@@ -1,0 +1,389 @@
+import FastConfirmation.Spec.Proof.AcceptedDynamicFinalizedPlacement
+import FastConfirmation.Spec.Proof.AcceptedPhaseSourceCarriers
+import FastConfirmation.Spec.Proof.ExecutionRootReflection
+import FastConfirmation.Spec.Proof.QueryFilterViability
+
+/-!
+# Path-local finalized transport for accepted retained tips
+
+The executable query filter can certify a finalized checkpoint in an earlier
+query store.  Transporting that certificate to a retained endpoint tip reads
+only the two concrete parent walks involved; it does not require the query's
+entire block domain to be contained in the endpoint store.
+
+This module records that path-local transport and separates the two positive
+early-finality branches from the genuinely insufficient numeric-recency arm:
+
+* exact stable finality is carried by paired query/endpoint boundary walks;
+* exact anchor finality is reflected from accepted AU at the retained tip;
+* source recency by itself still supplies no finalized/source dominance.
+
+No visibility, finalized-seed, filter membership, or safety conclusion is
+postulated by the retained-source results below.
+-/
+
+namespace FastConfirmation.Spec
+
+variable {Root : Type*} [LinearOrder Root] [Inhabited Root]
+variable (cfg : Config) (ext : Externals Root)
+
+/-! ## Paired-walk block transport -/
+
+omit [LinearOrder Root] [Inhabited Root] in
+/-- Two stores compute the same ancestor along paired known walks when they
+agree only at roots encountered by both walks.  Unlike `get_ancestor_congr`,
+this theorem needs no one-sided agreement over an entire store domain. -/
+theorem get_ancestor_eq_of_paired_walks
+    {source target : Store Root}
+    (hsourceParent : ParentSlotLt source)
+    (htargetParent : ParentSlotLt target)
+    (hagree : ∀ r, r ∈ source.block_roots →
+      r ∈ target.block_roots → source.blocks r = target.blocks r)
+    {slot : Slot} {r : Root}
+    (hsourceWalk : WalkKnown source slot r)
+    (htargetWalk : WalkKnown target slot r) :
+    get_ancestor source (get_node_for_root r) slot =
+      get_ancestor target (get_node_for_root r) slot := by
+  induction hsourceWalk with
+  | @stop r hsourceRoot hsourceLe =>
+      cases htargetWalk with
+      | stop htargetRoot htargetLe =>
+          simp only [get_node_for_root]
+          rw [get_ancestor_stop hsourceLe, get_ancestor_stop htargetLe]
+      | step htargetRoot htargetGt htargetTail =>
+          have hblock := hagree r hsourceRoot htargetRoot
+          have hsourceGt : slot < (source.blocks r).slot := by
+            simpa only [hblock] using htargetGt
+          exact False.elim ((Nat.not_lt_of_ge hsourceLe) hsourceGt)
+  | @step r hsourceRoot hsourceGt hsourceTail ih =>
+      cases htargetWalk with
+      | stop htargetRoot htargetLe =>
+          have hblock := hagree r hsourceRoot htargetRoot
+          have hsourceLe : (source.blocks r).slot ≤ slot := by
+            simpa only [hblock] using htargetLe
+          exact False.elim ((Nat.not_lt_of_ge hsourceLe) hsourceGt)
+      | step htargetRoot htargetGt htargetTail =>
+          have hblock := hagree r hsourceRoot htargetRoot
+          have htargetTail' : WalkKnown target slot
+              (source.blocks r).parent_root := by
+            simpa only [hblock] using htargetTail
+          simp only [get_node_for_root] at ih ⊢
+          rw [get_ancestor_step hsourceParent hsourceRoot hsourceGt
+              hsourceTail,
+            get_ancestor_step htargetParent htargetRoot htargetGt
+              htargetTail]
+          simpa only [hblock] using ih htargetTail'
+
+omit [LinearOrder Root] [Inhabited Root] in
+/-- Checkpoint-block form of `get_ancestor_eq_of_paired_walks`. -/
+theorem get_checkpoint_block_eq_of_paired_walks
+    {source target : Store Root}
+    (hsourceParent : ParentSlotLt source)
+    (htargetParent : ParentSlotLt target)
+    (hagree : ∀ r, r ∈ source.block_roots →
+      r ∈ target.block_roots → source.blocks r = target.blocks r)
+    {epoch : Epoch} {r : Root}
+    (hsourceWalk : WalkKnown source
+      (compute_start_slot_at_epoch cfg epoch) r)
+    (htargetWalk : WalkKnown target
+      (compute_start_slot_at_epoch cfg epoch) r) :
+    get_checkpoint_block cfg source r epoch =
+      get_checkpoint_block cfg target r epoch := by
+  exact congrArg ForkChoiceNode.root
+    (get_ancestor_eq_of_paired_walks hsourceParent htargetParent hagree
+      hsourceWalk htargetWalk)
+
+namespace Execution
+
+/-- Exact causal stores obtain the paired-walk agreement premise directly
+from accepted block provenance.  No block-domain inclusion is needed. -/
+theorem CausalStore.getCheckpointBlock_eq_of_pairedWalks
+    {E : Execution Root}
+    (hwfExecution : WellFormedExecution E)
+    {source target : Store Root}
+    (hsource : E.CausalStore cfg ext source)
+    (htarget : E.CausalStore cfg ext target)
+    (hsourceParent : ParentSlotLt source)
+    (htargetParent : ParentSlotLt target)
+    {epoch : Epoch} {r : Root}
+    (hsourceWalk : WalkKnown source
+      (compute_start_slot_at_epoch cfg epoch) r)
+    (htargetWalk : WalkKnown target
+      (compute_start_slot_at_epoch cfg epoch) r) :
+    get_checkpoint_block cfg source r epoch =
+      get_checkpoint_block cfg target r epoch := by
+  apply get_checkpoint_block_eq_of_paired_walks cfg hsourceParent
+    htargetParent
+  · intro x hxSource hxTarget
+    exact hwfExecution.blocks_agree hsource.blockProvenance
+      htarget.blockProvenance hxSource hxTarget
+  · exact hsourceWalk
+  · exact htargetWalk
+
+end Execution
+
+/-! ## Exact-stable query transport -/
+
+/-- The exact query-filter leaf witness together with its one actually used
+path down to `result`'s slot.  This is the path-local refinement of
+`FilterViableLeafBelow`: it retains no walk or agreement fact about unrelated
+query roots. -/
+def PathLocalFilterViableLeafBelow
+    (store : Store Root) (result : Root) : Prop :=
+  ∃ tip : Root,
+    tip ∈ store.block_roots ∧
+      is_ancestor store (get_node_for_root tip)
+        (get_node_for_root result) = true ∧
+      store.block_roots.filter
+          (fun r => (store.blocks r).parent_root = tip) = [] ∧
+      (store.justified_checkpoint.epoch = GENESIS_EPOCH ∨
+        (get_voting_source cfg store tip).epoch =
+            store.justified_checkpoint.epoch ∨
+        (get_voting_source cfg store tip).epoch + 2 ≥
+          get_current_store_epoch cfg store) ∧
+      (store.finalized_checkpoint.epoch = GENESIS_EPOCH ∨
+        store.finalized_checkpoint.root =
+          get_checkpoint_block cfg store tip
+            store.finalized_checkpoint.epoch) ∧
+      WalkKnown store (store.blocks result).slot tip
+
+omit [Inhabited Root] in
+/-- Path-local version of exact-stable query-filter transport.
+
+The only cross-store read is the checkpoint walk from `result`.  Supplying
+that walk in each store allows provenance to establish agreement root by root;
+there is no containment premise for unrelated query blocks. -/
+theorem finalized_check_of_exactStable_viableLeaf_pairedWalks
+    {query endpoint : Store Root}
+    (hwfQuery : ParentSlotLt query)
+    (hwfEndpoint : ParentSlotLt endpoint)
+    {result endpointTip : Root}
+    (hresultQuery : result ∈ query.block_roots)
+    (hviable : PathLocalFilterViableLeafBelow cfg query result)
+    (hstable : endpoint.finalized_checkpoint =
+      query.finalized_checkpoint)
+    (hblocksAgree : ∀ r, r ∈ query.block_roots →
+      r ∈ endpoint.block_roots → query.blocks r = endpoint.blocks r)
+    (hboundaryResult : compute_start_slot_at_epoch cfg
+      query.finalized_checkpoint.epoch ≤ (query.blocks result).slot)
+    (hqueryResultBoundaryWalk : WalkKnown query
+      (compute_start_slot_at_epoch cfg
+        query.finalized_checkpoint.epoch) result)
+    (hendpointResultBoundaryWalk : WalkKnown endpoint
+      (compute_start_slot_at_epoch cfg
+        endpoint.finalized_checkpoint.epoch) result)
+    (hendpointTipResult : is_ancestor endpoint
+      (get_node_for_root endpointTip) (get_node_for_root result) = true)
+    (hendpointBoundaryWalk : WalkKnown endpoint
+      (compute_start_slot_at_epoch cfg
+        endpoint.finalized_checkpoint.epoch) endpointTip) :
+    endpoint.finalized_checkpoint.epoch = GENESIS_EPOCH ∨
+      endpoint.finalized_checkpoint.root =
+        get_checkpoint_block cfg endpoint endpointTip
+          endpoint.finalized_checkpoint.epoch := by
+  obtain ⟨queryTip, hqueryTip, hqueryTipResult, _hleaf,
+      _hjustified, hfinalized, hqueryTipToResultWalk⟩ := hviable
+  rcases hfinalized with hgenesis | hqueryTipFinalized
+  · left
+    simpa only [hstable] using hgenesis
+  · right
+    have hqueryTipLandsOnResult : get_ancestor query
+        (get_node_for_root queryTip) (query.blocks result).slot =
+          get_node_for_root result := by
+      simpa only [is_ancestor, decide_eq_true_eq] using hqueryTipResult
+    have hqueryTipBoundaryWalk : WalkKnown query
+        (compute_start_slot_at_epoch cfg
+          query.finalized_checkpoint.epoch) queryTip :=
+      WalkKnown.splice_at_ancestor hwfQuery hboundaryResult
+        hqueryTipToResultWalk hqueryTipLandsOnResult
+        hqueryResultBoundaryWalk
+    have hqueryTipResultCheckpoint :
+        get_checkpoint_block cfg query queryTip
+            query.finalized_checkpoint.epoch =
+          get_checkpoint_block cfg query result
+            query.finalized_checkpoint.epoch :=
+      get_checkpoint_block_of_ancestor cfg hwfQuery hqueryTipResult
+        hboundaryResult hqueryTipBoundaryWalk
+    have hqueryResultFinalized : query.finalized_checkpoint.root =
+        get_checkpoint_block cfg query result
+          query.finalized_checkpoint.epoch :=
+      hqueryTipFinalized.trans hqueryTipResultCheckpoint
+    have hstableRoot : endpoint.finalized_checkpoint.root =
+        query.finalized_checkpoint.root :=
+      congrArg Checkpoint.root hstable
+    have hstableEpoch : endpoint.finalized_checkpoint.epoch =
+        query.finalized_checkpoint.epoch :=
+      congrArg Checkpoint.epoch hstable
+    have hendpointResultWalkAtQueryEpoch : WalkKnown endpoint
+        (compute_start_slot_at_epoch cfg
+          query.finalized_checkpoint.epoch) result := by
+      simpa only [hstableEpoch] using hendpointResultBoundaryWalk
+    have hresultCheckpointTransport :
+        get_checkpoint_block cfg query result
+            query.finalized_checkpoint.epoch =
+          get_checkpoint_block cfg endpoint result
+            query.finalized_checkpoint.epoch :=
+      get_checkpoint_block_eq_of_paired_walks cfg hwfQuery hwfEndpoint
+        hblocksAgree hqueryResultBoundaryWalk
+          hendpointResultWalkAtQueryEpoch
+    have hendpointResultFinalized : endpoint.finalized_checkpoint.root =
+        get_checkpoint_block cfg endpoint result
+          endpoint.finalized_checkpoint.epoch := by
+      calc
+        endpoint.finalized_checkpoint.root =
+            query.finalized_checkpoint.root := hstableRoot
+        _ = get_checkpoint_block cfg query result
+            query.finalized_checkpoint.epoch := hqueryResultFinalized
+        _ = get_checkpoint_block cfg endpoint result
+            query.finalized_checkpoint.epoch := hresultCheckpointTransport
+        _ = get_checkpoint_block cfg endpoint result
+            endpoint.finalized_checkpoint.epoch := by rw [hstableEpoch]
+    have hendpointBoundaryResult : compute_start_slot_at_epoch cfg
+        endpoint.finalized_checkpoint.epoch ≤
+          (endpoint.blocks result).slot := by
+      rw [hstableEpoch,
+        ← hblocksAgree result hresultQuery
+          hendpointResultBoundaryWalk.root_mem]
+      exact hboundaryResult
+    exact finalized_check_of_ancestor cfg hwfEndpoint hendpointTipResult
+      hendpointBoundaryResult hendpointBoundaryWalk
+        hendpointResultFinalized
+
+namespace Execution
+
+/-- Accepted-execution wrapper for path-local exact-stable transport.
+Block agreement is discharged for the paired result walks by causal
+provenance, without a query-domain subset hypothesis. -/
+theorem finalized_check_of_exactStable_viableLeaf_of_causalStores_pairedWalks
+    {E : Execution Root}
+    (hwfExecution : WellFormedExecution E)
+    {query endpoint : Store Root}
+    (hquery : E.CausalStore cfg ext query)
+    (hendpoint : E.CausalStore cfg ext endpoint)
+    (hwfQuery : ParentSlotLt query)
+    (hwfEndpoint : ParentSlotLt endpoint)
+    {result endpointTip : Root}
+    (hresultQuery : result ∈ query.block_roots)
+    (hviable : PathLocalFilterViableLeafBelow cfg query result)
+    (hstable : endpoint.finalized_checkpoint =
+      query.finalized_checkpoint)
+    (hboundaryResult : compute_start_slot_at_epoch cfg
+      query.finalized_checkpoint.epoch ≤ (query.blocks result).slot)
+    (hqueryResultBoundaryWalk : WalkKnown query
+      (compute_start_slot_at_epoch cfg
+        query.finalized_checkpoint.epoch) result)
+    (hendpointResultBoundaryWalk : WalkKnown endpoint
+      (compute_start_slot_at_epoch cfg
+        endpoint.finalized_checkpoint.epoch) result)
+    (hendpointTipResult : is_ancestor endpoint
+      (get_node_for_root endpointTip) (get_node_for_root result) = true)
+    (hendpointBoundaryWalk : WalkKnown endpoint
+      (compute_start_slot_at_epoch cfg
+        endpoint.finalized_checkpoint.epoch) endpointTip) :
+    endpoint.finalized_checkpoint.epoch = GENESIS_EPOCH ∨
+      endpoint.finalized_checkpoint.root =
+        get_checkpoint_block cfg endpoint endpointTip
+          endpoint.finalized_checkpoint.epoch := by
+  apply finalized_check_of_exactStable_viableLeaf_pairedWalks cfg
+    hwfQuery hwfEndpoint hresultQuery hviable hstable
+  · intro r hrQuery hrEndpoint
+    exact hwfExecution.blocks_agree hquery.blockProvenance
+      hendpoint.blockProvenance hrQuery hrEndpoint
+  · exact hboundaryResult
+  · exact hqueryResultBoundaryWalk
+  · exact hendpointResultBoundaryWalk
+  · exact hendpointTipResult
+  · exact hendpointBoundaryWalk
+
+namespace AcceptedRetainedPhaseSourceCarrierAt
+
+/-- Exact-stable F1 specialized to the accepted retained source carrier.
+
+The carrier contributes the concrete endpoint tip, causal provenance, and
+descent below `selected`.  The query's executable viable-leaf witness supplies
+finality; source recency is not (and need not be) used in this stable branch. -/
+theorem finalized_check_of_exactStable_query
+    {E : Execution Root}
+    {B : ExactPrefixAcceptedFFGSemantics cfg ext E}
+    (hwfExecution : WellFormedExecution E)
+    {query endpoint : Store Root}
+    (hquery : E.CausalStore cfg ext query)
+    (hendpointParent : ParentSlotLt endpoint)
+    (hqueryParent : ParentSlotLt query)
+    {selected : Root}
+    (h : E.AcceptedRetainedPhaseSourceCarrierAt cfg ext B endpoint selected)
+    (hselectedQuery : selected ∈ query.block_roots)
+    (hviable : PathLocalFilterViableLeafBelow cfg query selected)
+    (hstable : endpoint.finalized_checkpoint =
+      query.finalized_checkpoint)
+    (hboundarySelected : compute_start_slot_at_epoch cfg
+      query.finalized_checkpoint.epoch ≤ (query.blocks selected).slot)
+    (hquerySelectedBoundaryWalk : WalkKnown query
+      (compute_start_slot_at_epoch cfg
+        query.finalized_checkpoint.epoch) selected)
+    (hendpointSelectedBoundaryWalk : WalkKnown endpoint
+      (compute_start_slot_at_epoch cfg
+        endpoint.finalized_checkpoint.epoch) selected)
+    (hendpointTipBoundaryWalk : WalkKnown endpoint
+      (compute_start_slot_at_epoch cfg
+        endpoint.finalized_checkpoint.epoch) h.tip) :
+    endpoint.finalized_checkpoint.epoch = GENESIS_EPOCH ∨
+      endpoint.finalized_checkpoint.root =
+        get_checkpoint_block cfg endpoint h.tip
+          endpoint.finalized_checkpoint.epoch := by
+  exact E.finalized_check_of_exactStable_viableLeaf_of_causalStores_pairedWalks
+    cfg ext hwfExecution hquery h.store_causal hqueryParent
+    hendpointParent hselectedQuery hviable hstable hboundarySelected
+    hquerySelectedBoundaryWalk hendpointSelectedBoundaryWalk
+      h.tip_descends_selected
+      hendpointTipBoundaryWalk
+
+/-- Exact-anchor F2 for an accepted retained source carrier.
+
+Positive accepted AU at the carrier tip supplies an included justification
+certificate.  The trusted anchor is therefore an exact prefix of that source,
+so a single finalized-boundary walk reflects the anchor at the same tip.  No
+visibility, source/finalized dominance assumption, or safety premise is used. -/
+theorem finalizedRoot_eq_checkpointBlock_of_anchor
+    {E : Execution Root}
+    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (P : AcceptedEpochCheckpointProjection B.anchor
+      (E.AcceptedRoot cfg ext) B.state.C)
+    (V : B.state.ExactLinkValidity)
+    (hanchorExact : B.anchor =
+      B.state.C B.anchor.root B.anchor.epoch)
+    {store : Store Root} (hparent : ParentSlotLt store)
+    {selected : Root}
+    (h : E.AcceptedRetainedPhaseSourceCarrierAt cfg ext B store selected)
+    (hfinalizedAnchor : store.finalized_checkpoint = B.anchor)
+    (hwalk : WalkKnown store
+      (compute_start_slot_at_epoch cfg
+        store.finalized_checkpoint.epoch) h.tip) :
+    store.finalized_checkpoint.root =
+      get_checkpoint_block cfg store h.tip
+        store.finalized_checkpoint.epoch := by
+  obtain ⟨hsourceJustified⟩ :=
+    B.state.includedJustifiedAtTip_of_AU cfg ext h.source_au
+  have hprefix : ExactCheckpointPrefix B.state.C B.anchor
+      (get_voting_source cfg store h.tip) :=
+    IncludedCertifiedJustified.anchor_prefix
+      (cfg := cfg) P V hanchorExact hsourceJustified
+  have hepoch : B.anchor.epoch ≤
+      (get_voting_source cfg store h.tip).epoch :=
+    IncludedCertifiedJustified.anchor_epoch_le
+      (cfg := cfg) hsourceJustified
+  have hwalkAnchor : WalkKnown store
+      (compute_start_slot_at_epoch cfg B.anchor.epoch) h.tip := by
+    simpa only [hfinalizedAnchor] using hwalk
+  have hreflect : B.anchor.root =
+      get_checkpoint_block cfg store h.tip B.anchor.epoch :=
+    exactCheckpointPrefix_root_eq_at_sameTip cfg ext B.coherence
+      h.store_causal hparent h.tip_known hprefix h.source_au hepoch
+        hwalkAnchor
+  simpa only [hfinalizedAnchor] using hreflect
+
+end AcceptedRetainedPhaseSourceCarrierAt
+
+end Execution
+
+end FastConfirmation.Spec

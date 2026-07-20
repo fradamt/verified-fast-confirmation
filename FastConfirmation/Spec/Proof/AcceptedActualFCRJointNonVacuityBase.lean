@@ -1,0 +1,903 @@
+import Mathlib.Tactic
+import FastConfirmation.Spec.Proof.AcceptedActualFCRNextSlotSafetyFold
+
+/-!
+# Base execution for joint accepted-FCR non-vacuity
+
+This module supplies the concrete, operational half of the horizon-four
+joint witness.  The accepted FFG semantics and Paper A3.2 witness are kept in
+a follow-on module; all declarations here are intentionally public so that
+the semantic layer can reuse the exact executable trace.
+
+The construction has four honest validators of equal weight, four slots per
+epoch, and four roots: a dangling parent, the trusted anchor, a slot-one
+child, and a slot-seven carrier.  The last in-horizon vote (slot fifteen) is
+delivered at second sixteen, positively exercising the one-slot delivery
+lookahead without pretending that second sixteen is itself in the horizon.
+-/
+
+namespace FastConfirmation.Spec
+namespace AcceptedActualFCRJointNonVacuityBase
+
+abbrev WitnessRoot := Fin 4
+
+def junkRoot : WitnessRoot := 0
+def anchorRoot : WitnessRoot := 1
+def childRoot : WitnessRoot := 2
+def carrierRoot : WitnessRoot := 3
+
+def witnessConfig : Config where
+  slots_per_epoch := 4
+  slots_per_epoch_pos := by decide
+  slot_duration_ms := 1000
+  slot_duration_ms_pos := by decide
+  proposer_score_boost := 0
+  confirmation_byzantine_threshold := 25
+  confirmation_byzantine_threshold_le := by decide
+  committee_weight_estimation_adjustment_factor := 5
+  effective_balance_increment := 100
+  effective_balance_increment_pos := by decide
+  hundred_dvd_effective_balance_increment := by decide
+  attestation_due_bps := 0
+  min_seed_lookahead := 0
+
+def anchorCheckpoint : Checkpoint WitnessRoot :=
+  { epoch := 0, root := anchorRoot }
+
+def childEpochOneCheckpoint : Checkpoint WitnessRoot :=
+  { epoch := 1, root := childRoot }
+
+def carrierEpochTwoCheckpoint : Checkpoint WitnessRoot :=
+  { epoch := 2, root := carrierRoot }
+
+def carrierEpochThreeCheckpoint : Checkpoint WitnessRoot :=
+  { epoch := 3, root := carrierRoot }
+
+def witnessValidator : Validator :=
+  { effective_balance := 100
+    slashed := false
+    activation_epoch := 0
+    exit_epoch := FAR_FUTURE_EPOCH }
+
+def stateAt (slot : Slot) (justified : Checkpoint WitnessRoot) :
+    BeaconState WitnessRoot :=
+  { genesis_time := 0
+    slot := slot
+    validators :=
+      [witnessValidator, witnessValidator, witnessValidator, witnessValidator]
+    current_justified_checkpoint := justified
+    finalized_checkpoint := anchorCheckpoint }
+
+def anchorState : BeaconState WitnessRoot := stateAt 0 anchorCheckpoint
+def childState : BeaconState WitnessRoot := stateAt 1 anchorCheckpoint
+def carrierState : BeaconState WitnessRoot := stateAt 7 anchorCheckpoint
+
+def anchorSignedBlock : SignedBeaconBlock WitnessRoot :=
+  { message := { slot := 0, parent_root := junkRoot }
+    root := anchorRoot }
+
+def childSignedBlock : SignedBeaconBlock WitnessRoot :=
+  { message := { slot := 1, parent_root := anchorRoot }
+    root := childRoot }
+
+def carrierSignedBlock : SignedBeaconBlock WitnessRoot :=
+  { message := { slot := 7, parent_root := childRoot }
+    root := carrierRoot }
+
+/-! ## Ground honest votes -/
+
+def voteData (slot : Slot) : AttestationData WitnessRoot :=
+  if slot = 0 then
+    { slot := slot, index := 0, beacon_block_root := anchorRoot
+      source := anchorCheckpoint, target := anchorCheckpoint }
+  else if slot < 4 then
+    { slot := slot, index := 0, beacon_block_root := childRoot
+      source := anchorCheckpoint, target := anchorCheckpoint }
+  else if slot < 7 then
+    { slot := slot, index := 0, beacon_block_root := childRoot
+      source := anchorCheckpoint, target := childEpochOneCheckpoint }
+  else if slot = 7 then
+    { slot := slot, index := 0, beacon_block_root := carrierRoot
+      source := anchorCheckpoint, target := childEpochOneCheckpoint }
+  else if slot < 12 then
+    { slot := slot, index := 0, beacon_block_root := carrierRoot
+      source := childEpochOneCheckpoint, target := carrierEpochTwoCheckpoint }
+  else
+    { slot := slot, index := 0, beacon_block_root := carrierRoot
+      source := childEpochOneCheckpoint, target := carrierEpochThreeCheckpoint }
+
+def vote (slot : Slot) : Attestation WitnessRoot :=
+  { attesting_indices := [slot % 4], data := voteData slot }
+
+def vote0 := vote 0
+def vote1 := vote 1
+def vote2 := vote 2
+def vote3 := vote 3
+def vote4 := vote 4
+def vote5 := vote 5
+def vote6 := vote 6
+def vote7 := vote 7
+def vote8 := vote 8
+def vote9 := vote 9
+def vote10 := vote 10
+def vote11 := vote 11
+def vote12 := vote 12
+def vote13 := vote 13
+def vote14 := vote 14
+def vote15 := vote 15
+
+def groundVotes : List (Attestation WitnessRoot) :=
+  [vote0, vote1, vote2, vote3, vote4, vote5,
+    vote6, vote7, vote8, vote9, vote10, vote11,
+    vote12, vote13, vote14, vote15]
+
+/-! ## Phase0-coherent external functions -/
+
+/-- Eager epoch processing at the carrier slot exposes the child
+checkpoint.  Every other abstract input clamps to the trusted anchor; this
+keeps the external total while making the two phase0 laws transparent. -/
+def witnessPJF (st : BeaconState WitnessRoot) : BeaconState WitnessRoot :=
+  if st.slot = 7 then
+    { st with current_justified_checkpoint := childEpochOneCheckpoint }
+  else { st with current_justified_checkpoint := anchorCheckpoint }
+
+/-- Empty-slot processing changes the realized source precisely when crossing
+an epoch boundary, and then reads the eager PJF value of the input state. -/
+def witnessProcessSlots (st : BeaconState WitnessRoot) (target : Slot) :
+    BeaconState WitnessRoot :=
+  if compute_epoch_at_slot witnessConfig st.slot <
+      compute_epoch_at_slot witnessConfig target then
+    { witnessPJF st with slot := target }
+  else
+    { st with slot := target }
+
+/-- Decidable extensional equality for the deliberately non-`DecidableEq`
+projected beacon-state container. -/
+def SameProjectedState (a b : BeaconState WitnessRoot) : Prop :=
+  a.genesis_time = b.genesis_time ∧
+    a.slot = b.slot ∧
+    a.validators = b.validators ∧
+    a.current_justified_checkpoint = b.current_justified_checkpoint ∧
+    a.finalized_checkpoint = b.finalized_checkpoint
+
+instance (a b : BeaconState WitnessRoot) : Decidable (SameProjectedState a b) :=
+  by
+    unfold SameProjectedState
+    infer_instance
+
+theorem sameProjectedState_iff_eq {a b : BeaconState WitnessRoot} :
+    SameProjectedState a b ↔ a = b := by
+  constructor
+  · rintro ⟨hgen, hslot, hvalidators, hj, hf⟩
+    cases a
+    cases b
+    simp_all
+  · rintro rfl
+    exact ⟨rfl, rfl, rfl, rfl, rfl⟩
+
+def witnessTransition (st : BeaconState WitnessRoot)
+    (block : SignedBeaconBlock WitnessRoot) : Option (BeaconState WitnessRoot) :=
+  if SameProjectedState st anchorState ∧ block = childSignedBlock then
+    some childState
+  else if SameProjectedState st childState ∧ block = carrierSignedBlock then
+    some carrierState
+  else none
+
+def witnessExternals : Externals WitnessRoot where
+  get_beacon_committee := fun _ slot _ => [slot % 4]
+  get_committee_count_per_slot := fun _ _ => 1
+  process_slots := witnessProcessSlots
+  state_transition := witnessTransition
+  process_justification_and_finalization := witnessPJF
+  is_valid_indexed_attestation := fun _ a => decide (a ∈ groundVotes)
+
+/-! ## Schedule and execution -/
+
+/-- Symmetric schedule.  False copies implement ordinary gossip.  At second
+seven the slot-six receipt precedes the carrier; the true copies after it are
+the three attestations projected as carried by that block. -/
+def witnessSchedule (_w : ValidatorIndex) (n : ℕ) :
+    List (Event WitnessRoot) :=
+  if n = 1 then [Event.block childSignedBlock, Event.attestation vote0 false]
+  else if n = 7 then
+    [Event.attestation vote6 false, Event.block carrierSignedBlock,
+      Event.attestation vote4 true, Event.attestation vote5 true,
+      Event.attestation vote6 true]
+  else if 2 ≤ n ∧ n ≤ 16 then
+    [Event.attestation (vote (n - 1)) false]
+  else []
+
+def witnessCommittee (slot : Slot) : Finset ValidatorIndex := {slot % 4}
+
+def witnessVote (v : ValidatorIndex) (slot : Slot) :
+    Option (ℕ × Attestation WitnessRoot) :=
+  if slot < 16 ∧ v = slot % 4 then some (slot, vote slot) else none
+
+def witnessExecution : Execution WitnessRoot where
+  verification_horizon := 4
+  genesis_store :=
+    get_forkchoice_store witnessConfig anchorState anchorSignedBlock
+  schedule := witnessSchedule
+  honest := {0, 1, 2, 3}
+  committee := witnessCommittee
+  vote := witnessVote
+
+def confirmingFcr : FastConfirmationStore WitnessRoot :=
+  witnessExecution.fcrStep witnessConfig witnessExternals 0 1
+
+/-! ## Basic clock and finite classifiers -/
+
+theorem time_at_eq (n : ℕ) : witnessExecution.time_at n = n := by
+  norm_num [Execution.time_at, witnessExecution, anchorState, stateAt,
+    anchorSignedBlock, witnessConfig, get_forkchoice_store]
+
+theorem slot_at_eq (n : ℕ) :
+    witnessExecution.slot_at witnessConfig n = n := by
+  norm_num [Execution.slot_at, Execution.time_at, witnessExecution, anchorState,
+    stateAt, anchorSignedBlock, witnessConfig, get_forkchoice_store,
+    GENESIS_SLOT]
+
+theorem slot_start_eq (s : Slot) :
+    witnessExecution.slot_start witnessConfig s = s := by
+  norm_num [Execution.slot_start, witnessExecution, anchorState, stateAt,
+    anchorSignedBlock, witnessConfig, get_forkchoice_store]
+
+theorem slot_lt_sixteen {s : Slot}
+    (hs : witnessExecution.SlotWithinHorizon witnessConfig s) : s < 16 := by
+  have hepoch := hs.2
+  change s / 4 < 4 at hepoch
+  rwa [Nat.div_lt_iff_lt_mul (by decide : 0 < 4)] at hepoch
+
+theorem time_lt_sixteen {n : ℕ}
+    (hn : witnessExecution.WithinHorizon witnessConfig n) : n < 16 := by
+  have hepoch := hn.2.2
+  rw [slot_at_eq] at hepoch
+  change n / 4 < 4 at hepoch
+  rwa [Nat.div_lt_iff_lt_mul (by decide : 0 < 4)] at hepoch
+
+theorem time_within_of_lt_sixteen {n : ℕ} (hn : n < 16) :
+    witnessExecution.WithinHorizon witnessConfig n := by
+  refine ⟨?_, ?_, ?_⟩
+  · rw [time_at_eq]
+    exact (Nat.le_of_lt hn).trans (by norm_num [UINT64_MAX])
+  · rw [slot_at_eq]
+    exact (Nat.le_of_lt hn).trans (by norm_num [UINT64_MAX])
+  · rw [slot_at_eq]
+    change n / 4 < 4
+    rwa [Nat.div_lt_iff_lt_mul (by decide : 0 < 4)]
+
+theorem slot_within_of_lt_sixteen {s : Slot} (hs : s < 16) :
+    witnessExecution.SlotWithinHorizon witnessConfig s := by
+  refine ⟨(Nat.le_of_lt hs).trans (by norm_num [UINT64_MAX]), ?_⟩
+  change s / 4 < 4
+  rwa [Nat.div_lt_iff_lt_mul (by decide : 0 < 4)]
+
+theorem honest_eq_zero_or_one_or_two_or_three {v : ValidatorIndex}
+    (hv : v ∈ witnessExecution.honest) :
+      v = 0 ∨ v = 1 ∨ v = 2 ∨ v = 3 := by
+  simpa [witnessExecution] using hv
+
+theorem witness_vote_some_iff {v : ValidatorIndex} {s : Slot}
+    {n : ℕ} {a : Attestation WitnessRoot} :
+    witnessExecution.vote v s = some (n, a) ↔
+      s < 16 ∧ v = s % 4 ∧ n = s ∧ a = vote s := by
+  change (if s < 16 ∧ v = s % 4 then some (s, vote s) else none) =
+      some (n, a) ↔ _
+  by_cases h : s < 16 ∧ v = s % 4
+  · rw [if_pos h]
+    constructor
+    · intro heq
+      have hp : (s, vote s) = (n, a) := Option.some.inj heq
+      exact ⟨h.1, h.2, (congrArg Prod.fst hp).symm,
+        (congrArg Prod.snd hp).symm⟩
+    · rintro ⟨_, _, rfl, rfl⟩
+      rfl
+  · rw [if_neg h]
+    constructor
+    · intro himpossible
+      contradiction
+    · rintro ⟨hs, hv, -, -⟩
+      exact (h ⟨hs, hv⟩).elim
+
+theorem witness_valid_iff (state : BeaconState WitnessRoot)
+    (a : Attestation WitnessRoot) :
+    witnessExternals.is_valid_indexed_attestation state a = true ↔
+      a ∈ groundVotes := by
+  simp [witnessExternals]
+
+/-! ## Direct executable regression checks -/
+
+theorem confirming_second_within_horizon :
+    witnessExecution.WithinHorizon witnessConfig 2 :=
+  time_within_of_lt_sixteen (by decide)
+
+theorem confirming_store_domain :
+    anchorRoot ∈ confirmingFcr.store.block_roots ∧
+      childRoot ∈ confirmingFcr.store.block_roots := by
+  set_option maxRecDepth 50000 in
+    decide
+
+theorem anchor_is_current_epoch_at_strict_call :
+    get_block_epoch witnessConfig confirmingFcr.store anchorRoot =
+      get_current_store_epoch witnessConfig confirmingFcr.store := by
+  set_option maxRecDepth 50000 in
+    decide
+
+theorem child_is_one_confirmed :
+    is_one_confirmed witnessConfig witnessExternals confirmingFcr.store
+      (get_current_balance_source confirmingFcr) childRoot = true := by
+  set_option maxRecDepth 50000 in
+    decide
+
+theorem find_latest_confirmed_descendant_strict_advance :
+    find_latest_confirmed_descendant witnessConfig witnessExternals confirmingFcr
+      anchorRoot = childRoot := by
+  set_option maxRecDepth 20000 in
+    decide
+
+theorem actual_fcr_transition_strict_advance :
+    witnessExecution.confirmed witnessConfig witnessExternals 0 2 = childRoot := by
+  set_option maxRecDepth 20000 in
+    decide
+
+theorem confirming_fcr_input_and_output :
+    confirmingFcr.confirmed_root = anchorRoot ∧
+      get_latest_confirmed witnessConfig witnessExternals confirmingFcr = childRoot := by
+  set_option maxRecDepth 20000 in
+    decide
+
+theorem confirming_call_is_slot_transition :
+    get_current_slot witnessConfig
+        (witnessExecution.store witnessConfig witnessExternals 0 1) <
+      get_current_slot witnessConfig
+        (witnessExecution.store witnessConfig witnessExternals 0 2) := by
+  decide
+
+theorem strict_advance_execution_nondegenerate :
+    0 ∈ witnessExecution.honest ∧ 1 ∈ witnessExecution.honest ∧
+      2 ∈ witnessExecution.honest ∧ 3 ∈ witnessExecution.honest ∧
+      (0 : ValidatorIndex) ≠ 1 ∧ (1 : ValidatorIndex) ≠ 2 ∧
+      (2 : ValidatorIndex) ≠ 3 ∧
+      0 < witnessExecution.weight_of 0 ∧
+      0 < witnessExecution.weight_of 1 ∧
+      0 < witnessExecution.weight_of 2 ∧
+      0 < witnessExecution.weight_of 3 ∧
+      0 < witnessExecution.total_active witnessConfig := by
+  decide
+
+/-! ## Operational classifiers and execution assumptions -/
+
+theorem block_mem_schedule_iff {w n}
+    {b : SignedBeaconBlock WitnessRoot} :
+    Event.block b ∈ witnessExecution.schedule w n ↔
+      (n = 1 ∧ b = childSignedBlock) ∨
+      (n = 7 ∧ b = carrierSignedBlock) := by
+  change Event.block b ∈ witnessSchedule w n ↔ _
+  by_cases h1 : n = 1
+  · subst n
+    simp [witnessSchedule]
+  · by_cases h7 : n = 7
+    · subst n
+      simp [witnessSchedule]
+    · simp [witnessSchedule, h1, h7]
+
+theorem vote_mem_ground {s : Slot} (hs : s < 16) : vote s ∈ groundVotes := by
+  interval_cases s <;>
+    simp [groundVotes, vote0, vote1, vote2, vote3, vote4, vote5, vote6,
+      vote7, vote8, vote9, vote10, vote11, vote12, vote13, vote14,
+      vote15]
+
+theorem attestation_mem_schedule_ground {w n a ifb}
+    (h : Event.attestation a ifb ∈ witnessExecution.schedule w n) :
+    a ∈ groundVotes := by
+  change Event.attestation a ifb ∈ witnessSchedule w n at h
+  by_cases h1 : n = 1
+  · subst n
+    simp [witnessSchedule] at h
+    rcases h with ⟨rfl, rfl⟩
+    exact vote_mem_ground (s := 0) (by decide)
+  · by_cases h7 : n = 7
+    · subst n
+      simp [witnessSchedule] at h
+      rcases h with h | h | h | h <;> rcases h with ⟨rfl, rfl⟩ <;>
+        exact vote_mem_ground (by decide)
+    · by_cases hb : 2 ≤ n ∧ n ≤ 16
+      · simp [witnessSchedule, h1, h7, hb] at h
+        rcases h with ⟨rfl, rfl⟩
+        have hpred : n - 1 < n := Nat.sub_lt (by omega) (by decide)
+        exact vote_mem_ground (s := n - 1) (hpred.trans_le hb.2)
+      · simp [witnessSchedule, h1, h7, hb] at h
+
+theorem groundVote_exists {a : Attestation WitnessRoot}
+    (ha : a ∈ groundVotes) :
+    ∃ s : Slot, s < 16 ∧ a = vote s := by
+  simp [groundVotes, vote0, vote1, vote2, vote3, vote4, vote5, vote6,
+    vote7, vote8, vote9, vote10, vote11, vote12, vote13, vote14,
+    vote15] at ha
+  rcases ha with rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl |
+      rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl
+  all_goals exact ⟨_, by decide, rfl⟩
+
+theorem vote_data_slot (s : Slot) : (vote s).data.slot = s := by
+  simp only [vote, voteData]
+  split_ifs <;> simp_all
+
+theorem recorded_vote_of_attester {s : Slot} (hs : s < 16)
+    {v : ValidatorIndex} (hvin : v ∈ (vote s).attesting_indices) :
+    ∃ m a', witnessExecution.vote v (vote s).data.slot = some (m, a') ∧
+      (vote s).data = a'.data := by
+  have hv : v = s % 4 := by simpa [vote] using hvin
+  refine ⟨s, vote s, ?_, rfl⟩
+  rw [vote_data_slot]
+  simp [witnessExecution, witnessVote, hs, hv]
+
+theorem witness_store_symmetric (v w : ValidatorIndex) (n : ℕ) :
+    witnessExecution.store witnessConfig witnessExternals v n =
+      witnessExecution.store witnessConfig witnessExternals w n := by
+  induction n with
+  | zero => rfl
+  | succ n ih =>
+      simp only [Execution.store]
+      rw [ih]
+      rfl
+
+theorem witnessWellFormedExecution :
+    WellFormedExecution witnessExecution := by
+  constructor
+  · intro w n b hb w' n' b' hb' hroot
+    rcases block_mem_schedule_iff.mp hb with hchild | hcarrier <;>
+      rcases block_mem_schedule_iff.mp hb' with hchild' | hcarrier'
+    · rcases hchild with ⟨rfl, rfl⟩
+      rcases hchild' with ⟨rfl, rfl⟩
+      rfl
+    · rcases hchild with ⟨rfl, rfl⟩
+      rcases hcarrier' with ⟨rfl, rfl⟩
+      exact False.elim ((by decide : childRoot ≠ carrierRoot) hroot)
+    · rcases hcarrier with ⟨rfl, rfl⟩
+      rcases hchild' with ⟨rfl, rfl⟩
+      exact False.elim ((by decide : carrierRoot ≠ childRoot) hroot)
+    · rcases hcarrier with ⟨rfl, rfl⟩
+      rcases hcarrier' with ⟨rfl, rfl⟩
+      rfl
+  · intro w n b hb hgen
+    rcases block_mem_schedule_iff.mp hb with ⟨rfl, rfl⟩ | ⟨rfl, rfl⟩
+    all_goals
+      simp [witnessExecution, anchorState, stateAt, anchorSignedBlock,
+        childSignedBlock, carrierSignedBlock, get_forkchoice_store,
+        anchorRoot, childRoot, carrierRoot] at hgen
+  · intro r hr w n b hb
+    have hr' : r = anchorRoot := by
+      simpa [witnessExecution, anchorState, stateAt, anchorSignedBlock,
+        get_forkchoice_store] using hr
+    subst r
+    rcases block_mem_schedule_iff.mp hb with ⟨rfl, rfl⟩ | ⟨rfl, rfl⟩ <;>
+      decide
+
+theorem honest_vote_recorded {s : Slot} (hs : s < 16) :
+    witnessExecution.vote (s % 4) s =
+      some (s, honest_attestation witnessConfig witnessExternals
+        (witnessExecution.store witnessConfig witnessExternals (s % 4) s)
+        s 0 (s % 4)) := by
+  interval_cases s <;>
+    set_option maxRecDepth 50000 in rfl
+
+theorem witnessHonestBehavior :
+    HonestBehavior witnessConfig witnessExternals witnessExecution := by
+  constructor
+  · intro v hv s hcommittee hs _hs0
+    have hslt := slot_lt_sixteen hs
+    have hvmod : v = s % 4 := by
+      simpa [witnessExecution, witnessCommittee] using hcommittee
+    subst v
+    exact ⟨s, 0, time_within_of_lt_sixteen hslt, slot_at_eq s,
+      honest_vote_recorded hslt⟩
+  · intro v hv s hvote
+    rcases Option.ne_none_iff_exists'.mp hvote with ⟨na, hna⟩
+    rcases na with ⟨n, a⟩
+    obtain ⟨hs, hvmod, _hn, _ha⟩ := witness_vote_some_iff.mp hna
+    simpa [witnessExecution, witnessCommittee, hvmod]
+  · intro w n a ifb hschedule v hv hvin
+    obtain ⟨s, hs, rfl⟩ :=
+      groundVote_exists (attestation_mem_schedule_ground hschedule)
+    exact recorded_vote_of_attester hs hvin
+  · intro v hv s s' n n' a a' hvote hvote'
+    obtain ⟨hs, hvmod, hn, ha⟩ := witness_vote_some_iff.mp hvote
+    obtain ⟨hs', hvmod', hn', ha'⟩ := witness_vote_some_iff.mp hvote'
+    subst n
+    subst a
+    subst n'
+    subst a'
+    interval_cases s <;> interval_cases s' <;>
+      simp_all [vote, voteData, is_slashable_attestation_data,
+        anchorCheckpoint, childEpochOneCheckpoint,
+        carrierEpochTwoCheckpoint, carrierEpochThreeCheckpoint]
+  · intro v hv
+    rcases honest_eq_zero_or_one_or_two_or_three hv with
+      rfl | rfl | rfl | rfl <;> decide
+
+theorem witnessPJF_current_epoch_le (st : BeaconState WitnessRoot) :
+    (witnessPJF st).current_justified_checkpoint.epoch ≤
+      compute_epoch_at_slot witnessConfig st.slot := by
+  by_cases h : st.slot = 7
+  · simp [witnessPJF, h, childEpochOneCheckpoint, witnessConfig,
+      compute_epoch_at_slot]
+  · simp [witnessPJF, h, anchorCheckpoint]
+
+theorem active_index_lt_four {i : ValidatorIndex} {e : Epoch}
+    (hactive : is_active_validator
+      (witnessExecution.registry.getD i default) e = true) : i < 4 := by
+  cases i with
+  | zero => decide
+  | succ i =>
+      cases i with
+      | zero => decide
+      | succ i =>
+          cases i with
+          | zero => decide
+          | succ i =>
+              cases i with
+              | zero => decide
+              | succ i =>
+                  simp [Execution.registry, Execution.anchor_state,
+                    witnessExecution, anchorState, stateAt,
+                    anchorSignedBlock, witnessValidator,
+                    get_forkchoice_store, is_active_validator] at hactive
+                  have hexit : (default : Validator).exit_epoch = 0 := rfl
+                  rw [hexit] at hactive
+                  exact (Nat.not_lt_zero e hactive.2).elim
+
+theorem witness_committee_coverage_at {i : ValidatorIndex} {e : Epoch}
+    (hi : i < 4) (he : e < 4) :
+    ∃ s : Slot, witnessExecution.SlotWithinHorizon witnessConfig s ∧
+      compute_epoch_at_slot witnessConfig s = e ∧
+      i ∈ witnessExecution.committee s := by
+  have he3 : e ≤ 3 := Nat.le_of_lt_succ he
+  have hi3 : i ≤ 3 := Nat.le_of_lt_succ hi
+  have hslt : e * 4 + i < 16 := by
+    calc
+      e * 4 + i ≤ 3 * 4 + 3 :=
+        Nat.add_le_add (Nat.mul_le_mul_right 4 he3) hi3
+      _ < 16 := by decide
+  refine ⟨e * 4 + i, slot_within_of_lt_sixteen hslt, ?_, ?_⟩
+  all_goals interval_cases e <;> interval_cases i <;> decide
+
+theorem witnessExternalsCoherence :
+    ExternalsCoherence witnessConfig witnessExternals witnessExecution := by
+  constructor
+  · intro st s hlt
+    simp only [witnessExternals, witnessProcessSlots]
+    split <;> rfl
+  · intro st s
+    simp only [witnessExternals, witnessProcessSlots]
+    split
+    · simp only [witnessPJF]
+      split <;> rfl
+    · rfl
+  · intro st b st' h
+    simp only [witnessExternals, witnessTransition] at h
+    split at h
+    · next hguard =>
+        simp only [Option.some.injEq] at h
+        subst st'
+        rw [hguard.2]
+        rfl
+    · split at h
+      · next hguard =>
+          simp only [Option.some.injEq] at h
+          subst st'
+          rw [hguard.2]
+          rfl
+      · contradiction
+  · intro st b st' h
+    simp only [witnessExternals, witnessTransition] at h
+    split at h
+    · next hguard =>
+        simp only [Option.some.injEq] at h
+        subst st'
+        have hst : st = anchorState := sameProjectedState_iff_eq.mp hguard.1
+        subst st
+        rfl
+    · split at h
+      · next hguard =>
+          simp only [Option.some.injEq] at h
+          subst st'
+          have hst : st = childState := sameProjectedState_iff_eq.mp hguard.1
+          subst st
+          rfl
+      · contradiction
+  · intro st b st' h
+    simp only [witnessExternals, witnessTransition] at h
+    split at h
+    · next hguard =>
+        simp only [Option.some.injEq] at h
+        subst st'
+        have hst : st = anchorState := sameProjectedState_iff_eq.mp hguard.1
+        subst st
+        rw [hguard.2]
+        decide
+    · split at h
+      · next hguard =>
+          simp only [Option.some.injEq] at h
+          subst st'
+          have hst : st = childState := sameProjectedState_iff_eq.mp hguard.1
+          subst st
+          rw [hguard.2]
+          decide
+      · contradiction
+  · intro st b st' h
+    simp only [witnessExternals, witnessTransition] at h
+    split at h
+    · next hguard =>
+        simp only [Option.some.injEq] at h
+        subst st'
+        rw [hguard.2]
+        decide
+    · split at h
+      · next hguard =>
+          simp only [Option.some.injEq] at h
+          subst st'
+          rw [hguard.2]
+          decide
+      · contradiction
+  · intro st
+    exact witnessPJF_current_epoch_le st
+  · intro v hv n s hn hs
+    simp [get_slot_committee, witnessExternals, witnessExecution,
+      witnessCommittee]
+  · intro state a v hv hsingle hcommittee hvote
+    rcases hvote with ⟨m, a', hvote, hdata⟩
+    let s := a.data.slot
+    have hvoteS : witnessExecution.vote v s = some (m, a') := by
+      simpa [s] using hvote
+    obtain ⟨hs, hvmod, hm, ha'⟩ := witness_vote_some_iff.mp hvoteS
+    subst m
+    subst a'
+    have ha : a = vote s := by
+      cases a
+      simp_all [vote]
+    have hmem : a ∈ groundVotes := by
+      rw [ha]
+      exact vote_mem_ground hs
+    simp [witnessExternals, hmem]
+  · intro state a hvalid v hv hvin
+    have haGround := (witness_valid_iff state a).mp hvalid
+    obtain ⟨s, hs, rfl⟩ := groundVote_exists haGround
+    exact recorded_vote_of_attester hs hvin
+  · intro state a hvalid i hi
+    have haGround := (witness_valid_iff state a).mp hvalid
+    obtain ⟨s, hs, rfl⟩ := groundVote_exists haGround
+    have hi' : i = s % 4 := by simpa [vote] using hi
+    rw [vote_data_slot]
+    simpa [witnessExecution, witnessCommittee, hi']
+  · intro i s s' hs hs' hepoch
+    have his : i = s % 4 := by
+      simpa [witnessExecution, witnessCommittee] using hs
+    have his' : i = s' % 4 := by
+      simpa [witnessExecution, witnessCommittee] using hs'
+    have hmod : s % 4 = s' % 4 := his.symm.trans his'
+    have hdiv : s / 4 = s' / 4 := by
+      simpa [witnessConfig, compute_epoch_at_slot] using hepoch
+    calc
+      s = s % 4 + 4 * (s / 4) := (Nat.mod_add_div s 4).symm
+      _ = s' % 4 + 4 * (s' / 4) := by rw [hmod, hdiv]
+      _ = s' := Nat.mod_add_div s' 4
+  · intro i e he hactive
+    have helt : e < 4 := by simpa [witnessExecution] using he
+    exact witness_committee_coverage_at (active_index_lt_four hactive) helt
+  · intro i s hs hi
+    have hslt := slot_lt_sixteen hs
+    interval_cases s <;>
+      simp [witnessExecution, witnessCommittee] at hi <;>
+      subst i <;> decide
+
+theorem witnessStaticValidatorSet :
+    StaticValidatorSet witnessConfig witnessExecution := by
+  constructor
+  · exact time_within_of_lt_sixteen (by decide)
+  · intro i e e' he he'
+    have helt : e < 4 := by simpa [witnessExecution] using he
+    have helt' : e' < 4 := by simpa [witnessExecution] using he'
+    interval_cases e <;> interval_cases e'
+    all_goals
+      cases i with
+      | zero => decide
+      | succ i =>
+          cases i with
+          | zero => decide
+          | succ i =>
+              cases i with
+              | zero => decide
+              | succ i =>
+                  cases i with
+                  | zero => decide
+                  | succ i => rfl
+
+theorem witnessByzantineBound :
+    ByzantineBound witnessConfig witnessExecution := by
+  constructor
+  · intro i
+    cases i with
+    | zero => decide
+    | succ i =>
+        cases i with
+        | zero => decide
+        | succ i =>
+            cases i with
+            | zero => decide
+            | succ i =>
+                cases i with
+                | zero => decide
+                | succ i =>
+                    simp [Execution.weight_of, Execution.registry,
+                      Execution.anchor_state, witnessExecution, anchorState,
+                      stateAt, anchorSignedBlock, witnessValidator,
+                      witnessConfig, get_forkchoice_store]
+                    exact dvd_zero 100
+  · intro a b ha hb
+    have halt := slot_lt_sixteen ha
+    have hblt := slot_lt_sixteen hb
+    interval_cases a <;> interval_cases b <;>
+      set_option maxRecDepth 50000 in decide
+  · intro a b ha hb
+    have halt := slot_lt_sixteen ha
+    have hblt := slot_lt_sixteen hb
+    interval_cases a <;> interval_cases b <;>
+      set_option maxRecDepth 50000 in decide
+
+theorem witness_vote_false_delivery {s : Slot} (hs : s < 16)
+    (w : ValidatorIndex) :
+    Event.attestation (vote s) false ∈
+      witnessExecution.schedule w (witnessExecution.slot_start witnessConfig (s + 1)) := by
+  rw [slot_start_eq]
+  interval_cases s <;>
+    simp [witnessExecution, witnessSchedule, vote0, vote1, vote2, vote3,
+      vote4, vote5, vote6, vote7, vote8, vote9, vote10, vote11,
+      vote12, vote13, vote14, vote15]
+
+theorem witness_slot15_delivery_at_second16 (w : ValidatorIndex) :
+    Event.attestation vote15 false ∈ witnessExecution.schedule w 16 := by
+  simp [witnessExecution, witnessSchedule, vote15]
+
+theorem witnessSynchrony :
+    Synchrony witnessConfig witnessExternals witnessExecution := by
+  constructor
+  · intro v hv s n a hs hn hvote hdelivery w hw
+    obtain ⟨hslt, hvmod, hn', ha⟩ := witness_vote_some_iff.mp hvote
+    subst n
+    subst a
+    exact witness_vote_false_delivery hslt w
+  · intro v hv n r hn hr w hw m hm hslot
+    have hnm : n ≤ m := by
+      have hs : n + 1 ≤ m + 1 := by
+        simpa only [slot_at_eq] using hslot
+      exact Nat.le_of_succ_le_succ hs
+    rw [← witness_store_symmetric v w m]
+    exact
+      (witnessExecution.store_storeLE witnessConfig witnessExternals v hnm).1 hr
+  · intro v hv n i msg hn hmsg w hw m hm hslot
+    have hnm : n ≤ m := by
+      have hs : n + 1 ≤ m := by
+        simpa only [slot_at_eq] using hslot
+      exact (Nat.le_succ n).trans hs
+    obtain ⟨msg', hmsg', hepoch⟩ :=
+      (witnessExecution.store_storeLE witnessConfig witnessExternals v hnm).2.2.2
+        i msg hmsg
+    refine ⟨msg', ?_, hepoch⟩
+    rw [← witness_store_symmetric v w m]
+    exact hmsg'
+  · intro v hv n i hn hi w hw m hm hslot
+    have hnm : n ≤ m := by
+      have hs : n + 1 ≤ m := by
+        simpa only [slot_at_eq] using hslot
+      exact (Nat.le_succ n).trans hs
+    rw [← witness_store_symmetric v w m]
+    exact
+      (witnessExecution.store_storeLE witnessConfig witnessExternals v hnm).2.2.1 hi
+
+theorem witnessHorizonVoteDeliveryLookahead :
+    HorizonVoteDeliveryLookahead witnessConfig witnessExecution := by
+  constructor
+  intro v hv s n a hs hn hvote w hw
+  obtain ⟨hslt, hvmod, hn', ha⟩ := witness_vote_some_iff.mp hvote
+  subst n
+  subst a
+  exact witness_vote_false_delivery hslt w
+
+theorem witnessScheduledPrefixTrajectoryAssumptions :
+    witnessExecution.ScheduledPrefixTrajectoryAssumptions
+      witnessConfig witnessExternals := by
+  exact
+    { whole_seconds := by decide
+      wellFormed := witnessWellFormedExecution
+      externals_coherence := witnessExternalsCoherence
+      honest_behavior := witnessHonestBehavior
+      genesis := ⟨anchorState, anchorSignedBlock, rfl, rfl, by decide⟩ }
+
+theorem witnessPhase0SourceCoherence :
+    Phase0SourceCoherence witnessConfig witnessExternals := by
+  constructor
+  · intro st target hlt hepoch
+    simp only [witnessExternals, witnessProcessSlots]
+    have hnot : ¬ compute_epoch_at_slot witnessConfig st.slot <
+        compute_epoch_at_slot witnessConfig target := by
+      intro hstrict
+      exact (Nat.ne_of_lt hstrict) hepoch
+    rw [if_neg hnot]
+  · intro pre sb post htransition hepoch
+    simp only [witnessExternals, witnessTransition] at htransition
+    split at htransition
+    · next hguard =>
+        simp only [Option.some.injEq] at htransition
+        subst post
+        have hpre : pre = anchorState := sameProjectedState_iff_eq.mp hguard.1
+        subst pre
+        rfl
+    · split at htransition
+      · next hguard =>
+          simp only [Option.some.injEq] at htransition
+          subst post
+          have hpre : pre = childState := sameProjectedState_iff_eq.mp hguard.1
+          subst pre
+          rfl
+      · contradiction
+
+theorem witnessPhase0BoundarySourceCoherence :
+    Phase0BoundarySourceCoherence witnessConfig witnessExternals := by
+  constructor
+  · intro st target hlt hcross
+    simp only [witnessExternals, witnessProcessSlots]
+    rw [if_pos hcross]
+  · intro pre sb post htransition hcross
+    simp only [witnessExternals, witnessTransition] at htransition
+    split at htransition
+    · next hguard =>
+        simp only [Option.some.injEq] at htransition
+        subst post
+        have hpre : pre = anchorState := sameProjectedState_iff_eq.mp hguard.1
+        subst pre
+        rw [hguard.2] at hcross
+        norm_num [anchorState, stateAt, anchorSignedBlock, childSignedBlock,
+          witnessConfig, compute_epoch_at_slot] at hcross
+    · split at htransition
+      · next hguard =>
+          simp only [Option.some.injEq] at htransition
+          subst post
+          have hpre : pre = childState := sameProjectedState_iff_eq.mp hguard.1
+          subst pre
+          rfl
+      · contradiction
+
+theorem witnessScheduledPrefixCommitteeCoherence :
+    witnessExecution.ScheduledPrefixCommitteeCoherence
+      witnessConfig witnessExternals := by
+  intro p slot hs
+  simp [Execution.PrefixCommitteeAgreement, get_slot_committee,
+    witnessExternals, witnessExecution, witnessCommittee]
+
+theorem witnessTotalActiveBalanceFloor :
+    witnessConfig.effective_balance_increment ≤
+      witnessExecution.total_active witnessConfig := by
+  decide
+
+theorem witnessBalanceFloor :
+    witnessConfig.effective_balance_increment ≤
+      witnessExecution.weight
+        (witnessExecution.currentTargetAnchorActive witnessConfig) := by
+  decide
+
+theorem witnessEpochEndsFitUint64 : EpochEndsFitUint64 witnessConfig := by
+  refine ⟨2 ^ 62, ?_⟩
+  norm_num [EpochEndsFitUint64, UINT64_MAX, witnessConfig]
+
+theorem witnessAnchorEquality :
+    witnessExecution.genesis_store.justified_checkpoint = anchorCheckpoint := by
+  decide
+
+theorem witnessTrustedAnchorBoundaryAligned :
+    Execution.TrustedAnchorBoundaryAligned (cfg := witnessConfig)
+      (E := witnessExecution) (anchor := anchorCheckpoint) := by
+  unfold Execution.TrustedAnchorBoundaryAligned
+  decide
+
+end AcceptedActualFCRJointNonVacuityBase
+end FastConfirmation.Spec
