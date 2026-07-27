@@ -129,6 +129,10 @@ Paper companion:
 - [FFG vote and AU model](docs/ffg-delivery-abstraction.md)
 - [Source and predicate notes](docs/source-notes.md)
 
+Repository review:
+
+- [Architecture, trust, and source review guide](docs/REVIEW_GUIDE.md)
+
 ## Build
 
 The project uses Lean `v4.30.0-rc2` with the matching mathlib release.
@@ -140,3 +144,19 @@ lake build
 
 `lake build` elaborates every model, proof, witness, and counterexample. The
 project contains no `sorry`, `admit`, or project-defined axioms.
+
+## Verification
+
+The deterministic validation suite also checks the public consensus-source
+objects, facade reachability and independence, project declaration trust, and
+the axiom dependencies of the public Spec and Paper theorems:
+
+```sh
+scripts/validate.sh --fast  # source provenance and repository hygiene
+scripts/validate.sh         # plus import graph, build, and Lean-native trust audit
+```
+
+By default the source audit looks for `consensus-specs` beside this checkout,
+then one directory higher. Pass `--consensus-repo PATH` if the checkout
+containing the pinned public commit lives elsewhere. GitHub CI runs these
+checks without a model API or repository write permission.
