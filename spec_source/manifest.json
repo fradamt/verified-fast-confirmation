@@ -1,0 +1,50 @@
+{
+  "schema": 1,
+  "repository": "https://github.com/ethereum/consensus-specs.git",
+  "commit": "30aa65fc21cf7f7c7dd1f7d6b686d0250462d04f",
+  "license": "CC0-1.0",
+  "files": [
+    {
+      "path": "specs/phase0/fast-confirmation.md",
+      "role": "Fast Confirmation Rule executable specification",
+      "git_blob": "5d85a3802dee58271a111f7b69ab22c74bc5fb5d",
+      "bytes": 42865,
+      "sha256": "1c3a98398ba7096b60e85c7d41697508c7f5283cf71c7879cdc94ebc6510f7b3"
+    },
+    {
+      "path": "specs/phase0/fork-choice.md",
+      "role": "Phase 0 fork-choice environment",
+      "git_blob": "275b36991f108f165a1aa919fb65839bdcede6ac",
+      "bytes": 36554,
+      "sha256": "050733d8dbf1956d77944d29a25a85b4a167512079ee9810df0cfc8d3834d822"
+    },
+    {
+      "path": "specs/phase0/beacon-chain.md",
+      "role": "Phase 0 beacon-chain helpers and state",
+      "git_blob": "3c8de97273b93c72664d4187b115e8f98fa9b0ff",
+      "bytes": 76201,
+      "sha256": "889587103bc39a417aa674a0a5d19ad2918ec4c85251d84bfdafb3dd3e58bfc6"
+    },
+    {
+      "path": "specs/phase0/validator.md",
+      "role": "Phase 0 honest validator behavior",
+      "git_blob": "c53cc215b4d3b31085a9c501fd82eab92212b590",
+      "bytes": 37772,
+      "sha256": "cd40680cc3586db0386e619fe03dbfb2414f348ff19cc4b199322fba8ecb01ce"
+    },
+    {
+      "path": "presets/mainnet/phase0.yaml",
+      "role": "Mainnet Phase 0 preset values consumed by Config",
+      "git_blob": "44030cc5b9c19b80cc72639ba348c226c34aa88e",
+      "bytes": 2342,
+      "sha256": "026a5f7b00f4ce05ec4530de9811070be850565e2ab3ba8130eb9c30cc7708f4"
+    },
+    {
+      "path": "configs/mainnet.yaml",
+      "role": "Mainnet configuration values consumed by Config",
+      "git_blob": "de631062d67a18857d9f3c452427a609ee9d2716",
+      "bytes": 6550,
+      "sha256": "13df1c7585cf230c91b9fe7eefcdb4deab6879d34f42d0b9f652307f49cf8124"
+    }
+  ]
+}

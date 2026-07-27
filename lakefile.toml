@@ -2,6 +2,10 @@ name = "FastConfirmation"
 version = "0.1.0"
 keywords = ["lean", "consensus", "fast-confirmation-rule", "lmd-ghost"]
 defaultTargets = ["FastConfirmation"]
+# Lake consumes Lean's JSON diagnostic severity and fails project-module builds
+# that emit `hasSorry`. The build wrapper also checks the diagnostic text as
+# defense in depth against direct Lean's surprising zero exit status.
+moreLeanArgs = ["-E", "hasSorry"]
 
 [leanOptions]
 pp.unicode.fun = true
