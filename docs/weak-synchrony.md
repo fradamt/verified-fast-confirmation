@@ -124,3 +124,43 @@ are discharged at real call sites by `registryConstant`,
 `checkpoint_states_total_active_balance` (their honesty hypotheses are
 vacuous), and an `ObserverContext`-level committee-readback assumption
 mirroring `ExternalsCoherence.committees_agree`.
+
+## The one-shot weak safety theorem (proved)
+
+`Execution.weak_safeFrom_find_latest_confirmed_descendant` and its endpoint
+corollary `Execution.weak_confirmed_head`
+(`FastConfirmation/Spec/Proof/WeakOneShotSafety.lean`): for an observer
+`obs ∉ E.honest`, at any within-horizon second, under
+`WeakObserverMarginAssumptions` (the strong `SelectedMarginAssumptions`
+verbatim — synchrony stays honest-to-honest — plus `ObserverCoherence`:
+committee readback and justified-root knownness at the observer's own store),
+with a safe canonical input and the covered-margin supply as an explicit
+premise (`hmargin`, the same interface layering the strong development uses at
+`CoveredMargin`), the output of `Weak.find_latest_confirmed_descendant` is
+`SafeFrom` — an ancestor of every in-horizon honest node's fork-choice head
+from the query slot onward. Both theorems depend only on
+`propext, Classical.choice, Quot.sound`.
+
+Supporting files, replacing every observer-honesty site on the one-shot path:
+`WeakRulePredicateBridge` (weak ⇒ strong for all rule predicates),
+`WeakEconomicReadback` (economic core over store-generic committee readback),
+`WeakConfirmedSupporter` (honest supporter out of `is_one_confirmed` at a
+non-honest store), `WeakAncestryEndpoint` (containment-free `is_ancestor`
+replay), `WeakConfirmedDissemination` (dissemination routed from the honest
+supporter — both receiver-side `block_relay` uses deleted),
+`WeakSelectorInversion` (weak-selector inversion exposing strong predicates
+plus the justification-witness certificate), `WeakOneShotSafety` (assembly;
+also clones the two crossing-edge closers, whose `committees_agree`
+dependency at the observer was genuine, contrary to the initial audit).
+
+Deliberately open (Stage 8): discharging `hmargin` at a non-honest observer.
+Its blocker is `WindowRecordedEpochMax` — epoch-freshness of the observer's
+recorded LMD cells — which the strong development derives from vote delivery
+*to* the observer (`vote_ubiquity`), a guarantee the inbox model removes and
+broadcast certificates cannot replace (it asserts the *absence* of unseen
+newer votes). Candidate resolutions, in preference order: (A) rule delta 3 —
+count only epoch-fresh support in `Weak.is_one_confirmed`, making freshness
+derivable from `committee_assignment_unique`; (B) an explicit
+recorded-epoch-freshness assumption at the observer (weaker than honesty but a
+genuine delivery-to-observer premise); (C) keep `hmargin` as the interface
+premise (the current state).
