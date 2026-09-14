@@ -310,11 +310,11 @@ theorem base_strip_of_confirmed_at_minimal
   have hval : bs.validators = E.registry := by
     rw [hbsEq]
     exact (E.registryConstant cfg ext hA.externals_coherence hgen
-      v hv q).2 cp hkey
+      v q).2 cp hkey
   have htab : get_total_active_balance cfg bs = E.total_active cfg := by
     rw [hbsEq]
     exact E.checkpoint_states_total_active_balance cfg ext
-      hA.static_validators hA.externals_coherence v hv q cp hkey hqH
+      hA.static_validators hA.externals_coherence v q cp hkey hqH
         (hdiv := hA.whole_seconds) (hgen := hgen)
   have hbsH : get_current_epoch cfg bs < E.verification_horizon := by
     have hstateSlot := (E.stateSlotsLE cfg ext hA.whole_seconds

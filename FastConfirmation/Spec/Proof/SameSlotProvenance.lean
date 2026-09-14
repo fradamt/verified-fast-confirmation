@@ -157,10 +157,10 @@ theorem honestSupporter_of_confirmed_known
     exact hconf'
   have hval : bs.validators = E.registry := by
     rw [hbseq]
-    exact (E.registryConstant cfg ext hec hgen0 v hv (n + 1)).2 c hkey
+    exact (E.registryConstant cfg ext hec hgen0 v (n + 1)).2 c hkey
   have htab : get_total_active_balance cfg bs = E.total_active cfg := by
     rw [hbseq]
-    exact E.checkpoint_states_total_active_balance cfg ext hsv hec v hv (n + 1) c hkey hH
+    exact E.checkpoint_states_total_active_balance cfg ext hsv hec v (n + 1) c hkey hH
   have hprov := E.latestMessageProvenance cfg ext hwfE hec hgen0 v (n + 1)
   rw [← E.store_current_slot cfg ext v (n + 1)] at hprov
   have hwf : ParentSlotLt (E.store cfg ext v (n + 1)) :=

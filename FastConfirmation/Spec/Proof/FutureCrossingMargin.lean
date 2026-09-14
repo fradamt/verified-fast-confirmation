@@ -902,10 +902,10 @@ theorem futureCrossing_descendStep_of_selectedInputs
     exact hconf
   have hval : bs.validators = E.registry := by
     rw [hbsEq]
-    exact (E.registryConstant cfg ext hec hgen v hv q).2 cp hkey
+    exact (E.registryConstant cfg ext hec hgen v q).2 cp hkey
   have htab : get_total_active_balance cfg bs = E.total_active cfg := by
     rw [hbsEq]
-    exact E.checkpoint_states_total_active_balance cfg ext hsv hec v hv q cp hkey hqH
+    exact E.checkpoint_states_total_active_balance cfg ext hsv hec v q cp hkey hqH
   have hbsH : get_current_epoch cfg bs < E.verification_horizon := by
     have hstateSlot := (E.stateSlotsLE cfg ext hdiv hec hgen v q).2 cp hkey
     rw [hbsEq]
@@ -1051,10 +1051,10 @@ theorem crossingEdge_descendStep_of_selectedInputs
     exact hconf
   have hval : bs.validators = E.registry := by
     rw [hbsEq]
-    exact (E.registryConstant cfg ext hec hgen v hv q).2 cp hkey
+    exact (E.registryConstant cfg ext hec hgen v q).2 cp hkey
   have htab : get_total_active_balance cfg bs = E.total_active cfg := by
     rw [hbsEq]
-    exact E.checkpoint_states_total_active_balance cfg ext hsv hec v hv q cp hkey hqH
+    exact E.checkpoint_states_total_active_balance cfg ext hsv hec v q cp hkey hqH
   have hbsH : get_current_epoch cfg bs < E.verification_horizon := by
     have hstateSlot := (E.stateSlotsLE cfg ext hdiv hec hgen v q).2 cp hkey
     rw [hbsEq]

@@ -340,8 +340,8 @@ theorem Execution.registryConstant (E : Execution Root)
     (hec : ExternalsCoherence cfg ext E)
     (hgen : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
       E.genesis_store = get_forkchoice_store cfg ast ablk) :
-    ∀ v ∈ E.honest, ∀ n, RegistryConstant E.registry (E.store cfg ext v n) := by
-  intro v _ n
+    ∀ v, ∀ n, RegistryConstant E.registry (E.store cfg ext v n) := by
+  intro v n
   induction n with
   | zero => exact E.genesis_registryConstant cfg hgen
   | succ n ih =>
@@ -748,7 +748,7 @@ theorem get_total_active_balance_congr {st st' : BeaconState Root}
 active balance (`E.total_active`). -/
 theorem Execution.block_states_total_active_balance (E : Execution Root)
     (hsv : StaticValidatorSet cfg E) (hec : ExternalsCoherence cfg ext E)
-    (v : ValidatorIndex) (hv : v ∈ E.honest) (n : ℕ) (r : Root)
+    (v : ValidatorIndex) (n : ℕ) (r : Root)
     (hr : r ∈ (E.store cfg ext v n).block_roots)
     (hn : E.WithinHorizon cfg n)
     (hdiv : 1000 ∣ cfg.slot_duration_ms := by assumption)
@@ -757,7 +757,7 @@ theorem Execution.block_states_total_active_balance (E : Execution Root)
         exact ⟨_, _, by assumption⟩) :
     get_total_active_balance cfg ((E.store cfg ext v n).block_states r) =
       get_total_active_balance cfg E.anchor_state := by
-  have hrc := (E.registryConstant cfg ext hec hgen v hv n).1 r hr
+  have hrc := (E.registryConstant cfg ext hec hgen v n).1 r hr
   have hslot := (E.stateSlotsLE cfg ext hdiv hec hgen v n).1 r hr
   have hanchor := E.anchor_state_slot_le cfg hdiv hgen
   have hanchorN : E.anchor_state.slot ≤ E.slot_at cfg n :=
@@ -774,7 +774,7 @@ theorem Execution.block_states_total_active_balance (E : Execution Root)
 anchor's total active balance (`E.total_active`). -/
 theorem Execution.checkpoint_states_total_active_balance (E : Execution Root)
     (hsv : StaticValidatorSet cfg E) (hec : ExternalsCoherence cfg ext E)
-    (v : ValidatorIndex) (hv : v ∈ E.honest) (n : ℕ) (c : Checkpoint Root)
+    (v : ValidatorIndex) (n : ℕ) (c : Checkpoint Root)
     (hc : c ∈ (E.store cfg ext v n).checkpoint_state_keys)
     (hn : E.WithinHorizon cfg n)
     (hdiv : 1000 ∣ cfg.slot_duration_ms := by assumption)
@@ -783,7 +783,7 @@ theorem Execution.checkpoint_states_total_active_balance (E : Execution Root)
         exact ⟨_, _, by assumption⟩) :
     get_total_active_balance cfg ((E.store cfg ext v n).checkpoint_states c) =
       get_total_active_balance cfg E.anchor_state := by
-  have hrc := (E.registryConstant cfg ext hec hgen v hv n).2 c hc
+  have hrc := (E.registryConstant cfg ext hec hgen v n).2 c hc
   have hslot := (E.stateSlotsLE cfg ext hdiv hec hgen v n).2 c hc
   have hanchor := E.anchor_state_slot_le cfg hdiv hgen
   have hanchorN : E.anchor_state.slot ≤ E.slot_at cfg n :=

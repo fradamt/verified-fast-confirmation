@@ -88,7 +88,7 @@ theorem completedPrefix_pulledUpHead_validators
     obtain ⟨ast, ablk, hgeq, _, _⟩ := hT.genesis
     exact ⟨ast, ablk, hgeq⟩
   have hregistry :=
-    (E.registryConstant cfg ext hT.externals_coherence hgen v hv n).1
+    (E.registryConstant cfg ext hT.externals_coherence hgen v n).1
       (get_head cfg (E.store cfg ext v n)).root hhead
   simp only [get_pulled_up_head_state]
   split_ifs

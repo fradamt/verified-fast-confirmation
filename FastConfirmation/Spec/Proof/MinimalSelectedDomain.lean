@@ -175,7 +175,7 @@ theorem hval_of_selectedMarginDomain
     (hH : E.WithinHorizon cfg m) :
     ((E.store cfg ext w m).checkpoint_states
       (E.store cfg ext w m).justified_checkpoint).validators = E.registry :=
-  (E.registryConstant cfg ext hec hgen w hw m).2 _
+  (E.registryConstant cfg ext hec hgen w m).2 _
     (hdom.justified_checkpoint_cached w hw m hH)
 
 /-- Time-parametric strong-induction shell.  Unlike the legacy helper, its
@@ -249,11 +249,11 @@ theorem honestSupporter_of_confirmed_known_at_minimal
   have hval : bs.validators = E.registry := by
     rw [hbseq]
     exact (E.registryConstant cfg ext hA.externals_coherence hgen0
-      v hv n).2 c hkey
+      v n).2 c hkey
   have htab : get_total_active_balance cfg bs = E.total_active cfg := by
     rw [hbseq]
     exact E.checkpoint_states_total_active_balance cfg ext hA.static_validators
-      hA.externals_coherence (hdiv := hA.whole_seconds) v hv n c hkey hH
+      hA.externals_coherence (hdiv := hA.whole_seconds) v n c hkey hH
   have hprov := E.latestMessageProvenance cfg ext hA.wellFormed
     hA.externals_coherence hgen0 v n
   rw [← E.store_current_slot cfg ext v n] at hprov
@@ -1099,11 +1099,11 @@ theorem futureCrossing_descendStep_of_selectedInputs_minimal
   have hval : bs.validators = E.registry := by
     rw [hbsEq]
     exact (E.registryConstant cfg ext hA.externals_coherence hgen
-      v hv q).2 cp hkey
+      v q).2 cp hkey
   have htab : get_total_active_balance cfg bs = E.total_active cfg := by
     rw [hbsEq]
     exact E.checkpoint_states_total_active_balance cfg ext hA.static_validators
-      hA.externals_coherence v hv q cp hkey hqH
+      hA.externals_coherence v q cp hkey hqH
         (hdiv := hA.whole_seconds) (hgen := hgen)
   have hbsH : get_current_epoch cfg bs < E.verification_horizon := by
     have hstateSlot := (E.stateSlotsLE cfg ext hA.whole_seconds
@@ -1196,11 +1196,11 @@ theorem crossingEdge_descendStep_of_selectedInputs_minimal
   have hval : bs.validators = E.registry := by
     rw [hbsEq]
     exact (E.registryConstant cfg ext hA.externals_coherence hgen
-      v hv q).2 cp hkey
+      v q).2 cp hkey
   have htab : get_total_active_balance cfg bs = E.total_active cfg := by
     rw [hbsEq]
     exact E.checkpoint_states_total_active_balance cfg ext hA.static_validators
-      hA.externals_coherence v hv q cp hkey hqH
+      hA.externals_coherence v q cp hkey hqH
         (hdiv := hA.whole_seconds) (hgen := hgen)
   have hbsH : get_current_epoch cfg bs < E.verification_horizon := by
     have hstateSlot := (E.stateSlotsLE cfg ext hA.whole_seconds

@@ -303,7 +303,7 @@ theorem hval_of_interface (hec : ExternalsCoherence cfg ext E)
     (hH : E.WithinHorizon cfg m) :
     ((E.store cfg ext w m).checkpoint_states
       (E.store cfg ext w m).justified_checkpoint).validators = E.registry :=
-  (E.registryConstant cfg ext hec hgen w hw m).2 _
+  (E.registryConstant cfg ext hec hgen w m).2 _
     (hji.justified_checkpoint_cached w hw m hH)
 
 /-- The cached justified balance source is no later than the endpoint execution
