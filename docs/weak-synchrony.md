@@ -82,21 +82,45 @@ re-enable the discount for slashings carried in a broadcast-certified block.
 | Paper Assumption 3.2 (vote inclusion) | restated: enough votes reach an **honest** proposer whose block stays canonical; honest-to-honest delivery covers transport, the proposer-honesty budget joins the fault accounting |
 | Observer-as-honest instantiation of the accepted theorem | `ObserverContext` with `obs ∉ E.honest`; observer store facts used only via certificates |
 
-Obligations 1 and 2 are stated as named `Prop`s in `WeakSynchrony.lean`
-(no `sorry`s; the build enforces `-E hasSorry`). Proof sketches:
+Obligations 1 and 2 are stated as named `Prop`s in `WeakSynchrony.lean` and
+**both are proved** (no `sorry`s anywhere; the build enforces `-E hasSorry`;
+both dischargers depend only on `propext, Classical.choice, Quot.sound`):
 
-- **Obligation 1** (`CertificateHonestSupporter`): split the certificate
-  support sum into honest and non-honest counted weight; the economic package
-  (`ByzantineBound` + committee-estimation soundness, undiscounted — cf.
-  `EconomicCore`'s `hne`-style facts without the equivocation term) bounds the
-  non-honest part by the weak budget, so the strict inequality leaves an
-  honest counted attester; `no_forgery` turns the counted latest message into
-  that validator's genuine vote, `votes_assigned` pins its slot to the span.
-- **Obligation 2** (`CertificateDissemination`): by Obligation 1 take the
-  honest supporter `w` with vote at slot `s ≤ end_slot`; `votes_head` makes the
-  vote the validator-spec attestation over `w`'s own store at a second of slot
-  `s`, so the vote root and its ancestry — including `block_root`, by root
-  injectivity (`WellFormedExecution`) transporting the observer-store ancestry
-  fact — are in `w`'s store (store ancestor-closure is proved from the
-  dynamics, cf. `Ancestry.lean`); `block_relay` from `w` then delivers
-  `block_root` to every honest store from slot `s + 1 ≤ end_slot + 1`.
+- **Obligation 1** (`CertificateHonestSupporter`), discharged by
+  `Execution.certificate_honest_supporter` in
+  `FastConfirmation/Spec/Proof/WeakCertificateSupporter.lean` from
+  `WellFormedExecution + HonestBehavior + ExternalsCoherence + ByzantineBound`
+  and a `get_forkchoice_store` genesis. Route: the certificate support sum,
+  rewritten onto the ground-truth span committee, is bounded by the weak
+  budget whenever no counted validator is honest (`ByzantineBound.span_bound`
+  + `weight_mono`), so the certificate inequality forces an honest counted
+  supporter; `schedLMProv`/`no_forgery`/`votes_assigned`/
+  `committee_assignment_unique` turn its recorded latest message into its
+  genuine vote at its assigned slot in the span, and
+  `latestMessageProvenance` places the vote root in the observing store.
+- **Obligation 2** (`CertificateDissemination`), discharged by
+  `Execution.certificate_dissemination` in
+  `FastConfirmation/Spec/Proof/WeakCertificateDissemination.lean` (adding
+  `PaperSafetySynchrony + JustificationInterface` and the anchor-shape
+  genesis facts). Route: Obligation 1's supporter `u`; `votes_head` makes its
+  vote the validator-spec attestation over `u`'s own store, whose head root is
+  known (`head_root_known`); the observer-store ancestry fact transports into
+  `u`'s store via `Execution.is_ancestor_transport_closed`
+  (`FastConfirmation/Spec/Proof/WeakAncestryTransport.lean`) — a
+  **containment-free** replay of the `get_ancestor` walk using only
+  root-injectivity agreement at commonly-known roots plus parent-closure above
+  the anchor slot (`get_ancestor_aux_congr_closed`); `block_relay` from `u`
+  then delivers `block_root` to every honest store from `end_slot + 1`.
+
+The transport file is the weak model's one genuinely new argument: the
+existing `Knownness.mem_of_honest_past_descendant` transports ancestry via
+`block_relay` *into* the confirming node, which is illegal for a non-honest
+observer. `get_ancestor_aux_congr_closed` needs no store containment in
+either direction.
+
+Instance premises of the two `Prop`s (balance source reads the ground
+registry; store-computed committees read back the ground-truth assignment)
+are discharged at real call sites by `registryConstant`,
+`checkpoint_states_total_active_balance` (their honesty hypotheses are
+vacuous), and an `ObserverContext`-level committee-readback assumption
+mirroring `ExternalsCoherence.committees_agree`.
