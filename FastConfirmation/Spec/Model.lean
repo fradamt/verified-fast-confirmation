@@ -12,6 +12,7 @@ import FastConfirmation.Spec.Model.AcceptedExecution
 import FastConfirmation.Spec.Model.Assumptions
 import FastConfirmation.Spec.Model.FFGCertificates
 import FastConfirmation.Spec.Model.FFGStateSemantics
+import FastConfirmation.Spec.Model.WeakSynchrony
 
 /-!
 # Spec / Model — facade
