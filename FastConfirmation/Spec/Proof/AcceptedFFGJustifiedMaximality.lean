@@ -1269,6 +1269,54 @@ theorem causalVotingSource_epoch_le_justified
   · rw [hprojection.block_state_gj r hr]
     exact hmax.ledger.gj_epoch_le_justified r hcarrier
 
+/-- Two-store re-parameterization of `causalVotingSource_epoch_le_justified`.
+
+The voting source a root carries at one accepted causal store is bounded by
+the *remote* realized justified epoch of any other accepted causal store which
+already knows that root.  Both arms are discharged at the remote store: the
+realized arm by its `GJ` maximum, the strict old-block arm by its own
+old-`GU` maximum.
+
+The two side conditions are exactly what the old-block arm needs — the remote
+store must agree on the root's block slot and must not be behind on the epoch
+clock, so that a root which is old at the source store is old at the remote
+store as well.  Both are ordinary relay-site facts (`blocks_agree` and slot
+monotonicity); neither is a new law. -/
+theorem votingSource_epoch_le_remoteJustified_of_known
+    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (hdiv : 1000 ∣ cfg.slot_duration_ms)
+    (hgen : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
+      E.genesis_store = get_forkchoice_store cfg ast ablk ∧
+      ast.slot = ablk.message.slot)
+    (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
+    {source target : Store Root}
+    (hsource : E.CausalStore cfg ext source)
+    (htarget : E.CausalStore cfg ext target)
+    {r : Root} (hr : r ∈ source.block_roots)
+    (hrTarget : r ∈ target.block_roots)
+    (hblockSlot : (source.blocks r).slot = (target.blocks r).slot)
+    (hepoch : get_current_store_epoch cfg source ≤
+      get_current_store_epoch cfg target) :
+    (get_voting_source cfg source r).epoch ≤
+      target.justified_checkpoint.epoch := by
+  have hmax := htarget.acceptedFFGJustifiedMaximality
+    B hdiv hgen hanchor
+  have hcarrier : E.AcceptedCarrierIn (cfg := cfg) (ext := ext) target r :=
+    Execution.AcceptedCarrierIn.of_causal_known htarget hrTarget
+  have hprojection :=
+    Execution.ExactPrefixAcceptedFFGSemantics.causalStoreProjection B hsource
+  simp only [get_voting_source]
+  split_ifs with hold
+  · rw [hprojection.unrealized_justification r hr]
+    refine hmax.oldGU r hcarrier ?_
+    have holdTarget : compute_epoch_at_slot cfg (target.blocks r).slot <
+        get_current_store_epoch cfg target := by
+      rw [← hblockSlot]
+      exact lt_of_lt_of_le hold hepoch
+    simpa only [get_block_epoch] using holdTarget
+  · rw [hprojection.block_state_gj r hr]
+    exact hmax.ledger.gj_epoch_le_justified r hcarrier
+
 end ExactPrefixAcceptedFFGSemantics
 
 
