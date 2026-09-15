@@ -132,6 +132,12 @@ So the honesty is dead, exactly as it was for
   the call's own slot advance, so `certifiedBankedJustification_update` takes
   `hcall : E.IsFCRCallAt cfg ext obs n` and discharges it; the bare structure
   does not encode that provenance, so the field stays.
+* `BankedJustificationCertificate.second_epoch_start`: a *record*, not a fill.
+  Rule delta 5 banks only at an epoch start, so the sole constructor
+  `bankedJustificationCertificate_of_gate` already has it as its `hgate.1`;
+  the field merely keeps it in the structure, where the observed-reset arm of
+  `WeakSelectedStrictEdgeFilterSupply.lean` needs it to place the banking
+  second on its own epoch boundary.
 * `certifiedBankedJustification_update` takes the accepted-FFG bundle
   (`B`/`hT`/`hanchor`/`hboundary`) and `hA` in addition to the proposal's
   `hH`/`hstore`/`hinv`: the certified arm must *produce* `supplier_known`,
@@ -565,6 +571,13 @@ structure BankedJustificationCertificate (E : Execution Root)
   /-- fill (see docstring): the store's clock has advanced past slot `0` at
   `second`, needed for the consumption lemma's same-slot-capable timing. -/
   second_pos : 1 ≤ get_current_slot cfg (E.store cfg ext obs second)
+  /-- the banking second is an epoch start.  This is free at construction —
+  the only constructor is `Weak.bankedJustificationCertificate_of_gate`, whose
+  gate hypothesis *is* this conjunct — and it is what lets a consumer read the
+  banked value's own epoch boundary off the certificate's second. -/
+  second_epoch_start :
+    is_start_slot_at_epoch cfg
+      (get_current_slot cfg (E.store cfg ext obs second)) = true
   /-- the supplier of the justification: the fork-choice head at that second -/
   supplier : Root
   supplier_eq_head : supplier = (get_head cfg (E.store cfg ext obs second)).root
@@ -615,6 +628,7 @@ def BankedJustificationCertificate.transport {E : Execution Root}
   second_le := h.second_le.trans hnm
   second_within := h.second_within
   second_pos := h.second_pos
+  second_epoch_start := h.second_epoch_start
   supplier := h.supplier
   supplier_eq_head := h.supplier_eq_head
   supplier_known := h.supplier_known
@@ -1049,6 +1063,7 @@ noncomputable def bankedJustificationCertificate_of_gate
       second_le := Nat.le_refl _
       second_within := hH
       second_pos := hpos
+      second_epoch_start := by rw [← hstore]; exact hgate.1
       supplier := (get_head cfg (E.store cfg ext obs (n + 1))).root
       supplier_eq_head := rfl
       supplier_known := hheadKnown

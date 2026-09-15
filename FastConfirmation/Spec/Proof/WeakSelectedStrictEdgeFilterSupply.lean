@@ -2,6 +2,7 @@ import Mathlib.Tactic
 import FastConfirmation.Spec.Proof.AcceptedSelectedStrictEdgeFilterSupply
 import FastConfirmation.Spec.Proof.WeakCandidateSourceHistory
 import FastConfirmation.Spec.Proof.WeakCoveredMarginConstruction
+import FastConfirmation.Spec.Proof.WeakJustificationTiming
 
 /-!
 # Spec / Proof / WeakSelectedStrictEdgeFilterSupply
@@ -67,11 +68,14 @@ relay, `ExternalsCoherence.committees_agree`, or
   (`Weak.canonicalThroughoutNextEpoch_of_selectedCanonical_currentEpoch_at_observer`)
   and its epoch-start previous sibling
   (`Weak.StrictSelectedResultMechanicalFacts.canonicalThroughoutNextEpoch_of_previousEpochStart`);
-* two of the three epoch-start previous origins —
+* two of the three epoch-start previous origins, both in full —
   `Weak.StrictSelectorAdvanceAt.previousFinalizedReset_anchorLineage` (with
-  `…extendHistoricalLineage_sameEpoch_actual`) and
-  `Weak.StrictSelectorAdvanceAt.previousObservedReset_queryGUEpochSeed`
-  (query-local half);
+  `…extendHistoricalLineage_sameEpoch_actual`) and the `observedReset` origin,
+  whose query-local GU seed is
+  `Weak.StrictSelectorAdvanceAt.previousObservedReset_queryGUEpochSeed` and
+  whose seed dissemination splits into the gated arm
+  (`…previousObservedReset_gatedHeadDisseminated`) and the vacuous ungated arm
+  (`Weak.observedReset_ungated_absurd`);
 * the phase dispatcher
   `Weak.StrictSelectedResultMechanicalFacts.fcrStep_endpointFilterOutcome`
   and the top-level supplier
@@ -84,7 +88,7 @@ relay, `ExternalsCoherence.committees_agree`, or
 `Weak.ObserverStrictCallFilterInputsAt` is the record of facts the dispatcher
 still consumes and this module does not prove.  It is a **proof obligation,
 not an assumption**, and it is deliberately as small as the stage could make
-it.  Its five fields and the exact reason each is open:
+it.  Its four fields and the exact reason each is open:
 
 1. `result_descends_endpoint_justified` and
 2. `endpoint_justified_epoch_le_result` — the observer twins of
@@ -118,15 +122,27 @@ it.  Its five fields and the exact reason each is open:
    hubs, plus one `committees_agree`), so this is a mechanical — but not
    small — port; it is structurally an induction over the *observer's own*
    call history and cannot be imported from an honest node.
-5. `previous_epochStart_observedReset_headDisseminated` — §4 of the wave
-   design's known epoch-start escape, **now narrowed to its ungated arm**.
-   When rule delta 5's banking gate fires at this very call the observed
-   checkpoint is `UJ(head)` of *this* store, so the gate's broadcast
-   certificate is a certificate for the GU seed itself and
-   `Weak.StrictSelectorAdvanceAt.previousObservedReset_gatedHeadDisseminated`
-   (via `Weak.gatedHead_known_at_all_honest_endpoints_at_observer`) discharges
-   the field outright.  What the record still carries is only the complementary
-   `¬ Weak.ObserverBankingGateAt` arm; see that field's own docstring.
+
+The record used to carry a fifth field,
+`previous_epochStart_observedReset_headDisseminated` — §4 of the wave design's
+known epoch-start escape.  It is **now fully discharged** and has been deleted.
+When rule delta 5's banking gate fires at this very call the observed
+checkpoint is `UJ(head)` of *this* store, so the gate's broadcast certificate
+is a certificate for the GU seed itself and
+`Weak.StrictSelectorAdvanceAt.previousObservedReset_gatedHeadDisseminated`
+(via `Weak.gatedHead_known_at_all_honest_endpoints_at_observer`) supplies the
+dissemination.  On the complementary `¬ Weak.ObserverBankingGateAt` arm nothing
+has to be disseminated at all, because that arm is **empty**:
+`Weak.observedReset_ungated_absurd` derives `False` from it.  The banked value
+is then the one carried in from an earlier gate-passing second `s ≤ n`, hence
+`B.state.GU` of a block known at `(obs, s)`, hence an accepted `AU`
+checkpoint; the new justified-side timing lemma
+`Weak.auCheckpoint_startSlot_lt_currentSlot`
+(`WeakJustificationTiming.lean`) puts its epoch boundary strictly before
+`E.slot_at cfg s`, while the guard puts `E.slot_at cfg (n + 1)` on the *next*
+epoch's boundary — so `s`, which
+`Weak.BankedJustificationCertificate.second_epoch_start` makes an epoch start,
+would be an epoch start strictly inside a single epoch.
 -/
 
 namespace FastConfirmation.Spec
@@ -1234,13 +1250,8 @@ theorem StrictSelectorAdvanceAt.previousFinalizedReset_anchorLineage
       _ = B.anchor.root := congrArg Checkpoint.root hfinalizedAnchor
   have hanchorKnown : B.anchor.root ∈ query.store.block_roots := by
     simpa only [hinputRoot] using hinputKnown
-  have hanchor0 : B.anchor.root ∈ E.genesis_store.block_roots := by
-    obtain ⟨ast, ablk, hgen, _hslot, _hparent⟩ := hT.genesis
-    have hroot : B.anchor.root = ablk.root := by
-      rw [hanchor, hgen]
-      rfl
-    rw [hgen, hroot]
-    simp only [get_forkchoice_store, List.mem_singleton]
+  have hanchor0 : B.anchor.root ∈ E.genesis_store.block_roots :=
+    Weak.anchorRoot_mem_genesis cfg ext B hT hanchor
   have hanchorBlocks : E.genesis_store.blocks B.anchor.root =
       query.store.blocks B.anchor.root :=
     hT.wellFormed.blocks_agree
@@ -1546,6 +1557,298 @@ theorem StrictSelectorAdvanceAt.previousObservedReset_gatedHeadDisseminated
     rfl ⟨?_, hgate⟩ hw hmH hslot
   simpa only [hqCurrent] using hstart
 
+/-! ### The ungated arm is vacuous
+
+The complementary arm needs no dissemination at all: the observed-restart
+guard cannot fire on a *carried* banked value.  Both reachable provenances of
+that value put its own epoch boundary strictly before the banking second,
+while the guard puts the call itself at the boundary of the very next epoch —
+and the banking second is itself an epoch start, so it would have to be an
+epoch start strictly inside a single epoch. -/
+
+/-- **The observed-restart guard cannot fire on the genesis-store value.**
+
+When the banked checkpoint's root is the anchor block — the initialisation
+value, and also the `observed = B.anchor` degenerate case of the certified arm
+— it is the store's minimum-slot block (`Execution.store_anchor_min_slot`),
+whereas the guard's `afterFinalized_slot_lt_observed` conjunct demands a
+*strictly smaller* slot from a block the call has already resolved.  Only
+knownness of that block is needed, supplied by
+`Weak.observedReset_afterFinalized_known` below. -/
+theorem observedReset_genesisObserved_absurd
+    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
+    {obs : ValidatorIndex} {n : Nat}
+    {trace : Weak.GetLatestConfirmedTrace cfg ext
+      (E.weakFcrStep cfg ext obs n)}
+    (horigin : Weak.ObservedResetCandidateInputAt cfg ext
+      (E.weakFcrStep cfg ext obs n) trace)
+    (hafterKnown : trace.afterFinalized ∈
+      (E.weakFcrStep cfg ext obs n).store.block_roots)
+    (hgenesis :
+      (E.weakFcrStep cfg ext obs
+        n).current_epoch_observed_justified_checkpoint.root ∈
+          E.genesis_store.block_roots) :
+    False := by
+  obtain ⟨ast, ablk, hgenEq, hslotEq, hparentNe⟩ := hT.genesis
+  have hqCurrent : (E.weakFcrStep cfg ext obs n).store =
+      E.store cfg ext obs (n + 1) :=
+    E.weakFcrStep_store cfg ext obs n
+  have hanchorMem0 : ablk.root ∈ E.genesis_store.block_roots := by
+    rw [hgenEq]
+    simp only [get_forkchoice_store, List.mem_singleton]
+  have hrootEq : (E.weakFcrStep cfg ext obs
+      n).current_epoch_observed_justified_checkpoint.root = ablk.root := by
+    rw [hgenEq] at hgenesis
+    simpa only [get_forkchoice_store, List.mem_singleton] using hgenesis
+  have hknownN1 : ablk.root ∈ (E.store cfg ext obs (n + 1)).block_roots :=
+    (E.store_storeLE cfg ext obs (Nat.zero_le (n + 1))).1 hanchorMem0
+  have hanchorBlock : (E.store cfg ext obs (n + 1)).blocks ablk.root =
+      ablk.message :=
+    E.store_anchor_block cfg ext hT.wellFormed hgenEq obs (n + 1) hknownN1
+  have hmin := E.store_anchor_min_slot cfg ext hT.wellFormed
+    hT.externals_coherence hgenEq hslotEq hparentNe obs (n + 1)
+  have hlt := horigin.afterFinalized_slot_lt_observed
+  rw [hrootEq] at hlt
+  simp only [get_block_slot, hqCurrent, hanchorBlock] at hlt
+  exact absurd hlt (Nat.not_lt.mpr
+    (hmin trace.afterFinalized (by rwa [hqCurrent] at hafterKnown)))
+
+/-- **The candidate the observed-restart guard compares against is a known
+block of the query store.**
+
+Both arms of `Weak.ObservedResetCandidateInputAt.afterFinalized_cases` are
+already available observer-side: the finalized root by
+`Execution.finalizedCheckpoint_resetRealizedAt_of_acceptedGlobalTrajectory`,
+the carried confirmed root by stage S6's
+`Weak.AcceptedConfirmedSourceHistoryAt.confirmed_known` transported one second
+forward.  (The latter is why this lemma takes `hji` and `hDelay`; both are
+already on the dispatcher's binder list.) -/
+theorem observedReset_afterFinalized_known
+    (hA : SelectedMarginAssumptions cfg ext E)
+    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
+    (hji : JustificationInterface cfg ext E)
+    (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
+    (hboundary : Execution.TrustedAnchorBoundaryAligned (cfg := cfg)
+      (E := E) (anchor := B.anchor))
+    (hDelay : E.AcceptedRealizedFinalizationDelay cfg ext B)
+    {obs : ValidatorIndex} (hcoh : E.ObserverCoherence cfg ext obs) {n : Nat}
+    (hHn1 : E.WithinHorizon cfg (n + 1))
+    {trace : Weak.GetLatestConfirmedTrace cfg ext
+      (E.weakFcrStep cfg ext obs n)}
+    (horigin : Weak.ObservedResetCandidateInputAt cfg ext
+      (E.weakFcrStep cfg ext obs n) trace) :
+    trace.afterFinalized ∈ (E.weakFcrStep cfg ext obs n).store.block_roots := by
+  have hqCurrent : (E.weakFcrStep cfg ext obs n).store =
+      E.store cfg ext obs (n + 1) :=
+    E.weakFcrStep_store cfg ext obs n
+  rcases horigin.afterFinalized_cases with ⟨heq, _⟩ | ⟨heq, _⟩
+  · rw [heq, hqCurrent, E.weakFcrStep_confirmed_root]
+    refine (E.store_storeLE cfg ext obs (Nat.le_succ n)).1 ?_
+    exact (Weak.acceptedConfirmedSourceHistoryAt cfg ext B hT hA.synchrony
+      hA.static_validators hA.byzantine_bound hA.domain hji hanchor hboundary
+      hDelay hcoh n
+      (E.withinHorizon_mono cfg (Nat.le_succ n) hHn1)).confirmed_known
+  · rw [heq, hqCurrent]
+    exact (E.finalizedCheckpoint_resetRealizedAt_of_acceptedGlobalTrajectory
+      cfg ext B hT hanchor hboundary (w := obs) (n + 1)).root_known
+
+/-- **An epoch-start observed reset cannot happen on the ungated arm.**
+
+The residual field this replaces asked for the query head's dissemination on
+the arm where rule delta 5's banking gate did *not* fire at this call.  That
+arm is empty.
+
+Write `s` for the second at which the carried value was actually banked
+(`Weak.weakFcr_certifiedBankedJustification`; the initialisation arm is
+`Weak.observedReset_genesisObserved_absurd`).  The banked value is the
+supplier's own unrealized justification, hence `B.state.GU supplier`, hence an
+accepted `AU` checkpoint of a block known at `(obs, s)`.  So either it is the
+trusted anchor — again the genesis case — or
+`Weak.auCheckpoint_startSlot_lt_currentSlot` puts its epoch boundary strictly
+before `E.slot_at cfg s`, while `Weak.auCheckpoint_blockEpoch_le` keeps its
+root's block epoch at or below its own epoch.  The guard's
+`observed_previous_epoch` and `epoch_start` conjuncts put that block epoch one
+below the call's, and the call's slot at the *next* epoch's boundary, so
+
+  `compute_start_slot_at_epoch e < E.slot_at s < compute_start_slot_at_epoch (e + 1)`.
+
+But `Weak.BankedJustificationCertificate.second_epoch_start` says `E.slot_at s`
+is itself an epoch start — an epoch start strictly inside epoch `e`. -/
+theorem observedReset_ungated_absurd
+    (hA : SelectedMarginAssumptions cfg ext E)
+    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
+    (hji : JustificationInterface cfg ext E)
+    (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
+    (hboundary : Execution.TrustedAnchorBoundaryAligned (cfg := cfg)
+      (E := E) (anchor := B.anchor))
+    (hDelay : E.AcceptedRealizedFinalizationDelay cfg ext B)
+    {obs : ValidatorIndex} (hcoh : E.ObserverCoherence cfg ext obs) {n : Nat}
+    (hHn1 : E.WithinHorizon cfg (n + 1))
+    (hcall : E.IsFCRCallAt cfg ext obs n)
+    {trace : Weak.GetLatestConfirmedTrace cfg ext
+      (E.weakFcrStep cfg ext obs n)}
+    (horigin : Weak.ObservedResetCandidateInputAt cfg ext
+      (E.weakFcrStep cfg ext obs n) trace)
+    (hgate : ¬ Weak.ObserverBankingGateAt cfg ext E obs n) :
+    False := by
+  classical
+  have hqCurrent : (E.weakFcrStep cfg ext obs n).store =
+      E.store cfg ext obs (n + 1) :=
+    E.weakFcrStep_store cfg ext obs n
+  have hslotN1 : get_current_slot cfg (E.store cfg ext obs (n + 1)) =
+      E.slot_at cfg (n + 1) := E.store_current_slot cfg ext obs (n + 1)
+  -- the ungated call re-seats the banked value unchanged
+  have hobsCarried :
+      (E.weakFcrStep cfg ext obs
+        n).current_epoch_observed_justified_checkpoint =
+        (E.weakFcr cfg ext obs
+          n).current_epoch_observed_justified_checkpoint := by
+    have hnot : ¬ (is_start_slot_at_epoch cfg (get_current_slot cfg
+          ({ E.weakFcr cfg ext obs n with
+              store := E.store cfg ext obs (n + 1) } :
+            FastConfirmationStore Root).store) ∧
+        Weak.has_head_broadcast_certificate cfg ext
+          ({ E.weakFcr cfg ext obs n with
+              store := E.store cfg ext obs (n + 1) } :
+            FastConfirmationStore Root).store
+          (get_current_balance_source
+            { E.weakFcr cfg ext obs n with
+              store := E.store cfg ext obs (n + 1) }) = true) :=
+      fun hc => hgate hc.2
+    show (Weak.update_fast_confirmation_variables cfg ext
+        { E.weakFcr cfg ext obs n with
+          store := E.store cfg ext obs (n + 1) }
+      ).current_epoch_observed_justified_checkpoint = _
+    rw [Weak.update_fcv_observed_exact, if_neg hnot]
+  obtain ⟨cobs, hcobs⟩ : ∃ c : Checkpoint Root,
+      (E.weakFcr cfg ext obs
+        n).current_epoch_observed_justified_checkpoint = c := ⟨_, rfl⟩
+  rw [hcobs] at hobsCarried
+  obtain ⟨e, he⟩ : ∃ e : Epoch,
+      get_block_epoch cfg (E.store cfg ext obs (n + 1)) cobs.root = e :=
+    ⟨_, rfl⟩
+  -- the call sits exactly on the boundary of epoch `e + 1`
+  have hzero : compute_slots_since_epoch_start cfg
+      (E.slot_at cfg (n + 1)) = 0 := by
+    simpa only [is_start_slot_at_epoch, decide_eq_true_eq, hqCurrent, hslotN1]
+      using horigin.epoch_start
+  have hboundaryEq : E.slot_at cfg (n + 1) = compute_start_slot_at_epoch cfg
+      (compute_epoch_at_slot cfg (E.slot_at cfg (n + 1))) := by
+    simp only [compute_slots_since_epoch_start,
+      compute_start_slot_at_epoch] at hzero ⊢
+    exact Nat.le_antisymm (Nat.le_of_sub_eq_zero hzero)
+      (Nat.div_mul_le_self _ cfg.slots_per_epoch)
+  have hprev : e + 1 = compute_epoch_at_slot cfg (E.slot_at cfg (n + 1)) := by
+    have h := horigin.observed_previous_epoch
+    rw [hqCurrent, hobsCarried, he] at h
+    simpa only [get_current_store_epoch, hslotN1] using h
+  have hqBoundary : E.slot_at cfg (n + 1) =
+      compute_start_slot_at_epoch cfg (e + 1) := by
+    rw [hprev]; exact hboundaryEq
+  -- the genesis/anchor value is excluded outright
+  have hafterKnown : trace.afterFinalized ∈
+      (E.weakFcrStep cfg ext obs n).store.block_roots :=
+    Weak.observedReset_afterFinalized_known cfg ext hA B hT hji hanchor
+      hboundary hDelay hcoh hHn1 horigin
+  have hgenesisAbsurd : cobs.root ∈ E.genesis_store.block_roots → False := by
+    intro hg
+    exact Weak.observedReset_genesisObserved_absurd cfg ext B hT horigin
+      hafterKnown (by rw [hobsCarried]; exact hg)
+  have hHn : E.WithinHorizon cfg n :=
+    E.withinHorizon_mono cfg (Nat.le_succ n) hHn1
+  rcases Weak.weakFcr_certifiedBankedJustification cfg ext hA B hT hanchor
+      hboundary obs n hHn with hgen | hcertN
+  · exact hgenesisAbsurd (by rw [← hcobs]; exact hgen)
+  obtain ⟨hcert⟩ := hcertN
+  -- the certified arm: the banked value is `GU` of a block known at `second`
+  have hGU : cobs = B.state.GU hcert.supplier := by
+    have hbanked : cobs = (E.store cfg ext obs
+        hcert.second).unrealized_justifications hcert.supplier := by
+      rw [← hcobs]; exact hcert.banked_eq
+    rw [hbanked]
+    exact E.accepted_unrealized_justification_eq
+      B.coherence.toAcceptedFFGSelectorCoherence obs hcert.second
+      hcert.supplier_known
+  have hAU : B.state.AU cfg ext hcert.supplier cobs := by
+    rw [hGU]
+    exact B.state.gu_AU cfg ext (E.acceptedRoot_of_causal_known cfg ext
+      (E.store_causal cfg ext obs hcert.second) hcert.supplier_known)
+  by_cases hne : cobs = B.anchor
+  · refine hgenesisAbsurd ?_
+    rw [hne]
+    exact Weak.anchorRoot_mem_genesis cfg ext B hT hanchor
+  -- non-anchor: the banked checkpoint's boundary is strictly below `slot_at s`
+  have hslotS : get_current_slot cfg (E.store cfg ext obs hcert.second) =
+      E.slot_at cfg hcert.second :=
+    E.store_current_slot cfg ext obs hcert.second
+  have htiming : compute_start_slot_at_epoch cfg cobs.epoch <
+      E.slot_at cfg hcert.second := by
+    rw [← hslotS]
+    exact Weak.auCheckpoint_startSlot_lt_currentSlot cfg ext B hT
+      hcert.supplier_known hAU hne
+  have hknownS : cobs.root ∈
+      (E.store cfg ext obs hcert.second).block_roots := by
+    rw [← hcobs]; exact hcert.banked_known
+  have hknownN1 : cobs.root ∈ (E.store cfg ext obs (n + 1)).block_roots :=
+    (E.store_storeLE cfg ext obs
+      (hcert.second_le.trans (Nat.le_succ n))).1 hknownS
+  have hblocks : (E.store cfg ext obs hcert.second).blocks cobs.root =
+      (E.store cfg ext obs (n + 1)).blocks cobs.root :=
+    hT.wellFormed.blocks_agree (E.blockProvenance cfg ext obs hcert.second)
+      (E.blockProvenance cfg ext obs (n + 1)) hknownS hknownN1
+  have heS : get_block_epoch cfg (E.store cfg ext obs hcert.second)
+      cobs.root = e := by
+    rw [← he]; simp only [get_block_epoch, hblocks]
+  have heLe : e ≤ cobs.epoch := by
+    rw [← heS]
+    exact Weak.auCheckpoint_blockEpoch_le cfg ext B hT hanchor hboundary
+      obs hcert.second hcert.supplier_known hAU
+  have hlow : compute_start_slot_at_epoch cfg e <
+      E.slot_at cfg hcert.second :=
+    Nat.lt_of_le_of_lt
+      (Nat.mul_le_mul_right cfg.slots_per_epoch heLe) htiming
+  have hadvance : E.slot_at cfg n < E.slot_at cfg (n + 1) := by
+    unfold Execution.IsFCRCallAt at hcall
+    simpa only [E.store_current_slot cfg ext obs n,
+      E.store_current_slot cfg ext obs (n + 1)] using hcall
+  have hhigh : E.slot_at cfg hcert.second <
+      compute_start_slot_at_epoch cfg (e + 1) := by
+    rw [← hqBoundary]
+    exact Nat.lt_of_le_of_lt (E.slot_at_mono cfg hcert.second_le) hadvance
+  -- `second` would be an epoch start strictly inside epoch `e`
+  have hzeroS : compute_slots_since_epoch_start cfg
+      (E.slot_at cfg hcert.second) = 0 := by
+    simpa only [is_start_slot_at_epoch, decide_eq_true_eq, hslotS]
+      using hcert.second_epoch_start
+  have hqEq : E.slot_at cfg hcert.second =
+      E.slot_at cfg hcert.second / cfg.slots_per_epoch *
+        cfg.slots_per_epoch := by
+    simp only [compute_slots_since_epoch_start, compute_start_slot_at_epoch,
+      compute_epoch_at_slot] at hzeroS
+    exact Nat.le_antisymm (Nat.le_of_sub_eq_zero hzeroS)
+      (Nat.div_mul_le_self _ cfg.slots_per_epoch)
+  have hlowMul : e * cfg.slots_per_epoch <
+      E.slot_at cfg hcert.second / cfg.slots_per_epoch *
+        cfg.slots_per_epoch := by
+    rw [← hqEq]
+    simpa only [compute_start_slot_at_epoch] using hlow
+  have hhighMul : E.slot_at cfg hcert.second / cfg.slots_per_epoch *
+      cfg.slots_per_epoch < (e + 1) * cfg.slots_per_epoch := by
+    rw [← hqEq]
+    simpa only [compute_start_slot_at_epoch] using hhigh
+  have h1 : e < E.slot_at cfg hcert.second / cfg.slots_per_epoch := by
+    by_contra hc
+    exact absurd hlowMul (Nat.not_lt.mpr
+      (Nat.mul_le_mul_right cfg.slots_per_epoch (Nat.le_of_not_lt hc)))
+  have h2 : E.slot_at cfg hcert.second / cfg.slots_per_epoch < e + 1 := by
+    by_contra hc
+    exact absurd hhighMul (Nat.not_lt.mpr
+      (Nat.mul_le_mul_right cfg.slots_per_epoch (Nat.le_of_not_lt hc)))
+  exact absurd h2 (Nat.not_lt.mpr h1)
+
 /-- Weak twin of `StrictSelectedResultMechanicalFacts.
 canonicalThroughoutNextEpoch_of_previousEpochStart`.  The strong proof's
 `confirmed_known_at_query_slot_start_minimal` (query node as relay receiver)
@@ -1665,7 +1968,7 @@ residue carried, named, and reportable rather than silently absorbed.
 The record is *not* floor-classified: it is a proof obligation, not an
 assumption. -/
 
-/-- The five residual endpoint inputs of the weak phase dispatcher.
+/-- The four residual endpoint inputs of the weak phase dispatcher.
 
 Every field is stated exactly as the corresponding strong fact's conclusion,
 instantiated at the weak evaluator's own call, with the same binder list the
@@ -1763,39 +2066,6 @@ structure ObserverStrictCallFilterInputsAt (E : Execution Root)
       (E.weakGetLatestConfirmedTraceAt cfg ext obs n).result
       (get_block_epoch cfg (E.weakFcrStep cfg ext obs n).store
         (E.weakGetLatestConfirmedTraceAt cfg ext obs n).result))
-  /-- The `observedReset` origin of an epoch-start strict previous result, on
-  the **ungated** arm only.
-
-  Its query-local GU seed is fully discharged above
-  (`Weak.StrictSelectorAdvanceAt.previousObservedReset_queryGUEpochSeed`), and
-  so is that seed's dissemination whenever rule delta 5's banking gate fired
-  at this very call (`Weak.StrictSelectorAdvanceAt.
-  previousObservedReset_gatedHeadDisseminated`): the gate's certificate is a
-  certificate for the head, because at an epoch-start call
-  `Weak.update_fast_confirmation_variables` runs on this same store, so the
-  banking supplier *is* the query head.
-
-  What is left is the complementary arm.  When the gate did **not** fire the
-  banked checkpoint is the one carried in from `E.weakFcr obs n`, certified at
-  some earlier second `s ≤ n` whose supplier was the head *then*; the
-  observed-restart guard's `is_head_unrealized_justified_ok` conjunct can still
-  hold at this call, by the carried value coinciding with `UJ` of a head the
-  observer received privately.  `Weak.weakFcr_certifiedBankedJustification`
-  then delivers the banked root (`Weak.bankedSupplier_known_at_all_honest_
-  endpoints_at_observer`, and for free on the anchor arm) but *not* this
-  second's head, and `PaperSafetySynchrony.block_relay` needs an honest
-  sender.  Closing it needs either new attestation-timing infrastructure
-  (to show an epoch-`e` checkpoint cannot be unrealized-justified at the first
-  slot of epoch `e`, which would make the guard unfireable on this arm) or the
-  design's rule delta 5′, which certifies the epoch-start escape directly. -/
-  previous_epochStart_observedReset_headDisseminated :
-    Weak.ObservedResetCandidateInputAt cfg ext (E.weakFcrStep cfg ext obs n)
-      (E.weakGetLatestConfirmedTraceAt cfg ext obs n) →
-    ¬ Weak.ObserverBankingGateAt cfg ext E obs n →
-    ∀ w ∈ E.honest, ∀ m : Nat, E.WithinHorizon cfg m →
-      E.slot_at cfg (n + 1) ≤ E.slot_at cfg m →
-      (get_head cfg (E.weakFcrStep cfg ext obs n).store).root ∈
-        (E.store cfg ext w m).block_roots
 
 /-! ## Exhaustive weak actual-call endpoint dispatcher -/
 
@@ -2078,10 +2348,9 @@ noncomputable def
                           hn1H hcall
                           (by simpa only [hqCurrent] using hobserved.epoch_start)
                           hgate hw hmH hslotQM)
-                  · exact (by
-                      simpa only [hqCurrent] using
-                        hinputs.previous_epochStart_observedReset_headDisseminated
-                          hobserved hgate w hw m hmH hslotQM))
+                  · exact (Weak.observedReset_ungated_absurd cfg ext hMargin B
+                      hT hji hanchor hboundary hDelay hcoh hn1H hcall hobserved
+                      hgate).elim)
                 hlate hjustifiedEpoch hresultJustified
       · exact h.fcrStep_previousOffStart_late_endpointFilterOutcome
           cfg ext B hT hsync hstatic hbyz hdomain hji hanchor hboundary P V
