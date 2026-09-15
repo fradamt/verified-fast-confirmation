@@ -84,7 +84,7 @@ relay, `ExternalsCoherence.committees_agree`, or
 `Weak.ObserverStrictCallFilterInputsAt` is the record of facts the dispatcher
 still consumes and this module does not prove.  It is a **proof obligation,
 not an assumption**, and it is deliberately as small as the stage could make
-it.  Its four fields and the exact reason each is open:
+it.  Its five fields and the exact reason each is open:
 
 1. `result_descends_endpoint_justified` and
 2. `endpoint_justified_epoch_le_result` — the observer twins of
@@ -1597,7 +1597,7 @@ residue carried, named, and reportable rather than silently absorbed.
 The record is *not* floor-classified: it is a proof obligation, not an
 assumption. -/
 
-/-- The four residual endpoint inputs of the weak phase dispatcher.
+/-- The five residual endpoint inputs of the weak phase dispatcher.
 
 Every field is stated exactly as the corresponding strong fact's conclusion,
 instantiated at the weak evaluator's own call, with the same binder list the
