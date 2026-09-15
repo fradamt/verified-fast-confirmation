@@ -314,25 +314,87 @@ anchor arm is handled by global knownness, not an exception.
 > certificate whose span stays non-empty regardless of where `head` lands)
 > next.
 
-**Open sub-obligation (not a residual corner, a separate new item).** The
-maintenance lemmas that would show the invariant is preserved by an actual
-trajectory (`Weak.certifiedBankedJustification_update` /
-`Weak.weakFcr_certifiedBankedJustification`) are not yet proved. Their
-certified-arm case must exhibit `banked_known`/`banked_below_supplier` for
-the checkpoint rule delta 5 installs — i.e. that
-`store.unrealized_justified_checkpoint`, captured a full epoch earlier at
-some prior second, is *still* known and an ancestor of the *current*
-fork-choice head. That is exactly the content the strong development needs
-`AcceptedGlobalUnrealizedJustifiedOrigin` / `AcceptedUJCacheInstallationAt`
-(`AcceptedFFGGlobalCheckpointTrajectory.lean`,
-`AcceptedCandidateHistoryRecurrence.lean`) for, and that machinery — like
-every other global FFG export in `TheoremStatements.lean`
-(`observed_checkpoint_known`, `justified_descends`, `JustificationInterface`'s
-fields) — is quantified only over `v ∈ E.honest`. The weak model's observer
-is explicitly not honest, and no observer-side analogue of this specific
-ancestry/knownness export exists yet; `SelectedMarginAssumptions` does not
-supply one either. This is genuine new proof content, not bookkeeping, and is
-tracked here rather than forced.
+**Maintenance along the trajectory — half proved, half a model-level
+finding.** The maintenance lemmas that would show the invariant is preserved
+by an actual trajectory (`Weak.certifiedBankedJustification_update` /
+`Weak.weakFcr_certifiedBankedJustification`) reduce, after the work in
+`WeakBankedJustification.lean`, to exactly one field of
+`Weak.BankedJustificationCertificate`.
+
+*The honesty was dead.* The strong installation-provenance machinery is
+honesty-free throughout: `Execution.fcr_previousGreatest_succ_exact`,
+`Execution.previousGreatest_acceptedInstallation`,
+`Execution.AcceptedUJCacheInstallationAt`,
+`ObservedResetCandidateInputAt.acceptedInstallation`,
+`ExactPrefixAcceptedFFGSemantics.causalStoreGlobalProjection`,
+`globalJustified_anchor_or_AUEvidence`,
+`AcceptedSelectorAUCarrier.checkpointRoot_known` and the accepted bundle's
+`AcceptedFFGTransitionCoherence.au_checkpoint_of_known` carry **no** honesty
+binder (the last is quantified over `E.CausalStore`), and the store geometry
+they call (`store_causal`, `store_parentSlotLt`, `store_walkKnownK`,
+`store_storeLE`, `store_anchor_block`, `store_anchor_min_slot`) is
+node-generic. The one honesty-quantified route,
+`ActualResetCheckpointRealization.lean`'s `ResetCheckpointHistoryAt` family,
+goes through the **legacy** `FFGTransitionCoherence.au_checkpoint_of_known`
+(`∀ w ∈ E.honest, …`) and is simply bypassed in favour of the accepted
+bundle. So the needed facts restate at a possibly-Byzantine observer exactly
+as `ObserverCoherence.justified_root_known_of_acceptedGlobalTrajectory` did
+(`Weak.acceptedOriginRoot_known_at_observer` and its two instances).
+
+*What now closes.* `banked_known` is discharged outright, along the whole
+weak trajectory, with no honesty hypothesis:
+`Weak.weakFcr_previousGreatest_origin` identifies the carried
+greatest-unrealized field with an exact earlier second's store-global
+unrealized-justified checkpoint;
+`Weak.unrealizedJustifiedRoot_known_of_acceptedGlobalTrajectory` makes that
+root known in the observer's own store; and
+`Weak.weakFcr_observed_known` / `Weak.weakFcrStep_observed_known` propagate it
+across every rotation of the gated rule.
+
+*What does not close, and is not merely unproved.* `banked_below_supplier`
+asks that the banked root be an ancestor of the boundary head. **As rule
+delta 5 is currently written this is false in general.** The banked value is
+the store's unrealized-justified checkpoint captured at the *end of the
+previous epoch*; the certified head at the boundary descends from
+`store.justified_checkpoint.root`
+(`Weak.bankedBelowHead_of_bankedBelowJustified`). Between those two moments
+the store's checkpoints can move branch: `update_unrealized_checkpoints`
+replaces the UJ field on any strictly higher epoch, from any accepted carrier
+on any branch, and `on_tick_per_slot`'s epoch pull-up installs whatever the UJ
+field is at the tick. An observer holding UJ = `C_A` (epoch `e−1`, branch A)
+at the capture second, then receiving a branch-B block that justifies `C_B` at
+epoch `e`, enters epoch `e` with a branch-B head — the gate passes and banks
+`C_A`, which the head's certificate does not cover. Placing `C_A` and `C_B` on
+one chain is an FFG-safety-grade claim about conflicting certified
+justifications at *different* epochs; it does not follow from the store
+definitions, the accepted bundle gives only `anchor ∨ GU carrier`, and
+`JustificationInterface.justified_descends` covers only the strictly-ahead
+case (and is honest-quantified besides).
+
+*Consequence and proposed fix (for review, not applied).* The gate can bank a
+value its own certificate does not cover, so the banked root's dissemination
+to honest endpoints does not follow. The minimal repair is one extra
+executable conjunct on the gate:
+
+```lean
+    current_epoch_observed_justified_checkpoint :=
+      if has_head_broadcast_certificate cfg ext store bs &&
+          is_ancestor store (get_head cfg store)
+            (get_node_for_root
+              fcr_store.previous_epoch_greatest_unrealized_checkpoint.root) then
+        fcr_store.previous_epoch_greatest_unrealized_checkpoint
+      else fcr_store.current_epoch_observed_justified_checkpoint
+```
+
+This is still strictly stricter than the strong rule, hence still safety-free
+by the same monotonicity argument, and still costs at most one epoch of
+freshness — the "when the gate fails to bank" box above gains a fourth inert
+case, a boundary head that switched branches. With it,
+`banked_below_supplier` is the conjunct verbatim, `banked_known` is the
+theorems above, `second_pos` is the call's own slot advance, and both
+maintenance lemmas close.
+`Weak.bankedBelowHead_of_bankedBelowJustified` shows the cheaper
+justified-root form of the conjunct would suffice.
 
 ## Proof migration map
 
