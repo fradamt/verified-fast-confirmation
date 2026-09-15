@@ -47,6 +47,79 @@ relay, `ExternalsCoherence.committees_agree`, or
   fcrStep_currentNext_endpointRecentSourceSeed`);
 * the Lemma-26 history becomes stage S6's
   `Weak.StrictSelectedResultMechanicalFacts.actualCurrentSame_sourceHistoryOutcome`.
+
+## What is delivered
+
+* the four per-branch endpoint filter outcomes
+  `Weak.StrictSelectedResultMechanicalFacts.fcrStep_previous_/
+  fcrStep_currentSame_/fcrStep_currentNext_/
+  fcrStep_previousOffStart_late_endpointFilterOutcome`;
+* site 7, `Weak.acceptedSelectedResultFilterOutcome_retainedVisible_of_queryGUEpochSeed`,
+  with the observer-as-sender relay replaced by an explicit endpoint-knownness
+  premise, together with the seed producer
+  `Weak.StrictSelectedResultMechanicalFacts.previousOffStart_queryGUEpochSeed`,
+  which returns the seed's dissemination alongside the seed by threading the
+  stage-S2 entry witnesses' certificates
+  (`PreviousSelectedEntryWitness.witness_certificate` for the
+  `previous_slot_head` arm, `has_head_broadcast_certificate` for both `head`
+  arms) into the stage-S3 dissemination lemmas;
+* site 1's full-epoch canonicity at a confirmed current-epoch result
+  (`Weak.canonicalThroughoutNextEpoch_of_selectedCanonical_currentEpoch_at_observer`)
+  and its epoch-start previous sibling
+  (`Weak.StrictSelectedResultMechanicalFacts.canonicalThroughoutNextEpoch_of_previousEpochStart`);
+* two of the three epoch-start previous origins —
+  `Weak.StrictSelectorAdvanceAt.previousFinalizedReset_anchorLineage` (with
+  `…extendHistoricalLineage_sameEpoch_actual`) and
+  `Weak.StrictSelectorAdvanceAt.previousObservedReset_queryGUEpochSeed`
+  (query-local half);
+* the phase dispatcher
+  `Weak.StrictSelectedResultMechanicalFacts.fcrStep_endpointFilterOutcome`
+  and the top-level supplier
+  `Weak.StrictSelectorAdvanceAt.observerCall_selectedStrictEdgeFilterSupplyAt`;
+* obligation X1's resolution, `Weak.SelectedHelperProvisosAt` +
+  `Weak.ObserverHistoricalA32CallAssumptions` (see the section below).
+
+## What is carried, and why
+
+`Weak.ObserverStrictCallFilterInputsAt` is the record of facts the dispatcher
+still consumes and this module does not prove.  It is a **proof obligation,
+not an assumption**, and it is deliberately as small as the stage could make
+it.  Its four fields and the exact reason each is open:
+
+1. `result_descends_endpoint_justified` and
+2. `endpoint_justified_epoch_le_result` — the observer twins of
+   `actualCall_strictSelected_result_and_child_ancestor_of_endpointJustified`
+   and `actualCall_strictSelected_endpointJustifiedEpoch_le_result`.  Both
+   bottom out in the pre-query SIR chain
+   (`SelectedPreQueryHistoricalSIR.lean` →
+   `AcceptedSelectedJustifiedOrientation.lean`).  That chain's query-node
+   honesty is *not* uniformly of the three substitutable kinds: besides the
+   usual domain/committee uses it contains
+   (a) relay applications with the query node as **receiver**
+   (`MinimalSelectedDomain.ancestry_of_known_honest_past_descendant_minimal`,
+   `SelectedPreQueryHistoricalSIR.preQueryHonestTarget_sourceWitnessAtQuery`),
+   for which the weak model supplies no delivery, and
+   (b) one instantiation of the honest-endpoint-quantified input-safety
+   premise at the query node itself (`hbase v hv q …` in
+   `selectedSIRThreeRegionBracket_of_preQueryVote_and_pinning`), which a
+   Byzantine observer is outside of.  (b) is repairable — in the strict case
+   the observer's own head descends its input via
+   `Weak.strictSelectedResult_below_head` composed with
+   `StrictSelectedResultMechanicalFacts.descends_input` — but (a) needs new
+   weak-side infrastructure and is the wave's remaining scout question.
+3. `current_lineage` and
+4. `previous_epochStart_carried_lineage` — the observer-side instance of the
+   accepted historical A3.2 write-back induction
+   (`AcceptedHistoricalA32Induction.lean`, one call step in
+   `AcceptedHistoricalA32OneStep.lean`), re-indexed over `E.weakConfirmed` /
+   `E.weakFcrStep`.  Every honesty use in that stack is of the substitutable
+   kinds (all of them route through
+   `historicalA32QueryGeometryAt_of_acceptedGlobalTrajectory`'s two domain
+   hubs, plus one `committees_agree`), so this is a mechanical — but not
+   small — port; it is structurally an induction over the *observer's own*
+   call history and cannot be imported from an honest node.
+5. `previous_epochStart_observedReset_headDisseminated` — §4 of the wave
+   design's known epoch-start escape; see that field's own docstring.
 -/
 
 namespace FastConfirmation.Spec
