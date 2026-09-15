@@ -11,6 +11,9 @@ import FastConfirmation.Spec.Proof.WeakCrossingSets
 import FastConfirmation.Spec.Proof.WeakSiblingScore
 import FastConfirmation.Spec.Proof.WeakSelectorBetween
 import FastConfirmation.Spec.Proof.WeakSelectedEdgeGeometry
+import FastConfirmation.Spec.Proof.WeakSelectedMarginInputs
+import FastConfirmation.Spec.Proof.WeakCoveredMarginConstruction
+import FastConfirmation.Spec.Proof.WeakOneShotSafetyNative
 
 /-!
 # Spec — facade

@@ -292,28 +292,33 @@ plus the justification-witness certificate), `WeakOneShotSafety` (assembly;
 also clones the two crossing-edge closers, whose `committees_agree`
 dependency at the observer was genuine, contrary to the initial audit).
 
-Deliberately open (Stage 8): discharging `hmargin` at a non-honest observer.
-Its blocker is `WindowRecordedEpochMax` — epoch-freshness of the observer's
+**`hmargin` is now discharged at a non-honest observer** (margin-discharge
+wave, Stages G–J below); see that section for the full account.
+`Execution.weak_safeFrom_find_latest_confirmed_descendant` and
+`Execution.weak_confirmed_head` above remain as the *interface-layered*
+statements — they still take `hmargin : SelectedCoveredMarginSupplyAt` (the
+strong Prop) as an explicit premise, matching `CoveredMargin`'s own interface
+shape, and stay useful wherever a caller already has a strong margin supply
+in hand (e.g. from the existing `_of_pipeline_minimal` / `_of_stateRealization_
+minimal` FFG-realization wrappers). The new, fully weak-native headline —
+`Execution.weak_safeFrom_find_latest_confirmed_descendant_discharged` — is
+recorded in "Margin discharge (stages G–J)" below.
+
+Historical note on the blocker this wave removed: `hmargin`'s Stage-8
+obstruction was `WindowRecordedEpochMax` — epoch-freshness of the observer's
 recorded LMD cells — which the strong development derives from vote delivery
 *to* the observer (`vote_ubiquity`), a guarantee the inbox model removes and
 broadcast certificates cannot replace (it asserts the *absence* of unseen
-newer votes). Candidate resolutions, in preference order: (A) rule delta 3 —
-count only epoch-fresh support in `Weak.is_one_confirmed`, making freshness
-derivable from `committee_assignment_unique`; (B) an explicit
-recorded-epoch-freshness assumption at the observer (weaker than honesty but a
-genuine delivery-to-observer premise); (C) keep `hmargin` as the interface
-premise (the current state).
-
-**Candidate A is taken** — rule deltas 3 and 4 above land the epoch-fresh
-scorer/discount and the certificate-gated unrealized-justification
-short-circuits. This does **not** by itself discharge Stage 8: landing the
-delta only makes freshness of *counted* cells derivable; it does not yet
-supply a *weak-native* (store-computed, not ground-truth-indexed) base-strip
-argument that consumes that freshness fact to close `WindowRecordedEpochMax`
-at the observer (Stage H), nor the hdom-supplier retirement (Stage I) or the
-final `hmargin` discharge (Stage J) built on top of it. Those three stages
-remain out of scope for this wave; `hmargin` is still carried as an explicit
-premise of the one-shot theorem today.
+newer votes). Of the three candidate resolutions once listed here — (A) rule
+delta 3 (epoch-fresh scorer, landed above), (B) an explicit
+recorded-epoch-freshness assumption at the observer, (C) keep `hmargin` as an
+interface premise — the wave took a variant of (A) sharper than originally
+scoped: rather than deriving `WindowRecordedEpochMax` at the observer from
+freshness and then re-running the strong (ground-truth-indexed) base-strip
+argument, every ledger class on the weak path is read directly at the honest
+*endpoint*, so `WindowRecordedEpochMax` at the observer is never needed at
+all. See "Margin discharge (stages G–J)" for the design decision and its
+consequences.
 
 ## The finalized-base corollary (proved)
 
@@ -417,4 +422,134 @@ this corollary and carried for exactly the same reason.
 Both `weak_safeFrom_find_latest_confirmed_descendant_from_finalized` and
 `weak_confirmed_head_from_finalized` depend only on
 `propext, Classical.choice, Quot.sound` (`scripts/Audit.lean`'s
-`publicWitnesses` set, now 17 declarations).
+`publicWitnesses` set, 17 declarations at the time this corollary landed, now
+19 — see "Margin discharge (stages G–J)" below).
+
+## Margin discharge (stages G–J)
+
+The margin-discharge wave lands `hmargin`-free one-shot weak safety:
+`Execution.weak_safeFrom_find_latest_confirmed_descendant_discharged` and its
+endpoint form `Execution.weak_confirmed_head_discharged`
+(`FastConfirmation/Spec/Proof/WeakOneShotSafetyNative.lean`). Nothing on this
+path assumes delivery of votes *to* the observer.
+
+```lean
+theorem weak_safeFrom_find_latest_confirmed_descendant_discharged
+    {E : Execution Root} {obs : ValidatorIndex}
+    (hW : E.WeakObserverMarginAssumptions cfg ext obs)
+    (hwalkDomain : E.PostAnchorHonestVoteTargetWalkDomain cfg ext)
+    (q : ℕ) (hqH : E.WithinHorizon cfg q)
+    (fcr_store : FastConfirmationStore Root)
+    (hstore : fcr_store.store = E.store cfg ext obs q)
+    (lcr : Root) (hlcr : lcr ∈ fcr_store.store.block_roots)
+    (hbase : E.SafeFrom cfg ext lcr (E.slot_start cfg (E.slot_at cfg q)))
+    (hfilter : Weak.find_latest_confirmed_descendant cfg ext fcr_store lcr ≠ lcr →
+      Weak.SelectedStrictEdgeFilterSupplyAt cfg ext E
+        (Weak.find_latest_confirmed_descendant cfg ext fcr_store lcr) lcr obs q
+        fcr_store) :
+    E.SafeFrom cfg ext (Weak.find_latest_confirmed_descendant cfg ext fcr_store lcr) q
+```
+
+### The endpoint-direct decision
+
+The strong development's margin machinery classifies each honest window
+member's ledger contribution (`Sclass`/`Aclass`/`Xclass`) at the *observer's*
+own index `(obs, q)`, then transports the two honest classes to the
+consuming honest endpoint `(w, m)`. That transport is exactly the honest→
+non-honest relay the weak model forbids: converting an observer-indexed
+`Sval`/`Aval` strip to the endpoint needs `hSt : SupportsDesc cfg ext obs q …
+→ SupportsDesc cfg ext w m …`, which in turn needs the ground vote root to be
+known in *both* stores — and an arbitrary `Sclass cfg ext obs q` member's
+ground vote root need not be in a non-honest observer's block map at all.
+
+The wave's one architectural decision routes around that wall instead of
+patching it: **every ledger class on the weak margin path is read at the
+honest endpoint `(w, m)`, never at the observer.** The observer contributes
+only two *sums* — the weak fresh attestation score and the weak fresh
+discount (`Weak.get_epoch_fresh_attestation_score` /
+`Weak.get_support_discount`, rule delta 3) — and each sum is placed directly
+into `Sclass cfg ext w m` / `Aclass cfg ext w m` by freshness ⇒ newest-vote
+(`Execution.recorded_lm_is_newest_in_store`, store-generic and honesty-free)
+composed with honest→honest `block_relay` from the voting supporter's own
+store (never *to* the observer) and `Execution.is_ancestor_replay_closed`
+(`WeakEndpointClasses.lean`'s `freshSupporter_mem_endpoint_Sclass` /
+`freshParentStuck_subset_endpoint_Aclass`). This is strictly less work than
+the strong development would need at the observer: it deletes
+`support_transport` / `ancestor_transport` / `classes_base_transport_honest`
+/ `bval_strip_transport` from the weak path entirely, and every
+`WindowRecordedEpochMax` premise at the observer along with them
+(`WeakEndpointClasses.lean`, `WeakCrossingSets.lean`, `WeakSiblingScore.lean`,
+`WeakSelectedMarginInputs.lean`).
+
+### The non-subtractive crossing collapse
+
+`Weak.compute_adversarial_weight` (rule delta 1) has no equivocation
+subtraction, so the crossing-edge arm's *subtractive* conclusion — the
+`− weight (crossingEquivPre …)` term the strong `crossingEdgeFuture_
+endpoint_inequality_of_confirmed_window` carries — collapses to the same
+non-subtractive shape as the intra-epoch/future-crossing arm. Consequently:
+
+* `Weak.CrossingSelectedMarginInputs` (`WeakSelectedMarginInputs.lean`) is
+  ONE structure for both crossing regimes, not two — `CrossingEdgeSelected
+  MarginInputs` and `FutureCrossingSelectedMarginInputs` merge, and
+  `Weak.SelectedEdgeMarginInputsAt` has three constructors, not four;
+* `Weak.crossing_sibling_score_of_endpointLedger`
+  (`WeakSiblingScore.lean`) serves both regimes with one non-subtractive
+  bound, replacing the strong development's separate subtractive
+  `crossingEdge_sibling_score_of_endpointLedger_minimal`;
+* `Weak.freshByzSupporters_le_Bval` (`WeakCrossingSets.lean`) replaces
+  `LastAlgebra.hR4b_of_confinement` with a 6-line subset argument (fresh byz
+  supporters are non-honest span members — no equivocation score to split
+  out);
+* this is the **last use of `Synchrony.attester_slashing_relay` on the
+  one-shot path** — the strong crossing arm's equivocation-visibility relay
+  (`crossing_equivocation_score_split`, `crossingEquivPre`) never appears in
+  the weak graph. Every remaining `Synchrony.block_relay`/`attestation_
+  delivery` site reachable from the one-shot theorem is honest→honest.
+
+### The remaining premise surface
+
+After this wave, `weak_safeFrom_find_latest_confirmed_descendant_discharged`'s
+premises are:
+
+* **`hfilter` — the FFG-realization filter supply.** The next wave's target
+  (S10): it is exactly `Weak.SelectedStrictEdgeFilterSupplyAt`, the same
+  filter-membership boundary the strong `SelectedStrictEdgeFilterSupplyAt`
+  already carries, now over `Weak.StrictSelectedEdgeGeometry`. The six
+  observer-touching `block_relay`/`vote_ubiquity`/`attestation_delivery`
+  sites in the FFG-realization phase machinery that discharge it in the
+  strong development are enumerated in the margin-discharge wave's scout
+  report; four close via confirmed-block dissemination, provenance, or the
+  justification-witness certificate (all already proved for a non-honest
+  observer), and two are genuinely open — the honest-proposer-recurrence
+  residue restating Paper Assumption 3.2
+  (`Execution.WeakRecentSourceSeedDissemination`), which is the natural next
+  target once `hmargin` is off the critical path.
+* **`hwalkDomain : E.PostAnchorHonestVoteTargetWalkDomain cfg ext`** —
+  endpoint-side only. It survives `vote_ubiquity`'s retirement because its
+  *other* consumer, `endpointLedgerFields_from_execution_minimal`, runs
+  entirely at the honest endpoint `(w, m)`, where honest-to-honest delivery
+  is unchanged; only its observer-side instantiation
+  (`windowRecordedEpochMax_at_query_minimal` at `(obs, q)`) disappears.
+* **`ObserverCoherence.committees_agree`** (inside `hW : E.WeakObserverMargin
+  Assumptions`) — the observer's own store computes committees consistently
+  with the ground-truth assignment. `ObserverCoherence.justified_root_known`,
+  the bundle's other field, is derivable
+  (`ObserverCoherence.justified_root_known_of_acceptedGlobalTrajectory`), so
+  `committees_agree` is the only genuinely free premise about the observer's
+  own trajectory left.
+
+### The finalized-base composition
+
+`Execution.weak_safeFrom_find_latest_confirmed_descendant_discharged_from_
+finalized` and its endpoint form `weak_confirmed_head_discharged_from_
+finalized` (`WeakOneShotSafetyNative.lean`) compose the discharged headline
+with `WeakFinalizedInput.lean`'s finalized-base derivation of `hlcr`/`hbase` —
+a cheap plumbing composition, identical to `weak_safeFrom_find_latest_
+confirmed_descendant_from_finalized` above except that its final call is to
+the discharged headline, so `hmargin` becomes `hfilter`.
+
+`scripts/Audit.lean`'s `publicWitnesses` set now includes
+`weak_safeFrom_find_latest_confirmed_descendant_discharged` and
+`weak_confirmed_head_discharged` (19 declarations); both depend only on
+`propext, Classical.choice, Quot.sound`.

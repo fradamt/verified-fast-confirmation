@@ -1,4 +1,5 @@
 import FastConfirmation.Spec.Proof.WeakCoveredMarginConstruction
+import FastConfirmation.Spec.Proof.WeakFinalizedInput
 
 /-!
 # Spec / Proof / WeakOneShotSafetyNative
@@ -239,6 +240,92 @@ theorem weak_confirmed_head_discharged
       = true :=
   weak_safeFrom_find_latest_confirmed_descendant_discharged cfg ext hW hwalkDomain q hqH
     fcr_store hstore lcr hlcr hbase hfilter w hw m hqm hHm
+
+/-! ## Section 8′ — the finalized-base composition, discharged
+
+Cheap plumbing composition of `WeakFinalizedInput.weak_safeFrom_find_latest_
+confirmed_descendant_from_finalized` with the Section 7′ headline: identical
+derivation of `hlcr`/`hbase` from the accepted FFG semantics bundle, with the
+final call to `weak_safeFrom_find_latest_confirmed_descendant` replaced by
+`weak_safeFrom_find_latest_confirmed_descendant_discharged`, so `hmargin`
+becomes `hfilter`. -/
+
+/-- Finalized-base corollary of the discharged headline: the weak selector's
+output, seeded at the observer's own finalized checkpoint, is `SafeFrom` at
+the actual query second, with `hmargin` discharged into `hfilter`. -/
+theorem weak_safeFrom_find_latest_confirmed_descendant_discharged_from_finalized
+    {E : Execution Root} {obs : ValidatorIndex}
+    (hW : E.WeakObserverMarginAssumptions cfg ext obs)
+    (hwalkDomain : E.PostAnchorHonestVoteTargetWalkDomain cfg ext)
+    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
+    (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
+      (E := E) (anchor := B.anchor))
+    (hphase : Phase0SourceCoherence cfg ext)
+    (hboundaryPhase : Phase0BoundarySourceCoherence cfg ext)
+    (q : ℕ) (hqH : E.WithinHorizon cfg q)
+    (fcr_store : FastConfirmationStore Root)
+    (hstore : fcr_store.store = E.store cfg ext obs q)
+    (hfilter :
+      Weak.find_latest_confirmed_descendant cfg ext fcr_store
+          fcr_store.store.finalized_checkpoint.root ≠
+        fcr_store.store.finalized_checkpoint.root →
+      Weak.SelectedStrictEdgeFilterSupplyAt cfg ext E
+        (Weak.find_latest_confirmed_descendant cfg ext fcr_store
+          fcr_store.store.finalized_checkpoint.root)
+        fcr_store.store.finalized_checkpoint.root obs q fcr_store) :
+    E.SafeFrom cfg ext
+      (Weak.find_latest_confirmed_descendant cfg ext fcr_store
+        fcr_store.store.finalized_checkpoint.root) q := by
+  have hT := ScheduledPrefixTrajectoryAssumptions.of_selectedMarginAssumptions
+    cfg ext E hW.base
+  have hacc := SelectedMarginAssumptions.toFFGAccountabilityAssumptions
+    cfg ext E hW.base
+  have hlcr : fcr_store.store.finalized_checkpoint.root ∈
+      fcr_store.store.block_roots := by
+    rw [hstore]
+    exact (E.finalizedCheckpoint_resetRealizedAt_of_acceptedGlobalTrajectory
+      cfg ext B hT hanchor hboundary (w := obs) q).root_known
+  have hbase : E.SafeFrom cfg ext fcr_store.store.finalized_checkpoint.root
+      (E.slot_start cfg (E.slot_at cfg q)) := by
+    rw [hstore]
+    exact E.weak_finalizedReset_safeFrom_of_synchrony cfg ext B hT hacc hphase
+      hboundaryPhase hanchor hboundary hW.base.synchrony hqH
+  exact weak_safeFrom_find_latest_confirmed_descendant_discharged cfg ext hW hwalkDomain q hqH
+    fcr_store hstore fcr_store.store.finalized_checkpoint.root hlcr hbase
+    hfilter
+
+/-- Endpoint form of the discharged finalized-base corollary. -/
+theorem weak_confirmed_head_discharged_from_finalized
+    {E : Execution Root} {obs : ValidatorIndex}
+    (hW : E.WeakObserverMarginAssumptions cfg ext obs)
+    (hwalkDomain : E.PostAnchorHonestVoteTargetWalkDomain cfg ext)
+    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
+    (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
+      (E := E) (anchor := B.anchor))
+    (hphase : Phase0SourceCoherence cfg ext)
+    (hboundaryPhase : Phase0BoundarySourceCoherence cfg ext)
+    (q : ℕ) (hqH : E.WithinHorizon cfg q)
+    (fcr_store : FastConfirmationStore Root)
+    (hstore : fcr_store.store = E.store cfg ext obs q)
+    (hfilter :
+      Weak.find_latest_confirmed_descendant cfg ext fcr_store
+          fcr_store.store.finalized_checkpoint.root ≠
+        fcr_store.store.finalized_checkpoint.root →
+      Weak.SelectedStrictEdgeFilterSupplyAt cfg ext E
+        (Weak.find_latest_confirmed_descendant cfg ext fcr_store
+          fcr_store.store.finalized_checkpoint.root)
+        fcr_store.store.finalized_checkpoint.root obs q fcr_store)
+    {w : ValidatorIndex} (hw : w ∈ E.honest) {m : ℕ}
+    (hqm : q ≤ m) (hHm : E.WithinHorizon cfg m) :
+    is_ancestor (E.store cfg ext w m) (get_head cfg (E.store cfg ext w m))
+      (get_node_for_root
+        (Weak.find_latest_confirmed_descendant cfg ext fcr_store
+          fcr_store.store.finalized_checkpoint.root)) = true :=
+  weak_safeFrom_find_latest_confirmed_descendant_discharged_from_finalized cfg ext hW
+    hwalkDomain B hanchor hboundary hphase hboundaryPhase q hqH fcr_store hstore hfilter
+    w hw m hqm hHm
 
 end Execution
 
