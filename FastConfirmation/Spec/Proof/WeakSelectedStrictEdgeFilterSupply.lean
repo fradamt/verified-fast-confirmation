@@ -86,9 +86,16 @@ relay, `ExternalsCoherence.committees_agree`, or
 ## What is carried, and why
 
 `Weak.ObserverStrictCallFilterInputsAt` is the record of facts the dispatcher
-still consumes and this module does not prove.  It is a **proof obligation,
-not an assumption**, and it is deliberately as small as the stage could make
-it.  Its four fields and the exact reason each is open:
+consumes and *this module* does not prove.  It is a **proof obligation, not an
+assumption**, and it is deliberately as small as the stage could make it.
+
+**Stage S8 has since discharged it in full.**  The producer
+`Weak.observerStrictCallFilterInputsAt_of_observerCall`
+(`WeakObserverStrictCallFilterInputs.lean`) builds every field from this
+module's own premise set plus `Weak.ObserverHistoricalA32CallAssumptions` and
+the outer safety fold's carried input safety `hbase`, and
+`…observerCall_selectedStrictEdgeFilterSupplyAt_closed` is the supplier with
+no `hinputs` binder at all.  The four fields, and where each is now proved:
 
 1. `result_descends_endpoint_justified` and
 2. `endpoint_justified_epoch_le_result` — the observer twins of
@@ -106,11 +113,15 @@ it.  Its four fields and the exact reason each is open:
    (b) one instantiation of the honest-endpoint-quantified input-safety
    premise at the query node itself (`hbase v hv q …` in
    `selectedSIRThreeRegionBracket_of_preQueryVote_and_pinning`), which a
-   Byzantine observer is outside of.  (b) is repairable — in the strict case
-   the observer's own head descends its input via
-   `Weak.strictSelectedResult_below_head` composed with
-   `StrictSelectedResultMechanicalFacts.descends_input` — but (a) needs new
-   weak-side infrastructure and is the wave's remaining scout question.
+   Byzantine observer is outside of.  Both are resolved in
+   `WeakPreQuerySIR.lean` + `WeakSelectedJustifiedOrientation.lean`: (a) is
+   *deleted* rather than substituted — the relays' joint consumer
+   `preQueryTarget_descends_queryBlock_at_endpoint` is re-proved as one
+   `Execution.is_ancestor_replay_closed` once the witness root's endpoint
+   knownness is an explicit hypothesis, which both call sites already have in
+   hand; and (b) is replaced by `Weak.strictSelectedResult_below_head`, which
+   needs no input-safety premise.  `hbase` itself survives as a binder, because
+   its *other* use is at the honest endpoint, where it is legitimate.
 3. `current_lineage` and
 4. `previous_epochStart_carried_lineage` — the observer-side instance of the
    accepted historical A3.2 write-back induction
@@ -119,9 +130,12 @@ it.  Its four fields and the exact reason each is open:
    `E.weakFcrStep`.  Every honesty use in that stack is of the substitutable
    kinds (all of them route through
    `historicalA32QueryGeometryAt_of_acceptedGlobalTrajectory`'s two domain
-   hubs, plus one `committees_agree`), so this is a mechanical — but not
+   hubs, plus one `committees_agree`), so this was a mechanical — but not
    small — port; it is structurally an induction over the *observer's own*
-   call history and cannot be imported from an honest node.
+   call history and cannot be imported from an honest node.  It is landed in
+   `WeakHistoricalA32Geometry` / `WeakHistoricalA32Step` /
+   `WeakHistoricalA32OneStep` / `WeakHistoricalA32Induction`, with the
+   geometry module the single honesty hub the whole stack routes through.
 
 The record used to carry a fifth field,
 `previous_epochStart_observedReset_headDisseminated` — §4 of the wave design's
