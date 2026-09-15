@@ -34,35 +34,24 @@ variable (E : Execution Root)
 
 /-! ## Included finality is strictly older than its accepted carrier -/
 
-/-- An included non-anchor finalization is strictly older than the block
-which carries its certificate.
+/-- An attestation included on a carrier's chain was cast strictly before the
+carrier block itself.
 
-This is the carrier-local form of the timing argument used by reset
-classification.  It does not mention the current epoch of any store. -/
-theorem includedCertifiedFinalized_epoch_lt_acceptedCarrierBlock
+The including block is an ancestor of the carrier inside the observing store,
+so the store's parent-slot order carries the inclusion-time bound
+`slot_before_carrier` up to the carrier.  Only knownness of the carrier is
+required, no certificate and no checkpoint. -/
+theorem includedAttestationSlot_lt_acceptedCarrierBlock
     (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
     (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
     {v : ValidatorIndex} {q : ℕ} {carrier : Root}
     (hcarrier : carrier ∈
       (E.store cfg ext v q).block_roots)
-    {c : Checkpoint Root}
-    (F : IncludedCertifiedFinalized cfg E
-      B.state.includedAttestations.Included B.anchor carrier c) :
-    c.epoch < compute_epoch_at_slot cfg
-      ((E.store cfg ext v q).blocks carrier).slot := by
-  have hsigners : F.finalizing_link.signers.Nonempty := by
-    by_contra hnone
-    have hempty : F.finalizing_link.signers = ∅ :=
-      Finset.not_nonempty_iff_eq_empty.mp hnone
-    have hzero : 2 * E.total_active cfg ≤ 0 := by
-      simpa only [hempty, Execution.weight, Finset.sum_empty,
-        Nat.mul_zero] using F.finalizing_link.supermajority
-    exact (Nat.not_lt_of_ge hzero)
-      (Nat.mul_pos (by omega) (E.total_active_pos cfg))
-  obtain ⟨i, hi⟩ := hsigners
-  obtain ⟨a, ⟨containing, hcarrierContaining, hincluded⟩,
-      _hiAttests, _haSource, haTarget⟩ :=
-    F.finalizing_link.signer_attestation i hi
+    {a : Attestation Root}
+    (hchain : AttestationIncludedOnChain E
+      B.state.includedAttestations.Included carrier a) :
+    a.data.slot < ((E.store cfg ext v q).blocks carrier).slot := by
+  obtain ⟨containing, hcarrierContaining, hincluded⟩ := hchain
   have hevidence := B.state.includedAttestations.evidence hincluded
   obtain ⟨ast, ablk, hgenEq, hslot, hparent⟩ := hT.genesis
   have hcontainingRoot : E.ExecutionRoot containing :=
@@ -93,14 +82,47 @@ theorem includedCertifiedFinalized_epoch_lt_acceptedCarrierBlock
     (Execution.CausalStore.acceptedBlockAt_iff_eq cfg ext E
       hT.wellFormed (E.store_causal cfg ext v q) hcontainingKnown).mp
         hevidence.carrier_accepted
-  have hattestationBeforeCarrier : a.data.slot <
+  calc
+    a.data.slot < hevidence.carrier_message.slot :=
+      hevidence.slot_before_carrier
+    _ = ((E.store cfg ext v q).blocks containing).slot :=
+      (congrArg BeaconBlock.slot hcontainingBlock).symm
+    _ ≤ ((E.store cfg ext v q).blocks carrier).slot := hslotLe
+
+/-- An included non-anchor finalization is strictly older than the block
+which carries its certificate.
+
+This is the carrier-local form of the timing argument used by reset
+classification.  It does not mention the current epoch of any store. -/
+theorem includedCertifiedFinalized_epoch_lt_acceptedCarrierBlock
+    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
+    {v : ValidatorIndex} {q : ℕ} {carrier : Root}
+    (hcarrier : carrier ∈
+      (E.store cfg ext v q).block_roots)
+    {c : Checkpoint Root}
+    (F : IncludedCertifiedFinalized cfg E
+      B.state.includedAttestations.Included B.anchor carrier c) :
+    c.epoch < compute_epoch_at_slot cfg
       ((E.store cfg ext v q).blocks carrier).slot := by
-    calc
-      a.data.slot < hevidence.carrier_message.slot :=
-        hevidence.slot_before_carrier
-      _ = ((E.store cfg ext v q).blocks containing).slot :=
-        (congrArg BeaconBlock.slot hcontainingBlock).symm
-      _ ≤ ((E.store cfg ext v q).blocks carrier).slot := hslotLe
+  have hsigners : F.finalizing_link.signers.Nonempty := by
+    by_contra hnone
+    have hempty : F.finalizing_link.signers = ∅ :=
+      Finset.not_nonempty_iff_eq_empty.mp hnone
+    have hzero : 2 * E.total_active cfg ≤ 0 := by
+      simpa only [hempty, Execution.weight, Finset.sum_empty,
+        Nat.mul_zero] using F.finalizing_link.supermajority
+    exact (Nat.not_lt_of_ge hzero)
+      (Nat.mul_pos (by omega) (E.total_active_pos cfg))
+  obtain ⟨i, hi⟩ := hsigners
+  obtain ⟨a, hchain, _hiAttests, _haSource, haTarget⟩ :=
+    F.finalizing_link.signer_attestation i hi
+  have hattestationBeforeCarrier : a.data.slot <
+      ((E.store cfg ext v q).blocks carrier).slot :=
+    E.includedAttestationSlot_lt_acceptedCarrierBlock cfg ext B hT
+      hcarrier hchain
+  obtain ⟨_containing, _hcarrierContaining, hincluded⟩ := hchain
+  have hevidence := B.state.includedAttestations.evidence hincluded
   have hchildEpoch : c.epoch + 1 =
       compute_epoch_at_slot cfg a.data.slot := by
     calc
