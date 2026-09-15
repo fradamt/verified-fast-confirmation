@@ -746,6 +746,240 @@ theorem selected_strict_result_origin_recency_classification
     rw [hout] at hwitness
     exact ⟨a, htentative, hwitness⟩
 
+/-! ## Section 4 — the weak strict-selected-result mechanical facts bracket
+(weak twin of `SelectedPreQuerySIR.lean`) -/
+
+/-- Weak twin of `StrictSelectedResultMechanicalFacts`: the mechanical facts
+available for a strict weak-selector result, with no FFG/SIR premise. The
+`confirmed` field stays the **strong** `is_one_confirmed` (written
+`Spec.is_one_confirmed`/`Spec.get_current_balance_source` since bare names
+resolve to the weak rule's shadowing definitions inside `namespace Weak`,
+exactly as `WeakSourceHistory.lean`'s `confirmedPastDescendantSlotWitness_core`
+already documents): the weak selector inversion
+(`find_latest_confirmed_descendant_selected_minimal_weak`,
+`WeakSelectorInversion.lean`) upgrades every extracted weak witness to the
+strong predicate via `is_one_confirmed_of_weak`, and downstream consumers
+(e.g. `checkpoint_state_key_of_one_confirmed`,
+`confirmedPastDescendantSlotWitness_core`) are stated over the strong
+predicate. `trace_origin` and `previous_result_outer_guard` are re-targeted at
+the weak trace/witness types of Sections 1-2 above. -/
+structure StrictSelectedResultMechanicalFacts
+    (query : FastConfirmationStore Root) (input result : Root) : Prop where
+  confirmed : Spec.is_one_confirmed cfg ext query.store
+    (Spec.get_current_balance_source query) result = true
+  result_known : result ∈ query.store.block_roots
+  parent_known : (query.store.blocks result).parent_root ∈
+    query.store.block_roots
+  descends_input : is_ancestor query.store
+    (get_node_for_root result) (get_node_for_root input) = true
+  current_or_previous_epoch :
+    get_block_epoch cfg query.store result =
+        get_current_store_epoch cfg query.store ∨
+      get_block_epoch cfg query.store result + 1 =
+        get_current_store_epoch cfg query.store
+  trace_origin :
+    (∃ a,
+      PreviousAcceptedEdge cfg ext query input a result ∧
+        PreviousSelectedEntryWitness cfg ext query input ∧
+        ((get_voting_source cfg query.store
+            query.previous_slot_head).epoch + 2 ≥
+            get_current_store_epoch cfg query.store ∧
+          is_ancestor query.store
+            (get_node_for_root query.previous_slot_head)
+            (get_node_for_root result) = true)) ∨
+      (∃ a,
+        (a, result) ∈
+            (findLatestSelectedTrace cfg ext query input).2.2 ∧
+          TentativeSelectedEntryWitness cfg ext query ∧
+          TentativeSelectedResultWitness cfg ext query result)
+  previous_result_outer_guard :
+    get_block_epoch cfg query.store result ≠
+        get_current_store_epoch cfg query.store →
+      is_start_slot_at_epoch cfg
+          (get_current_slot cfg query.store) = true ∨
+        Weak.will_no_conflicting_checkpoint_be_justified cfg ext
+          query.store (get_current_balance_source query) = true
+
+/-- A strict weak-executable result supplies all of
+`Weak.StrictSelectedResultMechanicalFacts` without an FFG/SIR premise, at an
+observer that need not be honest. Weak twin of `strictSelectedResultMechanicalFacts`:
+`hv : v ∈ E.honest`'s two domain uses
+(`store_domainK_of_selectedMarginDomain`, `head_root_known_of_selectedMarginDomain`)
+are replaced by the honesty-free `Execution.observerStoreDomainK` /
+`Execution.head_root_known_at_observer` (`WeakObserverDomain.lean`, stage
+S0), driven by `hcoh : E.ObserverCoherence cfg ext obs`; the strong selector
+inversion facts are replaced by their weak twins
+(`find_latest_confirmed_descendant_selected_minimal_weak`,
+`weak_find_latest_confirmed_descendant_ge`, both already landed in
+`WeakSelectorInversion.lean`) and by this file's `selected_strict_result
+_origin_recency_classification` / `selected_previous_result_outer_gate`. No
+bookkeeping function is unfolded: `query` is a bare `FastConfirmationStore`,
+exactly as in the strong original. -/
+theorem strictSelectedResultMechanicalFacts
+    (hA : SelectedMarginAssumptions cfg ext E)
+    {obs : ValidatorIndex} (hcoh : E.ObserverCoherence cfg ext obs) {q : ℕ}
+    (hqH : E.WithinHorizon cfg q)
+    (query : FastConfirmationStore Root)
+    (hquery : query.store = E.store cfg ext obs q)
+    (input : Root) (hinput : input ∈ query.store.block_roots)
+    (hinputEpoch :
+      get_block_epoch cfg query.store input =
+          get_current_store_epoch cfg query.store ∨
+        get_block_epoch cfg query.store input + 1 =
+          get_current_store_epoch cfg query.store)
+    (hstrict : Weak.find_latest_confirmed_descendant cfg ext query input ≠ input) :
+    StrictSelectedResultMechanicalFacts cfg ext query input
+      (Weak.find_latest_confirmed_descendant cfg ext query input) := by
+  let result := Weak.find_latest_confirmed_descendant cfg ext query input
+  obtain ⟨hwfQ, hwalkQ, hjrkQ⟩ :=
+    E.observerStoreDomainK cfg ext hA.wellFormed hA.externals_coherence hA.genesis
+      hcoh q hqH
+  have hheadQ : (get_head cfg query.store).root ∈ query.store.block_roots := by
+    have hhead := E.head_root_known_at_observer cfg ext hcoh q hqH
+    simpa only [hquery] using hhead
+  have hselected := E.find_latest_confirmed_descendant_selected_minimal_weak
+    cfg ext hA obs q hqH (by simpa only [hquery] using hjrkQ) query hquery input hinput
+  have hright :
+      Spec.is_one_confirmed cfg ext query.store
+          (Spec.get_current_balance_source query) result = true ∧
+        result ∈ query.store.block_roots ∧
+        (query.store.blocks result).parent_root ∈
+          query.store.block_roots := by
+    rcases hselected with heq | hright
+    · exact False.elim (hstrict (by simpa only [result] using heq))
+    · exact ⟨hright.1, hright.2.2.1, hright.2.2.2.1⟩
+  have hge := weak_find_latest_confirmed_descendant_ge cfg ext query
+    (by simpa only [hquery] using hwfQ)
+    (by simpa only [hquery] using hwalkQ)
+    hheadQ input hinput
+  have hdesc : is_ancestor query.store
+      (get_node_for_root result) (get_node_for_root input) = true := by
+    simpa only [result] using hge.1
+  have hresultKnown : result ∈ query.store.block_roots := hright.2.1
+  have hwfQuery : ParentSlotLt query.store := by
+    simpa only [hquery] using hwfQ
+  have hwalkQuery : ∀ t ∈ query.store.block_roots,
+      ∀ r ∈ query.store.block_roots,
+        WalkKnown query.store (query.store.blocks t).slot r := by
+    simpa only [hquery] using hwalkQ
+  have hslotLower : (query.store.blocks input).slot ≤
+      (query.store.blocks result).slot := by
+    exact Execution.ancestor_slot_le hwfQuery
+      (hwalkQuery input hinput result hresultKnown) hdesc
+  have hepochLower : get_block_epoch cfg query.store input ≤
+      get_block_epoch cfg query.store result := by
+    exact ce_mono cfg hslotLower
+  have hresultKnownE : result ∈
+      (E.store cfg ext obs q).block_roots := by
+    simpa only [← hquery] using hresultKnown
+  have hslotUpperE := E.store_blocks_slot_le_current cfg ext
+    hA.whole_seconds
+    (by
+      obtain ⟨ast, ablk, hgeq, hslot, _⟩ := hA.genesis
+      exact ⟨ast, ablk, hgeq, hslot⟩)
+    obs q result hresultKnownE
+  have hslotUpper : (query.store.blocks result).slot ≤
+      get_current_slot cfg query.store := by
+    simpa only [hquery] using hslotUpperE
+  have hepochUpper : get_block_epoch cfg query.store result ≤
+      get_current_store_epoch cfg query.store := by
+    exact ce_mono cfg hslotUpper
+  have hepoch :
+      get_block_epoch cfg query.store result =
+          get_current_store_epoch cfg query.store ∨
+        get_block_epoch cfg query.store result + 1 =
+          get_current_store_epoch cfg query.store := by
+    let inputEpoch := get_block_epoch cfg query.store input
+    let resultEpoch := get_block_epoch cfg query.store result
+    let currentEpoch := get_current_store_epoch cfg query.store
+    have hinputEpoch' : inputEpoch = currentEpoch ∨
+        inputEpoch + 1 = currentEpoch := by
+      simpa only [inputEpoch, resultEpoch, currentEpoch] using hinputEpoch
+    have hepochLower' : inputEpoch ≤ resultEpoch := by
+      simpa only [inputEpoch, resultEpoch, currentEpoch] using hepochLower
+    have hepochUpper' : resultEpoch ≤ currentEpoch := by
+      simpa only [inputEpoch, resultEpoch, currentEpoch] using hepochUpper
+    change resultEpoch = currentEpoch ∨ resultEpoch + 1 = currentEpoch
+    rcases hinputEpoch' with hcurrent | hprevious
+    · left
+      apply Nat.le_antisymm hepochUpper'
+      exact hcurrent ▸ hepochLower'
+    · rcases le_or_gt resultEpoch inputEpoch with hresultLe | hinputLt
+      · right
+        have heq : resultEpoch = inputEpoch :=
+          Nat.le_antisymm hresultLe hepochLower'
+        simpa only [heq] using hprevious
+      · left
+        apply Nat.le_antisymm hepochUpper'
+        calc
+          currentEpoch = inputEpoch + 1 := hprevious.symm
+          _ ≤ resultEpoch := Nat.succ_le_of_lt hinputLt
+  have horiginRaw := selected_strict_result_origin_recency_classification
+    cfg ext query
+    (by simpa only [hquery] using hwfQ)
+    (by simpa only [hquery] using hwalkQ)
+    hheadQ input hinput result rfl (by simpa only [result] using hstrict)
+  have horigin :
+      (∃ a,
+        PreviousAcceptedEdge cfg ext query input a result ∧
+          PreviousSelectedEntryWitness cfg ext query input ∧
+          ((get_voting_source cfg query.store
+              query.previous_slot_head).epoch + 2 ≥
+              get_current_store_epoch cfg query.store ∧
+            is_ancestor query.store
+              (get_node_for_root query.previous_slot_head)
+              (get_node_for_root result) = true)) ∨
+        (∃ a,
+          (a, result) ∈
+              (findLatestSelectedTrace cfg ext query input).2.2 ∧
+            TentativeSelectedEntryWitness cfg ext query ∧
+            TentativeSelectedResultWitness cfg ext query result) := by
+    rcases horiginRaw with hprevious | htentative
+    · left
+      obtain ⟨a, hedge, hrecency⟩ := hprevious
+      exact ⟨a, hedge, hedge.entry_witness cfg ext, hrecency⟩
+    · exact Or.inr htentative
+  have houter : get_block_epoch cfg query.store result ≠
+        get_current_store_epoch cfg query.store →
+      is_start_slot_at_epoch cfg
+          (get_current_slot cfg query.store) = true ∨
+        Weak.will_no_conflicting_checkpoint_be_justified cfg ext
+          query.store (get_current_balance_source query) = true := by
+    intro hprevious
+    exact selected_previous_result_outer_gate cfg ext query input result
+      rfl (by simpa only [result] using hstrict) hprevious
+  exact {
+    confirmed := hright.1
+    result_known := hresultKnown
+    parent_known := hright.2.2
+    descends_input := hdesc
+    current_or_previous_epoch := hepoch
+    trace_origin := horigin
+    previous_result_outer_guard := houter
+  }
+
+/-! ## Section 5 — the past-descendant slot witness, projected through the
+mechanical-facts bracket -/
+
+/-- One-line wrapper projecting the landed `Weak.confirmedPastDescendantSlotWitness_core`
+(`WeakSourceHistory.lean`) through `Weak.StrictSelectedResultMechanicalFacts`,
+exactly as that file's docstring anticipates ("the
+`Weak.StrictSelectedResultMechanicalFacts`-shaped wrapper is a one-line
+application of it once S2 exists"). Weak twin of
+`StrictSelectedResultMechanicalFacts.confirmedPastDescendantSlotWitness`
+(`AcceptedEarlyPhaseSourceWiring.lean`). -/
+theorem StrictSelectedResultMechanicalFacts.confirmedPastDescendantSlotWitness_at_observer
+    (hA : SelectedMarginAssumptions cfg ext E)
+    {obs : ValidatorIndex} {q : Nat}
+    (hcomm : E.PrefixCommitteeAgreement cfg ext (E.store cfg ext obs q))
+    (hqH : E.WithinHorizon cfg q)
+    {query : FastConfirmationStore Root} {input result : Root}
+    (hquery : query.store = E.store cfg ext obs q)
+    (h : StrictSelectedResultMechanicalFacts cfg ext query input result) :
+    E.ConfirmedPastDescendantSlotWitnessAt cfg q query.store result :=
+  Weak.confirmedPastDescendantSlotWitness_core cfg ext hA hcomm hqH hquery
+    h.result_known h.parent_known h.confirmed
+
 end Weak
 
 end FastConfirmation.Spec
