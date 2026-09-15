@@ -476,7 +476,7 @@ private theorem executionRoot_of_acceptedBlockAt
 `Execution.acceptedSelectedResultFilterOutcome_retainedVisible_of_queryGUEpochSeed`,
 with the observer-as-sender relay replaced by the premise `hseedEndpoint`. -/
 noncomputable def
-    acceptedSelectedResultFilterOutcome_retainedVisible_of_queryGUEpochSeed_at_observer
+    acceptedSelectedResultFilterOutcome_retainedVisible_of_queryGUEpochSeed
     (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
     (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
@@ -858,7 +858,7 @@ noncomputable def
   obtain ⟨seed, hseedQ, hseedSelected, hguLower, hseedDissem⟩ :=
     h.previousOffStart_queryGUEpochSeed cfg ext B hT hsync hstatic hbyz
       hdomain hji hcoh hn1H hinput hout hstrict hprevious hnotStart
-  exact Weak.acceptedSelectedResultFilterOutcome_retainedVisible_of_queryGUEpochSeed_at_observer
+  exact Weak.acceptedSelectedResultFilterOutcome_retainedVisible_of_queryGUEpochSeed
     cfg ext B hT hanchor hboundary P V hanchorExact hacc hdomain hcoh hn1H
       (by simpa only [E.weakFcrStep_store] using h.result_known)
       (by simpa only [E.weakFcrStep_store] using hseedQ)
@@ -1207,6 +1207,204 @@ theorem StrictSelectorAdvanceAt.previousFinalizedReset_anchorLineage
     (show Nonempty (E.AcceptedHistoricalA32LineageAt cfg ext B
       trace.result B.anchor.epoch) from ⟨hextended⟩)
 
+/-- Clone of `WeakBankedJustification.lean`'s `private auTip_walkKnown` (a
+`private` declaration cannot be reused across modules).  Honesty-free. -/
+private theorem auTip_walkKnown
+    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
+    (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
+    (hboundary : Execution.TrustedAnchorBoundaryAligned (cfg := cfg) (E := E)
+      (anchor := B.anchor))
+    (obs : ValidatorIndex) (n : ℕ) {tip : Root} {c : Checkpoint Root}
+    (htip : tip ∈ (E.store cfg ext obs n).block_roots)
+    (hAU : B.state.AU cfg ext tip c) :
+    WalkKnown (E.store cfg ext obs n)
+      (compute_start_slot_at_epoch cfg c.epoch) tip := by
+  obtain ⟨ast, ablk, hgenEq, hslot, hparent⟩ := hT.genesis
+  have hanchorRoot : B.anchor.root = ablk.root := by
+    have hr := congrArg Checkpoint.root hanchor
+    rw [hgenEq] at hr
+    simpa only [get_forkchoice_store] using hr
+  have hanchorMem0 : B.anchor.root ∈ E.genesis_store.block_roots := by
+    rw [hgenEq, hanchorRoot]
+    simp only [get_forkchoice_store, List.mem_singleton]
+  have hanchorMem : B.anchor.root ∈ (E.store cfg ext obs n).block_roots :=
+    (E.store_storeLE cfg ext obs (Nat.zero_le n)).1 hanchorMem0
+  have hanchorBlock :
+      (E.store cfg ext obs n).blocks B.anchor.root = ablk.message := by
+    rw [hanchorRoot]
+    exact E.store_anchor_block cfg ext hT.wellFormed hgenEq obs n
+      (hanchorRoot ▸ hanchorMem)
+  have hboundary' : ablk.message.slot ≤
+      compute_start_slot_at_epoch cfg B.anchor.epoch := by
+    simpa only [Execution.TrustedAnchorBoundaryAligned, hgenEq, hanchorRoot,
+      get_forkchoice_store, Function.update_self] using hboundary
+  obtain ⟨carr, _hdesc, hformed⟩ := hAU
+  obtain ⟨hincluded⟩ := (B.state.formed_evidence hformed).certified
+  have hcertified : CertifiedJustified cfg E B.anchor c :=
+    IncludedCertifiedJustified.toCertifiedJustified
+      (cfg := cfg)
+      (Execution.AcceptedIncludedAttestationRelation.relation cfg ext E
+        B.state.includedAttestations) hincluded
+  have hanchorEpochLe : B.anchor.epoch ≤ c.epoch :=
+    CertifiedJustified.anchor_epoch_le (cfg := cfg) hcertified
+  have hstartLe : compute_start_slot_at_epoch cfg B.anchor.epoch ≤
+      compute_start_slot_at_epoch cfg c.epoch :=
+    Nat.mul_le_mul_right cfg.slots_per_epoch hanchorEpochLe
+  have hwalkAnchor : WalkKnown (E.store cfg ext obs n)
+      ((E.store cfg ext obs n).blocks B.anchor.root).slot tip :=
+    E.store_walkKnownK cfg ext hT.wellFormed hT.externals_coherence
+      ⟨ast, ablk, hgenEq, hslot, hparent⟩ obs n
+      B.anchor.root hanchorMem tip htip
+  apply hwalkAnchor.mono
+  rw [hanchorBlock]
+  exact hboundary'.trans hstartLe
+
+/-- The block epoch of an accepted AU checkpoint's root is at most the
+checkpoint's own epoch, at an arbitrary observer's store.
+
+This is the slot bound `Weak.auCheckpoint_known_and_below_tip`
+(`WeakBankedJustification.lean`) derives internally and discards; it is the
+observer-side replacement for `ResetCheckpointRealizedAt.root_slot_le_boundary`
+in the observed-reset arm below. -/
+theorem auCheckpoint_blockEpoch_le
+    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
+    (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
+    (hboundary : Execution.TrustedAnchorBoundaryAligned (cfg := cfg) (E := E)
+      (anchor := B.anchor))
+    (obs : ValidatorIndex) (n : ℕ) {tip : Root} {c : Checkpoint Root}
+    (htip : tip ∈ (E.store cfg ext obs n).block_roots)
+    (hAU : B.state.AU cfg ext tip c) :
+    get_block_epoch cfg (E.store cfg ext obs n) c.root ≤ c.epoch := by
+  obtain ⟨ast, ablk, hgenEq, hslot, hparent⟩ := hT.genesis
+  have hstore : E.CausalStore cfg ext (E.store cfg ext obs n) :=
+    E.store_causal cfg ext obs n
+  have hparentSlots : ParentSlotLt (E.store cfg ext obs n) :=
+    E.store_parentSlotLt cfg ext hT.wellFormed hT.externals_coherence
+      ⟨ast, ablk, hgenEq, hslot, hparent⟩
+      hT.wellFormed.anchor_parent_unscheduled obs n
+  have hwalk : WalkKnown (E.store cfg ext obs n)
+      (compute_start_slot_at_epoch cfg c.epoch) tip :=
+    auTip_walkKnown cfg ext B hT hanchor hboundary obs n htip hAU
+  have hcheckpoint := B.coherence.au_checkpoint_of_known hstore tip htip c hAU
+  have hroot : c.root = (get_ancestor (E.store cfg ext obs n)
+      (ForkChoiceNode.mk tip)
+      (compute_start_slot_at_epoch cfg c.epoch)).root := by
+    have hr := congrArg Checkpoint.root hcheckpoint
+    simpa only [get_checkpoint_for_block, get_checkpoint_block] using hr
+  obtain ⟨_hknown, hslotLe⟩ := get_ancestor_spec hparentSlots hwalk
+  have hcSlot : ((E.store cfg ext obs n).blocks c.root).slot ≤
+      compute_start_slot_at_epoch cfg c.epoch := by
+    rw [hroot]; exact hslotLe
+  have hscaled : get_block_epoch cfg (E.store cfg ext obs n) c.root *
+      cfg.slots_per_epoch ≤ c.epoch * cfg.slots_per_epoch :=
+    (start_slot_at_block_epoch_le cfg (E.store cfg ext obs n) c.root).trans
+      hcSlot
+  exact Nat.le_of_mul_le_mul_right hscaled cfg.slots_per_epoch_pos
+
+/-- Query-local weak twin of
+`Execution.StrictSelectorAdvanceAt.previousObservedReset_queryGUEpochSeed`.
+
+Rule delta 5 makes the observed checkpoint literally the head's own
+unrealized justification (`observed_eq_head_unrealized`), so the GU seed is
+the query fork-choice head and the "checkpoint root is at or below its
+boundary" step is the accepted AU geometry above rather than a reset
+realization record.  This discharges the *query-local* half of the
+observed-reset origin; only the seed's dissemination to honest endpoints is
+left in the residual record. -/
+theorem StrictSelectorAdvanceAt.previousObservedReset_queryGUEpochSeed
+    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
+    (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
+    (hboundary : Execution.TrustedAnchorBoundaryAligned (cfg := cfg)
+      (E := E) (anchor := B.anchor))
+    {obs : ValidatorIndex} (hcoh : E.ObserverCoherence cfg ext obs) {n : Nat}
+    (hHn1 : E.WithinHorizon cfg (n + 1))
+    {trace : Weak.GetLatestConfirmedTrace cfg ext
+      (E.weakFcrStep cfg ext obs n)}
+    (horigin : Weak.ObservedResetCandidateInputAt cfg ext
+      (E.weakFcrStep cfg ext obs n) trace)
+    (hselector : Weak.StrictSelectorAdvanceAt cfg ext
+      (E.weakFcrStep cfg ext obs n) trace)
+    (hprevious : get_block_epoch cfg (E.weakFcrStep cfg ext obs n).store
+          trace.result + 1 =
+        get_current_store_epoch cfg (E.weakFcrStep cfg ext obs n).store) :
+    (get_head cfg (E.weakFcrStep cfg ext obs n).store).root ∈
+        (E.weakFcrStep cfg ext obs n).store.block_roots ∧
+      is_ancestor (E.weakFcrStep cfg ext obs n).store
+        (get_node_for_root
+          (get_head cfg (E.weakFcrStep cfg ext obs n).store).root)
+        (get_node_for_root trace.result) = true ∧
+      get_block_epoch cfg (E.weakFcrStep cfg ext obs n).store
+          trace.result ≤
+        (B.state.GU
+          (get_head cfg (E.weakFcrStep cfg ext obs n).store).root).epoch := by
+  let query := E.weakFcrStep cfg ext obs n
+  have hqCurrent : query.store = E.store cfg ext obs (n + 1) :=
+    E.weakFcrStep_store cfg ext obs n
+  let head := (get_head cfg query.store).root
+  obtain ⟨hparentN1, hwalkN1, _hjustifiedN1⟩ :=
+    E.observerStoreDomainK cfg ext hT.wellFormed hT.externals_coherence
+      hT.genesis hcoh (n + 1) hHn1
+  have hparentQ : ParentSlotLt query.store := by
+    simpa only [query, hqCurrent] using hparentN1
+  have hwalkQ : ∀ t ∈ query.store.block_roots,
+      ∀ r ∈ query.store.block_roots,
+        WalkKnown query.store (query.store.blocks t).slot r := by
+    simpa only [query, hqCurrent] using hwalkN1
+  have hheadKnown : head ∈ query.store.block_roots := by
+    simpa only [query, head, hqCurrent] using
+      E.head_root_known_at_observer cfg ext hcoh (n + 1) hHn1
+  have hinputKnown : trace.afterObserved ∈ query.store.block_roots := by
+    rw [horigin.afterObserved_eq, hqCurrent]
+    exact Weak.weakFcrStep_observed_known cfg ext B hT hanchor hboundary obs n
+  have hstrict : Weak.find_latest_confirmed_descendant cfg ext query
+      trace.afterObserved ≠ trace.afterObserved := by
+    intro hfixed
+    exact hselector.result_ne_input (hselector.result_eq.trans hfixed)
+  have hheadResult : is_ancestor query.store
+      (get_node_for_root head) (get_node_for_root trace.result) = true := by
+    have hbelow := Weak.strictSelectedResult_below_head cfg ext hparentQ
+      hwalkQ hheadKnown hinputKnown hstrict
+    simpa only [head, hselector.result_eq] using hbelow
+  have hheadKnownN1 : head ∈ (E.store cfg ext obs (n + 1)).block_roots := by
+    simpa only [hqCurrent] using hheadKnown
+  have hguHead : query.store.unrealized_justifications head =
+      B.state.GU head := by
+    rw [hqCurrent]
+    exact E.accepted_unrealized_justification_eq
+      B.coherence.toAcceptedFFGSelectorCoherence obs (n + 1) hheadKnownN1
+  have hobservedGU :
+      query.current_epoch_observed_justified_checkpoint =
+        B.state.GU head := by
+    exact horigin.observed_eq_head_unrealized.trans hguHead
+  have hAU : B.state.AU cfg ext head (B.state.GU head) :=
+    B.state.gu_AU cfg ext
+      (E.acceptedRoot_of_causal_known cfg ext
+        (E.store_causal cfg ext obs (n + 1)) hheadKnownN1)
+  have hobservedBlockLe : get_block_epoch cfg query.store
+        query.current_epoch_observed_justified_checkpoint.root ≤
+      query.current_epoch_observed_justified_checkpoint.epoch := by
+    rw [hobservedGU, hqCurrent]
+    exact Weak.auCheckpoint_blockEpoch_le cfg ext B hT hanchor hboundary
+      obs (n + 1) hheadKnownN1 hAU
+  have hresultEpochEq : get_block_epoch cfg query.store trace.result =
+      get_block_epoch cfg query.store
+        query.current_epoch_observed_justified_checkpoint.root :=
+    Nat.add_right_cancel
+      (hprevious.trans horigin.observed_previous_epoch.symm)
+  refine ⟨hheadKnown, hheadResult, ?_⟩
+  calc
+    get_block_epoch cfg query.store trace.result =
+        get_block_epoch cfg query.store
+          query.current_epoch_observed_justified_checkpoint.root :=
+      hresultEpochEq
+    _ ≤ query.current_epoch_observed_justified_checkpoint.epoch :=
+      hobservedBlockLe
+    _ = (B.state.GU head).epoch :=
+      congrArg Checkpoint.epoch hobservedGU
+
 /-- Weak twin of `StrictSelectedResultMechanicalFacts.
 canonicalThroughoutNextEpoch_of_previousEpochStart`.  The strong proof's
 `confirmed_known_at_query_slot_start_minimal` (query node as relay receiver)
@@ -1424,34 +1622,28 @@ structure ObserverStrictCallFilterInputsAt (E : Execution Root)
       (E.weakGetLatestConfirmedTraceAt cfg ext obs n).result
       (get_block_epoch cfg (E.weakFcrStep cfg ext obs n).store
         (E.weakGetLatestConfirmedTraceAt cfg ext obs n).result))
-  /-- The `observedReset` origin of an epoch-start strict previous result: the
-  weak twin of
-  `Execution.StrictSelectorAdvanceAt.previousObservedReset_queryGUEpochSeed`,
-  *plus* the seed's dissemination to honest endpoints (the strong lemma's
-  consumer relays the seed out of the observer's own store).  Under rule
-  delta 5 the observed checkpoint is the banked `UJ(head)` and the banking
-  gate certifies its supplier, so this is the site the
-  `WeakBankedJustification.lean` consumption lemmas are expected to close;
-  §4 of the wave design flags it as the one epoch-start escape the weak rule
-  does not certify directly. -/
-  previous_epochStart_observedReset_seed :
+  /-- The `observedReset` origin of an epoch-start strict previous result.
+  Its query-local GU seed is fully discharged above
+  (`Weak.StrictSelectorAdvanceAt.previousObservedReset_queryGUEpochSeed`);
+  what remains is exactly the *dissemination* of that seed — the query
+  fork-choice head at an epoch-start second — to honest endpoints.
+
+  This is §4 of the wave design: at an epoch start the tentative-entry gate
+  takes the uncertified `is_start_slot_at_epoch` escape, so no head broadcast
+  certificate is available at the query second itself and stage S3's
+  `Weak.headSeed_known_at_all_honest_endpoints_at_observer` does not apply.
+  Under rule delta 5 the observed checkpoint is the banked `UJ(head)` and the
+  banking gate certifies its *supplier*, so this is the site
+  `WeakBankedJustification.lean`'s consumption lemmas are expected to close
+  (the design's alternative is rule delta 5′, which would certify the
+  epoch-start escape directly). -/
+  previous_epochStart_observedReset_headDisseminated :
     Weak.ObservedResetCandidateInputAt cfg ext (E.weakFcrStep cfg ext obs n)
       (E.weakGetLatestConfirmedTraceAt cfg ext obs n) →
-    get_block_epoch cfg (E.weakFcrStep cfg ext obs n).store
-        (E.weakGetLatestConfirmedTraceAt cfg ext obs n).result + 1 =
-      get_current_store_epoch cfg (E.weakFcrStep cfg ext obs n).store →
-    ∃ seed : Root,
-      seed ∈ (E.weakFcrStep cfg ext obs n).store.block_roots ∧
-        is_ancestor (E.weakFcrStep cfg ext obs n).store
-          (get_node_for_root seed)
-          (get_node_for_root
-            (E.weakGetLatestConfirmedTraceAt cfg ext obs n).result) = true ∧
-        get_block_epoch cfg (E.weakFcrStep cfg ext obs n).store
-            (E.weakGetLatestConfirmedTraceAt cfg ext obs n).result ≤
-          (B.state.GU seed).epoch ∧
-        (∀ w ∈ E.honest, ∀ m : Nat, E.WithinHorizon cfg m →
-          E.slot_at cfg (n + 1) ≤ E.slot_at cfg m →
-          seed ∈ (E.store cfg ext w m).block_roots)
+    ∀ w ∈ E.honest, ∀ m : Nat, E.WithinHorizon cfg m →
+      E.slot_at cfg (n + 1) ≤ E.slot_at cfg m →
+      (get_head cfg (E.weakFcrStep cfg ext obs n).store).root ∈
+        (E.store cfg ext w m).block_roots
 
 /-! ## Exhaustive weak actual-call endpoint dispatcher -/
 
@@ -1712,18 +1904,22 @@ noncomputable def
                   hfinalized hselector hprevious
             exact lateFromLineage hlineage
         | observedReset hobserved =>
-            obtain ⟨seed, hseedQ, hseedSelected, hguLower, hseedDissem⟩ :=
-              hinputs.previous_epochStart_observedReset_seed hobserved
-                hprevious
-            exact Weak.acceptedSelectedResultFilterOutcome_retainedVisible_of_queryGUEpochSeed_at_observer
-              cfg ext B hT hanchor hboundary P V hanchorExact hacc hdomain
+            obtain ⟨hseedQ, hseedSelected, hguLower⟩ :=
+              Weak.StrictSelectorAdvanceAt.previousObservedReset_queryGUEpochSeed
+                cfg ext B hT hanchor hboundary hcoh hn1H hobserved hselector
+                  hprevious
+            exact
+              Weak.acceptedSelectedResultFilterOutcome_retainedVisible_of_queryGUEpochSeed
+                cfg ext B hT hanchor hboundary P V hanchorExact hacc hdomain
                 hcoh hn1H hselectedQ
                 (by simpa only [hqCurrent] using hseedQ)
                 (by simpa only [hqCurrent] using hseedSelected)
                 hguLower
                 (by simpa only [hqCurrent] using hprevious.symm)
-                hw hmH (hseedDissem w hw m hmH hslotQM) hlate
-                hjustifiedEpoch hresultJustified
+                hw hmH
+                (hinputs.previous_epochStart_observedReset_headDisseminated
+                  hobserved w hw m hmH hslotQM)
+                hlate hjustifiedEpoch hresultJustified
       · exact h.fcrStep_previousOffStart_late_endpointFilterOutcome
           cfg ext B hT hsync hstatic hbyz hdomain hji hanchor hboundary P V
             hanchorExact hacc hcoh hn1H hinput hselector.result_eq.symm
