@@ -22,6 +22,7 @@ import FastConfirmation.Spec.Proof.WeakFCRCallContracts
 import FastConfirmation.Spec.Proof.WeakBankedJustification
 import FastConfirmation.Spec.Proof.WeakSeedDissemination
 import FastConfirmation.Spec.Proof.WeakEarlyPhaseSourceWiring
+import FastConfirmation.Spec.Proof.WeakCandidateHistoryRecurrence
 
 /-!
 # Spec — facade
