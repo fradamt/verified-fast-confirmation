@@ -17,6 +17,7 @@ import FastConfirmation.Spec.Proof.WeakOneShotSafetyNative
 import FastConfirmation.Spec.Proof.WeakObserverDomain
 import FastConfirmation.Spec.Proof.WeakSourceHistory
 import FastConfirmation.Spec.Proof.WeakCertificateMonotone
+import FastConfirmation.Spec.Proof.WeakFCRCallContracts
 
 /-!
 # Spec — facade
