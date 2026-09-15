@@ -1,5 +1,6 @@
 import FastConfirmation.Spec.Proof.AcceptedPhaseSourceCarriers
 import FastConfirmation.Spec.Proof.AcceptedResetAdoption
+import FastConfirmation.Spec.Proof.AcceptedFinalizedNextSlotSafety
 
 /-!
 # Honest origin of a store-read finalized checkpoint
@@ -504,6 +505,146 @@ theorem weak_finalized_epoch_le_remoteJustified
       O.seed_known hseedEndpoint
       (congrArg BeaconBlock.slot hblockAgree) hclock
     rwa [O.voting_source_eq] at hadopt
+
+/-! ## `SafeFrom` for a finalized field read at a non-honest observer
+
+Weak twins of `finalizedReset_justifiedDom_of_nextSlotSynchrony` and
+`finalizedReset_safeFrom_of_nextSlotSynchrony`
+(`AcceptedFinalizedNextSlotSafety.lean:35,122`).  The reading node `v` need not
+be honest: the single honesty site of the strong originals — the call to
+`finalizedReset_epoch_le_remoteJustified_nextSlot`, which relays the whole
+reading store from an honest `v` — is replaced by `weak_finalized_epoch_le_
+remoteJustified`, which relays only the finalizing certificate's own honest
+signer. Every other ingredient (`finalizedCheckpoint_resetRealizedAt_of_
+acceptedGlobalTrajectory`, `storeDomainK_of_acceptedGlobalTrajectory`,
+`ExactPrefixAcceptedFFGSemantics.endpointJustified_certificate`,
+`acceptedGlobalFinalized_anchor_or_includedCertificate`,
+`certified_finalized_prefix`, `store_known_ancestor_of_rootDescends_for_
+storeReflection`) is already honesty-free and reused unchanged.
+
+The improved relay gate (`slot_at q ≤ slot_at m`, no `+ 1`) lets the
+conclusion start at the *query slot's own start* rather than one slot after a
+separately-quantified next-slot marker: no `hnextQ`-style timing premise is
+needed, only the endpoint's raw time being at or after
+`E.slot_start cfg (E.slot_at cfg q)`. -/
+
+/-- At every honest endpoint whose raw time is at or after the start of the
+query slot, the query's finalized checkpoint (read at `v`, honest or not) is
+known and lies on the endpoint's realized justified chain. -/
+theorem weak_finalizedReset_justifiedDom_of_synchrony
+    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
+    (hacc : FFGAccountabilityAssumptions cfg ext E)
+    (hphase : Phase0SourceCoherence cfg ext)
+    (hboundaryPhase : Phase0BoundarySourceCoherence cfg ext)
+    (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
+    (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
+      (E := E) (anchor := B.anchor))
+    (hsync : PaperSafetySynchrony cfg ext E)
+    {v : ValidatorIndex} {q : ℕ}
+    (hHq : E.WithinHorizon cfg q) :
+    ∀ w ∈ E.honest, ∀ m : ℕ, E.slot_start cfg (E.slot_at cfg q) ≤ m →
+      E.WithinHorizon cfg m →
+      let finalized := (E.store cfg ext v q).finalized_checkpoint
+      finalized.root ∈ (E.store cfg ext w m).block_roots ∧
+        is_ancestor (E.store cfg ext w m)
+          (get_node_for_root
+            (E.store cfg ext w m).justified_checkpoint.root)
+          (get_node_for_root finalized.root) = true := by
+  intro w hw m hqm hHm
+  let finalized := (E.store cfg ext v q).finalized_checkpoint
+  obtain ⟨ast, ablk, hgen, hslot, hparent⟩ := hT.genesis
+  have hgenShort : ∃ (ast : BeaconState Root)
+      (ablk : SignedBeaconBlock Root),
+      E.genesis_store = get_forkchoice_store cfg ast ablk ∧
+        ast.slot = ablk.message.slot :=
+    ⟨ast, ablk, hgen, hslot⟩
+  have hqueryCausal : E.CausalStore cfg ext (E.store cfg ext v q) :=
+    E.store_causal cfg ext v q
+  have hendpointCausal : E.CausalStore cfg ext
+      (E.store cfg ext w m) :=
+    E.store_causal cfg ext w m
+  have hrealized :=
+    E.finalizedCheckpoint_resetRealizedAt_of_acceptedGlobalTrajectory
+      cfg ext B hT hanchor hboundary (w := v) q
+  have hfinalizedKnownQuery : finalized.root ∈
+      (E.store cfg ext v q).block_roots := hrealized.root_known
+  have hfinalizedRoot : E.ExecutionRoot finalized.root :=
+    ⟨(E.store cfg ext v q).blocks finalized.root,
+      E.blockAt_of_store_known cfg ext hfinalizedKnownQuery⟩
+  have hdomainK := E.storeDomainK_of_acceptedGlobalTrajectory
+    cfg ext B hT hanchor hboundary
+  obtain ⟨_hparent, _hwalk, hjustifiedKnown⟩ :=
+    hdomainK w hw m hHm
+  have hgws : WellFormedStore E.genesis_store := by
+    rw [hgen]
+    exact wellFormedStore_get_forkchoice_store cfg ast ablk hslot hparent
+  have hgenTime : E.genesis_store.genesis_time ≤ E.genesis_store.time :=
+    hgws.time_ge_genesis
+  have hslotEq : E.slot_at cfg (E.slot_start cfg (E.slot_at cfg q)) =
+      E.slot_at cfg q :=
+    E.slot_at_slot_start cfg hT.whole_seconds
+      (E.slot_at_mono cfg (Nat.zero_le q)) hgenTime
+  have hslotQM : E.slot_at cfg q ≤ E.slot_at cfg m := by
+    rw [← hslotEq]
+    exact E.slot_at_mono cfg hqm
+  have hepoch : finalized.epoch ≤
+      (E.store cfg ext w m).justified_checkpoint.epoch := by
+    simpa only [finalized] using
+      E.weak_finalized_epoch_le_remoteJustified cfg ext B hT hacc hphase
+        hboundaryPhase hanchor hboundary hsync hw hHq hHm hslotQM
+  obtain ⟨hjustified⟩ :=
+    ExactPrefixAcceptedFFGSemantics.endpointJustified_certificate
+      (E := E) cfg ext B hgenShort hanchor hendpointCausal
+  have hsemantic : E.RootDescends
+      (E.store cfg ext w m).justified_checkpoint.root finalized.root := by
+    rcases E.acceptedGlobalFinalized_anchor_or_includedCertificate
+        cfg ext B hgenShort hanchor hqueryCausal with
+      hfieldAnchor | ⟨carrier, _hcarrier, hincluded⟩
+    · have hfinalizedAnchor : finalized = B.anchor := by
+        simpa only [finalized] using hfieldAnchor
+      rw [hfinalizedAnchor]
+      exact hjustified.descends_anchor cfg
+    · obtain ⟨hincluded⟩ := hincluded
+      have hincludedFinalized : IncludedCertifiedFinalized cfg E
+          B.state.includedAttestations.Included B.anchor carrier
+          finalized := by
+        simpa only [finalized] using hincluded
+      have hfinalized : CertifiedFinalized cfg E B.anchor finalized :=
+        IncludedCertifiedFinalized.toCertifiedFinalized
+          (cfg := cfg)
+          (Execution.AcceptedIncludedAttestationRelation.relation
+            cfg ext E B.state.includedAttestations)
+          hincludedFinalized
+      exact E.certified_finalized_prefix cfg ext hacc
+        hfinalized hjustified hepoch
+  exact E.store_known_ancestor_of_rootDescends_for_storeReflection
+    cfg ext hT.wellFormed hT.externals_coherence hgen hslot hparent
+      hjustifiedKnown hfinalizedRoot hsemantic
+
+/-- A query's finalized checkpoint, read at a non-honest observer, is
+genuinely `SafeFrom` from the start of the query's own slot. -/
+theorem weak_finalizedReset_safeFrom_of_synchrony
+    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
+    (hacc : FFGAccountabilityAssumptions cfg ext E)
+    (hphase : Phase0SourceCoherence cfg ext)
+    (hboundaryPhase : Phase0BoundarySourceCoherence cfg ext)
+    (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
+    (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
+      (E := E) (anchor := B.anchor))
+    (hsync : PaperSafetySynchrony cfg ext E)
+    {v : ValidatorIndex} {q : ℕ}
+    (hHq : E.WithinHorizon cfg q) :
+    E.SafeFrom cfg ext (E.store cfg ext v q).finalized_checkpoint.root
+      (E.slot_start cfg (E.slot_at cfg q)) := by
+  have hdomainK := E.storeDomainK_of_acceptedGlobalTrajectory
+    cfg ext B hT hanchor hboundary
+  apply E.safeFrom_of_justified_dom_K cfg ext hdomainK
+  intro w hw m hqm hHm
+  exact E.weak_finalizedReset_justifiedDom_of_synchrony
+    cfg ext B hT hacc hphase hboundaryPhase hanchor hboundary hsync hHq
+      w hw m hqm hHm
 
 end Execution
 
