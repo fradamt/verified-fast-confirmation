@@ -1,0 +1,435 @@
+import FastConfirmation.Spec.Proof.AcceptedPhaseSourceCarriers
+import FastConfirmation.Spec.Proof.AcceptedResetAdoption
+
+/-!
+# Honest origin of a store-read finalized checkpoint
+
+The accepted finalized-adoption theorem
+`finalized_epoch_le_remoteJustified_of_synchrony` relays *every* root held by
+the store whose finalized field is read.  That relay step is exactly the
+observer-honesty site the weak model removes: a non-honest observer's store
+contents propagate nowhere.
+
+This file replaces that step by the finalizing certificate's own honest
+signer.  A non-anchor finalized field carried by any exact causal store owns
+an included finalizing link; two quorums of that link intersect in an honest
+validator, whose genuine attestation read its source off its own store.  The
+honest voting-source readback
+(`acceptedHonestAttestationDataSourceEqVSAtTarget`) turns that read into the
+executable `get_voting_source` of the link's target at the signer's store, and
+the vote precedes the reading store's current slot because the including block
+does.  Honest-to-honest block relay then carries the signer's own seed root to
+every honest endpoint, where accepted justified maximality adopts the epoch.
+
+Nothing here assumes the reading store's node is honest, and no conclusion is
+a confirmation, filter, head, ancestry, or `SafeFrom` statement.
+-/
+
+namespace FastConfirmation.Spec
+
+variable {Root : Type*} [LinearOrder Root] [Inhabited Root]
+variable (cfg : Config) (ext : Externals Root)
+
+namespace Execution
+
+variable (E : Execution Root)
+
+/-! ## Anchor geometry at an exact causal store
+
+The three store-local facts the inclusion-timing argument needs below hold at
+every exact causal store, not only at the per-second boundary stores: the
+genesis case *is* a boundary store, and the strict in-second prefixes have
+their own geometry lemmas. -/
+
+private theorem causalStore_nonAnchorParentKnown
+    {ast : BeaconState Root} {ablk : SignedBeaconBlock Root}
+    (hgen : E.genesis_store = get_forkchoice_store cfg ast ablk)
+    {store : Store Root} (hstore : E.CausalStore cfg ext store) :
+    NonAnchorParentKnown ablk.root store := by
+  cases hstore with
+  | genesis => exact E.store_nonAnchorParentKnown cfg ext hgen 0 0
+  | scheduledPrefix p => exact p.nonAnchorParentKnown cfg ext hgen
+
+private theorem causalStore_anchorBlock
+    (hwf : WellFormedExecution E)
+    {ast : BeaconState Root} {ablk : SignedBeaconBlock Root}
+    (hgen : E.genesis_store = get_forkchoice_store cfg ast ablk)
+    {store : Store Root} (hstore : E.CausalStore cfg ext store)
+    (hr : ablk.root ∈ store.block_roots) :
+    store.blocks ablk.root = ablk.message := by
+  cases hstore with
+  | genesis => exact E.store_anchor_block cfg ext hwf hgen 0 0 hr
+  | scheduledPrefix p => exact p.anchorBlock cfg ext hwf hgen hr
+
+private theorem causalStore_blocks_slot_le_current
+    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
+    {store : Store Root} (hstore : E.CausalStore cfg ext store) :
+    ∀ r ∈ store.block_roots,
+      (store.blocks r).slot ≤ get_current_slot cfg store := by
+  obtain ⟨ast, ablk, hgenEq, hslot, _hparent⟩ := hT.genesis
+  cases hstore with
+  | genesis =>
+      exact E.store_blocks_slot_le_current cfg ext hT.whole_seconds
+        ⟨ast, ablk, hgenEq, hslot⟩ 0 0
+  | scheduledPrefix p => exact p.blocksSlotLeCurrent cfg ext E hT
+
+/-- A semantic execution ancestor of a root known at an exact causal store is
+itself known there.  This is the knownness half of
+`store_known_ancestor_of_rootDescends_for_storeReflection`, re-proved without
+the executable-ancestry conclusion so that it needs no walk geometry and
+applies at strict in-second prefixes. -/
+private theorem causalStore_known_ancestor_of_rootDescends
+    (hwf : WellFormedExecution E)
+    {ast : BeaconState Root} {ablk : SignedBeaconBlock Root}
+    (hgen : E.genesis_store = get_forkchoice_store cfg ast ablk)
+    (hparent : ablk.message.parent_root ≠ ablk.root)
+    {store : Store Root} (hstore : E.CausalStore cfg ext store)
+    {tip ancestor : Root}
+    (htip : tip ∈ store.block_roots)
+    (hancestorRoot : E.ExecutionRoot ancestor)
+    (hdesc : E.RootDescends tip ancestor) :
+    ancestor ∈ store.block_roots := by
+  have hprovenance : BlockProvenance E store :=
+    Execution.CausalStore.blockProvenance cfg ext E hstore
+  have hnonAnchor : NonAnchorParentKnown ablk.root store :=
+    E.causalStore_nonAnchorParentKnown cfg ext hgen hstore
+  have hreflect : ∀ {a b : Root}, E.RootDescends a b →
+      a ∈ store.block_roots → E.ExecutionRoot b → b ∈ store.block_roots := by
+    intro a b hab
+    induction hab with
+    | refl r =>
+        intro hr _
+        exact hr
+    | @step child parent target hedge hrest ih =>
+        intro hchild htargetRoot
+        have hparentRoot : E.ExecutionRoot parent :=
+          RootDescends.source_executionRoot_for_storeReflection
+            (E := E) hrest htargetRoot
+        have hpEq : parent = (store.blocks child).parent_root :=
+          E.parentEdge_parent_eq_of_store_known_for_storeReflection
+            hwf hprovenance hchild hedge
+        have hchildNeAnchor : child ≠ ablk.root := by
+          intro hchildAnchor
+          subst child
+          have hanchorBlock : store.blocks ablk.root = ablk.message :=
+            E.causalStore_anchorBlock cfg ext hwf hgen hstore hchild
+          have hpEq' : parent = ablk.message.parent_root := by
+            rw [hanchorBlock] at hpEq
+            exact hpEq
+          apply E.anchorParent_not_executionRoot_for_storeReflection
+            cfg hwf hgen hparent
+          rwa [← hpEq']
+        have hparentKnown : parent ∈ store.block_roots := by
+          have hp := (hnonAnchor child hchild).resolve_left hchildNeAnchor
+          rwa [← hpEq] at hp
+        exact ih hparentKnown htargetRoot
+  exact hreflect hdesc htip hancestorRoot
+
+/-- Causal-store form of `includedAttestationSlot_lt_acceptedCarrierBlock`:
+an attestation included on a known carrier's chain was cast strictly before
+the reading store's current slot.
+
+Unlike the carrier-block form, this bound is stated against the store clock,
+which is what a relay gate consumes. -/
+theorem includedAttestationSlot_lt_causalStoreCurrentSlot
+    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
+    {store : Store Root} (hstore : E.CausalStore cfg ext store)
+    {carrier : Root} (hcarrier : carrier ∈ store.block_roots)
+    {a : Attestation Root}
+    (hchain : AttestationIncludedOnChain E
+      B.state.includedAttestations.Included carrier a) :
+    a.data.slot < get_current_slot cfg store := by
+  obtain ⟨containing, hcarrierContaining, hincluded⟩ := hchain
+  have hevidence := B.state.includedAttestations.evidence hincluded
+  obtain ⟨_ast, _ablk, hgenEq, _hslot, hparent⟩ := hT.genesis
+  have hcontainingRoot : E.ExecutionRoot containing :=
+    ⟨hevidence.carrier_message, hevidence.carrier_at⟩
+  have hcontainingKnown : containing ∈ store.block_roots :=
+    E.causalStore_known_ancestor_of_rootDescends cfg ext hT.wellFormed
+      hgenEq hparent hstore hcarrier hcontainingRoot hcarrierContaining
+  have hcontainingBlock : store.blocks containing =
+      hevidence.carrier_message :=
+    (Execution.CausalStore.acceptedBlockAt_iff_eq cfg ext E
+      hT.wellFormed hstore hcontainingKnown).mp hevidence.carrier_accepted
+  calc
+    a.data.slot < hevidence.carrier_message.slot :=
+      hevidence.slot_before_carrier
+    _ = (store.blocks containing).slot :=
+      (congrArg BeaconBlock.slot hcontainingBlock).symm
+    _ ≤ get_current_slot cfg store :=
+      E.causalStore_blocks_slot_le_current cfg ext hT hstore
+        containing hcontainingKnown
+
+/-! ## The honest origin of a finalized field -/
+
+/-- The honest origin of a non-anchor finalized checkpoint read at some exact
+causal store.
+
+`signer` is an honest signer of the certificate's finalizing link, `time` the
+second at which it cast that link's attestation, and `seed` the link's target
+root, known at the signer's own store.  The two readback fields record what
+the signer's store computed at that root: its executable voting source is the
+finalized checkpoint itself, and the signer's clock was exactly one epoch
+above it.
+
+The record deliberately mentions the reading store only through its finalized
+field and its clock.  No membership, honesty, or delivery property of the
+reading node is asserted. -/
+structure FinalizedHonestVotingSourceOrigin
+    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (store : Store Root) where
+  signer : ValidatorIndex
+  signer_honest : signer ∈ E.honest
+  time : ℕ
+  time_within : E.WithinHorizon cfg time
+  slot_before : E.slot_at cfg time < get_current_slot cfg store
+  seed : Root
+  seed_known : seed ∈ (E.store cfg ext signer time).block_roots
+  seed_epoch : get_current_store_epoch cfg (E.store cfg ext signer time) =
+    store.finalized_checkpoint.epoch + 1
+  voting_source_eq :
+    get_voting_source cfg (E.store cfg ext signer time) seed =
+      store.finalized_checkpoint
+
+/-- Every finalized field of an exact causal store is either the trusted
+anchor or has an honest voting-source origin.
+
+The honest signer is produced by self-intersection of the finalizing link's
+quorum; genuineness of its attestation comes from `no_forgery` plus
+`votes_head`, and the source readback from the accepted VSAt bridge at the
+finalizing link's *target* (not the reading store's current target).  The
+readback's non-genesis side condition is re-derived here from
+`B.anchor.epoch < child.epoch`, which the certificate supplies through
+`CertifiedJustified.anchor_epoch_le` and the link's `source_before_target`. -/
+theorem finalizedHonestVotingSourceOrigin_of_causalStore
+    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
+    (hacc : FFGAccountabilityAssumptions cfg ext E)
+    (hphase : Phase0SourceCoherence cfg ext)
+    (hboundaryPhase : Phase0BoundarySourceCoherence cfg ext)
+    (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
+    (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
+      (E := E) (anchor := B.anchor))
+    {store : Store Root} (hstore : E.CausalStore cfg ext store) :
+    store.finalized_checkpoint = B.anchor ∨
+      Nonempty (E.FinalizedHonestVotingSourceOrigin cfg ext B store) := by
+  obtain ⟨ast, ablk, hgenEq, hslot, hparent⟩ := hT.genesis
+  have hgenShort : ∃ (ast : BeaconState Root)
+      (ablk : SignedBeaconBlock Root),
+      E.genesis_store = get_forkchoice_store cfg ast ablk ∧
+        ast.slot = ablk.message.slot :=
+    ⟨ast, ablk, hgenEq, hslot⟩
+  rcases E.acceptedGlobalFinalized_anchor_or_includedCertificate cfg ext B
+      hgenShort hanchor hstore with hanchorField | ⟨tip, htip, ⟨F⟩⟩
+  · exact Or.inl hanchorField
+  right
+  -- The finalizing link and its honest signer.
+  let child := F.child
+  let globalLink : SupermajorityLink cfg E store.finalized_checkpoint child :=
+    IncludedSupermajorityLink.toSupermajorityLink (cfg := cfg)
+      (Execution.AcceptedIncludedAttestationRelation.relation cfg ext E
+        B.state.includedAttestations) F.finalizing_link
+  obtain ⟨i, hiGlobal, _hiGlobal', hiHonest⟩ :=
+    E.links_intersect_honest cfg ext hacc globalLink globalLink
+  have hiLink : i ∈ F.finalizing_link.signers := hiGlobal
+  obtain ⟨a, hchain, hiAttests, _haSource, haTarget⟩ :=
+    F.finalizing_link.signer_attestation i hiLink
+  obtain ⟨_containing, _hcarrierContaining, hincluded⟩ := hchain
+  have hevidence := B.state.includedAttestations.evidence hincluded
+  -- Genuineness: the included attestation is the signer's own honest vote.
+  obtain ⟨sender, sentAt, hscheduled⟩ := hevidence.received_from_block
+  obtain ⟨_groundTime, groundVote, hvoteGround, hdataGround⟩ :=
+    hacc.honest_behavior.no_forgery sender sentAt a true hscheduled
+      i hiHonest hiAttests
+  have hcommittee : i ∈ E.committee a.data.slot :=
+    hevidence.attesters_in_committee i hiAttests
+  -- The link's target epoch is strictly above the trusted anchor.
+  have hsourceCertified : CertifiedJustified cfg E B.anchor
+      store.finalized_checkpoint :=
+    IncludedCertifiedJustified.toCertifiedJustified (cfg := cfg)
+      (Execution.AcceptedIncludedAttestationRelation.relation cfg ext E
+        B.state.includedAttestations) F.justified
+  have hanchorLtTarget : B.anchor.epoch < child.epoch :=
+    lt_of_le_of_lt
+      (CertifiedJustified.anchor_epoch_le (cfg := cfg) hsourceCertified)
+      F.finalizing_link.source_before_target
+  have hslotEpoch : compute_epoch_at_slot cfg a.data.slot = child.epoch := by
+    rw [← hevidence.target_epoch, haTarget]
+  -- The vote is not older than the anchor boundary, so `votes_head` applies.
+  have hanchorRoot : B.anchor.root = ablk.root := by
+    have hr := congrArg Checkpoint.root hanchor
+    rw [hgenEq] at hr
+    simpa only [get_forkchoice_store] using hr
+  have hslotZero : E.slot_at cfg 0 = ast.slot := by
+    have hcurrent0 := E.store_current_slot cfg ext i 0
+    change get_current_slot cfg E.genesis_store = E.slot_at cfg 0 at hcurrent0
+    rw [hgenEq, get_current_slot_get_forkchoice_store cfg hacc.whole_seconds]
+      at hcurrent0
+    exact hcurrent0.symm
+  have hboundary' : ablk.message.slot ≤
+      compute_start_slot_at_epoch cfg B.anchor.epoch := by
+    simpa only [TrustedAnchorBoundaryAligned, hgenEq, hanchorRoot,
+      get_forkchoice_store, Function.update_self] using hboundary
+  have hstartVote : compute_start_slot_at_epoch cfg child.epoch ≤
+      a.data.slot := by
+    have hmulDiv := Nat.div_mul_le_self a.data.slot cfg.slots_per_epoch
+    have hdiv : a.data.slot / cfg.slots_per_epoch = child.epoch := by
+      simpa only [compute_epoch_at_slot] using hslotEpoch
+    rw [hdiv] at hmulDiv
+    simpa only [compute_start_slot_at_epoch] using hmulDiv
+  have hfromZero : E.slot_at cfg 0 ≤ a.data.slot := by
+    calc
+      E.slot_at cfg 0 = ast.slot := hslotZero
+      _ = ablk.message.slot := hslot
+      _ ≤ compute_start_slot_at_epoch cfg B.anchor.epoch := hboundary'
+      _ ≤ compute_start_slot_at_epoch cfg child.epoch :=
+        Nat.mul_le_mul_right cfg.slots_per_epoch hanchorLtTarget.le
+      _ ≤ a.data.slot := hstartVote
+  obtain ⟨k, index, hHk, hkSlot, hvoteHead⟩ :=
+    hacc.honest_behavior.votes_head i hiHonest a.data.slot hcommittee
+      hevidence.slot_within_horizon hfromZero
+  rw [hvoteHead] at hvoteGround
+  simp only [Option.some.injEq, Prod.mk.injEq] at hvoteGround
+  obtain ⟨_, hgroundVote⟩ := hvoteGround
+  have hdata : a.data =
+      (honest_attestation cfg ext (E.store cfg ext i k)
+        a.data.slot index i).data :=
+    hdataGround.trans
+      (congrArg (fun x : Attestation Root => x.data) hgroundVote.symm)
+  -- Store geometry at the signer's own store.
+  have hvoteCausal : E.CausalStore cfg ext (E.store cfg ext i k) :=
+    E.store_causal cfg ext i k
+  have hcore : E.ExactCausalStoreWellFormedCore cfg ext :=
+    E.exactCausalStoreWellFormedCore_of_trajectory cfg ext hT
+  have hwalkDomain : E.PostAnchorHonestVoteTargetWalkDomain cfg ext :=
+    E.postAnchorHonestVoteTargetWalkDomain_of_acceptedGlobalTrajectory
+      cfg ext B hT hanchor hboundary
+  have hparentSlots : ParentSlotLt (E.store cfg ext i k) :=
+    E.store_parentSlotLt cfg ext hT.wellFormed hT.externals_coherence
+      ⟨ast, ablk, hgenEq, hslot, hparent⟩
+      hT.wellFormed.anchor_parent_unscheduled i k
+  have htargetData : (honest_attestation_data cfg ext
+      (E.store cfg ext i k) a.data.slot index).target = child := by
+    rw [← honest_attestation_data_eq, ← hdata]
+    exact haTarget
+  have hwalk : WalkKnown (E.store cfg ext i k)
+      (compute_start_slot_at_epoch cfg child.epoch)
+      (get_head cfg (E.store cfg ext i k)).root := by
+    have hwalkVote := hwalkDomain i hiHonest a.data.slot k index hfromZero
+      hHk hkSlot hvoteHead
+    simpa only [honest_attestation_data_eq, htargetData] using hwalkVote
+  -- The link target is known at the signer's store, at or below the boundary.
+  have hlands : get_ancestor (E.store cfg ext i k)
+      (ForkChoiceNode.mk (get_head cfg (E.store cfg ext i k)).root)
+      (compute_start_slot_at_epoch cfg child.epoch) =
+        ForkChoiceNode.mk child.root := by
+    have hroot := honest_attestation_data_target_root cfg ext
+      (E.store cfg ext i k) a.data.slot index
+    rw [htargetData] at hroot
+    have hcheckpoint : get_checkpoint_block cfg (E.store cfg ext i k)
+        (get_head cfg (E.store cfg ext i k)).root child.epoch =
+        child.root := hroot.symm
+    simp only [get_checkpoint_block] at hcheckpoint
+    generalize hnode : get_ancestor (E.store cfg ext i k)
+      (ForkChoiceNode.mk (get_head cfg (E.store cfg ext i k)).root)
+      (compute_start_slot_at_epoch cfg child.epoch) = node
+      at hcheckpoint ⊢
+    obtain ⟨r⟩ := node
+    change r = child.root at hcheckpoint
+    cases hcheckpoint
+    rfl
+  have hseedSpec : child.root ∈ (E.store cfg ext i k).block_roots ∧
+      ((E.store cfg ext i k).blocks child.root).slot ≤
+        compute_start_slot_at_epoch cfg child.epoch := by
+    have hspec := get_ancestor_spec hparentSlots hwalk
+    rw [hlands] at hspec
+    exact hspec
+  -- The signer's clock sits exactly at the link target's epoch.
+  have hcurrentEpoch : get_current_store_epoch cfg (E.store cfg ext i k) =
+      child.epoch := by
+    simp only [get_current_store_epoch, E.store_current_slot, hkSlot]
+    exact hslotEpoch
+  have hseedEpochLe : get_block_epoch cfg (E.store cfg ext i k) child.root ≤
+      child.epoch := by
+    simp only [get_block_epoch, compute_epoch_at_slot]
+    calc
+      ((E.store cfg ext i k).blocks child.root).slot / cfg.slots_per_epoch ≤
+          compute_start_slot_at_epoch cfg child.epoch /
+            cfg.slots_per_epoch :=
+        Nat.div_le_div_right hseedSpec.2
+      _ = child.epoch := by
+        simp only [compute_start_slot_at_epoch]
+        exact Nat.mul_div_cancel child.epoch cfg.slots_per_epoch_pos
+  -- Source readback at the signer's store.
+  have hheadStateSlotLe :
+      ((E.store cfg ext i k).block_states
+        (get_head cfg (E.store cfg ext i k)).root).slot ≤ a.data.slot := by
+    rw [(hcore hvoteCausal).2 _ hwalk.root_mem]
+    calc
+      ((E.store cfg ext i k).blocks
+          (get_head cfg (E.store cfg ext i k)).root).slot ≤
+          get_current_slot cfg (E.store cfg ext i k) :=
+        E.store_blocks_slot_le_current cfg ext hT.whole_seconds hgenShort
+          i k _ hwalk.root_mem
+      _ = a.data.slot := by rw [E.store_current_slot cfg ext i k, hkSlot]
+  have hcurrentNonGenesis : ∀ r ∈ (E.store cfg ext i k).block_roots,
+      get_block_epoch cfg (E.store cfg ext i k) r = child.epoch →
+        r ∉ E.genesis_store.block_roots := by
+    intro r hr hcurrent hrGenesis
+    have hrEq : r = ablk.root := by
+      rw [hgenEq] at hrGenesis
+      simpa only [get_forkchoice_store, List.mem_singleton] using hrGenesis
+    subst r
+    have hanchorBlock : (E.store cfg ext i k).blocks ablk.root =
+        ablk.message :=
+      E.store_anchor_block cfg ext hT.wellFormed hgenEq i k hr
+    have hanchorEpoch : B.anchor.epoch = get_current_epoch cfg ast := by
+      rw [hanchor, hgenEq]
+      rfl
+    have hrootEpoch : get_block_epoch cfg (E.store cfg ext i k) ablk.root =
+        B.anchor.epoch := by
+      simp only [get_block_epoch]
+      rw [hanchorBlock, ← hslot]
+      simpa only [get_current_epoch] using hanchorEpoch.symm
+    exact (Nat.ne_of_lt hanchorLtTarget) (hrootEpoch.symm.trans hcurrent)
+  have hsourceVSAt := E.acceptedHonestAttestationDataSourceEqVSAtTarget
+    cfg ext B hT.wellFormed hcore hphase hboundaryPhase hvoteCausal
+    hparentSlots hslotEpoch hwalk htargetData hheadStateSlotLe
+    hcurrentNonGenesis
+  have hsourceData : (honest_attestation_data cfg ext
+      (E.store cfg ext i k) a.data.slot index).source =
+      store.finalized_checkpoint := by
+    rw [← honest_attestation_data_eq, ← hdata]
+    exact _haSource
+  -- Convert the accepted selector back to the executable voting source.
+  have hvotingSource : get_voting_source cfg (E.store cfg ext i k) child.root =
+      store.finalized_checkpoint := by
+    rw [hvoteCausal.getVotingSource_eq_acceptedSelector cfg ext B hseedSpec.1,
+      ← hsourceData, hsourceVSAt]
+    simp only [AcceptedChainFFGState.VSAt, hcurrentEpoch]
+    by_cases hseedCurrent :
+        get_block_epoch cfg (E.store cfg ext i k) child.root = child.epoch
+    · rw [if_pos hseedCurrent,
+        if_neg (by rw [hseedCurrent]; exact lt_irrefl _)]
+    · rw [if_neg hseedCurrent,
+        if_pos (Nat.lt_of_le_of_ne hseedEpochLe hseedCurrent)]
+  exact ⟨
+    { signer := i
+      signer_honest := hiHonest
+      time := k
+      time_within := hHk
+      slot_before := by
+        rw [hkSlot]
+        exact E.includedAttestationSlot_lt_causalStoreCurrentSlot cfg ext B hT
+          hstore htip.known ⟨_containing, _hcarrierContaining, hincluded⟩
+      seed := child.root
+      seed_known := hseedSpec.1
+      seed_epoch := by
+        rw [hcurrentEpoch]
+        exact F.child_epoch
+      voting_source_eq := hvotingSource }⟩
+
+end Execution
+
+end FastConfirmation.Spec
