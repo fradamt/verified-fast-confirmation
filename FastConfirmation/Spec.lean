@@ -18,6 +18,7 @@ import FastConfirmation.Spec.Proof.WeakObserverDomain
 import FastConfirmation.Spec.Proof.WeakSourceHistory
 import FastConfirmation.Spec.Proof.WeakCertificateMonotone
 import FastConfirmation.Spec.Proof.WeakFCRCallContracts
+import FastConfirmation.Spec.Proof.WeakBankedJustification
 
 /-!
 # Spec — facade
