@@ -75,16 +75,25 @@ for that parity and are marked as such.
 * `Weak.headUnrealizedJustification_known_and_below` — its specialization to
   the rule's actual read, `store.unrealized_justifications (get_head store)
   .root`, which is exactly what the revised gate banks.
+* `Weak.BankedJustificationCertificate` / `Weak.CertifiedBankedJustification`
+  — the certified-arm evidence package and the one-shot input invariant.  The
+  ancestry field is gone; in its place the structure carries the **raw
+  equation** `banked_eq` ("the banked checkpoint is the supplier's own
+  unrealized justification"), keeping the structure executable-flavored, with
+  ancestry derived at consumption from the accepted bundle.
+* `Weak.bankedSupplier_known_at_all_honest_endpoints_at_observer` and
+  `Weak.bankedRoot_known_at_all_honest_endpoints_at_observer` — the
+  consumption lemmas: the supplier *and* the banked root are known at every
+  honest endpoint past the gate, in both arms of the invariant (anchor arm via
+  genesis membership + `Execution.store_storeLE`, certified arm via
+  `Execution.certificate_dissemination` plus the chain-intrinsic ancestry).
 * `Weak.update_fcv_observed_exact` — the revised gate's exact source
   selection: the head's own unrealized justification when the certificate
   fires at an epoch start, the carried value otherwise.  The ordered write
   through `previous_epoch_greatest_unrealized_checkpoint` is gone.
 
-`Weak.BankedJustificationCertificate` / `Weak.CertifiedBankedJustification`
-and the consumption lemmas are still stated in their pre-revision form in this
-commit (the structure still carries the unprovable `banked_below_supplier`);
-they are rewritten over the revised banking equation in the next commit, and
-the maintenance lemmas land in the one after.
+The maintenance lemmas (`Weak.certifiedBankedJustification_update`,
+`Weak.weakFcr_certifiedBankedJustification`) land in the next commit.
 
 * `Weak.update_fcv_observed_exact`, `Weak.weakFcr_previousGreatest_succ_exact`,
   `Weak.weakFcr_previousGreatest_origin`,
@@ -519,23 +528,31 @@ theorem bankedBelowHead_of_bankedBelowJustified
 
 /-- Certificate evidence for the banked observed justified checkpoint (rule
 delta 5's input invariant, certified arm). Exactly the package
-`Execution.certificate_dissemination` consumes, plus the ancestry that lets
-the banked root's own dissemination be established from the supplier's.
-Field names mirror `Execution.AcceptedUJCacheInstallationAt`
+`Execution.certificate_dissemination` consumes, plus the **raw banking
+equation** that lets the banked root's own dissemination be established from
+the supplier's. Field names mirror `Execution.AcceptedUJCacheInstallationAt`
 (`second`/`second_le` for `originSecond`/`origin_le`) so the weak Lemma-22
 history can consume both uniformly.
 
-**Fill beyond proposal §2**: `second_pos`. The consumption lemma's timing
-gate is stated as `E.slot_at cfg second ≤ E.slot_at cfg m` ("same-slot
-capable", per the proposal) and needs
+**The ancestry is not a field.** An earlier form of this structure carried
+`banked_below_supplier : is_ancestor store supplier banked`, which the
+store-global banking made false in general (module docstring). The revised
+rule banks `store.unrealized_justifications supplier`, so the structure
+carries that equation (`banked_eq`) instead — an executable identity,
+discharged by `rfl`-shaped rewriting at construction — and the ancestry is
+*derived* at consumption from the accepted FFG contracts
+(`Weak.headUnrealizedJustification_known_and_below`).
+
+**Fill beyond the ratified statement**: `second_pos`. The consumption lemma's
+timing gate is stated as `E.slot_at cfg second ≤ E.slot_at cfg m`
+("same-slot capable") and needs
 `get_current_slot (E.store obs second) - 1 + 1 = get_current_slot (E.store obs
 second)`, which needs `get_current_slot (E.store obs second) ≥ 1` — false in
-general for `ℕ` truncated subtraction when the store's current slot is `0`
-(e.g. the certificate is, in principle, satisfiable at genesis's own slot).
+general for `ℕ` truncated subtraction when the store's current slot is `0`.
 Every certificate actually produced by a real trajectory has this for free
-(`second` is only ever reached via a genuine slot advance, so the previous
-second's slot bounds it below), but the bare structure does not encode that
-provenance, so it is recorded as an explicit field. -/
+(`certifiedBankedJustification_update` reads it off the call's slot advance),
+but the bare structure does not encode that provenance, so it is recorded as
+an explicit field. -/
 structure BankedJustificationCertificate (E : Execution Root)
     (obs : ValidatorIndex) (n : ℕ) (fcr_store : FastConfirmationStore Root) where
   /-- the second whose gated epoch-start rotation banked the value -/
@@ -549,15 +566,17 @@ structure BankedJustificationCertificate (E : Execution Root)
   supplier : Root
   supplier_eq_head : supplier = (get_head cfg (E.store cfg ext obs second)).root
   supplier_known : supplier ∈ (E.store cfg ext obs second).block_roots
-  /-- the banked root is on the supplier's chain: certificate ancestor
-  monotonicity carries dissemination from the supplier down to it -/
+  /-- the banked root is a known block of the observer's own store -/
   banked_known :
     fcr_store.current_epoch_observed_justified_checkpoint.root ∈
       (E.store cfg ext obs second).block_roots
-  banked_below_supplier :
-    is_ancestor (E.store cfg ext obs second) (get_node_for_root supplier)
-      (get_node_for_root
-        fcr_store.current_epoch_observed_justified_checkpoint.root) = true
+  /-- **the revised banking equation**: what was banked is the supplier's own
+  unrealized justification, the justification observed *through* the certified
+  block.  Ancestry of the banked root below the supplier is a consequence
+  (`Weak.headUnrealizedJustification_known_and_below`), not an assumption. -/
+  banked_eq :
+    fcr_store.current_epoch_observed_justified_checkpoint =
+      (E.store cfg ext obs second).unrealized_justifications supplier
   /-- the balance source the gate was evaluated against, with the two economic
   facts `certificate_dissemination` requires (produced, not assumed: the gate
   being true forces its key to be keyed, then `registryConstant` /
@@ -578,6 +597,34 @@ structure BankedJustificationCertificate (E : Execution Root)
   end_within : E.SlotWithinHorizon cfg
     (get_current_slot cfg (E.store cfg ext obs second) - 1)
 
+/-- Re-indexing a certificate: the structure constrains `fcr_store` only
+through its banked checkpoint, and `second ≤ n` only from above, so a witness
+transports verbatim along any later second and any store banking the same
+value. This is what the "not an epoch start / gate false" cases of the
+maintenance lemma use. -/
+def BankedJustificationCertificate.transport {E : Execution Root}
+    {obs : ValidatorIndex} {n m : ℕ} {fcr_store fcr_store' : FastConfirmationStore Root}
+    (h : Weak.BankedJustificationCertificate cfg ext E obs n fcr_store) (hnm : n ≤ m)
+    (heq : fcr_store'.current_epoch_observed_justified_checkpoint =
+      fcr_store.current_epoch_observed_justified_checkpoint) :
+    Weak.BankedJustificationCertificate cfg ext E obs m fcr_store' where
+  second := h.second
+  second_le := h.second_le.trans hnm
+  second_within := h.second_within
+  second_pos := h.second_pos
+  supplier := h.supplier
+  supplier_eq_head := h.supplier_eq_head
+  supplier_known := h.supplier_known
+  banked_known := by rw [heq]; exact h.banked_known
+  banked_eq := heq.trans h.banked_eq
+  balance_source := h.balance_source
+  balance_registry := h.balance_registry
+  balance_total := h.balance_total
+  certificate := h.certificate
+  start_anchor := h.start_anchor
+  start_within := h.start_within
+  end_within := h.end_within
+
 /-- **The one-shot input invariant.** `fcr_store`'s banked observed justified
 checkpoint is either the trusted anchor/initialisation value — globally
 known, hence disseminated for free by `Execution.store_storeLE` — or it was
@@ -590,26 +637,43 @@ def CertifiedBankedJustification (E : Execution Root) (obs : ValidatorIndex)
       E.genesis_store.block_roots ∨
     Nonempty (BankedJustificationCertificate cfg ext E obs n fcr_store)
 
+/-- `BankedJustificationCertificate.transport`, lifted to the invariant. -/
+theorem CertifiedBankedJustification.transport {E : Execution Root}
+    {obs : ValidatorIndex} {n m : ℕ} {fcr_store fcr_store' : FastConfirmationStore Root}
+    (h : Weak.CertifiedBankedJustification cfg ext E obs n fcr_store) (hnm : n ≤ m)
+    (heq : fcr_store'.current_epoch_observed_justified_checkpoint =
+      fcr_store.current_epoch_observed_justified_checkpoint) :
+    Weak.CertifiedBankedJustification cfg ext E obs m fcr_store' := by
+  rcases h with hanchor | hne
+  · exact Or.inl (by rw [heq]; exact hanchor)
+  · obtain ⟨hc⟩ := hne
+    exact Or.inr ⟨hc.transport cfg ext hnm heq⟩
+
 /-! ## Consumption -/
 
-/-- **The consumption lemma, certified arm** (proposal §2, statement
-unchanged): the banked twin of
+/-- **The consumption lemma, certified arm**: the banked twin of
 `Execution.confirmed_known_at_all_honest_endpoints_at_observer`. The supplier
 disseminates directly (`Execution.certificate_dissemination`, obligation 2,
 applied at the supplier itself after unfolding `has_head_broadcast_certificate`
-along `supplier_eq_head`); the banked root then transports along
-`banked_below_supplier` via `Execution.is_ancestor_transport_closed`, using
-the supplier's freshly-established endpoint membership as the doubly-known
-witness — no second trip through an honest supporter's store, and no
-`WalkKnown` side hypotheses, are needed (unlike
-`Weak.certificate_chain_dissemination`, which this lemma deliberately avoids
-calling: its extra `WalkKnown` premises are not derivable from the
-certificate's own fields, whereas `is_ancestor_transport_closed`'s
-anchor-min-slot premise is). The `hgate`/timing arithmetic is "same-slot
-capable" (`E.slot_at cfg second ≤ E.slot_at cfg m`, equality not required)
-via `second_pos` and `has_broadcast_certificate_span_nonempty`. -/
+along `supplier_eq_head`); the banked root then transports along the
+*chain-intrinsic* ancestry — `banked_eq` plus
+`Weak.headUnrealizedJustification_known_and_below` — via
+`Execution.is_ancestor_transport_closed`, using the supplier's freshly
+established endpoint membership as the doubly-known witness. No second trip
+through an honest supporter's store, and no `WalkKnown` side hypotheses, are
+needed (unlike `Weak.certificate_chain_dissemination`, whose extra `WalkKnown`
+premises are not derivable from the certificate's own fields, whereas
+`is_ancestor_transport_closed`'s anchor-min-slot premise is). The `hgate`
+timing arithmetic is "same-slot capable" (`E.slot_at cfg second ≤ E.slot_at
+cfg m`, equality not required) via `second_pos` and
+`has_broadcast_certificate_span_nonempty`. -/
 theorem bankedSupplier_known_at_all_honest_endpoints_at_observer
     {E : Execution Root} (hA : SelectedMarginAssumptions cfg ext E)
+    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
+    (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
+    (hboundary : Execution.TrustedAnchorBoundaryAligned (cfg := cfg) (E := E)
+      (anchor := B.anchor))
     (hsync : PaperSafetySynchrony cfg ext E) (hji : JustificationInterface cfg ext E)
     (hgen : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
       E.genesis_store = get_forkchoice_store cfg ast ablk ∧
@@ -652,28 +716,39 @@ theorem bankedSupplier_known_at_all_honest_endpoints_at_observer
       h.second_within h.start_within h.end_within h.start_anchor
       h.balance_registry h.balance_total (hcomm h.second h.second_within)
       h.supplier_known hcert' w hw m hmH htiming
+  -- The chain-intrinsic ancestry: the banked value *is* the supplier's own
+  -- unrealized justification, which the accepted contracts place on the
+  -- supplier's chain.
+  obtain ⟨hbankedKnown, hbelow⟩ :=
+    Weak.headUnrealizedJustification_known_and_below cfg ext B hT hanchor hboundary
+      obs h.second
+  rw [← h.supplier_eq_head, ← h.banked_eq] at hbankedKnown hbelow
   have hanchorBanked : ablk.message.slot ≤
       ((E.store cfg ext obs h.second).blocks
         fcr_store.current_epoch_observed_justified_checkpoint.root).slot :=
     E.store_anchor_min_slot cfg ext hA.wellFormed hA.externals_coherence hgeq hslot hparent
-      obs h.second fcr_store.current_epoch_observed_justified_checkpoint.root h.banked_known
+      obs h.second fcr_store.current_epoch_observed_justified_checkpoint.root hbankedKnown
   have hbanked : fcr_store.current_epoch_observed_justified_checkpoint.root ∈
       (E.store cfg ext w m).block_roots :=
     E.is_ancestor_transport_closed cfg ext hA.wellFormed hA.externals_coherence hgeq hslot
-      hparent hanchorBanked h.supplier_known hsupplier h.banked_known h.banked_below_supplier
+      hparent hanchorBanked h.supplier_known hsupplier hbankedKnown hbelow
   exact ⟨hsupplier, hbanked⟩
 
-/-- **The consumption lemma, both arms** (Francesco's amendment to proposal
-§3's "residual corner"): the banked root is known at every honest endpoint
-past the gate whether it is the trusted anchor or a certified installation —
-no scoping and no side condition on the anchor arm. The anchor arm needs only
-`Execution.store_storeLE` from genesis; the certified arm routes through
-`bankedSupplier_known_at_all_honest_endpoints_at_observer` above (there is no
-supplier in the anchor arm, so only the banked-root conjunct is stated here,
-universally over whichever certificate witnesses the invariant's second
-disjunct). -/
+/-- **The consumption lemma, both arms**: the banked root is known at every
+honest endpoint past the gate whether it is the trusted anchor or a certified
+installation — no scoping and no side condition on the anchor arm. The anchor
+arm needs only `Execution.store_storeLE` from genesis; the certified arm
+routes through `bankedSupplier_known_at_all_honest_endpoints_at_observer`
+above (there is no supplier in the anchor arm, so only the banked-root
+conjunct is stated here, universally over whichever certificate witnesses the
+invariant's second disjunct). -/
 theorem bankedRoot_known_at_all_honest_endpoints_at_observer
     {E : Execution Root} (hA : SelectedMarginAssumptions cfg ext E)
+    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
+    (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
+    (hboundary : Execution.TrustedAnchorBoundaryAligned (cfg := cfg) (E := E)
+      (anchor := B.anchor))
     (hsync : PaperSafetySynchrony cfg ext E) (hji : JustificationInterface cfg ext E)
     (hgen : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
       E.genesis_store = get_forkchoice_store cfg ast ablk ∧
@@ -688,11 +763,12 @@ theorem bankedRoot_known_at_all_honest_endpoints_at_observer
       E.slot_at cfg h.second ≤ E.slot_at cfg m) :
     fcr_store.current_epoch_observed_justified_checkpoint.root ∈
       (E.store cfg ext w m).block_roots := by
-  rcases hinv with hanchor | hne
-  · exact (E.store_storeLE cfg ext w (Nat.zero_le m)).1 hanchor
+  rcases hinv with hanchorArm | hne
+  · exact (E.store_storeLE cfg ext w (Nat.zero_le m)).1 hanchorArm
   · obtain ⟨h⟩ := hne
-    exact (Weak.bankedSupplier_known_at_all_honest_endpoints_at_observer cfg ext hA hsync hji
-      hgen hcomm h hw hmH (hgate h)).2
+    exact (Weak.bankedSupplier_known_at_all_honest_endpoints_at_observer cfg ext hA B hT
+      hanchor hboundary hsync hji hgen hcomm h hw hmH (hgate h)).2
+
 /-! ## Exact rotation of the two weak FCR checkpoint fields -/
 
 /-- Weak twin of `update_fcv_observed_exact` (`ActualResetCheckpointRealization
