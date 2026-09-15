@@ -868,6 +868,394 @@ noncomputable def
       hw hmH (hseedDissem w hw m hmH hslotQM) hlate hjustifiedEpoch
       hselectedJustified
 
+/-! ## The residual observer-side inputs of the phase dispatcher
+
+The strong dispatcher
+(`StrictSelectedResultMechanicalFacts.fcrStep_endpointFilterOutcome`) consumes
+four facts which are *not* phase bookkeeping and whose weak twins live outside
+this module's remit:
+
+1. the endpoint selected/justified **orientation**
+   (`actualCall_strictSelected_result_and_child_ancestor_of_endpointJustified`),
+2. the endpoint **declared-epoch bound**
+   (`actualCall_strictSelected_endpointJustifiedEpoch_le_result`),
+3. the **late current-epoch** arm (accepted historical A3.2 lineage,
+   full-epoch canonicity, paper A3.2 realization), and
+4. the **late epoch-start previous** arm (the three
+   `OrderedCandidateInputOrigin` producers of
+   `AcceptedPreviousEpochStartSupply.lean`).
+
+Each of 1–4 bottoms out in the accepted SIR / A3.2 stack, whose observer-side
+port is the wave's remaining work (see this module's final section).  They are
+therefore collected here as one explicitly-named record so that the dispatcher
+below proves exactly the S7 content — the phase split, the three early cells,
+the mid-epoch previous cell, and the strict-edge elimination — with the
+residue carried, named, and reportable rather than silently absorbed.
+
+The record is *not* floor-classified: it is a proof obligation, not an
+assumption. -/
+
+/-- The four residual endpoint inputs of the weak phase dispatcher.
+
+Every field is stated exactly as the corresponding strong fact's conclusion,
+instantiated at the weak evaluator's own call, with the same binder list the
+strong dispatcher passes. -/
+structure ObserverStrictCallFilterInputsAt (E : Execution Root)
+    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (obs : ValidatorIndex) (n : Nat) : Prop where
+  /-- Weak twin of
+  `actualCall_strictSelected_result_and_child_ancestor_of_endpointJustified`'s
+  second component. -/
+  result_descends_endpoint_justified :
+    ∀ {c : Root} {w : ValidatorIndex} {m : Nat}, w ∈ E.honest →
+      E.WithinHorizon cfg m →
+      E.slot_at cfg (n + 1) ≤ E.slot_at cfg m →
+      c ∈ (E.store cfg ext w m).block_roots →
+      is_ancestor (E.store cfg ext w m)
+        (get_node_for_root
+          (E.weakGetLatestConfirmedTraceAt cfg ext obs n).result)
+        (get_node_for_root c) = true →
+      (∀ w' ∈ E.honest, ∀ m' : Nat,
+        E.slot_start cfg (E.slot_at cfg (n + 1)) ≤ m' →
+        E.WithinHorizon cfg m' →
+        (E.weakGetLatestConfirmedTraceAt cfg ext obs n).result ∈
+          (E.store cfg ext w' m').block_roots) →
+      E.SelectedCanonicalBeforeEndpointAt cfg ext (n + 1)
+        (E.weakGetLatestConfirmedTraceAt cfg ext obs n).result m →
+      is_ancestor (E.store cfg ext w m)
+        (get_node_for_root
+          (E.store cfg ext w m).justified_checkpoint.root)
+        (get_node_for_root c) ≠ true →
+      is_ancestor (E.store cfg ext w m)
+        (get_node_for_root
+          (E.weakGetLatestConfirmedTraceAt cfg ext obs n).result)
+        (get_node_for_root
+          (E.store cfg ext w m).justified_checkpoint.root) = true
+  /-- Weak twin of
+  `actualCall_strictSelected_endpointJustifiedEpoch_le_result`. -/
+  endpoint_justified_epoch_le_result :
+    ∀ {c : Root} {w : ValidatorIndex} {m : Nat}, w ∈ E.honest →
+      E.WithinHorizon cfg m →
+      E.slot_at cfg (n + 1) ≤ E.slot_at cfg m →
+      c ∈ (E.store cfg ext w m).block_roots →
+      is_ancestor (E.store cfg ext w m)
+        (get_node_for_root
+          (E.weakGetLatestConfirmedTraceAt cfg ext obs n).result)
+        (get_node_for_root c) = true →
+      (∀ w' ∈ E.honest, ∀ m' : Nat,
+        E.slot_start cfg (E.slot_at cfg (n + 1)) ≤ m' →
+        E.WithinHorizon cfg m' →
+        (E.weakGetLatestConfirmedTraceAt cfg ext obs n).result ∈
+          (E.store cfg ext w' m').block_roots) →
+      E.SelectedCanonicalBeforeEndpointAt cfg ext (n + 1)
+        (E.weakGetLatestConfirmedTraceAt cfg ext obs n).result m →
+      is_ancestor (E.store cfg ext w m)
+        (get_node_for_root
+          (E.store cfg ext w m).justified_checkpoint.root)
+        (get_node_for_root c) ≠ true →
+      (E.store cfg ext w m).justified_checkpoint.epoch ≤
+        get_block_epoch cfg (E.weakFcrStep cfg ext obs n).store
+          (E.weakGetLatestConfirmedTraceAt cfg ext obs n).result
+  /-- The late current-epoch cell: the composite of
+  `acceptedHistoricalA32CurrentLineage_of_completedPrefixes`,
+  `canonicalThroughoutNextEpoch_of_selectedCanonical_currentEpoch` (site 1 of
+  the design's inventory) and
+  `acceptedSelectedResultFilterOutcome_retainedVisible_of_lateLineage`. -/
+  current_late_outcome :
+    ∀ {w : ValidatorIndex} {m : Nat}, w ∈ E.honest →
+      E.WithinHorizon cfg m →
+      E.slot_at cfg (n + 1) ≤ E.slot_at cfg m →
+      get_block_epoch cfg (E.weakFcrStep cfg ext obs n).store
+          (E.weakGetLatestConfirmedTraceAt cfg ext obs n).result =
+        get_current_store_epoch cfg (E.weakFcrStep cfg ext obs n).store →
+      E.SelectedCanonicalBeforeEndpointAt cfg ext (n + 1)
+        (E.weakGetLatestConfirmedTraceAt cfg ext obs n).result m →
+      (E.weakGetLatestConfirmedTraceAt cfg ext obs n).result ∈
+        (E.store cfg ext w m).block_roots →
+      get_block_epoch cfg (E.weakFcrStep cfg ext obs n).store
+          (E.weakGetLatestConfirmedTraceAt cfg ext obs n).result + 2 ≤
+        get_current_store_epoch cfg (E.store cfg ext w m) →
+      (E.store cfg ext w m).justified_checkpoint.epoch ≤
+        get_block_epoch cfg (E.weakFcrStep cfg ext obs n).store
+          (E.weakGetLatestConfirmedTraceAt cfg ext obs n).result →
+      is_ancestor (E.store cfg ext w m)
+        (get_node_for_root
+          (E.weakGetLatestConfirmedTraceAt cfg ext obs n).result)
+        (get_node_for_root
+          (E.store cfg ext w m).justified_checkpoint.root) = true →
+      Nonempty (E.AcceptedSelectedResultFilterOutcomeAt cfg ext B
+        (E.store cfg ext w m)
+        (E.weakGetLatestConfirmedTraceAt cfg ext obs n).result)
+  /-- The late epoch-start previous cell: the three-way
+  `Weak.OrderedCandidateInputOrigin` split of
+  `AcceptedPreviousEpochStartSupply.lean` composed with
+  `canonicalThroughoutNextEpoch_of_previousEpochStart`. -/
+  previous_epochStart_late_outcome :
+    ∀ {w : ValidatorIndex} {m : Nat}, w ∈ E.honest →
+      E.WithinHorizon cfg m →
+      E.slot_at cfg (n + 1) ≤ E.slot_at cfg m →
+      get_block_epoch cfg (E.weakFcrStep cfg ext obs n).store
+          (E.weakGetLatestConfirmedTraceAt cfg ext obs n).result + 1 =
+        get_current_store_epoch cfg (E.weakFcrStep cfg ext obs n).store →
+      is_start_slot_at_epoch cfg
+        (get_current_slot cfg (E.weakFcrStep cfg ext obs n).store) = true →
+      E.SelectedCanonicalBeforeEndpointAt cfg ext (n + 1)
+        (E.weakGetLatestConfirmedTraceAt cfg ext obs n).result m →
+      (E.weakGetLatestConfirmedTraceAt cfg ext obs n).result ∈
+        (E.store cfg ext w m).block_roots →
+      get_block_epoch cfg (E.weakFcrStep cfg ext obs n).store
+          (E.weakGetLatestConfirmedTraceAt cfg ext obs n).result + 2 ≤
+        get_current_store_epoch cfg (E.store cfg ext w m) →
+      (E.store cfg ext w m).justified_checkpoint.epoch ≤
+        get_block_epoch cfg (E.weakFcrStep cfg ext obs n).store
+          (E.weakGetLatestConfirmedTraceAt cfg ext obs n).result →
+      is_ancestor (E.store cfg ext w m)
+        (get_node_for_root
+          (E.weakGetLatestConfirmedTraceAt cfg ext obs n).result)
+        (get_node_for_root
+          (E.store cfg ext w m).justified_checkpoint.root) = true →
+      Nonempty (E.AcceptedSelectedResultFilterOutcomeAt cfg ext B
+        (E.store cfg ext w m)
+        (E.weakGetLatestConfirmedTraceAt cfg ext obs n).result)
+
+/-! ## Exhaustive weak actual-call endpoint dispatcher -/
+
+/-- **Weak twin of
+`StrictSelectedResultMechanicalFacts.fcrStep_endpointFilterOutcome`.**
+
+The phase split is identical to the strong one: current vs previous in the
+observer's own weak query store, then same-epoch / next-epoch / late at the
+endpoint, with the mid-epoch previous cell taking the direct GU-seed route.
+The three early cells and the mid-epoch previous cell are fully discharged
+above; the two late cells are supplied by `hinputs`. -/
+noncomputable def
+    StrictSelectedResultMechanicalFacts.fcrStep_endpointFilterOutcome
+    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
+    (hsync : PaperSafetySynchrony cfg ext E)
+    (hstatic : StaticValidatorSet cfg E)
+    (hbyz : ByzantineBound cfg E)
+    (hdomain : SelectedMarginDomain cfg ext E)
+    (hji : JustificationInterface cfg ext E)
+    (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
+    (hboundary : Execution.TrustedAnchorBoundaryAligned (cfg := cfg)
+      (E := E) (anchor := B.anchor))
+    (hDelay : E.AcceptedRealizedFinalizationDelay cfg ext B)
+    (P : AcceptedEpochCheckpointProjection B.anchor
+      (E.AcceptedRoot cfg ext) B.state.C)
+    (V : B.state.ExactLinkValidity)
+    (hanchorExact : B.anchor = B.state.C B.anchor.root B.anchor.epoch)
+    {obs : ValidatorIndex} (hcoh : E.ObserverCoherence cfg ext obs) {n : Nat}
+    (hn1H : E.WithinHorizon cfg (n + 1))
+    (hcall : E.IsFCRCallAt cfg ext obs n)
+    (hinput : (E.weakGetLatestConfirmedTraceAt cfg ext obs n).afterObserved ∈
+      (E.weakFcrStep cfg ext obs n).store.block_roots)
+    (hselector : Weak.StrictSelectorAdvanceAt cfg ext
+      (E.weakFcrStep cfg ext obs n)
+      (E.weakGetLatestConfirmedTraceAt cfg ext obs n))
+    (h : Weak.StrictSelectedResultMechanicalFacts cfg ext
+      (E.weakFcrStep cfg ext obs n)
+      (E.weakGetLatestConfirmedTraceAt cfg ext obs n).afterObserved
+      (E.weakGetLatestConfirmedTraceAt cfg ext obs n).result)
+    (hinputs : Weak.ObserverStrictCallFilterInputsAt cfg ext E B obs n)
+    {w : ValidatorIndex} (hw : w ∈ E.honest) {m : Nat}
+    (hmH : E.WithinHorizon cfg m)
+    {r0 a c : Root} {lo es sigma querySlot : Slot}
+    (hgeom : Weak.StrictSelectedEdgeGeometry cfg ext E
+      (E.weakGetLatestConfirmedTraceAt cfg ext obs n).result r0 a c
+      obs (n + 1) (E.weakFcrStep cfg ext obs n) w m
+        lo es sigma querySlot)
+    (hcM : c ∈ (E.store cfg ext w m).block_roots)
+    (hselectedC : is_ancestor (E.store cfg ext w m)
+      (get_node_for_root
+        (E.weakGetLatestConfirmedTraceAt cfg ext obs n).result)
+      (get_node_for_root c) = true)
+    (hselectedKnown : ∀ w' ∈ E.honest, ∀ m' : Nat,
+      E.slot_start cfg (E.slot_at cfg (n + 1)) ≤ m' →
+      E.WithinHorizon cfg m' →
+      (E.weakGetLatestConfirmedTraceAt cfg ext obs n).result ∈
+        (E.store cfg ext w' m').block_roots)
+    (hIH : E.SelectedCanonicalBeforeEndpointAt cfg ext (n + 1)
+      (E.weakGetLatestConfirmedTraceAt cfg ext obs n).result m)
+    (hnotCovered : is_ancestor (E.store cfg ext w m)
+      (get_node_for_root
+        (E.store cfg ext w m).justified_checkpoint.root)
+      (get_node_for_root c) ≠ true) :
+    E.AcceptedSelectedResultFilterOutcomeAt cfg ext B
+      (E.store cfg ext w m)
+      (E.weakGetLatestConfirmedTraceAt cfg ext obs n).result := by
+  classical
+  let trace := E.weakGetLatestConfirmedTraceAt cfg ext obs n
+  let hMargin : SelectedMarginAssumptions cfg ext E :=
+    { genesis := hT.genesis
+      wellFormed := hT.wellFormed
+      whole_seconds := hT.whole_seconds
+      honest_behavior := hT.honest_behavior
+      synchrony := hsync
+      externals_coherence := hT.externals_coherence
+      static_validators := hstatic
+      byzantine_bound := hbyz
+      domain := hdomain }
+  have hacc : CheckpointCertificateAccountability cfg E B.anchor :=
+    CheckpointCertificateAccountability.of_assumptions cfg
+      (Execution.SelectedMarginAssumptions.toFFGAccountabilityAssumptions
+        cfg ext E hMargin)
+  have hslotQM : E.slot_at cfg (n + 1) ≤ E.slot_at cfg m :=
+    hgeom.query_slot_le_endpoint cfg ext
+  have hstartM : E.slot_start cfg (E.slot_at cfg (n + 1)) ≤ m :=
+    E.query_slot_start_le_of_slot_ge_minimal cfg ext hMargin hslotQM
+  have hselectedM : trace.result ∈ (E.store cfg ext w m).block_roots :=
+    hselectedKnown w hw m hstartM hmH
+  have hresultJustified : is_ancestor (E.store cfg ext w m)
+      (get_node_for_root trace.result)
+      (get_node_for_root
+        (E.store cfg ext w m).justified_checkpoint.root) = true :=
+    hinputs.result_descends_endpoint_justified hw hmH hslotQM hcM
+      hselectedC hselectedKnown hIH hnotCovered
+  have hjustifiedEpoch :
+      (E.store cfg ext w m).justified_checkpoint.epoch ≤
+        get_block_epoch cfg (E.weakFcrStep cfg ext obs n).store
+          trace.result :=
+    hinputs.endpoint_justified_epoch_le_result hw hmH hslotQM hcM
+      hselectedC hselectedKnown hIH hnotCovered
+  have hqueryEpochLeEndpoint :
+      get_current_store_epoch cfg (E.weakFcrStep cfg ext obs n).store ≤
+        get_current_store_epoch cfg (E.store cfg ext w m) := by
+    simp only [get_current_store_epoch, E.weakFcrStep_store,
+      E.store_current_slot, compute_epoch_at_slot]
+    exact Nat.div_le_div_right hslotQM
+  rcases h.current_or_previous_epoch with hcurrent | hprevious
+  · by_cases hsame : get_current_store_epoch cfg (E.store cfg ext w m) =
+        get_current_store_epoch cfg (E.weakFcrStep cfg ext obs n).store
+    · exact h.fcrStep_currentSame_endpointFilterOutcome cfg ext hT hsync
+        hstatic hbyz hdomain hji B hanchor hboundary hDelay P V
+        hanchorExact hacc hcoh hn1H hcall hcurrent hw hmH hsame hgeom
+        hresultJustified
+    · by_cases hnext : get_current_store_epoch cfg (E.store cfg ext w m) =
+          get_current_store_epoch cfg (E.weakFcrStep cfg ext obs n).store + 1
+      · exact h.fcrStep_currentNext_endpointFilterOutcome cfg ext hT hsync
+          hstatic hbyz hdomain hji B hanchor hboundary hDelay P V
+          hanchorExact hacc hcoh hn1H hinput hselector.result_eq.symm
+          hselector.result_ne_input hcurrent hw hmH hnext hgeom
+          hresultJustified
+      · have hlate : get_block_epoch cfg
+            (E.weakFcrStep cfg ext obs n).store trace.result + 2 ≤
+          get_current_store_epoch cfg (E.store cfg ext w m) := by
+          have hqLt : get_current_store_epoch cfg
+                (E.weakFcrStep cfg ext obs n).store <
+              get_current_store_epoch cfg (E.store cfg ext w m) :=
+            Nat.lt_of_le_of_ne hqueryEpochLeEndpoint
+              (fun heq => hsame heq.symm)
+          have hqNextLt : get_current_store_epoch cfg
+                (E.weakFcrStep cfg ext obs n).store + 1 <
+              get_current_store_epoch cfg (E.store cfg ext w m) :=
+            Nat.lt_of_le_of_ne hqLt (fun heq => hnext heq.symm)
+          rw [hcurrent]
+          simpa only [Nat.add_assoc, Nat.reduceAdd] using hqNextLt
+        exact (hinputs.current_late_outcome hw hmH hslotQM hcurrent hIH
+          hselectedM hlate hjustifiedEpoch hresultJustified).some
+  · by_cases hsame : get_current_store_epoch cfg (E.store cfg ext w m) =
+        get_current_store_epoch cfg (E.weakFcrStep cfg ext obs n).store
+    · exact h.fcrStep_previous_endpointFilterOutcome cfg ext hT hsync
+        hstatic hbyz hdomain hji B hanchor hboundary hDelay P V
+        hanchorExact hacc hcoh hn1H hcall hprevious hw hmH hsame hgeom
+        hresultJustified
+    · have hlate : get_block_epoch cfg
+          (E.weakFcrStep cfg ext obs n).store trace.result + 2 ≤
+        get_current_store_epoch cfg (E.store cfg ext w m) := by
+        have hqLt : get_current_store_epoch cfg
+              (E.weakFcrStep cfg ext obs n).store <
+            get_current_store_epoch cfg (E.store cfg ext w m) :=
+          Nat.lt_of_le_of_ne hqueryEpochLeEndpoint
+            (fun heq => hsame heq.symm)
+        calc
+          get_block_epoch cfg (E.weakFcrStep cfg ext obs n).store
+                trace.result + 2 =
+              (get_block_epoch cfg (E.weakFcrStep cfg ext obs n).store
+                trace.result + 1) + 1 := by
+                  simp only [Nat.add_assoc, Nat.reduceAdd]
+          _ = get_current_store_epoch cfg
+                (E.weakFcrStep cfg ext obs n).store + 1 := by rw [hprevious]
+          _ ≤ get_current_store_epoch cfg (E.store cfg ext w m) := hqLt
+      by_cases hstart : is_start_slot_at_epoch cfg
+          (get_current_slot cfg (E.weakFcrStep cfg ext obs n).store) = true
+      · exact (hinputs.previous_epochStart_late_outcome hw hmH hslotQM
+          hprevious hstart hIH hselectedM hlate hjustifiedEpoch
+          hresultJustified).some
+      · exact h.fcrStep_previousOffStart_late_endpointFilterOutcome
+          cfg ext B hT hsync hstatic hbyz hdomain hji hanchor hboundary P V
+            hanchorExact hacc hcoh hn1H hinput hselector.result_eq.symm
+            hselector.result_ne_input hprevious hstart hw hmH hslotQM hlate
+            hjustifiedEpoch hresultJustified
+
+/-! ## Final weak strict-edge filter supplier -/
+
+/-- **Complete weak filter supply for the strict branch of one actual
+observer FCR call.**  Weak twin of
+`Execution.StrictSelectorAdvanceAt.actualCall_selectedStrictEdgeFilterSupplyAt`.
+
+Every quantified endpoint edge is sent through the weak phase dispatcher and
+the resulting endpoint outcome is retargeted to the concrete child edge by the
+(reused, honesty-free) `AcceptedSelectedResultFilterOutcomeAt.child_filtered`.
+The observer's honesty is nowhere assumed: it appears only as
+`hcoh : E.ObserverCoherence cfg ext obs`. -/
+noncomputable def
+    StrictSelectorAdvanceAt.observerCall_selectedStrictEdgeFilterSupplyAt
+    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
+    (hsync : PaperSafetySynchrony cfg ext E)
+    (hstatic : StaticValidatorSet cfg E)
+    (hbyz : ByzantineBound cfg E)
+    (hdomain : SelectedMarginDomain cfg ext E)
+    (hji : JustificationInterface cfg ext E)
+    (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
+    (hboundary : Execution.TrustedAnchorBoundaryAligned (cfg := cfg)
+      (E := E) (anchor := B.anchor))
+    (hDelay : E.AcceptedRealizedFinalizationDelay cfg ext B)
+    (P : AcceptedEpochCheckpointProjection B.anchor
+      (E.AcceptedRoot cfg ext) B.state.C)
+    (V : B.state.ExactLinkValidity)
+    (hanchorExact : B.anchor = B.state.C B.anchor.root B.anchor.epoch)
+    {obs : ValidatorIndex} (hcoh : E.ObserverCoherence cfg ext obs) {n : Nat}
+    (hn1H : E.WithinHorizon cfg (n + 1))
+    (hcall : E.IsFCRCallAt cfg ext obs n)
+    (hinput : (E.weakGetLatestConfirmedTraceAt cfg ext obs n).afterObserved ∈
+      (E.weakFcrStep cfg ext obs n).store.block_roots)
+    (hselector : Weak.StrictSelectorAdvanceAt cfg ext
+      (E.weakFcrStep cfg ext obs n)
+      (E.weakGetLatestConfirmedTraceAt cfg ext obs n))
+    (hinputs : Weak.ObserverStrictCallFilterInputsAt cfg ext E B obs n) :
+    Weak.SelectedStrictEdgeFilterSupplyAt cfg ext E
+      (E.weakGetLatestConfirmedTraceAt cfg ext obs n).result
+      (E.weakGetLatestConfirmedTraceAt cfg ext obs n).afterObserved
+      obs (n + 1) (E.weakFcrStep cfg ext obs n) := by
+  have hmechanical := Weak.StrictSelectorAdvanceAt.mechanicalFacts cfg ext
+    { genesis := hT.genesis
+      wellFormed := hT.wellFormed
+      whole_seconds := hT.whole_seconds
+      honest_behavior := hT.honest_behavior
+      synchrony := hsync
+      externals_coherence := hT.externals_coherence
+      static_validators := hstatic
+      byzantine_bound := hbyz
+      domain := hdomain }
+    hcoh hn1H (E.weakFcrStep_store cfg ext obs n) hinput hselector
+  intro a c w m lo es sigma querySlot hw hmH hgeom _hcne hcM
+    hparentEdge hselectedC hselectedKnown hIH hnotCovered
+  have houtcome := hmechanical.fcrStep_endpointFilterOutcome cfg ext B hT
+    hsync hstatic hbyz hdomain hji hanchor hboundary hDelay P V hanchorExact
+      hcoh hn1H hcall hinput hselector hinputs hw hmH hgeom hcM hselectedC
+      hselectedKnown hIH hnotCovered
+  have hfinalized : FinalizedBoundaryRealization cfg
+      (E.store cfg ext w m) :=
+    Execution.ExactPrefixAcceptedFFGSemantics.finalizedBoundaryRealizationAt
+      cfg ext B hT hanchor hboundary w m
+  obtain ⟨hparent, hwalkK, hjustifiedKnown⟩ :=
+    E.store_domainK_of_selectedMarginDomain cfg ext hT.wellFormed
+      hT.externals_coherence hT.genesis hdomain w hw m hmH
+  exact houtcome.child_filtered cfg ext hfinalized hparent hwalkK
+    hjustifiedKnown hcM hparentEdge hselectedC hnotCovered
+
 end Weak
 
 end FastConfirmation.Spec
