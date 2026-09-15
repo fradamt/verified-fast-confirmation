@@ -74,12 +74,19 @@ Only one surplus honest attester is needed — the certificate threshold is
    checkpoint — the key `get_current_balance_source` reads, and hence the key
    every other weak certificate in the call is evaluated against — on
    `Weak.has_head_broadcast_certificate` for the fork-choice head at update
-   time. If the gate fails the field keeps its previous (already-certified)
-   value: stale-but-certified beats fresh-but-uncertified, so this is
-   monotonically stricter than the strong rule and hence safety-free. Every
-   other write of the strong function is unconditional, as before. See
-   `docs/weak-synchrony.md`, "Rule delta 5", for the liveness cost and
-   `Weak.CertifiedBankedJustification` for the resulting input invariant.
+   time, **and banks the certified head's own unrealized justification**
+   (`store.unrealized_justifications (get_head store).root`) rather than the
+   store-global running maximum
+   (`fcr_store.previous_epoch_greatest_unrealized_checkpoint`, which keeps its
+   ungated writes for parity with the strong rule but is no longer consumed by
+   the weak banking). Banking only a justification observed *through* the
+   certified block makes coverage of the banked value by the head certificate
+   chain-intrinsic. If the gate fails the field keeps its previous
+   (already-certified) value: stale-but-certified beats fresh-but-uncertified,
+   so this is monotonically stricter than the strong rule and hence
+   safety-free. Every other write of the strong function is unconditional, as
+   before. See `docs/weak-synchrony.md`, "Rule delta 5", for the liveness cost
+   and `Weak.CertifiedBankedJustification` for the resulting input invariant.
 
 Stored-state maintenance across epochs (the revert-to-finalized and
 epoch-start restart branches of `get_latest_confirmed`, and
@@ -338,11 +345,33 @@ bookkeeping*).  Identical to the strong rule except for **one** write: the
 epoch-start installation of the current-epoch observed justified checkpoint —
 the key `get_current_balance_source` reads, and hence the key every other weak
 certificate in the call is evaluated against — happens only when the block
-supplying that justification is broadcast-certified.  The supplier is the
-fork-choice head at update time: possessing the head implies possessing its
-ancestry, so `has_head_broadcast_certificate` dominates the deeper carrier
-that actually formed `store.unrealized_justified_checkpoint` (the same
-domination argument as rule delta 4).
+supplying that justification is broadcast-certified, **and it banks that
+block's own unrealized justification**.
+
+*Bank only a justification observed in a certified block.* The supplier is the
+fork-choice head at update time, and what is banked is
+`store.unrealized_justifications (get_head store).root` — the justification
+observed *through* the certified block — not the store-global running maximum
+`fcr_store.previous_epoch_greatest_unrealized_checkpoint`.  With the
+store-global value, coverage of the banked checkpoint by the head certificate
+was an extrinsic claim, and a false one: between the second at which the
+running maximum was captured (the end of the previous epoch) and the boundary
+at which the gate fires, the store's checkpoints may move to a different
+branch, so the certified head need not descend from the banked root at all
+(the branch-switch hole recorded in `WeakBankedJustification.lean`).  Reading
+the head's *own* entry makes the coverage chain-intrinsic instead: the
+accepted FFG contracts tie `store.unrealized_justifications b` to `b`'s own
+ancestry (`AcceptedFFGTransitionCoherence.au_checkpoint_of_known` places the
+checkpoint on `b`'s chain), so a certificate on the head covers the banked
+root by construction and the hole is closed at the source, with no extra
+executable conjunct.
+
+Cost: when a *side* branch carried a higher justification, this banks the
+head-chain one instead — a lower epoch, hence strictly stricter in every
+recency guard that reads the banked value, so still safety-free.  The
+balance-source deviation from the strong rule (a possibly different, always
+head-chain-observed checkpoint state) is benign in-model under
+`StaticValidatorSet`.
 
 The gate is evaluated against `bs`, the **incoming** (already-certified, by
 `CertifiedBankedJustification` below) balance source, read off `fcr_store`
@@ -353,16 +382,19 @@ adversarial budget degenerate.
 
 If the gate fails the field keeps its previous value — stale-but-certified
 beats fresh-but-uncertified.  This is monotonically stricter than the strong
-rule (the field is only ever assigned values the strong rule would also have
-assigned), hence safety-free; the liveness cost is documented in
+rule in the sense that matters for safety (the field is only ever assigned a
+certified, head-chain-observed justification, never a fresher one than the
+strong rule's), hence safety-free; the liveness cost is documented in
 `docs/weak-synchrony.md`, "Rule delta 5".
 
 Field-by-field: the slot-head writes and the (unconditional)
-`previous_epoch_greatest_unrealized_checkpoint` refresh are untouched — they
-are either consumed only at already-gated use sites (`previous_slot_head`, via
-`has_justification_witness_certificate`) or dominated by the gated rotation
-below (`previous_epoch_greatest_unrealized_checkpoint`, whose sole consumer is
-that rotation). `previous_epoch_observed_justified_checkpoint` also stays
+`previous_epoch_greatest_unrealized_checkpoint` refresh are untouched — the
+former is consumed only at an already-gated use site (`previous_slot_head`,
+via `has_justification_witness_certificate`), and the latter is now
+**vestigial** in the weak bookkeeping: rule delta 5 no longer reads it, and it
+is kept written, verbatim and ungated, purely for field-for-field parity with
+the strong rule (and for any future consumer of the strong-side rotation
+lemmas). `previous_epoch_observed_justified_checkpoint` also stays
 unconditional: it only feeds the deferred-scope `get_previous_balance_source`,
 so rotating it ungated preserves rather than weakens any future invariant on
 it. Only `current_epoch_observed_justified_checkpoint`'s installation is
@@ -379,7 +411,7 @@ if is_start_slot_at_epoch(get_current_slot(store)):
         fcr_store.current_epoch_observed_justified_checkpoint)
     if has_head_broadcast_certificate(store, bs):                      # delta 5
         fcr_store.current_epoch_observed_justified_checkpoint = (
-            fcr_store.previous_epoch_greatest_unrealized_checkpoint)
+            store.unrealized_justifications[get_head(store).root])
 ``` -/
 def update_fast_confirmation_variables (fcr_store : FastConfirmationStore Root) :
     FastConfirmationStore Root :=
@@ -391,8 +423,8 @@ def update_fast_confirmation_variables (fcr_store : FastConfirmationStore Root) 
       previous_slot_head := fcr_store.current_slot_head
       current_slot_head := (get_head cfg store).root }
   -- Update greatest unrealized justified checkpoint at the last slot of an
-  -- epoch (unconditional: this field is consumed only through the gated
-  -- rotation below, which dominates it)
+  -- epoch (unconditional, and vestigial: rule delta 5's banking no longer
+  -- reads this field, it is kept for parity with the strong rule)
   let fcr_store :=
     if is_start_slot_at_epoch cfg (get_current_slot cfg store + 1) then
       { fcr_store with
@@ -400,14 +432,15 @@ def update_fast_confirmation_variables (fcr_store : FastConfirmationStore Root) 
           store.unrealized_justified_checkpoint }
     else fcr_store
   -- Update observed justified checkpoints at the start of an epoch; the
-  -- current-epoch write is gated on a broadcast certificate for its supplier
+  -- current-epoch write is gated on a broadcast certificate for the supplier
+  -- and banks that supplier's *own* unrealized justification
   if is_start_slot_at_epoch cfg (get_current_slot cfg store) then
     { fcr_store with
       previous_epoch_observed_justified_checkpoint :=
         fcr_store.current_epoch_observed_justified_checkpoint
       current_epoch_observed_justified_checkpoint :=
         if has_head_broadcast_certificate cfg ext store bs then
-          fcr_store.previous_epoch_greatest_unrealized_checkpoint
+          store.unrealized_justifications (get_head cfg store).root
         else fcr_store.current_epoch_observed_justified_checkpoint }
   else fcr_store
 

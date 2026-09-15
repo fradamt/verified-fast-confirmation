@@ -11,62 +11,105 @@ import FastConfirmation.Spec.Proof.WeakFCRCallContracts
 /-!
 # Spec / Proof / WeakBankedJustification
 
-Rule delta 5's input invariant (`Weak.CertifiedBankedJustification`,
-`docs/delta5-proposal.md` §2) and its consumption lemma(s), with the
-Francesco amendment to §3's "residual corner": the anchor arm is handled by a
-symmetric two-arm consumption, not by scoping or a side condition.
+Rule delta 5's input invariant (`Weak.CertifiedBankedJustification`), its
+consumption lemmas, and its maintenance along the actual weak trajectory,
+stated over the **revised** rule: the gated epoch-start write banks the
+certified head's *own* unrealized justification,
+`store.unrealized_justifications (get_head store).root`, rather than the
+store-global running maximum `previous_epoch_greatest_unrealized_checkpoint`.
+
+## Why the rule was revised (the branch-switch finding, resolved)
+
+An earlier form of rule delta 5 banked the store-global running maximum.  The
+input invariant then had to assert `banked_below_supplier` — that the banked
+root lies on the certified head's chain — and **that field is false in
+general**: the running maximum is captured at the end of the previous epoch,
+while the gate certifies the head at the *boundary*, and between those two
+moments the store's checkpoints may move branch
+(`update_unrealized_checkpoints` replaces the unrealized-justified field on
+any strictly higher epoch, from any accepted carrier on any branch).  An
+observer holding `C_A` (epoch `e−1`, branch A) at the capture second and then
+receiving a branch-B block justifying `C_B` at epoch `e` enters epoch `e` with
+a branch-B head: the gate passes and banks `C_A`, which the head's certificate
+does not cover.  Placing `C_A` and `C_B` on one chain is an FFG-safety-grade
+claim about conflicting certified justifications at *different* epochs; it does
+not follow from the store definitions.
+
+Francesco's revision removes the claim instead of assuming it: **bank only a
+justification observed in a certified block**.  With the banked value read out
+of the head's own `unrealized_justifications` entry, coverage by the head
+certificate is chain-intrinsic — the accepted FFG contracts
+(`AcceptedFFGTransitionCoherence.au_checkpoint_of_known`, causal-store
+quantified and honesty-free) place `store.unrealized_justifications b` on `b`'s
+own ancestry — so the ancestry is a *theorem* about the rule rather than a
+field of the invariant.  When a side branch carried a higher justification the
+revised rule banks the head-chain one instead: a lower epoch, hence strictly
+stricter in every recency guard that reads the banked value, so safety-free;
+the balance-source deviation is benign in-model under `StaticValidatorSet`.
+`previous_epoch_greatest_unrealized_checkpoint` keeps its strong (ungated)
+writes for field-for-field parity with the strong rule but is **no longer
+consumed** by the weak banking; the rotation lemmas about it are retained here
+for that parity and are marked as such.
 
 ## What is delivered
 
-* `Weak.BankedJustificationCertificate` / `Weak.CertifiedBankedJustification`
-  — the certified-arm evidence package and the one-shot input invariant, per
-  proposal §2.
 * `Weak.has_broadcast_certificate_span_nonempty` — a true certificate forces
-  a non-empty span (proposal §1's "free bonus").
+  a non-empty span.
 * `Weak.checkpoint_state_key_of_broadcast_certificate` — a true certificate
   forces its balance source to be a keyed checkpoint state (same route as
   `Execution.checkpoint_state_key_of_one_confirmed` /
   `Execution.get_attestation_score_unkeyed_eq_zero`, `CheckpointDomain.lean`).
-* `Weak.bankedSupplier_known_at_all_honest_endpoints_at_observer` — the
-  consumption lemma stated over the certificate structure directly (proposal
-  §2, unchanged statement): the supplier *and* the banked root are known at
-  every honest endpoint past the gate.
-* `Weak.bankedRoot_known_at_all_honest_endpoints_at_observer` — the amendment:
-  the same conclusion's banked-root half, stated over the *invariant*
-  (`CertifiedBankedJustification`), covering **both** arms symmetrically: the
-  anchor arm via genesis membership + `Execution.store_storeLE` (globally
-  known by initialisation, no supplier), the certified arm by routing through
-  the lemma above.
-
-* `Weak.acceptedOriginRoot_known_at_observer` and its two instances
-  `Weak.unrealizedJustifiedRoot_known_of_acceptedGlobalTrajectory` and
-  `Weak.justifiedRoot_known_at_observer` — the accepted-FFG knownness facts
-  restated at a possibly-Byzantine observer, copy-with-binder-dropped exactly
-  as `ObserverCoherence.justified_root_known_of_acceptedGlobalTrajectory`
+* `Weak.acceptedOriginRoot_known_at_observer`,
+  `Weak.unrealizedJustifiedRoot_known_of_acceptedGlobalTrajectory`,
+  `Weak.justifiedRoot_known_at_observer`, `Weak.head_known_at_observer` — the
+  accepted-FFG knownness facts restated at a possibly-Byzantine observer,
+  copies-with-binder-dropped exactly as
+  `ObserverCoherence.justified_root_known_of_acceptedGlobalTrajectory`
   (`WeakOneShotSafety.lean`) was.
+* `Weak.auCheckpoint_known_and_below_tip` — **the chain-intrinsic ancestry**:
+  a checkpoint with accepted AU evidence at a known tip is not only known in
+  the observer's own store (`AcceptedSelectorAUCarrier.checkpointRoot_known`'s
+  conclusion) but sits *on that tip's chain*.  The repo had the knownness half
+  only; the ancestry half is the `get_ancestor_comp` step the knownness proof
+  derives and discards.
+* `Weak.headUnrealizedJustification_known_and_below` — its specialization to
+  the rule's actual read, `store.unrealized_justifications (get_head store)
+  .root`, which is exactly what the revised gate banks.
+* `Weak.update_fcv_observed_exact` — the revised gate's exact source
+  selection: the head's own unrealized justification when the certificate
+  fires at an epoch start, the carried value otherwise.  The ordered write
+  through `previous_epoch_greatest_unrealized_checkpoint` is gone.
+
+`Weak.BankedJustificationCertificate` / `Weak.CertifiedBankedJustification`
+and the consumption lemmas are still stated in their pre-revision form in this
+commit (the structure still carries the unprovable `banked_below_supplier`);
+they are rewritten over the revised banking equation in the next commit, and
+the maintenance lemmas land in the one after.
+
 * `Weak.update_fcv_observed_exact`, `Weak.weakFcr_previousGreatest_succ_exact`,
-  `Weak.weakFcr_previousGreatest_origin` — the weak twins of the strong
-  bookkeeping rotation lemmas (`ActualResetCheckpointRealization.lean`,
-  `AcceptedCandidateHistoryRecurrence.lean`), now gated-rule aware.
-* `Weak.weakFcr_previousGreatest_known`, `Weak.weakFcr_observed_known`,
-  `Weak.weakFcrStep_observed_known` — **`banked_known` discharged in full**
-  along the actual weak trajectory, unconditionally and with no honesty
-  hypothesis anywhere.
-* `Weak.bankedBelowHead_of_bankedBelowJustified` — the fork-choice reduction
-  of `banked_below_supplier`: the head descends from the store's justified
-  root, so it suffices to place the banked root on the *justified* root's
-  chain.
+  `Weak.weakFcr_previousGreatest_origin`,
+  `Weak.weakFcr_previousGreatest_known` — the weak twins of the strong
+  bookkeeping rotation lemmas, gated-rule aware (the last two now cover the
+  *vestigial* field).
+* `Weak.weakFcr_observed_known`, `Weak.weakFcrStep_observed_known` —
+  `banked_known` discharged in full along the actual weak trajectory,
+  unconditionally and with no honesty hypothesis anywhere.
+* `Weak.certifiedBankedJustification_update`,
+  `Weak.weakFcr_certifiedBankedJustification` — **the maintenance lemmas**,
+  now closed: three cases (not an epoch start / gate false ⇒ re-index the
+  existing witness; gate true ⇒ the certified arm at `second := n + 1`,
+  `supplier :=` the boundary head, `banked_eq` read straight off the revised
+  write), and the trajectory induction seeded at the genesis initializer
+  (which banks the anchor store's `finalized_checkpoint`, in
+  `E.genesis_store.block_roots` ⇒ anchor arm).
 
 ## Honesty audit of the installation-provenance machinery
 
 Every component the maintenance lemmas need from the strong development is
 honesty-free, either because there is no honesty binder at all
-(`Execution.fcr_previousGreatest_succ_exact`,
-`Execution.previousGreatest_acceptedInstallation`,
-`Execution.AcceptedUJCacheInstallationAt`,
-`ObservedResetCandidateInputAt.acceptedInstallation`,
-`ExactPrefixAcceptedFFGSemantics.causalStoreGlobalProjection`,
+(`ExactPrefixAcceptedFFGSemantics.causalStoreGlobalProjection`,
 `globalJustified_anchor_or_AUEvidence`,
+`Execution.accepted_unrealized_justification_eq`,
 `AcceptedSelectorAUCarrier.checkpointRoot_known`,
 `AcceptedFFGTransitionCoherence.au_checkpoint_of_known` — quantified over
 `E.CausalStore`, not `E.honest`) or because the binder is routed only into
@@ -79,59 +122,10 @@ uses the **legacy** `FFGTransitionCoherence.au_checkpoint_of_known`
 So the honesty is dead, exactly as it was for
 `justifiedRootKnown_of_acceptedGlobalTrajectory`.
 
-## What is not delivered, and why it is a model-level finding
+## Fills beyond the ratified statements
 
-`Weak.certifiedBankedJustification_update` and
-`Weak.weakFcr_certifiedBankedJustification` (proposal §2's maintenance lemmas)
-are **not** included. After the work above, exactly one field of
-`BankedJustificationCertificate` remains: `banked_below_supplier`. It is not
-merely unproved — **as rule delta 5 is currently written it is false in
-general**, so no amount of observer-side restatement can close it.
-
-The gate installs `previous_epoch_greatest_unrealized_checkpoint`, which
-`weakFcr_previousGreatest_origin` shows is `(E.store obs k)
-.unrealized_justified_checkpoint` for the second `k` at the *end of the
-previous epoch*. The gate certifies the fork-choice head at the *boundary*
-second, and `get_head` descends from `store.justified_checkpoint.root`
-(`bankedBelowHead_of_bankedBelowJustified`). Between `k` and the boundary the
-store's own checkpoints can move to a different branch: `on_tick_per_slot`'s
-epoch pull-up installs whatever `store.unrealized_justified_checkpoint` is at
-the *tick*, and `update_unrealized_checkpoints` replaces the UJ field on any
-strictly higher epoch — from any accepted carrier, on any branch. So the
-observer's store can legitimately hold UJ = `C_A` (epoch `e−1`, branch A) at
-second `k`, receive a branch-B block whose pulled-up state justifies `C_B` at
-epoch `e`, and enter epoch `e` with `justified_checkpoint = C_B` and a head on
-branch B. The gate then passes (the head *is* certified) and banks `C_A`,
-which the head certificate does not cover. Placing `C_A` and `C_B` on one
-chain is an FFG-safety-grade claim about conflicting certified justifications
-at *different* epochs; it is not a consequence of the store definitions, and
-the accepted bundle (`AcceptedGlobalUnrealizedJustifiedOrigin` = `anchor ∨
-GU carrier`) does not force it. `JustificationInterface.justified_descends`
-covers only the strictly-ahead case and is honest-quantified besides.
-
-Consequence: **the gate as landed can bank a value its own certificate does
-not cover**, so the banked root's dissemination to honest endpoints does not
-follow. Minimal fix (statement only, for review — not applied here, since it
-changes the committed rule):
-
-```lean
-    current_epoch_observed_justified_checkpoint :=
-      if has_head_broadcast_certificate cfg ext store bs &&
-          is_ancestor store (get_head cfg store)
-            (get_node_for_root
-              fcr_store.previous_epoch_greatest_unrealized_checkpoint.root) then
-        fcr_store.previous_epoch_greatest_unrealized_checkpoint
-      else fcr_store.current_epoch_observed_justified_checkpoint
-```
-
-i.e. one extra executable conjunct, still strictly stricter than the strong
-rule and so still safety-free by the same monotonicity argument, and still
-liveness-costing at most one epoch of freshness (§4's accounting gains a
-fourth "inert" case: a boundary head that switched branches). With it,
-`banked_below_supplier` is the conjunct verbatim, `banked_known` is the
-theorems above, `second_pos` is the call's slot advance, and the two
-maintenance lemmas close. `bankedBelowHead_of_bankedBelowJustified` shows the
-cheaper justified-root form of the conjunct suffices.
+* `BankedJustificationCertificate.second_pos` is carried over unchanged from
+  the previous landing.
 -/
 
 namespace FastConfirmation.Spec
@@ -146,10 +140,10 @@ namespace Weak
 /-- **A true broadcast certificate has a non-empty span.** If
 `start_slot > end_slot`, `Finset.Icc start_slot end_slot` is empty, so the
 certificate's support is the empty sum `0`, and `0 > budget` is false for any
-`budget : ℕ` — contradicting the certificate. (Proposal §1's "free bonus":
-composed with `end_slot = get_current_slot store - 1` at
-`has_head_broadcast_certificate` and a within-horizon call second, this is
-what makes the certified head a pre-boundary block.) -/
+`budget : ℕ` — contradicting the certificate. (Composed with
+`end_slot = get_current_slot store - 1` at `has_head_broadcast_certificate`
+and a within-horizon call second, this is what makes the certified head a
+pre-boundary block.) -/
 theorem has_broadcast_certificate_span_nonempty {store : Store Root}
     {balance_source : BeaconState Root} {block_root : Root} {start_slot end_slot : Slot}
     (hcert : Weak.has_broadcast_certificate cfg ext store balance_source block_root
@@ -206,6 +200,320 @@ theorem checkpoint_state_key_of_broadcast_certificate (E : Execution Root)
   rw [Weak.has_broadcast_certificate, hsupp0] at hcert
   simp only [gt_iff_lt, decide_eq_true_eq] at hcert
   exact absurd hcert (Nat.not_lt_zero _)
+
+/-! ## Observer-side accepted checkpoint geometry
+
+Everything in this section is a *copy with the honesty binder dropped* of the
+accepted-FFG machinery, exactly as
+`ObserverCoherence.justified_root_known_of_acceptedGlobalTrajectory`
+(`WeakOneShotSafety.lean`) was: every step is proved for an arbitrary node,
+but the strong statements still take `_hw : w ∈ E.honest` as a required
+explicit argument, which a possibly-Byzantine `obs` cannot supply. -/
+
+/-- Unrealized-justified twin of
+`AcceptedFFGGlobalCheckpointOrigins.justified_anchor_or_AUEvidence`
+(`AcceptedFFGGlobalCheckpointTrajectory.lean` exports the justified and
+finalized accessors only; the `unrealized_justified` field has the same
+`anchor ∨ GU carrier` shape). -/
+private theorem unrealizedJustified_anchor_or_AUEvidence {E : Execution Root}
+    {anchor : Checkpoint Root} {S : AcceptedChainFFGState cfg ext E anchor}
+    {store : Store Root} (h : AcceptedFFGGlobalCheckpointOrigins S store) :
+    store.unrealized_justified_checkpoint = anchor ∨
+      AcceptedSelectorAUEvidence S store store.unrealized_justified_checkpoint := by
+  rcases h.unrealized_justified with hanchor | ⟨r, hr, hgu⟩
+  · exact Or.inl hanchor
+  · right
+    apply AcceptedSelectorAUEvidence.of_AU hr
+    rw [hgu]
+    exact S.gu_AU cfg ext hr.acceptedRoot
+
+/-- **The boundary walk of an accepted AU tip, at a possibly-Byzantine
+observer.** The tip's chain is known all the way down to the first slot of the
+checkpoint's epoch: the trusted anchor is a known block at or below that
+boundary (`TrustedAnchorBoundaryAligned` plus `anchor.epoch ≤ c.epoch`, which
+the accepted formation evidence certifies), and `store_walkKnownK` walks any
+known root down to any known block's slot. This is the step every consumer of
+`AcceptedSelectorAUCarrier.checkpointRoot_known` has to supply; factored out
+here so the knownness and the ancestry consumers share it. -/
+private theorem auTip_walkKnown
+    {E : Execution Root} (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
+    (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
+    (hboundary : Execution.TrustedAnchorBoundaryAligned (cfg := cfg) (E := E)
+      (anchor := B.anchor))
+    (obs : ValidatorIndex) (n : ℕ) {tip : Root} {c : Checkpoint Root}
+    (htip : tip ∈ (E.store cfg ext obs n).block_roots)
+    (hAU : B.state.AU cfg ext tip c) :
+    WalkKnown (E.store cfg ext obs n)
+      (compute_start_slot_at_epoch cfg c.epoch) tip := by
+  obtain ⟨ast, ablk, hgenEq, hslot, hparent⟩ := hT.genesis
+  have hanchorRoot : B.anchor.root = ablk.root := by
+    have hr := congrArg Checkpoint.root hanchor
+    rw [hgenEq] at hr
+    simpa only [get_forkchoice_store] using hr
+  have hanchorMem0 : B.anchor.root ∈ E.genesis_store.block_roots := by
+    rw [hgenEq, hanchorRoot]
+    simp only [get_forkchoice_store, List.mem_singleton]
+  have hanchorMem : B.anchor.root ∈ (E.store cfg ext obs n).block_roots :=
+    (E.store_storeLE cfg ext obs (Nat.zero_le n)).1 hanchorMem0
+  have hanchorBlock :
+      (E.store cfg ext obs n).blocks B.anchor.root = ablk.message := by
+    rw [hanchorRoot]
+    exact E.store_anchor_block cfg ext hT.wellFormed hgenEq obs n
+      (hanchorRoot ▸ hanchorMem)
+  have hboundary' : ablk.message.slot ≤
+      compute_start_slot_at_epoch cfg B.anchor.epoch := by
+    simpa only [Execution.TrustedAnchorBoundaryAligned, hgenEq, hanchorRoot,
+      get_forkchoice_store, Function.update_self] using hboundary
+  obtain ⟨carr, _hdesc, hformed⟩ := hAU
+  obtain ⟨hincluded⟩ := (B.state.formed_evidence hformed).certified
+  have hcertified : CertifiedJustified cfg E B.anchor c :=
+    IncludedCertifiedJustified.toCertifiedJustified
+      (cfg := cfg)
+      (Execution.AcceptedIncludedAttestationRelation.relation cfg ext E
+        B.state.includedAttestations) hincluded
+  have hanchorEpochLe : B.anchor.epoch ≤ c.epoch :=
+    CertifiedJustified.anchor_epoch_le (cfg := cfg) hcertified
+  have hstartLe : compute_start_slot_at_epoch cfg B.anchor.epoch ≤
+      compute_start_slot_at_epoch cfg c.epoch :=
+    Nat.mul_le_mul_right cfg.slots_per_epoch hanchorEpochLe
+  have hwalkAnchor : WalkKnown (E.store cfg ext obs n)
+      ((E.store cfg ext obs n).blocks B.anchor.root).slot tip :=
+    E.store_walkKnownK cfg ext hT.wellFormed hT.externals_coherence
+      ⟨ast, ablk, hgenEq, hslot, hparent⟩ obs n
+      B.anchor.root hanchorMem tip htip
+  apply hwalkAnchor.mono
+  rw [hanchorBlock]
+  exact hboundary'.trans hstartLe
+
+/-- **Accepted-origin checkpoint roots are known in the observer's own
+store.** The observer-side restatement of the knownness half of
+`AcceptedCurrentTargetLowerContracts.justifiedRootKnown_of_acceptedGlobalTrajectory`,
+generalized from the store's justified checkpoint to *any* checkpoint with an
+accepted origin at that store. -/
+theorem acceptedOriginRoot_known_at_observer
+    {E : Execution Root} (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
+    (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
+    (hboundary : Execution.TrustedAnchorBoundaryAligned (cfg := cfg) (E := E)
+      (anchor := B.anchor))
+    (obs : ValidatorIndex) (n : ℕ) {c : Checkpoint Root}
+    (horigin : c = B.anchor ∨
+      AcceptedSelectorAUEvidence B.state (E.store cfg ext obs n) c) :
+    c.root ∈ (E.store cfg ext obs n).block_roots := by
+  obtain ⟨ast, ablk, hgenEq, hslot, hparent⟩ := hT.genesis
+  have hanchorRoot : B.anchor.root = ablk.root := by
+    have hr := congrArg Checkpoint.root hanchor
+    rw [hgenEq] at hr
+    simpa only [get_forkchoice_store] using hr
+  have hanchorMem0 : B.anchor.root ∈ E.genesis_store.block_roots := by
+    rw [hgenEq, hanchorRoot]
+    simp only [get_forkchoice_store, List.mem_singleton]
+  have hanchorMem : B.anchor.root ∈ (E.store cfg ext obs n).block_roots :=
+    (E.store_storeLE cfg ext obs (Nat.zero_le n)).1 hanchorMem0
+  have hstore : E.CausalStore cfg ext (E.store cfg ext obs n) :=
+    E.store_causal cfg ext obs n
+  have hparentSlots : ParentSlotLt (E.store cfg ext obs n) :=
+    E.store_parentSlotLt cfg ext hT.wellFormed hT.externals_coherence
+      ⟨ast, ablk, hgenEq, hslot, hparent⟩
+      hT.wellFormed.anchor_parent_unscheduled obs n
+  rcases horigin with hcAnchor | hevidence
+  · rw [hcAnchor]
+    exact hanchorMem
+  · obtain ⟨carrier⟩ := hevidence
+    exact carrier.checkpointRoot_known B.coherence hstore hparentSlots
+      (Weak.auTip_walkKnown cfg ext B hT hanchor hboundary obs n
+        carrier.tip_carrier.known carrier.au)
+
+/-- **The observer's own unrealized-justified root is known in its own
+store.** `acceptedOriginRoot_known_at_observer` at the store-global
+unrealized-justified field, whose accepted origin is
+`unrealizedJustified_anchor_or_AUEvidence`. -/
+theorem unrealizedJustifiedRoot_known_of_acceptedGlobalTrajectory
+    {E : Execution Root} (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
+    (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
+    (hboundary : Execution.TrustedAnchorBoundaryAligned (cfg := cfg) (E := E)
+      (anchor := B.anchor))
+    (obs : ValidatorIndex) (n : ℕ) :
+    (E.store cfg ext obs n).unrealized_justified_checkpoint.root ∈
+      (E.store cfg ext obs n).block_roots := by
+  obtain ⟨ast, ablk, hgenEq, hslot, _hparent⟩ := hT.genesis
+  exact Weak.acceptedOriginRoot_known_at_observer cfg ext B hT hanchor hboundary obs n
+    (unrealizedJustified_anchor_or_AUEvidence cfg ext
+      ((B.causalStoreGlobalProjection ⟨ast, ablk, hgenEq, hslot⟩ hanchor
+        (E.store_causal cfg ext obs n)).storeGlobal))
+
+/-- **The observer's own justified root is known in its own store.**
+`acceptedOriginRoot_known_at_observer` at the store-global justified field. -/
+theorem justifiedRoot_known_at_observer
+    {E : Execution Root} (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
+    (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
+    (hboundary : Execution.TrustedAnchorBoundaryAligned (cfg := cfg) (E := E)
+      (anchor := B.anchor))
+    (obs : ValidatorIndex) (n : ℕ) :
+    (E.store cfg ext obs n).justified_checkpoint.root ∈
+      (E.store cfg ext obs n).block_roots := by
+  obtain ⟨ast, ablk, hgenEq, hslot, _hparent⟩ := hT.genesis
+  exact Weak.acceptedOriginRoot_known_at_observer cfg ext B hT hanchor hboundary obs n
+    (B.globalJustified_anchor_or_AUEvidence ⟨ast, ablk, hgenEq, hslot⟩ hanchor
+      (E.store_causal cfg ext obs n))
+
+/-- **The observer's own fork-choice head is a known block.** `get_head`'s
+GHOST descent either lands on a block of the filtered tree or degenerates to
+the justified root; both are known in the observer's own store, the latter by
+`justifiedRoot_known_at_observer`. This is `supplier_known` for the revised
+rule delta 5. -/
+theorem head_known_at_observer
+    {E : Execution Root} (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
+    (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
+    (hboundary : Execution.TrustedAnchorBoundaryAligned (cfg := cfg) (E := E)
+      (anchor := B.anchor))
+    (obs : ValidatorIndex) (n : ℕ) :
+    (get_head cfg (E.store cfg ext obs n)).root ∈ (E.store cfg ext obs n).block_roots := by
+  rcases get_head_root_mem_or cfg (E.store cfg ext obs n) with hmem | heq
+  · exact hmem
+  · rw [heq]
+    exact Weak.justifiedRoot_known_at_observer cfg ext B hT hanchor hboundary obs n
+
+/-! ### The chain-intrinsic ancestry of an accepted AU checkpoint -/
+
+/-- **An accepted AU checkpoint sits on its tip's own chain.** The accepted
+bundle's `au_checkpoint_of_known` (causal-store quantified, honesty-free)
+identifies the checkpoint's root with `get_checkpoint_block store tip c.epoch`,
+i.e. with the block the store's own ancestor walk from `tip` lands on at the
+first slot of `c.epoch`. Knownness is then `get_ancestor_spec` (this is
+`AcceptedSelectorAUCarrier.checkpointRoot_known`), and ancestry is the walk
+composition that knownness proof derives and discards: walking from `tip` down
+to the landed block's own slot lands on that block, which is precisely
+`is_ancestor`.
+
+This is the lemma that makes the revised rule delta 5 work — with the banked
+value read out of the head's own `unrealized_justifications` entry, coverage of
+the banked root by the head certificate is a consequence of the FFG contracts,
+not an extra hypothesis. -/
+theorem auCheckpoint_known_and_below_tip
+    {E : Execution Root} (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
+    (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
+    (hboundary : Execution.TrustedAnchorBoundaryAligned (cfg := cfg) (E := E)
+      (anchor := B.anchor))
+    (obs : ValidatorIndex) (n : ℕ) {tip : Root} {c : Checkpoint Root}
+    (htip : tip ∈ (E.store cfg ext obs n).block_roots)
+    (hAU : B.state.AU cfg ext tip c) :
+    c.root ∈ (E.store cfg ext obs n).block_roots ∧
+      is_ancestor (E.store cfg ext obs n) (get_node_for_root tip)
+        (get_node_for_root c.root) = true := by
+  obtain ⟨ast, ablk, hgenEq, hslot, hparent⟩ := hT.genesis
+  have hstore : E.CausalStore cfg ext (E.store cfg ext obs n) :=
+    E.store_causal cfg ext obs n
+  have hparentSlots : ParentSlotLt (E.store cfg ext obs n) :=
+    E.store_parentSlotLt cfg ext hT.wellFormed hT.externals_coherence
+      ⟨ast, ablk, hgenEq, hslot, hparent⟩
+      hT.wellFormed.anchor_parent_unscheduled obs n
+  have hwalk : WalkKnown (E.store cfg ext obs n)
+      (compute_start_slot_at_epoch cfg c.epoch) tip :=
+    Weak.auTip_walkKnown cfg ext B hT hanchor hboundary obs n htip hAU
+  have hcheckpoint := B.coherence.au_checkpoint_of_known hstore tip htip c hAU
+  have hroot : c.root = (get_ancestor (E.store cfg ext obs n)
+      (ForkChoiceNode.mk tip) (compute_start_slot_at_epoch cfg c.epoch)).root := by
+    have hr := congrArg Checkpoint.root hcheckpoint
+    simpa only [get_checkpoint_for_block, get_checkpoint_block] using hr
+  obtain ⟨hknown, hslotLe⟩ := get_ancestor_spec hparentSlots hwalk
+  have hcKnown : c.root ∈ (E.store cfg ext obs n).block_roots := by
+    rw [hroot]; exact hknown
+  have hcSlot : ((E.store cfg ext obs n).blocks c.root).slot ≤
+      compute_start_slot_at_epoch cfg c.epoch := by
+    rw [hroot]; exact hslotLe
+  have hback : WalkKnown (E.store cfg ext obs n)
+      ((E.store cfg ext obs n).blocks c.root).slot tip :=
+    E.store_walkKnownK cfg ext hT.wellFormed hT.externals_coherence
+      ⟨ast, ablk, hgenEq, hslot, hparent⟩ obs n c.root hcKnown tip htip
+  have hcomp := get_ancestor_comp hparentSlots hcSlot hback
+  have hinner : get_ancestor (E.store cfg ext obs n) (ForkChoiceNode.mk tip)
+      (compute_start_slot_at_epoch cfg c.epoch) = ForkChoiceNode.mk c.root := by
+    rw [hroot]
+  rw [hinner, get_ancestor_stop (le_refl _)] at hcomp
+  refine ⟨hcKnown, ?_⟩
+  simp only [is_ancestor, get_node_for_root, decide_eq_true_eq]
+  exact hcomp.symm
+
+/-- **The rule's actual read: the head's own unrealized justification is a
+known block on the head's chain.** `store.unrealized_justifications head` is
+`S.GU head` (`Execution.accepted_unrealized_justification_eq`, node-generic),
+which is AU at `head` itself (`gu_AU`), so
+`auCheckpoint_known_and_below_tip` applies with `tip := head`. This discharges
+both `banked_known` and the ancestry the consumption lemma needs, for the
+value the revised rule delta 5 banks. -/
+theorem headUnrealizedJustification_known_and_below
+    {E : Execution Root} (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
+    (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
+    (hboundary : Execution.TrustedAnchorBoundaryAligned (cfg := cfg) (E := E)
+      (anchor := B.anchor))
+    (obs : ValidatorIndex) (n : ℕ) :
+    ((E.store cfg ext obs n).unrealized_justifications
+        (get_head cfg (E.store cfg ext obs n)).root).root ∈
+      (E.store cfg ext obs n).block_roots ∧
+      is_ancestor (E.store cfg ext obs n)
+        (get_node_for_root (get_head cfg (E.store cfg ext obs n)).root)
+        (get_node_for_root ((E.store cfg ext obs n).unrealized_justifications
+          (get_head cfg (E.store cfg ext obs n)).root).root) = true := by
+  have hhead : (get_head cfg (E.store cfg ext obs n)).root ∈
+      (E.store cfg ext obs n).block_roots :=
+    Weak.head_known_at_observer cfg ext B hT hanchor hboundary obs n
+  have hgu : (E.store cfg ext obs n).unrealized_justifications
+      (get_head cfg (E.store cfg ext obs n)).root =
+      B.state.GU (get_head cfg (E.store cfg ext obs n)).root :=
+    E.accepted_unrealized_justification_eq
+      B.coherence.toAcceptedFFGSelectorCoherence obs n hhead
+  have hAU : B.state.AU cfg ext (get_head cfg (E.store cfg ext obs n)).root
+      ((E.store cfg ext obs n).unrealized_justifications
+        (get_head cfg (E.store cfg ext obs n)).root) := by
+    rw [hgu]
+    exact B.state.gu_AU cfg ext
+      (E.acceptedRoot_of_causal_known cfg ext (E.store_causal cfg ext obs n) hhead)
+  exact Weak.auCheckpoint_known_and_below_tip cfg ext B hT hanchor hboundary obs n
+    hhead hAU
+
+/-! ### The fork-choice reduction, retained
+
+No longer on rule delta 5's path (the revised rule's coverage is intrinsic to
+the head's own `unrealized_justifications` entry), but a true and reusable
+fork-choice fact at a possibly-Byzantine observer: anything on the store's
+*justified* root's chain is on the head's chain. -/
+
+/-- **`get_head` descends from the store's justified root.** `get_head` starts
+its GHOST descent at `store.justified_checkpoint.root` and only ever steps into
+the filtered block tree rooted there, so any block on the justified root's
+chain is on the head's chain (`E5Filter.head_ge_of_justified_ge_K`). All three
+of that lemma's domain conditions are node-generic and hold at the (possibly
+Byzantine) observer: `store_parentSlotLt`, `store_walkKnownK`, and
+`justifiedRoot_known_at_observer` above. -/
+theorem bankedBelowHead_of_bankedBelowJustified
+    {E : Execution Root} (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
+    (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
+    (hboundary : Execution.TrustedAnchorBoundaryAligned (cfg := cfg) (E := E)
+      (anchor := B.anchor))
+    (obs : ValidatorIndex) (n : ℕ) {b : Root}
+    (hb : b ∈ (E.store cfg ext obs n).block_roots)
+    (hjb : is_ancestor (E.store cfg ext obs n)
+      (get_node_for_root (E.store cfg ext obs n).justified_checkpoint.root)
+      (get_node_for_root b) = true) :
+    is_ancestor (E.store cfg ext obs n)
+      (get_head cfg (E.store cfg ext obs n)) (get_node_for_root b) = true := by
+  obtain ⟨ast, ablk, hgenEq, hslot, hparent⟩ := hT.genesis
+  exact head_ge_of_justified_ge_K cfg
+    (E.store_parentSlotLt cfg ext hT.wellFormed hT.externals_coherence
+      ⟨ast, ablk, hgenEq, hslot, hparent⟩
+      hT.wellFormed.anchor_parent_unscheduled obs n)
+    (E.store_walkKnownK cfg ext hT.wellFormed hT.externals_coherence
+      ⟨ast, ablk, hgenEq, hslot, hparent⟩ obs n)
+    (Weak.justifiedRoot_known_at_observer cfg ext B hT hanchor hboundary obs n)
+    hb hjb
 
 /-! ## The input invariant -/
 
@@ -385,235 +693,29 @@ theorem bankedRoot_known_at_all_honest_endpoints_at_observer
   · obtain ⟨h⟩ := hne
     exact (Weak.bankedSupplier_known_at_all_honest_endpoints_at_observer cfg ext hA hsync hji
       hgen hcomm h hw hmH (hgate h)).2
-
-/-! ## Maintenance along the actual-call trajectory
-
-The two maintenance lemmas of proposal §2 (`certifiedBankedJustification_update`,
-`weakFcr_certifiedBankedJustification`) need two facts about the value rule
-delta 5 installs at a gate-passing epoch-start rotation — namely the
-`banked_known` and `banked_below_supplier` fields of
-`BankedJustificationCertificate` at `second := n + 1`.
-
-This section discharges **`banked_known` in full**, unconditionally along the
-weak trajectory and with no honesty anywhere: the honesty binders in the
-strong development's installation-provenance machinery
-(`Execution.previousGreatest_acceptedInstallation`,
-`Execution.AcceptedUJCacheInstallationAt`,
-`ExactPrefixAcceptedFFGSemantics.causalStoreGlobalProjection`,
-`AcceptedSelectorAUCarrier.checkpointRoot_known`) are either absent outright or
-route only into node-generic store geometry (`store_causal`,
-`store_parentSlotLt`, `store_walkKnownK`, `store_storeLE`, `store_anchor_block`),
-exactly as for `justifiedRootKnown_of_acceptedGlobalTrajectory`.  The one
-honesty-quantified route (`ActualResetCheckpointRealization`'s
-`ResetCheckpointHistoryAt`) is the *legacy* `FFGTransitionCoherence`
-(`au_checkpoint_of_known : ∀ w ∈ E.honest, …`) and is bypassed here in favour
-of the accepted bundle's causal-store-quantified
-`AcceptedFFGTransitionCoherence.au_checkpoint_of_known`.
-
-`banked_below_supplier` is **not** discharged, and is not discharge*able* as
-rule delta 5 is currently written — see the module docstring's finding. -/
-
-/-! ### Observer-side accepted unrealized-justified-root knownness -/
-
-/-- Unrealized-justified twin of
-`AcceptedFFGGlobalCheckpointOrigins.justified_anchor_or_AUEvidence`
-(`AcceptedFFGGlobalCheckpointTrajectory.lean` exports the justified and
-finalized accessors only; the `unrealized_justified` field has the same
-`anchor ∨ GU carrier` shape). -/
-private theorem unrealizedJustified_anchor_or_AUEvidence {E : Execution Root}
-    {anchor : Checkpoint Root} {S : AcceptedChainFFGState cfg ext E anchor}
-    {store : Store Root} (h : AcceptedFFGGlobalCheckpointOrigins S store) :
-    store.unrealized_justified_checkpoint = anchor ∨
-      AcceptedSelectorAUEvidence S store store.unrealized_justified_checkpoint := by
-  rcases h.unrealized_justified with hanchor | ⟨r, hr, hgu⟩
-  · exact Or.inl hanchor
-  · right
-    apply AcceptedSelectorAUEvidence.of_AU hr
-    rw [hgu]
-    exact S.gu_AU cfg ext hr.acceptedRoot
-
-/-- **Accepted-origin checkpoint roots are known in the observer's own store.**
-The observer-side restatement of the knownness half of
-`AcceptedCurrentTargetLowerContracts.justifiedRootKnown_of_acceptedGlobalTrajectory`,
-generalized from the store's justified checkpoint to *any* checkpoint with an
-accepted origin at that store.  Like
-`ObserverCoherence.justified_root_known_of_acceptedGlobalTrajectory`
-(`WeakOneShotSafety.lean`), this is a *copy with the honesty binder dropped*
-rather than an application of the strong lemma: every step it takes
-(`store_storeLE`, `store_anchor_block`, `store_parentSlotLt`,
-`store_walkKnownK`, `store_causal`,
-`ExactPrefixAcceptedFFGSemantics.causalStoreGlobalProjection`,
-`AcceptedSelectorAUCarrier.checkpointRoot_known`) is proved for an arbitrary
-node — the accepted bundle's `au_checkpoint_of_known` is quantified over
-`E.CausalStore`, not over `E.honest`, unlike the legacy
-`FFGTransitionCoherence` one that `ActualResetCheckpointRealization.lean`
-uses — but the strong lemma still takes `_hw : w ∈ E.honest` as a required
-explicit argument, which a possibly-Byzantine `obs` cannot supply. -/
-theorem acceptedOriginRoot_known_at_observer
-    {E : Execution Root} (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
-    (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
-    (hboundary : Execution.TrustedAnchorBoundaryAligned (cfg := cfg) (E := E)
-      (anchor := B.anchor))
-    (obs : ValidatorIndex) (n : ℕ) {c : Checkpoint Root}
-    (horigin : c = B.anchor ∨
-      AcceptedSelectorAUEvidence B.state (E.store cfg ext obs n) c) :
-    c.root ∈ (E.store cfg ext obs n).block_roots := by
-  obtain ⟨ast, ablk, hgenEq, hslot, hparent⟩ := hT.genesis
-  have hgenShort : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
-      E.genesis_store = get_forkchoice_store cfg ast ablk ∧
-      ast.slot = ablk.message.slot :=
-    ⟨ast, ablk, hgenEq, hslot⟩
-  have hanchorRoot : B.anchor.root = ablk.root := by
-    have hr := congrArg Checkpoint.root hanchor
-    rw [hgenEq] at hr
-    simpa only [get_forkchoice_store] using hr
-  have hanchorMem0 : B.anchor.root ∈ E.genesis_store.block_roots := by
-    rw [hgenEq, hanchorRoot]
-    simp only [get_forkchoice_store, List.mem_singleton]
-  have hanchorMem : B.anchor.root ∈ (E.store cfg ext obs n).block_roots :=
-    (E.store_storeLE cfg ext obs (Nat.zero_le n)).1 hanchorMem0
-  have hanchorBlock :
-      (E.store cfg ext obs n).blocks B.anchor.root = ablk.message := by
-    rw [hanchorRoot]
-    exact E.store_anchor_block cfg ext hT.wellFormed hgenEq obs n
-      (hanchorRoot ▸ hanchorMem)
-  have hboundary' : ablk.message.slot ≤
-      compute_start_slot_at_epoch cfg B.anchor.epoch := by
-    simpa only [Execution.TrustedAnchorBoundaryAligned, hgenEq, hanchorRoot,
-      get_forkchoice_store, Function.update_self] using hboundary
-  have hstore : E.CausalStore cfg ext (E.store cfg ext obs n) :=
-    E.store_causal cfg ext obs n
-  have hparentSlots : ParentSlotLt (E.store cfg ext obs n) :=
-    E.store_parentSlotLt cfg ext hT.wellFormed hT.externals_coherence
-      ⟨ast, ablk, hgenEq, hslot, hparent⟩
-      hT.wellFormed.anchor_parent_unscheduled obs n
-  rcases horigin with hcAnchor | hevidence
-  · rw [hcAnchor]
-    exact hanchorMem
-  · obtain ⟨carrier⟩ := hevidence
-    obtain ⟨hincluded⟩ := carrier.formed_evidence.certified
-    have hcertified : CertifiedJustified cfg E B.anchor c :=
-      IncludedCertifiedJustified.toCertifiedJustified
-        (cfg := cfg)
-        (Execution.AcceptedIncludedAttestationRelation.relation cfg ext E
-          B.state.includedAttestations) hincluded
-    have hanchorEpochLe : B.anchor.epoch ≤ c.epoch :=
-      CertifiedJustified.anchor_epoch_le (cfg := cfg) hcertified
-    have hstartLe : compute_start_slot_at_epoch cfg B.anchor.epoch ≤
-        compute_start_slot_at_epoch cfg c.epoch :=
-      Nat.mul_le_mul_right cfg.slots_per_epoch hanchorEpochLe
-    have hwalkAnchor : WalkKnown (E.store cfg ext obs n)
-        ((E.store cfg ext obs n).blocks B.anchor.root).slot carrier.tip :=
-      E.store_walkKnownK cfg ext hT.wellFormed hT.externals_coherence
-        ⟨ast, ablk, hgenEq, hslot, hparent⟩ obs n
-        B.anchor.root hanchorMem carrier.tip carrier.tip_carrier.known
-    have hwalk : WalkKnown (E.store cfg ext obs n)
-        (compute_start_slot_at_epoch cfg c.epoch) carrier.tip := by
-      apply hwalkAnchor.mono
-      rw [hanchorBlock]
-      exact hboundary'.trans hstartLe
-    exact carrier.checkpointRoot_known B.coherence hstore hparentSlots hwalk
-
-/-- **The observer's own unrealized-justified root is known in its own store.**
-`acceptedOriginRoot_known_at_observer` at the store-global unrealized-justified
-field, whose accepted origin is `unrealizedJustified_anchor_or_AUEvidence`.
-This is `banked_known`'s ultimate source. -/
-theorem unrealizedJustifiedRoot_known_of_acceptedGlobalTrajectory
-    {E : Execution Root} (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
-    (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
-    (hboundary : Execution.TrustedAnchorBoundaryAligned (cfg := cfg) (E := E)
-      (anchor := B.anchor))
-    (obs : ValidatorIndex) (n : ℕ) :
-    (E.store cfg ext obs n).unrealized_justified_checkpoint.root ∈
-      (E.store cfg ext obs n).block_roots := by
-  obtain ⟨ast, ablk, hgenEq, hslot, _hparent⟩ := hT.genesis
-  exact Weak.acceptedOriginRoot_known_at_observer cfg ext B hT hanchor hboundary obs n
-    (unrealizedJustified_anchor_or_AUEvidence cfg ext
-      ((B.causalStoreGlobalProjection ⟨ast, ablk, hgenEq, hslot⟩ hanchor
-        (E.store_causal cfg ext obs n)).storeGlobal))
-
-/-- **The observer's own justified root is known in its own store.**
-`acceptedOriginRoot_known_at_observer` at the store-global justified field.
-This is `ObserverCoherence.justified_root_known` again, obtained here as an
-instance of the shared observer-side restatement rather than a second copy of
-the same forty lines; it is what feeds the fork-choice reduction below. -/
-theorem justifiedRoot_known_at_observer
-    {E : Execution Root} (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
-    (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
-    (hboundary : Execution.TrustedAnchorBoundaryAligned (cfg := cfg) (E := E)
-      (anchor := B.anchor))
-    (obs : ValidatorIndex) (n : ℕ) :
-    (E.store cfg ext obs n).justified_checkpoint.root ∈
-      (E.store cfg ext obs n).block_roots := by
-  obtain ⟨ast, ablk, hgenEq, hslot, _hparent⟩ := hT.genesis
-  exact Weak.acceptedOriginRoot_known_at_observer cfg ext B hT hanchor hboundary obs n
-    (B.globalJustified_anchor_or_AUEvidence ⟨ast, ablk, hgenEq, hslot⟩ hanchor
-      (E.store_causal cfg ext obs n))
-
-/-! ### The ancestry leg, reduced to the store's justified root -/
-
-/-- **`banked_below_supplier` reduces to `is_ancestor store justified banked`.**
-`get_head` starts its GHOST descent at `store.justified_checkpoint.root` and
-only ever steps into the filtered block tree rooted there, so any block on the
-justified root's chain is on the head's chain
-(`E5Filter.head_ge_of_justified_ge_K`).  All three of that lemma's domain
-conditions are node-generic and hold at the (possibly Byzantine) observer:
-`store_parentSlotLt`, `store_walkKnownK`, and `justifiedRoot_known_at_observer`
-above.
-
-This lemma is the exact residual of rule delta 5's maintenance obligation: it
-converts `BankedJustificationCertificate.banked_below_supplier` into a fact
-about the *justified* checkpoint, which is where the obligation genuinely
-fails — see this module's docstring. -/
-theorem bankedBelowHead_of_bankedBelowJustified
-    {E : Execution Root} (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
-    (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
-    (hboundary : Execution.TrustedAnchorBoundaryAligned (cfg := cfg) (E := E)
-      (anchor := B.anchor))
-    (obs : ValidatorIndex) (n : ℕ) {b : Root}
-    (hb : b ∈ (E.store cfg ext obs n).block_roots)
-    (hjb : is_ancestor (E.store cfg ext obs n)
-      (get_node_for_root (E.store cfg ext obs n).justified_checkpoint.root)
-      (get_node_for_root b) = true) :
-    is_ancestor (E.store cfg ext obs n)
-      (get_head cfg (E.store cfg ext obs n)) (get_node_for_root b) = true := by
-  obtain ⟨ast, ablk, hgenEq, hslot, hparent⟩ := hT.genesis
-  exact head_ge_of_justified_ge_K cfg
-    (E.store_parentSlotLt cfg ext hT.wellFormed hT.externals_coherence
-      ⟨ast, ablk, hgenEq, hslot, hparent⟩
-      hT.wellFormed.anchor_parent_unscheduled obs n)
-    (E.store_walkKnownK cfg ext hT.wellFormed hT.externals_coherence
-      ⟨ast, ablk, hgenEq, hslot, hparent⟩ obs n)
-    (Weak.justifiedRoot_known_at_observer cfg ext B hT hanchor hboundary obs n)
-    hb hjb
-
-/-! ### Exact rotation of the two weak FCR checkpoint fields -/
+/-! ## Exact rotation of the two weak FCR checkpoint fields -/
 
 /-- Weak twin of `update_fcv_observed_exact` (`ActualResetCheckpointRealization
-.lean`): exact source selected for the observed checkpoint, including rule
-delta 5's certificate gate and the ordered write through the possibly
-just-updated greatest-unrealized field. -/
+.lean`): exact source selected for the observed checkpoint under the revised
+rule delta 5 — the head's own unrealized justification when the certificate
+gate fires at an epoch start, the carried value otherwise.  Note that the
+ordered write through `previous_epoch_greatest_unrealized_checkpoint` has
+disappeared: the revised rule does not read that field. -/
 theorem update_fcv_observed_exact (fcr_store : FastConfirmationStore Root) :
     (Weak.update_fast_confirmation_variables cfg ext
         fcr_store).current_epoch_observed_justified_checkpoint =
       if is_start_slot_at_epoch cfg (get_current_slot cfg fcr_store.store) ∧
           has_head_broadcast_certificate cfg ext fcr_store.store
             (get_current_balance_source fcr_store) = true then
-        (if is_start_slot_at_epoch cfg (get_current_slot cfg fcr_store.store + 1) then
-          fcr_store.store.unrealized_justified_checkpoint
-        else fcr_store.previous_epoch_greatest_unrealized_checkpoint)
+        fcr_store.store.unrealized_justifications (get_head cfg fcr_store.store).root
       else fcr_store.current_epoch_observed_justified_checkpoint := by
   simp only [Weak.update_fast_confirmation_variables]
   split_ifs <;> simp_all
 
 /-- Weak twin of `Execution.fcr_previousGreatest_succ_exact`: the carried
 greatest-unrealized field is refreshed at a real slot advance exactly when the
-*next* slot starts an epoch, and rule delta 5 leaves that (ungated) write
-alone. -/
+*next* slot starts an epoch. Retained for field-for-field parity with the
+strong rule — the revised rule delta 5 no longer consumes this field. -/
 theorem weakFcr_previousGreatest_succ_exact {E : Execution Root}
     (v : ValidatorIndex) (n : ℕ)
     (hadv : get_current_slot cfg (E.store cfg ext v (n + 1)) >
@@ -634,10 +736,8 @@ theorem weakFcr_previousGreatest_succ_exact {E : Execution Root}
 
 /-- **Exact provenance of the weak carried greatest-unrealized field.** It is
 always some earlier second's store-global unrealized-justified checkpoint — the
-weak counterpart of `Execution.AcceptedUJCacheInstallationAt.field_eq`, stated
-without the accepted bundle because only the exact field identity is needed
-here.  No honesty, no call predicate: the recurrence is driven by the raw slot
-advance that `E.weakFcr` itself branches on. -/
+weak counterpart of `Execution.AcceptedUJCacheInstallationAt.field_eq`. Retained
+for parity; the revised rule delta 5 does not read this field. -/
 theorem weakFcr_previousGreatest_origin {E : Execution Root}
     (hgen : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
       E.genesis_store = get_forkchoice_store cfg ast ablk)
@@ -673,10 +773,8 @@ theorem weakFcr_previousGreatest_origin {E : Execution Root}
           simp only [Execution.weakFcr, if_neg hadv]
         exact hstep.trans hfield
 
-/-! ### `banked_known`, discharged -/
-
 /-- The weak carried greatest-unrealized root is a known block in the
-observer's own store at every later second. -/
+observer's own store at every later second. Retained for parity. -/
 theorem weakFcr_previousGreatest_known {E : Execution Root}
     (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
     (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
@@ -695,14 +793,16 @@ theorem weakFcr_previousGreatest_known {E : Execution Root}
     (Weak.unrealizedJustifiedRoot_known_of_acceptedGlobalTrajectory cfg ext B hT
       hanchor hboundary obs k)
 
-/-- **`banked_known`, discharged for the whole weak trajectory.** Whatever rule
-delta 5 has banked in `current_epoch_observed_justified_checkpoint` at any
-second is a known block in the observer's own store at that second — the
+/-! ### `banked_known`, discharged -/
+
+/-- **`banked_known`, discharged for the whole weak trajectory.** Whatever the
+revised rule delta 5 has banked in `current_epoch_observed_justified_checkpoint`
+at any second is a known block in the observer's own store at that second — the
 initialisation value is the trusted anchor, and every later value is either
-carried (`store_storeLE`) or a gate-passing installation of the
-greatest-unrealized field, which `weakFcr_previousGreatest_known` covers.  This
-is the `banked_known` field of `BankedJustificationCertificate` at
-`second := n`, proved outright and with no honesty hypothesis anywhere. -/
+carried (`store_storeLE`) or a gate-passing installation of the head's own
+unrealized justification, which
+`headUnrealizedJustification_known_and_below` covers. Proved outright, with no
+honesty hypothesis anywhere. -/
 theorem weakFcr_observed_known {E : Execution Root}
     (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
     (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
@@ -734,10 +834,8 @@ theorem weakFcr_observed_known {E : Execution Root}
           simp only [Execution.weakFcr, if_pos hadv, Weak.on_fast_confirmation]
         rw [hstep, Weak.update_fcv_observed_exact]
         split_ifs
-        · exact Weak.unrealizedJustifiedRoot_known_of_acceptedGlobalTrajectory cfg ext B
-            hT hanchor hboundary obs (n + 1)
-        · exact Weak.weakFcr_previousGreatest_known cfg ext B hT hanchor hboundary
-            obs (Nat.le_succ n)
+        · exact (Weak.headUnrealizedJustification_known_and_below cfg ext B hT
+            hanchor hboundary obs (n + 1)).1
         · exact (E.store_storeLE cfg ext obs (Nat.le_succ n)).1 ih
       · have hstep : (E.weakFcr cfg ext obs (n + 1)
             ).current_epoch_observed_justified_checkpoint =
@@ -748,7 +846,7 @@ theorem weakFcr_observed_known {E : Execution Root}
         exact (E.store_storeLE cfg ext obs (Nat.le_succ n)).1 ih
 
 /-- `banked_known` at the speculative query store `E.weakFcrStep`, the shape
-the maintenance lemma of proposal §2 needs at `second := n + 1`. -/
+the maintenance lemma needs at `second := n + 1`. -/
 theorem weakFcrStep_observed_known {E : Execution Root}
     (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
     (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
@@ -761,10 +859,8 @@ theorem weakFcrStep_observed_known {E : Execution Root}
       (E.store cfg ext obs (n + 1)).block_roots := by
   rw [Execution.weakFcrStep, Weak.update_fcv_observed_exact]
   split_ifs
-  · exact Weak.unrealizedJustifiedRoot_known_of_acceptedGlobalTrajectory cfg ext B hT
-      hanchor hboundary obs (n + 1)
-  · exact Weak.weakFcr_previousGreatest_known cfg ext B hT hanchor hboundary
-      obs (Nat.le_succ n)
+  · exact (Weak.headUnrealizedJustification_known_and_below cfg ext B hT
+      hanchor hboundary obs (n + 1)).1
   · exact (E.store_storeLE cfg ext obs (Nat.le_succ n)).1
       (Weak.weakFcr_observed_known cfg ext B hT hanchor hboundary obs n)
 
