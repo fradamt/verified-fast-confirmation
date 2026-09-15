@@ -25,6 +25,11 @@ import FastConfirmation.Spec.Proof.WeakEarlyPhaseSourceWiring
 import FastConfirmation.Spec.Proof.WeakCandidateHistoryRecurrence
 import FastConfirmation.Spec.Proof.WeakCandidateSourceHistory
 import FastConfirmation.Spec.Proof.WeakSelectedStrictEdgeFilterSupply
+import FastConfirmation.Spec.Proof.WeakPreQuerySIR
+import FastConfirmation.Spec.Proof.WeakHistoricalA32Geometry
+import FastConfirmation.Spec.Proof.WeakHistoricalA32Step
+import FastConfirmation.Spec.Proof.WeakHistoricalA32CallSupplier
+import FastConfirmation.Spec.Proof.WeakSelectedJustifiedOrientation
 
 /-!
 # Spec — facade
