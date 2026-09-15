@@ -15,6 +15,7 @@ import FastConfirmation.Spec.Proof.WeakSelectedMarginInputs
 import FastConfirmation.Spec.Proof.WeakCoveredMarginConstruction
 import FastConfirmation.Spec.Proof.WeakOneShotSafetyNative
 import FastConfirmation.Spec.Proof.WeakObserverDomain
+import FastConfirmation.Spec.Proof.WeakSourceHistory
 
 /-!
 # Spec — facade
