@@ -1,6 +1,7 @@
 import FastConfirmation.Spec.Proof.WeakSelectorInversion
 import FastConfirmation.Spec.Proof.WeakConfirmedDissemination
 import FastConfirmation.Spec.Proof.CoveredMargin
+import FastConfirmation.Spec.Proof.AcceptedCurrentTargetLowerContracts
 
 /-!
 # Spec / Proof / WeakOneShotSafety
@@ -90,20 +91,103 @@ structure ObserverCoherence (obs : ValidatorIndex) : Prop where
     (E.store cfg ext obs n).justified_checkpoint.root ∈
       (E.store cfg ext obs n).block_roots
 
+/-- **`ObserverCoherence.justified_root_known` is derivable, not an extra
+assumption**, given accepted global justified-root origins
+(`ExactPrefixAcceptedFFGSemantics`) and the ordinary execution trajectory
+(`ScheduledPrefixTrajectoryAssumptions`). This is exactly
+`AcceptedCurrentTargetLowerContracts.justifiedRootKnown_of_acceptedGlobalTrajectory`
+restated at an arbitrary `obs` — that theorem's honesty premise `_hw : w ∈
+E.honest` is already unused in its proof (every lemma it calls,
+`store_storeLE`, `store_anchor_block`, `store_parentSlotLt`,
+`store_walkKnownK`, `store_causal`, is proved for an arbitrary node), but the
+premise is still a required explicit argument, so it cannot be *applied*
+here without first producing a (nonexistent, since `obs` need not be honest)
+membership proof. The body is therefore copied verbatim with the honesty
+binder dropped, rather than routed through the original via `apply`. Kept
+here as a derivation lemma so `ObserverCoherence.justified_root_known` is
+demonstrably not an extra assumption, without importing the accepted-FFG
+package into the one-shot premise surface itself (`WeakObserverMarginAssumptions`
+still just takes `coherence` as a field). -/
+theorem ObserverCoherence.justified_root_known_of_acceptedGlobalTrajectory
+    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
+    (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
+    (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg) (E := E)
+      (anchor := B.anchor))
+    (obs : ValidatorIndex) :
+    ∀ n : ℕ, E.WithinHorizon cfg n →
+      (E.store cfg ext obs n).justified_checkpoint.root ∈
+        (E.store cfg ext obs n).block_roots := by
+  intro n _hHn
+  obtain ⟨ast, ablk, hgenEq, hslot, hparent⟩ := hT.genesis
+  have hgenShort : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
+      E.genesis_store = get_forkchoice_store cfg ast ablk ∧
+      ast.slot = ablk.message.slot :=
+    ⟨ast, ablk, hgenEq, hslot⟩
+  have hanchorRoot : B.anchor.root = ablk.root := by
+    have hr := congrArg Checkpoint.root hanchor
+    rw [hgenEq] at hr
+    simpa only [get_forkchoice_store] using hr
+  have hanchorMem0 : B.anchor.root ∈ E.genesis_store.block_roots := by
+    rw [hgenEq, hanchorRoot]
+    simp only [get_forkchoice_store, List.mem_singleton]
+  have hanchorMem : B.anchor.root ∈
+      (E.store cfg ext obs n).block_roots :=
+    (E.store_storeLE cfg ext obs (Nat.zero_le n)).1 hanchorMem0
+  have hanchorBlock :
+      (E.store cfg ext obs n).blocks B.anchor.root = ablk.message := by
+    rw [hanchorRoot]
+    exact E.store_anchor_block cfg ext hT.wellFormed hgenEq obs n
+      (hanchorRoot ▸ hanchorMem)
+  have hboundary' : ablk.message.slot ≤
+      compute_start_slot_at_epoch cfg B.anchor.epoch := by
+    simpa only [TrustedAnchorBoundaryAligned, hgenEq, hanchorRoot,
+      get_forkchoice_store, Function.update_self] using hboundary
+  have hstore : E.CausalStore cfg ext (E.store cfg ext obs n) :=
+    E.store_causal cfg ext obs n
+  have hparentSlots : ParentSlotLt (E.store cfg ext obs n) :=
+    E.store_parentSlotLt cfg ext hT.wellFormed hT.externals_coherence
+      ⟨ast, ablk, hgenEq, hslot, hparent⟩
+      hT.wellFormed.anchor_parent_unscheduled obs n
+  rcases B.globalJustified_anchor_or_AUEvidence hgenShort hanchor hstore with
+    hjustAnchor | hevidence
+  · rw [hjustAnchor]
+    exact hanchorMem
+  · obtain ⟨carrier⟩ := hevidence
+    obtain ⟨hincluded⟩ := carrier.formed_evidence.certified
+    have hcertified : CertifiedJustified cfg E B.anchor
+        (E.store cfg ext obs n).justified_checkpoint :=
+      IncludedCertifiedJustified.toCertifiedJustified
+        (cfg := cfg)
+        (Execution.AcceptedIncludedAttestationRelation.relation cfg ext E
+          B.state.includedAttestations) hincluded
+    have hanchorEpochLe : B.anchor.epoch ≤
+        (E.store cfg ext obs n).justified_checkpoint.epoch :=
+      CertifiedJustified.anchor_epoch_le (cfg := cfg) hcertified
+    have hstartLe : compute_start_slot_at_epoch cfg B.anchor.epoch ≤
+        compute_start_slot_at_epoch cfg
+          (E.store cfg ext obs n).justified_checkpoint.epoch :=
+      Nat.mul_le_mul_right cfg.slots_per_epoch hanchorEpochLe
+    have hwalkAnchor : WalkKnown (E.store cfg ext obs n)
+        ((E.store cfg ext obs n).blocks B.anchor.root).slot carrier.tip :=
+      E.store_walkKnownK cfg ext hT.wellFormed hT.externals_coherence
+        ⟨ast, ablk, hgenEq, hslot, hparent⟩ obs n
+        B.anchor.root hanchorMem carrier.tip carrier.tip_carrier.known
+    have hwalk : WalkKnown (E.store cfg ext obs n)
+        (compute_start_slot_at_epoch cfg
+          (E.store cfg ext obs n).justified_checkpoint.epoch) carrier.tip := by
+      apply hwalkAnchor.mono
+      rw [hanchorBlock]
+      exact hboundary'.trans hstartLe
+    exact carrier.checkpointRoot_known B.coherence hstore hparentSlots hwalk
+
 /-- The full assumption bundle for the one-shot weak safety theorem: the usual
-`SelectedMarginAssumptions`, an observer that need not be honest, the
-observer's own store coherence, and the anchor shape fact. The last field
-duplicates `base.genesis` verbatim (`SelectedMarginAssumptions.genesis`); it
-is kept because the task's blueprint names it explicitly, but every proof
-below in fact draws the anchor shape from `base.genesis`, so `anchor_shape`
-itself is never consumed (flagged in the final report). -/
+`SelectedMarginAssumptions`, an observer that need not be honest, and the
+observer's own store coherence. -/
 structure WeakObserverMarginAssumptions (obs : ValidatorIndex) : Prop where
   base : SelectedMarginAssumptions cfg ext E
   observer : obs ∉ E.honest
   coherence : E.ObserverCoherence cfg ext obs
-  anchor_shape : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
-    E.genesis_store = get_forkchoice_store cfg ast ablk ∧
-    ast.slot = ablk.message.slot ∧ ablk.message.parent_root ≠ ablk.root
 
 /-! ## Section 1 — the three `_of_prefix` crossing-arithmetic clones
 
