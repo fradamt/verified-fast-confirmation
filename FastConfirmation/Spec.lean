@@ -8,6 +8,7 @@ import FastConfirmation.Spec.Proof.WeakFreshSupport
 import FastConfirmation.Spec.Proof.WeakQuorumAccounting
 import FastConfirmation.Spec.Proof.WeakEndpointClasses
 import FastConfirmation.Spec.Proof.WeakCrossingSets
+import FastConfirmation.Spec.Proof.WeakSiblingScore
 import FastConfirmation.Spec.Proof.WeakSelectorBetween
 
 /-!
