@@ -864,6 +864,186 @@ theorem ObservedResetCandidateInputAt.acceptedLemma22EpochStartCandidateSource
     (E.weakFcrStep_store cfg ext obs n) hbank h.epoch_start
     h.observed_previous_epoch
 
+
+/-! ## The strict-advance origin (Lemma 13 at the observer) -/
+
+/-- Weak twin of `Execution.StrictSelectorAdvanceAt.mechanicalFacts`: enrich
+the strict arm of the weak recurrence with the query-local mechanical facts.
+`hv` is replaced by `hcoh` throughout, via
+`Weak.strictSelectedResultMechanicalFacts` (`WeakSelectedTrace.lean`). -/
+theorem StrictSelectorAdvanceAt.mechanicalFacts
+    {E : Execution Root} (hA : SelectedMarginAssumptions cfg ext E)
+    {obs : ValidatorIndex} (hcoh : E.ObserverCoherence cfg ext obs) {q : Nat}
+    (hqH : E.WithinHorizon cfg q)
+    {query : FastConfirmationStore Root}
+    {trace : Weak.GetLatestConfirmedTrace cfg ext query}
+    (hquery : query.store = E.store cfg ext obs q)
+    (hinput : trace.afterObserved ∈ query.store.block_roots)
+    (h : Weak.StrictSelectorAdvanceAt cfg ext query trace) :
+    Weak.StrictSelectedResultMechanicalFacts cfg ext query
+      trace.afterObserved trace.result := by
+  obtain ⟨ast, ablk, hgen, hslot, _hparent⟩ := hA.genesis
+  have hgenShort : ∃ (ast : BeaconState Root)
+      (ablk : SignedBeaconBlock Root),
+      E.genesis_store = get_forkchoice_store cfg ast ablk ∧
+        ast.slot = ablk.message.slot :=
+    ⟨ast, ablk, hgen, hslot⟩
+  have hinputEpochUpper : get_block_epoch cfg query.store
+        trace.afterObserved ≤ get_current_store_epoch cfg query.store := by
+    simp only [get_block_epoch, get_current_store_epoch,
+      compute_epoch_at_slot]
+    exact Nat.div_le_div_right
+      (by
+        rw [hquery]
+        simpa only [E.store_current_slot] using
+          E.store_blocks_slot_le_current cfg ext hA.whole_seconds hgenShort
+            obs q trace.afterObserved (by simpa only [hquery] using hinput))
+  have hinputEpoch : get_block_epoch cfg query.store
+          trace.afterObserved = get_current_store_epoch cfg query.store ∨
+      get_block_epoch cfg query.store trace.afterObserved + 1 =
+        get_current_store_epoch cfg query.store := by
+    have hrecent := h.input_recent
+    rcases Nat.eq_or_lt_of_le hinputEpochUpper with heq | hlt
+    · exact Or.inl heq
+    · exact Or.inr (Nat.le_antisymm (Nat.succ_le_iff.mpr hlt) hrecent)
+  have hstrictFind : Weak.find_latest_confirmed_descendant cfg ext query
+      trace.afterObserved ≠ trace.afterObserved := by
+    intro hfixed
+    exact h.result_ne_input (h.result_eq.trans hfixed)
+  have hfacts := Weak.strictSelectedResultMechanicalFacts cfg ext hA hcoh hqH
+    query hquery trace.afterObserved hinput hinputEpoch hstrictFind
+  simpa only [← h.result_eq] using hfacts
+
+/-- Weak twin of `Execution.StrictSelectedResultMechanicalFacts.
+currentCandidateSourceOrigin`: a strict current-epoch weak selector advance
+installs a fresh candidate-specific history origin at the observer.
+
+The Lemma-13 seed is the query fork-choice head, and stage S5's combined
+lemma hands back the `has_head_broadcast_certificate` flag alongside the `GU`
+bound, so the record's `seed_disseminated` field is
+`Weak.headSeed_known_at_all_honest_endpoints_at_observer` applied to that
+flag. `hslotPos` is the only genuinely new premise (the certificate's span
+ends at `get_current_slot - 1`, so translating its gate into the record's
+`E.slot_at cfg q ≤ E.slot_at cfg m` form needs the query slot to be past
+slot 0); at every actual call it is immediate from `E.IsFCRCallAt`. -/
+theorem StrictSelectedResultMechanicalFacts.currentCandidateSourceOrigin
+    {E : Execution Root} (hA : SelectedMarginAssumptions cfg ext E)
+    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (hsync : PaperSafetySynchrony cfg ext E)
+    (hji : JustificationInterface cfg ext E)
+    {obs : ValidatorIndex} (hcoh : E.ObserverCoherence cfg ext obs) {q : Nat}
+    (hqH : E.WithinHorizon cfg q)
+    (hslotPos : 1 ≤ E.slot_at cfg q)
+    {query : FastConfirmationStore Root} {input result : Root}
+    (hquery : query.store = E.store cfg ext obs q)
+    (hparent : ParentSlotLt query.store)
+    (hwalk : ∀ t ∈ query.store.block_roots,
+      ∀ r ∈ query.store.block_roots,
+        WalkKnown query.store (query.store.blocks t).slot r)
+    (hhead : (get_head cfg query.store).root ∈ query.store.block_roots)
+    (hinput : input ∈ query.store.block_roots)
+    (hout : Weak.find_latest_confirmed_descendant cfg ext query input = result)
+    (hstrict : result ≠ input)
+    (h : Weak.StrictSelectedResultMechanicalFacts cfg ext query input result)
+    (hcurrent : get_block_epoch cfg query.store result =
+      get_current_store_epoch cfg query.store)
+    (hnotStart : is_start_slot_at_epoch cfg
+      (get_current_slot cfg query.store) ≠ true) :
+    Nonempty (Weak.AcceptedCurrentCandidateSourceOriginAt cfg ext E B obs q
+      result) := by
+  obtain ⟨hdesc, hgu, hcert⟩ :=
+    h.currentHeadLemma13SourceSeedCertified_of_notStart cfg ext B
+      (by rw [hquery]; exact E.store_causal cfg ext obs q)
+      hparent hwalk hhead hinput hout hstrict hcurrent hnotStart
+  have hclock : get_current_slot cfg query.store = E.slot_at cfg q := by
+    rw [hquery]; exact E.store_current_slot cfg ext obs q
+  exact ⟨{
+    originSecond := q
+    origin_le := Nat.le_refl q
+    origin_within := hqH
+    candidate_known := by simpa only [hquery] using h.result_known
+    candidate_current := by simpa only [hquery] using hcurrent
+    seed := (get_head cfg (E.store cfg ext obs q)).root
+    seed_known := by simpa only [hquery] using hhead
+    seed_descends_candidate := by simpa only [hquery] using hdesc
+    gu_recent := by simpa only [hquery] using hgu
+    seed_disseminated := by
+      intro w hw m hmH hgate
+      have hgate' : (get_current_slot cfg query.store - 1) + 1 ≤
+          E.slot_at cfg m := by
+        rw [hclock, Nat.sub_add_cancel hslotPos]
+        exact hgate
+      have hknown := Weak.headSeed_known_at_all_honest_endpoints_at_observer
+        cfg ext hA hsync hji hqH hcoh hquery hcert hw hmH hgate'
+      simpa only [hquery] using hknown
+  }⟩
+
+/-- Weak twin of `Execution.previousConfirmed_current_of_boundary_recent`,
+over `E.weakFcrStep` / `E.weakConfirmed`. Honesty-free in both developments;
+only the bookkeeping function changes. -/
+theorem previousConfirmed_current_of_boundary_recent
+    {E : Execution Root} (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
+    {v : ValidatorIndex} {n : Nat}
+    (hcall : E.IsFCRCallAt cfg ext v n)
+    (hstart : is_start_slot_at_epoch cfg
+      (get_current_slot cfg (E.store cfg ext v (n + 1))) = true)
+    (hknownN : E.weakConfirmed cfg ext v n ∈
+      (E.store cfg ext v n).block_roots)
+    (hrecentQ : get_block_epoch cfg (E.weakFcrStep cfg ext v n).store
+          (E.weakConfirmed cfg ext v n) + 1 ≥
+        get_current_store_epoch cfg (E.weakFcrStep cfg ext v n).store) :
+    get_block_epoch cfg (E.store cfg ext v n)
+        (E.weakConfirmed cfg ext v n) =
+      get_current_store_epoch cfg (E.store cfg ext v n) := by
+  obtain ⟨ast, ablk, hgen, hslot, _hparent⟩ := hT.genesis
+  have hgenShort : ∃ (ast : BeaconState Root)
+      (ablk : SignedBeaconBlock Root),
+      E.genesis_store = get_forkchoice_store cfg ast ablk ∧
+        ast.slot = ablk.message.slot :=
+    ⟨ast, ablk, hgen, hslot⟩
+  have hknownN1 : E.weakConfirmed cfg ext v n ∈
+      (E.store cfg ext v (n + 1)).block_roots :=
+    (E.store_storeLE cfg ext v (Nat.le_succ n)).1 hknownN
+  have hblockAgree :
+      (E.store cfg ext v n).blocks (E.weakConfirmed cfg ext v n) =
+        (E.store cfg ext v (n + 1)).blocks
+          (E.weakConfirmed cfg ext v n) :=
+    hT.wellFormed.blocks_agree
+      (E.blockProvenance cfg ext v n)
+      (E.blockProvenance cfg ext v (n + 1)) hknownN hknownN1
+  have hblockEpochEq : get_block_epoch cfg (E.store cfg ext v n)
+        (E.weakConfirmed cfg ext v n) =
+      get_block_epoch cfg (E.weakFcrStep cfg ext v n).store
+        (E.weakConfirmed cfg ext v n) := by
+    rw [E.weakFcrStep_store]
+    simp only [get_block_epoch, hblockAgree]
+  have hblockUpper : get_block_epoch cfg (E.store cfg ext v n)
+        (E.weakConfirmed cfg ext v n) ≤
+      get_current_store_epoch cfg (E.store cfg ext v n) := by
+    simp only [get_block_epoch, get_current_store_epoch,
+      compute_epoch_at_slot]
+    exact Nat.div_le_div_right
+      (by
+        simpa only [E.store_current_slot] using
+          E.store_blocks_slot_le_current cfg ext hT.whole_seconds hgenShort
+            v n (E.weakConfirmed cfg ext v n) hknownN)
+  have hepochSucc := E.actualCall_currentEpoch_succ_of_start
+    cfg ext hT hcall hstart
+  have hlowerPlus : get_current_store_epoch cfg (E.store cfg ext v n) + 1 ≤
+      get_block_epoch cfg (E.store cfg ext v n)
+          (E.weakConfirmed cfg ext v n) + 1 := by
+    calc
+      get_current_store_epoch cfg (E.store cfg ext v n) + 1 =
+          get_current_store_epoch cfg (E.store cfg ext v (n + 1)) :=
+        hepochSucc
+      _ ≤ get_block_epoch cfg (E.weakFcrStep cfg ext v n).store
+            (E.weakConfirmed cfg ext v n) + 1 := by
+        simpa only [E.weakFcrStep_store] using hrecentQ
+      _ = get_block_epoch cfg (E.store cfg ext v n)
+            (E.weakConfirmed cfg ext v n) + 1 := by rw [← hblockEpochEq]
+  exact Nat.le_antisymm hblockUpper
+    (Nat.le_of_add_le_add_right hlowerPlus)
+
 end Weak
 
 end FastConfirmation.Spec
