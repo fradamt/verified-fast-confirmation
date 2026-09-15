@@ -69,6 +69,17 @@ Only one surplus honest attester is needed — the certificate threshold is
    is gated the same way, at its own short-circuit. See
    `docs/weak-synchrony.md` for the full site sweep and the findings this
    delta records but does not close.
+5. `Weak.update_fast_confirmation_variables` (*certified bookkeeping*) gates
+   the epoch-start installation of the current-epoch observed justified
+   checkpoint — the key `get_current_balance_source` reads, and hence the key
+   every other weak certificate in the call is evaluated against — on
+   `Weak.has_head_broadcast_certificate` for the fork-choice head at update
+   time. If the gate fails the field keeps its previous (already-certified)
+   value: stale-but-certified beats fresh-but-uncertified, so this is
+   monotonically stricter than the strong rule and hence safety-free. Every
+   other write of the strong function is unconditional, as before. See
+   `docs/weak-synchrony.md`, "Rule delta 5", for the liveness cost and
+   `Weak.CertifiedBankedJustification` for the resulting input invariant.
 
 Stored-state maintenance across epochs (the revert-to-finalized and
 epoch-start restart branches of `get_latest_confirmed`, and
@@ -322,6 +333,84 @@ def has_justification_witness_certificate (fcr_store : FastConfirmationStore Roo
   has_broadcast_certificate cfg ext store (get_current_balance_source fcr_store) witness
     (get_block_slot store witness) (get_current_slot cfg store - 1)
 
+/-- Weak-model `update_fast_confirmation_variables` (rule delta 5, *certified
+bookkeeping*).  Identical to the strong rule except for **one** write: the
+epoch-start installation of the current-epoch observed justified checkpoint —
+the key `get_current_balance_source` reads, and hence the key every other weak
+certificate in the call is evaluated against — happens only when the block
+supplying that justification is broadcast-certified.  The supplier is the
+fork-choice head at update time: possessing the head implies possessing its
+ancestry, so `has_head_broadcast_certificate` dominates the deeper carrier
+that actually formed `store.unrealized_justified_checkpoint` (the same
+domination argument as rule delta 4).
+
+The gate is evaluated against `bs`, the **incoming** (already-certified, by
+`CertifiedBankedJustification` below) balance source, read off `fcr_store`
+*before* any field is rewritten.  Evaluating it against the value being
+installed would let an uncertified key certify itself: an unkeyed or
+adversarial checkpoint state makes both the certificate support and the
+adversarial budget degenerate.
+
+If the gate fails the field keeps its previous value — stale-but-certified
+beats fresh-but-uncertified.  This is monotonically stricter than the strong
+rule (the field is only ever assigned values the strong rule would also have
+assigned), hence safety-free; the liveness cost is documented in
+`docs/weak-synchrony.md`, "Rule delta 5".
+
+Field-by-field: the slot-head writes and the (unconditional)
+`previous_epoch_greatest_unrealized_checkpoint` refresh are untouched — they
+are either consumed only at already-gated use sites (`previous_slot_head`, via
+`has_justification_witness_certificate`) or dominated by the gated rotation
+below (`previous_epoch_greatest_unrealized_checkpoint`, whose sole consumer is
+that rotation). `previous_epoch_observed_justified_checkpoint` also stays
+unconditional: it only feeds the deferred-scope `get_previous_balance_source`,
+so rotating it ungated preserves rather than weakens any future invariant on
+it. Only `current_epoch_observed_justified_checkpoint`'s installation is
+gated, on `has_head_broadcast_certificate` verbatim — same function, same
+span, same balance-source convention as delta 4.
+```python
+store = fcr_store.store
+fcr_store.previous_slot_head = fcr_store.current_slot_head
+fcr_store.current_slot_head = get_head(store).root
+if is_start_slot_at_epoch(Slot(get_current_slot(store) + 1)):
+    fcr_store.previous_epoch_greatest_unrealized_checkpoint = store.unrealized_justified_checkpoint
+if is_start_slot_at_epoch(get_current_slot(store)):
+    fcr_store.previous_epoch_observed_justified_checkpoint = (
+        fcr_store.current_epoch_observed_justified_checkpoint)
+    if has_head_broadcast_certificate(store, bs):                      # delta 5
+        fcr_store.current_epoch_observed_justified_checkpoint = (
+            fcr_store.previous_epoch_greatest_unrealized_checkpoint)
+``` -/
+def update_fast_confirmation_variables (fcr_store : FastConfirmationStore Root) :
+    FastConfirmationStore Root :=
+  let store := fcr_store.store
+  let bs := get_current_balance_source fcr_store
+  -- Update prev and curr slot head (unconditional, as in the strong rule)
+  let fcr_store :=
+    { fcr_store with
+      previous_slot_head := fcr_store.current_slot_head
+      current_slot_head := (get_head cfg store).root }
+  -- Update greatest unrealized justified checkpoint at the last slot of an
+  -- epoch (unconditional: this field is consumed only through the gated
+  -- rotation below, which dominates it)
+  let fcr_store :=
+    if is_start_slot_at_epoch cfg (get_current_slot cfg store + 1) then
+      { fcr_store with
+        previous_epoch_greatest_unrealized_checkpoint :=
+          store.unrealized_justified_checkpoint }
+    else fcr_store
+  -- Update observed justified checkpoints at the start of an epoch; the
+  -- current-epoch write is gated on a broadcast certificate for its supplier
+  if is_start_slot_at_epoch cfg (get_current_slot cfg store) then
+    { fcr_store with
+      previous_epoch_observed_justified_checkpoint :=
+        fcr_store.current_epoch_observed_justified_checkpoint
+      current_epoch_observed_justified_checkpoint :=
+        if has_head_broadcast_certificate cfg ext store bs then
+          fcr_store.previous_epoch_greatest_unrealized_checkpoint
+        else fcr_store.current_epoch_observed_justified_checkpoint }
+  else fcr_store
+
 /-- Weak-model previous-epoch advancement loop (as in `Confirmation`, over the
 weak `is_one_confirmed`). -/
 def find_latest_confirmed_descendant_prev_epoch_loop
@@ -407,6 +496,60 @@ def find_latest_confirmed_descendant (fcr_store : FastConfirmationStore Root)
       tentative_confirmed_root
     else confirmed_root
   else confirmed_root
+
+/-- Weak-model `get_latest_confirmed`. Identical to the strong rule with the
+weak `find_latest_confirmed_descendant` substituted for the advancement step
+(picked up automatically by namespace resolution, as `Weak.find_latest_
+confirmed_descendant` shadows the strong function inside this namespace).
+The revert-to-finalized branch (`is_confirmed_chain_safe`) and the
+epoch-start restart branch are the strong/deferred versions — stored-state
+maintenance across epochs is out of scope for the weak model (module
+docstring). -/
+def get_latest_confirmed (fcr_store : FastConfirmationStore Root) : Root :=
+  let store := fcr_store.store
+  let confirmed_root := fcr_store.confirmed_root
+  let current_epoch := get_current_store_epoch cfg store
+  -- Revert to finalized block if the confirmed block is too old, is not
+  -- canonical, or the confirmed chain cannot be re-confirmed at epoch start
+  let head := (get_head cfg store).root
+  let confirmed_root :=
+    if get_block_epoch cfg store confirmed_root + 1 < current_epoch ∨
+        ¬ is_ancestor store (get_node_for_root head) (get_node_for_root confirmed_root) ∨
+        (is_start_slot_at_epoch cfg (get_current_slot cfg store) ∧
+          ¬ is_confirmed_chain_safe cfg ext fcr_store confirmed_root) then
+      store.finalized_checkpoint.root
+    else confirmed_root
+  -- Restart the confirmation chain from the observed justified checkpoint
+  -- when the epoch-start restart conditions are all met
+  let is_epoch_start := is_start_slot_at_epoch cfg (get_current_slot cfg store)
+  let observed_justified_block_slot :=
+    get_block_slot store fcr_store.current_epoch_observed_justified_checkpoint.root
+  let is_observed_justified_block_epoch_ok :=
+    decide (compute_epoch_at_slot cfg observed_justified_block_slot + 1 = current_epoch)
+  let is_head_unrealized_justified_ok :=
+    decide (fcr_store.current_epoch_observed_justified_checkpoint =
+      store.unrealized_justifications head)
+  let is_confirmed_block_stale :=
+    decide (get_block_slot store confirmed_root < observed_justified_block_slot)
+  let confirmed_root :=
+    if is_epoch_start && is_observed_justified_block_epoch_ok &&
+        is_head_unrealized_justified_ok && is_confirmed_block_stale then
+      fcr_store.current_epoch_observed_justified_checkpoint.root
+    else confirmed_root
+  -- Attempt to further advance the latest confirmed block
+  if get_block_epoch cfg store confirmed_root + 1 ≥ current_epoch then
+    find_latest_confirmed_descendant cfg ext fcr_store confirmed_root
+  else
+    confirmed_root
+
+/-- Weak-model `on_fast_confirmation` handler: runs the weak
+`update_fast_confirmation_variables` (rule delta 5) then the weak
+`get_latest_confirmed`, both picked up by namespace resolution as in
+`get_latest_confirmed` above. -/
+def on_fast_confirmation (fcr_store : FastConfirmationStore Root) :
+    FastConfirmationStore Root :=
+  let fcr_store := update_fast_confirmation_variables cfg ext fcr_store
+  { fcr_store with confirmed_root := get_latest_confirmed cfg ext fcr_store }
 
 /-! ## Proof obligations
 
