@@ -369,6 +369,429 @@ noncomputable def StrictSelectedResultMechanicalFacts.fcrStep_currentNext_endpoi
       hselectedEndpoint hparent hwalkK hnonfuture hrecent
       hresultJustified
 
+/-! ## Site 7 — the late mid-epoch previous cell
+
+`Execution.acceptedSelectedResultFilterOutcome_retainedVisible_of_queryGUEpochSeed`
+relays the GU seed out of the observer's own store with
+`hsync.block_relay v hv q seed …`.  At a Byzantine observer there is no such
+relay, so the seed's endpoint knownness becomes an explicit premise
+(`hseedEndpoint`) discharged by the caller from the certificate the weak
+selector guard carries — which is exactly why the weak
+`previousOffStart_queryGUEpochSeed` below returns the dissemination
+conclusion alongside the seed rather than the bare triple.  No other use of
+the query node's honesty occurs in that proof: the query-side
+`store_domainK_of_selectedMarginDomain` becomes
+`Execution.observerStoreDomainK`, and `hsync` leaves the signature entirely. -/
+
+/-- Clone of `AcceptedSelectedStrictEdgeFilterSupply.lean`'s `private`
+`AcceptedBlockAt.executionRoot_for_lateSelectedSupply` (a `private` declaration
+cannot be reused across modules).  Pure provenance bookkeeping, no honesty. -/
+private theorem executionRoot_of_acceptedBlockAt
+    {r : Root} {b : BeaconBlock Root}
+    (h : E.AcceptedBlockAt cfg ext r b) : E.ExecutionRoot r := by
+  obtain ⟨store, hstore, hr, _hblock⟩ := h
+  rcases hstore.blockProvenance cfg ext E r hr with hgen | hsched
+  · exact ⟨store.blocks r, Or.inl ⟨hgen.1, hgen.2⟩⟩
+  · obtain ⟨sb, ⟨w, n, hscheduled⟩, hroot, hmessage⟩ := hsched
+    exact ⟨store.blocks r,
+      Or.inr ⟨w, n, sb, hscheduled, hroot, hmessage.symm⟩⟩
+
+/-- Weak twin of
+`Execution.acceptedSelectedResultFilterOutcome_retainedVisible_of_queryGUEpochSeed`,
+with the observer-as-sender relay replaced by the premise `hseedEndpoint`. -/
+noncomputable def
+    acceptedSelectedResultFilterOutcome_retainedVisible_of_queryGUEpochSeed_at_observer
+    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
+    (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
+    (hboundary : Execution.TrustedAnchorBoundaryAligned (cfg := cfg)
+      (E := E) (anchor := B.anchor))
+    (P : AcceptedEpochCheckpointProjection B.anchor
+      (E.AcceptedRoot cfg ext) B.state.C)
+    (V : B.state.ExactLinkValidity)
+    (hanchorExact : B.anchor = B.state.C B.anchor.root B.anchor.epoch)
+    (hacc : CheckpointCertificateAccountability cfg E B.anchor)
+    (hdomain : SelectedMarginDomain cfg ext E)
+    {obs : ValidatorIndex} (hcoh : E.ObserverCoherence cfg ext obs) {q : Nat}
+    (hqH : E.WithinHorizon cfg q)
+    {selected seed : Root} {e : Epoch}
+    (hselectedQ : selected ∈ (E.store cfg ext obs q).block_roots)
+    (hseedQ : seed ∈ (E.store cfg ext obs q).block_roots)
+    (hseedSelected : is_ancestor (E.store cfg ext obs q)
+      (get_node_for_root seed) (get_node_for_root selected) = true)
+    (hguLower : e ≤ (B.state.GU seed).epoch)
+    (hqueryEpoch : get_current_store_epoch cfg
+      (E.store cfg ext obs q) = e + 1)
+    {w : ValidatorIndex} (hw : w ∈ E.honest) {m : Nat}
+    (hmH : E.WithinHorizon cfg m)
+    (hseedEndpoint : seed ∈ (E.store cfg ext w m).block_roots)
+    (hlate : e + 2 ≤
+      get_current_store_epoch cfg (E.store cfg ext w m))
+    (hjustifiedEpoch : (E.store cfg ext w m).justified_checkpoint.epoch ≤ e)
+    (hselectedJustified : is_ancestor (E.store cfg ext w m)
+      (get_node_for_root selected)
+      (get_node_for_root
+        (E.store cfg ext w m).justified_checkpoint.root) = true) :
+    E.AcceptedSelectedResultFilterOutcomeAt cfg ext B
+      (E.store cfg ext w m) selected := by
+  obtain ⟨ast, ablk, hgen, hgenSlot, hgenParent⟩ := hT.genesis
+  have hgenShort : ∃ (ast : BeaconState Root)
+      (ablk : SignedBeaconBlock Root),
+      E.genesis_store = get_forkchoice_store cfg ast ablk ∧
+        ast.slot = ablk.message.slot :=
+    ⟨ast, ablk, hgen, hgenSlot⟩
+  let query := E.store cfg ext obs q
+  let endpoint := E.store cfg ext w m
+  have hqueryCausal : E.CausalStore cfg ext query := by
+    simpa only [query] using E.store_causal cfg ext obs q
+  have hendpointCausal : E.CausalStore cfg ext endpoint := by
+    simpa only [endpoint] using E.store_causal cfg ext w m
+  obtain ⟨hqueryParent, hqueryWalk, _hqueryJustified⟩ :=
+    E.observerStoreDomainK cfg ext hT.wellFormed hT.externals_coherence
+      hT.genesis hcoh q hqH
+  obtain ⟨hendpointParent, hendpointWalk, hendpointJustified⟩ :=
+    E.store_domainK_of_selectedMarginDomain cfg ext hT.wellFormed
+      hT.externals_coherence hT.genesis hdomain w hw m hmH
+  have hendpointParent' : ParentSlotLt endpoint := by
+    simpa only [endpoint] using hendpointParent
+  have hendpointWalk' : ∀ t ∈ endpoint.block_roots,
+      ∀ r ∈ endpoint.block_roots,
+        WalkKnown endpoint (endpoint.blocks t).slot r := by
+    simpa only [endpoint] using hendpointWalk
+  have hendpointJustified' : endpoint.justified_checkpoint.root ∈
+      endpoint.block_roots := by
+    simpa only [endpoint] using hendpointJustified
+  have hseedM : seed ∈ endpoint.block_roots := by
+    simpa only [endpoint] using hseedEndpoint
+  have hqueryParent' : ParentSlotLt query := by
+    simpa only [query] using hqueryParent
+  have hsemantic : E.RootDescends seed selected :=
+    E.rootDescends_of_store_ancestor (E.blockProvenance cfg ext obs q)
+      hqueryParent'
+      (by
+        simpa only [query] using hqueryWalk selected hselectedQ seed hseedQ)
+      (by simpa only [query] using hseedSelected)
+  have hselectedRoot : E.ExecutionRoot selected :=
+    executionRoot_of_acceptedBlockAt cfg ext
+      (E.acceptedBlockAt_of_causal_known cfg ext hqueryCausal
+        (by simpa only [query] using hselectedQ))
+  obtain ⟨hselectedM, hseedSelectedM⟩ :=
+    E.store_known_ancestor_of_rootDescends_for_storeReflection cfg ext
+      hT.wellFormed hT.externals_coherence hgen hgenSlot hgenParent
+      (by simpa only [endpoint] using hseedM) hselectedRoot hsemantic
+  have hseedBlockAgree : query.blocks seed = endpoint.blocks seed :=
+    hT.wellFormed.blocks_agree
+      (E.blockProvenance cfg ext obs q)
+      (E.blockProvenance cfg ext w m)
+      (by simpa only [query] using hseedQ)
+      (by simpa only [endpoint] using hseedM)
+  have hseedEpochLeQ : get_block_epoch cfg query seed ≤
+      get_current_store_epoch cfg query := by
+    simp only [get_block_epoch, get_current_store_epoch]
+    exact Nat.div_le_div_right
+      (E.store_blocks_slot_le_current cfg ext hT.whole_seconds
+        hgenShort obs q seed (by simpa only [query] using hseedQ))
+  have hseedOld : get_block_epoch cfg endpoint seed <
+      get_current_store_epoch cfg endpoint := by
+    calc
+      get_block_epoch cfg endpoint seed =
+          get_block_epoch cfg query seed := by
+        simp only [get_block_epoch, hseedBlockAgree]
+      _ ≤ get_current_store_epoch cfg query := hseedEpochLeQ
+      _ = e + 1 := by simpa only [query] using hqueryEpoch
+      _ < e + 2 := by
+        simpa only [Nat.succ_eq_add_one, Nat.add_assoc,
+          Nat.reduceAdd] using Nat.lt_succ_self (e + 1)
+      _ ≤ get_current_store_epoch cfg endpoint := by
+        simpa only [endpoint] using hlate
+  have hsourceGU : get_voting_source cfg endpoint seed =
+      B.state.GU seed := by
+    have hselector := hendpointCausal.getVotingSource_eq_acceptedSelector
+      cfg ext B (by simpa only [endpoint] using hseedM)
+    simpa only [if_pos hseedOld] using hselector
+  have hseedVisible : SourceVisibleAtTip cfg endpoint seed := by
+    refine ⟨?_⟩
+    calc
+      endpoint.justified_checkpoint.epoch ≤ e := by
+        simpa only [endpoint] using hjustifiedEpoch
+      _ ≤ (B.state.GU seed).epoch := hguLower
+      _ = (get_voting_source cfg endpoint seed).epoch := by rw [hsourceGU]
+  have hnonfuture : BlocksSlotLe
+      (get_current_slot cfg endpoint) endpoint := by
+    simpa only [endpoint] using
+      E.store_blocks_slot_le_current cfg ext hT.whole_seconds
+        hgenShort w m
+  have hpersistence : VotingSourceEpochChainPersistence cfg endpoint :=
+    E.acceptedVotingSourceEpochChainPersistence cfg ext B hendpointCausal
+      hendpointParent'
+      (E.blockProvenance cfg ext w m)
+      hendpointWalk' hnonfuture
+  obtain ⟨tip, htipKnown, _htipWalk, htipSeed, htipLeaf,
+      htipVisible⟩ :=
+    exists_visible_store_leaf_extension cfg
+      hendpointParent' hpersistence
+      hseedM hseedVisible
+  have htipSelected : is_ancestor endpoint
+      (get_node_for_root tip) (get_node_for_root selected) = true :=
+    is_ancestor_trans hendpointParent'
+      (hendpointWalk' selected hselectedM tip htipKnown)
+      (hendpointWalk' selected hselectedM seed hseedM)
+      htipSeed hseedSelectedM
+  have hsourceLe : (get_voting_source cfg endpoint tip).epoch ≤
+      endpoint.justified_checkpoint.epoch :=
+    B.causalVotingSource_epoch_le_justified hT.whole_seconds hgenShort
+      hanchor hendpointCausal htipKnown
+  have hsourceEq : (get_voting_source cfg endpoint tip).epoch =
+      endpoint.justified_checkpoint.epoch :=
+    Nat.le_antisymm hsourceLe htipVisible.justified_epoch_le_source
+  have htipJustified : is_ancestor endpoint
+      (get_node_for_root tip)
+      (get_node_for_root endpoint.justified_checkpoint.root) = true :=
+    is_ancestor_trans hendpointParent'
+      (hendpointWalk' endpoint.justified_checkpoint.root
+        hendpointJustified' tip htipKnown)
+      (hendpointWalk' endpoint.justified_checkpoint.root
+        hendpointJustified' selected hselectedM)
+      htipSelected (by simpa only [endpoint] using hselectedJustified)
+  have hfinalized : FinalizedBoundaryRealization cfg endpoint := by
+    simpa only [endpoint] using
+      Execution.ExactPrefixAcceptedFFGSemantics.finalizedBoundaryRealizationAt
+        cfg ext B hT hanchor hboundary w m
+  let hplace : RetainedFilterTipPlacement cfg endpoint selected :=
+    { tip := tip
+      tip_known := htipKnown
+      tip_descends_justified := htipJustified
+      tip_descends_child := htipSelected
+      tip_is_leaf := htipLeaf
+      finalized_walk_known :=
+        hfinalized.finalizedWalkKnown cfg hendpointWalk' htipKnown }
+  have hfinalizedCheck : endpoint.finalized_checkpoint.root =
+      get_checkpoint_block cfg endpoint tip
+        endpoint.finalized_checkpoint.epoch := by
+    have hcheck := hplace.finalizedRoot_eq_checkpointBlock_of_acceptedVisible
+      cfg ext B hgenShort hanchor P V hanchorExact hacc
+        hendpointCausal hendpointParent' htipVisible
+    simpa only [hplace] using hcheck
+  exact .retainedVisible hselectedM tip htipKnown htipSelected htipLeaf
+    (by simpa only [endpoint] using hselectedJustified)
+    hsourceEq (Or.inr hfinalizedCheck)
+
+/-- Weak twin of `StrictSelectedResultMechanicalFacts.previousOffStart_
+queryGUEpochSeed`, extended with the seed's dissemination to every honest
+endpoint at or past the query slot.
+
+Both arms of the strong disjunction name a *certified* root under the weak
+rule: the previous-loop arm's `previous_slot_head` carries
+`Weak.has_justification_witness_certificate` (the named
+`PreviousSelectedEntryWitness.witness_certificate` field, stage S2), and
+every `head` arm carries `Weak.has_head_broadcast_certificate`.  Stage S3's
+two dissemination lemmas turn each into endpoint knownness, which is what
+site 7 consumes in place of the observer-as-sender relay. -/
+theorem StrictSelectedResultMechanicalFacts.previousOffStart_queryGUEpochSeed
+    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
+    (hsync : PaperSafetySynchrony cfg ext E)
+    (hstatic : StaticValidatorSet cfg E)
+    (hbyz : ByzantineBound cfg E)
+    (hdomain : SelectedMarginDomain cfg ext E)
+    (hji : JustificationInterface cfg ext E)
+    {obs : ValidatorIndex} (hcoh : E.ObserverCoherence cfg ext obs) {n : Nat}
+    (hn1H : E.WithinHorizon cfg (n + 1))
+    {input selected : Root}
+    (hinput : input ∈ (E.weakFcrStep cfg ext obs n).store.block_roots)
+    (hout : Weak.find_latest_confirmed_descendant cfg ext
+      (E.weakFcrStep cfg ext obs n) input = selected)
+    (hstrict : selected ≠ input)
+    (h : Weak.StrictSelectedResultMechanicalFacts cfg ext
+      (E.weakFcrStep cfg ext obs n) input selected)
+    (hprevious : get_block_epoch cfg (E.weakFcrStep cfg ext obs n).store
+        selected + 1 =
+      get_current_store_epoch cfg (E.weakFcrStep cfg ext obs n).store)
+    (hnotStart : is_start_slot_at_epoch cfg
+      (get_current_slot cfg (E.weakFcrStep cfg ext obs n).store) ≠ true) :
+    ∃ seed : Root,
+      seed ∈ (E.weakFcrStep cfg ext obs n).store.block_roots ∧
+        is_ancestor (E.weakFcrStep cfg ext obs n).store
+          (get_node_for_root seed) (get_node_for_root selected) = true ∧
+        get_block_epoch cfg (E.weakFcrStep cfg ext obs n).store selected ≤
+          (B.state.GU seed).epoch ∧
+        (∀ w ∈ E.honest, ∀ m : Nat, E.WithinHorizon cfg m →
+          E.slot_at cfg (n + 1) ≤ E.slot_at cfg m →
+          seed ∈ (E.store cfg ext w m).block_roots) := by
+  let hA : SelectedMarginAssumptions cfg ext E :=
+    { genesis := hT.genesis
+      wellFormed := hT.wellFormed
+      whole_seconds := hT.whole_seconds
+      honest_behavior := hT.honest_behavior
+      synchrony := hsync
+      externals_coherence := hT.externals_coherence
+      static_validators := hstatic
+      byzantine_bound := hbyz
+      domain := hdomain }
+  let query := E.weakFcrStep cfg ext obs n
+  have hqCurrent : query.store = E.store cfg ext obs (n + 1) :=
+    E.weakFcrStep_store cfg ext obs n
+  have hqueryCausal : E.CausalStore cfg ext query.store := by
+    rw [hqCurrent]; exact E.store_causal cfg ext obs (n + 1)
+  obtain ⟨hparent, hwalk, _hjustifiedKnown⟩ :=
+    E.observerStoreDomainK cfg ext hT.wellFormed hT.externals_coherence
+      hT.genesis hcoh (n + 1) hn1H
+  have hparentQ : ParentSlotLt query.store := by
+    simpa only [query, hqCurrent] using hparent
+  have hwalkQ : ∀ t ∈ query.store.block_roots,
+      ∀ r ∈ query.store.block_roots,
+        WalkKnown query.store (query.store.blocks t).slot r := by
+    simpa only [query, hqCurrent] using hwalk
+  have hheadKnown : (get_head cfg query.store).root ∈
+      query.store.block_roots := by
+    simpa only [query, hqCurrent] using
+      E.head_root_known_at_observer cfg ext hcoh (n + 1) hn1H
+  have hpreviousHeadKnown : query.previous_slot_head ∈
+      query.store.block_roots := by
+    simpa only [query] using
+      Weak.weakFcrStep_previousSlotHead_known cfg ext hT.genesis hcoh n hn1H
+  have hheadSelected : is_ancestor query.store
+      (get_head cfg query.store) (get_node_for_root selected) = true := by
+    have hstrict' : Weak.find_latest_confirmed_descendant cfg ext query
+        input ≠ input := by
+      simpa only [query, hout] using hstrict
+    simpa only [query, hout] using
+      Weak.strictSelectedResult_below_head cfg ext hparentQ hwalkQ
+        hheadKnown (by simpa only [query] using hinput) hstrict'
+  have hprojection :=
+    Execution.ExactPrefixAcceptedFFGSemantics.causalStoreProjection
+      B hqueryCausal
+  have lower_of_raw {seed : Root}
+      (hseed : seed ∈ query.store.block_roots)
+      (hraw : (query.store.unrealized_justifications seed).epoch + 1 ≥
+        get_current_store_epoch cfg query.store) :
+      get_block_epoch cfg query.store selected ≤
+        (B.state.GU seed).epoch := by
+    have hguEq : query.store.unrealized_justifications seed =
+        B.state.GU seed := hprojection.unrealized_justification seed hseed
+    apply Nat.le_of_add_le_add_right
+    calc
+      get_block_epoch cfg query.store selected + 1 =
+          get_current_store_epoch cfg query.store := by
+        simpa only [query] using hprevious
+      _ ≤ (query.store.unrealized_justifications seed).epoch + 1 := hraw
+      _ = (B.state.GU seed).epoch + 1 := by rw [hguEq]
+  -- the query slot is past slot 0, so the certificate span's endpoint gate
+  -- `(current_slot - 1) + 1` is exactly the query slot
+  have hstart0 : is_start_slot_at_epoch cfg 0 = true := by
+    simp [is_start_slot_at_epoch, compute_slots_since_epoch_start]
+  have hslotPos : 1 ≤ get_current_slot cfg query.store := by
+    rcases Nat.eq_zero_or_pos (get_current_slot cfg query.store) with hz | hpos
+    · exact absurd (hz ▸ hstart0) hnotStart
+    · exact hpos
+  have hcurSlotEq : get_current_slot cfg query.store =
+      E.slot_at cfg (n + 1) := by
+    rw [hqCurrent]; exact E.store_current_slot cfg ext obs (n + 1)
+  have hslotPosAt : 1 ≤ E.slot_at cfg (n + 1) := by
+    rw [← hcurSlotEq]; exact hslotPos
+  have gate_of {m : Nat} (hslot : E.slot_at cfg (n + 1) ≤ E.slot_at cfg m) :
+      (get_current_slot cfg query.store - 1) + 1 ≤ E.slot_at cfg m := by
+    rw [hcurSlotEq, Nat.sub_add_cancel hslotPosAt]
+    exact hslot
+  have headDissem (hcert : Weak.has_head_broadcast_certificate cfg ext
+      query.store (get_current_balance_source query) = true) :
+      ∀ w ∈ E.honest, ∀ m : Nat, E.WithinHorizon cfg m →
+        E.slot_at cfg (n + 1) ≤ E.slot_at cfg m →
+        (get_head cfg query.store).root ∈ (E.store cfg ext w m).block_roots := by
+    intro w hw m hmH hslot
+    exact Weak.headSeed_known_at_all_honest_endpoints_at_observer cfg ext hA
+      hsync hji hn1H hcoh (by simpa only [query] using hqCurrent) hcert
+      hw hmH (gate_of hslot)
+  have witnessDissem (hcert : Weak.has_justification_witness_certificate
+      cfg ext query = true) :
+      ∀ w ∈ E.honest, ∀ m : Nat, E.WithinHorizon cfg m →
+        E.slot_at cfg (n + 1) ≤ E.slot_at cfg m →
+        query.previous_slot_head ∈ (E.store cfg ext w m).block_roots := by
+    intro w hw m hmH hslot
+    exact Weak.witnessSeed_known_at_all_honest_endpoints_at_observer cfg ext
+      hA hsync hji hn1H (hcoh.committees_agree (n + 1) hn1H)
+      (by simpa only [query] using hqCurrent) hcert
+      (by simpa only [hqCurrent] using hpreviousHeadKnown)
+      hw hmH (gate_of hslot)
+  rcases h.trace_origin with
+      ⟨_a, _hedge, hentry, _hrecent, hpreviousDesc⟩ |
+      ⟨_a, _hedge, hentry, _hfinal⟩
+  · rcases hentry.inner_gate with hstart | ⟨_noConflict, hgu⟩
+    · exact False.elim (hnotStart hstart)
+    · rcases hgu with hpreviousGU | ⟨hheadGU, hheadCert⟩
+      · exact ⟨query.previous_slot_head, hpreviousHeadKnown,
+          hpreviousDesc,
+          lower_of_raw hpreviousHeadKnown hpreviousGU,
+          witnessDissem hentry.witness_certificate⟩
+      · exact ⟨(get_head cfg query.store).root, hheadKnown,
+          hheadSelected, lower_of_raw hheadKnown hheadGU,
+          headDissem hheadCert⟩
+  · rcases hentry with hstart | ⟨hheadGU, hheadCert⟩
+    · exact False.elim (hnotStart hstart)
+    · exact ⟨(get_head cfg query.store).root, hheadKnown,
+        hheadSelected, lower_of_raw hheadKnown hheadGU,
+        headDissem hheadCert⟩
+
+/-- Weak twin of `StrictSelectedResultMechanicalFacts.fcrStep_previousOffStart_
+late_endpointFilterOutcome`. -/
+noncomputable def
+    StrictSelectedResultMechanicalFacts.fcrStep_previousOffStart_late_endpointFilterOutcome
+    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
+    (hsync : PaperSafetySynchrony cfg ext E)
+    (hstatic : StaticValidatorSet cfg E)
+    (hbyz : ByzantineBound cfg E)
+    (hdomain : SelectedMarginDomain cfg ext E)
+    (hji : JustificationInterface cfg ext E)
+    (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
+    (hboundary : Execution.TrustedAnchorBoundaryAligned (cfg := cfg)
+      (E := E) (anchor := B.anchor))
+    (P : AcceptedEpochCheckpointProjection B.anchor
+      (E.AcceptedRoot cfg ext) B.state.C)
+    (V : B.state.ExactLinkValidity)
+    (hanchorExact : B.anchor = B.state.C B.anchor.root B.anchor.epoch)
+    (hacc : CheckpointCertificateAccountability cfg E B.anchor)
+    {obs : ValidatorIndex} (hcoh : E.ObserverCoherence cfg ext obs) {n : Nat}
+    (hn1H : E.WithinHorizon cfg (n + 1))
+    {input selected : Root}
+    (hinput : input ∈ (E.weakFcrStep cfg ext obs n).store.block_roots)
+    (hout : Weak.find_latest_confirmed_descendant cfg ext
+      (E.weakFcrStep cfg ext obs n) input = selected)
+    (hstrict : selected ≠ input)
+    (h : Weak.StrictSelectedResultMechanicalFacts cfg ext
+      (E.weakFcrStep cfg ext obs n) input selected)
+    (hprevious : get_block_epoch cfg (E.weakFcrStep cfg ext obs n).store
+        selected + 1 =
+      get_current_store_epoch cfg (E.weakFcrStep cfg ext obs n).store)
+    (hnotStart : is_start_slot_at_epoch cfg
+      (get_current_slot cfg (E.weakFcrStep cfg ext obs n).store) ≠ true)
+    {w : ValidatorIndex} (hw : w ∈ E.honest) {m : Nat}
+    (hmH : E.WithinHorizon cfg m)
+    (hslotQM : E.slot_at cfg (n + 1) ≤ E.slot_at cfg m)
+    (hlate : get_block_epoch cfg (E.weakFcrStep cfg ext obs n).store
+        selected + 2 ≤
+      get_current_store_epoch cfg (E.store cfg ext w m))
+    (hjustifiedEpoch : (E.store cfg ext w m).justified_checkpoint.epoch ≤
+      get_block_epoch cfg (E.weakFcrStep cfg ext obs n).store selected)
+    (hselectedJustified : is_ancestor (E.store cfg ext w m)
+      (get_node_for_root selected)
+      (get_node_for_root
+        (E.store cfg ext w m).justified_checkpoint.root) = true) :
+    E.AcceptedSelectedResultFilterOutcomeAt cfg ext B
+      (E.store cfg ext w m) selected := by
+  obtain ⟨seed, hseedQ, hseedSelected, hguLower, hseedDissem⟩ :=
+    h.previousOffStart_queryGUEpochSeed cfg ext B hT hsync hstatic hbyz
+      hdomain hji hcoh hn1H hinput hout hstrict hprevious hnotStart
+  exact Weak.acceptedSelectedResultFilterOutcome_retainedVisible_of_queryGUEpochSeed_at_observer
+    cfg ext B hT hanchor hboundary P V hanchorExact hacc hdomain hcoh hn1H
+      (by simpa only [E.weakFcrStep_store] using h.result_known)
+      (by simpa only [E.weakFcrStep_store] using hseedQ)
+      (by simpa only [E.weakFcrStep_store] using hseedSelected)
+      hguLower
+      (by simpa only [E.weakFcrStep_store] using hprevious.symm)
+      hw hmH (hseedDissem w hw m hmH hslotQM) hlate hjustifiedEpoch
+      hselectedJustified
+
 end Weak
 
 end FastConfirmation.Spec
