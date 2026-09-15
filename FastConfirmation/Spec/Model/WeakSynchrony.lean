@@ -411,7 +411,7 @@ def find_latest_confirmed_descendant (fcr_store : FastConfirmationStore Root)
 /-! ## Proof obligations
 
 The two dissemination facts the weak-model safety proof must establish,
-stated as named `Prop`s so the migration target is pinned without `sorry`s.
+stated as named `Prop`s so the migration target is pinned without proof placeholders.
 The proof plan lives in `docs/weak-synchrony.md`. -/
 
 /-- **Obligation 1 — certificate surplus is honest.** In any store within the
