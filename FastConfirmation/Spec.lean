@@ -2,6 +2,7 @@ import FastConfirmation.Spec.Model
 import FastConfirmation.Spec.ProvenTheorems
 import FastConfirmation.Spec.Proof.AcceptedStrictPrefixExtraQueryCounterexample
 import FastConfirmation.Spec.Proof.AcceptedPinnedEconomicsStrictPrefixExtraQueryCounterexample
+import FastConfirmation.Spec.Proof.WeakOneShotSafety
 
 /-!
 # Spec — facade
