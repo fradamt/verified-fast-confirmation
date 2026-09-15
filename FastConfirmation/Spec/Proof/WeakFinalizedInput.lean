@@ -430,6 +430,81 @@ theorem finalizedHonestVotingSourceOrigin_of_causalStore
         exact F.child_epoch
       voting_source_eq := hvotingSource }⟩
 
+/-! ## Endpoint adoption without an observer relay -/
+
+/-- Weak twin of `finalized_epoch_le_remoteJustified_of_synchrony`: the
+finalized epoch carried by *any* store, honest or not, is adopted by every
+honest endpoint whose slot is not behind.
+
+The strong theorem relays the reading node's whole store and therefore needs
+that node to be honest.  Here the only relayed root is the honest signer's own
+seed, and the signer voted strictly before the reading store's slot, so the
+gate is `E.slot_at cfg q ≤ E.slot_at cfg m` — same-slot endpoints included.
+This is a property of the certificate route: the strong next-slot theorems are
+not upgraded by it.
+
+The reading second's horizon premise is kept for interface parity with the
+strong theorem and is deliberately unused: nothing is relayed *from* that
+store. -/
+theorem weak_finalized_epoch_le_remoteJustified
+    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
+    (hacc : FFGAccountabilityAssumptions cfg ext E)
+    (hphase : Phase0SourceCoherence cfg ext)
+    (hboundaryPhase : Phase0BoundarySourceCoherence cfg ext)
+    (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
+    (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
+      (E := E) (anchor := B.anchor))
+    (hsync : PaperSafetySynchrony cfg ext E)
+    {v w : ValidatorIndex} (hw : w ∈ E.honest) {q m : ℕ}
+    (_hHq : E.WithinHorizon cfg q)
+    (hHm : E.WithinHorizon cfg m)
+    (hrelay : E.slot_at cfg q ≤ E.slot_at cfg m) :
+    (E.store cfg ext v q).finalized_checkpoint.epoch ≤
+      (E.store cfg ext w m).justified_checkpoint.epoch := by
+  obtain ⟨ast, ablk, hgenEq, hslot, _hparent⟩ := hT.genesis
+  have hgenShort : ∃ (ast : BeaconState Root)
+      (ablk : SignedBeaconBlock Root),
+      E.genesis_store = get_forkchoice_store cfg ast ablk ∧
+        ast.slot = ablk.message.slot :=
+    ⟨ast, ablk, hgenEq, hslot⟩
+  have hendpoint : E.CausalStore cfg ext (E.store cfg ext w m) :=
+    E.store_causal cfg ext w m
+  rcases E.finalizedHonestVotingSourceOrigin_of_causalStore cfg ext B hT hacc
+      hphase hboundaryPhase hanchor hboundary
+      (E.store_causal cfg ext v q) with hanchorField | horigin
+  · rw [hanchorField]
+    exact E.anchor_epoch_le_acceptedGlobalJustified cfg ext B hgenShort
+      hanchor hendpoint
+  · obtain ⟨O⟩ := horigin
+    -- The signer's vote precedes the reading store's slot, so its seed is
+    -- relayed to the endpoint even in that same slot.
+    have hvoteSlot : E.slot_at cfg O.time < E.slot_at cfg q := by
+      simpa only [E.store_current_slot cfg ext v q] using O.slot_before
+    have hgate : E.slot_at cfg O.time + 1 ≤ E.slot_at cfg (m + 1) :=
+      ((Nat.succ_le_of_lt hvoteSlot).trans hrelay).trans
+        (E.slot_at_mono cfg (Nat.le_succ m))
+    have hseedEndpoint : O.seed ∈ (E.store cfg ext w m).block_roots :=
+      hsync.block_relay O.signer O.signer_honest O.time O.seed O.time_within
+        O.seed_known w hw m hHm hgate
+    have hblockAgree :
+        (E.store cfg ext O.signer O.time).blocks O.seed =
+          (E.store cfg ext w m).blocks O.seed :=
+      hT.wellFormed.blocks_agree
+        (E.blockProvenance cfg ext O.signer O.time)
+        (E.blockProvenance cfg ext w m) O.seed_known hseedEndpoint
+    have hclock : get_current_store_epoch cfg
+          (E.store cfg ext O.signer O.time) ≤
+        get_current_store_epoch cfg (E.store cfg ext w m) := by
+      simp only [get_current_store_epoch, E.store_current_slot]
+      exact ce_mono cfg ((Nat.le_of_lt hvoteSlot).trans hrelay)
+    have hadopt := B.votingSource_epoch_le_remoteJustified_of_known
+      hT.whole_seconds hgenShort hanchor
+      (E.store_causal cfg ext O.signer O.time) hendpoint
+      O.seed_known hseedEndpoint
+      (congrArg BeaconBlock.slot hblockAgree) hclock
+    rwa [O.voting_source_eq] at hadopt
+
 end Execution
 
 end FastConfirmation.Spec
