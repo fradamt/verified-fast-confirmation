@@ -61,6 +61,23 @@ namespace FastConfirmation.Spec
 variable {Root : Type*} [LinearOrder Root] [Inhabited Root]
 variable (cfg : Config) (ext : Externals Root)
 
+/-- Pure arithmetic core of the store-indexed weak base.  Restated locally:
+`SelectedMarginConstruction.queryStore_weak_base_arith` is `private`. -/
+private theorem weak_endpoint_base_arith
+    {Hsup discount maximum boost s a x B J : ℕ}
+    (hsm : maximum + boost + 1 ≤ 2 * Hsup + discount)
+    (hHsup : Hsup ≤ s) (hdisc : discount ≤ a)
+    (hMS : J + B ≤ maximum) (hpart : J = s + a + x) :
+    x + B + boost + 1 ≤ s := by
+  omega
+
+/-- Pure arithmetic core of the crossing base charge.  Restated locally:
+`CrossingCert.crossing_hbase_arith` is `private`. -/
+private theorem weak_crossing_hbase_arith {H B d rhs S : ℕ}
+    (h : 2 * (H + B) + d ≥ rhs) (hHS : H ≤ S) :
+    2 * S + 2 * B + d ≥ rhs := by
+  omega
+
 namespace Weak
 
 /-! ## 1. The counted fresh honest support lands in the endpoint's `Sclass` -/
@@ -334,6 +351,225 @@ theorem support_discount_le_endpoint_Aval {E : Execution Root}
   exact E.weight_mono
     (freshParentStuck_subset_endpoint_Aclass cfg ext hA hqH hval haQ hbQ hparentQ
       hprov hsched hlo0 hloLe hes hesq hw hmH hslotQM haM hbM hparentM)
+
+/-! ## 3. The weak-native base strip, read entirely at the honest endpoint -/
+
+/-- **The weak-native base strip, read entirely at the honest endpoint.**
+This is the rule-delta-3 payoff: no observer honesty, no synchrony to the
+observer, no delivery to the observer, no `WindowRecordedEpochMax`, no
+ground-vote replay premise.  The only observer-side inputs are the boolean
+`Weak.is_one_confirmed` and the store-generic committee readback. -/
+theorem base_strip_of_confirmed_at_observer {E : Execution Root}
+    (hA : SelectedMarginAssumptions cfg ext E)
+    {obs : ValidatorIndex} {q : ℕ} (hqH : E.WithinHorizon cfg q)
+    (hcomm : E.PrefixCommitteeAgreement cfg ext (E.store cfg ext obs q))
+    {query : FastConfirmationStore Root}
+    (hstore : query.store = E.store cfg ext obs q)
+    {b : Root}
+    (hb : b ∈ (E.store cfg ext obs q).block_roots)
+    (hp : ((E.store cfg ext obs q).blocks b).parent_root ∈
+      (E.store cfg ext obs q).block_roots)
+    (hconf : Weak.is_one_confirmed cfg ext query.store
+      (get_current_balance_source query) b = true)
+    {lo es : Slot}
+    (hlo : lo = ((E.store cfg ext obs q).blocks
+      ((E.store cfg ext obs q).blocks b).parent_root).slot + 1)
+    (hes : es = get_current_slot cfg (E.store cfg ext obs q) - 1)
+    {w : ValidatorIndex} (hw : w ∈ E.honest) {m : ℕ}
+    (hmH : E.WithinHorizon cfg m) (hslotQM : E.slot_at cfg q ≤ E.slot_at cfg m)
+    (haM : ((E.store cfg ext obs q).blocks b).parent_root ∈
+      (E.store cfg ext w m).block_roots)
+    (hbM : b ∈ (E.store cfg ext w m).block_roots)
+    (hparentM : ((E.store cfg ext w m).blocks b).parent_root =
+      ((E.store cfg ext obs q).blocks b).parent_root) :
+    E.Xval cfg ext w m b lo es + E.Bval lo es
+        + get_proposer_score cfg (E.store cfg ext w m) + 1
+      ≤ E.Sval cfg ext w m b lo es := by
+  obtain ⟨ast, ablk, hgeq, hslot, hparentne⟩ := hA.genesis
+  have hgen : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
+      E.genesis_store = get_forkchoice_store cfg ast ablk := ⟨ast, ablk, hgeq⟩
+  let bs := get_current_balance_source query
+  let cp := query.current_epoch_observed_justified_checkpoint
+  have hconfQ : Weak.is_one_confirmed cfg ext (E.store cfg ext obs q) bs b = true := by
+    simpa only [bs, hstore] using hconf
+  have hconfStrong : Spec.is_one_confirmed cfg ext (E.store cfg ext obs q) bs b = true :=
+    Spec.is_one_confirmed_of_weak cfg ext _ _ _ hconfQ
+  -- balance-source facts, through the strong rule predicate
+  have hbsEq : bs = (E.store cfg ext obs q).checkpoint_states cp := by
+    simp only [bs, cp, get_current_balance_source]
+    rw [hstore]
+  have hkey : cp ∈ (E.store cfg ext obs q).checkpoint_state_keys := by
+    apply E.checkpoint_state_key_of_one_confirmed cfg ext hgen obs q cp b
+    rw [← hbsEq]
+    exact hconfStrong
+  have hval : bs.validators = E.registry := by
+    rw [hbsEq]
+    exact (E.registryConstant cfg ext hA.externals_coherence hgen obs q).2 cp hkey
+  have htab : get_total_active_balance cfg bs = E.total_active cfg := by
+    rw [hbsEq]
+    exact E.checkpoint_states_total_active_balance cfg ext hA.static_validators
+      hA.externals_coherence obs q cp hkey hqH
+        (hdiv := hA.whole_seconds) (hgen := hgen)
+  have hbsH : get_current_epoch cfg bs < E.verification_horizon := by
+    have hstateSlot := (E.stateSlotsLE cfg ext hA.whole_seconds
+      hA.externals_coherence hgen obs q).2 cp hkey
+    rw [hbsEq]
+    exact lt_of_le_of_lt (Nat.div_le_div_right hstateSlot) hqH.2.2
+  -- store-side geometry at the observer
+  have hwf : ParentSlotLt (E.store cfg ext obs q) :=
+    E.store_parentSlotLt cfg ext hA.wellFormed hA.externals_coherence
+      ⟨ast, ablk, hgeq, hslot, hparentne⟩
+      hA.wellFormed.anchor_parent_unscheduled obs q
+  have hprov := E.latestMessageProvenance cfg ext hA.wellFormed
+    hA.externals_coherence hgen obs q
+  rw [← E.store_current_slot cfg ext obs q] at hprov
+  have hsched : SchedLMProv E cfg (E.store cfg ext obs q) :=
+    E.schedLMProv cfg ext hgen obs q
+  have hwalkK := E.store_walkKnownK cfg ext hA.wellFormed
+    hA.externals_coherence ⟨ast, ablk, hgeq, hslot, hparentne⟩ obs q
+  have hwalk : ∀ i ∈ AttSupporters cfg (E.store cfg ext obs q)
+      (get_node_for_root b) bs, ∀ lm,
+      (E.store cfg ext obs q).latest_messages i = some lm →
+        WalkKnown (E.store cfg ext obs q)
+          ((E.store cfg ext obs q).blocks b).slot lm.root := by
+    intro i _ lm hlm
+    obtain ⟨_, _, _, _, _, _, _, hlmKnown, _⟩ := hprov i lm hlm
+    exact hwalkK b hb lm.root hlmKnown
+  have hslotlt : ((E.store cfg ext obs q).blocks
+      ((E.store cfg ext obs q).blocks b).parent_root).slot <
+      ((E.store cfg ext obs q).blocks b).slot := hwf b hb hp
+  have hbcur : ((E.store cfg ext obs q).blocks b).slot ≤
+      get_current_slot cfg (E.store cfg ext obs q) :=
+    E.store_blocks_slot_le_current cfg ext hA.whole_seconds
+      ⟨ast, ablk, hgeq, hslot⟩ obs q b hb
+  have hbH : E.SlotWithinHorizon cfg ((E.store cfg ext obs q).blocks b).slot := by
+    have hbcur' := hbcur
+    rw [E.store_current_slot cfg ext obs q] at hbcur'
+    exact E.slotWithinHorizon_of_le cfg hbcur' hqH
+  have hcurH : E.SlotWithinHorizon cfg
+      (get_current_slot cfg (E.store cfg ext obs q)) := by
+    rw [E.store_current_slot cfg ext obs q]
+    exact E.slotWithinHorizon_of_le cfg (le_refl _) hqH
+  have hloH : E.SlotWithinHorizon cfg lo := by
+    refine E.slotWithinHorizon_mono cfg
+      (b := ((E.store cfg ext obs q).blocks b).slot) ?_ hbH
+    rw [hlo]
+    exact hslotlt
+  have hesH : E.SlotWithinHorizon cfg es := by
+    refine E.slotWithinHorizon_mono cfg
+      (b := get_current_slot cfg (E.store cfg ext obs q)) ?_ hcurH
+    rw [hes]
+    exact Nat.sub_le _ _
+  -- the cutoff precedes the query slot (from the confirmed past descendant)
+  have hesq : es < E.slot_at cfg q := by
+    obtain ⟨_, _, _, _, _, hnuq, _, _, _⟩ :=
+      E.confirmed_pastDescendant_at_observer cfg ext hA obs q hcomm query hstore b
+        hqH hb hp (by rw [hstore]; exact hconfStrong)
+    have hqpos : 0 < E.slot_at cfg q := lt_of_le_of_lt (Nat.zero_le _) hnuq
+    rw [hes, E.store_current_slot cfg ext obs q]
+    exact Nat.sub_lt hqpos Nat.one_pos
+  -- the window's lower end is at or after the anchor
+  have hlo0 : E.slot_at cfg 0 ≤ lo := by
+    have hcur0 : E.slot_at cfg 0 = ablk.message.slot := by
+      have ht := E.store_current_slot cfg ext obs 0
+      rw [show E.store cfg ext obs 0 = E.genesis_store from rfl, hgeq,
+        get_current_slot_get_forkchoice_store cfg hA.whole_seconds ast ablk] at ht
+      rw [← ht, hslot]
+    have hanchorP : ablk.message.slot ≤ ((E.store cfg ext obs q).blocks
+        ((E.store cfg ext obs q).blocks b).parent_root).slot :=
+      E.store_anchor_min_slot cfg ext hA.wellFormed hA.externals_coherence
+        hgeq hslot hparentne obs q _ hp
+    rw [hcur0, hlo]
+    exact hanchorP.trans (Nat.le_succ _)
+  -- the two endpoint-class bounds
+  have hHsup := freshHonestSupport_le_endpoint_Sval cfg ext hA hqH hval hb hp hprov
+    hsched hwalk hlo0 (by rw [hlo]; exact hslotlt) hes hesq hw hmH hslotQM
+  have hdisc := support_discount_le_endpoint_Aval cfg ext hA hqH hcomm hval htab
+    hp hb rfl hprov hsched hlo0 (by rw [hlo]) hes hesq hw hmH hslotQM haM hbM hparentM
+  -- the observer-side majority, the budget charge and the partition
+  have hsm := honest_support_majority_at_observer cfg ext hA.byzantine_bound hwf
+    hval htab hbH hcurH hprov hconfQ hwalk
+  rw [htab] at hsm
+  rw [← hlo, ← hes] at hsm
+  have hsplit : E.weight (E.span_committee lo es) = E.Jspec lo es + E.Bval lo es := by
+    rw [Execution.Jspec, Execution.Bval, Execution.Bwin]
+    exact E.weight_split_honest _
+  have hMS := hA.byzantine_bound.estimate_sound lo es hloH hesH
+  rw [hsplit] at hMS
+  have hpart := E.weight_partition cfg ext w m b lo es
+  -- proposer boost read at the endpoint
+  have hvalEnd := E.hval_of_selectedMarginDomain cfg ext hA.externals_coherence
+    hgen hA.domain w hw m hmH
+  have hkeyEnd := hA.domain.justified_checkpoint_cached w hw m hmH
+  have hstateSlotEnd := (E.stateSlotsLE cfg ext hA.whole_seconds
+    hA.externals_coherence hgen w m).2
+      (E.store cfg ext w m).justified_checkpoint hkeyEnd
+  have hEstH : get_current_epoch cfg ((E.store cfg ext w m).checkpoint_states
+      (E.store cfg ext w m).justified_checkpoint) < E.verification_horizon :=
+    lt_of_le_of_lt (Nat.div_le_div_right hstateSlotEnd) hmH.2.2
+  have hboost : compute_proposer_score cfg bs =
+      get_proposer_score cfg (E.store cfg ext w m) := by
+    simp only [get_proposer_score]
+    refine compute_proposer_score_congr cfg (hval.trans hvalEnd.symm) ?_
+    intro i
+    rw [hval, hvalEnd]
+    exact hA.static_validators.registry_activity_constant i _ _ hbsH hEstH
+  rw [← hboost]
+  exact weak_endpoint_base_arith hsm hHsup hdisc hMS hpart
+
+/-- **Weak, endpoint-anchored twin of `crossing_hbase_of_confirmed_window`.**
+`hdom` is gone (freshness replaces it) and there is no base transport: the
+honest support charge is already read at `(w, m)`. -/
+theorem crossing_hbase_of_confirmed_at_observer {E : Execution Root}
+    (hA : SelectedMarginAssumptions cfg ext E)
+    {obs : ValidatorIndex} {q : ℕ} (hqH : E.WithinHorizon cfg q)
+    (hcomm : E.PrefixCommitteeAgreement cfg ext (E.store cfg ext obs q))
+    {bs : BeaconState Root} {b : Root}
+    (hval : bs.validators = E.registry)
+    (htab : get_total_active_balance cfg bs = E.total_active cfg)
+    (hbQ : b ∈ (E.store cfg ext obs q).block_roots)
+    (hparentQ : ((E.store cfg ext obs q).blocks b).parent_root ∈
+      (E.store cfg ext obs q).block_roots)
+    (hprov : LatestMessageProvenance E cfg
+      (get_current_slot cfg (E.store cfg ext obs q)) (E.store cfg ext obs q))
+    (hsched : SchedLMProv E cfg (E.store cfg ext obs q))
+    (hwalk : ∀ i ∈ AttSupporters cfg (E.store cfg ext obs q) (get_node_for_root b) bs,
+      ∀ lm, (E.store cfg ext obs q).latest_messages i = some lm →
+        WalkKnown (E.store cfg ext obs q) ((E.store cfg ext obs q).blocks b).slot lm.root)
+    (hconf : Weak.is_one_confirmed cfg ext (E.store cfg ext obs q) bs b = true)
+    {es : Slot} (hes : es = get_current_slot cfg (E.store cfg ext obs q) - 1)
+    (hesq : es < E.slot_at cfg q)
+    {w : ValidatorIndex} (hw : w ∈ E.honest) {m : ℕ}
+    (hmH : E.WithinHorizon cfg m)
+    (hslotQM : E.slot_at cfg q ≤ E.slot_at cfg m)
+    (hbM : b ∈ (E.store cfg ext w m).block_roots) :
+    2 * E.Sval cfg ext w m b ((E.store cfg ext obs q).blocks b).slot es
+        + 2 * (((FreshAttSupporters cfg (E.store cfg ext obs q)
+              (get_node_for_root b) bs).filter (fun i => i ∉ E.honest)).map
+            (fun i => (bs.validators.getD i default).effective_balance)).sum
+        + Weak.get_support_discount cfg ext (E.store cfg ext obs q) bs b
+      ≥ estimate_committee_weight_between_slots cfg (get_total_active_balance cfg bs)
+          (((E.store cfg ext obs q).blocks
+            ((E.store cfg ext obs q).blocks b).parent_root).slot + 1)
+          (get_current_slot cfg (E.store cfg ext obs q) - 1)
+        + compute_proposer_score cfg bs
+        + 2 * Weak.get_adversarial_weight cfg (E.store cfg ext obs q) bs b + 1 := by
+  obtain ⟨ast, ablk, hgeq, hslot, hparentne⟩ := hA.genesis
+  have hcur0 : E.slot_at cfg 0 = ablk.message.slot := by
+    have ht := E.store_current_slot cfg ext obs 0
+    rw [show E.store cfg ext obs 0 = E.genesis_store from rfl, hgeq,
+      get_current_slot_get_forkchoice_store cfg hA.whole_seconds ast ablk] at ht
+    rw [← ht, hslot]
+  have hlo0 : E.slot_at cfg 0 ≤ ((E.store cfg ext obs q).blocks b).slot := by
+    rw [hcur0]
+    exact E.store_anchor_min_slot cfg ext hA.wellFormed hA.externals_coherence
+      hgeq hslot hparentne obs q b hbQ
+  have hineq := is_one_confirmed_ineq cfg ext hconf
+  rw [fresh_attestation_score_honest_split cfg E (E.store cfg ext obs q)
+    (get_node_for_root b) bs] at hineq
+  have hhonest := freshHonestSupport_le_endpoint_Sval cfg ext hA hqH hval hbQ
+    hparentQ hprov hsched hwalk hlo0 (le_refl _) hes hesq hw hmH hslotQM
+  exact weak_crossing_hbase_arith hineq hhonest
 
 end Weak
 
