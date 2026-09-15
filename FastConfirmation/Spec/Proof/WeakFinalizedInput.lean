@@ -1,6 +1,7 @@
 import FastConfirmation.Spec.Proof.AcceptedPhaseSourceCarriers
 import FastConfirmation.Spec.Proof.AcceptedResetAdoption
 import FastConfirmation.Spec.Proof.AcceptedFinalizedNextSlotSafety
+import FastConfirmation.Spec.Proof.WeakOneShotSafety
 
 /-!
 # Honest origin of a store-read finalized checkpoint
@@ -645,6 +646,103 @@ theorem weak_finalizedReset_safeFrom_of_synchrony
   exact E.weak_finalizedReset_justifiedDom_of_synchrony
     cfg ext B hT hacc hphase hboundaryPhase hanchor hboundary hsync hHq
       w hw m hqm hHm
+
+/-! ## Self-contained one-shot weak safety from the finalized checkpoint
+
+The finalized-base corollary: feed `weak_finalizedReset_safeFrom_of_synchrony`
+(the `SafeFrom` base, honesty-free on the reading node) as `hbase` into
+`weak_safeFrom_find_latest_confirmed_descendant`
+(`WeakOneShotSafety.lean:1038`, honesty-free on the observer). The result
+needs no separately-supplied `SafeFrom`/knownness premise for the finalized
+root: both come from the accepted FFG semantics bundle `B` together with the
+ordinary phase/anchor floor already used throughout the accepted pipeline.
+
+Every field of `hW.base : SelectedMarginAssumptions` this corollary needs
+beyond the ratified floor is derived, not assumed:
+`ScheduledPrefixTrajectoryAssumptions.of_selectedMarginAssumptions` and
+`SelectedMarginAssumptions.toFFGAccountabilityAssumptions` project the
+narrower trajectory and accountability interfaces the finalized-base
+machinery actually consumes. The FFG accountability statements
+(`certified_justified_unique`, `certified_links_not_surround`) are downstream
+theorems of `hW.base`, not additional premises. -/
+
+/-- **The self-contained finalized-base corollary.** The weak selector's
+output, seeded at the observer's own finalized checkpoint (read at `(obs,
+q)`, `obs` honest or not) rather than at a separately-supplied `SafeFrom`
+input, is `SafeFrom` at the actual query second. -/
+theorem weak_safeFrom_find_latest_confirmed_descendant_from_finalized
+    {E : Execution Root} {obs : ValidatorIndex}
+    (hW : E.WeakObserverMarginAssumptions cfg ext obs)
+    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
+    (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
+      (E := E) (anchor := B.anchor))
+    (hphase : Phase0SourceCoherence cfg ext)
+    (hboundaryPhase : Phase0BoundarySourceCoherence cfg ext)
+    (q : ℕ) (hqH : E.WithinHorizon cfg q)
+    (fcr_store : FastConfirmationStore Root)
+    (hstore : fcr_store.store = E.store cfg ext obs q)
+    (hmargin :
+      Weak.find_latest_confirmed_descendant cfg ext fcr_store
+          fcr_store.store.finalized_checkpoint.root ≠
+        fcr_store.store.finalized_checkpoint.root →
+      E.SelectedCoveredMarginSupplyAt cfg ext
+        (Weak.find_latest_confirmed_descendant cfg ext fcr_store
+          fcr_store.store.finalized_checkpoint.root)
+        fcr_store.store.finalized_checkpoint.root obs q fcr_store) :
+    E.SafeFrom cfg ext
+      (Weak.find_latest_confirmed_descendant cfg ext fcr_store
+        fcr_store.store.finalized_checkpoint.root) q := by
+  have hT := ScheduledPrefixTrajectoryAssumptions.of_selectedMarginAssumptions
+    cfg ext E hW.base
+  have hacc := SelectedMarginAssumptions.toFFGAccountabilityAssumptions
+    cfg ext E hW.base
+  have hlcr : fcr_store.store.finalized_checkpoint.root ∈
+      fcr_store.store.block_roots := by
+    rw [hstore]
+    exact (E.finalizedCheckpoint_resetRealizedAt_of_acceptedGlobalTrajectory
+      cfg ext B hT hanchor hboundary (w := obs) q).root_known
+  have hbase : E.SafeFrom cfg ext fcr_store.store.finalized_checkpoint.root
+      (E.slot_start cfg (E.slot_at cfg q)) := by
+    rw [hstore]
+    exact E.weak_finalizedReset_safeFrom_of_synchrony cfg ext B hT hacc hphase
+      hboundaryPhase hanchor hboundary hW.base.synchrony hqH
+  exact weak_safeFrom_find_latest_confirmed_descendant cfg ext hW q hqH
+    fcr_store hstore fcr_store.store.finalized_checkpoint.root hlcr hbase
+    hmargin
+
+/-- Endpoint form of the finalized-base corollary: the weak selector's output,
+seeded at the observer's own finalized checkpoint, is canonical at every
+honest endpoint at or after the query second. -/
+theorem weak_confirmed_head_from_finalized
+    {E : Execution Root} {obs : ValidatorIndex}
+    (hW : E.WeakObserverMarginAssumptions cfg ext obs)
+    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
+    (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
+      (E := E) (anchor := B.anchor))
+    (hphase : Phase0SourceCoherence cfg ext)
+    (hboundaryPhase : Phase0BoundarySourceCoherence cfg ext)
+    (q : ℕ) (hqH : E.WithinHorizon cfg q)
+    (fcr_store : FastConfirmationStore Root)
+    (hstore : fcr_store.store = E.store cfg ext obs q)
+    (hmargin :
+      Weak.find_latest_confirmed_descendant cfg ext fcr_store
+          fcr_store.store.finalized_checkpoint.root ≠
+        fcr_store.store.finalized_checkpoint.root →
+      E.SelectedCoveredMarginSupplyAt cfg ext
+        (Weak.find_latest_confirmed_descendant cfg ext fcr_store
+          fcr_store.store.finalized_checkpoint.root)
+        fcr_store.store.finalized_checkpoint.root obs q fcr_store)
+    {w : ValidatorIndex} (hw : w ∈ E.honest) {m : ℕ}
+    (hqm : q ≤ m) (hHm : E.WithinHorizon cfg m) :
+    is_ancestor (E.store cfg ext w m) (get_head cfg (E.store cfg ext w m))
+      (get_node_for_root
+        (Weak.find_latest_confirmed_descendant cfg ext fcr_store
+          fcr_store.store.finalized_checkpoint.root)) = true :=
+  weak_safeFrom_find_latest_confirmed_descendant_from_finalized cfg ext hW B
+    hanchor hboundary hphase hboundaryPhase q hqH fcr_store hstore hmargin
+    w hw m hqm hHm
 
 end Execution
 
