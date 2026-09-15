@@ -119,7 +119,14 @@ it.  Its five fields and the exact reason each is open:
    small — port; it is structurally an induction over the *observer's own*
    call history and cannot be imported from an honest node.
 5. `previous_epochStart_observedReset_headDisseminated` — §4 of the wave
-   design's known epoch-start escape; see that field's own docstring.
+   design's known epoch-start escape, **now narrowed to its ungated arm**.
+   When rule delta 5's banking gate fires at this very call the observed
+   checkpoint is `UJ(head)` of *this* store, so the gate's broadcast
+   certificate is a certificate for the GU seed itself and
+   `Weak.StrictSelectorAdvanceAt.previousObservedReset_gatedHeadDisseminated`
+   (via `Weak.gatedHead_known_at_all_honest_endpoints_at_observer`) discharges
+   the field outright.  What the record still carries is only the complementary
+   `¬ Weak.ObserverBankingGateAt` arm; see that field's own docstring.
 -/
 
 namespace FastConfirmation.Spec
@@ -1478,6 +1485,67 @@ theorem StrictSelectorAdvanceAt.previousObservedReset_queryGUEpochSeed
     _ = (B.state.GU head).epoch :=
       congrArg Checkpoint.epoch hobservedGU
 
+/-! ### Dissemination of the observed-reset GU seed
+
+The seed above is the query fork-choice head at an epoch-start second.  At an
+epoch start the *tentative-entry* gate takes the uncertified
+`is_start_slot_at_epoch` escape, so stage S3's
+`Weak.headSeed_known_at_all_honest_endpoints_at_observer` has no certificate to
+consume.  Rule delta 5's own **banking** gate, however, is evaluated at exactly
+this second and on exactly this store: `E.weakFcrStep obs n` *is*
+`Weak.update_fast_confirmation_variables` applied to the call's re-seated
+store, so when that gate fires its supplier is literally
+`get_head cfg (E.weakFcrStep obs n).store`.  The certificate the gate carries
+is therefore a certificate *for the seed*, and
+`Weak.gatedHead_known_at_all_honest_endpoints_at_observer`
+(`WeakBankedJustification.lean`) disseminates it. -/
+
+/-- Rule delta 5's banking gate as the observer's own call at second `n`
+evaluates it: the boundary head carries a broadcast certificate against the
+balance source keyed by the *incoming* banked checkpoint.  (The gate's other
+conjunct, `is_start_slot_at_epoch`, is already carried by
+`Weak.ObservedResetCandidateInputAt.epoch_start`.) -/
+def ObserverBankingGateAt (E : Execution Root) (obs : ValidatorIndex)
+    (n : ℕ) : Prop :=
+  Weak.has_head_broadcast_certificate cfg ext (E.store cfg ext obs (n + 1))
+    (get_current_balance_source
+      { E.weakFcr cfg ext obs n with store := E.store cfg ext obs (n + 1) }) = true
+
+/-- **The observed-reset GU seed is disseminated whenever the banking gate
+fired.**  This is the gate-passing half of the wave design's §4 escape; the
+complementary half (the guard firing on a *carried* banked value, with no
+certificate at this second) is what the residual record still carries. -/
+theorem StrictSelectorAdvanceAt.previousObservedReset_gatedHeadDisseminated
+    (hA : SelectedMarginAssumptions cfg ext E)
+    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
+    (hsync : PaperSafetySynchrony cfg ext E)
+    (hji : JustificationInterface cfg ext E)
+    (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
+    (hboundary : Execution.TrustedAnchorBoundaryAligned (cfg := cfg)
+      (E := E) (anchor := B.anchor))
+    {obs : ValidatorIndex} (hcoh : E.ObserverCoherence cfg ext obs) {n : Nat}
+    (hHn1 : E.WithinHorizon cfg (n + 1))
+    (hcall : E.IsFCRCallAt cfg ext obs n)
+    (hstart : is_start_slot_at_epoch cfg
+      (get_current_slot cfg (E.weakFcrStep cfg ext obs n).store) = true)
+    (hgate : Weak.ObserverBankingGateAt cfg ext E obs n)
+    {w : ValidatorIndex} (hw : w ∈ E.honest) {m : Nat}
+    (hmH : E.WithinHorizon cfg m)
+    (hslot : E.slot_at cfg (n + 1) ≤ E.slot_at cfg m) :
+    (get_head cfg (E.weakFcrStep cfg ext obs n).store).root ∈
+      (E.store cfg ext w m).block_roots := by
+  have hqCurrent : (E.weakFcrStep cfg ext obs n).store =
+      E.store cfg ext obs (n + 1) :=
+    E.weakFcrStep_store cfg ext obs n
+  rw [hqCurrent]
+  refine Weak.gatedHead_known_at_all_honest_endpoints_at_observer cfg ext hA B
+    hT hanchor hboundary hsync hji hcoh.committees_agree hHn1 hcall
+    (fcr_store :=
+      { E.weakFcr cfg ext obs n with store := E.store cfg ext obs (n + 1) })
+    rfl ⟨?_, hgate⟩ hw hmH hslot
+  simpa only [hqCurrent] using hstart
+
 /-- Weak twin of `StrictSelectedResultMechanicalFacts.
 canonicalThroughoutNextEpoch_of_previousEpochStart`.  The strong proof's
 `confirmed_known_at_query_slot_start_minimal` (query node as relay receiver)
@@ -1695,24 +1763,35 @@ structure ObserverStrictCallFilterInputsAt (E : Execution Root)
       (E.weakGetLatestConfirmedTraceAt cfg ext obs n).result
       (get_block_epoch cfg (E.weakFcrStep cfg ext obs n).store
         (E.weakGetLatestConfirmedTraceAt cfg ext obs n).result))
-  /-- The `observedReset` origin of an epoch-start strict previous result.
-  Its query-local GU seed is fully discharged above
-  (`Weak.StrictSelectorAdvanceAt.previousObservedReset_queryGUEpochSeed`);
-  what remains is exactly the *dissemination* of that seed — the query
-  fork-choice head at an epoch-start second — to honest endpoints.
+  /-- The `observedReset` origin of an epoch-start strict previous result, on
+  the **ungated** arm only.
 
-  This is §4 of the wave design: at an epoch start the tentative-entry gate
-  takes the uncertified `is_start_slot_at_epoch` escape, so no head broadcast
-  certificate is available at the query second itself and stage S3's
-  `Weak.headSeed_known_at_all_honest_endpoints_at_observer` does not apply.
-  Under rule delta 5 the observed checkpoint is the banked `UJ(head)` and the
-  banking gate certifies its *supplier*, so this is the site
-  `WeakBankedJustification.lean`'s consumption lemmas are expected to close
-  (the design's alternative is rule delta 5′, which would certify the
-  epoch-start escape directly). -/
+  Its query-local GU seed is fully discharged above
+  (`Weak.StrictSelectorAdvanceAt.previousObservedReset_queryGUEpochSeed`), and
+  so is that seed's dissemination whenever rule delta 5's banking gate fired
+  at this very call (`Weak.StrictSelectorAdvanceAt.
+  previousObservedReset_gatedHeadDisseminated`): the gate's certificate is a
+  certificate for the head, because at an epoch-start call
+  `Weak.update_fast_confirmation_variables` runs on this same store, so the
+  banking supplier *is* the query head.
+
+  What is left is the complementary arm.  When the gate did **not** fire the
+  banked checkpoint is the one carried in from `E.weakFcr obs n`, certified at
+  some earlier second `s ≤ n` whose supplier was the head *then*; the
+  observed-restart guard's `is_head_unrealized_justified_ok` conjunct can still
+  hold at this call, by the carried value coinciding with `UJ` of a head the
+  observer received privately.  `Weak.weakFcr_certifiedBankedJustification`
+  then delivers the banked root (`Weak.bankedSupplier_known_at_all_honest_
+  endpoints_at_observer`, and for free on the anchor arm) but *not* this
+  second's head, and `PaperSafetySynchrony.block_relay` needs an honest
+  sender.  Closing it needs either new attestation-timing infrastructure
+  (to show an epoch-`e` checkpoint cannot be unrealized-justified at the first
+  slot of epoch `e`, which would make the guard unfireable on this arm) or the
+  design's rule delta 5′, which certifies the epoch-start escape directly. -/
   previous_epochStart_observedReset_headDisseminated :
     Weak.ObservedResetCandidateInputAt cfg ext (E.weakFcrStep cfg ext obs n)
       (E.weakGetLatestConfirmedTraceAt cfg ext obs n) →
+    ¬ Weak.ObserverBankingGateAt cfg ext E obs n →
     ∀ w ∈ E.honest, ∀ m : Nat, E.WithinHorizon cfg m →
       E.slot_at cfg (n + 1) ≤ E.slot_at cfg m →
       (get_head cfg (E.weakFcrStep cfg ext obs n).store).root ∈
@@ -1990,8 +2069,19 @@ noncomputable def
                 hguLower
                 (by simpa only [hqCurrent] using hprevious.symm)
                 hw hmH
-                (hinputs.previous_epochStart_observedReset_headDisseminated
-                  hobserved w hw m hmH hslotQM)
+                (by
+                  by_cases hgate : Weak.ObserverBankingGateAt cfg ext E obs n
+                  · exact (by
+                      simpa only [hqCurrent] using
+                        Weak.StrictSelectorAdvanceAt.previousObservedReset_gatedHeadDisseminated
+                          cfg ext hMargin B hT hsync hji hanchor hboundary hcoh
+                          hn1H hcall
+                          (by simpa only [hqCurrent] using hobserved.epoch_start)
+                          hgate hw hmH hslotQM)
+                  · exact (by
+                      simpa only [hqCurrent] using
+                        hinputs.previous_epochStart_observedReset_headDisseminated
+                          hobserved hgate w hw m hmH hslotQM))
                 hlate hjustifiedEpoch hresultJustified
       · exact h.fcrStep_previousOffStart_late_endpointFilterOutcome
           cfg ext B hT hsync hstatic hbyz hdomain hji hanchor hboundary P V
