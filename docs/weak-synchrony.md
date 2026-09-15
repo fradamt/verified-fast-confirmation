@@ -178,12 +178,13 @@ in this call keys off `fcr_store.current_epoch_observed_justified_checkpoint`,
 which in turn derives from `unrealized_justified_checkpoint` bookkeeping in
 `Confirmation.lean` (around `:46-50`) that rule delta 4 did not touch and
 that was not itself broadcast-certified. Rule delta 5 (below) gates exactly
-this installation on `Weak.has_head_broadcast_certificate`, so the key every
-weak certificate in the call is evaluated against is now itself
-certificate-backed or the trusted anchor value — see "Rule delta 5" for the
-gate, the input invariant it establishes
-(`Weak.CertifiedBankedJustification`), and the liveness cost of closing this
-gap.
+this installation on `Weak.has_head_broadcast_certificate` **and re-points it
+at the certified head's own `unrealized_justifications` entry**, so the key
+every weak certificate in the call is evaluated against is now itself
+certificate-backed — by a certificate that provably covers it — or the trusted
+anchor value. See "Rule delta 5" for the gate, the input invariant it
+establishes (`Weak.CertifiedBankedJustification`, maintained along the whole
+trajectory), and the liveness cost of closing this gap.
 
 **Finding 6 — head-certificate non-inertness depends on call placement, not
 just the rule.** `has_head_broadcast_certificate`'s span is `[get_block_slot
@@ -219,22 +220,88 @@ note makes for scheduling it next.)
 is identical to the strong rule except for **one** write: the epoch-start
 installation of the current-epoch observed justified checkpoint — the key
 `get_current_balance_source` reads, and hence the key every other weak
-certificate in the call is evaluated against — happens only when the block
-supplying that justification (the fork-choice head at update time) is
-broadcast-certified (`Weak.has_head_broadcast_certificate`, evaluated against
-the pre-write balance source `bs`, read before any field is rewritten). If
-the gate fails, the field keeps its previous value: stale-but-certified beats
-fresh-but-uncertified. This is monotonically stricter than the strong rule —
-the field is only ever assigned values the strong rule would also have
-assigned — hence safety-free. Every other write (slot-head cache,
+certificate in the call is evaluated against — happens only when the
+fork-choice head at update time is broadcast-certified
+(`Weak.has_head_broadcast_certificate`, evaluated against the pre-write
+balance source `bs`, read before any field is rewritten), **and what it banks
+is that head's own unrealized justification**:
+
+```lean
+    current_epoch_observed_justified_checkpoint :=
+      if has_head_broadcast_certificate cfg ext store bs then
+        store.unrealized_justifications (get_head cfg store).root
+      else fcr_store.current_epoch_observed_justified_checkpoint
+```
+
+*Bank only a justification observed in a certified block.* The value banked is
+the justification observed **through** the certified block, not the
+store-global running maximum `previous_epoch_greatest_unrealized_checkpoint`.
+That is the whole point of the design: coverage of the banked checkpoint by
+the head certificate becomes **chain-intrinsic**. The accepted FFG contracts
+tie `store.unrealized_justifications b` to `b`'s own ancestry
+(`AcceptedFFGTransitionCoherence.au_checkpoint_of_known` identifies the
+checkpoint root with `get_checkpoint_block store b c.epoch`, i.e. with the
+block the store's own ancestor walk from `b` lands on), so "the banked root is
+on the certified head's chain" is a *theorem about the rule* rather than a
+field of the input invariant or an extra executable conjunct.
+
+If the gate fails, the field keeps its previous value: stale-but-certified
+beats fresh-but-uncertified. Every other write (slot-head cache,
 `previous_epoch_greatest_unrealized_checkpoint`,
 `previous_epoch_observed_justified_checkpoint`) stays unconditional, exactly
 as in the strong rule; see the definition's docstring for the field-by-field
-domination argument. `Weak.get_latest_confirmed` and
-`Weak.on_fast_confirmation` are minimal clones of the strong definitions with
-the weak selector/bookkeeping substituted (picked up by namespace shadowing);
-`is_confirmed_chain_safe` and the revert-to-finalized branch stay the
-strong/deferred versions, per the module docstring's standing scope.
+argument. `Weak.get_latest_confirmed` and `Weak.on_fast_confirmation` are
+minimal clones of the strong definitions with the weak selector/bookkeeping
+substituted (picked up by namespace shadowing); `is_confirmed_chain_safe` and
+the revert-to-finalized branch stay the strong/deferred versions, per the
+module docstring's standing scope.
+
+**`previous_epoch_greatest_unrealized_checkpoint` is now vestigial in the weak
+bookkeeping.** It keeps its strong, ungated writes verbatim — the last-slot
+refresh from `store.unrealized_justified_checkpoint` — purely for
+field-for-field parity with the strong rule (and for any future consumer of
+the strong-side rotation lemmas). Rule delta 5 no longer reads it. The weak
+rotation lemmas about it (`Weak.weakFcr_previousGreatest_succ_exact`,
+`Weak.weakFcr_previousGreatest_origin`, `Weak.weakFcr_previousGreatest_known`
+in `WeakBankedJustification.lean`) are retained and marked as parity-only;
+`Weak.update_fcv_observed_exact` no longer mentions the field at all (the
+ordered write through it has disappeared from the exact-source statement).
+
+**Safety and liveness of the deviation.** When a *side* branch carried a
+higher justification than the head chain, the revised rule banks the
+head-chain one — a lower epoch. Lower is strictly stricter in every recency
+guard that reads the banked value (`is_observed_justified_block_epoch_ok`,
+`get_block_epoch confirmed_root + 1 ≥ current_epoch`, the voting-source
+recency tests), so the deviation is safety-free by the same monotonicity
+argument that licensed dropping the equivocation discount; it costs liveness
+only in the case where a side branch was ahead, which is exactly the case in
+which trusting the side branch's justification would have been the uncertified
+step. The balance-source deviation (a possibly different, always
+head-chain-observed checkpoint state) is benign in-model under
+`StaticValidatorSet`, where all keyed checkpoint states agree on the registry
+and the total active balance; in practice it means the FCR may run on slightly
+staler effective balances.
+
+**Epoch shape at the consumers — unchanged, and one guard improves.**
+`Weak.get_latest_confirmed`'s epoch-start restart branch reads the banked
+value through three tests. (i) `is_observed_justified_block_epoch_ok` asks
+`compute_epoch_at_slot (get_block_slot store banked.root) + 1 = current_epoch`
+— a constraint on the epoch of the *block* the banked checkpoint points at.
+Under both the old and the revised write the banked root is the boundary block
+of its own checkpoint epoch (`banked.root = get_checkpoint_block store b
+banked.epoch`, whose slot is at or below `compute_start_slot_at_epoch
+banked.epoch`), so no epoch index moves. (ii) `is_head_unrealized_justified_ok`
+asks `banked = store.unrealized_justifications head` — under the revised rule
+this is *true by construction* at a gate-passing epoch-start call, since
+`update_fast_confirmation_variables` and `get_latest_confirmed` run on the same
+store in the same `on_fast_confirmation` invocation, hence on the same head.
+Under the old write it compared a store-global value captured one slot earlier
+against `UJ[head]`, an unrelated runtime coincidence. So the revision makes the
+restart branch *more* able to fire, not less. (iii) `is_confirmed_block_stale`
+is a slot comparison and is unaffected. The previous/current rotation
+(`previous_epoch_observed_justified_checkpoint := current_epoch_observed_
+justified_checkpoint`) is untouched. No downstream consumer lemma needed
+adjusting, and none was adjusted.
 
 **Free bonus** (`Weak.has_broadcast_certificate_span_nonempty`,
 `WeakBankedJustification.lean`): a true certificate forces non-empty support,
@@ -246,18 +313,39 @@ the gate fires at an epoch start.
 **The input invariant.** `Weak.BankedJustificationCertificate` packages the
 certified-arm evidence: the second the gate fired, the supplier (the
 fork-choice head at that second) and its knownness, the banked root's
-knownness and its being on the supplier's chain (ancestor monotonicity
-carries dissemination down from the supplier), and the balance source with
-its two economic facts (registry/total-active-balance) plus the gate itself
-and its span side conditions. `Weak.CertifiedBankedJustification` is the
-one-shot invariant: `fcr_store`'s banked observed justified checkpoint is
-either the trusted anchor/initialisation value (globally known, hence
-disseminated for free by `Execution.store_storeLE`) or a gate-passing
-rotation with a certificate. `Weak.checkpoint_state_key_of_broadcast_certificate`
-supplies the certificate's own economic side conditions self-containedly
-(same route as `Execution.checkpoint_state_key_of_one_confirmed`: an unkeyed
-balance source is the default `BeaconState`, whose empty registry makes every
-candidate inactive, so a true certificate forces a keyed source).
+knownness, the **raw banking equation** `banked_eq : banked =
+(E.store obs second).unrealized_justifications supplier`, and the balance
+source with its two economic facts (registry/total-active-balance) plus the
+gate itself and its span side conditions. The structure deliberately carries
+the equation rather than an ancestry field: the equation is executable, is
+discharged by `rfl`-shaped rewriting at construction, and the ancestry is
+derived where it is used. `Weak.CertifiedBankedJustification` is the one-shot
+invariant: `fcr_store`'s banked observed justified checkpoint is either the
+trusted anchor/initialisation value (globally known, hence disseminated for
+free by `Execution.store_storeLE`) or a gate-passing rotation with a
+certificate. `Weak.checkpoint_state_key_of_broadcast_certificate` supplies the
+certificate's own economic side conditions self-containedly (same route as
+`Execution.checkpoint_state_key_of_one_confirmed`: an unkeyed balance source is
+the default `BeaconState`, whose empty registry makes every candidate inactive,
+so a true certificate forces a keyed source).
+
+**The chain-intrinsic ancestry, as a lemma.**
+`Weak.auCheckpoint_known_and_below_tip` is the new load-bearing fact: a
+checkpoint with accepted AU evidence at a known tip is not only known in the
+observer's own store — that half is
+`AcceptedSelectorAUCarrier.checkpointRoot_known`, which the repo already had —
+but sits *on that tip's chain*. The ancestry half is the `get_ancestor_comp`
+step the knownness proof derives and discards: `au_checkpoint_of_known` gives
+`c.root = get_checkpoint_block store tip c.epoch`, and walking from `tip` down
+to that landed block's own slot lands on it, which is exactly `is_ancestor`.
+`Weak.headUnrealizedJustification_known_and_below` specialises it to the rule's
+actual read, `store.unrealized_justifications (get_head store).root`, via
+`Execution.accepted_unrealized_justification_eq` (`UJ[b] = GU b`) and `gu_AU`.
+Everything on this route is causal-store quantified and honesty-free, so it
+restates at a possibly-Byzantine observer exactly as
+`ObserverCoherence.justified_root_known_of_acceptedGlobalTrajectory` did;
+`Weak.head_known_at_observer` supplies the head's own knownness from
+`get_head_root_mem_or` plus `Weak.justifiedRoot_known_at_observer`.
 
 **Consumption.** `Weak.bankedSupplier_known_at_all_honest_endpoints_at_observer`
 is the banked twin of `Execution.confirmed_known_at_all_honest_endpoints_at_observer`:
@@ -265,8 +353,10 @@ given a certificate and a "same-slot-capable" timing gate (`E.slot_at
 cfg second ≤ E.slot_at cfg m`, equality not required — exactly like
 `weak_finalized_epoch_le_remoteJustified`), both the supplier and the banked
 root are known at every honest endpoint from the gate on. It routes through
-`Execution.certificate_dissemination` (obligation 2) for the supplier and
-`Execution.is_ancestor_transport_closed` for the banked root — not
+`Execution.certificate_dissemination` (obligation 2) for the supplier, and for
+the banked root through `banked_eq` +
+`Weak.headUnrealizedJustification_known_and_below` +
+`Execution.is_ancestor_transport_closed` — not
 `Weak.certificate_chain_dissemination`, whose extra `WalkKnown` premises are
 not derivable from the certificate's own fields.
 
@@ -299,35 +389,51 @@ anchor arm is handled by global knownness, not an exception.
 > construction (this is the self-certification hole the gate is designed to
 > close). In every case the rule keeps the previous banked value:
 > `current_epoch_observed_justified_checkpoint` is only ever *replaced* by a
-> certified value, never cleared, and `previous_epoch_greatest_unrealized_checkpoint`
-> keeps refreshing unconditionally at each epoch end, so a missed boundary
-> costs exactly one epoch of freshness and does not cascade. The consequences
-> are: the FCR runs the epoch on the previous epoch's balance source
-> (harmless in-model under `StaticValidatorSet`; in practice, stale effective
-> balances), and `get_latest_confirmed`'s epoch-start restart branch cannot
-> fire, since `is_observed_justified_block_epoch_ok` demands a banked root
-> exactly one epoch back. Safety is unaffected — the gated write is a strict
-> sub-behaviour of the strong write, so the delta is safety-free by the same
-> monotonicity argument that licensed dropping the equivocation discount.
-> This is the price of certified bookkeeping, and it is the strongest
-> remaining argument for scheduling the re-anchored-span variant (a
-> certificate whose span stays non-empty regardless of where `head` lands)
+> certified, head-chain-observed value, never cleared, so a missed boundary
+> costs exactly one epoch of freshness and does not cascade. A fourth,
+> *non*-inert liveness case is specific to the revision: the gate fires but a
+> side branch carried a higher justification than the head chain, so the
+> banked value is lower than the strong rule's would have been — the
+> confirmation restart then anchors one justification further back. The
+> consequences are: the FCR runs the epoch on the previous epoch's (or a
+> head-chain) balance source (harmless in-model under `StaticValidatorSet`; in
+> practice, stale effective balances), and `get_latest_confirmed`'s epoch-start
+> restart branch cannot fire when the gate failed, since
+> `is_observed_justified_block_epoch_ok` demands a banked root exactly one
+> epoch back. Safety is unaffected — the gated write only ever installs a
+> certified justification observed on the head's own chain, which is a
+> sub-behaviour of the strong write in every recency guard, so the delta is
+> safety-free by the same monotonicity argument that licensed dropping the
+> equivocation discount. This is the price of certified bookkeeping, and it is
+> the strongest remaining argument for scheduling the re-anchored-span variant
+> (a certificate whose span stays non-empty regardless of where `head` lands)
 > next.
 
-**Maintenance along the trajectory — half proved, half a model-level
-finding.** The maintenance lemmas that would show the invariant is preserved
-by an actual trajectory (`Weak.certifiedBankedJustification_update` /
-`Weak.weakFcr_certifiedBankedJustification`) reduce, after the work in
-`WeakBankedJustification.lean`, to exactly one field of
-`Weak.BankedJustificationCertificate`.
+**Maintenance along the trajectory — closed.** Both maintenance lemmas are
+proved in `WeakBankedJustification.lean`.
+`Weak.certifiedBankedJustification_update` has three cases: not an epoch start,
+or the gate false ⇒ the banked field is unchanged and the incoming witness
+re-indexes (`BankedJustificationCertificate.transport`); the gate true ⇒ the
+certified arm at `second := n + 1` with `supplier :=` the boundary head,
+`banked_eq` read straight off the revised write via
+`Weak.update_fcv_observed_exact`, `supplier_known` from
+`Weak.head_known_at_observer`, `banked_known` from
+`Weak.headUnrealizedJustification_known_and_below`, `second_pos` from the
+call's own slot advance (`E.IsFCRCallAt`), and the two economic facts
+*produced* rather than assumed — the gate being true forces its key to be
+keyed (`Weak.checkpoint_state_key_of_broadcast_certificate`), after which
+`Execution.registryConstant` and
+`Execution.checkpoint_states_total_active_balance` apply.
+`Weak.weakFcr_certifiedBankedJustification` is the trajectory induction: the
+seed is the genesis initializer, which banks the anchor store's
+`finalized_checkpoint` — in `E.genesis_store.block_roots`, hence the anchor arm
+— and every step is either the update lemma at a real slot advance or a pure
+re-index. No honesty hypothesis appears anywhere.
 
 *The honesty was dead.* The strong installation-provenance machinery is
-honesty-free throughout: `Execution.fcr_previousGreatest_succ_exact`,
-`Execution.previousGreatest_acceptedInstallation`,
-`Execution.AcceptedUJCacheInstallationAt`,
-`ObservedResetCandidateInputAt.acceptedInstallation`,
-`ExactPrefixAcceptedFFGSemantics.causalStoreGlobalProjection`,
+honesty-free throughout: `ExactPrefixAcceptedFFGSemantics.causalStoreGlobalProjection`,
 `globalJustified_anchor_or_AUEvidence`,
+`Execution.accepted_unrealized_justification_eq`,
 `AcceptedSelectorAUCarrier.checkpointRoot_known` and the accepted bundle's
 `AcceptedFFGTransitionCoherence.au_checkpoint_of_known` carry **no** honesty
 binder (the last is quantified over `E.CausalStore`), and the store geometry
@@ -336,65 +442,40 @@ they call (`store_causal`, `store_parentSlotLt`, `store_walkKnownK`,
 node-generic. The one honesty-quantified route,
 `ActualResetCheckpointRealization.lean`'s `ResetCheckpointHistoryAt` family,
 goes through the **legacy** `FFGTransitionCoherence.au_checkpoint_of_known`
-(`∀ w ∈ E.honest, …`) and is simply bypassed in favour of the accepted
-bundle. So the needed facts restate at a possibly-Byzantine observer exactly
-as `ObserverCoherence.justified_root_known_of_acceptedGlobalTrajectory` did
-(`Weak.acceptedOriginRoot_known_at_observer` and its two instances).
+(`∀ w ∈ E.honest, …`) and is simply bypassed in favour of the accepted bundle.
 
-*What now closes.* `banked_known` is discharged outright, along the whole
-weak trajectory, with no honesty hypothesis:
-`Weak.weakFcr_previousGreatest_origin` identifies the carried
-greatest-unrealized field with an exact earlier second's store-global
-unrealized-justified checkpoint;
-`Weak.unrealizedJustifiedRoot_known_of_acceptedGlobalTrajectory` makes that
-root known in the observer's own store; and
-`Weak.weakFcr_observed_known` / `Weak.weakFcrStep_observed_known` propagate it
-across every rotation of the gated rule.
-
-*What does not close, and is not merely unproved.* `banked_below_supplier`
-asks that the banked root be an ancestor of the boundary head. **As rule
-delta 5 is currently written this is false in general.** The banked value is
-the store's unrealized-justified checkpoint captured at the *end of the
-previous epoch*; the certified head at the boundary descends from
-`store.justified_checkpoint.root`
-(`Weak.bankedBelowHead_of_bankedBelowJustified`). Between those two moments
-the store's checkpoints can move branch: `update_unrealized_checkpoints`
-replaces the UJ field on any strictly higher epoch, from any accepted carrier
-on any branch, and `on_tick_per_slot`'s epoch pull-up installs whatever the UJ
-field is at the tick. An observer holding UJ = `C_A` (epoch `e−1`, branch A)
-at the capture second, then receiving a branch-B block that justifies `C_B` at
-epoch `e`, enters epoch `e` with a branch-B head — the gate passes and banks
-`C_A`, which the head's certificate does not cover. Placing `C_A` and `C_B` on
-one chain is an FFG-safety-grade claim about conflicting certified
+**The branch-switch finding, and how the revision resolves it.** The previous
+landing of this delta banked the store-global running maximum
+`previous_epoch_greatest_unrealized_checkpoint`, and its input invariant
+therefore had to carry a field `banked_below_supplier` asserting that the
+banked root lies on the certified head's chain. That field was found to be
+**false in general**, and not merely unproved. The running maximum is captured
+at the *end of the previous epoch*
+(`Weak.weakFcr_previousGreatest_origin` identifies it with `(E.store obs k)
+.unrealized_justified_checkpoint` for an exact earlier second `k`), while the
+gate certifies the head at the *boundary*. Between those two moments the
+store's checkpoints can move branch: `update_unrealized_checkpoints` replaces
+the unrealized-justified field on any strictly higher epoch, from any accepted
+carrier on any branch, and `on_tick_per_slot`'s epoch pull-up installs whatever
+that field holds at the tick. An observer holding `C_A` (epoch `e−1`, branch A)
+at second `k`, then receiving a branch-B block whose pulled-up state justifies
+`C_B` at epoch `e`, enters epoch `e` with a branch-B head: the gate passes and
+banks `C_A`, which the head's certificate does not cover. Placing `C_A` and
+`C_B` on one chain is an FFG-safety-grade claim about conflicting certified
 justifications at *different* epochs; it does not follow from the store
 definitions, the accepted bundle gives only `anchor ∨ GU carrier`, and
-`JustificationInterface.justified_descends` covers only the strictly-ahead
-case (and is honest-quantified besides).
+`JustificationInterface.justified_descends` covers only the strictly-ahead case
+(and is honest-quantified besides).
 
-*Consequence and proposed fix (for review, not applied).* The gate can bank a
-value its own certificate does not cover, so the banked root's dissemination
-to honest endpoints does not follow. The minimal repair is one extra
-executable conjunct on the gate:
-
-```lean
-    current_epoch_observed_justified_checkpoint :=
-      if has_head_broadcast_certificate cfg ext store bs &&
-          is_ancestor store (get_head cfg store)
-            (get_node_for_root
-              fcr_store.previous_epoch_greatest_unrealized_checkpoint.root) then
-        fcr_store.previous_epoch_greatest_unrealized_checkpoint
-      else fcr_store.current_epoch_observed_justified_checkpoint
-```
-
-This is still strictly stricter than the strong rule, hence still safety-free
-by the same monotonicity argument, and still costs at most one epoch of
-freshness — the "when the gate fails to bank" box above gains a fourth inert
-case, a boundary head that switched branches. With it,
-`banked_below_supplier` is the conjunct verbatim, `banked_known` is the
-theorems above, `second_pos` is the call's own slot advance, and both
-maintenance lemmas close.
-`Weak.bankedBelowHead_of_bankedBelowJustified` shows the cheaper
-justified-root form of the conjunct would suffice.
+An earlier proposal was to close the hole with an extra executable conjunct on
+the gate (`is_ancestor store (get_head store) (get_node_for_root
+previous_epoch_greatest.root)`). The ratified design does better: by banking
+the head's own `unrealized_justifications` entry, the rule never produces a
+banked value the head certificate fails to cover, so the hole is closed **at
+the source** and no ancestry conjunct, ancestry field, or ancestry obligation
+exists at all. `Weak.bankedBelowHead_of_bankedBelowJustified` — the fork-choice
+reduction from the head to the store's justified root — is retained as a true
+and reusable observer-side fact, but it is no longer on rule delta 5's path.
 
 ## Proof migration map
 
