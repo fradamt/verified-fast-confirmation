@@ -779,19 +779,20 @@ non-subtractive shape as the intra-epoch/future-crossing arm. Consequently:
 After this wave, `weak_safeFrom_find_latest_confirmed_descendant_discharged`'s
 premises are:
 
-* **`hfilter` — the FFG-realization filter supply.** The next wave's target
-  (S10): it is exactly `Weak.SelectedStrictEdgeFilterSupplyAt`, the same
-  filter-membership boundary the strong `SelectedStrictEdgeFilterSupplyAt`
-  already carries, now over `Weak.StrictSelectedEdgeGeometry`. The six
-  observer-touching `block_relay`/`vote_ubiquity`/`attestation_delivery`
-  sites in the FFG-realization phase machinery that discharge it in the
-  strong development are enumerated in the margin-discharge wave's scout
-  report; four close via confirmed-block dissemination, provenance, or the
-  justification-witness certificate (all already proved for a non-honest
-  observer), and two are genuinely open — the honest-proposer-recurrence
-  residue restating Paper Assumption 3.2
-  (`Execution.WeakRecentSourceSeedDissemination`), which is the natural next
-  target once `hmargin` is off the critical path.
+* **`hfilter` — the FFG-realization filter supply.** *(Historical note: at
+  the time this corollary landed, this was expected to need a further
+  `Execution.WeakRecentSourceSeedDissemination`-style relay premise. The
+  `hfilter`-discharge wave's scout report found this expectation wrong: every
+  observer-touching relay site the strong development uses to discharge the
+  matching filter supply either closes with no new premise at a non-honest
+  observer (confirmed-block dissemination, provenance, or a broadcast/
+  witness certificate — all already available) or is closed by a
+  monotonically stricter rule delta (delta 5′, gating the previous
+  uncertified epoch-start escape behind the head broadcast certificate) that
+  adds no assumption to the floor. `Weak.SelectedStrictEdgeFilterSupplyAt` is
+  now fully discharged, with no `hfilter`-shaped premise surviving anywhere —
+  see "The closed theorem" below. `Execution.WeakRecentSourceSeedDissemination`
+  was never landed and is not needed.)*
 * **`hwalkDomain : E.PostAnchorHonestVoteTargetWalkDomain cfg ext`** —
   endpoint-side only. It survives `vote_ubiquity`'s retirement because its
   *other* consumer, `endpointLedgerFields_from_execution_minimal`, runs
@@ -820,3 +821,142 @@ the discharged headline, so `hmargin` becomes `hfilter`.
 `weak_safeFrom_find_latest_confirmed_descendant_discharged` and
 `weak_confirmed_head_discharged` (19 declarations); both depend only on
 `propext, Classical.choice, Quot.sound`.
+
+## The closed theorem
+
+Stage S8 assembles the `hfilter`-discharge wave's own headline
+(`Weak.StrictSelectorAdvanceAt.observerCall_selectedStrictEdgeFilterSupplyAt_
+closed`, `WeakObserverStrictCallFilterInputs.lean` — the S0–S7 stack's
+closed strict-edge filter supplier, taking no `hinputs` bundle at all) with
+`weak_safeFrom_find_latest_confirmed_descendant_discharged` above
+(`WeakOneShotSafetyClosed.lean`). The result is the closed one-shot weak
+safety theorem, at an actual FCR call, with **no `hmargin` and no `hfilter`**:
+
+```lean
+theorem weak_safeFrom_observerCall_closed
+    {E : Execution Root}
+    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
+    (hji : JustificationInterface cfg ext E)
+    (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
+    (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg) (E := E) (anchor := B.anchor))
+    (hDelay : E.AcceptedRealizedFinalizationDelay cfg ext B)
+    (hphase0 : Phase0SourceCoherence cfg ext)
+    (hpaper : B.state.PaperA32Inclusion cfg ext)
+    (P : AcceptedEpochCheckpointProjection B.anchor (E.AcceptedRoot cfg ext) B.state.C)
+    (V : B.state.ExactLinkValidity)
+    (hanchorExact : B.anchor = B.state.C B.anchor.root B.anchor.epoch)
+    {obs : ValidatorIndex}
+    (hW : E.WeakObserverMarginAssumptions cfg ext obs)
+    (hwalkDomain : E.PostAnchorHonestVoteTargetWalkDomain cfg ext)
+    (hC : Weak.ObserverHistoricalA32CallAssumptions cfg ext E obs)
+    (hfit : EpochEndsFitUint64 cfg)
+    {n : ℕ}
+    (hn1H : E.WithinHorizon cfg (n + 1))
+    (hcall : E.IsFCRCallAt cfg ext obs n)
+    (hinput : (E.weakGetLatestConfirmedTraceAt cfg ext obs n).afterObserved ∈
+      (E.weakFcrStep cfg ext obs n).store.block_roots)
+    (hbase : E.SafeFrom cfg ext
+      (E.weakGetLatestConfirmedTraceAt cfg ext obs n).afterObserved
+      (E.slot_start cfg (E.slot_at cfg (n + 1)))) :
+    E.SafeFrom cfg ext (E.weakGetLatestConfirmedTraceAt cfg ext obs n).result (n + 1)
+```
+
+The assembly is a case split on `E.weakGetLatestConfirmedTraceAt`'s exact
+four-way candidate-history classification, uniform over which branch the
+actual call took: the three "unchanged" branches close directly from
+`hbase` (rewritten from the query slot's start to the call's own second
+`n + 1` via `Execution.slot_start_eq_succ_of_advance_minimal`); the
+`strictSelected` branch exposes exactly the `Weak.OrderedCandidateInputOrigin`
+and `Weak.StrictSelectorAdvanceAt` facts the closed filter supplier consumes,
+and its output is fed straight into `weak_safeFrom_find_latest_confirmed_
+descendant_discharged`'s `hfilter` slot.
+
+The endpoint form `weak_confirmed_head_closed` and the fully self-contained
+composition `weak_safeFrom_observerCall_closed_from_finalized` /
+`weak_confirmed_head_closed_from_finalized` (seeded at the observer's own
+finalized checkpoint, `hlcr`/`hbase` discharged internally via
+`WeakFinalizedInput.lean`, mirroring `weak_safeFrom_find_latest_confirmed_
+descendant_discharged_from_finalized`) are in the same file. The finalized
+composition needs one explicit scenario premise beyond the floor —
+`hbfr : (E.weakGetLatestConfirmedTraceAt cfg ext obs n).afterObserved =
+(E.weakFcrStep cfg ext obs n).store.finalized_checkpoint.root` — recording
+that *this particular call's* candidate input reduced to the observer's own
+finalized checkpoint (the content of `Weak.FinalizedResetCandidateInputAt.
+input_eq` for the real trace). Traces are functionally determined by their
+query, so this cannot be discharged in general without knowing which of the
+four candidate-history branches the call took; closing it unconditionally
+for every branch (in particular the "carried" branch, whose input is the
+*previous* call's own confirmed root) would need an induction over
+`E.weakConfirmed`'s own `SafeFrom` history that this wave does not build.
+It is flagged here rather than folded silently into the floor.
+
+### The complete premise surface, classified against the ratified floor
+
+Every premise of `weak_safeFrom_observerCall_closed`, classified:
+
+* **`hW : E.WeakObserverMarginAssumptions cfg ext obs`** — `hW.base :
+  SelectedMarginAssumptions` is the ratified floor: honest-to-honest
+  Δ-delivery and the β bound (`hW.base.synchrony : PaperSafetySynchrony`),
+  estimation soundness and honest behavior/BLS (`hW.base.honest_behavior`),
+  the static registry (`hW.base.static_validators`), the Byzantine bound
+  (`hW.base.byzantine_bound`), `ExternalsCoherence` (static committees, ground
+  truth), whole seconds, and genesis shape. `hW.observer : obs ∉ E.honest`
+  and `hW.coherence : ObserverCoherence cfg ext obs` are the two
+  observer-specific fields; of `ObserverCoherence`'s two fields, only
+  `committees_agree` (the observer's own store computes committees
+  consistently with the ground-truth assignment) is a genuinely free
+  premise — `justified_root_known` is derivable
+  (`ObserverCoherence.justified_root_known_of_acceptedGlobalTrajectory`,
+  packaged as `ObserverCoherence.of_acceptedTrajectory`).
+* **`hwalkDomain : E.PostAnchorHonestVoteTargetWalkDomain cfg ext`** —
+  endpoint-side only (§"The endpoint-direct decision" above); part of the
+  accepted synchronized-clocks/honest-behavior floor.
+* **`B : ExactPrefixAcceptedFFGSemantics cfg ext E`, `hT`, `hanchor`,
+  `hboundary`, `hDelay`, `hphase0`, `hpaper`, `P`, `V`, `hanchorExact`** —
+  the accepted FFG semantic contracts already used throughout the accepted
+  one-shot facade (`AcceptedActualFCRNextSlotSafetyFacade.lean`): genesis/
+  anchor bookkeeping (`hanchor`, `hboundary`, `hanchorExact`, `P`), the
+  accountability and finalization-delay bundle (`hT`, `hDelay`), and the
+  Phase-0 source-coherence/link-validity/inclusion contracts (`hphase0`,
+  `hpaper`, `V`) the accepted development already carries as floor, not
+  premises new to the weak route.
+* **`hji : JustificationInterface cfg ext E`** — the same executable
+  justification-selection contract the accepted development's actual-call
+  facade already assumes.
+* **`hC : Weak.ObserverHistoricalA32CallAssumptions cfg ext E obs`** — the
+  floor-classified observer call contract discharging obligation X1 (the
+  four-field `Weak.ObserverStrictCallFilterInputsAt` residue). This is the
+  accepted FFG semantic contracts' `helper_provisos`, extended to quantify
+  over the observer `obs` in addition to the honest validators the accepted
+  development already quantifies over — **not** a new class of assumption,
+  the same contract read at one more (not necessarily honest) index.
+* **`hfit : EpochEndsFitUint64 cfg`** — a pure configuration-arithmetic fact
+  (slots-per-epoch bookkeeping fits in `UInt64`), independent of honesty or
+  synchrony.
+* **`hcall : E.IsFCRCallAt cfg ext obs n`** — the actual-call clock predicate
+  ("the store's slot advanced from `n` to `n + 1`"), honesty-free and
+  store-level, shared verbatim with the accepted development
+  (`FCRCallContracts.lean`).
+* **`hinput`, `hbase`** — the call's own candidate input is known and
+  `SafeFrom` from the start of the query slot; the same input-safety premise
+  the accepted actual-call facade takes at an honest node, now at a
+  (possibly non-honest) observer.
+
+**Not carried, anywhere in this premise list:** no delivery of votes, blocks,
+or store contents *to* or *from* the observer (`obs` need not be a
+`Synchrony`/`PaperSafetySynchrony` sender or receiver at all); no observer
+honesty (`obs ∉ E.honest` is a hypothesis, not a contradiction to discharge);
+no equivocation-visibility relay (`Synchrony.attester_slashing_relay` does
+not occur on this path — the non-subtractive crossing collapse above retired
+its last use); and no Paper Assumption 3.2 premise beyond the floor (the
+historical A3.2 residue is fully discharged into `hC`, itself the accepted
+development's own `helper_provisos` read at one more index, not a new
+recurrence assumption).
+
+`scripts/Audit.lean`'s `publicWitnesses` set now includes
+`weak_safeFrom_observerCall_closed`, `weak_confirmed_head_closed`,
+`weak_safeFrom_observerCall_closed_from_finalized`, and
+`weak_confirmed_head_closed_from_finalized` (23 declarations); all four
+depend only on `propext, Classical.choice, Quot.sound`
+(`lake env lean scripts/Audit.lean`).
