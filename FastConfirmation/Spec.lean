@@ -10,6 +10,7 @@ import FastConfirmation.Spec.Proof.WeakEndpointClasses
 import FastConfirmation.Spec.Proof.WeakCrossingSets
 import FastConfirmation.Spec.Proof.WeakSiblingScore
 import FastConfirmation.Spec.Proof.WeakSelectorBetween
+import FastConfirmation.Spec.Proof.WeakSelectedEdgeGeometry
 
 /-!
 # Spec — facade
