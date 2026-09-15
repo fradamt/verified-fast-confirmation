@@ -58,6 +58,82 @@ namespace Weak
 
 variable {E : Execution Root}
 
+/-! ## The observer-side normative call contract (obligation X1)
+
+`Execution.AcceptedHistoricalA32CompletedPrefixCallAssumptions.helper_provisos`
+(`AcceptedHistoricalA32CallSupplier.lean`) is quantified as
+`∀ v ∈ E.honest, …` and indexed at the *strong* evaluator
+(`E.fcrStep` / `E.getLatestConfirmedTraceAt` /
+`SelectedHelperProvisosAt`, which itself names
+`find_latest_confirmed_descendant` and the strong
+`PreviousAcceptedEdge` / `CurrentTargetAcceptedEdge`).  A Byzantine observer
+is outside that quantifier, and its calls run the weak evaluator, so neither
+the quantifier nor the indexing fits.
+
+Resolution, per the wave design's target end state: the strong record is left
+untouched and a **parallel observer-quantified contract** is added on the weak
+side — `Weak.SelectedHelperProvisosAt` (the weak twin of the proviso record,
+over `Weak.findLatestSelectedTrace`) plus
+`Weak.ObserverHistoricalA32CallAssumptions`, which bundles the unchanged
+strong record with one observer-indexed field.  Nothing in the strong
+development changes.
+
+**This is floor-classified.**  `helper_provisos` is a normative FCR-spec
+contract (the literal helper provisos the specification attaches to a
+selector invocation), not a derived fact; extending it to cover the observer
+adds an assumption of exactly the same accepted-FFG-contract shape as the
+strong one it mirrors, and it is carried, not discharged. -/
+
+/-- Weak twin of `SelectedHelperProvisosAt`, over the weak evaluator trace.
+Field-for-field identical to the strong record with
+`findLatestSelectedTrace` / `PreviousAcceptedEdge` /
+`find_latest_confirmed_descendant` replaced by their `Weak.` counterparts.
+The strong `CurrentTargetAcceptedEdge`'s two conjuncts are inlined, because
+`WeakSelectedTrace.lean` (stage S2) landed no weak twin of that abbreviation. -/
+structure SelectedHelperProvisosAt (E : Execution Root)
+    (v : ValidatorIndex) (q : ℕ)
+    (fcrStore : FastConfirmationStore Root)
+    (latestConfirmedRoot : Root) : Prop where
+  current_target : ∀ a c : Root,
+    (a, c) ∈ (Weak.findLatestSelectedTrace cfg ext fcrStore
+      latestConfirmedRoot).2.2 →
+    get_block_epoch cfg fcrStore.store a <
+      get_block_epoch cfg fcrStore.store c →
+    HonestVotesSupportTarget cfg E
+      (get_current_target cfg fcrStore.store) q
+  no_conflict : ∀ a c : Root,
+    Weak.PreviousAcceptedEdge cfg ext fcrStore latestConfirmedRoot a c →
+    is_start_slot_at_epoch cfg
+      (get_current_slot cfg fcrStore.store) ≠ true →
+    HonestVotesSupportTarget cfg E
+      (get_current_target cfg fcrStore.store) q
+  selected_previous_result_no_conflict : ∀ result : Root,
+    Weak.find_latest_confirmed_descendant cfg ext fcrStore
+      latestConfirmedRoot = result →
+    result ≠ latestConfirmedRoot →
+    get_block_epoch cfg fcrStore.store result ≠
+      get_current_store_epoch cfg fcrStore.store →
+    is_start_slot_at_epoch cfg
+      (get_current_slot cfg fcrStore.store) ≠ true →
+    HonestVotesSupportTarget cfg E
+      (get_current_target cfg fcrStore.store) q
+
+/-- The accepted FFG call contract, extended to cover one fixed observer.
+
+`base` is `Execution.AcceptedHistoricalA32CompletedPrefixCallAssumptions`
+**verbatim and unchanged**; `observer_helper_provisos` is the single parallel
+field obligation X1 asks for.  Floor-classified together with `base`. -/
+structure ObserverHistoricalA32CallAssumptions (E : Execution Root)
+    (obs : ValidatorIndex) : Prop where
+  base : E.AcceptedHistoricalA32CompletedPrefixCallAssumptions cfg ext
+  observer_helper_provisos : ∀ n : ℕ,
+    E.IsFCRCallAt cfg ext obs n → E.WithinHorizon cfg (n + 1) →
+      getLatestSelectorGuard cfg (E.weakFcrStep cfg ext obs n)
+          (E.weakGetLatestConfirmedTraceAt cfg ext obs n).afterObserved →
+        Weak.SelectedHelperProvisosAt cfg ext E obs (n + 1)
+          (E.weakFcrStep cfg ext obs n)
+          (E.weakGetLatestConfirmedTraceAt cfg ext obs n).afterObserved
+
 /-! ## Actual-call endpoint order
 
 `Execution.actualCall_queryIndex_le_of_slot_le` is reused verbatim; only the
