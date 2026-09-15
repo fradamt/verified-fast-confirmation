@@ -4,6 +4,7 @@ import FastConfirmation.Spec.Proof.AcceptedStrictPrefixExtraQueryCounterexample
 import FastConfirmation.Spec.Proof.AcceptedPinnedEconomicsStrictPrefixExtraQueryCounterexample
 import FastConfirmation.Spec.Proof.WeakOneShotSafety
 import FastConfirmation.Spec.Proof.WeakFinalizedInput
+import FastConfirmation.Spec.Proof.WeakFreshSupport
 
 /-!
 # Spec — facade
