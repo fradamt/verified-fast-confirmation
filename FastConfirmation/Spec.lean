@@ -30,7 +30,11 @@ import FastConfirmation.Spec.Proof.WeakPreQuerySIR
 import FastConfirmation.Spec.Proof.WeakHistoricalA32Geometry
 import FastConfirmation.Spec.Proof.WeakHistoricalA32Step
 import FastConfirmation.Spec.Proof.WeakHistoricalA32CallSupplier
+import FastConfirmation.Spec.Proof.WeakHistoricalA32OneStep
+import FastConfirmation.Spec.Proof.WeakHistoricalA32Induction
 import FastConfirmation.Spec.Proof.WeakSelectedJustifiedOrientation
+import FastConfirmation.Spec.Proof.WeakHistoricalA32PayloadProducer
+import FastConfirmation.Spec.Proof.WeakObserverStrictCallFilterInputs
 
 /-!
 # Spec — facade
