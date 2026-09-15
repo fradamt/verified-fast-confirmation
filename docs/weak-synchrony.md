@@ -314,3 +314,107 @@ at the observer (Stage H), nor the hdom-supplier retirement (Stage I) or the
 final `hmargin` discharge (Stage J) built on top of it. Those three stages
 remain out of scope for this wave; `hmargin` is still carried as an explicit
 premise of the one-shot theorem today.
+
+## The finalized-base corollary (proved)
+
+The one-shot theorem above still takes its `SafeFrom` seed (`hbase`) as an
+explicit premise. `FastConfirmation/Spec/Proof/WeakFinalizedInput.lean` closes
+that gap for the finalized-checkpoint branch: it derives `hbase` — and the
+seed's own knownness (`hlcr`) — from the accepted FFG semantics bundle
+instead of asking the caller to supply either.
+
+The honest origin of a non-anchor finalized field
+(`Execution.FinalizedHonestVotingSourceOrigin` /
+`Execution.finalizedHonestVotingSourceOrigin_of_causalStore`) replaces the
+strong route's whole-store relay from an honest reader by the finalizing
+certificate's own honest signer: two quorums of the certified finalizing link
+intersect in an honest validator, whose genuine vote read its source off its
+own store (`acceptedHonestAttestationDataSourceEqVSAtTarget`), and that vote
+precedes the reading store's current slot because the including block does
+(`includedAttestationSlot_lt_causalStoreCurrentSlot`). Honest-to-honest
+`block_relay` then carries the signer's seed to every honest endpoint, and
+`votingSource_epoch_le_remoteJustified_of_known` adopts the epoch there
+(`Execution.weak_finalized_epoch_le_remoteJustified`) — the reading node
+itself is never assumed honest, and no reading-store content besides its
+finalized field and clock is relayed.
+
+`Execution.weak_finalizedReset_justifiedDom_of_synchrony` and
+`Execution.weak_finalizedReset_safeFrom_of_synchrony` are weak twins of
+`finalizedReset_justifiedDom_of_nextSlotSynchrony` /
+`finalizedReset_safeFrom_of_nextSlotSynchrony`
+(`AcceptedFinalizedNextSlotSafety.lean`) built on that origin lemma: the
+observer-honesty binder is dropped, and the single honesty site — the strong
+next-slot adoption call — is replaced by `weak_finalized_epoch_le_
+remoteJustified`. Because that lemma's relay gate is same-slot-capable
+(`slot_at q ≤ slot_at m`, no `+ 1`), the `SafeFrom` conclusion holds from
+`E.slot_start cfg (E.slot_at cfg q)` — the **query slot's own start** —
+rather than one slot after a separately-quantified next-slot marker. This is
+a property of the certificate route specifically; the strong next-slot
+theorems are not themselves upgraded to same-slot by it.
+
+`Execution.weak_safeFrom_find_latest_confirmed_descendant_from_finalized` and
+its endpoint form `Execution.weak_confirmed_head_from_finalized` compose the
+two pieces: `hlcr` and `hbase` (at `E.slot_start cfg (E.slot_at cfg q)`, the
+exact shape `weak_safeFrom_find_latest_confirmed_descendant` expects) come
+from `finalizedCheckpoint_resetRealizedAt_of_acceptedGlobalTrajectory` and
+`weak_finalizedReset_safeFrom_of_synchrony` respectively, both applied at the
+observer's own `(obs, q)`. The result is the same one-shot conclusion, seeded
+directly at the observer's own finalized checkpoint instead of at a
+caller-supplied `SafeFrom` input:
+
+```lean
+theorem weak_safeFrom_find_latest_confirmed_descendant_from_finalized
+    {E : Execution Root} {obs : ValidatorIndex}
+    (hW : E.WeakObserverMarginAssumptions cfg ext obs)
+    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
+    (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
+      (E := E) (anchor := B.anchor))
+    (hphase : Phase0SourceCoherence cfg ext)
+    (hboundaryPhase : Phase0BoundarySourceCoherence cfg ext)
+    (q : ℕ) (hqH : E.WithinHorizon cfg q)
+    (fcr_store : FastConfirmationStore Root)
+    (hstore : fcr_store.store = E.store cfg ext obs q)
+    (hmargin :
+      Weak.find_latest_confirmed_descendant cfg ext fcr_store
+          fcr_store.store.finalized_checkpoint.root ≠
+        fcr_store.store.finalized_checkpoint.root →
+      E.SelectedCoveredMarginSupplyAt cfg ext
+        (Weak.find_latest_confirmed_descendant cfg ext fcr_store
+          fcr_store.store.finalized_checkpoint.root)
+        fcr_store.store.finalized_checkpoint.root obs q fcr_store) :
+    E.SafeFrom cfg ext
+      (Weak.find_latest_confirmed_descendant cfg ext fcr_store
+        fcr_store.store.finalized_checkpoint.root) q
+```
+
+**Premise surface.** `hW.base : SelectedMarginAssumptions` is the same
+ratified floor the plain one-shot theorem uses; `B`, `hanchor`, `hboundary`,
+`hphase`, `hboundaryPhase` are the ordinary accepted-FFG-semantics /
+phase-source-coherence floor already used throughout the accepted pipeline
+(`AcceptedActualFCRNextSlotSafetyFacade.lean`), not new premises specific to
+the weak route. `ScheduledPrefixTrajectoryAssumptions.of_selectedMarginAssumptions`
+and `SelectedMarginAssumptions.toFFGAccountabilityAssumptions` project the
+narrower trajectory and accountability interfaces the finalized-base
+machinery consumes out of `hW.base` — they are derived, not additional
+fields. In particular the FFG accountability statements
+(`certified_justified_unique`, `certified_links_not_surround`, consumed via
+`certified_finalized_prefix`) are **theorems** of `hW.base`
+(`SelectedMarginAssumptions.toFFGAccountabilityAssumptions` +
+`CheckpointCertificateAccountability.of_assumptions`), not economic/behavioral
+premises added by this corollary.
+
+After this corollary, the only extra-floor assumptions about the observer's
+own store left in `hW.coherence : ObserverCoherence` are `committees_agree`
+(a one-node extension of the committee idealization to a non-honest observer;
+`justified_root_known` is derivable —
+`ObserverCoherence.justified_root_known_of_acceptedGlobalTrajectory`, and now
+also packaged as `ObserverCoherence.of_acceptedTrajectory`, which reduces the
+record's construction to `committees_agree` alone given the accepted
+bundle) — plus the pre-existing Stage-8 `hmargin` premise above, unchanged by
+this corollary and carried for exactly the same reason.
+
+Both `weak_safeFrom_find_latest_confirmed_descendant_from_finalized` and
+`weak_confirmed_head_from_finalized` depend only on
+`propext, Classical.choice, Quot.sound` (`scripts/Audit.lean`'s
+`publicWitnesses` set, now 17 declarations).

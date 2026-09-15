@@ -181,6 +181,27 @@ theorem ObserverCoherence.justified_root_known_of_acceptedGlobalTrajectory
       exact hboundary'.trans hstartLe
     exact carrier.checkpointRoot_known B.coherence hstore hparentSlots hwalk
 
+/-- Given the accepted global justified-root origin, constructing
+`ObserverCoherence` reduces to supplying `committees_agree` alone:
+`justified_root_known` is always derivable
+(`justified_root_known_of_acceptedGlobalTrajectory` above), so it is not an
+independent premise on top of the accepted FFG semantics bundle. -/
+def ObserverCoherence.of_acceptedTrajectory
+    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
+    (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
+    (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg) (E := E)
+      (anchor := B.anchor))
+    (obs : ValidatorIndex)
+    (hcomm : ∀ n : ℕ, E.WithinHorizon cfg n → ∀ s : Slot,
+      E.SlotWithinHorizon cfg s →
+      get_slot_committee cfg ext (E.store cfg ext obs n) s = E.committee s) :
+    E.ObserverCoherence cfg ext obs where
+  committees_agree := hcomm
+  justified_root_known :=
+    ObserverCoherence.justified_root_known_of_acceptedGlobalTrajectory
+      cfg ext E B hT hanchor hboundary obs
+
 /-- The full assumption bundle for the one-shot weak safety theorem: the usual
 `SelectedMarginAssumptions`, an observer that need not be honest, and the
 observer's own store coherence. -/
