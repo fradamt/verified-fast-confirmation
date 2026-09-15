@@ -267,6 +267,42 @@ theorem confirmed_ancestry_at_all_honest_endpoints_at_observer
       hgeq hslot hparentne hanchorR hb hbw hr₀ hbge
   exact ⟨hr0w, hbw, hbger₀w⟩
 
+/-! ## Public witness — the past-descendant certificate, exposed
+
+`past_descendant_known_at_observer` above is `private`: it is already exactly
+the witness Stage J needs (an honest supporter `i`, its vote-casting second
+`nu`, and its recorded root `lm.root` known at *both* `i`'s own store and the
+observer's), but its two callers only ever consume it internally. This public
+wrapper existentializes the same witness under the names Stage J's design
+uses (`u`, `d`), additionally surfacing the `d ∈ (E.store cfg ext obs q).
+block_roots` conjunct that `past_descendant_known_at_observer` already
+produces internally (as `hd_v`) and that `confirmed_known_at_all_honest_
+endpoints_at_observer`/`confirmed_ancestry_at_all_honest_endpoints_at_observer`
+discard. -/
+theorem confirmed_pastDescendant_at_observer
+    (hA : SelectedMarginAssumptions cfg ext E)
+    (obs : ValidatorIndex) (q : ℕ)
+    (hcomm : E.PrefixCommitteeAgreement cfg ext (E.store cfg ext obs q))
+    (query : FastConfirmationStore Root)
+    (hstore : query.store = E.store cfg ext obs q) (b : Root)
+    (hqH : E.WithinHorizon cfg q)
+    (hb : b ∈ (E.store cfg ext obs q).block_roots)
+    (hparent : ((E.store cfg ext obs q).blocks b).parent_root ∈
+      (E.store cfg ext obs q).block_roots)
+    (hconf : is_one_confirmed cfg ext query.store
+      (get_current_balance_source query) b = true) :
+    ∃ (u : ValidatorIndex) (nu : ℕ) (d : Root),
+      u ∈ E.honest ∧ E.WithinHorizon cfg nu ∧ E.slot_at cfg nu < E.slot_at cfg q ∧
+      d ∈ (E.store cfg ext u nu).block_roots ∧
+      d ∈ (E.store cfg ext obs q).block_roots ∧
+      is_ancestor (E.store cfg ext obs q) (get_node_for_root d) (get_node_for_root b) = true := by
+  obtain ⟨i, lm, hi, hlm, hsupp⟩ :=
+    E.honestSupporter_of_confirmed_known_at_observer cfg ext hA obs q hcomm
+      query hstore b hqH hb hparent hconf
+  obtain ⟨nu, hHnu, hslt, hd_i, hd_v, hanc⟩ :=
+    E.past_descendant_known_at_observer cfg ext hA obs q b hqH i hi lm hlm hsupp
+  exact ⟨i, nu, lm.root, hi, hHnu, hslt, hd_i, hd_v, hanc⟩
+
 end Execution
 
 end FastConfirmation.Spec
