@@ -1044,6 +1044,143 @@ theorem previousConfirmed_current_of_boundary_recent
   exact Nat.le_antisymm hblockUpper
     (Nat.le_of_add_le_add_right hlowerPlus)
 
+
+/-! ## The candidate-indexed confirmed-history invariant at the observer -/
+
+/-- Weak twin of `Execution.AcceptedConfirmedSourceHistoryAt`, over
+`E.weakConfirmed`. The `recent_epochStartSource` field's conclusion is the
+**strong** `Execution.AcceptedLemma24EpochStartSourceAt` (it mentions only the
+receiving honest endpoint's store, so it is honesty-free as stated); only the
+retained `current_origin` payload is the weak record. -/
+structure AcceptedConfirmedSourceHistoryAt (E : Execution Root)
+    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (v : ValidatorIndex) (n : Nat) : Prop where
+  confirmed_known : E.weakConfirmed cfg ext v n ∈
+    (E.store cfg ext v n).block_roots
+  recent_epochStartSource :
+    get_block_epoch cfg (E.store cfg ext v n)
+          (E.weakConfirmed cfg ext v n) + 1 ≥
+        get_current_store_epoch cfg (E.store cfg ext v n) →
+      ∀ w ∈ E.honest,
+        Nonempty (E.AcceptedLemma24EpochStartSourceAt cfg ext B
+          (get_current_store_epoch cfg (E.store cfg ext v n)) w)
+  current_origin :
+    get_block_epoch cfg (E.store cfg ext v n)
+          (E.weakConfirmed cfg ext v n) =
+        get_current_store_epoch cfg (E.store cfg ext v n) →
+      Nonempty (Weak.AcceptedCurrentCandidateSourceOriginAt cfg ext E B v n
+        (E.weakConfirmed cfg ext v n))
+
+/-- Initialization, checkpoint-sync safe exactly as in the strong
+development: the weak trajectory's seed is the same genesis initializer. -/
+theorem acceptedConfirmedSourceHistoryAt_zero
+    {E : Execution Root} (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
+    (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
+    (hboundary : Execution.TrustedAnchorBoundaryAligned (cfg := cfg)
+      (E := E) (anchor := B.anchor))
+    (v : ValidatorIndex) (hH0 : E.WithinHorizon cfg 0) :
+    Weak.AcceptedConfirmedSourceHistoryAt cfg ext E B v 0 := by
+  obtain ⟨ast, ablk, hgen, _hslot, _hparent⟩ := hT.genesis
+  have hconfirmedAnchor : E.weakConfirmed cfg ext v 0 = B.anchor.root := by
+    rw [E.weakConfirmed_zero, hanchor]
+    change E.genesis_store.finalized_checkpoint.root =
+      E.genesis_store.justified_checkpoint.root
+    rw [hgen]
+    rfl
+  have hreal := E.resetCheckpointRealizedAt_anchor_of_acceptedTrajectory
+    cfg ext hT hanchor hboundary v 0
+  have hblockEpochLeAnchor : get_block_epoch cfg
+      (E.store cfg ext v 0) B.anchor.root ≤ B.anchor.epoch := by
+    have hscaled : get_block_epoch cfg
+          (E.store cfg ext v 0) B.anchor.root * cfg.slots_per_epoch ≤
+        B.anchor.epoch * cfg.slots_per_epoch :=
+      (start_slot_at_block_epoch_le cfg
+        (E.store cfg ext v 0) B.anchor.root).trans
+          hreal.root_slot_le_boundary
+    exact Nat.le_of_mul_le_mul_right hscaled cfg.slots_per_epoch_pos
+  exact {
+    confirmed_known := by simpa only [hconfirmedAnchor] using hreal.root_known
+    recent_epochStartSource := by
+      intro hrecent w _hw
+      have hnear : get_current_store_epoch cfg (E.store cfg ext v 0) ≤
+          B.anchor.epoch + 2 := by
+        rw [← hconfirmedAnchor] at hblockEpochLeAnchor
+        exact hrecent.trans
+          ((Nat.add_le_add_right hblockEpochLeAnchor 1).trans
+            (Nat.add_le_add_left (Nat.le_succ 1) B.anchor.epoch))
+      exact E.acceptedLemma24EpochStartSourceAt_of_anchor_near
+        cfg ext B hT hanchor hboundary hnear w
+    current_origin := by
+      intro hcurrent
+      rw [hconfirmedAnchor] at hcurrent ⊢
+      exact Weak.acceptedCurrentCandidateSourceOriginAt_anchor
+        cfg ext B hT hanchor hboundary hH0 hcurrent
+  }
+
+/-- Weak twin of `AcceptedConfirmedSourceHistoryAt.succ_of_noCall`: between
+weak FCR calls everything is carried definitionally. -/
+theorem AcceptedConfirmedSourceHistoryAt.succ_of_noCall
+    {E : Execution Root} {B : ExactPrefixAcceptedFFGSemantics cfg ext E}
+    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
+    {v : ValidatorIndex} {n : Nat}
+    (hnoCall : ¬ E.IsFCRCallAt cfg ext v n)
+    (h : Weak.AcceptedConfirmedSourceHistoryAt cfg ext E B v n) :
+    Weak.AcceptedConfirmedSourceHistoryAt cfg ext E B v (n + 1) := by
+  have hknownN1 : E.weakConfirmed cfg ext v n ∈
+      (E.store cfg ext v (n + 1)).block_roots :=
+    (E.store_storeLE cfg ext v (Nat.le_succ n)).1 h.confirmed_known
+  have hconfirmedEq : E.weakConfirmed cfg ext v (n + 1) =
+      E.weakConfirmed cfg ext v n :=
+    E.weakConfirmed_succ_of_no_advance cfg ext v n hnoCall
+  have hblockAgree :
+      (E.store cfg ext v n).blocks (E.weakConfirmed cfg ext v n) =
+        (E.store cfg ext v (n + 1)).blocks
+          (E.weakConfirmed cfg ext v n) :=
+    hT.wellFormed.blocks_agree
+      (E.blockProvenance cfg ext v n)
+      (E.blockProvenance cfg ext v (n + 1))
+      h.confirmed_known hknownN1
+  have hslotMono : get_current_slot cfg (E.store cfg ext v n) ≤
+      get_current_slot cfg (E.store cfg ext v (n + 1)) := by
+    simpa only [E.store_current_slot] using
+      E.slot_at_mono cfg (Nat.le_succ n)
+  have hslotEq : get_current_slot cfg (E.store cfg ext v n) =
+      get_current_slot cfg (E.store cfg ext v (n + 1)) :=
+    Nat.le_antisymm hslotMono (Nat.le_of_not_gt hnoCall)
+  have hcurrentEpochEq : get_current_store_epoch cfg
+      (E.store cfg ext v n) =
+      get_current_store_epoch cfg (E.store cfg ext v (n + 1)) := by
+    simp only [get_current_store_epoch, hslotEq]
+  have hblockEpochEq : get_block_epoch cfg (E.store cfg ext v n)
+        (E.weakConfirmed cfg ext v n) =
+      get_block_epoch cfg (E.store cfg ext v (n + 1))
+        (E.weakConfirmed cfg ext v n) := by
+    simp only [get_block_epoch, hblockAgree]
+  exact {
+    confirmed_known := by simpa only [hconfirmedEq] using hknownN1
+    recent_epochStartSource := by
+      intro hrecent w hw
+      have hrecentN : get_block_epoch cfg (E.store cfg ext v n)
+            (E.weakConfirmed cfg ext v n) + 1 ≥
+          get_current_store_epoch cfg (E.store cfg ext v n) := by
+        rw [hblockEpochEq, hcurrentEpochEq, ← hconfirmedEq]
+        exact hrecent
+      have hsource := h.recent_epochStartSource hrecentN w hw
+      simpa only [hcurrentEpochEq] using hsource
+    current_origin := by
+      intro hcurrent
+      have hcurrentN : get_block_epoch cfg (E.store cfg ext v n)
+            (E.weakConfirmed cfg ext v n) =
+          get_current_store_epoch cfg (E.store cfg ext v n) := by
+        rw [hblockEpochEq, hcurrentEpochEq, ← hconfirmedEq]
+        exact hcurrent
+      obtain ⟨horigin⟩ := h.current_origin hcurrentN
+      exact ⟨by
+        simpa only [hconfirmedEq] using
+          (horigin.mono_upper cfg ext (Nat.le_succ n))⟩
+  }
+
 end Weak
 
 end FastConfirmation.Spec
