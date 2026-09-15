@@ -35,6 +35,7 @@ import FastConfirmation.Spec.Proof.WeakHistoricalA32Induction
 import FastConfirmation.Spec.Proof.WeakSelectedJustifiedOrientation
 import FastConfirmation.Spec.Proof.WeakHistoricalA32PayloadProducer
 import FastConfirmation.Spec.Proof.WeakObserverStrictCallFilterInputs
+import FastConfirmation.Spec.Proof.WeakOneShotSafetyClosed
 
 /-!
 # Spec — facade
