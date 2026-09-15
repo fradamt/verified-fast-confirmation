@@ -100,8 +100,55 @@ def get_adversarial_weight (store : Store Root) (balance_source : BeaconState Ro
   else
     compute_adversarial_weight cfg store balance_source block.slot (current_slot - 1)
 
+/-- The epoch a counted recorded LMD cell must reach: the epoch of the last
+completed slot.  At the first slot of an epoch this is the *previous* epoch —
+`LatestMessageProvenance` forces every recorded cell to have been set for a
+slot `≤ current_slot − 1`, so anchoring at `compute_epoch_at_slot current_slot`
+would make the scorer identically zero at every epoch boundary.  This is the
+exact index the margin lemmas use (`es = get_current_slot store − 1`). -/
+def recorded_cutoff_epoch (store : Store Root) : Epoch :=
+  compute_epoch_at_slot cfg (get_current_slot cfg store - 1)
+
+/-- Epoch-freshness of a recorded LMD cell (rule delta 3). -/
+def is_epoch_fresh_message (store : Store Root) (lm : LatestMessage Root) : Bool :=
+  decide (recorded_cutoff_epoch cfg store ≤ get_latest_message_epoch lm)
+
+/-- Weak-model `get_attestation_score`: counts only **epoch-fresh** cells. -/
+def get_epoch_fresh_attestation_score (store : Store Root)
+    (node : ForkChoiceNode Root) (state : BeaconState Root) : Gwei :=
+  let unslashed_and_active_indices :=
+    (get_active_validator_indices state (get_current_epoch cfg state)).filter
+      (fun i => !(state.validators.getD i default).slashed)
+  ((unslashed_and_active_indices.filter fun i =>
+      match store.latest_messages i with
+      | none => false
+      | some latest_message =>
+          decide (i ∉ store.equivocating_indices) &&
+            is_epoch_fresh_message cfg store latest_message &&
+            is_ancestor store (get_supported_node store latest_message) node)
+    |>.map fun i => (state.validators.getD i default).effective_balance).sum
+
+/-- Weak-model `get_block_support_between_slots`, epoch-fresh (rule delta 3). -/
+def get_epoch_fresh_block_support_between_slots (store : Store Root)
+    (balance_source : BeaconState Root) (block_root : Root)
+    (start_slot end_slot : Slot) : Gwei :=
+  let participants :=
+    (Finset.Icc start_slot end_slot).biUnion (fun slot => get_slot_committee cfg ext store slot)
+  let unslashed_and_active_indices :=
+    participants.filter (fun i =>
+      !(balance_source.validators.getD i default).slashed &&
+        is_active_validator (balance_source.validators.getD i default)
+          (get_current_epoch cfg balance_source))
+  ∑ i ∈ unslashed_and_active_indices.filter (fun i =>
+      (store.latest_messages i).any (fun latest_message =>
+        decide (latest_message.root = block_root) &&
+          is_epoch_fresh_message cfg store latest_message &&
+          decide (i ∉ store.equivocating_indices))),
+    (balance_source.validators.getD i default).effective_balance
+
 /-- Weak-model `compute_empty_slot_support_discount` (as in `LMDHelpers`, over
-the undiscounted budget). -/
+the undiscounted budget, and epoch-fresh — rule delta 3: a stale recorded
+parent-pointing cell must not fund the discount, see the module docstring). -/
 def compute_empty_slot_support_discount (store : Store Root)
     (balance_source : BeaconState Root) (block_root : Root) : Gwei :=
   let block := store.blocks block_root
@@ -110,7 +157,7 @@ def compute_empty_slot_support_discount (store : Store Root)
     0
   else
     let parent_support_in_empty_slots :=
-      get_block_support_between_slots cfg ext store balance_source block.parent_root
+      get_epoch_fresh_block_support_between_slots cfg ext store balance_source block.parent_root
         (parent_block.slot + 1) (block.slot - 1)
     let adversarial_weight :=
       compute_adversarial_weight cfg store balance_source
@@ -150,7 +197,8 @@ least as large as the adversarial budget of the same span, so at least one
 counted attester is honest. -/
 def is_one_confirmed (store : Store Root) (balance_source : BeaconState Root)
     (block_root : Root) : Bool :=
-  let support := get_attestation_score cfg store (get_node_for_root block_root) balance_source
+  let support :=
+    get_epoch_fresh_attestation_score cfg store (get_node_for_root block_root) balance_source
   let safety_threshold := compute_safety_threshold cfg ext store block_root balance_source
   decide (support > safety_threshold)
 
