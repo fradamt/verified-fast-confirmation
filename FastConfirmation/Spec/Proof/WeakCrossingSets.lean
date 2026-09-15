@@ -347,6 +347,310 @@ private theorem crossingParentSub_le_endpoint_Aval {E : Execution Root}
   simp only [Execution.Aclass, Finset.mem_filter] at hia ⊢
   exact ⟨⟨hiS, hia.1.2⟩, hia.2⟩
 
+/-! ## 4. The two weak endpoint-inequality assemblers -/
+
+/-- **Weak endpoint-inequality assembler, intra-epoch edge.** `hdom` is
+DELETED (freshness replaces it); `hSbase` is DELETED (the base charge is
+already read at the endpoint, `Weak.crossing_hbase_of_confirmed_at_observer`);
+the equivocation-relay legs (`hhb`/`hec`/`hne`-driven `crossing_equivocation_
+score_split`) are DELETED, since the weak budget has no equivocation term
+(`F3`). Discharges `reanchored_endpoint_of_fullSpan_certificate` with
+`Bsup :=` the weak fresh byz sum, `eqSub := eqExtra := 0`,
+`d := Weak.get_support_discount`, `A := Weak.get_adversarial_weight`,
+`Hpre/Hsub := weight (crossingParentPre/Sub)`, `xP := weight (crossingXPre)`,
+`Sval/Aval/Xval` at `(w, m)`. -/
+theorem intraEpochFuture_endpoint_inequality_at_observer {E : Execution Root}
+    (hA : SelectedMarginAssumptions cfg ext E)
+    {obs : ValidatorIndex} {q : ℕ} (hqH : E.WithinHorizon cfg q)
+    (hcomm : E.PrefixCommitteeAgreement cfg ext (E.store cfg ext obs q))
+    (hwf : ParentSlotLt (E.store cfg ext obs q))
+    {bs : BeaconState Root} {b : Root}
+    (hval : bs.validators = E.registry)
+    (htab : get_total_active_balance cfg bs = E.total_active cfg)
+    (hbQ : b ∈ (E.store cfg ext obs q).block_roots)
+    (hparentQ : ((E.store cfg ext obs q).blocks b).parent_root ∈
+      (E.store cfg ext obs q).block_roots)
+    (hprov : LatestMessageProvenance E cfg
+      (get_current_slot cfg (E.store cfg ext obs q)) (E.store cfg ext obs q))
+    (hsched : SchedLMProv E cfg (E.store cfg ext obs q))
+    (hconf : Weak.is_one_confirmed cfg ext (E.store cfg ext obs q) bs b = true)
+    (hwalk : ∀ i ∈ AttSupporters cfg (E.store cfg ext obs q) (get_node_for_root b) bs,
+      ∀ lm, (E.store cfg ext obs q).latest_messages i = some lm →
+        WalkKnown (E.store cfg ext obs q) ((E.store cfg ext obs q).blocks b).slot lm.root)
+    {es sigma : Slot}
+    (hes : es = get_current_slot cfg (E.store cfg ext obs q) - 1)
+    (hesq : es < E.slot_at cfg q)
+    (hslotlt : ((E.store cfg ext obs q).blocks
+        ((E.store cfg ext obs q).blocks b).parent_root).slot <
+      ((E.store cfg ext obs q).blocks b).slot)
+    (hbcur : ((E.store cfg ext obs q).blocks b).slot ≤
+      get_current_slot cfg (E.store cfg ext obs q))
+    (hintra : get_block_epoch cfg (E.store cfg ext obs q) b =
+      get_block_epoch cfg (E.store cfg ext obs q)
+        ((E.store cfg ext obs q).blocks b).parent_root)
+    (hesSigma : es ≤ sigma) (hSigmaH : E.SlotWithinHorizon cfg sigma)
+    {w : ValidatorIndex} (hw : w ∈ E.honest) {m : ℕ} (hmH : E.WithinHorizon cfg m)
+    (hslotQM : E.slot_at cfg q ≤ E.slot_at cfg m)
+    (hboost : compute_proposer_score cfg bs = get_proposer_score cfg (E.store cfg ext w m))
+    (hbM : b ∈ (E.store cfg ext w m).block_roots)
+    (haM : ((E.store cfg ext obs q).blocks b).parent_root ∈ (E.store cfg ext w m).block_roots)
+    (hparentM : ((E.store cfg ext w m).blocks b).parent_root =
+      ((E.store cfg ext obs q).blocks b).parent_root)
+    (hAX : E.Aval cfg ext w m b ((E.store cfg ext obs q).blocks b).slot sigma
+          + E.Xval cfg ext w m b ((E.store cfg ext obs q).blocks b).slot sigma
+        ≤ E.Aval cfg ext w m b ((E.store cfg ext obs q).blocks b).slot es
+          + E.Xval cfg ext w m b ((E.store cfg ext obs q).blocks b).slot es)
+    (hxS : E.Xval cfg ext w m b ((E.store cfg ext obs q).blocks b).slot sigma ≤
+      E.Xval cfg ext w m b ((E.store cfg ext obs q).blocks b).slot es) :
+    let lo := ((E.store cfg ext obs q).blocks
+      ((E.store cfg ext obs q).blocks b).parent_root).slot + 1
+    let mid := ((E.store cfg ext obs q).blocks b).slot
+    E.weight (crossingXPre cfg E (E.store cfg ext obs q) bs b lo mid es)
+        + E.Xval cfg ext w m b mid sigma
+        + E.weight (E.crossingByzPre lo mid es)
+        + E.Bval mid sigma + get_proposer_score cfg (E.store cfg ext w m) + 1
+      ≤ E.Sval cfg ext w m b mid sigma := by
+  dsimp only
+  let lo := ((E.store cfg ext obs q).blocks
+    ((E.store cfg ext obs q).blocks b).parent_root).slot + 1
+  let mid := ((E.store cfg ext obs q).blocks b).slot
+  have hlo : lo ≤ mid := hslotlt
+  have hcurH : E.SlotWithinHorizon cfg (get_current_slot cfg (E.store cfg ext obs q)) := by
+    rw [E.store_current_slot cfg ext obs q]
+    exact E.slotWithinHorizon_of_le cfg (le_refl _) hqH
+  have hesH : E.SlotWithinHorizon cfg es := by
+    apply E.slotWithinHorizon_mono cfg (b := get_current_slot cfg (E.store cfg ext obs q))
+      (by rw [hes]; exact Nat.sub_le _ _)
+    exact hcurH
+  have hmidH : E.SlotWithinHorizon cfg mid :=
+    E.slotWithinHorizon_mono cfg hbcur hcurH
+  have hloH : E.SlotWithinHorizon cfg lo :=
+    E.slotWithinHorizon_mono cfg hlo hmidH
+  have hbaseQ := crossing_hbase_of_confirmed_at_observer cfg ext hA hqH hcomm hval htab
+    hbQ hparentQ hprov hsched hwalk hconf hes hesq hw hmH hslotQM hbM
+  rw [hboost] at hbaseQ
+  rw [← hes] at hbaseQ
+  have hMUQ := crossing_hMU_of_canonicalPre cfg ext (obs := obs) (n := q) (bs := bs) (b := b)
+    hA.byzantine_bound htab hes hslotlt hbcur hloH hesH
+  dsimp only at hMUQ
+  have hpart : E.Sval cfg ext obs q b mid es + E.Aval cfg ext obs q b mid es
+        + E.Xval cfg ext obs q b mid es =
+      E.Sval cfg ext w m b mid es + E.Aval cfg ext w m b mid es
+        + E.Xval cfg ext w m b mid es := by
+    calc
+      _ = E.Jspec mid es := (E.weight_partition cfg ext obs q b mid es).symm
+      _ = _ := E.weight_partition cfg ext w m b mid es
+  have hMU :
+      (E.Sval cfg ext w m b mid es + E.Aval cfg ext w m b mid es
+          + E.Xval cfg ext w m b mid es + E.Bval mid es)
+        + (E.weight (crossingParentPre cfg E (E.store cfg ext obs q) bs b mid es)
+          + E.weight (crossingXPre cfg E (E.store cfg ext obs q) bs b lo mid es)
+          + E.weight (E.crossingByzPre lo mid es))
+        ≤ estimate_committee_weight_between_slots cfg
+          (get_total_active_balance cfg bs) lo es := by
+    rw [← hpart]
+    exact hMUQ
+  have hd := crossing_hd_of_preRegion_of_prefix (b := b) cfg ext hA.byzantine_bound hcomm hval
+    hloH hmidH htab mid es
+  have hguard := adversarial_guard_intra cfg hA.byzantine_bound
+    (store := E.store cfg ext obs q) htab hintra hes hmidH hesH
+  have hspan : ∀ i ∈ AttSupporters cfg (E.store cfg ext obs q)
+      (get_node_for_root b) bs, i ∉ E.honest → i ∈ E.span_committee mid es := by
+    intro i hi _
+    rw [hes]
+    exact supporter_mem_span_committee cfg hwf hprov hi (hwalk i hi) (le_refl _)
+  have hbyzsub := freshByzSupporters_le_Bval cfg (bs := bs) (b := b) hval hspan
+  have hdomFull :
+      (E.Sval cfg ext w m b mid es + E.Aval cfg ext w m b mid es
+          + E.Xval cfg ext w m b mid es + E.Bval mid es) + 0 + 0
+        ≤ 100 * (estimate_committee_weight_between_slots cfg
+          (get_total_active_balance cfg bs) mid es / 100) := by
+    rw [← E.weight_partition cfg ext w m b mid es]
+    simpa only [Nat.add_zero] using hguard.1
+  have hbyzfull : E.Bval mid es ≤
+      estimate_committee_weight_between_slots cfg
+          (get_total_active_balance cfg bs) mid es / 100
+            * cfg.confirmation_byzantine_threshold := by
+    rw [htab]
+    exact hA.byzantine_bound.span_bound mid es hmidH hesH
+  have hHsub := crossingParentSub_le_endpoint_Aval cfg ext hA hqH hval hbQ hparentQ
+    hprov hsched hes hesq hw hmH hslotQM haM hbM hparentM
+  have hend := E.reanchored_endpoint_of_fullSpan_certificate
+    (v₀ := w) (n₀ := m) (b' := b) (lo := mid) (es := es) (σ := sigma)
+    (Bsup := (((FreshAttSupporters cfg (E.store cfg ext obs q) (get_node_for_root b) bs).filter
+      (fun i => i ∉ E.honest)).map
+        (fun i => (bs.validators.getD i default).effective_balance)).sum)
+    (eqSub := 0) (eqExtra := 0) (HAextra := 0) (Bextra := 0)
+    (A := Weak.get_adversarial_weight cfg (E.store cfg ext obs q) bs b)
+    (d := Weak.get_support_discount cfg ext (E.store cfg ext obs q) bs b)
+    (MU := estimate_committee_weight_between_slots cfg
+      (get_total_active_balance cfg bs) lo es)
+    (qFull := estimate_committee_weight_between_slots cfg
+      (get_total_active_balance cfg bs) mid es / 100)
+    (Hpre := E.weight (crossingParentPre cfg E (E.store cfg ext obs q) bs b mid es))
+    (Hsub := E.weight (crossingParentSub cfg E (E.store cfg ext obs q) bs b mid es))
+    (xP := E.weight (crossingXPre cfg E (E.store cfg ext obs q) bs b lo mid es))
+    (Bpre := E.weight (E.crossingByzPre lo mid es))
+    (boost := get_proposer_score cfg (E.store cfg ext w m))
+    cfg ext hA.byzantine_bound hesSigma hmidH hSigmaH hbaseQ hMU hd hHsub hguard.2 hdomFull
+      (Nat.zero_le _) (Nat.zero_le _) hbyzsub (by simpa using hbyzfull) hAX hxS
+  simpa only [Nat.sub_zero] using hend
+
+/-- **Weak crossing-edge assembler.** Identical conclusion shape to
+`intraEpochFuture_endpoint_inequality_at_observer` (non-subtractive: the
+`- weight (E.crossingEquivPre …)` term the strong crossing arm carries is gone,
+`F3`), with `hcross` in place of `hintra`,
+`Bextra := E.weight (E.crossingByzPre sa mid es)`, `eqExtra := 0`. -/
+theorem crossingEdgeFuture_endpoint_inequality_at_observer {E : Execution Root}
+    (hA : SelectedMarginAssumptions cfg ext E)
+    {obs : ValidatorIndex} {q : ℕ} (hqH : E.WithinHorizon cfg q)
+    (hcomm : E.PrefixCommitteeAgreement cfg ext (E.store cfg ext obs q))
+    (hwf : ParentSlotLt (E.store cfg ext obs q))
+    {bs : BeaconState Root} {b : Root}
+    (hval : bs.validators = E.registry)
+    (htab : get_total_active_balance cfg bs = E.total_active cfg)
+    (hbQ : b ∈ (E.store cfg ext obs q).block_roots)
+    (hparentQ : ((E.store cfg ext obs q).blocks b).parent_root ∈
+      (E.store cfg ext obs q).block_roots)
+    (hprov : LatestMessageProvenance E cfg
+      (get_current_slot cfg (E.store cfg ext obs q)) (E.store cfg ext obs q))
+    (hsched : SchedLMProv E cfg (E.store cfg ext obs q))
+    (hconf : Weak.is_one_confirmed cfg ext (E.store cfg ext obs q) bs b = true)
+    (hwalk : ∀ i ∈ AttSupporters cfg (E.store cfg ext obs q) (get_node_for_root b) bs,
+      ∀ lm, (E.store cfg ext obs q).latest_messages i = some lm →
+        WalkKnown (E.store cfg ext obs q) ((E.store cfg ext obs q).blocks b).slot lm.root)
+    {es sigma : Slot}
+    (hes : es = get_current_slot cfg (E.store cfg ext obs q) - 1)
+    (hesq : es < E.slot_at cfg q)
+    (hslotlt : ((E.store cfg ext obs q).blocks
+        ((E.store cfg ext obs q).blocks b).parent_root).slot <
+      ((E.store cfg ext obs q).blocks b).slot)
+    (hbcur : ((E.store cfg ext obs q).blocks b).slot ≤
+      get_current_slot cfg (E.store cfg ext obs q))
+    (hcross : get_block_epoch cfg (E.store cfg ext obs q) b >
+      get_block_epoch cfg (E.store cfg ext obs q)
+        ((E.store cfg ext obs q).blocks b).parent_root)
+    (hesSigma : es ≤ sigma) (hSigmaH : E.SlotWithinHorizon cfg sigma)
+    {w : ValidatorIndex} (hw : w ∈ E.honest) {m : ℕ} (hmH : E.WithinHorizon cfg m)
+    (hslotQM : E.slot_at cfg q ≤ E.slot_at cfg m)
+    (hboost : compute_proposer_score cfg bs = get_proposer_score cfg (E.store cfg ext w m))
+    (hbM : b ∈ (E.store cfg ext w m).block_roots)
+    (haM : ((E.store cfg ext obs q).blocks b).parent_root ∈ (E.store cfg ext w m).block_roots)
+    (hparentM : ((E.store cfg ext w m).blocks b).parent_root =
+      ((E.store cfg ext obs q).blocks b).parent_root)
+    (hAX : E.Aval cfg ext w m b ((E.store cfg ext obs q).blocks b).slot sigma
+          + E.Xval cfg ext w m b ((E.store cfg ext obs q).blocks b).slot sigma
+        ≤ E.Aval cfg ext w m b ((E.store cfg ext obs q).blocks b).slot es
+          + E.Xval cfg ext w m b ((E.store cfg ext obs q).blocks b).slot es)
+    (hxS : E.Xval cfg ext w m b ((E.store cfg ext obs q).blocks b).slot sigma ≤
+      E.Xval cfg ext w m b ((E.store cfg ext obs q).blocks b).slot es) :
+    let lo := ((E.store cfg ext obs q).blocks
+      ((E.store cfg ext obs q).blocks b).parent_root).slot + 1
+    let mid := ((E.store cfg ext obs q).blocks b).slot
+    E.weight (crossingXPre cfg E (E.store cfg ext obs q) bs b lo mid es)
+        + E.Xval cfg ext w m b mid sigma
+        + E.weight (E.crossingByzPre lo mid es)
+        + E.Bval mid sigma + get_proposer_score cfg (E.store cfg ext w m) + 1
+      ≤ E.Sval cfg ext w m b mid sigma := by
+  dsimp only
+  let lo := ((E.store cfg ext obs q).blocks
+    ((E.store cfg ext obs q).blocks b).parent_root).slot + 1
+  let mid := ((E.store cfg ext obs q).blocks b).slot
+  let sa := compute_start_slot_at_epoch cfg
+    (get_block_epoch cfg (E.store cfg ext obs q) b)
+  have hlo : lo ≤ sa := Execution.parent_slot_succ_le_crossing_start (Root := Root) cfg hcross
+  have hsa : sa ≤ mid := start_slot_at_block_epoch_le cfg (E.store cfg ext obs q) b
+  have hcurH : E.SlotWithinHorizon cfg (get_current_slot cfg (E.store cfg ext obs q)) := by
+    rw [E.store_current_slot cfg ext obs q]
+    exact E.slotWithinHorizon_of_le cfg (le_refl _) hqH
+  have hesH : E.SlotWithinHorizon cfg es := by
+    apply E.slotWithinHorizon_mono cfg (b := get_current_slot cfg (E.store cfg ext obs q))
+      (by rw [hes]; exact Nat.sub_le _ _)
+    exact hcurH
+  have hmidH : E.SlotWithinHorizon cfg mid :=
+    E.slotWithinHorizon_mono cfg hbcur hcurH
+  have hsaH : E.SlotWithinHorizon cfg sa :=
+    E.slotWithinHorizon_mono cfg hsa hmidH
+  have hloH : E.SlotWithinHorizon cfg lo :=
+    E.slotWithinHorizon_mono cfg hlo hsaH
+  have hbaseQ := crossing_hbase_of_confirmed_at_observer cfg ext hA hqH hcomm hval htab
+    hbQ hparentQ hprov hsched hwalk hconf hes hesq hw hmH hslotQM hbM
+  rw [hboost] at hbaseQ
+  rw [← hes] at hbaseQ
+  have hMUQ := crossing_hMU_of_canonicalPre cfg ext (obs := obs) (n := q) (bs := bs) (b := b)
+    hA.byzantine_bound htab hes hslotlt hbcur hloH hesH
+  dsimp only at hMUQ
+  have hpart : E.Sval cfg ext obs q b mid es + E.Aval cfg ext obs q b mid es
+        + E.Xval cfg ext obs q b mid es =
+      E.Sval cfg ext w m b mid es + E.Aval cfg ext w m b mid es
+        + E.Xval cfg ext w m b mid es := by
+    calc
+      _ = E.Jspec mid es := (E.weight_partition cfg ext obs q b mid es).symm
+      _ = _ := E.weight_partition cfg ext w m b mid es
+  have hMU :
+      (E.Sval cfg ext w m b mid es + E.Aval cfg ext w m b mid es
+          + E.Xval cfg ext w m b mid es + E.Bval mid es)
+        + (E.weight (crossingParentPre cfg E (E.store cfg ext obs q) bs b mid es)
+          + E.weight (crossingXPre cfg E (E.store cfg ext obs q) bs b lo mid es)
+          + E.weight (E.crossingByzPre lo mid es))
+        ≤ estimate_committee_weight_between_slots cfg
+          (get_total_active_balance cfg bs) lo es := by
+    rw [← hpart]
+    exact hMUQ
+  have hd := crossing_hd_of_preRegion_of_prefix (b := b) cfg ext hA.byzantine_bound hcomm hval
+    hloH hmidH htab mid es
+  have hguard := adversarial_guard_crossing cfg hA.byzantine_bound
+    (store := E.store cfg ext obs q) htab hcross hes hsaH hesH
+  have hBextra : E.weight (E.crossingByzPre sa mid es) ≤
+      E.weight (E.crossingByzPre lo mid es) :=
+    E.weight_mono (E.crossingByzPre_mono_lo hlo)
+  have hspan : ∀ i ∈ AttSupporters cfg (E.store cfg ext obs q)
+      (get_node_for_root b) bs, i ∉ E.honest → i ∈ E.span_committee mid es := by
+    intro i hi _
+    rw [hes]
+    exact supporter_mem_span_committee cfg hwf hprov hi (hwalk i hi) (le_refl _)
+  have hbyzsub := freshByzSupporters_le_Bval cfg (bs := bs) (b := b) hval hspan
+  have hbyzfull : E.Bval mid es + E.weight (E.crossingByzPre sa mid es) ≤
+      estimate_committee_weight_between_slots cfg
+          (get_total_active_balance cfg bs) sa es / 100
+            * cfg.confirmation_byzantine_threshold := by
+    rw [E.crossing_fullSpan_Bval_split hsa, htab]
+    exact hA.byzantine_bound.span_bound sa es hsaH hesH
+  have hdomFull :
+      (E.Sval cfg ext w m b mid es + E.Aval cfg ext w m b mid es
+          + E.Xval cfg ext w m b mid es + E.Bval mid es)
+        + E.weight (E.crossingHonestPre sa mid es)
+        + E.weight (E.crossingByzPre sa mid es)
+      ≤ 100 * (estimate_committee_weight_between_slots cfg
+          (get_total_active_balance cfg bs) sa es / 100) := by
+    rw [← E.weight_partition cfg ext w m b mid es]
+    simpa only [Nat.add_assoc] using
+      (Eq.trans_le (E.crossing_fullSpan_mass_split hsa) hguard.1)
+  have hHsub := crossingParentSub_le_endpoint_Aval cfg ext hA hqH hval hbQ hparentQ
+    hprov hsched hes hesq hw hmH hslotQM haM hbM hparentM
+  have hend := E.reanchored_endpoint_of_fullSpan_certificate
+    (v₀ := w) (n₀ := m) (b' := b) (lo := mid) (es := es) (σ := sigma)
+    (Bsup := (((FreshAttSupporters cfg (E.store cfg ext obs q) (get_node_for_root b) bs).filter
+      (fun i => i ∉ E.honest)).map
+        (fun i => (bs.validators.getD i default).effective_balance)).sum)
+    (eqSub := 0) (eqExtra := 0)
+    (A := Weak.get_adversarial_weight cfg (E.store cfg ext obs q) bs b)
+    (d := Weak.get_support_discount cfg ext (E.store cfg ext obs q) bs b)
+    (MU := estimate_committee_weight_between_slots cfg
+      (get_total_active_balance cfg bs) lo es)
+    (qFull := estimate_committee_weight_between_slots cfg
+      (get_total_active_balance cfg bs) sa es / 100)
+    (HAextra := E.weight (E.crossingHonestPre sa mid es))
+    (Bextra := E.weight (E.crossingByzPre sa mid es))
+    (Hpre := E.weight (crossingParentPre cfg E (E.store cfg ext obs q) bs b mid es))
+    (Hsub := E.weight (crossingParentSub cfg E (E.store cfg ext obs q) bs b mid es))
+    (xP := E.weight (crossingXPre cfg E (E.store cfg ext obs q) bs b lo mid es))
+    (Bpre := E.weight (E.crossingByzPre lo mid es))
+    (boost := get_proposer_score cfg (E.store cfg ext w m))
+    cfg ext hA.byzantine_bound hesSigma hmidH hSigmaH hbaseQ hMU hd hHsub hguard.2 hdomFull
+      hBextra (Nat.zero_le _) hbyzsub hbyzfull hAX hxS
+  simpa only [Nat.sub_zero] using hend
+
 end Weak
 
 end FastConfirmation.Spec
