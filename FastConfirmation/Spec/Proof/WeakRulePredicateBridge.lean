@@ -153,16 +153,23 @@ theorem will_current_target_be_justified_of_weak (store : Store Root)
   simp only [decide_eq_true_eq] at h ⊢
   exact le_trans h (Nat.mul_le_mul_left 3 hm)
 
-theorem will_no_conflicting_of_weak (store : Store Root)
-    (h : Weak.will_no_conflicting_checkpoint_be_justified cfg ext store = true) :
+/-- B8, rule delta 4. The weak short-circuit additionally requires
+`Weak.has_head_broadcast_certificate`; the strong side does not. Casing on the
+strong condition first (`heq`) handles this: when it holds the strong
+`if_pos` closes the goal outright (`hc.1` in the weak-true sub-case just
+witnesses the same fact), and when it fails, both sides fall through to their
+(unchanged) arithmetic branch. -/
+theorem will_no_conflicting_of_weak (store : Store Root) (bs : BeaconState Root)
+    (h : Weak.will_no_conflicting_checkpoint_be_justified cfg ext store bs = true) :
     will_no_conflicting_checkpoint_be_justified cfg ext store = true := by
   have hm := weak_honest_ffg_support_le cfg ext store
   unfold Weak.will_no_conflicting_checkpoint_be_justified at h
   unfold will_no_conflicting_checkpoint_be_justified
   dsimp only at h ⊢
-  split_ifs at h with hc
-  · simp [hc]
-  · rw [if_neg hc]
+  by_cases heq : get_current_target cfg store = store.unrealized_justified_checkpoint
+  · simp [heq]
+  · rw [if_neg heq]
+    rw [if_neg (fun hc => heq hc.1)] at h
     simp only [decide_eq_true_eq] at h ⊢
     exact lt_of_lt_of_le h (Nat.mul_le_mul_left 3 hm)
 

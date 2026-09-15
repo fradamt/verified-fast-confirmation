@@ -825,10 +825,10 @@ theorem coveredDescendStepChainSupply_of_selectedMarginsAt_weak
 Clone of `CoveredMargin.safeFrom_find_latest_confirmed_descendant_covered_at_
 slotStart_minimal` (`:333`), over `Weak.find_latest_confirmed_descendant` and
 `(obs, hW)`. The selector inversion call becomes `WeakSelectorInversion
-.find_latest_confirmed_descendant_selected_minimal_weak`, whose three-way
-conclusion (unchanged / confirmed / confirmed-with-certificate) is first
-collapsed to the same two-way shape the strong original's `rcases` consumes
-(`hkey` below) — the weak witness and certificate disjunct are never needed
+.find_latest_confirmed_descendant_selected_minimal_weak`, whose two-way
+conclusion (unchanged / confirmed-with-guard-evidence) is first stripped down
+to the same two-way shape the strong original's `rcases` consumes (`hkey`
+below) — the weak witness and guard-evidence disjunct are never needed
 downstream, only the strong `is_one_confirmed` witness and membership facts,
 per the module's own docstring. The two `store_domainK_of_selectedMarginDomain`
 uses at the *observer* `(obs, q)` are inlined by hand, since that helper's
@@ -878,9 +878,8 @@ theorem safeFrom_find_latest_confirmed_descendant_covered_at_slotStart_weak
           query.store.block_roots) := by
     rcases E.find_latest_confirmed_descendant_selected_minimal_weak cfg ext hA
         obs q hqH hjrk query hstore lcr hlcr with
-      heq | ⟨hc, _hwc, hb, hp⟩ | ⟨hc, _hwc, hb, hp, _hcert⟩
+      heq | ⟨hc, _hwc, hb, hp, _hguard⟩
     · exact Or.inl heq
-    · exact Or.inr ⟨hc, hb, hp⟩
     · exact Or.inr ⟨hc, hb, hp⟩
   rcases hkey with heq | ⟨hconf, hbSelected, hpSelected⟩
   · exact absurd heq hsame
@@ -942,7 +941,7 @@ theorem safeFrom_find_latest_confirmed_descendant_covered_at_slotStart_weak
 Clone of `CoveredMargin.safeFrom_find_latest_confirmed_descendant_of_
 selectedCoveredMarginsAt_minimal` (`:408`), over `Weak.find_latest_confirmed_
 descendant` and `(obs, hW)`. The inner selector-inversion call again produces
-a three-way disjunction, collapsed to the two-way shape needed exactly as in
+its two-way disjunction, stripped to the shape needed exactly as in
 Section 5. -/
 
 /-- **The one-shot weak safety theorem.** The weak selector's output, read at
@@ -985,9 +984,8 @@ theorem weak_safeFrom_find_latest_confirmed_descendant
             fcr_store.store.block_roots := by
           rcases E.find_latest_confirmed_descendant_selected_minimal_weak cfg ext hA
               obs q hqH hjrk fcr_store hstore lcr hlcr with
-            heq | ⟨hc, _hwc, hb, hp⟩ | ⟨hc, _hwc, hb, hp, _hcert⟩
+            heq | ⟨hc, _hwc, hb, hp, _hguard⟩
           · exact absurd heq hne
-          · exact ⟨hc, hb, hp⟩
           · exact ⟨hc, hb, hp⟩
         obtain ⟨hconf, hb, hp⟩ := hkey
         have hb' : Weak.find_latest_confirmed_descendant cfg ext fcr_store lcr ∈

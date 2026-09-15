@@ -44,6 +44,18 @@ returned block (i.e. whenever the certificate held at all — a global fact,
 independent of `r`, that is sound to attach to *every* confirmed result in
 that case).
 
+**S6 obligation (rule delta 4 site sweep, `docs/weak-synchrony.md`).** The
+tentative loop's own voting-source read, `(get_voting_source cfg store
+tentative_confirmed_root).epoch + 2 ≥ current_epoch` (the `h3`/`h4`-leaf
+condition below, `find_latest_confirmed_descendant`'s final `if`), is not
+separately certificate-gated. It does not need to be: `tentative_confirmed_root`
+is only ever a candidate that already passed `Weak.is_one_confirmed`
+(`weak_tentative_loop_spec`'s only advance case), and a `Weak.is_one_confirmed`
+`true` result is itself a broadcast certificate for that root (`is_one_confirmed`'s
+own docstring in `Spec/Model/WeakSynchrony.lean`). So this site is gated
+*implicitly*, through the loop invariant, rather than by an explicit conjunct —
+recorded here since it is easy to mistake for an ungated read.
+
 `canonical_member_parent_known_minimal`'s only honesty-derived ingredient is
 `SelectedMarginDomain.justified_root_known` (used once, to fall back to the
 justified root when `get_head` degenerates); the weak twin takes that single
@@ -391,27 +403,44 @@ theorem canonical_member_parent_known_minimal_weak
     exact absurd hstrict (not_lt_of_ge hbaseMin)
   · exact ⟨hb, hp⟩
 
+/-- Guard evidence carried by a strict weak-selector advance (rule delta 4).
+The wrapper's previous-epoch guard requires
+`Weak.has_justification_witness_certificate`; its tentative-loop entry gate
+requires either the start of an epoch or `Weak.has_head_broadcast_certificate`
+on the fork-choice head (`Spec/Model/WeakSynchrony.lean`, S3/S4). Every strict
+advance goes through one of the two gates, so one of these three always
+backs it. -/
+def WeakSelectorGuardEvidence (fcrStore : FastConfirmationStore Root) : Prop :=
+  Weak.has_justification_witness_certificate cfg ext fcrStore = true ∨
+  is_start_slot_at_epoch cfg (get_current_slot cfg fcrStore.store) = true ∨
+  Weak.has_head_broadcast_certificate cfg ext fcrStore.store
+    (get_current_balance_source fcrStore) = true
+
 /-! ## Section 5 — `find_latest_confirmed_descendant_selected_minimal_weak`
 
 Weak twin of `MinimalSelectedDomain.find_latest_confirmed_descendant_selected_minimal`
 — the selector inversion proper.
 
-**Design of the certificate conjunct.** The wrapper's previous-epoch guard is
-`A ∧ B ∧ Weak.has_justification_witness_certificate cfg ext fcrStore ∧ D`
-(`Spec/Model/WeakSynchrony.lean`); `has_justification_witness_certificate`
-does not depend on the candidate root, so it is either true or false for the
-whole call, independently of provenance. Splitting on it first
+**Design of the guard evidence.** Both `Weak.has_justification_witness_certificate`
+and `Weak.has_head_broadcast_certificate cfg ext fcrStore.store
+(get_current_balance_source fcrStore)` are root-independent: each is either
+true or false for the whole call. Splitting on the witness certificate first
 (`by_cases hcertb`) makes the two cases easy:
 
-* if it is *true*, it is available unconditionally, so the certificate-backed
-  third disjunct can be attached to *every* confirmed result — the same
+* if it is *true*, it is available unconditionally, so `WeakSelectorGuardEvidence`
+  (its left disjunct) can be attached to *every* confirmed result — the same
   four-way case split used by the strong original suffices, each leaf ending
-  in `finishCert` instead of a bare `Or.inr`;
+  in `finishGuard _ _ (Or.inl hcertb)`;
 * if it is *false*, the previous-epoch guard can never hold (it needs the
   certificate as a conjunct), so any hypothetical `split_ifs` leaf that
-  assumes it does is contradictory (dismissed by `absurd`), and every
-  remaining (real) leaf is a plain `Weak.is_one_confirmed` witness with no
-  certificate to expose — `finishNoCert`.
+  assumes it does is contradictory (dismissed by `absurd`). The only real
+  leaves left are ones where the *tentative* loop's own entry gate fired,
+  which is itself `is_start_slot_at_epoch ∨ (… ∧ has_head_broadcast_certificate)`
+  (`h2`): splitting the head certificate too (`by_cases hheadcertb`) lets the
+  `hheadcertb`-true case reuse `Or.inr (Or.inr hheadcertb)` uniformly, while
+  the `hheadcertb`-false case falls back to reading `h2` directly
+  (`rcases h2 with hstart | ⟨_, hcert⟩`, the second branch then contradicting
+  `hheadcertb`).
 
 This keeps the strong `is_one_confirmed`-upgrade (`is_one_confirmed_of_weak`)
 and the `Weak.is_one_confirmed` witness both present in every confirmed case,
@@ -437,19 +466,8 @@ theorem find_latest_confirmed_descendant_selected_minimal_weak
           fcrStore.store.block_roots ∧
         (fcrStore.store.blocks
             (Weak.find_latest_confirmed_descendant cfg ext fcrStore lcr)).parent_root ∈
-          fcrStore.store.block_roots) ∨
-      (is_one_confirmed cfg ext fcrStore.store
-          (get_current_balance_source fcrStore)
-          (Weak.find_latest_confirmed_descendant cfg ext fcrStore lcr) = true ∧
-        Weak.is_one_confirmed cfg ext fcrStore.store
-          (get_current_balance_source fcrStore)
-          (Weak.find_latest_confirmed_descendant cfg ext fcrStore lcr) = true ∧
-        Weak.find_latest_confirmed_descendant cfg ext fcrStore lcr ∈
           fcrStore.store.block_roots ∧
-        (fcrStore.store.blocks
-            (Weak.find_latest_confirmed_descendant cfg ext fcrStore lcr)).parent_root ∈
-          fcrStore.store.block_roots ∧
-        Weak.has_justification_witness_certificate cfg ext fcrStore = true) := by
+        WeakSelectorGuardEvidence cfg ext fcrStore) := by
   set P : Root → Prop := fun r => r = lcr ∨
     (Weak.is_one_confirmed cfg ext fcrStore.store (get_current_balance_source fcrStore) r = true ∧
       r ∈ fcrStore.store.block_roots ∧
@@ -500,51 +518,28 @@ theorem find_latest_confirmed_descendant_selected_minimal_weak
       exact hacc
     · rw [heq]
       exact fresh base r hbase hr hconf
-  -- Package a `P`-witness into the theorem's goal at `r`, with or without the
-  -- certificate disjunct.
-  have finishNoCert : ∀ r, P r →
+  -- Package a `P`-witness into the theorem's goal at `r`, given guard
+  -- evidence for the whole call.
+  have finishGuard : ∀ r, P r → WeakSelectorGuardEvidence cfg ext fcrStore →
       (r = lcr ∨
         (is_one_confirmed cfg ext fcrStore.store (get_current_balance_source fcrStore) r = true ∧
           Weak.is_one_confirmed cfg ext fcrStore.store
             (get_current_balance_source fcrStore) r = true ∧
           r ∈ fcrStore.store.block_roots ∧
-          (fcrStore.store.blocks r).parent_root ∈ fcrStore.store.block_roots) ∨
-        (is_one_confirmed cfg ext fcrStore.store (get_current_balance_source fcrStore) r = true ∧
-          Weak.is_one_confirmed cfg ext fcrStore.store
-            (get_current_balance_source fcrStore) r = true ∧
-          r ∈ fcrStore.store.block_roots ∧
           (fcrStore.store.blocks r).parent_root ∈ fcrStore.store.block_roots ∧
-          Weak.has_justification_witness_certificate cfg ext fcrStore = true)) := by
-    intro r hr
+          WeakSelectorGuardEvidence cfg ext fcrStore)) := by
+    intro r hr hguard
     rcases hr with heq | ⟨hconf, hmem, hpar⟩
     · exact Or.inl heq
-    · exact Or.inr (Or.inl
+    · exact Or.inr
         ⟨is_one_confirmed_of_weak cfg ext fcrStore.store
             (get_current_balance_source fcrStore) r hconf,
-          hconf, hmem, hpar⟩)
-  have finishCert : ∀ r, P r →
-      Weak.has_justification_witness_certificate cfg ext fcrStore = true →
-      (r = lcr ∨
-        (is_one_confirmed cfg ext fcrStore.store (get_current_balance_source fcrStore) r = true ∧
-          Weak.is_one_confirmed cfg ext fcrStore.store
-            (get_current_balance_source fcrStore) r = true ∧
-          r ∈ fcrStore.store.block_roots ∧
-          (fcrStore.store.blocks r).parent_root ∈ fcrStore.store.block_roots) ∨
-        (is_one_confirmed cfg ext fcrStore.store (get_current_balance_source fcrStore) r = true ∧
-          Weak.is_one_confirmed cfg ext fcrStore.store
-            (get_current_balance_source fcrStore) r = true ∧
-          r ∈ fcrStore.store.block_roots ∧
-          (fcrStore.store.blocks r).parent_root ∈ fcrStore.store.block_roots ∧
-          Weak.has_justification_witness_certificate cfg ext fcrStore = true)) := by
-    intro r hr hcert
-    rcases hr with heq | ⟨hconf, hmem, hpar⟩
-    · exact Or.inl heq
-    · exact Or.inr (Or.inr
-        ⟨is_one_confirmed_of_weak cfg ext fcrStore.store
-            (get_current_balance_source fcrStore) r hconf,
-          hconf, hmem, hpar, hcert⟩)
+          hconf, hmem, hpar, hguard⟩
   by_cases hcertb : Weak.has_justification_witness_certificate cfg ext fcrStore = true
-  · -- certificate globally available: attach it to every confirmed result.
+  · -- witness certificate globally available: attach it to every confirmed
+    -- result. None of the six `split_ifs` leaves need to be told apart by
+    -- name — each candidate term below is tried by unification against
+    -- whichever leaf's (already-substituted) goal it actually matches.
     generalize hout : Weak.find_latest_confirmed_descendant cfg ext fcrStore lcr = result
     rw [Weak.find_latest_confirmed_descendant] at hout
     simp only at hout
@@ -554,25 +549,40 @@ theorem find_latest_confirmed_descendant_selected_minimal_weak
         | exact Or.inl rfl
         | (have hp := hprev (get_current_store_epoch cfg fcrStore.store)
               lcr lcr hlcr (Or.inl rfl)
-           exact finishCert _ (htent _ _ (known_of_P _ hp) hp) hcertb)
-        | exact finishCert _ (htent _ _ hlcr (Or.inl rfl)) hcertb
-        | exact finishCert _ (hprev _ lcr lcr hlcr (Or.inl rfl)) hcertb
-  · -- certificate globally unavailable: the previous-epoch guard can never
-    -- hold (it needs the certificate as a conjunct), so no confirmed result
-    -- carries it.
-    generalize hout : Weak.find_latest_confirmed_descendant cfg ext fcrStore lcr = result
-    rw [Weak.find_latest_confirmed_descendant] at hout
-    simp only at hout
-    split_ifs at hout with h1 h2 h3 h4 h5 <;>
-      subst hout <;>
-        first
-        | exact Or.inl rfl
-        | exact absurd h1.2.2.1 hcertb
-        | (have hp := hprev (get_current_store_epoch cfg fcrStore.store)
-              lcr lcr hlcr (Or.inl rfl)
-           exact finishNoCert _ (htent _ _ (known_of_P _ hp) hp))
-        | exact finishNoCert _ (htent _ _ hlcr (Or.inl rfl))
-        | exact finishNoCert _ (hprev _ lcr lcr hlcr (Or.inl rfl))
+           exact finishGuard _ (htent _ _ (known_of_P _ hp) hp) (Or.inl hcertb))
+        | exact finishGuard _ (htent _ _ hlcr (Or.inl rfl)) (Or.inl hcertb)
+        | exact finishGuard _ (hprev _ lcr lcr hlcr (Or.inl rfl)) (Or.inl hcertb)
+  · -- witness certificate globally unavailable: the previous-epoch guard can
+    -- never hold (it needs the certificate as a conjunct, projected out as
+    -- `_.2.2.1` — named `h2` or `h5` depending on the leaf, both dismissed by
+    -- `absurd`), so every confirmed result must instead have advanced through
+    -- the tentative loop's own entry gate, named `h1` in every leaf (it is
+    -- the selector's outermost condition). Split further on the head
+    -- broadcast certificate, the other source of guard evidence.
+    by_cases hheadcertb : Weak.has_head_broadcast_certificate cfg ext fcrStore.store
+        (get_current_balance_source fcrStore) = true
+    · generalize hout : Weak.find_latest_confirmed_descendant cfg ext fcrStore lcr = result
+      rw [Weak.find_latest_confirmed_descendant] at hout
+      simp only at hout
+      split_ifs at hout with h1 h2 h3 h4 h5 <;>
+        subst hout <;>
+          first
+          | exact Or.inl rfl
+          | exact absurd h2.2.2.1 hcertb
+          | exact absurd h5.2.2.1 hcertb
+          | exact finishGuard _ (htent _ _ hlcr (Or.inl rfl)) (Or.inr (Or.inr hheadcertb))
+    · generalize hout : Weak.find_latest_confirmed_descendant cfg ext fcrStore lcr = result
+      rw [Weak.find_latest_confirmed_descendant] at hout
+      simp only at hout
+      split_ifs at hout with h1 h2 h3 h4 h5 <;>
+        subst hout <;>
+          first
+          | exact Or.inl rfl
+          | exact absurd h2.2.2.1 hcertb
+          | exact absurd h5.2.2.1 hcertb
+          | (rcases h1 with hstart | ⟨_, hcert⟩
+             · exact finishGuard _ (htent _ _ hlcr (Or.inl rfl)) (Or.inr (Or.inl hstart))
+             · exact absurd hcert hheadcertb)
 
 end Execution
 

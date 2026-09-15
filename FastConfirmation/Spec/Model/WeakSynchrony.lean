@@ -52,6 +52,23 @@ Only one surplus honest attester is needed — the certificate threshold is
    budget, so a one-confirmed block carries `support − budget > 0` honest
    attesters — the proofs should route their synchrony applications through
    that surplus rather than through the observer's own receipt.
+3. `Weak.is_one_confirmed` and its empty-slot support discount count only
+   **epoch-fresh** recorded LMD cells (`Weak.is_epoch_fresh_message`): a
+   recorded cell whose epoch has not reached the epoch of the last completed
+   slot no longer counts, in either the main scorer or the discount. The
+   discount must be gated too, or a stale recorded parent-pointing cell could
+   fund it without a matching honest replay (see `docs/weak-synchrony.md`).
+4. The previous-epoch and tentative advancement disjuncts of
+   `find_latest_confirmed_descendant` that read an *unrealized* justification
+   (as opposed to the already-gated witness-certificate read above) each
+   additionally require `Weak.has_head_broadcast_certificate`: a broadcast
+   certificate on the fork-choice head, over the span from the head's slot to
+   the last completed slot. Possessing a block implies possessing its
+   ancestry, so a certificate on the head dominates the deeper carrier that
+   actually formed the justification. `Weak.will_no_conflicting_checkpoint_be_justified`
+   is gated the same way, at its own short-circuit. See
+   `docs/weak-synchrony.md` for the full site sweep and the findings this
+   delta records but does not close.
 
 Stored-state maintenance across epochs (the revert-to-finalized and
 epoch-start restart branches of `get_latest_confirmed`, and
@@ -223,23 +240,6 @@ def compute_honest_ffg_support_for_current_target (store : Store Root) : Gwei :=
     ffg_support_for_checkpoint - min adversarial_weight ffg_support_for_checkpoint
   min_honest_ffg_support + remaining_honest_ffg_weight
 
-/-- Weak-model `will_no_conflicting_checkpoint_be_justified`. -/
-def will_no_conflicting_checkpoint_be_justified (store : Store Root) : Bool :=
-  if get_current_target cfg store = store.unrealized_justified_checkpoint then
-    true
-  else
-    let state := get_pulled_up_head_state cfg ext store
-    let total_active_balance := get_total_active_balance cfg state
-    let honest_ffg_support := compute_honest_ffg_support_for_current_target cfg ext store
-    decide (3 * honest_ffg_support > 1 * total_active_balance)
-
-/-- Weak-model `will_current_target_be_justified`. -/
-def will_current_target_be_justified (store : Store Root) : Bool :=
-  let state := get_pulled_up_head_state cfg ext store
-  let total_active_balance := get_total_active_balance cfg state
-  let honest_ffg_support := compute_honest_ffg_support_for_current_target cfg ext store
-  decide (3 * honest_ffg_support ≥ 2 * total_active_balance)
-
 /-- Observed attesting weight certifying possession of `block_root`: the
 weight of unslashed, active, non-equivocating members of the committees of
 `[start_slot, end_slot]` whose latest message (i) was cast for a slot in the
@@ -277,6 +277,39 @@ def has_broadcast_certificate (store : Store Root) (balance_source : BeaconState
     get_broadcast_certificate_support cfg ext store balance_source block_root
       start_slot end_slot
   decide (support > compute_adversarial_weight cfg store balance_source start_slot end_slot)
+
+/-- Broadcast certificate for the fork-choice head, over the span from its
+slot to the last completed slot. Possessing a block implies possessing its
+ancestry, so a certificate on the block whose `unrealized_justifications` entry
+the rule reads dominates the deeper carrier that actually formed the
+justification — no certificate on the carrier is required (rule delta 4). -/
+def has_head_broadcast_certificate (store : Store Root)
+    (balance_source : BeaconState Root) : Bool :=
+  let head := (get_head cfg store).root
+  has_broadcast_certificate cfg ext store balance_source head
+    (get_block_slot store head) (get_current_slot cfg store - 1)
+
+/-- Weak-model `will_no_conflicting_checkpoint_be_justified`, gated by a
+broadcast certificate on the fork-choice head (rule delta 4): the short-circuit
+that the current target already matches the unrealized justified checkpoint is
+only trusted once the head is certified as disseminated. -/
+def will_no_conflicting_checkpoint_be_justified (store : Store Root)
+    (balance_source : BeaconState Root) : Bool :=
+  if get_current_target cfg store = store.unrealized_justified_checkpoint ∧
+      has_head_broadcast_certificate cfg ext store balance_source then
+    true
+  else
+    let state := get_pulled_up_head_state cfg ext store
+    let total_active_balance := get_total_active_balance cfg state
+    let honest_ffg_support := compute_honest_ffg_support_for_current_target cfg ext store
+    decide (3 * honest_ffg_support > 1 * total_active_balance)
+
+/-- Weak-model `will_current_target_be_justified`. -/
+def will_current_target_be_justified (store : Store Root) : Bool :=
+  let state := get_pulled_up_head_state cfg ext store
+  let total_active_balance := get_total_active_balance cfg state
+  let honest_ffg_support := compute_honest_ffg_support_for_current_target cfg ext store
+  decide (3 * honest_ffg_support ≥ 2 * total_active_balance)
 
 /-- Broadcast certificate for the justification witness: the block carrying
 the previous epoch's justification (`fcr_store.previous_slot_head`), certified
@@ -333,12 +366,16 @@ def find_latest_confirmed_descendant_tentative_loop
 rule over the weak predicates, except that the previous-epoch advancement
 additionally requires `has_justification_witness_certificate` (rule delta 2 in
 the module docstring): the observer's own receipt of the justification witness
-no longer certifies its dissemination, an attestation surplus does. -/
+no longer certifies its dissemination, an attestation surplus does. Every
+disjunct that reads an *unrealized* justification at `head` (as opposed to the
+already-certified `previous_slot_head`) additionally requires
+`has_head_broadcast_certificate` (rule delta 4). -/
 def find_latest_confirmed_descendant (fcr_store : FastConfirmationStore Root)
     (latest_confirmed_root : Root) : Root :=
   let store := fcr_store.store
   let head := (get_head cfg store).root
   let current_epoch := get_current_store_epoch cfg store
+  let bs := get_current_balance_source fcr_store
   let confirmed_root := latest_confirmed_root
   let confirmed_root :=
     if get_block_epoch cfg store confirmed_root + 1 = current_epoch ∧
@@ -346,16 +383,18 @@ def find_latest_confirmed_descendant (fcr_store : FastConfirmationStore Root)
           current_epoch ∧
         has_justification_witness_certificate cfg ext fcr_store ∧
         (is_start_slot_at_epoch cfg (get_current_slot cfg store) ∨
-          (will_no_conflicting_checkpoint_be_justified cfg ext store ∧
+          (will_no_conflicting_checkpoint_be_justified cfg ext store bs ∧
             ((store.unrealized_justifications fcr_store.previous_slot_head).epoch + 1 ≥
                 current_epoch ∨
-              (store.unrealized_justifications head).epoch + 1 ≥ current_epoch))) then
+              ((store.unrealized_justifications head).epoch + 1 ≥ current_epoch ∧
+                has_head_broadcast_certificate cfg ext store bs)))) then
       let canonical_roots := get_ancestor_roots store head confirmed_root
       find_latest_confirmed_descendant_prev_epoch_loop cfg ext fcr_store current_epoch
         canonical_roots confirmed_root
     else confirmed_root
   if is_start_slot_at_epoch cfg (get_current_slot cfg store) ∨
-      (store.unrealized_justifications head).epoch + 1 ≥ current_epoch then
+      ((store.unrealized_justifications head).epoch + 1 ≥ current_epoch ∧
+        has_head_broadcast_certificate cfg ext store bs) then
     let canonical_roots := get_ancestor_roots store head confirmed_root
     let tentative_confirmed_root :=
       find_latest_confirmed_descendant_tentative_loop cfg ext fcr_store
@@ -364,7 +403,7 @@ def find_latest_confirmed_descendant (fcr_store : FastConfirmationStore Root)
         ((get_voting_source cfg store tentative_confirmed_root).epoch + 2 ≥
             current_epoch ∧
           (is_start_slot_at_epoch cfg (get_current_slot cfg store) ∨
-            will_no_conflicting_checkpoint_be_justified cfg ext store)) then
+            will_no_conflicting_checkpoint_be_justified cfg ext store bs)) then
       tentative_confirmed_root
     else confirmed_root
   else confirmed_root
