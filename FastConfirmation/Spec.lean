@@ -14,6 +14,7 @@ import FastConfirmation.Spec.Proof.WeakSelectedEdgeGeometry
 import FastConfirmation.Spec.Proof.WeakSelectedMarginInputs
 import FastConfirmation.Spec.Proof.WeakCoveredMarginConstruction
 import FastConfirmation.Spec.Proof.WeakOneShotSafetyNative
+import FastConfirmation.Spec.Proof.WeakObserverDomain
 
 /-!
 # Spec — facade
