@@ -58,6 +58,12 @@ Uses:
    justification), over `[witness block slot, current_slot − 1]`. Certified
    votes end before the current slot, so every honest validator holds the
    witness chain before casting any vote the FFG projections count.
+3. **Fork-choice head — rule delta 4.** `Weak.has_head_broadcast_certificate`
+   certifies the fork-choice head over `[head slot, current_slot − 1]`.
+   Possessing a block implies possessing its ancestry, so a certificate on the
+   head dominates the deeper carrier that actually formed the
+   `unrealized_justifications` entry the rule reads — no certificate on that
+   carrier is required. See "Rule delta 4" below.
 
 ## Equivocation discount
 
@@ -70,6 +76,139 @@ adversarial baseline, since honest validators are never slashable and a detected
 equivocator's margin effect without the discount equals abstention. Equivocators'
 votes remain excluded from support sums (also stricter). A later improvement may
 re-enable the discount for slashings carried in a broadcast-certified block.
+
+## Rule delta 3 — epoch-fresh scorer
+
+`Weak.is_one_confirmed` and its empty-slot support discount now count only
+**epoch-fresh** recorded LMD cells. `Weak.recorded_cutoff_epoch store` is the
+epoch of the last completed slot (`compute_epoch_at_slot (get_current_slot
+store − 1)`) — anchoring at `compute_epoch_at_slot current_slot` instead would
+make the scorer identically zero at every epoch boundary, since
+`LatestMessageProvenance` forces every recorded cell to have been set for a
+slot `≤ current_slot − 1`. `Weak.is_epoch_fresh_message store lm` holds iff
+`recorded_cutoff_epoch store ≤ get_latest_message_epoch lm`.
+`Weak.get_epoch_fresh_attestation_score` and
+`Weak.get_epoch_fresh_block_support_between_slots` add this conjunct to the
+strong scorer's/discount's counted-cell filter (in the fixed order `(equiv &&
+fresh) && ancestor`, so the weak-⇒-strong bridge lemmas drop conjuncts rather
+than re-deriving them); `Weak.is_one_confirmed` and
+`Weak.compute_empty_slot_support_discount` are restated over them.
+
+**Why the discount must be gated too, not just the main scorer.** The
+stale-tolerant base-strip argument
+(`Execution.base_strip_of_confirmed_in_store_stale_minimal`,
+`AcceptedStrictPrefixExtraQueryFeasibility.lean:191`) that Stage H needs reads
+recorded parent-pointing cells through `PrefixGroundVoteAccountingReplay
+.parent_replay`, which is stated over the *ground-truth* `AttSupporters`/
+`ParentStuck` classes — exactly what this delta must let the weak store-side
+scorer approximate. A stale parent-pointing honest cell with a sibling ground
+vote lands in the `StoreXclass` (excess) bucket; `parent_replay` is false for
+it unless the discount counts only fresh cells. Landing the freshness gate on
+the main scorer alone would leave the discount able to count a stale cell the
+replay premise does not backstop. (A safe fallback, if the discount's
+`Finset` monotonicity proof ever regresses, is to zero the weak discount
+outright — strictly stricter than gating — but gating is preferred since it
+is only marginally more work: `Finset.sum_le_sum_of_subset_of_nonneg` composed
+with the same-base-set predicate-strengthening step, `Finset.monotone_filter_right`.)
+
+The sibling arm of the window partition needs no re-accounting: `Sclass`/
+`Aclass`/`Xclass` are ground-truth-indexed and the partition identity does not
+move, and `ByzantineBound.estimate_sound` already charges the whole window.
+Only `Hsup ≤ s` and `Hsup + discount ≤ s + a` move, and freshness makes both
+strictly easier. Landing this delta does not by itself remove any
+`WindowRecordedEpochMax` premise from the base strip — freshness only pays off
+once a weak-native (store-computed, not ground-truth) version of the base
+strip exists (Stage H, out of scope for this wave); see "Deliberately open"
+below.
+
+## Rule delta 4 — certificate-gated justification short-circuit
+
+Every place `find_latest_confirmed_descendant` reads an *unrealized*
+justification at the fork-choice `head` (as opposed to the already-witness-
+certified `previous_slot_head`) now additionally requires
+`Weak.has_head_broadcast_certificate` on `head`:
+
+- the previous-epoch guard's `(unrealized_justifications head).epoch + 1 ≥
+  current_epoch` disjunct;
+- the tentative loop's entry gate, same condition;
+- `Weak.will_no_conflicting_checkpoint_be_justified`'s short-circuit
+  (`get_current_target = unrealized_justified_checkpoint ⟹ true`), which now
+  additionally requires the head certificate before trusting the
+  short-circuit, using the balance source `get_current_balance_source
+  fcr_store` (the same one every other weak certificate in the call already
+  uses).
+
+The voting-source read of `previous_slot_head` and the `unrealized_justifications
+previous_slot_head` disjunct are already gated (they sit behind the witness
+certificate conjunct); they are unchanged.
+
+**Site sweep (all sites `find_latest_confirmed_descendant` touches that read
+an unrealized/tentative justification or voting source):**
+
+| site | status |
+| --- | --- |
+| voting-source read of `previous_slot_head` | already gated by the witness certificate |
+| `unrealized_justifications previous_slot_head` | already gated |
+| `unrealized_justifications head` (prev-epoch guard) | gated this delta |
+| `unrealized_justifications head` (tentative entry) | gated this delta |
+| `will_no_conflicting_checkpoint_be_justified` short-circuit | gated this delta |
+| voting-source read of `tentative_confirmed_root` (finding 7) | gated *implicitly* — see below |
+| `filter_block_tree` inside `get_head` (finding 8-adjacent) | out of scope |
+| `is_head_unrealized_justified_ok` in `get_latest_confirmed` | out of scope |
+| balance-source key from `unrealized_justified_checkpoint` (finding 8) | out of scope, documented below |
+
+**Finding 7 — the tentative loop's voting-source read is gated implicitly.**
+`find_latest_confirmed_descendant`'s final `if` reads `(get_voting_source
+cfg store tentative_confirmed_root).epoch + 2 ≥ current_epoch` — a read at a
+candidate root that is *not* separately wrapped in a certificate conjunct.
+This is sound without one: `tentative_confirmed_root` is only ever a value
+that already passed `Weak.is_one_confirmed`
+(`Weak.find_latest_confirmed_descendant_tentative_loop`'s only advance case,
+`weak_tentative_loop_spec` in `WeakSelectorInversion.lean`), and a `true`
+`Weak.is_one_confirmed` result is itself a broadcast certificate for that
+root (its support already exceeds the span's adversarial budget — see
+`is_one_confirmed`'s own docstring). So this site is gated through the loop
+invariant rather than an explicit conjunct; recorded explicitly
+(`WeakSelectorInversion.lean`'s module docstring) since it is easy to mistake
+for an ungated read.
+
+**Finding 8 — the balance source itself descends from an ungated read.**
+`get_current_balance_source`/every weak certificate in this call keys off
+`fcr_store.current_epoch_observed_justified_checkpoint`, which in turn derives
+from `unrealized_justified_checkpoint` bookkeeping in `Confirmation.lean`
+(around `:46-50`) that this delta does not touch and that is not itself
+broadcast-certified. This is *deferred stored-state scope*, consistent with
+the module docstring's standing exclusion of `get_latest_confirmed`'s
+revert-to-finalized/epoch-start-restart maintenance and
+`is_confirmed_chain_safe`. Recording this plainly so the delta is not
+mistaken for closing that gap: the observer's balance source is only as
+trustworthy as that upstream bookkeeping, which remains an open premise
+surface, not a proved one.
+
+**Finding 6 — head-certificate non-inertness depends on call placement, not
+just the rule.** `has_head_broadcast_certificate`'s span is `[get_block_slot
+store head, current_slot − 1]`; this is **empty** (hence the certificate is
+vacuously false, never able to fire) exactly when `head` *is* a block for
+`current_slot` itself. Verified against the actual call-trace model
+(`AllowedFCRCallTrace.lean`): the canonical schedule updates the cached
+variables "at the first whole second of a slot" (module docstring, `:6-8`),
+i.e. before a same-slot proposal could plausibly have been produced and
+processed, so `head` is ordinarily the *previous* slot's block and the span is
+non-empty. But this is a scheduling expectation, not a proved invariant of
+the interpreter: `canUpdate` (`:170-177`) gates on clock alignment,
+per-slot uniqueness, the attestation-deadline window, and past-attestations
+having landed — it does not check, and nothing else in `step?`/`run?` rules
+out, whether a block for the *current* slot has already been received and
+processed (via `.receive`/`.processNext`) before `.updateVariables`/
+`.query .mandatory` fire. The source explicitly "permits the update to happen
+later" in the slot, and separately permits `.query .extra` calls "at any
+other point in the slot" (`QueryKind` docstring, `:54-56`) — at either of
+those, if the current slot's own block has already landed, `head` can equal
+it, the span degenerates to empty, and the head certificate is inert at that
+call. This is not a bug in this delta: the re-anchored variant (certifying a
+span that stays non-empty regardless of where `head` lands, e.g. anchored one
+slot back) is a distinct rule shape, deferred as **delta 5**, out of scope for
+this wave.
 
 ## Proof migration map
 
@@ -164,3 +303,14 @@ derivable from `committee_assignment_unique`; (B) an explicit
 recorded-epoch-freshness assumption at the observer (weaker than honesty but a
 genuine delivery-to-observer premise); (C) keep `hmargin` as the interface
 premise (the current state).
+
+**Candidate A is taken** — rule deltas 3 and 4 above land the epoch-fresh
+scorer/discount and the certificate-gated unrealized-justification
+short-circuits. This does **not** by itself discharge Stage 8: landing the
+delta only makes freshness of *counted* cells derivable; it does not yet
+supply a *weak-native* (store-computed, not ground-truth-indexed) base-strip
+argument that consumes that freshness fact to close `WindowRecordedEpochMax`
+at the observer (Stage H), nor the hdom-supplier retirement (Stage I) or the
+final `hmargin` discharge (Stage J) built on top of it. Those three stages
+remain out of scope for this wave; `hmargin` is still carried as an explicit
+premise of the one-shot theorem today.
