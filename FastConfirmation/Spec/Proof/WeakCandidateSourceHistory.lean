@@ -18,13 +18,17 @@ Every use of the query node's honesty binder in the strong development
 resolves to one of three things (the wave's stage-S0 audit), and each is
 replaced here by its landed observer-side twin:
 
-| strong use | weak replacement |
-|---|---|
-| `store_domainK_of_selectedMarginDomain … hv` | `Execution.observerStoreDomainK` (`WeakObserverDomain.lean`) |
-| `head_root_known_of_selectedMarginDomain … hv` | `Execution.head_root_known_at_observer` (same) |
-| `hsync.block_relay` of a seed out of the observer's store | the landed certificate-dissemination lemmas (below) |
-| `StrictSelectorAdvanceAt.mechanicalFacts … hv` | `Weak.strictSelectedResultMechanicalFacts … hcoh` (`WeakSelectedTrace.lean`) |
-| `not_epochStart_of_current_of_selectedMargin … hv` | `Weak.…not_epochStart_of_current` + `…confirmedPastDescendantSlotWitness_at_observer` |
+* `store_domainK_of_selectedMarginDomain … hv` becomes
+  `Execution.observerStoreDomainK` (`WeakObserverDomain.lean`);
+* `head_root_known_of_selectedMarginDomain … hv` becomes
+  `Execution.head_root_known_at_observer` (same file);
+* `hsync.block_relay` of a seed out of the observer's own store becomes one
+  of the landed certificate-dissemination lemmas (below);
+* `StrictSelectorAdvanceAt.mechanicalFacts … hv` becomes
+  `Weak.strictSelectedResultMechanicalFacts … hcoh` (`WeakSelectedTrace.lean`);
+* `not_epochStart_of_current_of_selectedMargin … hv` becomes
+  `Weak.…not_epochStart_of_current` composed with
+  `Weak.…confirmedPastDescendantSlotWitness_at_observer`.
 
 The one structural consequence is in the two source-history records. The
 strong `AcceptedLemma22EpochStartCandidateSourceAt` carries
@@ -49,10 +53,50 @@ discharged, never assumed:
   disseminates it;
 * the trusted-anchor origin: the anchor root is in `E.genesis_store
   .block_roots`, hence in every store by `Execution.store_storeLE`;
-* the epoch-start banked origin (site 8 of the design's inventory):
-  `Weak.bankedRoot_known_at_all_honest_endpoints_at_observer`
-  (`WeakBankedJustification.lean`), whose two arms are exactly global
-  knownness of the anchor and the certificate minted at the banking second.
+* the epoch-start banked candidate (site 8 of the design's inventory): its
+  *seed* is the banking certificate's `supplier`, so the consumption lemma
+  called is the finer
+  `Weak.bankedSupplier_known_at_all_honest_endpoints_at_observer`
+  (`WeakBankedJustification.lean`) rather than the packaged
+  `bankedRoot_known_at_all_honest_endpoints_at_observer` — the banked root is
+  the Lemma-22 *candidate*, and the seed has to be the block whose voting
+  source is that candidate. The anchor arm needs no certificate at all
+  (global knownness from `E.genesis_store`), matching that lemma's own
+  anchor arm.
+
+## What is delivered
+
+* the two records `Weak.AcceptedCurrentCandidateSourceOriginAt` (+
+  `mono_upper`) and `Weak.AcceptedLemma22EpochStartCandidateSourceAt`, and
+  `…lemma24` into the (reused, honesty-free) strong
+  `Execution.AcceptedLemma24EpochStartSourceAt`;
+* the three origin producers:
+  `Weak.acceptedCurrentCandidateSourceOriginAt_anchor`,
+  `Weak.AcceptedCurrentCandidateSourceOriginAt.toLemma22AtNextBoundary`, and
+  `Weak.StrictSelectedResultMechanicalFacts.currentCandidateSourceOrigin`
+  (with `Weak.StrictSelectorAdvanceAt.mechanicalFacts`);
+* the boundary step, in query-generic form
+  (`Weak.bankedEpochStartCandidateSource_of_certifiedBank`) and at an actual
+  call (`Weak.ObservedResetCandidateInputAt.
+  acceptedLemma22EpochStartCandidateSource`);
+* the honesty-free clock clones `Weak.actualCall_epochStart_boundarySecond`
+  and `Weak.previousConfirmed_current_of_boundary_recent`;
+* the invariant `Weak.AcceptedConfirmedSourceHistoryAt`, its four step
+  lemmas (`…_zero`, `…succ_of_noCall`, `…confirmedKnown_succ_of_call`,
+  `…currentOrigin_succ_of_call`, `…recentSource_succ_of_call`), the combined
+  `…succ_of_call`, the all-seconds `Weak.acceptedConfirmedSourceHistoryAt`,
+  and the evaluator export
+  `Weak.getLatestConfirmedTraceAt_current_epochStartSource`;
+* the S6 → S7 bridge `Weak.StrictSelectedResultMechanicalFacts.
+  currentSame_sourceHistoryOutcome_of_epochStartSource` and its actual-call
+  form `…actualCurrentSame_sourceHistoryOutcome`, into the reused strong
+  outcome type `Execution.AcceptedCurrentSameSourceHistoryOutcome`.
+
+The weak evaluator trace and the four-way call-branch recurrence this
+induction runs over live in `WeakCandidateHistoryRecurrence.lean` (split out
+for the same reason the strong development splits
+`AcceptedCandidateHistoryRecurrence.lean` from this file: that layer mentions
+no assumption bundle at all).
 
 ## Divergences from the design (`/tmp/hfilter-wave-design.md` §(C) site 8,
 `/tmp/delta5-proposal.md` §5), where the landed state won
@@ -82,11 +126,18 @@ discharged, never assumed:
    `observed_previous_epoch` instead. The lemma is therefore not proved here;
    nothing in the induction asks for it.
 4. **`AcceptedLemma22EpochStartCandidateSourceAt.strictly_before_boundary`
-   stays strict.** The proposal suggested relaxing it to `second ≤ boundary`
-   to accommodate a same-slot certificate. The relaxation is unnecessary for
-   the *seed* (see 2), and is needed only for the banked arm's `second`,
-   which is why the weak record's field is `second_le_boundary : second ≤
-   boundary` — the one place the two differ.
+   is relaxed to `second_le_boundary`, and that is the only relaxation.** The
+   delta-5 proposal suggested `second ≤ boundary` to accommodate a same-slot
+   certificate; it is needed exactly for the banked arm's `second` (the
+   certificate may be minted at the boundary second itself), and nowhere
+   else — the *seed*'s own recency is not affected (see 2). No consumer of
+   the record reads the field.
+5. **`hspe : 1 < cfg.slots_per_epoch` disappears from the premise surface.**
+   The strong induction carries it only to run the observed-reset arm's
+   accepted *installation* witness (`AcceptedUJCacheInstallationAt`, via
+   `ObservedResetCandidateInputAt.acceptedInstallation`). Rule delta 5's
+   head-indexed banking replaces that witness with the banked certificate,
+   which needs no such hypothesis.
 -/
 
 namespace FastConfirmation.Spec
@@ -1260,6 +1311,7 @@ theorem AcceptedConfirmedSourceHistoryAt.confirmedKnown_succ_of_call
 
 set_option maxRecDepth 4000 in
 set_option maxHeartbeats 800000 in
+-- The exhaustive operational branch fold needs a larger elaboration budget.
 /-- Current-origin half of one actual weak call. Weak twin of
 `AcceptedConfirmedSourceHistoryAt.currentOrigin_succ_of_call`. Branch for
 branch: carried roots reuse the induction origin, finalized-current roots
@@ -1468,6 +1520,7 @@ theorem AcceptedConfirmedSourceHistoryAt.currentOrigin_succ_of_call
 
 set_option maxRecDepth 4000 in
 set_option maxHeartbeats 800000 in
+-- The exhaustive operational branch fold needs a larger elaboration budget.
 /-- Recent-source half of one actual weak call. Weak twin of
 `AcceptedConfirmedSourceHistoryAt.recentSource_succ_of_call`.
 
@@ -1786,6 +1839,129 @@ theorem getLatestConfirmedTraceAt_current_epochStartSource
     exact Nat.le_succ _
   have hsource := hhistory.recent_epochStartSource hstoredRecent w hw
   simpa only [E.weakFcrStep_store] using hsource
+
+
+/-! ## Source-history split: the S6 → S7 export -/
+
+set_option maxRecDepth 4000 in
+/-- Weak twin of `StrictSelectedResultMechanicalFacts.currentSame_source
+HistoryOutcome_of_epochStartSource`. The outcome type
+`Execution.AcceptedCurrentSameSourceHistoryOutcome` is reused verbatim: both
+of its arms are indexed at the *honest past supporter*'s store, so neither
+mentions the query node's honesty. The single honesty use in the strong proof
+is `confirmed_honestPastHeadBelow`, replaced by stage S4's landed
+`Execution.confirmed_honestPastHeadBelow_at_observer`; the past-head split
+`directJustified_or_pathLocal` and the carrier constructor `of_pathLocal` are
+already stated at the honest supporter and need no twin. -/
+theorem StrictSelectedResultMechanicalFacts.currentSame_sourceHistoryOutcome_of_epochStartSource
+    {E : Execution Root} (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
+    (hsync : PaperSafetySynchrony cfg ext E)
+    (hstatic : StaticValidatorSet cfg E)
+    (hbyz : ByzantineBound cfg E)
+    (hdomain : SelectedMarginDomain cfg ext E)
+    (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
+    {obs : ValidatorIndex} {q : Nat}
+    (hcomm : E.PrefixCommitteeAgreement cfg ext (E.store cfg ext obs q))
+    (hqH : E.WithinHorizon cfg q)
+    {query : FastConfirmationStore Root} {input result : Root}
+    (hquery : query.store = E.store cfg ext obs q)
+    (h : Weak.StrictSelectedResultMechanicalFacts cfg ext query input result)
+    (hcurrent : get_block_epoch cfg query.store result =
+      get_current_store_epoch cfg query.store)
+    (hsource : ∀ w ∈ E.honest,
+      Nonempty (E.AcceptedLemma24EpochStartSourceAt cfg ext B
+        (get_current_store_epoch cfg query.store) w)) :
+    E.AcceptedCurrentSameSourceHistoryOutcome cfg ext B obs q result := by
+  obtain ⟨hpast⟩ := E.confirmed_honestPastHeadBelow_at_observer cfg ext hT
+    hsync hstatic hbyz hdomain hcomm hqH hquery h.result_known h.parent_known
+    h.confirmed
+  have hpastEpoch : get_current_store_epoch cfg
+      (E.store cfg ext hpast.validator hpast.second) =
+      get_current_store_epoch cfg (E.store cfg ext obs q) := by
+    have hblockAgree : query.store.blocks result =
+        (E.store cfg ext hpast.validator hpast.second).blocks result := by
+      rw [hquery]
+      exact hT.wellFormed.blocks_agree
+        (E.blockProvenance cfg ext obs q)
+        (E.blockProvenance cfg ext hpast.validator hpast.second)
+        (by simpa only [hquery] using h.result_known) hpast.candidate_known
+    have hlower : get_current_store_epoch cfg (E.store cfg ext obs q) ≤
+        get_current_store_epoch cfg
+          (E.store cfg ext hpast.validator hpast.second) := by
+      rw [← hquery, ← hcurrent]
+      simp only [get_block_epoch, hblockAgree]
+      exact ce_mono cfg
+        (E.store_blocks_slot_le_current cfg ext hT.whole_seconds
+          (by
+            obtain ⟨ast, ablk, hgen, hslot, _⟩ := hT.genesis
+            exact ⟨ast, ablk, hgen, hslot⟩)
+          hpast.validator hpast.second result hpast.candidate_known)
+    have hupper : get_current_store_epoch cfg
+        (E.store cfg ext hpast.validator hpast.second) ≤
+        get_current_store_epoch cfg (E.store cfg ext obs q) := by
+      simp only [get_current_store_epoch, E.store_current_slot]
+      exact ce_mono cfg hpast.strictly_past.le
+    exact Nat.le_antisymm hupper hlower
+  rcases hpast.directJustified_or_pathLocal cfg ext hT hdomain with
+      hdirect | hpath
+  · exact .justifiedFallback ⟨{
+      past := hpast
+      justified_descends_candidate := hdirect
+    }⟩
+  · obtain ⟨hlemma24⟩ := hsource hpast.validator hpast.validator_honest
+    have hJRecentQuery : get_current_store_epoch cfg query.store ≤
+        (E.store cfg ext hpast.validator hpast.second
+          ).justified_checkpoint.epoch + 2 :=
+      hlemma24.justified_recent cfg ext B hT hanchor hpast.second_within
+        (by simpa only [hquery] using hpastEpoch)
+    have hJRecent : get_current_store_epoch cfg (E.store cfg ext obs q) ≤
+        (E.store cfg ext hpast.validator hpast.second
+          ).justified_checkpoint.epoch + 2 := by
+      simpa only [← hquery] using hJRecentQuery
+    exact .recentCarrier
+      (Execution.AcceptedRecentCandidateSourceCarrierAt.of_pathLocal cfg ext B
+        hT hpast hpastEpoch hJRecent hpath)
+
+set_option maxRecDepth 4000 in
+/-- **Callback-free Lemma-26 export for a strict current result of the actual
+weak evaluator at a possibly-Byzantine observer.** Weak twin of
+`StrictSelectedResultMechanicalFacts.actualCurrentSame_sourceHistoryOutcome`
+— the S7 dispatcher's `currentSame` entry point. Its only paper-facing timing
+premise is the accepted realized-finalization delay, exactly as in the strong
+development; `hspe : 1 < cfg.slots_per_epoch` is not needed (see
+`Weak.acceptedConfirmedSourceHistoryAt`). -/
+theorem StrictSelectedResultMechanicalFacts.actualCurrentSame_sourceHistoryOutcome
+    {E : Execution Root} (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
+    (hsync : PaperSafetySynchrony cfg ext E)
+    (hstatic : StaticValidatorSet cfg E)
+    (hbyz : ByzantineBound cfg E)
+    (hdomain : SelectedMarginDomain cfg ext E)
+    (hji : JustificationInterface cfg ext E)
+    (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
+    (hboundary : Execution.TrustedAnchorBoundaryAligned (cfg := cfg)
+      (E := E) (anchor := B.anchor))
+    (hDelay : E.AcceptedRealizedFinalizationDelay cfg ext B)
+    {obs : ValidatorIndex} (hcoh : E.ObserverCoherence cfg ext obs) {n : Nat}
+    (hHn1 : E.WithinHorizon cfg (n + 1))
+    (hcall : E.IsFCRCallAt cfg ext obs n)
+    {input : Root}
+    (h : Weak.StrictSelectedResultMechanicalFacts cfg ext
+      (E.weakFcrStep cfg ext obs n) input
+        (E.weakGetLatestConfirmedTraceAt cfg ext obs n).result)
+    (hcurrent : get_block_epoch cfg (E.weakFcrStep cfg ext obs n).store
+          (E.weakGetLatestConfirmedTraceAt cfg ext obs n).result =
+        get_current_store_epoch cfg (E.weakFcrStep cfg ext obs n).store) :
+    E.AcceptedCurrentSameSourceHistoryOutcome cfg ext B obs (n + 1)
+      (E.weakGetLatestConfirmedTraceAt cfg ext obs n).result := by
+  apply h.currentSame_sourceHistoryOutcome_of_epochStartSource cfg ext B hT
+    hsync hstatic hbyz hdomain hanchor (hcoh.committees_agree (n + 1) hHn1)
+    hHn1 (E.weakFcrStep_store cfg ext obs n) hcurrent
+  intro w hw
+  exact Weak.getLatestConfirmedTraceAt_current_epochStartSource cfg ext B hT
+    hsync hstatic hbyz hdomain hji hanchor hboundary hDelay hcoh hHn1 hcall
+    hcurrent w hw
 
 end Weak
 
