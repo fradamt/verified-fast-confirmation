@@ -132,7 +132,14 @@ broadcast certificate.
 
 `Execution.weakConfirmed_safeFromFollowingSlot_of_weakFullRuleFold` with its
 last premise discharged by `Weak.observedResetSeedSafety_of_acceptedDynamics`.
-The premise list is identical to the conditional fold's minus
+Since `docs/weak-final-wave.md` W6 the call contract is the **unchanged**
+7-field `E.AcceptedHistoricalA32CompletedPrefixCallAssumptions`, not
+`Weak.ObserverHistoricalA32CallAssumptions`: the observer proviso
+`observer_helper_provisos` is gone from this premise list, because the
+historical A3.2 crossing payload is now manufactured lazily at the consuming
+call from the fold's own strictly earlier output.
+
+The premise list is otherwise identical to the conditional fold's minus
 `hOR : Weak.ObservedResetSeedSafety`; the obligation's own inputs (`hW.base`,
 `B`, `hT`, `hji`, `hanchor`, `hboundary`, and the observer's committee
 agreement `hW.committees_agree`) were already carried.  The strong fold's
@@ -161,13 +168,13 @@ theorem weakConfirmed_safeFromFollowingSlot_of_acceptedWeakFullRuleFold
     {obs : ValidatorIndex}
     (hW : E.WeakObserverAssumptions cfg ext obs)
     (hwalkDomain : E.PostAnchorHonestVoteTargetWalkDomain cfg ext)
-    (hC : Weak.ObserverHistoricalA32CallAssumptions cfg ext E obs)
+    (hCbase : E.AcceptedHistoricalA32CompletedPrefixCallAssumptions cfg ext)
     (hfit : EpochEndsFitUint64 cfg) :
     ∀ n : ℕ, E.WithinHorizon cfg n →
       E.WeakConfirmedSafeFromFollowingSlot cfg ext obs n :=
   E.weakConfirmed_safeFromFollowingSlot_of_weakFullRuleFold cfg ext B hT hji
     hanchor hboundary hDelay hphase0 hboundaryPhase hpaper P V hanchorExact hW
-    hwalkDomain hC hfit
+    hwalkDomain hCbase hfit
     (Weak.observedResetSeedSafety_of_acceptedDynamics cfg ext hW.base B hT hji
       hanchor hboundary hW.committees_agree)
 
@@ -194,7 +201,7 @@ theorem weakConfirmed_head_of_acceptedWeakFullRuleFold_nextSlot
     {obs : ValidatorIndex}
     (hW : E.WeakObserverAssumptions cfg ext obs)
     (hwalkDomain : E.PostAnchorHonestVoteTargetWalkDomain cfg ext)
-    (hC : Weak.ObserverHistoricalA32CallAssumptions cfg ext E obs)
+    (hCbase : E.AcceptedHistoricalA32CompletedPrefixCallAssumptions cfg ext)
     (hfit : EpochEndsFitUint64 cfg)
     {n : ℕ} {w : ValidatorIndex} (hw : w ∈ E.honest) {m : ℕ}
     (hnm : n ≤ m)
@@ -205,7 +212,7 @@ theorem weakConfirmed_head_of_acceptedWeakFullRuleFold_nextSlot
       (get_node_for_root (E.weakConfirmed cfg ext obs n)) = true :=
   E.weakConfirmed_head_of_weakFullRuleFold_nextSlot cfg ext B hT hji hanchor
     hboundary hDelay hphase0 hboundaryPhase hpaper P V hanchorExact hW
-    hwalkDomain hC hfit
+    hwalkDomain hCbase hfit
     (Weak.observedResetSeedSafety_of_acceptedDynamics cfg ext hW.base B hT hji
       hanchor hboundary hW.committees_agree)
     hw hnm hnext hHm

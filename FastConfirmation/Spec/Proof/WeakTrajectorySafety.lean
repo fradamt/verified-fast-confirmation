@@ -399,10 +399,11 @@ theorem weakConfirmedSafeFromFollowingSlot_succ_of_call
     {obs : ValidatorIndex}
     (hW : E.WeakObserverAssumptions cfg ext obs)
     (hwalkDomain : E.PostAnchorHonestVoteTargetWalkDomain cfg ext)
-    (hC : Weak.ObserverHistoricalA32CallAssumptions cfg ext E obs)
+    (hCbase : E.AcceptedHistoricalA32CompletedPrefixCallAssumptions cfg ext)
     (hfit : EpochEndsFitUint64 cfg)
     (hOR : Weak.ObservedResetSeedSafety cfg ext E obs)
     {n : ℕ}
+    (hprior : Weak.ObserverPriorCallWriteBackSafe cfg ext E obs n)
     (hHn1 : E.WithinHorizon cfg (n + 1))
     (hcall : E.IsFCRCallAt cfg ext obs n)
     (hknownN : E.weakConfirmed cfg ext obs n ∈
@@ -413,9 +414,9 @@ theorem weakConfirmedSafeFromFollowingSlot_succ_of_call
     hanchor hboundary (obs := obs) (n := n) hknownN
   have hbase := E.weakGetLatestConfirmedTraceAt_input_safeFrom cfg ext B hT
     hW.base hphase0 hboundaryPhase hanchor hboundary hOR hHn1 hcall hprev
-  have hresult := E.weak_safeFrom_observerCall_closed cfg ext B hT hji hanchor
-    hboundary hDelay hphase0 hpaper P V hanchorExact hW hwalkDomain hC hfit
-    hHn1 hcall hinput hbase
+  have hresult := E.weak_safeFrom_observerCall_closed_lazy cfg ext B hT hji
+    hanchor hboundary hDelay hphase0 hpaper P V hanchorExact hW hwalkDomain
+    hCbase hfit hprior hHn1 hcall hinput hbase
   have hwrite : E.weakConfirmed cfg ext obs (n + 1) =
       (E.weakGetLatestConfirmedTraceAt cfg ext obs n).result :=
     (E.weakActualCandidateHistoryRecurrence cfg ext hcall).result_writeback
@@ -480,7 +481,7 @@ theorem weakConfirmedSafeFromFollowingSlot_of_weakFullRuleFold_all_le
     {obs : ValidatorIndex}
     (hW : E.WeakObserverAssumptions cfg ext obs)
     (hwalkDomain : E.PostAnchorHonestVoteTargetWalkDomain cfg ext)
-    (hC : Weak.ObserverHistoricalA32CallAssumptions cfg ext E obs)
+    (hCbase : E.AcceptedHistoricalA32CompletedPrefixCallAssumptions cfg ext)
     (hfit : EpochEndsFitUint64 cfg)
     (hOR : Weak.ObservedResetSeedSafety cfg ext E obs) :
     ∀ n : ℕ, ∀ k ≤ n, E.WithinHorizon cfg k →
@@ -506,10 +507,15 @@ theorem weakConfirmedSafeFromFollowingSlot_of_weakFullRuleFold_all_le
       · have hHn : E.WithinHorizon cfg n :=
           E.withinHorizon_mono cfg (Nat.le_succ n) hHk
         have hprev := (ih n (Nat.le_refl n) hHn).followingSlot
+        -- the threaded fold output at the strictly earlier call seconds, read
+        -- straight off the strengthened induction hypothesis
+        have hprior : Weak.ObserverPriorCallWriteBackSafe cfg ext E obs n :=
+          fun k hk hHk1 hcallK =>
+            (ih (k + 1) hk hHk1).callSecond k rfl hcallK
         by_cases hcall : E.IsFCRCallAt cfg ext obs n
         · exact E.weakConfirmedSafeFromFollowingSlot_succ_of_call cfg ext B hT
             hji hanchor hboundary hDelay hphase0 hboundaryPhase hpaper P V
-            hanchorExact hW hwalkDomain hC hfit hOR hHk hcall
+            hanchorExact hW hwalkDomain hCbase hfit hOR hprior hHk hcall
             (hknown n hHn).confirmed_known hprev
         · exact E.weakConfirmedSafeFromFollowingSlot_succ_of_noCall cfg ext hcall
             hprev
@@ -558,7 +564,7 @@ theorem weakConfirmed_safeFromFollowingSlot_of_weakFullRuleFold
     {obs : ValidatorIndex}
     (hW : E.WeakObserverAssumptions cfg ext obs)
     (hwalkDomain : E.PostAnchorHonestVoteTargetWalkDomain cfg ext)
-    (hC : Weak.ObserverHistoricalA32CallAssumptions cfg ext E obs)
+    (hCbase : E.AcceptedHistoricalA32CompletedPrefixCallAssumptions cfg ext)
     (hfit : EpochEndsFitUint64 cfg)
     (hOR : Weak.ObservedResetSeedSafety cfg ext E obs) :
     ∀ n : ℕ, E.WithinHorizon cfg n →
@@ -566,7 +572,7 @@ theorem weakConfirmed_safeFromFollowingSlot_of_weakFullRuleFold
   fun n hHn =>
     (E.weakConfirmedSafeFromFollowingSlot_of_weakFullRuleFold_all_le cfg ext B
       hT hji hanchor hboundary hDelay hphase0 hboundaryPhase hpaper P V
-      hanchorExact hW hwalkDomain hC hfit hOR n n (Nat.le_refl n)
+      hanchorExact hW hwalkDomain hCbase hfit hOR n n (Nat.le_refl n)
         hHn).followingSlot
 
 /-- The lazy weak A3.2 transport's threaded input, straight off the
@@ -594,7 +600,7 @@ theorem observerPriorCallWriteBackSafe_of_weakFullRuleFold
     {obs : ValidatorIndex}
     (hW : E.WeakObserverAssumptions cfg ext obs)
     (hwalkDomain : E.PostAnchorHonestVoteTargetWalkDomain cfg ext)
-    (hC : Weak.ObserverHistoricalA32CallAssumptions cfg ext E obs)
+    (hCbase : E.AcceptedHistoricalA32CompletedPrefixCallAssumptions cfg ext)
     (hfit : EpochEndsFitUint64 cfg)
     (hOR : Weak.ObservedResetSeedSafety cfg ext E obs)
     (n : ℕ) :
@@ -602,7 +608,7 @@ theorem observerPriorCallWriteBackSafe_of_weakFullRuleFold
   fun k hk hHk1 hcallK =>
     (E.weakConfirmedSafeFromFollowingSlot_of_weakFullRuleFold_all_le cfg ext B
       hT hji hanchor hboundary hDelay hphase0 hboundaryPhase hpaper P V
-      hanchorExact hW hwalkDomain hC hfit hOR n (k + 1) hk
+      hanchorExact hW hwalkDomain hCbase hfit hOR n (k + 1) hk
         hHk1).callSecond k rfl hcallK
 
 /-- Endpoint form of the weak full-rule theorem, matching the paper's timing:
@@ -627,7 +633,7 @@ theorem weakConfirmed_head_of_weakFullRuleFold_nextSlot
     {obs : ValidatorIndex}
     (hW : E.WeakObserverAssumptions cfg ext obs)
     (hwalkDomain : E.PostAnchorHonestVoteTargetWalkDomain cfg ext)
-    (hC : Weak.ObserverHistoricalA32CallAssumptions cfg ext E obs)
+    (hCbase : E.AcceptedHistoricalA32CompletedPrefixCallAssumptions cfg ext)
     (hfit : EpochEndsFitUint64 cfg)
     (hOR : Weak.ObservedResetSeedSafety cfg ext E obs)
     {n : ℕ} {w : ValidatorIndex} (hw : w ∈ E.honest) {m : ℕ}
@@ -640,7 +646,7 @@ theorem weakConfirmed_head_of_weakFullRuleFold_nextSlot
   have hHn : E.WithinHorizon cfg n := E.withinHorizon_mono cfg hnm hHm
   have hsafe := E.weakConfirmed_safeFromFollowingSlot_of_weakFullRuleFold cfg ext
     B hT hji hanchor hboundary hDelay hphase0 hboundaryPhase hpaper P V
-    hanchorExact hW hwalkDomain hC hfit hOR n hHn
+    hanchorExact hW hwalkDomain hCbase hfit hOR n hHn
   have hdeadlineLe : E.followingSlotStart cfg n ≤ m := by
     by_contra hnot
     have hmLt : m < E.followingSlotStart cfg n := Nat.lt_of_not_ge hnot

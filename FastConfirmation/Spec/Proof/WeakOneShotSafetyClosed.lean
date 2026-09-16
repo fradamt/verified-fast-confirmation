@@ -173,6 +173,82 @@ theorem weak_safeFrom_observerCall_closed
               hanchor hboundary hDelay hphase0 hpaper P V hanchorExact hC hfit hWM.coherence
               hn1H hcall hinput hbase horigin hselector)
 
+/-- **The lazy twin of the closed one-shot headline.**
+
+Identical conclusion, strictly weaker premises: `hC` is replaced by the
+unchanged 7-field `E.AcceptedHistoricalA32CompletedPrefixCallAssumptions`
+together with `hprior : Weak.ObserverPriorCallWriteBackSafe cfg ext E obs n` —
+a *derived* trajectory fact, discharged by the weak safety fold's own
+strengthened induction hypothesis at seconds strictly below `n`.
+
+A one-shot statement cannot supply `hprior` from its own `hbase`
+(`docs/weak-final-wave.md` §5.2), which is why the four audited witnesses keep
+`hC` and take the eager route instead.  The trajectory fold can, which is why
+its headline drops to `hC.base`. -/
+theorem weak_safeFrom_observerCall_closed_lazy
+    {E : Execution Root}
+    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
+    (hji : JustificationInterface cfg ext E)
+    (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
+    (hboundary : Execution.TrustedAnchorBoundaryAligned (cfg := cfg)
+      (E := E) (anchor := B.anchor))
+    (hDelay : E.AcceptedRealizedFinalizationDelay cfg ext B)
+    (hphase0 : Phase0SourceCoherence cfg ext)
+    (hpaper : B.state.PaperA32Inclusion cfg ext)
+    (P : AcceptedEpochCheckpointProjection B.anchor
+      (E.AcceptedRoot cfg ext) B.state.C)
+    (V : B.state.ExactLinkValidity)
+    (hanchorExact : B.anchor = B.state.C B.anchor.root B.anchor.epoch)
+    {obs : ValidatorIndex}
+    (hW : E.WeakObserverAssumptions cfg ext obs)
+    (hwalkDomain : E.PostAnchorHonestVoteTargetWalkDomain cfg ext)
+    (hCbase : E.AcceptedHistoricalA32CompletedPrefixCallAssumptions cfg ext)
+    (hfit : EpochEndsFitUint64 cfg)
+    {n : ℕ}
+    (hprior : Weak.ObserverPriorCallWriteBackSafe cfg ext E obs n)
+    (hn1H : E.WithinHorizon cfg (n + 1))
+    (hcall : E.IsFCRCallAt cfg ext obs n)
+    (hinput : (E.weakGetLatestConfirmedTraceAt cfg ext obs n).afterObserved ∈
+      (E.weakFcrStep cfg ext obs n).store.block_roots)
+    (hbase : E.SafeFrom cfg ext
+      (E.weakGetLatestConfirmedTraceAt cfg ext obs n).afterObserved
+      (E.slot_start cfg (E.slot_at cfg (n + 1)))) :
+    E.SafeFrom cfg ext (E.weakGetLatestConfirmedTraceAt cfg ext obs n).result
+      (n + 1) := by
+  have hA := hW.base
+  have hWM := hW.toMarginAssumptions cfg ext E B hT hanchor hboundary
+  let trace := E.weakGetLatestConfirmedTraceAt cfg ext obs n
+  have hstore : (E.weakFcrStep cfg ext obs n).store =
+      E.store cfg ext obs (n + 1) :=
+    E.weakFcrStep_store cfg ext obs n
+  have hstartEq : E.slot_start cfg (E.slot_at cfg (n + 1)) = n + 1 :=
+    E.slot_start_eq_succ_of_advance_minimal cfg ext hA n hn1H hcall
+  have hbranch := trace.candidateHistoryCallBranch (cfg := cfg) (ext := ext)
+  cases hbranch with
+  | carriedUnchanged _ hselector =>
+      rw [hselector.result_eq_input cfg ext]
+      simpa only [hstartEq] using hbase
+  | finalizedResetUnchanged _ hselector =>
+      rw [hselector.result_eq_input cfg ext]
+      simpa only [hstartEq] using hbase
+  | observedResetUnchanged _ hselector =>
+      rw [hselector.result_eq_input cfg ext]
+      simpa only [hstartEq] using hbase
+  | strictSelected horigin hselector =>
+      rw [hselector.result_eq]
+      exact weak_safeFrom_find_latest_confirmed_descendant_discharged cfg ext
+        hWM hwalkDomain (n + 1) hn1H (E.weakFcrStep cfg ext obs n) hstore
+        trace.afterObserved hinput hbase
+        (fun _ => by
+          rw [← hselector.result_eq]
+          exact
+            Weak.StrictSelectorAdvanceAt.observerCall_selectedStrictEdgeFilterSupplyAt_lazy
+              cfg ext B hT hA.synchrony hA.static_validators
+              hA.byzantine_bound hA.domain hji hanchor hboundary hDelay
+              hphase0 hpaper P V hanchorExact hCbase hfit hWM.coherence hprior
+              hn1H hcall hinput hbase horigin hselector)
+
 /-- Endpoint form of the closed headline: the weak selector's actual result,
 at a genuine FCR call, is canonical at every honest endpoint at or after the
 call's own second. -/
