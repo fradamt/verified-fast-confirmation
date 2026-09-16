@@ -41,6 +41,7 @@ import FastConfirmation.Spec.Proof.WeakObservedRestartDynamicSafety
 import FastConfirmation.Spec.Proof.WeakTrajectorySafety
 import FastConfirmation.Spec.Proof.WeakObservedResetSeedSafety
 import FastConfirmation.Spec.Proof.HonestTargetAgreement
+import FastConfirmation.Spec.Proof.AcceptedHistoricalA32OriginCall
 import FastConfirmation.Spec.Proof.EndpointQuorumCausality
 
 /-!
