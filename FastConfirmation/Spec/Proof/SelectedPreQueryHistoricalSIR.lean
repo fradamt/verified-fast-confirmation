@@ -56,10 +56,16 @@ same-epoch advance can inherit a current-epoch input for which the relevant
 `will_current_target_be_justified` call occurred in an earlier FCR invocation.
 That is precisely paper Lemma 27's trajectory obligation.
 
-The other two semantic branches retain the executable booleans and their exact
-normative support premises.  Thus downstream work cannot silently invoke a
-helper on an epoch-start short circuit or forget the final-result no-conflict
-call site. -/
+The other two semantic branches retain the executable booleans.  Thus
+downstream work cannot silently invoke a helper on an epoch-start short
+circuit or forget the final-result no-conflict call site.
+
+The two gate arms no longer carry `HonestVotesSupportTarget`: **N5** of
+`docs/trunkB-two-case-discharge.md` §7 replaced the proviso'd certificate
+pinning they fed by `Execution.EndpointOriginOrPinnedProducerAt`, which
+consumes the executable boolean alone.  With the two support fields gone the
+classification is purely executable, so it no longer mentions the execution
+`E` either. -/
 inductive StrictSelectedHistoricalSIRCallSite
     (q : ℕ) (query : FastConfirmationStore Root) (input result : Root) : Prop
   | currentCrossing
@@ -68,8 +74,6 @@ inductive StrictSelectedHistoricalSIRCallSite
       (a c : Root)
       (edge : CurrentTargetAcceptedEdge cfg ext query input a c)
       (gate : will_current_target_be_justified cfg ext query.store = true)
-      (support : HonestVotesSupportTarget cfg E
-        (get_current_target cfg query.store) q)
   | currentHistorical
       (result_current : get_block_epoch cfg query.store result =
         get_current_store_epoch cfg query.store)
@@ -87,15 +91,15 @@ inductive StrictSelectedHistoricalSIRCallSite
         (get_current_slot cfg query.store) ≠ true)
       (gate : will_no_conflicting_checkpoint_be_justified cfg ext
         query.store = true)
-      (support : HonestVotesSupportTarget cfg E
-        (get_current_target cfg query.store) q)
 
-/-- The exact selector and proviso facts classify a strict result into the
-paper's historical-current, epoch-boundary, and mid-epoch no-conflict cases.
+/-- The exact selector facts classify a strict result into the paper's
+historical-current, epoch-boundary, and mid-epoch no-conflict cases.
 
-The support premise is stored by `SelectedHelperProvisosAt` at execution index
-`q`, whereas the executable query store's current slot is `E.slot_at cfg q`.
-The equality premise below performs only that clock rewrite. -/
+Both executable booleans are *derived*, never assumed: the crossing gate is
+`CurrentTargetAcceptedEdge.current_target_gate` and the no-conflict gate is
+`selected_previous_result_no_conflict_gate`.  Since **N5** of
+`docs/trunkB-two-case-discharge.md` §7 removed the two support fields, this
+classification no longer mentions `SelectedHelperProvisosAt` at all. -/
 theorem strictSelectedHistoricalSIRCallSite
     (hA : SelectedMarginAssumptions cfg ext E)
     {v : ValidatorIndex} (hv : v ∈ E.honest) {q : ℕ}
@@ -108,9 +112,8 @@ theorem strictSelectedHistoricalSIRCallSite
           get_current_store_epoch cfg query.store ∨
         get_block_epoch cfg query.store input + 1 =
           get_current_store_epoch cfg query.store)
-    (hstrict : find_latest_confirmed_descendant cfg ext query input ≠ input)
-    (hprovisos : SelectedHelperProvisosAt cfg ext E v q query input) :
-    StrictSelectedHistoricalSIRCallSite cfg ext E q query input
+    (hstrict : find_latest_confirmed_descendant cfg ext query input ≠ input) :
+    StrictSelectedHistoricalSIRCallSite cfg ext q query input
       (find_latest_confirmed_descendant cfg ext query input) := by
   let result := find_latest_confirmed_descendant cfg ext query input
   have hfacts := E.strictSelectedResultMechanicalFacts cfg ext hA hv hqH
@@ -119,9 +122,8 @@ theorem strictSelectedHistoricalSIRCallSite
   · by_cases hcross : ∃ a c : Root,
         CurrentTargetAcceptedEdge cfg ext query input a c
     · obtain ⟨a, c, hedge⟩ := hcross
-      obtain ⟨hgate, hsupport⟩ :=
-        E.currentTargetAcceptedEdge_gate_and_support cfg ext hprovisos hedge
-      exact .currentCrossing hcurrent a c hedge hgate hsupport
+      exact .currentCrossing hcurrent a c hedge
+        (hedge.current_target_gate cfg ext)
     · exact .currentHistorical hcurrent hcross
   · have hnotCurrent : get_block_epoch cfg query.store result ≠
         get_current_store_epoch cfg query.store := by
@@ -131,11 +133,9 @@ theorem strictSelectedHistoricalSIRCallSite
     by_cases hstart : is_start_slot_at_epoch cfg
         (get_current_slot cfg query.store) = true
     · exact .previousEpochStart hprevious hstart
-    · obtain ⟨hgate, hsupport⟩ :=
-        E.selectedPreviousResult_noConflict_gate_and_support cfg ext
-          hprovisos rfl (by simpa only [result] using hstrict)
-            hnotCurrent hstart
-      exact .previousNoConflict hprevious hstart hgate hsupport
+    · exact .previousNoConflict hprevious hstart
+        (selected_previous_result_no_conflict_gate cfg ext query input result
+          rfl (by simpa only [result] using hstrict) hnotCurrent hstart)
 
 /-! ## Honest target geometry -/
 
@@ -799,92 +799,6 @@ theorem certifiedCurrentTarget_of_crossing
     E.currentTargetAcceptedEdge_gate_and_support cfg ext hprovisos hedge
   exact hproducer hgate hsupport
 
-/-- A strict previous-epoch mid-epoch result plus the result-level proviso
-feeds the no-conflict certificate pinning producer. -/
-theorem currentEpochCertificatePinned_of_previousNoConflict
-    {anchor : Checkpoint Root} {q : ℕ}
-    {query : FastConfirmationStore Root} {input result : Root}
-    (hprovisos : SelectedHelperProvisosAt cfg ext E v q query input)
-    (hproducer : E.NoConflictCertificatePinningProducerAt cfg ext anchor q query)
-    (hout : find_latest_confirmed_descendant cfg ext query input = result)
-    (hstrict : result ≠ input)
-    (hprevious : get_block_epoch cfg query.store result ≠
-      get_current_store_epoch cfg query.store)
-    (hnotStart : is_start_slot_at_epoch cfg
-      (get_current_slot cfg query.store) ≠ true)
-    {J : Checkpoint Root}
-    (hJ : CertifiedJustified cfg E anchor J)
-    (hJepoch : J.epoch = (get_current_target cfg query.store).epoch) :
-    J.root = (get_current_target cfg query.store).root := by
-  obtain ⟨hgate, hsupport⟩ :=
-    E.selectedPreviousResult_noConflict_gate_and_support cfg ext hprovisos
-      hout hstrict hprevious hnotStart
-  exact hproducer hgate hsupport J hJ hJepoch
-
-/-- Once current-target certification has been produced, concrete Casper
-accountability pins an endpoint certificate in the same epoch to that exact
-target root. -/
-theorem endpointJustified_root_eq_currentTarget_of_certificates
-    {anchor : Checkpoint Root}
-    {query : FastConfirmationStore Root} {store : Store Root}
-    (hacc : CertificateAccountability cfg E anchor)
-    (hendpoint : EndpointFFGPipeline cfg E anchor store)
-    (hcurrent : Nonempty (CertifiedJustified cfg E anchor
-      (get_current_target cfg query.store)))
-    (hepoch : store.justified_checkpoint.epoch =
-      (get_current_target cfg query.store).epoch) :
-    store.justified_checkpoint.root =
-      (get_current_target cfg query.store).root := by
-  obtain ⟨hJ⟩ := hendpoint.justified_certificate
-  obtain ⟨hT⟩ := hcurrent
-  exact hacc.justified_unique hJ hT hepoch
-
-/-- Every exact strict-selector call site either is the epoch-start short
-circuit or yields same-epoch endpoint/current-target pinning from its concrete
-certificate-level producer.
-
-No epoch-start certificate producer is needed.  For an actual pre-query vote,
-the target epoch is strictly below a query at its epoch boundary, so the
-middle/upper regions are arithmetically impossible; this fact is consumed by
-the pointwise bracket theorem below. -/
-theorem epochStart_or_endpointCurrentTargetPinned_of_callSite
-    {anchor : Checkpoint Root} {q : ℕ}
-    {query : FastConfirmationStore Root} {input result : Root}
-    {store : Store Root}
-    (hcall : StrictSelectedHistoricalSIRCallSite cfg ext E q query input result)
-    (hacc : CertificateAccountability cfg E anchor)
-    (hendpoint : EndpointFFGPipeline cfg E anchor store)
-    (hcurrent : E.CurrentTargetCertificateProducerAt cfg ext anchor q query)
-    (hhistorical : E.HistoricalCurrentTargetCertificateProducerAt cfg ext
-      anchor q query input result)
-    (hnoConflict : E.NoConflictCertificatePinningProducerAt cfg ext
-      anchor q query) :
-    is_start_slot_at_epoch cfg (get_current_slot cfg query.store) = true ∨
-      (store.justified_checkpoint.epoch =
-          (get_current_target cfg query.store).epoch →
-        store.justified_checkpoint.root =
-          (get_current_target cfg query.store).root) := by
-  cases hcall with
-  | currentCrossing hresult a c hedge hgate hsupport =>
-      right
-      intro hepoch
-      have hT := hcurrent hgate hsupport
-      exact E.endpointJustified_root_eq_currentTarget_of_certificates cfg
-        hacc hendpoint hT hepoch
-  | currentHistorical hresult hnone =>
-      right
-      intro hepoch
-      have hT := hhistorical hresult hnone
-      exact E.endpointJustified_root_eq_currentTarget_of_certificates cfg
-        hacc hendpoint hT hepoch
-  | previousEpochStart hresult hstart =>
-      exact Or.inl hstart
-  | previousNoConflict hresult hnotStart hgate hsupport =>
-      right
-      intro hepoch
-      obtain ⟨hJ⟩ := hendpoint.justified_certificate
-      exact hnoConflict hgate hsupport store.justified_checkpoint hJ hepoch
-
 /-! ## Current-target chain geometry -/
 
 /-- A current-epoch block on the query head chain descends from the query's
@@ -1352,102 +1266,6 @@ theorem preQueryVoteSelectedSIRBracketAt_of_startOrPin
   exact E.selectedSIRThreeRegionBracket_of_preQueryVote_and_pinning cfg ext
     hA hwalkDomain hv hqH query hquery input hinput hinputEpoch hbase hstrict
       hw hslotQM hHm hi hs0 hsq hsH hvote htarget hstartOrPin
-
-/-- Pointwise historical-vote producer with no ancestry premise.  The exact
-selector classification chooses one of three certificate-level paper
-producers or the mechanical epoch-start exclusion; concrete Casper
-accountability pins the endpoint checkpoint only where pinning is needed, and
-the preceding theorem then supplies the full bracket. -/
-theorem selectedSIRThreeRegionBracket_of_historicalCertificateProducers
-    (hA : SelectedMarginAssumptions cfg ext E)
-    (hwalkDomain : E.PostAnchorHonestVoteTargetWalkDomain cfg ext)
-    {anchor : Checkpoint Root}
-    {v : ValidatorIndex} (hv : v ∈ E.honest) {q : ℕ}
-    (hqH : E.WithinHorizon cfg q)
-    (query : FastConfirmationStore Root)
-    (hquery : query.store = E.store cfg ext v q)
-    (input : Root) (hinput : input ∈ query.store.block_roots)
-    (hinputEpoch :
-      get_block_epoch cfg query.store input =
-          get_current_store_epoch cfg query.store ∨
-        get_block_epoch cfg query.store input + 1 =
-          get_current_store_epoch cfg query.store)
-    (hbase : E.SafeFrom cfg ext input
-      (E.slot_start cfg (E.slot_at cfg q)))
-    (hstrict : find_latest_confirmed_descendant cfg ext query input ≠ input)
-    (hprovisos : SelectedHelperProvisosAt cfg ext E v q query input)
-    {w : ValidatorIndex} (hw : w ∈ E.honest) {m : ℕ}
-    (hslotQM : E.slot_at cfg q ≤ E.slot_at cfg m)
-    (hHm : E.WithinHorizon cfg m)
-    (hendpoint : EndpointFFGPipeline cfg E anchor (E.store cfg ext w m))
-    (hcurrent : E.CurrentTargetCertificateProducerAt cfg ext anchor q query)
-    (hhistorical : E.HistoricalCurrentTargetCertificateProducerAt cfg ext
-      anchor q query input
-        (find_latest_confirmed_descendant cfg ext query input))
-    (hnoConflict : E.NoConflictCertificatePinningProducerAt cfg ext
-      anchor q query)
-    {i : ValidatorIndex} (hi : i ∈ E.honest)
-    {s : Slot} (hs0 : E.slot_at cfg 0 ≤ s)
-    (hsq : s < E.slot_at cfg q)
-    (hsH : E.SlotWithinHorizon cfg s)
-    {k₀ : ℕ} {a₀ : Attestation Root}
-    (hvote₀ : E.vote i s = some (k₀, a₀))
-    (htarget₀ : a₀.data.target =
-      (E.store cfg ext w m).justified_checkpoint) :
-    SelectedSIRThreeRegionBracket cfg (E.store cfg ext w m) input
-      (find_latest_confirmed_descendant cfg ext query input)
-      (E.store cfg ext w m).justified_checkpoint := by
-  have hcall := E.strictSelectedHistoricalSIRCallSite cfg ext hA hv hqH
-    query hquery input hinput hinputEpoch hstrict hprovisos
-  have hacc : CertificateAccountability cfg E anchor :=
-    E.certificateAccountability_of_selectedMarginAssumptions cfg ext hA
-  have hstartOrPin :=
-    E.epochStart_or_endpointCurrentTargetPinned_of_callSite cfg ext hcall hacc
-      hendpoint hcurrent hhistorical hnoConflict
-  exact E.selectedSIRThreeRegionBracket_of_preQueryVote_and_pinning cfg ext
-    hA hwalkDomain hv hqH query hquery input hinput hinputEpoch hbase hstrict
-      hw hslotQM hHm hi hs0 hsq hsH hvote₀ htarget₀ hstartOrPin
-
-/-- The exact non-anchor remainder required by `SelectedPreQueryAnchor`, now
-with the post-anchor cutoff carried by `PreQueryVoteSelectedSIRBracketAt`.
-All vote witnesses are consumed pointwise; the unused `s < slot(m)` premise is
-part of the causal-origin interface and is stronger than the slot ordering
-already available from `s < slot(q) ≤ slot(m)`. -/
-theorem preQueryVoteSelectedSIRBracketAt_of_historicalCertificateProducers
-    (hA : SelectedMarginAssumptions cfg ext E)
-    (hwalkDomain : E.PostAnchorHonestVoteTargetWalkDomain cfg ext)
-    {anchor : Checkpoint Root}
-    {v : ValidatorIndex} (hv : v ∈ E.honest) {q : ℕ}
-    (hqH : E.WithinHorizon cfg q)
-    (query : FastConfirmationStore Root)
-    (hquery : query.store = E.store cfg ext v q)
-    (input : Root) (hinput : input ∈ query.store.block_roots)
-    (hinputEpoch :
-      get_block_epoch cfg query.store input =
-          get_current_store_epoch cfg query.store ∨
-        get_block_epoch cfg query.store input + 1 =
-          get_current_store_epoch cfg query.store)
-    (hbase : E.SafeFrom cfg ext input
-      (E.slot_start cfg (E.slot_at cfg q)))
-    (hstrict : find_latest_confirmed_descendant cfg ext query input ≠ input)
-    (hprovisos : SelectedHelperProvisosAt cfg ext E v q query input)
-    {w : ValidatorIndex} (hw : w ∈ E.honest) {m : ℕ}
-    (hslotQM : E.slot_at cfg q ≤ E.slot_at cfg m)
-    (hHm : E.WithinHorizon cfg m)
-    (hendpoint : EndpointFFGPipeline cfg E anchor (E.store cfg ext w m))
-    (hcurrent : E.CurrentTargetCertificateProducerAt cfg ext anchor q query)
-    (hhistorical : E.HistoricalCurrentTargetCertificateProducerAt cfg ext
-      anchor q query input
-        (find_latest_confirmed_descendant cfg ext query input))
-    (hnoConflict : E.NoConflictCertificatePinningProducerAt cfg ext
-      anchor q query) :
-    E.PreQueryVoteSelectedSIRBracketAt cfg ext q input
-      (find_latest_confirmed_descendant cfg ext query input) w m := by
-  intro i hi s k a hs0 hsq _hsm hsH hvote htarget
-  exact E.selectedSIRThreeRegionBracket_of_historicalCertificateProducers
-    cfg ext hA hwalkDomain hv hqH query hquery input hinput hinputEpoch hbase
-      hstrict hprovisos hw hslotQM hHm hendpoint hcurrent
-      hhistorical hnoConflict hi hs0 hsq hsH hvote htarget
 
 end Execution
 

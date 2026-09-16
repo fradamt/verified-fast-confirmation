@@ -209,15 +209,6 @@ theorem actualCall_strictSelected_endpointJustifiedEpoch_le_result
       trace.afterObserved ≠ trace.afterObserved := by
     intro hfixed
     exact hselector.result_ne_input (hselector.result_eq.trans hfixed)
-  have hprovisos : SelectedHelperProvisosAt cfg ext E v (n + 1)
-      query trace.afterObserved := by
-    simpa only [query, trace] using
-      hC.helper_provisos v hv n hcall hHn1 hselector.guard_true
-  have hcurrent : E.AcceptedCurrentTargetA32GateRealizationProducerAt
-      cfg ext B.anchor B.state (n + 1) query := by
-    simpa only [query] using
-      E.completedPrefix_acceptedTargetGateProducerAt cfg ext B hT hC hfit
-        hanchor hboundary hv hcall hHn1
   have hhistorical : E.AcceptedHistoricalA32PayloadProducerAt cfg ext B
       query trace.afterObserved trace.result := by
     simpa only [query, trace] using
@@ -229,23 +220,24 @@ theorem actualCall_strictSelected_endpointJustifiedEpoch_le_result
           trace.afterObserved) := by
     rw [← hselector.result_eq]
     exact hhistorical
-  have hnoConflict : E.NoConflictCertificatePinningProducerAt
+  have hproducer : E.EndpointOriginOrPinnedProducerAt
       cfg ext B.anchor (n + 1) query := by
     simpa only [query] using
-      E.completedPrefix_noConflictCertificatePinningProducerAt
+      E.completedPrefix_endpointOriginOrPinnedProducerAt
         cfg ext B hT hC hfit hanchor hboundary hv hHn1
   have hwalkDomain : E.PostAnchorHonestVoteTargetWalkDomain cfg ext :=
     E.postAnchorHonestVoteTargetWalkDomain_of_acceptedGlobalTrajectory
       cfg ext B hT hanchor hboundary
-  have hvoteBracket : E.PreQueryVoteSelectedSIRBracketAt cfg ext
-      (n + 1) trace.afterObserved
-        (find_latest_confirmed_descendant cfg ext query trace.afterObserved)
-        w m :=
-    E.preQueryVoteSelectedSIRBracketAt_of_acceptedProducers cfg ext hA
-      hwalkDomain B hgenShort hanchor hv hHn1 query hquery
+  have hbracketOrCausal :
+      E.PreQueryVoteSelectedSIRBracketAt cfg ext (n + 1) trace.afterObserved
+          (find_latest_confirmed_descendant cfg ext query trace.afterObserved)
+          w m ∨
+        E.CausalHonestTargetAt cfg ext (n + 1) w m :=
+    E.preQueryVoteSelectedSIRBracket_or_causalHonestTarget_of_acceptedProducers
+      cfg ext hA hwalkDomain B hgenShort hanchor hv hHn1 query hquery
       trace.afterObserved hinput' hinputEpoch
-      (by simpa only [trace] using hbase) hstrict hprovisos hcurrent
-      hhistorical' hnoConflict hw hslotQM hHm
+      (by simpa only [trace] using hbase) hstrict
+      hhistorical' hproducer hw hslotQM hHm
   have hmechanical := E.strictSelectedResultMechanicalFacts cfg ext hA
     hv hHn1 query hquery trace.afterObserved hinput' hinputEpoch hstrict
   have hresultQ : trace.result ∈ query.store.block_roots := by
@@ -277,41 +269,48 @@ theorem actualCall_strictSelected_endpointJustifiedEpoch_le_result
       (E.blockProvenance cfg ext v (n + 1))
       (E.blockProvenance cfg ext w m)
       (by simpa only [hquery] using hresultQ) hresultM
-  have horigin : E.EndpointJustificationOriginAt
-      cfg ext B.anchor w m :=
-    ExactPrefixAcceptedFFGSemantics.endpointJustificationOriginAt
-      cfg ext B hT hanchor hboundary
-  rcases horigin with hanchorEndpoint |
-      ⟨i, hi, s, k, a, hs0, hsm, hsH, hvote, htarget⟩
-  · have hbound := (E.known_descends_trustedAnchor cfg ext hA hanchor
-      w m hresultM).2
-    rw [← hanchorEndpoint] at hbound
-    simpa only [query, trace, get_block_epoch, hblocksAgree] using hbound
-  · by_cases hqs : E.slot_at cfg (n + 1) ≤ s
-    · have hbound :=
-        E.endpoint_justified_epoch_le_of_causal_honest_target_minimal
-          cfg ext hA hwalkDomain hw hHm hselectedKnown hIH hi hqs hsm
-          hsH hvote htarget hnotJResult
+  rcases hbracketOrCausal with hvoteBracket | hcausal
+  · have horigin : E.EndpointJustificationOriginAt
+        cfg ext B.anchor w m :=
+      ExactPrefixAcceptedFFGSemantics.endpointJustificationOriginAt
+        cfg ext B hT hanchor hboundary
+    rcases horigin with hanchorEndpoint |
+        ⟨i, hi, s, k, a, hs0, hsm, hsH, hvote, htarget⟩
+    · have hbound := (E.known_descends_trustedAnchor cfg ext hA hanchor
+        w m hresultM).2
+      rw [← hanchorEndpoint] at hbound
       simpa only [query, trace, get_block_epoch, hblocksAgree] using hbound
-    · have hsq : s < E.slot_at cfg (n + 1) := Nat.lt_of_not_ge hqs
-      have hbracket := hvoteBracket i hi s k a hs0 hsq hsm hsH
-        hvote htarget
-      by_contra hnot
-      have habove : get_block_epoch cfg (E.store cfg ext w m)
-          trace.result <
-          (E.store cfg ext w m).justified_checkpoint.epoch := by
-        have hnot' : ¬ (E.store cfg ext w m).justified_checkpoint.epoch ≤
-            get_block_epoch cfg query.store trace.result := by
-          simpa only [query, trace] using hnot
-        have hltQ := Nat.lt_of_not_ge hnot'
-        simpa only [get_block_epoch, hblocksAgree] using hltQ
-      have hJResult := hbracket.above_selected (by
-        rw [← hselector.result_eq]
-        exact habove)
-      have hresultEq : find_latest_confirmed_descendant cfg ext query
-          trace.afterObserved = trace.result := by
-        simpa only [query, trace] using hselector.result_eq.symm
-      exact hnotJResult (by simpa only [hresultEq] using hJResult)
+    · by_cases hqs : E.slot_at cfg (n + 1) ≤ s
+      · have hbound :=
+          E.endpoint_justified_epoch_le_of_causal_honest_target_minimal
+            cfg ext hA hwalkDomain hw hHm hselectedKnown hIH hi hqs hsm
+            hsH hvote htarget hnotJResult
+        simpa only [query, trace, get_block_epoch, hblocksAgree] using hbound
+      · have hsq : s < E.slot_at cfg (n + 1) := Nat.lt_of_not_ge hqs
+        have hbracket := hvoteBracket i hi s k a hs0 hsq hsm hsH
+          hvote htarget
+        by_contra hnot
+        have habove : get_block_epoch cfg (E.store cfg ext w m)
+            trace.result <
+            (E.store cfg ext w m).justified_checkpoint.epoch := by
+          have hnot' : ¬ (E.store cfg ext w m).justified_checkpoint.epoch ≤
+              get_block_epoch cfg query.store trace.result := by
+            simpa only [query, trace] using hnot
+          have hltQ := Nat.lt_of_not_ge hnot'
+          simpa only [get_block_epoch, hblocksAgree] using hltQ
+        have hJResult := hbracket.above_selected (by
+          rw [← hselector.result_eq]
+          exact habove)
+        have hresultEq : find_latest_confirmed_descendant cfg ext query
+            trace.afterObserved = trace.result := by
+          simpa only [query, trace] using hselector.result_eq.symm
+        exact hnotJResult (by simpa only [hresultEq] using hJResult)
+  · obtain ⟨i, hi, s, k, a, hqs, hsm, hsH, hvote, htarget⟩ := hcausal
+    have hbound :=
+      E.endpoint_justified_epoch_le_of_causal_honest_target_minimal
+        cfg ext hA hwalkDomain hw hHm hselectedKnown hIH hi hqs hsm
+        hsH hvote htarget hnotJResult
+    simpa only [query, trace, get_block_epoch, hblocksAgree] using hbound
 
 /-- The exact strict trace at an actual call supplies the mechanical selected
 facts used by every phase cell.  The input epoch dichotomy follows only from

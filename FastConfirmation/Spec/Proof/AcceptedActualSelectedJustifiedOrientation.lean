@@ -1088,15 +1088,6 @@ theorem actualCall_strictSelected_result_and_child_ancestor_of_endpointJustified
     intro hfixed
     exact hselector.result_ne_input
       (hselector.result_eq.trans hfixed)
-  have hprovisos : SelectedHelperProvisosAt cfg ext E v (n + 1)
-      query trace.afterObserved := by
-    simpa only [query, trace] using
-      hC.helper_provisos v hv n hcall hHn1 hselector.guard_true
-  have hcurrent : E.AcceptedCurrentTargetA32GateRealizationProducerAt
-      cfg ext B.anchor B.state (n + 1) query := by
-    simpa only [query] using
-      E.completedPrefix_acceptedTargetGateProducerAt cfg ext B hT hC hfit
-        hanchor hboundary hv hcall hHn1
   have hhistorical : E.AcceptedHistoricalA32PayloadProducerAt cfg ext B
       query trace.afterObserved trace.result := by
     simpa only [query, trace] using
@@ -1108,10 +1099,10 @@ theorem actualCall_strictSelected_result_and_child_ancestor_of_endpointJustified
           trace.afterObserved) := by
     rw [← hselector.result_eq]
     exact hhistorical
-  have hnoConflict : E.NoConflictCertificatePinningProducerAt
+  have hproducer : E.EndpointOriginOrPinnedProducerAt
       cfg ext B.anchor (n + 1) query := by
     simpa only [query] using
-      E.completedPrefix_noConflictCertificatePinningProducerAt
+      E.completedPrefix_endpointOriginOrPinnedProducerAt
         cfg ext B hT hC hfit hanchor hboundary hv hHn1
   have hselectedC' : is_ancestor (E.store cfg ext w m)
       (get_node_for_root
@@ -1143,8 +1134,8 @@ theorem actualCall_strictSelected_result_and_child_ancestor_of_endpointJustified
     E.strictSelected_result_and_child_ancestor_of_endpointJustified_accepted
       cfg ext hA B hT hanchor hboundary hv hHn1 query hquery
       trace.afterObserved hinput' hinputEpoch
-      (by simpa only [trace] using hbase) hstrict hprovisos hcurrent
-      hhistorical' hnoConflict hw hHm hslotQM hcM hselectedC'
+      (by simpa only [trace] using hbase) hstrict
+      hhistorical' hproducer hw hHm hslotQM hcM hselectedC'
       hselectedKnown' hIH' hnotCovered
   refine ⟨hout.1, ?_⟩
   have hsecond := hout.2
