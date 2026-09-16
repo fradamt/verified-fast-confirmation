@@ -1112,11 +1112,23 @@ Section 5. -/
 
 /-- **The one-shot weak safety theorem.** The weak selector's output, read at
 an arbitrary (not necessarily honest) observer's own store, is `SafeFrom` at
-the actual query second — matching the strong original's exact hypothesis
-list (`SafeFrom` base at the slot boundary, `SelectedCoveredMarginSupplyAt`
-margin supply) with `(v, hv : v ∈ E.honest)` replaced everywhere by
-`(obs, hW : E.WeakObserverMarginAssumptions cfg ext obs)`. No further
-hypothesis is added or dropped relative to `:408`. -/
+the actual query second — the strong original's hypothesis list (`SafeFrom`
+base at the slot boundary, `SelectedCoveredMarginSupplyAt` margin supply) with
+`(v, hv : v ∈ E.honest)` replaced everywhere by
+`(obs, hW : E.WeakObserverMarginAssumptions cfg ext obs)`.
+
+That substitution is not premise-neutral, and the exchange is the point of the
+weak layer: the honesty binder is dropped, and in its place the record carries
+*two* facts about the observer's own store — `ObserverCoherence.
+committees_agree` (committee readback) and `ObserverCoherence.
+justified_root_known` (the observer's justified root is in its own block map).
+Honesty supplied both on the strong side, via
+`ExternalsCoherence.committees_agree` and
+`SelectedMarginDomain.justified_root_known`; neither is implied by the weak
+floor alone at an arbitrary node, which is why this one-shot floor form — the
+only weak form with no accepted-FFG package to derive `justified_root_known`
+from — takes them. Everything else (`hA`-side floor, base, margin supply) is
+unchanged from `:408`. -/
 theorem weak_safeFrom_find_latest_confirmed_descendant
     {E : Execution Root} {obs : ValidatorIndex}
     (hW : E.WeakObserverMarginAssumptions cfg ext obs)
