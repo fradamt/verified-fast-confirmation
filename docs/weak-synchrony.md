@@ -920,7 +920,20 @@ audited unconditional pair and its conditional internal twin) — classified:
 
 * **`hW : E.WeakObserverAssumptions cfg ext obs`** — `hW.base :
   SelectedMarginAssumptions` is the ratified floor: honest-to-honest
-  Δ-delivery and the β bound (`hW.base.synchrony : PaperSafetySynchrony`),
+  Δ-delivery and the β bound (`hW.base.synchrony : PaperSafetySynchrony` —
+  the **single** synchrony assumption of the model since
+  `refactor: single synchrony assumption; the boundary delivery case is
+  derived`: its delivery clause is horizon-scoped on the vote's slot and cast
+  second but *not* on the mandated receipt second, so the old separate
+  boundary record `HorizonVoteDeliveryLookahead` is now the derived lemma
+  `PaperSafetySynchrony.toDeliveryLookahead`, and the old receipt-gated clause
+  is the derived lemma `toHorizonScopedDelivery`;
+  `Spec.attestation_delivery_pair_iff` proves the merged field is the same
+  proposition as the old pair, so no assumption content was added to the
+  model; the trajectory headlines, which carried both halves, come out exactly
+  equal — one field lighter on the surface — while the weak one-shot witnesses,
+  which carried only the gated half, now carry the boundary case too, that
+  being what "one synchrony assumption" costs),
   estimation soundness and honest behavior/BLS (`hW.base.honest_behavior`),
   the static registry (`hW.base.static_validators`), the Byzantine bound
   (`hW.base.byzantine_bound`), `ExternalsCoherence` (static committees, ground
@@ -957,14 +970,18 @@ audited unconditional pair and its conditional internal twin) — classified:
   justification-selection contract the accepted development's actual-call
   facade already assumes.
 * **`hCbase`** — the completed-prefix call contract. The closed one-call step
-  takes the accepted development's **unchanged** 7-field
-  `E.AcceptedHistoricalA32CompletedPrefixCallAssumptions`; the trajectory
-  headlines take the 4-field
+  takes the accepted development's 6-field
+  `E.AcceptedHistoricalA32CompletedPrefixCallAssumptions` (7 before the
+  single-synchrony refactor deleted `delivery_lookahead`); the trajectory
+  headlines take the 3-field
   `E.AcceptedHistoricalA32CompletedPrefixCallSupplement` (`phase0_source`,
-  `phase0_boundary_source`, `balance_floor`, `delivery_lookahead`) and rebuild
-  the 7-field record internally, because its other three fields
+  `phase0_boundary_source`, `balance_floor`) and rebuild
+  the 6-field record internally, because its other three fields
   (`synchrony`, `static_validators`, `byzantine_bound`) are literally fields of
-  `hW.base`. No observer-indexed extension of it exists any
+  `hW.base`. The supplement's former fourth field `delivery_lookahead` is
+  gone: the single-synchrony refactor moved its content into
+  `hW.base.synchrony`'s delivery clause, so it is supplied by a premise the
+  headlines already carried — a premise weakening, not a new assumption. No observer-indexed extension of it exists any
   more: the historical A3.2 crossing payload is manufactured *lazily* at the
   consuming call from the fold's own output at strictly earlier seconds
   (`Weak.LazyCertAt` / `Weak.LazySupportAt`), which needs no proviso at all.
@@ -1019,7 +1036,7 @@ available.
 
 The unconditional pair's premise list is, in full: `B`, `hji`, `hanchor`,
 `hboundary`, `hDelay`, `hpaper`, `P`, `V`, `hanchorExact`, `hW`, `hwalkDomain`,
-`hCbase` (the 4-field supplement) and `hfit` — plus, on the endpoint form, the
+`hCbase` (the 3-field supplement) and `hfit` — plus, on the endpoint form, the
 endpoint binders `hw`/`hnm`/`hnext`/`hHm`. All registered witnesses depend only
 on `propext, Classical.choice, Quot.sound`
 (`lake env lean scripts/Audit.lean`).

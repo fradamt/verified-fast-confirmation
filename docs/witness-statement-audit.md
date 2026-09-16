@@ -23,6 +23,26 @@ when the array held 23 names.
 > * `8b05b67` — **bonus**: `JustificationInterface.gate_sound` and
 >   `.target_justified_sound` deleted (13 fields left), weakening `hji` on W20–W23.
 > * `28a9bd6` + `5ec6441` — **F7**: both docstring discrepancies fixed.
+> * **single-synchrony refactor** — the model now carries **one** synchrony assumption.
+>   `HorizonVoteDeliveryLookahead` is deleted; its clause is the delivery field of
+>   `Synchrony`/`PaperSafetySynchrony`, now phrased without a horizon gate on the
+>   *receipt* second (the vote's slot and cast second stay horizon-scoped). The merged
+>   field is provably the same proposition as the old pair
+>   (`Spec.attestation_delivery_pair_iff`), and both old forms are recovered as derived
+>   lemmas (`toHorizonScopedDelivery`, `toDeliveryLookahead`) — **the boundary delivery
+>   case is now a derived lemma, not an assumption.** Records shrink: O 7 → 6 fields,
+>   O′ 4 → 3. On the witnesses that carried **both** old forms (W1, W2, W20–W23, and the
+>   non-vacuity pair W3/W4 through `completed_calls`) the premise content is *equal* and
+>   the surface shrank by one field, because the removed content sits in the `synchrony`
+>   field they already carry. On the witnesses that carried only the horizon-gated half
+>   and no `delivery_lookahead` (**W14–W19**, via `M.synchrony`), the `synchrony` field
+>   is now the merged clause, i.e. their delivery premise gained the boundary case: that
+>   is the unavoidable arithmetic of having *one* synchrony assumption instead of two —
+>   the model's assumption content is unchanged (the merged field **is** the old pair),
+>   but those six witnesses now assume the pair where they previously assumed one half.
+>   Conclusions are unchanged: W5/W6's environment `def` loses the
+>   `HorizonVoteDeliveryLookahead` conjunct, which the retained `Synchrony` conjunct now
+>   asserts — the same proposition, one conjunct shorter.
 >
 > Rows and sections below are annotated in place; nothing else was re-audited.
 For each witness: what it claims in protocol language, and every hypothesis it carries,
@@ -81,7 +101,7 @@ by name. Witness IDs are Audit.lean order (W1…W23), listed in §2.
 | L | `hanchorExact : B.anchor = B.state.C anchor.root anchor.epoch` | the anchor is its own exact projection | [B] | W20–W23 |
 | M | `SelectedMarginAssumptions` (`Proof/MinimalSelectedDomain.lean:39`) | 9 fields: `genesis` [B], `wellFormed` [P], `whole_seconds` [B], `honest_behavior` [S], `synchrony : PaperSafetySynchrony` [S], `externals_coherence` [S]+[P], `static_validators` [S], `byzantine_bound` [S], `domain : SelectedMarginDomain` [P] | mixed | W14–W23 (via M1/M2) |
 | M-a | `HonestBehavior` (`Model/Assumptions.lean:84`) | vote-your-head at the assigned slot, votes only when assigned, no forgery (BLS) / no equivocation, honest votes pairwise non-slashable, honest unslashed in the registry | [S] | as M |
-| M-b | `PaperSafetySynchrony` (`Model/Assumptions.lean:178`) | 3 fields: honest slot-`s` attestations are in every honest node's schedule at `slot_start(s+1)`; blocks known to an honest node are known to every honest node by the end of the same slot; equivocation evidence relays by the next slot. **Honest-to-honest only; no delivery to the observer is assumed.** | [S] (Δ-synchrony, GST-0 specialization) | as M |
+| M-b | `PaperSafetySynchrony` (`Model/Assumptions.lean:~183`) | 3 fields: honest slot-`s` attestations are in every honest node's schedule at `slot_start(s+1)`; blocks known to an honest node are known to every honest node by the end of the same slot; equivocation evidence relays by the next slot. **Honest-to-honest only; no delivery to the observer is assumed.** Since the single-synchrony refactor the delivery clause is *not* horizon-gated on the receipt side (the vote's slot and cast second still are), so it also covers the boundary vote whose receipt second is the first second past the exclusive cutoff: it is exactly the old receipt-gated clause **plus** the old separate `HorizonVoteDeliveryLookahead` record, and `attestation_delivery_pair_iff` proves the two are the same proposition. The old pair is recovered by `toHorizonScopedDelivery` / `toDeliveryLookahead` — **the boundary case is now a derived lemma, not an assumption.** | [S] (Δ-synchrony, GST-0 specialization) | as M |
 | M-c | `ExternalsCoherence` (`Model/Assumptions.lean:233`) | 14 fields pinning `process_slots`/`state_transition`/`process_justification_and_finalization` (slot targeting, registry preservation, pre-slot ordering, checkpoint-epoch bounds), committee readback = ground truth on honest stores, BLS validity both directions, committee confinement, per-epoch assignment uniqueness/coverage/activity | [P] for the state functions; [S] for committee ground truth and BLS | as M |
 | M-d | `StaticValidatorSet` (`Model/Assumptions.lean:325`) | genesis second is in-horizon; active-validator set constant below the horizon (paper Assumption 1) | [S] | as M |
 | M-e | `ByzantineBound` (`Model/Assumptions.lean:371`) | effective balances quantized; `estimate_committee_weight_between_slots` is an upper bound (the spec's own 5‰ high-probability claim); per-span `100·byz ≤ CONFIRMATION_BYZANTINE_THRESHOLD · W` (paper Assumption 2 at β = threshold/100) | [S] | as M |
@@ -89,8 +109,8 @@ by name. Witness IDs are Audit.lean order (W1…W23), listed in §2.
 | M1 | `WeakObserverMarginAssumptions` (`Proof/WeakOneShotSafety.lean:~225`) | `base : M` + `coherence : ObserverCoherence` (committee readback **and** justified-root knownness at the observer's own store). The `observer : obs ∉ E.honest` field was deleted in `fbb3ec1` (§8 F3, RESOLVED): `obs` is now arbitrary and may be honest | [P] | W14,W15,W18,W19 |
 | M2 | `WeakObserverAssumptions` (`Proof/WeakOneShotSafety.lean:~243`) | `base : M` + `committees_agree` at the observer's store only; `justified_root_known` is *derived* from A/B/D/E. The `observer : obs ∉ E.honest` field was deleted in `fbb3ec1` (§8 F3, RESOLVED) | [P] | W16,W17,W20–W23 |
 | N | `PostAnchorHonestVoteTargetWalkDomain` (`Proof/Bridge.lean:72`) | for an actual post-anchor honest vote, the walk from the source head down to the vote's target-epoch boundary stays inside that store's block domain | [P] (domain adequacy of the totalized walk) | W18–W23 |
-| O | `AcceptedHistoricalA32CompletedPrefixCallAssumptions` (`Proof/AcceptedHistoricalA32CallSupplier.lean:342`) — **7 fields, no `helper_provisos`** | `synchrony : PaperSafetySynchrony` [S]; `static_validators` [S]; `byzantine_bound` [S]; `phase0_source` [P]; `phase0_boundary_source` [P]; `balance_floor : effective_balance_increment ≤ weight(currentTargetAnchorActive)` [B] (excludes the empty-active-set helper branch); `delivery_lookahead : HorizonVoteDeliveryLookahead` [S] (a vote created in-horizon may be delivered at the first second beyond the exclusive cutoff) | mixed | W1,W2,W20–W23 |
-| O′ | `Execution.AcceptedHistoricalA32CompletedPrefixCallSupplement` (`Proof/WeakTrajectorySafety.lean`, added `28a9bd6`) — **4 fields** | O minus its three `SelectedMarginAssumptions`-duplicating fields: `phase0_source` = G [P], `phase0_boundary_source` = H [P], `balance_floor` [B], `delivery_lookahead` [S]. The full 7-field O is rebuilt internally from O′ + `hW.base` | mixed | W20–W23 (replaces O there) |
+| O | `AcceptedHistoricalA32CompletedPrefixCallAssumptions` (`Proof/AcceptedHistoricalA32CallSupplier.lean:~342`) — **6 fields, no `helper_provisos`, no `delivery_lookahead`** (was 7; `delivery_lookahead` was deleted by the single-synchrony refactor — the boundary delivery case is now derived from `synchrony` via `PaperSafetySynchrony.toDeliveryLookahead`, so the content moved into a field the record already carried) | `synchrony : PaperSafetySynchrony` [S] (its delivery clause now also covers the boundary vote); `static_validators` [S]; `byzantine_bound` [S]; `phase0_source` [P]; `phase0_boundary_source` [P]; `balance_floor : effective_balance_increment ≤ weight(currentTargetAnchorActive)` [B] (excludes the empty-active-set helper branch) | mixed | W1,W2,W20–W23 |
+| O′ | `Execution.AcceptedHistoricalA32CompletedPrefixCallSupplement` (`Proof/WeakTrajectorySafety.lean`, added `28a9bd6`) — **3 fields** (was 4; `delivery_lookahead` [S] dropped by the single-synchrony refactor — its content is now the boundary case of `hW.base.synchrony`, a premise these witnesses already carried, so dropping the field is a premise **weakening**) | O minus its `SelectedMarginAssumptions`-duplicating fields: `phase0_source` = G [P], `phase0_boundary_source` = H [P], `balance_floor` [B]. The full 6-field O is rebuilt internally from O′ + `hW.base` | mixed | W20–W23 (replaces O there) |
 | P | `EpochEndsFitUint64` (`Model/Config.lean:97`) | `slots_per_epoch ∣ UINT64_MAX + 1` | [B] | W1,W2,W20–W23 |
 | Q | `1 < cfg.slots_per_epoch` | config nondegeneracy | [B] | W1,W2 (strong only) |
 | R | `Weak.ObservedResetSeedSafety` (`Proof/WeakTrajectorySafety.lean:~148`) | at a weak call whose candidate came from the epoch-start restart branch, the restarted-from root is `SafeFrom` at `n+1` | **[D]** — proved by `Weak.observedResetSeedSafety_of_acceptedDynamics` from premises already present. §8 F1 RESOLVED (`47c3984`): W20/W21 are **no longer registered witnesses**, so no *witness* carries R | W20,W21 (internal only) |
@@ -177,7 +197,8 @@ All four share one premise list modulo `hOR`; differences from the strong twins 
 > **Post-audit (`28a9bd6`, `47c3984`).** The four premise lists below were audited at 17
 > items (W20/W21) and 16 (W22/W23). They are now 14 and 13: `hT`, `hphase0` and
 > `hboundaryPhase` are gone (derived internally / read off the call supplement), and
-> `hCbase` is the 4-field O′ rather than the 7-field O. W20/W21 are also no longer
+> `hCbase` is O′ rather than O (4 fields then; 3 since the single-synchrony refactor
+> deleted `delivery_lookahead`, O itself dropping 7 → 6). W20/W21 are also no longer
 > registered witnesses. Conclusions are byte-identical.
 
 ### W20 `Execution.weakConfirmed_safeFromFollowingSlot_of_weakFullRuleFold`
@@ -211,11 +232,15 @@ holds at `n` (`E.weakConfirmed obs n`, produced by rule-delta-5
     whole-seconds [B]) and `committees_agree` at the observer's own store [S]/[P]. The
     `observer : obs ∉ E.honest` field is **gone (F3 RESOLVED, `fbb3ec1`)**: the statement
     now also covers an honest observer.
-14. `hwalkDomain` = N [P]. 15. `hCbase` = **O′** [mixed] since `28a9bd6` — the 4-field
-    supplement (`phase0_source`, `phase0_boundary_source`, `balance_floor` [B],
-    `delivery_lookahead` [S]); the three fields of O that duplicated `hW.base`
-    (`synchrony`, `static_validators`, `byzantine_bound`) are now taken once, from
-    `hW.base`, when the full record is rebuilt internally. **F2 RESOLVED.**
+14. `hwalkDomain` = N [P]. 15. `hCbase` = **O′** [mixed] since `28a9bd6` — now the 3-field
+    supplement (`phase0_source`, `phase0_boundary_source`, `balance_floor` [B]); the
+    fields of O that duplicated `hW.base` (`synchrony`, `static_validators`,
+    `byzantine_bound`) are taken once, from `hW.base`, when the full record is rebuilt
+    internally, and `delivery_lookahead` [S] is gone entirely — the single-synchrony
+    refactor moved its content into `hW.base.synchrony`'s delivery clause, where the
+    boundary case is now the derived lemma `PaperSafetySynchrony.toDeliveryLookahead`.
+    The premise surface therefore shrank again; the conclusion is unchanged byte for
+    byte. **F2 RESOLVED.**
 16. `hfit` = P [B]. 17. `hOR` = R — **[D], §8 F1 RESOLVED by deregistration**.
 
 No honesty *or* non-honesty binder at `obs`; no delivery to `obs`;
@@ -395,7 +420,7 @@ cfg ext)`. Hypotheses: none.
 *Statement.* Closed **negative** result. In a concrete 4-root, 4-validator, all-honest,
 fully synchronous execution satisfying `StrictPrefixWitnessEnvironment` (genesis
 initialization, `WellFormedExecution`, whole seconds, `HonestBehavior`, full `Synchrony`,
-`HorizonVoteDeliveryLookahead`, `ExternalsCoherence`, `StaticValidatorSet`, `ByzantineBound`,
+`ExternalsCoherence`, `StaticValidatorSet`, `ByzantineBound`,
 plus exact clock/committee/schedule/vote equations), the global action interpreter reaches a
 genuine query snapshot in which node 0 and node 1 are two *different action prefixes of the
 same second*; node 0's source-permitted pre-update extra query returns `candidate`, while
@@ -463,14 +488,17 @@ carry `hT`; W20–W23 carry it anyway.
 `hCbase.phase0_boundary_source`.
 Additionally, three of `hCbase`'s seven fields (`synchrony`, `static_validators`,
 `byzantine_bound`) are already supplied by `hW.base`; only `balance_floor` and
-`delivery_lookahead` are new content. None of this changes the *assumption set* — it is
+`delivery_lookahead` are new content (and since the single-synchrony refactor
+`delivery_lookahead` no longer exists: its content is the boundary case of
+`hW.base.synchrony`, leaving `balance_floor` as the only new content). None of this changes the *assumption set* — it is
 double-counting on the premise **surface**, so the four headlines look heavier than they
 are.
 *Resolution:* all four collapsed. `hT` is derived inside each headline from `hW.base`
 (as W16/W17 already did) and `hphase0`/`hboundaryPhase` are read off the call contract;
-the call contract itself is now the 4-field
-`Execution.AcceptedHistoricalA32CompletedPrefixCallSupplement` (row O′), from which —
-together with `hW.base` — the full 7-field record is rebuilt internally
+the call contract itself is now the 3-field
+`Execution.AcceptedHistoricalA32CompletedPrefixCallSupplement` (row O′; 4 fields when F2
+was resolved, 3 since the single-synchrony refactor), from which —
+together with `hW.base` — the full record is rebuilt internally
 (`…CallSupplement.toCompletedPrefixCallAssumptions`). No field was left behind: all three
 duplications were literal (same `Prop`), so the de-duplication was mechanical.
 `Weak.observedResetSeedSafety_of_acceptedDynamics` lost its own `hT` for the same reason.
@@ -547,7 +575,8 @@ No other docstring claim checked against a signature was found to disagree. In p
 the following were verified **accurate**: `AcceptedActualFCRNextSlotSafetyAssumptions`'s
 "no finalized-reset, observed-adoption, observed-lock, head-ancestry, filter-result, or
 safety field"; `AcceptedHistoricalA32CompletedPrefixCallAssumptions`'s "there is no
-`helper_provisos` field" (7 fields, confirmed); W22's "strictly smaller premise surface than
+`helper_provisos` field" (7 fields at audit time, confirmed; 6 since the single-synchrony
+refactor dropped `delivery_lookahead`); W22's "strictly smaller premise surface than
 the conditional one … nothing is added"; W20's "premise surface is that of
 `weak_safeFrom_observerCall_closed_lazy` together with `hboundaryPhase` and `hOR`"; and the
 claim across the weak layer that `ObserverCoherence.justified_root_known` is derived rather
@@ -560,6 +589,7 @@ premise falls outside [S]/[P]/[B].
 
 **Trajectory-headline verdict (after `fbb3ec1`/`28a9bd6`/`47c3984`/`8b05b67`).** The two
 registered weak headlines W22/W23 carry **13 premises** (plus W23's four endpoint binders),
-every one of them [S]/[P]/[B]: no [D], no [!]. The conditional pair W20/W21 keeps the single
+every one of them [S]/[P]/[B]: no [D], no [!]. The single-synchrony refactor kept the count
+at 13 while shrinking one of them (`hCbase` 4 → 3 fields). The conditional pair W20/W21 keeps the single
 [D] `hOR` and is no longer a registered witness. `#print axioms` on both headlines:
 `[propext, Classical.choice, Quot.sound]`.

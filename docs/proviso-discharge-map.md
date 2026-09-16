@@ -89,9 +89,11 @@ structure ObserverHistoricalA32CallAssumptions (E) (obs) : Prop where
 
 `base` is `Execution.AcceptedHistoricalA32CompletedPrefixCallAssumptions`
 (`FastConfirmation/Spec/Proof/AcceptedHistoricalA32CallSupplier.lean:332-347`,
-8 fields: `synchrony`, `static_validators`, `byzantine_bound`, `phase0_source`,
-`phase0_boundary_source`, `balance_floor`, `delivery_lookahead`,
-`helper_provisos`).
+7 fields: `synchrony`, `static_validators`, `byzantine_bound`, `phase0_source`,
+`phase0_boundary_source`, `balance_floor`, `helper_provisos`; the former
+`delivery_lookahead` field was deleted by the single-synchrony refactor — the
+boundary delivery case is now derived from `synchrony` via
+`PaperSafetySynchrony.toDeliveryLookahead`).
 
 ### 1.1 Every binder of the record (`hC : Weak.ObserverHistoricalA32CallAssumptions …`)
 
@@ -146,7 +148,8 @@ in that file belong to the two unconditional fold corollaries (#21, #22).
   `AcceptedActualSelectedJustifiedOrientation.lean:705`, and the non-vacuity
   witness `AcceptedActualFCRJointNonVacuityFinal.lean:687` — all strong-path.
   The weak producers in `WeakHistoricalA32CallSupplier.lean:282` / `:764` read
-  only `static_validators`, `byzantine_bound`, `delivery_lookahead`,
+  only `synchrony` (for the boundary delivery case, formerly
+  `delivery_lookahead`), `static_validators`, `byzantine_bound`,
   `phase0_*`, `balance_floor` (documented at
   `WeakHistoricalA32CallSupplier.lean:32-36`).
 
@@ -154,7 +157,8 @@ in that file belong to the two unconditional fold corollaries (#21, #22).
   `static_validators`, `byzantine_bound` (`WeakSelectedJustifiedOrientation.lean:517-520`,
   `:639-642`), `phase0_source`, `phase0_boundary_source`
   (`WeakHistoricalA32Induction.lean:404`, `:474`, `:774`), plus `balance_floor`
-  and `delivery_lookahead` inside the two call suppliers.
+  and `synchrony`'s boundary delivery case (formerly the separate
+  `delivery_lookahead` field) inside the two call suppliers.
 
 **Consequence.** If `helper_provisos` were dropped from
 `Execution.AcceptedHistoricalA32CompletedPrefixCallAssumptions`, the weak path
