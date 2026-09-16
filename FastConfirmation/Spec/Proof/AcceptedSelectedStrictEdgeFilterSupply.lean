@@ -651,7 +651,7 @@ private theorem AcceptedBlockAt.executionRoot_for_lateSelectedSupply
 /-- Materialize a retained historical payload at its current selected tip in
 the exact query store.  This is ordinary accepted-root reflection plus the
 trusted boundary walk; no endpoint or safety fact occurs here. -/
-theorem AcceptedHistoricalA32LineageAt.payloadAtQuery_nonempty
+theorem AcceptedHistoricalA32LineageCoreAt.payloadAtQuery_nonempty
     (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
     (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
     (hphase0 : Phase0SourceCoherence cfg ext)
@@ -659,12 +659,17 @@ theorem AcceptedHistoricalA32LineageAt.payloadAtQuery_nonempty
     (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
       (E := E) (anchor := B.anchor))
     {v : ValidatorIndex} {q : Nat} {selected : Root} {e : Epoch}
-    (hlineage : E.AcceptedHistoricalA32LineageAt cfg ext B selected e)
+    {Cert : Checkpoint Root → Prop} {Supp : Root → Epoch → Prop}
+    (hlineage : E.AcceptedHistoricalA32LineageCoreAt cfg ext B selected e
+      Cert Supp)
     (hselectedQ : selected ∈ (E.store cfg ext v q).block_roots)
     (hselectedEpoch : get_block_epoch cfg
-      (E.store cfg ext v q) selected = e) :
-    Nonempty (E.AcceptedHistoricalA32GatePayloadAt
-      cfg ext B selected e) := by
+      (E.store cfg ext v q) selected = e)
+    (hsuppT : B.state.C selected e = B.state.C hlineage.origin e →
+      B.state.GJ selected = B.state.GJ hlineage.origin →
+      Supp hlineage.origin e → Supp selected e) :
+    Nonempty (E.AcceptedHistoricalA32GatePayloadCoreAt
+      cfg ext B selected e Cert Supp) := by
   obtain ⟨ast, ablk, hgen, hgenSlot, hgenParent⟩ := hT.genesis
   let query := E.store cfg ext v q
   have hqueryCausal : E.CausalStore cfg ext query := by
@@ -707,17 +712,43 @@ theorem AcceptedHistoricalA32LineageAt.payloadAtQuery_nonempty
         hanchor hboundary v q hanchorLeE hselectedQ
   exact ⟨hlineage.payloadAtTip cfg ext hphase0 hqueryCausal hqueryParent
     horiginQ hselectedQ' horiginEpoch hselectedEpoch' hselectedOrigin
-      hselectedWalk⟩
+      hselectedWalk hsuppT⟩
+
+/-- Eager instantiation of the query-store materialization.  The support
+obligation transports by the same one-line re-indexing it always did. -/
+theorem AcceptedHistoricalA32LineageAt.payloadAtQuery_nonempty
+    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
+    (hphase0 : Phase0SourceCoherence cfg ext)
+    (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
+    (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
+      (E := E) (anchor := B.anchor))
+    {v : ValidatorIndex} {q : Nat} {selected : Root} {e : Epoch}
+    (hlineage : E.AcceptedHistoricalA32LineageAt cfg ext B selected e)
+    (hselectedQ : selected ∈ (E.store cfg ext v q).block_roots)
+    (hselectedEpoch : get_block_epoch cfg
+      (E.store cfg ext v q) selected = e) :
+    Nonempty (E.AcceptedHistoricalA32GatePayloadAt
+      cfg ext B selected e) :=
+  AcceptedHistoricalA32LineageCoreAt.payloadAtQuery_nonempty cfg ext B hT
+    hphase0 hanchor hboundary hlineage hselectedQ hselectedEpoch
+    (fun hcheckpoint hsource hsupp w hw m hmH hlate =>
+      AcceptedHistoricalA32GatePayloadCoreAt.quorumDisjunction_transport
+        cfg ext hcheckpoint hsource (hsupp w hw m hmH hlate))
 
 /-- A retained historical A3.2 payload produces one source-visible seed at a
 late honest endpoint.  The anchor support arm is discharged directly from
 accepted AU certification; the non-anchor arm realizes the retained concrete
-quorum through the paper assumption. -/
-theorem AcceptedHistoricalA32LineageAt.lateVisibleSeedAt
+quorum through the paper assumption.
+
+This is the **support-branch-free** form: it takes the anchor-or-quorum
+disjunction at the *tip* as a plain hypothesis, so that the eager trunk can
+supply it from the payload field and the lazy trunk can manufacture it at the
+consuming call (`docs/crossing-call-support-residue.md` §4.3). -/
+theorem acceptedHistoricalA32LateVisibleSeed_of_support
     (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
     (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
     (hsync : PaperSafetySynchrony cfg ext E)
-    (hphase0 : Phase0SourceCoherence cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
       (E := E) (anchor := B.anchor))
@@ -725,7 +756,6 @@ theorem AcceptedHistoricalA32LineageAt.lateVisibleSeedAt
     {v : ValidatorIndex} (hv : v ∈ E.honest) {q : Nat}
     (hqH : E.WithinHorizon cfg q)
     {selected : Root} {e : Epoch}
-    (hlineage : E.AcceptedHistoricalA32LineageAt cfg ext B selected e)
     (hselectedQ : selected ∈ (E.store cfg ext v q).block_roots)
     (hselectedEpoch : get_block_epoch cfg
       (E.store cfg ext v q) selected = e)
@@ -735,17 +765,17 @@ theorem AcceptedHistoricalA32LineageAt.lateVisibleSeedAt
     (hselectedM : selected ∈ (E.store cfg ext w m).block_roots)
     (hlate : e + 2 ≤
       get_current_store_epoch cfg (E.store cfg ext w m))
-    (hjustifiedEpoch : (E.store cfg ext w m).justified_checkpoint.epoch ≤ e) :
+    (hjustifiedEpoch : (E.store cfg ext w m).justified_checkpoint.epoch ≤ e)
+    (hsupport : B.state.C selected e = B.anchor ∨
+      Nonempty (E.AcceptedHistoricalA32QuorumAt cfg ext B selected e)) :
     ∃ seed : Root,
       seed ∈ (E.store cfg ext w m).block_roots ∧
         is_ancestor (E.store cfg ext w m)
           (get_node_for_root seed) (get_node_for_root selected) = true ∧
         SourceVisibleAtTip cfg (E.store cfg ext w m) seed := by
-  obtain ⟨hpayload⟩ := hlineage.payloadAtQuery_nonempty cfg ext B hT
-    hphase0 hanchor hboundary hselectedQ hselectedEpoch
   have hendpointCausal : E.CausalStore cfg ext
       (E.store cfg ext w m) := E.store_causal cfg ext w m
-  rcases hpayload.support_branch w hw m hmH hlate with htargetAnchor | hquorum
+  rcases hsupport with htargetAnchor | hquorum
   · have heq : e = B.anchor.epoch := by
       have hepoch := congrArg Checkpoint.epoch htargetAnchor
       simpa only [B.state.checkpoint_epoch] using hepoch
@@ -792,6 +822,43 @@ theorem AcceptedHistoricalA32LineageAt.lateVisibleSeedAt
     exact ⟨seed, hincluded.executable.seed_known,
       hincluded.executable.seed_descends_selected,
       hincluded.executable.sourceVisible cfg hlate hjustifiedEpoch⟩
+
+/-- Eager instantiation: the retained payload's own `support_branch` field
+supplies the disjunction the late seed construction needs. -/
+theorem AcceptedHistoricalA32LineageAt.lateVisibleSeedAt
+    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
+    (hsync : PaperSafetySynchrony cfg ext E)
+    (hphase0 : Phase0SourceCoherence cfg ext)
+    (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
+    (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
+      (E := E) (anchor := B.anchor))
+    (hpaper : B.state.PaperA32Inclusion cfg ext)
+    {v : ValidatorIndex} (hv : v ∈ E.honest) {q : Nat}
+    (hqH : E.WithinHorizon cfg q)
+    {selected : Root} {e : Epoch}
+    (hlineage : E.AcceptedHistoricalA32LineageAt cfg ext B selected e)
+    (hselectedQ : selected ∈ (E.store cfg ext v q).block_roots)
+    (hselectedEpoch : get_block_epoch cfg
+      (E.store cfg ext v q) selected = e)
+    (hcanonical : E.CanonicalThroughoutEpoch cfg ext selected (e + 1))
+    {w : ValidatorIndex} (hw : w ∈ E.honest) {m : Nat}
+    (hmH : E.WithinHorizon cfg m)
+    (hselectedM : selected ∈ (E.store cfg ext w m).block_roots)
+    (hlate : e + 2 ≤
+      get_current_store_epoch cfg (E.store cfg ext w m))
+    (hjustifiedEpoch : (E.store cfg ext w m).justified_checkpoint.epoch ≤ e) :
+    ∃ seed : Root,
+      seed ∈ (E.store cfg ext w m).block_roots ∧
+        is_ancestor (E.store cfg ext w m)
+          (get_node_for_root seed) (get_node_for_root selected) = true ∧
+        SourceVisibleAtTip cfg (E.store cfg ext w m) seed := by
+  obtain ⟨hpayload⟩ := hlineage.payloadAtQuery_nonempty cfg ext B hT
+    hphase0 hanchor hboundary hselectedQ hselectedEpoch
+  exact E.acceptedHistoricalA32LateVisibleSeed_of_support cfg ext B hT hsync
+    hanchor hboundary hpaper hv hqH hselectedQ hselectedEpoch hcanonical
+    hw hmH hselectedM hlate hjustifiedEpoch
+    (hpayload.support_branch w hw m hmH hlate)
 
 /-- Accepted global-finalized provenance supplies the executable finalized
 boundary at every concrete store.  This is the accepted-state counterpart of
@@ -1152,17 +1219,21 @@ noncomputable def
       (by simpa only [E.fcrStep_store] using hprevious.symm)
       hw hmH hlate hjustifiedEpoch hselectedJustified
 
-/-- Complete late endpoint outcome from the retained historical A3.2
-lineage.  A visible seed is extended to a finite childless descendant;
+/-- Complete late endpoint outcome from a retained historical A3.2 support
+disjunction.  A visible seed is extended to a finite childless descendant;
 accepted justified maximality turns visibility into the exact source/J epoch
 equality required by the executable filter, and accepted global-finalized
-provenance places finality on that same leaf. -/
-noncomputable def acceptedSelectedResultFilterOutcome_retainedVisible_of_lateLineage
+provenance places finality on that same leaf.
+
+The anchor-or-quorum disjunction enters as a plain hypothesis, so both the
+eager trunk (which reads it off the payload) and the lazy trunk (which
+manufactures it from origin-call data at the consuming call) share this
+proof. -/
+noncomputable def acceptedSelectedResultFilterOutcome_retainedVisible_of_lateSupport
     (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
     (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
     (hsync : PaperSafetySynchrony cfg ext E)
     (hdomain : SelectedMarginDomain cfg ext E)
-    (hphase0 : Phase0SourceCoherence cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
       (E := E) (anchor := B.anchor))
@@ -1176,7 +1247,8 @@ noncomputable def acceptedSelectedResultFilterOutcome_retainedVisible_of_lateLin
     {v : ValidatorIndex} (hv : v ∈ E.honest) {q : Nat}
     (hqH : E.WithinHorizon cfg q)
     {selected : Root} {e : Epoch}
-    (hlineage : E.AcceptedHistoricalA32LineageAt cfg ext B selected e)
+    (hsupport : B.state.C selected e = B.anchor ∨
+      Nonempty (E.AcceptedHistoricalA32QuorumAt cfg ext B selected e))
     (hselectedQ : selected ∈ (E.store cfg ext v q).block_roots)
     (hselectedEpoch : get_block_epoch cfg
       (E.store cfg ext v q) selected = e)
@@ -1219,9 +1291,9 @@ noncomputable def acceptedSelectedResultFilterOutcome_retainedVisible_of_lateLin
       E.store_blocks_slot_le_current cfg ext hT.whole_seconds
         hgenShort w m
   obtain ⟨seed, hseedKnown, hseedSelected, hseedVisible⟩ :=
-    hlineage.lateVisibleSeedAt cfg ext B hT hsync hphase0 hanchor
-      hboundary hpaper hv hqH hselectedQ hselectedEpoch hcanonical
-      hw hmH hselectedM hlate hjustifiedEpoch
+    E.acceptedHistoricalA32LateVisibleSeed_of_support cfg ext B hT hsync
+      hanchor hboundary hpaper hv hqH hselectedQ hselectedEpoch hcanonical
+      hw hmH hselectedM hlate hjustifiedEpoch hsupport
   have hpersistence : VotingSourceEpochChainPersistence cfg endpoint :=
     E.acceptedVotingSourceEpochChainPersistence cfg ext B hendpointCausal
       hparent (E.blockProvenance cfg ext w m) hwalkK hnonfuture
@@ -1290,6 +1362,53 @@ noncomputable def acceptedSelectedResultFilterOutcome_retainedVisible_of_lateLin
     htipSelected htipLeaf
     (by simpa only [endpoint] using hselectedJustified)
     hsourceEq (Or.inr hfinalizedCheck)
+
+/-- Eager instantiation of the late retained outcome: the lineage's own
+payload supplies the anchor-or-quorum disjunction.  This is the form both
+trunks' dispatchers already call. -/
+noncomputable def acceptedSelectedResultFilterOutcome_retainedVisible_of_lateLineage
+    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
+    (hsync : PaperSafetySynchrony cfg ext E)
+    (hdomain : SelectedMarginDomain cfg ext E)
+    (hphase0 : Phase0SourceCoherence cfg ext)
+    (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
+    (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
+      (E := E) (anchor := B.anchor))
+    (hpaper : B.state.PaperA32Inclusion cfg ext)
+    (P : AcceptedEpochCheckpointProjection B.anchor
+      (E.AcceptedRoot cfg ext) B.state.C)
+    (V : B.state.ExactLinkValidity)
+    (hanchorExact : B.anchor =
+      B.state.C B.anchor.root B.anchor.epoch)
+    (hacc : CheckpointCertificateAccountability cfg E B.anchor)
+    {v : ValidatorIndex} (hv : v ∈ E.honest) {q : Nat}
+    (hqH : E.WithinHorizon cfg q)
+    {selected : Root} {e : Epoch}
+    (hlineage : E.AcceptedHistoricalA32LineageAt cfg ext B selected e)
+    (hselectedQ : selected ∈ (E.store cfg ext v q).block_roots)
+    (hselectedEpoch : get_block_epoch cfg
+      (E.store cfg ext v q) selected = e)
+    (hcanonical : E.CanonicalThroughoutEpoch cfg ext selected (e + 1))
+    {w : ValidatorIndex} (hw : w ∈ E.honest) {m : Nat}
+    (hmH : E.WithinHorizon cfg m)
+    (hselectedM : selected ∈ (E.store cfg ext w m).block_roots)
+    (hlate : e + 2 ≤
+      get_current_store_epoch cfg (E.store cfg ext w m))
+    (hjustifiedEpoch : (E.store cfg ext w m).justified_checkpoint.epoch ≤ e)
+    (hselectedJustified : is_ancestor (E.store cfg ext w m)
+      (get_node_for_root selected)
+      (get_node_for_root
+        (E.store cfg ext w m).justified_checkpoint.root) = true) :
+    E.AcceptedSelectedResultFilterOutcomeAt cfg ext B
+      (E.store cfg ext w m) selected := by
+  obtain ⟨hpayload⟩ := hlineage.payloadAtQuery_nonempty cfg ext B hT
+    hphase0 hanchor hboundary hselectedQ hselectedEpoch
+  exact E.acceptedSelectedResultFilterOutcome_retainedVisible_of_lateSupport
+    cfg ext B hT hsync hdomain hanchor hboundary hpaper P V hanchorExact hacc
+    hv hqH (hpayload.support_branch w hw m hmH hlate) hselectedQ
+    hselectedEpoch hcanonical hw hmH hselectedM hlate hjustifiedEpoch
+    hselectedJustified
 
 /-! ## Early retained-outcome scaffold
 
