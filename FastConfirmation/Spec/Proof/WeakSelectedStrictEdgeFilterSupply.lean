@@ -1063,13 +1063,15 @@ noncomputable def
     (hinputKnown : trace.afterObserved ∈
       (E.weakFcrStep cfg ext obs n).store.block_roots)
     {e : Epoch}
-    (hlineage : E.AcceptedHistoricalA32LineageAt cfg ext B
-      trace.afterObserved e)
+    {Cert : Checkpoint Root → Prop} {Supp : Root → Epoch → Prop}
+    (hlineage : E.AcceptedHistoricalA32LineageCoreAt cfg ext B
+      trace.afterObserved e Cert Supp)
     (hinputEpoch : get_block_epoch cfg (E.weakFcrStep cfg ext obs n).store
       trace.afterObserved = e)
     (hresultEpoch : get_block_epoch cfg (E.weakFcrStep cfg ext obs n).store
       trace.result = e) :
-    E.AcceptedHistoricalA32LineageAt cfg ext B trace.result e := by
+    E.AcceptedHistoricalA32LineageCoreAt cfg ext B trace.result e
+      Cert Supp := by
   let query := E.weakFcrStep cfg ext obs n
   let ast : BeaconState Root := Classical.choose hT.genesis
   let ablk : SignedBeaconBlock Root :=
@@ -1191,10 +1193,14 @@ theorem StrictSelectorAdvanceAt.previousFinalizedReset_anchorLineage
       (E.weakFcrStep cfg ext obs n) trace)
     (hprevious : get_block_epoch cfg (E.weakFcrStep cfg ext obs n).store
           trace.result + 1 =
-        get_current_store_epoch cfg (E.weakFcrStep cfg ext obs n).store) :
-    Nonempty (E.AcceptedHistoricalA32LineageAt cfg ext B trace.result
+        get_current_store_epoch cfg (E.weakFcrStep cfg ext obs n).store)
+    {Cert : Checkpoint Root → Prop} {Supp : Root → Epoch → Prop}
+    (hanchorCert : Cert B.anchor)
+    (hanchorSupp : ∀ (o : Root) (e' : Epoch),
+      B.state.C o e' = B.anchor → Supp o e') :
+    Nonempty (E.AcceptedHistoricalA32LineageCoreAt cfg ext B trace.result
       (get_block_epoch cfg (E.weakFcrStep cfg ext obs n).store
-        trace.result)) := by
+        trace.result) Cert Supp) := by
   let query := E.weakFcrStep cfg ext obs n
   have hrealized :=
     E.finalizedCheckpoint_resetRealizedAt_of_acceptedGlobalTrajectory
@@ -1280,27 +1286,27 @@ theorem StrictSelectorAdvanceAt.previousFinalizedReset_anchorLineage
   have hanchorAt : E.AcceptedBlockAt cfg ext B.anchor.root
       (query.store.blocks B.anchor.root) :=
     E.acceptedBlockAt_of_causal_known cfg ext hstore hanchorKnown
-  have hpayload : E.AcceptedHistoricalA32GatePayloadAt cfg ext B
-      B.anchor.root B.anchor.epoch :=
-    Execution.AcceptedHistoricalA32GatePayloadAt.of_anchor cfg ext B hanchorAt
-      (by simpa only [get_block_epoch] using hanchorEpoch)
-      hanchorExact.symm
-  have hlineageAnchor : E.AcceptedHistoricalA32LineageAt cfg ext B
-      B.anchor.root B.anchor.epoch :=
-    Execution.AcceptedHistoricalA32LineageAt.refl cfg ext hpayload
-  have hlineageInput : E.AcceptedHistoricalA32LineageAt cfg ext B
-      trace.afterObserved B.anchor.epoch := by
+  have hpayload : E.AcceptedHistoricalA32GatePayloadCoreAt cfg ext B
+      B.anchor.root B.anchor.epoch Cert Supp :=
+    Execution.AcceptedHistoricalA32GatePayloadCoreAt.of_anchor cfg ext B
+      hanchorAt (by simpa only [get_block_epoch] using hanchorEpoch)
+      hanchorExact.symm hanchorCert hanchorSupp
+  have hlineageAnchor : E.AcceptedHistoricalA32LineageCoreAt cfg ext B
+      B.anchor.root B.anchor.epoch Cert Supp :=
+    Execution.AcceptedHistoricalA32LineageCoreAt.refl cfg ext hpayload
+  have hlineageInput : E.AcceptedHistoricalA32LineageCoreAt cfg ext B
+      trace.afterObserved B.anchor.epoch Cert Supp := by
     simpa only [hinputRoot] using hlineageAnchor
-  have hextended : E.AcceptedHistoricalA32LineageAt cfg ext B
-      trace.result B.anchor.epoch :=
+  have hextended : E.AcceptedHistoricalA32LineageCoreAt cfg ext B
+      trace.result B.anchor.epoch Cert Supp :=
     Weak.StrictSelectorAdvanceAt.extendHistoricalLineage_sameEpoch_actual
       cfg ext B hT hcoh hHn1 hselector
         (by simpa only [query] using hinputKnown) hlineageInput
         (by simpa only [query] using hinputEpoch)
         (by simpa only [query] using hresultEpoch)
   simpa only [query, hresultEpoch] using
-    (show Nonempty (E.AcceptedHistoricalA32LineageAt cfg ext B
-      trace.result B.anchor.epoch) from ⟨hextended⟩)
+    (show Nonempty (E.AcceptedHistoricalA32LineageCoreAt cfg ext B
+      trace.result B.anchor.epoch Cert Supp) from ⟨hextended⟩)
 
 /-- Clone of `WeakBankedJustification.lean`'s `private auTip_walkKnown` (a
 `private` declaration cannot be reused across modules).  Honesty-free. -/
@@ -2328,6 +2334,10 @@ noncomputable def
               Weak.StrictSelectorAdvanceAt.previousFinalizedReset_anchorLineage
                 cfg ext B hT hanchor hboundary hLag hanchorExact hcoh hn1H
                   hfinalized hselector hprevious
+                  (Cert := E.AcceptedHistoricalA32EagerCert cfg ext B)
+                  (Supp := E.AcceptedHistoricalA32EagerSupp cfg ext B)
+                  ⟨CertifiedJustified.anchor⟩
+                  (fun _ _ h _ _ _ _ _ => Or.inl h)
             exact lateFromLineage hlineage
         | observedReset hobserved =>
             obtain ⟨hseedQ, hseedSelected, hguLower⟩ :=

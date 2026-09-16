@@ -97,10 +97,10 @@ noncomputable def getLatestConfirmedTraceAt_currentLineage_step_core
         (E.weakGetLatestConfirmedTraceAt cfg ext obs n).afterObserved →
       Weak.CurrentTargetAcceptedEdge cfg ext (E.weakFcrStep cfg ext obs n)
         (E.weakGetLatestConfirmedTraceAt cfg ext obs n).afterObserved a c →
-      E.AcceptedHistoricalA32LineageCoreAt cfg ext B
+      Nonempty (E.AcceptedHistoricalA32LineageCoreAt cfg ext B
         (E.weakGetLatestConfirmedTraceAt cfg ext obs n).result
         (get_current_store_epoch cfg (E.weakFcrStep cfg ext obs n).store)
-        Cert Supp)
+        Cert Supp))
     (hprevious :
       get_block_epoch cfg (E.store cfg ext obs n)
             (E.weakConfirmed cfg ext obs n) =
@@ -131,8 +131,8 @@ noncomputable def getLatestConfirmedTraceAt_currentLineage_step_core
       {a c : Root}
       (hedge : Weak.CurrentTargetAcceptedEdge cfg ext query
         trace.afterObserved a c) :
-      E.AcceptedHistoricalA32LineageCoreAt cfg ext B trace.result
-        (get_current_store_epoch cfg query.store) Cert Supp :=
+      Nonempty (E.AcceptedHistoricalA32LineageCoreAt cfg ext B trace.result
+        (get_current_store_epoch cfg query.store) Cert Supp) :=
     hcross hinputKnown hselector hedge
   have hnoCrossingLineage
       (hinputKnown : trace.afterObserved ∈ query.store.block_roots)
@@ -175,7 +175,7 @@ noncomputable def getLatestConfirmedTraceAt_currentLineage_step_core
             Weak.CurrentTargetAcceptedEdge cfg ext query
               trace.afterObserved a c
         · obtain ⟨a, c, hedge⟩ := hcrossing
-          exact ⟨_, ⟨hcrossingLineage hinputKnown hselector hedge⟩⟩
+          exact ⟨_, hcrossingLineage hinputKnown hselector hedge⟩
         · have hinputCurrent :=
             Weak.GetLatestConfirmedTrace.input_current_of_selected_current_no_crossing
               cfg ext trace
@@ -222,7 +222,7 @@ noncomputable def getLatestConfirmedTraceAt_currentLineage_step_core
             Weak.CurrentTargetAcceptedEdge cfg ext query
               trace.afterObserved a c
         · obtain ⟨a, c, hedge⟩ := hcrossing
-          exact ⟨_, ⟨hcrossingLineage hinputKnown hselector hedge⟩⟩
+          exact ⟨_, hcrossingLineage hinputKnown hselector hedge⟩
         · have hinputCurrent :=
             Weak.GetLatestConfirmedTrace.input_current_of_selected_current_no_crossing
               cfg ext trace
@@ -268,7 +268,7 @@ noncomputable def getLatestConfirmedTraceAt_currentLineage_step_core
           Weak.CurrentTargetAcceptedEdge cfg ext query
             trace.afterObserved a c
       · obtain ⟨a, c, hedge⟩ := hcrossing
-        exact ⟨_, ⟨hcrossingLineage hinputKnown hselector hedge⟩⟩
+        exact ⟨_, hcrossingLineage hinputKnown hselector hedge⟩
       · exact (hfalseOf
           (Weak.GetLatestConfirmedTrace.input_current_of_selected_current_no_crossing
             cfg ext trace hG.parent hG.walk hG.head_known hinputKnown
@@ -323,10 +323,10 @@ noncomputable def getLatestConfirmedTraceAt_currentLineage_step
     Weak.acceptedFixedSourceProducerAt_of_selectedCurrentCrossing cfg ext B
       hT hphase hboundaryPhase hanchor hboundary hcoh hHn1 hinputKnown
       hselector hresultCurrent hedge htargetProducer
-  exact Weak.selectedCurrentCrossingLineage_of_fixedSourceProducer cfg ext B
+  exact ⟨Weak.selectedCurrentCrossingLineage_of_fixedSourceProducer cfg ext B
     hG.causal hG.parent hG.walk hG.head_known hG.current_walk
     (E.weakGetLatestConfirmedTraceAt cfg ext obs n) hinputKnown hselector
-    hresultCurrent (hprovisos hselector) hedge hfixedRaw
+    hresultCurrent (hprovisos hselector) hedge hfixedRaw⟩
 
 /-- **The lazy instantiation.**
 
@@ -377,9 +377,9 @@ noncomputable def getLatestConfirmedTraceAt_currentLineage_step_lazy
     Weak.acceptedFixedSourceProducerAt_of_selectedCurrentCrossing cfg ext B
       hT hphase hboundaryPhase hanchor hboundary hcoh hHn1 hinputKnown
       hselector hresultCurrent hedge htargetProducer
-  exact Weak.selectedCurrentCrossingLazyLineage cfg ext B hT hA hanchor
+  exact ⟨Weak.selectedCurrentCrossingLazyLineage cfg ext B hT hA hanchor
     hboundary hcoh hHn1 hcall hG.causal hG.parent hG.walk hG.head_known
-    hG.current_walk hinputKnown hselector hresultCurrent hedge hfixedRaw
+    hG.current_walk hinputKnown hselector hresultCurrent hedge hfixedRaw⟩
 
 /-- **The no-crossing instantiation.**
 
@@ -418,6 +418,88 @@ noncomputable def getLatestConfirmedTraceAt_currentLineage_step_noCrossing
   Weak.getLatestConfirmedTraceAt_currentLineage_step_core cfg ext B hT hanchor
     hboundary hcoh hHn1 hknownN hresultCurrent hanchorCert hanchorSupp
     (fun _ _ hedge => absurd ⟨_, _, hedge⟩ hnoCrossing) hprevious
+
+/-! ## The write-back route
+
+`docs/weak-final-wave.md` §5.3.  Everything between the weak one-call
+transformer and the four closed one-shot witnesses is made
+`(Cert, Supp)`-polymorphic and instantiated twice:
+
+* **eagerly** — `Cert N`/`Supp N` are the constant eager obligations and the
+  crossing builder is the unchanged
+  `Weak.selectedCurrentCrossingLineage_of_fixedSourceProducer`, driven by
+  `Weak.ObserverHistoricalA32CallAssumptions.observer_helper_provisos`.  This
+  keeps the four frozen witness statements byte-identical;
+* **lazily** — `Cert N`/`Supp N` are `Weak.LazyCertAt`/`Weak.LazySupportAt` at
+  bound `N` and the crossing builder is
+  `Weak.selectedCurrentCrossingLazyLineage`, which consumes no proviso.  This is
+  what lets the trajectory fold drop to `hC.base`.
+
+The obligations are *families* indexed by the write-back second, because the
+lazy closures are: the induction's extension step widens the bound, which is a
+weakening (`Weak.observerHistoricalA32LazyLineage_mono`) and is `id` in the
+eager case. -/
+
+/-- The four facts the weak write-back induction needs about an obligation
+family: the two anchor discharges, the extension-step widening, the same-epoch
+support transport, and the crossing builder at each of the observer's calls. -/
+structure ObserverLineageRouteAt (E : Execution Root)
+    (B : ExactPrefixAcceptedFFGSemantics cfg ext E) (obs : ValidatorIndex)
+    (Cert : ℕ → Checkpoint Root → Prop)
+    (Supp : ℕ → Root → Epoch → Prop) : Prop where
+  anchor_cert : ∀ N : ℕ, Cert N B.anchor
+  anchor_supp : ∀ (N : ℕ) (o : Root) (e' : Epoch),
+    B.state.C o e' = B.anchor → Supp N o e'
+  mono : ∀ {N : ℕ} {tip : Root} {e : Epoch},
+    Nonempty (E.AcceptedHistoricalA32LineageCoreAt cfg ext B tip e
+      (Cert N) (Supp N)) →
+    Nonempty (E.AcceptedHistoricalA32LineageCoreAt cfg ext B tip e
+      (Cert (N + 1)) (Supp (N + 1)))
+  supp_transport : ∀ {N : ℕ} {origin tip : Root} {e : Epoch},
+    B.state.C tip e = B.state.C origin e →
+    B.state.GJ tip = B.state.GJ origin →
+    Supp N origin e → Supp N tip e
+  crossing : ∀ {n : ℕ}, E.IsFCRCallAt cfg ext obs n →
+    E.WithinHorizon cfg (n + 1) →
+    get_block_epoch cfg (E.weakFcrStep cfg ext obs n).store
+        (E.weakGetLatestConfirmedTraceAt cfg ext obs n).result =
+      get_current_store_epoch cfg (E.weakFcrStep cfg ext obs n).store →
+    ∀ {a c : Root},
+      (E.weakGetLatestConfirmedTraceAt cfg ext obs n).afterObserved ∈
+        (E.weakFcrStep cfg ext obs n).store.block_roots →
+      getLatestSelectorGuard cfg (E.weakFcrStep cfg ext obs n)
+        (E.weakGetLatestConfirmedTraceAt cfg ext obs n).afterObserved →
+      Weak.CurrentTargetAcceptedEdge cfg ext (E.weakFcrStep cfg ext obs n)
+        (E.weakGetLatestConfirmedTraceAt cfg ext obs n).afterObserved a c →
+      Nonempty (E.AcceptedHistoricalA32LineageCoreAt cfg ext B
+        (E.weakGetLatestConfirmedTraceAt cfg ext obs n).result
+        (get_current_store_epoch cfg (E.weakFcrStep cfg ext obs n).store)
+        (Cert (n + 1)) (Supp (n + 1)))
+
+/-- The eager obligation family: the constant pair the pre-wave weak trunk
+carries. -/
+abbrev EagerCertFamily (E : Execution Root)
+    (B : ExactPrefixAcceptedFFGSemantics cfg ext E) :
+    ℕ → Checkpoint Root → Prop :=
+  fun _ => E.AcceptedHistoricalA32EagerCert cfg ext B
+
+/-- The eager support family. -/
+abbrev EagerSuppFamily (E : Execution Root)
+    (B : ExactPrefixAcceptedFFGSemantics cfg ext E) :
+    ℕ → Root → Epoch → Prop :=
+  fun _ => E.AcceptedHistoricalA32EagerSupp cfg ext B
+
+/-- The lazy certification family at the observer. -/
+abbrev LazyCertFamily (E : Execution Root)
+    (B : ExactPrefixAcceptedFFGSemantics cfg ext E) (obs : ValidatorIndex) :
+    ℕ → Checkpoint Root → Prop :=
+  fun N => Weak.LazyCertAt cfg ext E B obs N
+
+/-- The lazy support family at the observer. -/
+abbrev LazySuppFamily (E : Execution Root)
+    (B : ExactPrefixAcceptedFFGSemantics cfg ext E) (obs : ValidatorIndex) :
+    ℕ → Root → Epoch → Prop :=
+  fun N => Weak.LazySupportAt cfg ext E B obs N
 
 end Weak
 
