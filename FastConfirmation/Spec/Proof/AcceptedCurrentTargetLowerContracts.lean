@@ -287,6 +287,49 @@ theorem postAnchorHonestVoteTargetWalkDomain_of_acceptedGlobalTrajectory
   exact E.postAnchorHonestVoteTargetWalkDomain_of_prefixVoteAssumptions
     cfg ext hV hanchor hboundary
 
+/-- **The honest vote-target walk domain is derived, not assumed.**
+
+For every actual post-anchor honest vote, the walk from the voter's own head
+down to the boundary slot of the vote's target epoch stays inside that store's
+block domain.  Nothing here is new assumption content:
+
+* the voter's head is a known block — either `get_head` returns a block of the
+  store (`get_head_root_mem_or`), or it falls back to the justified root, which
+  `SelectedMarginDomain.justified_root_known` keeps known at every in-horizon
+  honest store;
+* every known block walks down to the retained trusted anchor's slot —
+  `Execution.store_walkKnownK`, the store-closure family proved for arbitrary
+  nodes out of the handler contract that `on_block` admits only parent-known
+  blocks (`Model/Handlers.lean:354` ← fork-choice.md:908
+  `assert block.parent_root in store.block_states`);
+* the anchor's own block sits at or before the start slot of its epoch
+  (`TrustedAnchorBoundaryAligned`), and the vote's target epoch is at or above
+  the anchor epoch because the vote is post-anchor (`E.slot_at cfg 0 ≤ s`, the
+  predicate's own hypothesis), so `WalkKnown.mono` lifts the anchor-slot walk
+  to the target boundary slot.
+
+The last bullet is where the post-anchor hypothesis is spent: a vote whose
+target epoch preceded the anchor epoch would demand a walk *below* the retained
+anchor, which no store can support.  `hboundary` is likewise irreducible — a
+mid-epoch checkpoint-sync anchor cannot support the walk to the earlier
+boundary of its own epoch — and it is exactly the premise the weak headlines
+already carry for global justified/finalized root knownness.
+
+This is the weakest producer in the file: it consumes neither
+`ExactPrefixAcceptedFFGSemantics` nor `JustificationInterface`, only the
+selected-margin floor plus the anchor identification and its boundary
+alignment. -/
+theorem postAnchorHonestVoteTargetWalkDomain_of_selectedMarginAssumptions
+    (hA : SelectedMarginAssumptions cfg ext E)
+    {anchor : Checkpoint Root}
+    (hanchor : anchor = E.genesis_store.justified_checkpoint)
+    (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg) (E := E)
+      (anchor := anchor)) :
+    E.PostAnchorHonestVoteTargetWalkDomain cfg ext :=
+  E.postAnchorHonestVoteTargetWalkDomain_of_prefixVoteAssumptions cfg ext
+    (CurrentTargetPrefixVoteAssumptions.of_selectedMarginAssumptions cfg ext E hA)
+    hanchor hboundary
+
 
 end Execution
 

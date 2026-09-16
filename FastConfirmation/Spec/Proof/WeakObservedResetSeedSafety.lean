@@ -154,11 +154,14 @@ observer-honesty binder `hv : v ∈ E.honest` does not appear.
 That list is, in full: `B` (accepted FFG semantics), `hji`, `hanchor`,
 `hboundary`, `hDelay`, `hpaper`, `P`, `V`, `hanchorExact`, `hW`
 (`WeakObserverAssumptions` = the selected-margin floor plus committee readback
-at the observer's own store), `hwalkDomain`, `hCbase`
+at the observer's own store), `hCbase`
 (`AcceptedHistoricalA32CompletedPrefixCallSupplement`: the two phase-0
-coherence contracts, the balance floor, the delivery lookahead) and `hfit`.
-Three surface duplications are gone: `hT` is *derived* from `hW.base`
+coherence contracts and the balance floor) and `hfit` — **twelve** premises.
+Four surface duplications are gone: `hT` is *derived* from `hW.base`
 (`Execution.ScheduledPrefixTrajectoryAssumptions.of_selectedMarginAssumptions`),
+`hwalkDomain : PostAnchorHonestVoteTargetWalkDomain` is *derived* from
+`hW.base`/`hanchor`/`hboundary`
+(`Execution.postAnchorHonestVoteTargetWalkDomain_of_selectedMarginAssumptions`),
 the standalone `hphase0`/`hboundaryPhase` are read off `hCbase`, and the
 `synchrony`/`static_validators`/`byzantine_bound` fields of the full 6-field
 call contract are read off `hW.base` when it is rebuilt internally.
@@ -182,14 +185,13 @@ theorem weakConfirmed_safeFromFollowingSlot_of_acceptedWeakFullRuleFold
     (hanchorExact : B.anchor = B.state.C B.anchor.root B.anchor.epoch)
     {obs : ValidatorIndex}
     (hW : E.WeakObserverAssumptions cfg ext obs)
-    (hwalkDomain : E.PostAnchorHonestVoteTargetWalkDomain cfg ext)
     (hCbase : E.AcceptedHistoricalA32CompletedPrefixCallSupplement cfg ext)
     (hfit : EpochEndsFitUint64 cfg) :
     ∀ n : ℕ, E.WithinHorizon cfg n →
       E.WeakConfirmedSafeFromFollowingSlot cfg ext obs n :=
   E.weakConfirmed_safeFromFollowingSlot_of_weakFullRuleFold cfg ext B hji
     hanchor hboundary hDelay hpaper P V hanchorExact hW
-    hwalkDomain hCbase hfit
+    hCbase hfit
     (Weak.observedResetSeedSafety_of_acceptedDynamics cfg ext hW.base B hji
       hanchor hboundary hW.committees_agree)
 
@@ -212,7 +214,6 @@ theorem weakConfirmed_head_of_acceptedWeakFullRuleFold_nextSlot
     (hanchorExact : B.anchor = B.state.C B.anchor.root B.anchor.epoch)
     {obs : ValidatorIndex}
     (hW : E.WeakObserverAssumptions cfg ext obs)
-    (hwalkDomain : E.PostAnchorHonestVoteTargetWalkDomain cfg ext)
     (hCbase : E.AcceptedHistoricalA32CompletedPrefixCallSupplement cfg ext)
     (hfit : EpochEndsFitUint64 cfg)
     {n : ℕ} {w : ValidatorIndex} (hw : w ∈ E.honest) {m : ℕ}
@@ -224,7 +225,7 @@ theorem weakConfirmed_head_of_acceptedWeakFullRuleFold_nextSlot
       (get_node_for_root (E.weakConfirmed cfg ext obs n)) = true :=
   E.weakConfirmed_head_of_weakFullRuleFold_nextSlot cfg ext B hji hanchor
     hboundary hDelay hpaper P V hanchorExact hW
-    hwalkDomain hCbase hfit
+    hCbase hfit
     (Weak.observedResetSeedSafety_of_acceptedDynamics cfg ext hW.base B hji
       hanchor hboundary hW.committees_agree)
     hw hnm hnext hHm

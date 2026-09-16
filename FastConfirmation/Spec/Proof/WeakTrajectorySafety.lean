@@ -576,7 +576,13 @@ obligation `hOR : Weak.ObservedResetSeedSafety`. The strong fold's
 observer-honesty binder `hv : v ∈ E.honest` does not appear.
 
 Nothing on the surface is taken twice: `hT` is derived from `hW.base` by
-`ScheduledPrefixTrajectoryAssumptions.of_selectedMarginAssumptions`, the
+`ScheduledPrefixTrajectoryAssumptions.of_selectedMarginAssumptions`,
+`hwalkDomain : PostAnchorHonestVoteTargetWalkDomain` is derived from
+`hW.base`/`hanchor`/`hboundary` by
+`Execution.postAnchorHonestVoteTargetWalkDomain_of_selectedMarginAssumptions`
+(store-closure walk from the voter's head to the retained trusted anchor, lifted
+to the vote's target-epoch boundary by the predicate's own post-anchor
+hypothesis), the
 phase-0 coherence contracts come from `hCbase` alone, and the call contract is
 the 3-field `AcceptedHistoricalA32CompletedPrefixCallSupplement`, whose
 `synchrony`/`static_validators`/`byzantine_bound` counterparts in the full
@@ -614,7 +620,6 @@ theorem weakConfirmed_safeFromFollowingSlot_of_weakFullRuleFold
     (hanchorExact : B.anchor = B.state.C B.anchor.root B.anchor.epoch)
     {obs : ValidatorIndex}
     (hW : E.WeakObserverAssumptions cfg ext obs)
-    (hwalkDomain : E.PostAnchorHonestVoteTargetWalkDomain cfg ext)
     (hCbase : E.AcceptedHistoricalA32CompletedPrefixCallSupplement cfg ext)
     (hfit : EpochEndsFitUint64 cfg)
     (hOR : Weak.ObservedResetSeedSafety cfg ext E obs) :
@@ -625,7 +630,9 @@ theorem weakConfirmed_safeFromFollowingSlot_of_weakFullRuleFold
       (ScheduledPrefixTrajectoryAssumptions.of_selectedMarginAssumptions cfg ext E
         hW.base)
       hji hanchor hboundary hDelay hCbase.phase0_source
-      hCbase.phase0_boundary_source hpaper P V hanchorExact hW hwalkDomain
+      hCbase.phase0_boundary_source hpaper P V hanchorExact hW
+      (E.postAnchorHonestVoteTargetWalkDomain_of_selectedMarginAssumptions cfg ext
+        hW.base hanchor hboundary)
       (AcceptedHistoricalA32CompletedPrefixCallSupplement.toCompletedPrefixCallAssumptions
         cfg ext E hCbase hW.base)
       hfit hOR n n (Nat.le_refl n) hHn).followingSlot
@@ -684,7 +691,6 @@ theorem weakConfirmed_head_of_weakFullRuleFold_nextSlot
     (hanchorExact : B.anchor = B.state.C B.anchor.root B.anchor.epoch)
     {obs : ValidatorIndex}
     (hW : E.WeakObserverAssumptions cfg ext obs)
-    (hwalkDomain : E.PostAnchorHonestVoteTargetWalkDomain cfg ext)
     (hCbase : E.AcceptedHistoricalA32CompletedPrefixCallSupplement cfg ext)
     (hfit : EpochEndsFitUint64 cfg)
     (hOR : Weak.ObservedResetSeedSafety cfg ext E obs)
@@ -701,7 +707,7 @@ theorem weakConfirmed_head_of_weakFullRuleFold_nextSlot
   have hHn : E.WithinHorizon cfg n := E.withinHorizon_mono cfg hnm hHm
   have hsafe := E.weakConfirmed_safeFromFollowingSlot_of_weakFullRuleFold cfg ext
     B hji hanchor hboundary hDelay hpaper P V
-    hanchorExact hW hwalkDomain hCbase hfit hOR n hHn
+    hanchorExact hW hCbase hfit hOR n hHn
   have hdeadlineLe : E.followingSlotStart cfg n ≤ m := by
     by_contra hnot
     have hmLt : m < E.followingSlotStart cfg n := Nat.lt_of_not_ge hnot
