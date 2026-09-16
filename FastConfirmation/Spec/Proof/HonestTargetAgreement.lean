@@ -165,6 +165,62 @@ at `k ≥ q` by `honest_vote_castSecond_ge_of_slotStart`), so its epoch-boundary
 walk factors through `b` (`get_checkpoint_block_of_ancestor`).  The epoch
 conjunct is `Delivery.honest_attestation_data_target_epoch`, the root conjunct
 `Delivery.honest_attestation_data_target_root`. -/
+theorem honestVoteTarget_eq_checkpoint_of_head_ancestor_capped
+    (hhb : HonestBehavior cfg ext E)
+    (hps : ∀ (st : BeaconState Root) (t : Slot), st.slot < t →
+      (ext.process_slots st t).slot = t)
+    (hdiv : 1000 ∣ cfg.slot_duration_ms)
+    (hgen : E.genesis_store.genesis_time ≤ E.genesis_store.time)
+    {v : ValidatorIndex} (hv : v ∈ E.honest) {b : Root} {q : ℕ} {s : Slot}
+    {cap : Slot}
+    (heng : EngineInv cfg ext E b q cap)
+    (hscap : s ≤ cap)
+    (hqStart : E.slot_start cfg (E.slot_at cfg q) = q)
+    (hsH : E.SlotWithinHorizon cfg s) (hs0 : E.slot_at cfg 0 ≤ s)
+    (hqs : E.slot_at cfg q ≤ s)
+    {k : ℕ} {a : Attestation Root} (hvote : E.vote v s = some (k, a))
+    (hvoterHeadSlot : ((E.store cfg ext v k).block_states
+      (get_head cfg (E.store cfg ext v k)).root).slot ≤ s)
+    (hvoterParent : ParentSlotLt (E.store cfg ext v k))
+    (hbEpoch : get_block_epoch cfg (E.store cfg ext v k) b =
+      compute_epoch_at_slot cfg s)
+    (hvoterHeadWalk : WalkKnown (E.store cfg ext v k)
+      (compute_start_slot_at_epoch cfg (compute_epoch_at_slot cfg s))
+      (get_head cfg (E.store cfg ext v k)).root) :
+    a.data.target =
+      Checkpoint.mk (compute_epoch_at_slot cfg s)
+        (get_checkpoint_block cfg (E.store cfg ext v k) b
+          (compute_epoch_at_slot cfg s)) := by
+  have hqk : q ≤ k :=
+    E.honest_vote_castSecond_ge_of_slotStart cfg ext hhb hdiv hgen hv hqStart
+      hsH hs0 hqs hvote
+  obtain ⟨index, hkH, hkSlot, rfl⟩ :=
+    E.honest_vote_eq_honestAttestation cfg ext hhb hv hsH hs0 hvote
+  have hanc := heng v hv k hqk (by rw [hkSlot]; exact hscap) hkH
+  have hepoch :
+      (honest_attestation_data cfg ext (E.store cfg ext v k) s index).target.epoch =
+        compute_epoch_at_slot cfg s :=
+    honest_attestation_data_target_epoch cfg ext (E.store cfg ext v k) s index
+      hps hvoterHeadSlot
+  have hslot : compute_start_slot_at_epoch cfg (compute_epoch_at_slot cfg s) ≤
+      ((E.store cfg ext v k).blocks b).slot := by
+    rw [← hbEpoch]
+    exact start_slot_at_block_epoch_le cfg (E.store cfg ext v k) b
+  have hwalkEq := get_checkpoint_block_of_ancestor cfg hvoterParent hanc hslot
+    hvoterHeadWalk
+  rw [honest_attestation_data_eq]
+  refine checkpoint_eq_of_fields hepoch ?_
+  rw [honest_attestation_data_target_root, hepoch]
+  exact hwalkEq
+
+/-- `SafeFrom` is `EngineInv` with the cutoff cap removed, so it weakens to
+`EngineInv` at *every* cap.  This is the only direction the capped
+target-agreement twins need. -/
+theorem engineInv_of_safeFrom {b : Root} {n₀ : ℕ} {cap : Slot}
+    (hsafe : E.SafeFrom cfg ext b n₀) : EngineInv cfg ext E b n₀ cap :=
+  fun w hw m hm _ hH => hsafe w hw m hm hH
+
+/-- The uncapped form, unchanged: instantiate the cap at the vote slot. -/
 theorem honestVoteTarget_eq_checkpoint_of_head_ancestor
     (hhb : HonestBehavior cfg ext E)
     (hps : ∀ (st : BeaconState Root) (t : Slot), st.slot < t →
@@ -188,28 +244,10 @@ theorem honestVoteTarget_eq_checkpoint_of_head_ancestor
     a.data.target =
       Checkpoint.mk (compute_epoch_at_slot cfg s)
         (get_checkpoint_block cfg (E.store cfg ext v k) b
-          (compute_epoch_at_slot cfg s)) := by
-  have hqk : q ≤ k :=
-    E.honest_vote_castSecond_ge_of_slotStart cfg ext hhb hdiv hgen hv hqStart
-      hsH hs0 hqs hvote
-  obtain ⟨index, hkH, _, rfl⟩ :=
-    E.honest_vote_eq_honestAttestation cfg ext hhb hv hsH hs0 hvote
-  have hanc := hsafe v hv k hqk hkH
-  have hepoch :
-      (honest_attestation_data cfg ext (E.store cfg ext v k) s index).target.epoch =
-        compute_epoch_at_slot cfg s :=
-    honest_attestation_data_target_epoch cfg ext (E.store cfg ext v k) s index
-      hps hvoterHeadSlot
-  have hslot : compute_start_slot_at_epoch cfg (compute_epoch_at_slot cfg s) ≤
-      ((E.store cfg ext v k).blocks b).slot := by
-    rw [← hbEpoch]
-    exact start_slot_at_block_epoch_le cfg (E.store cfg ext v k) b
-  have hwalkEq := get_checkpoint_block_of_ancestor cfg hvoterParent hanc hslot
-    hvoterHeadWalk
-  rw [honest_attestation_data_eq]
-  refine checkpoint_eq_of_fields hepoch ?_
-  rw [honest_attestation_data_target_root, hepoch]
-  exact hwalkEq
+          (compute_epoch_at_slot cfg s)) :=
+  E.honestVoteTarget_eq_checkpoint_of_head_ancestor_capped cfg ext hhb hps
+    hdiv hgen hv (E.engineInv_of_safeFrom cfg ext hsafe) (le_refl s) hqStart
+    hsH hs0 hqs hvote hvoterHeadSlot hvoterParent hbEpoch hvoterHeadWalk
 
 /-! ## Section 3 — the packaging -/
 
@@ -241,16 +279,18 @@ facts.
   agreement with the query store on commonly known roots;
 * `hps`, `hdiv`, `hgen` — the `ext.process_slots` clock law and the whole-second
   slot / genesis-ordered anchor pair from `Clock.lean`. -/
-theorem honestVotesSupportTarget_of_safeFrom_currentEpochCandidate
+theorem honestVotesSupportTarget_of_engineInv_currentEpochCandidate
     (hhb : HonestBehavior cfg ext E)
     (hps : ∀ (st : BeaconState Root) (t : Slot), st.slot < t →
       (ext.process_slots st t).slot = t)
     (hdiv : 1000 ∣ cfg.slot_duration_ms)
     (hgen : E.genesis_store.genesis_time ≤ E.genesis_store.time)
-    {query : FastConfirmationStore Root} {b : Root} {q : ℕ}
+    {query : FastConfirmationStore Root} {b : Root} {q : ℕ} {cap : Slot}
     (hqH : E.WithinHorizon cfg q)
     (hqStart : E.slot_start cfg (E.slot_at cfg q) = q)
-    (hsafe : E.SafeFrom cfg ext b q)
+    (heng : EngineInv cfg ext E b q cap)
+    (hcap : compute_start_slot_at_epoch cfg
+      (get_current_store_epoch cfg query.store + 1) ≤ cap)
     (hqueryParent : ParentSlotLt query.store)
     (hqueryHead : is_ancestor query.store (get_head cfg query.store)
       (get_node_for_root b) = true)
@@ -318,8 +358,18 @@ theorem honestVotesSupportTarget_of_safeFrom_currentEpochCandidate
     rw [heq, ← hbEpoch]
     rfl
   -- the voter's target is `b`'s boundary block in the voter's store
-  have hvoteTarget := E.honestVoteTarget_eq_checkpoint_of_head_ancestor cfg ext
-    hhb hps hdiv hgen hv hsafe hqStart hsH hs0 hqs hvote
+  -- the vote slot is in the query store's current epoch, hence strictly below
+  -- that epoch's successor boundary, hence inside the cap
+  have hslt : s < compute_start_slot_at_epoch cfg
+      (get_current_store_epoch cfg query.store + 1) := by
+    rw [← heq]
+    simp only [compute_start_slot_at_epoch, compute_epoch_at_slot]
+    simpa only [Nat.mul_comm] using
+      (Nat.lt_mul_div_succ (b := cfg.slots_per_epoch) s
+        cfg.slots_per_epoch_pos)
+  have hscap : s ≤ cap := Nat.le_of_lt (Nat.lt_of_lt_of_le hslt hcap)
+  have hvoteTarget := E.honestVoteTarget_eq_checkpoint_of_head_ancestor_capped
+    cfg ext hhb hps hdiv hgen hv heng hscap hqStart hsH hs0 hqs hvote
     (hkSlot ▸ hvoterHeadSlot v hv k hqk hkH)
     hvParent hbEpochVoter (by rw [heq]; exact hvHeadWalk)
   -- and the two stores compute the same boundary block from `b`
@@ -327,6 +377,59 @@ theorem honestVotesSupportTarget_of_safeFrom_currentEpochCandidate
     (target := query.store) hvParent hqueryParent hvAgree hvWalk hqueryWalk
   rw [hvoteTarget, heq, hpaired, hT, hbEpoch]
   rfl
+
+/-- The uncapped form, unchanged: `SafeFrom` weakens to `EngineInv` at the
+successor epoch boundary, where the cap hypothesis is reflexive.
+
+Every existing consumer uses this shape; the capped twin above exists only so
+that the lazy crossing-call reconstruction
+(`docs/crossing-call-support-residue.md` §2.3) can feed it the *capped* safety
+its endpoint induction already carries. -/
+theorem honestVotesSupportTarget_of_safeFrom_currentEpochCandidate
+    (hhb : HonestBehavior cfg ext E)
+    (hps : ∀ (st : BeaconState Root) (t : Slot), st.slot < t →
+      (ext.process_slots st t).slot = t)
+    (hdiv : 1000 ∣ cfg.slot_duration_ms)
+    (hgen : E.genesis_store.genesis_time ≤ E.genesis_store.time)
+    {query : FastConfirmationStore Root} {b : Root} {q : ℕ}
+    (hqH : E.WithinHorizon cfg q)
+    (hqStart : E.slot_start cfg (E.slot_at cfg q) = q)
+    (hsafe : E.SafeFrom cfg ext b q)
+    (hqueryParent : ParentSlotLt query.store)
+    (hqueryHead : is_ancestor query.store (get_head cfg query.store)
+      (get_node_for_root b) = true)
+    (hbEpoch : get_block_epoch cfg query.store b =
+      get_current_store_epoch cfg query.store)
+    (hqueryHeadWalk : WalkKnown query.store
+      (compute_start_slot_at_epoch cfg (get_current_store_epoch cfg query.store))
+      (get_head cfg query.store).root)
+    (hqueryWalk : WalkKnown query.store
+      (compute_start_slot_at_epoch cfg (get_current_store_epoch cfg query.store))
+      b)
+    (hvoterHeadSlot : ∀ v ∈ E.honest, ∀ k : ℕ, q ≤ k → E.WithinHorizon cfg k →
+      ((E.store cfg ext v k).block_states
+        (get_head cfg (E.store cfg ext v k)).root).slot ≤ E.slot_at cfg k)
+    (hvoterParent : ∀ v ∈ E.honest, ∀ k : ℕ, q ≤ k → E.WithinHorizon cfg k →
+      ParentSlotLt (E.store cfg ext v k))
+    (hvoterHeadWalk : ∀ v ∈ E.honest, ∀ k : ℕ, q ≤ k → E.WithinHorizon cfg k →
+      WalkKnown (E.store cfg ext v k)
+        (compute_start_slot_at_epoch cfg
+          (get_current_store_epoch cfg query.store))
+        (get_head cfg (E.store cfg ext v k)).root)
+    (hvoterWalk : ∀ v ∈ E.honest, ∀ k : ℕ, q ≤ k → E.WithinHorizon cfg k →
+      WalkKnown (E.store cfg ext v k)
+        (compute_start_slot_at_epoch cfg
+          (get_current_store_epoch cfg query.store))
+        b)
+    (hagree : ∀ v ∈ E.honest, ∀ k : ℕ, q ≤ k → E.WithinHorizon cfg k →
+      ∀ r : Root, r ∈ (E.store cfg ext v k).block_roots →
+        r ∈ query.store.block_roots →
+        (E.store cfg ext v k).blocks r = query.store.blocks r) :
+    HonestVotesSupportTarget cfg E (get_current_target cfg query.store) q :=
+  E.honestVotesSupportTarget_of_engineInv_currentEpochCandidate cfg ext hhb
+    hps hdiv hgen hqH hqStart (E.engineInv_of_safeFrom cfg ext hsafe)
+    (le_refl _) hqueryParent hqueryHead hbEpoch hqueryHeadWalk hqueryWalk
+    hvoterHeadSlot hvoterParent hvoterHeadWalk hvoterWalk hagree
 
 end Execution
 

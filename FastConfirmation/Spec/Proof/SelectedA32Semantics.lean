@@ -170,6 +170,51 @@ theorem canonicalThroughoutNextEpoch_of_selectedCanonical_currentEpoch
       w' hw' m' hm'H hrelayGate
   exact ⟨hknown, hcanonical w' hw' m' hindexLower hslotUpper hm'H⟩
 
+/-- **The epoch-`e` sibling of the lemma above, in `EngineInv` form.**
+
+`docs/crossing-call-support-residue.md` §2.2/§2.3: the endpoint-filter supply's
+own binder `hIH : SelectedCanonicalBeforeEndpointAt q selected m` *is* capped
+safety — canonicity of `selected` at every honest endpoint whose slot is below
+`slot_at m`.  Under the A1 guard `e + 2 ≤ currentEpoch (store w m)` that cap
+strictly dominates `start(e+1)`, which is the whole of the epoch-`e` vote span
+the A3.2 quorum consumes.  So the binder converts to `EngineInv` capped at
+`start(e+1)` and the capped target-agreement twin
+(`honestVotesSupportTarget_of_engineInv_currentEpochCandidate`) then yields the
+*uncapped* support predicate.
+
+The arithmetic is the same shape as `hslotUpper` above: an endpoint at or below
+`start(e+1)` cannot be at or after an endpoint whose epoch is at least
+`e + 2`. -/
+theorem engineInv_of_selectedCanonical_lateEndpoint
+    (hA : SelectedMarginAssumptions cfg ext E)
+    {q : ℕ} {selected : Root} {e : Epoch}
+    {w : ValidatorIndex} {m : ℕ}
+    (hlate : e + 2 ≤
+      get_current_store_epoch cfg (E.store cfg ext w m))
+    (hcanonical : E.SelectedCanonicalBeforeEndpointAt cfg ext q selected m) :
+    EngineInv cfg ext E selected q
+      (compute_start_slot_at_epoch cfg (e + 1)) := by
+  -- the late endpoint sits at or after the start of epoch `e + 2`
+  have hmEpoch : compute_epoch_at_slot cfg (E.slot_at cfg m) =
+      get_current_store_epoch cfg (E.store cfg ext w m) := by
+    simp only [get_current_store_epoch, E.store_current_slot cfg ext w m]
+  have hboundary : compute_start_slot_at_epoch cfg (e + 2) ≤
+      E.slot_at cfg m := by
+    have hepoch : e + 2 ≤ compute_epoch_at_slot cfg (E.slot_at cfg m) := by
+      rw [hmEpoch]; exact hlate
+    simpa only [compute_start_slot_at_epoch] using
+      (Nat.le_div_iff_mul_le cfg.slots_per_epoch_pos).mp hepoch
+  have hstrict : compute_start_slot_at_epoch cfg (e + 1) <
+      compute_start_slot_at_epoch cfg (e + 2) := by
+    simp only [compute_start_slot_at_epoch]
+    exact Nat.mul_lt_mul_of_lt_of_le (Nat.lt_succ_self (e + 1))
+      (le_refl cfg.slots_per_epoch) cfg.slots_per_epoch_pos
+  intro w' hw' m' hm' hslotCap hm'H
+  refine hcanonical w' hw' m' ?_ ?_ hm'H
+  · exact E.query_slot_start_le_of_slot_ge_minimal cfg ext hA
+      (E.slot_at_mono cfg hm')
+  · exact Nat.lt_of_le_of_lt hslotCap (Nat.lt_of_lt_of_le hstrict hboundary)
+
 /-- If the executable current target is the trusted anchor, a current-epoch
 selected block is itself the required early A3.2 carrier.  This is the anchor
 arm of the actual gate's anchor-or-quorum split; it does not consult the global

@@ -139,6 +139,61 @@ theorem PriorStrictCallWriteBackSafe.mono {n m : ℕ} (hnm : n ≤ m)
     E.PriorStrictCallWriteBackSafe cfg ext n :=
   fun i hi k hk => h i hi k (Nat.lt_of_lt_of_le hk hnm)
 
+/-- **Capped, node-and-second-bounded call-safety supply.**
+
+`docs/crossing-call-support-residue.md` §4.3.  This is the antecedent the lazy
+support closure carries.  It is *weaker* than `PriorStrictCallWriteBackSafe` in
+two ways — the safety is capped at `cap`, and it is asserted only for the
+single validator `v` — and *stronger* in one: the bound is `k + 1 ≤ N` rather
+than `k < N`, so at `N := n + 1` it reaches the consuming call's own second.
+
+That last point is the whole design.  The closure is handed this antecedent
+*hypothetically* at construction time, so the crossing call proves nothing
+about its own fold step; the consuming call discharges it from `hprior` for
+`k < n` and from the endpoint induction's own capped hypothesis for `k = n`. -/
+def CallWriteBackEngineSafeUpTo (v : ValidatorIndex) (N : ℕ) (cap : Slot) :
+    Prop :=
+  ∀ k : ℕ, k + 1 ≤ N → E.WithinHorizon cfg (k + 1) →
+    E.IsFCRCallAt cfg ext v k →
+    E.confirmed cfg ext v (k + 1) ≠
+      (E.getLatestConfirmedTraceAt cfg ext v k).afterObserved →
+      EngineInv cfg ext E (E.confirmed cfg ext v (k + 1)) (k + 1) cap
+
+/-- Anti-monotone in the second bound: a supply reaching further restricts. -/
+theorem CallWriteBackEngineSafeUpTo.mono_second
+    {v : ValidatorIndex} {N N' : ℕ} {cap : Slot} (hNN : N ≤ N')
+    (h : E.CallWriteBackEngineSafeUpTo cfg ext v N' cap) :
+    E.CallWriteBackEngineSafeUpTo cfg ext v N cap :=
+  fun k hk => h k (Nat.le_trans hk hNN)
+
+/-- Monotone downward in the slot cap. -/
+theorem CallWriteBackEngineSafeUpTo.mono_cap
+    {v : ValidatorIndex} {N : ℕ} {cap cap' : Slot} (hcap : cap' ≤ cap)
+    (h : E.CallWriteBackEngineSafeUpTo cfg ext v N cap) :
+    E.CallWriteBackEngineSafeUpTo cfg ext v N cap' :=
+  fun k hk hkH hcall hstrict =>
+    EngineInv.mono cfg ext (h k hk hkH hcall hstrict) hcap
+
+/-- **The consumer-side discharge.**  At the call for second `n`, the bound
+`N := n + 1` splits into the strictly prior calls — handed over by the threaded
+fold output, uncapped, hence at every cap — and the call's own second, which
+the endpoint induction supplies in capped form. -/
+theorem callWriteBackEngineSafeUpTo_of_prior_and_current
+    {v : ValidatorIndex} (hv : v ∈ E.honest) {n : ℕ} {cap : Slot}
+    (hprior : E.PriorStrictCallWriteBackSafe cfg ext n)
+    (hcurrent : E.WithinHorizon cfg (n + 1) → E.IsFCRCallAt cfg ext v n →
+      E.confirmed cfg ext v (n + 1) ≠
+        (E.getLatestConfirmedTraceAt cfg ext v n).afterObserved →
+        EngineInv cfg ext E (E.confirmed cfg ext v (n + 1)) (n + 1) cap) :
+    E.CallWriteBackEngineSafeUpTo cfg ext v (n + 1) cap := by
+  intro k hk hkH hcall hstrict
+  rcases Nat.lt_or_ge k n with hlt | hge
+  · exact E.engineInv_of_safeFrom cfg ext
+      (hprior v hv k hlt hkH hcall hstrict)
+  · have hkn : k = n := Nat.le_antisymm (by omega) hge
+    subst hkn
+    exact hcurrent hkH hcall hstrict
+
 namespace AcceptedHistoricalA32OriginCallAt
 
 /-- **The lazy reconstruction.**  Origin-call data plus the fold's safety
