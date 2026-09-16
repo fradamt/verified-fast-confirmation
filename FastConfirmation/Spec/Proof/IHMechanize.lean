@@ -109,7 +109,7 @@ theorem dynamicsChainStruct_of_endpoint (hSA : SpecAssumptions cfg ext E) {b : R
     E.store_parentSlotLt cfg ext hwf hec hgen hwf.anchor_parent_unscheduled w m
   have hjcw : (E.store cfg ext w m).justified_checkpoint.root ∈
       (E.store cfg ext w m).block_roots :=
-    E.justified_known_of_interface cfg ext hji w hw m
+    E.justified_known_of_interface cfg ext hji w hw m hH
   have hbmem := hb w hw m hm hH hIH
   have hwalk : WalkKnown (E.store cfg ext w m)
       ((E.store cfg ext w m).blocks (E.store cfg ext w m).justified_checkpoint.root).slot b :=

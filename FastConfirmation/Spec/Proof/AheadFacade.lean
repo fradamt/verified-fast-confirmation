@@ -113,7 +113,7 @@ theorem obs_descends_justified (hji : JustificationInterface cfg ext E)
     ((E.fcrStep cfg ext v n).current_epoch_observed_justified_checkpoint)
     hH (Or.inl rfl)
     (E.fcrStep_observed_justifiedIn cfg ext hji hprev v hv n w hw m hm hH)
-    (le_of_lt hahead) (hji.checkpoint_known w hw m).1 hknown
+    (le_of_lt hahead) (hji.checkpoint_known w hw m hH).1 hknown
 
 /-! ## Section 2 — the head-tracking interface and residual reduction -/
 
@@ -209,8 +209,8 @@ theorem justifiedIn_root_known_of_realized (hji : JustificationInterface cfg ext
       c = (E.store cfg ext w m).finalized_checkpoint) :
     c.root ∈ (E.store cfg ext w m).block_roots := by
   rcases hrealized with h | h <;> rw [h]
-  · exact (hji.checkpoint_known w hw m).1
-  · exact (hji.checkpoint_known w hw m).2
+  · exact (hji.checkpoint_known w hw m hH).1
+  · exact (hji.checkpoint_known w hw m hH).2
 
 end Execution
 

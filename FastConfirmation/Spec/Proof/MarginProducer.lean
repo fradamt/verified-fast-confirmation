@@ -381,7 +381,7 @@ theorem selectedAnchorCharge
       exact hjust
   have hb : get_latest_confirmed cfg ext (E.fcrStep cfg ext v n) ∈
       (E.store cfg ext v (n + 1)).block_roots := by
-    rcases E.get_latest_confirmed_selected cfg ext hSA v hv (n + 1)
+    rcases E.get_latest_confirmed_selected cfg ext hSA v hv (n + 1) hHn1
         (E.fcrStep cfg ext v n) hs hconfirmed hfinalized hobserved with
       hreset | hselected
     · rcases hreset with h | h | h

@@ -56,7 +56,7 @@ theorem head_root_known (hji : JustificationInterface cfg ext E)
     (get_head cfg (E.store cfg ext w m)).root ∈ (E.store cfg ext w m).block_roots := by
   rcases get_head_root_mem_or cfg (E.store cfg ext w m) with h | h
   · exact h
-  · rw [h]; exact (hji.checkpoint_known w hw m).1
+  · rw [h]; exact (hji.checkpoint_known w hw m hH).1
 
 /-! ## Section 2 — `hhead_walk`, reduced to the checkpoint-boundary bound -/
 
@@ -79,7 +79,7 @@ theorem head_walk_of_bound (hwf : WellFormedExecution E)
         (E.store cfg ext w m).justified_checkpoint.root).slot ≤ sl) :
     WalkKnown (E.store cfg ext w m) sl (get_head cfg (E.store cfg ext w m)).root := by
   have hjc : (E.store cfg ext w m).justified_checkpoint.root ∈
-      (E.store cfg ext w m).block_roots := (hji.checkpoint_known w hw m).1
+      (E.store cfg ext w m).block_roots := (hji.checkpoint_known w hw m hH).1
   have hhead := E.head_root_known cfg ext hji hw m hH
   have hwalk := E.store_walkKnownK cfg ext hwf hec hgen w m
     (E.store cfg ext w m).justified_checkpoint.root hjc

@@ -113,8 +113,8 @@ theorem justified_dom_of_descent (hwfE : WellFormedExecution E)
       (get_node_for_root (E.store cfg ext w m).justified_checkpoint.root)
       (get_node_for_root r₀) = true := by
   have hpsl := E.store_parentSlotLt cfg ext hwfE hec hgen hwfE.anchor_parent_unscheduled w m
-  have hjc := (hji.checkpoint_known w hw m).1
-  have hfin := (hji.checkpoint_known w hw m).2
+  have hjc := (hji.checkpoint_known w hw m hH).1
+  have hfin := (hji.checkpoint_known w hw m hH).2
   have hwalk := E.store_walkKnownK cfg ext hwfE hec hgen w m r₀ hr0known
   exact is_ancestor_trans hpsl
     (hwalk _ hjc) (hwalk _ hfin)
@@ -190,7 +190,7 @@ theorem finalized_root_relay_known
     (hgap : E.slot_at cfg (n + 1) + 1 ≤ E.slot_at cfg (m + 1)) :
     (E.store cfg ext v (n + 1)).finalized_checkpoint.root ∈ (E.store cfg ext w m).block_roots :=
   hsyn.block_relay v hv (n + 1) _ hHn1
-    (hji.checkpoint_known v hv (n + 1)).2 w hw m hHm hgap
+    (hji.checkpoint_known v hv (n + 1) hHn1).2 w hw m hHm hgap
 
 /-! ## Section 3 — `dynamics_struct` from the two per-endpoint suppliers
 

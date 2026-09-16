@@ -62,8 +62,8 @@ theorem SpecAssumptions.toNoConflictPinningAssumptions
     externals_coherence := hec
     static_validators := hsv
     byzantine_bound := hbb
-    justified_root_known := fun w hw m _hH =>
-      (hji.checkpoint_known w hw m).1 }
+    justified_root_known := fun w hw m hH =>
+      (hji.checkpoint_known w hw m hH).1 }
 
 /-- The already-local selected-margin assumptions project to the pinning
 bundle without mentioning `JustificationInterface` at all. -/

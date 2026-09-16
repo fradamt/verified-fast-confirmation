@@ -188,8 +188,21 @@ structure JustificationInterface (E : Execution Root) : Prop where
       justified and finalized checkpoint roots an honest store carries are
       known blocks (the real epoch processing justifies only known targets —
       `justified_requires_targets`' knownness half for the store's own
-      fields; the abstract state transition cannot deliver it per-handler). -/
+      fields; the abstract state transition cannot deliver it per-handler).
+
+      Pinned-spec origin: `on_block`'s
+      `finalized_checkpoint_block = get_checkpoint_block(store,
+      block.parent_root, store.finalized_checkpoint.epoch)` with
+      `assert store.finalized_checkpoint.root == finalized_checkpoint_block`,
+      and `get_filtered_block_tree`'s `base = store.justified_checkpoint.root`
+      (fork-choice.md:448).
+
+      Horizon-scoped like every other field of this record: the claim is made
+      only at seconds `m` inside the verification horizon, which is the only
+      regime any conclusion of this development is stated in
+      (`docs/plumbing-spec-citations.md` P-5). -/
   checkpoint_known : ∀ w ∈ E.honest, ∀ m : ℕ,
+    E.WithinHorizon cfg m →
     (E.store cfg ext w m).justified_checkpoint.root ∈
       (E.store cfg ext w m).block_roots ∧
     (E.store cfg ext w m).finalized_checkpoint.root ∈

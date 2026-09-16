@@ -183,7 +183,7 @@ theorem advance_safe_of_selected_core (hSA : SpecAssumptions cfg ext E)
   have hHn1 : E.WithinHorizon cfg (n + 1) := E.withinHorizon_mono cfg hm hH
   obtain ⟨hconfirmed, hfinalized, hobserved⟩ :=
     E.fcrStep_reset_roots_known_selected cfg ext hSA v hv n hHn1
-  rcases E.get_latest_confirmed_selected cfg ext hSA v hv (n + 1)
+  rcases E.get_latest_confirmed_selected cfg ext hSA v hv (n + 1) hHn1
       (E.fcrStep cfg ext v n) (E.fcrStep_store cfg ext v n)
       hconfirmed hfinalized hobserved with hreset | ⟨hselected, hbSelected, hpSelected⟩
   · rcases hreset with h | h | h

@@ -313,7 +313,7 @@ theorem hck_of_genesisStart (hSA : SpecAssumptions cfg ext E)
   | zero =>
     intro hH0
     rw [E.confirmed_zero]
-    exact (hji.checkpoint_known v hv 0).2
+    exact (hji.checkpoint_known v hv 0 hH0).2
   | succ n ih =>
     intro hHn1
     have hHn := E.withinHorizon_mono cfg (Nat.le_succ n) hHn1
@@ -324,7 +324,7 @@ theorem hck_of_genesisStart (hSA : SpecAssumptions cfg ext E)
       · rw [h, E.fcrStep_confirmed_root cfg ext v n]
         exact (E.store_storeLE cfg ext v (Nat.le_succ n)).1 (ih hHn)
       · rw [h, E.fcrStep_store cfg ext v n]
-        exact (hji.checkpoint_known v hv (n + 1)).2
+        exact (hji.checkpoint_known v hv (n + 1) hHn1).2
       · rw [h]; exact E.fcrStep_observed_known cfg ext hji v hv n hHn1
       · exact E.hbconf_of_genesisStart cfg ext hSA hanchor0 v n _ hHn1 h
     · rw [E.confirmed_succ_of_no_advance cfg ext v n hadv]

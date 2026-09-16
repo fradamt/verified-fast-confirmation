@@ -46,7 +46,10 @@ theorem safeFrom_find_latest_confirmed_descendant
       find_latest_confirmed_descendant cfg ext (E.fcrStep cfg ext v k) lcr = lcr
   · rw [hsame]
     exact hbase
-  rcases E.find_latest_confirmed_descendant_selected cfg ext hSA v hv (k + 1)
+  refine E.safeFrom_of_headStep cfg ext ?_
+  intro w hw m hm hHm hIH
+  have hHk1 : E.WithinHorizon cfg (k + 1) := E.withinHorizon_mono cfg hm hHm
+  rcases E.find_latest_confirmed_descendant_selected cfg ext hSA v hv (k + 1) hHk1
       (E.fcrStep cfg ext v k) (E.fcrStep_store cfg ext v k) lcr hlcr with
     heq | ⟨hconf, hbSelected, hpSelected⟩
   · exact absurd heq hsame
@@ -61,9 +64,6 @@ theorem safeFrom_find_latest_confirmed_descendant
   have hlcrConfirm : lcr ∈ (E.store cfg ext v (k + 1)).block_roots := by
     simpa only [E.fcrStep_store] using hlcr
   have hsupply := hchain hsame
-  refine E.safeFrom_of_headStep cfg ext ?_
-  intro w hw m hm hHm hIH
-  have hHk1 : E.WithinHorizon cfg (k + 1) := E.withinHorizon_mono cfg hm hHm
   obtain ⟨hwfConfirm, hwalkConfirm, hjcConfirm⟩ :=
     E.store_domainK cfg ext hSA.2.1 hSA.2.2.2.2.2.1 hSA.1
       hSA.2.2.2.2.2.2.2.2 v hv (k + 1) hHk1

@@ -397,7 +397,7 @@ theorem Execution.store_domainK (E : Execution Root) (hwf : WellFormedExecution 
     E.StoreDomainK cfg ext := by
   intro w hw m hH
   refine ⟨E.store_parentSlotLt cfg ext hwf hec hgen hwf.anchor_parent_unscheduled w m,
-    E.store_walkKnownK cfg ext hwf hec hgen w m, (hji.checkpoint_known w hw m).1⟩
+    E.store_walkKnownK cfg ext hwf hec hgen w m, (hji.checkpoint_known w hw m hH).1⟩
 
 namespace Execution
 

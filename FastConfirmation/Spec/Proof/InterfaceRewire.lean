@@ -62,17 +62,17 @@ its two projections are exactly `MechanicalResidualsII.justified_known` and
 
 /-- **`justified_known` from `checkpoint_known`.** The first conjunct. -/
 theorem justified_known_of_interface (hji : JustificationInterface cfg ext E) :
-    ∀ w ∈ E.honest, ∀ m : ℕ,
+    ∀ w ∈ E.honest, ∀ m : ℕ, E.WithinHorizon cfg m →
       (E.store cfg ext w m).justified_checkpoint.root ∈
         (E.store cfg ext w m).block_roots :=
-  fun w hw m => (hji.checkpoint_known w hw m).1
+  fun w hw m hH => (hji.checkpoint_known w hw m hH).1
 
 /-- **`finalized_known` from `checkpoint_known`.** The second conjunct. -/
 theorem finalized_known_of_interface (hji : JustificationInterface cfg ext E) :
-    ∀ w ∈ E.honest, ∀ m : ℕ,
+    ∀ w ∈ E.honest, ∀ m : ℕ, E.WithinHorizon cfg m →
       (E.store cfg ext w m).finalized_checkpoint.root ∈
         (E.store cfg ext w m).block_roots :=
-  fun w hw m => (hji.checkpoint_known w hw m).2
+  fun w hw m hH => (hji.checkpoint_known w hw m hH).2
 
 /-! ## Section 2 — `justified_ancestry` closes the observed-anchor dominance
 modulo the two identified facts
@@ -102,7 +102,7 @@ theorem observed_anchor_dom_of_interface (hji : JustificationInterface cfg ext E
       (get_node_for_root (E.store cfg ext w m).justified_checkpoint.root)
       (get_node_for_root c.root) = true :=
   hji.justified_ancestry w hw m c _ hH hc_just (Or.inl rfl) hle hc_known
-    (hji.checkpoint_known w hw m).1
+    (hji.checkpoint_known w hw m hH).1
 
 /-! ## Section 3 — the rewired input bundle
 
@@ -172,8 +172,10 @@ theorem mechanicalResidualsII_of_final (hSA : SpecAssumptions cfg ext E)
   have hji : JustificationInterface cfg ext E := hSA.2.2.2.2.2.2.2.2
   exact
     { walk_closure := E.walkClosure_of_final cfg ext hSA hfinal
-      justified_known := fun w hw m _ => E.justified_known_of_interface cfg ext hji w hw m
-      finalized_known := fun w hw m _ => E.finalized_known_of_interface cfg ext hji w hw m
+      justified_known := fun w hw m hH =>
+        E.justified_known_of_interface cfg ext hji w hw m hH
+      finalized_known := fun w hw m hH =>
+        E.finalized_known_of_interface cfg ext hji w hw m hH
       finalized_descent := fun v hv k w hw m hkm hH =>
         hji.finalized_descent v hv k w hw m
           (E.withinHorizon_mono cfg hkm hH) hH hkm

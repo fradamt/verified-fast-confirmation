@@ -315,7 +315,7 @@ theorem past_descendant_of_honest_supporter_known
     · rw [← hhead]
       exact hmem
     · rw [← hhead, heq]
-      exact (hji.checkpoint_known i hi nu).1
+      exact (hji.checkpoint_known i hi nu hHnu).1
   refine ⟨i, nu, lm.root, hi, hHnu, ?_, hd, ?_⟩
   · rw [hnu]
     exact hslt
@@ -564,6 +564,7 @@ non-anchor-parent invariant supplies the parent. -/
 theorem canonical_member_parent_known
     (hSA : SpecAssumptions cfg ext E)
     (v : ValidatorIndex) (hv : v ∈ E.honest) (n : ℕ)
+    (hHn : E.WithinHorizon cfg n)
     (base b : Root)
     (hbase : base ∈ (E.store cfg ext v n).block_roots)
     (hmem : b ∈ get_ancestor_roots (E.store cfg ext v n)
@@ -585,7 +586,7 @@ theorem canonical_member_parent_known
     rcases get_head_root_mem_or cfg (E.store cfg ext v n) with h | h
     · exact h
     · rw [h]
-      exact (hji.checkpoint_known v hv n).1
+      exact (hji.checkpoint_known v hv n hHn).1
   have hb : b ∈ (E.store cfg ext v n).block_roots :=
     get_ancestor_roots_mem hwf (hwalkK base hbase _ hhead) hmem
   have hstrict : ((E.store cfg ext v n).blocks base).slot <
@@ -618,6 +619,7 @@ discarded by the older `find_latest_confirmed_descendant_spec`. -/
 theorem find_latest_confirmed_descendant_selected
     (hSA : SpecAssumptions cfg ext E)
     (v : ValidatorIndex) (hv : v ∈ E.honest) (n : ℕ)
+    (hHn : E.WithinHorizon cfg n)
     (fcrStore : FastConfirmationStore Root)
     (hstore : fcrStore.store = E.store cfg ext v n)
     (lcr : Root) (hlcr : lcr ∈ fcrStore.store.block_roots) :
@@ -644,7 +646,7 @@ theorem find_latest_confirmed_descendant_selected
     have hrE : r ∈ get_ancestor_roots (E.store cfg ext v n)
         (get_head cfg (E.store cfg ext v n)).root base := by
       simpa only [hstore] using hr
-    have hp := E.canonical_member_parent_known cfg ext hSA v hv n base r
+    have hp := E.canonical_member_parent_known cfg ext hSA v hv n hHn base r
       hbaseE hrE
     have hp' : r ∈ fcrStore.store.block_roots ∧
         (fcrStore.store.blocks r).parent_root ∈ fcrStore.store.block_roots := by
@@ -709,7 +711,7 @@ theorem selected_advance_known_at_all_honest_endpoints
     (hkm : k + 1 ≤ m) (hHm : E.WithinHorizon cfg m) :
     find_latest_confirmed_descendant cfg ext (E.fcrStep cfg ext v k) lcr ∈
       (E.store cfg ext w m).block_roots := by
-  rcases E.find_latest_confirmed_descendant_selected cfg ext hSA v hv (k + 1)
+  rcases E.find_latest_confirmed_descendant_selected cfg ext hSA v hv (k + 1) hHk
       (E.fcrStep cfg ext v k) (E.fcrStep_store cfg ext v k) lcr hlcr with
     heq | ⟨hconf, hb, hparent⟩
   · exact absurd heq hadvance
@@ -725,6 +727,7 @@ over an arbitrary root. -/
 theorem get_latest_confirmed_selected
     (hSA : SpecAssumptions cfg ext E)
     (v : ValidatorIndex) (hv : v ∈ E.honest) (n : ℕ)
+    (hHn : E.WithinHorizon cfg n)
     (fcrStore : FastConfirmationStore Root)
     (hstore : fcrStore.store = E.store cfg ext v n)
     (hconfirmed : fcrStore.confirmed_root ∈ fcrStore.store.block_roots)
@@ -753,7 +756,7 @@ theorem get_latest_confirmed_selected
       lcr ∈ fcrStore.store.block_roots →
       Q (find_latest_confirmed_descendant cfg ext fcrStore lcr) := by
     intro lcr hkind hlcr
-    rcases E.find_latest_confirmed_descendant_selected cfg ext hSA v hv n
+    rcases E.find_latest_confirmed_descendant_selected cfg ext hSA v hv n hHn
       fcrStore hstore lcr hlcr with heq | hselected
     · exact Or.inl (by rw [heq]; exact hkind)
     · exact Or.inr hselected
@@ -806,9 +809,9 @@ theorem confirmed_root_known_selected
   intro k
   induction k with
   | zero =>
-    intro _hH0
+    intro hH0
     rw [E.confirmed_zero]
-    exact (hji.checkpoint_known v hv 0).2
+    exact (hji.checkpoint_known v hv 0 hH0).2
   | succ n ih =>
     intro hHn1
     have hHn := E.withinHorizon_mono cfg (Nat.le_succ n) hHn1
@@ -822,13 +825,13 @@ theorem confirmed_root_known_selected
       have hfinalized : (E.fcrStep cfg ext v n).store.finalized_checkpoint.root ∈
           (E.fcrStep cfg ext v n).store.block_roots := by
         rw [E.fcrStep_store]
-        exact (hji.checkpoint_known v hv (n + 1)).2
+        exact (hji.checkpoint_known v hv (n + 1) hHn1).2
       have hobserved :
           (E.fcrStep cfg ext v n).current_epoch_observed_justified_checkpoint.root ∈
             (E.fcrStep cfg ext v n).store.block_roots := by
         rw [E.fcrStep_store]
         exact E.fcrStep_observed_known_selected cfg ext hji v hv n hHn1
-      rcases E.get_latest_confirmed_selected cfg ext hSA v hv (n + 1)
+      rcases E.get_latest_confirmed_selected cfg ext hSA v hv (n + 1) hHn1
           (E.fcrStep cfg ext v n) (E.fcrStep_store cfg ext v n)
           hconfirmed hfinalized hobserved with hreset | hselected
       · rcases hreset with h | h | h
@@ -862,7 +865,7 @@ theorem fcrStep_reset_roots_known_selected
     exact (E.store_storeLE cfg ext v (Nat.le_succ n)).1
       (E.confirmed_root_known_selected cfg ext hSA v hv n hHn)
   · rw [E.fcrStep_store]
-    exact (hji.checkpoint_known v hv (n + 1)).2
+    exact (hji.checkpoint_known v hv (n + 1) hHn1).2
   · rw [E.fcrStep_store]
     exact E.fcrStep_observed_known_selected cfg ext hji v hv n hHn1
 
@@ -890,7 +893,7 @@ theorem get_latest_confirmed_strict_advance_known
     (hkm : k + 1 ≤ m) (hHm : E.WithinHorizon cfg m) :
     get_latest_confirmed cfg ext (E.fcrStep cfg ext v k) ∈
       (E.store cfg ext w m).block_roots := by
-  rcases E.get_latest_confirmed_selected cfg ext hSA v hv (k + 1)
+  rcases E.get_latest_confirmed_selected cfg ext hSA v hv (k + 1) hHk
       (E.fcrStep cfg ext v k) (E.fcrStep_store cfg ext v k)
       hconfirmed hfinalized hobserved with hreset | ⟨hconf, hb, hparent⟩
   · rcases hreset with h | h | h

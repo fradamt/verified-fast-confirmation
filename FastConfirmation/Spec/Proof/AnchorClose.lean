@@ -740,7 +740,7 @@ theorem anchorRoots_known (hSA : SpecAssumptions cfg ext E)
   have hji : JustificationInterface cfg ext E := hSA.2.2.2.2.2.2.2.2
   have hHn := E.withinHorizon_mono cfg (Nat.le_succ n) hHn1
   refine ⟨E.hbconf_of_genesisStart cfg ext hSA hanchor0 v n _ hHn1 hconf, ?_,
-    (hji.checkpoint_known v hv (n + 1)).2,
+    (hji.checkpoint_known v hv (n + 1) hHn1).2,
     E.fcrStep_observed_known cfg ext hji v hv n hHn1⟩
   rw [E.fcrStep_confirmed_root]
   exact (E.store_storeLE cfg ext v (Nat.le_succ n)).1
@@ -1001,13 +1001,13 @@ theorem safeFromGlc_of_covSupply (hSA : SpecAssumptions cfg ext E)
   have hfinalized : (E.fcrStep cfg ext v n).store.finalized_checkpoint.root ∈
       (E.fcrStep cfg ext v n).store.block_roots := by
     rw [E.fcrStep_store]
-    exact (hji.checkpoint_known v hv (n + 1)).2
+    exact (hji.checkpoint_known v hv (n + 1) hHn1).2
   have hobserved :
       (E.fcrStep cfg ext v n).current_epoch_observed_justified_checkpoint.root ∈
         (E.fcrStep cfg ext v n).store.block_roots := by
     rw [E.fcrStep_store]
     exact E.fcrStep_observed_known_selected cfg ext hji v hv n hHn1
-  rcases E.get_latest_confirmed_selected cfg ext hSA v hv (n + 1)
+  rcases E.get_latest_confirmed_selected cfg ext hSA v hv (n + 1) hHn1
       (E.fcrStep cfg ext v n) (E.fcrStep_store cfg ext v n)
       hconfirmed hfinalized hobserved with hreset | ⟨hselected, hbSelected, hpSelected⟩
   · rcases hreset with h | h | h
@@ -1109,13 +1109,13 @@ theorem safeFromGlc_of_chainSupply (hSA : SpecAssumptions cfg ext E)
   have hfinalized : (E.fcrStep cfg ext v n).store.finalized_checkpoint.root ∈
       (E.fcrStep cfg ext v n).store.block_roots := by
     rw [E.fcrStep_store]
-    exact (hji.checkpoint_known v hv (n + 1)).2
+    exact (hji.checkpoint_known v hv (n + 1) hHn1).2
   have hobserved :
       (E.fcrStep cfg ext v n).current_epoch_observed_justified_checkpoint.root ∈
         (E.fcrStep cfg ext v n).store.block_roots := by
     rw [E.fcrStep_store]
     exact E.fcrStep_observed_known_selected cfg ext hji v hv n hHn1
-  rcases E.get_latest_confirmed_selected cfg ext hSA v hv (n + 1)
+  rcases E.get_latest_confirmed_selected cfg ext hSA v hv (n + 1) hHn1
       (E.fcrStep cfg ext v n) (E.fcrStep_store cfg ext v n)
       hconfirmed hfinalized hobserved with hreset | ⟨hselected, hbSelected, hpSelected⟩
   · rcases hreset with h | h | h

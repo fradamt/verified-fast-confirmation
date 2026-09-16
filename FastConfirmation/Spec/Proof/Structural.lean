@@ -229,7 +229,7 @@ theorem finalized_cross_known_of_boundary (hSA : SpecAssumptions cfg ext E)
   have hwalkK := E.store_walkKnownK cfg ext hwfE hec hgen' w m
   -- `fw` is a known block; the walk `fw ↓ anchorSlot` stays known
   have hfw_known : (E.store cfg ext w m).finalized_checkpoint.root ∈
-      (E.store cfg ext w m).block_roots := (hji.checkpoint_known w hw m).2
+      (E.store cfg ext w m).block_roots := (hji.checkpoint_known w hw m hH).2
   have hanchor_slot : ((E.store cfg ext w m).blocks ablk.root).slot = ablk.message.slot := by
     rw [E.store_anchor_block cfg ext hwfE hgeq w m hanchor_mem]
   have hwa : WalkKnown (E.store cfg ext w m) ablk.message.slot
