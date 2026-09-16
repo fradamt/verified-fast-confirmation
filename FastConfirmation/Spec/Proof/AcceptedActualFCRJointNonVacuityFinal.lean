@@ -282,16 +282,11 @@ theorem witnessSelectedHelperProvisos
         witnessExternals v n).afterObserved := by
   refine
     { current_target := ?_
-      no_conflict := ?_
       selected_previous_result_no_conflict := ?_ }
   · intro a c hedge
     exact False.elim
       (no_currentTargetAcceptedEdge_under_selector
         hv hHn1 hselector a c hedge)
-  · intro a c hedge hnotStart
-    exact False.elim
-      (no_previousAcceptedEdge_away_from_epoch_start
-        hv hHn1 a c hedge hnotStart)
   · intro result hout hstrict hprevious hnotStart
     exact False.elim
       (no_selectedPreviousResult_under_selector hv hHn1 hselector

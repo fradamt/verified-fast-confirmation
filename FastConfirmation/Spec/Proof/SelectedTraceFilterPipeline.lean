@@ -25,19 +25,21 @@ variable (cfg : Config) (ext : Externals Root)
 
 /-- Normative support provisos for prediction helpers actually used by one
 selector call.  Epoch-start short-circuit paths carry no no-conflict proviso,
-because that helper need not be evaluated there. -/
+because that helper need not be evaluated there.
+
+The record carries exactly the two provisos the safety development consumes:
+the crossing tentative edge (`current_target`) and the final tentative stage's
+previous-epoch result (`selected_previous_result_no_conflict`).  A third,
+retained-previous-loop-edge field was removed as dead: the mid-epoch
+`PreviousAcceptedEdge` no-conflict case is served at the result level by
+`StrictSelectedHistoricalSIRCallSite.previousNoConflict` instead.  See
+`docs/proviso-discharge-map.md` §2.1. -/
 structure SelectedHelperProvisosAt (E : Execution Root)
     (v : ValidatorIndex) (q : ℕ)
     (fcrStore : FastConfirmationStore Root)
     (latestConfirmedRoot : Root) : Prop where
   current_target : ∀ a c : Root,
     CurrentTargetAcceptedEdge cfg ext fcrStore latestConfirmedRoot a c →
-    HonestVotesSupportTarget cfg E
-      (get_current_target cfg fcrStore.store) q
-  no_conflict : ∀ a c : Root,
-    PreviousAcceptedEdge cfg ext fcrStore latestConfirmedRoot a c →
-    is_start_slot_at_epoch cfg
-      (get_current_slot cfg fcrStore.store) ≠ true →
     HonestVotesSupportTarget cfg E
       (get_current_target cfg fcrStore.store) q
   /-- The final tentative stage can return a previous-epoch result even when
