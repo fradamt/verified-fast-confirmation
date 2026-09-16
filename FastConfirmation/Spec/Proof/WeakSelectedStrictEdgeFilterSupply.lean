@@ -204,17 +204,17 @@ consuming call, from the fold's own output at strictly earlier seconds
 (`Weak.LazyCertAt` / `Weak.LazySupportAt`,
 `WeakHistoricalA32OriginCall.lean`), which needs no proviso at all.
 
-What the record is still the price of is the **four closed one-shot weak
-witnesses** — `Execution.weak_safeFrom_observerCall_closed`,
-`weak_confirmed_head_closed` and their two `_from_finalized` forms
-(`WeakOneShotSafetyClosed.lean`).  A one-shot statement's only safety input is
-`hbase` at its own second, and there is no route from one second's `hbase` to
-`Weak.ObserverPriorCallWriteBackSafe`, the trajectory fact the lazy route
-discharges its closures with; the observer's non-honesty rules out borrowing
-the strong fold's honest-node output.  Those four therefore take the **eager**
-route (`Weak.observerLineageRoute_eager`,
-`WeakHistoricalA32Induction.lean`), which is the single remaining reader of
-`observer_helper_provisos`, and their statements are unchanged.
+What the record used to be the price of is the **four closed one-shot weak
+witnesses** of `WeakOneShotSafetyClosed.lean`.  A one-shot statement's only
+safety input is `hbase` at its own second, and there is no route from one
+second's `hbase` to `Weak.ObserverPriorCallWriteBackSafe`, the trajectory fact
+the lazy route discharges its closures with; the observer's non-honesty rules
+out borrowing the strong fold's honest-node output.  Those four therefore took
+the **eager** route (`Weak.observerLineageRoute_eager`,
+`WeakHistoricalA32Induction.lean`), the single remaining reader of
+`observer_helper_provisos`.  They have since been **retired**: they were
+subsumed by the fold headlines and had no consumers, so the record below now
+has no reader at all.
 
 **It is floor-classified where it survives.**  `helper_provisos` is a
 normative FCR-spec contract (the literal helper provisos the specification

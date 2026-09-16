@@ -40,10 +40,10 @@ private def publicWitnesses : Array Name :=
     ``FastConfirmation.Spec.Execution.weak_confirmed_head_from_finalized,
     ``FastConfirmation.Spec.Execution.weak_safeFrom_find_latest_confirmed_descendant_discharged,
     ``FastConfirmation.Spec.Execution.weak_confirmed_head_discharged,
-    ``FastConfirmation.Spec.Execution.weak_safeFrom_observerCall_closed,
-    ``FastConfirmation.Spec.Execution.weak_confirmed_head_closed,
-    ``FastConfirmation.Spec.Execution.weak_safeFrom_observerCall_closed_from_finalized,
-    ``FastConfirmation.Spec.Execution.weak_confirmed_head_closed_from_finalized
+    ``FastConfirmation.Spec.Execution.weakConfirmed_safeFromFollowingSlot_of_weakFullRuleFold,
+    ``FastConfirmation.Spec.Execution.weakConfirmed_head_of_weakFullRuleFold_nextSlot,
+    ``FastConfirmation.Spec.Execution.weakConfirmed_safeFromFollowingSlot_of_acceptedWeakFullRuleFold,
+    ``FastConfirmation.Spec.Execution.weakConfirmed_head_of_acceptedWeakFullRuleFold_nextSlot
   ]
 
 private def unexpectedAxioms (axioms : Array Name) : Array Name :=

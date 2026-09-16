@@ -52,7 +52,7 @@ fold consumes them as inputs instead.
 At a call second the invariant's own deadline collapses onto the call
 (`Execution.followingSlotStart_eq_succ_of_call`), so the induction hypothesis
 is exactly `SafeFrom (E.weakConfirmed obs n) (n + 1)` — and `n + 1` is exactly
-the second at which `weak_safeFrom_observerCall_closed` wants its `hbase`
+the second at which `weak_safeFrom_observerCall_closed_lazy` wants its `hbase`
 (`Execution.slot_start_eq_succ_of_advance_minimal` identifies
 `E.slot_start (E.slot_at (n + 1))` with `n + 1`). The step therefore reduces to
 supplying `hinput`/`hbase` for the call's own candidate input, which
@@ -226,7 +226,7 @@ not merely from `followingSlotStart n`.  At a call
 slot.  The weak fold has no such arm: its step already computes
 `hresult : SafeFrom trace.result (n + 1)` on **all four** branches of
 `Weak.GetLatestConfirmedTrace.candidateHistoryCallBranch`
-(`Execution.weak_safeFrom_observerCall_closed`, driven by `hbase` at
+(`Execution.weak_safeFrom_observerCall_closed_lazy`, driven by `hbase` at
 `slot_start (slot_at (n + 1)) = n + 1`) and then throws it away with `.mono`.
 This record keeps it.  See `docs/weak-final-wave.md` §3.2. -/
 structure ObserverFoldSafetyAt (E : Execution Root) (obs : ValidatorIndex)
@@ -324,7 +324,7 @@ at `n`, whose deadline collapses onto the call second), the finalized arm is
 open obligation `Weak.ObservedResetSeedSafety`.
 
 The conclusion is stated at `E.slot_start cfg (E.slot_at cfg (n + 1))` — the
-exact shape `weak_safeFrom_observerCall_closed` consumes as `hbase`. -/
+exact shape `weak_safeFrom_observerCall_closed_lazy` consumes as `hbase`. -/
 theorem weakGetLatestConfirmedTraceAt_input_safeFrom
     (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
     (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
@@ -376,7 +376,7 @@ knownness gives the invariant at `n + 1`, by feeding Stage C's two supplies
 into the closed one-shot theorem.
 
 Both components of `Weak.ObserverFoldSafetyAt` come from the *same* witness:
-`weak_safeFrom_observerCall_closed` produces the unweakened
+`weak_safeFrom_observerCall_closed_lazy` produces the unweakened
 `SafeFrom trace.result (n + 1)` on every branch, which is `callSecond`
 verbatim; `followingSlot` is that witness relaxed to the following-slot
 deadline.  Before `docs/weak-final-wave.md` §3.2 the unweakened form was
@@ -440,8 +440,8 @@ to "the invariant at **every** second `k ≤ n`".
 
 *Why the strengthening is wanted* (see `docs/proviso-discharge-map.md` §4).
 The fold's call step feeds `hprev` — input safety at the call's own second —
-into `weak_safeFrom_observerCall_closed`.  That is enough for the orientation
-(Trunk-B) proviso sites, which are instantiated at the current call second
+into `weak_safeFrom_observerCall_closed_lazy`.  That is enough for the
+orientation (Trunk-B) proviso sites, which are instantiated at the call second
 only.  It is **not** enough for the historical A3.2 lineage: the interface
 `Weak.observerHistoricalA32CallInterfaceAt_of_callAssumptions` is eta-closed
 over all call seconds in `Weak.observerHistoricalA32CurrentLineage_invariant`,
@@ -531,12 +531,16 @@ broadcast certificate.
 
 Weak twin of
 `Execution.confirmed_safeFromFollowingSlot_of_acceptedActualFCRFold`. Its
-premise surface is that of `weak_safeFrom_observerCall_closed` (the ratified
-floor plus the accepted FFG semantic contracts), together with
-`hboundaryPhase` — already carried by
-`weak_safeFrom_observerCall_closed_from_finalized` for the same finalized arm —
-and the single open obligation `hOR : Weak.ObservedResetSeedSafety`. The
-strong fold's observer-honesty binder `hv : v ∈ E.honest` does not appear.
+premise surface is that of `weak_safeFrom_observerCall_closed_lazy` (the
+ratified floor plus the accepted FFG semantic contracts), together with
+`hboundaryPhase` — needed by the finalized arm of
+`weakGetLatestConfirmedTraceAt_input_safeFrom` — and the single open
+obligation `hOR : Weak.ObservedResetSeedSafety`. The strong fold's
+observer-honesty binder `hv : v ∈ E.honest` does not appear.
+
+This theorem and its endpoint form `…_head_of_weakFullRuleFold_nextSlot`, plus
+the two unconditional corollaries in `WeakObservedResetSeedSafety.lean`, are
+the **audited** weak statements (`scripts/Audit.lean`).
 
 Observer-wise the premise surface is `hW : WeakObserverAssumptions`: `obs ∉
 E.honest` and committee readback at the observer's own store, nothing else.

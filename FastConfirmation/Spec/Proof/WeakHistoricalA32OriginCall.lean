@@ -31,7 +31,7 @@ The strictness conjunct is a *strong-side artefact*
 strong side the `finalizedResetUnchanged` arm recovers safety only through
 `finalizedReset_safeFrom_of_nextSlotSynchrony`, which genuinely needs
 `slot_at (n + 1) + 1 ≤ slot_at q` and so fails at `q = n + 1`.  The weak fold
-has no such arm: `Execution.weak_safeFrom_observerCall_closed` closes **all
+has no such arm: `Execution.weak_safeFrom_observerCall_closed_lazy` closes **all
 four** branches of `Weak.GetLatestConfirmedTrace.candidateHistoryCallBranch`
 unconditionally, because the weak fold hands it `hbase` at
 `slot_start (slot_at (n + 1)) = n + 1`.  So the weak call step already proves
