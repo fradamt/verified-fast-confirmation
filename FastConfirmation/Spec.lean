@@ -37,6 +37,7 @@ import FastConfirmation.Spec.Proof.WeakHistoricalA32PayloadProducer
 import FastConfirmation.Spec.Proof.WeakObserverStrictCallFilterInputs
 import FastConfirmation.Spec.Proof.WeakOneShotSafetyClosed
 import FastConfirmation.Spec.Proof.WeakObservedRestartAdoption
+import FastConfirmation.Spec.Proof.WeakObservedRestartDynamicSafety
 import FastConfirmation.Spec.Proof.WeakTrajectorySafety
 
 /-!
