@@ -1,6 +1,7 @@
 import FastConfirmation.Spec.Proof.HonestTargetAgreement
 import FastConfirmation.Spec.Proof.TrustedAnchorGeometry
 import FastConfirmation.Spec.Proof.SelectedCoveredMarginConstruction
+import FastConfirmation.Spec.Proof.AcceptedHistoricalA32Payload
 
 /-!
 # Origin-call data for a historical A3.2 crossing, and its lazy proviso
@@ -219,7 +220,7 @@ seventeen hypotheses without a proviso:
 `hsafe` is the only genuinely non-local input, and on the strong path it is the
 `callSecond` component of `Execution.AcceptedFoldSafetyAt` at the *origin*
 call, i.e. a strictly earlier fold output. -/
-theorem honestVotesSupportTarget
+theorem honestVotesSupportTarget_capped
     (hA : SelectedMarginAssumptions cfg ext E)
     {anchor : Checkpoint Root}
     (hanchor : anchor = E.genesis_store.justified_checkpoint)
@@ -228,7 +229,11 @@ theorem honestVotesSupportTarget
     {node : ValidatorIndex} {second : ℕ} {origin : Root}
     {target : Checkpoint Root}
     (h : E.AcceptedHistoricalA32OriginCallAt cfg ext node second origin target)
-    (hsafe : E.SafeFrom cfg ext origin (second + 1)) :
+    {cap : Slot}
+    (heng : EngineInv cfg ext E origin (second + 1) cap)
+    (hcap : compute_start_slot_at_epoch cfg
+      (get_current_store_epoch cfg (E.fcrStep cfg ext node second).store + 1) ≤
+      cap) :
     HonestVotesSupportTarget cfg E target (second + 1) := by
   classical
   obtain ⟨ast, ablk, hgenEq, hanchorSlot, hanchorParent⟩ := hA.genesis
@@ -341,15 +346,31 @@ theorem honestVotesSupportTarget
     exact hA.wellFormed.blocks_agree (E.blockProvenance cfg ext i k)
       (E.blockProvenance cfg ext node q) hrK hrQ
   -- assemble
-  have hsupport := E.honestVotesSupportTarget_of_safeFrom_currentEpochCandidate
+  have hsupport := E.honestVotesSupportTarget_of_engineInv_currentEpochCandidate
     cfg ext hA.honest_behavior hA.externals_coherence.process_slots_slot
     hA.whole_seconds hgenTime
     (query := E.fcrStep cfg ext node second) (b := origin) (q := q)
-    hqH hqStart hsafe hqueryParent h.head_descends h.origin_current
+    hqH hqStart heng hcap hqueryParent h.head_descends h.origin_current
     hqueryHeadWalk hqueryWalk hvoterHeadSlot hvoterParent hvoterHeadWalk
     hvoterWalk hagree
   rw [h.target_eq] at hsupport
   exact hsupport
+
+/-- The uncapped reconstruction, unchanged: `SafeFrom` weakens to `EngineInv`
+at every cap, so the cap hypothesis is reflexive. -/
+theorem honestVotesSupportTarget
+    (hA : SelectedMarginAssumptions cfg ext E)
+    {anchor : Checkpoint Root}
+    (hanchor : anchor = E.genesis_store.justified_checkpoint)
+    (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
+      (E := E) (anchor := anchor))
+    {node : ValidatorIndex} {second : ℕ} {origin : Root}
+    {target : Checkpoint Root}
+    (h : E.AcceptedHistoricalA32OriginCallAt cfg ext node second origin target)
+    (hsafe : E.SafeFrom cfg ext origin (second + 1)) :
+    HonestVotesSupportTarget cfg E target (second + 1) :=
+  h.honestVotesSupportTarget_capped cfg ext E hA hanchor hboundary
+    (E.engineInv_of_safeFrom cfg ext hsafe) (le_refl _)
 
 /-- Recover the origin call's safety from the threaded fold output.
 
@@ -376,6 +397,31 @@ producer (`AcceptedCurrentTargetA32GateRealizationProducerAt`, i.e.
 modified in any way — it is simply *called later*, at the consuming call,
 with the proviso rebuilt on the spot instead of taken from the call-site
 record. -/
+theorem gateRealization_capped
+    (hA : SelectedMarginAssumptions cfg ext E)
+    {anchor : Checkpoint Root}
+    (hanchor : anchor = E.genesis_store.justified_checkpoint)
+    (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
+      (E := E) (anchor := anchor))
+    {S : AcceptedChainFFGState cfg ext E anchor}
+    {node : ValidatorIndex} {second : ℕ} {origin : Root}
+    {target : Checkpoint Root}
+    (h : E.AcceptedHistoricalA32OriginCallAt cfg ext node second origin target)
+    {cap : Slot}
+    (heng : EngineInv cfg ext E origin (second + 1) cap)
+    (hcap : compute_start_slot_at_epoch cfg
+      (get_current_store_epoch cfg (E.fcrStep cfg ext node second).store + 1) ≤
+      cap)
+    (hproducer : E.AcceptedCurrentTargetA32GateRealizationProducerAt cfg ext
+      anchor S (second + 1) (E.fcrStep cfg ext node second)) :
+    AcceptedCurrentTargetA32GateRealization cfg ext E anchor S
+      (E.fcrStep cfg ext node second).store := by
+  refine hproducer h.gate ?_
+  rw [h.target_eq]
+  exact h.honestVotesSupportTarget_capped cfg ext E hA hanchor hboundary heng
+    hcap
+
+/-- Uncapped form, unchanged. -/
 theorem gateRealization
     (hA : SelectedMarginAssumptions cfg ext E)
     {anchor : Checkpoint Root}
@@ -390,10 +436,37 @@ theorem gateRealization
     (hproducer : E.AcceptedCurrentTargetA32GateRealizationProducerAt cfg ext
       anchor S (second + 1) (E.fcrStep cfg ext node second)) :
     AcceptedCurrentTargetA32GateRealization cfg ext E anchor S
-      (E.fcrStep cfg ext node second).store := by
+      (E.fcrStep cfg ext node second).store :=
+  h.gateRealization_capped cfg ext E hA hanchor hboundary
+    (E.engineInv_of_safeFrom cfg ext hsafe) (le_refl _) hproducer
+
+/-- **The fixed-source twin.**  Same reconstruction, run against the
+*fixed-source* producer, which is the one the crossing branch actually holds
+(`AcceptedHistoricalA32Crossing.lean`).  Its output carries both payload
+obligations at once: the certificate and the anchor-or-quorum disjunction. -/
+theorem fixedSourceGateRealization_capped
+    (hA : SelectedMarginAssumptions cfg ext E)
+    {anchor : Checkpoint Root}
+    (hanchor : anchor = E.genesis_store.justified_checkpoint)
+    (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
+      (E := E) (anchor := anchor))
+    {S : AcceptedChainFFGState cfg ext E anchor}
+    {node : ValidatorIndex} {second : ℕ} {origin : Root}
+    {target : Checkpoint Root}
+    (h : E.AcceptedHistoricalA32OriginCallAt cfg ext node second origin target)
+    {cap : Slot}
+    (heng : EngineInv cfg ext E origin (second + 1) cap)
+    (hcap : compute_start_slot_at_epoch cfg
+      (get_current_store_epoch cfg (E.fcrStep cfg ext node second).store + 1) ≤
+      cap)
+    (hproducer : E.AcceptedFixedSourceCurrentTargetA32GateRealizationProducerAt
+      cfg ext anchor S (second + 1) (E.fcrStep cfg ext node second) origin) :
+    AcceptedFixedSourceCurrentTargetA32GateRealization cfg ext E anchor S
+      (E.fcrStep cfg ext node second).store origin := by
   refine hproducer h.gate ?_
   rw [h.target_eq]
-  exact h.honestVotesSupportTarget cfg ext E hA hanchor hboundary hsafe
+  exact h.honestVotesSupportTarget_capped cfg ext E hA hanchor hboundary heng
+    hcap
 
 /-- **A3, second half** — the certificate the two `currentHistorical` arms
 actually read, rebuilt at the consuming call.
@@ -420,6 +493,67 @@ theorem certified
   have hreal := h.gateRealization cfg ext E hA hanchor hboundary hsafe hproducer
   have hcert := hreal.certified
   rwa [h.target_eq] at hcert
+
+/-- **T4c, the certificate half of the lazy payload.**  The capped
+fixed-source realization's certificate, re-indexed by the retained
+checkpoint. -/
+theorem certifiedFixedSource_capped
+    (hA : SelectedMarginAssumptions cfg ext E)
+    {anchor : Checkpoint Root}
+    (hanchor : anchor = E.genesis_store.justified_checkpoint)
+    (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
+      (E := E) (anchor := anchor))
+    {S : AcceptedChainFFGState cfg ext E anchor}
+    {node : ValidatorIndex} {second : ℕ} {origin : Root}
+    {target : Checkpoint Root}
+    (h : E.AcceptedHistoricalA32OriginCallAt cfg ext node second origin target)
+    {cap : Slot}
+    (heng : EngineInv cfg ext E origin (second + 1) cap)
+    (hcap : compute_start_slot_at_epoch cfg
+      (get_current_store_epoch cfg (E.fcrStep cfg ext node second).store + 1) ≤
+      cap)
+    (hproducer : E.AcceptedFixedSourceCurrentTargetA32GateRealizationProducerAt
+      cfg ext anchor S (second + 1) (E.fcrStep cfg ext node second) origin) :
+    Nonempty (CertifiedJustified cfg E anchor target) := by
+  have hreal := h.fixedSourceGateRealization_capped cfg ext E hA hanchor
+    hboundary heng hcap hproducer
+  have hcert := hreal.certified
+  rwa [h.target_eq] at hcert
+
+/-- **T4c, the support half of the lazy payload.**
+
+Origin-call data plus *capped* safety at the origin rebuilds the retained
+anchor-or-quorum disjunction at the crossing call, through the unchanged
+fixed-source gate realization and the unchanged dependent rewriting of
+`AcceptedHistoricalA32GatePayloadCoreAt.eagerSupport_of_fixedSourceCurrentTarget`.
+This is what the lazy `Supp` closure evaluates to once its antecedent is
+discharged at the consuming call. -/
+theorem deferredSupport_capped
+    (hA : SelectedMarginAssumptions cfg ext E)
+    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
+    (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
+      (E := E) (anchor := B.anchor))
+    {node : ValidatorIndex} {second : ℕ} {origin : Root} {e : Epoch}
+    (h : E.AcceptedHistoricalA32OriginCallAt cfg ext node second origin
+      (B.state.C origin e))
+    (horiginEpoch : get_block_epoch cfg
+      (E.fcrStep cfg ext node second).store origin = e)
+    {cap : Slot}
+    (heng : EngineInv cfg ext E origin (second + 1) cap)
+    (hcap : compute_start_slot_at_epoch cfg
+      (get_current_store_epoch cfg (E.fcrStep cfg ext node second).store + 1) ≤
+      cap)
+    (hproducer : E.AcceptedFixedSourceCurrentTargetA32GateRealizationProducerAt
+      cfg ext B.anchor B.state (second + 1) (E.fcrStep cfg ext node second)
+      origin) :
+    B.state.C origin e = B.anchor ∨
+      Nonempty (E.AcceptedHistoricalA32QuorumAt cfg ext B origin e) := by
+  have hreal := h.fixedSourceGateRealization_capped cfg ext E hA hanchor
+    hboundary heng hcap hproducer
+  exact
+    AcceptedHistoricalA32GatePayloadCoreAt.eagerSupport_of_fixedSourceCurrentTarget
+      cfg ext B horiginEpoch h.target_eq hreal
 
 end AcceptedHistoricalA32OriginCallAt
 
