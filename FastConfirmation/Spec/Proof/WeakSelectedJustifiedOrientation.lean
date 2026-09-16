@@ -71,29 +71,22 @@ variable {E : Execution Root}
 
 /-! ## The weak historical-A3.2 producer interface
 
-`Execution.AcceptedHistoricalA32PayloadProducerAt`
-(`AcceptedHistoricalA32Payload.lean`) is **not** reusable at the weak
+`Execution.HistoricalCurrentTargetCertificateProducerAt`
+(`SelectedPreQueryHistoricalSIR.lean`) is **not** reusable at the weak
 evaluator: its no-crossing hypothesis names the strong
 `CurrentTargetAcceptedEdge`, hence the strong `findLatestSelectedTrace`.  A
 Byzantine observer runs `Weak.findLatestSelectedTrace` (rule delta 1 drops the
 discount), so the two propositions are different and there is no bridge in the
 direction the producer needs.  The weak interface below is the same statement
 over `Weak.CurrentTargetAcceptedEdge` (`WeakHistoricalA32Step.lean`); the
-*payload* it produces, `Execution.AcceptedHistoricalA32GatePayloadAt`, is
-evaluator-free and reused unchanged. -/
+*certificate* it produces, `CertifiedJustified`, is evaluator-free and reused
+unchanged.
 
-/-- Weak twin of `Execution.AcceptedHistoricalA32PayloadProducerAt`: the
-no-crossing side condition is stated over the weak selector's own tentative
-edge list. -/
-def HistoricalA32PayloadProducerAt (E : Execution Root)
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
-    (query : FastConfirmationStore Root) (input result : Root) : Prop :=
-  get_block_epoch cfg query.store result =
-      get_current_store_epoch cfg query.store →
-  (¬ ∃ a c : Root, Weak.CurrentTargetAcceptedEdge cfg ext query input a c) →
-    ∃ e : Epoch,
-      get_current_target cfg query.store = B.state.C result e ∧
-      Nonempty (E.AcceptedHistoricalA32GatePayloadAt cfg ext B result e)
+Before `docs/weak-final-wave.md` W5 this was
+`Weak.HistoricalA32PayloadProducerAt`, which handed back the whole retained
+A3.2 payload.  The single consumer read only `hpayload.certified.some`, and
+that stronger interface is exactly what the lazy route cannot supply at a
+consuming call, so it was weakened to the certificate and deleted. -/
 
 /-- Weak twin of `Execution.HistoricalCurrentTargetCertificateProducerAt`
 (`SelectedPreQueryHistoricalSIR.lean`), over the weak selector's own tentative
@@ -115,17 +108,6 @@ def HistoricalCurrentTargetCertificateProducerAt (E : Execution Root)
   (¬ ∃ a c : Root, Weak.CurrentTargetAcceptedEdge cfg ext query input a c) →
     Nonempty (CertifiedJustified cfg E anchor
       (get_current_target cfg query.store))
-
-/-- Every weak payload producer is in particular a certificate producer. -/
-theorem historicalCurrentTargetCertificateProducerAt_of_payloadProducer
-    {E : Execution Root} {B : ExactPrefixAcceptedFFGSemantics cfg ext E}
-    {query : FastConfirmationStore Root} {input result : Root}
-    (h : Weak.HistoricalA32PayloadProducerAt cfg ext E B query input result) :
-    Weak.HistoricalCurrentTargetCertificateProducerAt cfg ext E B.anchor
-      query input result := by
-  intro hcurrent hnone
-  obtain ⟨e, htarget, ⟨hpayload⟩⟩ := h hcurrent hnone
-  exact ⟨by rw [htarget]; exact hpayload.certified.some⟩
 
 /-- Observer twin of
 `Execution.epochStart_or_endpointOriginOrPinned_of_acceptedCallSite`.

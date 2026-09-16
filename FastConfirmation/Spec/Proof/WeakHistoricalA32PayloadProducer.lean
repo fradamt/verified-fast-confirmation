@@ -6,7 +6,7 @@ import FastConfirmation.Spec.Proof.WeakSelectedJustifiedOrientation
 
 The one-line seam between the observer-side A3.2 write-back induction
 (`WeakHistoricalA32Induction.lean`) and the weak-edge producer interface
-`Weak.HistoricalA32PayloadProducerAt`
+`Weak.HistoricalCurrentTargetCertificateProducerAt`
 (`WeakSelectedJustifiedOrientation.lean`).
 
 **Why this is its own module.**  The producer interface lives downstream of

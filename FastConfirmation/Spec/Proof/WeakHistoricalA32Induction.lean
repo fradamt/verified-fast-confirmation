@@ -27,8 +27,8 @@ evaluator-free and is reused verbatim.
   `E.confirmed_succ_of_no_advance` replaced by their `weak…` twins
   (`WeakFCRCallContracts.lean`, `WeakCandidateHistoryRecurrence.lean`).
 * The one-call transformer
-  `Execution.getLatestConfirmedTraceAt_currentLineage_step` →
-  `Weak.getLatestConfirmedTraceAt_currentLineage_step`
+  `Execution.getLatestConfirmedTraceAt_currentLineage_step_core` →
+  `Weak.getLatestConfirmedTraceAt_currentLineage_step_core`
   (`WeakHistoricalA32OneStep.lean`).
 * The honesty hub
   `E.historicalA32QueryGeometryAt_of_acceptedGlobalTrajectory … hv` →

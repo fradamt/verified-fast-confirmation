@@ -275,59 +275,6 @@ noncomputable def getLatestConfirmedTraceAt_currentLineage_step_core
             (hG.slot_upper _ hinputKnown) hselector hresultCurrent
             hcrossing)).elim
 
-/-- **The eager instantiation** — the pre-wave weak one-call transformer,
-byte-identical in statement.
-
-The crossing branch realizes the certificate and quorum on the spot, driven by
-the observer-quantified normative contract `Weak.SelectedHelperProvisosAt`.
-This is the instantiation the four closed one-shot weak witnesses keep using;
-see `docs/weak-final-wave.md` §5. -/
-noncomputable def getLatestConfirmedTraceAt_currentLineage_step
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
-    (hphase : Phase0SourceCoherence cfg ext)
-    (hboundaryPhase : Phase0BoundarySourceCoherence cfg ext)
-    (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
-    (hboundary : Execution.TrustedAnchorBoundaryAligned (cfg := cfg)
-      (E := E) (anchor := B.anchor))
-    {obs : ValidatorIndex} (hcoh : E.ObserverCoherence cfg ext obs)
-    {n : ℕ} (hHn1 : E.WithinHorizon cfg (n + 1))
-    (hknownN : E.weakConfirmed cfg ext obs n ∈
-      (E.store cfg ext obs n).block_roots)
-    (hresultCurrent : get_block_epoch cfg (E.weakFcrStep cfg ext obs n).store
-        (E.weakGetLatestConfirmedTraceAt cfg ext obs n).result =
-      get_current_store_epoch cfg (E.weakFcrStep cfg ext obs n).store)
-    (hprovisos :
-      getLatestSelectorGuard cfg (E.weakFcrStep cfg ext obs n)
-          (E.weakGetLatestConfirmedTraceAt cfg ext obs n).afterObserved →
-        Weak.SelectedHelperProvisosAt cfg ext E obs (n + 1)
-          (E.weakFcrStep cfg ext obs n)
-          (E.weakGetLatestConfirmedTraceAt cfg ext obs n).afterObserved)
-    (htargetProducer : E.AcceptedCurrentTargetA32GateRealizationProducerAt
-      cfg ext B.anchor B.state (n + 1) (E.weakFcrStep cfg ext obs n))
-    (hprevious :
-      get_block_epoch cfg (E.store cfg ext obs n)
-            (E.weakConfirmed cfg ext obs n) =
-          get_current_store_epoch cfg (E.store cfg ext obs n) →
-        ∃ e : Epoch, Nonempty (E.AcceptedHistoricalA32LineageAt
-          cfg ext B (E.weakConfirmed cfg ext obs n) e)) :
-    ∃ e : Epoch, Nonempty (E.AcceptedHistoricalA32LineageAt cfg ext B
-      (E.weakGetLatestConfirmedTraceAt cfg ext obs n).result e) := by
-  have hG := Weak.weakFcrStep_historicalA32QueryGeometryAt cfg ext B hT
-    hanchor hboundary hcoh hHn1
-  refine Weak.getLatestConfirmedTraceAt_currentLineage_step_core cfg ext B hT
-    hanchor hboundary hcoh hHn1 hknownN hresultCurrent
-    ⟨CertifiedJustified.anchor⟩ (fun _ _ h _ _ _ _ _ => Or.inl h) ?_ hprevious
-  intro a c hinputKnown hselector hedge
-  have hfixedRaw :=
-    Weak.acceptedFixedSourceProducerAt_of_selectedCurrentCrossing cfg ext B
-      hT hphase hboundaryPhase hanchor hboundary hcoh hHn1 hinputKnown
-      hselector hresultCurrent hedge htargetProducer
-  exact ⟨Weak.selectedCurrentCrossingLineage_of_fixedSourceProducer cfg ext B
-    hG.causal hG.parent hG.walk hG.head_known hG.current_walk
-    (E.weakGetLatestConfirmedTraceAt cfg ext obs n) hinputKnown hselector
-    hresultCurrent (hprovisos hselector) hedge hfixedRaw⟩
-
 /-- **The lazy instantiation.**
 
 The crossing branch records origin-call data and the two closures of

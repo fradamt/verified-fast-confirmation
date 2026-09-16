@@ -81,7 +81,9 @@ relay, `ExternalsCoherence.committees_agree`, or
   and the top-level supplier
   `Weak.StrictSelectorAdvanceAt.observerCall_selectedStrictEdgeFilterSupplyAt`;
 * obligation X1's resolution, `Weak.SelectedHelperProvisosAt` +
-  `Weak.ObserverHistoricalA32CallAssumptions` (see the section below).
+  `Weak.ObserverHistoricalA32CallAssumptions` (see the section below), which
+  since `docs/weak-final-wave.md` W6 is the price of the four *one-shot*
+  witnesses only, not of the weak trajectory statements.
 
 ## What is carried, and why
 
@@ -89,13 +91,15 @@ relay, `ExternalsCoherence.committees_agree`, or
 consumes and *this module* does not prove.  It is a **proof obligation, not an
 assumption**, and it is deliberately as small as the stage could make it.
 
-**Stage S8 has since discharged it in full.**  The producer
-`Weak.observerStrictCallFilterInputsAt_of_observerCall`
+**Stage S8 has since discharged it in full, on both routes.**  The generic
+producer `Weak.observerStrictCallFilterInputsAt_of_route`
 (`WeakObserverStrictCallFilterInputs.lean`) builds every field from this
-module's own premise set plus `Weak.ObserverHistoricalA32CallAssumptions` and
-the outer safety fold's carried input safety `hbase`, and
-`…observerCall_selectedStrictEdgeFilterSupplyAt_closed` is the supplier with
-no `hinputs` binder at all.  The four fields, and where each is now proved:
+module's own premise set, an obligation route and the outer safety fold's
+carried input safety `hbase`; its eager instantiation
+`…_of_observerCall` takes `Weak.ObserverHistoricalA32CallAssumptions` and its
+lazy one `…_of_observerCall_lazy` takes only the 7-field completed-prefix
+contract plus `Weak.ObserverPriorCallWriteBackSafe`.  Neither supplier leaves
+an `hinputs` binder.  The four original fields, and where each is now proved:
 
 1. `result_descends_endpoint_justified` and
 2. `endpoint_justified_epoch_le_result` — the observer twins of
@@ -188,11 +192,36 @@ over `Weak.findLatestSelectedTrace`) plus
 strong record with one observer-indexed field.  Nothing in the strong
 development changes.
 
-**This is floor-classified.**  `helper_provisos` is a normative FCR-spec
-contract (the literal helper provisos the specification attaches to a
-selector invocation), not a derived fact; extending it to cover the observer
-adds an assumption of exactly the same accepted-FFG-contract shape as the
-strong one it mirrors, and it is carried, not discharged. -/
+**Scope, corrected by `docs/weak-final-wave.md` §5.4.**  This record is no
+longer "the observer-side normative call contract of the weak development".
+Since wave W6 the weak **trajectory** statements — the fold
+`Execution.weakConfirmed_safeFromFollowingSlot_of_weakFullRuleFold`, its
+unconditional corollary
+`…_of_acceptedWeakFullRuleFold`, and the endpoint form — carry only the
+unchanged 7-field `E.AcceptedHistoricalA32CompletedPrefixCallAssumptions`.
+The historical A3.2 crossing payload they need is manufactured *lazily* at the
+consuming call, from the fold's own output at strictly earlier seconds
+(`Weak.LazyCertAt` / `Weak.LazySupportAt`,
+`WeakHistoricalA32OriginCall.lean`), which needs no proviso at all.
+
+What the record is still the price of is the **four closed one-shot weak
+witnesses** — `Execution.weak_safeFrom_observerCall_closed`,
+`weak_confirmed_head_closed` and their two `_from_finalized` forms
+(`WeakOneShotSafetyClosed.lean`).  A one-shot statement's only safety input is
+`hbase` at its own second, and there is no route from one second's `hbase` to
+`Weak.ObserverPriorCallWriteBackSafe`, the trajectory fact the lazy route
+discharges its closures with; the observer's non-honesty rules out borrowing
+the strong fold's honest-node output.  Those four therefore take the **eager**
+route (`Weak.observerLineageRoute_eager`,
+`WeakHistoricalA32Induction.lean`), which is the single remaining reader of
+`observer_helper_provisos`, and their statements are unchanged.
+
+**It is floor-classified where it survives.**  `helper_provisos` is a
+normative FCR-spec contract (the literal helper provisos the specification
+attaches to a selector invocation), not a derived fact; extending it to cover
+the observer adds an assumption of exactly the same accepted-FFG-contract
+shape as the strong one it mirrors, and on the one-shot path it is carried,
+not discharged. -/
 
 /-- Weak twin of `SelectedHelperProvisosAt`, over the weak evaluator trace.
 Field-for-field identical to the strong record with
@@ -2049,10 +2078,16 @@ structure ObserverStrictCallFilterInputsAt (E : Execution Root)
 
   This is the *only* input the late current-epoch cell still needs: site 1's
   full-epoch canonicity is discharged above, and
-  `acceptedSelectedResultFilterOutcome_retainedVisible_of_lateLineage` is
+  `acceptedSelectedResultFilterOutcome_retainedVisible_of_lateSupport` is
   applied at the honest endpoint itself (its query-node honesty binder is
   inert — it reads the query store only through knownness and the block
-  epoch, both of which hold at `(w, m)`). -/
+  epoch, both of which hold at `(w, m)`).
+
+  Since `docs/weak-final-wave.md` W5 the lineage is carried at the obligation
+  family `(Cert (n + 1), Supp (n + 1))` rather than eagerly, and the support
+  side is eliminated by `supp_elim_current` below.  The field itself is
+  **landed**, not residual: `Weak.observerCall_currentLineage` proves it for
+  both routes. -/
   current_lineage :
     get_block_epoch cfg (E.weakFcrStep cfg ext obs n).store
         (E.weakGetLatestConfirmedTraceAt cfg ext obs n).result =
