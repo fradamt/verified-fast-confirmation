@@ -857,6 +857,99 @@ theorem preQuerySelectedJustifiedCompatibilityAt_of_threeRegionBracket
     hwfM hwalkM hinputM hresultM hjustifiedM hresultInputM
   simpa only [result] using hcomp
 
+/-- Observer twin of
+`Execution.preQueryVoteSelectedSIRBracketAt_of_trustedAnchorEndpoint`
+(`SelectedPreQueryAnchor.lean`): arm 1 of
+`Execution.EndpointOriginOrPinnedAt` supplies the bracket with no gate, no
+pinning, and no proviso. -/
+theorem preQueryVoteSelectedSIRBracketAt_of_trustedAnchorEndpoint
+    (hA : SelectedMarginAssumptions cfg ext E)
+    {anchor : Checkpoint Root}
+    (hanchor : anchor = E.genesis_store.justified_checkpoint)
+    {obs : ValidatorIndex} (hcoh : E.ObserverCoherence cfg ext obs) {q : ℕ}
+    (hqH : E.WithinHorizon cfg q)
+    (query : FastConfirmationStore Root)
+    (hquery : query.store = E.store cfg ext obs q)
+    (input : Root) (hinput : input ∈ query.store.block_roots)
+    (hstrict :
+      Weak.find_latest_confirmed_descendant cfg ext query input ≠ input)
+    {w : ValidatorIndex} (hw : w ∈ E.honest) {m : ℕ}
+    (hslotQM : E.slot_at cfg q ≤ E.slot_at cfg m)
+    (hHm : E.WithinHorizon cfg m)
+    (hjustifiedAnchor :
+      (E.store cfg ext w m).justified_checkpoint = anchor) :
+    E.PreQueryVoteSelectedSIRBracketAt cfg ext q input
+      (Weak.find_latest_confirmed_descendant cfg ext query input) w m := by
+  intro _i _hi _s _k _a _hs0 _hsq _hsm _hsH _hvote _htarget
+  exact Weak.selectedSIRThreeRegionBracket_of_trustedAnchor_strict cfg ext
+    hA hanchor hcoh hqH query hquery input hinput hstrict hw hslotQM hHm
+    hjustifiedAnchor
+
+/-- Observer twin of
+`Execution.preQueryVoteSelectedSIRBracketAt_of_startOrPin`
+(`SelectedPreQueryHistoricalSIR.lean`). -/
+theorem preQueryVoteSelectedSIRBracketAt_of_startOrPin
+    (hA : SelectedMarginAssumptions cfg ext E)
+    (hwalkDomain : E.PostAnchorHonestVoteTargetWalkDomain cfg ext)
+    {obs : ValidatorIndex} (hcoh : E.ObserverCoherence cfg ext obs) {q : ℕ}
+    (hqH : E.WithinHorizon cfg q)
+    (query : FastConfirmationStore Root)
+    (hquery : query.store = E.store cfg ext obs q)
+    (input : Root) (hinput : input ∈ query.store.block_roots)
+    (hinputEpoch :
+      get_block_epoch cfg query.store input =
+          get_current_store_epoch cfg query.store ∨
+        get_block_epoch cfg query.store input + 1 =
+          get_current_store_epoch cfg query.store)
+    (hbase : E.SafeFrom cfg ext input
+      (E.slot_start cfg (E.slot_at cfg q)))
+    (hstrict :
+      Weak.find_latest_confirmed_descendant cfg ext query input ≠ input)
+    {w : ValidatorIndex} (hw : w ∈ E.honest) {m : ℕ}
+    (hslotQM : E.slot_at cfg q ≤ E.slot_at cfg m)
+    (hHm : E.WithinHorizon cfg m)
+    (hstartOrPin :
+      is_start_slot_at_epoch cfg (get_current_slot cfg query.store) = true ∨
+        ((E.store cfg ext w m).justified_checkpoint.epoch =
+            (get_current_target cfg query.store).epoch →
+          (E.store cfg ext w m).justified_checkpoint.root =
+            (get_current_target cfg query.store).root)) :
+    E.PreQueryVoteSelectedSIRBracketAt cfg ext q input
+      (Weak.find_latest_confirmed_descendant cfg ext query input) w m := by
+  intro i hi s k a hs0 hsq _hsm hsH hvote htarget
+  exact Weak.selectedSIRThreeRegionBracket_of_preQueryVote_and_pinning cfg ext
+    hA hwalkDomain hcoh hqH query hquery input hinput hinputEpoch hbase hstrict
+      hw hslotQM hHm hi hs0 hsq hsH hvote htarget hstartOrPin
+
+/-- Observer twin of
+`Execution.preQuerySelectedJustifiedCompatibilityAt_of_voteBracket`
+(`SelectedPreQueryAnchor.lean`): the shared tail of the three bracket-supplying
+arms of `Execution.EndpointOriginOrPinnedAt`. -/
+theorem preQuerySelectedJustifiedCompatibilityAt_of_voteBracket
+    (hA : SelectedMarginAssumptions cfg ext E)
+    {anchor : Checkpoint Root}
+    (hanchor : anchor = E.genesis_store.justified_checkpoint)
+    {obs : ValidatorIndex} (hcoh : E.ObserverCoherence cfg ext obs) {q : ℕ}
+    (hqH : E.WithinHorizon cfg q)
+    (query : FastConfirmationStore Root)
+    (hquery : query.store = E.store cfg ext obs q)
+    (input : Root) (hinput : input ∈ query.store.block_roots)
+    (hstrict :
+      Weak.find_latest_confirmed_descendant cfg ext query input ≠ input)
+    {w : ValidatorIndex} (hw : w ∈ E.honest) {m : ℕ}
+    (hslotQM : E.slot_at cfg q ≤ E.slot_at cfg m)
+    (hHm : E.WithinHorizon cfg m)
+    (hvoteBracket : E.PreQueryVoteSelectedSIRBracketAt cfg ext q input
+      (Weak.find_latest_confirmed_descendant cfg ext query input) w m) :
+    E.PreQuerySelectedJustifiedCompatibilityAt cfg ext anchor q
+      (Weak.find_latest_confirmed_descendant cfg ext query input) w m := by
+  have hbracket := Weak.preQuerySelectedSIRBracketAt_of_voteBracket_strict
+    cfg ext hA hanchor hcoh hqH query hquery input hinput hstrict
+      hw hslotQM hHm hvoteBracket
+  exact Weak.preQuerySelectedJustifiedCompatibilityAt_of_threeRegionBracket
+    cfg ext hA hcoh hqH query hquery input hinput hstrict hw hslotQM hHm
+      hbracket
+
 end Weak
 
 end FastConfirmation.Spec

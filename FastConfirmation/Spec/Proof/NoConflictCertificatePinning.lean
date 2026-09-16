@@ -179,6 +179,65 @@ theorem noConflict_arithmeticBranch_oneThird
   rw [E.weight_union_disjoint hdisjoint]
   exact honeThird
 
+/-- Both live executable gates of the selector call site reduce to the raw
+helper inequality, away from the `get_current_target = unrealized_justified`
+short circuit.
+
+This is the boolean-to-arithmetic half of **N4**
+(`docs/trunkB-two-case-discharge.md` §5.5, §7): the `previousNoConflict` arm's
+`will_no_conflicting_checkpoint_be_justified` *is* that inequality, and the
+`currentCrossing` arm's `will_current_target_be_justified` asserts the
+strictly stronger `3 · support ≥ 2 · total`, which implies it as soon as the
+total active weight is positive.  Stating it once lets the case-β pinning
+producers phrase their gate premise uniformly over both arms.  No honesty, no
+node, and no store domain occurs. -/
+theorem rawGate_of_executableGate {store : Store Root}
+    (htab : get_total_active_balance cfg
+      (get_pulled_up_head_state cfg ext store) = E.total_active cfg)
+    (hpos : 0 < E.total_active cfg)
+    (hgate :
+      will_no_conflicting_checkpoint_be_justified cfg ext store = true ∨
+        will_current_target_be_justified cfg ext store = true) :
+    get_current_target cfg store = store.unrealized_justified_checkpoint ∨
+      E.total_active cfg <
+        3 * compute_honest_ffg_support_for_current_target cfg ext store := by
+  by_cases heq : get_current_target cfg store =
+      store.unrealized_justified_checkpoint
+  · exact Or.inl heq
+  refine Or.inr ?_
+  rcases hgate with hnoConflict | hcurrentTarget
+  · simp only [will_no_conflicting_checkpoint_be_justified, heq, if_false,
+      decide_eq_true_eq] at hnoConflict
+    rw [htab] at hnoConflict
+    simpa only [one_mul] using hnoConflict
+  · simp only [will_current_target_be_justified, decide_eq_true_eq]
+      at hcurrentTarget
+    rw [htab] at hcurrentTarget
+    have hdouble : E.total_active cfg < 2 * E.total_active cfg := by
+      rw [two_mul]
+      exact Nat.lt_add_of_pos_left hpos
+    exact Nat.lt_of_lt_of_le hdouble hcurrentTarget
+
+/-- Converse of `Execution.rawGate_of_executableGate` for the no-conflict
+boolean: the raw helper inequality is exactly what that boolean asserts, so
+the arithmetic branch of `noConflict_arithmeticBranch_oneThird` can be reached
+from either form.
+
+This keeps the case-β pinning producers phrased over the raw inequality —
+which is what both gate arms share (§5.5) — without duplicating the signer
+weight argument. -/
+theorem noConflictGate_of_rawGate {store : Store Root}
+    (htab : get_total_active_balance cfg
+      (get_pulled_up_head_state cfg ext store) = E.total_active cfg)
+    (hraw : E.total_active cfg <
+      3 * compute_honest_ffg_support_for_current_target cfg ext store) :
+    will_no_conflicting_checkpoint_be_justified cfg ext store = true := by
+  simp only [will_no_conflicting_checkpoint_be_justified]
+  split_ifs with heq
+  · rfl
+  · simp only [decide_eq_true_eq, htab, one_mul]
+    exact hraw
+
 omit [LinearOrder Root] [Inhabited Root] in
 private theorem slot_lt_noConflict_next_epoch_start {s : Slot} {e : Epoch}
     (hepoch : compute_epoch_at_slot cfg s = e) :

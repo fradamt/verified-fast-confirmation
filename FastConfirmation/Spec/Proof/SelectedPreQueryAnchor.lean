@@ -304,6 +304,63 @@ theorem preQuerySelectedSIRBracketAt_of_voteBracket_strict
   · obtain ⟨i, hi, s, k, a, hs0, hsq, hsm, hsH, hvote, htarget⟩ := hvote
     exact hvoteBracket i hi s k a hs0 hsq hsm hsH hvote htarget
 
+/-- An anchor endpoint justification already supplies the pre-query vote
+bracket: the trusted-anchor branch of the bracket ignores the vote entirely.
+
+This is arm 1 of `Execution.EndpointOriginOrPinnedAt`
+(`docs/trunkB-two-case-discharge.md` §7, N6) feeding the unchanged bracket
+route.  It is proviso-free and pinning-free, which is exactly why arm 1 needs
+no gate. -/
+theorem preQueryVoteSelectedSIRBracketAt_of_trustedAnchorEndpoint
+    (hA : SelectedMarginAssumptions cfg ext E)
+    {anchor : Checkpoint Root}
+    (hanchor : anchor = E.genesis_store.justified_checkpoint)
+    {v : ValidatorIndex} (hv : v ∈ E.honest) {q : ℕ}
+    (hqH : E.WithinHorizon cfg q)
+    (query : FastConfirmationStore Root)
+    (hquery : query.store = E.store cfg ext v q)
+    (input : Root) (hinput : input ∈ query.store.block_roots)
+    (hstrict : find_latest_confirmed_descendant cfg ext query input ≠ input)
+    {w : ValidatorIndex} (hw : w ∈ E.honest) {m : ℕ}
+    (hslotQM : E.slot_at cfg q ≤ E.slot_at cfg m)
+    (hHm : E.WithinHorizon cfg m)
+    (hjustifiedAnchor :
+      (E.store cfg ext w m).justified_checkpoint = anchor) :
+    E.PreQueryVoteSelectedSIRBracketAt cfg ext q input
+      (find_latest_confirmed_descendant cfg ext query input) w m := by
+  intro _i _hi _s _k _a _hs0 _hsq _hsm _hsH _hvote _htarget
+  exact E.selectedSIRThreeRegionBracket_of_trustedAnchor_strict cfg ext
+    hA hanchor hv hqH query hquery input hinput hstrict hw hslotQM hHm
+    hjustifiedAnchor
+
+/-- The pre-query vote bracket is the only input the compatibility rung needs
+beyond the executable selector facts.  Splitting this off from the producer
+wrappers lets the three bracket-supplying arms of
+`Execution.EndpointOriginOrPinnedAt` share one tail. -/
+theorem preQuerySelectedJustifiedCompatibilityAt_of_voteBracket
+    (hA : SelectedMarginAssumptions cfg ext E)
+    {anchor : Checkpoint Root}
+    (hanchor : anchor = E.genesis_store.justified_checkpoint)
+    {v : ValidatorIndex} (hv : v ∈ E.honest) {q : ℕ}
+    (hqH : E.WithinHorizon cfg q)
+    (query : FastConfirmationStore Root)
+    (hquery : query.store = E.store cfg ext v q)
+    (input : Root) (hinput : input ∈ query.store.block_roots)
+    (hstrict : find_latest_confirmed_descendant cfg ext query input ≠ input)
+    {w : ValidatorIndex} (hw : w ∈ E.honest) {m : ℕ}
+    (hslotQM : E.slot_at cfg q ≤ E.slot_at cfg m)
+    (hHm : E.WithinHorizon cfg m)
+    (hvoteBracket : E.PreQueryVoteSelectedSIRBracketAt cfg ext q input
+      (find_latest_confirmed_descendant cfg ext query input) w m) :
+    E.PreQuerySelectedJustifiedCompatibilityAt cfg ext anchor q
+      (find_latest_confirmed_descendant cfg ext query input) w m := by
+  have hbracket := E.preQuerySelectedSIRBracketAt_of_voteBracket_strict
+    cfg ext hA hanchor hv hqH query hquery input hinput hstrict
+      hw hslotQM hHm hvoteBracket
+  exact E.preQuerySelectedJustifiedCompatibilityAt_of_threeRegionBracket
+    cfg ext hA hv hqH query hquery input hinput hstrict hw hslotQM hHm
+      hbracket
+
 end Execution
 
 end FastConfirmation.Spec

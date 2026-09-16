@@ -1204,6 +1204,59 @@ noncomputable def observerCall_noConflictCertificatePinningProducerAt
       cfg ext B hT hC hfit hanchor hboundary hcoh hHn1 hgate' hsupport'
         hc hcepoch'
 
+set_option maxRecDepth 10000 in
+/-- **N6** of `docs/trunkB-two-case-discharge.md` §7 at a possibly-Byzantine
+observer: the executable gate alone decides, for every endpoint, between the
+trusted anchor, a post-query honest quorum member, and same-epoch pinning
+against the query's current target.
+
+The case split is `by_cases` on
+`Execution.EndpointJustifiedQuorumAt.PostQueryHonestSigner` applied to the
+quorum N1 extracts from a non-anchor endpoint justification; case α is N2 and
+case β is N3 above.  Neither the quorum extraction nor the case-β pinning
+mentions the observer's honesty, so this is the observer twin of
+`Execution.completedPrefix_endpointOriginOrPinnedProducerAt` with the honest
+binder replaced by `Execution.ObserverCoherence`. -/
+theorem observerCall_endpointOriginOrPinnedProducerAt
+    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
+    (hC : E.AcceptedHistoricalA32CompletedPrefixCallAssumptions cfg ext)
+    (hfit : EpochEndsFitUint64 cfg)
+    (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
+    (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
+      (E := E) (anchor := B.anchor))
+    {obs : ValidatorIndex} (hcoh : E.ObserverCoherence cfg ext obs) {n : Nat}
+    (hHn1 : E.WithinHorizon cfg (n + 1)) :
+    E.EndpointOriginOrPinnedProducerAt cfg ext B.anchor (n + 1)
+      (E.weakFcrStep cfg ext obs n) := by
+  classical
+  intro hgate w m
+  simp only [E.weakFcrStep_store] at hgate ⊢
+  have htab : get_total_active_balance cfg
+      (get_pulled_up_head_state cfg ext (E.store cfg ext obs (n + 1))) =
+      E.total_active cfg :=
+    E.completedPrefix_pulledUpHead_totalActive_at_observer cfg ext hT
+      hC.static_validators hcoh hHn1
+  have hpos : 0 < E.total_active cfg := by
+    rw [E.total_active_eq_anchorActive_weight cfg hC.balance_floor]
+    exact Nat.lt_of_lt_of_le cfg.effective_balance_increment_pos
+      hC.balance_floor
+  have hgateRaw := E.rawGate_of_executableGate cfg ext htab hpos hgate
+  by_cases hne : (E.store cfg ext w m).justified_checkpoint = B.anchor
+  · exact Or.inl hne
+  · obtain ⟨Q⟩ :=
+      ExactPrefixAcceptedFFGSemantics.endpointJustified_quorumAt
+        cfg ext B hT hanchor hboundary hne
+    by_cases hpost : Q.PostQueryHonestSigner cfg ext (n + 1)
+    · exact Or.inr (Or.inl
+        (EndpointJustifiedQuorumAt.causalHonestTargetAt_of_postQuerySigner
+          cfg ext hT.honest_behavior hpost))
+    · refine Or.inr (Or.inr fun hepoch => ?_)
+      exact
+        E.noConflict_endpointJustifiedQuorum_root_eq_currentTarget_at_observer
+          cfg ext B hT hC hfit hanchor hboundary hcoh hHn1 hgateRaw Q hpost
+          hepoch
+
 end Execution
 
 end FastConfirmation.Spec

@@ -68,6 +68,30 @@ def EndpointJustificationOriginAt (anchor : Checkpoint Root)
   (E.store cfg ext w m).justified_checkpoint = anchor ∨
     E.HonestTargetBeforeEndpointAt cfg ext w m
 
+/-- **N6** of `docs/trunkB-two-case-discharge.md` §7: the three-way endpoint
+disjunction which replaces `HonestVotesSupportTarget` on Trunk B.
+
+The endpoint's justified checkpoint is either the trusted anchor (arm 1 —
+literally the origin interface's own anchor arm), or some honest member of its
+certifying quorum cast its target vote at or after the selected query slot
+(arm 2 — case α of §3, in exactly the `CausalHonestTargetAt` shape the two
+proviso-free post-query consumers
+`endpoint_justified_epoch_le_of_causal_honest_target_minimal`
+(`CausalCheckpointEpochBound.lean:87`) and
+`endpoint_justified_ancestor_of_causal_honest_target_minimal`
+(`CausalCheckpointCompatibility.lean:37`) consume), or it agrees with the
+query's current target whenever the two share an epoch (arm 3 — case β of §5).
+
+Arms 1 and 2 close the compatibility and epoch-bound rungs outright.  Only arm
+3 enters the pre-query SIR bracket, where it takes over the pinning duty that
+`NoConflictCertificatePinningProducerAt` used to discharge from the proviso. -/
+def EndpointOriginOrPinnedAt (anchor : Checkpoint Root) (q : ℕ)
+    (w : ValidatorIndex) (m : ℕ) (target : Checkpoint Root) : Prop :=
+  (E.store cfg ext w m).justified_checkpoint = anchor ∨
+    E.CausalHonestTargetAt cfg ext q w m ∨
+    ((E.store cfg ext w m).justified_checkpoint.epoch = target.epoch →
+      (E.store cfg ext w m).justified_checkpoint.root = target.root)
+
 /-- The part of an endpoint-justification origin which predates the selected
 query slot.  Same-slot endpoints necessarily enter this branch. -/
 def PreQueryTargetOriginAt (anchor : Checkpoint Root) (q : ℕ)
@@ -227,6 +251,72 @@ theorem selected_result_and_child_ancestor_of_endpoint_justified_minimal
         (hwalkM J.root hJM glc hglcM) (hwalkM J.root hJM c hcM)
         hglcC_M hcJ
     exact ⟨by simpa only [J] using hcJ, by simpa only [J] using hglcJ⟩
+
+/-- Arm 2 of `EndpointOriginOrPinnedAt` closes the compatibility rung on its
+own: the causal honest target witness is exactly what the proviso-free
+post-query consumer `endpoint_justified_ancestor_of_causal_honest_target_minimal`
+takes, and `glc ⩾c c ⩾c JC` then gives the result-level orientation.
+
+This is the high-epoch branch of
+`selected_result_and_child_ancestor_of_endpoint_justified_minimal` with its
+epoch side condition dropped: the witness is supplied by the endpoint quorum
+(`docs/trunkB-two-case-discharge.md` §3.1), not by an epoch comparison, so no
+pre-query bracket and no certificate pinning occurs here. -/
+theorem selected_result_and_child_ancestor_of_causalHonestTarget
+    (hA : SelectedMarginAssumptions cfg ext E)
+    (hwalkDomain : E.PostAnchorHonestVoteTargetWalkDomain cfg ext)
+    {q : ℕ} {glc c : Root}
+    {w : ValidatorIndex} (hw : w ∈ E.honest) {m : ℕ}
+    (hHm : E.WithinHorizon cfg m)
+    (hslotQM : E.slot_at cfg q ≤ E.slot_at cfg m)
+    (hcM : c ∈ (E.store cfg ext w m).block_roots)
+    (hglcC_M : is_ancestor (E.store cfg ext w m)
+      (get_node_for_root glc) (get_node_for_root c) = true)
+    (hglcKnown : ∀ w' ∈ E.honest, ∀ m' : ℕ,
+      E.slot_start cfg (E.slot_at cfg q) ≤ m' →
+      E.WithinHorizon cfg m' →
+      glc ∈ (E.store cfg ext w' m').block_roots)
+    (hIH : ∀ w' ∈ E.honest, ∀ m' : ℕ,
+      E.slot_start cfg (E.slot_at cfg q) ≤ m' →
+      E.slot_at cfg m' < E.slot_at cfg m →
+      E.WithinHorizon cfg m' →
+      is_ancestor (E.store cfg ext w' m')
+        (get_head cfg (E.store cfg ext w' m'))
+        (get_node_for_root glc) = true)
+    (hcausal : E.CausalHonestTargetAt cfg ext q w m)
+    (hnotCovered : is_ancestor (E.store cfg ext w m)
+      (get_node_for_root (E.store cfg ext w m).justified_checkpoint.root)
+      (get_node_for_root c) ≠ true) :
+    is_ancestor (E.store cfg ext w m)
+        (get_node_for_root c)
+        (get_node_for_root
+          (E.store cfg ext w m).justified_checkpoint.root) = true ∧
+      is_ancestor (E.store cfg ext w m)
+        (get_node_for_root glc)
+        (get_node_for_root
+          (E.store cfg ext w m).justified_checkpoint.root) = true := by
+  let J := (E.store cfg ext w m).justified_checkpoint
+  have hstartM : E.slot_start cfg (E.slot_at cfg q) ≤ m :=
+    E.query_slot_start_le_of_slot_ge_minimal cfg ext hA hslotQM
+  have hglcM : glc ∈ (E.store cfg ext w m).block_roots :=
+    hglcKnown w hw m hstartM hHm
+  obtain ⟨hwfM, hwalkM, hJM⟩ :=
+    E.store_domainK_of_selectedMarginDomain cfg ext hA.wellFormed
+      hA.externals_coherence hA.genesis hA.domain w hw m hHm
+  obtain ⟨i, hi, s, k, a, hqs, hsm, hsH, hvote, htarget⟩ := hcausal
+  have hcJ : is_ancestor (E.store cfg ext w m)
+      (get_node_for_root c) (get_node_for_root J.root) = true := by
+    apply E.endpoint_justified_ancestor_of_causal_honest_target_minimal
+      cfg ext hA hwalkDomain hw hHm hcM hglcC_M hglcKnown hIH
+      hi hqs hsm hsH hvote
+    · simpa only [J] using htarget
+    · simpa only [J] using hnotCovered
+  have hglcJ : is_ancestor (E.store cfg ext w m)
+      (get_node_for_root glc) (get_node_for_root J.root) = true :=
+    is_ancestor_trans hwfM
+      (hwalkM J.root hJM glc hglcM) (hwalkM J.root hJM c hcM)
+      hglcC_M hcJ
+  exact ⟨by simpa only [J] using hcJ, by simpa only [J] using hglcJ⟩
 
 /-- Causal-time version of checkpoint compatibility.
 

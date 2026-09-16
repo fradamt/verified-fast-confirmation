@@ -2,6 +2,7 @@ import FastConfirmation.Spec.Proof.SelectedPreQueryAnchor
 import FastConfirmation.Spec.Proof.SelectedA32Support
 import FastConfirmation.Spec.Proof.CausalCheckpointEpochBound
 import FastConfirmation.Spec.Proof.CheckpointGeometry
+import FastConfirmation.Spec.Proof.SelectedJustifiedCompatibility
 
 /-!
 # Historical, non-anchor pre-query SIR producers
@@ -760,6 +761,30 @@ def NoConflictCertificatePinningProducerAt
     c.epoch = (get_current_target cfg query.store).epoch →
       c.root = (get_current_target cfg query.store).root
 
+/-- Proviso-free replacement of the no-conflict certificate pinning
+interface, **N5**/**N6** of `docs/trunkB-two-case-discharge.md` §7.
+
+Both live gate arms of the call-site classification — `previousNoConflict`'s
+`will_no_conflicting_checkpoint_be_justified` and `currentCrossing`'s
+`will_current_target_be_justified` — feed the same raw helper inequality
+(§5.5), and that inequality alone already decides, for **every** endpoint,
+between the three arms of `Execution.EndpointOriginOrPinnedAt`: the trusted
+anchor, a post-query honest member of the endpoint quorum (case α), and
+same-epoch pinning against the query's current target (case β).
+
+The old interface asked instead for unconditional pinning of an *arbitrary*
+certified checkpoint, which is exactly the shape that could only be produced
+from `HonestVotesSupportTarget`; this one is discharged from the executable
+gate and the endpoint's own certificate. -/
+def EndpointOriginOrPinnedProducerAt
+    (anchor : Checkpoint Root) (q : ℕ)
+    (query : FastConfirmationStore Root) : Prop :=
+  (will_no_conflicting_checkpoint_be_justified cfg ext query.store = true ∨
+      will_current_target_be_justified cfg ext query.store = true) →
+    ∀ (w : ValidatorIndex) (m : ℕ),
+      E.EndpointOriginOrPinnedAt cfg ext anchor q w m
+        (get_current_target cfg query.store)
+
 /-- A retained current-epoch crossing plus its exact proviso feeds a
 certificate producer without any extra helper premise. -/
 theorem certifiedCurrentTarget_of_crossing
@@ -1288,6 +1313,45 @@ theorem selectedSIRThreeRegionBracket_of_preQueryVote_and_pinning
       cfg ext hA hwalkDomain hv hqH hTE hresultE hTresultE hw hslotQM hHm
         hi hs0 hsq hsH hvote₀ htargetT
     simpa only [result, store, J, T, hroot] using hTresultM
+
+/-- The epoch-start short circuit and the endpoint pin are the only two ways
+the bracket's final premise can be met, so they are packaged once here.
+
+This is the tail shared by arm 3 of `Execution.EndpointOriginOrPinnedAt` and
+by the `previousEpochStart` call site
+(`docs/trunkB-two-case-discharge.md` §7, N5/N6); the caller supplies the
+disjunction instead of rebuilding it from a certificate producer. -/
+theorem preQueryVoteSelectedSIRBracketAt_of_startOrPin
+    (hA : SelectedMarginAssumptions cfg ext E)
+    (hwalkDomain : E.PostAnchorHonestVoteTargetWalkDomain cfg ext)
+    {v : ValidatorIndex} (hv : v ∈ E.honest) {q : ℕ}
+    (hqH : E.WithinHorizon cfg q)
+    (query : FastConfirmationStore Root)
+    (hquery : query.store = E.store cfg ext v q)
+    (input : Root) (hinput : input ∈ query.store.block_roots)
+    (hinputEpoch :
+      get_block_epoch cfg query.store input =
+          get_current_store_epoch cfg query.store ∨
+        get_block_epoch cfg query.store input + 1 =
+          get_current_store_epoch cfg query.store)
+    (hbase : E.SafeFrom cfg ext input
+      (E.slot_start cfg (E.slot_at cfg q)))
+    (hstrict : find_latest_confirmed_descendant cfg ext query input ≠ input)
+    {w : ValidatorIndex} (hw : w ∈ E.honest) {m : ℕ}
+    (hslotQM : E.slot_at cfg q ≤ E.slot_at cfg m)
+    (hHm : E.WithinHorizon cfg m)
+    (hstartOrPin :
+      is_start_slot_at_epoch cfg (get_current_slot cfg query.store) = true ∨
+        ((E.store cfg ext w m).justified_checkpoint.epoch =
+            (get_current_target cfg query.store).epoch →
+          (E.store cfg ext w m).justified_checkpoint.root =
+            (get_current_target cfg query.store).root)) :
+    E.PreQueryVoteSelectedSIRBracketAt cfg ext q input
+      (find_latest_confirmed_descendant cfg ext query input) w m := by
+  intro i hi s k a hs0 hsq _hsm hsH hvote htarget
+  exact E.selectedSIRThreeRegionBracket_of_preQueryVote_and_pinning cfg ext
+    hA hwalkDomain hv hqH query hquery input hinput hinputEpoch hbase hstrict
+      hw hslotQM hHm hi hs0 hsq hsH hvote htarget hstartOrPin
 
 /-- Pointwise historical-vote producer with no ancestry premise.  The exact
 selector classification chooses one of three certificate-level paper
