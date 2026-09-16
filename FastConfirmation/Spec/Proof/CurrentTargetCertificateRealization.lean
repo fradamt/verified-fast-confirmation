@@ -27,9 +27,11 @@ The last step exposes one genuine finite-horizon seam.  A vote in the last
 slot of epoch `e` is first processable at the start of `e+1`.  Therefore the
 core constructor accepts the needed local delivery law.  The legacy synchrony
 adapter keeps that exact delivery second within the verified horizon, while
-the accepted finite-horizon path uses `HorizonVoteDeliveryLookahead`: vote
-creation remains inside the public horizon, and receipt may occur at the first
-second beyond its exclusive cutoff.
+the accepted finite-horizon path uses the boundary case of the single
+synchrony premise (`PaperSafetySynchrony.toDeliveryLookahead`, formerly the
+separate `HorizonVoteDeliveryLookahead` assumption): vote creation remains
+inside the public horizon, and receipt may occur at the first second beyond
+its exclusive cutoff.
 -/
 
 namespace FastConfirmation.Spec
@@ -981,7 +983,7 @@ theorem certifiedCurrentTarget_of_gate_and_stateSemantics
             (E.slot_start cfg (vj.slot + 1)) :=
           E.withinHorizon_mono cfg hdeliveryLe hnextH
         refine ⟨j, E.slot_start cfg (vj.slot + 1), a, false, ?_, ?_, ?_, ?_⟩
-        · exact hsync.attestation_delivery j vj.honest vj.slot vj.time a
+        · exact hsync.toHorizonScopedDelivery cfg ext j vj.honest vj.slot vj.time a
             vj.slot_within_horizon vj.time_within_horizon
             (by simpa only [a] using vj.vote) hdeliveryH j vj.honest
         · simp only [a, honest_attestation_attesting_indices,
@@ -1463,7 +1465,7 @@ sit at the first second beyond the public cutoff. -/
 theorem
     acceptedCurrentTargetA32GateRealization_of_currentEpochConcreteQuorum_withLookahead
     (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
-    (hdelivery : HorizonVoteDeliveryLookahead cfg E)
+    (hdelivery : PaperSafetySynchrony cfg ext E)
     (hphase : Phase0SourceCoherence cfg ext)
     {store : Store Root} (hstore : E.CausalStore cfg ext store)
     (htargetKnown : (get_current_target cfg store).root ∈ store.block_roots)

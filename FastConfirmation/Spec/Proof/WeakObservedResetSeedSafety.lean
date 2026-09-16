@@ -160,7 +160,7 @@ coherence contracts, the balance floor, the delivery lookahead) and `hfit`.
 Three surface duplications are gone: `hT` is *derived* from `hW.base`
 (`Execution.ScheduledPrefixTrajectoryAssumptions.of_selectedMarginAssumptions`),
 the standalone `hphase0`/`hboundaryPhase` are read off `hCbase`, and the
-`synchrony`/`static_validators`/`byzantine_bound` fields of the full 7-field
+`synchrony`/`static_validators`/`byzantine_bound` fields of the full 6-field
 call contract are read off `hW.base` when it is rebuilt internally.
 
 Observer-wise the premise surface is exactly `hW : WeakObserverAssumptions` —

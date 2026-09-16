@@ -435,7 +435,7 @@ private lemma equivocating_indices_at_three :
 private theorem witnessSynchrony :
     Synchrony witnessConfig witnessExternals witnessExecution := by
   constructor
-  · intro v hv s n a hs hn hvote hdelivery w hw
+  · intro v hv s n a hs hn hvote w hw
     rw [vote_some_cases] at hvote
     rcases hvote with h0 | h1 | h2 | h3
     · rcases h0 with ⟨rfl, rfl, rfl, rfl⟩
@@ -474,25 +474,6 @@ private theorem witnessSynchrony :
     interval_cases n <;>
       simp_all [equivocating_indices_at_zero, equivocating_indices_at_one,
         equivocating_indices_at_two, equivocating_indices_at_three]
-
-private theorem witnessHorizonVoteDeliveryLookahead :
-    HorizonVoteDeliveryLookahead witnessConfig witnessExecution := by
-  constructor
-  intro v hv s n a hs hn hvote w hw
-  rw [vote_some_cases] at hvote
-  rcases hvote with h0 | h1 | h2 | h3
-  · rcases h0 with ⟨rfl, rfl, rfl, rfl⟩
-    rw [slot_start_eq]
-    simp [witnessExecution, witnessSchedule]
-  · rcases h1 with ⟨rfl, rfl, rfl, rfl⟩
-    rw [slot_start_eq]
-    simp [witnessExecution, witnessSchedule]
-  · rcases h2 with ⟨rfl, rfl, rfl, rfl⟩
-    rw [slot_start_eq]
-    simp [witnessExecution, witnessSchedule]
-  · rcases h3 with ⟨rfl, rfl, rfl, rfl⟩
-    rw [slot_start_eq]
-    simp [witnessExecution, witnessSchedule]
 
 private lemma witness_valid_iff (state : BeaconState WitnessRoot)
     (a : Attestation WitnessRoot) :
@@ -874,7 +855,12 @@ theorem global_pinned_economics_strict_prefix_query_snapshot :
 
 /-- Every non-FFG execution and environment assumption used by this regression
 is a proved property of the finite model.  The final equations expose the
-pinned economic constants and the exact parent/candidate/sibling topology. -/
+pinned economic constants and the exact parent/candidate/sibling topology.
+
+The `Synchrony` conjunct is the single synchrony assumption: its delivery
+clause now carries the boundary case that used to appear here as a separate
+`HorizonVoteDeliveryLookahead` conjunct, so the environment asserted is the
+same one as before the merge. -/
 def PinnedEconomicsStrictPrefixWitnessEnvironment : Prop :=
     (∃ st block,
         witnessExecution.genesis_store =
@@ -885,7 +871,6 @@ def PinnedEconomicsStrictPrefixWitnessEnvironment : Prop :=
       1000 ∣ witnessConfig.slot_duration_ms ∧
       HonestBehavior witnessConfig witnessExternals witnessExecution ∧
       Synchrony witnessConfig witnessExternals witnessExecution ∧
-      HorizonVoteDeliveryLookahead witnessConfig witnessExecution ∧
       ExternalsCoherence witnessConfig witnessExternals witnessExecution ∧
       StaticValidatorSet witnessConfig witnessExecution ∧
       ByzantineBound witnessConfig witnessExecution ∧
@@ -910,7 +895,7 @@ theorem pinned_economics_strict_prefix_witness_environment :
     PinnedEconomicsStrictPrefixWitnessEnvironment := by
   refine ⟨⟨anchorState, anchorSignedBlock, rfl, rfl, by decide⟩,
     witnessWellFormedExecution, by decide, witnessHonestBehavior,
-    witnessSynchrony, witnessHorizonVoteDeliveryLookahead,
+    witnessSynchrony,
     witnessExternalsCoherence, witnessStaticValidatorSet,
     witnessByzantineBound, rfl, rfl, time_at_eq, slot_at_eq, slot_start_eq,
     schedule_node_independent, ?_, ?_, rfl, rfl, rfl⟩

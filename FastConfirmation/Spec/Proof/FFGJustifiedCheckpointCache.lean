@@ -376,7 +376,7 @@ theorem honestVoteTarget_cached_at_delivery
   have hscheduled :
       Event.attestation a false ∈ E.schedule w (deliveryPred + 1) := by
     rw [← hdeliveryEq]
-    exact hsyn.attestation_delivery v hv s n a
+    exact hsyn.toHorizonScopedDelivery cfg ext v hv s n a
       (E.slotWithinHorizon_of_le cfg (by rw [hn]) hHn)
       hHn hvote hHdeliver w hw
   obtain ⟨pre, suf, hscheduleEq⟩ := List.append_of_mem hscheduled

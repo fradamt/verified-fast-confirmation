@@ -349,7 +349,7 @@ noncomputable def observerCall_acceptedTargetGateProducerAt
     exact hsupportBoundary
   have hrealized :=
     E.scheduledEventPrefix_acceptedTargetA32GateRealization_withLookahead
-    cfg ext B hT hC.delivery_lookahead hC.static_validators
+    cfg ext B hT hC.synchrony hC.static_validators
       hC.byzantine_bound
       hC.phase0_source hC.phase0_boundary_source hanchor hboundary p hHn1
       hevidence hstate hval htab hendHP hanchorH hC.balance_floor

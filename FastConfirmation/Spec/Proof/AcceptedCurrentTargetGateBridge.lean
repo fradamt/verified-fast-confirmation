@@ -1499,7 +1499,7 @@ theorem
     scheduledEventPrefix_acceptedCurrentTargetA32GateRealization_withLookahead
     (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
     (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
-    (hdelivery : HorizonVoteDeliveryLookahead cfg E)
+    (hdelivery : PaperSafetySynchrony cfg ext E)
     (hsv : StaticValidatorSet cfg E)
     (hbb : ByzantineBound cfg E)
     (hphase : Phase0SourceCoherence cfg ext)
@@ -1726,7 +1726,7 @@ lookahead rather than demanding that the next epoch belong to the cutoff. -/
 theorem
     acceptedCurrentTargetA32GateRealization_of_oldEpochConcreteQuorum_withLookahead
     (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
-    (hdelivery : HorizonVoteDeliveryLookahead cfg E)
+    (hdelivery : PaperSafetySynchrony cfg ext E)
     {store : Store Root} (hstore : E.CausalStore cfg ext store)
     (htargetKnown : (get_current_target cfg store).root ∈ store.block_roots)
     (htargetOld : get_block_epoch cfg store
@@ -1899,7 +1899,7 @@ theorem
     scheduledEventPrefix_acceptedOldTargetA32GateRealization_withLookahead
     (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
     (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
-    (hdelivery : HorizonVoteDeliveryLookahead cfg E)
+    (hdelivery : PaperSafetySynchrony cfg ext E)
     (hsv : StaticValidatorSet cfg E)
     (hbb : ByzantineBound cfg E)
     (hphase : Phase0SourceCoherence cfg ext)
@@ -2079,7 +2079,7 @@ endpoint. -/
 theorem scheduledEventPrefix_acceptedTargetA32GateRealization_withLookahead
     (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
     (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
-    (hdelivery : HorizonVoteDeliveryLookahead cfg E)
+    (hdelivery : PaperSafetySynchrony cfg ext E)
     (hsv : StaticValidatorSet cfg E)
     (hbb : ByzantineBound cfg E)
     (hphase : Phase0SourceCoherence cfg ext)

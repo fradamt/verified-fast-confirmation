@@ -323,8 +323,14 @@ theorem completedPrefix_currentTargetEpochEnd_within
 
 The first five fields are direct protocol/model contracts.  `balance_floor`
 excludes the executable helper's artificial empty-active-set minimum-balance
-branch. `delivery_lookahead` is the paper-synchrony boundary closure for
-honest votes created inside the prefix.
+branch.
+
+**There is no `delivery_lookahead` field either.**  The paper-synchrony
+boundary closure for honest votes created inside the prefix used to be a
+separate assumption record here; it is now the boundary case of the single
+`synchrony` field above, read off by
+`PaperSafetySynchrony.toDeliveryLookahead`.  The record is a premise weaker
+than before in surface and exactly equal in content.
 
 **There is no `helper_provisos` field.**  It used to carry the literal
 normative proviso of the FCR specification, required at a crossing call to
@@ -349,7 +355,6 @@ structure AcceptedHistoricalA32CompletedPrefixCallAssumptions : Prop where
   phase0_boundary_source : Phase0BoundarySourceCoherence cfg ext
   balance_floor : cfg.effective_balance_increment ≤
     E.weight (E.currentTargetAnchorActive cfg)
-  delivery_lookahead : HorizonVoteDeliveryLookahead cfg E
 
 /-- At one actual boundary call, the completed scheduled prefix supplies the
 accepted current-target gate producer.  The producer remains conditional on
@@ -421,7 +426,7 @@ noncomputable def completedPrefix_acceptedTargetGateProducerAt
     exact hsupportBoundary
   have hrealized :=
     E.scheduledEventPrefix_acceptedTargetA32GateRealization_withLookahead
-    cfg ext B hT hC.delivery_lookahead hC.static_validators
+    cfg ext B hT hC.synchrony hC.static_validators
       hC.byzantine_bound
       hC.phase0_source hC.phase0_boundary_source hanchor hboundary p hHn1
       hevidence hstate hval htab hendHP hanchorH hC.balance_floor

@@ -95,7 +95,7 @@ assumption**, and it is deliberately as small as the stage could make it.
 (`WeakObserverStrictCallFilterInputs.lean`) builds every field from this
 module's own premise set, an obligation route and the outer safety fold's
 carried input safety `hbase`; its single (lazy) instantiation
-`…_of_observerCall_lazy` takes only the 7-field completed-prefix contract plus
+`…_of_observerCall_lazy` takes only the 6-field completed-prefix contract plus
 `Weak.ObserverPriorCallWriteBackSafe`.  It leaves no `hinputs` binder.  The
 four original fields, and where each is now proved:
 
@@ -193,7 +193,7 @@ The weak trajectory statements — the fold
 `Execution.weakConfirmed_safeFromFollowingSlot_of_weakFullRuleFold`, its
 unconditional corollary `…_of_acceptedWeakFullRuleFold`, and the two endpoint
 forms, i.e. the four audited weak statements — carry only the unchanged
-7-field `E.AcceptedHistoricalA32CompletedPrefixCallAssumptions`.  The
+6-field `E.AcceptedHistoricalA32CompletedPrefixCallAssumptions`.  The
 historical A3.2 crossing payload they need is manufactured *lazily* at the
 consuming call, from the fold's own output at strictly earlier seconds
 (`Weak.LazyCertAt` / `Weak.LazySupportAt`,

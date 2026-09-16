@@ -652,7 +652,7 @@ theorem Execution.vote_lands {E : Execution Root}
   -- the delivered event and its fold decomposition
   have hmem : Event.attestation a false ∈ E.schedule w (Nm1 + 1) := by
     rw [← hNeq]
-    exact hsyn.attestation_delivery v hv s n a
+    exact hsyn.toHorizonScopedDelivery cfg ext v hv s n a
       (E.slotWithinHorizon_of_le cfg (by rw [hn]) hHn) hHn hvote hHdeliver w hw
   obtain ⟨pre, suf, hl⟩ := List.append_of_mem hmem
   -- the prefix store extends and agrees with the ticked base

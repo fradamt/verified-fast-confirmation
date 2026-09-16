@@ -28,7 +28,7 @@ safety `hbase` — the same premise the strong actual-call theorem takes.
 
 The producer has exactly one instantiation,
 `observerStrictCallFilterInputsAt_of_observerCall_lazy`: it takes only the
-7-field `E.AcceptedHistoricalA32CompletedPrefixCallAssumptions` plus the
+6-field `E.AcceptedHistoricalA32CompletedPrefixCallAssumptions` plus the
 threaded fold output `Weak.ObserverPriorCallWriteBackSafe obs n`, and the
 trajectory fold takes it.  The **eager** instantiation, driven by the
 observer-side proviso record, was deleted together with the four closed
@@ -124,7 +124,7 @@ theorem observerStrictCallFilterInputsAt_of_route
 
 /-- **The lazy instantiation.**
 
-No proviso anywhere: the call contract is the unchanged 7-field
+No proviso anywhere: the call contract is the unchanged 6-field
 `E.AcceptedHistoricalA32CompletedPrefixCallAssumptions`, and the two payload
 obligations are discharged from the trajectory fold's own strictly earlier
 output `hprior`, plus — at the late current-epoch cell only — the endpoint
@@ -192,7 +192,7 @@ theorem observerStrictCallFilterInputsAt_of_observerCall_lazy
 
 `Weak.StrictSelectorAdvanceAt.observerCall_selectedStrictEdgeFilterSupplyAt`
 with its `hinputs` binder discharged by the producer above.  The historical
-A3.2 call contract is the unchanged 7-field completed-prefix contract
+A3.2 call contract is the unchanged 6-field completed-prefix contract
 `hCbase` together with `hprior` (a *derived* trajectory fact, supplied by the
 weak safety fold's own strengthened induction hypothesis at strictly earlier
 seconds).  No normative observer proviso is consumed anywhere below this. -/

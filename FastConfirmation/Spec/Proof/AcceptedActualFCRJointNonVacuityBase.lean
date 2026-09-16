@@ -761,7 +761,7 @@ theorem witness_slot15_delivery_at_second16 (w : ValidatorIndex) :
 theorem witnessSynchrony :
     Synchrony witnessConfig witnessExternals witnessExecution := by
   constructor
-  · intro v hv s n a hs hn hvote hdelivery w hw
+  · intro v hv s n a hs hn hvote w hw
     obtain ⟨hslt, hvmod, hn', ha⟩ := witness_vote_some_iff.mp hvote
     subst n
     subst a
@@ -793,15 +793,6 @@ theorem witnessSynchrony :
     rw [← witness_store_symmetric v w m]
     exact
       (witnessExecution.store_storeLE witnessConfig witnessExternals v hnm).2.2.1 hi
-
-theorem witnessHorizonVoteDeliveryLookahead :
-    HorizonVoteDeliveryLookahead witnessConfig witnessExecution := by
-  constructor
-  intro v hv s n a hs hn hvote w hw
-  obtain ⟨hslt, hvmod, hn', ha⟩ := witness_vote_some_iff.mp hvote
-  subst n
-  subst a
-  exact witness_vote_false_delivery hslt w
 
 theorem witnessScheduledPrefixTrajectoryAssumptions :
     witnessExecution.ScheduledPrefixTrajectoryAssumptions

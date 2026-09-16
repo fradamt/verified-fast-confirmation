@@ -12,7 +12,10 @@ accepted theorem bundle is assembled in
 
 Division of labor: `HonestBehavior` says *what* honest validators' messages
 look like (validator spec); `Synchrony` says *when* they arrive (the FCR
-intro's assumption); `ExternalsCoherence`/`StaticValidatorSet` pin the
+intro's assumption) — there is exactly **one** synchrony assumption, its
+delivery clause covering the horizon's boundary vote as well, so the former
+separate `HorizonVoteDeliveryLookahead` record is now the derived lemma
+`Synchrony.toDeliveryLookahead`; `ExternalsCoherence`/`StaticValidatorSet` pin the
 abstracted beacon-chain machinery; `ByzantineBound` is the
 `CONFIRMATION_BYZANTINE_THRESHOLD` + committee-weight-estimation soundness
 (the spec's own "high probability" 5‰ assumption, consumed, not derived).
@@ -125,12 +128,27 @@ second of slot `s+1` the earliest applicable processing time for a slot-`s`
 attestation. -/
 structure Synchrony (E : Execution Root) : Prop where
   /-- honest attestations of slot `s` are processed by every honest node at
-      the first second of slot `s+1`. -/
+      the first second of slot `s+1`.
+
+      The *vote* is horizon-scoped — its slot and its creation second both lie
+      inside the public verification horizon — but the mandated receipt second
+      is not gated: it is named in the (infinite) execution schedule. For a
+      vote cast in the horizon's last slot that receipt is the first second of
+      the following epoch, just past the exclusive cutoff, which no
+      receipt-gated phrasing can name; the cutoff cannot be asked to contain
+      its own next epoch boundary.
+
+      **This one field is exactly the old pair.** It is the conjunction of the
+      previous receipt-gated clause (recovered verbatim by
+      `Synchrony.toHorizonScopedDelivery`) and the previous separate boundary
+      record `HorizonVoteDeliveryLookahead` (recovered verbatim by
+      `Synchrony.toDeliveryLookahead`); `attestation_delivery_pair_iff` proves
+      that conjunction and this field are the same proposition, so merging the
+      two assumptions added no content. -/
   attestation_delivery : ∀ v ∈ E.honest, ∀ s n (a : Attestation Root),
     E.SlotWithinHorizon cfg s →
     E.WithinHorizon cfg n →
     E.vote v s = some (n, a) →
-    E.WithinHorizon cfg (E.slot_start cfg (s + 1)) →
     ∀ w ∈ E.honest,
       Event.attestation a false ∈ E.schedule w (E.slot_start cfg (s + 1))
   /-- blocks known to an honest node propagate by the **end of the same
@@ -176,11 +194,15 @@ The accepted next-slot argument needs honest-attestation delivery, block relay,
 and equivocation-evidence relay. It does not use the additional
 `latest_message_relay` field of the full `Synchrony` bundle. -/
 structure PaperSafetySynchrony (E : Execution Root) : Prop where
+  /-- Same single delivery clause as `Synchrony.attestation_delivery`: the
+      vote is horizon-scoped, its mandated receipt second is named in the
+      execution schedule without a horizon gate, and the field is exactly the
+      old receipt-gated clause together with the old
+      `HorizonVoteDeliveryLookahead`. -/
   attestation_delivery : ∀ v ∈ E.honest, ∀ s n (a : Attestation Root),
     E.SlotWithinHorizon cfg s →
     E.WithinHorizon cfg n →
     E.vote v s = some (n, a) →
-    E.WithinHorizon cfg (E.slot_start cfg (s + 1)) →
     ∀ w ∈ E.honest,
       Event.attestation a false ∈ E.schedule w (E.slot_start cfg (s + 1))
   block_relay : ∀ v ∈ E.honest, ∀ n r,
@@ -208,22 +230,99 @@ def Synchrony.toPaperSafetySynchrony
 instance : Coe (Synchrony cfg ext E) (PaperSafetySynchrony cfg ext E) where
   coe := Synchrony.toPaperSafetySynchrony cfg ext
 
-/-- One-slot operational closure for honest votes created inside the public
-verification horizon.
+/-! ### The delivery clause equals the old horizon-gated/boundary pair
 
-This is the boundary case of the paper's synchrony premise.  The vote's slot
-and creation time remain horizon-scoped; only its mandated receipt second may
-be the first second of the immediately following epoch, just beyond the
-exclusive public cutoff.  Keeping that receipt in the infinite execution
-schedule avoids the impossible requirement that the cutoff contain its own
-next epoch boundary. -/
-structure HorizonVoteDeliveryLookahead (E : Execution Root) : Prop where
-  attestation_delivery : ∀ v ∈ E.honest, ∀ s n (a : Attestation Root),
-    E.SlotWithinHorizon cfg s →
-    E.WithinHorizon cfg n →
-    E.vote v s = some (n, a) →
-    ∀ w ∈ E.honest,
-      Event.attestation a false ∈ E.schedule w (E.slot_start cfg (s + 1))
+Before the merge the model carried two synchrony assumptions: the
+receipt-gated `attestation_delivery` clause of `Synchrony` /
+`PaperSafetySynchrony`, and a separate one-field record
+`HorizonVoteDeliveryLookahead` whose sole purpose was the boundary case (a
+vote cast in the horizon's last slot has its mandated receipt second just past
+the exclusive cutoff, which the gated phrasing cannot name).  The single
+merged clause above is *literally* that pair: the theorem below proves the
+conjunction of the two old propositions is the same proposition as the new
+field, and the two `to…` lemmas recover each old form verbatim. -/
+
+omit [LinearOrder Root] [Inhabited Root] in
+/-- **No new assumption content.** The conjunction of the old receipt-gated
+delivery clause and the old `HorizonVoteDeliveryLookahead.attestation_delivery`
+is exactly the merged `attestation_delivery` field: the gated conjunct is the
+merged clause with a hypothesis discarded, and the boundary conjunct is the
+merged clause verbatim. -/
+theorem attestation_delivery_pair_iff (E : Execution Root) :
+    ((∀ v ∈ E.honest, ∀ s n (a : Attestation Root),
+        E.SlotWithinHorizon cfg s →
+        E.WithinHorizon cfg n →
+        E.vote v s = some (n, a) →
+        E.WithinHorizon cfg (E.slot_start cfg (s + 1)) →
+        ∀ w ∈ E.honest,
+          Event.attestation a false ∈
+            E.schedule w (E.slot_start cfg (s + 1))) ∧
+      (∀ v ∈ E.honest, ∀ s n (a : Attestation Root),
+        E.SlotWithinHorizon cfg s →
+        E.WithinHorizon cfg n →
+        E.vote v s = some (n, a) →
+        ∀ w ∈ E.honest,
+          Event.attestation a false ∈
+            E.schedule w (E.slot_start cfg (s + 1)))) ↔
+      (∀ v ∈ E.honest, ∀ s n (a : Attestation Root),
+        E.SlotWithinHorizon cfg s →
+        E.WithinHorizon cfg n →
+        E.vote v s = some (n, a) →
+        ∀ w ∈ E.honest,
+          Event.attestation a false ∈
+            E.schedule w (E.slot_start cfg (s + 1))) := by
+  constructor
+  · exact fun h => h.2
+  · intro h
+    exact ⟨fun v hv s n a hs hn hvote _ => h v hv s n a hs hn hvote, h⟩
+
+/-- The old receipt-gated delivery clause, derived from the merged one by
+discarding the receipt-side horizon hypothesis. -/
+theorem PaperSafetySynchrony.toHorizonScopedDelivery
+    {E : Execution Root} (h : PaperSafetySynchrony cfg ext E) :
+    ∀ v ∈ E.honest, ∀ s n (a : Attestation Root),
+      E.SlotWithinHorizon cfg s →
+      E.WithinHorizon cfg n →
+      E.vote v s = some (n, a) →
+      E.WithinHorizon cfg (E.slot_start cfg (s + 1)) →
+      ∀ w ∈ E.honest,
+        Event.attestation a false ∈ E.schedule w (E.slot_start cfg (s + 1)) :=
+  fun v hv s n a hs hn hvote _ => h.attestation_delivery v hv s n a hs hn hvote
+
+/-- The old `HorizonVoteDeliveryLookahead` boundary clause — now a special
+case of the merged delivery field rather than a separate assumption. -/
+theorem PaperSafetySynchrony.toDeliveryLookahead
+    {E : Execution Root} (h : PaperSafetySynchrony cfg ext E) :
+    ∀ v ∈ E.honest, ∀ s n (a : Attestation Root),
+      E.SlotWithinHorizon cfg s →
+      E.WithinHorizon cfg n →
+      E.vote v s = some (n, a) →
+      ∀ w ∈ E.honest,
+        Event.attestation a false ∈ E.schedule w (E.slot_start cfg (s + 1)) :=
+  h.attestation_delivery
+
+/-- The old receipt-gated delivery clause, from the full synchrony bundle. -/
+theorem Synchrony.toHorizonScopedDelivery
+    {E : Execution Root} (h : Synchrony cfg ext E) :
+    ∀ v ∈ E.honest, ∀ s n (a : Attestation Root),
+      E.SlotWithinHorizon cfg s →
+      E.WithinHorizon cfg n →
+      E.vote v s = some (n, a) →
+      E.WithinHorizon cfg (E.slot_start cfg (s + 1)) →
+      ∀ w ∈ E.honest,
+        Event.attestation a false ∈ E.schedule w (E.slot_start cfg (s + 1)) :=
+  (h.toPaperSafetySynchrony cfg ext).toHorizonScopedDelivery cfg ext
+
+/-- The old boundary clause, from the full synchrony bundle. -/
+theorem Synchrony.toDeliveryLookahead
+    {E : Execution Root} (h : Synchrony cfg ext E) :
+    ∀ v ∈ E.honest, ∀ s n (a : Attestation Root),
+      E.SlotWithinHorizon cfg s →
+      E.WithinHorizon cfg n →
+      E.vote v s = some (n, a) →
+      ∀ w ∈ E.honest,
+        Event.attestation a false ∈ E.schedule w (E.slot_start cfg (s + 1)) :=
+  h.attestation_delivery
 
 /-- Coherence facts about the abstract `Externals`, true of the real
 beacon-chain functions they stand for (registry/slot behavior of the state

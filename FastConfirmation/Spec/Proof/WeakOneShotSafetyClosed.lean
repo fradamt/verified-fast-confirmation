@@ -91,7 +91,7 @@ supply premise: the entire margin/filter chain (Stages G–S7) is discharged
 internally, uniformly over which of the four candidate-history branches the
 call actually took.
 
-The historical A3.2 call contract is the unchanged 7-field
+The historical A3.2 call contract is the unchanged 6-field
 `E.AcceptedHistoricalA32CompletedPrefixCallAssumptions` together with
 `hprior : Weak.ObserverPriorCallWriteBackSafe cfg ext E obs n` — a *derived*
 trajectory fact, discharged by the weak safety fold's own strengthened

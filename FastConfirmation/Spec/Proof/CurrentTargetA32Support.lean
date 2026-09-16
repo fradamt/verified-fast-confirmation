@@ -550,16 +550,17 @@ def ConcreteA32QuorumScheduledDelivery
             vote.slot vote.index i) false ∈
         E.schedule i (E.slot_start cfg (vote.slot + 1))
 
-/-- The explicit one-slot boundary lookahead supplies the scheduled copy for
-every quorum vote, including a last-slot vote whose receipt is just beyond the
-public cutoff. -/
+/-- The boundary case of the single synchrony premise supplies the scheduled
+copy for every quorum vote, including a last-slot vote whose receipt is just
+beyond the public cutoff.  `toDeliveryLookahead` is the derived form of what
+used to be the separate `HorizonVoteDeliveryLookahead` assumption. -/
 theorem ConcreteA32QuorumBefore.scheduledDelivery_of_lookahead
     {deadline : Slot} {target : Checkpoint Root}
     (Q : ConcreteA32QuorumBefore cfg ext E deadline target)
-    (hdelivery : HorizonVoteDeliveryLookahead cfg E) :
+    (hdelivery : PaperSafetySynchrony cfg ext E) :
     ConcreteA32QuorumScheduledDelivery cfg ext E Q := by
   intro i hi vote
-  exact hdelivery.attestation_delivery i vote.honest vote.slot vote.time
+  exact hdelivery.toDeliveryLookahead cfg ext i vote.honest vote.slot vote.time
     (honest_attestation cfg ext (E.store cfg ext i vote.time)
       vote.slot vote.index i)
     vote.slot_within_horizon vote.time_within_horizon
@@ -585,7 +586,7 @@ theorem ConcreteA32QuorumBefore.scheduledDelivery_of_synchrony
   have hdeliveryH : E.WithinHorizon cfg
       (E.slot_start cfg (vote.slot + 1)) :=
     E.withinHorizon_mono cfg hdeliveryLe hdeadline
-  exact hsync.attestation_delivery i vote.honest vote.slot vote.time
+  exact hsync.toHorizonScopedDelivery cfg ext i vote.honest vote.slot vote.time
     (honest_attestation cfg ext (E.store cfg ext i vote.time)
       vote.slot vote.index i)
     vote.slot_within_horizon vote.time_within_horizon
@@ -807,7 +808,7 @@ theorem concreteVote_receivedBy
   have hdeliveryH : E.WithinHorizon cfg delivery :=
     E.withinHorizon_mono cfg hdeliveryLe hHm
   refine ⟨delivery, hdeliveryLe, false, ?_⟩
-  exact hsync.attestation_delivery i vote.honest vote.slot vote.time
+  exact hsync.toHorizonScopedDelivery cfg ext i vote.honest vote.slot vote.time
     (honest_attestation cfg ext (E.store cfg ext i vote.time)
       vote.slot vote.index i) vote.slot_within_horizon
     vote.time_within_horizon vote.vote hdeliveryH w hw

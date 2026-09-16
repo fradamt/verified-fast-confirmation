@@ -183,25 +183,28 @@ variable (E : Execution Root)
 
 /-- The part of `E.AcceptedHistoricalA32CompletedPrefixCallAssumptions` that is
 **not** already contained in `SelectedMarginAssumptions`: the two phase-0
-source-coherence contracts, the anchor-active balance floor, and the horizon
-vote-delivery lookahead.
+source-coherence contracts and the anchor-active balance floor.
 
-The full 7-field call contract additionally carries `synchrony`,
+The full 6-field call contract additionally carries `synchrony`,
 `static_validators` and `byzantine_bound`, which are literally three fields of
 `SelectedMarginAssumptions` — a record every weak trajectory headline already
 carries inside `hW.base`.  Taking those three a second time would only
-double-count the premise *surface*, so the headlines take this 4-field
+double-count the premise *surface*, so the headlines take this 3-field
 supplement and rebuild the full contract internally with
-`toCompletedPrefixCallAssumptions` below. -/
+`toCompletedPrefixCallAssumptions` below.
+
+The supplement used to have a fourth field, `delivery_lookahead`.  It is gone:
+the boundary delivery case is now part of the single `synchrony` assumption,
+which the headlines already carry inside `hW.base`, so dropping it weakened
+the premise surface without moving any assumption content. -/
 structure AcceptedHistoricalA32CompletedPrefixCallSupplement : Prop where
   phase0_source : Phase0SourceCoherence cfg ext
   phase0_boundary_source : Phase0BoundarySourceCoherence cfg ext
   balance_floor : cfg.effective_balance_increment ≤
     E.weight (E.currentTargetAnchorActive cfg)
-  delivery_lookahead : HorizonVoteDeliveryLookahead cfg E
 
-/-- The 4-field supplement together with the selected-margin floor rebuilds the
-full 7-field completed-prefix call contract: the three shared fields are read
+/-- The 3-field supplement together with the selected-margin floor rebuilds the
+full 6-field completed-prefix call contract: the three shared fields are read
 off `hA`, so no caller has to supply them twice. -/
 def AcceptedHistoricalA32CompletedPrefixCallSupplement.toCompletedPrefixCallAssumptions
     (hC : E.AcceptedHistoricalA32CompletedPrefixCallSupplement cfg ext)
@@ -213,7 +216,6 @@ def AcceptedHistoricalA32CompletedPrefixCallSupplement.toCompletedPrefixCallAssu
   phase0_source := hC.phase0_source
   phase0_boundary_source := hC.phase0_boundary_source
   balance_floor := hC.balance_floor
-  delivery_lookahead := hC.delivery_lookahead
 
 /-- Local restatement of the Fold file's (private) genesis clock bound. -/
 private theorem weakFold_genesisTime_le
@@ -576,9 +578,9 @@ observer-honesty binder `hv : v ∈ E.honest` does not appear.
 Nothing on the surface is taken twice: `hT` is derived from `hW.base` by
 `ScheduledPrefixTrajectoryAssumptions.of_selectedMarginAssumptions`, the
 phase-0 coherence contracts come from `hCbase` alone, and the call contract is
-the 4-field `AcceptedHistoricalA32CompletedPrefixCallSupplement`, whose
+the 3-field `AcceptedHistoricalA32CompletedPrefixCallSupplement`, whose
 `synchrony`/`static_validators`/`byzantine_bound` counterparts in the full
-7-field record are read off `hW.base`
+6-field record are read off `hW.base`
 (`…CallSupplement.toCompletedPrefixCallAssumptions`).
 
 This theorem and its endpoint form `…_head_of_weakFullRuleFold_nextSlot` are
