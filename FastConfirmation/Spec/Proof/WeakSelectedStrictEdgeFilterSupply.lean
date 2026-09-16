@@ -80,10 +80,9 @@ relay, `ExternalsCoherence.committees_agree`, or
   `Weak.StrictSelectedResultMechanicalFacts.fcrStep_endpointFilterOutcome`
   and the top-level supplier
   `Weak.StrictSelectorAdvanceAt.observerCall_selectedStrictEdgeFilterSupplyAt`;
-* obligation X1's resolution, `Weak.SelectedHelperProvisosAt` +
-  `Weak.ObserverHistoricalA32CallAssumptions` (see the section below), which
-  since `docs/weak-final-wave.md` W6 is the price of the four *one-shot*
-  witnesses only, not of the weak trajectory statements.
+* obligation X1, which since `docs/weak-final-wave.md` W6 is discharged rather
+  than assumed: no observer-side proviso record survives (see the section
+  below).
 
 ## What is carried, and why
 
@@ -91,15 +90,14 @@ relay, `ExternalsCoherence.committees_agree`, or
 consumes and *this module* does not prove.  It is a **proof obligation, not an
 assumption**, and it is deliberately as small as the stage could make it.
 
-**Stage S8 has since discharged it in full, on both routes.**  The generic
-producer `Weak.observerStrictCallFilterInputsAt_of_route`
+**Stage S8 has since discharged it in full.**  The generic producer
+`Weak.observerStrictCallFilterInputsAt_of_route`
 (`WeakObserverStrictCallFilterInputs.lean`) builds every field from this
 module's own premise set, an obligation route and the outer safety fold's
-carried input safety `hbase`; its eager instantiation
-`…_of_observerCall` takes `Weak.ObserverHistoricalA32CallAssumptions` and its
-lazy one `…_of_observerCall_lazy` takes only the 7-field completed-prefix
-contract plus `Weak.ObserverPriorCallWriteBackSafe`.  Neither supplier leaves
-an `hinputs` binder.  The four original fields, and where each is now proved:
+carried input safety `hbase`; its single (lazy) instantiation
+`…_of_observerCall_lazy` takes only the 7-field completed-prefix contract plus
+`Weak.ObserverPriorCallWriteBackSafe`.  It leaves no `hinputs` binder.  The
+four original fields, and where each is now proved:
 
 1. `result_descends_endpoint_justified` and
 2. `endpoint_justified_epoch_le_result` — the observer twins of
@@ -172,96 +170,47 @@ namespace Weak
 
 variable {E : Execution Root}
 
-/-! ## The observer-side normative call contract (obligation X1)
+/-! ## Obligation X1, closed by deletion
 
 `Execution.AcceptedHistoricalA32CompletedPrefixCallAssumptions.helper_provisos`
 (`AcceptedHistoricalA32CallSupplier.lean`) is quantified as
 `∀ v ∈ E.honest, …` and indexed at the *strong* evaluator
 (`E.fcrStep` / `E.getLatestConfirmedTraceAt` /
-`SelectedHelperProvisosAt`, which itself names
+`Execution.SelectedHelperProvisosAt`, which itself names
 `find_latest_confirmed_descendant` and the strong
 `PreviousAcceptedEdge` / `CurrentTargetAcceptedEdge`).  A Byzantine observer
 is outside that quantifier, and its calls run the weak evaluator, so neither
 the quantifier nor the indexing fits.
 
-Resolution, per the wave design's target end state: the strong record is left
-untouched and a **parallel observer-quantified contract** is added on the weak
-side — `Weak.SelectedHelperProvisosAt` (the weak twin of the proviso record,
-over `Weak.findLatestSelectedTrace`) plus
-`Weak.ObserverHistoricalA32CallAssumptions`, which bundles the unchanged
-strong record with one observer-indexed field.  Nothing in the strong
-development changes.
+The wave design's provisional resolution was a **parallel observer-quantified
+contract** on the weak side — `Weak.SelectedHelperProvisosAt` plus
+`Weak.ObserverHistoricalA32CallAssumptions`, a record bundling the unchanged
+strong contract with one observer-indexed proviso field
+(`observer_helper_provisos`).  That is no longer needed and **all of it has
+been deleted**.
 
-**Scope, corrected by `docs/weak-final-wave.md` §5.4.**  This record is no
-longer "the observer-side normative call contract of the weak development".
-Since wave W6 the weak **trajectory** statements — the fold
+The weak trajectory statements — the fold
 `Execution.weakConfirmed_safeFromFollowingSlot_of_weakFullRuleFold`, its
-unconditional corollary
-`…_of_acceptedWeakFullRuleFold`, and the endpoint form — carry only the
-unchanged 7-field `E.AcceptedHistoricalA32CompletedPrefixCallAssumptions`.
-The historical A3.2 crossing payload they need is manufactured *lazily* at the
+unconditional corollary `…_of_acceptedWeakFullRuleFold`, and the two endpoint
+forms, i.e. the four audited weak statements — carry only the unchanged
+7-field `E.AcceptedHistoricalA32CompletedPrefixCallAssumptions`.  The
+historical A3.2 crossing payload they need is manufactured *lazily* at the
 consuming call, from the fold's own output at strictly earlier seconds
 (`Weak.LazyCertAt` / `Weak.LazySupportAt`,
 `WeakHistoricalA32OriginCall.lean`), which needs no proviso at all.
 
-What the record used to be the price of is the **four closed one-shot weak
-witnesses** of `WeakOneShotSafetyClosed.lean`.  A one-shot statement's only
-safety input is `hbase` at its own second, and there is no route from one
-second's `hbase` to `Weak.ObserverPriorCallWriteBackSafe`, the trajectory fact
-the lazy route discharges its closures with; the observer's non-honesty rules
-out borrowing the strong fold's honest-node output.  Those four therefore took
-the **eager** route (`Weak.observerLineageRoute_eager`,
-`WeakHistoricalA32Induction.lean`), the single remaining reader of
-`observer_helper_provisos`.  They have since been **retired**: they were
-subsumed by the fold headlines and had no consumers, so the record below now
-has no reader at all.
+The only declarations that ever read the observer proviso were the four closed
+*one-shot* weak witnesses of `WeakOneShotSafetyClosed.lean`, through the eager
+obligation route.  A one-shot statement's only safety input is `hbase` at its
+own second, and there is no route from one second's `hbase` to
+`Weak.ObserverPriorCallWriteBackSafe`, the trajectory fact the lazy route
+discharges its closures with; the observer's non-honesty rules out borrowing
+the strong fold's honest-node output.  Those four were subsumed by the fold
+headlines and had no consumers, so they were retired — and with them the eager
+route, the eager obligation families, the eager crossing constructors, and
+both proviso records.  Nothing observer-side carries a normative proviso any
+more. -/
 
-**It is floor-classified where it survives.**  `helper_provisos` is a
-normative FCR-spec contract (the literal helper provisos the specification
-attaches to a selector invocation), not a derived fact; extending it to cover
-the observer adds an assumption of exactly the same accepted-FFG-contract
-shape as the strong one it mirrors, and on the one-shot path it is carried,
-not discharged. -/
-
-/-- Weak twin of `SelectedHelperProvisosAt`, over the weak evaluator trace.
-Field-for-field identical to the strong record with
-`findLatestSelectedTrace` / `find_latest_confirmed_descendant` replaced by
-their `Weak.` counterparts.
-The strong `CurrentTargetAcceptedEdge`'s two conjuncts are inlined, because
-`WeakSelectedTrace.lean` (stage S2) landed no weak twin of that abbreviation.
-
-Like its strong twin the record carries exactly one proviso, the crossing
-tentative edge (`current_target`).  The dead retained-previous-loop-edge and
-`selected_previous_result_no_conflict` fields were removed; see
-`docs/proviso-discharge-map.md` §2.1 and
-`docs/trunkA-final-discharge.md` §5.1. -/
-structure SelectedHelperProvisosAt (E : Execution Root)
-    (v : ValidatorIndex) (q : ℕ)
-    (fcrStore : FastConfirmationStore Root)
-    (latestConfirmedRoot : Root) : Prop where
-  current_target : ∀ a c : Root,
-    (a, c) ∈ (Weak.findLatestSelectedTrace cfg ext fcrStore
-      latestConfirmedRoot).2.2 →
-    get_block_epoch cfg fcrStore.store a <
-      get_block_epoch cfg fcrStore.store c →
-    HonestVotesSupportTarget cfg E
-      (get_current_target cfg fcrStore.store) q
-
-/-- The accepted FFG call contract, extended to cover one fixed observer.
-
-`base` is `Execution.AcceptedHistoricalA32CompletedPrefixCallAssumptions`
-**verbatim and unchanged**; `observer_helper_provisos` is the single parallel
-field obligation X1 asks for.  Floor-classified together with `base`. -/
-structure ObserverHistoricalA32CallAssumptions (E : Execution Root)
-    (obs : ValidatorIndex) : Prop where
-  base : E.AcceptedHistoricalA32CompletedPrefixCallAssumptions cfg ext
-  observer_helper_provisos : ∀ n : ℕ,
-    E.IsFCRCallAt cfg ext obs n → E.WithinHorizon cfg (n + 1) →
-      getLatestSelectorGuard cfg (E.weakFcrStep cfg ext obs n)
-          (E.weakGetLatestConfirmedTraceAt cfg ext obs n).afterObserved →
-        Weak.SelectedHelperProvisosAt cfg ext E obs (n + 1)
-          (E.weakFcrStep cfg ext obs n)
-          (E.weakGetLatestConfirmedTraceAt cfg ext obs n).afterObserved
 
 /-! ## Actual-call endpoint order
 

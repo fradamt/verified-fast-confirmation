@@ -11,7 +11,7 @@ At the observer's crossing call this records only the **origin-call data**
 support obligations as the closures `Weak.LazyCertAt` / `Weak.LazySupportAt`,
 whose antecedents are threaded weak fold outputs at *strictly earlier* seconds.
 Nothing about the fold at the crossing second is proved here, and — this is the
-point of the wave — **no `Weak.SelectedHelperProvisosAt` is consumed**.
+point of the wave — **no normative proviso is consumed**.
 
 Every honesty-dependent step of the strong construction has an honesty-free
 observer substitute (`docs/weak-final-wave.md` §1):
@@ -158,11 +158,11 @@ theorem observerHistoricalA32OriginCallAt_of_crossing
 
 /-- **The lazy weak crossing lineage.**
 
-Same executable geometry as
-`Weak.selectedCurrentCrossingLineage_of_fixedSourceProducer`, but the payload's
-two obligations are the closures `Weak.LazyCertAt` / `Weak.LazySupportAt`
-instead of the eagerly realized certificate and quorum.  It consumes **no**
-`Weak.SelectedHelperProvisosAt`. -/
+Same executable geometry as the (now deleted) eager weak crossing
+constructor, but the payload's two obligations are the closures
+`Weak.LazyCertAt` / `Weak.LazySupportAt` instead of the eagerly realized
+certificate and quorum.  It consumes **no** normative proviso — it is the
+only weak crossing builder left. -/
 noncomputable def selectedCurrentCrossingLazyLineage
     (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
     (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)

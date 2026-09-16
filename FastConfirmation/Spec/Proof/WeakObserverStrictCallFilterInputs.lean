@@ -26,16 +26,13 @@ S7 supplier's own premise set, plus an obligation route
 (`Weak.ObserverLineageRouteAt`) and the outer safety fold's carried input
 safety `hbase` — the same premise the strong actual-call theorem takes.
 
-Since `docs/weak-final-wave.md` W5 the producer comes in two instantiations:
-
-* `observerStrictCallFilterInputsAt_of_observerCall` — the **eager** one,
-  driven by `Weak.ObserverHistoricalA32CallAssumptions`, byte-identical in
-  statement, which the four closed one-shot weak witnesses take;
-* `observerStrictCallFilterInputsAt_of_observerCall_lazy` — the **lazy** one,
-  which takes only the 7-field
-  `E.AcceptedHistoricalA32CompletedPrefixCallAssumptions` plus the threaded
-  fold output `Weak.ObserverPriorCallWriteBackSafe obs n`, and which the
-  trajectory fold takes.
+The producer has exactly one instantiation,
+`observerStrictCallFilterInputsAt_of_observerCall_lazy`: it takes only the
+7-field `E.AcceptedHistoricalA32CompletedPrefixCallAssumptions` plus the
+threaded fold output `Weak.ObserverPriorCallWriteBackSafe obs n`, and the
+trajectory fold takes it.  The **eager** instantiation, driven by the
+observer-side proviso record, was deleted together with the four closed
+one-shot weak witnesses that were its only consumers.
 -/
 
 namespace FastConfirmation.Spec
@@ -125,41 +122,6 @@ theorem observerStrictCallFilterInputsAt_of_route
       hinput hbase hselector hhistorical hw hmH hslotQM hcM hselectedC
       hselectedKnown hIH hnotCovered
 
-/-- **The eager instantiation**, byte-identical in statement to the pre-wave
-producer: the obligations are the constant eager pair, so all three
-eliminations are the identity. -/
-theorem observerStrictCallFilterInputsAt_of_observerCall
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
-    {obs : ValidatorIndex}
-    (hC : Weak.ObserverHistoricalA32CallAssumptions cfg ext E obs)
-    (hfit : EpochEndsFitUint64 cfg)
-    (hdomain : SelectedMarginDomain cfg ext E)
-    (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
-    (hboundary : Execution.TrustedAnchorBoundaryAligned (cfg := cfg)
-      (E := E) (anchor := B.anchor))
-    (hcoh : E.ObserverCoherence cfg ext obs) {n : Nat}
-    (hcall : E.IsFCRCallAt cfg ext obs n)
-    (hHn1 : E.WithinHorizon cfg (n + 1))
-    (hinput : (E.weakGetLatestConfirmedTraceAt cfg ext obs n).afterObserved ∈
-      (E.weakFcrStep cfg ext obs n).store.block_roots)
-    (hbase : E.SafeFrom cfg ext
-      (E.weakGetLatestConfirmedTraceAt cfg ext obs n).afterObserved
-      (E.slot_start cfg (E.slot_at cfg (n + 1))))
-    (hselector : Weak.StrictSelectorAdvanceAt cfg ext
-      (E.weakFcrStep cfg ext obs n)
-      (E.weakGetLatestConfirmedTraceAt cfg ext obs n)) :
-    Weak.ObserverStrictCallFilterInputsAt cfg ext E B obs n
-      (Weak.EagerCertFamily cfg ext E B) (Weak.EagerSuppFamily cfg ext E B) :=
-  Weak.observerStrictCallFilterInputsAt_of_route cfg ext B hT hC.base hfit
-    hdomain hanchor hboundary hcoh
-    (Weak.observerLineageRoute_eager cfg ext B hT hC hfit hanchor hboundary
-      hcoh)
-    (fun hc => hc)
-    (fun hsupp w hw m hmH hlate _ _ => hsupp w hw m hmH hlate)
-    (fun hsupp w hw m hmH hlate => hsupp w hw m hmH hlate)
-    hcall hHn1 hinput hbase hselector
-
 /-- **The lazy instantiation.**
 
 No proviso anywhere: the call contract is the unchanged 7-field
@@ -226,69 +188,14 @@ theorem observerStrictCallFilterInputsAt_of_observerCall_lazy
     intro k hk hkH hcallK
     exact E.engineInv_of_safeFrom cfg ext (hprior k (by omega) hkH hcallK)
 
-/-- **The weak strict-edge filter supplier, with no residual bundle.**
-
-`Weak.StrictSelectorAdvanceAt.observerCall_selectedStrictEdgeFilterSupplyAt`
-with its `hinputs` binder discharged by the producer above.  This is the form
-stage S9's closed theorem consumes: the only premises beyond stage S7's own
-are `hC` (obligation X1's floor-classified observer call contract) and `hbase`
-(the outer safety fold's carried input safety, exactly as in the strong
-actual-call theorem). -/
-noncomputable def
-    StrictSelectorAdvanceAt.observerCall_selectedStrictEdgeFilterSupplyAt_closed
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
-    (hsync : PaperSafetySynchrony cfg ext E)
-    (hstatic : StaticValidatorSet cfg E)
-    (hbyz : ByzantineBound cfg E)
-    (hdomain : SelectedMarginDomain cfg ext E)
-    (hji : JustificationInterface cfg ext E)
-    (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
-    (hboundary : Execution.TrustedAnchorBoundaryAligned (cfg := cfg)
-      (E := E) (anchor := B.anchor))
-    (hDelay : E.AcceptedRealizedFinalizationDelay cfg ext B)
-    (hphase0 : Phase0SourceCoherence cfg ext)
-    (hpaper : B.state.PaperA32Inclusion cfg ext)
-    (P : AcceptedEpochCheckpointProjection B.anchor
-      (E.AcceptedRoot cfg ext) B.state.C)
-    (V : B.state.ExactLinkValidity)
-    (hanchorExact : B.anchor = B.state.C B.anchor.root B.anchor.epoch)
-    {obs : ValidatorIndex}
-    (hC : Weak.ObserverHistoricalA32CallAssumptions cfg ext E obs)
-    (hfit : EpochEndsFitUint64 cfg)
-    (hcoh : E.ObserverCoherence cfg ext obs) {n : Nat}
-    (hn1H : E.WithinHorizon cfg (n + 1))
-    (hcall : E.IsFCRCallAt cfg ext obs n)
-    (hinput : (E.weakGetLatestConfirmedTraceAt cfg ext obs n).afterObserved ∈
-      (E.weakFcrStep cfg ext obs n).store.block_roots)
-    (hbase : E.SafeFrom cfg ext
-      (E.weakGetLatestConfirmedTraceAt cfg ext obs n).afterObserved
-      (E.slot_start cfg (E.slot_at cfg (n + 1))))
-    (horigin : Weak.OrderedCandidateInputOrigin cfg ext
-      (E.weakFcrStep cfg ext obs n)
-      (E.weakGetLatestConfirmedTraceAt cfg ext obs n))
-    (hselector : Weak.StrictSelectorAdvanceAt cfg ext
-      (E.weakFcrStep cfg ext obs n)
-      (E.weakGetLatestConfirmedTraceAt cfg ext obs n)) :
-    Weak.SelectedStrictEdgeFilterSupplyAt cfg ext E
-      (E.weakGetLatestConfirmedTraceAt cfg ext obs n).result
-      (E.weakGetLatestConfirmedTraceAt cfg ext obs n).afterObserved
-      obs (n + 1) (E.weakFcrStep cfg ext obs n) :=
-  Weak.StrictSelectorAdvanceAt.observerCall_selectedStrictEdgeFilterSupplyAt
-    cfg ext B hT hsync hstatic hbyz hdomain hji hanchor hboundary hDelay
-    hphase0 hpaper P V hanchorExact hcoh hn1H hcall hinput horigin hselector
-    (Weak.observerStrictCallFilterInputsAt_of_observerCall cfg ext B hT hC
-      hfit hdomain hanchor hboundary hcoh hcall hn1H hinput hbase hselector)
-
 /-- **The lazy weak strict-edge filter supplier.**
 
-Same conclusion as
-`StrictSelectorAdvanceAt.observerCall_selectedStrictEdgeFilterSupplyAt_closed`,
-with `hC : Weak.ObserverHistoricalA32CallAssumptions` replaced by the strictly
-weaker pair `hCbase` (the unchanged 7-field completed-prefix contract) and
-`hprior` (a *derived* trajectory fact, supplied by the weak safety fold's own
-strengthened induction hypothesis at strictly earlier seconds).  No
-`observer_helper_provisos` is consumed anywhere below this. -/
+`Weak.StrictSelectorAdvanceAt.observerCall_selectedStrictEdgeFilterSupplyAt`
+with its `hinputs` binder discharged by the producer above.  The historical
+A3.2 call contract is the unchanged 7-field completed-prefix contract
+`hCbase` together with `hprior` (a *derived* trajectory fact, supplied by the
+weak safety fold's own strengthened induction hypothesis at strictly earlier
+seconds).  No normative observer proviso is consumed anywhere below this. -/
 noncomputable def
     StrictSelectorAdvanceAt.observerCall_selectedStrictEdgeFilterSupplyAt_lazy
     (B : ExactPrefixAcceptedFFGSemantics cfg ext E)

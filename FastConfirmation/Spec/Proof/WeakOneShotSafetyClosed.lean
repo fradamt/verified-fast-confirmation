@@ -61,7 +61,7 @@ strictly below `n`.  A *one-shot* statement cannot
 (`docs/weak-final-wave.md` §5.2), which is why the one-shot closed witnesses
 that used to live here — `weak_safeFrom_observerCall_closed`,
 `weak_confirmed_head_closed` and their two `_from_finalized` forms — carried
-the eager observer proviso `observer_helper_provisos` instead.  Those four
+the eager observer proviso (`observer_helper_provisos`) instead.  Those four
 were subsumed by the fold headlines, had no consumers, and existed only as
 carriers of that proviso; they were retired together with the proviso
 machinery itself.  The audited statements are now the trajectory headlines

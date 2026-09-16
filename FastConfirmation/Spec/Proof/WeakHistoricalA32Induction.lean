@@ -47,11 +47,12 @@ evaluator-free and is reused verbatim.
   `E.genesis_store` alone.  It is imported and applied verbatim in the
   genesis base below; no weak twin exists or is needed.
 * No new assumption record is introduced.  The strong development's abstract
-  `Execution.AcceptedHistoricalA32CallInterfaces` is replaced by the already
-  landed `Weak.ObserverHistoricalA32CallAssumptions`
-  (`WeakSelectedStrictEdgeFilterSupply.lean`): its `observer_helper_provisos`
-  field supplies the normative provisos, and its unchanged strong `base`
-  drives `Execution.observerCall_acceptedTargetGateProducerAt`
+  `Execution.AcceptedHistoricalA32CallInterfaces` is replaced by the
+  obligation route `Weak.ObserverLineageRouteAt`
+  (`WeakHistoricalA32OneStep.lean`), whose only instantiation is the lazy one
+  below: it needs no normative proviso at all, and the unchanged 7-field
+  `E.AcceptedHistoricalA32CompletedPrefixCallAssumptions` drives
+  `Execution.observerCall_acceptedTargetGateProducerAt`
   (`WeakHistoricalA32CallSupplier.lean`) for the gate producer.  The
   per-call interface below is therefore *derived*, not assumed.
 * The whole payload side — `Execution.AcceptedHistoricalA32LineageAt`,
@@ -61,9 +62,8 @@ evaluator-free and is reused verbatim.
 
 **The quantifier change.**  The strong `…_invariant` and headline forms
 quantify over `∀ v ∈ E.honest`.  On the weak side there is exactly one node
-whose contract is available — the fixed observer `obs` carried by
-`Weak.ObserverHistoricalA32CallAssumptions` — so both are restated at that
-single `obs` rather than under an honest quantifier.
+whose call trajectory is available — the fixed observer `obs` — so both are
+restated at that single `obs` rather than under an honest quantifier.
 
 **One private clone.**
 `Execution.AcceptedHistoricalA32LineageAt.payloadAtExecutionStore` and
@@ -107,57 +107,11 @@ structure ObserverHistoricalA32CurrentLineageAt (E : Execution Root)
 
 variable {E : Execution Root}
 
-/-- **The eager route.**
-
-`Cert`/`Supp` are the constant eager obligations, and the crossing builder is
-the unchanged `Weak.selectedCurrentCrossingLineage_of_fixedSourceProducer`
-driven by the observer-quantified normative contract
-`Weak.ObserverHistoricalA32CallAssumptions.observer_helper_provisos`.
-
-This is the route the four closed one-shot weak witnesses take, which is why
-their statements are unchanged by the wave (`docs/weak-final-wave.md` §5). -/
-theorem observerLineageRoute_eager
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
-    {obs : ValidatorIndex}
-    (hC : Weak.ObserverHistoricalA32CallAssumptions cfg ext E obs)
-    (hfit : EpochEndsFitUint64 cfg)
-    (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
-    (hboundary : Execution.TrustedAnchorBoundaryAligned (cfg := cfg)
-      (E := E) (anchor := B.anchor))
-    (hcoh : E.ObserverCoherence cfg ext obs) :
-    Weak.ObserverLineageRouteAt cfg ext E B obs
-      (Weak.EagerCertFamily cfg ext E B) (Weak.EagerSuppFamily cfg ext E B) :=
-  { anchor_cert := fun _ => ⟨CertifiedJustified.anchor⟩
-    anchor_supp := fun _ _ _ h _ _ _ _ _ => Or.inl h
-    mono := fun h => h
-    supp_transport := fun hcheckpoint hsource hsupp w hw m hmH hlate =>
-      Execution.AcceptedHistoricalA32GatePayloadCoreAt.quorumDisjunction_transport
-        cfg ext hcheckpoint hsource (hsupp w hw m hmH hlate)
-    crossing := by
-      intro k hcall hHk1 hresultCurrent a c hinputKnown hselector hedge
-      have hG := Weak.weakFcrStep_historicalA32QueryGeometryAt cfg ext B hT
-        hanchor hboundary hcoh hHk1
-      have htargetProducer :=
-        Execution.observerCall_acceptedTargetGateProducerAt cfg ext B hT
-          hC.base hfit hanchor hboundary hcoh hcall hHk1
-      have hfixedRaw :=
-        Weak.acceptedFixedSourceProducerAt_of_selectedCurrentCrossing cfg ext B
-          hT hC.base.phase0_source hC.base.phase0_boundary_source hanchor
-          hboundary hcoh hHk1 hinputKnown hselector hresultCurrent hedge
-          htargetProducer
-      exact ⟨Weak.selectedCurrentCrossingLineage_of_fixedSourceProducer
-        cfg ext B hG.causal hG.parent hG.walk hG.head_known hG.current_walk
-        (E.weakGetLatestConfirmedTraceAt cfg ext obs k) hinputKnown hselector
-        hresultCurrent
-        (hC.observer_helper_provisos k hcall hHk1 hselector) hedge
-        hfixedRaw⟩ }
-
 /-- **The lazy route.**
 
 `Cert`/`Supp` are `Weak.LazyCertAt`/`Weak.LazySupportAt` at the write-back
 bound, and the crossing builder is `Weak.selectedCurrentCrossingLazyLineage`,
-which consumes **no** `Weak.SelectedHelperProvisosAt`.  Only the unchanged
+which consumes **no** normative proviso.  Only the unchanged
 7-field `E.AcceptedHistoricalA32CompletedPrefixCallAssumptions` is required. -/
 theorem observerLineageRoute_lazy
     (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
@@ -443,10 +397,10 @@ noncomputable def observerHistoricalA32CurrentLineageAt_all
           simpa only [hconfirmedOut] using hroute.mono hlineage
 
 /-- Weak twin of
-`Execution.acceptedHistoricalA32CurrentLineage_invariant`, restated at the
-single fixed observer carried by `Weak.ObserverHistoricalA32CallAssumptions`
-(the strong form's `∀ v ∈ E.honest` quantifier has no weak counterpart: there
-is exactly one node whose weak call contract is available).
+`Execution.acceptedHistoricalA32CurrentLineage_invariant`, restated at a
+single fixed observer (the strong form's `∀ v ∈ E.honest` quantifier has no
+weak counterpart: there is exactly one node whose weak call trajectory is
+available).
 
 No new assumption is taken beyond the route: `hroute` supplies the crossing
 builder and the two anchor discharges, and every top-level weak statement
@@ -479,10 +433,9 @@ Rather than routing through the `n + 1` write-back (which would force an
 the one-call transformer directly to the induction's `n`-th retained facts;
 the conclusion is therefore literally the residual field.
 
-`hcall` is unavoidable and is the only extra binder: the normative provisos
-of `Weak.ObserverHistoricalA32CallAssumptions.observer_helper_provisos` and
-the completed-prefix gate producer are both contracted at actual weak FCR
-calls only. -/
+`hcall` is unavoidable and is the only extra binder: the route's crossing
+builder and the completed-prefix gate producer are both contracted at actual
+weak FCR calls only. -/
 theorem observerCall_currentLineage
     (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
     (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)

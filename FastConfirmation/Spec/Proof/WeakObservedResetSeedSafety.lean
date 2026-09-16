@@ -133,11 +133,11 @@ broadcast certificate.
 `Execution.weakConfirmed_safeFromFollowingSlot_of_weakFullRuleFold` with its
 last premise discharged by `Weak.observedResetSeedSafety_of_acceptedDynamics`.
 Since `docs/weak-final-wave.md` W6 the call contract is the **unchanged**
-7-field `E.AcceptedHistoricalA32CompletedPrefixCallAssumptions`, not
-`Weak.ObserverHistoricalA32CallAssumptions`: the observer proviso
-`observer_helper_provisos` is gone from this premise list, because the
-historical A3.2 crossing payload is now manufactured lazily at the consuming
-call from the fold's own strictly earlier output.
+7-field `E.AcceptedHistoricalA32CompletedPrefixCallAssumptions`: no
+observer-side normative proviso appears in this premise list, because the
+historical A3.2 crossing payload is manufactured lazily at the consuming call
+from the fold's own strictly earlier output.  The proviso machinery has since
+been deleted outright.
 
 The premise list is otherwise identical to the conditional fold's minus
 `hOR : Weak.ObservedResetSeedSafety`; the obligation's own inputs (`hW.base`,

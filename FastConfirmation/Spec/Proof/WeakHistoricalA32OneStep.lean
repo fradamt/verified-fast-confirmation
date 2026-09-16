@@ -26,8 +26,10 @@ identical.
   `Weak.weakFcrStep_historicalA32QueryGeometryAt … hcoh`
   (`WeakHistoricalA32Geometry.lean`), where
   `hcoh : E.ObserverCoherence cfg ext obs` replaces the honest-node binder;
-* the three step constructors → `Weak.selectedCurrentNoCrossingLineage`,
-  `Weak.selectedCurrentCrossingLineage_of_fixedSourceProducer` and
+* the three step constructors → `Weak.selectedCurrentNoCrossingLineage`
+  (`WeakHistoricalA32Step.lean`),
+  `Weak.selectedCurrentCrossingLazyLineage`
+  (`WeakHistoricalA32LazyCrossing.lean`) and
   `Weak.acceptedFixedSourceProducerAt_of_selectedCurrentCrossing`
   (`WeakHistoricalA32Step.lean`);
 * `Execution.confirmed_current_at_previousStore_of_query` →
@@ -279,8 +281,7 @@ noncomputable def getLatestConfirmedTraceAt_currentLineage_step_core
 
 The crossing branch records origin-call data and the two closures of
 `Weak.LazyCertAt` / `Weak.LazySupportAt` instead of a realized certificate and
-quorum, so **no `Weak.SelectedHelperProvisosAt` is consumed anywhere in this
-theorem**.  The gate producer stays: it is the action/schedule bridge, not a
+quorum, so **no normative proviso is consumed anywhere in this theorem**.  The gate producer stays: it is the action/schedule bridge, not a
 proviso, and the closures capture it. -/
 noncomputable def getLatestConfirmedTraceAt_currentLineage_step_lazy
     (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
@@ -369,23 +370,18 @@ noncomputable def getLatestConfirmedTraceAt_currentLineage_step_noCrossing
 /-! ## The write-back route
 
 `docs/weak-final-wave.md` §5.3.  Everything between the weak one-call
-transformer and the four closed one-shot witnesses is made
-`(Cert, Supp)`-polymorphic and instantiated twice:
-
-* **eagerly** — `Cert N`/`Supp N` are the constant eager obligations and the
-  crossing builder is the unchanged
-  `Weak.selectedCurrentCrossingLineage_of_fixedSourceProducer`, driven by
-  `Weak.ObserverHistoricalA32CallAssumptions.observer_helper_provisos`.  This
-  keeps the four frozen witness statements byte-identical;
-* **lazily** — `Cert N`/`Supp N` are `Weak.LazyCertAt`/`Weak.LazySupportAt` at
-  bound `N` and the crossing builder is
-  `Weak.selectedCurrentCrossingLazyLineage`, which consumes no proviso.  This is
-  what lets the trajectory fold drop to `hC.base`.
+transformer and the weak trajectory headlines is `(Cert, Supp)`-polymorphic.
+The wave carried two instantiations; only the **lazy** one survives: `Cert N`/
+`Supp N` are `Weak.LazyCertAt`/`Weak.LazySupportAt` at bound `N` and the
+crossing builder is `Weak.selectedCurrentCrossingLazyLineage`, which consumes
+no proviso.  That is what lets the trajectory fold carry only the unchanged
+7-field completed-prefix contract.  The **eager** instantiation — constant
+obligations and a proviso-driven crossing builder — existed solely to keep the
+four closed one-shot witnesses' statements frozen, and went with them.
 
 The obligations are *families* indexed by the write-back second, because the
 lazy closures are: the induction's extension step widens the bound, which is a
-weakening (`Weak.observerHistoricalA32LazyLineage_mono`) and is `id` in the
-eager case. -/
+weakening (`Weak.observerHistoricalA32LazyLineage_mono`). -/
 
 /-- The four facts the weak write-back induction needs about an obligation
 family: the two anchor discharges, the extension-step widening, the same-epoch
@@ -422,19 +418,6 @@ structure ObserverLineageRouteAt (E : Execution Root)
         (E.weakGetLatestConfirmedTraceAt cfg ext obs n).result
         (get_current_store_epoch cfg (E.weakFcrStep cfg ext obs n).store)
         (Cert (n + 1)) (Supp (n + 1)))
-
-/-- The eager obligation family: the constant pair the pre-wave weak trunk
-carries. -/
-abbrev EagerCertFamily (E : Execution Root)
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E) :
-    ℕ → Checkpoint Root → Prop :=
-  fun _ => E.AcceptedHistoricalA32EagerCert cfg ext B
-
-/-- The eager support family. -/
-abbrev EagerSuppFamily (E : Execution Root)
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E) :
-    ℕ → Root → Epoch → Prop :=
-  fun _ => E.AcceptedHistoricalA32EagerSupp cfg ext B
 
 /-- The lazy certification family at the observer. -/
 abbrev LazyCertFamily (E : Execution Root)

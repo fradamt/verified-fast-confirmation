@@ -20,9 +20,10 @@ certification and support obligations as the closures
 threaded fold outputs.  Nothing about the fold at the crossing second is
 proved here.
 
-`Weak.SelectedHelperProvisosAt` is untouched: the weak trunk keeps using the
-eager constructors through the unchanged
-`Execution.selectedCurrentCrossingLineage_of_fixedSourceProducer`.
+The strong eager constructor
+`Execution.selectedCurrentCrossingLineage_of_fixedSourceProducer` is untouched
+and keeps its `Execution.SelectedHelperProvisosAt` premise; the weak trunk has
+no eager constructor any more.
 -/
 
 namespace FastConfirmation.Spec

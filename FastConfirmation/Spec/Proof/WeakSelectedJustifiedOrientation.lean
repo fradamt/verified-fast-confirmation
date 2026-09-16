@@ -331,9 +331,9 @@ step, and the gate-driven endpoint origin/pinning producer landed in
 `WeakHistoricalA32CallSupplier.lean`.
 
 Since **N5** of `docs/trunkB-two-case-discharge.md` §7 the Trunk-B route needs
-neither `Weak.ObserverHistoricalA32CallAssumptions.observer_helper_provisos`
-nor the accepted live current-target gate producer: both gate arms of the
-call site are served by `Execution.EndpointOriginOrPinnedProducerAt`. -/
+neither an observer-side normative proviso nor the accepted live
+current-target gate producer: both gate arms of the call site are served by
+`Execution.EndpointOriginOrPinnedProducerAt`. -/
 private theorem observerCall_orientation_inputs
     (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
     (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)

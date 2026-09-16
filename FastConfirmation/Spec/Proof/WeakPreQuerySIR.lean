@@ -280,8 +280,7 @@ theorem findLatestSelectedTrace_crossing_currentTargetGate
 
 Two shape changes, both forced by the weak rule rather than by the observer:
 the strong `CurrentTargetAcceptedEdge` abbreviation has no weak twin (stage
-S2 landed none), so its two conjuncts are inlined exactly as
-`Weak.SelectedHelperProvisosAt` already inlines them; and the executable
+S2 landed none), so its two conjuncts are inlined; and the executable
 gates are the weak-rule booleans
 `Weak.will_current_target_be_justified` /
 `Weak.will_no_conflicting_checkpoint_be_justified` (the latter taking the

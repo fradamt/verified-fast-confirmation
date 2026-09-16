@@ -55,7 +55,8 @@ content is:
   the configuration the live proviso sites do *not* enjoy: there the `SafeFrom`
   root is a previous-epoch block and the current-epoch boundary block sits
   strictly above it.  So this constructor does not by itself discharge
-  `observer_helper_provisos`; it pins down precisely what would.
+  `Execution.SelectedHelperProvisosAt.current_target`; it pins down precisely
+  what would.
 * the voter's store must know the boundary walk from its head and from `b`, and
   must agree with the query store on the blocks both know (`hvoterHeadWalk`,
   `hvoterWalk`, `hagree`).  These are the standard cross-store transport
@@ -262,8 +263,8 @@ current-target-epoch slot at or after `slot_at q` carries the query store's
 
 The hypothesis list is deliberately long and explicit: per
 `docs/proviso-discharge-map.md` §5.1 the *current-epoch* placement of `b` is
-exactly what the live `observer_helper_provisos` sites cannot supply (there the
-safe root is one epoch too low), so this lemma makes the residual gap precise
+exactly what the live `helper_provisos` sites cannot supply (there the safe
+root is one epoch too low), so this lemma makes the residual gap precise
 rather than hiding it.  All remaining hypotheses are ordinary derivable store
 facts.
 

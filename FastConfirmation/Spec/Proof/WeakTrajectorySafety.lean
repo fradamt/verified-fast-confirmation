@@ -102,11 +102,10 @@ historical A3.2 replay at a call second `n`
 eta-closed over *all* call seconds in
 `Weak.observerHistoricalA32CurrentLineage_invariant`) demands the call-site
 data at **every earlier call second `k < n`**, never at a second beyond `n`.
-Any discharge of `Weak.ObserverHistoricalA32CallAssumptions.
-observer_helper_provisos` from the trajectory invariant therefore needs the
-invariant retained at those earlier seconds; the plain single-second motive
-drops it.  Nothing downstream changes: no signature moves, and the
-strengthening is well-founded exactly as the plain induction is.
+Any discharge of the historical A3.2 crossing payload from the trajectory
+invariant therefore needs the invariant retained at those earlier seconds; the
+plain single-second motive drops it.  Nothing downstream changes: no signature
+moves, and the strengthening is well-founded exactly as the plain induction is.
 -/
 
 namespace FastConfirmation.Spec
@@ -446,9 +445,9 @@ only.  It is **not** enough for the historical A3.2 lineage: the interface
 `Weak.observerHistoricalA32CallInterfaceAt_of_callAssumptions` is eta-closed
 over all call seconds in `Weak.observerHistoricalA32CurrentLineage_invariant`,
 and the write-back recursion `observerHistoricalA32CurrentLineageAt_all`
-replays **every earlier call second `k < n`**.  A discharge of
-`observer_helper_provisos` from the trajectory invariant therefore needs an
-input-safety witness at each of those earlier seconds, which the plain
+replays **every earlier call second `k < n`**.  A discharge of the crossing
+payload from the trajectory invariant therefore needs an input-safety witness
+at each of those earlier seconds, which the plain
 single-second motive does not retain.  The demand is never at a second beyond
 `n`, so the strengthened induction is well-founded exactly as the plain one is;
 this lemma simply keeps the witness around.
