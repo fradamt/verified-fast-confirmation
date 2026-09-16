@@ -7,10 +7,17 @@ weak selector's result is `SafeFrom`. This note takes it from one call to the
 **whole trajectory**: for every in-horizon second `n`, the root the observer's
 weak FCR holds at `n` is safe.
 
-Stage 1 of that effort has landed in
-[`FastConfirmation/Spec/Proof/WeakTrajectorySafety.lean`](../FastConfirmation/Spec/Proof/WeakTrajectorySafety.lean).
-Everything below is either proved there, proved elsewhere and consumed there,
-or explicitly labelled open.
+Stages 1–6 of that effort have landed, across
+[`WeakTrajectorySafety.lean`](../FastConfirmation/Spec/Proof/WeakTrajectorySafety.lean),
+[`WeakObservedRestartAdoption.lean`](../FastConfirmation/Spec/Proof/WeakObservedRestartAdoption.lean),
+[`WeakObservedRestartDynamicSafety.lean`](../FastConfirmation/Spec/Proof/WeakObservedRestartDynamicSafety.lean)
+and
+[`WeakObservedResetSeedSafety.lean`](../FastConfirmation/Spec/Proof/WeakObservedResetSeedSafety.lean).
+**The full-rule fold is unconditional**: the trajectory theorem and its
+endpoint form now carry no residual obligation, only the ratified floor. The
+one remaining stage is audit registration (stage 7), which is a human-review
+gate rather than a proof. Everything below is either proved in those modules,
+proved elsewhere and consumed there, or explicitly labelled open.
 
 ## The gap this closes
 
@@ -166,12 +173,14 @@ classifier rather than assumed. The scenario predicate disappears.
 
 * `hinput`: `Weak.weakFcrStep_observed_known` — rule delta 5's `banked_known`,
   discharged for the whole weak trajectory, honesty-free.
-* `hbase`: **open.** Pinned as `Weak.ObservedResetSeedSafety`.
+* `hbase`: `Weak.ObservedResetSeedSafety`, consumed here as a named `Prop` and
+  proved by `Weak.observedResetSeedSafety_of_acceptedDynamics` (stage 6).
 
 Five of the six cells are discharged in `WeakTrajectorySafety.lean`. The sixth
-is the entire residue of the full-rule effort.
+was the entire residue of the full-rule effort; it is now proved in
+`WeakObservedResetSeedSafety.lean` (stage 6).
 
-## The one open obligation
+## The obligation that used to be open
 
 ```lean
 def ObservedResetSeedSafety (E : Execution Root) (obs : ValidatorIndex) : Prop :=
@@ -189,6 +198,14 @@ gate rejects proof placeholders outright (`lakefile.toml`'s `-E hasSorry`,
 `scripts/check_build.sh`, and `scripts/validate.sh`'s exact-string scan), so a
 named obligation is also the only shape in which a migration target can be
 pinned in this repository at all.
+
+**It is discharged.** `Weak.observedResetSeedSafety_of_acceptedDynamics`
+([`FastConfirmation/Spec/Proof/WeakObservedResetSeedSafety.lean`](../FastConfirmation/Spec/Proof/WeakObservedResetSeedSafety.lean))
+proves it from floor data only. The `def` stays where it is because
+`WeakTrajectorySafety.lean` sits *below* the arm modules in the import order
+and because the one-call-at-a-time (conditional) reading of the fold is still
+worth having; the unconditional fold is the corollary in the same file as the
+proof. See "Stages 5–6 as landed" below.
 
 ### Why it is the hard one
 
@@ -259,9 +276,9 @@ Stages G–J; **XL** = a wave with a genuinely new argument, like
 | 2 | **Adoption**: weak twin of `ActualFCRGuardedObservedAdoption` — the banked checkpoint's epoch is `≤` every honest endpoint's justified epoch at the call second | **M** | landed |
 | 3 | **Anchor arm**: the observed-reset seed reduces to `B.anchor` whenever the banked certificate degenerates; closes by `trustedAnchor_safeFrom_of_acceptedGlobalTrajectory` | **S** | landed |
 | 4 | **Same-epoch arm**: `c.epoch = J.epoch` at the endpoint, closed by accountable uniqueness (`certified_justified_unique`) plus `head_ge_of_justified_ge_K` | **M** | landed |
-| 5 | **Later-epoch arm**: `c.epoch < J.epoch`, the honest formation-target vote plus the `safeFrom_of_headStep_at` strong induction, with the sender-side relays replaced by the banked certificate's `seed_disseminated` | **L** | open |
-| 6 | Assemble stages 2–5 into `Weak.ObservedResetSeedSafety`; delete the obligation from the fold's premise list | **M** | open |
-| 7 | Register the unconditional fold and its endpoint form in `scripts/Audit.lean`'s `publicWitnesses`; extend `docs/weak-synchrony.md`'s premise-surface classification | **S** | open |
+| 5 | **Later-epoch arm**: `c.epoch < J.epoch`, the honest formation-target vote plus the `safeFrom_of_headStep_at` strong induction, with the sender-side relays replaced by the banked certificate's `seed_disseminated` | **L** | landed (turned out **M**) |
+| 6 | Assemble stages 2–5 into `Weak.ObservedResetSeedSafety`; add the unconditional fold | **M** | landed (**S**) |
+| 7 | Register the unconditional fold and its endpoint form in `scripts/Audit.lean`'s `publicWitnesses`; extend `docs/weak-synchrony.md`'s premise-surface classification | **S** | open (needs human review of stages 5–6 first) |
 
 ### Stages 2–4 as landed
 
@@ -316,19 +333,86 @@ modulo exactly the stage-5 arm, with no index or temporal mismatch: split the
 banking invariant (anchor arm ⇒ stage 3), run
 `Execution.safeFrom_of_headStep_at`, derive `c.epoch ≤ J.epoch` at the endpoint
 from stage 2 plus `Execution.store_justified_epoch_mono`, and split it with
-`Nat.eq_or_lt_of_le` into stage 4 and stage 5. That composition has been
-checked to elaborate with the stage-5 arm as a hypothesis; it is not landed
-here because pinning a second named obligation before stage 5 exists would add
-premise surface the repository does not need.
+`Nat.eq_or_lt_of_le` into stage 4 and stage 5. That prediction held exactly:
+stage 6's body is that composition verbatim, with no index or temporal
+adjustment and no extra hypothesis, once stage 5's arm is real.
 
-Stage 5 is the only one that could turn out **XL**: if the honest formation
-target's vote cannot be reached without transporting observer-store ancestry
-into the voter's store, it will need a second containment-free replay in the
-manner of `WeakAncestryTransport.lean`'s `get_ancestor_aux_congr_closed`. The
-existing `Weak.AcceptedLemma22EpochStartCandidateSourceAt` record is the
-evidence that this is expected to be avoidable: it already carries a
-dissemination field in place of the strong record's honesty-plus-relay-gate
-pair, and it is already produced at exactly the observed-reset call site.
+Stage 5 was the only one that could have turned out **XL**: if the honest
+formation target's vote could not be reached without transporting observer-store
+ancestry into the voter's store, it would have needed a second containment-free
+replay in the manner of `WeakAncestryTransport.lean`'s
+`get_ancestor_aux_congr_closed`. It did not. See below.
+
+### Stages 5–6 as landed
+
+Stage 5 is in
+[`FastConfirmation/Spec/Proof/WeakObservedRestartDynamicSafety.lean`](../FastConfirmation/Spec/Proof/WeakObservedRestartDynamicSafety.lean)
+alongside stages 3 and 4 — the three arms of one split belong in one file — and
+stage 6 is the new
+[`FastConfirmation/Spec/Proof/WeakObservedResetSeedSafety.lean`](../FastConfirmation/Spec/Proof/WeakObservedResetSeedSafety.lean).
+
+`Weak.ObservedResetCandidateInputAt.head_of_laterEpoch` is the stage-5 arm. It
+takes the slot-indexed induction hypothesis of
+`Execution.safeFrom_of_headStep_at` as an explicit premise, so the arm itself
+is a plain endpoint statement and the induction is run once, in stage 6.
+
+**No new argument was needed.** The strong proof's strictly-later branch is a
+chain of endpoint-quantified facts —
+`Execution.globalJustified_honestTarget`, the voter's own
+`target_walk`/`get_ancestor_comp` composition,
+`Execution.rootDescends_of_store_ancestor`,
+`Execution.store_known_ancestor_of_rootDescends_for_storeReflection`, and
+`head_ge_of_justified_ge_K` — every one of which already quantifies honesty
+over the *receiving* endpoint (or over the formation voter it itself produces),
+never over the querying node. Those transfer verbatim. Only three leaves of
+the branch read the querying node's honesty, and each had a landed weak
+replacement:
+
+| strong honesty site | what it supplies | weak replacement |
+| --- | --- | --- |
+| `hsync.block_relay v hv …` at the banked root | `c.root` known at the formation voter's store | `Weak.bankedRoot_known_at_all_honest_endpoints_at_observer` (certificate dissemination; gate from `second_le` + `Execution.slot_at_mono`) |
+| `hreal.root_known` | `c.root` known at the observer's own query store, hence `E.ExecutionRoot c.root` | `Weak.weakFcrStep_observed_known` (rule delta 5's `banked_known`) |
+| `hreal.root_slot_le_boundary` | `c.root`'s block sits at or below its own epoch boundary | `Weak.ObservedResetCandidateInputAt.banked_blockEpoch_le`, i.e. `Weak.auCheckpoint_blockEpoch_le` at the query head, whose docstring already advertised itself as exactly this replacement |
+
+and `hreal.certified` was already replaced in stage 4
+(`Weak.ObservedResetCandidateInputAt.certifiedJustified`). Both stage-4 and
+stage-5 uses now factor through the new
+`Weak.ObservedResetCandidateInputAt.bankedAU`: the branch's own
+`observed_eq_head_unrealized` conjunct plus
+`Execution.accepted_unrealized_justification_eq` and `gu_AU` make the banked
+value the query head's accepted `AU` checkpoint, honesty-free, and every
+chain-intrinsic fact about it follows from that one record.
+
+**The previous-epoch equation was only needed one way.** The strong proof's
+`ObservedResetCandidateInputAt.observed_checkpoint_previous_epoch` proves
+`c.epoch + 1 = e`, and its lower bound `c.epoch < e` is the half that reads the
+cache installation's provenance (`acceptedInstallation`) — the honest-only
+half. The later-epoch arm consumes only `e ≤ c.epoch + 1`, which is the
+branch's own `observed_previous_epoch` conjunct composed with
+`banked_blockEpoch_le`
+(`Weak.ObservedResetCandidateInputAt.currentEpoch_le_banked_succ`). So the
+honest-only half never appears, and `hspe : 1 < cfg.slots_per_epoch` — a
+premise of the strong theorem, carried purely for that half — is not a premise
+of the weak one.
+
+Stage 6 is then the composition the previous stage had already checked
+out-of-tree, with the stage-5 arm real: split
+`Weak.weakFcrStep_certifiedBankedJustification`; the anchor arm closes by stage
+3; otherwise apply `Execution.safeFrom_of_headStep_at`, derive
+`c.epoch ≤ J.epoch` at the endpoint from stage 2's
+`guardedObservedAdoption` plus `Execution.store_justified_epoch_mono`, and
+split it with `Nat.eq_or_lt_of_le` into stage 4 and stage 5. The premise
+surface of `Weak.observedResetSeedSafety_of_acceptedDynamics` is
+`hA : SelectedMarginAssumptions`, `B`, `hT`, `hji : JustificationInterface`,
+`hanchor`, `hboundary`, and the observer's own committee agreement `hcomm`
+(literally `Execution.ObserverCoherence.committees_agree`) — all six already
+premises of the conditional fold. Hence
+
+* `Execution.weakConfirmed_safeFromFollowingSlot_of_acceptedWeakFullRuleFold`
+* `Execution.weakConfirmed_head_of_acceptedWeakFullRuleFold_nextSlot`
+
+have exactly the conditional fold's premise list **minus** `hOR`, with nothing
+added, and still no honesty binder at `obs`.
 
 ## Things the existing machinery made easier than expected
 
@@ -358,10 +442,17 @@ pair, and it is already produced at exactly the observed-reset call site.
 
 ## Things that are harder than expected
 
-* **The observed-reset arm is a genuine hole, not a plumbing gap.** There is no
-  weak-side `SafeFrom`/justified-domination lemma for the banked checkpoint at
-  all; the closest available facts stop at dissemination, chain-intrinsic
-  ancestry below the certified head, and GU-epoch orientation of the seed.
+* **The observed-reset arm was a genuine hole, not a plumbing gap.** At the
+  start of the effort there was no weak-side `SafeFrom`/justified-domination
+  lemma for the banked checkpoint at all; the closest available facts stopped at
+  dissemination, chain-intrinsic ancestry below the certified head, and GU-epoch
+  orientation of the seed. Closing it took four waves (stages 2–5) and two new
+  modules, but no new *kind* of argument: the domination step reduces to the
+  accepted formation-vote machinery, which is endpoint-quantified throughout.
+  The `Execution.ObservedRestartJustifiedSourceLockAt` shape flagged above as
+  "the declared shape of the missing cross-carrier fact" never had to be
+  produced — the split into an anchor arm, a same-epoch arm and a later-epoch
+  arm avoids it entirely.
 * **The epoch-boundary arm is where the observer's inbox model bites hardest.**
   The banked value is installed at an epoch boundary, possibly many seconds
   before the call that restarts from it; the certificate that licensed the
@@ -370,7 +461,7 @@ pair, and it is already produced at exactly the observed-reset call site.
   `E.slot_at h.second ≤ E.slot_at m`. Any domination argument therefore has to
   carry the installation second forward, which the strong proof does not need
   to do because it re-relays from the querying node's store at query time.
-  **Resolved in stages 2–4** at no cost: `second_le` plus
+  **Resolved in stages 2–5** at no cost: `second_le` plus
   `Execution.slot_at_mono` discharge the gate, and the certificate's own span
   (`Weak.BankedJustificationCertificate.supplier_slot_lt`) replaces the strong
   proof's installation-second age argument. See "The temporal carry, resolved"
@@ -383,11 +474,19 @@ pair, and it is already produced at exactly the observed-reset call site.
 
 ## Audit status
 
-`WeakTrajectorySafety.lean` contains no proof placeholders and the full gate
-passes (`scripts/check_build.sh`, `lake env lean scripts/Audit.lean`,
-`scripts/check_imports.py`). Its declarations are deliberately **not** added to
-`scripts/Audit.lean`'s `publicWitnesses` at this stage: the headline fold is a
-genuine theorem, but it is conditional on `Weak.ObservedResetSeedSafety`, and
-`publicWitnesses` is the repository's set of headline results whose premise
-surface has been classified against the ratified floor. Registration is stage 7,
-after stage 6 removes the obligation.
+None of the six weak full-rule modules contains a proof placeholder and the
+full gate passes (`scripts/check_build.sh`, `lake env lean scripts/Audit.lean`,
+`scripts/check_imports.py`). `#print axioms` on
+`Weak.observedResetSeedSafety_of_acceptedDynamics`,
+`Execution.weakConfirmed_safeFromFollowingSlot_of_acceptedWeakFullRuleFold` and
+`Execution.weakConfirmed_head_of_acceptedWeakFullRuleFold_nextSlot` reports
+`propext`, `Classical.choice`, `Quot.sound` and nothing else.
+
+The declarations are still deliberately **not** added to `scripts/Audit.lean`'s
+`publicWitnesses`. That set is the repository's list of headline results whose
+premise surface has been *classified against the ratified floor* by a human,
+and the classification of the unconditional fold's surface — in particular the
+carried contracts `Weak.ObserverHistoricalA32CallAssumptions` and
+`Weak.ObserverCoherence` — is the remaining work. Registration, together with
+extending `docs/weak-synchrony.md`'s premise-surface table, is **stage 7**, to
+be done after review of stages 5–6.
