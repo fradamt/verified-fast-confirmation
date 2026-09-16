@@ -1985,7 +1985,9 @@ instantiated at the weak evaluator's own call, with the same binder list the
 strong dispatcher passes. -/
 structure ObserverStrictCallFilterInputsAt (E : Execution Root)
     (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
-    (obs : ValidatorIndex) (n : Nat) : Prop where
+    (obs : ValidatorIndex) (n : Nat)
+    (Cert : ℕ → Checkpoint Root → Prop)
+    (Supp : ℕ → Root → Epoch → Prop) : Prop where
   /-- Weak twin of
   `actualCall_strictSelected_result_and_child_ancestor_of_endpointJustified`'s
   second component. -/
@@ -2055,8 +2057,9 @@ structure ObserverStrictCallFilterInputsAt (E : Execution Root)
     get_block_epoch cfg (E.weakFcrStep cfg ext obs n).store
         (E.weakGetLatestConfirmedTraceAt cfg ext obs n).result =
       get_current_store_epoch cfg (E.weakFcrStep cfg ext obs n).store →
-    ∃ e : Epoch, Nonempty (E.AcceptedHistoricalA32LineageAt cfg ext B
-      (E.weakGetLatestConfirmedTraceAt cfg ext obs n).result e)
+    ∃ e : Epoch, Nonempty (E.AcceptedHistoricalA32LineageCoreAt cfg ext B
+      (E.weakGetLatestConfirmedTraceAt cfg ext obs n).result e
+      (Cert (n + 1)) (Supp (n + 1)))
   /-- The `carried` origin of an epoch-start strict previous result: the weak
   twin of
   `Execution.StrictSelectorAdvanceAt.previousCarried_epochStartLineage`.  Like
@@ -2072,10 +2075,51 @@ structure ObserverStrictCallFilterInputsAt (E : Execution Root)
       get_current_store_epoch cfg (E.weakFcrStep cfg ext obs n).store →
     is_start_slot_at_epoch cfg
       (get_current_slot cfg (E.weakFcrStep cfg ext obs n).store) = true →
-    Nonempty (E.AcceptedHistoricalA32LineageAt cfg ext B
+    Nonempty (E.AcceptedHistoricalA32LineageCoreAt cfg ext B
       (E.weakGetLatestConfirmedTraceAt cfg ext obs n).result
       (get_block_epoch cfg (E.weakFcrStep cfg ext obs n).store
-        (E.weakGetLatestConfirmedTraceAt cfg ext obs n).result))
+        (E.weakGetLatestConfirmedTraceAt cfg ext obs n).result)
+      (Cert n) (Supp n))
+  /-- The trusted-anchor discharges of the obligation family, needed by the
+  `finalizedReset` arm of the epoch-start previous branch. -/
+  anchor_cert : ∀ N : ℕ, Cert N B.anchor
+  /-- The trusted-anchor support discharge. -/
+  anchor_supp : ∀ (N : ℕ) (o : Root) (e' : Epoch),
+    B.state.C o e' = B.anchor → Supp N o e'
+  /-- Same-epoch transport of the support obligation, used to materialize the
+  retained payload at the honest endpoint's own store. -/
+  supp_transport : ∀ {N : ℕ} {origin tip : Root} {e : Epoch},
+    B.state.C tip e = B.state.C origin e →
+    B.state.GJ tip = B.state.GJ origin →
+    Supp N origin e → Supp N tip e
+  /-- **A1's elimination at the late current-epoch cell.**
+
+  The support obligation carried at the call's own write-back bound `n + 1` is
+  turned into the anchor-or-quorum disjunction the A1 consumer takes as a plain
+  hypothesis.  Under the eager instantiation this is the identity; under the
+  lazy one it is the threaded fold output for `k < n` plus the endpoint
+  induction's own `hIH`, converted by
+  `Execution.engineInv_of_selectedCanonical_lateEndpoint`, for `k = n`
+  (`docs/weak-final-wave.md` §2, §5.3). -/
+  supp_elim_current : ∀ {o : Root} {e : Epoch}, Supp (n + 1) o e →
+    ∀ w ∈ E.honest, ∀ m : ℕ, E.WithinHorizon cfg m →
+    e + 2 ≤ get_current_store_epoch cfg (E.store cfg ext w m) →
+    E.SelectedCanonicalBeforeEndpointAt cfg ext (n + 1)
+      (E.weakGetLatestConfirmedTraceAt cfg ext obs n).result m →
+    E.IsFCRCallAt cfg ext obs n →
+      B.state.C o e = B.anchor ∨
+        Nonempty (E.AcceptedHistoricalA32QuorumAt cfg ext B o e)
+  /-- **A1's elimination at the epoch-start previous cell.**
+
+  Those payloads were all created at calls strictly earlier than `n` — their
+  epoch was current at a strictly earlier slot — so no `hIH` is needed: the
+  threaded fold output alone discharges the capped supply, and `k = n` never
+  arises (`docs/weak-final-wave.md` §6.4). -/
+  supp_elim_prior : ∀ {o : Root} {e : Epoch}, Supp n o e →
+    ∀ w ∈ E.honest, ∀ m : ℕ, E.WithinHorizon cfg m →
+    e + 2 ≤ get_current_store_epoch cfg (E.store cfg ext w m) →
+      B.state.C o e = B.anchor ∨
+        Nonempty (E.AcceptedHistoricalA32QuorumAt cfg ext B o e)
 
 /-! ## Exhaustive weak actual-call endpoint dispatcher -/
 
@@ -2121,7 +2165,9 @@ noncomputable def
       (E.weakFcrStep cfg ext obs n)
       (E.weakGetLatestConfirmedTraceAt cfg ext obs n).afterObserved
       (E.weakGetLatestConfirmedTraceAt cfg ext obs n).result)
-    (hinputs : Weak.ObserverStrictCallFilterInputsAt cfg ext E B obs n)
+    {Cert : ℕ → Checkpoint Root → Prop} {Supp : ℕ → Root → Epoch → Prop}
+    (hinputs : Weak.ObserverStrictCallFilterInputsAt cfg ext E B obs n
+      Cert Supp)
     {w : ValidatorIndex} (hw : w ∈ E.honest) {m : Nat}
     (hmH : E.WithinHorizon cfg m)
     {r0 a c : Root} {lo es sigma querySlot : Slot}
@@ -2250,9 +2296,18 @@ noncomputable def
             (E.store cfg ext w m) trace.result = e :=
           hlineage.tip_epoch_eq_of_causal_known cfg ext hT
             (E.store_causal cfg ext w m) hselectedM
-        exact E.acceptedSelectedResultFilterOutcome_retainedVisible_of_lateLineage
-          cfg ext B hT hsync hdomain hphase0 hanchor hboundary hpaper P V
-            hanchorExact hacc hw hmH hlineage hselectedM hselectedEpochM
+        obtain ⟨hpayloadTip⟩ :=
+          Execution.AcceptedHistoricalA32LineageCoreAt.payloadAtQuery_nonempty
+            cfg ext B hT hphase0 hanchor hboundary hlineage hselectedM
+            hselectedEpochM
+            (fun hcheckpoint hsource hsupp =>
+              hinputs.supp_transport hcheckpoint hsource hsupp)
+        exact E.acceptedSelectedResultFilterOutcome_retainedVisible_of_lateSupport
+          cfg ext B hT hsync hdomain hanchor hboundary hpaper P V
+            hanchorExact hacc hw hmH
+            (hinputs.supp_elim_current hpayloadTip.support_branch w hw m hmH
+              hlateE hIH hcall)
+            hselectedM hselectedEpochM
             hcanonical hw hmH hselectedM hlateE hjustifiedEpochE
             hresultJustified
   · by_cases hsame : get_current_store_epoch cfg (E.store cfg ext w m) =
@@ -2290,7 +2345,8 @@ noncomputable def
           E.causalRealizedFinalizationLag_of_acceptedDelay
             cfg ext B hT hanchor hDelay
         have lateFromLineage : ∀ {e : Epoch},
-            E.AcceptedHistoricalA32LineageAt cfg ext B trace.result e →
+            E.AcceptedHistoricalA32LineageCoreAt cfg ext B trace.result e
+              (Cert n) (Supp n) →
             E.AcceptedSelectedResultFilterOutcomeAt cfg ext B
               (E.store cfg ext w m) trace.result := by
           intro e hlineage
@@ -2318,9 +2374,18 @@ noncomputable def
               (E.store cfg ext w m) trace.result = e :=
             hlineage.tip_epoch_eq_of_causal_known cfg ext hT
               (E.store_causal cfg ext w m) hselectedM
-          exact E.acceptedSelectedResultFilterOutcome_retainedVisible_of_lateLineage
-            cfg ext B hT hsync hdomain hphase0 hanchor hboundary hpaper P V
-              hanchorExact hacc hw hmH hlineage hselectedM hselectedEpochM
+          obtain ⟨hpayloadTip⟩ :=
+            Execution.AcceptedHistoricalA32LineageCoreAt.payloadAtQuery_nonempty
+              cfg ext B hT hphase0 hanchor hboundary hlineage hselectedM
+              hselectedEpochM
+              (fun hcheckpoint hsource hsupp =>
+                hinputs.supp_transport hcheckpoint hsource hsupp)
+          exact E.acceptedSelectedResultFilterOutcome_retainedVisible_of_lateSupport
+            cfg ext B hT hsync hdomain hanchor hboundary hpaper P V
+              hanchorExact hacc hw hmH
+              (hinputs.supp_elim_prior hpayloadTip.support_branch w hw m hmH
+                hlateE)
+              hselectedM hselectedEpochM
               hcanonical hw hmH hselectedM hlateE hjustifiedEpochE
               hresultJustified
         cases horigin with
@@ -2334,10 +2399,7 @@ noncomputable def
               Weak.StrictSelectorAdvanceAt.previousFinalizedReset_anchorLineage
                 cfg ext B hT hanchor hboundary hLag hanchorExact hcoh hn1H
                   hfinalized hselector hprevious
-                  (Cert := E.AcceptedHistoricalA32EagerCert cfg ext B)
-                  (Supp := E.AcceptedHistoricalA32EagerSupp cfg ext B)
-                  ⟨CertifiedJustified.anchor⟩
-                  (fun _ _ h _ _ _ _ _ => Or.inl h)
+                  (hinputs.anchor_cert n) (hinputs.anchor_supp n)
             exact lateFromLineage hlineage
         | observedReset hobserved =>
             obtain ⟨hseedQ, hseedSelected, hguLower⟩ :=
@@ -2413,7 +2475,9 @@ noncomputable def
     (hselector : Weak.StrictSelectorAdvanceAt cfg ext
       (E.weakFcrStep cfg ext obs n)
       (E.weakGetLatestConfirmedTraceAt cfg ext obs n))
-    (hinputs : Weak.ObserverStrictCallFilterInputsAt cfg ext E B obs n) :
+    {Cert : ℕ → Checkpoint Root → Prop} {Supp : ℕ → Root → Epoch → Prop}
+    (hinputs : Weak.ObserverStrictCallFilterInputsAt cfg ext E B obs n
+      Cert Supp) :
     Weak.SelectedStrictEdgeFilterSupplyAt cfg ext E
       (E.weakGetLatestConfirmedTraceAt cfg ext obs n).result
       (E.weakGetLatestConfirmedTraceAt cfg ext obs n).afterObserved
