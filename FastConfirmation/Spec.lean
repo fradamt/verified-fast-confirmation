@@ -40,6 +40,7 @@ import FastConfirmation.Spec.Proof.WeakObservedRestartAdoption
 import FastConfirmation.Spec.Proof.WeakObservedRestartDynamicSafety
 import FastConfirmation.Spec.Proof.WeakTrajectorySafety
 import FastConfirmation.Spec.Proof.WeakObservedResetSeedSafety
+import FastConfirmation.Spec.Proof.HonestTargetAgreement
 
 /-!
 # Spec — facade
