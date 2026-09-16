@@ -609,9 +609,6 @@ def witnessCompletedPrefixCallAssumptions :
   phase0_boundary_source := witnessPhase0BoundarySourceCoherence
   balance_floor := witnessBalanceFloor
   delivery_lookahead := witnessHorizonVoteDeliveryLookahead
-  helper_provisos := by
-    intro v hv n _hcall hHn1 hselector
-    exact witnessSelectedHelperProvisos hv hHn1 hselector
 
 def witnessAcceptedActualFCRNextSlotSafetyAssumptions :
     witnessExecution.AcceptedActualFCRNextSlotSafetyAssumptions witnessConfig

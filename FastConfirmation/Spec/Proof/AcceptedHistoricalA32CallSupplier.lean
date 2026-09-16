@@ -322,9 +322,18 @@ theorem completedPrefix_currentTargetEpochEnd_within
 The first five fields are direct protocol/model contracts.  `balance_floor`
 excludes the executable helper's artificial empty-active-set minimum-balance
 branch. `delivery_lookahead` is the paper-synchrony boundary closure for
-honest votes created inside the prefix. `helper_provisos` is the literal
-normative proviso from the FCR specification, required only when the outer
-evaluator's descendant-selector guard is true.
+honest votes created inside the prefix.
+
+**There is no `helper_provisos` field.**  It used to carry the literal
+normative proviso of the FCR specification, required at a crossing call to
+realize the current-target gate.  `docs/crossing-call-support-residue.md`
+shows that obligation is *derivable* once the payload records origin-call data
+instead of realized certification content: the crossing call's proviso is
+rebuilt at the consuming call from the safety fold's strictly earlier output
+(`AcceptedHistoricalA32OriginCallAt.honestVotesSupportTarget`, the capped
+target-agreement twin, and the endpoint induction's own canonicity binder).
+The bundle is therefore a premise weaker than the one the earlier headline
+carried; nothing downstream changed shape.
 
 Everything else needed by the accepted target gate--causal replay, current
 slot, latest-message provenance, non-equivocation, committee accounting,
@@ -339,13 +348,6 @@ structure AcceptedHistoricalA32CompletedPrefixCallAssumptions : Prop where
   balance_floor : cfg.effective_balance_increment ≤
     E.weight (E.currentTargetAnchorActive cfg)
   delivery_lookahead : HorizonVoteDeliveryLookahead cfg E
-  helper_provisos : ∀ v ∈ E.honest, ∀ n : ℕ,
-    E.IsFCRCallAt cfg ext v n → E.WithinHorizon cfg (n + 1) →
-      getLatestSelectorGuard cfg (E.fcrStep cfg ext v n)
-          (E.getLatestConfirmedTraceAt cfg ext v n).afterObserved →
-        SelectedHelperProvisosAt cfg ext E v (n + 1)
-          (E.fcrStep cfg ext v n)
-          (E.getLatestConfirmedTraceAt cfg ext v n).afterObserved
 
 /-- At one actual boundary call, the completed scheduled prefix supplies the
 accepted current-target gate producer.  The producer remains conditional on
