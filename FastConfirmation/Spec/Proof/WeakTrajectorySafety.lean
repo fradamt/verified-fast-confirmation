@@ -582,7 +582,9 @@ Nothing on the surface is taken twice: `hT` is derived from `hW.base` by
 `Execution.postAnchorHonestVoteTargetWalkDomain_of_selectedMarginAssumptions`
 (store-closure walk from the voter's head to the retained trusted anchor, lifted
 to the vote's target-epoch boundary by the predicate's own post-anchor
-hypothesis), the
+hypothesis), `hanchorExact` is derived from `B`/`hT`/`hanchor`/`hboundary` by
+`Execution.acceptedAnchorExact_of_trajectory` (it restates `hboundary` through
+the checkpoint walk), the
 phase-0 coherence contracts come from `hCbase` alone, and the call contract is
 the 3-field `AcceptedHistoricalA32CompletedPrefixCallSupplement`, whose
 `synchrony`/`static_validators`/`byzantine_bound` counterparts in the full
@@ -617,20 +619,22 @@ theorem weakConfirmed_safeFromFollowingSlot_of_weakFullRuleFold
     (P : AcceptedEpochCheckpointProjection B.anchor
       (E.AcceptedRoot cfg ext) B.state.C)
     (V : B.state.ExactLinkValidity)
-    (hanchorExact : B.anchor = B.state.C B.anchor.root B.anchor.epoch)
     {obs : ValidatorIndex}
     (hW : E.WeakObserverAssumptions cfg ext obs)
     (hCbase : E.AcceptedHistoricalA32CompletedPrefixCallSupplement cfg ext)
     (hfit : EpochEndsFitUint64 cfg)
     (hOR : Weak.ObservedResetSeedSafety cfg ext E obs) :
     ∀ n : ℕ, E.WithinHorizon cfg n →
-      E.WeakConfirmedSafeFromFollowingSlot cfg ext obs n :=
-  fun n hHn =>
+      E.WeakConfirmedSafeFromFollowingSlot cfg ext obs n := by
+  have hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext :=
+    ScheduledPrefixTrajectoryAssumptions.of_selectedMarginAssumptions cfg ext E
+      hW.base
+  exact fun n hHn =>
     (E.weakConfirmedSafeFromFollowingSlot_of_weakFullRuleFold_all_le cfg ext B
-      (ScheduledPrefixTrajectoryAssumptions.of_selectedMarginAssumptions cfg ext E
-        hW.base)
+      hT
       hji hanchor hboundary hDelay hCbase.phase0_source
-      hCbase.phase0_boundary_source hpaper P V hanchorExact hW
+      hCbase.phase0_boundary_source hpaper P V
+      (E.acceptedAnchorExact_of_trajectory cfg ext B hT hanchor hboundary) hW
       (E.postAnchorHonestVoteTargetWalkDomain_of_selectedMarginAssumptions cfg ext
         hW.base hanchor hboundary)
       (AcceptedHistoricalA32CompletedPrefixCallSupplement.toCompletedPrefixCallAssumptions
@@ -688,7 +692,6 @@ theorem weakConfirmed_head_of_weakFullRuleFold_nextSlot
     (P : AcceptedEpochCheckpointProjection B.anchor
       (E.AcceptedRoot cfg ext) B.state.C)
     (V : B.state.ExactLinkValidity)
-    (hanchorExact : B.anchor = B.state.C B.anchor.root B.anchor.epoch)
     {obs : ValidatorIndex}
     (hW : E.WeakObserverAssumptions cfg ext obs)
     (hCbase : E.AcceptedHistoricalA32CompletedPrefixCallSupplement cfg ext)
@@ -707,7 +710,7 @@ theorem weakConfirmed_head_of_weakFullRuleFold_nextSlot
   have hHn : E.WithinHorizon cfg n := E.withinHorizon_mono cfg hnm hHm
   have hsafe := E.weakConfirmed_safeFromFollowingSlot_of_weakFullRuleFold cfg ext
     B hji hanchor hboundary hDelay hpaper P V
-    hanchorExact hW hCbase hfit hOR n hHn
+    hW hCbase hfit hOR n hHn
   have hdeadlineLe : E.followingSlotStart cfg n ≤ m := by
     by_contra hnot
     have hmLt : m < E.followingSlotStart cfg n := Nat.lt_of_not_ge hnot

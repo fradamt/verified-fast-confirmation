@@ -152,16 +152,21 @@ The premise list is exactly the conditional fold's minus
 observer-honesty binder `hv : v ∈ E.honest` does not appear.
 
 That list is, in full: `B` (accepted FFG semantics), `hji`, `hanchor`,
-`hboundary`, `hDelay`, `hpaper`, `P`, `V`, `hanchorExact`, `hW`
+`hboundary`, `hDelay`, `hpaper`, `P`, `V`, `hW`
 (`WeakObserverAssumptions` = the selected-margin floor plus committee readback
 at the observer's own store), `hCbase`
 (`AcceptedHistoricalA32CompletedPrefixCallSupplement`: the two phase-0
-coherence contracts and the balance floor) and `hfit` — **twelve** premises.
-Four surface duplications are gone: `hT` is *derived* from `hW.base`
+coherence contracts and the balance floor) and `hfit` — **eleven** premises.
+Five surface duplications are gone: `hT` is *derived* from `hW.base`
 (`Execution.ScheduledPrefixTrajectoryAssumptions.of_selectedMarginAssumptions`),
 `hwalkDomain : PostAnchorHonestVoteTargetWalkDomain` is *derived* from
 `hW.base`/`hanchor`/`hboundary`
 (`Execution.postAnchorHonestVoteTargetWalkDomain_of_selectedMarginAssumptions`),
+`hanchorExact : B.anchor = B.state.C B.anchor.root B.anchor.epoch` is *derived*
+from `B`/`hT`/`hanchor`/`hboundary`
+(`Execution.acceptedAnchorExact_of_trajectory` — causal checkpoint reflection at
+the trusted anchor, so it restates `hboundary` through the checkpoint walk and
+is not an independent premise; `docs/plumbing-spec-citations.md` P-10),
 the standalone `hphase0`/`hboundaryPhase` are read off `hCbase`, and the
 `synchrony`/`static_validators`/`byzantine_bound` fields of the full 6-field
 call contract are read off `hW.base` when it is rebuilt internally.
@@ -182,7 +187,6 @@ theorem weakConfirmed_safeFromFollowingSlot_of_acceptedWeakFullRuleFold
     (P : AcceptedEpochCheckpointProjection B.anchor
       (E.AcceptedRoot cfg ext) B.state.C)
     (V : B.state.ExactLinkValidity)
-    (hanchorExact : B.anchor = B.state.C B.anchor.root B.anchor.epoch)
     {obs : ValidatorIndex}
     (hW : E.WeakObserverAssumptions cfg ext obs)
     (hCbase : E.AcceptedHistoricalA32CompletedPrefixCallSupplement cfg ext)
@@ -190,7 +194,7 @@ theorem weakConfirmed_safeFromFollowingSlot_of_acceptedWeakFullRuleFold
     ∀ n : ℕ, E.WithinHorizon cfg n →
       E.WeakConfirmedSafeFromFollowingSlot cfg ext obs n :=
   E.weakConfirmed_safeFromFollowingSlot_of_weakFullRuleFold cfg ext B hji
-    hanchor hboundary hDelay hpaper P V hanchorExact hW
+    hanchor hboundary hDelay hpaper P V hW
     hCbase hfit
     (Weak.observedResetSeedSafety_of_acceptedDynamics cfg ext hW.base B hji
       hanchor hboundary hW.committees_agree)
@@ -211,7 +215,6 @@ theorem weakConfirmed_head_of_acceptedWeakFullRuleFold_nextSlot
     (P : AcceptedEpochCheckpointProjection B.anchor
       (E.AcceptedRoot cfg ext) B.state.C)
     (V : B.state.ExactLinkValidity)
-    (hanchorExact : B.anchor = B.state.C B.anchor.root B.anchor.epoch)
     {obs : ValidatorIndex}
     (hW : E.WeakObserverAssumptions cfg ext obs)
     (hCbase : E.AcceptedHistoricalA32CompletedPrefixCallSupplement cfg ext)
@@ -224,7 +227,7 @@ theorem weakConfirmed_head_of_acceptedWeakFullRuleFold_nextSlot
       (get_head cfg (E.store cfg ext w m))
       (get_node_for_root (E.weakConfirmed cfg ext obs n)) = true :=
   E.weakConfirmed_head_of_weakFullRuleFold_nextSlot cfg ext B hji hanchor
-    hboundary hDelay hpaper P V hanchorExact hW
+    hboundary hDelay hpaper P V hW
     hCbase hfit
     (Weak.observedResetSeedSafety_of_acceptedDynamics cfg ext hW.base B hji
       hanchor hboundary hW.committees_agree)
