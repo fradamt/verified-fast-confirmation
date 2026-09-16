@@ -208,8 +208,10 @@ def ObserverCoherence.of_acceptedTrajectory
       cfg ext E B hT hanchor hboundary obs
 
 /-- The **internal** assumption bundle the margin machinery runs on: the usual
-`SelectedMarginAssumptions`, an observer that need not be honest, and the
-observer's own store coherence.
+`SelectedMarginAssumptions` and the observer's own store coherence. The
+observer `obs` is completely arbitrary — it **may** be honest; the model simply
+grants it nothing. (Non-honesty was never used by any proof, so it is not a
+field: carrying it would only narrow the statements.)
 
 This record is *not* the premise surface of the weak development's top-level
 statements: `coherence.justified_root_known` is a derived fact, never a
@@ -224,16 +226,20 @@ endpoint forms), which carry no `B` at all and so have nothing to derive
 `justified_root_known` from, still take this bundle directly. -/
 structure WeakObserverMarginAssumptions (obs : ValidatorIndex) : Prop where
   base : SelectedMarginAssumptions cfg ext E
-  observer : obs ∉ E.honest
   coherence : E.ObserverCoherence cfg ext obs
 
 /-- **The observer premise surface of the weak development.** Everything a
 caller must supply about the observer `obs`, and nothing that is derivable:
 
 * `base` — the ordinary (observer-independent) `SelectedMarginAssumptions`;
-* `observer` — `obs` need *not* be honest (the weak development's point);
 * `committees_agree` — the one genuinely free observer-store fact: the
   observer reads back the scheduled committees from its own store.
+
+The observer `obs` is arbitrary and **may** be honest: the weak development's
+point is that nothing is assumed *in the observer's favour* (no delivery, no
+honest behaviour), not that the observer is dishonest. Non-honesty was never
+used by any proof, so it is not a field — carrying it would only narrow every
+weak statement.
 
 `ObserverCoherence.justified_root_known` is deliberately absent: it is a
 theorem about any node's trajectory
@@ -242,7 +248,6 @@ every top-level weak statement carries the accepted-FFG/trajectory premises
 that prove it, so it is derived rather than assumed. -/
 structure WeakObserverAssumptions (obs : ValidatorIndex) : Prop where
   base : SelectedMarginAssumptions cfg ext E
-  observer : obs ∉ E.honest
   committees_agree : ∀ n : ℕ, E.WithinHorizon cfg n → ∀ s : Slot,
     E.SlotWithinHorizon cfg s →
     get_slot_committee cfg ext (E.store cfg ext obs n) s = E.committee s
@@ -262,7 +267,6 @@ def WeakObserverAssumptions.toMarginAssumptions {obs : ValidatorIndex}
       (anchor := B.anchor)) :
     E.WeakObserverMarginAssumptions cfg ext obs where
   base := hW.base
-  observer := hW.observer
   coherence :=
     ObserverCoherence.of_acceptedTrajectory cfg ext E B hT hanchor hboundary obs
       hW.committees_agree

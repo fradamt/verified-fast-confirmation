@@ -541,8 +541,9 @@ This theorem and its endpoint form `…_head_of_weakFullRuleFold_nextSlot`, plus
 the two unconditional corollaries in `WeakObservedResetSeedSafety.lean`, are
 the **audited** weak statements (`scripts/Audit.lean`).
 
-Observer-wise the premise surface is `hW : WeakObserverAssumptions`: `obs ∉
-E.honest` and committee readback at the observer's own store, nothing else.
+Observer-wise the premise surface is `hW : WeakObserverAssumptions`: committee
+readback at the observer's own store, nothing else — `obs` is arbitrary and
+may be honest.
 `ObserverCoherence.justified_root_known` is *derived* inside the induction
 from `B`/`hT`/`hanchor`/`hboundary`
 (`WeakObserverAssumptions.toMarginAssumptions`), never assumed.

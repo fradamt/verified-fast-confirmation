@@ -100,7 +100,8 @@ supplier needs is manufactured lazily at the consuming call rather than
 assumed up front.
 
 Observer-wise the premise surface is `hW : WeakObserverAssumptions` — the
-floor, `obs ∉ E.honest`, and committee readback at the observer's own store.
+floor and committee readback at the observer's own store; `obs` is arbitrary
+and may be honest.
 `ObserverCoherence.justified_root_known` is *derived* here from `B`/`hT`/
 `hanchor`/`hboundary` (`WeakObserverAssumptions.toMarginAssumptions`), so it
 never appears as a premise. -/
