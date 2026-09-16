@@ -27,33 +27,22 @@ variable (cfg : Config) (ext : Externals Root)
 selector call.  Epoch-start short-circuit paths carry no no-conflict proviso,
 because that helper need not be evaluated there.
 
-The record carries exactly the two provisos the safety development consumes:
-the crossing tentative edge (`current_target`) and the final tentative stage's
-previous-epoch result (`selected_previous_result_no_conflict`).  A third,
-retained-previous-loop-edge field was removed as dead: the mid-epoch
-`PreviousAcceptedEdge` no-conflict case is served at the result level by
-`StrictSelectedHistoricalSIRCallSite.previousNoConflict` instead.  See
-`docs/proviso-discharge-map.md` §2.1. -/
+The record carries exactly one proviso, the crossing tentative edge
+(`current_target`).  Two further fields were removed as dead: the
+retained-previous-loop-edge one (the mid-epoch `PreviousAcceptedEdge`
+no-conflict case is served at the result level by
+`StrictSelectedHistoricalSIRCallSite.previousNoConflict` instead), and the
+final tentative stage's `selected_previous_result_no_conflict`, whose only
+reader was the likewise-dead
+`Execution.selectedPreviousResult_noConflict_gate_and_support`.  See
+`docs/proviso-discharge-map.md` §2.1 and
+`docs/trunkA-final-discharge.md` §5.1. -/
 structure SelectedHelperProvisosAt (E : Execution Root)
     (v : ValidatorIndex) (q : ℕ)
     (fcrStore : FastConfirmationStore Root)
     (latestConfirmedRoot : Root) : Prop where
   current_target : ∀ a c : Root,
     CurrentTargetAcceptedEdge cfg ext fcrStore latestConfirmedRoot a c →
-    HonestVotesSupportTarget cfg E
-      (get_current_target cfg fcrStore.store) q
-  /-- The final tentative stage can return a previous-epoch result even when
-  that result is not a retained previous-loop edge.  In a non-start slot the
-  wrapper's final guard still used the same no-conflict helper, so its
-  normative support proviso must be indexed by the selected result as well as
-  by previous-loop edges. -/
-  selected_previous_result_no_conflict : ∀ result : Root,
-    find_latest_confirmed_descendant cfg ext fcrStore latestConfirmedRoot = result →
-    result ≠ latestConfirmedRoot →
-    get_block_epoch cfg fcrStore.store result ≠
-      get_current_store_epoch cfg fcrStore.store →
-    is_start_slot_at_epoch cfg
-      (get_current_slot cfg fcrStore.store) ≠ true →
     HonestVotesSupportTarget cfg E
       (get_current_target cfg fcrStore.store) q
 

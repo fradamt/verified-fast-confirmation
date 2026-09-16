@@ -149,35 +149,6 @@ private theorem bounded_no_previousAcceptedEdge_away_from_epoch_start :
               v.val n.val).store) ≠ true → False := by
   set_option maxRecDepth 50000 in decide
 
-private theorem bounded_no_selectedPreviousResult_under_selector :
-    ∀ (v : Fin 4) (n : Fin 15) (result : WitnessRoot),
-      getLatestSelectorGuard witnessConfig
-          (witnessExecution.fcrStep witnessConfig witnessExternals
-            v.val n.val)
-          (witnessExecution.getLatestConfirmedTraceAt witnessConfig
-            witnessExternals v.val n.val).afterObserved →
-        find_latest_confirmed_descendant witnessConfig witnessExternals
-          (witnessExecution.fcrStep witnessConfig witnessExternals
-            v.val n.val)
-          (witnessExecution.getLatestConfirmedTraceAt witnessConfig
-            witnessExternals v.val n.val).afterObserved = result →
-        result ≠
-          (witnessExecution.getLatestConfirmedTraceAt witnessConfig
-            witnessExternals v.val n.val).afterObserved →
-        get_block_epoch witnessConfig
-            (witnessExecution.fcrStep witnessConfig witnessExternals
-              v.val n.val).store result ≠
-          get_current_store_epoch witnessConfig
-            (witnessExecution.fcrStep witnessConfig witnessExternals
-              v.val n.val).store →
-        is_start_slot_at_epoch witnessConfig
-          (get_current_slot witnessConfig
-            (witnessExecution.fcrStep witnessConfig witnessExternals
-              v.val n.val).store) ≠ true →
-        False := by
-  simp only [getLatestSelectorGuard]
-  set_option maxRecDepth 50000 in decide
-
 /-- Whenever the executable selector is actually enabled in this witness,
 its current-target edge antecedent is empty.  Tentative edges computed at
 guard-false queries are deliberately outside this call-scoped statement. -/
@@ -233,41 +204,6 @@ theorem no_previousAcceptedEdge_away_from_epoch_start
   exact bounded_no_previousAcceptedEdge_away_from_epoch_start
     vf nf a c hedge hnotStart
 
-/-- At an actual selector invocation, the strict selected-result antecedent
-from a previous block epoch is empty in this finite prefix. -/
-theorem no_selectedPreviousResult_under_selector
-    {v : ValidatorIndex} (hv : v ∈ witnessExecution.honest) {n : ℕ}
-    (hHn1 : witnessExecution.WithinHorizon witnessConfig (n + 1))
-    (hselector : getLatestSelectorGuard witnessConfig
-      (witnessExecution.fcrStep witnessConfig witnessExternals v n)
-      (witnessExecution.getLatestConfirmedTraceAt witnessConfig
-        witnessExternals v n).afterObserved)
-    (result : WitnessRoot)
-    (hout : find_latest_confirmed_descendant witnessConfig witnessExternals
-      (witnessExecution.fcrStep witnessConfig witnessExternals v n)
-      (witnessExecution.getLatestConfirmedTraceAt witnessConfig
-        witnessExternals v n).afterObserved = result)
-    (hstrict : result ≠
-      (witnessExecution.getLatestConfirmedTraceAt witnessConfig
-        witnessExternals v n).afterObserved)
-    (hprevious : get_block_epoch witnessConfig
-      (witnessExecution.fcrStep witnessConfig witnessExternals v n).store
-        result ≠ get_current_store_epoch witnessConfig
-          (witnessExecution.fcrStep witnessConfig witnessExternals v n).store)
-    (hnotStart : is_start_slot_at_epoch witnessConfig
-      (get_current_slot witnessConfig
-        (witnessExecution.fcrStep witnessConfig witnessExternals v n).store)
-        ≠ true) : False := by
-  have hnlt := time_lt_sixteen hHn1
-  have hnlt' : n < 15 := by omega
-  have hvlt : v < 4 := by
-    rcases honest_eq_zero_or_one_or_two_or_three hv with
-      rfl | rfl | rfl | rfl <;> decide
-  let vf : Fin 4 := ⟨v, hvlt⟩
-  let nf : Fin 15 := ⟨n, hnlt'⟩
-  exact bounded_no_selectedPreviousResult_under_selector
-    vf nf result hselector hout hstrict hprevious hnotStart
-
 theorem witnessSelectedHelperProvisos
     {v : ValidatorIndex} (hv : v ∈ witnessExecution.honest) {n : ℕ}
     (hHn1 : witnessExecution.WithinHorizon witnessConfig (n + 1))
@@ -280,17 +216,11 @@ theorem witnessSelectedHelperProvisos
       (witnessExecution.fcrStep witnessConfig witnessExternals v n)
       (witnessExecution.getLatestConfirmedTraceAt witnessConfig
         witnessExternals v n).afterObserved := by
-  refine
-    { current_target := ?_
-      selected_previous_result_no_conflict := ?_ }
-  · intro a c hedge
-    exact False.elim
-      (no_currentTargetAcceptedEdge_under_selector
-        hv hHn1 hselector a c hedge)
-  · intro result hout hstrict hprevious hnotStart
-    exact False.elim
-      (no_selectedPreviousResult_under_selector hv hHn1 hselector
-        result hout hstrict hprevious hnotStart)
+  refine { current_target := ?_ }
+  intro a c hedge
+  exact False.elim
+    (no_currentTargetAcceptedEdge_under_selector
+      hv hHn1 hselector a c hedge)
 
 /-! ## Concrete late-prefix geometry used by Paper A3.2 -/
 

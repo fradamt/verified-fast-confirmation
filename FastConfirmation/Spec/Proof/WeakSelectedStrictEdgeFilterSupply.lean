@@ -201,11 +201,11 @@ their `Weak.` counterparts.
 The strong `CurrentTargetAcceptedEdge`'s two conjuncts are inlined, because
 `WeakSelectedTrace.lean` (stage S2) landed no weak twin of that abbreviation.
 
-Like its strong twin the record carries exactly two provisos: the crossing
-tentative edge (`current_target`) and the final tentative stage's
-previous-epoch result (`selected_previous_result_no_conflict`).  The dead
-retained-previous-loop-edge field was removed; see
-`docs/proviso-discharge-map.md` §2.1. -/
+Like its strong twin the record carries exactly one proviso, the crossing
+tentative edge (`current_target`).  The dead retained-previous-loop-edge and
+`selected_previous_result_no_conflict` fields were removed; see
+`docs/proviso-discharge-map.md` §2.1 and
+`docs/trunkA-final-discharge.md` §5.1. -/
 structure SelectedHelperProvisosAt (E : Execution Root)
     (v : ValidatorIndex) (q : ℕ)
     (fcrStore : FastConfirmationStore Root)
@@ -215,16 +215,6 @@ structure SelectedHelperProvisosAt (E : Execution Root)
       latestConfirmedRoot).2.2 →
     get_block_epoch cfg fcrStore.store a <
       get_block_epoch cfg fcrStore.store c →
-    HonestVotesSupportTarget cfg E
-      (get_current_target cfg fcrStore.store) q
-  selected_previous_result_no_conflict : ∀ result : Root,
-    Weak.find_latest_confirmed_descendant cfg ext fcrStore
-      latestConfirmedRoot = result →
-    result ≠ latestConfirmedRoot →
-    get_block_epoch cfg fcrStore.store result ≠
-      get_current_store_epoch cfg fcrStore.store →
-    is_start_slot_at_epoch cfg
-      (get_current_slot cfg fcrStore.store) ≠ true →
     HonestVotesSupportTarget cfg E
       (get_current_target cfg fcrStore.store) q
 

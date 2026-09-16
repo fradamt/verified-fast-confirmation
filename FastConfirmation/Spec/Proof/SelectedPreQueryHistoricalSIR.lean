@@ -769,20 +769,6 @@ def EndpointOriginOrPinnedProducerAt
       E.EndpointOriginOrPinnedAt cfg ext anchor q w m
         (get_current_target cfg query.store)
 
-/-- A retained current-epoch crossing plus its exact proviso feeds a
-certificate producer without any extra helper premise. -/
-theorem certifiedCurrentTarget_of_crossing
-    {anchor : Checkpoint Root} {q : ℕ}
-    {query : FastConfirmationStore Root} {input a c : Root}
-    (hprovisos : SelectedHelperProvisosAt cfg ext E v q query input)
-    (hproducer : E.CurrentTargetCertificateProducerAt cfg ext anchor q query)
-    (hedge : CurrentTargetAcceptedEdge cfg ext query input a c) :
-    Nonempty (CertifiedJustified cfg E anchor
-      (get_current_target cfg query.store)) := by
-  obtain ⟨hgate, hsupport⟩ :=
-    E.currentTargetAcceptedEdge_gate_and_support cfg ext hprovisos hedge
-  exact hproducer hgate hsupport
-
 /-! ## Current-target chain geometry -/
 
 /-- A current-epoch block on the query head chain descends from the query's
