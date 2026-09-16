@@ -32,7 +32,9 @@ obstruction; §7 states it exactly.
 
 Two dead sub-clusters were found on the way (§8) — `currentSame`-cell payload
 consumption and the retained-quorum-source structure — both deletable today and
-both *removing* apparent counterexamples to the restructure.
+both *removing* apparent counterexamples to the restructure. **Both have since
+been deleted** (see the §8 annotations); line numbers quoted below are those of
+the pre-deletion tree.
 
 ---
 
@@ -83,7 +85,7 @@ from the gate realization that builds it.
 | **B2** | `WeakSelectedJustifiedOrientation.lean:157` | `hpayload.certified.some` | `Weak.epochStart_or_endpointCurrentTargetPinned_of_observerCallSite` (`:112`) | → `hacc.justified_unique hJ hT hepoch` |
 | F1 | `AcceptedHistoricalLineageFinalizedPlacement.lean:443/451/526` | `hpayload.certified`, `.support_branch` | `…finalizedRoot_eq_queryCheckpointBlock_of_lineage` (`:356`) | pin against `IncludedCertifiedFinalized`, surround exclusion |
 | F2 | `AcceptedHistoricalLineageFinalizedPlacement.lean:335-337` | `hQ.quorum` | `AcceptedHistoricalA32QuorumAt.exactFinalizedPrefix_of_included` (`:203`) | `not_surround_includedLink` → `False` |
-| X1 | `AcceptedPhaseSourceCarriers.lean:449` | `h.payload.support_branch` | `…LineageAt.anchor_or_retainedQuorumSource` (`:442`) | pure repackaging — **DEAD, zero consumers** |
+| X1 | `AcceptedPhaseSourceCarriers.lean:449` | `h.payload.support_branch` | `…LineageAt.anchor_or_retainedQuorumSource` (`:442`) | pure repackaging — **DEAD, zero consumers**; **deleted**, see §8.2 |
 
 `D1-D6` are *degenerate*: the only thing pulled out of `certified` is the
 numeric inequality `B.anchor.epoch ≤ e` (via `CertifiedJustified.anchor_epoch_le`),
@@ -351,9 +353,18 @@ the residue sits.
    it is dead code.** Deleting it (plus `…finalizedPlacementBeforeQueryAt_of_lineage`,
    `AcceptedHistoricalLineageFinalizedPlacement.lean:588`, also unreferenced)
    should be a precondition of any restructure wave.
+   **Status: `retainedFinalizedAt_currentSameEndpoint` and
+   `AcceptedCurrentSameRetainedFinalizedCarrierAt` are deleted. Still present and
+   now orphaned by that deletion:
+   `AcceptedRetainedPhaseSourceCarrierAt.finalized_check_of_earlyHistoricalLineage`
+   (`AcceptedHistoricalLineageFinalizedPlacement.lean:637`, was consumed only
+   here) and the already-unreferenced
+   `…acceptedFinalizedPlacementBeforeQueryAt_of_lineage` (`:588`) — both left for
+   a follow-up sweep.**
 2. **`AcceptedHistoricalRetainedQuorumSourceAt`** (`AcceptedPhaseSourceCarriers.lean:432-439`)
    and its producer `…anchor_or_retainedQuorumSource` (`:442-465`, `support_branch`
    at `:449`) — zero consumers repo-wide. Pure repackaging; delete.
+   **Status: deleted.**
 3. Already recorded in the map: `no_conflict` (landed), `gate_sound`,
    `target_justified_sound`, `SelectedA32Support.lean:147`.
 
@@ -422,7 +433,7 @@ any appeal to `justified_targets_before_endpoint`.
 
 | Wave | Content | Blast radius | Green? |
 |---|---|---|---|
-| R0 | Delete §8 dead code (`retainedFinalizedAt_currentSameEndpoint`, `AcceptedCurrentSameRetainedFinalizedCarrierAt`, `acceptedFinalizedPlacementBeforeQueryAt_of_lineage`, `AcceptedHistoricalRetainedQuorumSourceAt`, `anchor_or_retainedQuorumSource`) | 3 files | yes |
+| R0 | Delete §8 dead code (`retainedFinalizedAt_currentSameEndpoint`, `AcceptedCurrentSameRetainedFinalizedCarrierAt`, `acceptedFinalizedPlacementBeforeQueryAt_of_lineage`, `AcceptedHistoricalRetainedQuorumSourceAt`, `anchor_or_retainedQuorumSource`) | 3 files | **landed**, except `acceptedFinalizedPlacementBeforeQueryAt_of_lineage` (and the newly orphaned `finalized_check_of_earlyHistoricalLineage`) — follow-up |
 | R1 | Replace `D1-D6`'s `certified` elimination by an explicit `anchor_epoch_le : B.anchor.epoch ≤ e` payload field (additive) — decouples 6 sites from the positive content | `AcceptedHistoricalA32Payload.lean` + 5 consumers | yes |
 | R2 | Introduce `A32DeferredCertification` and thread it through `extend`/`transport_sameEpoch`/`payloadAtTip`; keep a `≥ e+2`-gated projection used at A1/A2 | `AcceptedHistoricalA32Payload.lean`, `…Step`, `…Crossing`, `…OneStep`, `…Induction`, weak twins | yes |
 | R3 | Per-epoch discharge layer (§9.2) over `WeakTrajectorySafety.lean`'s strengthened `∀ k ≤ n` fold (wave 3, landed) | new file + `WeakTrajectorySafety.lean` | yes |

@@ -125,16 +125,21 @@ strong twin: `SelectedTraceFilterPipeline.lean:29-56`.
   (`StrictSelectedHistoricalSIRCallSite.previousNoConflict`). The only other
   `PreviousAcceptedEdge` no-conflict consumer,
   `SelectedFilterBridge.lean:679 filterTipCertificate_of_previous_no_conflict_result`,
-  is unreferenced legacy API (as is its sibling at `:640`).
+  is unreferenced legacy API (as is its sibling at `:640`,
+  `filterTipCertificate_of_current_accepted_edge`). **Both are now deleted;**
+  the `SelectedFilterFFGPipeline` fields `current_target_tip_source` (`:515`)
+  and `no_conflict_tip_source` (`:534`), plus
+  `selected_strict_current_balance_checkpoint_key` (`:299`), are orphaned by
+  that deletion and are candidates for a follow-up sweep.
 * **Immediately deletable** from both records; the only edit needed is the
   witness at `AcceptedActualFCRJointNonVacuityFinal.lean:285-296`.
 
-### 2.2 `current_target` — 4 projections
+### 2.2 `current_target` — 4 projections (3 live; S2 deleted)
 
 | Site | File:line | Enclosing declaration |
 |---|---|---|
 | S1 | `SelectedA32Support.lean:48` | `Execution.currentTargetAcceptedEdge_gate_and_support` (`:38`) |
-| S2 | `SelectedA32Support.lean:170` | `Execution.currentTargetAcceptedEdge_honest_vote_before_next_epoch` (`:147`) — **dead lemma, no callers** |
+| S2 | ~~`SelectedA32Support.lean:170`~~ | ~~`Execution.currentTargetAcceptedEdge_honest_vote_before_next_epoch` (`:147`)~~ — **dead lemma, no callers; deleted.** Its callee `Execution.honest_target_vote_before_next_epoch` (`:111`) is orphaned by the deletion and left for a follow-up sweep |
 | W1 | `WeakHistoricalA32Step.lean:293` | `Weak.currentTargetAcceptedEdge_gate_and_support` (`:280`) |
 | W2 | `WeakPreQuerySIR.lean:368` | `Weak.strictSelectedHistoricalSIRCallSite` (`:339`) |
 

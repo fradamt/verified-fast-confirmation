@@ -141,34 +141,6 @@ theorem honest_target_vote_before_next_epoch
   · simpa only [a, honest_attestation_data_eq,
       honest_attestation_data_slot] using hsBefore
 
-/-- Specialization of `honest_target_vote_before_next_epoch` to an actual
-selected tentative crossing.  This is the complete vote-level fact supplied
-by the executable gate plus `SelectedHelperProvisosAt.current_target`. -/
-theorem currentTargetAcceptedEdge_honest_vote_before_next_epoch
-    (hhb : HonestBehavior cfg ext E)
-    {v : ValidatorIndex} {q : ℕ}
-    {query : FastConfirmationStore Root} {latestConfirmedRoot a c : Root}
-    (hprovisos : SelectedHelperProvisosAt cfg ext E v q query
-      latestConfirmedRoot)
-    (hedge : CurrentTargetAcceptedEdge cfg ext query latestConfirmedRoot a c)
-    {i : ValidatorIndex} (hi : i ∈ E.honest)
-    {s : Slot} (hcommittee : i ∈ E.committee s)
-    (hsH : E.SlotWithinHorizon cfg s)
-    (hsEpoch : compute_epoch_at_slot cfg s =
-      (get_current_target cfg query.store).epoch)
-    (hqS : E.slot_at cfg q ≤ s)
-    (hs0 : E.slot_at cfg 0 ≤ s) :
-    ∃ (k : ℕ) (vote : Attestation Root),
-      E.WithinHorizon cfg k ∧
-      E.slot_at cfg k = s ∧
-      E.vote i s = some (k, vote) ∧
-      vote.data.slot = s ∧
-      vote.data.slot < compute_start_slot_at_epoch cfg
-        ((get_current_target cfg query.store).epoch + 1) ∧
-      vote.data.target = get_current_target cfg query.store := by
-  exact E.honest_target_vote_before_next_epoch cfg ext hhb
-    (hprovisos.current_target a c hedge) hi hcommittee hsH hsEpoch hqS hs0
-
 end Execution
 
 end FastConfirmation.Spec

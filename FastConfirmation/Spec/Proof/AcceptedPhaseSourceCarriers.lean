@@ -424,47 +424,6 @@ theorem earlySelectedEndpointPhase
         Nat.add_assoc] using hearly)
     exact .previous hprevious (Nat.le_antisymm hupper hlower)
 
-/-! ## Historical A3.2 source placement -/
-
-/-- The non-anchor historical quorum and its accepted source remain placed
-on the current retained lineage tip.  This is store-independent semantic
-placement; endpoint recency still depends on the phase/history argument. -/
-structure AcceptedHistoricalRetainedQuorumSourceAt
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
-    (tip : Root) (e : Epoch) where
-  origin : Root
-  quorum_at : E.AcceptedHistoricalA32QuorumAt cfg ext B origin e
-  source_eq_tip : quorum_at.quorum.source = B.state.GJ tip
-  source_au_tip : B.state.AU cfg ext tip quorum_at.quorum.source
-
-/-- Project the anchor disjunct or the positive retained-tip quorum source
-from a safety-free historical lineage. -/
-theorem AcceptedHistoricalA32LineageAt.anchor_or_retainedQuorumSource
-    {B : ExactPrefixAcceptedFFGSemantics cfg ext E}
-    {tip : Root} {e : Epoch}
-    (hphase : Phase0SourceCoherence cfg ext)
-    (h : E.AcceptedHistoricalA32LineageAt cfg ext B tip e) :
-    B.state.C h.origin e = B.anchor ∨
-      Nonempty (E.AcceptedHistoricalRetainedQuorumSourceAt cfg ext B tip e) := by
-  rcases h.payload.support_branch with hanchor | hquorum
-  · exact Or.inl hanchor
-  · obtain ⟨hquorum⟩ := hquorum
-    have hgj : B.state.GJ tip = B.state.GJ h.origin :=
-      h.same_epoch_segment.gj_eq_first hphase
-        B.coherence.toAcceptedFFGSelectorCoherence
-    have hsource : hquorum.quorum.source = B.state.GJ tip :=
-      hquorum.source_eq.trans hgj.symm
-    have htipAccepted : E.AcceptedRoot cfg ext tip := h.tip_at.acceptedRoot
-    exact Or.inr ⟨{
-      origin := h.origin
-      quorum_at := hquorum
-      source_eq_tip := hsource
-      source_au_tip := by
-        rw [hsource]
-        exact B.state.gj_AU cfg ext htipAccepted
-    }⟩
-
-
 end Execution
 
 end FastConfirmation.Spec
