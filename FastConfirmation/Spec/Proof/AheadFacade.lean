@@ -54,21 +54,31 @@ chain) survives `filter_block_tree` whenever its leaf's `get_voting_source` is r
 — `correct_justified` asks only `voting_source.epoch + 2 ≥ current_epoch` (or `= jc.epoch`),
 which a pre-fork justified source at epoch `obs.epoch − 1` satisfies. So a heavier sibling
 branch can carry the `get_head` argmax away from `obs.root`; nothing in the filter forbids
-it. The head is forced above `obs` only by **weight**: `obs` being justified means ≥ 2/3 of
-its epoch's committee attested to it (`JustificationInterface.justified_requires_targets`),
-so `obs`'s subtree dominates every sibling and the argmax descends through it. Converting
-that 2/3 into an `is_ancestor (head) obs` fact is exactly the head-safety weight engine
-(`Descent` / `QuorumAccounting` / `get_head_descends`) re-run for a *justified* checkpoint —
-which is not available in this package and is not filter-mechanical.
+it. The head could be forced above `obs` only by **weight**. `obs` being justified means ≥ 2/3
+of its epoch's committee attested to it (`JustificationInterface.justified_requires_targets`),
+and converting that 2/3 into an `is_ancestor (head) obs` fact would be the head-safety weight
+engine (`Descent` / `QuorumAccounting` / `Endpoint.ghost_step_dominates`) re-run for a
+*justified* checkpoint. **That conversion does not go through here.** The adversary may sit
+entirely inside the quorum, so the honest quorum share is `2/3 − β`, not `2/3`, and the
+per-fork ledger needs `1/3 + β + pb < 2/3 − β`, i.e. `β < 1/6 − pb/2 ≈ 0.1604`. At this
+development's design point `β = 1/4` it reads `5/12` against `7/12` — the sibling wins. An
+earlier draft of this header claimed the opposite ("2/3 exceeds the confirmation bar"); that
+claim was false at `CONFIRMATION_BYZANTINE_THRESHOLD = 25`.
 
-The public interface exports `HeadTracksJustified` as a
-`JustificationInterface`-family field — "the honest fork-choice head descends from every
-known-root `JustifiedIn` checkpoint above the store's realized justified epoch". It is the
-FFG-friendliness of LMD-GHOST (the fork-choice counterpart of `justified_requires_targets`,
-whose 2/3-target content it consumes); same high-probability family as `observed_justified`.
-It can alternatively be derived by applying the head-safety weight argument to justified
-checkpoints: the 2/3 bound feeds the same `fork_majority_of_windows` descent used by the
-confirmation engine, with no boost/discount arms because 2/3 exceeds the confirmation bar.
+`HeadTracksJustified` is therefore carried as an **explicit premise** by the routes that
+consume it, not as a `JustificationInterface` field. It used to be the field
+`JustificationInterface.justified_descends`, presented as an FFG export; that presentation was
+wrong on two counts, and the field was deleted (P-6; see the `HeadTracksJustified` docstring
+below and `docs/p6-justified-descends-derivation.md`):
+
+* it is an LMD-GHOST *weight* fact, not a Casper-FFG export; and
+* it does **not** follow from the 2/3-target export at this development's Byzantine design
+  point. Running the 2/3 quorum through the spec's own per-fork ledger
+  (`Endpoint.ghost_step_dominates`) needs `β < 1/6 − pb/2 ≈ 0.1604`, while
+  `Config.confirmation_byzantine_threshold` is `≤ 25` structurally and `= 25` on mainnet. The
+  live weight-engine name is `MajorityPersists.fork_majority` (an earlier draft of this header
+  cited `fork_majority_of_windows`, which no longer exists) and it carries exactly that
+  threshold, as does the paper's own Lemma 4 (`Paper/LMDGhost/Proof/Quorum.lean:88-92`).
 
 -/
 
@@ -117,14 +127,64 @@ theorem obs_descends_justified (hji : JustificationInterface cfg ext E)
 
 /-! ## Section 2 — the head-tracking interface and residual reduction -/
 
-/-- **LMD-GHOST justification friendliness.** At an honest store,
-the fork-choice head descends from every `JustifiedIn` checkpoint `c` whose root is known and
-whose epoch is above the store's *realized* justified epoch. This is precisely the ahead
-regime `observed_head_ahead` generalizes over `obs`; it is **not** filter-mechanical (see the
-module header) — its honest content is the 2/3-attestation weight of a justified checkpoint
-(`justified_requires_targets`) dominating every sibling in `get_head`'s argmax descent. The
-`obs.epoch ≤ jc.epoch` complement is already closed (`E5Filter.head_ge_of_justifiedIn_le`);
-this predicate states the ahead-regime premise. -/
+/-- **LMD-GHOST justification friendliness — an explicitly-carried, unproven LMD premise.**
+At an honest store, the fork-choice head descends from every `JustifiedIn` checkpoint `c`
+whose root is known and whose epoch is above the store's *realized* justified epoch. This is
+precisely the ahead regime `observed_head_ahead` generalizes over `obs`; it is **not**
+filter-mechanical (see the module header) — its honest content is the 2/3-attestation weight
+of a justified checkpoint (`justified_requires_targets`) dominating every sibling in
+`get_head`'s argmax descent. The `obs.epoch ≤ jc.epoch` complement is already closed
+(`E5Filter.head_ge_of_justifiedIn_le`); this predicate states the ahead-regime premise.
+
+**Provenance and why it is a premise, not a theorem (P-6).** This statement was the
+`JustificationInterface.justified_descends` field until that field was deleted
+(14 → 13 fields). Two things were wrong with carrying it there.
+
+*It is not an FFG export.* It is an LMD-GHOST weight claim; `JustificationInterface` is the
+Casper-FFG export surface. The deleted field's docstring asserted "2/3 of an epoch's
+attesters named it as target; honest ones' newest messages keep descending from it", which is
+the conclusion, not a derivation.
+
+*It is not derivable from the 2/3 quorum at this development's Byzantine floor.* Feed an FFG
+quorum into the spec's own per-fork ledger `Endpoint.ghost_step_dominates` (`Endpoint.lean`),
+charging the proposer boost adversarially as `MajorityPersists.fork_weight_lt` does. With
+`Sval ≥ (2/3 − β)·W` honest quorum weight, `Xval ≤ 1/3·W` honest-but-sibling-stuck,
+`Bval ≤ β·W`, and `pb = proposer_score_boost/100/32 = 40/100/32 = 0.0125`, the required
+`Xval + Bval + proposer_score + 1 ≤ Sval` reads
+
+    1/3 + β + pb < 2/3 − β    ⟺    β < 1/6 − pb/2 ≈ 0.1604.
+
+But `Config.confirmation_byzantine_threshold` is `≤ 25` structurally (`Config.lean:35-39`)
+and `= 25` on mainnet (`:66`). At `β = 1/4` the honest quorum share is `5/12` against `7/12`
+— the sibling wins the argmax. Instantaneous LMD dominance from a 2/3 quorum therefore needs
+`β < 1/6 − pb/2`, which is exactly the hypothesis of the paper's own Lemma 4
+(`Paper/LMDGhost/Proof/Quorum.lean:88-92`, `Q > 1/2·(1 + Wp/W) + β`), so transplanting the
+paper imports the bound rather than removing it. `Spec/Proof/Fraction.lean:31-41` records
+that this development already hit, and retreated from, the same β mismatch once.
+
+**Where it survives.** It does *not* survive on the accepted/actual route, which never needed
+it: `get_latest_confirmed` re-checks `current_epoch_observed_justified_checkpoint =
+store.unrealized_justifications head` at runtime (`Model/Confirmation.lean`), making the
+ancestry chain-intrinsic, and `AcceptedObservedRestartDynamicSafety` proves the observed
+anchor's `SafeFrom` from that guard with no head-tracking premise. It does not survive in
+`AnchorClose` either: the covering fold that consumed it there was redundant, since the
+observed anchor's own threaded `SafeFrom` witness already gives `head ⪰ r₀`.
+
+What remains is the **legacy `SpecAssumptions` observed-anchor bundle**, where the fact has no
+runtime guard to lean on because the strong rule rotates in a *store-global* running maximum
+(`Model/Confirmation.lean`'s `update_fast_confirmation_variables`), not a read off the head's
+own `unrealized_justifications`. The chain-intrinsic banking property that makes the weak
+rule's version provable (`Weak.headUnrealizedJustification_known_and_below`) is a consequence
+of the *weak* rule delta, and the corresponding claim for the strong rule's store-global value
+is recorded in-tree as **false in general** — the branch-switch hole, `Model/WeakSynchrony.lean`
+and `Proof/WeakBankedJustification.lean`'s headers. So on that one route the fact is **carried
+explicitly** rather than asserted, in the style of `Nucleus.CurrentEpochCoveringBridge`.
+
+No audited public witness reaches it: the forward proof-term closure of the 21
+`scripts/Audit.lean` witnesses (19251 constants, 5353 of them from project modules) contained
+neither the old field nor either of its two consumers. Full analysis:
+`docs/p6-justified-descends-derivation.md` §7; audit row
+`docs/plumbing-spec-citations.md` P-6. -/
 def HeadTracksJustified (E : Execution Root) : Prop :=
   ∀ w ∈ E.honest, ∀ m : ℕ, ∀ c : Checkpoint Root,
     E.WithinHorizon cfg m →

@@ -105,10 +105,11 @@ bundles is machine-checked. The two bundles state the same-slot input (i) and th
 base premises (ii). This theorem does not reduce the proof to same-slot availability
 alone, and hence no outright next-slot-weakened `Spec_Safety` (module header). -/
 theorem Spec_Safety_of_sameSlot_and_engine
+    (htracks : ∀ E : Execution Root, SpecAssumptions cfg ext E → E.HeadTracksJustified cfg ext)
     (hSameSlot : ∀ E : Execution Root, SpecAssumptions cfg ext E → E.SameSlotFinalizedRootKnown cfg ext)
     (hEng : ∀ E : Execution Root, SpecAssumptions cfg ext E → E.EngineOpenResiduals cfg ext) :
     Spec_Safety cfg ext :=
-  Spec_Safety_of_engineResiduals cfg ext
+  Spec_Safety_of_engineResiduals cfg ext htracks
     (fun E hSA => E.engineSafetyResiduals_of_split cfg ext (hSameSlot E hSA) (hEng E hSA))
 
 /-- **`Spec_Monotonicity` from the two input bundles and confirmed-root knownness.**
@@ -117,13 +118,15 @@ input bundles plus the single-store confirmed-root knownness premise `hck` (via
 `hkc_of_confirmed_known`, within-node `StoreLE`). Composes `Spec_Safety_of_sameSlot_and_engine` with
 `spec_monotonicity_of_safety`. -/
 theorem Spec_Monotonicity_of_sameSlot_and_engine
+    (htracks : ∀ E : Execution Root, SpecAssumptions cfg ext E → E.HeadTracksJustified cfg ext)
     (hSameSlot : ∀ E : Execution Root, SpecAssumptions cfg ext E → E.SameSlotFinalizedRootKnown cfg ext)
     (hEng : ∀ E : Execution Root, SpecAssumptions cfg ext E → E.EngineOpenResiduals cfg ext)
     (hck : ∀ E : Execution Root, SpecAssumptions cfg ext E → ∀ v ∈ E.honest, ∀ k : ℕ,
       E.WithinHorizon cfg k →
       E.confirmed cfg ext v k ∈ (E.store cfg ext v k).block_roots) :
     Spec_Monotonicity cfg ext :=
-  spec_monotonicity_of_safety cfg ext (Spec_Safety_of_sameSlot_and_engine cfg ext hSameSlot hEng)
+  spec_monotonicity_of_safety cfg ext
+    (Spec_Safety_of_sameSlot_and_engine cfg ext htracks hSameSlot hEng)
     (hkc_of_confirmed_known cfg ext hck)
 
 end FastConfirmation.Spec

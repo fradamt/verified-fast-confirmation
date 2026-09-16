@@ -193,6 +193,7 @@ taken directly (built by `advance_safe_of_disjunctive` on the sound disjunctive 
 engine `dynamics_struct` / `fork_edges_ground` appears: the advance case is discharged by the
 FFG takeover inside the advance leg, not by an LMD chain. -/
 theorem l4Residual_of_advance (hSA : SpecAssumptions cfg ext E)
+    (htracks : E.HeadTracksJustified cfg ext)
     (hSameSlot : E.SameSlotFinalizedRootKnown cfg ext)
     (hadvance : ∀ v ∈ E.honest, ∀ n : ℕ, ∀ b : Root,
       is_one_confirmed cfg ext (E.fcrStep cfg ext v n).store
@@ -202,7 +203,7 @@ theorem l4Residual_of_advance (hSA : SpecAssumptions cfg ext E)
   obtain ⟨hgen, hwfE, hdiv, hhb, hsync, hec, hsv, hbb, hji⟩ := hSA
   have hSA : SpecAssumptions cfg ext E := ⟨hgen, hwfE, hdiv, hhb, hsync, hec, hsv, hbb, hji⟩
   have hdomK := E.store_domainK cfg ext hwfE hec hgen hji
-  have hobs := E.observedFilterResiduals_of_interface cfg ext hji
+  have hobs := E.observedFilterResiduals_of_interface cfg ext hji htracks
     (E.prev_greatest_of_interface cfg ext hji)
   exact {
     genesis_safe := by
@@ -247,6 +248,7 @@ to the strict-epoch `hadv_hi`), and the same-slot knownness `hb_sameslot` inside
 (reduced by `hbk_of_confirming`). The declaration uses only Lean's standard axioms
 `propext`, `Classical.choice`, and `Quot.sound`. -/
 theorem spec_safety_of_advance_disjunctive
+    (htracks : ∀ E : Execution Root, SpecAssumptions cfg ext E → E.HeadTracksJustified cfg ext)
     (hSameSlot : ∀ E : Execution Root, SpecAssumptions cfg ext E → E.SameSlotFinalizedRootKnown cfg ext)
     (hbk : ∀ E : Execution Root, SpecAssumptions cfg ext E →
       ∀ v ∈ E.honest, ∀ n : ℕ, ∀ b : Root,
@@ -275,7 +277,7 @@ theorem spec_safety_of_advance_disjunctive
             (get_node_for_root b) = true) :
     Spec_Safety cfg ext :=
   spec_safety_of_residual cfg ext (fun E hSA =>
-    E.l4Residual_of_advance cfg ext hSA (hSameSlot E hSA)
+    E.l4Residual_of_advance cfg ext hSA (htracks E hSA) (hSameSlot E hSA)
       (E.advance_safe_of_disjunctive cfg ext hSA (hbk E hSA) (hdisj E hSA) (heng E hSA)))
 
 /-- **`Spec_Safety` from the genesis-start anchor + the advance supplies** —
@@ -290,6 +292,7 @@ engine `heng` (the `INVstar`/ground-truth-`Bval` core). The `hanchor0` modeling 
 the same one `Compose.Spec_Safety_proved` carries; this route additionally removes the unsound
 advance-regime dependence on `EngineGroundSuppliers.hcase`. -/
 theorem spec_safety_of_advance_genesisStart
+    (htracks : ∀ E : Execution Root, SpecAssumptions cfg ext E → E.HeadTracksJustified cfg ext)
     (hanchor0 : ∀ E : Execution Root, SpecAssumptions cfg ext E →
       ∀ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
         E.genesis_store = get_forkchoice_store cfg ast ablk → ablk.message.slot = GENESIS_SLOT)
@@ -319,7 +322,7 @@ theorem spec_safety_of_advance_genesisStart
           is_ancestor (E.store cfg ext w m) (get_head cfg (E.store cfg ext w m))
             (get_node_for_root b) = true) :
     Spec_Safety cfg ext :=
-  spec_safety_of_advance_disjunctive cfg ext
+  spec_safety_of_advance_disjunctive cfg ext htracks
     (fun E hSA v hv n w hw m hm hH _hgate =>
       E.sameSlotFinalizedRootKnown_of_genesis_start cfg ext hSA (hanchor0 E hSA)
         v hv n w hw m hm hH)

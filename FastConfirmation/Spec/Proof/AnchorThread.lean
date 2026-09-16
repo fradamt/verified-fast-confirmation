@@ -316,6 +316,7 @@ and the fold's existing previous-confirmed/finalized `SafeFrom` witnesses, deman
 where the fold consumes the continuation. The declaration uses only Lean's standard axioms
 `propext`, `Classical.choice`, and `Quot.sound`. -/
 theorem Spec_Safety_of_anchored
+    (htracks : ∀ E : Execution Root, SpecAssumptions cfg ext E → E.HeadTracksJustified cfg ext)
     (hanchor0 : ∀ E : Execution Root, SpecAssumptions cfg ext E →
       ∀ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
         E.genesis_store = get_forkchoice_store cfg ast ablk → ablk.message.slot = GENESIS_SLOT)
@@ -337,7 +338,7 @@ theorem Spec_Safety_of_anchored
   obtain ⟨hgen, hwfE, hdiv, hhb, hsync, hec, hsv, hbb, hji⟩ := hSA
   have hSA : SpecAssumptions cfg ext E := ⟨hgen, hwfE, hdiv, hhb, hsync, hec, hsv, hbb, hji⟩
   have hdomK := E.store_domainK cfg ext hwfE hec hgen hji
-  have hobs := E.observedFilterResiduals_of_interface cfg ext hji
+  have hobs := E.observedFilterResiduals_of_interface cfg ext hji (htracks E hSA)
     (E.prev_greatest_of_interface cfg ext hji)
   have hSameSlot : E.SameSlotFinalizedRootKnown cfg ext := fun v hv n w hw m hm hH _hgate =>
     E.sameSlotFinalizedRootKnown_of_genesis_start cfg ext hSA (hanchor0 E hSA) v hv n w hw m hm hH
@@ -369,6 +370,7 @@ plus the single-store confirmed-root knownness residual `hck` (lifted across tim
 `StoreLE`; `hkc_of_confirmed_known`). The monotonicity companion of the anchoring
 headline uses only Lean's standard axioms `propext`, `Classical.choice`, and `Quot.sound`. -/
 theorem Spec_Monotonicity_of_anchored
+    (htracks : ∀ E : Execution Root, SpecAssumptions cfg ext E → E.HeadTracksJustified cfg ext)
     (hanchor0 : ∀ E : Execution Root, SpecAssumptions cfg ext E →
       ∀ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
         E.genesis_store = get_forkchoice_store cfg ast ablk → ablk.message.slot = GENESIS_SLOT)
@@ -389,7 +391,7 @@ theorem Spec_Monotonicity_of_anchored
       E.confirmed cfg ext v k ∈ (E.store cfg ext v k).block_roots) :
     Spec_Monotonicity cfg ext :=
   spec_monotonicity_of_safety cfg ext
-    (Spec_Safety_of_anchored cfg ext hanchor0 hadv)
+    (Spec_Safety_of_anchored cfg ext htracks hanchor0 hadv)
     (hkc_of_confirmed_known cfg ext hck)
 
 /-! ## Section 5 — selected-result engine-core bridge -/
@@ -400,13 +402,14 @@ does not expose the legacy arbitrary-root `hbconf`/`hb_sameslot` fields:
 executable selection certificate, and the glc-scoped fold consumes the result
 only at the actual `get_latest_confirmed` output. -/
 theorem Spec_Safety_of_selectedCore
+    (htracks : ∀ E : Execution Root, SpecAssumptions cfg ext E → E.HeadTracksJustified cfg ext)
     (hanchor0 : ∀ E : Execution Root, SpecAssumptions cfg ext E →
       ∀ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
         E.genesis_store = get_forkchoice_store cfg ast ablk → ablk.message.slot = GENESIS_SLOT)
     (hcore : ∀ E : Execution Root, SpecAssumptions cfg ext E →
       E.SelectedEngineAdvanceCore cfg ext) :
     Spec_Safety cfg ext :=
-  Spec_Safety_of_anchored cfg ext hanchor0
+  Spec_Safety_of_anchored cfg ext htracks hanchor0
     (fun E hSA v hv n hadvslot hprev hfin hobs hconf =>
       E.advance_safe_of_selected_core cfg ext hSA (hcore E hSA) v hv n hadvslot
         hprev hfin hobs hconf)
@@ -415,6 +418,7 @@ theorem Spec_Safety_of_selectedCore
 knownness is the executable selected-result induction, with no genesis-start
 specialization and no arbitrary confirmation predicate. -/
 theorem Spec_Monotonicity_of_selectedCore
+    (htracks : ∀ E : Execution Root, SpecAssumptions cfg ext E → E.HeadTracksJustified cfg ext)
     (hanchor0 : ∀ E : Execution Root, SpecAssumptions cfg ext E →
       ∀ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
         E.genesis_store = get_forkchoice_store cfg ast ablk → ablk.message.slot = GENESIS_SLOT)
@@ -422,7 +426,7 @@ theorem Spec_Monotonicity_of_selectedCore
       E.SelectedEngineAdvanceCore cfg ext) :
     Spec_Monotonicity cfg ext :=
   spec_monotonicity_of_safety cfg ext
-    (Spec_Safety_of_selectedCore cfg ext hanchor0 hcore)
+    (Spec_Safety_of_selectedCore cfg ext htracks hanchor0 hcore)
     (hkc_of_confirmed_known cfg ext
       (fun E hSA v hv k => E.confirmed_root_known_selected cfg ext hSA v hv k))
 

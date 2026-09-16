@@ -256,12 +256,13 @@ every slot regime.
 `Quot.sound`, with no project axiom; the reduction from `Spec_Safety` to `hanchor0` + `EngineAdvanceCore` is
 machine-checked. The explicit assumptions are the four `EngineAdvanceCore` fields and `hanchor0`. -/
 theorem Spec_Safety_closed
+    (htracks : ∀ E : Execution Root, SpecAssumptions cfg ext E → E.HeadTracksJustified cfg ext)
     (hanchor0 : ∀ E : Execution Root, SpecAssumptions cfg ext E →
       ∀ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
         E.genesis_store = get_forkchoice_store cfg ast ablk → ablk.message.slot = GENESIS_SLOT)
     (hcore : ∀ E : Execution Root, SpecAssumptions cfg ext E → E.EngineAdvanceCore cfg ext) :
     Spec_Safety cfg ext :=
-  spec_safety_of_advance_genesisStart cfg ext hanchor0
+  spec_safety_of_advance_genesisStart cfg ext htracks hanchor0
     (fun E hSA =>
       E.hbk_of_confirming cfg ext hSA.2.2.2.2.1 (hcore E hSA).hbconf (hcore E hSA).hb_sameslot)
     (fun E hSA => E.hdisj_of_covering cfg ext hSA (hcore E hSA).hcov)
@@ -275,6 +276,7 @@ cross-node relay; `hkc_of_confirmed_known`). The monotonicity companion of the
 conditional result uses only Lean's standard axioms `propext`, `Classical.choice`, and
 `Quot.sound`. -/
 theorem Spec_Monotonicity_closed
+    (htracks : ∀ E : Execution Root, SpecAssumptions cfg ext E → E.HeadTracksJustified cfg ext)
     (hanchor0 : ∀ E : Execution Root, SpecAssumptions cfg ext E →
       ∀ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
         E.genesis_store = get_forkchoice_store cfg ast ablk → ablk.message.slot = GENESIS_SLOT)
@@ -283,7 +285,7 @@ theorem Spec_Monotonicity_closed
       E.WithinHorizon cfg k →
       E.confirmed cfg ext v k ∈ (E.store cfg ext v k).block_roots) :
     Spec_Monotonicity cfg ext :=
-  spec_monotonicity_of_safety cfg ext (Spec_Safety_closed cfg ext hanchor0 hcore)
+  spec_monotonicity_of_safety cfg ext (Spec_Safety_closed cfg ext htracks hanchor0 hcore)
     (hkc_of_confirmed_known cfg ext hck)
 
 end FastConfirmation.Spec

@@ -56,13 +56,14 @@ structure StrongPrefixSafetyInputs (E : Execution Root) : Prop where
 comes from block relay; `finalized_dom_sameslot` supplies the complementary
 same-slot case. -/
 theorem shellResiduals_of_strongPrefixSafetyInputs (hSA : SpecAssumptions cfg ext E)
+    (htracks : E.HeadTracksJustified cfg ext)
     (h : E.StrongPrefixSafetyInputs cfg ext) : E.ShellResiduals cfg ext := by
   obtain ⟨hgen, hwfE, hdiv, hhb, hsync, hec, hsv, hbb, hji⟩ := hSA
   have hSA : SpecAssumptions cfg ext E := ⟨hgen, hwfE, hdiv, hhb, hsync, hec, hsv, hbb, hji⟩
   refine
     { genesis_dom := E.genesis_dom_of_interface cfg ext hSA
       finalized_dom := ?_
-      observed_filter := E.observedFilterResiduals_of_interface cfg ext hji
+      observed_filter := E.observedFilterResiduals_of_interface cfg ext hji htracks
         (E.prev_greatest_of_interface cfg ext hji)
       dynamics_struct := h.dynamics_struct
       fork_edges := h.fork_edges }
@@ -109,14 +110,17 @@ end Execution
 /-- Derive the all-prefix `Spec_Safety` statement when every execution supplies
 `StrongPrefixSafetyInputs`. -/
 theorem Spec_Safety_of_strongPrefix_inputs
+    (htracks : ∀ E : Execution Root, SpecAssumptions cfg ext E → E.HeadTracksJustified cfg ext)
     (h : ∀ E : Execution Root, SpecAssumptions cfg ext E → E.StrongPrefixSafetyInputs cfg ext) :
     Spec_Safety cfg ext :=
   spec_safety_shell_residuals cfg ext
-    (fun E hSA => E.shellResiduals_of_strongPrefixSafetyInputs cfg ext hSA (h E hSA))
+    (fun E hSA =>
+      E.shellResiduals_of_strongPrefixSafetyInputs cfg ext hSA (htracks E hSA) (h E hSA))
 
 /-- Equivalent conditional form with same-slot finalized-root availability
 separated from the ancestry-chain and fork-edge inputs. -/
 theorem Spec_Safety_of_sameSlot_inputs
+    (htracks : ∀ E : Execution Root, SpecAssumptions cfg ext E → E.HeadTracksJustified cfg ext)
     (hSameSlot : ∀ E : Execution Root, SpecAssumptions cfg ext E → E.SameSlotFinalizedRootKnown cfg ext)
     (hrest : ∀ E : Execution Root, SpecAssumptions cfg ext E →
       (∀ v ∈ E.honest, ∀ n : ℕ, ∀ b : Root,
@@ -128,7 +132,7 @@ theorem Spec_Safety_of_sameSlot_inputs
           (get_current_balance_source (E.fcrStep cfg ext v n)) b = true →
         E.ForkEdgeSupply cfg ext b (n + 1))) :
     Spec_Safety cfg ext :=
-  Spec_Safety_of_strongPrefix_inputs cfg ext
+  Spec_Safety_of_strongPrefix_inputs cfg ext htracks
     (fun E hSA =>
       { finalized_dom_sameslot := hSameSlot E hSA
         dynamics_struct := (hrest E hSA).1
@@ -243,12 +247,14 @@ theorem spec_monotonicity_of_safety (hsafe : Spec_Safety cfg ext)
 node's confirmed roots follows from the same `StrongPrefixSafetyInputs` plus the confirmed-root
 knownness premise `hkc`. -/
 theorem Spec_Monotonicity_of_strongPrefix_inputs
+    (htracks : ∀ E : Execution Root, SpecAssumptions cfg ext E → E.HeadTracksJustified cfg ext)
     (h : ∀ E : Execution Root, SpecAssumptions cfg ext E → E.StrongPrefixSafetyInputs cfg ext)
     (hkc : ∀ E : Execution Root, SpecAssumptions cfg ext E → ∀ v ∈ E.honest, ∀ k m : ℕ, k ≤ m →
       E.WithinHorizon cfg m →
       E.confirmed cfg ext v k ∈ (E.store cfg ext v m).block_roots) :
     Spec_Monotonicity cfg ext :=
-  spec_monotonicity_of_safety cfg ext (Spec_Safety_of_strongPrefix_inputs cfg ext h) hkc
+  spec_monotonicity_of_safety cfg ext
+    (Spec_Safety_of_strongPrefix_inputs cfg ext htracks h) hkc
 
 /-- **`Spec_Monotonicity` from strong-prefix inputs and single-store confirmed knownness.**
 The `hkc` time-span premise is reduced to its
@@ -256,11 +262,13 @@ minimal single-store form `hck` (`confirmed v k ∈ (store v k).block_roots`) vi
 `hkc_of_confirmed_known` (within-node `StoreLE`, no cross-node relay). Chain consistency follows from `StrongPrefixSafetyInputs`
 plus the one `get_latest_confirmed` store-knownness invariant. -/
 theorem Spec_Monotonicity_of_strongPrefix_inputs_of_confirmed_known
+    (htracks : ∀ E : Execution Root, SpecAssumptions cfg ext E → E.HeadTracksJustified cfg ext)
     (h : ∀ E : Execution Root, SpecAssumptions cfg ext E → E.StrongPrefixSafetyInputs cfg ext)
     (hck : ∀ E : Execution Root, SpecAssumptions cfg ext E → ∀ v ∈ E.honest, ∀ k : ℕ,
       E.WithinHorizon cfg k →
       E.confirmed cfg ext v k ∈ (E.store cfg ext v k).block_roots) :
     Spec_Monotonicity cfg ext :=
-  Spec_Monotonicity_of_strongPrefix_inputs cfg ext h (hkc_of_confirmed_known cfg ext hck)
+  Spec_Monotonicity_of_strongPrefix_inputs cfg ext htracks h
+    (hkc_of_confirmed_known cfg ext hck)
 
 end FastConfirmation.Spec

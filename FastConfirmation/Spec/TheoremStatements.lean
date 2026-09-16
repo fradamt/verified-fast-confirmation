@@ -27,6 +27,11 @@ The FFG-side facts the algorithm consumes are isolated in
 propagation the `FastConfirmationStore` observed-checkpoint fields are
 documented with). The semantic soundness of the two `will_*` gates is **not**
 among them: no proof in the development ever applied it, so it is not a field.
+Neither is the LMD head-tracking claim formerly carried as `justified_descends`:
+it is an LMD-GHOST weight fact, not an FFG export, and it is not derivable from
+the ≥2/3-attested-target export at this development's Byzantine design point. It
+now lives as the explicitly-carried premise `Execution.HeadTracksJustified`
+(`Proof/AheadFacade.lean`); see `docs/p6-justified-descends-derivation.md`.
 These predicates remain low-level proof vocabulary. The accepted theorem uses
 the separate accepted FFG-semantics and `PaperSafetySynchrony` interfaces.
 -/
@@ -264,25 +269,21 @@ structure JustificationInterface (E : Execution Root) : Prop where
       (E.store cfg ext w m).block_roots ∧
     ((E.fcr cfg ext v n).current_epoch_observed_justified_checkpoint).root ∈
       (E.store cfg ext w m).block_roots
-  /-- Recorded justified
-      support (the fork-choice counterpart of `justified_requires_targets`,
-      whose ≥2/3-attested-target content it re-reads at the LMD layer): at
-      every honest store, a checkpoint justified above the store's realized
-      justified epoch retains recorded latest-message support descending
-      from it that strictly dominates every competing subtree plus the
-      proposer boost — packaged as the dominant filtered descent chain the
-      GHOST walk follows (2/3 of an epoch's attesters named it as target;
-      honest ones' newest messages keep descending from it — the
-      justification-friendliness of LMD-GHOST the fork-choice design
-      guarantees). Stated as the head-tracking conclusion the algorithm
-      relies on. -/
-  justified_descends : ∀ w ∈ E.honest, ∀ m : ℕ, ∀ c : Checkpoint Root,
-    E.WithinHorizon cfg m →
-    JustifiedIn (E.store cfg ext w m) c →
-    c.root ∈ (E.store cfg ext w m).block_roots →
-    (E.store cfg ext w m).justified_checkpoint.epoch < c.epoch →
-      is_ancestor (E.store cfg ext w m)
-        (get_head cfg (E.store cfg ext w m)) (get_node_for_root c.root) = true
+  /- Deleted field: `justified_descends` — the LMD head-tracking claim that an
+     honest store's `get_head` descends *every* checkpoint justified above that
+     store's realized justified epoch. It was never an FFG export: it is an
+     LMD-GHOST weight claim, and it is not derivable from a 2/3 justification
+     quorum at this development's own design point
+     `CONFIRMATION_BYZANTINE_THRESHOLD = 25`. No audited public witness ever
+     reached it. It had two consumers: `AnchorClose`'s covering fold, which turned
+     out to be redundant (the observed anchor's own `SafeFrom` witness was already
+     threaded there and says exactly what the fold was deriving), and the legacy
+     `SpecAssumptions` observed-anchor bundle, which now carries the fact as the
+     named, explicitly-threaded premise `Execution.HeadTracksJustified`
+     (`Proof/AheadFacade.lean`). The accepted/actual route never needed it: the
+     rule re-checks `obs = store.unrealized_justifications head` at runtime. See
+     `docs/plumbing-spec-citations.md` P-6 and
+     `docs/p6-justified-descends-derivation.md` §7. -/
   /-- Checkpoint-boundary
       placement: the justified checkpoint's block sits at or below the
       boundary of any honest vote's target epoch from that store

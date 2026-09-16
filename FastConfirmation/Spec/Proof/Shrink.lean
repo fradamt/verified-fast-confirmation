@@ -42,11 +42,12 @@ mechanization on the store-independent ground-truth-`Bval` track).
 This strengthens `INVstarTrack.Spec_Safety_of_ground` by discharging the genesis reset case,
 so the same-slot assumption is confined to non-genesis reset anchors. -/
 theorem Spec_Safety_shrunk
+    (htracks : ∀ E : Execution Root, SpecAssumptions cfg ext E → E.HeadTracksJustified cfg ext)
     (hSameSlot : ∀ E : Execution Root, SpecAssumptions cfg ext E →
       E.SameSlotFinalizedRootKnownNonGenesis cfg ext)
     (hEng : ∀ E : Execution Root, SpecAssumptions cfg ext E → E.EngineGroundResiduals cfg ext) :
     Spec_Safety cfg ext :=
-  Spec_Safety_of_ground cfg ext
+  Spec_Safety_of_ground cfg ext htracks
     (fun E hSA => E.sameSlotFinalizedRootKnown_of_nonGenesis cfg ext (hSameSlot E hSA)) hEng
 
 /-- **`Spec_Monotonicity` from the minimal input bundle.** Chain consistency of an honest
@@ -57,6 +58,7 @@ lifted across time by within-node `StoreLE` — no cross-node relay). Composes `
 with `StrongPrefixSafety.spec_monotonicity_of_safety`, on exactly the same two input fields plus
 `hck`. -/
 theorem Spec_Monotonicity_shrunk
+    (htracks : ∀ E : Execution Root, SpecAssumptions cfg ext E → E.HeadTracksJustified cfg ext)
     (hSameSlot : ∀ E : Execution Root, SpecAssumptions cfg ext E →
       E.SameSlotFinalizedRootKnownNonGenesis cfg ext)
     (hEng : ∀ E : Execution Root, SpecAssumptions cfg ext E → E.EngineGroundResiduals cfg ext)
@@ -64,7 +66,7 @@ theorem Spec_Monotonicity_shrunk
       E.WithinHorizon cfg k →
       E.confirmed cfg ext v k ∈ (E.store cfg ext v k).block_roots) :
     Spec_Monotonicity cfg ext :=
-  spec_monotonicity_of_safety cfg ext (Spec_Safety_shrunk cfg ext hSameSlot hEng)
+  spec_monotonicity_of_safety cfg ext (Spec_Safety_shrunk cfg ext htracks hSameSlot hEng)
     (hkc_of_confirmed_known cfg ext hck)
 
 end FastConfirmation.Spec

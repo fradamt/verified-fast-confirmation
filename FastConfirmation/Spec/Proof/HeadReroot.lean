@@ -7,8 +7,9 @@ The existing head-descent lemmas (`Descent.is_ancestor_get_head`,
 `EngineStore.is_ancestor_get_head_of_chain`) are formulated for a
 `DescendsTo`/`DescendStep` chain that **starts at the store's own `justified_checkpoint.root`**
 — where `get_head`'s argmax descent begins. The strict FFG branch of the covering fold, however,
-already knows `head ⪰ r₀` for a mid-chain anchor `r₀` (via the `justified_descends` export) and only
-needs to continue the argmax descent from `r₀` down to `b` along a `DescendStep` chain.
+already knows `head ⪰ r₀` for a mid-chain anchor `r₀` (for the reset anchors, from their threaded
+`SafeFrom` witnesses) and only needs to continue the argmax descent from `r₀` down to `b` along a
+`DescendStep` chain.
 
 This module supplies exactly that continuation. The **walk-path characterization** is
 `head_aux_reroot`: if the argmax walk from `start` produces a head that descends from a node `x`
@@ -343,8 +344,8 @@ from the store's justified root, and there is a `DescendsTo` chain from `x` down
 filtered tree, then `head ⪰ b`. Composes the walk-path characterization (`head_aux_reroot`, so the
 argmax walk passes through `x`) with the leaf-descent (`head_ge_of_reroot_leaf`, so the remaining
 argmax steps follow the dominant chain to `b`). This is the strict-FFG-branch continuation the
-covering fold needs: `justified_descends` supplies `head ⪰ r₀` for a mid-chain `r₀`, and this lemma
-carries the descent the rest of the way to the confirmed block. -/
+covering fold needs: the anchor's own `SafeFrom` witness supplies `head ⪰ r₀` for a mid-chain
+`r₀`, and this lemma carries the descent the rest of the way to the confirmed block. -/
 theorem head_ge_of_intermediate_chain {store : Store Root}
     (hwf : ∀ r ∈ store.block_roots,
       (store.blocks r).parent_root ∈ store.block_roots →

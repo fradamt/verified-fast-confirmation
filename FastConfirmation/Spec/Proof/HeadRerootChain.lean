@@ -11,10 +11,10 @@ rooted at the store's **own** `justified_checkpoint.root`;
 already descends from (`head ⪰ x`) and that itself descends from the justified root (`x ⪰ jc.root`).
 
 It converts the chain to a `DescendsTo` path (`EngineStore.descendsTo_of_chain`) and closes with
-`HeadReroot.head_ge_of_intermediate_chain`. The case-(iii) fold supplies `head ⪰ r₀` from the
-`justified_descends` export on the covering `jcb` (`jcb.root = r₀`, `JustifiedIn`, `jc.epoch <
-jcb.epoch`), `r₀ ⪰ jc.root` from chain comparability on `b`'s chain, and the `r₀`-rooted
-`DescendStep` chain from the `r₀`-scoped supply — exactly this lemma's inputs.
+`HeadReroot.head_ge_of_intermediate_chain`. `AnchorClose`'s advance leg supplies `head ⪰ r₀` from
+the anchor's own threaded `SafeFrom` witness, `r₀ ⪰ jc.root` from chain comparability on `b`'s
+chain, and the `r₀`-rooted `DescendStep` chain from the `r₀`-scoped supply — exactly this lemma's
+inputs.
 -/
 
 namespace FastConfirmation.Spec

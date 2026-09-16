@@ -20,9 +20,10 @@ The supplies `DescendStepChainSupply`/`ForkEdgeConfirmMarginSupply` now carry th
 parameter `r₀`** and a per-edge **`c ⪰ r₀` scoping premise**, so the confirm-margin producer (whose
 certificates live only on the `[r₀, glc]` segment) is faced only with `[r₀, glc]`-segment edges.
 `advance_safe_of_descendStepChain` / `heng_of_descendStepChain` / `hdisj_glc_of_anchorCov` are
-replaced by the strong-induction shell `safeFrom_of_headStep`. The observed kind uses the
-per-endpoint 4-case fold `head_ge_glc_endpoint`; the confirmed/finalized kinds use the fold's
-threaded `SafeFrom` witnesses and `head_ge_of_safe_scoped_terminal` on `[r₀, glc]`.
+replaced by the strong-induction shell `safeFrom_of_headStep`. All three anchor kinds use their
+threaded `SafeFrom` witnesses and `head_ge_of_safe_scoped_terminal` on `[r₀, glc]`; the observed
+kind used to run a 4-case covering fold `head_ge_glc_endpoint` instead, which was redundant and
+is deleted (see the note where it stood).
 `safeFromGlc_of_covSupply` extracts a single `r₀` from the L4 anchoring
 (`confirmedWithAnchor_of_advance`) and threads it through both `hcov` and the supply.
 
@@ -223,9 +224,9 @@ on `b`'s chain with `x ⪰ jc.root`, `x ⪰ r₀`,
 and `head ⪰ x`: the parent-link chain `x → b` (`parentChain_at`) lifts to a `DescendStep` chain
 edge-wise (each edge child `c` descends from `x` by `get_ancestor_roots_descends`, hence from `r₀`
 by transitivity — the scoping premise `hedge` consumes), which
-`HeadRerootChain.head_ge_of_intermediate_ledger` folds to `head ⪰ b`. Case (ii) is `x = jc.root`
-(`head ⪰ jc.root` from the filter takeover); case (iii) is `x = r₀` (`head ⪰ r₀` from
-`justified_descends`). -/
+`HeadRerootChain.head_ge_of_intermediate_ledger` folds to `head ⪰ b`. The mid-chain instance is
+`x = jc.root` (`head ⪰ jc.root` from the filter takeover); the deleted covering fold also used
+`x = r₀`. -/
 theorem head_ge_of_scoped_terminal {store : Store Root}
     (hwf : ∀ r ∈ store.block_roots,
       (store.blocks r).parent_root ∈ store.block_roots →
@@ -626,8 +627,9 @@ The two case-(i) instruments —
 the unconditional head witness (`get_checkpoint_block head jc.epoch = jc.root`) and the slot bound
 (`glc.slot ≤ start_slot(jc.epoch)`, **FALSE for a fresh `glc` at a store with an older `jc`**) — are
 **deleted**: they were wrongly demanded globally. In their place the derivable **covering
-disjunction** drives case (i): `head_ge_glc_endpoint` reads `jc.root ⪰ glc` off the disjunction
-(`head ⪰ jc.root ⪰ glc`, no geometry) and `glc ⪰ jc.root` for the chain branch.
+disjunction** drove case (i) of the (now deleted) covering fold: `jc.root ⪰ glc` off the
+disjunction gives `head ⪰ jc.root ⪰ glc` with no geometry, and `glc ⪰ jc.root` drives the chain
+branch. The observed route no longer consumes it (it finishes from the threaded `hobs`).
 
 For the observed route, the disjunction is derivable under the **head-safety IH clause**
 (`∀ w' m', n+1 ≤ m' → slot_at m' < slot_at m → head(w',m') ⪰ glc`), added as a hypothesis
@@ -842,107 +844,28 @@ theorem anchor_ge_of_pastDescendant (hSA : SpecAssumptions cfg ext E)
   exact ⟨hsub_uw hr₀_u, hsub_uw hb_u,
     E.is_ancestor_transport_rev cfg ext hwfE hsub_uw hr₀_u hb_u hwalk_br_u hbr_u⟩
 
-/-- **Per-endpoint head descent from the covering disjunction and the r₀-scoped edge supply.**
-At a foreign endpoint `(w, m)`, from the covering
-checkpoint `jcb` (`jcb.root = r₀`, `JustifiedIn`, known), the transported anchoring `b ⪰ jcb.root`
-(`hbge`), the covering disjunction `b ⪰ jc.root ∨ jc.root ⪰ b` (`hdisj`), and the r₀-scoped edge
-supply `hedge`, the fork-choice head descends from `b`. There are four cases:
-* **(i) `jc.root ⪰ b`** (the second disjunct): `head ⪰ jc.root ⪰ b` by `head_ge_of_justified_ge_K` —
-  this branch needs no additional geometry or head witness.
-* **(ii) `b ⪰ jc.root`, `jc.root ⪰ r₀`**: walk `[jc.root, b]` (`head ⪰ jc.root` from the filter,
-  `head_ge_of_scoped_terminal` at `x = jc.root`; every edge child `c ⪰ jc.root ⪰ r₀`).
-* **(iii) `b ⪰ jc.root`, `r₀ ⪰ jc.root`, `jc.epoch < jcb.epoch`**: `head ⪰ r₀` from
-  `justified_descends` on `jcb`, then the mid-walk `[r₀, b]` (`head_ge_of_scoped_terminal` at
-  `x = r₀`).
-* **(iv) `r₀ ⪰ jc.root`, `jcb.epoch ≤ jc.epoch`**: `justified_ancestry` forces `jc.root ⪰ r₀`, so
-  this collapses to case (ii) — the impossible cert-less corner never survives.
-Cases (ii)/(iv) share the `x = jc.root` fold, differing only in how `jc.root ⪰ r₀` is obtained. -/
-theorem head_ge_glc_endpoint (hSA : SpecAssumptions cfg ext E)
-    (w : ValidatorIndex) (hw : w ∈ E.honest) (m : ℕ)
-    (hH : E.WithinHorizon cfg m)
-    {b r₀ : Root} (jcb : Checkpoint Root)
-    (hbmem : b ∈ (E.store cfg ext w m).block_roots)
-    (hjcb_root : jcb.root = r₀)
-    (hjust : JustifiedIn (E.store cfg ext w m) jcb)
-    (hjcb_known : jcb.root ∈ (E.store cfg ext w m).block_roots)
-    (hbge : is_ancestor (E.store cfg ext w m)
-      (get_node_for_root b) (get_node_for_root jcb.root) = true)
-    (hdisj : is_ancestor (E.store cfg ext w m)
-        (get_node_for_root b)
-        (get_node_for_root (E.store cfg ext w m).justified_checkpoint.root) = true ∨
-      is_ancestor (E.store cfg ext w m)
-        (get_node_for_root (E.store cfg ext w m).justified_checkpoint.root)
-        (get_node_for_root b) = true)
-    (hedge : ∀ a c : Root, a ∈ (E.store cfg ext w m).block_roots →
-      c ∈ (E.store cfg ext w m).block_roots →
-      ((E.store cfg ext w m).blocks c).parent_root = a →
-      is_ancestor (E.store cfg ext w m) (get_node_for_root b) (get_node_for_root c) = true →
-      is_ancestor (E.store cfg ext w m) (get_node_for_root c) (get_node_for_root r₀) = true →
-      c ≠ r₀ →
-      DescendStep cfg (E.store cfg ext w m)
-        (get_filtered_block_tree cfg (E.store cfg ext w m)) a c) :
-    is_ancestor (E.store cfg ext w m) (get_head cfg (E.store cfg ext w m))
-      (get_node_for_root b) = true := by
-  obtain ⟨hgen, hwfE, _hdiv, _hbeh, _hsync, hec, _hsv, _hbb, hji⟩ := hSA
-  obtain ⟨hwf, hwalkK, hjc⟩ := E.store_domainK cfg ext hwfE hec hgen hji w hw m hH
-  set S := E.store cfg ext w m with hSdef
-  have hsub : ∀ r ∈ get_filtered_block_tree cfg S, r ∈ S.block_roots :=
-    filtered_subset_block_roots cfg S hjc
-  have hr₀mem : r₀ ∈ S.block_roots := hjcb_root ▸ hjcb_known
-  -- `b ⪰ r₀`
-  have hbge_r₀ : is_ancestor S (get_node_for_root b) (get_node_for_root r₀) = true :=
-    hjcb_root ▸ hbge
-  -- `head ⪰ jc.root` (the filter takeover, used by cases (i)/(ii)/(iv))
-  have hhead_jc : is_ancestor S (get_head cfg S)
-      (get_node_for_root S.justified_checkpoint.root) = true :=
-    head_ge_of_justified_ge_K cfg hwf hwalkK hjc hjc
-      (is_ancestor_refl S (get_node_for_root S.justified_checkpoint.root))
-  -- the case-(ii)/(iv) fold at `x = jc.root`, parameterised by how `jc.root ⪰ r₀` arrives
-  have caseII : is_ancestor S (get_node_for_root S.justified_checkpoint.root)
-        (get_node_for_root r₀) = true →
-      is_ancestor S (get_node_for_root b)
-        (get_node_for_root S.justified_checkpoint.root) = true →
-      is_ancestor S (get_head cfg S) (get_node_for_root b) = true := by
-    intro hjc_r₀ hbge_jc
-    exact head_ge_of_scoped_terminal cfg hwf hsub hwalkK hjc hr₀mem hjc hbmem
-      (is_ancestor_refl S (get_node_for_root S.justified_checkpoint.root)) hjc_r₀ hhead_jc
-      hbge_jc hedge
-  rcases hdisj with hbge_jc | hjc_ge_b
-  · -- `b ⪰ jc.root` (chain branch): reroot analysis (cases (ii)/(iii)/(iv))
-    -- comparability of `jc.root` and `r₀` (both ancestors of `b`)
-    have ha_jc : get_ancestor S (ForkChoiceNode.mk b)
-        (S.blocks S.justified_checkpoint.root).slot =
-          ForkChoiceNode.mk S.justified_checkpoint.root := by
-      simpa only [is_ancestor, get_node_for_root, decide_eq_true_eq] using hbge_jc
-    have ha_r₀ : get_ancestor S (ForkChoiceNode.mk b) (S.blocks r₀).slot =
-        ForkChoiceNode.mk r₀ := by
-      simpa only [is_ancestor, get_node_for_root, decide_eq_true_eq] using hbge_r₀
-    rcases reroot_comparable hwf (y := b) (a := S.justified_checkpoint.root) (b := r₀)
-        (hwalkK S.justified_checkpoint.root hjc b hbmem) (hwalkK r₀ hr₀mem b hbmem)
-        ha_jc ha_r₀ with hr₀_ge_jc | hjc_ge_r₀
-    · -- `r₀ ⪰ jc.root`: cases (iii)/(iv)
-      by_cases hep2 : S.justified_checkpoint.epoch < jcb.epoch
-      · -- case (iii): `head ⪰ r₀` from `justified_descends`, mid-walk `[r₀, b]`
-        have hhead_r₀ : is_ancestor S (get_head cfg S) (get_node_for_root r₀) = true :=
-          hjcb_root ▸ hji.justified_descends w hw m jcb hH hjust hjcb_known hep2
-        have hr₀_ge_jc' : is_ancestor S (get_node_for_root r₀)
-            (get_node_for_root S.justified_checkpoint.root) = true := by
-          simp only [is_ancestor, get_node_for_root, decide_eq_true_eq]; exact hr₀_ge_jc
-        exact head_ge_of_scoped_terminal cfg hwf hsub hwalkK hjc hr₀mem hr₀mem hbmem
-          hr₀_ge_jc' (is_ancestor_refl S (get_node_for_root r₀)) hhead_r₀ hbge_r₀ hedge
-      · -- case (iv): `jcb.epoch ≤ jc.epoch` ⟹ `jc.root ⪰ r₀` by `justified_ancestry` → case (ii)
-        have hjc_r₀ : is_ancestor S (get_node_for_root S.justified_checkpoint.root)
-            (get_node_for_root r₀) = true :=
-          hjcb_root ▸ hji.justified_ancestry w hw m jcb S.justified_checkpoint hH hjust
-            (Or.inl rfl) (not_lt.mp hep2) hjcb_known hjc
-        exact caseII hjc_r₀ hbge_jc
-    · -- `jc.root ⪰ r₀`: case (ii)
-      have hjc_r₀ : is_ancestor S (get_node_for_root S.justified_checkpoint.root)
-          (get_node_for_root r₀) = true := by
-        simp only [is_ancestor, get_node_for_root, decide_eq_true_eq]; exact hjc_ge_r₀
-      exact caseII hjc_r₀ hbge_jc
-  · -- case (i): `jc.root ⪰ b` ⟹ `head ⪰ jc.root ⪰ b` (no geometry)
-    exact head_ge_of_justified_ge_K cfg hwf hwalkK hjc hbmem hjc_ge_b
+/-! ### Deleted: `head_ge_glc_endpoint`, the 4-case covering fold
+
+The observed-anchor route of `safeFromGlc_of_covSupply` used to run a per-endpoint 4-case
+covering fold here. Its case (iii) (`b ⪰ jc.root`, `r₀ ⪰ jc.root`, `jc.epoch < jcb.epoch`) was
+the sole consumer of `JustificationInterface.justified_descends` on this path, obtaining
+`head ⪰ r₀` from the covering checkpoint `jcb`.
+
+The fold was **redundant**. The route tag already says `r₀` is the FCR's
+`current_epoch_observed_justified_checkpoint.root`, and `safeFromGlc_of_covSupply` already
+threads that root's own `SafeFrom` witness `hobs` — which *is* `head ⪰ r₀` at every honest
+endpoint from `n + 1` on. The pre-deadline branch of the same proof had always used exactly
+that (`simpa only [hobserved] using hobs w hw m hm hH`); the post-deadline branch now does
+too, finishing through `finishDirect` like the confirmed and finalized kinds. So the fold, and
+with it this path's dependence on the head-tracking claim, is gone — no weight arithmetic and
+no new hypothesis. See `docs/p6-justified-descends-derivation.md` (W0) and
+`docs/plumbing-spec-citations.md` P-6.
+
+`AnchorCovSupply`'s observed disjunct keeps its `jcb` covering payload and covering
+disjunction: the flag is never produced in-tree, and `Nucleus.covering_comparability` /
+`Nucleus.CurrentEpochCoveringBridge` are still stated in that field shape. -/
+
+
 
 /-- **The `get_latest_confirmed`-scoped advance leg.** Threads the **existential** anchor through
 the four-case argument and produces the full `SafeFrom` of the confirmed block from the
@@ -958,10 +881,11 @@ the very `(r₀, kind, ConfirmedWithAnchor)` package `confirmedWithAnchor_of_adv
 supply scoping). The fold extracts that one `r₀` (+ its `ConfirmedWithAnchor` `hanc`, feeding
 `hcov`) and the supply `hsup` in a single `obtain`. The head-safety strong-induction shell
 `safeFrom_of_headStep` supplies the IH. Once the confirming-store relay deadline holds, the
-confirmed/finalized routes start from their threaded `head ⪰ r₀` fact and the observed route
-runs `head_ge_glc_endpoint`'s 4-case covering fold. Before that deadline (including same-slot
-endpoints), all three kinds use the executable selected-candidate transport of `glc ⪰ r₀` and
-their threaded `SafeFrom` facts, then fold the cert-carrying `[r₀, glc]` segment directly. Every
+all three routes start from their threaded `head ⪰ r₀` fact — for the observed kind that
+is the `hobs` witness, the route tag identifying `r₀` with the observed justified root.
+The 4-case covering fold this branch used to run is deleted. Before that deadline
+(including same-slot endpoints), all three kinds use the executable selected-candidate
+transport of `glc ⪰ r₀` and their threaded `SafeFrom` facts, then fold the cert-carrying `[r₀, glc]` segment directly. Every
 demanded edge still satisfies `c ⪰ r₀`. -/
 theorem safeFromGlc_of_covSupply (hSA : SpecAssumptions cfg ext E)
     (hcov : E.AnchorCovSupply cfg ext)
@@ -1046,10 +970,15 @@ theorem safeFromGlc_of_covSupply (hSA : SpecAssumptions cfg ext E)
     rcases hroute with hconfirmed | hfinalized | hobserved
     · exact finishDirect hconfirmed.2
     · exact finishDirect hfinalized.2
-    · obtain ⟨_hobserved, jcb, hjcb_root, hjust, hjcb_known, hdisj⟩ := hobserved
-      exact E.head_ge_glc_endpoint cfg ext hSA w hw m hH jcb hbEndpoint hjcb_root hjust
-        hjcb_known (by rw [hjcb_root]; exact hbge_r₀) hdisj
-        (fun a c ha hc hlink hbc hcr => hsup w hw m hm hH hIH a c ha hc hlink hbc hcr)
+    · -- **Observed kind, post-deadline.** The threaded observed-anchor `SafeFrom` witness
+      -- `hobs` *is* `head ⪰ r₀` here, exactly as in the pre-deadline branch below: the route
+      -- tag says `r₀` is the FCR's `current_epoch_observed_justified_checkpoint.root`, and
+      -- `hobs` is that root's `SafeFrom` from `n + 1`. So this kind finishes through
+      -- `finishDirect` like the other two, with no covering fold and no head-tracking premise.
+      -- (The route's `jcb` covering payload is therefore unused here; it is retained in
+      -- `AnchorCovSupply` for the flag's producers.)
+      exact finishDirect (by
+        simpa only [hobserved.1] using hobs w hw m hm hH)
   · obtain ⟨hr₀mem, hbmem, hbge_r₀⟩ :=
       E.confirmed_ancestry_at_all_honest_endpoints cfg ext hSA v hv n _ r₀ hHn1
         hbConfirm hpConfirm hanc.r₀_known hanc.b_ge_r₀ hselected w hw m
@@ -1161,6 +1090,7 @@ advance residual is the actual anchor-scoped `[r₀, glc]` `DescendStep` chain.
 `hanchor0` remains solely for the independent genesis/finalized reset fold; it
 does not enter `safeFromGlc_of_chainSupply`. -/
 theorem Spec_Safety_of_chainSupply
+    (htracks : ∀ E : Execution Root, SpecAssumptions cfg ext E → E.HeadTracksJustified cfg ext)
     (hanchor0 : ∀ E : Execution Root, SpecAssumptions cfg ext E →
       ∀ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
         E.genesis_store = get_forkchoice_store cfg ast ablk → ablk.message.slot = GENESIS_SLOT)
@@ -1180,13 +1110,14 @@ theorem Spec_Safety_of_chainSupply
           E.DescendStepChainSupply cfg ext
             (get_latest_confirmed cfg ext (E.fcrStep cfg ext v n)) r₀ (n + 1)) :
     Spec_Safety cfg ext := by
-  refine Spec_Safety_of_anchored cfg ext hanchor0 ?_
+  refine Spec_Safety_of_anchored cfg ext htracks hanchor0 ?_
   intro E hSA v hv n hadvslot hprev hfin hobs hconf
   exact E.safeFromGlc_of_chainSupply cfg ext hSA v hv n hprev hfin hobs
     (hsupply E hSA v hv n hadvslot hconf)
 
 /-- Monotonicity from the same selected chain-only bridge. -/
 theorem Spec_Monotonicity_of_chainSupply
+    (htracks : ∀ E : Execution Root, SpecAssumptions cfg ext E → E.HeadTracksJustified cfg ext)
     (hanchor0 : ∀ E : Execution Root, SpecAssumptions cfg ext E →
       ∀ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
         E.genesis_store = get_forkchoice_store cfg ast ablk → ablk.message.slot = GENESIS_SLOT)
@@ -1207,7 +1138,7 @@ theorem Spec_Monotonicity_of_chainSupply
             (get_latest_confirmed cfg ext (E.fcrStep cfg ext v n)) r₀ (n + 1)) :
     Spec_Monotonicity cfg ext :=
   spec_monotonicity_of_safety cfg ext
-    (Spec_Safety_of_chainSupply cfg ext hanchor0 hsupply)
+    (Spec_Safety_of_chainSupply cfg ext htracks hanchor0 hsupply)
     (hkc_of_confirmed_known cfg ext
       (fun E hSA v hv k => E.confirmed_root_known_selected cfg ext hSA v hv k))
 
@@ -1242,6 +1173,7 @@ The single advance flag of `Spec_Safety_of_anchored` is discharged here; the res
 `{hcov, hsupply}`, each an honest, transparent obligation. The declaration uses only Lean's
 standard axioms `propext`, `Classical.choice`, and `Quot.sound`. -/
 theorem Spec_Safety_of_close
+    (htracks : ∀ E : Execution Root, SpecAssumptions cfg ext E → E.HeadTracksJustified cfg ext)
     (hanchor0 : ∀ E : Execution Root, SpecAssumptions cfg ext E →
       ∀ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
         E.genesis_store = get_forkchoice_store cfg ast ablk → ablk.message.slot = GENESIS_SLOT)
@@ -1262,7 +1194,7 @@ theorem Spec_Safety_of_close
           E.DescendStepChainSupply cfg ext
             (get_latest_confirmed cfg ext (E.fcrStep cfg ext v n)) r₀ (n + 1)) :
     Spec_Safety cfg ext := by
-  refine Spec_Safety_of_anchored cfg ext hanchor0 ?_
+  refine Spec_Safety_of_anchored cfg ext htracks hanchor0 ?_
   intro E hSA v hv n hadvslot hprev hfin hobs hconf
   exact E.safeFromGlc_of_covSupply cfg ext hSA (hcov E hSA) v hv n hadvslot hconf hprev hfin hobs
     (hsupply E hSA v hv n hadvslot hconf)
@@ -1273,6 +1205,7 @@ theorem Spec_Safety_of_close
 fully discharged by the executable selected-result induction. Composes
 `spec_monotonicity_of_safety` on `Spec_Safety_of_close`. -/
 theorem Spec_Monotonicity_of_close
+    (htracks : ∀ E : Execution Root, SpecAssumptions cfg ext E → E.HeadTracksJustified cfg ext)
     (hanchor0 : ∀ E : Execution Root, SpecAssumptions cfg ext E →
       ∀ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
         E.genesis_store = get_forkchoice_store cfg ast ablk → ablk.message.slot = GENESIS_SLOT)
@@ -1294,7 +1227,7 @@ theorem Spec_Monotonicity_of_close
             (get_latest_confirmed cfg ext (E.fcrStep cfg ext v n)) r₀ (n + 1)) :
     Spec_Monotonicity cfg ext :=
   spec_monotonicity_of_safety cfg ext
-    (Spec_Safety_of_close cfg ext hanchor0 hcov hsupply)
+    (Spec_Safety_of_close cfg ext htracks hanchor0 hcov hsupply)
     (hkc_of_confirmed_known cfg ext
       (fun E hSA v hv k => E.confirmed_root_known_selected cfg ext hSA v hv k))
 
@@ -1313,6 +1246,7 @@ residual is exactly
 `{hcov, hcm}` with `hcm` the transparent confirm-margin engine data. The declaration uses only
 Lean's standard axioms `propext`, `Classical.choice`, and `Quot.sound`. -/
 theorem Spec_Safety_of_confirmMargin
+    (htracks : ∀ E : Execution Root, SpecAssumptions cfg ext E → E.HeadTracksJustified cfg ext)
     (hanchor0 : ∀ E : Execution Root, SpecAssumptions cfg ext E →
       ∀ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
         E.genesis_store = get_forkchoice_store cfg ast ablk → ablk.message.slot = GENESIS_SLOT)
@@ -1333,7 +1267,7 @@ theorem Spec_Safety_of_confirmMargin
           E.ForkEdgeConfirmMarginSupply cfg ext
             (get_latest_confirmed cfg ext (E.fcrStep cfg ext v n)) r₀ (n + 1)) :
     Spec_Safety cfg ext :=
-  Spec_Safety_of_close cfg ext hanchor0 hcov
+  Spec_Safety_of_close cfg ext htracks hanchor0 hcov
     (fun E hSA v hv n hadvslot hconf => by
       obtain ⟨r₀, hkind, hanc, hcmSup⟩ := hcm E hSA v hv n hadvslot hconf
       exact ⟨r₀, hkind, hanc, E.descendStepChainSupply_of_confirmMargin cfg ext hSA hcmSup⟩)
@@ -1342,6 +1276,7 @@ theorem Spec_Safety_of_confirmMargin
 companion of `Spec_Safety_of_confirmMargin`; `hck` is fully discharged by selected-result
 provenance. -/
 theorem Spec_Monotonicity_of_confirmMargin
+    (htracks : ∀ E : Execution Root, SpecAssumptions cfg ext E → E.HeadTracksJustified cfg ext)
     (hanchor0 : ∀ E : Execution Root, SpecAssumptions cfg ext E →
       ∀ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
         E.genesis_store = get_forkchoice_store cfg ast ablk → ablk.message.slot = GENESIS_SLOT)
@@ -1363,7 +1298,7 @@ theorem Spec_Monotonicity_of_confirmMargin
             (get_latest_confirmed cfg ext (E.fcrStep cfg ext v n)) r₀ (n + 1)) :
     Spec_Monotonicity cfg ext :=
   spec_monotonicity_of_safety cfg ext
-    (Spec_Safety_of_confirmMargin cfg ext hanchor0 hcov hcm)
+    (Spec_Safety_of_confirmMargin cfg ext htracks hanchor0 hcov hcm)
     (hkc_of_confirmed_known cfg ext
       (fun E hSA v hv k => E.confirmed_root_known_selected cfg ext hSA v hv k))
 
@@ -1371,6 +1306,7 @@ theorem Spec_Monotonicity_of_confirmMargin
 confirm-margin bundle.**  This is the covering-free counterpart of
 `Spec_Safety_of_confirmMargin`. -/
 theorem Spec_Safety_of_chainConfirmMargin
+    (htracks : ∀ E : Execution Root, SpecAssumptions cfg ext E → E.HeadTracksJustified cfg ext)
     (hanchor0 : ∀ E : Execution Root, SpecAssumptions cfg ext E →
       ∀ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
         E.genesis_store = get_forkchoice_store cfg ast ablk → ablk.message.slot = GENESIS_SLOT)
@@ -1390,7 +1326,7 @@ theorem Spec_Safety_of_chainConfirmMargin
           E.ForkEdgeConfirmMarginSupply cfg ext
             (get_latest_confirmed cfg ext (E.fcrStep cfg ext v n)) r₀ (n + 1)) :
     Spec_Safety cfg ext :=
-  Spec_Safety_of_chainSupply cfg ext hanchor0
+  Spec_Safety_of_chainSupply cfg ext htracks hanchor0
     (fun E hSA v hv n hadvslot hconf => by
       obtain ⟨r₀, hkind, hanc, hcmSup⟩ := hcm E hSA v hv n hadvslot hconf
       exact ⟨r₀, hkind, hanc,
@@ -1398,6 +1334,7 @@ theorem Spec_Safety_of_chainConfirmMargin
 
 /-- Monotonicity from the same covering-free confirm-margin bridge. -/
 theorem Spec_Monotonicity_of_chainConfirmMargin
+    (htracks : ∀ E : Execution Root, SpecAssumptions cfg ext E → E.HeadTracksJustified cfg ext)
     (hanchor0 : ∀ E : Execution Root, SpecAssumptions cfg ext E →
       ∀ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
         E.genesis_store = get_forkchoice_store cfg ast ablk → ablk.message.slot = GENESIS_SLOT)
@@ -1418,7 +1355,7 @@ theorem Spec_Monotonicity_of_chainConfirmMargin
             (get_latest_confirmed cfg ext (E.fcrStep cfg ext v n)) r₀ (n + 1)) :
     Spec_Monotonicity cfg ext :=
   spec_monotonicity_of_safety cfg ext
-    (Spec_Safety_of_chainConfirmMargin cfg ext hanchor0 hcm)
+    (Spec_Safety_of_chainConfirmMargin cfg ext htracks hanchor0 hcm)
     (hkc_of_confirmed_known cfg ext
       (fun E hSA v hv k => E.confirmed_root_known_selected cfg ext hSA v hv k))
 

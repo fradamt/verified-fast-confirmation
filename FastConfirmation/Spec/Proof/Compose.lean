@@ -159,12 +159,13 @@ bundle (`hanchor0` + `EngineGroundSuppliers`) is machine-checked. Its explicit p
 `hanchor0` and the engine-supplier fields `hb_sameslot`/`hcase`/`fork_edges_ground` (the
 head-safety engine core and its same-slot `SameSlotFinalizedRootKnown` condition). -/
 theorem Spec_Safety_proved
+    (htracks : ∀ E : Execution Root, SpecAssumptions cfg ext E → E.HeadTracksJustified cfg ext)
     (hanchor0 : ∀ E : Execution Root, SpecAssumptions cfg ext E →
       ∀ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
         E.genesis_store = get_forkchoice_store cfg ast ablk → ablk.message.slot = GENESIS_SLOT)
     (hsup : ∀ E : Execution Root, SpecAssumptions cfg ext E → E.EngineGroundSuppliers cfg ext) :
     Spec_Safety cfg ext :=
-  Spec_Safety_shrunk cfg ext
+  Spec_Safety_shrunk cfg ext htracks
     (fun E hSA => E.sameSlotFinalizedRootKnownNonGenesis_of_genesis_start cfg ext hSA (hanchor0 E hSA))
     (fun E hSA => E.engineGroundResiduals_of_suppliers cfg ext hSA (hsup E hSA))
 
@@ -175,6 +176,7 @@ consistency of an honest node's confirmed roots follows from the closing safety 
 monotonicity companion of the composition uses only Lean's standard axioms
 `propext`, `Classical.choice`, and `Quot.sound`. -/
 theorem Spec_Monotonicity_proved
+    (htracks : ∀ E : Execution Root, SpecAssumptions cfg ext E → E.HeadTracksJustified cfg ext)
     (hanchor0 : ∀ E : Execution Root, SpecAssumptions cfg ext E →
       ∀ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
         E.genesis_store = get_forkchoice_store cfg ast ablk → ablk.message.slot = GENESIS_SLOT)
@@ -183,7 +185,7 @@ theorem Spec_Monotonicity_proved
       E.WithinHorizon cfg k →
       E.confirmed cfg ext v k ∈ (E.store cfg ext v k).block_roots) :
     Spec_Monotonicity cfg ext :=
-  spec_monotonicity_of_safety cfg ext (Spec_Safety_proved cfg ext hanchor0 hsup)
+  spec_monotonicity_of_safety cfg ext (Spec_Safety_proved cfg ext htracks hanchor0 hsup)
     (hkc_of_confirmed_known cfg ext hck)
 
 end FastConfirmation.Spec

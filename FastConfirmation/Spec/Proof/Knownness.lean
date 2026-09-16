@@ -357,6 +357,7 @@ FCR safety guarantee follows from a proof that every execution's `SpecAssumption
 `hbconf` is discharged internally (`hbconf_of_genesisStart`); it needs no residual. Composes
 `Spec_Safety_closed` with the `EngineAdvanceCore` assembled from these. -/
 theorem Spec_Safety_of_knownness
+    (htracks : ∀ E : Execution Root, SpecAssumptions cfg ext E → E.HeadTracksJustified cfg ext)
     (hanchor0 : ∀ E : Execution Root, SpecAssumptions cfg ext E →
       ∀ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
         E.genesis_store = get_forkchoice_store cfg ast ablk → ablk.message.slot = GENESIS_SLOT)
@@ -388,7 +389,7 @@ theorem Spec_Safety_of_knownness
           is_ancestor (E.store cfg ext w m) (get_head cfg (E.store cfg ext w m))
             (get_node_for_root b) = true) :
     Spec_Safety cfg ext :=
-  Spec_Safety_closed cfg ext hanchor0 (fun E hSA =>
+  Spec_Safety_closed cfg ext htracks hanchor0 (fun E hSA =>
     { hbconf := fun v _hv n b hH hconf =>
         E.hbconf_of_genesisStart cfg ext hSA (hanchor0 E hSA) v n b hH hconf
       hb_sameslot := fun v hv n b hconf w hw m hm hH _hgap =>
@@ -404,6 +405,7 @@ discharged** here (`hck_of_genesisStart`, no residual) — so monotonicity reduc
 `hanchor0` + `hpast` + `hcov` + `heng` as safety, with no extra `hck` hypothesis. Composes
 `spec_monotonicity_of_safety` on `Spec_Safety_of_knownness`. -/
 theorem Spec_Monotonicity_of_knownness
+    (htracks : ∀ E : Execution Root, SpecAssumptions cfg ext E → E.HeadTracksJustified cfg ext)
     (hanchor0 : ∀ E : Execution Root, SpecAssumptions cfg ext E →
       ∀ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
         E.genesis_store = get_forkchoice_store cfg ast ablk → ablk.message.slot = GENESIS_SLOT)
@@ -436,7 +438,7 @@ theorem Spec_Monotonicity_of_knownness
             (get_node_for_root b) = true) :
     Spec_Monotonicity cfg ext :=
   spec_monotonicity_of_safety cfg ext
-    (Spec_Safety_of_knownness cfg ext hanchor0 hpast hcov heng)
+    (Spec_Safety_of_knownness cfg ext htracks hanchor0 hpast hcov heng)
     (hkc_of_confirmed_known cfg ext
       (fun E hSA v hv k => E.hck_of_genesisStart cfg ext hSA (hanchor0 E hSA) v hv k))
 

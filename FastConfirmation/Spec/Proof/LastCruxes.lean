@@ -127,13 +127,14 @@ knownness input `hck` (via `hkc_of_confirmed_known`, within-node
 `spec_monotonicity_of_safety`. The monotonicity companion of the `hBb`-free
 safety facade, on exactly the same two-bundle remainder. -/
 theorem Spec_Monotonicity_of_ground
+    (htracks : ∀ E : Execution Root, SpecAssumptions cfg ext E → E.HeadTracksJustified cfg ext)
     (hSameSlot : ∀ E : Execution Root, SpecAssumptions cfg ext E → E.SameSlotFinalizedRootKnown cfg ext)
     (hEng : ∀ E : Execution Root, SpecAssumptions cfg ext E → E.EngineGroundResiduals cfg ext)
     (hck : ∀ E : Execution Root, SpecAssumptions cfg ext E → ∀ v ∈ E.honest, ∀ k : ℕ,
       E.WithinHorizon cfg k →
       E.confirmed cfg ext v k ∈ (E.store cfg ext v k).block_roots) :
     Spec_Monotonicity cfg ext :=
-  spec_monotonicity_of_safety cfg ext (Spec_Safety_of_ground cfg ext hSameSlot hEng)
+  spec_monotonicity_of_safety cfg ext (Spec_Safety_of_ground cfg ext htracks hSameSlot hEng)
     (hkc_of_confirmed_known cfg ext hck)
 
 end FastConfirmation.Spec

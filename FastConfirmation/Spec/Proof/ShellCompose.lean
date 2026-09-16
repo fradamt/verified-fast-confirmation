@@ -375,9 +375,10 @@ headline uses only Lean's standard axioms `propext`, `Classical.choice`, and `Qu
 with no project axiom. The
 whole reduction chain from `Spec_Safety` down to `EngineSafetyResiduals` is machine-checked. -/
 theorem Spec_Safety_of_engineResiduals
+    (htracks : ∀ E : Execution Root, SpecAssumptions cfg ext E → E.HeadTracksJustified cfg ext)
     (h : ∀ E : Execution Root, SpecAssumptions cfg ext E → E.EngineSafetyResiduals cfg ext) :
     Spec_Safety cfg ext :=
-  Spec_Safety_of_strongPrefix_inputs cfg ext
+  Spec_Safety_of_strongPrefix_inputs cfg ext htracks
     (fun E hSA => E.specSafetyResiduals_of_engine cfg ext hSA (h E hSA))
 
 end FastConfirmation.Spec

@@ -9,8 +9,8 @@ import FastConfirmation.Spec.Proof.FFGAccountability
 actually passed.  `FFGCertificates` and `FFGAccountability` prove the
 certificate-level Casper consequences.  This module connects the two as far as
 the transcribed model permits, without using the generally false
-`JustificationInterface.justified_ancestry`, `justified_descends`, or
-`finalized_descent` fields.
+`JustificationInterface.justified_ancestry` or `finalized_descent` fields (nor the
+`justified_descends` field, which has since been deleted outright — P-6).
 
 There are two genuine model boundaries:
 

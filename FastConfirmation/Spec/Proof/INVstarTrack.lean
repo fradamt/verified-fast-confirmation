@@ -403,6 +403,7 @@ The E5 anchors are rebuilt from the interface as follows:
 `finalized_root_relay_known` and the surviving same-slot corner `SameSlotFinalizedRootKnown`. The engine
 leg is the `hBb`-free `EngineGroundResiduals`. -/
 theorem soundResidualsGround_of_split (hSA : SpecAssumptions cfg ext E)
+    (htracks : E.HeadTracksJustified cfg ext)
     (hSameSlot : E.SameSlotFinalizedRootKnown cfg ext) (hEng : E.EngineGroundResiduals cfg ext) :
     E.SoundResidualsGround cfg ext := by
   obtain ⟨hgen, hwfE, hdiv, hhb, hsync, hec, hsv, hbb, hji⟩ := hSA
@@ -410,7 +411,7 @@ theorem soundResidualsGround_of_split (hSA : SpecAssumptions cfg ext E)
   refine
     { genesis_dom := E.genesis_dom_of_interface cfg ext hSA
       finalized_dom := ?_
-      observed_filter := E.observedFilterResiduals_of_interface cfg ext hji
+      observed_filter := E.observedFilterResiduals_of_interface cfg ext hji htracks
         (E.prev_greatest_of_interface cfg ext hji)
       dynamics_struct := hEng.dynamics_struct
       fork_edges_ground := hEng.fork_edges_ground }
@@ -451,10 +452,12 @@ track) is **gone** — the endpoint enemy `Bval` is store-independent and `span_
 at the endpoint directly (`GroundBeta`), so the per-fork descent needs only the honest transports
 at every slot regime. -/
 theorem Spec_Safety_of_ground
+    (htracks : ∀ E : Execution Root, SpecAssumptions cfg ext E → E.HeadTracksJustified cfg ext)
     (hSameSlot : ∀ E : Execution Root, SpecAssumptions cfg ext E → E.SameSlotFinalizedRootKnown cfg ext)
     (hEng : ∀ E : Execution Root, SpecAssumptions cfg ext E → E.EngineGroundResiduals cfg ext) :
     Spec_Safety cfg ext :=
   spec_safety_soundResidualsGround cfg ext
-    (fun E hSA => E.soundResidualsGround_of_split cfg ext hSA (hSameSlot E hSA) (hEng E hSA))
+    (fun E hSA =>
+      E.soundResidualsGround_of_split cfg ext hSA (htracks E hSA) (hSameSlot E hSA) (hEng E hSA))
 
 end FastConfirmation.Spec
