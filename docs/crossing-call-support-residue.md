@@ -630,3 +630,64 @@ at roughly a fifth of the blast radius and touch none of the
 | 12 | §9.2's shared-surface list is complete | **fails** — the A1 *consumption* is shared too (`WeakSelectedStrictEdgeFilterSupply.lean:2247`, `:2315`) |
 | 13 | the residue is paper A3.2 | **fails** — it is the antecedent of A3.2's antecedent, and prediction-shaped (§6) |
 | 14 | no audit witness signature changes | **holds** (`scripts/Audit.lean:22-47`) |
+
+---
+
+## 9. Landing report — T4a → T5 all green
+
+Landed on `centaur/discharge-helper-provisos-202609161`, one commit per wave,
+full gate (`scripts/check_build.sh` + `scripts/Audit.lean`) after each.
+
+| wave | SHA | content |
+|---|---|---|
+| **T4a** | `0263ceb` | `Cert`/`Supp` shim: `AcceptedHistoricalA32GatePayloadCoreAt` / `…LineageCoreAt`, eager `abbrev`s, generic constructors + `mapCert`/`mapSupp`, and the support-free A1 forms `acceptedHistoricalA32LateVisibleSeed_of_support` / `…retainedVisible_of_lateSupport` |
+| **T4b** | `a0a5be9` | C1–C4: `honestVoteTarget_eq_checkpoint_of_head_ancestor_capped`, `honestVotesSupportTarget_of_engineInv_currentEpochCandidate`, `engineInv_of_selectedCanonical_lateEndpoint`, `CallWriteBackEngineSafeUpTo` + monos + `callWriteBackEngineSafeUpTo_of_prior_and_current` |
+| **T4c** | `7fbbacb` | C5: `honestVotesSupportTarget_capped`, `gateRealization_capped`, `fixedSourceGateRealization_capped`, `certifiedFixedSource_capped`, `deferredSupport_capped` |
+| **T3** | `6b21063` | `PriorStrictCallWriteBackSafe n` threaded Fold/Facade → Integration → filter supply → orientation, supplied by the fold's own `ih` |
+| **T4d** | `3dbcc90` | the flip: `AcceptedHistoricalA32LazyCrossing`, `LazyCertAt`/`LazySupportAt`, the `hcross`-parameterized one-call transformer with lazy and no-crossing instantiations, the lazy write-back invariant, and both strong A1 discharges |
+| **T5** | `f2ee223` | `helper_provisos` deleted from `AcceptedHistoricalA32CompletedPrefixCallAssumptions` (now **7** fields) |
+
+`git diff 34fe79e..f2ee223 -- '*Weak*'` is **empty**: the weak trunk is
+byte-identical, and `observer_helper_provisos` / `Weak.SelectedHelperProvisosAt`
+are untouched.  All 23 audit witnesses keep their signatures.
+
+### 9.1 Two corrections to §4.3
+
+1. **The cap is `start(e + 1)`, not `slot_at m`.**  `LazySupportAt`'s antecedent
+   is `CallWriteBackEngineSafeUpTo v N (compute_start_slot_at_epoch cfg (e+1))`.
+   §4.3's literal `E.slot_at cfg m` is not derivable: the endpoint binder
+   `SelectedCanonicalBeforeEndpointAt` is **strict** below `slot_at m`, so
+   `EngineInv … (slot_at m)` is out of reach.  §2.3's own arithmetic already
+   argues for the boundary form, and it still dominates the whole epoch-`e`
+   vote span, so nothing else changes.
+2. **The `currentHistorical` `certified` consumer needs the no-crossing route,
+   not just `hprior`.**  The lineage the payload producer holds is the one at
+   write-back second `n + 1`, whose `LazyCertAt` bound would demand
+   `PriorStrictCallWriteBackSafe (n + 1)` — i.e. the very fold step being
+   proved.  §9.3's "the lineage needs a `second < n`-style bound field" is real,
+   but it is discharged **without** a new field: under the producer's own
+   `hnoCrossing` antecedent the one-call transformer creates no payload at all,
+   so it is run in its `…_step_noCrossing` form from the invariant at second
+   `n`, whose closure `hprior` discharges.  This is D1† recorded in the types.
+   Consequently `epochStart_or_endpointOriginOrPinned_of_acceptedCallSite` and
+   its two siblings were *weakened* to take
+   `HistoricalCurrentTargetCertificateProducerAt` directly instead of the full
+   payload producer.
+
+### 9.2 What the final weak wave inherits
+
+* The shim is trunk-neutral and already in place; the weak side sits on the
+  eager `abbrev`s with zero diff.  A weak twin of T4d needs only weak
+  instantiations of `Cert`/`Supp`, not a second shim.
+* `Weak.SelectedHelperProvisosAt` and
+  `Weak.ObserverHistoricalA32CallAssumptions.observer_helper_provisos` are
+  untouched, and remain blocked for the reason `trunkA-final-discharge.md` §5.5
+  gives (one-shot weak theorems with a non-honest observer), **not** by
+  anything in this note.
+* The strong crossing constructors that consumed
+  `Execution.currentTargetAcceptedEdge_gate_and_support`
+  (`selectedCurrentCrossingLineage`, `…_of_fixedSourceProducer`, the two
+  `…At_of_*` wrappers, and the `carriedCurrentCrossingLineage*` family) are now
+  unreachable from every live strong path but were left in place: they are the
+  structural analogue of the weak constructors, and deleting them is orthogonal
+  cleanup that should happen with, not before, the weak wave.
