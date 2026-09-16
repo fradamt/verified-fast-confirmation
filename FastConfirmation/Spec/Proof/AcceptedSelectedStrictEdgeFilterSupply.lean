@@ -1,7 +1,7 @@
 import Mathlib.Tactic
 import FastConfirmation.Spec.Proof.AcceptedRetainedPhaseSourceRetarget
 import FastConfirmation.Spec.Proof.AcceptedEarlyPhaseSourceWiring
-import FastConfirmation.Spec.Proof.AcceptedHistoricalLineageFinalizedPlacement
+import FastConfirmation.Spec.Proof.AcceptedHistoricalFinalizedPlacementAdapters
 import FastConfirmation.Spec.Proof.AcceptedFFGJustifiedMaximality
 import FastConfirmation.Spec.Proof.PaperA32SupportRealization
 import FastConfirmation.Spec.Proof.SelectedCoveredMarginConstruction
@@ -745,7 +745,7 @@ theorem AcceptedHistoricalA32LineageAt.lateVisibleSeedAt
     hphase0 hanchor hboundary hselectedQ hselectedEpoch
   have hendpointCausal : E.CausalStore cfg ext
       (E.store cfg ext w m) := E.store_causal cfg ext w m
-  rcases hpayload.support_branch with htargetAnchor | hquorum
+  rcases hpayload.support_branch w hw m hmH hlate with htargetAnchor | hquorum
   · have heq : e = B.anchor.epoch := by
       have hepoch := congrArg Checkpoint.epoch htargetAnchor
       simpa only [B.state.checkpoint_epoch] using hepoch

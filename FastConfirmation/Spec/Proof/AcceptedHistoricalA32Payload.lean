@@ -40,6 +40,29 @@ structure AcceptedHistoricalA32QuorumAt
   target_ne_anchor : target ≠ B.anchor
   source_eq : quorum.source = B.state.GJ origin
 
+/-- Deferred, epoch-indexed form of the payload's paper-A3.2 support branch.
+
+`docs/epoch-indexed-restructure.md` §5 establishes that **every** positive
+consumption of the retained quorum is guarded by `e + 2 ≤ currentEpoch` at the
+consuming store — the target epoch is at least two epochs behind the consumer,
+so the quorum's `start_slot (e+1)` deadline places all of its votes a full
+epoch in the consumer's past.  Stating the branch in this guarded form records
+that fact in the *type*: the anchor-or-quorum content can only be read at a
+late honest endpoint, and a future per-epoch discharge layer only has to
+supply it there.
+
+The conclusion does not mention `w` or `m`; the binders exist solely to carry
+the guard.  `AcceptedHistoricalA32LineageAt.lateVisibleSeedAt`
+(`AcceptedSelectedStrictEdgeFilterSupply.lean`) is the sole consumer, and its
+`hlate`/`hmH`/`hw` hypotheses are exactly this antecedent. -/
+def AcceptedHistoricalA32DeferredSupportAt
+    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (origin : Root) (e : Epoch) : Prop :=
+  ∀ w : ValidatorIndex, w ∈ E.honest → ∀ m : ℕ, E.WithinHorizon cfg m →
+    e + 2 ≤ get_current_store_epoch cfg (E.store cfg ext w m) →
+      B.state.C origin e = B.anchor ∨
+        Nonempty (E.AcceptedHistoricalA32QuorumAt cfg ext B origin e)
+
 /-- The irreducible paper-A3.2 data retained from a successful accepted
 current-target gate.  In the non-anchor branch, the target and deadline are
 indexed exactly and the quorum source is the block-local realized justified
@@ -62,9 +85,7 @@ structure AcceptedHistoricalA32GatePayloadAt
   anchor_epoch_le : B.anchor.epoch ≤ e
   certified : Nonempty
     (CertifiedJustified cfg E B.anchor (B.state.C origin e))
-  support_branch :
-    B.state.C origin e = B.anchor ∨
-      Nonempty (E.AcceptedHistoricalA32QuorumAt cfg ext B origin e)
+  support_branch : E.AcceptedHistoricalA32DeferredSupportAt cfg ext B origin e
 
 namespace AcceptedHistoricalA32GatePayloadAt
 
@@ -93,7 +114,7 @@ def of_anchor
     certified := by
       rw [hcheckpoint]
       exact ⟨CertifiedJustified.anchor⟩
-    support_branch := Or.inl hcheckpoint }
+    support_branch := fun _ _ _ _ _ => Or.inl hcheckpoint }
 
 /-- Construct the historical payload from the fixed-source accepted gate at
 its original current-epoch carrier.  The theorem performs only dependent
@@ -123,7 +144,8 @@ def of_fixedSourceCurrentTarget
     exact hle
   · rw [← htarget]
     exact hgate.certified
-  · rcases hgate.support_branch with hanchor | ⟨hne, Q, hsource⟩
+  · intro _w _hw _m _hmH _hlate
+    rcases hgate.support_branch with hanchor | ⟨hne, Q, hsource⟩
     · exact Or.inl (htarget.symm.trans hanchor)
     · right
       have htargetEpoch : (get_current_target cfg store).epoch = e := by
@@ -196,7 +218,8 @@ def transport_sameEpoch
   · simpa only [get_block_epoch] using htipEpoch
   · rw [hcheckpoint]
     exact hpayload.certified
-  · rcases hpayload.support_branch with hanchor | hquorum
+  · intro w hw m hmH hlate
+    rcases hpayload.support_branch w hw m hmH hlate with hanchor | hquorum
     · exact Or.inl (hcheckpoint.trans hanchor)
     · obtain ⟨hquorum⟩ := hquorum
       exact Or.inr ⟨

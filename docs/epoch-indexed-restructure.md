@@ -432,13 +432,130 @@ any appeal to `justified_targets_before_endpoint`.
 | Wave | Content | Blast radius | Green? |
 |---|---|---|---|
 | R0 | Delete §8 dead code (`retainedFinalizedAt_currentSameEndpoint`, `AcceptedCurrentSameRetainedFinalizedCarrierAt`, `acceptedFinalizedPlacementBeforeQueryAt_of_lineage`, `AcceptedHistoricalRetainedQuorumSourceAt`, `anchor_or_retainedQuorumSource`), plus the follow-up sweep (`finalized_check_of_earlyHistoricalLineage`, `honest_target_vote_before_next_epoch`, `selected_strict_current_balance_checkpoint_key`, the two `SelectedFilterFFGPipeline` tip-source fields) | 5 files | **fully landed** |
-| R1 | Replace `D1-D6`'s `certified` elimination by an explicit `anchor_epoch_le : B.anchor.epoch ≤ e` payload field (additive) — decouples 6 sites from the positive content | `AcceptedHistoricalA32Payload.lean` + 5 consumers | yes |
-| R2 | Introduce `A32DeferredCertification` and thread it through `extend`/`transport_sameEpoch`/`payloadAtTip`; keep a `≥ e+2`-gated projection used at A1/A2 | `AcceptedHistoricalA32Payload.lean`, `…Step`, `…Crossing`, `…OneStep`, `…Induction`, weak twins | yes |
-| R3 | Per-epoch discharge layer (§9.2) over `WeakTrajectorySafety.lean`'s strengthened `∀ k ≤ n` fold (wave 3, landed) | new file + `WeakTrajectorySafety.lean` | yes |
-| R4 | Drop the Trunk-A half of `Weak.SelectedHelperProvisosAt.current_target` at `WeakHistoricalA32Step.lean:280` | `WeakHistoricalA32Step.lean`, `SelectedA32Support.lean` | yes |
+| R1 | Replace `D1-D6`'s `certified` elimination by an explicit `anchor_epoch_le : B.anchor.epoch ≤ e` payload field (additive) — decouples 6 sites from the positive content | `AcceptedHistoricalA32Payload.lean` + 5 consumers | **landed** |
+| R2 | Introduce `A32DeferredCertification` and thread it through `extend`/`transport_sameEpoch`/`payloadAtTip`; keep a `≥ e+2`-gated projection used at A1/A2 | `AcceptedHistoricalA32Payload.lean`, `…Step`, `…Crossing`, `…OneStep`, `…Induction`, weak twins | **landed for `support_branch` only** — see §10 |
+| R3 | Per-epoch discharge layer (§9.2) over `WeakTrajectorySafety.lean`'s strengthened `∀ k ≤ n` fold (wave 3, landed) | new file + `WeakTrajectorySafety.lean` | **blocked** — §10 |
+| R4 | Drop the Trunk-A half of `Weak.SelectedHelperProvisosAt.current_target` at `WeakHistoricalA32Step.lean:280` | `WeakHistoricalA32Step.lean`, `SelectedA32Support.lean` | **blocked by R3** |
 | R5 | **Blocked by §7.** Trunk B: needs either a new elapsed-conflicting-weight bound or retention of the proviso at `WeakPreQuerySIR.lean:339` | — | — |
 
-R0-R4 remove the proviso from Trunk A entirely and leave
-`observer_helper_provisos` carrying only the Trunk-B (pre-query SIR pinning)
-half — a strictly smaller premise surface than today, and a precisely stated
-residue.
+---
+
+## 10. Correction: `certified` is **not** `e+2`-gated, and that blocks R3/R4
+
+Written while landing R1/R2; it supersedes §9.2's claim that *both* positive
+payload fields can move behind the guard, and §9.1's claim that `F1`/`F2`
+survive unchanged.
+
+### 10.1 `F1`/`F2` were dead, and are now deleted
+
+`EarlySelectedEndpointPhase.finalizedRoot_eq_queryCheckpointBlock_of_lineage`
+(row `F1`) lost its only consumer when R0's follow-up sweep deleted
+`AcceptedRetainedPhaseSourceCarrierAt.finalized_check_of_earlyHistoricalLineage`
+(§8.1). `rg` over the tree then returned **zero** external references to any
+public declaration of `AcceptedHistoricalLineageFinalizedPlacement.lean` —
+`F1`, `AcceptedHistoricalA32QuorumAt.exactFinalizedPrefix_of_included` (`F2`),
+`ConcreteA32QuorumBefore.not_surround_includedLink` and
+`…intersects_supermajorityLink_honest` — so the whole module is gone. Its two
+importers (`AcceptedSelectedStrictEdgeFilterSupply.lean`,
+`AcceptedCurrentSameEndpointSource.lean`) now import
+`AcceptedHistoricalFinalizedPlacementAdapters` directly.
+
+**Consequence.** After that deletion `support_branch` has exactly one consumer
+outside the payload module's own transport, namely `A1`
+(`AcceptedHistoricalA32LineageAt.lateVisibleSeedAt`), and that consumer *is*
+`e+2`-gated. So the guarded form is now the honest type of the field, and R2
+lands it: `Execution.AcceptedHistoricalA32DeferredSupportAt`.
+
+### 10.2 `certified` cannot follow it
+
+`certified` still has two live consumers with **no** `e+2` guard in scope, both
+in the `currentHistorical` arm of the two surviving orientation dispatchers:
+
+* `B1` `acceptedHistoricalA32PayloadProducerAt_to_certificateProducer`
+  (`AcceptedHistoricalA32Payload.lean`) →
+  `Execution.epochStart_or_endpointOriginOrPinned_of_acceptedCallSite`
+  (`AcceptedSelectedJustifiedOrientation.lean`, `currentHistorical` arm);
+* `B2` `Weak.epochStart_or_endpointOriginOrPinned_of_observerCallSite`
+  (`WeakSelectedJustifiedOrientation.lean`, `currentHistorical` arm).
+
+Both arms are *live* — `StrictSelectedHistoricalSIRCallSite.currentHistorical`
+is constructed at `SelectedPreQueryHistoricalSIR.lean:128` and
+`WeakPreQuerySIR.lean:368` — and both use the certificate for
+`hacc.justified_unique hJ hT hepoch` against the endpoint's *own*
+`justified_checkpoint` at an endpoint `m` that may still be inside epoch `e`
+(the arm is selected precisely when the result is current-epoch and the call
+found no crossing edge). N5/N6 removed the proviso from the `currentCrossing`
+and `previousNoConflict` arms by routing them through
+`EndpointOriginOrPinnedProducerAt`, but that producer's antecedent is one of
+the two *executable gate booleans at the current query*, and the
+`currentHistorical` arm has neither.
+
+### 10.3 Why that blocks R3/R4
+
+In the non-anchor branch the payload's `certified` is *manufactured from the
+quorum*: `certifiedCurrentTarget_of_gate_and_stateSemantics`
+(`CurrentTargetCertificateRealization.lean:~508-700`) builds
+`currentTargetA32Signers` and the certificate from
+`currentTargetFutureHonestSeat_vote`, which unfolds `hsupport` at
+`CurrentTargetA32Support.lean:504`. So `certified` and `support_branch` have a
+*single* producer-side dependency on `HonestVotesSupportTarget`, and deferring
+only one of them removes nothing from the crossing call's premise list.
+R3's per-epoch discharge therefore cannot make `of_fixedSourceCurrentTarget`
+proviso-free while `B1`/`B2` read `certified` ungated, and R4 cannot drop
+`SelectedHelperProvisosAt.current_target`.
+
+Two further obstacles stand behind that one, and both should be checked before
+R3 is attempted again:
+
+1. **The discharge needs the fold, and the fold sits above a frozen witness.**
+   The only route to `HonestVotesSupportTarget T q` without the proviso is
+   `honestVotesSupportTarget_of_safeFrom_currentEpochCandidate`
+   (`HonestTargetAgreement.lean:244`, still **zero consumers**), whose
+   `hsafe : SafeFrom b q` at an *earlier* call second can only come from
+   `weakConfirmedSafeFromFollowingSlot_of_weakFullRuleFold_all_le`
+   (`WeakTrajectorySafety.lean:400`). That fold *calls*
+   `Execution.weak_safeFrom_observerCall_closed`, which is one of the audit's
+   23 public witnesses and whose signature may not change; supplying the
+   all-seconds witness to it would require either a new argument (forbidden)
+   or a new field on `Weak.ObserverHistoricalA32CallAssumptions` (circular —
+   the fold is what proves it). The real fix is to interleave the A3.2
+   write-back recursion (`observerHistoricalA32CurrentLineageAt_all`) with the
+   safety fold so the lineage at second `n` is built from the safety invariant
+   at seconds `< n`. That is an architectural wave in its own right.
+2. **The strong one-shot path needs its own fold instance.** `A1` is reached
+   from `AcceptedActualFCRNextSlotSafetyAssumptions.findLatestConfirmedDescendant_safeFrom_of_actualCall`,
+   also a frozen witness. Here the trajectory invariant *is* derivable from the
+   record (`AcceptedActualFCRNextSlotSafetyAssumptions.confirmed_safeFromFollowingSlot`
+   → `confirmed_safeFromFollowingSlot_of_acceptedActualFCRFold`), so this side
+   is threading work rather than a genuine gap.
+
+### 10.4 What R2 actually landed
+
+`AcceptedHistoricalA32GatePayloadAt.support_branch` now has type
+`E.AcceptedHistoricalA32DeferredSupportAt cfg ext B origin e`, i.e.
+
+```lean
+∀ w : ValidatorIndex, w ∈ E.honest → ∀ m : ℕ, E.WithinHorizon cfg m →
+  e + 2 ≤ get_current_store_epoch cfg (E.store cfg ext w m) →
+    B.state.C origin e = B.anchor ∨
+      Nonempty (E.AcceptedHistoricalA32QuorumAt cfg ext B origin e)
+```
+
+`of_anchor` and `of_fixedSourceCurrentTarget` discharge it by ignoring the new
+binders, `transport_sameEpoch` re-indexes under them, and `A1` supplies
+`hw`/`hmH`/`hlate` from its own hypothesis list. The `A2` site
+(`selectedA32Semantics.selectedA32Semantic_of_fixedSourceGate_currentEpoch`)
+is **not** rewired: it reads
+`FixedSourceCurrentTargetA32GateRealizationCore.support_branch`, the *gate
+realization* rather than the payload, at the producing call itself. Guarding
+that record would have to propagate through its three other readers
+(`AcceptedHistoricalA32Crossing.lean:51`,
+`AcceptedCurrentTargetGateBridge.lean:374`,
+`CurrentTargetCertificateRealization.lean:1042`) and buys nothing while the
+record's sibling `certified` stays ungated (§10.2).
+
+R0-R2 therefore narrow the payload's positive surface to a single ungated
+field, `certified`, read at exactly two sites. Removing the Trunk-A proviso
+requires a proviso-free supply of `CertifiedJustified anchor T` in the
+`currentHistorical` configuration — the same shape of gap as §7's Trunk-B
+residue, and the next thing to attack.

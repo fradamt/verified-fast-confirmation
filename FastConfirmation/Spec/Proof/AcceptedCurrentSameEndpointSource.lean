@@ -5,7 +5,7 @@ import FastConfirmation.Spec.Proof.AcceptedFFGJustifiedMaximality
 import FastConfirmation.Spec.Proof.ExactCheckpointLinks
 import FastConfirmation.Spec.Proof.AcceptedHistoricalFinalizedPlacement
 import FastConfirmation.Spec.Proof.AcceptedRealizedJustifiedOrigin
-import FastConfirmation.Spec.Proof.AcceptedHistoricalLineageFinalizedPlacement
+import FastConfirmation.Spec.Proof.AcceptedHistoricalFinalizedPlacementAdapters
 
 /-!
 # Current-same historical source transport to an endpoint
