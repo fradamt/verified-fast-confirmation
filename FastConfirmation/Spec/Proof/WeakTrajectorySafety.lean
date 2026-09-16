@@ -64,10 +64,14 @@ supplying `hinput`/`hbase` for the call's own candidate input, which
   `Execution.weak_finalizedReset_safeFrom_of_synchrony`;
 * **observed reset** (the epoch-start restart) — `hinput` by
   `Weak.weakFcrStep_observed_known` (rule delta 5's `banked_known`); `hbase`
-  **open**, `Weak.ObservedResetSeedSafety`.
+  by `Weak.ObservedResetSeedSafety`, consumed here and proved in
+  `WeakObservedResetSeedSafety.lean`.
 
-Five of those six cells are discharged here. The sixth is the whole residue of
-the full-rule effort and is pinned as a named `Prop`,
+Five of those six cells are discharged here. The sixth is proved in
+`WeakObservedResetSeedSafety.lean` (stage 6), on top of the arms of
+`WeakObservedRestartAdoption.lean` and
+`WeakObservedRestartDynamicSafety.lean`, which sit above this file in the
+import order; here it is therefore consumed as a named `Prop`,
 `Weak.ObservedResetSeedSafety`, in the style `Spec/Model/WeakSynchrony.lean`
 already uses for `Weak.CertificateHonestSupporter` /
 `Weak.CertificateDissemination`: the migration target is stated, so the fold
@@ -79,12 +83,12 @@ visible in the premise list of everything downstream of it.
 (`AcceptedObservedRestartDynamicSafety.lean`), whose proof uses the querying
 node's honesty at exactly two sites, both `PaperSafetySynchrony.block_relay`
 with that node as *sender*: relaying the banked checkpoint root, and relaying
-the GU carrier tip. Rule delta 5's head-indexed banking already replaces both
-with broadcast certificates at the level of *knownness*
+the GU carrier tip. Rule delta 5's head-indexed banking replaces both with
+broadcast certificates at the level of *knownness*
 (`Weak.bankedRoot_known_at_all_honest_endpoints_at_observer`,
-`Weak.gatedHead_known_at_all_honest_endpoints_at_observer`); what is missing is
-the head-*domination* step on top of them. See `docs/weak-full-rule.md` for the
-staged plan.
+`Weak.gatedHead_known_at_all_honest_endpoints_at_observer`), and the
+head-*domination* step on top of them is stages 2–5. See
+`docs/weak-full-rule.md` for the staged plan.
 -/
 
 namespace FastConfirmation.Spec
@@ -114,10 +118,16 @@ only ever hold a broadcast-certified, head-chain-observed justification
 `Weak.weakFcr_certifiedBankedJustification`), which is the evidence that has to
 stand in for the strong proof's two sender-side `block_relay` applications.
 
-Stated as a named `Prop` rather than proved here: it is the single open
-obligation of the weak full-rule fold, and the only premise of
-`Execution.weakConfirmed_safeFromFollowingSlot_of_weakFullRuleFold` that is not
-already part of the ratified floor. -/
+Stated as a named `Prop` rather than proved here, because its proof needs the
+arm-by-arm discharge of `WeakObservedRestartAdoption.lean` /
+`WeakObservedRestartDynamicSafety.lean`, which sit above this file's
+`WeakOneShotSafetyClosed` import.  It is **no longer open**:
+`Weak.observedResetSeedSafety_of_acceptedDynamics`
+(`WeakObservedResetSeedSafety.lean`, stage 6) proves it from the floor alone,
+and the fold's unconditional corollary
+`Execution.weakConfirmed_safeFromFollowingSlot_of_acceptedWeakFullRuleFold`
+lives there too.  The `Prop` is kept as the conditional fold's premise so the
+one-call-at-a-time reading remains available. -/
 def ObservedResetSeedSafety (E : Execution Root) (obs : ValidatorIndex) : Prop :=
   ∀ n : ℕ, E.WithinHorizon cfg (n + 1) → E.IsFCRCallAt cfg ext obs n →
     ∀ trace : Weak.GetLatestConfirmedTrace cfg ext (E.weakFcrStep cfg ext obs n),
