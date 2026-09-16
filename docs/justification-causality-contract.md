@@ -1,5 +1,18 @@
 # The justification-causality contract
 
+> **SUPERSEDED — §1's field addition is NOT being made.** The Trunk-B
+> verification in [`trunkB-two-case-discharge.md`](trunkB-two-case-discharge.md)
+> establishes that the causality bound is *derivable in-repo*: the justifying
+> certificate is an `IncludedCertifiedJustified` over a carrier known in the
+> endpoint store, and `IncludedAttestationEvidence`
+> (`FastConfirmation/Spec/Model/FFGStateSemantics.lean:90-115`) already supplies
+> the per-signer slot bounds. Sharpening the assumed
+> `JustificationInterface.justified_requires_targets` would therefore *grow* the
+> premise surface for content that can be proved — and that field is not even in
+> the assumptions bundle the accepted safety route uses. §§2-6 below remain
+> valid as the spec grounding and as the E1/E2 analysis; only §1's proposed
+> interface change is withdrawn.
+
 Wave 4 of [`proviso-discharge-map.md`](proviso-discharge-map.md) §6 is a design
 decision: escape **E1** (endpoint-slot-capped proviso) or **E2** (boundary-block
 safety invariant). This note states E1's single premise-surface addition — a
