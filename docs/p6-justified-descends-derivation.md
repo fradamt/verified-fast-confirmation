@@ -1,5 +1,10 @@
 # P-6 — deriving `JustificationInterface.justified_descends` at the spec layer
 
+> **W0 EXECUTED — the field is deleted.** See **§7, "W0 outcome"**, at the end of this
+> document for the reachability computation, the site-by-site resolution, and the one residual.
+> Sections 0-6 below are the original analysis, kept verbatim; §7 records where it was right,
+> where it overshot, and what actually landed.
+
 **Status:** analysis only. No `.lean` file was touched, nothing was built, nothing committed.
 **Snapshot:** branch `centaur/weak-synchrony-202609150824`, working tree at 2026-09-16
 (`git pull --ff-only` → already up to date).
@@ -525,3 +530,149 @@ narrow the field to the single observed-checkpoint instance both consumers use, 
 quorum conditions, and move it out of `JustificationInterface` into a named LMD premise in the
 style of `Nucleus.CurrentEpochCoveringBridge` — after first checking (wave 0) whether the weak
 headlines project the field at all, since the accepted public theorem provably does not.
+
+---
+
+## 7. W0 outcome — executed, the field is deleted
+
+**Status:** landed on `centaur/weak-synchrony-202609150824` in `fe724fd` (code) and the docs
+commit that follows it. `bash scripts/check_build.sh` green; `lake env lean scripts/Audit.lean`
+passes with **21 witnesses** (10237 declarations, 6404 theorems, 26 generated partials,
+sorry-free, `[propext, Classical.choice, Quot.sound]` only).
+`JustificationInterface` is **14 → 13 fields**.
+
+### 7.1 The reachability computation
+
+Computed from the compiled environment (a throwaway `lake env lean` script, not committed):
+forward closure of the 21 `scripts/Audit.lean` `publicWitnesses` over the constants appearing in
+each declaration's **type and proof term**, transitively, then intersected against the
+projection-site set.
+
+| quantity | value |
+|---|---|
+| declarations in the whole project mentioning `justified_descends` | **2** (`ExportWiring.headTracksJustified_of_interface`, `AnchorClose.head_ge_glc_endpoint`) — a fresh `rg '\.justified_descends'` agrees, and §1.3's name-collision finding is confirmed |
+| forward closure of the 21 witnesses | **19251** constants, **5353** of them from `FastConfirmation.*` modules |
+| `JustificationInterface.justified_descends` in that closure | **no** |
+| either projection site in that closure | **no** |
+| `JustificationInterface` (the structure) in that closure | **yes** — it is a binder on W20–W23, which is why deleting a field weakens audited witnesses |
+
+**The control that makes this decisive.** The same pass was run for all 14 fields. Exactly one
+is reachable:
+
+| field | project decls mentioning it | reachable ones | field in closure |
+|---|---|---|---|
+| `checkpoint_known` | 21 | **1** (`Execution.head_root_known`) | **yes** |
+| `justified_descends` | 2 | 0 | no |
+| the other 12 | 0–6 each | 0 | no |
+
+So the method discriminates: it finds the one field the audited witnesses really do project, and
+it says `justified_descends` is not one of them. **Verdict: UNREACHABLE from all 21 witnesses.**
+
+### 7.2 Where §5's plan was right, and where it overshot
+
+§5 predicted "deletion plus an explicit premise on the two routes that use it". Half of that is
+what landed; the other half was a **mechanization overshoot**, and the correction came from the
+owner's observation that the rule's own banking already carries the ancestry.
+
+**Site B (`AnchorClose:927`) did not need a premise — the fold was redundant.** §1.2 correctly
+noted that site B is behind the unproduced `AnchorCovSupply` flag, but missed that the flag's
+observed disjunct is *tagged*: its first conjunct is
+`r₀ = (fcrStep v n).current_epoch_observed_justified_checkpoint.root`, and
+`safeFromGlc_of_covSupply` already threads `hobs : SafeFrom obs.root (n+1)` — whose unfolding
+*is* `head(w,m) ⪰ obs.root` for every honest `w` and `m ≥ n+1`. The proof's own pre-deadline
+branch had always used exactly that (`simpa only [hobserved] using hobs w hw m hm hH`); only the
+post-deadline branch detoured through the 4-case fold. The post-deadline branch now finishes
+through `finishDirect` like the confirmed and finalized kinds, and `head_ge_glc_endpoint` is
+deleted as dead code. No weight arithmetic, no β gate, no new hypothesis.
+
+**The accepted/actual route never needed it either.** `get_latest_confirmed`
+(`Model/Confirmation.lean`) computes
+`is_head_unrealized_justified_ok := decide (fcr_store.current_epoch_observed_justified_checkpoint
+= store.unrealized_justifications head)` — a **runtime re-check** that the observed checkpoint is
+the head's *own* unrealized justification. That is the executable form of the owner's point, and
+it is why `AcceptedObservedRestartDynamicSafety.safeFrom_of_acceptedDynamics` proves the observed
+anchor's `SafeFrom` with no head-tracking premise at all, and why
+`StrictSelectorAdvanceGeometryAt.descends_input` gets `result ⪰ afterObserved` mechanically.
+
+**Site A (`ExportWiring`) does still need it, and the transitivity route provably cannot close
+it.** Two independent reasons, both citable in-tree:
+
+1. *It is the base of the transitivity, not a step in it.* Site A produces
+   `ObservedFilterResiduals.observed_head_ahead`, which is what
+   `AnchorFacade.safeFrom_observed_of_filter_K` turns into `SafeFrom obs.root` — i.e. into `hobs`
+   itself. Deriving `hobs` from "head ⪰ candidate, candidate ⪰ obs" is circular: `hobs` is one of
+   the three reset anchors the fold consumes *in order to* establish the candidate's safety. (At
+   site B the orientation is the same but harmless, because there `hobs` arrives threaded.)
+2. *The strong rule has no chain-intrinsic banking to lean on.* Rule delta 5's
+   `Weak.headUnrealizedJustification_known_and_below` works because the **weak** rule banks
+   `store.unrealized_justifications (get_head store).root` — a read off the head's own chain. The
+   **strong** rule's `update_fast_confirmation_variables` (`Model/Confirmation.lean`) rotates in
+   `store.unrealized_justified_checkpoint` / `previous_epoch_greatest_unrealized_checkpoint` —
+   *store-global running maxima*, confirmed by `MicroSteps.fcrStep_observed_boundary`. And the
+   claim that a store-global running maximum lies on the certified head's chain is recorded in
+   this repository as **false in general**: the branch-switch hole, written out in
+   `Model/WeakSynchrony.lean`'s and `Proof/WeakBankedJustification.lean`'s headers (and
+   `docs/weak-synchrony.md`) — "between the second at which the running maximum was captured …
+   and the boundary at which the gate fires, the store's checkpoints may move to a different
+   branch, so the certified head need not descend from the banked root at all". That is exactly
+   the `banked_below_supplier` field Francesco's revision *removed* rather than assumed. There is
+   no non-`Weak` counterpart of `auCheckpoint_known_and_below_tip`, and its hypotheses
+   (`ExactPrefixAcceptedFFGSemantics`) are not available from `SpecAssumptions` anyway.
+
+So the residual is not a β-conditional lemma and not a general assumption — it is **one premise
+on one legacy route**, the `SpecAssumptions` observed-anchor bundle, which is precisely the route
+that lacks the runtime guard the actual algorithm performs.
+
+### 7.3 What landed
+
+* **`TheoremStatements.lean`** — field deleted, 14 → 13. A comment in its place records why, and
+  the module header no longer presents the claim as an FFG export.
+* **`AheadFacade.HeadTracksJustified`** — already binder-identical to the old field, this is now
+  the fact's only home. Its docstring carries the finding: the `β < 1/6 − pb/2` arithmetic with
+  the `Endpoint.ghost_step_dominates` ledger, the `β = 1/4` counter-reading `5/12` vs `7/12`, the
+  paper's Lemma 4 threshold (`Paper/LMDGhost/Proof/Quorum.lean:88-92`), the `Fraction.lean:31-41`
+  precedent, where the fact survives and where it does not, and the reachability numbers.
+* **`AnchorClose.lean`** — observed route rewired to `hobs`; `head_ge_glc_endpoint` deleted, with
+  a section note in its place. `AnchorCovSupply` keeps its `jcb` covering payload unchanged (the
+  flag is never produced in-tree and `Nucleus.covering_comparability` /
+  `CurrentEpochCoveringBridge` are still stated in that field shape), so its observed payload is
+  now unused — a candidate for a later, separate narrowing.
+* **`ExportWiring.lean`** — `headTracksJustified_of_interface` deleted;
+  `observedFilterResiduals_of_interface` takes `htracks : E.HeadTracksJustified cfg ext`.
+* **premise threading** — `htracks` is carried explicitly by
+  `shellResiduals_of_strongPrefixSafetyInputs`, `soundResidualsGround_of_split`,
+  `l4Residual_of_advance`, `Spec_Safety_of_anchored` and the `Spec_Safety_*` /
+  `Spec_Monotonicity_*` conditional theorems downstream of them (`StrongPrefixSafety`,
+  `INVstarTrack`, `LastCruxes`, `Suppliers`, `ShellCompose`, `Definitive`, `Shrink`, `Compose`,
+  `Closing`, `Knownness`, `AnchorThread`, `AnchorClose`). None of these is an audited witness.
+* **false claims fixed** — the deleted field's docstring ("2/3 of an epoch's attesters named it
+  as target; honest ones' newest messages keep descending from it") is gone with the field;
+  `AheadFacade`'s "with no boost/discount arms because 2/3 exceeds the confirmation bar" is
+  replaced by the arithmetic that refutes it; the stale `fork_majority_of_windows` citation now
+  reads `MajorityPersists.fork_majority`. Stale prose in `HeadReroot`, `HeadRerootChain`,
+  `SelectedFilterBridge` and `AnchorClose`'s own header is updated.
+
+### 7.4 Effect on the premise surface
+
+* `hji` shrinks from 14 to 13 fields on **every** witness carrying it — W20–W23, the four weak
+  trajectory headlines. This is a strict premise weakening: no witness gained anything.
+* The accepted public theorem is unaffected, as §5 predicted (it is stated over
+  `AcceptedActualFCRNextSlotSafetyAssumptions`, which never mentioned
+  `JustificationInterface`).
+* The unproven content now appears in exactly one place — `HeadTracksJustified` — visible in the
+  signature of every legacy route that uses it, and in none of the 21 audited witnesses.
+
+### 7.5 What is *not* closed
+
+W1 (narrowing to the observed family), W2 (the relocation, now done) and W3 (the full derivation
+under `β ≤ 1/6`) are superseded as stated. The live question is narrower and better posed:
+
+> Can the legacy `SpecAssumptions` observed-anchor route be given the same runtime guard the
+> actual algorithm has (`obs = store.unrealized_justifications head`), so that
+> `HeadTracksJustified` is discharged there the way
+> `AcceptedObservedRestartDynamicSafety` already discharges it on the accepted route?
+
+If yes, the premise disappears entirely rather than being weakened. If no — because the legacy
+route quantifies over rotated checkpoints with no such guard — then the honest conclusion is that
+the legacy `SpecAssumptions` route is strictly weaker than the accepted one and should be
+retired rather than repaired, since the accepted route already proves the fact outright.

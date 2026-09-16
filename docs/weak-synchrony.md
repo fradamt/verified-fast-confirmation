@@ -467,8 +467,14 @@ banks `C_A`, which the head's certificate does not cover. Placing `C_A` and
 `C_B` on one chain is an FFG-safety-grade claim about conflicting certified
 justifications at *different* epochs; it does not follow from the store
 definitions, the accepted bundle gives only `anchor ∨ GU carrier`, and
-`JustificationInterface.justified_descends` covers only the strictly-ahead case
-(and is honest-quantified besides).
+`JustificationInterface.justified_descends` covered only the strictly-ahead case
+(and was honest-quantified besides). That field has since been deleted outright
+(`fe724fd`, P-6): it was an LMD-GHOST weight claim, not an FFG export, and it is
+not derivable from the 2/3-target export at `CONFIRMATION_BYZANTINE_THRESHOLD =
+25`. So the reasoning here stands a fortiori — see
+`docs/p6-justified-descends-derivation.md` §7, whose §7.2 cites *this* branch-switch
+finding as the reason the strong path cannot borrow rule delta 5's chain-intrinsic
+banking.
 
 An earlier proposal was to close the hole with an extra executable conjunct on
 the gate (`is_ancestor store (get_head store) (get_node_for_root

@@ -58,7 +58,8 @@ when the array held 23 names.
 >   predicate's own post-anchor hypothesis). `hwalkDomain` is deleted from W20–W23.
 >   **W18/W19 keep it** — see §8 F8.
 > * `ed9af80` — **P-2**: `JustificationInterface.justified_checkpoint_cached` deleted as a
->   literal duplicate of `.justified_cached`; row C is now **14 fields**.
+>   literal duplicate of `.justified_cached`; row C was then **14 fields**. `fe724fd`
+>   deleted `.justified_descends` (P-6); row C is now **13 fields**.
 > * `3fc11bc` — **P-5**: `JustificationInterface.checkpoint_known` gains the
 >   `WithinHorizon` guard (strict weakening).
 > * `445d63d` — **P-10 / row L**: `hanchorExact` is **derived** from `hboundary` (row E) by
@@ -117,7 +118,7 @@ by name. Witness IDs are Audit.lean order (W1…W23), listed in §2.
 | A2 | `AcceptedFFGSelectorCoherence` (**10** fields, not 11 — P-1; `genesis_unrealized_justification` carries a P-3 disclosure since `bfc03a3`) | selectors agree with `ext.is_valid_indexed_attestation`, with the genesis store's block states, and with every *accepted* `on_block` post-state (`transition_gj/gf/gu/guf`) | [P] mirrors `state_transition` + `process_justification_and_finalization` | as A |
 | A3 | `AcceptedFFGTransitionCoherence` extra (2) | `checkpoint_of_known`, `au_checkpoint_of_known`: `C`/AU agree with `get_checkpoint_for_block` on every causal store | [P] | as A |
 | B | `ScheduledPrefixTrajectoryAssumptions` (`Proof/CausalQueryTraceAdapter.lean:112`) | 5 fields: `whole_seconds` (`1000 ∣ slot_duration_ms`) [B]; `wellFormed` (roots commit to blocks) [P]; `externals_coherence` [S]+[P]; `honest_behavior` [S]; `genesis` (store = `get_forkchoice_store` of an anchor pair) [B] | mixed | binder on W1,W2; **derived from M** on W16–W23 (since `28a9bd6` it is a binder nowhere on the weak side — F2) |
-| C | `JustificationInterface` (`Spec/TheoremStatements.lean:82`) — **14 fields** (17 → 15 in `8b05b67`, which deleted the two never-applied `will_*` gate-soundness fields; 15 → **14** in `ed9af80`, which deleted `justified_checkpoint_cached` as a literal duplicate of `justified_cached`, P-2. The audit's "13" was a miscount, P-1) | FFG exports consumed by the FCR: `justified_unique` (**accountable safety**), `justified_requires_targets` (2/3 target weight), `observed_justified`, `unrealized_justified` (P-4 disclosure since `bfc03a3`), `finalized_justified_ancestry`, `justified_ancestry`, `finalized_descent`, `checkpoint_known` (**horizon-guarded since `3fc11bc`**, P-5), `justified_descends` (**P-6, still unsupported**), `justified_block_boundary`, and 4 checkpoint-state-cached fields | [S] (accountable-safety + ≥2/3 justification) with [P] cache fields | W20–W23 |
+| C | `JustificationInterface` (`Spec/TheoremStatements.lean:87`) — **13 fields** (17 → 15 in `8b05b67`, which deleted the two never-applied `will_*` gate-soundness fields; 15 → 14 in `ed9af80`, which deleted `justified_checkpoint_cached` as a literal duplicate of `justified_cached`, P-2; 14 → **13** in `fe724fd`, which deleted `justified_descends` outright — **P-6 RESOLVED-BY-DELETION**. The audit's "13" was a miscount, P-1) | FFG exports consumed by the FCR: `justified_unique` (**accountable safety**), `justified_requires_targets` (2/3 target weight), `observed_justified`, `unrealized_justified` (P-4 disclosure since `bfc03a3`), `finalized_justified_ancestry`, `justified_ancestry`, `finalized_descent`, `checkpoint_known` (**horizon-guarded since `3fc11bc`**, P-5), `justified_block_boundary`, and 4 checkpoint-state-cached fields. Every remaining field is genuinely FFG: the one LMD-GHOST weight claim, `justified_descends`, is gone (see the P-6 note below) | [S] (accountable-safety + ≥2/3 justification) with [P] cache fields | W20–W23 |
 | D | `hanchor : B.anchor = genesis_store.justified_checkpoint` | the FFG state's anchor is the store's trusted checkpoint-sync anchor | [B] | W1,W2,W16–W23 |
 | E | `TrustedAnchorBoundaryAligned` (`Proof/FFGGlobalCheckpointTrajectory.lean:623`) | anchor block's slot ≤ start slot of the anchor's epoch | [B] | W1,W2,W16–W23 |
 | F | `AcceptedRealizedFinalizationDelay` (`Proof/AcceptedFinalizationTiming.lean:211`) | every accepted block's realized finalized checkpoint is the anchor or ≥2 epochs behind the block | [P] (phase0 process-epoch-before-slot order), also the **finalization spacing** [S] | W1,W2,W20–W23 |
@@ -246,7 +247,8 @@ holds at `n` (`E.weakConfirmed obs n`, produced by rule-delta-5
 2. ~~`hT` = B~~ — **F2 RESOLVED (`28a9bd6`): removed**, derived from `hW.base` via
    `ScheduledPrefixTrajectoryAssumptions.of_selectedMarginAssumptions`.
 3. `hji` = C [S] — justification interface (accountable safety, ≥2/3
-   justification, checkpoint caches); **15 fields since `8b05b67`, 14 since `ed9af80`**, the two gate-soundness
+   justification, checkpoint caches); **15 fields since `8b05b67`, 14 since `ed9af80`, 13 since
+   `fe724fd`** (P-6), the two gate-soundness
    fields having been deleted as dead, which weakens this premise.
 4. `hanchor` = D [B]. 5. `hboundary` = E [B]. 6. `hDelay` = F [P/S].
 7. ~~`hphase0` = G~~ — **F2 RESOLVED: removed**, read off `hCbase.phase0_source`.
@@ -649,10 +651,19 @@ at 13 while shrinking one of them (`hCbase` 4 → 3 fields). The conditional pai
 [D] `hOR` and is no longer a registered witness. `#print axioms` on both headlines:
 `[propext, Classical.choice, Quot.sound]`.
 
-**Trajectory-headline verdict (after the second wave, `dab205e`…`bfc03a3`).** W22/W23 carry
-**11 premises** (plus W23's endpoint binders): `B`, `hji` (14 fields, one of them P-5-guarded),
-`hanchor`, `hboundary`, `hDelay`, `hpaper`, `P`, `V`, `hW`, `hCbase` (3 fields), `hfit`.
-`hwalkDomain` and `hanchorExact` are derived internally; no [D], no [!]. `#print axioms` on
-both headlines: `[propext, Classical.choice, Quot.sound]`. The only premise content left
-that this development cannot ground in the pinned spec is `JustificationInterface.justified_descends`
-(`docs/plumbing-spec-citations.md` P-6), which sits inside `hji`.
+**Trajectory-headline verdict (after the third wave, `dab205e`…`fe724fd`).** W22/W23 carry
+**11 premises** (plus W23's endpoint binders): `B`, `hji` (**13** fields, one of them
+P-5-guarded), `hanchor`, `hboundary`, `hDelay`, `hpaper`, `P`, `V`, `hW`, `hCbase` (3 fields),
+`hfit`. `hwalkDomain` and `hanchorExact` are derived internally; no [D], no [!]. `#print axioms`
+on both headlines: `[propext, Classical.choice, Quot.sound]`.
+
+The premise content this development could not ground in the pinned spec was
+`JustificationInterface.justified_descends` (`docs/plumbing-spec-citations.md` P-6). **It is no
+longer inside `hji`, or inside any witness premise at all.** `fe724fd` deleted the field after
+computing, from the compiled environment, that the forward proof-term closure of all 21 audited
+witnesses (19251 constants, 5353 from project modules) never reaches it — while it *does* reach
+`checkpoint_known`, the control that shows the measurement discriminates. One of its two
+consumers turned out to be redundant and was deleted with it; the other, a legacy
+`SpecAssumptions` route reached by no audited witness, now carries the fact as the explicit
+named premise `Execution.HeadTracksJustified`. So `hji` shrank on W20–W23 with nothing added:
+a strict premise weakening. See `docs/p6-justified-descends-derivation.md` §7.
