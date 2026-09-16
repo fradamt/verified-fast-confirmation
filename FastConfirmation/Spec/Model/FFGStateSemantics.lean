@@ -848,6 +848,27 @@ structure AcceptedFFGSelectorCoherence
   genesis_guf : ∀ r ∈ E.genesis_store.block_roots,
     (ext.process_justification_and_finalization
       (E.genesis_store.block_states r)).finalized_checkpoint = S.GUF r
+  /-- The genesis store's `unrealized_justifications` map agrees with the
+      semantic `GU` selector on every anchor root.
+
+      **DISCLOSURE (`docs/plumbing-spec-citations.md` P-3): together with
+      `genesis_gu` this over-constrains the pinned initializer.**
+      `get_forkchoice_store` (fork-choice.md:215) stores the *un-pulled*
+      value, `unrealized_justifications={anchor_root: justified_checkpoint}`,
+      where `justified_checkpoint = Checkpoint(anchor_epoch, anchor_root)`.
+      `genesis_gu` separately says
+      `pjf(anchor_state).current_justified_checkpoint = GU anchor_root`, i.e.
+      the *pulled-up* value.  The two fields together therefore demand
+      `pjf(anchor_state).current_justified_checkpoint =
+      Checkpoint(anchor_epoch, anchor_root)` — an extra contract on
+      `ext.process_justification_and_finalization` AT THE ANCHOR STATE, which
+      `get_forkchoice_store` does not establish and which the pinned spec does
+      not state anywhere.  It is true of a trusted anchor that is itself a
+      justified boundary state (the checkpoint-sync case this development
+      already restricts to via `TrustedAnchorBoundaryAligned`), and it is in
+      that sense a companion of the trust-boundary premise rather than a
+      transcription of the initializer.  Nothing weaker is used: the field is
+      read only at the anchor root. -/
   genesis_unrealized_justification : ∀ r ∈ E.genesis_store.block_roots,
     E.genesis_store.unrealized_justifications r = S.GU r
   transition_gj : ∀ t : E.AcceptedBlockTransition cfg ext,

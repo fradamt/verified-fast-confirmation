@@ -330,8 +330,27 @@ transition; shuffling agreement with the ground-truth assignment — the spec's
 own `MAX_SEED_LOOKAHEAD` consistency note; validity of honestly constructed
 attestations). -/
 structure ExternalsCoherence (E : Execution Root) : Prop where
-  /-- `process_slots` targets its slot and preserves the registry. -/
+  /-- `process_slots` targets its slot.  Verbatim from the pinned loop
+      `while state.slot < slot: … state.slot = Slot(state.slot + 1)`
+      (beacon-chain.md:1396). -/
   process_slots_slot : ∀ st (s : Slot), st.slot < s → (ext.process_slots st s).slot = s
+  /-- `process_slots` preserves the validator registry.
+
+      **DISCLOSURE (`docs/plumbing-spec-citations.md` P-7): this is the
+      static-validator-set idealization at the function level, not a
+      transcription.**  It is *false* of the pinned `process_slots` across an
+      epoch boundary: the loop calls `process_epoch` on the last slot of each
+      epoch, and `process_epoch` calls `process_registry_updates`,
+      `process_slashings` and `process_effective_balance_updates`, all three of
+      which write `state.validators`.  Within a single epoch the boundary test
+      never fires and `process_slot` (beacon-chain.md:1407) touches only
+      `state_roots` / `block_roots` / `latest_block_header`, so the field is
+      exactly right there; across boundaries it asserts that no activation,
+      exit, slashing or effective-balance change lands inside the verified
+      window.  That is the same idealization as `StaticValidatorSet` ([S],
+      paper Assumption 1) and as this record's own `state_transition_registry`,
+      which already discloses it — this field is its `process_slots` half and is
+      licensed by the same assumption, no more. -/
   process_slots_registry : ∀ st s, (ext.process_slots st s).validators = st.validators
   /-- a valid state transition lands on the block's slot and preserves the
       registry (no deposits/exits in the window — the static-set idealization,
@@ -365,7 +384,24 @@ structure ExternalsCoherence (E : Execution Root) : Prop where
       compute_epoch_at_slot cfg st.slot
   /-- the store-computed slot committees agree with the ground-truth
       assignment on every honest store (the spec's committee-consistency
-      window, idealized to the verified execution prefix). -/
+      window, idealized to the verified execution prefix).
+
+      **DISCLOSURE (`docs/plumbing-spec-citations.md` P-8): the agreement
+      window asserted here EXCEEDS the spec's own bound.**  The pinned
+      requirement on `get_slot_committee` is
+      fast-confirmation.md:230 — *"This function returns the committee for a
+      specific slot. It MUST support committees of epochs starting from
+      `current_epoch - 2`."* — i.e. a two-epoch lookback over
+      `shuffling_source = store.block_states[head]`, matching validator.md:257's
+      `MAX_SEED_LOOKAHEAD` and validator.md:325's "Lookahead".  This field
+      instead asserts exact agreement with the ground-truth committee for
+      **every** in-horizon slot, with no window and no `MAX_SEED_LOOKAHEAD`
+      qualification.  It is a strengthening of the quoted MUST, licensed by the
+      same static-validator-set idealization as `process_slots_registry` /
+      `state_transition_registry` ([S] `StaticValidatorSet`, paper Assumption
+      1): with the active set constant below the horizon the shuffling is a
+      function of the (fixed) registry, so `current_epoch - 2` stops binding.
+      Under a mutating registry the extra window would not be available. -/
   committees_agree : ∀ v ∈ E.honest, ∀ n (s : Slot),
     E.WithinHorizon cfg n → E.SlotWithinHorizon cfg s →
     get_slot_committee cfg ext (E.store cfg ext v n) s = E.committee s

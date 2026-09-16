@@ -165,7 +165,26 @@ structure JustificationInterface (E : Execution Root) : Prop where
       checkpoint and its FCR store's previous-epoch greatest unrealized
       checkpoint are justified in every honest view from the same slot on
       (both are computed by the same ≥2/3-attested unrealized-justification
-      machinery the observed checkpoint reads). -/
+      machinery the observed checkpoint reads).
+
+      **DISCLOSURE (`docs/plumbing-spec-citations.md` P-4): this asserts
+      cross-view propagation one rotation upstream of where the pinned spec
+      documents it.**  fast-confirmation.md documents the all-honest-nodes
+      property only for the two `*_observed_justified_checkpoint` fields
+      (fast-confirmation.md:94: *"a justified checkpoint that has been observed
+      by all honest nodes at the beginning of the current epoch assuming
+      synchrony"*), which is what `observed_justified` above transcribes.  The
+      field documentation of the checkpoint named in the SECOND conjunct here
+      reads, verbatim (fast-confirmation.md:97):
+      *"`previous_epoch_greatest_unrealized_checkpoint`: a greatest unrealized
+      justified checkpoint at the start of the last slot of the previous epoch
+      **according to a local view**"* — a local-view quantity.  Asserting that
+      it, and the store's own `unrealized_justified_checkpoint`, are justified
+      in EVERY honest view from the same slot on is the synchrony step the spec
+      takes only one rotation later, applied here early.  It is sound under
+      GST-0 honest-to-honest Δ-synchrony plus the ≥2/3-attested-target
+      provenance both quantities share with the observed checkpoint, but it is
+      an assumption of this development, not transcription. -/
   unrealized_justified : ∀ v ∈ E.honest, ∀ n : ℕ, ∀ w ∈ E.honest, ∀ m : ℕ,
     E.WithinHorizon cfg n → E.WithinHorizon cfg m →
     E.slot_at cfg n ≤ E.slot_at cfg m →
