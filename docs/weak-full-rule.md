@@ -233,6 +233,10 @@ appears only as an `hbase` hypothesis. The strong route gets domination out of
 honest formation target vote). Neither half needs the observer's honesty — the
 *inputs* to them did.
 
+(Stages 2–4 have since supplied those inputs and the `c.epoch = J.epoch` half;
+the residue is the `c.epoch < J.epoch` half, stage 5. See "Stages 2–4 as
+landed" below.)
+
 The declared shape of the missing cross-carrier fact already exists as a `def`:
 `Execution.ObservedRestartJustifiedSourceLockAt`
 (`AcceptedResetAdoption.lean`), whose docstring notes that knownness,
@@ -252,12 +256,70 @@ Stages G–J; **XL** = a wave with a genuinely new argument, like
 | 1a | `WeakConfirmedSafeFromFollowingSlot`, base case, idle step | **S** | landed |
 | 1b | `weakGetLatestConfirmedTraceAt_input_known` (named extraction of an inline derivation the weak stack repeats at six sites) | **S** | landed |
 | 1c | `Weak.CandidateHistoryCallBranch.origin`, input-safety dispatcher, call step, headline fold, endpoint form | **S** | landed |
-| 2 | **Adoption**: weak twin of `ActualFCRGuardedObservedAdoption` — the banked checkpoint's epoch is `≤` every honest endpoint's justified epoch at the call second | **M** | open |
-| 3 | **Anchor arm**: the observed-reset seed reduces to `B.anchor` whenever the banked certificate degenerates; closes by `trustedAnchor_safeFrom_of_acceptedGlobalTrajectory` | **S** | open |
-| 4 | **Same-epoch arm**: `c.epoch = J.epoch` at the endpoint, via `checkpointTakeoverEvidence_of_sameEpochCertificates` (already honesty-free) and `checkpointTakeover_head_of_globalTrajectory` (honesty on the endpoint only) | **M** | open |
+| 2 | **Adoption**: weak twin of `ActualFCRGuardedObservedAdoption` — the banked checkpoint's epoch is `≤` every honest endpoint's justified epoch at the call second | **M** | landed |
+| 3 | **Anchor arm**: the observed-reset seed reduces to `B.anchor` whenever the banked certificate degenerates; closes by `trustedAnchor_safeFrom_of_acceptedGlobalTrajectory` | **S** | landed |
+| 4 | **Same-epoch arm**: `c.epoch = J.epoch` at the endpoint, closed by accountable uniqueness (`certified_justified_unique`) plus `head_ge_of_justified_ge_K` | **M** | landed |
 | 5 | **Later-epoch arm**: `c.epoch < J.epoch`, the honest formation-target vote plus the `safeFrom_of_headStep_at` strong induction, with the sender-side relays replaced by the banked certificate's `seed_disseminated` | **L** | open |
 | 6 | Assemble stages 2–5 into `Weak.ObservedResetSeedSafety`; delete the obligation from the fold's premise list | **M** | open |
 | 7 | Register the unconditional fold and its endpoint form in `scripts/Audit.lean`'s `publicWitnesses`; extend `docs/weak-synchrony.md`'s premise-surface classification | **S** | open |
+
+### Stages 2–4 as landed
+
+Two new modules, both honesty-free at `obs`:
+
+* [`FastConfirmation/Spec/Proof/WeakObservedRestartAdoption.lean`](../FastConfirmation/Spec/Proof/WeakObservedRestartAdoption.lean)
+  — stage 2. `Weak.bankedCheckpoint_epoch_le_honestJustified` is the core:
+  the certified supplier disseminates
+  (`Weak.bankedSupplier_known_at_all_honest_endpoints_at_observer`), the banked
+  value *is* that supplier's `GU` (the certificate's `banked_eq` plus
+  `Execution.accepted_unrealized_justification_eq`), and the endpoint's own
+  `AcceptedOldGURealized.oldGU` absorbs it. `Weak.GuardedObservedAdoption` /
+  `Weak.ObservedResetCandidateInputAt.guardedObservedAdoption` are the
+  call-indexed forms.
+* [`FastConfirmation/Spec/Proof/WeakObservedRestartDynamicSafety.lean`](../FastConfirmation/Spec/Proof/WeakObservedRestartDynamicSafety.lean)
+  — stages 3 and 4, plus `Weak.weakFcrStep_certifiedBankedJustification`, which
+  supplies rule delta 5's invariant at the *query* store (one
+  `certifiedBankedJustification_update` past the landed trajectory invariant),
+  so neither arm assumes a certificate it cannot produce.
+  Stage 3 is `Weak.genesisRoot_safeFrom_of_acceptedGlobalTrajectory` and
+  `Weak.ObservedResetCandidateInputAt.safeFrom_of_anchorArm`; stage 4 is
+  `Weak.sameEpochCertified_head_at_endpoint`,
+  `Weak.ObservedResetCandidateInputAt.certifiedJustified` (the weak replacement
+  for the strong proof's honest-node-only `hreal.certified`) and
+  `Weak.ObservedResetCandidateInputAt.head_of_sameEpoch`.
+
+#### The temporal carry, resolved
+
+The note above ("the epoch-boundary arm is where the observer's inbox model
+bites hardest") anticipated a new bridge from the installation second to the
+call second. None was needed. Two existing facts cover it:
+
+* the dissemination gate `E.slot_at h.second ≤ E.slot_at m` follows from
+  `BankedJustificationCertificate.second_le` and `Execution.slot_at_mono` —
+  the certificate's own index bound *is* the carry;
+* the "carrier predates the boundary" step, which the strong proof gets from
+  the cache installation's second, is instead intrinsic to the certificate:
+  `has_head_broadcast_certificate` fixes the end slot at
+  `get_current_slot store - 1`, so `Weak.has_broadcast_certificate_span_nonempty`
+  plus the structure's `second_pos` fill give
+  `Weak.BankedJustificationCertificate.supplier_slot_lt` (new, stage 2) — the
+  supplier is strictly below the banking second's slot, hence strictly below
+  the call's boundary slot after `slot_at_mono`.
+
+So the installation second never has to be re-related to the call second by
+anything stronger than monotonicity of the clock.
+
+#### What stages 2–4 leave
+
+The three landed arms compose into `Weak.ObservedResetSeedSafety`'s body
+modulo exactly the stage-5 arm, with no index or temporal mismatch: split the
+banking invariant (anchor arm ⇒ stage 3), run
+`Execution.safeFrom_of_headStep_at`, derive `c.epoch ≤ J.epoch` at the endpoint
+from stage 2 plus `Execution.store_justified_epoch_mono`, and split it with
+`Nat.eq_or_lt_of_le` into stage 4 and stage 5. That composition has been
+checked to elaborate with the stage-5 arm as a hypothesis; it is not landed
+here because pinning a second named obligation before stage 5 exists would add
+premise surface the repository does not need.
 
 Stage 5 is the only one that could turn out **XL**: if the honest formation
 target's vote cannot be reached without transporting observer-store ancestry
@@ -308,6 +370,11 @@ pair, and it is already produced at exactly the observed-reset call site.
   `E.slot_at h.second ≤ E.slot_at m`. Any domination argument therefore has to
   carry the installation second forward, which the strong proof does not need
   to do because it re-relays from the querying node's store at query time.
+  **Resolved in stages 2–4** at no cost: `second_le` plus
+  `Execution.slot_at_mono` discharge the gate, and the certificate's own span
+  (`Weak.BankedJustificationCertificate.supplier_slot_lt`) replaces the strong
+  proof's installation-second age argument. See "The temporal carry, resolved"
+  above.
 * **`Weak.ObserverHistoricalA32CallAssumptions` stays floor-classified.** The
   fold inherits it unchanged from the closed one-shot theorem. It is the
   accepted development's own `helper_provisos` read at one more index, not a
