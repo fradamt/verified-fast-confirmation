@@ -21,8 +21,11 @@ The single change is the observer running the FCR:
 - Strong model (current accepted theorem): the observer is a member of
   `E.honest`, so `block_relay` treats its store contents as network-known and
   `attester_slashing_relay` treats its equivocation evidence as shared.
-- Weak model: the observer is `ObserverContext.obs ∉ E.honest` — an inbox. No
-  law guarantees delivery to it, and nothing it holds propagates from it.
+- Weak model: the observer is an arbitrary node — an inbox that is granted
+  nothing. No law guarantees delivery to it, and nothing it holds propagates
+  from it. (Since `refactor!: drop the unused obs-not-honest field` the
+  records no longer even assume `obs ∉ E.honest`: non-honesty was never used,
+  so the weak statements cover honest observers too.)
   Its inbox stays authentic (`WellFormedExecution`, `HonestBehavior.no_forgery`
   range over every node's schedule) and its clock stays synchronized (a base
   assumption of the protocol, kept).
@@ -535,8 +538,9 @@ mirroring `ExternalsCoherence.committees_agree`.
 
 `Execution.weak_safeFrom_find_latest_confirmed_descendant` and its endpoint
 corollary `Execution.weak_confirmed_head`
-(`FastConfirmation/Spec/Proof/WeakOneShotSafety.lean`): for an observer
-`obs ∉ E.honest`, at any within-horizon second, under
+(`FastConfirmation/Spec/Proof/WeakOneShotSafety.lean`): for an **arbitrary**
+observer `obs` (honest or not — nothing is assumed in its favour), at any
+within-horizon second, under
 `WeakObserverMarginAssumptions` (the strong `SelectedMarginAssumptions`
 verbatim — synchrony stays honest-to-honest — plus `ObserverCoherence`:
 committee readback and justified-root knownness at the observer's own store),
@@ -810,8 +814,8 @@ premises are:
   (`ObserverCoherence.justified_root_known_of_acceptedGlobalTrajectory`) and,
   wherever the accepted-FFG package is in scope — i.e. at every top-level weak
   statement — it is derived rather than assumed, so the caller-facing bundle
-  is `E.WeakObserverAssumptions` (floor + `obs ∉ E.honest` +
-  `committees_agree`). The `hmargin`/`hfilter`-carrying one-shot floor forms
+  is `E.WeakObserverAssumptions` (floor + `committees_agree`; `obs` itself is
+  unconstrained). The `hmargin`/`hfilter`-carrying one-shot floor forms
   (`weak_safeFrom_find_latest_confirmed_descendant`,
   `…_discharged`, and their endpoint forms), which carry no `B`, still take
   the internal `E.WeakObserverMarginAssumptions`.
@@ -911,8 +915,8 @@ instead.
 ### The complete premise surface, classified against the ratified floor
 
 Every premise of `weak_safeFrom_observerCall_closed_lazy` — and, apart from
-`hprior`/`hcall`/`hinput`/`hbase`, of the four audited trajectory headlines —
-classified:
+`hprior`/`hcall`/`hinput`/`hbase`, of the four trajectory headlines (the
+audited unconditional pair and its conditional internal twin) — classified:
 
 * **`hW : E.WeakObserverAssumptions cfg ext obs`** — `hW.base :
   SelectedMarginAssumptions` is the ratified floor: honest-to-honest
@@ -920,10 +924,10 @@ classified:
   estimation soundness and honest behavior/BLS (`hW.base.honest_behavior`),
   the static registry (`hW.base.static_validators`), the Byzantine bound
   (`hW.base.byzantine_bound`), `ExternalsCoherence` (static committees, ground
-  truth), whole seconds, and genesis shape. The two observer-specific fields
-  are `hW.observer : obs ∉ E.honest` and `hW.committees_agree` (the
-  observer's own store computes committees consistently with the ground-truth
-  assignment): `committees_agree` is the **only** observer-store premise.
+  truth), whole seconds, and genesis shape. The one observer-specific field
+  is `hW.committees_agree` (the observer's own store computes committees
+  consistently with the ground-truth assignment): it is the **only**
+  observer-store premise, and there is no constraint on `obs` itself.
   `justified_root_known` is derived and no longer appears on the surface —
   `ObserverCoherence.justified_root_known_of_acceptedGlobalTrajectory` proves
   it from `B`/`hT`/`hanchor`/`hboundary`, which every statement on this list
@@ -941,15 +945,26 @@ classified:
   accountability and finalization-delay bundle (`hT`, `hDelay`), and the
   Phase-0 source-coherence/link-validity/inclusion contracts (`hphase0`,
   `hpaper`, `V`) the accepted development already carries as floor, not
-  premises new to the weak route. The trajectory headlines additionally carry
-  `hboundaryPhase : Phase0BoundarySourceCoherence cfg ext`, of the same kind,
-  for the finalized arm of their candidate-input derivation.
+  premises new to the weak route. On the **trajectory headlines** three of
+  these are no longer binders at all (`refactor: premise surface equals
+  assumption set on the trajectory headlines`): `hT` is derived from
+  `hW.base` by
+  `ScheduledPrefixTrajectoryAssumptions.of_selectedMarginAssumptions`, and
+  `hphase0` / `hboundaryPhase : Phase0BoundarySourceCoherence cfg ext` (the
+  latter for the finalized arm of the candidate-input derivation) are read off
+  the call-contract supplement below.
 * **`hji : JustificationInterface cfg ext E`** — the same executable
   justification-selection contract the accepted development's actual-call
   facade already assumes.
-* **`hCbase : E.AcceptedHistoricalA32CompletedPrefixCallAssumptions cfg ext`**
-  — the accepted development's **unchanged** 7-field completed-prefix call
-  contract, read verbatim. No observer-indexed extension of it exists any
+* **`hCbase`** — the completed-prefix call contract. The closed one-call step
+  takes the accepted development's **unchanged** 7-field
+  `E.AcceptedHistoricalA32CompletedPrefixCallAssumptions`; the trajectory
+  headlines take the 4-field
+  `E.AcceptedHistoricalA32CompletedPrefixCallSupplement` (`phase0_source`,
+  `phase0_boundary_source`, `balance_floor`, `delivery_lookahead`) and rebuild
+  the 7-field record internally, because its other three fields
+  (`synchrony`, `static_validators`, `byzantine_bound`) are literally fields of
+  `hW.base`. No observer-indexed extension of it exists any
   more: the historical A3.2 crossing payload is manufactured *lazily* at the
   consuming call from the fold's own output at strictly earlier seconds
   (`Weak.LazyCertAt` / `Weak.LazySupportAt`), which needs no proviso at all.
@@ -969,7 +984,8 @@ classified:
 **Not carried, anywhere in this premise list:** no delivery of votes, blocks,
 or store contents *to* or *from* the observer (`obs` need not be a
 `Synchrony`/`PaperSafetySynchrony` sender or receiver at all); no observer
-honesty (`obs ∉ E.honest` is a hypothesis, not a contradiction to discharge);
+honesty (and, since the obs-not-honest field was dropped, no *non*-honesty
+either: `obs` is simply an arbitrary index);
 no equivocation-visibility relay (`Synchrony.attester_slashing_relay` does
 not occur on this path — the non-subtractive crossing collapse above retired
 its last use); and no Paper Assumption 3.2 premise beyond the floor and the
@@ -977,7 +993,7 @@ accepted development's own unchanged `helper_provisos`.
 
 ### The audited witness list
 
-`scripts/Audit.lean`'s `publicWitnesses` set (23 declarations) registers, on
+`scripts/Audit.lean`'s `publicWitnesses` set (21 declarations) registers, on
 the weak side:
 
 * `Execution.weak_safeFrom_find_latest_confirmed_descendant` /
@@ -985,17 +1001,27 @@ the weak side:
   `hmargin`-carrying one-shot floor forms;
 * `Execution.weak_safeFrom_find_latest_confirmed_descendant_discharged` /
   `weak_confirmed_head_discharged` — the `hmargin`-free forms;
-* `Execution.weakConfirmed_safeFromFollowingSlot_of_weakFullRuleFold` and
-  `Execution.weakConfirmed_head_of_weakFullRuleFold_nextSlot`
-  (`WeakTrajectorySafety.lean`) — the **conditional** full-rule fold and its
-  endpoint form, carrying `hOR : Weak.ObservedResetSeedSafety`;
 * `Execution.weakConfirmed_safeFromFollowingSlot_of_acceptedWeakFullRuleFold`
   and `Execution.weakConfirmed_head_of_acceptedWeakFullRuleFold_nextSlot`
-  (`WeakObservedResetSeedSafety.lean`) — the **unconditional** twins, with
-  `hOR` discharged from the floor.
+  (`WeakObservedResetSeedSafety.lean`) — the **unconditional** full-rule fold
+  and its endpoint form, with `hOR : Weak.ObservedResetSeedSafety` discharged
+  from the floor. These two are the weak headlines.
 
-The last four replaced the four retired one-shot closed witnesses. All depend
-only on `propext, Classical.choice, Quot.sound`
+The **conditional** pair
+`Execution.weakConfirmed_safeFromFollowingSlot_of_weakFullRuleFold` /
+`…_head_of_weakFullRuleFold_nextSlot` (`WeakTrajectorySafety.lean`) is no
+longer registered (`refactor: the unconditional fold pair are the weak
+headline witnesses`): carrying `hOR` makes it a strictly weaker restatement of
+the unconditional pair, which discharges `hOR` from premises the conditional
+pair already has. It remains an internal theorem — the unconditional pair's
+proof chain runs through it, and the one-call-at-a-time reading of `hOR` stays
+available.
+
+The unconditional pair's premise list is, in full: `B`, `hji`, `hanchor`,
+`hboundary`, `hDelay`, `hpaper`, `P`, `V`, `hanchorExact`, `hW`, `hwalkDomain`,
+`hCbase` (the 4-field supplement) and `hfit` — plus, on the endpoint form, the
+endpoint binders `hw`/`hnm`/`hnext`/`hHm`. All registered witnesses depend only
+on `propext, Classical.choice, Quot.sound`
 (`lake env lean scripts/Audit.lean`).
 
 ## The full rule (trajectory safety)
@@ -1003,8 +1029,8 @@ only on `propext, Classical.choice, Quot.sound`
 The step above is still *one call*: its `hprior`/`hinput`/`hbase` premises are
 exactly what an induction over `E.weakConfirmed`'s own history has to supply.
 That induction has landed in
-`FastConfirmation/Spec/Proof/WeakTrajectorySafety.lean` and is where the four
-audited weak statements live; the invariant, the four-branch step, the base
+`FastConfirmation/Spec/Proof/WeakTrajectorySafety.lean`, with the two audited
+weak headlines in `WeakObservedResetSeedSafety.lean` on top of it; the invariant, the four-branch step, the base
 case and the discharge of the last obligation
 (`Weak.ObservedResetSeedSafety`, safety of the epoch-start observed-reset seed
 at a non-honest observer) are documented in

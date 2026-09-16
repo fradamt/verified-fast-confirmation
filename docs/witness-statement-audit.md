@@ -1,15 +1,37 @@
 # Witness statement & assumption audit
 
-**Scope.** This document audits the **statements** and the **assumptions** of the 23
+**Scope.** This document audits the **statements** and the **assumptions** of the
 declarations in `scripts/Audit.lean`'s `publicWitnesses` array, as of
-`centaur/weak-synchrony-202609150824` @ `0be68f6` (working tree clean at audit time).
+`centaur/weak-synchrony-202609150824` @ `0be68f6` (working tree clean at audit time),
+when the array held 23 names.
+
+> **Post-audit status (2026-09-16).** Flags **F1, F2, F3 and F7 are RESOLVED**, plus the
+> bonus deletion of the two dead `JustificationInterface` fields. Every fix was a
+> deletion, a premise weakening or a doc correction; no conclusion changed by a byte.
+> * `fbb3ec1` — **F3**: the `observer : obs ∉ E.honest` field is deleted from both weak
+>   observer records; all ten weak witnesses now cover an *arbitrary* observer.
+> * `28a9bd6` — **F2**: `hT`, `hphase0`, `hboundaryPhase` are gone from the four
+>   trajectory headlines (derived internally), and the 7-field call contract `hCbase` is
+>   replaced there by the 4-field
+>   `Execution.AcceptedHistoricalA32CompletedPrefixCallSupplement`, its other three
+>   fields being read off `hW.base`. `Weak.observedResetSeedSafety_of_acceptedDynamics`
+>   also lost its `hT`.
+> * `47c3984` — **F1**: W20/W21 (the *conditional* fold pair) are **deregistered**; the
+>   witness count is now **21** and `scripts/Audit.lean` asserts 21. They remain internal
+>   theorems used by W22/W23's proof chain. The W-numbering below is left as audited;
+>   the registered set is W1–W19, W22, W23.
+> * `8b05b67` — **bonus**: `JustificationInterface.gate_sound` and
+>   `.target_justified_sound` deleted (13 fields left), weakening `hji` on W20–W23.
+> * `28a9bd6` + `5ec6441` — **F7**: both docstring discrepancies fixed.
+>
+> Rows and sections below are annotated in place; nothing else was re-audited.
 For each witness: what it claims in protocol language, and every hypothesis it carries,
 unfolded through record premises, each classified.
 
 **Explicitly out of scope: the proofs.** Proof integrity is gate-checked mechanically by
 `scripts/Audit.lean` itself (no `sorry`, no project axiom/opaque/partial/extern/
-`implemented_by`, axiom closure ⊆ `{propext, Classical.choice, Quot.sound}`, all 23
-witnesses present and theorems). Nothing below depends on reading a proof body; every
+`implemented_by`, axiom closure ⊆ `{propext, Classical.choice, Quot.sound}`, all
+witnesses present and theorems — 23 at audit time, **21** since `47c3984`). Nothing below depends on reading a proof body; every
 statement and premise list was read off the Lean signature, not the docstring. Where a
 docstring disagrees with its signature, that is recorded in §8.
 
@@ -46,13 +68,13 @@ by name. Witness IDs are Audit.lean order (W1…W23), listed in §2.
 | A1 | `AcceptedChainFFGState` fields (26) | `checkpoint_epoch`, `formed_*` evidence, `gj/gu/gf/guf_mem`, `gj_max`/`gu_max` maximality, `gj_anchor_or_before`, `au_epoch_le_block`, `gf/guf_evidence`, epoch-ordering `gf ≤ gj`, `guf ≤ gu`, `gf ≤ guf` | [P] | as A |
 | A2 | `AcceptedFFGSelectorCoherence` (11 fields) | selectors agree with `ext.is_valid_indexed_attestation`, with the genesis store's block states, and with every *accepted* `on_block` post-state (`transition_gj/gf/gu/guf`) | [P] mirrors `state_transition` + `process_justification_and_finalization` | as A |
 | A3 | `AcceptedFFGTransitionCoherence` extra (2) | `checkpoint_of_known`, `au_checkpoint_of_known`: `C`/AU agree with `get_checkpoint_for_block` on every causal store | [P] | as A |
-| B | `ScheduledPrefixTrajectoryAssumptions` (`Proof/CausalQueryTraceAdapter.lean:112`) | 5 fields: `whole_seconds` (`1000 ∣ slot_duration_ms`) [B]; `wellFormed` (roots commit to blocks) [P]; `externals_coherence` [S]+[P]; `honest_behavior` [S]; `genesis` (store = `get_forkchoice_store` of an anchor pair) [B] | mixed | W1,W2,W16–W23 |
-| C | `JustificationInterface` (`Spec/TheoremStatements.lean:80`) — 15 fields | FFG exports consumed by the FCR: `gate_sound`, `target_justified_sound` (soundness of the two `will_*` gates, both proviso-gated on `HonestVotesSupportTarget`), `justified_unique` (**accountable safety**), `justified_requires_targets` (2/3 target weight), `observed_justified`, `unrealized_justified`, `finalized_justified_ancestry`, `justified_ancestry`, `finalized_descent`, `checkpoint_known`, and 5 checkpoint-state-cached fields | [S] (accountable-safety + ≥2/3 justification) with [P] cache fields | W20–W23 |
+| B | `ScheduledPrefixTrajectoryAssumptions` (`Proof/CausalQueryTraceAdapter.lean:112`) | 5 fields: `whole_seconds` (`1000 ∣ slot_duration_ms`) [B]; `wellFormed` (roots commit to blocks) [P]; `externals_coherence` [S]+[P]; `honest_behavior` [S]; `genesis` (store = `get_forkchoice_store` of an anchor pair) [B] | mixed | binder on W1,W2; **derived from M** on W16–W23 (since `28a9bd6` it is a binder nowhere on the weak side — F2) |
+| C | `JustificationInterface` (`Spec/TheoremStatements.lean:80`) — **13 fields** (was 15; `gate_sound` and `target_justified_sound`, the soundness of the two `will_*` gates, were never applied anywhere and were deleted in `8b05b67`) | FFG exports consumed by the FCR: `justified_unique` (**accountable safety**), `justified_requires_targets` (2/3 target weight), `observed_justified`, `unrealized_justified`, `finalized_justified_ancestry`, `justified_ancestry`, `finalized_descent`, `checkpoint_known`, and 5 checkpoint-state-cached fields | [S] (accountable-safety + ≥2/3 justification) with [P] cache fields | W20–W23 |
 | D | `hanchor : B.anchor = genesis_store.justified_checkpoint` | the FFG state's anchor is the store's trusted checkpoint-sync anchor | [B] | W1,W2,W16–W23 |
 | E | `TrustedAnchorBoundaryAligned` (`Proof/FFGGlobalCheckpointTrajectory.lean:623`) | anchor block's slot ≤ start slot of the anchor's epoch | [B] | W1,W2,W16–W23 |
 | F | `AcceptedRealizedFinalizationDelay` (`Proof/AcceptedFinalizationTiming.lean:211`) | every accepted block's realized finalized checkpoint is the anchor or ≥2 epochs behind the block | [P] (phase0 process-epoch-before-slot order), also the **finalization spacing** [S] | W1,W2,W20–W23 |
-| G | `Phase0SourceCoherence` (`Proof/FFGSourceCoherence.lean:64`) | same-epoch `process_slots` / `state_transition` preserve `current_justified_checkpoint` | [P] | W1,W2,W16–W23 |
-| H | `Phase0BoundarySourceCoherence` (`Proof/CurrentTargetCertificateRealization.lean:57`) | epoch-crossing `process_slots` / `state_transition` install the eager `process_justification_and_finalization` value | [P] | W1,W2,W16–W23 |
+| G | `Phase0SourceCoherence` (`Proof/FFGSourceCoherence.lean:64`) | same-epoch `process_slots` / `state_transition` preserve `current_justified_checkpoint` | [P] | W1,W2,W16,W17; on W20–W23 no longer a standalone binder — supplied once by O′ (`28a9bd6`) |
+| H | `Phase0BoundarySourceCoherence` (`Proof/CurrentTargetCertificateRealization.lean:57`) | epoch-crossing `process_slots` / `state_transition` install the eager `process_justification_and_finalization` value | [P] | W1,W2,W16,W17; on W20–W23 supplied once by O′ (`28a9bd6`) |
 | I | `PaperA32Inclusion` (`Model/FFGStateSemantics.lean:1188` → `…Core:1136`) | paper Assumption 3.2: canonical-throughout-epoch `b` with fixed `vs(b,e)→C(b,e)` 2/3 link support in every honest view throughout epoch `e+1` ⇒ by `st(e+2)` every honest view holds a pre-boundary descendant carrying `C(b,e)` in AU | [S] | W1,W2,W20–W23 |
 | J | `AcceptedEpochCheckpointProjection` (`Model/ExactCheckpointLinks.lean:31`) | `C` is closed on accepted roots and composes at/above the anchor epoch | [B] | W1,W2,W20–W23 |
 | K | `ExactLinkValidity` = `ExactIncludedLinkValidity` (`:153`/`…:~120`) | a link that *extends* an included certificate has an accepted carrier and both endpoints equal to that carrier's `C` at their epochs | [P] | W1,W2,W20–W23 |
@@ -64,13 +86,14 @@ by name. Witness IDs are Audit.lean order (W1…W23), listed in §2.
 | M-d | `StaticValidatorSet` (`Model/Assumptions.lean:325`) | genesis second is in-horizon; active-validator set constant below the horizon (paper Assumption 1) | [S] | as M |
 | M-e | `ByzantineBound` (`Model/Assumptions.lean:371`) | effective balances quantized; `estimate_committee_weight_between_slots` is an upper bound (the spec's own 5‰ high-probability claim); per-span `100·byz ≤ CONFIRMATION_BYZANTINE_THRESHOLD · W` (paper Assumption 2 at β = threshold/100) | [S] | as M |
 | M-f | `SelectedMarginDomain` (`:27`) | honest stores keep their justified root known and their justified checkpoint state cached | [P] | as M |
-| M1 | `WeakObserverMarginAssumptions` (`Proof/WeakOneShotSafety.lean:225`) | `base : M` + `observer : obs ∉ E.honest` + `coherence : ObserverCoherence` (committee readback **and** justified-root knownness at the observer's own store) | [P] + see §8 F3 | W14,W15,W18,W19 |
-| M2 | `WeakObserverAssumptions` (`Proof/WeakOneShotSafety.lean:243`) | `base : M` + `observer : obs ∉ E.honest` + `committees_agree` at the observer's store only; `justified_root_known` is *derived* from A/B/D/E | [P] + see §8 F3 | W16,W17,W20–W23 |
+| M1 | `WeakObserverMarginAssumptions` (`Proof/WeakOneShotSafety.lean:~225`) | `base : M` + `coherence : ObserverCoherence` (committee readback **and** justified-root knownness at the observer's own store). The `observer : obs ∉ E.honest` field was deleted in `fbb3ec1` (§8 F3, RESOLVED): `obs` is now arbitrary and may be honest | [P] | W14,W15,W18,W19 |
+| M2 | `WeakObserverAssumptions` (`Proof/WeakOneShotSafety.lean:~243`) | `base : M` + `committees_agree` at the observer's store only; `justified_root_known` is *derived* from A/B/D/E. The `observer : obs ∉ E.honest` field was deleted in `fbb3ec1` (§8 F3, RESOLVED) | [P] | W16,W17,W20–W23 |
 | N | `PostAnchorHonestVoteTargetWalkDomain` (`Proof/Bridge.lean:72`) | for an actual post-anchor honest vote, the walk from the source head down to the vote's target-epoch boundary stays inside that store's block domain | [P] (domain adequacy of the totalized walk) | W18–W23 |
 | O | `AcceptedHistoricalA32CompletedPrefixCallAssumptions` (`Proof/AcceptedHistoricalA32CallSupplier.lean:342`) — **7 fields, no `helper_provisos`** | `synchrony : PaperSafetySynchrony` [S]; `static_validators` [S]; `byzantine_bound` [S]; `phase0_source` [P]; `phase0_boundary_source` [P]; `balance_floor : effective_balance_increment ≤ weight(currentTargetAnchorActive)` [B] (excludes the empty-active-set helper branch); `delivery_lookahead : HorizonVoteDeliveryLookahead` [S] (a vote created in-horizon may be delivered at the first second beyond the exclusive cutoff) | mixed | W1,W2,W20–W23 |
+| O′ | `Execution.AcceptedHistoricalA32CompletedPrefixCallSupplement` (`Proof/WeakTrajectorySafety.lean`, added `28a9bd6`) — **4 fields** | O minus its three `SelectedMarginAssumptions`-duplicating fields: `phase0_source` = G [P], `phase0_boundary_source` = H [P], `balance_floor` [B], `delivery_lookahead` [S]. The full 7-field O is rebuilt internally from O′ + `hW.base` | mixed | W20–W23 (replaces O there) |
 | P | `EpochEndsFitUint64` (`Model/Config.lean:97`) | `slots_per_epoch ∣ UINT64_MAX + 1` | [B] | W1,W2,W20–W23 |
 | Q | `1 < cfg.slots_per_epoch` | config nondegeneracy | [B] | W1,W2 (strong only) |
-| R | `Weak.ObservedResetSeedSafety` (`Proof/WeakTrajectorySafety.lean:148`) | at a weak call whose candidate came from the epoch-start restart branch, the restarted-from root is `SafeFrom` at `n+1` | **[D]** — proved by `Weak.observedResetSeedSafety_of_acceptedDynamics` from premises already present. See §8 F1 | W20,W21 |
+| R | `Weak.ObservedResetSeedSafety` (`Proof/WeakTrajectorySafety.lean:~148`) | at a weak call whose candidate came from the epoch-start restart branch, the restarted-from root is `SafeFrom` at `n+1` | **[D]** — proved by `Weak.observedResetSeedSafety_of_acceptedDynamics` from premises already present. §8 F1 RESOLVED (`47c3984`): W20/W21 are **no longer registered witnesses**, so no *witness* carries R | W20,W21 (internal only) |
 | S | `SelectedCoveredMarginSupplyAt` / `Weak.SelectedCoveredMarginSupplyAt` (`Proof/CoveredMargin.lean:203`, `Proof/WeakSelectedMarginInputs.lean:209`) | per strict selected edge at each honest endpoint: either the edge is already covered by that endpoint's justified root, or the caller supplies the exact LMD margin record | **[!]** residual per-call proof obligation, not an environmental assumption | W14–W17 |
 | T | `Weak.SelectedStrictEdgeFilterSupplyAt` (`Proof/WeakCoveredMarginConstruction.lean:45`) | per strict selected edge with the strict-edge geometry: the child node is in the endpoint's filtered block tree | **[!]** residual per-call proof obligation (S discharged into it) | W18,W19 |
 | U | call-local data: `hqH : WithinHorizon q`, `hstore : fcr_store.store = E.store obs q`, `hlcr`, `hbase : SafeFrom lcr (slot_start (slot_at q))`, `hcall`, `hselector : getLatestSelectorGuard …` | the query is in-horizon, reads the node's own store, the seed root is known and already safe from the query slot's start, the call actually happened / the helper actually ran | [B] | W2,W14–W19 |
@@ -100,8 +123,9 @@ by name. Witness IDs are Audit.lean order (W1…W23), listed in §2.
 | s | `SafeConfirmedAlg1Inputs` (`:557`) | for **every** honest-view-safe block: rule confirmation + the same four interface conjuncts | [!] — docstring self-discloses it is *stronger and more direct* than paper Assumption 6 | W13 |
 | t | `0 ≤ pb`, `0 ≤ we`, `sg τ b t` guard, `1 ≤ s`, `b.WellFormed`, `b.slot ≤ s` | scalar nonnegativity / recency-and-GST guard / block well-formedness | [B] | W7–W13 |
 
-**Bucket counts (distinct assumptions, spec + paper layers, counting the 21 spec-layer rows
-A–U and the 20 paper-layer rows a–t = 41 entries):** [S] 19 · [P] 12 · [B] 8 · [D] 1 · [!] 3
+**Bucket counts (as audited; distinct assumptions, spec + paper layers, counting the 21
+spec-layer rows A–U — row O′ was added later as a projection of O, not a new assumption —
+and the 20 paper-layer rows a–t = 41 entries):** [S] 19 · [P] 12 · [B] 8 · [D] 1 · [!] 3
 (rows S, T, s; with q, p, r flagged as [S]-with-caveat). Several rows are mixed-class
 records; the count assigns each row its dominant class and §8 records the exceptions.
 
@@ -150,8 +174,15 @@ unchanged.
 
 All four share one premise list modulo `hOR`; differences from the strong twins are in §3.5.
 
+> **Post-audit (`28a9bd6`, `47c3984`).** The four premise lists below were audited at 17
+> items (W20/W21) and 16 (W22/W23). They are now 14 and 13: `hT`, `hphase0` and
+> `hboundaryPhase` are gone (derived internally / read off the call supplement), and
+> `hCbase` is the 4-field O′ rather than the 7-field O. W20/W21 are also no longer
+> registered witnesses. Conclusions are byte-identical.
+
 ### W20 `Execution.weakConfirmed_safeFromFollowingSlot_of_weakFullRuleFold`
-`Spec/Proof/WeakTrajectorySafety.lean:552`. **Headline, conditional form.**
+`Spec/Proof/WeakTrajectorySafety.lean:~572`. **Conditional form — since `47c3984` an
+internal theorem, not a registered witness (§8 F1).**
 
 *Statement.* Fix an observer `obs` that is **not** honest and to which no delivery is
 assumed. For **every** in-horizon second `n`, the root the observer's weak FCR trajectory
@@ -161,33 +192,38 @@ holds at `n` (`E.weakConfirmed obs n`, produced by rule-delta-5
 (= the first second of the slot after `slot(n)`). Quantifier order: `∀ n, WithinHorizon n →
 ∀ w ∈ honest, ∀ m ≥ followingSlotStart n, WithinHorizon m → is_ancestor(…)`.
 
-*Hypotheses* (17):
+*Hypotheses* (17 as audited; **14 now**, see the annotations):
 1. `B` = A [P] — accepted FFG semantic state.
-2. `hT` = B [mixed] — **[D], see §8 F2**: derivable from `hW.base` via
+2. ~~`hT` = B~~ — **F2 RESOLVED (`28a9bd6`): removed**, derived from `hW.base` via
    `ScheduledPrefixTrajectoryAssumptions.of_selectedMarginAssumptions`.
-3. `hji` = C [S] — 15-field justification interface (accountable safety, ≥2/3
-   justification, gate soundness, checkpoint caches).
+3. `hji` = C [S] — justification interface (accountable safety, ≥2/3
+   justification, checkpoint caches); **13 fields since `8b05b67`**, the two gate-soundness
+   fields having been deleted as dead, which weakens this premise.
 4. `hanchor` = D [B]. 5. `hboundary` = E [B]. 6. `hDelay` = F [P/S].
-7. `hphase0` = G [P] — **[D], see §8 F2**: equals `hCbase.phase0_source`.
-8. `hboundaryPhase` = H [P] — **[D], see §8 F2**: equals `hCbase.phase0_boundary_source`.
+7. ~~`hphase0` = G~~ — **F2 RESOLVED: removed**, read off `hCbase.phase0_source`.
+8. ~~`hboundaryPhase` = H~~ — **F2 RESOLVED: removed**, read off
+   `hCbase.phase0_boundary_source`.
 9. `hpaper` = I [S] — paper A3.2.
 10. `P` = J [B]. 11. `V` = K [P]. 12. `hanchorExact` = L [B].
 13. `hW` = M2 — unfolds to `base : SelectedMarginAssumptions` (M-a…M-f: honest behaviour
     [S], honest-to-honest Δ-synchrony [S], externals coherence [P]+[S], static registry
     [S], β bound + weight-estimation soundness [S], honest-store domain [P], genesis /
-    whole-seconds [B]); `observer : obs ∉ E.honest` — **[!], see §8 F3** (unused, and it
-    *narrows* the statement); `committees_agree` at the observer's own store [S]/[P].
-14. `hwalkDomain` = N [P]. 15. `hCbase` = O [mixed] — of its 7 fields, `synchrony`,
-    `static_validators`, `byzantine_bound` are already supplied by `hW.base`, and
-    `phase0_source`/`phase0_boundary_source` by items 7–8; only `balance_floor` [B] and
-    `delivery_lookahead` [S] are new content.
-16. `hfit` = P [B]. 17. `hOR` = R — **[D], see §8 F1**.
+    whole-seconds [B]) and `committees_agree` at the observer's own store [S]/[P]. The
+    `observer : obs ∉ E.honest` field is **gone (F3 RESOLVED, `fbb3ec1`)**: the statement
+    now also covers an honest observer.
+14. `hwalkDomain` = N [P]. 15. `hCbase` = **O′** [mixed] since `28a9bd6` — the 4-field
+    supplement (`phase0_source`, `phase0_boundary_source`, `balance_floor` [B],
+    `delivery_lookahead` [S]); the three fields of O that duplicated `hW.base`
+    (`synchrony`, `static_validators`, `byzantine_bound`) are now taken once, from
+    `hW.base`, when the full record is rebuilt internally. **F2 RESOLVED.**
+16. `hfit` = P [B]. 17. `hOR` = R — **[D], §8 F1 RESOLVED by deregistration**.
 
-No honesty binder at `obs`; no delivery to `obs`; `ObserverCoherence.justified_root_known`
-is derived inside the induction, not assumed.
+No honesty *or* non-honesty binder at `obs`; no delivery to `obs`;
+`ObserverCoherence.justified_root_known` is derived inside the induction, not assumed.
 
 ### W21 `Execution.weakConfirmed_head_of_weakFullRuleFold_nextSlot`
-`WeakTrajectorySafety.lean:621`. **Headline, endpoint form of W20.**
+`WeakTrajectorySafety.lean:~641`. **Endpoint form of W20; likewise internal since
+`47c3984`.**
 
 *Statement.* Same premises as W20 plus `w ∈ E.honest`, `n ≤ m`,
 `slot(n) + 1 ≤ slot(m)`, `WithinHorizon m`. Conclusion: `is_ancestor (store w m)
@@ -198,31 +234,41 @@ timing: canonical at every in-horizon honest endpoint in a strictly later slot. 
 *Hypotheses.* Identical to W20 (17), plus the three endpoint binders [B]. Same [D]/[!] as W20.
 
 ### W22 `Execution.weakConfirmed_safeFromFollowingSlot_of_acceptedWeakFullRuleFold`
-`Spec/Proof/WeakObservedResetSeedSafety.lean:153`. **Headline, unconditional.**
+`Spec/Proof/WeakObservedResetSeedSafety.lean:~163`. **The unconditional weak headline.**
 
 *Statement.* Identical to W20's conclusion, verbatim.
 
-*Hypotheses.* W20's list **minus** `hOR`: 16 premises, items 1–16 above. The discharge
-(`Weak.observedResetSeedSafety_of_acceptedDynamics`, `:81`) consumes only `hW.base`, `B`,
-`hT`, `hji`, `hanchor`, `hboundary`, `hW.committees_agree` — all already present, so the
-premise surface is strictly smaller than W20's, as the docstring claims. Remaining flags:
-**[D]** on `hT`, `hphase0`, `hboundaryPhase` (§8 F2); **[!]** on `hW.observer` (§8 F3).
+*Hypotheses.* W20's list **minus** `hOR`: audited at 16 premises, **13 now**. The
+discharge (`Weak.observedResetSeedSafety_of_acceptedDynamics`, `:~81`) consumes only
+`hW.base`, `B`, `hji`, `hanchor`, `hboundary`, `hW.committees_agree` — all already
+present (it lost its own `hT` in `28a9bd6`), so the premise surface is strictly smaller
+than W20's, as the docstring claims. The exact list is now:
+
+> `B` [A], `hji` [C, 13 fields], `hanchor` [D], `hboundary` [E], `hDelay` [F],
+> `hpaper` [I], `P` [J], `V` [K], `hanchorExact` [L], `hW` [M2, no honesty field],
+> `hwalkDomain` [N], `hCbase` [O′, 4 fields], `hfit` [P].
+
+All former [D]/[!] flags on this witness are cleared: `hT`, `hphase0`, `hboundaryPhase`
+are no longer carried (F2) and `hW.observer` no longer exists (F3). Every remaining
+premise is [S]/[P]/[B].
 
 ### W23 `Execution.weakConfirmed_head_of_acceptedWeakFullRuleFold_nextSlot`
-`WeakObservedResetSeedSafety.lean:186`. **Headline, unconditional endpoint form.**
-Statement = W21's; hypotheses = W22's plus the three endpoint binders [B].
+`WeakObservedResetSeedSafety.lean:~196`. **The unconditional endpoint headline.**
+Statement = W21's; hypotheses = W22's 13 plus the three endpoint binders [B]
+(`hw : w ∈ E.honest`, `n ≤ m`, `slot(n)+1 ≤ slot(m)`, `WithinHorizon m`). Same cleared
+flags as W22.
 
 ### 3.5 Strong ↔ weak premise differences
 
 | | strong fold (W1/W2, via `AcceptedActualFCRNextSlotSafetyAssumptions`) | weak trajectory headlines (W20–W23) |
 |---|---|---|
-| observer | `hv : v ∈ E.honest` | `hW.observer : obs ∉ E.honest` (**opposite**, and unused — §8 F3). The weak headline therefore does **not** subsume the strong one: it is silent about honest observers. |
+| observer | `hv : v ∈ E.honest` | **nothing** — `obs` is an arbitrary index. (As audited this was `hW.observer : obs ∉ E.honest`, unused and domain-narrowing; deleted in `fbb3ec1`, §8 F3. The weak headlines now also speak about honest observers, though the *conclusion object* still differs: see the last row.) |
 | observer-store facts | none (honesty supplies them) | `committees_agree` at `obs`'s store; `justified_root_known` derived |
-| `JustificationInterface` | **absent** (deliberately replaced by `SelectedMarginDomain`) | **present** (`hji`, 15 fields) — a materially larger FFG export surface on the weak side |
+| `JustificationInterface` | **absent** (deliberately replaced by `SelectedMarginDomain`) | **present** (`hji`, **13** fields since `8b05b67`) — a materially larger FFG export surface on the weak side |
 | `PostAnchorHonestVoteTargetWalkDomain` | absent | present (`hwalkDomain`) |
-| `SelectedMarginAssumptions` | absent as a premise (rebuilt internally from `trajectory` + `completed_calls` + derived domain) | present inside `hW.base` — which is why `hT` becomes redundant (§8 F2) |
+| `SelectedMarginAssumptions` | absent as a premise (rebuilt internally from `trajectory` + `completed_calls` + derived domain) | present inside `hW.base` — which is why `hT` was redundant and is now **derived from it** (§8 F2, `28a9bd6`) |
 | `1 < cfg.slots_per_epoch` | present | **absent** |
-| `Phase0*SourceCoherence` | only inside `completed_calls` | *also* standalone (`hphase0`, `hboundaryPhase`) — duplicated (§8 F2) |
+| `Phase0*SourceCoherence` | only inside `completed_calls` | only inside the call supplement O′ — the standalone duplicates are gone (§8 F2, `28a9bd6`) |
 | conclusion object | `E.confirmed v n` (strong handler) | `E.weakConfirmed obs n` (rule-delta-5 handler) |
 | deadline | `followingSlotStart n` | `followingSlotStart n` (identical) |
 
@@ -239,8 +285,8 @@ FCR store whose `store` field is exactly `E.store obs q`, and a seed root `lcr` 
 and already `SafeFrom` from the start of `q`'s slot: the weak selector's output
 `Weak.find_latest_confirmed_descendant` is `SafeFrom` at second `q` itself — an ancestor of
 every in-horizon honest node's head from `q` on.
-*Hypotheses.* `hW` = M1 [P + §8 F3], `hqH`/`hstore`/`hlcr`/`hbase` = U [B], `hmargin` = S
-**[!]** (conditional on the selector strictly advancing).
+*Hypotheses.* `hW` = M1 [P] (no honesty field since `fbb3ec1`), `hqH`/`hstore`/`hlcr`/
+`hbase` = U [B], `hmargin` = S **[!]** (conditional on the selector strictly advancing).
 
 ### W15 `Execution.weak_confirmed_head` — `:1175`
 Endpoint form of W14: same premises plus `w ∈ E.honest`, `q ≤ m`, `WithinHorizon m`;
@@ -260,7 +306,8 @@ Endpoint form of W16; premises identical plus `hw`, `hqm`, `hHm` [B].
 ### W18 `Execution.weak_safeFrom_find_latest_confirmed_descendant_discharged` — `Proof/WeakOneShotSafetyNative.lean:199`
 *Statement.* W14 with the margin obligation `hmargin` (S) discharged into the narrower
 `hfilter` (T) via the weak supplier; `hwalkDomain` (N) appears in its place.
-*Hypotheses.* `hW` = M1, `hwalkDomain` = N [P], U [B], `hfilter` = T **[!]**.
+*Hypotheses.* `hW` = M1 (no honesty field since `fbb3ec1`), `hwalkDomain` = N [P], U [B],
+`hfilter` = T **[!]**.
 
 ### W19 `Execution.weak_confirmed_head_discharged` — `:223`
 Endpoint form of W18; same premises plus `hw`, `hqm`, `hHm` [B].
@@ -389,17 +436,22 @@ one-second-per-slot preset: a pinned-**economics** witness, not `mainnet_config`
 
 ## 8. Flags
 
-**F1 — [D] on a trajectory headline: `hOR : Weak.ObservedResetSeedSafety` (W20, W21).**
+**F1 — RESOLVED (`47c3984`) — [D] on a trajectory headline:
+`hOR : Weak.ObservedResetSeedSafety` (W20, W21).**
 `WeakTrajectorySafety.lean:552`/`:621` carry `hOR` as a premise, yet
 `Weak.observedResetSeedSafety_of_acceptedDynamics` (`WeakObservedResetSeedSafety.lean:81`)
 proves exactly that `Prop` from `hW.base`, `B`, `hT`, `hji`, `hanchor`, `hboundary`,
 `hW.committees_agree` — every one of which W20/W21 already carry. So on W20/W21 `hOR` is
-derived-but-carried. It is *deliberate* (the docstring at `:141-147` says the `Prop` is kept
+derived-but-carried. It is *deliberate* (the docstring says the `Prop` is kept
 "so the one-call-at-a-time reading remains available"), and W22/W23 are the same statements
 with it discharged. Ratification consequence: **W20/W21 are strictly weaker restatements of
 W22/W23 and add nothing; only W22/W23 should be read as headlines.**
+*Resolution:* W20/W21 were removed from `publicWitnesses` (count 23 → **21**; the
+`Audit.lean` size assertion was updated to 21). They remain internal theorems — W22/W23's
+proof chain goes through them — and their docstring now says so.
 
-**F2 — [D] on all four trajectory headlines: three redundant premises.**
+**F2 — RESOLVED (`28a9bd6`) — [D] on all four trajectory headlines: three redundant
+premises.**
 (i) `hT : ScheduledPrefixTrajectoryAssumptions` is derivable from `hW.base` via
 `ScheduledPrefixTrajectoryAssumptions.of_selectedMarginAssumptions`
 (`CausalQueryTraceAdapter.lean:~125`) — all five of `hT`'s fields are fields of
@@ -413,10 +465,19 @@ Additionally, three of `hCbase`'s seven fields (`synchrony`, `static_validators`
 `byzantine_bound`) are already supplied by `hW.base`; only `balance_floor` and
 `delivery_lookahead` are new content. None of this changes the *assumption set* — it is
 double-counting on the premise **surface**, so the four headlines look heavier than they
-are. Recommend collapsing before publication, or stating in the docstring that the surface
-is deliberately redundant.
+are.
+*Resolution:* all four collapsed. `hT` is derived inside each headline from `hW.base`
+(as W16/W17 already did) and `hphase0`/`hboundaryPhase` are read off the call contract;
+the call contract itself is now the 4-field
+`Execution.AcceptedHistoricalA32CompletedPrefixCallSupplement` (row O′), from which —
+together with `hW.base` — the full 7-field record is rebuilt internally
+(`…CallSupplement.toCompletedPrefixCallAssumptions`). No field was left behind: all three
+duplications were literal (same `Prop`), so the de-duplication was mechanical.
+`Weak.observedResetSeedSafety_of_acceptedDynamics` lost its own `hT` for the same reason.
+Premise counts: W20/W21 17 → 14, W22/W23 16 → 13. Conclusions unchanged byte for byte.
 
-**F3 — [!] an unused premise that narrows the weak statements: `observer : obs ∉ E.honest`.**
+**F3 — RESOLVED (`fbb3ec1`) — [!] an unused premise that narrowed the weak statements:
+`observer : obs ∉ E.honest`.**
 Field of both `WeakObserverAssumptions` (`WeakOneShotSafety.lean:246`) and
 `WeakObserverMarginAssumptions` (`:227`). A repository-wide search finds exactly **one**
 occurrence of the projection, `WeakOneShotSafety.lean:265`, which merely copies it from one
@@ -427,6 +488,11 @@ subsume the strong fold. If it is genuinely unused the field should be deleted, 
 strictly generalize all ten weak witnesses; if it is intended as documentation it should not
 be a hypothesis. (Finding is signature/grep-level; a `lake env`-side unused-argument check
 would confirm it mechanically — not run here per the read-only constraint.)
+*Resolution:* the field was deleted from **both** records; the only consumption (the copy
+inside `WeakObserverAssumptions.toMarginAssumptions`) went with it and the build confirms
+nothing else used it. Every weak witness is thereby strictly generalized: they now hold for
+an arbitrary observer, honest or not. The records' docstrings state that the observer MAY be
+honest and that the model simply grants it nothing.
 
 **F4 — [!] residual per-call proof obligations on the premise surface: `hmargin`/`hfilter`.**
 W14–W17 carry `(Weak.)SelectedCoveredMarginSupplyAt` and W18/W19 carry
@@ -458,19 +524,25 @@ the Lean abstracts `d` away and instead demands the LMD-GHOST monotonicity bound
 in the docstring at `HFC/TheoremStatements.lean:~410`; recorded here so ratification is of
 the substituted bound, not the paper's.
 
-**F7 — docstring/signature discrepancies found.** Two, both minor, both in the weak layer:
+**F7 — RESOLVED (`28a9bd6`, `5ec6441`) — docstring/signature discrepancies found.** Two,
+both minor, both in the weak layer:
 (i) `WeakObservedResetSeedSafety.lean:38-41` enumerates
 `observedResetSeedSafety_of_acceptedDynamics`'s premises as "the selected-margin
 assumptions, the accepted FFG semantic bundle and its anchor alignment, the justification
 interface, and the observer's own committee agreement" — the signature (`:81`) *also* takes
 `hT : ScheduledPrefixTrajectoryAssumptions`. Harmless (it is derivable from `hA`), but the
-enumeration is incomplete.
+enumeration is incomplete. *Resolution (`28a9bd6`):* `hT` was removed from that signature
+and is derived from `hA` in the body, so the enumeration is now exact; the paragraph says
+so explicitly.
 (ii) `WeakOneShotSafety.lean:1109-1115` says W14 matches the strong original's hypothesis
 list with "no further hypothesis added or dropped". The substitution `(v, hv : v ∈ honest)
 ↦ (obs, hW)` does replace one binder by a three-field record containing two genuinely new
 observer-store facts (`committees_agree`, `justified_root_known`) plus the unused
 non-honesty field of F3. The sentence is defensible as written but reads as stronger than
-the signature warrants.
+the signature warrants. *Resolution (`5ec6441`):* the docstring now states the exchange —
+the honesty binder is dropped and two observer-store facts (`committees_agree`,
+`justified_root_known`) are taken in its place, with the reason this one-shot floor form
+cannot derive the second one.
 No other docstring claim checked against a signature was found to disagree. In particular
 the following were verified **accurate**: `AcceptedActualFCRNextSlotSafetyAssumptions`'s
 "no finalized-reset, observed-adoption, observed-lock, head-ancestry, filter-result, or
@@ -481,7 +553,13 @@ the conditional one … nothing is added"; W20's "premise surface is that of
 claim across the weak layer that `ObserverCoherence.justified_root_known` is derived rather
 than assumed.
 
-**Trajectory-headline verdict.** The premise surfaces of W20–W23 contain, besides [S]/[P]/[B]
-items, exactly: **[D]** `hT`, `hphase0`, `hboundaryPhase` (all four) and `hOR` (W20/W21
-only); and **[!]** the unused, domain-narrowing `hW.observer`. No other premise falls outside
-[S]/[P]/[B].
+**Trajectory-headline verdict (as audited).** The premise surfaces of W20–W23 contain,
+besides [S]/[P]/[B] items, exactly: **[D]** `hT`, `hphase0`, `hboundaryPhase` (all four) and
+`hOR` (W20/W21 only); and **[!]** the unused, domain-narrowing `hW.observer`. No other
+premise falls outside [S]/[P]/[B].
+
+**Trajectory-headline verdict (after `fbb3ec1`/`28a9bd6`/`47c3984`/`8b05b67`).** The two
+registered weak headlines W22/W23 carry **13 premises** (plus W23's four endpoint binders),
+every one of them [S]/[P]/[B]: no [D], no [!]. The conditional pair W20/W21 keeps the single
+[D] `hOR` and is no longer a registered witness. `#print axioms` on both headlines:
+`[propext, Classical.choice, Quot.sound]`.
