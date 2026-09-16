@@ -22,10 +22,11 @@ not assert the stronger cross-node claim at every arbitrary in-slot execution
 prefix; finite counterexamples show that statement is false.
 
 The FFG-side facts the algorithm consumes are isolated in
-`JustificationInterface` — the exports of Casper-FFG justification (the
-semantic soundness of `will_no_conflicting_checkpoint_be_justified` /
-`will_current_target_be_justified`, and the observation propagation the
-`FastConfirmationStore` observed-checkpoint fields are documented with).
+`JustificationInterface` — the exports of Casper-FFG justification
+(accountable safety, the ≥2/3-attested-target export, and the observation
+propagation the `FastConfirmationStore` observed-checkpoint fields are
+documented with). The semantic soundness of the two `will_*` gates is **not**
+among them: no proof in the development ever applied it, so it is not a field.
 These predicates remain low-level proof vocabulary. The accepted theorem uses
 the separate accepted FFG-semantics and `PaperSafetySynchrony` interfaces.
 -/
@@ -57,11 +58,12 @@ honest validators always vote the target derived from their own head
 support for *`v`'s* target `T` only under **cross-validator head/boundary
 agreement** (every honest head's epoch-boundary block is `T.root`), which is
 exactly what the FCR's preceding checks are mid-way through establishing
-when the gates are consulted. Hence it enters the interface as an explicit
-hypothesis (avoiding circularity) and is **discharged at the algorithm's
-call sites** by the L3/L4 proof from `HonestBehavior.votes_head` + the
-established head agreement — never assumed globally; `SpecAssumptions` is
-not strengthened by it. Without the gating the fields would be inconsistent:
+when the gates are consulted. Hence it enters the gate-consuming statements as
+an explicit hypothesis (avoiding circularity) and is **discharged at the
+algorithm's call sites** by the L3/L4 proof from `HonestBehavior.votes_head` +
+the established head agreement — never assumed globally; `SpecAssumptions` is
+not strengthened by it. Without the gating a gate-soundness claim would be
+inconsistent:
 the `will_*` booleans are arithmetically true early in every epoch (the
 elapsed-committee estimate is still small) even while honest heads — and
 hence honest targets — are split across an adversarial boundary proposal. -/
@@ -78,26 +80,6 @@ stores; the prediction-shaped fields are gated on the spec's own
 `HonestVotesSupportTarget` proviso and on the relevant roots being known
 (the totalized ancestry walk is meaningless on unknown roots). -/
 structure JustificationInterface (E : Execution Root) : Prop where
-  /-- semantic soundness of the `will_no_conflicting_checkpoint_be_justified`
-      gate: if it holds at an honest node, every checkpoint justified
-      anywhere (at any honest node, then or later) is ancestry-comparable
-      with the current target — "no checkpoint conflicting with the current
-      target can ever be justified". -/
-  gate_sound : ∀ v ∈ E.honest, ∀ n : ℕ,
-    E.WithinHorizon cfg n →
-    will_no_conflicting_checkpoint_be_justified cfg ext (E.store cfg ext v n) = true →
-    HonestVotesSupportTarget cfg E (get_current_target cfg (E.store cfg ext v n)) n →
-    ∀ w ∈ E.honest, ∀ m : ℕ, E.WithinHorizon cfg m →
-    E.slot_at cfg n + 1 ≤ E.slot_at cfg m →
-    ∀ c : Checkpoint Root, JustifiedIn (E.store cfg ext w m) c →
-      c.root ∈ (E.store cfg ext w m).block_roots →
-      (get_current_target cfg (E.store cfg ext v n)).root ∈
-        (E.store cfg ext w m).block_roots →
-      is_ancestor (E.store cfg ext w m) (get_node_for_root c.root)
-        (get_node_for_root (get_current_target cfg (E.store cfg ext v n)).root) = true ∨
-      is_ancestor (E.store cfg ext w m)
-        (get_node_for_root (get_current_target cfg (E.store cfg ext v n)).root)
-        (get_node_for_root c.root) = true
   /-- FFG accountable safety, consumed (< 1/3 of stake slashable under
       `CONFIRMATION_BYZANTINE_THRESHOLD ≤ 25`): checkpoints justified in
       honest views are unique per epoch. -/
@@ -156,17 +138,6 @@ structure JustificationInterface (E : Execution Root) : Prop where
           Event.attestation a ifb ∈ E.schedule w' n' ∧
           i ∈ a.attesting_indices ∧ a.data.target = c) ∧
         2 * E.total_active cfg ≤ 3 * E.weight S
-  /-- semantic soundness of `will_current_target_be_justified`: if it holds
-      at an honest node, the current target is justified in every honest view
-      from the start of the next epoch. -/
-  target_justified_sound : ∀ v ∈ E.honest, ∀ n : ℕ,
-    E.WithinHorizon cfg n →
-    will_current_target_be_justified cfg ext (E.store cfg ext v n) = true →
-    HonestVotesSupportTarget cfg E (get_current_target cfg (E.store cfg ext v n)) n →
-    ∀ w ∈ E.honest, ∀ m : ℕ, E.WithinHorizon cfg m →
-      ((get_current_target cfg (E.store cfg ext v n)).epoch + 2) * cfg.slots_per_epoch ≤
-        E.slot_at cfg m →
-      JustifiedIn (E.store cfg ext w m) (get_current_target cfg (E.store cfg ext v n))
   /-- the observed-justified-checkpoint propagation the `FastConfirmationStore`
       field documentation claims: an honest node's observed justified
       checkpoint is justified in every honest view from the same slot on. -/

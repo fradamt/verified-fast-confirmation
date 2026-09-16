@@ -29,9 +29,8 @@ The reductions follow the fields of `L4ResidualHyps`:
   `v`) is derived here, so both fields use the same residual.
 
 * **`observed_dom`** — the rotated observed-justified anchor is on every
-  honest justified chain, using `observed_justified`, `justified_unique`, and
-  `gate_sound`, together with `HonestVotesSupportTarget` at the
-  `will_current_target_be_justified` gate.
+  honest justified chain, using `observed_justified` and `justified_unique`
+  together with the two `ObservedDomResiduals` cores.
 
 * **`advance_cert`** — the per-confirmed-block
   `LedgerChainInputCert`. `ledgerChainInputCert_of_dynamicsChain` **builds** it:
