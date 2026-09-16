@@ -6,6 +6,7 @@ import FastConfirmation.Spec.Proof.AcceptedFFGJustifiedMaximality
 import FastConfirmation.Spec.Proof.PaperA32SupportRealization
 import FastConfirmation.Spec.Proof.SelectedCoveredMarginConstruction
 import FastConfirmation.Spec.Proof.AcceptedActualSelectedJustifiedOrientation
+import FastConfirmation.Spec.Proof.AcceptedHistoricalA32OriginCall
 import FastConfirmation.Spec.Proof.AcceptedCurrentSameEndpointSource
 import FastConfirmation.Spec.Proof.AcceptedRecentCarrierFinalizedPlacement
 import FastConfirmation.Spec.Proof.AcceptedPreviousEpochStartSupply
@@ -128,6 +129,7 @@ theorem actualCall_strictSelected_endpointJustifiedEpoch_le_result
     {v : ValidatorIndex} (hv : v ∈ E.honest) {n : Nat}
     (hcall : E.IsFCRCallAt cfg ext v n)
     (hHn1 : E.WithinHorizon cfg (n + 1))
+    (hprior : E.PriorStrictCallWriteBackSafe cfg ext n)
     (hinput : (E.getLatestConfirmedTraceAt cfg ext v n).afterObserved ∈
       (E.fcrStep cfg ext v n).store.block_roots)
     (hbase : E.SafeFrom cfg ext
@@ -213,7 +215,8 @@ theorem actualCall_strictSelected_endpointJustifiedEpoch_le_result
       query trace.afterObserved trace.result := by
     simpa only [query, trace] using
       E.completedPrefix_acceptedHistoricalA32PayloadProducerAt
-        cfg ext B hT hC hfit hanchor hboundary hv hcall hHn1 hinput hselector
+        cfg ext B hT hC hfit hanchor hboundary hv hcall hHn1 hprior hinput
+          hselector
   have hhistorical' : E.AcceptedHistoricalA32PayloadProducerAt cfg ext B
       query trace.afterObserved
         (find_latest_confirmed_descendant cfg ext query
@@ -1849,6 +1852,7 @@ noncomputable def
     {v : ValidatorIndex} (hv : v ∈ E.honest) {n : Nat}
     (hn1H : E.WithinHorizon cfg (n + 1))
     (hcall : E.IsFCRCallAt cfg ext v n)
+    (hprior : E.PriorStrictCallWriteBackSafe cfg ext n)
     (hinput : (E.getLatestConfirmedTraceAt cfg ext v n).afterObserved ∈
       (E.fcrStep cfg ext v n).store.block_roots)
     (hbase : E.SafeFrom cfg ext
@@ -1922,7 +1926,7 @@ noncomputable def
       (get_node_for_root
         (E.store cfg ext w m).justified_checkpoint.root) = true := by
     exact (E.actualCall_strictSelected_result_and_child_ancestor_of_endpointJustified
-      cfg ext B hT hC hfit hdomain hanchor hboundary hv hcall hn1H
+      cfg ext B hT hC hfit hdomain hanchor hboundary hv hcall hn1H hprior
       hinput hbase hselector hw hmH hslotQM hcM
       (by simpa only [trace] using hselectedC) hselectedKnown hIH
       hnotCovered).2
@@ -1930,7 +1934,7 @@ noncomputable def
       (E.store cfg ext w m).justified_checkpoint.epoch ≤
         get_block_epoch cfg (E.fcrStep cfg ext v n).store trace.result := by
     exact E.actualCall_strictSelected_endpointJustifiedEpoch_le_result
-      cfg ext B hT hC hfit hdomain hanchor hboundary hv hcall hn1H
+      cfg ext B hT hC hfit hdomain hanchor hboundary hv hcall hn1H hprior
       hinput hbase hselector hw hmH hslotQM hcM
       (by simpa only [trace] using hselectedC) hselectedKnown hIH
       hnotCovered
@@ -2258,6 +2262,7 @@ noncomputable def
     {v : ValidatorIndex} (hv : v ∈ E.honest) {n : Nat}
     (hn1H : E.WithinHorizon cfg (n + 1))
     (hcall : E.IsFCRCallAt cfg ext v n)
+    (hprior : E.PriorStrictCallWriteBackSafe cfg ext n)
     (hinput : (E.getLatestConfirmedTraceAt cfg ext v n).afterObserved ∈
       (E.fcrStep cfg ext v n).store.block_roots)
     (hbase : E.SafeFrom cfg ext
@@ -2281,7 +2286,7 @@ noncomputable def
     hparentEdge hselectedC hselectedKnown hIH hnotCovered
   have houtcome := hmechanical.fcrStep_endpointFilterOutcome cfg ext B hT
     hC hfit hdomain hanchor hboundary hDelay hspe hpaper P V hanchorExact
-      hv hn1H hcall hinput hbase horigin hselector hw hmH hgeom hcM
+      hv hn1H hcall hprior hinput hbase horigin hselector hw hmH hgeom hcM
       hselectedC hselectedKnown hIH hnotCovered
   have hfinalized : FinalizedBoundaryRealization cfg
       (E.store cfg ext w m) :=

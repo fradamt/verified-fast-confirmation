@@ -335,6 +335,14 @@ theorem confirmed_safeFromFollowingSlot_of_acceptedActualFCRFold_all_le
       have hHn : E.WithinHorizon cfg n :=
         E.withinHorizon_mono cfg (Nat.le_succ n) hHn1
       have hsafeN := (ih n (Nat.le_refl n) hHn v hv).followingSlot
+      -- The strengthened induction hypothesis *is* the threaded lazy-transport
+      -- input: at every strictly advanced call second `k < n` the write-back is
+      -- safe from its own second (`docs/crossing-call-support-residue.md` §4.3,
+      -- the `k < n` arm of the consumer-side discharge).
+      have hprior : E.PriorStrictCallWriteBackSafe cfg ext n :=
+        fun i hi k hk hHk1 hcallK hstrictK =>
+          (ih (k + 1) (Nat.succ_le_of_lt hk) hHk1 i hi).callSecond k rfl
+            hcallK hstrictK
       by_cases hcall : E.IsFCRCallAt cfg ext v n
       · let trace := E.getLatestConfirmedTraceAt cfg ext v n
         have hrec := E.actualCandidateHistoryRecurrence cfg ext hcall
@@ -418,7 +426,7 @@ theorem confirmed_safeFromFollowingSlot_of_acceptedActualFCRFold_all_le
                 simpa only [trace] using
                   E.getLatestConfirmedTraceAt_result_safeFrom_of_acceptedDispatcher
                     cfg ext B hT hC hfit hdomain hanchor hboundary hDelay
-                      hspe hpaper P V hanchorExact hv hHn1 hcall
+                      hspe hpaper P V hanchorExact hv hHn1 hcall hprior
                         hinputKnown hinputSafe
               exact ⟨hstrictSafe.mono cfg ext E hcallToDeadline,
                 fun _ => hstrictSafe⟩

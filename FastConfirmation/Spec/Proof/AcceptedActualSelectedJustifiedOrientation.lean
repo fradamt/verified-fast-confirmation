@@ -4,6 +4,7 @@ import FastConfirmation.Spec.Proof.AcceptedHistoricalA32CallSupplier
 import FastConfirmation.Spec.Proof.AcceptedCurrentSameSourceHistory
 import FastConfirmation.Spec.Proof.NoConflictCertificatePinning
 import FastConfirmation.Spec.Proof.EndpointQuorumCausality
+import FastConfirmation.Spec.Proof.AcceptedHistoricalA32OriginCall
 
 /-!
 # Actual-call accepted selected / justified orientation
@@ -598,6 +599,7 @@ noncomputable def completedPrefix_acceptedHistoricalA32PayloadProducerAt
     {v : ValidatorIndex} (hv : v ∈ E.honest) {n : Nat}
     (hcall : E.IsFCRCallAt cfg ext v n)
     (hHn1 : E.WithinHorizon cfg (n + 1))
+    (_hprior : E.PriorStrictCallWriteBackSafe cfg ext n)
     (hinput : (E.getLatestConfirmedTraceAt cfg ext v n).afterObserved ∈
       (E.fcrStep cfg ext v n).store.block_roots)
     (hselector : StrictSelectorAdvanceAt cfg ext
@@ -728,6 +730,7 @@ theorem actualCall_strictSelected_result_and_child_ancestor_of_endpointJustified
     {v : ValidatorIndex} (hv : v ∈ E.honest) {n : Nat}
     (hcall : E.IsFCRCallAt cfg ext v n)
     (hHn1 : E.WithinHorizon cfg (n + 1))
+    (hprior : E.PriorStrictCallWriteBackSafe cfg ext n)
     (hinput : (E.getLatestConfirmedTraceAt cfg ext v n).afterObserved ∈
       (E.fcrStep cfg ext v n).store.block_roots)
     (hbase : E.SafeFrom cfg ext
@@ -820,7 +823,8 @@ theorem actualCall_strictSelected_result_and_child_ancestor_of_endpointJustified
       query trace.afterObserved trace.result := by
     simpa only [query, trace] using
       E.completedPrefix_acceptedHistoricalA32PayloadProducerAt
-        cfg ext B hT hC hfit hanchor hboundary hv hcall hHn1 hinput hselector
+        cfg ext B hT hC hfit hanchor hboundary hv hcall hHn1 hprior hinput
+          hselector
   have hhistorical' : E.AcceptedHistoricalA32PayloadProducerAt cfg ext B
       query trace.afterObserved
         (find_latest_confirmed_descendant cfg ext query

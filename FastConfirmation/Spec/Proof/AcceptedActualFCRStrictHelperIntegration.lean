@@ -53,6 +53,7 @@ noncomputable def
     {v : ValidatorIndex} (hv : v ∈ E.honest) {n : ℕ}
     (hHn1 : E.WithinHorizon cfg (n + 1))
     (hcall : E.IsFCRCallAt cfg ext v n)
+    (hprior : E.PriorStrictCallWriteBackSafe cfg ext n)
     (hinput : (E.getLatestConfirmedTraceAt cfg ext v n).afterObserved ∈
       (E.fcrStep cfg ext v n).store.block_roots)
     (hbase : E.SafeFrom cfg ext
@@ -83,7 +84,7 @@ noncomputable def
       exact
         (Execution.StrictSelectorAdvanceAt.actualCall_selectedStrictEdgeFilterSupplyAt
           cfg ext B hT hC hfit hdomain hanchor hboundary hDelay hspe
-            hpaper P V hanchorExact hv hHn1 hcall hinput hbase
+            hpaper P V hanchorExact hv hHn1 hcall hprior hinput hbase
               horigin hselector) hw hmH hgeom hcne hcM hparentEdge
                 hselectedC hselectedKnown hIH hnotCovered
 
@@ -112,6 +113,7 @@ theorem getLatestConfirmedTraceAt_result_safeFrom_of_acceptedDispatcher
     {v : ValidatorIndex} (hv : v ∈ E.honest) {n : ℕ}
     (hHn1 : E.WithinHorizon cfg (n + 1))
     (hcall : E.IsFCRCallAt cfg ext v n)
+    (hprior : E.PriorStrictCallWriteBackSafe cfg ext n)
     (hinput : (E.getLatestConfirmedTraceAt cfg ext v n).afterObserved ∈
       (E.fcrStep cfg ext v n).store.block_roots)
     (hinputSafe : E.SafeFrom cfg ext
@@ -143,7 +145,7 @@ theorem getLatestConfirmedTraceAt_result_safeFrom_of_acceptedDispatcher
         (E.getLatestConfirmedTraceAt cfg ext v n) hinput hinputSafe
           (E.getLatestConfirmedTraceAt_actualFCRStrictSelectedFilterSupplierAt
             cfg ext B hT hC hfit hdomain hanchor hboundary hDelay hspe
-              hpaper P V hanchorExact hv hHn1 hcall hinput hbase)
+              hpaper P V hanchorExact hv hHn1 hcall hprior hinput hbase)
 
 end Execution
 
