@@ -50,6 +50,16 @@ structure AcceptedHistoricalA32GatePayloadAt
   origin_block : BeaconBlock Root
   origin_at : E.AcceptedBlockAt cfg ext origin origin_block
   origin_epoch : compute_epoch_at_slot cfg origin_block.slot = e
+  /-- The trusted anchor is not above the payload's own epoch.
+
+  This is the *only* consequence of the positive certification that the
+  boundary-walk consumers (`AcceptedHistoricalA32LineageAt.payloadAtQuery_nonempty`
+  and its four siblings) read; recording it as its own field decouples them
+  from `certified`, which the epoch-indexed restructure moves behind an
+  `e + 2 ≤ currentEpoch` guard.  Every constructor below discharges it
+  without extra input: the anchor branch by checkpoint equality and the
+  gate branch by `CertifiedJustified.anchor_epoch_le`. -/
+  anchor_epoch_le : B.anchor.epoch ≤ e
   certified : Nonempty
     (CertifiedJustified cfg E B.anchor (B.state.C origin e))
   support_branch :
@@ -76,6 +86,10 @@ def of_anchor
   { origin_block := originBlock
     origin_at := horiginAt
     origin_epoch := horiginEpoch
+    anchor_epoch_le := by
+      have hepoch := congrArg Checkpoint.epoch hcheckpoint
+      rw [B.state.checkpoint_epoch] at hepoch
+      exact le_of_eq hepoch.symm
     certified := by
       rw [hcheckpoint]
       exact ⟨CertifiedJustified.anchor⟩
@@ -98,10 +112,15 @@ def of_fixedSourceCurrentTarget
     origin_block := store.blocks origin
     origin_at := E.acceptedBlockAt_of_causal_known cfg ext hstore horigin
     origin_epoch := ?_
+    anchor_epoch_le := ?_
     certified := ?_
     support_branch := ?_
   }
   · simpa only [get_block_epoch] using horiginEpoch
+  · have hle := CertifiedJustified.anchor_epoch_le (cfg := cfg)
+      (Classical.choice hgate.certified)
+    rw [htarget, B.state.checkpoint_epoch] at hle
+    exact hle
   · rw [← htarget]
     exact hgate.certified
   · rcases hgate.support_branch with hanchor | ⟨hne, Q, hsource⟩
@@ -170,6 +189,7 @@ def transport_sameEpoch
     origin_block := store.blocks tip
     origin_at := E.acceptedBlockAt_of_causal_known cfg ext hstore htip
     origin_epoch := ?_
+    anchor_epoch_le := hpayload.anchor_epoch_le
     certified := ?_
     support_branch := ?_
   }

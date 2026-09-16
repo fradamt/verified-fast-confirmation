@@ -424,13 +424,7 @@ theorem EarlySelectedEndpointPhase.finalizedRoot_eq_queryCheckpointBlock_of_line
       hlineage.payload.origin_epoch
   have hselectedEpoch' : get_block_epoch cfg query selected = e := by
     simpa only [query] using hselectedEpoch
-  have hlineageCertified : CertifiedJustified cfg E B.anchor
-      (B.state.C hlineage.origin e) :=
-    Classical.choice hlineage.payload.certified
-  have hanchorLeE : B.anchor.epoch ≤ e := by
-    have := CertifiedJustified.anchor_epoch_le
-      (cfg := cfg) hlineageCertified
-    simpa only [B.state.checkpoint_epoch] using this
+  have hanchorLeE : B.anchor.epoch ≤ e := hlineage.payload.anchor_epoch_le
   have hselectedWalk : WalkKnown query
       (compute_start_slot_at_epoch cfg e) selected := by
     simpa only [query] using
