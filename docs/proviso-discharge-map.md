@@ -129,8 +129,11 @@ strong twin: `SelectedTraceFilterPipeline.lean:29-56`.
   `filterTipCertificate_of_current_accepted_edge`). **Both are now deleted;**
   the `SelectedFilterFFGPipeline` fields `current_target_tip_source` (`:515`)
   and `no_conflict_tip_source` (`:534`), plus
-  `selected_strict_current_balance_checkpoint_key` (`:299`), are orphaned by
-  that deletion and are candidates for a follow-up sweep.
+  `selected_strict_current_balance_checkpoint_key` (`:299`), were orphaned by
+  that deletion and are **also deleted** (R0 follow-up sweep). Note
+  `SelectedFilterFFGPipeline` itself now has zero consumers repo-wide; its two
+  surviving fields (`accountability_assumptions`, `endpoint`) are carried by no
+  theorem, so the whole record is a further deletion candidate.
 * **Immediately deletable** from both records; the only edit needed is the
   witness at `AcceptedActualFCRJointNonVacuityFinal.lean:285-296`.
 
@@ -139,7 +142,7 @@ strong twin: `SelectedTraceFilterPipeline.lean:29-56`.
 | Site | File:line | Enclosing declaration |
 |---|---|---|
 | S1 | `SelectedA32Support.lean:48` | `Execution.currentTargetAcceptedEdge_gate_and_support` (`:38`) |
-| S2 | ~~`SelectedA32Support.lean:170`~~ | ~~`Execution.currentTargetAcceptedEdge_honest_vote_before_next_epoch` (`:147`)~~ — **dead lemma, no callers; deleted.** Its callee `Execution.honest_target_vote_before_next_epoch` (`:111`) is orphaned by the deletion and left for a follow-up sweep |
+| S2 | ~~`SelectedA32Support.lean:170`~~ | ~~`Execution.currentTargetAcceptedEdge_honest_vote_before_next_epoch` (`:147`)~~ — **dead lemma, no callers; deleted.** Its callee `Execution.honest_target_vote_before_next_epoch` (`:111`) was orphaned by the deletion and is **also deleted** (R0 follow-up sweep) |
 | W1 | `WeakHistoricalA32Step.lean:293` | `Weak.currentTargetAcceptedEdge_gate_and_support` (`:280`) |
 | W2 | `WeakPreQuerySIR.lean:368` | `Weak.strictSelectedHistoricalSIRCallSite` (`:339`) |
 
@@ -299,8 +302,10 @@ actually consumes.
   (`CausalQueryEvidence.lean:84`, explicitly flagged as not implied by
   `GlobalRuntime`) is *not* an obstacle here. A three-line lemma
   `honest_vote_castSecond_ge_of_slotStart` closes this gap.
-* `Execution.honest_target_vote_before_next_epoch` — `SelectedA32Support.lean:111`
-  (the per-seat unfolding; currently dead, but the shape a constructor would mirror).
+* `Execution.honest_target_vote_before_next_epoch` — was
+  `SelectedA32Support.lean:111` (the per-seat unfolding; **deleted** as dead by
+  the R0 sweep, but the shape a constructor would mirror is recoverable from
+  git history).
 * **No lemma anywhere constructs `HonestVotesSupportTarget`.** Every occurrence
   is a hypothesis or a record field. That is the hole.
 

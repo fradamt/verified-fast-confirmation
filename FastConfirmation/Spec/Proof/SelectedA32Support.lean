@@ -100,47 +100,6 @@ theorem current_target_eq_checkpoint_of_current_epoch_ancestor
   rw [hcEpoch]
   exact congrArg (Checkpoint.mk (get_current_store_epoch cfg store)) hroot
 
-/-- The exact per-seat temporal consequence of
-`HonestVotesSupportTarget`: an honest validator assigned at or after the query
-casts a concrete vote for `target`, strictly before the next target-epoch
-boundary.
-
-The conclusion intentionally says nothing about `a.data.source`.  Fixing that
-field uniformly across a quorum is the additional FFG/source-coherence fact
-needed by `HonestTargetQuorumBefore`. -/
-theorem honest_target_vote_before_next_epoch
-    (hhb : HonestBehavior cfg ext E)
-    {target : Checkpoint Root} {q : ℕ}
-    (hsupport : HonestVotesSupportTarget cfg E target q)
-    {i : ValidatorIndex} (hi : i ∈ E.honest)
-    {s : Slot} (hcommittee : i ∈ E.committee s)
-    (hsH : E.SlotWithinHorizon cfg s)
-    (hsEpoch : compute_epoch_at_slot cfg s = target.epoch)
-    (hqS : E.slot_at cfg q ≤ s)
-    (hs0 : E.slot_at cfg 0 ≤ s) :
-    ∃ (k : ℕ) (a : Attestation Root),
-      E.WithinHorizon cfg k ∧
-      E.slot_at cfg k = s ∧
-      E.vote i s = some (k, a) ∧
-      a.data.slot = s ∧
-      a.data.slot < compute_start_slot_at_epoch cfg (target.epoch + 1) ∧
-      a.data.target = target := by
-  obtain ⟨k, index, hkH, hkSlot, hvote⟩ :=
-    hhb.votes_head i hi s hcommittee hsH hs0
-  let a := honest_attestation cfg ext (E.store cfg ext i k) s index i
-  have haTarget : a.data.target = target :=
-    hsupport.2 i hi s hsH hsEpoch hqS k a (by simpa only [a] using hvote)
-  have hsBefore : s < compute_start_slot_at_epoch cfg (target.epoch + 1) := by
-    rw [← hsEpoch]
-    simp only [compute_start_slot_at_epoch, compute_epoch_at_slot]
-    simpa only [Nat.mul_comm] using
-      (Nat.lt_mul_div_succ (b := cfg.slots_per_epoch) s cfg.slots_per_epoch_pos)
-  refine ⟨k, a, hkH, hkSlot, ?_, ?_, ?_, haTarget⟩
-  · simpa only [a] using hvote
-  · rfl
-  · simpa only [a, honest_attestation_data_eq,
-      honest_attestation_data_slot] using hsBefore
-
 end Execution
 
 end FastConfirmation.Spec

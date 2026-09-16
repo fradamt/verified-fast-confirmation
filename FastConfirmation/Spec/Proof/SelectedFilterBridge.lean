@@ -293,32 +293,6 @@ theorem previousAcceptedEdge_current_balance_checkpoint_key
   apply hkey
   simpa only [get_current_balance_source] using hconf
 
-/-- Any strict wrapper result, regardless of which advancing loop produced it,
-used an in-domain current observed checkpoint as its confirmation balance
-source. -/
-theorem selected_strict_current_balance_checkpoint_key
-    {E : Execution Root}
-    (hgen : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
-      E.genesis_store = get_forkchoice_store cfg ast ablk)
-    {v : ValidatorIndex} {n : ℕ}
-    (fcrStore : FastConfirmationStore Root)
-    (hstore : fcrStore.store = E.store cfg ext v n)
-    (lcr result : Root)
-    (hout : find_latest_confirmed_descendant cfg ext fcrStore lcr = result)
-    (hstrict : result ≠ lcr) :
-    fcrStore.current_epoch_observed_justified_checkpoint ∈
-      fcrStore.store.checkpoint_state_keys := by
-  have hconf : is_one_confirmed cfg ext fcrStore.store
-      (get_current_balance_source fcrStore) result = true := by
-    rcases find_latest_confirmed_descendant_spec cfg ext fcrStore lcr with heq | hconfirmed
-    · exact False.elim (hstrict (hout.symm.trans heq))
-    · rwa [hout] at hconfirmed
-  have hkey := E.checkpoint_state_key_of_one_confirmed cfg ext hgen v n
-    fcrStore.current_epoch_observed_justified_checkpoint result
-  rw [← hstore] at hkey
-  apply hkey
-  simpa only [get_current_balance_source] using hconf
-
 /-- Away from the epoch-start escape hatch, a strict previous-epoch result
 passed the executable no-conflicting-checkpoint gate. -/
 theorem selected_previous_result_no_conflict_gate
@@ -488,71 +462,13 @@ structure FilterTipSkeleton (store : Store Root) (c : Root) where
 gates into endpoint filter viability.
 
 The first field is the narrow concrete Casper assumption bundle and the
-second realizes its certificates in each endpoint store.  The latter two are
-call-site visibility statements, gated by the spec's own
-`HonestVotesSupportTarget` proviso.  They mention only the selected-branch
-leaf's `get_voting_source` recency and existentially choose one viable leaf;
-they do not require every adversarial leaf to be fresh and do not assume that
-the endpoint head already descends from the selected block.  When the endpoint
-justified root has advanced below the selected block, no `FilterTipSkeleton`
-through that block exists and the surrounding safety proof uses direct
-justified coverage instead of this filter branch.  Accordingly each source
-field is conditional on that direct-coverage test being false; it never
-postulates the coverage alternative itself.
-
-Endpoint order is deliberately by **slot**, not by second: a late in-slot
-query must also establish the filter fact at every honest slot-start store in
-that same slot.  This is a retrospective proof obligation from the accepted
-edge's already-delivered past-slot support; it is not backward message
-propagation.  The executable model can derive the selected root's slot-start
-knownness through `SameSlotProvenance`, but cannot derive this FFG source
-recency because the state-transition checkpoint writes are opaque. -/
+second realizes its certificates in each endpoint store.  Neither contains a
+fork-choice-head or FCR-safety conclusion. -/
 structure SelectedFilterFFGPipeline (E : Execution Root)
     (anchor : Checkpoint Root) : Prop where
   accountability_assumptions : FFGAccountabilityAssumptions cfg ext E
   endpoint : ∀ w ∈ E.honest, ∀ m : ℕ, E.WithinHorizon cfg m →
     EndpointFFGPipeline cfg E anchor (E.store cfg ext w m)
-  current_target_tip_source :
-    ∀ v ∈ E.honest, ∀ n : ℕ,
-      E.WithinHorizon cfg n →
-      ∀ (fcrStore : FastConfirmationStore Root),
-      fcrStore = E.fcr cfg ext v n →
-      fcrStore.current_epoch_observed_justified_checkpoint ∈
-        fcrStore.store.checkpoint_state_keys →
-      ∀ latestConfirmedRoot a c : Root,
-      CurrentTargetAcceptedEdge cfg ext fcrStore latestConfirmedRoot a c →
-      will_current_target_be_justified cfg ext fcrStore.store = true →
-      HonestVotesSupportTarget cfg E
-        (get_current_target cfg fcrStore.store) n →
-      ∀ w ∈ E.honest, ∀ m : ℕ,
-      E.slot_at cfg n ≤ E.slot_at cfg m → E.WithinHorizon cfg m →
-      is_ancestor (E.store cfg ext w m)
-        (get_node_for_root (E.store cfg ext w m).justified_checkpoint.root)
-        (get_node_for_root c) ≠ true →
-      ∃ hskel : FilterTipSkeleton cfg (E.store cfg ext w m) c,
-        TipSourceFresh cfg (E.store cfg ext w m) hskel.tip
-  no_conflict_tip_source :
-    ∀ v ∈ E.honest, ∀ n : ℕ,
-      E.WithinHorizon cfg n →
-      ∀ (fcrStore : FastConfirmationStore Root),
-      fcrStore = E.fcr cfg ext v n →
-      fcrStore.current_epoch_observed_justified_checkpoint ∈
-        fcrStore.store.checkpoint_state_keys →
-      ∀ lcr result : Root,
-      find_latest_confirmed_descendant cfg ext fcrStore lcr = result →
-      result ≠ lcr →
-      get_block_epoch cfg fcrStore.store result ≠
-        get_current_store_epoch cfg fcrStore.store →
-      will_no_conflicting_checkpoint_be_justified cfg ext fcrStore.store = true →
-      HonestVotesSupportTarget cfg E
-        (get_current_target cfg fcrStore.store) n →
-      ∀ w ∈ E.honest, ∀ m : ℕ,
-      E.slot_at cfg n ≤ E.slot_at cfg m → E.WithinHorizon cfg m →
-      is_ancestor (E.store cfg ext w m)
-        (get_node_for_root (E.store cfg ext w m).justified_checkpoint.root)
-        (get_node_for_root result) ≠ true →
-      ∃ hskel : FilterTipSkeleton cfg (E.store cfg ext w m) result,
-        TipSourceFresh cfg (E.store cfg ext w m) hskel.tip
 
 /-!
 ### Scope
@@ -564,15 +480,9 @@ store/certificate visibility contract used by the selected-filter bridge.
 present proof tree contains no theorem deriving its cross-validator target
 agreement from `HonestBehavior`; doing so is the documented E6 obligation.
 
-The current-target theorem below covers every retained epoch-crossing
-tentative trace edge, including at epoch start.  The previous-result theorem
-covers a strict retained previous-epoch result only away from epoch start,
-where the executable outer disjunction forces the no-conflict boolean.  A
-result-level certificate does not separately certify every intermediate edge
-in the retained previous trace.  A
-previous-epoch advancement admitted solely by the epoch-start escape has no
-`will_*` premise from which this bridge can derive future source freshness and
-is intentionally not covered here.
+The two `TipSourceFresh` supply fields this record once carried (one per live
+gate arm) were removed by the R0 dead-code sweep of
+`docs/epoch-indexed-restructure.md`: no consumer in the tree eliminated them.
 -/
 
 /-! ## Mechanical assembly -/
