@@ -960,3 +960,15 @@ recurrence assumption).
 `weak_confirmed_head_closed_from_finalized` (23 declarations); all four
 depend only on `propext, Classical.choice, Quot.sound`
 (`lake env lean scripts/Audit.lean`).
+
+## The full rule (trajectory safety)
+
+The theorem above is still *one-shot*: it concerns one FCR call, and its
+`hinput`/`hbase` premises — together with the `hbfr` scenario predicate of the
+finalized composition — are exactly what an induction over `E.weakConfirmed`'s
+own history has to supply. That induction is stage 1 of the full-rule effort and
+has landed in `FastConfirmation/Spec/Proof/WeakTrajectorySafety.lean`; the
+invariant, the four-branch step, the base case and the staged plan for the one
+remaining obligation (`Weak.ObservedResetSeedSafety`, safety of the epoch-start
+observed-reset seed at a non-honest observer) are documented in
+[`weak-full-rule.md`](weak-full-rule.md).
