@@ -625,3 +625,174 @@ earlier-call safety, which only the weak fold produces and which a one-shot
 statement cannot receive. Removing it is not a proof problem — it is a change to
 the audited statement set (promote one weak witness to an all-seconds form), and
 should be raised as such rather than attempted as a refactor.
+
+---
+
+## 9. Landing report for the T-wave, and two corrections to §6/§7
+
+Written while landing T0–T3 on branch
+`centaur/discharge-helper-provisos-202609161`. Everything in §§0–8 above is
+left as written; this section records what landed, and **two claims of §6/§7
+that the code contradicts**. Both were found by attempting the wave, not by
+re-reading; both are verified by `rg` and by the enclosing declarations quoted.
+
+### 9.1 What landed (all green, gate + audit after each)
+
+| Wave | Status | Where |
+|---|---|---|
+| **T0** — free deletions (§5.1) | **landed** | `SelectedA32Support`, `SelectedTraceFilterPipeline`, `WeakSelectedStrictEdgeFilterSupply`, `AcceptedActualFCRJointNonVacuityFinal`, `SelectedPreQueryHistoricalSIR`, `NoConflictCertificatePinning` |
+| **T2** — A4, the all-`k ≤ n` accepted fold motive | **landed** | `AcceptedActualFCRNextSlotSafetyFold`, `…Facade` |
+| **T1** — A1 + A2 + A3 | **landed, additive** | new `AcceptedHistoricalA32OriginCall.lean` |
+| **T3** — A5, threading | **predicate + suppliers landed; the threading itself not attempted** | `PriorStrictCallWriteBackSafe` in `AcceptedHistoricalA32OriginCall`, suppliers in `…Fold`/`…Facade` |
+| **T4** — flip the payload | **blocked**, §9.2 and §9.3 | — |
+| **T5** — delete `helper_provisos` | **blocked** (depends on T4) | — |
+
+`honestVotesSupportTarget_of_safeFrom_currentEpochCandidate` now has its first
+consumer, `AcceptedHistoricalA32OriginCallAt.honestVotesSupportTarget`, and all
+seventeen of its hypotheses are discharged without a proviso, exactly as §6's
+A2 predicts. A2 is the one piece of §6 that survived contact unchanged.
+
+**Correction to A4.** The unweakened
+`E.SafeFrom (E.confirmed v (k+1)) (k+1)` is *not* derivable unconditionally.
+On the `finalizedResetUnchanged` arm the cached root is the query's freshly
+finalized checkpoint, and `finalizedReset_safeFrom_of_nextSlotSynchrony`
+(`AcceptedFinalizedNextSlotSafety.lean:120-140`) genuinely requires
+`slot_at (n+1) + 1 ≤ slot_at q`, which fails at `q = n+1`: honest nodes in the
+call's own slot need not have adopted it yet. `AcceptedFoldSafetyAt.callSecond`
+is therefore conditioned on `trace.result ≠ trace.afterObserved`. This costs
+nothing — an A3.2 crossing origin arises only on the `strictSelected` arm,
+whose `StrictSelectorAdvanceAt.result_ne_input` supplies the side condition —
+but it must be stated.
+
+### 9.2 Correction 1 — §7's "the weak-path blast radius is 0" is **false**
+
+§7 asserts the weak path does not move under T0–T5. It does, because the
+payload record and *both* its constructors are **shared between the trunks**:
+
+* `Execution.AcceptedHistoricalA32GatePayloadAt.certified` is read by the weak
+  `currentHistorical` arm at `WeakSelectedJustifiedOrientation.lean:146`
+  (`hpayload.certified.some`), where `hpayload` comes from
+  `Weak.HistoricalA32PayloadProducerAt` (`:85-96`), whose conclusion is literally
+  `Nonempty (E.AcceptedHistoricalA32GatePayloadAt cfg ext B result e)` — the
+  **strong** record, not a weak twin;
+* the weak side *builds* that record with the shared constructors:
+  `AcceptedHistoricalA32GatePayloadAt.of_fixedSourceCurrentTarget` at
+  `WeakHistoricalA32Step.lean:679` and `:764`, and `.of_anchor` at
+  `WeakHistoricalA32Induction.lean:265` and
+  `WeakSelectedStrictEdgeFilterSupply.lean:1285`;
+* `Execution.AcceptedHistoricalA32LineageAt` and `.payloadAtTip` are likewise
+  shared (`WeakHistoricalA32Induction.lean:103, 265-270, 428, 464, 515, 549,
+  647-658, 699, 739-767, 840`; `WeakSelectedStrictEdgeFilterSupply.lean:1066-1288`).
+
+So **deleting `certified` from the payload breaks the weak side**, which is out
+of scope by construction (§5.5: the weak residual is closed). T4 must therefore
+either touch the weak files or, better, **parameterize the shared record by its
+certification obligation**:
+
+```lean
+structure AcceptedHistoricalA32GatePayloadCoreAt (B) (origin) (e)
+    (Cert : Checkpoint Root → Prop) : Prop where
+  …
+  certified : Cert (B.state.C origin e)
+
+/-- eager instantiation; keeps the weak side literally zero-diff -/
+abbrev AcceptedHistoricalA32GatePayloadAt (B) (origin) (e) :=
+  AcceptedHistoricalA32GatePayloadCoreAt cfg ext B origin e
+    (fun c => Nonempty (CertifiedJustified cfg E B.anchor c))
+```
+
+`Cert` is a predicate on the *checkpoint*, so `transport_sameEpoch` still
+re-indexes it with the same one-line `rw [hcheckpoint]` (§2.1), and the
+`abbrev` keeps `hpayload.certified`, `of_anchor`, `of_fixedSourceCurrentTarget`,
+`payloadAtTip` and `AcceptedHistoricalA32LineageAt` resolving verbatim for every
+existing caller (dot notation unfolds reducible abbreviations). The same
+treatment is needed for the lineage. Existing constructor names stay as thin
+wrappers at the eager instantiation; the strong path gets a second instantiation
+at `fun c => c = B.anchor ∨ E.AcceptedHistoricalA32OriginCallFor cfg ext c`.
+This is the shim the next wave must land **before** any flip.
+
+### 9.3 Correction 2 — the **A1 site's** lazy discharge is same-step circular
+
+This is the decisive one, and it reverses §5.3's well-foundedness bullet and
+§6's "*Not needed* … any capped `HonestVotesSupportTargetUpTo`".
+
+§5.3 argues: "lineage(`n+1`) is consumed at the call's own second
+(`AcceptedSelectedStrictEdgeFilterSupply.lean:1869-1875`), and under laziness
+its `currentHistorical` consumption needs safety only at origin calls
+`k+1 ≤ n`". That conflates the two consumers. The lineage consumed at the call's
+own second is the one reached through **A1**, not through `currentHistorical`:
+
+* the enclosing declaration is
+  `StrictSelectedResultMechanicalFacts.fcrStep_endpointFilterOutcome`
+  (`AcceptedSelectedStrictEdgeFilterSupply.lean:1712`), at call second `n`;
+* its late branch obtains `hwrite : E.confirmed v (n+1) = trace.result`, then
+  `acceptedHistoricalA32CurrentLineage_of_completedPrefixes … (n+1)`, and feeds
+  the result to `acceptedSelectedResultFilterOutcome_retainedVisible_of_lateLineage`
+  → `AcceptedHistoricalA32LineageAt.lateVisibleSeedAt` → `support_branch`;
+* that lineage is built by `acceptedHistoricalA32CurrentLineageAt_all`
+  (`AcceptedHistoricalA32Induction.lean:214-297`) at index `n+1` from
+  `hcall.helper_provisos` **at second `n`**, via
+  `getLatestConfirmedTraceAt_currentLineage_step`
+  (`AcceptedHistoricalA32OneStep.lean:27`), whose `hcrossingLineage` branch
+  (`:82-104`) makes `trace.result` the payload's own origin.
+
+So when the call at second `n` *is* a crossing, the A1 consumption at that same
+second needs `E.SafeFrom (E.confirmed v (n+1)) (n+1)` with `k = n`, which is
+**literally the fold's step-`n` conclusion**. The strict `k < n` of
+`PriorStrictCallWriteBackSafe` fails; the eager-vs-lazy dichotomy of §2.4 does
+not save A1.
+
+**`currentHistorical` is unaffected**, and §2.4's argument is right *there*: that
+arm carries `hnone : ¬ ∃ a c, CurrentTargetAcceptedEdge …` at the same query, so
+`getLatestConfirmedTraceAt_currentLineage_step` took its `hnoCrossingLineage`
+branch and the payload's origin call is strictly earlier. D1† stands; **D2†
+does not**.
+
+**The repair, and why it is more work than §6 allows.** The A1 branch has both
+`hlate : e + 2 ≤ get_current_store_epoch (E.store w m)` and
+`hIH : E.SelectedCanonicalBeforeEndpointAt cfg ext (n+1) trace.result m`
+(`SelectedTraceFFGRealizationPipeline.lean:42-49`), which is exactly *capped*
+safety — canonicity at every honest endpoint with `slot_at m' < slot_at m`.
+Under `hlate` every vote the A3.2 quorum needs is cast in a slot of epoch `e`,
+hence at a second strictly below `m`. So a **capped** proviso
+`HonestVotesSupportTargetUpTo … m` is available at the A1 site and suffices —
+but supplying it requires:
+
+1. a capped variant of `honestVotesSupportTarget_of_safeFrom_currentEpochCandidate`
+   (mechanical: `hsafe` restricted to endpoints below the cap), and
+2. a capped variant of the quorum manufacture
+   `certifiedCurrentTarget_of_gate_and_stateSemantics` →
+   `currentTargetFutureHonestSeat_vote` (`CurrentTargetA32Support.lean:504`),
+   which today consumes the *uncapped* `HonestVotesSupportTarget`.
+
+(2) is the expensive one and touches `CurrentTargetA32Support` /
+`CurrentTargetCertificateRealization`, which §6 explicitly rules out
+("*Not needed* … any capped `HonestVotesSupportTargetUpTo`"). That ruling must
+be reversed.
+
+Additionally, even the `currentHistorical` half needs one more payload
+invariant that §6 does not list: the consuming call must *know* the origin call
+is strictly earlier. `hnone` proves it semantically, but the payload type
+forgets the origin second, so the lineage needs a `second < n`-style bound field
+threaded through `extend` — the same shape as R1's `anchor_epoch_le`.
+
+### 9.4 Revised plan for the next wave
+
+1. **T4a** — parameterize payload + lineage by `Cert` with eager-instantiation
+   `abbrev` shims (§9.2). Zero-diff for the weak side; green throughout.
+2. **T4b** — add the origin-second bound to the lineage and thread it through
+   `extend`/`transport_sameEpoch`.
+3. **T4c** — capped `HonestVotesSupportTargetUpTo` and the capped quorum
+   manufacture (§9.3 items 1–2). This is the real cost, and it should be sized
+   before anything else is moved.
+4. **T3** — thread `PriorStrictCallWriteBackSafe` (already defined and supplied
+   by the fold and the facade) down
+   `…Facade → AcceptedActualFCRStrictHelperIntegration →
+   AcceptedSelectedStrictEdgeFilterSupply →
+   strictSelected_result_and_child_ancestor_of_endpointJustified_accepted →
+   epochStart_or_endpointOriginOrPinned_of_acceptedCallSite`.
+5. **T4/T5** as written in §7, once 1–4 are green.
+
+No part of this changes §0's verdict that the strong path is derivable in-repo;
+it changes the *cost*, and it removes "capped proviso" from the list of things
+that are not needed.
