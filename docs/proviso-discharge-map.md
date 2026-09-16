@@ -66,7 +66,7 @@ structure ObserverHistoricalA32CallAssumptions (E) (obs) : Prop where
 
 Correction to the brief: `Weak.observedResetSeedSafety_of_acceptedDynamics`
 does **not** take `hC`; it is proved from `hW.base`, `B`, `hT`, `hji`,
-`hanchor`, `hboundary`, `hW.coherence.committees_agree`
+`hanchor`, `hboundary`, `hW.committees_agree`
 (`WeakObservedResetSeedSafety.lean:165-167`, `:205-207`). The two `hC` binders
 in that file belong to the two unconditional fold corollaries (#21, #22).
 

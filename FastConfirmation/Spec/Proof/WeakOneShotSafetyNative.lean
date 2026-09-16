@@ -252,10 +252,16 @@ becomes `hfilter`. -/
 
 /-- Finalized-base corollary of the discharged headline: the weak selector's
 output, seeded at the observer's own finalized checkpoint, is `SafeFrom` at
-the actual query second, with `hmargin` discharged into `hfilter`. -/
+the actual query second, with `hmargin` discharged into `hfilter`.
+
+Observer-wise the premise surface is `hW : WeakObserverAssumptions` — the
+floor, `obs ∉ E.honest`, and committee readback at the observer's own store.
+Since `B`/`hanchor`/`hboundary` are carried here anyway (and `hT` is derived
+from `hW.base`), `ObserverCoherence.justified_root_known` is *derived* via
+`WeakObserverAssumptions.toMarginAssumptions`, not assumed. -/
 theorem weak_safeFrom_find_latest_confirmed_descendant_discharged_from_finalized
     {E : Execution Root} {obs : ValidatorIndex}
-    (hW : E.WeakObserverMarginAssumptions cfg ext obs)
+    (hW : E.WeakObserverAssumptions cfg ext obs)
     (hwalkDomain : E.PostAnchorHonestVoteTargetWalkDomain cfg ext)
     (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
@@ -291,14 +297,17 @@ theorem weak_safeFrom_find_latest_confirmed_descendant_discharged_from_finalized
     rw [hstore]
     exact E.weak_finalizedReset_safeFrom_of_synchrony cfg ext B hT hacc hphase
       hboundaryPhase hanchor hboundary hW.base.synchrony hqH
-  exact weak_safeFrom_find_latest_confirmed_descendant_discharged cfg ext hW hwalkDomain q hqH
+  -- the observer's `justified_root_known` is derived from `B`/`hT`/`hanchor`/
+  -- `hboundary`, all already carried here, rather than assumed
+  have hWM := hW.toMarginAssumptions cfg ext E B hT hanchor hboundary
+  exact weak_safeFrom_find_latest_confirmed_descendant_discharged cfg ext hWM hwalkDomain q hqH
     fcr_store hstore fcr_store.store.finalized_checkpoint.root hlcr hbase
     hfilter
 
 /-- Endpoint form of the discharged finalized-base corollary. -/
 theorem weak_confirmed_head_discharged_from_finalized
     {E : Execution Root} {obs : ValidatorIndex}
-    (hW : E.WeakObserverMarginAssumptions cfg ext obs)
+    (hW : E.WeakObserverAssumptions cfg ext obs)
     (hwalkDomain : E.PostAnchorHonestVoteTargetWalkDomain cfg ext)
     (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)

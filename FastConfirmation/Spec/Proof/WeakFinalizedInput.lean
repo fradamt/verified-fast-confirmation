@@ -669,10 +669,16 @@ theorems of `hW.base`, not additional premises. -/
 /-- **The self-contained finalized-base corollary.** The weak selector's
 output, seeded at the observer's own finalized checkpoint (read at `(obs,
 q)`, `obs` honest or not) rather than at a separately-supplied `SafeFrom`
-input, is `SafeFrom` at the actual query second. -/
+input, is `SafeFrom` at the actual query second.
+
+Observer-wise the premise surface is `hW : WeakObserverAssumptions` — the
+floor, `obs ∉ E.honest`, and committee readback at the observer's own store.
+`B`/`hanchor`/`hboundary` are carried here anyway and `hT` is derived from
+`hW.base`, so `ObserverCoherence.justified_root_known` is *derived* via
+`WeakObserverAssumptions.toMarginAssumptions`, not assumed. -/
 theorem weak_safeFrom_find_latest_confirmed_descendant_from_finalized
     {E : Execution Root} {obs : ValidatorIndex}
-    (hW : E.WeakObserverMarginAssumptions cfg ext obs)
+    (hW : E.WeakObserverAssumptions cfg ext obs)
     (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
@@ -707,7 +713,10 @@ theorem weak_safeFrom_find_latest_confirmed_descendant_from_finalized
     rw [hstore]
     exact E.weak_finalizedReset_safeFrom_of_synchrony cfg ext B hT hacc hphase
       hboundaryPhase hanchor hboundary hW.base.synchrony hqH
-  exact weak_safeFrom_find_latest_confirmed_descendant cfg ext hW q hqH
+  -- the observer's `justified_root_known` is derived from `B`/`hT`/`hanchor`/
+  -- `hboundary`, all already carried here, rather than assumed
+  have hWM := hW.toMarginAssumptions cfg ext E B hT hanchor hboundary
+  exact weak_safeFrom_find_latest_confirmed_descendant cfg ext hWM q hqH
     fcr_store hstore fcr_store.store.finalized_checkpoint.root hlcr hbase
     hmargin
 
@@ -716,7 +725,7 @@ seeded at the observer's own finalized checkpoint, is canonical at every
 honest endpoint at or after the query second. -/
 theorem weak_confirmed_head_from_finalized
     {E : Execution Root} {obs : ValidatorIndex}
-    (hW : E.WeakObserverMarginAssumptions cfg ext obs)
+    (hW : E.WeakObserverAssumptions cfg ext obs)
     (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)

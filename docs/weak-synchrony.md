@@ -637,7 +637,7 @@ caller-supplied `SafeFrom` input:
 ```lean
 theorem weak_safeFrom_find_latest_confirmed_descendant_from_finalized
     {E : Execution Root} {obs : ValidatorIndex}
-    (hW : E.WeakObserverMarginAssumptions cfg ext obs)
+    (hW : E.WeakObserverAssumptions cfg ext obs)
     (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
@@ -676,15 +676,19 @@ fields. In particular the FFG accountability statements
 `CheckpointCertificateAccountability.of_assumptions`), not economic/behavioral
 premises added by this corollary.
 
-After this corollary, the only extra-floor assumptions about the observer's
-own store left in `hW.coherence : ObserverCoherence` are `committees_agree`
-(a one-node extension of the committee idealization to a non-honest observer;
-`justified_root_known` is derivable —
-`ObserverCoherence.justified_root_known_of_acceptedGlobalTrajectory`, and now
-also packaged as `ObserverCoherence.of_acceptedTrajectory`, which reduces the
-record's construction to `committees_agree` alone given the accepted
-bundle) — plus the pre-existing Stage-8 `hmargin` premise above, unchanged by
-this corollary and carried for exactly the same reason.
+After this corollary, the only extra-floor assumption about the observer's
+own store is `hW.committees_agree` (a one-node extension of the committee
+idealization to a non-honest observer) — plus the pre-existing Stage-8
+`hmargin` premise above, unchanged by this corollary and carried for exactly
+the same reason. Since this corollary already carries `B`/`hanchor`/
+`hboundary` (and derives `hT` from `hW.base`), it takes the slim
+`WeakObserverAssumptions` and builds the internal
+`WeakObserverMarginAssumptions` itself via
+`WeakObserverAssumptions.toMarginAssumptions`: `justified_root_known` is
+discharged by
+`ObserverCoherence.justified_root_known_of_acceptedGlobalTrajectory`
+(packaged as `ObserverCoherence.of_acceptedTrajectory`) and is not a
+premise.
 
 Both `weak_safeFrom_find_latest_confirmed_descendant_from_finalized` and
 `weak_confirmed_head_from_finalized` depend only on
@@ -799,13 +803,18 @@ premises are:
   entirely at the honest endpoint `(w, m)`, where honest-to-honest delivery
   is unchanged; only its observer-side instantiation
   (`windowRecordedEpochMax_at_query_minimal` at `(obs, q)`) disappears.
-* **`ObserverCoherence.committees_agree`** (inside `hW : E.WeakObserverMargin
-  Assumptions`) — the observer's own store computes committees consistently
-  with the ground-truth assignment. `ObserverCoherence.justified_root_known`,
-  the bundle's other field, is derivable
-  (`ObserverCoherence.justified_root_known_of_acceptedGlobalTrajectory`), so
-  `committees_agree` is the only genuinely free premise about the observer's
-  own trajectory left.
+* **`committees_agree`** (inside `hW`) — the observer's own store computes
+  committees consistently with the ground-truth assignment. This is the only
+  genuinely free premise about the observer's own trajectory left:
+  `ObserverCoherence.justified_root_known` is derivable
+  (`ObserverCoherence.justified_root_known_of_acceptedGlobalTrajectory`) and,
+  wherever the accepted-FFG package is in scope — i.e. at every top-level weak
+  statement — it is derived rather than assumed, so the caller-facing bundle
+  is `E.WeakObserverAssumptions` (floor + `obs ∉ E.honest` +
+  `committees_agree`). The `hmargin`/`hfilter`-carrying one-shot floor forms
+  (`weak_safeFrom_find_latest_confirmed_descendant`,
+  `…_discharged`, and their endpoint forms), which carry no `B`, still take
+  the internal `E.WeakObserverMarginAssumptions`.
 
 ### The finalized-base composition
 
@@ -847,7 +856,7 @@ theorem weak_safeFrom_observerCall_closed
     (V : B.state.ExactLinkValidity)
     (hanchorExact : B.anchor = B.state.C B.anchor.root B.anchor.epoch)
     {obs : ValidatorIndex}
-    (hW : E.WeakObserverMarginAssumptions cfg ext obs)
+    (hW : E.WeakObserverAssumptions cfg ext obs)
     (hwalkDomain : E.PostAnchorHonestVoteTargetWalkDomain cfg ext)
     (hC : Weak.ObserverHistoricalA32CallAssumptions cfg ext E obs)
     (hfit : EpochEndsFitUint64 cfg)
@@ -895,20 +904,22 @@ It is flagged here rather than folded silently into the floor.
 
 Every premise of `weak_safeFrom_observerCall_closed`, classified:
 
-* **`hW : E.WeakObserverMarginAssumptions cfg ext obs`** — `hW.base :
+* **`hW : E.WeakObserverAssumptions cfg ext obs`** — `hW.base :
   SelectedMarginAssumptions` is the ratified floor: honest-to-honest
   Δ-delivery and the β bound (`hW.base.synchrony : PaperSafetySynchrony`),
   estimation soundness and honest behavior/BLS (`hW.base.honest_behavior`),
   the static registry (`hW.base.static_validators`), the Byzantine bound
   (`hW.base.byzantine_bound`), `ExternalsCoherence` (static committees, ground
-  truth), whole seconds, and genesis shape. `hW.observer : obs ∉ E.honest`
-  and `hW.coherence : ObserverCoherence cfg ext obs` are the two
-  observer-specific fields; of `ObserverCoherence`'s two fields, only
-  `committees_agree` (the observer's own store computes committees
-  consistently with the ground-truth assignment) is a genuinely free
-  premise — `justified_root_known` is derivable
-  (`ObserverCoherence.justified_root_known_of_acceptedGlobalTrajectory`,
-  packaged as `ObserverCoherence.of_acceptedTrajectory`).
+  truth), whole seconds, and genesis shape. The two observer-specific fields
+  are `hW.observer : obs ∉ E.honest` and `hW.committees_agree` (the
+  observer's own store computes committees consistently with the ground-truth
+  assignment): `committees_agree` is the **only** observer-store premise.
+  `justified_root_known` is derived and no longer appears on the surface —
+  `ObserverCoherence.justified_root_known_of_acceptedGlobalTrajectory` proves
+  it from `B`/`hT`/`hanchor`/`hboundary`, which every statement on this list
+  already carries, and
+  `WeakObserverAssumptions.toMarginAssumptions` performs the promotion to the
+  internal `WeakObserverMarginAssumptions` bundle inside the proofs.
 * **`hwalkDomain : E.PostAnchorHonestVoteTargetWalkDomain cfg ext`** —
   endpoint-side only (§"The endpoint-direct decision" above); part of the
   accepted synchronized-clocks/honest-behavior floor.

@@ -135,8 +135,14 @@ last premise discharged by `Weak.observedResetSeedSafety_of_acceptedDynamics`.
 The premise list is identical to the conditional fold's minus
 `hOR : Weak.ObservedResetSeedSafety`; the obligation's own inputs (`hW.base`,
 `B`, `hT`, `hji`, `hanchor`, `hboundary`, and the observer's committee
-agreement `hW.coherence.committees_agree`) were already carried.  The strong
-fold's observer-honesty binder `hv : v ∈ E.honest` does not appear. -/
+agreement `hW.committees_agree`) were already carried.  The strong fold's
+observer-honesty binder `hv : v ∈ E.honest` does not appear.
+
+Observer-wise the premise surface is exactly `hW : WeakObserverAssumptions` —
+`obs ∉ E.honest` plus committee readback at the observer's own store.
+`ObserverCoherence.justified_root_known` is *derived* from `B`/`hT`/`hanchor`/
+`hboundary` inside the fold (`WeakObserverAssumptions.toMarginAssumptions`),
+never assumed. -/
 theorem weakConfirmed_safeFromFollowingSlot_of_acceptedWeakFullRuleFold
     (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
     (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
@@ -153,7 +159,7 @@ theorem weakConfirmed_safeFromFollowingSlot_of_acceptedWeakFullRuleFold
     (V : B.state.ExactLinkValidity)
     (hanchorExact : B.anchor = B.state.C B.anchor.root B.anchor.epoch)
     {obs : ValidatorIndex}
-    (hW : E.WeakObserverMarginAssumptions cfg ext obs)
+    (hW : E.WeakObserverAssumptions cfg ext obs)
     (hwalkDomain : E.PostAnchorHonestVoteTargetWalkDomain cfg ext)
     (hC : Weak.ObserverHistoricalA32CallAssumptions cfg ext E obs)
     (hfit : EpochEndsFitUint64 cfg) :
@@ -163,7 +169,7 @@ theorem weakConfirmed_safeFromFollowingSlot_of_acceptedWeakFullRuleFold
     hanchor hboundary hDelay hphase0 hboundaryPhase hpaper P V hanchorExact hW
     hwalkDomain hC hfit
     (Weak.observedResetSeedSafety_of_acceptedDynamics cfg ext hW.base B hT hji
-      hanchor hboundary hW.coherence.committees_agree)
+      hanchor hboundary hW.committees_agree)
 
 /-- Endpoint form of the unconditional weak full-rule theorem, matching the
 paper's timing: the observer's weak confirmed root at second `n` is canonical
@@ -186,7 +192,7 @@ theorem weakConfirmed_head_of_acceptedWeakFullRuleFold_nextSlot
     (V : B.state.ExactLinkValidity)
     (hanchorExact : B.anchor = B.state.C B.anchor.root B.anchor.epoch)
     {obs : ValidatorIndex}
-    (hW : E.WeakObserverMarginAssumptions cfg ext obs)
+    (hW : E.WeakObserverAssumptions cfg ext obs)
     (hwalkDomain : E.PostAnchorHonestVoteTargetWalkDomain cfg ext)
     (hC : Weak.ObserverHistoricalA32CallAssumptions cfg ext E obs)
     (hfit : EpochEndsFitUint64 cfg)
@@ -201,7 +207,7 @@ theorem weakConfirmed_head_of_acceptedWeakFullRuleFold_nextSlot
     hboundary hDelay hphase0 hboundaryPhase hpaper P V hanchorExact hW
     hwalkDomain hC hfit
     (Weak.observedResetSeedSafety_of_acceptedDynamics cfg ext hW.base B hT hji
-      hanchor hboundary hW.coherence.committees_agree)
+      hanchor hboundary hW.committees_agree)
     hw hnm hnext hHm
 
 end Execution

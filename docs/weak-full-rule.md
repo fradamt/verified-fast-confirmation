@@ -405,8 +405,8 @@ split it with `Nat.eq_or_lt_of_le` into stage 4 and stage 5. The premise
 surface of `Weak.observedResetSeedSafety_of_acceptedDynamics` is
 `hA : SelectedMarginAssumptions`, `B`, `hT`, `hji : JustificationInterface`,
 `hanchor`, `hboundary`, and the observer's own committee agreement `hcomm`
-(literally `Execution.ObserverCoherence.committees_agree`) — all six already
-premises of the conditional fold. Hence
+(literally `Execution.WeakObserverAssumptions.committees_agree`) — all six
+already premises of the conditional fold. Hence
 
 * `Execution.weakConfirmed_safeFromFollowingSlot_of_acceptedWeakFullRuleFold`
 * `Execution.weakConfirmed_head_of_acceptedWeakFullRuleFold_nextSlot`
@@ -436,7 +436,7 @@ added, and still no honesty binder at `obs`.
   it.
 * **Nothing in the weak stack actually consumes `obs ∉ E.honest`.** The weak
   lemmas are stated honesty-agnostically at `obs`, so they are strictly more
-  general than the intended reading; `WeakObserverMarginAssumptions.observer`
+  general than the intended reading; `WeakObserverAssumptions.observer`
   is carried to pin the reading, and `Weak.ObserverContext` is currently only
   documentation.
 
@@ -486,7 +486,11 @@ The declarations are still deliberately **not** added to `scripts/Audit.lean`'s
 `publicWitnesses`. That set is the repository's list of headline results whose
 premise surface has been *classified against the ratified floor* by a human,
 and the classification of the unconditional fold's surface — in particular the
-carried contracts `Weak.ObserverHistoricalA32CallAssumptions` and
-`Weak.ObserverCoherence` — is the remaining work. Registration, together with
+carried contract `Weak.ObserverHistoricalA32CallAssumptions` — is the
+remaining work. `Execution.ObserverCoherence` is no longer part of that
+surface: the fold takes `Execution.WeakObserverAssumptions` (floor + `obs ∉
+E.honest` + committee readback) and derives `justified_root_known` internally
+from `B`/`hT`/`hanchor`/`hboundary` via
+`Execution.WeakObserverAssumptions.toMarginAssumptions`. Registration, together with
 extending `docs/weak-synchrony.md`'s premise-surface table, is **stage 7**, to
 be done after review of stages 5–6.

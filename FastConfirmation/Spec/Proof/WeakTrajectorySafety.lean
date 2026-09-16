@@ -345,7 +345,7 @@ theorem weakConfirmedSafeFromFollowingSlot_succ_of_call
     (V : B.state.ExactLinkValidity)
     (hanchorExact : B.anchor = B.state.C B.anchor.root B.anchor.epoch)
     {obs : ValidatorIndex}
-    (hW : E.WeakObserverMarginAssumptions cfg ext obs)
+    (hW : E.WeakObserverAssumptions cfg ext obs)
     (hwalkDomain : E.PostAnchorHonestVoteTargetWalkDomain cfg ext)
     (hC : Weak.ObserverHistoricalA32CallAssumptions cfg ext E obs)
     (hfit : EpochEndsFitUint64 cfg)
@@ -413,16 +413,19 @@ theorem weakConfirmedSafeFromFollowingSlot_of_weakFullRuleFold_all_le
     (V : B.state.ExactLinkValidity)
     (hanchorExact : B.anchor = B.state.C B.anchor.root B.anchor.epoch)
     {obs : ValidatorIndex}
-    (hW : E.WeakObserverMarginAssumptions cfg ext obs)
+    (hW : E.WeakObserverAssumptions cfg ext obs)
     (hwalkDomain : E.PostAnchorHonestVoteTargetWalkDomain cfg ext)
     (hC : Weak.ObserverHistoricalA32CallAssumptions cfg ext E obs)
     (hfit : EpochEndsFitUint64 cfg)
     (hOR : Weak.ObservedResetSeedSafety cfg ext E obs) :
     ∀ n : ℕ, ∀ k ≤ n, E.WithinHorizon cfg k →
       E.WeakConfirmedSafeFromFollowingSlot cfg ext obs k := by
+  -- the observer's `justified_root_known` is *derived* here from `B`/`hT`/
+  -- `hanchor`/`hboundary`, never assumed
+  have hWM := hW.toMarginAssumptions cfg ext E B hT hanchor hboundary
   have hknown := Weak.acceptedConfirmedSourceHistoryAt cfg ext B hT
     hW.base.synchrony hW.base.static_validators hW.base.byzantine_bound
-    hW.base.domain hji hanchor hboundary hDelay hW.coherence
+    hW.base.domain hji hanchor hboundary hDelay hWM.coherence
   intro n
   induction n with
   | zero =>
@@ -462,6 +465,12 @@ floor plus the accepted FFG semantic contracts), together with
 and the single open obligation `hOR : Weak.ObservedResetSeedSafety`. The
 strong fold's observer-honesty binder `hv : v ∈ E.honest` does not appear.
 
+Observer-wise the premise surface is `hW : WeakObserverAssumptions`: `obs ∉
+E.honest` and committee readback at the observer's own store, nothing else.
+`ObserverCoherence.justified_root_known` is *derived* inside the induction
+from `B`/`hT`/`hanchor`/`hboundary`
+(`WeakObserverAssumptions.toMarginAssumptions`), never assumed.
+
 Corollary of `…_of_weakFullRuleFold_all_le` at `k := n`; the statement is
 unchanged. -/
 theorem weakConfirmed_safeFromFollowingSlot_of_weakFullRuleFold
@@ -480,7 +489,7 @@ theorem weakConfirmed_safeFromFollowingSlot_of_weakFullRuleFold
     (V : B.state.ExactLinkValidity)
     (hanchorExact : B.anchor = B.state.C B.anchor.root B.anchor.epoch)
     {obs : ValidatorIndex}
-    (hW : E.WeakObserverMarginAssumptions cfg ext obs)
+    (hW : E.WeakObserverAssumptions cfg ext obs)
     (hwalkDomain : E.PostAnchorHonestVoteTargetWalkDomain cfg ext)
     (hC : Weak.ObserverHistoricalA32CallAssumptions cfg ext E obs)
     (hfit : EpochEndsFitUint64 cfg)
@@ -512,7 +521,7 @@ theorem weakConfirmed_head_of_weakFullRuleFold_nextSlot
     (V : B.state.ExactLinkValidity)
     (hanchorExact : B.anchor = B.state.C B.anchor.root B.anchor.epoch)
     {obs : ValidatorIndex}
-    (hW : E.WeakObserverMarginAssumptions cfg ext obs)
+    (hW : E.WeakObserverAssumptions cfg ext obs)
     (hwalkDomain : E.PostAnchorHonestVoteTargetWalkDomain cfg ext)
     (hC : Weak.ObserverHistoricalA32CallAssumptions cfg ext E obs)
     (hfit : EpochEndsFitUint64 cfg)

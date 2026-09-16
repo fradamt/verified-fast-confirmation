@@ -103,7 +103,13 @@ slot, the weak selector's actual result is `SafeFrom` at the call's own
 second `n + 1` — with no `hmargin`, `hfilter`, or other residual filter-
 supply premise: the entire margin/filter chain (Stages G–S7) is discharged
 internally, uniformly over which of the four candidate-history branches the
-call actually took. -/
+call actually took.
+
+Observer-wise the premise surface is `hW : WeakObserverAssumptions` — the
+floor, `obs ∉ E.honest`, and committee readback at the observer's own store.
+`ObserverCoherence.justified_root_known` is *derived* here from `B`/`hT`/
+`hanchor`/`hboundary` (`WeakObserverAssumptions.toMarginAssumptions`), so it
+never appears as a premise. -/
 theorem weak_safeFrom_observerCall_closed
     {E : Execution Root}
     (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
@@ -120,7 +126,7 @@ theorem weak_safeFrom_observerCall_closed
     (V : B.state.ExactLinkValidity)
     (hanchorExact : B.anchor = B.state.C B.anchor.root B.anchor.epoch)
     {obs : ValidatorIndex}
-    (hW : E.WeakObserverMarginAssumptions cfg ext obs)
+    (hW : E.WeakObserverAssumptions cfg ext obs)
     (hwalkDomain : E.PostAnchorHonestVoteTargetWalkDomain cfg ext)
     (hC : Weak.ObserverHistoricalA32CallAssumptions cfg ext E obs)
     (hfit : EpochEndsFitUint64 cfg)
@@ -135,6 +141,10 @@ theorem weak_safeFrom_observerCall_closed
     E.SafeFrom cfg ext (E.weakGetLatestConfirmedTraceAt cfg ext obs n).result
       (n + 1) := by
   have hA := hW.base
+  -- `justified_root_known` is derived here, not assumed: `B`/`hT`/`hanchor`/
+  -- `hboundary` are already in scope, so the internal margin bundle is built
+  -- from the caller's committee readback alone.
+  have hWM := hW.toMarginAssumptions cfg ext E B hT hanchor hboundary
   let trace := E.weakGetLatestConfirmedTraceAt cfg ext obs n
   have hstore : (E.weakFcrStep cfg ext obs n).store = E.store cfg ext obs (n + 1) :=
     E.weakFcrStep_store cfg ext obs n
@@ -153,14 +163,14 @@ theorem weak_safeFrom_observerCall_closed
       simpa only [hstartEq] using hbase
   | strictSelected horigin hselector =>
       rw [hselector.result_eq]
-      exact weak_safeFrom_find_latest_confirmed_descendant_discharged cfg ext hW hwalkDomain
+      exact weak_safeFrom_find_latest_confirmed_descendant_discharged cfg ext hWM hwalkDomain
         (n + 1) hn1H (E.weakFcrStep cfg ext obs n) hstore trace.afterObserved hinput hbase
         (fun _ => by
           rw [← hselector.result_eq]
           exact
             Weak.StrictSelectorAdvanceAt.observerCall_selectedStrictEdgeFilterSupplyAt_closed
               cfg ext B hT hA.synchrony hA.static_validators hA.byzantine_bound hA.domain hji
-              hanchor hboundary hDelay hphase0 hpaper P V hanchorExact hC hfit hW.coherence
+              hanchor hboundary hDelay hphase0 hpaper P V hanchorExact hC hfit hWM.coherence
               hn1H hcall hinput hbase horigin hselector)
 
 /-- Endpoint form of the closed headline: the weak selector's actual result,
@@ -182,7 +192,7 @@ theorem weak_confirmed_head_closed
     (V : B.state.ExactLinkValidity)
     (hanchorExact : B.anchor = B.state.C B.anchor.root B.anchor.epoch)
     {obs : ValidatorIndex}
-    (hW : E.WeakObserverMarginAssumptions cfg ext obs)
+    (hW : E.WeakObserverAssumptions cfg ext obs)
     (hwalkDomain : E.PostAnchorHonestVoteTargetWalkDomain cfg ext)
     (hC : Weak.ObserverHistoricalA32CallAssumptions cfg ext E obs)
     (hfit : EpochEndsFitUint64 cfg)
@@ -231,7 +241,7 @@ theorem weak_safeFrom_observerCall_closed_from_finalized
     (V : B.state.ExactLinkValidity)
     (hanchorExact : B.anchor = B.state.C B.anchor.root B.anchor.epoch)
     {obs : ValidatorIndex}
-    (hW : E.WeakObserverMarginAssumptions cfg ext obs)
+    (hW : E.WeakObserverAssumptions cfg ext obs)
     (hwalkDomain : E.PostAnchorHonestVoteTargetWalkDomain cfg ext)
     (hC : Weak.ObserverHistoricalA32CallAssumptions cfg ext E obs)
     (hfit : EpochEndsFitUint64 cfg)
@@ -278,7 +288,7 @@ theorem weak_confirmed_head_closed_from_finalized
     (V : B.state.ExactLinkValidity)
     (hanchorExact : B.anchor = B.state.C B.anchor.root B.anchor.epoch)
     {obs : ValidatorIndex}
-    (hW : E.WeakObserverMarginAssumptions cfg ext obs)
+    (hW : E.WeakObserverAssumptions cfg ext obs)
     (hwalkDomain : E.PostAnchorHonestVoteTargetWalkDomain cfg ext)
     (hC : Weak.ObserverHistoricalA32CallAssumptions cfg ext E obs)
     (hfit : EpochEndsFitUint64 cfg)

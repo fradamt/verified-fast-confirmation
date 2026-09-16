@@ -103,11 +103,16 @@ E.honest` is already unused in its proof (every lemma it calls,
 premise is still a required explicit argument, so it cannot be *applied*
 here without first producing a (nonexistent, since `obs` need not be honest)
 membership proof. The body is therefore copied verbatim with the honesty
-binder dropped, rather than routed through the original via `apply`. Kept
-here as a derivation lemma so `ObserverCoherence.justified_root_known` is
-demonstrably not an extra assumption, without importing the accepted-FFG
-package into the one-shot premise surface itself (`WeakObserverMarginAssumptions`
-still just takes `coherence` as a field). -/
+binder dropped, rather than routed through the original via `apply`.
+
+This is the *supplier* of `ObserverCoherence.justified_root_known` everywhere
+in the weak development: no statement that carries the accepted-FFG package
+takes that fact as a premise. The caller-facing bundle
+`WeakObserverAssumptions` carries only `committees_agree`, and the top-level
+theorems — which all already carry `B`, `hT`, `hanchor`, `hboundary` —
+promote it to the internal `WeakObserverMarginAssumptions` with
+`WeakObserverAssumptions.toMarginAssumptions`, discharging
+`justified_root_known` here. -/
 theorem ObserverCoherence.justified_root_known_of_acceptedGlobalTrajectory
     (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
     (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
@@ -202,13 +207,65 @@ def ObserverCoherence.of_acceptedTrajectory
     ObserverCoherence.justified_root_known_of_acceptedGlobalTrajectory
       cfg ext E B hT hanchor hboundary obs
 
-/-- The full assumption bundle for the one-shot weak safety theorem: the usual
+/-- The **internal** assumption bundle the margin machinery runs on: the usual
 `SelectedMarginAssumptions`, an observer that need not be honest, and the
-observer's own store coherence. -/
+observer's own store coherence.
+
+This record is *not* the premise surface of the weak development's top-level
+statements: `coherence.justified_root_known` is a derived fact, never a
+caller-supplied one. Callers hand in `WeakObserverAssumptions` below, whose
+only observer-store field is `committees_agree`, and every statement carrying
+the accepted-FFG package (`B`, `hT`, `hanchor`, `hboundary`) — the folds, the
+closed call theorems, and the finalized-base corollaries — builds this bundle
+internally with `WeakObserverAssumptions.toMarginAssumptions`. Only the
+`hmargin`/`hfilter`-carrying one-shot floor forms
+(`weak_safeFrom_find_latest_confirmed_descendant`, `…_discharged` and their
+endpoint forms), which carry no `B` at all and so have nothing to derive
+`justified_root_known` from, still take this bundle directly. -/
 structure WeakObserverMarginAssumptions (obs : ValidatorIndex) : Prop where
   base : SelectedMarginAssumptions cfg ext E
   observer : obs ∉ E.honest
   coherence : E.ObserverCoherence cfg ext obs
+
+/-- **The observer premise surface of the weak development.** Everything a
+caller must supply about the observer `obs`, and nothing that is derivable:
+
+* `base` — the ordinary (observer-independent) `SelectedMarginAssumptions`;
+* `observer` — `obs` need *not* be honest (the weak development's point);
+* `committees_agree` — the one genuinely free observer-store fact: the
+  observer reads back the scheduled committees from its own store.
+
+`ObserverCoherence.justified_root_known` is deliberately absent: it is a
+theorem about any node's trajectory
+(`ObserverCoherence.justified_root_known_of_acceptedGlobalTrajectory`), and
+every top-level weak statement carries the accepted-FFG/trajectory premises
+that prove it, so it is derived rather than assumed. -/
+structure WeakObserverAssumptions (obs : ValidatorIndex) : Prop where
+  base : SelectedMarginAssumptions cfg ext E
+  observer : obs ∉ E.honest
+  committees_agree : ∀ n : ℕ, E.WithinHorizon cfg n → ∀ s : Slot,
+    E.SlotWithinHorizon cfg s →
+    get_slot_committee cfg ext (E.store cfg ext obs n) s = E.committee s
+
+/-- Promotion of the caller-facing premise bundle to the internal one: the
+missing field, `ObserverCoherence.justified_root_known`, is *derived* from the
+accepted global justified-root origin and the ordinary execution trajectory
+via `ObserverCoherence.of_acceptedTrajectory`. Every top-level weak theorem
+already carries `B`, `hT`, `hanchor`, `hboundary`, so this promotion is always
+available there and `justified_root_known` never reaches a premise list. -/
+def WeakObserverAssumptions.toMarginAssumptions {obs : ValidatorIndex}
+    (hW : E.WeakObserverAssumptions cfg ext obs)
+    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
+    (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
+    (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg) (E := E)
+      (anchor := B.anchor)) :
+    E.WeakObserverMarginAssumptions cfg ext obs where
+  base := hW.base
+  observer := hW.observer
+  coherence :=
+    ObserverCoherence.of_acceptedTrajectory cfg ext E B hT hanchor hboundary obs
+      hW.committees_agree
 
 /-! ## Section 1 — the three `_of_prefix` crossing-arithmetic clones
 
