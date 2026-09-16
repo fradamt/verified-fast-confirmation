@@ -1,4 +1,5 @@
 import FastConfirmation.Spec.Proof.AcceptedHistoricalA32OneStep
+import FastConfirmation.Spec.Proof.AcceptedHistoricalA32OriginCall
 
 /-!
 # Strong induction for the accepted historical A3.2 payload
@@ -36,8 +37,9 @@ structure AcceptedHistoricalA32CurrentLineageAt
   current_lineage :
     get_block_epoch cfg (E.store cfg ext v n) (E.confirmed cfg ext v n) =
         get_current_store_epoch cfg (E.store cfg ext v n) →
-      ∃ e : Epoch, Nonempty (E.AcceptedHistoricalA32LineageAt
-        cfg ext B (E.confirmed cfg ext v n) e)
+      ∃ e : Epoch, Nonempty (E.AcceptedHistoricalA32LineageCoreAt
+        cfg ext B (E.confirmed cfg ext v n) e
+        (E.LazyCertAt cfg ext B n) (E.LazySupportAt cfg ext B v n))
 
 /-- The exact non-operational interface consumed at one actual FCR call.
 
@@ -50,12 +52,6 @@ interface. -/
 structure AcceptedHistoricalA32CallInterfaceAt
     (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
     (v : ValidatorIndex) (n : ℕ) : Prop where
-  helper_provisos :
-    getLatestSelectorGuard cfg (E.fcrStep cfg ext v n)
-        (E.getLatestConfirmedTraceAt cfg ext v n).afterObserved →
-      SelectedHelperProvisosAt cfg ext E v (n + 1)
-        (E.fcrStep cfg ext v n)
-        (E.getLatestConfirmedTraceAt cfg ext v n).afterObserved
   target_gate_producer : E.AcceptedCurrentTargetA32GateRealizationProducerAt
     cfg ext B.anchor B.state (n + 1) (E.fcrStep cfg ext v n)
 
@@ -199,12 +195,16 @@ noncomputable def acceptedHistoricalA32CurrentLineageAt_zero
       simpa only [e] using
         E.trustedAnchor_checkpointForBlock_of_trajectory cfg ext hT
           hanchor hboundary
-    have hpayload := AcceptedHistoricalA32GatePayloadAt.of_anchor
+    have hpayload := AcceptedHistoricalA32GatePayloadCoreAt.of_anchor
       cfg ext B hat horiginEpoch
         (hcheckpointStore.trans hcheckpointAnchor)
+        (Cert := E.LazyCertAt cfg ext B 0)
+        (Supp := E.LazySupportAt cfg ext B v 0)
+        (E.lazyCertAt_anchor cfg ext)
+        (fun _ _ h => E.lazySupportAt_anchor cfg ext h)
     refine ⟨e, ⟨?_⟩⟩
     simpa only [hconfirmedAnchor] using
-      (AcceptedHistoricalA32LineageAt.refl cfg ext hpayload)
+      (AcceptedHistoricalA32LineageCoreAt.refl cfg ext hpayload)
 
 /-! ## Write-back induction -/
 
@@ -214,6 +214,7 @@ slot transport the preceding lineage. -/
 noncomputable def acceptedHistoricalA32CurrentLineageAt_all
     (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
     (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
+    (hA : SelectedMarginAssumptions cfg ext E)
     (hphase : Phase0SourceCoherence cfg ext)
     (hboundaryPhase : Phase0BoundarySourceCoherence cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
@@ -264,11 +265,14 @@ noncomputable def acceptedHistoricalA32CurrentLineageAt_all
             rw [hconfirmedOut] at hcurrentN1
             simpa only [trace, E.fcrStep_store] using hcurrentN1
           obtain ⟨e, hlineage⟩ :=
-            E.getLatestConfirmedTraceAt_currentLineage_step cfg ext B hT
-              hphase hboundaryPhase hanchor hboundary hv hHn1
+            E.getLatestConfirmedTraceAt_currentLineage_step_lazy cfg ext B hT
+              hA hphase hboundaryPhase hanchor hboundary hv hHn1 hadv
               hprevious.confirmed_known htraceCurrent
-              hcall.helper_provisos hcall.target_gate_producer
-              hprevious.current_lineage
+              hcall.target_gate_producer
+              (fun hcur =>
+                (hprevious.current_lineage hcur).imp (fun _ h =>
+                  h.map (E.acceptedHistoricalA32LazyLineage_mono cfg ext
+                    (Nat.le_succ n))))
           refine ⟨e, ?_⟩
           simpa only [trace, hconfirmedOut] using hlineage
       · have hconfirmedOut : E.confirmed cfg ext v (n + 1) =
@@ -312,12 +316,15 @@ noncomputable def acceptedHistoricalA32CurrentLineageAt_all
             exact hcurrentN1
           obtain ⟨e, hlineage⟩ := hprevious.current_lineage hcurrentN
           refine ⟨e, ?_⟩
-          simpa only [hconfirmedOut] using hlineage
+          simpa only [hconfirmedOut] using
+            hlineage.map (E.acceptedHistoricalA32LazyLineage_mono cfg ext
+              (Nat.le_succ n))
 
 /-- Global bounded invariant for all honest validators. -/
 theorem acceptedHistoricalA32CurrentLineage_invariant
     (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
     (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
+    (hA : SelectedMarginAssumptions cfg ext E)
     (hphase : Phase0SourceCoherence cfg ext)
     (hboundaryPhase : Phase0BoundarySourceCoherence cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
@@ -327,7 +334,7 @@ theorem acceptedHistoricalA32CurrentLineage_invariant
     ∀ v ∈ E.honest, ∀ n : ℕ, E.WithinHorizon cfg n →
       E.AcceptedHistoricalA32CurrentLineageAt cfg ext B v n := by
   intro v hv n hHn
-  exact E.acceptedHistoricalA32CurrentLineageAt_all cfg ext B hT hphase
+  exact E.acceptedHistoricalA32CurrentLineageAt_all cfg ext B hT hA hphase
     hboundaryPhase hanchor hboundary hv
       (fun k hk hkH => hcalls v hv k hk hkH) n hHn
 
@@ -337,6 +344,7 @@ lineage, retaining the exact original target, source, and deadline payload. -/
 theorem acceptedHistoricalA32CurrentLineage
     (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
     (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
+    (hA : SelectedMarginAssumptions cfg ext E)
     (hphase : Phase0SourceCoherence cfg ext)
     (hboundaryPhase : Phase0BoundarySourceCoherence cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
@@ -348,9 +356,10 @@ theorem acceptedHistoricalA32CurrentLineage
     (hcurrent : get_block_epoch cfg (E.store cfg ext v n)
         (E.confirmed cfg ext v n) =
       get_current_store_epoch cfg (E.store cfg ext v n)) :
-    ∃ e : Epoch, Nonempty (E.AcceptedHistoricalA32LineageAt
-      cfg ext B (E.confirmed cfg ext v n) e) :=
-  (E.acceptedHistoricalA32CurrentLineage_invariant cfg ext B hT hphase
+    ∃ e : Epoch, Nonempty (E.AcceptedHistoricalA32LineageCoreAt
+      cfg ext B (E.confirmed cfg ext v n) e
+      (E.LazyCertAt cfg ext B n) (E.LazySupportAt cfg ext B v n)) :=
+  (E.acceptedHistoricalA32CurrentLineage_invariant cfg ext B hT hA hphase
     hboundaryPhase hanchor hboundary hcalls v hv n hHn).current_lineage
       hcurrent
 

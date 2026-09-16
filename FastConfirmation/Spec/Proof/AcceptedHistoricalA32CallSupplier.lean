@@ -1,4 +1,5 @@
 import FastConfirmation.Spec.Proof.AcceptedHistoricalA32Induction
+import FastConfirmation.Spec.Proof.AcceptedFFGJustifiedCheckpointCache
 
 /-!
 # Completed-prefix supplier for historical A3.2 call interfaces
@@ -424,6 +425,27 @@ noncomputable def completedPrefix_acceptedTargetGateProducerAt
   rw [hpstore] at hrealized
   simpa only [E.fcrStep_store] using hrealized
 
+/-- The selected-margin assumption bundle assembled from the completed-prefix
+primitives.  The domain half is the accepted global trajectory's own. -/
+theorem selectedMarginAssumptions_of_completedPrefixes
+    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
+    (hC : E.AcceptedHistoricalA32CompletedPrefixCallAssumptions cfg ext)
+    (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
+    (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
+      (E := E) (anchor := B.anchor)) :
+    SelectedMarginAssumptions cfg ext E :=
+  { genesis := hT.genesis
+    wellFormed := hT.wellFormed
+    whole_seconds := hT.whole_seconds
+    honest_behavior := hT.honest_behavior
+    synchrony := hC.synchrony
+    externals_coherence := hT.externals_coherence
+    static_validators := hC.static_validators
+    byzantine_bound := hC.byzantine_bound
+    domain := E.selectedMarginDomain_of_acceptedGlobalTrajectory
+      cfg ext B hT hC.synchrony hanchor hboundary }
+
 /-- The completed-prefix primitive bundle discharges the complete call
 interface required by the historical write-back induction. -/
 noncomputable def
@@ -438,7 +460,6 @@ noncomputable def
     E.AcceptedHistoricalA32CallInterfaces cfg ext B := by
   intro v hv n hcall hHn1
   exact {
-    helper_provisos := hC.helper_provisos v hv n hcall hHn1
     target_gate_producer :=
       E.completedPrefix_acceptedTargetGateProducerAt cfg ext B hT hC hfit
         hanchor hboundary hv hcall hHn1
@@ -457,6 +478,8 @@ theorem acceptedHistoricalA32CurrentLineage_invariant_of_completedPrefixes
     ∀ v ∈ E.honest, ∀ n : ℕ, E.WithinHorizon cfg n →
       E.AcceptedHistoricalA32CurrentLineageAt cfg ext B v n := by
   exact E.acceptedHistoricalA32CurrentLineage_invariant cfg ext B hT
+    (E.selectedMarginAssumptions_of_completedPrefixes cfg ext B hT hC
+      hanchor hboundary)
     hC.phase0_source hC.phase0_boundary_source hanchor hboundary
       (E.acceptedHistoricalA32CallInterfaces_of_completedPrefixes
         cfg ext B hT hC hfit hanchor hboundary)
@@ -475,8 +498,9 @@ theorem acceptedHistoricalA32CurrentLineage_of_completedPrefixes
     (hcurrent : get_block_epoch cfg (E.store cfg ext v n)
         (E.confirmed cfg ext v n) =
       get_current_store_epoch cfg (E.store cfg ext v n)) :
-    ∃ e : Epoch, Nonempty (E.AcceptedHistoricalA32LineageAt
-      cfg ext B (E.confirmed cfg ext v n) e) :=
+    ∃ e : Epoch, Nonempty (E.AcceptedHistoricalA32LineageCoreAt
+      cfg ext B (E.confirmed cfg ext v n) e
+      (E.LazyCertAt cfg ext B n) (E.LazySupportAt cfg ext B v n)) :=
   (E.acceptedHistoricalA32CurrentLineage_invariant_of_completedPrefixes
     cfg ext B hT hC hfit hanchor hboundary v hv n hHn).current_lineage hcurrent
 

@@ -211,14 +211,14 @@ theorem actualCall_strictSelected_endpointJustifiedEpoch_le_result
       trace.afterObserved ≠ trace.afterObserved := by
     intro hfixed
     exact hselector.result_ne_input (hselector.result_eq.trans hfixed)
-  have hhistorical : E.AcceptedHistoricalA32PayloadProducerAt cfg ext B
-      query trace.afterObserved trace.result := by
+  have hhistorical : E.HistoricalCurrentTargetCertificateProducerAt cfg ext
+      B.anchor (n + 1) query trace.afterObserved trace.result := by
     simpa only [query, trace] using
-      E.completedPrefix_acceptedHistoricalA32PayloadProducerAt
+      E.completedPrefix_acceptedHistoricalCertificateProducerAt
         cfg ext B hT hC hfit hanchor hboundary hv hcall hHn1 hprior hinput
           hselector
-  have hhistorical' : E.AcceptedHistoricalA32PayloadProducerAt cfg ext B
-      query trace.afterObserved
+  have hhistorical' : E.HistoricalCurrentTargetCertificateProducerAt cfg ext
+      B.anchor (n + 1) query trace.afterObserved
         (find_latest_confirmed_descendant cfg ext query
           trace.afterObserved) := by
     rw [← hselector.result_eq]
@@ -1807,11 +1807,12 @@ noncomputable def StrictSelectedResultMechanicalFacts.fcrStep_currentNext_endpoi
 /-- Read the lineage's semantic epoch back in any causal execution store
 which knows its tip.  This is the small adapter needed when the completed
 prefix invariant existentially packages the lineage epoch. -/
-theorem AcceptedHistoricalA32LineageAt.tip_epoch_eq_of_causal_known
+theorem AcceptedHistoricalA32LineageCoreAt.tip_epoch_eq_of_causal_known
     (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
     {B : ExactPrefixAcceptedFFGSemantics cfg ext E}
     {store : Store Root} {selected : Root} {e : Epoch}
-    (h : E.AcceptedHistoricalA32LineageAt cfg ext B selected e)
+    {Cert : Checkpoint Root → Prop} {Supp : Root → Epoch → Prop}
+    (h : E.AcceptedHistoricalA32LineageCoreAt cfg ext B selected e Cert Supp)
     (hcausal : E.CausalStore cfg ext store)
     (hknown : selected ∈ store.block_roots) :
     get_block_epoch cfg store selected = e := by
@@ -1994,8 +1995,9 @@ noncomputable def
           E.acceptedHistoricalA32CurrentLineage_of_completedPrefixes
             cfg ext B hT hC hfit hanchor hboundary hv hn1H
               hcurrentConfirmed
-        have hlineage : E.AcceptedHistoricalA32LineageAt cfg ext B
-            trace.result e := by
+        have hlineage : E.AcceptedHistoricalA32LineageCoreAt cfg ext B
+            trace.result e (E.LazyCertAt cfg ext B (n + 1))
+            (E.LazySupportAt cfg ext B v (n + 1)) := by
           simpa only [hwrite] using hlineageConfirmed
         have hselectedQ : trace.result ∈
             (E.store cfg ext v (n + 1)).block_roots := by
@@ -2008,19 +2010,37 @@ noncomputable def
             (E.store cfg ext v (n + 1)) := by
           exact hselectedEpoch.symm.trans
             (by simpa only [trace, E.fcrStep_store] using hcurrent)
+        have hlateE : e + 2 ≤
+            get_current_store_epoch cfg (E.store cfg ext w m) := by
+          simpa only [trace, E.fcrStep_store, hselectedEpoch] using hlate
         have hcanonical : E.CanonicalThroughoutEpoch cfg ext
             trace.result (e + 1) :=
           E.canonicalThroughoutNextEpoch_of_selectedCanonical_currentEpoch
-            cfg ext hMargin hv hn1H hselectedQ heCurrent
-              (by simpa only [trace, E.fcrStep_store, hselectedEpoch]
-                using hlate) hIH
-        exact E.acceptedSelectedResultFilterOutcome_retainedVisible_of_lateLineage
-          cfg ext B hT hC.synchrony hdomain hC.phase0_source hanchor
-            hboundary hpaper P V hanchorExact hacc hv hn1H hlineage
+            cfg ext hMargin hv hn1H hselectedQ heCurrent hlateE hIH
+        -- **A1's capped supply.**  `k < n` is the threaded fold output;
+        -- `k = n` is this step's own endpoint-induction hypothesis, converted
+        -- by `engineInv_of_selectedCanonical_lateEndpoint`
+        -- (`docs/crossing-call-support-residue.md` §2.2/§2.3).
+        have hsupply : E.CallWriteBackEngineSafeUpTo cfg ext v (n + 1)
+            (compute_start_slot_at_epoch cfg (e + 1)) := by
+          refine E.callWriteBackEngineSafeUpTo_of_prior_and_current cfg ext hv
+            hprior ?_
+          intro _ _ _
+          rw [hwrite]
+          exact E.engineInv_of_selectedCanonical_lateEndpoint cfg ext hMargin
+            hlateE hIH
+        obtain ⟨hpayloadTip⟩ :=
+          AcceptedHistoricalA32LineageCoreAt.payloadAtQuery_nonempty cfg ext B
+            hT hC.phase0_source hanchor hboundary hlineage hselectedQ
+            hselectedEpoch
+            (fun hcheckpoint hsource hsupp =>
+              E.lazySupportAt_transport cfg ext hcheckpoint hsource hsupp)
+        exact E.acceptedSelectedResultFilterOutcome_retainedVisible_of_lateSupport
+          cfg ext B hT hC.synchrony hdomain hanchor
+            hboundary hpaper P V hanchorExact hacc hv hn1H
+            (hpayloadTip.support_branch w hw m hmH hlateE hsupply)
             hselectedQ hselectedEpoch hcanonical hw hmH
-            (by simpa only [trace] using hselectedM)
-            (by simpa only [trace, E.fcrStep_store, hselectedEpoch]
-              using hlate)
+            (by simpa only [trace] using hselectedM) hlateE
             (by simpa only [trace, E.fcrStep_store, hselectedEpoch]
               using hjustifiedEpoch)
             (by simpa only [trace] using hresultJustified)
@@ -2059,8 +2079,9 @@ noncomputable def
           simpa only [E.fcrStep_store] using hstart
         have hcanonicalFor
             {e : Epoch}
-            (hlineage : E.AcceptedHistoricalA32LineageAt cfg ext B
-              trace.result e) :
+            {Cert : Checkpoint Root → Prop} {Supp : Root → Epoch → Prop}
+            (hlineage : E.AcceptedHistoricalA32LineageCoreAt cfg ext B
+              trace.result e Cert Supp) :
             E.CanonicalThroughoutEpoch cfg ext trace.result (e + 1) := by
           have hselectedEpoch : get_block_epoch cfg
               (E.store cfg ext v (n + 1)) trace.result = e :=
@@ -2073,10 +2094,15 @@ noncomputable def
               (by simpa only [E.fcrStep_store] using hstart)
               (by simpa only [trace, E.fcrStep_store, hselectedEpoch]
                 using hlate) hIH
+        -- The previous-epoch-start payloads were all created at calls strictly
+        -- earlier than `n` (their epoch was current at a strictly earlier
+        -- slot), so the threaded fold output alone discharges their capped
+        -- supply — `k = n` never arises here.
         have lateFromLineage
             {e : Epoch}
-            (hlineage : E.AcceptedHistoricalA32LineageAt cfg ext B
-              trace.result e) :
+            (hlineage : E.AcceptedHistoricalA32LineageCoreAt cfg ext B
+              trace.result e (E.LazyCertAt cfg ext B n)
+              (E.LazySupportAt cfg ext B v n)) :
             E.AcceptedSelectedResultFilterOutcomeAt cfg ext B
               (E.store cfg ext w m) trace.result := by
           have hselectedQ : trace.result ∈
@@ -2086,13 +2112,26 @@ noncomputable def
               (E.store cfg ext v (n + 1)) trace.result = e :=
             hlineage.tip_epoch_eq_of_causal_known cfg ext hT
               (E.store_causal cfg ext v (n + 1)) hselectedQ
-          exact E.acceptedSelectedResultFilterOutcome_retainedVisible_of_lateLineage
-            cfg ext B hT hC.synchrony hdomain hC.phase0_source hanchor
-              hboundary hpaper P V hanchorExact hacc hv hn1H hlineage
+          have hlateE : e + 2 ≤
+              get_current_store_epoch cfg (E.store cfg ext w m) := by
+            simpa only [trace, E.fcrStep_store, hselectedEpoch] using hlate
+          have hsupply : E.CallWriteBackEngineSafeUpTo cfg ext v n
+              (compute_start_slot_at_epoch cfg (e + 1)) :=
+            fun k hk hkH hcallK hstrictK =>
+              E.engineInv_of_safeFrom cfg ext
+                (hprior v hv k (by omega) hkH hcallK hstrictK)
+          obtain ⟨hpayloadTip⟩ :=
+            AcceptedHistoricalA32LineageCoreAt.payloadAtQuery_nonempty cfg ext
+              B hT hC.phase0_source hanchor hboundary hlineage hselectedQ
+              hselectedEpoch
+              (fun hcheckpoint hsource hsupp =>
+                E.lazySupportAt_transport cfg ext hcheckpoint hsource hsupp)
+          exact E.acceptedSelectedResultFilterOutcome_retainedVisible_of_lateSupport
+            cfg ext B hT hC.synchrony hdomain hanchor
+              hboundary hpaper P V hanchorExact hacc hv hn1H
+              (hpayloadTip.support_branch w hw m hmH hlateE hsupply)
               hselectedQ hselectedEpoch (hcanonicalFor hlineage) hw hmH
-              (by simpa only [trace] using hselectedM)
-              (by simpa only [trace, E.fcrStep_store, hselectedEpoch]
-                using hlate)
+              (by simpa only [trace] using hselectedM) hlateE
               (by simpa only [trace, E.fcrStep_store, hselectedEpoch]
                 using hjustifiedEpoch)
               (by simpa only [trace] using hresultJustified)
@@ -2108,6 +2147,8 @@ noncomputable def
               Execution.StrictSelectorAdvanceAt.previousFinalizedReset_anchorLineage
                 cfg ext B hT hdomain hanchor hboundary hLag hanchorExact hv
                   hn1H hfinalized hselector hprevious
+                (E.lazyCertAt_anchor cfg ext)
+                (fun _ _ hanchorEq => E.lazySupportAt_anchor cfg ext hanchorEq)
             exact lateFromLineage hlineage
         | observedReset hobserved =>
             obtain ⟨seed, hseedQ, hseedSelected, hguLower⟩ :=

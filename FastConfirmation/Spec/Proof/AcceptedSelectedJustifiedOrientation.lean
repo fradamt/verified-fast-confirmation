@@ -195,16 +195,12 @@ theorem epochStart_or_endpointOriginOrPinned_of_acceptedCallSite
     {input result : Root} {w : ValidatorIndex} {m : Nat}
     (hcall : StrictSelectedHistoricalSIRCallSite cfg ext q query input result)
     (hacc : CertificateAccountability cfg E B.anchor)
-    (hhistorical : E.AcceptedHistoricalA32PayloadProducerAt
-      cfg ext B query input result)
+    (hhistorical' : E.HistoricalCurrentTargetCertificateProducerAt
+      cfg ext B.anchor q query input result)
     (hproducer : E.EndpointOriginOrPinnedProducerAt cfg ext B.anchor q query) :
     is_start_slot_at_epoch cfg (get_current_slot cfg query.store) = true ∨
       E.EndpointOriginOrPinnedAt cfg ext B.anchor q w m
         (get_current_target cfg query.store) := by
-  have hhistorical' : E.HistoricalCurrentTargetCertificateProducerAt
-      cfg ext B.anchor q query input result :=
-    E.acceptedHistoricalA32PayloadProducerAt_to_certificateProducer
-      cfg ext B hhistorical
   cases hcall with
   | currentCrossing _resultCurrent _a _c _edge hgate =>
       exact Or.inr (hproducer (Or.inr hgate) w m)
@@ -253,8 +249,9 @@ theorem preQueryVoteSelectedSIRBracket_or_causalHonestTarget_of_acceptedProducer
     (hbase : E.SafeFrom cfg ext input
       (E.slot_start cfg (E.slot_at cfg q)))
     (hstrict : find_latest_confirmed_descendant cfg ext query input ≠ input)
-    (hhistorical : E.AcceptedHistoricalA32PayloadProducerAt cfg ext B
-      query input (find_latest_confirmed_descendant cfg ext query input))
+    (hhistorical : E.HistoricalCurrentTargetCertificateProducerAt cfg ext
+      B.anchor q query input
+      (find_latest_confirmed_descendant cfg ext query input))
     (hproducer : E.EndpointOriginOrPinnedProducerAt cfg ext B.anchor q query)
     {w : ValidatorIndex} (hw : w ∈ E.honest) {m : Nat}
     (hslotQM : E.slot_at cfg q ≤ E.slot_at cfg m)
@@ -306,8 +303,9 @@ theorem strictSelected_result_and_child_ancestor_of_endpointJustified_accepted
     (hbase : E.SafeFrom cfg ext input
       (E.slot_start cfg (E.slot_at cfg q)))
     (hstrict : find_latest_confirmed_descendant cfg ext query input ≠ input)
-    (hhistorical : E.AcceptedHistoricalA32PayloadProducerAt cfg ext B
-      query input (find_latest_confirmed_descendant cfg ext query input))
+    (hhistorical : E.HistoricalCurrentTargetCertificateProducerAt cfg ext
+      B.anchor q query input
+      (find_latest_confirmed_descendant cfg ext query input))
     (hproducer : E.EndpointOriginOrPinnedProducerAt cfg ext B.anchor q query)
     {c : Root} {w : ValidatorIndex} (hw : w ∈ E.honest) {m : Nat}
     (hHm : E.WithinHorizon cfg m)

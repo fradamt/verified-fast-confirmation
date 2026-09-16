@@ -557,6 +557,200 @@ theorem deferredSupport_capped
 
 end AcceptedHistoricalA32OriginCallAt
 
+/-! ## The lazy payload obligations
+
+`docs/crossing-call-support-residue.md` §4.3.  These are the two closures the
+strong trunk instantiates the T4a `Cert`/`Supp` parameters with.  Both take
+their safety antecedent **hypothetically**, so the crossing call proves nothing
+about its own fold step; the consuming call discharges them. -/
+
+/-- Lazy certification obligation, bounded by the write-back second `N`.
+
+The antecedent is the *uncapped* threaded fold output, because the single
+`certified` consumer (the `currentHistorical` arm of
+`epochStart_or_endpointOriginOrPinned_of_acceptedCallSite`) reads the
+certificate at an endpoint with no epoch guard.  That consumer is reached only
+through the **no-crossing** branch of the one-call transformer, so the lineage
+it holds is the one indexed at the *previous* second and `N` stays strictly
+below the consuming call. -/
+def LazyCertAt (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (N : ℕ) (c : Checkpoint Root) : Prop :=
+  E.PriorStrictCallWriteBackSafe cfg ext N →
+    Nonempty (CertifiedJustified cfg E B.anchor c)
+
+/-- Lazy support obligation, bounded by the owning validator `v` and the
+write-back second `N`.
+
+The antecedent is the *capped* supply at the epoch boundary `start(e + 1)`,
+which `docs/crossing-call-support-residue.md` §2.3 shows is exactly enough:
+every vote the A3.2 quorum consumes is cast at a slot of epoch `e`, hence
+strictly below that boundary.  The single `support_branch` consumer (A1,
+`AcceptedHistoricalA32LineageAt.lateVisibleSeedAt`) is guarded by
+`e + 2 ≤ currentEpoch`, and under that guard the endpoint induction's own
+`SelectedCanonicalBeforeEndpointAt` binder supplies exactly this cap — see
+`engineInv_of_selectedCanonical_lateEndpoint`.
+
+(The cap is `start(e + 1)` and **not** `slot_at m`: the endpoint binder is
+strict below `slot_at m`, so `slot_at m` itself is not available.  §2.3's own
+arithmetic already uses the boundary form.) -/
+def LazySupportAt (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (v : ValidatorIndex) (N : ℕ) (origin : Root) (e : Epoch) : Prop :=
+  ∀ w : ValidatorIndex, w ∈ E.honest → ∀ m : ℕ, E.WithinHorizon cfg m →
+    e + 2 ≤ get_current_store_epoch cfg (E.store cfg ext w m) →
+    E.CallWriteBackEngineSafeUpTo cfg ext v N
+      (compute_start_slot_at_epoch cfg (e + 1)) →
+      B.state.C origin e = B.anchor ∨
+        Nonempty (E.AcceptedHistoricalA32QuorumAt cfg ext B origin e)
+
+/-- Widening the second bound weakens the obligation, because both antecedents
+are anti-monotone in it.  This is what the write-back induction's extension
+step uses. -/
+theorem LazyCertAt.mono {B : ExactPrefixAcceptedFFGSemantics cfg ext E}
+    {N N' : ℕ} (hNN : N ≤ N') {c : Checkpoint Root}
+    (h : E.LazyCertAt cfg ext B N c) : E.LazyCertAt cfg ext B N' c :=
+  fun hprior => h (hprior.mono cfg ext E hNN)
+
+/-- Widening the second bound weakens the support obligation. -/
+theorem LazySupportAt.mono {B : ExactPrefixAcceptedFFGSemantics cfg ext E}
+    {v : ValidatorIndex} {N N' : ℕ} (hNN : N ≤ N') {origin : Root} {e : Epoch}
+    (h : E.LazySupportAt cfg ext B v N origin e) :
+    E.LazySupportAt cfg ext B v N' origin e :=
+  fun w hw m hmH hlate hsupply =>
+    h w hw m hmH hlate (hsupply.mono_second cfg ext E hNN)
+
+/-- Every eagerly certified payload is lazily certified. -/
+theorem lazyCertAt_of_eager {B : ExactPrefixAcceptedFFGSemantics cfg ext E}
+    {N : ℕ} {c : Checkpoint Root}
+    (h : Nonempty (CertifiedJustified cfg E B.anchor c)) :
+    E.LazyCertAt cfg ext B N c :=
+  fun _ => h
+
+/-- Every eagerly supported payload is lazily supported. -/
+theorem lazySupportAt_of_eager {B : ExactPrefixAcceptedFFGSemantics cfg ext E}
+    {v : ValidatorIndex} {N : ℕ} {origin : Root} {e : Epoch}
+    (h : E.AcceptedHistoricalA32DeferredSupportAt cfg ext B origin e) :
+    E.LazySupportAt cfg ext B v N origin e :=
+  fun w hw m hmH hlate _ => h w hw m hmH hlate
+
+/-- The trusted-anchor payload discharges both lazy obligations outright. -/
+theorem lazyCertAt_anchor {B : ExactPrefixAcceptedFFGSemantics cfg ext E}
+    {N : ℕ} : E.LazyCertAt cfg ext B N B.anchor :=
+  fun _ => ⟨CertifiedJustified.anchor⟩
+
+/-- The trusted-anchor support arm, recorded lazily. -/
+theorem lazySupportAt_anchor {B : ExactPrefixAcceptedFFGSemantics cfg ext E}
+    {v : ValidatorIndex} {N : ℕ} {origin : Root} {e : Epoch}
+    (h : B.state.C origin e = B.anchor) :
+    E.LazySupportAt cfg ext B v N origin e :=
+  fun _ _ _ _ _ _ => Or.inl h
+
+/-- The lazy support closure transports along a same-epoch segment exactly as
+the eager one does: only the anchor-or-quorum disjunction moves, and the
+antecedent does not mention the origin root. -/
+theorem lazySupportAt_transport
+    {B : ExactPrefixAcceptedFFGSemantics cfg ext E}
+    {v : ValidatorIndex} {N : ℕ} {origin tip : Root} {e : Epoch}
+    (hcheckpoint : B.state.C tip e = B.state.C origin e)
+    (hsource : B.state.GJ tip = B.state.GJ origin)
+    (h : E.LazySupportAt cfg ext B v N origin e) :
+    E.LazySupportAt cfg ext B v N tip e :=
+  fun w hw m hmH hlate hsupply =>
+    AcceptedHistoricalA32GatePayloadCoreAt.quorumDisjunction_transport cfg ext
+      hcheckpoint hsource (h w hw m hmH hlate hsupply)
+
+/-- Widen a lazily instantiated payload's second bound. -/
+noncomputable def acceptedHistoricalA32LazyPayload_mono
+    {B : ExactPrefixAcceptedFFGSemantics cfg ext E}
+    {v : ValidatorIndex} {N N' : ℕ} (hNN : N ≤ N')
+    {origin : Root} {e : Epoch}
+    (h : E.AcceptedHistoricalA32GatePayloadCoreAt cfg ext B origin e
+      (E.LazyCertAt cfg ext B N) (E.LazySupportAt cfg ext B v N)) :
+    E.AcceptedHistoricalA32GatePayloadCoreAt cfg ext B origin e
+      (E.LazyCertAt cfg ext B N') (E.LazySupportAt cfg ext B v N') :=
+  (h.mapCert cfg ext (fun hc => hc.mono cfg ext E hNN)).mapSupp cfg ext
+    (fun hs => hs.mono cfg ext E hNN)
+
+/-- Widen a lazily instantiated lineage's second bound.  This is the write-back
+induction's extension step: moving from `N = n` to `N = n + 1` is *weakening*,
+because both closures' antecedents are anti-monotone in the bound. -/
+noncomputable def acceptedHistoricalA32LazyLineage_mono
+    {B : ExactPrefixAcceptedFFGSemantics cfg ext E}
+    {v : ValidatorIndex} {N N' : ℕ} (hNN : N ≤ N')
+    {tip : Root} {e : Epoch}
+    (h : E.AcceptedHistoricalA32LineageCoreAt cfg ext B tip e
+      (E.LazyCertAt cfg ext B N) (E.LazySupportAt cfg ext B v N)) :
+    E.AcceptedHistoricalA32LineageCoreAt cfg ext B tip e
+      (E.LazyCertAt cfg ext B N') (E.LazySupportAt cfg ext B v N') :=
+  (h.mapCert cfg ext (fun _ hc => hc.mono cfg ext E hNN)).mapSupp cfg ext
+    (fun _ hs => hs.mono cfg ext E hNN)
+
+namespace AcceptedHistoricalA32OriginCallAt
+
+/-- **The lazy certificate closure at a crossing call.**  Discharged by
+`hprior` at the consuming call, which is legitimate exactly when the origin
+call sits strictly below the bound. -/
+theorem lazyCert
+    (hA : SelectedMarginAssumptions cfg ext E)
+    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
+    (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
+      (E := E) (anchor := B.anchor))
+    {node : ValidatorIndex} {second : ℕ} {origin : Root} {e : Epoch}
+    (h : E.AcceptedHistoricalA32OriginCallAt cfg ext node second origin
+      (B.state.C origin e))
+    {N : ℕ} (hlt : second < N)
+    (hproducer : E.AcceptedFixedSourceCurrentTargetA32GateRealizationProducerAt
+      cfg ext B.anchor B.state (second + 1) (E.fcrStep cfg ext node second)
+      origin) :
+    E.LazyCertAt cfg ext B N (B.state.C origin e) := by
+  intro hprior
+  exact h.certifiedFixedSource_capped cfg ext E hA hanchor hboundary
+    (E.engineInv_of_safeFrom cfg ext
+      (h.safeFrom_of_prior cfg ext E hlt hprior)) (le_refl _) hproducer
+
+/-- **The lazy support closure at a crossing call.**
+
+The consuming call instantiates the capped supply at `k := second`, which the
+bound `second + 1 ≤ N` permits; `origin_writeback` turns the fold output into
+`EngineInv origin (second + 1) (slot_at m)`, and the `e + 2` guard makes
+`start(e + 1) < start(e + 2) ≤ slot_at m`, so the cap dominates the whole
+epoch-`e` vote span. -/
+theorem lazySupport
+    (hA : SelectedMarginAssumptions cfg ext E)
+    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
+    (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
+      (E := E) (anchor := B.anchor))
+    {node : ValidatorIndex} {second : ℕ} {origin : Root} {e : Epoch}
+    (h : E.AcceptedHistoricalA32OriginCallAt cfg ext node second origin
+      (B.state.C origin e))
+    (horiginEpoch : get_block_epoch cfg
+      (E.fcrStep cfg ext node second).store origin = e)
+    {N : ℕ} (hle : second + 1 ≤ N)
+    (hproducer : E.AcceptedFixedSourceCurrentTargetA32GateRealizationProducerAt
+      cfg ext B.anchor B.state (second + 1) (E.fcrStep cfg ext node second)
+      origin) :
+    E.LazySupportAt cfg ext B node N origin e := by
+  intro w hw m hmH _hlate hsupply
+  -- the origin call's store is current at epoch `e`
+  have hcurrent : get_current_store_epoch cfg
+      (E.fcrStep cfg ext node second).store = e :=
+    h.origin_current.symm.trans horiginEpoch
+  -- the capped fold supply at the origin call's own second
+  have heng0 := hsupply second hle h.second_horizon h.is_call
+    (by rw [h.origin_writeback]; exact h.origin_strict)
+  have heng : EngineInv cfg ext E origin (second + 1)
+      (compute_start_slot_at_epoch cfg (e + 1)) := by
+    rwa [h.origin_writeback] at heng0
+  have hcap : compute_start_slot_at_epoch cfg
+      (get_current_store_epoch cfg (E.fcrStep cfg ext node second).store + 1) ≤
+      compute_start_slot_at_epoch cfg (e + 1) := by
+    rw [hcurrent]
+  exact h.deferredSupport_capped cfg ext E hA B hanchor hboundary
+    horiginEpoch heng hcap hproducer
+
+end AcceptedHistoricalA32OriginCallAt
+
 end Execution
 
 end FastConfirmation.Spec

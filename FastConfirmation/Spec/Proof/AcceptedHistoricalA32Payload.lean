@@ -188,6 +188,30 @@ def of_anchor
       exact hanchorCert
     support_branch := hanchorSupp origin e hcheckpoint }
 
+/-- The weakest generic constructor: an accepted current-epoch carrier, the
+trusted-anchor epoch bound, and the two obligations.
+
+The anchor bound is taken as a hypothesis rather than read off a certificate,
+which is exactly what lets the lazy instantiation build a payload without ever
+constructing the positive certification content — at an actual call it is the
+ambient `trustedAnchor_epoch_le_currentEpoch` fact. -/
+def of_causalKnown
+    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    {store : Store Root} (hstore : E.CausalStore cfg ext store)
+    {origin : Root} (horigin : origin ∈ store.block_roots)
+    {e : Epoch} (horiginEpoch : get_block_epoch cfg store origin = e)
+    (hanchorLe : B.anchor.epoch ≤ e)
+    {Cert : Checkpoint Root → Prop} {Supp : Root → Epoch → Prop}
+    (hcert : Cert (B.state.C origin e))
+    (hsupp : Supp origin e) :
+    E.AcceptedHistoricalA32GatePayloadCoreAt cfg ext B origin e Cert Supp :=
+  { origin_block := store.blocks origin
+    origin_at := E.acceptedBlockAt_of_causal_known cfg ext hstore horigin
+    origin_epoch := by simpa only [get_block_epoch] using horiginEpoch
+    anchor_epoch_le := hanchorLe
+    certified := hcert
+    support_branch := hsupp }
+
 /-- Generic fixed-source gate constructor.  The gate realization is still
 required — it is what bounds the anchor epoch — but the two payload
 obligations are supplied by the caller, which is what lets the strong trunk

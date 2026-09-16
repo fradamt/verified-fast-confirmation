@@ -530,7 +530,7 @@ private theorem AcceptedBlockAt.executionRoot_for_actualOrientation
 /-- Materialize a retained lineage in an ordinary execution-boundary store.
 This is accepted-root reflection plus the trusted-anchor boundary walk; it
 does not use an endpoint, no-crossing fact, or safety conclusion. -/
-private theorem AcceptedHistoricalA32LineageAt.payloadAtExecutionStore
+private theorem AcceptedHistoricalA32LineageCoreAt.payloadAtExecutionStore
     (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
     (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
     (hphase : Phase0SourceCoherence cfg ext)
@@ -538,10 +538,16 @@ private theorem AcceptedHistoricalA32LineageAt.payloadAtExecutionStore
     (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
       (E := E) (anchor := B.anchor))
     {v : ValidatorIndex} {q : Nat} {tip : Root} {e : Epoch}
-    (hlineage : E.AcceptedHistoricalA32LineageAt cfg ext B tip e)
+    {Cert : Checkpoint Root → Prop} {Supp : Root → Epoch → Prop}
+    (hlineage : E.AcceptedHistoricalA32LineageCoreAt cfg ext B tip e
+      Cert Supp)
     (htip : tip ∈ (E.store cfg ext v q).block_roots)
-    (htipEpoch : get_block_epoch cfg (E.store cfg ext v q) tip = e) :
-    Nonempty (E.AcceptedHistoricalA32GatePayloadAt cfg ext B tip e) := by
+    (htipEpoch : get_block_epoch cfg (E.store cfg ext v q) tip = e)
+    (hsuppT : B.state.C tip e = B.state.C hlineage.origin e →
+      B.state.GJ tip = B.state.GJ hlineage.origin →
+      Supp hlineage.origin e → Supp tip e) :
+    Nonempty (E.AcceptedHistoricalA32GatePayloadCoreAt cfg ext B tip e
+      Cert Supp) := by
   obtain ⟨ast, ablk, hgen, hgenSlot, hgenParent⟩ := hT.genesis
   let store := E.store cfg ext v q
   have hstoreCausal : E.CausalStore cfg ext store := by
@@ -582,13 +588,20 @@ private theorem AcceptedHistoricalA32LineageAt.payloadAtExecutionStore
       E.trustedAnchor_boundaryWalkAtEpoch_of_trajectory cfg ext hT
         hanchor hboundary v q hanchorLe htip
   exact ⟨hlineage.payloadAtTip cfg ext hphase hstoreCausal hstoreParent
-    horigin htip' horiginEpoch htipEpoch' htipOrigin htipWalk⟩
+    horigin htip' horiginEpoch htipEpoch' htipOrigin htipWalk hsuppT⟩
 
 /-- The completed-prefix historical induction instantiates the retained
-payload producer on the exact strict selector result.  Its lineage invariant
-is stronger than the producer's no-crossing antecedent, so that antecedent is
-not used here. -/
-noncomputable def completedPrefix_acceptedHistoricalA32PayloadProducerAt
+certificate producer on the exact strict selector result.
+
+**This is where the no-crossing antecedent becomes load-bearing.**  Under the
+lazy instantiation the lineage carried at write-back second `n + 1` would
+require the threaded fold output *at second `n`*, which is what the enclosing
+dispatcher is proving.  But `hnoCrossing` says this call created no payload at
+all: it transported the input's.  So the transformer is run in its no-crossing
+form from the invariant at second `n`, whose certification closure is
+discharged by `hprior` — the strictly earlier fold output.  This is D1† of
+`docs/crossing-call-support-residue.md` §2.1, now recorded in the types. -/
+noncomputable def completedPrefix_acceptedHistoricalCertificateProducerAt
     (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
     (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
     (hC : E.AcceptedHistoricalA32CompletedPrefixCallAssumptions cfg ext)
@@ -599,41 +612,36 @@ noncomputable def completedPrefix_acceptedHistoricalA32PayloadProducerAt
     {v : ValidatorIndex} (hv : v ∈ E.honest) {n : Nat}
     (hcall : E.IsFCRCallAt cfg ext v n)
     (hHn1 : E.WithinHorizon cfg (n + 1))
-    (_hprior : E.PriorStrictCallWriteBackSafe cfg ext n)
+    (hprior : E.PriorStrictCallWriteBackSafe cfg ext n)
     (hinput : (E.getLatestConfirmedTraceAt cfg ext v n).afterObserved ∈
       (E.fcrStep cfg ext v n).store.block_roots)
     (hselector : StrictSelectorAdvanceAt cfg ext
       (E.fcrStep cfg ext v n)
       (E.getLatestConfirmedTraceAt cfg ext v n)) :
-    E.AcceptedHistoricalA32PayloadProducerAt cfg ext B
+    E.HistoricalCurrentTargetCertificateProducerAt cfg ext B.anchor (n + 1)
       (E.fcrStep cfg ext v n)
       (E.getLatestConfirmedTraceAt cfg ext v n).afterObserved
       (E.getLatestConfirmedTraceAt cfg ext v n).result := by
-  intro hcurrent _hnoCrossing
+  intro hcurrent hnoCrossing
   let query := E.fcrStep cfg ext v n
   let trace := E.getLatestConfirmedTraceAt cfg ext v n
   have hqueryStore : query.store = E.store cfg ext v (n + 1) := by
     simpa only [query] using E.fcrStep_store cfg ext v n
-  have hwrite : E.confirmed cfg ext v (n + 1) = trace.result := by
-    exact (E.confirmed_succ_of_advance cfg ext v n hcall).trans
-      trace.result_eq.symm
-  have hcurrentConfirmed : get_block_epoch cfg
-        (E.store cfg ext v (n + 1)) (E.confirmed cfg ext v (n + 1)) =
-      get_current_store_epoch cfg (E.store cfg ext v (n + 1)) := by
-    rw [hwrite]
-    simpa only [query, trace, hqueryStore] using hcurrent
-  have hinvariant :=
+  have hHn : E.WithinHorizon cfg n :=
+    E.withinHorizon_mono cfg (Nat.le_succ n) hHn1
+  have hinvariantN :=
     E.acceptedHistoricalA32CurrentLineage_invariant_of_completedPrefixes
-      cfg ext B hT hC hfit hanchor hboundary v hv (n + 1) hHn1
-  obtain ⟨e, ⟨hlineageConfirmed⟩⟩ :=
-    hinvariant.current_lineage hcurrentConfirmed
-  have hlineage : E.AcceptedHistoricalA32LineageAt cfg ext B
-      trace.result e := by
-    simpa only [hwrite] using hlineageConfirmed
+      cfg ext B hT hC hfit hanchor hboundary v hv n hHn
+  obtain ⟨e, ⟨hlineage⟩⟩ :=
+    E.getLatestConfirmedTraceAt_currentLineage_step_noCrossing cfg ext B hT
+      hanchor hboundary hv hHn1 hinvariantN.confirmed_known hcurrent
+      hnoCrossing (E.lazyCertAt_anchor cfg ext)
+      (fun _ _ h => E.lazySupportAt_anchor cfg ext h)
+      hinvariantN.current_lineage
   have hresultKnown : trace.result ∈ query.store.block_roots := by
-    have hknown := hinvariant.confirmed_known
-    rw [hwrite] at hknown
-    simpa only [hqueryStore] using hknown
+    simpa only [query, trace] using
+      E.getLatestConfirmedTraceAt_result_known cfg ext B hT hanchor hboundary
+        hv hHn1 hinvariantN.confirmed_known
   have hqueryCausal : E.CausalStore cfg ext query.store := by
     rw [hqueryStore]
     exact E.store_causal cfg ext v (n + 1)
@@ -646,11 +654,14 @@ noncomputable def completedPrefix_acceptedHistoricalA32PayloadProducerAt
   have hresultEpoch : get_block_epoch cfg query.store trace.result = e := by
     simpa only [get_block_epoch, ← htipBlock] using hlineage.tip_epoch
   have hpayload : Nonempty
-      (E.AcceptedHistoricalA32GatePayloadAt cfg ext B trace.result e) := by
+      (E.AcceptedHistoricalA32GatePayloadCoreAt cfg ext B trace.result e
+        (E.LazyCertAt cfg ext B n) (E.LazySupportAt cfg ext B v n)) := by
     apply hlineage.payloadAtExecutionStore cfg ext B hT hC.phase0_source
-      hanchor hboundary
+      hanchor hboundary (v := v) (q := n + 1)
     · simpa only [hqueryStore] using hresultKnown
     · simpa only [hqueryStore] using hresultEpoch
+    · intro hcheckpoint hsource hsupp
+      exact E.lazySupportAt_transport cfg ext hcheckpoint hsource hsupp
   have hparent : ParentSlotLt query.store := by
     let hdomain := E.storeDomainK_of_acceptedGlobalTrajectory cfg ext B hT
       hanchor hboundary
@@ -695,19 +706,23 @@ noncomputable def completedPrefix_acceptedHistoricalA32PayloadProducerAt
       hboundaryResult hwalkHead
   have heCurrent : e = get_current_store_epoch cfg query.store := by
     exact hresultEpoch.symm.trans hcurrent
-  refine ⟨e, ?_, hpayload⟩
-  calc
-    get_current_target cfg query.store =
-        get_checkpoint_for_block cfg query.store
-          (get_head cfg query.store).root
-            (get_current_store_epoch cfg query.store) := rfl
-    _ = get_checkpoint_for_block cfg query.store
-          (get_head cfg query.store).root e := by rw [heCurrent]
-    _ = get_checkpoint_for_block cfg query.store trace.result e := by
-      exact congrArg (Checkpoint.mk e) hcheckpoint
-    _ = B.state.C trace.result e :=
-      (B.coherence.checkpoint_of_known hqueryCausal trace.result
-        hresultKnown e).symm
+  have htargetEq : get_current_target cfg query.store =
+      B.state.C trace.result e := by
+    calc
+      get_current_target cfg query.store =
+          get_checkpoint_for_block cfg query.store
+            (get_head cfg query.store).root
+              (get_current_store_epoch cfg query.store) := rfl
+      _ = get_checkpoint_for_block cfg query.store
+            (get_head cfg query.store).root e := by rw [heCurrent]
+      _ = get_checkpoint_for_block cfg query.store trace.result e := by
+        exact congrArg (Checkpoint.mk e) hcheckpoint
+      _ = B.state.C trace.result e :=
+        (B.coherence.checkpoint_of_known hqueryCausal trace.result
+          hresultKnown e).symm
+  -- the certification closure, discharged by the strictly earlier fold output
+  rw [htargetEq]
+  exact (Classical.choice hpayload).certified hprior
 
 /-! ## Consumer-ready actual-call orientation -/
 
@@ -819,14 +834,14 @@ theorem actualCall_strictSelected_result_and_child_ancestor_of_endpointJustified
     intro hfixed
     exact hselector.result_ne_input
       (hselector.result_eq.trans hfixed)
-  have hhistorical : E.AcceptedHistoricalA32PayloadProducerAt cfg ext B
-      query trace.afterObserved trace.result := by
+  have hhistorical : E.HistoricalCurrentTargetCertificateProducerAt cfg ext
+      B.anchor (n + 1) query trace.afterObserved trace.result := by
     simpa only [query, trace] using
-      E.completedPrefix_acceptedHistoricalA32PayloadProducerAt
+      E.completedPrefix_acceptedHistoricalCertificateProducerAt
         cfg ext B hT hC hfit hanchor hboundary hv hcall hHn1 hprior hinput
           hselector
-  have hhistorical' : E.AcceptedHistoricalA32PayloadProducerAt cfg ext B
-      query trace.afterObserved
+  have hhistorical' : E.HistoricalCurrentTargetCertificateProducerAt cfg ext
+      B.anchor (n + 1) query trace.afterObserved
         (find_latest_confirmed_descendant cfg ext query
           trace.afterObserved) := by
     rw [← hselector.result_eq]
