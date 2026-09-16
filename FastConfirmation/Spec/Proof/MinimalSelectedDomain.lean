@@ -68,7 +68,7 @@ theorem SpecAssumptions.toSelectedMarginAssumptions {E : Execution Root}
   obtain ⟨hgen, hwf, hdiv, hhb, hsync, hec, hsv, hbb, hji⟩ := hSA
   exact ⟨hgen, hwf, hdiv, hhb, hsync, hec, hsv, hbb,
     ⟨fun w hw m _hH => (hji.checkpoint_known w hw m).1,
-      hji.justified_checkpoint_cached⟩⟩
+      hji.justified_cached⟩⟩
 
 private theorem exists_mem_of_map_sum_pos_minimal {Alpha : Type*}
     (l : List Alpha) (f : Alpha → ℕ) (h : 0 < (l.map f).sum) :

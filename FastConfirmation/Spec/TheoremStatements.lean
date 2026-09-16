@@ -101,7 +101,20 @@ structure JustificationInterface (E : Execution Root) : Prop where
   /-- the justified checkpoint itself was a two-thirds-attested target,
       delivered under synchrony — its checkpoint state is cached at every
       honest node (`get_weight`/`get_proposer_score` read it on every
-      `get_head`; without this the totalized read is junk). -/
+      `get_head`; without this the totalized read is junk).
+
+      Pinned-spec origin: fork-choice.md:358
+      `def get_weight(store, node): state =
+      store.checkpoint_states[store.justified_checkpoint]`, an unguarded dict
+      read — this field is that read's `KeyError`-freedom, made explicit.
+      The real pipeline justifies only checkpoints that gathered ≥2/3
+      attestations and `on_attestation`'s `store_target_checkpoint_state`
+      caches every validated target, but `update_checkpoints` does not
+      re-cache, so the fact enters as an explicit FFG-pipeline property.
+
+      (This field absorbed the former `justified_checkpoint_cached`, which was
+      the same proposition up to bound-variable renaming; see
+      `docs/plumbing-spec-citations.md` P-2.) -/
   justified_cached : ∀ v ∈ E.honest, ∀ n : ℕ,
     E.WithinHorizon cfg n →
     (E.store cfg ext v n).justified_checkpoint ∈
@@ -163,7 +176,7 @@ structure JustificationInterface (E : Execution Root) : Prop where
   /-- Greatest-unrealized cache:
       the previous-epoch greatest unrealized checkpoint an honest node's FCR
       store carries is among its store's keyed checkpoint states (same
-      ≥2/3-attested-target caching provenance as `justified_checkpoint_cached`
+      ≥2/3-attested-target caching provenance as `justified_cached`
       / `observed_justified_cached` — the checkpoint was an attestation
       target, and `store_target_checkpoint_state` keys every validated
       target; the pinned spec's rotation does not re-key). -/
@@ -204,17 +217,6 @@ structure JustificationInterface (E : Execution Root) : Prop where
       is_ancestor (E.store cfg ext w m)
         (get_node_for_root (E.store cfg ext w m).finalized_checkpoint.root)
         (get_node_for_root (E.store cfg ext v k).finalized_checkpoint.root) = true
-  /-- The justified balance
-      source is cached: an honest store's justified checkpoint is among its
-      keyed checkpoint states (the real pipeline justifies only checkpoints
-      that gathered ≥2/3 attestations, and `on_attestation`'s
-      `store_target_checkpoint_state` caches every validated target — the
-      pinned spec's `update_checkpoints` does not re-cache, so the fact
-      enters as an explicit FFG-pipeline property). -/
-  justified_checkpoint_cached : ∀ w ∈ E.honest, ∀ m : ℕ,
-    E.WithinHorizon cfg m →
-    (E.store cfg ext w m).justified_checkpoint ∈
-      (E.store cfg ext w m).checkpoint_state_keys
   /-- Observed/unrealized
       checkpoint knownness: the roots of the store's unrealized justified
       checkpoint, its previous-epoch greatest unrealized checkpoint, and the

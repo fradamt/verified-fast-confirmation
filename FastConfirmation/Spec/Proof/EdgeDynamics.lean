@@ -290,7 +290,7 @@ theorem forkEdgeInput_of_residual (hwf : WellFormedExecution E)
 /-- **`hval` from the justification interface.** The `EdgeInputResidual.hval`
 field states that the justified balance-source state carries the ground registry.
 It follows from
-`JustificationInterface.justified_checkpoint_cached`: the justified checkpoint is a
+`JustificationInterface.justified_cached`: the justified checkpoint is a
 *keyed* checkpoint state because the real pipeline justifies only ≥2/3-attested targets that
 `on_attestation`'s `store_target_checkpoint_state` cached) together with
 `Registry.registryConstant`'s checkpoint-state clause (every keyed checkpoint state at an
@@ -304,7 +304,7 @@ theorem hval_of_interface (hec : ExternalsCoherence cfg ext E)
     ((E.store cfg ext w m).checkpoint_states
       (E.store cfg ext w m).justified_checkpoint).validators = E.registry :=
   (E.registryConstant cfg ext hec hgen w m).2 _
-    (hji.justified_checkpoint_cached w hw m hH)
+    (hji.justified_cached w hw m hH)
 
 /-- The cached justified balance source is no later than the endpoint execution
 slot, hence its current epoch is below the endpoint's verification horizon. -/
@@ -316,7 +316,7 @@ theorem justified_balance_source_epoch_lt_horizon
     (w : ValidatorIndex) (hw : w ∈ E.honest) (m : ℕ) (hH : E.WithinHorizon cfg m) :
     get_current_epoch cfg ((E.store cfg ext w m).checkpoint_states
       (E.store cfg ext w m).justified_checkpoint) < E.verification_horizon := by
-  have hcached := hji.justified_checkpoint_cached w hw m hH
+  have hcached := hji.justified_cached w hw m hH
   have hslot := (E.stateSlotsLE cfg ext hdiv hec hgen w m).2 _ hcached
   exact lt_of_le_of_lt (Nat.div_le_div_right hslot) hH.2.2
 
