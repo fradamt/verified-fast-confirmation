@@ -204,24 +204,6 @@ theorem no_previousAcceptedEdge_away_from_epoch_start
   exact bounded_no_previousAcceptedEdge_away_from_epoch_start
     vf nf a c hedge hnotStart
 
-theorem witnessSelectedHelperProvisos
-    {v : ValidatorIndex} (hv : v ∈ witnessExecution.honest) {n : ℕ}
-    (hHn1 : witnessExecution.WithinHorizon witnessConfig (n + 1))
-    (hselector : getLatestSelectorGuard witnessConfig
-      (witnessExecution.fcrStep witnessConfig witnessExternals v n)
-      (witnessExecution.getLatestConfirmedTraceAt witnessConfig
-        witnessExternals v n).afterObserved) :
-    SelectedHelperProvisosAt witnessConfig witnessExternals witnessExecution
-      v (n + 1)
-      (witnessExecution.fcrStep witnessConfig witnessExternals v n)
-      (witnessExecution.getLatestConfirmedTraceAt witnessConfig
-        witnessExternals v n).afterObserved := by
-  refine { current_target := ?_ }
-  intro a c hedge
-  exact False.elim
-    (no_currentTargetAcceptedEdge_under_selector
-      hv hHn1 hselector a c hedge)
-
 /-! ## Concrete late-prefix geometry used by Paper A3.2 -/
 
 structure LateStoreFacts (w : ValidatorIndex) (m : ℕ) : Prop where

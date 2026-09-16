@@ -33,20 +33,6 @@ namespace Execution
 
 variable (E : Execution Root)
 
-/-- A retained tentative epoch-crossing exposes exactly the executable gate
-and the normative target-support proviso attached to that gate. -/
-theorem currentTargetAcceptedEdge_gate_and_support
-    {v : ValidatorIndex} {q : ℕ}
-    {query : FastConfirmationStore Root} {latestConfirmedRoot a c : Root}
-    (hprovisos : SelectedHelperProvisosAt cfg ext E v q query
-      latestConfirmedRoot)
-    (hedge : CurrentTargetAcceptedEdge cfg ext query latestConfirmedRoot a c) :
-    will_current_target_be_justified cfg ext query.store = true ∧
-      HonestVotesSupportTarget cfg E
-        (get_current_target cfg query.store) q := by
-  exact ⟨hedge.current_target_gate cfg ext,
-    hprovisos.current_target a c hedge⟩
-
 /-- Once a concrete child is known to be on the query head's chain and to
 belong to the query's current epoch, the helper target is exactly that child's
 epoch checkpoint.  These geometric hypotheses are separate from
