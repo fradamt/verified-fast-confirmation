@@ -565,6 +565,18 @@ and `Weak.StrictSelectedHistoricalSIRCallSite` (`WeakPreQuerySIR.lean:290-323`):
 delete the `support` fields; `strictSelectedHistoricalSIRCallSite` (`:98-137`) and
 its weak twin then drop `hprovisos` (the gates are already derived, §1).
 
+*Landed.* Both inductives also lose their `E` parameter — the two `support`
+fields were their only mention of an execution, so the classification is now
+purely executable. The proviso'd pinning interface
+`NoConflictCertificatePinningProducerAt` and both of its dischargers are
+deleted, together with the two `completedPrefix_noConflict_certifiedJustified_*`
+proofs they wrapped and the pre-accepted legacy island
+(`currentEpochCertificatePinned_of_previousNoConflict`,
+`endpointJustified_root_eq_currentTarget_of_certificates`,
+`epochStart_or_endpointCurrentTargetPinned_of_callSite`, and the two
+`…_of_historicalCertificateProducers` wrappers), which had no callers outside
+their own module and could not survive the interface change.
+
 **N6 — three-way endpoint origin (signature change).**
 ```lean
 def EndpointOriginOrPinnedAt (anchor) (q) (w m) (T : Checkpoint Root) : Prop :=
@@ -583,10 +595,43 @@ built by `by_cases` on case α from N1/N2/N3, and consumed by re-cased variants 
 lemmas; arm 3 → the existing bracket route with the pin in place of
 `epochStart_or_endpointCurrentTargetPinned_of_observerCallSite`'s output.
 
+*Landed* as `Execution.EndpointOriginOrPinnedAt` with arm 2 stated as the
+existing `Execution.CausalHonestTargetAt` (N2 produces exactly that shape, so
+the raw vote conjuncts are not repeated), and with the producer interface
+`Execution.EndpointOriginOrPinnedProducerAt` taking *either* executable gate
+boolean — the crossing arm's `will_current_target_be_justified` and the
+no-conflict arm's `will_no_conflicting_checkpoint_be_justified` both reduce to
+the raw helper inequality (§5.5), so one interface serves both live arms and
+the accepted live-gate certificate producer leaves the Trunk-B path entirely.
+
+Three shared consumers were factored out rather than duplicating the case
+split four times: `preQueryVoteSelectedSIRBracketAt_of_startOrPin` (arm 3 and
+the epoch-start short circuit), `…_of_trustedAnchorEndpoint` (arm 1) and
+`selected_result_and_child_ancestor_of_causalHonestTarget` (arm 2). The
+epoch-start short circuit stays outside the disjunction, so the call-site
+dispatcher's conclusion is `is_start_slot ∨ EndpointOriginOrPinnedAt`.
+
 **N7 — delete the field.** `Weak.SelectedHelperProvisosAt.selected_previous_result_no_conflict`
 and the Trunk-B half of `current_target` become unused;
 `observer_helper_provisos` (`WeakSelectedStrictEdgeFilterSupply.lean:236-245`) can
 go once Trunk A is handled.
+
+*Orphaned by N5/N6, for the N7 sweep* (all still compile; none is reachable
+from a public witness):
+
+| Declaration | Module | Why it is now dead |
+|---|---|---|
+| `selected_previous_result_no_conflict` field | `SelectedTraceFilterPipeline.lean`, `WeakSelectedStrictEdgeFilterSupply.lean` | supplied, never read |
+| `selectedPreviousResult_noConflict_gate_and_support` | `SelectedA32Support.lean` | last consumer was the call-site classifier |
+| `certifiedCurrentTarget_of_crossing` | `SelectedPreQueryHistoricalSIR.lean` | already dead before this wave |
+| `CurrentTargetCertificateProducerAt` + `acceptedCurrentTargetCertificateProducerAt_of_gateProducer` | `SelectedPreQueryHistoricalSIR.lean`, `CurrentTargetCertificateRealization.lean` | crossing arm no longer takes the certificate route |
+| `noConflict_certifiedJustified_root_eq_currentTarget` | `NoConflictCertificatePinning.lean` | already dead before this wave |
+| `noConflict_arithmeticBranch_oneThird_of_prefixEvidence`, `…_of_currentTargetGate` | `WeakHistoricalA32CallSupplier.lean` | N4 wrappers; the producers now call `…_of_rawGate` / `rawGate_of_executableGate` directly |
+
+`currentTargetAcceptedEdge_gate_and_support` (`SelectedA32Support.lean:38`) and
+its weak twin (`WeakHistoricalA32Step.lean:280`) stay: they are Trunk A's
+crossing-lineage hubs, and `SelectedHelperProvisosAt.current_target` is still
+read through them.
 
 **Blast radius:** `SelectedPreQueryHistoricalSIR.lean`, `WeakPreQuerySIR.lean`,
 `SelectedJustifiedCompatibility.lean`, `AcceptedSelectedJustifiedOrientation.lean`,

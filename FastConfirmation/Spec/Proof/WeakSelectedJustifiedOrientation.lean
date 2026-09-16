@@ -96,7 +96,7 @@ def HistoricalA32PayloadProducerAt (E : Execution Root)
       Nonempty (E.AcceptedHistoricalA32GatePayloadAt cfg ext B result e)
 
 /-- Observer twin of
-`Execution.epochStart_or_endpointCurrentTargetPinned_of_acceptedCallSite`.
+`Execution.epochStart_or_endpointOriginOrPinned_of_acceptedCallSite`.
 
 Only two things change.  The call-site classifier is stage S8a's weak
 inductive, whose two executable gates are the *weak* rule booleans, so each is
@@ -106,50 +106,39 @@ bridges `will_current_target_be_justified_of_weak` /
 one-directional weak ⇒ strong, which is exactly the direction needed here.
 And the historical arm consumes the weak producer interface above instead of
 the strong one.  The accountability step
-(`CertificateAccountability.justified_unique`) and the endpoint certificate
-(`ExactPrefixAcceptedFFGSemantics.endpointJustified_certificate`) are read at
-the honest endpoint's store and are reused verbatim. -/
-theorem epochStart_or_endpointCurrentTargetPinned_of_observerCallSite
+(`CertificateAccountability.justified_unique`), the endpoint certificate
+(`ExactPrefixAcceptedFFGSemantics.endpointJustified_certificate`) and the
+gate-driven endpoint disjunction
+(`Execution.EndpointOriginOrPinnedProducerAt`) are read at the honest
+endpoint's store and are reused verbatim. -/
+theorem epochStart_or_endpointOriginOrPinned_of_observerCallSite
     (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
     (hgen : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
       E.genesis_store = get_forkchoice_store cfg ast ablk ∧
         ast.slot = ablk.message.slot)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     {q : Nat} {query : FastConfirmationStore Root}
-    {input result : Root} {store : Store Root}
-    (hstore : E.CausalStore cfg ext store)
-    (hcall : Weak.StrictSelectedHistoricalSIRCallSite cfg ext E q query
+    {input result : Root} {w : ValidatorIndex} {m : Nat}
+    (hcall : Weak.StrictSelectedHistoricalSIRCallSite cfg ext q query
       input result)
     (hacc : CertificateAccountability cfg E B.anchor)
-    (hcurrent : E.AcceptedCurrentTargetA32GateRealizationProducerAt
-      cfg ext B.anchor B.state q query)
     (hhistorical : Weak.HistoricalA32PayloadProducerAt cfg ext E B
       query input result)
-    (hnoConflict : E.NoConflictCertificatePinningProducerAt
-      cfg ext B.anchor q query) :
+    (hproducer : E.EndpointOriginOrPinnedProducerAt cfg ext B.anchor q query) :
     is_start_slot_at_epoch cfg (get_current_slot cfg query.store) = true ∨
-      (store.justified_checkpoint.epoch =
-          (get_current_target cfg query.store).epoch →
-        store.justified_checkpoint.root =
-          (get_current_target cfg query.store).root) := by
-  have hcurrent' : E.CurrentTargetCertificateProducerAt
-      cfg ext B.anchor q query :=
-    E.acceptedCurrentTargetCertificateProducerAt_of_gateProducer
-      cfg ext B hcurrent
-  obtain ⟨hJ⟩ :=
-    Execution.ExactPrefixAcceptedFFGSemantics.endpointJustified_certificate
-      cfg ext B hgen hanchor hstore
+      E.EndpointOriginOrPinnedAt cfg ext B.anchor q w m
+        (get_current_target cfg query.store) := by
   cases hcall with
-  | currentCrossing _resultCurrent _a _c _mem _lt hgate hsupport =>
-      right
-      intro hepoch
-      obtain ⟨hT⟩ := hcurrent'
+  | currentCrossing _resultCurrent _a _c _mem _lt hgate =>
+      exact Or.inr (hproducer (Or.inr
         (will_current_target_be_justified_of_weak cfg ext
-          query.store hgate) hsupport
-      exact hacc.justified_unique hJ hT hepoch
+          query.store hgate)) w m)
   | currentHistorical hresultCurrent hnone =>
-      right
+      refine Or.inr (Or.inr (Or.inr ?_))
       intro hepoch
+      obtain ⟨hJ⟩ :=
+        Execution.ExactPrefixAcceptedFFGSemantics.endpointJustified_certificate
+          cfg ext B hgen hanchor (E.store_causal cfg ext w m)
       obtain ⟨e, htarget, ⟨hpayload⟩⟩ := hhistorical hresultCurrent hnone
       have hT : CertifiedJustified cfg E B.anchor
           (get_current_target cfg query.store) := by
@@ -158,25 +147,22 @@ theorem epochStart_or_endpointCurrentTargetPinned_of_observerCallSite
       exact hacc.justified_unique hJ hT hepoch
   | previousEpochStart _resultPrevious hstart =>
       exact Or.inl hstart
-  | previousNoConflict _resultPrevious _notStart hgate hsupport =>
-      right
-      intro hepoch
-      exact hnoConflict
+  | previousNoConflict _resultPrevious _notStart hgate =>
+      exact Or.inr (hproducer (Or.inl
         (will_no_conflicting_of_weak cfg ext query.store
-          (get_current_balance_source query) hgate) hsupport
-        store.justified_checkpoint hJ hepoch
+          (get_current_balance_source query) hgate)) w m)
 
 /-! ## The three producer wrappers -/
 
 /-- Observer twin of
-`Execution.preQueryVoteSelectedSIRBracketAt_of_acceptedProducers`.
+`Execution.preQueryVoteSelectedSIRBracket_or_causalHonestTarget_of_acceptedProducers`.
 
 The honest-node binder `hv` becomes `E.ObserverCoherence cfg ext obs`; the
-call-site classifier and the three-region bracket are stage S8a's observer
-twins; `Execution.epochStart_or_endpointCurrentTargetPinned_of_acceptedCallSite`
-and `Execution.certificateAccountability_of_selectedMarginAssumptions` are
-honesty-free and reused verbatim. -/
-theorem preQueryVoteSelectedSIRBracketAt_of_observerProducers
+call-site classifier, the three-region bracket and the trusted-anchor bracket
+are stage S8a's observer twins;
+`Execution.certificateAccountability_of_selectedMarginAssumptions` and the
+endpoint-side arms of the disjunction are honesty-free and reused verbatim. -/
+theorem preQueryVoteSelectedSIRBracket_or_causalHonestTarget_of_observerProducers
     (hA : SelectedMarginAssumptions cfg ext E)
     (hwalkDomain : E.PostAnchorHonestVoteTargetWalkDomain cfg ext)
     (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
@@ -198,79 +184,33 @@ theorem preQueryVoteSelectedSIRBracketAt_of_observerProducers
       (E.slot_start cfg (E.slot_at cfg q)))
     (hstrict :
       Weak.find_latest_confirmed_descendant cfg ext query input ≠ input)
-    (hprovisos : Weak.SelectedHelperProvisosAt cfg ext E obs q query input)
-    (hcurrent : E.AcceptedCurrentTargetA32GateRealizationProducerAt
-      cfg ext B.anchor B.state q query)
     (hhistorical : Weak.HistoricalA32PayloadProducerAt cfg ext E B
       query input (Weak.find_latest_confirmed_descendant cfg ext query input))
-    (hnoConflict : E.NoConflictCertificatePinningProducerAt
-      cfg ext B.anchor q query)
+    (hproducer : E.EndpointOriginOrPinnedProducerAt cfg ext B.anchor q query)
     {w : ValidatorIndex} (hw : w ∈ E.honest) {m : Nat}
     (hslotQM : E.slot_at cfg q ≤ E.slot_at cfg m)
     (hHm : E.WithinHorizon cfg m) :
     E.PreQueryVoteSelectedSIRBracketAt cfg ext q input
-      (Weak.find_latest_confirmed_descendant cfg ext query input) w m := by
-  intro i hi s k a hs0 hsq _hsm hsH hvote htarget
+        (Weak.find_latest_confirmed_descendant cfg ext query input) w m ∨
+      E.CausalHonestTargetAt cfg ext q w m := by
   have hcall := Weak.strictSelectedHistoricalSIRCallSite cfg ext hA
-    hcoh hqH query hquery input hinput hinputEpoch hstrict hprovisos
+    hcoh hqH query hquery input hinput hinputEpoch hstrict
   have hacc : CertificateAccountability cfg E B.anchor :=
     E.certificateAccountability_of_selectedMarginAssumptions cfg ext hA
-  have hstartOrPin :=
-    Weak.epochStart_or_endpointCurrentTargetPinned_of_observerCallSite
-      cfg ext B hgen hanchor (E.store_causal cfg ext w m)
-      hcall hacc hcurrent hhistorical hnoConflict
-  exact Weak.selectedSIRThreeRegionBracket_of_preQueryVote_and_pinning
-    cfg ext hA hwalkDomain hcoh hqH query hquery input hinput hinputEpoch
-      hbase hstrict hw hslotQM hHm hi hs0 hsq hsH hvote htarget
-      hstartOrPin
-
-/-- Observer twin of
-`Execution.preQuerySelectedJustifiedCompatibilityAt_of_acceptedProducers`. -/
-theorem preQuerySelectedJustifiedCompatibilityAt_of_observerProducers
-    (hA : SelectedMarginAssumptions cfg ext E)
-    (hwalkDomain : E.PostAnchorHonestVoteTargetWalkDomain cfg ext)
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
-    (hgen : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
-      E.genesis_store = get_forkchoice_store cfg ast ablk ∧
-        ast.slot = ablk.message.slot)
-    (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
-    {obs : ValidatorIndex} (hcoh : E.ObserverCoherence cfg ext obs) {q : Nat}
-    (hqH : E.WithinHorizon cfg q)
-    (query : FastConfirmationStore Root)
-    (hquery : query.store = E.store cfg ext obs q)
-    (input : Root) (hinput : input ∈ query.store.block_roots)
-    (hinputEpoch :
-      get_block_epoch cfg query.store input =
-          get_current_store_epoch cfg query.store ∨
-        get_block_epoch cfg query.store input + 1 =
-          get_current_store_epoch cfg query.store)
-    (hbase : E.SafeFrom cfg ext input
-      (E.slot_start cfg (E.slot_at cfg q)))
-    (hstrict :
-      Weak.find_latest_confirmed_descendant cfg ext query input ≠ input)
-    (hprovisos : Weak.SelectedHelperProvisosAt cfg ext E obs q query input)
-    (hcurrent : E.AcceptedCurrentTargetA32GateRealizationProducerAt
-      cfg ext B.anchor B.state q query)
-    (hhistorical : Weak.HistoricalA32PayloadProducerAt cfg ext E B
-      query input (Weak.find_latest_confirmed_descendant cfg ext query input))
-    (hnoConflict : E.NoConflictCertificatePinningProducerAt
-      cfg ext B.anchor q query)
-    {w : ValidatorIndex} (hw : w ∈ E.honest) {m : Nat}
-    (hslotQM : E.slot_at cfg q ≤ E.slot_at cfg m)
-    (hHm : E.WithinHorizon cfg m) :
-    E.PreQuerySelectedJustifiedCompatibilityAt cfg ext B.anchor q
-      (Weak.find_latest_confirmed_descendant cfg ext query input) w m := by
-  have hvoteBracket :=
-    Weak.preQueryVoteSelectedSIRBracketAt_of_observerProducers cfg ext hA
-      hwalkDomain B hgen hanchor hcoh hqH query hquery input hinput
-      hinputEpoch hbase hstrict hprovisos hcurrent hhistorical hnoConflict
-      hw hslotQM hHm
-  have hbracket := Weak.preQuerySelectedSIRBracketAt_of_voteBracket_strict
-    cfg ext hA hanchor hcoh hqH query hquery input hinput hstrict
-      hw hslotQM hHm hvoteBracket
-  exact Weak.preQuerySelectedJustifiedCompatibilityAt_of_threeRegionBracket
-    cfg ext hA hcoh hqH query hquery input hinput hstrict hw hslotQM hHm
-      hbracket
+  rcases Weak.epochStart_or_endpointOriginOrPinned_of_observerCallSite
+      cfg ext B hgen hanchor (w := w) (m := m) hcall hacc hhistorical
+      hproducer with hstart | hJanchor | hcausal | hpin
+  · exact Or.inl (Weak.preQueryVoteSelectedSIRBracketAt_of_startOrPin cfg ext
+      hA hwalkDomain hcoh hqH query hquery input hinput hinputEpoch hbase
+      hstrict hw hslotQM hHm (Or.inl hstart))
+  · exact Or.inl
+      (Weak.preQueryVoteSelectedSIRBracketAt_of_trustedAnchorEndpoint cfg ext
+        hA hanchor hcoh hqH query hquery input hinput hstrict hw hslotQM hHm
+        hJanchor)
+  · exact Or.inr hcausal
+  · exact Or.inl (Weak.preQueryVoteSelectedSIRBracketAt_of_startOrPin cfg ext
+      hA hwalkDomain hcoh hqH query hquery input hinput hinputEpoch hbase
+      hstrict hw hslotQM hHm (Or.inr hpin))
 
 /-- Observer twin of
 `Execution.strictSelected_result_and_child_ancestor_of_endpointJustified_accepted`.
@@ -299,13 +239,9 @@ theorem strictSelected_result_and_child_ancestor_of_endpointJustified_at_observe
       (E.slot_start cfg (E.slot_at cfg q)))
     (hstrict :
       Weak.find_latest_confirmed_descendant cfg ext query input ≠ input)
-    (hprovisos : Weak.SelectedHelperProvisosAt cfg ext E obs q query input)
-    (hcurrent : E.AcceptedCurrentTargetA32GateRealizationProducerAt
-      cfg ext B.anchor B.state q query)
     (hhistorical : Weak.HistoricalA32PayloadProducerAt cfg ext E B
       query input (Weak.find_latest_confirmed_descendant cfg ext query input))
-    (hnoConflict : E.NoConflictCertificatePinningProducerAt
-      cfg ext B.anchor q query)
+    (hproducer : E.EndpointOriginOrPinnedProducerAt cfg ext B.anchor q query)
     {c : Root} {w : ValidatorIndex} (hw : w ∈ E.honest) {m : Nat}
     (hHm : E.WithinHorizon cfg m)
     (hslotQM : E.slot_at cfg q ≤ E.slot_at cfg m)
@@ -349,17 +285,24 @@ theorem strictSelected_result_and_child_ancestor_of_endpointJustified_at_observe
   have hwalkDomain : E.PostAnchorHonestVoteTargetWalkDomain cfg ext :=
     E.postAnchorHonestVoteTargetWalkDomain_of_acceptedGlobalTrajectory
       cfg ext B hT hanchor hboundary
-  have hpre :=
-    Weak.preQuerySelectedJustifiedCompatibilityAt_of_observerProducers
-      cfg ext hA hwalkDomain B hgenShort hanchor hcoh hqH query hquery
-      input hinput hinputEpoch hbase hstrict hprovisos hcurrent
-      hhistorical hnoConflict hw hslotQM hHm
-  have horigin : E.EndpointJustificationOriginAt cfg ext B.anchor w m :=
-    Execution.ExactPrefixAcceptedFFGSemantics.endpointJustificationOriginAt
-      cfg ext B hT hanchor hboundary
-  exact E.selected_result_and_child_ancestor_of_endpoint_justified_causal_minimal
-    cfg ext hA hwalkDomain hw hHm hslotQM hcM hselectedC
-      hselectedKnown hIH hpre horigin hnotCovered
+  rcases
+      Weak.preQueryVoteSelectedSIRBracket_or_causalHonestTarget_of_observerProducers
+        cfg ext hA hwalkDomain B hgenShort hanchor hcoh hqH query hquery
+        input hinput hinputEpoch hbase hstrict hhistorical hproducer
+        hw hslotQM hHm with hvoteBracket | hcausal
+  · have hpre :=
+      Weak.preQuerySelectedJustifiedCompatibilityAt_of_voteBracket
+        cfg ext hA hanchor hcoh hqH query hquery input hinput hstrict
+          hw hslotQM hHm hvoteBracket
+    have horigin : E.EndpointJustificationOriginAt cfg ext B.anchor w m :=
+      Execution.ExactPrefixAcceptedFFGSemantics.endpointJustificationOriginAt
+        cfg ext B hT hanchor hboundary
+    exact E.selected_result_and_child_ancestor_of_endpoint_justified_causal_minimal
+      cfg ext hA hwalkDomain hw hHm hslotQM hcM hselectedC
+        hselectedKnown hIH hpre horigin hnotCovered
+  · exact E.selected_result_and_child_ancestor_of_causalHonestTarget
+      cfg ext hA hwalkDomain hw hHm hslotQM hcM hselectedC hselectedKnown
+        hIH hcausal hnotCovered
 
 /-! ## The two actual-call facts of the residual bundle
 
@@ -371,9 +314,14 @@ input epoch dichotomy from the block-slot upper bound and
 along `hselector.result_eq`. -/
 
 /-- The observer-call form of the two orientation premises, shared by both
-theorems below: the query store identity, the input's epoch dichotomy, the
-strictness of the selector step, the observer-quantified helper provisos, and
-the two accepted producers landed in `WeakHistoricalA32CallSupplier.lean`. -/
+theorems below: the input's epoch dichotomy, the strictness of the selector
+step, and the gate-driven endpoint origin/pinning producer landed in
+`WeakHistoricalA32CallSupplier.lean`.
+
+Since **N5** of `docs/trunkB-two-case-discharge.md` §7 the Trunk-B route needs
+neither `Weak.ObserverHistoricalA32CallAssumptions.observer_helper_provisos`
+nor the accepted live current-target gate producer: both gate arms of the
+call site are served by `Execution.EndpointOriginOrPinnedProducerAt`. -/
 private theorem observerCall_orientation_inputs
     (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
     (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
@@ -384,7 +332,7 @@ private theorem observerCall_orientation_inputs
     (hboundary : Execution.TrustedAnchorBoundaryAligned (cfg := cfg)
       (E := E) (anchor := B.anchor))
     (hcoh : E.ObserverCoherence cfg ext obs) {n : Nat}
-    (hcall : E.IsFCRCallAt cfg ext obs n)
+    (_hcall : E.IsFCRCallAt cfg ext obs n)
     (hHn1 : E.WithinHorizon cfg (n + 1))
     (hinput : (E.weakGetLatestConfirmedTraceAt cfg ext obs n).afterObserved ∈
       (E.weakFcrStep cfg ext obs n).store.block_roots)
@@ -401,12 +349,7 @@ private theorem observerCall_orientation_inputs
         (E.weakFcrStep cfg ext obs n)
         (E.weakGetLatestConfirmedTraceAt cfg ext obs n).afterObserved ≠
       (E.weakGetLatestConfirmedTraceAt cfg ext obs n).afterObserved) ∧
-    Weak.SelectedHelperProvisosAt cfg ext E obs (n + 1)
-      (E.weakFcrStep cfg ext obs n)
-      (E.weakGetLatestConfirmedTraceAt cfg ext obs n).afterObserved ∧
-    E.AcceptedCurrentTargetA32GateRealizationProducerAt cfg ext B.anchor
-      B.state (n + 1) (E.weakFcrStep cfg ext obs n) ∧
-    E.NoConflictCertificatePinningProducerAt cfg ext B.anchor (n + 1)
+    E.EndpointOriginOrPinnedProducerAt cfg ext B.anchor (n + 1)
       (E.weakFcrStep cfg ext obs n) := by
   have hquery : (E.weakFcrStep cfg ext obs n).store =
       E.store cfg ext obs (n + 1) :=
@@ -429,11 +372,8 @@ private theorem observerCall_orientation_inputs
           obs (n + 1)
           (E.weakGetLatestConfirmedTraceAt cfg ext obs n).afterObserved
             (by simpa only [hquery] using hinput))
-  refine ⟨?_, ?_, hC.observer_helper_provisos n hcall hHn1
-      hselector.guard_true,
-    E.observerCall_acceptedTargetGateProducerAt cfg ext B hT hC.base hfit
-      hanchor hboundary hcoh hcall hHn1,
-    E.observerCall_noConflictCertificatePinningProducerAt cfg ext B hT
+  refine ⟨?_, ?_,
+    E.observerCall_endpointOriginOrPinnedProducerAt cfg ext B hT
       hC.base hfit hanchor hboundary hcoh hHn1⟩
   · rcases Nat.eq_or_lt_of_le hinputUpper with heq | hlt
     · exact Or.inl heq
@@ -521,7 +461,7 @@ theorem observerCall_strictSelected_result_and_child_ancestor_of_endpointJustifi
       domain := hdomain }
   have hquery : query.store = E.store cfg ext obs (n + 1) :=
     E.weakFcrStep_store cfg ext obs n
-  obtain ⟨hinputEpoch, hstrict, hprovisos, hcurrent, hnoConflict⟩ :=
+  obtain ⟨hinputEpoch, hstrict, hproducer⟩ :=
     Weak.observerCall_orientation_inputs cfg ext B hT hC hfit hanchor
       hboundary hcoh hcall hHn1 hinput hselector
   have hhistorical' : Weak.HistoricalA32PayloadProducerAt cfg ext E B
@@ -561,8 +501,8 @@ theorem observerCall_strictSelected_result_and_child_ancestor_of_endpointJustifi
   have hout :=
     Weak.strictSelected_result_and_child_ancestor_of_endpointJustified_at_observer
       cfg ext hA B hT hanchor hboundary hcoh hHn1 query hquery
-      trace.afterObserved hinput hinputEpoch hbase hstrict hprovisos
-      hcurrent hhistorical' hnoConflict hw hHm hslotQM hcM hselectedC'
+      trace.afterObserved hinput hinputEpoch hbase hstrict
+      hhistorical' hproducer hw hHm hslotQM hcM hselectedC'
       hselectedKnown' hIH' hnotCovered
   have hsecond := hout.2
   rw [← hselector.result_eq] at hsecond
@@ -649,7 +589,7 @@ theorem observerCall_strictSelected_endpointJustifiedEpoch_le_result
       E.genesis_store = get_forkchoice_store cfg ast ablk ∧
         ast.slot = ablk.message.slot :=
     ⟨ast, ablk, hgen, hgenSlot⟩
-  obtain ⟨hinputEpoch, hstrict, hprovisos, hcurrent, hnoConflict⟩ :=
+  obtain ⟨hinputEpoch, hstrict, hproducer⟩ :=
     Weak.observerCall_orientation_inputs cfg ext B hT hC hfit hanchor
       hboundary hcoh hcall hHn1 hinput hselector
   have hwalkDomain : E.PostAnchorHonestVoteTargetWalkDomain cfg ext :=
@@ -661,15 +601,19 @@ theorem observerCall_strictSelected_endpointJustifiedEpoch_le_result
         (E.weakGetLatestConfirmedTraceAt cfg ext obs n).afterObserved) := by
     rw [← hselector.result_eq]
     exact hhistorical
-  have hvoteBracket : E.PreQueryVoteSelectedSIRBracketAt cfg ext
-      (n + 1) (E.weakGetLatestConfirmedTraceAt cfg ext obs n).afterObserved
-      (Weak.find_latest_confirmed_descendant cfg ext (E.weakFcrStep cfg ext obs n)
-        (E.weakGetLatestConfirmedTraceAt cfg ext obs n).afterObserved) w m :=
-    Weak.preQueryVoteSelectedSIRBracketAt_of_observerProducers cfg ext hA
-      hwalkDomain B hgenShort hanchor hcoh hHn1 (E.weakFcrStep cfg ext obs n) hquery
+  have hbracketOrCausal :
+      E.PreQueryVoteSelectedSIRBracketAt cfg ext
+          (n + 1) (E.weakGetLatestConfirmedTraceAt cfg ext obs n).afterObserved
+          (Weak.find_latest_confirmed_descendant cfg ext
+            (E.weakFcrStep cfg ext obs n)
+            (E.weakGetLatestConfirmedTraceAt cfg ext obs n).afterObserved)
+          w m ∨
+        E.CausalHonestTargetAt cfg ext (n + 1) w m :=
+    Weak.preQueryVoteSelectedSIRBracket_or_causalHonestTarget_of_observerProducers
+      cfg ext hA hwalkDomain B hgenShort hanchor hcoh hHn1
+      (E.weakFcrStep cfg ext obs n) hquery
       (E.weakGetLatestConfirmedTraceAt cfg ext obs n).afterObserved hinput
-      hinputEpoch hbase hstrict hprovisos hcurrent hhistorical' hnoConflict
-      hw hslotQM hHm
+      hinputEpoch hbase hstrict hhistorical' hproducer hw hslotQM hHm
   have hmechanical := Weak.strictSelectedResultMechanicalFacts cfg ext hA
     hcoh hHn1 (E.weakFcrStep cfg ext obs n) hquery
     (E.weakGetLatestConfirmedTraceAt cfg ext obs n).afterObserved hinput
@@ -705,35 +649,42 @@ theorem observerCall_strictSelected_endpointJustifiedEpoch_le_result
       (E.blockProvenance cfg ext obs (n + 1))
       (E.blockProvenance cfg ext w m)
       (by simpa only [hquery] using hresultQ) hresultM
-  have horigin : E.EndpointJustificationOriginAt cfg ext B.anchor w m :=
-    Execution.ExactPrefixAcceptedFFGSemantics.endpointJustificationOriginAt
-      cfg ext B hT hanchor hboundary
-  rcases horigin with hanchorEndpoint |
-      ⟨i, hi, s, k, a, hs0, hsm, hsH, hvote, htarget⟩
-  · have hbound := (E.known_descends_trustedAnchor cfg ext hA hanchor
-      w m hresultM).2
-    rw [← hanchorEndpoint] at hbound
-    simpa only [get_block_epoch, hblocksAgree] using hbound
-  · by_cases hqs : E.slot_at cfg (n + 1) ≤ s
-    · have hbound :=
-        E.endpoint_justified_epoch_le_of_causal_honest_target_minimal
-          cfg ext hA hwalkDomain hw hHm hselectedKnown hIH hi hqs hsm
-          hsH hvote htarget hnotJResult
+  rcases hbracketOrCausal with hvoteBracket | hcausal
+  · have horigin : E.EndpointJustificationOriginAt cfg ext B.anchor w m :=
+      Execution.ExactPrefixAcceptedFFGSemantics.endpointJustificationOriginAt
+        cfg ext B hT hanchor hboundary
+    rcases horigin with hanchorEndpoint |
+        ⟨i, hi, s, k, a, hs0, hsm, hsH, hvote, htarget⟩
+    · have hbound := (E.known_descends_trustedAnchor cfg ext hA hanchor
+        w m hresultM).2
+      rw [← hanchorEndpoint] at hbound
       simpa only [get_block_epoch, hblocksAgree] using hbound
-    · have hsq : s < E.slot_at cfg (n + 1) := Nat.lt_of_not_ge hqs
-      have hbracket := hvoteBracket i hi s k a hs0 hsq hsm hsH
-        hvote htarget
-      by_contra hnot
-      have habove : get_block_epoch cfg (E.store cfg ext w m)
-          (E.weakGetLatestConfirmedTraceAt cfg ext obs n).result <
-          (E.store cfg ext w m).justified_checkpoint.epoch := by
-        have hltQ := Nat.lt_of_not_ge hnot
-        simpa only [get_block_epoch, hblocksAgree] using hltQ
-      have hJResult := hbracket.above_selected (by
-        rw [← hselector.result_eq]
-        exact habove)
-      exact hnotJResult (by
-        simpa only [hselector.result_eq] using hJResult)
+    · by_cases hqs : E.slot_at cfg (n + 1) ≤ s
+      · have hbound :=
+          E.endpoint_justified_epoch_le_of_causal_honest_target_minimal
+            cfg ext hA hwalkDomain hw hHm hselectedKnown hIH hi hqs hsm
+            hsH hvote htarget hnotJResult
+        simpa only [get_block_epoch, hblocksAgree] using hbound
+      · have hsq : s < E.slot_at cfg (n + 1) := Nat.lt_of_not_ge hqs
+        have hbracket := hvoteBracket i hi s k a hs0 hsq hsm hsH
+          hvote htarget
+        by_contra hnot
+        have habove : get_block_epoch cfg (E.store cfg ext w m)
+            (E.weakGetLatestConfirmedTraceAt cfg ext obs n).result <
+            (E.store cfg ext w m).justified_checkpoint.epoch := by
+          have hltQ := Nat.lt_of_not_ge hnot
+          simpa only [get_block_epoch, hblocksAgree] using hltQ
+        have hJResult := hbracket.above_selected (by
+          rw [← hselector.result_eq]
+          exact habove)
+        exact hnotJResult (by
+          simpa only [hselector.result_eq] using hJResult)
+  · obtain ⟨i, hi, s, k, a, hqs, hsm, hsH, hvote, htarget⟩ := hcausal
+    have hbound :=
+      E.endpoint_justified_epoch_le_of_causal_honest_target_minimal
+        cfg ext hA hwalkDomain hw hHm hselectedKnown hIH hi hqs hsm
+        hsH hvote htarget hnotJResult
+    simpa only [get_block_epoch, hblocksAgree] using hbound
 
 end Weak
 

@@ -286,8 +286,13 @@ gates are the weak-rule booleans
 `Weak.will_current_target_be_justified` /
 `Weak.will_no_conflicting_checkpoint_be_justified` (the latter taking the
 call's balance source, per rule delta 4). No honesty occurs anywhere in the
-inductive. -/
-inductive StrictSelectedHistoricalSIRCallSite (E : Execution Root)
+inductive.
+
+As in the strong twin, **N5** of `docs/trunkB-two-case-discharge.md` §7
+removed the two `HonestVotesSupportTarget` fields; with them gone the
+classification mentions no execution at all, so the `E` parameter is dropped
+too. -/
+inductive StrictSelectedHistoricalSIRCallSite
     (q : ℕ) (query : FastConfirmationStore Root) (input result : Root) : Prop
   | currentCrossing
       (result_current : get_block_epoch cfg query.store result =
@@ -298,8 +303,6 @@ inductive StrictSelectedHistoricalSIRCallSite (E : Execution Root)
       (edge_crossing : get_block_epoch cfg query.store a <
         get_block_epoch cfg query.store c)
       (gate : Weak.will_current_target_be_justified cfg ext query.store = true)
-      (support : HonestVotesSupportTarget cfg E
-        (get_current_target cfg query.store) q)
   | currentHistorical
       (result_current : get_block_epoch cfg query.store result =
         get_current_store_epoch cfg query.store)
@@ -319,8 +322,6 @@ inductive StrictSelectedHistoricalSIRCallSite (E : Execution Root)
         (get_current_slot cfg query.store) ≠ true)
       (gate : Weak.will_no_conflicting_checkpoint_be_justified cfg ext
         query.store (get_current_balance_source query) = true)
-      (support : HonestVotesSupportTarget cfg E
-        (get_current_target cfg query.store) q)
 
 /-- Observer twin of
 `Execution.strictSelectedHistoricalSIRCallSite`
@@ -328,14 +329,14 @@ inductive StrictSelectedHistoricalSIRCallSite (E : Execution Root)
 
 The whole query-node honesty content of the strong proof lives inside
 `strictSelectedResultMechanicalFacts`, which is replaced wholesale by the
-stage-S2 `Weak.strictSelectedResultMechanicalFacts`. The two gate/support
-extractions become: the crossing gate from
+stage-S2 `Weak.strictSelectedResultMechanicalFacts`. The two gate extractions
+become: the crossing gate from
 `findLatestSelectedTrace_crossing_currentTargetGate` above, and the
 no-conflict gate from the weak mechanical facts' own
 `previous_result_outer_guard` field (the weak twin of
-`selected_previous_result_no_conflict_gate`); both supports come from
-`Weak.SelectedHelperProvisosAt`, the observer-quantified proviso record
-landed at stage S7. -/
+`selected_previous_result_no_conflict_gate`). Since **N5** of
+`docs/trunkB-two-case-discharge.md` §7 removed the two support fields, the
+observer-quantified proviso record no longer occurs here. -/
 theorem strictSelectedHistoricalSIRCallSite
     (hA : SelectedMarginAssumptions cfg ext E)
     {obs : ValidatorIndex} (hcoh : E.ObserverCoherence cfg ext obs) {q : ℕ}
@@ -349,9 +350,8 @@ theorem strictSelectedHistoricalSIRCallSite
         get_block_epoch cfg query.store input + 1 =
           get_current_store_epoch cfg query.store)
     (hstrict :
-      Weak.find_latest_confirmed_descendant cfg ext query input ≠ input)
-    (hprovisos : Weak.SelectedHelperProvisosAt cfg ext E obs q query input) :
-    StrictSelectedHistoricalSIRCallSite cfg ext E q query input
+      Weak.find_latest_confirmed_descendant cfg ext query input ≠ input) :
+    StrictSelectedHistoricalSIRCallSite cfg ext q query input
       (Weak.find_latest_confirmed_descendant cfg ext query input) := by
   let result := Weak.find_latest_confirmed_descendant cfg ext query input
   have hfacts := Weak.strictSelectedResultMechanicalFacts cfg ext hA hcoh hqH
@@ -365,7 +365,6 @@ theorem strictSelectedHistoricalSIRCallSite
       exact .currentCrossing hcurrent a c hmem hlt
         (Weak.findLatestSelectedTrace_crossing_currentTargetGate cfg ext
           query input a c hmem hlt)
-        (hprovisos.current_target a c hmem hlt)
     · exact .currentHistorical hcurrent hcross
   · have hnotCurrent : get_block_epoch cfg query.store result ≠
         get_current_store_epoch cfg query.store := by
@@ -382,8 +381,6 @@ theorem strictSelectedHistoricalSIRCallSite
         · exact absurd hstart' hstart
         · exact hgate'
       exact .previousNoConflict hprevious hstart hgate
-        (hprovisos.selected_previous_result_no_conflict result rfl
-          (by simpa only [result] using hstrict) hnotCurrent hstart)
 
 /-! ## The relay-free endpoint ancestry transport -/
 

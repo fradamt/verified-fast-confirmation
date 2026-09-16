@@ -19,10 +19,11 @@ There are three materially different layers.
   declared epoch is the vote-slot epoch and its root is no later than that
   boundary in every store which knows it.
 * The selector's exact call-site split is executable.  A previous-epoch result
-  is either at epoch start or carries the actual no-conflict gate and its
-  `SelectedHelperProvisosAt` support premise.  A current-epoch result either
-  has a retained crossing edge, which carries the actual current-target gate,
-  or needs the historical gate propagation of paper Lemma 27.
+  is either at epoch start or carries the actual no-conflict gate.  A
+  current-epoch result either has a retained crossing edge, which carries the
+  actual current-target gate, or needs the historical gate propagation of
+  paper Lemma 27.  Since **N5** of `docs/trunkB-two-case-discharge.md` §7 no
+  arm carries a `SelectedHelperProvisosAt` support premise.
 * Turning those gates into historical checkpoint ordering is the paper SIR
   work.  Current-target certification can be consumed mechanically by concrete
   Casper same-epoch uniqueness.  The required producers are stated below as
@@ -743,23 +744,6 @@ def HistoricalCurrentTargetCertificateProducerAt
   (¬ ∃ a c : Root, CurrentTargetAcceptedEdge cfg ext query input a c) →
     Nonempty (CertifiedJustified cfg E anchor
       (get_current_target cfg query.store))
-
-/-- Certificate-level semantics of the exact no-conflict helper.
-
-The conclusion is the same-epoch target pinning forced by a committed
-greater-than-one-third honest target set against any two-thirds concrete
-certificate.  Deriving this implication from the helper arithmetic, vote
-provenance, and committee accounting is the formal counterpart of paper
-Lemma 42.  Again, no selected-result ancestry occurs in this interface. -/
-def NoConflictCertificatePinningProducerAt
-    (anchor : Checkpoint Root) (q : ℕ)
-    (query : FastConfirmationStore Root) : Prop :=
-  will_no_conflicting_checkpoint_be_justified cfg ext query.store = true →
-  HonestVotesSupportTarget cfg E (get_current_target cfg query.store) q →
-  ∀ c : Checkpoint Root,
-    CertifiedJustified cfg E anchor c →
-    c.epoch = (get_current_target cfg query.store).epoch →
-      c.root = (get_current_target cfg query.store).root
 
 /-- Proviso-free replacement of the no-conflict certificate pinning
 interface, **N5**/**N6** of `docs/trunkB-two-case-discharge.md` §7.

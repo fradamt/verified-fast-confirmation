@@ -82,15 +82,19 @@ proof transports under a rewrite of that one lemma.
 
 ## What is not here
 
-`AcceptedActualSelectedJustifiedOrientation.lean`'s two producer wrappers are
-deliberately absent; see the report accompanying this module.  Both bottom out
-in honesty uses that are *not* of kinds (a)/(b): the no-conflict pinning
-producer reaches `Execution.noConflict_arithmeticBranch_oneThird`, whose
-honesty premise feeds the adversarial-weight bound on the query node's own
-observed latest messages, and the historical payload producer instantiates the
-honest-quantified write-back induction
-`acceptedHistoricalA32CurrentLineage_invariant_of_completedPrefixes` at the
-query node over the *strong* `E.confirmed`.
+The historical A3.2 payload producer of
+`AcceptedActualSelectedJustifiedOrientation.lean` is deliberately absent; see
+the report accompanying this module.  It bottoms out in an honesty use that is
+*not* of kinds (a)/(b): it instantiates the honest-quantified write-back
+induction `acceptedHistoricalA32CurrentLineage_invariant_of_completedPrefixes`
+at the query node over the *strong* `E.confirmed`.
+
+The endpoint origin/pinning producer *is* here.  Its arithmetic half used to
+be the same obstruction — the strong pinning proof reaches
+`Execution.noConflict_arithmeticBranch_oneThird`, whose honesty premise feeds
+the adversarial-weight bound on the query node's own observed latest messages
+— and the section below re-assembles that branch over prefix accounting
+evidence instead, which is substitution (a) in disguise.
 -/
 
 namespace FastConfirmation.Spec
@@ -590,253 +594,6 @@ private theorem mem_observerNoConflict_epoch_span_of_committee
   simp only [Execution.span_committee, Finset.mem_biUnion]
   exact ⟨s, Finset.mem_Icc.mpr ⟨hlo, hhi⟩, hcommittee⟩
 
-/-- Accepted-state no-conflict pinning at a possibly-Byzantine observer's
-completed scheduled boundary.
-
-The equality branch uses the actual accepted global UJ certificate and never
-mentions a node.  The arithmetic branch reconstructs the observed signer votes
-through the exact accepted prefix; `currentTargetObservedHonestSupporter_vote_of_prefix`
-is honesty-free in the prefix node by construction (its honesty premises are
-all about the *supporter* `i`, not about whose store `i` was observed in), so
-it is reused verbatim.
-
-Mirrors `Execution.completedPrefix_noConflict_certifiedJustified_root_eq_currentTarget`
-with substitution (b) (twice, through the two pulled-up-head lemmas) and
-substitution (a) (once, through the prefix-evidence arithmetic branch). -/
-theorem completedPrefix_noConflict_certifiedJustified_root_eq_currentTarget_at_observer
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
-    (hC : E.AcceptedHistoricalA32CompletedPrefixCallAssumptions cfg ext)
-    (hfit : EpochEndsFitUint64 cfg)
-    (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
-    (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
-      (E := E) (anchor := B.anchor))
-    {obs : ValidatorIndex} (hcoh : E.ObserverCoherence cfg ext obs) {n : Nat}
-    (hHn1 : E.WithinHorizon cfg (n + 1))
-    (hgate : will_no_conflicting_checkpoint_be_justified cfg ext
-      (E.store cfg ext obs (n + 1)) = true)
-    (hsupport : HonestVotesSupportTarget cfg E
-      (get_current_target cfg (E.store cfg ext obs (n + 1))) (n + 1))
-    {c : Checkpoint Root}
-    (hc : CertifiedJustified cfg E B.anchor c)
-    (hcepoch : c.epoch =
-      (get_current_target cfg (E.store cfg ext obs (n + 1))).epoch) :
-    c.root =
-      (get_current_target cfg (E.store cfg ext obs (n + 1))).root := by
-  classical
-  obtain ⟨ast, ablk, hgen, hgenSlot, _hgenParent⟩ := hT.genesis
-  have hgenShort : ∃ (ast : BeaconState Root)
-      (ablk : SignedBeaconBlock Root),
-      E.genesis_store = get_forkchoice_store cfg ast ablk ∧
-        ast.slot = ablk.message.slot :=
-    ⟨ast, ablk, hgen, hgenSlot⟩
-  have hgenZero : ∃ (ast : BeaconState Root)
-      (ablk : SignedBeaconBlock Root),
-      E.genesis_store = get_forkchoice_store cfg ast ablk :=
-    ⟨ast, ablk, hgen⟩
-  let hA := E.noConflictPinningAssumptions_of_acceptedGlobalTrajectory
-    cfg ext B hT hC.static_validators hC.byzantine_bound hanchor hboundary
-  let hAccA : FFGAccountabilityAssumptions cfg ext E :=
-    { genesis_store := hgenZero
-      whole_seconds := hT.whole_seconds
-      honest_behavior := hT.honest_behavior
-      externals_coherence := hT.externals_coherence
-      static_validator_set := hC.static_validators
-      byzantine_bound := hC.byzantine_bound }
-  let hacc : CertificateAccountability cfg E B.anchor :=
-    CertificateAccountability.of_assumptions cfg ext hAccA
-  let store := E.store cfg ext obs (n + 1)
-  let target := get_current_target cfg store
-  let state := get_pulled_up_head_state cfg ext store
-  let deadline := compute_start_slot_at_epoch cfg (target.epoch + 1)
-  let signers := E.currentTargetA32Signers cfg store state
-  change c.epoch = target.epoch at hcepoch
-  change c.root = target.root
-  have hstate : state = get_pulled_up_head_state cfg ext store := rfl
-  have hval : state.validators = E.registry := by
-    simpa only [state, store] using
-      E.completedPrefix_pulledUpHead_validators_at_observer cfg ext hT
-        hcoh hHn1
-  have htab : get_total_active_balance cfg state = E.total_active cfg := by
-    simpa only [state, store] using
-      E.completedPrefix_pulledUpHead_totalActive_at_observer cfg ext hT
-        hC.static_validators hcoh hHn1
-  have hendH : E.SlotWithinHorizon cfg
-      (currentTargetEpochEnd cfg store) := by
-    simpa only [store] using
-      E.currentTargetEpochEnd_within_of_epochEndsFitUint64
-        cfg ext hfit (v := obs) hHn1
-  have hanchorH : get_current_epoch cfg E.anchor_state <
-      E.verification_horizon :=
-    E.completedPrefix_anchor_epoch_within cfg ext hT hC.static_validators
-  have hstoreCausal : E.CausalStore cfg ext store := by
-    simpa only [store] using E.store_causal cfg ext obs (n + 1)
-  obtain ⟨hUJ⟩ :=
-    ExactPrefixAcceptedFFGSemantics.unrealizedJustified_certificate
-      cfg ext B hgenShort hanchor hstoreCausal
-  by_cases heq : target = store.unrealized_justified_checkpoint
-  · have hroot := hacc.justified_unique hc hUJ
-      (hcepoch.trans (congrArg Checkpoint.epoch heq))
-    exact hroot.trans (congrArg Checkpoint.root heq).symm
-  · have htargetNotAnchor : target ≠ B.anchor := by
-      intro htargetAnchor
-      have htargetEpoch : target.epoch =
-          compute_epoch_at_slot cfg (E.slot_at cfg (n + 1)) := by
-        simp only [target, store, get_current_target,
-          get_checkpoint_for_block, get_current_store_epoch,
-          E.store_current_slot cfg ext obs (n + 1)]
-      have hUJLeTarget : store.unrealized_justified_checkpoint.epoch ≤
-          target.epoch := by
-        have hbound := (E.store_CkptEpochLe cfg ext
-          hT.externals_coherence hT.whole_seconds hgenShort obs (n + 1)).2
-        change store.unrealized_justified_checkpoint.epoch ≤
-          compute_epoch_at_slot cfg (E.slot_at cfg (n + 1)) at hbound
-        exact hbound.trans_eq htargetEpoch.symm
-      have hanchorLeUJ : B.anchor.epoch ≤
-          store.unrealized_justified_checkpoint.epoch :=
-        CertifiedJustified.anchor_epoch_le (cfg := cfg) hUJ
-      have hUJEpoch : store.unrealized_justified_checkpoint.epoch =
-          B.anchor.epoch := by
-        apply Nat.le_antisymm
-        · exact hUJLeTarget.trans_eq
-            (congrArg Checkpoint.epoch htargetAnchor)
-        · exact hanchorLeUJ
-      have hUJRoot : store.unrealized_justified_checkpoint.root =
-          B.anchor.root :=
-        hacc.justified_unique hUJ CertifiedJustified.anchor hUJEpoch
-      have hUJAnchor : store.unrealized_justified_checkpoint = B.anchor := by
-        generalize hu : store.unrealized_justified_checkpoint = u
-          at hUJEpoch hUJRoot ⊢
-        generalize ha : B.anchor = a at hUJEpoch hUJRoot ⊢
-        cases u
-        cases a
-        simp only at hUJEpoch hUJRoot ⊢
-        subst_vars
-        rfl
-      exact heq (htargetAnchor.trans hUJAnchor.symm)
-    let p := E.completedScheduledEventPrefix obs n
-    have hpstore : p.store cfg ext = store := by
-      simpa only [p, store] using
-        E.completedScheduledEventPrefix_store cfg ext obs n
-    have hanchorBefore : B.anchor.epoch < target.epoch := by
-      have hprefix := p.currentTarget_anchor_epoch_lt_of_ne
-        cfg ext B hT hanchor hboundary
-        (by
-          rw [hpstore]
-          simpa only [target, store] using htargetNotAnchor)
-      simpa only [hpstore, target, store] using hprefix
-    have hvotes : ∀ i ∈ signers,
-        Nonempty (ConcreteHonestTargetVoteBefore cfg ext E i
-          deadline target) := by
-      intro i hiSigner
-      simp only [signers, Execution.currentTargetA32Signers,
-        Finset.mem_union] at hiSigner
-      rcases hiSigner with hiObserved | hiFuture
-      · let hV := CurrentTargetPrefixVoteAssumptions.of_acceptedGlobalTrajectory
-          cfg ext E B hT hanchor hboundary
-        have hboundaryZero : TrustedAnchorBoundaryAligned
-            (cfg := cfg) (E := E)
-            (anchor := E.genesis_store.justified_checkpoint) := by
-          simpa only [← hanchor] using hboundary
-        have hvote :=
-          E.currentTargetObservedHonestSupporter_vote_of_prefix
-            cfg ext B hV hboundaryZero p hHn1
-              (by simpa only [hpstore, state, store] using hiObserved)
-        rw [hpstore] at hvote
-        simpa only [store, target, deadline] using hvote
-      · simpa only [store, target, deadline] using
-          E.currentTargetFutureHonestSeat_vote cfg ext hT.honest_behavior
-            (by simpa only [store] using hendH)
-            (by simpa only [store, target] using hsupport) hiFuture
-    have hsignersHonest : signers ⊆ E.honest := by
-      intro i hi
-      obtain ⟨vote⟩ := hvotes i hi
-      exact vote.honest
-    have hsignersEpoch : signers ⊆
-        E.span_committee (target.epoch * cfg.slots_per_epoch)
-          (target.epoch * cfg.slots_per_epoch +
-            (cfg.slots_per_epoch - 1)) := by
-      intro i hi
-      obtain ⟨vote⟩ := hvotes i hi
-      exact mem_observerNoConflict_epoch_span_of_committee cfg
-        vote.assigned vote.slot_epoch
-    have hevidence := E.completedScheduledEventPrefix_accountingEvidence_at_observer
-      cfg ext hT hcoh n hHn1
-    have honeThird : E.total_active cfg < 3 * E.weight signers := by
-      simpa only [signers, store, state] using
-        E.noConflict_arithmeticBranch_oneThird_of_prefixEvidence cfg ext hA
-          hevidence hHn1 hstate hval htab hendH hanchorH hC.balance_floor
-          heq hgate
-    have hcurrentH : E.SlotWithinHorizon cfg
-        (get_current_slot cfg store) := by
-      rw [show get_current_slot cfg store = E.slot_at cfg (n + 1) by
-        simpa only [store] using
-          E.store_current_slot cfg ext obs (n + 1)]
-      exact ⟨hHn1.2.1, hHn1.2.2⟩
-    let U := E.span_committee (target.epoch * cfg.slots_per_epoch)
-      (target.epoch * cfg.slots_per_epoch +
-        (cfg.slots_per_epoch - 1))
-    have hspanEq : U = E.currentTargetAnchorActive cfg := by
-      simpa only [U, target, store, get_current_target,
-        get_checkpoint_for_block, currentTargetEpochStart,
-        currentTargetEpochEnd, compute_start_slot_at_epoch] using
-        E.current_epoch_span_eq_anchorActive cfg ext
-          hT.externals_coherence hC.static_validators hcurrentH hendH
-            hanchorH
-    have hU : E.weight U ≤ E.total_active cfg := by
-      rw [hspanEq, ← E.total_active_eq_anchorActive_weight
-        cfg hC.balance_floor]
-    cases hc with
-    | anchor =>
-        exfalso
-        exact (Nat.ne_of_lt hanchorBefore) hcepoch
-    | @link source competing hsource link =>
-        have hTU : link.signers ⊆ U := by
-          intro i hi
-          have hiEpoch := link.signers_in_epoch hi
-          simpa only [U, hcepoch] using hiEpoch
-        obtain ⟨i, hiSigner, hiLink, hiHonest⟩ :=
-          one_third_honest_intersects_two_thirds E
-            hsignersEpoch hTU hsignersHonest hU honeThird
-              link.supermajority
-        obtain ⟨vote⟩ := hvotes i hiSigner
-        obtain ⟨w, t, a, fromBlock, haSchedule, hiA,
-            _haSource, haTarget⟩ := link.signer_attestation i hiLink
-        obtain ⟨kCompeting, aCompeting, hvoteCompeting,
-            hdataCompeting⟩ := hT.honest_behavior.no_forgery
-              w t a fromBlock haSchedule i hiHonest hiA
-        let aTarget := honest_attestation cfg ext
-          (E.store cfg ext i vote.time) vote.slot vote.index i
-        have hvoteTarget : E.vote i vote.slot =
-            some (vote.time, aTarget) := by
-          simpa only [aTarget] using vote.vote
-        have haTargetExact : aTarget.data.target = target := by
-          simpa only [aTarget] using vote.target_eq
-        have haCompetingExact : aCompeting.data.target = c := by
-          rw [← hdataCompeting]
-          exact haTarget
-        by_contra hroot
-        have hdataNe : aTarget.data ≠ aCompeting.data := by
-          intro hdataEq
-          have htargets := congrArg
-            (fun d : AttestationData Root => d.target) hdataEq
-          change aTarget.data.target = aCompeting.data.target at htargets
-          rw [haTargetExact, haCompetingExact] at htargets
-          exact hroot (congrArg Checkpoint.root htargets).symm
-        have htargetEpoch :
-            aTarget.data.target.epoch =
-              aCompeting.data.target.epoch := by
-          rw [haTargetExact, haCompetingExact]
-          exact hcepoch.symm
-        have hslash : is_slashable_attestation_data
-            aTarget.data aCompeting.data = true := by
-          simp [is_slashable_attestation_data, hdataNe, htargetEpoch]
-        have hnot := hT.honest_behavior.not_slashable i hiHonest
-          vote.slot a.data.slot vote.time kCompeting aTarget aCompeting
-          hvoteTarget hvoteCompeting
-        rw [hslash] at hnot
-        contradiction
-
 omit [LinearOrder Root] [Inhabited Root] in
 /-- A slot between the canonical first and last slots of epoch `e` has epoch
 exactly `e`.  Cloned rather than reused because the source copy
@@ -1168,41 +925,6 @@ theorem noConflict_endpointJustifiedQuorum_root_eq_currentTarget_at_observer
       apply hnoPostQuery
       exact ⟨i, hiQ, hiHonest, u, n', a, fb, hsched, hia, haTarget, haH,
         ha0, haBound, by rw [haSlotEq]; exact hsQuery⟩
-
-set_option maxRecDepth 10000 in
-/-- Producer form used by the weak selector call-site dispatcher.  As with the
-target-gate producer, `Execution.NoConflictCertificatePinningProducerAt`
-mentions its query only through `query.store`, so re-indexing over
-`E.weakFcrStep` is a rewrite by `Execution.weakFcrStep_store` and carries no
-new proof content.
-
-Mirrors `Execution.completedPrefix_noConflictCertificatePinningProducerAt`. -/
-noncomputable def observerCall_noConflictCertificatePinningProducerAt
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
-    (hC : E.AcceptedHistoricalA32CompletedPrefixCallAssumptions cfg ext)
-    (hfit : EpochEndsFitUint64 cfg)
-    (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
-    (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
-      (E := E) (anchor := B.anchor))
-    {obs : ValidatorIndex} (hcoh : E.ObserverCoherence cfg ext obs) {n : Nat}
-    (hHn1 : E.WithinHorizon cfg (n + 1)) :
-    E.NoConflictCertificatePinningProducerAt cfg ext B.anchor (n + 1)
-      (E.weakFcrStep cfg ext obs n) := by
-  intro hgate hsupport c hc hcepoch
-  have hgate' : will_no_conflicting_checkpoint_be_justified cfg ext
-      (E.store cfg ext obs (n + 1)) = true := by
-    simpa only [E.weakFcrStep_store] using hgate
-  have hsupport' : HonestVotesSupportTarget cfg E
-      (get_current_target cfg (E.store cfg ext obs (n + 1))) (n + 1) := by
-    simpa only [E.weakFcrStep_store] using hsupport
-  have hcepoch' : c.epoch =
-      (get_current_target cfg (E.store cfg ext obs (n + 1))).epoch := by
-    simpa only [E.weakFcrStep_store] using hcepoch
-  simpa only [E.weakFcrStep_store] using
-    E.completedPrefix_noConflict_certifiedJustified_root_eq_currentTarget_at_observer
-      cfg ext B hT hC hfit hanchor hboundary hcoh hHn1 hgate' hsupport'
-        hc hcepoch'
 
 set_option maxRecDepth 10000 in
 /-- **N6** of `docs/trunkB-two-case-discharge.md` §7 at a possibly-Byzantine
