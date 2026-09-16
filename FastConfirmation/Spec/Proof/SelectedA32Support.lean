@@ -1,4 +1,6 @@
-import FastConfirmation.Spec.Proof.SelectedTraceFilterPipeline
+import FastConfirmation.Spec.Proof.SelectedTraceCoverage
+import FastConfirmation.Spec.Proof.SelectedEdgeGeometry
+import FastConfirmation.Spec.Proof.SelectedFilterChainGeometry
 import FastConfirmation.Spec.Proof.Delivery
 
 /-!

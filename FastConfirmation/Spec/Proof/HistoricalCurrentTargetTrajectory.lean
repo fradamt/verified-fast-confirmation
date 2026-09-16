@@ -427,9 +427,10 @@ These predicates mention only the actual `E.fcrStep`/`E.confirmed` recurrence.
 They deliberately do not quantify over arbitrary `FastConfirmationStore`s.
 -/
 
-/-- Exact strengthening of `get_latest_confirmed_call_cases_minimal`: when the
-handler actually calls the selector, retain both its concrete reset input and
-the executable recency guard which enabled that call. -/
+/-- Exact call-case split for the executable handler: it either returns one of
+its three reset roots directly, or calls the selector — and when it calls,
+retain both the concrete reset input and the executable recency guard which
+enabled that call. -/
 theorem getLatestConfirmed_actualCallCases
     (query : FastConfirmationStore Root) :
     (get_latest_confirmed cfg ext query = query.confirmed_root ∨

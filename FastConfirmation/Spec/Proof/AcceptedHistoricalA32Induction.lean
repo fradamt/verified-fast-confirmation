@@ -43,8 +43,9 @@ structure AcceptedHistoricalA32CurrentLineageAt
 
 /-- The exact non-operational interface consumed at one actual FCR call.
 
-`SelectedHelperProvisosAt` records the spec's normative helper provisos only
-when the outer evaluator actually invokes the descendant selector.  The gate
+The interface records no helper-support proviso: the record which stated the
+spec's normative provisos at an actual selector call
+(`SelectedHelperProvisosAt`) has been deleted.  The gate
 producer is intentionally conditional on the executable target gate and
 matching target-support proviso; concrete global/scheduled action evidence can
 therefore construct it without putting a quorum or A3.2 conclusion in this

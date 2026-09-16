@@ -23,7 +23,8 @@ There are three materially different layers.
   current-epoch result either has a retained crossing edge, which carries the
   actual current-target gate, or needs the historical gate propagation of
   paper Lemma 27.  Since **N5** of `docs/trunkB-two-case-discharge.md` §7 no
-  arm carries a `SelectedHelperProvisosAt` support premise.
+  arm carries a helper-support premise; the record that stated those provisos
+  has since been deleted outright.
 * Turning those gates into historical checkpoint ordering is the paper SIR
   work.  Current-target certification can be consumed mechanically by concrete
   Casper same-epoch uniqueness.  The required producers are stated below as
@@ -100,7 +101,7 @@ Both executable booleans are *derived*, never assumed: the crossing gate is
 `CurrentTargetAcceptedEdge.current_target_gate` and the no-conflict gate is
 `selected_previous_result_no_conflict_gate`.  Since **N5** of
 `docs/trunkB-two-case-discharge.md` §7 removed the two support fields, this
-classification no longer mentions `SelectedHelperProvisosAt` at all. -/
+classification mentions no helper-support proviso at all. -/
 theorem strictSelectedHistoricalSIRCallSite
     (hA : SelectedMarginAssumptions cfg ext E)
     {v : ValidatorIndex} (hv : v ∈ E.honest) {q : ℕ}

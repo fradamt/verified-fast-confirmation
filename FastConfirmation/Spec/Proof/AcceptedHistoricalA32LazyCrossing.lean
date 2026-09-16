@@ -21,9 +21,9 @@ threaded fold outputs.  Nothing about the fold at the crossing second is
 proved here.
 
 The strong eager constructor
-`Execution.selectedCurrentCrossingLineage_of_fixedSourceProducer` is untouched
-and keeps its `Execution.SelectedHelperProvisosAt` premise; the weak trunk has
-no eager constructor any more.
+`Execution.selectedCurrentCrossingLineage_of_fixedSourceProducer`, which took
+an `Execution.SelectedHelperProvisosAt` premise, has been deleted together
+with that record; neither trunk has an eager crossing constructor any more.
 -/
 
 namespace FastConfirmation.Spec
@@ -152,12 +152,13 @@ theorem acceptedHistoricalA32OriginCallAt_of_crossing
     gate := hedge.current_target_gate cfg ext
     target_eq := htarget }
 
-/-- **The lazy crossing lineage.**  Same executable geometry as
-`selectedCurrentCrossingLineage_of_fixedSourceProducer`, but the payload's two
-obligations are the closures of `docs/crossing-call-support-residue.md` §4.3
-instead of the eagerly realized certificate and quorum.
+/-- **The lazy crossing lineage.**  Same executable geometry as the deleted
+eager `selectedCurrentCrossingLineage_of_fixedSourceProducer`, but the
+payload's two obligations are the closures of
+`docs/crossing-call-support-residue.md` §4.3 instead of the eagerly realized
+certificate and quorum.
 
-Consequently it consumes **no** `SelectedHelperProvisosAt`. -/
+Consequently it consumes **no** helper-support proviso. -/
 noncomputable def selectedCurrentCrossingLazyLineage
     (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
     (hA : SelectedMarginAssumptions cfg ext E)

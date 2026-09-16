@@ -8,10 +8,10 @@ import FastConfirmation.Spec.Proof.AcceptedPathLocalFinalizedTransport
 Wave 2 of `docs/proviso-discharge-map.md` §6: the **first constructor** for
 `HonestVotesSupportTarget` in the development.
 
-Every previous occurrence of `HonestVotesSupportTarget` in this repository is
+Every occurrence of `HonestVotesSupportTarget` predating this module was
 either a hypothesis or a record field (`SelectedHelperProvisosAt.current_target`,
 `SelectedHelperProvisosAt.selected_previous_result_no_conflict`, and the two
-dead `JustificationInterface` gates).  Nothing builds one.  This module builds
+dead `JustificationInterface` gates — all since deleted).  Nothing built one.  This module builds
 one, from a trajectory-level `Execution.SafeFrom` witness plus an explicit list
 of store-geometry side conditions, and so turns a *carried* normative proviso
 into a statement whose residual content is exactly those side conditions.
@@ -54,9 +54,9 @@ content is:
   descends from (`hbEpoch`, `hqueryHead`).  Per the map's §5.1 this is exactly
   the configuration the live proviso sites do *not* enjoy: there the `SafeFrom`
   root is a previous-epoch block and the current-epoch boundary block sits
-  strictly above it.  So this constructor does not by itself discharge
-  `Execution.SelectedHelperProvisosAt.current_target`; it pins down precisely
-  what would.
+  strictly above it.  So this constructor did not by itself discharge the
+  crossing-call current-target proviso (`SelectedHelperProvisosAt.current_target`,
+  now deleted); it pins down precisely what would.
 * the voter's store must know the boundary walk from its head and from `b`, and
   must agree with the query store on the blocks both know (`hvoterHeadWalk`,
   `hvoterWalk`, `hagree`).  These are the standard cross-store transport
@@ -263,8 +263,8 @@ current-target-epoch slot at or after `slot_at q` carries the query store's
 
 The hypothesis list is deliberately long and explicit: per
 `docs/proviso-discharge-map.md` §5.1 the *current-epoch* placement of `b` is
-exactly what the live `helper_provisos` sites cannot supply (there the safe
-root is one epoch too low), so this lemma makes the residual gap precise
+exactly what the former `helper_provisos` sites could not supply (there the
+safe root is one epoch too low), so this lemma makes the residual gap precise
 rather than hiding it.  All remaining hypotheses are ordinary derivable store
 facts.
 

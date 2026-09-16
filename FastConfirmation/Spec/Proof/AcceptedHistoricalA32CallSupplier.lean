@@ -10,9 +10,11 @@ prefix to construct the accounting evidence and accepted current-target gate
 producer consumed by `AcceptedHistoricalA32CallInterfaces`.
 
 The adapter does not use `SelectedMarginAssumptions`, a justification
-interface, transition history, canonicity, or safety. The literal normative
-`SelectedHelperProvisosAt` contract remains an input exactly when the outer
-evaluator invokes the descendant selector. A one-slot operational delivery
+interface, transition history, canonicity, or safety, and it carries no
+helper-support proviso at all: the literal normative contract it used to take
+when the outer evaluator invokes the descendant selector
+(`SelectedHelperProvisosAt`) has been deleted, and the crossing call's target
+support is rebuilt from the fold's own earlier output. A one-slot operational delivery
 law covers the finite-prefix boundary case: a vote created in the last
 verified slot is scheduled just after the exclusive public cutoff.
 -/

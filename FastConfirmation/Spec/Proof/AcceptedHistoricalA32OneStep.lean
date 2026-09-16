@@ -238,8 +238,9 @@ noncomputable def getLatestConfirmedTraceAt_currentLineage_step_core
 
 The crossing branch now records origin-call data and the two closures of
 `docs/crossing-call-support-residue.md` §4.3 instead of a realized certificate
-and quorum, so **no `SelectedHelperProvisosAt` is consumed anywhere in this
-theorem**.  The gate producer stays: it is the action/schedule bridge, not a
+and quorum, so **no helper-support proviso is consumed anywhere in this
+theorem** (the `SelectedHelperProvisosAt` record it used to name no longer
+exists).  The gate producer stays: it is the action/schedule bridge, not a
 proviso, and the closures capture it. -/
 noncomputable def getLatestConfirmedTraceAt_currentLineage_step_lazy
     (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
