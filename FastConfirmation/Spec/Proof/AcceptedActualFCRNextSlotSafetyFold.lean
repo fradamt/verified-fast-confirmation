@@ -2,6 +2,7 @@ import FastConfirmation.Spec.Proof.AcceptedActualFCRCommon
 import FastConfirmation.Spec.Proof.AcceptedActualFCRStrictHelperIntegration
 import FastConfirmation.Spec.Proof.AcceptedFinalizedNextSlotSafety
 import FastConfirmation.Spec.Proof.AcceptedObservedRestartDynamicSafety
+import FastConfirmation.Spec.Proof.AcceptedHistoricalA32OriginCall
 
 /-!
 # Accepted actual-FCR next-slot safety fold
@@ -293,9 +294,8 @@ theorem confirmed_safeFromFollowingSlot_of_acceptedActualFCRFold_all_le
     (hpaper : B.state.PaperA32Inclusion cfg ext)
     (P : AcceptedEpochCheckpointProjection B.anchor
       (E.AcceptedRoot cfg ext) B.state.C)
-    (V : B.state.ExactLinkValidity)
-    {v : ValidatorIndex} (hv : v ∈ E.honest) :
-    ∀ n : ℕ, ∀ k ≤ n, E.WithinHorizon cfg k →
+    (V : B.state.ExactLinkValidity) :
+    ∀ n : ℕ, ∀ k ≤ n, E.WithinHorizon cfg k → ∀ v ∈ E.honest,
       E.AcceptedFoldSafetyAt cfg ext v k := by
   have hdomain : SelectedMarginDomain cfg ext E :=
     E.selectedMarginDomain_of_acceptedGlobalTrajectory
@@ -319,7 +319,7 @@ theorem confirmed_safeFromFollowingSlot_of_acceptedActualFCRFold_all_le
   intro n
   induction n with
   | zero =>
-      intro k hk _hH0
+      intro k hk _hH0 v hv
       rw [Nat.le_zero.mp hk]
       refine { followingSlot := ?_, callSecond := ?_ }
       · unfold ConfirmedSafeFromFollowingSlot
@@ -328,13 +328,13 @@ theorem confirmed_safeFromFollowingSlot_of_acceptedActualFCRFold_all_le
       · intro j hj _ _
         exact absurd hj.symm (Nat.succ_ne_zero j)
   | succ n ih =>
-      intro k hk hHn1
+      intro k hk hHn1 v hv
       rcases Nat.eq_or_lt_of_le hk with rfl | hlt
       swap
-      · exact ih k (Nat.lt_succ_iff.mp hlt) hHn1
+      · exact ih k (Nat.lt_succ_iff.mp hlt) hHn1 v hv
       have hHn : E.WithinHorizon cfg n :=
         E.withinHorizon_mono cfg (Nat.le_succ n) hHn1
-      have hsafeN := (ih n (Nat.le_refl n) hHn).followingSlot
+      have hsafeN := (ih n (Nat.le_refl n) hHn v hv).followingSlot
       by_cases hcall : E.IsFCRCallAt cfg ext v n
       · let trace := E.getLatestConfirmedTraceAt cfg ext v n
         have hrec := E.actualCandidateHistoryRecurrence cfg ext hcall
@@ -471,8 +471,36 @@ theorem confirmed_safeFromFollowingSlot_of_acceptedActualFCRFold
       E.ConfirmedSafeFromFollowingSlot cfg ext v n :=
   fun n hHn =>
     (E.confirmed_safeFromFollowingSlot_of_acceptedActualFCRFold_all_le
-      cfg ext B hT hC hfit hanchor hboundary hDelay hspe hpaper P V hv
-      n n (Nat.le_refl n) hHn).followingSlot
+      cfg ext B hT hC hfit hanchor hboundary hDelay hspe hpaper P V
+      n n (Nat.le_refl n) hHn v hv).followingSlot
+
+/-- The lazy A3.2 transport's threaded input, straight off the strengthened
+fold.
+
+`PriorStrictCallWriteBackSafe n` is exactly the `callSecond` component of
+`AcceptedFoldSafetyAt` at the seconds `k + 1 ≤ n`, so this is a projection, not
+a new proof.  It is the object wave T3 threads down the strong dispatcher
+chain to the two `currentHistorical`/late-seed consumption sites. -/
+theorem priorStrictCallWriteBackSafe_of_acceptedActualFCRFold
+    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
+    (hC : E.AcceptedHistoricalA32CompletedPrefixCallAssumptions cfg ext)
+    (hfit : EpochEndsFitUint64 cfg)
+    (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
+    (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
+      (E := E) (anchor := B.anchor))
+    (hDelay : E.AcceptedRealizedFinalizationDelay cfg ext B)
+    (hspe : 1 < cfg.slots_per_epoch)
+    (hpaper : B.state.PaperA32Inclusion cfg ext)
+    (P : AcceptedEpochCheckpointProjection B.anchor
+      (E.AcceptedRoot cfg ext) B.state.C)
+    (V : B.state.ExactLinkValidity)
+    (n : ℕ) :
+    E.PriorStrictCallWriteBackSafe cfg ext n :=
+  fun i hi k hk hHk1 hcall hstrict =>
+    (E.confirmed_safeFromFollowingSlot_of_acceptedActualFCRFold_all_le
+      cfg ext B hT hC hfit hanchor hboundary hDelay hspe hpaper P V
+      n (k + 1) hk hHk1 i hi).callSecond k rfl hcall hstrict
 
 /-- Endpoint form matching the paper's timing: a cached output is canonical
 at every in-horizon honest endpoint in a strictly later slot. -/

@@ -77,7 +77,7 @@ theorem foldSafetyAt
     cfg ext h.semantics h.trajectory h.completed_calls h.epoch_ends_fit
       h.anchor_eq h.anchor_boundary h.finalization_delay
       h.slots_per_epoch_gt_one h.paper_a32 h.checkpoint_projection
-      h.exact_link_validity hv n n (Nat.le_refl n) hHn
+      h.exact_link_validity n n (Nat.le_refl n) hHn v hv
 
 /-- Unweakened safety of the root a call at second `n` writes back, when that
 call's selector strictly advanced.
@@ -97,6 +97,16 @@ theorem confirmed_safeFrom_strictCallSecond
       (E.getLatestConfirmedTraceAt cfg ext v n).afterObserved) :
     E.SafeFrom cfg ext (E.confirmed cfg ext v (n + 1)) (n + 1) :=
   (h.foldSafetyAt cfg ext E hv hHn1).callSecond n rfl hcall hstrict
+
+/-- Bundle-facing form of the threaded lazy-transport input. -/
+theorem priorStrictCallWriteBackSafe
+    (h : E.AcceptedActualFCRNextSlotSafetyAssumptions cfg ext) (n : ℕ) :
+    E.PriorStrictCallWriteBackSafe cfg ext n :=
+  E.priorStrictCallWriteBackSafe_of_acceptedActualFCRFold
+    cfg ext h.semantics h.trajectory h.completed_calls h.epoch_ends_fit
+      h.anchor_eq h.anchor_boundary h.finalization_delay
+      h.slots_per_epoch_gt_one h.paper_a32 h.checkpoint_projection
+      h.exact_link_validity n
 
 set_option maxRecDepth 5000 in
 set_option maxHeartbeats 1400000 in

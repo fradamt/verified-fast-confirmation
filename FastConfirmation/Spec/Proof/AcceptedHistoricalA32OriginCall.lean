@@ -87,6 +87,15 @@ structure AcceptedHistoricalA32OriginCallAt
   head_descends : is_ancestor (E.fcrStep cfg ext node second).store
     (get_head cfg (E.fcrStep cfg ext node second).store)
     (get_node_for_root origin) = true
+  /-- The origin *is* the root this call writes back. -/
+  origin_writeback : E.confirmed cfg ext node (second + 1) = origin
+  /-- …and the write-back strictly advanced.  Both facts hold at a crossing by
+  `AcceptedCandidateHistoryRecurrence`'s `result_writeback` and
+  `CurrentTargetAcceptedEdge.result_ne_input`; together they are exactly the
+  shape `Execution.AcceptedFoldSafetyAt.callSecond` consumes, which is how the
+  origin's safety is recovered from a strictly earlier fold output. -/
+  origin_strict : origin ≠
+    (E.getLatestConfirmedTraceAt cfg ext node second).afterObserved
   gate : will_current_target_be_justified cfg ext
     (E.fcrStep cfg ext node second).store = true
   target_eq : get_current_target cfg (E.fcrStep cfg ext node second).store =
@@ -102,6 +111,33 @@ the whole object transports by a single `rw`. -/
 def AcceptedHistoricalA32OriginCallFor (target : Checkpoint Root) : Prop :=
   ∃ (node : ValidatorIndex) (second : ℕ) (origin : Root),
     E.AcceptedHistoricalA32OriginCallAt cfg ext node second origin target
+
+/-- **The threaded fold output the lazy transport consumes.**
+
+Every strictly advanced call write-back at a second *strictly below* `n`, at
+any honest node, is safe from its own write-back second — the **unweakened**
+`slot_start`-indexed deadline, not the `followingSlotStart`-mono'd one
+(`docs/trunkA-final-discharge.md` §5.3).
+
+This is exactly the `callSecond` component of `Execution.AcceptedFoldSafetyAt`
+at seconds `k + 1 ≤ n`, i.e. precisely what the accepted fold's strengthened
+induction hypothesis hands out at its `succ n` step.  Well-foundedness is the
+strict `k < n`: the crossing that produced a payload consumed at the call for
+second `n` necessarily happened at an earlier call, because the
+`currentHistorical` arm fires only when *this* call found no crossing edge
+(§2.4).  An eager variant would need `k = n` and would be circular. -/
+def PriorStrictCallWriteBackSafe (n : ℕ) : Prop :=
+  ∀ i ∈ E.honest, ∀ k : ℕ, k < n → E.WithinHorizon cfg (k + 1) →
+    E.IsFCRCallAt cfg ext i k →
+    E.confirmed cfg ext i (k + 1) ≠
+      (E.getLatestConfirmedTraceAt cfg ext i k).afterObserved →
+      E.SafeFrom cfg ext (E.confirmed cfg ext i (k + 1)) (k + 1)
+
+/-- Monotonicity in the horizon: a wider prior window restricts. -/
+theorem PriorStrictCallWriteBackSafe.mono {n m : ℕ} (hnm : n ≤ m)
+    (h : E.PriorStrictCallWriteBackSafe cfg ext m) :
+    E.PriorStrictCallWriteBackSafe cfg ext n :=
+  fun i hi k hk => h i hi k (Nat.lt_of_lt_of_le hk hnm)
 
 namespace AcceptedHistoricalA32OriginCallAt
 
@@ -259,6 +295,76 @@ theorem honestVotesSupportTarget
     hvoterWalk hagree
   rw [h.target_eq] at hsupport
   exact hsupport
+
+/-- Recover the origin call's safety from the threaded fold output.
+
+This is the one place where the recursion's well-foundedness is discharged:
+the origin call sits at a second `second < n` strictly below the consuming
+call, so the required witness is a strictly earlier output of the same fold. -/
+theorem safeFrom_of_prior
+    {node : ValidatorIndex} {second : ℕ} {origin : Root}
+    {target : Checkpoint Root}
+    (h : E.AcceptedHistoricalA32OriginCallAt cfg ext node second origin target)
+    {n : ℕ} (hlt : second < n)
+    (hprior : E.PriorStrictCallWriteBackSafe cfg ext n) :
+    E.SafeFrom cfg ext origin (second + 1) := by
+  have hsafe := hprior node h.node_honest second hlt h.second_horizon h.is_call
+    (by rw [h.origin_writeback]; exact h.origin_strict)
+  rwa [h.origin_writeback] at hsafe
+
+/-- **A3, first half** — run the *unchanged* gate-realization producer at the
+crossing call.
+
+This is the whole of the lazy design downstream of the reconstruction: the
+producer (`AcceptedCurrentTargetA32GateRealizationProducerAt`, i.e.
+`certifiedCurrentTarget_of_gate_and_stateSemantics` at the actual call) is not
+modified in any way — it is simply *called later*, at the consuming call,
+with the proviso rebuilt on the spot instead of taken from the call-site
+record. -/
+theorem gateRealization
+    (hA : SelectedMarginAssumptions cfg ext E)
+    {anchor : Checkpoint Root}
+    (hanchor : anchor = E.genesis_store.justified_checkpoint)
+    (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
+      (E := E) (anchor := anchor))
+    {S : AcceptedChainFFGState cfg ext E anchor}
+    {node : ValidatorIndex} {second : ℕ} {origin : Root}
+    {target : Checkpoint Root}
+    (h : E.AcceptedHistoricalA32OriginCallAt cfg ext node second origin target)
+    (hsafe : E.SafeFrom cfg ext origin (second + 1))
+    (hproducer : E.AcceptedCurrentTargetA32GateRealizationProducerAt cfg ext
+      anchor S (second + 1) (E.fcrStep cfg ext node second)) :
+    AcceptedCurrentTargetA32GateRealization cfg ext E anchor S
+      (E.fcrStep cfg ext node second).store := by
+  refine hproducer h.gate ?_
+  rw [h.target_eq]
+  exact h.honestVotesSupportTarget cfg ext E hA hanchor hboundary hsafe
+
+/-- **A3, second half** — the certificate the two `currentHistorical` arms
+actually read, rebuilt at the consuming call.
+
+`docs/trunkA-final-discharge.md` §1: the only thing either arm extracts from
+the payload's old `certified` field is
+`Nonempty (CertifiedJustified anchor T)`, consumed once by
+`CertificateAccountability.justified_unique`.  This produces exactly that, from
+origin-call data plus the origin's safety. -/
+theorem certified
+    (hA : SelectedMarginAssumptions cfg ext E)
+    {anchor : Checkpoint Root}
+    (hanchor : anchor = E.genesis_store.justified_checkpoint)
+    (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
+      (E := E) (anchor := anchor))
+    {S : AcceptedChainFFGState cfg ext E anchor}
+    {node : ValidatorIndex} {second : ℕ} {origin : Root}
+    {target : Checkpoint Root}
+    (h : E.AcceptedHistoricalA32OriginCallAt cfg ext node second origin target)
+    (hsafe : E.SafeFrom cfg ext origin (second + 1))
+    (hproducer : E.AcceptedCurrentTargetA32GateRealizationProducerAt cfg ext
+      anchor S (second + 1) (E.fcrStep cfg ext node second)) :
+    Nonempty (CertifiedJustified cfg E anchor target) := by
+  have hreal := h.gateRealization cfg ext E hA hanchor hboundary hsafe hproducer
+  have hcert := hreal.certified
+  rwa [h.target_eq] at hcert
 
 end AcceptedHistoricalA32OriginCallAt
 
