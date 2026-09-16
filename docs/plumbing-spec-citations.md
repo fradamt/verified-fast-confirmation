@@ -11,6 +11,30 @@ faithfulness verdict.
 **Read `docs/witness-statement-audit.md` first** for the inventory and the [S]/[P]/[B]/[D]
 key. Rows A, A1, A2, A3, G, H, J, K, M-c, M-f, N, O, O′ there are the subject matter.
 
+> **Post-audit status (2026-09-16).** Every flag of §13 except **P-6** is now
+> **RESOLVED**; P-6 awaits the owner. Each fix was a deletion, a premise weakening or a
+> docstring disclosure — no witness conclusion changed by a byte and no premise surface
+> grew anywhere.
+> * `ed9af80` — **P-2**: the duplicate field `justified_checkpoint_cached` is deleted;
+>   `justified_cached` is kept and absorbs its provenance paragraph.
+>   `JustificationInterface` 15 → **14** fields.
+> * `3fc11bc` — **P-5**: `checkpoint_known` gains the `WithinHorizon` guard every other
+>   field of the record carries (a strict weakening); ~25 consumers rewired mechanically.
+> * `445d63d` — **P-10**: `hanchorExact` (row L) is *derived* from `hboundary` (row E) on
+>   the weak headlines by the pre-existing `acceptedAnchorExact_of_trajectory`, the same
+>   route the strong fold already used. Rows E and L are now demonstrably not independent.
+> * `bfc03a3` — **P-3, P-4, P-7, P-8**: docstring disclosures, no semantic change.
+> * `dab205e` — **bonus, row N**: `PostAnchorHonestVoteTargetWalkDomain` is derived from
+>   `SelectedMarginAssumptions` + `hanchor` + `hboundary` and dropped from the weak
+>   headlines. See §14.
+> * The **P-9** Lean docstring was already corrected by `edf357f` (the single-synchrony
+>   refactor): `AcceptedHistoricalA32CallSupplier.lean:~323` now reads "the first five
+>   fields" of a six-field record and states outright that there is no `delivery_lookahead`
+>   field. Only the **P-1** count drift in `witness-statement-audit.md` remained, and is
+>   fixed there.
+>
+> Rows and sections below are annotated in place; nothing else was re-audited.
+
 ## 0. Sources, snapshot, and method
 
 **Pinned spec.** consensus-specs `30aa65fc21cf7f7c7dd1f7d6b686d0250462d04f`, via the blob
@@ -128,7 +152,7 @@ The 16 laws:
 | `genesis_gj` | `:841` | `get_forkchoice_store` (fork-choice.md:215): `block_states={anchor_root: copy(anchor_state)}` | FAITHFUL |
 | `genesis_gf` | `:843` | same line | FAITHFUL |
 | `genesis_gu`, `genesis_guf` | `:845`,`:848` | `compute_pulled_up_tip` applied to the anchor state | FAITHFUL |
-| `genesis_unrealized_justification` | `:851` | `get_forkchoice_store`: `unrealized_justifications={anchor_root: justified_checkpoint}` | **FAITHFUL-WITH-NOTE — see §12 P-3.** The pinned initializer stores the *un-pulled* checkpoint; combined with `genesis_gu` this field demands `pjf(anchor_state).current_justified_checkpoint = Checkpoint(anchor_epoch, anchor_root)`, which `get_forkchoice_store` does not establish |
+| `genesis_unrealized_justification` | `:851` | `get_forkchoice_store`: `unrealized_justifications={anchor_root: justified_checkpoint}` | **FAITHFUL-WITH-NOTE — §13 P-3, disclosed in the field docstring by `bfc03a3`.** The pinned initializer stores the *un-pulled* checkpoint; combined with `genesis_gu` this field demands `pjf(anchor_state).current_justified_checkpoint = Checkpoint(anchor_epoch, anchor_root)`, which `get_forkchoice_store` does not establish |
 | `transition_gj`, `transition_gf` | `:853`,`:856` | `on_block` (fork-choice.md:905): `state_transition(state, signed_block, …)` then `store.block_states[block_root] = state` | FAITHFUL |
 | `transition_gu`, `transition_guf` | `:859`,`:863` | `compute_pulled_up_tip(store, block_root)`, the last line of `on_block` | FAITHFUL |
 | `checkpoint_of_known` | `:874` | `get_checkpoint_for_block` → `get_checkpoint_block` (fork-choice.md:295) → `get_ancestor` (`:269`) | FAITHFUL-WITH-NOTE: the semantic `C` is a global function of (root, epoch) while `get_checkpoint_block` is store-relative; the field asserts store-independence over causal stores. Sound because `get_ancestor` is a pure walk over `store.blocks`, which is monotone along the execution |
@@ -153,9 +177,12 @@ transcription.** The transcription obligation lands on `AcceptedFFGSelectorCoher
 
 ## 2. `JustificationInterface` — `Spec/TheoremStatements.lean:82`, **15 fields**
 
-> **Count correction.** The statement audit records 13 (from 15). The record has **15**;
-> `8b05b67` deleted two fields from **17**. Verified: `git show 8b05b67^:…` yields 17
-> fields, the snapshot yields 15. §12 P-1.
+> **Count correction.** The statement audit records 13 (from 15). The record had **15** at
+> audit time; `8b05b67` deleted two fields from **17**. Verified: `git show 8b05b67^:…`
+> yields 17 fields, the audited snapshot 15. §13 P-1.
+>
+> **Since `ed9af80` (P-2) the record has 14 fields**: `justified_checkpoint_cached` is
+> gone. Row 12 below is struck; row 3 `justified_cached` carries its content.
 
 | # | field (`:line`) | pinned-spec origin | verdict |
 |---|---|---|---|
@@ -165,14 +192,14 @@ transcription.** The transcription obligation lands on `AcceptedFFGSelectorCoher
 | 4 | `finalized_justified_ancestry` `:113` | `weigh_…` assigns `finalized_checkpoint` from `old_*_justified_checkpoint`, on the same chain; consumed by `filter_block_tree`'s `correct_finalized` (fork-choice.md:430) | FAITHFUL-WITH-NOTE ([S] Casper) |
 | 5 | `justified_requires_targets` `:126` | `if previous_epoch_target_balance * 3 >= total_active_balance * 2` / `if current_epoch_target_balance * 3 >= …` (beacon-chain.md:1509ff) | FAITHFUL-WITH-NOTE: the spec's inequality is over balances **recorded in the state**; the Lean quantifies over attestations **observable in honest schedules**, adding the network-observability half |
 | 6 | `observed_justified` `:144` | fast-confirmation.md:94 — verbatim field doc: *"`current_epoch_observed_justified_checkpoint`: a justified checkpoint that has been observed by all honest nodes at the beginning of the current epoch assuming synchrony"* | **FAITHFUL** (direct transcription of normative field documentation) |
-| 7 | `unrealized_justified` `:156` | fast-confirmation.md:97 — but that field's doc reads *"`previous_epoch_greatest_unrealized_checkpoint`: a greatest unrealized justified checkpoint at the start of the last slot of the previous epoch **according to a local view**"* | FAITHFUL-WITH-NOTE — **§12 P-4**: the spec documents cross-view propagation only for the *observed* fields; this asserts it one rotation upstream, where the spec says "local view" |
+| 7 | `unrealized_justified` `:156` (disclosed in-docstring by `bfc03a3`, §13 P-4) | fast-confirmation.md:97 — but that field's doc reads *"`previous_epoch_greatest_unrealized_checkpoint`: a greatest unrealized justified checkpoint at the start of the last slot of the previous epoch **according to a local view**"* | FAITHFUL-WITH-NOTE — **§13 P-4**: the spec documents cross-view propagation only for the *observed* fields; this asserts it one rotation upstream, where the spec says "local view" |
 | 8 | `greatest_unrealized_cached` `:170` | `update_fast_confirmation_variables` (fast-confirmation.md:805) rotates the checkpoint into `*_observed_*` **without re-keying** `checkpoint_states`; `get_previous_balance_source` then reads it as a key | FAITHFUL-WITH-NOTE (gap the pinned rotation leaves open, supplied explicitly; the docstring says exactly this) |
-| 9 | `checkpoint_known` `:179` | `on_block`'s `finalized_checkpoint_block = get_checkpoint_block(store, block.parent_root, store.finalized_checkpoint.epoch)` + `assert store.finalized_checkpoint.root == finalized_checkpoint_block`; `get_filtered_block_tree`'s `base = store.justified_checkpoint.root` (fork-choice.md:448) | FAITHFUL-WITH-NOTE — **§12 P-5**: this is the one field of the fifteen with **no `WithinHorizon` guard**; it is stated for all `m` |
+| 9 | `checkpoint_known` `:179` | `on_block`'s `finalized_checkpoint_block = get_checkpoint_block(store, block.parent_root, store.finalized_checkpoint.epoch)` + `assert store.finalized_checkpoint.root == finalized_checkpoint_block`; `get_filtered_block_tree`'s `base = store.justified_checkpoint.root` (fork-choice.md:448) | FAITHFUL-WITH-NOTE — **§13 P-5 RESOLVED (`3fc11bc`)**: it was the one field of the fifteen with no `WithinHorizon` guard; it now carries one, like every other field |
 | 10 | `justified_ancestry` `:188` | as #1 | FAITHFUL-WITH-NOTE ([S]) |
 | 11 | `finalized_descent` `:201` | fork-choice.md:171 Store doc: *"`finalized_checkpoint`: the highest known finalized checkpoint"*, + `update_checkpoints`' monotone guard | FAITHFUL-WITH-NOTE ([S] cross-store; the spec's monotonicity is per-store only) |
-| 12 | `justified_checkpoint_cached` `:214` | — | **UNMOTIVATED as a distinct field**: mechanically α-equal to field #3 `justified_cached` (`:105`). §12 P-2 |
+| ~~12~~ | ~~`justified_checkpoint_cached` `:214`~~ | — | **DELETED (`ed9af80`, §13 P-2)**: it was mechanically α-equal to field #3 `justified_cached` (`:105`), which now carries its docstring content |
 | 13 | `observed_checkpoint_known` `:224` | fast-confirmation.md:94 for the third conjunct; `compute_pulled_up_tip` writes `unrealized_justifications` only for known `block_root`s for the first two | FAITHFUL-WITH-NOTE (cross-store knownness is a synchrony consequence; the spec asserts nothing cross-store) |
-| 14 | `justified_descends` `:245` | fork-choice.md:394 `filter_block_tree` keeps a branch when `voting_source.epoch == store.justified_checkpoint.epoch or voting_source.epoch + 2 >= current_epoch`; `get_head` (`:473`) then walks `get_filtered_block_tree` from `store.justified_checkpoint.root` | **UNMOTIVATED/CANNOT-LOCATE** as stated — §12 P-6. The field asserts the head *descends every checkpoint justified above the store's realized justified epoch*. `filter_block_tree` prunes branches whose voting source is stale, but nothing in the pinned fork choice makes the head descend a checkpoint that is not the filter base. The docstring calls it "the justification-friendliness of LMD-GHOST the fork-choice design guarantees" — a design intuition, not spec text |
+| 14 | `justified_descends` `:245` | fork-choice.md:394 `filter_block_tree` keeps a branch when `voting_source.epoch == store.justified_checkpoint.epoch or voting_source.epoch + 2 >= current_epoch`; `get_head` (`:473`) then walks `get_filtered_block_tree` from `store.justified_checkpoint.root` | **UNMOTIVATED/CANNOT-LOCATE** as stated — §13 P-6. The field asserts the head *descends every checkpoint justified above the store's realized justified epoch*. `filter_block_tree` prunes branches whose voting source is stale, but nothing in the pinned fork choice makes the head descend a checkpoint that is not the filter base. The docstring calls it "the justification-friendliness of LMD-GHOST the fork-choice design guarantees" — a design intuition, not spec text |
 | 15 | `justified_block_boundary` `:259` | `get_checkpoint_block`: `epoch_first_slot = compute_start_slot_at_epoch(epoch); return get_ancestor(store, node, epoch_first_slot).root`, and `get_ancestor` (`:269`) returns a node with `block.slot <= slot` | FAITHFUL-WITH-NOTE (the "honest targets never trail the justified epoch" half comes from validator.md's FFG-vote construction, not from the walk) |
 
 ---
@@ -245,13 +272,13 @@ process-epoch-before-slot-increment order" is accurate.
 | field | Lean | origin | verdict |
 |---|---|---|---|
 | `process_slots_slot` | `:331` | `while state.slot < slot: … state.slot = Slot(state.slot + 1)` | FAITHFUL |
-| `process_slots_registry` | `:332` | — | **FAITHFUL-WITH-NOTE / §12 P-7**: *false* of the pinned function across an epoch boundary. `process_epoch` calls `process_registry_updates`, `process_slashings` and `process_effective_balance_updates`, all of which mutate `state.validators`. Motivated only by the static-set idealization ([S] `StaticValidatorSet`), which this field's docstring — unlike `state_transition_registry`'s — does not mention |
+| `process_slots_registry` | `:332` | — | **FAITHFUL-WITH-NOTE / §13 P-7, disclosed in the field's own docstring by `bfc03a3`**: *false* of the pinned function across an epoch boundary. `process_epoch` calls `process_registry_updates`, `process_slashings` and `process_effective_balance_updates`, all of which mutate `state.validators`. Motivated only by the static-set idealization ([S] `StaticValidatorSet`), which this field's docstring — unlike `state_transition_registry`'s — does not mention |
 | `state_transition_registry` | `:338` | same idealization; **disclosed** in the docstring ("no deposits/exits in the window — the static-set idealization") | FAITHFUL-WITH-NOTE |
 | `state_transition_slot` | `:336` | `state_transition` calls `process_slots(state, block.slot)`; `process_block` does not move the slot | FAITHFUL |
 | `state_transition_pre_slot_lt` | `:344` | `def process_slots(state, slot): assert state.slot < slot` | **FAITHFUL** (single quoted assert) |
 | `state_transition_checkpoint_epoch` | `:351` | `weigh_…` assigns checkpoints at `previous_epoch`/`current_epoch` of the processing state, all `≤ epoch(block.slot)`; `finalized` from the older justified values | FAITHFUL-WITH-NOTE (needs the pre-state invariant on the no-boundary path) |
 | `pjf_checkpoint_epoch` | `:360` | same; plus the early return `if get_current_epoch(state) <= GENESIS_EPOCH + 1: return` preserves whatever the pre-state carried | FAITHFUL-WITH-NOTE (same) |
-| `committees_agree` | `:366` | fast-confirmation.md:230 normative note on `get_slot_committee`: *"This function returns the committee for a specific slot. It MUST support committees of epochs starting from `current_epoch - 2`."*, over `shuffling_source = store.block_states[head]`; validator.md:257 `MAX_SEED_LOOKAHEAD` and validator.md:325 "Lookahead" | FAITHFUL-WITH-NOTE — **§12 P-8**: the spec bounds the guarantee to `current_epoch - 2`; the Lean asserts exact ground-truth agreement for **every** in-horizon slot, with no window |
+| `committees_agree` | `:366` (disclosed in-docstring by `bfc03a3`, §13 P-8) | fast-confirmation.md:230 normative note on `get_slot_committee`: *"This function returns the committee for a specific slot. It MUST support committees of epochs starting from `current_epoch - 2`."*, over `shuffling_source = store.block_states[head]`; validator.md:257 `MAX_SEED_LOOKAHEAD` and validator.md:325 "Lookahead" | FAITHFUL-WITH-NOTE — **§13 P-8**: the spec bounds the guarantee to `current_epoch - 2`; the Lean asserts exact ground-truth agreement for **every** in-horizon slot, with no window |
 | `honest_attestation_valid` | `:374` | `is_valid_indexed_attestation` (beacon-chain.md:765): sorted-unique non-empty indices + `bls.FastAggregateVerify` | FAITHFUL-WITH-NOTE (singleton indices are trivially sorted-unique; BLS completeness on honestly-signed data. The restriction to actually-signed data is a deliberate weakening, disclosed) |
 | `valid_attestation_honest` | `:381` | the same function's `bls.FastAggregateVerify` read as unforgeable | FAITHFUL-WITH-NOTE ([S]; cryptographic soundness, not spec text) |
 | `valid_attestation_committee` | `:390` | `def get_attesting_indices(state, attestation): committee = get_beacon_committee(state, attestation.data.slot, attestation.data.index); return {index for i, index in enumerate(committee) if attestation.aggregation_bits[i]}` (beacon-chain.md:1192) | **FAITHFUL** — the constraint `get_indexed_attestation` imposes, restored as a field because the model absorbed the indexed projection into the wire object (docstring says so) |
@@ -303,7 +330,7 @@ the meaning of the store. They are nonetheless part of the plumbing layer's fait
   (`WeakTrajectorySafety.lean:196`) now carries **3** fields — `phase0_source` (§3),
   `phase0_boundary_source` (§4), `balance_floor` — not the 4 the statement audit records.
   `delivery_lookahead` was absorbed into `PaperSafetySynchrony.attestation_delivery` by the
-  concurrent working-tree edit. §12 P-9.
+  concurrent working-tree edit. §13 P-9.
 - The full contract `AcceptedHistoricalA32CompletedPrefixCallAssumptions`
   (`AcceptedHistoricalA32CallSupplier.lean:344`) is correspondingly **6** fields; its
   docstring at `:326` still describes a `delivery_lookahead` field that no longer exists.
@@ -320,17 +347,21 @@ This should be the genesis state for a full client."*
   `justified_checkpoint = Checkpoint(epoch=anchor_epoch, root=anchor_root)`. **FAITHFUL.**
 - `TrustedAnchorBoundaryAligned` (row E) — `Proof/FFGGlobalCheckpointTrajectory.lean:623`:
   `(E.genesis_store.blocks anchor.root).slot ≤ compute_start_slot_at_epoch cfg anchor.epoch`.
-  **FAITHFUL-WITH-NOTE / §12 P-10.** `get_forkchoice_store` sets `anchor_epoch =
+  **FAITHFUL-WITH-NOTE / §13 P-10 — RESOLVED (`445d63d`).** `get_forkchoice_store` sets `anchor_epoch =
   get_current_epoch(anchor_state)`, which gives the *converse* inequality
   `compute_start_slot_at_epoch(anchor.epoch) ≤ anchor_block.slot`. The two together force
   the anchor block to sit exactly at its epoch boundary — a real restriction on
   checkpoint-sync anchors, which the pinned initializer explicitly permits to be any
   trusted state.
-- `hanchorExact : B.anchor = B.state.C anchor.root anchor.epoch` (row L, [B]). Given §1.1's
-  `C` ≙ `get_checkpoint_for_block`, this is `get_ancestor(anchor_root,
+- ~~`hanchorExact : B.anchor = B.state.C anchor.root anchor.epoch` (row L, [B]).~~ Given
+  §1.1's `C` ≙ `get_checkpoint_for_block`, this is `get_ancestor(anchor_root,
   start_slot(anchor.epoch)) = anchor_root`, i.e. the same boundary-alignment fact expressed
-  through the walk. **FAITHFUL-WITH-NOTE** (equivalent to the previous row, so the two are
-  not independent premises).
+  through the walk. **RESOLVED (`445d63d`): no longer a premise anywhere.** It is *derived*
+  from `B` + trajectory + `hanchor` + `hboundary` by
+  `Execution.acceptedAnchorExact_of_trajectory` (`Proof/AcceptedActualFCRCommon.lean:26`),
+  which reflects the semantic `C` through `AcceptedFFGTransitionCoherence.checkpoint_of_known`
+  at the genesis store. The strong headlines already did this; the weak headlines now do
+  too. Rows E and L are therefore demonstrably one premise, not two.
 
 ---
 
@@ -345,7 +376,7 @@ This should be the genesis state for a full client."*
 | `gj/gu/gf/guf_mem`, `gj_anchor_or_before`, `gj_max`, `gu_max`, `au_epoch_le_block`, `gf/guf_evidence`, 3 epoch orderings | `process_slots` loop; `weigh_justification_and_finalization`; `update_checkpoints` | NOTE ×13 |
 | `AcceptedFFGSelectorCoherence` (10) | `get_forkchoice_store`; `on_block`; `compute_pulled_up_tip` | 9 FAITHFUL, 1 NOTE (P-3) |
 | `checkpoint_of_known`, `au_checkpoint_of_known` | `get_checkpoint_block`/`get_ancestor` | NOTE ×2 |
-| `JustificationInterface` (15) | `get_weight`; balance-source reads; `weigh_…`; FCR store field docs | 1 FAITHFUL, 12 NOTE, 1 UNMOTIVATED (P-6), 1 duplicate (P-2) |
+| `JustificationInterface` (15 → **14** since `ed9af80`) | `get_weight`; balance-source reads; `weigh_…`; FCR store field docs | 1 FAITHFUL, 12 NOTE, 1 UNMOTIVATED (P-6); the duplicate (P-2) is deleted |
 | `Phase0SourceCoherence` (2) | `process_slots` boundary test; `process_block` call list | 1 FAITHFUL, 1 NOTE |
 | `Phase0BoundarySourceCoherence` (2) | same + participation-record rotation | NOTE ×2 |
 | `PaperA32Inclusion` | arXiv:2405.00549, cited by fast-confirmation.md:57 | NOTE |
@@ -355,45 +386,75 @@ This should be the genesis state for a full client."*
 | `ExternalsCoherence` (14) | `process_slots`; `state_transition`; `get_attesting_indices`; `get_beacon_committee`; `get_slot_committee` note | 4 FAITHFUL, 10 NOTE (2 flagged: P-7, P-8) |
 | handler contracts (`on_block` parent-known + 4 asserts, `validate_on_attestation`, `on_attestation`) | fork-choice.md:905/950/786 | 3 FAITHFUL, 1 NOTE |
 | `balance_floor` | `get_total_balance` minimum | NOTE |
-| `TrustedAnchorBoundaryAligned`, `hanchor`, `hanchorExact` | `get_forkchoice_store` | 1 FAITHFUL, 2 NOTE (P-10) |
+| `TrustedAnchorBoundaryAligned`, `hanchor`, ~~`hanchorExact`~~ | `get_forkchoice_store` | 1 FAITHFUL, 1 NOTE; `hanchorExact` derived and dropped (P-10, `445d63d`) |
 
-**Counts (fields, not records): FAITHFUL 28 · FAITHFUL-WITH-NOTE 52 · DELTA 1 ·
+**Counts as audited (fields, not records): FAITHFUL 28 · FAITHFUL-WITH-NOTE 52 · DELTA 1 ·
 UNMOTIVATED/CANNOT-LOCATE 2** (`justified_descends`; `justified_checkpoint_cached` as a
 distinct field). Total 83 plumbing fields examined.
 
+**Counts after the fixes:** the duplicate is gone (`ed9af80`) and `hanchorExact` is derived
+rather than assumed (`445d63d`), so **81** plumbing fields remain on the surface, with
+exactly **one** UNMOTIVATED — `justified_descends`, P-6, which awaits the owner.
+
 ## 13. Flags
 
-**P-1 — field-count drift in `witness-statement-audit.md`.** `JustificationInterface` has
+**P-1 — RESOLVED (doc-only, this commit) — field-count drift in `witness-statement-audit.md`.** `JustificationInterface` has
 **15** fields, not 13 (`8b05b67` went 17 → 15). `AcceptedChainFFGState` has **24**, not 26.
 `AcceptedFFGSelectorCoherence` has **10**, not 11. Documentation only; no premise changed.
+*Resolution:* the rows in `witness-statement-audit.md` are corrected, and the counts are
+re-verified mechanically against the environment (`getStructureFields`) rather than by
+eye: `JustificationInterface` **14** (after P-2), `AcceptedChainFFGState` **24**,
+`AcceptedFFGSelectorCoherence` **10**, `AcceptedFFGTransitionCoherence` **+2**,
+`ExternalsCoherence` **14**, `SelectedMarginAssumptions` **9**,
+`AcceptedHistoricalA32CompletedPrefixCallAssumptions` **6**, its supplement **3**,
+`AcceptedActualFCRNextSlotSafetyAssumptions` **11**.
 
-**P-2 — a literally duplicated premise field.** `JustificationInterface.justified_cached`
+**P-2 — RESOLVED (`ed9af80`) — a literally duplicated premise field.** `JustificationInterface.justified_cached`
 (`TheoremStatements.lean:105`) and `.justified_checkpoint_cached` (`:214`) are the **same
 proposition** up to bound-variable renaming (verified mechanically: both normalize to
 `∀ X ∈ E.honest, ∀ X : ℕ, E.WithinHorizon cfg X → (E.store cfg ext X X).justified_checkpoint
 ∈ (E.store cfg ext X X).checkpoint_state_keys`). One of the two should go; the premise
 surface of W20–W23 currently carries it twice under different docstrings.
+*Resolution:* `justified_checkpoint_cached` deleted; `justified_cached` kept and its
+docstring extended with the deleted field's provenance paragraph and the fork-choice.md:358
+`get_weight` citation. Three consumers rewired by renaming the projection
+(`EdgeDynamics` ×2, `SpecAssumptions.toSelectedMarginAssumptions`). Record 15 → 14.
 
-**P-3 — the genesis unrealized-justification field over-constrains the pinned initializer.**
+**P-3 — RESOLVED as a disclosure (`bfc03a3`) — the genesis unrealized-justification field over-constrains the pinned initializer.**
 `AcceptedFFGSelectorCoherence.genesis_unrealized_justification` (`:851`) plus `genesis_gu`
 (`:845`) jointly demand `pjf(anchor_state).current_justified_checkpoint =
 Checkpoint(anchor_epoch, anchor_root)`. The pinned `get_forkchoice_store` stores the
 **un-pulled** value: `unrealized_justifications={anchor_root: justified_checkpoint}`. The
 conjunction is therefore an extra contract on `ext.process_justification_and_finalization`
 at the anchor state, not a transcription of the initializer.
+*Resolution:* no strict weakening was available (the field is read at the anchor root, which
+is where the extra content lives), so the field's own docstring now states the over-constraint
+verbatim and names it a companion of the checkpoint-sync trust boundary rather than a
+transcription. No semantic change.
 
-**P-4 — cross-view propagation asserted where the spec says "local view".**
+**P-4 — RESOLVED as a disclosure (`bfc03a3`) — cross-view propagation asserted where the spec says "local view".**
 `JustificationInterface.unrealized_justified` (`:156`) asserts that an honest store's
 unrealized justified checkpoint *and* its FCR store's
 `previous_epoch_greatest_unrealized_checkpoint` are justified in every honest view from the
 same slot on. fast-confirmation.md documents the all-honest-nodes property only for the two
 `*_observed_justified_checkpoint` fields; the greatest-unrealized field's own documentation
 says *"according to a local view"*.
+*Resolution:* disclosed in the field's docstring, with both quotations (fast-confirmation.md:94
+for the observed fields, :97 for the greatest-unrealized field) and the statement that the
+cross-view step is taken one rotation upstream of the spec's own. No semantic change; the
+field is consumed as a whole, so dropping either conjunct is not available as a weakening.
 
-**P-5 — one unguarded field.** `JustificationInterface.checkpoint_known` (`:179`) is the
+**P-5 — RESOLVED (`3fc11bc`) — one unguarded field.** `JustificationInterface.checkpoint_known` (`:179`) is the
 only field of the fifteen stated without a `WithinHorizon` hypothesis; it claims
 justified/finalized-root knownness at **every** second, including beyond the verification
 horizon every other conclusion is scoped to.
+*Resolution:* the field now reads `∀ w ∈ E.honest, ∀ m : ℕ, E.WithinHorizon cfg m → …`,
+which is a strict weakening (the new field follows from the old by discarding a hypothesis).
+Every consumer already had the horizon witness in context or derived it one line earlier;
+`InterfaceRewire.justified_known_of_interface` / `.finalized_known_of_interface` gained the
+same guard, four legacy `SpecAssumptions`-path lemmas took the horizon second they were
+implicitly relying on, and `FindLatestSafety.safeFrom_find_latest_confirmed_descendant` kept
+its signature by entering `safeFrom_of_headStep` first. No witness signature changed.
 
 **P-6 — UNMOTIVATED: `JustificationInterface.justified_descends` (`:245`).** It asserts
 that an honest store's `get_head` descends *every* checkpoint justified above that store's
@@ -405,21 +466,31 @@ justification is "the justification-friendliness of LMD-GHOST the fork-choice de
 guarantees", which is a design intuition. This is the largest single unsupported step in
 the plumbing layer and it sits on all four weak headlines via `hji`.
 
-**P-7 — `ExternalsCoherence.process_slots_registry` (`:332`) is false of the pinned
+**P-7 — RESOLVED as a disclosure (`bfc03a3`) — `ExternalsCoherence.process_slots_registry` (`:332`) is false of the pinned
 function.** `process_slots` calls `process_epoch`, which calls `process_registry_updates`,
 `process_slashings` and `process_effective_balance_updates` — all of which write
 `state.validators`. The field is the static-set idealization at the function level. Its
 sibling `state_transition_registry` (`:338`) discloses exactly this in its docstring;
 `process_slots_registry` does not, and says only "preserves the registry".
+*Resolution:* the field now has its own docstring naming it the static-validator-set
+idealization at the function level, listing the three `process_epoch` calls that falsify it
+across a boundary, noting that it is exact within one epoch, and pointing at the [S]
+assumption that licenses it. `process_slots_slot` keeps the transcription half with its
+beacon-chain.md:1396 citation. No faithful weakening was trivially available (the model calls
+`process_slots` across boundaries), so none was made.
 
-**P-8 — `ExternalsCoherence.committees_agree` (`:366`) exceeds the spec's own window.**
+**P-8 — RESOLVED as a disclosure (`bfc03a3`) — `ExternalsCoherence.committees_agree` (`:366`) exceeds the spec's own window.**
 fast-confirmation.md:230 states the requirement as *"It MUST support committees of epochs
 starting from `current_epoch - 2`"*. The Lean field asserts exact agreement with the
 ground-truth committee for every in-horizon slot with no two-epoch window and no
 `MAX_SEED_LOOKAHEAD` qualification. Sound under the static-registry idealization, but it is
 a strengthening, not a transcription, of the quoted MUST.
+*Resolution:* disclosed in the field's docstring, quoting fast-confirmation.md:230 verbatim
+and stating that the extra window is licensed by the same static-set idealization (a fixed
+active set makes the shuffling registry-determined, so `current_epoch - 2` stops binding).
+No semantic change.
 
-**P-9 — the record moved under this audit.** `AcceptedHistoricalA32CompletedPrefixCall
+**P-9 — RESOLVED (`edf357f` for the Lean docstring; doc rows here) — the record moved under this audit.** `AcceptedHistoricalA32CompletedPrefixCall
 Supplement` has **3** fields in the snapshot read (`WeakTrajectorySafety.lean:196`, md5
 `9e11694e…`), not the 4 the *committed* statement audit records: `delivery_lookahead` was
 merged into `PaperSafetySynchrony.attestation_delivery` by the concurrent uncommitted edit.
@@ -428,16 +499,32 @@ The working-tree `witness-statement-audit.md` has since been updated to 3 (row O
 `AcceptedHistoricalA32CallSupplier.lean:326` still documents a `delivery_lookahead` field
 that no longer exists** ("`delivery_lookahead` is the paper-synchrony boundary closure for
 honest votes created inside the prefix", and "the first five fields" of a now-six-field
-record). That docstring/signature discrepancy is unresolved as of this reading.
+record). *Resolution:* re-read at `bfc03a3`. The docstring the audit flagged was in fact already
+corrected by `edf357f` itself: `AcceptedHistoricalA32CallSupplier.lean:~323` now reads *"The
+first five fields are direct protocol/model contracts"* of a six-field record and states
+outright *"There is no `delivery_lookahead` field either."* A repository sweep for
+`delivery_lookahead` / `HorizonVoteDeliveryLookahead` finds only deliberate historical notes.
+The remaining half of this flag was the P-1 count drift, fixed in
+`witness-statement-audit.md`.
 
-**P-10 — the trust boundary is narrower than checkpoint sync.** `TrustedAnchorBoundary
+**P-10 — RESOLVED as a de-duplication (`445d63d`) — the trust boundary is narrower than checkpoint sync.** `TrustedAnchorBoundary
 Aligned` (`FFGGlobalCheckpointTrajectory.lean:623`) together with `get_forkchoice_store`'s
 `anchor_epoch = get_current_epoch(anchor_state)` pins the anchor block to *exactly* its
 epoch's start slot. The pinned initializer permits any trusted anchor state, including a
 mid-epoch one. `hanchorExact` (row L) is the same fact restated through the checkpoint
 walk, so rows E and L are not independent premises.
+*Resolution:* the redundancy is **total**, not partial, and it is mechanical: the derivation
+`Execution.acceptedAnchorExact_of_trajectory` (`Proof/AcceptedActualFCRCommon.lean:26`)
+already existed — the strong fold used it, which is why W1/W2 never carried `hanchorExact` —
+and every one of its inputs (`B`, the trajectory record, `hanchor`, `hboundary`) was already
+a premise of the weak headlines. `hanchorExact` is therefore deleted from all four weak
+trajectory theorems and supplied internally. The *narrowness* of the trust boundary itself
+(anchor block pinned to its epoch's start slot) is unchanged and remains an honest
+restriction relative to `get_forkchoice_store`, now carried by exactly one premise, row E.
 
-**Overall judgement.** The plumbing layer is a faithful transcription: 28 fields are
+**P-6 — still open (owner).** Untouched by this pass, as instructed.
+
+**Overall judgement (as audited).** The plumbing layer is a faithful transcription: 28 fields are
 line-for-line, 52 are transcriptions with an abstraction step that this document names, one
 is a declared design delta, and only two are unsupported — one of them (P-2) a duplicate
 rather than a claim. Everything that touches `on_block`, `on_attestation`,
@@ -446,3 +533,53 @@ rather than a claim. Everything that touches `on_block`, `on_attestation`,
 them the same phenomenon: the reduced model erases `process_epoch`'s internals, block
 bodies, and the `checkpoint_states` cache's provenance, so what the spec computes the model
 must assume. P-6 is the one genuine hole.
+
+**Overall judgement (after the fixes).** Unchanged in substance, sharper on the surface: the
+duplicate is gone, the one unguarded field is guarded, the one redundant anchor row is
+derived, the four idealizations are disclosed at the point of definition, and P-6 is the
+single remaining unsupported step.
+
+---
+
+## 14. Bonus: row N, `PostAnchorHonestVoteTargetWalkDomain`, derived (`dab205e`)
+
+Not a flag of this document — it is row N of `witness-statement-audit.md`, classified [P]
+"domain adequacy of the totalized walk" — but it is grounded by the same store-closure
+machinery this audit traces, so it is recorded here.
+
+The predicate says: for every actual post-anchor honest vote, `WalkKnown` holds from the
+voter's own head down to the boundary slot of the vote's target epoch. It is now **derived**,
+by
+
+```
+Execution.postAnchorHonestVoteTargetWalkDomain_of_selectedMarginAssumptions
+  (hA : SelectedMarginAssumptions cfg ext E)
+  (hanchor : anchor = E.genesis_store.justified_checkpoint)
+  (hboundary : TrustedAnchorBoundaryAligned … anchor) :
+  E.PostAnchorHonestVoteTargetWalkDomain cfg ext
+```
+
+from three facts this audit has already grounded:
+
+1. the voter's head is a known block — `get_head_root_mem_or`, with
+   `SelectedMarginDomain.justified_root_known` covering the totalized fallback;
+2. every known block walks down to the retained trusted anchor's slot —
+   `Execution.store_walkKnownK`, which is proved for arbitrary nodes out of the handler
+   contract of §10: `on_block` admits only parent-known blocks (`Model/Handlers.lean:354`
+   ← fork-choice.md:908 `assert block.parent_root in store.block_states`). The owner's
+   justification — "we have parent-known for `on_block`, which is correct" — is exactly
+   this step, and it suffices;
+3. `TrustedAnchorBoundaryAligned` (§11) lifts that anchor-slot walk to the target boundary,
+   because the predicate's own post-anchor hypothesis (`E.slot_at cfg 0 ≤ s`) puts the
+   vote's target epoch at or above the anchor epoch.
+
+Step 3 is where the boundary subtlety lands, and it is handled by the post-anchor hypothesis
+alone: a vote whose target epoch *preceded* the anchor epoch would demand a walk below the
+retained anchor, which no store can support — and the predicate never quantifies over one.
+
+`hwalkDomain` is dropped from the four weak trajectory theorems. It is **kept** on the weak
+one-shot floor pair (`weak_safeFrom_find_latest_confirmed_descendant_discharged` /
+`weak_confirmed_head_discharged`, W18/W19): those carry `hW.base` but neither an anchor
+identification nor `TrustedAnchorBoundaryAligned`, so dropping the binder there would be a
+premise *exchange* (one [P] adequacy statement for one [B] anchor inequality), not a shrink.
+That is an owner call, not a mechanical one.
