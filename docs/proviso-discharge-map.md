@@ -18,6 +18,58 @@ the very call. Details and the two narrow escapes are in §5.
 
 ---
 
+## FINAL STATUS (superseding everything below on the weak path)
+
+**The weak observer proviso no longer exists.** `docs/weak-final-wave.md`
+W1–W9 closed it, and not by any of the waves 4–6 sketched in §6:
+
+* **Waves 4/5 were never needed.** Neither the `JustificationInterface`
+  extension (E1) nor the capped `HonestVotesSupportTargetUpTo` plumbing across
+  ≈29 files was performed. The weak path was closed by making the historical
+  A3.2 crossing payload **lazy** instead: `Weak.LazyCertAt` /
+  `Weak.LazySupportAt` (`WeakHistoricalA32OriginCall.lean`,
+  `WeakHistoricalA32LazyCrossing.lean`) package the certification and support
+  obligations as closures over the fold's own output at *strictly earlier*
+  seconds, so the crossing call proves them from
+  `Weak.ObserverPriorCallWriteBackSafe` rather than assuming them.
+* **§4's question is answered "yes".** The strengthened fold motive
+  (`Execution.weakConfirmedSafeFromFollowingSlot_of_weakFullRuleFold_all_le`,
+  wave 3 above) retains the invariant at every earlier call second, which is
+  exactly what the lazy closures consume. That is the discharge §4 was looking
+  for.
+* **§5.1's obstruction still stands, and was routed around.** The live proviso
+  sites really cannot supply the current-epoch placement of the safe root. The
+  lazy route does not try to: it takes its support from the **origin call's**
+  own write-back, not from the consuming call's `hbase`.
+* **Wave 6 happened, in the strong direction only for the weak twins.**
+  `Weak.SelectedHelperProvisosAt` and `Weak.ObserverHistoricalA32CallAssumptions`
+  (with its `observer_helper_provisos` field) are **deleted**, together with
+  the eager obligation route, the eager obligation families, the eager weak
+  crossing constructors and the four one-shot closed weak witnesses that were
+  their only consumers. No binder of §1.1 survives; nothing needed replacing
+  by `E.AcceptedHistoricalA32CompletedPrefixCallAssumptions`, because the
+  lazy path never took the record in the first place.
+* **Wave 6 step 3 was *not* taken.** `Execution.SelectedHelperProvisosAt` (the
+  strong record, `SelectedTraceFilterPipeline.lean`) and the strong
+  `helper_provisos` field are untouched: they are still read by the legacy
+  retained-trace pipeline and by ~25 FFG state-realization public function
+  contracts (`SelectedTraceFFGRealizationPipeline.lean`,
+  `SelectedCoveredMarginConstruction.lean`). Deleting them is a separate,
+  still-pending decision — see `docs/weak-final-wave.md` §8.1 item 1.
+
+The audited weak statements are now the four trajectory headlines
+(`Execution.weakConfirmed_safeFromFollowingSlot_of_weakFullRuleFold`,
+`…_head_of_weakFullRuleFold_nextSlot`, and the two
+`…_of_acceptedWeakFullRuleFold` twins), none of which carries an observer
+proviso.
+
+Everything below is retained as the historical analysis that produced this
+outcome; where it speaks of live `observer_helper_provisos` sites, binders of
+`Weak.ObserverHistoricalA32CallAssumptions`, or the weak
+`SelectedHelperProvisosAt`, it is describing code that no longer exists.
+
+---
+
 ## 1. Consumption graph of `Weak.ObserverHistoricalA32CallAssumptions`
 
 Definition: `FastConfirmation/Spec/Proof/WeakSelectedStrictEdgeFilterSupply.lean:236-245`

@@ -795,7 +795,7 @@ premises are:
   uncertified epoch-start escape behind the head broadcast certificate) that
   adds no assumption to the floor. `Weak.SelectedStrictEdgeFilterSupplyAt` is
   now fully discharged, with no `hfilter`-shaped premise surviving anywhere —
-  see "The closed theorem" below. `Execution.WeakRecentSourceSeedDissemination`
+  see "The closed one-call step" below. `Execution.WeakRecentSourceSeedDissemination`
   was never landed and is not needed.)*
 * **`hwalkDomain : E.PostAnchorHonestVoteTargetWalkDomain cfg ext`** —
   endpoint-side only. It survives `vote_ubiquity`'s retirement because its
@@ -831,18 +831,18 @@ the discharged headline, so `hmargin` becomes `hfilter`.
 `weak_confirmed_head_discharged` (19 declarations); both depend only on
 `propext, Classical.choice, Quot.sound`.
 
-## The closed theorem
+## The closed one-call step
 
 Stage S8 assembles the `hfilter`-discharge wave's own headline
 (`Weak.StrictSelectorAdvanceAt.observerCall_selectedStrictEdgeFilterSupplyAt_
-closed`, `WeakObserverStrictCallFilterInputs.lean` — the S0–S7 stack's
-closed strict-edge filter supplier, taking no `hinputs` bundle at all) with
+lazy`, `WeakObserverStrictCallFilterInputs.lean` — the S0–S7 stack's closed
+strict-edge filter supplier, taking no `hinputs` bundle at all) with
 `weak_safeFrom_find_latest_confirmed_descendant_discharged` above
-(`WeakOneShotSafetyClosed.lean`). The result is the closed one-shot weak
-safety theorem, at an actual FCR call, with **no `hmargin` and no `hfilter`**:
+(`WeakOneShotSafetyClosed.lean`). The result is the closed one-call weak
+safety step, at an actual FCR call, with **no `hmargin` and no `hfilter`**:
 
 ```lean
-theorem weak_safeFrom_observerCall_closed
+theorem weak_safeFrom_observerCall_closed_lazy
     {E : Execution Root}
     (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
     (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
@@ -858,9 +858,10 @@ theorem weak_safeFrom_observerCall_closed
     {obs : ValidatorIndex}
     (hW : E.WeakObserverAssumptions cfg ext obs)
     (hwalkDomain : E.PostAnchorHonestVoteTargetWalkDomain cfg ext)
-    (hC : Weak.ObserverHistoricalA32CallAssumptions cfg ext E obs)
+    (hCbase : E.AcceptedHistoricalA32CompletedPrefixCallAssumptions cfg ext)
     (hfit : EpochEndsFitUint64 cfg)
     {n : ℕ}
+    (hprior : Weak.ObserverPriorCallWriteBackSafe cfg ext E obs n)
     (hn1H : E.WithinHorizon cfg (n + 1))
     (hcall : E.IsFCRCallAt cfg ext obs n)
     (hinput : (E.weakGetLatestConfirmedTraceAt cfg ext obs n).afterObserved ∈
@@ -881,28 +882,37 @@ and `Weak.StrictSelectorAdvanceAt` facts the closed filter supplier consumes,
 and its output is fed straight into `weak_safeFrom_find_latest_confirmed_
 descendant_discharged`'s `hfilter` slot.
 
-The endpoint form `weak_confirmed_head_closed` and the fully self-contained
-composition `weak_safeFrom_observerCall_closed_from_finalized` /
-`weak_confirmed_head_closed_from_finalized` (seeded at the observer's own
-finalized checkpoint, `hlcr`/`hbase` discharged internally via
-`WeakFinalizedInput.lean`, mirroring `weak_safeFrom_find_latest_confirmed_
-descendant_discharged_from_finalized`) are in the same file. The finalized
-composition needs one explicit scenario premise beyond the floor —
-`hbfr : (E.weakGetLatestConfirmedTraceAt cfg ext obs n).afterObserved =
-(E.weakFcrStep cfg ext obs n).store.finalized_checkpoint.root` — recording
-that *this particular call's* candidate input reduced to the observer's own
-finalized checkpoint (the content of `Weak.FinalizedResetCandidateInputAt.
-input_eq` for the real trace). Traces are functionally determined by their
-query, so this cannot be discharged in general without knowing which of the
-four candidate-history branches the call took; closing it unconditionally
-for every branch (in particular the "carried" branch, whose input is the
-*previous* call's own confirmed root) would need an induction over
-`E.weakConfirmed`'s own `SafeFrom` history that this wave does not build.
-It is flagged here rather than folded silently into the floor.
+### The four one-shot closed witnesses were retired
+
+Until `docs/weak-final-wave.md` W7 this file also carried four *one-shot*
+closed statements — `weak_safeFrom_observerCall_closed`,
+`weak_confirmed_head_closed` and their two `_from_finalized` forms — and they
+were the four registered weak witnesses in `scripts/Audit.lean`. They took an
+**eager** obligation route driven by an observer-quantified normative proviso
+(`Weak.ObserverHistoricalA32CallAssumptions.observer_helper_provisos`), because
+a one-shot statement's only safety input is `hbase` at its own second and
+there is no route from that to `Weak.ObserverPriorCallWriteBackSafe`, the
+trajectory fact the lazy route discharges its closures with; the observer's
+non-honesty rules out borrowing the strong fold's honest-node output.
+
+They are gone. They were subsumed by the full-rule fold (which closes *every*
+second of the observer's trajectory, not one call), they had no consumers, and
+they existed only as carriers of that proviso. Deleting them removed the eager
+obligation route, the eager obligation families, the eager weak crossing
+constructors and both observer proviso records — so no weak statement carries
+a normative observer proviso any more. The `_from_finalized` compositions went
+with them; they needed one extra scenario premise
+(`hbfr : (E.weakGetLatestConfirmedTraceAt cfg ext obs n).afterObserved =
+(E.weakFcrStep cfg ext obs n).store.finalized_checkpoint.root`) recording that
+*this particular call's* candidate input reduced to the observer's own
+finalized checkpoint, which the trajectory fold discharges branch-by-branch
+instead.
 
 ### The complete premise surface, classified against the ratified floor
 
-Every premise of `weak_safeFrom_observerCall_closed`, classified:
+Every premise of `weak_safeFrom_observerCall_closed_lazy` — and, apart from
+`hprior`/`hcall`/`hinput`/`hbase`, of the four audited trajectory headlines —
+classified:
 
 * **`hW : E.WeakObserverAssumptions cfg ext obs`** — `hW.base :
   SelectedMarginAssumptions` is the ratified floor: honest-to-honest
@@ -931,38 +941,30 @@ Every premise of `weak_safeFrom_observerCall_closed`, classified:
   accountability and finalization-delay bundle (`hT`, `hDelay`), and the
   Phase-0 source-coherence/link-validity/inclusion contracts (`hphase0`,
   `hpaper`, `V`) the accepted development already carries as floor, not
-  premises new to the weak route.
+  premises new to the weak route. The trajectory headlines additionally carry
+  `hboundaryPhase : Phase0BoundarySourceCoherence cfg ext`, of the same kind,
+  for the finalized arm of their candidate-input derivation.
 * **`hji : JustificationInterface cfg ext E`** — the same executable
   justification-selection contract the accepted development's actual-call
   facade already assumes.
-* **`hC : Weak.ObserverHistoricalA32CallAssumptions cfg ext E obs`** — the
-  floor-classified observer call contract discharging obligation X1 (the
-  `Weak.ObserverStrictCallFilterInputsAt` residue). This is the accepted FFG
-  semantic contracts' `helper_provisos`, extended to quantify over the
-  observer `obs` in addition to the honest validators the accepted development
-  already quantifies over — **not** a new class of assumption, the same
-  contract read at one more (not necessarily honest) index.
-
-  **Scope since `docs/weak-final-wave.md` (W1–W7, landed).** This premise now
-  appears on the **four closed one-shot witnesses only**
-  (`weak_safeFrom_observerCall_closed`, `weak_confirmed_head_closed`, and their
-  two `_from_finalized` forms). The weak *trajectory* statements — the fold in
-  `WeakTrajectorySafety.lean` and the two unconditional headlines in
-  `WeakObservedResetSeedSafety.lean` — carry only
-  `E.AcceptedHistoricalA32CompletedPrefixCallAssumptions`, because they can
-  supply `Weak.ObserverPriorCallWriteBackSafe` from their own strengthened
-  induction hypothesis and a one-shot statement cannot.
+* **`hCbase : E.AcceptedHistoricalA32CompletedPrefixCallAssumptions cfg ext`**
+  — the accepted development's **unchanged** 7-field completed-prefix call
+  contract, read verbatim. No observer-indexed extension of it exists any
+  more: the historical A3.2 crossing payload is manufactured *lazily* at the
+  consuming call from the fold's own output at strictly earlier seconds
+  (`Weak.LazyCertAt` / `Weak.LazySupportAt`), which needs no proviso at all.
+  Obligation X1 is therefore **discharged**, not assumed.
 * **`hfit : EpochEndsFitUint64 cfg`** — a pure configuration-arithmetic fact
   (slots-per-epoch bookkeeping fits in `UInt64`), independent of honesty or
   synchrony.
 * **`hcall : E.IsFCRCallAt cfg ext obs n`** — the actual-call clock predicate
   ("the store's slot advanced from `n` to `n + 1`"), honesty-free and
   store-level, shared verbatim with the accepted development
-  (`FCRCallContracts.lean`).
-* **`hinput`, `hbase`** — the call's own candidate input is known and
-  `SafeFrom` from the start of the query slot; the same input-safety premise
-  the accepted actual-call facade takes at an honest node, now at a
-  (possibly non-honest) observer.
+  (`FCRCallContracts.lean`). Not a premise of the trajectory headlines.
+* **`hprior`, `hinput`, `hbase`** — the threaded trajectory fact and the
+  call's own candidate input being known and `SafeFrom` from the start of the
+  query slot. All three are *derived* inside the fold; none is a premise of
+  the trajectory headlines.
 
 **Not carried, anywhere in this premise list:** no delivery of votes, blocks,
 or store contents *to* or *from* the observer (`obs` need not be a
@@ -970,26 +972,40 @@ or store contents *to* or *from* the observer (`obs` need not be a
 honesty (`obs ∉ E.honest` is a hypothesis, not a contradiction to discharge);
 no equivocation-visibility relay (`Synchrony.attester_slashing_relay` does
 not occur on this path — the non-subtractive crossing collapse above retired
-its last use); and no Paper Assumption 3.2 premise beyond the floor (the
-historical A3.2 residue is fully discharged into `hC`, itself the accepted
-development's own `helper_provisos` read at one more index, not a new
-recurrence assumption).
+its last use); and no Paper Assumption 3.2 premise beyond the floor and the
+accepted development's own unchanged `helper_provisos`.
 
-`scripts/Audit.lean`'s `publicWitnesses` set now includes
-`weak_safeFrom_observerCall_closed`, `weak_confirmed_head_closed`,
-`weak_safeFrom_observerCall_closed_from_finalized`, and
-`weak_confirmed_head_closed_from_finalized` (23 declarations); all four
-depend only on `propext, Classical.choice, Quot.sound`
+### The audited witness list
+
+`scripts/Audit.lean`'s `publicWitnesses` set (23 declarations) registers, on
+the weak side:
+
+* `Execution.weak_safeFrom_find_latest_confirmed_descendant` /
+  `weak_confirmed_head` and their two `_from_finalized` forms — the
+  `hmargin`-carrying one-shot floor forms;
+* `Execution.weak_safeFrom_find_latest_confirmed_descendant_discharged` /
+  `weak_confirmed_head_discharged` — the `hmargin`-free forms;
+* `Execution.weakConfirmed_safeFromFollowingSlot_of_weakFullRuleFold` and
+  `Execution.weakConfirmed_head_of_weakFullRuleFold_nextSlot`
+  (`WeakTrajectorySafety.lean`) — the **conditional** full-rule fold and its
+  endpoint form, carrying `hOR : Weak.ObservedResetSeedSafety`;
+* `Execution.weakConfirmed_safeFromFollowingSlot_of_acceptedWeakFullRuleFold`
+  and `Execution.weakConfirmed_head_of_acceptedWeakFullRuleFold_nextSlot`
+  (`WeakObservedResetSeedSafety.lean`) — the **unconditional** twins, with
+  `hOR` discharged from the floor.
+
+The last four replaced the four retired one-shot closed witnesses. All depend
+only on `propext, Classical.choice, Quot.sound`
 (`lake env lean scripts/Audit.lean`).
 
 ## The full rule (trajectory safety)
 
-The theorem above is still *one-shot*: it concerns one FCR call, and its
-`hinput`/`hbase` premises — together with the `hbfr` scenario predicate of the
-finalized composition — are exactly what an induction over `E.weakConfirmed`'s
-own history has to supply. That induction is stage 1 of the full-rule effort and
-has landed in `FastConfirmation/Spec/Proof/WeakTrajectorySafety.lean`; the
-invariant, the four-branch step, the base case and the staged plan for the one
-remaining obligation (`Weak.ObservedResetSeedSafety`, safety of the epoch-start
-observed-reset seed at a non-honest observer) are documented in
+The step above is still *one call*: its `hprior`/`hinput`/`hbase` premises are
+exactly what an induction over `E.weakConfirmed`'s own history has to supply.
+That induction has landed in
+`FastConfirmation/Spec/Proof/WeakTrajectorySafety.lean` and is where the four
+audited weak statements live; the invariant, the four-branch step, the base
+case and the discharge of the last obligation
+(`Weak.ObservedResetSeedSafety`, safety of the epoch-start observed-reset seed
+at a non-honest observer) are documented in
 [`weak-full-rule.md`](weak-full-rule.md).

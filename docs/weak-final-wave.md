@@ -618,7 +618,7 @@ the weak wave landed, the full list is:
 
 ---
 
-## 8. Landing report — W0–W7 all green
+## 8. Landing report — W0–W9 all green
 
 Landed on `centaur/discharge-helper-provisos-202609161`, one commit per wave,
 full gate (`scripts/check_build.sh` + `lake env lean scripts/Audit.lean`) after
@@ -635,6 +635,8 @@ each.
 | **W4c/W5** | `497d2d0` | the route threaded through the write-back induction, the orientation, the filter-input record and the dispatcher; both weak A1 sites flipped to `…retainedVisible_of_lateSupport` |
 | **W6** | `07f0a0e` | `weak_safeFrom_observerCall_closed_lazy` and the headline flip |
 | **W7** | `c20bf35` | deletion of the superseded weak payload-producer surface and the in-file commentary re-scoping |
+| **W8** | `9d29d1e` | retirement of the four one-shot closed witnesses; the four trajectory headlines become the audited statements |
+| **W9** | `a15939d` | deletion of the observer proviso machinery end to end |
 
 ### 8.1 Deviations from the plan
 
@@ -660,14 +662,16 @@ each.
    those four witnesses must acquire
    `hprior : Weak.ObserverPriorCallWriteBackSafe cfg ext E obs n`, which §5.2
    shows a one-shot statement cannot supply from its own `hbase` — i.e. it is
-   Option B, four audited signature changes. The W7 bullet as written ("delete
+   Option B, four audited signature changes. **Resolved in W8/W9 (§8.3-8.4) by
+   deleting the four witnesses instead.** The W7 bullet as written ("delete
    `observer_helper_provisos` … four one-shot witnesses keep it") is internally
    inconsistent; this landing keeps the four witnesses frozen, which is what
    §0 item 5 and §5.4 actually argue for.
 
    Consequently `Weak.SelectedHelperProvisosAt` and
-   `Weak.ObserverHistoricalA32CallAssumptions` also survive, both with their
-   original shape. The record's docstring has been re-scoped in place.
+   `Weak.ObserverHistoricalA32CallAssumptions` also survived W7, both with
+   their original shape, with the record's docstring re-scoped in place. Both
+   were **deleted** in W9 (§8.4).
 
 3. **The eager one-call wrapper was deleted rather than kept.**
    `Weak.getLatestConfirmedTraceAt_currentLineage_step` (the byte-identical
@@ -719,13 +723,84 @@ the record's `.base` projection: a strict premise weakening.
 
 `#print axioms` on both: `propext`, `Classical.choice`, `Quot.sound`.
 
-### 8.3 What still carries the proviso
+### 8.3 What still carried the proviso, and its deletion (W8/W9)
 
-Exactly four declarations, all in `WeakOneShotSafetyClosed.lean` and all with
-statements unchanged by the wave (the file's diff since `45f6e84` contains no
-deletions at all):
+At the end of W7 exactly four declarations still carried
+`observer_helper_provisos`, all in `WeakOneShotSafetyClosed.lean`, all with
+statements unchanged by the wave:
 
 * `Execution.weak_safeFrom_observerCall_closed`
 * `Execution.weak_confirmed_head_closed`
 * `Execution.weak_safeFrom_observerCall_closed_from_finalized`
 * `Execution.weak_confirmed_head_closed_from_finalized`
+
+§8.1 item 2 framed the remaining choice as "Option A (keep the four frozen,
+keep the proviso machinery) vs Option B (weaken the four's statements to
+`hCbase + hprior`, four audited signature changes)". **The repo owner resolved
+it a third way: delete the four.** They are subsumed by the full-rule fold —
+which closes *every* second of the observer's trajectory, not one call — they
+had zero consumers in the tree, and they existed only as carriers of the
+discharged proviso. So neither their statements nor the proviso had to be
+argued about; both went.
+
+### 8.4 Landing report — the retirement and the eradication
+
+| commit | content |
+|---|---|
+| **W8** `9d29d1e` | `refactor!: retire the one-shot closed witnesses; the fold headlines are the audited statements` |
+| **W9** `a15939d` | `refactor!: delete the observer proviso machinery end to end` |
+
+**W8 — the audited set changed, the audited *statements* did not.** The four
+one-shot closed witnesses were removed from `WeakOneShotSafetyClosed.lean`
+(only `weak_safeFrom_observerCall_closed_lazy`, the fold's own one-call step,
+remains there) and from `scripts/Audit.lean`'s `publicWitnesses`. Their four
+slots were taken by the four **trajectory headlines**, whose statements were
+not touched:
+
+* `Execution.weakConfirmed_safeFromFollowingSlot_of_weakFullRuleFold`
+* `Execution.weakConfirmed_head_of_weakFullRuleFold_nextSlot`
+  (both `WeakTrajectorySafety.lean`, the *conditional* fold pair carrying
+  `hOR : Weak.ObservedResetSeedSafety`)
+* `Execution.weakConfirmed_safeFromFollowingSlot_of_acceptedWeakFullRuleFold`
+* `Execution.weakConfirmed_head_of_acceptedWeakFullRuleFold_nextSlot`
+  (both `WeakObservedResetSeedSafety.lean`, the *unconditional* twins)
+
+`publicWitnesses` is still **23** declarations; `#print axioms` on all four
+new entries reports `propext`, `Classical.choice`, `Quot.sound` and nothing
+else. This is stage 7's registration half from `docs/weak-full-rule.md`; the
+human premise classification remains outstanding.
+
+**W9 — everything that only fed the four is gone.** In dependency order:
+
+* `Weak.observerLineageRoute_eager` (`WeakHistoricalA32Induction.lean`) — the
+  last code reader of `observer_helper_provisos`;
+* `Weak.observerStrictCallFilterInputsAt_of_observerCall` and
+  `Weak.StrictSelectorAdvanceAt.observerCall_selectedStrictEdgeFilterSupplyAt_closed`
+  (`WeakObserverStrictCallFilterInputs.lean`) — the eager producer/supplier
+  pair; only the `_lazy` forms survive;
+* `Weak.EagerCertFamily` / `Weak.EagerSuppFamily`
+  (`WeakHistoricalA32OneStep.lean`) — the constant obligation families;
+* the weak eager crossing constructors
+  (`WeakHistoricalA32Step.lean`): `Weak.currentTargetAcceptedEdge_gate_and_support`,
+  `Weak.selectedCurrentCrossingAcceptedTargetSegment`,
+  `Weak.selectedCurrentCrossingLineage`,
+  `Weak.selectedCurrentCrossingLineage_of_fixedSourceProducer`,
+  `Weak.selectedCurrentCrossingLineageAt_at_observer`,
+  `Weak.selectedCurrentCrossingLineageAt_of_fixedSourceProducer` — i.e. the
+  §6.3 item 1 list, which "*die only under Option B*", plus the two
+  action-facing wrappers that had already lost all consumers.
+  `Weak.selectedCurrentCrossingLazyLineage` is now the only weak crossing
+  builder;
+* `Weak.SelectedHelperProvisosAt` and `Weak.ObserverHistoricalA32CallAssumptions`
+  (`WeakSelectedStrictEdgeFilterSupply.lean`) — §6.3 items 2 and 3. The
+  structure *collapse* the plan anticipated was unnecessary: once the eager
+  route went, no binder of the record remained, so it was deleted outright
+  rather than replaced by its `base` field.
+
+`Execution.SelectedHelperProvisosAt` (the strong record,
+`SelectedTraceFilterPipeline.lean`) is **untouched**, together with the
+strong-legacy retained-trace pipeline and the ~25 FFG state-realization public
+function contracts that read it — §8.1 item 1's deferred decision stands.
+
+Gate after each commit: `scripts/check_build.sh` + `lake env lean
+scripts/Audit.lean`, sorry-free, 23 witnesses.

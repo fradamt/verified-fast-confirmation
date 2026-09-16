@@ -14,10 +14,12 @@ Stages 1–6 of that effort have landed, across
 and
 [`WeakObservedResetSeedSafety.lean`](../FastConfirmation/Spec/Proof/WeakObservedResetSeedSafety.lean).
 **The full-rule fold is unconditional**: the trajectory theorem and its
-endpoint form now carry no residual obligation, only the ratified floor. The
-one remaining stage is audit registration (stage 7), which is a human-review
-gate rather than a proof. Everything below is either proved in those modules,
-proved elsewhere and consumed there, or explicitly labelled open.
+endpoint form now carry no residual obligation, only the ratified floor. Stage
+7's registration half is **done** — the four trajectory headlines are the
+audited weak statements in `scripts/Audit.lean` — and what is left of it is
+the human premise classification, a review gate rather than a proof.
+Everything below is either proved in those modules, proved elsewhere and
+consumed there, or explicitly labelled open.
 
 ## The gap this closes
 
@@ -27,8 +29,8 @@ proved elsewhere and consumed there, or explicitly labelled open.
 > induction over `E.weakConfirmed`'s own `SafeFrom` history that this wave does
 > not build.
 
-Concretely, `Execution.weak_safeFrom_observerCall_closed` takes two premises it
-cannot produce:
+Concretely, `Execution.weak_safeFrom_observerCall_closed_lazy` takes two
+premises it cannot produce:
 
 ```lean
 (hinput : (E.weakGetLatestConfirmedTraceAt cfg ext obs n).afterObserved ∈
@@ -128,12 +130,12 @@ At a call second the invariant's own deadline collapses onto the call —
 `E.followingSlotStart n = n + 1`, and
 `Execution.slot_start_eq_succ_of_advance_minimal` gives
 `E.slot_start (E.slot_at (n + 1)) = n + 1`. So the induction hypothesis is
-*literally* the `hbase` shape the closed theorem wants, at the carried origin.
+*literally* the `hbase` shape the closed step wants, at the carried origin.
 
 The four-way operational branch classification
 (`Weak.GetLatestConfirmedTrace.candidateHistoryCallBranch`) is
 `carriedUnchanged | finalizedResetUnchanged | observedResetUnchanged |
-strictSelected`. The closed one-shot theorem already case-splits on it
+strictSelected`. The closed one-call step already case-splits on it
 internally and closes all four *given* `hinput`/`hbase`; what the step has to
 do is supply those two over the **three candidate origins**, which
 `Weak.CandidateHistoryCallBranch.origin` (new, trivial plumbing) projects out
@@ -278,7 +280,7 @@ Stages G–J; **XL** = a wave with a genuinely new argument, like
 | 4 | **Same-epoch arm**: `c.epoch = J.epoch` at the endpoint, closed by accountable uniqueness (`certified_justified_unique`) plus `head_ge_of_justified_ge_K` | **M** | landed |
 | 5 | **Later-epoch arm**: `c.epoch < J.epoch`, the honest formation-target vote plus the `safeFrom_of_headStep_at` strong induction, with the sender-side relays replaced by the banked certificate's `seed_disseminated` | **L** | landed (turned out **M**) |
 | 6 | Assemble stages 2–5 into `Weak.ObservedResetSeedSafety`; add the unconditional fold | **M** | landed (**S**) |
-| 7 | Register the unconditional fold and its endpoint form in `scripts/Audit.lean`'s `publicWitnesses`; extend `docs/weak-synchrony.md`'s premise-surface classification | **S** | open (needs human review of stages 5–6 first) |
+| 7 | Register the unconditional fold and its endpoint form in `scripts/Audit.lean`'s `publicWitnesses`; extend `docs/weak-synchrony.md`'s premise-surface classification | **S** | landed (registration + docs); the human premise classification of stages 5–6 is still outstanding |
 
 ### Stages 2–4 as landed
 
@@ -479,13 +481,15 @@ added, and still no honesty binder at `obs`.
   crossing payload is manufactured lazily at the consuming call from the fold's
   own output at strictly earlier seconds.
 
-  `Weak.ObserverHistoricalA32CallAssumptions` survives as the price of the
-  **four closed one-shot weak witnesses** only
+  `Weak.ObserverHistoricalA32CallAssumptions` briefly survived as the price of
+  the **four closed one-shot weak witnesses**
   (`Execution.weak_safeFrom_observerCall_closed`,
   `weak_confirmed_head_closed`, and their two `_from_finalized` forms): a
   one-shot statement's only safety input is `hbase` at its own second, and
-  there is no route from that to `Weak.ObserverPriorCallWriteBackSafe`. Their
-  statements are byte-identical to before the wave.
+  there is no route from that to `Weak.ObserverPriorCallWriteBackSafe`. Those
+  four have since been **deleted** — subsumed by the fold, with no consumers —
+  and the proviso machinery went with them. No observer proviso exists in the
+  repository any more.
 
 ## Audit status
 
@@ -497,16 +501,29 @@ full gate passes (`scripts/check_build.sh`, `lake env lean scripts/Audit.lean`,
 `Execution.weakConfirmed_head_of_acceptedWeakFullRuleFold_nextSlot` reports
 `propext`, `Classical.choice`, `Quot.sound` and nothing else.
 
-The declarations are still deliberately **not** added to `scripts/Audit.lean`'s
-`publicWitnesses`. That set is the repository's list of headline results whose
-premise surface has been *classified against the ratified floor* by a human.
-Since the W1–W7 wave the unconditional fold's surface no longer contains
-`Weak.ObserverHistoricalA32CallAssumptions` at all — it carries the unchanged
-`E.AcceptedHistoricalA32CompletedPrefixCallAssumptions` instead — so what
-remains is the human classification itself, not a proviso discharge. `Execution.ObserverCoherence` is no longer part of that
-surface: the fold takes `Execution.WeakObserverAssumptions` (floor + `obs ∉
+**Registration is done.** `scripts/Audit.lean`'s `publicWitnesses` set (still
+23 declarations) now registers the four trajectory headlines:
+
+* `Execution.weakConfirmed_safeFromFollowingSlot_of_weakFullRuleFold`
+* `Execution.weakConfirmed_head_of_weakFullRuleFold_nextSlot`
+* `Execution.weakConfirmed_safeFromFollowingSlot_of_acceptedWeakFullRuleFold`
+* `Execution.weakConfirmed_head_of_acceptedWeakFullRuleFold_nextSlot`
+
+They took the slots of the four one-shot closed witnesses
+(`Execution.weak_safeFrom_observerCall_closed`, `weak_confirmed_head_closed`
+and their two `_from_finalized` forms), which were retired: the fold subsumes
+them, they had no consumers, and they existed only as carriers of the observer
+proviso. `docs/weak-synchrony.md`'s premise-surface classification has been
+extended to the new set.
+
+What remains of stage 7 is the *human* half: `publicWitnesses` is the
+repository's list of headline results whose premise surface has been
+classified against the ratified floor **by a human**, and that review of the
+weak fold's surface has not been performed. The surface itself is as small as
+the development can make it — the unconditional fold carries the unchanged
+`E.AcceptedHistoricalA32CompletedPrefixCallAssumptions` and no observer
+proviso of any kind, and `Execution.ObserverCoherence` is not part of it
+either: the fold takes `Execution.WeakObserverAssumptions` (floor + `obs ∉
 E.honest` + committee readback) and derives `justified_root_known` internally
 from `B`/`hT`/`hanchor`/`hboundary` via
-`Execution.WeakObserverAssumptions.toMarginAssumptions`. Registration, together with
-extending `docs/weak-synchrony.md`'s premise-surface table, is **stage 7**, to
-be done after review of stages 5–6.
+`Execution.WeakObserverAssumptions.toMarginAssumptions`.
