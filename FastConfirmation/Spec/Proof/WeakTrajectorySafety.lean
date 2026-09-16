@@ -89,6 +89,23 @@ broadcast certificates at the level of *knownness*
 `Weak.gatedHead_known_at_all_honest_endpoints_at_observer`), and the
 head-*domination* step on top of them is stages 2–5. See
 `docs/weak-full-rule.md` for the staged plan.
+
+## The all-seconds form of the fold
+
+`Execution.weakConfirmedSafeFromFollowingSlot_of_weakFullRuleFold_all_le` runs
+the same induction with the motive strengthened to
+`∀ k ≤ n, WithinHorizon k → invariant k`, and the headline fold is its
+`k := n` instance.  The reason is `docs/proviso-discharge-map.md` §4: the
+historical A3.2 replay at a call second `n`
+(`Weak.observerHistoricalA32CurrentLineageAt_all`, whose call interface is
+eta-closed over *all* call seconds in
+`Weak.observerHistoricalA32CurrentLineage_invariant`) demands the call-site
+data at **every earlier call second `k < n`**, never at a second beyond `n`.
+Any discharge of `Weak.ObserverHistoricalA32CallAssumptions.
+observer_helper_provisos` from the trajectory invariant therefore needs the
+invariant retained at those earlier seconds; the plain single-second motive
+drops it.  Nothing downstream changes: no signature moves, and the
+strengthening is well-founded exactly as the plain induction is.
 -/
 
 namespace FastConfirmation.Spec
@@ -357,6 +374,77 @@ theorem weakConfirmedSafeFromFollowingSlot_succ_of_call
 
 /-! ## Stage E — the headline fold -/
 
+/-- **All-seconds form of the weak full-rule fold.**
+
+Same content as `weakConfirmed_safeFromFollowingSlot_of_weakFullRuleFold`
+below, but with the induction motive strengthened from "the invariant at `n`"
+to "the invariant at **every** second `k ≤ n`".
+
+*Why the strengthening is wanted* (see `docs/proviso-discharge-map.md` §4).
+The fold's call step feeds `hprev` — input safety at the call's own second —
+into `weak_safeFrom_observerCall_closed`.  That is enough for the orientation
+(Trunk-B) proviso sites, which are instantiated at the current call second
+only.  It is **not** enough for the historical A3.2 lineage: the interface
+`Weak.observerHistoricalA32CallInterfaceAt_of_callAssumptions` is eta-closed
+over all call seconds in `Weak.observerHistoricalA32CurrentLineage_invariant`,
+and the write-back recursion `observerHistoricalA32CurrentLineageAt_all`
+replays **every earlier call second `k < n`**.  A discharge of
+`observer_helper_provisos` from the trajectory invariant therefore needs an
+input-safety witness at each of those earlier seconds, which the plain
+single-second motive does not retain.  The demand is never at a second beyond
+`n`, so the strengthened induction is well-founded exactly as the plain one is;
+this lemma simply keeps the witness around.
+
+Purely enabling: no signature below changes, and the single-second theorem is
+recovered by instantiating `k := n`. -/
+theorem weakConfirmedSafeFromFollowingSlot_of_weakFullRuleFold_all_le
+    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
+    (hji : JustificationInterface cfg ext E)
+    (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
+    (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
+      (E := E) (anchor := B.anchor))
+    (hDelay : E.AcceptedRealizedFinalizationDelay cfg ext B)
+    (hphase0 : Phase0SourceCoherence cfg ext)
+    (hboundaryPhase : Phase0BoundarySourceCoherence cfg ext)
+    (hpaper : B.state.PaperA32Inclusion cfg ext)
+    (P : AcceptedEpochCheckpointProjection B.anchor
+      (E.AcceptedRoot cfg ext) B.state.C)
+    (V : B.state.ExactLinkValidity)
+    (hanchorExact : B.anchor = B.state.C B.anchor.root B.anchor.epoch)
+    {obs : ValidatorIndex}
+    (hW : E.WeakObserverMarginAssumptions cfg ext obs)
+    (hwalkDomain : E.PostAnchorHonestVoteTargetWalkDomain cfg ext)
+    (hC : Weak.ObserverHistoricalA32CallAssumptions cfg ext E obs)
+    (hfit : EpochEndsFitUint64 cfg)
+    (hOR : Weak.ObservedResetSeedSafety cfg ext E obs) :
+    ∀ n : ℕ, ∀ k ≤ n, E.WithinHorizon cfg k →
+      E.WeakConfirmedSafeFromFollowingSlot cfg ext obs k := by
+  have hknown := Weak.acceptedConfirmedSourceHistoryAt cfg ext B hT
+    hW.base.synchrony hW.base.static_validators hW.base.byzantine_bound
+    hW.base.domain hji hanchor hboundary hDelay hW.coherence
+  intro n
+  induction n with
+  | zero =>
+      intro k hk _hH0
+      rw [Nat.le_zero.mp hk]
+      exact E.weakConfirmedSafeFromFollowingSlot_zero cfg ext B hT hanchor
+        hboundary obs
+  | succ n ih =>
+      intro k hk hHk
+      rcases Nat.eq_or_lt_of_le hk with rfl | hlt
+      · have hHn : E.WithinHorizon cfg n :=
+          E.withinHorizon_mono cfg (Nat.le_succ n) hHk
+        have hprev := ih n (Nat.le_refl n) hHn
+        by_cases hcall : E.IsFCRCallAt cfg ext obs n
+        · exact E.weakConfirmedSafeFromFollowingSlot_succ_of_call cfg ext B hT
+            hji hanchor hboundary hDelay hphase0 hboundaryPhase hpaper P V
+            hanchorExact hW hwalkDomain hC hfit hOR hHk hcall
+            (hknown n hHn).confirmed_known hprev
+        · exact E.weakConfirmedSafeFromFollowingSlot_succ_of_noCall cfg ext hcall
+            hprev
+      · exact ih k (Nat.lt_succ_iff.mp hlt) hHk
+
 /-- **The weak full-rule safety theorem.**
 
 Every root the observer's weak FCR trajectory holds, at every in-horizon
@@ -372,7 +460,10 @@ floor plus the accepted FFG semantic contracts), together with
 `hboundaryPhase` — already carried by
 `weak_safeFrom_observerCall_closed_from_finalized` for the same finalized arm —
 and the single open obligation `hOR : Weak.ObservedResetSeedSafety`. The
-strong fold's observer-honesty binder `hv : v ∈ E.honest` does not appear. -/
+strong fold's observer-honesty binder `hv : v ∈ E.honest` does not appear.
+
+Corollary of `…_of_weakFullRuleFold_all_le` at `k := n`; the statement is
+unchanged. -/
 theorem weakConfirmed_safeFromFollowingSlot_of_weakFullRuleFold
     (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
     (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
@@ -395,28 +486,11 @@ theorem weakConfirmed_safeFromFollowingSlot_of_weakFullRuleFold
     (hfit : EpochEndsFitUint64 cfg)
     (hOR : Weak.ObservedResetSeedSafety cfg ext E obs) :
     ∀ n : ℕ, E.WithinHorizon cfg n →
-      E.WeakConfirmedSafeFromFollowingSlot cfg ext obs n := by
-  have hknown := Weak.acceptedConfirmedSourceHistoryAt cfg ext B hT
-    hW.base.synchrony hW.base.static_validators hW.base.byzantine_bound
-    hW.base.domain hji hanchor hboundary hDelay hW.coherence
-  intro n
-  induction n with
-  | zero =>
-      intro _hH0
-      exact E.weakConfirmedSafeFromFollowingSlot_zero cfg ext B hT hanchor
-        hboundary obs
-  | succ n ih =>
-      intro hHn1
-      have hHn : E.WithinHorizon cfg n :=
-        E.withinHorizon_mono cfg (Nat.le_succ n) hHn1
-      have hprev := ih hHn
-      by_cases hcall : E.IsFCRCallAt cfg ext obs n
-      · exact E.weakConfirmedSafeFromFollowingSlot_succ_of_call cfg ext B hT hji
-          hanchor hboundary hDelay hphase0 hboundaryPhase hpaper P V hanchorExact
-          hW hwalkDomain hC hfit hOR hHn1 hcall (hknown n hHn).confirmed_known
-          hprev
-      · exact E.weakConfirmedSafeFromFollowingSlot_succ_of_noCall cfg ext hcall
-          hprev
+      E.WeakConfirmedSafeFromFollowingSlot cfg ext obs n :=
+  fun n =>
+    E.weakConfirmedSafeFromFollowingSlot_of_weakFullRuleFold_all_le cfg ext B hT
+      hji hanchor hboundary hDelay hphase0 hboundaryPhase hpaper P V hanchorExact
+      hW hwalkDomain hC hfit hOR n n (Nat.le_refl n)
 
 /-- Endpoint form of the weak full-rule theorem, matching the paper's timing:
 the observer's weak confirmed root at second `n` is canonical at every

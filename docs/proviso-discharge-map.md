@@ -477,7 +477,7 @@ Record the current premise surfaces of the five weak headline theorems
 `WeakTrajectorySafety.lean:376/425`,
 `WeakObservedResetSeedSafety.lean:140/174`).
 
-### Wave 1 — delete the dead `no_conflict` field
+### Wave 1 — delete the dead `no_conflict` field — **LANDED** (`0e9b8be`)
 *Edits:* `SelectedTraceFilterPipeline.lean:37-42`,
 `WeakSelectedStrictEdgeFilterSupply.lean:214-219`,
 `AcceptedActualFCRJointNonVacuityFinal.lean:285-296` (drop the vacuous branch;
@@ -485,7 +485,7 @@ Record the current premise surfaces of the five weak headline theorems
 *Blast radius:* 3 files. Zero proof changes elsewhere (field has no projections).
 *Green after:* yes.
 
-### Wave 2 — the missing constructor lemmas (additive only)
+### Wave 2 — the missing constructor lemmas (additive only) — **LANDED** (`5f274ed`)
 New file `FastConfirmation/Spec/Proof/HonestTargetAgreement.lean` (imports
 `SelectedA32Support`, `Delivery`, `L4Fold`):
 1. `honest_vote_castSecond_slot` — `v ∈ E.honest → E.vote v s = some (k,a) → E.slot_at cfg k = s`
@@ -504,18 +504,27 @@ New file `FastConfirmation/Spec/Proof/HonestTargetAgreement.lean` (imports
    `SelectedA32Support.lean:80`, and
    `get_checkpoint_block_eq_of_paired_walks`,
    `AcceptedPathLocalFinalizedTransport.lean:79`).
-*Blast radius:* 1 new file, nothing changes signature.
+*Blast radius:* 1 new file (`HonestTargetAgreement.lean`, wired into
+`FastConfirmation/Spec.lean` so the trust audit covers it), nothing changes
+signature.  As landed, lemma 4
+(`Execution.honestVotesSupportTarget_of_safeFrom_currentEpochCandidate`) carries
+the current-epoch placement of `b` as the explicit hypothesis `hbEpoch :
+get_block_epoch query.store b = get_current_store_epoch query.store` — which is
+exactly what §5.1 says the live sites cannot supply — plus the usual per-voter
+walk/agreement transport premises.  See the module docstring for the full list.
 *Green after:* yes. **This wave is worth doing regardless** — it is the first
 constructor for `HonestVotesSupportTarget` in the repo and it makes the
 remaining gap precise and checkable.
 
-### Wave 3 — strengthen the fold's IH (enabling, no signature change)
+### Wave 3 — strengthen the fold's IH (enabling, no signature change) — **LANDED**
 Rewrite `WeakTrajectorySafety.lean:403-419` so the induction motive is
 `∀ k ≤ n, E.WithinHorizon cfg k → E.WeakConfirmedSafeFromFollowingSlot cfg ext obs k`,
 exposing a new lemma
 `weakConfirmedSafeFromFollowingSlot_of_weakFullRuleFold_all_le`. Keep the
 existing statement as a corollary.
 *Blast radius:* 1 file. *Green after:* yes.
+As landed: the new lemma is stated `∀ n, ∀ k ≤ n, WithinHorizon k → invariant k`
+and the headline fold is its `k := n` instance; no downstream signature moved.
 
 ### Wave 4 — decision point (§5.3)
 Choose (E1) or (E2), or accept that `observer_helper_provisos` stays. If (E1):
