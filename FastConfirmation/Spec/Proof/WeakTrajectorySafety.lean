@@ -179,6 +179,42 @@ namespace Execution
 
 variable (E : Execution Root)
 
+/-! ## The non-duplicated part of the completed-prefix call contract -/
+
+/-- The part of `E.AcceptedHistoricalA32CompletedPrefixCallAssumptions` that is
+**not** already contained in `SelectedMarginAssumptions`: the two phase-0
+source-coherence contracts, the anchor-active balance floor, and the horizon
+vote-delivery lookahead.
+
+The full 7-field call contract additionally carries `synchrony`,
+`static_validators` and `byzantine_bound`, which are literally three fields of
+`SelectedMarginAssumptions` — a record every weak trajectory headline already
+carries inside `hW.base`.  Taking those three a second time would only
+double-count the premise *surface*, so the headlines take this 4-field
+supplement and rebuild the full contract internally with
+`toCompletedPrefixCallAssumptions` below. -/
+structure AcceptedHistoricalA32CompletedPrefixCallSupplement : Prop where
+  phase0_source : Phase0SourceCoherence cfg ext
+  phase0_boundary_source : Phase0BoundarySourceCoherence cfg ext
+  balance_floor : cfg.effective_balance_increment ≤
+    E.weight (E.currentTargetAnchorActive cfg)
+  delivery_lookahead : HorizonVoteDeliveryLookahead cfg E
+
+/-- The 4-field supplement together with the selected-margin floor rebuilds the
+full 7-field completed-prefix call contract: the three shared fields are read
+off `hA`, so no caller has to supply them twice. -/
+def AcceptedHistoricalA32CompletedPrefixCallSupplement.toCompletedPrefixCallAssumptions
+    (hC : E.AcceptedHistoricalA32CompletedPrefixCallSupplement cfg ext)
+    (hA : SelectedMarginAssumptions cfg ext E) :
+    E.AcceptedHistoricalA32CompletedPrefixCallAssumptions cfg ext where
+  synchrony := hA.synchrony
+  static_validators := hA.static_validators
+  byzantine_bound := hA.byzantine_bound
+  phase0_source := hC.phase0_source
+  phase0_boundary_source := hC.phase0_boundary_source
+  balance_floor := hC.balance_floor
+  delivery_lookahead := hC.delivery_lookahead
+
 /-- Local restatement of the Fold file's (private) genesis clock bound. -/
 private theorem weakFold_genesisTime_le
     (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext) :
@@ -531,11 +567,19 @@ broadcast certificate.
 Weak twin of
 `Execution.confirmed_safeFromFollowingSlot_of_acceptedActualFCRFold`. Its
 premise surface is that of `weak_safeFrom_observerCall_closed_lazy` (the
-ratified floor plus the accepted FFG semantic contracts), together with
-`hboundaryPhase` — needed by the finalized arm of
-`weakGetLatestConfirmedTraceAt_input_safeFrom` — and the single open
+ratified floor plus the accepted FFG semantic contracts) — with
+`hCbase.phase0_boundary_source` supplying the finalized arm of
+`weakGetLatestConfirmedTraceAt_input_safeFrom` — together with the single open
 obligation `hOR : Weak.ObservedResetSeedSafety`. The strong fold's
 observer-honesty binder `hv : v ∈ E.honest` does not appear.
+
+Nothing on the surface is taken twice: `hT` is derived from `hW.base` by
+`ScheduledPrefixTrajectoryAssumptions.of_selectedMarginAssumptions`, the
+phase-0 coherence contracts come from `hCbase` alone, and the call contract is
+the 4-field `AcceptedHistoricalA32CompletedPrefixCallSupplement`, whose
+`synchrony`/`static_validators`/`byzantine_bound` counterparts in the full
+7-field record are read off `hW.base`
+(`…CallSupplement.toCompletedPrefixCallAssumptions`).
 
 This theorem and its endpoint form `…_head_of_weakFullRuleFold_nextSlot`, plus
 the two unconditional corollaries in `WeakObservedResetSeedSafety.lean`, are
@@ -552,14 +596,11 @@ Corollary of `…_of_weakFullRuleFold_all_le` at `k := n`; the statement is
 unchanged. -/
 theorem weakConfirmed_safeFromFollowingSlot_of_weakFullRuleFold
     (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
     (hji : JustificationInterface cfg ext E)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
       (E := E) (anchor := B.anchor))
     (hDelay : E.AcceptedRealizedFinalizationDelay cfg ext B)
-    (hphase0 : Phase0SourceCoherence cfg ext)
-    (hboundaryPhase : Phase0BoundarySourceCoherence cfg ext)
     (hpaper : B.state.PaperA32Inclusion cfg ext)
     (P : AcceptedEpochCheckpointProjection B.anchor
       (E.AcceptedRoot cfg ext) B.state.C)
@@ -568,16 +609,20 @@ theorem weakConfirmed_safeFromFollowingSlot_of_weakFullRuleFold
     {obs : ValidatorIndex}
     (hW : E.WeakObserverAssumptions cfg ext obs)
     (hwalkDomain : E.PostAnchorHonestVoteTargetWalkDomain cfg ext)
-    (hCbase : E.AcceptedHistoricalA32CompletedPrefixCallAssumptions cfg ext)
+    (hCbase : E.AcceptedHistoricalA32CompletedPrefixCallSupplement cfg ext)
     (hfit : EpochEndsFitUint64 cfg)
     (hOR : Weak.ObservedResetSeedSafety cfg ext E obs) :
     ∀ n : ℕ, E.WithinHorizon cfg n →
       E.WeakConfirmedSafeFromFollowingSlot cfg ext obs n :=
   fun n hHn =>
     (E.weakConfirmedSafeFromFollowingSlot_of_weakFullRuleFold_all_le cfg ext B
-      hT hji hanchor hboundary hDelay hphase0 hboundaryPhase hpaper P V
-      hanchorExact hW hwalkDomain hCbase hfit hOR n n (Nat.le_refl n)
-        hHn).followingSlot
+      (ScheduledPrefixTrajectoryAssumptions.of_selectedMarginAssumptions cfg ext E
+        hW.base)
+      hji hanchor hboundary hDelay hCbase.phase0_source
+      hCbase.phase0_boundary_source hpaper P V hanchorExact hW hwalkDomain
+      (AcceptedHistoricalA32CompletedPrefixCallSupplement.toCompletedPrefixCallAssumptions
+        cfg ext E hCbase hW.base)
+      hfit hOR n n (Nat.le_refl n) hHn).followingSlot
 
 /-- The lazy weak A3.2 transport's threaded input, straight off the
 strengthened fold.
@@ -621,14 +666,11 @@ in-horizon honest endpoint in a strictly later slot. Weak twin of
 `Execution.confirmed_head_of_acceptedActualFCRFold_nextSlot`. -/
 theorem weakConfirmed_head_of_weakFullRuleFold_nextSlot
     (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
     (hji : JustificationInterface cfg ext E)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
       (E := E) (anchor := B.anchor))
     (hDelay : E.AcceptedRealizedFinalizationDelay cfg ext B)
-    (hphase0 : Phase0SourceCoherence cfg ext)
-    (hboundaryPhase : Phase0BoundarySourceCoherence cfg ext)
     (hpaper : B.state.PaperA32Inclusion cfg ext)
     (P : AcceptedEpochCheckpointProjection B.anchor
       (E.AcceptedRoot cfg ext) B.state.C)
@@ -637,7 +679,7 @@ theorem weakConfirmed_head_of_weakFullRuleFold_nextSlot
     {obs : ValidatorIndex}
     (hW : E.WeakObserverAssumptions cfg ext obs)
     (hwalkDomain : E.PostAnchorHonestVoteTargetWalkDomain cfg ext)
-    (hCbase : E.AcceptedHistoricalA32CompletedPrefixCallAssumptions cfg ext)
+    (hCbase : E.AcceptedHistoricalA32CompletedPrefixCallSupplement cfg ext)
     (hfit : EpochEndsFitUint64 cfg)
     (hOR : Weak.ObservedResetSeedSafety cfg ext E obs)
     {n : ℕ} {w : ValidatorIndex} (hw : w ∈ E.honest) {m : ℕ}
@@ -647,9 +689,12 @@ theorem weakConfirmed_head_of_weakFullRuleFold_nextSlot
     is_ancestor (E.store cfg ext w m)
       (get_head cfg (E.store cfg ext w m))
       (get_node_for_root (E.weakConfirmed cfg ext obs n)) = true := by
+  have hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext :=
+    ScheduledPrefixTrajectoryAssumptions.of_selectedMarginAssumptions cfg ext E
+      hW.base
   have hHn : E.WithinHorizon cfg n := E.withinHorizon_mono cfg hnm hHm
   have hsafe := E.weakConfirmed_safeFromFollowingSlot_of_weakFullRuleFold cfg ext
-    B hT hji hanchor hboundary hDelay hphase0 hboundaryPhase hpaper P V
+    B hji hanchor hboundary hDelay hpaper P V
     hanchorExact hW hwalkDomain hCbase hfit hOR n hHn
   have hdeadlineLe : E.followingSlotStart cfg n ≤ m := by
     by_contra hnot

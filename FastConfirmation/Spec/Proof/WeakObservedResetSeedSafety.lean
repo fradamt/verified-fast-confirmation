@@ -36,13 +36,19 @@ adoption law is already stated at `n + 1`, which is exactly the second
 ## Premise surface
 
 `Weak.observedResetSeedSafety_of_acceptedDynamics` takes only floor data: the
-selected-margin assumptions, the accepted FFG semantic bundle and its anchor
-alignment, the justification interface, and the observer's own committee
-agreement (`Execution.ObserverCoherence.committees_agree`).  Every one of those
-is already a premise of `Execution.weakConfirmed_safeFromFollowingSlot_of_
-weakFullRuleFold`, so the discharged fold below has *strictly smaller* premise
-surface than the conditional one: the obligation disappears and nothing is
-added.  In particular there is still no honesty binder at `obs`.
+selected-margin assumptions `hA`, the accepted FFG semantic bundle `B` and its
+anchor alignment (`hanchor`, `hboundary`), the justification interface `hji`,
+and the observer's own committee agreement
+(`Execution.ObserverCoherence.committees_agree`).  That is the whole signature:
+the scheduled-prefix trajectory assumptions it runs on are *derived* from `hA`
+inside the proof
+(`Execution.ScheduledPrefixTrajectoryAssumptions.of_selectedMarginAssumptions`),
+never taken as a premise.  Every one of those inputs is already a premise of
+`Execution.weakConfirmed_safeFromFollowingSlot_of_weakFullRuleFold`, so the
+discharged fold below has *strictly smaller* premise surface than the
+conditional one: the obligation disappears and nothing is added.  In particular
+there is still no honesty binder at `obs` — the observer is arbitrary and may
+be honest.
 -/
 
 namespace FastConfirmation.Spec
@@ -81,7 +87,6 @@ epoch against the banked one. -/
 theorem observedResetSeedSafety_of_acceptedDynamics
     {E : Execution Root} (hA : SelectedMarginAssumptions cfg ext E)
     (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
     (hji : JustificationInterface cfg ext E)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : Execution.TrustedAnchorBoundaryAligned (cfg := cfg) (E := E)
@@ -90,6 +95,9 @@ theorem observedResetSeedSafety_of_acceptedDynamics
     (hcomm : ∀ k : ℕ, E.WithinHorizon cfg k → ∀ s : Slot, E.SlotWithinHorizon cfg s →
       get_slot_committee cfg ext (E.store cfg ext obs k) s = E.committee s) :
     Weak.ObservedResetSeedSafety cfg ext E obs := by
+  have hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext :=
+    Execution.ScheduledPrefixTrajectoryAssumptions.of_selectedMarginAssumptions
+      cfg ext E hA
   intro n hHn1 hcall trace hinput
   rcases Weak.weakFcrStep_certifiedBankedJustification cfg ext hA B hT hanchor
     hboundary hHn1 hcall with hgenesisArm | hcertified
@@ -126,40 +134,47 @@ variable (E : Execution Root)
 
 Every root the observer's weak FCR trajectory holds, at every in-horizon
 second, is an ancestor of every in-horizon honest node's fork-choice head from
-the following slot onward — at an observer that is not honest, receives no
-guaranteed delivery, and whose every use of synchrony is licensed by a
+the following slot onward — at an observer that is granted nothing (no honesty,
+no guaranteed delivery), and whose every use of synchrony is licensed by a
 broadcast certificate.
 
 `Execution.weakConfirmed_safeFromFollowingSlot_of_weakFullRuleFold` with its
 last premise discharged by `Weak.observedResetSeedSafety_of_acceptedDynamics`.
-Since `docs/weak-final-wave.md` W6 the call contract is the **unchanged**
-7-field `E.AcceptedHistoricalA32CompletedPrefixCallAssumptions`: no
-observer-side normative proviso appears in this premise list, because the
-historical A3.2 crossing payload is manufactured lazily at the consuming call
-from the fold's own strictly earlier output.  The proviso machinery has since
-been deleted outright.
+Since `docs/weak-final-wave.md` W6 the call contract carries no observer-side
+normative proviso, because the historical A3.2 crossing payload is manufactured
+lazily at the consuming call from the fold's own strictly earlier output.  The
+proviso machinery has since been deleted outright.
 
-The premise list is otherwise identical to the conditional fold's minus
+The premise list is exactly the conditional fold's minus
 `hOR : Weak.ObservedResetSeedSafety`; the obligation's own inputs (`hW.base`,
-`B`, `hT`, `hji`, `hanchor`, `hboundary`, and the observer's committee
-agreement `hW.committees_agree`) were already carried.  The strong fold's
+`B`, `hji`, `hanchor`, `hboundary`, and the observer's committee agreement
+`hW.committees_agree`) were already carried.  The strong fold's
 observer-honesty binder `hv : v ∈ E.honest` does not appear.
 
+That list is, in full: `B` (accepted FFG semantics), `hji`, `hanchor`,
+`hboundary`, `hDelay`, `hpaper`, `P`, `V`, `hanchorExact`, `hW`
+(`WeakObserverAssumptions` = the selected-margin floor plus committee readback
+at the observer's own store), `hwalkDomain`, `hCbase`
+(`AcceptedHistoricalA32CompletedPrefixCallSupplement`: the two phase-0
+coherence contracts, the balance floor, the delivery lookahead) and `hfit`.
+Three surface duplications are gone: `hT` is *derived* from `hW.base`
+(`Execution.ScheduledPrefixTrajectoryAssumptions.of_selectedMarginAssumptions`),
+the standalone `hphase0`/`hboundaryPhase` are read off `hCbase`, and the
+`synchrony`/`static_validators`/`byzantine_bound` fields of the full 7-field
+call contract are read off `hW.base` when it is rebuilt internally.
+
 Observer-wise the premise surface is exactly `hW : WeakObserverAssumptions` —
-`obs ∉ E.honest` plus committee readback at the observer's own store.
-`ObserverCoherence.justified_root_known` is *derived* from `B`/`hT`/`hanchor`/
-`hboundary` inside the fold (`WeakObserverAssumptions.toMarginAssumptions`),
-never assumed. -/
+committee readback at the observer's own store, nothing else; `obs` is
+arbitrary and may be honest.  `ObserverCoherence.justified_root_known` is
+*derived* from `B`/`hT`/`hanchor`/`hboundary` inside the fold
+(`WeakObserverAssumptions.toMarginAssumptions`), never assumed. -/
 theorem weakConfirmed_safeFromFollowingSlot_of_acceptedWeakFullRuleFold
     (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
     (hji : JustificationInterface cfg ext E)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
       (E := E) (anchor := B.anchor))
     (hDelay : E.AcceptedRealizedFinalizationDelay cfg ext B)
-    (hphase0 : Phase0SourceCoherence cfg ext)
-    (hboundaryPhase : Phase0BoundarySourceCoherence cfg ext)
     (hpaper : B.state.PaperA32Inclusion cfg ext)
     (P : AcceptedEpochCheckpointProjection B.anchor
       (E.AcceptedRoot cfg ext) B.state.C)
@@ -168,14 +183,14 @@ theorem weakConfirmed_safeFromFollowingSlot_of_acceptedWeakFullRuleFold
     {obs : ValidatorIndex}
     (hW : E.WeakObserverAssumptions cfg ext obs)
     (hwalkDomain : E.PostAnchorHonestVoteTargetWalkDomain cfg ext)
-    (hCbase : E.AcceptedHistoricalA32CompletedPrefixCallAssumptions cfg ext)
+    (hCbase : E.AcceptedHistoricalA32CompletedPrefixCallSupplement cfg ext)
     (hfit : EpochEndsFitUint64 cfg) :
     ∀ n : ℕ, E.WithinHorizon cfg n →
       E.WeakConfirmedSafeFromFollowingSlot cfg ext obs n :=
-  E.weakConfirmed_safeFromFollowingSlot_of_weakFullRuleFold cfg ext B hT hji
-    hanchor hboundary hDelay hphase0 hboundaryPhase hpaper P V hanchorExact hW
+  E.weakConfirmed_safeFromFollowingSlot_of_weakFullRuleFold cfg ext B hji
+    hanchor hboundary hDelay hpaper P V hanchorExact hW
     hwalkDomain hCbase hfit
-    (Weak.observedResetSeedSafety_of_acceptedDynamics cfg ext hW.base B hT hji
+    (Weak.observedResetSeedSafety_of_acceptedDynamics cfg ext hW.base B hji
       hanchor hboundary hW.committees_agree)
 
 /-- Endpoint form of the unconditional weak full-rule theorem, matching the
@@ -185,14 +200,11 @@ at every in-horizon honest endpoint in a strictly later slot.  Weak twin of
 binder at `obs` and no residual obligation. -/
 theorem weakConfirmed_head_of_acceptedWeakFullRuleFold_nextSlot
     (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
     (hji : JustificationInterface cfg ext E)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
       (E := E) (anchor := B.anchor))
     (hDelay : E.AcceptedRealizedFinalizationDelay cfg ext B)
-    (hphase0 : Phase0SourceCoherence cfg ext)
-    (hboundaryPhase : Phase0BoundarySourceCoherence cfg ext)
     (hpaper : B.state.PaperA32Inclusion cfg ext)
     (P : AcceptedEpochCheckpointProjection B.anchor
       (E.AcceptedRoot cfg ext) B.state.C)
@@ -201,7 +213,7 @@ theorem weakConfirmed_head_of_acceptedWeakFullRuleFold_nextSlot
     {obs : ValidatorIndex}
     (hW : E.WeakObserverAssumptions cfg ext obs)
     (hwalkDomain : E.PostAnchorHonestVoteTargetWalkDomain cfg ext)
-    (hCbase : E.AcceptedHistoricalA32CompletedPrefixCallAssumptions cfg ext)
+    (hCbase : E.AcceptedHistoricalA32CompletedPrefixCallSupplement cfg ext)
     (hfit : EpochEndsFitUint64 cfg)
     {n : ℕ} {w : ValidatorIndex} (hw : w ∈ E.honest) {m : ℕ}
     (hnm : n ≤ m)
@@ -210,10 +222,10 @@ theorem weakConfirmed_head_of_acceptedWeakFullRuleFold_nextSlot
     is_ancestor (E.store cfg ext w m)
       (get_head cfg (E.store cfg ext w m))
       (get_node_for_root (E.weakConfirmed cfg ext obs n)) = true :=
-  E.weakConfirmed_head_of_weakFullRuleFold_nextSlot cfg ext B hT hji hanchor
-    hboundary hDelay hphase0 hboundaryPhase hpaper P V hanchorExact hW
+  E.weakConfirmed_head_of_weakFullRuleFold_nextSlot cfg ext B hji hanchor
+    hboundary hDelay hpaper P V hanchorExact hW
     hwalkDomain hCbase hfit
-    (Weak.observedResetSeedSafety_of_acceptedDynamics cfg ext hW.base B hT hji
+    (Weak.observedResetSeedSafety_of_acceptedDynamics cfg ext hW.base B hji
       hanchor hboundary hW.committees_agree)
     hw hnm hnext hHm
 
