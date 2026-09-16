@@ -434,6 +434,34 @@ brief already excludes from Trunk B.
 
 All in the `Execution` / `Weak` namespaces; all additive except N5–N7.
 
+**Status (landed).** N1–N4 are implemented and green. N1/N2 live in the new
+module `FastConfirmation/Spec/Proof/EndpointQuorumCausality.lean`; N3/N4 in
+`FastConfirmation/Spec/Proof/WeakHistoricalA32CallSupplier.lean`. Three
+signature refinements relative to the sketches below, all *weakenings of the
+premise surface* — none weakens a conclusion, and no hypothesis had to be
+added:
+
+* **N2** is split in two, because "the chosen slot of `i`" is not expressible
+  as a hypothesis about an existential witness. The case-split predicate
+  `EndpointJustifiedQuorumAt.PostQueryHonestSigner Q q` names the signer *and*
+  its attestation (with exactly the conjuncts `signer_attestation` supplies);
+  `causalHonestTargetAt_of_postQuerySigner` turns it into the existing
+  `Execution.CausalHonestTargetAt cfg ext q w m`, which is precisely what
+  `EndpointJustificationCausalityAt` (`SelectedJustifiedCompatibility.lean:131`)
+  must produce. Case β's hypothesis is the negation of the same predicate, so
+  the two cases are literally complementary. The raw witness shape (including
+  `E.slot_at cfg 0 ≤ s`, which `CausalHonestTargetAt` drops) is available from
+  `honestTargetVote_of_scheduledAttestation`.
+* **N3** needs neither `hw : w ∈ E.honest` nor `hHm : E.WithinHorizon cfg m`:
+  the endpoint certificate it opposes comes from
+  `endpointJustified_certificate` at the *causal* store `E.store cfg ext w m`,
+  which requires no honesty and no horizon bound. Its arithmetic premise is the
+  raw helper inequality (N4's form) rather than the already-converted signer
+  weight, so the caller never has to mention `currentTargetA32Signers`.
+* **N4**'s `hraw` is stated over `compute_honest_ffg_support_for_current_target`
+  itself rather than over its unfolded body; the two are definitionally equal,
+  and the folded form is what both executable gates reduce to.
+
 **N1 — the endpoint quorum with slot data (the §4 derivation).**
 ```lean
 structure EndpointJustifiedQuorumAt (E : Execution Root)
@@ -466,6 +494,9 @@ theorem ExactPrefixAcceptedFFGSemantics.endpointJustified_quorumAt
 ```
 *Proof:* §4 steps 1–10. ~120 lines; every sub-step has a citable precedent in
 `AcceptedSelectedJustifiedOrientation.lean:48-148`.
+*Landed* as `Execution.EndpointJustifiedQuorumAt` /
+`Execution.ExactPrefixAcceptedFFGSemantics.endpointJustified_quorumAt`
+(`EndpointQuorumCausality.lean`), verbatim in this shape.
 
 **N2 — case-α witness extraction.**
 ```lean
@@ -480,6 +511,9 @@ theorem EndpointJustifiedQuorumAt.postQueryHonestTarget_of_mem
       a.data.target = (E.store cfg ext w m).justified_checkpoint
 ```
 *Proof:* `no_forgery` + N1's conjuncts. ~15 lines.
+*Landed* as `Execution.honestTargetVote_of_scheduledAttestation` plus
+`EndpointJustifiedQuorumAt.PostQueryHonestSigner` /
+`…causalHonestTargetAt_of_postQuerySigner` (see the status note above).
 
 **N3 — case-β pinning (the replacement for the proviso'd producer).**
 ```lean
@@ -503,6 +537,11 @@ theorem noConflict_endpointJustified_root_eq_currentTarget_at_observer
 ```
 *Proof:* §5.3; ~90 lines, of which ~60 are the existing
 `WeakHistoricalA32CallSupplier.lean:644-760` with the `hiFuture` arm rewritten.
+*Landed* as
+`Execution.noConflict_endpointJustifiedQuorum_root_eq_currentTarget_at_observer`
+(`WeakHistoricalA32CallSupplier.lean`), without `hw`/`hHm` and over the raw
+gate; the proviso-free re-derivation of `signers ⊆ E.honest` and
+`signers ⊆ span_committee(e)` (§5.2 items 1–2) went through as described.
 
 **N4 — raw-inequality form of the arithmetic branch (refactor, no new content).**
 ```lean
@@ -516,6 +555,9 @@ theorem noConflict_arithmeticBranch_oneThird_of_rawGate
 ```
 plus two 5-line corollaries deriving `hraw` from `will_no_conflicting_checkpoint_be_justified`
 and from `will_current_target_be_justified` (the latter needs `0 < E.total_active`).
+*Landed* as `Execution.noConflict_arithmeticBranch_oneThird_of_rawGate`; the
+old `…_of_prefixEvidence` is now a wrapper with its **signature unchanged**, and
+`…_of_currentTargetGate` is the crossing-arm corollary.
 
 **N5 — drop `support` from the call-site inductive (signature change).**
 `StrictSelectedHistoricalSIRCallSite` (`SelectedPreQueryHistoricalSIR.lean:62-90`)
