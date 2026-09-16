@@ -466,11 +466,26 @@ added, and still no honesty binder at `obs`.
   (`Weak.BankedJustificationCertificate.supplier_slot_lt`) replaces the strong
   proof's installation-second age argument. See "The temporal carry, resolved"
   above.
-* **`Weak.ObserverHistoricalA32CallAssumptions` stays floor-classified.** The
-  fold inherits it unchanged from the closed one-shot theorem. It is the
-  accepted development's own `helper_provisos` read at one more index, not a
-  new class of assumption, but it is still a carried contract rather than a
-  discharged one, and the full-rule statement does not improve on it.
+* ~~**`Weak.ObserverHistoricalA32CallAssumptions` stays floor-classified.** The
+  fold inherits it unchanged from the closed one-shot theorem.~~
+  **Superseded by `docs/weak-final-wave.md` (waves W1–W7, landed).** The two
+  fold headlines
+  `Execution.weakConfirmed_safeFromFollowingSlot_of_acceptedWeakFullRuleFold`
+  and `Execution.weakConfirmed_head_of_acceptedWeakFullRuleFold_nextSlot`, the
+  conditional fold pair in `WeakTrajectorySafety.lean`, and everything between
+  them and the weak strict-edge dispatcher now carry only
+  `E.AcceptedHistoricalA32CompletedPrefixCallAssumptions` — the unchanged
+  7-field accepted contract, with **no** observer proviso. The historical A3.2
+  crossing payload is manufactured lazily at the consuming call from the fold's
+  own output at strictly earlier seconds.
+
+  `Weak.ObserverHistoricalA32CallAssumptions` survives as the price of the
+  **four closed one-shot weak witnesses** only
+  (`Execution.weak_safeFrom_observerCall_closed`,
+  `weak_confirmed_head_closed`, and their two `_from_finalized` forms): a
+  one-shot statement's only safety input is `hbase` at its own second, and
+  there is no route from that to `Weak.ObserverPriorCallWriteBackSafe`. Their
+  statements are byte-identical to before the wave.
 
 ## Audit status
 
@@ -484,10 +499,11 @@ full gate passes (`scripts/check_build.sh`, `lake env lean scripts/Audit.lean`,
 
 The declarations are still deliberately **not** added to `scripts/Audit.lean`'s
 `publicWitnesses`. That set is the repository's list of headline results whose
-premise surface has been *classified against the ratified floor* by a human,
-and the classification of the unconditional fold's surface — in particular the
-carried contract `Weak.ObserverHistoricalA32CallAssumptions` — is the
-remaining work. `Execution.ObserverCoherence` is no longer part of that
+premise surface has been *classified against the ratified floor* by a human.
+Since the W1–W7 wave the unconditional fold's surface no longer contains
+`Weak.ObserverHistoricalA32CallAssumptions` at all — it carries the unchanged
+`E.AcceptedHistoricalA32CompletedPrefixCallAssumptions` instead — so what
+remains is the human classification itself, not a proviso discharge. `Execution.ObserverCoherence` is no longer part of that
 surface: the fold takes `Execution.WeakObserverAssumptions` (floor + `obs ∉
 E.honest` + committee readback) and derives `justified_root_known` internally
 from `B`/`hT`/`hanchor`/`hboundary` via

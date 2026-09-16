@@ -325,6 +325,19 @@ actually consumes.
 
 ## 4. Does the fold's induction dominate the demand seconds?
 
+> **LANDED, `docs/weak-final-wave.md` waves W1–W7.** The question this section
+> asks — "*Any discharge of `observer_helper_provisos` from the trajectory
+> invariant needs the invariant retained at the earlier seconds*" — is now
+> answered affirmatively and in the tree. The fold's motive is
+> `Weak.ObserverFoldSafetyAt` (following-slot safety **plus** the unweakened
+> call-second safety, `WeakTrajectorySafety.lean`), its projection
+> `Execution.observerPriorCallWriteBackSafe_of_weakFullRuleFold` supplies
+> `Weak.ObserverPriorCallWriteBackSafe obs n` at each `succ` step, and the two
+> lazy closures `Weak.LazyCertAt` / `Weak.LazySupportAt`
+> (`WeakHistoricalA32OriginCall.lean`) consume exactly that. The weak
+> trajectory statements therefore carry **no** observer proviso; the four
+> closed one-shot witnesses still do (§5.1's correction below).
+
 **Fold structure.** `Execution.WeakConfirmedSafeFromFollowingSlot`
 (`WeakTrajectorySafety.lean:180`) = `SafeFrom (E.weakConfirmed obs n) (E.followingSlotStart n)`.
 Fold: `weakConfirmed_safeFromFollowingSlot_of_weakFullRuleFold`
@@ -370,6 +383,22 @@ quantifier is therefore **not** the obstruction. The obstruction is spatial
 ## 5. Obstructions
 
 ### 5.1 The decisive one: the proviso is demanded exactly where the safe root is a *previous-epoch* block
+
+> **CORRECTION (`docs/weak-final-wave.md` §1.1, landed).** The diagnosis below
+> is confirmed *and moot*. It is exactly right about the **direct** route: at a
+> live `observer_helper_provisos` site the safe root is one epoch too low, so
+> `SafeFrom input` cannot determine the current-epoch boundary block. What the
+> wave changed is that the proviso is no longer demanded there. At a **crossing**
+> call the origin is by construction a current-epoch block of the query store
+> which the query head descends from (`Weak.ObserverHistoricalA32OriginCallAt`'s
+> `origin_current` / `head_descends`), which is precisely the configuration
+> `Execution.honestVotesSupportTarget_of_engineInv_currentEpochCandidate`
+> needs — and that lemma has **no** honesty binder and **no** committee
+> membership hypothesis on the querying node. The safety it consumes is the
+> origin call's own write-back safety at a second *strictly earlier* than the
+> consuming call, which the fold's `callSecond` component supplies. So the
+> obstruction is real for the eager/direct shape and vacuous for the lazy
+> origin-call shape.
 
 At a call, `hinputEpoch`
 (`AcceptedSelectedStrictEdgeFilterSupply.lean:199-207`,

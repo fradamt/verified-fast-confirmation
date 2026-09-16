@@ -937,11 +937,21 @@ Every premise of `weak_safeFrom_observerCall_closed`, classified:
   facade already assumes.
 * **`hC : Weak.ObserverHistoricalA32CallAssumptions cfg ext E obs`** — the
   floor-classified observer call contract discharging obligation X1 (the
-  four-field `Weak.ObserverStrictCallFilterInputsAt` residue). This is the
-  accepted FFG semantic contracts' `helper_provisos`, extended to quantify
-  over the observer `obs` in addition to the honest validators the accepted
-  development already quantifies over — **not** a new class of assumption,
-  the same contract read at one more (not necessarily honest) index.
+  `Weak.ObserverStrictCallFilterInputsAt` residue). This is the accepted FFG
+  semantic contracts' `helper_provisos`, extended to quantify over the
+  observer `obs` in addition to the honest validators the accepted development
+  already quantifies over — **not** a new class of assumption, the same
+  contract read at one more (not necessarily honest) index.
+
+  **Scope since `docs/weak-final-wave.md` (W1–W7, landed).** This premise now
+  appears on the **four closed one-shot witnesses only**
+  (`weak_safeFrom_observerCall_closed`, `weak_confirmed_head_closed`, and their
+  two `_from_finalized` forms). The weak *trajectory* statements — the fold in
+  `WeakTrajectorySafety.lean` and the two unconditional headlines in
+  `WeakObservedResetSeedSafety.lean` — carry only
+  `E.AcceptedHistoricalA32CompletedPrefixCallAssumptions`, because they can
+  supply `Weak.ObserverPriorCallWriteBackSafe` from their own strengthened
+  induction hypothesis and a one-shot statement cannot.
 * **`hfit : EpochEndsFitUint64 cfg`** — a pure configuration-arithmetic fact
   (slots-per-epoch bookkeeping fits in `UInt64`), independent of honesty or
   synchrony.

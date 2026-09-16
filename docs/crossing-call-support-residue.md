@@ -603,7 +603,7 @@ consequence of the weak theorems being one-shot with a non-honest observer
 | **T3** | thread `hprior` (`PriorStrictCallWriteBackSafe`, already defined and supplied) down `…Facade → AcceptedActualFCRStrictHelperIntegration → AcceptedSelectedStrictEdgeFilterSupply → strictSelected_result_and_child_ancestor_… → epochStart_or_endpointOriginOrPinned_of_acceptedCallSite` | ~8-10 | medium; mechanical, wide |
 | **T4d** | flip the strong payload: `of_fixedSourceCurrentTarget` lazy twin at `AcceptedHistoricalA32Crossing:156`, `AcceptedHistoricalA32Step:365`, `:446`; write-back induction instantiates `Supp := LazySupportAt v n`; lazy twins of the A1 consumers; discharge `CallWriteBackEngineSafeUpTo` at `AcceptedSelectedStrictEdgeFilterSupply:1894` (hIH+hprior) and `:1966` (hprior) | `…Crossing`, `…Step`, `…OneStep`, `…Induction`, `…CallSupplier`, `…GlobalTrajectory`, `AcceptedSelectedJustifiedOrientation`, `AcceptedSelectedStrictEdgeFilterSupply` — **~8** | high |
 | **T5** | drop the support half of the strong hub and delete `SelectedHelperProvisosAt.current_target`, `AcceptedHistoricalA32CallInterfaceAt.helper_provisos`, `AcceptedHistoricalA32CompletedPrefixCallAssumptions.helper_provisos`, then `SelectedHelperProvisosAt` | **5** | low once T4d is green |
-| **T6** | blocked, §5.5 of `trunkA-final-discharge.md`: weak twin + `observer_helper_provisos` | — | — |
+| **T6** | ~~blocked, §5.5 of `trunkA-final-discharge.md`~~ — **superseded and landed** as the W0–W7 wave of `docs/weak-final-wave.md`; see §9.3 below | ~14 | — |
 
 §9.4's T4c ("capped `HonestVotesSupportTargetUpTo` and the capped quorum
 manufacture … This is the real cost") is **deleted**; T4b/T4c above replace it
@@ -681,9 +681,12 @@ are untouched.  All 23 audit witnesses keep their signatures.
   instantiations of `Cert`/`Supp`, not a second shim.
 * `Weak.SelectedHelperProvisosAt` and
   `Weak.ObserverHistoricalA32CallAssumptions.observer_helper_provisos` are
-  untouched, and remain blocked for the reason `trunkA-final-discharge.md` §5.5
-  gives (one-shot weak theorems with a non-honest observer), **not** by
-  anything in this note.
+  untouched here. ~~and remain blocked for the reason
+  `trunkA-final-discharge.md` §5.5 gives~~ — **that scope was wrong**: §5.5's
+  obstruction is real for *one-shot* weak theorems only. The weak trajectory
+  statements are all-seconds forms and dropped the proviso in
+  `docs/weak-final-wave.md`'s W1–W7; the record survives for the four closed
+  one-shot witnesses. See §9.3.
 * The strong crossing constructors that consumed
   `Execution.currentTargetAcceptedEdge_gate_and_support`
   (`selectedCurrentCrossingLineage`, `…_of_fixedSourceProducer`, the two
@@ -691,3 +694,29 @@ are untouched.  All 23 audit witnesses keep their signatures.
   unreachable from every live strong path but were left in place: they are the
   structural analogue of the weak constructors, and deleting them is orthogonal
   cleanup that should happen with, not before, the weak wave.
+
+---
+
+## 9.3 The weak wave landed (W0–W7)
+
+`docs/weak-final-wave.md` is the design; the waves landed on the same branch,
+one commit each, full gate after every one:
+
+| wave | content |
+|---|---|
+| **W0** | delete the unreachable strong crossing constructors (`selectedCurrentCrossingLineage*`, `carriedCurrentCrossingLineage*`, `currentTargetAcceptedEdge_gate_and_support`, `witnessSelectedHelperProvisos`) |
+| **W1** | `Weak.ObserverFoldSafetyAt` (unconditional `callSecond`), `Weak.ObserverPriorCallWriteBackSafe`, and the fold's projection |
+| **W2** | `Weak.ObserverHistoricalA32OriginCallAt` (no `node_honest`, no `origin_strict`), the honesty-free reconstruction, `Weak.LazyCertAt`/`LazySupportAt`, `Weak.selectedCurrentCrossingLazyLineage` |
+| **W3** | `(Cert, Supp)` on the weak no-crossing and finalized-reset step constructors |
+| **W4** | the `hcross`-parameterized weak one-call transformer with eager / lazy / no-crossing instantiations, and `Weak.ObserverLineageRouteAt` |
+| **W5** | the route threaded through the write-back induction, the orientation (which drops to `hC.base` and takes `Weak.HistoricalCurrentTargetCertificateProducerAt`), and both weak A1 sites flipped to `…retainedVisible_of_lateSupport` |
+| **W6** | the headline flip: the weak trajectory statements take the unchanged 7-field completed-prefix contract |
+| **W7** | deletion of the superseded weak payload-producer surface plus this documentation |
+
+The one correction §9.1 of this note needed on the weak side is *negative*:
+the `result ≠ afterObserved` conditioning of `AcceptedFoldSafetyAt.callSecond`
+does **not** port. The weak fold has no `finalizedResetUnchanged` recovery arm
+— `weak_safeFrom_observerCall_closed` closes all four candidate-history
+branches from `hbase` at `slot_start (slot_at (n+1)) = n+1` — so
+`Weak.ObserverFoldSafetyAt.callSecond` is unconditional and the weak origin-call
+record needs no `origin_strict`.

@@ -615,3 +615,117 @@ the weak wave landed, the full list is:
 | 12 | the observer's non-honesty blocks a step of the design | **fails** — it blocks nothing in the lazy machinery; it blocks only the *one-shot* discharge of the history premise, which is §5.5's real content |
 | 13 | `trunkA-final-discharge.md` §5.5 | **holds in content, over-scoped** — corrected in §5.4 |
 | 14 | the strong crossing-constructor deletion is free today | **holds** for the strong side (W0); the weak analogues survive under Option A |
+
+---
+
+## 8. Landing report — W0–W7 all green
+
+Landed on `centaur/discharge-helper-provisos-202609161`, one commit per wave,
+full gate (`scripts/check_build.sh` + `lake env lean scripts/Audit.lean`) after
+each.
+
+| wave | SHA | content |
+|---|---|---|
+| **W0** | `9d3c0ad` | the unreachable strong crossing constructors + `witnessSelectedHelperProvisos` + `currentTargetAcceptedEdge_gate_and_support` |
+| **W1** | `ac6040a` | `Weak.ObserverFoldSafetyAt`, `Weak.ObserverPriorCallWriteBackSafe`, the strengthened fold motive and `observerPriorCallWriteBackSafe_of_weakFullRuleFold` |
+| **W2** | `e2ac2cd` | `WeakHistoricalA32OriginCall` (the weak origin-call record + the honesty-free reconstruction + the lazy closures) and `WeakHistoricalA32LazyCrossing` |
+| **W3** | `e8edc77` | `(Cert, Supp)` on `Weak.selectedCurrentNoCrossingLineage` and `Weak.actualFinalizedResetCurrentAnchorLineage_core` |
+| **W4a** | `e7bbd5d` | `Weak.getLatestConfirmedTraceAt_currentLineage_step_core` with `_lazy` / `_noCrossing` instantiations |
+| **W4b** | `6b44eae` | `(Cert, Supp)` on the weak lineage helpers; `Weak.ObserverLineageRouteAt` and the four obligation families |
+| **W4c/W5** | `497d2d0` | the route threaded through the write-back induction, the orientation, the filter-input record and the dispatcher; both weak A1 sites flipped to `…retainedVisible_of_lateSupport` |
+| **W6** | `07f0a0e` | `weak_safeFrom_observerCall_closed_lazy` and the headline flip |
+| **W7** | `c20bf35` | deletion of the superseded weak payload-producer surface and the in-file commentary re-scoping |
+
+### 8.1 Deviations from the plan
+
+1. **`Execution.SelectedHelperProvisosAt` was not deleted (W0).** It is
+   unreachable from the 23 audit witnesses, but it is still read by the legacy
+   retained-trace pipeline and the FFG state-realization *public function
+   contracts* (`SelectedTraceFilterPipeline`,
+   `SelectedTraceFFGRealizationPipeline`, and
+   `SelectedCoveredMarginConstruction`'s `Spec_Safety_of_selectedStateRealization_minimal`
+   and ~25 siblings). Deleting the record forces either deleting that whole
+   contract surface — far beyond a free deletion — or stripping the antecedent
+   from *hypothesis-record fields*
+   (`SelectedTraceFFGPipeline.retained_edge_tip_source` and
+   `SelectedTraceFFGStateRealizationFor`'s four), which **strengthens** those
+   assumption records and hence weakens every consumer. Reported instead of
+   done.
+
+2. **`observer_helper_provisos` was not deleted (W7), and cannot be under the
+   recommended route.** It now has exactly **one** code reader in the whole
+   tree: `Weak.observerLineageRoute_eager`
+   (`WeakHistoricalA32Induction.lean`), the eager instantiation that keeps the
+   four closed one-shot witnesses' statements byte-identical. Deleting it means
+   those four witnesses must acquire
+   `hprior : Weak.ObserverPriorCallWriteBackSafe cfg ext E obs n`, which §5.2
+   shows a one-shot statement cannot supply from its own `hbase` — i.e. it is
+   Option B, four audited signature changes. The W7 bullet as written ("delete
+   `observer_helper_provisos` … four one-shot witnesses keep it") is internally
+   inconsistent; this landing keeps the four witnesses frozen, which is what
+   §0 item 5 and §5.4 actually argue for.
+
+   Consequently `Weak.SelectedHelperProvisosAt` and
+   `Weak.ObserverHistoricalA32CallAssumptions` also survive, both with their
+   original shape. The record's docstring has been re-scoped in place.
+
+3. **The eager one-call wrapper was deleted rather than kept.**
+   `Weak.getLatestConfirmedTraceAt_currentLineage_step` (the byte-identical
+   pre-wave statement) became unreachable once the eager route went through
+   `Weak.observerLineageRoute_eager`, so W7 removed it.
+
+4. **The obligation parameters are *families* `ℕ → …`, not the fixed pair of
+   §5.3.** The lazy closures are indexed by the write-back second, and the
+   induction's extension step widens that bound, so a fixed `(Cert, Supp)` pair
+   does not close. `Weak.ObserverLineageRouteAt` carries the anchor discharges,
+   the widening (`mono`), the same-epoch support transport and the crossing
+   builder; `Weak.ObserverStrictCallFilterInputsAt` carries the two
+   eliminations (`supp_elim_current` with `hIH`/`hcall`, `supp_elim_prior`
+   without — the §6.4 risk-register entry, confirmed).
+
+### 8.2 Premise surface of the two fold headlines, exactly
+
+`Execution.weakConfirmed_safeFromFollowingSlot_of_acceptedWeakFullRuleFold`
+(`WeakObservedResetSeedSafety.lean`):
+
+```
+(B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+(hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
+(hji : JustificationInterface cfg ext E)
+(hanchor : B.anchor = E.genesis_store.justified_checkpoint)
+(hboundary : TrustedAnchorBoundaryAligned (cfg := cfg) (E := E) (anchor := B.anchor))
+(hDelay : E.AcceptedRealizedFinalizationDelay cfg ext B)
+(hphase0 : Phase0SourceCoherence cfg ext)
+(hboundaryPhase : Phase0BoundarySourceCoherence cfg ext)
+(hpaper : B.state.PaperA32Inclusion cfg ext)
+(P : AcceptedEpochCheckpointProjection B.anchor (E.AcceptedRoot cfg ext) B.state.C)
+(V : B.state.ExactLinkValidity)
+(hanchorExact : B.anchor = B.state.C B.anchor.root B.anchor.epoch)
+{obs : ValidatorIndex}
+(hW : E.WeakObserverAssumptions cfg ext obs)
+(hwalkDomain : E.PostAnchorHonestVoteTargetWalkDomain cfg ext)
+(hCbase : E.AcceptedHistoricalA32CompletedPrefixCallAssumptions cfg ext)
+(hfit : EpochEndsFitUint64 cfg)
+```
+
+`…_head_of_acceptedWeakFullRuleFold_nextSlot` is the same list plus the
+endpoint binders `{n} {w} (hw : w ∈ E.honest) {m} (hnm : n ≤ m)
+(hnext : E.slot_at cfg n + 1 ≤ E.slot_at cfg m) (hHm : E.WithinHorizon cfg m)`.
+
+The only change against `45f6e84` is
+`hC : Weak.ObserverHistoricalA32CallAssumptions cfg ext E obs` →
+`hCbase : E.AcceptedHistoricalA32CompletedPrefixCallAssumptions cfg ext`, i.e.
+the record's `.base` projection: a strict premise weakening.
+
+`#print axioms` on both: `propext`, `Classical.choice`, `Quot.sound`.
+
+### 8.3 What still carries the proviso
+
+Exactly four declarations, all in `WeakOneShotSafetyClosed.lean` and all with
+statements unchanged by the wave (the file's diff since `45f6e84` contains no
+deletions at all):
+
+* `Execution.weak_safeFrom_observerCall_closed`
+* `Execution.weak_confirmed_head_closed`
+* `Execution.weak_safeFrom_observerCall_closed_from_finalized`
+* `Execution.weak_confirmed_head_closed_from_finalized`

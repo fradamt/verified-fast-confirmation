@@ -462,7 +462,26 @@ consumes).
 
 ### 5.5 The residual that still needs the proviso — stated exactly
 
-> **Residual.** `Weak.ObserverHistoricalA32CallAssumptions.observer_helper_provisos`
+> **CORRECTED SCOPE (`docs/weak-final-wave.md` §5.4, landed as waves W1–W7).**
+> The argument below is **sound but over-scoped**. It was written as if the
+> residual blocked `observer_helper_provisos` *entirely*; it blocks only
+> deleting the record, not removing it from the weak *trajectory* statements.
+> Those are all-seconds forms, so they can — and now do — supply
+> `Weak.ObserverPriorCallWriteBackSafe` from their own strengthened induction
+> hypothesis and take the lazy crossing route, which consumes no proviso. The
+> corrected residual is:
+>
+> > `Weak.ObserverHistoricalA32CallAssumptions.observer_helper_provisos` is the
+> > price of the **four closed one-shot weak witnesses**
+> > (`WeakOneShotSafetyClosed.lean`), not of the weak development as a whole.
+>
+> Steps 1–3 below are exactly the proof of *that* statement; the observer's
+> non-honesty obstructs nothing in the lazy machinery (every consumption of
+> `node_honest` has an honesty-free observer substitute — see
+> `docs/weak-final-wave.md` §1).
+
+> **Residual (as originally stated).**
+> `Weak.ObserverHistoricalA32CallAssumptions.observer_helper_provisos`
 > (`WeakSelectedStrictEdgeFilterSupply.lean:239-245`) cannot be deleted while the
 > weak public witnesses keep their statements.
 
@@ -497,9 +516,13 @@ Proof sketch of the obstruction, in three steps:
    the observer.
 
 **In one line: `observer_helper_provisos` is the price of the weak theorems
-being one-shot.** Removing it requires promoting one weak witness to an
-all-seconds form, which is a change to the audited statement set and therefore
-out of scope here.
+being one-shot.** That line is exact — and it is the reason the weak
+*trajectory* statements, which are **not** one-shot, could drop it in
+`docs/weak-final-wave.md`'s W6 without touching any audited statement. Removing
+it from the four one-shot witnesses too would require promoting one of them to
+an all-seconds form (or giving it an explicit
+`Weak.ObserverPriorCallWriteBackSafe` premise), which is a change to the
+audited statement set and therefore still out of scope here.
 
 ---
 
@@ -610,6 +633,17 @@ survive T0–T5 intact.
 ---
 
 ## 8. Residual statement
+
+> **UPDATED after `docs/weak-final-wave.md` W1–W7.** The projection site below
+> is still the only one, but it is now reached **only from the eager route**
+> (`Weak.observerLineageRoute_eager`, `WeakHistoricalA32Induction.lean`), i.e.
+> only from the four closed one-shot weak witnesses. The weak trajectory
+> statements reach the same conclusion through
+> `Weak.selectedCurrentCrossingLazyLineage`, which projects no
+> `HonestVotesSupportTarget` at the crossing call at all — it records
+> origin-call data and manufactures the proviso at the *consuming* call from
+> the fold's strictly earlier output. The closing sentence stands verbatim for
+> the four one-shot witnesses and only for them.
 
 After T0–T5, `HonestVotesSupportTarget` is projected at **one** site:
 `Weak.currentTargetAcceptedEdge_gate_and_support`
