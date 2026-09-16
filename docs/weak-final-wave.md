@@ -640,19 +640,65 @@ each.
 
 ### 8.1 Deviations from the plan
 
-1. **`Execution.SelectedHelperProvisosAt` was not deleted (W0).** It is
-   unreachable from the 23 audit witnesses, but it is still read by the legacy
+1. **`Execution.SelectedHelperProvisosAt` was not deleted (W0).** It was
+   unreachable from the 23 audit witnesses, but it was still read by the legacy
    retained-trace pipeline and the FFG state-realization *public function
    contracts* (`SelectedTraceFilterPipeline`,
    `SelectedTraceFFGRealizationPipeline`, and
    `SelectedCoveredMarginConstruction`'s `Spec_Safety_of_selectedStateRealization_minimal`
-   and ~25 siblings). Deleting the record forces either deleting that whole
+   and ~25 siblings). Deleting the record forced either deleting that whole
    contract surface — far beyond a free deletion — or stripping the antecedent
    from *hypothesis-record fields*
    (`SelectedTraceFFGPipeline.retained_edge_tip_source` and
    `SelectedTraceFFGStateRealizationFor`'s four), which **strengthens** those
    assumption records and hence weakens every consumer. Reported instead of
-   done.
+   done at the time.
+
+   **RESOLVED — the contract surface was deleted** (`refactor!: delete the
+   legacy proviso'd contract surface`). The repo owner chose the first route.
+   The reachability frontier was computed from the environment, not from
+   `rg`: the reverse-dependency closure of
+   `FastConfirmation.Spec.SelectedHelperProvisosAt` is **71 environment
+   constants / 29 source declarations**, and its intersection with the forward
+   closure of the 23 audit witnesses (5191 project constants) is **empty**, so
+   nothing audited moved. Deleted: the whole of
+   `SelectedTraceFilterPipeline.lean` (the record, `SelectedTraceFFGPipeline`,
+   `filterTipCertificate_of_retained_edge`,
+   `child_filtered_of_retained_edge_pipeline`,
+   `strictSelectedEdge_child_filtered_of_trace_pipeline_minimal`, and the
+   file's now-orphaned
+   `retainedTentativeEdge_current_balance_checkpoint_key`; the module is gone
+   and its three importers took over its imports verbatim);
+   `SelectedTraceFFGStateRealizationFor` / `…At` and their two filter
+   consequences in `SelectedTraceFFGRealizationPipeline.lean` (which keeps
+   only the shared A3.2 vocabulary: `SelectedCanonicalBeforeEndpointAt`,
+   `SelectedEarlyA32CarrierAt`, `SelectedA32SemanticRealizationAt`,
+   `SelectedMarginAssumptions.toFFGAccountabilityAssumptions`); and the 19
+   proviso'd / newly-orphaned declarations of
+   `SelectedCoveredMarginConstruction.lean`, i.e. the two margin-supply
+   wrappers, the four `safeFrom_find_latest_confirmed_descendant_of_*`/`_spec_`
+   contracts, `safeFrom_and_input_ancestry_…_spec_minimal`, both
+   `SelectedGetLatest…At` records with their four `…get_latest_confirmed…`
+   bridges, and all four public trajectory theorems
+   (`Spec_Safety_of_selectedPipeline_minimal`,
+   `Spec_Safety_of_selectedStateRealization_minimal`, and the two
+   `Spec_Monotonicity_…` twins). Swept with them, as same-file orphans of the
+   same layer: `get_latest_confirmed_call_cases_minimal` (subsumed by the live
+   `getLatestConfirmed_actualCallCases`) and
+   `find_latest_confirmed_descendant_input_ancestry_minimal` (a query-store
+   wrapper of `find_latest_confirmed_descendant_ge`). Kept deliberately:
+   `SelectedStrictEdgeFilterSupplyAt`,
+   `selectedCoveredMarginSupplyAt_of_filterSupply_minimal` (both audit-
+   reachable) and `slot_start_eq_succ_of_advance_minimal` (a dozen live
+   readers), plus six shared lemmas in *other* modules whose last reader was
+   the deleted layer — `strict_selected_edge_mem_trace`
+   (`SelectedTraceCoverage`), `child_filtered_of_filterTipCertificate_nonempty`
+   and the `current_balance_checkpoint_key` field (`SelectedFilterBridge`),
+   `retainedFilterTipPlacement_of_available_seed` (`SelectedFFGRealization`),
+   `query_justified_epoch_le_of_causal_honest_target_minimal`
+   (`CausalCheckpointEpochBound`), `a32IncludedAtTip_of_paper_at_known`
+   (`PaperA32Projection`) — these are general geometry/structure
+   infrastructure, not part of the proviso layer.
 
 2. **`observer_helper_provisos` was not deleted (W7), and cannot be under the
    recommended route.** It now has exactly **one** code reader in the whole
@@ -797,10 +843,11 @@ human premise classification remains outstanding.
   route went, no binder of the record remained, so it was deleted outright
   rather than replaced by its `base` field.
 
-`Execution.SelectedHelperProvisosAt` (the strong record,
-`SelectedTraceFilterPipeline.lean`) is **untouched**, together with the
-strong-legacy retained-trace pipeline and the ~25 FFG state-realization public
-function contracts that read it — §8.1 item 1's deferred decision stands.
+`Execution.SelectedHelperProvisosAt` (the strong record, then in
+`SelectedTraceFilterPipeline.lean`) was left **untouched** by W9, together with
+the strong-legacy retained-trace pipeline and the FFG state-realization public
+function contracts that read it. That deferred decision has since been taken
+the other way: the whole surface is **deleted** — see §8.1 item 1.
 
 Gate after each commit: `scripts/check_build.sh` + `lake env lean
 scripts/Audit.lean`, sorry-free, 23 witnesses.

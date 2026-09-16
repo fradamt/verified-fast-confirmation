@@ -49,13 +49,17 @@ W1–W9 closed it, and not by any of the waves 4–6 sketched in §6:
   their only consumers. No binder of §1.1 survives; nothing needed replacing
   by `E.AcceptedHistoricalA32CompletedPrefixCallAssumptions`, because the
   lazy path never took the record in the first place.
-* **Wave 6 step 3 was *not* taken.** `Execution.SelectedHelperProvisosAt` (the
-  strong record, `SelectedTraceFilterPipeline.lean`) and the strong
-  `helper_provisos` field are untouched: they are still read by the legacy
-  retained-trace pipeline and by ~25 FFG state-realization public function
-  contracts (`SelectedTraceFFGRealizationPipeline.lean`,
-  `SelectedCoveredMarginConstruction.lean`). Deleting them is a separate,
-  still-pending decision — see `docs/weak-final-wave.md` §8.1 item 1.
+* **Wave 6 step 3 is now done.** `Execution.SelectedHelperProvisosAt` (the
+  strong record, formerly `SelectedTraceFilterPipeline.lean`) and the whole
+  legacy contract surface that read it — the retained-trace pipeline and the
+  FFG state-realization public function contracts in
+  `SelectedTraceFFGRealizationPipeline.lean` and
+  `SelectedCoveredMarginConstruction.lean` — were **deleted** (`refactor!:
+  delete the legacy proviso'd contract surface`): 29 source declarations, 71
+  environment constants, `SelectedTraceFilterPipeline.lean` removed outright.
+  The deletion closure was checked against the forward closure of the 23 audit
+  witnesses and the intersection is empty. See `docs/weak-final-wave.md`
+  §8.1 item 1 for the full inventory, including what was deliberately kept.
 
 The audited weak statements are now the four trajectory headlines
 (`Execution.weakConfirmed_safeFromFollowingSlot_of_weakFullRuleFold`,
