@@ -39,6 +39,34 @@ def followingSlotStart (n : ℕ) : ℕ :=
 def ConfirmedSafeFromFollowingSlot (v : ValidatorIndex) (n : ℕ) : Prop :=
   E.SafeFrom cfg ext (E.confirmed cfg ext v n) (E.followingSlotStart cfg n)
 
+/-- **The invariant the accepted fold actually maintains at every second.**
+
+`followingSlot` is the historical single-second conclusion, unchanged.
+
+`callSecond` is the *unweakened* form: when second `n` is the write-back
+second of a call at `k = n - 1` whose selector **strictly advanced**, the newly
+cached root is safe from second `n` itself, not merely from
+`followingSlotStart n`.  At a call `E.slot_start_eq_succ_of_advance_minimal`
+gives `slot_start (slot_at (k + 1)) = k + 1`, so this is exactly the
+`slot_start`-indexed safety that the lazy A3.2 origin-call transport consumes
+at an *earlier* crossing call (`docs/trunkA-final-discharge.md` §2.4, §5.3);
+the `followingSlotStart` form is strictly weaker and does not suffice there.
+
+The strictness side condition is not a restriction for that consumer: an A3.2
+crossing origin is produced only on the `strictSelected` arm, whose
+`StrictSelectorAdvanceAt.result_ne_input` supplies it.  It is *necessary*
+here: on the `finalizedResetUnchanged` arm the cached root is the query's
+freshly finalized checkpoint, whose safety genuinely needs a strictly later
+slot (`finalizedReset_safeFrom_of_nextSlotSynchrony` takes
+`slot_at (n + 1) + 1 ≤ slot_at q`), so no unconditional unweakened form is
+derivable. -/
+structure AcceptedFoldSafetyAt (v : ValidatorIndex) (n : ℕ) : Prop where
+  followingSlot : E.ConfirmedSafeFromFollowingSlot cfg ext v n
+  callSecond : ∀ k : ℕ, n = k + 1 → E.IsFCRCallAt cfg ext v k →
+    E.confirmed cfg ext v n ≠
+      (E.getLatestConfirmedTraceAt cfg ext v k).afterObserved →
+    E.SafeFrom cfg ext (E.confirmed cfg ext v n) n
+
 private theorem nextSlotFold_genesisTime_le
     (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext) :
     E.genesis_store.genesis_time ≤ E.genesis_store.time := by
@@ -221,13 +249,38 @@ theorem strictFinalizedResetCandidateInput_safeFrom_anchor
 set_option maxRecDepth 5000 in
 set_option maxHeartbeats 1400000 in
 -- The dependent dispatcher elaborates separately in all strict input origins.
-/-- Every honest node's exact executable confirmed cache is safe from the
-start of the following slot.
+/-- **All-seconds form of the accepted actual-FCR next-slot safety fold.**
 
-Finalized unchanged resets use synchrony at that deadline.  Strict finalized
-resets reduce to the trusted anchor before the strict-helper dispatcher is
-invoked.  Active observed resets use the accepted dynamic checkpoint proof. -/
-theorem confirmed_safeFromFollowingSlot_of_acceptedActualFCRFold
+Same content as `confirmed_safeFromFollowingSlot_of_acceptedActualFCRFold`
+below, but with the induction motive strengthened in two ways: from "the
+invariant at `n`" to "the invariant at **every** second `k ≤ n`", and from
+`ConfirmedSafeFromFollowingSlot` alone to the pair `AcceptedFoldSafetyAt`,
+which additionally exposes the *unweakened* call-second safety
+`E.SafeFrom cfg ext (E.confirmed cfg ext v (k + 1)) (k + 1)` of a strictly
+advanced write-back.
+
+*Why the strengthening is wanted* (`docs/trunkA-final-discharge.md` §2.4,
+§5.3; strong twin of the weak
+`weakConfirmedSafeFromFollowingSlot_of_weakFullRuleFold_all_le`,
+`WeakTrajectorySafety.lean`).  The A3.2 write-back recursion replays **every
+earlier call second `k < n`**, and the lazy origin-call transport of the
+historical A3.2 payload reconstructs the target-support proviso at the
+*crossing* call `k + 1` from safety of that call's own confirmed result at
+second `k + 1`.  Both the all-`k` quantification and the unweakened
+`slot_start`-indexed deadline are therefore needed, and neither survives the
+plain single-second `followingSlotStart` motive.  The demand is never at a
+second beyond `n`, so the strengthened induction is well-founded exactly as
+the plain one is; this theorem simply keeps the witnesses around.
+
+Finalized unchanged resets use synchrony at the following-slot deadline.
+Strict finalized resets reduce to the trusted anchor before the strict-helper
+dispatcher is invoked.  Active observed resets use the accepted dynamic
+checkpoint proof.
+
+Purely enabling: no signature below changes, and the historical single-second
+theorem is recovered by instantiating `k := n` and projecting
+`followingSlot`. -/
+theorem confirmed_safeFromFollowingSlot_of_acceptedActualFCRFold_all_le
     (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
     (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
     (hC : E.AcceptedHistoricalA32CompletedPrefixCallAssumptions cfg ext)
@@ -242,8 +295,8 @@ theorem confirmed_safeFromFollowingSlot_of_acceptedActualFCRFold
       (E.AcceptedRoot cfg ext) B.state.C)
     (V : B.state.ExactLinkValidity)
     {v : ValidatorIndex} (hv : v ∈ E.honest) :
-    ∀ n : ℕ, E.WithinHorizon cfg n →
-      E.ConfirmedSafeFromFollowingSlot cfg ext v n := by
+    ∀ n : ℕ, ∀ k ≤ n, E.WithinHorizon cfg k →
+      E.AcceptedFoldSafetyAt cfg ext v k := by
   have hdomain : SelectedMarginDomain cfg ext E :=
     E.selectedMarginDomain_of_acceptedGlobalTrajectory
       cfg ext B hT hC.synchrony hanchor hboundary
@@ -266,15 +319,22 @@ theorem confirmed_safeFromFollowingSlot_of_acceptedActualFCRFold
   intro n
   induction n with
   | zero =>
-      intro _hH0
-      unfold ConfirmedSafeFromFollowingSlot
-      exact (E.confirmed_zero_safeFrom_of_acceptedGlobalTrajectory
-        cfg ext B hT hanchor hboundary v).mono cfg ext E (Nat.zero_le _)
+      intro k hk _hH0
+      rw [Nat.le_zero.mp hk]
+      refine { followingSlot := ?_, callSecond := ?_ }
+      · unfold ConfirmedSafeFromFollowingSlot
+        exact (E.confirmed_zero_safeFrom_of_acceptedGlobalTrajectory
+          cfg ext B hT hanchor hboundary v).mono cfg ext E (Nat.zero_le _)
+      · intro j hj _ _
+        exact absurd hj.symm (Nat.succ_ne_zero j)
   | succ n ih =>
-      intro hHn1
+      intro k hk hHn1
+      rcases Nat.eq_or_lt_of_le hk with rfl | hlt
+      swap
+      · exact ih k (Nat.lt_succ_iff.mp hlt) hHn1
       have hHn : E.WithinHorizon cfg n :=
         E.withinHorizon_mono cfg (Nat.le_succ n) hHn1
-      have hsafeN := ih hHn
+      have hsafeN := (ih n (Nat.le_refl n) hHn).followingSlot
       by_cases hcall : E.IsFCRCallAt cfg ext v n
       · let trace := E.getLatestConfirmedTraceAt cfg ext v n
         have hrec := E.actualCandidateHistoryRecurrence cfg ext hcall
@@ -303,18 +363,28 @@ theorem confirmed_safeFromFollowingSlot_of_acceptedActualFCRFold
         have hbranch : CandidateHistoryCallBranch cfg ext
             (E.fcrStep cfg ext v n) trace := by
           simpa only [trace] using hrec.branch
+        -- One pass over the four-way branch classification, producing both
+        -- the following-slot form and the unweakened strict call-second form.
         have hresultSafe : E.SafeFrom cfg ext trace.result
-            (E.followingSlotStart cfg (n + 1)) := by
+              (E.followingSlotStart cfg (n + 1)) ∧
+            (trace.result ≠ trace.afterObserved →
+              E.SafeFrom cfg ext trace.result (n + 1)) := by
           cases hbranch with
           | carriedUnchanged hinput hselector =>
               have hinputSafe : E.SafeFrom cfg ext trace.afterObserved
                   (n + 1) := by
                 rw [hinput.input_eq, E.fcrStep_confirmed_root]
                 exact hsafePreviousAtCall
-              rw [hselector.result_eq_input cfg ext]
+              have heq : trace.result = trace.afterObserved :=
+                hselector.result_eq_input cfg ext
+              refine ⟨?_, fun hne => absurd heq hne⟩
+              rw [heq]
               exact hinputSafe.mono cfg ext E hcallToDeadline
           | finalizedResetUnchanged hinput hselector =>
-              rw [hselector.result_eq_input cfg ext]
+              have heq : trace.result = trace.afterObserved :=
+                hselector.result_eq_input cfg ext
+              refine ⟨?_, fun hne => absurd heq hne⟩
+              rw [heq]
               exact E.finalizedResetCandidateInput_safeFrom_of_nextSlotSynchrony
                 cfg ext B hT hacc hanchor hboundary hC.synchrony hv hHn1
                   hinput hdeadlineSlot
@@ -323,7 +393,10 @@ theorem confirmed_safeFromFollowingSlot_of_acceptedActualFCRFold
                 Execution.ObservedResetCandidateInputAt.safeFrom_of_acceptedDynamics
                   (E := E) cfg ext B hT hC.synchrony hC.static_validators
                     hC.byzantine_bound hanchor hboundary hspe hv hHn1 hcall hinput
-              rw [hselector.result_eq_input cfg ext]
+              have heq : trace.result = trace.afterObserved :=
+                hselector.result_eq_input cfg ext
+              refine ⟨?_, fun hne => absurd heq hne⟩
+              rw [heq]
               exact hinputSafe.mono cfg ext E hcallToDeadline
           | strictSelected horigin hselector =>
               have hinputSafe : E.SafeFrom cfg ext trace.afterObserved
@@ -347,19 +420,59 @@ theorem confirmed_safeFromFollowingSlot_of_acceptedActualFCRFold
                     cfg ext B hT hC hfit hdomain hanchor hboundary hDelay
                       hspe hpaper P V hanchorExact hv hHn1 hcall
                         hinputKnown hinputSafe
-              exact hstrictSafe.mono cfg ext E hcallToDeadline
+              exact ⟨hstrictSafe.mono cfg ext E hcallToDeadline,
+                fun _ => hstrictSafe⟩
         have hwrite : E.confirmed cfg ext v (n + 1) = trace.result := by
           simpa only [trace] using hrec.result_writeback
-        unfold ConfirmedSafeFromFollowingSlot
-        rw [hwrite]
-        exact hresultSafe
+        refine { followingSlot := ?_, callSecond := ?_ }
+        · unfold ConfirmedSafeFromFollowingSlot
+          rw [hwrite]
+          exact hresultSafe.1
+        · intro j hj _hcallJ hne
+          cases Nat.succ_injective hj
+          rw [hwrite] at hne ⊢
+          exact hresultSafe.2 hne
       · have hdeadlineEq : E.followingSlotStart cfg (n + 1) =
             E.followingSlotStart cfg n :=
           E.followingSlotStart_succ_eq_of_noCall cfg ext hcall
-        unfold ConfirmedSafeFromFollowingSlot at hsafeN ⊢
-        rw [E.confirmed_succ_of_no_advance cfg ext v n hcall,
-          hdeadlineEq]
-        exact hsafeN
+        refine { followingSlot := ?_, callSecond := ?_ }
+        · unfold ConfirmedSafeFromFollowingSlot at hsafeN ⊢
+          rw [E.confirmed_succ_of_no_advance cfg ext v n hcall,
+            hdeadlineEq]
+          exact hsafeN
+        · intro j hj hcallJ _
+          cases Nat.succ_injective hj
+          exact absurd hcallJ hcall
+
+/-- Every honest node's exact executable confirmed cache is safe from the
+start of the following slot.
+
+Finalized unchanged resets use synchrony at that deadline.  Strict finalized
+resets reduce to the trusted anchor before the strict-helper dispatcher is
+invoked.  Active observed resets use the accepted dynamic checkpoint proof.
+
+Corollary of `…_all_le` at `k := n`; the statement is unchanged. -/
+theorem confirmed_safeFromFollowingSlot_of_acceptedActualFCRFold
+    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
+    (hC : E.AcceptedHistoricalA32CompletedPrefixCallAssumptions cfg ext)
+    (hfit : EpochEndsFitUint64 cfg)
+    (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
+    (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
+      (E := E) (anchor := B.anchor))
+    (hDelay : E.AcceptedRealizedFinalizationDelay cfg ext B)
+    (hspe : 1 < cfg.slots_per_epoch)
+    (hpaper : B.state.PaperA32Inclusion cfg ext)
+    (P : AcceptedEpochCheckpointProjection B.anchor
+      (E.AcceptedRoot cfg ext) B.state.C)
+    (V : B.state.ExactLinkValidity)
+    {v : ValidatorIndex} (hv : v ∈ E.honest) :
+    ∀ n : ℕ, E.WithinHorizon cfg n →
+      E.ConfirmedSafeFromFollowingSlot cfg ext v n :=
+  fun n hHn =>
+    (E.confirmed_safeFromFollowingSlot_of_acceptedActualFCRFold_all_le
+      cfg ext B hT hC hfit hanchor hboundary hDelay hspe hpaper P V hv
+      n n (Nat.le_refl n) hHn).followingSlot
 
 /-- Endpoint form matching the paper's timing: a cached output is canonical
 at every in-horizon honest endpoint in a strictly later slot. -/

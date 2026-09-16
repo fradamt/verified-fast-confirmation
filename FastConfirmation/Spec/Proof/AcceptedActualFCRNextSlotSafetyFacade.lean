@@ -61,6 +61,43 @@ theorem confirmed_safeFromFollowingSlot
       h.slots_per_epoch_gt_one h.paper_a32 h.checkpoint_projection
       h.exact_link_validity hv n hHn
 
+/-- Bundle-facing form of the strengthened fold invariant.
+
+`AcceptedFoldSafetyAt` bundles the following-slot invariant with the
+*unweakened* call-second safety of a strictly advanced write-back; the fold
+proves it at every second, so no `k ≤ n` binder survives here.  This is the
+form the lazy A3.2 origin-call transport consumes at an earlier crossing call
+(`docs/trunkA-final-discharge.md` §5.3). -/
+theorem foldSafetyAt
+    (h : E.AcceptedActualFCRNextSlotSafetyAssumptions cfg ext)
+    {v : ValidatorIndex} (hv : v ∈ E.honest)
+    {n : ℕ} (hHn : E.WithinHorizon cfg n) :
+    E.AcceptedFoldSafetyAt cfg ext v n :=
+  E.confirmed_safeFromFollowingSlot_of_acceptedActualFCRFold_all_le
+    cfg ext h.semantics h.trajectory h.completed_calls h.epoch_ends_fit
+      h.anchor_eq h.anchor_boundary h.finalization_delay
+      h.slots_per_epoch_gt_one h.paper_a32 h.checkpoint_projection
+      h.exact_link_validity hv n n (Nat.le_refl n) hHn
+
+/-- Unweakened safety of the root a call at second `n` writes back, when that
+call's selector strictly advanced.
+
+At a call `E.slot_start_eq_succ_of_advance_minimal` gives
+`slot_start (slot_at (n + 1)) = n + 1`, so this is exactly the
+`slot_start`-indexed input of
+`honestVotesSupportTarget_of_safeFrom_currentEpochCandidate` at the crossing
+call.  Strictness is supplied at an A3.2 crossing by
+`StrictSelectorAdvanceAt.result_ne_input`. -/
+theorem confirmed_safeFrom_strictCallSecond
+    (h : E.AcceptedActualFCRNextSlotSafetyAssumptions cfg ext)
+    {v : ValidatorIndex} (hv : v ∈ E.honest)
+    {n : ℕ} (hHn1 : E.WithinHorizon cfg (n + 1))
+    (hcall : E.IsFCRCallAt cfg ext v n)
+    (hstrict : E.confirmed cfg ext v (n + 1) ≠
+      (E.getLatestConfirmedTraceAt cfg ext v n).afterObserved) :
+    E.SafeFrom cfg ext (E.confirmed cfg ext v (n + 1)) (n + 1) :=
+  (h.foldSafetyAt cfg ext E hv hHn1).callSecond n rfl hcall hstrict
+
 set_option maxRecDepth 5000 in
 set_option maxHeartbeats 1400000 in
 -- The dependent dispatcher elaborates all executable input/reset origins here.
