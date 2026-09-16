@@ -1,5 +1,6 @@
 import FastConfirmation.Spec.Proof.AcceptedActualFCRNextSlotSafetyFold
 import FastConfirmation.Spec.Proof.WeakCandidateSourceHistory
+import FastConfirmation.Spec.Proof.WeakHistoricalA32OriginCall
 import FastConfirmation.Spec.Proof.WeakOneShotSafetyClosed
 
 /-!
@@ -198,6 +199,48 @@ def WeakConfirmedSafeFromFollowingSlot (obs : ValidatorIndex) (n : ℕ) : Prop :
   E.SafeFrom cfg ext (E.weakConfirmed cfg ext obs n)
     (E.followingSlotStart cfg n)
 
+end Execution
+
+namespace Weak
+
+/-- **The invariant the weak fold actually maintains at every second.**
+
+Weak twin of `Execution.AcceptedFoldSafetyAt`
+(`AcceptedActualFCRNextSlotSafetyFold.lean`), with one difference, and it is in
+the weak side's favour: `callSecond` carries **no** side condition.
+
+`followingSlot` is the historical single-second conclusion, unchanged.
+
+`callSecond` is the *unweakened* form: when second `n` is the write-back second
+of a call at `k = n - 1`, the newly cached root is safe from second `n` itself,
+not merely from `followingSlotStart n`.  At a call
+`Execution.slot_start_eq_succ_of_advance_minimal` gives
+`slot_start (slot_at (k + 1)) = k + 1`, so this is exactly the
+`slot_start`-indexed safety the lazy A3.2 origin-call transport consumes at an
+*earlier* crossing call.
+
+*Why no strictness side condition.*  The strong record has to condition
+`callSecond` on `E.confirmed v n ≠ afterObserved`, because its
+`finalizedResetUnchanged` arm recovers safety only via
+`finalizedReset_safeFrom_of_nextSlotSynchrony`, which needs a strictly later
+slot.  The weak fold has no such arm: its step already computes
+`hresult : SafeFrom trace.result (n + 1)` on **all four** branches of
+`Weak.GetLatestConfirmedTrace.candidateHistoryCallBranch`
+(`Execution.weak_safeFrom_observerCall_closed`, driven by `hbase` at
+`slot_start (slot_at (n + 1)) = n + 1`) and then throws it away with `.mono`.
+This record keeps it.  See `docs/weak-final-wave.md` §3.2. -/
+structure ObserverFoldSafetyAt (E : Execution Root) (obs : ValidatorIndex)
+    (n : ℕ) : Prop where
+  followingSlot : E.WeakConfirmedSafeFromFollowingSlot cfg ext obs n
+  callSecond : ∀ k : ℕ, n = k + 1 → E.IsFCRCallAt cfg ext obs k →
+    E.SafeFrom cfg ext (E.weakConfirmed cfg ext obs n) n
+
+end Weak
+
+namespace Execution
+
+variable (E : Execution Root)
+
 /-! ## Stage A — initialization ("restarts") -/
 
 /-- **Base case.** The weak trajectory is seeded by the same genesis
@@ -234,11 +277,14 @@ theorem weakConfirmedSafeFromFollowingSlot_succ_of_noCall
     {obs : ValidatorIndex} {n : ℕ}
     (hnoCall : ¬ E.IsFCRCallAt cfg ext obs n)
     (h : E.WeakConfirmedSafeFromFollowingSlot cfg ext obs n) :
-    E.WeakConfirmedSafeFromFollowingSlot cfg ext obs (n + 1) := by
-  unfold WeakConfirmedSafeFromFollowingSlot at h ⊢
-  rw [E.weakConfirmed_succ_of_no_advance cfg ext obs n hnoCall,
-    E.followingSlotStart_succ_eq_of_noCall cfg ext hnoCall]
-  exact h
+    Weak.ObserverFoldSafetyAt cfg ext E obs (n + 1) := by
+  refine { followingSlot := ?_, callSecond := ?_ }
+  · unfold WeakConfirmedSafeFromFollowingSlot at h ⊢
+    rw [E.weakConfirmed_succ_of_no_advance cfg ext obs n hnoCall,
+      E.followingSlotStart_succ_eq_of_noCall cfg ext hnoCall]
+    exact h
+  · intro k hk hcallk
+    exact absurd (by simpa only [Nat.succ_inj.mp hk] using hcallk) hnoCall
 
 /-! ## Stage C — the call step's candidate-input supply -/
 
@@ -327,8 +373,14 @@ theorem weakGetLatestConfirmedTraceAt_input_safeFrom
 
 /-- **Call step.** The invariant at `n` plus the call's own candidate
 knownness gives the invariant at `n + 1`, by feeding Stage C's two supplies
-into the closed one-shot theorem and relaxing its conclusion from the call
-second to the following-slot deadline. -/
+into the closed one-shot theorem.
+
+Both components of `Weak.ObserverFoldSafetyAt` come from the *same* witness:
+`weak_safeFrom_observerCall_closed` produces the unweakened
+`SafeFrom trace.result (n + 1)` on every branch, which is `callSecond`
+verbatim; `followingSlot` is that witness relaxed to the following-slot
+deadline.  Before `docs/weak-final-wave.md` §3.2 the unweakened form was
+computed here and immediately discarded. -/
 theorem weakConfirmedSafeFromFollowingSlot_succ_of_call
     (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
     (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
@@ -356,7 +408,7 @@ theorem weakConfirmedSafeFromFollowingSlot_succ_of_call
     (hknownN : E.weakConfirmed cfg ext obs n ∈
       (E.store cfg ext obs n).block_roots)
     (hprev : E.WeakConfirmedSafeFromFollowingSlot cfg ext obs n) :
-    E.WeakConfirmedSafeFromFollowingSlot cfg ext obs (n + 1) := by
+    Weak.ObserverFoldSafetyAt cfg ext E obs (n + 1) := by
   have hinput := E.weakGetLatestConfirmedTraceAt_input_known cfg ext B hT
     hanchor hboundary (obs := obs) (n := n) hknownN
   have hbase := E.weakGetLatestConfirmedTraceAt_input_safeFrom cfg ext B hT
@@ -367,10 +419,15 @@ theorem weakConfirmedSafeFromFollowingSlot_succ_of_call
   have hwrite : E.weakConfirmed cfg ext obs (n + 1) =
       (E.weakGetLatestConfirmedTraceAt cfg ext obs n).result :=
     (E.weakActualCandidateHistoryRecurrence cfg ext hcall).result_writeback
-  unfold WeakConfirmedSafeFromFollowingSlot
-  rw [hwrite]
-  exact hresult.mono cfg ext E
-    (Nat.le_of_lt (E.lt_followingSlotStart cfg ext hT (n + 1)))
+  have hunweakened : E.SafeFrom cfg ext
+      (E.weakConfirmed cfg ext obs (n + 1)) (n + 1) := by
+    rw [hwrite]
+    exact hresult
+  refine { followingSlot := ?_, callSecond := ?_ }
+  · unfold WeakConfirmedSafeFromFollowingSlot
+    exact hunweakened.mono cfg ext E
+      (Nat.le_of_lt (E.lt_followingSlotStart cfg ext hT (n + 1)))
+  · exact fun _ _ _ => hunweakened
 
 /-! ## Stage E — the headline fold -/
 
@@ -395,8 +452,16 @@ single-second motive does not retain.  The demand is never at a second beyond
 `n`, so the strengthened induction is well-founded exactly as the plain one is;
 this lemma simply keeps the witness around.
 
-Purely enabling: no signature below changes, and the single-second theorem is
-recovered by instantiating `k := n`. -/
+*Why the motive also carries `callSecond`* (see `docs/weak-final-wave.md` §3).
+The lazy historical A3.2 crossing manufactures its certificate and quorum at the
+*consuming* call from the fold's safety output at the strictly earlier *origin*
+call, and it needs that output at the origin call's own second — the unweakened
+`slot_start`-indexed form, which `followingSlot` has already thrown away.  So
+the retained record is `Weak.ObserverFoldSafetyAt`, whose `callSecond` is
+exactly the witness the step already computes.
+
+Purely enabling: no public witness signature changes, and the single-second
+theorem is recovered by `.followingSlot` at `k := n`. -/
 theorem weakConfirmedSafeFromFollowingSlot_of_weakFullRuleFold_all_le
     (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
     (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
@@ -419,7 +484,7 @@ theorem weakConfirmedSafeFromFollowingSlot_of_weakFullRuleFold_all_le
     (hfit : EpochEndsFitUint64 cfg)
     (hOR : Weak.ObservedResetSeedSafety cfg ext E obs) :
     ∀ n : ℕ, ∀ k ≤ n, E.WithinHorizon cfg k →
-      E.WeakConfirmedSafeFromFollowingSlot cfg ext obs k := by
+      Weak.ObserverFoldSafetyAt cfg ext E obs k := by
   -- the observer's `justified_root_known` is *derived* here from `B`/`hT`/
   -- `hanchor`/`hboundary`, never assumed
   have hWM := hW.toMarginAssumptions cfg ext E B hT hanchor hboundary
@@ -431,14 +496,16 @@ theorem weakConfirmedSafeFromFollowingSlot_of_weakFullRuleFold_all_le
   | zero =>
       intro k hk _hH0
       rw [Nat.le_zero.mp hk]
-      exact E.weakConfirmedSafeFromFollowingSlot_zero cfg ext B hT hanchor
-        hboundary obs
+      exact
+        { followingSlot := E.weakConfirmedSafeFromFollowingSlot_zero cfg ext B
+            hT hanchor hboundary obs
+          callSecond := fun _ hk0 => absurd hk0 (by omega) }
   | succ n ih =>
       intro k hk hHk
       rcases Nat.eq_or_lt_of_le hk with rfl | hlt
       · have hHn : E.WithinHorizon cfg n :=
           E.withinHorizon_mono cfg (Nat.le_succ n) hHk
-        have hprev := ih n (Nat.le_refl n) hHn
+        have hprev := (ih n (Nat.le_refl n) hHn).followingSlot
         by_cases hcall : E.IsFCRCallAt cfg ext obs n
         · exact E.weakConfirmedSafeFromFollowingSlot_succ_of_call cfg ext B hT
             hji hanchor hboundary hDelay hphase0 hboundaryPhase hpaper P V
@@ -496,10 +563,47 @@ theorem weakConfirmed_safeFromFollowingSlot_of_weakFullRuleFold
     (hOR : Weak.ObservedResetSeedSafety cfg ext E obs) :
     ∀ n : ℕ, E.WithinHorizon cfg n →
       E.WeakConfirmedSafeFromFollowingSlot cfg ext obs n :=
-  fun n =>
-    E.weakConfirmedSafeFromFollowingSlot_of_weakFullRuleFold_all_le cfg ext B hT
-      hji hanchor hboundary hDelay hphase0 hboundaryPhase hpaper P V hanchorExact
-      hW hwalkDomain hC hfit hOR n n (Nat.le_refl n)
+  fun n hHn =>
+    (E.weakConfirmedSafeFromFollowingSlot_of_weakFullRuleFold_all_le cfg ext B
+      hT hji hanchor hboundary hDelay hphase0 hboundaryPhase hpaper P V
+      hanchorExact hW hwalkDomain hC hfit hOR n n (Nat.le_refl n)
+        hHn).followingSlot
+
+/-- The lazy weak A3.2 transport's threaded input, straight off the
+strengthened fold.
+
+`Weak.ObserverPriorCallWriteBackSafe obs n` is exactly the `callSecond`
+component of `Weak.ObserverFoldSafetyAt` at the seconds `k + 1 ≤ n`, so this is
+a projection, not a new proof.  Weak twin of
+`Execution.priorStrictCallWriteBackSafe_of_acceptedActualFCRFold`. -/
+theorem observerPriorCallWriteBackSafe_of_weakFullRuleFold
+    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
+    (hji : JustificationInterface cfg ext E)
+    (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
+    (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
+      (E := E) (anchor := B.anchor))
+    (hDelay : E.AcceptedRealizedFinalizationDelay cfg ext B)
+    (hphase0 : Phase0SourceCoherence cfg ext)
+    (hboundaryPhase : Phase0BoundarySourceCoherence cfg ext)
+    (hpaper : B.state.PaperA32Inclusion cfg ext)
+    (P : AcceptedEpochCheckpointProjection B.anchor
+      (E.AcceptedRoot cfg ext) B.state.C)
+    (V : B.state.ExactLinkValidity)
+    (hanchorExact : B.anchor = B.state.C B.anchor.root B.anchor.epoch)
+    {obs : ValidatorIndex}
+    (hW : E.WeakObserverAssumptions cfg ext obs)
+    (hwalkDomain : E.PostAnchorHonestVoteTargetWalkDomain cfg ext)
+    (hC : Weak.ObserverHistoricalA32CallAssumptions cfg ext E obs)
+    (hfit : EpochEndsFitUint64 cfg)
+    (hOR : Weak.ObservedResetSeedSafety cfg ext E obs)
+    (n : ℕ) :
+    Weak.ObserverPriorCallWriteBackSafe cfg ext E obs n :=
+  fun k hk hHk1 hcallK =>
+    (E.weakConfirmedSafeFromFollowingSlot_of_weakFullRuleFold_all_le cfg ext B
+      hT hji hanchor hboundary hDelay hphase0 hboundaryPhase hpaper P V
+      hanchorExact hW hwalkDomain hC hfit hOR n (k + 1) hk
+        hHk1).callSecond k rfl hcallK
 
 /-- Endpoint form of the weak full-rule theorem, matching the paper's timing:
 the observer's weak confirmed root at second `n` is canonical at every

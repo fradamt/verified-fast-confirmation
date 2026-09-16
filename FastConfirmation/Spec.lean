@@ -25,6 +25,7 @@ import FastConfirmation.Spec.Proof.WeakSeedDissemination
 import FastConfirmation.Spec.Proof.WeakEarlyPhaseSourceWiring
 import FastConfirmation.Spec.Proof.WeakCandidateHistoryRecurrence
 import FastConfirmation.Spec.Proof.WeakCandidateSourceHistory
+import FastConfirmation.Spec.Proof.WeakHistoricalA32OriginCall
 import FastConfirmation.Spec.Proof.WeakSelectedStrictEdgeFilterSupply
 import FastConfirmation.Spec.Proof.WeakPreQuerySIR
 import FastConfirmation.Spec.Proof.WeakHistoricalA32Geometry
