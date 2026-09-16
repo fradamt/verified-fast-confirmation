@@ -581,9 +581,13 @@ the 4-field `AcceptedHistoricalA32CompletedPrefixCallSupplement`, whose
 7-field record are read off `hW.base`
 (`…CallSupplement.toCompletedPrefixCallAssumptions`).
 
-This theorem and its endpoint form `…_head_of_weakFullRuleFold_nextSlot`, plus
-the two unconditional corollaries in `WeakObservedResetSeedSafety.lean`, are
-the **audited** weak statements (`scripts/Audit.lean`).
+This theorem and its endpoint form `…_head_of_weakFullRuleFold_nextSlot` are
+**not** audit witnesses: they are strictly weaker restatements of the two
+unconditional corollaries in `WeakObservedResetSeedSafety.lean`, which discharge
+`hOR` from premises this pair already carries and are the registered weak
+headlines (`scripts/Audit.lean`).  This pair is kept as an internal theorem —
+the unconditional pair's proof chain runs through it — and so that the
+one-call-at-a-time reading of `hOR` remains available.
 
 Observer-wise the premise surface is `hW : WeakObserverAssumptions`: committee
 readback at the observer's own store, nothing else — `obs` is arbitrary and
