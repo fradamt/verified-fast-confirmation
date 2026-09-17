@@ -59,7 +59,8 @@ when the array held 23 names.
 >   **W18/W19 keep it** — see §8 F8.
 > * `ed9af80` — **P-2**: `JustificationInterface.justified_checkpoint_cached` deleted as a
 >   literal duplicate of `.justified_cached`; row C was then **14 fields**. `fe724fd`
->   deleted `.justified_descends` (P-6); row C is now **13 fields**.
+>   deleted `.justified_descends` (P-6), taking row C to **13 fields**; the P-4 wave then
+>   deleted `.unrealized_justified`, and row C is now **12 fields**.
 > * `3fc11bc` — **P-5**: `JustificationInterface.checkpoint_known` gains the
 >   `WithinHorizon` guard (strict weakening).
 > * `445d63d` — **P-10 / row L**: `hanchorExact` is **derived** from `hboundary` (row E) by
@@ -68,6 +69,11 @@ when the array held 23 names.
 > * `bfc03a3` — **P-3/P-4/P-7/P-8**: docstring disclosures on
 >   `genesis_unrealized_justification`, `unrealized_justified`,
 >   `process_slots_registry`, `committees_agree`. No semantic change.
+> * **P-4 wave** — `JustificationInterface.unrealized_justified` **deleted** (13 → **12**
+>   fields): after the P-6 orphan sweep (`096e51b`) removed its one projection site
+>   `FinalWiring.prev_greatest_of_interface`, no project declaration mentioned it at all.
+>   `bfc03a3`'s disclosure is superseded by the deletion. See
+>   `docs/p4-unrealized-justified-derivation.md`.
 > * **P-1** count drift: corrected in the rows below, and re-verified mechanically against
 >   the environment rather than by eye.
 >
@@ -118,7 +124,7 @@ by name. Witness IDs are Audit.lean order (W1…W23), listed in §2.
 | A2 | `AcceptedFFGSelectorCoherence` (**10** fields, not 11 — P-1; `genesis_unrealized_justification` carries a P-3 disclosure since `bfc03a3`) | selectors agree with `ext.is_valid_indexed_attestation`, with the genesis store's block states, and with every *accepted* `on_block` post-state (`transition_gj/gf/gu/guf`) | [P] mirrors `state_transition` + `process_justification_and_finalization` | as A |
 | A3 | `AcceptedFFGTransitionCoherence` extra (2) | `checkpoint_of_known`, `au_checkpoint_of_known`: `C`/AU agree with `get_checkpoint_for_block` on every causal store | [P] | as A |
 | B | `ScheduledPrefixTrajectoryAssumptions` (`Proof/CausalQueryTraceAdapter.lean:112`) | 5 fields: `whole_seconds` (`1000 ∣ slot_duration_ms`) [B]; `wellFormed` (roots commit to blocks) [P]; `externals_coherence` [S]+[P]; `honest_behavior` [S]; `genesis` (store = `get_forkchoice_store` of an anchor pair) [B] | mixed | binder on W1,W2; **derived from M** on W16–W23 (since `28a9bd6` it is a binder nowhere on the weak side — F2) |
-| C | `JustificationInterface` (`Spec/TheoremStatements.lean:87`) — **13 fields** (17 → 15 in `8b05b67`, which deleted the two never-applied `will_*` gate-soundness fields; 15 → 14 in `ed9af80`, which deleted `justified_checkpoint_cached` as a literal duplicate of `justified_cached`, P-2; 14 → **13** in `fe724fd`, which deleted `justified_descends` outright — **P-6 RESOLVED-BY-DELETION**. The audit's "13" was a miscount, P-1) | FFG exports consumed by the FCR: `justified_unique` (**accountable safety**), `justified_requires_targets` (2/3 target weight), `observed_justified`, `unrealized_justified` (P-4 disclosure since `bfc03a3`), `finalized_justified_ancestry`, `justified_ancestry`, `finalized_descent`, `checkpoint_known` (**horizon-guarded since `3fc11bc`**, P-5), `justified_block_boundary`, and 4 checkpoint-state-cached fields. Every remaining field is genuinely FFG: the one LMD-GHOST weight claim, `justified_descends`, is gone (see the P-6 note below) | [S] (accountable-safety + ≥2/3 justification) with [P] cache fields | W20–W23 |
+| C | `JustificationInterface` (`Spec/TheoremStatements.lean:87`) — **12 fields** (17 → 15 in `8b05b67`, which deleted the two never-applied `will_*` gate-soundness fields; 15 → 14 in `ed9af80`, which deleted `justified_checkpoint_cached` as a literal duplicate of `justified_cached`, P-2; 14 → 13 in `fe724fd`, which deleted `justified_descends` outright — **P-6 RESOLVED-BY-DELETION**; 13 → **12** in the P-4 wave, which deleted `unrealized_justified` outright — **P-4 RESOLVED-BY-DELETION**, see `docs/p4-unrealized-justified-derivation.md`. The audit's "13" was a miscount, P-1) | FFG exports consumed by the FCR: `justified_unique` (**accountable safety**), `justified_requires_targets` (2/3 target weight), `observed_justified`, `finalized_justified_ancestry`, `justified_ancestry`, `finalized_descent`, `checkpoint_known` (**horizon-guarded since `3fc11bc`**, P-5), `justified_block_boundary`, and 4 checkpoint-state-cached fields. Every remaining field is genuinely FFG and genuinely cross-view-*documented*: the one LMD-GHOST weight claim (`justified_descends`, P-6) and the one one-rotation-upstream propagation claim (`unrealized_justified`, P-4) are both gone | [S] (accountable-safety + ≥2/3 justification) with [P] cache fields | W20–W23 |
 | D | `hanchor : B.anchor = genesis_store.justified_checkpoint` | the FFG state's anchor is the store's trusted checkpoint-sync anchor | [B] | W1,W2,W16–W23 |
 | E | `TrustedAnchorBoundaryAligned` (`Proof/FFGGlobalCheckpointTrajectory.lean:623`) | anchor block's slot ≤ start slot of the anchor's epoch | [B] | W1,W2,W16–W23 |
 | F | `AcceptedRealizedFinalizationDelay` (`Proof/AcceptedFinalizationTiming.lean:211`) | every accepted block's realized finalized checkpoint is the anchor or ≥2 epochs behind the block | [P] (phase0 process-epoch-before-slot order), also the **finalization spacing** [S] | W1,W2,W20–W23 |
@@ -248,7 +254,7 @@ holds at `n` (`E.weakConfirmed obs n`, produced by rule-delta-5
    `ScheduledPrefixTrajectoryAssumptions.of_selectedMarginAssumptions`.
 3. `hji` = C [S] — justification interface (accountable safety, ≥2/3
    justification, checkpoint caches); **15 fields since `8b05b67`, 14 since `ed9af80`, 13 since
-   `fe724fd`** (P-6), the two gate-soundness
+   `fe724fd`** (P-6), **12 since the P-4 wave** deleted `unrealized_justified`; each of those
    fields having been deleted as dead, which weakens this premise.
 4. `hanchor` = D [B]. 5. `hboundary` = E [B]. 6. `hDelay` = F [P/S].
 7. ~~`hphase0` = G~~ — **F2 RESOLVED: removed**, read off `hCbase.phase0_source`.
@@ -328,7 +334,7 @@ Statement = W21's; hypotheses = W22's **11** plus the four endpoint binders [B]
 |---|---|---|
 | observer | `hv : v ∈ E.honest` | **nothing** — `obs` is an arbitrary index. (As audited this was `hW.observer : obs ∉ E.honest`, unused and domain-narrowing; deleted in `fbb3ec1`, §8 F3. The weak headlines now also speak about honest observers, though the *conclusion object* still differs: see the last row.) |
 | observer-store facts | none (honesty supplies them) | `committees_agree` at `obs`'s store; `justified_root_known` derived |
-| `JustificationInterface` | **absent** (deliberately replaced by `SelectedMarginDomain`) | **present** (`hji`, **13** fields: 15 since `8b05b67`, 14 since `ed9af80`, 13 since `fe724fd`) — a materially larger FFG export surface on the weak side |
+| `JustificationInterface` | **absent** (deliberately replaced by `SelectedMarginDomain`) | **present** (`hji`, **12** fields: 15 since `8b05b67`, 14 since `ed9af80`, 13 since `fe724fd`, 12 since the P-4 wave) — a materially larger FFG export surface on the weak side |
 | `PostAnchorHonestVoteTargetWalkDomain` | absent | **absent since `dab205e`** — derived inside the fold from `hW.base`/`hanchor`/`hboundary` (was `hwalkDomain`) |
 | `hanchorExact` (row L) | absent (derived by `acceptedAnchorExact_of_trajectory`) | **absent since `445d63d`** — same derivation, same lemma |
 | `SelectedMarginAssumptions` | absent as a premise (rebuilt internally from `trajectory` + `completed_calls` + derived domain) | present inside `hW.base` — which is why `hT` was redundant and is now **derived from it** (§8 F2, `28a9bd6`) |
@@ -652,11 +658,11 @@ at 13 while shrinking one of them (`hCbase` 4 → 3 fields). The conditional pai
 [D] `hOR` and is no longer a registered witness. `#print axioms` on both headlines:
 `[propext, Classical.choice, Quot.sound]`.
 
-**Trajectory-headline verdict (after the third wave, `dab205e`…`fe724fd`).** W22/W23 carry
-**11 premises** (plus W23's endpoint binders): `B`, `hji` (**13** fields, one of them
-P-5-guarded), `hanchor`, `hboundary`, `hDelay`, `hpaper`, `P`, `V`, `hW`, `hCbase` (3 fields),
-`hfit`. `hwalkDomain` and `hanchorExact` are derived internally; no [D], no [!]. `#print axioms`
-on both headlines: `[propext, Classical.choice, Quot.sound]`.
+**Trajectory-headline verdict (after the third wave, `dab205e`…`fe724fd`, and the P-4 wave).**
+W22/W23 carry **11 premises** (plus W23's endpoint binders): `B`, `hji` (**12** fields, one of
+them P-5-guarded), `hanchor`, `hboundary`, `hDelay`, `hpaper`, `P`, `V`, `hW`, `hCbase`
+(3 fields), `hfit`. `hwalkDomain` and `hanchorExact` are derived internally; no [D], no [!].
+`#print axioms` on both headlines: `[propext, Classical.choice, Quot.sound]`.
 
 The premise content this development could not ground in the pinned spec was
 `JustificationInterface.justified_descends` (`docs/plumbing-spec-citations.md` P-6). **It is no
@@ -668,3 +674,12 @@ consumers turned out to be redundant and was deleted with it; the other, a legac
 `SpecAssumptions` route reached by no audited witness, has since been retired outright rather
 than repaired. So `hji` shrank on W20–W23 with nothing added: a strict premise weakening. See
 `docs/p6-justified-descends-derivation.md` §8.
+
+The **P-4 wave** repeated that measurement over all 13 remaining fields and found a stronger
+result for `unrealized_justified` (`docs/plumbing-spec-citations.md` P-4): not merely
+unreachable from the 21 witnesses, but mentioned by **zero** project declarations at all — its
+one projection site, `FinalWiring.prev_greatest_of_interface`, had gone with the P-6
+observed-anchor cone in `096e51b`. The same pass still reports `checkpoint_known` at 16
+mentions / 1 reachable (`Execution.head_root_known`), so the control holds. The field is
+deleted, `hji` is 13 → 12 on W20–W23, and again nothing was added. See
+`docs/p4-unrealized-justified-derivation.md`.

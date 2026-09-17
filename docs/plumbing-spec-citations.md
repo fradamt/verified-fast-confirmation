@@ -23,6 +23,10 @@ key. Rows A, A1, A2, A3, G, H, J, K, M-c, M-f, N, O, O′ there are the subject 
 >   the weak headlines by the pre-existing `acceptedAnchorExact_of_trajectory`, the same
 >   route the strong fold already used. Rows E and L are now demonstrably not independent.
 > * `bfc03a3` — **P-3, P-4, P-7, P-8**: docstring disclosures, no semantic change.
+> * **P-4 wave** — `unrealized_justified` is **deleted** outright, superseding `bfc03a3`'s
+>   disclosure: after the P-6 orphan sweep took its one projection site, no project
+>   declaration mentioned it. `JustificationInterface` 13 → **12** fields. See
+>   `docs/p4-unrealized-justified-derivation.md`.
 > * `dab205e` — **bonus, row N**: `PostAnchorHonestVoteTargetWalkDomain` is derived from
 >   `SelectedMarginAssumptions` + `hanchor` + `hboundary` and dropped from the weak
 >   headlines. See §14.
@@ -197,7 +201,7 @@ transcription.** The transcription obligation lands on `AcceptedFFGSelectorCoher
 | 4 | `finalized_justified_ancestry` `:113` | `weigh_…` assigns `finalized_checkpoint` from `old_*_justified_checkpoint`, on the same chain; consumed by `filter_block_tree`'s `correct_finalized` (fork-choice.md:430) | FAITHFUL-WITH-NOTE ([S] Casper) |
 | 5 | `justified_requires_targets` `:126` | `if previous_epoch_target_balance * 3 >= total_active_balance * 2` / `if current_epoch_target_balance * 3 >= …` (beacon-chain.md:1509ff) | FAITHFUL-WITH-NOTE: the spec's inequality is over balances **recorded in the state**; the Lean quantifies over attestations **observable in honest schedules**, adding the network-observability half |
 | 6 | `observed_justified` `:144` | fast-confirmation.md:94 — verbatim field doc: *"`current_epoch_observed_justified_checkpoint`: a justified checkpoint that has been observed by all honest nodes at the beginning of the current epoch assuming synchrony"* | **FAITHFUL** (direct transcription of normative field documentation) |
-| 7 | `unrealized_justified` `:156` (disclosed in-docstring by `bfc03a3`, §13 P-4) | fast-confirmation.md:97 — but that field's doc reads *"`previous_epoch_greatest_unrealized_checkpoint`: a greatest unrealized justified checkpoint at the start of the last slot of the previous epoch **according to a local view**"* | FAITHFUL-WITH-NOTE — **§13 P-4**: the spec documents cross-view propagation only for the *observed* fields; this asserts it one rotation upstream, where the spec says "local view" |
+| ~~7~~ | ~~`unrealized_justified` `:156`~~ — fast-confirmation.md:97, whose field doc reads *"`previous_epoch_greatest_unrealized_checkpoint`: a greatest unrealized justified checkpoint at the start of the last slot of the previous epoch **according to a local view**"* | — | **DELETED — §13 P-4 RESOLVED-BY-DELETION** (13 → 12 fields): the field asserted cross-view propagation one rotation upstream of where the spec takes it. Its sole projection site, `FinalWiring.prev_greatest_of_interface`, went with the P-6 observed-anchor cone in `096e51b`, after which **no declaration in the project mentioned it**. See `docs/p4-unrealized-justified-derivation.md` |
 | 8 | `greatest_unrealized_cached` `:170` | `update_fast_confirmation_variables` (fast-confirmation.md:805) rotates the checkpoint into `*_observed_*` **without re-keying** `checkpoint_states`; `get_previous_balance_source` then reads it as a key | FAITHFUL-WITH-NOTE (gap the pinned rotation leaves open, supplied explicitly; the docstring says exactly this) |
 | 9 | `checkpoint_known` `:179` | `on_block`'s `finalized_checkpoint_block = get_checkpoint_block(store, block.parent_root, store.finalized_checkpoint.epoch)` + `assert store.finalized_checkpoint.root == finalized_checkpoint_block`; `get_filtered_block_tree`'s `base = store.justified_checkpoint.root` (fork-choice.md:448) | FAITHFUL-WITH-NOTE — **§13 P-5 RESOLVED (`3fc11bc`)**: it was the one field of the fifteen with no `WithinHorizon` guard; it now carries one, like every other field |
 | 10 | `justified_ancestry` `:188` | as #1 | FAITHFUL-WITH-NOTE ([S]) |
@@ -439,17 +443,34 @@ is where the extra content lives), so the field's own docstring now states the o
 verbatim and names it a companion of the checkpoint-sync trust boundary rather than a
 transcription. No semantic change.
 
-**P-4 — RESOLVED as a disclosure (`bfc03a3`) — cross-view propagation asserted where the spec says "local view".**
-`JustificationInterface.unrealized_justified` (`:156`) asserts that an honest store's
-unrealized justified checkpoint *and* its FCR store's
-`previous_epoch_greatest_unrealized_checkpoint` are justified in every honest view from the
-same slot on. fast-confirmation.md documents the all-honest-nodes property only for the two
-`*_observed_justified_checkpoint` fields; the greatest-unrealized field's own documentation
-says *"according to a local view"*.
-*Resolution:* disclosed in the field's docstring, with both quotations (fast-confirmation.md:94
-for the observed fields, :97 for the greatest-unrealized field) and the statement that the
-cross-view step is taken one rotation upstream of the spec's own. No semantic change; the
-field is consumed as a whole, so dropping either conjunct is not available as a weakening.
+**P-4 — RESOLVED-BY-DELETION — `JustificationInterface.unrealized_justified` (`:156`) is gone
+(13 → 12 fields).** The field asserted that an honest store's unrealized justified checkpoint
+*and* its FCR store's `previous_epoch_greatest_unrealized_checkpoint` are `JustifiedIn` every
+honest view from the same slot on. fast-confirmation.md documents the all-honest-nodes property
+only for the two `*_observed_justified_checkpoint` fields (fast-confirmation.md:94); the
+greatest-unrealized field's own documentation says *"according to a local view"*
+(fast-confirmation.md:97). Between `bfc03a3` and this wave the mismatch was carried as an
+in-docstring disclosure, on the reading that "the field is consumed as a whole, so dropping
+either conjunct is not available as a weakening".
+*Resolution:* that reading is now void — **the field is consumed by nothing.** Its only
+projection site in the whole development, `FinalWiring.prev_greatest_of_interface` (one of the
+three E5 reset-anchor legs), was deleted with the legacy `SpecAssumptions` observed-anchor cone
+in the P-6 orphan sweep (`096e51b`). A forward-closure pass over the compiled environment —
+the same pass whose control still finds `checkpoint_known`'s one reachable site
+`Execution.head_root_known` — finds **zero** project declarations mentioning the field. It
+therefore survived only as unprojected weight on the premise surface of W20–W23; deleting it is
+a strict premise weakening and no witness statement changes.
+The content is not recoverable as stated, either. The derivation the model does support —
+the checkpoint is `S.GU r` for a block `r` known to `v`
+(`AcceptedFFGGlobalCheckpointOrigins.unrealized_justified`), relay `r` by
+`PaperSafetySynchrony.block_relay`, recompute `(store w m).unrealized_justifications r = S.GU r`
+by `Execution.accepted_unrealized_justification_eq`, landing `JustifiedIn`'s fifth disjunct
+(and the anchor disjunct via `genesis_unrealized_justification` +
+`get_forkchoice_store`'s literal `{anchor_root: justified_checkpoint}`) — needs `block_relay`'s
+`+1`-slot gate `slot_at n + 1 ≤ slot_at (m + 1)`, whereas the field concluded from
+`slot_at n ≤ slot_at m`. The **same-slot cross-node corner** is outside the block-relay
+guarantee, as `Proof/FinalWiring.lean:16-18` already records for the confirmed block. Full
+analysis, with file:line for every step: `docs/p4-unrealized-justified-derivation.md`.
 
 **P-5 — RESOLVED (`3fc11bc`) — one unguarded field.** `JustificationInterface.checkpoint_known` (`:179`) is the
 only field of the fifteen stated without a `WithinHorizon` hypothesis; it claims
