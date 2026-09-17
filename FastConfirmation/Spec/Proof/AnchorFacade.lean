@@ -364,14 +364,13 @@ theorem get_forkchoice_store_justified_keyed (ast : BeaconState Root)
 
 /-! ## Section 3 — safety interface with the target-known domain
 
-`E5Filter`'s `spec_safety_of_hypsFilter` and `ForkAssembly`'s `spec_safety_final_residuals`
-each carry an over-strong field: the former's `L4ResidualHypsFilter.store_domain`
-uses the **blanket** walk domain `∀ t r` (false for checkpoint-sync anchors, `E5Filter`
-§3), while the latter's `FinalResidualsER.observed_dom` assumes the invalid-in-general
-relation `obs ⪯ jc`. This section omits both: the observed anchor uses
-`E5Filter`'s sound filter route (`ObservedFilterResiduals`), and the walk domain is the
-**target-known** `StoreDomainK`, discharged from the Section-2 anchor facts — no blanket
-walk, no `∀ sl` anchor guard. -/
+`ForkAssembly`'s `spec_safety_final_residuals` carries an over-strong field: its
+`FinalResidualsER.observed_dom` assumes the invalid-in-general relation `obs ⪯ jc`. The
+alternative `E5Filter` route that avoided it carried a different over-strong field — a
+**blanket** walk domain `∀ t r`, false for checkpoint-sync anchors (`E5Filter` §3) — and an
+ahead-regime premise nothing produced; it is deleted (P-6). This section keeps the walk-domain
+fix: the **target-known** `StoreDomainK`, discharged from the Section-2 anchor facts — no
+blanket walk, no `∀ sl` anchor guard. -/
 
 /-- **The target-known fork-choice domain** — `ResidualDischarge.StoreDomain` with the
 blanket `hwalk` replaced by the Section-2 `hwalkK`. Unlike the blanket form this is
@@ -426,7 +425,8 @@ theorem safeFrom_of_justified_dom_K (hdomK : E.StoreDomainK cfg ext) {r₀ : Roo
 /-! ### Deleted: the observed-anchor filter route and the `SoundResiduals` facade
 
 `head_ge_of_justifiedIn_K` and `safeFrom_observed_of_filter_K` turned an
-`E5Filter.ObservedFilterResiduals` into the observed anchor's `SafeFrom`; `SoundResiduals`,
+`E5Filter`'s deleted observed-anchor residual bundle into the observed anchor's `SafeFrom`;
+  `SoundResiduals`,
 `l4Residual_of_soundResiduals` and `spec_safety_sound_residuals` were the facade above them.
 All five existed only to serve the ahead-regime split, whose ahead branch had no producer.
 

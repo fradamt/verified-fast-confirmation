@@ -770,8 +770,13 @@ the chain-intrinsic banking that rule delta 5 buys and the strong rule does not 
   `AnchorThread` and `AnchorClose`.
 * **Wave B** — the orphan sweep to fixpoint: every declaration all of whose consumers were in
   Wave A.
-* **Wave C** — the now-unproduced ahead-regime proposition
-  `E5Filter.ObservedFilterResiduals` and the filter-route declarations around it.
+* **Wave C** — the now-unproduced ahead-regime proposition itself:
+  `E5Filter.ObservedFilterResiduals` (whose `observed_head_ahead` field *was* the proposition,
+  instantiated at the observed anchor), the two-regime head lemma `head_ge_of_justifiedIn`, and
+  the discharge chain above them (`safeFrom_observed_of_filter`,
+  `observed_safe_of_filterResiduals`, `L4ResidualHypsFilter`, `l4Residual_of_hypsFilter`,
+  `spec_safety_of_hypsFilter`). `rg '\bObservedFilterResiduals\b'` now returns nothing in
+  `.lean` code — only the deletion notes and this document.
 * **Prose** — the three sites that carried the wrong mechanism claim
   (`AheadFacade.lean`'s header, `TheoremStatements.lean`'s deleted-field comment, §7.2 here)
   now state §8.2; `docs/plumbing-spec-citations.md` P-6 reads RESOLVED with the residual

@@ -20,7 +20,8 @@ inputs.
    `observedKnown_of_interface` and `observedFilterResiduals_of_interface` stood beside it:
    the first closed the observed anchor's own root knownness across the three `fcrStep`-observed
    cases, the second bundled that with the ahead-regime head-tracking premise into an
-   `E5Filter.ObservedFilterResiduals`. Both are deleted with the legacy `SpecAssumptions`
+   `E5Filter`'s observed-anchor residual bundle. All of it is deleted with the legacy
+   `SpecAssumptions`
    observed-anchor cone (P-6) — see the Section 1 and Section 3 notes below.
 
 2. `hbound_of_justified_block_boundary` + `vote_lands_export_closed` /
@@ -77,7 +78,8 @@ See `docs/p6-justified-descends-derivation.md` §8. -/
 /-! ## Section 3 — deleted: `observedFilterResiduals_of_interface`
 
 This bundled `observedKnown_of_interface` with the carried `htracks` premise and the
-boundary-source `prev_greatest_justifiedIn` into an `E5Filter.ObservedFilterResiduals`. It is
+boundary-source `prev_greatest_justifiedIn` into `E5Filter`'s observed-anchor residual
+bundle. It is
 deleted with the rest of the legacy `SpecAssumptions` observed-anchor cone (Section 1's note):
 the ahead-regime premise it threaded had no producer, and the accepted route closes the
 observed anchor without ever entering the ahead regime. -/
