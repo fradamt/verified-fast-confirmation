@@ -36,13 +36,16 @@ them in the safety interface.
 * **Section 3 — the safety interface.** `store_domainK` supplies the
   `_K` fork-choice domain (`hwf`/`hwalkK`/`hjust`) at every honest store from
   `SpecAssumptions` (the Layer-0 facts + `JustificationInterface.checkpoint_known`).
-  `safeFrom_of_justified_dom_K` / the observed + finalized reset-anchor lifts are
-  re-proved on the `_K` head lemmas (`E5Filter.head_ge_of_justified_ge_K`,
-  `head_ge_of_justifiedIn_le_K`), so the reset anchors are safe with **no** blanket
-  walk domain and **no** `∀ sl` anchor guard. `SoundResiduals` is the resulting
-  input bundle — the observed filter route (`ObservedFilterResiduals`),
-  the finalized tracks, and the engine `advance_cert` — with the anchor/walk domain
-  discharged internally. `spec_safety_sound_residuals` is the end-to-end headline.
+  `safeFrom_of_justified_dom_K` lifts a justified-dominance fact to a reset anchor's
+  `SafeFrom` on the `_K` head lemma `E5Filter.head_ge_of_justified_ge_K`, with **no**
+  blanket walk domain and **no** `∀ sl` anchor guard.
+
+  The observed-anchor filter route that used to sit beside it
+  (`head_ge_of_justifiedIn_K`, `safeFrom_observed_of_filter_K`) and the facade above it
+  (`SoundResiduals`, `l4Residual_of_soundResiduals`, `spec_safety_sound_residuals`) are
+  **deleted**: they existed only to serve the ahead-regime split of the legacy
+  `SpecAssumptions` observed-anchor cone, whose ahead branch had no producer (P-6; see the
+  section note below and `docs/p6-justified-descends-derivation.md` §8).
 
 -/
 
@@ -420,155 +423,20 @@ theorem safeFrom_of_justified_dom_K (hdomK : E.StoreDomainK cfg ext) {r₀ : Roo
   obtain ⟨hr0, hjb⟩ := hdom w hw m hm hH
   exact head_ge_of_justified_ge_K cfg hwf hwalkK hjust hr0 hjb
 
-/-- **Filter-route head domination (`_K`, both regimes).** `E5Filter.head_ge_of_justifiedIn`
-on the target-known walk domain: the `≤`-epoch case through the filter
-(`head_ge_of_justifiedIn_le_K`), the ahead case through `hahead`. -/
-theorem head_ge_of_justifiedIn_K (hji : JustificationInterface cfg ext E)
-    (w : ValidatorIndex) (hw : w ∈ E.honest) (m : ℕ)
-    (hH : E.WithinHorizon cfg m)
-    (hwf : ∀ r ∈ (E.store cfg ext w m).block_roots,
-      ((E.store cfg ext w m).blocks r).parent_root ∈ (E.store cfg ext w m).block_roots →
-        ((E.store cfg ext w m).blocks ((E.store cfg ext w m).blocks r).parent_root).slot
-          < ((E.store cfg ext w m).blocks r).slot)
-    (hwalkK : ∀ t ∈ (E.store cfg ext w m).block_roots, ∀ r ∈ (E.store cfg ext w m).block_roots,
-      WalkKnown (E.store cfg ext w m) ((E.store cfg ext w m).blocks t).slot r)
-    (hjust : (E.store cfg ext w m).justified_checkpoint.root ∈ (E.store cfg ext w m).block_roots)
-    (c : Checkpoint Root) (hc_just : JustifiedIn (E.store cfg ext w m) c)
-    (hc_known : c.root ∈ (E.store cfg ext w m).block_roots)
-    (hahead : (E.store cfg ext w m).justified_checkpoint.epoch < c.epoch →
-      is_ancestor (E.store cfg ext w m) (get_head cfg (E.store cfg ext w m))
-        (get_node_for_root c.root) = true) :
-    is_ancestor (E.store cfg ext w m) (get_head cfg (E.store cfg ext w m))
-      (get_node_for_root c.root) = true := by
-  by_cases hle : c.epoch ≤ (E.store cfg ext w m).justified_checkpoint.epoch
-  · exact E.head_ge_of_justifiedIn_le_K cfg ext hji w hw m hH
-      hwf hwalkK hjust c hc_just hc_known hle
-  · exact hahead (not_le.mp hle)
+/-! ### Deleted: the observed-anchor filter route and the `SoundResiduals` facade
 
-/-- **`SafeFrom(observed-root)` via the sound filter route (`_K`).** `E5Filter`'s
-`safeFrom_observed_of_filter` on the target-known walk domain: the observed anchor is
-`JustifiedIn` everywhere (`fcrStep_observed_justifiedIn`, using `hprev`), known
-(`hknown`), so `head_ge_of_justifiedIn_K` dominates it — sound `obs ⪯ jc` where it
-holds, `hahead` above. No blanket walk, no `anchor_guard`. -/
-theorem safeFrom_observed_of_filter_K (hji : JustificationInterface cfg ext E)
-    (hdomK : E.StoreDomainK cfg ext)
-    (hprev : ∀ v ∈ E.honest, ∀ n : ℕ, ∀ w ∈ E.honest, ∀ m : ℕ, n + 1 ≤ m →
-      E.WithinHorizon cfg m →
-      is_start_slot_at_epoch cfg (get_current_slot cfg (E.store cfg ext v (n + 1))) = true →
-      ¬ (get_current_slot cfg (E.store cfg ext v (n + 1)) >
-          get_current_slot cfg (E.store cfg ext v n)) →
-      JustifiedIn (E.store cfg ext w m)
-        ((E.fcrStep cfg ext v n).current_epoch_observed_justified_checkpoint))
-    (hknown : ∀ v ∈ E.honest, ∀ n : ℕ, ∀ w ∈ E.honest, ∀ m : ℕ, n + 1 ≤ m →
-      E.WithinHorizon cfg m →
-      (E.fcrStep cfg ext v n).current_epoch_observed_justified_checkpoint.root ∈
-        (E.store cfg ext w m).block_roots)
-    (hahead : ∀ v ∈ E.honest, ∀ n : ℕ, ∀ w ∈ E.honest, ∀ m : ℕ, n + 1 ≤ m →
-      E.WithinHorizon cfg m →
-      (E.store cfg ext w m).justified_checkpoint.epoch <
-        (E.fcrStep cfg ext v n).current_epoch_observed_justified_checkpoint.epoch →
-      is_ancestor (E.store cfg ext w m) (get_head cfg (E.store cfg ext w m))
-        (get_node_for_root
-          (E.fcrStep cfg ext v n).current_epoch_observed_justified_checkpoint.root) = true)
-    (v : ValidatorIndex) (hv : v ∈ E.honest) (n : ℕ) :
-    E.SafeFrom cfg ext
-      (E.fcrStep cfg ext v n).current_epoch_observed_justified_checkpoint.root (n + 1) := by
-  intro w hw m hm hH
-  obtain ⟨hwf, hwalkK, hjust⟩ := hdomK w hw m hH
-  exact E.head_ge_of_justifiedIn_K cfg ext hji w hw m hH hwf hwalkK hjust
-    ((E.fcrStep cfg ext v n).current_epoch_observed_justified_checkpoint)
-    (E.fcrStep_observed_justifiedIn cfg ext hji hprev v hv n w hw m hm hH)
-    (hknown v hv n w hw m hm hH) (hahead v hv n w hw m hm hH)
+`head_ge_of_justifiedIn_K` and `safeFrom_observed_of_filter_K` turned an
+`E5Filter.ObservedFilterResiduals` into the observed anchor's `SafeFrom`; `SoundResiduals`,
+`l4Residual_of_soundResiduals` and `spec_safety_sound_residuals` were the facade above them.
+All five existed only to serve the ahead-regime split, whose ahead branch had no producer.
 
-/-- **The sound input bundle** (`AnchorFacade`). This bundle omits two over-strong
-inputs:
+The anchor-slot walk machinery and the two reset-anchor folds
+(`safeFrom_of_justified_dom_K`, `store_domainK`, `store_walkKnownK`) are unaffected.
 
-* the fork-choice **walk domain is discharged internally** (`store_domainK` from the
-  Section-2 anchor facts + `JustificationInterface.checkpoint_known`) — no blanket
-  `hwalk`, no `∀ sl` `anchor_guard`;
-* the observed anchor uses the **sound filter route** (`observed_filter`) rather than
-  the invalid-in-general relation `obs ⪯ jc`.
-
-The reset (finalized/genesis) anchors carry their *sound* justified dominance
-`jc ⪰ r₀` with knownness (`jc ⪰ finalized` always holds — E5 cross-store descent +
-`finalized_justified_ancestry`); the engine leg is the certificate `advance_cert`. -/
-structure SoundResiduals (E : Execution Root) : Prop where
-  /-- E5: the genesis finalized reset anchor is known and justified-dominated at every
-      honest store. -/
-  genesis_dom : ∀ v ∈ E.honest, ∀ w ∈ E.honest, ∀ m : ℕ,
-    E.WithinHorizon cfg m →
-    (E.store cfg ext v 0).finalized_checkpoint.root ∈ (E.store cfg ext w m).block_roots ∧
-    is_ancestor (E.store cfg ext w m)
-      (get_node_for_root (E.store cfg ext w m).justified_checkpoint.root)
-      (get_node_for_root (E.store cfg ext v 0).finalized_checkpoint.root) = true
-  /-- E5: each update's finalized reset anchor is known and justified-dominated at
-      every honest store past `n+1`. -/
-  finalized_dom : ∀ v ∈ E.honest, ∀ n : ℕ, ∀ w ∈ E.honest, ∀ m : ℕ, n + 1 ≤ m →
-    E.WithinHorizon cfg m →
-    (E.store cfg ext v (n + 1)).finalized_checkpoint.root ∈ (E.store cfg ext w m).block_roots ∧
-    is_ancestor (E.store cfg ext w m)
-      (get_node_for_root (E.store cfg ext w m).justified_checkpoint.root)
-      (get_node_for_root (E.store cfg ext v (n + 1)).finalized_checkpoint.root) = true
-  /-- **E5 (sound filter route)**: the observed-anchor filter inputs replace the
-      invalid-in-general `observed_dom` premise. -/
-  observed_filter : E.ObservedFilterResiduals cfg ext
-  /-- engine: every `is_one_confirmed` block at an update store carries a
-      `LedgerChainInputCert`. -/
-  advance_cert : ∀ v ∈ E.honest, ∀ n : ℕ, ∀ b : Root,
-    is_one_confirmed cfg ext (E.fcrStep cfg ext v n).store
-      (get_current_balance_source (E.fcrStep cfg ext v n)) b = true →
-    LedgerChainInputCert cfg ext E b (n + 1)
-
-/-- **`L4Residual` from the sound bundle.** `StoreDomainK` is discharged from
-`SpecAssumptions` (`store_domainK`); the finalized/genesis anchors go through
-`safeFrom_of_justified_dom_K`, the observed anchor through the sound filter route
-`safeFrom_observed_of_filter_K`, the advance through `L4Fold.safeFrom_of_certificates`.
-No blanket walk domain, no `∀ sl` anchor guard, no `obs ⪯ jc`. -/
-theorem l4Residual_of_soundResiduals (hSA : SpecAssumptions cfg ext E)
-    (h : E.SoundResiduals cfg ext) : E.L4Residual cfg ext := by
-  obtain ⟨hgen, hwf, _, _, _, hec, _, _, hji⟩ := hSA
-  have hdomK := E.store_domainK cfg ext hwf hec hgen hji
-  exact
-    { genesis_safe := fun v hv =>
-        E.safeFrom_of_justified_dom_K cfg ext hdomK
-          (fun w hw m (_hm : 0 ≤ m) (hH : E.WithinHorizon cfg m) =>
-            h.genesis_dom v hv w hw m hH)
-      finalized_safe := fun v hv n => by
-        rw [E.fcrStep_store]
-        exact E.safeFrom_of_justified_dom_K cfg ext hdomK (h.finalized_dom v hv n)
-      observed_safe := fun v hv n =>
-        E.safeFrom_observed_of_filter_K cfg ext hji hdomK
-          h.observed_filter.prev_greatest_justifiedIn h.observed_filter.observed_known
-          h.observed_filter.observed_head_ahead v hv n
-      advance_safe := fun v hv n b hconf =>
-        E.safeFrom_of_certificates cfg ext (h.advance_cert v hv n b hconf) }
+They are deleted by the orphan sweep that follows the retirement of the legacy
+`SpecAssumptions` observed-anchor cone (P-6): every consumer they had was in that cone.
+See `docs/p6-justified-descends-derivation.md` §8. -/
 
 end Execution
-
-/-- **`Spec_Safety` from the sound input bundle** (`AnchorFacade`). FCR safety
-follows when every execution's `SpecAssumptions`
-supplies `SoundResiduals`. The exactly-enumerated residual bundle:
-
-* `genesis_dom` / `finalized_dom` `[E5-reset]` — the finalized reset anchors are known
-  and on every honest justified chain (`jc ⪰ finalized`, sound; cross-store finalized
-  descent + `finalized_justified_ancestry`);
-* `observed_filter` `[E5/E6]` — the observed-anchor filter inputs
-  (`ObservedFilterResiduals`: boundary-source justification, observed-anchor
-  knownness, and the ahead-regime head domination), used instead of the
-  invalid-in-general relation `obs ⪯ jc`;
-* `advance_cert` `[E-engine]` — the per-confirmed-block `LedgerChainInputCert` (the §8
-  certificate boundary; its accounting uses the explicit `Arms` premises, and the crossing
-  tax-arm is supplied separately by `Crossing.lean` — both outside this bundle).
-
-The fork-choice **walk domain** and **anchor guard** are discharged rather than assumed:
-`StoreDomainK` is proved from Layer-0 facts
-(`store_domainK` ← the Section-2 anchor facts + `checkpoint_known`), so neither the
-blanket `∀ t r` `hwalk` of `L4ResidualHypsFilter.store_domain` nor the `∀ sl`
-`anchor_guard` of `FinalResidualsER` appears. -/
-theorem spec_safety_sound_residuals
-    (h : ∀ E : Execution Root, SpecAssumptions cfg ext E → E.SoundResiduals cfg ext) :
-    Spec_Safety cfg ext :=
-  spec_safety_of_residual cfg ext
-    (fun E hSA => E.l4Residual_of_soundResiduals cfg ext hSA (h E hSA))
 
 end FastConfirmation.Spec

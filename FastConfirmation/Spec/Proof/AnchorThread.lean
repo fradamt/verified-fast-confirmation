@@ -41,6 +41,15 @@ The head-witness geometry (`head ⪰ b`, `get_checkpoint_block head jc.epoch = j
 economic core are supplied per edge by `descendStep_of_confirmMargin` as a
 `DescendStep`. This module reduces the covering input to the anchor-scoped form and exposes the
 dominance composition point.
+
+**P-6 note.** The glc-scoped fold this module used to carry — `safeFrom_get_latest_confirmed_glc`,
+`L4ResidualGlc`, `confirmed_safeFrom_of_residualGlc`, `spec_safety_of_residualGlc` — and the four
+closing theorems above it (`Spec_Safety_of_anchored` / `_of_selectedCore` and their
+`Spec_Monotonicity_*` companions) are **deleted**. The fold's `observed_safe` field was an
+observed-anchor `SafeFrom` that only the retired ahead-regime route produced; the closings
+carried the never-produced ahead-regime head-tracking premise. Sections 1-2 —
+`confirmedWithAnchor_of_advance`, `coveringFFG_of_advance`, `hdisj_of_coveringFFG` — are
+unaffected. See the section notes below and `docs/p6-justified-descends-derivation.md` §8.
 -/
 
 namespace FastConfirmation.Spec
@@ -189,100 +198,18 @@ section re-states the fold with the advance leg **`get_latest_confirmed`-scoped*
 (`L4ResidualGlc.advance_safe_glc`), so its consumers carry the `ConfirmedWithAnchor` package. The
 three E5 reset legs are unchanged. -/
 
-/-- **`SafeFrom` of `get_latest_confirmed`, advance leg scoped to the output.** The
-`safeFrom_get_latest_confirmed` variant whose engine hypothesis is demanded **only** at the
-`get_latest_confirmed` output (not for every `is_one_confirmed` block) — the case split routes each
-reset anchor to its `SafeFrom` witness and the advance to the scoped engine leg. This is the
-re-thread's pivot: it lets the advance leg carry the `ConfirmedWithAnchor` package for exactly the
-block that reaches the engine. The continuation also receives all three already-constructed reset-
-anchor `SafeFrom` witnesses, so endpoints before the confirming-store relay deadline can discharge
-the cert segment directly. -/
-theorem safeFrom_get_latest_confirmed_glc {fcr_store : FastConfirmationStore Root} {n : ℕ}
-    (hprev : E.SafeFrom cfg ext fcr_store.confirmed_root n)
-    (hfin : E.SafeFrom cfg ext fcr_store.store.finalized_checkpoint.root n)
-    (hobs : E.SafeFrom cfg ext
-      fcr_store.current_epoch_observed_justified_checkpoint.root n)
-    (heng : E.SafeFrom cfg ext fcr_store.confirmed_root n →
-      E.SafeFrom cfg ext fcr_store.store.finalized_checkpoint.root n →
-      E.SafeFrom cfg ext fcr_store.current_epoch_observed_justified_checkpoint.root n →
-      is_one_confirmed cfg ext fcr_store.store (get_current_balance_source fcr_store)
-          (get_latest_confirmed cfg ext fcr_store) = true →
-      E.SafeFrom cfg ext (get_latest_confirmed cfg ext fcr_store) n) :
-    E.SafeFrom cfg ext (get_latest_confirmed cfg ext fcr_store) n := by
-  rcases get_latest_confirmed_spec cfg ext fcr_store with (h | h | h) | h
-  · rw [h]; exact hprev
-  · rw [h]; exact hfin
-  · rw [h]; exact hobs
-  · exact heng hprev hfin hobs h
+/-! ### Deleted: the glc-scoped `L4Residual` fold
 
-/-- **The glc-scoped L4 fold residual.** `L4Fold.L4Residual` with the advance leg
-re-scoped to the `get_latest_confirmed` output: `advance_safe_glc` demands safety only for the
-block the FCR actually returns at a slot update (`get_latest_confirmed (fcrStep v n) =
-confirmed v (n+1)`), not for every `is_one_confirmed` block. The three E5 reset legs are verbatim
-`L4Residual`'s. This is the residual the anchoring-scoped closing supplies. -/
-structure L4ResidualGlc (E : Execution Root) : Prop where
-  /-- E5 / genesis base: the anchor's finalized root is safe from second 0. -/
-  genesis_safe : ∀ v ∈ E.honest,
-    E.SafeFrom cfg ext (E.store cfg ext v 0).finalized_checkpoint.root 0
-  /-- E5: the finalized reset anchor is safe at every slot-update second. -/
-  finalized_safe : ∀ v ∈ E.honest, ∀ n : ℕ,
-    E.SafeFrom cfg ext (E.fcrStep cfg ext v n).store.finalized_checkpoint.root (n + 1)
-  /-- E5/E6: the observed-justified restart anchor is safe at every slot update. -/
-  observed_safe : ∀ v ∈ E.honest, ∀ n : ℕ,
-    E.SafeFrom cfg ext
-      (E.fcrStep cfg ext v n).current_epoch_observed_justified_checkpoint.root (n + 1)
-  /-- engine: the `get_latest_confirmed` output at a slot-update store is safe (the
-      anchoring-scoped advance leg — its consumers carry `ConfirmedWithAnchor`). The
-      **slot-advance premise** (`get_current_slot` strictly grew) is added because the
-      trajectory fold consumes this leg **only** in the slot-advance branch
-      (`confirmed_safeFrom_of_residualGlc`); it is never demanded on a non-advancing second. The
-      previous-confirmed, finalized, and observed `SafeFrom` invariants are threaded into this
-      continuation for the pre-relay direct routes. -/
-  advance_safe_glc : ∀ v ∈ E.honest, ∀ n : ℕ,
-    get_current_slot cfg (E.store cfg ext v (n + 1)) > get_current_slot cfg (E.store cfg ext v n) →
-    E.SafeFrom cfg ext (E.fcrStep cfg ext v n).confirmed_root (n + 1) →
-    E.SafeFrom cfg ext (E.fcrStep cfg ext v n).store.finalized_checkpoint.root (n + 1) →
-    E.SafeFrom cfg ext
-      (E.fcrStep cfg ext v n).current_epoch_observed_justified_checkpoint.root (n + 1) →
-    is_one_confirmed cfg ext (E.fcrStep cfg ext v n).store
-        (get_current_balance_source (E.fcrStep cfg ext v n))
-        (get_latest_confirmed cfg ext (E.fcrStep cfg ext v n)) = true →
-    E.SafeFrom cfg ext (get_latest_confirmed cfg ext (E.fcrStep cfg ext v n)) (n + 1)
+`safeFrom_get_latest_confirmed_glc`, `L4ResidualGlc`, `confirmed_safeFrom_of_residualGlc` and
+`spec_safety_of_residualGlc` stood here. The fold's `observed_safe` field was an
+observed-anchor `SafeFrom`, which only `AnchorFacade.safeFrom_observed_of_filter_K` produced,
+and its only consumer was `Spec_Safety_of_anchored`.
 
-/-- **The trajectory fold, glc-scoped.** Verbatim `L4Fold.confirmed_safeFrom_of_residual`,
-but the advance case routes through `safeFrom_get_latest_confirmed_glc` — so the advance leg is
-demanded only at the `get_latest_confirmed` output. -/
-theorem confirmed_safeFrom_of_residualGlc (hres : E.L4ResidualGlc cfg ext)
-    (v : ValidatorIndex) (hv : v ∈ E.honest) :
-    ∀ n : ℕ, E.SafeFrom cfg ext (E.confirmed cfg ext v n) n := by
-  intro n
-  induction n with
-  | zero => rw [E.confirmed_zero]; exact hres.genesis_safe v hv
-  | succ n ih =>
-    by_cases h : get_current_slot cfg (E.store cfg ext v (n + 1)) >
-        get_current_slot cfg (E.store cfg ext v n)
-    · rw [E.confirmed_succ_of_advance cfg ext v n h]
-      have hprev : E.SafeFrom cfg ext (E.fcrStep cfg ext v n).confirmed_root (n + 1) := by
-        rw [E.fcrStep_confirmed_root]
-        exact fun w hw m hm => ih w hw m (le_trans (Nat.le_succ n) hm)
-      have hfin := hres.finalized_safe v hv n
-      have hobs := hres.observed_safe v hv n
-      exact E.safeFrom_get_latest_confirmed_glc cfg ext hprev hfin hobs
-        (hres.advance_safe_glc v hv n h)
-    · rw [E.confirmed_succ_of_no_advance cfg ext v n h]
-      exact fun w hw m hm => ih w hw m (le_trans (Nat.le_succ n) hm)
+They are deleted by the orphan sweep that follows the retirement of the legacy
+`SpecAssumptions` observed-anchor cone (P-6): every consumer they had was in that cone.
+See `docs/p6-justified-descends-derivation.md` §8. -/
 
 end Execution
-
-/-- **`Spec_Safety` from the glc-scoped fold residual.** The re-threaded skeleton theorem:
-`Spec_Safety` reduces to a proof that every execution's `SpecAssumptions` supplies `L4ResidualGlc`
-— the residual whose advance leg is `get_latest_confirmed`-scoped, so it can carry
-`ConfirmedWithAnchor`. Mirrors `L4Fold.spec_safety_of_residual`. -/
-theorem spec_safety_of_residualGlc
-    (hres : ∀ E : Execution Root, SpecAssumptions cfg ext E → E.L4ResidualGlc cfg ext) :
-    Spec_Safety cfg ext := by
-  intro E hSA v hv n w hw m hm
-  exact E.confirmed_safeFrom_of_residualGlc cfg ext (hres E hSA) v hv n w hw m hm
 
 /-! ## Sections 4 and 5 — deleted: the anchoring-scoped and selected-core closings
 

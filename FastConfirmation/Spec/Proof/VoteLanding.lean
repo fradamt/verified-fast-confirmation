@@ -50,6 +50,12 @@ the cross-store `is_ancestor` transport of late voters' heads (`vote_lands`'s
 algebra. Their consumers require the `get_head`/`get_checkpoint_block`
 well-formedness inputs stated by the corresponding interfaces.
 
+
+**P-6 note.** Some names used in this header no longer exist. The legacy `SpecAssumptions`
+observed-anchor cone was retired and swept for orphans, which removed `EdgeDynamics.EdgeInputResidual`, `IHMechanize.dynamicsChainStruct_of_endpoint`
+and `hdeltas_of_monotone`, and this module's own `rho0_same_epoch` / `hdeltas_sameEpoch`.
+The descriptions above are kept because they still identify the *shapes* the surviving
+declarations produce and consume. See `docs/p6-justified-descends-derivation.md` §8.
 -/
 
 namespace FastConfirmation.Spec
@@ -258,37 +264,14 @@ non-negative. This is the tentative (current-epoch) loop's `ρ = 0`; the crossin
 (previous-epoch) regime has earlier-epoch recurrers and uses the explicit
 `ξ`/`α > 0` migration inputs. -/
 
-/-- **`hρ0` in the strict same-epoch regime** (`VoteLanding`). Under `hlo : lo ≤ σ'+1` and the
-same-epoch hypothesis `hsame` (every `t ∈ [lo, σ']` has `epoch t = epoch (σ'+1)`), the
-honest committee of slot `σ'+1` is contained in the honest window growth
-`(span lo (σ'+1) \ span lo σ')`, so its weight is bounded by the full `hρ0` right-hand
-side (the `Unrec`-difference term contributing non-negatively). Closes the `ρ = 0`
-partition for the current-epoch confirmations. -/
-theorem rho0_same_epoch (hec : ExternalsCoherence cfg ext E)
-    (v₀ : ValidatorIndex) (n₀ : ℕ) (b' : Root) (lo es σ' : Slot)
-    (hlo : lo ≤ σ' + 1)
-    (hsame : ∀ t : Slot, lo ≤ t → t ≤ σ' →
-      compute_epoch_at_slot cfg t = compute_epoch_at_slot cfg (σ' + 1)) :
-    E.weight ((E.span_committee (σ' + 1) (σ' + 1)).filter (fun i => i ∈ E.honest)) ≤
-      E.weight (E.Unrec cfg ext v₀ n₀ b' lo es σ' \ E.Unrec cfg ext v₀ n₀ b' lo es (σ' + 1))
-        + E.weight ((E.span_committee lo (σ' + 1) \ E.span_committee lo σ').filter
-          (fun i => i ∈ E.honest)) := by
-  classical
-  have hsub : (E.span_committee (σ' + 1) (σ' + 1)).filter (fun i => i ∈ E.honest) ⊆
-      (E.span_committee lo (σ' + 1) \ E.span_committee lo σ').filter (fun i => i ∈ E.honest) := by
-    intro i hi
-    simp only [Finset.mem_filter, Execution.span_committee, Finset.mem_sdiff,
-      Finset.mem_biUnion, Finset.mem_Icc] at hi ⊢
-    obtain ⟨⟨t, ⟨htlo, hthi⟩, hit⟩, hih⟩ := hi
-    have hteq : t = σ' + 1 := le_antisymm hthi htlo
-    subst hteq
-    refine ⟨⟨⟨σ' + 1, ⟨hlo, le_refl _⟩, hit⟩, ?_⟩, hih⟩
-    rintro ⟨s, ⟨hslo, hshi⟩, his⟩
-    have hs_eq : s = σ' + 1 :=
-      hec.committee_assignment_unique i s (σ' + 1) his hit (hsame s hslo hshi)
-    subst hs_eq
-    exact absurd hshi (Nat.not_succ_le_self σ')
-  exact le_trans (E.weight_mono hsub) (Nat.le_add_left _ _)
+/-! ### Deleted: `rho0_same_epoch` and `hdeltas_sameEpoch`
+
+The `ρ = 0` same-epoch partition and the migration-delta assembly built on it. Both were
+consumed only by `ShellCompose`'s engine composition.
+
+They are deleted by the orphan sweep that follows the retirement of the legacy
+`SpecAssumptions` observed-anchor cone (P-6): every consumer they had was in that cone.
+See `docs/p6-justified-descends-derivation.md` §8. -/
 
 /-! ## Section 5 — the IHMechanize-facing compositions
 
@@ -323,51 +306,6 @@ theorem hmaj_of_saturation_lb (v₀ : ValidatorIndex) (n₀ : ℕ) (b' : Root) (
           + boost + 1 ≤ E.Sval cfg ext v₀ n₀ b' lo σ' :=
   E.hmaj_of_saturation cfg ext v₀ n₀ b' lo es boost hsat
     (E.boost_dilution cfg lo es boost hJlb)
-
-/-- **`hdeltas` from the migration monotonicities in the same-epoch regime** (`VoteLanding`).
-Composes `IHMechanize.hdeltas_of_monotone` with `rho0_same_epoch`: the pre-`T1`
-per-slot class-migration deltas follow from the honest-support growth `hSmono`, the
-sibling-stuck antitonicity `hXmono`, and — for `hρ0` — the strict same-epoch structure
-`hsame` (each pre-`T1` slot's window `[lo, σ']` lies in `epoch(σ'+1)`), with `lo ≤ es+1`.
-This closes `EdgeInputResidual.hdeltas` for current-epoch confirmations down to the two
-genuine store-dynamics migration weights `hSmono`/`hXmono`. -/
-theorem hdeltas_sameEpoch (hec : ExternalsCoherence cfg ext E)
-    (w : ValidatorIndex) (m : ℕ) (b : Root) (lo es : Slot)
-    (hlo : lo ≤ es + 1)
-    (hSmono : ∀ σ' : Slot, es ≤ σ' →
-      E.SlotWithinHorizon cfg σ' → E.SlotWithinHorizon cfg (σ' + 1) →
-      compute_epoch_at_slot cfg (σ' + 1) < compute_epoch_at_slot cfg es + 2 →
-      E.Sval cfg ext w m b lo σ' +
-          E.weight ((E.span_committee lo (σ' + 1) \ E.span_committee lo σ').filter
-            (fun i => i ∈ E.honest))
-        ≤ E.Sval cfg ext w m b lo (σ' + 1))
-    (hXmono : ∀ σ' : Slot, es ≤ σ' →
-      E.SlotWithinHorizon cfg σ' → E.SlotWithinHorizon cfg (σ' + 1) →
-      compute_epoch_at_slot cfg (σ' + 1) < compute_epoch_at_slot cfg es + 2 →
-      E.Xval cfg ext w m b lo (σ' + 1) ≤ E.Xval cfg ext w m b lo σ')
-    (hsame : ∀ σ' : Slot, es ≤ σ' →
-      E.SlotWithinHorizon cfg σ' → E.SlotWithinHorizon cfg (σ' + 1) →
-      compute_epoch_at_slot cfg (σ' + 1) < compute_epoch_at_slot cfg es + 2 →
-      ∀ t : Slot, lo ≤ t → t ≤ σ' →
-        compute_epoch_at_slot cfg t = compute_epoch_at_slot cfg (σ' + 1)) :
-    ∀ σ' : Slot, es ≤ σ' →
-      E.SlotWithinHorizon cfg σ' → E.SlotWithinHorizon cfg (σ' + 1) →
-      compute_epoch_at_slot cfg (σ' + 1) < compute_epoch_at_slot cfg es + 2 →
-      ∃ ξ α : ℕ,
-        (E.Sval cfg ext w m b lo σ' + ξ + α +
-            E.weight ((E.span_committee lo (σ' + 1) \ E.span_committee lo σ').filter
-              (fun i => i ∈ E.honest))
-          ≤ E.Sval cfg ext w m b lo (σ' + 1)) ∧
-        (E.Xval cfg ext w m b lo (σ' + 1) + ξ ≤ E.Xval cfg ext w m b lo σ') ∧
-        (E.weight ((E.span_committee (σ' + 1) (σ' + 1)).filter (fun i => i ∈ E.honest)) ≤
-          E.weight (E.Unrec cfg ext w m b lo es σ' \ E.Unrec cfg ext w m b lo es (σ' + 1))
-            + ξ + α +
-            E.weight ((E.span_committee lo (σ' + 1) \ E.span_committee lo σ').filter
-              (fun i => i ∈ E.honest))) :=
-  E.hdeltas_of_monotone cfg ext w m b lo es hSmono hXmono
-    (fun σ' h1 hσH hσ1H h2 =>
-      E.rho0_same_epoch cfg ext hec w m b lo es σ'
-        (le_trans hlo (Nat.succ_le_succ h1)) (hsame σ' h1 hσH hσ1H h2))
 
 end Execution
 

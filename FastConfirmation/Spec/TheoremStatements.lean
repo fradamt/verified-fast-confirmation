@@ -364,26 +364,17 @@ def Spec_Safety_next_slot : Prop :=
         (get_head cfg (E.store cfg ext w m))
         (get_node_for_root (E.confirmed cfg ext v n)) = true
 
-/-- **Chain consistency** — an honest node's confirmed roots all lie on one
-chain: any two are ancestry-comparable in the node's (later) store. This is
-the defensible spec-model rendering of the paper's monotonicity: strict
-"once confirmed, always confirmed" ancestor-monotonicity is *false* for the
-deployed algorithm without a liveness premise — the assumptions do not force
-block production, and `get_latest_confirmed`'s staleness revert
-(`get_block_epoch(confirmed) + 1 < current_epoch` → finalized root) fires by
-design when the chain stalls, moving the confirmed root *backwards* along
-the same chain. Strict monotonicity holds while the revert/restart branches
-are idle; this file records that restricted conditional statement separately. -/
-def Spec_Monotonicity : Prop :=
-  ∀ E : Execution Root, SpecAssumptions cfg ext E →
-    ∀ v ∈ E.honest, ∀ n m : ℕ, n ≤ m →
-      E.WithinHorizon cfg m →
-      is_ancestor (E.store cfg ext v m)
-        (get_node_for_root (E.confirmed cfg ext v m))
-        (get_node_for_root (E.confirmed cfg ext v n)) = true ∨
-      is_ancestor (E.store cfg ext v m)
-        (get_node_for_root (E.confirmed cfg ext v n))
-        (get_node_for_root (E.confirmed cfg ext v m)) = true
+/-! ### Deleted: `Spec_Monotonicity`
+
+The all-prefix monotonicity statement stood here. Every theorem concluding it went with the
+legacy `SpecAssumptions` observed-anchor cone, and nothing else referred to it.
+`Spec_Monotonicity_no_revert` — the restricted statement that is actually about the revert
+branches — is stated independently below and is unaffected. The accepted public results are
+unchanged.
+
+They are deleted by the orphan sweep that follows the retirement of the legacy
+`SpecAssumptions` observed-anchor cone (P-6): every consumer they had was in that cone.
+See `docs/p6-justified-descends-derivation.md` §8. -/
 
 /-- **Conditional strict monotonicity** — the refinement implies the comparability
 form defers: if between the two instants neither the finalized-revert nor

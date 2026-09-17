@@ -46,7 +46,10 @@ route with the sound goal `SafeFrom(observed-root)`.
   reshapes the `WalkClosure` consumer to target slots `≥` the anchor block's slot,
   eliminating the `anchor_guard` residual's `∀ sl` over-strength (false for
   checkpoint-sync anchors) without any anchor-at-genesis assumption. The consumer
-  analysis is documented per call site.
+  analysis is documented per call site. `head_ge_of_justified_ge_K` — the at-or-below
+  head core on the target-known walk domain — is the lemma the accepted and weak routes
+  actually use; its anchor-reshaped ahead-capable companion `head_ge_of_justifiedIn_le_K`
+  is deleted with the ahead-regime route (P-6, see the section note there).
 
 These inputs are recorded explicitly by the structures named above.
 -/
@@ -483,31 +486,16 @@ namespace Execution
 
 variable (E : Execution Root)
 
-/-- **The sound observed-anchor head core, anchor-reshaped.** `head_ge_of_justifiedIn_le`
-re-proved on the target-known walk domain `hwalkK` (Section 3) instead of the blanket
-`hwalk`: for a `JustifiedIn` `c` with known root at-or-below `jc`'s epoch, the head
-dominates `c` — with the walk domain dischargeable from `walkKnown_of_anchorSlot` (the
-sound fixed-slot anchor-min fact, **no `anchor_guard`**). This is the anchor-reshaped
-sound core of the observed-anchor dominance; `b := c.root`'s knownness is `hc_known`. -/
-theorem head_ge_of_justifiedIn_le_K (hji : JustificationInterface cfg ext E)
-    (w : ValidatorIndex) (hw : w ∈ E.honest) (m : ℕ)
-    (hH : E.WithinHorizon cfg m)
-    (hwf : ∀ r ∈ (E.store cfg ext w m).block_roots,
-      ((E.store cfg ext w m).blocks r).parent_root ∈ (E.store cfg ext w m).block_roots →
-        ((E.store cfg ext w m).blocks ((E.store cfg ext w m).blocks r).parent_root).slot
-          < ((E.store cfg ext w m).blocks r).slot)
-    (hwalkK : ∀ t ∈ (E.store cfg ext w m).block_roots, ∀ r ∈ (E.store cfg ext w m).block_roots,
-      WalkKnown (E.store cfg ext w m) ((E.store cfg ext w m).blocks t).slot r)
-    (hjust : (E.store cfg ext w m).justified_checkpoint.root ∈
-      (E.store cfg ext w m).block_roots)
-    (c : Checkpoint Root) (hc_just : JustifiedIn (E.store cfg ext w m) c)
-    (hc_known : c.root ∈ (E.store cfg ext w m).block_roots)
-    (hle : c.epoch ≤ (E.store cfg ext w m).justified_checkpoint.epoch) :
-    is_ancestor (E.store cfg ext w m) (get_head cfg (E.store cfg ext w m))
-      (get_node_for_root c.root) = true :=
-  head_ge_of_justified_ge_K cfg hwf hwalkK hjust hc_known
-    (hji.justified_ancestry w hw m c (E.store cfg ext w m).justified_checkpoint
-      hH hc_just (Or.inl rfl) hle hc_known hjust)
+/-! ### Deleted: `head_ge_of_justifiedIn_le_K`
+
+The anchor-reshaped at-or-below head core. Its only consumer was
+`AnchorFacade.head_ge_of_justifiedIn_K`, the ahead-regime split. The unreshaped
+`head_ge_of_justifiedIn_le` and the general `head_ge_of_justified_ge_K` — the lemma the
+accepted and weak routes actually use — are unaffected.
+
+They are deleted by the orphan sweep that follows the retirement of the legacy
+`SpecAssumptions` observed-anchor cone (P-6): every consumer they had was in that cone.
+See `docs/p6-justified-descends-derivation.md` §8. -/
 
 end Execution
 

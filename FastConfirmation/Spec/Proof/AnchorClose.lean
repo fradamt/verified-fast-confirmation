@@ -9,14 +9,20 @@ import FastConfirmation.Spec.Proof.Knownness
 # Spec / Proof / AnchorClose: the closing composition
 
 This module holds the anchor-scoped `SafeFrom` machinery for the `get_latest_confirmed` output:
-the per-edge `DescendStep` supplies, the confirm-margin collapse, the anchor-scoped covering
-supply, and the two glc folds `safeFromGlc_of_covSupply` / `safeFromGlc_of_chainSupply`.
+the mid-walk fold helpers, the per-edge `DescendStep` supply `DescendStepChainSupply`, the
+strong-induction shell `safeFrom_of_headStep`, the confirm-margin collapse
+`descendStepChainSupply_of_confirmMargin`, and the anchor-kind covering helpers.
 
-The eight closing theorems that used to sit on top of them (`Spec_Safety_of_chainSupply`,
-`_of_close`, `_of_confirmMargin`, `_of_chainConfirmMargin` and their `Spec_Monotonicity_*`
-companions) are **deleted** (P-6): each refined `AnchorThread.Spec_Safety_of_anchored` and so
-carried the never-produced ahead-regime head-tracking premise. See the section note below and
-`docs/p6-justified-descends-derivation.md` §8.
+Everything above those — the anchor-scoped covering supply `AnchorCovSupply`, the two glc folds
+`safeFromGlc_of_covSupply` / `safeFromGlc_of_chainSupply`, and the eight closing theorems
+`Spec_Safety_of_chainSupply` / `_of_close` / `_of_confirmMargin` / `_of_chainConfirmMargin`
+with their `Spec_Monotonicity_*` companions — is **deleted** (P-6). Each closing refined
+`AnchorThread.Spec_Safety_of_anchored` and so carried the never-produced ahead-regime
+head-tracking premise; the covering supply and the folds were consumed only by them. See the
+section notes below and `docs/p6-justified-descends-derivation.md` §8.
+
+The header sections that follow describe the *former* full composition; they are kept for the
+machinery that survives and for the record of what the flags were.
 
 ## Anchor-scoped supplies and the four-case fold
 
@@ -618,81 +624,16 @@ theorem descendStepChainSupply_of_confirmMargin (hSA : SpecAssumptions cfg ext E
 hypothesis. The three reset-anchor knownness facts and the confirmed-block knownness are discharged
 internally; the covering flag shrinks to the **anchor-scoped** supply `AnchorCovSupply`. -/
 
-/-- **The anchor-scoped covering supply** — the `hcov` hypothesis of
-the covering advance leg, DRY-named. For every confirmed `get_latest_confirmed` block `glc` at a
-foreign endpoint `(w, m)` and the actual reset anchor `r₀`, it carries the block-root containment
-transport and reverse walk, followed by one of three kind-tagged routes. The confirmed and
-finalized routes contain `head ⪰ r₀`, produced directly by the two threaded `SafeFrom` witnesses;
-the observed route retains the covering checkpoint `jcb` (`jcb.root = r₀`, `JustifiedIn`/known)
-and **the covering disjunction** `glc ⪰ jc.root ∨ jc.root ⪰ glc`. The `glc ⪰ r₀` conjunct is
-transported separately from `hanc.b_ge_r₀` in `safeFromGlc_of_covSupply`.
+/-! ### Deleted: `AnchorCovSupply`, `safeFromGlc_of_covSupply`, `safeFromGlc_of_chainSupply`
 
-The two case-(i) instruments —
-the unconditional head witness (`get_checkpoint_block head jc.epoch = jc.root`) and the slot bound
-(`glc.slot ≤ start_slot(jc.epoch)`, **FALSE for a fresh `glc` at a store with an older `jc`**) — are
-**deleted**: they were wrongly demanded globally. In their place the derivable **covering
-disjunction** drove case (i) of the (now deleted) covering fold: `jc.root ⪰ glc` off the
-disjunction gives `head ⪰ jc.root ⪰ glc` with no geometry, and `glc ⪰ jc.root` drives the chain
-branch. The observed route no longer consumes it (it finishes from the threaded `hobs`).
+The anchor-scoped covering supply and the two `get_latest_confirmed`-scoped folds that
+produced `AnchorThread.L4ResidualGlc.advance_safe_glc` stood here. `AnchorCovSupply` was never
+produced in-tree; the two folds were consumed only by the eight closing theorems deleted
+below.
 
-For the observed route, the disjunction is derivable under the **head-safety IH clause**
-(`∀ w' m', n+1 ≤ m' → slot_at m' < slot_at m → head(w',m') ⪰ glc`), added as a hypothesis
-**before** the route result, so a producer may assume head-safety at strictly-earlier slots (the
-quorum route:
-`justified_requires_targets` → an honest quorum member's earlier-slot head ⪰ `glc` via the IH →
-`Delivery.honest_attestation_data_target_root` ties their FFG target to their head-chain boundary).
-The confirmed/finalized routes do not consume that quorum route: the fold threads their `SafeFrom`
-witnesses to this production point. Consumption runs **inside** the head-safety induction, where
-the IH remains available for the observed route and the per-edge supply. The endpoint relay
-premise is exact: endpoints that have not reached the one-slot delivery deadline bypass this
-supply and use selected-candidate support/vote provenance plus the three threaded `SafeFrom`
-witnesses. -/
-def AnchorCovSupply (E : Execution Root) : Prop :=
-  ∀ v ∈ E.honest, ∀ n : ℕ,
-    get_current_slot cfg (E.store cfg ext v (n + 1)) > get_current_slot cfg (E.store cfg ext v n) →
-    is_one_confirmed cfg ext (E.fcrStep cfg ext v n).store
-        (get_current_balance_source (E.fcrStep cfg ext v n))
-        (get_latest_confirmed cfg ext (E.fcrStep cfg ext v n)) = true →
-    E.SafeFrom cfg ext (E.fcrStep cfg ext v n).confirmed_root (n + 1) →
-    E.SafeFrom cfg ext (E.fcrStep cfg ext v n).store.finalized_checkpoint.root (n + 1) →
-    ∀ w ∈ E.honest, ∀ m : ℕ, n + 1 ≤ m →
-      E.WithinHorizon cfg m →
-      E.slot_at cfg (n + 1) + 1 ≤ E.slot_at cfg (m + 1) →
-      ∀ r₀ : Root,
-        (r₀ = (E.fcrStep cfg ext v n).confirmed_root ∨
-          r₀ = (E.store cfg ext v (n + 1)).finalized_checkpoint.root ∨
-          r₀ = (E.fcrStep cfg ext v n).current_epoch_observed_justified_checkpoint.root) →
-        E.ConfirmedWithAnchor cfg ext
-          (get_latest_confirmed cfg ext (E.fcrStep cfg ext v n)) r₀ v (n + 1) →
-        (∀ w' ∈ E.honest, ∀ m' : ℕ, n + 1 ≤ m' → E.slot_at cfg m' < E.slot_at cfg m →
-          E.WithinHorizon cfg m' →
-          is_ancestor (E.store cfg ext w' m') (get_head cfg (E.store cfg ext w' m'))
-            (get_node_for_root (get_latest_confirmed cfg ext (E.fcrStep cfg ext v n))) = true) →
-        ((E.store cfg ext v (n + 1)).block_roots ⊆ (E.store cfg ext w m).block_roots) ∧
-        WalkKnown (E.store cfg ext v (n + 1))
-            ((E.store cfg ext v (n + 1)).blocks r₀).slot
-            (get_latest_confirmed cfg ext (E.fcrStep cfg ext v n)) ∧
-        ((r₀ = (E.fcrStep cfg ext v n).confirmed_root ∧
-            is_ancestor (E.store cfg ext w m) (get_head cfg (E.store cfg ext w m))
-              (get_node_for_root r₀) = true) ∨
-          (r₀ = (E.store cfg ext v (n + 1)).finalized_checkpoint.root ∧
-            is_ancestor (E.store cfg ext w m) (get_head cfg (E.store cfg ext w m))
-              (get_node_for_root r₀) = true) ∨
-          (r₀ = (E.fcrStep cfg ext v n).current_epoch_observed_justified_checkpoint.root ∧
-            ∃ jcb : Checkpoint Root,
-              jcb.root = r₀ ∧
-              JustifiedIn (E.store cfg ext w m) jcb ∧
-              jcb.root ∈ (E.store cfg ext w m).block_roots ∧
-              -- **The covering disjunction**, retained only for the
-              -- observed-anchor route. The confirmed/finalized routes use their threaded
-              -- `SafeFrom` witnesses above and do not demand this quorum-derived comparison.
-              (is_ancestor (E.store cfg ext w m)
-                  (get_node_for_root (get_latest_confirmed cfg ext (E.fcrStep cfg ext v n)))
-                  (get_node_for_root (E.store cfg ext w m).justified_checkpoint.root) = true ∨
-                is_ancestor (E.store cfg ext w m)
-                  (get_node_for_root (E.store cfg ext w m).justified_checkpoint.root)
-                  (get_node_for_root (get_latest_confirmed cfg ext (E.fcrStep cfg ext v n))) =
-                    true)))
+They are deleted by the orphan sweep that follows the retirement of the legacy
+`SpecAssumptions` observed-anchor cone (P-6): every consumer they had was in that cone.
+See `docs/p6-justified-descends-derivation.md` §8. -/
 
 /-- **Confirmed-anchor covering from the trajectory invariant.** At every later honest endpoint,
 the fold's pre-update confirmed-root `SafeFrom` witness is exactly `head ⪰ r₀` when the actual
@@ -870,220 +811,6 @@ disjunction: the flag is never produced in-tree, and `Nucleus.covering_comparabi
 `Nucleus.CurrentEpochCoveringBridge` are still stated in that field shape. -/
 
 
-
-/-- **The `get_latest_confirmed`-scoped advance leg.** Threads the **existential** anchor through
-the four-case argument and produces the full `SafeFrom` of the confirmed block from the
-anchor-scoped covering supply `hcov` and the r₀-scoped per-edge `DescendStep` supply `hsupply`.
-
-**Anchor scoping.** The supply is demanded only for the selected anchor, rather than **universally** over all
-three reset-anchor kinds (`∀ r₀, kind → …`): the L4 confirm-margin certificates
-(`CertExtract.edgeCert_of_confirmation`) live **only** on the segment `[r₀, glc]` above the
-*actual* walk anchor, so the demand for the other two kinds is unproducible. Instead `hsupply`
-provides the **existential** anchor `∃ r₀, kind ∧ ConfirmedWithAnchor ∧ DescendStepChainSupply` —
-the very `(r₀, kind, ConfirmedWithAnchor)` package `confirmedWithAnchor_of_advance` /
-`get_latest_confirmed_ge` produce (a single `r₀` for **both** the covering `jcb.root = r₀` and the
-supply scoping). The fold extracts that one `r₀` (+ its `ConfirmedWithAnchor` `hanc`, feeding
-`hcov`) and the supply `hsup` in a single `obtain`. The head-safety strong-induction shell
-`safeFrom_of_headStep` supplies the IH. Once the confirming-store relay deadline holds, the
-all three routes start from their threaded `head ⪰ r₀` fact — for the observed kind that
-is the `hobs` witness, the route tag identifying `r₀` with the observed justified root.
-The 4-case covering fold this branch used to run is deleted. Before that deadline
-(including same-slot endpoints), all three kinds use the executable selected-candidate
-transport of `glc ⪰ r₀` and their threaded `SafeFrom` facts, then fold the cert-carrying `[r₀, glc]` segment directly. Every
-demanded edge still satisfies `c ⪰ r₀`. -/
-theorem safeFromGlc_of_covSupply (hSA : SpecAssumptions cfg ext E)
-    (hcov : E.AnchorCovSupply cfg ext)
-    (v : ValidatorIndex) (hv : v ∈ E.honest) (n : ℕ)
-    (hadvslot : get_current_slot cfg (E.store cfg ext v (n + 1)) >
-      get_current_slot cfg (E.store cfg ext v n))
-    (hconf : is_one_confirmed cfg ext (E.fcrStep cfg ext v n).store
-        (get_current_balance_source (E.fcrStep cfg ext v n))
-        (get_latest_confirmed cfg ext (E.fcrStep cfg ext v n)) = true)
-    (hprev : E.SafeFrom cfg ext (E.fcrStep cfg ext v n).confirmed_root (n + 1))
-    (hfin : E.SafeFrom cfg ext
-      (E.fcrStep cfg ext v n).store.finalized_checkpoint.root (n + 1))
-    (hobs : E.SafeFrom cfg ext
-      (E.fcrStep cfg ext v n).current_epoch_observed_justified_checkpoint.root (n + 1))
-    (hsupply : ∃ r₀ : Root,
-      (r₀ = (E.fcrStep cfg ext v n).confirmed_root ∨
-        r₀ = (E.store cfg ext v (n + 1)).finalized_checkpoint.root ∨
-        r₀ = (E.fcrStep cfg ext v n).current_epoch_observed_justified_checkpoint.root) ∧
-      E.ConfirmedWithAnchor cfg ext
-        (get_latest_confirmed cfg ext (E.fcrStep cfg ext v n)) r₀ v (n + 1) ∧
-      E.DescendStepChainSupply cfg ext
-        (get_latest_confirmed cfg ext (E.fcrStep cfg ext v n)) r₀ (n + 1)) :
-    E.SafeFrom cfg ext (get_latest_confirmed cfg ext (E.fcrStep cfg ext v n)) (n + 1) := by
-  have hwfE : WellFormedExecution E := hSA.2.1
-  obtain ⟨r₀, hkind, hanc, hsup⟩ := hsupply
-  refine E.safeFrom_of_headStep cfg ext ?_
-  intro w hw m hm hH hIH
-  have hHn1 : E.WithinHorizon cfg (n + 1) := E.withinHorizon_mono cfg hm hH
-  have hHn : E.WithinHorizon cfg n :=
-    E.withinHorizon_mono cfg (Nat.le_trans (Nat.le_succ n) hm) hH
-  have hji : JustificationInterface cfg ext E := hSA.2.2.2.2.2.2.2.2
-  have hconfirmed : (E.fcrStep cfg ext v n).confirmed_root ∈
-      (E.fcrStep cfg ext v n).store.block_roots := by
-    rw [E.fcrStep_confirmed_root, E.fcrStep_store]
-    exact (E.store_storeLE cfg ext v (Nat.le_succ n)).1
-      (E.confirmed_root_known_selected cfg ext hSA v hv n hHn)
-  have hfinalized : (E.fcrStep cfg ext v n).store.finalized_checkpoint.root ∈
-      (E.fcrStep cfg ext v n).store.block_roots := by
-    rw [E.fcrStep_store]
-    exact (hji.checkpoint_known v hv (n + 1) hHn1).2
-  have hobserved :
-      (E.fcrStep cfg ext v n).current_epoch_observed_justified_checkpoint.root ∈
-        (E.fcrStep cfg ext v n).store.block_roots := by
-    rw [E.fcrStep_store]
-    exact E.fcrStep_observed_known_selected cfg ext hji v hv n hHn1
-  rcases E.get_latest_confirmed_selected cfg ext hSA v hv (n + 1) hHn1
-      (E.fcrStep cfg ext v n) (E.fcrStep_store cfg ext v n)
-      hconfirmed hfinalized hobserved with hreset | ⟨hselected, hbSelected, hpSelected⟩
-  · rcases hreset with h | h | h
-    · rw [h]
-      exact hprev w hw m hm hH
-    · rw [h]
-      exact hfin w hw m hm hH
-    · rw [h]
-      exact hobs w hw m hm hH
-  have hbConfirm : get_latest_confirmed cfg ext (E.fcrStep cfg ext v n) ∈
-      (E.store cfg ext v (n + 1)).block_roots := by
-    simpa only [E.fcrStep_store] using hbSelected
-  have hpConfirm : ((E.store cfg ext v (n + 1)).blocks
-        (get_latest_confirmed cfg ext (E.fcrStep cfg ext v n))).parent_root ∈
-      (E.store cfg ext v (n + 1)).block_roots := by
-    simpa only [E.fcrStep_store] using hpSelected
-  have hbEndpoint : get_latest_confirmed cfg ext (E.fcrStep cfg ext v n) ∈
-      (E.store cfg ext w m).block_roots :=
-    E.confirmed_known_at_all_honest_endpoints cfg ext hSA v hv n _ hHn1
-      hbConfirm hpConfirm hselected w hw m (E.slot_at_mono cfg hm) hH
-  by_cases hrelay : E.slot_at cfg (n + 1) + 1 ≤ E.slot_at cfg (m + 1)
-  · obtain ⟨hsub_t, hw_walk, hroute⟩ :=
-      hcov v hv n hadvslot hconf hprev hfin w hw m hm hH hrelay r₀ hkind hanc hIH
-    have hbge_r₀ := E.is_ancestor_transport_rev cfg ext hwfE hsub_t hanc.r₀_known hanc.b_known
-      hw_walk hanc.b_ge_r₀
-    have finishDirect (hhead_r₀ : is_ancestor (E.store cfg ext w m)
-        (get_head cfg (E.store cfg ext w m)) (get_node_for_root r₀) = true) :
-        is_ancestor (E.store cfg ext w m) (get_head cfg (E.store cfg ext w m))
-          (get_node_for_root (get_latest_confirmed cfg ext (E.fcrStep cfg ext v n))) = true := by
-      obtain ⟨hwf, hwalkK, hjc⟩ := E.store_domainK cfg ext hwfE hSA.2.2.2.2.2.1 hSA.1
-        hSA.2.2.2.2.2.2.2.2 w hw m hH
-      exact head_ge_of_safe_scoped_terminal cfg hwf
-        (filtered_subset_block_roots cfg (E.store cfg ext w m) hjc) hwalkK hjc
-        (hsub_t hanc.r₀_known) hbEndpoint hhead_r₀ hbge_r₀
-        (fun a c ha hc hlink hbc hcr => hsup w hw m hm hH hIH a c ha hc hlink hbc hcr)
-    rcases hroute with hconfirmed | hfinalized | hobserved
-    · exact finishDirect hconfirmed.2
-    · exact finishDirect hfinalized.2
-    · -- **Observed kind, post-deadline.** The threaded observed-anchor `SafeFrom` witness
-      -- `hobs` *is* `head ⪰ r₀` here, exactly as in the pre-deadline branch below: the route
-      -- tag says `r₀` is the FCR's `current_epoch_observed_justified_checkpoint.root`, and
-      -- `hobs` is that root's `SafeFrom` from `n + 1`. So this kind finishes through
-      -- `finishDirect` like the other two, with no covering fold and no head-tracking premise.
-      -- (The route's `jcb` covering payload is therefore unused here; it is retained in
-      -- `AnchorCovSupply` for the flag's producers.)
-      exact finishDirect (by
-        simpa only [hobserved.1] using hobs w hw m hm hH)
-  · obtain ⟨hr₀mem, hbmem, hbge_r₀⟩ :=
-      E.confirmed_ancestry_at_all_honest_endpoints cfg ext hSA v hv n _ r₀ hHn1
-        hbConfirm hpConfirm hanc.r₀_known hanc.b_ge_r₀ hselected w hw m
-          (E.slot_at_mono cfg hm) hH
-    have hhead_r₀ : is_ancestor (E.store cfg ext w m)
-        (get_head cfg (E.store cfg ext w m)) (get_node_for_root r₀) = true := by
-      rcases hkind with hconfirmed | hfinalized | hobserved
-      · simpa only [hconfirmed] using hprev w hw m hm hH
-      · have hfin' : E.SafeFrom cfg ext
-            (E.store cfg ext v (n + 1)).finalized_checkpoint.root (n + 1) := by
-          simpa only [E.fcrStep_store] using hfin
-        simpa only [hfinalized] using hfin' w hw m hm hH
-      · simpa only [hobserved] using hobs w hw m hm hH
-    obtain ⟨hwf, hwalkK, hjc⟩ := E.store_domainK cfg ext hwfE hSA.2.2.2.2.2.1 hSA.1
-      hSA.2.2.2.2.2.2.2.2 w hw m hH
-    exact head_ge_of_safe_scoped_terminal cfg hwf
-      (filtered_subset_block_roots cfg (E.store cfg ext w m) hjc) hwalkK hjc
-      hr₀mem hbmem hhead_r₀ hbge_r₀
-      (fun a c ha hc hlink hbc hcr => hsup w hw m hm hH hIH a c ha hc hlink hbc hcr)
-
-/-- **Selected-result closing from the anchor-scoped chain supply alone.**
-The concrete selected-candidate certificate transports `glc`, the actual reset
-anchor `r₀`, and `glc ⪰ r₀` to every honest endpoint, including endpoints before
-the ordinary one-slot relay deadline.  The anchor-kind `SafeFrom` invariant then
-gives `head ⪰ r₀`, and the supplied `[r₀, glc]` `DescendStep` chain closes the
-endpoint.  Thus the selected advance path needs neither `AnchorCovSupply` nor any
-covering/FFG geometry. -/
-theorem safeFromGlc_of_chainSupply (hSA : SpecAssumptions cfg ext E)
-    (v : ValidatorIndex) (hv : v ∈ E.honest) (n : ℕ)
-    (hprev : E.SafeFrom cfg ext (E.fcrStep cfg ext v n).confirmed_root (n + 1))
-    (hfin : E.SafeFrom cfg ext
-      (E.fcrStep cfg ext v n).store.finalized_checkpoint.root (n + 1))
-    (hobs : E.SafeFrom cfg ext
-      (E.fcrStep cfg ext v n).current_epoch_observed_justified_checkpoint.root (n + 1))
-    (hsupply : ∃ r₀ : Root,
-      (r₀ = (E.fcrStep cfg ext v n).confirmed_root ∨
-        r₀ = (E.store cfg ext v (n + 1)).finalized_checkpoint.root ∨
-        r₀ = (E.fcrStep cfg ext v n).current_epoch_observed_justified_checkpoint.root) ∧
-      E.ConfirmedWithAnchor cfg ext
-        (get_latest_confirmed cfg ext (E.fcrStep cfg ext v n)) r₀ v (n + 1) ∧
-      E.DescendStepChainSupply cfg ext
-        (get_latest_confirmed cfg ext (E.fcrStep cfg ext v n)) r₀ (n + 1)) :
-    E.SafeFrom cfg ext (get_latest_confirmed cfg ext (E.fcrStep cfg ext v n)) (n + 1) := by
-  have hwfE : WellFormedExecution E := hSA.2.1
-  obtain ⟨r₀, hkind, hanc, hsup⟩ := hsupply
-  refine E.safeFrom_of_headStep cfg ext ?_
-  intro w hw m hm hH hIH
-  have hHn1 : E.WithinHorizon cfg (n + 1) := E.withinHorizon_mono cfg hm hH
-  have hHn : E.WithinHorizon cfg n :=
-    E.withinHorizon_mono cfg (Nat.le_trans (Nat.le_succ n) hm) hH
-  have hji : JustificationInterface cfg ext E := hSA.2.2.2.2.2.2.2.2
-  have hconfirmed : (E.fcrStep cfg ext v n).confirmed_root ∈
-      (E.fcrStep cfg ext v n).store.block_roots := by
-    rw [E.fcrStep_confirmed_root, E.fcrStep_store]
-    exact (E.store_storeLE cfg ext v (Nat.le_succ n)).1
-      (E.confirmed_root_known_selected cfg ext hSA v hv n hHn)
-  have hfinalized : (E.fcrStep cfg ext v n).store.finalized_checkpoint.root ∈
-      (E.fcrStep cfg ext v n).store.block_roots := by
-    rw [E.fcrStep_store]
-    exact (hji.checkpoint_known v hv (n + 1) hHn1).2
-  have hobserved :
-      (E.fcrStep cfg ext v n).current_epoch_observed_justified_checkpoint.root ∈
-        (E.fcrStep cfg ext v n).store.block_roots := by
-    rw [E.fcrStep_store]
-    exact E.fcrStep_observed_known_selected cfg ext hji v hv n hHn1
-  rcases E.get_latest_confirmed_selected cfg ext hSA v hv (n + 1) hHn1
-      (E.fcrStep cfg ext v n) (E.fcrStep_store cfg ext v n)
-      hconfirmed hfinalized hobserved with hreset | ⟨hselected, hbSelected, hpSelected⟩
-  · rcases hreset with h | h | h
-    · rw [h]
-      exact hprev w hw m hm hH
-    · rw [h]
-      exact hfin w hw m hm hH
-    · rw [h]
-      exact hobs w hw m hm hH
-  have hbConfirm : get_latest_confirmed cfg ext (E.fcrStep cfg ext v n) ∈
-      (E.store cfg ext v (n + 1)).block_roots := by
-    simpa only [E.fcrStep_store] using hbSelected
-  have hpConfirm : ((E.store cfg ext v (n + 1)).blocks
-        (get_latest_confirmed cfg ext (E.fcrStep cfg ext v n))).parent_root ∈
-      (E.store cfg ext v (n + 1)).block_roots := by
-    simpa only [E.fcrStep_store] using hpSelected
-  obtain ⟨hr₀mem, hbmem, hbge_r₀⟩ :=
-    E.confirmed_ancestry_at_all_honest_endpoints cfg ext hSA v hv n _ r₀ hHn1
-      hbConfirm hpConfirm hanc.r₀_known hanc.b_ge_r₀ hselected w hw m
-        (E.slot_at_mono cfg hm) hH
-  have hhead_r₀ : is_ancestor (E.store cfg ext w m)
-      (get_head cfg (E.store cfg ext w m)) (get_node_for_root r₀) = true := by
-    rcases hkind with hconfirmed | hfinalized | hobserved
-    · simpa only [hconfirmed] using hprev w hw m hm hH
-    · have hfin' : E.SafeFrom cfg ext
-          (E.store cfg ext v (n + 1)).finalized_checkpoint.root (n + 1) := by
-        simpa only [E.fcrStep_store] using hfin
-      simpa only [hfinalized] using hfin' w hw m hm hH
-    · simpa only [hobserved] using hobs w hw m hm hH
-  obtain ⟨hwf, hwalkK, hjc⟩ := E.store_domainK cfg ext hwfE hSA.2.2.2.2.2.1 hSA.1
-    hji w hw m hH
-  exact head_ge_of_safe_scoped_terminal cfg hwf
-    (filtered_subset_block_roots cfg (E.store cfg ext w m) hjc) hwalkK hjc
-    hr₀mem hbmem hhead_r₀ hbge_r₀
-    (fun a c ha hc hlink hbc hcr => hsup w hw m hm hH hIH a c ha hc hlink hbc hcr)
 
 end Execution
 

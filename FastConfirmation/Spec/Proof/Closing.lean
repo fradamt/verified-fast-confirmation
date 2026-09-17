@@ -10,10 +10,11 @@ per-confirmed-block fields.
 
 ## Why the disjunctive route is needed
 
-`Compose.EngineGroundSuppliers` routes the L4 advance leg through its `hcase` field
-(`b ⪰ jc(w, m)` at every endpoint) — a field that is **false in the advance regime** (once a
+A supplier bundle that routes the L4 advance leg through an `hcase` field
+(`b ⪰ jc(w, m)` at every endpoint) demands something **false in the advance regime**: once a
 descendant of `b` is justified, `jc(w, m)` sits strictly above `b`, so `hcase` is not provable as
-`∀ E, SpecAssumptions → …`). `Structural.safeFrom_of_disjunctive` instead uses the disjunctive
+`∀ E, SpecAssumptions → …`. (`Compose.EngineGroundSuppliers` did exactly that; it is deleted
+with the observed-anchor cone's orphan sweep, P-6.) `Structural.safeFrom_of_disjunctive` instead uses the disjunctive
 route (`Structural.safeFrom_of_disjunctive`): the advance branch is discharged **off the engine**
 by the FFG takeover (`Structural.head_ge_of_advance`, `head ⪰ jc ⪰ b`), and only the chain branch
 runs the LMD margin. Thus no assumption requires the advance-regime-false `hcase`.
@@ -116,100 +117,16 @@ structure EngineAdvanceCore (E : Execution Root) : Prop where
       is_ancestor (E.store cfg ext w m) (get_head cfg (E.store cfg ext w m))
         (get_node_for_root b) = true
 
-/-- The executable-selection form of the advance core.  Unlike
-`EngineAdvanceCore`, its fields are demanded only for the block actually
-returned by `get_latest_confirmed (fcrStep v n)`.  Confirming-store and
-same-slot knownness are deliberately absent: `advance_safe_of_selected_core`
-derives both from the canonical candidate certificate and validation
-provenance. -/
-structure SelectedEngineAdvanceCore (E : Execution Root) : Prop where
-  /-- A covering checkpoint for the concrete selected result. -/
-  hcov : ∀ v ∈ E.honest, ∀ n : ℕ,
-    get_current_slot cfg (E.store cfg ext v (n + 1)) >
-        get_current_slot cfg (E.store cfg ext v n) →
-    is_one_confirmed cfg ext (E.fcrStep cfg ext v n).store
-      (get_current_balance_source (E.fcrStep cfg ext v n))
-      (get_latest_confirmed cfg ext (E.fcrStep cfg ext v n)) = true →
-    ∀ w ∈ E.honest, ∀ m : ℕ, n + 1 ≤ m →
-      E.WithinHorizon cfg m →
-      ∃ jcb : Checkpoint Root,
-        JustifiedIn (E.store cfg ext w m) jcb ∧
-        jcb.root ∈ (E.store cfg ext w m).block_roots ∧
-        is_ancestor (E.store cfg ext w m)
-          (get_node_for_root (get_latest_confirmed cfg ext (E.fcrStep cfg ext v n)))
-          (get_node_for_root jcb.root) = true ∧
-        (jcb.epoch < (E.store cfg ext w m).justified_checkpoint.epoch →
-          is_ancestor (E.store cfg ext w m)
-            (get_node_for_root (E.store cfg ext w m).justified_checkpoint.root)
-            (get_node_for_root
-              (get_latest_confirmed cfg ext (E.fcrStep cfg ext v n))) = true)
-  /-- The chain-branch head-safety engine for the concrete selected result. -/
-  heng : ∀ v ∈ E.honest, ∀ n : ℕ,
-    get_current_slot cfg (E.store cfg ext v (n + 1)) >
-        get_current_slot cfg (E.store cfg ext v n) →
-    is_one_confirmed cfg ext (E.fcrStep cfg ext v n).store
-      (get_current_balance_source (E.fcrStep cfg ext v n))
-      (get_latest_confirmed cfg ext (E.fcrStep cfg ext v n)) = true →
-    ∀ w ∈ E.honest, ∀ m : ℕ, n + 1 ≤ m →
-      E.WithinHorizon cfg m →
-      is_ancestor (E.store cfg ext w m)
-          (get_node_for_root (get_latest_confirmed cfg ext (E.fcrStep cfg ext v n)))
-          (get_node_for_root (E.store cfg ext w m).justified_checkpoint.root) = true →
-      is_ancestor (E.store cfg ext w m) (get_head cfg (E.store cfg ext w m))
-        (get_node_for_root (get_latest_confirmed cfg ext (E.fcrStep cfg ext v n))) = true
+/-! ### Deleted: `SelectedEngineAdvanceCore` and `advance_safe_of_selected_core`
+
+The selected-result variant of the localized advance core, and the advance leg built from it.
+Its only consumer was `AnchorThread.Spec_Safety_of_selectedCore`.
+
+They are deleted by the orphan sweep that follows the retirement of the legacy
+`SpecAssumptions` observed-anchor cone (P-6): every consumer they had was in that cone.
+See `docs/p6-justified-descends-derivation.md` §8. -/
 
 /-! ## Section 2 — the advance leg from the localized cores -/
-
-/-- The concrete selected-result bridge.  Reset equalities return through the
-three threaded `SafeFrom` witnesses.  A strict executable selection retains
-canonical membership and parent membership; the support/vote/relay proof then
-establishes current-moment endpoint knownness, after which the selected
-covering and engine fields close the disjunctive head argument. -/
-theorem advance_safe_of_selected_core (hSA : SpecAssumptions cfg ext E)
-    (hcore : E.SelectedEngineAdvanceCore cfg ext)
-    (v : ValidatorIndex) (hv : v ∈ E.honest) (n : ℕ)
-    (hadvslot : get_current_slot cfg (E.store cfg ext v (n + 1)) >
-      get_current_slot cfg (E.store cfg ext v n))
-    (hprev : E.SafeFrom cfg ext (E.fcrStep cfg ext v n).confirmed_root (n + 1))
-    (hfin : E.SafeFrom cfg ext
-      (E.fcrStep cfg ext v n).store.finalized_checkpoint.root (n + 1))
-    (hobs : E.SafeFrom cfg ext
-      (E.fcrStep cfg ext v n).current_epoch_observed_justified_checkpoint.root (n + 1))
-    (hconf : is_one_confirmed cfg ext (E.fcrStep cfg ext v n).store
-      (get_current_balance_source (E.fcrStep cfg ext v n))
-      (get_latest_confirmed cfg ext (E.fcrStep cfg ext v n)) = true) :
-    E.SafeFrom cfg ext (get_latest_confirmed cfg ext (E.fcrStep cfg ext v n)) (n + 1) := by
-  intro w hw m hm hH
-  have hHn1 : E.WithinHorizon cfg (n + 1) := E.withinHorizon_mono cfg hm hH
-  obtain ⟨hconfirmed, hfinalized, hobserved⟩ :=
-    E.fcrStep_reset_roots_known_selected cfg ext hSA v hv n hHn1
-  rcases E.get_latest_confirmed_selected cfg ext hSA v hv (n + 1) hHn1
-      (E.fcrStep cfg ext v n) (E.fcrStep_store cfg ext v n)
-      hconfirmed hfinalized hobserved with hreset | ⟨hselected, hbSelected, hpSelected⟩
-  · rcases hreset with h | h | h
-    · rw [h]
-      exact hprev w hw m hm hH
-    · rw [h]
-      exact hfin w hw m hm hH
-    · rw [h]
-      exact hobs w hw m hm hH
-  have hbConfirm : get_latest_confirmed cfg ext (E.fcrStep cfg ext v n) ∈
-      (E.store cfg ext v (n + 1)).block_roots := by
-    simpa only [E.fcrStep_store] using hbSelected
-  have hpConfirm : ((E.store cfg ext v (n + 1)).blocks
-        (get_latest_confirmed cfg ext (E.fcrStep cfg ext v n))).parent_root ∈
-      (E.store cfg ext v (n + 1)).block_roots := by
-    simpa only [E.fcrStep_store] using hpSelected
-  have hbEndpoint : get_latest_confirmed cfg ext (E.fcrStep cfg ext v n) ∈
-      (E.store cfg ext w m).block_roots :=
-    E.confirmed_known_at_all_honest_endpoints cfg ext hSA v hv n _ hHn1
-      hbConfirm hpConfirm hselected w hw m (E.slot_at_mono cfg hm) hH
-  obtain ⟨jcb, hjust, hjcbKnown, hbge, hadvHi⟩ :=
-    hcore.hcov v hv n hadvslot hconf w hw m hm hH
-  have hdisj := E.disjunction_of_covering cfg ext hSA w hw m hH hbEndpoint
-    hjust hjcbKnown hbge hadvHi
-  exact E.head_descent_of_disjunction cfg ext hSA w hw m hH hbEndpoint hdisj
-    (hcore.heng v hv n hadvslot hconf w hw m hm hH)
 
 /-- **The advance leg from `EngineAdvanceCore`.** For every `is_one_confirmed` block `b` at
 a slot-update store, `SafeFrom b (n+1)` — the engine leg of `L4Fold.L4Residual` — follows from the
@@ -239,8 +156,10 @@ end Execution
 `Suppliers.l4Residual_of_advance`, and both were unconsumed roots of the legacy
 `SpecAssumptions` observed-anchor cone; they are deleted with it (P-6).
 
-The localized cores `EngineAdvanceCore` / `SelectedEngineAdvanceCore` and the advance-leg
-builders `advance_safe_of_core` / `advance_safe_of_selected_core` are unaffected. See
+The localized core `EngineAdvanceCore` and its advance-leg builder `advance_safe_of_core`
+remain (both are unconsumed roots of long standing); the selected-result variant
+`SelectedEngineAdvanceCore` / `advance_safe_of_selected_core` had a single consumer in the cone
+and went with it in the orphan sweep. See
 `docs/p6-justified-descends-derivation.md` §8. -/
 
 end FastConfirmation.Spec

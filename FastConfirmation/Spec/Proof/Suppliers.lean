@@ -1,4 +1,4 @@
-import FastConfirmation.Spec.Proof.Compose
+import FastConfirmation.Spec.Proof.Structural
 
 /-!
 # Spec / Proof / Suppliers: wiring the engine-ground advance leg

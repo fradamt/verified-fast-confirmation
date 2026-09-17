@@ -1,4 +1,5 @@
-import FastConfirmation.Spec.Proof.Shrink
+import FastConfirmation.Spec.Proof.LastCruxes
+import FastConfirmation.Spec.Proof.Cruxes
 
 /-!
 # Spec / Proof / Structural: the disjunctive `hcase` and shared-anchor knownness
@@ -47,6 +48,13 @@ two structural residuals the `hBb`-free ground bundle (`INVstarTrack.EngineGroun
   anchorSlot` for an unknown `fv`; the missing export is "finalized blocks are old, hence already
   gossiped" — exactly `block_relay`'s `+1` gate, which the same-slot regime is past. This is the
   same-slot knownness condition represented by `SameSlotFinalizedRootKnownNonGenesis`.
+
+**P-6 note.** Some names used in this header no longer exist. The legacy `SpecAssumptions`
+observed-anchor cone was retired and swept for orphans, which removed `INVstarTrack.EngineGroundResiduals`, the two `SameSlotFinalizedRootKnown*`
+predicates, `IHMechanize.dynamicsChainStruct_of_endpoint`, and this module's own Section 2
+(`finalized_cross_known_of_boundary` and the two genesis-start discharges).
+The descriptions above are kept because they still identify the *shapes* the surviving
+declarations produce and consume. See `docs/p6-justified-descends-derivation.md` §8.
 -/
 
 namespace FastConfirmation.Spec
@@ -196,86 +204,16 @@ The `mem_of_is_ancestor_above_anchor` transport instantiated at the finalized re
 its walk domain / parent-order / knownness premises discharged from `SpecAssumptions` and only the
 boundary `hab` (the reset root sits at or above the anchor slot in `w`'s store) left as input. -/
 
-/-- **The reset root is known at `w`, from the boundary `hab`.** For honest `v`, `w`, times with
-`n + 1 ≤ m`, the confirming node's finalized reset root `fv := (store v (n+1)).finalized` is a known
-block at `(w, m)` provided it sits at or above the anchor slot in `w`'s store (`hab`). The transport
-is `LastCruxes.mem_of_is_ancestor_above_anchor` on `a := fw := (store w m).finalized` (known,
-`checkpoint_known`) with the anchor-slot walk from `AnchorFacade.store_walkKnownK` and the descent
-`fw ⪰ fv` from `finalized_descent`; every premise but `hab` is Layer-0 / interface-mechanical.
-`hab` is quantified over the anchor decomposition (`hgen` supplies the unique one). -/
-theorem finalized_cross_known_of_boundary (hSA : SpecAssumptions cfg ext E)
-    (v : ValidatorIndex) (hv : v ∈ E.honest) (n : ℕ)
-    (w : ValidatorIndex) (hw : w ∈ E.honest) (m : ℕ) (hm : n + 1 ≤ m)
-    (hH : E.WithinHorizon cfg m)
-    (hab : ∀ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
-      E.genesis_store = get_forkchoice_store cfg ast ablk →
-      ablk.message.slot ≤ ((E.store cfg ext w m).blocks
-        (E.store cfg ext v (n + 1)).finalized_checkpoint.root).slot) :
-    (E.store cfg ext v (n + 1)).finalized_checkpoint.root ∈ (E.store cfg ext w m).block_roots := by
-  obtain ⟨hgen, hwfE, _hdiv, _hbeh, _hsync, hec, _hsv, _hbb, hji⟩ := hSA
-  obtain ⟨ast, ablk, hgeq, hslot, hparent⟩ := hgen
-  have hgen' : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
-      E.genesis_store = get_forkchoice_store cfg ast ablk ∧
-      ast.slot = ablk.message.slot ∧ ablk.message.parent_root ≠ ablk.root :=
-    ⟨ast, ablk, hgeq, hslot, hparent⟩
-  -- the anchor root is known at `(w, m)` (shared genesis + `StoreLE`)
-  have hanchor_mem0 : ablk.root ∈ (E.store cfg ext w 0).block_roots := by
-    change ablk.root ∈ E.genesis_store.block_roots
-    rw [hgeq]; simp [get_forkchoice_store]
-  have hanchor_mem : ablk.root ∈ (E.store cfg ext w m).block_roots :=
-    (E.store_storeLE cfg ext w (Nat.zero_le m)).1 hanchor_mem0
-  -- Layer-0 parent-slot order and the target-known walk domain at `(w, m)`
-  have hpsl : ParentSlotLt (E.store cfg ext w m) :=
-    E.store_parentSlotLt cfg ext hwfE hec hgen' hwfE.anchor_parent_unscheduled w m
-  have hwalkK := E.store_walkKnownK cfg ext hwfE hec hgen' w m
-  -- `fw` is a known block; the walk `fw ↓ anchorSlot` stays known
-  have hfw_known : (E.store cfg ext w m).finalized_checkpoint.root ∈
-      (E.store cfg ext w m).block_roots := (hji.checkpoint_known w hw m hH).2
-  have hanchor_slot : ((E.store cfg ext w m).blocks ablk.root).slot = ablk.message.slot := by
-    rw [E.store_anchor_block cfg ext hwfE hgeq w m hanchor_mem]
-  have hwa : WalkKnown (E.store cfg ext w m) ablk.message.slot
-      (E.store cfg ext w m).finalized_checkpoint.root := by
-    have := hwalkK ablk.root hanchor_mem _ hfw_known
-    rwa [hanchor_slot] at this
-  -- the descent `fw ⪰ fv` and the boundary
-  have hanc : is_ancestor (E.store cfg ext w m)
-      (ForkChoiceNode.mk (E.store cfg ext w m).finalized_checkpoint.root)
-      (ForkChoiceNode.mk (E.store cfg ext v (n + 1)).finalized_checkpoint.root) = true := by
-    have := hji.finalized_descent v hv (n + 1) w hw m
-      (E.withinHorizon_mono cfg hm hH) hH hm
-    simpa only [get_node_for_root] using this
-  exact mem_of_is_ancestor_above_anchor hpsl hwa (hab ast ablk hgeq) hanc
+/-! ### Deleted: the shared-anchor same-slot discharges
 
-/-- **`SameSlotFinalizedRootKnownNonGenesis` for the genesis-start regime.** When the anchor
-block sits at `GENESIS_SLOT` (`hanchor0`, a genesis start, as opposed to a checkpoint-sync
-anchor), the boundary `hab` of `finalized_cross_known_of_boundary` is `0 ≤ _` — trivially true — so
-the confirming node's finalized reset root is known at **every** honest `(w, m)` with `n + 1 ≤ m`,
-**same-slot included, non-genesis included, with no relay**. This closes the same-slot reset corner
-outright under genesis-start (hence also `SameSlotFinalizedRootKnownNonGenesis`, whose non-genesis
-guard is not needed here). -/
-theorem sameSlotFinalizedRootKnown_of_genesis_start (hSA : SpecAssumptions cfg ext E)
-    (hanchor0 : ∀ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
-      E.genesis_store = get_forkchoice_store cfg ast ablk → ablk.message.slot = GENESIS_SLOT) :
-    ∀ v ∈ E.honest, ∀ n : ℕ, ∀ w ∈ E.honest, ∀ m : ℕ, n + 1 ≤ m →
-      E.WithinHorizon cfg m →
-      (E.store cfg ext v (n + 1)).finalized_checkpoint.root ∈
-        (E.store cfg ext w m).block_roots := by
-  intro v hv n w hw m hm hH
-  refine E.finalized_cross_known_of_boundary cfg ext hSA v hv n w hw m hm hH ?_
-  intro ast ablk hgeq
-  rw [hanchor0 ast ablk hgeq, GENESIS_SLOT]
-  exact Nat.zero_le _
+`finalized_cross_known_of_boundary` and the two genesis-start discharges of the same-slot
+finalized-reset corner stood here. Their conclusions were the
+`SameSlotFinalizedRootKnown*` predicates, deleted with the conditional routes that consumed
+them. Section 1's disjunctive `hcase` machinery is unaffected.
 
-/-- **`SameSlotFinalizedRootKnownNonGenesis` from genesis-start.** The guarded field is
-discharged under the genesis-start hypothesis: `sameSlotFinalizedRootKnown_of_genesis_start` establishes the
-reset-root knownness for every `(w, m)` regardless of the same-slot / non-genesis guards, so the
-guarded `SameSlotFinalizedRootKnownNonGenesis` follows by dropping its two extra hypotheses. -/
-theorem sameSlotFinalizedRootKnownNonGenesis_of_genesis_start (hSA : SpecAssumptions cfg ext E)
-    (hanchor0 : ∀ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
-      E.genesis_store = get_forkchoice_store cfg ast ablk → ablk.message.slot = GENESIS_SLOT) :
-    E.SameSlotFinalizedRootKnownNonGenesis cfg ext :=
-  fun v hv n w hw m hm hH _hgate _hng =>
-    E.sameSlotFinalizedRootKnown_of_genesis_start cfg ext hSA hanchor0 v hv n w hw m hm hH
+They are deleted by the orphan sweep that follows the retirement of the legacy
+`SpecAssumptions` observed-anchor cone (P-6): every consumer they had was in that cone.
+See `docs/p6-justified-descends-derivation.md` §8. -/
 
 end Execution
 

@@ -181,7 +181,7 @@ decision 13).
 | `Spec/Model/Validator.lean` | honest attesting (`honest_attestation_data`, `honest_attestation`) |
 | `Spec/Model/Execution.lean` | `Event`, `Execution`, store/FCR trajectories, `WellFormedStore` |
 | `Spec/Model/Assumptions.lean` | ground-truth quantities; `HonestBehavior`, `Synchrony`, `ExternalsCoherence`, `StaticValidatorSet`, `ByzantineBound` |
-| `Spec/TheoremStatements.lean` | `JustifiedIn`, `JustificationInterface`, `SpecAssumptions`, `Spec_Safety`, `Spec_Monotonicity` |
+| `Spec/TheoremStatements.lean` | `JustifiedIn`, `JustificationInterface`, `SpecAssumptions`, `Spec_Safety`, `Spec_Monotonicity_no_revert` (the unrestricted `Spec_Monotonicity` was deleted with the observed-anchor cone, P-6) |
 | `Spec/Proof/StoreInvariants.lean`, `Spec/Proof/Trajectory.lean` | proof layer 0: store-extension order `StoreLE` + handler preservation; clock coherence |
 | `Spec/Model.lean`, `Spec.lean` | facades |
 

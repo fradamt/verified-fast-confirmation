@@ -11,25 +11,19 @@ inputs.
 
 ## What is delivered
 
-1. `observedKnown_of_interface` — the `observed_known` fact is closed from
-   `observed_checkpoint_known` across all three `fcrStep`-observed cases (off-boundary via
-   `fcrStep_observed_else`; on-boundary via `fcrStep_observed_boundary`, whose two rotation
-   sources are the interface's first two knownness conjuncts). The synchrony hypothesis
-   `slot_at n ≤ slot_at m` comes from `n + 1 ≤ m` by `slot_at_mono`.
+1. `boundarySource_known` — the root of the epoch-boundary rotation source `src` is a known
+   block at every honest store from `n + 1` on, from `observed_checkpoint_known`'s first two
+   conjuncts. What that does *not* give is the *justification* of `src` in `w`'s view — a
+   cross-store semantic fact of the unrealized / greatest-unrealized checkpoint family, NOT
+   delivered by the knownness-only `observed_checkpoint_known`.
 
-   `observedFilterResiduals_of_interface` used to bundle this with the ahead-regime
-   head-tracking premise into `E5Filter.ObservedFilterResiduals`. Both the bundle and the
-   premise are deleted — see the note in Section 1 below.
+   `observedKnown_of_interface` and `observedFilterResiduals_of_interface` stood beside it:
+   the first closed the observed anchor's own root knownness across the three `fcrStep`-observed
+   cases, the second bundled that with the ahead-regime head-tracking premise into an
+   `E5Filter.ObservedFilterResiduals`. Both are deleted with the legacy `SpecAssumptions`
+   observed-anchor cone (P-6) — see the Section 1 and Section 3 notes below.
 
-2. `boundarySource_known`: `MicroSteps.prev_greatest_justifiedIn_of_boundarySource`
-   reduces the boundary-source premise to `JustifiedIn (store w m) src` for the
-   boundary rotation source `src`. Its root
-   is known (`observed_checkpoint_known`, the same two conjuncts as item 1 — delivered here), so
-   what remains is the *justification* of `src` in `w`'s view — a cross-store semantic fact of the
-   unrealized / greatest-unrealized checkpoint family, NOT delivered by the knownness-only
-   `observed_checkpoint_known`.
-
-3. `hbound_of_justified_block_boundary` + `vote_lands_export_closed` /
+2. `hbound_of_justified_block_boundary` + `vote_lands_export_closed` /
    `vote_ubiquity_export_closed` — `HeadStack`'s vote-landing bundle had one residual, the
    checkpoint-boundary bound `hbound`. `justified_block_boundary` **is** that bound, given the
    honest voter witness (built from `hvote`, `a.data.target = t` by `rfl`) and the epoch ordering
@@ -69,38 +63,16 @@ every honest `w`, so the observed anchor is never in the ahead regime and
 
 /-! ## Section 2 — `observed_known` from `observed_checkpoint_known` -/
 
-/-- **`observed_known` from `observed_checkpoint_known`.** The `fcrStep`-observed checkpoint's
-root is a known block at every honest store from `n + 1` on. Case split on the epoch boundary
-of `store v (n+1)`:
+/-! ### Deleted: `observedKnown_of_interface`
 
-* **off boundary** — `fcrStep_observed_else`: the value is `(fcr v n)`'s observed checkpoint;
-  its root is the third `observed_checkpoint_known` conjunct at `(v, n)`.
-* **on boundary** — `fcrStep_observed_boundary`: the value is the rotation source, either the
-  store's `unrealized_justified_checkpoint` (first conjunct at `(v, n+1)`) or the carried
-  `previous_epoch_greatest_unrealized_checkpoint` (second conjunct at `(v, n)`).
+The `observed_known` field of the observed-anchor filter bundle, closed from
+`observed_checkpoint_known`. Its only consumer was `observedFilterResiduals_of_interface`
+(deleted with the cone). `boundarySource_known` below still delivers the same two knownness
+conjuncts for the boundary rotation source.
 
-The synchrony premise `slot_at _ ≤ slot_at m` follows from `n + 1 ≤ m` by `slot_at_mono`. -/
-theorem observedKnown_of_interface (hji : JustificationInterface cfg ext E) :
-    ∀ v ∈ E.honest, ∀ n : ℕ, ∀ w ∈ E.honest, ∀ m : ℕ, n + 1 ≤ m →
-      E.WithinHorizon cfg m →
-      (E.fcrStep cfg ext v n).current_epoch_observed_justified_checkpoint.root ∈
-        (E.store cfg ext w m).block_roots := by
-  intro v hv n w hw m hm hH
-  have hHn1 : E.WithinHorizon cfg (n + 1) := E.withinHorizon_mono cfg hm hH
-  have hnm : n ≤ m := Nat.le_trans (Nat.le_succ n) hm
-  have hHn : E.WithinHorizon cfg n := E.withinHorizon_mono cfg hnm hH
-  by_cases hstart :
-      is_start_slot_at_epoch cfg (get_current_slot cfg (E.store cfg ext v (n + 1))) = true
-  · rw [E.fcrStep_observed_boundary cfg ext v n hstart]
-    split_ifs with hnext
-    · exact (hji.observed_checkpoint_known v hv (n + 1) w hw m
-        hHn1 hH (E.slot_at_mono cfg hm)).1
-    · exact (hji.observed_checkpoint_known v hv n w hw m
-        hHn hH (E.slot_at_mono cfg hnm)).2.1
-  · rw [Bool.not_eq_true] at hstart
-    rw [E.fcrStep_observed_else cfg ext v n hstart]
-    exact (hji.observed_checkpoint_known v hv n w hw m
-      hHn hH (E.slot_at_mono cfg hnm)).2.2
+They are deleted by the orphan sweep that follows the retirement of the legacy
+`SpecAssumptions` observed-anchor cone (P-6): every consumer they had was in that cone.
+See `docs/p6-justified-descends-derivation.md` §8. -/
 
 /-! ## Section 3 — deleted: `observedFilterResiduals_of_interface`
 
@@ -120,7 +92,7 @@ epoch-boundary rotation source
           else (fcr v n).previous_epoch_greatest_unrealized_checkpoint.
 
 `boundarySource_known` delivers the *knownness* half of that input (`src.root ∈ block_roots`)
-from `observed_checkpoint_known` — the same two conjuncts item 1 uses. Root knownness alone
+from `observed_checkpoint_known`. Root knownness alone
 does not establish the *justification* of `src` in `w`'s view: `JustifiedIn` needs
 `src` to be one of `(store w m)`'s own checkpoint fields or an `unrealized_justifications` entry
 of a known block, whereas `observed_checkpoint_known` exports only root-knownness. The

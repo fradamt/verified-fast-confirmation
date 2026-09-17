@@ -1,4 +1,5 @@
-import FastConfirmation.Spec.Proof.ShellInstantiation
+import FastConfirmation.Spec.Proof.AnchorFacade
+import FastConfirmation.Spec.Proof.ResidualMechanicalII
 import FastConfirmation.Spec.Proof.InterfaceRewire
 import FastConfirmation.Spec.Proof.Engine
 import FastConfirmation.Spec.Proof.EdgeDynamics
@@ -45,6 +46,12 @@ This module constructs these fields from smaller store-dynamics inputs.
 
 * **Section 4 — `hdeltas` (class migration).** `hdeltas_of_monotone` constructs
   the pre-`T1` per-slot `∃ξα` step from same-epoch monotonicity premises.
+
+**P-6 note.** Some names used in this header no longer exist. The legacy `SpecAssumptions`
+observed-anchor cone was retired and swept for orphans, which removed `ShellInstantiation.ShellResiduals`, `EdgeDynamics.EdgeInputResidual`,
+and this module's own `dynamicsChainStruct_of_endpoint` and `hdeltas_of_monotone`.
+The descriptions above are kept because they still identify the *shapes* the surviving
+declarations produce and consume. See `docs/p6-justified-descends-derivation.md` §8.
 -/
 
 namespace FastConfirmation.Spec
@@ -79,45 +86,15 @@ namespace Execution
 
 variable (E : Execution Root)
 
-/-- **`DynamicsChainStruct` from two per-endpoint inputs.** Under
-`SpecAssumptions`, the structural confirmed-chain obligation follows from
-`hb` (the confirmed `b` is relay-known at each honest endpoint under the shell IH) and
-`hcase` (the L4 loop-inversion descent: `get_ancestor_roots store b jc ≠ []` or `b = jc`).
-The other fields — `ParentSlotLt` (`store_parentSlotLt`), filtered containment
-(`filtered_subset_block_roots`), justified knownness (`justified_known_of_interface`), and
-the `b`-walk domain (`store_walkKnownK`, with `jc`/`b` both known) — follow from
-`SpecAssumptions`. -/
-theorem dynamicsChainStruct_of_endpoint (hSA : SpecAssumptions cfg ext E) {b : Root} {n₀ : ℕ}
-    (hb : ∀ w ∈ E.honest, ∀ m : ℕ, n₀ ≤ m →
-      E.WithinHorizon cfg m →
-      (∀ w' ∈ E.honest, ∀ m' : ℕ, n₀ ≤ m' → E.slot_at cfg m' < E.slot_at cfg m →
-        is_ancestor (E.store cfg ext w' m') (get_head cfg (E.store cfg ext w' m'))
-          (get_node_for_root b) = true) →
-      b ∈ (E.store cfg ext w m).block_roots)
-    (hcase : ∀ w ∈ E.honest, ∀ m : ℕ, n₀ ≤ m →
-      E.WithinHorizon cfg m →
-      (∀ w' ∈ E.honest, ∀ m' : ℕ, n₀ ≤ m' → E.slot_at cfg m' < E.slot_at cfg m →
-        is_ancestor (E.store cfg ext w' m') (get_head cfg (E.store cfg ext w' m'))
-          (get_node_for_root b) = true) →
-      get_ancestor_roots (E.store cfg ext w m) b
-          (E.store cfg ext w m).justified_checkpoint.root ≠ [] ∨
-        b = (E.store cfg ext w m).justified_checkpoint.root) :
-    E.DynamicsChainStruct cfg ext b n₀ := by
-  obtain ⟨hgen, hwf, _hdiv, _hbeh, _hsync, hec, _hsv, _hbb, hji⟩ := hSA
-  intro w hw m hm hH hIH
-  have hpsl : ParentSlotLt (E.store cfg ext w m) :=
-    E.store_parentSlotLt cfg ext hwf hec hgen hwf.anchor_parent_unscheduled w m
-  have hjcw : (E.store cfg ext w m).justified_checkpoint.root ∈
-      (E.store cfg ext w m).block_roots :=
-    E.justified_known_of_interface cfg ext hji w hw m hH
-  have hbmem := hb w hw m hm hH hIH
-  have hwalk : WalkKnown (E.store cfg ext w m)
-      ((E.store cfg ext w m).blocks (E.store cfg ext w m).justified_checkpoint.root).slot b :=
-    E.store_walkKnownK cfg ext hwf hec hgen w m
-      (E.store cfg ext w m).justified_checkpoint.root hjcw b hbmem
-  exact dynamicsChainStruct_body cfg b hpsl
-    (filtered_subset_block_roots cfg (E.store cfg ext w m) hjcw)
-    hbmem hjcw hwalk (hcase w hw m hm hH hIH)
+/-! ### Deleted: `dynamicsChainStruct_of_endpoint` and `hdeltas_of_monotone`
+
+The per-endpoint `DynamicsChainStruct` constructor and the monotone pre-`T1` migration step.
+The first was consumed only by `FinalWiring.dynamics_struct_of_suppliers`, the second only by
+`VoteLanding.hdeltas_sameEpoch`.
+
+They are deleted by the orphan sweep that follows the retirement of the legacy
+`SpecAssumptions` observed-anchor cone (P-6): every consumer they had was in that cone.
+See `docs/p6-justified-descends-derivation.md` §8. -/
 
 /-! ## Section 2 — `hmaj`: post-`T1` saturation and boost dilution
 
@@ -273,49 +250,6 @@ fresh honest committee of slot `σ' + 1` entering `Sclass` (`votes_head` + IH: i
 `desc(b')`). Hence the `∃ξα` witness is `ξ = α = 0`, and `hdeltas` collapses to the three
 per-slot facts `hSmono` / `hXmono` / `hρ0` below. This section mechanizes that `ξ = α = 0`
 assembly; the three monotonicity facts are explicit inputs. -/
-
-/-- **`hdeltas` from same-epoch monotonicity.** The pre-`T1` per-slot step with the
-same-epoch `ρ = 0` witness `ξ = α = 0`: given per slot the honest-support growth `hSmono`
-(`s(σ')` grows by at least the fresh honest committee), the sibling-stuck antitonicity
-`hXmono` (`x` never grows), and the fresh-committee/`Unrec`-drop partition `hρ0`, the `∃ξα`
-migration field holds with witnesses `ξ = α = 0`. -/
-theorem hdeltas_of_monotone (w : ValidatorIndex) (m : ℕ) (b : Root) (lo es : Slot)
-    (hSmono : ∀ σ' : Slot, es ≤ σ' →
-      E.SlotWithinHorizon cfg σ' → E.SlotWithinHorizon cfg (σ' + 1) →
-      compute_epoch_at_slot cfg (σ' + 1) < compute_epoch_at_slot cfg es + 2 →
-      E.Sval cfg ext w m b lo σ' +
-          E.weight ((E.span_committee lo (σ' + 1) \ E.span_committee lo σ').filter
-            (fun i => i ∈ E.honest))
-        ≤ E.Sval cfg ext w m b lo (σ' + 1))
-    (hXmono : ∀ σ' : Slot, es ≤ σ' →
-      E.SlotWithinHorizon cfg σ' → E.SlotWithinHorizon cfg (σ' + 1) →
-      compute_epoch_at_slot cfg (σ' + 1) < compute_epoch_at_slot cfg es + 2 →
-      E.Xval cfg ext w m b lo (σ' + 1) ≤ E.Xval cfg ext w m b lo σ')
-    (hρ0 : ∀ σ' : Slot, es ≤ σ' →
-      E.SlotWithinHorizon cfg σ' → E.SlotWithinHorizon cfg (σ' + 1) →
-      compute_epoch_at_slot cfg (σ' + 1) < compute_epoch_at_slot cfg es + 2 →
-      E.weight ((E.span_committee (σ' + 1) (σ' + 1)).filter (fun i => i ∈ E.honest)) ≤
-        E.weight (E.Unrec cfg ext w m b lo es σ' \ E.Unrec cfg ext w m b lo es (σ' + 1))
-          + E.weight ((E.span_committee lo (σ' + 1) \ E.span_committee lo σ').filter
-            (fun i => i ∈ E.honest))) :
-    ∀ σ' : Slot, es ≤ σ' →
-      E.SlotWithinHorizon cfg σ' → E.SlotWithinHorizon cfg (σ' + 1) →
-      compute_epoch_at_slot cfg (σ' + 1) < compute_epoch_at_slot cfg es + 2 →
-      ∃ ξ α : ℕ,
-        (E.Sval cfg ext w m b lo σ' + ξ + α +
-            E.weight ((E.span_committee lo (σ' + 1) \ E.span_committee lo σ').filter
-              (fun i => i ∈ E.honest))
-          ≤ E.Sval cfg ext w m b lo (σ' + 1)) ∧
-        (E.Xval cfg ext w m b lo (σ' + 1) + ξ ≤ E.Xval cfg ext w m b lo σ') ∧
-        (E.weight ((E.span_committee (σ' + 1) (σ' + 1)).filter (fun i => i ∈ E.honest)) ≤
-          E.weight (E.Unrec cfg ext w m b lo es σ' \ E.Unrec cfg ext w m b lo es (σ' + 1))
-            + ξ + α +
-            E.weight ((E.span_committee lo (σ' + 1) \ E.span_committee lo σ').filter
-              (fun i => i ∈ E.honest))) := by
-  intro σ' h1 hσH hσ1H h2
-  exact ⟨0, 0, by simpa using hSmono σ' h1 hσH hσ1H h2,
-    by simpa using hXmono σ' h1 hσH hσ1H h2,
-    by simpa using hρ0 σ' h1 hσH hσ1H h2⟩
 
 end Execution
 

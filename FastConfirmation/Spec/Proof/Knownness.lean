@@ -49,6 +49,12 @@ In the checkpoint-sync above-anchor obstruction, an unknown `b` looks up to the 
 slot `0` below a checkpoint-sync anchor, so `mem_of_is_ancestor_above_anchor`'s `hab` is not
 derivable there.
 
+
+**P-6 note.** Some names used in this header no longer exist. The legacy `SpecAssumptions`
+observed-anchor cone was retired and swept for orphans, which removed `Closing.Spec_Safety_closed` and this module's own
+`mem_of_honest_past_descendant` / `hb_sameslot_of_pastDescendant`.
+The descriptions above are kept because they still identify the *shapes* the surviving
+declarations produce and consume. See `docs/p6-justified-descends-derivation.md` §8.
 -/
 
 namespace FastConfirmation.Spec
@@ -163,71 +169,15 @@ that `SpecAssumptions` alone does not supply is the honest past descendant `(u, 
 honest-supporter existence + head-knownness residual (`HonestPastDescendant` below); everything else
 is Layer-0 / synchrony-mechanical. -/
 
-/-- **The transport core (fully proven).** Under genesis-start, from an honest supporter's past-slot
-store `(u, n_u)` (`slot n_u < slot (n+1)`) holding a block `d` that descends from `b` at the
-confirming store `(v, n+1)`, the confirmed block `b` is known at **every** honest `(w, m)` with
-`n + 1 ≤ m` — same slot included, past `block_relay`'s `+1` gate. Two `block_relay` hops
-(`(u, n_u) ⊆ (v, n+1)` for the ancestry transport, `(u, n_u) ⊆ (w, m)` for the endpoint) sandwich a
-`get_ancestor_congr` that carries the `b ≼ d` walk from `(v, n+1)` to `(u, n_u)`. -/
-theorem mem_of_honest_past_descendant (hSA : SpecAssumptions cfg ext E)
-    (hanchor0 : ∀ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
-      E.genesis_store = get_forkchoice_store cfg ast ablk → ablk.message.slot = GENESIS_SLOT)
-    (v : ValidatorIndex) (hv : v ∈ E.honest) (n : ℕ) (b : Root)
-    (w : ValidatorIndex) (hw : w ∈ E.honest) (m : ℕ) (hm : n + 1 ≤ m)
-    (hHn1 : E.WithinHorizon cfg (n + 1)) (hHm : E.WithinHorizon cfg m)
-    (u : ValidatorIndex) (hu : u ∈ E.honest) (n_u : ℕ) (d : Root)
-    (hHnu : E.WithinHorizon cfg n_u)
-    (hslot_lt : E.slot_at cfg n_u < E.slot_at cfg (n + 1))
-    (hd_u : d ∈ (E.store cfg ext u n_u).block_roots)
-    (hanc_v : is_ancestor (E.store cfg ext v (n + 1))
-      (get_node_for_root d) (get_node_for_root b) = true) :
-    b ∈ (E.store cfg ext w m).block_roots := by
-  obtain ⟨hgen, hwfE, _hdiv, _hhb, hsync, hec, _hsv, _hbb, _hji⟩ := hSA
-  obtain ⟨ast, ablk, hgeq, hslot, hparent⟩ := hgen
-  have hgen' : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
-      E.genesis_store = get_forkchoice_store cfg ast ablk ∧
-      ast.slot = ablk.message.slot ∧ ablk.message.parent_root ≠ ablk.root :=
-    ⟨ast, ablk, hgeq, hslot, hparent⟩
-  set rb := ((E.store cfg ext v (n + 1)).blocks b).slot with hrb
-  -- containment `(u, n_u) ⊆ (v, n+1)` from block_relay (past-slot gate)
-  have hgate_uv : E.slot_at cfg n_u + 1 ≤ E.slot_at cfg (n + 1 + 1) :=
-    le_trans hslot_lt (E.slot_at_mono cfg (Nat.le_succ (n + 1)))
-  have hsub_uv : (E.store cfg ext u n_u).block_roots ⊆ (E.store cfg ext v (n + 1)).block_roots :=
-    fun r hr => hsync.block_relay u hu n_u r hHnu hr v hv (n + 1) hHn1 hgate_uv
-  -- blanket block agreement on the contained store
-  have hagree : ∀ x ∈ (E.store cfg ext u n_u).block_roots,
-      (E.store cfg ext u n_u).blocks x = (E.store cfg ext v (n + 1)).blocks x := fun x hx =>
-    hwfE.blocks_agree (E.blockProvenance cfg ext u n_u) (E.blockProvenance cfg ext v (n + 1))
-      hx (hsub_uv hx)
-  -- the walk from `d` at `(u, n_u)` toward `rb`
-  have hanchor_mem0u : ablk.root ∈ (E.store cfg ext u 0).block_roots := by
-    change ablk.root ∈ E.genesis_store.block_roots
-    rw [hgeq]; simp [get_forkchoice_store]
-  have hanchor_memu : ablk.root ∈ (E.store cfg ext u n_u).block_roots :=
-    (E.store_storeLE cfg ext u (Nat.zero_le n_u)).1 hanchor_mem0u
-  have hpsl_u : ParentSlotLt (E.store cfg ext u n_u) :=
-    E.store_parentSlotLt cfg ext hwfE hec hgen' hwfE.anchor_parent_unscheduled u n_u
-  have hanchor_slotu : ((E.store cfg ext u n_u).blocks ablk.root).slot = ablk.message.slot := by
-    rw [E.store_anchor_block cfg ext hwfE hgeq u n_u hanchor_memu]
-  have hwalk0 : WalkKnown (E.store cfg ext u n_u) ablk.message.slot d := by
-    have := E.store_walkKnownK cfg ext hwfE hec hgen' u n_u ablk.root hanchor_memu d hd_u
-    rwa [hanchor_slotu] at this
-  have hwalk_u : WalkKnown (E.store cfg ext u n_u) rb d :=
-    hwalk0.mono (by rw [hanchor0 ast ablk hgeq, GENESIS_SLOT]; exact Nat.zero_le _)
-  -- the `b ≼ d` walk lands on `b`; transport it to `(u, n_u)`
-  have hv_lands : get_ancestor (E.store cfg ext v (n + 1)) (ForkChoiceNode.mk d) rb =
-      ForkChoiceNode.mk b := by
-    simpa only [is_ancestor, get_node_for_root, decide_eq_true_eq] using hanc_v
-  have hu_lands : get_ancestor (E.store cfg ext u n_u) (ForkChoiceNode.mk d) rb =
-      ForkChoiceNode.mk b := by
-    rw [get_ancestor_congr hagree hd_u hwalk_u]; exact hv_lands
-  have hb_u : b ∈ (E.store cfg ext u n_u).block_roots := by
-    have hspec := (get_ancestor_spec hpsl_u hwalk_u).1
-    rw [hu_lands] at hspec; exact hspec
-  -- second block_relay hop `(u, n_u) → (w, m)` (same-slot included)
-  have hgate_uw : E.slot_at cfg n_u + 1 ≤ E.slot_at cfg (m + 1) :=
-    le_trans (le_trans hslot_lt (E.slot_at_mono cfg hm)) (E.slot_at_mono cfg (Nat.le_succ m))
-  exact hsync.block_relay u hu n_u b hHnu hb_u w hw m hHm hgate_uw
+/-! ### Deleted: `mem_of_honest_past_descendant` and `hb_sameslot_of_pastDescendant`
+
+The geometric transport for the same-slot knownness corner, and the `hb_sameslot` discharge
+built on it. Their only consumer was `Spec_Safety_of_knownness`. `HonestPastDescendant`,
+`hbconf_of_genesisStart` and `hck_of_genesisStart` are unaffected.
+
+They are deleted by the orphan sweep that follows the retirement of the legacy
+`SpecAssumptions` observed-anchor cone (P-6): every consumer they had was in that cone.
+See `docs/p6-justified-descends-derivation.md` §8. -/
 
 /-- **The honest-past-descendant residual for `hb_sameslot`.** For every confirmed block `b` at a
 slot-update store, an honest node `u` and past-slot second `n_u` (`slot n_u < slot (n+1)`) whose
@@ -247,25 +197,6 @@ def HonestPastDescendant (E : Execution Root) : Prop :=
       d ∈ (E.store cfg ext u n_u).block_roots ∧
       is_ancestor (E.store cfg ext v (n + 1))
         (get_node_for_root d) (get_node_for_root b) = true
-
-/-- **`hb_sameslot` from the honest-past-descendant residual.** Discharges `EngineAdvanceCore`'s
-`hb_sameslot` field (indeed for every `m ≥ n+1`, same slot or later) from `HonestPastDescendant` via
-`mem_of_honest_past_descendant`. -/
-theorem hb_sameslot_of_pastDescendant (hSA : SpecAssumptions cfg ext E)
-    (hanchor0 : ∀ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
-      E.genesis_store = get_forkchoice_store cfg ast ablk → ablk.message.slot = GENESIS_SLOT)
-    (hpast : E.HonestPastDescendant cfg ext)
-    (v : ValidatorIndex) (hv : v ∈ E.honest) (n : ℕ) (b : Root)
-    (hconf : is_one_confirmed cfg ext (E.fcrStep cfg ext v n).store
-      (get_current_balance_source (E.fcrStep cfg ext v n)) b = true)
-    (w : ValidatorIndex) (hw : w ∈ E.honest) (m : ℕ) (hm : n + 1 ≤ m)
-    (hHm : E.WithinHorizon cfg m) :
-    b ∈ (E.store cfg ext w m).block_roots := by
-  have hHn1 := E.withinHorizon_mono cfg hm hHm
-  obtain ⟨u, n_u, d, hu, hHnu, hslot_lt, hd_u, hanc_v⟩ :=
-    hpast v hv n b hHn1 hconf
-  exact E.mem_of_honest_past_descendant cfg ext hSA hanchor0 v hv n b w hw m hm
-    hHn1 hHm u hu n_u d hHnu hslot_lt hd_u hanc_v
 
 /-! ## Section 3b — `hck`: single-store confirmed-root knownness (monotonicity) -/
 
