@@ -313,8 +313,9 @@ theorem forkEdgeSupply_of_ground {b : Root} {n₀ : ℕ}
 ground per-block supply (`fork_edges_ground`, `ForkEdgeGroundSupply`, `hBb`-free). It reaches
 `Spec_Safety` through the engine-agnostic `L4Fold` skeleton. `EngineGroundResiduals` mirrors
 `Definitive.EngineOpenResiduals` with `fork_edges_engine` (`ForkEdgeEngineSupply`, `hBb`)
-replaced by `fork_edges_ground` — so `Spec_Safety_of_ground` is the `hBb`-free mirror of
-`Definitive.Spec_Safety_of_sameSlot_and_engine`. -/
+replaced by `fork_edges_ground`. The two safety headlines that used to close this track —
+`Spec_Safety_of_ground` and its splitter `soundResidualsGround_of_split` — are deleted with the
+legacy `SpecAssumptions` observed-anchor cone (P-6); see the notes where they stood. -/
 
 /-- **The ground sound-residual bundle.** `AnchorFacade.SoundResiduals` with the engine
 leg instantiated on the ground track: the two E5 reset anchors (`genesis_dom`/`finalized_dom`)
@@ -394,33 +395,14 @@ structure EngineGroundResiduals (E : Execution Root) : Prop where
       (get_current_balance_source (E.fcrStep cfg ext v n)) b = true →
     E.ForkEdgeGroundSupply cfg ext b (n + 1)
 
-/-- **`SoundResidualsGround` from the same-slot split** — the `hBb`-free mirror of
-`shellResiduals_of_strongPrefixSafetyInputs` (and `Definitive`'s split).
-The E5 anchors are rebuilt from the interface as follows:
-`genesis_dom` from `FinalWiring.genesis_dom_of_interface`, `observed_filter` from
-`ExportWiring.observedFilterResiduals_of_interface` fed `prev_greatest_of_interface`, and
-`finalized_dom` from `finalized_dom_of_known` with the knownness split into the later-slot
-`finalized_root_relay_known` and the surviving same-slot corner `SameSlotFinalizedRootKnown`. The engine
-leg is the `hBb`-free `EngineGroundResiduals`. -/
-theorem soundResidualsGround_of_split (hSA : SpecAssumptions cfg ext E)
-    (htracks : E.HeadTracksJustified cfg ext)
-    (hSameSlot : E.SameSlotFinalizedRootKnown cfg ext) (hEng : E.EngineGroundResiduals cfg ext) :
-    E.SoundResidualsGround cfg ext := by
-  obtain ⟨hgen, hwfE, hdiv, hhb, hsync, hec, hsv, hbb, hji⟩ := hSA
-  have hSA : SpecAssumptions cfg ext E := ⟨hgen, hwfE, hdiv, hhb, hsync, hec, hsv, hbb, hji⟩
-  refine
-    { genesis_dom := E.genesis_dom_of_interface cfg ext hSA
-      finalized_dom := ?_
-      observed_filter := E.observedFilterResiduals_of_interface cfg ext hji htracks
-        (E.prev_greatest_of_interface cfg ext hji)
-      dynamics_struct := hEng.dynamics_struct
-      fork_edges_ground := hEng.fork_edges_ground }
-  intro v hv n w hw m hm hH
-  refine E.finalized_dom_of_known cfg ext hSA v hv n w hw m hm hH ?_
-  by_cases hg : E.slot_at cfg (n + 1) + 1 ≤ E.slot_at cfg (m + 1)
-  · exact E.finalized_root_relay_known cfg ext hji hsync v hv n w hw m
-      (E.withinHorizon_mono cfg hm hH) hH hg
-  · exact hSameSlot v hv n w hw m hm hH hg
+/-! ### Deleted: `soundResidualsGround_of_split`
+
+The `hBb`-free mirror of `shellResiduals_of_strongPrefixSafetyInputs` stood here. It rebuilt
+`SoundResidualsGround` from `SameSlotFinalizedRootKnown` + `EngineGroundResiduals`, wiring the
+observed-anchor leg through `ExportWiring.observedFilterResiduals_of_interface` and carrying
+the ahead-regime head-tracking premise `htracks` explicitly. Nothing ever
+produced that premise; it and the whole legacy `SpecAssumptions` observed-anchor cone are
+deleted (P-6). See `docs/p6-justified-descends-derivation.md` §8. -/
 
 end Execution
 
@@ -437,27 +419,13 @@ theorem spec_safety_soundResidualsGround
   spec_safety_of_residual cfg ext
     (fun E hSA => E.l4Residual_of_soundResidualsGround cfg ext hSA (h E hSA))
 
-/-- **`Spec_Safety` from the same-slot family and the `hBb`-free engine bundle** — the
-`hBb`-free mirror of `Definitive.Spec_Safety_of_sameSlot_and_engine`. FCR safety follows from a proof that
-every execution's `SpecAssumptions` supplies (i) the isolated same-slot availability family
-(`SameSlotFinalizedRootKnown`), and (ii) the engine store-dynamics residuals with the enemy transport
-**eliminated** (`EngineGroundResiduals` — the `INVstar`/ground-truth-`Bval` track, whose per-edge
-`ForkEdgeGroundInputs` carries **no** `hBb`). Composes `soundResidualsGround_of_split` with
-`spec_safety_soundResidualsGround`.
+/-! ### Deleted: `Spec_Safety_of_ground`
 
-The whole reduction from the public `Spec_Safety` down to `SameSlotFinalizedRootKnown` +
-`EngineGroundResiduals` is machine-checked and `hBb`-free: the base-transport tax-arm corner
-(the `hBb` at `slot_at nc = slot_at m` that `Definitive.EngineOpenResiduals` carried on the v2
-track) is **gone** — the endpoint enemy `Bval` is store-independent and `span_fraction`-budgeted
-at the endpoint directly (`GroundBeta`), so the per-fork descent needs only the honest transports
-at every slot regime. -/
-theorem Spec_Safety_of_ground
-    (htracks : ∀ E : Execution Root, SpecAssumptions cfg ext E → E.HeadTracksJustified cfg ext)
-    (hSameSlot : ∀ E : Execution Root, SpecAssumptions cfg ext E → E.SameSlotFinalizedRootKnown cfg ext)
-    (hEng : ∀ E : Execution Root, SpecAssumptions cfg ext E → E.EngineGroundResiduals cfg ext) :
-    Spec_Safety cfg ext :=
-  spec_safety_soundResidualsGround cfg ext
-    (fun E hSA =>
-      E.soundResidualsGround_of_split cfg ext hSA (htracks E hSA) (hSameSlot E hSA) (hEng E hSA))
+The `hBb`-free mirror of `Definitive.Spec_Safety_of_sameSlot_and_engine` stood here:
+`Spec_Safety` from `SameSlotFinalizedRootKnown` + `EngineGroundResiduals`, composing
+`soundResidualsGround_of_split` with `spec_safety_soundResidualsGround`. It carried the
+unproduced ahead-regime head-tracking premise `htracks` and is deleted with the
+rest of the legacy `SpecAssumptions` observed-anchor cone (P-6). See
+`docs/p6-justified-descends-derivation.md` §8. -/
 
 end FastConfirmation.Spec

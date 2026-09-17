@@ -356,29 +356,12 @@ theorem specSafetyResiduals_of_engine (hSA : SpecAssumptions cfg ext E)
 
 end Execution
 
-/-! ## Section 4 — the engine-reduced safety headline -/
+/-! ## Section 4 — deleted: `Spec_Safety_of_engineResiduals`
 
-/-- **`Spec_Safety` from the engine-reduced residual bundle** — the shell-IH-composed
-facade. FCR safety follows from a proof that every execution's `SpecAssumptions` supplies
-`EngineSafetyResiduals`: the same-slot reset corner (`finalized_dom_sameslot`, same-slot availability),
-the structural confirmed chain (`dynamics_struct`), and the **transparent** per-edge engine
-supply (`fork_edges_engine` — `ForkEdgeEngineSupply`, whose fields are the named engine
-residuals the shell threads its head-safety IH into). Composes `specSafetyResiduals_of_engine`
-with `Spec_Safety_of_strongPrefix_inputs`.
-
-Here `fork_edges` is reduced to its
-engine inputs, but **not** eliminated — the engine's base mechanization (the full-saturation
-`hsat`, the `VpreIdentities` behind `hbase`, and the block-relay `FreshEngineInputs` behind
-`hdeltaIn`) remains open at every slot regime, and the `hdeltaIn`/`hBb` same-slot corner is
-same-slot availability. So there is no outright next-slot-weakened `Spec_Safety`; this
-headline uses only Lean's standard axioms `propext`, `Classical.choice`, and `Quot.sound`,
-with no project axiom. The
-whole reduction chain from `Spec_Safety` down to `EngineSafetyResiduals` is machine-checked. -/
-theorem Spec_Safety_of_engineResiduals
-    (htracks : ∀ E : Execution Root, SpecAssumptions cfg ext E → E.HeadTracksJustified cfg ext)
-    (h : ∀ E : Execution Root, SpecAssumptions cfg ext E → E.EngineSafetyResiduals cfg ext) :
-    Spec_Safety cfg ext :=
-  Spec_Safety_of_strongPrefix_inputs cfg ext htracks
-    (fun E hSA => E.specSafetyResiduals_of_engine cfg ext hSA (h E hSA))
+The engine-reduced safety headline stood here: `Spec_Safety` from `EngineSafetyResiduals`, via
+`specSafetyResiduals_of_engine` and `StrongPrefixSafety.Spec_Safety_of_strongPrefix_inputs`.
+It carried the unproduced ahead-regime head-tracking premise `htracks` and is deleted with the rest of the legacy
+`SpecAssumptions` observed-anchor cone (P-6). `specSafetyResiduals_of_engine` and the per-edge
+engine composition above are unaffected. See `docs/p6-justified-descends-derivation.md` §8. -/
 
 end FastConfirmation.Spec

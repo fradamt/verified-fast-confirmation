@@ -4,7 +4,8 @@ import FastConfirmation.Spec.Proof.Shrink
 # Spec / Proof / Structural: the disjunctive `hcase` and shared-anchor knownness
 
 This module addresses the
-two structural residuals the final shrink (`Shrink.Spec_Safety_shrunk`) still carries:
+two structural residuals the `hBb`-free ground bundle (`INVstarTrack.EngineGroundResiduals` plus
+`SameSlotFinalizedRootKnownNonGenesis`) still carries:
 
 * **(a) the disjunctive `hcase`.** The `dynamics_struct` leg reduces
   (`IHMechanize.dynamicsChainStruct_of_endpoint`) to `hb` + `hcase`, where the old `hcase` demands,

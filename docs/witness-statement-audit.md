@@ -231,7 +231,7 @@ All four share one premise list modulo `hOR`; differences from the strong twins 
 > registered witnesses. Conclusions are byte-identical.
 
 ### W20 `Execution.weakConfirmed_safeFromFollowingSlot_of_weakFullRuleFold`
-`Spec/Proof/WeakTrajectorySafety.lean:~572`. **Conditional form — since `47c3984` an
+`Spec/Proof/WeakTrajectorySafety.lean:611`. **Conditional form — since `47c3984` an
 internal theorem, not a registered witness (§8 F1).**
 
 *Statement.* Fix an observer `obs` that is **not** honest and to which no delivery is
@@ -281,7 +281,7 @@ No honesty *or* non-honesty binder at `obs`; no delivery to `obs`;
 `ObserverCoherence.justified_root_known` is derived inside the induction, not assumed.
 
 ### W21 `Execution.weakConfirmed_head_of_weakFullRuleFold_nextSlot`
-`WeakTrajectorySafety.lean:~641`. **Endpoint form of W20; likewise internal since
+`WeakTrajectorySafety.lean:684`. **Endpoint form of W20; likewise internal since
 `47c3984`.**
 
 *Statement.* Same premises as W20 plus `w ∈ E.honest`, `n ≤ m`,
@@ -290,10 +290,11 @@ No honesty *or* non-honesty binder at `obs`; no delivery to `obs`;
 timing: canonical at every in-horizon honest endpoint in a strictly later slot. The
 `followingSlotStart` deadline of W20 is converted to the slot inequality internally.
 
-*Hypotheses.* Identical to W20 (17), plus the three endpoint binders [B]. Same [D]/[!] as W20.
+*Hypotheses.* Identical to W20 (17), plus the four endpoint binders [B] (`hw : w ∈ E.honest`,
+`hnm : n ≤ m`, `hnext : slot(n)+1 ≤ slot(m)`, `hHm : WithinHorizon m`). Same [D]/[!] as W20.
 
 ### W22 `Execution.weakConfirmed_safeFromFollowingSlot_of_acceptedWeakFullRuleFold`
-`Spec/Proof/WeakObservedResetSeedSafety.lean:~163`. **The unconditional weak headline.**
+`Spec/Proof/WeakObservedResetSeedSafety.lean:179`. **The unconditional weak headline.**
 
 *Statement.* Identical to W20's conclusion, verbatim.
 
@@ -303,7 +304,7 @@ discharge (`Weak.observedResetSeedSafety_of_acceptedDynamics`, `:~81`) consumes 
 present (it lost its own `hT` in `28a9bd6`), so the premise surface is strictly smaller
 than W20's, as the docstring claims. The exact list is now:
 
-> `B` [A], `hji` [C, **14** fields], `hanchor` [D], `hboundary` [E], `hDelay` [F],
+> `B` [A], `hji` [C, **13** fields], `hanchor` [D], `hboundary` [E], `hDelay` [F],
 > `hpaper` [I], `P` [J], `V` [K], `hW` [M2, no honesty field],
 > `hCbase` [O′, 3 fields], `hfit` [P].
 >
@@ -316,10 +317,10 @@ are no longer carried (F2) and `hW.observer` no longer exists (F3). Every remain
 premise is [S]/[P]/[B].
 
 ### W23 `Execution.weakConfirmed_head_of_acceptedWeakFullRuleFold_nextSlot`
-`WeakObservedResetSeedSafety.lean:~196`. **The unconditional endpoint headline.**
-Statement = W21's; hypotheses = W22's **11** plus the three endpoint binders [B]
-(`hw : w ∈ E.honest`, `n ≤ m`, `slot(n)+1 ≤ slot(m)`, `WithinHorizon m`). Same cleared
-flags as W22.
+`WeakObservedResetSeedSafety.lean:207`. **The unconditional endpoint headline.**
+Statement = W21's; hypotheses = W22's **11** plus the four endpoint binders [B]
+(`hw : w ∈ E.honest`, `hnm : n ≤ m`, `hnext : slot(n)+1 ≤ slot(m)`,
+`hHm : WithinHorizon m`). Same cleared flags as W22.
 
 ### 3.5 Strong ↔ weak premise differences
 
@@ -327,7 +328,7 @@ flags as W22.
 |---|---|---|
 | observer | `hv : v ∈ E.honest` | **nothing** — `obs` is an arbitrary index. (As audited this was `hW.observer : obs ∉ E.honest`, unused and domain-narrowing; deleted in `fbb3ec1`, §8 F3. The weak headlines now also speak about honest observers, though the *conclusion object* still differs: see the last row.) |
 | observer-store facts | none (honesty supplies them) | `committees_agree` at `obs`'s store; `justified_root_known` derived |
-| `JustificationInterface` | **absent** (deliberately replaced by `SelectedMarginDomain`) | **present** (`hji`, **14** fields: 15 since `8b05b67`, 14 since `ed9af80`) — a materially larger FFG export surface on the weak side |
+| `JustificationInterface` | **absent** (deliberately replaced by `SelectedMarginDomain`) | **present** (`hji`, **13** fields: 15 since `8b05b67`, 14 since `ed9af80`, 13 since `fe724fd`) — a materially larger FFG export surface on the weak side |
 | `PostAnchorHonestVoteTargetWalkDomain` | absent | **absent since `dab205e`** — derived inside the fold from `hW.base`/`hanchor`/`hboundary` (was `hwalkDomain`) |
 | `hanchorExact` (row L) | absent (derived by `acceptedAnchorExact_of_trajectory`) | **absent since `445d63d`** — same derivation, same lemma |
 | `SelectedMarginAssumptions` | absent as a premise (rebuilt internally from `trajectory` + `completed_calls` + derived domain) | present inside `hW.base` — which is why `hT` was redundant and is now **derived from it** (§8 F2, `28a9bd6`) |
@@ -664,6 +665,6 @@ computing, from the compiled environment, that the forward proof-term closure of
 witnesses (19251 constants, 5353 from project modules) never reaches it — while it *does* reach
 `checkpoint_known`, the control that shows the measurement discriminates. One of its two
 consumers turned out to be redundant and was deleted with it; the other, a legacy
-`SpecAssumptions` route reached by no audited witness, now carries the fact as the explicit
-named premise `Execution.HeadTracksJustified`. So `hji` shrank on W20–W23 with nothing added:
-a strict premise weakening. See `docs/p6-justified-descends-derivation.md` §7.
+`SpecAssumptions` route reached by no audited witness, has since been retired outright rather
+than repaired. So `hji` shrank on W20–W23 with nothing added: a strict premise weakening. See
+`docs/p6-justified-descends-derivation.md` §8.

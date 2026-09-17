@@ -7,8 +7,8 @@ import FastConfirmation.Spec.Proof.EngineTransport
 # Spec / Proof / Knownness: the confirmed-block knownness family
 
 This module addresses the knownness family
-of `Closing.EngineAdvanceCore` via the **support-vote route**, under the same genesis-start scope
-`Spec_Safety_closed` already takes (`hanchor0`):
+of `Closing.EngineAdvanceCore` via the **support-vote route**, under a genesis-start scope
+`hanchor0`:
 
 * `hbconf` (the confirmed block is a known block at its own confirming store `(v, n+1)`) — **closed
   outright** from `SpecAssumptions` + `hanchor0` (`hbconf_of_genesisStart`);
@@ -18,10 +18,11 @@ of `Closing.EngineAdvanceCore` via the **support-vote route**, under the same ge
   transport core is proven in full** (`mem_of_honest_past_descendant`), reducing the field to the
   single honest-liveness residual `HonestPastDescendant` (`hb_sameslot_of_pastDescendant`).
 
-The headlines `Spec_Safety_of_knownness` / `Spec_Monotonicity_of_knownness` compose these into the
-public guarantees: `hbconf`/`hck` are discharged internally, so the public `Spec_Safety` /
-`Spec_Monotonicity` reduce to `hanchor0` + `HonestPastDescendant` + the two carried engine fields
-`hcov`/`heng`.
+The headlines `Spec_Safety_of_knownness` / `Spec_Monotonicity_of_knownness` that composed these
+into the public guarantees are **deleted** (P-6): they inherited `AheadFacade`'s ahead-regime
+head-tracking premise from `Closing.Spec_Safety_closed`, nothing ever produced it, and no
+audited witness reached them. See the Section 4 note below and
+`docs/p6-justified-descends-derivation.md` §8. The knownness results themselves stand.
 
 ## The support-vote route (`hbconf`)
 
@@ -44,9 +45,9 @@ confirmed block; it needs no honesty (`LatestMessageProvenance` holds at every n
 
 `hbconf` (own store) is delivered from `SpecAssumptions` alone under the genesis-start hypothesis
 `hanchor0` (anchor block at `GENESIS_SLOT`), which makes the above-anchor boundary `0 ≤ _` trivial.
-The genesis-start scope is the same one `Spec_Safety_closed` already takes (`hanchor0`); in the
-checkpoint-sync above-anchor obstruction, an unknown `b` looks up to the totalized default slot `0`
-below a checkpoint-sync anchor, so `mem_of_is_ancestor_above_anchor`'s `hab` is not derivable there.
+In the checkpoint-sync above-anchor obstruction, an unknown `b` looks up to the totalized default
+slot `0` below a checkpoint-sync anchor, so `mem_of_is_ancestor_above_anchor`'s `hab` is not
+derivable there.
 
 -/
 
@@ -332,114 +333,16 @@ theorem hck_of_genesisStart (hSA : SpecAssumptions cfg ext E)
 
 end Execution
 
-/-! ## Section 4 — the knownness-closed `Spec_Safety` headline
+/-! ## Section 4 — deleted: the knownness-closed headlines
 
-Composes `Closing.Spec_Safety_closed` with the two knownness dischargers: `hbconf` is closed
-outright from `SpecAssumptions` + genesis-start (`hbconf_of_genesisStart`), and `hb_sameslot` is
-reduced to the honest-past-descendant residual `HonestPastDescendant`
-(`hb_sameslot_of_pastDescendant`).
-So the public `Spec_Safety` reduces to `hanchor0` + `HonestPastDescendant` + the two carried engine
-fields `hcov`/`heng` — the confirmed-block knownness family collapses to a single honest-liveness
-residual (`hpast`), the geometric transport core being fully proven above. -/
+`Spec_Safety_of_knownness` and `Spec_Monotonicity_of_knownness` stood here. They composed
+`Closing.Spec_Safety_closed` with the two knownness dischargers (`hbconf_of_genesisStart`,
+`hb_sameslot_of_pastDescendant`), and inherited from it the unproduced ahead-regime head-tracking premise `htracks`. Both were unconsumed roots of the legacy
+`SpecAssumptions` observed-anchor cone and are deleted with it (P-6).
 
-/-- **`Spec_Safety` from the knownness residual + the carried engine fields.** The public
-FCR safety guarantee follows from a proof that every execution's `SpecAssumptions` supplies
-
-* the **genesis-start anchor** `hanchor0` (as `Spec_Safety_closed`);
-* the **honest-past-descendant** residual `hpast` (`HonestPastDescendant`) — the one input the
-  support-vote route needs beyond `SpecAssumptions`: an honest supporter of every confirmed block
-  knew a descendant of it at a strictly earlier slot (honest-supporter existence +
-  `votes_head`/`no_forgery` head-knownness); it discharges the same-slot availability corner
-  `hb_sameslot` via the fully-proven `mem_of_honest_past_descendant` transport;
-* the carried engine fields `hcov`/`heng` (the disjunction's covering justified checkpoint with its
-  strict-epoch advance sub-case, and the chain-branch head-safety engine).
-
-`hbconf` is discharged internally (`hbconf_of_genesisStart`); it needs no residual. Composes
-`Spec_Safety_closed` with the `EngineAdvanceCore` assembled from these. -/
-theorem Spec_Safety_of_knownness
-    (htracks : ∀ E : Execution Root, SpecAssumptions cfg ext E → E.HeadTracksJustified cfg ext)
-    (hanchor0 : ∀ E : Execution Root, SpecAssumptions cfg ext E →
-      ∀ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
-        E.genesis_store = get_forkchoice_store cfg ast ablk → ablk.message.slot = GENESIS_SLOT)
-    (hpast : ∀ E : Execution Root, SpecAssumptions cfg ext E → E.HonestPastDescendant cfg ext)
-    (hcov : ∀ E : Execution Root, SpecAssumptions cfg ext E →
-      ∀ v ∈ E.honest, ∀ n : ℕ, ∀ b : Root,
-        is_one_confirmed cfg ext (E.fcrStep cfg ext v n).store
-          (get_current_balance_source (E.fcrStep cfg ext v n)) b = true →
-        ∀ w ∈ E.honest, ∀ m : ℕ, n + 1 ≤ m →
-          E.WithinHorizon cfg m →
-          ∃ jcb : Checkpoint Root,
-            b ∈ (E.store cfg ext w m).block_roots ∧
-            JustifiedIn (E.store cfg ext w m) jcb ∧
-            jcb.root ∈ (E.store cfg ext w m).block_roots ∧
-            is_ancestor (E.store cfg ext w m)
-              (get_node_for_root b) (get_node_for_root jcb.root) = true ∧
-            (jcb.epoch < (E.store cfg ext w m).justified_checkpoint.epoch →
-              is_ancestor (E.store cfg ext w m)
-                (get_node_for_root (E.store cfg ext w m).justified_checkpoint.root)
-                (get_node_for_root b) = true))
-    (heng : ∀ E : Execution Root, SpecAssumptions cfg ext E →
-      ∀ v ∈ E.honest, ∀ n : ℕ, ∀ b : Root,
-        is_one_confirmed cfg ext (E.fcrStep cfg ext v n).store
-          (get_current_balance_source (E.fcrStep cfg ext v n)) b = true →
-        ∀ w ∈ E.honest, ∀ m : ℕ, n + 1 ≤ m →
-          E.WithinHorizon cfg m →
-          is_ancestor (E.store cfg ext w m) (get_node_for_root b)
-              (get_node_for_root (E.store cfg ext w m).justified_checkpoint.root) = true →
-          is_ancestor (E.store cfg ext w m) (get_head cfg (E.store cfg ext w m))
-            (get_node_for_root b) = true) :
-    Spec_Safety cfg ext :=
-  Spec_Safety_closed cfg ext htracks hanchor0 (fun E hSA =>
-    { hbconf := fun v _hv n b hH hconf =>
-        E.hbconf_of_genesisStart cfg ext hSA (hanchor0 E hSA) v n b hH hconf
-      hb_sameslot := fun v hv n b hconf w hw m hm hH _hgap =>
-        E.hb_sameslot_of_pastDescendant cfg ext hSA (hanchor0 E hSA) (hpast E hSA)
-          v hv n b hconf w hw m hm hH
-      hcov := hcov E hSA
-      heng := heng E hSA })
-
-/-- **`Spec_Monotonicity` from the same knownness bundle.** The monotonicity companion of
-`Spec_Safety_of_knownness`: chain consistency of an honest node's confirmed roots follows from the
-knownness-closed safety plus the single-store confirmed-root knownness `hck`, which is **fully
-discharged** here (`hck_of_genesisStart`, no residual) — so monotonicity reduces to exactly the same
-`hanchor0` + `hpast` + `hcov` + `heng` as safety, with no extra `hck` hypothesis. Composes
-`spec_monotonicity_of_safety` on `Spec_Safety_of_knownness`. -/
-theorem Spec_Monotonicity_of_knownness
-    (htracks : ∀ E : Execution Root, SpecAssumptions cfg ext E → E.HeadTracksJustified cfg ext)
-    (hanchor0 : ∀ E : Execution Root, SpecAssumptions cfg ext E →
-      ∀ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
-        E.genesis_store = get_forkchoice_store cfg ast ablk → ablk.message.slot = GENESIS_SLOT)
-    (hpast : ∀ E : Execution Root, SpecAssumptions cfg ext E → E.HonestPastDescendant cfg ext)
-    (hcov : ∀ E : Execution Root, SpecAssumptions cfg ext E →
-      ∀ v ∈ E.honest, ∀ n : ℕ, ∀ b : Root,
-        is_one_confirmed cfg ext (E.fcrStep cfg ext v n).store
-          (get_current_balance_source (E.fcrStep cfg ext v n)) b = true →
-        ∀ w ∈ E.honest, ∀ m : ℕ, n + 1 ≤ m →
-          E.WithinHorizon cfg m →
-          ∃ jcb : Checkpoint Root,
-            b ∈ (E.store cfg ext w m).block_roots ∧
-            JustifiedIn (E.store cfg ext w m) jcb ∧
-            jcb.root ∈ (E.store cfg ext w m).block_roots ∧
-            is_ancestor (E.store cfg ext w m)
-              (get_node_for_root b) (get_node_for_root jcb.root) = true ∧
-            (jcb.epoch < (E.store cfg ext w m).justified_checkpoint.epoch →
-              is_ancestor (E.store cfg ext w m)
-                (get_node_for_root (E.store cfg ext w m).justified_checkpoint.root)
-                (get_node_for_root b) = true))
-    (heng : ∀ E : Execution Root, SpecAssumptions cfg ext E →
-      ∀ v ∈ E.honest, ∀ n : ℕ, ∀ b : Root,
-        is_one_confirmed cfg ext (E.fcrStep cfg ext v n).store
-          (get_current_balance_source (E.fcrStep cfg ext v n)) b = true →
-        ∀ w ∈ E.honest, ∀ m : ℕ, n + 1 ≤ m →
-          E.WithinHorizon cfg m →
-          is_ancestor (E.store cfg ext w m) (get_node_for_root b)
-              (get_node_for_root (E.store cfg ext w m).justified_checkpoint.root) = true →
-          is_ancestor (E.store cfg ext w m) (get_head cfg (E.store cfg ext w m))
-            (get_node_for_root b) = true) :
-    Spec_Monotonicity cfg ext :=
-  spec_monotonicity_of_safety cfg ext
-    (Spec_Safety_of_knownness cfg ext htracks hanchor0 hpast hcov heng)
-    (hkc_of_confirmed_known cfg ext
-      (fun E hSA v hv k => E.hck_of_genesisStart cfg ext hSA (hanchor0 E hSA) v hv k))
+The knownness content of Sections 1-3b is unaffected: `hbconf_of_genesisStart`,
+`mem_of_honest_past_descendant`, `HonestPastDescendant`, `hb_sameslot_of_pastDescendant` and
+`hck_of_genesisStart` all stand, and none of them touches the ahead regime. See
+`docs/p6-justified-descends-derivation.md` §8. -/
 
 end FastConfirmation.Spec

@@ -29,9 +29,12 @@ documented with). The semantic soundness of the two `will_*` gates is **not**
 among them: no proof in the development ever applied it, so it is not a field.
 Neither is the LMD head-tracking claim formerly carried as `justified_descends`:
 it is an LMD-GHOST weight fact, not an FFG export, and it is not derivable from
-the ≥2/3-attested-target export at this development's Byzantine design point. It
-now lives as the explicitly-carried premise `Execution.HeadTracksJustified`
-(`Proof/AheadFacade.lean`); see `docs/p6-justified-descends-derivation.md`.
+the ≥2/3-attested-target export at this development's Byzantine design point.
+After the field was deleted it survived for one wave as an explicitly-carried
+premise in `Proof/AheadFacade.lean`; that premise and the whole legacy
+`SpecAssumptions` observed-anchor cone that threaded it are now deleted too,
+since nothing ever produced it and the accepted route never enters the ahead
+regime. See `docs/p6-justified-descends-derivation.md` §8.
 These predicates remain low-level proof vocabulary. The accepted theorem uses
 the separate accepted FFG-semantics and `PaperSafetySynchrony` interfaces.
 -/
@@ -278,12 +281,26 @@ structure JustificationInterface (E : Execution Root) : Prop where
      reached it. It had two consumers: `AnchorClose`'s covering fold, which turned
      out to be redundant (the observed anchor's own `SafeFrom` witness was already
      threaded there and says exactly what the fold was deriving), and the legacy
-     `SpecAssumptions` observed-anchor bundle, which now carries the fact as the
-     named, explicitly-threaded premise `Execution.HeadTracksJustified`
-     (`Proof/AheadFacade.lean`). The accepted/actual route never needed it: the
-     rule re-checks `obs = store.unrealized_justifications head` at runtime. See
-     `docs/plumbing-spec-citations.md` P-6 and
-     `docs/p6-justified-descends-derivation.md` §7. -/
+     `SpecAssumptions` observed-anchor bundle, which carried the fact for one wave
+     as a named explicit premise in `Proof/AheadFacade.lean` and has now been
+     retired outright together with that premise.
+
+     The accepted/actual route never needed it, but not for the reason earlier
+     prose in this repository gave. It is *not* that `get_latest_confirmed`'s
+     runtime re-check `obs = store.unrealized_justifications head` discharges
+     head-tracking there: on the accepted route that guard is projected and then
+     deliberately ignored (`AcceptedObservedRestartAdoption`'s
+     `ActualFCRGuardedObservedAdoption` takes `ObservedRestartCompatible` as an
+     argument its own proof records as "intentionally unused"). The route is
+     head-tracking-*free* instead: `ActualFCRGuardedObservedAdoption` gives
+     `obs.epoch ≤ jc(w, n+1).epoch` at every honest `w`
+     (`AcceptedObservedRestartDynamicSafety`), so the ahead regime never arises
+     and `E5Filter.head_ge_of_justified_ge_K` alone closes the observed anchor.
+     The runtime re-check *is* load-bearing on the **weak** route, where
+     `Weak.ObservedResetCandidateInputAt.observed_eq_head_unrealized` is what
+     `bankedAU` / `certifiedJustified` read the banked value's accepted
+     certificate off. See `docs/plumbing-spec-citations.md` P-6 and
+     `docs/p6-justified-descends-derivation.md` §8. -/
   /-- Checkpoint-boundary
       placement: the justified checkpoint's block sits at or below the
       boundary of any honest vote's target epoch from that store

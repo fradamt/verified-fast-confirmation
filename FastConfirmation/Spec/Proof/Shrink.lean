@@ -2,26 +2,16 @@ import FastConfirmation.Spec.Proof.LastCruxes
 import FastConfirmation.Spec.Proof.Cruxes
 
 /-!
-# Spec / Proof / Shrink: the minimal input bundle
+# Spec / Proof / Shrink: the minimal input bundle (retired)
 
-`INVstarTrack.Spec_Safety_of_ground` reduces `Spec_Safety` to
-`SameSlotFinalizedRootKnown` and `EngineGroundResiduals`. The genesis case of the first
-component follows from within-node `StoreLE`, leaving
-`SameSlotFinalizedRootKnownNonGenesis`. Thus the facade below depends on exactly:
+This module held the two final-shrink headlines `Spec_Safety_shrunk` /
+`Spec_Monotonicity_shrunk`, which reduced `Spec_Safety` / `Spec_Monotonicity` to
+`SameSlotFinalizedRootKnownNonGenesis` + `EngineGroundResiduals`.
 
-* `SameSlotFinalizedRootKnownNonGenesis`, the non-genesis, below-anchor, same-slot
-  reset-root knownness condition. `LastCruxes.mem_of_is_ancestor_above_anchor`
-  handles roots above the anchor, while the `block_relay` theorem requires a
-  strictly later slot for the remaining cross-node case.
-* `EngineGroundResiduals`, consisting of the structural descent field
-  `dynamics_struct` and the per-edge supply `fork_edges_ground`. Each supplied
-  `ForkEdgeGroundInputs` contains the maintained `INVstar` certificate, honest
-  confinement transports, and the ground-truth `Bval` sibling bounds.
-
-The ground-truth `Bval` route does not require the recorded base-enemy transport
-`hBb`: `Bval` is store-independent and bounded directly by `span_fraction` at
-the endpoint. The store-dynamics lemmas `Cruxes.hPS_crux`, `hcov_crux`,
-`hsat_crux`, and `hrec_crux` provide the named inputs used inside the engine.
+Both belonged to the legacy `SpecAssumptions` observed-anchor cone and are deleted (P-6): they
+carried `AheadFacade`'s ahead-regime head-tracking premise, which nothing in the
+development ever produced and which no audited witness reached. The module now carries only
+the note below. See `docs/p6-justified-descends-derivation.md` §8.
 -/
 
 namespace FastConfirmation.Spec
@@ -29,44 +19,18 @@ namespace FastConfirmation.Spec
 variable {Root : Type*} [LinearOrder Root] [Inhabited Root]
 variable (cfg : Config) (ext : Externals Root)
 
-/-! ## The final-shrink headlines -/
+/-! ## Deleted: the final-shrink headlines
 
-/-- **`Spec_Safety` from the minimal input bundle.**
+`Spec_Safety_shrunk` and `Spec_Monotonicity_shrunk` stood here — `Spec_Safety` /
+`Spec_Monotonicity` from `SameSlotFinalizedRootKnownNonGenesis` + `EngineGroundResiduals`,
+composing `INVstarTrack.Spec_Safety_of_ground` with the genesis reduction of the same-slot
+corner. Both carried the unproduced ahead-regime
+head-tracking premise `htracks`, both were unconsumed roots (or fed one) of the legacy
+`SpecAssumptions` observed-anchor cone, and both are deleted with it (P-6).
 
-The public FCR safety guarantee follows from a proof that every execution's `SpecAssumptions`
-supplies (i) `SameSlotFinalizedRootKnownNonGenesis` (the same-slot reset corner
-with its genesis sub-case removed via within-node `StoreLE`) and (ii) the `hBb`-free engine bundle
-`EngineGroundResiduals` (`dynamics_struct` + `fork_edges_ground`, the head-safety engine's base
-mechanization on the store-independent ground-truth-`Bval` track).
-
-This strengthens `INVstarTrack.Spec_Safety_of_ground` by discharging the genesis reset case,
-so the same-slot assumption is confined to non-genesis reset anchors. -/
-theorem Spec_Safety_shrunk
-    (htracks : ∀ E : Execution Root, SpecAssumptions cfg ext E → E.HeadTracksJustified cfg ext)
-    (hSameSlot : ∀ E : Execution Root, SpecAssumptions cfg ext E →
-      E.SameSlotFinalizedRootKnownNonGenesis cfg ext)
-    (hEng : ∀ E : Execution Root, SpecAssumptions cfg ext E → E.EngineGroundResiduals cfg ext) :
-    Spec_Safety cfg ext :=
-  Spec_Safety_of_ground cfg ext htracks
-    (fun E hSA => E.sameSlotFinalizedRootKnown_of_nonGenesis cfg ext (hSameSlot E hSA)) hEng
-
-/-- **`Spec_Monotonicity` from the minimal input bundle.** Chain consistency of an honest
-node's confirmed roots follows
-from the same minimal bundle (`SameSlotFinalizedRootKnownNonGenesis` + `EngineGroundResiduals`) plus the
-single-store confirmed-root knownness residual `hck` (`confirmed v k ∈ (store v k).block_roots`,
-lifted across time by within-node `StoreLE` — no cross-node relay). Composes `Spec_Safety_shrunk`
-with `StrongPrefixSafety.spec_monotonicity_of_safety`, on exactly the same two input fields plus
-`hck`. -/
-theorem Spec_Monotonicity_shrunk
-    (htracks : ∀ E : Execution Root, SpecAssumptions cfg ext E → E.HeadTracksJustified cfg ext)
-    (hSameSlot : ∀ E : Execution Root, SpecAssumptions cfg ext E →
-      E.SameSlotFinalizedRootKnownNonGenesis cfg ext)
-    (hEng : ∀ E : Execution Root, SpecAssumptions cfg ext E → E.EngineGroundResiduals cfg ext)
-    (hck : ∀ E : Execution Root, SpecAssumptions cfg ext E → ∀ v ∈ E.honest, ∀ k : ℕ,
-      E.WithinHorizon cfg k →
-      E.confirmed cfg ext v k ∈ (E.store cfg ext v k).block_roots) :
-    Spec_Monotonicity cfg ext :=
-  spec_monotonicity_of_safety cfg ext (Spec_Safety_shrunk cfg ext htracks hSameSlot hEng)
-    (hkc_of_confirmed_known cfg ext hck)
+Nothing produced that premise, and the audited route does not need it:
+`AcceptedObservedRestartDynamicSafety` proves `obs.epoch ≤ jc(w, n+1).epoch` at every honest
+`w`, so the observed anchor never enters the ahead regime. See
+`docs/p6-justified-descends-derivation.md` §8 and `docs/plumbing-spec-citations.md` P-6. -/
 
 end FastConfirmation.Spec

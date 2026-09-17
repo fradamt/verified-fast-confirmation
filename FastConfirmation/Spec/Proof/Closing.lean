@@ -10,7 +10,7 @@ per-confirmed-block fields.
 
 ## Why the disjunctive route is needed
 
-`Compose.Spec_Safety_proved` routes the L4 advance leg through `EngineGroundSuppliers.hcase`
+`Compose.EngineGroundSuppliers` routes the L4 advance leg through its `hcase` field
 (`b ⪰ jc(w, m)` at every endpoint) — a field that is **false in the advance regime** (once a
 descendant of `b` is justified, `jc(w, m)` sits strictly above `b`, so `hcase` is not provable as
 `∀ E, SpecAssumptions → …`). `Structural.safeFrom_of_disjunctive` instead uses the disjunctive
@@ -20,8 +20,8 @@ runs the LMD margin. Thus no assumption requires the advance-regime-false `hcase
 
 ## The four localized irreducible cores (`EngineAdvanceCore`)
 
-`spec_safety_of_advance_genesisStart` carries three supplies (`hbk`/`hdisj`/`heng`). Two of
-them reduce as follows:
+The sound disjunctive route carries three supplies (`hbk`/`hdisj`/`heng`). Two of them reduce
+as follows:
 
 * `hbk` (endpoint knownness of `b`) ⟸ `Suppliers.hbk_of_confirming` from
   * `hbconf` — `b` is known at its **own** confirming store `(v, n+1)`;
@@ -36,14 +36,14 @@ them reduce as follows:
   head-safety engine core (arXiv:2405.00549 §3.1's floored-integer arms on the `INVstar` /
   ground-truth-`Bval` track, `INVstarTrack`; per-edge `ForkEdgeGroundSupply`).
 
-`EngineAdvanceCore` bundles these four fields; `advance_safe_of_core` rebuilds the disjunctive advance
-supplies from it, and `Spec_Safety_closed` composes with the genesis-start anchor.
+`EngineAdvanceCore` bundles these four fields and `advance_safe_of_core` rebuilds the disjunctive
+advance supplies from it.
 
-`Spec_Safety_closed` additionally assumes a genesis-start anchor `hanchor0`. This makes the
-same-slot finalized reset root known via
-`Structural.sameSlotFinalizedRootKnown_of_genesis_start`. For checkpoint-sync anchors, the analogous
-same-slot cross-node knownness remains the explicit `SameSlotFinalizedRootKnown` condition because
-`Synchrony.block_relay` requires a strictly later slot.
+The safety/monotonicity headlines `Spec_Safety_closed` / `Spec_Monotonicity_closed` that used to
+compose these with the genesis-start anchor `hanchor0` are **deleted** (P-6): they inherited
+`AheadFacade`'s ahead-regime head-tracking premise from `Suppliers.l4Residual_of_advance`'s
+observed-anchor leg, nothing ever produced it, and no audited witness reached them. See the
+Section 3 note below and `docs/p6-justified-descends-derivation.md` §8.
 -/
 
 namespace FastConfirmation.Spec
@@ -231,61 +231,16 @@ theorem advance_safe_of_core (hSA : SpecAssumptions cfg ext E)
 
 end Execution
 
-/-! ## Section 3 — the safety headline -/
+/-! ## Section 3 — deleted: the safety and monotonicity headlines
 
-/-- **`Spec_Safety` from the genesis-start anchor and localized engine cores.**
+`Spec_Safety_closed` and `Spec_Monotonicity_closed` stood here, composing
+`Suppliers.spec_safety_of_advance_genesisStart` with the core opening
+(`hbk_of_confirming` + `hdisj_of_covering`). Both carried the unproduced ahead-regime head-tracking premise `htracks`, inherited from the E5 observed-anchor leg of
+`Suppliers.l4Residual_of_advance`, and both were unconsumed roots of the legacy
+`SpecAssumptions` observed-anchor cone; they are deleted with it (P-6).
 
-The public FCR safety guarantee (`TheoremStatements.Spec_Safety`: a block confirmed by an honest
-node at second `n` is an ancestor of every honest node's fork-choice head at every `m ≥ n`) follows
-from a proof that every execution's `SpecAssumptions` supplies
-
-* the **genesis-start anchor** `hanchor0` (the fork-choice anchor block sits at `GENESIS_SLOT`) —
-  the modeling specialization that discharges the finalized-reset same-slot availability corner
-  outright (`Structural.sameSlotFinalizedRootKnown_of_genesis_start`); *not* derivable from `SpecAssumptions`,
-  which admits checkpoint-sync anchors (module header, checkpoint-sync disposition); and
-* the **localized engine cores** `EngineAdvanceCore` per confirmed block (the head-safety engine's
-  chain-branch content on the sound disjunctive route: `hbconf`/`hb_sameslot`/`hcov`/`heng`).
-
-Composes `Suppliers.spec_safety_of_advance_genesisStart` with the core opening
-(`hbk_of_confirming` + `hdisj_of_covering`). Unlike `Compose.Spec_Safety_proved`, the advance
-regime is discharged **off** the engine (FFG takeover),
-so no hypothesis is advance-regime-false: the whole open content is well-typed and dischargeable at
-every slot regime.
-
-`Spec_Safety_closed` uses only Lean's standard axioms `propext`, `Classical.choice`, and
-`Quot.sound`, with no project axiom; the reduction from `Spec_Safety` to `hanchor0` + `EngineAdvanceCore` is
-machine-checked. The explicit assumptions are the four `EngineAdvanceCore` fields and `hanchor0`. -/
-theorem Spec_Safety_closed
-    (htracks : ∀ E : Execution Root, SpecAssumptions cfg ext E → E.HeadTracksJustified cfg ext)
-    (hanchor0 : ∀ E : Execution Root, SpecAssumptions cfg ext E →
-      ∀ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
-        E.genesis_store = get_forkchoice_store cfg ast ablk → ablk.message.slot = GENESIS_SLOT)
-    (hcore : ∀ E : Execution Root, SpecAssumptions cfg ext E → E.EngineAdvanceCore cfg ext) :
-    Spec_Safety cfg ext :=
-  spec_safety_of_advance_genesisStart cfg ext htracks hanchor0
-    (fun E hSA =>
-      E.hbk_of_confirming cfg ext hSA.2.2.2.2.1 (hcore E hSA).hbconf (hcore E hSA).hb_sameslot)
-    (fun E hSA => E.hdisj_of_covering cfg ext hSA (hcore E hSA).hcov)
-    (fun E hSA => (hcore E hSA).heng)
-
-/-- **`Spec_Monotonicity` from the same bundle and confirmed-root knownness.** Chain
-consistency of an honest node's confirmed roots follows from the safety composition
-(`Spec_Safety_closed`) plus the single-store confirmed-root knownness residual `hck`
-(`confirmed v k ∈ (store v k).block_roots`, lifted across time by within-node `StoreLE` — no
-cross-node relay; `hkc_of_confirmed_known`). The monotonicity companion of the
-conditional result uses only Lean's standard axioms `propext`, `Classical.choice`, and
-`Quot.sound`. -/
-theorem Spec_Monotonicity_closed
-    (htracks : ∀ E : Execution Root, SpecAssumptions cfg ext E → E.HeadTracksJustified cfg ext)
-    (hanchor0 : ∀ E : Execution Root, SpecAssumptions cfg ext E →
-      ∀ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
-        E.genesis_store = get_forkchoice_store cfg ast ablk → ablk.message.slot = GENESIS_SLOT)
-    (hcore : ∀ E : Execution Root, SpecAssumptions cfg ext E → E.EngineAdvanceCore cfg ext)
-    (hck : ∀ E : Execution Root, SpecAssumptions cfg ext E → ∀ v ∈ E.honest, ∀ k : ℕ,
-      E.WithinHorizon cfg k →
-      E.confirmed cfg ext v k ∈ (E.store cfg ext v k).block_roots) :
-    Spec_Monotonicity cfg ext :=
-  spec_monotonicity_of_safety cfg ext (Spec_Safety_closed cfg ext htracks hanchor0 hcore)
-    (hkc_of_confirmed_known cfg ext hck)
+The localized cores `EngineAdvanceCore` / `SelectedEngineAdvanceCore` and the advance-leg
+builders `advance_safe_of_core` / `advance_safe_of_selected_core` are unaffected. See
+`docs/p6-justified-descends-derivation.md` §8. -/
 
 end FastConfirmation.Spec

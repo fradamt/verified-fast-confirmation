@@ -284,150 +284,21 @@ theorem spec_safety_of_residualGlc
   intro E hSA v hv n w hw m hm
   exact E.confirmed_safeFrom_of_residualGlc cfg ext (hres E hSA) v hv n w hw m hm
 
-/-! ## Section 4 — the anchoring-scoped closing headline (item 3) -/
+/-! ## Sections 4 and 5 — deleted: the anchoring-scoped and selected-core closings
 
-/-- **`Spec_Safety` from the genesis-start anchor and the glc-scoped advance supplies.**
-FCR safety follows from a proof that every execution's
-`SpecAssumptions` supplies
+`Spec_Safety_of_anchored` / `Spec_Monotonicity_of_anchored` (the glc-scoped closing) and
+`Spec_Safety_of_selectedCore` / `Spec_Monotonicity_of_selectedCore` (its selected-result bridge)
+stood here. All four carried the unproduced ahead-regime head-tracking premise `htracks`. `Spec_Safety_of_anchored` built its
+`observed_safe` leg
+by running `AnchorFacade.safeFrom_observed_of_filter_K` on
+`ExportWiring.observedFilterResiduals_of_interface`, and the other three inherited it.
 
-* the **genesis-start anchor** `hanchor0` (the fork-choice anchor block at `GENESIS_SLOT`), which
-  discharges the finalized-reset same-slot availability corner outright
-  (`Structural.sameSlotFinalizedRootKnown_of_genesis_start`), and
-* the three **`get_latest_confirmed`-scoped** advance supplies `hbk_glc`/`hdisj_glc`/`heng_glc` —
-  the endpoint knownness, the `jc ⪰ b ∨ b ⪰ jc` disjunction, and the chain-branch engine, demanded
-  **only** at the `get_latest_confirmed` output (not for every `is_one_confirmed` block).
-
-The three E5 reset legs are rebuilt verbatim from the proven interface machinery
-(`FinalWiring`/`AnchorFacade`/`ExportWiring`, exactly as `Suppliers.l4Residual_of_advance`), the
-genesis-start route discharging `SameSlotFinalizedRootKnown`; the glc-scoped advance leg is
-`Structural.safeFrom_of_disjunctive` at the `get_latest_confirmed` block, fed the three glc-scoped
-supplies. `confirmed_safeFrom_of_residualGlc` folds the trajectory.
-
-**Why the glc-scoping matters.** Unlike `Closing.Spec_Safety_closed` / `Suppliers.
-spec_safety_of_advance_genesisStart`, whose advance supplies quantify over **every**
-`is_one_confirmed` block, this closing demands the advance leg only at the `get_latest_confirmed`
-output — the block for which `Anchoring.get_latest_confirmed_ge` supplies the `ConfirmedWithAnchor`
-package. The advance leg is a **single** `SafeFrom`-valued flag `hadv`, rather than the
-former three separate `hbk_glc`/`hdisj_glc`/`heng_glc` flags: this lets the disjunction
-`jc ⪰ b ∨ b ⪰ jc` be produced **inside** the head-safety induction (where the IH is available), so
-the strict-branch head-witness geometry it rests on is no longer demanded at a site that lacks the
-IH. The advance leg also carries the **slot-advance premise** (`get_current_slot` strictly grew)
-and the fold's existing previous-confirmed/finalized `SafeFrom` witnesses, demanding them only
-where the fold consumes the continuation. The declaration uses only Lean's standard axioms
-`propext`, `Classical.choice`, and `Quot.sound`. -/
-theorem Spec_Safety_of_anchored
-    (htracks : ∀ E : Execution Root, SpecAssumptions cfg ext E → E.HeadTracksJustified cfg ext)
-    (hanchor0 : ∀ E : Execution Root, SpecAssumptions cfg ext E →
-      ∀ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
-        E.genesis_store = get_forkchoice_store cfg ast ablk → ablk.message.slot = GENESIS_SLOT)
-    (hadv : ∀ E : Execution Root, SpecAssumptions cfg ext E →
-      ∀ v ∈ E.honest, ∀ n : ℕ,
-        get_current_slot cfg (E.store cfg ext v (n + 1)) >
-            get_current_slot cfg (E.store cfg ext v n) →
-        E.SafeFrom cfg ext (E.fcrStep cfg ext v n).confirmed_root (n + 1) →
-        E.SafeFrom cfg ext (E.fcrStep cfg ext v n).store.finalized_checkpoint.root (n + 1) →
-        E.SafeFrom cfg ext
-          (E.fcrStep cfg ext v n).current_epoch_observed_justified_checkpoint.root (n + 1) →
-        is_one_confirmed cfg ext (E.fcrStep cfg ext v n).store
-            (get_current_balance_source (E.fcrStep cfg ext v n))
-            (get_latest_confirmed cfg ext (E.fcrStep cfg ext v n)) = true →
-        E.SafeFrom cfg ext (get_latest_confirmed cfg ext (E.fcrStep cfg ext v n)) (n + 1)) :
-    Spec_Safety cfg ext := by
-  apply spec_safety_of_residualGlc cfg ext
-  intro E hSA
-  obtain ⟨hgen, hwfE, hdiv, hhb, hsync, hec, hsv, hbb, hji⟩ := hSA
-  have hSA : SpecAssumptions cfg ext E := ⟨hgen, hwfE, hdiv, hhb, hsync, hec, hsv, hbb, hji⟩
-  have hdomK := E.store_domainK cfg ext hwfE hec hgen hji
-  have hobs := E.observedFilterResiduals_of_interface cfg ext hji (htracks E hSA)
-    (E.prev_greatest_of_interface cfg ext hji)
-  have hSameSlot : E.SameSlotFinalizedRootKnown cfg ext := fun v hv n w hw m hm hH _hgate =>
-    E.sameSlotFinalizedRootKnown_of_genesis_start cfg ext hSA (hanchor0 E hSA) v hv n w hw m hm hH
-  exact {
-    genesis_safe := by
-      intro v hv
-      refine E.safeFrom_of_justified_dom_K cfg ext hdomK ?_
-      intro w hw m _ hH
-      exact E.genesis_dom_of_interface cfg ext hSA v hv w hw m hH
-    finalized_safe := fun v hv n => by
-      rw [E.fcrStep_store]
-      refine E.safeFrom_of_justified_dom_K cfg ext hdomK ?_
-      intro w hw m hm hH
-      refine E.finalized_dom_of_known cfg ext hSA v hv n w hw m hm hH ?_
-      by_cases hg : E.slot_at cfg (n + 1) + 1 ≤ E.slot_at cfg (m + 1)
-      · exact E.finalized_root_relay_known cfg ext hji hsync v hv n w hw m
-          (E.withinHorizon_mono cfg hm hH) hH hg
-      · exact hSameSlot v hv n w hw m hm hH hg
-    observed_safe := fun v hv n =>
-      E.safeFrom_observed_of_filter_K cfg ext hji hdomK
-        hobs.prev_greatest_justifiedIn hobs.observed_known hobs.observed_head_ahead v hv n
-    advance_safe_glc := fun v hv n hadvslot hprev hfin hobs hconf =>
-      hadv E hSA v hv n hadvslot hprev hfin hobs hconf
-  }
-
-/-- **`Spec_Monotonicity` from the same anchoring-scoped bundle and confirmed-root knownness.**
-Chain consistency follows from the re-threaded safety theorem (`Spec_Safety_of_anchored`)
-plus the single-store confirmed-root knownness residual `hck` (lifted across time by within-node
-`StoreLE`; `hkc_of_confirmed_known`). The monotonicity companion of the anchoring
-headline uses only Lean's standard axioms `propext`, `Classical.choice`, and `Quot.sound`. -/
-theorem Spec_Monotonicity_of_anchored
-    (htracks : ∀ E : Execution Root, SpecAssumptions cfg ext E → E.HeadTracksJustified cfg ext)
-    (hanchor0 : ∀ E : Execution Root, SpecAssumptions cfg ext E →
-      ∀ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
-        E.genesis_store = get_forkchoice_store cfg ast ablk → ablk.message.slot = GENESIS_SLOT)
-    (hadv : ∀ E : Execution Root, SpecAssumptions cfg ext E →
-      ∀ v ∈ E.honest, ∀ n : ℕ,
-        get_current_slot cfg (E.store cfg ext v (n + 1)) >
-            get_current_slot cfg (E.store cfg ext v n) →
-        E.SafeFrom cfg ext (E.fcrStep cfg ext v n).confirmed_root (n + 1) →
-        E.SafeFrom cfg ext (E.fcrStep cfg ext v n).store.finalized_checkpoint.root (n + 1) →
-        E.SafeFrom cfg ext
-          (E.fcrStep cfg ext v n).current_epoch_observed_justified_checkpoint.root (n + 1) →
-        is_one_confirmed cfg ext (E.fcrStep cfg ext v n).store
-            (get_current_balance_source (E.fcrStep cfg ext v n))
-            (get_latest_confirmed cfg ext (E.fcrStep cfg ext v n)) = true →
-        E.SafeFrom cfg ext (get_latest_confirmed cfg ext (E.fcrStep cfg ext v n)) (n + 1))
-    (hck : ∀ E : Execution Root, SpecAssumptions cfg ext E → ∀ v ∈ E.honest, ∀ k : ℕ,
-      E.WithinHorizon cfg k →
-      E.confirmed cfg ext v k ∈ (E.store cfg ext v k).block_roots) :
-    Spec_Monotonicity cfg ext :=
-  spec_monotonicity_of_safety cfg ext
-    (Spec_Safety_of_anchored cfg ext htracks hanchor0 hadv)
-    (hkc_of_confirmed_known cfg ext hck)
-
-/-! ## Section 5 — selected-result engine-core bridge -/
-
-/-- Public safety bridge from the selected-result engine core.  This route
-does not expose the legacy arbitrary-root `hbconf`/`hb_sameslot` fields:
-`advance_safe_of_selected_core` derives current-moment knownness from the
-executable selection certificate, and the glc-scoped fold consumes the result
-only at the actual `get_latest_confirmed` output. -/
-theorem Spec_Safety_of_selectedCore
-    (htracks : ∀ E : Execution Root, SpecAssumptions cfg ext E → E.HeadTracksJustified cfg ext)
-    (hanchor0 : ∀ E : Execution Root, SpecAssumptions cfg ext E →
-      ∀ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
-        E.genesis_store = get_forkchoice_store cfg ast ablk → ablk.message.slot = GENESIS_SLOT)
-    (hcore : ∀ E : Execution Root, SpecAssumptions cfg ext E →
-      E.SelectedEngineAdvanceCore cfg ext) :
-    Spec_Safety cfg ext :=
-  Spec_Safety_of_anchored cfg ext htracks hanchor0
-    (fun E hSA v hv n hadvslot hprev hfin hobs hconf =>
-      E.advance_safe_of_selected_core cfg ext hSA (hcore E hSA) v hv n hadvslot
-        hprev hfin hobs hconf)
-
-/-- Monotonicity from the same selected-result core.  Confirmed-root
-knownness is the executable selected-result induction, with no genesis-start
-specialization and no arbitrary confirmation predicate. -/
-theorem Spec_Monotonicity_of_selectedCore
-    (htracks : ∀ E : Execution Root, SpecAssumptions cfg ext E → E.HeadTracksJustified cfg ext)
-    (hanchor0 : ∀ E : Execution Root, SpecAssumptions cfg ext E →
-      ∀ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
-        E.genesis_store = get_forkchoice_store cfg ast ablk → ablk.message.slot = GENESIS_SLOT)
-    (hcore : ∀ E : Execution Root, SpecAssumptions cfg ext E →
-      E.SelectedEngineAdvanceCore cfg ext) :
-    Spec_Monotonicity cfg ext :=
-  spec_monotonicity_of_safety cfg ext
-    (Spec_Safety_of_selectedCore cfg ext htracks hanchor0 hcore)
-    (hkc_of_confirmed_known cfg ext
-      (fun E hSA v hv k => E.confirmed_root_known_selected cfg ext hSA v hv k))
+They are deleted with the rest of the legacy `SpecAssumptions` observed-anchor cone (P-6).
+Nothing ever produced that premise, and the audited route does not need it:
+`AcceptedObservedRestartDynamicSafety` proves `obs.epoch ≤ jc(w, n+1).epoch` at every honest `w`,
+so the observed anchor never enters the ahead regime and `E5Filter.head_ge_of_justified_ge_K`
+closes its `SafeFrom` alone. Sections 1-3 (`confirmedWithAnchor_of_advance`,
+`coveringFFG_of_advance`, `hdisj_of_coveringFFG`, the `L4ResidualGlc` fold) are unaffected. See
+`docs/p6-justified-descends-derivation.md` §8. -/
 
 end FastConfirmation.Spec

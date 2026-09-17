@@ -8,11 +8,15 @@ import FastConfirmation.Spec.Proof.Knownness
 /-!
 # Spec / Proof / AnchorClose: the closing composition
 
-This is the **closing composition** for the anchoring-scoped theorem
-`AnchorThread.Spec_Safety_of_anchored`: it discharges the three `get_latest_confirmed`-scoped
-advance supplies `hbk_glc` / `hdisj_glc` / `heng_glc` down to a **minimal, transparent flag set**,
-and proves `Spec_Safety` and `Spec_Monotonicity` from `SpecAssumptions`, the
-genesis-start anchor `hanchor0` + those flags.
+This module holds the anchor-scoped `SafeFrom` machinery for the `get_latest_confirmed` output:
+the per-edge `DescendStep` supplies, the confirm-margin collapse, the anchor-scoped covering
+supply, and the two glc folds `safeFromGlc_of_covSupply` / `safeFromGlc_of_chainSupply`.
+
+The eight closing theorems that used to sit on top of them (`Spec_Safety_of_chainSupply`,
+`_of_close`, `_of_confirmMargin`, `_of_chainConfirmMargin` and their `Spec_Monotonicity_*`
+companions) are **deleted** (P-6): each refined `AnchorThread.Spec_Safety_of_anchored` and so
+carried the never-produced ahead-regime head-tracking premise. See the section note below and
+`docs/p6-justified-descends-derivation.md` §8.
 
 ## Anchor-scoped supplies and the four-case fold
 
@@ -1083,280 +1087,21 @@ theorem safeFromGlc_of_chainSupply (hSA : SpecAssumptions cfg ext E)
 
 end Execution
 
-/-! ## Section 3 — selected chain-only closing -/
+/-! ## Sections 3 and 4 — deleted: the eight closing theorems
 
-/-- **Public selected-result safety bridge with no covering supply.**  The only
-advance residual is the actual anchor-scoped `[r₀, glc]` `DescendStep` chain.
-`hanchor0` remains solely for the independent genesis/finalized reset fold; it
-does not enter `safeFromGlc_of_chainSupply`. -/
-theorem Spec_Safety_of_chainSupply
-    (htracks : ∀ E : Execution Root, SpecAssumptions cfg ext E → E.HeadTracksJustified cfg ext)
-    (hanchor0 : ∀ E : Execution Root, SpecAssumptions cfg ext E →
-      ∀ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
-        E.genesis_store = get_forkchoice_store cfg ast ablk → ablk.message.slot = GENESIS_SLOT)
-    (hsupply : ∀ E : Execution Root, SpecAssumptions cfg ext E →
-      ∀ v ∈ E.honest, ∀ n : ℕ,
-        get_current_slot cfg (E.store cfg ext v (n + 1)) >
-            get_current_slot cfg (E.store cfg ext v n) →
-        is_one_confirmed cfg ext (E.fcrStep cfg ext v n).store
-            (get_current_balance_source (E.fcrStep cfg ext v n))
-            (get_latest_confirmed cfg ext (E.fcrStep cfg ext v n)) = true →
-        ∃ r₀ : Root,
-          (r₀ = (E.fcrStep cfg ext v n).confirmed_root ∨
-            r₀ = (E.store cfg ext v (n + 1)).finalized_checkpoint.root ∨
-            r₀ = (E.fcrStep cfg ext v n).current_epoch_observed_justified_checkpoint.root) ∧
-          E.ConfirmedWithAnchor cfg ext
-            (get_latest_confirmed cfg ext (E.fcrStep cfg ext v n)) r₀ v (n + 1) ∧
-          E.DescendStepChainSupply cfg ext
-            (get_latest_confirmed cfg ext (E.fcrStep cfg ext v n)) r₀ (n + 1)) :
-    Spec_Safety cfg ext := by
-  refine Spec_Safety_of_anchored cfg ext htracks hanchor0 ?_
-  intro E hSA v hv n hadvslot hprev hfin hobs hconf
-  exact E.safeFromGlc_of_chainSupply cfg ext hSA v hv n hprev hfin hobs
-    (hsupply E hSA v hv n hadvslot hconf)
+`Spec_Safety_of_chainSupply` / `_of_close` / `_of_confirmMargin` / `_of_chainConfirmMargin` and
+their four `Spec_Monotonicity_*` companions stood here. Every one of them refined
+`AnchorThread.Spec_Safety_of_anchored` and therefore carried the unproduced ahead-regime head-tracking premise `htracks`, which entered through that theorem's `observed_safe`
+leg (`AnchorFacade.safeFrom_observed_of_filter_K` on
+`ExportWiring.observedFilterResiduals_of_interface`).
 
-/-- Monotonicity from the same selected chain-only bridge. -/
-theorem Spec_Monotonicity_of_chainSupply
-    (htracks : ∀ E : Execution Root, SpecAssumptions cfg ext E → E.HeadTracksJustified cfg ext)
-    (hanchor0 : ∀ E : Execution Root, SpecAssumptions cfg ext E →
-      ∀ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
-        E.genesis_store = get_forkchoice_store cfg ast ablk → ablk.message.slot = GENESIS_SLOT)
-    (hsupply : ∀ E : Execution Root, SpecAssumptions cfg ext E →
-      ∀ v ∈ E.honest, ∀ n : ℕ,
-        get_current_slot cfg (E.store cfg ext v (n + 1)) >
-            get_current_slot cfg (E.store cfg ext v n) →
-        is_one_confirmed cfg ext (E.fcrStep cfg ext v n).store
-            (get_current_balance_source (E.fcrStep cfg ext v n))
-            (get_latest_confirmed cfg ext (E.fcrStep cfg ext v n)) = true →
-        ∃ r₀ : Root,
-          (r₀ = (E.fcrStep cfg ext v n).confirmed_root ∨
-            r₀ = (E.store cfg ext v (n + 1)).finalized_checkpoint.root ∨
-            r₀ = (E.fcrStep cfg ext v n).current_epoch_observed_justified_checkpoint.root) ∧
-          E.ConfirmedWithAnchor cfg ext
-            (get_latest_confirmed cfg ext (E.fcrStep cfg ext v n)) r₀ v (n + 1) ∧
-          E.DescendStepChainSupply cfg ext
-            (get_latest_confirmed cfg ext (E.fcrStep cfg ext v n)) r₀ (n + 1)) :
-    Spec_Monotonicity cfg ext :=
-  spec_monotonicity_of_safety cfg ext
-    (Spec_Safety_of_chainSupply cfg ext htracks hanchor0 hsupply)
-    (hkc_of_confirmed_known cfg ext
-      (fun E hSA v hv k => E.confirmed_root_known_selected cfg ext hSA v hv k))
-
-/-! ## Section 3 — the closing theorem
-
-Discharging the single `SafeFrom`-valued advance flag of `AnchorThread.Spec_Safety_of_anchored`
-through `safeFromGlc_of_covSupply`: the endpoint knownness `hbk`
-from the concrete selected-result certificate (`SameSlotProvenance`),
-the anchor-scoped covering supply `hcov` (direct `SafeFrom` covering for confirmed/finalized,
-the `jc ⪰ b ∨ b ⪰ jc` disjunction only for observed), and the per-edge `DescendStep` supply
-`hsupply`. So the public `Spec_Safety`, under genesis-start `hanchor0`, reduces to the transparent
-flag set `{hcov, hsupply}`. -/
-
-/-- **`Spec_Safety` from the transparent hypothesis set.** FCR
-safety follows from a proof that every execution's `SpecAssumptions` supplies
-
-* `hanchor0` — the genesis-start anchor (the fork-choice anchor block sits at `GENESIS_SLOT`);
-* `hcov` — the anchor-scoped covering supply `AnchorCovSupply`: the confirmed/finalized kinds use
-  the fold-threaded `SafeFrom` witnesses to produce `head ⪰ r₀`; the observed kind retains the
-  **IH-claused** `JustifiedIn`/covering-disjunction route. In all kinds `b ⪰ r₀` is the transported
-  anchoring rather than a free hypothesis;
-* `hsupply` — the per-`b`-chain-edge `DescendStep` supply `DescendStepChainSupply` per confirmed
-  block, **demanded only on a slot advance**, for the **existential** anchor `∃ r₀, kind ∧
-  ConfirmedWithAnchor ∧ DescendStepChainSupply` — the single `(r₀, kind, ConfirmedWithAnchor)`
-  package the L4 anchoring produces (**not** universally over all three
-  reset-anchor kinds, since the confirm-margin certificates live only on `[r₀, glc]` above the
-  actual walk anchor) — via the confirm-margin collapse
-  (`Dominance.descendStep_of_confirmMargin` / `Assembly.descendStep_of_assemblyResidual` and the
-  crossing `Reanchor.crossing_ledger_descendStep`); it feeds the chain branch of the advance leg.
-
-The single advance flag of `Spec_Safety_of_anchored` is discharged here; the residual is exactly
-`{hcov, hsupply}`, each an honest, transparent obligation. The declaration uses only Lean's
-standard axioms `propext`, `Classical.choice`, and `Quot.sound`. -/
-theorem Spec_Safety_of_close
-    (htracks : ∀ E : Execution Root, SpecAssumptions cfg ext E → E.HeadTracksJustified cfg ext)
-    (hanchor0 : ∀ E : Execution Root, SpecAssumptions cfg ext E →
-      ∀ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
-        E.genesis_store = get_forkchoice_store cfg ast ablk → ablk.message.slot = GENESIS_SLOT)
-    (hcov : ∀ E : Execution Root, SpecAssumptions cfg ext E → E.AnchorCovSupply cfg ext)
-    (hsupply : ∀ E : Execution Root, SpecAssumptions cfg ext E →
-      ∀ v ∈ E.honest, ∀ n : ℕ,
-        get_current_slot cfg (E.store cfg ext v (n + 1)) >
-            get_current_slot cfg (E.store cfg ext v n) →
-        is_one_confirmed cfg ext (E.fcrStep cfg ext v n).store
-            (get_current_balance_source (E.fcrStep cfg ext v n))
-            (get_latest_confirmed cfg ext (E.fcrStep cfg ext v n)) = true →
-        ∃ r₀ : Root,
-          (r₀ = (E.fcrStep cfg ext v n).confirmed_root ∨
-            r₀ = (E.store cfg ext v (n + 1)).finalized_checkpoint.root ∨
-            r₀ = (E.fcrStep cfg ext v n).current_epoch_observed_justified_checkpoint.root) ∧
-          E.ConfirmedWithAnchor cfg ext
-            (get_latest_confirmed cfg ext (E.fcrStep cfg ext v n)) r₀ v (n + 1) ∧
-          E.DescendStepChainSupply cfg ext
-            (get_latest_confirmed cfg ext (E.fcrStep cfg ext v n)) r₀ (n + 1)) :
-    Spec_Safety cfg ext := by
-  refine Spec_Safety_of_anchored cfg ext htracks hanchor0 ?_
-  intro E hSA v hv n hadvslot hprev hfin hobs hconf
-  exact E.safeFromGlc_of_covSupply cfg ext hSA (hcov E hSA) v hv n hadvslot hconf hprev hfin hobs
-    (hsupply E hSA v hv n hadvslot hconf)
-
-/-- **`Spec_Monotonicity` from the same hypothesis set.** The monotonicity companion of
-`Spec_Safety_of_close`. Chain consistency of an honest node's confirmed roots follows from the same
-`{hanchor0, hcov, hsupply}` flags, with the single-store confirmed-root knownness `hck`
-fully discharged by the executable selected-result induction. Composes
-`spec_monotonicity_of_safety` on `Spec_Safety_of_close`. -/
-theorem Spec_Monotonicity_of_close
-    (htracks : ∀ E : Execution Root, SpecAssumptions cfg ext E → E.HeadTracksJustified cfg ext)
-    (hanchor0 : ∀ E : Execution Root, SpecAssumptions cfg ext E →
-      ∀ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
-        E.genesis_store = get_forkchoice_store cfg ast ablk → ablk.message.slot = GENESIS_SLOT)
-    (hcov : ∀ E : Execution Root, SpecAssumptions cfg ext E → E.AnchorCovSupply cfg ext)
-    (hsupply : ∀ E : Execution Root, SpecAssumptions cfg ext E →
-      ∀ v ∈ E.honest, ∀ n : ℕ,
-        get_current_slot cfg (E.store cfg ext v (n + 1)) >
-            get_current_slot cfg (E.store cfg ext v n) →
-        is_one_confirmed cfg ext (E.fcrStep cfg ext v n).store
-            (get_current_balance_source (E.fcrStep cfg ext v n))
-            (get_latest_confirmed cfg ext (E.fcrStep cfg ext v n)) = true →
-        ∃ r₀ : Root,
-          (r₀ = (E.fcrStep cfg ext v n).confirmed_root ∨
-            r₀ = (E.store cfg ext v (n + 1)).finalized_checkpoint.root ∨
-            r₀ = (E.fcrStep cfg ext v n).current_epoch_observed_justified_checkpoint.root) ∧
-          E.ConfirmedWithAnchor cfg ext
-            (get_latest_confirmed cfg ext (E.fcrStep cfg ext v n)) r₀ v (n + 1) ∧
-          E.DescendStepChainSupply cfg ext
-            (get_latest_confirmed cfg ext (E.fcrStep cfg ext v n)) r₀ (n + 1)) :
-    Spec_Monotonicity cfg ext :=
-  spec_monotonicity_of_safety cfg ext
-    (Spec_Safety_of_close cfg ext htracks hanchor0 hcov hsupply)
-    (hkc_of_confirmed_known cfg ext
-      (fun E hSA v hv k => E.confirmed_root_known_selected cfg ext hSA v hv k))
-
-/-! ## Section 4 — the fully unfolded confirm-margin theorem
-
-The same closing with the engine flag opened to the **fully-unfolded confirm-margin residual
-bundle** `ForkEdgeConfirmMarginSupply` via `descendStepChainSupply_of_confirmMargin`. This is the
-most transparent statement of the hypotheses: the per-`b`-chain-edge
-plain confirm-margin strip (`Base.weak_base_of_rule`, no arms, no min-reserve `INVstar`) + the three
-aggregate window-growth facts + the recorded-support/sibling data. -/
-
-/-- **`Spec_Safety` from the confirm-margin bundle.** `Spec_Safety_of_close`
-with the engine hypothesis `hsupply` opened to `ForkEdgeConfirmMarginSupply` through
-`descendStepChainSupply_of_confirmMargin`. The
-residual is exactly
-`{hcov, hcm}` with `hcm` the transparent confirm-margin engine data. The declaration uses only
-Lean's standard axioms `propext`, `Classical.choice`, and `Quot.sound`. -/
-theorem Spec_Safety_of_confirmMargin
-    (htracks : ∀ E : Execution Root, SpecAssumptions cfg ext E → E.HeadTracksJustified cfg ext)
-    (hanchor0 : ∀ E : Execution Root, SpecAssumptions cfg ext E →
-      ∀ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
-        E.genesis_store = get_forkchoice_store cfg ast ablk → ablk.message.slot = GENESIS_SLOT)
-    (hcov : ∀ E : Execution Root, SpecAssumptions cfg ext E → E.AnchorCovSupply cfg ext)
-    (hcm : ∀ E : Execution Root, SpecAssumptions cfg ext E →
-      ∀ v ∈ E.honest, ∀ n : ℕ,
-        get_current_slot cfg (E.store cfg ext v (n + 1)) >
-            get_current_slot cfg (E.store cfg ext v n) →
-        is_one_confirmed cfg ext (E.fcrStep cfg ext v n).store
-            (get_current_balance_source (E.fcrStep cfg ext v n))
-            (get_latest_confirmed cfg ext (E.fcrStep cfg ext v n)) = true →
-        ∃ r₀ : Root,
-          (r₀ = (E.fcrStep cfg ext v n).confirmed_root ∨
-            r₀ = (E.store cfg ext v (n + 1)).finalized_checkpoint.root ∨
-            r₀ = (E.fcrStep cfg ext v n).current_epoch_observed_justified_checkpoint.root) ∧
-          E.ConfirmedWithAnchor cfg ext
-            (get_latest_confirmed cfg ext (E.fcrStep cfg ext v n)) r₀ v (n + 1) ∧
-          E.ForkEdgeConfirmMarginSupply cfg ext
-            (get_latest_confirmed cfg ext (E.fcrStep cfg ext v n)) r₀ (n + 1)) :
-    Spec_Safety cfg ext :=
-  Spec_Safety_of_close cfg ext htracks hanchor0 hcov
-    (fun E hSA v hv n hadvslot hconf => by
-      obtain ⟨r₀, hkind, hanc, hcmSup⟩ := hcm E hSA v hv n hadvslot hconf
-      exact ⟨r₀, hkind, hanc, E.descendStepChainSupply_of_confirmMargin cfg ext hSA hcmSup⟩)
-
-/-- **`Spec_Monotonicity` from the confirm-margin bundle.** The monotonicity
-companion of `Spec_Safety_of_confirmMargin`; `hck` is fully discharged by selected-result
-provenance. -/
-theorem Spec_Monotonicity_of_confirmMargin
-    (htracks : ∀ E : Execution Root, SpecAssumptions cfg ext E → E.HeadTracksJustified cfg ext)
-    (hanchor0 : ∀ E : Execution Root, SpecAssumptions cfg ext E →
-      ∀ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
-        E.genesis_store = get_forkchoice_store cfg ast ablk → ablk.message.slot = GENESIS_SLOT)
-    (hcov : ∀ E : Execution Root, SpecAssumptions cfg ext E → E.AnchorCovSupply cfg ext)
-    (hcm : ∀ E : Execution Root, SpecAssumptions cfg ext E →
-      ∀ v ∈ E.honest, ∀ n : ℕ,
-        get_current_slot cfg (E.store cfg ext v (n + 1)) >
-            get_current_slot cfg (E.store cfg ext v n) →
-        is_one_confirmed cfg ext (E.fcrStep cfg ext v n).store
-            (get_current_balance_source (E.fcrStep cfg ext v n))
-            (get_latest_confirmed cfg ext (E.fcrStep cfg ext v n)) = true →
-        ∃ r₀ : Root,
-          (r₀ = (E.fcrStep cfg ext v n).confirmed_root ∨
-            r₀ = (E.store cfg ext v (n + 1)).finalized_checkpoint.root ∨
-            r₀ = (E.fcrStep cfg ext v n).current_epoch_observed_justified_checkpoint.root) ∧
-          E.ConfirmedWithAnchor cfg ext
-            (get_latest_confirmed cfg ext (E.fcrStep cfg ext v n)) r₀ v (n + 1) ∧
-          E.ForkEdgeConfirmMarginSupply cfg ext
-            (get_latest_confirmed cfg ext (E.fcrStep cfg ext v n)) r₀ (n + 1)) :
-    Spec_Monotonicity cfg ext :=
-  spec_monotonicity_of_safety cfg ext
-    (Spec_Safety_of_confirmMargin cfg ext htracks hanchor0 hcov hcm)
-    (hkc_of_confirmed_known cfg ext
-      (fun E hSA v hv k => E.confirmed_root_known_selected cfg ext hSA v hv k))
-
-/-- **Selected chain-only safety with the chain supply opened to the concrete
-confirm-margin bundle.**  This is the covering-free counterpart of
-`Spec_Safety_of_confirmMargin`. -/
-theorem Spec_Safety_of_chainConfirmMargin
-    (htracks : ∀ E : Execution Root, SpecAssumptions cfg ext E → E.HeadTracksJustified cfg ext)
-    (hanchor0 : ∀ E : Execution Root, SpecAssumptions cfg ext E →
-      ∀ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
-        E.genesis_store = get_forkchoice_store cfg ast ablk → ablk.message.slot = GENESIS_SLOT)
-    (hcm : ∀ E : Execution Root, SpecAssumptions cfg ext E →
-      ∀ v ∈ E.honest, ∀ n : ℕ,
-        get_current_slot cfg (E.store cfg ext v (n + 1)) >
-            get_current_slot cfg (E.store cfg ext v n) →
-        is_one_confirmed cfg ext (E.fcrStep cfg ext v n).store
-            (get_current_balance_source (E.fcrStep cfg ext v n))
-            (get_latest_confirmed cfg ext (E.fcrStep cfg ext v n)) = true →
-        ∃ r₀ : Root,
-          (r₀ = (E.fcrStep cfg ext v n).confirmed_root ∨
-            r₀ = (E.store cfg ext v (n + 1)).finalized_checkpoint.root ∨
-            r₀ = (E.fcrStep cfg ext v n).current_epoch_observed_justified_checkpoint.root) ∧
-          E.ConfirmedWithAnchor cfg ext
-            (get_latest_confirmed cfg ext (E.fcrStep cfg ext v n)) r₀ v (n + 1) ∧
-          E.ForkEdgeConfirmMarginSupply cfg ext
-            (get_latest_confirmed cfg ext (E.fcrStep cfg ext v n)) r₀ (n + 1)) :
-    Spec_Safety cfg ext :=
-  Spec_Safety_of_chainSupply cfg ext htracks hanchor0
-    (fun E hSA v hv n hadvslot hconf => by
-      obtain ⟨r₀, hkind, hanc, hcmSup⟩ := hcm E hSA v hv n hadvslot hconf
-      exact ⟨r₀, hkind, hanc,
-        E.descendStepChainSupply_of_confirmMargin cfg ext hSA hcmSup⟩)
-
-/-- Monotonicity from the same covering-free confirm-margin bridge. -/
-theorem Spec_Monotonicity_of_chainConfirmMargin
-    (htracks : ∀ E : Execution Root, SpecAssumptions cfg ext E → E.HeadTracksJustified cfg ext)
-    (hanchor0 : ∀ E : Execution Root, SpecAssumptions cfg ext E →
-      ∀ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
-        E.genesis_store = get_forkchoice_store cfg ast ablk → ablk.message.slot = GENESIS_SLOT)
-    (hcm : ∀ E : Execution Root, SpecAssumptions cfg ext E →
-      ∀ v ∈ E.honest, ∀ n : ℕ,
-        get_current_slot cfg (E.store cfg ext v (n + 1)) >
-            get_current_slot cfg (E.store cfg ext v n) →
-        is_one_confirmed cfg ext (E.fcrStep cfg ext v n).store
-            (get_current_balance_source (E.fcrStep cfg ext v n))
-            (get_latest_confirmed cfg ext (E.fcrStep cfg ext v n)) = true →
-        ∃ r₀ : Root,
-          (r₀ = (E.fcrStep cfg ext v n).confirmed_root ∨
-            r₀ = (E.store cfg ext v (n + 1)).finalized_checkpoint.root ∨
-            r₀ = (E.fcrStep cfg ext v n).current_epoch_observed_justified_checkpoint.root) ∧
-          E.ConfirmedWithAnchor cfg ext
-            (get_latest_confirmed cfg ext (E.fcrStep cfg ext v n)) r₀ v (n + 1) ∧
-          E.ForkEdgeConfirmMarginSupply cfg ext
-            (get_latest_confirmed cfg ext (E.fcrStep cfg ext v n)) r₀ (n + 1)) :
-    Spec_Monotonicity cfg ext :=
-  spec_monotonicity_of_safety cfg ext
-    (Spec_Safety_of_chainConfirmMargin cfg ext htracks hanchor0 hcm)
-    (hkc_of_confirmed_known cfg ext
-      (fun E hSA v hv k => E.confirmed_root_known_selected cfg ext hSA v hv k))
+They are deleted with the rest of the legacy `SpecAssumptions` observed-anchor cone (P-6): 38
+declarations across 16 files, 14 of them unconsumed roots, none reached by any of the 21
+`scripts/Audit.lean` witnesses. Nothing in the development ever produced
+that premise, and the audited route does not need it —
+`AcceptedObservedRestartDynamicSafety` proves `obs.epoch ≤ jc(w, n+1).epoch` at every honest
+`w`, so the observed anchor never enters the ahead regime and
+`E5Filter.head_ge_of_justified_ge_K` closes its `SafeFrom` on the at-or-below branch alone. See
+`docs/p6-justified-descends-derivation.md` §8 and `docs/plumbing-spec-citations.md` P-6. -/
 
 end FastConfirmation.Spec

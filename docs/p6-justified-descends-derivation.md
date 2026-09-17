@@ -1,9 +1,10 @@
 # P-6 — deriving `JustificationInterface.justified_descends` at the spec layer
 
-> **W0 EXECUTED — the field is deleted.** See **§7, "W0 outcome"**, at the end of this
-> document for the reachability computation, the site-by-site resolution, and the one residual.
-> Sections 0-6 below are the original analysis, kept verbatim; §7 records where it was right,
-> where it overshot, and what actually landed.
+> **W0 EXECUTED — the field is deleted; the residual is RETIRED.** §7 records the W0 wave
+> (reachability computation, site-by-site resolution, the one residual). **§8 supersedes §7.5**:
+> the residual route is retired rather than repaired, the whole observed-anchor cone is deleted,
+> and §7.2's mechanism claim about the accepted route is corrected. Sections 0-6 are the
+> original analysis, kept verbatim.
 
 **Status:** analysis only. No `.lean` file was touched, nothing was built, nothing committed.
 **Snapshot:** branch `centaur/weak-synchrony-202609150824`, working tree at 2026-09-16
@@ -585,8 +586,9 @@ post-deadline branch detoured through the 4-case fold. The post-deadline branch 
 through `finishDirect` like the confirmed and finalized kinds, and `head_ge_glc_endpoint` is
 deleted as dead code. No weight arithmetic, no β gate, no new hypothesis.
 
-**The accepted/actual route never needed it either.** `get_latest_confirmed`
-(`Model/Confirmation.lean`) computes
+**The accepted/actual route never needed it either.** *(The mechanism stated in this paragraph
+is **wrong**; §8.2 corrects it. The conclusion — that the accepted route carries no head-tracking
+premise — is right.)* `get_latest_confirmed` (`Model/Confirmation.lean`) computes
 `is_head_unrealized_justified_ok := decide (fcr_store.current_epoch_observed_justified_checkpoint
 = store.unrealized_justifications head)` — a **runtime re-check** that the observed checkpoint is
 the head's *own* unrealized justification. That is the executable form of the owner's point, and
@@ -662,7 +664,7 @@ that lacks the runtime guard the actual algorithm performs.
 * The unproven content now appears in exactly one place — `HeadTracksJustified` — visible in the
   signature of every legacy route that uses it, and in none of the 21 audited witnesses.
 
-### 7.5 What is *not* closed
+### 7.5 What is *not* closed *(superseded by §8)*
 
 W1 (narrowing to the observed family), W2 (the relocation, now done) and W3 (the full derivation
 under `β ≤ 1/6`) are superseded as stated. The live question is narrower and better posed:
@@ -676,3 +678,109 @@ If yes, the premise disappears entirely rather than being weakened. If no — be
 route quantifies over rotated checkpoints with no such guard — then the honest conclusion is that
 the legacy `SpecAssumptions` route is strictly weaker than the accepted one and should be
 retired rather than repaired, since the accepted route already proves the fact outright.
+
+---
+
+## 8. Outcome — the residual is retired, and §7.2's mechanism claim is corrected
+
+**Status:** landed on `centaur/weak-synchrony-202609150824`. `bash scripts/check_build.sh`
+green; `lake env lean scripts/Audit.lean` passes with **21 witnesses**, sorry-free, on
+`[propext, Classical.choice, Quot.sound]` only. **§8 supersedes §7.5.**
+
+### 8.1 The decision
+
+§7.5 posed the live question as a disjunction: either give the legacy `SpecAssumptions`
+observed-anchor route the runtime guard the actual algorithm has, or conclude that the route is
+strictly weaker than the accepted one and **retire it rather than repair it**.
+
+The second branch is taken. Three facts decide it.
+
+1. **Nothing ever produced the premise.** After `fe724fd` the fact lived as
+   `AheadFacade.HeadTracksJustified`, binder-identical to the deleted field. In the whole
+   development there was no producer — only consumers threading it further down. Every route
+   that reached a `Spec_Safety` / `Spec_Monotonicity` conclusion did so *conditionally on it*.
+2. **No audited witness reached any of it.** The static closure over the 21
+   `scripts/Audit.lean` witnesses that already excluded the field also excludes the premise and
+   every declaration carrying it. Of the 38 declarations in the cone, **14 were unconsumed
+   roots**; nothing outside the cone consumed any of it.
+3. **There is nothing to repair it with.** §7.2's second sub-point still stands: the strong
+   rule rotates in a *store-global* running maximum, and the claim that such a maximum lies on
+   the certified head's chain is recorded in this repository as false in general — the
+   branch-switch hole (`Model/WeakSynchrony.lean`, `Proof/WeakBankedJustification.lean`,
+   `docs/weak-synchrony.md`). The guard that makes the weak rule's version provable is a
+   consequence of the *weak* rule delta and has no non-`Weak` counterpart.
+
+So the cone is deleted: 38 declarations across 16 files, plus the orphans that cascaded from
+them, plus the ahead-regime proposition itself (`E5Filter.ObservedFilterResiduals` and the
+filter-route declarations that only produced or consumed it). `AheadFacade` keeps only the two
+structural facts that do not mention the premise (`obs_descends_justified`,
+`justifiedIn_root_known_of_realized`).
+
+**What is retired is the observed-anchor cone, not `SpecAssumptions`.** `SpecAssumptions`
+itself is untouched and keeps its consumers; what goes is the family of conditional theorems
+that reached `Spec_Safety` / `Spec_Monotonicity` *through the ahead-regime premise*.
+
+### 8.2 The corrected mechanism claim
+
+§7.2, `AheadFacade.lean`'s old "Where it survives" paragraph and `TheoremStatements.lean`'s
+deleted-field comment all said the same thing: that the accepted route discharges head-tracking
+because `get_latest_confirmed` re-checks
+`current_epoch_observed_justified_checkpoint = store.unrealized_justifications head` at runtime.
+
+**That is wrong for the accepted route.** The guard is projected there and then *deliberately
+ignored*. `AcceptedObservedRestartAdoption` states the boundary-adoption property as
+
+```lean
+def ActualFCRGuardedObservedAdoption (v : ValidatorIndex) (n : ℕ) : Prop :=
+  ObservedRestartCompatible cfg (E.fcrStep cfg ext v n) →
+    ∀ w ∈ E.honest, E.WithinHorizon cfg (n + 1) →
+      (E.fcrStep cfg ext v n).current_epoch_observed_justified_checkpoint.epoch ≤
+        (E.store cfg ext w (n + 1)).justified_checkpoint.epoch
+```
+
+and the producer `ObservedResetCandidateInputAt.actualFCRGuardedObservedAdoption` says in its
+own docstring that "the `ObservedRestartCompatible` argument in the conclusion is **intentionally
+unused**: the stronger branch-indexed `ObservedResetCandidateInputAt` premise already contains
+the exact active restart facts."
+
+The accepted route is head-tracking-**free** for a different and simpler reason. The conclusion
+above is an *epoch inequality* `obs.epoch ≤ jc(w, n+1).epoch` at **every** honest `w`;
+`AcceptedObservedRestartDynamicSafety.safeFrom_of_acceptedDynamics` lifts it along
+`store_justified_epoch_mono` to `obs.epoch ≤ jc(w, m).epoch` for every later `m`. That is
+exactly the **at-or-below** branch of the observed-anchor split, where
+`E5Filter.head_ge_of_justified_ge_K` closes `head ⪰ obs.root` through the filter alone. The
+*ahead* regime — `jc.epoch < obs.epoch`, the only regime the deleted proposition spoke about —
+**never arises** on that route. No head-tracking fact of any strength is needed or projected.
+
+**Where the re-check really is load-bearing: the weak route.** There
+`Weak.ObservedResetCandidateInputAt` carries `observed_eq_head_unrealized` as a real conjunct,
+and `Weak.ObservedResetCandidateInputAt.bankedAU` uses it — with
+`Weak.head_known_at_observer` and `Execution.accepted_unrealized_justification_eq` — to identify
+the banked observed checkpoint with the head's own `GU` and hence obtain accepted formation
+evidence at the head itself; `.certifiedJustified` then reads the certificate off that. This is
+the chain-intrinsic banking that rule delta 5 buys and the strong rule does not have.
+
+### 8.3 What changed in the tree
+
+* **Wave A** — the 38-declaration observed-anchor cone, deleted bottom-up with a section note in
+  place of each block: `AheadFacade` (the proposition and its two reductions), `ExportWiring`
+  (`observedFilterResiduals_of_interface`), and the conditional `Spec_Safety_*` /
+  `Spec_Monotonicity_*` families in `StrongPrefixSafety`, `ShellCompose`, `Definitive`,
+  `INVstarTrack`, `LastCruxes`, `Shrink`, `Compose`, `Suppliers`, `Closing`, `Knownness`,
+  `AnchorThread` and `AnchorClose`.
+* **Wave B** — the orphan sweep to fixpoint: every declaration all of whose consumers were in
+  Wave A.
+* **Wave C** — the now-unproduced ahead-regime proposition
+  `E5Filter.ObservedFilterResiduals` and the filter-route declarations around it.
+* **Prose** — the three sites that carried the wrong mechanism claim
+  (`AheadFacade.lean`'s header, `TheoremStatements.lean`'s deleted-field comment, §7.2 here)
+  now state §8.2; `docs/plumbing-spec-citations.md` P-6 reads RESOLVED with the residual
+  retired; `docs/witness-statement-audit.md` no longer names the premise;
+  `docs/weak-synchrony.md`'s cross-reference is no longer a live residual.
+
+### 8.4 Effect on the premise surface
+
+Nothing on the audited surface moved. The 21 witnesses, their statements and their premise
+lists are unchanged; `hji` is still 13 fields on W20–W23. What is smaller is the *unaudited*
+surface: the development no longer contains any theorem whose conclusion is `Spec_Safety` or
+`Spec_Monotonicity` conditional on an LMD head-tracking assumption nothing can produce.

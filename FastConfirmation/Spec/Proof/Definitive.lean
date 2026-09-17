@@ -3,21 +3,16 @@ import FastConfirmation.Spec.Proof.ShellCompose
 /-!
 # Spec / Proof / Definitive: composition of the safety residuals
 
-This module composes the FCR safety reduction chain:
-`Spec_Safety_of_strongPrefix_inputs` (`Spec_Safety` → the 3-field
-`StrongPrefixSafetyInputs`), `ShellCompose.Spec_Safety_of_engineResiduals`
-(`Spec_Safety` → the transparent engine bundle `EngineSafetyResiduals`, with the
-per-edge `ForkEdgeEngineInputs` fields the named engine residuals), the
-class algebra (`LastAlgebra.vpreIdentities_of` behind `hbase`), and the closed
-side conditions (`Identities.hjc_le_closed`, whose `PjfCheckpointEpoch` is now
-discharged from `ExternalsCoherence.pjf_checkpoint_epoch`). It yields:
+This module splits the transparent engine bundle `ShellCompose.EngineSafetyResiduals` into two
+explicit hypothesis bundles: the **same-slot availability family**
+(`StrongPrefixSafety.SameSlotFinalizedRootKnown`, the cleanly-isolated cross-node reset corner)
+and the **engine store-dynamics residuals** (`EngineOpenResiduals`, the head-safety induction's
+explicit base premises at every slot regime). `engineSafetyResiduals_of_split` rebuilds
+`EngineSafetyResiduals` from the two.
 
-> `Spec_Safety` follows from two explicit hypothesis bundles: the **same-slot availability
-> family** (`SameSlotFinalizedRootKnown`, the cleanly-isolated cross-node reset
-> corner) and the **engine store-dynamics residuals** (`EngineOpenResiduals`, the
-> head-safety induction's explicit base premises at every slot regime).
-
-Both bundles reduce to `EngineSafetyResiduals`.
+The two conditional headlines that used to close this split into `Spec_Safety` /
+`Spec_Monotonicity` are deleted with the legacy `SpecAssumptions` observed-anchor cone (P-6);
+see the Section 2 note below.
 
 ## Why there is no reduction to same-slot availability alone (and no next-slot outright form)
 
@@ -90,43 +85,13 @@ theorem engineSafetyResiduals_of_split
 
 end Execution
 
-/-! ## Section 2 — the conditional safety result -/
+/-! ## Section 2 — deleted: the conditional safety and monotonicity results
 
-/-- **`Spec_Safety` from the same-slot and engine input bundles.** FCR safety
-follows from a proof that every execution's `SpecAssumptions` supplies
-(i) the cleanly-isolated same-slot availability family (`SameSlotFinalizedRootKnown`), and (ii) the
-engine store-dynamics residuals (`EngineOpenResiduals` — the head-safety induction's explicit
-base mechanization, uniform across slot regimes). Composes `engineSafetyResiduals_of_split`
-with `ShellCompose.Spec_Safety_of_engineResiduals`.
-
-This headline uses only Lean's standard axioms `propext`, `Classical.choice`, and
-`Quot.sound`, with no project axiom: the whole reduction from the public `Spec_Safety` down to these two
-bundles is machine-checked. The two bundles state the same-slot input (i) and the engine
-base premises (ii). This theorem does not reduce the proof to same-slot availability
-alone, and hence no outright next-slot-weakened `Spec_Safety` (module header). -/
-theorem Spec_Safety_of_sameSlot_and_engine
-    (htracks : ∀ E : Execution Root, SpecAssumptions cfg ext E → E.HeadTracksJustified cfg ext)
-    (hSameSlot : ∀ E : Execution Root, SpecAssumptions cfg ext E → E.SameSlotFinalizedRootKnown cfg ext)
-    (hEng : ∀ E : Execution Root, SpecAssumptions cfg ext E → E.EngineOpenResiduals cfg ext) :
-    Spec_Safety cfg ext :=
-  Spec_Safety_of_engineResiduals cfg ext htracks
-    (fun E hSA => E.engineSafetyResiduals_of_split cfg ext (hSameSlot E hSA) (hEng E hSA))
-
-/-- **`Spec_Monotonicity` from the two input bundles and confirmed-root knownness.**
-Chain consistency of an honest node's confirmed roots follows from the same two
-input bundles plus the single-store confirmed-root knownness premise `hck` (via
-`hkc_of_confirmed_known`, within-node `StoreLE`). Composes `Spec_Safety_of_sameSlot_and_engine` with
-`spec_monotonicity_of_safety`. -/
-theorem Spec_Monotonicity_of_sameSlot_and_engine
-    (htracks : ∀ E : Execution Root, SpecAssumptions cfg ext E → E.HeadTracksJustified cfg ext)
-    (hSameSlot : ∀ E : Execution Root, SpecAssumptions cfg ext E → E.SameSlotFinalizedRootKnown cfg ext)
-    (hEng : ∀ E : Execution Root, SpecAssumptions cfg ext E → E.EngineOpenResiduals cfg ext)
-    (hck : ∀ E : Execution Root, SpecAssumptions cfg ext E → ∀ v ∈ E.honest, ∀ k : ℕ,
-      E.WithinHorizon cfg k →
-      E.confirmed cfg ext v k ∈ (E.store cfg ext v k).block_roots) :
-    Spec_Monotonicity cfg ext :=
-  spec_monotonicity_of_safety cfg ext
-    (Spec_Safety_of_sameSlot_and_engine cfg ext htracks hSameSlot hEng)
-    (hkc_of_confirmed_known cfg ext hck)
+`Spec_Safety_of_sameSlot_and_engine` and `Spec_Monotonicity_of_sameSlot_and_engine` stood here.
+They composed `engineSafetyResiduals_of_split` with
+`ShellCompose.Spec_Safety_of_engineResiduals`, carrying the unproduced ahead-regime head-tracking premise `htracks`. Both are unconsumed roots of the legacy
+`SpecAssumptions` observed-anchor cone and are deleted with it (P-6). The two input bundles —
+`EngineOpenResiduals` and the split `engineSafetyResiduals_of_split` — are unaffected. See
+`docs/p6-justified-descends-derivation.md` §8. -/
 
 end FastConfirmation.Spec

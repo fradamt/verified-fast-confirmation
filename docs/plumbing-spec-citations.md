@@ -11,10 +11,9 @@ faithfulness verdict.
 **Read `docs/witness-statement-audit.md` first** for the inventory and the [S]/[P]/[B]/[D]
 key. Rows A, A1, A2, A3, G, H, J, K, M-c, M-f, N, O, O′ there are the subject matter.
 
-> **Post-audit status (2026-09-16).** Every flag of §13 except **P-6** is now
-> **RESOLVED**; P-6 awaits the owner. Each fix was a deletion, a premise weakening or a
-> docstring disclosure — no witness conclusion changed by a byte and no premise surface
-> grew anywhere.
+> **Post-audit status (2026-09-17).** Every flag of §13, **P-6 included**, is now
+> **RESOLVED**. Each fix was a deletion, a premise weakening or a docstring disclosure — no
+> witness conclusion changed by a byte and no premise surface grew anywhere.
 > * `ed9af80` — **P-2**: the duplicate field `justified_checkpoint_cached` is deleted;
 >   `justified_cached` is kept and absorbs its provenance paragraph.
 >   `JustificationInterface` 15 → **14** fields.
@@ -186,8 +185,9 @@ transcription.** The transcription obligation lands on `AcceptedFFGSelectorCoher
 >
 > **Since `fe724fd` (P-6) the record has 13 fields**: `justified_descends` is gone
 > outright. Row 14 below is struck; nothing in the record carries its content — it was an
-> LMD-GHOST weight claim, not an FFG export, and it survives only as an explicitly-named
-> premise on one legacy route (§13 P-6).
+> LMD-GHOST weight claim, not an FFG export. It survived for one wave as an explicitly-named
+> premise on one legacy route; that route is now retired too, so the content survives nowhere
+> (§13 P-6).
 
 | # | field (`:line`) | pinned-spec origin | verdict |
 |---|---|---|---|
@@ -204,7 +204,7 @@ transcription.** The transcription obligation lands on `AcceptedFFGSelectorCoher
 | 11 | `finalized_descent` `:201` | fork-choice.md:171 Store doc: *"`finalized_checkpoint`: the highest known finalized checkpoint"*, + `update_checkpoints`' monotone guard | FAITHFUL-WITH-NOTE ([S] cross-store; the spec's monotonicity is per-store only) |
 | ~~12~~ | ~~`justified_checkpoint_cached` `:214`~~ | — | **DELETED (`ed9af80`, §13 P-2)**: it was mechanically α-equal to field #3 `justified_cached` (`:105`), which now carries its docstring content |
 | 13 | `observed_checkpoint_known` `:224` | fast-confirmation.md:94 for the third conjunct; `compute_pulled_up_tip` writes `unrealized_justifications` only for known `block_root`s for the first two | FAITHFUL-WITH-NOTE (cross-store knownness is a synchrony consequence; the spec asserts nothing cross-store) |
-| ~~14~~ | ~~`justified_descends` `:245`~~ | — | **DELETED (`fe724fd`, §13 P-6) — RESOLVED-BY-DELETION.** It was an LMD-GHOST weight claim presented as an FFG export, and it is not derivable from row 5's 2/3-target export at this development's design point (`1/3 + β + pb < 2/3 − β` ⟺ `β < 1/6 − pb/2 ≈ 0.1604`, against `CONFIRMATION_BYZANTINE_THRESHOLD = 25`). No audited witness ever reached it; one of its two consumers was redundant and went with it. **Residual:** the surviving consumer, the legacy `SpecAssumptions` observed-anchor bundle, carries the content as the explicit named premise `Execution.HeadTracksJustified` (`Proof/AheadFacade.lean`) — reached by no audited witness. See §13 P-6 and `docs/p6-justified-descends-derivation.md` §7 |
+| ~~14~~ | ~~`justified_descends` `:245`~~ | — | **DELETED (`fe724fd`, §13 P-6) — RESOLVED, residual retired.** It was an LMD-GHOST weight claim presented as an FFG export, and it is not derivable from row 5's 2/3-target export at this development's design point (`1/3 + β + pb < 2/3 − β` ⟺ `β < 1/6 − pb/2 ≈ 0.1604`, against `CONFIRMATION_BYZANTINE_THRESHOLD = 25`). No audited witness ever reached it; one of its two consumers was redundant and went with it. The one residual — the explicitly-carried premise the legacy `SpecAssumptions` observed-anchor bundle kept — is now gone too: the whole observed-anchor cone (38 declarations) is deleted, because nothing produced the premise and the accepted route never enters the ahead regime it guarded. See §13 P-6 and `docs/p6-justified-descends-derivation.md` §8 |
 | 15 | `justified_block_boundary` `:259` | `get_checkpoint_block`: `epoch_first_slot = compute_start_slot_at_epoch(epoch); return get_ancestor(store, node, epoch_first_slot).root`, and `get_ancestor` (`:269`) returns a node with `block.slot <= slot` | FAITHFUL-WITH-NOTE (the "honest targets never trail the justified epoch" half comes from validator.md's FFG-vote construction, not from the walk) |
 
 ---
@@ -399,10 +399,9 @@ distinct field). Total 83 plumbing fields examined.
 
 **Counts after the fixes:** the duplicate is gone (`ed9af80`), `hanchorExact` is derived rather
 than assumed (`445d63d`), and `justified_descends` is deleted outright (`fe724fd`), so **80**
-plumbing fields remain on the surface and **no UNMOTIVATED field is left**. P-6's content
-survives only as one explicitly-named premise (`Execution.HeadTracksJustified`) on a legacy
-route that no audited witness reaches — it is no longer a plumbing field, and no longer inside
-`JustificationInterface`.
+plumbing fields remain on the surface and **no UNMOTIVATED field is left**. P-6's content no
+longer survives anywhere: the one explicitly-named premise it left behind, and the legacy
+`SpecAssumptions` observed-anchor cone that carried it, are deleted as well.
 
 ## 13. Flags
 
@@ -464,15 +463,16 @@ same guard, four legacy `SpecAssumptions`-path lemmas took the horizon second th
 implicitly relying on, and `FindLatestSafety.safeFrom_find_latest_confirmed_descendant` kept
 its signature by entering `safeFrom_of_headStep` first. No witness signature changed.
 
-**P-6 — RESOLVED-BY-DELETION (`fe724fd`) — `JustificationInterface.justified_descends`
-(`:245`) is gone; `JustificationInterface` is 14 → 13 fields.** It asserted that an honest
-store's `get_head` descends *every* checkpoint justified above that store's realized justified
-epoch. No text in the four pinned files grounds this. `filter_block_tree` (fork-choice.md:394)
-prunes branches by `voting_source.epoch + 2 >= current_epoch`, and `get_filtered_block_tree`
-roots the walk at `store.justified_checkpoint.root` — neither makes the head descend a
-*different, higher* justified checkpoint. The docstring's justification was "the
-justification-friendliness of LMD-GHOST the fork-choice design guarantees", a design intuition.
-It was the largest single unsupported step in the plumbing layer.
+**P-6 — RESOLVED — `JustificationInterface.justified_descends` (`:245`) is gone
+(`fe724fd`, 14 → 13 fields), and the residual it left behind is retired too.** The field
+asserted that an honest store's `get_head` descends *every* checkpoint justified above that
+store's realized justified epoch. No text in the four pinned files grounds this.
+`filter_block_tree` (fork-choice.md:394) prunes branches by
+`voting_source.epoch + 2 >= current_epoch`, and `get_filtered_block_tree` roots the walk at
+`store.justified_checkpoint.root` — neither makes the head descend a *different, higher*
+justified checkpoint. The docstring's justification was "the justification-friendliness of
+LMD-GHOST the fork-choice design guarantees", a design intuition. It was the largest single
+unsupported step in the plumbing layer.
 
 *Why deletion rather than a citation or a derivation.* Two findings, both recorded in
 `docs/p6-justified-descends-derivation.md`:
@@ -492,17 +492,41 @@ It was the largest single unsupported step in the plumbing layer.
 *The two consumers.* `AnchorClose`'s covering fold was **redundant** — the observed anchor's own
 `SafeFrom` witness was already threaded at the call site and says exactly what the fold derived,
 as the pre-deadline branch of the same proof had always done — so it was deleted with the field,
-with no weight arithmetic and no replacement hypothesis. The accepted/actual route never needed
-the fact either: `get_latest_confirmed` re-checks
-`current_epoch_observed_justified_checkpoint = store.unrealized_justifications head` at runtime.
+with no weight arithmetic and no replacement hypothesis. The other consumer, the legacy
+`SpecAssumptions` observed-anchor bundle, kept the content for one wave as an explicitly-named
+premise.
 
-*The residual.* The legacy `SpecAssumptions` observed-anchor bundle still needs it, and cannot
-derive it: the strong rule rotates in a store-global running maximum, not a read off the head's
-own chain, and this repository already records that the corresponding chain claim is **false in
-general** for that value (the branch-switch hole, `Model/WeakSynchrony.lean` /
-`Proof/WeakBankedJustification.lean`). There it is carried as the explicit named premise
-`Execution.HeadTracksJustified`, threaded visibly through every route that assembles the bundle
-— none of which is an audited witness. Its docstring carries the arithmetic above.
+*The residual, and its retirement.* That premise had no producer anywhere in the development,
+and none was available: the strong rule rotates in a store-global running maximum, not a read
+off the head's own chain, and this repository already records that the corresponding chain
+claim is **false in general** for that value (the branch-switch hole,
+`Model/WeakSynchrony.lean` / `Proof/WeakBankedJustification.lean`). The honest conclusion is
+therefore the one §7.5 posed as the alternative: **retire the route, do not repair it.** The
+premise and the 38-declaration observed-anchor cone that threaded it — the conditional
+`Spec_Safety_*` / `Spec_Monotonicity_*` families in `StrongPrefixSafety`, `ShellCompose`,
+`Definitive`, `INVstarTrack`, `LastCruxes`, `Shrink`, `Compose`, `Suppliers`, `Closing`,
+`Knownness`, `AnchorThread` and `AnchorClose`, plus their `AheadFacade` / `ExportWiring`
+wiring — are deleted, together with the orphans that cascaded from them. Fourteen of the 38
+were unconsumed roots; nothing outside the cone consumed any of it.
+
+*What this does and does not retire.* What is retired is the **observed-anchor cone**, not
+`SpecAssumptions`, which keeps 72 consumers and is untouched. The audited surface is unchanged:
+`scripts/Audit.lean` still passes with 21 witnesses, sorry-free, on `[propext,
+Classical.choice, Quot.sound]`.
+
+*The corrected mechanism claim.* Earlier prose here and in three `.lean` headers said the
+accepted route discharges head-tracking through `get_latest_confirmed`'s runtime re-check
+`current_epoch_observed_justified_checkpoint = store.unrealized_justifications head`. That is
+**wrong** for the accepted route: there the guard is projected and then deliberately ignored —
+`AcceptedObservedRestartAdoption`'s `ActualFCRGuardedObservedAdoption` takes
+`ObservedRestartCompatible` as an argument its own proof records as "intentionally unused",
+because the branch-indexed `ObservedResetCandidateInputAt` premise is strictly stronger. The
+accepted route is head-tracking-**free** for a different reason:
+`ActualFCRGuardedObservedAdoption` yields `obs.epoch ≤ jc(w, n+1).epoch` at every honest `w`
+(`AcceptedObservedRestartDynamicSafety`), so the ahead regime never arises and only
+`E5Filter.head_ge_of_justified_ge_K` is needed. The runtime re-check *is* load-bearing on the
+**weak** route, where `Weak.ObservedResetCandidateInputAt.observed_eq_head_unrealized` is what
+`bankedAU` / `certifiedJustified` read the banked checkpoint's accepted certificate off.
 
 **P-7 — RESOLVED as a disclosure (`bfc03a3`) — `ExternalsCoherence.process_slots_registry` (`:332`) is false of the pinned
 function.** `process_slots` calls `process_epoch`, which calls `process_registry_updates`,
@@ -560,7 +584,9 @@ trajectory theorems and supplied internally. The *narrowness* of the trust bound
 (anchor block pinned to its epoch's start slot) is unchanged and remains an honest
 restriction relative to `get_forkchoice_store`, now carried by exactly one premise, row E.
 
-**P-6 — still open (owner).** Untouched by this pass, as instructed.
+**P-6 — RESOLVED.** The field was deleted in `fe724fd`; the one residual it left — the
+explicitly-carried premise on the legacy `SpecAssumptions` observed-anchor route — is retired
+with that whole route. Full account above.
 
 **Overall judgement (as audited).** The plumbing layer is a faithful transcription: 28 fields are
 line-for-line, 52 are transcriptions with an abstraction step that this document names, one
@@ -570,12 +596,13 @@ rather than a claim. Everything that touches `on_block`, `on_attestation`,
 `get_checkpoint_block` is verbatim. The concentration of notes is in three places, all of
 them the same phenomenon: the reduced model erases `process_epoch`'s internals, block
 bodies, and the `checkpoint_states` cache's provenance, so what the spec computes the model
-must assume. P-6 is the one genuine hole.
+must assume. P-6 was the one genuine hole.
 
 **Overall judgement (after the fixes).** Unchanged in substance, sharper on the surface: the
 duplicate is gone, the one unguarded field is guarded, the one redundant anchor row is
-derived, the four idealizations are disclosed at the point of definition, and P-6 is the
-single remaining unsupported step.
+derived, the four idealizations are disclosed at the point of definition, and P-6's unsupported
+step is deleted outright — first the field, then the legacy route that carried it as a premise.
+No unsupported plumbing step remains.
 
 ---
 

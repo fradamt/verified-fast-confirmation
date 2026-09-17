@@ -41,9 +41,19 @@ content is exactly:
 * `SameSlotFinalizedRootKnown` (the finalized-reset same-slot corner, genesis-start-closable by
   `Structural.sameSlotFinalizedRootKnown_of_genesis_start`).
 
-The E5 reset legs (`genesis_safe`/`finalized_safe`/`observed_safe`) are rebuilt verbatim
-from the proven interface machinery (`FinalWiring`/`AnchorFacade`/`ExportWiring`), so
-`l4Residual_of_advance` needs only `SpecAssumptions` + `SameSlotFinalizedRootKnown` + the advance leg.
+## What is left here
+
+The `L4Residual` assembly `l4Residual_of_advance` and the two closings
+`spec_safety_of_advance_disjunctive` / `spec_safety_of_advance_genesisStart` are **deleted**
+(P-6). Their E5 observed-anchor leg ran through
+`ExportWiring.observedFilterResiduals_of_interface`, so they carried the ahead-regime premise
+`AheadFacade`'s ahead-regime head-tracking premise — which nothing in the development ever produced, and which
+no audited witness reached. The whole legacy `SpecAssumptions` observed-anchor cone goes with
+them; see the Section 3/4 notes below and `docs/p6-justified-descends-derivation.md` §8.
+
+What survives is Sections 1-2: the advance leg itself (`advance_safe_of_disjunctive`) and the
+two mechanical reductions `hbk_of_confirming` / `hdisj_of_covering`. None of them touches the
+ahead regime.
 
 -/
 
@@ -179,153 +189,27 @@ theorem hdisj_of_covering (hSA : SpecAssumptions cfg ext E)
     hcov v hv n b hconf w hw m hm hH
   exact E.disjunction_of_covering cfg ext hSA w hw m hH hb hjust hknown hbge hadv_hi
 
-/-! ## Section 3 — `L4Residual` from the advance leg (E5 legs reused verbatim) -/
+/-! ## Section 3 — deleted: `l4Residual_of_advance`
 
-/-- **`L4Residual` from `SameSlotFinalizedRootKnown` + the advance leg.** The three
-E5 reset legs are rebuilt exactly as `INVstarTrack.l4Residual_of_soundResidualsGround` builds
-them from `SoundResidualsGround` — the genesis/finalized reset anchors through
-`AnchorFacade.safeFrom_of_justified_dom_K` (`genesis_dom_of_interface` /
-`finalized_dom_of_known` with the same-slot corner supplied by `SameSlotFinalizedRootKnown`, later slot
-by `finalized_root_relay_known`), the observed anchor through
-`AnchorFacade.safeFrom_observed_of_filter_K` fed `ExportWiring.observedFilterResiduals_of_interface`
-— so this needs only `SpecAssumptions` + `SameSlotFinalizedRootKnown`. The advance leg `advance_safe` is
-taken directly (built by `advance_safe_of_disjunctive` on the sound disjunctive route). No
-engine `dynamics_struct` / `fork_edges_ground` appears: the advance case is discharged by the
-FFG takeover inside the advance leg, not by an LMD chain. -/
-theorem l4Residual_of_advance (hSA : SpecAssumptions cfg ext E)
-    (htracks : E.HeadTracksJustified cfg ext)
-    (hSameSlot : E.SameSlotFinalizedRootKnown cfg ext)
-    (hadvance : ∀ v ∈ E.honest, ∀ n : ℕ, ∀ b : Root,
-      is_one_confirmed cfg ext (E.fcrStep cfg ext v n).store
-        (get_current_balance_source (E.fcrStep cfg ext v n)) b = true →
-      E.SafeFrom cfg ext b (n + 1)) :
-    E.L4Residual cfg ext := by
-  obtain ⟨hgen, hwfE, hdiv, hhb, hsync, hec, hsv, hbb, hji⟩ := hSA
-  have hSA : SpecAssumptions cfg ext E := ⟨hgen, hwfE, hdiv, hhb, hsync, hec, hsv, hbb, hji⟩
-  have hdomK := E.store_domainK cfg ext hwfE hec hgen hji
-  have hobs := E.observedFilterResiduals_of_interface cfg ext hji htracks
-    (E.prev_greatest_of_interface cfg ext hji)
-  exact {
-    genesis_safe := by
-      intro v hv
-      refine E.safeFrom_of_justified_dom_K cfg ext hdomK ?_
-      intro w hw m _ hH
-      exact E.genesis_dom_of_interface cfg ext hSA v hv w hw m hH
-    finalized_safe := fun v hv n => by
-      rw [E.fcrStep_store]
-      refine E.safeFrom_of_justified_dom_K cfg ext hdomK ?_
-      intro w hw m hm hH
-      refine E.finalized_dom_of_known cfg ext hSA v hv n w hw m hm hH ?_
-      by_cases hg : E.slot_at cfg (n + 1) + 1 ≤ E.slot_at cfg (m + 1)
-      · exact E.finalized_root_relay_known cfg ext hji hsync v hv n w hw m
-          (E.withinHorizon_mono cfg hm hH) hH hg
-      · exact hSameSlot v hv n w hw m hm hH hg
-    observed_safe := fun v hv n =>
-      E.safeFrom_observed_of_filter_K cfg ext hji hdomK
-        hobs.prev_greatest_justifiedIn hobs.observed_known hobs.observed_head_ahead v hv n
-    advance_safe := hadvance
-  }
+This assembled an `L4Residual` from `SameSlotFinalizedRootKnown` plus the advance leg, reusing
+the three E5 reset legs verbatim. Its observed-anchor leg ran
+`AnchorFacade.safeFrom_observed_of_filter_K` on
+`ExportWiring.observedFilterResiduals_of_interface`, so it carried the ahead-regime
+head-tracking premise `htracks` explicitly. Nothing ever produced that premise, and
+the whole legacy `SpecAssumptions` observed-anchor cone is deleted with it (P-6). See
+`docs/p6-justified-descends-derivation.md` §8. -/
 
 end Execution
 
-/-! ## Section 4 — the closing composition on the sound disjunctive route -/
+/-! ## Section 4 — deleted: the closing compositions on the sound disjunctive route
 
-/-- **`Spec_Safety` from `SameSlotFinalizedRootKnown` + the localized advance supplies**
-— the sound closing. FCR safety follows from a proof that every execution's `SpecAssumptions`
-supplies (i) the finalized-reset same-slot corner `SameSlotFinalizedRootKnown` and (ii) the three
-per-confirmed-block advance supplies `hbk`/`hdisj`/`heng` (the endpoint knownness, the
-`jc ⪰ b ∨ b ⪰ jc` disjunction, and the chain-branch engine). `advance_safe_of_disjunctive`
-turns the three supplies into the advance leg on the sound disjunctive route (the advance case
-off the engine, via the FFG takeover); `l4Residual_of_advance` assembles the `L4Residual`
-with the E5 legs reused verbatim; `L4Fold.spec_safety_of_residual` folds the trajectory.
-
-Unlike `Compose.Spec_Safety_proved` — which routes the advance leg through the
-advance-regime-false `EngineGroundSuppliers.hcase` — this closing is sound at **every** slot
-regime: the explicit premises are `SameSlotFinalizedRootKnown` (derivable for a genesis-start
-anchor), the
-chain-branch engine `heng`, the disjunction supply `hdisj` (reduced by `hdisj_of_covering`
-to the strict-epoch `hadv_hi`), and the same-slot knownness `hb_sameslot` inside `hbk`
-(reduced by `hbk_of_confirming`). The declaration uses only Lean's standard axioms
-`propext`, `Classical.choice`, and `Quot.sound`. -/
-theorem spec_safety_of_advance_disjunctive
-    (htracks : ∀ E : Execution Root, SpecAssumptions cfg ext E → E.HeadTracksJustified cfg ext)
-    (hSameSlot : ∀ E : Execution Root, SpecAssumptions cfg ext E → E.SameSlotFinalizedRootKnown cfg ext)
-    (hbk : ∀ E : Execution Root, SpecAssumptions cfg ext E →
-      ∀ v ∈ E.honest, ∀ n : ℕ, ∀ b : Root,
-        is_one_confirmed cfg ext (E.fcrStep cfg ext v n).store
-          (get_current_balance_source (E.fcrStep cfg ext v n)) b = true →
-        ∀ w ∈ E.honest, ∀ m : ℕ, n + 1 ≤ m → E.WithinHorizon cfg m →
-          b ∈ (E.store cfg ext w m).block_roots)
-    (hdisj : ∀ E : Execution Root, SpecAssumptions cfg ext E →
-      ∀ v ∈ E.honest, ∀ n : ℕ, ∀ b : Root,
-        is_one_confirmed cfg ext (E.fcrStep cfg ext v n).store
-          (get_current_balance_source (E.fcrStep cfg ext v n)) b = true →
-        ∀ w ∈ E.honest, ∀ m : ℕ, n + 1 ≤ m → E.WithinHorizon cfg m →
-          is_ancestor (E.store cfg ext w m)
-              (get_node_for_root (E.store cfg ext w m).justified_checkpoint.root)
-              (get_node_for_root b) = true ∨
-            is_ancestor (E.store cfg ext w m) (get_node_for_root b)
-              (get_node_for_root (E.store cfg ext w m).justified_checkpoint.root) = true)
-    (heng : ∀ E : Execution Root, SpecAssumptions cfg ext E →
-      ∀ v ∈ E.honest, ∀ n : ℕ, ∀ b : Root,
-        is_one_confirmed cfg ext (E.fcrStep cfg ext v n).store
-          (get_current_balance_source (E.fcrStep cfg ext v n)) b = true →
-        ∀ w ∈ E.honest, ∀ m : ℕ, n + 1 ≤ m → E.WithinHorizon cfg m →
-          is_ancestor (E.store cfg ext w m) (get_node_for_root b)
-              (get_node_for_root (E.store cfg ext w m).justified_checkpoint.root) = true →
-          is_ancestor (E.store cfg ext w m) (get_head cfg (E.store cfg ext w m))
-            (get_node_for_root b) = true) :
-    Spec_Safety cfg ext :=
-  spec_safety_of_residual cfg ext (fun E hSA =>
-    E.l4Residual_of_advance cfg ext hSA (htracks E hSA) (hSameSlot E hSA)
-      (E.advance_safe_of_disjunctive cfg ext hSA (hbk E hSA) (hdisj E hSA) (heng E hSA)))
-
-/-- **`Spec_Safety` from the genesis-start anchor + the advance supplies** —
-the genesis-start closing. Specializing `spec_safety_of_advance_disjunctive` to a genesis
-start (`hanchor0`, the anchor block at `GENESIS_SLOT`) discharges the finalized-reset
-`SameSlotFinalizedRootKnown` corner **outright** via `Structural.sameSlotFinalizedRootKnown_of_genesis_start` (the
-reset root sits above the slot-0 anchor, so its cross-store knownness needs no relay). What
-requires exactly the advance supplies: the endpoint knownness `hbk` (whose same-slot
-`hb_sameslot` leg is the same-slot availability corner for `b`), the disjunction `hdisj` (localized by
-`hdisj_of_covering` to the strict-epoch engine sub-case `hadv_hi`), and the chain-branch
-engine `heng` (the `INVstar`/ground-truth-`Bval` core). The `hanchor0` modeling hypothesis is
-the same one `Compose.Spec_Safety_proved` carries; this route additionally removes the unsound
-advance-regime dependence on `EngineGroundSuppliers.hcase`. -/
-theorem spec_safety_of_advance_genesisStart
-    (htracks : ∀ E : Execution Root, SpecAssumptions cfg ext E → E.HeadTracksJustified cfg ext)
-    (hanchor0 : ∀ E : Execution Root, SpecAssumptions cfg ext E →
-      ∀ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
-        E.genesis_store = get_forkchoice_store cfg ast ablk → ablk.message.slot = GENESIS_SLOT)
-    (hbk : ∀ E : Execution Root, SpecAssumptions cfg ext E →
-      ∀ v ∈ E.honest, ∀ n : ℕ, ∀ b : Root,
-        is_one_confirmed cfg ext (E.fcrStep cfg ext v n).store
-          (get_current_balance_source (E.fcrStep cfg ext v n)) b = true →
-        ∀ w ∈ E.honest, ∀ m : ℕ, n + 1 ≤ m → E.WithinHorizon cfg m →
-          b ∈ (E.store cfg ext w m).block_roots)
-    (hdisj : ∀ E : Execution Root, SpecAssumptions cfg ext E →
-      ∀ v ∈ E.honest, ∀ n : ℕ, ∀ b : Root,
-        is_one_confirmed cfg ext (E.fcrStep cfg ext v n).store
-          (get_current_balance_source (E.fcrStep cfg ext v n)) b = true →
-        ∀ w ∈ E.honest, ∀ m : ℕ, n + 1 ≤ m → E.WithinHorizon cfg m →
-          is_ancestor (E.store cfg ext w m)
-              (get_node_for_root (E.store cfg ext w m).justified_checkpoint.root)
-              (get_node_for_root b) = true ∨
-            is_ancestor (E.store cfg ext w m) (get_node_for_root b)
-              (get_node_for_root (E.store cfg ext w m).justified_checkpoint.root) = true)
-    (heng : ∀ E : Execution Root, SpecAssumptions cfg ext E →
-      ∀ v ∈ E.honest, ∀ n : ℕ, ∀ b : Root,
-        is_one_confirmed cfg ext (E.fcrStep cfg ext v n).store
-          (get_current_balance_source (E.fcrStep cfg ext v n)) b = true →
-        ∀ w ∈ E.honest, ∀ m : ℕ, n + 1 ≤ m → E.WithinHorizon cfg m →
-          is_ancestor (E.store cfg ext w m) (get_node_for_root b)
-              (get_node_for_root (E.store cfg ext w m).justified_checkpoint.root) = true →
-          is_ancestor (E.store cfg ext w m) (get_head cfg (E.store cfg ext w m))
-            (get_node_for_root b) = true) :
-    Spec_Safety cfg ext :=
-  spec_safety_of_advance_disjunctive cfg ext htracks
-    (fun E hSA v hv n w hw m hm hH _hgate =>
-      E.sameSlotFinalizedRootKnown_of_genesis_start cfg ext hSA (hanchor0 E hSA)
-        v hv n w hw m hm hH)
-    hbk hdisj heng
+`spec_safety_of_advance_disjunctive` and `spec_safety_of_advance_genesisStart` stood here. Both
+folded `l4Residual_of_advance` through `L4Fold.spec_safety_of_residual`, and both carried the
+unproduced ahead-regime head-tracking premise `htracks` that
+`l4Residual_of_advance` needed for its observed-anchor leg. They are unconsumed roots of the
+legacy `SpecAssumptions` observed-anchor cone and are deleted with it (P-6). The advance-leg
+machinery of Sections 1-2 (`advance_safe_of_disjunctive`, `hbk_of_confirming`,
+`hdisj_of_covering`) does not touch the ahead regime and is unaffected. See
+`docs/p6-justified-descends-derivation.md` §8. -/
 
 end FastConfirmation.Spec

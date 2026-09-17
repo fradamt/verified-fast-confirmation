@@ -7,18 +7,22 @@ import FastConfirmation.Spec.Proof.Remainder
 /-!
 # Strong-prefix safety interfaces
 
-Internal conditional results for `Spec_Safety`, the stronger statement that
-quantifies over every later completed whole-second execution state, including
-later states inside the same slot. The accepted public result is instead
-`acceptedSpec_safety_next_slot`, exported by
-`FastConfirmation.Spec.ProvenTheorems`.
+Same-slot availability vocabulary and the safety-to-monotonicity bridge for `Spec_Safety`, the
+stronger statement that quantifies over every later completed whole-second execution state,
+including later states inside the same slot. The accepted public result is instead
+`acceptedSpec_safety_next_slot`, exported by `FastConfirmation.Spec.ProvenTheorems`.
 
-`StrongPrefixSafetyInputs` names the three additional facts used by this
-conditional reduction: same-slot finalized-root availability, construction of
-the confirmed ancestry chain, and the per-edge fork-choice argument. These
-interfaces remain part of the shared internal proof library reached by the
-accepted development's imports. They are not an alternative public assumption
-bundle and do not appear in the accepted theorem's premise.
+What survives here is the part with no dependence on the ahead regime:
+`SameSlotFinalizedRootKnown` / `SameSlotFinalizedRootKnownNonGenesis` and their genesis
+reduction, the ancestor-comparability lemmas, and `spec_monotonicity_of_safety`
+(`Spec_Monotonicity` from `Spec_Safety` plus confirmed-root knownness).
+
+The conditional reductions that stood here — `shellResiduals_of_strongPrefixSafetyInputs`,
+`Spec_Safety_of_strongPrefix_inputs`, `Spec_Safety_of_sameSlot_inputs` and the two
+`Spec_Monotonicity_of_strongPrefix_inputs*` companions — are deleted with the rest of the
+legacy `SpecAssumptions` observed-anchor cone (P-6; see the section notes below). They routed
+the observed anchor through `AheadFacade`'s unproduced ahead-regime head-tracking
+premise; none of them was an audited witness.
 -/
 
 namespace FastConfirmation.Spec
@@ -52,27 +56,18 @@ structure StrongPrefixSafetyInputs (E : Execution Root) : Prop where
       (get_current_balance_source (E.fcrStep cfg ext v n)) b = true →
     E.ForkEdgeSupply cfg ext b (n + 1)
 
-/-- Assemble the lower-level shell inputs. Later-slot finalized-root knownness
-comes from block relay; `finalized_dom_sameslot` supplies the complementary
-same-slot case. -/
-theorem shellResiduals_of_strongPrefixSafetyInputs (hSA : SpecAssumptions cfg ext E)
-    (htracks : E.HeadTracksJustified cfg ext)
-    (h : E.StrongPrefixSafetyInputs cfg ext) : E.ShellResiduals cfg ext := by
-  obtain ⟨hgen, hwfE, hdiv, hhb, hsync, hec, hsv, hbb, hji⟩ := hSA
-  have hSA : SpecAssumptions cfg ext E := ⟨hgen, hwfE, hdiv, hhb, hsync, hec, hsv, hbb, hji⟩
-  refine
-    { genesis_dom := E.genesis_dom_of_interface cfg ext hSA
-      finalized_dom := ?_
-      observed_filter := E.observedFilterResiduals_of_interface cfg ext hji htracks
-        (E.prev_greatest_of_interface cfg ext hji)
-      dynamics_struct := h.dynamics_struct
-      fork_edges := h.fork_edges }
-  intro v hv n w hw m hm hH
-  refine E.finalized_dom_of_known cfg ext hSA v hv n w hw m hm hH ?_
-  by_cases hg : E.slot_at cfg (n + 1) + 1 ≤ E.slot_at cfg (m + 1)
-  · exact E.finalized_root_relay_known cfg ext hji hsync v hv n w hw m
-      (E.withinHorizon_mono cfg hm hH) hH hg
-  · exact h.finalized_dom_sameslot v hv n w hw m hm hH hg
+/-! ### Deleted: `shellResiduals_of_strongPrefixSafetyInputs`
+
+This assembled `ShellInstantiation.ShellResiduals` from `StrongPrefixSafetyInputs`, wiring the
+observed-anchor leg through `ExportWiring.observedFilterResiduals_of_interface` and carrying
+the ahead-regime head-tracking premise `htracks` explicitly.
+
+It is deleted with the whole legacy `SpecAssumptions` observed-anchor cone (38 declarations,
+14 of them unconsumed roots). Nothing ever produced that premise, and the audited
+route does not need it: `AcceptedObservedRestartDynamicSafety` proves
+`obs.epoch ≤ jc(w, n+1).epoch` at every honest `w`, so the observed anchor never enters the
+ahead regime and `E5Filter.head_ge_of_justified_ge_K` closes its `SafeFrom` on its own. See
+`docs/p6-justified-descends-derivation.md` §8 and `docs/plumbing-spec-citations.md` P-6. -/
 
 /-- Same-slot availability of the finalized root read at the confirming
 update. The premise covers the interval before the next-slot block-relay
@@ -105,38 +100,13 @@ theorem sameSlotFinalizedRootKnown_of_nonGenesis (h : E.SameSlotFinalizedRootKno
 
 end Execution
 
-/-! ## Conditional strong-prefix theorem -/
+/-! ## Deleted: the conditional strong-prefix theorems
 
-/-- Derive the all-prefix `Spec_Safety` statement when every execution supplies
-`StrongPrefixSafetyInputs`. -/
-theorem Spec_Safety_of_strongPrefix_inputs
-    (htracks : ∀ E : Execution Root, SpecAssumptions cfg ext E → E.HeadTracksJustified cfg ext)
-    (h : ∀ E : Execution Root, SpecAssumptions cfg ext E → E.StrongPrefixSafetyInputs cfg ext) :
-    Spec_Safety cfg ext :=
-  spec_safety_shell_residuals cfg ext
-    (fun E hSA =>
-      E.shellResiduals_of_strongPrefixSafetyInputs cfg ext hSA (htracks E hSA) (h E hSA))
-
-/-- Equivalent conditional form with same-slot finalized-root availability
-separated from the ancestry-chain and fork-edge inputs. -/
-theorem Spec_Safety_of_sameSlot_inputs
-    (htracks : ∀ E : Execution Root, SpecAssumptions cfg ext E → E.HeadTracksJustified cfg ext)
-    (hSameSlot : ∀ E : Execution Root, SpecAssumptions cfg ext E → E.SameSlotFinalizedRootKnown cfg ext)
-    (hrest : ∀ E : Execution Root, SpecAssumptions cfg ext E →
-      (∀ v ∈ E.honest, ∀ n : ℕ, ∀ b : Root,
-        is_one_confirmed cfg ext (E.fcrStep cfg ext v n).store
-          (get_current_balance_source (E.fcrStep cfg ext v n)) b = true →
-        E.DynamicsChainStruct cfg ext b (n + 1)) ∧
-      (∀ v ∈ E.honest, ∀ n : ℕ, ∀ b : Root,
-        is_one_confirmed cfg ext (E.fcrStep cfg ext v n).store
-          (get_current_balance_source (E.fcrStep cfg ext v n)) b = true →
-        E.ForkEdgeSupply cfg ext b (n + 1))) :
-    Spec_Safety cfg ext :=
-  Spec_Safety_of_strongPrefix_inputs cfg ext htracks
-    (fun E hSA =>
-      { finalized_dom_sameslot := hSameSlot E hSA
-        dynamics_struct := (hrest E hSA).1
-        fork_edges := (hrest E hSA).2 })
+`Spec_Safety_of_strongPrefix_inputs` and `Spec_Safety_of_sameSlot_inputs` stood here. Each
+derived the all-prefix `Spec_Safety` from `StrongPrefixSafetyInputs` while carrying the
+unproduced ahead-regime premise `htracks`, and each was an unconsumed root (or fed one) of the
+legacy `SpecAssumptions` observed-anchor cone. See the note in place of
+`shellResiduals_of_strongPrefixSafetyInputs` above. -/
 
 /-! ## Monotonicity from safety
 
@@ -242,33 +212,12 @@ theorem spec_monotonicity_of_safety (hsafe : Spec_Safety cfg ext)
   exact ancestor_comparable hwf
     (hwalkK _ ha _ hhead) (hwalkK _ hb _ hhead) hA hB
 
-/-- **`Spec_Monotonicity` from the strong-prefix inputs.** Composes
-`Spec_Safety_of_strongPrefix_inputs` with `spec_monotonicity_of_safety`: chain consistency of an honest
-node's confirmed roots follows from the same `StrongPrefixSafetyInputs` plus the confirmed-root
-knownness premise `hkc`. -/
-theorem Spec_Monotonicity_of_strongPrefix_inputs
-    (htracks : ∀ E : Execution Root, SpecAssumptions cfg ext E → E.HeadTracksJustified cfg ext)
-    (h : ∀ E : Execution Root, SpecAssumptions cfg ext E → E.StrongPrefixSafetyInputs cfg ext)
-    (hkc : ∀ E : Execution Root, SpecAssumptions cfg ext E → ∀ v ∈ E.honest, ∀ k m : ℕ, k ≤ m →
-      E.WithinHorizon cfg m →
-      E.confirmed cfg ext v k ∈ (E.store cfg ext v m).block_roots) :
-    Spec_Monotonicity cfg ext :=
-  spec_monotonicity_of_safety cfg ext
-    (Spec_Safety_of_strongPrefix_inputs cfg ext htracks h) hkc
+/-! ### Deleted: `Spec_Monotonicity_of_strongPrefix_inputs` and
+`Spec_Monotonicity_of_strongPrefix_inputs_of_confirmed_known`
 
-/-- **`Spec_Monotonicity` from strong-prefix inputs and single-store confirmed knownness.**
-The `hkc` time-span premise is reduced to its
-minimal single-store form `hck` (`confirmed v k ∈ (store v k).block_roots`) via
-`hkc_of_confirmed_known` (within-node `StoreLE`, no cross-node relay). Chain consistency follows from `StrongPrefixSafetyInputs`
-plus the one `get_latest_confirmed` store-knownness invariant. -/
-theorem Spec_Monotonicity_of_strongPrefix_inputs_of_confirmed_known
-    (htracks : ∀ E : Execution Root, SpecAssumptions cfg ext E → E.HeadTracksJustified cfg ext)
-    (h : ∀ E : Execution Root, SpecAssumptions cfg ext E → E.StrongPrefixSafetyInputs cfg ext)
-    (hck : ∀ E : Execution Root, SpecAssumptions cfg ext E → ∀ v ∈ E.honest, ∀ k : ℕ,
-      E.WithinHorizon cfg k →
-      E.confirmed cfg ext v k ∈ (E.store cfg ext v k).block_roots) :
-    Spec_Monotonicity cfg ext :=
-  Spec_Monotonicity_of_strongPrefix_inputs cfg ext htracks h
-    (hkc_of_confirmed_known cfg ext hck)
+Both composed `spec_monotonicity_of_safety` on `Spec_Safety_of_strongPrefix_inputs`, and both
+carried the ahead-regime head-tracking premise `htracks`. They go with the rest of the
+legacy `SpecAssumptions` observed-anchor cone; see the note in place of
+`shellResiduals_of_strongPrefixSafetyInputs` above. -/
 
 end FastConfirmation.Spec

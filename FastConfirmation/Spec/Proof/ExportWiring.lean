@@ -11,37 +11,25 @@ inputs.
 
 ## What is delivered
 
-1. The ahead-regime "one missing fork-choice fact" (`AheadFacade.HeadTracksJustified`) is
-   **carried explicitly**, not exported. It used to be
-   `headTracksJustified_of_interface`, a projection of the
-   `JustificationInterface.justified_descends` field, which was binder-identical to it. That
-   field is deleted (P-6): it is an LMD-GHOST weight claim, not an FFG export, and it does not
-   follow from the interface's 2/3-target export at this development's Byzantine design point
-   — see the `HeadTracksJustified` docstring in `AheadFacade.lean` and
-   `docs/p6-justified-descends-derivation.md`. `observedFilterResiduals_of_interface`
-   therefore takes `htracks` as a named hypothesis, and every route that assembles the
-   observed-anchor bundle carries it visibly. No audited public witness reaches it.
-
-2. `observedKnown_of_interface` — the `observed_known` field is closed from
+1. `observedKnown_of_interface` — the `observed_known` fact is closed from
    `observed_checkpoint_known` across all three `fcrStep`-observed cases (off-boundary via
    `fcrStep_observed_else`; on-boundary via `fcrStep_observed_boundary`, whose two rotation
    sources are the interface's first two knownness conjuncts). The synchrony hypothesis
    `slot_at n ≤ slot_at m` comes from `n + 1 ≤ m` by `slot_at_mono`.
 
-3. `observedFilterResiduals_of_interface` — bundles 1 + 2 into
-   `E5Filter.ObservedFilterResiduals` with only the boundary-source
-   `prev_greatest_justifiedIn` premise carried
-   as a hypothesis (item 4 below reduces it further).
+   `observedFilterResiduals_of_interface` used to bundle this with the ahead-regime
+   head-tracking premise into `E5Filter.ObservedFilterResiduals`. Both the bundle and the
+   premise are deleted — see the note in Section 1 below.
 
-4. `boundarySource_known`: `MicroSteps.prev_greatest_justifiedIn_of_boundarySource`
+2. `boundarySource_known`: `MicroSteps.prev_greatest_justifiedIn_of_boundarySource`
    reduces the boundary-source premise to `JustifiedIn (store w m) src` for the
    boundary rotation source `src`. Its root
-   is known (`observed_checkpoint_known`, the same two conjuncts as item 2 — delivered here), so
+   is known (`observed_checkpoint_known`, the same two conjuncts as item 1 — delivered here), so
    what remains is the *justification* of `src` in `w`'s view — a cross-store semantic fact of the
    unrealized / greatest-unrealized checkpoint family, NOT delivered by the knownness-only
    `observed_checkpoint_known`.
 
-5. `hbound_of_justified_block_boundary` + `vote_lands_export_closed` /
+3. `hbound_of_justified_block_boundary` + `vote_lands_export_closed` /
    `vote_ubiquity_export_closed` — `HeadStack`'s vote-landing bundle had one residual, the
    checkpoint-boundary bound `hbound`. `justified_block_boundary` **is** that bound, given the
    honest voter witness (built from `hvote`, `a.data.target = t` by `rfl`) and the epoch ordering
@@ -64,13 +52,20 @@ namespace Execution
 
 variable (E : Execution Root)
 
-/-! ## Section 1 — the ahead-regime head-tracking fact is carried, not exported
+/-! ## Section 1 — deleted: the ahead-regime head-tracking wiring
 
-`headTracksJustified_of_interface` stood here: it projected
-`JustificationInterface.justified_descends`, which was binder-identical to
-`AheadFacade.HeadTracksJustified`. The field is deleted (P-6) and the fact is now an explicit
-`htracks` hypothesis of `observedFilterResiduals_of_interface` below, threaded by every route
-that assembles the observed-anchor bundle. -/
+Two declarations stood here in turn. `headTracksJustified_of_interface` projected the
+`JustificationInterface.justified_descends` field; the field was deleted in `fe724fd` (P-6) as
+an LMD-GHOST weight claim wrongly presented as an FFG export, and the projection with it. The
+fact then lived on as the explicit premise `AheadFacade`'s ahead-regime head-tracking premise, threaded through
+`observedFilterResiduals_of_interface` (deleted in Section 3's place below) into the legacy
+`SpecAssumptions` observed-anchor cone.
+
+That whole cone is now retired. Nothing ever produced the premise, and the audited route does
+not need it: `AcceptedObservedRestartDynamicSafety` proves `obs.epoch ≤ jc(w, n+1).epoch` at
+every honest `w`, so the observed anchor is never in the ahead regime and
+`E5Filter.head_ge_of_justified_ge_K` suffices. See
+`docs/p6-justified-descends-derivation.md` §8 and `docs/plumbing-spec-citations.md` P-6. -/
 
 /-! ## Section 2 — `observed_known` from `observed_checkpoint_known` -/
 
@@ -107,28 +102,13 @@ theorem observedKnown_of_interface (hji : JustificationInterface cfg ext E) :
     exact (hji.observed_checkpoint_known v hv n w hw m
       hHn hH (E.slot_at_mono cfg hnm)).2.2
 
-/-! ## Section 3 — the observed-anchor filter bundle, two of three fields interface-closed -/
+/-! ## Section 3 — deleted: `observedFilterResiduals_of_interface`
 
-/-- **`ObservedFilterResiduals` from the interface plus the carried head-tracking premise.**
-Feeding `observedKnown_of_interface` (the `observed_known` field) and the explicit `htracks`
-premise (the `observed_head_ahead` field, via `AheadFacade.observed_head_ahead_of_headTracks`)
-into `AheadFacade.observedFilterResiduals_of_headTracks` leaves the boundary-source hypothesis
-`prev_greatest_justifiedIn` (the on-boundary/no-advance corner). One of the three
-observed-anchor fields is discharged from `JustificationInterface`; the ahead-regime one is
-`htracks`, an LMD premise the interface does not and cannot export (P-6, see
-`AheadFacade.HeadTracksJustified`). -/
-theorem observedFilterResiduals_of_interface (hji : JustificationInterface cfg ext E)
-    (htracks : E.HeadTracksJustified cfg ext)
-    (hprev : ∀ v ∈ E.honest, ∀ n : ℕ, ∀ w ∈ E.honest, ∀ m : ℕ, n + 1 ≤ m →
-      E.WithinHorizon cfg m →
-      is_start_slot_at_epoch cfg (get_current_slot cfg (E.store cfg ext v (n + 1))) = true →
-      ¬ (get_current_slot cfg (E.store cfg ext v (n + 1)) >
-          get_current_slot cfg (E.store cfg ext v n)) →
-      JustifiedIn (E.store cfg ext w m)
-        ((E.fcrStep cfg ext v n).current_epoch_observed_justified_checkpoint)) :
-    E.ObservedFilterResiduals cfg ext :=
-  E.observedFilterResiduals_of_headTracks cfg ext hji hprev
-    (E.observedKnown_of_interface cfg ext hji) htracks
+This bundled `observedKnown_of_interface` with the carried `htracks` premise and the
+boundary-source `prev_greatest_justifiedIn` into an `E5Filter.ObservedFilterResiduals`. It is
+deleted with the rest of the legacy `SpecAssumptions` observed-anchor cone (Section 1's note):
+the ahead-regime premise it threaded had no producer, and the accepted route closes the
+observed anchor without ever entering the ahead regime. -/
 
 /-! ## Section 4 — boundary-source knownness and justification
 
@@ -140,7 +120,7 @@ epoch-boundary rotation source
           else (fcr v n).previous_epoch_greatest_unrealized_checkpoint.
 
 `boundarySource_known` delivers the *knownness* half of that input (`src.root ∈ block_roots`)
-from `observed_checkpoint_known` — the same two conjuncts item 2 uses. Root knownness alone
+from `observed_checkpoint_known` — the same two conjuncts item 1 uses. Root knownness alone
 does not establish the *justification* of `src` in `w`'s view: `JustifiedIn` needs
 `src` to be one of `(store w m)`'s own checkpoint fields or an `unrealized_justifications` entry
 of a known block, whereas `observed_checkpoint_known` exports only root-knownness. The

@@ -3,8 +3,8 @@ import FastConfirmation.Spec.Proof.INVstarTrack
 /-!
 # Spec / Proof / LastCruxes: ancestor transport and the residual reduction
 
-`INVstarTrack` supplies the **`hBb`-free** per-edge pipeline, reducing `Spec_Safety` to
-`SameSlotFinalizedRootKnown` and `EngineGroundResiduals` through `Spec_Safety_of_ground`.
+`INVstarTrack` supplies the **`hBb`-free** per-edge pipeline, whose open content is
+`SameSlotFinalizedRootKnown` and `EngineGroundResiduals`.
 
 ## Residual decomposition
 
@@ -41,9 +41,8 @@ genuine below-anchor obstruction**, and **the deep engine bundle**:
   package). They form the explicit content of `EngineGroundResiduals` uniformly across
   slot regimes.
 
-* **Crux 7 — the input facade.** In `StrongPrefixSafety`, the bundle is
-  `Spec_Safety_of_ground` (`SameSlotFinalizedRootKnown` + `EngineGroundResiduals`), the `hBb`-free
-  minimal remainder.
+* **Crux 7 — the input facade.** The bundle is `SameSlotFinalizedRootKnown` +
+  `EngineGroundResiduals`, the `hBb`-free minimal remainder.
 -/
 
 namespace FastConfirmation.Spec
@@ -93,14 +92,12 @@ theorem mem_of_is_ancestor_above_anchor {store : Store Root}
 
 /-! ## Crux 7 — the minimal `hBb`-free facade
 
-The public `Spec_Safety` reduces through `INVstarTrack` to the **two-bundle**
-remainder `SameSlotFinalizedRootKnown` + `EngineGroundResiduals` via
-`INVstarTrack.Spec_Safety_of_ground`, which sits above `StrongPrefixSafety` in the import DAG
-(`ShellCompose → StrongPrefixSafety`, so the latter cannot import it; the reduced
-headline lives here instead).
+The `hBb`-free track reduces the safety obligation to the **two-bundle** remainder
+`SameSlotFinalizedRootKnown` + `EngineGroundResiduals`.
 
-It is strictly tighter than `Spec_Safety_of_strongPrefix_inputs`' three-field
-`StrongPrefixSafetyInputs`: the per-edge economic bundle `fork_edges` (`ForkEdgeSupply`,
+It is strictly tighter than the three-field
+`StrongPrefixSafety.StrongPrefixSafetyInputs`: the per-edge economic bundle `fork_edges`
+(`ForkEdgeSupply`,
 carrying the recorded base-enemy transport `hBb`) is replaced by the store-independent
 ground-truth-`Bval` bundle `fork_edges_ground` (`ForkEdgeGroundSupply`), whose per-edge
 `ForkEdgeGroundInputs` **drops `hBb` entirely** — the endpoint enemy `Bval` is
@@ -109,32 +106,21 @@ ground-truth-`Bval` bundle `fork_edges_ground` (`ForkEdgeGroundSupply`), whose p
 tax-arm corner the v2 track carried on every `fork_edges` base transport is **gone**; what
 remains open is only the E5-reset `SameSlotFinalizedRootKnown` corner (crux 1, the below-anchor
 obstruction above) and the engine base mechanization (`EngineGroundResiduals` =
-`dynamics_struct` + `fork_edges_ground`, cruxes 2–6). No outright `Spec_Safety_proved`
-follows: `SameSlotFinalizedRootKnown` does not close (crux 1) and the engine bundle is open.
+`dynamics_struct` + `fork_edges_ground`, cruxes 2–6). No outright closing follows:
+`SameSlotFinalizedRootKnown` does not close (crux 1) and the engine bundle is open.
 
-`Spec_Safety_of_ground` uses only Lean's standard axioms `propext`,
-`Classical.choice`, and `Quot.sound`, with no project axiom: the whole reduction from the public guarantee down to the
-two-bundle remainder is machine-checked. This section adds the monotonicity corollary on
-that same minimal bundle. -/
+The monotonicity corollary on that same minimal bundle used to live here; it is deleted with the
+legacy `SpecAssumptions` observed-anchor cone (P-6), see the note below. -/
 
 variable (cfg : Config) (ext : Externals Root)
 
-/-- **`Spec_Monotonicity` from the `hBb`-free ground bundle.** Chain
-consistency of an honest node's confirmed roots follows from the minimal remainder
-(`SameSlotFinalizedRootKnown` + `EngineGroundResiduals`) plus the single-store confirmed-root
-knownness input `hck` (via `hkc_of_confirmed_known`, within-node
-`StoreLE` — no cross-node relay). Composes `INVstarTrack.Spec_Safety_of_ground` with
-`spec_monotonicity_of_safety`. The monotonicity companion of the `hBb`-free
-safety facade, on exactly the same two-bundle remainder. -/
-theorem Spec_Monotonicity_of_ground
-    (htracks : ∀ E : Execution Root, SpecAssumptions cfg ext E → E.HeadTracksJustified cfg ext)
-    (hSameSlot : ∀ E : Execution Root, SpecAssumptions cfg ext E → E.SameSlotFinalizedRootKnown cfg ext)
-    (hEng : ∀ E : Execution Root, SpecAssumptions cfg ext E → E.EngineGroundResiduals cfg ext)
-    (hck : ∀ E : Execution Root, SpecAssumptions cfg ext E → ∀ v ∈ E.honest, ∀ k : ℕ,
-      E.WithinHorizon cfg k →
-      E.confirmed cfg ext v k ∈ (E.store cfg ext v k).block_roots) :
-    Spec_Monotonicity cfg ext :=
-  spec_monotonicity_of_safety cfg ext (Spec_Safety_of_ground cfg ext htracks hSameSlot hEng)
-    (hkc_of_confirmed_known cfg ext hck)
+/-! ### Deleted: `Spec_Monotonicity_of_ground`
+
+The monotonicity corollary on the two-bundle remainder stood here, composing
+`INVstarTrack.Spec_Safety_of_ground` with `StrongPrefixSafety.spec_monotonicity_of_safety`. It
+carried the unproduced ahead-regime head-tracking premise `htracks` and was an
+unconsumed root of the legacy `SpecAssumptions` observed-anchor cone; it is deleted with that
+cone (P-6). The ancestor-transport cruxes above are unaffected. See
+`docs/p6-justified-descends-derivation.md` §8. -/
 
 end FastConfirmation.Spec

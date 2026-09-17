@@ -3,21 +3,14 @@ import FastConfirmation.Spec.Proof.Structural
 /-!
 # Spec / Proof / Compose: `EngineGroundResiduals` from the shell
 
-`Shrink.Spec_Safety_shrunk` reduces the public `Spec_Safety` to the bundle
-`SameSlotFinalizedRootKnownNonGenesis` + `EngineGroundResiduals` (the `hBb`-free ground-truth-`Bval` engine,
-`INVstarTrack`). `Structural` then discharges the same-slot leg under the genesis-start anchor
-(`sameSlotFinalizedRootKnownNonGenesis_of_genesis_start`). This module does **the threading**: it wires the
-engine bundle down to its transparent per-field suppliers and composes the whole chain into the
-closing `Spec_Safety_proved` / `Spec_Monotonicity_proved`.
+This module wires `EngineGroundResiduals` (the `hBb`-free ground-truth-`Bval` engine,
+`INVstarTrack`) down to its transparent per-field suppliers.
 
-## Where the composition lives
-
-`StrongPrefixSafety` is upstream in the import graph — `ShellCompose` imports it, and the whole
-sharper-facade chain `ShellCompose → Definitive → INVstarTrack → LastCruxes → Shrink → Structural`
-builds on it. A closing theorem that consumes `Spec_Safety_shrunk` / `EngineGroundResiduals` /
-`sameSlotFinalizedRootKnownNonGenesis_of_genesis_start` therefore lives here,
-downstream of `Structural`, to avoid an import cycle. `StrongPrefixSafety`
-provides the conditional all-prefix reduction and monotonicity machinery.
+It used to close the chain as well, with `Spec_Safety_proved` / `Spec_Monotonicity_proved` on
+top of `Shrink.Spec_Safety_shrunk` and `Structural`'s genesis-start discharge of the same-slot
+leg. Those two closings belonged to the legacy `SpecAssumptions` observed-anchor cone — they
+carried the never-produced ahead-regime premise `AheadFacade`'s ahead-regime head-tracking premise — and are
+deleted (P-6; see the Section 2 note and `docs/p6-justified-descends-derivation.md` §8).
 
 ## `EngineGroundResiduals` from `EngineGroundSuppliers`
 
@@ -44,18 +37,6 @@ confirming-store knownness `hbconf`. So
 
 `engineGroundResiduals_of_suppliers` discharges the later-slot `hb` and passes the rest through.
 
-## The `Spec_Safety_proved` composition
-
-`Spec_Safety_proved` composes `Spec_Safety_shrunk` with the genesis-start same-slot discharge and
-this threading, reducing the public guarantee to exactly **the genesis-start anchor hypothesis
-`hanchor0`** (the modeling specialization to a genesis start, needed to discharge the same-slot availability
-corner — *not* derivable from `SpecAssumptions`, which admits checkpoint-sync anchors) **plus the
-engine suppliers `EngineGroundSuppliers`**. The explicit tiny-`TAB` floor `hfloor` is **not**
-surfaced here: it lives *inside* `fork_edges_ground`'s carried `INVstar`-maintenance content, not at
-this composition level.
-
-The explicit premises are the `EngineGroundSuppliers` fields `hb_sameslot`, `hcase`, and
-`fork_edges_ground`, together with the `hanchor0` modeling hypothesis.
 -/
 
 namespace FastConfirmation.Spec
@@ -138,54 +119,12 @@ theorem engineGroundResiduals_of_suppliers (hSA : SpecAssumptions cfg ext E)
 
 end Execution
 
-/-! ## Section 2 — the closing composition -/
+/-! ## Section 2 — deleted: the closing composition
 
-/-- **`Spec_Safety` from the genesis-start anchor and the engine suppliers** — the
-closing composition.
-
-FCR safety follows from a proof that every execution's `SpecAssumptions` supplies (i) the
-**genesis-start anchor** `hanchor0` (the fork-choice store's anchor block sits at `GENESIS_SLOT` —
-the genesis-start modeling specialization, which discharges the same-slot availability reset corner
-via `Structural.sameSlotFinalizedRootKnownNonGenesis_of_genesis_start`; *not* derivable from
-`SpecAssumptions`, which admits checkpoint-sync anchors) and (ii) the threaded engine suppliers
-`EngineGroundSuppliers` (the head-safety engine's base mechanization on the store-independent
-ground-truth-`Bval` track, with `dynamics_struct`'s later-slot knownness discharged).
-
-Composes `Shrink.Spec_Safety_shrunk` (`Spec_Safety` from `SameSlotFinalizedRootKnownNonGenesis` and
-`EngineGroundResiduals`) with the genesis-start discharge and the supplier threading
-`engineGroundResiduals_of_suppliers`. The declaration uses only Lean's standard axioms
-`propext`, `Classical.choice`, and `Quot.sound`, with no project axiom; the whole reduction from the public guarantee to the residual
-bundle (`hanchor0` + `EngineGroundSuppliers`) is machine-checked. Its explicit premises are
-`hanchor0` and the engine-supplier fields `hb_sameslot`/`hcase`/`fork_edges_ground` (the
-head-safety engine core and its same-slot `SameSlotFinalizedRootKnown` condition). -/
-theorem Spec_Safety_proved
-    (htracks : ∀ E : Execution Root, SpecAssumptions cfg ext E → E.HeadTracksJustified cfg ext)
-    (hanchor0 : ∀ E : Execution Root, SpecAssumptions cfg ext E →
-      ∀ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
-        E.genesis_store = get_forkchoice_store cfg ast ablk → ablk.message.slot = GENESIS_SLOT)
-    (hsup : ∀ E : Execution Root, SpecAssumptions cfg ext E → E.EngineGroundSuppliers cfg ext) :
-    Spec_Safety cfg ext :=
-  Spec_Safety_shrunk cfg ext htracks
-    (fun E hSA => E.sameSlotFinalizedRootKnownNonGenesis_of_genesis_start cfg ext hSA (hanchor0 E hSA))
-    (fun E hSA => E.engineGroundResiduals_of_suppliers cfg ext hSA (hsup E hSA))
-
-/-- **`Spec_Monotonicity` from the same bundle and confirmed-root knownness.** Chain
-consistency of an honest node's confirmed roots follows from the closing safety composition
-(`Spec_Safety_proved`) plus the single-store confirmed-root knownness residual `hck` (`confirmed v k
-∈ (store v k).block_roots`, lifted across time by within-node `StoreLE` — no cross-node relay). The
-monotonicity companion of the composition uses only Lean's standard axioms
-`propext`, `Classical.choice`, and `Quot.sound`. -/
-theorem Spec_Monotonicity_proved
-    (htracks : ∀ E : Execution Root, SpecAssumptions cfg ext E → E.HeadTracksJustified cfg ext)
-    (hanchor0 : ∀ E : Execution Root, SpecAssumptions cfg ext E →
-      ∀ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
-        E.genesis_store = get_forkchoice_store cfg ast ablk → ablk.message.slot = GENESIS_SLOT)
-    (hsup : ∀ E : Execution Root, SpecAssumptions cfg ext E → E.EngineGroundSuppliers cfg ext)
-    (hck : ∀ E : Execution Root, SpecAssumptions cfg ext E → ∀ v ∈ E.honest, ∀ k : ℕ,
-      E.WithinHorizon cfg k →
-      E.confirmed cfg ext v k ∈ (E.store cfg ext v k).block_roots) :
-    Spec_Monotonicity cfg ext :=
-  spec_monotonicity_of_safety cfg ext (Spec_Safety_proved cfg ext htracks hanchor0 hsup)
-    (hkc_of_confirmed_known cfg ext hck)
+`Spec_Safety_proved` and `Spec_Monotonicity_proved` stood here, composing
+`Shrink.Spec_Safety_shrunk` with the genesis-start same-slot discharge and the supplier
+threading above. Both carried the unproduced ahead-regime head-tracking premise `htracks` and both were unconsumed roots of the legacy
+`SpecAssumptions` observed-anchor cone; they are deleted with it (P-6). See
+`docs/p6-justified-descends-derivation.md` §8. -/
 
 end FastConfirmation.Spec

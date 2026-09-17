@@ -472,9 +472,17 @@ definitions, the accepted bundle gives only `anchor ∨ GU carrier`, and
 (`fe724fd`, P-6): it was an LMD-GHOST weight claim, not an FFG export, and it is
 not derivable from the 2/3-target export at `CONFIRMATION_BYZANTINE_THRESHOLD =
 25`. So the reasoning here stands a fortiori — see
-`docs/p6-justified-descends-derivation.md` §7, whose §7.2 cites *this* branch-switch
+`docs/p6-justified-descends-derivation.md`, whose §7.2 cites *this* branch-switch
 finding as the reason the strong path cannot borrow rule delta 5's chain-intrinsic
 banking.
+
+That cross-reference is no longer a live residual in either direction. The named premise
+`fe724fd` left behind on the legacy `SpecAssumptions` observed-anchor route, and the whole
+observed-anchor cone that threaded it, are deleted (P-6 §8): nothing in the development ever
+produced the premise, and the accepted route does not need it — it proves
+`obs.epoch ≤ jc(w, n+1).epoch` at every honest `w`, so the strictly-ahead case the deleted
+field covered never arises there. The branch-switch finding recorded here is what ruled out
+repairing the strong path instead.
 
 An earlier proposal was to close the hole with an extra executable conjunct on
 the gate (`is_ancestor store (get_head store) (get_node_for_root
