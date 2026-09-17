@@ -4,9 +4,10 @@ import FastConfirmation.Spec.Proof.IHMechanize
 /-!
 # Spec / Proof / FinalWiring: residual wiring (mostly retired)
 
-This module wired the `unrealized_justified` export and the two mechanical E5-reset anchor
-obligations into the conditional `Spec_Safety` input records. Those records went with the legacy
-`SpecAssumptions` observed-anchor cone (P-6), and six of this module's seven declarations —
+This module wired the former `JustificationInterface.unrealized_justified` export and the two
+mechanical E5-reset anchor obligations into the conditional `Spec_Safety` input records. Those
+records went with the legacy `SpecAssumptions` observed-anchor cone (P-6), and six of this
+module's seven declarations —
 `prev_greatest_of_interface`, `justified_dom_of_descent`, `genesis_dom_of_interface`,
 `finalized_dom_of_known`, `finalized_root_relay_known` and `dynamics_struct_of_suppliers` — went
 with them in the orphan sweep. See the section note below and
@@ -27,7 +28,7 @@ namespace Execution
 
 variable (E : Execution Root)
 
-/-! ## Section 1 — `prev_greatest` from `unrealized_justified` -/
+/-! ## Section 1 — the deleted `prev_greatest` leg -/
 
 /-! ### Deleted: the E5 reset-anchor wiring and the `dynamics_struct` assembly
 
@@ -38,7 +39,12 @@ conditional `Spec_Safety` routes. `hb_of_confirming` below is unaffected.
 
 They are deleted by the orphan sweep that follows the retirement of the legacy
 `SpecAssumptions` observed-anchor cone (P-6): every consumer they had was in that cone.
-See `docs/p6-justified-descends-derivation.md` §8. -/
+See `docs/p6-justified-descends-derivation.md` §8.
+
+`prev_greatest_of_interface` was the **only** projection site in the development of
+`JustificationInterface.unrealized_justified`; with it gone the field was unmentioned
+anywhere, and it has since been deleted too (P-4, 13 → 12 fields). See
+`docs/p4-unrealized-justified-derivation.md`. -/
 
 /-! ## Section 2 — the E5 reset anchors: `genesis_dom` and `finalized_dom`
 

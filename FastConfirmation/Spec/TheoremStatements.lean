@@ -35,6 +35,12 @@ premise in `Proof/AheadFacade.lean`; that premise and the whole legacy
 `SpecAssumptions` observed-anchor cone that threaded it are now deleted too,
 since nothing ever produced it and the accepted route never enters the ahead
 regime. See `docs/p6-justified-descends-derivation.md` §8.
+Neither is the unrealized-family cross-view propagation formerly carried as
+`unrealized_justified`: its single projection site went with that same
+observed-anchor cone, after which no declaration in the development mentioned
+it, and the derivation that would have replaced it reaches only the
+strictly-later-slot regime, not the same-slot corner the field asserted. See
+`docs/p4-unrealized-justified-derivation.md`.
 These predicates remain low-level proof vocabulary. The accepted theorem uses
 the separate accepted FFG-semantics and `PaperSafetySynchrony` interfaces.
 -/
@@ -167,39 +173,45 @@ structure JustificationInterface (E : Execution Root) : Prop where
     E.slot_at cfg n ≤ E.slot_at cfg m →
       JustifiedIn (E.store cfg ext w m)
         ((E.fcr cfg ext v n).current_epoch_observed_justified_checkpoint)
-  /-- Unrealized-family justification propagation (the
-      unrealized/greatest-unrealized analog
-      of `observed_justified`): an honest store's unrealized justified
-      checkpoint and its FCR store's previous-epoch greatest unrealized
-      checkpoint are justified in every honest view from the same slot on
-      (both are computed by the same ≥2/3-attested unrealized-justification
-      machinery the observed checkpoint reads).
+  /- Deleted field: `unrealized_justified` — the unrealized-family analog of
+     `observed_justified`, which asserted that an honest store's
+     `unrealized_justified_checkpoint` *and* its FCR store's
+     `previous_epoch_greatest_unrealized_checkpoint` are `JustifiedIn` every
+     honest view from the same slot on. It carried the **P-4** disclosure: the
+     pinned spec documents the all-honest-nodes property only for the two
+     `*_observed_justified_checkpoint` fields (fast-confirmation.md:94), and the
+     field documentation of the checkpoint named in the second conjunct reads
+     *"a greatest unrealized justified checkpoint at the start of the last slot
+     of the previous epoch **according to a local view**"*
+     (fast-confirmation.md:97). The claim was therefore cross-view propagation
+     asserted one rotation upstream of where the spec takes it.
 
-      **DISCLOSURE (`docs/plumbing-spec-citations.md` P-4): this asserts
-      cross-view propagation one rotation upstream of where the pinned spec
-      documents it.**  fast-confirmation.md documents the all-honest-nodes
-      property only for the two `*_observed_justified_checkpoint` fields
-      (fast-confirmation.md:94: *"a justified checkpoint that has been observed
-      by all honest nodes at the beginning of the current epoch assuming
-      synchrony"*), which is what `observed_justified` above transcribes.  The
-      field documentation of the checkpoint named in the SECOND conjunct here
-      reads, verbatim (fast-confirmation.md:97):
-      *"`previous_epoch_greatest_unrealized_checkpoint`: a greatest unrealized
-      justified checkpoint at the start of the last slot of the previous epoch
-      **according to a local view**"* — a local-view quantity.  Asserting that
-      it, and the store's own `unrealized_justified_checkpoint`, are justified
-      in EVERY honest view from the same slot on is the synchrony step the spec
-      takes only one rotation later, applied here early.  It is sound under
-      GST-0 honest-to-honest Δ-synchrony plus the ≥2/3-attested-target
-      provenance both quantities share with the observed checkpoint, but it is
-      an assumption of this development, not transcription. -/
-  unrealized_justified : ∀ v ∈ E.honest, ∀ n : ℕ, ∀ w ∈ E.honest, ∀ m : ℕ,
-    E.WithinHorizon cfg n → E.WithinHorizon cfg m →
-    E.slot_at cfg n ≤ E.slot_at cfg m →
-      JustifiedIn (E.store cfg ext w m)
-        (E.store cfg ext v n).unrealized_justified_checkpoint ∧
-      JustifiedIn (E.store cfg ext w m)
-        ((E.fcr cfg ext v n).previous_epoch_greatest_unrealized_checkpoint)
+     It is deleted as **dead weight**, not repaired. It had exactly one
+     projection site in the whole development, `FinalWiring.prev_greatest_of_interface`,
+     which built one of the three E5 reset-anchor legs for the conditional
+     `Spec_Safety` routes; that declaration went with the legacy
+     `SpecAssumptions` observed-anchor cone in the P-6 orphan sweep. After the
+     sweep **no declaration in the project mentioned the field** — it survived
+     only as unprojected weight on the premise surface of the four weak
+     headlines W20–W23, which carry `hji` as a binder. Deleting it is a strict
+     premise weakening there and changes no statement.
+
+     The content is also not recoverable as stated. The natural derivation —
+     the checkpoint is `S.GU r` for a block `r` known in `v`'s store
+     (`AcceptedFFGGlobalCheckpointOrigins.unrealized_justified`,
+     `Proof/AcceptedFFGGlobalCheckpointTrajectory.lean:96`), relay `r` to `w`
+     by `PaperSafetySynchrony.block_relay` (`Model/Assumptions.lean:209-216`),
+     and recompute `(store w m).unrealized_justifications r = S.GU r` by
+     `Execution.accepted_unrealized_justification_eq`
+     (`Proof/AcceptedFFGStateTrajectory.lean:572-577`) to land `JustifiedIn`'s
+     fifth disjunct — closes only on the strictly-later-slot regime.
+     `block_relay` has a `+1`-slot gate (`slot_at n + 1 ≤ slot_at (m + 1)`),
+     while the deleted field asserted the conclusion from `slot_at n ≤
+     slot_at m`, i.e. including the same-slot cross-node corner that is outside
+     the block-relay guarantee (`Proof/FinalWiring.lean:16-18` records the same
+     limit for the confirmed block's endpoint knownness).
+     See `docs/p4-unrealized-justified-derivation.md` and
+     `docs/plumbing-spec-citations.md` P-4. -/
   /-- Greatest-unrealized cache:
       the previous-epoch greatest unrealized checkpoint an honest node's FCR
       store carries is among its store's keyed checkpoint states (same
