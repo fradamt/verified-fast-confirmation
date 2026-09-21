@@ -65,15 +65,15 @@ theorem weak_get_adversarial_weight_ge (store : Store Root) (bs : BeaconState Ro
 
 /-- The weak fresh-gated discount support is no larger than the strong
 discount support on the same span: the weak filter additionally requires
-`is_epoch_fresh_message`, so its counted set is a subset of the strong
+`is_duty_fresh_message`, so its counted set is a subset of the strong
 filter's on the same underlying committee union (rule delta 3, module
 docstring of `WeakSynchrony`: the discount must be fresh-gated, not just the
 main scorer). -/
 theorem weak_fresh_block_support_le (store : Store Root) (bs : BeaconState Root)
     (r : Root) (a b : Slot) :
-    Weak.get_epoch_fresh_block_support_between_slots cfg ext store bs r a b ≤
+    Weak.get_duty_fresh_block_support_between_slots cfg ext store bs r a b ≤
       get_block_support_between_slots cfg ext store bs r a b := by
-  unfold Weak.get_epoch_fresh_block_support_between_slots get_block_support_between_slots
+  unfold Weak.get_duty_fresh_block_support_between_slots get_block_support_between_slots
   dsimp only
   refine Finset.sum_le_sum_of_subset_of_nonneg
     (Finset.monotone_filter_right _ ?_) (fun i _ _ => Nat.zero_le _)
@@ -107,16 +107,16 @@ theorem weak_safety_threshold_ge (store : Store Root) (r : Root) (bs : BeaconSta
     (weak_support_discount_le cfg ext store bs r)
 
 /-- The weak fresh-gated attestation score is no larger than the strong score
-at the same node: the weak filter additionally requires `is_epoch_fresh_message`
+at the same node: the weak filter additionally requires `is_duty_fresh_message`
 (rule delta 3), so its counted set is a subset of the strong filter's, in the
 same conjunct order `(equiv && fresh) && ancestor` against `equiv && ancestor`
 — the idiom at `SupportTransport.lean:70-91`, without the ancestor-transport
 step since the node is unchanged. -/
-theorem weak_epoch_fresh_attestation_score_le (store : Store Root)
+theorem weak_duty_fresh_attestation_score_le (store : Store Root)
     (node : ForkChoiceNode Root) (state : BeaconState Root) :
-    Weak.get_epoch_fresh_attestation_score cfg store node state ≤
+    Weak.get_duty_fresh_attestation_score cfg ext store node state ≤
       get_attestation_score cfg store node state := by
-  simp only [Weak.get_epoch_fresh_attestation_score, get_attestation_score]
+  simp only [Weak.get_duty_fresh_attestation_score, get_attestation_score]
   refine sum_le_sum_of_sublist ?_
   refine List.Sublist.map _ ?_
   refine List.monotone_filter_right _ ?_
@@ -133,7 +133,7 @@ theorem is_one_confirmed_of_weak (store : Store Root) (bs : BeaconState Root) (r
   simp only [Weak.is_one_confirmed, decide_eq_true_eq] at h
   simp only [is_one_confirmed, decide_eq_true_eq]
   exact lt_of_le_of_lt (weak_safety_threshold_ge cfg ext store r bs)
-    (lt_of_lt_of_le h (weak_epoch_fresh_attestation_score_le cfg store _ bs))
+    (lt_of_lt_of_le h (weak_duty_fresh_attestation_score_le cfg ext store _ bs))
 
 theorem weak_honest_ffg_support_le (store : Store Root) :
     Weak.compute_honest_ffg_support_for_current_target cfg ext store ≤

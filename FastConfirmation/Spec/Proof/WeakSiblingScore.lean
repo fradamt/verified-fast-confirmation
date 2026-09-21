@@ -32,11 +32,11 @@ endpoint-indexed fresh-parent-stuck inclusion. -/
 theorem mem_crossingXPre_of_endpoint_Xclass_not_mid {E : Execution Root}
     {obs : ValidatorIndex} {q : ℕ} {w : ValidatorIndex} {m : ℕ}
     {bs : BeaconState Root} {b : Root} {lo mid es : Slot} {i : ValidatorIndex}
-    (hparentA : FreshParentStuck cfg E (E.store cfg ext obs q) bs b
+    (hparentA : FreshParentStuck cfg ext E (E.store cfg ext obs q) bs b
       ⊆ E.Aclass cfg ext w m b lo es)
     (hiX : i ∈ E.Xclass cfg ext w m b lo es)
     (hiNotMid : i ∉ E.span_committee mid es) :
-    i ∈ crossingXPre cfg E (E.store cfg ext obs q) bs b lo mid es := by
+    i ∈ crossingXPre cfg ext E (E.store cfg ext obs q) bs b lo mid es := by
   have hiX' := hiX
   simp only [Execution.Xclass, Finset.mem_filter] at hiX'
   rw [crossingXPre, Finset.mem_sdiff]
@@ -45,7 +45,7 @@ theorem mem_crossingXPre_of_endpoint_Xclass_not_mid {E : Execution Root}
       Finset.mem_sdiff]
     exact ⟨⟨hiX'.1.1, hiNotMid⟩, hiX'.1.2⟩
   · intro hiParentPre
-    have hiParent : i ∈ FreshParentStuck cfg E (E.store cfg ext obs q) bs b :=
+    have hiParent : i ∈ FreshParentStuck cfg ext E (E.store cfg ext obs q) bs b :=
       (Finset.mem_sdiff.mp hiParentPre).1
     have hiA := hparentA hiParent
     simp only [Execution.Aclass, Finset.mem_filter] at hiA
@@ -61,7 +61,7 @@ theorem crossing_sibling_score_of_endpointLedger {E : Execution Root}
     (hA : SelectedMarginAssumptions cfg ext E)
     {obs : ValidatorIndex} {q : ℕ} {w : ValidatorIndex} {m : ℕ}
     {bs : BeaconState Root} {a b : Root} {lo mid es sigma : Slot}
-    (hparentA : FreshParentStuck cfg E (E.store cfg ext obs q) bs b
+    (hparentA : FreshParentStuck cfg ext E (E.store cfg ext obs q) bs b
       ⊆ E.Aclass cfg ext w m b lo es)
     (hmidEs : mid ≤ es) (hesSigma : es ≤ sigma)
     (hcommittee : ∀ t : Slot, es < t → t ≤ sigma → E.CommitteeSupportsAt cfg ext w m b t)
@@ -73,7 +73,7 @@ theorem crossing_sibling_score_of_endpointLedger {E : Execution Root}
       get_attestation_score cfg (E.store cfg ext w m) (get_node_for_root c')
           ((E.store cfg ext w m).checkpoint_states
             (E.store cfg ext w m).justified_checkpoint)
-        ≤ E.weight (crossingXPre cfg E (E.store cfg ext obs q) bs b lo mid es)
+        ≤ E.weight (crossingXPre cfg ext E (E.store cfg ext obs q) bs b lo mid es)
           + E.Xval cfg ext w m b mid sigma
           + E.weight (E.crossingByzPre lo mid es)
           + E.Bval mid sigma := by
@@ -83,7 +83,7 @@ theorem crossing_sibling_score_of_endpointLedger {E : Execution Root}
     E.Xclass_subset_of_committee_support cfg ext hA.honest_behavior
       w m b lo hesSigma hcommittee
   have hXsplit : E.Xclass cfg ext w m b lo sigma ⊆
-      crossingXPre cfg E (E.store cfg ext obs q) bs b lo mid es ∪
+      crossingXPre cfg ext E (E.store cfg ext obs q) bs b lo mid es ∪
         E.Xclass cfg ext w m b mid sigma := by
     intro i hi
     by_cases hiMid : i ∈ E.span_committee mid sigma
@@ -99,17 +99,17 @@ theorem crossing_sibling_score_of_endpointLedger {E : Execution Root}
       exact mem_crossingXPre_of_endpoint_Xclass_not_mid (E := E) cfg ext hparentA
         hiEndEs hiNotMidEs
   have hXweight : E.Xval cfg ext w m b lo sigma ≤
-      E.weight (crossingXPre cfg E (E.store cfg ext obs q) bs b lo mid es) +
+      E.weight (crossingXPre cfg ext E (E.store cfg ext obs q) bs b lo mid es) +
         E.Xval cfg ext w m b mid sigma := by
     calc
       E.Xval cfg ext w m b lo sigma =
           E.weight (E.Xclass cfg ext w m b lo sigma) := rfl
-      _ ≤ E.weight (crossingXPre cfg E (E.store cfg ext obs q) bs b lo mid es ∪
+      _ ≤ E.weight (crossingXPre cfg ext E (E.store cfg ext obs q) bs b lo mid es ∪
           E.Xclass cfg ext w m b mid sigma) := E.weight_mono hXsplit
-      _ ≤ E.weight (crossingXPre cfg E (E.store cfg ext obs q) bs b lo mid es) +
+      _ ≤ E.weight (crossingXPre cfg ext E (E.store cfg ext obs q) bs b lo mid es) +
           E.weight (E.Xclass cfg ext w m b mid sigma) :=
         weight_union_le _ _
-      _ = E.weight (crossingXPre cfg E (E.store cfg ext obs q) bs b lo mid es) +
+      _ = E.weight (crossingXPre cfg ext E (E.store cfg ext obs q) bs b lo mid es) +
           E.Xval cfg ext w m b mid sigma := rfl
   have hBsplit : E.Bwin lo sigma ⊆
       E.crossingByzPre lo mid es ∪ E.Bwin mid sigma :=
@@ -131,11 +131,11 @@ theorem crossing_sibling_score_of_endpointLedger {E : Execution Root}
           ((E.store cfg ext w m).checkpoint_states
             (E.store cfg ext w m).justified_checkpoint)
         ≤ E.Xval cfg ext w m b lo sigma + E.Bval lo sigma := hsibling
-    _ ≤ (E.weight (crossingXPre cfg E (E.store cfg ext obs q) bs b lo mid es) +
+    _ ≤ (E.weight (crossingXPre cfg ext E (E.store cfg ext obs q) bs b lo mid es) +
           E.Xval cfg ext w m b mid sigma) +
         (E.weight (E.crossingByzPre lo mid es) + E.Bval mid sigma) :=
       Nat.add_le_add hXweight hBweight
-    _ = E.weight (crossingXPre cfg E (E.store cfg ext obs q) bs b lo mid es) +
+    _ = E.weight (crossingXPre cfg ext E (E.store cfg ext obs q) bs b lo mid es) +
           E.Xval cfg ext w m b mid sigma
           + E.weight (E.crossingByzPre lo mid es)
           + E.Bval mid sigma := by

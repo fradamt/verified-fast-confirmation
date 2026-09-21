@@ -53,11 +53,13 @@ Only one surplus honest attester is needed — the certificate threshold is
    attesters — the proofs should route their synchrony applications through
    that surplus rather than through the observer's own receipt.
 3. `Weak.is_one_confirmed` and its empty-slot support discount count only
-   **epoch-fresh** recorded LMD cells (`Weak.is_epoch_fresh_message`): a
-   recorded cell whose epoch has not reached the epoch of the last completed
-   slot no longer counts, in either the main scorer or the discount. The
-   discount must be gated too, or a stale recorded parent-pointing cell could
-   fund it without a matching honest replay (see `docs/weak-synchrony.md`).
+   **duty-fresh** recorded LMD cells (`Weak.is_duty_fresh_message`). A cell
+   from the last completed epoch is admitted. A cell from the preceding epoch
+   is also admitted until that validator has a completed duty in the newer
+   epoch. Both sums use the same check, so an old parent vote cannot fund a
+   discount after an unobserved replacement may support a competing child.
+   This replaces the earlier epoch-wide cutoff without assuming delivery to
+   the observer. The scan is bounded to the completed part of one epoch.
 4. The previous-epoch and tentative advancement disjuncts of
    `find_latest_confirmed_descendant` that read an *unrealized* justification
    (as opposed to the already-gated witness-certificate read above) each
@@ -135,21 +137,30 @@ def get_adversarial_weight (store : Store Root) (balance_source : BeaconState Ro
   else
     compute_adversarial_weight cfg store balance_source block.slot (current_slot - 1)
 
-/-- The epoch a counted recorded LMD cell must reach: the epoch of the last
-completed slot.  At the first slot of an epoch this is the *previous* epoch —
-`LatestMessageProvenance` forces every recorded cell to have been set for a
-slot `≤ current_slot − 1`, so anchoring at `compute_epoch_at_slot current_slot`
-would make the scorer identically zero at every epoch boundary.  This is the
-exact index the margin lemmas use (`es = get_current_slot store − 1`). -/
+/-- The last completed epoch, used as the reference for duty-based freshness.
+At the first slot of an epoch this is the previous epoch. Provenance places
+recorded votes before the current slot. A cell from the preceding epoch may
+also remain usable if its validator has no completed duty in this epoch; the
+predicate below checks that condition explicitly. -/
 def recorded_cutoff_epoch (store : Store Root) : Epoch :=
   compute_epoch_at_slot cfg (get_current_slot cfg store - 1)
 
-/-- Epoch-freshness of a recorded LMD cell (rule delta 3). -/
-def is_epoch_fresh_message (store : Store Root) (lm : LatestMessage Root) : Bool :=
-  decide (recorded_cutoff_epoch cfg store ≤ get_latest_message_epoch lm)
+/-- A recorded vote remains usable until a later-epoch duty has completed.
+The last completed epoch is enough for a current cell. A previous-epoch cell
+also remains usable if this validator has no assigned slot in the completed
+part of that epoch. The scan covers at most one epoch and needs no message
+arrival guarantee at the observer. -/
+def is_duty_fresh_message (store : Store Root) (i : ValidatorIndex)
+    (lm : LatestMessage Root) : Bool :=
+  let cutoff := recorded_cutoff_epoch cfg store
+  decide (cutoff ≤ get_latest_message_epoch lm) ||
+    (decide (get_latest_message_epoch lm + 1 = cutoff) &&
+      decide (i ∉ (Finset.Icc (compute_start_slot_at_epoch cfg cutoff)
+        (get_current_slot cfg store - 1)).biUnion
+          (fun s => get_slot_committee cfg ext store s)))
 
-/-- Weak-model `get_attestation_score`: counts only **epoch-fresh** cells. -/
-def get_epoch_fresh_attestation_score (store : Store Root)
+/-- Weak-model `get_attestation_score`: counts only **duty-fresh** cells. -/
+def get_duty_fresh_attestation_score (store : Store Root)
     (node : ForkChoiceNode Root) (state : BeaconState Root) : Gwei :=
   let unslashed_and_active_indices :=
     (get_active_validator_indices state (get_current_epoch cfg state)).filter
@@ -159,12 +170,12 @@ def get_epoch_fresh_attestation_score (store : Store Root)
       | none => false
       | some latest_message =>
           decide (i ∉ store.equivocating_indices) &&
-            is_epoch_fresh_message cfg store latest_message &&
+            is_duty_fresh_message cfg ext store i latest_message &&
             is_ancestor store (get_supported_node store latest_message) node)
     |>.map fun i => (state.validators.getD i default).effective_balance).sum
 
-/-- Weak-model `get_block_support_between_slots`, epoch-fresh (rule delta 3). -/
-def get_epoch_fresh_block_support_between_slots (store : Store Root)
+/-- Weak-model `get_block_support_between_slots`, duty-fresh (rule delta 3). -/
+def get_duty_fresh_block_support_between_slots (store : Store Root)
     (balance_source : BeaconState Root) (block_root : Root)
     (start_slot end_slot : Slot) : Gwei :=
   let participants :=
@@ -177,12 +188,12 @@ def get_epoch_fresh_block_support_between_slots (store : Store Root)
   ∑ i ∈ unslashed_and_active_indices.filter (fun i =>
       (store.latest_messages i).any (fun latest_message =>
         decide (latest_message.root = block_root) &&
-          is_epoch_fresh_message cfg store latest_message &&
+          is_duty_fresh_message cfg ext store i latest_message &&
           decide (i ∉ store.equivocating_indices))),
     (balance_source.validators.getD i default).effective_balance
 
 /-- Weak-model `compute_empty_slot_support_discount` (as in `LMDHelpers`, over
-the undiscounted budget, and epoch-fresh — rule delta 3: a stale recorded
+the undiscounted budget, and duty-fresh — rule delta 3: a stale recorded
 parent-pointing cell must not fund the discount, see the module docstring). -/
 def compute_empty_slot_support_discount (store : Store Root)
     (balance_source : BeaconState Root) (block_root : Root) : Gwei :=
@@ -192,7 +203,7 @@ def compute_empty_slot_support_discount (store : Store Root)
     0
   else
     let parent_support_in_empty_slots :=
-      get_epoch_fresh_block_support_between_slots cfg ext store balance_source block.parent_root
+      get_duty_fresh_block_support_between_slots cfg ext store balance_source block.parent_root
         (parent_block.slot + 1) (block.slot - 1)
     let adversarial_weight :=
       compute_adversarial_weight cfg store balance_source
@@ -233,7 +244,7 @@ counted attester is honest. -/
 def is_one_confirmed (store : Store Root) (balance_source : BeaconState Root)
     (block_root : Root) : Bool :=
   let support :=
-    get_epoch_fresh_attestation_score cfg store (get_node_for_root block_root) balance_source
+    get_duty_fresh_attestation_score cfg ext store (get_node_for_root block_root) balance_source
   let safety_threshold := compute_safety_threshold cfg ext store block_root balance_source
   decide (support > safety_threshold)
 

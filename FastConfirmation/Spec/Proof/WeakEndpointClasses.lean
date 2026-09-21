@@ -26,12 +26,13 @@ observer contributes only the cells it actually recorded, and
 ## Route for the support class (`freshSupporter_mem_endpoint_Sclass`)
 
 1. `Weak.mem_FreshAttSupporters` extracts the recorded, non-equivocating,
-   **epoch-fresh** cell `lm` whose supported node descends from `b` in the
+   **duty-fresh** cell `lm` whose supported node descends from `b` in the
    observer's own store.
-2. `Weak.epoch_le_of_fresh_cell` manufactures the `hdom` premise of
-   `Execution.recorded_lm_is_newest_in_store` out of freshness alone — no
-   honesty of the observer, no delivery to the observer, no
-   `WindowRecordedEpochMax`.
+2. `Weak.epoch_le_of_duty_fresh_cell` supplies the `hdom` premise of
+   `Execution.recorded_lm_is_newest_in_store` for completed assigned duties.
+   The existing observer committee-readback contract and honest duty assignment
+   connect the executable check to actual votes. No observer honesty, delivery
+   to the observer, or `WindowRecordedEpochMax` is needed.
 3. `Execution.recorded_lm_is_newest_in_store` (reused verbatim; it is already
    store-generic and honesty-free) returns the supporter's **ground** newest
    vote `a` through the cutoff, with `a.data.beacon_block_root = lm.root`.
@@ -93,6 +94,7 @@ containment in either direction. -/
 theorem freshSupporter_mem_endpoint_Sclass {E : Execution Root}
     (hA : SelectedMarginAssumptions cfg ext E)
     {obs : ValidatorIndex} {q : ℕ} (hqH : E.WithinHorizon cfg q)
+    (hcomm : E.PrefixCommitteeAgreement cfg ext (E.store cfg ext obs q))
     {bs : BeaconState Root} {b : Root}
     (hval : bs.validators = E.registry)
     (hbQ : b ∈ (E.store cfg ext obs q).block_roots)
@@ -113,7 +115,7 @@ theorem freshSupporter_mem_endpoint_Sclass {E : Execution Root}
     (hmH : E.WithinHorizon cfg m)
     (hslotQM : E.slot_at cfg q ≤ E.slot_at cfg m)
     {i : ValidatorIndex}
-    (hiFresh : i ∈ FreshAttSupporters cfg (E.store cfg ext obs q)
+    (hiFresh : i ∈ FreshAttSupporters cfg ext (E.store cfg ext obs q)
       (get_node_for_root b) bs)
     (hi : i ∈ E.honest) :
     i ∈ E.Sclass cfg ext w m b lo es := by
@@ -122,9 +124,9 @@ theorem freshSupporter_mem_endpoint_Sclass {E : Execution Root}
     E.store_parentSlotLt cfg ext hA.wellFormed hA.externals_coherence
       ⟨ast, ablk, hgeq, hslot, hparentne⟩
       hA.wellFormed.anchor_parent_unscheduled obs q
-  obtain ⟨lm, hlm, _hnequiv, hfresh, hanc⟩ := mem_FreshAttSupporters cfg hiFresh
+  obtain ⟨lm, hlm, _hnequiv, hfresh, hanc⟩ := mem_FreshAttSupporters cfg ext hiFresh
   have hiSupp : i ∈ AttSupporters cfg (E.store cfg ext obs q) (get_node_for_root b) bs :=
-    mem_AttSupporters_of_mem_fresh cfg hiFresh
+    mem_AttSupporters_of_mem_fresh cfg ext hiFresh
   -- (i) window membership, from the recorded cell's provenance
   have hiSpan : i ∈ E.span_committee lo es := by
     rw [hes]
@@ -133,7 +135,10 @@ theorem freshSupporter_mem_endpoint_Sclass {E : Execution Root}
   have hdom : ∀ (t : Slot) (k : ℕ) (att : Attestation Root),
       t ≤ es → E.vote i t = some (k, att) →
       compute_epoch_at_slot cfg t ≤ lm.epoch :=
-    fun _ _ _ ht _ => epoch_le_of_fresh_cell cfg hfresh hes ht
+    fun t _ _ ht hvote => epoch_le_of_duty_fresh_cell cfg ext hfresh hes ht (by
+      rw [hcomm t (E.slotWithinHorizon_of_le cfg (ht.trans (le_of_lt hesq)) hqH)]
+      exact hA.honest_behavior.votes_assigned i hi t
+        (by rw [hvote]; exact Option.some_ne_none _))
   obtain ⟨t, k, att, htle, hvote, hnew, hroot⟩ :=
     E.recorded_lm_is_newest_in_store cfg ext hA.honest_behavior
       hA.externals_coherence hsched hprov hes hi hlm hdom
@@ -175,6 +180,7 @@ bounds the strong sum. -/
 theorem freshHonestSupport_le_endpoint_Sval {E : Execution Root}
     (hA : SelectedMarginAssumptions cfg ext E)
     {obs : ValidatorIndex} {q : ℕ} (hqH : E.WithinHorizon cfg q)
+    (hcomm : E.PrefixCommitteeAgreement cfg ext (E.store cfg ext obs q))
     {bs : BeaconState Root} {b : Root}
     (hval : bs.validators = E.registry)
     (hbQ : b ∈ (E.store cfg ext obs q).block_roots)
@@ -194,15 +200,15 @@ theorem freshHonestSupport_le_endpoint_Sval {E : Execution Root}
     {w : ValidatorIndex} (hw : w ∈ E.honest) {m : ℕ}
     (hmH : E.WithinHorizon cfg m)
     (hslotQM : E.slot_at cfg q ≤ E.slot_at cfg m) :
-    (((FreshAttSupporters cfg (E.store cfg ext obs q) (get_node_for_root b) bs).filter
+    (((FreshAttSupporters cfg ext (E.store cfg ext obs q) (get_node_for_root b) bs).filter
           (fun i => i ∈ E.honest)).map
         (fun i => (bs.validators.getD i default).effective_balance)).sum
       ≤ E.Sval cfg ext w m b lo es := by
-  rw [fresh_honest_score_eq_weight cfg hval, Execution.Sval]
+  rw [fresh_honest_score_eq_weight cfg ext hval, Execution.Sval]
   apply E.weight_mono
   intro i hi
   rw [List.mem_toFinset, List.mem_filter] at hi
-  exact freshSupporter_mem_endpoint_Sclass cfg ext hA hqH hval hbQ hparentQ hprov
+  exact freshSupporter_mem_endpoint_Sclass cfg ext hA hqH hcomm hval hbQ hparentQ hprov
     hsched hwalk hlo0 hloMid hes hesq hw hmH hslotQM hi.1 (of_decide_eq_true hi.2)
 
 /-! ## 2. The fresh discount source lands in the endpoint's `Aclass` -/
@@ -215,6 +221,7 @@ ancestor/voteless class.**  `ParentStuck_subset_storeAclass`'s argument with its
 theorem freshParentStuck_subset_endpoint_Aclass {E : Execution Root}
     (hA : SelectedMarginAssumptions cfg ext E)
     {obs : ValidatorIndex} {q : ℕ} (hqH : E.WithinHorizon cfg q)
+    (hcomm : E.PrefixCommitteeAgreement cfg ext (E.store cfg ext obs q))
     {bs : BeaconState Root} {a b : Root}
     (hval : bs.validators = E.registry)
     (haQ : a ∈ (E.store cfg ext obs q).block_roots)
@@ -234,7 +241,7 @@ theorem freshParentStuck_subset_endpoint_Aclass {E : Execution Root}
     (haM : a ∈ (E.store cfg ext w m).block_roots)
     (hbM : b ∈ (E.store cfg ext w m).block_roots)
     (hparentM : ((E.store cfg ext w m).blocks b).parent_root = a) :
-    FreshParentStuck cfg E (E.store cfg ext obs q) bs b
+    FreshParentStuck cfg ext E (E.store cfg ext obs q) bs b
       ⊆ E.Aclass cfg ext w m b lo es := by
   obtain ⟨ast, ablk, hgeq, hslot, hparentne⟩ := hA.genesis
   have hpslM : ParentSlotLt (E.store cfg ext w m) :=
@@ -267,14 +274,17 @@ theorem freshParentStuck_subset_endpoint_Aclass {E : Execution Root}
   simp only [FreshParentStuck, Finset.mem_filter] at hiPS
   obtain ⟨hiFPS, hih⟩ := hiPS
   obtain ⟨hspanBase, _hnequiv, lm, hlm, hlmRoot, hfresh⟩ :=
-    mem_FreshParentSupport cfg hiFPS
+    mem_FreshParentSupport cfg ext hiFPS
   rw [hparentQ] at hspanBase
   have hiSpan : i ∈ E.span_committee lo es :=
     span_committee_mono_lo hloLe (E.span_committee_mono _ hbaseEs hspanBase)
   have hdom : ∀ (t : Slot) (k : ℕ) (att : Attestation Root),
       t ≤ es → E.vote i t = some (k, att) →
       compute_epoch_at_slot cfg t ≤ lm.epoch :=
-    fun _ _ _ ht _ => epoch_le_of_fresh_cell cfg hfresh hes ht
+    fun t _ _ ht hvote => epoch_le_of_duty_fresh_cell cfg ext hfresh hes ht (by
+      rw [hcomm t (E.slotWithinHorizon_of_le cfg (ht.trans (le_of_lt hesq)) hqH)]
+      exact hA.honest_behavior.votes_assigned i hih t
+        (by rw [hvote]; exact Option.some_ne_none _))
   obtain ⟨t, k, att, htle, hvote, hnew, hattRoot⟩ :=
     E.recorded_lm_is_newest_in_store cfg ext hA.honest_behavior
       hA.externals_coherence hsched hprov hes hih hlm hdom
@@ -349,7 +359,7 @@ theorem support_discount_le_endpoint_Aval {E : Execution Root}
     hA.byzantine_bound hcomm hval hstartH hbH htab) ?_
   rw [Execution.Aval]
   exact E.weight_mono
-    (freshParentStuck_subset_endpoint_Aclass cfg ext hA hqH hval haQ hbQ hparentQ
+    (freshParentStuck_subset_endpoint_Aclass cfg ext hA hqH hcomm hval haQ hbQ hparentQ
       hprov hsched hlo0 hloLe hes hesq hw hmH hslotQM haM hbM hparentM)
 
 /-! ## 3. The weak-native base strip, read entirely at the honest endpoint -/
@@ -482,7 +492,7 @@ theorem base_strip_of_confirmed_at_observer {E : Execution Root}
     rw [hcur0, hlo]
     exact hanchorP.trans (Nat.le_succ _)
   -- the two endpoint-class bounds
-  have hHsup := freshHonestSupport_le_endpoint_Sval cfg ext hA hqH hval hb hp hprov
+  have hHsup := freshHonestSupport_le_endpoint_Sval cfg ext hA hqH hcomm hval hb hp hprov
     hsched hwalk hlo0 (by rw [hlo]; exact hslotlt) hes hesq hw hmH hslotQM
   have hdisc := support_discount_le_endpoint_Aval cfg ext hA hqH hcomm hval htab
     hp hb rfl hprov hsched hlo0 (by rw [hlo]) hes hesq hw hmH hslotQM haM hbM hparentM
@@ -544,7 +554,7 @@ theorem crossing_hbase_of_confirmed_at_observer {E : Execution Root}
     (hslotQM : E.slot_at cfg q ≤ E.slot_at cfg m)
     (hbM : b ∈ (E.store cfg ext w m).block_roots) :
     2 * E.Sval cfg ext w m b ((E.store cfg ext obs q).blocks b).slot es
-        + 2 * (((FreshAttSupporters cfg (E.store cfg ext obs q)
+        + 2 * (((FreshAttSupporters cfg ext (E.store cfg ext obs q)
               (get_node_for_root b) bs).filter (fun i => i ∉ E.honest)).map
             (fun i => (bs.validators.getD i default).effective_balance)).sum
         + Weak.get_support_discount cfg ext (E.store cfg ext obs q) bs b
@@ -565,9 +575,9 @@ theorem crossing_hbase_of_confirmed_at_observer {E : Execution Root}
     exact E.store_anchor_min_slot cfg ext hA.wellFormed hA.externals_coherence
       hgeq hslot hparentne obs q b hbQ
   have hineq := is_one_confirmed_ineq cfg ext hconf
-  rw [fresh_attestation_score_honest_split cfg E (E.store cfg ext obs q)
+  rw [fresh_attestation_score_honest_split cfg ext E (E.store cfg ext obs q)
     (get_node_for_root b) bs] at hineq
-  have hhonest := freshHonestSupport_le_endpoint_Sval cfg ext hA hqH hval hbQ
+  have hhonest := freshHonestSupport_le_endpoint_Sval cfg ext hA hqH hcomm hval hbQ
     hparentQ hprov hsched hwalk hlo0 (le_refl _) hes hesq hw hmH hslotQM
   exact weak_crossing_hbase_arith hineq hhonest
 

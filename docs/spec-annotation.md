@@ -195,3 +195,29 @@ there the Spec column cites the prose being rendered.
   guarantee does not rely on honest proposals (proposer boost is handled
   adversarially), and aggregation is invisible to the indexed-attestation
   projection (design §12).
+
+## Weak variant: duty-based freshness (21 September 2026)
+
+This is an intentional change to `Spec.Weak`, not a change to the pinned strong
+consensus specification or its source manifest. The weak variant replaces its
+previous epoch-wide filter with `is_duty_fresh_message cfg ext store i lm`.
+The helper now needs the validator index and the existing external committee
+functions. It retains a previous-epoch cell only while its validator has no
+completed duty in the last completed epoch.
+
+Both `get_duty_fresh_attestation_score` and
+`get_duty_fresh_block_support_between_slots` use the new predicate. The latter
+continues to fund `compute_empty_slot_support_discount`; the discount is not
+removed. The other weak rule changes, certificate gates, FFG predicates, and
+banking logic are unchanged. In particular, this does not include the separate
+Python genesis-banking repair or the proposed certified-ancestor selection.
+
+The proof uses the existing observer committee-readback contract to convert
+assigned-duty exclusion into the epoch-domination fact needed by
+`recorded_lm_is_newest_in_store`. It adds no observer-delivery premise. The
+public full-rule statements and their assumption records are unchanged.
+
+Human correspondence review should check the validator-index argument,
+`current_slot - 1` cutoff, epoch-boundary arm, inclusive completed-duty range,
+and use of the same predicate in both support sums before this variant is
+merged or ported into the Python specification.

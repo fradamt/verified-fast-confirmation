@@ -80,49 +80,63 @@ equivocator's margin effect without the discount equals abstention. Equivocators
 votes remain excluded from support sums (also stricter). A later improvement may
 re-enable the discount for slashings carried in a broadcast-certified block.
 
-## Rule delta 3 — epoch-fresh scorer
+## Rule delta 3 — duty-based freshness
 
-`Weak.is_one_confirmed` and its empty-slot support discount now count only
-**epoch-fresh** recorded LMD cells. `Weak.recorded_cutoff_epoch store` is the
-epoch of the last completed slot (`compute_epoch_at_slot (get_current_slot
-store − 1)`) — anchoring at `compute_epoch_at_slot current_slot` instead would
-make the scorer identically zero at every epoch boundary, since
-`LatestMessageProvenance` forces every recorded cell to have been set for a
-slot `≤ current_slot − 1`. `Weak.is_epoch_fresh_message store lm` holds iff
-`recorded_cutoff_epoch store ≤ get_latest_message_epoch lm`.
-`Weak.get_epoch_fresh_attestation_score` and
-`Weak.get_epoch_fresh_block_support_between_slots` add this conjunct to the
-strong scorer's/discount's counted-cell filter (in the fixed order `(equiv &&
-fresh) && ancestor`, so the weak-⇒-strong bridge lemmas drop conjuncts rather
-than re-deriving them); `Weak.is_one_confirmed` and
-`Weak.compute_empty_slot_support_discount` are restated over them.
+`Weak.is_one_confirmed` and its empty-slot support discount count only cells
+accepted by `Weak.is_duty_fresh_message cfg ext store i lm`. The check uses
+`cutoff = epoch(current_slot - 1)` and accepts either:
 
-**Why the discount must be gated too, not just the main scorer.** The
-stale-tolerant base-strip argument
-(`Execution.base_strip_of_confirmed_in_store_stale_minimal`,
-`AcceptedStrictPrefixExtraQueryFeasibility.lean:191`) that Stage H needs reads
-recorded parent-pointing cells through `PrefixGroundVoteAccountingReplay
-.parent_replay`, which is stated over the *ground-truth* `AttSupporters`/
-`ParentStuck` classes — exactly what this delta must let the weak store-side
-scorer approximate. A stale parent-pointing honest cell with a sibling ground
-vote lands in the `StoreXclass` (excess) bucket; `parent_replay` is false for
-it unless the discount counts only fresh cells. Landing the freshness gate on
-the main scorer alone would leave the discount able to count a stale cell the
-replay premise does not backstop. (A safe fallback, if the discount's
-`Finset` monotonicity proof ever regresses, is to zero the weak discount
-outright — strictly stricter than gating — but gating is preferred since it
-is only marginally more work: `Finset.sum_le_sum_of_subset_of_nonneg` composed
-with the same-base-set predicate-strengthening step, `Finset.monotone_filter_right`.)
+- a cell with `lm.epoch >= cutoff`; or
+- a cell with `lm.epoch + 1 == cutoff` whose validator has no assigned duty in
+  `[start_slot(cutoff), current_slot - 1]`.
 
-The sibling arm of the window partition needs no re-accounting: `Sclass`/
-`Aclass`/`Xclass` are ground-truth-indexed and the partition identity does not
-move, and `ByzantineBound.estimate_sound` already charges the whole window.
-Only `Hsup ≤ s` and `Hsup + discount ≤ s + a` move, and freshness makes both
-strictly easier. Landing this delta does not by itself remove any
-`WindowRecordedEpochMax` premise from the base strip — freshness only pays off
-once a weak-native (store-computed, not ground-truth) version of the base
-strip exists (Stage H, out of scope for this wave); see "Deliberately open"
-below.
+The second arm scans only the completed part of one epoch. A client can cache
+that committee union once per query instead of recomputing it per validator.
+Thus a previous
+vote remains usable until a newer duty has completed. At the first slot of an
+epoch the cutoff remains the previous epoch. The rule adds no delivery
+assumption for the observer. The observer's existing committee-readback contract
+is used when connecting this executable check to the ground-truth vote schedule.
+
+This replaces the original weak branch's epoch-wide cutoff, introduced in
+`cf46f95`. That cutoff discarded all remaining previous-epoch cells at the
+second slot of an epoch, even when a validator's next duty was still ahead.
+
+`WeakDutyFreshness.lean` proves the local contract:
+
+- `epoch_le_of_duty_fresh_cell`: the recorded epoch dominates every completed
+  assigned duty of its validator;
+- `duty_fresh_of_epoch_fresh`: every cell admitted by the old cutoff is retained;
+- `duty_fresh_of_no_completed_duty`: a previous vote is retained before its next duty;
+- `duty_fresh_of_completed_duty_domination`: a recent cell that already covers
+  all completed duties is retained;
+- `duty_fresh_false_of_newer_completed_duty`: a newer completed duty excludes
+  the old cell.
+
+The endpoint support and parent-support proofs use the first lemma together
+with honest duty assignment and the existing `PrefixCommitteeAgreement`.
+They do not use delivery to the observer. The public assumption records and
+headline theorem statements are unchanged.
+
+**The empty-slot discount is retained.** Honest votes for the parent in the gap
+are neutral between its children. They can reduce the potential competing
+weight. A hidden newer vote for a competing child invalidates that use of the
+old parent vote, so the discount uses the same duty check as positive support.
+A timely replacement that still votes for the parent can keep funding the
+discount; a replacement on the candidate branch contributes positive support.
+The rule does not add the parent discount and positive support for one recorded
+message: these root conditions are disjoint.
+
+This filter changes weight accounting, not the stored message history. The
+broadcast-certificate helpers are unchanged: an old honest vote can still prove
+past receipt of a block even after a newer vote replaces its LMD contribution.
+The current-target FFG scorer is also unchanged; its checkpoint comparison
+already requires a vote for the current target epoch.
+
+The lossless-retention lemma is a local statement about a recent recorded cell,
+not a full FCR liveness theorem. It does not assume an offline validator will
+cast its next vote. Without that vote, exclusion after its duty can still cost
+liveness compared with retaining an actually-unsuperseded old cell.
 
 ## Rule delta 4 — certificate-gated justification short-circuit
 
@@ -755,7 +769,7 @@ The wave's one architectural decision routes around that wall instead of
 patching it: **every ledger class on the weak margin path is read at the
 honest endpoint `(w, m)`, never at the observer.** The observer contributes
 only two *sums* — the weak fresh attestation score and the weak fresh
-discount (`Weak.get_epoch_fresh_attestation_score` /
+discount (`Weak.get_duty_fresh_attestation_score` /
 `Weak.get_support_discount`, rule delta 3) — and each sum is placed directly
 into `Sclass cfg ext w m` / `Aclass cfg ext w m` by freshness ⇒ newest-vote
 (`Execution.recorded_lm_is_newest_in_store`, store-generic and honesty-free)

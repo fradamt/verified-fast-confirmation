@@ -45,34 +45,34 @@ sub-window. Weak twin of `Execution.crossingParentPre`, over
 `Weak.FreshParentStuck`. -/
 def crossingParentPre (E : Execution Root) (store : Store Root) (bs : BeaconState Root)
     (b : Root) (mid es : Slot) : Finset ValidatorIndex :=
-  FreshParentStuck cfg E store bs b \ E.span_committee mid es
+  FreshParentStuck cfg ext E store bs b \ E.span_committee mid es
 
 /-- Fresh parent-stuck honest validators that recur in, and are therefore
 already counted by, the sub-window. Weak twin of `Execution.crossingParentSub`. -/
 def crossingParentSub (E : Execution Root) (store : Store Root) (bs : BeaconState Root)
     (b : Root) (mid es : Slot) : Finset ValidatorIndex :=
-  FreshParentStuck cfg E store bs b ∩ E.span_committee mid es
+  FreshParentStuck cfg ext E store bs b ∩ E.span_committee mid es
 
 /-- The canonical old-sibling honest pre mass, over the weak parent-pre set.
 Weak twin of `Execution.crossingXPre`. -/
 def crossingXPre (E : Execution Root) (store : Store Root) (bs : BeaconState Root)
     (b : Root) (lo mid es : Slot) : Finset ValidatorIndex :=
-  E.crossingHonestPre lo mid es \ crossingParentPre cfg E store bs b mid es
+  E.crossingHonestPre lo mid es \ crossingParentPre cfg ext E store bs b mid es
 
 /-- The weak (fresh) crossing pre-region is a subset of the strong one:
 dropping the freshness conjunct only shrinks `FreshParentStuck` inside
 `ParentStuck`. -/
 theorem crossingParentPre_subset_strong {E : Execution Root} {store : Store Root}
     {bs : BeaconState Root} {b : Root} {mid es : Slot} :
-    crossingParentPre cfg E store bs b mid es ⊆ E.crossingParentPre cfg store bs b mid es :=
-  Finset.sdiff_subset_sdiff (FreshParentStuck_subset_ParentStuck cfg) (Finset.Subset.refl _)
+    crossingParentPre cfg ext E store bs b mid es ⊆ E.crossingParentPre cfg store bs b mid es :=
+  Finset.sdiff_subset_sdiff (FreshParentStuck_subset_ParentStuck cfg ext) (Finset.Subset.refl _)
 
 /-- Dually, the strong old-sibling pre mass is a subset of the weak one:
 subtracting a smaller set (the weak parent-pre) leaves a bigger difference. -/
 theorem crossingXPre_superset_strong {E : Execution Root} {store : Store Root}
     {bs : BeaconState Root} {b : Root} {lo mid es : Slot} :
-    E.crossingXPre cfg store bs b lo mid es ⊆ crossingXPre cfg E store bs b lo mid es :=
-  Finset.sdiff_subset_sdiff (Finset.Subset.refl _) (crossingParentPre_subset_strong cfg)
+    E.crossingXPre cfg store bs b lo mid es ⊆ crossingXPre cfg ext E store bs b lo mid es :=
+  Finset.sdiff_subset_sdiff (Finset.Subset.refl _) (crossingParentPre_subset_strong cfg ext)
 
 /-- Weak twin of `CrossingCert.crossing_parentPre_subset_honestPre`, over
 `Weak.FreshParentStuck`/`mem_FreshParentSupport`. -/
@@ -81,18 +81,18 @@ theorem crossing_parentPre_subset_honestPre {E : Execution Root}
     (hes : es = get_current_slot cfg (E.store cfg ext obs n) - 1)
     (hbcur : ((E.store cfg ext obs n).blocks b).slot ≤
       get_current_slot cfg (E.store cfg ext obs n)) :
-    crossingParentPre cfg E (E.store cfg ext obs n) bs b
+    crossingParentPre cfg ext E (E.store cfg ext obs n) bs b
         ((E.store cfg ext obs n).blocks b).slot es
       ⊆ E.crossingHonestPre
           (((E.store cfg ext obs n).blocks
             ((E.store cfg ext obs n).blocks b).parent_root).slot + 1)
           ((E.store cfg ext obs n).blocks b).slot es := by
   intro i hi
-  have hi' : i ∈ FreshParentStuck cfg E (E.store cfg ext obs n) bs b \
+  have hi' : i ∈ FreshParentStuck cfg ext E (E.store cfg ext obs n) bs b \
       E.span_committee ((E.store cfg ext obs n).blocks b).slot es := by
     simpa only [crossingParentPre] using hi
   obtain ⟨hiP, hiNotSub⟩ := Finset.mem_sdiff.mp hi'
-  have hiRaw := (mem_FreshParentSupport cfg (Finset.mem_filter.mp hiP).1).1
+  have hiRaw := (mem_FreshParentSupport cfg ext (Finset.mem_filter.mp hiP).1).1
   have hhigh : ((E.store cfg ext obs n).blocks b).slot - 1 ≤ es := by
     rw [hes]
     exact Nat.sub_le_sub_right hbcur 1
@@ -125,8 +125,8 @@ theorem crossing_hMU_of_canonicalPre {E : Execution Root} (hbb : ByzantineBound 
     let mid := ((E.store cfg ext obs n).blocks b).slot
     (E.Sval cfg ext obs n b mid es + E.Aval cfg ext obs n b mid es
         + E.Xval cfg ext obs n b mid es + E.Bval mid es)
-      + (E.weight (crossingParentPre cfg E (E.store cfg ext obs n) bs b mid es)
-        + E.weight (crossingXPre cfg E (E.store cfg ext obs n) bs b lo mid es)
+      + (E.weight (crossingParentPre cfg ext E (E.store cfg ext obs n) bs b mid es)
+        + E.weight (crossingXPre cfg ext E (E.store cfg ext obs n) bs b lo mid es)
         + E.weight (E.crossingByzPre lo mid es))
       ≤ estimate_committee_weight_between_slots cfg
           (get_total_active_balance cfg bs) lo es := by
@@ -142,9 +142,9 @@ theorem crossing_hMU_of_canonicalPre {E : Execution Root} (hbb : ByzantineBound 
       ≤ ((E.store cfg ext obs n).blocks b).slot := hslotlt
   rw [← E.weight_partition cfg ext obs n b
     ((E.store cfg ext obs n).blocks b).slot es]
-  rw [show E.weight (crossingParentPre cfg E (E.store cfg ext obs n) bs b
+  rw [show E.weight (crossingParentPre cfg ext E (E.store cfg ext obs n) bs b
           ((E.store cfg ext obs n).blocks b).slot es)
-        + E.weight (crossingXPre cfg E (E.store cfg ext obs n) bs b
+        + E.weight (crossingXPre cfg ext E (E.store cfg ext obs n) bs b
           (((E.store cfg ext obs n).blocks
             ((E.store cfg ext obs n).blocks b).parent_root).slot + 1)
           ((E.store cfg ext obs n).blocks b).slot es)
@@ -185,26 +185,26 @@ theorem crossing_hd_of_preRegion_of_prefix {E : Execution Root}
     (htab : get_total_active_balance cfg bs = E.total_active cfg)
     (mid es : Slot) :
     Weak.get_support_discount cfg ext (E.store cfg ext obs n) bs b
-      ≤ E.weight (crossingParentPre cfg E (E.store cfg ext obs n) bs b mid es)
-        + E.weight (crossingParentSub cfg E (E.store cfg ext obs n) bs b mid es) := by
+      ≤ E.weight (crossingParentPre cfg ext E (E.store cfg ext obs n) bs b mid es)
+        + E.weight (crossingParentSub cfg ext E (E.store cfg ext obs n) bs b mid es) := by
   have hd := support_discount_le_fresh_parent_stuck_of_prefix cfg ext hbb hcomm hval
     hstartH hbH htab
   have hdiff :
-      FreshParentStuck cfg E (E.store cfg ext obs n) bs b \
-          (FreshParentStuck cfg E (E.store cfg ext obs n) bs b ∩ E.span_committee mid es)
-        = FreshParentStuck cfg E (E.store cfg ext obs n) bs b \ E.span_committee mid es := by
+      FreshParentStuck cfg ext E (E.store cfg ext obs n) bs b \
+          (FreshParentStuck cfg ext E (E.store cfg ext obs n) bs b ∩ E.span_committee mid es)
+        = FreshParentStuck cfg ext E (E.store cfg ext obs n) bs b \ E.span_committee mid es := by
     ext i
     simp
   have hsplit := E.weight_add_sdiff
     (Finset.inter_subset_left :
-      FreshParentStuck cfg E (E.store cfg ext obs n) bs b ∩ E.span_committee mid es
-        ⊆ FreshParentStuck cfg E (E.store cfg ext obs n) bs b)
+      FreshParentStuck cfg ext E (E.store cfg ext obs n) bs b ∩ E.span_committee mid es
+        ⊆ FreshParentStuck cfg ext E (E.store cfg ext obs n) bs b)
   rw [hdiff] at hsplit
   calc
     Weak.get_support_discount cfg ext (E.store cfg ext obs n) bs b
-        ≤ E.weight (FreshParentStuck cfg E (E.store cfg ext obs n) bs b) := hd
-    _ = E.weight (crossingParentPre cfg E (E.store cfg ext obs n) bs b mid es)
-          + E.weight (crossingParentSub cfg E (E.store cfg ext obs n) bs b mid es) := by
+        ≤ E.weight (FreshParentStuck cfg ext E (E.store cfg ext obs n) bs b) := hd
+    _ = E.weight (crossingParentPre cfg ext E (E.store cfg ext obs n) bs b mid es)
+          + E.weight (crossingParentSub cfg ext E (E.store cfg ext obs n) bs b mid es) := by
             simpa only [crossingParentPre, crossingParentSub, add_comm] using hsplit.symm
 
 /-- **Replaces `hR4b_of_confinement(_of_prefix)`.** With `eqSub := 0` this is a
@@ -214,17 +214,17 @@ theorem freshByzSupporters_le_Bval {E : Execution Root} {store : Store Root}
     {mid es : Slot}
     (hspan : ∀ i ∈ AttSupporters cfg store (get_node_for_root b) bs,
       i ∉ E.honest → i ∈ E.span_committee mid es) :
-    (((FreshAttSupporters cfg store (get_node_for_root b) bs).filter
+    (((FreshAttSupporters cfg ext store (get_node_for_root b) bs).filter
           (fun i => i ∉ E.honest)).map
         (fun i => (bs.validators.getD i default).effective_balance)).sum + 0
       ≤ E.Bval mid es := by
-  rw [Nat.add_zero, fresh_byz_score_eq_weight cfg hval]
+  rw [Nat.add_zero, fresh_byz_score_eq_weight cfg ext hval]
   simp only [Execution.Bval, Execution.Bwin]
   apply E.weight_mono
   intro i hi
   rw [List.mem_toFinset, List.mem_filter] at hi
   have hnh : i ∉ E.honest := of_decide_eq_true hi.2
-  exact Finset.mem_filter.mpr ⟨hspan i (mem_AttSupporters_of_mem_fresh cfg hi.1) hnh, hnh⟩
+  exact Finset.mem_filter.mpr ⟨hspan i (mem_AttSupporters_of_mem_fresh cfg ext hi.1) hnh, hnh⟩
 
 /-! ## 2. The full-span weak adversarial guard (both regimes collapse to an
 equality, `F3`) -/
@@ -298,6 +298,7 @@ membership `crossingParentSub` already supplies at `mid`, since `SupportsDesc`/
 private theorem crossingParentSub_le_endpoint_Aval {E : Execution Root}
     (hA : SelectedMarginAssumptions cfg ext E)
     {obs : ValidatorIndex} {q : ℕ} (hqH : E.WithinHorizon cfg q)
+    (hcomm : E.PrefixCommitteeAgreement cfg ext (E.store cfg ext obs q))
     {bs : BeaconState Root} {b : Root}
     (hval : bs.validators = E.registry)
     (hbQ : b ∈ (E.store cfg ext obs q).block_roots)
@@ -316,7 +317,7 @@ private theorem crossingParentSub_le_endpoint_Aval {E : Execution Root}
     (hbM : b ∈ (E.store cfg ext w m).block_roots)
     (hparentM : ((E.store cfg ext w m).blocks b).parent_root =
       ((E.store cfg ext obs q).blocks b).parent_root) :
-    E.weight (crossingParentSub cfg E (E.store cfg ext obs q) bs b
+    E.weight (crossingParentSub cfg ext E (E.store cfg ext obs q) bs b
         ((E.store cfg ext obs q).blocks b).slot es)
       ≤ E.Aval cfg ext w m b ((E.store cfg ext obs q).blocks b).slot es := by
   obtain ⟨ast, ablk, hgeq, hslot, hparentne⟩ := hA.genesis
@@ -333,13 +334,13 @@ private theorem crossingParentSub_le_endpoint_Aval {E : Execution Root}
         hgeq hslot hparentne obs q _ hpQ
     rw [hcur0]
     exact hanchorP.trans (Nat.le_succ _)
-  have hAclassLo := freshParentStuck_subset_endpoint_Aclass cfg ext hA hqH
+  have hAclassLo := freshParentStuck_subset_endpoint_Aclass cfg ext hA hqH hcomm
     (a := ((E.store cfg ext obs q).blocks b).parent_root) hval hpQ hbQ rfl hprov hsched
     hlo0 (le_refl _) hes hesq hw hmH hslotQM haM hbM hparentM
   rw [Execution.Aval]
   apply E.weight_mono
   intro i hi
-  have hi' : i ∈ FreshParentStuck cfg E (E.store cfg ext obs q) bs b ∩
+  have hi' : i ∈ FreshParentStuck cfg ext E (E.store cfg ext obs q) bs b ∩
       E.span_committee ((E.store cfg ext obs q).blocks b).slot es := by
     simpa only [crossingParentSub] using hi
   obtain ⟨hiP, hiS⟩ := Finset.mem_inter.mp hi'
@@ -405,7 +406,7 @@ theorem intraEpochFuture_endpoint_inequality_at_observer {E : Execution Root}
     let lo := ((E.store cfg ext obs q).blocks
       ((E.store cfg ext obs q).blocks b).parent_root).slot + 1
     let mid := ((E.store cfg ext obs q).blocks b).slot
-    E.weight (crossingXPre cfg E (E.store cfg ext obs q) bs b lo mid es)
+    E.weight (crossingXPre cfg ext E (E.store cfg ext obs q) bs b lo mid es)
         + E.Xval cfg ext w m b mid sigma
         + E.weight (E.crossingByzPre lo mid es)
         + E.Bval mid sigma + get_proposer_score cfg (E.store cfg ext w m) + 1
@@ -443,8 +444,8 @@ theorem intraEpochFuture_endpoint_inequality_at_observer {E : Execution Root}
   have hMU :
       (E.Sval cfg ext w m b mid es + E.Aval cfg ext w m b mid es
           + E.Xval cfg ext w m b mid es + E.Bval mid es)
-        + (E.weight (crossingParentPre cfg E (E.store cfg ext obs q) bs b mid es)
-          + E.weight (crossingXPre cfg E (E.store cfg ext obs q) bs b lo mid es)
+        + (E.weight (crossingParentPre cfg ext E (E.store cfg ext obs q) bs b mid es)
+          + E.weight (crossingXPre cfg ext E (E.store cfg ext obs q) bs b lo mid es)
           + E.weight (E.crossingByzPre lo mid es))
         ≤ estimate_committee_weight_between_slots cfg
           (get_total_active_balance cfg bs) lo es := by
@@ -459,7 +460,7 @@ theorem intraEpochFuture_endpoint_inequality_at_observer {E : Execution Root}
     intro i hi _
     rw [hes]
     exact supporter_mem_span_committee cfg hwf hprov hi (hwalk i hi) (le_refl _)
-  have hbyzsub := freshByzSupporters_le_Bval cfg (bs := bs) (b := b) hval hspan
+  have hbyzsub := freshByzSupporters_le_Bval cfg ext (bs := bs) (b := b) hval hspan
   have hdomFull :
       (E.Sval cfg ext w m b mid es + E.Aval cfg ext w m b mid es
           + E.Xval cfg ext w m b mid es + E.Bval mid es) + 0 + 0
@@ -473,11 +474,11 @@ theorem intraEpochFuture_endpoint_inequality_at_observer {E : Execution Root}
             * cfg.confirmation_byzantine_threshold := by
     rw [htab]
     exact hA.byzantine_bound.span_bound mid es hmidH hesH
-  have hHsub := crossingParentSub_le_endpoint_Aval cfg ext hA hqH hval hbQ hparentQ
+  have hHsub := crossingParentSub_le_endpoint_Aval cfg ext hA hqH hcomm hval hbQ hparentQ
     hprov hsched hes hesq hw hmH hslotQM haM hbM hparentM
   have hend := E.reanchored_endpoint_of_fullSpan_certificate
     (v₀ := w) (n₀ := m) (b' := b) (lo := mid) (es := es) (σ := sigma)
-    (Bsup := (((FreshAttSupporters cfg (E.store cfg ext obs q) (get_node_for_root b) bs).filter
+    (Bsup := (((FreshAttSupporters cfg ext (E.store cfg ext obs q) (get_node_for_root b) bs).filter
       (fun i => i ∉ E.honest)).map
         (fun i => (bs.validators.getD i default).effective_balance)).sum)
     (eqSub := 0) (eqExtra := 0) (HAextra := 0) (Bextra := 0)
@@ -487,9 +488,9 @@ theorem intraEpochFuture_endpoint_inequality_at_observer {E : Execution Root}
       (get_total_active_balance cfg bs) lo es)
     (qFull := estimate_committee_weight_between_slots cfg
       (get_total_active_balance cfg bs) mid es / 100)
-    (Hpre := E.weight (crossingParentPre cfg E (E.store cfg ext obs q) bs b mid es))
-    (Hsub := E.weight (crossingParentSub cfg E (E.store cfg ext obs q) bs b mid es))
-    (xP := E.weight (crossingXPre cfg E (E.store cfg ext obs q) bs b lo mid es))
+    (Hpre := E.weight (crossingParentPre cfg ext E (E.store cfg ext obs q) bs b mid es))
+    (Hsub := E.weight (crossingParentSub cfg ext E (E.store cfg ext obs q) bs b mid es))
+    (xP := E.weight (crossingXPre cfg ext E (E.store cfg ext obs q) bs b lo mid es))
     (Bpre := E.weight (E.crossingByzPre lo mid es))
     (boost := get_proposer_score cfg (E.store cfg ext w m))
     cfg ext hA.byzantine_bound hesSigma hmidH hSigmaH hbaseQ hMU hd hHsub hguard.2 hdomFull
@@ -547,7 +548,7 @@ theorem crossingEdgeFuture_endpoint_inequality_at_observer {E : Execution Root}
     let lo := ((E.store cfg ext obs q).blocks
       ((E.store cfg ext obs q).blocks b).parent_root).slot + 1
     let mid := ((E.store cfg ext obs q).blocks b).slot
-    E.weight (crossingXPre cfg E (E.store cfg ext obs q) bs b lo mid es)
+    E.weight (crossingXPre cfg ext E (E.store cfg ext obs q) bs b lo mid es)
         + E.Xval cfg ext w m b mid sigma
         + E.weight (E.crossingByzPre lo mid es)
         + E.Bval mid sigma + get_proposer_score cfg (E.store cfg ext w m) + 1
@@ -590,8 +591,8 @@ theorem crossingEdgeFuture_endpoint_inequality_at_observer {E : Execution Root}
   have hMU :
       (E.Sval cfg ext w m b mid es + E.Aval cfg ext w m b mid es
           + E.Xval cfg ext w m b mid es + E.Bval mid es)
-        + (E.weight (crossingParentPre cfg E (E.store cfg ext obs q) bs b mid es)
-          + E.weight (crossingXPre cfg E (E.store cfg ext obs q) bs b lo mid es)
+        + (E.weight (crossingParentPre cfg ext E (E.store cfg ext obs q) bs b mid es)
+          + E.weight (crossingXPre cfg ext E (E.store cfg ext obs q) bs b lo mid es)
           + E.weight (E.crossingByzPre lo mid es))
         ≤ estimate_committee_weight_between_slots cfg
           (get_total_active_balance cfg bs) lo es := by
@@ -609,7 +610,7 @@ theorem crossingEdgeFuture_endpoint_inequality_at_observer {E : Execution Root}
     intro i hi _
     rw [hes]
     exact supporter_mem_span_committee cfg hwf hprov hi (hwalk i hi) (le_refl _)
-  have hbyzsub := freshByzSupporters_le_Bval cfg (bs := bs) (b := b) hval hspan
+  have hbyzsub := freshByzSupporters_le_Bval cfg ext (bs := bs) (b := b) hval hspan
   have hbyzfull : E.Bval mid es + E.weight (E.crossingByzPre sa mid es) ≤
       estimate_committee_weight_between_slots cfg
           (get_total_active_balance cfg bs) sa es / 100
@@ -626,11 +627,11 @@ theorem crossingEdgeFuture_endpoint_inequality_at_observer {E : Execution Root}
     rw [← E.weight_partition cfg ext w m b mid es]
     simpa only [Nat.add_assoc] using
       (Eq.trans_le (E.crossing_fullSpan_mass_split hsa) hguard.1)
-  have hHsub := crossingParentSub_le_endpoint_Aval cfg ext hA hqH hval hbQ hparentQ
+  have hHsub := crossingParentSub_le_endpoint_Aval cfg ext hA hqH hcomm hval hbQ hparentQ
     hprov hsched hes hesq hw hmH hslotQM haM hbM hparentM
   have hend := E.reanchored_endpoint_of_fullSpan_certificate
     (v₀ := w) (n₀ := m) (b' := b) (lo := mid) (es := es) (σ := sigma)
-    (Bsup := (((FreshAttSupporters cfg (E.store cfg ext obs q) (get_node_for_root b) bs).filter
+    (Bsup := (((FreshAttSupporters cfg ext (E.store cfg ext obs q) (get_node_for_root b) bs).filter
       (fun i => i ∉ E.honest)).map
         (fun i => (bs.validators.getD i default).effective_balance)).sum)
     (eqSub := 0) (eqExtra := 0)
@@ -642,9 +643,9 @@ theorem crossingEdgeFuture_endpoint_inequality_at_observer {E : Execution Root}
       (get_total_active_balance cfg bs) sa es / 100)
     (HAextra := E.weight (E.crossingHonestPre sa mid es))
     (Bextra := E.weight (E.crossingByzPre sa mid es))
-    (Hpre := E.weight (crossingParentPre cfg E (E.store cfg ext obs q) bs b mid es))
-    (Hsub := E.weight (crossingParentSub cfg E (E.store cfg ext obs q) bs b mid es))
-    (xP := E.weight (crossingXPre cfg E (E.store cfg ext obs q) bs b lo mid es))
+    (Hpre := E.weight (crossingParentPre cfg ext E (E.store cfg ext obs q) bs b mid es))
+    (Hsub := E.weight (crossingParentSub cfg ext E (E.store cfg ext obs q) bs b mid es))
+    (xP := E.weight (crossingXPre cfg ext E (E.store cfg ext obs q) bs b lo mid es))
     (Bpre := E.weight (E.crossingByzPre lo mid es))
     (boost := get_proposer_score cfg (E.store cfg ext w m))
     cfg ext hA.byzantine_bound hesSigma hmidH hSigmaH hbaseQ hMU hd hHsub hguard.2 hdomFull

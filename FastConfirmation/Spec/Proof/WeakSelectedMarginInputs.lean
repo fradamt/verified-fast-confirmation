@@ -83,7 +83,7 @@ structure CrossingSelectedMarginInputs
     (E.store cfg ext w m).block_roots
   endpoint_parent_eq : ((E.store cfg ext w m).blocks b).parent_root =
     ((E.store cfg ext obs q).blocks b).parent_root
-  parent_sub_endpoint : E.weight (Weak.crossingParentSub cfg E (E.store cfg ext obs q)
+  parent_sub_endpoint : E.weight (Weak.crossingParentSub cfg ext E (E.store cfg ext obs q)
       (get_current_balance_source query) b
       ((E.store cfg ext obs q).blocks b).slot es) ≤
     E.Aval cfg ext w m b ((E.store cfg ext obs q).blocks b).slot es
@@ -104,7 +104,7 @@ structure CrossingSelectedMarginInputs
     get_attestation_score cfg (E.store cfg ext w m) (get_node_for_root c')
         ((E.store cfg ext w m).checkpoint_states
           (E.store cfg ext w m).justified_checkpoint)
-      ≤ E.weight (Weak.crossingXPre cfg E (E.store cfg ext obs q)
+      ≤ E.weight (Weak.crossingXPre cfg ext E (E.store cfg ext obs q)
             (get_current_balance_source query) b
             (((E.store cfg ext obs q).blocks
               ((E.store cfg ext obs q).blocks b).parent_root).slot + 1)

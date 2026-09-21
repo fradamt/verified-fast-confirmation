@@ -253,18 +253,18 @@ theorem selectedCoveredMarginSupplyAt_of_filterSupply_at_observer
         ((E.store cfg ext obs q).blocks c).parent_root).slot + 1 := by
     rw [← hgeom.lo_eq]
     exact hlo₀
-  have hAclassLo := Weak.freshParentStuck_subset_endpoint_Aclass cfg ext hA hqH
+  have hAclassLo := Weak.freshParentStuck_subset_endpoint_Aclass cfg ext hA hqH hcomm
     (a := ((E.store cfg ext obs q).blocks c).parent_root)
     hvalC hgeom.parent_known hgeom.block_known rfl hprovC hschedC
     hlo0Par (le_refl _) hcutoffQ hesLtQ hw hmH hslotQM
     (by rw [hgeom.parent_eq]; exact haM) hcM (by rw [hgeom.parent_eq]; exact hparentM)
-  have hparentSub : E.weight (Weak.crossingParentSub cfg E (E.store cfg ext obs q) bs c
+  have hparentSub : E.weight (Weak.crossingParentSub cfg ext E (E.store cfg ext obs q) bs c
       ((E.store cfg ext obs q).blocks c).slot es) ≤
       E.Aval cfg ext w m c ((E.store cfg ext obs q).blocks c).slot es := by
     rw [Execution.Aval]
     apply E.weight_mono
     intro i hi
-    have hi' : i ∈ Weak.FreshParentStuck cfg E (E.store cfg ext obs q) bs c ∩
+    have hi' : i ∈ Weak.FreshParentStuck cfg ext E (E.store cfg ext obs q) bs c ∩
         E.span_committee ((E.store cfg ext obs q).blocks c).slot es := by
       simpa only [Weak.crossingParentSub] using hi
     obtain ⟨hiP, hiS⟩ := Finset.mem_inter.mp hi'
