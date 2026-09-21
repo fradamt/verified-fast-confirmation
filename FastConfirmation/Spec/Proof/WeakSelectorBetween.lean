@@ -1,3 +1,4 @@
+import FastConfirmation.Spec.Proof.WeakCertifiedHead
 import FastConfirmation.Spec.Proof.CertExtract
 import FastConfirmation.Spec.Model.WeakSynchrony
 
@@ -195,6 +196,8 @@ theorem find_latest_confirmed_descendant_between (fcr_store : FastConfirmationSt
     (lcr : Root) (hlcr : lcr ∈ fcr_store.store.block_roots) :
     Weak.PstrConfirmed cfg ext fcr_store lcr
       (Weak.find_latest_confirmed_descendant cfg ext fcr_store lcr) := by
+  have hhead := Weak.get_certified_head_known cfg ext fcr_store.store
+    (get_current_balance_source fcr_store) hhead
   set P : Root → Prop := fun r => Weak.PstrConfirmed cfg ext fcr_store lcr r with hP
   have base : P lcr := by
     refine ⟨is_ancestor_refl _ _, hlcr, ?_⟩
@@ -202,19 +205,19 @@ theorem find_latest_confirmed_descendant_between (fcr_store : FastConfirmationSt
     exact Or.inl (is_ancestor_antisymm hwf (hwalk c hc_mem lcr hlcr) hc_lcr hlcr_c)
   have hprev : ∀ (ce : Epoch) (acc : Root), P acc →
       P (Weak.find_latest_confirmed_descendant_prev_epoch_loop cfg ext fcr_store ce
-          (get_ancestor_roots fcr_store.store (get_head cfg fcr_store.store).root acc) acc) := by
+          (get_ancestor_roots fcr_store.store (Weak.get_certified_head cfg ext fcr_store.store (get_current_balance_source fcr_store)) acc) acc) := by
     intro ce acc hacc
     have hw : WalkKnown fcr_store.store (fcr_store.store.blocks acc).slot
-        (get_head cfg fcr_store.store).root := hwalk acc hacc.2.1 _ hhead
+        (Weak.get_certified_head cfg ext fcr_store.store (get_current_balance_source fcr_store)) := hwalk acc hacc.2.1 _ hhead
     exact prev_epoch_loop_between cfg ext fcr_store ce hwf hwalk lcr hlcr _ acc
       (fun x hx => get_ancestor_roots_mem hwf hw hx) (get_ancestor_roots_isChain hwf hw)
       (fun x hx => get_ancestor_roots_head? hwf hw hx) hacc
   have htent : ∀ (acc : Root), P acc →
       P (Weak.find_latest_confirmed_descendant_tentative_loop cfg ext fcr_store
-          (get_ancestor_roots fcr_store.store (get_head cfg fcr_store.store).root acc) acc) := by
+          (get_ancestor_roots fcr_store.store (Weak.get_certified_head cfg ext fcr_store.store (get_current_balance_source fcr_store)) acc) acc) := by
     intro acc hacc
     have hw : WalkKnown fcr_store.store (fcr_store.store.blocks acc).slot
-        (get_head cfg fcr_store.store).root := hwalk acc hacc.2.1 _ hhead
+        (Weak.get_certified_head cfg ext fcr_store.store (get_current_balance_source fcr_store)) := hwalk acc hacc.2.1 _ hhead
     exact tentative_loop_between cfg ext fcr_store hwf hwalk lcr hlcr _ acc
       (fun x hx => get_ancestor_roots_mem hwf hw hx) (get_ancestor_roots_isChain hwf hw)
       (fun x hx => get_ancestor_roots_head? hwf hw hx) hacc

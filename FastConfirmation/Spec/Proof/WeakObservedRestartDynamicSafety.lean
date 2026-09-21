@@ -267,15 +267,19 @@ theorem ObservedResetCandidateInputAt.bankedAU
     {trace : Weak.GetLatestConfirmedTrace cfg ext (E.weakFcrStep cfg ext obs n)}
     (hinput : Weak.ObservedResetCandidateInputAt cfg ext
       (E.weakFcrStep cfg ext obs n) trace) :
-    B.state.AU cfg ext (get_head cfg (E.store cfg ext obs (n + 1))).root
+    B.state.AU cfg ext (Weak.get_certified_head cfg ext (E.store cfg ext obs (n + 1))
+      (get_current_balance_source (E.weakFcrStep cfg ext obs n)))
       (E.weakFcrStep cfg ext obs n
         ).current_epoch_observed_justified_checkpoint := by
-  have hheadKnown : (get_head cfg (E.store cfg ext obs (n + 1))).root ∈
+  have hheadKnown : (Weak.get_certified_head cfg ext (E.store cfg ext obs (n + 1))
+      (get_current_balance_source (E.weakFcrStep cfg ext obs n))) ∈
       (E.store cfg ext obs (n + 1)).block_roots :=
-    Weak.head_known_at_observer cfg ext B hT hanchor hboundary obs (n + 1)
+    Weak.get_certified_head_known cfg ext _ _
+      (Weak.head_known_at_observer cfg ext B hT hanchor hboundary obs (n + 1))
   have hGU : (E.weakFcrStep cfg ext obs n
       ).current_epoch_observed_justified_checkpoint =
-      B.state.GU (get_head cfg (E.store cfg ext obs (n + 1))).root := by
+      B.state.GU (Weak.get_certified_head cfg ext (E.store cfg ext obs (n + 1))
+      (get_current_balance_source (E.weakFcrStep cfg ext obs n))) := by
     rw [hinput.observed_eq_head_unrealized, E.weakFcrStep_store]
     exact E.accepted_unrealized_justification_eq
       B.coherence.toAcceptedFFGSelectorCoherence obs (n + 1) hheadKnown
@@ -390,7 +394,8 @@ theorem ObservedResetCandidateInputAt.banked_blockEpoch_le
       (E.weakFcrStep cfg ext obs n
         ).current_epoch_observed_justified_checkpoint.epoch :=
   Weak.auCheckpoint_blockEpoch_le cfg ext B hT hanchor hboundary obs (n + 1)
-    (Weak.head_known_at_observer cfg ext B hT hanchor hboundary obs (n + 1))
+    (Weak.get_certified_head_known cfg ext _ _
+      (Weak.head_known_at_observer cfg ext B hT hanchor hboundary obs (n + 1)))
     (Weak.ObservedResetCandidateInputAt.bankedAU cfg ext B hT hanchor hboundary
       hinput)
 

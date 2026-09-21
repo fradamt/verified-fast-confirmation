@@ -1,3 +1,4 @@
+import FastConfirmation.Spec.Proof.WeakCertifiedHead
 import FastConfirmation.Spec.Model.WeakSynchrony
 import FastConfirmation.Spec.Proof.CheckpointDomain
 import FastConfirmation.Spec.Proof.WeakCertificateDissemination
@@ -72,7 +73,7 @@ for that parity and are marked as such.
   conclusion) but sits *on that tip's chain*.  The repo had the knownness half
   only; the ancestry half is the `get_ancestor_comp` step the knownness proof
   derives and discards.
-* `Weak.headUnrealizedJustification_known_and_below` — its specialization to
+* `Weak.blockUnrealizedJustification_known_and_below` — its specialization to
   the rule's actual read, `store.unrealized_justifications (get_head store)
   .root`, which is exactly what the revised gate banks.
 * `Weak.BankedJustificationCertificate` / `Weak.CertifiedBankedJustification`
@@ -458,38 +459,32 @@ theorem auCheckpoint_known_and_below_tip
   simp only [is_ancestor, get_node_for_root, decide_eq_true_eq]
   exact hcomp.symm
 
-/-- **The rule's actual read: the head's own unrealized justification is a
-known block on the head's chain.** `store.unrealized_justifications head` is
-`S.GU head` (`Execution.accepted_unrealized_justification_eq`, node-generic),
-which is AU at `head` itself (`gu_AU`), so
-`auCheckpoint_known_and_below_tip` applies with `tip := head`. This discharges
-both `banked_known` and the ancestry the consumption lemma needs, for the
-value the revised rule delta 5 banks. -/
-theorem headUnrealizedJustification_known_and_below
+/-- A known block's own unrealized justification is known and lies on its
+ancestry. This applies to the selected certified carrier as well as the actual
+fork-choice head. No observer-honesty assumption is used. -/
+theorem blockUnrealizedJustification_known_and_below
     {E : Execution Root} (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
     (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : Execution.TrustedAnchorBoundaryAligned (cfg := cfg) (E := E)
       (anchor := B.anchor))
-    (obs : ValidatorIndex) (n : ℕ) :
+    (obs : ValidatorIndex) (n : ℕ) (supplier : Root)
+    (hhead : supplier ∈ (E.store cfg ext obs n).block_roots) :
     ((E.store cfg ext obs n).unrealized_justifications
-        (get_head cfg (E.store cfg ext obs n)).root).root ∈
+        supplier).root ∈
       (E.store cfg ext obs n).block_roots ∧
       is_ancestor (E.store cfg ext obs n)
-        (get_node_for_root (get_head cfg (E.store cfg ext obs n)).root)
+        (get_node_for_root supplier)
         (get_node_for_root ((E.store cfg ext obs n).unrealized_justifications
-          (get_head cfg (E.store cfg ext obs n)).root).root) = true := by
-  have hhead : (get_head cfg (E.store cfg ext obs n)).root ∈
-      (E.store cfg ext obs n).block_roots :=
-    Weak.head_known_at_observer cfg ext B hT hanchor hboundary obs n
+          supplier).root) = true := by
   have hgu : (E.store cfg ext obs n).unrealized_justifications
-      (get_head cfg (E.store cfg ext obs n)).root =
-      B.state.GU (get_head cfg (E.store cfg ext obs n)).root :=
+      supplier =
+      B.state.GU supplier :=
     E.accepted_unrealized_justification_eq
       B.coherence.toAcceptedFFGSelectorCoherence obs n hhead
-  have hAU : B.state.AU cfg ext (get_head cfg (E.store cfg ext obs n)).root
+  have hAU : B.state.AU cfg ext supplier
       ((E.store cfg ext obs n).unrealized_justifications
-        (get_head cfg (E.store cfg ext obs n)).root) := by
+        supplier) := by
     rw [hgu]
     exact B.state.gu_AU cfg ext
       (E.acceptedRoot_of_causal_known cfg ext (E.store_causal cfg ext obs n) hhead)
@@ -550,7 +545,7 @@ rule banks `store.unrealized_justifications supplier`, so the structure
 carries that equation (`banked_eq`) instead — an executable identity,
 discharged by `rfl`-shaped rewriting at construction — and the ancestry is
 *derived* at consumption from the accepted FFG contracts
-(`Weak.headUnrealizedJustification_known_and_below`).
+(`Weak.blockUnrealizedJustification_known_and_below`).
 
 **Fill beyond the ratified statement**: `second_pos`. The consumption lemma's
 timing gate is stated as `E.slot_at cfg second ≤ E.slot_at cfg m`
@@ -578,9 +573,8 @@ structure BankedJustificationCertificate (E : Execution Root)
   second_epoch_start :
     is_start_slot_at_epoch cfg
       (get_current_slot cfg (E.store cfg ext obs second)) = true
-  /-- the supplier of the justification: the fork-choice head at that second -/
+  /-- The known certified block whose own justification was banked. -/
   supplier : Root
-  supplier_eq_head : supplier = (get_head cfg (E.store cfg ext obs second)).root
   supplier_known : supplier ∈ (E.store cfg ext obs second).block_roots
   /-- the banked root is a known block of the observer's own store -/
   banked_known :
@@ -589,7 +583,7 @@ structure BankedJustificationCertificate (E : Execution Root)
   /-- **the revised banking equation**: what was banked is the supplier's own
   unrealized justification, the justification observed *through* the certified
   block.  Ancestry of the banked root below the supplier is a consequence
-  (`Weak.headUnrealizedJustification_known_and_below`), not an assumption. -/
+  (`Weak.blockUnrealizedJustification_known_and_below`), not an assumption. -/
   banked_eq :
     fcr_store.current_epoch_observed_justified_checkpoint =
       (E.store cfg ext obs second).unrealized_justifications supplier
@@ -603,8 +597,10 @@ structure BankedJustificationCertificate (E : Execution Root)
     get_total_active_balance cfg balance_source = E.total_active cfg
   /-- the gate itself, verbatim -/
   certificate :
-    has_head_broadcast_certificate cfg ext (E.store cfg ext obs second)
-      balance_source = true
+    has_broadcast_certificate cfg ext (E.store cfg ext obs second)
+      balance_source supplier
+      (get_block_slot (E.store cfg ext obs second) supplier)
+      (get_current_slot cfg (E.store cfg ext obs second) - 1) = true
   /-- the span side conditions, discharged once here rather than at each use -/
   start_anchor :
     E.slot_at cfg 0 ≤ get_block_slot (E.store cfg ext obs second) supplier
@@ -630,7 +626,6 @@ def BankedJustificationCertificate.transport {E : Execution Root}
   second_pos := h.second_pos
   second_epoch_start := h.second_epoch_start
   supplier := h.supplier
-  supplier_eq_head := h.supplier_eq_head
   supplier_known := h.supplier_known
   banked_known := by rw [heq]; exact h.banked_known
   banked_eq := heq.trans h.banked_eq
@@ -671,10 +666,9 @@ theorem CertifiedBankedJustification.transport {E : Execution Root}
 /-- **The consumption lemma, certified arm**: the banked twin of
 `Execution.confirmed_known_at_all_honest_endpoints_at_observer`. The supplier
 disseminates directly (`Execution.certificate_dissemination`, obligation 2,
-applied at the supplier itself after unfolding `has_head_broadcast_certificate`
-along `supplier_eq_head`); the banked root then transports along the
+applied to the certificate that names the supplier directly); the banked root then transports along the
 *chain-intrinsic* ancestry — `banked_eq` plus
-`Weak.headUnrealizedJustification_known_and_below` — via
+`Weak.blockUnrealizedJustification_known_and_below` — via
 `Execution.is_ancestor_transport_closed`, using the supplier's freshly
 established endpoint membership as the doubly-known witness. No second trip
 through an honest supporter's store, and no `WalkKnown` side hypotheses, are
@@ -712,7 +706,7 @@ theorem bankedSupplier_known_at_all_honest_endpoints_at_observer
       (get_block_slot (E.store cfg ext obs h.second) h.supplier)
       (get_current_slot cfg (E.store cfg ext obs h.second) - 1) = true := by
     have hc := h.certificate
-    simp only [Weak.has_head_broadcast_certificate, ← h.supplier_eq_head] at hc
+    -- The certificate names the supplier directly.
     exact hc
   -- Same-slot-capable timing: end_slot + 1 = current_slot = E.slot_at second ≤ E.slot_at m.
   have hend1 : get_current_slot cfg (E.store cfg ext obs h.second) - 1 + 1 =
@@ -737,9 +731,9 @@ theorem bankedSupplier_known_at_all_honest_endpoints_at_observer
   -- unrealized justification, which the accepted contracts place on the
   -- supplier's chain.
   obtain ⟨hbankedKnown, hbelow⟩ :=
-    Weak.headUnrealizedJustification_known_and_below cfg ext B hT hanchor hboundary
-      obs h.second
-  rw [← h.supplier_eq_head, ← h.banked_eq] at hbankedKnown hbelow
+    Weak.blockUnrealizedJustification_known_and_below cfg ext B hT hanchor hboundary
+      obs h.second h.supplier h.supplier_known
+  rw [← h.banked_eq] at hbankedKnown hbelow
   have hanchorBanked : ablk.message.slot ≤
       ((E.store cfg ext obs h.second).blocks
         fcr_store.current_epoch_observed_justified_checkpoint.root).slot :=
@@ -800,7 +794,7 @@ theorem update_fcv_observed_exact (fcr_store : FastConfirmationStore Root) :
       if is_start_slot_at_epoch cfg (get_current_slot cfg fcr_store.store) ∧
           has_head_broadcast_certificate cfg ext fcr_store.store
             (get_current_balance_source fcr_store) = true then
-        fcr_store.store.unrealized_justifications (get_head cfg fcr_store.store).root
+        fcr_store.store.unrealized_justifications (Weak.get_certified_head cfg ext fcr_store.store (get_current_balance_source fcr_store))
       else fcr_store.current_epoch_observed_justified_checkpoint := by
   simp only [Weak.update_fast_confirmation_variables]
   split_ifs <;> simp_all
@@ -894,7 +888,7 @@ at any second is a known block in the observer's own store at that second — th
 initialisation value is the trusted anchor, and every later value is either
 carried (`store_storeLE`) or a gate-passing installation of the head's own
 unrealized justification, which
-`headUnrealizedJustification_known_and_below` covers. Proved outright, with no
+`blockUnrealizedJustification_known_and_below` covers. Proved outright, with no
 honesty hypothesis anywhere. -/
 theorem weakFcr_observed_known {E : Execution Root}
     (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
@@ -927,8 +921,10 @@ theorem weakFcr_observed_known {E : Execution Root}
           simp only [Execution.weakFcr, if_pos hadv, Weak.on_fast_confirmation]
         rw [hstep, Weak.update_fcv_observed_exact]
         split_ifs
-        · exact (Weak.headUnrealizedJustification_known_and_below cfg ext B hT
-            hanchor hboundary obs (n + 1)).1
+        · exact (Weak.blockUnrealizedJustification_known_and_below cfg ext B hT
+            hanchor hboundary obs (n + 1) _
+            (Weak.get_certified_head_known cfg ext _ _
+              (Weak.head_known_at_observer cfg ext B hT hanchor hboundary obs (n + 1)))).1
         · exact (E.store_storeLE cfg ext obs (Nat.le_succ n)).1 ih
       · have hstep : (E.weakFcr cfg ext obs (n + 1)
             ).current_epoch_observed_justified_checkpoint =
@@ -952,8 +948,10 @@ theorem weakFcrStep_observed_known {E : Execution Root}
       (E.store cfg ext obs (n + 1)).block_roots := by
   rw [Execution.weakFcrStep, Weak.update_fcv_observed_exact]
   split_ifs
-  · exact (Weak.headUnrealizedJustification_known_and_below cfg ext B hT
-      hanchor hboundary obs (n + 1)).1
+  · exact (Weak.blockUnrealizedJustification_known_and_below cfg ext B hT
+      hanchor hboundary obs (n + 1) _
+            (Weak.get_certified_head_known cfg ext _ _
+              (Weak.head_known_at_observer cfg ext B hT hanchor hboundary obs (n + 1)))).1
   · exact (E.store_storeLE cfg ext obs (Nat.le_succ n)).1
       (Weak.weakFcr_observed_known cfg ext B hT hanchor hboundary obs n)
 
@@ -1001,19 +999,20 @@ noncomputable def bankedJustificationCertificate_of_gate
   have hbanked : (Weak.update_fast_confirmation_variables cfg ext
       fcr_store).current_epoch_observed_justified_checkpoint =
       (E.store cfg ext obs (n + 1)).unrealized_justifications
-        (get_head cfg (E.store cfg ext obs (n + 1))).root := by
+        (Weak.get_certified_head cfg ext (E.store cfg ext obs (n + 1)) (get_current_balance_source fcr_store)) := by
     rw [Weak.update_fcv_observed_exact, if_pos hgate, hstore]
-  have hheadKnown : (get_head cfg (E.store cfg ext obs (n + 1))).root ∈
+  have hheadKnown : (Weak.get_certified_head cfg ext (E.store cfg ext obs (n + 1)) (get_current_balance_source fcr_store)) ∈
       (E.store cfg ext obs (n + 1)).block_roots :=
-    Weak.head_known_at_observer cfg ext B hT hanchor hboundary obs (n + 1)
+    Weak.get_certified_head_known cfg ext _ _
+      (Weak.head_known_at_observer cfg ext B hT hanchor hboundary obs (n + 1))
   have hcertStore : Weak.has_head_broadcast_certificate cfg ext
       (E.store cfg ext obs (n + 1)) (get_current_balance_source fcr_store) = true := by
     rw [← hstore]; exact hgate.2
   have hcertPlain : Weak.has_broadcast_certificate cfg ext
       (E.store cfg ext obs (n + 1)) (get_current_balance_source fcr_store)
-      (get_head cfg (E.store cfg ext obs (n + 1))).root
+      (Weak.get_certified_head cfg ext (E.store cfg ext obs (n + 1)) (get_current_balance_source fcr_store))
       (get_block_slot (E.store cfg ext obs (n + 1))
-        (get_head cfg (E.store cfg ext obs (n + 1))).root)
+        (Weak.get_certified_head cfg ext (E.store cfg ext obs (n + 1)) (get_current_balance_source fcr_store)))
       (get_current_slot cfg (E.store cfg ext obs (n + 1)) - 1) = true := by
     simpa only [Weak.has_head_broadcast_certificate] using hcertStore
   have hbseq : get_current_balance_source fcr_store =
@@ -1024,9 +1023,9 @@ noncomputable def bankedJustificationCertificate_of_gate
   have hkey : fcr_store.current_epoch_observed_justified_checkpoint ∈
       (E.store cfg ext obs (n + 1)).checkpoint_state_keys := by
     refine Weak.checkpoint_state_key_of_broadcast_certificate cfg ext E hgen0 obs (n + 1)
-      _ (get_head cfg (E.store cfg ext obs (n + 1))).root
+      _ (Weak.get_certified_head cfg ext (E.store cfg ext obs (n + 1)) (get_current_balance_source fcr_store))
       (get_block_slot (E.store cfg ext obs (n + 1))
-        (get_head cfg (E.store cfg ext obs (n + 1))).root)
+        (Weak.get_certified_head cfg ext (E.store cfg ext obs (n + 1)) (get_current_balance_source fcr_store)))
       (get_current_slot cfg (E.store cfg ext obs (n + 1)) - 1) ?_
     rw [← hbseq]
     exact hcertPlain
@@ -1036,7 +1035,7 @@ noncomputable def bankedJustificationCertificate_of_gate
   have hslotNow : get_current_slot cfg (E.store cfg ext obs (n + 1)) =
       E.slot_at cfg (n + 1) := E.store_current_slot cfg ext obs (n + 1)
   have hspan : get_block_slot (E.store cfg ext obs (n + 1))
-      (get_head cfg (E.store cfg ext obs (n + 1))).root ≤
+      (Weak.get_certified_head cfg ext (E.store cfg ext obs (n + 1)) (get_current_balance_source fcr_store)) ≤
       get_current_slot cfg (E.store cfg ext obs (n + 1)) - 1 :=
     Weak.has_broadcast_certificate_span_nonempty cfg ext hcertPlain
   have hendLe : get_current_slot cfg (E.store cfg ext obs (n + 1)) - 1 ≤
@@ -1044,11 +1043,11 @@ noncomputable def bankedJustificationCertificate_of_gate
     rw [← hslotNow]; exact Nat.sub_le _ _
   have hstartAnchor : E.slot_at cfg 0 ≤
       get_block_slot (E.store cfg ext obs (n + 1))
-        (get_head cfg (E.store cfg ext obs (n + 1))).root := by
+        (Weak.get_certified_head cfg ext (E.store cfg ext obs (n + 1)) (get_current_balance_source fcr_store)) := by
     obtain ⟨ast, ablk, hgeq, hslotEq, hparentNe⟩ := hA.genesis
     have hanchorHead : ablk.message.slot ≤
         ((E.store cfg ext obs (n + 1)).blocks
-          (get_head cfg (E.store cfg ext obs (n + 1))).root).slot :=
+          (Weak.get_certified_head cfg ext (E.store cfg ext obs (n + 1)) (get_current_balance_source fcr_store))).slot :=
       E.store_anchor_min_slot cfg ext hA.wellFormed hA.externals_coherence hgeq hslotEq
         hparentNe obs (n + 1) _ hheadKnown
     have hslot0 : E.slot_at cfg 0 = ablk.message.slot := by
@@ -1064,13 +1063,14 @@ noncomputable def bankedJustificationCertificate_of_gate
       second_within := hH
       second_pos := hpos
       second_epoch_start := by rw [← hstore]; exact hgate.1
-      supplier := (get_head cfg (E.store cfg ext obs (n + 1))).root
-      supplier_eq_head := rfl
+      supplier := (Weak.get_certified_head cfg ext (E.store cfg ext obs (n + 1)) (get_current_balance_source fcr_store))
       supplier_known := hheadKnown
       banked_known := by
         rw [hbanked]
-        exact (Weak.headUnrealizedJustification_known_and_below cfg ext B hT
-          hanchor hboundary obs (n + 1)).1
+        exact (Weak.blockUnrealizedJustification_known_and_below cfg ext B hT
+          hanchor hboundary obs (n + 1) _
+            (Weak.get_certified_head_known cfg ext _ _
+              (Weak.head_known_at_observer cfg ext B hT hanchor hboundary obs (n + 1)))).1
       banked_eq := hbanked
       balance_source := get_current_balance_source fcr_store
       balance_registry := by
@@ -1082,7 +1082,7 @@ noncomputable def bankedJustificationCertificate_of_gate
         exact E.checkpoint_states_total_active_balance cfg ext hA.static_validators
           hA.externals_coherence (hdiv := hA.whole_seconds) (hgen := hgen0)
           obs (n + 1) _ hkey hH
-      certificate := hcertStore
+      certificate := hcertPlain
       start_anchor := hstartAnchor
       start_within :=
         E.slotWithinHorizon_of_le cfg (hspan.trans hendLe) hH
@@ -1125,7 +1125,7 @@ theorem bankedJustificationCertificate_of_gate_supplier
         (get_current_balance_source fcr_store) = true) :
     (Weak.bankedJustificationCertificate_of_gate cfg ext hA B hT hanchor
         hboundary hH hcall hstore hgate).supplier =
-      (get_head cfg (E.store cfg ext obs (n + 1))).root := rfl
+      (Weak.get_certified_head cfg ext (E.store cfg ext obs (n + 1)) (get_current_balance_source fcr_store)) := rfl
 
 /-- **The boundary head of a gate-passing epoch-start call is disseminated.**
 
@@ -1158,7 +1158,7 @@ theorem gatedHead_known_at_all_honest_endpoints_at_observer
         (get_current_balance_source fcr_store) = true)
     {w : ValidatorIndex} (hw : w ∈ E.honest) {m : ℕ} (hmH : E.WithinHorizon cfg m)
     (hslot : E.slot_at cfg (n + 1) ≤ E.slot_at cfg m) :
-    (get_head cfg (E.store cfg ext obs (n + 1))).root ∈
+    (Weak.get_certified_head cfg ext (E.store cfg ext obs (n + 1)) (get_current_balance_source fcr_store)) ∈
       (E.store cfg ext w m).block_roots := by
   have hknown :=
     (Weak.bankedSupplier_known_at_all_honest_endpoints_at_observer cfg ext hA B hT
@@ -1181,7 +1181,7 @@ economic facts *produced* — the gate being true forces its key to be keyed
 `registryConstant` / `checkpoint_states_total_active_balance` apply.
 
 No ancestry obligation arises here: under the revised rule it is a theorem
-about the banked value (`headUnrealizedJustification_known_and_below`),
+about the banked value (`blockUnrealizedJustification_known_and_below`),
 deferred to consumption. -/
 theorem certifiedBankedJustification_update
     {E : Execution Root} (hA : SelectedMarginAssumptions cfg ext E)

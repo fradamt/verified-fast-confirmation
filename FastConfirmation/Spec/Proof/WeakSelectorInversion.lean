@@ -181,27 +181,27 @@ theorem weak_find_latest_confirmed_descendant_mem (fcr_store : FastConfirmationS
         (Weak.find_latest_confirmed_descendant cfg ext fcr_store lcr) = true ∧
       ∃ base : Root,
         Weak.find_latest_confirmed_descendant cfg ext fcr_store lcr ∈
-          get_ancestor_roots fcr_store.store (get_head cfg fcr_store.store).root base) := by
+          get_ancestor_roots fcr_store.store (Weak.get_certified_head cfg ext fcr_store.store (get_current_balance_source fcr_store)) base) := by
   set P : Root → Prop := fun r => r = lcr ∨
     (Weak.is_one_confirmed cfg ext fcr_store.store (get_current_balance_source fcr_store) r = true ∧
       ∃ base : Root, r ∈
-        get_ancestor_roots fcr_store.store (get_head cfg fcr_store.store).root base)
+        get_ancestor_roots fcr_store.store (Weak.get_certified_head cfg ext fcr_store.store (get_current_balance_source fcr_store)) base)
     with hP
   have hprev : ∀ (ce : Epoch) (base acc : Root), P acc →
       P (Weak.find_latest_confirmed_descendant_prev_epoch_loop cfg ext fcr_store ce
-          (get_ancestor_roots fcr_store.store (get_head cfg fcr_store.store).root base) acc) := by
+          (get_ancestor_roots fcr_store.store (Weak.get_certified_head cfg ext fcr_store.store (get_current_balance_source fcr_store)) base) acc) := by
     intro ce base acc hacc
     rcases weak_prev_epoch_loop_spec cfg ext fcr_store ce
-        (get_ancestor_roots fcr_store.store (get_head cfg fcr_store.store).root base) acc with
+        (get_ancestor_roots fcr_store.store (Weak.get_certified_head cfg ext fcr_store.store (get_current_balance_source fcr_store)) base) acc with
       h | ⟨r, hr, heq, hc⟩
     · rw [hP]; rw [h]; exact hacc
     · exact Or.inr (heq ▸ ⟨hc, base, hr⟩)
   have htent : ∀ (base acc : Root), P acc →
       P (Weak.find_latest_confirmed_descendant_tentative_loop cfg ext fcr_store
-          (get_ancestor_roots fcr_store.store (get_head cfg fcr_store.store).root base) acc) := by
+          (get_ancestor_roots fcr_store.store (Weak.get_certified_head cfg ext fcr_store.store (get_current_balance_source fcr_store)) base) acc) := by
     intro base acc hacc
     rcases weak_tentative_loop_spec cfg ext fcr_store
-        (get_ancestor_roots fcr_store.store (get_head cfg fcr_store.store).root base) acc with
+        (get_ancestor_roots fcr_store.store (Weak.get_certified_head cfg ext fcr_store.store (get_current_balance_source fcr_store)) base) acc with
       h | ⟨r, hr, heq, hc⟩
     · rw [hP]; rw [h]; exact hacc
     · exact Or.inr (heq ▸ ⟨hc, base, hr⟩)
@@ -236,17 +236,19 @@ theorem weak_find_latest_confirmed_descendant_ge (fcr_store : FastConfirmationSt
         (get_node_for_root lcr) = true ∧
       Weak.find_latest_confirmed_descendant cfg ext fcr_store lcr ∈
         fcr_store.store.block_roots := by
+  have hhead := Weak.get_certified_head_known cfg ext fcr_store.store
+    (get_current_balance_source fcr_store) hhead
   set P : Root → Prop := fun r =>
     is_ancestor fcr_store.store (get_node_for_root r) (get_node_for_root lcr) = true ∧
       r ∈ fcr_store.store.block_roots with hP
   have base : P lcr := ⟨is_ancestor_refl _ _, hlcr⟩
   have hprev : ∀ (ce : Epoch) (acc : Root), P acc →
       P (Weak.find_latest_confirmed_descendant_prev_epoch_loop cfg ext fcr_store ce
-          (get_ancestor_roots fcr_store.store (get_head cfg fcr_store.store).root acc) acc) := by
+          (get_ancestor_roots fcr_store.store (Weak.get_certified_head cfg ext fcr_store.store (get_current_balance_source fcr_store)) acc) acc) := by
     intro ce acc hacc
     obtain ⟨hacc_anc, hacc_mem⟩ := hacc
     rcases weak_prev_epoch_loop_spec cfg ext fcr_store ce
-        (get_ancestor_roots fcr_store.store (get_head cfg fcr_store.store).root acc) acc with
+        (get_ancestor_roots fcr_store.store (Weak.get_certified_head cfg ext fcr_store.store (get_current_balance_source fcr_store)) acc) acc with
       h | ⟨r, hr, heq, _hc⟩
     · rw [h]; exact ⟨hacc_anc, hacc_mem⟩
     · rw [heq]
@@ -256,11 +258,11 @@ theorem weak_find_latest_confirmed_descendant_ge (fcr_store : FastConfirmationSt
         (hwalk lcr hlcr acc hacc_mem) hr_anc hacc_anc, hr_mem⟩
   have htent : ∀ (acc : Root), P acc →
       P (Weak.find_latest_confirmed_descendant_tentative_loop cfg ext fcr_store
-          (get_ancestor_roots fcr_store.store (get_head cfg fcr_store.store).root acc) acc) := by
+          (get_ancestor_roots fcr_store.store (Weak.get_certified_head cfg ext fcr_store.store (get_current_balance_source fcr_store)) acc) acc) := by
     intro acc hacc
     obtain ⟨hacc_anc, hacc_mem⟩ := hacc
     rcases weak_tentative_loop_spec cfg ext fcr_store
-        (get_ancestor_roots fcr_store.store (get_head cfg fcr_store.store).root acc) acc with
+        (get_ancestor_roots fcr_store.store (Weak.get_certified_head cfg ext fcr_store.store (get_current_balance_source fcr_store)) acc) acc with
       h | ⟨r, hr, heq, _hc⟩
     · rw [h]; exact ⟨hacc_anc, hacc_mem⟩
     · rw [heq]
@@ -354,10 +356,10 @@ theorem canonical_member_parent_known_minimal_weak
     (hHn : E.WithinHorizon cfg n)
     (hjrk : (E.store cfg ext v n).justified_checkpoint.root ∈
       (E.store cfg ext v n).block_roots)
-    (base b : Root)
+    (bs : BeaconState Root) (base b : Root)
     (hbase : base ∈ (E.store cfg ext v n).block_roots)
     (hmem : b ∈ get_ancestor_roots (E.store cfg ext v n)
-      (get_head cfg (E.store cfg ext v n)).root base) :
+      (Weak.get_certified_head cfg ext (E.store cfg ext v n) bs) base) :
     b ∈ (E.store cfg ext v n).block_roots ∧
       ((E.store cfg ext v n).blocks b).parent_root ∈
         (E.store cfg ext v n).block_roots := by
@@ -377,6 +379,7 @@ theorem canonical_member_parent_known_minimal_weak
     · exact h
     · rw [h]
       exact hjrk
+  have hhead := Weak.get_certified_head_known cfg ext (E.store cfg ext v n) bs hhead
   have hb : b ∈ (E.store cfg ext v n).block_roots :=
     get_ancestor_roots_mem hwf (hwalkK base hbase _ hhead) hmem
   have hstrict : ((E.store cfg ext v n).blocks base).slot <
@@ -473,16 +476,18 @@ theorem find_latest_confirmed_descendant_selected_minimal_weak
       r ∈ fcrStore.store.block_roots ∧
       (fcrStore.store.blocks r).parent_root ∈ fcrStore.store.block_roots)
   have fresh : ∀ (base r : Root), base ∈ fcrStore.store.block_roots →
-      r ∈ get_ancestor_roots fcrStore.store (get_head cfg fcrStore.store).root base →
+      r ∈ get_ancestor_roots fcrStore.store (Weak.get_certified_head cfg ext fcrStore.store (get_current_balance_source fcrStore)) base →
       Weak.is_one_confirmed cfg ext fcrStore.store (get_current_balance_source fcrStore) r = true →
       P r := by
     intro base r hbase hr hconf
     have hbaseE : base ∈ (E.store cfg ext v n).block_roots := by
       simpa only [hstore] using hbase
     have hrE : r ∈ get_ancestor_roots (E.store cfg ext v n)
-        (get_head cfg (E.store cfg ext v n)).root base := by
+        (Weak.get_certified_head cfg ext (E.store cfg ext v n)
+          (get_current_balance_source fcrStore)) base := by
       simpa only [hstore] using hr
-    have hp := E.canonical_member_parent_known_minimal_weak cfg ext hA v n hHn hjrk base r
+    have hp := E.canonical_member_parent_known_minimal_weak cfg ext hA v n hHn hjrk
+      (get_current_balance_source fcrStore) base r
       hbaseE hrE
     have hp' : r ∈ fcrStore.store.block_roots ∧
         (fcrStore.store.blocks r).parent_root ∈ fcrStore.store.block_roots := by
@@ -497,10 +502,10 @@ theorem find_latest_confirmed_descendant_selected_minimal_weak
   have hprev : ∀ (ce : Epoch) (base acc : Root),
       base ∈ fcrStore.store.block_roots → P acc →
       P (Weak.find_latest_confirmed_descendant_prev_epoch_loop cfg ext fcrStore ce
-        (get_ancestor_roots fcrStore.store (get_head cfg fcrStore.store).root base) acc) := by
+        (get_ancestor_roots fcrStore.store (Weak.get_certified_head cfg ext fcrStore.store (get_current_balance_source fcrStore)) base) acc) := by
     intro ce base acc hbase hacc
     rcases weak_prev_epoch_loop_spec cfg ext fcrStore ce
-      (get_ancestor_roots fcrStore.store (get_head cfg fcrStore.store).root base) acc with
+      (get_ancestor_roots fcrStore.store (Weak.get_certified_head cfg ext fcrStore.store (get_current_balance_source fcrStore)) base) acc with
       heq | ⟨r, hr, heq, hconf⟩
     · rw [heq]
       exact hacc
@@ -509,10 +514,10 @@ theorem find_latest_confirmed_descendant_selected_minimal_weak
   have htent : ∀ (base acc : Root),
       base ∈ fcrStore.store.block_roots → P acc →
       P (Weak.find_latest_confirmed_descendant_tentative_loop cfg ext fcrStore
-        (get_ancestor_roots fcrStore.store (get_head cfg fcrStore.store).root base) acc) := by
+        (get_ancestor_roots fcrStore.store (Weak.get_certified_head cfg ext fcrStore.store (get_current_balance_source fcrStore)) base) acc) := by
     intro base acc hbase hacc
     rcases weak_tentative_loop_spec cfg ext fcrStore
-      (get_ancestor_roots fcrStore.store (get_head cfg fcrStore.store).root base) acc with
+      (get_ancestor_roots fcrStore.store (Weak.get_certified_head cfg ext fcrStore.store (get_current_balance_source fcrStore)) base) acc with
       heq | ⟨r, hr, heq, hconf⟩
     · rw [heq]
       exact hacc

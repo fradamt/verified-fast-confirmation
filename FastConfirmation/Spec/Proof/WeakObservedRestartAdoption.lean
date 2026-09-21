@@ -89,7 +89,6 @@ theorem BankedJustificationCertificate.supplier_slot_lt
       (get_block_slot (E.store cfg ext obs h.second) h.supplier)
       (get_current_slot cfg (E.store cfg ext obs h.second) - 1) = true := by
     have hc := h.certificate
-    simp only [Weak.has_head_broadcast_certificate, ← h.supplier_eq_head] at hc
     exact hc
   have hspan := Weak.has_broadcast_certificate_span_nonempty cfg ext hcert
   have hpos := h.second_pos

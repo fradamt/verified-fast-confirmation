@@ -245,7 +245,7 @@ noncomputable def getLatestConfirmedTraceAt_currentLineage_step_core
             simpa only [hinputEq, query] using hlineage
           exact ⟨_, ⟨hnoCrossingLineage hinputKnown hselector
             hcrossing hinputLineage⟩⟩
-  · have hobsFacts := Weak.observedRestartGuard_facts cfg
+  · have hobsFacts := Weak.observedRestartGuard_facts cfg ext
       (query := query) (candidate := trace.afterFinalized) hobsTrue
     have hinputKnown : trace.afterObserved ∈ query.store.block_roots := by
       rw [hobsRestart]

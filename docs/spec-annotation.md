@@ -221,3 +221,18 @@ Human correspondence review should check the validator-index argument,
 `current_slot - 1` cutoff, epoch-boundary arm, inclusive completed-duty range,
 and use of the same predicate in both support sums before this variant is
 merged or ported into the Python specification.
+
+
+## Weak variant: certified ancestor selection (21 September 2026)
+
+The weak variant now selects the newest certified ancestor of the actual head.
+It scans only that prefix and reads the selected carrier's own unrealized
+justification. The no-conflict short circuit, epoch-start banking, and
+observed-restart guard use that same explicit source convention. Actual head
+fields and target calculations keep their original meaning.
+
+The full change and correspondence review points are in
+[certified-head.md](certified-head.md). This is a weak-model source change; the
+pinned strong source and manifest are unchanged. The new proof module is
+reachable through the existing facade. Human correspondence review is still
+needed before merge; Lean safety does not replace review of the Python port.

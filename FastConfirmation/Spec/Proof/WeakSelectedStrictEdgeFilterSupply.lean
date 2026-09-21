@@ -796,8 +796,9 @@ theorem StrictSelectedResultMechanicalFacts.previousOffStart_queryGUEpochSeed
       ∀ r ∈ query.store.block_roots,
         WalkKnown query.store (query.store.blocks t).slot r := by
     simpa only [query, hqCurrent] using hwalk
-  have hheadKnown : (get_head cfg query.store).root ∈
+  have hheadKnown : (Weak.get_certified_head cfg ext query.store (get_current_balance_source query)) ∈
       query.store.block_roots := by
+    apply Weak.get_certified_head_known cfg ext _ _
     simpa only [query, hqCurrent] using
       E.head_root_known_at_observer cfg ext hcoh (n + 1) hn1H
   have hpreviousHeadKnown : query.previous_slot_head ∈
@@ -805,13 +806,15 @@ theorem StrictSelectedResultMechanicalFacts.previousOffStart_queryGUEpochSeed
     simpa only [query] using
       Weak.weakFcrStep_previousSlotHead_known cfg ext hT.genesis hcoh n hn1H
   have hheadSelected : is_ancestor query.store
-      (get_head cfg query.store) (get_node_for_root selected) = true := by
+      (get_node_for_root (Weak.get_certified_head cfg ext query.store (get_current_balance_source query))) (get_node_for_root selected) = true := by
     have hstrict' : Weak.find_latest_confirmed_descendant cfg ext query
         input ≠ input := by
       simpa only [query, hout] using hstrict
     simpa only [query, hout] using
-      Weak.strictSelectedResult_below_head cfg ext hparentQ hwalkQ
-        hheadKnown (by simpa only [query] using hinput) hstrict'
+      Weak.strictSelectedResult_below_certified_head cfg ext hparentQ hwalkQ
+        (by simpa only [query, hqCurrent] using
+          E.head_root_known_at_observer cfg ext hcoh (n + 1) hn1H)
+        (by simpa only [query] using hinput) hstrict'
   have hprojection :=
     Execution.ExactPrefixAcceptedFFGSemantics.causalStoreProjection
       B hqueryCausal
@@ -851,7 +854,7 @@ theorem StrictSelectedResultMechanicalFacts.previousOffStart_queryGUEpochSeed
       query.store (get_current_balance_source query) = true) :
       ∀ w ∈ E.honest, ∀ m : Nat, E.WithinHorizon cfg m →
         E.slot_at cfg (n + 1) ≤ E.slot_at cfg m →
-        (get_head cfg query.store).root ∈ (E.store cfg ext w m).block_roots := by
+        (Weak.get_certified_head cfg ext query.store (get_current_balance_source query)) ∈ (E.store cfg ext w m).block_roots := by
     intro w hw m hmH hslot
     exact Weak.headSeed_known_at_all_honest_endpoints_at_observer cfg ext hA
       hsync hji hn1H hcoh (by simpa only [query] using hqCurrent) hcert
@@ -877,12 +880,12 @@ theorem StrictSelectedResultMechanicalFacts.previousOffStart_queryGUEpochSeed
           hpreviousDesc,
           lower_of_raw hpreviousHeadKnown hpreviousGU,
           witnessDissem hentry.witness_certificate⟩
-      · exact ⟨(get_head cfg query.store).root, hheadKnown,
+      · exact ⟨(Weak.get_certified_head cfg ext query.store (get_current_balance_source query)), hheadKnown,
           hheadSelected, lower_of_raw hheadKnown hheadGU,
           headDissem hheadCert⟩
   · rcases hentry with hstart | ⟨hheadGU, hheadCert⟩
     · exact False.elim (hnotStart hstart)
-    · exact ⟨(get_head cfg query.store).root, hheadKnown,
+    · exact ⟨(Weak.get_certified_head cfg ext query.store (get_current_balance_source query)), hheadKnown,
         hheadSelected, lower_of_raw hheadKnown hheadGU,
         headDissem hheadCert⟩
 
@@ -1409,20 +1412,20 @@ theorem StrictSelectorAdvanceAt.previousObservedReset_queryGUEpochSeed
     (hprevious : get_block_epoch cfg (E.weakFcrStep cfg ext obs n).store
           trace.result + 1 =
         get_current_store_epoch cfg (E.weakFcrStep cfg ext obs n).store) :
-    (get_head cfg (E.weakFcrStep cfg ext obs n).store).root ∈
+    (Weak.get_certified_head cfg ext (E.weakFcrStep cfg ext obs n).store (get_current_balance_source (E.weakFcrStep cfg ext obs n))) ∈
         (E.weakFcrStep cfg ext obs n).store.block_roots ∧
       is_ancestor (E.weakFcrStep cfg ext obs n).store
         (get_node_for_root
-          (get_head cfg (E.weakFcrStep cfg ext obs n).store).root)
+          (Weak.get_certified_head cfg ext (E.weakFcrStep cfg ext obs n).store (get_current_balance_source (E.weakFcrStep cfg ext obs n))))
         (get_node_for_root trace.result) = true ∧
       get_block_epoch cfg (E.weakFcrStep cfg ext obs n).store
           trace.result ≤
         (B.state.GU
-          (get_head cfg (E.weakFcrStep cfg ext obs n).store).root).epoch := by
+          (Weak.get_certified_head cfg ext (E.weakFcrStep cfg ext obs n).store (get_current_balance_source (E.weakFcrStep cfg ext obs n)))).epoch := by
   let query := E.weakFcrStep cfg ext obs n
   have hqCurrent : query.store = E.store cfg ext obs (n + 1) :=
     E.weakFcrStep_store cfg ext obs n
-  let head := (get_head cfg query.store).root
+  let head := (Weak.get_certified_head cfg ext query.store (get_current_balance_source query))
   obtain ⟨hparentN1, hwalkN1, _hjustifiedN1⟩ :=
     E.observerStoreDomainK cfg ext hT.wellFormed hT.externals_coherence
       hT.genesis hcoh (n + 1) hHn1
@@ -1433,7 +1436,8 @@ theorem StrictSelectorAdvanceAt.previousObservedReset_queryGUEpochSeed
         WalkKnown query.store (query.store.blocks t).slot r := by
     simpa only [query, hqCurrent] using hwalkN1
   have hheadKnown : head ∈ query.store.block_roots := by
-    simpa only [query, head, hqCurrent] using
+    apply Weak.get_certified_head_known cfg ext _ _
+    simpa only [query, hqCurrent] using
       E.head_root_known_at_observer cfg ext hcoh (n + 1) hHn1
   have hinputKnown : trace.afterObserved ∈ query.store.block_roots := by
     rw [horigin.afterObserved_eq, hqCurrent]
@@ -1444,8 +1448,9 @@ theorem StrictSelectorAdvanceAt.previousObservedReset_queryGUEpochSeed
     exact hselector.result_ne_input (hselector.result_eq.trans hfixed)
   have hheadResult : is_ancestor query.store
       (get_node_for_root head) (get_node_for_root trace.result) = true := by
-    have hbelow := Weak.strictSelectedResult_below_head cfg ext hparentQ
-      hwalkQ hheadKnown hinputKnown hstrict
+    have hbelow := Weak.strictSelectedResult_below_certified_head cfg ext hparentQ
+      hwalkQ (by simpa only [query, hqCurrent] using
+        E.head_root_known_at_observer cfg ext hcoh (n + 1) hHn1) hinputKnown hstrict
     simpa only [head, hselector.result_eq] using hbelow
   have hheadKnownN1 : head ∈ (E.store cfg ext obs (n + 1)).block_roots := by
     simpa only [hqCurrent] using hheadKnown
@@ -1528,22 +1533,24 @@ theorem StrictSelectorAdvanceAt.previousObservedReset_gatedHeadDisseminated
     (hcall : E.IsFCRCallAt cfg ext obs n)
     (hstart : is_start_slot_at_epoch cfg
       (get_current_slot cfg (E.weakFcrStep cfg ext obs n).store) = true)
-    (hgate : Weak.ObserverBankingGateAt cfg ext E obs n)
+    (hgate : Weak.has_head_broadcast_certificate cfg ext
+      (E.weakFcrStep cfg ext obs n).store
+      (get_current_balance_source (E.weakFcrStep cfg ext obs n)) = true)
     {w : ValidatorIndex} (hw : w ∈ E.honest) {m : Nat}
     (hmH : E.WithinHorizon cfg m)
     (hslot : E.slot_at cfg (n + 1) ≤ E.slot_at cfg m) :
-    (get_head cfg (E.weakFcrStep cfg ext obs n).store).root ∈
+    (Weak.get_certified_head cfg ext (E.weakFcrStep cfg ext obs n).store (get_current_balance_source (E.weakFcrStep cfg ext obs n))) ∈
       (E.store cfg ext w m).block_roots := by
   have hqCurrent : (E.weakFcrStep cfg ext obs n).store =
       E.store cfg ext obs (n + 1) :=
     E.weakFcrStep_store cfg ext obs n
-  rw [hqCurrent]
-  refine Weak.gatedHead_known_at_all_honest_endpoints_at_observer cfg ext hA B
-    hT hanchor hboundary hsync hji hcoh.committees_agree hHn1 hcall
-    (fcr_store :=
-      { E.weakFcr cfg ext obs n with store := E.store cfg ext obs (n + 1) })
-    rfl ⟨?_, hgate⟩ hw hmH hslot
-  simpa only [hqCurrent] using hstart
+  have hpos : 1 ≤ E.slot_at cfg (n + 1) := by
+    rw [← E.store_current_slot cfg ext obs (n + 1)]
+    exact Nat.lt_of_le_of_lt (Nat.zero_le _) hcall
+  apply Weak.headSeed_known_at_all_honest_endpoints_at_observer cfg ext hA
+    hsync hji hHn1 hcoh hqCurrent hgate hw hmH
+  rw [hqCurrent, E.store_current_slot cfg ext obs (n + 1), Nat.sub_add_cancel hpos]
+  exact hslot
 
 /-! ### The ungated arm is vacuous
 
@@ -2400,17 +2407,12 @@ noncomputable def
                 (by simpa only [hqCurrent] using hprevious.symm)
                 hw hmH
                 (by
-                  by_cases hgate : Weak.ObserverBankingGateAt cfg ext E obs n
-                  · exact (by
-                      simpa only [hqCurrent] using
-                        Weak.StrictSelectorAdvanceAt.previousObservedReset_gatedHeadDisseminated
-                          cfg ext hMargin B hT hsync hji hanchor hboundary hcoh
-                          hn1H hcall
-                          (by simpa only [hqCurrent] using hobserved.epoch_start)
-                          hgate hw hmH hslotQM)
-                  · exact (Weak.observedReset_ungated_absurd cfg ext hMargin B
-                      hT hji hanchor hboundary hDelay hcoh hn1H hcall hobserved
-                      hgate).elim)
+                  simpa only [hqCurrent] using
+                    Weak.StrictSelectorAdvanceAt.previousObservedReset_gatedHeadDisseminated
+                      cfg ext hMargin B hT hsync hji hanchor hboundary hcoh
+                      hn1H hcall
+                      (by simpa only [hqCurrent] using hobserved.epoch_start)
+                      hobserved.carrier_certificate hw hmH hslotQM)
                 hlate hjustifiedEpoch hresultJustified
       · exact h.fcrStep_previousOffStart_late_endpointFilterOutcome
           cfg ext B hT hsync hstatic hbyz hdomain hji hanchor hboundary P V

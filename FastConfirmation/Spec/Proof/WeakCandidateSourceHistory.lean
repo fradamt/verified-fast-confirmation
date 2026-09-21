@@ -734,8 +734,6 @@ theorem bankedEpochStartCandidateSource_of_certifiedBank
         (get_block_slot (E.store cfg ext obs hcert.second) hcert.supplier)
         (get_current_slot cfg (E.store cfg ext obs hcert.second) - 1) = true := by
       have hc' := hcert.certificate
-      simp only [Weak.has_head_broadcast_certificate,
-        ← hcert.supplier_eq_head] at hc'
       exact hc'
     have hspan : get_block_slot (E.store cfg ext obs hcert.second)
         hcert.supplier ≤
@@ -835,9 +833,9 @@ theorem bankedEpochStartCandidateSource_of_certifiedBank
           Nat.add_le_add_left (Nat.le_succ 1) _
     -- Chain-intrinsic ancestry of the banked root below the supplier.
     obtain ⟨_hbankedKnown, hbelow⟩ :=
-      Weak.headUnrealizedJustification_known_and_below cfg ext B hT hanchor
-        hboundary obs hcert.second
-    rw [← hcert.supplier_eq_head, ← hcert.banked_eq] at hbelow
+      Weak.blockUnrealizedJustification_known_and_below cfg ext B hT hanchor
+        hboundary obs hcert.second hcert.supplier hcert.supplier_known
+    rw [← hcert.banked_eq] at hbelow
     -- Dissemination of the supplier at the boundary.
     have hdiss : ∀ w ∈ E.honest,
         hcert.supplier ∈ (E.store cfg ext w (n + 1)).block_roots := by
@@ -1014,8 +1012,10 @@ theorem StrictSelectedResultMechanicalFacts.currentCandidateSourceOrigin
     origin_within := hqH
     candidate_known := by simpa only [hquery] using h.result_known
     candidate_current := by simpa only [hquery] using hcurrent
-    seed := (get_head cfg (E.store cfg ext obs q)).root
-    seed_known := by simpa only [hquery] using hhead
+    seed := Weak.get_certified_head cfg ext (E.store cfg ext obs q)
+      (get_current_balance_source query)
+    seed_known := by
+      simpa only [hquery] using Weak.get_certified_head_known cfg ext _ _ hhead
     seed_descends_candidate := by simpa only [hquery] using hdesc
     gu_recent := by simpa only [hquery] using hgu
     seed_disseminated := by

@@ -144,7 +144,7 @@ selector-independent ancestry helpers (`get_ancestor_roots_mem`,
 `get_ancestor_roots_descends`, `ancestorRoots_member_below_head`) and the
 already-landed weak loop inversions (`weak_prev_epoch_loop_spec`,
 `weak_tentative_loop_spec`, `WeakSelectorInversion.lean`). -/
-theorem strictSelectedResult_below_head
+theorem strictSelectedResult_below_certified_head
     {query : FastConfirmationStore Root}
     (hwf : ParentSlotLt query.store)
     (hwalk : ∀ t ∈ query.store.block_roots,
@@ -153,10 +153,13 @@ theorem strictSelectedResult_below_head
     (hhead : (get_head cfg query.store).root ∈ query.store.block_roots)
     {input : Root} (hinput : input ∈ query.store.block_roots)
     (hstrict : Weak.find_latest_confirmed_descendant cfg ext query input ≠ input) :
-    is_ancestor query.store (get_head cfg query.store)
+    is_ancestor query.store
+      (get_node_for_root (Weak.get_certified_head cfg ext query.store (get_current_balance_source query)))
       (get_node_for_root
         (Weak.find_latest_confirmed_descendant cfg ext query input)) = true := by
-  let head := (get_head cfg query.store).root
+  let head := Weak.get_certified_head cfg ext query.store (get_current_balance_source query)
+  have hhead := Weak.get_certified_head_known cfg ext query.store
+    (get_current_balance_source query) hhead
   set P : Root → Prop := fun r =>
     r ∈ query.store.block_roots ∧
       (r = input ∨ is_ancestor query.store (get_node_for_root head)
@@ -208,6 +211,26 @@ theorem strictSelectedResult_below_head
   rcases hresult.2 with heq | hbelow
   · exact False.elim (hstrict heq)
   · simpa only [head, get_node_for_root] using hbelow
+
+theorem strictSelectedResult_below_head
+    {query : FastConfirmationStore Root}
+    (hwf : ParentSlotLt query.store)
+    (hwalk : ∀ t ∈ query.store.block_roots,
+      ∀ r ∈ query.store.block_roots,
+        WalkKnown query.store (query.store.blocks t).slot r)
+    (hhead : (get_head cfg query.store).root ∈ query.store.block_roots)
+    {input : Root} (hinput : input ∈ query.store.block_roots)
+    (hstrict : Weak.find_latest_confirmed_descendant cfg ext query input ≠ input) :
+    is_ancestor query.store (get_head cfg query.store)
+      (get_node_for_root
+        (Weak.find_latest_confirmed_descendant cfg ext query input)) = true  := by
+  have hc := Weak.get_certified_head_known cfg ext query.store
+    (get_current_balance_source query) hhead
+  have hr := (weak_find_latest_confirmed_descendant_ge cfg ext query hwf hwalk
+    hhead input hinput).2
+  exact is_ancestor_trans hwf (hwalk _ hr _ hhead) (hwalk _ hr _ hc)
+    (Weak.get_certified_head_below_head cfg ext query.store (get_current_balance_source query))
+    (strictSelectedResult_below_certified_head cfg ext hwf hwalk hhead hinput hstrict)
 
 /-! ## Query-local not-epoch-start / current-head Lemma-13 facts -/
 
@@ -281,9 +304,9 @@ theorem StrictSelectedResultMechanicalFacts.currentHeadLemma13SourceSeedCertifie
       get_current_store_epoch cfg query.store)
     (hnotStart : is_start_slot_at_epoch cfg
       (get_current_slot cfg query.store) ≠ true) :
-    is_ancestor query.store (get_node_for_root (get_head cfg query.store).root)
+    is_ancestor query.store (get_node_for_root (Weak.get_certified_head cfg ext query.store (get_current_balance_source query)))
         (get_node_for_root result) = true ∧
-      (B.state.GU (get_head cfg query.store).root).epoch + 1 ≥
+      (B.state.GU (Weak.get_certified_head cfg ext query.store (get_current_balance_source query))).epoch + 1 ≥
         get_current_store_epoch cfg query.store ∧
       Weak.has_head_broadcast_certificate cfg ext query.store
         (get_current_balance_source query) = true := by
@@ -294,21 +317,22 @@ theorem StrictSelectedResultMechanicalFacts.currentHeadLemma13SourceSeedCertifie
   · rcases hentry with hstart | ⟨hgu, hheadCert⟩
     · exact False.elim (hnotStart hstart)
     · have hbelow : is_ancestor query.store
-          (get_node_for_root (get_head cfg query.store).root)
+          (get_node_for_root (Weak.get_certified_head cfg ext query.store (get_current_balance_source query)))
           (get_node_for_root result) = true := by
         have hstrict' :
             Weak.find_latest_confirmed_descendant cfg ext query input ≠ input := by
           simpa only [hout] using hstrict
         simpa only [hout] using
-          strictSelectedResult_below_head cfg ext hparent hwalk hhead
+          strictSelectedResult_below_certified_head cfg ext hparent hwalk hhead
             hinput hstrict'
       have hprojection :=
         Execution.ExactPrefixAcceptedFFGSemantics.causalStoreProjection
           B hstore
       have hguEq : query.store.unrealized_justifications
-          (get_head cfg query.store).root =
-        B.state.GU (get_head cfg query.store).root :=
-        hprojection.unrealized_justification _ hhead
+          (Weak.get_certified_head cfg ext query.store (get_current_balance_source query)) =
+        B.state.GU (Weak.get_certified_head cfg ext query.store (get_current_balance_source query)) :=
+        hprojection.unrealized_justification _
+          (Weak.get_certified_head_known cfg ext _ _ hhead)
       exact ⟨hbelow, by simpa only [hguEq] using hgu, hheadCert⟩
 
 /-! ## Site 3 — actual `weakFcrStep` previous cell, no observer relay -/
@@ -611,7 +635,8 @@ theorem StrictSelectedResultMechanicalFacts.fcrStep_currentNext_endpointRecentSo
       E.slot_at cfg m := by
     rw [hcurSlotEq, Nat.sub_add_cancel hslotPosAt]
     exact hslotForward
-  have hheadKnownEndpoint : (get_head cfg (E.weakFcrStep cfg ext obs n).store).root ∈
+  have hheadKnownEndpoint : (Weak.get_certified_head cfg ext (E.weakFcrStep cfg ext obs n).store
+        (get_current_balance_source (E.weakFcrStep cfg ext obs n))) ∈
       (E.store cfg ext w m).block_roots :=
     Weak.headSeed_known_at_all_honest_endpoints_at_observer cfg ext hA
       hsync hji hn1H hcoh hqCurrent hheadCert hw hmH hheadGate
@@ -625,7 +650,7 @@ theorem StrictSelectedResultMechanicalFacts.fcrStep_currentNext_endpointRecentSo
     hT.wellFormed hT.externals_coherence hgen hgenSlot hgenParent
     hqueryCausal hendpointCausal hqueryParent hqueryProvenance
     hqueryWalk hqueryNonfuture h.result_known hselectedM hnextEpoch
-    hhead hbelow hguRecent hheadKnownEndpoint
+    (Weak.get_certified_head_known cfg ext _ _ hhead) hbelow hguRecent hheadKnownEndpoint
 
 end Weak
 

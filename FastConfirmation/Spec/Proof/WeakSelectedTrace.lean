@@ -236,7 +236,7 @@ theorem selected_previous_result_outer_gate
                   fcrStore.previous_slot_head).epoch + 1 ≥
                 get_current_store_epoch cfg fcrStore.store ∨
               ((fcrStore.store.unrealized_justifications
-                    (get_head cfg fcrStore.store).root).epoch + 1 ≥
+                    (Weak.get_certified_head cfg ext fcrStore.store (get_current_balance_source fcrStore))).epoch + 1 ≥
                   get_current_store_epoch cfg fcrStore.store ∧
                 Weak.has_head_broadcast_certificate cfg ext fcrStore.store
                   (get_current_balance_source fcrStore) = true))))) →
@@ -260,7 +260,7 @@ conjuncts. -/
 def findLatestSelectedTrace (fcrStore : FastConfirmationStore Root)
     (latestConfirmedRoot : Root) : Root × (List (Root × Root) × List (Root × Root)) :=
   let store := fcrStore.store
-  let head := (get_head cfg store).root
+  let head := Weak.get_certified_head cfg ext store (get_current_balance_source fcrStore)
   let currentEpoch := get_current_store_epoch cfg store
   let bs := get_current_balance_source fcrStore
   let previousGuard :=
@@ -375,7 +375,7 @@ structure PreviousSelectedEntryWitness (fcrStore : FastConfirmationStore Root)
             fcrStore.previous_slot_head).epoch + 1 ≥
           get_current_store_epoch cfg fcrStore.store ∨
         ((fcrStore.store.unrealized_justifications
-              (get_head cfg fcrStore.store).root).epoch + 1 ≥
+              (Weak.get_certified_head cfg ext fcrStore.store (get_current_balance_source fcrStore))).epoch + 1 ≥
             get_current_store_epoch cfg fcrStore.store ∧
           Weak.has_head_broadcast_certificate cfg ext fcrStore.store
             (get_current_balance_source fcrStore) = true)))
@@ -405,7 +405,7 @@ def TentativeSelectedEntryWitness (fcrStore : FastConfirmationStore Root) : Prop
   is_start_slot_at_epoch cfg
       (get_current_slot cfg fcrStore.store) = true ∨
     ((fcrStore.store.unrealized_justifications
-        (get_head cfg fcrStore.store).root).epoch + 1 ≥
+        (Weak.get_certified_head cfg ext fcrStore.store (get_current_balance_source fcrStore))).epoch + 1 ≥
       get_current_store_epoch cfg fcrStore.store ∧
     Weak.has_head_broadcast_certificate cfg ext fcrStore.store
       (get_current_balance_source fcrStore) = true)
@@ -582,11 +582,13 @@ theorem prevEpochCanonicalTrace_parentTrace
     SelectedParentTrace fcrStore.store acc
       (prevEpochLoopTrace cfg ext fcrStore currentEpoch
         (get_ancestor_roots fcrStore.store
-          (get_head cfg fcrStore.store).root acc) acc).1
+          (Weak.get_certified_head cfg ext fcrStore.store (get_current_balance_source fcrStore)) acc) acc).1
       (prevEpochLoopTrace cfg ext fcrStore currentEpoch
         (get_ancestor_roots fcrStore.store
-          (get_head cfg fcrStore.store).root acc) acc).2 := by
-  have hw := hwalk acc hacc _ hhead
+          (Weak.get_certified_head cfg ext fcrStore.store (get_current_balance_source fcrStore)) acc) acc).2 := by
+  have hcarrier := Weak.get_certified_head_known cfg ext fcrStore.store
+    (get_current_balance_source fcrStore) hhead
+  have hw := hwalk acc hacc _ hcarrier
   exact prevEpochLoopTrace_parentTrace cfg ext fcrStore currentEpoch _ acc
     (fun x hx => get_ancestor_roots_mem hwf hw hx)
     (get_ancestor_roots_isChain hwf hw)
@@ -604,11 +606,13 @@ theorem tentativeCanonicalTrace_parentTrace
     SelectedParentTrace fcrStore.store acc
       (tentativeLoopTrace cfg ext fcrStore
         (get_ancestor_roots fcrStore.store
-          (get_head cfg fcrStore.store).root acc) acc).1
+          (Weak.get_certified_head cfg ext fcrStore.store (get_current_balance_source fcrStore)) acc) acc).1
       (tentativeLoopTrace cfg ext fcrStore
         (get_ancestor_roots fcrStore.store
-          (get_head cfg fcrStore.store).root acc) acc).2 := by
-  have hw := hwalk acc hacc _ hhead
+          (Weak.get_certified_head cfg ext fcrStore.store (get_current_balance_source fcrStore)) acc) acc).2 := by
+  have hcarrier := Weak.get_certified_head_known cfg ext fcrStore.store
+    (get_current_balance_source fcrStore) hhead
+  have hw := hwalk acc hacc _ hcarrier
   exact tentativeLoopTrace_parentTrace cfg ext fcrStore _ acc
     (fun x hx => get_ancestor_roots_mem hwf hw hx)
     (get_ancestor_roots_isChain hwf hw)
@@ -632,7 +636,7 @@ theorem findLatestSelectedTrace_parentTrace
       ((findLatestSelectedTrace cfg ext fcrStore latestConfirmedRoot).2.1 ++
         (findLatestSelectedTrace cfg ext fcrStore latestConfirmedRoot).2.2) := by
   let store := fcrStore.store
-  let head := (get_head cfg store).root
+  let head := Weak.get_certified_head cfg ext store (get_current_balance_source fcrStore)
   let currentEpoch := get_current_store_epoch cfg store
   let bs := get_current_balance_source fcrStore
   let pRoots := get_ancestor_roots store head latestConfirmedRoot

@@ -4,6 +4,14 @@ Companion to `FastConfirmation/Spec/Model/WeakSynchrony.lean`. Source
 discussion: the Ethlabs working note "Weakening the synchrony assumptions of
 FCR" (September 2026).
 
+## Current carrier rule — 21 September 2026
+
+The current implementation uses the newest certified ancestor of the actual
+fork-choice head. It does not require the actual head to have a completed-slot
+certificate. See [certified-head.md](certified-head.md) for the rule, proof
+changes, and validation scope. Later sections retain the original development
+history; references there to head-only certificates describe the earlier rule.
+
 ## Network model
 
 The adversary controls **or eclipses** up to `CONFIRMATION_BYZANTINE_THRESHOLD`

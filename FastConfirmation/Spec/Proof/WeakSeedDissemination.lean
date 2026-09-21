@@ -22,7 +22,7 @@ lemma is specialized to the banking use: it is stated at the second `h.second`
 the invariant's certificate witness was minted at (an *installation* second,
 consumed with a same-slot-capable gate tailored to
 `update_fast_confirmation_variables`'s epoch-start write), and its ancestry
-step is the chain-intrinsic `Weak.headUnrealizedJustification_known_and_below`
+step is the chain-intrinsic `Weak.blockUnrealizedJustification_known_and_below`
 rather than a general observer-known ancestor.
 
 This file supplies the complementary **general, at-query-second** form the
@@ -295,26 +295,27 @@ theorem headSeed_known_at_all_honest_endpoints_at_observer
       (get_current_balance_source fcrStore) = true)
     {w : ValidatorIndex} (hw : w ∈ E.honest) {m : ℕ} (hmH : E.WithinHorizon cfg m)
     (hgate : (get_current_slot cfg fcrStore.store - 1) + 1 ≤ E.slot_at cfg m) :
-    (get_head cfg fcrStore.store).root ∈ (E.store cfg ext w m).block_roots := by
-  have hheadKnown : (get_head cfg fcrStore.store).root ∈
+    (Weak.get_certified_head cfg ext fcrStore.store (get_current_balance_source fcrStore)) ∈ (E.store cfg ext w m).block_roots := by
+  have hheadKnown : (Weak.get_certified_head cfg ext fcrStore.store (get_current_balance_source fcrStore)) ∈
       (E.store cfg ext obs q).block_roots := by
     rw [hstore]
-    exact E.head_root_known_at_observer cfg ext hcoh q hqH
+    exact Weak.get_certified_head_known cfg ext _ _
+      (E.head_root_known_at_observer cfg ext hcoh q hqH)
   have hcert : Weak.has_broadcast_certificate cfg ext fcrStore.store
-      (get_current_balance_source fcrStore) (get_head cfg fcrStore.store).root
-      (get_block_slot fcrStore.store (get_head cfg fcrStore.store).root)
+      (get_current_balance_source fcrStore) (Weak.get_certified_head cfg ext fcrStore.store (get_current_balance_source fcrStore))
+      (get_block_slot fcrStore.store (Weak.get_certified_head cfg ext fcrStore.store (get_current_balance_source fcrStore)))
       (get_current_slot cfg fcrStore.store - 1) = true := by
     simpa only [Weak.has_head_broadcast_certificate] using hhead
   obtain ⟨hval, htab, hstart0, hstartH, hendH⟩ :=
     certificateSideConditions_at_observer cfg ext hA hqH hstore hheadKnown hcert
   have hcertQ : Weak.has_broadcast_certificate cfg ext (E.store cfg ext obs q)
-      (get_current_balance_source fcrStore) (get_head cfg fcrStore.store).root
-      (get_block_slot fcrStore.store (get_head cfg fcrStore.store).root)
+      (get_current_balance_source fcrStore) (Weak.get_certified_head cfg ext fcrStore.store (get_current_balance_source fcrStore))
+      (get_block_slot fcrStore.store (Weak.get_certified_head cfg ext fcrStore.store (get_current_balance_source fcrStore)))
       (get_current_slot cfg fcrStore.store - 1) = true := by rw [← hstore]; exact hcert
   exact E.certificate_dissemination cfg ext hA.wellFormed hA.honest_behavior hsync
     hA.externals_coherence hA.byzantine_bound hji hA.genesis obs q
-    (get_current_balance_source fcrStore) (get_head cfg fcrStore.store).root
-    (get_block_slot fcrStore.store (get_head cfg fcrStore.store).root)
+    (get_current_balance_source fcrStore) (Weak.get_certified_head cfg ext fcrStore.store (get_current_balance_source fcrStore))
+    (get_block_slot fcrStore.store (Weak.get_certified_head cfg ext fcrStore.store (get_current_balance_source fcrStore)))
     (get_current_slot cfg fcrStore.store - 1) hqH hstartH hendH hstart0 hval htab
     (hcoh.committees_agree q hqH) hheadKnown hcertQ w hw m hmH hgate
 
@@ -322,7 +323,7 @@ theorem headSeed_known_at_all_honest_endpoints_at_observer
 disseminates too. Thin wrapper over `Weak.certificate_chain_dissemination`,
 mirroring `witnessSeed_ancestor_known_at_all_honest_endpoints_at_observer`
 above. This is the general form of the fact
-`Weak.headUnrealizedJustification_known_and_below` /
+`Weak.blockUnrealizedJustification_known_and_below` /
 `Weak.bankedSupplier_known_at_all_honest_endpoints_at_observer`
 (`WeakBankedJustification.lean`) specialize to the banking installer's own
 second and its chain-intrinsic ancestor (the head's own unrealized
@@ -340,35 +341,36 @@ theorem headSeed_ancestor_known_at_all_honest_endpoints_at_observer
       (get_current_balance_source fcrStore) = true)
     {anc : Root} (hanc_obs : anc ∈ (E.store cfg ext obs q).block_roots)
     (hwb : WalkKnown (E.store cfg ext obs q)
-      ((E.store cfg ext obs q).blocks anc).slot (get_head cfg fcrStore.store).root)
+      ((E.store cfg ext obs q).blocks anc).slot (Weak.get_certified_head cfg ext fcrStore.store (get_current_balance_source fcrStore)))
     (hwalk : ∀ i lm, (E.store cfg ext obs q).latest_messages i = some lm →
       is_ancestor (E.store cfg ext obs q) (get_node_for_root lm.root)
-        (get_node_for_root (get_head cfg fcrStore.store).root) = true →
+        (get_node_for_root (Weak.get_certified_head cfg ext fcrStore.store (get_current_balance_source fcrStore))) = true →
       WalkKnown (E.store cfg ext obs q) ((E.store cfg ext obs q).blocks anc).slot lm.root)
     (hanc : is_ancestor (E.store cfg ext obs q)
-      (get_node_for_root (get_head cfg fcrStore.store).root) (get_node_for_root anc) = true)
+      (get_node_for_root (Weak.get_certified_head cfg ext fcrStore.store (get_current_balance_source fcrStore))) (get_node_for_root anc) = true)
     {w : ValidatorIndex} (hw : w ∈ E.honest) {m : ℕ} (hmH : E.WithinHorizon cfg m)
     (hgate : (get_current_slot cfg fcrStore.store - 1) + 1 ≤ E.slot_at cfg m) :
     anc ∈ (E.store cfg ext w m).block_roots := by
-  have hheadKnown : (get_head cfg fcrStore.store).root ∈
+  have hheadKnown : (Weak.get_certified_head cfg ext fcrStore.store (get_current_balance_source fcrStore)) ∈
       (E.store cfg ext obs q).block_roots := by
     rw [hstore]
-    exact E.head_root_known_at_observer cfg ext hcoh q hqH
+    exact Weak.get_certified_head_known cfg ext _ _
+      (E.head_root_known_at_observer cfg ext hcoh q hqH)
   have hcert : Weak.has_broadcast_certificate cfg ext fcrStore.store
-      (get_current_balance_source fcrStore) (get_head cfg fcrStore.store).root
-      (get_block_slot fcrStore.store (get_head cfg fcrStore.store).root)
+      (get_current_balance_source fcrStore) (Weak.get_certified_head cfg ext fcrStore.store (get_current_balance_source fcrStore))
+      (get_block_slot fcrStore.store (Weak.get_certified_head cfg ext fcrStore.store (get_current_balance_source fcrStore)))
       (get_current_slot cfg fcrStore.store - 1) = true := by
     simpa only [Weak.has_head_broadcast_certificate] using hhead
   obtain ⟨hval, htab, hstart0, hstartH, hendH⟩ :=
     certificateSideConditions_at_observer cfg ext hA hqH hstore hheadKnown hcert
   have hcertQ : Weak.has_broadcast_certificate cfg ext (E.store cfg ext obs q)
-      (get_current_balance_source fcrStore) (get_head cfg fcrStore.store).root
-      (get_block_slot fcrStore.store (get_head cfg fcrStore.store).root)
+      (get_current_balance_source fcrStore) (Weak.get_certified_head cfg ext fcrStore.store (get_current_balance_source fcrStore))
+      (get_block_slot fcrStore.store (Weak.get_certified_head cfg ext fcrStore.store (get_current_balance_source fcrStore)))
       (get_current_slot cfg fcrStore.store - 1) = true := by rw [← hstore]; exact hcert
   exact Weak.certificate_chain_dissemination cfg ext E hA.wellFormed hA.honest_behavior hsync
     hA.externals_coherence hA.byzantine_bound hji hA.genesis obs q
-    (get_current_balance_source fcrStore) (get_head cfg fcrStore.store).root anc
-    (get_block_slot fcrStore.store (get_head cfg fcrStore.store).root)
+    (get_current_balance_source fcrStore) (Weak.get_certified_head cfg ext fcrStore.store (get_current_balance_source fcrStore)) anc
+    (get_block_slot fcrStore.store (Weak.get_certified_head cfg ext fcrStore.store (get_current_balance_source fcrStore)))
     (get_current_slot cfg fcrStore.store - 1) hqH hstartH hendH hstart0 hval htab
     (hcoh.committees_agree q hqH) hheadKnown hanc_obs hcertQ hwb hwalk hanc w hw m hmH hgate
 

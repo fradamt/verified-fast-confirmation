@@ -1,3 +1,4 @@
+import FastConfirmation.Spec.Proof.WeakCertifiedHead
 import FastConfirmation.Spec.Proof.WeakCertificateDissemination
 
 /-!
