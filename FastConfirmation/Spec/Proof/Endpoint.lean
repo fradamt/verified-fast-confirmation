@@ -455,10 +455,36 @@ theorem confirmed_ancestor_strip_from_execution {E : Execution Root}
   exact confirmed_ancestor_strip_of_rule cfg ext hec hbb hv hnH other
     hval hloH hcH hesH htab hneEquiv hbyz hconf hother hneStatus hchild hG
 
+/-- A supporter of the opposite resolved parent cannot also support its child
+when the child's supporters select the required resolved parent. -/
+theorem opposite_supporter_excludes_child {store : Store Root} {bs : BeaconState Root}
+    {h c : Root} {selected other : PayloadStatus} {i : ValidatorIndex}
+    {lm : LatestMessage Root}
+    (hselected : selected ≠ .pending) (hother : other ≠ .pending)
+    (hne : other ≠ selected)
+    (hopp : i ∈ AttSupporters cfg store (ForkChoiceNode.mk h other) bs)
+    (hlm : store.latest_messages i = some lm)
+    (hc : is_ancestor store (get_supported_node store lm)
+      (get_node_for_root c) = true)
+    (hchildSubset : (AttSupporters cfg store (get_node_for_root c) bs).toFinset ⊆
+      (AttSupporters cfg store (ForkChoiceNode.mk h selected) bs).toFinset) :
+    False := by
+  have hiC : i ∈ AttSupporters cfg store (get_node_for_root c) bs :=
+    mem_AttSupporters_of cfg (AttSupporters_active cfg hopp)
+      (AttSupporters_unslashed cfg hopp) hlm (mem_AttSupporters cfg hopp).choose_spec.2.1 hc
+  have hiSel := List.mem_toFinset.mp
+    (hchildSubset (List.mem_toFinset.mpr hiC))
+  obtain ⟨lmS, hlmS, _, hs⟩ := mem_AttSupporters cfg hiSel
+  obtain ⟨lmO, hlmO, _, ho⟩ := mem_AttSupporters cfg hopp
+  have hS : lmS = lm := Option.some.inj (hlmS.symm.trans hlm)
+  have hO : lmO = lm := Option.some.inj (hlmO.symm.trans hlm)
+  subst lmS
+  subst lmO
+  exact not_ancestor_two_resolved_statuses store
+    (get_supported_node store lm) h selected other hselected hother hne ⟨hs, ho⟩
+
 /-- Every opposite-status supporter is paid by the old sibling class, the
-non-honest window, or the ancestor slice. The honest-class confinement is the
-same ground-vote classification used by sibling confinement, except that
-ancestor votes are retained for the pending-parent contest. -/
+non-honest window, or the ancestor slice. -/
 theorem recorded_opposite_status_le {E : Execution Root} {store : Store Root}
     {bs : BeaconState Root} (hval : bs.validators = E.registry)
     {v₀ : ValidatorIndex} {n₀ : ℕ} {b' h : Root} {lo σ : Slot}

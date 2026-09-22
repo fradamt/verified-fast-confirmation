@@ -1158,6 +1158,186 @@ theorem Execution.latest_message_root_head {E : Execution Root}
   rw [← hbbr]
   exact E.latest_message_root cfg ext hhb hec hgen hv hvote hmsg hmepoch.symm
 
+/-! ## Exact recorded message, including the payload bit -/
+
+/-- Schedule provenance with the complete latest-message value. The payload
+bit is set by `update_latest_messages` from the attestation index. -/
+def SchedLMProvExact (E : Execution Root) (store : Store Root) : Prop :=
+  ∀ (i : ValidatorIndex) (m : LatestMessage Root),
+    store.latest_messages i = some m →
+    ∃ (a : Attestation Root) (u : ValidatorIndex) (t : ℕ) (ifb : Bool),
+      Event.attestation a ifb ∈ E.schedule u t ∧
+      i ∈ a.attesting_indices ∧
+      m = LatestMessage.mk a.data.slot a.data.beacon_block_root
+        (decide (a.data.index = 1))
+
+private theorem schedLMProvExact_of_latest_eq {E : Execution Root}
+    {store store' : Store Root} (h : SchedLMProvExact E store)
+    (hlm : store'.latest_messages = store.latest_messages) :
+    SchedLMProvExact E store' := by
+  intro i m hm
+  rw [hlm] at hm
+  exact h i m hm
+
+private theorem on_attestation_sched_exact {E : Execution Root}
+    {store store' : Store Root} {a : Attestation Root} {ifb : Bool}
+    (hsched : ∃ u t, Event.attestation a ifb ∈ E.schedule u t)
+    (h : SchedLMProvExact E store)
+    (hh : on_attestation cfg ext store a ifb = some store') :
+    SchedLMProvExact E store' := by
+  simp only [on_attestation] at hh
+  split_ifs at hh with hv hvi
+  cases hh
+  intro i m hm
+  rcases update_latest_messages_mem _ _ _ _ _ hm with hold | ⟨hi, hmeq⟩
+  · rw [store_target_checkpoint_state_latest] at hold
+    exact h i m hold
+  · obtain ⟨u, t, hmem⟩ := hsched
+    exact ⟨a, u, t, ifb, hmem, hi, hmeq⟩
+
+private theorem apply_event_sched_exact {E : Execution Root}
+    {store store' : Store Root} {e : Event Root}
+    (hsched : ∀ a ifb, e = Event.attestation a ifb →
+      ∃ u t, Event.attestation a ifb ∈ E.schedule u t)
+    (h : SchedLMProvExact E store)
+    (he : apply_event cfg ext store e = some store') :
+    SchedLMProvExact E store' := by
+  cases e with
+  | block b =>
+    simp only [apply_event] at he
+    exact schedLMProvExact_of_latest_eq h (on_block_latest cfg ext he)
+  | attestation a ifb =>
+    simp only [apply_event] at he
+    exact on_attestation_sched_exact cfg ext (hsched a ifb rfl) h he
+  | attester_slashing asl =>
+    simp only [apply_event] at he
+    exact schedLMProvExact_of_latest_eq h (on_attester_slashing_latest ext he)
+  | execution_payload_envelope envelope observation =>
+    exact schedLMProvExact_of_latest_eq h
+      (on_execution_payload_envelope_frame ext he).latest_messages
+  | payload_attestation_message message fromBlock =>
+    exact schedLMProvExact_of_latest_eq h
+      (on_payload_attestation_message_frame cfg ext he).latest_messages
+
+private theorem sched_exact_foldl {E : Execution Root} :
+    ∀ (l : List (Event Root)) (s : Store Root),
+      (∀ a ifb, Event.attestation a ifb ∈ l →
+        ∃ u t, Event.attestation a ifb ∈ E.schedule u t) →
+      SchedLMProvExact E s →
+      SchedLMProvExact E
+        (l.foldl (fun store event => (apply_event cfg ext store event).getD store) s) := by
+  intro l
+  induction l with
+  | nil => intro s _ h; exact h
+  | cons e l ih =>
+    intro s hl h
+    rw [List.foldl_cons]
+    have hesched : ∀ a ifb, e = Event.attestation a ifb →
+        ∃ u t, Event.attestation a ifb ∈ E.schedule u t :=
+      fun a ifb he => hl a ifb (by rw [← he]; exact List.mem_cons_self)
+    cases he : apply_event cfg ext s e with
+    | none =>
+      simp only [Option.getD_none]
+      exact ih s (fun a ifb hb => hl a ifb (List.mem_cons_of_mem e hb)) h
+    | some s' =>
+      simp only [Option.getD_some]
+      exact ih s' (fun a ifb hb => hl a ifb (List.mem_cons_of_mem e hb))
+        (apply_event_sched_exact cfg ext hesched h he)
+
+/-- Every recorded honest or Byzantine latest message has an exact scheduled
+setting attestation, including its slot and payload-status bit. -/
+theorem Execution.schedLMProvExact {E : Execution Root}
+    (hgen : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
+      E.genesis_store = get_forkchoice_store cfg ast ablk)
+    (v : ValidatorIndex) (n : ℕ) :
+    SchedLMProvExact E (E.store cfg ext v n) := by
+  induction n with
+  | zero =>
+    obtain ⟨ast, ablk, hg⟩ := hgen
+    intro i m hm
+    have hm' : E.genesis_store.latest_messages i = some m := hm
+    rw [hg] at hm'
+    simp [get_forkchoice_store] at hm'
+  | succ n ih =>
+    change SchedLMProvExact E
+      ((E.schedule v (n + 1)).foldl
+        (fun store event => (apply_event cfg ext store event).getD store)
+        (on_tick cfg (E.store cfg ext v n) (E.time_at (n + 1))))
+    refine sched_exact_foldl cfg ext _ _
+      (fun a ifb hmem => ⟨v, n + 1, hmem⟩) ?_
+    exact schedLMProvExact_of_latest_eq ih
+      (on_tick_latest cfg (E.store cfg ext v n) (E.time_at (n + 1)))
+
+/-- The exact latest message of an honest validator is its unique vote in the
+recorded epoch. This includes the payload bit, which the root-only provenance
+lemma does not recover. -/
+theorem Execution.latest_message_eq_honest_vote {E : Execution Root}
+    (hhb : HonestBehavior cfg ext E) (hec : ExternalsCoherence cfg ext E)
+    (hgen : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
+      E.genesis_store = get_forkchoice_store cfg ast ablk)
+    {v w : ValidatorIndex} (hv : v ∈ E.honest)
+    {s : Slot} {k : ℕ} {a : Attestation Root}
+    (hvote : E.vote v s = some (k, a))
+    {m : ℕ} {msg : LatestMessage Root}
+    (hmsg : (E.store cfg ext w m).latest_messages v = some msg)
+    (hepoch : compute_epoch_at_slot cfg s = get_latest_message_epoch cfg msg) :
+    msg = LatestMessage.mk s a.data.beacon_block_root
+      (decide (a.data.index = 1)) := by
+  obtain ⟨a', u, t, ifb, hsched, hvin, hmsgEq⟩ :=
+    E.schedLMProvExact cfg ext hgen w m v msg hmsg
+  obtain ⟨k', a'', hvote', hdata'⟩ :=
+    hhb.no_forgery u t a' ifb hsched v hv hvin
+  have hcs : v ∈ E.committee a'.data.slot :=
+    hhb.votes_assigned v hv a'.data.slot
+      (by rw [hvote']; exact Option.some_ne_none _)
+  have hcs' : v ∈ E.committee s :=
+    hhb.votes_assigned v hv s
+      (by rw [hvote]; exact Option.some_ne_none _)
+  have hslotep : compute_epoch_at_slot cfg a'.data.slot =
+      get_latest_message_epoch cfg msg := by
+    rw [hmsgEq]
+    rfl
+  have hslot_eq : a'.data.slot = s :=
+    hec.committee_assignment_unique v a'.data.slot s hcs hcs'
+      (by rw [hslotep, hepoch])
+  rw [hslot_eq, hvote] at hvote'
+  simp only [Option.some.injEq, Prod.mk.injEq] at hvote'
+  have hdata : a'.data = a.data := by
+    rw [hdata', hvote'.2]
+  have hroot : a'.data.beacon_block_root = a.data.beacon_block_root :=
+    congrArg AttestationData.beacon_block_root hdata
+  have hindex : a'.data.index = a.data.index :=
+    congrArg AttestationData.index hdata
+  simpa only [hslot_eq, hroot, hindex] using hmsgEq
+
+/-- Two stores that record the same honest validator in the same target epoch
+record the same entire message. Committee assignment uniqueness identifies the
+vote slot; no forgery then identifies its root and payload bit. -/
+theorem Execution.latest_message_eq_of_same_epoch {E : Execution Root}
+    (hhb : HonestBehavior cfg ext E) (hec : ExternalsCoherence cfg ext E)
+    (hgen : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
+      E.genesis_store = get_forkchoice_store cfg ast ablk)
+    {i v w : ValidatorIndex} (hi : i ∈ E.honest)
+    {n m : ℕ} {src dst : LatestMessage Root}
+    (hsrc : (E.store cfg ext v n).latest_messages i = some src)
+    (hdst : (E.store cfg ext w m).latest_messages i = some dst)
+    (hepoch : get_latest_message_epoch cfg src = get_latest_message_epoch cfg dst) :
+    src = dst := by
+  obtain ⟨a, u, t, ifb, hsched, hia, hsrcEq⟩ :=
+    E.schedLMProvExact cfg ext hgen v n i src hsrc
+  obtain ⟨k, a', hvote, _⟩ := hhb.no_forgery u t a ifb hsched i hi hia
+  have hslotep : compute_epoch_at_slot cfg a.data.slot =
+      get_latest_message_epoch cfg src := by
+    rw [hsrcEq]
+    rfl
+  have hslotep' : compute_epoch_at_slot cfg a.data.slot =
+      get_latest_message_epoch cfg dst := hslotep.trans hepoch
+  have hsrcEq' := E.latest_message_eq_honest_vote cfg ext hhb hec hgen
+    hi hvote hsrc hslotep
+  have hdstEq' := E.latest_message_eq_honest_vote cfg ext hhb hec hgen
+    hi hvote hdst hslotep'
+  exact hsrcEq'.trans hdstEq'.symm
+
 end FastConfirmation.Spec
 
 end

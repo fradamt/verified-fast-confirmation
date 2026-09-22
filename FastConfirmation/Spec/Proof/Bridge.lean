@@ -68,6 +68,45 @@ def RecordedEpochMax (v₀ : ValidatorIndex) (n₀ : ℕ) (es : Slot) : Prop :=
       t ≤ es → E.vote i t = some (k, a) →
       compute_epoch_at_slot cfg t ≤ (get_latest_message_epoch cfg lm)
 
+/-- Two honest stores have the same complete latest message for an honest
+validator when both recorded votes are within the old window and both stores
+have the window's epoch-maximality fact. This includes the payload bit. -/
+theorem old_window_latest_messages_agree
+    (hhb : HonestBehavior cfg ext E) (hec : ExternalsCoherence cfg ext E)
+    (hgen : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
+      E.genesis_store = get_forkchoice_store cfg ast ablk)
+    {v w i : ValidatorIndex} {n m : ℕ} {es : Slot}
+    (hi : i ∈ E.honest)
+    {src dst : LatestMessage Root}
+    (hsrc : (E.store cfg ext v n).latest_messages i = some src)
+    (hdst : (E.store cfg ext w m).latest_messages i = some dst)
+    (hsrcSlot : src.slot ≤ es) (hdstSlot : dst.slot ≤ es)
+    (hmaxSrc : ∀ lm, (E.store cfg ext v n).latest_messages i = some lm →
+      ∀ t k (a : Attestation Root), t ≤ es → E.vote i t = some (k, a) →
+        compute_epoch_at_slot cfg t ≤ get_latest_message_epoch cfg lm)
+    (hmaxDst : ∀ lm, (E.store cfg ext w m).latest_messages i = some lm →
+      ∀ t k (a : Attestation Root), t ≤ es → E.vote i t = some (k, a) →
+        compute_epoch_at_slot cfg t ≤ get_latest_message_epoch cfg lm) :
+    src = dst := by
+  obtain ⟨aS, uS, tS, ifbS, hschedS, hiS, hsrcEq⟩ :=
+    E.schedLMProvExact cfg ext hgen v n i src hsrc
+  obtain ⟨aD, uD, tD, ifbD, hschedD, hiD, hdstEq⟩ :=
+    E.schedLMProvExact cfg ext hgen w m i dst hdst
+  obtain ⟨kS, aS', hvS, _⟩ := hhb.no_forgery uS tS aS ifbS hschedS i hi hiS
+  obtain ⟨kD, aD', hvD, _⟩ := hhb.no_forgery uD tD aD ifbD hschedD i hi hiD
+  have hsSlot : aS.data.slot ≤ es := by simpa only [hsrcEq] using hsrcSlot
+  have hdSlot : aD.data.slot ≤ es := by simpa only [hdstEq] using hdstSlot
+  have hleSD : get_latest_message_epoch cfg src ≤
+      get_latest_message_epoch cfg dst := by
+    have h := hmaxDst dst hdst aS.data.slot kS aS' hsSlot hvS
+    simpa only [hsrcEq] using h
+  have hleDS : get_latest_message_epoch cfg dst ≤
+      get_latest_message_epoch cfg src := by
+    have h := hmaxSrc src hsrc aD.data.slot kD aD' hdSlot hvD
+    simpa only [hdstEq] using h
+  exact E.latest_message_eq_of_same_epoch cfg ext hhb hec hgen hi hsrc hdst
+    (Nat.le_antisymm hleSD hleDS)
+
 /-- Model/domain adequacy for honest-attestation delivery. For an actual
 post-anchor honest vote, the source head's walk down to its FFG target epoch
 boundary stays in the source store's block domain. Source-head knownness is
@@ -116,6 +155,24 @@ theorem RecordedEpochMax.toWindow {v : ValidatorIndex} {q : ℕ} {lo es : Slot}
     E.WindowRecordedEpochMax cfg ext v q lo es := by
   intro i hi _hiSpan lm hlm t k a ht hvote
   exact h i hi lm hlm t k a ht hvote
+
+/-- Window-scoped maximality at both stores suffices for exact old-message
+agreement. The validator belongs to the fixed source window. -/
+theorem old_window_latest_messages_agree_window
+    (hhb : HonestBehavior cfg ext E) (hec : ExternalsCoherence cfg ext E)
+    (hgen : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
+      E.genesis_store = get_forkchoice_store cfg ast ablk)
+    {v w i : ValidatorIndex} {n m : ℕ} {lo es : Slot}
+    (hi : i ∈ E.honest) (hiSpan : i ∈ E.span_committee lo es)
+    {src dst : LatestMessage Root}
+    (hsrc : (E.store cfg ext v n).latest_messages i = some src)
+    (hdst : (E.store cfg ext w m).latest_messages i = some dst)
+    (hsrcSlot : src.slot ≤ es) (hdstSlot : dst.slot ≤ es)
+    (hmaxSrc : E.WindowRecordedEpochMax cfg ext v n lo es)
+    (hmaxDst : E.WindowRecordedEpochMax cfg ext w m lo es) :
+    src = dst :=
+  E.old_window_latest_messages_agree cfg ext hhb hec hgen hi hsrc hdst
+    hsrcSlot hdstSlot (hmaxSrc i hi hiSpan) (hmaxDst i hi hiSpan)
 
 end Execution
 
