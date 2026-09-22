@@ -18,7 +18,7 @@ MANIFEST_PATH = ROOT / "spec_source" / "manifest.json"
 EXPECTED_TOP_LEVEL_KEYS = {"schema", "repository", "commit", "license", "files"}
 EXPECTED_FILE_KEYS = {"path", "role", "git_blob", "bytes", "sha256"}
 EXPECTED_REPOSITORY = "https://github.com/ethereum/consensus-specs.git"
-EXPECTED_COMMIT = "30aa65fc21cf7f7c7dd1f7d6b686d0250462d04f"
+EXPECTED_COMMIT = "477321355d48d527e7e1e4d572f6a40a0b41072a"
 EXPECTED_LICENSE = "CC0-1.0"
 EXPECTED_ROLES = {
     "specs/phase0/fast-confirmation.md":
