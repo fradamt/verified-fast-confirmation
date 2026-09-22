@@ -484,27 +484,37 @@ def findContainmentSlots (answers : List ProcessSlotsAnswer) (state : BeaconStat
       if answer.slot == slot && stateEq answer.state state then some answer.result
       else findContainmentSlots rest state slot
 
+/-- Return the fallback through the IO result. A Unit-only notification can
+be erased by the compiler because both result branches have the same value. -/
+unsafe def missingContainmentAnswer (misses : IO.Ref (List String))
+    (message : String) (fallback : α) : α :=
+  match unsafeIO (do
+    misses.modify (fun old => message :: old)
+    pure fallback) with
+  | .ok value => value
+  | .error _ => fallback
+
 unsafe def makeContainmentExternals (answers : Answers) (misses : IO.Ref (List String)) :
     Externals Nat := {
   makeExternals answers misses with
   get_beacon_committee := fun state slot index =>
     match findContainmentCommittee answers.committees state slot index with
     | some result => result
-    | none =>
-        let _ := noteMiss misses s!"get_beacon_committee slot={slot} index={index}"
-        []
+    | none => missingContainmentAnswer misses
+        s!"get_beacon_committee slot={slot} index={index}" []
   get_committee_count_per_slot := fun state epoch =>
     match findContainmentCount answers.counts state epoch with
     | some result => result
-    | none =>
-        let _ := noteMiss misses s!"get_committee_count_per_slot epoch={epoch}"
-        0
+    | none => missingContainmentAnswer misses
+        s!"get_committee_count_per_slot epoch={epoch}" 0
   process_slots := fun state slot =>
     match findContainmentSlots answers.slots state slot with
     | some result => result
-    | none =>
-        let _ := noteMiss misses s!"process_slots slot={slot}"
-        state
+    | none => missingContainmentAnswer misses s!"process_slots slot={slot}" state
+  process_justification_and_finalization := fun state =>
+    match findFinal answers.finals state with
+    | some result => result
+    | none => missingContainmentAnswer misses "process_justification_and_finalization" state
 }
 
 def checkpointText (checkpoint : Checkpoint Nat) : String :=
