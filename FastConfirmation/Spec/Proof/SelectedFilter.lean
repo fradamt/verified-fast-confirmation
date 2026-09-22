@@ -269,19 +269,22 @@ theorem FilterTipCertificate.mem_filtered {store : Store Root} {c : Root}
     h.child_on_chain h.tip_is_leaf h.justified_ok h.finalized_ok
 
 omit [Inhabited Root] in
-/-- The `MarginProducer.SameEpochSelectedMarginInputs.child_filtered` shape,
-obtained once the endpoint FFG visibility proof has produced a viable-tip
-certificate. -/
+/-- The selected beacon child is available below the resolved parent status
+in its bid once the endpoint FFG proof supplies a viable-tip certificate.
+This membership does not establish which payload branch fork choice selects. -/
 theorem FilterTipCertificate.child_filtered {store : Store Root} {a c : Root}
     (h : FilterTipCertificate cfg store c)
     (hparent : (store.blocks c).parent_root = a) :
-    ForkChoiceNode.mk c ∈
+    ForkChoiceNode.mk c .pending ∈
       get_node_children store (get_filtered_block_tree cfg store)
-        (ForkChoiceNode.mk a) := by
-  simp only [get_node_children, List.mem_map]
-  refine ⟨c, ?_, rfl⟩
-  rw [List.mem_filter]
-  exact ⟨h.mem_filtered cfg, by simp [hparent]⟩
+        (ForkChoiceNode.mk a (get_parent_payload_status store (store.blocks c))) := by
+  apply (mem_get_node_children_resolved
+    (node := ForkChoiceNode.mk a (get_parent_payload_status store (store.blocks c)))
+    (by
+      change get_parent_payload_status store (store.blocks c) ≠ .pending
+      simp only [get_parent_payload_status]
+      split_ifs <;> decide)).mpr
+  exact ⟨rfl, h.mem_filtered cfg, hparent, rfl⟩
 
 end FastConfirmation.Spec
 

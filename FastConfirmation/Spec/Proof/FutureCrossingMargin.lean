@@ -227,26 +227,29 @@ structure FutureCrossingINV2Inputs
     (get_proposer_score cfg (E.store cfg ext w m))
   balance_source_registry : ((E.store cfg ext w m).checkpoint_states
     (E.store cfg ext w m).justified_checkpoint).validators = E.registry
-  child_filtered : ForkChoiceNode.mk b ∈
+  child_filtered : ForkChoiceNode.mk b .pending ∈
     get_node_children (E.store cfg ext w m)
       (get_filtered_block_tree cfg (E.store cfg ext w m))
-      (ForkChoiceNode.mk a)
+      (ForkChoiceNode.mk a (get_parent_payload_status (E.store cfg ext w m)
+        ((E.store cfg ext w m).blocks b)))
   selected_recording : ∀ i ∈ E.Sclass cfg ext w m b lo sigma,
     i ∈ AttSupporters cfg (E.store cfg ext w m) (get_node_for_root b)
       ((E.store cfg ext w m).checkpoint_states
         (E.store cfg ext w m).justified_checkpoint)
   honest_sibling_confinement : ∀ c' : Root,
-    ForkChoiceNode.mk c' ∈ get_node_children (E.store cfg ext w m)
+    ForkChoiceNode.mk c' .pending ∈ get_node_children (E.store cfg ext w m)
       (get_filtered_block_tree cfg (E.store cfg ext w m))
-      (ForkChoiceNode.mk a) -> c' ≠ b ->
+      (ForkChoiceNode.mk a (get_parent_payload_status (E.store cfg ext w m)
+        ((E.store cfg ext w m).blocks b))) -> c' ≠ b ->
     ∀ i ∈ AttSupporters cfg (E.store cfg ext w m) (get_node_for_root c')
       ((E.store cfg ext w m).checkpoint_states
         (E.store cfg ext w m).justified_checkpoint),
       i ∈ E.honest -> i ∈ E.Xclass cfg ext w m b lo sigma
   byzantine_sibling_confinement : ∀ c' : Root,
-    ForkChoiceNode.mk c' ∈ get_node_children (E.store cfg ext w m)
+    ForkChoiceNode.mk c' .pending ∈ get_node_children (E.store cfg ext w m)
       (get_filtered_block_tree cfg (E.store cfg ext w m))
-      (ForkChoiceNode.mk a) -> c' ≠ b ->
+      (ForkChoiceNode.mk a (get_parent_payload_status (E.store cfg ext w m)
+        ((E.store cfg ext w m).blocks b))) -> c' ≠ b ->
     ∀ i ∈ AttSupporters cfg (E.store cfg ext w m) (get_node_for_root c')
       ((E.store cfg ext w m).checkpoint_states
         (E.store cfg ext w m).justified_checkpoint),
@@ -845,19 +848,21 @@ structure FutureCrossingSelectedMarginInputs
     E.Aval cfg ext w m b ((E.store cfg ext v q).blocks b).slot es
   committee_support : ∀ t : Slot, es < t → t ≤ sigma →
     E.CommitteeSupportsAt cfg ext w m b t
-  child_filtered : ForkChoiceNode.mk b ∈
+  child_filtered : ForkChoiceNode.mk b .pending ∈
     get_node_children (E.store cfg ext w m)
       (get_filtered_block_tree cfg (E.store cfg ext w m))
-      (ForkChoiceNode.mk a)
+      (ForkChoiceNode.mk a (get_parent_payload_status (E.store cfg ext w m)
+        ((E.store cfg ext w m).blocks b)))
   selected_recording : ∀ i ∈ E.Sclass cfg ext w m b
       ((E.store cfg ext v q).blocks b).slot sigma,
     i ∈ AttSupporters cfg (E.store cfg ext w m) (get_node_for_root b)
       ((E.store cfg ext w m).checkpoint_states
         (E.store cfg ext w m).justified_checkpoint)
   sibling_score : ∀ c' : Root,
-    ForkChoiceNode.mk c' ∈ get_node_children (E.store cfg ext w m)
+    ForkChoiceNode.mk c' .pending ∈ get_node_children (E.store cfg ext w m)
       (get_filtered_block_tree cfg (E.store cfg ext w m))
-      (ForkChoiceNode.mk a) → c' ≠ b →
+      (ForkChoiceNode.mk a (get_parent_payload_status (E.store cfg ext w m)
+        ((E.store cfg ext w m).blocks b))) → c' ≠ b →
     get_attestation_score cfg (E.store cfg ext w m) (get_node_for_root c')
         ((E.store cfg ext w m).checkpoint_states
           (E.store cfg ext w m).justified_checkpoint)
@@ -991,19 +996,21 @@ structure CrossingEdgeSelectedMarginInputs
     E.Aval cfg ext w m b ((E.store cfg ext v q).blocks b).slot es
   committee_support : ∀ t : Slot, es < t → t ≤ sigma →
     E.CommitteeSupportsAt cfg ext w m b t
-  child_filtered : ForkChoiceNode.mk b ∈
+  child_filtered : ForkChoiceNode.mk b .pending ∈
     get_node_children (E.store cfg ext w m)
       (get_filtered_block_tree cfg (E.store cfg ext w m))
-      (ForkChoiceNode.mk a)
+      (ForkChoiceNode.mk a (get_parent_payload_status (E.store cfg ext w m)
+        ((E.store cfg ext w m).blocks b)))
   selected_recording : ∀ i ∈ E.Sclass cfg ext w m b
       ((E.store cfg ext v q).blocks b).slot sigma,
     i ∈ AttSupporters cfg (E.store cfg ext w m) (get_node_for_root b)
       ((E.store cfg ext w m).checkpoint_states
         (E.store cfg ext w m).justified_checkpoint)
   sibling_score : ∀ c' : Root,
-    ForkChoiceNode.mk c' ∈ get_node_children (E.store cfg ext w m)
+    ForkChoiceNode.mk c' .pending ∈ get_node_children (E.store cfg ext w m)
       (get_filtered_block_tree cfg (E.store cfg ext w m))
-      (ForkChoiceNode.mk a) → c' ≠ b →
+      (ForkChoiceNode.mk a (get_parent_payload_status (E.store cfg ext w m)
+        ((E.store cfg ext w m).blocks b))) → c' ≠ b →
     get_attestation_score cfg (E.store cfg ext w m) (get_node_for_root c')
         ((E.store cfg ext w m).checkpoint_states
           (E.store cfg ext w m).justified_checkpoint)

@@ -22,7 +22,7 @@ variable (cfg : Config)
 
 /-! ## Mechanical checkpoint composition -/
 
-omit [LinearOrder Root] [Inhabited Root] in
+omit [Inhabited Root] in
 /-- Walking first to a later epoch boundary and then to an earlier boundary
 is the same as walking directly to the earlier boundary. -/
 theorem get_checkpoint_for_block_comp
@@ -47,9 +47,8 @@ theorem get_checkpoint_for_block_comp
   have hboundary : compute_start_slot_at_epoch cfg sourceEpoch ≤
       compute_start_slot_at_epoch cfg targetEpoch :=
     Nat.mul_le_mul_right cfg.slots_per_epoch hepoch
-  have hcomp := get_ancestor_comp hwf hboundary hwalk
-  simpa only [get_checkpoint_for_block, get_checkpoint_block] using
-    congrArg ForkChoiceNode.root hcomp
+  have hcomp := get_ancestor_comp_root hwf hboundary hwalk
+  simpa only [get_checkpoint_for_block, get_checkpoint_block] using hcomp
 
 namespace AcceptedEpochCheckpointProjection
 
@@ -467,7 +466,7 @@ theorem exactFinalizedPrefix_of_accountable
 
 end AcceptedChainFFGState
 
-omit [LinearOrder Root] [Inhabited Root] in
+omit [Inhabited Root] in
 /-- Reflection of an exact semantic prefix into the executable checkpoint
 equation at a store.  Placement of the target on a retained tip remains a
 separate history proof. -/

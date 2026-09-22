@@ -52,7 +52,7 @@ theorem RecordedEpochMax_of_ubiquity {v₀ : ValidatorIndex} {n₀ : ℕ} {es : 
     (hubiq : ∀ i ∈ E.honest, ∀ (t : Slot) (kk : ℕ) (a : Attestation Root),
       t ≤ es → E.vote i t = some (kk, a) →
       ∃ msg, (E.store cfg ext v₀ n₀).latest_messages i = some msg ∧
-        compute_epoch_at_slot cfg t ≤ msg.epoch) :
+        compute_epoch_at_slot cfg t ≤ (get_latest_message_epoch cfg msg)) :
     E.RecordedEpochMax cfg ext v₀ n₀ es := by
   intro i hi lm hlm t kk a htle hvt
   obtain ⟨msg, hmsg, hep⟩ := hubiq i hi t kk a htle hvt
@@ -79,7 +79,7 @@ theorem recorded_lm_is_newest_at
     {i : ValidatorIndex} (hi : i ∈ E.honest) {lm : LatestMessage Root}
     (hlm : (E.store cfg ext w m).latest_messages i = some lm)
     (hdom : ∀ (t : Slot) (k : ℕ) (a : Attestation Root),
-      t ≤ es → E.vote i t = some (k, a) → compute_epoch_at_slot cfg t ≤ lm.epoch) :
+      t ≤ es → E.vote i t = some (k, a) → compute_epoch_at_slot cfg t ≤ (get_latest_message_epoch cfg lm)) :
     ∃ (t : Slot) (k : ℕ) (a : Attestation Root),
       t ≤ es ∧ E.vote i t = some (k, a) ∧
       (∀ t' : Slot, t < t' → t' ≤ es → E.vote i t' = none) ∧
@@ -106,7 +106,7 @@ theorem recorded_lm_is_newest_at
     obtain ⟨k', a3⟩ := p
     have hcomm' : i ∈ E.committee t' :=
       hhb.votes_assigned i hi t' (by rw [hvt]; exact Option.some_ne_none _)
-    have heple : compute_epoch_at_slot cfg t' ≤ lm.epoch := hdom t' k' a3 hle hvt
+    have heple : compute_epoch_at_slot cfg t' ≤ (get_latest_message_epoch cfg lm) := hdom t' k' a3 hle hvt
     have hepmono : compute_epoch_at_slot cfg a'.data.slot ≤ compute_epoch_at_slot cfg t' :=
       Nat.div_le_div_right (le_of_lt hlt)
     have hle1 : compute_epoch_at_slot cfg t' ≤ compute_epoch_at_slot cfg a'.data.slot := by

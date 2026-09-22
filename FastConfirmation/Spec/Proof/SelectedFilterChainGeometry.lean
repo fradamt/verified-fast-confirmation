@@ -50,8 +50,7 @@ private theorem roots_isSome_of_ancestor {store : Store Root}
       (store.blocks r).parent_root ∈ store.block_roots →
         (store.blocks (store.blocks r).parent_root).slot < (store.blocks r).slot)
     {t r : Root} (hw : WalkKnown store (store.blocks t).slot r) :
-    get_ancestor store (ForkChoiceNode.mk r) (store.blocks t).slot =
-        ForkChoiceNode.mk t →
+    (get_ancestor store (ForkChoiceNode.mk r .pending) (store.blocks t).slot).root = t →
     ∀ fuel : ℕ, (store.blocks r).slot < fuel →
       (get_ancestor_roots_aux store t fuel r).isSome = true ∨ r = t := by
   induction hw with
@@ -86,9 +85,9 @@ private theorem hcase_of_ancestor {store : Store Root}
       (store.blocks r).parent_root ∈ store.block_roots →
         (store.blocks (store.blocks r).parent_root).slot < (store.blocks r).slot)
     {b jc : Root} (hwalk : WalkKnown store (store.blocks jc).slot b)
-    (hanc : is_ancestor store (ForkChoiceNode.mk b) (ForkChoiceNode.mk jc) = true) :
+    (hanc : is_ancestor store (ForkChoiceNode.mk b .pending) (ForkChoiceNode.mk jc .pending) = true) :
     get_ancestor_roots store b jc ≠ [] ∨ b = jc := by
-  simp only [is_ancestor, decide_eq_true_eq] at hanc
+  simp only [is_ancestor_pending, decide_eq_true_eq] at hanc
   rcases roots_isSome_of_ancestor hwf hwalk hanc
       ((store.blocks b).slot + 1) (Nat.lt_succ_self _) with hsome | heq
   · left
@@ -130,7 +129,7 @@ theorem chainDown_of_isAncestor {store : Store Root}
       ChainDown store top (mids ++ [t]) ∧
       (∀ r ∈ mids ++ [t], r ∈ store.block_roots) ∧
       mids ++ [t] = get_ancestor_roots store t top := by
-  have hanc' : is_ancestor store (ForkChoiceNode.mk t) (ForkChoiceNode.mk top) = true := by
+  have hanc' : is_ancestor store (ForkChoiceNode.mk t .pending) (ForkChoiceNode.mk top .pending) = true := by
     simpa only [get_node_for_root] using hanc
   have hcase := hcase_of_ancestor hwf (hwalkK top htop t ht) hanc'
   rcases hcase with hne | heq
@@ -151,8 +150,9 @@ theorem chainDown_of_isAncestor {store : Store Root}
   · exact Or.inl heq
 
 omit [Inhabited Root] in
-/-- Worker form of converse ancestor-list membership. -/
-theorem mem_get_ancestor_roots_aux_of_between {store : Store Root}
+/-- Root form of converse ancestor-list membership. Parent recursion may
+resolve a payload status; list membership depends only on the beacon root. -/
+private theorem mem_get_ancestor_roots_aux_of_between_root {store : Store Root}
     (hwf : ∀ r ∈ store.block_roots,
       (store.blocks r).parent_root ∈ store.block_roots →
         (store.blocks (store.blocks r).parent_root).slot < (store.blocks r).slot)
@@ -160,8 +160,7 @@ theorem mem_get_ancestor_roots_aux_of_between {store : Store Root}
     ∀ (fuel : ℕ), (store.blocks r).slot < fuel → ∀ (l : List Root),
       get_ancestor_roots_aux store top fuel r = some l →
       ∀ c : Root, (store.blocks top).slot < (store.blocks c).slot →
-        get_ancestor store (ForkChoiceNode.mk r) (store.blocks c).slot =
-          ForkChoiceNode.mk c →
+        (get_ancestor store (ForkChoiceNode.mk r .pending) (store.blocks c).slot).root = c →
         c ∈ l := by
   induction hw with
   | stop hr hle =>
@@ -191,24 +190,41 @@ theorem mem_get_ancestor_roots_aux_of_between {store : Store Root}
           rcases Nat.lt_or_ge (store.blocks c).slot (store.blocks r).slot with h | h
           · exact h
           · rw [get_ancestor_stop h] at hget
-            exact absurd (congrArg ForkChoiceNode.root hget).symm hceq
+            exact absurd hget.symm hceq
         have hp' : WalkKnown store (store.blocks c).slot
             (store.blocks r).parent_root := hp.mono (le_of_lt hcslot)
-        have hget' : get_ancestor store
-            (ForkChoiceNode.mk (store.blocks r).parent_root)
-            (store.blocks c).slot = ForkChoiceNode.mk c := by
+        have hget' : (get_ancestor store
+            (ForkChoiceNode.mk (store.blocks r).parent_root .pending)
+            (store.blocks c).slot).root = c := by
           rw [← get_ancestor_step hwf hr hcr hp']
           exact hget
         by_cases hD : (store.blocks r).parent_root = top
         · rw [hD] at hget'
           rw [get_ancestor_stop (le_of_lt hcslot)] at hget'
-          have : top = c := congrArg ForkChoiceNode.root hget'
+          have : top = c := hget'
           exact absurd (this ▸ hcslot) (lt_irrefl _)
         · rw [if_neg hD] at hl
           obtain ⟨l', hl', rfl⟩ := Option.map_eq_some_iff.mp hl
           have hbound : (store.blocks (store.blocks r).parent_root).slot < f :=
             Nat.lt_of_lt_of_le (hwf _ hr hp.root_mem) (Nat.lt_succ_iff.mp hfuel)
           exact List.mem_append.mpr (Or.inl (ih f hbound l' hl' c hcslot hget'))
+
+omit [Inhabited Root] in
+/-- Worker form of converse ancestor-list membership. -/
+theorem mem_get_ancestor_roots_aux_of_between {store : Store Root}
+    (hwf : ∀ r ∈ store.block_roots,
+      (store.blocks r).parent_root ∈ store.block_roots →
+        (store.blocks (store.blocks r).parent_root).slot < (store.blocks r).slot)
+    {top : Root} {r : Root} (hw : WalkKnown store (store.blocks top).slot r) :
+    ∀ (fuel : ℕ), (store.blocks r).slot < fuel → ∀ (l : List Root),
+      get_ancestor_roots_aux store top fuel r = some l →
+      ∀ c : Root, (store.blocks top).slot < (store.blocks c).slot →
+        get_ancestor store (ForkChoiceNode.mk r .pending) (store.blocks c).slot =
+          ForkChoiceNode.mk c .pending →
+        c ∈ l := by
+  intro fuel hfuel l hl c hcslot hget
+  exact mem_get_ancestor_roots_aux_of_between_root hwf hw fuel hfuel l hl c hcslot
+    (congrArg ForkChoiceNode.root hget)
 
 omit [Inhabited Root] in
 /-- A block strictly between the terminal and start of an ancestry walk occurs
@@ -225,17 +241,17 @@ theorem mem_get_ancestor_roots_of_between {store : Store Root}
     (hctop : is_ancestor store (get_node_for_root c) (get_node_for_root top) = true)
     (hne : c ≠ top) :
     c ∈ get_ancestor_roots store t top := by
-  have hctop' : get_ancestor store (ForkChoiceNode.mk c) (store.blocks top).slot =
-      ForkChoiceNode.mk top := by
-    simpa only [is_ancestor, get_node_for_root, decide_eq_true_eq] using hctop
-  have htc' : get_ancestor store (ForkChoiceNode.mk t) (store.blocks c).slot =
-      ForkChoiceNode.mk c := by
-    simpa only [is_ancestor, get_node_for_root, decide_eq_true_eq] using htc
+  have hctop' : (get_ancestor store (ForkChoiceNode.mk c .pending) (store.blocks top).slot).root =
+      top := by
+    simpa only [get_node_for_root, is_ancestor_pending, decide_eq_true_eq] using hctop
+  have htc' : (get_ancestor store (ForkChoiceNode.mk t .pending) (store.blocks c).slot).root =
+      c := by
+    simpa only [get_node_for_root, is_ancestor_pending, decide_eq_true_eq] using htc
   have hcslot : (store.blocks top).slot < (store.blocks c).slot := by
     rcases Nat.lt_or_ge (store.blocks top).slot (store.blocks c).slot with h | h
     · exact h
     · rw [get_ancestor_stop h] at hctop'
-      exact absurd (congrArg ForkChoiceNode.root hctop') hne
+      exact absurd hctop' hne
   have hct : (store.blocks c).slot ≤ (store.blocks t).slot := by
     have h := get_ancestor_slot_le hwf (hwalkK c hc t ht)
     rw [htc'] at h
@@ -244,7 +260,7 @@ theorem mem_get_ancestor_roots_of_between {store : Store Root}
     intro heq
     rw [heq] at hct
     exact absurd (lt_of_lt_of_le hcslot hct) (lt_irrefl _)
-  have httop : is_ancestor store (ForkChoiceNode.mk t) (ForkChoiceNode.mk top) = true := by
+  have httop : is_ancestor store (ForkChoiceNode.mk t .pending) (ForkChoiceNode.mk top .pending) = true := by
     have h := is_ancestor_trans hwf (hwalkK top htop t ht)
       (hwalkK top htop c hc) htc hctop
     simpa only [get_node_for_root] using h
@@ -256,7 +272,7 @@ theorem mem_get_ancestor_roots_of_between {store : Store Root}
       simp at hnil
     | some l =>
       rw [Option.getD_some]
-      exact mem_get_ancestor_roots_aux_of_between hwf (hwalkK top htop t ht)
+      exact mem_get_ancestor_roots_aux_of_between_root hwf (hwalkK top htop t ht)
         _ (Nat.lt_succ_self _) l haux c hcslot htc'
   · exact absurd heq htne
 

@@ -75,7 +75,14 @@ theorem on_block_time {store store' : Store Root} {b : SignedBeaconBlock Root}
     cases hst : ext.state_transition
         (store.block_states b.message.parent_root) b with
     | none => rw [hst] at h; cases h
-    | some state => rw [hst] at h; cases h; simp
+    | some state =>
+      rw [hst] at h
+      dsimp only at h
+      split at h
+      · cases h
+      · rename_i after_ptc hptc
+        cases h
+        simpa using (notify_ptc_messages_frame cfg ext hptc).time
 
 omit [Inhabited Root] in
 theorem on_attestation_time {store store' : Store Root} {a : Attestation Root}
@@ -96,12 +103,34 @@ theorem on_attester_slashing_time {store store' : Store Root}
   cases h
   rfl
 
+omit [Inhabited Root] in
+theorem on_payload_attestation_message_time {store store' : Store Root}
+    {message : PayloadAttestationMessage Root} {is_from_block : Bool}
+    (h : on_payload_attestation_message cfg ext store message is_from_block =
+      some store') : store'.time = store.time :=
+  (on_payload_attestation_message_frame cfg ext h).time
+
+omit [Inhabited Root] in
+theorem on_execution_payload_envelope_time {store store' : Store Root}
+    {envelope : SignedExecutionPayloadEnvelope Root} {observation : EnvelopeObservation Root}
+    (h : on_execution_payload_envelope ext store envelope observation = some store') :
+    store'.time = store.time := (on_execution_payload_envelope_frame ext h).time
+
+theorem notify_ptc_messages_time {store store' : Store Root}
+    {state : BeaconState Root} {attestations : List (IndexedPayloadAttestation Root)}
+    (h : notify_ptc_messages cfg ext store state attestations = some store') :
+    store'.time = store.time := (notify_ptc_messages_frame cfg ext h).time
+
 theorem apply_event_time {store store' : Store Root} {e : Event Root}
     (h : apply_event cfg ext store e = some store') : store'.time = store.time := by
   cases e with
   | block b => exact on_block_time cfg ext h
   | attestation a ifb => exact on_attestation_time cfg ext h
   | attester_slashing s => exact on_attester_slashing_time ext h
+  | execution_payload_envelope envelope observation =>
+      exact on_execution_payload_envelope_time ext h
+  | payload_attestation_message message ifb =>
+      exact on_payload_attestation_message_time cfg ext h
 
 /-! ## `on_tick` writes its argument -/
 

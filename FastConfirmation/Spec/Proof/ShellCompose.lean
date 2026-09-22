@@ -223,7 +223,7 @@ structure ForkEdgeEngineInputs (E : Execution Root) (w : ValidatorIndex) (m : �
   hubiq : ∀ i ∈ E.Sclass cfg ext w m b lo σ, ∀ (t : Slot) (kk : ℕ) (a : Attestation Root),
     E.vote i t = some (kk, a) →
     ∃ lm, (E.store cfg ext w m).latest_messages i = some lm ∧
-      compute_epoch_at_slot cfg t ≤ lm.epoch
+      compute_epoch_at_slot cfg t ≤ (get_latest_message_epoch cfg lm)
   /-- `hrec` domain — vote-block knownness. -/
   hbbr_known : ∀ i ∈ E.Sclass cfg ext w m b lo σ,
     ∀ (t : Slot) (kk : ℕ) (a : Attestation Root),
@@ -233,23 +233,32 @@ structure ForkEdgeEngineInputs (E : Execution Root) (w : ValidatorIndex) (m : �
     (E.store cfg ext w m).latest_messages i = some lm →
     WalkKnown (E.store cfg ext w m) ((E.store cfg ext w m).blocks c).slot lm.root
   /-- `hchild` — the fork-choice child membership of `c` under `h`. -/
-  hchild : ForkChoiceNode.mk c ∈
+  hchild : ForkChoiceNode.mk c .pending ∈
     get_node_children (E.store cfg ext w m)
-      (get_filtered_block_tree cfg (E.store cfg ext w m)) (ForkChoiceNode.mk h)
+      (get_filtered_block_tree cfg (E.store cfg ext w m))
+        (ForkChoiceNode.mk h
+          (get_parent_payload_status (E.store cfg ext w m)
+            ((E.store cfg ext w m).blocks c)))
   /-- `hHon` — honest supporters of any sibling are confined to `Xclass` (carried). -/
   hHon : ∀ c' : Root,
-    ForkChoiceNode.mk c' ∈
+    ForkChoiceNode.mk c' .pending ∈
         get_node_children (E.store cfg ext w m)
-          (get_filtered_block_tree cfg (E.store cfg ext w m)) (ForkChoiceNode.mk h) →
+          (get_filtered_block_tree cfg (E.store cfg ext w m))
+            (ForkChoiceNode.mk h
+              (get_parent_payload_status (E.store cfg ext w m)
+                ((E.store cfg ext w m).blocks c))) →
       c' ≠ c →
       ∀ i ∈ AttSupporters cfg (E.store cfg ext w m) (get_node_for_root c')
           ((E.store cfg ext w m).checkpoint_states (E.store cfg ext w m).justified_checkpoint),
         i ∈ E.honest → i ∈ E.Xclass cfg ext w m b lo σ
   /-- `hByz` — byz supporters of any sibling are confined to `BbadSet ∪ SpentSet` (carried). -/
   hByz : ∀ c' : Root,
-    ForkChoiceNode.mk c' ∈
+    ForkChoiceNode.mk c' .pending ∈
         get_node_children (E.store cfg ext w m)
-          (get_filtered_block_tree cfg (E.store cfg ext w m)) (ForkChoiceNode.mk h) →
+          (get_filtered_block_tree cfg (E.store cfg ext w m))
+            (ForkChoiceNode.mk h
+              (get_parent_payload_status (E.store cfg ext w m)
+                ((E.store cfg ext w m).blocks c))) →
       c' ≠ c →
       ∀ i ∈ AttSupporters cfg (E.store cfg ext w m) (get_node_for_root c')
           ((E.store cfg ext w m).checkpoint_states (E.store cfg ext w m).justified_checkpoint),

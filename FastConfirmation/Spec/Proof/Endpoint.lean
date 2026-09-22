@@ -123,7 +123,7 @@ theorem ghost_step_dominates {E : Execution Root} {store : Store Root}
     (hsib : get_attestation_score cfg store (get_node_for_root cc)
         (store.checkpoint_states store.justified_checkpoint)
       ≤ E.Xval cfg ext v₀ n₀ b' lo σ + E.Bval lo σ) :
-    get_weight cfg store (ForkChoiceNode.mk cc) < get_weight cfg store (ForkChoiceNode.mk c) := by
+    get_weight cfg store (ForkChoiceNode.mk cc .pending) < get_weight cfg store (ForkChoiceNode.mk c .pending) := by
   simp only [get_node_for_root] at hbside hsib
   exact fork_weight_lt cfg (ghost_arith hbside hledger hsib)
 
@@ -136,21 +136,26 @@ through `EngineStore.descendStep_of_dom`. This is the per-fork producer the shel
 iterates along the confirmed chain (one `b′` certificate per fork). -/
 theorem ledger_descendStep {E : Execution Root} {store : Store Root}
     {v₀ : ValidatorIndex} {n₀ : ℕ} {b' h c : Root} {lo σ : Slot}
-    (hchild : ForkChoiceNode.mk c ∈
-      get_node_children store (get_filtered_block_tree cfg store) (ForkChoiceNode.mk h))
+    (hchild : ForkChoiceNode.mk c .pending ∈
+      get_node_children store (get_filtered_block_tree cfg store)
+        (ForkChoiceNode.mk h (get_parent_payload_status store (store.blocks c))))
     (hbside : E.Sval cfg ext v₀ n₀ b' lo σ ≤
       get_attestation_score cfg store (get_node_for_root c)
         (store.checkpoint_states store.justified_checkpoint))
     (hledger : E.Xval cfg ext v₀ n₀ b' lo σ + E.Bval lo σ + get_proposer_score cfg store + 1
       ≤ E.Sval cfg ext v₀ n₀ b' lo σ)
     (hsib : ∀ c' : Root,
-      ForkChoiceNode.mk c' ∈
-        get_node_children store (get_filtered_block_tree cfg store) (ForkChoiceNode.mk h) →
+      ForkChoiceNode.mk c' .pending ∈
+        get_node_children store (get_filtered_block_tree cfg store)
+          (ForkChoiceNode.mk h (get_parent_payload_status store (store.blocks c))) →
         c' ≠ c →
         get_attestation_score cfg store (get_node_for_root c')
             (store.checkpoint_states store.justified_checkpoint)
           ≤ E.Xval cfg ext v₀ n₀ b' lo σ + E.Bval lo σ) :
     DescendStep cfg store (get_filtered_block_tree cfg store) h c :=
+  -- The sibling bound covers only this resolved parent. The pending parent's
+  -- selection of that status remains to be derived; `descendStep_of_dom`
+  -- requires that additional fact as its final argument.
   descendStep_of_dom cfg hchild
     (fun c' hc' hne => ghost_step_dominates cfg ext hbside hledger (hsib c' hc' hne))
 
@@ -191,16 +196,18 @@ lower bound and a sibling upper bound (for every competing child) hold at `store
 Exactly the hypotheses of `ledger_descendStep`, existentially bundled per fork. -/
 def LedgerStep (E : Execution Root) (store : Store Root) (h c : Root) : Prop :=
   ∃ (v₀ : ValidatorIndex) (n₀ : ℕ) (b' : Root) (lo σ : Slot),
-    ForkChoiceNode.mk c ∈
-        get_node_children store (get_filtered_block_tree cfg store) (ForkChoiceNode.mk h) ∧
+    ForkChoiceNode.mk c .pending ∈
+        get_node_children store (get_filtered_block_tree cfg store)
+          (ForkChoiceNode.mk h (get_parent_payload_status store (store.blocks c))) ∧
     E.Sval cfg ext v₀ n₀ b' lo σ ≤
         get_attestation_score cfg store (get_node_for_root c)
           (store.checkpoint_states store.justified_checkpoint) ∧
     E.Xval cfg ext v₀ n₀ b' lo σ + E.Bval lo σ + get_proposer_score cfg store + 1
         ≤ E.Sval cfg ext v₀ n₀ b' lo σ ∧
     (∀ c' : Root,
-      ForkChoiceNode.mk c' ∈
-          get_node_children store (get_filtered_block_tree cfg store) (ForkChoiceNode.mk h) →
+      ForkChoiceNode.mk c' .pending ∈
+          get_node_children store (get_filtered_block_tree cfg store)
+            (ForkChoiceNode.mk h (get_parent_payload_status store (store.blocks c))) →
         c' ≠ c →
         get_attestation_score cfg store (get_node_for_root c')
             (store.checkpoint_states store.justified_checkpoint)

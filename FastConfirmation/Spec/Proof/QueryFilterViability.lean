@@ -51,7 +51,7 @@ def FilterViableLeafBelow (store : Store Root) (r : Root) : Prop :=
           get_checkpoint_block cfg store tip
             store.finalized_checkpoint.epoch)
 
-omit [LinearOrder Root] [Inhabited Root] in
+omit [Inhabited Root] in
 /-- Splice a known walk to `middle` with a known walk from the node reached at
 `middle` down to `lower`.  This is the domain counterpart of
 `get_ancestor_comp`; unlike a blanket boundary-walk premise, it exposes only
@@ -61,15 +61,15 @@ theorem WalkKnown.splice_at_ancestor
     {lower middle : Slot} (hlowerMiddle : lower ≤ middle)
     {tip ancestor : Root}
     (hprefix : WalkKnown store middle tip)
-    (hlands : get_ancestor store (get_node_for_root tip) middle =
-      get_node_for_root ancestor)
+    (hlands : (get_ancestor store (get_node_for_root tip) middle).root =
+      ancestor)
     (hsuffix : WalkKnown store lower ancestor) :
     WalkKnown store lower tip := by
   induction hprefix with
-  | stop htip htipSlot =>
+  | @stop tip htip htipSlot =>
       simp only [get_node_for_root] at hlands
       rw [get_ancestor_stop htipSlot] at hlands
-      injection hlands with htipAncestor
+      have htipAncestor : tip = ancestor := hlands
       subst ancestor
       exact hsuffix
   | @step tip htip hmiddleTip hparent ih =>
@@ -125,10 +125,10 @@ theorem finalized_check_of_exactStable_viableLeaf
   · left
     simpa only [hstable] using hgenesis
   · right
-    have hqueryTipLandsOnResult : get_ancestor query
-        (get_node_for_root queryTip) (query.blocks result).slot =
-          get_node_for_root result := by
-      simpa only [is_ancestor, decide_eq_true_eq] using hqueryTipResult
+    have hqueryTipLandsOnResult : (get_ancestor query
+        (get_node_for_root queryTip) (query.blocks result).slot).root =
+          result := by
+      simpa only [get_node_for_root, is_ancestor_pending, decide_eq_true_eq] using hqueryTipResult
     have hqueryTipBoundaryWalk : WalkKnown query
         (compute_start_slot_at_epoch cfg
           query.finalized_checkpoint.epoch) queryTip :=
@@ -328,7 +328,7 @@ theorem filter_block_tree_aux_mem_viableLeafBelow
                 simpa using hp)
             have htipBase : is_ancestor store
                 (get_node_for_root tip) (get_node_for_root base) = true :=
-              is_ancestor_trans hwf
+              is_ancestor_trans hwf (b := get_node_for_root child)
                 (hwalkK base hbase tip htip)
                 (hwalkK base hbase child hchildKnown)
                 htipChild hchildBase
@@ -376,8 +376,8 @@ theorem queryHead_direct_or_viableLeafBelow
       (get_head cfg store).root = store.justified_checkpoint.root := by
     simp only [get_head]
     exact get_head_aux_root_mem_or cfg
-      ((get_filtered_block_tree cfg store).length + 1)
-      (ForkChoiceNode.mk store.justified_checkpoint.root)
+      (2 * (get_filtered_block_tree cfg store).length + 2)
+      (ForkChoiceNode.mk store.justified_checkpoint.root .pending)
   rcases hhead with hheadFiltered | hheadJustified
   · right
     obtain ⟨tip, htip, htipHead, hleaf, hjustifiedCheck,
@@ -396,19 +396,18 @@ theorem queryHead_direct_or_viableLeafBelow
         exact hjustified
     have htipResult : is_ancestor store
         (get_node_for_root tip) (get_node_for_root result) = true :=
-      is_ancestor_trans hwf
+      is_ancestor_trans hwf (b := get_node_for_root (get_head cfg store).root)
         (hwalkK result hresult tip htip)
         (hwalkK result hresult (get_head cfg store).root hheadKnown)
-        htipHead hheadResult
+        htipHead ((is_ancestor_node_root store (get_head cfg store) result).symm.trans
+          hheadResult)
     exact ⟨tip, htip, htipResult, hleaf, hjustifiedCheck,
       hfinalizedCheck⟩
   · left
     change is_ancestor store
-      (ForkChoiceNode.mk store.justified_checkpoint.root)
+      (ForkChoiceNode.mk store.justified_checkpoint.root .pending)
       (get_node_for_root result) = true
-    change is_ancestor store
-      (ForkChoiceNode.mk (get_head cfg store).root)
-      (get_node_for_root result) = true at hheadResult
+    rw [is_ancestor_node_root] at hheadResult
     rwa [hheadJustified] at hheadResult
 
 end FastConfirmation.Spec

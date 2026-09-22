@@ -351,16 +351,10 @@ noncomputable def
         hanchor hboundary v (n + 1) hanchorEpochLeCurrent hheadStore
     simpa only [E.fcrStep_store] using hboundaryWalk
   let target := get_current_target cfg (E.fcrStep cfg ext v n).store
-  have heta : get_ancestor (E.fcrStep cfg ext v n).store
-      (get_head cfg (E.fcrStep cfg ext v n).store)
-      (compute_start_slot_at_epoch cfg
-        (get_current_store_epoch cfg (E.fcrStep cfg ext v n).store)) =
-        get_node_for_root target.root := by
-    rfl
-  have htargetSpec := get_ancestor_spec hparent hcurrentWalk
-  rw [heta] at htargetSpec
   have htargetKnown : target.root ∈
-      (E.fcrStep cfg ext v n).store.block_roots := htargetSpec.1
+      (E.fcrStep cfg ext v n).store.block_roots := by
+    simpa only [target, get_current_target, get_checkpoint_for_block,
+      get_checkpoint_block] using (get_ancestor_spec hparent hcurrentWalk).1
   have hstrictNonGenesis : ∀ r ∈
       (E.fcrStep cfg ext v n).store.block_roots,
       ((E.fcrStep cfg ext v n).store.blocks target.root).slot <

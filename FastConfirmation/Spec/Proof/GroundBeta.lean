@@ -306,15 +306,21 @@ theorem ledger_descendStep_groundBeta {E : Execution Root}
       E.AncestorOrVoteless cfg ext w m b' es i)
     (hinv : E.INVstar cfg ext v₀ n₀ b' lo es es
       (get_proposer_score cfg (E.store cfg ext w m)))
-    (hchild : ForkChoiceNode.mk c ∈ get_node_children (E.store cfg ext w m)
-      (get_filtered_block_tree cfg (E.store cfg ext w m)) (ForkChoiceNode.mk h))
+    (hchild : ForkChoiceNode.mk c .pending ∈ get_node_children (E.store cfg ext w m)
+      (get_filtered_block_tree cfg (E.store cfg ext w m))
+        (ForkChoiceNode.mk h
+          (get_parent_payload_status (E.store cfg ext w m)
+            ((E.store cfg ext w m).blocks c))))
     (hbside : E.Sval cfg ext w m b' lo es ≤
       get_attestation_score cfg (E.store cfg ext w m) (get_node_for_root c)
         ((E.store cfg ext w m).checkpoint_states
           (E.store cfg ext w m).justified_checkpoint))
     (hsib : ∀ c' : Root,
-      ForkChoiceNode.mk c' ∈ get_node_children (E.store cfg ext w m)
-        (get_filtered_block_tree cfg (E.store cfg ext w m)) (ForkChoiceNode.mk h) →
+      ForkChoiceNode.mk c' .pending ∈ get_node_children (E.store cfg ext w m)
+        (get_filtered_block_tree cfg (E.store cfg ext w m))
+          (ForkChoiceNode.mk h
+            (get_parent_payload_status (E.store cfg ext w m)
+              ((E.store cfg ext w m).blocks c))) →
         c' ≠ c →
         get_attestation_score cfg (E.store cfg ext w m) (get_node_for_root c')
             ((E.store cfg ext w m).checkpoint_states

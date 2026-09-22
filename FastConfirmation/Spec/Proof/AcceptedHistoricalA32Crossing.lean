@@ -227,10 +227,10 @@ theorem carriedCurrentCrossingAcceptedTargetSegment
   obtain ⟨htargetKnown, hresultDescendsTarget⟩ :=
     currentEpochBlock_descends_currentTarget cfg hparent hwalk hhead
       hresultKnown hbelowResult hcurrentWalk hresultCurrent
-  have hlands : get_ancestor query.store (ForkChoiceNode.mk trace.result)
-      (query.store.blocks (get_current_target cfg query.store).root).slot =
-        ForkChoiceNode.mk (get_current_target cfg query.store).root := by
-    simpa only [is_ancestor, decide_eq_true_eq, get_node_for_root]
+  have hlands : (get_ancestor query.store (ForkChoiceNode.mk trace.result .pending)
+      (query.store.blocks (get_current_target cfg query.store).root).slot).root =
+        (get_current_target cfg query.store).root := by
+    simpa only [get_node_for_root, is_ancestor_pending, decide_eq_true_eq]
       using hresultDescendsTarget
   have htargetCurrent : (get_current_target cfg query.store).epoch =
       get_current_store_epoch cfg query.store := rfl
@@ -242,7 +242,7 @@ theorem carriedCurrentCrossingAcceptedTargetSegment
   have hknownSegment : KnownSameEpochAncestrySegment cfg
       E.genesis_store.block_roots query.store
         (get_current_target cfg query.store).root trace.result :=
-    E.knownSameEpochAncestrySegment_of_known_ancestor cfg hparent
+    E.knownSameEpochAncestrySegment_of_known_ancestor_root cfg hparent
       (hwalk (get_current_target cfg query.store).root htargetKnown
         trace.result hresultKnown)
       hlands hsameEpoch hstrictNonGenesis
@@ -434,16 +434,10 @@ noncomputable def carriedCurrentCrossingLineageAt_of_targetGateProducer
       hanchor hboundary v (n + 1) hanchorEpochLeCurrent hheadStore
     simpa only [E.fcrStep_store] using hboundaryWalk
   let target := get_current_target cfg (E.fcrStep cfg ext v n).store
-  have heta : get_ancestor (E.fcrStep cfg ext v n).store
-      (get_head cfg (E.fcrStep cfg ext v n).store)
-      (compute_start_slot_at_epoch cfg
-        (get_current_store_epoch cfg (E.fcrStep cfg ext v n).store)) =
-        get_node_for_root target.root := by
-    rfl
-  have htargetSpec := get_ancestor_spec hparent hcurrentWalk
-  rw [heta] at htargetSpec
   have htargetKnown : target.root ∈
-      (E.fcrStep cfg ext v n).store.block_roots := htargetSpec.1
+      (E.fcrStep cfg ext v n).store.block_roots := by
+    simpa only [target, get_current_target, get_checkpoint_for_block,
+      get_checkpoint_block] using (get_ancestor_spec hparent hcurrentWalk).1
   have hstrictNonGenesis : ∀ r ∈
       (E.fcrStep cfg ext v n).store.block_roots,
       ((E.fcrStep cfg ext v n).store.blocks target.root).slot <

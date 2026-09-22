@@ -41,45 +41,96 @@ theorem WalkKnown.mono {store : Store Root} {s s' : Slot} (hs : s ≤ s') {r : R
     · exact WalkKnown.stop hr hle
     · exact WalkKnown.step hr hgt' ih
 
+variable [LinearOrder Root]
+
 /-! ## `get_ancestor` order facts -/
 
-/-- The walked ancestor never sits at a higher slot than the start block
-(each `parent_slot_lt` step strictly lowers the slot). -/
+/-- Every parent step lowers the slot, for every starting payload status. -/
+theorem get_ancestor_slot_le_status {store : Store Root}
+    (hwf : ∀ r ∈ store.block_roots,
+      (store.blocks r).parent_root ∈ store.block_roots →
+        (store.blocks (store.blocks r).parent_root).slot < (store.blocks r).slot)
+    {slot : Slot} {r : Root} (hw : WalkKnown store slot r) :
+    ∀ status : PayloadStatus,
+      (store.blocks (get_ancestor store (ForkChoiceNode.mk r status) slot).root).slot ≤
+        (store.blocks r).slot := by
+  induction hw with
+  | stop hr hle =>
+    intro status
+    rw [get_ancestor_stop_status hle]
+  | step hr hgt hp ih =>
+    intro status
+    rw [get_ancestor_step_status hwf hr hgt hp]
+    exact (ih _).trans (le_of_lt (hwf _ hr hp.root_mem))
+
+/-- Pending-node slot bound. -/
 theorem get_ancestor_slot_le {store : Store Root}
     (hwf : ∀ r ∈ store.block_roots,
       (store.blocks r).parent_root ∈ store.block_roots →
         (store.blocks (store.blocks r).parent_root).slot < (store.blocks r).slot)
     {slot : Slot} {r : Root} (hw : WalkKnown store slot r) :
-    (store.blocks (get_ancestor store (ForkChoiceNode.mk r) slot).root).slot ≤
-      (store.blocks r).slot := by
-  induction hw with
-  | stop hr hle => simp [get_ancestor_stop hle]
-  | step hr hgt hp ih =>
-    rw [get_ancestor_step hwf hr hgt hp]
-    exact ih.trans (le_of_lt (hwf _ hr hp.root_mem))
+    (store.blocks (get_ancestor store (ForkChoiceNode.mk r .pending) slot).root).slot ≤
+      (store.blocks r).slot :=
+  get_ancestor_slot_le_status hwf hw .pending
 
-/-- Walk-composition on the known domain: walking down to `slot` and then to a
-still-lower `slot'` lands where a single walk down to `slot'` would. -/
+/-- Exact walk composition, with the complete Gloas node at the intermediate
+stop. Parent recursion resolves statuses in the same way in both walks. -/
+theorem get_ancestor_comp_status {store : Store Root}
+    (hwf : ∀ r ∈ store.block_roots,
+      (store.blocks r).parent_root ∈ store.block_roots →
+        (store.blocks (store.blocks r).parent_root).slot < (store.blocks r).slot)
+    {slot slot' : Slot} (hss : slot' ≤ slot) {r : Root}
+    (hw : WalkKnown store slot' r) :
+    ∀ status : PayloadStatus,
+      get_ancestor store (get_ancestor store (ForkChoiceNode.mk r status) slot) slot' =
+        get_ancestor store (ForkChoiceNode.mk r status) slot' := by
+  induction hw with
+  | @stop r hr hle =>
+    intro status
+    rw [get_ancestor_stop_status (node := ForkChoiceNode.mk r status)
+      (slot := slot) (hle.trans hss)]
+  | @step r hr hgt hp ih =>
+    intro status
+    rcases le_or_gt (store.blocks r).slot slot with hle | hlt
+    · rw [get_ancestor_stop_status (node := ForkChoiceNode.mk r status)
+        (slot := slot) hle]
+    · rw [get_ancestor_step_status (node := ForkChoiceNode.mk r status)
+        (slot := slot) hwf hr hlt (hp.mono hss),
+        get_ancestor_step_status (node := ForkChoiceNode.mk r status)
+          (slot := slot') hwf hr hgt hp]
+      exact ih _
+
+/-- Pending-node form of exact walk composition. -/
 theorem get_ancestor_comp {store : Store Root}
     (hwf : ∀ r ∈ store.block_roots,
       (store.blocks r).parent_root ∈ store.block_roots →
         (store.blocks (store.blocks r).parent_root).slot < (store.blocks r).slot)
     {slot slot' : Slot} (hss : slot' ≤ slot) {r : Root}
     (hw : WalkKnown store slot' r) :
-    get_ancestor store (get_ancestor store (ForkChoiceNode.mk r) slot) slot' =
-      get_ancestor store (ForkChoiceNode.mk r) slot' := by
-  induction hw with
-  | stop hr hle => rw [get_ancestor_stop (hle.trans hss)]
-  | @step r hr hgt hp ih =>
-    rcases le_or_gt (store.blocks r).slot slot with hle | hlt
-    · rw [get_ancestor_stop hle]
-    · rw [get_ancestor_step hwf hr hlt (hp.mono hss),
-        get_ancestor_step hwf hr hgt hp]
-      exact ih
+    get_ancestor store (get_ancestor store (ForkChoiceNode.mk r .pending) slot) slot' =
+      get_ancestor store (ForkChoiceNode.mk r .pending) slot' :=
+  get_ancestor_comp_status hwf hss hw .pending
+
+/-- Root-only composition can restart from a pending intermediate root.
+The starting status does not affect the root reached by an ancestor walk. -/
+theorem get_ancestor_comp_root {store : Store Root}
+    (hwf : ∀ r ∈ store.block_roots,
+      (store.blocks r).parent_root ∈ store.block_roots →
+        (store.blocks (store.blocks r).parent_root).slot < (store.blocks r).slot)
+    {slot slot' : Slot} (hss : slot' ≤ slot) {r : Root}
+    (hw : WalkKnown store slot' r) :
+    (get_ancestor store
+      (ForkChoiceNode.mk (get_ancestor store (ForkChoiceNode.mk r .pending) slot).root .pending)
+      slot').root = (get_ancestor store (ForkChoiceNode.mk r .pending) slot').root := by
+  calc
+    _ = (get_ancestor store (get_ancestor store (ForkChoiceNode.mk r .pending) slot)
+        slot').root :=
+      get_ancestor_root_eq_status store slot'
+        (get_ancestor store (ForkChoiceNode.mk r .pending) slot).root .pending
+        (get_ancestor store (ForkChoiceNode.mk r .pending) slot).payload_status
+    _ = _ := congrArg ForkChoiceNode.root (get_ancestor_comp hwf hss hw)
 
 /-! ## `get_ancestor_roots` fuel elimination -/
-
-variable [LinearOrder Root]
 
 /-- Python-shaped one-step unfold of the worker at positive fuel (the `let next`
 of the def zeta-reduced away). -/
@@ -286,18 +337,16 @@ theorem get_ancestor_roots_head? {store : Store Root}
 
 /-! ## `is_ancestor` order facts -/
 
-/-- `is_ancestor` is reflexive: the walk down to a block's own slot stops
-immediately at that block (needs no domain hypothesis). -/
+/-- `is_ancestor` is reflexive for every payload status. -/
 theorem is_ancestor_refl (store : Store Root) (n : ForkChoiceNode Root) :
     is_ancestor store n n = true := by
-  obtain ⟨r⟩ := n
-  simp only [is_ancestor, decide_eq_true_eq]
-  exact get_ancestor_stop (le_refl _)
+  simp only [is_ancestor]
+  rw [get_ancestor_stop_status (le_refl _)]
+  simp
 
-/-- `is_ancestor` is transitive on the known domain: if `a`'s walk down to
-`c`'s slot is known and `b`'s walk down to `c`'s slot is known, `a ⪰ b ⪰ c`
-gives `a ⪰ c`. Composition through `b` uses `get_ancestor_comp`; the slot
-ordering `c ≤ b` comes from `get_ancestor_slot_le`. -/
+/-- Gloas ancestry is transitive on the known walk domain. At a lower slot,
+the first parent step discards the intermediate start status. At the same
+slot, payload-status equality or a pending ancestor composes directly. -/
 theorem is_ancestor_trans {store : Store Root}
     (hwf : ∀ r ∈ store.block_roots,
       (store.blocks r).parent_root ∈ store.block_roots →
@@ -307,14 +356,40 @@ theorem is_ancestor_trans {store : Store Root}
     (hwb : WalkKnown store (store.blocks c.root).slot b.root)
     (hab : is_ancestor store a b = true) (hbc : is_ancestor store b c = true) :
     is_ancestor store a c = true := by
-  obtain ⟨ar⟩ := a; obtain ⟨br⟩ := b; obtain ⟨cr⟩ := c
-  simp only [is_ancestor, decide_eq_true_eq] at hab hbc ⊢
-  have hSc_le_Sb : (store.blocks cr).slot ≤ (store.blocks br).slot := by
-    have h := get_ancestor_slot_le hwf hwb
-    rwa [hbc] at h
-  have hcomp := get_ancestor_comp hwf hSc_le_Sb hwa
-  rw [hab, hbc] at hcomp
-  exact hcomp.symm
+  simp only [is_ancestor, Bool.and_eq_true, decide_eq_true_eq] at hab hbc ⊢
+  have hSc_le_Sb : (store.blocks c.root).slot ≤ (store.blocks b.root).slot := by
+    have h := get_ancestor_slot_le_status hwf hwb b.payload_status
+    change (store.blocks (get_ancestor store b (store.blocks c.root).slot).root).slot ≤
+      (store.blocks b.root).slot at h
+    rwa [hbc.1] at h
+  have hcomp :
+      get_ancestor store (get_ancestor store a (store.blocks b.root).slot)
+          (store.blocks c.root).slot =
+        get_ancestor store a (store.blocks c.root).slot :=
+    get_ancestor_comp_status hwf hSc_le_Sb hwa a.payload_status
+  rcases hSc_le_Sb.lt_or_eq with hlt | heq
+  · have hsame :
+        get_ancestor store (get_ancestor store a (store.blocks b.root).slot)
+            (store.blocks c.root).slot =
+          get_ancestor store b (store.blocks c.root).slot :=
+      get_ancestor_eq_of_root_eq_of_lt hab.1 (by rw [hab.1]; exact hlt)
+    have hresult : get_ancestor store a (store.blocks c.root).slot =
+        get_ancestor store b (store.blocks c.root).slot := hcomp.symm.trans hsame
+    rw [hresult]
+    exact hbc
+  · have hstop : get_ancestor store b (store.blocks c.root).slot = b :=
+      get_ancestor_stop_status (node := b) (Nat.le_of_eq heq.symm)
+    rw [hstop] at hbc
+    constructor
+    · rw [heq]
+      exact hab.1.trans hbc.1
+    · rcases hbc.2 with hbcstatus | hcPending
+      · rcases hab.2 with habstatus | hbPending
+        · left
+          rw [heq]
+          exact habstatus.trans hbcstatus
+        · exact Or.inr (hbcstatus.symm.trans hbPending)
+      · exact Or.inr hcPending
 
 end FastConfirmation.Spec
 

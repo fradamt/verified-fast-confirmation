@@ -57,32 +57,46 @@ private theorem on_block_inserted_sameBlocks_for_lastWriter
     | none => rw [hst] at hh; cases hh
     | some post =>
       rw [hst] at hh
-      simp only at hh
       let added : Store Root :=
         { store with
-          block_roots :=
-            if sb.root ∈ store.block_roots then store.block_roots
-            else store.block_roots ++ [sb.root]
+          block_roots := store.block_roots ++ [sb.root]
           blocks := Function.update store.blocks sb.root sb.message
-          block_states := Function.update store.block_states sb.root post }
-      let timed := record_block_timeliness cfg added sb.root
-      let boosted := update_proposer_boost_root cfg timed
-        (get_head cfg store).root sb.root
-      let realized := update_checkpoints boosted
-        post.current_justified_checkpoint post.finalized_checkpoint
-      have hresult : compute_pulled_up_tip cfg ext realized sb.root = store' := by
-        dsimp only [realized, boosted, timed, added]
-        split_ifs
-        all_goals exact Option.some.inj hh
-      refine ⟨post, rfl, ?_⟩
-      change SameBlocks added store'
-      rw [← hresult]
-      exact (record_block_timeliness_sameBlocks cfg added sb.root).trans
-        ((update_proposer_boost_root_sameBlocks cfg timed
-          (get_head cfg store).root sb.root).trans
-          ((update_checkpoints_sameBlocks boosted
-            post.current_justified_checkpoint post.finalized_checkpoint).trans
-            (compute_pulled_up_tip_sameBlocks cfg ext realized sb.root)))
+          block_states := Function.update store.block_states sb.root post
+          payload_timeliness_vote := Function.update store.payload_timeliness_vote
+            sb.root (some (List.replicate cfg.ptc_size none))
+          payload_data_availability_vote := Function.update store.payload_data_availability_vote
+            sb.root (some (List.replicate cfg.ptc_size none)) }
+      change (match notify_ptc_messages cfg ext added post sb.message.payload_attestations with
+        | none => none
+        | some notified => some (FastConfirmation.Spec.compute_pulled_up_tip cfg ext
+            (FastConfirmation.Spec.update_checkpoints
+              (FastConfirmation.Spec.update_proposer_boost_root cfg
+                (FastConfirmation.Spec.record_block_timeliness cfg notified sb.root)
+                (get_head cfg store).root sb.root)
+              post.current_justified_checkpoint post.finalized_checkpoint) sb.root)) =
+          some store' at hh
+      cases hn : notify_ptc_messages cfg ext added post sb.message.payload_attestations with
+      | none => rw [hn] at hh; cases hh
+      | some notified =>
+        rw [hn] at hh
+        cases hh
+        have hf := notify_ptc_messages_frame cfg ext hn
+        let timed := record_block_timeliness cfg notified sb.root
+        let boosted := update_proposer_boost_root cfg timed
+          (get_head cfg store).root sb.root
+        let realized := update_checkpoints boosted
+          post.current_justified_checkpoint post.finalized_checkpoint
+        have htail : SameBlocks added
+            (compute_pulled_up_tip cfg ext realized sb.root) :=
+          hf.sameBlocks.trans
+            ((record_block_timeliness_sameBlocks cfg notified sb.root).trans
+              ((update_proposer_boost_root_sameBlocks cfg timed
+                (get_head cfg store).root sb.root).trans
+                ((update_checkpoints_sameBlocks boosted
+                  post.current_justified_checkpoint post.finalized_checkpoint).trans
+                  (compute_pulled_up_tip_sameBlocks cfg ext realized sb.root))))
+        refine ⟨post, by simpa only [hst], ?_⟩
+        simpa only [if_neg hknown] using htail
 
 /-- A successful block write leaves every other block message unchanged. -/
 theorem on_block_other_root_blocks
@@ -471,6 +485,16 @@ private theorem acceptedBlockLastWriterPrefix_take
               apply hp.successor_of_sameBlocks hklt
               rw [hsuccessorStore]
               exact on_attester_slashing_sameBlocks ext
+                (by simpa [apply_event, hevent] using heq)
+          | execution_payload_envelope envelope observation =>
+              apply hp.successor_of_sameBlocks hklt
+              rw [hsuccessorStore]
+              exact on_execution_payload_envelope_sameBlocks ext
+                (by simpa [apply_event, hevent] using heq)
+          | payload_attestation_message message fromBlock =>
+              apply hp.successor_of_sameBlocks hklt
+              rw [hsuccessorStore]
+              exact on_payload_attestation_message_sameBlocks cfg ext
                 (by simpa [apply_event, hevent] using heq)
 
 /-- Every ordinary execution boundary has strengthened last-writer

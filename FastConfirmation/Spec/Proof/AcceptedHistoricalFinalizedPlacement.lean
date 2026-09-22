@@ -540,10 +540,9 @@ theorem finalized_check_of_laggingQuery
       · exact False.elim (hqueryGenesis hgenesis)
       · exact hfinalized
     have hqueryTipLandsOnSelected :
-        get_ancestor query (get_node_for_root queryTip)
-            (query.blocks selected).slot =
-          get_node_for_root selected := by
-      simpa only [is_ancestor, decide_eq_true_eq] using hqueryTipSelected
+        (get_ancestor query (get_node_for_root queryTip)
+            (query.blocks selected).slot).root = selected := by
+      simpa only [get_node_for_root, is_ancestor_pending, decide_eq_true_eq] using hqueryTipSelected
     have hqueryTipBoundaryWalk : WalkKnown query
         (compute_start_slot_at_epoch cfg
           query.finalized_checkpoint.epoch) queryTip :=

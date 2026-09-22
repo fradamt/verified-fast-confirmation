@@ -78,7 +78,7 @@ theorem ghost_step_dominates_v2 {E : Execution Root} {store : Store Root}
     (hsib : get_attestation_score cfg store (get_node_for_root cc)
         (store.checkpoint_states store.justified_checkpoint)
       ≤ E.Xval cfg ext v₀ n₀ b' lo σ + E.Enemy cfg ext v₀ n₀ b' lo es σ) :
-    get_weight cfg store (ForkChoiceNode.mk cc) < get_weight cfg store (ForkChoiceNode.mk c) := by
+    get_weight cfg store (ForkChoiceNode.mk cc .pending) < get_weight cfg store (ForkChoiceNode.mk c .pending) := by
   simp only [get_node_for_root] at hbside hsib
   exact fork_weight_lt cfg (ghost_arith_v2 hbside hledger hsib)
 
@@ -88,8 +88,9 @@ the `b′`-side lower bound and a v2 sibling upper bound (for every competing ch
 hold at `store`. The `Enemy`-analog of `Endpoint.LedgerStep`. -/
 def LedgerStepV2 (E : Execution Root) (store : Store Root) (h c : Root) : Prop :=
   ∃ (v₀ : ValidatorIndex) (n₀ : ℕ) (b' : Root) (lo es σ : Slot),
-    ForkChoiceNode.mk c ∈
-        get_node_children store (get_filtered_block_tree cfg store) (ForkChoiceNode.mk h) ∧
+    ForkChoiceNode.mk c .pending ∈
+        get_node_children store (get_filtered_block_tree cfg store)
+          (ForkChoiceNode.mk h (get_parent_payload_status store (store.blocks c))) ∧
     E.Sval cfg ext v₀ n₀ b' lo σ ≤
         get_attestation_score cfg store (get_node_for_root c)
           (store.checkpoint_states store.justified_checkpoint) ∧
@@ -97,8 +98,9 @@ def LedgerStepV2 (E : Execution Root) (store : Store Root) (h c : Root) : Prop :
         + get_proposer_score cfg store + 1
         ≤ E.Sval cfg ext v₀ n₀ b' lo σ ∧
     (∀ c' : Root,
-      ForkChoiceNode.mk c' ∈
-          get_node_children store (get_filtered_block_tree cfg store) (ForkChoiceNode.mk h) →
+      ForkChoiceNode.mk c' .pending ∈
+          get_node_children store (get_filtered_block_tree cfg store)
+            (ForkChoiceNode.mk h (get_parent_payload_status store (store.blocks c))) →
         c' ≠ c →
         get_attestation_score cfg store (get_node_for_root c')
             (store.checkpoint_states store.justified_checkpoint)
@@ -110,6 +112,9 @@ theorem descendStep_of_ledgerStepV2 {E : Execution Root} {store : Store Root} {h
     (hstep : LedgerStepV2 cfg ext E store h c) :
     DescendStep cfg store (get_filtered_block_tree cfg store) h c := by
   obtain ⟨v₀, n₀, b', lo, es, σ, hchild, hbside, hledger, hsib⟩ := hstep
+  -- The sibling bound covers only this resolved parent. The pending parent's
+  -- selection of that status remains to be derived; `descendStep_of_dom`
+  -- requires that additional fact as its final argument.
   exact descendStep_of_dom cfg hchild
     (fun c' hc' hne => ghost_step_dominates_v2 cfg ext hbside hledger (hsib c' hc' hne))
 
@@ -156,21 +161,24 @@ theorem inv2_ledgerStepV2 {E : Execution Root} {store : Store Root}
     {v₀ : ValidatorIndex} {n₀ : ℕ} {b' h c : Root} {lo es σ : Slot} {boost : ℕ}
     (hboost : boost = get_proposer_score cfg store)
     (hinv : E.INV2 cfg ext v₀ n₀ b' lo es σ boost)
-    (hchild : ForkChoiceNode.mk c ∈
-      get_node_children store (get_filtered_block_tree cfg store) (ForkChoiceNode.mk h))
+    (hchild : ForkChoiceNode.mk c .pending ∈
+      get_node_children store (get_filtered_block_tree cfg store)
+        (ForkChoiceNode.mk h (get_parent_payload_status store (store.blocks c))))
     (hSmem : ∀ i ∈ E.Sclass cfg ext v₀ n₀ b' lo σ,
       i ∈ AttSupporters cfg store (get_node_for_root c)
         (store.checkpoint_states store.justified_checkpoint))
     (hHon : ∀ c' : Root,
-      ForkChoiceNode.mk c' ∈
-          get_node_children store (get_filtered_block_tree cfg store) (ForkChoiceNode.mk h) →
+      ForkChoiceNode.mk c' .pending ∈
+          get_node_children store (get_filtered_block_tree cfg store)
+            (ForkChoiceNode.mk h (get_parent_payload_status store (store.blocks c))) →
         c' ≠ c →
         ∀ i ∈ AttSupporters cfg store (get_node_for_root c')
             (store.checkpoint_states store.justified_checkpoint),
           i ∈ E.honest → i ∈ E.Xclass cfg ext v₀ n₀ b' lo σ)
     (hByz : ∀ c' : Root,
-      ForkChoiceNode.mk c' ∈
-          get_node_children store (get_filtered_block_tree cfg store) (ForkChoiceNode.mk h) →
+      ForkChoiceNode.mk c' .pending ∈
+          get_node_children store (get_filtered_block_tree cfg store)
+            (ForkChoiceNode.mk h (get_parent_payload_status store (store.blocks c))) →
         c' ≠ c →
         ∀ i ∈ AttSupporters cfg store (get_node_for_root c')
             (store.checkpoint_states store.justified_checkpoint),

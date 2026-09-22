@@ -51,6 +51,13 @@ theorem of_eq {store store' : Store Root}
   · rw [huf, huj]
     exact h.unrealized_finalized_le_unrealized_justified
 
+/-- Payload handlers leave the four checkpoint fields fixed. -/
+theorem of_payloadFrame {store store' : Store Root}
+    (h : CheckpointEpochOrder store) (hf : PayloadFrame store store') :
+    CheckpointEpochOrder store' :=
+  h.of_eq hf.justified_checkpoint hf.finalized_checkpoint
+    hf.unrealized_justified_checkpoint hf.unrealized_finalized_checkpoint
+
 omit [LinearOrder Root] [Inhabited Root] in
 /-- Independent maximum guards preserve the realized order when their input
 pair is ordered. -/
@@ -309,42 +316,56 @@ private theorem on_block_of_ordered_transition
     split_ifs at hh
     all_goals try contradiction
     rw [hst] at hh
-    cases hh
     let added : Store Root :=
       { store with
-        block_roots := if sb.root ∈ store.block_roots then
-            store.block_roots else store.block_roots ++ [sb.root]
+        block_roots := store.block_roots ++ [sb.root]
         blocks := Function.update store.blocks sb.root sb.message
-        block_states := Function.update store.block_states sb.root post }
-    let staged := FastConfirmation.Spec.record_block_timeliness cfg added sb.root
-    let boosted := FastConfirmation.Spec.update_proposer_boost_root cfg staged
-      (get_head cfg store).root sb.root
-    let realized := FastConfirmation.Spec.update_checkpoints boosted
-      post.current_justified_checkpoint post.finalized_checkpoint
-    have hadded : CheckpointEpochOrder added := by
-      apply h.of_eq <;> rfl
-    have hstaged : CheckpointEpochOrder staged :=
-      CheckpointEpochOrder.record_block_timeliness cfg added sb.root hadded
-    have hboosted : CheckpointEpochOrder boosted :=
-      CheckpointEpochOrder.update_proposer_boost_root cfg staged
-        (get_head cfg store).root sb.root hstaged
-    have hrealized : CheckpointEpochOrder realized :=
-      CheckpointEpochOrder.update_checkpoints boosted
+        block_states := Function.update store.block_states sb.root post
+        payload_timeliness_vote := Function.update store.payload_timeliness_vote
+          sb.root (some (List.replicate cfg.ptc_size none))
+        payload_data_availability_vote := Function.update store.payload_data_availability_vote
+          sb.root (some (List.replicate cfg.ptc_size none)) }
+    change (match notify_ptc_messages cfg ext added post sb.message.payload_attestations with
+      | none => none
+      | some notified => some (FastConfirmation.Spec.compute_pulled_up_tip cfg ext
+          (FastConfirmation.Spec.update_checkpoints
+            (FastConfirmation.Spec.update_proposer_boost_root cfg
+              (FastConfirmation.Spec.record_block_timeliness cfg notified sb.root)
+              (get_head cfg store).root sb.root)
+            post.current_justified_checkpoint post.finalized_checkpoint) sb.root)) =
+        some store' at hh
+    cases hn : notify_ptc_messages cfg ext added post sb.message.payload_attestations with
+    | none => rw [hn] at hh; cases hh
+    | some notified =>
+      rw [hn] at hh
+      cases hh
+      have hframe := notify_ptc_messages_frame cfg ext hn
+      let staged := FastConfirmation.Spec.record_block_timeliness cfg notified sb.root
+      let boosted := FastConfirmation.Spec.update_proposer_boost_root cfg staged
+        (get_head cfg store).root sb.root
+      let realized := FastConfirmation.Spec.update_checkpoints boosted
         post.current_justified_checkpoint post.finalized_checkpoint
-        hboosted hstatePair
-    have hrealizedState : realized.block_states sb.root = post := by
-      simp only [realized, boosted, staged, added,
-        FastConfirmation.Spec.update_checkpoints,
-        FastConfirmation.Spec.update_proposer_boost_root,
-        FastConfirmation.Spec.record_block_timeliness]
-      split_ifs <;> simp only [Function.update_self]
-    have hresult : CheckpointEpochOrder
-        (FastConfirmation.Spec.compute_pulled_up_tip cfg ext realized sb.root) :=
-      CheckpointEpochOrder.compute_pulled_up_tip cfg ext realized sb.root
+      have hadded : CheckpointEpochOrder added := by
+        apply h.of_eq <;> rfl
+      have hnotified : CheckpointEpochOrder notified := hadded.of_payloadFrame hframe
+      have hstaged : CheckpointEpochOrder staged :=
+        CheckpointEpochOrder.record_block_timeliness cfg notified sb.root hnotified
+      have hboosted : CheckpointEpochOrder boosted :=
+        CheckpointEpochOrder.update_proposer_boost_root cfg staged
+          (get_head cfg store).root sb.root hstaged
+      have hrealized : CheckpointEpochOrder realized :=
+        CheckpointEpochOrder.update_checkpoints boosted
+          post.current_justified_checkpoint post.finalized_checkpoint
+          hboosted hstatePair
+      have hrealizedState : realized.block_states sb.root = post := by
+        simp only [realized, boosted, staged,
+          FastConfirmation.Spec.update_checkpoints,
+          FastConfirmation.Spec.update_proposer_boost_root,
+          FastConfirmation.Spec.record_block_timeliness]
+        split_ifs <;> rw [hframe.block_states] <;>
+          exact Function.update_self _ _ _
+      exact CheckpointEpochOrder.compute_pulled_up_tip cfg ext realized sb.root
         hrealized (by rw [hrealizedState]; exact hpulledPair)
-    dsimp only [realized, boosted, staged, added] at hresult ⊢
-    split_ifs at hresult
-    all_goals exact hresult
 
 /-- A concrete exact accepted block transition preserves checkpoint epoch
 order.  Both pair inequalities are semantic consequences at the transition's
@@ -387,6 +408,7 @@ theorem on_block
     (h : CheckpointEpochOrder store)
     (hh : FastConfirmation.Spec.on_block cfg ext store sb = some store') :
     CheckpointEpochOrder store' := by
+  have hcall := hh
   by_cases hknown : sb.root ∈ store.block_roots
   · simp [FastConfirmation.Spec.on_block, hknown] at hh
     cases hh
@@ -398,19 +420,6 @@ theorem on_block
         (store.block_states sb.message.parent_root) sb with
     | none => rw [hst] at hh; cases hh
     | some state =>
-      rw [hst] at hh
-      cases hh
-      let added : Store Root :=
-        { store with
-          block_roots := if sb.root ∈ store.block_roots then
-              store.block_roots else store.block_roots ++ [sb.root]
-          blocks := Function.update store.blocks sb.root sb.message
-          block_states := Function.update store.block_states sb.root state }
-      let staged := FastConfirmation.Spec.record_block_timeliness cfg added sb.root
-      let boosted := FastConfirmation.Spec.update_proposer_boost_root cfg staged
-        (get_head cfg store).root sb.root
-      let realized := FastConfirmation.Spec.update_checkpoints boosted
-        state.current_justified_checkpoint state.finalized_checkpoint
       have hrootAt : E.BlockAt sb.root sb.message := by
         rcases hscheduled with ⟨w, n, hs⟩
         exact Or.inr ⟨w, n, sb, hs, rfl, rfl⟩
@@ -428,31 +437,7 @@ theorem on_block
         rw [hcoh.transition_guf _ _ _ hscheduled hst,
           hcoh.transition_gu _ _ _ hscheduled hst]
         exact S.guf_epoch_le_gu sb.root hroot
-      have hadded : CheckpointEpochOrder added := by
-        apply h.of_eq <;> rfl
-      have hstaged : CheckpointEpochOrder staged :=
-        CheckpointEpochOrder.record_block_timeliness cfg added sb.root hadded
-      have hboosted : CheckpointEpochOrder boosted :=
-        CheckpointEpochOrder.update_proposer_boost_root cfg staged
-          (get_head cfg store).root sb.root hstaged
-      have hrealized : CheckpointEpochOrder realized :=
-        CheckpointEpochOrder.update_checkpoints boosted
-          state.current_justified_checkpoint state.finalized_checkpoint
-          hboosted hstatePair
-      have hrealizedState : realized.block_states sb.root = state := by
-        simp only [realized, boosted, staged, added,
-          FastConfirmation.Spec.update_checkpoints,
-          FastConfirmation.Spec.update_proposer_boost_root,
-          FastConfirmation.Spec.record_block_timeliness]
-        split_ifs <;> simp only [Function.update_self]
-      have hresult : CheckpointEpochOrder
-          (FastConfirmation.Spec.compute_pulled_up_tip cfg ext realized sb.root) :=
-        CheckpointEpochOrder.compute_pulled_up_tip cfg ext realized sb.root hrealized (by
-          rw [hrealizedState]
-          exact hpulledPair)
-      dsimp only [realized, boosted, staged, added] at hresult ⊢
-      split_ifs at hresult
-      all_goals exact hresult
+      exact on_block_of_ordered_transition cfg ext hst hstatePair hpulledPair h hcall
 
 theorem apply_event_getD
     {E : Execution Root} {anchor : Checkpoint Root}
@@ -472,6 +457,10 @@ theorem apply_event_getD
     | block sb => exact on_block cfg ext hcoh ⟨w, n, hscheduled⟩ h heq
     | attestation a isFromBlock => exact on_attestation cfg ext h heq
     | attester_slashing sl => exact on_attester_slashing ext h heq
+    | execution_payload_envelope signed observation =>
+        exact h.of_payloadFrame (on_execution_payload_envelope_frame ext heq)
+    | payload_attestation_message message fromBlock =>
+        exact h.of_payloadFrame (on_payload_attestation_message_frame cfg ext heq)
 
 end CheckpointEpochOrder
 
@@ -598,6 +587,12 @@ private theorem acceptedCheckpointEpochOrder_take
         | attester_slashing sl =>
             exact CheckpointEpochOrder.on_attester_slashing ext hp
               (by simpa [apply_event, hevent] using heq)
+        | execution_payload_envelope signed observation =>
+            exact hp.of_payloadFrame (on_execution_payload_envelope_frame ext
+              (by simpa [apply_event, hevent] using heq))
+        | payload_attestation_message message fromBlock =>
+            exact hp.of_payloadFrame (on_payload_attestation_message_frame cfg ext
+              (by simpa [apply_event, hevent] using heq))
 
 /-- Checkpoint epoch order at every ordinary execution boundary, derived only
 from exact accepted block transitions. -/

@@ -68,22 +68,33 @@ theorem get_weight_le (store : Store Root) (node : ForkChoiceNode Root) :
           (store.checkpoint_states store.justified_checkpoint)
         + get_proposer_score cfg store := by
   simp only [get_weight]
-  split_ifs with _ _
+  split_ifs
+  · exact Nat.zero_le _
   · exact Nat.le_add_right _ _
-  · exact le_refl _
+  · exact Nat.le_refl _
   · exact Nat.add_le_add_left (Nat.zero_le _) _
 
-/-- `get_weight` is at least the bare attestation score (the proposer boost is
-nonnegative). -/
-theorem get_weight_ge (store : Store Root) (node : ForkChoiceNode Root) :
+/-- A node which is not a previous-slot payload decision keeps its bare
+attestation score. Gloas gives previous-slot resolved nodes zero weight. -/
+theorem get_weight_ge_of_not_payload_decision (store : Store Root)
+    (node : ForkChoiceNode Root)
+    (h : is_previous_slot_payload_decision cfg store node = false) :
     get_attestation_score cfg store node
         (store.checkpoint_states store.justified_checkpoint)
       ≤ get_weight cfg store node := by
-  simp only [get_weight]
+  simp only [get_weight, h, Bool.false_eq_true, if_false]
   split_ifs
-  · exact le_refl _
+  · exact Nat.le_refl _
   · exact Nat.le_add_right _ _
   · exact Nat.le_add_right _ _
+
+/-- Pending beacon-root support is a lower bound for its Gloas weight. -/
+theorem get_weight_ge (store : Store Root) (root : Root) :
+    get_attestation_score cfg store (ForkChoiceNode.mk root .pending)
+        (store.checkpoint_states store.justified_checkpoint)
+      ≤ get_weight cfg store (ForkChoiceNode.mk root .pending) := by
+  apply get_weight_ge_of_not_payload_decision
+  simp [is_previous_slot_payload_decision]
 
 /-- **The fork-weight bridge.** If the sibling `c'`'s bare attestation score plus
 the full proposer boost is strictly below `c`'s bare attestation score, then
@@ -91,12 +102,12 @@ the full proposer boost is strictly below `c`'s bare attestation score, then
 `Descent.DescendsTo`'s `hdom`. Both scores are read against the justified
 checkpoint state, the balance source `get_weight` uses. -/
 theorem fork_weight_lt {store : Store Root} {c c' : Root}
-    (hlt : get_attestation_score cfg store (ForkChoiceNode.mk c')
+    (hlt : get_attestation_score cfg store (ForkChoiceNode.mk c' .pending)
           (store.checkpoint_states store.justified_checkpoint)
         + get_proposer_score cfg store
-      < get_attestation_score cfg store (ForkChoiceNode.mk c)
+      < get_attestation_score cfg store (ForkChoiceNode.mk c .pending)
           (store.checkpoint_states store.justified_checkpoint)) :
-    get_weight cfg store (ForkChoiceNode.mk c') < get_weight cfg store (ForkChoiceNode.mk c) :=
+    get_weight cfg store (ForkChoiceNode.mk c' .pending) < get_weight cfg store (ForkChoiceNode.mk c .pending) :=
   lt_of_le_of_lt (get_weight_le cfg store _) (lt_of_lt_of_le hlt (get_weight_ge cfg store _))
 
 /-- **`fork_majority`** — the per-fork weight inequality `Descent.DescendsTo`'s
@@ -123,11 +134,11 @@ theorem fork_majority {store : Store Root} {c c' : Root}
     (hconf : Wold + get_proposer_score cfg store + 1 ≤ 2 * H0 + discount)
     (hD : discount ≤ D)
     (hnb : Bnew ≤ Hnew)
-    (hsib : get_attestation_score cfg store (ForkChoiceNode.mk c')
+    (hsib : get_attestation_score cfg store (ForkChoiceNode.mk c' .pending)
           (store.checkpoint_states store.justified_checkpoint) + H0 + D ≤ Wold + Bnew)
-    (hscore : H0 + Hnew ≤ get_attestation_score cfg store (ForkChoiceNode.mk c)
+    (hscore : H0 + Hnew ≤ get_attestation_score cfg store (ForkChoiceNode.mk c .pending)
           (store.checkpoint_states store.justified_checkpoint)) :
-    get_weight cfg store (ForkChoiceNode.mk c') < get_weight cfg store (ForkChoiceNode.mk c) :=
+    get_weight cfg store (ForkChoiceNode.mk c' .pending) < get_weight cfg store (ForkChoiceNode.mk c .pending) :=
   fork_weight_lt cfg (persists_ledger hconf hD hnb hsib hscore)
 
 /-! ## Set-accounting helper for the recorded-support lower bound (result 1)

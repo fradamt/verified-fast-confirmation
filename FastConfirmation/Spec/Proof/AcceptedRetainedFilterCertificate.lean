@@ -130,9 +130,10 @@ theorem child_filtered_of_finalizedCheck
         get_checkpoint_block cfg store h.tip
           store.finalized_checkpoint.epoch)
     (hparentEdge : (store.blocks selected).parent_root = parent) :
-    ForkChoiceNode.mk selected ∈
+    ForkChoiceNode.mk selected .pending ∈
       get_node_children store (get_filtered_block_tree cfg store)
-        (ForkChoiceNode.mk parent) := by
+        (ForkChoiceNode.mk parent
+          (get_parent_payload_status store (store.blocks selected))) := by
   obtain ⟨hcert⟩ := h.filterTipCertificate_of_finalizedCheck cfg ext hfinalized
     hparent hwalkK hjustifiedKnown hselectedJustified hnotCovered
       hfinalizedCheck

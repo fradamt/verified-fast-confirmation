@@ -46,9 +46,9 @@ def CurrentTargetScheduledLatestMessageProvenance
     ∃ (a : Attestation Root) (u : ValidatorIndex) (t : ℕ) (ifb : Bool),
       Event.attestation a ifb ∈ E.schedule u t ∧
       i ∈ a.attesting_indices ∧
-      a.data.target.epoch = m.epoch ∧
+      a.data.target.epoch = (get_latest_message_epoch cfg m) ∧
       a.data.beacon_block_root = m.root ∧
-      compute_epoch_at_slot cfg a.data.slot = m.epoch
+      compute_epoch_at_slot cfg a.data.slot = (get_latest_message_epoch cfg m)
 
 omit [LinearOrder Root] [Inhabited Root] in
 private theorem currentTargetScheduledLatestMessageProvenance_of_latest_eq
@@ -73,7 +73,8 @@ private theorem currentTargetScheduledLatestMessageProvenance_on_attestation
   cases hh
   simp only [validate_on_attestation, Bool.and_eq_true,
     decide_eq_true_eq] at hv
-  obtain ⟨⟨⟨⟨⟨⟨_, hEpoch⟩, _⟩, _⟩, _⟩, _⟩, _⟩ := hv
+  have hEpoch : a.data.target.epoch = compute_epoch_at_slot cfg a.data.slot :=
+    hv.1.1.1.1.1.1.1.1.2
   intro i m hm
   rcases update_latest_messages_mem _ _ _ _ _ hm with
     hold | ⟨hi, hmeq⟩
@@ -81,10 +82,9 @@ private theorem currentTargetScheduledLatestMessageProvenance_on_attestation
     exact h i m hold
   · obtain ⟨u, t, hmem⟩ := hsched
     refine ⟨a, u, t, ifb, hmem, hi, ?_, ?_, ?_⟩
+    · simpa only [hmeq, get_latest_message_epoch] using hEpoch
     · rw [hmeq]
-    · rw [hmeq]
-    · rw [hmeq]
-      exact hEpoch.symm
+    · simp only [hmeq, get_latest_message_epoch]
 
 private theorem currentTargetScheduledLatestMessageProvenance_apply_event
     {E : Execution Root} {store store' : Store Root} {e : Event Root}
@@ -106,6 +106,12 @@ private theorem currentTargetScheduledLatestMessageProvenance_apply_event
       simp only [apply_event] at he
       exact currentTargetScheduledLatestMessageProvenance_of_latest_eq cfg h
         (on_attester_slashing_latest ext he)
+  | execution_payload_envelope envelope observation =>
+      exact currentTargetScheduledLatestMessageProvenance_of_latest_eq cfg h
+        (on_execution_payload_envelope_frame ext he).latest_messages
+  | payload_attestation_message message fromBlock =>
+      exact currentTargetScheduledLatestMessageProvenance_of_latest_eq cfg h
+        (on_payload_attestation_message_frame cfg ext he).latest_messages
 
 private theorem currentTargetScheduledLatestMessageProvenance_foldl
     {E : Execution Root} :
@@ -286,7 +292,7 @@ theorem currentTargetObservedHonestSupporter_vote
   obtain ⟨_active, _unslashed, lm, hlm, _hnequiv, htarget⟩ :=
     mem_CurrentTargetSupporters cfg hiObserved.1
   have htargetEpoch :
-      (get_current_target cfg (E.store cfg ext v n)).epoch = lm.epoch := by
+      (get_current_target cfg (E.store cfg ext v n)).epoch = (get_latest_message_epoch cfg lm) := by
     have h := congrArg Checkpoint.epoch htarget
     simpa only [get_checkpoint_for_block] using h
   obtain ⟨a, u, t, ifb, hsched, hiAttests, haTargetEpoch,
@@ -319,30 +325,30 @@ theorem currentTargetObservedHonestSupporter_vote
       compute_start_slot_at_epoch cfg (get_current_epoch cfg ast) := by
     simpa only [TrustedAnchorBoundaryAligned, hgeq,
       get_forkchoice_store, Function.update_self] using hboundary
-  have hqueryEpoch : compute_epoch_at_slot cfg (E.slot_at cfg n) = lm.epoch := by
+  have hqueryEpoch : compute_epoch_at_slot cfg (E.slot_at cfg n) = (get_latest_message_epoch cfg lm) := by
     calc
       compute_epoch_at_slot cfg (E.slot_at cfg n) =
           get_current_store_epoch cfg (E.store cfg ext v n) := by
         simp only [get_current_store_epoch]
         rw [E.store_current_slot cfg ext v n]
       _ = (get_current_target cfg (E.store cfg ext v n)).epoch := rfl
-      _ = lm.epoch := htargetEpoch
-  have hanchorEpochLe : get_current_epoch cfg ast ≤ lm.epoch := by
+      _ = (get_latest_message_epoch cfg lm) := htargetEpoch
+  have hanchorEpochLe : get_current_epoch cfg ast ≤ (get_latest_message_epoch cfg lm) := by
     calc
       get_current_epoch cfg ast =
           compute_epoch_at_slot cfg (E.slot_at cfg 0) := by
         simp only [get_current_epoch, hslot0]
       _ ≤ compute_epoch_at_slot cfg (E.slot_at cfg n) :=
         Nat.div_le_div_right (E.slot_at_mono cfg (Nat.zero_le n))
-      _ = lm.epoch := hqueryEpoch
+      _ = (get_latest_message_epoch cfg lm) := hqueryEpoch
   have hstartMono : compute_start_slot_at_epoch cfg
       (get_current_epoch cfg ast) ≤
-      compute_start_slot_at_epoch cfg lm.epoch := by
+      compute_start_slot_at_epoch cfg (get_latest_message_epoch cfg lm) := by
     exact Nat.mul_le_mul_right cfg.slots_per_epoch hanchorEpochLe
-  have hstartVote : compute_start_slot_at_epoch cfg lm.epoch ≤
+  have hstartVote : compute_start_slot_at_epoch cfg (get_latest_message_epoch cfg lm) ≤
       a.data.slot := by
     have h := Nat.div_mul_le_self a.data.slot cfg.slots_per_epoch
-    have hdivEpoch : a.data.slot / cfg.slots_per_epoch = lm.epoch := by
+    have hdivEpoch : a.data.slot / cfg.slots_per_epoch = (get_latest_message_epoch cfg lm) := by
       simpa only [compute_epoch_at_slot] using haSlotEpoch
     rw [hdivEpoch] at h
     exact h
@@ -351,7 +357,7 @@ theorem currentTargetObservedHonestSupporter_vote
       E.slot_at cfg 0 = ast.slot := hslot0
       _ = ablk.message.slot := hgenSlot
       _ ≤ compute_start_slot_at_epoch cfg (get_current_epoch cfg ast) := hboundary'
-      _ ≤ compute_start_slot_at_epoch cfg lm.epoch := hstartMono
+      _ ≤ compute_start_slot_at_epoch cfg (get_latest_message_epoch cfg lm) := hstartMono
       _ ≤ a.data.slot := hstartVote
   obtain ⟨k, index, hkH, hkSlot, hvote⟩ :=
     hhb.votes_head i hi a.data.slot hiCommittee haSlotH hfrom0
@@ -410,7 +416,7 @@ theorem currentTargetObservedHonestSupporter_vote
       _ = lm.root := haRoot
   have hcanonicalEpoch :
       (honest_attestation cfg ext (E.store cfg ext i k)
-        a.data.slot index i).data.target.epoch = lm.epoch := by
+        a.data.slot index i).data.target.epoch = (get_latest_message_epoch cfg lm) := by
     exact (congrArg (fun d : AttestationData Root => d.target.epoch) hdata).symm.trans
       haTargetEpoch
   have hcanonicalRoot :
@@ -430,10 +436,10 @@ theorem currentTargetObservedHonestSupporter_vote
             (get_head cfg (E.store cfg ext i k)).root
             (honest_attestation cfg ext (E.store cfg ext i k)
               a.data.slot index i).data.target.epoch := htransport
-      _ = get_checkpoint_block cfg (E.store cfg ext v n) lm.root lm.epoch := by
+      _ = get_checkpoint_block cfg (E.store cfg ext v n) lm.root (get_latest_message_epoch cfg lm) := by
         rw [hheadRoot, hcanonicalEpoch]
       _ = (get_checkpoint_for_block cfg (E.store cfg ext v n)
-            lm.root lm.epoch).root := rfl
+            lm.root (get_latest_message_epoch cfg lm)).root := rfl
       _ = (get_current_target cfg (E.store cfg ext v n)).root :=
         congrArg Checkpoint.root htarget.symm
   have htargetExact :

@@ -77,7 +77,7 @@ private theorem roots_isSome_of_ancestor_selected {store : Store Root}
       (store.blocks r).parent_root ∈ store.block_roots →
         (store.blocks (store.blocks r).parent_root).slot < (store.blocks r).slot)
     {t r : Root} (hw : WalkKnown store (store.blocks t).slot r) :
-    get_ancestor store (ForkChoiceNode.mk r) (store.blocks t).slot = ForkChoiceNode.mk t →
+    (get_ancestor store (ForkChoiceNode.mk r .pending) (store.blocks t).slot).root = t →
     ∀ fuel : ℕ, (store.blocks r).slot < fuel →
       (get_ancestor_roots_aux store t fuel r).isSome = true ∨ r = t := by
   induction hw with
@@ -110,9 +110,9 @@ private theorem hcase_of_ancestor_selected {store : Store Root}
       (store.blocks r).parent_root ∈ store.block_roots →
         (store.blocks (store.blocks r).parent_root).slot < (store.blocks r).slot)
     {b jc : Root} (hwalk : WalkKnown store (store.blocks jc).slot b)
-    (hanc : is_ancestor store (ForkChoiceNode.mk b) (ForkChoiceNode.mk jc) = true) :
+    (hanc : is_ancestor store (ForkChoiceNode.mk b .pending) (ForkChoiceNode.mk jc .pending) = true) :
     get_ancestor_roots store b jc ≠ [] ∨ b = jc := by
-  simp only [is_ancestor, decide_eq_true_eq] at hanc
+  simp only [is_ancestor_pending, decide_eq_true_eq] at hanc
   rcases roots_isSome_of_ancestor_selected hwf hwalk hanc
       ((store.blocks b).slot + 1) (Nat.lt_succ_self _) with hsome | heq
   · left
@@ -251,7 +251,7 @@ theorem head_ge_of_scoped_terminal {store : Store Root}
       c ≠ r₀ →
       DescendStep cfg store (get_filtered_block_tree cfg store) a c) :
     is_ancestor store (get_head cfg store) (get_node_for_root b) = true := by
-  have hbx' : is_ancestor store (ForkChoiceNode.mk b) (ForkChoiceNode.mk x) = true := by
+  have hbx' : is_ancestor store (ForkChoiceNode.mk b .pending) (ForkChoiceNode.mk x .pending) = true := by
     simpa only [get_node_for_root] using hbx
   have hcase := hcase_of_ancestor_selected hwf (hwalkK x hx b hb) hbx'
   obtain ⟨hmem, hchainPL, hlast⟩ := parentChain_at hwf hwalkK hx hb hcase
@@ -271,9 +271,9 @@ theorem head_ge_of_scoped_terminal {store : Store Root}
     have hxLtC := parentChain_edge_child_slot_gt_head hwf hmem hchainPL ha hc hlink
     have hr₀LeX : (store.blocks r₀).slot ≤ (store.blocks x).slot := by
       have hsle := get_ancestor_slot_le hwf (hwalkK r₀ hr₀ x hx)
-      have hlands : get_ancestor store (ForkChoiceNode.mk x)
-          (store.blocks r₀).slot = ForkChoiceNode.mk r₀ := by
-        simpa only [is_ancestor, get_node_for_root, decide_eq_true_eq] using hx_r₀
+      have hlands : (get_ancestor store (ForkChoiceNode.mk x .pending)
+          (store.blocks r₀).slot).root = r₀ := by
+        simpa only [get_node_for_root, is_ancestor_pending, decide_eq_true_eq] using hx_r₀
       rw [hlands] at hsle
       simpa using hsle
     have hcNeR₀ : c ≠ r₀ := by
@@ -309,7 +309,7 @@ theorem head_ge_of_safe_scoped_terminal {store : Store Root}
       c ≠ r₀ →
       DescendStep cfg store (get_filtered_block_tree cfg store) a c) :
     is_ancestor store (get_head cfg store) (get_node_for_root b) = true := by
-  have hb_r₀' : is_ancestor store (ForkChoiceNode.mk b) (ForkChoiceNode.mk r₀) = true := by
+  have hb_r₀' : is_ancestor store (ForkChoiceNode.mk b .pending) (ForkChoiceNode.mk r₀ .pending) = true := by
     simpa only [get_node_for_root] using hb_r₀
   have hcase := hcase_of_ancestor_selected hwf (hwalkK r₀ hr₀ b hb) hb_r₀'
   obtain ⟨hmem, hchainPL, hlast⟩ := parentChain_at hwf hwalkK hr₀ hb hcase
@@ -350,19 +350,19 @@ theorem head_ge_of_safe_scoped_terminal {store : Store Root}
       have hpar : (store.blocks c).parent_root = r₀ := hchainPL'.1
       have hcmem : c ∈ store.block_roots := hmem c (by simp [hs])
       have hcfilter : c ∈ get_filtered_block_tree cfg store :=
-        (mem_get_node_children.mp hstep.1).1
+        hstep.child_mem
       have hc_jc : is_ancestor store (get_node_for_root c)
           (get_node_for_root store.justified_checkpoint.root) = true :=
         filtered_through_justified_K cfg hwf hwalkK hjust hcfilter
       have hc_r₀ : is_ancestor store (get_node_for_root c) (get_node_for_root r₀) = true :=
         is_ancestor_of_parent hwf hcmem hr₀ hpar
-      have hc_jc' : get_ancestor store (ForkChoiceNode.mk c)
-          (store.blocks store.justified_checkpoint.root).slot =
-            ForkChoiceNode.mk store.justified_checkpoint.root := by
-        simpa only [is_ancestor, get_node_for_root, decide_eq_true_eq] using hc_jc
-      have hc_r₀' : get_ancestor store (ForkChoiceNode.mk c) (store.blocks r₀).slot =
-          ForkChoiceNode.mk r₀ := by
-        simpa only [is_ancestor, get_node_for_root, decide_eq_true_eq] using hc_r₀
+      have hc_jc' : (get_ancestor store (ForkChoiceNode.mk c .pending)
+          (store.blocks store.justified_checkpoint.root).slot).root =
+            store.justified_checkpoint.root := by
+        simpa only [get_node_for_root, is_ancestor_pending, decide_eq_true_eq] using hc_jc
+      have hc_r₀' : (get_ancestor store (ForkChoiceNode.mk c .pending) (store.blocks r₀).slot).root =
+          r₀ := by
+        simpa only [get_node_for_root, is_ancestor_pending, decide_eq_true_eq] using hc_r₀
       rcases reroot_comparable hwf
           (hwalkK r₀ hr₀ c hcmem)
           (hwalkK store.justified_checkpoint.root hjust c hcmem) hc_r₀' hc_jc' with
@@ -381,7 +381,7 @@ theorem head_ge_of_safe_scoped_terminal {store : Store Root}
           exact head_ge_of_intermediate_ledger cfg hwf hsub hwalkK hjust hcmem hc_jc hhead_c hb
             hchainTail hlastTail
       · apply finish
-        simpa only [is_ancestor, get_node_for_root, decide_eq_true_eq] using hr₀_jc
+        simpa only [get_node_for_root, is_ancestor_pending, decide_eq_true_eq] using hr₀_jc
 
 namespace Execution
 
@@ -540,23 +540,32 @@ def ForkEdgeConfirmMarginSupply (E : Execution Root) (b r₀ : Root) (n₀ : ℕ
           (E.Xval cfg ext w m c lo σ ≤ E.Xval cfg ext w m c lo es) ∧
           ((100 - cfg.confirmation_byzantine_threshold) * (E.Bval lo σ - E.Bval lo es)
             ≤ cfg.confirmation_byzantine_threshold * (E.Jspec lo σ - E.Jspec lo es)) ∧
-          (ForkChoiceNode.mk c ∈ get_node_children (E.store cfg ext w m)
-            (get_filtered_block_tree cfg (E.store cfg ext w m)) (ForkChoiceNode.mk a)) ∧
+          (ForkChoiceNode.mk c .pending ∈ get_node_children (E.store cfg ext w m)
+            (get_filtered_block_tree cfg (E.store cfg ext w m))
+              (ForkChoiceNode.mk a
+                (get_parent_payload_status (E.store cfg ext w m)
+                  ((E.store cfg ext w m).blocks c)))) ∧
           (∀ i ∈ E.Sclass cfg ext w m c lo σ,
             i ∈ AttSupporters cfg (E.store cfg ext w m) (get_node_for_root c)
               ((E.store cfg ext w m).checkpoint_states
                 (E.store cfg ext w m).justified_checkpoint)) ∧
           (∀ c' : Root,
-            ForkChoiceNode.mk c' ∈ get_node_children (E.store cfg ext w m)
-              (get_filtered_block_tree cfg (E.store cfg ext w m)) (ForkChoiceNode.mk a) →
+            ForkChoiceNode.mk c' .pending ∈ get_node_children (E.store cfg ext w m)
+              (get_filtered_block_tree cfg (E.store cfg ext w m))
+                (ForkChoiceNode.mk a
+                  (get_parent_payload_status (E.store cfg ext w m)
+                    ((E.store cfg ext w m).blocks c))) →
             c' ≠ c →
             ∀ i ∈ AttSupporters cfg (E.store cfg ext w m) (get_node_for_root c')
               ((E.store cfg ext w m).checkpoint_states
                 (E.store cfg ext w m).justified_checkpoint),
               i ∈ E.honest → i ∈ E.Xclass cfg ext w m c lo σ) ∧
           (∀ c' : Root,
-            ForkChoiceNode.mk c' ∈ get_node_children (E.store cfg ext w m)
-              (get_filtered_block_tree cfg (E.store cfg ext w m)) (ForkChoiceNode.mk a) →
+            ForkChoiceNode.mk c' .pending ∈ get_node_children (E.store cfg ext w m)
+              (get_filtered_block_tree cfg (E.store cfg ext w m))
+                (ForkChoiceNode.mk a
+                  (get_parent_payload_status (E.store cfg ext w m)
+                    ((E.store cfg ext w m).blocks c))) →
             c' ≠ c →
             ∀ i ∈ AttSupporters cfg (E.store cfg ext w m) (get_node_for_root c')
               ((E.store cfg ext w m).checkpoint_states
@@ -564,8 +573,11 @@ def ForkEdgeConfirmMarginSupply (E : Execution Root) (b r₀ : Root) (n₀ : ℕ
               i ∉ E.honest → i ∈ E.Bwin lo σ)) ∨
         -- crossing arm (subject `c`, re-anchored `[lo, σ]`; via crossing_ledger_descendStep)
         (∃ (v₀ : ValidatorIndex) (n₀' : ℕ) (lo σ : Slot) (xP Bpre : ℕ),
-          (ForkChoiceNode.mk c ∈ get_node_children (E.store cfg ext w m)
-            (get_filtered_block_tree cfg (E.store cfg ext w m)) (ForkChoiceNode.mk a)) ∧
+          (ForkChoiceNode.mk c .pending ∈ get_node_children (E.store cfg ext w m)
+            (get_filtered_block_tree cfg (E.store cfg ext w m))
+              (ForkChoiceNode.mk a
+                (get_parent_payload_status (E.store cfg ext w m)
+                  ((E.store cfg ext w m).blocks c)))) ∧
           (E.Sval cfg ext v₀ n₀' c lo σ ≤
             get_attestation_score cfg (E.store cfg ext w m) (get_node_for_root c)
               ((E.store cfg ext w m).checkpoint_states
@@ -574,8 +586,11 @@ def ForkEdgeConfirmMarginSupply (E : Execution Root) (b r₀ : Root) (n₀ : ℕ
               + get_proposer_score cfg (E.store cfg ext w m) + 1
             ≤ E.Sval cfg ext v₀ n₀' c lo σ) ∧
           (∀ c' : Root,
-            ForkChoiceNode.mk c' ∈ get_node_children (E.store cfg ext w m)
-              (get_filtered_block_tree cfg (E.store cfg ext w m)) (ForkChoiceNode.mk a) →
+            ForkChoiceNode.mk c' .pending ∈ get_node_children (E.store cfg ext w m)
+              (get_filtered_block_tree cfg (E.store cfg ext w m))
+                (ForkChoiceNode.mk a
+                  (get_parent_payload_status (E.store cfg ext w m)
+                    ((E.store cfg ext w m).blocks c))) →
             c' ≠ c →
             get_attestation_score cfg (E.store cfg ext w m) (get_node_for_root c')
                 ((E.store cfg ext w m).checkpoint_states
@@ -815,11 +830,11 @@ theorem anchor_ge_of_pastDescendant (hSA : SpecAssumptions cfg ext E)
     let sx := ((E.store cfg ext v (n + 1)).blocks x).slot
     have hwalk_x : WalkKnown (E.store cfg ext u n_u) sx d :=
       hwalk0.mono (Nat.zero_le _)
-    have hv_lands : get_ancestor (E.store cfg ext v (n + 1))
-        (ForkChoiceNode.mk d) sx = ForkChoiceNode.mk x := by
-      simpa only [is_ancestor, get_node_for_root, decide_eq_true_eq, sx] using hdx_v
-    have hu_lands : get_ancestor (E.store cfg ext u n_u)
-        (ForkChoiceNode.mk d) sx = ForkChoiceNode.mk x := by
+    have hv_lands : (get_ancestor (E.store cfg ext v (n + 1))
+        (ForkChoiceNode.mk d .pending) sx).root = x := by
+      simpa only [get_node_for_root, is_ancestor_pending, decide_eq_true_eq, sx] using hdx_v
+    have hu_lands : (get_ancestor (E.store cfg ext u n_u)
+        (ForkChoiceNode.mk d .pending) sx).root = x := by
       rw [get_ancestor_congr hagree_uv hd_u hwalk_x]
       exact hv_lands
     have hspec := (get_ancestor_spec hwf_u hwalk_x).1
@@ -913,13 +928,13 @@ theorem head_ge_glc_endpoint (hSA : SpecAssumptions cfg ext E)
   rcases hdisj with hbge_jc | hjc_ge_b
   · -- `b ⪰ jc.root` (chain branch): reroot analysis (cases (ii)/(iii)/(iv))
     -- comparability of `jc.root` and `r₀` (both ancestors of `b`)
-    have ha_jc : get_ancestor S (ForkChoiceNode.mk b)
-        (S.blocks S.justified_checkpoint.root).slot =
-          ForkChoiceNode.mk S.justified_checkpoint.root := by
-      simpa only [is_ancestor, get_node_for_root, decide_eq_true_eq] using hbge_jc
-    have ha_r₀ : get_ancestor S (ForkChoiceNode.mk b) (S.blocks r₀).slot =
-        ForkChoiceNode.mk r₀ := by
-      simpa only [is_ancestor, get_node_for_root, decide_eq_true_eq] using hbge_r₀
+    have ha_jc : (get_ancestor S (ForkChoiceNode.mk b .pending)
+        (S.blocks S.justified_checkpoint.root).slot).root =
+          S.justified_checkpoint.root := by
+      simpa only [get_node_for_root, is_ancestor_pending, decide_eq_true_eq] using hbge_jc
+    have ha_r₀ : (get_ancestor S (ForkChoiceNode.mk b .pending) (S.blocks r₀).slot).root =
+        r₀ := by
+      simpa only [get_node_for_root, is_ancestor_pending, decide_eq_true_eq] using hbge_r₀
     rcases reroot_comparable hwf (y := b) (a := S.justified_checkpoint.root) (b := r₀)
         (hwalkK S.justified_checkpoint.root hjc b hbmem) (hwalkK r₀ hr₀mem b hbmem)
         ha_jc ha_r₀ with hr₀_ge_jc | hjc_ge_r₀
@@ -930,7 +945,7 @@ theorem head_ge_glc_endpoint (hSA : SpecAssumptions cfg ext E)
           hjcb_root ▸ hji.justified_descends w hw m jcb hH hjust hjcb_known hep2
         have hr₀_ge_jc' : is_ancestor S (get_node_for_root r₀)
             (get_node_for_root S.justified_checkpoint.root) = true := by
-          simp only [is_ancestor, get_node_for_root, decide_eq_true_eq]; exact hr₀_ge_jc
+          simp only [get_node_for_root, is_ancestor_pending, decide_eq_true_eq]; exact hr₀_ge_jc
         exact head_ge_of_scoped_terminal cfg hwf hsub hwalkK hjc hr₀mem hr₀mem hbmem
           hr₀_ge_jc' (is_ancestor_refl S (get_node_for_root r₀)) hhead_r₀ hbge_r₀ hedge
       · -- case (iv): `jcb.epoch ≤ jc.epoch` ⟹ `jc.root ⪰ r₀` by `justified_ancestry` → case (ii)
@@ -942,7 +957,7 @@ theorem head_ge_glc_endpoint (hSA : SpecAssumptions cfg ext E)
     · -- `jc.root ⪰ r₀`: case (ii)
       have hjc_r₀ : is_ancestor S (get_node_for_root S.justified_checkpoint.root)
           (get_node_for_root r₀) = true := by
-        simp only [is_ancestor, get_node_for_root, decide_eq_true_eq]; exact hjc_ge_r₀
+        simp only [get_node_for_root, is_ancestor_pending, decide_eq_true_eq]; exact hjc_ge_r₀
       exact caseII hjc_r₀ hbge_jc
   · -- case (i): `jc.root ⪰ b` ⟹ `head ⪰ jc.root ⪰ b` (no geometry)
     exact head_ge_of_justified_ge_K cfg hwf hwalkK hjc hbmem hjc_ge_b

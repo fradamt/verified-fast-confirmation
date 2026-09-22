@@ -129,25 +129,34 @@ def ForkEdgeInput (E : Execution Root) (w : ValidatorIndex) (m : ℕ) (b h c : R
     get_current_epoch cfg ((E.store cfg ext w m).checkpoint_states
       (E.store cfg ext w m).justified_checkpoint) < E.verification_horizon ∧
     boost = get_proposer_score cfg (E.store cfg ext w m) ∧
-    ForkChoiceNode.mk c ∈
+    ForkChoiceNode.mk c .pending ∈
       get_node_children (E.store cfg ext w m)
-        (get_filtered_block_tree cfg (E.store cfg ext w m)) (ForkChoiceNode.mk h) ∧
+        (get_filtered_block_tree cfg (E.store cfg ext w m))
+          (ForkChoiceNode.mk h
+            (get_parent_payload_status (E.store cfg ext w m)
+              ((E.store cfg ext w m).blocks c))) ∧
     (∀ i ∈ E.Sclass cfg ext w m b lo σ,
       ∃ lm, (E.store cfg ext w m).latest_messages i = some lm ∧
         is_ancestor (E.store cfg ext w m)
           (get_supported_node (E.store cfg ext w m) lm) (get_node_for_root c) = true) ∧
     (∀ c' : Root,
-      ForkChoiceNode.mk c' ∈
+      ForkChoiceNode.mk c' .pending ∈
           get_node_children (E.store cfg ext w m)
-            (get_filtered_block_tree cfg (E.store cfg ext w m)) (ForkChoiceNode.mk h) →
+            (get_filtered_block_tree cfg (E.store cfg ext w m))
+              (ForkChoiceNode.mk h
+                (get_parent_payload_status (E.store cfg ext w m)
+                  ((E.store cfg ext w m).blocks c))) →
         c' ≠ c →
         ∀ i ∈ AttSupporters cfg (E.store cfg ext w m) (get_node_for_root c')
             ((E.store cfg ext w m).checkpoint_states (E.store cfg ext w m).justified_checkpoint),
           i ∈ E.honest → i ∈ E.Xclass cfg ext w m b lo σ) ∧
     (∀ c' : Root,
-      ForkChoiceNode.mk c' ∈
+      ForkChoiceNode.mk c' .pending ∈
           get_node_children (E.store cfg ext w m)
-            (get_filtered_block_tree cfg (E.store cfg ext w m)) (ForkChoiceNode.mk h) →
+            (get_filtered_block_tree cfg (E.store cfg ext w m))
+              (ForkChoiceNode.mk h
+                (get_parent_payload_status (E.store cfg ext w m)
+                  ((E.store cfg ext w m).blocks c))) →
         c' ≠ c →
         ∀ i ∈ AttSupporters cfg (E.store cfg ext w m) (get_node_for_root c')
             ((E.store cfg ext w m).checkpoint_states (E.store cfg ext w m).justified_checkpoint),

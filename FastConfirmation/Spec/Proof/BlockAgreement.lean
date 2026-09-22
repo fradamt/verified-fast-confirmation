@@ -1,6 +1,7 @@
 module
 public import FastConfirmation.Spec.Proof.AncestryRoots
 public import FastConfirmation.Spec.Model.Assumptions
+public import FastConfirmation.Spec.Model.PayloadEffects
 
 @[expose] public section
 
@@ -61,6 +62,11 @@ theorem of_eq {E : Execution Root} {store store' : Store Root}
   rw [hbr] at hr
   rw [hb]
   exact h r hr
+
+/-- Payload handlers leave the block provenance fields equal. -/
+theorem of_payloadFrame {E : Execution Root} {store store' : Store Root}
+    (h : BlockProvenance E store) (hf : PayloadFrame store store') :
+    BlockProvenance E store' := h.of_eq hf.block_roots hf.blocks
 
 end BlockProvenance
 
@@ -205,6 +211,12 @@ theorem blockProvenance_add {E : Execution Root} {store : Store Root}
   · rw [Function.update_of_ne hrb]
     exact h r ((hbr r hr).resolve_left hrb)
 
+theorem notify_ptc_messages_blockProvenance {E : Execution Root} {store store' : Store Root}
+    {state : BeaconState Root} {attestations : List (IndexedPayloadAttestation Root)}
+    (h : BlockProvenance E store)
+    (hh : notify_ptc_messages cfg ext store state attestations = some store') :
+    BlockProvenance E store' := h.of_payloadFrame (notify_ptc_messages_frame cfg ext hh)
+
 theorem on_block_blockProvenance {E : Execution Root} {store store' : Store Root}
     {sb : SignedBeaconBlock Root} (hsched : IsScheduledBlock E sb)
     (h : BlockProvenance E store) (hh : on_block cfg ext store sb = some store') :
@@ -214,23 +226,26 @@ theorem on_block_blockProvenance {E : Execution Root} {store store' : Store Root
     cases hh
     exact h
   · simp only [on_block, if_neg hknown] at hh
-    split_ifs at hh with hp hslot hfin hfc
+    split_ifs at hh
     all_goals try contradiction
     cases hst : ext.state_transition (store.block_states sb.message.parent_root) sb with
     | none => rw [hst] at hh; cases hh
     | some state =>
       rw [hst] at hh
-      cases hh
-      apply compute_pulled_up_tip_blockProvenance
-      apply update_checkpoints_blockProvenance
-      apply update_proposer_boost_root_blockProvenance
-      apply record_block_timeliness_blockProvenance
-      refine blockProvenance_add sb hsched state _ ?_ h
-      intro r hr
-      first
-        | exact Or.inr hr
-        | · rw [List.mem_append, List.mem_singleton] at hr
-            exact hr.symm
+      dsimp only at hh
+      split at hh
+      · cases hh
+      · rename_i after_ptc hptc
+        cases hh
+        apply compute_pulled_up_tip_blockProvenance
+        apply update_checkpoints_blockProvenance
+        apply update_proposer_boost_root_blockProvenance
+        apply record_block_timeliness_blockProvenance
+        refine notify_ptc_messages_blockProvenance cfg ext ?_ hptc
+        refine blockProvenance_add sb hsched state _ ?_ h
+        intro r hr
+        rw [List.mem_append, List.mem_singleton] at hr
+        exact hr.symm
 
 /-! ## Provenance preservation by the attestation handlers -/
 
@@ -255,6 +270,22 @@ theorem on_attester_slashing_blockProvenance {E : Execution Root} {store store' 
   cases hh
   exact h.of_eq rfl rfl
 
+omit [Inhabited Root] in
+theorem on_payload_attestation_message_blockProvenance {E : Execution Root}
+    {store store' : Store Root} {message : PayloadAttestationMessage Root}
+    {is_from_block : Bool} (h : BlockProvenance E store)
+    (hh : on_payload_attestation_message cfg ext store message is_from_block = some store') :
+    BlockProvenance E store' :=
+  h.of_payloadFrame (on_payload_attestation_message_frame cfg ext hh)
+
+omit [Inhabited Root] in
+theorem on_execution_payload_envelope_blockProvenance {E : Execution Root}
+    {store store' : Store Root} {envelope : SignedExecutionPayloadEnvelope Root}
+    {observation : EnvelopeObservation Root} (h : BlockProvenance E store)
+    (hh : on_execution_payload_envelope ext store envelope observation = some store') :
+    BlockProvenance E store' :=
+  h.of_payloadFrame (on_execution_payload_envelope_frame ext hh)
+
 /-! ## Event dispatch, the event fold, and the trajectory invariant -/
 
 /-- One dispatched event preserves provenance; block events additionally require
@@ -274,6 +305,10 @@ theorem apply_event_blockProvenance {E : Execution Root} {s s' : Store Root}
   | attester_slashing sl =>
     simp only [apply_event] at he
     exact on_attester_slashing_blockProvenance ext h he
+  | execution_payload_envelope envelope observation =>
+    exact on_execution_payload_envelope_blockProvenance ext h he
+  | payload_attestation_message message is_from_block =>
+    exact on_payload_attestation_message_blockProvenance cfg ext h he
 
 /-- Folding the second's scheduled events preserves provenance: every block
 event in the list is scheduled, so each `apply_event` step keeps the invariant. -/
@@ -343,56 +378,79 @@ theorem WellFormedExecution.blocks_agree {E : Execution Root} (hwf : WellFormedE
 domain it is invariant under any store agreeing on the known blocks; hence so is
 `is_ancestor`. -/
 
-omit [LinearOrder Root] [Inhabited Root] in
-/-- `get_ancestor_aux` reads only `blocks` at the walked roots, so on the walk
-known in `s` any store `t` agreeing with `s` on `s`'s blocks computes the same
-ancestor (for every fuel). -/
+omit [Inhabited Root] in
+/-- Every parent step reads the child's bid and its known parent's bid. Stores
+that agree on known blocks therefore agree on the complete node, for any
+starting status and fuel. -/
+theorem get_ancestor_aux_congr_status {s t : Store Root}
+    (hagree : ∀ x ∈ s.block_roots, s.blocks x = t.blocks x)
+    {slot : Slot} {r : Root} (hw : WalkKnown s slot r) :
+    ∀ (status : PayloadStatus) (fuel : ℕ),
+      get_ancestor_aux s slot fuel (ForkChoiceNode.mk r status) =
+        get_ancestor_aux t slot fuel (ForkChoiceNode.mk r status) := by
+  induction hw with
+  | @stop r hr hle =>
+    intro status fuel
+    cases fuel with
+    | zero => rfl
+    | succ f =>
+      simp only [get_ancestor_aux]
+      rw [if_neg (by simpa using hle),
+        if_neg (by rw [← hagree r hr]; simpa using hle)]
+  | @step r hr hgt hp ih =>
+    intro status fuel
+    cases fuel with
+    | zero => rfl
+    | succ f =>
+      simp only [get_ancestor_aux]
+      rw [if_pos (by simpa using hgt),
+        if_pos (by rw [← hagree r hr]; simpa using hgt), ← hagree r hr]
+      have hstatus : get_parent_payload_status s (s.blocks r) =
+          get_parent_payload_status t (s.blocks r) := by
+        simp only [get_parent_payload_status, ← hagree _ hp.root_mem]
+      rw [← hstatus]
+      exact ih _ f
+
+omit [Inhabited Root] in
+/-- Pending-node form of complete ancestor transport. -/
 theorem get_ancestor_aux_congr {s t : Store Root}
     (hagree : ∀ x ∈ s.block_roots, s.blocks x = t.blocks x)
     {slot : Slot} {r : Root} (hw : WalkKnown s slot r) :
-    ∀ fuel : ℕ, get_ancestor_aux s slot fuel (ForkChoiceNode.mk r)
-              = get_ancestor_aux t slot fuel (ForkChoiceNode.mk r) := by
-  induction hw with
-  | @stop r hr hle =>
-    intro fuel
-    cases fuel with
-    | zero => rfl
-    | succ f =>
-      simp only [get_ancestor_aux]
-      rw [if_neg (by simpa using hle), if_neg (by rw [← hagree r hr]; simpa using hle)]
-  | @step r hr hgt hp ih =>
-    intro fuel
-    cases fuel with
-    | zero => rfl
-    | succ f =>
-      simp only [get_ancestor_aux]
-      rw [if_pos (by simpa using hgt), if_pos (by rw [← hagree r hr]; simpa using hgt),
-        ← hagree r hr]
-      exact ih f
+    ∀ fuel : ℕ, get_ancestor_aux s slot fuel (ForkChoiceNode.mk r .pending) =
+      get_ancestor_aux t slot fuel (ForkChoiceNode.mk r .pending) :=
+  get_ancestor_aux_congr_status hagree hw .pending
 
-omit [LinearOrder Root] [Inhabited Root] in
-/-- Wrapper form: `get_ancestor` agrees across stores agreeing on `s`'s blocks,
-for any walk known in `s` from a root known in `s`. -/
+omit [Inhabited Root] in
+/-- Complete ancestor transport for an arbitrary starting node. -/
+theorem get_ancestor_congr_status {s t : Store Root}
+    (hagree : ∀ x ∈ s.block_roots, s.blocks x = t.blocks x)
+    {slot : Slot} {node : ForkChoiceNode Root} (hr : node.root ∈ s.block_roots)
+    (hw : WalkKnown s slot node.root) :
+    get_ancestor s node slot = get_ancestor t node slot := by
+  cases node with
+  | mk r status =>
+    simp only [get_ancestor]
+    rw [hagree r hr]
+    exact get_ancestor_aux_congr_status hagree hw status _
+
+omit [Inhabited Root] in
+/-- Pending-node wrapper for stores that agree on every known block. -/
 theorem get_ancestor_congr {s t : Store Root}
     (hagree : ∀ x ∈ s.block_roots, s.blocks x = t.blocks x)
     {slot : Slot} {r : Root} (hr : r ∈ s.block_roots) (hw : WalkKnown s slot r) :
-    get_ancestor s (ForkChoiceNode.mk r) slot = get_ancestor t (ForkChoiceNode.mk r) slot := by
-  simp only [get_ancestor]
-  rw [hagree r hr]
-  exact get_ancestor_aux_congr hagree hw _
+    get_ancestor s (ForkChoiceNode.mk r .pending) slot = get_ancestor t (ForkChoiceNode.mk r .pending) slot :=
+  get_ancestor_congr_status hagree hr hw
 
 omit [Inhabited Root] in
-/-- `is_ancestor` transports across stores agreeing on `s`'s blocks: the ancestor
-test and the whole walk read only agreeing blocks. -/
+/-- The Gloas ancestry test transports both its root and status comparison. -/
 theorem is_ancestor_congr {s t : Store Root}
     (hagree : ∀ x ∈ s.block_roots, s.blocks x = t.blocks x)
     {node ancestor : ForkChoiceNode Root}
     (hnode : node.root ∈ s.block_roots) (hanc : ancestor.root ∈ s.block_roots)
     (hw : WalkKnown s (s.blocks ancestor.root).slot node.root) :
     is_ancestor s node ancestor = is_ancestor t node ancestor := by
-  obtain ⟨nr⟩ := node
-  simp only [is_ancestor]
-  rw [← hagree ancestor.root hanc, get_ancestor_congr hagree hnode hw]
+  simp only [is_ancestor, ← hagree ancestor.root hanc,
+    get_ancestor_congr_status hagree hnode hw]
 
 /-! ## Transport along one node's trajectory
 

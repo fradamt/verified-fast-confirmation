@@ -132,9 +132,9 @@ theorem is_ancestor_transport {E : Execution Root} (hwf : WellFormedExecution E)
     (hb : b ∈ (E.store cfg ext v n).block_roots)
     (hw : WalkKnown (E.store cfg ext v n) ((E.store cfg ext v n).blocks b).slot r)
     (hanc : is_ancestor (E.store cfg ext v n)
-      (ForkChoiceNode.mk r) (ForkChoiceNode.mk b) = true) :
+      (ForkChoiceNode.mk r .pending) (ForkChoiceNode.mk b .pending) = true) :
     is_ancestor (E.store cfg ext w m)
-      (ForkChoiceNode.mk r) (ForkChoiceNode.mk b) = true := by
+      (ForkChoiceNode.mk r .pending) (ForkChoiceNode.mk b .pending) = true := by
   have hagree : ∀ x ∈ (E.store cfg ext v n).block_roots,
       (E.store cfg ext v n).blocks x = (E.store cfg ext w m).blocks x := fun x hx =>
     hwf.blocks_agree (E.blockProvenance cfg ext v n) (E.blockProvenance cfg ext w m) hx (hsub hx)
@@ -156,7 +156,7 @@ theorem recorded_supports_c {E : Execution Root} (hwf : WellFormedExecution E)
     (hb_vn : b ∈ (E.store cfg ext v n).block_roots)
     (hw_vn : WalkKnown (E.store cfg ext v n) ((E.store cfg ext v n).blocks b).slot lm.root)
     (hge_vn : is_ancestor (E.store cfg ext v n)
-      (ForkChoiceNode.mk lm.root) (ForkChoiceNode.mk b) = true)
+      (ForkChoiceNode.mk lm.root .pending) (ForkChoiceNode.mk b .pending) = true)
     (hwf_pl : ∀ r ∈ (E.store cfg ext w m).block_roots,
       ((E.store cfg ext w m).blocks r).parent_root ∈ (E.store cfg ext w m).block_roots →
         ((E.store cfg ext w m).blocks ((E.store cfg ext w m).blocks r).parent_root).slot <
@@ -164,11 +164,11 @@ theorem recorded_supports_c {E : Execution Root} (hwf : WellFormedExecution E)
     (hwa_wm : WalkKnown (E.store cfg ext w m) ((E.store cfg ext w m).blocks c).slot lm.root)
     (hwb_wm : WalkKnown (E.store cfg ext w m) ((E.store cfg ext w m).blocks c).slot b)
     (hbc_wm : is_ancestor (E.store cfg ext w m)
-      (ForkChoiceNode.mk b) (ForkChoiceNode.mk c) = true) :
+      (ForkChoiceNode.mk b .pending) (ForkChoiceNode.mk c .pending) = true) :
     is_ancestor (E.store cfg ext w m)
       (get_supported_node (E.store cfg ext w m) lm) (get_node_for_root c) = true := by
   have hge_wm : is_ancestor (E.store cfg ext w m)
-      (ForkChoiceNode.mk lm.root) (ForkChoiceNode.mk b) = true :=
+      (ForkChoiceNode.mk lm.root .pending) (ForkChoiceNode.mk b .pending) = true :=
     is_ancestor_transport cfg ext hwf hsub hr_vn hb_vn hw_vn hge_vn
   exact supports_of_ge_b hwf_pl hwa_wm hwb_wm hge_wm hbc_wm
 
@@ -257,12 +257,12 @@ setting attestation's slot is `< k`.
 The recorded message `lm` for a supporter `i` sits, by ubiquity, at epoch
 `≥ epochOf t` (`t` its newest pre-`s` vote slot). Two cases:
 
-* **equality** (`lm.epoch = epochOf t`): the recorded root is *exactly* `i`'s
+* **equality** (`(get_latest_message_epoch cfg lm) = epochOf t`): the recorded root is *exactly* `i`'s
   pre-`s` vote block (`Execution.latest_message_root`), which descends from `b`
   at the confirming store (the package fact); `recorded_supports_c` transports
   that to `c`-support at `(w, m)`.
-* **displacement** (`lm.epoch > epochOf t`): the setting attestation's slot `sl`
-  has `epochOf sl = lm.epoch > epochOf t`, so `sl > t`; the "no vote in `(t, s)`"
+* **displacement** (`(get_latest_message_epoch cfg lm) > epochOf t`): the setting attestation's slot `sl`
+  has `epochOf sl = (get_latest_message_epoch cfg lm) > epochOf t`, so `sl > t`; the "no vote in `(t, s)`"
   clause of the package forbids `t < sl < s`, so `sl ≥ s`; and `sl < k` from the
   provenance gate — hence `sl ∈ [s, k)` and the engine IH (`hIH`, `EngineInduction` shape)
   puts `i`'s slot-`sl` vote block `⪰ b` at `(w, m)` directly, which
@@ -278,7 +278,7 @@ private theorem compute_epoch_at_slot_mono {x y : Slot} (h : x ≤ y) :
 /-- **The recorded message of a package supporter supports `c` at `(w, m)`.**
 For honest `i` whose newest pre-`s` vote (slot `t < s`, block `a`, no vote in
 `(t, s)`) descends from `b` at the confirming store `(v₀, n₀)`, and a recorded
-latest message `lm` at `(w, m)` (slot `k = slot_at m`) with `epochOf t ≤ lm.epoch`
+latest message `lm` at `(w, m)` (slot `k = slot_at m`) with `epochOf t ≤ (get_latest_message_epoch cfg lm)`
 (ubiquity), the message supports the fork child `c` on `b`'s chain — under the
 engine IH `hIH` (every honest `[s, k)`-vote block `⪰ b` at `(w, m)`) and the
 cross-store / walk domain conditions. Closes `EngineTransport`'s blocker 1. -/
@@ -295,7 +295,7 @@ theorem recorded_supports_c_of_IH {E : Execution Root}
     (hgvn : is_ancestor (E.store cfg ext v₀ n₀)
       (get_node_for_root a.data.beacon_block_root) (get_node_for_root b) = true)
     (hlm : (E.store cfg ext w m).latest_messages i = some lm)
-    (hepge : compute_epoch_at_slot cfg t ≤ lm.epoch)
+    (hepge : compute_epoch_at_slot cfg t ≤ (get_latest_message_epoch cfg lm))
     (hslot_m : E.slot_at cfg m = k)
     (hIH : ∀ j ∈ E.honest, ∀ t' : Slot, s ≤ t' → t' < k →
       ∀ jj (a' : Attestation Root), E.vote j t' = some (jj, a') →
@@ -313,7 +313,7 @@ theorem recorded_supports_c_of_IH {E : Execution Root}
     (hwa_wm : WalkKnown (E.store cfg ext w m) ((E.store cfg ext w m).blocks c).slot lm.root)
     (hwb_wm : WalkKnown (E.store cfg ext w m) ((E.store cfg ext w m).blocks c).slot b)
     (hbc_wm : is_ancestor (E.store cfg ext w m)
-      (ForkChoiceNode.mk b) (ForkChoiceNode.mk c) = true)
+      (ForkChoiceNode.mk b .pending) (ForkChoiceNode.mk c .pending) = true)
     (hw : w ∈ E.honest) (hmH : E.WithinHorizon cfg m) :
     is_ancestor (E.store cfg ext w m)
       (get_supported_node (E.store cfg ext w m) lm) (get_node_for_root c) = true := by
@@ -395,7 +395,7 @@ theorem HS0_in_AttSupporters {E : Execution Root}
     (hubiq : ∀ i ∈ HS₀, ∀ (t : Slot) (kk : ℕ) (a : Attestation Root),
       E.vote i t = some (kk, a) →
       ∃ lm, (E.store cfg ext w m).latest_messages i = some lm ∧
-        compute_epoch_at_slot cfg t ≤ lm.epoch)
+        compute_epoch_at_slot cfg t ≤ (get_latest_message_epoch cfg lm))
     (hsub : (E.store cfg ext v₀ n₀).block_roots ⊆ (E.store cfg ext w m).block_roots)
     (hb_vn : b ∈ (E.store cfg ext v₀ n₀).block_roots)
     (hwf_pl : ∀ r ∈ (E.store cfg ext w m).block_roots,
@@ -403,7 +403,7 @@ theorem HS0_in_AttSupporters {E : Execution Root}
         ((E.store cfg ext w m).blocks ((E.store cfg ext w m).blocks r).parent_root).slot <
           ((E.store cfg ext w m).blocks r).slot)
     (hbc_wm : is_ancestor (E.store cfg ext w m)
-      (ForkChoiceNode.mk b) (ForkChoiceNode.mk c) = true)
+      (ForkChoiceNode.mk b .pending) (ForkChoiceNode.mk c .pending) = true)
     (hwb_wm : WalkKnown (E.store cfg ext w m) ((E.store cfg ext w m).blocks c).slot b)
     (hdom_vn : ∀ i ∈ HS₀, ∀ (t : Slot) (kk : ℕ) (a : Attestation Root),
       E.vote i t = some (kk, a) →
@@ -436,7 +436,7 @@ theorem HS0_in_AttSupporters {E : Execution Root}
 A *new-window voter* is an honest committee member of a slot `t'` with `s ≤ t'`.
 Its recorded message at `(w, m)` cannot come from a pre-`s` seat: were the setting
 slot `sl < s`, then `sl < s ≤ t'` forces `epochOf sl ≤ epochOf t'`, while ubiquity
-forces `epochOf sl = lm.epoch ≥ epochOf t'`; the two pin `epochOf sl = epochOf t'`,
+forces `epochOf sl = (get_latest_message_epoch cfg lm) ≥ epochOf t'`; the two pin `epochOf sl = epochOf t'`,
 so `committee_assignment_unique` (both `i`-assigned) gives `sl = t'`, contradicting
 `sl < s ≤ t'`. Hence `sl ≥ s`, and with `sl < k` from the provenance gate the
 setting slot lands in `[s, k)` where the engine IH `hIH` puts `i`'s vote block
@@ -444,7 +444,7 @@ setting slot lands in `[s, k)` where the engine IH `hIH` puts `i`'s vote block
 
 /-- **A new-window voter's recorded message supports `c` at `(w, m)`.** For honest
 `i` assigned to a slot `t'` with `s ≤ t'`, and a recorded latest message `lm` at
-`(w, m in slot k)` with `epochOf t' ≤ lm.epoch` (ubiquity), the message supports
+`(w, m in slot k)` with `epochOf t' ≤ (get_latest_message_epoch cfg lm)` (ubiquity), the message supports
 the fork child `c` on `b`'s chain, under the engine IH `hIH` and the walk domain
 conditions. The setting slot is forced into `[s, k)` by the within-epoch seat
 uniqueness. -/
@@ -457,7 +457,7 @@ theorem newvoter_recorded_supports_c_of_IH {E : Execution Root}
     {t' : Slot} {s k : Slot} {lm : LatestMessage Root}
     (hi : i ∈ E.honest) (hcomm_t' : i ∈ E.committee t') (hst' : s ≤ t')
     (hlm : (E.store cfg ext w m).latest_messages i = some lm)
-    (hepge : compute_epoch_at_slot cfg t' ≤ lm.epoch)
+    (hepge : compute_epoch_at_slot cfg t' ≤ (get_latest_message_epoch cfg lm))
     (hslot_m : E.slot_at cfg m = k)
     (hIH : ∀ j ∈ E.honest, ∀ t'' : Slot, s ≤ t'' → t'' < k →
       ∀ jj (a' : Attestation Root), E.vote j t'' = some (jj, a') →
@@ -470,7 +470,7 @@ theorem newvoter_recorded_supports_c_of_IH {E : Execution Root}
     (hwa_wm : WalkKnown (E.store cfg ext w m) ((E.store cfg ext w m).blocks c).slot lm.root)
     (hwb_wm : WalkKnown (E.store cfg ext w m) ((E.store cfg ext w m).blocks c).slot b)
     (hbc_wm : is_ancestor (E.store cfg ext w m)
-      (ForkChoiceNode.mk b) (ForkChoiceNode.mk c) = true)
+      (ForkChoiceNode.mk b .pending) (ForkChoiceNode.mk c .pending) = true)
     (hw : w ∈ E.honest) (hmH : E.WithinHorizon cfg m) :
     is_ancestor (E.store cfg ext w m)
       (get_supported_node (E.store cfg ext w m) lm) (get_node_for_root c) = true := by
@@ -525,13 +525,13 @@ theorem NewVoters_in_AttSupporters {E : Execution Root}
         ((E.store cfg ext w m).blocks ((E.store cfg ext w m).blocks r).parent_root).slot <
           ((E.store cfg ext w m).blocks r).slot)
     (hbc_wm : is_ancestor (E.store cfg ext w m)
-      (ForkChoiceNode.mk b) (ForkChoiceNode.mk c) = true)
+      (ForkChoiceNode.mk b .pending) (ForkChoiceNode.mk c .pending) = true)
     (hwb_wm : WalkKnown (E.store cfg ext w m) ((E.store cfg ext w m).blocks c).slot b)
     (NV : Finset ValidatorIndex)
     (hNV : ∀ i ∈ NV, i ∈ E.honest ∧ ∃ (t' : Slot) (lm : LatestMessage Root),
       E.SlotWithinHorizon cfg t' ∧ i ∈ E.committee t' ∧ s ≤ t' ∧
       (E.store cfg ext w m).latest_messages i = some lm ∧
-      compute_epoch_at_slot cfg t' ≤ lm.epoch ∧
+      compute_epoch_at_slot cfg t' ≤ (get_latest_message_epoch cfg lm) ∧
       WalkKnown (E.store cfg ext w m) ((E.store cfg ext w m).blocks c).slot lm.root)
     (hw : w ∈ E.honest) (hmH : E.WithinHorizon cfg m) :
     ∀ i ∈ NV, i ∈ AttSupporters cfg (E.store cfg ext w m) (get_node_for_root c) bs := by

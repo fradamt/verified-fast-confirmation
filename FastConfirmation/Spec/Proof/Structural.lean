@@ -241,8 +241,8 @@ theorem finalized_cross_known_of_boundary (hSA : SpecAssumptions cfg ext E)
     rwa [hanchor_slot] at this
   -- the descent `fw ⪰ fv` and the boundary
   have hanc : is_ancestor (E.store cfg ext w m)
-      (ForkChoiceNode.mk (E.store cfg ext w m).finalized_checkpoint.root)
-      (ForkChoiceNode.mk (E.store cfg ext v (n + 1)).finalized_checkpoint.root) = true := by
+      (ForkChoiceNode.mk (E.store cfg ext w m).finalized_checkpoint.root .pending)
+      (ForkChoiceNode.mk (E.store cfg ext v (n + 1)).finalized_checkpoint.root .pending) = true := by
     have := hji.finalized_descent v hv (n + 1) w hw m
       (E.withinHorizon_mono cfg hm hH) hH hm
     simpa only [get_node_for_root] using this

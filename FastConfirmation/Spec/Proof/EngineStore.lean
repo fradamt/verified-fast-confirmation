@@ -5,38 +5,22 @@ public import FastConfirmation.Spec.Proof.Engine
 @[expose] public section
 
 /-!
-# Spec / Proof / EngineStore (per-store head descent)
+# Spec / Proof / EngineStore
 
-At a single honest store `(w, m)` in slot `k`, the transported engine facts and
-the window ledger `EngineWindows.fork_majority_of_windows` provide a `b`-side dominant child
-at every fork on `b`'s chain, and (via `FilterViability`) that every chain root
-survives `get_filtered_block_tree`. This module wires those per-fork facts into a
-`Descent.DescendsTo` path from the justified root down to `b` and concludes, via
-`Descent.is_ancestor_get_head`, that the fork-choice head descends from `b`.
+A Gloas beacon edge has two selections. The pending parent first selects
+EMPTY or FULL. The resolved parent then selects a pending beacon child.
+`DescendStep` records both selections, with the parent status determined by
+the child's execution bid.
 
-The per-fork data is packaged as one relation, `DescendStep`, between a node and
-its chosen child: the child is a `get_node_children` member drawn from the
-filtered tree, and it strictly dominates every sibling in `get_weight` — exactly
-the pair (`hchild`, `hdom`) `Descent.DescendsTo.step` consumes, and exactly what
-`EngineWindows.fork_majority_of_windows` produces per fork. A `List.Chain` of
-`DescendStep` from the justified root down to `b` is the parent-linked dominant
-path (`AncestryRoots`' `get_ancestor_roots` characterization supplies its
-shape).
+Strict weight domination among beacon siblings does not establish the
+payload selection. Opposite-status children can contribute to one payload
+branch together. The assembly lemma therefore takes the exact payload
+selection as a separate local premise.
 
-Contents:
-
-* `DescendStep` — the per-fork child-choice relation (membership + domination).
-* `descendsTo_of_chain` — a `List.Chain DescendStep` from `h` down to `b` builds a
-  `DescendsTo … b … h` path (structural recursion over the chain).
-* `chain_descendStep_mem` — every node on the chain is in the filtered tree (each
-  is a `get_node_children` member): the subset feeding the fuel bound.
-* `is_ancestor_get_head_of_chain` — the headline: under the descent chain (plus
-  `Nodup` for the path-length/fuel discharge and the usual `parent_slot_lt` /
-  filtered-containment domain conditions) the head descends from `b`.
-
-Every transported fact — the per-fork dominance, the filtered-tree containment,
-the `parent_slot_lt` well-formedness — enters in its delivered shape as a
-hypothesis; this module is the pure wiring. No Model / TheoremStatements edits.
+A chain of these actual edges gives a `DescendsTo` path. Its distinct beacon
+roots fit within the filtered list, and the Gloas head fuel covers both node
+steps per beacon edge. The filter-only branch uses root ancestry and permits
+any payload status in the final head.
 -/
 
 namespace FastConfirmation.Spec
@@ -46,32 +30,78 @@ variable (cfg : Config)
 
 /-! ## The per-fork child-choice relation -/
 
-/-- `DescendStep cfg store blocks h c`: `c` is the fork-choice-dominant child of
-`h` in the candidate list `blocks`. It is a `get_node_children` member (drawn from
-`blocks`, parent-linked to `h`) and it strictly dominates every other child of `h`
-in `get_weight` — the exact `(hchild, hdom)` pair `Descent.DescendsTo.step`
-consumes and `EngineWindows.fork_majority_of_windows` produces per fork. -/
-def DescendStep (store : Store Root) (blocks : List Root) (h c : Root) : Prop :=
-  ForkChoiceNode.mk c ∈ get_node_children store blocks (ForkChoiceNode.mk h) ∧
-    ∀ c' ∈ get_node_children store blocks (ForkChoiceNode.mk h),
-      c' ≠ ForkChoiceNode.mk c →
-        get_weight cfg store c' < get_weight cfg store (ForkChoiceNode.mk c)
+/-- A child's bid resolves its parent's payload as EMPTY or FULL. -/
+theorem get_parent_payload_status_ne_pending (store : Store Root)
+    (block : BeaconBlock Root) : get_parent_payload_status store block ≠ .pending := by
+  simp only [get_parent_payload_status]
+  split_ifs <;> decide
 
-/-- **Assemble a `DescendStep` from per-sibling domination.** The `hdom` clause is
-reindexed from sibling *roots* — the form `EngineWindows.fork_majority_of_windows`
-delivers per fork (`get_weight (mk c') < get_weight (mk c)` for each competing root
-`c'`) — to the `ForkChoiceNode` children `DescendStep` records. -/
+/-- One certified Gloas beacon edge. The full-key selection from the pending
+parent must choose the status in the child's bid. The pending child must
+then strictly dominate the other children of that resolved parent. -/
+def DescendStep (store : Store Root) (blocks : List Root) (h c : Root) : Prop :=
+  (get_node_children store blocks (ForkChoiceNode.mk h .pending)).argmax
+      (fun child => toLex (get_weight cfg store child,
+        toLex (child.root, get_payload_status_tiebreaker cfg store child))) =
+    some (ForkChoiceNode.mk h (get_parent_payload_status store (store.blocks c))) ∧
+  ForkChoiceNode.mk c .pending ∈ get_node_children store blocks
+    (ForkChoiceNode.mk h (get_parent_payload_status store (store.blocks c))) ∧
+  ∀ child ∈ get_node_children store blocks
+      (ForkChoiceNode.mk h (get_parent_payload_status store (store.blocks c))),
+    child ≠ ForkChoiceNode.mk c .pending →
+      get_weight cfg store child < get_weight cfg store (ForkChoiceNode.mk c .pending)
+
+namespace DescendStep
+
+variable {cfg : Config}
+
+/-- The beacon child belongs to the candidate list. -/
+theorem child_mem {store : Store Root} {blocks : List Root} {h c : Root}
+    (hstep : DescendStep cfg store blocks h c) : c ∈ blocks := by
+  have hmem := (mem_get_node_children_resolved
+    (get_parent_payload_status_ne_pending store (store.blocks c))).mp hstep.2.1
+  exact hmem.2.1
+
+/-- A certified edge follows the beacon parent link. -/
+theorem parent_eq {store : Store Root} {blocks : List Root} {h c : Root}
+    (hstep : DescendStep cfg store blocks h c) : (store.blocks c).parent_root = h := by
+  have hmem := (mem_get_node_children_resolved
+    (get_parent_payload_status_ne_pending store (store.blocks c))).mp hstep.2.1
+  exact hmem.2.2.1
+
+/-- Prepend the payload-resolution and beacon-child selections to a path. -/
+theorem descendsTo {store : Store Root} {blocks : List Root} {b h c : Root} {n : ℕ}
+    (hstep : DescendStep cfg store blocks h c)
+    (hrec : DescendsTo cfg store blocks b n c) :
+    DescendsTo cfg store blocks b (n + 1) h :=
+  DescendsTo.step hstep.1 hstep.2.1 hstep.2.2 hrec
+
+end DescendStep
+
+/-- Assemble one beacon edge from dominance within its resolved payload
+branch and an explicit selection of that branch. The payload premise uses
+the full Gloas key; per-beacon-sibling dominance alone cannot supply it. -/
 theorem descendStep_of_dom {store : Store Root} {blocks : List Root} {h c : Root}
-    (hchild : ForkChoiceNode.mk c ∈ get_node_children store blocks (ForkChoiceNode.mk h))
+    (hchild : ForkChoiceNode.mk c .pending ∈ get_node_children store blocks
+      (ForkChoiceNode.mk h (get_parent_payload_status store (store.blocks c))))
     (hdom : ∀ c' : Root,
-      ForkChoiceNode.mk c' ∈ get_node_children store blocks (ForkChoiceNode.mk h) →
-        c' ≠ c →
-          get_weight cfg store (ForkChoiceNode.mk c') <
-            get_weight cfg store (ForkChoiceNode.mk c)) :
+      ForkChoiceNode.mk c' .pending ∈ get_node_children store blocks
+        (ForkChoiceNode.mk h (get_parent_payload_status store (store.blocks c))) →
+      c' ≠ c →
+        get_weight cfg store (ForkChoiceNode.mk c' .pending) <
+          get_weight cfg store (ForkChoiceNode.mk c .pending))
+    (hresolve : (get_node_children store blocks (ForkChoiceNode.mk h .pending)).argmax
+        (fun child => toLex (get_weight cfg store child,
+          toLex (child.root, get_payload_status_tiebreaker cfg store child))) =
+      some (ForkChoiceNode.mk h (get_parent_payload_status store (store.blocks c)))) :
     DescendStep cfg store blocks h c := by
-  refine ⟨hchild, ?_⟩
-  rintro ⟨cr⟩ hc'' hne
-  exact hdom cr hc'' (fun heq => hne (by rw [heq]))
+  refine ⟨hresolve, hchild, ?_⟩
+  rintro ⟨cr, status⟩ hmem hne
+  have hstatus : status = .pending :=
+    ((mem_get_node_children_resolved
+      (get_parent_payload_status_ne_pending store (store.blocks c))).mp hmem).1
+  subst status
+  exact hdom cr hmem (fun heq => hne (by rw [heq]))
 
 /-! ## The descent chain builds a `DescendsTo` path -/
 
@@ -98,7 +128,7 @@ theorem descendsTo_of_chain {store : Store Root} {blocks : List Root} {b : Root}
     obtain ⟨hstep, hchain'⟩ := hchain
     have hlast' : (a :: rest).getLast (List.cons_ne_nil a rest) = b :=
       (List.getLast_cons (List.cons_ne_nil a rest)).symm.trans hlast
-    exact DescendsTo.step hstep.1 hstep.2 (ih a hchain' hlast')
+    exact hstep.descendsTo (ih a hchain' hlast')
 
 /-! ## The descent nodes live in the filtered tree -/
 
@@ -119,7 +149,7 @@ theorem chain_descendStep_mem {store : Store Root} {blocks : List Root} :
     obtain ⟨hstep, hchain'⟩ := hchain
     rw [List.mem_cons] at hc
     rcases hc with rfl | hc
-    · exact (mem_get_node_children.mp hstep.1).1
+    · exact hstep.child_mem
     · exact ih a hchain' c hc
 
 omit [Inhabited Root] in
@@ -137,14 +167,10 @@ private theorem length_le_of_nodup_subset {l₁ l₂ : List Root}
 
 /-! ## The headline: the head descends from `b` -/
 
-/-- **Per-store head descent.** At an honest store, a `DescendStep` chain from the
-justified checkpoint root down to `b` (each fork's `b`-side child dominating every
-sibling — `EngineWindows.fork_majority_of_windows` per fork — over roots in the
-filtered tree) forces the fork-choice head to descend from `b`. The path's `Nodup`
-discharges the fuel bound (its nodes are distinct filtered roots); `hwf`
-(`parent_slot_lt`) and `hsub` (filtered-tree containment) are the usual domain
-conditions, ``Preservation``/``FilterViability`` establish them. Composes `descendsTo_of_chain` with
-`Descent.is_ancestor_get_head`. -/
+/-- A chain of actual payload selections and dominant beacon children from
+the justified root to `b` forces the head to descend from `b`. Distinct chain
+roots bound the beacon depth; the Gloas fuel then covers both node steps of
+each edge. The statement uses the existing store and filter conditions. -/
 theorem is_ancestor_get_head_of_chain {store : Store Root}
     (hwf : ∀ r ∈ store.block_roots,
       (store.blocks r).parent_root ∈ store.block_roots →
@@ -161,7 +187,7 @@ theorem is_ancestor_get_head_of_chain {store : Store Root}
   have hmem := chain_descendStep_mem cfg ds store.justified_checkpoint.root hchain
   have hfuel : ds.length ≤ (get_filtered_block_tree cfg store).length + 1 :=
     Nat.le_succ_of_le (length_le_of_nodup_subset hnd (fun c hc => hmem c hc))
-  change is_ancestor store (get_head cfg store) (ForkChoiceNode.mk b) = true
+  change is_ancestor store (get_head cfg store) (ForkChoiceNode.mk b .pending) = true
   exact is_ancestor_get_head cfg hwf hsub hdesc hfuel
 
 /-! ## The filter complement: filtered roots descend from the justified root
@@ -187,17 +213,14 @@ theorem is_ancestor_of_parent {store : Store Root}
     {child base : Root}
     (hchild : child ∈ store.block_roots) (hbase : base ∈ store.block_roots)
     (hp : (store.blocks child).parent_root = base) :
-    is_ancestor store (ForkChoiceNode.mk child) (ForkChoiceNode.mk base) = true := by
-  simp only [is_ancestor, decide_eq_true_eq]
-  show get_ancestor store (ForkChoiceNode.mk child) (store.blocks base).slot
-      = ForkChoiceNode.mk base
+    is_ancestor store (ForkChoiceNode.mk child .pending) (ForkChoiceNode.mk base .pending) = true := by
+  rw [is_ancestor_pending, decide_eq_true_eq]
   have hlt : (store.blocks base).slot < (store.blocks child).slot := by
     have h := hwf child hchild (by rw [hp]; exact hbase)
     rwa [hp] at h
   rw [get_ancestor_step hwf hchild hlt
     (by rw [hp]; exact WalkKnown.stop hbase (le_refl _))]
-  rw [hp]
-  exact get_ancestor_stop (le_refl _)
+  rw [hp, get_ancestor_stop (le_refl _)]
 
 omit [Inhabited Root] in
 /-- Inductive step of `filter_block_tree_aux_output_descends`: a root `r` in a
@@ -213,12 +236,12 @@ private theorem output_descends_step {store : Store Root}
     {base : Root} (hbase : base ∈ store.block_roots) {fuel : ℕ}
     (ih : ∀ b' : Root, b' ∈ store.block_roots → ∀ r,
       r ∈ (filter_block_tree_aux cfg store fuel b').2 →
-        is_ancestor store (ForkChoiceNode.mk r) (ForkChoiceNode.mk b') = true)
+        is_ancestor store (ForkChoiceNode.mk r .pending) (ForkChoiceNode.mk b' .pending) = true)
     {child r : Root}
     (hchild : child ∈ store.block_roots.filter
       (fun root => (store.blocks root).parent_root = base))
     (hrl : r ∈ (filter_block_tree_aux cfg store fuel child).2) :
-    is_ancestor store (ForkChoiceNode.mk r) (ForkChoiceNode.mk base) = true := by
+    is_ancestor store (ForkChoiceNode.mk r .pending) (ForkChoiceNode.mk base .pending) = true := by
   have hchild_mem : child ∈ store.block_roots := (List.mem_filter.mp hchild).1
   have hp : (store.blocks child).parent_root = base := by
     have h := (List.mem_filter.mp hchild).2
@@ -245,7 +268,7 @@ theorem filter_block_tree_aux_output_descends {store : Store Root}
       WalkKnown store (store.blocks t).slot r) :
     ∀ (fuel : ℕ) (base : Root), base ∈ store.block_roots →
       ∀ r, r ∈ (filter_block_tree_aux cfg store fuel base).2 →
-        is_ancestor store (ForkChoiceNode.mk r) (ForkChoiceNode.mk base) = true := by
+        is_ancestor store (ForkChoiceNode.mk r .pending) (ForkChoiceNode.mk base .pending) = true := by
   intro fuel
   induction fuel with
   | zero =>
@@ -300,13 +323,9 @@ theorem filtered_through_justified {store : Store Root}
       store.justified_checkpoint.root).2 := hr
   exact filter_block_tree_aux_output_descends cfg hwf hwalk _ _ hjust r hr'
 
-/-- **FFG takeover head lemma.** Once the justified checkpoint's block descends
-from `b`, so does the fork-choice head, with no LMD weight margin. The head is a
-filtered root (`Engine.get_head_aux_root_mem_or`) descending from the justified
-root (`filtered_through_justified`), which descends from `b` (`hjb`) — transitivity;
-or the head degenerately stays at the justified root, where `hjb` applies directly.
-THE punchline of `EngineStore`: once the justified block is on `b`'s chain, the filter alone
-forces every head above `b`. -/
+/-- If the justified block descends from `b`, every head-loop step stays
+below `b`. Payload resolution preserves its root, and beacon selection
+preserves its root ancestry. No payload-status equality is required. -/
 theorem head_ge_of_justified_ge {store : Store Root}
     (hwf : ∀ r ∈ store.block_roots,
       (store.blocks r).parent_root ∈ store.block_roots →
@@ -318,27 +337,18 @@ theorem head_ge_of_justified_ge {store : Store Root}
     (hjb : is_ancestor store (get_node_for_root store.justified_checkpoint.root)
       (get_node_for_root b) = true) :
     is_ancestor store (get_head cfg store) (get_node_for_root b) = true := by
-  simp only [get_node_for_root] at hjb ⊢
-  have hmem : (get_head cfg store).root ∈ get_filtered_block_tree cfg store ∨
-      (get_head cfg store).root = store.justified_checkpoint.root := by
-    simp only [get_head]
-    exact get_head_aux_root_mem_or cfg ((get_filtered_block_tree cfg store).length + 1)
-      (ForkChoiceNode.mk store.justified_checkpoint.root)
-  rcases hmem with hin | heq
-  · have hgt := filtered_through_justified cfg hwf hwalk hjust hin
-    simp only [get_node_for_root] at hgt
-    have hqr_mem : (get_head cfg store).root ∈ store.block_roots := by
-      have hin' : (get_head cfg store).root ∈
-          (filter_block_tree_aux cfg store (store.block_roots.length + 1)
-            store.justified_checkpoint.root).2 := hin
-      rcases filter_block_tree_aux_output_mem cfg _ _ _ hin' with h | h
-      · exact h
-      · rw [h]; exact hjust
-    exact is_ancestor_trans hwf (hwalk b _ hqr_mem) (hwalk b _ hjust) hgt hjb
-  · change is_ancestor store (ForkChoiceNode.mk (get_head cfg store).root)
-      (ForkChoiceNode.mk b) = true
-    rw [heq]
-    exact hjb
+  simp only [get_node_for_root, is_ancestor_pending, decide_eq_true_eq] at hjb ⊢
+  have hsub : ∀ r ∈ get_filtered_block_tree cfg store, r ∈ store.block_roots := by
+    intro r hr
+    have hr' : r ∈ (filter_block_tree_aux cfg store (store.block_roots.length + 1)
+        store.justified_checkpoint.root).2 := hr
+    rcases filter_block_tree_aux_output_mem cfg _ _ _ hr' with h | h
+    · exact h
+    · rw [h]
+      exact hjust
+  exact get_head_aux_stays_below cfg hwf hsub
+    (2 * (get_filtered_block_tree cfg store).length + 2)
+    (hwalk b _ hjust) hjb
 
 end FastConfirmation.Spec
 

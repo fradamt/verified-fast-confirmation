@@ -2045,9 +2045,10 @@ theorem child_filtered
     (hnotCovered : is_ancestor endpoint
       (get_node_for_root endpoint.justified_checkpoint.root)
       (get_node_for_root child) ≠ true) :
-    ForkChoiceNode.mk child ∈
+    ForkChoiceNode.mk child .pending ∈
       get_node_children endpoint (get_filtered_block_tree cfg endpoint)
-        (ForkChoiceNode.mk parent) := by
+        (ForkChoiceNode.mk parent
+          (get_parent_payload_status endpoint (endpoint.blocks child))) := by
   cases h with
   | justifiedCovers hresultKnown hcovers =>
       have hcoveredChild : is_ancestor endpoint

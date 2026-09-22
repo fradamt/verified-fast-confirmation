@@ -55,9 +55,9 @@ theorem supporter_of_ancestor {store : Store Root}
     {mroot b c : Root}
     (hwa : WalkKnown store (store.blocks c).slot mroot)
     (hwb : WalkKnown store (store.blocks c).slot b)
-    (hsupp : is_ancestor store (ForkChoiceNode.mk mroot) (ForkChoiceNode.mk b) = true)
-    (hbc : is_ancestor store (ForkChoiceNode.mk b) (ForkChoiceNode.mk c) = true) :
-    is_ancestor store (ForkChoiceNode.mk mroot) (ForkChoiceNode.mk c) = true :=
+    (hsupp : is_ancestor store (ForkChoiceNode.mk mroot .pending) (ForkChoiceNode.mk b .pending) = true)
+    (hbc : is_ancestor store (ForkChoiceNode.mk b .pending) (ForkChoiceNode.mk c .pending) = true) :
+    is_ancestor store (ForkChoiceNode.mk mroot .pending) (ForkChoiceNode.mk c .pending) = true :=
   is_ancestor_trans hwf hwa hwb hsupp hbc
 
 /-! ## Score monotonicity along a known chain -/
@@ -76,13 +76,13 @@ theorem attestation_score_mono_of_ancestor {store : Store Root}
         (store.blocks (store.blocks r).parent_root).slot < (store.blocks r).slot)
     {b c : Root} (state : BeaconState Root)
     (hwb : WalkKnown store (store.blocks c).slot b)
-    (hbc : is_ancestor store (ForkChoiceNode.mk b) (ForkChoiceNode.mk c) = true)
+    (hbc : is_ancestor store (ForkChoiceNode.mk b .pending) (ForkChoiceNode.mk c .pending) = true)
     (hwalk : ∀ i lm, store.latest_messages i = some lm →
-      is_ancestor store (ForkChoiceNode.mk lm.root) (ForkChoiceNode.mk b) = true →
+      is_ancestor store (ForkChoiceNode.mk lm.root .pending) (ForkChoiceNode.mk b .pending) = true →
       WalkKnown store (store.blocks c).slot lm.root) :
-    get_attestation_score cfg store (ForkChoiceNode.mk b) state ≤
-      get_attestation_score cfg store (ForkChoiceNode.mk c) state := by
-  simp only [get_attestation_score, get_supported_node]
+    get_attestation_score cfg store (ForkChoiceNode.mk b .pending) state ≤
+      get_attestation_score cfg store (ForkChoiceNode.mk c .pending) state := by
+  simp only [get_attestation_score, is_ancestor_supported_pending]
   refine sum_le_sum_of_sublist ?_
   refine List.Sublist.map _ ?_
   refine List.monotone_filter_right _ ?_
@@ -113,10 +113,10 @@ theorem no_index_supports_both_siblings {store : Store Root}
     (hne : c ≠ c')
     (hwc : WalkKnown store (store.blocks c).slot lm.root)
     (hwc' : WalkKnown store (store.blocks c').slot lm.root)
-    (hsc : is_ancestor store (get_supported_node store lm) (ForkChoiceNode.mk c) = true)
-    (hsc' : is_ancestor store (get_supported_node store lm) (ForkChoiceNode.mk c') = true) :
+    (hsc : is_ancestor store (get_supported_node store lm) (ForkChoiceNode.mk c .pending) = true)
+    (hsc' : is_ancestor store (get_supported_node store lm) (ForkChoiceNode.mk c' .pending) = true) :
     False := by
-  simp only [get_supported_node] at hsc hsc'
+  simp only [is_ancestor_supported_pending] at hsc hsc'
   exact siblings_incompatible hwf hc hc' hp hpc hpc' hne hwc hwc' hsc hsc'
 
 end FastConfirmation.Spec

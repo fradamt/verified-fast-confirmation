@@ -304,7 +304,7 @@ theorem exists_store_leaf_extension {store : Store Root}
   have htipSlotLe : (store.blocks c).slot ≤
       (store.blocks tip).slot := by
     have hancestorSlotLe := get_ancestor_slot_le hwf htipData.2.1
-    simp only [is_ancestor, get_node_for_root, decide_eq_true_eq] at htipData
+    simp only [get_node_for_root, is_ancestor_pending, decide_eq_true_eq] at htipData
     rw [htipData.2.2] at hancestorSlotLe
     exact hancestorSlotLe
   have htipParentKnown : (store.blocks child).parent_root ∈

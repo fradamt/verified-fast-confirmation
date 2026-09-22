@@ -107,32 +107,22 @@ theorem endpoint_justified_ancestor_of_causal_honest_target_minimal
       (E.store cfg ext i k) s index
     rw [htargetData] at hroot
     exact hroot
-  have heta : get_ancestor (E.store cfg ext i k)
-      (get_head cfg (E.store cfg ext i k))
-      (compute_start_slot_at_epoch cfg J.epoch) = get_node_for_root J.root := by
-    have hckpt := htargetRoot.symm
-    simp only [get_checkpoint_block] at hckpt
-    generalize hnode : get_ancestor (E.store cfg ext i k)
-      (get_head cfg (E.store cfg ext i k))
-      (compute_start_slot_at_epoch cfg J.epoch) = node at hckpt ⊢
-    obtain ⟨r⟩ := node
-    simp only [get_node_for_root] at hckpt ⊢
-    rw [hckpt]
+  have hrootWalk : (get_ancestor (E.store cfg ext i k)
+      (get_node_for_root (get_head cfg (E.store cfg ext i k)).root)
+      (compute_start_slot_at_epoch cfg J.epoch)).root = J.root := by
+    simpa only [get_checkpoint_block] using htargetRoot.symm
   have htargetSpec := get_ancestor_spec hwfK htargetWalk
-  rw [heta] at htargetSpec
+  rw [hrootWalk] at htargetSpec
   have hJK : J.root ∈ (E.store cfg ext i k).block_roots := htargetSpec.1
   have hJslot : ((E.store cfg ext i k).blocks J.root).slot ≤
       compute_start_slot_at_epoch cfg J.epoch := htargetSpec.2
   have hheadJ_K : is_ancestor (E.store cfg ext i k)
       (get_head cfg (E.store cfg ext i k)) (get_node_for_root J.root) = true := by
-    have hcomp := get_ancestor_comp hwfK hJslot
+    rw [is_ancestor_node_root]
+    simp only [get_node_for_root, is_ancestor_pending, decide_eq_true_eq]
+    have hcomp := get_ancestor_comp_root hwfK hJslot
       (hwalkK J.root hJK _ hheadK)
-    rw [heta] at hcomp
-    have hstop : get_ancestor (E.store cfg ext i k) (get_node_for_root J.root)
-        ((E.store cfg ext i k).blocks J.root).slot = get_node_for_root J.root := by
-      exact get_ancestor_stop (le_refl _)
-    rw [hstop] at hcomp
-    simp only [is_ancestor, decide_eq_true_eq]
+    rw [hrootWalk, get_ancestor_stop (le_refl _)] at hcomp
     exact hcomp.symm
   have hkLower : E.slot_start cfg (E.slot_at cfg q) ≤ k :=
     E.query_slot_start_le_of_slot_ge_minimal cfg ext hA (by
@@ -162,12 +152,12 @@ theorem endpoint_justified_ancestor_of_causal_honest_target_minimal
       (get_node_for_root (get_head cfg (E.store cfg ext i k)).root)
       (get_node_for_root glc) = true :=
     is_ancestor_transport cfg ext hA.wellFormed hsub hheadK hglcK
-      (hwalkK glc hglcK _ hheadK) hheadGlc_K
+      (hwalkK glc hglcK _ hheadK) ((is_ancestor_node_root _ _ _).symm.trans hheadGlc_K)
   have hheadJ_M : is_ancestor (E.store cfg ext w m)
       (get_node_for_root (get_head cfg (E.store cfg ext i k)).root)
       (get_node_for_root J.root) = true :=
     is_ancestor_transport cfg ext hA.wellFormed hsub hheadK hJK
-      (hwalkK J.root hJK _ hheadK) hheadJ_K
+      (hwalkK J.root hJK _ hheadK) ((is_ancestor_node_root _ _ _).symm.trans hheadJ_K)
   obtain ⟨hwfM, hwalkM, _hjustM⟩ :=
     E.store_domainK_of_selectedMarginDomain cfg ext hA.wellFormed
       hA.externals_coherence hA.genesis hA.domain w hw m hHm

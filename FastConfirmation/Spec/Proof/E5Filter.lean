@@ -360,12 +360,12 @@ private theorem output_descends_step_K {store : Store Root}
     {base : Root} (hbase : base ∈ store.block_roots) {fuel : ℕ}
     (ih : ∀ b' : Root, b' ∈ store.block_roots → ∀ r,
       r ∈ (filter_block_tree_aux cfg store fuel b').2 →
-        is_ancestor store (ForkChoiceNode.mk r) (ForkChoiceNode.mk b') = true)
+        is_ancestor store (ForkChoiceNode.mk r .pending) (ForkChoiceNode.mk b' .pending) = true)
     {child r : Root}
     (hchild : child ∈ store.block_roots.filter
       (fun root => (store.blocks root).parent_root = base))
     (hrl : r ∈ (filter_block_tree_aux cfg store fuel child).2) :
-    is_ancestor store (ForkChoiceNode.mk r) (ForkChoiceNode.mk base) = true := by
+    is_ancestor store (ForkChoiceNode.mk r .pending) (ForkChoiceNode.mk base .pending) = true := by
   have hchild_mem : child ∈ store.block_roots := (List.mem_filter.mp hchild).1
   have hp : (store.blocks child).parent_root = base := by
     have h := (List.mem_filter.mp hchild).2
@@ -391,7 +391,7 @@ theorem filter_block_tree_aux_output_descends_K {store : Store Root}
       WalkKnown store (store.blocks t).slot r) :
     ∀ (fuel : ℕ) (base : Root), base ∈ store.block_roots →
       ∀ r, r ∈ (filter_block_tree_aux cfg store fuel base).2 →
-        is_ancestor store (ForkChoiceNode.mk r) (ForkChoiceNode.mk base) = true := by
+        is_ancestor store (ForkChoiceNode.mk r .pending) (ForkChoiceNode.mk base .pending) = true := by
   intro fuel
   induction fuel with
   | zero =>
@@ -460,12 +460,13 @@ theorem head_ge_of_justified_ge_K {store : Store Root}
     (hjb : is_ancestor store (get_node_for_root store.justified_checkpoint.root)
       (get_node_for_root b) = true) :
     is_ancestor store (get_head cfg store) (get_node_for_root b) = true := by
+  rw [is_ancestor_node_root]
   simp only [get_node_for_root] at hjb ⊢
   have hmem : (get_head cfg store).root ∈ get_filtered_block_tree cfg store ∨
       (get_head cfg store).root = store.justified_checkpoint.root := by
     simp only [get_head]
-    exact get_head_aux_root_mem_or cfg ((get_filtered_block_tree cfg store).length + 1)
-      (ForkChoiceNode.mk store.justified_checkpoint.root)
+    exact get_head_aux_root_mem_or cfg (2 * (get_filtered_block_tree cfg store).length + 2)
+      (ForkChoiceNode.mk store.justified_checkpoint.root .pending)
   rcases hmem with hin | heq
   · have hgt := filtered_through_justified_K cfg hwf hwalkK hjust hin
     simp only [get_node_for_root] at hgt
@@ -477,8 +478,8 @@ theorem head_ge_of_justified_ge_K {store : Store Root}
       · exact h
       · rw [h]; exact hjust
     exact is_ancestor_trans hwf (hwalkK b hb _ hqr_mem) (hwalkK b hb _ hjust) hgt hjb
-  · change is_ancestor store (ForkChoiceNode.mk (get_head cfg store).root)
-      (ForkChoiceNode.mk b) = true
+  · change is_ancestor store (ForkChoiceNode.mk (get_head cfg store).root .pending)
+      (ForkChoiceNode.mk b .pending) = true
     rw [heq]
     exact hjb
 

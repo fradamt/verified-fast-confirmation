@@ -26,8 +26,7 @@ omit [Inhabited Root] in
 private theorem covered_roots_isSome_of_ancestor {store : Store Root}
     (hwf : ParentSlotLt store)
     {t r : Root} (hw : WalkKnown store (store.blocks t).slot r) :
-    get_ancestor store (ForkChoiceNode.mk r) (store.blocks t).slot =
-        ForkChoiceNode.mk t →
+    (get_ancestor store (ForkChoiceNode.mk r .pending) (store.blocks t).slot).root = t →
     ∀ fuel : ℕ, (store.blocks r).slot < fuel →
       (get_ancestor_roots_aux store t fuel r).isSome = true ∨ r = t := by
   induction hw with
@@ -61,10 +60,10 @@ private theorem covered_hcase_of_ancestor {store : Store Root}
     (hwf : ParentSlotLt store)
     {b terminal : Root}
     (hwalk : WalkKnown store (store.blocks terminal).slot b)
-    (hanc : is_ancestor store (ForkChoiceNode.mk b)
-      (ForkChoiceNode.mk terminal) = true) :
+    (hanc : is_ancestor store (ForkChoiceNode.mk b .pending)
+      (ForkChoiceNode.mk terminal .pending) = true) :
     get_ancestor_roots store b terminal ≠ [] ∨ b = terminal := by
-  simp only [is_ancestor, decide_eq_true_eq] at hanc
+  simp only [is_ancestor_pending, decide_eq_true_eq] at hanc
   rcases covered_roots_isSome_of_ancestor hwf hwalk hanc
       ((store.blocks b).slot + 1) (Nat.lt_succ_self _) with hsome | heq
   · left
@@ -122,20 +121,20 @@ theorem head_ge_of_covered_or_descend_chain {store : Store Root}
             · exact False.elim (hcovered hcov)
             · exact hstep
           have hcFiltered : c ∈ get_filtered_block_tree cfg store :=
-            (mem_get_node_children.mp hstep.1).1
+            hstep.child_mem
           have hcJ : is_ancestor store (get_node_for_root c)
               (get_node_for_root store.justified_checkpoint.root) = true :=
             filtered_through_justified_K cfg hwf hwalk hjust hcFiltered
           have hcA : is_ancestor store (get_node_for_root c)
               (get_node_for_root a) = true :=
             is_ancestor_of_parent hwf hc ha hparentAC
-          have hcJ' : get_ancestor store (ForkChoiceNode.mk c)
-              (store.blocks store.justified_checkpoint.root).slot =
-                ForkChoiceNode.mk store.justified_checkpoint.root := by
-            simpa only [is_ancestor, get_node_for_root, decide_eq_true_eq] using hcJ
-          have hcA' : get_ancestor store (ForkChoiceNode.mk c)
-              (store.blocks a).slot = ForkChoiceNode.mk a := by
-            simpa only [is_ancestor, get_node_for_root, decide_eq_true_eq] using hcA
+          have hcJ' : (get_ancestor store (ForkChoiceNode.mk c .pending)
+              (store.blocks store.justified_checkpoint.root).slot).root =
+                store.justified_checkpoint.root := by
+            simpa only [get_node_for_root, is_ancestor_pending, decide_eq_true_eq] using hcJ
+          have hcA' : (get_ancestor store (ForkChoiceNode.mk c .pending)
+              (store.blocks a).slot).root = a := by
+            simpa only [get_node_for_root, is_ancestor_pending, decide_eq_true_eq] using hcA
           have haJ : is_ancestor store (get_node_for_root a)
               (get_node_for_root store.justified_checkpoint.root) = true := by
             rcases reroot_comparable hwf
@@ -144,10 +143,8 @@ theorem head_ge_of_covered_or_descend_chain {store : Store Root}
                 hcA' hcJ' with hJA | hAJ
             · rcases reroot_child_squeeze hwf hwalk hjust ha hc hparentAC
                   hJA hcJ' with hEqA | hEqC
-              · simpa only [is_ancestor, get_node_for_root,
-                    decide_eq_true_eq, hEqA] using
-                  (get_ancestor_stop (le_refl
-                    (store.blocks store.justified_checkpoint.root).slot))
+              · simpa only [hEqA] using
+                  (is_ancestor_refl store (get_node_for_root a))
               · have hcov : is_ancestor store
                     (get_node_for_root store.justified_checkpoint.root)
                     (get_node_for_root c) = true := by
@@ -155,11 +152,11 @@ theorem head_ge_of_covered_or_descend_chain {store : Store Root}
                     (is_ancestor_refl store
                       (get_node_for_root store.justified_checkpoint.root))
                 exact False.elim (hcovered hcov)
-            · simpa only [is_ancestor, get_node_for_root,
+            · simpa only [get_node_for_root, is_ancestor_pending,
                   decide_eq_true_eq] using hAJ
           have hdesc : DescendsTo cfg store
               (get_filtered_block_tree cfg store) c 1 a :=
-            DescendsTo.step hstep.1 hstep.2 (DescendsTo.here hc)
+            hstep.descendsTo (DescendsTo.here hc)
           exact head_ge_of_intermediate_chain cfg hwf hsub hwalk hjust ha haJ
             hheadA hdesc
       have hmemTail : ∀ r ∈ c :: rest, r ∈ store.block_roots := by
@@ -253,8 +250,8 @@ theorem head_ge_of_safe_covered_terminal
           (get_node_for_root c) = true ∨
         DescendStep cfg store (get_filtered_block_tree cfg store) a c) :
     is_ancestor store (get_head cfg store) (get_node_for_root b) = true := by
-  have hbR₀' : is_ancestor store (ForkChoiceNode.mk b)
-      (ForkChoiceNode.mk r₀) = true := by
+  have hbR₀' : is_ancestor store (ForkChoiceNode.mk b .pending)
+      (ForkChoiceNode.mk r₀ .pending) = true := by
     simpa only [get_node_for_root] using hbR₀
   have hcase := covered_hcase_of_ancestor hwf (hwalk r₀ hr₀ b hb) hbR₀'
   obtain ⟨hmem, hparent, hlast⟩ := parentChain_at hwf hwalk hr₀ hb hcase

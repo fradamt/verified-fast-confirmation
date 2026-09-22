@@ -417,7 +417,7 @@ theorem past_descendant_of_honest_supporter_known_minimal
   refine ⟨i, nu, lm.root, hi, hHnu, ?_, hd, ?_⟩
   · rw [hnu]
     exact hslt
-  · simpa only [get_supported_node, get_node_for_root] using hsupp
+  · simpa only [get_node_for_root, is_ancestor_supported_pending] using hsupp
 
 theorem mem_of_known_honest_past_descendant_minimal
     (hA : SelectedMarginAssumptions cfg ext E)
@@ -469,11 +469,11 @@ theorem mem_of_known_honest_past_descendant_minimal
     E.store_anchor_min_slot cfg ext hA.wellFormed hA.externals_coherence
       hgeq hstateSlot hroot v n b hb
   have hwalk : WalkKnown (E.store cfg ext u nu) rb d := hwalk0.mono hbound
-  have hvlands : get_ancestor (E.store cfg ext v n) (ForkChoiceNode.mk d) rb =
-      ForkChoiceNode.mk b := by
-    simpa only [is_ancestor, get_node_for_root, decide_eq_true_eq] using hanc
-  have hulands : get_ancestor (E.store cfg ext u nu) (ForkChoiceNode.mk d) rb =
-      ForkChoiceNode.mk b := by
+  have hvlands : (get_ancestor (E.store cfg ext v n) (ForkChoiceNode.mk d .pending) rb).root =
+      b := by
+    simpa only [get_node_for_root, is_ancestor_pending, decide_eq_true_eq] using hanc
+  have hulands : (get_ancestor (E.store cfg ext u nu) (ForkChoiceNode.mk d .pending) rb).root =
+      b := by
     rw [get_ancestor_congr hagree hd hwalk]
     exact hvlands
   have hbu : b ∈ (E.store cfg ext u nu).block_roots := by
@@ -554,11 +554,11 @@ theorem ancestry_of_known_honest_past_descendant_minimal
       E.store_anchor_min_slot cfg ext hA.wellFormed hA.externals_coherence
         hgeq hstateSlot hroot v n x hx
     have hwalkx : WalkKnown (E.store cfg ext u nu) sx d := hwalk0.mono hbound
-    have hvlands : get_ancestor (E.store cfg ext v n) (ForkChoiceNode.mk d) sx =
-        ForkChoiceNode.mk x := by
-      simpa only [is_ancestor, get_node_for_root, decide_eq_true_eq, sx] using hdx
-    have hulands : get_ancestor (E.store cfg ext u nu) (ForkChoiceNode.mk d) sx =
-        ForkChoiceNode.mk x := by
+    have hvlands : (get_ancestor (E.store cfg ext v n) (ForkChoiceNode.mk d .pending) sx).root =
+        x := by
+      simpa only [get_node_for_root, is_ancestor_pending, decide_eq_true_eq, sx] using hdx
+    have hulands : (get_ancestor (E.store cfg ext u nu) (ForkChoiceNode.mk d .pending) sx).root =
+        x := by
       rw [get_ancestor_congr hagreeUV hd hwalkx]
       exact hvlands
     have hspec := (get_ancestor_spec hwfu hwalkx).1
@@ -1056,8 +1056,11 @@ theorem sameEpoch_descendStep_of_selectedInputs_minimal
       hA.genesis_store hA.domain w hw m hHm
   have hbside := recorded_bside_ge cfg ext hval hin.selected_recording
   have hsib : ∀ c' : Root,
-      ForkChoiceNode.mk c' ∈ get_node_children (E.store cfg ext w m)
-        (get_filtered_block_tree cfg (E.store cfg ext w m)) (ForkChoiceNode.mk a) →
+      ForkChoiceNode.mk c' .pending ∈ get_node_children (E.store cfg ext w m)
+        (get_filtered_block_tree cfg (E.store cfg ext w m))
+          (ForkChoiceNode.mk a
+            (get_parent_payload_status (E.store cfg ext w m)
+              ((E.store cfg ext w m).blocks c))) →
       c' ≠ c →
       get_attestation_score cfg (E.store cfg ext w m) (get_node_for_root c')
           ((E.store cfg ext w m).checkpoint_states

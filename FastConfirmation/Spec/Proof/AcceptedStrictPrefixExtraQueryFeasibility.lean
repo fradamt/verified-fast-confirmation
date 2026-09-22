@@ -92,11 +92,10 @@ theorem queryHonestSupporters_disjoint_parentStuck
         (get_node_for_root b) ≠ true := by
     intro htrue
     have hEq :
-        get_ancestor queryStore
+        (get_ancestor queryStore
             (get_node_for_root (queryStore.blocks b).parent_root)
-            (queryStore.blocks b).slot =
-          get_node_for_root b := by
-      exact of_decide_eq_true htrue
+            (queryStore.blocks b).slot).root = b := by
+      simpa only [get_node_for_root, is_ancestor_pending, decide_eq_true_eq] using htrue
     have hstop :
         get_ancestor queryStore
             (get_node_for_root (queryStore.blocks b).parent_root)
@@ -105,11 +104,11 @@ theorem queryHonestSupporters_disjoint_parentStuck
       get_ancestor_stop (le_of_lt
         (hparentSlots b hknown hparentKnown))
     rw [hstop] at hEq
-    injection hEq with hroot
+    have hroot : (queryStore.blocks b).parent_root = b := hEq
     have hlt := hparentSlots b hknown hparentKnown
     rw [hroot] at hlt
     exact (lt_irrefl _ hlt).elim
-  simp only [get_supported_node, hlmParent] at hsupports
+  simp only [get_node_for_root, is_ancestor_supported_pending, hlmParent] at hsupports
   exact hparentNotSupport hsupports
 
 omit [Inhabited Root] in

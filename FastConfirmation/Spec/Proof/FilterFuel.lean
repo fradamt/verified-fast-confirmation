@@ -10,13 +10,13 @@ Layer 0, the head-stack fuel toolkit: fuel elimination for the two remaining
 fuel-bounded fork-choice workers, `filter_block_tree_aux` and `get_head_aux`,
 mirroring `Proof/Ancestry.lean`'s pattern for `get_ancestor_aux`.
 
-Both workers descend the block tree toward the leaves (each recursive call
-moves to a *child* of the current node). The recursion domain is captured by
-`TreeBounded store L n r`: the subtree rooted at `r`, taking children from the
+The filter descends the beacon tree. The head loop also resolves payload status
+at each root. `TreeBounded store L n r` records beacon height, and
+`NodeTreeBounded` records height in the full Gloas graph. The beacon bound is: the subtree rooted at `r`, taking children from the
 candidate list `L`, has height at most `n` — an `Acc`-shaped inductive whose
 `n` index is the decreasing measure the fuel-independence induction runs on.
 Instantiating `L := store.block_roots` gives the `filter_block_tree` domain;
-`L := blocks` (the filtered tree) gives the `get_head` descent domain.
+`L := blocks` gives twice that height as a bound for the Gloas head descent.
 
 Contents:
 
@@ -40,8 +40,7 @@ variable (cfg : Config)
 
 /-! ## The tree-descent domain -/
 
-/-- Height bound for the child-descent recursion shared by `filter_block_tree`
-and `get_head`: `TreeBounded store L n r` holds when the subtree rooted at `r`,
+/-- Beacon-tree height bound for `filter_block_tree`: `TreeBounded store L n r` holds when the subtree rooted at `r`,
 drawing children from the candidate list `L` (those `c ∈ L` with
 `(store.blocks c).parent_root = r`), terminates within `n` levels. `Acc`-shaped:
 a leaf (no children in `L`) is bounded at every positive height; the `n` index
@@ -162,93 +161,231 @@ theorem filter_block_tree_aux_fuel_eq {store : Store Root} {n : ℕ} {r : Root}
 /-! ## `get_node_children` membership -/
 
 omit [Inhabited Root] in
-/-- A node is a `get_node_children` child exactly when its root is drawn from
-the candidate list and points at the parent — the descent step's membership
-characterization. -/
+/-- A pending node has same-root EMPTY and, when verified, FULL children. -/
+theorem mem_get_node_children_pending {store : Store Root} {blocks : List Root}
+    {node child : ForkChoiceNode Root} (hpending : node.payload_status = .pending) :
+    child ∈ get_node_children store blocks node ↔
+      child.root = node.root ∧
+        (child.payload_status = .empty ∨
+          (child.payload_status = .full ∧ is_payload_verified store node.root = true)) := by
+  cases child with
+  | mk root status =>
+    by_cases hv : is_payload_verified store node.root = true
+    · simp [get_node_children, hpending, hv, and_or_left]
+    · simp [get_node_children, hpending, hv]
+
+omit [Inhabited Root] in
+/-- A resolved node has pending beacon children that select its payload status. -/
+theorem mem_get_node_children_resolved {store : Store Root} {blocks : List Root}
+    {node child : ForkChoiceNode Root} (hresolved : node.payload_status ≠ .pending) :
+    child ∈ get_node_children store blocks node ↔
+      child.payload_status = .pending ∧ child.root ∈ blocks ∧
+        (store.blocks child.root).parent_root = node.root ∧
+        node.payload_status = get_parent_payload_status store (store.blocks child.root) := by
+  rw [get_node_children, if_neg hresolved]
+  constructor
+  · rintro hchild
+    obtain ⟨r, hr, rfl⟩ := List.mem_map.mp hchild
+    simp only [List.mem_filter, decide_eq_true_eq] at hr
+    exact ⟨rfl, hr.1, hr.2.1, hr.2.2⟩
+  · rintro ⟨hpending, hmem, hparent, hstatus⟩
+    apply List.mem_map.mpr
+    refine ⟨child.root, List.mem_filter.mpr ⟨hmem, ?_⟩, ?_⟩
+    · simpa only [decide_eq_true_eq] using And.intro hparent hstatus
+    · cases child with
+      | mk root status =>
+        change status = .pending at hpending
+        subst status
+        rfl
+
+omit [Inhabited Root] in
+/-- Gloas child membership has two cases: payload resolution at one root,
+or a pending beacon child of a resolved node. -/
 theorem mem_get_node_children {store : Store Root} {blocks : List Root}
     {node child : ForkChoiceNode Root} :
     child ∈ get_node_children store blocks node ↔
-      child.root ∈ blocks ∧ (store.blocks child.root).parent_root = node.root := by
-  simp only [get_node_children, List.mem_map, List.mem_filter, decide_eq_true_eq]
-  constructor
-  · rintro ⟨r, ⟨hr, hp⟩, rfl⟩; exact ⟨hr, hp⟩
-  · rintro ⟨hr, hp⟩; exact ⟨child.root, ⟨hr, hp⟩, rfl⟩
+      (node.payload_status = .pending ∧ child.root = node.root ∧
+        (child.payload_status = .empty ∨
+          (child.payload_status = .full ∧ is_payload_verified store node.root = true))) ∨
+      (node.payload_status ≠ .pending ∧ child.payload_status = .pending ∧
+        child.root ∈ blocks ∧ (store.blocks child.root).parent_root = node.root ∧
+        node.payload_status = get_parent_payload_status store (store.blocks child.root)) := by
+  by_cases hpending : node.payload_status = .pending
+  · constructor
+    · intro hc
+      exact Or.inl ⟨hpending, (mem_get_node_children_pending hpending).mp hc⟩
+    · rintro (⟨_, hc⟩ | ⟨hresolved, _⟩)
+      · exact (mem_get_node_children_pending hpending).mpr hc
+      · exact False.elim (hresolved hpending)
+  · constructor
+    · intro hc
+      exact Or.inr ⟨hpending, (mem_get_node_children_resolved hpending).mp hc⟩
+    · rintro (⟨hresolved, _⟩ | ⟨_, hc⟩)
+      · exact False.elim (hpending hresolved)
+      · exact (mem_get_node_children_resolved hpending).mpr hc
+
+omit [Inhabited Root] in
+/-- A child either uses a candidate beacon root or preserves its parent's root. -/
+theorem get_node_children_root_mem_or {store : Store Root} {blocks : List Root}
+    {node child : ForkChoiceNode Root}
+    (hchild : child ∈ get_node_children store blocks node) :
+    child.root ∈ blocks ∨ child.root = node.root := by
+  rcases mem_get_node_children.mp hchild with hpending | hresolved
+  · exact Or.inr hpending.2.1
+  · exact Or.inl hresolved.2.2.1
+
+/-! ## The payload-aware node-descent domain -/
+
+/-- Height of the actual Gloas node graph, including payload resolution steps. -/
+inductive NodeTreeBounded (store : Store Root) (blocks : List Root) :
+    ℕ → ForkChoiceNode Root → Prop
+  | mk {n : ℕ} {node : ForkChoiceNode Root}
+      (h : ∀ child ∈ get_node_children store blocks node,
+        NodeTreeBounded store blocks n child) :
+      NodeTreeBounded store blocks (n + 1) node
+
+omit [Inhabited Root] in
+/-- A node height bound remains valid with one more level. -/
+theorem NodeTreeBounded.mono {store : Store Root} {blocks : List Root}
+    {n : ℕ} {node : ForkChoiceNode Root} (h : NodeTreeBounded store blocks n node) :
+    NodeTreeBounded store blocks (n + 1) node := by
+  induction h with
+  | @mk n node hchild ih => exact NodeTreeBounded.mk (fun child hc => ih child hc)
+
+omit [Inhabited Root] in
+/-- Each beacon-tree level needs at most two Gloas node levels: one pending
+node and one resolved node. -/
+theorem TreeBounded.nodeBounded {store : Store Root} {blocks : List Root}
+    {n : ℕ} {r : Root} (h : TreeBounded store blocks n r) :
+    ∀ status : PayloadStatus,
+      NodeTreeBounded store blocks (2 * n) (ForkChoiceNode.mk r status) := by
+  induction h with
+  | @mk n r hchild ih =>
+    have resolved : ∀ status : PayloadStatus, status ≠ .pending →
+        NodeTreeBounded store blocks (2 * n + 1) (ForkChoiceNode.mk r status) := by
+      intro status hstatus
+      apply NodeTreeBounded.mk
+      intro child hc
+      obtain ⟨hpending, hmem, hparent, _⟩ :=
+        (mem_get_node_children_resolved hstatus).mp hc
+      have hfilt : child.root ∈ blocks.filter (fun x => (store.blocks x).parent_root = r) :=
+        List.mem_filter.mpr ⟨hmem, by simpa using hparent⟩
+      have hb := ih child.root hfilt child.payload_status
+      exact hb
+    intro status
+    by_cases hpending : status = .pending
+    · subst status
+      have hb : NodeTreeBounded store blocks (2 * n + 2)
+          (ForkChoiceNode.mk r .pending) := by
+        apply NodeTreeBounded.mk
+        intro child hc
+        obtain ⟨hroot, hstatus⟩ := (mem_get_node_children_pending rfl).mp hc
+        have hresolved : child.payload_status ≠ .pending := by
+          rcases hstatus with hempty | ⟨hfull, _⟩
+          · simp [hempty]
+          · simp [hfull]
+        have hb := resolved child.payload_status hresolved
+        cases child with
+        | mk childRoot childStatus =>
+          change childRoot = r at hroot
+          subst childRoot
+          exact hb
+      convert hb using 1 <;> omega
+    · have hb := (resolved status hpending).mono
+      convert hb using 1 <;> omega
+
+omit [Inhabited Root] in
+/-- Starting from a resolved node saves the first payload-resolution level. -/
+theorem TreeBounded.nodeBounded_resolved {store : Store Root} {blocks : List Root}
+    {n : ℕ} {r : Root} (h : TreeBounded store blocks n r)
+    {status : PayloadStatus} (hstatus : status ≠ .pending) :
+    NodeTreeBounded store blocks (2 * n - 1) (ForkChoiceNode.mk r status) := by
+  cases h with
+  | @mk n r hchild =>
+    have hb : NodeTreeBounded store blocks (2 * n + 1) (ForkChoiceNode.mk r status) := by
+      apply NodeTreeBounded.mk
+      intro child hc
+      obtain ⟨_, hmem, hparent, _⟩ := (mem_get_node_children_resolved hstatus).mp hc
+      have hfilt : child.root ∈ blocks.filter (fun x => (store.blocks x).parent_root = r) :=
+        List.mem_filter.mpr ⟨hmem, by simpa using hparent⟩
+      exact (hchild child.root hfilt).nodeBounded child.payload_status
+    convert hb using 1 <;> omega
 
 /-! ## `get_head_aux` fuel elimination -/
 
-/-- Python-shaped one-step unfold of `get_head_aux` at positive fuel: pick the
-`argmax` child by lexicographic `(weight, root)` and descend, or return `head`
-when there are no children. -/
+/-- Gloas head-loop unfolding uses the full weight/root/status key. -/
 theorem get_head_aux_succ (store : Store Root) (blocks : List Root) (fuel : ℕ)
     (head : ForkChoiceNode Root) :
     get_head_aux cfg store blocks (fuel + 1) head =
       match (get_node_children store blocks head).argmax
-          (fun child => toLex (get_weight cfg store child, child.root)) with
+          (fun child => toLex (get_weight cfg store child,
+            toLex (child.root, get_payload_status_tiebreaker cfg store child))) with
       | none => head
       | some best => get_head_aux cfg store blocks fuel best := rfl
 
-/-- Leaf unfold: with no children the `get_head` descent stops at `head`
-(`argmax [] = none`). -/
+/-- With no children, the Gloas descent returns its current node. -/
 theorem get_head_aux_leaf (store : Store Root) (blocks : List Root) (fuel : ℕ)
     (head : ForkChoiceNode Root)
     (hnil : get_node_children store blocks head = []) :
     get_head_aux cfg store blocks (fuel + 1) head = head := by
   rw [get_head_aux_succ, hnil, List.argmax_nil]
 
-/-- Internal unfold: when the `argmax` child exists the descent moves to it. -/
+/-- The head loop follows the maximum child under the full Gloas key. -/
 theorem get_head_aux_step (store : Store Root) (blocks : List Root) (fuel : ℕ)
     (head best : ForkChoiceNode Root)
     (hbest : (get_node_children store blocks head).argmax
-        (fun child => toLex (get_weight cfg store child, child.root)) = some best) :
+        (fun child => toLex (get_weight cfg store child,
+          toLex (child.root, get_payload_status_tiebreaker cfg store child))) = some best) :
     get_head_aux cfg store blocks (fuel + 1) head =
       get_head_aux cfg store blocks fuel best := by
   rw [get_head_aux_succ, hbest]
 
-/-- Fuel independence for `get_head_aux` on the `TreeBounded store blocks`
-domain: any two fuels at least the descent height compute the same head. The
-`argmax` child is a `get_node_children` member, hence lies in the `TreeBounded`
-child set, so the IH aligns the two recursive descents. -/
-theorem get_head_aux_fuel_eq {store : Store Root} {blocks : List Root} {n : ℕ} {r : Root}
-    (hk : TreeBounded store blocks n r) :
+/-- Fuel independence on the actual Gloas node graph. -/
+theorem get_head_aux_fuel_eq_node {store : Store Root} {blocks : List Root}
+    {n : ℕ} {node : ForkChoiceNode Root} (hk : NodeTreeBounded store blocks n node) :
     ∀ fuel fuel' : ℕ, n ≤ fuel → n ≤ fuel' →
-      get_head_aux cfg store blocks fuel (ForkChoiceNode.mk r) =
-        get_head_aux cfg store blocks fuel' (ForkChoiceNode.mk r) := by
+      get_head_aux cfg store blocks fuel node = get_head_aux cfg store blocks fuel' node := by
   induction hk with
-  | @mk n r _ ih =>
+  | @mk n node hchild ih =>
     intro fuel fuel' hf hf'
     cases fuel with
     | zero => omega
-    | succ f => cases fuel' with
+    | succ f =>
+      cases fuel' with
       | zero => omega
       | succ f' =>
         rw [get_head_aux_succ, get_head_aux_succ]
-        rcases hbest : (get_node_children store blocks (ForkChoiceNode.mk r)).argmax
-            (fun child => toLex (get_weight cfg store child, child.root)) with _ | best
-        · rfl
-        · obtain ⟨br⟩ := best
-          have hmem : ForkChoiceNode.mk br ∈
-              get_node_children store blocks (ForkChoiceNode.mk r) := List.argmax_mem hbest
-          rw [mem_get_node_children] at hmem
-          have hfilt : br ∈ blocks.filter (fun x => (store.blocks x).parent_root = r) :=
-            List.mem_filter.mpr ⟨hmem.1, by simpa using hmem.2⟩
-          exact ih br hfilt f f' (by omega) (by omega)
+        cases hbest : (get_node_children store blocks node).argmax
+            (fun child => toLex (get_weight cfg store child,
+              toLex (child.root, get_payload_status_tiebreaker cfg store child))) with
+        | none => rfl
+        | some best =>
+          exact ih best (List.argmax_mem hbest) f f' (by omega) (by omega)
 
-/-- Strict weight domination selects the `argmax`: if `best` is a child whose
-weight strictly exceeds every other child's, then it is the lexicographic
-`argmax` regardless of the root tie-break (strictness in the first Lex
-coordinate makes the second coordinate irrelevant). This is the descent-step
-determinism `get_head` relies on. -/
+/-- A beacon height of `n` requires `2 * n` head-loop fuel in Gloas. -/
+theorem get_head_aux_fuel_eq {store : Store Root} {blocks : List Root} {n : ℕ} {r : Root}
+    (hk : TreeBounded store blocks n r) :
+    ∀ fuel fuel' : ℕ, 2 * n ≤ fuel → 2 * n ≤ fuel' →
+      get_head_aux cfg store blocks fuel (ForkChoiceNode.mk r .pending) =
+        get_head_aux cfg store blocks fuel' (ForkChoiceNode.mk r .pending) :=
+  get_head_aux_fuel_eq_node cfg (hk.nodeBounded .pending)
+
+/-- Strict weight domination selects a child under the Gloas key. Root and
+payload priority cannot override a strict first-coordinate inequality. -/
 theorem get_head_argmax_dominant {store : Store Root} {blocks : List Root}
     {head best : ForkChoiceNode Root}
     (hbest : best ∈ get_node_children store blocks head)
     (hdom : ∀ c ∈ get_node_children store blocks head, c ≠ best →
         get_weight cfg store c < get_weight cfg store best) :
     (get_node_children store blocks head).argmax
-        (fun child => toLex (get_weight cfg store child, child.root)) = some best := by
+        (fun child => toLex (get_weight cfg store child,
+          toLex (child.root, get_payload_status_tiebreaker cfg store child))) = some best := by
   have key : ∀ a : ForkChoiceNode Root,
       get_weight cfg store a < get_weight cfg store best →
-        (toLex (get_weight cfg store a, a.root) : Gwei ×ₗ Root) <
-          toLex (get_weight cfg store best, best.root) := by
+        (toLex (get_weight cfg store a,
+          toLex (a.root, get_payload_status_tiebreaker cfg store a)) : Gwei ×ₗ (Root ×ₗ ℕ)) <
+          toLex (get_weight cfg store best,
+            toLex (best.root, get_payload_status_tiebreaker cfg store best)) := by
     intro a hlt
     rw [Prod.Lex.toLex_lt_toLex]
     exact Or.inl hlt

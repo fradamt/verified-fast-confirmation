@@ -148,6 +148,16 @@ theorem of_eq
       (get_current_slot_congr cfg htime hgenesis)
   exact h.of_sameBlocks_currentEpoch cfg ext hsame hcurrent hj huj
 
+/-- Payload writes preserve every field used by the paired origin invariant. -/
+theorem of_payloadFrame
+    {S : AcceptedChainFFGState cfg ext E anchor}
+    {store store' : Store Root}
+    (h : AcceptedRealizedJustifiedOrigins cfg ext S store)
+    (hf : PayloadFrame store store') :
+    AcceptedRealizedJustifiedOrigins cfg ext S store' :=
+  h.of_eq cfg ext hf.sameBlocks hf.time hf.genesis_time
+    hf.justified_checkpoint hf.unrealized_justified_checkpoint
+
 /-- Pair-level forward clock transport. -/
 theorem of_sameBlocks_currentEpoch_mono
     {S : AcceptedChainFFGState cfg ext E anchor}
@@ -534,104 +544,109 @@ private theorem on_block_of_selectors
   · simp only [FastConfirmation.Spec.on_block, if_neg hknown] at hh
     split_ifs at hh <;> try cases hh
     rw [hst] at hh
-    cases hh
-    have hsub : store.block_roots ⊆
-        (if sb.root ∈ store.block_roots then store.block_roots
-          else store.block_roots ++ [sb.root]) := by
-      intro r hr
-      by_cases hrs : sb.root ∈ store.block_roots
-      · simpa [hrs] using hr
-      · simp [hrs, hr]
-    have hroot : sb.root ∈
-        (if sb.root ∈ store.block_roots then store.block_roots
-          else store.block_roots ++ [sb.root]) := by
-      by_cases hrs : sb.root ∈ store.block_roots
-      · simp [hrs]
-      · simp [hrs]
     let added : Store Root :=
       { store with
-        block_roots := if sb.root ∈ store.block_roots then
-            store.block_roots else store.block_roots ++ [sb.root]
+        block_roots := store.block_roots ++ [sb.root]
         blocks := Function.update store.blocks sb.root sb.message
-        block_states := Function.update store.block_states sb.root post }
-    let staged := FastConfirmation.Spec.record_block_timeliness cfg added sb.root
-    let boosted := FastConfirmation.Spec.update_proposer_boost_root cfg staged
-      (get_head cfg store).root sb.root
-    let realized := FastConfirmation.Spec.update_checkpoints boosted
-      post.current_justified_checkpoint post.finalized_checkpoint
-    suffices hresult : AcceptedRealizedJustifiedOrigins cfg ext S
-        (FastConfirmation.Spec.compute_pulled_up_tip cfg ext realized sb.root) by
-      dsimp only [realized, boosted, staged, added] at hresult ⊢
-      split_ifs at hresult
-      all_goals exact hresult
-    have holdBlock : ∀ r, r ∈ store.block_roots →
-        added.blocks r = store.blocks r := by
-      intro r hr
-      by_cases hre : r = sb.root
-      · subst r
-        have holdAt : E.AcceptedBlockAt cfg ext sb.root
-            (store.blocks sb.root) :=
-          E.acceptedBlockAt_of_causal_known cfg ext hstore hr
-        have heq : store.blocks sb.root = sb.message :=
-          holdAt.unique cfg ext E hwf hnewAt
-        simp only [added, Function.update_self, heq]
-      · simp [added, Function.update, hre]
-    have haddedCurrent : get_current_store_epoch cfg added =
-        get_current_store_epoch cfg store := rfl
-    have hadded : AcceptedRealizedJustifiedOrigins cfg ext S added := by
-      constructor
-      · rcases h.realized with hanchor | ⟨r, hr, hgj' | ⟨hgu', hold⟩⟩
-        · exact Or.inl hanchor
-        · exact Or.inr ⟨r, ⟨hsub hr.known, hr.2⟩, Or.inl hgj'⟩
-        · right
-          refine ⟨r, ⟨hsub hr.known, hr.2⟩, Or.inr ⟨hgu', ?_⟩⟩
-          have hblock : get_block_epoch cfg added r =
-              get_block_epoch cfg store r := by
-            simp only [get_block_epoch, holdBlock r hr.known]
-          rw [hblock, haddedCurrent]
-          exact hold
-      · rcases h.unrealized with hanchor | ⟨r, hr, hgu'⟩
-        · exact Or.inl hanchor
-        · exact Or.inr ⟨r, ⟨hsub hr.known, hr.2⟩, hgu'⟩
-    have hstaged : AcceptedRealizedJustifiedOrigins cfg ext S staged :=
-      record_block_timeliness cfg ext added sb.root hadded
-    have hboosted : AcceptedRealizedJustifiedOrigins cfg ext S boosted :=
-      update_proposer_boost_root cfg ext staged (get_head cfg store).root
-        sb.root hstaged
-    have haddedRoot : sb.root ∈ added.block_roots := by
-      simpa only [added] using hroot
-    have hboostedRoot : sb.root ∈ boosted.block_roots := by
-      simp only [boosted, staged,
-        FastConfirmation.Spec.update_proposer_boost_root,
-        FastConfirmation.Spec.record_block_timeliness]
-      split_ifs
-      all_goals exact haddedRoot
-    have hcarrier : E.AcceptedCarrierIn (cfg := cfg) (ext := ext)
-        boosted sb.root := ⟨hboostedRoot, sb.message, hnewAt⟩
-    have hrealized : AcceptedRealizedJustifiedOrigins cfg ext S realized := by
-      apply update_checkpoints cfg ext boosted post.current_justified_checkpoint
-        post.finalized_checkpoint hboosted
-      exact Or.inr ⟨sb.root, hcarrier, Or.inl hgj⟩
-    have hsameRoots : realized.block_roots = added.block_roots := by
-      simp only [realized, boosted, staged,
-        FastConfirmation.Spec.update_checkpoints,
-        FastConfirmation.Spec.update_proposer_boost_root,
-        FastConfirmation.Spec.record_block_timeliness]
-      split_ifs <;> rfl
-    have hsameStates : realized.block_states = added.block_states := by
-      simp only [realized, boosted, staged,
-        FastConfirmation.Spec.update_checkpoints,
-        FastConfirmation.Spec.update_proposer_boost_root,
-        FastConfirmation.Spec.record_block_timeliness]
-      split_ifs <;> rfl
-    have hrealizedCarrier : E.AcceptedCarrierIn (cfg := cfg) (ext := ext)
-        realized sb.root :=
-      ⟨by rw [hsameRoots]; exact haddedRoot, sb.message, hnewAt⟩
-    apply compute_pulled_up_tip cfg ext realized sb.root hrealized
-      hrealizedCarrier
-    rw [hsameStates]
-    simp only [added, Function.update_self]
-    exact hgu
+        block_states := Function.update store.block_states sb.root post
+        payload_timeliness_vote := Function.update store.payload_timeliness_vote
+          sb.root (some (List.replicate cfg.ptc_size none))
+        payload_data_availability_vote := Function.update store.payload_data_availability_vote
+          sb.root (some (List.replicate cfg.ptc_size none)) }
+    change (match notify_ptc_messages cfg ext added post sb.message.payload_attestations with
+      | none => none
+      | some notified => some (FastConfirmation.Spec.compute_pulled_up_tip cfg ext
+          (FastConfirmation.Spec.update_checkpoints
+            (FastConfirmation.Spec.update_proposer_boost_root cfg
+              (FastConfirmation.Spec.record_block_timeliness cfg notified sb.root)
+              (get_head cfg store).root sb.root)
+            post.current_justified_checkpoint post.finalized_checkpoint) sb.root)) =
+        some store' at hh
+    cases hn : notify_ptc_messages cfg ext added post sb.message.payload_attestations with
+    | none => rw [hn] at hh; cases hh
+    | some notified =>
+      rw [hn] at hh
+      cases hh
+      have hf := notify_ptc_messages_frame cfg ext hn
+      let staged := FastConfirmation.Spec.record_block_timeliness cfg notified sb.root
+      let boosted := FastConfirmation.Spec.update_proposer_boost_root cfg staged
+        (get_head cfg store).root sb.root
+      let realized := FastConfirmation.Spec.update_checkpoints boosted
+        post.current_justified_checkpoint post.finalized_checkpoint
+      suffices hresult : AcceptedRealizedJustifiedOrigins cfg ext S
+          (FastConfirmation.Spec.compute_pulled_up_tip cfg ext realized sb.root) by
+        exact hresult
+      have hsub : store.block_roots ⊆ added.block_roots := by
+        intro r hr
+        exact List.mem_append_left _ hr
+      have holdBlock : ∀ r, r ∈ store.block_roots →
+          added.blocks r = store.blocks r := by
+        intro r hr
+        by_cases hre : r = sb.root
+        · subst r
+          have holdAt : E.AcceptedBlockAt cfg ext sb.root
+              (store.blocks sb.root) :=
+            E.acceptedBlockAt_of_causal_known cfg ext hstore hr
+          have heq : store.blocks sb.root = sb.message :=
+            holdAt.unique cfg ext E hwf hnewAt
+          simp only [added, Function.update_self, heq]
+        · simp [added, Function.update, hre]
+      have haddedCurrent : get_current_store_epoch cfg added =
+          get_current_store_epoch cfg store := rfl
+      have hadded : AcceptedRealizedJustifiedOrigins cfg ext S added := by
+        constructor
+        · rcases h.realized with hanchor | ⟨r, hr, hgj' | ⟨hgu', hold⟩⟩
+          · exact Or.inl hanchor
+          · exact Or.inr ⟨r, ⟨hsub hr.known, hr.2⟩, Or.inl hgj'⟩
+          · right
+            refine ⟨r, ⟨hsub hr.known, hr.2⟩, Or.inr ⟨hgu', ?_⟩⟩
+            have hblock : get_block_epoch cfg added r =
+                get_block_epoch cfg store r := by
+              simp only [get_block_epoch, holdBlock r hr.known]
+            rw [hblock, haddedCurrent]
+            exact hold
+        · rcases h.unrealized with hanchor | ⟨r, hr, hgu'⟩
+          · exact Or.inl hanchor
+          · exact Or.inr ⟨r, ⟨hsub hr.known, hr.2⟩, hgu'⟩
+      have hstaged : AcceptedRealizedJustifiedOrigins cfg ext S staged :=
+        record_block_timeliness cfg ext notified sb.root (hadded.of_payloadFrame cfg ext hf)
+      have hboosted : AcceptedRealizedJustifiedOrigins cfg ext S boosted :=
+        update_proposer_boost_root cfg ext staged (get_head cfg store).root
+          sb.root hstaged
+      have haddedRoot : sb.root ∈ added.block_roots := by
+        exact List.mem_append_right _ (List.mem_singleton_self _)
+      have hboostedRoot : sb.root ∈ boosted.block_roots := by
+        simp only [boosted, staged,
+          FastConfirmation.Spec.update_proposer_boost_root,
+          FastConfirmation.Spec.record_block_timeliness]
+        split_ifs
+        all_goals rw [hf.block_roots]; exact haddedRoot
+      have hcarrier : E.AcceptedCarrierIn (cfg := cfg) (ext := ext)
+          boosted sb.root := ⟨hboostedRoot, sb.message, hnewAt⟩
+      have hrealized : AcceptedRealizedJustifiedOrigins cfg ext S realized := by
+        apply update_checkpoints cfg ext boosted post.current_justified_checkpoint
+          post.finalized_checkpoint hboosted
+        exact Or.inr ⟨sb.root, hcarrier, Or.inl hgj⟩
+      have hsameRoots : realized.block_roots = added.block_roots := by
+        simp only [realized, boosted, staged,
+          FastConfirmation.Spec.update_checkpoints,
+          FastConfirmation.Spec.update_proposer_boost_root,
+          FastConfirmation.Spec.record_block_timeliness]
+        split_ifs <;> exact hf.block_roots
+      have hsameStates : realized.block_states = added.block_states := by
+        simp only [realized, boosted, staged,
+          FastConfirmation.Spec.update_checkpoints,
+          FastConfirmation.Spec.update_proposer_boost_root,
+          FastConfirmation.Spec.record_block_timeliness]
+        split_ifs <;> exact hf.block_states
+      have hrealizedCarrier : E.AcceptedCarrierIn (cfg := cfg) (ext := ext)
+          realized sb.root :=
+        ⟨by rw [hsameRoots]; exact haddedRoot, sb.message, hnewAt⟩
+      apply compute_pulled_up_tip cfg ext realized sb.root hrealized
+        hrealizedCarrier
+      rw [hsameStates]
+      simp only [added, Function.update_self]
+      exact hgu
 
 /-- One exact accepted block transition preserves the refined origin. -/
 theorem acceptedBlockTransition
@@ -870,6 +885,12 @@ private theorem acceptedRealizedJustifiedOrigins_take
         | attester_slashing sl =>
             exact AcceptedRealizedJustifiedOrigins.on_attester_slashing
               cfg ext hp (by simpa [apply_event, hevent] using heq)
+        | execution_payload_envelope envelope observation =>
+            exact hp.of_payloadFrame cfg ext (on_execution_payload_envelope_frame ext
+              (by simpa [apply_event, hevent] using heq))
+        | payload_attestation_message message fromBlock =>
+            exact hp.of_payloadFrame cfg ext (on_payload_attestation_message_frame cfg ext
+              (by simpa [apply_event, hevent] using heq))
 
 /-- Every ordinary execution boundary retains the executable `GJ`/old-`GU`
 origin of its realized justified checkpoint. -/

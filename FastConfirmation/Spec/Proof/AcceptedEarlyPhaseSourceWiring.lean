@@ -150,13 +150,14 @@ theorem queryHead_direct_or_headFilterViableLeafBelow
         (get_node_for_root store.justified_checkpoint.root)
         (get_node_for_root result) = true ∨
       HeadFilterViableLeafBelow cfg store result := by
+  rw [is_ancestor_node_root] at hheadResult
   have hhead : (get_head cfg store).root ∈
         get_filtered_block_tree cfg store ∨
       (get_head cfg store).root = store.justified_checkpoint.root := by
     simp only [get_head]
     exact get_head_aux_root_mem_or cfg
-      ((get_filtered_block_tree cfg store).length + 1)
-      (ForkChoiceNode.mk store.justified_checkpoint.root)
+      (2 * (get_filtered_block_tree cfg store).length + 2)
+      (ForkChoiceNode.mk store.justified_checkpoint.root .pending)
   rcases hhead with hheadFiltered | hheadJustified
   · right
     obtain ⟨tip, htip, htipHead, hleaf, hjustifiedCheck,
@@ -185,7 +186,7 @@ theorem queryHead_direct_or_headFilterViableLeafBelow
       hwalkK result hresult tip htip⟩
   · left
     change is_ancestor store
-      (ForkChoiceNode.mk store.justified_checkpoint.root)
+      (ForkChoiceNode.mk store.justified_checkpoint.root .pending)
       (get_node_for_root result) = true
     rw [← hheadJustified]
     exact hheadResult

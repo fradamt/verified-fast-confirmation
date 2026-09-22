@@ -531,10 +531,11 @@ theorem child_filtered_of_selectedTraceFFGStateRealization_minimal
     (hnotCovered : is_ancestor (E.store cfg ext w m)
       (get_node_for_root (E.store cfg ext w m).justified_checkpoint.root)
       (get_node_for_root c) ≠ true) :
-    ForkChoiceNode.mk c ∈
+    ForkChoiceNode.mk c .pending ∈
       get_node_children (E.store cfg ext w m)
         (get_filtered_block_tree cfg (E.store cfg ext w m))
-        (ForkChoiceNode.mk a) := by
+        (ForkChoiceNode.mk a (get_parent_payload_status (E.store cfg ext w m)
+          ((E.store cfg ext w m).blocks c))) := by
   exact child_filtered_of_filterTipCertificate_nonempty cfg
     (E.filterTipCertificate_of_selectedTraceFFGStateRealization_minimal
       cfg ext hA hwalkDomain hv hqH hresult hr₀ hr₀Epoch hstrict

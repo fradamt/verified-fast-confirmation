@@ -51,7 +51,7 @@ def PrefixWindowRecordedEpochMax
       queryStore.latest_messages i = some lm →
       ∀ (t : Slot) (k : ℕ) (a : Attestation Root),
         t ≤ es → E.vote i t = some (k, a) →
-        compute_epoch_at_slot cfg t ≤ lm.epoch
+        compute_epoch_at_slot cfg t ≤ (get_latest_message_epoch cfg lm)
 
 /-- Applied-event coverage form of store-explicit domination.  It asks for a
 cell only for a concrete relevant ground vote. -/
@@ -62,7 +62,7 @@ def PrefixRecordedEpochCoverage
       t ≤ es → E.vote i t = some (k, a) →
       ∃ lm : LatestMessage Root,
         queryStore.latest_messages i = some lm ∧
-        compute_epoch_at_slot cfg t ≤ lm.epoch
+        compute_epoch_at_slot cfg t ≤ (get_latest_message_epoch cfg lm)
 
 /-- The weakest completed-boundary replay footprint used by the current
 base strip: a cell must replay only when it is present in the prefix and its
@@ -98,7 +98,7 @@ theorem not_prefixWindowRecordedEpochMax_of_newer_vote
     (hlm : queryStore.latest_messages i = some lm)
     {t : Slot} {k : ℕ} {a : Attestation Root}
     (htes : t ≤ es) (hvote : E.vote i t = some (k, a))
-    (hnewer : ¬ compute_epoch_at_slot cfg t ≤ lm.epoch) :
+    (hnewer : ¬ compute_epoch_at_slot cfg t ≤ (get_latest_message_epoch cfg lm)) :
     ¬ PrefixWindowRecordedEpochMax cfg E queryStore lo es := by
   intro hmax
   exact hnewer (hmax i hi hiSpan lm hlm t k a htes hvote)
@@ -116,7 +116,7 @@ theorem prefixWindowRecordedEpochMax_of_usedCellReplay
           boundaryStore.latest_messages i = some lm →
           ∀ (t : Slot) (k : ℕ) (a : Attestation Root),
             t ≤ es → E.vote i t = some (k, a) →
-            compute_epoch_at_slot cfg t ≤ lm.epoch) :
+            compute_epoch_at_slot cfg t ≤ (get_latest_message_epoch cfg lm)) :
     PrefixWindowRecordedEpochMax cfg E queryStore lo es := by
   intro i hi hiSpan lm hlm t k a htes hvote
   apply hboundary i hi hiSpan lm
@@ -159,7 +159,7 @@ theorem recorded_lm_is_newest_in_store
     (hlm : queryStore.latest_messages i = some lm)
     (hdom : ∀ (t : Slot) (k : ℕ) (a : Attestation Root),
       t ≤ es → E.vote i t = some (k, a) →
-      compute_epoch_at_slot cfg t ≤ lm.epoch) :
+      compute_epoch_at_slot cfg t ≤ (get_latest_message_epoch cfg lm)) :
     ∃ (t : Slot) (k : ℕ) (a : Attestation Root),
       t ≤ es ∧ E.vote i t = some (k, a) ∧
       (∀ t' : Slot, t < t' → t' ≤ es → E.vote i t' = none) ∧
@@ -193,7 +193,7 @@ theorem recorded_lm_is_newest_in_store
       have hcomm' : i ∈ E.committee t' :=
         hhb.votes_assigned i hi t'
           (by rw [hvt]; exact Option.some_ne_none _)
-      have heple : compute_epoch_at_slot cfg t' ≤ lm.epoch :=
+      have heple : compute_epoch_at_slot cfg t' ≤ (get_latest_message_epoch cfg lm) :=
         hdom t' k' a3 hle hvt
       have hepmono : compute_epoch_at_slot cfg a'.data.slot ≤
           compute_epoch_at_slot cfg t' :=
@@ -234,7 +234,7 @@ theorem honestVote_recorded_at_query_minimal
       (n, honest_attestation cfg ext (E.store cfg ext i n) s index i))
     (hsq : s < E.slot_at cfg q) :
     ∃ msg, (E.store cfg ext v q).latest_messages i = some msg ∧
-      compute_epoch_at_slot cfg s ≤ msg.epoch := by
+      compute_epoch_at_slot cfg s ≤ (get_latest_message_epoch cfg msg) := by
   obtain ⟨ast, ablk, hgeq, hslot, hparent⟩ := hA.genesis
   have hgenTime : E.genesis_store.genesis_time ≤ E.genesis_store.time := by
     have hgws : WellFormedStore E.genesis_store := by
@@ -401,7 +401,7 @@ theorem windowRecordedEpochMax_at_query_minimal
       E.slotWithinHorizon_mono cfg hsEs hesH
     obtain ⟨ns, indexS, hnsH, hnsSlot, hvoteS⟩ :=
       hA.honest_behavior.votes_head i hi s hiS hsH (hlo0.trans hloS)
-    have hsDom : compute_epoch_at_slot cfg s ≤ lm.epoch :=
+    have hsDom : compute_epoch_at_slot cfg s ≤ (get_latest_message_epoch cfg lm) :=
       hpost i hi lm hlm s ns
         (honest_attestation cfg ext (E.store cfg ext i ns) s indexS i)
         hloS hsEs hvoteS
@@ -464,7 +464,7 @@ theorem recorded_supporter_mem_Sclass_window
   simp only [Execution.Sclass, Finset.mem_filter]
   refine ⟨⟨hiSpan, hi⟩, ⟨t, k, a, htle, hvote, hnew, ?_⟩⟩
   rw [hroot]
-  simpa only [get_supported_node, get_node_for_root] using hanc
+  simpa only [get_node_for_root, is_ancestor_supported_pending] using hanc
 
 /-- Honest supporter score is bounded by `Sval`, with only window-scoped
 recorded-epoch domination. -/
@@ -564,7 +564,7 @@ theorem ParentStuck_subset_Aclass_window
         (get_node_for_root
           ((E.store cfg ext v₀ n₀).blocks b').parent_root)
         (get_node_for_root b') = true := by
-      simp only [is_ancestor, get_node_for_root, decide_eq_true_eq]
+      simp only [get_node_for_root, is_ancestor_pending, decide_eq_true_eq]
       rw [get_ancestor_stop (le_of_lt hslotlt)]
       intro hcon
       injection hcon with heq
@@ -726,7 +726,7 @@ theorem honest_sibling_confinement_window
   obtain ⟨lm, hlm, _, hanc⟩ := mem_AttSupporters cfg hiSupp
   have hanc' : is_ancestor (E.store cfg ext w m)
       (get_node_for_root lm.root) (get_node_for_root c') = true := by
-    simpa only [get_supported_node, get_node_for_root] using hanc
+    simpa only [get_node_for_root, is_ancestor_supported_pending] using hanc
   have hiSpan : i ∈ E.span_committee lo es := by
     rw [hes]
     exact supporter_mem_span_committee cfg hwf hprov hiSupp

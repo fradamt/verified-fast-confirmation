@@ -221,7 +221,7 @@ theorem vote_lands_export_closed
       (honest_attestation cfg ext (E.store cfg ext v n) s index v).data.target.epoch) :
     ∃ msg, (E.store cfg ext w (E.slot_start cfg (s + 1))).latest_messages v = some msg ∧
       (honest_attestation cfg ext (E.store cfg ext v n) s index v).data.target.epoch ≤
-        msg.epoch :=
+        (get_latest_message_epoch cfg msg) :=
   vote_lands_closed cfg ext hwf hhb hsyn hec hji hdiv hgen hv hw hn hHn hHdeliver hvote
     (E.hbound_of_justified_block_boundary cfg ext hji hv hHn
       (E.slotWithinHorizon_of_le cfg (by rw [hn]) hHn) hvote hjc_le)
@@ -249,7 +249,7 @@ theorem vote_ubiquity_export_closed
     (hHm : E.WithinHorizon cfg m) :
     ∃ msg, (E.store cfg ext w m).latest_messages v = some msg ∧
       (honest_attestation cfg ext (E.store cfg ext v n) s index v).data.target.epoch ≤
-        msg.epoch :=
+        (get_latest_message_epoch cfg msg) :=
   vote_ubiquity_closed cfg ext hwf hhb hsyn hec hji hdiv hgen hv hw hn hHn hvote
     (E.hbound_of_justified_block_boundary cfg ext hji hv hHn
       (E.slotWithinHorizon_of_le cfg (by rw [hn]) hHn) hvote hjc_le) hm hHm

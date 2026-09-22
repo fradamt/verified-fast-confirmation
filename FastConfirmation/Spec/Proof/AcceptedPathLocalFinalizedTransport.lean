@@ -32,10 +32,12 @@ variable (cfg : Config) (ext : Externals Root)
 
 /-! ## Paired-walk block transport -/
 
-omit [LinearOrder Root] [Inhabited Root] in
+omit [Inhabited Root] in
 /-- Two stores compute the same ancestor along paired known walks when they
 agree only at roots encountered by both walks.  Unlike `get_ancestor_congr`,
-this theorem needs no one-sided agreement over an entire store domain. -/
+this theorem needs no one-sided agreement over an entire store domain.
+Agreement at each child and its known parent also fixes the payload status
+chosen by each Gloas parent step. -/
 theorem get_ancestor_eq_of_paired_walks
     {source target : Store Root}
     (hsourceParent : ParentSlotLt source)
@@ -47,18 +49,24 @@ theorem get_ancestor_eq_of_paired_walks
     (htargetWalk : WalkKnown target slot r) :
     get_ancestor source (get_node_for_root r) slot =
       get_ancestor target (get_node_for_root r) slot := by
+  suffices hstatus : ∀ status : PayloadStatus,
+      get_ancestor source (ForkChoiceNode.mk r status) slot =
+        get_ancestor target (ForkChoiceNode.mk r status) slot from
+    hstatus .pending
   induction hsourceWalk with
   | @stop r hsourceRoot hsourceLe =>
+      intro status
       cases htargetWalk with
       | stop htargetRoot htargetLe =>
-          simp only [get_node_for_root]
-          rw [get_ancestor_stop hsourceLe, get_ancestor_stop htargetLe]
+          rw [get_ancestor_stop_status hsourceLe,
+            get_ancestor_stop_status htargetLe]
       | step htargetRoot htargetGt htargetTail =>
           have hblock := hagree r hsourceRoot htargetRoot
           have hsourceGt : slot < (source.blocks r).slot := by
             simpa only [hblock] using htargetGt
           exact False.elim ((Nat.not_lt_of_ge hsourceLe) hsourceGt)
   | @step r hsourceRoot hsourceGt hsourceTail ih =>
+      intro status
       cases htargetWalk with
       | stop htargetRoot htargetLe =>
           have hblock := hagree r hsourceRoot htargetRoot
@@ -70,14 +78,23 @@ theorem get_ancestor_eq_of_paired_walks
           have htargetTail' : WalkKnown target slot
               (source.blocks r).parent_root := by
             simpa only [hblock] using htargetTail
-          simp only [get_node_for_root] at ih ⊢
-          rw [get_ancestor_step hsourceParent hsourceRoot hsourceGt
+          have hparentBlock := hagree (source.blocks r).parent_root
+            hsourceTail.root_mem htargetTail'.root_mem
+          have hparentRoot : (source.blocks r).parent_root =
+              (target.blocks r).parent_root :=
+            congrArg BeaconBlock.parent_root hblock
+          have hparentStatus :
+              get_parent_payload_status source (source.blocks r) =
+                get_parent_payload_status target (target.blocks r) := by
+            simp only [get_parent_payload_status, ← hblock, hparentBlock]
+          rw [get_ancestor_step_status hsourceParent hsourceRoot hsourceGt
               hsourceTail,
-            get_ancestor_step htargetParent htargetRoot htargetGt
-              htargetTail]
-          simpa only [hblock] using ih htargetTail'
+            get_ancestor_step_status htargetParent htargetRoot htargetGt
+              htargetTail,
+            ← hparentRoot, ← hparentStatus]
+          exact ih htargetTail' _
 
-omit [LinearOrder Root] [Inhabited Root] in
+omit [Inhabited Root] in
 /-- Checkpoint-block form of `get_ancestor_eq_of_paired_walks`. -/
 theorem get_checkpoint_block_eq_of_paired_walks
     {source target : Store Root}
@@ -190,10 +207,10 @@ theorem finalized_check_of_exactStable_viableLeaf_pairedWalks
   · left
     simpa only [hstable] using hgenesis
   · right
-    have hqueryTipLandsOnResult : get_ancestor query
-        (get_node_for_root queryTip) (query.blocks result).slot =
-          get_node_for_root result := by
-      simpa only [is_ancestor, decide_eq_true_eq] using hqueryTipResult
+    have hqueryTipLandsOnResult : (get_ancestor query
+        (get_node_for_root queryTip) (query.blocks result).slot).root =
+          result := by
+      simpa only [get_node_for_root, is_ancestor_pending, decide_eq_true_eq] using hqueryTipResult
     have hqueryTipBoundaryWalk : WalkKnown query
         (compute_start_slot_at_epoch cfg
           query.finalized_checkpoint.epoch) queryTip :=

@@ -56,14 +56,14 @@ handler. -/
 omit [LinearOrder Root] [Inhabited Root] in
 /-- The `update_latest_messages` fold only rewrites `latest_messages`, so it
 leaves `equivocating_indices` fixed. -/
-private theorem update_lm_foldl_equiv (target : Epoch) (beacon : Root) :
+private theorem update_lm_foldl_equiv (slot : Slot) (beacon : Root) (payload_present : Bool) :
     ∀ (l : List ValidatorIndex) (s : Store Root),
       (l.foldl (fun st j =>
         if (match st.latest_messages j with
             | none => true
-            | some lm => decide (target > lm.epoch)) then
+            | some lm => decide (slot > lm.slot)) then
           { st with latest_messages :=
-              Function.update st.latest_messages j (some (LatestMessage.mk target beacon)) }
+              Function.update st.latest_messages j (some (LatestMessage.mk slot beacon payload_present)) }
         else st) s).equivocating_indices = s.equivocating_indices := by
   intro l
   induction l with
@@ -79,7 +79,7 @@ theorem update_latest_messages_equiv (store : Store Root)
     (update_latest_messages store attesting_indices a).equivocating_indices =
       store.equivocating_indices := by
   simp only [update_latest_messages]
-  exact update_lm_foldl_equiv a.data.target.epoch a.data.beacon_block_root _ store
+  exact update_lm_foldl_equiv a.data.slot a.data.beacon_block_root (decide (a.data.index = 1)) _ store
 
 omit [Inhabited Root] in
 theorem record_block_timeliness_equiv (store : Store Root) (root : Root) :
@@ -138,9 +138,14 @@ theorem on_block_equiv {store store' : Store Root} {sb : SignedBeaconBlock Root}
     | none => rw [hst] at h; cases h
     | some state =>
       rw [hst] at h
-      cases h
-      rw [compute_pulled_up_tip_equiv, update_checkpoints_equivocating_indices,
-        update_proposer_boost_root_equiv, record_block_timeliness_equiv]
+      dsimp only at h
+      split at h
+      · cases h
+      · rename_i notified hnotify
+        cases h
+        rw [compute_pulled_up_tip_equiv, update_checkpoints_equivocating_indices,
+          update_proposer_boost_root_equiv, record_block_timeliness_equiv]
+        exact (notify_ptc_messages_frame cfg ext hnotify).equivocating_indices
 
 omit [Inhabited Root] in
 theorem on_attestation_equiv {store store' : Store Root}
@@ -223,6 +228,22 @@ theorem apply_event_honest_not_equiv {E : Execution Root}
       simp only [Option.getD_some]
       exact on_attester_slashing_honest_not_added cfg ext hhb hec hv
         hcausal hunknown has hprev
+  | execution_payload_envelope envelope observation =>
+    simp only [apply_event]
+    cases he : on_execution_payload_envelope ext store envelope observation with
+    | none => exact hprev
+    | some next =>
+      simp only [Option.getD_some]
+      rw [(on_execution_payload_envelope_frame ext he).equivocating_indices]
+      exact hprev
+  | payload_attestation_message message fromBlock =>
+    simp only [apply_event]
+    cases he : on_payload_attestation_message cfg ext store message fromBlock with
+    | none => exact hprev
+    | some next =>
+      simp only [Option.getD_some]
+      rw [(on_payload_attestation_message_frame cfg ext he).equivocating_indices]
+      exact hprev
 
 /-- Folding a second's events preserves non-equivocation when each exact
 prefix belongs to an honest node inside the horizon. -/

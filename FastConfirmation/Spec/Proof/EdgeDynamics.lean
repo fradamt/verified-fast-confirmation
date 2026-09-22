@@ -238,9 +238,12 @@ structure EdgeInputResidual (E : Execution Root) (w : ValidatorIndex) (m : ℕ)
   hbsH : get_current_epoch cfg ((E.store cfg ext w m).checkpoint_states
     (E.store cfg ext w m).justified_checkpoint) < E.verification_horizon
   /-- `hchild` — the fork-choice child membership of `c` under `h`. -/
-  hchild : ForkChoiceNode.mk c ∈
+  hchild : ForkChoiceNode.mk c .pending ∈
     get_node_children (E.store cfg ext w m)
-      (get_filtered_block_tree cfg (E.store cfg ext w m)) (ForkChoiceNode.mk h)
+      (get_filtered_block_tree cfg (E.store cfg ext w m))
+        (ForkChoiceNode.mk h
+          (get_parent_payload_status (E.store cfg ext w m)
+            ((E.store cfg ext w m).blocks c)))
   /-- `hrec` — every `Sclass` member records a `c`-supporting latest message. -/
   hrec : ∀ i ∈ E.Sclass cfg ext w m b lo σ,
     ∃ lm, (E.store cfg ext w m).latest_messages i = some lm ∧
@@ -248,18 +251,24 @@ structure EdgeInputResidual (E : Execution Root) (w : ValidatorIndex) (m : ℕ)
         (get_supported_node (E.store cfg ext w m) lm) (get_node_for_root c) = true
   /-- `hHon` — honest supporters of any sibling are confined to `Xclass`. -/
   hHon : ∀ c' : Root,
-    ForkChoiceNode.mk c' ∈
+    ForkChoiceNode.mk c' .pending ∈
         get_node_children (E.store cfg ext w m)
-          (get_filtered_block_tree cfg (E.store cfg ext w m)) (ForkChoiceNode.mk h) →
+          (get_filtered_block_tree cfg (E.store cfg ext w m))
+            (ForkChoiceNode.mk h
+              (get_parent_payload_status (E.store cfg ext w m)
+                ((E.store cfg ext w m).blocks c))) →
       c' ≠ c →
       ∀ i ∈ AttSupporters cfg (E.store cfg ext w m) (get_node_for_root c')
           ((E.store cfg ext w m).checkpoint_states (E.store cfg ext w m).justified_checkpoint),
         i ∈ E.honest → i ∈ E.Xclass cfg ext w m b lo σ
   /-- `hByz` — byz supporters of any sibling are confined to `BbadSet ∪ SpentSet`. -/
   hByz : ∀ c' : Root,
-    ForkChoiceNode.mk c' ∈
+    ForkChoiceNode.mk c' .pending ∈
         get_node_children (E.store cfg ext w m)
-          (get_filtered_block_tree cfg (E.store cfg ext w m)) (ForkChoiceNode.mk h) →
+          (get_filtered_block_tree cfg (E.store cfg ext w m))
+            (ForkChoiceNode.mk h
+              (get_parent_payload_status (E.store cfg ext w m)
+                ((E.store cfg ext w m).blocks c))) →
       c' ≠ c →
       ∀ i ∈ AttSupporters cfg (E.store cfg ext w m) (get_node_for_root c')
           ((E.store cfg ext w m).checkpoint_states (E.store cfg ext w m).justified_checkpoint),

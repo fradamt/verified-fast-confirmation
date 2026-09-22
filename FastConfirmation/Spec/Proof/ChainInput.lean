@@ -116,21 +116,24 @@ def LedgerCertInput (E : Execution Root) (store : Store Root) (h c : Root) : Pro
     (store.checkpoint_states store.justified_checkpoint).validators = E.registry ∧
     boost = get_proposer_score cfg store ∧
     E.INV2 cfg ext v₀ n₀ b' lo es σ boost ∧
-    ForkChoiceNode.mk c ∈
-        get_node_children store (get_filtered_block_tree cfg store) (ForkChoiceNode.mk h) ∧
+    ForkChoiceNode.mk c .pending ∈
+        get_node_children store (get_filtered_block_tree cfg store)
+          (ForkChoiceNode.mk h (get_parent_payload_status store (store.blocks c))) ∧
     (∀ i ∈ E.Sclass cfg ext v₀ n₀ b' lo σ,
       i ∈ AttSupporters cfg store (get_node_for_root c)
         (store.checkpoint_states store.justified_checkpoint)) ∧
     (∀ c' : Root,
-      ForkChoiceNode.mk c' ∈
-          get_node_children store (get_filtered_block_tree cfg store) (ForkChoiceNode.mk h) →
+      ForkChoiceNode.mk c' .pending ∈
+          get_node_children store (get_filtered_block_tree cfg store)
+            (ForkChoiceNode.mk h (get_parent_payload_status store (store.blocks c))) →
         c' ≠ c →
         ∀ i ∈ AttSupporters cfg store (get_node_for_root c')
             (store.checkpoint_states store.justified_checkpoint),
           i ∈ E.honest → i ∈ E.Xclass cfg ext v₀ n₀ b' lo σ) ∧
     (∀ c' : Root,
-      ForkChoiceNode.mk c' ∈
-          get_node_children store (get_filtered_block_tree cfg store) (ForkChoiceNode.mk h) →
+      ForkChoiceNode.mk c' .pending ∈
+          get_node_children store (get_filtered_block_tree cfg store)
+            (ForkChoiceNode.mk h (get_parent_payload_status store (store.blocks c))) →
         c' ≠ c →
         ∀ i ∈ AttSupporters cfg store (get_node_for_root c')
             (store.checkpoint_states store.justified_checkpoint),
@@ -237,24 +240,33 @@ theorem ledgerCertInput_of_endpoint {E : Execution Root} {w : ValidatorIndex} {m
     (hval : ((E.store cfg ext w m).checkpoint_states
       (E.store cfg ext w m).justified_checkpoint).validators = E.registry)
     (hboost : boost = get_proposer_score cfg (E.store cfg ext w m))
-    (hchild : ForkChoiceNode.mk c ∈
+    (hchild : ForkChoiceNode.mk c .pending ∈
       get_node_children (E.store cfg ext w m)
-        (get_filtered_block_tree cfg (E.store cfg ext w m)) (ForkChoiceNode.mk h))
+        (get_filtered_block_tree cfg (E.store cfg ext w m))
+          (ForkChoiceNode.mk h
+            (get_parent_payload_status (E.store cfg ext w m)
+              ((E.store cfg ext w m).blocks c))))
     (hSmem : ∀ i ∈ E.Sclass cfg ext w m b' lo σ,
       i ∈ AttSupporters cfg (E.store cfg ext w m) (get_node_for_root c)
         ((E.store cfg ext w m).checkpoint_states (E.store cfg ext w m).justified_checkpoint))
     (hHon : ∀ c' : Root,
-      ForkChoiceNode.mk c' ∈
+      ForkChoiceNode.mk c' .pending ∈
           get_node_children (E.store cfg ext w m)
-            (get_filtered_block_tree cfg (E.store cfg ext w m)) (ForkChoiceNode.mk h) →
+            (get_filtered_block_tree cfg (E.store cfg ext w m))
+              (ForkChoiceNode.mk h
+                (get_parent_payload_status (E.store cfg ext w m)
+                  ((E.store cfg ext w m).blocks c))) →
         c' ≠ c →
         ∀ i ∈ AttSupporters cfg (E.store cfg ext w m) (get_node_for_root c')
             ((E.store cfg ext w m).checkpoint_states (E.store cfg ext w m).justified_checkpoint),
           i ∈ E.honest → i ∈ E.Xclass cfg ext w m b' lo σ)
     (hByz : ∀ c' : Root,
-      ForkChoiceNode.mk c' ∈
+      ForkChoiceNode.mk c' .pending ∈
           get_node_children (E.store cfg ext w m)
-            (get_filtered_block_tree cfg (E.store cfg ext w m)) (ForkChoiceNode.mk h) →
+            (get_filtered_block_tree cfg (E.store cfg ext w m))
+              (ForkChoiceNode.mk h
+                (get_parent_payload_status (E.store cfg ext w m)
+                  ((E.store cfg ext w m).blocks c))) →
         c' ≠ c →
         ∀ i ∈ AttSupporters cfg (E.store cfg ext w m) (get_node_for_root c')
             ((E.store cfg ext w m).checkpoint_states (E.store cfg ext w m).justified_checkpoint),

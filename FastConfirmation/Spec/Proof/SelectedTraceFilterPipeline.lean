@@ -208,10 +208,11 @@ theorem child_filtered_of_retained_edge_pipeline
     (hnot_covered : is_ancestor (E.store cfg ext w m)
       (get_node_for_root (E.store cfg ext w m).justified_checkpoint.root)
       (get_node_for_root c) ≠ true) :
-    ForkChoiceNode.mk c ∈
+    ForkChoiceNode.mk c .pending ∈
       get_node_children (E.store cfg ext w m)
         (get_filtered_block_tree cfg (E.store cfg ext w m))
-        (ForkChoiceNode.mk a) := by
+        (ForkChoiceNode.mk a (get_parent_payload_status (E.store cfg ext w m)
+          ((E.store cfg ext w m).blocks c))) := by
   exact child_filtered_of_filterTipCertificate_nonempty cfg
     (filterTipCertificate_of_retained_edge cfg ext hpipeline hedge hprovisos
       hw hslot hHm hwf hwalkK hc hnot_covered) hparent
@@ -243,10 +244,11 @@ theorem strictSelectedEdge_child_filtered_of_trace_pipeline_minimal
     (hnot_covered : is_ancestor (E.store cfg ext w m)
       (get_node_for_root (E.store cfg ext w m).justified_checkpoint.root)
       (get_node_for_root c) ≠ true) :
-    ForkChoiceNode.mk c ∈
+    ForkChoiceNode.mk c .pending ∈
       get_node_children (E.store cfg ext w m)
         (get_filtered_block_tree cfg (E.store cfg ext w m))
-        (ForkChoiceNode.mk a) := by
+        (ForkChoiceNode.mk a (get_parent_payload_status (E.store cfg ext w m)
+          ((E.store cfg ext w m).blocks c))) := by
   obtain ⟨hwfQ, hwalkQ, _hjustQ⟩ :=
     E.store_domainK_of_selectedMarginDomain cfg ext hA.wellFormed
       hA.externals_coherence hA.genesis hA.domain v hv q hqH

@@ -66,7 +66,7 @@ def RecordedEpochMax (v₀ : ValidatorIndex) (n₀ : ℕ) (es : Slot) : Prop :=
     (E.store cfg ext v₀ n₀).latest_messages i = some lm →
     ∀ (t : Slot) (k : ℕ) (a : Attestation Root),
       t ≤ es → E.vote i t = some (k, a) →
-      compute_epoch_at_slot cfg t ≤ lm.epoch
+      compute_epoch_at_slot cfg t ≤ (get_latest_message_epoch cfg lm)
 
 /-- Model/domain adequacy for honest-attestation delivery. For an actual
 post-anchor honest vote, the source head's walk down to its FFG target epoch
@@ -95,7 +95,7 @@ def PostAnchorRecordedEpochMax
     (E.store cfg ext v q).latest_messages i = some lm →
     ∀ (t : Slot) (k : ℕ) (a : Attestation Root),
       lo ≤ t → t ≤ es → E.vote i t = some (k, a) →
-      compute_epoch_at_slot cfg t ≤ lm.epoch
+      compute_epoch_at_slot cfg t ≤ (get_latest_message_epoch cfg lm)
 
 /-- Domination for all votes through `es`, restricted to honest validators
 proved to belong to the concrete ledger window `[lo, es]`. A window member's
@@ -107,7 +107,7 @@ def WindowRecordedEpochMax
       (E.store cfg ext v q).latest_messages i = some lm →
       ∀ (t : Slot) (k : ℕ) (a : Attestation Root),
         t ≤ es → E.vote i t = some (k, a) →
-        compute_epoch_at_slot cfg t ≤ lm.epoch
+        compute_epoch_at_slot cfg t ≤ (get_latest_message_epoch cfg lm)
 
 /-- The legacy all-validator domination implies the faithful window-scoped
 form. -/
@@ -157,7 +157,7 @@ theorem recorded_lm_is_newest
     {i : ValidatorIndex} (hi : i ∈ E.honest) {lm : LatestMessage Root}
     (hlm : (E.store cfg ext v₀ n₀).latest_messages i = some lm)
     (hdom : ∀ (t : Slot) (k : ℕ) (a : Attestation Root),
-      t ≤ es → E.vote i t = some (k, a) → compute_epoch_at_slot cfg t ≤ lm.epoch) :
+      t ≤ es → E.vote i t = some (k, a) → compute_epoch_at_slot cfg t ≤ (get_latest_message_epoch cfg lm)) :
     ∃ (t : Slot) (k : ℕ) (a : Attestation Root),
       t ≤ es ∧ E.vote i t = some (k, a) ∧
       (∀ t' : Slot, t < t' → t' ≤ es → E.vote i t' = none) ∧
@@ -188,7 +188,7 @@ theorem recorded_lm_is_newest
     obtain ⟨k', a3⟩ := p
     have hcomm' : i ∈ E.committee t' :=
       hhb.votes_assigned i hi t' (by rw [hvt]; exact Option.some_ne_none _)
-    have heple : compute_epoch_at_slot cfg t' ≤ lm.epoch := hdom t' k' a3 hle hvt
+    have heple : compute_epoch_at_slot cfg t' ≤ (get_latest_message_epoch cfg lm) := hdom t' k' a3 hle hvt
     have hepmono : compute_epoch_at_slot cfg a'.data.slot ≤ compute_epoch_at_slot cfg t' :=
       Nat.div_le_div_right (le_of_lt hlt)
     have hle1 : compute_epoch_at_slot cfg t' ≤ compute_epoch_at_slot cfg a'.data.slot := by
@@ -243,7 +243,7 @@ theorem recorded_supporter_mem_Sclass
   · rw [hes]
     exact supporter_mem_span_committee cfg hwf hprov hi_supp (hwalk i hi_supp) hsa
   · refine ⟨t, k, a, htle, hvote, hnew, ?_⟩
-    rw [hbbreq]; simpa only [get_supported_node, get_node_for_root] using hanc
+    rw [hbbreq]; simpa only [get_node_for_root, is_ancestor_supported_pending] using hanc
 
 /-- **`hHsup` discharge.** The honest-supporter list-sum at `(v₀, n₀)` is at most
 `Sval lo es`: `FractionBase.honest_score_eq_weight` turns the list-sum into a
@@ -332,11 +332,11 @@ theorem ParentStuck_subset_Aclass
     have hb'nanc : ¬ is_ancestor (E.store cfg ext v₀ n₀)
         (get_node_for_root ((E.store cfg ext v₀ n₀).blocks b').parent_root)
         (get_node_for_root b') = true := by
-      simp only [is_ancestor, get_node_for_root, decide_eq_true_eq]
+      simp only [get_node_for_root, is_ancestor_pending, decide_eq_true_eq]
       rw [get_ancestor_stop (le_of_lt hslotlt)]
       intro hcon
-      injection hcon with h
-      rw [h] at hslotlt
+      change ((E.store cfg ext v₀ n₀).blocks b').parent_root = b' at hcon
+      rw [hcon] at hslotlt
       exact lt_irrefl _ hslotlt
     simp only [Execution.Aclass, Finset.mem_filter]
     refine ⟨⟨?_, hih⟩, ?_, ?_⟩

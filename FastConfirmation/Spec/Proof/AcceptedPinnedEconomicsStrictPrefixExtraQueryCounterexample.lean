@@ -78,7 +78,10 @@ def stateAt (slot : Slot) : BeaconState WitnessRoot :=
     validators :=
       [witnessValidator, witnessValidator, witnessValidator, witnessValidator]
     current_justified_checkpoint := anchorCheckpoint
-    finalized_checkpoint := anchorCheckpoint }
+    finalized_checkpoint := anchorCheckpoint
+    beacon_committee_reads :=
+      (List.range 4).map (fun s => (s, 0, [s % 4]))
+    committee_count_reads := [(0, 1)] }
 
 def anchorState : BeaconState WitnessRoot := stateAt 0
 
@@ -345,13 +348,13 @@ private theorem witnessHonestBehavior :
     rcases honest_eq hv with rfl | rfl | rfl | rfl <;> decide
 
 def anchorMessage : LatestMessage WitnessRoot :=
-  { epoch := 0, root := anchorRoot }
+  { slot := 0, root := anchorRoot, payload_present := false }
 
 def parentMessage : LatestMessage WitnessRoot :=
-  { epoch := 0, root := parentRoot }
+  { slot := 1, root := parentRoot, payload_present := false }
 
 def candidateMessage : LatestMessage WitnessRoot :=
-  { epoch := 0, root := candidateRoot }
+  { slot := 2, root := candidateRoot, payload_present := false }
 
 private lemma block_roots_at_zero :
     (witnessExecution.store witnessConfig witnessExternals 0 0).block_roots =

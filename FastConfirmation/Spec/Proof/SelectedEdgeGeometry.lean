@@ -287,9 +287,9 @@ theorem strictSelectedEdgeGeometry_of_query_minimal
   have hcSlotLeD_U : ((E.store cfg ext u nu).blocks c).slot ≤
       ((E.store cfg ext u nu).blocks d).slot := by
     have h := get_ancestor_slot_le hwfU (hwalkU c hcU d hdU)
-    rw [show get_ancestor (E.store cfg ext u nu) (ForkChoiceNode.mk d)
-        ((E.store cfg ext u nu).blocks c).slot = ForkChoiceNode.mk c by
-      simpa only [is_ancestor, get_node_for_root, decide_eq_true_eq] using hdC_U] at h
+    rw [show (get_ancestor (E.store cfg ext u nu) (ForkChoiceNode.mk d .pending)
+        ((E.store cfg ext u nu).blocks c).slot).root = c by
+      simpa only [get_node_for_root, is_ancestor_pending, decide_eq_true_eq] using hdC_U] at h
     exact h
   have hdSlotLeNu : ((E.store cfg ext u nu).blocks d).slot ≤
       E.slot_at cfg nu := by

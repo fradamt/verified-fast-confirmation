@@ -1,6 +1,7 @@
 module
 public import FastConfirmation.Spec.Proof.Remainder
 public import FastConfirmation.Spec.Proof.Delivery
+public import FastConfirmation.Spec.Model.PayloadEffects
 
 @[expose] public section
 
@@ -74,6 +75,11 @@ theorem foldl {α : Type*} {f : Store Root → α → Store Root}
   | cons a l ih => exact (hf s a).trans (ih (f s a))
 
 end SameCkpt
+
+/-- Payload and PTC writes preserve both tracked checkpoints. -/
+theorem PayloadFrame.sameCkpt {store store' : Store Root}
+    (h : PayloadFrame store store') : SameCkpt store store' :=
+  ⟨h.justified_checkpoint.symm, h.unrealized_justified_checkpoint.symm⟩
 
 /-- The store-epoch bound tracked along a trajectory: both checkpoints the
 invariant follows have epoch at most `compute_epoch_at_slot SL`. -/
@@ -230,6 +236,22 @@ theorem on_attester_slashing_CkptEpochLe (cfg : Config) (ext : Externals Root) (
   cases hh
   exact CkptEpochLe.of_sameCkpt ⟨rfl, rfl⟩ h
 
+omit [Inhabited Root] in
+theorem on_payload_attestation_message_CkptEpochLe (cfg : Config) (ext : Externals Root)
+    (SL : Slot) {store store' : Store Root} {message : PayloadAttestationMessage Root}
+    {is_from_block : Bool} (h : CkptEpochLe cfg SL store)
+    (hh : on_payload_attestation_message cfg ext store message is_from_block = some store') :
+    CkptEpochLe cfg SL store' :=
+  CkptEpochLe.of_sameCkpt (on_payload_attestation_message_frame cfg ext hh).sameCkpt h
+
+omit [Inhabited Root] in
+theorem on_execution_payload_envelope_CkptEpochLe (cfg : Config) (ext : Externals Root)
+    (SL : Slot) {store store' : Store Root} {envelope : SignedExecutionPayloadEnvelope Root}
+    {observation : EnvelopeObservation Root} (h : CkptEpochLe cfg SL store)
+    (hh : on_execution_payload_envelope ext store envelope observation = some store') :
+    CkptEpochLe cfg SL store' :=
+  CkptEpochLe.of_sameCkpt (on_execution_payload_envelope_frame ext hh).sameCkpt h
+
 /-- `on_block` preserves the store-epoch bound. The block's own justified
 checkpoint (from `state_transition`) is bounded by the block epoch, which is at
 most `SL` by the not-future gate; the pulled-up tip's justified checkpoint is
@@ -249,31 +271,39 @@ theorem on_block_CkptEpochLe (cfg : Config) (ext : Externals Root) (SL : Slot)
   · simp [on_block, hknown] at hh
     cases hh
     exact h
-  · simp only [on_block, if_neg hknown] at hh
-    split_ifs at hh with hp hslot hfin hfc
+  · have hge : sb.message.slot ≤ get_current_slot cfg store := by
+      by_contra hfuture
+      simp [on_block, hknown, hfuture] at hh
+    simp only [on_block, if_neg hknown] at hh
+    split_ifs at hh
     all_goals try contradiction
     cases hst : ext.state_transition (store.block_states sb.message.parent_root) sb with
     | none => rw [hst] at hh; cases hh
     | some state =>
       rw [hst] at hh
-      cases hh
-      have hge : sb.message.slot ≤ get_current_slot cfg store := by
-        by_contra hcon; first | exact hslot hcon | exact hcon hslot
-      have hblkSL : compute_epoch_at_slot cfg sb.message.slot ≤ compute_epoch_at_slot cfg SL :=
-        Nat.div_le_div_right (le_trans hge hcur)
-      have hcjc : state.current_justified_checkpoint.epoch ≤ compute_epoch_at_slot cfg SL :=
-        le_trans (hst_ckpt _ _ _ hst) hblkSL
-      refine compute_pulled_up_tip_CkptEpochLe cfg ext SL _ sb.root ?_ ?_
-      · rw [← (update_checkpoints_sameBlocks _ _ _).2.2,
-            ← (update_proposer_boost_root_sameBlocks cfg _ _ _).2.2,
-            ← (record_block_timeliness_sameBlocks cfg _ _).2.2]
-        simp only [Function.update_self]
-        refine le_trans (hpjf state) ?_
-        rw [hst_slot _ _ _ hst]; exact hblkSL
-      · refine update_checkpoints_CkptEpochLe cfg SL _ _ _ hcjc ?_
-        refine CkptEpochLe.of_sameCkpt (update_proposer_boost_root_sameCkpt cfg _ _ _) ?_
-        refine CkptEpochLe.of_sameCkpt (record_block_timeliness_sameCkpt cfg _ _) ?_
-        exact CkptEpochLe.of_sameCkpt ⟨rfl, rfl⟩ h
+      dsimp only at hh
+      split at hh
+      · cases hh
+      · rename_i after_ptc hptc
+        cases hh
+        have hframe := notify_ptc_messages_frame cfg ext hptc
+        have hblkSL : compute_epoch_at_slot cfg sb.message.slot ≤ compute_epoch_at_slot cfg SL :=
+          Nat.div_le_div_right (le_trans hge hcur)
+        have hcjc : state.current_justified_checkpoint.epoch ≤ compute_epoch_at_slot cfg SL :=
+          le_trans (hst_ckpt _ _ _ hst) hblkSL
+        refine compute_pulled_up_tip_CkptEpochLe cfg ext SL _ sb.root ?_ ?_
+        · rw [← (update_checkpoints_sameBlocks _ _ _).2.2,
+              ← (update_proposer_boost_root_sameBlocks cfg _ _ _).2.2,
+              ← (record_block_timeliness_sameBlocks cfg _ _).2.2,
+              hframe.block_states]
+          simp only [Function.update_self]
+          refine le_trans (hpjf state) ?_
+          rw [hst_slot _ _ _ hst]; exact hblkSL
+        · refine update_checkpoints_CkptEpochLe cfg SL _ _ _ hcjc ?_
+          refine CkptEpochLe.of_sameCkpt (update_proposer_boost_root_sameCkpt cfg _ _ _) ?_
+          refine CkptEpochLe.of_sameCkpt (record_block_timeliness_sameCkpt cfg _ _) ?_
+          refine CkptEpochLe.of_sameCkpt hframe.sameCkpt ?_
+          exact CkptEpochLe.of_sameCkpt ⟨rfl, rfl⟩ h
 
 /-- One dispatched event preserves the bound (needs the current-slot bound for
 the `on_block` case, re-established across the fold). -/
@@ -298,6 +328,10 @@ theorem apply_event_CkptEpochLe (cfg : Config) (ext : Externals Root) (SL : Slot
   | attester_slashing asl =>
     simp only [apply_event] at he
     exact on_attester_slashing_CkptEpochLe cfg ext SL h he
+  | execution_payload_envelope envelope observation =>
+    exact on_execution_payload_envelope_CkptEpochLe cfg ext SL h he
+  | payload_attestation_message message is_from_block =>
+    exact on_payload_attestation_message_CkptEpochLe cfg ext SL h he
 
 /-! ### `on_tick` preserves the store-epoch bound
 

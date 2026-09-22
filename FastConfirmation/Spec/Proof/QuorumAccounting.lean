@@ -149,7 +149,8 @@ theorem supporter_mem_span_committee {E : Execution Root}
   -- `b` is an ancestor of `lm.root`, so `(blocks b).slot ≤ (blocks lm.root).slot`.
   have hble : (store.blocks b).slot ≤ (store.blocks lm.root).slot := by
     have hsle := get_ancestor_slot_le hwf (hwalk lm hlm)
-    simp only [get_supported_node, get_node_for_root, is_ancestor, decide_eq_true_eq] at hanc
+    rw [get_node_for_root, is_ancestor_supported_pending] at hanc
+    simp only [is_ancestor_pending, decide_eq_true_eq] at hanc
     rw [hanc] at hsle
     simpa using hsle
   refine Finset.mem_biUnion.mpr ⟨a.data.slot, Finset.mem_Icc.mpr ⟨?_, ?_⟩, hcomm⟩

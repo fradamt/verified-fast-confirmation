@@ -187,7 +187,7 @@ theorem ancestor_slot_le {store : Store Root}
     (hanc : is_ancestor store (get_node_for_root x) (get_node_for_root y) = true) :
     (store.blocks y).slot ≤ (store.blocks x).slot := by
   have hsle := get_ancestor_slot_le hwf hw
-  simp only [is_ancestor, get_node_for_root, decide_eq_true_eq] at hanc
+  simp only [get_node_for_root, is_ancestor_pending, decide_eq_true_eq] at hanc
   rw [hanc] at hsle
   simpa using hsle
 
@@ -258,7 +258,7 @@ theorem byz_sibling_recorded_dichotomy
   obtain ⟨lm, hlm, hnoneq, hanc⟩ := mem_AttSupporters cfg hi_supp
   have hancC' : is_ancestor (E.store cfg ext w m) (get_node_for_root lm.root)
       (get_node_for_root c') = true := by
-    simpa only [get_supported_node, get_node_for_root] using hanc
+    simpa only [get_node_for_root, is_ancestor_supported_pending] using hanc
   have hlmk : lm.root ∈ (E.store cfg ext w m).block_roots := hlmknown lm i hlm
   obtain ⟨a, _, _, _, _, hslt, hcomm, _, hblk⟩ := hprov i lm hlm
   -- lower bound: lo ≤ c'.slot ≤ lm.root.slot ≤ a.data.slot

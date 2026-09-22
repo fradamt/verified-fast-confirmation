@@ -4,27 +4,16 @@ public import FastConfirmation.Spec.Proof.Engine
 @[expose] public section
 
 /-!
-# Spec / Proof / HeadReroot: the mid-walk head-descent lemma
+# Spec / Proof / HeadReroot
 
-The existing head-descent lemmas (`Descent.is_ancestor_get_head`,
-`EngineStore.is_ancestor_get_head_of_chain`) are formulated for a
-`DescendsTo`/`DescendStep` chain that **starts at the store's own `justified_checkpoint.root`**
-— where `get_head`'s argmax descent begins. The strict FFG branch of the covering fold, however,
-already knows `head ⪰ r₀` for a mid-chain anchor `r₀` (via the `justified_descends` export) and only
-needs to continue the argmax descent from `r₀` down to `b` along a `DescendStep` chain.
+A Gloas head walk alternates payload resolution and beacon-child selection.
+This module proves that a head walk passes through each pending beacon
+ancestor between its start and its result. A walk that starts at a resolved
+node needs an explicit pending-status premise when that node is the target.
+Root ancestry alone does not imply equality of complete fork-choice nodes.
 
-This module supplies exactly that continuation. The **walk-path characterization** is
-`head_aux_reroot`: if the argmax walk from `start` produces a head that descends from a node `x`
-which itself descends from `start`, then the walk **passes through** `x` — the head is the head of
-the argmax walk re-rooted at `x` (`∃ N, get_head_aux fuel (mk start) = get_head_aux N (mk x)`). The
-lemma `head_leaf` shows that the actual `get_head` walk terminates at a childless node
-(fuel `blocks.length + 1` exceeds the pairwise-distinct descent length), so the re-rooted walk has
-fuel to spare for the remaining `DescendStep` chain. Composing the two gives
-`head_ge_of_intermediate_chain`.
-
-Domain hypotheses are the usual `parent_slot_lt` (`hwf`), filtered-containment (`hsub`), and the
-blanket walk-knownness `hwalk` (`∀ t r, r ∈ block_roots → WalkKnown store (blocks t).slot r`),
-as also used by `EngineStore`.
+The leaf bound counts both kinds of node step. The final continuation theorem
+follows the actual selections recorded by `NodeDescendsTo`.
 -/
 
 namespace FastConfirmation.Spec
@@ -32,11 +21,10 @@ namespace FastConfirmation.Spec
 variable {Root : Type*} [LinearOrder Root] [Inhabited Root]
 variable (cfg : Config)
 
-/-! ## Comparability of two ancestors of a common node -/
+/-! ## Beacon-root geometry -/
 
-omit [LinearOrder Root] [Inhabited Root] in
-/-- Two ancestors of a common node `y` are ancestry-comparable, by
-`get_ancestor_comp`. -/
+/-- Two beacon ancestors of a common root are comparable. The result records
+root equality, since the parent walk can resolve a payload status. -/
 theorem reroot_comparable {store : Store Root}
     (hwf : ∀ r ∈ store.block_roots,
       (store.blocks r).parent_root ∈ store.block_roots →
@@ -44,22 +32,25 @@ theorem reroot_comparable {store : Store Root}
     {y a b : Root}
     (hwa : WalkKnown store (store.blocks a).slot y)
     (hwb : WalkKnown store (store.blocks b).slot y)
-    (ha : get_ancestor store (ForkChoiceNode.mk y) (store.blocks a).slot = ForkChoiceNode.mk a)
-    (hb : get_ancestor store (ForkChoiceNode.mk y) (store.blocks b).slot = ForkChoiceNode.mk b) :
-    get_ancestor store (ForkChoiceNode.mk b) (store.blocks a).slot = ForkChoiceNode.mk a ∨
-      get_ancestor store (ForkChoiceNode.mk a) (store.blocks b).slot = ForkChoiceNode.mk b := by
+    (ha : (get_ancestor store (ForkChoiceNode.mk y .pending) (store.blocks a).slot).root = a)
+    (hb : (get_ancestor store (ForkChoiceNode.mk y .pending) (store.blocks b).slot).root = b) :
+    (get_ancestor store (ForkChoiceNode.mk b .pending) (store.blocks a).slot).root = a ∨
+      (get_ancestor store (ForkChoiceNode.mk a .pending) (store.blocks b).slot).root = b := by
   rcases le_total (store.blocks a).slot (store.blocks b).slot with hle | hle
   · left
-    have hcomp := get_ancestor_comp hwf hle hwa
-    rw [hb, ha] at hcomp
-    exact hcomp
+    have hcomp := congrArg ForkChoiceNode.root (get_ancestor_comp hwf hle hwa)
+    have hroot := get_ancestor_root_eq_of_root_eq (store := store)
+      (a := get_ancestor store (ForkChoiceNode.mk y .pending) (store.blocks b).slot)
+      (b := ForkChoiceNode.mk b .pending) hb (store.blocks a).slot
+    exact hroot.symm.trans (hcomp.trans ha)
   · right
-    have hcomp := get_ancestor_comp hwf hle hwb
-    rw [ha, hb] at hcomp
-    exact hcomp
+    have hcomp := congrArg ForkChoiceNode.root (get_ancestor_comp hwf hle hwb)
+    have hroot := get_ancestor_root_eq_of_root_eq (store := store)
+      (a := get_ancestor store (ForkChoiceNode.mk y .pending) (store.blocks a).slot)
+      (b := ForkChoiceNode.mk a .pending) ha (store.blocks b).slot
+    exact hroot.symm.trans (hcomp.trans hb)
 
-omit [LinearOrder Root] [Inhabited Root] in
-/-- Mutual descent forces equality: if `x ⪰ start` and `start ⪰ x` then `x = start`. -/
+/-- Mutual beacon-root ancestry forces root equality. -/
 theorem reroot_eq_of_mutual {store : Store Root}
     (hwf : ∀ r ∈ store.block_roots,
       (store.blocks r).parent_root ∈ store.block_roots →
@@ -67,26 +58,16 @@ theorem reroot_eq_of_mutual {store : Store Root}
     (hwalk : ∀ t ∈ store.block_roots, ∀ r ∈ store.block_roots,
       WalkKnown store (store.blocks t).slot r)
     {x start : Root} (hx : x ∈ store.block_roots) (hstart : start ∈ store.block_roots)
-    (hxs : get_ancestor store (ForkChoiceNode.mk x) (store.blocks start).slot =
-        ForkChoiceNode.mk start)
-    (hsx : get_ancestor store (ForkChoiceNode.mk start) (store.blocks x).slot =
-        ForkChoiceNode.mk x) :
+    (hxs : (get_ancestor store (ForkChoiceNode.mk x .pending) (store.blocks start).slot).root = start)
+    (hsx : (get_ancestor store (ForkChoiceNode.mk start .pending) (store.blocks x).slot).root = x) :
     x = start := by
-  have hle1 : (store.blocks start).slot ≤ (store.blocks x).slot := by
-    have h := get_ancestor_slot_le hwf (hwalk start hstart x hx)
-    rw [hxs] at h; simpa using h
-  have hle2 : (store.blocks x).slot ≤ (store.blocks start).slot := by
+  have hle : (store.blocks x).slot ≤ (store.blocks start).slot := by
     have h := get_ancestor_slot_le hwf (hwalk x hx start hstart)
-    rw [hsx] at h; simpa using h
-  have heq : (store.blocks x).slot ≤ (store.blocks start).slot := hle2
-  have hstop : get_ancestor store (ForkChoiceNode.mk x) (store.blocks start).slot =
-      ForkChoiceNode.mk x := get_ancestor_stop heq
-  rw [hstop] at hxs
-  exact ForkChoiceNode.mk.injEq x start |>.mp hxs
+    rwa [hsx] at h
+  rwa [get_ancestor_stop hle] at hxs
 
-omit [LinearOrder Root] [Inhabited Root] in
-/-- Direct-child squeeze: if `x ⪰ start`, `br ⪰ x`, and `br`'s parent is `start`, then `x` is
-`start` or `br` — nothing sits strictly between a node and its parent. -/
+/-- A beacon ancestor between a parent and its direct child is one of those
+roots. Payload nodes at the parent root do not introduce a third root. -/
 theorem reroot_child_squeeze {store : Store Root}
     (hwf : ∀ r ∈ store.block_roots,
       (store.blocks r).parent_root ∈ store.block_roots →
@@ -95,49 +76,135 @@ theorem reroot_child_squeeze {store : Store Root}
       WalkKnown store (store.blocks t).slot r)
     {x start br : Root} (hx : x ∈ store.block_roots) (hstart : start ∈ store.block_roots)
     (hbr : br ∈ store.block_roots) (hbr_par : (store.blocks br).parent_root = start)
-    (hxs : get_ancestor store (ForkChoiceNode.mk x) (store.blocks start).slot =
-        ForkChoiceNode.mk start)
-    (hbrx : get_ancestor store (ForkChoiceNode.mk br) (store.blocks x).slot =
-        ForkChoiceNode.mk x) :
+    (hxs : (get_ancestor store (ForkChoiceNode.mk x .pending) (store.blocks start).slot).root = start)
+    (hbrx : (get_ancestor store (ForkChoiceNode.mk br .pending) (store.blocks x).slot).root = x) :
     x = start ∨ x = br := by
-  have hstart_lt_br : (store.blocks start).slot < (store.blocks br).slot := by
-    have h := hwf br hbr (by rw [hbr_par]; exact hstart)
-    rwa [hbr_par] at h
-  -- `slot start ≤ slot x`
   have hle_sx : (store.blocks start).slot ≤ (store.blocks x).slot := by
     have h := get_ancestor_slot_le hwf (hwalk start hstart x hx)
-    rw [hxs] at h; simpa using h
+    rwa [hxs] at h
   rcases eq_or_lt_of_le hle_sx with heq | hlt
-  · -- `slot x = slot start` ⟹ `x = start`
-    left
-    have hstop : get_ancestor store (ForkChoiceNode.mk x) (store.blocks start).slot =
-        ForkChoiceNode.mk x := get_ancestor_stop (le_of_eq heq.symm)
-    rw [hstop] at hxs
-    exact ForkChoiceNode.mk.injEq x start |>.mp hxs
-  · -- `slot start < slot x`; show `x = br`
-    right
+  · left
+    rwa [get_ancestor_stop (le_of_eq heq.symm)] at hxs
+  · right
     rcases le_or_gt (store.blocks br).slot (store.blocks x).slot with hle | hgt
-    · -- `slot br ≤ slot x`; `get_ancestor br (slot x)` stops at `br`
-      have hstop : get_ancestor store (ForkChoiceNode.mk br) (store.blocks x).slot =
-          ForkChoiceNode.mk br := get_ancestor_stop hle
-      rw [hstop] at hbrx
-      exact (ForkChoiceNode.mk.injEq br x |>.mp hbrx).symm
-    · -- `slot x < slot br`; the walk steps to `start`, landing at `start` ⟹ `x = start`, absurd
-      exfalso
+    · rw [get_ancestor_stop hle] at hbrx
+      exact hbrx.symm
+    · exfalso
       have hpw : WalkKnown store (store.blocks x).slot (store.blocks br).parent_root := by
-        rw [hbr_par]; exact WalkKnown.stop hstart (le_of_lt hlt)
+        rw [hbr_par]
+        exact WalkKnown.stop hstart (le_of_lt hlt)
       rw [get_ancestor_step hwf hbr hgt hpw, hbr_par,
         get_ancestor_stop (le_of_lt hlt)] at hbrx
-      have : start = x := ForkChoiceNode.mk.injEq start x |>.mp hbrx
+      have : start = x := hbrx
       exact absurd (this ▸ hlt) (lt_irrefl _)
 
-/-! ## The walk-path characterization: the argmax walk passes through `x` -/
+/-! ## The actual head path passes through the pending target -/
 
-/-- **Reroot.** If the argmax walk from `start` produces a head that descends from `x`, and `x`
-descends from `start`, then the walk **passes through** `x`: the head is the head of the argmax
-walk re-rooted at `x`, at some remaining fuel `N`. Induction on `fuel`; at each descent step the
-head is comparable to both the chosen child `br` and to `x` (`reroot_comparable`), and the
-direct-child squeeze (`reroot_child_squeeze`) resolves which subtree `x` lies in. -/
+/-- Complete node equality uses both the beacon root and the payload status. -/
+private theorem node_eq_pending {node : ForkChoiceNode Root} {r : Root}
+    (hroot : node.root = r) (hstatus : node.payload_status = .pending) :
+    node = ForkChoiceNode.mk r .pending := by
+  cases node with
+  | mk root status =>
+    change root = r at hroot
+    change status = .pending at hstatus
+    rw [hroot, hstatus]
+
+/-- Reroot an arbitrary-status head walk at a pending beacon ancestor.
+If the target is already the start root, the start must itself be pending.
+For a strict beacon descendant, the walk reaches its pending node through
+an actual beacon-child edge. -/
+theorem head_aux_reroot_node {store : Store Root} {blocks : List Root}
+    (hwf : ∀ r ∈ store.block_roots,
+      (store.blocks r).parent_root ∈ store.block_roots →
+        (store.blocks (store.blocks r).parent_root).slot < (store.blocks r).slot)
+    (hsub : ∀ r ∈ blocks, r ∈ store.block_roots)
+    (hwalk : ∀ t ∈ store.block_roots, ∀ r ∈ store.block_roots,
+      WalkKnown store (store.blocks t).slot r)
+    {x : Root} (hx : x ∈ store.block_roots) :
+    ∀ (fuel : ℕ) (start : ForkChoiceNode Root), start.root ∈ store.block_roots →
+      (get_ancestor store (ForkChoiceNode.mk x .pending) (store.blocks start.root).slot).root =
+        start.root →
+      (get_ancestor store (get_head_aux cfg store blocks fuel start)
+        (store.blocks x).slot).root = x →
+      (x = start.root → start.payload_status = .pending) →
+      ∃ N, get_head_aux cfg store blocks fuel start =
+        get_head_aux cfg store blocks N (ForkChoiceNode.mk x .pending) := by
+  intro fuel
+  induction fuel with
+  | zero =>
+    intro start hstart hxs hhx hstatus
+    change (get_ancestor store start (store.blocks x).slot).root = x at hhx
+    have hsx : (get_ancestor store (ForkChoiceNode.mk start.root .pending)
+        (store.blocks x).slot).root = x :=
+      (get_ancestor_root_eq_of_root_eq (store := store)
+        (a := start) (b := ForkChoiceNode.mk start.root .pending) rfl _).symm.trans hhx
+    have hxeq := reroot_eq_of_mutual hwf hwalk hx hstart hxs hsx
+    have hnode : start = ForkChoiceNode.mk x .pending :=
+      node_eq_pending hxeq.symm (hstatus hxeq)
+    exact ⟨0, by rw [hnode]⟩
+  | succ fuel ih =>
+    intro start hstart hxs hhx hstatus
+    by_cases hxeq : x = start.root
+    · have hnode : start = ForkChoiceNode.mk x .pending :=
+        node_eq_pending hxeq.symm (hstatus hxeq)
+      exact ⟨fuel + 1, by rw [hnode]⟩
+    · cases hbest : (get_node_children store blocks start).argmax
+          (fun child => toLex (get_weight cfg store child,
+            toLex (child.root, get_payload_status_tiebreaker cfg store child))) with
+      | none =>
+        have hnil := List.argmax_eq_none.mp hbest
+        rw [get_head_aux_leaf cfg store blocks fuel start hnil] at hhx
+        have hsx : (get_ancestor store (ForkChoiceNode.mk start.root .pending)
+            (store.blocks x).slot).root = x :=
+          (get_ancestor_root_eq_of_root_eq (store := store)
+            (a := start) (b := ForkChoiceNode.mk start.root .pending) rfl _).symm.trans hhx
+        exact False.elim (hxeq (reroot_eq_of_mutual hwf hwalk hx hstart hxs hsx))
+      | some best =>
+        have hmem : best ∈ get_node_children store blocks start := List.argmax_mem hbest
+        rw [get_head_aux_step cfg store blocks fuel start best hbest] at hhx ⊢
+        rcases mem_get_node_children.mp hmem with hpending | hresolved
+        · have hroot : best.root = start.root := hpending.2.1
+          apply ih best
+          · rwa [hroot]
+          · simpa only [hroot] using hxs
+          · exact hhx
+          · intro heq
+            exact False.elim (hxeq (heq.trans hroot))
+        · obtain ⟨_, hbeststatus, hbestblocks, hparent, _⟩ := hresolved
+          have hbestknown : best.root ∈ store.block_roots := hsub _ hbestblocks
+          have hHbest : (get_ancestor store (get_head_aux cfg store blocks fuel best)
+              (store.blocks best.root).slot).root = best.root := by
+            apply get_head_aux_stays_below cfg hwf hsub fuel
+              (WalkKnown.stop hbestknown (le_refl _))
+            rw [get_ancestor_stop_status (le_refl _)]
+          let H := get_head_aux cfg store blocks fuel best
+          have hHknown : H.root ∈ store.block_roots := by
+            rcases get_head_aux_root_mem_or cfg (store := store) (blocks := blocks) fuel best with h | h
+            · exact hsub _ h
+            · change H.root = best.root at h
+              rwa [h]
+          have hHbest' : (get_ancestor store (ForkChoiceNode.mk H.root .pending)
+              (store.blocks best.root).slot).root = best.root :=
+            (get_ancestor_root_eq_of_root_eq (store := store)
+              (a := H) (b := ForkChoiceNode.mk H.root .pending) rfl _).symm.trans hHbest
+          have hHx' : (get_ancestor store (ForkChoiceNode.mk H.root .pending)
+              (store.blocks x).slot).root = x :=
+            (get_ancestor_root_eq_of_root_eq (store := store)
+              (a := H) (b := ForkChoiceNode.mk H.root .pending) rfl _).symm.trans hhx
+          rcases reroot_comparable hwf
+              (hwalk best.root hbestknown H.root hHknown)
+              (hwalk x hx H.root hHknown) hHbest' hHx' with hxbest | hbestx
+          · exact ih best hbestknown hxbest hhx (fun _ => hbeststatus)
+          · rcases reroot_child_squeeze hwf hwalk hx hstart hbestknown
+                hparent hxs hbestx with hxstart | hxbest
+            · exact False.elim (hxeq hxstart)
+            · have hnode : best = ForkChoiceNode.mk x .pending :=
+                node_eq_pending hxbest.symm hbeststatus
+              exact ⟨fuel, by rw [hnode]⟩
+
+/-- Root-facing rerooting starts at a pending node. The local status premise
+of `head_aux_reroot_node` therefore holds without an extra assumption. -/
 theorem head_aux_reroot {store : Store Root} {blocks : List Root}
     (hwf : ∀ r ∈ store.block_roots,
       (store.blocks r).parent_root ∈ store.block_roots →
@@ -147,65 +214,16 @@ theorem head_aux_reroot {store : Store Root} {blocks : List Root}
       WalkKnown store (store.blocks t).slot r)
     {x : Root} (hx : x ∈ store.block_roots) :
     ∀ (fuel : ℕ) (start : Root), start ∈ store.block_roots →
-      get_ancestor store (ForkChoiceNode.mk x) (store.blocks start).slot =
-        ForkChoiceNode.mk start →
-      get_ancestor store (get_head_aux cfg store blocks fuel (ForkChoiceNode.mk start))
-          (store.blocks x).slot = ForkChoiceNode.mk x →
-      ∃ N, get_head_aux cfg store blocks fuel (ForkChoiceNode.mk start) =
-        get_head_aux cfg store blocks N (ForkChoiceNode.mk x) := by
-  intro fuel
-  induction fuel with
-  | zero =>
-    intro start hstart hxs hhx
-    have hleaf : get_head_aux cfg store blocks 0 (ForkChoiceNode.mk start) =
-        ForkChoiceNode.mk start := rfl
-    rw [hleaf] at hhx
-    have hxeq : x = start := reroot_eq_of_mutual hwf hwalk hx hstart hxs hhx
-    exact ⟨0, by rw [hxeq]⟩
-  | succ f ih =>
-    intro start hstart hxs hhx
-    rcases hbest : (get_node_children store blocks (ForkChoiceNode.mk start)).argmax
-        (fun child => toLex (get_weight cfg store child, child.root)) with _ | best
-    · -- leaf: the walk stops at `start`, so `start ⪰ x`; with `x ⪰ start`, `x = start`
-      have hnil : get_node_children store blocks (ForkChoiceNode.mk start) = [] :=
-        List.argmax_eq_none.mp hbest
-      rw [get_head_aux_leaf cfg store blocks f (ForkChoiceNode.mk start) hnil] at hhx
-      have hxeq : x = start := reroot_eq_of_mutual hwf hwalk hx hstart hxs hhx
-      exact ⟨f + 1, by rw [hxeq, get_head_aux_leaf cfg store blocks f _ hnil]⟩
-    · -- descent step to `br`
-      obtain ⟨br⟩ := best
-      have hmem : ForkChoiceNode.mk br ∈
-          get_node_children store blocks (ForkChoiceNode.mk start) := List.argmax_mem hbest
-      have hbr_par : (store.blocks br).parent_root = start := (mem_get_node_children.mp hmem).2
-      have hbr_mem : br ∈ store.block_roots := hsub br (mem_get_node_children.mp hmem).1
-      rw [get_head_aux_step cfg store blocks f (ForkChoiceNode.mk start) (ForkChoiceNode.mk br)
-        hbest] at hhx ⊢
-      -- `H ⪰ br`
-      have hHbr : get_ancestor store (get_head_aux cfg store blocks f (ForkChoiceNode.mk br))
-          (store.blocks br).slot = ForkChoiceNode.mk br :=
-        get_head_aux_stays_below cfg hwf hsub f
-          (WalkKnown.stop hbr_mem (le_refl _)) (get_ancestor_stop (le_refl _))
-      -- the head as `mk H0`
-      set H0 : Root := (get_head_aux cfg store blocks f (ForkChoiceNode.mk br)).root with hH0def
-      have hHeq : get_head_aux cfg store blocks f (ForkChoiceNode.mk br) = ForkChoiceNode.mk H0 :=
-        rfl
-      have hH0mem : H0 ∈ store.block_roots := by
-        rcases get_head_aux_root_mem_or cfg (blocks := blocks) f (ForkChoiceNode.mk br) with h | h
-        · exact hsub _ h
-        · rw [hH0def, h]; exact hbr_mem
-      rw [hHeq] at hHbr hhx
-      rcases reroot_comparable hwf (hwalk br hbr_mem H0 hH0mem) (hwalk x hx H0 hH0mem) hHbr hhx with
-        hxbr | hbrx
-      · -- `x ⪰ br`: recurse
-        exact ih br hbr_mem hxbr (by rw [hHeq]; exact hhx)
-      · -- `br ⪰ x`: `x = start` or `x = br`
-        rcases reroot_child_squeeze hwf hwalk hx hstart hbr_mem hbr_par hxs hbrx with hxst | hxbr
-        · exact ⟨f + 1, by rw [hxst,
-            get_head_aux_step cfg store blocks f (ForkChoiceNode.mk start)
-              (ForkChoiceNode.mk br) hbest]⟩
-        · exact ⟨f, by rw [hxbr]⟩
+      (get_ancestor store (ForkChoiceNode.mk x .pending) (store.blocks start).slot).root = start →
+      (get_ancestor store (get_head_aux cfg store blocks fuel (ForkChoiceNode.mk start .pending))
+        (store.blocks x).slot).root = x →
+      ∃ N, get_head_aux cfg store blocks fuel (ForkChoiceNode.mk start .pending) =
+        get_head_aux cfg store blocks N (ForkChoiceNode.mk x .pending) := by
+  intro fuel start hstart hxs hhx
+  exact head_aux_reroot_node cfg hwf hsub hwalk hx fuel
+    (ForkChoiceNode.mk start .pending) hstart hxs hhx (fun _ => rfl)
 
-/-! ## Finiteness: the argmax walk terminates at a leaf when fuel exceeds the descent length -/
+/-! ## Both kinds of node edge consume the finite walk budget -/
 
 omit [LinearOrder Root] [Inhabited Root] in
 /-- Budget decrease: the `blocks`-count of strictly-higher-slot roots strictly drops from a node to
@@ -238,47 +256,89 @@ private theorem budget_lt_of_child {store : Store Root} {blocks : List Root}
   · exact h
   · exact absurd ((hsl.eq_of_length h).symm ▸ hbrq) hbrp
 
-/-- **The argmax walk reaches a leaf.** If the `blocks`-count of roots strictly above `start`'s slot
-is below `fuel`, the descent from `start` lands on a childless node. Strong induction on `fuel`:
-each step moves to a child `br` of strictly higher slot, dropping the budget (`budget_lt_of_child`),
-so the fuel outlasts the strictly-shrinking budget. -/
+/-- A pending node needs one more node step than a resolved node at the
+same root. Each strictly higher beacon root supplies two possible steps. -/
+def head_walk_budget (store : Store Root) (blocks : List Root)
+    (node : ForkChoiceNode Root) : ℕ :=
+  2 * (blocks.filter (fun r => decide ((store.blocks node.root).slot <
+    (store.blocks r).slot))).length + if node.payload_status = .pending then 1 else 0
+
+/-- Every actual node edge strictly decreases the two-step beacon budget. -/
+private theorem head_walk_budget_lt_of_child {store : Store Root} {blocks : List Root}
+    (hwf : ∀ r ∈ store.block_roots,
+      (store.blocks r).parent_root ∈ store.block_roots →
+        (store.blocks (store.blocks r).parent_root).slot < (store.blocks r).slot)
+    (hsub : ∀ r ∈ blocks, r ∈ store.block_roots)
+    {start best : ForkChoiceNode Root} (hstart : start.root ∈ store.block_roots)
+    (hmem : best ∈ get_node_children store blocks start) :
+    head_walk_budget store blocks best < head_walk_budget store blocks start := by
+  rcases mem_get_node_children.mp hmem with hpending | hresolved
+  · obtain ⟨hstatus, hroot, hbeststatus⟩ := hpending
+    have hresolved : best.payload_status ≠ .pending := by
+      rcases hbeststatus with hempty | ⟨hfull, _⟩
+      · simp [hempty]
+      · simp [hfull]
+    simp only [head_walk_budget, hroot, if_pos hstatus, if_neg hresolved]
+    omega
+  · obtain ⟨hstatus, hbeststatus, hbestblocks, hparent, _⟩ := hresolved
+    have hbestknown := hsub _ hbestblocks
+    have hlt : (store.blocks start.root).slot < (store.blocks best.root).slot := by
+      have h := hwf best.root hbestknown (by rw [hparent]; exact hstart)
+      rwa [hparent] at h
+    have hcount := budget_lt_of_child hbestblocks hlt
+    simp only [head_walk_budget, if_neg hstatus, if_pos hbeststatus]
+    omega
+
+/-- An arbitrary-status head walk reaches a childless node when its fuel
+exceeds the budget for payload and beacon edges. -/
+theorem walk_reaches_leaf_node {store : Store Root} {blocks : List Root}
+    (hwf : ∀ r ∈ store.block_roots,
+      (store.blocks r).parent_root ∈ store.block_roots →
+        (store.blocks (store.blocks r).parent_root).slot < (store.blocks r).slot)
+    (hsub : ∀ r ∈ blocks, r ∈ store.block_roots) :
+    ∀ (fuel : ℕ) (start : ForkChoiceNode Root), start.root ∈ store.block_roots →
+      head_walk_budget store blocks start < fuel →
+      get_node_children store blocks (get_head_aux cfg store blocks fuel start) = [] := by
+  intro fuel
+  induction fuel with
+  | zero => intro start _ hbud; exact absurd hbud (Nat.not_lt_zero _)
+  | succ fuel ih =>
+    intro start hstart hbud
+    cases hbest : (get_node_children store blocks start).argmax
+        (fun child => toLex (get_weight cfg store child,
+          toLex (child.root, get_payload_status_tiebreaker cfg store child))) with
+    | none =>
+      have hnil := List.argmax_eq_none.mp hbest
+      rw [get_head_aux_leaf cfg store blocks fuel start hnil]
+      exact hnil
+    | some best =>
+      have hmem : best ∈ get_node_children store blocks start := List.argmax_mem hbest
+      have hbestknown : best.root ∈ store.block_roots := by
+        rcases get_node_children_root_mem_or hmem with h | h
+        · exact hsub _ h
+        · rwa [h]
+      have hdecrease := head_walk_budget_lt_of_child hwf hsub hstart hmem
+      rw [get_head_aux_step cfg store blocks fuel start best hbest]
+      exact ih best hbestknown (by omega)
+
+/-- Pending-root form of the leaf bound. Each possible beacon descendant
+requires two node steps, and the start root needs its payload resolution. -/
 theorem walk_reaches_leaf {store : Store Root} {blocks : List Root}
     (hwf : ∀ r ∈ store.block_roots,
       (store.blocks r).parent_root ∈ store.block_roots →
         (store.blocks (store.blocks r).parent_root).slot < (store.blocks r).slot)
     (hsub : ∀ r ∈ blocks, r ∈ store.block_roots) :
     ∀ (fuel : ℕ) (start : Root), start ∈ store.block_roots →
-      (blocks.filter (fun r => decide ((store.blocks start).slot <
-        (store.blocks r).slot))).length < fuel →
+      2 * (blocks.filter (fun r => decide ((store.blocks start).slot <
+        (store.blocks r).slot))).length + 1 < fuel →
       get_node_children store blocks
-        (get_head_aux cfg store blocks fuel (ForkChoiceNode.mk start)) = [] := by
-  intro fuel
-  induction fuel with
-  | zero => intro start _ hbud; exact absurd hbud (Nat.not_lt_zero _)
-  | succ f ih =>
-    intro start hstart hbud
-    rcases hbest : (get_node_children store blocks (ForkChoiceNode.mk start)).argmax
-        (fun child => toLex (get_weight cfg store child, child.root)) with _ | best
-    · have hnil : get_node_children store blocks (ForkChoiceNode.mk start) = [] :=
-        List.argmax_eq_none.mp hbest
-      rw [get_head_aux_leaf cfg store blocks f (ForkChoiceNode.mk start) hnil]; exact hnil
-    · obtain ⟨br⟩ := best
-      have hmem : ForkChoiceNode.mk br ∈
-          get_node_children store blocks (ForkChoiceNode.mk start) := List.argmax_mem hbest
-      have hbr_par : (store.blocks br).parent_root = start := (mem_get_node_children.mp hmem).2
-      have hbr_blocks : br ∈ blocks := (mem_get_node_children.mp hmem).1
-      have hbr_mem : br ∈ store.block_roots := hsub br hbr_blocks
-      have hlt : (store.blocks start).slot < (store.blocks br).slot := by
-        have h := hwf br hbr_mem (by rw [hbr_par]; exact hstart)
-        rwa [hbr_par] at h
-      rw [get_head_aux_step cfg store blocks f (ForkChoiceNode.mk start) (ForkChoiceNode.mk br)
-        hbest]
-      refine ih br hbr_mem ?_
-      exact lt_of_lt_of_le (budget_lt_of_child hbr_blocks hlt) (Nat.lt_succ_iff.mp hbud)
+        (get_head_aux cfg store blocks fuel (ForkChoiceNode.mk start .pending)) = [] := by
+  intro fuel start hstart hbud
+  apply walk_reaches_leaf_node cfg hwf hsub fuel (ForkChoiceNode.mk start .pending) hstart
+  simpa [head_walk_budget] using hbud
 
-/-- **The fork-choice head is a leaf of the filtered tree.** `get_head`'s fuel
-`(filtered tree).length + 1` exceeds the strictly-shrinking descent budget
-(`walk_reaches_leaf`), so the argmax descent stops at a childless node. -/
+/-- The Gloas head fuel `2 * blocks.length + 2` exceeds the budget for every
+payload-resolution and beacon-child edge. Thus the head is childless. -/
 theorem head_leaf {store : Store Root}
     (hwf : ∀ r ∈ store.block_roots,
       (store.blocks r).parent_root ∈ store.block_roots →
@@ -288,66 +348,65 @@ theorem head_leaf {store : Store Root}
     get_node_children store (get_filtered_block_tree cfg store) (get_head cfg store) = [] := by
   simp only [get_head]
   refine walk_reaches_leaf cfg hwf hsub _ store.justified_checkpoint.root hjust ?_
-  exact lt_of_le_of_lt (List.filter_sublist.length_le) (Nat.lt_succ_self _)
+  have hcount : ((get_filtered_block_tree cfg store).filter (fun r =>
+      decide ((store.blocks store.justified_checkpoint.root).slot <
+        (store.blocks r).slot))).length ≤ (get_filtered_block_tree cfg store).length :=
+    List.filter_sublist.length_le
+  omega
 
-/-! ## Phase 2: descend the `DescendsTo` chain from a leaf head -/
+/-! ## Continue actual selections from a head that is already a leaf -/
 
-/-- **Leaf descent.** Once the head is known to be the leaf of the argmax walk re-rooted at `x`
-(`∃ N, head = get_head_aux N (mk x)`) and to descend from `x`, following any `DescendsTo` chain
-`x → b` shows the head descends from `b`. Induction on the chain: at each step the head is not `x`
-itself (`x` has the dominant child, but the head is a leaf), so the re-rooted walk had fuel to take
-that dominant step, and the head descends from the child. -/
+/-- A leaf reached from any node also follows every certified selection
+from that node. A positive path cannot finish with zero remaining fuel,
+since its current node has the selected child. -/
+theorem head_ge_of_reroot_leaf_node {store : Store Root} {blocks : List Root}
+    (hwf : ∀ r ∈ store.block_roots,
+      (store.blocks r).parent_root ∈ store.block_roots →
+        (store.blocks (store.blocks r).parent_root).slot < (store.blocks r).slot)
+    (hsub : ∀ r ∈ blocks, r ∈ store.block_roots)
+    {H : ForkChoiceNode Root} (hleaf : get_node_children store blocks H = [])
+    {b : Root} {n : ℕ} {start : ForkChoiceNode Root}
+    (hdesc : NodeDescendsTo cfg store blocks b n start) :
+    (∃ fuel, H = get_head_aux cfg store blocks fuel start) →
+      (get_ancestor store H (store.blocks b).slot).root = b := by
+  induction hdesc with
+  | here status hb =>
+    rintro ⟨fuel, hH⟩
+    rw [hH]
+    apply get_head_aux_stays_below cfg hwf hsub fuel (WalkKnown.stop hb (le_refl _))
+    rw [get_ancestor_stop_status (le_refl _)]
+  | @step n head best hbest hrec ih =>
+    rintro ⟨fuel, hH⟩
+    cases fuel with
+    | zero =>
+      change H = head at hH
+      have hchild := List.argmax_mem hbest
+      rw [← hH, hleaf] at hchild
+      exact absurd hchild List.not_mem_nil
+    | succ fuel =>
+      apply ih
+      refine ⟨fuel, ?_⟩
+      rw [hH, get_head_aux_step cfg store blocks fuel head best hbest]
+
+/-- Root-facing continuation at a pending beacon node. The conclusion is
+beacon-root ancestry and permits any final payload status. -/
 theorem head_ge_of_reroot_leaf {store : Store Root}
     (hwf : ∀ r ∈ store.block_roots,
       (store.blocks r).parent_root ∈ store.block_roots →
         (store.blocks (store.blocks r).parent_root).slot < (store.blocks r).slot)
     (hsub : ∀ r ∈ get_filtered_block_tree cfg store, r ∈ store.block_roots)
     (hleaf : get_node_children store (get_filtered_block_tree cfg store) (get_head cfg store) = [])
-    {b : Root} :
-    ∀ {n : ℕ} {x : Root},
-      DescendsTo cfg store (get_filtered_block_tree cfg store) b n x →
-      (∃ N, get_head cfg store =
-        get_head_aux cfg store (get_filtered_block_tree cfg store) N (ForkChoiceNode.mk x)) →
-      get_ancestor store (get_head cfg store) (store.blocks x).slot = ForkChoiceNode.mk x →
-      get_ancestor store (get_head cfg store) (store.blocks b).slot = ForkChoiceNode.mk b := by
-  intro n x hdesc
-  induction hdesc with
-  | here hb => intro _ hhx; exact hhx
-  | @step n h c hchild hdom hrec ih =>
-    intro hex hhx
-    obtain ⟨N, hN⟩ := hex
-    cases N with
-    | zero =>
-      have hGx : get_head cfg store = ForkChoiceNode.mk h := hN
-      rw [hGx] at hleaf
-      rw [hleaf] at hchild
-      exact absurd hchild List.not_mem_nil
-    | succ f' =>
-      have harg : (get_node_children store (get_filtered_block_tree cfg store)
-          (ForkChoiceNode.mk h)).argmax
-            (fun child => toLex (get_weight cfg store child, child.root)) =
-          some (ForkChoiceNode.mk c) := get_head_argmax_dominant cfg hchild hdom
-      have hGc : get_head cfg store =
-          get_head_aux cfg store (get_filtered_block_tree cfg store) f' (ForkChoiceNode.mk c) := by
-        rw [hN, get_head_aux_step cfg store (get_filtered_block_tree cfg store) f'
-          (ForkChoiceNode.mk h) (ForkChoiceNode.mk c) harg]
-      have hc_mem : c ∈ store.block_roots := hsub c (mem_get_node_children.mp hchild).1
-      have hGgec : get_ancestor store (get_head cfg store) (store.blocks c).slot =
-          ForkChoiceNode.mk c := by
-        rw [hGc]
-        exact get_head_aux_stays_below cfg hwf hsub f'
-          (WalkKnown.stop hc_mem (le_refl _)) (get_ancestor_stop (le_refl _))
-      exact ih ⟨f', hGc⟩ hGgec
+    {b : Root} {n : ℕ} {x : Root}
+    (hdesc : DescendsTo cfg store (get_filtered_block_tree cfg store) b n x)
+    (hex : ∃ N, get_head cfg store =
+      get_head_aux cfg store (get_filtered_block_tree cfg store) N (ForkChoiceNode.mk x .pending))
+    (_hhx : (get_ancestor store (get_head cfg store) (store.blocks x).slot).root = x) :
+    (get_ancestor store (get_head cfg store) (store.blocks b).slot).root = b :=
+  head_ge_of_reroot_leaf_node cfg hwf hsub hleaf hdesc hex
 
-/-! ## The headline: mid-walk head descent -/
-
-/-- **Mid-walk head descent.** If `head ⪰ x` for a node `x` that descends
-from the store's justified root, and there is a `DescendsTo` chain from `x` down to `b` in the
-filtered tree, then `head ⪰ b`. Composes the walk-path characterization (`head_aux_reroot`, so the
-argmax walk passes through `x`) with the leaf-descent (`head_ge_of_reroot_leaf`, so the remaining
-argmax steps follow the dominant chain to `b`). This is the strict-FFG-branch continuation the
-covering fold needs: `justified_descends` supplies `head ⪰ r₀` for a mid-chain `r₀`, and this lemma
-carries the descent the rest of the way to the confirmed block. -/
+/-- If the head descends from an intermediate pending root and an actual
+Gloas descent path continues from that root to `b`, the head descends from
+`b`. This statement retains its root-facing public interface. -/
 theorem head_ge_of_intermediate_chain {store : Store Root}
     (hwf : ∀ r ∈ store.block_roots,
       (store.blocks r).parent_root ∈ store.block_roots →
@@ -362,14 +421,14 @@ theorem head_ge_of_intermediate_chain {store : Store Root}
     (hhx : is_ancestor store (get_head cfg store) (get_node_for_root x) = true)
     (hdesc : DescendsTo cfg store (get_filtered_block_tree cfg store) b n x) :
     is_ancestor store (get_head cfg store) (get_node_for_root b) = true := by
-  simp only [is_ancestor, get_node_for_root, decide_eq_true_eq] at hxj hhx ⊢
+  simp only [get_node_for_root, is_ancestor_pending, decide_eq_true_eq] at hxj hhx ⊢
   have hgd : get_head cfg store =
       get_head_aux cfg store (get_filtered_block_tree cfg store)
-        ((get_filtered_block_tree cfg store).length + 1)
-        (ForkChoiceNode.mk store.justified_checkpoint.root) := rfl
+        (2 * (get_filtered_block_tree cfg store).length + 2)
+        (ForkChoiceNode.mk store.justified_checkpoint.root .pending) := rfl
   have hleaf := head_leaf cfg hwf hsub hjust
   have hreroot : ∃ N, get_head cfg store =
-      get_head_aux cfg store (get_filtered_block_tree cfg store) N (ForkChoiceNode.mk x) := by
+      get_head_aux cfg store (get_filtered_block_tree cfg store) N (ForkChoiceNode.mk x .pending) := by
     rw [hgd]
     exact head_aux_reroot cfg hwf hsub hwalk hx _ store.justified_checkpoint.root hjust hxj
       (by rw [← hgd]; exact hhx)

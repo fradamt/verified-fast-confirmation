@@ -204,36 +204,48 @@ private theorem justified_epoch_le_on_block
         cases hh
     | some state =>
         rw [hst] at hh
-        cases hh
         let added : Store Root :=
           { store with
-            block_roots := if sb.root ∈ store.block_roots then
-                store.block_roots else store.block_roots ++ [sb.root]
+            block_roots := store.block_roots ++ [sb.root]
             blocks := Function.update store.blocks sb.root sb.message
-            block_states := Function.update store.block_states sb.root state }
-        let staged := FastConfirmation.Spec.record_block_timeliness cfg
-          added sb.root
-        let boosted := FastConfirmation.Spec.update_proposer_boost_root cfg
-          staged (get_head cfg store).root sb.root
-        let realized := FastConfirmation.Spec.update_checkpoints boosted
-          state.current_justified_checkpoint state.finalized_checkpoint
-        have hboostedJ : boosted.justified_checkpoint =
-            store.justified_checkpoint := by
-          simp only [boosted, staged, added,
-            FastConfirmation.Spec.update_proposer_boost_root,
-            FastConfirmation.Spec.record_block_timeliness]
-          split_ifs <;> rfl
-        have hresult : store.justified_checkpoint.epoch ≤
-            (FastConfirmation.Spec.compute_pulled_up_tip cfg ext realized
-              sb.root).justified_checkpoint.epoch :=
-          (congrArg Checkpoint.epoch hboostedJ.symm).le.trans
+            block_states := Function.update store.block_states sb.root state
+            payload_timeliness_vote := Function.update store.payload_timeliness_vote
+              sb.root (some (List.replicate cfg.ptc_size none))
+            payload_data_availability_vote := Function.update store.payload_data_availability_vote
+              sb.root (some (List.replicate cfg.ptc_size none)) }
+        change (match notify_ptc_messages cfg ext added state sb.message.payload_attestations with
+          | none => none
+          | some notified => some (FastConfirmation.Spec.compute_pulled_up_tip cfg ext
+              (FastConfirmation.Spec.update_checkpoints
+                (FastConfirmation.Spec.update_proposer_boost_root cfg
+                  (FastConfirmation.Spec.record_block_timeliness cfg notified sb.root)
+                  (get_head cfg store).root sb.root)
+                state.current_justified_checkpoint state.finalized_checkpoint) sb.root)) =
+            some store' at hh
+        cases hn : notify_ptc_messages cfg ext added state sb.message.payload_attestations with
+        | none => rw [hn] at hh; cases hh
+        | some notified =>
+          rw [hn] at hh
+          cases hh
+          have hf := notify_ptc_messages_frame cfg ext hn
+          let staged := FastConfirmation.Spec.record_block_timeliness cfg
+            notified sb.root
+          let boosted := FastConfirmation.Spec.update_proposer_boost_root cfg
+            staged (get_head cfg store).root sb.root
+          let realized := FastConfirmation.Spec.update_checkpoints boosted
+            state.current_justified_checkpoint state.finalized_checkpoint
+          have hboostedJ : boosted.justified_checkpoint =
+              store.justified_checkpoint := by
+            simp only [boosted, staged,
+              FastConfirmation.Spec.update_proposer_boost_root,
+              FastConfirmation.Spec.record_block_timeliness]
+            split_ifs <;> exact hf.justified_checkpoint
+          exact (congrArg Checkpoint.epoch hboostedJ.symm).le.trans
             ((justified_epoch_le_update_checkpoints boosted
                 state.current_justified_checkpoint
                 state.finalized_checkpoint).trans
               (justified_epoch_le_compute_pulled_up_tip
                 (cfg := cfg) (ext := ext) realized sb.root))
-        dsimp only [realized, boosted, staged, added] at hresult ⊢
-        split_ifs at hresult <;> exact hresult
 
 private theorem justified_epoch_le_apply_event_getD
     (store : Store Root) (event : Event Root) :
@@ -259,6 +271,12 @@ private theorem justified_epoch_le_apply_event_getD
             (on_attester_slashing_justified_checkpoint (ext := ext)
               (by simpa only [FastConfirmation.Spec.apply_event]
                 using hevent))).symm.le
+      | execution_payload_envelope envelope observation =>
+          exact (congrArg Checkpoint.epoch
+            (on_execution_payload_envelope_frame ext hevent).justified_checkpoint).symm.le
+      | payload_attestation_message message fromBlock =>
+          exact (congrArg Checkpoint.epoch
+            (on_payload_attestation_message_frame cfg ext hevent).justified_checkpoint).symm.le
 
 private theorem justified_epoch_le_event_fold
     (events : List (Event Root)) (store : Store Root) :

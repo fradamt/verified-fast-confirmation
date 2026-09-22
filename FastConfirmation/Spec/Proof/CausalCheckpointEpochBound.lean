@@ -54,25 +54,12 @@ theorem checkpointTarget_epoch_le_of_head_descent_and_reverse_exclusion
     simp only [get_block_epoch, compute_epoch_at_slot,
       compute_start_slot_at_epoch] at hepoch ⊢
     exact (Nat.div_lt_iff_lt_mul cfg.slots_per_epoch_pos).mp hepoch
-  have heta : get_ancestor store (get_node_for_root H)
-      (compute_start_slot_at_epoch cfg J.epoch) =
-        get_node_for_root J.root := by
-    simp only [get_checkpoint_block] at htarget
-    generalize hnode : get_ancestor store (get_node_for_root H)
-      (compute_start_slot_at_epoch cfg J.epoch) = node
-    simp only [get_node_for_root] at hnode ⊢
-    rw [hnode] at htarget
-    obtain ⟨r⟩ := node
-    change r = J.root at htarget
-    cases htarget
-    rfl
-  have hcomp := get_ancestor_comp hwf (Nat.le_of_lt hslot) hwalkGlc
-  simp only [is_ancestor, get_node_for_root, decide_eq_true_eq] at hHGlc
-  simp only [get_node_for_root] at heta hcomp
-  rw [heta, hHGlc] at hcomp
+  simp only [get_checkpoint_block] at htarget
+  have hcomp := get_ancestor_comp_root hwf (Nat.le_of_lt hslot) hwalkGlc
+  simp only [get_node_for_root, is_ancestor_pending, decide_eq_true_eq] at hHGlc
+  rw [htarget, hHGlc] at hcomp
   apply hnotJGlc
-  simp only [is_ancestor, get_node_for_root, decide_eq_true_eq]
-  exact hcomp
+  simpa only [get_node_for_root, is_ancestor_pending, decide_eq_true_eq] using hcomp
 
 namespace Execution
 
@@ -155,20 +142,11 @@ theorem endpoint_justified_epoch_le_of_causal_honest_target_minimal
     rw [htargetData] at hroot
     exact hroot.symm
   have htargetSpec := get_ancestor_spec hwfK htargetWalk
-  have heta : get_ancestor (E.store cfg ext i k)
-      (get_head cfg (E.store cfg ext i k))
-      (compute_start_slot_at_epoch cfg J.epoch) = get_node_for_root J.root := by
-    simp only [get_checkpoint_block] at htargetRoot
-    generalize hnode : get_ancestor (E.store cfg ext i k)
-      (get_head cfg (E.store cfg ext i k))
-      (compute_start_slot_at_epoch cfg J.epoch) = node
-    simp only [get_node_for_root] at hnode ⊢
-    rw [hnode] at htargetRoot
-    obtain ⟨r⟩ := node
-    change r = J.root at htargetRoot
-    cases htargetRoot
-    rfl
-  rw [heta] at htargetSpec
+  have hrootWalk : (get_ancestor (E.store cfg ext i k)
+      (get_node_for_root (get_head cfg (E.store cfg ext i k)).root)
+      (compute_start_slot_at_epoch cfg J.epoch)).root = J.root := by
+    simpa only [get_checkpoint_block] using htargetRoot
+  rw [hrootWalk] at htargetSpec
   have hJK : J.root ∈ (E.store cfg ext i k).block_roots := htargetSpec.1
   have hkLower : E.slot_start cfg (E.slot_at cfg q) ≤ k :=
     E.query_slot_start_le_of_slot_ge_minimal cfg ext hA (by
@@ -202,7 +180,7 @@ theorem endpoint_justified_epoch_le_of_causal_honest_target_minimal
       get_block_epoch cfg (E.store cfg ext i k) glc :=
     checkpointTarget_epoch_le_of_head_descent_and_reverse_exclusion cfg
       hwfK (hwalkK glc hglcK _ hheadK) htargetRoot
-      hheadGlcK hnotJGlcK
+      ((is_ancestor_node_root _ _ _).symm.trans hheadGlcK) hnotJGlcK
   have hglcAgree : (E.store cfg ext i k).blocks glc =
       (E.store cfg ext w m).blocks glc :=
     hA.wellFormed.blocks_agree

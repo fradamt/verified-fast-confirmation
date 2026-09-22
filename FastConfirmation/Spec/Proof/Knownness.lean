@@ -217,11 +217,11 @@ theorem mem_of_honest_past_descendant (hSA : SpecAssumptions cfg ext E)
   have hwalk_u : WalkKnown (E.store cfg ext u n_u) rb d :=
     hwalk0.mono (by rw [hanchor0 ast ablk hgeq, GENESIS_SLOT]; exact Nat.zero_le _)
   -- the `b ≼ d` walk lands on `b`; transport it to `(u, n_u)`
-  have hv_lands : get_ancestor (E.store cfg ext v (n + 1)) (ForkChoiceNode.mk d) rb =
-      ForkChoiceNode.mk b := by
-    simpa only [is_ancestor, get_node_for_root, decide_eq_true_eq] using hanc_v
-  have hu_lands : get_ancestor (E.store cfg ext u n_u) (ForkChoiceNode.mk d) rb =
-      ForkChoiceNode.mk b := by
+  have hv_lands : (get_ancestor (E.store cfg ext v (n + 1)) (ForkChoiceNode.mk d .pending) rb).root =
+      b := by
+    simpa only [get_node_for_root, is_ancestor_pending, decide_eq_true_eq] using hanc_v
+  have hu_lands : (get_ancestor (E.store cfg ext u n_u) (ForkChoiceNode.mk d .pending) rb).root =
+      b := by
     rw [get_ancestor_congr hagree hd_u hwalk_u]; exact hv_lands
   have hb_u : b ∈ (E.store cfg ext u n_u).block_roots := by
     have hspec := (get_ancestor_spec hpsl_u hwalk_u).1

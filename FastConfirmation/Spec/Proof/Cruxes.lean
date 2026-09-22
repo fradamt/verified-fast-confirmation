@@ -212,7 +212,7 @@ theorem hrec_crux (hSA : SpecAssumptions cfg ext E)
     (hb_wm : b ∈ (E.store cfg ext w m).block_roots)
     (hc_wm : c ∈ (E.store cfg ext w m).block_roots)
     (hbc_wm : is_ancestor (E.store cfg ext w m)
-      (ForkChoiceNode.mk b) (ForkChoiceNode.mk c) = true)
+      (ForkChoiceNode.mk b .pending) (ForkChoiceNode.mk c .pending) = true)
     (hIH : ∀ j ∈ E.honest, ∀ t' : Slot, σ + 1 ≤ t' → t' < E.slot_at cfg m →
       ∀ jj (a' : Attestation Root), E.vote j t' = some (jj, a') →
       is_ancestor (E.store cfg ext w m)
@@ -220,7 +220,7 @@ theorem hrec_crux (hSA : SpecAssumptions cfg ext E)
     (hubiq : ∀ i ∈ E.Sclass cfg ext w m b lo σ, ∀ (t : Slot) (kk : ℕ) (a : Attestation Root),
       E.vote i t = some (kk, a) →
       ∃ lm, (E.store cfg ext w m).latest_messages i = some lm ∧
-        compute_epoch_at_slot cfg t ≤ lm.epoch)
+        compute_epoch_at_slot cfg t ≤ (get_latest_message_epoch cfg lm))
     (hbbr_known : ∀ i ∈ E.Sclass cfg ext w m b lo σ,
       ∀ (t : Slot) (kk : ℕ) (a : Attestation Root),
       E.vote i t = some (kk, a) → a.data.beacon_block_root ∈ (E.store cfg ext w m).block_roots)

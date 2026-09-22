@@ -1,8 +1,13 @@
 module
 public import FastConfirmation.Spec.Model
 public import FastConfirmation.Spec.ProvenTheorems
+public import FastConfirmation.Spec.Proof.PayloadStoreInvariants
+public import FastConfirmation.Spec.Proof.PayloadSupport
+public import FastConfirmation.Spec.Proof.PayloadPersistence
 public import FastConfirmation.Spec.Proof.AcceptedStrictPrefixExtraQueryCounterexample
 public import FastConfirmation.Spec.Proof.AcceptedPinnedEconomicsStrictPrefixExtraQueryCounterexample
+
+@[expose] public section
 
 /-!
 # Spec — facade
@@ -29,3 +34,5 @@ four-slot preset rather than claiming to instantiate every field of
 boundary-call proof path: the primary stored-output theorem starts at the next
 slot, after the modeled synchrony deadline.
 -/
+
+end

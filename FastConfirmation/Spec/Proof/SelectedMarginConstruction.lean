@@ -101,7 +101,7 @@ theorem recorded_supporter_mem_storeSclass
   simp only [StoreSclass, Finset.mem_filter]
   refine ⟨⟨hiSpan, hi⟩, ⟨t, k, a, htle, hvote, hnew, ?_⟩⟩
   rw [hroot]
-  simpa only [get_supported_node, get_node_for_root] using hanc
+  simpa only [get_node_for_root, is_ancestor_supported_pending] using hanc
 
 /-- Honest recorded support is bounded by the store-indexed `S` value. -/
 theorem honest_supporters_sum_le_storeSval
@@ -162,7 +162,7 @@ theorem ParentStuck_subset_storeAclass
       have hparentNotDesc : ¬ is_ancestor queryStore
           (get_node_for_root (queryStore.blocks b).parent_root)
           (get_node_for_root b) = true := by
-        simp only [is_ancestor, get_node_for_root, decide_eq_true_eq]
+        simp only [get_node_for_root, is_ancestor_pending, decide_eq_true_eq]
         rw [get_ancestor_stop
           (le_of_lt (hev.parent_slot_lt b hev.block_known hev.parent_known))]
         intro hcon
@@ -241,18 +241,20 @@ theorem prefixDirectWindowSelectedMarginInputsAt_of_confirmed_in_store_minimal
     (hAt : ∀ i, i ∈ E.honest → i ∈ E.span_committee lo es →
       E.StoreAncestorOrVoteless query.store c es i →
         E.AncestorOrVoteless cfg ext w m c es i)
-    (hchild : ForkChoiceNode.mk c ∈
+    (hchild : ForkChoiceNode.mk c .pending ∈
       get_node_children (E.store cfg ext w m)
         (get_filtered_block_tree cfg (E.store cfg ext w m))
-        (ForkChoiceNode.mk a))
+        (ForkChoiceNode.mk a (get_parent_payload_status (E.store cfg ext w m)
+          ((E.store cfg ext w m).blocks c))))
     (hselected : E.Sval cfg ext w m c lo es ≤
       get_attestation_score cfg (E.store cfg ext w m) (get_node_for_root c)
         ((E.store cfg ext w m).checkpoint_states
           (E.store cfg ext w m).justified_checkpoint))
     (hsibling : ∀ c' : Root,
-      ForkChoiceNode.mk c' ∈ get_node_children (E.store cfg ext w m)
+      ForkChoiceNode.mk c' .pending ∈ get_node_children (E.store cfg ext w m)
         (get_filtered_block_tree cfg (E.store cfg ext w m))
-        (ForkChoiceNode.mk a) → c' ≠ c →
+        (ForkChoiceNode.mk a (get_parent_payload_status (E.store cfg ext w m)
+          ((E.store cfg ext w m).blocks c))) → c' ≠ c →
       get_attestation_score cfg (E.store cfg ext w m) (get_node_for_root c')
           ((E.store cfg ext w m).checkpoint_states
             (E.store cfg ext w m).justified_checkpoint) ≤
