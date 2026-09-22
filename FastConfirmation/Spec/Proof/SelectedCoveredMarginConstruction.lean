@@ -242,7 +242,7 @@ theorem selectedCoveredMarginSupplyAt_of_filterSupply_minimal
       ((E.store cfg ext v q).blocks c).slot es) ≤
       E.Aval cfg ext w m c ((E.store cfg ext v q).blocks c).slot es :=
     E.crossingParentSub_le_endpoint_Aval_minimal cfg ext hA
-      hcutoffQ haQ hgeom.block_known hgeom.parent_eq
+      hv hqH hcutoffQ haQ hgeom.block_known hgeom.parent_eq
       haM hcM hparentM (by simpa only [hgeom.lo_eq] using hmaxQuery)
   have hselectedMid : ∀ i ∈ E.Sclass cfg ext w m c
       ((E.store cfg ext v q).blocks c).slot sigma,
@@ -297,6 +297,7 @@ theorem selectedCoveredMarginSupplyAt_of_filterSupply_minimal
           simpa only [hgeom.lo_eq] using hsibling }
   · have hsibling :=
       E.futureCrossing_sibling_score_of_endpointLedger_minimal cfg ext hA
+        hv hqH
         (bs := get_current_balance_source query)
         hgeom.block_known hgeom.parent_known hgeom.lo_eq hcutoffQ
         hgeom.child_slot_le_cutoff hgeom.cutoff_le_sigma hmaxQuery

@@ -59,7 +59,7 @@ theorem completedScheduledEventPrefix_accountingEvidence
     simpa only [p] using E.completedScheduledEventPrefix_store cfg ext v n
   have hp : E.CurrentTargetPrefixAccountingEvidence cfg ext
       (p.store cfg ext) (p.previousSecond + 1) :=
-    { operational := p.operationalEvidence cfg ext E hT
+    { operational := p.operationalEvidence cfg ext E hT hv hHn1
       committees := by
         intro slot hslot
         rw [hpstore]
@@ -418,7 +418,7 @@ noncomputable def completedPrefix_acceptedTargetGateProducerAt
     E.scheduledEventPrefix_acceptedTargetA32GateRealization_withLookahead
     cfg ext B hT hC.delivery_lookahead hC.static_validators
       hC.byzantine_bound
-      hC.phase0_source hC.phase0_boundary_source hanchor hboundary p hHn1
+      hC.phase0_source hC.phase0_boundary_source hanchor hboundary p hv hHn1
       hevidence hstate hval htab hendHP hanchorH hC.balance_floor
       hgateP hsupportP
   rw [hpstore] at hrealized

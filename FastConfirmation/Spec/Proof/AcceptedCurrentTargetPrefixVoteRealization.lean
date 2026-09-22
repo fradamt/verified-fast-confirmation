@@ -182,7 +182,7 @@ private theorem slot_lt_prefix_next_epoch_start {s : Slot} {e : Epoch}
 canonical ground vote for that prefix store's exact current target before the
 next epoch boundary.
 
-The prefix node itself need not be honest.  `hqH` bounds the exact query
+The prefix node is honest. `hqH` bounds the exact query
 second, while `B.coherence.checkpoint_of_known` identifies the checkpoint
 projection of the same accepted LMD/head root in the voter's causal boundary
 store and the query prefix. -/
@@ -192,6 +192,7 @@ theorem currentTargetObservedHonestSupporter_vote_of_prefix
     (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg) (E := E)
       (anchor := E.genesis_store.justified_checkpoint))
     (p : E.ScheduledEventPrefix)
+    (hp : p.node ∈ E.honest)
     (hqH : E.WithinHorizon cfg (p.previousSecond + 1))
     {state : BeaconState Root} {i : ValidatorIndex}
     (hiObserved : i ∈ E.currentTargetObservedHonestSupporters cfg
@@ -223,7 +224,7 @@ theorem currentTargetObservedHonestSupporter_vote_of_prefix
   have hiCommittee : i ∈ E.committee a.data.slot :=
     hhb.votes_assigned i hi a.data.slot
       (by rw [hvoteGround]; exact Option.some_ne_none _)
-  have hprov := p.latestMessageProvenance cfg ext E hV.trajectory
+  have hprov := p.latestMessageProvenance cfg ext E hV.trajectory hp hqH
   obtain ⟨ap, _hapAttests, _hapTargetEpoch, _hapRoot, hapSlotEpoch,
       hapApplied, hapCommittee, hlmKnown, _hlmSlot⟩ :=
     hprov i lm hlm
@@ -387,6 +388,7 @@ theorem currentTargetObservedHonestSupporter_vote_of_prefix_of_selected
     (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg) (E := E)
       (anchor := E.genesis_store.justified_checkpoint))
     (p : E.ScheduledEventPrefix)
+    (hp : p.node ∈ E.honest)
     (hqH : E.WithinHorizon cfg (p.previousSecond + 1))
     {state : BeaconState Root} {i : ValidatorIndex}
     (hiObserved : i ∈ E.currentTargetObservedHonestSupporters cfg
@@ -397,7 +399,7 @@ theorem currentTargetObservedHonestSupporter_vote_of_prefix_of_selected
       (get_current_target cfg (p.store cfg ext))) :=
   E.currentTargetObservedHonestSupporter_vote_of_prefix cfg ext B
     (CurrentTargetPrefixVoteAssumptions.of_selectedMarginAssumptions
-      cfg ext E hA hgen) hboundary p hqH hiObserved
+      cfg ext E hA hgen) hboundary p hp hqH hiObserved
 
 end Execution
 

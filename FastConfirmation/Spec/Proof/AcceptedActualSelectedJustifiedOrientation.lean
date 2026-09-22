@@ -262,7 +262,7 @@ theorem completedPrefix_noConflict_certifiedJustified_root_eq_currentTarget
           simpa only [← hanchor] using hboundary
         have hvote :=
           E.currentTargetObservedHonestSupporter_vote_of_prefix
-            cfg ext B hV hboundaryZero p hHn1
+            cfg ext B hV hboundaryZero p hv hHn1
               (by simpa only [hpstore, state, store] using hiObserved)
         rw [hpstore] at hvote
         simpa only [store, target, deadline] using hvote

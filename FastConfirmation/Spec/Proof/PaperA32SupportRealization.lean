@@ -142,7 +142,9 @@ theorem paperA32LinkSupportAtCore_of_concreteHonestTargetVotes
       vote.assigned, ?_, ?_⟩
     · simp only [a, honest_attestation_attesting_indices,
         List.mem_singleton]
-    · apply hec.honest_attestation_valid _ a i vote.honest
+    · apply hec.honest_attestation_valid _ a
+        ((E.honestCausalStore_store cfg ext w m hw hHm).checkpointState
+          cfg ext hkeyed) i vote.honest
       · simp only [a, honest_attestation_attesting_indices]
       · simpa only [a, honest_attestation_data_eq,
           honest_attestation_data_slot] using vote.assigned

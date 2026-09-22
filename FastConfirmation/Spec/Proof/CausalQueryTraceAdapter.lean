@@ -149,7 +149,7 @@ theorem ScheduledPrefixTrajectoryAssumptions.of_selectedMarginAssumptions
     honest_behavior := hA.honest_behavior
     genesis := hgen }
 
-/-- Store facts mechanically inherited by an exact scheduled prefix.  These
+/-- Store facts inherited by an honest node's in-horizon scheduled prefix. These
 are operational/provenance facts only; in particular the record contains no
 confirmation, base strip, recorded-epoch domination, replay, or target
 agreement. -/
@@ -182,11 +182,38 @@ theorem ScheduledEventPrefix.schedLMProv
       (on_tick_latest cfg (E.store cfg ext p.node p.previousSecond)
         (E.time_at (p.previousSecond + 1)))
 
-/-- Ordinary latest-message provenance, with the prefix store's exact current
-slot as ambient bound. -/
+/-- Each shorter prefix of an honest in-horizon scheduled prefix is in the
+validation domain. -/
+theorem ScheduledEventPrefix.honestCausal_take
+    (p : E.ScheduledEventPrefix) (hp : p.node ∈ E.honest)
+    (hn : E.WithinHorizon cfg (p.previousSecond + 1))
+    (k : ℕ)
+    (hk : k ≤ ((E.schedule p.node (p.previousSecond + 1)).take
+      p.processedCount).length) :
+    E.HonestCausalStore cfg ext
+      ((((E.schedule p.node (p.previousSecond + 1)).take p.processedCount).take k).foldl
+        (fun store event => (apply_event cfg ext store event).getD store)
+          (on_tick cfg (E.store cfg ext p.node p.previousSecond)
+            (E.time_at (p.previousSecond + 1)))) := by
+  have hkCount : k ≤ p.processedCount := by
+    rw [List.length_take] at hk
+    omega
+  have hkSchedule : k ≤ (E.schedule p.node (p.previousSecond + 1)).length := by
+    rw [List.length_take] at hk
+    omega
+  have hshort : E.HonestCausalStore cfg ext
+      (({ p with processedCount := k, count_le := hkSchedule } :
+        E.ScheduledEventPrefix).store cfg ext) :=
+    .scheduledPrefix _ hp hn
+  simpa only [ScheduledEventPrefix.store, List.take_take,
+    Nat.min_eq_left hkCount, Nat.min_eq_right hkCount] using hshort
+
+/-- Latest-message provenance at an honest node's in-horizon prefix, with the
+prefix store's exact current slot as ambient bound. -/
 theorem ScheduledEventPrefix.latestMessageProvenance
     (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
-    (p : E.ScheduledEventPrefix) :
+    (p : E.ScheduledEventPrefix) (hp : p.node ∈ E.honest)
+    (hn : E.WithinHorizon cfg (p.previousSecond + 1)) :
     LatestMessageProvenance E cfg (get_current_slot cfg (p.store cfg ext))
       (p.store cfg ext) := by
   obtain ⟨anchorState, anchorBlock, hgen, _hslot, _hparent⟩ := hT.genesis_structure
@@ -199,7 +226,7 @@ theorem ScheduledEventPrefix.latestMessageProvenance
   have hresult : LatestMessageProvenance E cfg
       (E.slot_at cfg (p.previousSecond + 1)) (p.store cfg ext) := by
     rw [ScheduledEventPrefix.store]
-    refine LMP_foldl cfg ext hT.wellFormed hT.externals_coherence _ _ ?_ ?_ ?_ ?_
+    refine LMP_foldl cfg ext hT.wellFormed hT.externals_coherence _ _ ?_ ?_ ?_ ?_ ?_
     · intro block hmem
       exact ⟨p.node, p.previousSecond + 1, List.mem_of_mem_take hmem⟩
     · exact on_tick_blockProvenance cfg _ _
@@ -208,8 +235,10 @@ theorem ScheduledEventPrefix.latestMessageProvenance
     · exact on_tick_LMP cfg _ _
         ((E.latestMessageProvenance cfg ext hT.wellFormed
             hT.externals_coherence ⟨anchorState, anchorBlock, hgen⟩
-            p.node p.previousSecond).mono_sl
+            p.node p.previousSecond hp
+            (E.withinHorizon_mono cfg (Nat.le_succ _) hn)).mono_sl
           (E.slot_at_mono cfg (Nat.le_succ p.previousSecond)))
+    · exact ScheduledEventPrefix.honestCausal_take cfg ext E p hp hn
   rwa [p.current_slot cfg ext]
 
 /-- Every block known at a scheduled prefix is no later than that prefix's
@@ -301,26 +330,33 @@ theorem ScheduledEventPrefix.parentSlotLt
     · exact on_tick_WFPlus cfg anchorBlock.message.parent_root _ _ hbase
   exact hprefix.2.1
 
-/-- No honest validator is marked equivocating at an exact scheduled prefix.
--/
+/-- No honest validator is marked equivocating at an honest node's
+in-horizon scheduled prefix. -/
 theorem ScheduledEventPrefix.honest_not_equivocating
     (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
-    (p : E.ScheduledEventPrefix) :
+    (p : E.ScheduledEventPrefix) (hp : p.node ∈ E.honest)
+    (hn : E.WithinHorizon cfg (p.previousSecond + 1)) :
     ∀ i ∈ E.honest, i ∉ (p.store cfg ext).equivocating_indices := by
   obtain ⟨anchorState, anchorBlock, hgen, _hslot, _hparent⟩ := hT.genesis_structure
   intro i hi
   rw [ScheduledEventPrefix.store]
   refine honest_not_equiv_foldl cfg ext hT.honest_behavior
-    hT.externals_coherence hi _ _ ?_
-  rw [on_tick_equiv]
-  exact E.honest_not_equivocating cfg ext hT.honest_behavior
-    hT.externals_coherence ⟨anchorState, anchorBlock, hgen⟩ hi
-    p.node p.previousSecond
+    hT.externals_coherence hi _ _ ?_ ?_ ?_
+  · rw [on_tick_equiv]
+    exact E.honest_not_equivocating cfg ext hT.honest_behavior
+      hT.externals_coherence ⟨anchorState, anchorBlock, hgen⟩ hi
+      p.node p.previousSecond hp
+      (E.withinHorizon_mono cfg (Nat.le_succ _) hn)
+  · exact on_tick_unknownBlockStatesDefault cfg _ _
+      (E.unknownBlockStatesDefault_store cfg ext
+        ⟨anchorState, anchorBlock, hgen⟩ p.node p.previousSecond)
+  · exact ScheduledEventPrefix.honestCausal_take cfg ext E p hp hn
 
-/-- Assemble all mechanically inherited prefix facts. -/
+/-- Assemble the inherited facts at an honest node's in-horizon prefix. -/
 theorem ScheduledEventPrefix.operationalEvidence
     (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
-    (p : E.ScheduledEventPrefix) :
+    (p : E.ScheduledEventPrefix) (hp : p.node ∈ E.honest)
+    (hn : E.WithinHorizon cfg (p.previousSecond + 1)) :
     E.ScheduledPrefixOperationalEvidence cfg ext (p.store cfg ext)
       (p.previousSecond + 1) :=
   { causal := .scheduledPrefix p
@@ -328,13 +364,13 @@ theorem ScheduledEventPrefix.operationalEvidence
     scheduled_provenance :=
       ScheduledEventPrefix.schedLMProv cfg ext E hT p
     latest_message_provenance :=
-      ScheduledEventPrefix.latestMessageProvenance cfg ext E hT p
+      ScheduledEventPrefix.latestMessageProvenance cfg ext E hT p hp hn
     parent_slot_lt :=
       ScheduledEventPrefix.parentSlotLt cfg ext E hT p
     blocks_slot_le_current :=
       ScheduledEventPrefix.blocksSlotLeCurrent cfg ext E hT p
     honest_not_equivocating :=
-      ScheduledEventPrefix.honest_not_equivocating cfg ext E hT p }
+      ScheduledEventPrefix.honest_not_equivocating cfg ext E hT p hp hn }
 
 end Execution
 
@@ -587,8 +623,8 @@ theorem ScheduledQueryPrefixCompatibility.query_wall_slot
   rw [← h.clock_aligned]
   exact h.queryStore_current_slot cfg ext
 
-/-- The accepted query inherits all safety-free scheduled-prefix trajectory
-facts at its exact pre-query store. -/
+/-- An accepted query at an honest node's in-horizon scheduled prefix inherits
+the trajectory facts at its exact pre-query store. -/
 theorem ScheduledQueryPrefixCompatibility.operationalEvidence
     {E : Execution Root}
     {runtime : Runtime Root} {actions : List (Action Root)}
@@ -596,11 +632,13 @@ theorem ScheduledQueryPrefixCompatibility.operationalEvidence
     {scheduledPrefix : E.ScheduledEventPrefix}
     (h : ScheduledQueryPrefixCompatibility cfg ext E runtime actions position
       before after querySecond scheduledPrefix)
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext) :
+    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
+    (hpHonest : scheduledPrefix.node ∈ E.honest)
+    (hn : E.WithinHorizon cfg querySecond) :
     E.ScheduledPrefixOperationalEvidence cfg ext before.fcrStore.store
       querySecond := by
   have hp := ScheduledEventPrefix.operationalEvidence cfg ext E hT
-    scheduledPrefix
+    scheduledPrefix hpHonest (by simpa only [h.scheduled_second] using hn)
   rwa [← h.store_eq, h.scheduled_second] at hp
 
 end AllowedFCRCalls
@@ -712,12 +750,13 @@ theorem ScheduledQueryPrefixCompatibility.queryStoreBaseStripEvidence
     (h : ScheduledQueryPrefixCompatibility cfg ext E runtime actions position
       before after querySecond scheduledPrefix)
     (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
+    (hpHonest : scheduledPrefix.node ∈ E.honest)
     {bs : BeaconState Root} {b : Root} {lo es : Slot}
     (hres : E.QueryStoreBaseStripTraceResidual cfg ext before.fcrStore.store bs
       b lo es querySecond) :
     E.QueryStoreBaseStripEvidence cfg ext before.fcrStore.store bs b lo es :=
   ScheduledPrefixOperationalEvidence.toQueryStoreBaseStripEvidence cfg ext E
-    (h.operationalEvidence cfg ext hT) hres
+    (h.operationalEvidence cfg ext hT hpHonest hres.query_horizon) hres
 
 /-! ## Global cast materialization and exact pre-query order -/
 
@@ -970,8 +1009,8 @@ theorem GlobalScheduledQueryPrefixCompatibility.queryStore_causal
   rw [h.query_store_eq actor kind haction]
   exact .scheduledPrefix scheduledPrefix
 
-/-- Safety-free scheduled-prefix trajectory facts at the exact global query
-actor's store. -/
+/-- Trajectory facts at the exact global query actor's store, when its matching
+scheduled prefix belongs to an honest node and lies within the horizon. -/
 theorem GlobalScheduledQueryPrefixCompatibility.operationalEvidence
     {E : Execution Root}
     {runtime : GlobalRuntime Root} {actions : List (GlobalAction Root)}
@@ -982,11 +1021,13 @@ theorem GlobalScheduledQueryPrefixCompatibility.operationalEvidence
     (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
     (actor : ValidatorIndex) (kind : QueryKind)
     (haction : actions.getD position (.honestVoteCast 0 0 0) =
-      .nodeAction actor (.query kind)) :
+      .nodeAction actor (.query kind))
+    (hpHonest : scheduledPrefix.node ∈ E.honest)
+    (hn : E.WithinHorizon cfg querySecond) :
     E.ScheduledPrefixOperationalEvidence cfg ext
       (before.nodeState actor).fcrStore.store querySecond := by
   have hp := ScheduledEventPrefix.operationalEvidence cfg ext E hT
-    scheduledPrefix
+    scheduledPrefix hpHonest (by simpa only [h.scheduled_second] using hn)
   rwa [← h.query_store_eq actor kind haction, h.scheduled_second] at hp
 
 /-- The combined global/scheduled adapter feeds the existing query-store base
@@ -1002,13 +1043,15 @@ theorem GlobalScheduledQueryPrefixCompatibility.queryStoreBaseStripEvidence
     (actor : ValidatorIndex) (kind : QueryKind)
     (haction : actions.getD position (.honestVoteCast 0 0 0) =
       .nodeAction actor (.query kind))
+    (hpHonest : scheduledPrefix.node ∈ E.honest)
     {bs : BeaconState Root} {b : Root} {lo es : Slot}
     (hres : E.QueryStoreBaseStripTraceResidual cfg ext
       (before.nodeState actor).fcrStore.store bs b lo es querySecond) :
     E.QueryStoreBaseStripEvidence cfg ext
       (before.nodeState actor).fcrStore.store bs b lo es :=
   ScheduledPrefixOperationalEvidence.toQueryStoreBaseStripEvidence cfg ext E
-    (h.operationalEvidence cfg ext hT actor kind haction) hres
+    (h.operationalEvidence cfg ext hT actor kind haction hpHonest
+      hres.query_horizon) hres
 
 /-- A global step never removes a recorded cast. -/
 theorem globalStep_voteCasts_subset

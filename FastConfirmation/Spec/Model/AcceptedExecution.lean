@@ -96,6 +96,77 @@ inductive CausalStore (E : Execution Root) : Store Root → Prop
   | scheduledPrefix (p : ScheduledEventPrefix E) :
       CausalStore E (p.store cfg ext)
 
+/-- The causal stores at honest nodes inside the verification horizon. -/
+inductive HonestCausalStore (E : Execution Root) : Store Root → Prop
+  | genesis : E.honest.Nonempty → E.WithinHorizon cfg 0 →
+      HonestCausalStore E E.genesis_store
+  | scheduledPrefix (p : ScheduledEventPrefix E) :
+      p.node ∈ E.honest → E.WithinHorizon cfg (p.previousSecond + 1) →
+      HonestCausalStore E (p.store cfg ext)
+
+theorem HonestCausalStore.causal {E : Execution Root} {store : Store Root}
+    (h : HonestCausalStore cfg ext E store) : CausalStore cfg ext E store := by
+  cases h with
+  | genesis _ _ => exact .genesis
+  | scheduledPrefix p _ _ => exact .scheduledPrefix p
+
+/-- Only keyed block and checkpoint states of honest, in-horizon causal
+stores enter the indexed-attestation coherence laws. Prepared states produced
+by `process_slots` are related to this domain by a separate preservation law. -/
+def ReachableValidationState (E : Execution Root) (state : BeaconState Root) : Prop :=
+  ∃ store, HonestCausalStore cfg ext E store ∧
+    ((∃ root ∈ store.block_roots, store.block_states root = state) ∨
+      ∃ checkpoint ∈ store.checkpoint_state_keys,
+        store.checkpoint_states checkpoint = state)
+
+theorem HonestCausalStore.blockState {E : Execution Root} {store : Store Root}
+    (h : HonestCausalStore cfg ext E store) {root : Root}
+    (hroot : root ∈ store.block_roots) :
+    ReachableValidationState cfg ext E (store.block_states root) :=
+  ⟨store, h, Or.inl ⟨root, hroot, rfl⟩⟩
+
+theorem HonestCausalStore.checkpointState {E : Execution Root} {store : Store Root}
+    (h : HonestCausalStore cfg ext E store) {checkpoint : Checkpoint Root}
+    (hcheckpoint : checkpoint ∈ store.checkpoint_state_keys) :
+    ReachableValidationState cfg ext E (store.checkpoint_states checkpoint) :=
+  ⟨store, h, Or.inr ⟨checkpoint, hcheckpoint, rfl⟩⟩
+
+theorem honestCausalStore_store (E : Execution Root) (v : ValidatorIndex) (n : ℕ)
+    (hv : v ∈ E.honest) (hn : E.WithinHorizon cfg n) :
+    HonestCausalStore cfg ext E (E.store cfg ext v n) := by
+  cases n with
+  | zero => exact .genesis ⟨v, hv⟩ hn
+  | succ n =>
+    let p : ScheduledEventPrefix E :=
+      { node := v
+        previousSecond := n
+        processedCount := (E.schedule v (n + 1)).length
+        count_le := le_rfl }
+    have hp : p.store cfg ext = E.store cfg ext v (n + 1) := by
+      simp [p, ScheduledEventPrefix.store, Execution.store]
+    rw [← hp]
+    exact .scheduledPrefix p hv hn
+
+/-- An exact left part of an honest node's in-horizon schedule is in the
+validation domain, including the empty prefix after the tick. -/
+theorem honestCausalStore_prefix (E : Execution Root) (v : ValidatorIndex)
+    (hv : v ∈ E.honest) (n : ℕ) (hn : E.WithinHorizon cfg (n + 1))
+    (pre rest : List (Event Root)) (hl : E.schedule v (n + 1) = pre ++ rest) :
+    HonestCausalStore cfg ext E
+      (pre.foldl (fun store event => (apply_event cfg ext store event).getD store)
+        (on_tick cfg (E.store cfg ext v n) (E.time_at (n + 1)))) := by
+  let p : ScheduledEventPrefix E :=
+    { node := v
+      previousSecond := n
+      processedCount := pre.length
+      count_le := by rw [hl, List.length_append]; omega }
+  have hp : p.store cfg ext =
+      pre.foldl (fun store event => (apply_event cfg ext store event).getD store)
+        (on_tick cfg (E.store cfg ext v n) (E.time_at (n + 1))) := by
+    simp [p, ScheduledEventPrefix.store, hl]
+  rw [← hp]
+  exact .scheduledPrefix p hv hn
+
 /-- Every ordinary execution boundary is represented by the exact-prefix
 causal domain. -/
 theorem store_causal (E : Execution Root) (v : ValidatorIndex) (n : ℕ) :

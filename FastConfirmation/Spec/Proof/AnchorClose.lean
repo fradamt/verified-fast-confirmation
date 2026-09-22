@@ -739,7 +739,7 @@ theorem anchorRoots_known (hSA : SpecAssumptions cfg ext E)
       (E.store cfg ext v (n + 1)).block_roots := by
   have hji : JustificationInterface cfg ext E := hSA.2.2.2.2.2.2.2.2
   have hHn := E.withinHorizon_mono cfg (Nat.le_succ n) hHn1
-  refine ⟨E.hbconf_of_genesisStart cfg ext hSA hanchor0 v n _ hHn1 hconf, ?_,
+  refine ⟨E.hbconf_of_genesisStart cfg ext hSA hanchor0 v hv n _ hHn1 hconf, ?_,
     (hji.checkpoint_known v hv (n + 1)).2,
     E.fcrStep_observed_known cfg ext hji v hv n hHn1⟩
   rw [E.fcrStep_confirmed_root]

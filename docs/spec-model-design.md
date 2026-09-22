@@ -256,6 +256,23 @@ spec's own dynamics: the fork-choice **handlers** driving store evolution,
     `min_seed_lookahead` (1); `BASIS_POINTS = 10000` and `UINT64_MAX` are
     constants.
 
+    `ExternalsCoherence` restricts `honest_attestation_valid`,
+    `valid_attestation_honest`, and `valid_attestation_committee` to
+    `Execution.ReachableValidationState`. A state is in this domain only if
+    it occurs at a known block or checkpoint key in an honest node's
+    in-horizon causal store. A fresh checkpoint state can be prepared before
+    a successful handler stores it. Its check uses the reachable base state
+    and the separate `process_slots_attestation_valid` contract on that base. In Phase0,
+    slot processing preserves public keys, fork data, and the genesis
+    validators root; the attestation supplies its target epoch.
+    `valid_attestation_default` maps rejection and an invalid validator-index
+    lookup on the empty default state to `false`; Python need not return a
+    Boolean on that lookup failure.
+    The handler proofs establish that an unkeyed block-state read returns
+    that default. These are explicit contracts for the abstract functions,
+    not a refinement proof. Supporting validity-based trajectory invariants
+    now require an honest node and an in-horizon second.
+
 14. **Dict-update fidelity.** `blocks[root] = block` preserves python dict
     semantics: `Function.update` on the totalized map plus key-list append
     *only if absent* (python assignment to an existing key keeps its

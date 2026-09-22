@@ -322,11 +322,13 @@ theorem GlobalScheduledQueryPrefixCompatibility.currentTargetPrefixAccountingEvi
     (hcommittees : E.ScheduledPrefixCommitteeCoherence cfg ext)
     (actor : ValidatorIndex) (kind : QueryKind)
     (haction : actions.getD position (.honestVoteCast 0 0 0) =
-      .nodeAction actor (.query kind)) :
+      .nodeAction actor (.query kind))
+    (hhonest : scheduledPrefix.node ∈ E.honest)
+    (hH : E.WithinHorizon cfg querySecond) :
     E.CurrentTargetPrefixAccountingEvidence cfg ext
       (before.nodeState actor).fcrStore.store querySecond := by
   refine
-    { operational := h.operationalEvidence cfg ext hT actor kind haction
+    { operational := h.operationalEvidence cfg ext hT actor kind haction hhonest hH
       committees := ?_ }
   rw [h.query_store_eq actor kind haction]
   exact hcommittees scheduledPrefix

@@ -126,7 +126,7 @@ theorem INV2_base_bridged
     (hBbadVal : Bbad = E.BbadVal cfg ext v n b lo es) :
     E.INV2 cfg ext v n b lo es es (compute_proposer_score cfg bs) := by
   have hne : ∀ i ∈ (E.store cfg ext v n).equivocating_indices, i ∉ E.honest :=
-    fun i hi hih => Execution.honest_not_equivocating cfg ext hhb hec hgen hih v n hi
+    fun i hi hih => Execution.honest_not_equivocating cfg ext hhb hec hgen hih v n (by assumption) (by assumption) hi
   subst hlo hes hsa
   set sa : Slot :=
     (if get_block_epoch cfg (E.store cfg ext v n) b >

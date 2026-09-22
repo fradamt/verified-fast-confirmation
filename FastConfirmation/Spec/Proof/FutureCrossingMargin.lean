@@ -435,7 +435,7 @@ theorem intraEpochFuture_endpoint_inequality_of_confirmed_window
   have hloH : E.SlotWithinHorizon cfg lo :=
     E.slotWithinHorizon_mono cfg hlo hmidH
   have hne : ∀ i ∈ (E.store cfg ext v n).equivocating_indices, i ∉ E.honest :=
-    fun i hi hih => (Execution.honest_not_equivocating cfg ext hhb hec hgen hih v n) hi
+    fun i hi hih => (Execution.honest_not_equivocating cfg ext hhb hec hgen hih v n (by assumption) (by assumption)) hi
   have hbaseQ := E.crossing_hbase_of_confirmed_window cfg ext hhb hec hgen hwf hval hprov
     hconf hwalk es hes hdom
   rw [hboost] at hbaseQ
@@ -658,7 +658,7 @@ theorem crossingEdgeFuture_endpoint_inequality_of_confirmed_window
   have hloH : E.SlotWithinHorizon cfg lo :=
     E.slotWithinHorizon_mono cfg hlo hsaH
   have hne : ∀ i ∈ (E.store cfg ext v n).equivocating_indices, i ∉ E.honest :=
-    fun i hi hih => (Execution.honest_not_equivocating cfg ext hhb hec hgen hih v n) hi
+    fun i hi hih => (Execution.honest_not_equivocating cfg ext hhb hec hgen hih v n (by assumption) (by assumption)) hi
   have hbaseQ := E.crossing_hbase_of_confirmed_window cfg ext hhb hec hgen hwf hval hprov
     hconf hwalk es hes hdom
   rw [hboost, ← hes] at hbaseQ
@@ -913,7 +913,7 @@ theorem futureCrossing_descendStep_of_selectedInputs
   have hwf : ParentSlotLt (E.store cfg ext v q) :=
     E.store_parentSlotLt cfg ext hwfE hec
       ⟨ast, ablk, hgeq, hslot, hparent⟩ hwfE.anchor_parent_unscheduled v q
-  have hprov := E.latestMessageProvenance cfg ext hwfE hec hgen v q
+  have hprov := E.latestMessageProvenance cfg ext hwfE hec hgen v q (by assumption) (by assumption)
   rw [← E.store_current_slot cfg ext v q] at hprov
   have hwalkK := E.store_walkKnownK cfg ext hwfE hec
     ⟨ast, ablk, hgeq, hslot, hparent⟩ v q
@@ -1062,7 +1062,7 @@ theorem crossingEdge_descendStep_of_selectedInputs
   have hwf : ParentSlotLt (E.store cfg ext v q) :=
     E.store_parentSlotLt cfg ext hwfE hec
       ⟨ast, ablk, hgeq, hslot, hparent⟩ hwfE.anchor_parent_unscheduled v q
-  have hprov := E.latestMessageProvenance cfg ext hwfE hec hgen v q
+  have hprov := E.latestMessageProvenance cfg ext hwfE hec hgen v q (by assumption) (by assumption)
   rw [← E.store_current_slot cfg ext v q] at hprov
   have hwalkK := E.store_walkKnownK cfg ext hwfE hec
     ⟨ast, ablk, hgeq, hslot, hparent⟩ v q

@@ -291,7 +291,7 @@ theorem StrictSelectedResultMechanicalFacts.confirmedPastDescendantSlotWitness
       h.confirmed
   obtain ⟨u, nu, d, hu, hnuH, hnuq, hdPast, hdResult⟩ :=
     E.past_descendant_of_honest_supporter_known_minimal cfg ext hA
-      v q result hqH i hi lm hlm hsupp
+      v hv q result hqH i hi lm hlm hsupp
   have hrelayGate : E.slot_at cfg nu + 1 ≤ E.slot_at cfg (q + 1) := by
     exact (Nat.succ_le_iff.mpr hnuq).trans
       (E.slot_at_mono cfg (Nat.le_succ q))

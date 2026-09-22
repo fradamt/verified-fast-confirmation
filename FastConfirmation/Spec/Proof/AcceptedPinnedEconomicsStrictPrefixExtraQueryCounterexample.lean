@@ -159,8 +159,8 @@ private def witnessExternals : Externals WitnessRoot where
     { st with
       current_justified_checkpoint :=
         { st.current_justified_checkpoint with epoch := 0 } }
-  is_valid_indexed_attestation := fun _ a =>
-    decide (a = vote0 ∨ a = vote1 ∨ a = vote2 ∨ a = vote3)
+  is_valid_indexed_attestation := fun state a =>
+    decide (state.validators ≠ [] ∧ (a = vote0 ∨ a = vote1 ∨ a = vote2 ∨ a = vote3))
 
 private def witnessSchedule (_w : ValidatorIndex) (n : ℕ) :
     List (Event WitnessRoot) :=
@@ -495,10 +495,71 @@ private theorem witnessHorizonVoteDeliveryLookahead :
     simp [witnessExecution, witnessSchedule]
 
 private lemma witness_valid_iff (state : BeaconState WitnessRoot)
-    (a : Attestation WitnessRoot) :
+    (a : Attestation WitnessRoot) (hstate : state.validators ≠ []) :
     witnessExternals.is_valid_indexed_attestation state a = true ↔
       a = vote0 ∨ a = vote1 ∨ a = vote2 ∨ a = vote3 := by
-  simp [witnessExternals]
+  simp [witnessExternals, hstate]
+
+private theorem witnessProcessSlots_registry (st : BeaconState WitnessRoot) (s : Slot) :
+    (witnessExternals.process_slots st s).validators = st.validators := rfl
+
+private theorem witnessTransition_registry (st : BeaconState WitnessRoot)
+    (b : SignedBeaconBlock WitnessRoot) (st' : BeaconState WitnessRoot)
+    (h : witnessExternals.state_transition st b = some st') :
+    st'.validators = st.validators := by
+  simp [witnessExternals] at h
+  rcases h with ⟨_hguard, rfl⟩
+  rfl
+
+private theorem witnessStore_registryConstant (v : ValidatorIndex) (n : ℕ) :
+    RegistryConstant witnessExecution.registry
+      (witnessExecution.store witnessConfig witnessExternals v n) := by
+  induction n with
+  | zero =>
+      exact witnessExecution.genesis_registryConstant witnessConfig
+        ⟨anchorState, anchorSignedBlock, rfl⟩
+  | succ n ih =>
+      change RegistryConstant witnessExecution.registry
+        ((witnessExecution.schedule v (n + 1)).foldl
+          (fun store event =>
+            (apply_event witnessConfig witnessExternals store event).getD store)
+          (on_tick witnessConfig
+            (witnessExecution.store witnessConfig witnessExternals v n)
+            (witnessExecution.time_at (n + 1))))
+      refine registryConstant_foldl
+        (fun store event hstore => apply_event_getD_registryConstant
+          witnessConfig witnessExternals witnessTransition_registry
+          witnessProcessSlots_registry store event hstore) _ _ ?_
+      exact on_tick_registryConstant witnessConfig _ _ ih
+
+private theorem witnessCausalStore_registryConstant {store : Store WitnessRoot}
+    (hstore : witnessExecution.CausalStore witnessConfig witnessExternals store) :
+    RegistryConstant witnessExecution.registry store := by
+  cases hstore with
+  | genesis =>
+      exact witnessExecution.genesis_registryConstant witnessConfig
+        ⟨anchorState, anchorSignedBlock, rfl⟩
+  | scheduledPrefix p =>
+      unfold Execution.ScheduledEventPrefix.store
+      refine registryConstant_foldl
+        (fun store event hstore => apply_event_getD_registryConstant
+          witnessConfig witnessExternals witnessTransition_registry
+          witnessProcessSlots_registry store event hstore) _ _ ?_
+      exact on_tick_registryConstant witnessConfig _ _
+        (witnessStore_registryConstant p.node p.previousSecond)
+
+private theorem witnessReachableValidationState_nonempty {state : BeaconState WitnessRoot}
+    (hstate : witnessExecution.ReachableValidationState
+      witnessConfig witnessExternals state) : state.validators ≠ [] := by
+  obtain ⟨store, hstore, hstate⟩ := hstate
+  have hreg := witnessCausalStore_registryConstant
+    (hstore.causal witnessConfig witnessExternals)
+  have heq : state.validators = witnessExecution.registry := by
+    rcases hstate with ⟨root, hroot, rfl⟩ | ⟨checkpoint, hcheckpoint, rfl⟩
+    · exact hreg.1 root hroot
+    · exact hreg.2 checkpoint hcheckpoint
+  rw [heq]
+  decide
 
 private theorem witnessExternalsCoherence :
     ExternalsCoherence witnessConfig witnessExternals witnessExecution := by
@@ -527,7 +588,8 @@ private theorem witnessExternalsCoherence :
   · intro v hv n s hn hs
     simp [get_slot_committee, witnessExternals, witnessExecution,
       witnessCommittee]
-  · intro state a v hv hsingle hcommittee hvote
+  · intro state a hreachable v hv hsingle hcommittee hvote
+    have hstate := witnessReachableValidationState_nonempty hreachable
     rcases hvote with ⟨m, a', hvote, hdata⟩
     rw [vote_some_cases] at hvote
     rcases hvote with h0 | h1 | h2 | h3
@@ -537,30 +599,31 @@ private theorem witnessExternalsCoherence :
       subst a'
       have ha : a = vote0 := by cases a; simp_all [vote0]
       rw [ha]
-      exact (witness_valid_iff state vote0).2 (Or.inl rfl)
+      exact (witness_valid_iff state vote0 hstate).2 (Or.inl rfl)
     · rcases h1 with ⟨hv1, hs1, hm1, ha'⟩
       subst v
       subst m
       subst a'
       have ha : a = vote1 := by cases a; simp_all [vote1]
       rw [ha]
-      exact (witness_valid_iff state vote1).2 (Or.inr (Or.inl rfl))
+      exact (witness_valid_iff state vote1 hstate).2 (Or.inr (Or.inl rfl))
     · rcases h2 with ⟨hv2, hs2, hm2, ha'⟩
       subst v
       subst m
       subst a'
       have ha : a = vote2 := by cases a; simp_all [vote2]
       rw [ha]
-      exact (witness_valid_iff state vote2).2 (Or.inr (Or.inr (Or.inl rfl)))
+      exact (witness_valid_iff state vote2 hstate).2 (Or.inr (Or.inr (Or.inl rfl)))
     · rcases h3 with ⟨hv3, hs3, hm3, ha'⟩
       subst v
       subst m
       subst a'
       have ha : a = vote3 := by cases a; simp_all [vote3]
       rw [ha]
-      exact (witness_valid_iff state vote3).2 (Or.inr (Or.inr (Or.inr rfl)))
-  · intro state a hvalid v hv hvin
-    rcases (witness_valid_iff state a).1 hvalid with rfl | rfl | rfl | rfl
+      exact (witness_valid_iff state vote3 hstate).2 (Or.inr (Or.inr (Or.inr rfl)))
+  · intro state a hreachable hvalid v hv hvin
+    have hstate := witnessReachableValidationState_nonempty hreachable
+    rcases (witness_valid_iff state a hstate).1 hvalid with rfl | rfl | rfl | rfl
     · have : v = 0 := by simpa [vote0] using hvin
       subst v
       exact ⟨0, vote0, by decide, rfl⟩
@@ -573,8 +636,9 @@ private theorem witnessExternalsCoherence :
     · have : v = 3 := by simpa [vote3] using hvin
       subst v
       exact ⟨3, vote3, by decide, rfl⟩
-  · intro state a hvalid i hi
-    rcases (witness_valid_iff state a).1 hvalid with rfl | rfl | rfl | rfl
+  · intro state a hreachable hvalid i hi
+    have hstate := witnessReachableValidationState_nonempty hreachable
+    rcases (witness_valid_iff state a hstate).1 hvalid with rfl | rfl | rfl | rfl
     · have : i = 0 := by simpa [vote0] using hi
       subst i
       decide
@@ -619,6 +683,12 @@ private theorem witnessExternalsCoherence :
     interval_cases s <;>
       simp [witnessExecution, witnessCommittee] at hi <;>
       subst i <;> decide
+
+  · intro a
+    have hdefault : (default : BeaconState WitnessRoot).validators = [] := rfl
+    simp [witnessExternals, hdefault]
+  · intro state slot a _hreachable _hlt
+    rfl
 
 private theorem witnessStaticValidatorSet :
     StaticValidatorSet witnessConfig witnessExecution := by

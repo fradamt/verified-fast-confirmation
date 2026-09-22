@@ -96,7 +96,7 @@ theorem pastHead_of_honestSupporter_known
     (hstatic : StaticValidatorSet cfg E)
     (hbyz : ByzantineBound cfg E)
     (hdomain : SelectedMarginDomain cfg ext E)
-    (v : ValidatorIndex) (n : Nat) (b : Root)
+    (v : ValidatorIndex) (hv : v ∈ E.honest) (n : Nat) (b : Root)
     (hH : E.WithinHorizon cfg n)
     (i : ValidatorIndex) (hi : i ∈ E.honest) (lm : LatestMessage Root)
     (hlm : (E.store cfg ext v n).latest_messages i = some lm)
@@ -133,7 +133,7 @@ theorem pastHead_of_honestSupporter_known
   obtain ⟨ap, _hiap, _htarget, _hbbrap, hapEpoch, hapBound, hapComm,
       hlmKnown, hlmSlot⟩ :=
     E.latestMessageProvenance cfg ext hT.wellFormed
-      hT.externals_coherence hgen0 v n i lm hlm
+      hT.externals_coherence hgen0 v n (by assumption) (by assumption) i lm hlm
   have hepoch : compute_epoch_at_slot cfg s =
       compute_epoch_at_slot cfg ap.data.slot := by
     rw [hslotep, hapEpoch]
@@ -207,7 +207,7 @@ theorem confirmed_honestPastHeadBelow
       (by simpa only [hquery] using hparentCandidate) hconfirmed
   obtain ⟨nu, hnuH, hnuq, hheadPast, hheadCandidateQ⟩ :=
     E.pastHead_of_honestSupporter_known cfg ext hT hsync hstatic hbyz
-      hdomain v q candidate hqH i hi lm hlm hsupp
+      hdomain v hv q candidate hqH i hi lm hlm hsupp
   have hrelayGate : E.slot_at cfg nu + 1 ≤ E.slot_at cfg (q + 1) :=
     (Nat.succ_le_iff.mpr hnuq).trans
       (E.slot_at_mono cfg (Nat.le_succ q))
