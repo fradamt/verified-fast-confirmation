@@ -200,7 +200,7 @@ theorem getLatestConfirmedTraceAt_result_known
       using hknownN1
   have hinputKnown : trace.afterObserved ∈ query.store.block_roots := by
     rcases trace.observed.branch_cases with
-        ⟨hobsUnchanged, _hobsFalse⟩ | ⟨hobsRestart, _hobsTrue⟩
+        ⟨hobsUnchanged, _hobsFalse⟩ | ⟨hobsRestart, _hobsTrue⟩ | hreset
     · rcases trace.finalized.branch_cases with
           ⟨hcarried, _hfinalizedFalse⟩ | ⟨hreverted, _hfinalizedTrue⟩
       · rw [hobsUnchanged, hcarried]
@@ -213,6 +213,11 @@ theorem getLatestConfirmedTraceAt_result_known
     · rw [hobsRestart]
       simpa only [query, E.weakFcrStep_store] using
         Weak.weakFcrStep_observed_known cfg ext B hT hanchor hboundary obs n
+    · have hrealized :=
+        E.finalizedCheckpoint_resetRealizedAt_of_acceptedGlobalTrajectory
+          cfg ext B hT hanchor hboundary (w := obs) (n + 1)
+      rw [hreset]
+      simpa only [query, E.weakFcrStep_store] using hrealized.root_known
   rcases trace.selector_cases cfg ext with
       ⟨hresultEq, _hselectorFalse⟩ | ⟨hresultEq, _hselectorTrue⟩
   · rw [hresultEq]

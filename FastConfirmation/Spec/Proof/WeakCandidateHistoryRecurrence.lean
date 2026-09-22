@@ -137,25 +137,43 @@ def getLatestObservedRestartGuard
       get_block_slot query.store
         query.current_epoch_observed_justified_checkpoint.root)
 
-/-- Candidate after the observed-restart phase. -/
+/-- Candidate after the observed restart and greatest-unrealized reset. -/
 def getLatestAfterObserved
     (query : FastConfirmationStore Root) : Root :=
   let afterFinalized := getLatestAfterFinalized cfg ext query
-  if getLatestObservedRestartGuard cfg ext query afterFinalized then
-    query.current_epoch_observed_justified_checkpoint.root
-  else
-    afterFinalized
+  let restarted :=
+    if getLatestObservedRestartGuard cfg ext query afterFinalized then
+      query.current_epoch_observed_justified_checkpoint.root
+    else afterFinalized
+  let greatest := query.current_epoch_greatest_unrealized_checkpoint
+  if greatest ≠ get_checkpoint_for_block cfg query.store restarted greatest.epoch then
+    query.store.finalized_checkpoint.root
+  else restarted
 
-/-- Exact provenance for the second phase. -/
+/-- Exact provenance for the restart and the last reset gate. -/
 inductive GetLatestObservedPhase
     (query : FastConfirmationStore Root) (before : Root) : Root → Prop
   | unchanged
-      (guard_false : getLatestObservedRestartGuard cfg ext query before = false) :
+      (guard_false : getLatestObservedRestartGuard cfg ext query before = false)
+      (checkpoint_eq : query.current_epoch_greatest_unrealized_checkpoint =
+        get_checkpoint_for_block cfg query.store before
+          query.current_epoch_greatest_unrealized_checkpoint.epoch) :
       GetLatestObservedPhase query before before
   | restarted
-      (guard_true : getLatestObservedRestartGuard cfg ext query before = true) :
+      (guard_true : getLatestObservedRestartGuard cfg ext query before = true)
+      (checkpoint_eq : query.current_epoch_greatest_unrealized_checkpoint =
+        get_checkpoint_for_block cfg query.store
+          query.current_epoch_observed_justified_checkpoint.root
+          query.current_epoch_greatest_unrealized_checkpoint.epoch) :
       GetLatestObservedPhase query before
         query.current_epoch_observed_justified_checkpoint.root
+  | greatestReset
+      (checkpoint_ne : query.current_epoch_greatest_unrealized_checkpoint ≠
+        get_checkpoint_for_block cfg query.store
+          (if getLatestObservedRestartGuard cfg ext query before then
+            query.current_epoch_observed_justified_checkpoint.root else before)
+          query.current_epoch_greatest_unrealized_checkpoint.epoch) :
+      GetLatestObservedPhase query before query.store.finalized_checkpoint.root
 
 namespace GetLatestObservedPhase
 
@@ -165,10 +183,12 @@ theorem branch_cases
     (after = before ∧
         getLatestObservedRestartGuard cfg ext query before = false) ∨
       (after = query.current_epoch_observed_justified_checkpoint.root ∧
-        getLatestObservedRestartGuard cfg ext query before = true) := by
+        getLatestObservedRestartGuard cfg ext query before = true) ∨
+      after = query.store.finalized_checkpoint.root := by
   cases h with
-  | unchanged hfalse => exact Or.inl ⟨rfl, hfalse⟩
-  | restarted htrue => exact Or.inr ⟨rfl, htrue⟩
+  | unchanged hfalse _ => exact Or.inl ⟨rfl, hfalse⟩
+  | restarted htrue _ => exact Or.inr (Or.inl ⟨rfl, htrue⟩)
+  | greatestReset _ => exact Or.inr (Or.inr rfl)
 
 end GetLatestObservedPhase
 
@@ -256,15 +276,23 @@ def getLatestConfirmedTrace (query : FastConfirmationStore Root) :
       rw [if_neg hguard]
       exact .carried hnamed
   · dsimp only [afterObserved, getLatestAfterObserved]
-    by_cases hguard : getLatestObservedRestartGuard cfg ext query
-        (getLatestAfterFinalized cfg ext query) = true
-    · rw [if_pos hguard]
-      exact .restarted hguard
-    · have hfalse : getLatestObservedRestartGuard cfg ext query
-          (getLatestAfterFinalized cfg ext query) = false :=
-        Bool.eq_false_of_not_eq_true hguard
-      rw [if_neg hguard]
-      exact .unchanged hfalse
+    by_cases hreset : query.current_epoch_greatest_unrealized_checkpoint ≠
+        get_checkpoint_for_block cfg query.store
+          (if getLatestObservedRestartGuard cfg ext query
+              (getLatestAfterFinalized cfg ext query) then
+            query.current_epoch_observed_justified_checkpoint.root
+          else getLatestAfterFinalized cfg ext query)
+          query.current_epoch_greatest_unrealized_checkpoint.epoch
+    · rw [if_pos hreset]
+      exact .greatestReset hreset
+    · rw [if_neg hreset]
+      have heq := Classical.not_not.mp hreset
+      by_cases hguard : getLatestObservedRestartGuard cfg ext query
+          (getLatestAfterFinalized cfg ext query) = true
+      · rw [if_pos hguard] at heq ⊢
+        exact .restarted hguard heq
+      · rw [if_neg hguard] at heq ⊢
+        exact .unchanged (Bool.eq_false_of_not_eq_true hguard) heq
   · dsimp only [result, Weak.getLatestTraceResult, afterObserved]
     by_cases hguard : getLatestSelectorGuard cfg query
         (getLatestAfterObserved cfg ext query)
@@ -296,7 +324,8 @@ theorem afterObserved_cases
         getLatestObservedRestartGuard cfg ext query trace.afterFinalized = false) ∨
       (trace.afterObserved =
           query.current_epoch_observed_justified_checkpoint.root ∧
-        getLatestObservedRestartGuard cfg ext query trace.afterFinalized = true) :=
+        getLatestObservedRestartGuard cfg ext query trace.afterFinalized = true) ∨
+      trace.afterObserved = query.store.finalized_checkpoint.root :=
   trace.observed.branch_cases
 
 theorem selector_cases
@@ -316,11 +345,12 @@ theorem selectorInput_cases
       trace.afterObserved = query.store.finalized_checkpoint.root ∨
       trace.afterObserved =
         query.current_epoch_observed_justified_checkpoint.root := by
-  rcases trace.observed.branch_cases with ⟨hunchanged, _⟩ | ⟨hrestarted, _⟩
+  rcases trace.observed.branch_cases with ⟨hunchanged, _⟩ | ⟨hrestarted, _⟩ | hreset
   · rcases trace.finalized.branch_cases with ⟨hcarried, _⟩ | ⟨hreverted, _⟩
     · exact Or.inl (hunchanged.trans hcarried)
     · exact Or.inr (Or.inl (hunchanged.trans hreverted))
   · exact Or.inr (Or.inr hrestarted)
+  · exact Or.inr (Or.inl hreset)
 
 end GetLatestConfirmedTrace
 
@@ -371,16 +401,10 @@ theorem confirmed_recent
 
 end CarriedCandidateInputAt
 
-/-- Weak twin of `FinalizedResetCandidateInputAt`. -/
+/-- A finalized selector input can come from either reset gate. -/
 structure FinalizedResetCandidateInputAt
     (query : FastConfirmationStore Root)
     (trace : Weak.GetLatestConfirmedTrace cfg ext query) : Prop where
-  afterFinalized_eq :
-    trace.afterFinalized = query.store.finalized_checkpoint.root
-  finalized_guard_true : getLatestFinalizedRevertGuard cfg ext query
-  afterObserved_eq : trace.afterObserved = trace.afterFinalized
-  observed_guard_false :
-    getLatestObservedRestartGuard cfg ext query trace.afterFinalized = false
   input_eq : trace.afterObserved = query.store.finalized_checkpoint.root
 
 /-- Weak twin of `ObservedResetCandidateInputAt`. Every conjunct of the
@@ -523,7 +547,7 @@ theorem candidateHistoryCallBranch
             trace.afterObserved = trace.afterObserved :=
           hselected.1.symm.trans hfixedResult
         exact Or.inl (.selectedFixed hselected.1 hselected.2 hfixed)
-  rcases trace.afterObserved_cases cfg ext with hunchanged | hrestarted
+  rcases trace.afterObserved_cases cfg ext with hunchanged | hrestarted | hreset
   · rcases trace.afterFinalized_cases cfg ext with hcarried | hfinalized
     · have hinput : Weak.CarriedCandidateInputAt cfg ext query trace := {
         afterFinalized_eq := hcarried.1
@@ -536,10 +560,6 @@ theorem candidateHistoryCallBranch
       · exact .carriedUnchanged hinput hselector
       · exact .strictSelected (.carried hinput) hselector
     · have hinput : Weak.FinalizedResetCandidateInputAt cfg ext query trace := {
-        afterFinalized_eq := hfinalized.1
-        finalized_guard_true := hfinalized.2
-        afterObserved_eq := hunchanged.1
-        observed_guard_false := hunchanged.2
         input_eq := hunchanged.1.trans hfinalized.1
       }
       rcases mkSelector with hselector | hselector
@@ -563,6 +583,10 @@ theorem candidateHistoryCallBranch
     rcases mkSelector with hselector | hselector
     · exact .observedResetUnchanged hinput hselector
     · exact .strictSelected (.observedReset hinput) hselector
+  · have hinput : Weak.FinalizedResetCandidateInputAt cfg ext query trace := ⟨hreset⟩
+    rcases mkSelector with hselector | hselector
+    · exact .finalizedResetUnchanged hinput hselector
+    · exact .strictSelected (.finalizedReset hinput) hselector
 
 end GetLatestConfirmedTrace
 

@@ -237,21 +237,8 @@ theorem tentative_loop_eq (h : CompleteEvidence cfg ext f)
       Weak.find_latest_confirmed_descendant_tentative_loop, is_one_confirmed_eq cfg ext h,
       current_target_eq cfg ext h, ih]
 
-/-- Banking needs checkpoint alignment and a strictly newer certified epoch. -/
-theorem banking_eq (h : CompleteEvidence cfg ext f) :
-    Strong.update_fast_confirmation_variables cfg f =
-      Weak.update_fast_confirmation_variables cfg ext f := by
-  simp only [Strong.update_fast_confirmation_variables,
-    Weak.update_fast_confirmation_variables, carrier_certificate cfg ext h]
-  by_cases hs : is_start_slot_at_epoch cfg (get_current_slot cfg f.store) = true
-  · have hb := h.bank_alignment hs
-    have hn := h.bank_epoch_newer hs
-    by_cases hl : is_start_slot_at_epoch cfg (get_current_slot cfg f.store + 1) = true
-    · simp only [hs, hl, if_true, hn] at hb ⊢
-      rw [hb]
-    · simp only [hs, hl, Bool.false_eq_true, if_true, if_false, hn] at hb ⊢
-      rw [hb]
-  · simp [hs]
+/- The former `banking_eq` whole-store equality is false after the weak-only
+checkpoint field was added. See docs/weak-synchrony.md. -/
 
 /-- Conditional helper only: the after-head grid does not meet these premises. -/
 theorem certified_head_eq_of_certificate (s : Store Root) (bs : BeaconState Root)
@@ -274,27 +261,8 @@ theorem descendant_eq_of_head_eq (h : CompleteEvidence cfg ext f)
     and_true, true_and, no_conflict_eq cfg ext h,
     prev_epoch_loop_eq cfg ext h, tentative_loop_eq cfg ext h]
 
-theorem get_latest_confirmed_eq_of_head_eq (h : CompleteEvidence cfg ext f)
-    (hh : Weak.get_certified_head cfg ext f.store (get_current_balance_source f) =
-      (get_head cfg f.store).root) :
-    Strong.get_latest_confirmed cfg ext f = Weak.get_latest_confirmed cfg ext f := by
-  simp only [Strong.get_latest_confirmed, Weak.get_latest_confirmed,
-    is_confirmed_chain_safe_eq cfg ext h, hh,
-    carrier_certificate cfg ext h, Bool.and_true, descendant_eq_of_head_eq cfg ext h hh]
-
-/-- The handler uses evidence and head alignment at its updated query state.
-Evidence is not claimed to be preserved by banking: at an epoch boundary,
-`hu.bank_epoch_newer` fails if the updated query selects the checkpoint just
-banked. The concrete slot-two witnesses do not exercise that boundary. -/
-theorem on_fast_confirmation_eq_of_head_eq (h : CompleteEvidence cfg ext f)
-    (hu : CompleteEvidence cfg ext (Weak.update_fast_confirmation_variables cfg ext f))
-    (hh : Weak.get_certified_head cfg ext
-        (Weak.update_fast_confirmation_variables cfg ext f).store
-        (get_current_balance_source (Weak.update_fast_confirmation_variables cfg ext f)) =
-      (get_head cfg (Weak.update_fast_confirmation_variables cfg ext f).store).root) :
-    Strong.on_fast_confirmation cfg ext f = Weak.on_fast_confirmation cfg ext f := by
-  simp only [Strong.on_fast_confirmation, Weak.on_fast_confirmation, banking_eq cfg ext h,
-    get_latest_confirmed_eq_of_head_eq cfg ext hu hh]
+/- Historical getter and handler equalities were removed: the greatest-
+unrealized reset can make their outputs differ. See docs/weak-synchrony.md. -/
 
 end CompleteEvidence
 end FastConfirmation.Spec

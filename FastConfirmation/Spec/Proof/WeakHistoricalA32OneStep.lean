@@ -150,8 +150,58 @@ noncomputable def getLatestConfirmedTraceAt_currentLineage_step_core
       hG.exact_core hG.causal hG.parent hG.walk hG.head_known trace
       hinputKnown (hG.slot_upper _ hinputKnown) hselector hresultCurrent
       hnoCrossing (hG.strict_non_genesis _ hinputKnown) hinputLineage
+  have finalizedCase (hinputEq : trace.afterObserved =
+      query.store.finalized_checkpoint.root) :
+      ∃ e : Epoch, Nonempty (E.AcceptedHistoricalA32LineageCoreAt cfg ext B
+        trace.result e Cert Supp) := by
+    have hrealized :=
+      E.finalizedCheckpoint_resetRealizedAt_of_acceptedGlobalTrajectory
+        cfg ext B hT hanchor hboundary (w := obs) (n + 1)
+    have hfinalizedKnown : query.store.finalized_checkpoint.root ∈
+        query.store.block_roots := by
+      simpa only [query, E.weakFcrStep_store] using hrealized.root_known
+    have hinputKnown : trace.afterObserved ∈ query.store.block_roots := by
+      rw [hinputEq]
+      exact hfinalizedKnown
+    rcases trace.selector_cases cfg ext with
+        ⟨hresultEq, _hselectorFalse⟩ | ⟨_resultEq, hselector⟩
+    · have hcurrentFinalized : get_block_epoch cfg query.store
+          query.store.finalized_checkpoint.root =
+        get_current_store_epoch cfg query.store := by
+        simpa only [hresultEq, hinputEq] using hresultCurrent
+      have hlineage :=
+        Weak.actualFinalizedResetCurrentAnchorLineage_core cfg ext
+          B hT hanchor hboundary obs n
+            (by simpa only [query] using hcurrentFinalized)
+            hanchorCert hanchorSupp
+      exact ⟨_, ⟨by simpa only [hresultEq, hinputEq, query] using hlineage⟩⟩
+    · by_cases hcrossing : ∃ a c : Root,
+          Weak.CurrentTargetAcceptedEdge cfg ext query
+            trace.afterObserved a c
+      · obtain ⟨a, c, hedge⟩ := hcrossing
+        exact ⟨_, hcrossingLineage hinputKnown hselector hedge⟩
+      · have hinputCurrent :=
+          Weak.GetLatestConfirmedTrace.input_current_of_selected_current_no_crossing
+            cfg ext trace
+            hG.parent hG.walk hG.head_known hinputKnown
+            (hG.slot_upper _ hinputKnown) hselector hresultCurrent hcrossing
+        have hcurrentFinalized : get_block_epoch cfg query.store
+              query.store.finalized_checkpoint.root =
+            get_current_store_epoch cfg query.store := by
+          simpa only [hinputEq] using hinputCurrent
+        have hlineage :=
+          Weak.actualFinalizedResetCurrentAnchorLineage_core
+            cfg ext B hT hanchor hboundary obs n
+              (by simpa only [query] using hcurrentFinalized)
+              hanchorCert hanchorSupp
+        have hinputLineage : E.AcceptedHistoricalA32LineageCoreAt cfg ext B
+            trace.afterObserved
+              (get_current_store_epoch cfg query.store) Cert Supp := by
+          simpa only [hinputEq, query] using hlineage
+        exact ⟨_, ⟨hnoCrossingLineage hinputKnown hselector
+          hcrossing hinputLineage⟩⟩
   rcases trace.observed.branch_cases with
-      ⟨hobsUnchanged, _hobsFalse⟩ | ⟨hobsRestart, hobsTrue⟩
+      ⟨hobsUnchanged, _hobsFalse⟩ | ⟨hobsRestart, hobsTrue⟩ | hreset
   · rcases trace.finalized.branch_cases with
         ⟨hcarried, _hfinalizedFalse⟩ | ⟨hfinalized, _hfinalizedTrue⟩
     · have hinputEq : trace.afterObserved = query.confirmed_root :=
@@ -199,52 +249,7 @@ noncomputable def getLatestConfirmedTraceAt_currentLineage_step_core
     · have hinputEq : trace.afterObserved =
           query.store.finalized_checkpoint.root :=
         hobsUnchanged.trans hfinalized
-      have hrealized :=
-        E.finalizedCheckpoint_resetRealizedAt_of_acceptedGlobalTrajectory
-          cfg ext B hT hanchor hboundary (w := obs) (n + 1)
-      have hfinalizedKnown : query.store.finalized_checkpoint.root ∈
-          query.store.block_roots := by
-        simpa only [query, E.weakFcrStep_store] using hrealized.root_known
-      have hinputKnown : trace.afterObserved ∈ query.store.block_roots := by
-        rw [hinputEq]
-        exact hfinalizedKnown
-      rcases trace.selector_cases cfg ext with
-          ⟨hresultEq, _hselectorFalse⟩ | ⟨_resultEq, hselector⟩
-      · have hcurrentFinalized : get_block_epoch cfg query.store
-            query.store.finalized_checkpoint.root =
-          get_current_store_epoch cfg query.store := by
-          simpa only [hresultEq, hinputEq] using hresultCurrent
-        have hlineage :=
-          Weak.actualFinalizedResetCurrentAnchorLineage_core cfg ext
-            B hT hanchor hboundary obs n
-              (by simpa only [query] using hcurrentFinalized)
-              hanchorCert hanchorSupp
-        exact ⟨_, ⟨by simpa only [hresultEq, hinputEq, query] using hlineage⟩⟩
-      · by_cases hcrossing : ∃ a c : Root,
-            Weak.CurrentTargetAcceptedEdge cfg ext query
-              trace.afterObserved a c
-        · obtain ⟨a, c, hedge⟩ := hcrossing
-          exact ⟨_, hcrossingLineage hinputKnown hselector hedge⟩
-        · have hinputCurrent :=
-            Weak.GetLatestConfirmedTrace.input_current_of_selected_current_no_crossing
-              cfg ext trace
-              hG.parent hG.walk hG.head_known hinputKnown
-              (hG.slot_upper _ hinputKnown) hselector hresultCurrent hcrossing
-          have hcurrentFinalized : get_block_epoch cfg query.store
-                query.store.finalized_checkpoint.root =
-              get_current_store_epoch cfg query.store := by
-            simpa only [hinputEq] using hinputCurrent
-          have hlineage :=
-            Weak.actualFinalizedResetCurrentAnchorLineage_core
-              cfg ext B hT hanchor hboundary obs n
-                (by simpa only [query] using hcurrentFinalized)
-                hanchorCert hanchorSupp
-          have hinputLineage : E.AcceptedHistoricalA32LineageCoreAt cfg ext B
-              trace.afterObserved
-                (get_current_store_epoch cfg query.store) Cert Supp := by
-            simpa only [hinputEq, query] using hlineage
-          exact ⟨_, ⟨hnoCrossingLineage hinputKnown hselector
-            hcrossing hinputLineage⟩⟩
+      exact finalizedCase hinputEq
   · have hobsFacts := Weak.observedRestartGuard_facts cfg ext
       (query := query) (candidate := trace.afterFinalized) hobsTrue
     have hinputKnown : trace.afterObserved ∈ query.store.block_roots := by
@@ -276,6 +281,7 @@ noncomputable def getLatestConfirmedTraceAt_currentLineage_step_core
             cfg ext trace hG.parent hG.walk hG.head_known hinputKnown
             (hG.slot_upper _ hinputKnown) hselector hresultCurrent
             hcrossing)).elim
+  · exact finalizedCase hreset
 
 /-- **The lazy instantiation.**
 
