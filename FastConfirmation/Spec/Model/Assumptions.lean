@@ -176,7 +176,7 @@ structure Synchrony (E : Execution Root) : Prop where
 /-- The synchrony fragment used by the accepted spec next-slot proof.
 
 The accepted next-slot argument needs honest-attestation delivery, block relay,
-and equivocation-evidence relay. It does not use the additional
+payload-envelope relay, and equivocation-evidence relay. It does not use the additional
 `latest_message_relay` field of the full `Synchrony` bundle. -/
 structure PaperSafetySynchrony (E : Execution Root) : Prop where
   attestation_delivery : ∀ v ∈ E.honest, ∀ s n (a : Attestation Root),
@@ -193,6 +193,16 @@ structure PaperSafetySynchrony (E : Execution Root) : Prop where
       E.WithinHorizon cfg m →
       E.slot_at cfg n + 1 ≤ E.slot_at cfg (m + 1) →
       r ∈ (E.store cfg ext w m).block_roots
+  /-- Verified payload envelopes known to an honest node reach every honest
+      node by the last second of the same slot. As in `block_relay`, the
+      receiving state is horizon-scoped; `m + 1` only locates its deadline. -/
+  payload_envelope_relay : ∀ v ∈ E.honest, ∀ n r,
+    E.WithinHorizon cfg n →
+    is_payload_verified (E.store cfg ext v n) r = true →
+    ∀ w ∈ E.honest, ∀ m,
+      E.WithinHorizon cfg m →
+      E.slot_at cfg n + 1 ≤ E.slot_at cfg (m + 1) →
+      is_payload_verified (E.store cfg ext w m) r = true
   attester_slashing_relay : ∀ v ∈ E.honest, ∀ n (i : ValidatorIndex),
     E.WithinHorizon cfg n →
     i ∈ (E.store cfg ext v n).equivocating_indices →
@@ -200,16 +210,22 @@ structure PaperSafetySynchrony (E : Execution Root) : Prop where
     E.slot_at cfg n + 1 ≤ E.slot_at cfg m →
     i ∈ (E.store cfg ext w m).equivocating_indices
 
-/-- Every full `Synchrony` witness supplies the narrower accepted-proof
-fragment. -/
+/-- The legacy synchrony bundle supplies the beacon and attestation fields.
+Gloas also needs explicit evidence of payload-envelope relay. -/
 def Synchrony.toPaperSafetySynchrony
-    (h : Synchrony cfg ext E) : PaperSafetySynchrony cfg ext E where
+    (h : Synchrony cfg ext E)
+    (hpayload : ∀ v ∈ E.honest, ∀ n r,
+      E.WithinHorizon cfg n →
+      is_payload_verified (E.store cfg ext v n) r = true →
+      ∀ w ∈ E.honest, ∀ m,
+        E.WithinHorizon cfg m →
+        E.slot_at cfg n + 1 ≤ E.slot_at cfg (m + 1) →
+        is_payload_verified (E.store cfg ext w m) r = true) :
+    PaperSafetySynchrony cfg ext E where
   attestation_delivery := h.attestation_delivery
   block_relay := h.block_relay
+  payload_envelope_relay := hpayload
   attester_slashing_relay := h.attester_slashing_relay
-
-instance : Coe (Synchrony cfg ext E) (PaperSafetySynchrony cfg ext E) where
-  coe := Synchrony.toPaperSafetySynchrony cfg ext
 
 /-- One-slot operational closure for honest votes created inside the public
 verification horizon.
