@@ -307,6 +307,71 @@ theorem INV2_base_of_arms (hbb : ByzantineBound cfg E)
   exact inv2_base_arith harm
     (E.BbadVal_le_floor_capacity cfg ext hbb v₀ n₀ b' lo es hloH hesH)
 
+private theorem reclassify_tax_arm
+    {s xV xpre OV Opre X O B boost r : ℕ}
+    (hX : xV + xpre = X) (hO : OV + Opre = O)
+    (h : s ≥ (xV + OV) + (xpre + Opre) + B + (boost + 1) + r) :
+    X + B + (boost + O + 1) + r ≤ s := by omega
+
+private theorem reclassify_member_arm
+    {s xV xpre OV Opre X O boost r : ℕ}
+    (hX : xV + xpre = X) (hO : OV + Opre = O)
+    (h : s ≥ (xV + OV) + (xpre + Opre) + (boost + 1) + r) :
+    X + (boost + O + 1) + r ≤ s := by omega
+
+/-- The payload-aware base potential charges the opposite ancestor votes in
+the same `boost` position as a fixed debt. This is the invariant needed to
+carry that debt through the existing `INV2_step` recurrence. -/
+theorem INV2_base_of_confirmed_with_opposite (hbb : ByzantineBound cfg E)
+    {store : Store Root} {bs : BeaconState Root} {b' : Root}
+    (hconf : is_one_confirmed cfg ext store bs b' = true)
+    (v₀ : ValidatorIndex) (n₀ : ℕ) (lo es : Slot) (boost O : ℕ)
+    (hloH : E.SlotWithinHorizon cfg lo) (hesH : E.SlotWithinHorizon cfg es)
+    {s0 aV xV G Opre OV apre xpre B_V B0 Bsup eqV Bpar Bbad qV : ℕ}
+    (hboost : boost = compute_proposer_score cfg bs)
+    (hS : get_attestation_score cfg store (get_node_for_root b') bs ≤ s0 + Bsup)
+    (hd : get_support_discount cfg ext store bs b' ≤ G + Bpar)
+    (hAhi : get_adversarial_weight cfg ext store bs b'
+        ≤ qV * cfg.confirmation_byzantine_threshold)
+    (hAlo : qV * cfg.confirmation_byzantine_threshold
+        ≤ get_adversarial_weight cfg ext store bs b' + eqV)
+    (hBsup : Bsup ≤ get_adversarial_weight cfg ext store bs b')
+    (hR4b : Bsup + eqV ≤ B_V)
+    (hR8aW : s0 + (aV + OV) + xV + B_V ≤ 100 * qV)
+    (hR8cW : s0 + (aV + OV) + xV + (G + Opre + apre + xpre) + B0
+        ≤ 100 * (estimate_committee_weight_between_slots cfg
+            (get_total_active_balance cfg bs)
+            ((store.blocks (store.blocks b').parent_root).slot + 1)
+            (get_current_slot cfg store - 1) / 100))
+    (hBbad : Bbad + Bsup + eqV + Bpar ≤ B0)
+    (hSval : s0 = E.Sval cfg ext v₀ n₀ b' lo es)
+    (hXval : xV + xpre = E.Xval cfg ext v₀ n₀ b' lo es)
+    (hBbadVal : Bbad = E.BbadVal cfg ext v₀ n₀ b' lo es)
+    (hOval : OV + Opre = O)
+    (hJval : s0 + (aV + OV) + xV + (G + Opre + apre + xpre) =
+      E.Jspec lo es) :
+    E.INV2 cfg ext v₀ n₀ b' lo es es (boost + O) := by
+  have harm := arms_of_confirmed_with_opposite cfg ext hconf hS hd hAhi hAlo
+    hBsup hR4b hR8aW hR8cW hBbad
+  have hJval' : s0 + aV + (xV + OV) + (G + apre + (xpre + Opre)) =
+      E.Jspec lo es := by omega
+  rw [← hboost, hJval', hSval, hBbadVal] at harm
+  have harm' :
+      E.Xval cfg ext v₀ n₀ b' lo es + E.BbadVal cfg ext v₀ n₀ b' lo es +
+          (boost + O + 1) +
+          cfg.confirmation_byzantine_threshold * E.Sval cfg ext v₀ n₀ b' lo es /
+            (100 - cfg.confirmation_byzantine_threshold) ≤
+            E.Sval cfg ext v₀ n₀ b' lo es
+      ∨ E.Xval cfg ext v₀ n₀ b' lo es + (boost + O + 1) +
+          cfg.confirmation_byzantine_threshold * E.Jspec lo es /
+            (100 - cfg.confirmation_byzantine_threshold) ≤
+            E.Sval cfg ext v₀ n₀ b' lo es := by
+    rcases harm with h | h
+    · left; exact reclassify_tax_arm hXval hOval h
+    · right; exact reclassify_member_arm hXval hOval h
+  exact E.INV2_base_of_arms cfg ext hbb v₀ n₀ b' lo es (boost + O)
+    hloH hesH harm'
+
 /-! ## Section 8 — the v2 sibling bridge (endpoint result 5)
 
 `Endpoint.recorded_sibling_le` bounds a sibling's recorded score by `Xval + Bval`
