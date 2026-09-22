@@ -12,6 +12,67 @@ certificate. See [certified-head.md](certified-head.md) for the rule, proof
 changes, and validation scope. Later sections retain the original development
 history; references there to head-only certificates describe the earlier rule.
 
+## Greatest-unrealized reset — 22 September 2026
+
+The weak FCR store has a separate
+`current_epoch_greatest_unrealized_checkpoint` field. Initialization sets it to
+finalized. At each epoch start, weak bookkeeping copies
+`previous_epoch_greatest_unrealized_checkpoint` into it. This value stays fixed
+when the previous snapshot changes at the last slot of the epoch. The certified
+observed checkpoint still supplies positive confirmation and the balance source.
+The frozen strong rule does not read or write the new field.
+
+The weak getter applies this last reset gate **after the certified restart**
+and immediately before descendant search:
+
+```text
+if greatest != get_checkpoint_for_block(confirmed_root, greatest.epoch):
+    confirmed_root = finalized.root
+```
+
+The test compares the full checkpoint. An ancestor root alone does not suffice
+when the chain skips an epoch boundary. A test before restart is insufficient:
+the restart can restore the rejected root. Schema 2 of the trace harness carries
+the new field. Legacy schema 1 defaults it to finalized and cannot reconstruct
+an earlier epoch-start snapshot for an independent record.
+
+The proposed containment principle is that weak confirmation is an ancestor
+of strong confirmation on the same fork-choice store, across handler calls.
+`FastConfirmation/Spec/Proof/Containment.lean` defines `Dominates` with this root
+order, equal fork-choice stores, equal previous snapshots and slot heads, and
+strong current observed checkpoint equal to weak current greatest checkpoint.
+`dominates_init` proves initialization without extra premises. The requested
+handler preservation and one-shot containment are false under this relation.
+`Negative.not_handler_preservation` and `Negative.not_one_shot_containment` are
+kernel-checked audit witnesses. The chain is `1@0 → 2@8 → 3@9`; at slot 16,
+weak starts at 2 and strong at 3. Their banks and balance sources agree. Strong
+fails to reconfirm its extra suffix and resets to 1. Its actual head has a
+different unrealized checkpoint, so restart fails. Weak retains 2, which passes
+the new reset. The outputs reverse the initial ancestor order.
+
+This finite store is not claimed to have an accepted execution history.
+An accepted-history theorem would need further hypotheses and proofs; there
+is no proved trajectory containment corollary here. Work on the positive
+containment theorem stopped at this counterexample. Native trace counts are
+separate diagnostics and do not prove containment.
+
+Three obsolete complete-evidence audit witnesses were removed, together with
+their positive theorem declarations:
+
+- `CompleteEvidence.banking_eq`: weak banking writes the new field; strong
+  banking retains it, so whole-record equality is false.
+- `CompleteEvidence.get_latest_confirmed_eq_of_head_eq`: complete prior-slot
+  evidence and aligned heads do not prevent the added checkpoint reset.
+- `CompleteEvidence.on_fast_confirmation_eq_of_head_eq`: the dependent handler
+  equality also fails; the new reset can change the confirmed root.
+
+The audit has 54 witnesses: 55 old witnesses minus the three removed equalities,
+plus two negative containment witnesses. The other complete-evidence helper
+statements and concrete witnesses remain.
+Their evidence contract has no added premise. The existing weak safety proof
+now has an explicit greatest-checkpoint reset case. Both reset locations use
+the same finalized-root safety argument; certified restart safety is unchanged.
+
 ## Network model
 
 The adversary controls **or eclipses** up to `CONFIRMATION_BYZANTINE_THRESHOLD`
