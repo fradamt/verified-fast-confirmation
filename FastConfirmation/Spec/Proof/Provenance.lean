@@ -29,6 +29,8 @@ Concretely `LatestMessageProvenance E cfg sl store` says: whenever
 * `m.root ∈ store.block_roots` and `(store.blocks m.root).slot ≤ a.data.slot` —
   the voted block is known and no later than `a`'s slot (the
   `validate_on_attestation` known-block / not-future gates).
+* `m.slot = a.data.slot` — the handler stores the exact attestation slot, so a
+  resolved payload vote at a root belongs to a later committee slot.
 
 This is the span-confinement input to L2's accounting half: an honest recorded
 supporter's message is confined to the committee of a slot in `[m.root's slot,

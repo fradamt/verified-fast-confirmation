@@ -207,6 +207,31 @@ theorem confirmed_payload_score_margin_at_source {E : Execution Root}
   rw [attestation_score_eq_weight cfg hval]
   exact confirmed_payload_source_arith hmajor hdiscount hbudget
 
+/-- The resolved parent status selected by a child receives every vote that
+supports the child's pending node.  This is a score lower bound at the same
+store, with Gloas payload ancestry preserved. -/
+theorem selected_parent_score_ge_child_score {E : Execution Root}
+    {store : Store Root} {bs : BeaconState Root} {b : Root}
+    (hval : bs.validators = E.registry)
+    (hwf : ∀ r ∈ store.block_roots,
+      (store.blocks r).parent_root ∈ store.block_roots →
+        (store.blocks (store.blocks r).parent_root).slot < (store.blocks r).slot)
+    (hb : b ∈ store.block_roots)
+    (hp : (store.blocks b).parent_root ∈ store.block_roots)
+    (hwalk : ∀ i lm, store.latest_messages i = some lm →
+      i ∈ AttSupporters cfg store (get_node_for_root b) bs →
+        WalkKnown store (store.blocks (store.blocks b).parent_root).slot lm.root) :
+    get_attestation_score cfg store (get_node_for_root b) bs ≤
+      get_attestation_score cfg store
+        (ForkChoiceNode.mk (store.blocks b).parent_root
+          (get_parent_payload_status store (store.blocks b))) bs := by
+  rw [attestation_score_eq_weight cfg hval,
+    attestation_score_eq_weight cfg hval]
+  apply E.weight_mono
+  exact attSupporters_subset_resolved_ancestor cfg hwf
+    (child_pending_descends_required_parent_status hwf hb hp) hwalk
+    (WalkKnown.step hb (hwf b hb hp) (WalkKnown.stop hp (le_refl _)))
+
 /-- The pending parent's payload contest. A strict margin pays the complete
 proposer score. If Gloas gives both previous-slot payload decisions zero
 weight, the status tie breaker supplies the second route. -/

@@ -1,6 +1,7 @@
 module
 public import FastConfirmation.Spec.Proof.AncestryRoots
 public import FastConfirmation.Spec.Proof.QuorumAccounting
+public import FastConfirmation.Spec.Proof.BlockAgreement
 
 @[expose] public section
 
@@ -262,6 +263,52 @@ theorem confirmed_child_parent_not_previous_slot (store : Store Root) (b : Root)
   have hne : (store.blocks (store.blocks b).parent_root).slot + 1 ≠
       get_current_slot cfg store := hnat _ _ _ hslot hcutoff
   simp [is_previous_slot_payload_decision, hne]
+
+/-- At a same-slot or later endpoint, the parent of a confirmed child is too
+old for Gloas's previous-slot payload tie breaker.  The source cutoff comes
+from actual confirmation; block provenance identifies the child's slot in
+both stores. -/
+theorem confirmed_parent_not_previous_at_later_store (ext : Externals Root)
+    {E : Execution Root}
+    (hwf : WellFormedExecution E)
+    (v w : ValidatorIndex) (n m : ℕ) {b : Root}
+    (status : PayloadStatus)
+    (hbSource : b ∈ (E.store cfg ext v n).block_roots)
+    (hbEndpoint : b ∈ (E.store cfg ext w m).block_roots)
+    (hparentLt : ((E.store cfg ext w m).blocks
+      ((E.store cfg ext w m).blocks b).parent_root).slot <
+        ((E.store cfg ext w m).blocks b).slot)
+    (hwfSource : ∀ r ∈ (E.store cfg ext v n).block_roots,
+      ((E.store cfg ext v n).blocks r).parent_root ∈
+        (E.store cfg ext v n).block_roots →
+        ((E.store cfg ext v n).blocks
+          ((E.store cfg ext v n).blocks r).parent_root).slot <
+          ((E.store cfg ext v n).blocks r).slot)
+    (hprov : LatestMessageProvenance E cfg
+      (get_current_slot cfg (E.store cfg ext v n)) (E.store cfg ext v n))
+    {bs : BeaconState Root}
+    (hwalk : ∀ i ∈ AttSupporters cfg (E.store cfg ext v n) (get_node_for_root b) bs,
+      ∀ lm, (E.store cfg ext v n).latest_messages i = some lm →
+        WalkKnown (E.store cfg ext v n)
+          ((E.store cfg ext v n).blocks b).slot lm.root)
+    (hclock : E.slot_at cfg n ≤ E.slot_at cfg m)
+    (hconf : is_one_confirmed cfg ext (E.store cfg ext v n) bs b = true) :
+    is_previous_slot_payload_decision cfg (E.store cfg ext w m)
+      (ForkChoiceNode.mk ((E.store cfg ext w m).blocks b).parent_root status) = false := by
+  have hcutoffSource := confirmed_block_slot_le_cutoff cfg ext hwfSource
+    hprov hwalk hconf
+  have hblock := hwf.blocks_agree
+    (E.blockProvenance cfg ext v n) (E.blockProvenance cfg ext w m)
+    hbSource hbEndpoint
+  have hnat (c q e : ℕ) (hc : c ≤ q - 1) (hqe : q ≤ e) : c ≤ e - 1 := by omega
+  have hcutoffEndpoint : ((E.store cfg ext w m).blocks b).slot ≤
+      get_current_slot cfg (E.store cfg ext w m) - 1 := by
+    rw [← hblock]
+    rw [E.store_current_slot cfg ext v n] at hcutoffSource
+    rw [E.store_current_slot cfg ext w m]
+    exact hnat _ _ _ hcutoffSource hclock
+  exact confirmed_child_parent_not_previous_slot cfg (E.store cfg ext w m)
+    b status hparentLt hcutoffEndpoint
 
 open Classical in
 /-- Supporters whose recorded message names the node's own beacon root. -/
