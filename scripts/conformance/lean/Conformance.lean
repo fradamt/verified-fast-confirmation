@@ -1,5 +1,6 @@
 import Lean.Data.Json
 import FastConfirmation.Spec.Model
+import FastConfirmation.Spec.Model.WeakSynchrony
 
 namespace FastConfirmation.Conformance
 
@@ -450,7 +451,7 @@ def compareFcr (leanValue pythonValue : FastConfirmationStore Nat) :
 unsafe def evaluate (record : Record) : IO (Option String) := do
   let misses ← IO.mkRef []
   let ext := makeExternals record.answers misses
-  let leanValue := on_fast_confirmation record.cfg ext record.before
+  let leanValue := Weak.on_fast_confirmation record.cfg ext record.before
   let missList ← misses.get
   match missList with
   | miss :: _ => return some s!"MISSING_EXTERNAL {miss}"

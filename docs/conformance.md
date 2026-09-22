@@ -1,10 +1,11 @@
 # FCR conformance harness
 
-The Lean runner checks the Comparison section of the conformance trace schema.
+The weak Lean runner checks the Comparison section of the conformance trace
+schema.
 For each JSON Lines record, it rebuilds the `Store Nat` and
 `FastConfirmationStore Nat`, builds `Config` from the recorded values, supplies
 the recorded answers for the four executable external functions, runs
-`on_fast_confirmation`, and compares the six FCR fields.
+`Weak.on_fast_confirmation`, and compares the six FCR fields.
 
 The runner also checks the runtime proof conditions required by `Config`:
 positive slot and duration values, the threshold bound, a positive effective

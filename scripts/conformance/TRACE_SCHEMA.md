@@ -77,9 +77,32 @@ structural equality on `(projection, args)`. A lookup miss is reported as a
 `on_fast_confirmation`; they are not recorded and Lean instantiates them with
 constant functions that are never reached (`fun _ _ => none`, `fun _ _ => false`).
 
+## v2 (weak-synchrony)
+
+The weak-synchrony Lean model changes the FCR rule implementation, but it does
+not change the wire interfaces audited for this harness: `Config`, `Store`,
+`FastConfirmationStore`, `Externals`, or the six stored FCR output fields. It
+also uses the same four executable externals. Weak FCR makes more calls to
+those externals, especially committee and committee-count queries; v1 already
+records every invocation and its projected state and answer. Therefore this
+port has no v2 record-field or external addition, and the exporter continues
+to emit `schema: 1`.
+
+The weak Python helper has one extra derived check,
+`safe_execution_block_hash`, for post-Bellatrix forks. It is not an
+`FastConfirmationStore` field, is absent from the requested Altair run, and
+cannot be rebuilt by this phase-0 Lean model because the projected block does
+not contain execution-payload data. It is therefore not added to this trace
+schema. A future post-Bellatrix port must add that block-payload projection
+and bump the schema together with the runner.
+
+All v1 records remain readable by the weak runner. The runner selects
+`Weak.on_fast_confirmation`; v1 records do not need a handler discriminator
+because this branch has one weak-specific runner.
+
 ## Comparison
 For each record the Lean runner constructs `FastConfirmationStore` from `store`
-and `fcr_before`, runs `on_fast_confirmation cfg ext`, and compares the six
+and `fcr_before`, runs `Weak.on_fast_confirmation cfg ext`, and compares the six
 `fcr_after` fields. Output: one line per record,
 `OK <test_id> <call_index>` or `MISMATCH <test_id> <call_index> <field> lean=<v> python=<v>`
 or `MISSING_EXTERNAL ...`, then a summary line

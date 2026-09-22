@@ -136,12 +136,27 @@ def _ambiguity_guard(
     answer: Any,
     test_id: str,
 ) -> None:
-    key = json.dumps(key_data, separators=(",", ":"), sort_keys=True)
+    key = json.dumps(_without_state_ids(key_data), separators=(",", ":"), sort_keys=True)
     previous = seen.setdefault(function, {})
     answer_key = json.dumps(answer, separators=(",", ":"), sort_keys=True)
     if key in previous and previous[key] != answer_key:
         raise RuntimeError(f"projection ambiguity {function} test_id={test_id}")
     previous[key] = answer_key
+
+
+def _without_state_ids(value: Any) -> Any:
+    """Remove informational state roots from projection keys."""
+    if isinstance(value, dict):
+        return {
+            key: _without_state_ids(item)
+            for key, item in value.items()
+            if key != "id"
+        }
+    if isinstance(value, tuple):
+        return tuple(_without_state_ids(item) for item in value)
+    if isinstance(value, list):
+        return [_without_state_ids(item) for item in value]
+    return value
 
 
 def _wrap_externals(spec: Any, test_id: str, externals: dict[str, list[dict[str, Any]]]):
