@@ -21,6 +21,12 @@ EXPECTED_REPOSITORY = "https://github.com/ethereum/consensus-specs.git"
 EXPECTED_COMMIT = "477321355d48d527e7e1e4d572f6a40a0b41072a"
 EXPECTED_LICENSE = "CC0-1.0"
 EXPECTED_ROLES = {
+    "specs/gloas/validator.md": "Gloas honest validator behavior",
+    "specs/gloas/fork-choice.md": "Gloas fork-choice environment",
+    "specs/gloas/fast-confirmation.md": "Gloas Fast Confirmation Rule overlay",
+    "specs/gloas/beacon-chain.md": "Gloas beacon-chain types and helpers",
+    "presets/mainnet/gloas.yaml": "Mainnet Gloas preset values consumed by Config",
+    "presets/minimal/gloas.yaml": "Minimal Gloas preset values consumed by conformance",
     "specs/phase0/fast-confirmation.md":
         "Fast Confirmation Rule executable specification",
     "specs/phase0/fork-choice.md": "Phase 0 fork-choice environment",

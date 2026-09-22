@@ -7,9 +7,10 @@ public import Mathlib.Tactic
 /-!
 # Spec / Model / Config
 
-Protocol constants and configuration consumed by the Fast Confirmation Rule
-spec (`consensus-specs/specs/phase0/fast-confirmation.md` — "Constants" and
-"Configuration" — plus the beacon-chain / fork-choice presets the rule reads).
+Protocol constants and configuration consumed by Gloas fork choice and the
+Fast Confirmation Rule. The rule inherits the constants and configuration in
+`specs/phase0/fast-confirmation.md`. Gloas adds payload deadlines and PTC size
+and changes the attestation deadline (`specs/gloas/validator.md:43`).
 
 Python `uint64` values are modelled as `ℕ` (see `docs/spec-model-design.md`,
 decision 1). `GENESIS_SLOT = GENESIS_EPOCH = 0` are hardcoded below as in the
@@ -51,15 +52,24 @@ structure Config where
       balances are quantized finely enough that real validator-set weights have
       no sub-`100` rounding residue. -/
   hundred_dvd_effective_balance_increment : 100 ∣ effective_balance_increment
-  /-- `ATTESTATION_DUE_BPS` (config, basis points of `SLOT_DURATION_MS`;
-      mainnet `3333`). -/
+  /-- `ATTESTATION_DUE_BPS_GLOAS` (config, basis points of `SLOT_DURATION_MS`;
+      mainnet Gloas `2500`, `configs/mainnet.yaml:97`). -/
   attestation_due_bps : ℕ
   /-- `MIN_SEED_LOOKAHEAD` (preset, epochs; mainnet `1`). -/
   min_seed_lookahead : ℕ
+  /-- `PTC_SIZE` (`presets/mainnet/gloas.yaml:6`; minimal uses 16 at
+      `presets/minimal/gloas.yaml:6`). -/
+  ptc_size : ℕ := 512
+  /-- `PAYLOAD_DUE_BPS` (`configs/mainnet.yaml:105`). -/
+  payload_due_bps : ℕ := 5000
+  /-- `PAYLOAD_ATTESTATION_DUE_BPS` (`configs/mainnet.yaml:107`). -/
+  payload_attestation_due_bps : ℕ := 7500
+  /-- `REORG_HEAD_WEIGHT_THRESHOLD` (`configs/mainnet.yaml:149`). -/
+  reorg_head_weight_threshold : ℕ := 20
 
 /-- The mainnet values of every constant the FCR reads (consensus-specs
-`presets/mainnet/phase0.yaml` + `configs/mainnet.yaml` +
-`fast-confirmation.md` tables). -/
+`presets/mainnet/phase0.yaml` + `presets/mainnet/gloas.yaml` +
+`configs/mainnet.yaml` + `fast-confirmation.md` tables). -/
 def mainnet_config : Config where
   slots_per_epoch := 32
   slots_per_epoch_pos := by decide
@@ -72,7 +82,7 @@ def mainnet_config : Config where
   effective_balance_increment := 1000000000
   effective_balance_increment_pos := by decide
   hundred_dvd_effective_balance_increment := by decide
-  attestation_due_bps := 3333
+  attestation_due_bps := 2500
   min_seed_lookahead := 1
 
 /-- `GENESIS_SLOT` (phase0 beacon-chain constant). -/

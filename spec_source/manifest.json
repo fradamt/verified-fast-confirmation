@@ -45,6 +45,48 @@
       "git_blob": "448dcf63cde44229b565b6633464c229d9fe550d",
       "bytes": 6712,
       "sha256": "1c954ef11d38db5c0728f0487da0c29cc2c18869809bff765ab8a4788b269731"
+    },
+    {
+      "path": "specs/gloas/fork-choice.md",
+      "role": "Gloas fork-choice environment",
+      "git_blob": "41451d2f986307661d10360faada1dacb883ee09",
+      "bytes": 43292,
+      "sha256": "8997e00283d6fe827e27152cdf762cc8b26544ac56df07c21927ce818a7a63cd"
+    },
+    {
+      "path": "specs/gloas/fast-confirmation.md",
+      "role": "Gloas Fast Confirmation Rule overlay",
+      "git_blob": "cf1259fd948a392595616df0ba034c024116fead",
+      "bytes": 1248,
+      "sha256": "44ea3dcd269a681709ec8b0f2604fc966c2295abfae4ce1faccc54aaada88213"
+    },
+    {
+      "path": "specs/gloas/beacon-chain.md",
+      "role": "Gloas beacon-chain types and helpers",
+      "git_blob": "855f1484ea76848320c7e4a54ba92896cd0949e9",
+      "bytes": 87223,
+      "sha256": "2fcadb2df7126f3e50649d90d65b81fdb8014765d1cd0b000c6dabd0d74f0630"
+    },
+    {
+      "path": "presets/mainnet/gloas.yaml",
+      "role": "Mainnet Gloas preset values consumed by Config",
+      "git_blob": "d2c639766c36add39b96b0f39d08cf084e268189",
+      "bytes": 985,
+      "sha256": "da63650a971da7a05d7c1884917787665a09cd475c8e60cd42d933eeac63a514"
+    },
+    {
+      "path": "presets/minimal/gloas.yaml",
+      "role": "Minimal Gloas preset values consumed by conformance",
+      "git_blob": "32f164fb7564ca56a46d313b217b906f6e10d804",
+      "bytes": 1023,
+      "sha256": "7316a6048b055f81546cb94486fff0cb5ef08b1189cb9014d658e0a09aa39846"
+    },
+    {
+      "path": "specs/gloas/validator.md",
+      "role": "Gloas honest validator behavior",
+      "git_blob": "d5af3708702609cedf20198de2aa18ab7a2bb2bb",
+      "bytes": 20267,
+      "sha256": "9fc7478f0a0746f5eddd34e175f9e95b15c509988273fab9cccbfd2d7e72107a"
     }
   ]
 }

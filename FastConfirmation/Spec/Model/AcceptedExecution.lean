@@ -1,6 +1,7 @@
 module
 public import Mathlib.Tactic
 public import FastConfirmation.Spec.Model.Execution
+public import FastConfirmation.Spec.Model.PayloadEffects
 
 @[expose] public section
 
@@ -270,8 +271,116 @@ theorem successorPrefix_store (t : AcceptedBlockTransition cfg ext E) :
   rw [hevent]
   simp [apply_event, t.accepted]
 
-/-- A successful `on_block` call always leaves its root in the finite block
-domain, including on the duplicate-root overwrite path. -/
+/-- The block domain and state map needed by accepted-transition inversion. -/
+private def retainedBlockFields (store : Store Root) :=
+  (store.block_roots, store.block_states)
+
+private theorem update_checkpoints_retainedBlockFields (store : Store Root)
+    (justified finalized : Checkpoint Root) :
+    retainedBlockFields (update_checkpoints store justified finalized) =
+      retainedBlockFields store := by
+  simp only [update_checkpoints]
+  split_ifs <;> rfl
+
+private theorem update_unrealized_checkpoints_retainedBlockFields (store : Store Root)
+    (justified finalized : Checkpoint Root) :
+    retainedBlockFields (update_unrealized_checkpoints store justified finalized) =
+      retainedBlockFields store := by
+  simp only [update_unrealized_checkpoints]
+  split_ifs <;> rfl
+
+private theorem update_proposer_boost_root_retainedBlockFields (store : Store Root)
+    (head root : Root) :
+    retainedBlockFields (update_proposer_boost_root cfg store head root) =
+      retainedBlockFields store := by
+  simp only [update_proposer_boost_root]
+  split_ifs <;> rfl
+
+private theorem compute_pulled_up_tip_retainedBlockFields (store : Store Root)
+    (root : Root) :
+    retainedBlockFields (compute_pulled_up_tip cfg ext store root) =
+      retainedBlockFields store := by
+  simp only [compute_pulled_up_tip]
+  split_ifs
+  · rw [update_checkpoints_retainedBlockFields,
+      update_unrealized_checkpoints_retainedBlockFields] <;> rfl
+  · rw [update_unrealized_checkpoints_retainedBlockFields] <;> rfl
+
+/-- Inversion of the Gloas fresh-block path. PTC processing preserves the
+block domain and the installed state before checkpoint updates. -/
+private theorem on_block_fresh_effects
+    {store store' : Store Root} {sb : SignedBeaconBlock Root}
+    (hfresh : sb.root ∉ store.block_roots)
+    (hh : on_block cfg ext store sb = some store') :
+    sb.root ∈ store'.block_roots ∧
+      ∃ post : BeaconState Root,
+        ext.state_transition (store.block_states sb.message.parent_root) sb = some post ∧
+        store'.block_states sb.root = post := by
+  simp only [on_block, hfresh] at hh
+  split_ifs at hh <;> try contradiction
+  cases hst : ext.state_transition (store.block_states sb.message.parent_root) sb with
+  | none => rw [hst] at hh; cases hh
+  | some post =>
+    rw [hst] at hh
+    let added : Store Root :=
+      { store with
+        block_roots := store.block_roots ++ [sb.root]
+        blocks := Function.update store.blocks sb.root sb.message
+        block_states := Function.update store.block_states sb.root post
+        payload_timeliness_vote := Function.update store.payload_timeliness_vote
+          sb.root (some (List.replicate cfg.ptc_size none))
+        payload_data_availability_vote := Function.update store.payload_data_availability_vote
+          sb.root (some (List.replicate cfg.ptc_size none)) }
+    change (match notify_ptc_messages cfg ext added post sb.message.payload_attestations with
+      | none => none
+      | some notified => some (compute_pulled_up_tip cfg ext
+          (update_checkpoints
+            (update_proposer_boost_root cfg
+              (record_block_timeliness cfg notified sb.root)
+              (get_head cfg store).root sb.root)
+            post.current_justified_checkpoint post.finalized_checkpoint) sb.root)) =
+        some store' at hh
+    cases hn : notify_ptc_messages cfg ext added post sb.message.payload_attestations with
+    | none => rw [hn] at hh; cases hh
+    | some notified =>
+      rw [hn] at hh
+      let finished := compute_pulled_up_tip cfg ext
+        (update_checkpoints
+          (update_proposer_boost_root cfg
+            (record_block_timeliness cfg notified sb.root)
+            (get_head cfg store).root sb.root)
+          post.current_justified_checkpoint post.finalized_checkpoint) sb.root
+      have heq : finished = store' := Option.some.inj hh
+      have hframe := notify_ptc_messages_frame cfg ext hn
+      have hroots : sb.root ∈ notified.block_roots := by
+        rw [hframe.block_roots]
+        exact List.mem_append_right _ (List.mem_singleton_self _)
+      have hstate : notified.block_states sb.root = post := by
+        rw [hframe.block_states]
+        exact Function.update_self _ _ _
+      have hfields : retainedBlockFields finished = retainedBlockFields notified := by
+        dsimp only [finished]
+        rw [compute_pulled_up_tip_retainedBlockFields,
+          update_checkpoints_retainedBlockFields,
+          update_proposer_boost_root_retainedBlockFields] <;> rfl
+      have hfinalRoots : finished.block_roots = notified.block_roots :=
+        congrArg (a₁ := retainedBlockFields finished)
+          (a₂ := retainedBlockFields notified) Prod.fst hfields
+      have hfinalStates : finished.block_states = notified.block_states :=
+        congrArg (a₁ := retainedBlockFields finished)
+          (a₂ := retainedBlockFields notified) Prod.snd hfields
+      constructor
+      · have hfinished : sb.root ∈ finished.block_roots := by
+          rw [hfinalRoots]
+          exact hroots
+        exact heq ▸ hfinished
+      · refine ⟨post, rfl, ?_⟩
+        have hfinished : finished.block_states sb.root = post :=
+          (congrFun hfinalStates sb.root).trans hstate
+        exact heq ▸ hfinished
+
+/-- A successful Gloas block call leaves its root in the finite block domain.
+A duplicate root is a no-op; a fresh root is installed before PTC processing. -/
 theorem on_block_root_known
     {store store' : Store Root} {sb : SignedBeaconBlock Root}
     (hh : on_block cfg ext store sb = some store') :
@@ -280,59 +389,9 @@ theorem on_block_root_known
   · simp [on_block, hknown] at hh
     cases hh
     exact hknown
-  · simp only [on_block, hknown] at hh
-    split_ifs at hh <;> try simp_all
-    cases hst : ext.state_transition
-        (store.block_states sb.message.parent_root) sb with
-    | none => rw [hst] at hh; cases hh
-    | some post =>
-      rw [hst] at hh
-      simp only at hh
-      let added : Store Root :=
-        { store with
-          block_roots :=
-            if sb.root ∈ store.block_roots then store.block_roots
-            else store.block_roots ++ [sb.root]
-          blocks := Function.update store.blocks sb.root sb.message
-          block_states := Function.update store.block_states sb.root post }
-      let timed := record_block_timeliness cfg added sb.root
-      let boosted := update_proposer_boost_root cfg timed
-        (get_head cfg store).root sb.root
-      let realized := update_checkpoints boosted
-        post.current_justified_checkpoint post.finalized_checkpoint
-      have hresult : compute_pulled_up_tip cfg ext realized sb.root = store' := by
-        dsimp only [realized, boosted, timed, added]
-        split_ifs
-        all_goals exact Option.some.inj hh
-      rw [← hresult]
-      have hpulled :
-          (compute_pulled_up_tip cfg ext realized sb.root).block_roots =
-            realized.block_roots := by
-        simp only [compute_pulled_up_tip]
-        split_ifs <;>
-          simp only [update_unrealized_checkpoints, update_checkpoints] <;>
-          split_ifs <;> rfl
-      rw [hpulled]
-      have hrealized : realized.block_roots = boosted.block_roots := by
-        dsimp only [realized]
-        simp only [update_checkpoints]
-        split_ifs <;> rfl
-      rw [hrealized]
-      have hboosted : boosted.block_roots = timed.block_roots := by
-        dsimp only [boosted]
-        simp only [update_proposer_boost_root]
-        split_ifs <;> rfl
-      rw [hboosted]
-      change sb.root ∈ added.block_roots
-      dsimp only [added]
-      by_cases hknown : sb.root ∈ store.block_roots
-      · rw [if_pos hknown]
-        exact hknown
-      · rw [if_neg hknown]
-        exact List.mem_append_right _ (List.mem_singleton_self _)
+  · exact (on_block_fresh_effects cfg ext hknown hh).1
 
-/-- Mechanical handler inversion: either a known root is a no-op, or a fresh
-root installs exactly the opaque transition result. -/
+/-- A successful fresh Gloas block call installs the opaque transition state. -/
 theorem on_block_inserted_state_fresh
     {store store' : Store Root} {sb : SignedBeaconBlock Root}
     (hfresh : sb.root ∉ store.block_roots)
@@ -340,53 +399,8 @@ theorem on_block_inserted_state_fresh
     ∃ post : BeaconState Root,
       ext.state_transition (store.block_states sb.message.parent_root) sb =
           some post ∧
-        store'.block_states sb.root = post := by
-    simp only [on_block, hfresh] at hh
-    split_ifs at hh <;> try simp_all
-    cases hst : ext.state_transition
-        (store.block_states sb.message.parent_root) sb with
-    | none => rw [hst] at hh; cases hh
-    | some post =>
-      rw [hst] at hh
-      simp only at hh
-      let added : Store Root :=
-        { store with
-          block_roots :=
-            if sb.root ∈ store.block_roots then store.block_roots
-            else store.block_roots ++ [sb.root]
-          blocks := Function.update store.blocks sb.root sb.message
-          block_states := Function.update store.block_states sb.root post }
-      let timed := record_block_timeliness cfg added sb.root
-      let boosted := update_proposer_boost_root cfg timed
-        (get_head cfg store).root sb.root
-      let realized := update_checkpoints boosted
-        post.current_justified_checkpoint post.finalized_checkpoint
-      have hresult : compute_pulled_up_tip cfg ext realized sb.root = store' := by
-        dsimp only [realized, boosted, timed, added]
-        split_ifs
-        all_goals exact Option.some.inj hh
-      have hstate : store'.block_states sb.root = post := by
-        rw [← hresult]
-        have hpulled :
-            (compute_pulled_up_tip cfg ext realized sb.root).block_states =
-              realized.block_states := by
-          simp only [compute_pulled_up_tip]
-          split_ifs <;>
-            simp only [update_unrealized_checkpoints, update_checkpoints] <;>
-            split_ifs <;> rfl
-        rw [hpulled]
-        have hrealized : realized.block_states = boosted.block_states := by
-          dsimp only [realized]
-          simp only [update_checkpoints]
-          split_ifs <;> rfl
-        rw [hrealized]
-        have hboosted : boosted.block_states = timed.block_states := by
-          dsimp only [boosted]
-          simp only [update_proposer_boost_root]
-          split_ifs <;> rfl
-        rw [hboosted]
-        exact Function.update_self sb.root post store.block_states
-      exact congrArg some hstate.symm
+        store'.block_states sb.root = post :=
+  (on_block_fresh_effects cfg ext hfresh hh).2
 
 /-- Mechanical handler inversion: either a known root is a no-op, or a fresh
 root installs exactly the opaque transition result. -/

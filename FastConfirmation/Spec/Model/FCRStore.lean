@@ -7,8 +7,8 @@ public import FastConfirmation.Spec.Model.ForkChoice
 # Spec / Model / FCRStore
 
 `FastConfirmationStore`, its initialization, and the "Misc helper functions" +
-"State helpers" sections of `specs/phase0/fast-confirmation.md`, transcribed
-1:1 in document order.
+"State helpers" sections of the inherited fast-confirmation specification,
+with the `specs/gloas/fast-confirmation.md` overlay.
 -/
 
 namespace FastConfirmation.Spec
@@ -50,12 +50,16 @@ def get_fast_confirmation_store (store : Store Root) : FastConfirmationStore Roo
   previous_slot_head := store.finalized_checkpoint.root
   current_slot_head := store.finalized_checkpoint.root
 
-/-- `get_node_for_root`:
-```python
-return ForkChoiceNode(root=block_root)
-``` -/
+/-- `get_node_for_root` (`specs/gloas/fast-confirmation.md:26`).
+Fast Confirmation confirms a beacon root through its pending node. -/
 def get_node_for_root (block_root : Root) : ForkChoiceNode Root :=
-  ForkChoiceNode.mk block_root
+  ForkChoiceNode.mk block_root .pending
+
+/-- `get_safe_execution_block_hash`
+(`specs/gloas/fast-confirmation.md:38`). Only the parent payload of the
+confirmed beacon block is safe. -/
+def get_safe_execution_block_hash (fcr_store : FastConfirmationStore Root) : Root :=
+  (fcr_store.store.blocks fcr_store.confirmed_root).parent_block_hash
 
 /-- `get_block_slot`: Return a slot of the block.
 ```python

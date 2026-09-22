@@ -161,7 +161,7 @@ structure Synchrony (E : Execution Root) : Prop where
     ∀ w ∈ E.honest, ∀ m, E.WithinHorizon cfg m →
       E.slot_at cfg n + 1 ≤ E.slot_at cfg m →
       ∃ msg', (E.store cfg ext w m).latest_messages i = some msg' ∧
-        msg.epoch ≤ msg'.epoch
+        get_latest_message_epoch cfg msg ≤ get_latest_message_epoch cfg msg'
   /-- Equivocation evidence known to an honest node is known to every honest
       node from the next slot onward. Attester slashings gossip and may be
       carried in blocks through `on_attester_slashing`; the safety argument
