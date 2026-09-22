@@ -172,9 +172,12 @@ theorem on_block_checkpointKeysLE {store store' : Store Root}
     {block : SignedBeaconBlock Root}
     (h : on_block cfg ext store block = some store') :
     CheckpointKeysLE store store' := by
-  simp only [on_block] at h
-  split_ifs at h <;> try cases h
-  all_goals
+  by_cases hknown : block.root ∈ store.block_roots
+  · simp only [on_block, if_pos hknown] at h
+    cases h
+    exact CheckpointKeysLE.refl _
+  · simp only [on_block, if_neg hknown] at h
+    split_ifs at h <;> try cases h
     cases htransition :
         ext.state_transition (store.block_states block.message.parent_root) block with
     | none => rw [htransition] at h; cases h

@@ -239,12 +239,13 @@ theorem on_block_wellFormedStoreCore
     (h : WellFormedStoreCore store)
     (hh : on_block cfg ext store signed_block = some store') :
     WellFormedStoreCore store' := by
-  simp only [on_block] at hh
-  -- `split_ifs` reaches the `block_roots` append-if inside the surviving
-  -- `some`-arm too, so both "root already present" and "root appended" cases
-  -- are handled uniformly below.
-  split_ifs at hh with hp hslot hfin hfc <;> try cases hh
-  all_goals
+  by_cases hknown : signed_block.root ∈ store.block_roots
+  · simp [on_block, hknown] at hh
+    cases hh
+    exact h
+  · simp only [on_block, if_neg hknown] at hh
+    split_ifs at hh with hp hslot hfin hfc
+    all_goals try contradiction
     cases hst : ext.state_transition
         (store.block_states signed_block.message.parent_root) signed_block with
     | none => rw [hst] at hh; cases hh
@@ -443,7 +444,7 @@ theorem on_block_parentSlotLt
       (store.blocks r).parent_root ≠ signed_block.root)
     (hh : on_block cfg ext store signed_block = some store') :
     ParentSlotLt store' := by
-  simp only [on_block] at hh
+  simp only [on_block, if_neg hfresh] at hh
   -- With `hfresh` in context, `split_ifs` resolves the append-if to the fresh
   -- branch and discharges the rejected `none` arms, leaving one goal.
   split_ifs at hh with hp hslot hfin hfc

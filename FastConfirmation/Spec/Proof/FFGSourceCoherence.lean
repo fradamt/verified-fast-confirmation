@@ -115,75 +115,70 @@ structure BlockStateTransitionHistory (cfg : Config) (ext : Externals Root)
 
 /-! ## Direct handler extraction -/
 
-/-- A successful `on_block` call necessarily reached a successful invocation
-of the opaque `state_transition` on the parent block state.  This is a theorem
-of the transcribed handler; no phase0 semantic contract is used. -/
+/-- A fresh successful `on_block` call necessarily reached a successful
+invocation of the opaque `state_transition` on the parent block state. -/
 theorem on_block_transition_witness
     {store store' : Store Root} {sb : SignedBeaconBlock Root}
+    (hfresh : sb.root ∉ store.block_roots)
     (hh : on_block cfg ext store sb = some store') :
     ∃ post : BeaconState Root,
       ext.state_transition (store.block_states sb.message.parent_root) sb =
         some post := by
-  simp only [on_block] at hh
+  simp only [on_block, if_neg hfresh] at hh
   split_ifs at hh <;> try cases hh
-  all_goals
-    cases hst : ext.state_transition
-        (store.block_states sb.message.parent_root) sb with
-    | none => rw [hst] at hh; cases hh
-    | some post => exact ⟨post, rfl⟩
+  cases hst : ext.state_transition
+      (store.block_states sb.message.parent_root) sb with
+  | none => rw [hst] at hh; cases hh
+  | some post => exact ⟨post, rfl⟩
 
-/-- A successful block handler installs the accepted signed block's exact
-message at its root.  This is the block-message analogue of
-`AcceptedBlockTransition.on_block_inserted_state`. -/
+/-- A fresh successful block handler installs the accepted signed block's exact
+message at its root. -/
 theorem on_block_inserted_message
     {store store' : Store Root} {sb : SignedBeaconBlock Root}
+    (hfresh : sb.root ∉ store.block_roots)
     (hh : on_block cfg ext store sb = some store') :
     store'.blocks sb.root = sb.message := by
-  simp only [on_block] at hh
+  simp only [on_block, if_neg hfresh] at hh
   split_ifs at hh <;> try cases hh
-  all_goals
-    cases hst : ext.state_transition
-        (store.block_states sb.message.parent_root) sb with
-    | none => rw [hst] at hh; cases hh
-    | some post =>
-      rw [hst] at hh
-      simp only at hh
-      let added : Store Root :=
-        { store with
-          block_roots :=
-            if sb.root ∈ store.block_roots then store.block_roots
-            else store.block_roots ++ [sb.root]
-          blocks := Function.update store.blocks sb.root sb.message
-          block_states := Function.update store.block_states sb.root post }
-      let timed := record_block_timeliness cfg added sb.root
-      let boosted := update_proposer_boost_root cfg timed
-        (get_head cfg store).root sb.root
-      let realized := update_checkpoints boosted
-        post.current_justified_checkpoint post.finalized_checkpoint
-      have hresult : compute_pulled_up_tip cfg ext realized sb.root = store' := by
-        dsimp only [realized, boosted, timed, added]
-        split_ifs
-        all_goals exact Option.some.inj hh
-      rw [← hresult]
-      have hpulled :
-          (compute_pulled_up_tip cfg ext realized sb.root).blocks =
-            realized.blocks := by
-        simp only [compute_pulled_up_tip]
-        split_ifs <;>
-          simp only [update_unrealized_checkpoints, update_checkpoints] <;>
-          split_ifs <;> rfl
-      rw [hpulled]
-      have hrealized : realized.blocks = boosted.blocks := by
-        dsimp only [realized]
-        simp only [update_checkpoints]
+  cases hst : ext.state_transition
+      (store.block_states sb.message.parent_root) sb with
+  | none => rw [hst] at hh; cases hh
+  | some post =>
+    rw [hst] at hh
+    simp only at hh
+    let added : Store Root :=
+      { store with
+        block_roots := store.block_roots ++ [sb.root]
+        blocks := Function.update store.blocks sb.root sb.message
+        block_states := Function.update store.block_states sb.root post }
+    let timed := record_block_timeliness cfg added sb.root
+    let boosted := update_proposer_boost_root cfg timed
+      (get_head cfg store).root sb.root
+    let realized := update_checkpoints boosted
+      post.current_justified_checkpoint post.finalized_checkpoint
+    have hresult : compute_pulled_up_tip cfg ext realized sb.root = store' := by
+      dsimp only [realized, boosted, timed, added]
+      exact Option.some.inj hh
+    rw [← hresult]
+    have hpulled :
+        (compute_pulled_up_tip cfg ext realized sb.root).blocks =
+          realized.blocks := by
+      simp only [compute_pulled_up_tip]
+      split_ifs <;>
+        simp only [update_unrealized_checkpoints, update_checkpoints] <;>
         split_ifs <;> rfl
-      rw [hrealized]
-      have hboosted : boosted.blocks = timed.blocks := by
-        dsimp only [boosted]
-        simp only [update_proposer_boost_root]
-        split_ifs <;> rfl
-      rw [hboosted]
-      exact Function.update_self sb.root sb.message store.blocks
+    rw [hpulled]
+    have hrealized : realized.blocks = boosted.blocks := by
+      dsimp only [realized]
+      simp only [update_checkpoints]
+      split_ifs <;> rfl
+    rw [hrealized]
+    have hboosted : boosted.blocks = timed.blocks := by
+      dsimp only [boosted]
+      simp only [update_proposer_boost_root]
+      split_ifs <;> rfl
+    rw [hboosted]
+    exact Function.update_self sb.root sb.message store.blocks
 
 /-- At the state-function boundary, a same-epoch successful handler transition
 preserves the realized justified checkpoint.  The transition witness comes
@@ -192,6 +187,7 @@ from the handler; only the equality itself comes from
 theorem on_block_transition_current_justified
     (hphase : Phase0SourceCoherence cfg ext)
     {store store' : Store Root} {sb : SignedBeaconBlock Root}
+    (hfresh : sb.root ∉ store.block_roots)
     (hsame : compute_epoch_at_slot cfg
         (store.block_states sb.message.parent_root).slot =
       compute_epoch_at_slot cfg sb.message.slot)
@@ -202,7 +198,7 @@ theorem on_block_transition_current_justified
         post.current_justified_checkpoint =
           (store.block_states sb.message.parent_root).current_justified_checkpoint := by
   obtain ⟨post, htransition⟩ := on_block_transition_witness (cfg := cfg)
-    (ext := ext) hh
+    (ext := ext) hfresh hh
   exact ⟨post, htransition,
     hphase.state_transition_current_justified _ _ _ htransition hsame⟩
 
@@ -332,6 +328,7 @@ theorem of_on_block
     (hprojection : FFGStoreProjection cfg ext S store)
     (hcore : WellFormedStoreCore store)
     (hscheduled : ∃ w n, Event.block sb ∈ E.schedule w n)
+    (hfresh : sb.root ∉ store.block_roots)
     (hparent : sb.message.parent_root ∈ store.block_roots)
     (hsame : compute_epoch_at_slot cfg
         (store.blocks sb.message.parent_root).slot =
@@ -340,7 +337,7 @@ theorem of_on_block
     ProjectedSameEpochTransition cfg ext E S
       sb.message.parent_root sb.root := by
   obtain ⟨post, htransition⟩ := on_block_transition_witness (cfg := cfg)
-    (ext := ext) hh
+    (ext := ext) hfresh hh
   refine ⟨store, hprojection, sb, rfl, rfl, hparent, hscheduled,
     post, htransition, ?_⟩
   rw [hcore.2 sb.message.parent_root hparent]
@@ -705,6 +702,8 @@ not an input and cannot establish this edge. -/
 theorem of_transition
     {S : AcceptedChainFFGState cfg ext E anchor}
     (t : E.AcceptedBlockTransition cfg ext)
+    (hfresh : t.signedBlock.root ∉
+      (t.atPrefix.store cfg ext).block_roots)
     (hparent : t.signedBlock.message.parent_root ∈
       (t.atPrefix.store cfg ext).block_roots)
     (hsame : compute_epoch_at_slot cfg
@@ -714,8 +713,8 @@ theorem of_transition
     AcceptedProjectedSameEpochTransition cfg ext E S
       t.signedBlock.message.parent_root t.signedBlock.root := by
   obtain ⟨post, htransition, hpost⟩ :=
-    Execution.AcceptedBlockTransition.on_block_inserted_state
-      cfg ext t.accepted
+    Execution.AcceptedBlockTransition.on_block_inserted_state_fresh
+      cfg ext hfresh t.accepted
   have hparentAt : E.AcceptedBlockAt cfg ext
       t.signedBlock.message.parent_root
       ((t.atPrefix.store cfg ext).blocks
@@ -725,7 +724,7 @@ theorem of_transition
   have hchildAt : E.AcceptedBlockAt cfg ext t.signedBlock.root
       t.signedBlock.message :=
     ⟨t.postStore, t.post_causal, t.root_known,
-      on_block_inserted_message t.accepted⟩
+      on_block_inserted_message hfresh t.accepted⟩
   have htip : E.AcceptedCarrierIn
       (cfg := cfg) (ext := ext) t.postStore t.signedBlock.root :=
     ⟨t.root_known, t.signedBlock.message, hchildAt⟩

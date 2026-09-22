@@ -164,7 +164,7 @@ current epoch if needed.
 head = get_head(store).root
 head_state = store.block_states[head]
 if get_current_epoch(head_state) < get_current_store_epoch(store):
-    pulled_up_state = copy(head_state)
+    pulled_up_state = head_state.copy()
     process_slots(pulled_up_state, compute_start_slot_at_epoch(get_current_store_epoch(store)))
     return pulled_up_state
 else:

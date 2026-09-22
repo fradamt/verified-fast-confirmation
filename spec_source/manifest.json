@@ -1,36 +1,36 @@
 {
   "schema": 1,
   "repository": "https://github.com/ethereum/consensus-specs.git",
-  "commit": "30aa65fc21cf7f7c7dd1f7d6b686d0250462d04f",
+  "commit": "477321355d48d527e7e1e4d572f6a40a0b41072a",
   "license": "CC0-1.0",
   "files": [
     {
       "path": "specs/phase0/fast-confirmation.md",
       "role": "Fast Confirmation Rule executable specification",
-      "git_blob": "5d85a3802dee58271a111f7b69ab22c74bc5fb5d",
-      "bytes": 42865,
-      "sha256": "1c3a98398ba7096b60e85c7d41697508c7f5283cf71c7879cdc94ebc6510f7b3"
+      "git_blob": "0fcd5996331bd2000ee533965beaaba1b2b49551",
+      "bytes": 42782,
+      "sha256": "98a50d0a859cbb8966062bbc4ba3df63df181b0e3a2fad4cfa6a80e99b3e2ff2"
     },
     {
       "path": "specs/phase0/fork-choice.md",
       "role": "Phase 0 fork-choice environment",
-      "git_blob": "275b36991f108f165a1aa919fb65839bdcede6ac",
-      "bytes": 36554,
-      "sha256": "050733d8dbf1956d77944d29a25a85b4a167512079ee9810df0cfc8d3834d822"
+      "git_blob": "c1efc17662e9b51301e426f3f196925c3f76f6b2",
+      "bytes": 38316,
+      "sha256": "fb7a184deb1ed68db86aca7f36209fc844ec785ad69ebb6bd9ab9a089c998756"
     },
     {
       "path": "specs/phase0/beacon-chain.md",
       "role": "Phase 0 beacon-chain helpers and state",
-      "git_blob": "3c8de97273b93c72664d4187b115e8f98fa9b0ff",
-      "bytes": 76201,
-      "sha256": "889587103bc39a417aa674a0a5d19ad2918ec4c85251d84bfdafb3dd3e58bfc6"
+      "git_blob": "db6a79522db7898d7dbc1c1ebd8c9e3243764949",
+      "bytes": 81609,
+      "sha256": "071938ea0e20497a962a0c11b73a130fe2490a313d014b598769de6c77ba25b0"
     },
     {
       "path": "specs/phase0/validator.md",
       "role": "Phase 0 honest validator behavior",
-      "git_blob": "c53cc215b4d3b31085a9c501fd82eab92212b590",
-      "bytes": 37772,
-      "sha256": "cd40680cc3586db0386e619fe03dbfb2414f348ff19cc4b199322fba8ecb01ce"
+      "git_blob": "7a03a24f56421b1f1f985d3917141766dabf4a72",
+      "bytes": 37662,
+      "sha256": "e07d20ed2ad190cff073ebefc5c237e3d68b1c07cd2b047773c7ffa790dd9a44"
     },
     {
       "path": "presets/mainnet/phase0.yaml",
@@ -42,9 +42,9 @@
     {
       "path": "configs/mainnet.yaml",
       "role": "Mainnet configuration values consumed by Config",
-      "git_blob": "de631062d67a18857d9f3c452427a609ee9d2716",
-      "bytes": 6550,
-      "sha256": "13df1c7585cf230c91b9fe7eefcdb4deab6879d34f42d0b9f652307f49cf8124"
+      "git_blob": "448dcf63cde44229b565b6633464c229d9fe550d",
+      "bytes": 6712,
+      "sha256": "1c954ef11d38db5c0728f0487da0c29cc2c18869809bff765ab8a4788b269731"
     }
   ]
 }

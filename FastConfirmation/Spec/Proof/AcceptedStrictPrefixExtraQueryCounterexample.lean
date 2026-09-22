@@ -372,18 +372,19 @@ private lemma latest_message_at_three (i : ValidatorIndex) :
       if i = 2 then some candidateMessage
       else if i = 1 then some candidateMessage
       else if i = 0 then some anchorMessage else none := by
-  change (Function.update
-      (Function.update
-        (Function.update (fun _ => none) 0 (some anchorMessage))
-        1 (some candidateMessage))
-      2 (some candidateMessage)) i = _
-  by_cases h2 : i = 2
-  · subst i; simp
-  · by_cases h1 : i = 1
+  set_option maxRecDepth 20000 in
+    change (Function.update
+        (Function.update
+          (Function.update (fun _ => none) 0 (some anchorMessage))
+          1 (some candidateMessage))
+        2 (some candidateMessage)) i = _
+    by_cases h2 : i = 2
     · subst i; simp
-    · by_cases h0 : i = 0
+    · by_cases h1 : i = 1
       · subst i; simp
-      · simp [Function.update, h0, h1, h2]
+      · by_cases h0 : i = 0
+        · subst i; simp
+        · simp [Function.update, h0, h1, h2]
 
 private lemma equivocating_indices_at_zero :
     (witnessExecution.store witnessConfig witnessExternals 0 0).equivocating_indices =
@@ -766,37 +767,38 @@ theorem direct_extra_query_is_legal_preUpdate :
           (.query .extra) = some after ∧
         after.observations.getLast?.map QueryObservation.result =
           some candidateRoot ∧
-        after.observations.getLast?.map QueryObservation.writeBack =
-          some .exposeOnly := by
-  refine ⟨rfl, rfl, by decide, ?_⟩
-  have hready : directQueryRuntime.awaitingMandatoryQuery = false := rfl
-  have hexists : ∃ after,
-      step? witnessConfig witnessExternals directQueryRuntime
-        (.query .extra) = some after := by
-    simp only [step?, hready, Bool.false_eq_true, if_false]
-    exact ⟨_, rfl⟩
-  obtain ⟨after, hstep⟩ := hexists
-  have hexact : ∃ observation,
-      after.observations = directQueryRuntime.observations ++ [observation] ∧
-        observation.result = get_latest_confirmed witnessConfig witnessExternals
-          directQueryRuntime.fcrStore ∧
-        observation.writeBack = .exposeOnly := by
-    set_option maxRecDepth 20000 in
-      simp only [step?] at hstep
-      split at hstep
-      · contradiction
-      · cases hstep
-        exact ⟨_, rfl, rfl, rfl⟩
-  obtain ⟨observation, hobservations, hresult, hwriteBack⟩ := hexact
-  refine ⟨after, hstep, ?_, ?_⟩
-  · rw [hobservations]
-    simp only [directQueryRuntime, initRuntime, List.nil_append,
-      List.getLast?_singleton, Option.map_some]
-    exact congrArg some (hresult.trans strict_extra_query_result.2.2.1)
-  · rw [hobservations]
-    simp only [directQueryRuntime, initRuntime, List.nil_append,
-      List.getLast?_singleton, Option.map_some]
-    exact congrArg some hwriteBack
+      after.observations.getLast?.map QueryObservation.writeBack =
+        some .exposeOnly := by
+  set_option maxRecDepth 20000 in
+    refine ⟨rfl, rfl, by decide, ?_⟩
+    have hready : directQueryRuntime.awaitingMandatoryQuery = false := rfl
+    have hexists : ∃ after,
+        step? witnessConfig witnessExternals directQueryRuntime
+          (.query .extra) = some after := by
+      simp only [step?, hready, Bool.false_eq_true, if_false]
+      exact ⟨_, rfl⟩
+    obtain ⟨after, hstep⟩ := hexists
+    have hexact : ∃ observation,
+        after.observations = directQueryRuntime.observations ++ [observation] ∧
+          observation.result = get_latest_confirmed witnessConfig witnessExternals
+            directQueryRuntime.fcrStore ∧
+          observation.writeBack = .exposeOnly := by
+      set_option maxRecDepth 20000 in
+        simp only [step?] at hstep
+        split at hstep
+        · contradiction
+        · cases hstep
+          exact ⟨_, rfl, rfl, rfl⟩
+    obtain ⟨observation, hobservations, hresult, hwriteBack⟩ := hexact
+    refine ⟨after, hstep, ?_, ?_⟩
+    · rw [hobservations]
+      simp only [directQueryRuntime, initRuntime, List.nil_append,
+        List.getLast?_singleton, Option.map_some]
+      exact congrArg some (hresult.trans strict_extra_query_result.2.2.1)
+    · rw [hobservations]
+      simp only [directQueryRuntime, initRuntime, List.nil_append,
+        List.getLast?_singleton, Option.map_some]
+      exact congrArg some hwriteBack
 
 /-! ## Same-position global query witness -/
 

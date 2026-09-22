@@ -111,9 +111,13 @@ theorem on_block_blocksSlotLe {sl : Slot} {store store' : Store Root}
     {sb : SignedBeaconBlock Root} (hcur : get_current_slot cfg store ≤ sl)
     (h : BlocksSlotLe sl store) (hh : on_block cfg ext store sb = some store') :
     BlocksSlotLe sl store' := by
-  simp only [on_block] at hh
-  split_ifs at hh with hp hslot hfin hfc <;> try cases hh
-  all_goals
+  by_cases hknown : sb.root ∈ store.block_roots
+  · simp [on_block, hknown] at hh
+    cases hh
+    exact h
+  · simp only [on_block, if_neg hknown] at hh
+    split_ifs at hh with hp hslot hfin hfc
+    all_goals try contradiction
     cases hst : ext.state_transition (store.block_states sb.message.parent_root) sb with
     | none => rw [hst] at hh; cases hh
     | some state =>
@@ -294,10 +298,10 @@ the seven conjuncts, taking the cross-store transport ones (known blocks,
 not-future, LMD/FFG consistency) as explicit premises. -/
 
 /-- Pure epoch-window arithmetic on the two epoch numbers: if `es ≤ es1 ≤ es + 1`
-then `es` is `es1` or `es1`'s predecessor (guarded at `0`). -/
+then `es` is `es1` or `es1`'s saturating predecessor. -/
 private theorem epoch_window_nat (es es1 : ℕ) (h1 : es ≤ es1) (h2 : es1 ≤ es + 1) :
-    es = es1 ∨ es = (if es1 > 0 then es1 - 1 else 0) := by
-  split_ifs with hpos <;> omega
+    es = es1 ∨ es = es1 - 1 := by
+  omega
 
 omit [LinearOrder Root] [Inhabited Root] in
 /-- Epoch-window conjunct: when the receiving store's current slot is exactly one

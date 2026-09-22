@@ -264,9 +264,13 @@ theorem on_block_ffgStoreProjection
     (h : FFGStoreProjection cfg ext S store)
     (hh : on_block cfg ext store sb = some store') :
     FFGStoreProjection cfg ext S store' := by
-  simp only [on_block] at hh
-  split_ifs at hh <;> try cases hh
-  all_goals
+  by_cases hknown : sb.root ∈ store.block_roots
+  · simp [on_block, hknown] at hh
+    cases hh
+    exact h
+  · simp only [on_block, if_neg hknown] at hh
+    split_ifs at hh
+    all_goals try contradiction
     cases hst : ext.state_transition
         (store.block_states sb.message.parent_root) sb with
     | none => rw [hst] at hh; cases hh

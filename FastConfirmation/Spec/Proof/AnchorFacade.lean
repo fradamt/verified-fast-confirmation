@@ -109,9 +109,13 @@ theorem on_block_nonAnchorParentKnown (aRoot : Root) {store store' : Store Root}
     {sb : SignedBeaconBlock Root} (hQ : NonAnchorParentKnown aRoot store)
     (hh : on_block cfg ext store sb = some store') :
     NonAnchorParentKnown aRoot store' := by
-  simp only [on_block] at hh
-  split_ifs at hh with hp hslot hfin hfc <;> try cases hh
-  all_goals
+  by_cases hknown : sb.root ∈ store.block_roots
+  · simp [on_block, hknown] at hh
+    cases hh
+    exact hQ
+  · simp only [on_block, if_neg hknown] at hh
+    split_ifs at hh with hp hslot hfin hfc
+    all_goals try contradiction
     cases hst : ext.state_transition (store.block_states sb.message.parent_root) sb with
     | none => rw [hst] at hh; cases hh
     | some state =>

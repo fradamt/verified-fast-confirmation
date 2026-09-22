@@ -6,7 +6,7 @@ This repository contains two separate developments:
 
 | Development | Source | Role and import |
 | --- | --- | --- |
-| [`FastConfirmation/Spec/`](FastConfirmation/Spec/) | Ethereum consensus specification, pinned at public commit [`30aa65f`](https://github.com/ethereum/consensus-specs/blob/30aa65fc21cf7f7c7dd1f7d6b686d0250462d04f/specs/phase0/fast-confirmation.md) | Primary executable model and accepted safety proof; `import FastConfirmation.Spec` |
+| [`FastConfirmation/Spec/`](FastConfirmation/Spec/) | Ethereum consensus specification, pinned at public commit [`4773213`](https://github.com/ethereum/consensus-specs/blob/477321355d48d527e7e1e4d572f6a40a0b41072a/specs/phase0/fast-confirmation.md) | Primary executable model and accepted safety proof; `import FastConfirmation.Spec` |
 | [`FastConfirmation/Paper/`](FastConfirmation/Paper/) | [Fast Confirmation Rule paper](https://arxiv.org/abs/2405.00549), Sections 3.1 and 4 | Independent companion model and proofs; `import FastConfirmation.Paper` |
 
 The accepted consensus-spec theorem is proved entirely within

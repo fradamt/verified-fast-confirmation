@@ -4,8 +4,8 @@ This repository models both the FCR **paper** (arXiv:2405.00549) and the FCR
 **consensus spec**. This document describes the consensus-spec layer:
 
 - **Source of truth**:
-  [`consensus-specs/specs/phase0/fast-confirmation.md`](https://github.com/ethereum/consensus-specs/blob/30aa65fc21cf7f7c7dd1f7d6b686d0250462d04f/specs/phase0/fast-confirmation.md)
-  at public commit `30aa65fc21cf7f7c7dd1f7d6b686d0250462d04f`.
+  [`consensus-specs/specs/phase0/fast-confirmation.md`](https://github.com/ethereum/consensus-specs/blob/477321355d48d527e7e1e4d572f6a40a0b41072a/specs/phase0/fast-confirmation.md)
+  at public commit `477321355d48d527e7e1e4d572f6a40a0b41072a`.
 - **Environment**: `specs/phase0/fork-choice.md` (Store, `get_head`,
   `get_attestation_score`, `get_voting_source`, …) and `specs/phase0/beacon-chain.md`
   (epoch arithmetic, `is_active_validator`, `get_total_active_balance`) at the same
@@ -199,8 +199,10 @@ spec's own dynamics: the fork-choice **handlers** driving store evolution,
     `on_tick_per_slot`/`on_tick`, the `on_attestation` helper chain
     (`validate_target_epoch_against_current_time`, `validate_on_attestation`,
     `store_target_checkpoint_state`, `update_latest_messages`), the `on_block`
-    helper chain (`record_block_timeliness`, `get_dependent_root`,
-    `update_proposer_boost_root`), the four handlers, and
+    helper chain (`record_block_timeliness`,
+    `compute_shuffling_lookahead_start_slot`, `compute_shuffling_dependent_slot`,
+    `get_shuffling_dependent_root`, `update_proposer_boost_root`), the four
+    handlers, and
     `get_forkchoice_store`. Python mutation → `Store → … → Store`; python
     `assert`-rejection in handlers → `Option Store` (`none` = the message is
     not applied now — python's "delay consideration"/drop). Validation

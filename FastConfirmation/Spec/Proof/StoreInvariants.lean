@@ -233,9 +233,13 @@ theorem on_block_storeLE {store store' : Store Root}
     {signed_block : SignedBeaconBlock Root}
     (h : on_block cfg ext store signed_block = some store') :
     StoreLE store store' := by
-  simp only [on_block] at h
-  split_ifs at h <;> try cases h
-  all_goals
+  by_cases hknown : signed_block.root ∈ store.block_roots
+  · simp [on_block, hknown] at h
+    cases h
+    exact StoreLE.refl _
+  · simp only [on_block, if_neg hknown] at h
+    split_ifs at h
+    all_goals try contradiction
     cases hst : ext.state_transition
         (store.block_states signed_block.message.parent_root) signed_block with
     | none => rw [hst] at h; cases h

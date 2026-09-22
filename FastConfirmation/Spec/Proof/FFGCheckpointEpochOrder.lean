@@ -298,9 +298,13 @@ private theorem on_block_of_ordered_transition
     (h : CheckpointEpochOrder store)
     (hh : FastConfirmation.Spec.on_block cfg ext store sb = some store') :
     CheckpointEpochOrder store' := by
-  simp only [FastConfirmation.Spec.on_block] at hh
-  split_ifs at hh <;> try cases hh
-  all_goals
+  by_cases hknown : sb.root ∈ store.block_roots
+  · simp [FastConfirmation.Spec.on_block, hknown] at hh
+    cases hh
+    exact h
+  · simp only [FastConfirmation.Spec.on_block, if_neg hknown] at hh
+    split_ifs at hh
+    all_goals try contradiction
     rw [hst] at hh
     cases hh
     let added : Store Root :=
@@ -349,22 +353,24 @@ theorem acceptedBlockTransition
     (t : E.AcceptedBlockTransition cfg ext)
     (h : CheckpointEpochOrder (t.atPrefix.store cfg ext)) :
     CheckpointEpochOrder t.postStore := by
-  obtain ⟨post, hst, hinserted⟩ :=
-    Execution.AcceptedBlockTransition.on_block_inserted_state
-      cfg ext t.accepted
-  have hstatePair : post.finalized_checkpoint.epoch ≤
-      post.current_justified_checkpoint.epoch := by
-    rw [← hinserted, hcoh.transition_gf t, hcoh.transition_gj t]
-    exact S.gf_epoch_le_gj t.signedBlock.root t.root_accepted
-  have hpulledPair :
-      (ext.process_justification_and_finalization
-        post).finalized_checkpoint.epoch ≤
-      (ext.process_justification_and_finalization
-        post).current_justified_checkpoint.epoch := by
-    rw [← hinserted, hcoh.transition_guf t, hcoh.transition_gu t]
-    exact S.guf_epoch_le_gu t.signedBlock.root t.root_accepted
-  exact on_block_of_ordered_transition cfg ext hst hstatePair hpulledPair
-    h t.accepted
+  rcases Execution.AcceptedBlockTransition.on_block_inserted_state
+      cfg ext t.accepted with
+    (⟨_hknown, hpost⟩ | ⟨post, hst, hinserted⟩)
+  · rw [hpost]
+    exact h
+  · have hstatePair : post.finalized_checkpoint.epoch ≤
+        post.current_justified_checkpoint.epoch := by
+      rw [← hinserted, hcoh.transition_gf t, hcoh.transition_gj t]
+      exact S.gf_epoch_le_gj t.signedBlock.root t.root_accepted
+    have hpulledPair :
+        (ext.process_justification_and_finalization
+          post).finalized_checkpoint.epoch ≤
+        (ext.process_justification_and_finalization
+          post).current_justified_checkpoint.epoch := by
+      rw [← hinserted, hcoh.transition_guf t, hcoh.transition_gu t]
+      exact S.guf_epoch_le_gu t.signedBlock.root t.root_accepted
+    exact on_block_of_ordered_transition cfg ext hst hstatePair hpulledPair
+      h t.accepted
 
 /-- A successful scheduled block insertion first offers the ordered `GF/GJ`
 pair and then the ordered eager `GUF/GU` pair. -/
@@ -378,9 +384,13 @@ theorem on_block
     (h : CheckpointEpochOrder store)
     (hh : FastConfirmation.Spec.on_block cfg ext store sb = some store') :
     CheckpointEpochOrder store' := by
-  simp only [FastConfirmation.Spec.on_block] at hh
-  split_ifs at hh <;> try cases hh
-  all_goals
+  by_cases hknown : sb.root ∈ store.block_roots
+  · simp [FastConfirmation.Spec.on_block, hknown] at hh
+    cases hh
+    exact h
+  · simp only [FastConfirmation.Spec.on_block, if_neg hknown] at hh
+    split_ifs at hh
+    all_goals try contradiction
     cases hst : ext.state_transition
         (store.block_states sb.message.parent_root) sb with
     | none => rw [hst] at hh; cases hh

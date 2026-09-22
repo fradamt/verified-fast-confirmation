@@ -1,7 +1,7 @@
 # Spec ↔ Lean annotation — `FastConfirmation/Spec/`
 
 Per-function mapping between public `consensus-specs` commit
-[`30aa65f`](https://github.com/ethereum/consensus-specs/tree/30aa65fc21cf7f7c7dd1f7d6b686d0250462d04f) and the Lean
+[`4773213`](https://github.com/ethereum/consensus-specs/tree/477321355d48d527e7e1e4d572f6a40a0b41072a) and the Lean
 model. Lean names equal python names (the faithfulness device — diff each def's
 docstring, which quotes the python, against its body). "Deviations" lists
 only per-function items; the global conventions (ℕ arithmetic, totalized
@@ -106,7 +106,7 @@ there the Spec column cites the prose being rendered.
 | Spec | Lean | Deviations / notes |
 |---|---|---|
 | `get_current_target_score` | same | — |
-| `compute_honest_ffg_support_for_current_target` | same | `total - ffg_weight_till_now` non-negative (within-epoch estimate ≤ total); `min`-cap subtraction safe by construction; two `Slot(current_slot - 1)` sites truncate at `current_slot = 0` (benign at slot 0 for the same reason as `get_adversarial_weight`'s site); `100 - confirmation_byzantine_threshold` non-truncating by `Config.confirmation_byzantine_threshold_le` |
+| `compute_honest_ffg_support_for_current_target` | same | `total - ffg_weight_till_now` non-negative (within-epoch estimate ≤ total); two `current_slot - 1` sites use saturating ℕ subtraction; `100 - confirmation_byzantine_threshold` non-truncating by `Config.confirmation_byzantine_threshold_le` |
 | `will_no_conflicting_checkpoint_be_justified` | same | — |
 | `will_current_target_be_justified` | same | — |
 
@@ -128,14 +128,16 @@ there the Spec column cites the prose being rendered.
 | `compute_pulled_up_tip` | same | `process_justification_and_finalization` abstract (`Externals`); python `copy()` moot under state-passing; `unrealized_justifications` write = `Function.update` (no domain field — the dict is never iterated) |
 | `on_tick_per_slot` | same | `Root()` = `Inhabited.default`; both `if`s literal |
 | `on_tick` | `on_tick_aux` + wrapper | catch-up while-loop → fuel `tick_slot + 1` (advances a slot per iteration only when slot boundaries land on whole seconds — `1000 ∣ slot_duration_ms`, a `SpecAssumptions` conjunct; fuel-out = python's nontermination, design §11a); `time - store.genesis_time` truncates where python `uint64` raises — unreachable from trajectories (`time_at` increasing) |
-| `validate_target_epoch_against_current_time` | same | assert-only body → `Bool`; `current_epoch - 1` guarded by the spec's own `current_epoch > GENESIS_EPOCH` check |
+| `validate_target_epoch_against_current_time` | same | assert-only body → `Bool`; `current_epoch - 1` is the spec's explicit saturating subtraction |
 | `validate_on_attestation` | same | assert-only body → `Bool` (`false` = "delay consideration"/drop); `if not is_from_block:` = short-circuit `is_from_block \|\|`; `in store.blocks` tested against `block_roots`; assert order preserved by the `&&` chain |
 | `store_target_checkpoint_state` | same | `target not in store.checkpoint_states` = `checkpoint_state_keys` membership (design §14); `process_slots` abstract, the spec's own slot guard transcribed; `copy` moot |
 | `update_latest_messages` | same | for-loop → `List.foldl` over the non-equivocating filter; `i not in … or epoch >` = `Option` match |
 | `record_block_timeliness` | same | `store.time - store.genesis_time` truncates (store invariant `WellFormedStore.time_ge_genesis`); writes `some is_timely` |
-| `get_dependent_root` | same | `Root()` = `default`; `epoch - MIN_SEED_LOOKAHEAD` guarded by the early return; trailing `- 1` non-truncating in-branch (`epoch - lookahead ≥ 1` ⇒ start slot ≥ `slots_per_epoch` ≥ 1) |
-| `update_proposer_boost_root` | same | `store.block_timeliness[root]` = `.getD false` — default unreachable (`on_block` sets it immediately before) |
-| `on_block` | same | handler asserts → `Option (Store Root)` (`none` = not applied); `parent_root in store.block_states` tested against `block_roots` (shared key set — design §14); `state_transition` abstract, `none` = python raise; `hash_tree_root(block)` = `signed_block.root` (design §12); dict insert = `Function.update` + append-if-absent (design §14); `head` computed before the insert — python mutation order preserved |
+| `compute_shuffling_lookahead_start_slot` | same | `epoch - MIN_SEED_LOOKAHEAD` is the spec's explicit saturating subtraction |
+| `compute_shuffling_dependent_slot` | same | `lookahead_start_slot - 1` is the spec's explicit saturating subtraction |
+| `get_shuffling_dependent_root` | same | `hash_tree_root`/`Root()` are represented by the projected root and totalized node model (design §12) |
+| `update_proposer_boost_root` | same | `store.block_timeliness[root]` = `.getD false` — default unreachable (`on_block` sets it immediately before); dependent roots are computed at the current store epoch |
+| `on_block` | same | handler asserts → `Option (Store Root)` (`none` = not applied); known roots return the unchanged store before validation; `parent_root in store.block_states` tested against `block_roots` (shared key set — design §14); `state_transition` abstract, `none` = python raise; `hash_tree_root(block)` = `signed_block.root` (design §12); fresh dict insert = `Function.update` + append (design §14); `head` computed before the insert — python mutation order preserved |
 | `on_attestation` | same | asserts → `Option`; **documented divergence**: on the signature-failure path the reference python's in-place checkpoint-state cache write survives the raise — the model discards it, the normative "invalid calls to handlers must not modify store" reading (see docstring); `get_indexed_attestation` absorbed (wire attestation already indexed — design §12); `is_from_block := false` default kept |
 | `on_attester_slashing` | same | asserts → `Option`; python set intersection = `toFinset ∩`; the add-loop = `Finset ∪` |
 | `get_forkchoice_store` | same | takes `SignedBeaconBlock` (the root travels on the wire object); python's `assert anchor_block.state_root == hash_tree_root(anchor_state)` dropped — the accepted anchor relation does not represent this state-root commitment and requires only slot agreement and parent/root inequality (design §11a); singleton dicts = `Function.update` over junk-totalized defaults |

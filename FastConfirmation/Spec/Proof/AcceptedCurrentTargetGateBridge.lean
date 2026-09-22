@@ -190,7 +190,8 @@ theorem acceptedCrossEpochParentGJEqGU_of_known_parent
   have htParent : t.signedBlock.message.parent_root = parent :=
     (congrArg BeaconBlock.parent_root htMessage).trans hparent
   have htParentKnown : t.signedBlock.message.parent_root ∈
-      (t.atPrefix.store cfg ext).block_roots := t.parent_known
+      (t.atPrefix.store cfg ext).block_roots :=
+    t.parent_known writer.fresh
   have hprefixParentKnown : parent ∈
       (t.atPrefix.store cfg ext).block_roots := by
     rw [← htParent]
@@ -230,8 +231,8 @@ theorem acceptedCrossEpochParentGJEqGU_of_known_parent
         (congrArg (fun b => compute_epoch_at_slot cfg b.slot)
           htMessage).symm
   obtain ⟨post, htransition, hpost⟩ :=
-    Execution.AcceptedBlockTransition.on_block_inserted_state
-      cfg ext t.accepted
+    Execution.AcceptedBlockTransition.on_block_inserted_state_fresh
+      cfg ext writer.fresh t.accepted
   have hprojection : AcceptedFFGStoreProjection B.state
       (t.atPrefix.store cfg ext) :=
     Execution.ExactPrefixAcceptedFFGSemantics.causalStoreProjection B

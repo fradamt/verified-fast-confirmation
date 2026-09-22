@@ -253,9 +253,12 @@ private theorem on_block_acceptedFFGStoreProjection_of_selectors
     (h : AcceptedFFGStoreProjection S store)
     (hh : on_block cfg ext store sb = some store') :
     AcceptedFFGStoreProjection S store' := by
-  simp only [on_block] at hh
-  split_ifs at hh <;> try cases hh
-  all_goals
+  by_cases hknown : sb.root ∈ store.block_roots
+  · simp only [on_block, if_pos hknown] at hh
+    cases hh
+    exact h
+  · simp only [on_block, if_neg hknown] at hh
+    split_ifs at hh <;> try cases hh
     rw [hst] at hh
     cases hh
     apply compute_pulled_up_tip_acceptedFFGStoreProjection_of_blockState
@@ -325,20 +328,22 @@ theorem acceptedBlockTransition_acceptedFFGStoreProjection
     (t : E.AcceptedBlockTransition cfg ext)
     (h : AcceptedFFGStoreProjection S (t.atPrefix.store cfg ext)) :
     AcceptedFFGStoreProjection S t.postStore := by
-  obtain ⟨post, hst, hinserted⟩ :=
-    Execution.AcceptedBlockTransition.on_block_inserted_state
-      cfg ext t.accepted
-  apply on_block_acceptedFFGStoreProjection_of_selectors hst
-  · rw [← hinserted]
-    exact hcoh.transition_gj t
-  · rw [← hinserted]
-    exact hcoh.transition_gf t
-  · rw [← hinserted]
-    exact hcoh.transition_gu t
-  · rw [← hinserted]
-    exact hcoh.transition_guf t
-  · exact h
-  · exact t.accepted
+  rcases Execution.AcceptedBlockTransition.on_block_inserted_state
+      cfg ext t.accepted with
+    (⟨hknown, hsame⟩ | ⟨post, hst, hinserted⟩)
+  · rw [hsame]
+    exact h
+  · apply on_block_acceptedFFGStoreProjection_of_selectors hst
+    · rw [← hinserted]
+      exact hcoh.transition_gj t
+    · rw [← hinserted]
+      exact hcoh.transition_gf t
+    · rw [← hinserted]
+      exact hcoh.transition_gu t
+    · rw [← hinserted]
+      exact hcoh.transition_guf t
+    · exact h
+    · exact t.accepted
 
 theorem on_attestation_acceptedFFGStoreProjection
     {store store' : Store Root} {a : Attestation Root}

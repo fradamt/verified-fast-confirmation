@@ -59,7 +59,7 @@ def get_slots_since_genesis (store : Store Root) : ℕ :=
 
 /-- `get_current_slot`:
 ```python
-return Slot(GENESIS_SLOT + get_slots_since_genesis(store))
+return GENESIS_SLOT + get_slots_since_genesis(store)
 ``` -/
 def get_current_slot (store : Store Root) : Slot :=
   GENESIS_SLOT + get_slots_since_genesis cfg store
@@ -160,7 +160,7 @@ def get_attestation_score (store : Store Root) (node : ForkChoiceNode Root)
 
 /-- `compute_proposer_score`:
 ```python
-committee_weight = get_total_active_balance(state) // SLOTS_PER_EPOCH
+committee_weight = get_total_active_balance(state) // Uint64(SLOTS_PER_EPOCH)
 return (committee_weight * PROPOSER_SCORE_BOOST) // 100
 ``` -/
 def compute_proposer_score (state : BeaconState Root) : Gwei :=

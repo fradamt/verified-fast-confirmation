@@ -222,12 +222,16 @@ theorem on_block_registryConstant {reg : List Validator}
     (h : RegistryConstant reg store)
     (hh : on_block cfg ext store signed_block = some store') :
     RegistryConstant reg store' := by
-  simp only [on_block] at hh
+  by_cases hknown : signed_block.root ∈ store.block_roots
+  · simp [on_block, hknown] at hh
+    cases hh
+    exact h
+  · simp only [on_block, if_neg hknown] at hh
   -- `split_ifs` also splits the `block_roots` append-if inside the surviving
   -- `some`-arm, so both "root already present" and "root appended" branches
   -- are handled uniformly below.
-  split_ifs at hh with hp hslot hfin hfc <;> try cases hh
-  all_goals
+    split_ifs at hh with hp hslot hfin hfc
+    all_goals try contradiction
     cases hst : ext.state_transition
         (store.block_states signed_block.message.parent_root) signed_block with
     | none => rw [hst] at hh; cases hh
@@ -519,9 +523,13 @@ theorem on_block_stateSlotsLE {SL : Slot}
     (hcur : get_current_slot cfg store ≤ SL) (h : StateSlotsLE SL store)
     (hh : on_block cfg ext store signed_block = some store') :
     StateSlotsLE SL store' := by
-  simp only [on_block] at hh
-  split_ifs at hh with hp hslot hfin hfc <;> try cases hh
-  all_goals
+  by_cases hknown : signed_block.root ∈ store.block_roots
+  · simp [on_block, hknown] at hh
+    cases hh
+    exact h
+  · simp only [on_block, if_neg hknown] at hh
+    split_ifs at hh with hp hslot hfin hfc
+    all_goals try contradiction
     cases hst : ext.state_transition
         (store.block_states signed_block.message.parent_root) signed_block with
     | none => rw [hst] at hh; cases hh

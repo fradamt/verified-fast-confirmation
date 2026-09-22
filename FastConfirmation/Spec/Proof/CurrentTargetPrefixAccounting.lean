@@ -269,13 +269,11 @@ theorem will_current_target_be_justified_honest_quorum_of_prefix
       Execution.currentTargetObservedNonhonestSupporters] using
       E.currentTarget_nonhonest_weight_le_adversarial_of_prefix cfg ext hbb
         hevidence hqH hval htab
-  have hobserved : score - min adversarial score ≤
+  have hobserved : score - adversarial ≤
       E.weight observedHonest := by
-    rw [hscore, Nat.min_def]
-    split_ifs
-    · apply (Nat.sub_le_iff_le_add).2
-      exact Nat.add_le_add_left hbyz _
-    · simp only [Nat.sub_self, Nat.zero_le]
+    rw [hscore]
+    apply (Nat.sub_le_iff_le_add).2
+    exact Nat.add_le_add_left hbyz _
   have hfuture : remaining ≤ E.weight futureHonest := by
     simpa only [remaining, estimate, start, finish, futureHonest] using
       E.currentTarget_remaining_honest_le_future_weight cfg ext
@@ -290,8 +288,8 @@ theorem will_current_target_be_justified_honest_quorum_of_prefix
       at hgateArithmetic
   rw [← hstate, htab] at hgateArithmetic
   change 2 * E.total_active cfg ≤
-    3 * (score - min adversarial score + remaining) at hgateArithmetic
-  have hpredict : score - min adversarial score + remaining ≤
+    3 * (score - adversarial + remaining) at hgateArithmetic
+  have hpredict : score - adversarial + remaining ≤
       E.weight observedHonest + E.weight futureHonest :=
     Nat.add_le_add hobserved hfuture
   have hquorum : 2 * E.total_active cfg ≤
