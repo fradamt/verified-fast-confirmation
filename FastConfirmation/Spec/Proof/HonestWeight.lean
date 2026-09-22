@@ -1,6 +1,7 @@
 import FastConfirmation.Spec.Proof.QuorumAccounting
 import FastConfirmation.Spec.Proof.Registry
 import FastConfirmation.Spec.Proof.StoreInvariants
+import FastConfirmation.Spec.Proof.ValidationStateReachability
 
 /-!
 # Spec / Proof / HonestWeight
@@ -156,6 +157,8 @@ theorem on_attester_slashing_honest_not_added {E : Execution Root}
     (hhb : HonestBehavior cfg ext E) (hec : ExternalsCoherence cfg ext E)
     {store store' : Store Root} {asl : AttesterSlashing Root}
     {v : ValidatorIndex} (hv : v ∈ E.honest)
+    (hcausal : E.HonestCausalStore cfg ext store)
+    (hunknown : UnknownBlockStatesDefault store)
     (hh : on_attester_slashing ext store asl = some store')
     (hprev : v ∉ store.equivocating_indices) :
     v ∉ store'.equivocating_indices := by
@@ -170,10 +173,15 @@ theorem on_attester_slashing_honest_not_added {E : Execution Root}
   have hs2 : ext.is_valid_indexed_attestation
       (store.block_states store.justified_checkpoint.root) asl.attestation_2 = true := by
     simpa using hv2
+  have hknown : store.justified_checkpoint.root ∈ store.block_roots := by
+    by_contra hnot
+    rw [hunknown _ hnot, hec.valid_attestation_default] at hs1
+    contradiction
+  have hstate := hcausal.blockState cfg ext hknown
   obtain ⟨m1, c1, hvote1, hdata1⟩ :=
-    hec.valid_attestation_honest _ asl.attestation_1 hs1 v hv hv1'
+    hec.valid_attestation_honest _ asl.attestation_1 hstate hs1 v hv hv1'
   obtain ⟨m2, c2, hvote2, hdata2⟩ :=
-    hec.valid_attestation_honest _ asl.attestation_2 hs2 v hv hv2'
+    hec.valid_attestation_honest _ asl.attestation_2 hstate hs2 v hv hv2'
   have hns := hhb.not_slashable v hv asl.attestation_1.data.slot asl.attestation_2.data.slot
     m1 m2 c1 c2 hvote1 hvote2
   have hslash' : is_slashable_attestation_data asl.attestation_1.data asl.attestation_2.data
@@ -187,7 +195,9 @@ across by `on_attester_slashing_honest_not_added`. -/
 theorem apply_event_honest_not_equiv {E : Execution Root}
     (hhb : HonestBehavior cfg ext E) (hec : ExternalsCoherence cfg ext E)
     {v : ValidatorIndex} (hv : v ∈ E.honest)
-    (store : Store Root) (e : Event Root) (hprev : v ∉ store.equivocating_indices) :
+    (store : Store Root) (e : Event Root) (hprev : v ∉ store.equivocating_indices)
+    (hcausal : E.HonestCausalStore cfg ext store)
+    (hunknown : UnknownBlockStatesDefault store) :
     v ∉ ((apply_event cfg ext store e).getD store).equivocating_indices := by
   cases e with
   | block b =>
@@ -208,45 +218,66 @@ theorem apply_event_honest_not_equiv {E : Execution Root}
     | none => simpa using hprev
     | some s' =>
       simp only [Option.getD_some]
-      exact on_attester_slashing_honest_not_added cfg ext hhb hec hv has hprev
+      exact on_attester_slashing_honest_not_added cfg ext hhb hec hv
+        hcausal hunknown has hprev
 
-/-- Folding a second's events preserves "honest `v` is not equivocating". -/
+/-- Folding a second's events preserves non-equivocation when each exact
+prefix belongs to an honest node inside the horizon. -/
 theorem honest_not_equiv_foldl {E : Execution Root}
     (hhb : HonestBehavior cfg ext E) (hec : ExternalsCoherence cfg ext E)
     {v : ValidatorIndex} (hv : v ∈ E.honest) :
     ∀ (l : List (Event Root)) (s : Store Root), v ∉ s.equivocating_indices →
+      UnknownBlockStatesDefault s →
+      (∀ k, k ≤ l.length → E.HonestCausalStore cfg ext
+        ((l.take k).foldl
+          (fun store event => (apply_event cfg ext store event).getD store) s)) →
       v ∉ (l.foldl (fun store e => (apply_event cfg ext store e).getD store)
         s).equivocating_indices := by
   intro l
   induction l with
-  | nil => intro s hs; exact hs
+  | nil => intro s hs _ _; exact hs
   | cons e l ih =>
-    intro s hs
+    intro s hs hunknown hcausal
     rw [List.foldl_cons]
-    exact ih _ (apply_event_honest_not_equiv cfg ext hhb hec hv s e hs)
+    refine ih _ ?_ (apply_event_unknownBlockStatesDefault cfg ext s e hunknown) ?_
+    · exact apply_event_honest_not_equiv cfg ext hhb hec hv s e hs
+        (by simpa using hcausal 0 (Nat.zero_le _)) hunknown
+    · intro k hk
+      simpa only [List.take_succ_cons, List.foldl_cons] using
+        hcausal (k + 1) (by simpa using Nat.succ_le_succ hk)
 
-/-- **Step 1.** No honest validator is ever in an (honest-or-Byzantine) node's
-`equivocating_indices`: genesis starts empty (`get_forkchoice_store`), `on_tick`
-leaves the set fixed, and the event fold never adds an honest validator. -/
+/-- No honest validator is marked equivocating at an honest node inside the
+verification horizon. Genesis starts empty; each scheduled prefix supplies
+its keyed validation-state reachability. -/
 theorem Execution.honest_not_equivocating {E : Execution Root}
     (hhb : HonestBehavior cfg ext E) (hec : ExternalsCoherence cfg ext E)
     (hgen : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
       E.genesis_store = get_forkchoice_store cfg ast ablk)
-    {v : ValidatorIndex} (hv : v ∈ E.honest) (w : ValidatorIndex) (n : ℕ) :
+    {v : ValidatorIndex} (hv : v ∈ E.honest) (w : ValidatorIndex) (n : ℕ)
+    (hw : w ∈ E.honest) (hn : E.WithinHorizon cfg n) :
     v ∉ (E.store cfg ext w n).equivocating_indices := by
+  revert hn
   induction n with
   | zero =>
+    intro hn
     obtain ⟨ast, ablk, hg⟩ := hgen
     have h0 : E.store cfg ext w 0 = E.genesis_store := rfl
     rw [h0, hg]
     simp [get_forkchoice_store]
   | succ n ih =>
+    intro hn
     change v ∉ ((E.schedule w (n + 1)).foldl
       (fun store event => (apply_event cfg ext store event).getD store)
       (on_tick cfg (E.store cfg ext w n) (E.time_at (n + 1)))).equivocating_indices
-    refine honest_not_equiv_foldl cfg ext hhb hec hv _ _ ?_
-    rw [on_tick_equiv]
-    exact ih
+    refine honest_not_equiv_foldl cfg ext hhb hec hv _ _ ?_ ?_ ?_
+    · rw [on_tick_equiv]
+      exact ih (E.withinHorizon_mono cfg (Nat.le_succ n) hn)
+    · exact on_tick_unknownBlockStatesDefault cfg _ _
+        (E.unknownBlockStatesDefault_store cfg ext hgen w n)
+    · intro k hk
+      exact E.honestCausalStore_prefix cfg ext w hw n hn
+        ((E.schedule w (n + 1)).take k) ((E.schedule w (n + 1)).drop k)
+        (List.take_append_drop k _).symm
 
 /-! ## Step 2 — the equivocation score is ground-truth span weight
 
@@ -416,7 +447,7 @@ theorem byz_score_le_adversarial_weight {E : Execution Root}
       ≤ get_adversarial_weight cfg ext (E.store cfg ext v n) bs b := by
   have hne : ∀ i ∈ (E.store cfg ext v n).equivocating_indices, i ∉ E.honest := by
     intro i hi hih
-    exact Execution.honest_not_equivocating cfg ext hhb hec hgen hih v n hi
+    exact Execution.honest_not_equivocating cfg ext hhb hec hgen hih v n hv hnH hi
   have hsa : (if get_block_epoch cfg (E.store cfg ext v n) b >
         get_block_epoch cfg (E.store cfg ext v n) ((E.store cfg ext v n).blocks b).parent_root then
         compute_start_slot_at_epoch cfg (get_block_epoch cfg (E.store cfg ext v n) b)

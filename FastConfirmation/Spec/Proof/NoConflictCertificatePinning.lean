@@ -138,7 +138,7 @@ theorem noConflict_arithmeticBranch_oneThird
       Execution.currentTargetObservedNonhonestSupporters] using
       E.current_target_score_eq_honest_add_nonhonest_weight
         cfg ext hstate hval
-  have hprov := E.latestMessageProvenance cfg ext hwf hec hgen0 v n
+  have hprov := E.latestMessageProvenance cfg ext hwf hec hgen0 v n (by assumption) (by assumption)
   rw [← E.store_current_slot cfg ext v n] at hprov
   have hbyz : E.weight observedNonhonest ≤ adversarial := by
     simpa only [observedNonhonest, adversarial, start, finish, store,
@@ -232,7 +232,7 @@ theorem currentTargetObservedHonestSupporter_vote_of_ffgState
   have hiCommittee : i ∈ E.committee a.data.slot :=
     hhb.votes_assigned i hi a.data.slot
       (by rw [hvoteGround]; exact Option.some_ne_none _)
-  have hprov := E.latestMessageProvenance cfg ext hwf hec hgen0 v n
+  have hprov := E.latestMessageProvenance cfg ext hwf hec hgen0 v n (by assumption) (by assumption)
   obtain ⟨ap, _hapAttests, _hapTargetEpoch, _hapRoot, hapSlotEpoch,
       hapApplied, hapCommittee, hlmKnown, _hlmSlot⟩ :=
     hprov i lm hlm

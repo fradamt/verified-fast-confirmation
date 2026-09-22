@@ -232,7 +232,8 @@ theorem hrec_of_domain (hSA : SpecAssumptions cfg ext E)
       E.vote i t = some (kk, a) → a.data.beacon_block_root ∈ (E.store cfg ext w m).block_roots)
     (hwalk_wm : ∀ i ∈ E.Sclass cfg ext w m b lo σ, ∀ lm,
       (E.store cfg ext w m).latest_messages i = some lm →
-      WalkKnown (E.store cfg ext w m) ((E.store cfg ext w m).blocks c).slot lm.root) :
+      WalkKnown (E.store cfg ext w m) ((E.store cfg ext w m).blocks c).slot lm.root)
+    (hmH : E.WithinHorizon cfg m) :
     ∀ i ∈ E.Sclass cfg ext w m b lo σ,
       ∃ lm, (E.store cfg ext w m).latest_messages i = some lm ∧
         is_ancestor (E.store cfg ext w m)
@@ -257,7 +258,7 @@ theorem hrec_of_domain (hSA : SpecAssumptions cfg ext E)
     E.store_walkKnownK cfg ext hwf hec hgen w m c hc_wm b hb_wm
   have hsupp : is_ancestor (E.store cfg ext w m)
       (get_supported_node (E.store cfg ext w m) lm) (get_node_for_root c) = true :=
-    recorded_supports_c_of_IH cfg ext hwf hhb hec hgen' hhon (Nat.lt_succ_of_le htle)
+    recorded_supports_c_of_IH cfg ext (hw := _hw) (hmH := hmH) hwf hhb hec hgen' hhon (Nat.lt_succ_of_le htle)
       hvote (fun t' h1 h2 => hmidle t' h1 (Nat.lt_succ_iff.mp h2)) hgvn hlm hepge rfl hIH
       (List.Subset.refl _) hbbr_vn hb_wm hwa_vn hpsl (hwalk_wm i hi lm hlm) hwb_wm hbc_wm
   exact ⟨lm, hlm, hsupp⟩

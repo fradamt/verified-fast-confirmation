@@ -150,7 +150,7 @@ theorem globalFinalized_honestTarget
   have hwalkDomain : E.PostAnchorHonestVoteTargetWalkDomain cfg ext :=
     E.postAnchorHonestVoteTargetWalkDomain_of_acceptedGlobalTrajectory
       cfg ext B hT hanchor hboundary
-  obtain ⟨ast, ablk, hgenEq, hslot, hparent⟩ := hT.genesis
+  obtain ⟨ast, ablk, hgenEq, hslot, hparent⟩ := hT.genesis_structure
   have hgenShort : ∃ (ast : BeaconState Root)
       (ablk : SignedBeaconBlock Root),
       E.genesis_store = get_forkchoice_store cfg ast ablk ∧
@@ -353,11 +353,11 @@ theorem finalized_check_of_honestTargetOnSelected
   have hparentVote : ParentSlotLt
       (E.store cfg ext htarget.validator htarget.second) :=
     E.store_parentSlotLt cfg ext hT.wellFormed hT.externals_coherence
-      hT.genesis hT.wellFormed.anchor_parent_unscheduled
+      hT.genesis_structure hT.wellFormed.anchor_parent_unscheduled
       htarget.validator htarget.second
   have hparentEndpoint : ParentSlotLt (E.store cfg ext w m) :=
     E.store_parentSlotLt cfg ext hT.wellFormed hT.externals_coherence
-      hT.genesis hT.wellFormed.anchor_parent_unscheduled w m
+      hT.genesis_structure hT.wellFormed.anchor_parent_unscheduled w m
   have hselectedVoteWalk : WalkKnown
       (E.store cfg ext htarget.validator htarget.second)
       (compute_start_slot_at_epoch cfg

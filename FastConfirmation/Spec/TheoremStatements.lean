@@ -294,11 +294,13 @@ structure JustificationInterface (E : Execution Root) : Prop where
           (E.store cfg ext w m).justified_checkpoint.root).slot ≤
         compute_start_slot_at_epoch cfg t.epoch
 
-/-- The full premise bundle of the FCR guarantee uses the spec's trusted-anchor
-initialization. The projection drops
-`anchor_block.state_root == hash_tree_root(anchor_state)` and does not
-represent this commitment. The accepted trajectory instead requires anchor
-slot agreement and anchor parent/root inequality. The bundle also requires
+/-- The legacy premise bundle uses the spec's trusted-anchor initialization
+with anchor slot agreement and parent/root inequality. This legacy bundle
+does not require a state-root commitment. The accepted trajectory additionally
+requires `Externals.AnchorCommitsToState` in its `genesis` premise. This
+abstract contract comes from the external interpretation; slot agreement is
+independent, and the model does not prove a concrete hashing result.
+The legacy bundle also requires
 whole-second slot boundaries (mainnet: `12000 ms`), the behavioral and
 network records, the externals-coherence and static-set idealisations, the
 economic assumptions, and the FFG interface. -/

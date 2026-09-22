@@ -708,7 +708,7 @@ private theorem realizedJustifiedOrigins_after_execution_tick
     AcceptedRealizedJustifiedOrigins cfg ext S
       (FastConfirmation.Spec.on_tick cfg (E.store cfg ext w n)
         (E.time_at (n + 1))) := by
-  obtain ⟨ast, ablk, hgen, hgenSlot, hgenParent⟩ := hT.genesis
+  obtain ⟨ast, ablk, hgen, hgenSlot, hgenParent⟩ := hT.genesis_structure
   have hgenTime : E.genesis_store.genesis_time ≤
       E.genesis_store.time := by
     rw [hgen]
@@ -800,7 +800,7 @@ private theorem genesisAcceptedRealizedJustifiedOrigins
     (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint) :
     AcceptedRealizedJustifiedOrigins cfg ext B.state E.genesis_store := by
-  obtain ⟨ast, ablk, hgen, _hslot, _hparent⟩ := hT.genesis
+  obtain ⟨ast, ablk, hgen, _hslot, _hparent⟩ := hT.genesis_structure
   rw [hgen] at hanchor ⊢
   constructor <;> apply Or.inl <;>
     simpa only [get_forkchoice_store] using hanchor.symm

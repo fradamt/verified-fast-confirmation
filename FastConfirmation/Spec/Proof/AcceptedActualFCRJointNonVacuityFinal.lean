@@ -439,8 +439,10 @@ noncomputable def witnessAnchorChildLinkSupportAt
           (s := 4) (by decide) (by decide) h8m, ?_, ?_, ?_, ?_, ?_, ?_,
           ?_, ?_⟩
       · decide
-      · exact (witness_valid_iff _ _).2
-          (vote_mem_ground (by decide))
+      · apply (witness_valid_iff _ _).2
+        refine ⟨?_, vote_mem_ground (by decide)⟩
+        rw [(witnessStore_registryConstant w m).2 _ hlate.child_target_key]
+        decide
       · exact slot_within_of_lt_sixteen (by decide)
       · simpa only [vote4, vote_data_slot, slot_at_eq] using
           (by omega : 4 ≤ m)
@@ -452,8 +454,10 @@ noncomputable def witnessAnchorChildLinkSupportAt
           (s := 5) (by decide) (by decide) h8m, ?_, ?_, ?_, ?_, ?_, ?_,
           ?_, ?_⟩
       · decide
-      · exact (witness_valid_iff _ _).2
-          (vote_mem_ground (by decide))
+      · apply (witness_valid_iff _ _).2
+        refine ⟨?_, vote_mem_ground (by decide)⟩
+        rw [(witnessStore_registryConstant w m).2 _ hlate.child_target_key]
+        decide
       · exact slot_within_of_lt_sixteen (by decide)
       · simpa only [vote5, vote_data_slot, slot_at_eq] using
           (by omega : 5 ≤ m)
@@ -465,8 +469,10 @@ noncomputable def witnessAnchorChildLinkSupportAt
           (s := 6) (by decide) (by decide) h8m, ?_, ?_, ?_, ?_, ?_, ?_,
           ?_, ?_⟩
       · decide
-      · exact (witness_valid_iff _ _).2
-          (vote_mem_ground (by decide))
+      · apply (witness_valid_iff _ _).2
+        refine ⟨?_, vote_mem_ground (by decide)⟩
+        rw [(witnessStore_registryConstant w m).2 _ hlate.child_target_key]
+        decide
       · exact slot_within_of_lt_sixteen (by decide)
       · simpa only [vote6, vote_data_slot, slot_at_eq] using
           (by omega : 6 ≤ m)

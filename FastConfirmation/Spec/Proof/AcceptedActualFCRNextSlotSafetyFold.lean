@@ -42,7 +42,7 @@ def ConfirmedSafeFromFollowingSlot (v : ValidatorIndex) (n : ℕ) : Prop :=
 private theorem nextSlotFold_genesisTime_le
     (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext) :
     E.genesis_store.genesis_time ≤ E.genesis_store.time := by
-  obtain ⟨ast, ablk, hgen, _hslot, _hparent⟩ := hT.genesis
+  obtain ⟨ast, ablk, hgen, _hslot, _hparent⟩ := hT.genesis_structure
   rw [hgen]
   simp only [get_forkchoice_store]
   omega
@@ -251,7 +251,7 @@ theorem confirmed_safeFromFollowingSlot_of_acceptedActualFCRFold
       B.state.C B.anchor.root B.anchor.epoch :=
     acceptedAnchorExact_of_trajectory cfg ext E B hT hanchor hboundary
   let hMargin : SelectedMarginAssumptions cfg ext E :=
-    { genesis := hT.genesis
+    { genesis := hT.genesis_structure
       wellFormed := hT.wellFormed
       whole_seconds := hT.whole_seconds
       honest_behavior := hT.honest_behavior

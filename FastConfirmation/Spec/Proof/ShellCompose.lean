@@ -282,7 +282,7 @@ theorem forkEdgeInput_of_engineInputs (hSA : SpecAssumptions cfg ext E)
       hbsH := E.justified_balance_source_epoch_lt_horizon cfg ext hec hji hdiv hgen'
         w hw m hin.hHm
       hchild := hin.hchild
-      hrec := E.hrec_of_domain cfg ext hSA hw hin.hb_wm hin.hc_wm hin.hbc_wm hin.hIH
+      hrec := E.hrec_of_domain cfg ext (hmH := hin.hHm) hSA hw hin.hb_wm hin.hc_wm hin.hbc_wm hin.hIH
         hin.hubiq hin.hbbr_known hin.hwalk_wm
       hHon := hin.hHon
       hByz := hin.hByz }

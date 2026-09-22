@@ -53,6 +53,7 @@ from the recorded message are both newest through the same cutoff. -/
 theorem recorded_support_of_sclass_at_endpoint_minimal
     (hA : SelectedMarginAssumptions cfg ext E)
     {w : ValidatorIndex} {m : ℕ} {b : Root} {lo sigma : Slot}
+    (hw : w ∈ E.honest) (hmH : E.WithinHorizon cfg m)
     (hsigma : sigma = get_current_slot cfg (E.store cfg ext w m) - 1)
     (hmax : E.WindowRecordedEpochMax cfg ext w m lo sigma)
     (hpresence : E.EndpointRecordedPresence cfg ext w m b lo sigma) :
@@ -66,7 +67,7 @@ theorem recorded_support_of_sclass_at_endpoint_minimal
       E.genesis_store = get_forkchoice_store cfg ast ablk :=
     ⟨ast, ablk, hgenEq⟩
   have hprov := E.latestMessageProvenance cfg ext hA.wellFormed
-    hA.externals_coherence hgen w m
+    hA.externals_coherence hgen w m hw hmH
   rw [← E.store_current_slot cfg ext w m] at hprov
   intro i hi
   have hi' := hi
@@ -130,8 +131,8 @@ theorem selected_recording_at_endpoint_minimal
   have hsigmaH : E.SlotWithinHorizon cfg sigma :=
     E.slotWithinHorizon_of_le cfg hsigmaLe hmH
   have hrec := E.recorded_support_of_sclass_at_endpoint_minimal cfg ext hA
-    hsigma hmax hpresence
-  exact E.hSmem_of_recorded cfg ext hA.honest_behavior
+    hw hmH hsigma hmax hpresence
+  exact E.hSmem_of_recorded cfg ext (hw := hw) (hmH := hmH) hA.honest_behavior
     hA.externals_coherence hA.static_validators hgen w m w m b b lo sigma
     hval hbsH hsigmaH hrec
 
@@ -232,7 +233,7 @@ theorem honest_sibling_confinement_at_endpoint_minimal
     hA.externals_coherence
       ⟨ast, ablk, hgenEq, hgenSlot, hgenParent⟩ w m
   have hprov := E.latestMessageProvenance cfg ext hA.wellFormed
-    hA.externals_coherence hgen w m
+    hA.externals_coherence hgen w m (by assumption) (by assumption)
   rw [← E.store_current_slot cfg ext w m] at hprov
   have hlmknown : ∀ (lm : LatestMessage Root) (i : ValidatorIndex),
       (E.store cfg ext w m).latest_messages i = some lm →
@@ -289,7 +290,7 @@ theorem byzantine_sibling_confinement_at_endpoint_minimal
     hA.externals_coherence
       ⟨ast, ablk, hgenEq, hgenSlot, hgenParent⟩ w m
   have hprov := E.latestMessageProvenance cfg ext hA.wellFormed
-    hA.externals_coherence hgen w m
+    hA.externals_coherence hgen w m (by assumption) (by assumption)
   rw [← E.store_current_slot cfg ext w m] at hprov
   have hlmknown : ∀ (lm : LatestMessage Root) (i : ValidatorIndex),
       (E.store cfg ext w m).latest_messages i = some lm →
@@ -379,6 +380,7 @@ theorem crossingParentSub_le_endpoint_Aval_minimal
     (hA : SelectedMarginAssumptions cfg ext E)
     {v : ValidatorIndex} {q : ℕ} {w : ValidatorIndex} {m : ℕ}
     {bs : BeaconState Root} {a b : Root} {es : Slot}
+    (hv : v ∈ E.honest) (hqH : E.WithinHorizon cfg q)
     (hes : es = get_current_slot cfg (E.store cfg ext v q) - 1)
     (haQ : a ∈ (E.store cfg ext v q).block_roots)
     (hbQ : b ∈ (E.store cfg ext v q).block_roots)
@@ -405,7 +407,7 @@ theorem crossingParentSub_le_endpoint_Aval_minimal
       ⟨ast, ablk, hgenEq, hgenSlot, hgenParent⟩
       hA.wellFormed.anchor_parent_unscheduled w m
   have hprovQ := E.latestMessageProvenance cfg ext hA.wellFormed
-    hA.externals_coherence hgen v q
+    hA.externals_coherence hgen v q hv hqH
   rw [← E.store_current_slot cfg ext v q] at hprovQ
   have hslotltQ : ((E.store cfg ext v q).blocks a).slot <
       ((E.store cfg ext v q).blocks b).slot := by

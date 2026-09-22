@@ -59,7 +59,7 @@ theorem completedScheduledEventPrefix_accountingEvidence
     simpa only [p] using E.completedScheduledEventPrefix_store cfg ext v n
   have hp : E.CurrentTargetPrefixAccountingEvidence cfg ext
       (p.store cfg ext) (p.previousSecond + 1) :=
-    { operational := p.operationalEvidence cfg ext E hT
+    { operational := p.operationalEvidence cfg ext E hT hv hHn1
       committees := by
         intro slot hslot
         rw [hpstore]
@@ -85,7 +85,7 @@ theorem completedPrefix_pulledUpHead_validators
     hanchor hboundary hv n hHn
   have hgen : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
       E.genesis_store = get_forkchoice_store cfg ast ablk := by
-    obtain ⟨ast, ablk, hgeq, _, _⟩ := hT.genesis
+    obtain ⟨ast, ablk, hgeq, _, _⟩ := hT.genesis_structure
     exact ⟨ast, ablk, hgeq⟩
   have hregistry :=
     (E.registryConstant cfg ext hT.externals_coherence hgen v hv n).1
@@ -116,7 +116,7 @@ theorem completedPrefix_pulledUpHead_epoch
     simpa only [store, head] using
       E.headRootKnown_of_acceptedGlobalTrajectory cfg ext B hT hanchor
         hboundary hv n hHn
-  obtain ⟨ast, ablk, hgen, _hslot, _hparent⟩ := hT.genesis
+  obtain ⟨ast, ablk, hgen, _hslot, _hparent⟩ := hT.genesis_structure
   have hstateSlots := E.stateSlotsLE cfg ext hT.whole_seconds
     hT.externals_coherence ⟨ast, ablk, hgen⟩ v n
   have hheadSlot : (store.block_states head).slot ≤
@@ -170,7 +170,7 @@ theorem completedPrefix_anchor_epoch_within
     (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
     (hsv : StaticValidatorSet cfg E) :
     get_current_epoch cfg E.anchor_state < E.verification_horizon := by
-  obtain ⟨ast, ablk, hgen, _hslot, _hparent⟩ := hT.genesis
+  obtain ⟨ast, ablk, hgen, _hslot, _hparent⟩ := hT.genesis_structure
   have hanchorSlot := E.anchor_state_slot_le cfg hT.whole_seconds
     ⟨ast, ablk, hgen⟩
   exact lt_of_le_of_lt
@@ -284,7 +284,7 @@ theorem completedPrefix_currentTargetEpochEnd_within
   let store := E.store cfg ext v n
   let e := get_current_store_epoch cfg store
   let next := compute_start_slot_at_epoch cfg (e + 1)
-  obtain ⟨ast, ablk, hgen, _hslot, _hparent⟩ := hT.genesis
+  obtain ⟨ast, ablk, hgen, _hslot, _hparent⟩ := hT.genesis_structure
   have hgenTime : E.genesis_store.genesis_time ≤
       E.genesis_store.time := by
     rw [hgen]
@@ -418,7 +418,7 @@ noncomputable def completedPrefix_acceptedTargetGateProducerAt
     E.scheduledEventPrefix_acceptedTargetA32GateRealization_withLookahead
     cfg ext B hT hC.delivery_lookahead hC.static_validators
       hC.byzantine_bound
-      hC.phase0_source hC.phase0_boundary_source hanchor hboundary p hHn1
+      hC.phase0_source hC.phase0_boundary_source hanchor hboundary p hv hHn1
       hevidence hstate hval htab hendHP hanchorH hC.balance_floor
       hgateP hsupportP
   rw [hpstore] at hrealized

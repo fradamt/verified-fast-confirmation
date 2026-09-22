@@ -98,7 +98,7 @@ theorem findLatestConfirmedDescendant_safeFrom_of_actualCall
     acceptedAnchorExact_of_trajectory cfg ext E h.semantics h.trajectory
       h.anchor_eq h.anchor_boundary
   let hMargin : SelectedMarginAssumptions cfg ext E :=
-    { genesis := h.trajectory.genesis
+    { genesis := h.trajectory.genesis_structure
       wellFormed := h.trajectory.wellFormed
       whole_seconds := h.trajectory.whole_seconds
       honest_behavior := h.trajectory.honest_behavior

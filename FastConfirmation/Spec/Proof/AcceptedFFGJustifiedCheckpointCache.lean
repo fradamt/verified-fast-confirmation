@@ -43,7 +43,7 @@ theorem justifiedCheckpoint_cached_of_acceptedGlobalTrajectory
     (hHm : E.WithinHorizon cfg m) :
     (E.store cfg ext w m).justified_checkpoint ∈
       (E.store cfg ext w m).checkpoint_state_keys := by
-  obtain ⟨ast, ablk, hgenEq, hslot, hparent⟩ := hT.genesis
+  obtain ⟨ast, ablk, hgenEq, hslot, hparent⟩ := hT.genesis_structure
   have hgenFull : ∃ (ast : BeaconState Root)
       (ablk : SignedBeaconBlock Root),
       E.genesis_store = get_forkchoice_store cfg ast ablk ∧

@@ -326,7 +326,7 @@ theorem base_strip_of_confirmed_at_minimal
       ⟨ast, ablk, hgeq, hslot, hparent⟩
       hA.wellFormed.anchor_parent_unscheduled v q
   have hprov := E.latestMessageProvenance cfg ext hA.wellFormed
-    hA.externals_coherence hgen v q
+    hA.externals_coherence hgen v q (by assumption) (by assumption)
   rw [← E.store_current_slot cfg ext v q] at hprov
   have hwalkK := E.store_walkKnownK cfg ext hA.wellFormed
     hA.externals_coherence ⟨ast, ablk, hgeq, hslot, hparent⟩ v q

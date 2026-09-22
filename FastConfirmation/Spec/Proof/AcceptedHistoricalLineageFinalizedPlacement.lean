@@ -381,7 +381,7 @@ theorem EarlySelectedEndpointPhase.finalizedRoot_eq_queryCheckpointBlock_of_line
     (E.store cfg ext w m).finalized_checkpoint.root =
       get_checkpoint_block cfg (E.store cfg ext v q) selected
         (E.store cfg ext w m).finalized_checkpoint.epoch := by
-  obtain ⟨ast, ablk, hgen, hgenSlot, hgenParent⟩ := hT.genesis
+  obtain ⟨ast, ablk, hgen, hgenSlot, hgenParent⟩ := hT.genesis_structure
   have hgenShort : ∃ (ast : BeaconState Root)
       (ablk : SignedBeaconBlock Root),
       E.genesis_store = get_forkchoice_store cfg ast ablk ∧
@@ -395,7 +395,7 @@ theorem EarlySelectedEndpointPhase.finalizedRoot_eq_queryCheckpointBlock_of_line
     simpa only [endpoint] using E.store_causal cfg ext w m
   have hqueryParent : ParentSlotLt query := by
     simpa only [query] using E.store_parentSlotLt cfg ext hT.wellFormed
-      hT.externals_coherence hT.genesis
+      hT.externals_coherence hT.genesis_structure
       hT.wellFormed.anchor_parent_unscheduled v q
   have hselectedQ' : selected ∈ query.block_roots := by
     simpa only [query] using hselectedQ
@@ -672,11 +672,11 @@ theorem finalized_check_of_earlyHistoricalLineage
     E.store_causal cfg ext v q
   have hqueryParent : ParentSlotLt (E.store cfg ext v q) :=
     E.store_parentSlotLt cfg ext hT.wellFormed hT.externals_coherence
-      hT.genesis hT.wellFormed.anchor_parent_unscheduled v q
+      hT.genesis_structure hT.wellFormed.anchor_parent_unscheduled v q
   have hendpointParent : ParentSlotLt (E.store cfg ext w m) :=
     E.store_parentSlotLt cfg ext hT.wellFormed hT.externals_coherence
-      hT.genesis hT.wellFormed.anchor_parent_unscheduled w m
-  obtain ⟨ast, ablk, hgen, hgenSlot, _hgenParent⟩ := hT.genesis
+      hT.genesis_structure hT.wellFormed.anchor_parent_unscheduled w m
+  obtain ⟨ast, ablk, hgen, hgenSlot, _hgenParent⟩ := hT.genesis_structure
   have hgenShort : ∃ (ast : BeaconState Root)
       (ablk : SignedBeaconBlock Root),
       E.genesis_store = get_forkchoice_store cfg ast ablk ∧

@@ -294,7 +294,7 @@ theorem currentTargetObservedHonestSupporter_vote
   have hiCommittee : i ∈ E.committee a.data.slot :=
     hhb.votes_assigned i hi a.data.slot
       (by rw [hvoteGround]; exact Option.some_ne_none _)
-  have hprov := E.latestMessageProvenance cfg ext hwf hec hgen0 v n
+  have hprov := E.latestMessageProvenance cfg ext hwf hec hgen0 v n (by assumption) (by assumption)
   obtain ⟨ap, _hapAttests, _hapTargetEpoch, _hapRoot, hapSlotEpoch,
       hapApplied, hapCommittee, _hlmKnown, _hlmSlot⟩ :=
     hprov i lm hlm
@@ -919,7 +919,7 @@ theorem will_current_target_be_justified_honestTargetQuorumBefore
     intro i hi
     obtain ⟨vote⟩ := hvotes i hi
     exact mem_epoch_span_of_committee cfg vote.assigned vote.slot_epoch
-  have hprov := E.latestMessageProvenance cfg ext hwf hec hgen0 v n
+  have hprov := E.latestMessageProvenance cfg ext hwf hec hgen0 v n (by assumption) (by assumption)
   rw [← E.store_current_slot cfg ext v n] at hprov
   have hquorum : 2 * E.total_active cfg ≤ 3 * E.weight signers := by
     simpa only [signers, Execution.currentTargetA32Signers, store] using

@@ -295,7 +295,7 @@ def acceptedIncludedEvidenceAt (s : Slot) (hlo : 4 ≤ s) (hhi : s ≤ 6) :
     rfl
   valid := by
     apply (witness_valid_iff anchorState (vote s)).2
-    exact vote_mem_ground (hhi.trans_lt (by decide : 6 < 16))
+    exact ⟨by decide, vote_mem_ground (hhi.trans_lt (by decide : 6 < 16))⟩
   slot_within_horizon := by
     rw [vote_data_slot]
     exact slot_within_of_lt_sixteen (hhi.trans_lt (by decide : 6 < 16))
@@ -345,7 +345,7 @@ def witnessAcceptedIncludedAttestations :
         valid := by
           rcases h.2 with rfl | rfl | rfl <;>
             apply (witness_valid_iff anchorState _).2 <;>
-            exact vote_mem_ground (by decide)
+            exact ⟨by decide, vote_mem_ground (by decide)⟩
         slot_within_horizon := by
           rcases h.2 with rfl | rfl | rfl <;>
             exact slot_within_of_lt_sixteen (by decide)

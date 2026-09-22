@@ -45,7 +45,7 @@ theorem ExactPrefixAcceptedFFGSemantics.endpointJustificationOriginAt
       (E := E) (anchor := B.anchor))
     {w : ValidatorIndex} {m : Nat} :
     E.EndpointJustificationOriginAt cfg ext B.anchor w m := by
-  obtain ⟨ast, ablk, hgenEq, hslot, hparent⟩ := hT.genesis
+  obtain ⟨ast, ablk, hgenEq, hslot, hparent⟩ := hT.genesis_structure
   have hgenShort : ∃ (ast : BeaconState Root)
       (ablk : SignedBeaconBlock Root),
       E.genesis_store = get_forkchoice_store cfg ast ablk ∧
@@ -401,7 +401,7 @@ theorem strictSelected_result_and_child_ancestor_of_endpointJustified_accepted
           (find_latest_confirmed_descendant cfg ext query input))
         (get_node_for_root
           (E.store cfg ext w m).justified_checkpoint.root) = true := by
-  obtain ⟨ast, ablk, hgen, hgenSlot, _hgenParent⟩ := hT.genesis
+  obtain ⟨ast, ablk, hgen, hgenSlot, _hgenParent⟩ := hT.genesis_structure
   have hgenShort : ∃ (ast : BeaconState Root)
       (ablk : SignedBeaconBlock Root),
       E.genesis_store = get_forkchoice_store cfg ast ablk ∧

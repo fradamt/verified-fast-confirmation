@@ -559,6 +559,33 @@ The two source-store facts left as hypotheses — the head block is known
 are the `get_head`/`get_checkpoint_block` well-formedness inputs used by this
 lemma. -/
 
+/-- A fresh checkpoint state is validated through its reachable block-state
+base. Slot processing preserves the indexed check; the cache need not already
+contain the prepared state. -/
+theorem honest_attestation_valid_prepared {E : Execution Root}
+    (hec : ExternalsCoherence cfg ext E) {store : Store Root}
+    (hstore : E.HonestCausalStore cfg ext store) (a : Attestation Root)
+    (hroot : a.data.target.root ∈ store.block_roots)
+    (v : ValidatorIndex) (hv : v ∈ E.honest)
+    (hsingle : a.attesting_indices = [v])
+    (hcommittee : v ∈ E.committee a.data.slot)
+    (hvote : ∃ m a', E.vote v a.data.slot = some (m, a') ∧ a.data = a'.data) :
+    ext.is_valid_indexed_attestation
+      ((store_target_checkpoint_state cfg ext store a.data.target).checkpoint_states
+        a.data.target) a = true := by
+  by_cases hkey : a.data.target ∈ store.checkpoint_state_keys
+  · simpa only [store_target_checkpoint_state, if_neg (not_not_intro hkey)] using
+      hec.honest_attestation_valid _ a
+        (hstore.checkpointState cfg ext hkey) v hv hsingle hcommittee hvote
+  · have hbase := hec.honest_attestation_valid _ a
+      (hstore.blockState cfg ext hroot) v hv hsingle hcommittee hvote
+    simp only [store_target_checkpoint_state, if_pos hkey, Function.update_self]
+    split_ifs with hslot
+    · rw [hec.process_slots_attestation_valid _ _ _
+        (hstore.blockState cfg ext hroot) hslot]
+      exact hbase
+    · exact hbase
+
 /-- **Application-second effect.** Under honest behaviour, synchrony, externals
 coherence and a well-formed execution from a `get_forkchoice_store` genesis,
 the honest attestation `v` casts for its assigned slot `s` (at second `n`) is,
@@ -701,9 +728,13 @@ theorem Execution.vote_lands {E : Execution Root}
       ((store_target_checkpoint_state cfg ext
           (pre.foldl (fun store event => (apply_event cfg ext store event).getD store) tb)
           a.data.target).checkpoint_states a.data.target) a = true :=
-    hec.honest_attestation_valid _ a v hv hsingle hcomm_slot hvote_ex
+    honest_attestation_valid_prepared cfg ext hec
+      (E.honestCausalStore_prefix cfg ext w hw Nm1
+        (by simpa only [← hNeq] using hHdeliver)
+        pre (Event.attestation a false :: suf) hl)
+      a (hsub htroot) v hv hsingle hcomm_slot hvote_ex
   have hne_full : v ∉ (E.store cfg ext w (Nm1 + 1)).equivocating_indices :=
-    Execution.honest_not_equivocating cfg ext hhb hec ⟨ast, ablk, hgeq⟩ hv w (Nm1 + 1)
+    Execution.honest_not_equivocating cfg ext hhb hec ⟨ast, ablk, hgeq⟩ hv w (Nm1 + 1) hw (by simpa only [← hNeq] using hHdeliver)
   have hle_pf : StoreLE
       (pre.foldl (fun store event => (apply_event cfg ext store event).getD store) tb)
       (E.store cfg ext w (Nm1 + 1)) := by

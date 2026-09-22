@@ -387,7 +387,7 @@ theorem support_discount_le_Aval
       ≤ E.Aval cfg ext v₀ n₀ b' lo es := by
   have hne : ∀ i ∈ (E.store cfg ext v₀ n₀).equivocating_indices, i ∉ E.honest :=
     fun i hi_eq hi_honest =>
-      Execution.honest_not_equivocating cfg ext hhb hec hgen hi_honest v₀ n₀ hi_eq
+      Execution.honest_not_equivocating cfg ext hhb hec hgen hi_honest v₀ n₀ (by assumption) (by assumption) hi_eq
   refine le_trans (support_discount_le_parent_stuck cfg ext hec hbb hv₀ hnH hval
     (hlo ▸ hloH) hbH htab hne) ?_
   rw [Execution.Aval]

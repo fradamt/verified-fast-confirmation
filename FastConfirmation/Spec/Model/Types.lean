@@ -9,9 +9,8 @@ import FastConfirmation.Spec.Model.Config
 The data structures the Fast Confirmation Rule reads, transcribed from
 `consensus-specs` phase0 (`beacon-chain.md` containers projected to the fields
 the FCR touches, and the `fork-choice.md` helper dataclasses), plus the
-`Externals` bundle of abstract beacon-chain primitives (committee shuffling and
-`process_slots` — the only functions not transcribed; see
-`docs/spec-model-design.md`).
+`Externals` bundle of abstract beacon-chain primitives and the abstract
+anchor commitment (see `docs/spec-model-design.md`).
 
 `Root` is a type parameter: hash digests are opaque; `LinearOrder` models the
 lexicographic tie-break of `get_head`, `Inhabited.default` models the python
@@ -152,7 +151,8 @@ def is_slashable_attestation_data {Root : Type*} [DecidableEq Root]
     (data_1.source.epoch < data_2.source.epoch ∧ data_2.target.epoch < data_1.target.epoch))
 
 /-- The abstract beacon-chain primitives the transcription bottoms out in:
-committee shuffling, the state transition, and signature/index validity.
+committee shuffling, the state transition, signature/index validity, and the
+abstract anchor commitment.
 Everything else in the FCR spec and its fork-choice environment is transcribed
 concretely on top of these (see `docs/spec-model-design.md`, "Faithfulness
 contract" and decisions 12–13). -/
@@ -177,6 +177,13 @@ structure Externals (Root : Type*) where
       (sorted/nonempty indices + aggregate BLS signature — all absorbed here;
       used by `on_attestation` and `on_attester_slashing`). -/
   is_valid_indexed_attestation : BeaconState Root → IndexedAttestation Root → Bool
+  /-- Abstract contract for `anchor_block.state_root == hash_tree_root(anchor_state)`.
+      The external interpretation must relate the full block and state before
+      projection. The accepted trajectory requires this relation at its anchor;
+      slot agreement is a separate premise. This model does not prove a concrete
+      hashing result. The default supplies no commitment evidence. -/
+  AnchorCommitsToState : BeaconBlock Root → BeaconState Root → Prop :=
+    fun _ _ => False
 
 variable {Root : Type*}
 variable (cfg : Config)

@@ -223,13 +223,14 @@ theorem hrec_crux (hSA : SpecAssumptions cfg ext E)
       E.vote i t = some (kk, a) → a.data.beacon_block_root ∈ (E.store cfg ext w m).block_roots)
     (hlm_known : ∀ i ∈ E.Sclass cfg ext w m b lo σ, ∀ lm,
       (E.store cfg ext w m).latest_messages i = some lm →
-      lm.root ∈ (E.store cfg ext w m).block_roots) :
+      lm.root ∈ (E.store cfg ext w m).block_roots)
+    (hmH : E.WithinHorizon cfg m) :
     ∀ i ∈ E.Sclass cfg ext w m b lo σ,
       ∃ lm, (E.store cfg ext w m).latest_messages i = some lm ∧
         is_ancestor (E.store cfg ext w m)
           (get_supported_node (E.store cfg ext w m) lm) (get_node_for_root c) = true := by
   obtain ⟨hgen, hwf, hdiv, hhb, hsync, hec, hsv, hbb, hji⟩ := hSA
-  refine E.hrec_of_domain cfg ext ⟨hgen, hwf, hdiv, hhb, hsync, hec, hsv, hbb, hji⟩
+  refine E.hrec_of_domain cfg ext (hmH := hmH) ⟨hgen, hwf, hdiv, hhb, hsync, hec, hsv, hbb, hji⟩
     hw hb_wm hc_wm hbc_wm hIH hubiq hbbr_known ?_
   intro i hi lm hlm
   exact E.store_walkKnownK cfg ext hwf hec hgen w m c hc_wm lm.root (hlm_known i hi lm hlm)

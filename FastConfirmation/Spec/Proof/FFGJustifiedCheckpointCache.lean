@@ -451,8 +451,11 @@ theorem honestVoteTarget_cached_at_delivery
         (pre.foldl
           (fun store event => (apply_event cfg ext store event).getD store)
           ticked) a.data.target).checkpoint_states a.data.target) a = true :=
-    hec.honest_attestation_valid _ a v hv hsingle
-      hcommitteeAtVote hvoteExists
+    honest_attestation_valid_prepared cfg ext hec
+      (E.honestCausalStore_prefix cfg ext w hw deliveryPred
+        (by simpa only [← hdeliveryEq] using hHdeliver)
+        pre (Event.attestation a false :: suf) hscheduleEq)
+      a (hroots htargetRoot) v hv hsingle hcommitteeAtVote hvoteExists
   let applied := update_latest_messages
     (store_target_checkpoint_state cfg ext
       (pre.foldl

@@ -119,7 +119,7 @@ theorem getLatestConfirmedTraceAt_result_safeFrom_of_acceptedDispatcher
     E.SafeFrom cfg ext
       (E.getLatestConfirmedTraceAt cfg ext v n).result (n + 1) := by
   let hA : SelectedMarginAssumptions cfg ext E :=
-    { genesis := hT.genesis
+    { genesis := hT.genesis_structure
       wellFormed := hT.wellFormed
       whole_seconds := hT.whole_seconds
       honest_behavior := hT.honest_behavior

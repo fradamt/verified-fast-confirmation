@@ -617,7 +617,7 @@ theorem support_discount_le_Aval_window
   have hne : ∀ i ∈ (E.store cfg ext v₀ n₀).equivocating_indices,
       i ∉ E.honest :=
     fun i hieq hi =>
-      Execution.honest_not_equivocating cfg ext hhb hec hgen hi v₀ n₀ hieq
+      Execution.honest_not_equivocating cfg ext hhb hec hgen hi v₀ n₀ (by assumption) (by assumption) hieq
   refine le_trans (support_discount_le_parent_stuck cfg ext hec hbb hv₀ hnH
     hval (hlo ▸ hloH) hbH htab hne) ?_
   rw [Execution.Aval]
