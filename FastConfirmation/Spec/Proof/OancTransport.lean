@@ -708,6 +708,202 @@ theorem opposite_honest_classification_of_execution
       (hwalkDst c hcDst lm.root hroot)
       (hwalkDst c hcDst b (hsub hb)) hbc hchildSubset
 
+/-- The current v2 base enemy does not contain a recorded Byzantine message
+on the confirmed block's ancestor line. This applies even when that message
+supports the opposite resolved payload status. -/
+theorem ancestor_recorded_message_not_BbadSet
+    {v i : ValidatorIndex} {n : ℕ} {b : Root} {lo es : Slot}
+    {lm : LatestMessage Root}
+    (hlm : (E.store cfg ext v n).latest_messages i = some lm)
+    (hline : is_ancestor (E.store cfg ext v n)
+        (get_node_for_root lm.root) (get_node_for_root b) = true ∨
+      is_ancestor (E.store cfg ext v n)
+        (get_node_for_root b) (get_node_for_root lm.root) = true) :
+    i ∉ E.BbadSet cfg ext v n b lo es := by
+  intro hi
+  simp only [Execution.BbadSet, Finset.mem_filter] at hi
+  rcases hline with h | h
+  · exact (hi.2.2 lm hlm).1 h
+  · exact (hi.2.2 lm hlm).2 h
+
+/-- A validator with no tail committee assignment also lies outside the
+current v2 spent set. Together with the preceding lemma, this records the
+precise old ancestor branch that the current enemy does not charge. -/
+theorem old_ancestor_message_not_v2_enemy
+    {v i : ValidatorIndex} {n : ℕ} {b : Root} {lo es σ : Slot}
+    {lm : LatestMessage Root}
+    (hlm : (E.store cfg ext v n).latest_messages i = some lm)
+    (hline : is_ancestor (E.store cfg ext v n)
+        (get_node_for_root lm.root) (get_node_for_root b) = true ∨
+      is_ancestor (E.store cfg ext v n)
+        (get_node_for_root b) (get_node_for_root lm.root) = true)
+    (hnoTail : ∀ t : Slot, es < t → t ≤ σ → i ∉ E.committee t) :
+    i ∉ E.BbadSet cfg ext v n b lo es ∪ E.SpentSet es σ := by
+  intro hi
+  rcases Finset.mem_union.mp hi with hbase | hspent
+  · exact E.ancestor_recorded_message_not_BbadSet cfg ext hlm hline hbase
+  · simp only [Execution.SpentSet, Finset.mem_filter,
+      Execution.span_committee, Finset.mem_biUnion, Finset.mem_Icc] at hspent
+    obtain ⟨⟨t, ⟨hlo, hhi⟩, hcomm⟩, _⟩ := hspent
+    exact hnoTail t hlo hhi hcomm
+
+/-- The provable Byzantine confinement for an opposite resolved status uses
+the entire old Byzantine window. A later setting slot lies in the spent tail;
+an older one lies in `Bwin` by the resolved-supporter slot bound. -/
+theorem opposite_byz_full_window_or_spent
+    {w i : ValidatorIndex} {m : ℕ} {h : Root}
+    {lo es σ : Slot} {other : PayloadStatus}
+    {bs : BeaconState Root} {lm : LatestMessage Root}
+    (hwf : ∀ r ∈ (E.store cfg ext w m).block_roots,
+      ((E.store cfg ext w m).blocks r).parent_root ∈
+          (E.store cfg ext w m).block_roots →
+        ((E.store cfg ext w m).blocks
+          ((E.store cfg ext w m).blocks r).parent_root).slot <
+          ((E.store cfg ext w m).blocks r).slot)
+    (hprov : LatestMessageProvenance E cfg
+      (get_current_slot cfg (E.store cfg ext w m)) (E.store cfg ext w m))
+    (hresolved : other ≠ .pending)
+    (hwalk : WalkKnown (E.store cfg ext w m)
+      ((E.store cfg ext w m).blocks h).slot lm.root)
+    (hlo : lo ≤ ((E.store cfg ext w m).blocks h).slot + 1)
+    (hσcur : get_current_slot cfg (E.store cfg ext w m) - 1 ≤ σ)
+    (hiOpp : i ∈ AttSupporters cfg (E.store cfg ext w m)
+      (ForkChoiceNode.mk h other) bs)
+    (hiByz : i ∉ E.honest)
+    (hlm : (E.store cfg ext w m).latest_messages i = some lm) :
+    i ∈ E.Bwin lo es ∨ i ∈ E.SpentSet es σ := by
+  by_cases hold : lm.slot ≤ es
+  · left
+    have hiSpan := E.old_resolved_supporter_mem_span cfg hwf hprov
+      hresolved hiOpp hlm hwalk hlo hold
+    simp only [Execution.Bwin, Finset.mem_filter]
+    exact ⟨hiSpan, hiByz⟩
+  · right
+    obtain ⟨_, _, _, _, _, hgate, hcomm, _, _, hslot⟩ := hprov i lm hlm
+    have hlate : es < lm.slot := Nat.lt_of_not_ge hold
+    have hupper : lm.slot ≤ σ := by
+      rw [hslot]
+      exact (Nat.le_sub_one_of_lt hgate).trans hσcur
+    simp only [Execution.SpentSet, Finset.mem_filter,
+      Execution.span_committee, Finset.mem_biUnion, Finset.mem_Icc]
+    refine ⟨⟨lm.slot, ⟨hlate, hupper⟩, ?_⟩, hiByz⟩
+    rw [hslot]
+    exact hcomm
+
+/-- Both parts of the provable Byzantine confinement fit in the complete
+window budget. This is the enemy available to an `INVstar`-based status bound. -/
+theorem old_byz_union_spent_le_Bval
+    {lo es σ : Slot} (hlo : lo ≤ es + 1) (hesσ : es ≤ σ) :
+    E.weight (E.Bwin lo es ∪ E.SpentSet es σ) ≤ E.Bval lo σ := by
+  apply E.weight_mono
+  intro i hi
+  simp only [Execution.Bval, Execution.Bwin, Execution.SpentSet,
+    Finset.mem_union, Finset.mem_filter,
+    Execution.span_committee, Finset.mem_biUnion,
+    Finset.mem_Icc] at hi ⊢
+  rcases hi with ⟨⟨t, ⟨htlo, htes⟩, hcomm⟩, hbyz⟩ |
+    ⟨⟨t, ⟨htes, htσ⟩, hcomm⟩, hbyz⟩
+  · exact ⟨⟨t, ⟨htlo, htes.trans hesσ⟩, hcomm⟩, hbyz⟩
+  · exact ⟨⟨t, ⟨hlo.trans htes, htσ⟩, hcomm⟩, hbyz⟩
+
+/-- A complete-window Byzantine bound combines with the honest transport
+classification to bound the opposite resolved score by `X + Bval + Oanc`. -/
+theorem recorded_opposite_status_le_full_window
+    {store source : Store Root} {bs bsSource : BeaconState Root}
+    (hval : bs.validators = E.registry)
+    {v : ValidatorIndex} {n : ℕ} {b h : Root}
+    {lo es σ : Slot} {other : PayloadStatus}
+    (hlo : lo ≤ es + 1) (hesσ : es ≤ σ)
+    (hHon : ∀ i ∈ AttSupporters cfg store (ForkChoiceNode.mk h other) bs,
+      i ∈ E.honest →
+        i ∈ E.Xclass cfg ext v n b lo σ ∨
+          i ∈ OppositeAncestorClass cfg ext E source bsSource
+            v n b h lo es other)
+    (hByz : ∀ i ∈ AttSupporters cfg store (ForkChoiceNode.mk h other) bs,
+      i ∉ E.honest →
+        i ∈ E.Bwin lo es ∨ i ∈ E.SpentSet es σ) :
+    get_attestation_score cfg store (ForkChoiceNode.mk h other) bs ≤
+      E.Xval cfg ext v n b lo σ + E.Bval lo σ +
+        E.weight (OppositeAncestorClass cfg ext E source bsSource
+          v n b h lo es other) := by
+  rw [attestation_score_eq_weight cfg hval, Execution.Xval]
+  have hsub : (AttSupporters cfg store (ForkChoiceNode.mk h other) bs).toFinset ⊆
+      (E.Xclass cfg ext v n b lo σ ∪
+        (E.Bwin lo es ∪ E.SpentSet es σ)) ∪
+        OppositeAncestorClass cfg ext E source bsSource
+          v n b h lo es other := by
+    intro i hi
+    have hi' := List.mem_toFinset.mp hi
+    by_cases hh : i ∈ E.honest
+    · rcases hHon i hi' hh with hX | hO
+      · exact Finset.mem_union.mpr (Or.inl (Finset.mem_union.mpr (Or.inl hX)))
+      · exact Finset.mem_union.mpr (Or.inr hO)
+    · exact Finset.mem_union.mpr (Or.inl (Finset.mem_union.mpr
+        (Or.inr (Finset.mem_union.mpr (hByz i hi' hh)))))
+  have hscore := (E.weight_mono hsub).trans
+    ((weight_union_le _ _).trans
+      (Nat.add_le_add_right (weight_union_le _ _) _))
+  have hB := E.old_byz_union_spent_le_Bval hlo hesσ
+  calc
+    _ ≤ E.weight (E.Xclass cfg ext v n b lo σ) +
+        E.weight (E.Bwin lo es ∪ E.SpentSet es σ) +
+        E.weight (OppositeAncestorClass cfg ext E source bsSource
+          v n b h lo es other) := by simpa only [add_assoc] using hscore
+    _ ≤ E.weight (E.Xclass cfg ext v n b lo σ) + E.Bval lo σ +
+        E.weight (OppositeAncestorClass cfg ext E source bsSource
+          v n b h lo es other) := by
+            exact Nat.add_le_add_right (Nat.add_le_add_left hB _) _
+
+/-- The endpoint strip of `INVstar`, used here without importing the later
+ground-step module. -/
+private theorem invstar_endpoint_local
+    (v : ValidatorIndex) (n : ℕ) (b : Root) (lo es σ : Slot)
+    (boost : ℕ) (hinv : E.INVstar cfg ext v n b lo es σ boost) :
+    E.Xval cfg ext v n b lo σ + E.Bval lo σ + boost + 1
+      ≤ E.Sval cfg ext v n b lo σ := by
+  simp only [Execution.INVstar] at hinv
+  have hDpos : 0 < 100 - cfg.confirmation_byzantine_threshold := by
+    have := cfg.confirmation_byzantine_threshold_le
+    omega
+  refine Nat.le_of_mul_le_mul_left (le_trans (Nat.le_add_right _ _) hinv) hDpos
+
+private theorem invstar_opposite_margin_arith
+    {X B P O S Q R : ℕ}
+    (hstrip : X + B + (P + O) + 1 ≤ S)
+    (hopp : Q ≤ X + B + O) (hselected : S ≤ R) :
+    Q + P < R := by omega
+
+/-- The complete-window score bound and a debt-strengthened `INVstar` imply
+the payload decision margin at an endpoint. -/
+theorem pendingStatusMargin_of_INVstar_opposite
+    {store : Store Root} {blocks : List Root}
+    {v : ValidatorIndex} {n : ℕ} {b h : Root}
+    {lo es σ : Slot} {status : PayloadStatus} {boost O : ℕ}
+    (hmem : ForkChoiceNode.mk h status ∈
+      get_node_children store blocks (ForkChoiceNode.mk h .pending))
+    (hnotPrev : is_previous_slot_payload_decision cfg store
+      (ForkChoiceNode.mk h status) = false)
+    (hselected : E.Sval cfg ext v n b lo σ ≤
+      get_attestation_score cfg store (ForkChoiceNode.mk h status)
+        (store.checkpoint_states store.justified_checkpoint))
+    (hboost : boost = get_proposer_score cfg store)
+    (hinv : E.INVstar cfg ext v n b lo es σ (boost + O))
+    (hopp : ∀ other ∈ get_node_children store blocks (ForkChoiceNode.mk h .pending),
+      other ≠ ForkChoiceNode.mk h status →
+      get_attestation_score cfg store other
+        (store.checkpoint_states store.justified_checkpoint) ≤
+          E.Xval cfg ext v n b lo σ + E.Bval lo σ + O) :
+    PendingStatusMargin cfg store blocks h status := by
+  refine ⟨hmem, ?_⟩
+  intro other hm hne
+  left
+  constructor
+  · have hstrip := E.invstar_endpoint_local cfg ext v n b lo es σ (boost + O) hinv
+    rw [hboost] at hstrip
+    have hscore := hopp other hm hne
+    exact invstar_opposite_margin_arith hstrip hscore hselected
+  · exact hnotPrev
+
 end Execution
 end FastConfirmation.Spec
 
