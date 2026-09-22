@@ -1,5 +1,45 @@
 # Review guide
 
+## Weak observer premises after the main merge
+
+`Execution.WeakObserverAssumptions` adds committed-anchor initialization and
+observer-run attestation validity. The new `genesis` field has this exact type:
+
+```lean
+genesis : ∃ (anchorState : BeaconState Root) (anchorBlock : SignedBeaconBlock Root),
+  E.genesis_store = get_forkchoice_store cfg anchorState anchorBlock ∧
+  anchorState.slot = anchorBlock.message.slot ∧
+  ext.AnchorCommitsToState anchorBlock.message anchorState ∧
+  anchorBlock.message.parent_root ≠ anchorBlock.root
+```
+
+The new `validity` field has the exact type
+`validity : E.ObserverValidity cfg ext obs`. Its record is:
+
+```lean
+structure ObserverValidity (E : Execution Root) (obs : ValidatorIndex) : Prop where
+  honest_attestation_valid : ∀ (state : BeaconState Root) (a : Attestation Root),
+    E.ObserverValidationState cfg ext obs state →
+    ∀ v ∈ E.honest, a.attesting_indices = [v] → v ∈ E.committee a.data.slot →
+    (∃ m a', E.vote v a.data.slot = some (m, a') ∧ a.data = a'.data) →
+      ext.is_valid_indexed_attestation state a = true
+  valid_attestation_honest : ∀ (state : BeaconState Root) (a : Attestation Root),
+    E.ObserverValidationState cfg ext obs state →
+    ext.is_valid_indexed_attestation state a = true →
+    ∀ v ∈ E.honest, v ∈ a.attesting_indices →
+      ∃ m a', E.vote v a.data.slot = some (m, a') ∧ a.data = a'.data
+  valid_attestation_committee : ∀ (state : BeaconState Root) (a : Attestation Root),
+    E.ObserverValidationState cfg ext obs state →
+    ext.is_valid_indexed_attestation state a = true →
+    ∀ i ∈ a.attesting_indices, i ∈ E.committee a.data.slot
+```
+
+`ObserverValidationState` means a keyed block or checkpoint state in the
+observer's genesis store or a scheduled handler prefix at that observer. This
+is a smaller domain than the pre-merge unconditional attestation laws. It
+does not require the observer to be honest. The weak proofs derive observer
+non-equivocation and latest-message provenance from this field.
+
 ## Trust and architecture
 
 The repository publishes two independent developments. `FastConfirmation.Spec`

@@ -104,15 +104,15 @@ not contain execution-payload data. It is therefore not added to this trace
 schema. A future post-Bellatrix port must add that block-payload projection
 and bump the schema together with the runner.
 
-All v1 records remain readable by the weak runner. The runner selects
-`Weak.on_fast_confirmation`; records do not need a handler discriminator
-because this branch has one weak-specific parity runner.
+The runner selects `Strong.on_fast_confirmation` for version 1 and
+`Weak.on_fast_confirmation` for version 2. The schema number is the handler
+discriminator.
 
 ## Comparison
 For each record the Lean runner constructs `FastConfirmationStore` from `store`
-and `fcr_before`, runs `Weak.on_fast_confirmation cfg ext`, and compares the six
-legacy `fcr_after` fields, plus the new checkpoint for version 2. Version 1 does
-not compare an output field that was absent from its source record.
+and `fcr_before`, runs the selected rule, and compares the six legacy
+`fcr_after` fields, plus the new checkpoint for version 2. Version 1 does not
+compare an output field that was absent from its source record.
 Output: one line per record,
 
 `OK <test_id> <call_index>` or `MISMATCH <test_id> <call_index> <field> lean=<v> python=<v>`

@@ -1,5 +1,46 @@
 # Weak synchrony: model delta and proof-migration plan
 
+## Premises added by the main merge
+
+The caller-facing `Execution.WeakObserverAssumptions` adds these fields:
+
+```lean
+genesis : ∃ (anchorState : BeaconState Root) (anchorBlock : SignedBeaconBlock Root),
+  E.genesis_store = get_forkchoice_store cfg anchorState anchorBlock ∧
+  anchorState.slot = anchorBlock.message.slot ∧
+  ext.AnchorCommitsToState anchorBlock.message anchorState ∧
+  anchorBlock.message.parent_root ≠ anchorBlock.root
+validity : E.ObserverValidity cfg ext obs
+```
+
+The validity record is verbatim:
+
+```lean
+structure ObserverValidity (E : Execution Root) (obs : ValidatorIndex) : Prop where
+  honest_attestation_valid : ∀ (state : BeaconState Root) (a : Attestation Root),
+    E.ObserverValidationState cfg ext obs state →
+    ∀ v ∈ E.honest, a.attesting_indices = [v] → v ∈ E.committee a.data.slot →
+    (∃ m a', E.vote v a.data.slot = some (m, a') ∧ a.data = a'.data) →
+      ext.is_valid_indexed_attestation state a = true
+  valid_attestation_honest : ∀ (state : BeaconState Root) (a : Attestation Root),
+    E.ObserverValidationState cfg ext obs state →
+    ext.is_valid_indexed_attestation state a = true →
+    ∀ v ∈ E.honest, v ∈ a.attesting_indices →
+      ∃ m a', E.vote v a.data.slot = some (m, a') ∧ a.data = a'.data
+  valid_attestation_committee : ∀ (state : BeaconState Root) (a : Attestation Root),
+    E.ObserverValidationState cfg ext obs state →
+    ext.is_valid_indexed_attestation state a = true →
+    ∀ i ∈ a.attesting_indices, i ∈ E.committee a.data.slot
+```
+
+`ObserverValidationState` is a keyed block or checkpoint state from genesis
+or from the observer's validated handler prefixes. It restricts the old
+unconditional attestation laws to the states this observer run produces.
+The observer may be outside the honest set. Its non-equivocation and
+latest-message provenance now follow from these scoped laws. The anchor
+commitment supplies the new strong adapter requirement; it is the same
+commitment already carried by `ScheduledPrefixTrajectoryAssumptions` on main.
+
 Companion to `FastConfirmation/Spec/Model/WeakSynchrony.lean`. Source
 discussion: the Ethlabs working note "Weakening the synchrony assumptions of
 FCR" (September 2026).
@@ -1057,10 +1098,11 @@ audited unconditional pair and its conditional internal twin) — classified:
   estimation soundness and honest behavior/BLS (`hW.base.honest_behavior`),
   the static registry (`hW.base.static_validators`), the Byzantine bound
   (`hW.base.byzantine_bound`), `ExternalsCoherence` (static committees, ground
-  truth), whole seconds, and genesis shape. The one observer-specific field
-  is `hW.committees_agree` (the observer's own store computes committees
-  consistently with the ground-truth assignment): it is the **only**
-  observer-store premise, and there is no constraint on `obs` itself.
+  truth), whole seconds, and genesis shape. The merge also adds
+  `hW.genesis` for the committed anchor and `hW.validity` for indexed
+  attestation validity on observer-run states. `hW.committees_agree` states
+  that the observer's store computes committees consistently with the
+  ground-truth assignment. There is no constraint on `obs` itself.
   `justified_root_known` is derived and no longer appears on the surface —
   `ObserverCoherence.justified_root_known_of_acceptedGlobalTrajectory` proves
   it from `B`/`hT`/`hanchor`/`hboundary`, which every statement on this list
