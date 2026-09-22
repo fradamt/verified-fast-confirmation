@@ -124,6 +124,7 @@ structure ScheduledPrefixTrajectoryAssumptions : Prop where
 /-- Structural initialization facts used by store invariant proofs. The
 anchor commitment remains a separate conjunct of `genesis`. -/
 theorem ScheduledPrefixTrajectoryAssumptions.genesis_structure
+    {cfg : Config} {ext : Externals Root} {E : Execution Root}
     (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext) :
     ∃ (anchorState : BeaconState Root) (anchorBlock : SignedBeaconBlock Root),
       E.genesis_store = get_forkchoice_store cfg anchorState anchorBlock ∧

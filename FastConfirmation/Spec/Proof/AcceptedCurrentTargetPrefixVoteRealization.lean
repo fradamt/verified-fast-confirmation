@@ -201,7 +201,7 @@ theorem currentTargetObservedHonestSupporter_vote_of_prefix
         ((get_current_target cfg (p.store cfg ext)).epoch + 1))
       (get_current_target cfg (p.store cfg ext))) := by
   obtain ⟨hdiv, hwf, hec, hhb, hgen⟩ := hV.trajectory
-  obtain ⟨ast, ablk, hgeq, hgenSlot, _hparent⟩ := hgen
+  obtain ⟨ast, ablk, hgeq, hgenSlot, _hcommit, _hparent⟩ := hgen
   have hgen0 : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
       E.genesis_store = get_forkchoice_store cfg ast ablk :=
     ⟨ast, ablk, hgeq⟩

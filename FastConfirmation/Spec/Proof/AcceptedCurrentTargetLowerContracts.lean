@@ -190,7 +190,7 @@ theorem postAnchorHonestVoteTargetWalkDomain_of_prefixVoteAssumptions
       (anchor := anchor)) :
     E.PostAnchorHonestVoteTargetWalkDomain cfg ext := by
   obtain ⟨hdiv, hwf, hec, _hhb, hgen⟩ := hV.trajectory
-  obtain ⟨ast, ablk, hgenEq, hslot, hparent⟩ := hgen
+  obtain ⟨ast, ablk, hgenEq, hslot, _hcommit, hparent⟩ := hgen
   have hgenShort : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
       E.genesis_store = get_forkchoice_store cfg ast ablk ∧
       ast.slot = ablk.message.slot :=
