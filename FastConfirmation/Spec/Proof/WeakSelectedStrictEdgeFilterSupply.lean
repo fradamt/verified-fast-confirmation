@@ -1717,7 +1717,7 @@ theorem observedReset_ungated_absurd
         { E.weakFcr cfg ext obs n with
           store := E.store cfg ext obs (n + 1) }
       ).current_epoch_observed_justified_checkpoint = _
-    rw [Weak.update_fcv_observed_exact, if_neg hnot]
+    rw [Weak.update_fcv_observed_exact, if_neg (fun h => hnot h.1)]
   obtain ⟨cobs, hcobs⟩ : ∃ c : Checkpoint Root,
       (E.weakFcr cfg ext obs
         n).current_epoch_observed_justified_checkpoint = c := ⟨_, rfl⟩

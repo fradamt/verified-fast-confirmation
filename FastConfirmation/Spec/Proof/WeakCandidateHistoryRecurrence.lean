@@ -22,18 +22,14 @@ the strong development splits the same two layers: nothing here mentions FFG
 semantics, synchrony, honesty, or any assumption bundle — it is pure
 evaluator bookkeeping.
 
-## What is reused verbatim from the strong layer
+## The weak evaluator phases
 
-The weak rule changes **only** the final descendant-selector step. The first
-two evaluator phases are literally the same functions:
-`getLatestFinalizedRevertGuard`, `getLatestAfterFinalized`,
-`getLatestObservedRestartGuard`, `getLatestAfterObserved`,
-`getLatestSelectorGuard`, and the two phase relations
-`GetLatestFinalizedPhase` / `GetLatestObservedPhase` are therefore *reused
-verbatim* — they are already stated over a bare `query :
-FastConfirmationStore Root` with no rule dependency. Only
-`GetLatestSelectorPhase` (which names `find_latest_confirmed_descendant`) and
-everything indexed by the trace type get weak twins.
+The finalized-revert phase uses `Weak.is_confirmed_chain_safe`, which checks
+the chain with the weak one-confirmation rule. Its guard, candidate function,
+and phase relation are weak twins of the strong trace helpers. The observed
+restart phase uses the certified head. The final phase uses the weak
+descendant selector. Only `getLatestSelectorGuard`, the final recency test,
+is reused from the strong layer.
 
 ## What is delivered
 
@@ -72,6 +68,57 @@ variable {Root : Type*} [LinearOrder Root] [Inhabited Root]
 variable (cfg : Config) (ext : Externals Root)
 
 namespace Weak
+
+/-- The first guard uses the weak chain reconfirmation rule. -/
+def getLatestFinalizedRevertGuard
+    (query : FastConfirmationStore Root) : Prop :=
+  get_block_epoch cfg query.store query.confirmed_root + 1 <
+      get_current_store_epoch cfg query.store ∨
+    ¬ is_ancestor query.store
+      (get_node_for_root (get_head cfg query.store).root)
+      (get_node_for_root query.confirmed_root) ∨
+    (is_start_slot_at_epoch cfg (get_current_slot cfg query.store) ∧
+      ¬ Weak.is_confirmed_chain_safe cfg ext query query.confirmed_root)
+
+/-- Candidate after the weak finalized-revert phase. -/
+def getLatestAfterFinalized
+    (query : FastConfirmationStore Root) : Root :=
+  if get_block_epoch cfg query.store query.confirmed_root + 1 <
+        get_current_store_epoch cfg query.store ∨
+      ¬ is_ancestor query.store
+        (get_node_for_root (get_head cfg query.store).root)
+        (get_node_for_root query.confirmed_root) ∨
+      (is_start_slot_at_epoch cfg (get_current_slot cfg query.store) ∧
+        ¬ Weak.is_confirmed_chain_safe cfg ext query query.confirmed_root) then
+    query.store.finalized_checkpoint.root
+  else
+    query.confirmed_root
+
+/-- Exact provenance for the weak finalized-revert phase. -/
+inductive GetLatestFinalizedPhase
+    (query : FastConfirmationStore Root) : Root → Prop
+  | carried
+      (guard_false : ¬ getLatestFinalizedRevertGuard cfg ext query) :
+      GetLatestFinalizedPhase query query.confirmed_root
+  | reverted
+      (guard_true : getLatestFinalizedRevertGuard cfg ext query) :
+      GetLatestFinalizedPhase query query.store.finalized_checkpoint.root
+
+namespace GetLatestFinalizedPhase
+
+theorem branch_cases
+    {query : FastConfirmationStore Root} {candidate : Root}
+    (h : GetLatestFinalizedPhase cfg ext query candidate) :
+    (candidate = query.confirmed_root ∧
+        ¬ getLatestFinalizedRevertGuard cfg ext query) ∨
+      (candidate = query.store.finalized_checkpoint.root ∧
+        getLatestFinalizedRevertGuard cfg ext query) := by
+  cases h with
+  | carried hfalse => exact Or.inl ⟨rfl, hfalse⟩
+  | reverted htrue => exact Or.inr ⟨rfl, htrue⟩
+
+end GetLatestFinalizedPhase
+
 
 /-- The second Boolean guard, parameterized by the candidate produced by the
 first phase.  In particular, its stale comparison is not made against the
@@ -129,9 +176,9 @@ end GetLatestObservedPhase
 
 /-! ## The weak phased evaluator -/
 
-/-- Weak twin of `getLatestTraceResult`: the phased evaluator with the weak
-descendant selector in the final phase. The first two phases are the shared
-(rule-independent) guard functions. -/
+/-- Weak twin of `getLatestTraceResult`: the phased evaluator uses weak
+reconfirmation, the certified observed restart, and the weak descendant
+selector. -/
 def getLatestTraceResult (query : FastConfirmationStore Root) : Root :=
   let candidate := getLatestAfterObserved cfg ext query
   if get_block_epoch cfg query.store candidate + 1 ≥
@@ -172,8 +219,8 @@ theorem branch_cases
 
 end GetLatestSelectorPhase
 
-/-- Weak twin of `GetLatestConfirmedTrace`: the first two phases are the
-shared phase relations, the final phase is the weak one. -/
+/-- Weak twin of `GetLatestConfirmedTrace`: each phase records the guard
+and output of the weak evaluator. -/
 structure GetLatestConfirmedTrace (query : FastConfirmationStore Root) where
   afterFinalized : Root
   afterObserved : Root

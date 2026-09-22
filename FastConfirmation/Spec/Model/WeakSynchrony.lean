@@ -67,7 +67,8 @@ Only one surplus honest attester is needed — the certificate threshold is
    confirmation of its certified ancestors. If no certificate exists, the
    helper falls back to the actual head; certificate-dependent guards fail.
 5. Epoch-start bookkeeping banks the selected carrier's own unrealized
-   justification, using the incoming balance source to check its certificate.
+   justification only when its epoch is strictly newer than the banked epoch,
+   using the incoming balance source to check its certificate.
    The observed-restart guard also uses a certified carrier at the query's
    balance source. The actual slot-head fields and fork-choice targets retain
    their original meaning. No certificate for an ancestor is treated as a
@@ -230,6 +231,36 @@ def is_one_confirmed (store : Store Root) (balance_source : BeaconState Root)
   let safety_threshold := compute_safety_threshold cfg ext store block_root balance_source
   decide (support > safety_threshold)
 
+/-- Reconfirm the confirmed chain with the previous epoch balance source.
+This transcribes Python `fast-confirmation.md:665-702` at `8036a74a1`.
+The checkpoint ancestry test and the previous-epoch lower bound match Python;
+each root is checked by the weak `is_one_confirmed` (`P:697-701`), with
+duty-fresh support and no equivocation discount in the adversarial budget. -/
+def is_confirmed_chain_safe (fcr_store : FastConfirmationStore Root)
+    (confirmed_root : Root) : Bool :=
+  let store := fcr_store.store
+  if fcr_store.current_epoch_observed_justified_checkpoint ≠
+      get_checkpoint_for_block cfg store confirmed_root
+        fcr_store.current_epoch_observed_justified_checkpoint.epoch then
+    false
+  else
+    let current_epoch := get_current_store_epoch cfg store
+    let start_root_exclusive :=
+      if fcr_store.current_epoch_observed_justified_checkpoint.epoch + 1 ≥ current_epoch then
+        fcr_store.current_epoch_observed_justified_checkpoint.root
+      else
+        let ancestor_at_previous_epoch_start :=
+          (get_ancestor store (get_node_for_root confirmed_root)
+            (compute_start_slot_at_epoch cfg (current_epoch - 1))).root
+        if get_block_epoch cfg store ancestor_at_previous_epoch_start + 1 = current_epoch then
+          (store.blocks ancestor_at_previous_epoch_start).parent_root
+        else
+          ancestor_at_previous_epoch_start
+    let chain_roots := get_ancestor_roots store confirmed_root start_root_exclusive
+    chain_roots.all (fun root =>
+      is_one_confirmed cfg ext store (get_previous_balance_source fcr_store) root)
+
+
 /-- Weak-model `compute_honest_ffg_support_for_current_target` (as in
 `FFGHelpers`, over the undiscounted budget). -/
 def compute_honest_ffg_support_for_current_target (store : Store Root) : Gwei :=
@@ -356,7 +387,9 @@ def has_justification_witness_certificate (fcr_store : FastConfirmationStore Roo
 
 /-- Bank only the selected certified carrier's own unrealized justification.
 The certificate uses the incoming balance source, before any fields change.
-If it fails, retain the existing banked checkpoint. The actual slot-head
+Write only if that checkpoint has a strictly newer epoch, as in Python
+`fast-confirmation.md:924-928` at `8036a74a1`. If the certificate fails or the
+epoch is not newer, retain the existing banked checkpoint. The actual slot-head
 fields, previous-epoch rotation, and legacy global-maximum snapshot retain
 their original writes. The legacy snapshot is not consumed by weak banking.
 
@@ -391,7 +424,12 @@ def update_fast_confirmation_variables (fcr_store : FastConfirmationStore Root) 
         fcr_store.current_epoch_observed_justified_checkpoint
       current_epoch_observed_justified_checkpoint :=
         if has_head_broadcast_certificate cfg ext store bs then
-          store.unrealized_justifications (get_certified_head cfg ext store bs)
+          let certified_checkpoint :=
+            store.unrealized_justifications (get_certified_head cfg ext store bs)
+          if certified_checkpoint.epoch >
+              fcr_store.current_epoch_observed_justified_checkpoint.epoch then
+            certified_checkpoint
+          else fcr_store.current_epoch_observed_justified_checkpoint
         else fcr_store.current_epoch_observed_justified_checkpoint }
   else fcr_store
 
@@ -478,14 +516,13 @@ def find_latest_confirmed_descendant (fcr_store : FastConfirmationStore Root)
     else confirmed_root
   else confirmed_root
 
-/-- Weak-model `get_latest_confirmed`. Identical to the strong rule with the
-weak `find_latest_confirmed_descendant` substituted for the advancement step
-(picked up automatically by namespace resolution, as `Weak.find_latest_
-confirmed_descendant` shadows the strong function inside this namespace).
-The revert-to-finalized branch (`is_confirmed_chain_safe`) and the
-epoch-start restart branch are the strong/deferred versions — stored-state
-maintenance across epochs is out of scope for the weak model (module
-docstring). -/
+/-- Weak-model `get_latest_confirmed` (`P:1076-1132`, `8036a74a1`).
+At epoch start, the revert-to-finalized branch uses the weak
+`is_confirmed_chain_safe` (`P:1093-1098`), which reconfirms with the previous
+balance source and weak `is_one_confirmed` (`P:697-701`). Namespace resolution
+selects both this helper and the weak `find_latest_confirmed_descendant`.
+The observed-checkpoint restart uses the certified carrier's own justification
+and its broadcast certificate. -/
 def get_latest_confirmed (fcr_store : FastConfirmationStore Root) : Root :=
   let store := fcr_store.store
   let confirmed_root := fcr_store.confirmed_root

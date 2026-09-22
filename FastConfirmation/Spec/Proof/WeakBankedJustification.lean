@@ -784,16 +784,21 @@ theorem bankedRoot_known_at_all_honest_endpoints_at_observer
 
 /-- Weak twin of `update_fcv_observed_exact` (`ActualResetCheckpointRealization
 .lean`): exact source selected for the observed checkpoint under the revised
-rule delta 5 — the head's own unrealized justification when the certificate
-gate fires at an epoch start, the carried value otherwise.  Note that the
+rule delta 5 — the certified supplier's own unrealized justification when the
+certificate gate fires at an epoch start and its checkpoint epoch is strictly
+newer than the observed checkpoint epoch; the carried value otherwise. Note that the
 ordered write through `previous_epoch_greatest_unrealized_checkpoint` has
 disappeared: the revised rule does not read that field. -/
 theorem update_fcv_observed_exact (fcr_store : FastConfirmationStore Root) :
     (Weak.update_fast_confirmation_variables cfg ext
         fcr_store).current_epoch_observed_justified_checkpoint =
-      if is_start_slot_at_epoch cfg (get_current_slot cfg fcr_store.store) ∧
+      if (is_start_slot_at_epoch cfg (get_current_slot cfg fcr_store.store) ∧
           has_head_broadcast_certificate cfg ext fcr_store.store
-            (get_current_balance_source fcr_store) = true then
+            (get_current_balance_source fcr_store) = true) ∧
+          (fcr_store.store.unrealized_justifications
+            (Weak.get_certified_head cfg ext fcr_store.store
+              (get_current_balance_source fcr_store))).epoch >
+            fcr_store.current_epoch_observed_justified_checkpoint.epoch then
         fcr_store.store.unrealized_justifications (Weak.get_certified_head cfg ext fcr_store.store (get_current_balance_source fcr_store))
       else fcr_store.current_epoch_observed_justified_checkpoint := by
   simp only [Weak.update_fast_confirmation_variables]
@@ -957,21 +962,21 @@ theorem weakFcrStep_observed_known {E : Execution Root}
 
 /-! ## Maintenance along the actual-call trajectory -/
 
-/-- **The certificate installed by one gate-passing epoch-start rotation**,
-named rather than left anonymous inside `certifiedBankedJustification_update`.
+/-- **Supplier evidence from a gate-passing epoch-start call.**
+
+The certificate is indexed by a record containing the supplier's checkpoint.
+This record supports supplier dissemination even when the strict-newer guard
+retains the actual observed checkpoint. When the guard permits the write,
+`certifiedBankedJustification_update` transports the certificate to the actual
+output record.
 
 Its `second` is the call's own boundary second `n + 1` and its `supplier` is
-that second's fork-choice head — the two facts consumers need in order to read
-a *head* dissemination (rather than a bare banked-root dissemination) off
-`bankedSupplier_known_at_all_honest_endpoints_at_observer`.  Both are `rfl`
-(`bankedJustificationCertificate_of_gate_second` /
-`…_supplier`), because the body is a plain structure literal.
-
-`banked_eq` is read straight off the revised write; `supplier_known` /
-`banked_known` come from the observer-side accepted facts above; the two
-economic facts are *produced*, not assumed — the gate being true forces its
-key to be keyed (`checkpoint_state_key_of_broadcast_certificate`), after which
-`registryConstant` / `checkpoint_states_total_active_balance` apply. -/
+that second's selected certified carrier. Both projections remain `rfl`.
+The checkpoint equation follows from the record's explicit field value;
+`supplier_known` and `banked_known` follow from the accepted facts above.
+The certificate supplies the checkpoint-state key, from which
+`registryConstant` and `checkpoint_states_total_active_balance` give the two
+economic facts. -/
 noncomputable def bankedJustificationCertificate_of_gate
     {E : Execution Root} (hA : SelectedMarginAssumptions cfg ext E)
     (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
@@ -988,7 +993,11 @@ noncomputable def bankedJustificationCertificate_of_gate
       Weak.has_head_broadcast_certificate cfg ext fcr_store.store
         (get_current_balance_source fcr_store) = true) :
     Weak.BankedJustificationCertificate cfg ext E obs (n + 1)
-      (Weak.update_fast_confirmation_variables cfg ext fcr_store) := by
+      { Weak.update_fast_confirmation_variables cfg ext fcr_store with
+        current_epoch_observed_justified_checkpoint :=
+          fcr_store.store.unrealized_justifications
+            (Weak.get_certified_head cfg ext fcr_store.store
+              (get_current_balance_source fcr_store)) } := by
   -- `hA.genesis` is an `Exists`, so it may only be destructed *inside* the
   -- `Prop`-valued fields: a `Classical.choice` at the head of this
   -- `Type`-valued definition would block the two `rfl` projections below.
@@ -996,11 +1005,17 @@ noncomputable def bankedJustificationCertificate_of_gate
       E.genesis_store = get_forkchoice_store cfg ast ablk := by
     obtain ⟨ast, ablk, hgeq, _, _⟩ := hA.genesis
     exact ⟨ast, ablk, hgeq⟩
-  have hbanked : (Weak.update_fast_confirmation_variables cfg ext
-      fcr_store).current_epoch_observed_justified_checkpoint =
+  have hbanked :
+      ({ Weak.update_fast_confirmation_variables cfg ext fcr_store with
+        current_epoch_observed_justified_checkpoint :=
+          fcr_store.store.unrealized_justifications
+            (Weak.get_certified_head cfg ext fcr_store.store
+              (get_current_balance_source fcr_store)) } :
+        FastConfirmationStore Root).current_epoch_observed_justified_checkpoint =
       (E.store cfg ext obs (n + 1)).unrealized_justifications
         (Weak.get_certified_head cfg ext (E.store cfg ext obs (n + 1)) (get_current_balance_source fcr_store)) := by
-    rw [Weak.update_fcv_observed_exact, if_pos hgate, hstore]
+    change fcr_store.store.unrealized_justifications _ = _
+    rw [hstore]
   have hheadKnown : (Weak.get_certified_head cfg ext (E.store cfg ext obs (n + 1)) (get_current_balance_source fcr_store)) ∈
       (E.store cfg ext obs (n + 1)).block_roots :=
     Weak.get_certified_head_known cfg ext _ _
@@ -1088,7 +1103,7 @@ noncomputable def bankedJustificationCertificate_of_gate
         E.slotWithinHorizon_of_le cfg (hspan.trans hendLe) hH
       end_within := E.slotWithinHorizon_of_le cfg hendLe hH }
 
-/-- The gate certificate's banking second is the call's own boundary second. -/
+/-- The gate certificate's second is the call's own boundary second. -/
 theorem bankedJustificationCertificate_of_gate_second
     {E : Execution Root} (hA : SelectedMarginAssumptions cfg ext E)
     (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
@@ -1107,7 +1122,7 @@ theorem bankedJustificationCertificate_of_gate_second
     (Weak.bankedJustificationCertificate_of_gate cfg ext hA B hT hanchor
       hboundary hH hcall hstore hgate).second = n + 1 := rfl
 
-/-- The gate certificate's supplier is that second's fork-choice head. -/
+/-- The gate certificate's supplier is that second's selected certified carrier. -/
 theorem bankedJustificationCertificate_of_gate_supplier
     {E : Execution Root} (hA : SelectedMarginAssumptions cfg ext E)
     (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
@@ -1127,12 +1142,14 @@ theorem bankedJustificationCertificate_of_gate_supplier
         hboundary hH hcall hstore hgate).supplier =
       (Weak.get_certified_head cfg ext (E.store cfg ext obs (n + 1)) (get_current_balance_source fcr_store)) := rfl
 
-/-- **The boundary head of a gate-passing epoch-start call is disseminated.**
+/-- **The certified carrier of a gate-passing epoch-start call is disseminated.**
 
 The banked twin of `Execution.confirmed_known_at_all_honest_endpoints_at_observer`
 applied to the *supplier* half of
-`bankedSupplier_known_at_all_honest_endpoints_at_observer`, at the certificate
-this very call installs.  This is the epoch-start replacement for stage S3's
+`bankedSupplier_known_at_all_honest_endpoints_at_observer`, using this call's
+supplier certificate. The strict-newer guard need not permit a checkpoint
+write for this certificate to establish dissemination. This is the epoch-start
+replacement for stage S3's
 `Weak.headSeed_known_at_all_honest_endpoints_at_observer`: at an epoch start
 the tentative-entry gate takes the uncertified escape, so no *entry* head
 certificate is available, but rule delta 5's own banking gate carries one
@@ -1170,15 +1187,12 @@ theorem gatedHead_known_at_all_honest_endpoints_at_observer
         exact hslot)).1
   rwa [Weak.bankedJustificationCertificate_of_gate_supplier] at hknown
 
-/-- **Rule delta 5 preserves its own input invariant.** Three cases: not an
-epoch start, or the gate false ⇒ the banked field is unchanged and the
-incoming witness re-indexes (`BankedJustificationCertificate.transport`); gate
-true ⇒ the certified arm at `second := n + 1` with `supplier :=` the boundary
-head, `banked_eq` read straight off the revised write, `supplier_known` /
-`banked_known` from the observer-side accepted facts above, and the two
-economic facts *produced* — the gate being true forces its key to be keyed
-(`checkpoint_state_key_of_broadcast_certificate`), after which
-`registryConstant` / `checkpoint_states_total_active_balance` apply.
+/-- **Rule delta 5 preserves its own input invariant.** At an epoch start,
+a passing certificate gate and a strictly newer checkpoint install the
+supplier's checkpoint. The exact write equation transports the supplier
+certificate to the actual output. In every other case the banked field is
+unchanged and the incoming witness re-indexes through
+`BankedJustificationCertificate.transport`.
 
 No ancestry obligation arises here: under the revised rule it is a theorem
 about the banked value (`blockUnrealizedJustification_known_and_below`),
@@ -1199,13 +1213,24 @@ theorem certifiedBankedJustification_update
     Weak.CertifiedBankedJustification cfg ext E obs (n + 1)
       (Weak.update_fast_confirmation_variables cfg ext fcr_store) := by
   by_cases hgate :
-      is_start_slot_at_epoch cfg (get_current_slot cfg fcr_store.store) ∧
+      (is_start_slot_at_epoch cfg (get_current_slot cfg fcr_store.store) ∧
         Weak.has_head_broadcast_certificate cfg ext fcr_store.store
-          (get_current_balance_source fcr_store) = true
-  · -- Gate-passing epoch-start rotation: the certified arm at `second := n + 1`.
-    exact Or.inr ⟨Weak.bankedJustificationCertificate_of_gate cfg ext hA B hT
-      hanchor hboundary hH hcall hstore hgate⟩
-  · -- Not an epoch start, or the gate failed: the banked field is unchanged.
+          (get_current_balance_source fcr_store) = true) ∧
+        (fcr_store.store.unrealized_justifications
+          (Weak.get_certified_head cfg ext fcr_store.store
+            (get_current_balance_source fcr_store))).epoch >
+          fcr_store.current_epoch_observed_justified_checkpoint.epoch
+  · -- The supplier checkpoint passes both the certificate and epoch guards.
+    refine Or.inr ⟨(Weak.bankedJustificationCertificate_of_gate cfg ext hA B hT
+      hanchor hboundary hH hcall hstore hgate.1).transport cfg ext
+        (Nat.le_refl _) ?_⟩
+    change (Weak.update_fast_confirmation_variables cfg ext
+      fcr_store).current_epoch_observed_justified_checkpoint =
+        fcr_store.store.unrealized_justifications
+          (Weak.get_certified_head cfg ext fcr_store.store
+            (get_current_balance_source fcr_store))
+    rw [Weak.update_fcv_observed_exact, if_pos hgate]
+  · -- No write: retain the previous checkpoint and its certificate.
     have heq : (Weak.update_fast_confirmation_variables cfg ext
         fcr_store).current_epoch_observed_justified_checkpoint =
         fcr_store.current_epoch_observed_justified_checkpoint := by
