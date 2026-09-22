@@ -108,3 +108,33 @@ and `fcr_before`, runs `Weak.on_fast_confirmation cfg ext`, and compares the six
 or `MISSING_EXTERNAL ...`, then a summary line
 `SUMMARY records=<n> ok=<n> mismatch=<n> missing_external=<n>`.
 Exit status 0 only when mismatch and missing_external are both 0.
+
+## Same-input containment check
+
+Run `lake env lean --run scripts/conformance/lean/Conformance.lean --containment
+<trace.jsonl>` to compare the frozen `Strong` rule and the `Weak` rule. Both
+handlers receive the same reconstructed `store`, `fcr_before`, and external
+answers. Each record is independent; neither output becomes the next input.
+Repeated `--test <substring>` filters select test IDs by OR. The selected mode
+streams the file. The existing single-path conformance command is unchanged.
+
+Each line reports `EQUAL`, `WEAK_BELOW`, `WEAK_ABOVE`, or `INCOMPARABLE`, with
+confirmed roots as `root@slot`, both current-epoch banked checkpoints as
+`(epoch,root)`, and their equality. `WEAK_BELOW` means that the weak root is a
+strict ancestor of the strong root. `WEAK_ABOVE` and `INCOMPARABLE` violate
+handler containment. Getter fields compare `get_latest_confirmed` on the same
+unchanged `fcr_before`; they do not include either handler's variable update.
+
+`CONTAINMENT` totals handler results. `GETTER_CONTAINMENT` totals getter results.
+`CONTAINMENT_COVERAGE` counts records with missing external answers and parse
+errors. Each miss identifies the rule and handler/getter. A trace records only
+the calls made by its source rule, so the other rule can request absent
+answers. Such classifications use the existing fallback values and are
+diagnostic; they do not establish containment for a complete external oracle.
+The mode processes all records and exits nonzero for missing answers or parse
+errors. A containment violation alone does not cause a nonzero exit.
+
+Containment reconstruction removes repeated identical JSON external answers
+before parsing their states. It keeps first occurrences in order and keeps
+answers with different results. This preserves all first-match lookup outputs.
+Containment lookups also check scalar query fields before full state equality.

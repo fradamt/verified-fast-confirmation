@@ -1,6 +1,7 @@
 import Lean.Data.Json
 import FastConfirmation.Spec.Model
 import FastConfirmation.Spec.Model.WeakSynchrony
+import FastConfirmation.Spec.Model.StrongReference
 
 namespace FastConfirmation.Conformance
 
@@ -313,6 +314,35 @@ def parseAnswers (j : J) : Except String Answers := do
     finals := finals.toList
   }
 
+/-- Keep the first occurrence of each complete JSON answer. This runs before
+state parsing, which is costly when a trace repeats the same 64-validator
+state hundreds of times. Answers with different results remain in order, so
+first-match lookup is unchanged even for conflicting duplicate queries. -/
+def uniqueJsonAnswers (answers : Array J) : Array J := Id.run do
+  let mut seen : Std.HashSet J := {}
+  let mut unique := #[]
+  for answer in answers do
+    if !seen.contains answer then
+      seen := seen.insert answer
+      unique := unique.push answer
+  return unique
+
+def parseContainmentAnswers (j : J) : Except String Answers := do
+  let committees ← arrayMap parseCommitteeAnswer
+    (uniqueJsonAnswers (← arrayField j "get_beacon_committee"))
+  let counts ← arrayMap parseCountAnswer
+    (uniqueJsonAnswers (← arrayField j "get_committee_count_per_slot"))
+  let slots ← arrayMap parseProcessSlotsAnswer
+    (uniqueJsonAnswers (← arrayField j "process_slots"))
+  let finals ← arrayMap parseProcessFinalAnswer
+    (uniqueJsonAnswers (← arrayField j "process_justification_and_finalization"))
+  return {
+    committees := committees.toList
+    counts := counts.toList
+    slots := slots.toList
+    finals := finals.toList
+  }
+
 def parseFcr (store : Store Nat) (j : J) : Except String (FastConfirmationStore Nat) := do
   return {
     store := store
@@ -344,6 +374,19 @@ def parseRecord (j : J) : Except String Record := do
     before := ← parseFcr parsedStore.store (← field j "fcr_before")
     after := ← parseFcr parsedStore.store (← field j "fcr_after")
     answers := ← parseAnswers (← field j "externals")
+  }
+
+/-- The normal parser remains unchanged. Only containment removes repeated
+external JSON answers; all store and FCR inputs use the same parsers. -/
+def parseContainmentRecord (j : J) : Except String Record := do
+  let parsedStore ← parseStore (← field j "store")
+  return {
+    testId := ← stringField j "test_id"
+    callIndex := ← natField j "call_index"
+    cfg := ← parseConfig (← field j "config")
+    before := ← parseFcr parsedStore.store (← field j "fcr_before")
+    after := ← parseFcr parsedStore.store (← field j "fcr_after")
+    answers := ← parseContainmentAnswers (← field j "externals")
   }
 
 def findCommittee (answers : List CommitteeAnswer) (state : BeaconState Nat)
@@ -414,6 +457,56 @@ unsafe def makeExternals (answers : Answers) (misses : IO.Ref (List String)) :
   is_valid_indexed_attestation := fun _ _ => false
 }
 
+/-- Scalar guards precede full state equality in containment lookups. The
+answer order and exact equality predicate are identical to the normal runner. -/
+def findContainmentCommittee (answers : List CommitteeAnswer) (state : BeaconState Nat)
+    (slot index : Nat) : Option (List Nat) :=
+  match answers with
+  | [] => none
+  | answer :: rest =>
+      if answer.slot == slot && answer.index == index && stateEq answer.state state then
+        some answer.result
+      else findContainmentCommittee rest state slot index
+
+def findContainmentCount (answers : List CountAnswer) (state : BeaconState Nat)
+    (epoch : Nat) : Option Nat :=
+  match answers with
+  | [] => none
+  | answer :: rest =>
+      if answer.epoch == epoch && stateEq answer.state state then some answer.result
+      else findContainmentCount rest state epoch
+
+def findContainmentSlots (answers : List ProcessSlotsAnswer) (state : BeaconState Nat)
+    (slot : Nat) : Option (BeaconState Nat) :=
+  match answers with
+  | [] => none
+  | answer :: rest =>
+      if answer.slot == slot && stateEq answer.state state then some answer.result
+      else findContainmentSlots rest state slot
+
+unsafe def makeContainmentExternals (answers : Answers) (misses : IO.Ref (List String)) :
+    Externals Nat := {
+  makeExternals answers misses with
+  get_beacon_committee := fun state slot index =>
+    match findContainmentCommittee answers.committees state slot index with
+    | some result => result
+    | none =>
+        let _ := noteMiss misses s!"get_beacon_committee slot={slot} index={index}"
+        []
+  get_committee_count_per_slot := fun state epoch =>
+    match findContainmentCount answers.counts state epoch with
+    | some result => result
+    | none =>
+        let _ := noteMiss misses s!"get_committee_count_per_slot epoch={epoch}"
+        0
+  process_slots := fun state slot =>
+    match findContainmentSlots answers.slots state slot with
+    | some result => result
+    | none =>
+        let _ := noteMiss misses s!"process_slots slot={slot}"
+        state
+}
+
 def checkpointText (checkpoint : Checkpoint Nat) : String :=
   s!"({checkpoint.epoch},{rootText checkpoint.root})"
 
@@ -480,6 +573,139 @@ unsafe def processLine (line : String) : IO (Bool × Bool) := do
               IO.println s!"{message} {record.testId} {record.callIndex}"
               return (false, message.startsWith "MISSING_EXTERNAL")
 
+/-- The order is checked in the input store. Equal roots are handled first,
+so `WEAK_BELOW` and `WEAK_ABOVE` always mean strict ancestry. -/
+def containmentClass (store : Store Nat) (strongRoot weakRoot : Nat) : String :=
+  if strongRoot == weakRoot then "EQUAL"
+  else if is_ancestor store (get_node_for_root strongRoot) (get_node_for_root weakRoot) then
+    "WEAK_BELOW"
+  else if is_ancestor store (get_node_for_root weakRoot) (get_node_for_root strongRoot) then
+    "WEAK_ABOVE"
+  else "INCOMPARABLE"
+
+def rootWithSlot (store : Store Nat) (root : Nat) : String :=
+  s!"{rootText root}@{(store.blocks root).slot}"
+
+structure ContainmentResult where
+  classification : String
+  getterClassification : String
+  missing : Bool
+
+/-- Both handlers receive exactly the parsed pre-call FCR store and the same
+external answer table. Getter diagnostics also compare the two getters on that
+same pre-call store, without either handler's variable update. Missing answers
+are reported separately: their fallback outputs are diagnostic, not evidence
+about a complete external oracle. -/
+unsafe def evaluateContainment (record : Record) : IO ContainmentResult := do
+  let strongMisses ← IO.mkRef []
+  let weakMisses ← IO.mkRef []
+  let strongGetterMisses ← IO.mkRef []
+  let weakGetterMisses ← IO.mkRef []
+  let strongValue := Strong.on_fast_confirmation record.cfg
+    (makeContainmentExternals record.answers strongMisses) record.before
+  let weakValue := Weak.on_fast_confirmation record.cfg
+    (makeContainmentExternals record.answers weakMisses) record.before
+  let strongGetter := Strong.get_latest_confirmed record.cfg
+    (makeContainmentExternals record.answers strongGetterMisses) record.before
+  let weakGetter := Weak.get_latest_confirmed record.cfg
+    (makeContainmentExternals record.answers weakGetterMisses) record.before
+  let store := record.before.store
+  let classification := containmentClass store strongValue.confirmed_root weakValue.confirmed_root
+  let getterClassification := containmentClass store strongGetter weakGetter
+  -- Printing forces all compared values before inspecting the miss references.
+  IO.println s!"{classification} {record.testId} {record.callIndex} strong={rootWithSlot store strongValue.confirmed_root} weak={rootWithSlot store weakValue.confirmed_root} strong_bank={checkpointText strongValue.current_epoch_observed_justified_checkpoint} weak_bank={checkpointText weakValue.current_epoch_observed_justified_checkpoint} bank_equal={checkpointEq strongValue.current_epoch_observed_justified_checkpoint weakValue.current_epoch_observed_justified_checkpoint} getter={getterClassification} strong_getter={rootWithSlot store strongGetter} weak_getter={rootWithSlot store weakGetter}"
+  let mut missing := false
+  for (name, ref) in [("strong_handler", strongMisses), ("weak_handler", weakMisses),
+      ("strong_getter", strongGetterMisses), ("weak_getter", weakGetterMisses)] do
+    let misses ← ref.get
+    if !misses.isEmpty then
+      missing := true
+      IO.println s!"MISSING_EXTERNAL {record.testId} {record.callIndex} rule={name} calls={misses.length} first={misses.head!}"
+  return { classification, getterClassification, missing }
+
+structure RunnerOptions where
+  path : Option String := none
+  containment : Bool := false
+  tests : List String := []
+
+def parseOptions : List String → RunnerOptions → Except String RunnerOptions
+  | [], options =>
+      if options.path.isSome then .ok options else .error "missing trace path"
+  | "--containment" :: rest, options =>
+      parseOptions rest { options with containment := true }
+  | "--test" :: pattern :: rest, options =>
+      parseOptions rest { options with tests := options.tests ++ [pattern] }
+  | "--test" :: [], _ => .error "--test needs a substring"
+  | argument :: rest, options =>
+      if argument.startsWith "--" then .error s!"unknown option {argument}"
+      else if options.path.isSome then .error "more than one trace path"
+      else parseOptions rest { options with path := some argument }
+
+def matchesTests (tests : List String) (value : String) : Bool :=
+  tests.isEmpty || tests.any (fun pattern => value.contains pattern)
+
+structure ClassCounts where
+  equal : Nat := 0
+  weakBelow : Nat := 0
+  weakAbove : Nat := 0
+  incomparable : Nat := 0
+
+def ClassCounts.add (counts : ClassCounts) (classification : String) : ClassCounts :=
+  if classification == "EQUAL" then { counts with equal := counts.equal + 1 }
+  else if classification == "WEAK_BELOW" then { counts with weakBelow := counts.weakBelow + 1 }
+  else if classification == "WEAK_ABOVE" then { counts with weakAbove := counts.weakAbove + 1 }
+  else { counts with incomparable := counts.incomparable + 1 }
+
+def ClassCounts.summary (counts : ClassCounts) (label : String) (records : Nat) : String :=
+  s!"{label} records={records} equal={counts.equal} weak_below={counts.weakBelow} weak_above={counts.weakAbove} incomparable={counts.incomparable}"
+
+/-- Stream large traces. Raw-line filtering avoids parsing records that cannot
+match; the parsed test ID is then checked to prevent matches in other fields.
+Repeated `--test` arguments are combined by OR. -/
+unsafe def runSelected (options : RunnerOptions) : IO UInt32 := do
+  let handle ← IO.FS.Handle.mk options.path.get! .read
+  let mut records := 0
+  let mut counts : ClassCounts := {}
+  let mut getterCounts : ClassCounts := {}
+  let mut missing := 0
+  let mut errors := 0
+  let mut ok := 0
+  let mut mismatch := 0
+  repeat
+    let line ← handle.getLine
+    if line.isEmpty then break
+    if line.trimAscii != "" && matchesTests options.tests line then
+      match Lean.Json.parse line >>=
+          (if options.containment then parseContainmentRecord else parseRecord) with
+      | .error e =>
+          errors := errors + 1
+          IO.eprintln s!"ERROR record: {e}"
+      | .ok record =>
+          if matchesTests options.tests record.testId then
+            records := records + 1
+            if options.containment then
+              let result ← evaluateContainment record
+              counts := counts.add result.classification
+              getterCounts := getterCounts.add result.getterClassification
+              if result.missing then missing := missing + 1
+            else
+              match ← evaluate record with
+              | none =>
+                  ok := ok + 1
+                  IO.println s!"OK {record.testId} {record.callIndex}"
+              | some message =>
+                  IO.println s!"{message} {record.testId} {record.callIndex}"
+                  if message.startsWith "MISSING_EXTERNAL" then missing := missing + 1
+                  else mismatch := mismatch + 1
+  if options.containment then
+    IO.println (counts.summary "CONTAINMENT" records)
+    IO.println (getterCounts.summary "GETTER_CONTAINMENT" records)
+    IO.println s!"CONTAINMENT_COVERAGE missing_external_records={missing} errors={errors}"
+    return if missing = 0 ∧ errors = 0 then 0 else 1
+  else
+    IO.println s!"SUMMARY records={records + errors} ok={ok} mismatch={mismatch + errors} missing_external={missing}"
+    return if mismatch = 0 ∧ missing = 0 ∧ errors = 0 then 0 else 1
+
 unsafe def main (args : List String) : IO UInt32 := do
   match args with
   | [path] =>
@@ -503,8 +729,12 @@ unsafe def main (args : List String) : IO UInt32 := do
       IO.println s!"SUMMARY records={records} ok={ok} mismatch={mismatch} missing_external={missing}"
       return if mismatch = 0 ∧ missing = 0 then 0 else 1
   | _ =>
-      IO.eprintln "usage: lake env lean --run scripts/conformance/lean/Conformance.lean <trace.jsonl>"
-      return 2
+      match parseOptions args {} with
+      | .ok options => runSelected options
+      | .error message =>
+          IO.eprintln s!"ERROR arguments: {message}"
+          IO.eprintln "usage: lake env lean --run scripts/conformance/lean/Conformance.lean [--containment] [--test <substring>]... <trace.jsonl>"
+          return 2
 
 end FastConfirmation.Conformance
 
