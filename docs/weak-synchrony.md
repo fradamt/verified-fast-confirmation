@@ -73,6 +73,29 @@ Their evidence contract has no added premise. The existing weak safety proof
 now has an explicit greatest-checkpoint reset case. Both reset locations use
 the same finalized-root safety argument; certified restart safety is unchanged.
 
+Rationale and zk scope (22 September 2026). The gate is the first check of
+the strong `is_confirmed_chain_safe`, applied to the same checkpoint: the
+strong rule banks the greatest-unrealized snapshot as its observed checkpoint.
+At the epoch transition, fork choice pulls this checkpoint up to
+`store.justified_checkpoint`, so the gate keeps the confirmed chain consistent
+with the observer's own justified checkpoint. The gate can only reset, so it
+cannot weaken safety. Its only input is the replayed store, so the replay
+theorems are unchanged. The snapshot is a maximum over all processed blocks,
+orphans included. A zk prover chooses the log and can lower the snapshot by
+omitting blocks, so the gate is not enforceable against a hostile prover. No
+safety argument depends on it. A third party cannot force the gate on a prover.
+The gate fires only if a checkpoint that conflicts with the confirmed chain has
+an unrealized justification: two thirds of the stake voted for it. A verifier
+must keep the highest accepted confirmed root and must not treat a later lower
+output as a revert. Any prover can already produce a lower output by omitting votes.
+
+Trajectory containment (weak confirmed root is an ancestor of the strong one) is
+not a target. Python probes on consensus-specs branch `fcr-containment-probe`
+(e58edbbf3, 3e2a87558) reach weak-above-strong with 5 of 64 validators faulty:
+strong fails its epoch-start re-check on a block that weak never confirmed, and
+its restart cannot fire (skipped checkpoint slot, or a head whose unrealized
+checkpoint is behind the store maximum).
+
 ## Network model
 
 The adversary controls **or eclipses** up to `CONFIRMATION_BYZANTINE_THRESHOLD`
