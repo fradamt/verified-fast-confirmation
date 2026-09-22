@@ -1,21 +1,24 @@
 # Spec-model design — `FastConfirmation/Spec/`
 
+G3 status: the model and payload-delivery results build, but Gloas safety is
+stopped at the false payload-branch invariant. See
+[the negative result](gloas-negative-result.md). The inherited proof-interface
+descriptions below are not a completed Gloas theorem.
+
 This repository models both the FCR **paper** (arXiv:2405.00549) and the FCR
 **consensus spec**. This document describes the consensus-spec layer:
 
 - **Source of truth**:
   [`consensus-specs/specs/phase0/fast-confirmation.md`](https://github.com/ethereum/consensus-specs/blob/477321355d48d527e7e1e4d572f6a40a0b41072a/specs/phase0/fast-confirmation.md)
   at public commit `477321355d48d527e7e1e4d572f6a40a0b41072a`.
-- **Environment**: `specs/phase0/fork-choice.md` (Store, `get_head`,
-  `get_attestation_score`, `get_voting_source`, …) and `specs/phase0/beacon-chain.md`
-  (epoch arithmetic, `is_active_validator`, `get_total_active_balance`) at the same
-  commit.
-- **Out of scope (documented, deliberate)**: the Bellatrix/Gloas deltas
-  (`get_safe_execution_block_hash`, Gloas `get_node_for_root` payload status) —
-  pure execution-payload plumbing, no rule logic; the optimistic-sync `MUST
-  return False if not VALID` note on `is_one_confirmed` (meaningless in phase0,
-  which has no execution payloads — becomes relevant only if the Bellatrix delta
-  is added later).
+- **Environment**: Gloas fork choice and its FCR overlay, with inherited
+  phase0 arithmetic and FCR helpers, at the same commit. The complete delta
+  and external projection contract are in
+  [gloas-model-design.md](gloas-model-design.md).
+- **Scope**: Gloas is the sole fork-choice model. The numbered decisions below
+  describe the inherited projection conventions. The Gloas design supersedes
+  their root-only node, epoch-only latest-message, single-deadline, and
+  head-fuel details. Historical phase0 traces do not instantiate Gloas.
 
 `FastConfirmation/Paper/` contains a separate formalization of the paper. The
 consensus-spec layer is `FastConfirmation/Spec/` and imports only Mathlib—not
@@ -165,6 +168,24 @@ decision 13).
     `get_voting_source`). `state.validators[i]` totalizes with `List.getD`.
     `enumerate` in `get_active_validator_indices` becomes a filter over
     `List.range validators.length` (order-preserving).
+
+## Gloas payload-envelope synchrony
+
+On 22 September 2026, the accepted synchrony assumption was strengthened by
+one field, `PaperSafetySynchrony.payload_envelope_relay`. Once an honest
+validator has verified a payload envelope, every honest validator must have
+it by the last second of that slot. This uses the same delivery bound and
+horizon handling as `block_relay`. Both the sender state and receiver state
+are within the verification horizon. The successor clock read only identifies
+the deadline; it does not require a successor state within the horizon.
+
+An honest index-1 attestation has a FULL head, whose envelope is locally
+verified. Relay supplies that envelope before the next-slot delivery tick.
+Handler preservation carries it through any events before the attestation.
+This closes the payload part of validation without adding a branch-weight
+assumption. The exact field is in [the review guide](REVIEW_GUIDE.md). The
+legacy `Synchrony` record is unchanged; conversion to `PaperSafetySynchrony`
+now takes explicit payload-relay evidence.
 
 ## Module system
 
@@ -357,8 +378,8 @@ spec's own dynamics: the fork-choice **handlers** driving store evolution,
 
 The accepted theorem surface is
 `AcceptedActualFCRNextSlotSafetyAssumptions` together with
-`acceptedSpec_safety_next_slot`. It proves that a root stored by an honest
-node's FCR is an ancestor of every in-horizon honest head from the following
+`acceptedSpec_safety_next_slot`. Its intended conclusion is that a root
+stored by an honest node's FCR is an ancestor of every in-horizon honest head from the following
 slot onward. The literal descendant-selector result is also safe at an actual
 scheduled boundary call. Reset safety is a proved result. Its finalized-reset
 case uses the separate `AcceptedRealizedFinalizationDelay` premise, and its

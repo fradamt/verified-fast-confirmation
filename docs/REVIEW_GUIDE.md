@@ -1,5 +1,11 @@
 # Review guide
 
+G3 Gloas status: **STOP-false at G2-004**. Full validation fails at payload
+branch selection. The new synchrony field closes G2-003; it does not close
+G2-004. See [the exact-source negative result](gloas-negative-result.md).
+The public witness declaration texts are unchanged, but there is no completed
+Gloas proof or full trust-audit result.
+
 ## Trust and architecture
 
 The repository publishes two independent developments. `FastConfirmation.Spec`
@@ -31,7 +37,7 @@ substitutes for the accepted theorem.
 
 The authoritative public source is `ethereum/consensus-specs` commit
 `477321355d48d527e7e1e4d572f6a40a0b41072a`. The manifest in
-`spec_source/manifest.json` records the exact six source and configuration
+`spec_source/manifest.json` records the exact twelve source and configuration
 objects consumed by the model.
 
 The manifest proves byte identity and provenance only. A pin change must also
@@ -79,3 +85,36 @@ The bundled `leanchecker` is intentionally not a blocking gate: on this
 295-module environment it fans out replay work across matching modules, is not
 an external verifier, and showed an unsuitable runtime/memory profile for
 routine hosted CI.
+
+## Gloas synchrony strengthening (22 September 2026)
+
+`PaperSafetySynchrony` gains one field. This strengthens the assumptions of
+the accepted theorem even though its public declaration text is unchanged.
+The field is verbatim:
+
+```lean
+  /-- Verified payload envelopes known to an honest node reach every honest
+      node by the last second of the same slot. As in `block_relay`, the
+      receiving state is horizon-scoped; `m + 1` only locates its deadline. -/
+  payload_envelope_relay : ∀ v ∈ E.honest, ∀ n r,
+    E.WithinHorizon cfg n →
+    is_payload_verified (E.store cfg ext v n) r = true →
+    ∀ w ∈ E.honest, ∀ m,
+      E.WithinHorizon cfg m →
+      E.slot_at cfg n + 1 ≤ E.slot_at cfg (m + 1) →
+      is_payload_verified (E.store cfg ext w m) r = true
+```
+
+The bound is the same as `block_relay`: a verified envelope must be present
+at every honest receiver by the last second of the sender's slot. The
+receiving state, rather than its successor, is within the horizon. Payload
+persistence carries this fact through the tick and every event prefix at
+the next slot boundary. Thus an honest index-1 vote finds a verified payload
+before validation. No other assumption record gains a field. The legacy
+`Synchrony` conversion now needs explicit evidence for this new field.
+
+Payload availability alone does not compare FULL and EMPTY branch weights.
+The local experiment in `scripts/GloasPayloadBranchObstacle.lean` is not an
+accepted execution. The new [negative result](gloas-negative-result.md) uses
+honest singleton votes and the new relay field. See also
+[the historical obligations](gloas-proof-obligations-history.md).

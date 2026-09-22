@@ -1,0 +1,1862 @@
+diff --git a/scripts/GloasHandlerChecks.lean b/scripts/GloasHandlerChecks.lean
+new file mode 100644
+index 0000000..17115a6
+--- /dev/null
++++ b/scripts/GloasHandlerChecks.lean
+@@ -0,0 +1,205 @@
++import FastConfirmation.Spec.Model.Execution
++
++/-!
++# Gloas handler checks
++
++These finite checks cover handler control flow and store writes. The fixture
++uses a four-position PTC and two validators. It is a synthetic configuration.
++The committee read tables agree with the external committee functions. Each
++PTC has exactly `cfg.ptc_size` positions, including repeated validators.
++
++Signature identity 7 denotes an accepted signature. Observation identity 1
++denotes available data. The envelope verifier binds the known block, state,
++payload identity, signature, and observation. These choices define the local
++external inputs for these checks. They do not test cryptography or the
++execution engine. All assertions use kernel reduction through `decide`.
++-/
++
++namespace GloasHandlerChecks
++
++open FastConfirmation.Spec
++
++def cfg : Config :=
++  { mainnet_config with
++    slots_per_epoch := 8
++    slots_per_epoch_pos := by decide
++    slot_duration_ms := 6000
++    slot_duration_ms_pos := by decide
++    effective_balance_increment := 100
++    effective_balance_increment_pos := by decide
++    hundred_dvd_effective_balance_increment := by decide
++    ptc_size := 4 }
++
++def checkpoint : Checkpoint Nat := ⟨0, 1⟩
++
++def validator : Validator :=
++  { effective_balance := 100
++    slashed := false
++    activation_epoch := 0
++    exit_epoch := FAR_FUTURE_EPOCH }
++
++def anchorState : BeaconState Nat :=
++  { genesis_time := 0
++    slot := 0
++    validators := [validator, validator]
++    current_justified_checkpoint := checkpoint
++    finalized_checkpoint := checkpoint
++    source_identity := some 1
++    beacon_committee_reads :=
++      [(0, 0, [0, 1]), (1, 0, [0, 1]), (2, 0, [0, 1]), (3, 0, [0, 1])]
++    committee_count_reads := [(0, 1)] }
++
++def anchorBlock : SignedBeaconBlock Nat :=
++  { root := 1
++    message :=
++      { slot := 0
++        parent_root := 0
++        parent_block_hash := 0
++        block_hash := 10 } }
++
++/-- B selects the anchor's EMPTY node, so it needs no anchor envelope. -/
++def blockB : SignedBeaconBlock Nat :=
++  { root := 2
++    message :=
++      { slot := 1
++        parent_root := 1
++        parent_block_hash := 0
++        block_hash := 20 } }
++
++def envelopeB : SignedExecutionPayloadEnvelope Nat :=
++  { message :=
++      { beacon_block_root := 2
++        parent_beacon_block_root := 1
++        identity := 20 }
++    signature := 7 }
++
++def available : EnvelopeObservation Nat := ⟨1⟩
++def unavailable : EnvelopeObservation Nat := ⟨0⟩
++
++def externals : Externals Nat :=
++  { get_beacon_committee := fun state slot index => state.beacon_committees slot index
++    get_committee_count_per_slot := fun state epoch => state.committee_count_per_slot epoch
++    process_slots := fun state slot => { state with slot := slot }
++    state_transition := fun state block =>
++      some { state with slot := block.message.slot, source_identity := some block.root }
++    process_justification_and_finalization := id
++    is_valid_indexed_attestation := fun _ _ => true
++    get_ptc := fun _ _ => [0, 1, 0, 1]
++    is_valid_indexed_payload_attestation := fun state vote =>
++      decide (vote.data.slot = state.slot ∧ vote.signature = 7 ∧
++        vote.attesting_indices = [0])
++    is_data_available := fun root observation =>
++      decide (root = 2 ∧ observation.identity = 1)
++    verify_execution_payload_envelope := fun state envelope observation =>
++      decide (state.source_identity = some 2 ∧ state.slot = 1 ∧
++        envelope = envelopeB ∧ observation.identity = 1) }
++
++def beforeB : Store Nat :=
++  on_tick cfg (get_forkchoice_store cfg anchorState anchorBlock) 6
++
++/-- B is inserted by the real handler, including both vote-map entries. -/
++def currentStore : Store Nat :=
++  (on_block cfg externals beforeB blockB).getD beforeB
++
++def laterStore : Store Nat := on_tick cfg currentStore 12
++
++def positiveVote : PayloadAttestationMessage Nat :=
++  { validator_index := 0
++    data :=
++      { beacon_block_root := 2
++        slot := 1
++        payload_present := true
++        blob_data_available := false }
++    signature := 7 }
++
++def replacementVote : PayloadAttestationMessage Nat :=
++  { positiveVote with
++    data := { positiveVote.data with payload_present := false, blob_data_available := true } }
++
++def badSignatureVote : PayloadAttestationMessage Nat :=
++  { positiveVote with signature := 0 }
++
++/-- C selects B's FULL node and includes B's old-slot PTC vote. -/
++def blockC : SignedBeaconBlock Nat :=
++  { root := 3
++    message :=
++      { slot := 2
++        parent_root := 2
++        parent_block_hash := 20
++        block_hash := 30
++        payload_attestations :=
++          [{ attesting_indices := [0], data := positiveVote.data, signature := 7 }] } }
++
++def votes (store : Store Nat) :
++    Option (List (Option Bool)) × Option (List (Option Bool)) :=
++  (store.payload_timeliness_vote 2, store.payload_data_availability_vote 2)
++
++def positiveVotes : Option (List (Option Bool)) × Option (List (Option Bool)) :=
++  (some [some true, none, some true, none],
++    some [some false, none, some false, none])
++
++def replacementVotes : Option (List (Option Bool)) × Option (List (Option Bool)) :=
++  (some [some false, none, some false, none],
++    some [some true, none, some true, none])
++
++/-- The fixture reaches B through the handler and has a complete PTC domain. -/
++theorem fixture_initialization :
++    (on_block cfg externals beforeB blockB).map (fun store => store.block_roots) =
++      some [1, 2] ∧
++    get_current_slot cfg currentStore = 1 ∧
++    (externals.get_ptc (currentStore.block_states 2) 1).length = cfg.ptc_size ∧
++    votes currentStore =
++      (some [none, none, none, none], some [none, none, none, none]) := by
++  decide
++
++/-- The same FULL-parent child succeeds after the parent's envelope arrives.
++The accepted child also applies its body PTC vote through the notification fold. -/
++theorem full_parent_requires_envelope :
++    is_parent_node_full laterStore blockC.message = true ∧
++    (on_block cfg externals laterStore blockC).isNone = true ∧
++    (on_execution_payload_envelope externals laterStore envelopeB available).map
++      (fun store => store.payloads 2) = some (some envelopeB.message) ∧
++    ((on_execution_payload_envelope externals laterStore envelopeB available).bind
++      (fun store => on_block cfg externals store blockC)).map
++        (fun store => (store.block_roots, votes store)) =
++      some ([1, 2, 3], positiveVotes) := by
++  decide
++
++/-- A known block and otherwise accepted envelope do not bypass missing data. -/
++theorem envelope_requires_data :
++    (laterStore.block_roots.contains 2) = true ∧
++    externals.verify_execution_payload_envelope
++      (laterStore.block_states 2) envelopeB available = true ∧
++    externals.is_data_available 2 unavailable = false ∧
++    (on_execution_payload_envelope externals laterStore envelopeB unavailable).isNone = true := by
++  decide
++
++/-- Both occurrences of validator 0 are written; a later vote replaces both. -/
++theorem repeated_positions_and_replacement :
++    (on_payload_attestation_message cfg externals currentStore positiveVote false).map votes =
++      some positiveVotes ∧
++    ((on_payload_attestation_message cfg externals currentStore positiveVote false).bind
++      (fun store => on_payload_attestation_message cfg externals store replacementVote false)).map
++        votes = some replacementVotes := by
++  decide
++
++/-- Wire votes require the current slot and an accepted signature. The block
++path skips those checks. Membership and assigned-slot checks still precede it. -/
++theorem block_and_wire_checks :
++    (on_payload_attestation_message cfg externals laterStore positiveVote false).isNone = true ∧
++    (on_payload_attestation_message cfg externals currentStore badSignatureVote false).isNone = true ∧
++    (on_payload_attestation_message cfg externals laterStore badSignatureVote true).map votes =
++      some positiveVotes ∧
++    (on_payload_attestation_message cfg externals currentStore
++      { positiveVote with validator_index := 2 } true).isNone = true := by
++  decide
++
++#print axioms fixture_initialization
++#print axioms full_parent_requires_envelope
++#print axioms envelope_requires_data
++#print axioms repeated_positions_and_replacement
++#print axioms block_and_wire_checks
++
++#eval ("GLOAS_HANDLER_CHECKS", 5)
++
++end GloasHandlerChecks
+diff --git a/scripts/GloasPayloadBranchObstacle.lean b/scripts/GloasPayloadBranchObstacle.lean
+new file mode 100644
+index 0000000..9d2f037
+--- /dev/null
++++ b/scripts/GloasPayloadBranchObstacle.lean
+@@ -0,0 +1,199 @@
++import FastConfirmation.Spec.Model.Execution
++
++/-!
++# Gloas payload-branch obstacle
++
++This finite store tests the former generic `descendStep_of_dom` interface.
++Beacon child 2 strictly beats the other beacon child of root 1's FULL node.
++Root 1's pending node nevertheless chooses EMPTY, because that branch has
++more weight. Thus dominance within one resolved branch does not establish
++selection of that branch from the pending parent.
++
++The fixture has three validators, four beacon roots, and no proposer boost.
++Validator 0 votes for child 2. Validators 1 and 2 vote for child 4, which
++selects root 1's EMPTY node. Child 3 also selects FULL and has no votes.
++All votes are later than their beacon blocks. The clock is at slot 3, so the
++previous-slot zero-weight rule does not apply to root 1's payload decision.
++
++This is a local fork-choice counterexample. It does not claim a full accepted
++execution, an FCR confirmation, or a refutation of the public safety theorem.
++The file imports only the executable model. It uses kernel `decide`, no
++additional axiom, and no proof-layer definition.
++-/
++
++namespace GloasPayloadBranchObstacle
++
++open FastConfirmation.Spec
++
++def cfg : Config :=
++  { mainnet_config with
++    slots_per_epoch := 8
++    slots_per_epoch_pos := by decide
++    slot_duration_ms := 6000
++    slot_duration_ms_pos := by decide
++    effective_balance_increment := 100
++    effective_balance_increment_pos := by decide
++    hundred_dvd_effective_balance_increment := by decide
++    ptc_size := 2 }
++
++def checkpoint : Checkpoint Nat := ⟨0, 1⟩
++
++def validator : Validator :=
++  { effective_balance := 100
++    slashed := false
++    activation_epoch := 0
++    exit_epoch := FAR_FUTURE_EPOCH }
++
++def anchorState : BeaconState Nat :=
++  { genesis_time := 0
++    slot := 0
++    validators := [validator, validator, validator]
++    current_justified_checkpoint := checkpoint
++    finalized_checkpoint := checkpoint }
++
++def anchorBlock : SignedBeaconBlock Nat :=
++  { root := 1
++    message :=
++      { slot := 0
++        parent_root := 0
++        parent_block_hash := 0
++        block_hash := 10 } }
++
++def fullChild : BeaconBlock Nat :=
++  { slot := 1
++    parent_root := 1
++    parent_block_hash := 10
++    block_hash := 20 }
++
++def fullSibling : BeaconBlock Nat :=
++  { slot := 1
++    parent_root := 1
++    parent_block_hash := 10
++    block_hash := 30 }
++
++def emptyChild : BeaconBlock Nat :=
++  { slot := 1
++    parent_root := 1
++    parent_block_hash := 0
++    block_hash := 40 }
++
++def store : Store Nat :=
++  let anchor := get_forkchoice_store cfg anchorState anchorBlock
++  { anchor with
++    time := 18
++    block_roots := [1, 2, 3, 4]
++    blocks := fun root =>
++      match root with
++      | 2 => fullChild
++      | 3 => fullSibling
++      | 4 => emptyChild
++      | _ => anchor.blocks root
++    block_states := fun root =>
++      if root = 1 then anchorState
++      else { anchorState with slot := 1 }
++    block_timeliness := fun root =>
++      if root ∈ [1, 2, 3, 4] then some (true, true) else none
++    latest_messages := fun index =>
++      match index with
++      | 0 => some ⟨2, 2, false⟩
++      | 1 => some ⟨2, 4, false⟩
++      | 2 => some ⟨2, 4, false⟩
++      | _ => none
++    unrealized_justifications := fun _ => checkpoint
++    payloads := fun root =>
++      if root = 1 then some
++        { beacon_block_root := 1
++          parent_beacon_block_root := 0
++          identity := 10 }
++      else none
++    payload_timeliness_vote := fun root =>
++      if root ∈ [1, 2, 3, 4] then some [none, none] else none
++    payload_data_availability_vote := fun root =>
++      if root ∈ [1, 2, 3, 4] then some [none, none] else none }
++
++def blocks : List Nat := get_filtered_block_tree cfg store
++
++/-- Use the exact source key: weight, beacon root, then payload status. -/
++def selectedChild (parent : ForkChoiceNode Nat) : Option (ForkChoiceNode Nat) :=
++  (get_node_children store blocks parent).argmax
++    (fun child => toLex (get_weight cfg store child,
++      toLex (child.root, get_payload_status_tiebreaker cfg store child)))
++
++/-- Every candidate survives the filter, and FULL is locally available. -/
++theorem fixture_domain :
++    blocks = [2, 3, 4, 1] ∧
++    get_current_slot cfg store = 3 ∧
++    is_payload_verified store 1 = true ∧
++    should_apply_proposer_boost cfg store = false ∧
++    get_parent_payload_status store (store.blocks 2) = .full ∧
++    get_parent_payload_status store (store.blocks 3) = .full ∧
++    get_parent_payload_status store (store.blocks 4) = .empty := by
++  decide
++
++/-- The FULL branch has a real competing beacon child. -/
++theorem full_children :
++    get_node_children store blocks (ForkChoiceNode.mk 1 .full) =
++      [ForkChoiceNode.mk 2 .pending, ForkChoiceNode.mk 3 .pending] := by
++  decide
++
++theorem exact_weights :
++    get_weight cfg store (ForkChoiceNode.mk 2 .pending) = 100 ∧
++    get_weight cfg store (ForkChoiceNode.mk 3 .pending) = 0 ∧
++    get_weight cfg store (ForkChoiceNode.mk 1 .full) = 100 ∧
++    get_weight cfg store (ForkChoiceNode.mk 1 .empty) = 200 := by
++  decide
++
++/-- The old beacon-child membership and strict-dominance premises hold
++within the resolved parent selected by child 2's bid. -/
++theorem selected_beacon_child_dominates :
++    ForkChoiceNode.mk 2 .pending ∈
++      get_node_children store blocks
++        (ForkChoiceNode.mk 1 (get_parent_payload_status store (store.blocks 2))) ∧
++    ∀ child ∈ get_node_children store blocks
++        (ForkChoiceNode.mk 1 (get_parent_payload_status store (store.blocks 2))),
++      child ≠ ForkChoiceNode.mk 2 .pending →
++        get_weight cfg store child < get_weight cfg store (ForkChoiceNode.mk 2 .pending) := by
++  have hstatus : get_parent_payload_status store (store.blocks 2) = .full := by
++    decide
++  rw [hstatus, full_children]
++  constructor
++  · decide
++  · intro child hchild hne
++    have hcases : child = ForkChoiceNode.mk 2 .pending ∨
++        child = ForkChoiceNode.mk 3 .pending := by
++      simpa only [List.mem_cons, List.not_mem_nil, or_false] using hchild
++    rcases hcases with heq | heq
++    · exact False.elim (hne heq)
++    · rw [heq]
++      decide
++
++/-- The FULL branch selects child 2, but its pending parent selects EMPTY. -/
++theorem opposite_branch_selected :
++    selectedChild (ForkChoiceNode.mk 1 .full) = some (ForkChoiceNode.mk 2 .pending) ∧
++    selectedChild (ForkChoiceNode.mk 1 .pending) = some (ForkChoiceNode.mk 1 .empty) ∧
++    selectedChild (ForkChoiceNode.mk 1 .pending) ≠
++      some (ForkChoiceNode.mk 1
++        (get_parent_payload_status store (store.blocks 2))) := by
++  decide
++
++/-- The complete source head walk reaches the other beacon child. -/
++theorem head_uses_other_branch :
++    get_head cfg store = ForkChoiceNode.mk 4 .empty ∧
++    is_ancestor store (get_head cfg store) (get_node_for_root 2) = false := by
++  decide
++
++#print axioms fixture_domain
++#print axioms full_children
++#print axioms exact_weights
++#print axioms selected_beacon_child_dominates
++#print axioms opposite_branch_selected
++#print axioms head_uses_other_branch
++
++#eval ("GLOAS_PAYLOAD_BRANCH_OBSTACLE",
++  get_weight cfg store (ForkChoiceNode.mk 2 .pending),
++  get_weight cfg store (ForkChoiceNode.mk 3 .pending),
++  get_weight cfg store (ForkChoiceNode.mk 1 .full),
++  get_weight cfg store (ForkChoiceNode.mk 1 .empty),
++  (get_head cfg store).root)
++
++end GloasPayloadBranchObstacle
+diff --git a/scripts/GloasPayloadDeliveryObstacle.lean b/scripts/GloasPayloadDeliveryObstacle.lean
+new file mode 100644
+index 0000000..ac2bf6d
+--- /dev/null
++++ b/scripts/GloasPayloadDeliveryObstacle.lean
+@@ -0,0 +1,212 @@
++import FastConfirmation.Spec.Model.Execution
++
++/-!
++# Gloas payload delivery obstacle
++
++This file uses only the executable Model modules. It exhibits the missing
++payload-delivery premise in the former `Delivery.validate_at_extension` lemma.
++The two stores have the same blocks. The receiver has no verified payload for
++the voted block, so the Gloas index-1 check rejects the vote.
++
++This refutes that private transport step with its former premises. It does not
++by itself refute a public safety theorem or construct a full accepted execution.
++No Python specification change, extra axiom, or proof-layer import is used.
++-/
++
++namespace GloasPayloadDeliveryObstacle
++
++open FastConfirmation.Spec
++
++/-- Minimal values read by this fixture: 8 slots, 6 seconds, PTC size 16. -/
++def cfg : Config :=
++  { mainnet_config with
++    slots_per_epoch := 8
++    slots_per_epoch_pos := by decide
++    slot_duration_ms := 6000
++    slot_duration_ms_pos := by decide
++    ptc_size := 16 }
++
++def checkpoint : Checkpoint Nat := ⟨0, 1⟩
++
++def anchorBlock : SignedBeaconBlock Nat :=
++  { root := 1
++    message :=
++      { slot := 0
++        parent_root := 0
++        proposer_index := 0
++        parent_block_hash := 0
++        block_hash := 10 } }
++
++def anchorState : BeaconState Nat :=
++  { genesis_time := 0
++    slot := 0
++    validators :=
++      [{ effective_balance := 32000000000
++         slashed := false
++         activation_epoch := 0
++         exit_epoch := FAR_FUTURE_EPOCH }]
++    current_justified_checkpoint := checkpoint
++    finalized_checkpoint := checkpoint }
++
++/-- B follows the anchor's EMPTY node; its own payload has execution hash 20. -/
++def blockB : BeaconBlock Nat :=
++  { slot := 1
++    parent_root := 1
++    proposer_index := 0
++    parent_block_hash := 0
++    block_hash := 20 }
++
++def envelopeB : ExecutionPayloadEnvelope Nat :=
++  { beacon_block_root := 2
++    parent_beacon_block_root := 1
++    identity := 20 }
++
++/-- Both stores have the same known blocks, block states, checkpoints, and PTC maps. -/
++def sharedStore : Store Nat :=
++  let anchor := get_forkchoice_store cfg anchorState anchorBlock
++  { anchor with
++    time := 12
++    block_roots := [1, 2]
++    blocks := Function.update anchor.blocks 2 blockB
++    block_states := Function.update anchor.block_states 2 { anchorState with slot := 1 }
++    block_timeliness := Function.update anchor.block_timeliness 2 (some (true, true))
++    unrealized_justifications := Function.update anchor.unrealized_justifications 2 checkpoint
++    payload_timeliness_vote := Function.update anchor.payload_timeliness_vote 2
++      (some (List.replicate cfg.ptc_size none))
++    payload_data_availability_vote := Function.update anchor.payload_data_availability_vote 2
++      (some (List.replicate cfg.ptc_size none)) }
++
++/-- The source is at slot 2 and has received B's verified envelope. -/
++def S : Store Nat :=
++  { sharedStore with payloads := Function.update sharedStore.payloads 2 (some envelopeB) }
++
++/-- The receiver is at delivery slot 3 and has not received B's envelope. -/
++def P : Store Nat := { sharedStore with time := 18 }
++
++/-- A later-slot vote for B's FULL node. -/
++def a : Attestation Nat :=
++  { attesting_indices := [0]
++    data :=
++      { slot := 2
++        index := 1
++        beacon_block_root := 2
++        source := checkpoint
++        target := checkpoint } }
++
++/-- Whole-map block agreement, stronger than agreement at source-known roots. -/
++theorem blocks_equal : S.blocks = P.blocks := rfl
++
++theorem blocks_agree : ∀ root ∈ S.block_roots, S.blocks root = P.blocks root := by
++  intro root _
++  rfl
++
++theorem block_domain_equal : S.block_roots = P.block_roots := rfl
++
++theorem block_domain_subset : S.block_roots ⊆ P.block_roots := List.Subset.refl _
++
++theorem source_current_slot : get_current_slot cfg S = a.data.slot := by decide
++
++theorem delivery_current_slot : get_current_slot cfg P = a.data.slot + 1 := by decide
++
++theorem target_epoch_matches : a.data.target.epoch = compute_epoch_at_slot cfg a.data.slot := by
++  decide
++
++theorem voted_root_known : a.data.beacon_block_root ∈ S.block_roots := by decide
++
++theorem target_root_known : a.data.target.root ∈ S.block_roots := by decide
++
++theorem voted_block_is_older : (S.blocks a.data.beacon_block_root).slot < a.data.slot := by
++  decide
++
++theorem voted_block_not_future : (S.blocks a.data.beacon_block_root).slot ≤ a.data.slot := by
++  decide
++
++theorem target_consistency : a.data.target.root =
++    get_checkpoint_block cfg S a.data.beacon_block_root a.data.target.epoch := by decide
++
++/-- These are the two constructors' premises for the old `WalkKnown` argument:
++B is known above target slot 0, its parent is known, and its parent stops there.
++The script states the elementary facts to avoid importing the proof layer. -/
++theorem known_checkpoint_walk :
++    a.data.beacon_block_root ∈ S.block_roots ∧
++    compute_start_slot_at_epoch cfg a.data.target.epoch <
++      (S.blocks a.data.beacon_block_root).slot ∧
++    (S.blocks a.data.beacon_block_root).parent_root ∈ S.block_roots ∧
++    (S.blocks (S.blocks a.data.beacon_block_root).parent_root).slot ≤
++      compute_start_slot_at_epoch cfg a.data.target.epoch := by decide
++
++/-- The parent walk also respects the source model's strict slot decrease. -/
++theorem parent_slot_decreases :
++    (S.blocks (S.blocks 2).parent_root).slot < (S.blocks 2).slot := by decide
++
++theorem source_payload_verified : is_payload_verified S a.data.beacon_block_root = true := by
++  decide
++
++theorem receiver_payload_missing : is_payload_verified P a.data.beacon_block_root = false := by
++  decide
++
++/-- Both extra index-shape checks hold. Only receiver payload presence fails. -/
++theorem valid_payload_index_shape :
++    (a.data.index = 0 ∨ a.data.index = 1) ∧
++    ((P.blocks a.data.beacon_block_root).slot = a.data.slot → a.data.index = 0) := by
++  decide
++
++/-- The old transport conclusion is false under Gloas. -/
++theorem receiver_rejects : validate_on_attestation cfg P a false = false := by decide
++
++theorem old_transport_conclusion_false : ¬ validate_on_attestation cfg P a false = true := by
++  rw [receiver_rejects]
++  decide
++
++/-- The exact old validation-facts interface is false. All of its premises
++hold for P and a, including the epoch window and the checkpoint walk. -/
++theorem old_validation_facts_interface_false :
++    ¬ (∀ (store : Store Nat) (vote : Attestation Nat),
++      validate_target_epoch_against_current_time cfg store vote = true →
++      vote.data.target.epoch = compute_epoch_at_slot cfg vote.data.slot →
++      vote.data.target.root ∈ store.block_roots →
++      vote.data.beacon_block_root ∈ store.block_roots →
++      (store.blocks vote.data.beacon_block_root).slot ≤ vote.data.slot →
++      vote.data.target.root =
++        get_checkpoint_block cfg store vote.data.beacon_block_root vote.data.target.epoch →
++      vote.data.slot + 1 ≤ get_current_slot cfg store →
++      validate_on_attestation cfg store vote false = true) := by
++  intro claimed
++  exact old_transport_conclusion_false
++    (claimed P a (by decide) (by decide) (by decide) (by decide)
++      (by decide) (by decide) (by decide))
++
++/-- At the same delivery clock, retaining the source payload makes validation pass. -/
++theorem same_clock_with_payload_accepts :
++    validate_on_attestation cfg { S with time := P.time } a false = true := by decide
++
++/-- The source's canonical head is B's FULL node at the voting slot. -/
++theorem source_head_full : get_head cfg S = ForkChoiceNode.mk 2 .full := by decide
++
++/-- The receiver has the same canonical beacon root, but its EMPTY node. -/
++theorem receiver_head_empty : get_head cfg P = ForkChoiceNode.mk 2 .empty := by decide
++
++/-- The Gloas honest data-index rule for this source head selects index 1. -/
++theorem honest_data_index_rule :
++    (if (S.blocks (get_head cfg S).root).slot = a.data.slot then 0
++      else if (get_head cfg S).payload_status = .full then 1 else 0) = a.data.index := by
++  rw [source_head_full]
++  decide
++
++#eval ("GLOAS_PAYLOAD_DELIVERY_OBSTACLE",
++  get_current_slot cfg S,
++  get_current_slot cfg P,
++  (get_head cfg S).root,
++  (get_head cfg P).root,
++  is_payload_verified S 2,
++  is_payload_verified P 2,
++  validate_on_attestation cfg P a false)
++
++#print axioms receiver_rejects
++#print axioms old_transport_conclusion_false
++#print axioms old_validation_facts_interface_false
++#print axioms same_clock_with_payload_accepts
++#print axioms source_head_full
++#print axioms receiver_head_empty
++
++end GloasPayloadDeliveryObstacle
+diff --git a/scripts/conformance/TRACE_SCHEMA.md b/scripts/conformance/TRACE_SCHEMA.md
+index 7149730..5f6c675 100644
+--- a/scripts/conformance/TRACE_SCHEMA.md
++++ b/scripts/conformance/TRACE_SCHEMA.md
+@@ -1,22 +1,21 @@
+-# FCR conformance trace schema, version 1
+-
+-One trace file is JSON Lines: one JSON object per executed `on_fast_confirmation`
+-call in the Python reference tests. The Python exporter writes it; the Lean
+-runner reads it, rebuilds the store, runs the Lean `on_fast_confirmation`, and
+-compares. Both sides implement this document exactly. Do not change it without
+-updating both sides and bumping `schema`.
+-
+-## Encoding rules
+-- `Root` values: `0x` + 64 lowercase hex characters (32 bytes). Lean maps a root
+-  to `Nat` by big-endian value; lexicographic byte order equals numeric order.
+-- Integers (`Slot`, `Epoch`, `Gwei`, indices, `time`, `genesis_time`): JSON
+-  numbers. Values above 2^53 are written as decimal strings; Lean accepts both.
+-- `Checkpoint`: `{"epoch": n, "root": "0x.."}`.
+-- Booleans as JSON booleans.
+-- A `state` is the projection Lean's `BeaconState` reads:
+-  `{"id": "0x..hash_tree_root of the full state..", "genesis_time": n, "slot": n,
+-    "validators": [{"effective_balance": n, "slashed": b, "activation_epoch": n,
+-    "exit_epoch": n}, ...], "current_justified_checkpoint": cp,
+-    "finalized_checkpoint": cp}`.
+-  `id` is informational for humans. Lean matches states structurally on the
+-  other five fields, in order, exactly.
++# FCR conformance trace schema, version 2
++
++One JSON Lines record describes one Gloas `on_fast_confirmation` call.
++The exporter snapshots the source store, records `get_head`, runs FCR, and
++records the result. The Lean runner rebuilds the projections and compares
++both the head node and the six FCR fields. The schema value is the integer
++`2`. Version 1 describes a phase0 store. Both readers reject it with this
++message: `schema v1 describes a phase0 store; schema v2 is required`.
++
++## Encoding
++
++- Roots and opaque identities use `0x` followed by 64 lowercase hex digits.
++  Lean maps them to `Nat` in big-endian order.
++- Nonnegative integers use JSON numbers up to `2^53`. Larger values use
++  decimal strings. Readers accept both forms.
++- Booleans use JSON booleans. An unset PTC vote uses JSON `null`.
++- A checkpoint is `{"epoch": n, "root": "0x.."}`.
++- A node is `{"root": "0x..", "payload_status": n}`. Status 0 means EMPTY,
++  1 means FULL, and 2 means PENDING. A status is not inferred from its root.
++- Lists retain source order. Root maps use lists of entries in source dict
++  insertion order. Validator messages use increasing validator index order.
+@@ -24,0 +24 @@ updating both sides and bumping `schema`.
++
+@@ -26,27 +26,18 @@ updating both sides and bumping `schema`.
+-schema                 1
+-test_id                pytest node id
+-fork                   e.g. "altair"
+-preset                 "minimal" | "mainnet"
+-call_index             0-based index of this call inside the test
+-config                 slots_per_epoch, slot_duration_ms, proposer_score_boost,
+-                       confirmation_byzantine_threshold,
+-                       committee_weight_estimation_adjustment_factor,
+-                       effective_balance_increment, attestation_due_bps,
+-                       min_seed_lookahead
+-store                  time, genesis_time, justified_checkpoint,
+-                       finalized_checkpoint, unrealized_justified_checkpoint,
+-                       unrealized_finalized_checkpoint, proposer_boost_root,
+-                       equivocating_indices [n...] (sorted),
+-                       blocks [{root, slot, parent_root}] in dict insertion order,
+-                       block_states [{root, state}],
+-                       block_timeliness [{root, timely}],
+-                       checkpoint_states [{checkpoint, state}],
+-                       latest_messages [{index, epoch, root}] (sorted by index),
+-                       unrealized_justifications [{root, checkpoint}]
+-fcr_before             confirmed_root,
+-                       previous_epoch_observed_justified_checkpoint,
+-                       current_epoch_observed_justified_checkpoint,
+-                       previous_epoch_greatest_unrealized_checkpoint,
+-                       previous_slot_head, current_slot_head
+-fcr_after              same six fields, after the Python call
+-externals              recorded answers, see below
++┌─────────────┬──────────────────────────────────────────────────────────┐
++│ schema      │ 2                                                        │
++│ fork        │ "gloas"                                                  │
++│ preset      │ "minimal" or "mainnet"                                   │
++│ test_id     │ pytest node id                                           │
++│ call_index  │ zero-based call index within the test                    │
++│ head_before │ node from get_head before FCR                            │
++│ config      │ slots_per_epoch, slot_duration_ms, proposer_score_boost, │
++│             │ confirmation_byzantine_threshold,                        │
++│             │ committee_weight_estimation_adjustment_factor,           │
++│             │ effective_balance_increment, attestation_due_bps,        │
++│             │ min_seed_lookahead, ptc_size, payload_due_bps,           │
++│             │ payload_attestation_due_bps, reorg_head_weight_threshold │
++│ store       │ the projection below, before FCR                         │
++│ fcr_before  │ six FCR fields below, before FCR                         │
++│ fcr_after   │ six FCR fields below, after FCR                          │
++│ externals   │ recorded source calls below                              │
++└─────────────┴──────────────────────────────────────────────────────────┘
+@@ -55,3 +46,99 @@ externals              recorded answers, see below
+-The Python `store` is snapshotted immediately before the call. The FCR call does
+-not mutate the fork-choice store; if it does in some fork, the exporter must
+-abort with an error naming the field.
++`attestation_due_bps` records `ATTESTATION_DUE_BPS_GLOAS`. Each PTC threshold
++is `ptc_size / 2`, with integer division. The exporter rejects a call if FCR
++changes any projected fork-choice store field.
++
++The optional root field `safe_execution_block_hash_after` records the source
++`get_safe_execution_block_hash` result after FCR. New exports include this
++field. The runner compares the model helper when the field is present.
++Earlier v2 records remain valid and skip this comparison. In Gloas the
++safe execution hash is the confirmed block's `parent_block_hash`.
++
++## State projection
++
++A state contains these fields:
++
++```text
++┌──────────────────────────────┬──────────────────────────────────────────────────────┐
++│ id                           │ hash_tree_root of the full source state              │
++│ slot, genesis_time           │ nonnegative integers                                 │
++│ validators                   │ [{effective_balance, slashed,                        │
++│                              │ activation_epoch, exit_epoch}, ...]                  │
++│ current_justified_checkpoint │ checkpoint                                           │
++│ finalized_checkpoint         │ checkpoint                                           │
++│ beacon_committee_reads       │ [{slot, index, result: [validator_index, ...]}, ...] │
++│ committee_count_reads        │ [{epoch, result: count}, ...]                        │
++└──────────────────────────────┴──────────────────────────────────────────────────────┘
++```
++
++The state `id` is a semantic opaque identity for the full source state.
++The runner sets `BeaconState.source_identity` to `some id`. Lean equality
++uses this identity and all other projected fields, including both finite
++read lists. The exporter collects all reached
++committee and count queries, including those reached by Gloas `get_head`. It also fills the potential
++`is_head_weak` query domain for the proposer-boost parent's state. This
++covers head scoring paths that a later call can take on the same snapshot.
++After the source call, it attaches the resulting lists to every copy of each
++state projection. Committee reads are sorted by `(slot, index)`; count reads
++are sorted by epoch. Duplicate queries with the same result produce one
++read-list entry. Committee results retain order and repeated indices.
++
++Read lists are complete for the queries reached in the record. The runner
++reports a missing external if its execution requests a committee or count
++that is absent from the state's read list. It must not silently use the
++model's total default for an unrecorded query.
++
++## Store projection
++
++The store has these fields:
++
++```text
++┌─────────────────────────────────┬──────────────────────────────────────────────┐
++│ time, genesis_time              │ nonnegative integers                         │
++│ justified_checkpoint            │ checkpoint                                   │
++│ finalized_checkpoint            │ checkpoint                                   │
++│ unrealized_justified_checkpoint │ checkpoint                                   │
++│ unrealized_finalized_checkpoint │ checkpoint                                   │
++│ proposer_boost_root             │ root                                         │
++│ equivocating_indices            │ sorted validator indices                     │
++│ blocks                          │ block entries, below                         │
++│ block_states                    │ [{root, state}, ...]                         │
++│ block_timeliness                │ [{root, timely: [attestation, ptc]}, ...]    │
++│ checkpoint_states               │ [{checkpoint, state}, ...]                   │
++│ latest_messages                 │ [{index, slot, root, payload_present}, ...]  │
++│ unrealized_justifications       │ [{root, checkpoint}, ...]                    │
++│ payloads                        │ [{root, beacon_block_root,                   │
++│                                 │ parent_beacon_block_root, identity}, ...]    │
++│ payload_timeliness_vote         │ [{root, votes: [null or boolean, ...]}, ...] │
++│ payload_data_availability_vote  │ [{root, votes: [null or boolean, ...]}, ...] │
++└─────────────────────────────────┴──────────────────────────────────────────────┘
++```
++
++Each block entry has `root`, `slot`, `parent_root`, `proposer_index`,
++`parent_block_hash`, `block_hash`, and `payload_attestations`. The two block
++hash fields come from `body.signed_execution_payload_bid.message`.
++Each payload attestation contains `attesting_indices`, `data`, and
++`signature`. The exporter calls the source `get_indexed_payload_attestation`
++with the stored post-state to obtain the indices. Data contains `slot`,
++`beacon_block_root`, `payload_present`, and `blob_data_available`.
++The signature field is the hash-tree-root of the source signature.
++
++A payload map entry represents a delivered and verified envelope. Its map
++key equals `beacon_block_root`. Its opaque `identity` is the hash-tree-root
++of that envelope. An absent entry means the payload is not verified. Each
++PTC vote list has exactly `ptc_size` positions. Local verified-payload
++membership and PTC payload/data votes are separate observations. This trace
++checks FCR on a snapshot; it does not replay the envelope handler's sidecar
++or execution-engine validation.
++
++## FCR projection
++
++These six fields remain roots or checkpoints:
++
++```text
++confirmed_root
++previous_epoch_observed_justified_checkpoint
++current_epoch_observed_justified_checkpoint
++previous_epoch_greatest_unrealized_checkpoint
++previous_slot_head
++current_slot_head
++```
+@@ -60,2 +147,32 @@ abort with an error naming the field.
+-During the Python call the exporter wraps exactly these spec functions and
+-records every invocation:
++
++The exporter wraps these source functions while it obtains `head_before`
++and runs FCR:
++
++```text
++┌────────────────────────────────────────┬───────────────────────────────────────────────┐
++│ get_beacon_committee                   │ [{state, slot, index, result: [n, ...]}, ...] │
++│ get_committee_count_per_slot           │ [{state, epoch, result: n}, ...]              │
++│ process_slots                          │ [{state, slot, result: state}, ...]           │
++│ process_justification_and_finalization │ [{state, result: state}, ...]                 │
++└────────────────────────────────────────┴───────────────────────────────────────────────┘
++```
++
++Argument states describe the state before a call. Result states describe
++it after a mutating call. After it attaches finite read views, the exporter
++checks that equal projected input keys have equal projected results.
++This check includes source state IDs on both sides. Distinct full source
++states can give different external answers even when their other projected
++fields are equal. Equal identities bind equal source states. Every external
++state result carries the identity of its exact full source result.
++A conflict aborts export with `projection ambiguity` and the test ID.
++A missing Lean lookup is `MISSING_EXTERNAL`, never a silent default.
++Handler-only external functions are not reached by FCR and are not part
++of this snapshot trace.
++
++## Result
++
++The runner prints one result per record. It compares `head_before`,
++including the payload status, then the six FCR fields, then the optional
++safe execution hash. A failure names
++the first different field and gives the Lean and source values. It prints:
++
+@@ -63,4 +180 @@ records every invocation:
+-get_beacon_committee                    [{state, slot, index, result: [n...]}]
+-get_committee_count_per_slot            [{state, epoch, result: n}]
+-process_slots                           [{state, slot, result: state}]
+-process_justification_and_finalization  [{state, result: state}]
++SUMMARY records=<n> ok=<n> mismatch=<n> missing_external=<n>
+@@ -68,20 +182,3 @@ process_justification_and_finalization  [{state, result: state}]
+-`state` is the projection of the argument state **before** the call;
+-`result` for the two mutating functions is the projection **after** the call.
+-Because Lean's state is a projection, two different full states can share one
+-projection. The exporter must check inside each record that equal
+-`(projection, other args)` keys never map to different results; if they do it
+-must abort with `projection ambiguity` and the test id. Lean looks answers up by
+-structural equality on `(projection, args)`. A lookup miss is reported as a
+-`MISSING_EXTERNAL <function> <args>` mismatch, never defaulted silently.
+-`state_transition` and `is_valid_indexed_attestation` are not called by
+-`on_fast_confirmation`; they are not recorded and Lean instantiates them with
+-constant functions that are never reached (`fun _ _ => none`, `fun _ _ => false`).
+-
+-## Comparison
+-For each record the Lean runner constructs `FastConfirmationStore` from `store`
+-and `fcr_before`, runs `on_fast_confirmation cfg ext`, and compares the six
+-`fcr_after` fields. Output: one line per record,
+-`OK <test_id> <call_index>` or `MISMATCH <test_id> <call_index> <field> lean=<v> python=<v>`
+-or `MISSING_EXTERNAL ...`, then a summary line
+-`SUMMARY records=<n> ok=<n> mismatch=<n> missing_external=<n>`.
+-Exit status 0 only when mismatch and missing_external are both 0.
++
++A successful run requires at least one record and no mismatch or missing
++external. The exporter script preserves pytest and runner failure codes.
+diff --git a/scripts/conformance/lean/Conformance.lean b/scripts/conformance/lean/Conformance.lean
+index c18d032..c822541 100644
+--- a/scripts/conformance/lean/Conformance.lean
++++ b/scripts/conformance/lean/Conformance.lean
+@@ -2 +2 @@ import Lean.Data.Json
+-import FastConfirmation.Spec.Model
++import FastConfirmation.Spec.Model.Execution
+@@ -96,0 +97,7 @@ def parseValidator (j : J) : Except String Validator := do
++def parseCommitteeRead (j : J) : Except String (Slot × CommitteeIndex × List ValidatorIndex) := do
++  let result ← arrayMap natValue (← arrayField j "result")
++  return (← natField j "slot", ← natField j "index", result.toList)
++
++def parseCountRead (j : J) : Except String (Epoch × Nat) := do
++  return (← natField j "epoch", ← natField j "result")
++
+@@ -99,0 +107,2 @@ def parseState (j : J) : Except String (BeaconState Nat) := do
++  let committeeReads ← arrayMap parseCommitteeRead (← arrayField j "beacon_committee_reads")
++  let countReads ← arrayMap parseCountRead (← arrayField j "committee_count_reads")
+@@ -100,0 +110 @@ def parseState (j : J) : Except String (BeaconState Nat) := do
++    source_identity := some (← rootField j "id")
+@@ -103,0 +114,2 @@ def parseState (j : J) : Except String (BeaconState Nat) := do
++    beacon_committee_reads := committeeReads.toList
++    committee_count_reads := countReads.toList
+@@ -122 +134,2 @@ def stateEq (a b : BeaconState Nat) : Bool :=
+-  a.genesis_time == b.genesis_time && a.slot == b.slot &&
++  a.source_identity == b.source_identity &&
++    a.genesis_time == b.genesis_time && a.slot == b.slot &&
+@@ -125 +138,3 @@ def stateEq (a b : BeaconState Nat) : Bool :=
+-    checkpointEq a.finalized_checkpoint b.finalized_checkpoint
++    checkpointEq a.finalized_checkpoint b.finalized_checkpoint &&
++    a.beacon_committee_reads == b.beacon_committee_reads &&
++    a.committee_count_reads == b.committee_count_reads
+@@ -136,0 +152,16 @@ def lookupCheckpoint (key : Checkpoint Nat) :
++def parsePayloadAttestationData (j : J) : Except String (PayloadAttestationData Nat) := do
++  return {
++    beacon_block_root := ← rootField j "beacon_block_root"
++    slot := ← natField j "slot"
++    payload_present := ← boolField j "payload_present"
++    blob_data_available := ← boolField j "blob_data_available"
++  }
++
++def parsePayloadAttestation (j : J) : Except String (IndexedPayloadAttestation Nat) := do
++  let indices ← arrayMap natValue (← arrayField j "attesting_indices")
++  return {
++    attesting_indices := indices.toList
++    data := ← parsePayloadAttestationData (← field j "data")
++    signature := ← rootField j "signature"
++  }
++
+@@ -137,0 +169 @@ def parseBlock (j : J) : Except String (Nat × BeaconBlock Nat) := do
++  let attestations ← arrayMap parsePayloadAttestation (← arrayField j "payload_attestations")
+@@ -140,0 +173,4 @@ def parseBlock (j : J) : Except String (Nat × BeaconBlock Nat) := do
++    proposer_index := ← natField j "proposer_index"
++    parent_block_hash := ← rootField j "parent_block_hash"
++    block_hash := ← rootField j "block_hash"
++    payload_attestations := attestations.toList
+@@ -146,2 +182,34 @@ def parseBlockState (j : J) : Except String (Nat × BeaconState Nat) := do
+-def parseTimeliness (j : J) : Except String (Nat × Bool) := do
+-  return (← rootField j "root", ← boolField j "timely")
++def parseTimeliness (j : J) : Except String (Nat × (Bool × Bool)) := do
++  let values ← arrayMap boolValue (← arrayField j "timely")
++  match values.toList with
++  | [attestation, ptc] => return (← rootField j "root", (attestation, ptc))
++  | _ => throw "block timeliness requires exactly two booleans"
++
++def parsePayload (j : J) : Except String (Nat × ExecutionPayloadEnvelope Nat) := do
++  let root ← rootField j "root"
++  let beaconRoot ← rootField j "beacon_block_root"
++  if root != beaconRoot then throw "payload map key differs from beacon_block_root"
++  return (root, {
++    beacon_block_root := beaconRoot
++    parent_beacon_block_root := ← rootField j "parent_beacon_block_root"
++    identity := ← rootField j "identity"
++  })
++
++def parseVote (j : J) : Except String (Option Bool) :=
++  match j with
++  | .null => pure none
++  | _ => some <$> boolValue j
++
++def parseVotes (cfg : Config) (j : J) : Except String (Nat × List (Option Bool)) := do
++  let votes ← arrayMap parseVote (← arrayField j "votes")
++  if votes.size != cfg.ptc_size then throw "PTC vote list length differs from ptc_size"
++  return (← rootField j "root", votes.toList)
++
++def parseNode (j : J) : Except String (ForkChoiceNode Nat) := do
++  let status ← natField j "payload_status"
++  let payloadStatus ← match status with
++    | 0 => pure PayloadStatus.empty
++    | 1 => pure PayloadStatus.full
++    | 2 => pure PayloadStatus.pending
++    | _ => throw "payload_status must be 0, 1, or 2"
++  return { root := ← rootField j "root", payload_status := payloadStatus }
+@@ -154 +222 @@ def parseLatestMessage (j : J) : Except String (Nat × LatestMessage Nat) := do
+-    epoch := ← natField j "epoch"
++    slot := ← natField j "slot"
+@@ -155,0 +224 @@ def parseLatestMessage (j : J) : Except String (Nat × LatestMessage Nat) := do
++    payload_present := ← boolField j "payload_present"
+@@ -169,0 +239,4 @@ def parseConfig (j : J) : Except String Config := do
++  let ptcSize ← natField j "ptc_size"
++  let payloadDue ← natField j "payload_due_bps"
++  let payloadAttestationDue ← natField j "payload_attestation_due_bps"
++  let reorgHeadWeight ← natField j "reorg_head_weight_threshold"
+@@ -188,0 +262,4 @@ def parseConfig (j : J) : Except String Config := do
++              ptc_size := ptcSize
++              payload_due_bps := payloadDue
++              payload_attestation_due_bps := payloadAttestationDue
++              reorg_head_weight_threshold := reorgHeadWeight
+@@ -199 +276 @@ structure ParsedStore where
+-def parseStore (j : J) : Except String ParsedStore := do
++def parseStore (cfg : Config) (j : J) : Except String ParsedStore := do
+@@ -211,0 +289,3 @@ def parseStore (j : J) : Except String ParsedStore := do
++  let payloads ← arrayMap parsePayload (← arrayField j "payloads")
++  let payloadTimeliness ← arrayMap (parseVotes cfg) (← arrayField j "payload_timeliness_vote")
++  let payloadAvailability ← arrayMap (parseVotes cfg) (← arrayField j "payload_data_availability_vote")
+@@ -236,0 +317,3 @@ def parseStore (j : J) : Except String ParsedStore := do
++    payloads := fun root => lookupNat root payloads.toList
++    payload_timeliness_vote := fun root => lookupNat root payloadTimeliness.toList
++    payload_data_availability_vote := fun root => lookupNat root payloadAvailability.toList
+@@ -335,0 +419,2 @@ structure Record where
++  headBefore : ForkChoiceNode Nat
++  safeExecutionBlockHashAfter : Option Nat
+@@ -338 +423,10 @@ def parseRecord (j : J) : Except String Record := do
+-  let parsedStore ← parseStore (← field j "store")
++  let schema ← natField j "schema"
++  if schema == 1 then
++    throw "schema v1 describes a phase0 store; schema v2 is required"
++  if schema != 2 then throw "unsupported schema; expected v2"
++  if (← stringField j "fork") != "gloas" then throw "schema v2 requires Gloas"
++  let cfg ← parseConfig (← field j "config")
++  let parsedStore ← parseStore cfg (← field j "store")
++  let safeExecutionBlockHashAfter ← match j.getObjVal? "safe_execution_block_hash_after" with
++    | .ok value => some <$> rootValue value
++    | .error _ => pure none
+@@ -342 +436,3 @@ def parseRecord (j : J) : Except String Record := do
+-    cfg := ← parseConfig (← field j "config")
++    cfg := cfg
++    safeExecutionBlockHashAfter := safeExecutionBlockHashAfter
++    headBefore := ← parseNode (← field j "head_before")
+@@ -381,4 +477,10 @@ def findFinal (answers : List ProcessFinalAnswer) (state : BeaconState Nat) :
+-unsafe def noteMiss (misses : IO.Ref (List String)) (message : String) : Unit :=
+-  match unsafeIO (misses.modify (fun old => message :: old)) with
+-  | .ok _ => ()
+-  | .error _ => ()
++/-- Return the fallback through the IO call so recording a miss is required
++for evaluation of the external result. An unused pure Unit binding could
++otherwise be removed by the compiler. -/
++unsafe def missingValue (misses : IO.Ref (List String)) (message : String)
++    (fallback : α) : α :=
++  match unsafeIO (do
++    misses.modify (fun old => message :: old)
++    pure fallback) with
++  | .ok value => value
++  | .error _ => fallback
+@@ -392,2 +494 @@ unsafe def makeExternals (answers : Answers) (misses : IO.Ref (List String)) :
+-        let _ := noteMiss misses s!"get_beacon_committee slot={slot} index={index}"
+-        []
++        missingValue misses s!"get_beacon_committee slot={slot} index={index}" []
+@@ -398,2 +499 @@ unsafe def makeExternals (answers : Answers) (misses : IO.Ref (List String)) :
+-        let _ := noteMiss misses s!"get_committee_count_per_slot epoch={epoch}"
+-        0
++        missingValue misses s!"get_committee_count_per_slot epoch={epoch}" 0
+@@ -404,2 +504 @@ unsafe def makeExternals (answers : Answers) (misses : IO.Ref (List String)) :
+-        let _ := noteMiss misses s!"process_slots slot={slot}"
+-        state
++        missingValue misses s!"process_slots slot={slot}" state
+@@ -411,2 +510 @@ unsafe def makeExternals (answers : Answers) (misses : IO.Ref (List String)) :
+-        let _ := noteMiss misses "process_justification_and_finalization"
+-        state
++        missingValue misses "process_justification_and_finalization" state
+@@ -449,0 +548,22 @@ def compareFcr (leanValue pythonValue : FastConfirmationStore Nat) :
++def nodeText (node : ForkChoiceNode Nat) : String :=
++  s!"({rootText node.root},{node.payload_status.toNat})"
++
++/-- Check the complete state-read domain that Gloas proposer boost can use.
++The exporter fills this domain even when its first head call skips it. -/
++def missingHeadRead (cfg : Config) (store : Store Nat) : Option String := do
++  if store.proposer_boost_root == 0 then none else do
++    let block := store.blocks store.proposer_boost_root
++    let parent := store.blocks block.parent_root
++    if parent.slot + 1 < block.slot then none else do
++      let state := store.block_states block.parent_root
++      let epoch := compute_epoch_at_slot cfg parent.slot
++      match state.committee_count_reads.find? (fun entry => entry.1 == epoch) with
++      | none => some s!"get_committee_count_per_slot head epoch={epoch}"
++      | some (_, count) =>
++          let missing := (List.range count).find? (fun index =>
++            !(state.beacon_committee_reads.any (fun entry =>
++              entry.1 == parent.slot && entry.2.1 == index)))
++          match missing with
++          | none => none
++          | some index => some s!"get_beacon_committee head slot={parent.slot} index={index}"
++
+@@ -450,0 +571,2 @@ unsafe def evaluate (record : Record) : IO (Option String) := do
++  if let some missing := missingHeadRead record.cfg record.before.store then
++    return some s!"MISSING_EXTERNAL {missing}"
+@@ -452,0 +575 @@ unsafe def evaluate (record : Record) : IO (Option String) := do
++  let head := get_head record.cfg record.before.store
+@@ -453,0 +577,3 @@ unsafe def evaluate (record : Record) : IO (Option String) := do
++  -- Store the comparison through IO before reading the miss log. This
++  -- forces the pure external callers before the effectful log inspection.
++  let comparisonRef ← IO.mkRef (compareFcr leanValue record.after)
+@@ -454,0 +581 @@ unsafe def evaluate (record : Record) : IO (Option String) := do
++  let comparison ← comparisonRef.get
+@@ -458,2 +585,3 @@ unsafe def evaluate (record : Record) : IO (Option String) := do
+-      match compareFcr leanValue record.after with
+-      | none => return none
++      if head != record.headBefore then
++        return some (fieldResult "head_before" (nodeText head) (nodeText record.headBefore))
++      match comparison with
+@@ -461,0 +590,8 @@ unsafe def evaluate (record : Record) : IO (Option String) := do
++      | none =>
++          match record.safeExecutionBlockHashAfter with
++          | none => return none
++          | some expected =>
++              let actual := get_safe_execution_block_hash leanValue
++              if actual == expected then return none
++              return some (fieldResult "safe_execution_block_hash_after"
++                (rootText actual) (rootText expected))
+@@ -485 +621 @@ unsafe def main (args : List String) : IO UInt32 := do
+-      let contents ← IO.FS.readFile path
++      let input ← IO.FS.Handle.mk path .read
+@@ -490 +626,3 @@ unsafe def main (args : List String) : IO UInt32 := do
+-      for line in contents.splitOn "\n" do
++      repeat
++        let line ← input.getLine
++        if line.isEmpty then break
+@@ -503 +641,2 @@ unsafe def main (args : List String) : IO UInt32 := do
+-      return if mismatch = 0 ∧ missing = 0 then 0 else 1
++      if records == 0 then IO.eprintln "ERROR empty trace: at least one Gloas record is required"
++      return if records > 0 ∧ mismatch = 0 ∧ missing = 0 then 0 else 1
+diff --git a/scripts/conformance/lean/GloasHelpers.lean b/scripts/conformance/lean/GloasHelpers.lean
+new file mode 100644
+index 0000000..713cf8d
+--- /dev/null
++++ b/scripts/conformance/lean/GloasHelpers.lean
+@@ -0,0 +1,173 @@
++import Lean.Data.Json
++import FastConfirmation.Spec.Model.Execution
++
++/-! Direct helper comparisons for the four-block projected source fixture.
++These stores are not claimed to be accepted executions. -/
++
++namespace FastConfirmation.GloasHelpers
++
++open FastConfirmation.Spec Lean
++
++structure Inputs where
++  verified : Bool
++  timelyYes : Nat
++  timelyNo : Nat
++  availableYes : Nat
++  availableNo : Nat
++  boostRoot : Nat
++  boostParentFull : Bool
++  siblingAttestationTimely : Bool
++  siblingPtcTimely : Bool
++
++def parseInputs (j : Json) : Except String Inputs := do
++  let result : Inputs := {
++    verified := ← (← j.getObjVal? "verified").getBool?
++    timelyYes := ← (← j.getObjVal? "timely_yes").getNat?
++    timelyNo := ← (← j.getObjVal? "timely_no").getNat?
++    availableYes := ← (← j.getObjVal? "available_yes").getNat?
++    availableNo := ← (← j.getObjVal? "available_no").getNat?
++    boostRoot := ← (← j.getObjVal? "boost_root").getNat?
++    boostParentFull := ← (← j.getObjVal? "boost_parent_full").getBool?
++    siblingAttestationTimely := ← (← j.getObjVal? "sibling_attestation_timely").getBool?
++    siblingPtcTimely := ← (← j.getObjVal? "sibling_ptc_timely").getBool?
++  }
++  if result.timelyYes + result.timelyNo > 512 ∨
++      result.availableYes + result.availableNo > 512 then
++    throw "vote counts exceed PTC size"
++  if result.boostRoot != 0 && result.boostRoot != 4 then
++    throw "fixture boost root must be 0 or 4"
++  return result
++
++def checkpoint : Checkpoint Nat := ⟨0, 1⟩
++
++def state (slot : Nat) : BeaconState Nat := {
++  genesis_time := 0
++  slot := slot
++  validators := List.replicate 100 {
++    effective_balance := 32000000000
++    slashed := false
++    activation_epoch := 0
++    exit_epoch := 2 ^ 64 - 1
++  }
++  current_justified_checkpoint := checkpoint
++  finalized_checkpoint := checkpoint
++  beacon_committee_reads := [(slot, 0, List.range 100)]
++  committee_count_reads := [(0, 1)]
++}
++
++def block (inputs : Inputs) : Nat → BeaconBlock Nat
++  | 1 => { slot := 0, parent_root := 0, proposer_index := 0,
++           block_hash := 101, parent_block_hash := 0 }
++  | 2 => { slot := 1, parent_root := 1, proposer_index := 7,
++           block_hash := 102, parent_block_hash := 101 }
++  | 3 => { slot := 1, parent_root := 1, proposer_index := 7,
++           block_hash := 103, parent_block_hash := 101 }
++  | 4 => { slot := 2, parent_root := 2, proposer_index := 8,
++           block_hash := 104, parent_block_hash := if inputs.boostParentFull then 102 else 101 }
++  | _ => default
++
++def votes (yes no : Nat) : List (Option Bool) :=
++  List.replicate yes (some true) ++ List.replicate no (some false) ++
++    List.replicate (512 - yes - no) none
++
++def store (inputs : Inputs) : Store Nat := {
++  time := 24
++  genesis_time := 0
++  justified_checkpoint := checkpoint
++  finalized_checkpoint := checkpoint
++  unrealized_justified_checkpoint := checkpoint
++  unrealized_finalized_checkpoint := checkpoint
++  proposer_boost_root := inputs.boostRoot
++  equivocating_indices := ∅
++  block_roots := [1, 2, 3, 4]
++  blocks := block inputs
++  block_states := fun root => state (block inputs root).slot
++  block_timeliness := fun root => some (if root = 3 then
++    (inputs.siblingAttestationTimely, inputs.siblingPtcTimely) else (true, true))
++  checkpoint_state_keys := {checkpoint}
++  checkpoint_states := fun _ => state 0
++  latest_messages := fun _ => none
++  unrealized_justifications := fun _ => checkpoint
++  payloads := fun root =>
++    if root ∈ [1, 2, 3, 4] ∧ (root ≠ 2 ∨ inputs.verified = true) then
++      some {
++        beacon_block_root := root
++        parent_beacon_block_root := (block inputs root).parent_root
++        identity := root + 1000
++      }
++    else none
++  payload_timeliness_vote := fun root => some (if root = 2 then
++    votes inputs.timelyYes inputs.timelyNo else List.replicate 512 (some true))
++  payload_data_availability_vote := fun root => some (if root = 2 then
++    votes inputs.availableYes inputs.availableNo else List.replicate 512 (some true))
++}
++
++def observations (s : Store Nat) : List (String × Json) :=
++  let cfg := mainnet_config
++  [ ("payload_verified", toJson (is_payload_verified s 2)),
++    ("timely_yes", toJson (payload_timeliness cfg s 2 true)),
++    ("timely_no", toJson (payload_timeliness cfg s 2 false)),
++    ("available_yes", toJson (payload_data_availability cfg s 2 true)),
++    ("available_no", toJson (payload_data_availability cfg s 2 false)),
++    ("extend", toJson (should_extend_payload cfg s 2)),
++    ("head_weak", toJson (is_head_weak cfg s 2)),
++    ("apply_boost", toJson (should_apply_proposer_boost cfg s)),
++    ("sibling_head_late", toJson (is_head_late s 3)) ] ++
++    ([ ("empty", PayloadStatus.empty), ("full", .full), ("pending", .pending) ].flatMap
++      fun (label, status) =>
++        let node := ForkChoiceNode.mk 2 status
++        [ ("previous_" ++ label, toJson (is_previous_slot_payload_decision cfg s node)),
++          ("tiebreak_" ++ label, toJson (get_payload_status_tiebreaker cfg s node)),
++          ("weight_" ++ label, toJson (get_weight cfg s node)) ])
++
++def checkFixture (j : Json) : Except String (String × List String × Nat) := do
++  let name ← (← j.getObjVal? "name").getStr?
++  let inputs ← parseInputs (← j.getObjVal? "input")
++  let expected ← j.getObjVal? "expected"
++  let actual := observations (store inputs)
++  let failures ← actual.filterMapM fun (key, value) => do
++    let source ← expected.getObjVal? key
++    pure (if source.compress = value.compress then none else
++      some s!"MISMATCH {name} {key} lean={value.compress} source={source.compress}")
++  return (name, failures, actual.length)
++
++def run (path : String) : IO UInt32 := do
++  let text ← IO.FS.readFile path
++  let parsed : Except String (Array Json) := do
++    let j ← Json.parse text
++    if (← (← j.getObjVal? "format").getStr?) != "gloas-helper-observations-v1" then
++      throw "unexpected helper observation format"
++    if (← (← j.getObjVal? "pin").getStr?) != "477321355d48d527e7e1e4d572f6a40a0b41072a" then
++      throw "unexpected consensus source pin"
++    (← j.getObjVal? "fixtures").getArr?
++  match parsed with
++  | .error error =>
++      IO.eprintln s!"ERROR {error}"
++      return 1
++  | .ok fixtures =>
++      if fixtures.isEmpty then
++        IO.eprintln "ERROR no helper fixtures"
++        return 1
++      let mut count := 0
++      let mut mismatches := 0
++      for fixture in fixtures do
++        match checkFixture fixture with
++        | .error error =>
++            IO.eprintln s!"ERROR {error}"
++            return 1
++        | .ok (name, failures, observations) =>
++            count := count + observations
++            mismatches := mismatches + failures.length
++            if failures.isEmpty then IO.println s!"OK {name}"
++            for failure in failures do IO.println failure
++      IO.println s!"SUMMARY helpers={fixtures.size} observations={count} mismatch={mismatches}"
++      return if mismatches = 0 then 0 else 1
++
++end FastConfirmation.GloasHelpers
++
++def main (args : List String) : IO UInt32 :=
++  match args with
++  | [path] => FastConfirmation.GloasHelpers.run path
++  | _ => do
++      IO.eprintln "usage: lake env lean --run scripts/conformance/lean/GloasHelpers.lean observations.json"
++      return 2
+diff --git a/scripts/conformance/lean/examples/genesis-ok.jsonl b/scripts/conformance/lean/examples/genesis-ok.jsonl
+index 3d64124..f43399e 100644
+--- a/scripts/conformance/lean/examples/genesis-ok.jsonl
++++ b/scripts/conformance/lean/examples/genesis-ok.jsonl
+@@ -1 +1 @@
+-{"schema":1,"test_id":"handmade::genesis","fork":"altair","preset":"minimal","call_index":0,"config":{"slots_per_epoch":32,"slot_duration_ms":12000,"proposer_score_boost":40,"confirmation_byzantine_threshold":25,"committee_weight_estimation_adjustment_factor":5,"effective_balance_increment":1000000000,"attestation_due_bps":3333,"min_seed_lookahead":1},"store":{"time":0,"genesis_time":0,"justified_checkpoint":{"epoch":0,"root":"0x0000000000000000000000000000000000000000000000000000000000000000"},"finalized_checkpoint":{"epoch":0,"root":"0x0000000000000000000000000000000000000000000000000000000000000000"},"unrealized_justified_checkpoint":{"epoch":0,"root":"0x0000000000000000000000000000000000000000000000000000000000000000"},"unrealized_finalized_checkpoint":{"epoch":0,"root":"0x0000000000000000000000000000000000000000000000000000000000000000"},"proposer_boost_root":"0x0000000000000000000000000000000000000000000000000000000000000000","equivocating_indices":[],"blocks":[{"root":"0x0000000000000000000000000000000000000000000000000000000000000000","slot":0,"parent_root":"0x0000000000000000000000000000000000000000000000000000000000000000"}],"block_states":[{"root":"0x0000000000000000000000000000000000000000000000000000000000000000","state":{"id":"0x0000000000000000000000000000000000000000000000000000000000000000","genesis_time":0,"slot":0,"validators":[],"current_justified_checkpoint":{"epoch":0,"root":"0x0000000000000000000000000000000000000000000000000000000000000000"},"finalized_checkpoint":{"epoch":0,"root":"0x0000000000000000000000000000000000000000000000000000000000000000"}}}],"block_timeliness":[],"checkpoint_states":[{"checkpoint":{"epoch":0,"root":"0x0000000000000000000000000000000000000000000000000000000000000000"},"state":{"id":"0x0000000000000000000000000000000000000000000000000000000000000000","genesis_time":0,"slot":0,"validators":[],"current_justified_checkpoint":{"epoch":0,"root":"0x0000000000000000000000000000000000000000000000000000000000000000"},"finalized_checkpoint":{"epoch":0,"root":"0x0000000000000000000000000000000000000000000000000000000000000000"}}}],"latest_messages":[],"unrealized_justifications":[]},"fcr_before":{"confirmed_root":"0x0000000000000000000000000000000000000000000000000000000000000000","previous_epoch_observed_justified_checkpoint":{"epoch":0,"root":"0x0000000000000000000000000000000000000000000000000000000000000000"},"current_epoch_observed_justified_checkpoint":{"epoch":0,"root":"0x0000000000000000000000000000000000000000000000000000000000000000"},"previous_epoch_greatest_unrealized_checkpoint":{"epoch":0,"root":"0x0000000000000000000000000000000000000000000000000000000000000000"},"previous_slot_head":"0x0000000000000000000000000000000000000000000000000000000000000000","current_slot_head":"0x0000000000000000000000000000000000000000000000000000000000000000"},"fcr_after":{"confirmed_root":"0x0000000000000000000000000000000000000000000000000000000000000000","previous_epoch_observed_justified_checkpoint":{"epoch":0,"root":"0x0000000000000000000000000000000000000000000000000000000000000000"},"current_epoch_observed_justified_checkpoint":{"epoch":0,"root":"0x0000000000000000000000000000000000000000000000000000000000000000"},"previous_epoch_greatest_unrealized_checkpoint":{"epoch":0,"root":"0x0000000000000000000000000000000000000000000000000000000000000000"},"previous_slot_head":"0x0000000000000000000000000000000000000000000000000000000000000000","current_slot_head":"0x0000000000000000000000000000000000000000000000000000000000000000"},"externals":{"get_beacon_committee":[],"get_committee_count_per_slot":[],"process_slots":[],"process_justification_and_finalization":[]}}
++{"schema":2,"test_id":"handmade::gloas::genesis","fork":"gloas","preset":"minimal","call_index":0,"config":{"slots_per_epoch":8,"slot_duration_ms":12000,"proposer_score_boost":40,"confirmation_byzantine_threshold":25,"committee_weight_estimation_adjustment_factor":5,"effective_balance_increment":1000000000,"attestation_due_bps":2500,"min_seed_lookahead":1,"ptc_size":16,"payload_due_bps":5000,"payload_attestation_due_bps":7500,"reorg_head_weight_threshold":20},"store":{"time":0,"genesis_time":0,"justified_checkpoint":{"epoch":0,"root":"0x0000000000000000000000000000000000000000000000000000000000000001"},"finalized_checkpoint":{"epoch":0,"root":"0x0000000000000000000000000000000000000000000000000000000000000001"},"unrealized_justified_checkpoint":{"epoch":0,"root":"0x0000000000000000000000000000000000000000000000000000000000000001"},"unrealized_finalized_checkpoint":{"epoch":0,"root":"0x0000000000000000000000000000000000000000000000000000000000000001"},"proposer_boost_root":"0x0000000000000000000000000000000000000000000000000000000000000000","equivocating_indices":[],"blocks":[{"root":"0x0000000000000000000000000000000000000000000000000000000000000001","slot":0,"parent_root":"0x0000000000000000000000000000000000000000000000000000000000000000","proposer_index":0,"parent_block_hash":"0x0000000000000000000000000000000000000000000000000000000000000000","block_hash":"0x0000000000000000000000000000000000000000000000000000000000000000","payload_attestations":[]}],"block_states":[{"root":"0x0000000000000000000000000000000000000000000000000000000000000001","state":{"id":"0x0000000000000000000000000000000000000000000000000000000000000000","genesis_time":0,"slot":0,"validators":[],"current_justified_checkpoint":{"epoch":0,"root":"0x0000000000000000000000000000000000000000000000000000000000000001"},"finalized_checkpoint":{"epoch":0,"root":"0x0000000000000000000000000000000000000000000000000000000000000001"},"beacon_committee_reads":[],"committee_count_reads":[]}}],"block_timeliness":[{"root":"0x0000000000000000000000000000000000000000000000000000000000000001","timely":[true,true]}],"checkpoint_states":[{"checkpoint":{"epoch":0,"root":"0x0000000000000000000000000000000000000000000000000000000000000001"},"state":{"id":"0x0000000000000000000000000000000000000000000000000000000000000000","genesis_time":0,"slot":0,"validators":[],"current_justified_checkpoint":{"epoch":0,"root":"0x0000000000000000000000000000000000000000000000000000000000000001"},"finalized_checkpoint":{"epoch":0,"root":"0x0000000000000000000000000000000000000000000000000000000000000001"},"beacon_committee_reads":[],"committee_count_reads":[]}}],"latest_messages":[],"unrealized_justifications":[],"payloads":[],"payload_timeliness_vote":[{"root":"0x0000000000000000000000000000000000000000000000000000000000000001","votes":[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null]}],"payload_data_availability_vote":[{"root":"0x0000000000000000000000000000000000000000000000000000000000000001","votes":[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null]}]},"fcr_before":{"confirmed_root":"0x0000000000000000000000000000000000000000000000000000000000000001","previous_epoch_observed_justified_checkpoint":{"epoch":0,"root":"0x0000000000000000000000000000000000000000000000000000000000000001"},"current_epoch_observed_justified_checkpoint":{"epoch":0,"root":"0x0000000000000000000000000000000000000000000000000000000000000001"},"previous_epoch_greatest_unrealized_checkpoint":{"epoch":0,"root":"0x0000000000000000000000000000000000000000000000000000000000000001"},"previous_slot_head":"0x0000000000000000000000000000000000000000000000000000000000000001","current_slot_head":"0x0000000000000000000000000000000000000000000000000000000000000001"},"fcr_after":{"confirmed_root":"0x0000000000000000000000000000000000000000000000000000000000000001","previous_epoch_observed_justified_checkpoint":{"epoch":0,"root":"0x0000000000000000000000000000000000000000000000000000000000000001"},"current_epoch_observed_justified_checkpoint":{"epoch":0,"root":"0x0000000000000000000000000000000000000000000000000000000000000001"},"previous_epoch_greatest_unrealized_checkpoint":{"epoch":0,"root":"0x0000000000000000000000000000000000000000000000000000000000000001"},"previous_slot_head":"0x0000000000000000000000000000000000000000000000000000000000000001","current_slot_head":"0x0000000000000000000000000000000000000000000000000000000000000001"},"externals":{"get_beacon_committee":[],"get_committee_count_per_slot":[],"process_slots":[],"process_justification_and_finalization":[]},"head_before":{"root":"0x0000000000000000000000000000000000000000000000000000000000000001","payload_status":0}}
+diff --git a/scripts/conformance/lean/examples/genesis-wrong.jsonl b/scripts/conformance/lean/examples/genesis-wrong.jsonl
+index 2f2612e..6e66416 100644
+--- a/scripts/conformance/lean/examples/genesis-wrong.jsonl
++++ b/scripts/conformance/lean/examples/genesis-wrong.jsonl
+@@ -1 +1 @@
+-{"schema":1,"test_id":"handmade::genesis-wrong","fork":"altair","preset":"minimal","call_index":0,"config":{"slots_per_epoch":32,"slot_duration_ms":12000,"proposer_score_boost":40,"confirmation_byzantine_threshold":25,"committee_weight_estimation_adjustment_factor":5,"effective_balance_increment":1000000000,"attestation_due_bps":3333,"min_seed_lookahead":1},"store":{"time":0,"genesis_time":0,"justified_checkpoint":{"epoch":0,"root":"0x0000000000000000000000000000000000000000000000000000000000000000"},"finalized_checkpoint":{"epoch":0,"root":"0x0000000000000000000000000000000000000000000000000000000000000000"},"unrealized_justified_checkpoint":{"epoch":0,"root":"0x0000000000000000000000000000000000000000000000000000000000000000"},"unrealized_finalized_checkpoint":{"epoch":0,"root":"0x0000000000000000000000000000000000000000000000000000000000000000"},"proposer_boost_root":"0x0000000000000000000000000000000000000000000000000000000000000000","equivocating_indices":[],"blocks":[{"root":"0x0000000000000000000000000000000000000000000000000000000000000000","slot":0,"parent_root":"0x0000000000000000000000000000000000000000000000000000000000000000"}],"block_states":[{"root":"0x0000000000000000000000000000000000000000000000000000000000000000","state":{"id":"0x0000000000000000000000000000000000000000000000000000000000000000","genesis_time":0,"slot":0,"validators":[],"current_justified_checkpoint":{"epoch":0,"root":"0x0000000000000000000000000000000000000000000000000000000000000000"},"finalized_checkpoint":{"epoch":0,"root":"0x0000000000000000000000000000000000000000000000000000000000000000"},"finalized_checkpoint":{"epoch":0,"root":"0x0000000000000000000000000000000000000000000000000000000000000000"}}}],"block_timeliness":[],"checkpoint_states":[{"checkpoint":{"epoch":0,"root":"0x0000000000000000000000000000000000000000000000000000000000000000"},"state":{"id":"0x0000000000000000000000000000000000000000000000000000000000000000","genesis_time":0,"slot":0,"validators":[],"current_justified_checkpoint":{"epoch":0,"root":"0x0000000000000000000000000000000000000000000000000000000000000000"},"finalized_checkpoint":{"epoch":0,"root":"0x0000000000000000000000000000000000000000000000000000000000000000"}}}],"latest_messages":[],"unrealized_justifications":[]},"fcr_before":{"confirmed_root":"0x0000000000000000000000000000000000000000000000000000000000000000","previous_epoch_observed_justified_checkpoint":{"epoch":0,"root":"0x0000000000000000000000000000000000000000000000000000000000000000"},"current_epoch_observed_justified_checkpoint":{"epoch":0,"root":"0x0000000000000000000000000000000000000000000000000000000000000000"},"previous_epoch_greatest_unrealized_checkpoint":{"epoch":0,"root":"0x0000000000000000000000000000000000000000000000000000000000000000"},"previous_slot_head":"0x0000000000000000000000000000000000000000000000000000000000000000","current_slot_head":"0x0000000000000000000000000000000000000000000000000000000000000000"},"fcr_after":{"confirmed_root":"0x0000000000000000000000000000000000000000000000000000000000000001","previous_epoch_observed_justified_checkpoint":{"epoch":0,"root":"0x0000000000000000000000000000000000000000000000000000000000000000"},"current_epoch_observed_justified_checkpoint":{"epoch":0,"root":"0x0000000000000000000000000000000000000000000000000000000000000000"},"previous_epoch_greatest_unrealized_checkpoint":{"epoch":0,"root":"0x0000000000000000000000000000000000000000000000000000000000000000"},"previous_slot_head":"0x0000000000000000000000000000000000000000000000000000000000000000","current_slot_head":"0x0000000000000000000000000000000000000000000000000000000000000000"},"externals":{"get_beacon_committee":[],"get_committee_count_per_slot":[],"process_slots":[],"process_justification_and_finalization":[]}}
++{"schema":2,"test_id":"handmade::gloas::genesis-wrong","fork":"gloas","preset":"minimal","call_index":0,"config":{"slots_per_epoch":8,"slot_duration_ms":12000,"proposer_score_boost":40,"confirmation_byzantine_threshold":25,"committee_weight_estimation_adjustment_factor":5,"effective_balance_increment":1000000000,"attestation_due_bps":2500,"min_seed_lookahead":1,"ptc_size":16,"payload_due_bps":5000,"payload_attestation_due_bps":7500,"reorg_head_weight_threshold":20},"store":{"time":0,"genesis_time":0,"justified_checkpoint":{"epoch":0,"root":"0x0000000000000000000000000000000000000000000000000000000000000001"},"finalized_checkpoint":{"epoch":0,"root":"0x0000000000000000000000000000000000000000000000000000000000000001"},"unrealized_justified_checkpoint":{"epoch":0,"root":"0x0000000000000000000000000000000000000000000000000000000000000001"},"unrealized_finalized_checkpoint":{"epoch":0,"root":"0x0000000000000000000000000000000000000000000000000000000000000001"},"proposer_boost_root":"0x0000000000000000000000000000000000000000000000000000000000000000","equivocating_indices":[],"blocks":[{"root":"0x0000000000000000000000000000000000000000000000000000000000000001","slot":0,"parent_root":"0x0000000000000000000000000000000000000000000000000000000000000000","proposer_index":0,"parent_block_hash":"0x0000000000000000000000000000000000000000000000000000000000000000","block_hash":"0x0000000000000000000000000000000000000000000000000000000000000000","payload_attestations":[]}],"block_states":[{"root":"0x0000000000000000000000000000000000000000000000000000000000000001","state":{"id":"0x0000000000000000000000000000000000000000000000000000000000000000","genesis_time":0,"slot":0,"validators":[],"current_justified_checkpoint":{"epoch":0,"root":"0x0000000000000000000000000000000000000000000000000000000000000001"},"finalized_checkpoint":{"epoch":0,"root":"0x0000000000000000000000000000000000000000000000000000000000000001"},"beacon_committee_reads":[],"committee_count_reads":[]}}],"block_timeliness":[{"root":"0x0000000000000000000000000000000000000000000000000000000000000001","timely":[true,true]}],"checkpoint_states":[{"checkpoint":{"epoch":0,"root":"0x0000000000000000000000000000000000000000000000000000000000000001"},"state":{"id":"0x0000000000000000000000000000000000000000000000000000000000000000","genesis_time":0,"slot":0,"validators":[],"current_justified_checkpoint":{"epoch":0,"root":"0x0000000000000000000000000000000000000000000000000000000000000001"},"finalized_checkpoint":{"epoch":0,"root":"0x0000000000000000000000000000000000000000000000000000000000000001"},"beacon_committee_reads":[],"committee_count_reads":[]}}],"latest_messages":[],"unrealized_justifications":[],"payloads":[],"payload_timeliness_vote":[{"root":"0x0000000000000000000000000000000000000000000000000000000000000001","votes":[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null]}],"payload_data_availability_vote":[{"root":"0x0000000000000000000000000000000000000000000000000000000000000001","votes":[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null]}]},"fcr_before":{"confirmed_root":"0x0000000000000000000000000000000000000000000000000000000000000001","previous_epoch_observed_justified_checkpoint":{"epoch":0,"root":"0x0000000000000000000000000000000000000000000000000000000000000001"},"current_epoch_observed_justified_checkpoint":{"epoch":0,"root":"0x0000000000000000000000000000000000000000000000000000000000000001"},"previous_epoch_greatest_unrealized_checkpoint":{"epoch":0,"root":"0x0000000000000000000000000000000000000000000000000000000000000001"},"previous_slot_head":"0x0000000000000000000000000000000000000000000000000000000000000001","current_slot_head":"0x0000000000000000000000000000000000000000000000000000000000000001"},"fcr_after":{"confirmed_root":"0x0000000000000000000000000000000000000000000000000000000000000002","previous_epoch_observed_justified_checkpoint":{"epoch":0,"root":"0x0000000000000000000000000000000000000000000000000000000000000001"},"current_epoch_observed_justified_checkpoint":{"epoch":0,"root":"0x0000000000000000000000000000000000000000000000000000000000000001"},"previous_epoch_greatest_unrealized_checkpoint":{"epoch":0,"root":"0x0000000000000000000000000000000000000000000000000000000000000001"},"previous_slot_head":"0x0000000000000000000000000000000000000000000000000000000000000001","current_slot_head":"0x0000000000000000000000000000000000000000000000000000000000000001"},"externals":{"get_beacon_committee":[],"get_committee_count_per_slot":[],"process_slots":[],"process_justification_and_finalization":[]},"head_before":{"root":"0x0000000000000000000000000000000000000000000000000000000000000001","payload_status":0}}
+diff --git a/scripts/conformance/lean/examples/historical-v1.jsonl b/scripts/conformance/lean/examples/historical-v1.jsonl
+new file mode 100644
+index 0000000..3d64124
+--- /dev/null
++++ b/scripts/conformance/lean/examples/historical-v1.jsonl
+@@ -0,0 +1 @@
++{"schema":1,"test_id":"handmade::genesis","fork":"altair","preset":"minimal","call_index":0,"config":{"slots_per_epoch":32,"slot_duration_ms":12000,"proposer_score_boost":40,"confirmation_byzantine_threshold":25,"committee_weight_estimation_adjustment_factor":5,"effective_balance_increment":1000000000,"attestation_due_bps":3333,"min_seed_lookahead":1},"store":{"time":0,"genesis_time":0,"justified_checkpoint":{"epoch":0,"root":"0x0000000000000000000000000000000000000000000000000000000000000000"},"finalized_checkpoint":{"epoch":0,"root":"0x0000000000000000000000000000000000000000000000000000000000000000"},"unrealized_justified_checkpoint":{"epoch":0,"root":"0x0000000000000000000000000000000000000000000000000000000000000000"},"unrealized_finalized_checkpoint":{"epoch":0,"root":"0x0000000000000000000000000000000000000000000000000000000000000000"},"proposer_boost_root":"0x0000000000000000000000000000000000000000000000000000000000000000","equivocating_indices":[],"blocks":[{"root":"0x0000000000000000000000000000000000000000000000000000000000000000","slot":0,"parent_root":"0x0000000000000000000000000000000000000000000000000000000000000000"}],"block_states":[{"root":"0x0000000000000000000000000000000000000000000000000000000000000000","state":{"id":"0x0000000000000000000000000000000000000000000000000000000000000000","genesis_time":0,"slot":0,"validators":[],"current_justified_checkpoint":{"epoch":0,"root":"0x0000000000000000000000000000000000000000000000000000000000000000"},"finalized_checkpoint":{"epoch":0,"root":"0x0000000000000000000000000000000000000000000000000000000000000000"}}}],"block_timeliness":[],"checkpoint_states":[{"checkpoint":{"epoch":0,"root":"0x0000000000000000000000000000000000000000000000000000000000000000"},"state":{"id":"0x0000000000000000000000000000000000000000000000000000000000000000","genesis_time":0,"slot":0,"validators":[],"current_justified_checkpoint":{"epoch":0,"root":"0x0000000000000000000000000000000000000000000000000000000000000000"},"finalized_checkpoint":{"epoch":0,"root":"0x0000000000000000000000000000000000000000000000000000000000000000"}}}],"latest_messages":[],"unrealized_justifications":[]},"fcr_before":{"confirmed_root":"0x0000000000000000000000000000000000000000000000000000000000000000","previous_epoch_observed_justified_checkpoint":{"epoch":0,"root":"0x0000000000000000000000000000000000000000000000000000000000000000"},"current_epoch_observed_justified_checkpoint":{"epoch":0,"root":"0x0000000000000000000000000000000000000000000000000000000000000000"},"previous_epoch_greatest_unrealized_checkpoint":{"epoch":0,"root":"0x0000000000000000000000000000000000000000000000000000000000000000"},"previous_slot_head":"0x0000000000000000000000000000000000000000000000000000000000000000","current_slot_head":"0x0000000000000000000000000000000000000000000000000000000000000000"},"fcr_after":{"confirmed_root":"0x0000000000000000000000000000000000000000000000000000000000000000","previous_epoch_observed_justified_checkpoint":{"epoch":0,"root":"0x0000000000000000000000000000000000000000000000000000000000000000"},"current_epoch_observed_justified_checkpoint":{"epoch":0,"root":"0x0000000000000000000000000000000000000000000000000000000000000000"},"previous_epoch_greatest_unrealized_checkpoint":{"epoch":0,"root":"0x0000000000000000000000000000000000000000000000000000000000000000"},"previous_slot_head":"0x0000000000000000000000000000000000000000000000000000000000000000","current_slot_head":"0x0000000000000000000000000000000000000000000000000000000000000000"},"externals":{"get_beacon_committee":[],"get_committee_count_per_slot":[],"process_slots":[],"process_justification_and_finalization":[]}}
+diff --git a/scripts/conformance/lean/examples/safe-execution-ok.jsonl b/scripts/conformance/lean/examples/safe-execution-ok.jsonl
+new file mode 100644
+index 0000000..4c40781
+--- /dev/null
++++ b/scripts/conformance/lean/examples/safe-execution-ok.jsonl
+@@ -0,0 +1 @@
++{"schema":2,"test_id":"handwritten-safe-execution-parent-hash","fork":"gloas","preset":"minimal","call_index":0,"config":{"slots_per_epoch":8,"slot_duration_ms":12000,"proposer_score_boost":40,"confirmation_byzantine_threshold":25,"committee_weight_estimation_adjustment_factor":5,"effective_balance_increment":1000000000,"attestation_due_bps":2500,"min_seed_lookahead":1,"ptc_size":16,"payload_due_bps":5000,"payload_attestation_due_bps":7500,"reorg_head_weight_threshold":20},"store":{"time":0,"genesis_time":0,"justified_checkpoint":{"epoch":0,"root":"0x0000000000000000000000000000000000000000000000000000000000000001"},"finalized_checkpoint":{"epoch":0,"root":"0x0000000000000000000000000000000000000000000000000000000000000001"},"unrealized_justified_checkpoint":{"epoch":0,"root":"0x0000000000000000000000000000000000000000000000000000000000000001"},"unrealized_finalized_checkpoint":{"epoch":0,"root":"0x0000000000000000000000000000000000000000000000000000000000000001"},"proposer_boost_root":"0x0000000000000000000000000000000000000000000000000000000000000000","equivocating_indices":[],"blocks":[{"root":"0x0000000000000000000000000000000000000000000000000000000000000001","slot":0,"parent_root":"0x0000000000000000000000000000000000000000000000000000000000000000","proposer_index":0,"parent_block_hash":"0x0000000000000000000000000000000000000000000000000000000000000003","block_hash":"0x0000000000000000000000000000000000000000000000000000000000000002","payload_attestations":[]}],"block_states":[{"root":"0x0000000000000000000000000000000000000000000000000000000000000001","state":{"id":"0x0000000000000000000000000000000000000000000000000000000000000000","genesis_time":0,"slot":0,"validators":[],"current_justified_checkpoint":{"epoch":0,"root":"0x0000000000000000000000000000000000000000000000000000000000000001"},"finalized_checkpoint":{"epoch":0,"root":"0x0000000000000000000000000000000000000000000000000000000000000001"},"beacon_committee_reads":[],"committee_count_reads":[]}}],"block_timeliness":[{"root":"0x0000000000000000000000000000000000000000000000000000000000000001","timely":[true,true]}],"checkpoint_states":[{"checkpoint":{"epoch":0,"root":"0x0000000000000000000000000000000000000000000000000000000000000001"},"state":{"id":"0x0000000000000000000000000000000000000000000000000000000000000000","genesis_time":0,"slot":0,"validators":[],"current_justified_checkpoint":{"epoch":0,"root":"0x0000000000000000000000000000000000000000000000000000000000000001"},"finalized_checkpoint":{"epoch":0,"root":"0x0000000000000000000000000000000000000000000000000000000000000001"},"beacon_committee_reads":[],"committee_count_reads":[]}}],"latest_messages":[],"unrealized_justifications":[],"payloads":[],"payload_timeliness_vote":[{"root":"0x0000000000000000000000000000000000000000000000000000000000000001","votes":[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null]}],"payload_data_availability_vote":[{"root":"0x0000000000000000000000000000000000000000000000000000000000000001","votes":[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null]}]},"fcr_before":{"confirmed_root":"0x0000000000000000000000000000000000000000000000000000000000000001","previous_epoch_observed_justified_checkpoint":{"epoch":0,"root":"0x0000000000000000000000000000000000000000000000000000000000000001"},"current_epoch_observed_justified_checkpoint":{"epoch":0,"root":"0x0000000000000000000000000000000000000000000000000000000000000001"},"previous_epoch_greatest_unrealized_checkpoint":{"epoch":0,"root":"0x0000000000000000000000000000000000000000000000000000000000000001"},"previous_slot_head":"0x0000000000000000000000000000000000000000000000000000000000000001","current_slot_head":"0x0000000000000000000000000000000000000000000000000000000000000001"},"fcr_after":{"confirmed_root":"0x0000000000000000000000000000000000000000000000000000000000000001","previous_epoch_observed_justified_checkpoint":{"epoch":0,"root":"0x0000000000000000000000000000000000000000000000000000000000000001"},"current_epoch_observed_justified_checkpoint":{"epoch":0,"root":"0x0000000000000000000000000000000000000000000000000000000000000001"},"previous_epoch_greatest_unrealized_checkpoint":{"epoch":0,"root":"0x0000000000000000000000000000000000000000000000000000000000000001"},"previous_slot_head":"0x0000000000000000000000000000000000000000000000000000000000000001","current_slot_head":"0x0000000000000000000000000000000000000000000000000000000000000001"},"externals":{"get_beacon_committee":[],"get_committee_count_per_slot":[],"process_slots":[],"process_justification_and_finalization":[]},"head_before":{"root":"0x0000000000000000000000000000000000000000000000000000000000000001","payload_status":0},"safe_execution_block_hash_after":"0x0000000000000000000000000000000000000000000000000000000000000003"}
+diff --git a/scripts/conformance/lean/examples/safe-execution-wrong.jsonl b/scripts/conformance/lean/examples/safe-execution-wrong.jsonl
+new file mode 100644
+index 0000000..26c9242
+--- /dev/null
++++ b/scripts/conformance/lean/examples/safe-execution-wrong.jsonl
+@@ -0,0 +1 @@
++{"schema":2,"test_id":"handwritten-safe-execution-wrong-own-hash","fork":"gloas","preset":"minimal","call_index":0,"config":{"slots_per_epoch":8,"slot_duration_ms":12000,"proposer_score_boost":40,"confirmation_byzantine_threshold":25,"committee_weight_estimation_adjustment_factor":5,"effective_balance_increment":1000000000,"attestation_due_bps":2500,"min_seed_lookahead":1,"ptc_size":16,"payload_due_bps":5000,"payload_attestation_due_bps":7500,"reorg_head_weight_threshold":20},"store":{"time":0,"genesis_time":0,"justified_checkpoint":{"epoch":0,"root":"0x0000000000000000000000000000000000000000000000000000000000000001"},"finalized_checkpoint":{"epoch":0,"root":"0x0000000000000000000000000000000000000000000000000000000000000001"},"unrealized_justified_checkpoint":{"epoch":0,"root":"0x0000000000000000000000000000000000000000000000000000000000000001"},"unrealized_finalized_checkpoint":{"epoch":0,"root":"0x0000000000000000000000000000000000000000000000000000000000000001"},"proposer_boost_root":"0x0000000000000000000000000000000000000000000000000000000000000000","equivocating_indices":[],"blocks":[{"root":"0x0000000000000000000000000000000000000000000000000000000000000001","slot":0,"parent_root":"0x0000000000000000000000000000000000000000000000000000000000000000","proposer_index":0,"parent_block_hash":"0x0000000000000000000000000000000000000000000000000000000000000003","block_hash":"0x0000000000000000000000000000000000000000000000000000000000000002","payload_attestations":[]}],"block_states":[{"root":"0x0000000000000000000000000000000000000000000000000000000000000001","state":{"id":"0x0000000000000000000000000000000000000000000000000000000000000000","genesis_time":0,"slot":0,"validators":[],"current_justified_checkpoint":{"epoch":0,"root":"0x0000000000000000000000000000000000000000000000000000000000000001"},"finalized_checkpoint":{"epoch":0,"root":"0x0000000000000000000000000000000000000000000000000000000000000001"},"beacon_committee_reads":[],"committee_count_reads":[]}}],"block_timeliness":[{"root":"0x0000000000000000000000000000000000000000000000000000000000000001","timely":[true,true]}],"checkpoint_states":[{"checkpoint":{"epoch":0,"root":"0x0000000000000000000000000000000000000000000000000000000000000001"},"state":{"id":"0x0000000000000000000000000000000000000000000000000000000000000000","genesis_time":0,"slot":0,"validators":[],"current_justified_checkpoint":{"epoch":0,"root":"0x0000000000000000000000000000000000000000000000000000000000000001"},"finalized_checkpoint":{"epoch":0,"root":"0x0000000000000000000000000000000000000000000000000000000000000001"},"beacon_committee_reads":[],"committee_count_reads":[]}}],"latest_messages":[],"unrealized_justifications":[],"payloads":[],"payload_timeliness_vote":[{"root":"0x0000000000000000000000000000000000000000000000000000000000000001","votes":[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null]}],"payload_data_availability_vote":[{"root":"0x0000000000000000000000000000000000000000000000000000000000000001","votes":[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null]}]},"fcr_before":{"confirmed_root":"0x0000000000000000000000000000000000000000000000000000000000000001","previous_epoch_observed_justified_checkpoint":{"epoch":0,"root":"0x0000000000000000000000000000000000000000000000000000000000000001"},"current_epoch_observed_justified_checkpoint":{"epoch":0,"root":"0x0000000000000000000000000000000000000000000000000000000000000001"},"previous_epoch_greatest_unrealized_checkpoint":{"epoch":0,"root":"0x0000000000000000000000000000000000000000000000000000000000000001"},"previous_slot_head":"0x0000000000000000000000000000000000000000000000000000000000000001","current_slot_head":"0x0000000000000000000000000000000000000000000000000000000000000001"},"fcr_after":{"confirmed_root":"0x0000000000000000000000000000000000000000000000000000000000000001","previous_epoch_observed_justified_checkpoint":{"epoch":0,"root":"0x0000000000000000000000000000000000000000000000000000000000000001"},"current_epoch_observed_justified_checkpoint":{"epoch":0,"root":"0x0000000000000000000000000000000000000000000000000000000000000001"},"previous_epoch_greatest_unrealized_checkpoint":{"epoch":0,"root":"0x0000000000000000000000000000000000000000000000000000000000000001"},"previous_slot_head":"0x0000000000000000000000000000000000000000000000000000000000000001","current_slot_head":"0x0000000000000000000000000000000000000000000000000000000000000001"},"externals":{"get_beacon_committee":[],"get_committee_count_per_slot":[],"process_slots":[],"process_justification_and_finalization":[]},"head_before":{"root":"0x0000000000000000000000000000000000000000000000000000000000000001","payload_status":0},"safe_execution_block_hash_after":"0x0000000000000000000000000000000000000000000000000000000000000002"}
+diff --git a/scripts/conformance/python/check_trace.py b/scripts/conformance/python/check_trace.py
+index c4ef912..8df8691 100644
+--- a/scripts/conformance/python/check_trace.py
++++ b/scripts/conformance/python/check_trace.py
+@@ -22,0 +23,4 @@ CONFIG_KEYS = {
++    "ptc_size",
++    "payload_due_bps",
++    "payload_attestation_due_bps",
++    "reorg_head_weight_threshold",
+@@ -38,0 +43,3 @@ STORE_KEYS = {
++    "payloads",
++    "payload_timeliness_vote",
++    "payload_data_availability_vote",
+@@ -63,0 +71,2 @@ def integer(value: Any, path: str) -> int:
++        if value < 0:
++            fail(f"{path}: expected a nonnegative integer")
+@@ -95,0 +105,2 @@ def state(value: Any, path: str) -> None:
++            "beacon_committee_reads",
++            "committee_count_reads",
+@@ -116,0 +128,10 @@ def state(value: Any, path: str) -> None:
++    for index, item in enumerate(value["beacon_committee_reads"]):
++        exact_keys(item, {"slot", "index", "result"}, f"{path}.beacon_committee_reads[{index}]")
++        integer(item["slot"], f"{path}.beacon_committee_reads[{index}].slot")
++        integer(item["index"], f"{path}.beacon_committee_reads[{index}].index")
++        for result in item["result"]:
++            integer(result, f"{path}.beacon_committee_reads[{index}].result")
++    for index, item in enumerate(value["committee_count_reads"]):
++        exact_keys(item, {"epoch", "result"}, f"{path}.committee_count_reads[{index}]")
++        integer(item["epoch"], f"{path}.committee_count_reads[{index}].epoch")
++        integer(item["result"], f"{path}.committee_count_reads[{index}].result")
+@@ -140 +161 @@ def store(value: Any, path: str) -> None:
+-        exact_keys(block, {"root", "slot", "parent_root"}, f"{path}.blocks[{index}]")
++        exact_keys(block, {"root", "slot", "parent_root", "proposer_index", "parent_block_hash", "block_hash", "payload_attestations"}, f"{path}.blocks[{index}]")
+@@ -143,0 +165,15 @@ def store(value: Any, path: str) -> None:
++        integer(block["proposer_index"], f"{path}.blocks[{index}].proposer_index")
++        root(block["parent_block_hash"], f"{path}.blocks[{index}].parent_block_hash")
++        root(block["block_hash"], f"{path}.blocks[{index}].block_hash")
++        for att_index, attestation in enumerate(block["payload_attestations"]):
++            att_path = f"{path}.blocks[{index}].payload_attestations[{att_index}]"
++            exact_keys(attestation, {"attesting_indices", "data", "signature"}, att_path)
++            root(attestation["signature"], f"{att_path}.signature")
++            for validator in attestation["attesting_indices"]:
++                integer(validator, f"{att_path}.attesting_indices")
++            data = attestation["data"]
++            exact_keys(data, {"slot", "beacon_block_root", "payload_present", "blob_data_available"}, f"{att_path}.data")
++            integer(data["slot"], f"{att_path}.data.slot")
++            root(data["beacon_block_root"], f"{att_path}.data.beacon_block_root")
++            if not isinstance(data["payload_present"], bool) or not isinstance(data["blob_data_available"], bool):
++                fail(f"{att_path}.data: expected payload and data booleans")
+@@ -158,2 +194,2 @@ def store(value: Any, path: str) -> None:
+-        if not isinstance(item["timely"], bool):
+-            fail(f"{path}.block_timeliness[{index}].timely: expected boolean")
++        if not isinstance(item["timely"], list) or len(item["timely"]) != 2 or not all(isinstance(bit, bool) for bit in item["timely"]):
++            fail(f"{path}.block_timeliness[{index}].timely: expected two booleans")
+@@ -161 +197 @@ def store(value: Any, path: str) -> None:
+-        exact_keys(item, {"index", "epoch", "root"}, f"{path}.latest_messages[{index}]")
++        exact_keys(item, {"index", "slot", "root", "payload_present"}, f"{path}.latest_messages[{index}]")
+@@ -163 +199,3 @@ def store(value: Any, path: str) -> None:
+-        integer(item["epoch"], f"{path}.latest_messages[{index}].epoch")
++        integer(item["slot"], f"{path}.latest_messages[{index}].slot")
++        if not isinstance(item["payload_present"], bool):
++            fail(f"{path}.latest_messages[{index}].payload_present: expected boolean")
+@@ -169,0 +208,15 @@ def store(value: Any, path: str) -> None:
++    for index, item in enumerate(value["payloads"]):
++        item_path = f"{path}.payloads[{index}]"
++        exact_keys(item, {"root", "beacon_block_root", "parent_beacon_block_root", "identity"}, item_path)
++        for name in item:
++            root(item[name], f"{item_path}.{name}")
++        if item["root"] != item["beacon_block_root"]:
++            fail(f"{item_path}: payload map key differs from beacon_block_root")
++    for name in ("payload_timeliness_vote", "payload_data_availability_vote"):
++        for index, item in enumerate(value[name]):
++            item_path = f"{path}.{name}[{index}]"
++            exact_keys(item, {"root", "votes"}, item_path)
++            root(item["root"], f"{item_path}.root")
++            if not isinstance(item["votes"], list) or not all(vote is None or isinstance(vote, bool) for vote in item["votes"]):
++                fail(f"{item_path}.votes: expected nullable booleans")
++
+@@ -224,0 +278,2 @@ def main() -> int:
++                if isinstance(record, dict) and record.get("schema") == 1:
++                    fail(f"line {line_number}: schema v1 describes a phase0 store; schema v2 is required")
+@@ -228,0 +284 @@ def main() -> int:
++                        "head_before",
+@@ -238 +294,3 @@ def main() -> int:
+-                    },
++                    } | ({"safe_execution_block_hash_after"}
++                         if isinstance(record, dict) and "safe_execution_block_hash_after" in record
++                         else set()),
+@@ -241,2 +299,10 @@ def main() -> int:
+-                if record["schema"] != 1:
+-                    fail(f"line {line_number}: unsupported schema")
++                if record["schema"] == 1:
++                    fail(f"line {line_number}: schema v1 describes a phase0 store; schema v2 is required")
++                if type(record["schema"]) is not int or record["schema"] != 2:
++                    fail(f"line {line_number}: unsupported schema; expected v2")
++                if "safe_execution_block_hash_after" in record:
++                    root(record["safe_execution_block_hash_after"], f"line {line_number}.safe_execution_block_hash_after")
++                exact_keys(record["head_before"], {"root", "payload_status"}, f"line {line_number}.head_before")
++                root(record["head_before"]["root"], f"line {line_number}.head_before.root")
++                if integer(record["head_before"]["payload_status"], f"line {line_number}.head_before.payload_status") not in (0, 1, 2):
++                    fail(f"line {line_number}.head_before.payload_status: expected 0, 1, or 2")
+@@ -246,0 +313,2 @@ def main() -> int:
++                if record["fork"] != "gloas":
++                    fail(f"line {line_number}: schema v2 requires Gloas")
+@@ -251,0 +320,4 @@ def main() -> int:
++                for name in ("payload_timeliness_vote", "payload_data_availability_vote"):
++                    for item in record["store"][name]:
++                        if len(item["votes"]) != integer(record["config"]["ptc_size"], "ptc_size"):
++                            fail(f"line {line_number}.store.{name}: vote list length differs from ptc_size")
+diff --git a/scripts/conformance/python/fcr_trace_plugin.py b/scripts/conformance/python/fcr_trace_plugin.py
+index 7bf5099..38ab794 100644
+--- a/scripts/conformance/python/fcr_trace_plugin.py
++++ b/scripts/conformance/python/fcr_trace_plugin.py
+@@ -1 +1 @@
+-"""Export Python fast-confirmation calls as schema-versioned JSON Lines."""
++"""Export Gloas fast-confirmation calls as schema v2 JSON Lines."""
+@@ -52,0 +53,13 @@ def _state(spec: Any, state: Any) -> dict[str, Any]:
++def _node(node: Any) -> dict[str, Any]:
++    return {"root": _root(node.root), "payload_status": _int(node.payload_status)}
++
++
++def _payload_attestation_data(data: Any) -> dict[str, Any]:
++    return {
++        "beacon_block_root": _root(data.beacon_block_root),
++        "slot": _int(data.slot),
++        "payload_present": bool(data.payload_present),
++        "blob_data_available": bool(data.blob_data_available),
++    }
++
++
+@@ -67,0 +81,13 @@ def _store(spec: Any, store: Any) -> dict[str, Any]:
++                "proposer_index": _int(block.proposer_index),
++                "parent_block_hash": _root(block.body.signed_execution_payload_bid.message.parent_block_hash),
++                "block_hash": _root(block.body.signed_execution_payload_bid.message.block_hash),
++                "payload_attestations": [
++                    {
++                        "attesting_indices": [_int(i) for i in spec.get_indexed_payload_attestation(
++                            store.block_states[root], attestation
++                        ).attesting_indices],
++                        "data": _payload_attestation_data(attestation.data),
++                        "signature": _root(spec.hash_tree_root(attestation.signature)),
++                    }
++                    for attestation in block.body.payload_attestations
++                ],
+@@ -76 +102 @@ def _store(spec: Any, store: Any) -> dict[str, Any]:
+-            {"root": _root(root), "timely": bool(timely)}
++            {"root": _root(root), "timely": [bool(value) for value in timely]}
+@@ -86 +112,2 @@ def _store(spec: Any, store: Any) -> dict[str, Any]:
+-                "epoch": _int(message.epoch),
++                "slot": _int(message.slot),
++                "payload_present": bool(message.payload_present),
+@@ -90,0 +118,17 @@ def _store(spec: Any, store: Any) -> dict[str, Any]:
++        "payloads": [
++            {
++                "root": _root(root),
++                "beacon_block_root": _root(envelope.beacon_block_root),
++                "parent_beacon_block_root": _root(envelope.parent_beacon_block_root),
++                "identity": _root(spec.hash_tree_root(envelope)),
++            }
++            for root, envelope in store.payloads.items()
++        ],
++        "payload_timeliness_vote": [
++            {"root": _root(root), "votes": [None if vote is None else bool(vote) for vote in votes]}
++            for root, votes in store.payload_timeliness_vote.items()
++        ],
++        "payload_data_availability_vote": [
++            {"root": _root(root), "votes": [None if vote is None else bool(vote) for vote in votes]}
++            for root, votes in store.payload_data_availability_vote.items()
++        ],
+@@ -127 +171,5 @@ def _config(spec: Any) -> dict[str, Any]:
+-        "attestation_due_bps": _int(spec.config.ATTESTATION_DUE_BPS),
++        "attestation_due_bps": _int(spec.config.ATTESTATION_DUE_BPS_GLOAS),
++        "ptc_size": _int(spec.PTC_SIZE),
++        "payload_due_bps": _int(spec.config.PAYLOAD_DUE_BPS),
++        "payload_attestation_due_bps": _int(spec.config.PAYLOAD_ATTESTATION_DUE_BPS),
++        "reorg_head_weight_threshold": _int(spec.config.REORG_HEAD_WEIGHT_THRESHOLD),
+@@ -146,0 +195,57 @@ def _ambiguity_guard(
++def _encode_large_integers(value: Any) -> Any:
++    if isinstance(value, bool):
++        return value
++    if isinstance(value, int):
++        return str(value) if value > 2**53 else value
++    if isinstance(value, dict):
++        return {key: _encode_large_integers(item) for key, item in value.items()}
++    if isinstance(value, (list, tuple)):
++        return [_encode_large_integers(item) for item in value]
++    return value
++
++
++def _attach_read_views(record: dict[str, Any]) -> None:
++    """Build finite source read views from all calls reached in this record."""
++    committees: dict[str, dict[tuple[int, int], list[int]]] = {}
++    counts: dict[str, dict[int, int]] = {}
++    for answer in record["externals"]["get_beacon_committee"]:
++        key = (answer["slot"], answer["index"])
++        values = committees.setdefault(answer["state"]["id"], {})
++        if key in values and values[key] != answer["result"]:
++            raise RuntimeError(f"inconsistent committee read test_id={record['test_id']}")
++        values[key] = answer["result"]
++    for answer in record["externals"]["get_committee_count_per_slot"]:
++        values = counts.setdefault(answer["state"]["id"], {})
++        if answer["epoch"] in values and values[answer["epoch"]] != answer["result"]:
++            raise RuntimeError(f"inconsistent committee count test_id={record['test_id']}")
++        values[answer["epoch"]] = answer["result"]
++
++    def visit(value: Any) -> None:
++        if isinstance(value, dict):
++            if "id" in value and "validators" in value:
++                identity = value["id"]
++                value["beacon_committee_reads"] = [
++                    {"slot": slot, "index": index, "result": result}
++                    for (slot, index), result in sorted(committees.get(identity, {}).items())
++                ]
++                value["committee_count_reads"] = [
++                    {"epoch": epoch, "result": result}
++                    for epoch, result in sorted(counts.get(identity, {}).items())
++                ]
++            for item in value.values():
++                visit(item)
++        elif isinstance(value, list):
++            for item in value:
++                visit(item)
++
++    visit(record)
++
++
++def _check_projection_answers(record: dict[str, Any]) -> None:
++    seen: dict[str, dict[str, Any]] = {}
++    for function, answers in record["externals"].items():
++        for answer in answers:
++            key = tuple((key, value) for key, value in answer.items() if key != "result")
++            _ambiguity_guard(seen, function, key, answer["result"], record["test_id"])
++
++
+@@ -157 +261,0 @@ def _wrap_externals(spec: Any, test_id: str, externals: dict[str, list[dict[str,
+-    seen: dict[str, dict[str, str]] = {}
+@@ -163,7 +266,0 @@ def _wrap_externals(spec: Any, test_id: str, externals: dict[str, list[dict[str,
+-        _ambiguity_guard(
+-            seen,
+-            "get_beacon_committee",
+-            (before, _int(slot), _int(index)),
+-            answer["result"],
+-            test_id,
+-        )
+@@ -177,7 +273,0 @@ def _wrap_externals(spec: Any, test_id: str, externals: dict[str, list[dict[str,
+-        _ambiguity_guard(
+-            seen,
+-            "get_committee_count_per_slot",
+-            (before, _int(epoch)),
+-            answer["result"],
+-            test_id,
+-        )
+@@ -191,7 +280,0 @@ def _wrap_externals(spec: Any, test_id: str, externals: dict[str, list[dict[str,
+-        _ambiguity_guard(
+-            seen,
+-            "process_slots",
+-            (before, _int(slot)),
+-            answer["result"],
+-            test_id,
+-        )
+@@ -205,7 +287,0 @@ def _wrap_externals(spec: Any, test_id: str, externals: dict[str, list[dict[str,
+-        _ambiguity_guard(
+-            seen,
+-            "process_justification_and_finalization",
+-            (before,),
+-            answer["result"],
+-            test_id,
+-        )
+@@ -229,0 +306,2 @@ def _capture(self: Any) -> None:
++    if str(spec.fork) != "gloas":
++        raise RuntimeError("schema v2 requires Gloas; pre-Gloas stores are historical")
+@@ -244,0 +323,13 @@ def _capture(self: Any) -> None:
++        # Fill the only state-read domain used by Gloas head scoring. These
++        # queries also cover paths that the extra head call does not take.
++        store = fcr_store.store
++        if store.proposer_boost_root != spec.Root():
++            boost = store.blocks[store.proposer_boost_root]
++            parent = store.blocks[boost.parent_root]
++            if parent.slot + 1 >= boost.slot:
++                state = store.block_states[boost.parent_root]
++                epoch = spec.compute_epoch_at_slot(parent.slot)
++                count = spec.get_committee_count_per_slot(state, epoch)
++                for index in range(count):
++                    spec.get_beacon_committee(state, parent.slot, spec.CommitteeIndex(index))
++        head_before = _node(spec.get_head(fcr_store.store))
+@@ -258 +349,2 @@ def _capture(self: Any) -> None:
+-        "schema": 1,
++        "schema": 2,
++        "head_before": head_before,
+@@ -266,0 +359 @@ def _capture(self: Any) -> None:
++        "safe_execution_block_hash_after": _root(spec.get_safe_execution_block_hash(fcr_store)),
+@@ -269 +362,3 @@ def _capture(self: Any) -> None:
+-    _writer.write(json.dumps(record, separators=(",", ":")) + "\n")
++    _attach_read_views(record)
++    _check_projection_answers(record)
++    _writer.write(json.dumps(_encode_large_integers(record), separators=(",", ":")) + "\n")
+diff --git a/scripts/conformance/python/gloas_helper_observations.py b/scripts/conformance/python/gloas_helper_observations.py
+new file mode 100644
+index 0000000..4b99747
+--- /dev/null
++++ b/scripts/conformance/python/gloas_helper_observations.py
+@@ -0,0 +1,124 @@
++"""Export direct Gloas helper observations from unchanged pinned source.
++
++The four-block store and committee reads are projections. These fixtures are
++not pyspec traces or accepted executions. No source file is changed.
++"""
++
++from __future__ import annotations
++
++import argparse
++import json
++from pathlib import Path
++from types import SimpleNamespace
++
++from gloas_full_instance_obstacle import (
++    GloasNode,
++    PIN,
++    fixture,
++    load_helpers,
++    source_functions,
++)
++
++
++def cases() -> list[dict]:
++    base = dict(verified=True, timely_yes=0, timely_no=0, available_yes=0,
++                available_no=0, boost_root=4, boost_parent_full=True,
++                sibling_attestation_timely=False, sibling_ptc_timely=False)
++    variants = [
++        ("verified_unknown_no_boost", dict(boost_root=0, sibling_attestation_timely=True,
++                                          sibling_ptc_timely=True)),
++        ("unverified_positive_votes", dict(verified=False, timely_yes=512, available_yes=512,
++                                           boost_parent_full=False)),
++        ("tied_empty_boost", dict(timely_yes=256, timely_no=256,
++                                 available_yes=256, available_no=256, boost_parent_full=False)),
++        ("positive_majorities_empty_boost", dict(timely_yes=257, timely_no=255,
++                                                available_yes=257, available_no=255,
++                                                boost_parent_full=False)),
++        ("negative_majorities_empty_boost", dict(timely_yes=255, timely_no=257,
++                                                available_yes=255, available_no=257,
++                                                boost_parent_full=False)),
++        ("timely_only_empty_boost", dict(timely_yes=257, timely_no=255,
++                                        available_yes=256, available_no=256,
++                                        boost_parent_full=False)),
++        ("available_only_empty_boost", dict(timely_yes=256, timely_no=256,
++                                           available_yes=257, available_no=255,
++                                           boost_parent_full=False)),
++        ("early_equivocation_ptc_only", dict(sibling_attestation_timely=False,
++                                            sibling_ptc_timely=True)),
++        ("late_equivocation", {}),
++    ]
++    return [{"name": name, "input": base | changes} for name, changes in variants]
++
++
++def votes(yes: int, no: int) -> list[bool | None]:
++    assert yes + no <= 512
++    return [True] * yes + [False] * no + [None] * (512 - yes - no)
++
++
++def make_store(inputs: dict):
++    store = fixture()
++    store.latest_messages = {}
++    store.proposer_boost_root = inputs["boost_root"]
++    store.blocks[4].body.signed_execution_payload_bid.message.parent_block_hash = (
++        102 if inputs["boost_parent_full"] else 101
++    )
++    store.block_timeliness[3] = [inputs["sibling_attestation_timely"], inputs["sibling_ptc_timely"]]
++    store.payloads = {
++        root: SimpleNamespace(beacon_block_root=root,
++                              parent_beacon_block_root=block.parent_root, identity=root + 1000)
++        for root, block in store.blocks.items() if root != 2 or inputs["verified"]
++    }
++    store.payload_timeliness_vote[2] = votes(inputs["timely_yes"], inputs["timely_no"])
++    store.payload_data_availability_vote[2] = votes(inputs["available_yes"], inputs["available_no"])
++    return store
++
++
++def observe(spec: dict, store) -> dict:
++    result = {
++        "payload_verified": spec["is_payload_verified"](store, 2),
++        "timely_yes": spec["payload_timeliness"](store, 2, True),
++        "timely_no": spec["payload_timeliness"](store, 2, False),
++        "available_yes": spec["payload_data_availability"](store, 2, True),
++        "available_no": spec["payload_data_availability"](store, 2, False),
++        "extend": spec["should_extend_payload"](store, 2),
++        "head_weak": spec["is_head_weak"](store, 2),
++        "apply_boost": spec["should_apply_proposer_boost"](store),
++        "sibling_head_late": spec["is_head_late"](store, 3),
++    }
++    for label, status in [("empty", 0), ("full", 1), ("pending", 2)]:
++        node = GloasNode(2, status)
++        result[f"previous_{label}"] = spec["is_previous_slot_payload_decision"](store, node)
++        result[f"tiebreak_{label}"] = spec["get_payload_status_tiebreaker"](store, node)
++        result[f"weight_{label}"] = spec["get_weight"](store, node)
++    return result
++
++
++def main() -> None:
++    parser = argparse.ArgumentParser(description=__doc__)
++    parser.add_argument("--consensus-repo", type=Path, required=True)
++    parser.add_argument("--out", type=Path, required=True)
++    args = parser.parse_args()
++    spec = load_helpers(args.consensus_repo, "gloas")
++    source = source_functions(args.consensus_repo, "specs/gloas/fork-choice.md")
++    spec["ATTESTATION_TIMELINESS_INDEX"] = 0
++    exec("from __future__ import annotations\n" + source["is_head_late"], spec)
++    records = cases()
++    for record in records:
++        # The attestation deadline precedes the PTC deadline.
++        assert not record["input"]["sibling_attestation_timely"] or record["input"]["sibling_ptc_timely"]
++        record["expected"] = observe(spec, make_store(record["input"]))
++        assert record["expected"]["weight_empty"] == record["expected"]["weight_full"] == 0
++    early, late = records[-2]["expected"], records[-1]["expected"]
++    assert (early["apply_boost"], early["weight_pending"], early["sibling_head_late"]) == (False, 0, True)
++    assert (late["apply_boost"], late["weight_pending"], late["sibling_head_late"]) == (True, 40_000_000_000, True)
++    assert not records[2]["expected"]["extend"] and records[3]["expected"]["extend"]
++    output = {"format": "gloas-helper-observations-v1", "pin": PIN,
++              "scope": "projected source functions; not an accepted execution", "fixtures": records}
++    args.out.parent.mkdir(parents=True, exist_ok=True)
++    args.out.write_text(json.dumps(output, indent=2) + "\n", encoding="utf-8")
++    count = sum(len(record["expected"]) for record in records)
++    print(f"SOURCE_HELPERS fixtures={len(records)} observations={count} pin={PIN}")
++
++
++if __name__ == "__main__":
++    main()
+diff --git a/scripts/conformance/run.sh b/scripts/conformance/run.sh
+index a676dfc..2996f2e 100755
+--- a/scripts/conformance/run.sh
++++ b/scripts/conformance/run.sh
+@@ -2 +2 @@
+-set -u
++set -euo pipefail
+@@ -4,2 +4,12 @@ set -u
+-if [[ $# -ne 4 ]]; then
+-  echo "usage: scripts/conformance/run.sh <consensus-specs-dir> <fork> <preset> <out.jsonl>" >&2
++if [[ $# -eq 2 ]]; then
++  consensus_specs_dir=$1
++  fork=gloas
++  preset=minimal
++  out=$2
++elif [[ $# -eq 4 ]]; then
++  consensus_specs_dir=$1
++  fork=$2
++  preset=$3
++  out=$4
++else
++  echo "usage: scripts/conformance/run.sh <consensus-specs-dir> [gloas minimal] <out.jsonl>" >&2
+@@ -9,4 +19,8 @@ fi
+-consensus_specs_dir=$1
+-fork=$2
+-preset=$3
+-out=$4
++if [[ "$fork" != gloas ]]; then
++  echo "schema v2 requires Gloas; pre-Gloas traces describe historical phase0 stores" >&2
++  exit 2
++fi
++if [[ ! -x "$consensus_specs_dir/.venv/bin/python" ]]; then
++  echo "MISSING_PYSPEC: $consensus_specs_dir/.venv/bin/python; no setup or network attempted" >&2
++  exit 2
++fi
+@@ -15 +29,3 @@ plugin_dir="$repo_root/scripts/conformance/python"
+-tmp_dir="$(mktemp -d "${TMPDIR:-/tmp}/fcr-conformance.XXXXXX")"
++mkdir -p "$(dirname "$out")"
++out="$(cd "$(dirname "$out")" && pwd)/$(basename "$out")"
++tmp_dir="$(mktemp -d "$repo_root/.conformance.XXXXXX")"
+@@ -17 +33,2 @@ trace_base="$tmp_dir/trace.jsonl"
+-pytest_log="$tmp_dir/pytest.log"
++pytest_log="$out.pytest.log"
++runner_log="$out.runner.log"
+@@ -20 +36,0 @@ trap 'rm -rf "$tmp_dir"' EXIT
+-mkdir -p "$(dirname "$out")"
+@@ -21,0 +38,3 @@ export FCR_TRACE_OUT="$trace_base"
++export UV_OFFLINE=1
++export UV_NO_SYNC=1
++export PYTHONDONTWRITEBYTECODE=1
+@@ -26,2 +45,2 @@ set +e
+-    uv run pytest "tests/core/pyspec/eth_consensus_specs/test/phase0/fast_confirmation" \
+-      --reftests --fork="$fork" --preset="$preset" -p fcr_trace_plugin
++    .venv/bin/python -m pytest "tests/core/pyspec/eth_consensus_specs/test/phase0/fast_confirmation" \
++      --reftests --fork="$fork" --preset="$preset" -p fcr_trace_plugin -p no:cacheprovider
+@@ -33 +52 @@ shopt -s nullglob
+-trace_files=("$tmp_dir/trace.jsonl" "$tmp_dir"/trace.*.jsonl)
++trace_files=("$tmp_dir"/trace*.jsonl)
+@@ -41,2 +60,2 @@ if [[ $pytest_status -ne 0 ]]; then
+-  echo "pytest-status=$pytest_status"
+-  rg -n "FAILED|ERROR|E   " "$pytest_log" | head -20 || true
++  echo "pytest-status=$pytest_status log=$pytest_log"
++  rg -n -m 20 "FAILED|ERROR|E   " "$pytest_log" || true
+@@ -44,7 +63,8 @@ fi
+-
+-runner="$repo_root/scripts/conformance/lean/Conformance.lean"
+-if [[ -f "$runner" ]]; then
+-  echo "runner-summary:"
+-  (cd "$repo_root" && lake env lean --run "$runner" "$out" | tail -n 1)
+-else
+-  echo "runner absent"
++if [[ $record_count -eq 0 ]]; then
++  echo "MISSING_TRACE: no Gloas FCR records were exported" >&2
++  exit 1
++fi
++python3 "$plugin_dir/check_trace.py" "$out"
++if [[ "${FCR_EXPORT_ONLY:-0}" == 1 ]]; then
++  echo "export-only: records=$record_count trace=$out pytest-status=$pytest_status"
++  exit "$pytest_status"
+@@ -53 +73,12 @@ fi
+-exit 0
++set +e
++(cd "$repo_root" && lake env lean --run scripts/conformance/lean/Conformance.lean "$out") \
++  >"$runner_log" 2>&1
++runner_status=$?
++set -e
++rg -m 3 '^(MISMATCH|MISSING_EXTERNAL|ERROR)' "$runner_log" || true
++tail -n 1 "$runner_log"
++echo "runner-log=$runner_log"
++if [[ $pytest_status -ne 0 ]]; then
++  exit "$pytest_status"
++fi
++exit "$runner_status"

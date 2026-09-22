@@ -1,0 +1,1474 @@
+diff --git a/FastConfirmation/Spec/Model.lean b/FastConfirmation/Spec/Model.lean
+index 7d3eaa2..f0ad8c8 100644
+--- a/FastConfirmation/Spec/Model.lean
++++ b/FastConfirmation/Spec/Model.lean
+@@ -20,2 +20 @@ The complete executable model of the Fast Confirmation Rule consensus spec
+-(`consensus-specs/specs/phase0/fast-confirmation.md` @ public commit
+-`30aa65f`) together
++(Gloas overlay plus inherited phase0 FCR at public commit `477321355`) together
+diff --git a/FastConfirmation/Spec/Model/AcceptedExecution.lean b/FastConfirmation/Spec/Model/AcceptedExecution.lean
+index d6c6cda..334de9d 100644
+--- a/FastConfirmation/Spec/Model/AcceptedExecution.lean
++++ b/FastConfirmation/Spec/Model/AcceptedExecution.lean
+@@ -2,0 +3 @@ import FastConfirmation.Spec.Model.Execution
++import FastConfirmation.Spec.Model.PayloadEffects
+@@ -199,2 +200,110 @@ theorem successorPrefix_store (t : AcceptedBlockTransition cfg ext E) :
+-/-- A successful `on_block` call always leaves its root in the finite block
+-domain, including on the duplicate-root overwrite path. -/
++/-- The block domain and state map needed by accepted-transition inversion. -/
++private def retainedBlockFields (store : Store Root) :=
++  (store.block_roots, store.block_states)
++
++private theorem update_checkpoints_retainedBlockFields (store : Store Root)
++    (justified finalized : Checkpoint Root) :
++    retainedBlockFields (update_checkpoints store justified finalized) =
++      retainedBlockFields store := by
++  simp only [update_checkpoints]
++  split_ifs <;> rfl
++
++private theorem update_unrealized_checkpoints_retainedBlockFields (store : Store Root)
++    (justified finalized : Checkpoint Root) :
++    retainedBlockFields (update_unrealized_checkpoints store justified finalized) =
++      retainedBlockFields store := by
++  simp only [update_unrealized_checkpoints]
++  split_ifs <;> rfl
++
++private theorem update_proposer_boost_root_retainedBlockFields (store : Store Root)
++    (head root : Root) :
++    retainedBlockFields (update_proposer_boost_root cfg store head root) =
++      retainedBlockFields store := by
++  simp only [update_proposer_boost_root]
++  split_ifs <;> rfl
++
++private theorem compute_pulled_up_tip_retainedBlockFields (store : Store Root)
++    (root : Root) :
++    retainedBlockFields (compute_pulled_up_tip cfg ext store root) =
++      retainedBlockFields store := by
++  simp only [compute_pulled_up_tip]
++  split_ifs
++  · rw [update_checkpoints_retainedBlockFields,
++      update_unrealized_checkpoints_retainedBlockFields] <;> rfl
++  · rw [update_unrealized_checkpoints_retainedBlockFields] <;> rfl
++
++/-- Inversion of the Gloas fresh-block path. PTC processing preserves the
++block domain and the installed state before checkpoint updates. -/
++private theorem on_block_fresh_effects
++    {store store' : Store Root} {sb : SignedBeaconBlock Root}
++    (hfresh : sb.root ∉ store.block_roots)
++    (hh : on_block cfg ext store sb = some store') :
++    sb.root ∈ store'.block_roots ∧
++      ∃ post : BeaconState Root,
++        ext.state_transition (store.block_states sb.message.parent_root) sb = some post ∧
++        store'.block_states sb.root = post := by
++  simp only [on_block, hfresh] at hh
++  split_ifs at hh <;> try contradiction
++  cases hst : ext.state_transition (store.block_states sb.message.parent_root) sb with
++  | none => rw [hst] at hh; cases hh
++  | some post =>
++    rw [hst] at hh
++    let added : Store Root :=
++      { store with
++        block_roots := store.block_roots ++ [sb.root]
++        blocks := Function.update store.blocks sb.root sb.message
++        block_states := Function.update store.block_states sb.root post
++        payload_timeliness_vote := Function.update store.payload_timeliness_vote
++          sb.root (some (List.replicate cfg.ptc_size none))
++        payload_data_availability_vote := Function.update store.payload_data_availability_vote
++          sb.root (some (List.replicate cfg.ptc_size none)) }
++    change (match notify_ptc_messages cfg ext added post sb.message.payload_attestations with
++      | none => none
++      | some notified => some (compute_pulled_up_tip cfg ext
++          (update_checkpoints
++            (update_proposer_boost_root cfg
++              (record_block_timeliness cfg notified sb.root)
++              (get_head cfg store).root sb.root)
++            post.current_justified_checkpoint post.finalized_checkpoint) sb.root)) =
++        some store' at hh
++    cases hn : notify_ptc_messages cfg ext added post sb.message.payload_attestations with
++    | none => rw [hn] at hh; cases hh
++    | some notified =>
++      rw [hn] at hh
++      let finished := compute_pulled_up_tip cfg ext
++        (update_checkpoints
++          (update_proposer_boost_root cfg
++            (record_block_timeliness cfg notified sb.root)
++            (get_head cfg store).root sb.root)
++          post.current_justified_checkpoint post.finalized_checkpoint) sb.root
++      have heq : finished = store' := Option.some.inj hh
++      have hframe := notify_ptc_messages_frame cfg ext hn
++      have hroots : sb.root ∈ notified.block_roots := by
++        rw [hframe.block_roots]
++        exact List.mem_append_right _ (List.mem_singleton_self _)
++      have hstate : notified.block_states sb.root = post := by
++        rw [hframe.block_states]
++        exact Function.update_self _ _ _
++      have hfields : retainedBlockFields finished = retainedBlockFields notified := by
++        dsimp only [finished]
++        rw [compute_pulled_up_tip_retainedBlockFields,
++          update_checkpoints_retainedBlockFields,
++          update_proposer_boost_root_retainedBlockFields] <;> rfl
++      have hfinalRoots : finished.block_roots = notified.block_roots :=
++        congrArg (a₁ := retainedBlockFields finished)
++          (a₂ := retainedBlockFields notified) Prod.fst hfields
++      have hfinalStates : finished.block_states = notified.block_states :=
++        congrArg (a₁ := retainedBlockFields finished)
++          (a₂ := retainedBlockFields notified) Prod.snd hfields
++      constructor
++      · have hfinished : sb.root ∈ finished.block_roots := by
++          rw [hfinalRoots]
++          exact hroots
++        exact heq ▸ hfinished
++      · refine ⟨post, rfl, ?_⟩
++        have hfinished : finished.block_states sb.root = post :=
++          (congrFun hfinalStates sb.root).trans hstate
++        exact heq ▸ hfinished
++
++/-- A successful Gloas block call leaves its root in the finite block domain.
++A duplicate root is a no-op; a fresh root is installed before PTC processing. -/
+@@ -209,50 +318 @@ theorem on_block_root_known
+-  · simp only [on_block, hknown] at hh
+-    split_ifs at hh <;> try simp_all
+-    cases hst : ext.state_transition
+-        (store.block_states sb.message.parent_root) sb with
+-    | none => rw [hst] at hh; cases hh
+-    | some post =>
+-      rw [hst] at hh
+-      simp only at hh
+-      let added : Store Root :=
+-        { store with
+-          block_roots :=
+-            if sb.root ∈ store.block_roots then store.block_roots
+-            else store.block_roots ++ [sb.root]
+-          blocks := Function.update store.blocks sb.root sb.message
+-          block_states := Function.update store.block_states sb.root post }
+-      let timed := record_block_timeliness cfg added sb.root
+-      let boosted := update_proposer_boost_root cfg timed
+-        (get_head cfg store).root sb.root
+-      let realized := update_checkpoints boosted
+-        post.current_justified_checkpoint post.finalized_checkpoint
+-      have hresult : compute_pulled_up_tip cfg ext realized sb.root = store' := by
+-        dsimp only [realized, boosted, timed, added]
+-        split_ifs
+-        all_goals exact Option.some.inj hh
+-      rw [← hresult]
+-      have hpulled :
+-          (compute_pulled_up_tip cfg ext realized sb.root).block_roots =
+-            realized.block_roots := by
+-        simp only [compute_pulled_up_tip]
+-        split_ifs <;>
+-          simp only [update_unrealized_checkpoints, update_checkpoints] <;>
+-          split_ifs <;> rfl
+-      rw [hpulled]
+-      have hrealized : realized.block_roots = boosted.block_roots := by
+-        dsimp only [realized]
+-        simp only [update_checkpoints]
+-        split_ifs <;> rfl
+-      rw [hrealized]
+-      have hboosted : boosted.block_roots = timed.block_roots := by
+-        dsimp only [boosted]
+-        simp only [update_proposer_boost_root]
+-        split_ifs <;> rfl
+-      rw [hboosted]
+-      change sb.root ∈ added.block_roots
+-      dsimp only [added]
+-      by_cases hknown : sb.root ∈ store.block_roots
+-      · rw [if_pos hknown]
+-        exact hknown
+-      · rw [if_neg hknown]
+-        exact List.mem_append_right _ (List.mem_singleton_self _)
++  · exact (on_block_fresh_effects cfg ext hknown hh).1
+@@ -260,2 +320 @@ theorem on_block_root_known
+-/-- Mechanical handler inversion: either a known root is a no-op, or a fresh
+-root installs exactly the opaque transition result. -/
++/-- A successful fresh Gloas block call installs the opaque transition state. -/
+@@ -269,47 +328,2 @@ theorem on_block_inserted_state_fresh
+-        store'.block_states sb.root = post := by
+-    simp only [on_block, hfresh] at hh
+-    split_ifs at hh <;> try simp_all
+-    cases hst : ext.state_transition
+-        (store.block_states sb.message.parent_root) sb with
+-    | none => rw [hst] at hh; cases hh
+-    | some post =>
+-      rw [hst] at hh
+-      simp only at hh
+-      let added : Store Root :=
+-        { store with
+-          block_roots :=
+-            if sb.root ∈ store.block_roots then store.block_roots
+-            else store.block_roots ++ [sb.root]
+-          blocks := Function.update store.blocks sb.root sb.message
+-          block_states := Function.update store.block_states sb.root post }
+-      let timed := record_block_timeliness cfg added sb.root
+-      let boosted := update_proposer_boost_root cfg timed
+-        (get_head cfg store).root sb.root
+-      let realized := update_checkpoints boosted
+-        post.current_justified_checkpoint post.finalized_checkpoint
+-      have hresult : compute_pulled_up_tip cfg ext realized sb.root = store' := by
+-        dsimp only [realized, boosted, timed, added]
+-        split_ifs
+-        all_goals exact Option.some.inj hh
+-      have hstate : store'.block_states sb.root = post := by
+-        rw [← hresult]
+-        have hpulled :
+-            (compute_pulled_up_tip cfg ext realized sb.root).block_states =
+-              realized.block_states := by
+-          simp only [compute_pulled_up_tip]
+-          split_ifs <;>
+-            simp only [update_unrealized_checkpoints, update_checkpoints] <;>
+-            split_ifs <;> rfl
+-        rw [hpulled]
+-        have hrealized : realized.block_states = boosted.block_states := by
+-          dsimp only [realized]
+-          simp only [update_checkpoints]
+-          split_ifs <;> rfl
+-        rw [hrealized]
+-        have hboosted : boosted.block_states = timed.block_states := by
+-          dsimp only [boosted]
+-          simp only [update_proposer_boost_root]
+-          split_ifs <;> rfl
+-        rw [hboosted]
+-        exact Function.update_self sb.root post store.block_states
+-      exact congrArg some hstate.symm
++        store'.block_states sb.root = post :=
++  (on_block_fresh_effects cfg ext hfresh hh).2
+diff --git a/FastConfirmation/Spec/Model/Assumptions.lean b/FastConfirmation/Spec/Model/Assumptions.lean
+index aa84c14..2f9a5ec 100644
+--- a/FastConfirmation/Spec/Model/Assumptions.lean
++++ b/FastConfirmation/Spec/Model/Assumptions.lean
+@@ -161 +161 @@ structure Synchrony (E : Execution Root) : Prop where
+-        msg.epoch ≤ msg'.epoch
++        get_latest_message_epoch cfg msg ≤ get_latest_message_epoch cfg msg'
+diff --git a/FastConfirmation/Spec/Model/Config.lean b/FastConfirmation/Spec/Model/Config.lean
+index 8b2ef55..eab1f1f 100644
+--- a/FastConfirmation/Spec/Model/Config.lean
++++ b/FastConfirmation/Spec/Model/Config.lean
+@@ -7,3 +7,4 @@ import Mathlib.Tactic
+-Protocol constants and configuration consumed by the Fast Confirmation Rule
+-spec (`consensus-specs/specs/phase0/fast-confirmation.md` — "Constants" and
+-"Configuration" — plus the beacon-chain / fork-choice presets the rule reads).
++Protocol constants and configuration consumed by Gloas fork choice and the
++Fast Confirmation Rule. The rule inherits the constants and configuration in
++`specs/phase0/fast-confirmation.md`. Gloas adds payload deadlines and PTC size
++and changes the attestation deadline (`specs/gloas/validator.md:43`).
+@@ -51,2 +52,2 @@ structure Config where
+-  /-- `ATTESTATION_DUE_BPS` (config, basis points of `SLOT_DURATION_MS`;
+-      mainnet `3333`). -/
++  /-- `ATTESTATION_DUE_BPS_GLOAS` (config, basis points of `SLOT_DURATION_MS`;
++      mainnet Gloas `2500`, `configs/mainnet.yaml:97`). -/
+@@ -55,0 +57,9 @@ structure Config where
++  /-- `PTC_SIZE` (`presets/mainnet/gloas.yaml:6`; minimal uses 16 at
++      `presets/minimal/gloas.yaml:6`). -/
++  ptc_size : ℕ := 512
++  /-- `PAYLOAD_DUE_BPS` (`configs/mainnet.yaml:105`). -/
++  payload_due_bps : ℕ := 5000
++  /-- `PAYLOAD_ATTESTATION_DUE_BPS` (`configs/mainnet.yaml:107`). -/
++  payload_attestation_due_bps : ℕ := 7500
++  /-- `REORG_HEAD_WEIGHT_THRESHOLD` (`configs/mainnet.yaml:149`). -/
++  reorg_head_weight_threshold : ℕ := 20
+@@ -58,2 +68,2 @@ structure Config where
+-`presets/mainnet/phase0.yaml` + `configs/mainnet.yaml` +
+-`fast-confirmation.md` tables). -/
++`presets/mainnet/phase0.yaml` + `presets/mainnet/gloas.yaml` +
++`configs/mainnet.yaml` + `fast-confirmation.md` tables). -/
+@@ -72 +82 @@ def mainnet_config : Config where
+-  attestation_due_bps := 3333
++  attestation_due_bps := 2500
+diff --git a/FastConfirmation/Spec/Model/Execution.lean b/FastConfirmation/Spec/Model/Execution.lean
+index 5305eb9..5a73700 100644
+--- a/FastConfirmation/Spec/Model/Execution.lean
++++ b/FastConfirmation/Spec/Model/Execution.lean
+@@ -24 +24,3 @@ variable (cfg : Config) (ext : Externals Root)
+-/-- A wire message a node can process: a block (`on_block`), an attestation
++/-- Sources: `specs/gloas/fork-choice.md:1020`, `:1089`, and `:1115`;
++`specs/phase0/fork-choice.md:1000` and `:1027`.
++A wire message a node can process: a block (`on_block`), an attestation
+@@ -26 +28,2 @@ variable (cfg : Config) (ext : Externals Root)
+-(`on_attester_slashing`). -/
++(`on_attester_slashing`), an execution envelope with its local observation, or
++an individual PTC message with its block-origin flag. -/
+@@ -31,2 +34,8 @@ inductive Event (Root : Type*) where
+-
+-/-- Dispatch one wire message to its handler (`none` = the handler rejected
++  | execution_payload_envelope (signed_envelope : SignedExecutionPayloadEnvelope Root)
++      (observation : EnvelopeObservation Root)
++  | payload_attestation_message (ptc_message : PayloadAttestationMessage Root)
++      (is_from_block : Bool)
++
++/-- Sources: `specs/gloas/fork-choice.md:1020`, `:1089`, and `:1115`;
++`specs/phase0/fork-choice.md:1000` and `:1027`.
++Dispatch one wire message to its handler (`none` = the handler rejected
+@@ -39,0 +49,4 @@ def apply_event (store : Store Root) : Event Root → Option (Store Root)
++  | .execution_payload_envelope signed_envelope observation =>
++      on_execution_payload_envelope ext store signed_envelope observation
++  | .payload_attestation_message ptc_message is_from_block =>
++      on_payload_attestation_message cfg ext store ptc_message is_from_block
+@@ -152,2 +165,2 @@ structure WellFormedStore (store : Store Root) : Prop where
+-    is_ancestor store (ForkChoiceNode.mk store.justified_checkpoint.root)
+-      (ForkChoiceNode.mk store.finalized_checkpoint.root) = true
++    is_ancestor store (ForkChoiceNode.mk store.justified_checkpoint.root .pending)
++      (ForkChoiceNode.mk store.finalized_checkpoint.root .pending) = true
+diff --git a/FastConfirmation/Spec/Model/FCRStore.lean b/FastConfirmation/Spec/Model/FCRStore.lean
+index 6382949..b4d5059 100644
+--- a/FastConfirmation/Spec/Model/FCRStore.lean
++++ b/FastConfirmation/Spec/Model/FCRStore.lean
+@@ -7,2 +7,2 @@ import FastConfirmation.Spec.Model.ForkChoice
+-"State helpers" sections of `specs/phase0/fast-confirmation.md`, transcribed
+-1:1 in document order.
++"State helpers" sections of the inherited fast-confirmation specification,
++with the `specs/gloas/fast-confirmation.md` overlay.
+@@ -50,4 +50,2 @@ def get_fast_confirmation_store (store : Store Root) : FastConfirmationStore Roo
+-/-- `get_node_for_root`:
+-```python
+-return ForkChoiceNode(root=block_root)
+-``` -/
++/-- `get_node_for_root` (`specs/gloas/fast-confirmation.md:26`).
++Fast Confirmation confirms a beacon root through its pending node. -/
+@@ -55 +53,7 @@ def get_node_for_root (block_root : Root) : ForkChoiceNode Root :=
+-  ForkChoiceNode.mk block_root
++  ForkChoiceNode.mk block_root .pending
++
++/-- `get_safe_execution_block_hash`
++(`specs/gloas/fast-confirmation.md:38`). Only the parent payload of the
++confirmed beacon block is safe. -/
++def get_safe_execution_block_hash (fcr_store : FastConfirmationStore Root) : Root :=
++  (fcr_store.store.blocks fcr_store.confirmed_root).parent_block_hash
+diff --git a/FastConfirmation/Spec/Model/FFGHelpers.lean b/FastConfirmation/Spec/Model/FFGHelpers.lean
+index f5c0cc0..9e38dc4 100644
+--- a/FastConfirmation/Spec/Model/FFGHelpers.lean
++++ b/FastConfirmation/Spec/Model/FFGHelpers.lean
+@@ -49 +49 @@ def get_current_target_score (store : Store Root) : Gwei :=
+-                (get_latest_message_epoch latest_message)))
++                (get_latest_message_epoch cfg latest_message)))
+diff --git a/FastConfirmation/Spec/Model/ForkChoice.lean b/FastConfirmation/Spec/Model/ForkChoice.lean
+index 621035d..0abfd43 100644
+--- a/FastConfirmation/Spec/Model/ForkChoice.lean
++++ b/FastConfirmation/Spec/Model/ForkChoice.lean
+@@ -8,3 +8,3 @@ import FastConfirmation.Spec.Model.Types
+-The fork-choice `Store` and the `specs/phase0/fork-choice.md` helpers the Fast
+-Confirmation Rule calls, transcribed 1:1 (`get_current_slot` …
+-`get_head`, `get_voting_source`, `get_latest_message_epoch`).
++The Gloas fork-choice `Store` and helpers used by Fast Confirmation. Modified
++helpers follow `specs/gloas/fork-choice.md`; unchanged helpers retain the
++inherited phase0 definition.
+@@ -12,2 +12,2 @@ Confirmation Rule calls, transcribed 1:1 (`get_current_slot` …
+-Python dicts become total functions plus (where iterated) an explicit domain
+-`Finset`; python's unbounded recursion/loops (`get_ancestor`,
++Python dicts become total functions plus, where iterated, an explicit domain
++list or set. Python's unbounded recursion/loops (`get_ancestor`,
+@@ -24 +24,2 @@ variable (cfg : Config)
+-/-- Fork-choice `Store` dataclass. Dict fields are totalized functions;
++/-- Gloas `Store` (`specs/gloas/fork-choice.md:191`).
++Dict fields are totalized functions;
+@@ -44 +45,3 @@ structure Store (Root : Type*) where
+-  block_timeliness : Root → Option Bool
++  /-- Attestation and PTC deadlines, in source index order
++  (`specs/gloas/fork-choice.md:203`; indices at :105). -/
++  block_timeliness : Root → Option (Bool × Bool)
+@@ -50,0 +54,8 @@ structure Store (Root : Type*) where
++  /-- Locally delivered and verified envelopes
++  (`specs/gloas/fork-choice.md:208`). -/
++  payloads : Root → Option (ExecutionPayloadEnvelope Root) := fun _ => none
++  /-- PTC timeliness votes; `none` in a list means no vote
++  (`specs/gloas/fork-choice.md:210`). -/
++  payload_timeliness_vote : Root → Option (List (Option Bool)) := fun _ => none
++  /-- PTC data availability votes (`specs/gloas/fork-choice.md:212`). -/
++  payload_data_availability_vote : Root → Option (List (Option Bool)) := fun _ => none
+@@ -81,11 +92,42 @@ def compute_slots_since_epoch_start (slot : Slot) : ℕ :=
+-/-- Fuel-bounded worker for `get_ancestor` (python recurses on the parent
+-pointer, terminating only when parent slots strictly decrease; on fuel
+-exhaustion we return the current node — a python-divergence point outside the
+-well-formed domain).
+-```python
+-block = store.blocks[node.root]
+-if block.slot > slot:
+-    parent = ForkChoiceNode(root=block.parent_root)
+-    return get_ancestor(store, parent, slot)
+-return node
+-``` -/
++/-- `is_payload_verified` (`specs/gloas/fork-choice.md:313`).
++Only the local verified-envelope map determines this predicate. -/
++def is_payload_verified (store : Store Root) (root : Root) : Bool :=
++  (store.payloads root).isSome
++
++/-- `payload_timeliness` (`specs/gloas/fork-choice.md:325`).
++The source requires a keyed vote list. A missing key is outside the helper's
++domain and is totalized as an empty list. The strict majority threshold is
++`PTC_SIZE // 2` (`specs/gloas/fork-choice.md:100`). -/
++def payload_timeliness (store : Store Root) (root : Root) (timely : Bool) : Bool :=
++  if !is_payload_verified store root then !timely
++  else
++    let votes := ((store.payload_timeliness_vote root).getD []).filterMap id
++    decide ((votes.filter (fun vote => vote == timely)).length > cfg.ptc_size / 2)
++
++/-- `payload_data_availability` (`specs/gloas/fork-choice.md:346`).
++As with timeliness, the source requires the vote list to be keyed. Local
++verification is required before affirmative PTC votes can make data available.
++The strict majority threshold is `PTC_SIZE // 2`
++(`specs/gloas/fork-choice.md:101`). -/
++def payload_data_availability (store : Store Root) (root : Root)
++    (available : Bool) : Bool :=
++  if !is_payload_verified store root then !available
++  else
++    let votes := ((store.payload_data_availability_vote root).getD []).filterMap id
++    decide ((votes.filter (fun vote => vote == available)).length > cfg.ptc_size / 2)
++
++/-- `get_parent_payload_status` (`specs/gloas/fork-choice.md:367`).
++The child bid chooses FULL exactly when its parent hash equals the parent bid's
++block hash. -/
++def get_parent_payload_status (store : Store Root) (block : BeaconBlock Root) :
++    PayloadStatus :=
++  if block.parent_block_hash = (store.blocks block.parent_root).block_hash then .full
++  else .empty
++
++/-- `is_parent_node_full` (`specs/gloas/fork-choice.md:377`). -/
++def is_parent_node_full (store : Store Root) (block : BeaconBlock Root) : Bool :=
++  decide (get_parent_payload_status store block = .full)
++
++/-- Fuel worker for `get_ancestor` (`specs/gloas/fork-choice.md:387`).
++Each parent step resolves the parent's payload status from the child bid.
++Exhausted fuel returns the current node, outside the well-formed domain. -/
+@@ -98 +140,2 @@ def get_ancestor_aux (store : Store Root) (slot : Slot) :
+-      get_ancestor_aux store slot fuel (ForkChoiceNode.mk block.parent_root)
++      get_ancestor_aux store slot fuel
++        (ForkChoiceNode.mk block.parent_root (get_parent_payload_status store block))
+@@ -101 +144,2 @@ def get_ancestor_aux (store : Store Root) (slot : Slot) :
+-/-- `get_ancestor`: wrapper supplying fuel `block.slot + 1`, sufficient on a
++/-- `get_ancestor` (`specs/gloas/fork-choice.md:387`):
++wrapper supplying fuel `block.slot + 1`, sufficient on a
+@@ -107,4 +151,2 @@ def get_ancestor (store : Store Root) (node : ForkChoiceNode Root) (slot : Slot)
+-/-- `is_ancestor`:
+-```python
+-return get_ancestor(store, node, store.blocks[ancestor.root].slot) == ancestor
+-``` -/
++/-- `is_ancestor` (`specs/gloas/fork-choice.md:405`). A pending ancestor
++accepts either resolved status at the same root. -/
+@@ -112 +154,4 @@ def is_ancestor (store : Store Root) (node ancestor : ForkChoiceNode Root) : Boo
+-  decide (get_ancestor store node (store.blocks ancestor.root).slot = ancestor)
++  let node_ancestor := get_ancestor store node (store.blocks ancestor.root).slot
++  decide (node_ancestor.root = ancestor.root) &&
++    decide (node_ancestor.payload_status = ancestor.payload_status ∨
++      ancestor.payload_status = .pending)
+@@ -114,7 +159,2 @@ def is_ancestor (store : Store Root) (node ancestor : ForkChoiceNode Root) : Boo
+-/-- `get_checkpoint_block`: Compute the checkpoint block for epoch ``epoch`` in
+-the chain of block ``root``.
+-```python
+-epoch_first_slot = compute_start_slot_at_epoch(epoch)
+-node = ForkChoiceNode(root=root)
+-return get_ancestor(store, node, epoch_first_slot).root
+-``` -/
++/-- `get_checkpoint_block` (`specs/gloas/fork-choice.md:420`).
++Start from the pending node and project the ancestor's beacon root. -/
+@@ -123 +163 @@ def get_checkpoint_block (store : Store Root) (root : Root) (epoch : Epoch) : Ro
+-  let node := ForkChoiceNode.mk root
++  let node := ForkChoiceNode.mk root .pending
+@@ -126,6 +166,3 @@ def get_checkpoint_block (store : Store Root) (root : Root) (epoch : Epoch) : Ro
+-/-- `get_supported_node`: Return a node supported by the ``message``.
+-```python
+-return ForkChoiceNode(root=message.root)
+-```
+-(The unused `store` argument is kept for signature fidelity.) -/
+-def get_supported_node (_store : Store Root) (message : LatestMessage Root) :
++/-- `get_supported_node` (`specs/gloas/fork-choice.md:435`). A vote from
++the block slot supports PENDING. A later-slot vote resolves FULL or EMPTY. -/
++def get_supported_node (store : Store Root) (message : LatestMessage Root) :
+@@ -133 +170,5 @@ def get_supported_node (_store : Store Root) (message : LatestMessage Root) :
+-  ForkChoiceNode.mk message.root
++  let payload_status :=
++    if (store.blocks message.root).slot < message.slot then
++      if message.payload_present then PayloadStatus.full else PayloadStatus.empty
++    else PayloadStatus.pending
++  ForkChoiceNode.mk message.root payload_status
+@@ -179,13 +220,96 @@ def get_proposer_score (store : Store Root) : Gwei :=
+-/-- `get_weight`:
+-```python
+-state = store.checkpoint_states[store.justified_checkpoint]
+-attestation_score = get_attestation_score(store, node, state)
+-if store.proposer_boost_root == Root():
+-    return attestation_score
+-proposer_score = Gwei(0)
+-proposer_boost_node = ForkChoiceNode(root=store.proposer_boost_root)
+-if is_ancestor(store, proposer_boost_node, node):
+-    proposer_score = get_proposer_score(store)
+-return attestation_score + proposer_score
+-```
+-(`Root()` is `Inhabited.default`.) -/
++/-- `is_previous_slot_payload_decision` (`specs/gloas/fork-choice.md:460`). -/
++def is_previous_slot_payload_decision (store : Store Root)
++    (node : ForkChoiceNode Root) : Bool :=
++  decide ((store.blocks node.root).slot + 1 = get_current_slot cfg store ∧
++    (node.payload_status = .empty ∨ node.payload_status = .full))
++
++/-- `should_build_on_full` (`specs/gloas/fork-choice.md:474`). The source
++requires a resolved head. Previous-slot FULL also checks negative PTC votes. -/
++def should_build_on_full (store : Store Root) (head : ForkChoiceNode Root)
++    (slot : Slot) : Bool :=
++  if (store.blocks head.root).slot + 1 ≠ slot then
++    decide (head.payload_status = .full)
++  else if head.payload_status = .empty then false
++  else if payload_timeliness cfg store head.root false then false
++  else if payload_data_availability cfg store head.root false then false
++  else true
++
++/-- `should_extend_payload` (`specs/gloas/fork-choice.md:496`). The source
++requires `root` to be from the previous slot. Without affirmative PTC votes,
++a proposer-boost block which selects EMPTY can prevent extension. -/
++def should_extend_payload (store : Store Root) (root : Root) : Bool :=
++  if !is_payload_verified store root then false
++  else
++    let proposer_root := store.proposer_boost_root
++    let payload_is_timely := payload_timeliness cfg store root true
++    let payload_data_is_available := payload_data_availability cfg store root true
++    (payload_is_timely && payload_data_is_available) ||
++      decide (proposer_root = default) ||
++      decide ((store.blocks proposer_root).parent_root ≠ root) ||
++      is_parent_node_full store (store.blocks proposer_root)
++
++/-- `get_payload_status_tiebreaker` (`specs/gloas/fork-choice.md:514`).
++Previous-slot EMPTY has priority 1. FULL has priority 2 or 0, according to
++`should_extend_payload`. Other nodes use the source status number. -/
++def get_payload_status_tiebreaker (store : Store Root)
++    (node : ForkChoiceNode Root) : ℕ :=
++  if is_previous_slot_payload_decision cfg store node then
++    if node.payload_status = .empty then 1
++    else if should_extend_payload cfg store node.root then 2
++    else 0
++  else node.payload_status.toNat
++
++/-- Inherited `calculate_committee_fraction`
++(`specs/phase0/fork-choice.md:291`), used by the Gloas weak-head test at
++`specs/gloas/fork-choice.md:788`. -/
++def calculate_committee_fraction (state : BeaconState Root)
++    (committee_percent : ℕ) : Gwei :=
++  let committee_weight := get_total_active_balance cfg state / cfg.slots_per_epoch
++  committee_weight * committee_percent / 100
++
++/-- `is_head_late` (`specs/gloas/fork-choice.md:778`). The first deadline
++is the attestation deadline. A missing key is outside the source read domain. -/
++def is_head_late (store : Store Root) (head_root : Root) : Bool :=
++  !((store.block_timeliness head_root).getD (false, false)).1
++
++/-- `is_head_weak` (`specs/gloas/fork-choice.md:785`). Committee query
++results are concrete state read projections. The coherence contract binds
++them to beacon-chain committee queries. List order and multiplicity are kept. -/
++def is_head_weak (store : Store Root) (head_root : Root) : Bool :=
++  let justified_state := store.checkpoint_states store.justified_checkpoint
++  let reorg_threshold :=
++    calculate_committee_fraction cfg justified_state cfg.reorg_head_weight_threshold
++  let head_state := store.block_states head_root
++  let head_block := store.blocks head_root
++  let epoch := compute_epoch_at_slot cfg head_block.slot
++  let head_node := ForkChoiceNode.mk head_root .pending
++  let head_weight := get_attestation_score cfg store head_node justified_state
++  let equivocation_weight :=
++    ((List.range (head_state.committee_count_per_slot epoch)).map fun index =>
++      (((head_state.beacon_committees head_block.slot index).filter
++        (fun i => decide (i ∈ store.equivocating_indices))).map
++        (fun i => (justified_state.validators.getD i default).effective_balance)).sum).sum
++  decide (head_weight + equivocation_weight < reorg_threshold)
++
++/-- `should_apply_proposer_boost` (`specs/gloas/fork-choice.md:530`).
++For a weak parent in the previous slot, an early proposer equivocation
++disables boost. Early means timely at the PTC deadline. -/
++def should_apply_proposer_boost (store : Store Root) : Bool :=
++  if store.proposer_boost_root = default then false
++  else
++    let block := store.blocks store.proposer_boost_root
++    let parent_root := block.parent_root
++    let parent := store.blocks parent_root
++    let slot := block.slot
++    if parent.slot + 1 < slot then true
++    else if !is_head_weak cfg store parent_root then true
++    else
++      let equivocations := store.block_roots.filter fun root =>
++        ((store.block_timeliness root).getD (false, false)).2 &&
++          decide ((store.blocks root).proposer_index = parent.proposer_index ∧
++            (store.blocks root).slot + 1 = slot ∧ root ≠ parent_root)
++      decide (equivocations.length = 0)
++
++/-- `get_weight` (`specs/gloas/fork-choice.md:566`). Previous-slot
++payload decisions have zero weight. Other nodes receive attestation weight
++and, when enabled, proposer boost on the boost block's ancestor chain. -/
+@@ -193,4 +317 @@ def get_weight (store : Store Root) (node : ForkChoiceNode Root) : Gwei :=
+-  let state := store.checkpoint_states store.justified_checkpoint
+-  let attestation_score := get_attestation_score cfg store node state
+-  if store.proposer_boost_root = default then
+-    attestation_score
++  if is_previous_slot_payload_decision cfg store node then 0
+@@ -198,4 +319,8 @@ def get_weight (store : Store Root) (node : ForkChoiceNode Root) : Gwei :=
+-    let proposer_boost_node := ForkChoiceNode.mk store.proposer_boost_root
+-    let proposer_score : Gwei :=
+-      if is_ancestor store proposer_boost_node node then get_proposer_score cfg store else 0
+-    attestation_score + proposer_score
++    let state := store.checkpoint_states store.justified_checkpoint
++    let attestation_score := get_attestation_score cfg store node state
++    if !should_apply_proposer_boost cfg store then attestation_score
++    else
++      let proposer_boost_node := ForkChoiceNode.mk store.proposer_boost_root .pending
++      let proposer_score : Gwei :=
++        if is_ancestor store proposer_boost_node node then get_proposer_score cfg store else 0
++      attestation_score + proposer_score
+@@ -305,7 +430,4 @@ def get_filtered_block_tree (store : Store Root) : List Root :=
+-/-- `get_node_children`:
+-```python
+-return [ForkChoiceNode(root=root) for root in blocks if blocks[root].parent_root == node.root]
+-```
+-(The python `blocks` dict values are always `store.blocks[root]`, so the model
+-passes the root list and looks the parent up in `store` — the one signature
+-deviation, see `docs/spec-model-design.md` decision 8.) -/
++/-- `get_node_children` (`specs/gloas/fork-choice.md:597`). A pending
++node has an EMPTY child and, if locally verified, a FULL child at the same
++root. A resolved node has pending beacon children whose bid selects its
++status. Candidate dict values are represented by the store and a root list. -/
+@@ -314,15 +436,13 @@ def get_node_children (store : Store Root) (blocks : List Root)
+-  (blocks.filter (fun root => (store.blocks root).parent_root = node.root)).map
+-    ForkChoiceNode.mk
+-
+-/-- Fuel-bounded worker for `get_head`'s descent loop. `List.argmax` over the
+-lexicographic key `(get_weight store child, child.root)` is python's
+-`max(children, key=lambda child: (get_weight(store, child), child.root))` —
+-the key is injective on children (distinct roots), so the maximum is unique
+-and order-independent.
+-```python
+-while True:
+-    children = get_node_children(store, blocks, head)
+-    if len(children) == 0:
+-        return head
+-    head = max(children, key=lambda child: (get_weight(store, child), child.root))
+-``` -/
++  if node.payload_status = .pending then
++    let children := [ForkChoiceNode.mk node.root .empty]
++    if is_payload_verified store node.root then children ++ [ForkChoiceNode.mk node.root .full]
++    else children
++  else
++    (blocks.filter fun root =>
++      decide ((store.blocks root).parent_root = node.root ∧
++        node.payload_status = get_parent_payload_status store (store.blocks root))).map
++      (fun root => ForkChoiceNode.mk root .pending)
++
++/-- Fuel worker for `get_head` (`specs/gloas/fork-choice.md:622`).
++The source's lexicographic key is weight, beacon root, then payload-status
++priority. Nested `toLex` preserves that ordering. -/
+@@ -335 +455,2 @@ def get_head_aux (store : Store Root) (blocks : List Root) :
+-        (fun child => toLex (get_weight cfg store child, child.root)) with
++        (fun child => toLex (get_weight cfg store child,
++          toLex (child.root, get_payload_status_tiebreaker cfg store child))) with
+@@ -339,7 +460,4 @@ def get_head_aux (store : Store Root) (blocks : List Root) :
+-/-- `get_head`: wrapper supplying fuel `blocks.length + 1` (the descent visits
+-pairwise-distinct tree nodes on a well-formed store).
+-```python
+-blocks = get_filtered_block_tree(store)
+-head = ForkChoiceNode(root=store.justified_checkpoint.root)
+-while True: ...
+-``` -/
++/-- `get_head` (`specs/gloas/fork-choice.md:622`). The descent starts
++at the pending justified root. Fuel `2 * blocks.length + 2` allows a pending
++and a resolved node for each beacon root, including the start root when the
++filtered list is empty. -/
+@@ -348,2 +466,2 @@ def get_head (store : Store Root) : ForkChoiceNode Root :=
+-  get_head_aux cfg store blocks (blocks.length + 1)
+-    (ForkChoiceNode.mk store.justified_checkpoint.root)
++  get_head_aux cfg store blocks (2 * blocks.length + 2)
++    (ForkChoiceNode.mk store.justified_checkpoint.root .pending)
+@@ -351,4 +469,2 @@ def get_head (store : Store Root) : ForkChoiceNode Root :=
+-/-- `get_latest_message_epoch`: Return epoch of the ``latest_message``.
+-```python
+-return latest_message.epoch
+-``` -/
++/-- `get_latest_message_epoch` (`specs/gloas/fork-choice.md:651`).
++Gloas stores the vote slot and derives its epoch. -/
+@@ -356 +472 @@ def get_latest_message_epoch (latest_message : LatestMessage Root) : Epoch :=
+-  latest_message.epoch
++  compute_epoch_at_slot cfg latest_message.slot
+@@ -377,4 +493,2 @@ def get_slot_component_duration_ms (basis_points : ℕ) : ℕ :=
+-/-- `get_attestation_due_ms`:
+-```python
+-return get_slot_component_duration_ms(ATTESTATION_DUE_BPS)
+-``` -/
++/-- `get_attestation_due_ms` (`specs/gloas/fork-choice.md:725`). The
++configuration stores the selected fork's `ATTESTATION_DUE_BPS_GLOAS`. -/
+@@ -383,0 +498,8 @@ def get_attestation_due_ms : ℕ :=
++/-- `get_payload_due_ms` (`specs/gloas/fork-choice.md:757`). -/
++def get_payload_due_ms : ℕ :=
++  get_slot_component_duration_ms cfg cfg.payload_due_bps
++
++/-- `get_payload_attestation_due_ms` (`specs/gloas/fork-choice.md:764`). -/
++def get_payload_attestation_due_ms : ℕ :=
++  get_slot_component_duration_ms cfg cfg.payload_attestation_due_bps
++
+diff --git a/FastConfirmation/Spec/Model/Handlers.lean b/FastConfirmation/Spec/Model/Handlers.lean
+index f2700dc..a8fa980 100644
+--- a/FastConfirmation/Spec/Model/Handlers.lean
++++ b/FastConfirmation/Spec/Model/Handlers.lean
+@@ -7,2 +7,3 @@ import FastConfirmation.Spec.Model.ForkChoice
+-The `specs/phase0/fork-choice.md` store-mutating helpers and handlers that
+-drive store evolution: `update_checkpoints`, `update_unrealized_checkpoints`,
++The Gloas store-mutating helpers and handlers, plus unchanged helpers from
++`specs/phase0/fork-choice.md`, drive store evolution: `update_checkpoints`,
++`update_unrealized_checkpoints`,
+@@ -10 +11 @@ drive store evolution: `update_checkpoints`, `update_unrealized_checkpoints`,
+-chains, the four handlers, and `get_forkchoice_store`.
++chains, the six handlers, and `get_forkchoice_store`.
+@@ -25 +26,2 @@ variable (cfg : Config) (ext : Externals Root)
+-/-- `update_checkpoints`: Update checkpoints in store if necessary.
++/-- Source: `specs/phase0/fork-choice.md:494`.
++`update_checkpoints`: Update checkpoints in store if necessary.
+@@ -44 +46,2 @@ def update_checkpoints (store : Store Root)
+-/-- `update_unrealized_checkpoints`: Update unrealized checkpoints in store if
++/-- Source: `specs/phase0/fork-choice.md:512`.
++`update_unrealized_checkpoints`: Update unrealized checkpoints in store if
+@@ -67 +70,2 @@ def update_unrealized_checkpoints (store : Store Root)
+-/-- `compute_pulled_up_tip`:
++/-- Source: `specs/phase0/fork-choice.md:755`.
++`compute_pulled_up_tip`:
+@@ -97 +101,2 @@ def compute_pulled_up_tip (store : Store Root) (block_root : Root) : Store Root
+-/-- `on_tick_per_slot`:
++/-- Source: `specs/phase0/fork-choice.md:777`.
++`on_tick_per_slot`:
+@@ -125 +130,2 @@ def on_tick_per_slot (store : Store Root) (time : ℕ) : Store Root :=
+-/-- Fuel-bounded worker for `on_tick`'s catch-up loop (each iteration is meant
++/-- Source: `specs/phase0/fork-choice.md:932`.
++Fuel-bounded worker for `on_tick`'s catch-up loop (each iteration is meant
+@@ -143 +149,2 @@ def on_tick_aux (tick_slot : ℕ) : ℕ → Store Root → Store Root
+-/-- `on_tick`: catch up slot by slot so every previous slot is processed with
++/-- Source: `specs/phase0/fork-choice.md:932`.
++`on_tick`: catch up slot by slot so every previous slot is processed with
+@@ -155 +162,2 @@ def on_tick (store : Store Root) (time : ℕ) : Store Root :=
+-/-- `validate_target_epoch_against_current_time` (python body is asserts;
++/-- Source: `specs/phase0/fork-choice.md:801`.
++`validate_target_epoch_against_current_time` (python body is asserts;
+@@ -171 +179,2 @@ def validate_target_epoch_against_current_time (store : Store Root)
+-/-- `validate_on_attestation` (python body is asserts; `true` = valid — a
++/-- Source: `specs/gloas/fork-choice.md:889`.
++`validate_on_attestation` (python body is asserts; `true` = valid — a
+@@ -180 +189,7 @@ assert attestation.data.beacon_block_root in store.blocks
+-assert store.blocks[attestation.data.beacon_block_root].slot <= attestation.data.slot
++block_slot = store.blocks[attestation.data.beacon_block_root].slot
++assert block_slot <= attestation.data.slot
++assert attestation.data.index in [0, 1]
++if block_slot == attestation.data.slot:
++    assert attestation.data.index == 0
++if attestation.data.index == 1:
++    assert is_payload_verified(store, attestation.data.beacon_block_root)
+@@ -196,0 +212,6 @@ def validate_on_attestation (store : Store Root) (attestation : Attestation Root
++  -- The index encodes payload presence, not the committee index.
++  decide (attestation.data.index = 0 ∨ attestation.data.index = 1) &&
++  (decide ((store.blocks attestation.data.beacon_block_root).slot ≠ attestation.data.slot) ||
++    decide (attestation.data.index = 0)) &&
++  (decide (attestation.data.index ≠ 1) ||
++    is_payload_verified store attestation.data.beacon_block_root) &&
+@@ -203 +224,2 @@ def validate_on_attestation (store : Store Root) (attestation : Attestation Root
+-/-- `store_target_checkpoint_state`:
++/-- Source: `specs/phase0/fork-choice.md:845`.
++`store_target_checkpoint_state`:
+@@ -225 +247,2 @@ def store_target_checkpoint_state (store : Store Root) (target : Checkpoint Root
+-/-- `update_latest_messages`:
++/-- Source: `specs/gloas/fork-choice.md:940`.
++`update_latest_messages` compares exact slots and records payload presence.
+@@ -227 +250 @@ def store_target_checkpoint_state (store : Store Root) (target : Checkpoint Root
+-target = attestation.data.target
++slot = attestation.data.slot
+@@ -228,0 +252 @@ beacon_block_root = attestation.data.beacon_block_root
++payload_present = attestation.data.index == 1
+@@ -233,2 +257,3 @@ for i in non_equivocating_attesting_indices:
+-    if i not in store.latest_messages or target.epoch > store.latest_messages[i].epoch:
+-        store.latest_messages[i] = LatestMessage(epoch=target.epoch, root=beacon_block_root)
++    if i not in store.latest_messages or slot > store.latest_messages[i].slot:
++        store.latest_messages[i] = LatestMessage(
++            slot=slot, root=beacon_block_root, payload_present=payload_present)
+@@ -239 +264 @@ def update_latest_messages (store : Store Root)
+-  let target := attestation.data.target
++  let slot := attestation.data.slot
+@@ -240,0 +266 @@ def update_latest_messages (store : Store Root)
++  let payload_present := decide (attestation.data.index = 1)
+@@ -248 +274 @@ def update_latest_messages (store : Store Root)
+-        | some latest_message => decide (target.epoch > latest_message.epoch)
++        | some latest_message => decide (slot > latest_message.slot)
+@@ -253 +279 @@ def update_latest_messages (store : Store Root)
+-              (some (LatestMessage.mk target.epoch beacon_block_root)) }
++              (some (LatestMessage.mk slot beacon_block_root payload_present)) }
+@@ -257 +283,2 @@ def update_latest_messages (store : Store Root)
+-/-- `record_block_timeliness`:
++/-- Source: `specs/gloas/fork-choice.md:964`.
++`record_block_timeliness` records the attestation and PTC deadlines.
+@@ -263,3 +290,6 @@ attestation_threshold_ms = get_attestation_due_ms()
+-is_before_attesting_interval = time_into_slot_ms < attestation_threshold_ms
+-is_timely = get_current_slot(store) == block.slot and is_before_attesting_interval
+-store.block_timeliness[root] = is_timely
++is_current_slot = get_current_slot(store) == block.slot
++ptc_threshold_ms = get_payload_attestation_due_ms()
++store.block_timeliness[root] = [
++    is_current_slot and time_into_slot_ms < threshold
++    for threshold in [attestation_threshold_ms, ptc_threshold_ms]
++]
+@@ -273,4 +303,2 @@ def record_block_timeliness (store : Store Root) (root : Root) : Store Root :=
+-  let is_before_attesting_interval :=
+-    decide (time_into_slot_ms < attestation_threshold_ms)
+-  let is_timely :=
+-    decide (get_current_slot cfg store = block.slot) && is_before_attesting_interval
++  let is_current_slot := decide (get_current_slot cfg store = block.slot)
++  let ptc_threshold_ms := get_payload_attestation_due_ms cfg
+@@ -278 +306,3 @@ def record_block_timeliness (store : Store Root) (root : Root) : Store Root :=
+-    block_timeliness := Function.update store.block_timeliness root (some is_timely) }
++    block_timeliness := Function.update store.block_timeliness root
++      (some (is_current_slot && decide (time_into_slot_ms < attestation_threshold_ms),
++        is_current_slot && decide (time_into_slot_ms < ptc_threshold_ms))) }
+@@ -280 +310,2 @@ def record_block_timeliness (store : Store Root) (root : Root) : Store Root :=
+-/-- `compute_shuffling_lookahead_start_slot`:
++/-- Source: `specs/phase0/fork-choice.md:888`.
++`compute_shuffling_lookahead_start_slot`:
+@@ -290 +321,2 @@ def compute_shuffling_lookahead_start_slot (epoch : Epoch) : Slot :=
+-/-- `compute_shuffling_dependent_slot`:
++/-- Source: `specs/phase0/fork-choice.md:896`.
++`compute_shuffling_dependent_slot`:
+@@ -300 +332,2 @@ def compute_shuffling_dependent_slot (epoch : Epoch) : Slot :=
+-/-- `get_shuffling_dependent_root`:
++/-- Source: `specs/gloas/fork-choice.md:982`.
++`get_shuffling_dependent_root`:
+@@ -303 +336 @@ def get_shuffling_dependent_root(store: Store, root: Root, epoch: Epoch) -> Root
+-    node = ForkChoiceNode(root=root)
++    node = ForkChoiceNode(root=root, payload_status=PAYLOAD_STATUS_PENDING)
+@@ -308 +341 @@ def get_shuffling_dependent_root (store : Store Root) (root : Root) (epoch : Epo
+-  let node := ForkChoiceNode.mk root
++  let node := ForkChoiceNode.mk root .pending
+@@ -312,2 +345,3 @@ def get_shuffling_dependent_root (store : Store Root) (root : Root) (epoch : Epo
+-/-- `update_proposer_boost_root` (python reads `store.block_timeliness[root]`,
+-always set by `on_block` immediately before — the `getD false` default is
++/-- Source: `specs/gloas/fork-choice.md:995`.
++`update_proposer_boost_root` (python reads `store.block_timeliness[root]`,
++always set by `on_block` immediately before — the `getD (false, false)` default is
+@@ -317 +351 @@ is_first_block = store.proposer_boost_root == Root()
+-is_timely = store.block_timeliness[root]
++is_timely = store.block_timeliness[root][ATTESTATION_TIMELINESS_INDEX]
+@@ -330 +364 @@ def update_proposer_boost_root (store : Store Root) (head root : Root) : Store R
+-  let is_timely := (store.block_timeliness root).getD false
++  let is_timely := ((store.block_timeliness root).getD (false, false)).1
+@@ -342,5 +376,104 @@ def update_proposer_boost_root (store : Store Root) (head root : Root) : Store R
+-/-- `on_block` handler. `none` = one of the python asserts failed or
+-`state_transition` raised (the block is not applied). A known block returns
+-the unchanged store. Python's `assert block.parent_root in store.block_states`
+-is tested against `block_roots` (`blocks` and `block_states` share their key
+-set by construction — design decision 14).
++/-- Source: `specs/gloas/fork-choice.md:1115`.
++`on_payload_attestation_message` writes every PTC position for its validator.
++A different assigned slot returns the unchanged store. Only wire messages need
++current-slot and signature checks. Missing vote entries or out-of-range PTC
++positions reject, as Python dictionary/list access would raise; initialization,
++block insertion, and the PTC coherence contract exclude these cases.
++```python
++data = ptc_message.data
++assert data.beacon_block_root in store.block_states
++state = store.block_states[data.beacon_block_root]
++if data.slot != state.slot:
++    return
++ptc_indices = []
++ptc = get_ptc(state, data.slot)
++for ptc_index, validator_index in enumerate(ptc):
++    if validator_index == ptc_message.validator_index:
++        ptc_indices.append(ptc_index)
++assert len(ptc_indices) > 0
++if not is_from_block:
++    assert data.slot == get_current_slot(store)
++    assert is_valid_indexed_payload_attestation(
++        state, IndexedPayloadAttestation(
++            attesting_indices=PayloadTimelinessCommitteeIndices(
++                data=[ptc_message.validator_index]),
++            data=data, signature=ptc_message.signature))
++payload_timeliness_vote = store.payload_timeliness_vote[data.beacon_block_root]
++payload_data_availability_vote = store.payload_data_availability_vote[data.beacon_block_root]
++for ptc_index in ptc_indices:
++    payload_timeliness_vote[ptc_index] = data.payload_present
++    payload_data_availability_vote[ptc_index] = data.blob_data_available
++``` -/
++def on_payload_attestation_message (store : Store Root)
++    (ptc_message : PayloadAttestationMessage Root) (is_from_block : Bool := false) :
++    Option (Store Root) :=
++  let data := ptc_message.data
++  if data.beacon_block_root ∉ store.block_roots then none
++  else
++    let state := store.block_states data.beacon_block_root
++    if data.slot ≠ state.slot then some store
++    else
++      let ptc := ext.get_ptc state data.slot
++      let ptc_indices := (List.range ptc.length).filter
++        (fun i => decide (ptc[i]? = some ptc_message.validator_index))
++      if ptc_indices.isEmpty then none
++      else if !is_from_block &&
++          (decide (data.slot ≠ get_current_slot cfg store) ||
++            !ext.is_valid_indexed_payload_attestation state
++              { attesting_indices := [ptc_message.validator_index]
++                data := data
++                signature := ptc_message.signature }) then none
++      else
++        match store.payload_timeliness_vote data.beacon_block_root,
++            store.payload_data_availability_vote data.beacon_block_root with
++        | some timeliness, some availability =>
++          if ¬ ptc_indices.all
++              (fun i => decide (i < timeliness.length ∧ i < availability.length)) then none
++          else
++            let timeliness := ptc_indices.foldl
++              (fun votes i => votes.set i (some data.payload_present)) timeliness
++            let availability := ptc_indices.foldl
++              (fun votes i => votes.set i (some data.blob_data_available)) availability
++            some { store with
++              payload_timeliness_vote := Function.update store.payload_timeliness_vote
++                data.beacon_block_root (some timeliness)
++              payload_data_availability_vote :=
++                Function.update store.payload_data_availability_vote
++                  data.beacon_block_root (some availability) }
++        | _, _ => none
++
++/-- Source: `specs/gloas/fork-choice.md:267`.
++`notify_ptc_messages` consumes the indexed projection of block-body attestations.
++The projection preserves source PTC index extraction. A failed inner handler
++rejects the outer block; no earlier partial store write is retained.
++```python
++if state.slot == 0:
++    return
++for payload_attestation in payload_attestations:
++    indexed_payload_attestation = get_indexed_payload_attestation(state, payload_attestation)
++    for idx in indexed_payload_attestation.attesting_indices:
++        on_payload_attestation_message(
++            store, PayloadAttestationMessage(
++                validator_index=idx, data=payload_attestation.data,
++                signature=BLSSignature()), is_from_block=True)
++``` -/
++def notify_ptc_messages (store : Store Root) (state : BeaconState Root)
++    (payload_attestations : List (IndexedPayloadAttestation Root)) : Option (Store Root) :=
++  if state.slot = 0 then some store
++  else
++    payload_attestations.foldl
++      (fun (result : Option (Store Root)) attestation => result.bind fun store =>
++        attestation.attesting_indices.foldl
++          (fun (result : Option (Store Root)) idx => result.bind fun store =>
++            on_payload_attestation_message cfg ext store
++              { validator_index := idx
++                data := attestation.data
++                signature := default } true)
++          (some store))
++      (some store)
++
++/-- Source: `specs/gloas/fork-choice.md:1020`.
++`on_block` requires a verified payload for a FULL parent, initializes both PTC
++vote lists, then applies the block's PTC messages before timeliness and boost.
++`none` means a source assertion or external transition failed. Known blocks
++return the unchanged store. `blocks` and `block_states` have the same domain.
+@@ -350,2 +482,0 @@ block_root = hash_tree_root(block)
+-
+-# Return early if the block is already known
+@@ -354,2 +484,0 @@ if block_root in store.blocks:
+-
+-# Parent block must be known
+@@ -357,3 +486,4 @@ assert block.parent_root in store.block_states
+-# Make a copy of the state to avoid mutability issues
+-pre_state = store.block_states[block.parent_root].copy()
+-assert get_current_slot(store) >= block.slot
++if is_parent_node_full(store, block):
++    assert is_payload_verified(store, block.parent_root)
++current_slot = get_current_slot(store)
++assert current_slot >= block.slot
+@@ -362,2 +492,2 @@ assert block.slot > finalized_slot
+-finalized_checkpoint_block = get_checkpoint_block(store, block.parent_root,
+-                                                  store.finalized_checkpoint.epoch)
++finalized_checkpoint_block = get_checkpoint_block(
++    store, block.parent_root, store.finalized_checkpoint.epoch)
+@@ -365 +495 @@ assert store.finalized_checkpoint.root == finalized_checkpoint_block
+-state = pre_state.copy()
++state = store.block_states[block.parent_root].copy()
+@@ -369,0 +500,3 @@ store.block_states[block_root] = state
++store.payload_timeliness_vote[block_root] = [None] * PTC_SIZE
++store.payload_data_availability_vote[block_root] = [None] * PTC_SIZE
++notify_ptc_messages(store, state, block.body.payload_attestations)
+@@ -379 +511,0 @@ def on_block (store : Store Root) (signed_block : SignedBeaconBlock Root) :
+-  -- Return early if the block is already known
+@@ -380,0 +513,2 @@ def on_block (store : Store Root) (signed_block : SignedBeaconBlock Root) :
++  else if block.parent_root ∉ store.block_roots then none
++  else if is_parent_node_full store block && !is_payload_verified store block.parent_root then none
+@@ -382,2 +516,2 @@ def on_block (store : Store Root) (signed_block : SignedBeaconBlock Root) :
+-    -- Parent block must be known
+-    if block.parent_root ∉ store.block_roots then none
++    let pre_state := store.block_states block.parent_root
++    if ¬ get_current_slot cfg store ≥ block.slot then none
+@@ -385,3 +519,2 @@ def on_block (store : Store Root) (signed_block : SignedBeaconBlock Root) :
+-      let pre_state := store.block_states block.parent_root
+-      -- Blocks cannot be in the future
+-      if ¬ get_current_slot cfg store ≥ block.slot then none
++      let finalized_slot := compute_start_slot_at_epoch cfg store.finalized_checkpoint.epoch
++      if ¬ block.slot > finalized_slot then none
+@@ -389,3 +522,3 @@ def on_block (store : Store Root) (signed_block : SignedBeaconBlock Root) :
+-        -- Check that block is later than the finalized epoch slot
+-        let finalized_slot := compute_start_slot_at_epoch cfg store.finalized_checkpoint.epoch
+-        if ¬ block.slot > finalized_slot then none
++        let finalized_checkpoint_block :=
++          get_checkpoint_block cfg store block.parent_root store.finalized_checkpoint.epoch
++        if store.finalized_checkpoint.root ≠ finalized_checkpoint_block then none
+@@ -393,7 +526,15 @@ def on_block (store : Store Root) (signed_block : SignedBeaconBlock Root) :
+-          -- Check block is a descendant of the finalized block
+-          let finalized_checkpoint_block :=
+-            get_checkpoint_block cfg store block.parent_root store.finalized_checkpoint.epoch
+-          if store.finalized_checkpoint.root ≠ finalized_checkpoint_block then none
+-          else
+-            -- Check that the block is valid and compute the post-state
+-            match ext.state_transition pre_state signed_block with
++          match ext.state_transition pre_state signed_block with
++          | none => none
++          | some state =>
++            let head := get_head cfg store
++            let store :=
++              { store with
++                block_roots := store.block_roots ++ [block_root]
++                blocks := Function.update store.blocks block_root block
++                block_states := Function.update store.block_states block_root state
++                payload_timeliness_vote := Function.update store.payload_timeliness_vote
++                  block_root (some (List.replicate cfg.ptc_size none))
++                payload_data_availability_vote :=
++                  Function.update store.payload_data_availability_vote
++                    block_root (some (List.replicate cfg.ptc_size none)) }
++            match notify_ptc_messages cfg ext store state block.payload_attestations with
+@@ -401,9 +542 @@ def on_block (store : Store Root) (signed_block : SignedBeaconBlock Root) :
+-            | some state =>
+-              -- Compute head before applying the block
+-              let head := get_head cfg store
+-              -- Add new block and its state to the store
+-              let store :=
+-                { store with
+-                  block_roots := store.block_roots ++ [block_root]
+-                  blocks := Function.update store.blocks block_root block
+-                  block_states := Function.update store.block_states block_root state }
++            | some store =>
+@@ -412 +544,0 @@ def on_block (store : Store Root) (signed_block : SignedBeaconBlock Root) :
+-              -- Update checkpoints in store if necessary
+@@ -416 +547,0 @@ def on_block (store : Store Root) (signed_block : SignedBeaconBlock Root) :
+-              -- Eagerly compute unrealized justification and finality
+@@ -419 +550,26 @@ def on_block (store : Store Root) (signed_block : SignedBeaconBlock Root) :
+-/-- `on_attestation` handler. `none` = validation failed (python assert — the
++/-- Source: `specs/gloas/fork-choice.md:1089`.
++`on_execution_payload_envelope` records a payload only after block, local data,
++and envelope validation. The observation is the explicit local context for the
++source's context-dependent availability and execution-engine calls.
++```python
++envelope = signed_envelope.message
++assert envelope.beacon_block_root in store.block_states
++assert is_data_available(envelope.beacon_block_root)
++state = store.block_states[envelope.beacon_block_root]
++verify_execution_payload_envelope(state, signed_envelope, EXECUTION_ENGINE)
++store.payloads[envelope.beacon_block_root] = envelope
++``` -/
++def on_execution_payload_envelope (store : Store Root)
++    (signed_envelope : SignedExecutionPayloadEnvelope Root)
++    (observation : EnvelopeObservation Root) : Option (Store Root) :=
++  let envelope := signed_envelope.message
++  if envelope.beacon_block_root ∉ store.block_roots then none
++  else if !ext.is_data_available envelope.beacon_block_root observation then none
++  else
++    let state := store.block_states envelope.beacon_block_root
++    if !ext.verify_execution_payload_envelope state signed_envelope observation then none
++    else some { store with
++      payloads := Function.update store.payloads envelope.beacon_block_root (some envelope) }
++
++/-- Source: `specs/phase0/fork-choice.md:1000`.
++`on_attestation` handler. `none` = validation failed (python assert — the
+@@ -450 +606,2 @@ def on_attestation (store : Store Root) (attestation : Attestation Root)
+-/-- `on_attester_slashing` handler (`none` = a python assert failed).
++/-- Source: `specs/phase0/fork-choice.md:1027`.
++`on_attester_slashing` handler (`none` = a python assert failed).
+@@ -476 +633,2 @@ def on_attester_slashing (store : Store Root)
+-/-- `get_forkchoice_store`: the trusted-anchor initialization. The python
++/-- Source: `specs/gloas/fork-choice.md:218`.
++`get_forkchoice_store`: the trusted-anchor initialization. The python
+@@ -493 +651 @@ return Store(
+-    block_timeliness={},
++    block_timeliness={anchor_root: [True, True]},
+@@ -496 +654,4 @@ return Store(
+-    unrealized_justifications={anchor_root: justified_checkpoint})
++    unrealized_justifications={anchor_root: justified_checkpoint},
++    payloads={},
++    payload_timeliness_vote={anchor_root: [None] * PTC_SIZE},
++    payload_data_availability_vote={anchor_root: [None] * PTC_SIZE})
+@@ -516 +677 @@ def get_forkchoice_store (anchor_state : BeaconState Root)
+-    block_timeliness := fun _ => none
++    block_timeliness := Function.update (fun _ => none) anchor_root (some (true, true))
+@@ -521 +682,6 @@ def get_forkchoice_store (anchor_state : BeaconState Root)
+-      Function.update (fun _ => default) anchor_root justified_checkpoint }
++      Function.update (fun _ => default) anchor_root justified_checkpoint
++    payloads := fun _ => none
++    payload_timeliness_vote :=
++      Function.update (fun _ => none) anchor_root (some (List.replicate cfg.ptc_size none))
++    payload_data_availability_vote :=
++      Function.update (fun _ => none) anchor_root (some (List.replicate cfg.ptc_size none)) }
+diff --git a/FastConfirmation/Spec/Model/PayloadEffects.lean b/FastConfirmation/Spec/Model/PayloadEffects.lean
+new file mode 100644
+index 0000000..fb7266b
+--- /dev/null
++++ b/FastConfirmation/Spec/Model/PayloadEffects.lean
+@@ -0,0 +1,185 @@
++import FastConfirmation.Spec.Model.Handlers
++
++/-!
++# Payload handler preservation
++
++The envelope and PTC handlers change only the three payload maps. The frame
++relation below records every other field without an assumption about payload
++validity or delivery. Block PTC notification preserves the same relation.
++-/
++
++namespace FastConfirmation.Spec
++
++variable {Root : Type*}
++
++/-- Remove the three fields that payload handlers can change. -/
++def Store.withoutPayloadFields (store : Store Root) : Store Root :=
++  { store with
++    payloads := fun _ => none
++    payload_timeliness_vote := fun _ => none
++    payload_data_availability_vote := fun _ => none }
++
++/-- Every non-payload field is equal in the two stores. -/
++def PayloadFrame (old new : Store Root) : Prop :=
++  new.withoutPayloadFields = old.withoutPayloadFields
++
++namespace PayloadFrame
++
++theorem refl (store : Store Root) : PayloadFrame store store := rfl
++
++theorem trans {a b c : Store Root} (hab : PayloadFrame a b)
++    (hbc : PayloadFrame b c) : PayloadFrame a c := Eq.trans hbc hab
++
++theorem time {old new : Store Root} (h : PayloadFrame old new) :
++    new.time = old.time :=
++  congrArg (a₁ := new.withoutPayloadFields) (a₂ := old.withoutPayloadFields)
++    Store.time h
++
++theorem genesis_time {old new : Store Root} (h : PayloadFrame old new) :
++    new.genesis_time = old.genesis_time :=
++  congrArg (a₁ := new.withoutPayloadFields) (a₂ := old.withoutPayloadFields)
++    Store.genesis_time h
++
++theorem justified_checkpoint {old new : Store Root} (h : PayloadFrame old new) :
++    new.justified_checkpoint = old.justified_checkpoint :=
++  congrArg (a₁ := new.withoutPayloadFields) (a₂ := old.withoutPayloadFields)
++    Store.justified_checkpoint h
++
++theorem finalized_checkpoint {old new : Store Root} (h : PayloadFrame old new) :
++    new.finalized_checkpoint = old.finalized_checkpoint :=
++  congrArg (a₁ := new.withoutPayloadFields) (a₂ := old.withoutPayloadFields)
++    Store.finalized_checkpoint h
++
++theorem unrealized_justified_checkpoint {old new : Store Root} (h : PayloadFrame old new) :
++    new.unrealized_justified_checkpoint = old.unrealized_justified_checkpoint :=
++  congrArg (a₁ := new.withoutPayloadFields) (a₂ := old.withoutPayloadFields)
++    Store.unrealized_justified_checkpoint h
++
++theorem unrealized_finalized_checkpoint {old new : Store Root} (h : PayloadFrame old new) :
++    new.unrealized_finalized_checkpoint = old.unrealized_finalized_checkpoint :=
++  congrArg (a₁ := new.withoutPayloadFields) (a₂ := old.withoutPayloadFields)
++    Store.unrealized_finalized_checkpoint h
++
++theorem proposer_boost_root {old new : Store Root} (h : PayloadFrame old new) :
++    new.proposer_boost_root = old.proposer_boost_root :=
++  congrArg (a₁ := new.withoutPayloadFields) (a₂ := old.withoutPayloadFields)
++    Store.proposer_boost_root h
++
++theorem equivocating_indices {old new : Store Root} (h : PayloadFrame old new) :
++    new.equivocating_indices = old.equivocating_indices :=
++  congrArg (a₁ := new.withoutPayloadFields) (a₂ := old.withoutPayloadFields)
++    Store.equivocating_indices h
++
++theorem block_roots {old new : Store Root} (h : PayloadFrame old new) :
++    new.block_roots = old.block_roots :=
++  congrArg (a₁ := new.withoutPayloadFields) (a₂ := old.withoutPayloadFields)
++    Store.block_roots h
++
++theorem blocks {old new : Store Root} (h : PayloadFrame old new) :
++    new.blocks = old.blocks :=
++  congrArg (a₁ := new.withoutPayloadFields) (a₂ := old.withoutPayloadFields)
++    Store.blocks h
++
++theorem block_states {old new : Store Root} (h : PayloadFrame old new) :
++    new.block_states = old.block_states :=
++  congrArg (a₁ := new.withoutPayloadFields) (a₂ := old.withoutPayloadFields)
++    Store.block_states h
++
++theorem block_timeliness {old new : Store Root} (h : PayloadFrame old new) :
++    new.block_timeliness = old.block_timeliness :=
++  congrArg (a₁ := new.withoutPayloadFields) (a₂ := old.withoutPayloadFields)
++    Store.block_timeliness h
++
++theorem checkpoint_state_keys {old new : Store Root} (h : PayloadFrame old new) :
++    new.checkpoint_state_keys = old.checkpoint_state_keys :=
++  congrArg (a₁ := new.withoutPayloadFields) (a₂ := old.withoutPayloadFields)
++    Store.checkpoint_state_keys h
++
++theorem checkpoint_states {old new : Store Root} (h : PayloadFrame old new) :
++    new.checkpoint_states = old.checkpoint_states :=
++  congrArg (a₁ := new.withoutPayloadFields) (a₂ := old.withoutPayloadFields)
++    Store.checkpoint_states h
++
++theorem latest_messages {old new : Store Root} (h : PayloadFrame old new) :
++    new.latest_messages = old.latest_messages :=
++  congrArg (a₁ := new.withoutPayloadFields) (a₂ := old.withoutPayloadFields)
++    Store.latest_messages h
++
++theorem unrealized_justifications {old new : Store Root} (h : PayloadFrame old new) :
++    new.unrealized_justifications = old.unrealized_justifications :=
++  congrArg (a₁ := new.withoutPayloadFields) (a₂ := old.withoutPayloadFields)
++    Store.unrealized_justifications h
++
++end PayloadFrame
++
++/-- A rejected accumulated computation remains rejected under the bind fold. -/
++private theorem foldl_bind_none {α : Type*}
++    (f : Store Root → α → Option (Store Root)) (l : List α) :
++    l.foldl (fun (result : Option (Store Root)) a => result.bind fun store => f store a)
++      none = none := by
++  induction l with
++  | nil => rfl
++  | cons a l ih =>
++    change l.foldl (fun (result : Option (Store Root)) a => result.bind fun store => f store a)
++      none = none
++    exact ih
++
++/-- Successful fallible folds preserve a frame preserved by each step. -/
++theorem payloadFrame_foldl {α : Type*} {f : Store Root → α → Option (Store Root)}
++    (hf : ∀ store a store', f store a = some store' → PayloadFrame store store')
++    (l : List α) (store : Store Root) {store' : Store Root}
++    (h : l.foldl (fun (result : Option (Store Root)) a => result.bind fun s => f s a) (some store) =
++      some store') : PayloadFrame store store' := by
++  induction l generalizing store with
++  | nil =>
++    cases h
++    exact PayloadFrame.refl _
++  | cons a l ih =>
++    cases hstep : f store a with
++    | none =>
++      simp only [List.foldl_cons, Option.bind_some, hstep, foldl_bind_none] at h
++      cases h
++    | some next =>
++      have htail : l.foldl (fun (result : Option (Store Root)) a => result.bind fun s => f s a)
++          (some next) = some store' := by
++        simpa only [List.foldl_cons, Option.bind_some, hstep] using h
++      exact (hf store a next hstep).trans (ih (store := next) htail)
++
++variable [LinearOrder Root] (cfg : Config) (ext : Externals Root)
++
++/-- PTC messages change only the two vote maps. -/
++theorem on_payload_attestation_message_frame {store store' : Store Root}
++    {message : PayloadAttestationMessage Root} {is_from_block : Bool}
++    (h : on_payload_attestation_message cfg ext store message is_from_block =
++      some store') : PayloadFrame store store' := by
++  simp only [on_payload_attestation_message] at h
++  split_ifs at h <;> try contradiction
++  all_goals first
++    | (cases h; rfl)
++    | (split at h <;> (try split_ifs at h) <;> cases h <;> rfl)
++
++/-- An accepted envelope changes only the payload map. -/
++theorem on_execution_payload_envelope_frame {store store' : Store Root}
++    {envelope : SignedExecutionPayloadEnvelope Root}
++    {observation : EnvelopeObservation Root}
++    (h : on_execution_payload_envelope ext store envelope observation = some store') :
++    PayloadFrame store store' := by
++  simp only [on_execution_payload_envelope] at h
++  split_ifs at h <;> cases h <;> rfl
++
++/-- Block PTC notification preserves all non-payload fields. -/
++theorem notify_ptc_messages_frame [Inhabited Root] {store store' : Store Root}
++    {state : BeaconState Root} {attestations : List (IndexedPayloadAttestation Root)}
++    (h : notify_ptc_messages cfg ext store state attestations = some store') :
++    PayloadFrame store store' := by
++  simp only [notify_ptc_messages] at h
++  split_ifs at h
++  · cases h
++    exact PayloadFrame.refl _
++  · refine payloadFrame_foldl ?_ attestations store h
++    intro s a t ha
++    refine payloadFrame_foldl ?_ a.attesting_indices s ha
++    intro s idx t hi
++    exact on_payload_attestation_message_frame cfg ext hi
++
++end FastConfirmation.Spec
+diff --git a/FastConfirmation/Spec/Model/Types.lean b/FastConfirmation/Spec/Model/Types.lean
+index fab4d92..9d471fb 100644
+--- a/FastConfirmation/Spec/Model/Types.lean
++++ b/FastConfirmation/Spec/Model/Types.lean
+@@ -10,5 +10,5 @@ The data structures the Fast Confirmation Rule reads, transcribed from
+-`consensus-specs` phase0 (`beacon-chain.md` containers projected to the fields
+-the FCR touches, and the `fork-choice.md` helper dataclasses), plus the
+-`Externals` bundle of abstract beacon-chain primitives (committee shuffling and
+-`process_slots` — the only functions not transcribed; see
+-`docs/spec-model-design.md`).
++`consensus-specs` Gloas and inherited phase0 containers projected to the
++fields the FCR and fork choice read, plus the
++`Externals` bundle of beacon-chain primitives, signature checks, execution
++validation, and local data observations. The exact read-projection contract is
++in `docs/gloas-model-design.md`.
+@@ -40,3 +40,16 @@ deriving DecidableEq, Inhabited
+-/-- Fork-choice `ForkChoiceNode`: `@dataclass(eq=True, frozen=True)` wrapping a
+-`root`. Kept as a distinct structure (not collapsed into `Root`) because the
+-spec introduced it for upgradability — Gloas extends it. -/
++/-- Gloas payload status (`specs/gloas/fork-choice.md:78`, constants at :102).
++The source values are EMPTY = 0, FULL = 1, and PENDING = 2. -/
++inductive PayloadStatus where
++  | empty
++  | full
++  | pending
++  deriving DecidableEq, Inhabited
++
++/-- Numeric source representation (`specs/gloas/fork-choice.md:102`). -/
++def PayloadStatus.toNat : PayloadStatus → ℕ
++  | .empty => 0
++  | .full => 1
++  | .pending => 2
++
++/-- Gloas fork-choice node (`specs/gloas/fork-choice.md:153`).
++The root and payload status together identify a node. -/
+@@ -45 +58,2 @@ structure ForkChoiceNode (Root : Type*) where
+-deriving DecidableEq, Inhabited
++  payload_status : PayloadStatus := .pending
++  deriving DecidableEq, Inhabited
+@@ -47,2 +61 @@ deriving DecidableEq, Inhabited
+-/-- Fork-choice `LatestMessage`: the LMD vote recorded per validator
+-(`epoch: Epoch, root: Root`). -/
++/-- Gloas latest message (`specs/gloas/fork-choice.md:181`). -/
+@@ -50 +63 @@ structure LatestMessage (Root : Type*) where
+-  epoch : Epoch
++  slot : Slot
+@@ -52 +65,2 @@ structure LatestMessage (Root : Type*) where
+-deriving DecidableEq, Inhabited
++  payload_present : Bool := false
++  deriving DecidableEq, Inhabited
+@@ -54,2 +68,46 @@ deriving DecidableEq, Inhabited
+-/-- `BeaconBlock`, projected to the fields the FCR and the fork-choice helpers
+-read: `slot` and `parent_root`. -/
++/-- PTC vote data (`specs/gloas/beacon-chain.md:708`). -/
++structure PayloadAttestationData (Root : Type*) where
++  beacon_block_root : Root
++  slot : Slot
++  payload_present : Bool
++  blob_data_available : Bool
++  deriving DecidableEq, Inhabited
++
++/-- Indexed PTC vote (`specs/gloas/beacon-chain.md:738`). The opaque signature
++identity is retained for external signature verification. -/
++structure IndexedPayloadAttestation (Root : Type*) where
++  attesting_indices : List ValidatorIndex
++  data : PayloadAttestationData Root
++  signature : Root
++  deriving DecidableEq, Inhabited
++
++/-- Wire PTC message (`specs/gloas/beacon-chain.md:729`). -/
++structure PayloadAttestationMessage (Root : Type*) where
++  validator_index : ValidatorIndex
++  data : PayloadAttestationData Root
++  signature : Root
++  deriving DecidableEq, Inhabited
++
++/-- Projected execution envelope (`specs/gloas/beacon-chain.md:777`).
++The opaque identity binds all fields read by external envelope validation. -/
++structure ExecutionPayloadEnvelope (Root : Type*) where
++  beacon_block_root : Root
++  parent_beacon_block_root : Root
++  identity : Root
++  deriving DecidableEq, Inhabited
++
++/-- Signed execution envelope (`specs/gloas/beacon-chain.md:790`). -/
++structure SignedExecutionPayloadEnvelope (Root : Type*) where
++  message : ExecutionPayloadEnvelope Root
++  signature : Root
++  deriving DecidableEq, Inhabited
++
++/-- Local observation context for data retrieval and execution verification
++(`specs/gloas/fork-choice.md:293`, :658). Equal identities denote equal
++observations. The coherence contract binds their meaning to source calls. -/
++structure EnvelopeObservation (Root : Type*) where
++  identity : Root
++  deriving DecidableEq, Inhabited
++
++/-- Gloas block read projection (`specs/gloas/beacon-chain.md:749`, :829).
++Payload attestations carry the source indexed projection, including order. -/
+@@ -59 +117,5 @@ structure BeaconBlock (Root : Type*) where
+-deriving DecidableEq, Inhabited
++  proposer_index : ValidatorIndex := 0
++  parent_block_hash : Root := parent_root
++  block_hash : Root := parent_root
++  payload_attestations : List (IndexedPayloadAttestation Root) := []
++  deriving DecidableEq, Inhabited
+@@ -82,0 +145,11 @@ structure BeaconState (Root : Type*) where
++  /-- Opaque source-state commitment. A concrete source projection retains
++  this identity so external reads can distinguish states with the same other
++  projected fields. Synthetic states can leave it absent. -/
++  source_identity : Option Root := none
++  /-- Exact ordered committee query results used by Gloas `is_head_weak`
++  (`specs/gloas/fork-choice.md:785`). Absent queries are outside the read
++  projection domain. The source contract requires all reached queries. -/
++  beacon_committee_reads : List (Slot × CommitteeIndex × List ValidatorIndex) := []
++  /-- Exact committee counts for the same read domain
++  (`specs/gloas/fork-choice.md:797`). -/
++  committee_count_reads : List (Epoch × ℕ) := []
+@@ -84,0 +158,13 @@ deriving Inhabited
++/-- Lookup in the committee read projection. Outside its domain, return junk.
++Source read: `specs/gloas/fork-choice.md:798`. -/
++def BeaconState.beacon_committees {Root : Type*} (state : BeaconState Root)
++    (slot : Slot) (index : CommitteeIndex) : List ValidatorIndex :=
++  ((state.beacon_committee_reads.find? fun row =>
++    row.1 == slot && row.2.1 == index).map fun row => row.2.2).getD []
++
++/-- Lookup in the count read projection. Outside its domain, return junk.
++Source read: `specs/gloas/fork-choice.md:797`. -/
++def BeaconState.committee_count_per_slot {Root : Type*} (state : BeaconState Root)
++    (epoch : Epoch) : ℕ :=
++  ((state.committee_count_reads.find? fun row => row.1 == epoch).map Prod.snd).getD 0
++
+@@ -155,4 +241,4 @@ def is_slashable_attestation_data {Root : Type*} [DecidableEq Root]
+-committee shuffling, the state transition, and signature/index validity.
+-Everything else in the FCR spec and its fork-choice environment is transcribed
+-concretely on top of these (see `docs/spec-model-design.md`, "Faithfulness
+-contract" and decisions 12–13). -/
++committee shuffling, the state transition, signature/index validity, local data
++availability, and execution-envelope verification. Their read-projection
++contract is in `docs/gloas-model-design.md`. The inherited contract is in
++`docs/spec-model-design.md`, "Faithfulness contract" and decisions 12–13. -/
+@@ -179,0 +266,16 @@ structure Externals (Root : Type*) where
++  /-- Ordered PTC, including duplicate positions
++  (`specs/gloas/beacon-chain.md:1392`; call at `specs/gloas/fork-choice.md:1134`). -/
++  get_ptc : BeaconState Root → Slot → List ValidatorIndex := fun _ _ => []
++  /-- PTC index/signature validation (`specs/gloas/beacon-chain.md:1094`;
++  call at `specs/gloas/fork-choice.md:1147`). -/
++  is_valid_indexed_payload_attestation :
++    BeaconState Root → IndexedPayloadAttestation Root → Bool := fun _ _ => false
++  /-- Local sidecar and KZG checks (`specs/gloas/fork-choice.md:293`).
++  Context is explicit so data can arrive after an earlier failed attempt. -/
++  is_data_available : Root → EnvelopeObservation Root → Bool := fun _ _ => false
++  /-- Envelope, bid, signature, state and execution-engine validation
++  (`specs/gloas/fork-choice.md:658`). The envelope and observation identities
++  retain inputs beyond the read projection. Failure is rejection. -/
++  verify_execution_payload_envelope : BeaconState Root →
++    SignedExecutionPayloadEnvelope Root → EnvelopeObservation Root → Bool :=
++      fun _ _ _ => false
+diff --git a/FastConfirmation/Spec/Model/Validator.lean b/FastConfirmation/Spec/Model/Validator.lean
+index 7f7a22b..99732ef 100644
+--- a/FastConfirmation/Spec/Model/Validator.lean
++++ b/FastConfirmation/Spec/Model/Validator.lean
+@@ -7 +7,2 @@ Honest validator behavior for attesting, from `specs/phase0/validator.md`
+-("Attesting" / "Attestation data" / "Construct attestation"): the attestation
++("Attesting" / "Attestation data" / "Construct attestation"), with the payload
++index rule from `specs/gloas/validator.md:97`: the attestation
+@@ -23 +24,2 @@ variable (cfg : Config) (ext : Externals Root)
+-/-- validator.md "Attestation data": the `AttestationData` an honest validator
++/-- Sources: `specs/phase0/validator.md:620` and `specs/gloas/validator.md:97`.
++"Attestation data": the `AttestationData` an honest validator
+@@ -25 +27,2 @@ assigned to `slot` (committee `index`) constructs from its store at voting
+-time.
++time. The committee parameter identifies the assignment; the data index is 0
++at the head block's own slot, and otherwise 1 exactly for a FULL head.
+@@ -36 +39 @@ def honest_attestation_data (store : Store Root) (slot : Slot)
+-    (index : CommitteeIndex) : AttestationData Root :=
++    (_index : CommitteeIndex) : AttestationData Root :=
+@@ -42 +45,3 @@ def honest_attestation_data (store : Store Root) (slot : Slot)
+-    index := index
++    index :=
++      if (store.blocks head_block.root).slot = slot then 0
++      else if head_block.payload_status = .full then 1 else 0
+@@ -50 +55,2 @@ def honest_attestation_data (store : Store Root) (slot : Slot)
+-/-- validator.md "Construct attestation": the wire attestation of a single
++/-- Sources: `specs/phase0/validator.md:655` and `specs/gloas/validator.md:97`.
++"Construct attestation": the wire attestation of a single
