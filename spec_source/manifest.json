@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "repository": "https://github.com/ethereum/consensus-specs.git",
-  "commit": "477321355d48d527e7e1e4d572f6a40a0b41072a",
+  "commit": "6b9bd532cca16555e2f3282d757622ebff29743e",
   "license": "CC0-1.0",
   "files": [
     {
