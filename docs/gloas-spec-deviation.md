@@ -115,13 +115,49 @@ fixed Oanc debt when the aggregate growth facts hold. `LedgerV2.lean`
 defines the status enemy. It includes old Byzantine votes on the ancestor
 line and fits inside the existing complete-window Byzantine budget.
 
-The safety shell is still open. `ChainInput.lean` and `GroundBeta.lean` lack
-a derived `PendingStatusMargin` at the later honest store. The direct-window
-and crossing paths also need this margin. The present edge certificates
-do not carry the actual confirmation of each edge or the status-specific
-old-vote classification. The full library build stops at those call sites.
-No confirmed-child exclusion has been found for the revised rule. The g3
-receiver case excludes an unconfirmed child and shows why the old root-only
-ledger inputs cannot select its payload status. The earlier confirmed
-counterexample applies to the upstream rule; see
-`docs/gloas-negative-result.md` for that historical result.
+## Proof of the pending-parent status margin (G2-004)
+
+Full validation passes. The accepted public theorem
+`acceptedSpec_safety_next_slot` depends on the constructions below; the
+trust audit reports only `propext`, `Classical.choice`, and `Quot.sound`.
+
+```text
+┌──────────────────────────────────────┬─────────────────────────────────────────────┐
+│ Step                                 │ Location                                    │
+├──────────────────────────────────────┼─────────────────────────────────────────────┤
+│ Margin consumed by a descent step    │ Endpoint.lean `PendingStatusMargin`         │
+│ Certificate field `status_margin`    │ ArbitraryQueryMargin.lean,                  │
+│                                      │ FutureCrossingMargin.lean                   │
+│ Four call sites filled               │ SelectedCoveredMarginConstruction.lean      │
+│                                      │ `selectedCoveredMarginSupplyAt_of_filter-   │
+│                                      │ Supply_minimal`                             │
+│ FULL parent availability             │ FullParentAvailability.lean                 │
+│                                      │ `Execution.full_parent_payload_verified`    │
+│ Status is a pending-parent child     │ StatusMarginConstruction.lean               │
+│                                      │ `required_parent_status_mem_pending_minimal`│
+│ Honest opposite classification       │ `endpoint_opposite_honest_classification`   │
+│ Old opposite voter is not discounted │ `endpoint_opposite_not_parentPayloadStuck`  │
+│ Strip with opposite debt (lo window) │ `endpoint_status_strip_lo`                  │
+│ Direct-window and same-epoch arms    │ `statusMargin_loWindow_minimal`             │
+│ Re-anchored certificate with debt    │ `intraEpochFuture_endpoint_inequality_opp`, │
+│                                      │ `crossingEdgeFuture_endpoint_inequality_opp`│
+│ Future-crossing and crossing arms    │ `statusMargin_crossing_minimal`             │
+└──────────────────────────────────────┴─────────────────────────────────────────────┘
+```
+
+The argument has three parts.
+
+1. An honest endpoint supporter of the opposite resolved status of the parent
+   is sibling-stuck (`Xclass`), or it is an ancestor-class voter whose message
+   is from the query window. The query holds the same message, so the voter is
+   not a matching parent-payload supporter at the query.
+2. The discount is at most the weight of the matching parent-payload
+   supporters (`Discount.lean` `support_discount_le_matching_parent_stuck`).
+   The remaining ancestor-class weight stays in the confirmation strip. It
+   pays for the opposite ancestor voters.
+3. Byzantine opposite supporters lie in the parent-to-endpoint window. The
+   crossing arms split them as in the crossing sibling bound, and they
+   subtract relayed query equivocators on a crossing edge.
+
+The earlier confirmed counterexample applies to the upstream rule; see
+[the historical negative result](history/gloas-negative-result.md).

@@ -2,9 +2,10 @@
 
 The G3 lane ports this design onto main `4b9ef30`. The G5
 [payload-aware discount](gloas-spec-deviation.md) removes the G3 safety
-counterexample, but the current endpoint lemma remains false. The
-[historical G2 obligations](gloas-proof-obligations-history.md) record the
-prior gaps. This design note does not establish Gloas safety.
+counterexample, and `StatusMarginConstruction.lean` proves the
+pending-parent status margin. The
+[historical G2 obligations](history/gloas-proof-obligations-history.md) record
+the prior gaps.
 
 This note specifies the Gloas model. Gloas replaces the phase0 fork-choice
 model. The revised lane contract removes the pre-Gloas equivalence

@@ -1,10 +1,12 @@
 # Review guide
 
-G3 Gloas status: **STOP-false at G2-004**. Full validation fails at payload
-branch selection. The new synchrony field closes G2-003; it does not close
-G2-004. See [the exact-source negative result](gloas-negative-result.md).
-The public witness declaration texts are unchanged, but there is no completed
-Gloas proof or full trust-audit result.
+Gloas status: **proved** for the payload-aware discount in
+[the spec deviation](gloas-spec-deviation.md). Full validation passes,
+including the trust audit of the 13 public witnesses. The payload envelope
+relay closes G2-003. `StatusMarginConstruction.lean` closes G2-004: it
+constructs the pending-parent payload status margin for every selected edge.
+The public witness declaration texts are unchanged. The G3 negative result
+applies to the upstream discount rule; it is kept in the [history](#history).
 
 ## Trust and architecture
 
@@ -117,6 +119,16 @@ before validation. No other assumption record gains a field. The legacy
 
 Payload availability alone does not compare FULL and EMPTY branch weights.
 The local experiment in `scripts/GloasPayloadBranchObstacle.lean` is not an
-accepted execution. The new [negative result](gloas-negative-result.md) uses
-honest singleton votes and the new relay field. See also
-[the historical obligations](gloas-proof-obligations-history.md).
+accepted execution. The [negative result](history/gloas-negative-result.md)
+for the upstream discount uses honest singleton votes and the new relay field.
+The payload-aware discount charges only matching parent-payload votes; the
+opposite ancestor votes then stay in the confirmation slack and pay for the
+status margin.
+
+## History
+
+These records describe earlier states of the Gloas port. They are not
+current proof obligations.
+
+- [G3 negative result for the upstream discount](history/gloas-negative-result.md)
+- [Historical G2 proof obligations](history/gloas-proof-obligations-history.md)

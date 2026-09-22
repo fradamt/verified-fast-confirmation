@@ -1,5 +1,11 @@
 # G3 negative result: payload branch selection
 
+> **History.** This record applies to the upstream discount rule before the
+> payload-aware change in [the spec deviation](../gloas-spec-deviation.md).
+> The current Gloas proof constructs the pending-parent status margin in
+> `FastConfirmation/Spec/Proof/StatusMarginConstruction.lean`. The G2b port
+> archive was removed after commit `28faf6d`.
+
 G2-004 is false on the exact-source execution below. Payload-envelope relay
 closes G2-003, but it does not make the root ledger control payload branches.
 The G3 lane stops without adding a branch-weight premise. The port does not

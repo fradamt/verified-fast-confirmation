@@ -107,5 +107,6 @@ SUMMARY helpers=9 observations=162 mismatch=0
 
 The model handler checks and both local Lean obstacle scripts also pass.
 These small checks do not replace the full conformance run. The
-[required negative result](gloas-negative-result.md) is a different exact-source
-handler execution, with honest singleton votes and the new payload relay.
+[historical negative result](history/gloas-negative-result.md) is a different
+exact-source handler execution for the upstream discount, with honest
+singleton votes and the new payload relay.

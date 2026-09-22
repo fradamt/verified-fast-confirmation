@@ -1,3 +1,14 @@
+# Historical G2 proof obligations
+
+> **History.** This record applies to the upstream discount rule before the
+> payload-aware change in [the spec deviation](../gloas-spec-deviation.md).
+> The current Gloas proof constructs the pending-parent status margin in
+> `FastConfirmation/Spec/Proof/StatusMarginConstruction.lean`. The G2b port
+> archive was removed after commit `28faf6d`.
+
+This is the preserved G2b record. The G3 lane is allowed to strengthen payload
+envelope relay. The statements below describe the earlier assumptions.
+
 # Gloas proof obligations
 
 The Gloas proof port is blocked. No public theorem statement or safety assumption was changed to remove either obligation. The active library retains the last buildable pre-port baseline. The patches preserve the candidate for further work. They do not prove Gloas safety.
@@ -127,7 +138,7 @@ This is a kernel-checked local fork-choice counterexample. It does not refute th
 
 ## Kernel checks and scope
 
-After reconstructing the candidate as stated in [README.md](README.md), run:
+After reconstructing the candidate as stated in the archived README (`archive/gloas-port/README.md` at commit `28faf6d`), run:
 
 ```sh
 flock /home/fradamt/lean/orch/g2-lean-slot.lock lake env lean scripts/GloasPayloadDeliveryObstacle.lean
