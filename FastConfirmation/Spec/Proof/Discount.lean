@@ -1,5 +1,6 @@
 module
 public import FastConfirmation.Spec.Proof.HonestWeight
+public import FastConfirmation.Spec.Proof.PayloadSupport
 
 @[expose] public section
 
@@ -120,6 +121,65 @@ theorem parent_payload_partition (E : Execution Root) (store : Store Root)
     (fun i => (store.latest_messages i).any (fun lm =>
       decide ((get_supported_node store lm).payload_status =
         get_parent_payload_status store (store.blocks b)))) E.weight_of
+
+/-- A matching parent-root vote cannot support a different resolved payload
+status at that root.  The statement uses the complete opposite-status
+supporter set, including validators outside the discount's pre-region. -/
+theorem parentPayloadStuck_disjoint_oppositeStatus (E : Execution Root)
+    (store : Store Root) (bs : BeaconState Root) (b : Root)
+    (other : PayloadStatus) (hresolved : other ≠ .pending)
+    (hne : other ≠ get_parent_payload_status store (store.blocks b)) :
+    Disjoint (ParentPayloadStuck cfg E store bs b)
+      (AttSupporters cfg store
+        (ForkChoiceNode.mk (store.blocks b).parent_root other) bs).toFinset := by
+  rw [Finset.disjoint_left]
+  intro i hiParent hiOther
+  simp only [ParentPayloadStuck, ParentPayloadSupport, ParentSupport,
+    Finset.mem_filter] at hiParent
+  obtain ⟨⟨⟨_, hroot⟩, hmatch⟩, _⟩ := hiParent
+  obtain ⟨lm, hlm, _, hsupp⟩ :=
+    mem_AttSupporters cfg (List.mem_toFinset.mp hiOther)
+  rw [hlm] at hroot hmatch
+  simp only [Option.any_some, Bool.and_eq_true, decide_eq_true_eq] at hroot hmatch
+  have hstatus := (supported_node_own_root_resolved_iff store lm other hresolved).mp
+    (by simpa only [hroot.1] using hsupp)
+  have hmatch' : (if lm.payload_present then .full else .empty) =
+      get_parent_payload_status store (store.blocks b) := by
+    simpa only [get_supported_node, hstatus.1, ↓reduceIte] using hmatch
+  exact hne (hstatus.2.trans hmatch')
+
+/-- Matching parent-root votes and votes supporting the child are disjoint
+in one recorded store.  The parent is strictly earlier than the child, so a
+latest message pinned to the parent stops before it can reach the child's
+pending node. -/
+theorem parentPayloadStuck_disjoint_childSupporters (E : Execution Root)
+    (store : Store Root) (bs : BeaconState Root) (b : Root)
+    (hslot : (store.blocks (store.blocks b).parent_root).slot < (store.blocks b).slot) :
+    Disjoint (ParentPayloadStuck cfg E store bs b)
+      (AttSupporters cfg store (get_node_for_root b) bs).toFinset := by
+  rw [Finset.disjoint_left]
+  intro i hiParent hiChild
+  simp only [ParentPayloadStuck, ParentPayloadSupport, ParentSupport,
+    Finset.mem_filter] at hiParent
+  obtain ⟨⟨⟨_, hroot⟩, _⟩, _⟩ := hiParent
+  obtain ⟨lm, hlm, _, hsupp⟩ :=
+    mem_AttSupporters cfg (List.mem_toFinset.mp hiChild)
+  rw [hlm] at hroot
+  simp only [Option.any_some, Bool.and_eq_true, decide_eq_true_eq] at hroot
+  have hstop : get_ancestor store (get_supported_node store lm) (store.blocks b).slot
+      = get_supported_node store lm :=
+    get_ancestor_stop_status (by
+      change (store.blocks lm.root).slot ≤ (store.blocks b).slot
+      rw [hroot.1]
+      exact le_of_lt hslot)
+  simp only [get_node_for_root, is_ancestor_pending,
+    decide_eq_true_eq] at hsupp
+  rw [hstop] at hsupp
+  change lm.root = b at hsupp
+  have hEq : (store.blocks b).parent_root = b := hroot.1.symm.trans hsupp
+  have hbad := hslot
+  rw [hEq] at hbad
+  exact (lt_irrefl _ hbad).elim
 
 omit [Inhabited Root] in
 /-- A parent supporter is in the pre-region span committee and does not

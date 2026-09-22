@@ -157,6 +157,40 @@ theorem supporter_mem_span_committee {E : Execution Root}
   · exact hsa.trans (hble.trans h8)
   · exact Nat.le_sub_one_of_lt h5
 
+/-- A confirmed block is older than the confirmation store's completed-vote
+cutoff.  Confirmation has positive score, and every recorded supporter is
+confined by provenance to a committee slot from the block slot through that
+cutoff.  Hence the parent of a confirmed child cannot be a previous-slot
+payload decision at a same-slot or later endpoint. -/
+theorem confirmed_block_slot_le_cutoff {E : Execution Root}
+    {store : Store Root} {bs : BeaconState Root} {b : Root}
+    (hwf : ∀ r ∈ store.block_roots,
+      (store.blocks r).parent_root ∈ store.block_roots →
+        (store.blocks (store.blocks r).parent_root).slot < (store.blocks r).slot)
+    (hprov : LatestMessageProvenance E cfg (get_current_slot cfg store) store)
+    (hwalk : ∀ i ∈ AttSupporters cfg store (get_node_for_root b) bs, ∀ lm,
+      store.latest_messages i = some lm →
+        WalkKnown store (store.blocks b).slot lm.root)
+    (hconf : is_one_confirmed cfg ext store bs b = true) :
+    (store.blocks b).slot ≤ get_current_slot cfg store - 1 := by
+  have hpositive : 0 < get_attestation_score cfg store (get_node_for_root b) bs := by
+    have hgt : compute_safety_threshold cfg ext store b bs <
+        get_attestation_score cfg store (get_node_for_root b) bs := by
+      simpa [is_one_confirmed] using hconf
+    exact lt_of_le_of_lt (Nat.zero_le _) hgt
+  cases hlist : AttSupporters cfg store (get_node_for_root b) bs with
+  | nil =>
+      rw [get_attestation_score_eq_sum, hlist] at hpositive
+      simp at hpositive
+  | cons i rest =>
+      have hi : i ∈ AttSupporters cfg store (get_node_for_root b) bs := by
+        rw [hlist]
+        exact List.mem_cons_self
+      have hspan := supporter_mem_span_committee cfg hwf hprov hi
+        (hwalk i hi) (le_refl (store.blocks b).slot)
+      obtain ⟨s, hs, _⟩ := Finset.mem_biUnion.mp hspan
+      exact (Finset.mem_Icc.mp hs).1.trans (Finset.mem_Icc.mp hs).2
+
 /-! ## Step 3 — the Byzantine budget
 
 The non-honest supporters' total weight is bounded by

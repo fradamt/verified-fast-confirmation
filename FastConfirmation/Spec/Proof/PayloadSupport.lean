@@ -1,5 +1,5 @@
 module
-public import FastConfirmation.Spec.Proof.Ancestry
+public import FastConfirmation.Spec.Proof.AncestryRoots
 public import FastConfirmation.Spec.Proof.QuorumAccounting
 
 @[expose] public section
@@ -62,6 +62,30 @@ theorem not_ancestor_both_payload_statuses (store : Store Root)
     · cases himpossible
   · cases himpossible
 
+/-- The two distinct resolved statuses at a root have disjoint ancestry
+predicates, in either order. -/
+theorem not_ancestor_two_resolved_statuses (store : Store Root)
+    (node : ForkChoiceNode Root) (root : Root)
+    (selected other : PayloadStatus)
+    (hselected : selected ≠ .pending) (hother : other ≠ .pending)
+    (hne : other ≠ selected) :
+    ¬ (is_ancestor store node (ForkChoiceNode.mk root selected) = true ∧
+      is_ancestor store node (ForkChoiceNode.mk root other) = true) := by
+  cases selected with
+  | pending => exact (hselected rfl).elim
+  | empty =>
+    cases other with
+    | pending => exact (hother rfl).elim
+    | empty => exact (hne rfl).elim
+    | full => exact not_ancestor_both_payload_statuses store node root
+  | full =>
+    cases other with
+    | pending => exact (hother rfl).elim
+    | empty =>
+      intro h
+      exact not_ancestor_both_payload_statuses store node root ⟨h.2, h.1⟩
+    | full => exact (hne rfl).elim
+
 variable (cfg : Config)
 
 /-- EMPTY and FULL at one root have disjoint recorded supporter sets. -/
@@ -79,6 +103,70 @@ theorem payload_status_supporters_disjoint (store : Store Root)
   cases heq
   exact not_ancestor_both_payload_statuses store (get_supported_node store message) root
     ⟨hsupportEmpty, hsupportFull⟩
+
+/-- A recorded supporter of a descendant node also supports a resolved
+ancestor, when its latest-message walk is known down to that ancestor.  This
+keeps the payload status in the ancestry test; replacing the ancestor by a
+pending root would lose the branch distinction. -/
+theorem attSupporters_subset_resolved_ancestor {store : Store Root}
+    {child parent : ForkChoiceNode Root} {state : BeaconState Root}
+    (hwf : ∀ r ∈ store.block_roots,
+      (store.blocks r).parent_root ∈ store.block_roots →
+        (store.blocks (store.blocks r).parent_root).slot < (store.blocks r).slot)
+    (hancestor : is_ancestor store child parent = true)
+    (hwalk : ∀ i lm, store.latest_messages i = some lm →
+      i ∈ AttSupporters cfg store child state →
+        WalkKnown store (store.blocks parent.root).slot lm.root)
+    (hchildWalk : WalkKnown store (store.blocks parent.root).slot child.root) :
+    (AttSupporters cfg store child state).toFinset ⊆
+      (AttSupporters cfg store parent state).toFinset := by
+  intro i hi
+  simp only [List.mem_toFinset] at hi ⊢
+  have hiChild := hi
+  obtain ⟨lm, hlm, hnotEquiv, hsupports⟩ := mem_AttSupporters cfg hi
+  simp only [AttSupporters, List.mem_filter] at hi ⊢
+  refine ⟨hi.1, ?_⟩
+  rw [hlm]
+  simp only [Bool.and_eq_true, decide_eq_true_eq]
+  exact ⟨hnotEquiv,
+    is_ancestor_trans hwf (hwalk i lm hlm hiChild)
+      hchildWalk hsupports hancestor⟩
+
+/-- The child's pending node descends from exactly the resolved parent status
+encoded by its bid.  This is the one-step Gloas ancestor equation. -/
+theorem child_pending_descends_required_parent_status {store : Store Root}
+    {b : Root}
+    (hwf : ∀ r ∈ store.block_roots,
+      (store.blocks r).parent_root ∈ store.block_roots →
+        (store.blocks (store.blocks r).parent_root).slot < (store.blocks r).slot)
+    (hb : b ∈ store.block_roots)
+    (hp : (store.blocks b).parent_root ∈ store.block_roots) :
+    is_ancestor store (get_node_for_root b)
+      (ForkChoiceNode.mk (store.blocks b).parent_root
+        (get_parent_payload_status store (store.blocks b))) = true := by
+  have hslot := hwf b hb hp
+  have hpWalk : WalkKnown store (store.blocks (store.blocks b).parent_root).slot
+      (store.blocks b).parent_root := WalkKnown.stop hp (le_refl _)
+  simp only [get_node_for_root, is_ancestor, Bool.and_eq_true,
+    decide_eq_true_eq]
+  rw [get_ancestor_step_status hwf hb hslot hpWalk,
+    get_ancestor_stop_status (le_refl _)]
+  exact ⟨rfl, Or.inl rfl⟩
+
+/-- The parent of a child whose slot is inside the completed-vote cutoff is
+older than the previous slot.  The payload tie breaker is therefore not the
+branch used for that parent at this store. -/
+theorem confirmed_child_parent_not_previous_slot (store : Store Root) (b : Root)
+    (status : PayloadStatus)
+    (hslot : (store.blocks (store.blocks b).parent_root).slot < (store.blocks b).slot)
+    (hcutoff : (store.blocks b).slot ≤ get_current_slot cfg store - 1) :
+    is_previous_slot_payload_decision cfg store
+      (ForkChoiceNode.mk (store.blocks b).parent_root status) = false := by
+  have hnat (p c now : ℕ) (hp : p < c) (hc : c ≤ now - 1) :
+      p + 1 ≠ now := by omega
+  have hne : (store.blocks (store.blocks b).parent_root).slot + 1 ≠
+      get_current_slot cfg store := hnat _ _ _ hslot hcutoff
+  simp [is_previous_slot_payload_decision, hne]
 
 open Classical in
 /-- Supporters whose recorded message names the node's own beacon root. -/

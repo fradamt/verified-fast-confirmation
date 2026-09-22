@@ -122,6 +122,21 @@ theorem confirmation_payload_margin_arith
     (hpartition : O + S + G ≤ M + A) :
     O + P < S + G := by omega
 
+/-- The status budget in the form produced by the actual confirmation rule.
+`H` is honest child support at confirmation, after the rule's `2 * A` has
+paid for Byzantine child support.  `O` is the complete opposite-status score
+at the endpoint.  The old selected and matching-parent voters are disjoint
+from it, while newly recorded Byzantine votes cost `Bnew`; honest new votes
+of at least that weight increase the selected score. -/
+theorem confirmed_payload_margin_transport_arith
+    {H d M P G O Bnew Hnew selectedScore : ℕ}
+    (hconf : M + P + 1 ≤ 2 * H + d)
+    (hdiscount : d ≤ G)
+    (hbudget : O + H + G ≤ M + Bnew)
+    (hnew : Bnew ≤ Hnew)
+    (hselected : H + Hnew ≤ selectedScore) :
+    O + P < selectedScore := by omega
+
 /-- The pending parent's payload contest. A strict margin pays the complete
 proposer score. If Gloas gives both previous-slot payload decisions zero
 weight, the status tie breaker supplies the second route. -/
