@@ -402,7 +402,13 @@ theorem finalized_check_of_honestTargetOnSelected
           (E.store cfg ext w m).finalized_checkpoint.epoch :=
     htargetAtHead.trans
       (get_checkpoint_block_of_ancestor cfg hparentVote
-        hheadDescendsSelected hboundarySelectedVote htarget.target_walk)
+        ((congrArg (· = true) (is_ancestor_pending_root_eq
+          (E.store cfg ext htarget.validator htarget.second)
+          (get_head cfg (E.store cfg ext htarget.validator htarget.second)).root
+          selected .pending
+          (get_head cfg (E.store cfg ext htarget.validator
+            htarget.second)).payload_status)).mpr hheadDescendsSelected)
+        hboundarySelectedVote htarget.target_walk)
   have hselectedTransport :
       get_checkpoint_block cfg
           (E.store cfg ext htarget.validator htarget.second) selected

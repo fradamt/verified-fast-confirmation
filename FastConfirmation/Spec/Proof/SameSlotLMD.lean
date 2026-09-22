@@ -167,7 +167,8 @@ theorem pastDescendant_ancestorPair_at_slot_endpoint_minimal
     hA.externals_coherence hgen v q
   have hdr : is_ancestor (E.store cfg ext v q)
       (get_node_for_root d) (get_node_for_root r) = true :=
-    is_ancestor_trans hpslQ (hwalkQ r hr d hdQ) (hwalkQ r hr b hb) hdb hbr
+    is_ancestor_trans (a := get_node_for_root d) (b := get_node_for_root b)
+        (c := get_node_for_root r) hpslQ (hwalkQ r hr d hdQ) (hwalkQ r hr b hb) hdb hbr
   have hanchor0 : ablk.root ∈ (E.store cfg ext u 0).block_roots := by
     change ablk.root ∈ E.genesis_store.block_roots
     rw [hgeq]

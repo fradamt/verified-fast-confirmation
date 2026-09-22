@@ -463,7 +463,8 @@ theorem mem_known_descends {store : Store Root}
       rcases hr with rfl | hr
       · exact ⟨hcmem, hc_top⟩
       · obtain ⟨hrmem, hr_c⟩ := ih hrest hcmem hr
-        exact ⟨hrmem, is_ancestor_trans hwf
+        exact ⟨hrmem, is_ancestor_trans (a := get_node_for_root r) (b := get_node_for_root c)
+            (c := get_node_for_root top) hwf
           (hwalk top htop r hrmem) (hwalk top htop c hcmem) hr_c hc_top⟩
 
 end ChainDown

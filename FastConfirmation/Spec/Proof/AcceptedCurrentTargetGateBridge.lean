@@ -459,9 +459,10 @@ def fixedSource_of_acceptedTargetWalk
       B.anchor B.state store) :
     AcceptedFixedSourceCurrentTargetA32GateRealization cfg ext E
       B.anchor B.state store carrier := by
-  exact fixedSource_of_acceptedTargetWalk_root cfg ext B hwf hcore hphase hboundaryPhase
+  exact fixedSource_of_acceptedTargetWalk_root (E := E) cfg ext B hwf hcore hphase
+    hboundaryPhase
     hstore hparentSlots hcarrierEpoch hcurrentNonGenesis hwalk
-    (congrArg ForkChoiceNode.root hlands) hgate
+    (by rw [hlands]) hgate
 
 end AcceptedCurrentTargetA32GateRealization
 

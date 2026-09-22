@@ -126,6 +126,11 @@ structure ForkEdgeGroundInputs (E : Execution Root) (w : ValidatorIndex) (m : �
       (ForkChoiceNode.mk h
         (get_parent_payload_status (E.store cfg ext w m)
           ((E.store cfg ext w m).blocks c)))
+  /-- the pending-parent status contest selects the status of `c`. -/
+  hstatus : PendingStatusMargin cfg (E.store cfg ext w m)
+    (get_filtered_block_tree cfg (E.store cfg ext w m)) h
+    (get_parent_payload_status (E.store cfg ext w m)
+      ((E.store cfg ext w m).blocks c))
   /-- the recorded `b`-side lower bound: `c`'s attestation score dominates `Sval(σ)`. -/
   hbside : E.Sval cfg ext w m b lo σ ≤ get_attestation_score cfg (E.store cfg ext w m)
     (get_node_for_root c)
@@ -152,7 +157,7 @@ theorem descendStep_of_forkEdgeGroundInputs {w : ValidatorIndex} {m : ℕ} {b h 
     (hin : E.ForkEdgeGroundInputs cfg ext w m b h c vc nc lo es σ) :
     DescendStep cfg (E.store cfg ext w m)
       (get_filtered_block_tree cfg (E.store cfg ext w m)) h c :=
-  ledger_descendStep cfg ext hin.hchild hin.hbside
+  ledger_descendStep cfg ext hin.hchild hin.hstatus hin.hbside
     (E.bval_endpoint_strip_sigma cfg ext vc w nc m b lo es σ
       (get_proposer_score cfg (E.store cfg ext w m)) hin.hSt hin.hAt hin.hinv) hin.hsib
 
@@ -266,7 +271,8 @@ theorem mem_isAncestor_of_parentChain {store : Store Root}
     rcases List.mem_cons.mp hc with rfl | hc'
     · have hbd := ihd d (by simp)
       have hda := is_ancestor_of_parent hwf hdmem hamem hr
-      exact is_ancestor_trans hwf (hwalk _ hamem b hb) (hwalk _ hamem d hdmem) hbd hda
+      exact is_ancestor_trans (a := get_node_for_root b) (b := get_node_for_root d)
+        (c := get_node_for_root c) hwf (hwalk _ hamem b hb) (hwalk _ hamem d hdmem) hbd hda
     · exact ihd c hc'
 
 /-- **The per-block ground supply.** `ShellCompose.ForkEdgeEngineSupply`'s

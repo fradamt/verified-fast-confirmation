@@ -236,6 +236,7 @@ theorem postAnchorHonestTargetGeometryAt_of_vote
       (compute_start_slot_at_epoch cfg J.epoch)).root = J.root := by
     simpa only [get_checkpoint_block, get_node_for_root] using htargetRoot
   have htargetSpec := get_ancestor_spec hwfK htargetWalk
+  simp only [get_node_for_root] at heta
   rw [heta] at htargetSpec
   have hJK : J.root ∈ (E.store cfg ext i k).block_roots :=
     htargetSpec.1
@@ -482,6 +483,7 @@ theorem preQueryHonestTarget_sourceWitnessAtQuery
       (compute_start_slot_at_epoch cfg target.epoch)).root = target.root := by
     simpa only [get_checkpoint_block, get_node_for_root] using htargetRoot
   have htargetSpec := get_ancestor_spec hwfK htargetWalk
+  simp only [get_node_for_root] at heta
   rw [heta] at htargetSpec
   have hTK : target.root ∈ (E.store cfg ext i k).block_roots :=
     htargetSpec.1
@@ -498,6 +500,7 @@ theorem preQueryHonestTarget_sourceWitnessAtQuery
         ((E.store cfg ext i k).blocks target.root).slot =
           get_node_for_root target.root :=
       get_ancestor_stop (Nat.le_refl _)
+    simp only [get_node_for_root] at hstop
     rw [hstop] at hcomp
     rw [is_ancestor_node_root]
     simp only [is_ancestor_get_node_for_root, decide_eq_true_eq]
@@ -878,6 +881,7 @@ theorem currentEpochBlock_descends_currentTarget
         T.root := by
     rfl
   have htargetSpec := get_ancestor_spec hwf hboundaryWalk
+  simp only [get_node_for_root] at heta
   rw [heta] at htargetSpec
   have hT : T.root ∈ store.block_roots := htargetSpec.1
   have hTslot : (store.blocks T.root).slot ≤
@@ -891,6 +895,7 @@ theorem currentEpochBlock_descends_currentTarget
     have hstop : get_ancestor store (get_node_for_root T.root)
         (store.blocks T.root).slot = get_node_for_root T.root :=
       get_ancestor_stop (Nat.le_refl _)
+    simp only [get_node_for_root] at hstop
     rw [hstop] at hcomp
     rw [is_ancestor_node_root]
     simp only [is_ancestor_get_node_for_root, decide_eq_true_eq]
@@ -944,6 +949,7 @@ theorem currentTarget_descends_previousEpochBlock
         T.root := by
     rfl
   have htargetSpec := get_ancestor_spec hwf hboundaryWalk
+  simp only [get_node_for_root] at heta
   rw [heta] at htargetSpec
   have hT : T.root ∈ store.block_roots := htargetSpec.1
   have hbEpochLt : get_block_epoch cfg store b <
@@ -959,6 +965,7 @@ theorem currentTarget_descends_previousEpochBlock
     (hwalk b hb _ hhead)
   rw [is_ancestor_node_root] at hheadB
   simp only [is_ancestor_get_node_for_root, decide_eq_true_eq] at hheadB ⊢
+  simp only [get_node_for_root] at hheadB
   rw [heta, hheadB] at hcomp
   exact ⟨by simpa only [T] using hT, by simpa only [T] using hcomp⟩
 

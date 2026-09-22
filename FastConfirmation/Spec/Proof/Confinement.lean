@@ -228,7 +228,8 @@ theorem honest_sibling_confinement
     rw [← ha, hbbreq] at hanc1
     have hlmc : is_ancestor (E.store cfg ext w m) (get_node_for_root lm.root)
         (get_node_for_root c) = true :=
-      is_ancestor_trans hwf (hwalkK c hc lm.root hlmk) (hwalkK c hc b hb) hanc1 hbc
+      is_ancestor_trans (a := get_node_for_root lm.root) (b := get_node_for_root b)
+        (c := get_node_for_root c) hwf (hwalkK c hc lm.root hlmk) (hwalkK c hc b hb) hanc1 hbc
     exact siblings_incompatible hwf hc hc' hh hpc hpc' hne
       (hwalkK c hc lm.root hlmk) (hwalkK c' hc' lm.root hlmk) hlmc hanc'
   · rintro (hvoteless | ⟨t1, k1, a1, ht1le, hvote1, hnew1, hanc1⟩)

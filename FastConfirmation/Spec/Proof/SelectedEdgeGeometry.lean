@@ -223,7 +223,8 @@ theorem strictSelectedEdgeGeometry_of_query_minimal
     is_ancestor_of_parent hwfM hcM haM hparentM
   have hglcA_M : is_ancestor (E.store cfg ext w m)
       (get_node_for_root glc) (get_node_for_root a) = true :=
-    is_ancestor_trans hwfM (hwalkM a haM glc _hglcM)
+    is_ancestor_trans (a := get_node_for_root glc) (b := get_node_for_root c)
+        (c := get_node_for_root a) hwfM (hwalkM a haM glc _hglcM)
       (hwalkM a haM c hcM) hglcC_M hcA_M
   have hanchorLeAM : ablk.message.slot ≤
       ((E.store cfg ext w m).blocks a).slot :=
@@ -245,14 +246,16 @@ theorem strictSelectedEdgeGeometry_of_query_minimal
   have haQ : a ∈ (E.store cfg ext v q).block_roots := hsubUQ haU
   have hglcC_Q : is_ancestor (E.store cfg ext v q)
       (get_node_for_root glc) (get_node_for_root c) = true := by
-    have hcongr := is_ancestor_congr hagreeUQ hglcU hcU
+    have hcongr := is_ancestor_congr (node := ForkChoiceNode.mk glc .pending)
+        (ancestor := ForkChoiceNode.mk c .pending) hagreeUQ hglcU hcU
       (hwalkU c hcU glc hglcU)
     simp only [get_node_for_root] at hglcC_U ⊢
     rw [← hcongr]
     exact hglcC_U
   have hcR0_Q : is_ancestor (E.store cfg ext v q)
       (get_node_for_root c) (get_node_for_root r0) = true := by
-    have hcongr := is_ancestor_congr hagreeUQ hcU hr0U
+    have hcongr := is_ancestor_congr (node := ForkChoiceNode.mk c .pending)
+        (ancestor := ForkChoiceNode.mk r0 .pending) hagreeUQ hcU hr0U
       (hwalkU r0 hr0U c hcU)
     simp only [get_node_for_root] at hcR0_U ⊢
     rw [← hcongr]
@@ -282,7 +285,8 @@ theorem strictSelectedEdgeGeometry_of_query_minimal
     hwfQ c hcQ hparentKnownQ
   have hdC_U : is_ancestor (E.store cfg ext u nu)
       (get_node_for_root d) (get_node_for_root c) = true :=
-    is_ancestor_trans hwfU (hwalkU c hcU d hdU)
+    is_ancestor_trans (a := get_node_for_root d) (b := get_node_for_root glc)
+        (c := get_node_for_root c) hwfU (hwalkU c hcU d hdU)
       (hwalkU c hcU glc hglcU) hdGlc_U hglcC_U
   have hcSlotLeD_U : ((E.store cfg ext u nu).blocks c).slot ≤
       ((E.store cfg ext u nu).blocks d).slot := by

@@ -399,7 +399,7 @@ theorem currentTargetObservedHonestSupporter_vote
     exact haApplied.trans (E.slot_at_mono cfg (Nat.le_succ n))
   have hsub : (E.store cfg ext i k).block_roots ⊆
       (E.store cfg ext v n).block_roots :=
-    E.blockRoots_subset_of_relay cfg ext hsync hi hv hkH hnH
+    E.blockRoots_subset_of_legacy_relay cfg ext hsync hi hv hkH hnH
       hrelay
   have htransport := E.checkpoint_block_transport cfg ext hwf hsub
     hheadKnown hwalk
@@ -753,7 +753,7 @@ theorem concreteVote_source_eq_common_ancestor
     (honest_attestation cfg ext
       (E.store cfg ext i vote.time) vote.slot vote.index i).data.source =
       S.GJ common := by
-  exact E.honest_attestation_source_eq_common_ancestor
+  exact E.honest_attestation_source_eq_common_ancestor (index := vote.index)
     hhistory hphase hcoh hi vote.time_within_horizon hcore hsegment hvoteEpoch
 
 /-- Uniform common-segment geometry for the concrete signer set yields the

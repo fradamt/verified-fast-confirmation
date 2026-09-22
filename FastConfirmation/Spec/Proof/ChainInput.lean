@@ -119,6 +119,8 @@ def LedgerCertInput (E : Execution Root) (store : Store Root) (h c : Root) : Pro
     ForkChoiceNode.mk c .pending ∈
         get_node_children store (get_filtered_block_tree cfg store)
           (ForkChoiceNode.mk h (get_parent_payload_status store (store.blocks c))) ∧
+    PendingStatusMargin cfg store (get_filtered_block_tree cfg store) h
+      (get_parent_payload_status store (store.blocks c)) ∧
     (∀ i ∈ E.Sclass cfg ext v₀ n₀ b' lo σ,
       i ∈ AttSupporters cfg store (get_node_for_root c)
         (store.checkpoint_states store.justified_checkpoint)) ∧
@@ -146,8 +148,9 @@ confinement (`recorded_sibling_le_v2`) are all internal to that lemma. -/
 theorem ledgerStepV2_of_certInput {E : Execution Root} {store : Store Root} {h c : Root}
     (hc : LedgerCertInput cfg ext E store h c) :
     LedgerStepV2 cfg ext E store h c := by
-  obtain ⟨v₀, n₀, b', lo, es, σ, boost, hval, hboost, hinv, hchild, hSmem, hHon, hByz⟩ := hc
-  exact inv2_ledgerStepV2 cfg ext hval hboost hinv hchild hSmem hHon hByz
+  obtain ⟨v₀, n₀, b', lo, es, σ, boost, hval, hboost, hinv, hchild, hstatus,
+    hSmem, hHon, hByz⟩ := hc
+  exact inv2_ledgerStepV2 cfg ext hval hboost hinv hchild hstatus hSmem hHon hByz
 
 /-! ## Section 3 — `LedgerChainInput` from the certificate functional
 
@@ -246,6 +249,10 @@ theorem ledgerCertInput_of_endpoint {E : Execution Root} {w : ValidatorIndex} {m
           (ForkChoiceNode.mk h
             (get_parent_payload_status (E.store cfg ext w m)
               ((E.store cfg ext w m).blocks c))))
+    (hstatus : PendingStatusMargin cfg (E.store cfg ext w m)
+      (get_filtered_block_tree cfg (E.store cfg ext w m)) h
+      (get_parent_payload_status (E.store cfg ext w m)
+        ((E.store cfg ext w m).blocks c)))
     (hSmem : ∀ i ∈ E.Sclass cfg ext w m b' lo σ,
       i ∈ AttSupporters cfg (E.store cfg ext w m) (get_node_for_root c)
         ((E.store cfg ext w m).checkpoint_states (E.store cfg ext w m).justified_checkpoint))
@@ -275,7 +282,7 @@ theorem ledgerCertInput_of_endpoint {E : Execution Root} {w : ValidatorIndex} {m
   ⟨w, m, b', lo, es, σ, boost, hval, hboost,
     E.inv2_at_endpoint cfg ext hec hsv vc w nc m b' lo es σ boost hσ hσH
       hSt hAt hBb hbase hpre hsat,
-    hchild, hSmem, hHon, hByz⟩
+    hchild, hstatus, hSmem, hHon, hByz⟩
 
 end FastConfirmation.Spec
 

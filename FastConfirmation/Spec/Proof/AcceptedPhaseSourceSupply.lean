@@ -127,9 +127,12 @@ theorem StrictSelectedResultMechanicalFacts.current_lemma13SourceSeed_of_notStar
         have hstrict' :
             find_latest_confirmed_descendant cfg ext query input ≠ input := by
           simpa only [hout] using hstrict
-        simpa only [head, hout] using
-          strictSelectedResult_below_head cfg ext hparent hwalk hhead
-            hinput hstrict'
+        have hb := strictSelectedResult_below_head cfg ext hparent hwalk hhead
+          hinput hstrict'
+        rw [hout] at hb
+        exact (congrArg (· = true) (is_ancestor_pending_root_eq query.store
+          (get_head cfg query.store).root result .pending
+          (get_head cfg query.store).payload_status)).mpr hb
       have hprojection :=
         Execution.ExactPrefixAcceptedFFGSemantics.causalStoreProjection
           B hstore

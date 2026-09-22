@@ -7,6 +7,7 @@ public import FastConfirmation.Spec.Proof.SelectedCommitteeSupport
 public import FastConfirmation.Spec.Proof.SelectedMarginConstruction
 public import FastConfirmation.Spec.Proof.EndpointLedgerMinimal
 public import FastConfirmation.Spec.Proof.FutureSiblingScore
+public import FastConfirmation.Spec.Proof.StatusMarginConstruction
 
 @[expose] public section
 
@@ -204,14 +205,25 @@ theorem selectedCoveredMarginSupplyAt_of_filterSupply_minimal
   have hbase := E.base_strip_of_confirmed_at_minimal cfg ext hA hv hqH
     hquery hgeom.block_known hgeom.parent_known hgeom.confirmation
     lo es hgeom.lo_eq hcutoffQ hmaxQuery hw hmH
+  have hsigmaLt : sigma < E.slot_at cfg m := hgeom.sigma_lt_endpoint
+  have hslotQM' : E.slot_at cfg q ≤ E.slot_at cfg m := hslotQM
   by_cases heqCutoff : sigma = es
   · have hledgerEs : E.EndpointLedgerFields cfg ext w m a c lo es := by
       simpa only [heqCutoff] using hledger
+    have hstatus := E.statusMargin_loWindow_minimal cfg ext hA hwalkDomain
+      hv hqH hquery hw hmH haQ hgeom.block_known
+      (hgeom.parent_eq) haM hcM hparentM hgeom.confirmation hgeom.lo_eq hloEnd
+      hlo₀ hcutoffQ (by rw [heqCutoff] at hsigmaEnd; exact hsigmaEnd)
+      (by rw [← heqCutoff]; exact hsigmaLt) (le_refl es) hslotQM' hmaxQuery hSt
+      (fun t h1 h2 => absurd (lt_of_lt_of_le h1 h2) (lt_irrefl _))
+      (by simp only [Nat.sub_self, Nat.mul_zero, le_refl])
+      hledgerEs.selected_recording
     exact SelectedEdgeMarginInputsAt.directWindow lo es
       { support_transport := hSt
         ancestor_transport := hAt
         base_strip := hbase
         child_filtered := hchild
+        status_margin := hstatus
         selected_score := hledgerEs.selected_score
         sibling_score := hledgerEs.sibling_score }
   have hesLtSigma : es < sigma :=
@@ -259,7 +271,18 @@ theorem selectedCoveredMarginSupplyAt_of_filterSupply_minimal
     simp only [Execution.Sclass, Finset.mem_filter] at hi' ⊢
     exact ⟨⟨span_committee_mono_lo hloMid hi'.1.1, hi'.1.2⟩, hi'.2⟩
   rcases hgeom.regime with hsame | hcross | ⟨hedge, hwindow⟩
-  · exact SelectedEdgeMarginInputsAt.sameEpoch lo es sigma
+  · have hsameT : ∀ t : Slot, lo ≤ t → t ≤ sigma →
+        compute_epoch_at_slot cfg t = compute_epoch_at_slot cfg lo :=
+      fun t htlo htσ => epoch_eq_of_between cfg htlo htσ hsame
+    have hbudget := E.hbudget_sameEpoch_of_IH cfg ext hA.byzantine_bound
+      hA.externals_coherence hgeom.lo_le_cutoff hgeom.cutoff_le_sigma
+      hgeom.sigma_horizon hsameT
+    have hstatus := E.statusMargin_loWindow_minimal cfg ext hA hwalkDomain
+      hv hqH hquery hw hmH haQ hgeom.block_known
+      (hgeom.parent_eq) haM hcM hparentM hgeom.confirmation hgeom.lo_eq hloEnd
+      hlo₀ hcutoffQ hsigmaEnd hsigmaLt hgeom.cutoff_le_sigma hslotQM' hmaxQuery
+      hSt hcommittee hbudget hledger.selected_recording
+    exact SelectedEdgeMarginInputsAt.sameEpoch lo es sigma
       { query_store_eq := hquery
         confirming_cutoff := hgeom.confirming_cutoff
         lo_le_es := hgeom.lo_le_cutoff
@@ -271,10 +294,18 @@ theorem selectedCoveredMarginSupplyAt_of_filterSupply_minimal
         ancestor_transport := hAt
         base_strip := hbase
         child_filtered := hchild
+        status_margin := hstatus
         selected_recording := hledger.selected_recording
         honest_sibling_confinement := hledger.honest_sibling_confinement
         byzantine_sibling_confinement := hledger.byzantine_sibling_confinement }
-  · have hsibling :=
+  · have hstatus := E.statusMargin_crossing_minimal cfg ext hA hwalkDomain
+      hv hqH hquery hw hmH haQ hgeom.block_known
+      (hgeom.parent_eq) haM hcM hparentM hgeom.confirmation hgeom.lo_eq hloEnd
+      hlo₀ hcutoffQ hsigmaEnd hsigmaLt hgeom.cutoff_le_sigma hgeom.sigma_horizon
+      hslotQM' hgeom.child_slot_le_cutoff hmaxQuery hSt hAt hmaxMid hStMid hAtMid
+      hcommittee hledger.selected_recording hselectedMid
+      (Or.inr ⟨hcross, hrelaySlot⟩)
+    have hsibling :=
       E.crossingEdge_sibling_score_of_endpointLedger_minimal cfg ext hA
         (bs := get_current_balance_source query)
         hv hqH hw hmH hrelaySlot hgeom.block_known hgeom.parent_known
@@ -296,10 +327,17 @@ theorem selectedCoveredMarginSupplyAt_of_filterSupply_minimal
         parent_sub_endpoint := hparentSub
         committee_support := hcommittee
         child_filtered := hchild
+        status_margin := hstatus
         selected_recording := hselectedMid
         sibling_score := by
           simpa only [hgeom.lo_eq] using hsibling }
-  · have hsibling :=
+  · have hstatus := E.statusMargin_crossing_minimal cfg ext hA hwalkDomain
+      hv hqH hquery hw hmH haQ hgeom.block_known
+      (hgeom.parent_eq) haM hcM hparentM hgeom.confirmation hgeom.lo_eq hloEnd
+      hlo₀ hcutoffQ hsigmaEnd hsigmaLt hgeom.cutoff_le_sigma hgeom.sigma_horizon
+      hslotQM' hgeom.child_slot_le_cutoff hmaxQuery hSt hAt hmaxMid hStMid hAtMid
+      hcommittee hledger.selected_recording hselectedMid (Or.inl hedge)
+    have hsibling :=
       E.futureCrossing_sibling_score_of_endpointLedger_minimal cfg ext hA
         hv hqH
         (bs := get_current_balance_source query)
@@ -323,6 +361,7 @@ theorem selectedCoveredMarginSupplyAt_of_filterSupply_minimal
         parent_sub_endpoint := hparentSub
         committee_support := hcommittee
         child_filtered := hchild
+        status_margin := hstatus
         selected_recording := hselectedMid
         sibling_score := by
           simpa only [hgeom.lo_eq] using hsibling }
@@ -816,6 +855,7 @@ witnesses already threaded by the trajectory fold have exactly the strength
 required by the arbitrary-query theorem. -/
 theorem safeFrom_get_latest_confirmed_fcrStep_of_pipeline_minimal
     (hSA : SpecAssumptions cfg ext E)
+    (hpayload : PayloadEnvelopeRelay cfg ext E)
     (hwalkDomain : E.PostAnchorHonestVoteTargetWalkDomain cfg ext)
     {anchor : Checkpoint Root}
     (v : ValidatorIndex) (hv : v ∈ E.honest) (n : ℕ)
@@ -833,7 +873,7 @@ theorem safeFrom_get_latest_confirmed_fcrStep_of_pipeline_minimal
     E.SafeFrom cfg ext
       (get_latest_confirmed cfg ext (E.fcrStep cfg ext v n)) (n + 1) := by
   let hA : SelectedMarginAssumptions cfg ext E :=
-    hSA.toSelectedMarginAssumptions cfg ext
+    hSA.toSelectedMarginAssumptions cfg ext hpayload
   have hstartEq : E.slot_start cfg (E.slot_at cfg (n + 1)) = n + 1 :=
     E.slot_start_eq_succ_of_advance_minimal cfg ext hA n hHn1 hadvance
   obtain ⟨hconfirmed, hfinalized, hobserved⟩ :=
@@ -850,6 +890,7 @@ theorem safeFrom_get_latest_confirmed_fcrStep_of_pipeline_minimal
 the strict `get_latest_confirmed` branch. -/
 theorem safeFrom_get_latest_confirmed_fcrStep_of_stateRealization_minimal
     (hSA : SpecAssumptions cfg ext E)
+    (hpayload : PayloadEnvelopeRelay cfg ext E)
     (hwalkDomain : E.PostAnchorHonestVoteTargetWalkDomain cfg ext)
     {anchor : Checkpoint Root}
     (v : ValidatorIndex) (hv : v ∈ E.honest) (n : ℕ)
@@ -867,7 +908,7 @@ theorem safeFrom_get_latest_confirmed_fcrStep_of_stateRealization_minimal
     E.SafeFrom cfg ext
       (get_latest_confirmed cfg ext (E.fcrStep cfg ext v n)) (n + 1) := by
   let hA : SelectedMarginAssumptions cfg ext E :=
-    hSA.toSelectedMarginAssumptions cfg ext
+    hSA.toSelectedMarginAssumptions cfg ext hpayload
   have hstartEq : E.slot_start cfg (E.slot_at cfg (n + 1)) = n + 1 :=
     E.slot_start_eq_succ_of_advance_minimal cfg ext hA n hHn1 hadvance
   obtain ⟨hconfirmed, hfinalized, hobserved⟩ :=
@@ -898,6 +939,8 @@ The pipeline supplier is horizon-scoped because `SafeFrom` itself only
 quantifies over in-horizon endpoints, and it is demanded only at a genuine
 slot update. -/
 theorem Spec_Safety_of_selectedPipeline_minimal
+    (hpayload : ∀ E : Execution Root, SpecAssumptions cfg ext E →
+      PayloadEnvelopeRelay cfg ext E)
     (hwalkDomain : ∀ E : Execution Root, SpecAssumptions cfg ext E →
       E.PostAnchorHonestVoteTargetWalkDomain cfg ext)
     (hfinalized : ∀ E : Execution Root, SpecAssumptions cfg ext E →
@@ -939,7 +982,7 @@ theorem Spec_Safety_of_selectedPipeline_minimal
       obtain ⟨anchor, hcalls⟩ :=
         hpipeline E hSA v hv n hHn1 hadvance
       exact (E.safeFrom_get_latest_confirmed_fcrStep_of_pipeline_minimal
-        cfg ext hSA (hwalkDomain E hSA) v hv n hHn1 hadvance
+        cfg ext hSA (hpayload E hSA) (hwalkDomain E hSA) v hv n hHn1 hadvance
         hprev hfin hobsSafe hcalls) w hw m hm hHm
   }
 
@@ -948,6 +991,8 @@ state realization.  This replaces the broader
 retained-tip supplier: its strict-call premise contains no leaf, filter
 membership, source-freshness conclusion, or future head conclusion. -/
 theorem Spec_Safety_of_selectedStateRealization_minimal
+    (hpayload : ∀ E : Execution Root, SpecAssumptions cfg ext E →
+      PayloadEnvelopeRelay cfg ext E)
     (hwalkDomain : ∀ E : Execution Root, SpecAssumptions cfg ext E →
       E.PostAnchorHonestVoteTargetWalkDomain cfg ext)
     (hfinalized : ∀ E : Execution Root, SpecAssumptions cfg ext E →
@@ -989,12 +1034,14 @@ theorem Spec_Safety_of_selectedStateRealization_minimal
       obtain ⟨anchor, hcalls⟩ :=
         hrealization E hSA v hv n hHn1 hadvance
       exact (E.safeFrom_get_latest_confirmed_fcrStep_of_stateRealization_minimal
-        cfg ext hSA (hwalkDomain E hSA) v hv n hHn1 hadvance
+        cfg ext hSA (hpayload E hSA) (hwalkDomain E hSA) v hv n hHn1 hadvance
         hprev hfin hobsSafe hcalls) w hw m hm hHm
   }
 
 /-- Monotonicity paired with the causal/state realization theorem. -/
 theorem Spec_Monotonicity_of_selectedStateRealization_minimal
+    (hpayload : ∀ E : Execution Root, SpecAssumptions cfg ext E →
+      PayloadEnvelopeRelay cfg ext E)
     (hwalkDomain : ∀ E : Execution Root, SpecAssumptions cfg ext E →
       E.PostAnchorHonestVoteTargetWalkDomain cfg ext)
     (hfinalized : ∀ E : Execution Root, SpecAssumptions cfg ext E →
@@ -1012,7 +1059,7 @@ theorem Spec_Monotonicity_of_selectedStateRealization_minimal
     Spec_Monotonicity cfg ext :=
   spec_monotonicity_of_safety cfg ext
     (Spec_Safety_of_selectedStateRealization_minimal cfg ext
-      hwalkDomain hfinalized hrealization)
+      hpayload hwalkDomain hfinalized hrealization)
     (hkc_of_confirmed_known cfg ext
       (fun E hSA v hv k =>
         E.confirmed_root_known_selected cfg ext hSA v hv k))
@@ -1020,6 +1067,8 @@ theorem Spec_Monotonicity_of_selectedStateRealization_minimal
 /-- Public monotonicity from the same exact selected-call contract.  The
 single-store knownness side is the executable selected-result induction. -/
 theorem Spec_Monotonicity_of_selectedPipeline_minimal
+    (hpayload : ∀ E : Execution Root, SpecAssumptions cfg ext E →
+      PayloadEnvelopeRelay cfg ext E)
     (hwalkDomain : ∀ E : Execution Root, SpecAssumptions cfg ext E →
       E.PostAnchorHonestVoteTargetWalkDomain cfg ext)
     (hfinalized : ∀ E : Execution Root, SpecAssumptions cfg ext E →
@@ -1037,7 +1086,7 @@ theorem Spec_Monotonicity_of_selectedPipeline_minimal
     Spec_Monotonicity cfg ext :=
   spec_monotonicity_of_safety cfg ext
     (Spec_Safety_of_selectedPipeline_minimal cfg ext
-      hwalkDomain hfinalized hpipeline)
+      hpayload hwalkDomain hfinalized hpipeline)
     (hkc_of_confirmed_known cfg ext
       (fun E hSA v hv k =>
         E.confirmed_root_known_selected cfg ext hSA v hv k))

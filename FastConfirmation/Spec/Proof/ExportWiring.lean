@@ -206,7 +206,7 @@ with the checkpoint-boundary bound now sourced from the `justified_block_boundar
 only carried hypothesis is the epoch ordering `hjc_le`. -/
 theorem vote_lands_export_closed
     (hwf : WellFormedExecution E) (hhb : HonestBehavior cfg ext E)
-    (hsyn : Synchrony cfg ext E) (hec : ExternalsCoherence cfg ext E)
+    (hsyn : PaperSafetySynchrony cfg ext E) (hec : ExternalsCoherence cfg ext E)
     (hji : JustificationInterface cfg ext E)
     (hdiv : 1000 ∣ cfg.slot_duration_ms)
     (hgen : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
@@ -233,7 +233,7 @@ honest node from `slot_start (s+1)` on. This is the exact call site the migratio
 leaving only the epoch ordering `hjc_le`. -/
 theorem vote_ubiquity_export_closed
     (hwf : WellFormedExecution E) (hhb : HonestBehavior cfg ext E)
-    (hsyn : Synchrony cfg ext E) (hec : ExternalsCoherence cfg ext E)
+    (hsyn : PaperSafetySynchrony cfg ext E) (hec : ExternalsCoherence cfg ext E)
     (hji : JustificationInterface cfg ext E)
     (hdiv : 1000 ∣ cfg.slot_duration_ms)
     (hgen : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),

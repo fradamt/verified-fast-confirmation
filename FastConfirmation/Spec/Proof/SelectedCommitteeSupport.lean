@@ -114,9 +114,15 @@ theorem committeeSupportsAt_of_slotStart_IH_minimal
       ((E.store cfg ext w m).blocks c).slot :=
     E.store_anchor_min_slot cfg ext hA.wellFormed hA.externals_coherence
       hgeq hslot hparent w m c hc
+  have hheadGlc' : is_ancestor (E.store cfg ext i nᵢ)
+      (get_node_for_root (get_head cfg (E.store cfg ext i nᵢ)).root)
+      (get_node_for_root glc) = true :=
+    (congrArg (· = true) (is_ancestor_pending_root_eq (E.store cfg ext i nᵢ)
+      (get_head cfg (E.store cfg ext i nᵢ)).root glc .pending
+      (get_head cfg (E.store cfg ext i nᵢ)).payload_status)).mpr hheadGlc
   obtain ⟨hcᵢ, hheadC⟩ := E.chain_descent_restrict hA.wellFormed
     (E.blockProvenance cfg ext i nᵢ) (E.blockProvenance cfg ext w m)
-    hparentᵢ hwalkA hanchorLeC hsub hhead hglcᵢ hheadGlc hchain
+    hparentᵢ hwalkA hanchorLeC hsub hhead hglcᵢ hheadGlc' hchain
   have hheadCEnd : is_ancestor (E.store cfg ext w m)
       (get_node_for_root (get_head cfg (E.store cfg ext i nᵢ)).root)
       (get_node_for_root c) = true :=

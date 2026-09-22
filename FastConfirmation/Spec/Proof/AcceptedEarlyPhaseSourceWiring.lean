@@ -59,7 +59,7 @@ def HeadFilterViableLeafBelow
     tip ∈ store.block_roots ∧
       (get_head cfg store).root ∈ store.block_roots ∧
       is_ancestor store (get_node_for_root tip)
-          (get_head cfg store) = true ∧
+          (get_node_for_root (get_head cfg store).root) = true ∧
       is_ancestor store (get_node_for_root tip)
           (get_node_for_root result) = true ∧
       store.block_roots.filter
@@ -85,7 +85,7 @@ def HeadFilterViableLemma13SourceAt
     tip ∈ store.block_roots ∧
       (get_head cfg store).root ∈ store.block_roots ∧
       is_ancestor store (get_node_for_root tip)
-          (get_head cfg store) = true ∧
+          (get_node_for_root (get_head cfg store).root) = true ∧
       is_ancestor store (get_node_for_root tip)
           (get_node_for_root result) = true ∧
       store.block_roots.filter
@@ -113,7 +113,7 @@ def RelayedHeadFilterRecentSourceAt
     tip ∈ query.block_roots ∧
       (get_head cfg query).root ∈ query.block_roots ∧
       is_ancestor query (get_node_for_root tip)
-          (get_head cfg query) = true ∧
+          (get_node_for_root (get_head cfg query).root) = true ∧
       is_ancestor query (get_node_for_root tip)
           (get_node_for_root result) = true ∧
       query.block_roots.filter
@@ -176,7 +176,9 @@ theorem queryHead_direct_or_headFilterViableLeafBelow
         exact hjustified
     have htipResult : is_ancestor store
         (get_node_for_root tip) (get_node_for_root result) = true :=
-      is_ancestor_trans hwf
+      is_ancestor_trans (a := get_node_for_root tip)
+        (b := get_node_for_root (get_head cfg store).root)
+        (c := get_node_for_root result) hwf
         (hwalkK result hresult tip htip)
         (hwalkK result hresult (get_head cfg store).root hheadKnown)
         htipHead hheadResult

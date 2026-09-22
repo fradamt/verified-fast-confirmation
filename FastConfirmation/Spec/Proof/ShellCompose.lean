@@ -239,6 +239,11 @@ structure ForkEdgeEngineInputs (E : Execution Root) (w : ValidatorIndex) (m : �
         (ForkChoiceNode.mk h
           (get_parent_payload_status (E.store cfg ext w m)
             ((E.store cfg ext w m).blocks c)))
+  /-- `hstatus` — the pending-parent status contest selects the status of `c`. -/
+  hstatus : PendingStatusMargin cfg (E.store cfg ext w m)
+    (get_filtered_block_tree cfg (E.store cfg ext w m)) h
+    (get_parent_payload_status (E.store cfg ext w m)
+      ((E.store cfg ext w m).blocks c))
   /-- `hHon` — honest supporters of any sibling are confined to `Xclass` (carried). -/
   hHon : ∀ c' : Root,
     ForkChoiceNode.mk c' .pending ∈
@@ -299,7 +304,7 @@ theorem forkEdgeInput_of_engineInputs (hSA : SpecAssumptions cfg ext E)
       hHon := hin.hHon
       hByz := hin.hByz }
   exact E.forkEdgeInput_of_residual cfg ext hwfE hsync hin.hvc hw hin.hHnc hin.hHm
-    hin.hslotS hin.hσ hin.hlo hin.hb hres
+    hin.hslotS hin.hσ hin.hlo hin.hb hres hin.hstatus
 
 /-! ## Section 3 — the endpoint/edge lift and the final facade
 

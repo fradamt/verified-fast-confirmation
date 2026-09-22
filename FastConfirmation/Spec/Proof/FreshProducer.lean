@@ -71,7 +71,8 @@ theorem chain_descent_restrict (hwfE : WellFormedExecution E)
   have hwalk_b_c : WalkKnown source (source.blocks c).slot b := by
     rwa [hc_agree]
   exact ⟨hc_source,
-    is_ancestor_trans hparent hwalk_a_c hwalk_b_c hab hbc_source⟩
+    is_ancestor_trans (a := get_node_for_root a) (b := get_node_for_root b)
+      (c := get_node_for_root c) hparent hwalk_a_c hwalk_b_c hab hbc_source⟩
 
 /-! ## Fresh engine inputs from the confirming cutoff onward -/
 
@@ -131,7 +132,7 @@ theorem freshEngineInputs_of_IH (hSA : SpecAssumptions cfg ext E)
     le_trans (Nat.succ_le_of_lt hni_lt_m) (E.slot_at_mono cfg (Nat.le_succ m))
   have hsub : (E.store cfg ext i nᵢ).block_roots ⊆
       (E.store cfg ext w m).block_roots :=
-    E.blockRoots_subset_of_relay cfg ext hsync hi_honest hw hHni hHm hgate
+    E.blockRoots_subset_of_legacy_relay cfg ext hsync hi_honest hw hHni hHm hgate
   obtain ⟨hparentᵢ, hwalkK, _hjust⟩ :=
     E.store_domainK cfg ext hwfE hec hgen' hji i hi_honest nᵢ hHni
   have hhead : (get_head cfg (E.store cfg ext i nᵢ)).root ∈

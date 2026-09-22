@@ -112,6 +112,7 @@ theorem endpoint_justified_ancestor_of_causal_honest_target_minimal
       (compute_start_slot_at_epoch cfg J.epoch)).root = J.root := by
     simpa only [get_checkpoint_block] using htargetRoot.symm
   have htargetSpec := get_ancestor_spec hwfK htargetWalk
+  simp only [get_node_for_root] at hrootWalk
   rw [hrootWalk] at htargetSpec
   have hJK : J.root ∈ (E.store cfg ext i k).block_roots := htargetSpec.1
   have hJslot : ((E.store cfg ext i k).blocks J.root).slot ≤
@@ -164,7 +165,8 @@ theorem endpoint_justified_ancestor_of_causal_honest_target_minimal
   have hheadC_M : is_ancestor (E.store cfg ext w m)
       (get_node_for_root (get_head cfg (E.store cfg ext i k)).root)
       (get_node_for_root c) = true :=
-    is_ancestor_trans hwfM
+    is_ancestor_trans (a := get_node_for_root _) (b := get_node_for_root glc)
+        (c := get_node_for_root c) hwfM
       (hwalkM c hcM _ hheadM) (hwalkM c hcM glc hglcM)
       hheadGlc_M hglcC_M
   rcases is_ancestor_comparable hwfM

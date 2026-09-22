@@ -276,7 +276,6 @@ theorem mem_get_ancestor_roots_of_between {store : Store Root}
         _ (Nat.lt_succ_self _) l haux c hcslot htc'
   · exact absurd heq htne
 
-omit [Inhabited Root] in
 /-- Construct the entire filter skeleton from a common-descendant leaf.  All
 ancestor-list fields are derived; only the separately indexed finalized-slot
 walk is copied from the narrow placement boundary. -/

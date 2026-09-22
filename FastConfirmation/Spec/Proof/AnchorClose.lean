@@ -266,7 +266,8 @@ theorem head_ge_of_scoped_terminal {store : Store Root}
       rcases List.mem_cons.mp hc with rfl | hc'
       · exact hx_r₀
       · have hcx := get_ancestor_roots_descends hwf hwalkK hx hb hc'
-        exact is_ancestor_trans hwf (hwalkK r₀ hr₀ c (hmem c hc))
+        exact is_ancestor_trans (a := get_node_for_root c) (b := get_node_for_root x)
+          (c := get_node_for_root r₀) hwf (hwalkK r₀ hr₀ c (hmem c hc))
           (hwalkK r₀ hr₀ x hx) hcx hx_r₀
     have hxLtC := parentChain_edge_child_slot_gt_head hwf hmem hchainPL ha hc hlink
     have hr₀LeX : (store.blocks r₀).slot ≤ (store.blocks x).slot := by
@@ -545,6 +546,10 @@ def ForkEdgeConfirmMarginSupply (E : Execution Root) (b r₀ : Root) (n₀ : ℕ
               (ForkChoiceNode.mk a
                 (get_parent_payload_status (E.store cfg ext w m)
                   ((E.store cfg ext w m).blocks c)))) ∧
+          PendingStatusMargin cfg (E.store cfg ext w m)
+            (get_filtered_block_tree cfg (E.store cfg ext w m)) a
+            (get_parent_payload_status (E.store cfg ext w m)
+              ((E.store cfg ext w m).blocks c)) ∧
           (∀ i ∈ E.Sclass cfg ext w m c lo σ,
             i ∈ AttSupporters cfg (E.store cfg ext w m) (get_node_for_root c)
               ((E.store cfg ext w m).checkpoint_states
@@ -578,6 +583,10 @@ def ForkEdgeConfirmMarginSupply (E : Execution Root) (b r₀ : Root) (n₀ : ℕ
               (ForkChoiceNode.mk a
                 (get_parent_payload_status (E.store cfg ext w m)
                   ((E.store cfg ext w m).blocks c)))) ∧
+          PendingStatusMargin cfg (E.store cfg ext w m)
+            (get_filtered_block_tree cfg (E.store cfg ext w m)) a
+            (get_parent_payload_status (E.store cfg ext w m)
+              ((E.store cfg ext w m).blocks c)) ∧
           (E.Sval cfg ext v₀ n₀' c lo σ ≤
             get_attestation_score cfg (E.store cfg ext w m) (get_node_for_root c)
               ((E.store cfg ext w m).checkpoint_states
@@ -616,11 +625,11 @@ theorem descendStepChainSupply_of_confirmMargin (hSA : SpecAssumptions cfg ext E
   intro w hw m hm hH hIH a c ha hc hlink hscope hscope_r₀ hcne
   rcases hsupply w hw m hm hH hIH a c ha hc hlink hscope hscope_r₀ hcne with
     ⟨v₀, n₀', lo, es, σ, _hsame, hsub, hb', hdomS, hdomA, hstrip0, hgrowS, hgrowX, hbudget,
-      hchild, hSmem, hHon, hByz⟩
-    | ⟨v₀, n₀', lo, σ, xP, Bpre, hchild, hbside, hend, hsib⟩
+      hchild, hstatus, hSmem, hHon, hByz⟩
+    | ⟨v₀, n₀', lo, σ, xP, Bpre, hchild, hstatus, hbside, hend, hsib⟩
   · exact E.descendStep_of_assemblyResidual cfg ext hec hgen0 hji hwfE hw hH
-      hsub hb' hdomS hdomA hstrip0 hgrowS hgrowX hbudget hchild hSmem hHon hByz
-  · exact E.crossing_ledger_descendStep cfg ext hchild hbside hend hsib
+      hsub hb' hdomS hdomA hstrip0 hgrowS hgrowX hbudget hchild hstatus hSmem hHon hByz
+  · exact E.crossing_ledger_descendStep cfg ext hchild hstatus hbside hend hsib
 
 /-! ## Section 2 — the anchor-scoped covering supply and `hdisj_glc`
 
@@ -797,7 +806,7 @@ theorem anchor_ge_of_pastDescendant (hSA : SpecAssumptions cfg ext E)
     le_trans hslot_lt (E.slot_at_mono cfg (Nat.le_succ (n + 1)))
   have hsub_uv : (E.store cfg ext u n_u).block_roots ⊆
       (E.store cfg ext v (n + 1)).block_roots :=
-    E.blockRoots_subset_of_relay cfg ext hsync hu hv hHnu hHn1 hgate_uv
+    E.blockRoots_subset_of_legacy_relay cfg ext hsync hu hv hHnu hHn1 hgate_uv
   have hagree_uv : ∀ x ∈ (E.store cfg ext u n_u).block_roots,
       (E.store cfg ext u n_u).blocks x = (E.store cfg ext v (n + 1)).blocks x :=
     fun x hx => hwfE.blocks_agree (E.blockProvenance cfg ext u n_u)
@@ -820,7 +829,8 @@ theorem anchor_ge_of_pastDescendant (hSA : SpecAssumptions cfg ext E)
   have hd_v : d ∈ (E.store cfg ext v (n + 1)).block_roots := hsub_uv hd_u
   have hdr₀_v : is_ancestor (E.store cfg ext v (n + 1))
       (get_node_for_root d) (get_node_for_root r₀) = true :=
-    is_ancestor_trans hwf_v
+    is_ancestor_trans (a := get_node_for_root d) (b := get_node_for_root b)
+        (c := get_node_for_root r₀) hwf_v
       (hwalk_v r₀ hanc.r₀_known d hd_v)
       (hwalk_v r₀ hanc.r₀_known b hanc.b_known) hdb_v hanc.b_ge_r₀
   have mem_past (x : Root) (hx_v : x ∈ (E.store cfg ext v (n + 1)).block_roots)
@@ -856,7 +866,7 @@ theorem anchor_ge_of_pastDescendant (hSA : SpecAssumptions cfg ext E)
       (E.slot_at_mono cfg (Nat.le_succ m))
   have hsub_uw : (E.store cfg ext u n_u).block_roots ⊆
       (E.store cfg ext w m).block_roots :=
-    E.blockRoots_subset_of_relay cfg ext hsync hu hw hHnu hHm hgate_uw
+    E.blockRoots_subset_of_legacy_relay cfg ext hsync hu hw hHnu hHm hgate_uw
   exact ⟨hsub_uw hr₀_u, hsub_uw hb_u,
     E.is_ancestor_transport_rev cfg ext hwfE hsub_uw hr₀_u hb_u hwalk_br_u hbr_u⟩
 

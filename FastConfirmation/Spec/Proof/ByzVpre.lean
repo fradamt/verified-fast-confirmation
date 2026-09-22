@@ -279,7 +279,8 @@ theorem byz_sibling_recorded_dichotomy
     · -- lm.root ⪰ b ⪰ c ⟹ lm.root ⪰ c; with lm.root ⪰ c' this contradicts siblings_incompatible
       have hlmc : is_ancestor (E.store cfg ext w m) (get_node_for_root lm.root)
           (get_node_for_root c) = true :=
-        is_ancestor_trans hwf (hwalkK c hc lm.root hlmk) (hwalkK c hc b hb) hsupp hbc
+        is_ancestor_trans (a := get_node_for_root lm.root) (b := get_node_for_root b)
+        (c := get_node_for_root c) hwf (hwalkK c hc lm.root hlmk) (hwalkK c hc b hb) hsupp hbc
       exact siblings_incompatible hwf hc hc' hh hpc hpc' hne
         (hwalkK c hc lm.root hlmk) (hwalkK c' hc' lm.root hlmk) hlmc hancC'
     · -- b ⪰ lm.root ⪰ c' ⟹ b ⪰ c'; with b ⪰ c this contradicts siblings_incompatible

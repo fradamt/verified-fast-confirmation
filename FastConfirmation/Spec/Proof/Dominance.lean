@@ -213,6 +213,10 @@ theorem descendStep_of_confirmMargin (v₀ w : ValidatorIndex) (n₀ m : ℕ)
     (hchild : ForkChoiceNode.mk c .pending ∈ get_node_children (E.store cfg ext w m)
       (get_filtered_block_tree cfg (E.store cfg ext w m)) (ForkChoiceNode.mk h (get_parent_payload_status (E.store cfg ext w m)
           ((E.store cfg ext w m).blocks c))))
+    (hstatus : PendingStatusMargin cfg (E.store cfg ext w m)
+      (get_filtered_block_tree cfg (E.store cfg ext w m)) h
+      (get_parent_payload_status (E.store cfg ext w m)
+        ((E.store cfg ext w m).blocks c)))
     (hbside : E.Sval cfg ext w m b' lo σ ≤ get_attestation_score cfg (E.store cfg ext w m)
       (get_node_for_root c)
       ((E.store cfg ext w m).checkpoint_states (E.store cfg ext w m).justified_checkpoint))
@@ -227,9 +231,8 @@ theorem descendStep_of_confirmMargin (v₀ w : ValidatorIndex) (n₀ m : ℕ)
           ≤ E.Xval cfg ext w m b' lo σ + E.Bval lo σ) :
     DescendStep cfg (E.store cfg ext w m)
       (get_filtered_block_tree cfg (E.store cfg ext w m)) h c :=
-  -- These bounds compare children within the selected payload branch.
-  -- Selection of that branch remains open in `ledger_descendStep`.
-  ledger_descendStep cfg ext hchild hbside
+  -- `hstatus` selects the payload branch; the ledger then selects `c`.
+  ledger_descendStep cfg ext hchild hstatus hbside
     (E.bval_endpoint_strip_window_uniform cfg ext v₀ w n₀ m b' lo es σ
       (get_proposer_score cfg (E.store cfg ext w m)) hSt hAt hstrip0 hgrowS hgrowX hbudget)
     hsib

@@ -171,6 +171,10 @@ theorem forkEdgeGroundInputs_of_base (hbb : ByzantineBound cfg E)
         (ForkChoiceNode.mk h
           (get_parent_payload_status (E.store cfg ext w m)
             ((E.store cfg ext w m).blocks c))))
+    (hstatus : PendingStatusMargin cfg (E.store cfg ext w m)
+      (get_filtered_block_tree cfg (E.store cfg ext w m)) h
+      (get_parent_payload_status (E.store cfg ext w m)
+        ((E.store cfg ext w m).blocks c)))
     (hbside : E.Sval cfg ext w m b lo σ ≤ get_attestation_score cfg (E.store cfg ext w m)
       (get_node_for_root c)
       ((E.store cfg ext w m).checkpoint_states (E.store cfg ext w m).justified_checkpoint))
@@ -189,6 +193,7 @@ theorem forkEdgeGroundInputs_of_base (hbb : ByzantineBound cfg E)
     hinv := E.invstar_sigma_of_deltas cfg ext hbb vc nc b lo es
       (get_proposer_score cfg (E.store cfg ext w m)) hloH hbase hdelta σ hσ hσH
     hchild := hchild
+    hstatus := hstatus
     hbside := hbside
     hsib := hsib }
 

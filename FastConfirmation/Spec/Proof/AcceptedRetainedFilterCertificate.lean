@@ -48,7 +48,8 @@ def retainedFilterTipPlacement
     RetainedFilterTipPlacement cfg store selected := by
   have htipJustified : is_ancestor store (get_node_for_root h.tip)
       (get_node_for_root store.justified_checkpoint.root) = true :=
-    is_ancestor_trans hparent
+    is_ancestor_trans (a := get_node_for_root h.tip) (b := get_node_for_root selected)
+      (c := get_node_for_root store.justified_checkpoint.root) hparent
       (hwalkK store.justified_checkpoint.root hjustifiedKnown h.tip h.tip_known)
       (hwalkK store.justified_checkpoint.root hjustifiedKnown selected
         h.selected_known)

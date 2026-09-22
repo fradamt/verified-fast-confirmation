@@ -217,7 +217,7 @@ theorem head_facts_transport (hwf : WellFormedExecution E)
     le_trans hkm (E.slot_at_mono cfg (Nat.le_succ m))
   have hsub : (E.store cfg ext i k).block_roots ⊆
       (E.store cfg ext w m).block_roots :=
-    E.blockRoots_subset_of_relay cfg ext hsync hi hw hHk hHm hgate
+    E.blockRoots_subset_of_legacy_relay cfg ext hsync hi hw hHk hHm hgate
   exact ⟨hsub, hsub hH, hsub hglc,
     is_ancestor_transport cfg ext hwf hsub hH hglc hwalk hHglc⟩
 
@@ -314,7 +314,10 @@ theorem covering_comparability (hSA : SpecAssumptions cfg ext E)
     have hwalk := hwalk_i ablk.root hanchor_mem H hH
     rwa [hanchor_slot] at hwalk
   have hHglc_i : is_ancestor (E.store cfg ext i k)
-      (get_node_for_root H) (get_node_for_root glc) = true := hIH i hi k hnk hkm hHk
+      (get_node_for_root H) (get_node_for_root glc) = true := by
+    rw [get_node_for_root, is_ancestor_pending_root_eq _ _ _ .pending
+      (get_head cfg (E.store cfg ext i k)).payload_status]
+    exact hIH i hi k hnk hkm hHk
   have hglc : glc ∈ (E.store cfg ext i k).block_roots :=
     mem_of_is_ancestor_above_anchor hwf_i hwalk0 (Nat.zero_le _) hHglc_i
   have hwalk_glc_i : WalkKnown (E.store cfg ext i k)

@@ -444,7 +444,8 @@ theorem crossingParentSub_le_endpoint_Aval_minimal
     simp only [get_node_for_root, is_ancestor_pending, decide_eq_true_eq]
     rw [get_ancestor_stop (le_of_lt hslotltM)]
     intro hcon
-    injection hcon with heq
+    have heq := hcon
+    dsimp only at heq
     rw [heq] at hslotltM
     exact lt_irrefl _ hslotltM
   rw [Execution.Aval]

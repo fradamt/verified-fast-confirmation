@@ -289,7 +289,8 @@ theorem paperA32SupportThroughoutEpochCore_of_concreteQuorum
             (get_head cfg voteStore).root)
             (congrArg Checkpoint.epoch htargetData)
     have hancestorRoot :
-        (get_ancestor voteStore (get_head cfg voteStore)
+        (get_ancestor voteStore
+          (ForkChoiceNode.mk (get_head cfg voteStore).root .pending)
           (compute_start_slot_at_epoch cfg (V.C b e).epoch)).root =
             (V.C b e).root := by
       simpa only [get_checkpoint_block] using hroot.symm

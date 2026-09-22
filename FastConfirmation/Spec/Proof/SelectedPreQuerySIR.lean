@@ -90,7 +90,8 @@ theorem compatible_of_selected_descends_input
         (get_node_for_root selected) = true := by
   by_cases hbelow : justified.epoch ≤ get_block_epoch cfg store input
   · left
-    exact is_ancestor_trans hwf
+    exact is_ancestor_trans (a := get_node_for_root selected) (b := get_node_for_root input)
+        (c := get_node_for_root justified.root) hwf
       (hwalk justified.root hjustified selected hselected)
       (hwalk justified.root hjustified input hinput)
       hselectedInput (hbracket.below_input hbelow)

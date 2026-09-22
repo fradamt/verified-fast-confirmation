@@ -146,6 +146,7 @@ theorem endpoint_justified_epoch_le_of_causal_honest_target_minimal
       (get_node_for_root (get_head cfg (E.store cfg ext i k)).root)
       (compute_start_slot_at_epoch cfg J.epoch)).root = J.root := by
     simpa only [get_checkpoint_block] using htargetRoot
+  simp only [get_node_for_root] at hrootWalk
   rw [hrootWalk] at htargetSpec
   have hJK : J.root ∈ (E.store cfg ext i k).block_roots := htargetSpec.1
   have hkLower : E.slot_start cfg (E.slot_at cfg q) ≤ k :=

@@ -92,6 +92,11 @@ structure SameEpochSelectedMarginInputs
       (get_filtered_block_tree cfg (E.store cfg ext w m))
       (ForkChoiceNode.mk a (get_parent_payload_status (E.store cfg ext w m)
         ((E.store cfg ext w m).blocks c)))
+  /-- The required payload status wins the pending-parent contest. -/
+  status_margin : PendingStatusMargin cfg (E.store cfg ext w m)
+    (get_filtered_block_tree cfg (E.store cfg ext w m)) a
+    (get_parent_payload_status (E.store cfg ext w m)
+      ((E.store cfg ext w m).blocks c))
   /-- Every honest support-class member is recorded on the selected side. -/
   selected_recording : ∀ i ∈ E.Sclass cfg ext w m c lo σ,
     i ∈ AttSupporters cfg (E.store cfg ext w m) (get_node_for_root c)
@@ -207,7 +212,8 @@ theorem sameEpoch_descendStep_of_selectedInputs
       (hin.byzantine_sibling_confinement c' hc' hne)
   exact E.descendStep_of_confirmMargin cfg ext v w (n + 1) m
     lo es σ hin.support_transport hin.ancestor_transport
-    hin.base_strip hgrowS hgrowX hbudget hin.child_filtered hbside hsib
+    hin.base_strip hgrowS hgrowX hbudget hin.child_filtered hin.status_margin
+    hbside hsib
 
 /-! ## Crossing producer boundary -/
 
@@ -225,6 +231,10 @@ structure CrossingSelectedMarginInputs
       (get_filtered_block_tree cfg (E.store cfg ext w m))
       (ForkChoiceNode.mk a (get_parent_payload_status (E.store cfg ext w m)
         ((E.store cfg ext w m).blocks c)))
+  status_margin : PendingStatusMargin cfg (E.store cfg ext w m)
+    (get_filtered_block_tree cfg (E.store cfg ext w m)) a
+    (get_parent_payload_status (E.store cfg ext w m)
+      ((E.store cfg ext w m).blocks c))
   selected_score : E.Sval cfg ext v (n + 1) c lo σ ≤
     get_attestation_score cfg (E.store cfg ext w m) (get_node_for_root c)
       ((E.store cfg ext w m).checkpoint_states
@@ -255,7 +265,8 @@ theorem crossing_descendStep_of_selectedInputs
       oldSiblingHonest oldSiblingByzantine) :
     DescendStep cfg (E.store cfg ext w m)
       (get_filtered_block_tree cfg (E.store cfg ext w m)) a c :=
-  E.crossing_ledger_descendStep cfg ext hin.child_filtered hin.selected_score
+  E.crossing_ledger_descendStep cfg ext hin.child_filtered hin.status_margin
+    hin.selected_score
     hin.endpoint_margin hin.sibling_score
 
 /-- The three exhaustive geometric regimes for one selected-chain edge.

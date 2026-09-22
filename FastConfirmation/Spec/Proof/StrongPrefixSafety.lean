@@ -236,8 +236,18 @@ theorem spec_monotonicity_of_safety (hsafe : Spec_Safety cfg ext)
     hkc E hSA v hv n m hnm hH
   have hb : E.confirmed cfg ext v m ∈ (E.store cfg ext v m).block_roots :=
     hkc E hSA v hv m m (le_refl _) hH
-  have hA := hsafe E hSA v hv n v hv m hnm hH
-  have hB := hsafe E hSA v hv m v hv m (le_refl _) hH
+  have hA : is_ancestor (E.store cfg ext v m)
+      (get_node_for_root (get_head cfg (E.store cfg ext v m)).root)
+      (get_node_for_root (E.confirmed cfg ext v n)) = true := by
+    rw [get_node_for_root, is_ancestor_pending_root_eq _ _ _ .pending
+      (get_head cfg (E.store cfg ext v m)).payload_status]
+    exact hsafe E hSA v hv n v hv m hnm hH
+  have hB : is_ancestor (E.store cfg ext v m)
+      (get_node_for_root (get_head cfg (E.store cfg ext v m)).root)
+      (get_node_for_root (E.confirmed cfg ext v m)) = true := by
+    rw [get_node_for_root, is_ancestor_pending_root_eq _ _ _ .pending
+      (get_head cfg (E.store cfg ext v m)).payload_status]
+    exact hsafe E hSA v hv m v hv m (le_refl _) hH
   exact ancestor_comparable hwf
     (hwalkK _ ha _ hhead) (hwalkK _ hb _ hhead) hA hB
 

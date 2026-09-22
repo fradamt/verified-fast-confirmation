@@ -273,7 +273,8 @@ theorem store_known_ancestor_of_rootDescends_for_storeReflection
           exact hpEq.symm
         obtain ⟨htargetKnown, hrestAncestor⟩ :=
           ih hparentKnown htargetRoot
-        exact ⟨htargetKnown, is_ancestor_trans hpsl
+        exact ⟨htargetKnown, is_ancestor_trans (a := get_node_for_root child)
+          (b := get_node_for_root parent) (c := get_node_for_root target) hpsl
           (hwalkK target htargetKnown child hchild)
           (hwalkK target htargetKnown parent hparentKnown)
           hstep hrestAncestor⟩

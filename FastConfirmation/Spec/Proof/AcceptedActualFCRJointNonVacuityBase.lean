@@ -812,6 +812,7 @@ theorem witnessStaticValidatorSet :
                   | zero => decide
                   | succ i => rfl
 
+set_option maxRecDepth 20000 in
 theorem witnessByzantineBound :
     ByzantineBound witnessConfig witnessExecution := by
   constructor

@@ -699,7 +699,8 @@ private theorem witnessByzantineBound :
         · decide
         · rcases i with _ | i
           · decide
-          · simp [Execution.weight_of, Execution.registry,
+          · set_option maxRecDepth 20000 in
+            simp [Execution.weight_of, Execution.registry,
               Execution.anchor_state, witnessExecution, anchorState, stateAt,
               anchorSignedBlock, witnessValidator, witnessConfig,
               get_forkchoice_store]

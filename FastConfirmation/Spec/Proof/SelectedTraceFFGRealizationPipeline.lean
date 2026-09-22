@@ -299,7 +299,8 @@ theorem filterTipCertificate_of_selectedTraceFFGStateRealization_minimal
       (get_node_for_root glc) ≠ true := by
     intro hJGlc
     apply hnotCovered
-    exact is_ancestor_trans hwfM
+    exact is_ancestor_trans (a := get_node_for_root _) (b := get_node_for_root glc)
+        (c := get_node_for_root c) hwfM
       (hwalkM c hcM _
         (hrealization.endpoint w hw m hHm).justified_root_known)
       (hwalkM c hcM glc
@@ -458,7 +459,8 @@ theorem filterTipCertificate_of_selectedTraceFFGStateRealization_minimal
         Or.inl (hincluded'.sourceVisible cfg hlate hJBound)⟩
   have hseedC : is_ancestor (E.store cfg ext w m)
       (get_node_for_root seed) (get_node_for_root c) = true :=
-    is_ancestor_trans hwfM
+    is_ancestor_trans (a := get_node_for_root seed) (b := get_node_for_root glc)
+        (c := get_node_for_root c) hwfM
       (hwalkM c hcM seed hseed)
       (hwalkM c hcM glc (hglcKnown w hw m
         (E.query_slot_start_le_of_slot_ge_minimal cfg ext hA hslotQM) hHm))

@@ -73,7 +73,6 @@ theorem is_ancestor_antisymm {store : Store Root}
       = a := by rw [get_ancestor_stop h2]
   exact hstop.symm.trans hab
 
-omit [Inhabited Root] in
 /-- **Comparability of two ancestors** — the `is_ancestor` wrapper of
 `HeadReroot.reroot_comparable`. If `a` and `b` are both ancestors of a common `y`, then they are
 ancestry-comparable. -/
@@ -187,7 +186,8 @@ theorem pstr_advance (fcr_store : FastConfirmationStore Root)
   obtain ⟨hacc_lcr, hacc_mem, hacc_between⟩ := hacc
   have hb_acc : is_ancestor fcr_store.store (get_node_for_root b) (get_node_for_root acc) = true :=
     is_ancestor_of_parent hwf hb_mem hacc_mem hb_par
-  refine ⟨is_ancestor_trans hwf (hwalk lcr hlcr b hb_mem) (hwalk lcr hlcr acc hacc_mem)
+  refine ⟨is_ancestor_trans (a := get_node_for_root b) (b := get_node_for_root acc)
+      (c := get_node_for_root lcr) hwf (hwalk lcr hlcr b hb_mem) (hwalk lcr hlcr acc hacc_mem)
       hb_acc hacc_lcr, hb_mem, ?_⟩
   intro c hc_mem hbc_c hc_lcr
   rcases is_ancestor_comparable hwf (hwalk c hc_mem b hb_mem) (hwalk acc hacc_mem b hb_mem)

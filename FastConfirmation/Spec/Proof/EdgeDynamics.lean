@@ -78,6 +78,16 @@ theorem blockRoots_subset_of_relay (hsync : PaperSafetySynchrony cfg ext E)
     (E.store cfg ext vc nc).block_roots ⊆ (E.store cfg ext w m).block_roots :=
   fun r hr => hsync.block_relay vc hvc nc r hHnc hr w hw m hHm hslot
 
+/-- `blockRoots_subset_of_relay` from the legacy `Synchrony` bundle, whose
+`block_relay` field has the same shape. -/
+theorem blockRoots_subset_of_legacy_relay (hsync : Synchrony cfg ext E)
+    {vc w : ValidatorIndex} {nc m : ℕ}
+    (hvc : vc ∈ E.honest) (hw : w ∈ E.honest)
+    (hHnc : E.WithinHorizon cfg nc) (hHm : E.WithinHorizon cfg m)
+    (hslot : E.slot_at cfg nc + 1 ≤ E.slot_at cfg (m + 1)) :
+    (E.store cfg ext vc nc).block_roots ⊆ (E.store cfg ext w m).block_roots :=
+  fun r hr => hsync.block_relay vc hvc nc r hHnc hr w hw m hHm hslot
+
 /-- **`hequiv` — equivocator containment from `attester_slashing_relay`.** Every equivocator
 known at the confirming anchor `(vc, nc)` is known at the endpoint `(w, m)`, under the
 one-slot ordering `slot_at nc + 1 ≤ slot_at m`. This supplies
@@ -280,23 +290,27 @@ are the slot bounds; the two transports are built from the block relay containme
 (`blockRoots_subset_of_relay`, from `Synchrony.block_relay` under `hslotS`) and the
 walk-domain functions; `hboost` is `rfl`; the other fields come from `hres`. -/
 theorem forkEdgeInput_of_residual (hwf : WellFormedExecution E)
-    (hsync : PaperSafetySynchrony cfg ext E)
+    (hsync : Synchrony cfg ext E)
     {w : ValidatorIndex} {m : ℕ} {b h c : Root} {vc : ValidatorIndex} {nc : ℕ} {lo es σ : Slot}
     (hvc : vc ∈ E.honest) (hw : w ∈ E.honest)
     (hHnc : E.WithinHorizon cfg nc) (hHm : E.WithinHorizon cfg m)
     (hslotS : E.slot_at cfg nc + 1 ≤ E.slot_at cfg (m + 1))
     (hσ : es ≤ σ) (hlo : lo ≤ es + 1)
     (hb : b ∈ (E.store cfg ext vc nc).block_roots)
-    (hres : E.EdgeInputResidual cfg ext w m b h c vc nc lo es σ) :
+    (hres : E.EdgeInputResidual cfg ext w m b h c vc nc lo es σ)
+    (hstatus : PendingStatusMargin cfg (E.store cfg ext w m)
+      (get_filtered_block_tree cfg (E.store cfg ext w m)) h
+      (get_parent_payload_status (E.store cfg ext w m)
+        ((E.store cfg ext w m).blocks c))) :
     E.ForkEdgeInput cfg ext w m b h c := by
   have hsub : (E.store cfg ext vc nc).block_roots ⊆ (E.store cfg ext w m).block_roots :=
-    E.blockRoots_subset_of_relay cfg ext hsync hvc hw hHnc hHm hslotS
+    fun r hr => hsync.block_relay vc hvc nc r hHnc hr w hw m hHm hslotS
   refine ⟨vc, nc, lo, es, σ, get_proposer_score cfg (E.store cfg ext w m), hσ,
     hres.hloH, hres.hσH, hres.hbase,
     E.htS_of_walk cfg ext hwf hsub hb hres.hdomS,
     E.htA_of_walk cfg ext hwf hsub hb hres.hdomA,
     hres.hBb, hlo,
-    hres.hdeltas, hres.hmaj, hres.hval, hres.hbsH, rfl, hres.hchild, hres.hrec,
+    hres.hdeltas, hres.hmaj, hres.hval, hres.hbsH, rfl, hres.hchild, hstatus, hres.hrec,
     hres.hHon, hres.hByz⟩
 
 /-- **`hval` from the justification interface.** The `EdgeInputResidual.hval`

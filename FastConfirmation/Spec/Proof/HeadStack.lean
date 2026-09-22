@@ -98,7 +98,7 @@ supplied: `hhead_known` by `head_root_known` (Section 1) and `hhead_walk` by
 boundary. -/
 theorem vote_lands_closed {E : Execution Root}
     (hwf : WellFormedExecution E) (hhb : HonestBehavior cfg ext E)
-    (hsyn : Synchrony cfg ext E) (hec : ExternalsCoherence cfg ext E)
+    (hsyn : PaperSafetySynchrony cfg ext E) (hec : ExternalsCoherence cfg ext E)
     (hji : JustificationInterface cfg ext E)
     (hdiv : 1000 ∣ cfg.slot_duration_ms)
     (hgen : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
@@ -128,7 +128,7 @@ site the `hSmono`/`hXmono`/`hsat` migration cruxes route their late voters throu
 bound `hbound`. -/
 theorem vote_ubiquity_closed {E : Execution Root}
     (hwf : WellFormedExecution E) (hhb : HonestBehavior cfg ext E)
-    (hsyn : Synchrony cfg ext E) (hec : ExternalsCoherence cfg ext E)
+    (hsyn : PaperSafetySynchrony cfg ext E) (hec : ExternalsCoherence cfg ext E)
     (hji : JustificationInterface cfg ext E)
     (hdiv : 1000 ∣ cfg.slot_duration_ms)
     (hgen : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),

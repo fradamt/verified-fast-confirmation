@@ -401,6 +401,7 @@ theorem ObservedResetCandidateInputAt.safeFrom_of_acceptedDynamics
           (compute_start_slot_at_epoch cfg J.epoch)).root = J.root := by
         simpa only [get_checkpoint_block, get_node_for_root] using htargetRoot
       have htargetSpec := get_ancestor_spec hwfK htarget.target_walk
+      simp only [get_node_for_root] at heta
       rw [heta] at htargetSpec
       have hJK : J.root ∈
           (E.store cfg ext htarget.validator htarget.second).block_roots :=
@@ -412,6 +413,7 @@ theorem ObservedResetCandidateInputAt.safeFrom_of_acceptedDynamics
           (hwalkK c.root hcKnownK _ hheadK)
         rw [is_ancestor_node_root] at hheadC
         simp only [is_ancestor_get_node_for_root, decide_eq_true_eq] at hheadC ⊢
+        simp only [get_node_for_root] at hheadC hcomp
         rw [heta, hheadC] at hcomp
         exact hcomp
       have hsemantic : E.RootDescends J.root c.root :=

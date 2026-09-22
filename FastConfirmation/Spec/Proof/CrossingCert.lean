@@ -781,6 +781,10 @@ theorem crossing_endpoint_of_confirmed
           (ForkChoiceNode.mk h
             (get_parent_payload_status (E.store cfg ext w m)
               ((E.store cfg ext w m).blocks c))))
+    (hstatus : PendingStatusMargin cfg (E.store cfg ext w m)
+      (get_filtered_block_tree cfg (E.store cfg ext w m)) h
+      (get_parent_payload_status (E.store cfg ext w m)
+        ((E.store cfg ext w m).blocks c)))
     (hbside : E.Sval cfg ext v n b ((E.store cfg ext v n).blocks b).slot σ ≤
       get_attestation_score cfg (E.store cfg ext w m) (get_node_for_root c)
         ((E.store cfg ext w m).checkpoint_states
@@ -815,7 +819,7 @@ theorem crossing_endpoint_of_confirmed
   have hend := E.crossing_endpoint_inequality_of_confirmed (m := m) cfg ext hhb hec hbb
     hsv hji hgen hv hnH hwf hval hbsH htab hprov hconf hwalk hes hslotlt hbcur
     hbanc hdom hcross hesσ hσH hw hHm hEstH hAX hxS
-  exact E.crossing_ledger_descendStep cfg ext hchild hbside hend hsib
+  exact E.crossing_ledger_descendStep cfg ext hchild hstatus hbside hend hsib
 
 end Execution
 

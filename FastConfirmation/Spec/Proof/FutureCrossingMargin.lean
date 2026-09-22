@@ -232,6 +232,10 @@ structure FutureCrossingINV2Inputs
       (get_filtered_block_tree cfg (E.store cfg ext w m))
       (ForkChoiceNode.mk a (get_parent_payload_status (E.store cfg ext w m)
         ((E.store cfg ext w m).blocks b)))
+  status_margin : PendingStatusMargin cfg (E.store cfg ext w m)
+    (get_filtered_block_tree cfg (E.store cfg ext w m)) a
+    (get_parent_payload_status (E.store cfg ext w m)
+      ((E.store cfg ext w m).blocks b))
   selected_recording : ∀ i ∈ E.Sclass cfg ext w m b lo sigma,
     i ∈ AttSupporters cfg (E.store cfg ext w m) (get_node_for_root b)
       ((E.store cfg ext w m).checkpoint_states
@@ -299,7 +303,7 @@ theorem futureCrossing_descendStep_of_INV2Inputs
       sigma hin.es_le_sigma hin.sigma_horizon
   exact descendStep_of_ledgerStepV2 cfg ext
     (inv2_ledgerStepV2 cfg ext hin.balance_source_registry rfl hinv
-      hin.child_filtered hin.selected_recording
+      hin.child_filtered hin.status_margin hin.selected_recording
       hin.honest_sibling_confinement hin.byzantine_sibling_confinement)
 
 /-! ## 4. Endpoint-anchored full-span producer
@@ -853,6 +857,10 @@ structure FutureCrossingSelectedMarginInputs
       (get_filtered_block_tree cfg (E.store cfg ext w m))
       (ForkChoiceNode.mk a (get_parent_payload_status (E.store cfg ext w m)
         ((E.store cfg ext w m).blocks b)))
+  status_margin : PendingStatusMargin cfg (E.store cfg ext w m)
+    (get_filtered_block_tree cfg (E.store cfg ext w m)) a
+    (get_parent_payload_status (E.store cfg ext w m)
+      ((E.store cfg ext w m).blocks b))
   selected_recording : ∀ i ∈ E.Sclass cfg ext w m b
       ((E.store cfg ext v q).blocks b).slot sigma,
     i ∈ AttSupporters cfg (E.store cfg ext w m) (get_node_for_root b)
@@ -959,7 +967,8 @@ theorem futureCrossing_descendStep_of_selectedInputs
       (E.store cfg ext w m).justified_checkpoint).validators = E.registry :=
     E.hval_of_interface cfg ext hec hgen hji w hw m hmH
   have hbside := recorded_bside_ge cfg ext hvalEnd hin.selected_recording
-  exact E.crossing_ledger_descendStep cfg ext hin.child_filtered hbside hend
+  exact E.crossing_ledger_descendStep cfg ext hin.child_filtered
+    hin.status_margin hbside hend
     hin.sibling_score
 
 /-- Endpoint-anchored inputs for an edge that itself crosses an epoch.  All
@@ -1001,6 +1010,10 @@ structure CrossingEdgeSelectedMarginInputs
       (get_filtered_block_tree cfg (E.store cfg ext w m))
       (ForkChoiceNode.mk a (get_parent_payload_status (E.store cfg ext w m)
         ((E.store cfg ext w m).blocks b)))
+  status_margin : PendingStatusMargin cfg (E.store cfg ext w m)
+    (get_filtered_block_tree cfg (E.store cfg ext w m)) a
+    (get_parent_payload_status (E.store cfg ext w m)
+      ((E.store cfg ext w m).blocks b))
   selected_recording : ∀ i ∈ E.Sclass cfg ext w m b
       ((E.store cfg ext v q).blocks b).slot sigma,
     i ∈ AttSupporters cfg (E.store cfg ext w m) (get_node_for_root b)
@@ -1110,7 +1123,8 @@ theorem crossingEdge_descendStep_of_selectedInputs
       (E.store cfg ext w m).justified_checkpoint).validators = E.registry :=
     E.hval_of_interface cfg ext hec hgen hji w hw m hmH
   have hbside := recorded_bside_ge cfg ext hvalEnd hin.selected_recording
-  exact E.crossing_ledger_descendStep cfg ext hin.child_filtered hbside hend
+  exact E.crossing_ledger_descendStep cfg ext hin.child_filtered
+    hin.status_margin hbside hend
     hin.sibling_score
 
 /-! ## 5. Machine-checked obstruction witnesses -/

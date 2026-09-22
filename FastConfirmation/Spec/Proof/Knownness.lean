@@ -148,7 +148,9 @@ theorem hbconf_of_genesisStart (hSA : SpecAssumptions cfg ext E)
     rwa [hanchor_slot] at this
   have hab : ablk.message.slot ≤ ((E.store cfg ext v (n + 1)).blocks b).slot := by
     rw [hanchor0 ast ablk hgeq, GENESIS_SLOT]; exact Nat.zero_le _
-  exact mem_of_is_ancestor_above_anchor hpsl hwa hab hanc
+  have hanc' := hanc
+  rw [get_node_for_root, is_ancestor_supported_pending] at hanc'
+  exact mem_of_is_ancestor_above_anchor hpsl hwa hab hanc'
 
 /-! ## Section 3 — `hb_sameslot`: knownness at a foreign same-slot endpoint
 

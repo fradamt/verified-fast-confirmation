@@ -300,7 +300,7 @@ theorem past_descendant_of_honest_supporter_known
     E.store_anchor_min_slot cfg ext hwfE hec hgeq hslot hroot v n lm.root hlmKnown
   have hs0 : E.slot_at cfg 0 ≤ s := by
     rw [hcur0, hsap]
-    exact hanchorle.trans hlmSlot
+    exact hanchorle.trans hlmSlot.1
   have hsH : E.SlotWithinHorizon cfg s :=
     E.slotWithinHorizon_of_le cfg (le_of_lt hslt) hH
   obtain ⟨nu, index, hHnu, hnu, hvoteHead⟩ :=
@@ -446,7 +446,8 @@ theorem ancestry_of_known_honest_past_descendant
   have hwalkv := E.store_walkKnownK cfg ext hwfE hec hgen' v n
   have hdr₀ : is_ancestor (E.store cfg ext v n)
       (get_node_for_root d) (get_node_for_root r₀) = true :=
-    is_ancestor_trans hwfv (hwalkv r₀ hr₀ d hdv) (hwalkv r₀ hr₀ b hb) hdb hbge
+    is_ancestor_trans (a := get_node_for_root d) (b := get_node_for_root b)
+      (c := get_node_for_root r₀) hwfv (hwalkv r₀ hr₀ d hdv) (hwalkv r₀ hr₀ b hb) hdb hbge
   have hanchor0 : ablk.root ∈ (E.store cfg ext u 0).block_roots := by
     change ablk.root ∈ E.genesis_store.block_roots
     rw [hgeq]

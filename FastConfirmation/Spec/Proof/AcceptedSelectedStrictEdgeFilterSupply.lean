@@ -268,7 +268,10 @@ theorem actualCall_strictSelected_endpointJustifiedEpoch_le_result
       (get_node_for_root trace.result) ≠ true := by
     intro hJResult
     apply hnotCovered
-    exact is_ancestor_trans hparentM
+    exact is_ancestor_trans
+      (a := get_node_for_root (E.store cfg ext w m).justified_checkpoint.root)
+      (b := get_node_for_root trace.result)
+      (c := get_node_for_root c) hparentM
       (hwalkM c hcM
         (E.store cfg ext w m).justified_checkpoint.root hjustifiedM)
       (hwalkM c hcM trace.result hresultM)
@@ -582,11 +585,13 @@ theorem StrictSelectedResultMechanicalFacts.previousOffStart_queryGUEpochSeed
           hpreviousDesc,
           lower_of_raw hpreviousHeadKnown hpreviousGU⟩
       · exact ⟨(get_head cfg query.store).root, hheadKnown,
-          hheadSelected, lower_of_raw hheadKnown hheadGU⟩
+          (by rw [is_ancestor_node_root] at hheadSelected; exact hheadSelected),
+          lower_of_raw hheadKnown hheadGU⟩
   · rcases hentry with hstart | hheadGU
     · exact False.elim (hnotStart hstart)
     · exact ⟨(get_head cfg query.store).root, hheadKnown,
-        hheadSelected, lower_of_raw hheadKnown hheadGU⟩
+        (by rw [is_ancestor_node_root] at hheadSelected; exact hheadSelected),
+          lower_of_raw hheadKnown hheadGU⟩
 
 /-- Narrow derived outcome for one selected result at one causal endpoint.
 
@@ -1061,7 +1066,8 @@ noncomputable def
       hseedM hseedVisible
   have htipSelected : is_ancestor endpoint
       (get_node_for_root tip) (get_node_for_root selected) = true :=
-    is_ancestor_trans hendpointParent'
+    is_ancestor_trans (a := get_node_for_root tip) (b := get_node_for_root seed)
+      (c := get_node_for_root selected) hendpointParent'
       (hendpointWalk' selected hselectedM tip htipKnown)
       (hendpointWalk' selected hselectedM seed hseedM)
       htipSeed hseedSelectedM
@@ -1075,7 +1081,8 @@ noncomputable def
   have htipJustified : is_ancestor endpoint
       (get_node_for_root tip)
       (get_node_for_root endpoint.justified_checkpoint.root) = true :=
-    is_ancestor_trans hendpointParent'
+    is_ancestor_trans (a := get_node_for_root tip) (b := get_node_for_root selected)
+      (c := get_node_for_root endpoint.justified_checkpoint.root) hendpointParent'
       (hendpointWalk' endpoint.justified_checkpoint.root
         hendpointJustified' tip htipKnown)
       (hendpointWalk' endpoint.justified_checkpoint.root
@@ -1242,7 +1249,8 @@ noncomputable def acceptedSelectedResultFilterOutcome_retainedVisible_of_lateLin
       (by simpa only [endpoint] using hseedVisible)
   have htipSelected : is_ancestor endpoint
       (get_node_for_root tip) (get_node_for_root selected) = true :=
-    is_ancestor_trans hparent
+    is_ancestor_trans (a := get_node_for_root tip) (b := get_node_for_root seed)
+      (c := get_node_for_root selected) hparent
       (hwalkK selected (by simpa only [endpoint] using hselectedM)
         tip htipKnown)
       (hwalkK selected (by simpa only [endpoint] using hselectedM)
@@ -1258,7 +1266,8 @@ noncomputable def acceptedSelectedResultFilterOutcome_retainedVisible_of_lateLin
   have htipJustified : is_ancestor endpoint
       (get_node_for_root tip)
       (get_node_for_root endpoint.justified_checkpoint.root) = true :=
-    is_ancestor_trans hparent
+    is_ancestor_trans (a := get_node_for_root tip) (b := get_node_for_root selected)
+      (c := get_node_for_root endpoint.justified_checkpoint.root) hparent
       (hwalkK endpoint.justified_checkpoint.root
         (by
           have hdomain := E.store_domainK_of_selectedMarginDomain
@@ -2054,7 +2063,8 @@ theorem child_filtered
       have hcoveredChild : is_ancestor endpoint
           (get_node_for_root endpoint.justified_checkpoint.root)
           (get_node_for_root child) = true :=
-        is_ancestor_trans hparent
+        is_ancestor_trans (a := get_node_for_root endpoint.justified_checkpoint.root)
+          (b := get_node_for_root glc) (c := get_node_for_root child) hparent
           (hwalkK child hchildKnown endpoint.justified_checkpoint.root
             hjustifiedKnown)
           (hwalkK child hchildKnown glc hresultKnown)
@@ -2081,14 +2091,16 @@ theorem child_filtered
       hresultJustified hsourceEq hfinalizedCheck =>
       have htipChild : is_ancestor endpoint
           (get_node_for_root tip) (get_node_for_root child) = true :=
-        is_ancestor_trans hparent
+        is_ancestor_trans (a := get_node_for_root tip) (b := get_node_for_root glc)
+          (c := get_node_for_root child) hparent
           (hwalkK child hchildKnown tip htipKnown)
           (hwalkK child hchildKnown glc hresultKnown)
           htipResult hresultChild
       have htipJustified : is_ancestor endpoint
           (get_node_for_root tip)
           (get_node_for_root endpoint.justified_checkpoint.root) = true :=
-        is_ancestor_trans hparent
+        is_ancestor_trans (a := get_node_for_root tip) (b := get_node_for_root glc)
+          (c := get_node_for_root endpoint.justified_checkpoint.root) hparent
           (hwalkK endpoint.justified_checkpoint.root hjustifiedKnown
             tip htipKnown)
           (hwalkK endpoint.justified_checkpoint.root hjustifiedKnown

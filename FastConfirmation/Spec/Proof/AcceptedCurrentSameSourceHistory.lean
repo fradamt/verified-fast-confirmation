@@ -152,7 +152,7 @@ theorem pastHead_of_honestSupporter_known
       hgeq hslot hroot v n lm.root hlmKnown
   have hs0 : E.slot_at cfg 0 ≤ s := by
     rw [hcur0, hsap]
-    exact hanchorle.trans hlmSlot
+    exact hanchorle.trans hlmSlot.1
   have hsH : E.SlotWithinHorizon cfg s :=
     E.slotWithinHorizon_of_le cfg (le_of_lt hslt) hH
   obtain ⟨nu, index, hHnu, hnu, hvoteHead⟩ :=
@@ -903,12 +903,14 @@ theorem ObservedResetCandidateInputAt.acceptedLemma22EpochStartCandidateSource
         (get_node_for_root tip) (get_node_for_root c.root) = true := by
       have hcomp := get_ancestor_comp_root hparentOrigin
         hrealOrigin.root_slot_le_boundary hwalkTipCandidate
+      simp only [get_node_for_root] at heta hcomp
       rw [heta] at hcomp
       have hstop : get_ancestor (E.store cfg ext v hi.originSecond)
           (get_node_for_root c.root)
           ((E.store cfg ext v hi.originSecond).blocks c.root).slot =
             get_node_for_root c.root :=
         get_ancestor_stop (Nat.le_refl _)
+      simp only [get_node_for_root] at hstop
       rw [hstop] at hcomp
       simp only [is_ancestor_get_node_for_root, decide_eq_true_eq]
       exact hcomp.symm

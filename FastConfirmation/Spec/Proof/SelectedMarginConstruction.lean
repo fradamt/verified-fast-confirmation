@@ -166,7 +166,8 @@ theorem ParentStuck_subset_storeAclass
         rw [get_ancestor_stop
           (le_of_lt (hev.parent_slot_lt b hev.block_known hev.parent_known))]
         intro hcon
-        injection hcon with heq
+        have heq := hcon
+        dsimp only at heq
         have hlt := hev.parent_slot_lt b hev.block_known hev.parent_known
         rw [heq] at hlt
         exact lt_irrefl _ hlt
@@ -258,7 +259,11 @@ theorem prefixDirectWindowSelectedMarginInputsAt_of_confirmed_in_store_minimal
       get_attestation_score cfg (E.store cfg ext w m) (get_node_for_root c')
           ((E.store cfg ext w m).checkpoint_states
             (E.store cfg ext w m).justified_checkpoint) ≤
-        E.Xval cfg ext w m c lo es + E.Bval lo es) :
+        E.Xval cfg ext w m c lo es + E.Bval lo es)
+    (hstatus : PendingStatusMargin cfg (E.store cfg ext w m)
+      (get_filtered_block_tree cfg (E.store cfg ext w m)) a
+      (get_parent_payload_status (E.store cfg ext w m)
+        ((E.store cfg ext w m).blocks c))) :
     E.PrefixDirectWindowSelectedMarginInputsAt cfg ext
       glc a c v q query w m lo es := by
   have hbase := E.base_strip_of_confirmed_in_store_minimal cfg ext hA hev hdom
@@ -267,6 +272,7 @@ theorem prefixDirectWindowSelectedMarginInputsAt_of_confirmed_in_store_minimal
       ancestor_transport := hAt
       base_strip := ?_
       child_filtered := hchild
+      status_margin := hstatus
       selected_score := hselected
       sibling_score := hsibling }
   rwa [← hboost]

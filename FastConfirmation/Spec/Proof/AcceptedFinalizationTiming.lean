@@ -533,10 +533,10 @@ private theorem AcceptedFinalizationLagAt.on_block_of_delays
           sb.root (some (List.replicate cfg.ptc_size none)) }
     change (match notify_ptc_messages cfg ext inserted post sb.message.payload_attestations with
       | none => none
-      | some notified => some (compute_pulled_up_tip cfg ext
-          (update_checkpoints
-            (update_proposer_boost_root cfg
-              (record_block_timeliness cfg notified sb.root)
+      | some notified => some (FastConfirmation.Spec.compute_pulled_up_tip cfg ext
+          (FastConfirmation.Spec.update_checkpoints
+            (FastConfirmation.Spec.update_proposer_boost_root cfg
+              (FastConfirmation.Spec.record_block_timeliness cfg notified sb.root)
               (get_head cfg store).root sb.root)
             post.current_justified_checkpoint post.finalized_checkpoint) sb.root)) =
       some store' at hh

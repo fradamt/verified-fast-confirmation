@@ -306,7 +306,8 @@ theorem acceptedRetainedPhaseSourceCarrier_of_recentSeed_nonempty
     exists_store_leaf_extension hparent hseed
   have htipSelected : is_ancestor store (get_node_for_root tip)
       (get_node_for_root selected) = true :=
-    is_ancestor_trans hparent
+    is_ancestor_trans (a := get_node_for_root tip) (b := get_node_for_root seed)
+      (c := get_node_for_root selected) hparent
       (hwalkK selected hselected tip htip)
       (hwalkK selected hselected seed hseed)
       htipSeed hseedSelected

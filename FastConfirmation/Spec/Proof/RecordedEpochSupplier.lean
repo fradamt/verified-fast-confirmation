@@ -567,7 +567,7 @@ theorem ParentStuck_subset_Aclass_window
       simp only [get_node_for_root, is_ancestor_pending, decide_eq_true_eq]
       rw [get_ancestor_stop (le_of_lt hslotlt)]
       intro hcon
-      injection hcon with heq
+      have heq : ((E.store cfg ext v₀ n₀).blocks b').parent_root = b' := hcon
       rw [heq] at hslotlt
       exact lt_irrefl _ hslotlt
     simp only [Execution.Aclass, Finset.mem_filter]
@@ -749,7 +749,8 @@ theorem honest_sibling_confinement_window
     rw [← ha, hbbreq] at hanc1
     have hlmc : is_ancestor (E.store cfg ext w m)
         (get_node_for_root lm.root) (get_node_for_root c) = true :=
-      is_ancestor_trans hwf (hwalkK c hc lm.root hlmk)
+      is_ancestor_trans (a := get_node_for_root lm.root) (b := get_node_for_root b)
+          (c := get_node_for_root c) hwf (hwalkK c hc lm.root hlmk)
         (hwalkK c hc b hb) hanc1 hbc
     exact siblings_incompatible hwf hc hc' hh hpc hpc' hne
       (hwalkK c hc lm.root hlmk) (hwalkK c' hc' lm.root hlmk)
