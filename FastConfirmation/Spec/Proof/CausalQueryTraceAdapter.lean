@@ -106,9 +106,9 @@ theorem ScheduledEventPrefix.current_slot (p : E.ScheduledEventPrefix) :
 /-! ## Mechanical trajectory evidence at a scheduled prefix -/
 
 /-- The exact trajectory assumptions used to replay store-local invariants to
-an in-second prefix.  This is the safety-free subset of
-`SelectedMarginAssumptions`; no Byzantine estimate, selected-margin domain, or
-head conclusion is included. -/
+an in-second prefix. These are the operational fields of
+`SelectedMarginAssumptions`, with an explicit anchor commitment. No Byzantine
+estimate, selected-margin domain, or head conclusion is included. -/
 structure ScheduledPrefixTrajectoryAssumptions : Prop where
   whole_seconds : 1000 ∣ cfg.slot_duration_ms
   wellFormed : WellFormedExecution E
@@ -118,18 +118,35 @@ structure ScheduledPrefixTrajectoryAssumptions : Prop where
       (anchorBlock : SignedBeaconBlock Root),
     E.genesis_store = get_forkchoice_store cfg anchorState anchorBlock ∧
       anchorState.slot = anchorBlock.message.slot ∧
+      ext.AnchorCommitsToState anchorBlock.message anchorState ∧
       anchorBlock.message.parent_root ≠ anchorBlock.root
 
-/-- Existing selected-margin assumptions supply the smaller scheduled-prefix
-trajectory interface. -/
+/-- Structural initialization facts used by store invariant proofs. The
+anchor commitment remains a separate conjunct of `genesis`. -/
+theorem ScheduledPrefixTrajectoryAssumptions.genesis_structure
+    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext) :
+    ∃ (anchorState : BeaconState Root) (anchorBlock : SignedBeaconBlock Root),
+      E.genesis_store = get_forkchoice_store cfg anchorState anchorBlock ∧
+      anchorState.slot = anchorBlock.message.slot ∧
+      anchorBlock.message.parent_root ≠ anchorBlock.root := by
+  obtain ⟨anchorState, anchorBlock, hstore, hslot, _hcommit, hparent⟩ := hT.genesis
+  exact ⟨anchorState, anchorBlock, hstore, hslot, hparent⟩
+
+/-- The legacy selected-margin bundle supplies the operational fields. Its
+anchor facts must also carry the explicit commitment required here. -/
 theorem ScheduledPrefixTrajectoryAssumptions.of_selectedMarginAssumptions
-    (hA : SelectedMarginAssumptions cfg ext E) :
+    (hA : SelectedMarginAssumptions cfg ext E)
+    (hgen : ∃ (anchorState : BeaconState Root) (anchorBlock : SignedBeaconBlock Root),
+      E.genesis_store = get_forkchoice_store cfg anchorState anchorBlock ∧
+      anchorState.slot = anchorBlock.message.slot ∧
+      ext.AnchorCommitsToState anchorBlock.message anchorState ∧
+      anchorBlock.message.parent_root ≠ anchorBlock.root) :
     E.ScheduledPrefixTrajectoryAssumptions cfg ext :=
   { whole_seconds := hA.whole_seconds
     wellFormed := hA.wellFormed
     externals_coherence := hA.externals_coherence
     honest_behavior := hA.honest_behavior
-    genesis := hA.genesis }
+    genesis := hgen }
 
 /-- Store facts mechanically inherited by an exact scheduled prefix.  These
 are operational/provenance facts only; in particular the record contains no
@@ -153,7 +170,7 @@ theorem ScheduledEventPrefix.schedLMProv
     (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
     (p : E.ScheduledEventPrefix) :
     SchedLMProv E cfg (p.store cfg ext) := by
-  obtain ⟨anchorState, anchorBlock, hgen, _hslot, _hparent⟩ := hT.genesis
+  obtain ⟨anchorState, anchorBlock, hgen, _hslot, _hparent⟩ := hT.genesis_structure
   rw [ScheduledEventPrefix.store]
   refine sched_foldl cfg ext _ _ ?_ ?_
   · intro attestation fromBlock hmem
@@ -171,7 +188,7 @@ theorem ScheduledEventPrefix.latestMessageProvenance
     (p : E.ScheduledEventPrefix) :
     LatestMessageProvenance E cfg (get_current_slot cfg (p.store cfg ext))
       (p.store cfg ext) := by
-  obtain ⟨anchorState, anchorBlock, hgen, _hslot, _hparent⟩ := hT.genesis
+  obtain ⟨anchorState, anchorBlock, hgen, _hslot, _hparent⟩ := hT.genesis_structure
   have hcur : get_current_slot cfg
       (on_tick cfg (E.store cfg ext p.node p.previousSecond)
         (E.time_at (p.previousSecond + 1))) =
@@ -201,7 +218,7 @@ theorem ScheduledEventPrefix.blocksSlotLeCurrent
     (p : E.ScheduledEventPrefix) :
     BlocksSlotLe (get_current_slot cfg (p.store cfg ext))
       (p.store cfg ext) := by
-  obtain ⟨anchorState, anchorBlock, hgen, hslot, _hparent⟩ := hT.genesis
+  obtain ⟨anchorState, anchorBlock, hgen, hslot, _hparent⟩ := hT.genesis_structure
   have hcur : get_current_slot cfg
       (on_tick cfg (E.store cfg ext p.node p.previousSecond)
         (E.time_at (p.previousSecond + 1))) =
@@ -225,7 +242,7 @@ theorem ScheduledEventPrefix.parentSlotLt
     (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
     (p : E.ScheduledEventPrefix) :
     ParentSlotLt (p.store cfg ext) := by
-  obtain ⟨anchorState, anchorBlock, hgen, hslot, hparent⟩ := hT.genesis
+  obtain ⟨anchorState, anchorBlock, hgen, hslot, hparent⟩ := hT.genesis_structure
   have hgenFull : ∃ (anchorState : BeaconState Root)
       (anchorBlock : SignedBeaconBlock Root),
       E.genesis_store = get_forkchoice_store cfg anchorState anchorBlock ∧
@@ -289,7 +306,7 @@ theorem ScheduledEventPrefix.honest_not_equivocating
     (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
     (p : E.ScheduledEventPrefix) :
     ∀ i ∈ E.honest, i ∉ (p.store cfg ext).equivocating_indices := by
-  obtain ⟨anchorState, anchorBlock, hgen, _hslot, _hparent⟩ := hT.genesis
+  obtain ⟨anchorState, anchorBlock, hgen, _hslot, _hparent⟩ := hT.genesis_structure
   intro i hi
   rw [ScheduledEventPrefix.store]
   refine honest_not_equiv_foldl cfg ext hT.honest_behavior

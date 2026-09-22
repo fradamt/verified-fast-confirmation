@@ -50,7 +50,7 @@ theorem ObservedResetCandidateInputAt.observed_checkpoint_previous_epoch
   let c := (E.fcrStep cfg ext v n
     ).current_epoch_observed_justified_checkpoint
   let e := get_current_store_epoch cfg (E.store cfg ext v (n + 1))
-  obtain ⟨ast, ablk, hgen, hgenSlot, hgenParent⟩ := hT.genesis
+  obtain ⟨ast, ablk, hgen, hgenSlot, hgenParent⟩ := hT.genesis_structure
   have hgenShort : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
       E.genesis_store = get_forkchoice_store cfg ast ablk ∧
         ast.slot = ablk.message.slot :=
@@ -194,7 +194,7 @@ theorem ObservedResetCandidateInputAt.safeFrom_of_acceptedDynamics
     ).current_epoch_observed_justified_checkpoint
   let e := get_current_store_epoch cfg (E.store cfg ext v (n + 1))
   change E.SafeFrom cfg ext c.root (n + 1)
-  obtain ⟨ast, ablk, hgen, hgenSlot, hgenParent⟩ := hT.genesis
+  obtain ⟨ast, ablk, hgen, hgenSlot, hgenParent⟩ := hT.genesis_structure
   have hgenShort : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
       E.genesis_store = get_forkchoice_store cfg ast ablk ∧
         ast.slot = ablk.message.slot :=
@@ -203,7 +203,7 @@ theorem ObservedResetCandidateInputAt.safeFrom_of_acceptedDynamics
     E.selectedMarginDomain_of_acceptedGlobalTrajectory
       cfg ext B hT hsync hanchor hboundary
   let hA : SelectedMarginAssumptions cfg ext E :=
-    { genesis := hT.genesis
+    { genesis := hT.genesis_structure
       wellFormed := hT.wellFormed
       whole_seconds := hT.whole_seconds
       honest_behavior := hT.honest_behavior

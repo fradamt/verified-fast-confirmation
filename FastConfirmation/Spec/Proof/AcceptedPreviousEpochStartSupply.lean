@@ -64,7 +64,7 @@ theorem StrictSelectorAdvanceAt.previousObservedReset_queryGUEpochSeed
     hboundary v n trace horigin.observed_guard_true
   obtain ⟨hparent, hwalk, _hjustifiedKnown⟩ :=
     E.store_domainK_of_selectedMarginDomain cfg ext hT.wellFormed
-      hT.externals_coherence hT.genesis hdomain v hv (n + 1) hHn1
+      hT.externals_coherence hT.genesis_structure hdomain v hv (n + 1) hHn1
   have hparentQ : ParentSlotLt query.store := by
     simpa only [query, E.fcrStep_store] using hparent
   have hwalkQ : ∀ t ∈ query.store.block_roots,
@@ -163,11 +163,11 @@ noncomputable def
       trace.result = e) :
     E.AcceptedHistoricalA32LineageAt cfg ext B trace.result e := by
   let query := E.fcrStep cfg ext v n
-  let ast : BeaconState Root := Classical.choose hT.genesis
+  let ast : BeaconState Root := Classical.choose hT.genesis_structure
   let ablk : SignedBeaconBlock Root :=
-    Classical.choose (Classical.choose_spec hT.genesis)
+    Classical.choose (Classical.choose_spec hT.genesis_structure)
   have hgenFacts :=
-    Classical.choose_spec (Classical.choose_spec hT.genesis)
+    Classical.choose_spec (Classical.choose_spec hT.genesis_structure)
   have hgen : E.genesis_store = get_forkchoice_store cfg ast ablk :=
     hgenFacts.1
   have hgenSlot : ast.slot = ablk.message.slot := hgenFacts.2.1
@@ -185,7 +185,7 @@ noncomputable def
       E.store_causal cfg ext v (n + 1)
   obtain ⟨hparentN1, hwalkN1, _hjustifiedN1⟩ :=
     E.store_domainK_of_selectedMarginDomain cfg ext hT.wellFormed
-      hT.externals_coherence hT.genesis hdomain v hv (n + 1) hHn1
+      hT.externals_coherence hT.genesis_structure hdomain v hv (n + 1) hHn1
   have hparent : ParentSlotLt query.store := by
     simpa only [query, E.fcrStep_store] using hparentN1
   have hwalk : ∀ t ∈ query.store.block_roots,
@@ -433,7 +433,7 @@ theorem StrictSelectorAdvanceAt.previousFinalizedReset_anchorLineage
     exact (Nat.not_lt_of_ge hrecentFinalized) hstale
   obtain ⟨hparentN1, hwalkN1, _hjustifiedN1⟩ :=
     E.store_domainK_of_selectedMarginDomain cfg ext hT.wellFormed
-      hT.externals_coherence hT.genesis hdomain v hv (n + 1) hHn1
+      hT.externals_coherence hT.genesis_structure hdomain v hv (n + 1) hHn1
   have hparent : ParentSlotLt query.store := by
     simpa only [query, E.fcrStep_store] using hparentN1
   have hwalk : ∀ t ∈ query.store.block_roots,
@@ -471,7 +471,7 @@ theorem StrictSelectorAdvanceAt.previousFinalizedReset_anchorLineage
   have hanchorKnown : B.anchor.root ∈ query.store.block_roots := by
     simpa only [hinputRoot] using hinputKnown
   have hanchor0 : B.anchor.root ∈ E.genesis_store.block_roots := by
-    obtain ⟨ast, ablk, hgen, _hslot, _hparent⟩ := hT.genesis
+    obtain ⟨ast, ablk, hgen, _hslot, _hparent⟩ := hT.genesis_structure
     have hroot : B.anchor.root = ablk.root := by
       rw [hanchor, hgen]
       rfl

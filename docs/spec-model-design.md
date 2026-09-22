@@ -211,11 +211,19 @@ spec's own dynamics: the fork-choice **handlers** driving store evolution,
 11a. **Additional dynamics modeling choices:** the
     `on_tick` catch-up while-loop is a fuel site like decision 4's (fuel
     `tick_slot + 1`; the loop advances one slot per iteration on
-    whole-second-boundary configs); `get_forkchoice_store` drops python's
-    `assert anchor_block.state_root == hash_tree_root(anchor_state)`; the
-    accepted anchor relation does not represent this state-root commitment
-    and requires only slot agreement and parent/root inequality. The function
-    takes the *signed* wire container because the root travels on it);
+    whole-second-boundary configs). The executable `get_forkchoice_store`
+    omits python's
+    `assert anchor_block.state_root == hash_tree_root(anchor_state)`.
+    The accepted `ScheduledPrefixTrajectoryAssumptions.genesis` requires
+    `Externals.AnchorCommitsToState anchorBlock.message anchorState`.
+    This abstract contract must come from the external interpretation of the
+    full block and state; the model does not prove a concrete hashing result.
+    Slot agreement and parent/root inequality remain separate premises.
+    The legacy `SpecAssumptions` bundle still has only those two premises.
+    The relation defaults to `False`, so an external implementation must
+    supply a relation and anchor evidence to satisfy the accepted trajectory.
+    The function takes the *signed* wire container because the root travels
+    on it;
     `Event.attestation` with
     `is_from_block = true` may appear in adversarial schedules unaccompanied
     by a block — a **conservative over-approximation** (the adversary gets

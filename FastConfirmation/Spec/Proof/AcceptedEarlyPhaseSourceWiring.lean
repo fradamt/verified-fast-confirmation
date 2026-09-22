@@ -34,7 +34,7 @@ private def selectedMarginAssumptions_of_earlyPhaseInputs
     (hbyz : ByzantineBound cfg E)
     (hdomain : SelectedMarginDomain cfg ext E) :
     SelectedMarginAssumptions cfg ext E :=
-  { genesis := hT.genesis
+  { genesis := hT.genesis_structure
     wellFormed := hT.wellFormed
     whole_seconds := hT.whole_seconds
     honest_behavior := hT.honest_behavior
@@ -595,7 +595,7 @@ theorem StrictSelectedResultMechanicalFacts.fcrStep_previous_endpointRecentSourc
     RecentSourceSeedAt cfg (E.store cfg ext w m) result := by
   let hA := E.selectedMarginAssumptions_of_earlyPhaseInputs cfg ext
     hT hsync hstatic hbyz hdomain
-  obtain ⟨ast, ablk, hgen, hgenSlot, hgenParent⟩ := hT.genesis
+  obtain ⟨ast, ablk, hgen, hgenSlot, hgenParent⟩ := hT.genesis_structure
   have hnH : E.WithinHorizon cfg n :=
     E.withinHorizon_mono cfg (Nat.le_succ n) hn1H
   have hslotForward : E.slot_at cfg (n + 1) ≤ E.slot_at cfg m :=
@@ -614,7 +614,7 @@ theorem StrictSelectedResultMechanicalFacts.fcrStep_previous_endpointRecentSourc
   have hendpointCausal := E.store_causal cfg ext w m
   obtain ⟨hparentN1, hwalkN1, _hjustifiedN1⟩ :=
     E.store_domainK_of_selectedMarginDomain cfg ext hT.wellFormed
-      hT.externals_coherence hT.genesis hdomain v hv (n + 1) hn1H
+      hT.externals_coherence hT.genesis_structure hdomain v hv (n + 1) hn1H
   have hqueryParent : ParentSlotLt (E.fcrStep cfg ext v n).store := by
     simpa only [E.fcrStep_store] using hparentN1
   have hqueryProvenance : BlockProvenance E
@@ -632,11 +632,11 @@ theorem StrictSelectedResultMechanicalFacts.fcrStep_previous_endpointRecentSourc
     ⟨_a, _hedge, _hentry, hrecent, hdesc⟩ |
       ⟨_a, _hedge, _hentry, hfinal⟩
   · have hseedQ := E.fcrStep_previousSlotHead_known cfg ext
-      hT.genesis hdomain v hv n hn1H
+      hT.genesis_structure hdomain v hv n hn1H
     have hseedN : (E.fcrStep cfg ext v n).previous_slot_head ∈
         (E.store cfg ext v n).block_roots := by
       rw [E.fcrStep_previousSlotHead_eq_currentSlotHead]
-      exact E.fcr_currentSlotHead_known cfg ext hT.genesis hdomain
+      exact E.fcr_currentSlotHead_known cfg ext hT.genesis_structure hdomain
         v hv n hnH
     have hslotAdvance : E.slot_at cfg n < E.slot_at cfg (n + 1) := by
       unfold IsFCRCallAt at hcall
@@ -698,7 +698,7 @@ theorem StrictSelectedResultMechanicalFacts.fcrStep_currentNext_endpointRecentSo
     RecentSourceSeedAt cfg (E.store cfg ext w m) result := by
   let hA := E.selectedMarginAssumptions_of_earlyPhaseInputs cfg ext
     hT hsync hstatic hbyz hdomain
-  obtain ⟨ast, ablk, hgen, hgenSlot, hgenParent⟩ := hT.genesis
+  obtain ⟨ast, ablk, hgen, hgenSlot, hgenParent⟩ := hT.genesis_structure
   have hqueryCausal : E.CausalStore cfg ext
       (E.fcrStep cfg ext v n).store := by
     rw [E.fcrStep_store]
@@ -706,7 +706,7 @@ theorem StrictSelectedResultMechanicalFacts.fcrStep_currentNext_endpointRecentSo
   have hendpointCausal := E.store_causal cfg ext w m
   obtain ⟨hparentN1, hwalkN1, _hjustifiedN1⟩ :=
     E.store_domainK_of_selectedMarginDomain cfg ext hT.wellFormed
-      hT.externals_coherence hT.genesis hdomain v hv (n + 1) hn1H
+      hT.externals_coherence hT.genesis_structure hdomain v hv (n + 1) hn1H
   have hqueryParent : ParentSlotLt (E.fcrStep cfg ext v n).store := by
     simpa only [E.fcrStep_store] using hparentN1
   have hqueryWalk : ∀ t ∈ (E.fcrStep cfg ext v n).store.block_roots,

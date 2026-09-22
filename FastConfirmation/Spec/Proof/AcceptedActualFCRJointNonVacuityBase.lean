@@ -184,6 +184,8 @@ def witnessTransition (st : BeaconState WitnessRoot)
   else none
 
 def witnessExternals : Externals WitnessRoot where
+  AnchorCommitsToState := fun block state =>
+    block = anchorSignedBlock.message ∧ state = anchorState
   get_beacon_committee := fun _ slot _ => [slot % 4]
   get_committee_count_per_slot := fun _ _ => 1
   process_slots := witnessProcessSlots
@@ -811,7 +813,7 @@ theorem witnessScheduledPrefixTrajectoryAssumptions :
       wellFormed := witnessWellFormedExecution
       externals_coherence := witnessExternalsCoherence
       honest_behavior := witnessHonestBehavior
-      genesis := ⟨anchorState, anchorSignedBlock, rfl, rfl, by decide⟩ }
+      genesis := ⟨anchorState, anchorSignedBlock, rfl, rfl, ⟨rfl, rfl⟩, by decide⟩ }
 
 theorem witnessPhase0SourceCoherence :
     Phase0SourceCoherence witnessConfig witnessExternals := by

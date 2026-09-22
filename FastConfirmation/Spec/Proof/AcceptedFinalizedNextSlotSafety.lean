@@ -55,7 +55,7 @@ theorem finalizedReset_justifiedDom_of_nextSlotSynchrony
   intro w hw m hqm hHm
   let finalized :=
     (E.fcrStep cfg ext v n).store.finalized_checkpoint
-  obtain ⟨ast, ablk, hgen, hslot, hparent⟩ := hT.genesis
+  obtain ⟨ast, ablk, hgen, hslot, hparent⟩ := hT.genesis_structure
   have hgenShort : ∃ (ast : BeaconState Root)
       (ablk : SignedBeaconBlock Root),
       E.genesis_store = get_forkchoice_store cfg ast ablk ∧

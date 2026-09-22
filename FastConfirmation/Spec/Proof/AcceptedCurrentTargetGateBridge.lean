@@ -573,7 +573,7 @@ theorem concreteHonestTargetVote_acceptedOldTargetSourceEvidence
       (E.store cfg ext i vote.time) vote.slot vote.index target.root := by
   let voteStore := E.store cfg ext i vote.time
   let head := (get_head cfg voteStore).root
-  obtain ⟨ast, ablk, hgen, hgenSlot, hgenParent⟩ := hT.genesis
+  obtain ⟨ast, ablk, hgen, hgenSlot, hgenParent⟩ := hT.genesis_structure
   have hgenTrajectory :
       ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
         E.genesis_store = get_forkchoice_store cfg ast ablk ∧
@@ -599,7 +599,7 @@ theorem concreteHonestTargetVote_acceptedOldTargetSourceEvidence
   have hparentSlots : ParentSlotLt voteStore := by
     simpa only [voteStore] using
       E.store_parentSlotLt cfg ext hT.wellFormed
-        hT.externals_coherence hT.genesis
+        hT.externals_coherence hT.genesis_structure
         hT.wellFormed.anchor_parent_unscheduled i vote.time
   have htargetData : (honest_attestation_data cfg ext voteStore
       vote.slot vote.index).target = target := by
@@ -800,7 +800,7 @@ theorem concreteHonestTargetVote_knownCurrentEpochSegment
       (get_head cfg (E.store cfg ext i vote.time)).root := by
   let voteStore := E.store cfg ext i vote.time
   let head := (get_head cfg voteStore).root
-  obtain ⟨ast, ablk, hgen, hgenSlot, hgenParent⟩ := hT.genesis
+  obtain ⟨ast, ablk, hgen, hgenSlot, hgenParent⟩ := hT.genesis_structure
   have hgenTrajectory :
       ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
         E.genesis_store = get_forkchoice_store cfg ast ablk ∧
@@ -821,7 +821,7 @@ theorem concreteHonestTargetVote_knownCurrentEpochSegment
   have hparentSlots : ParentSlotLt voteStore := by
     simpa only [voteStore] using
       E.store_parentSlotLt cfg ext hT.wellFormed
-        hT.externals_coherence hT.genesis
+        hT.externals_coherence hT.genesis_structure
         hT.wellFormed.anchor_parent_unscheduled i vote.time
   have htargetData :
       (honest_attestation_data cfg ext voteStore vote.slot vote.index).target =
@@ -931,7 +931,7 @@ theorem concreteHonestTargetVote_acceptedCurrentEpochSegment
     (vote : ConcreteHonestTargetVoteBefore cfg ext E i deadline target) :
     AcceptedProjectedSameEpochSegment cfg ext E B.state target.root
       (get_head cfg (E.store cfg ext i vote.time)).root := by
-  obtain ⟨ast, ablk, hgen, hgenSlot, hgenParent⟩ := hT.genesis
+  obtain ⟨ast, ablk, hgen, hgenSlot, hgenParent⟩ := hT.genesis_structure
   have hgenCore : WellFormedStoreCore E.genesis_store := by
     rw [hgen]
     exact (wellFormedStore_get_forkchoice_store cfg ast ablk hgenSlot
@@ -973,7 +973,7 @@ theorem concreteHonestTargetVote_acceptedCurrentEpochSourceGeometry
         (get_head cfg (E.store cfg ext i vote.time)).root := by
   let voteStore := E.store cfg ext i vote.time
   let head := (get_head cfg voteStore).root
-  obtain ⟨ast, ablk, hgen, hgenSlot, hgenParent⟩ := hT.genesis
+  obtain ⟨ast, ablk, hgen, hgenSlot, hgenParent⟩ := hT.genesis_structure
   have hgenTrajectory :
       ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
         E.genesis_store = get_forkchoice_store cfg ast ablk ∧

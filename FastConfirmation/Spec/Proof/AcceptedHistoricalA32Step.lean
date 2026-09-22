@@ -528,7 +528,7 @@ theorem confirmed_current_at_previousStore_of_query
       get_current_store_epoch cfg (E.fcrStep cfg ext v n).store) :
     get_block_epoch cfg (E.store cfg ext v n) (E.confirmed cfg ext v n) =
       get_current_store_epoch cfg (E.store cfg ext v n) := by
-  obtain ⟨ast, ablk, hgen, hslot, _hparent⟩ := hT.genesis
+  obtain ⟨ast, ablk, hgen, hslot, _hparent⟩ := hT.genesis_structure
   have hknownN1 : E.confirmed cfg ext v n ∈
       (E.store cfg ext v (n + 1)).block_roots :=
     (E.store_storeLE cfg ext v (Nat.le_succ n)).1 hknownN
@@ -627,11 +627,11 @@ theorem historicalA32QueryGeometryAt_of_acceptedGlobalTrajectory
     {v : ValidatorIndex} (hv : v ∈ E.honest)
     {n : ℕ} (hHn1 : E.WithinHorizon cfg (n + 1)) :
     E.HistoricalA32QueryGeometryAt cfg ext (E.fcrStep cfg ext v n) := by
-  let ast : BeaconState Root := Classical.choose hT.genesis
+  let ast : BeaconState Root := Classical.choose hT.genesis_structure
   let ablk : SignedBeaconBlock Root :=
-    Classical.choose (Classical.choose_spec hT.genesis)
+    Classical.choose (Classical.choose_spec hT.genesis_structure)
   have hgenFacts :=
-    Classical.choose_spec (Classical.choose_spec hT.genesis)
+    Classical.choose_spec (Classical.choose_spec hT.genesis_structure)
   have hgen : E.genesis_store = get_forkchoice_store cfg ast ablk :=
     hgenFacts.1
   have hslot : ast.slot = ablk.message.slot := hgenFacts.2.1

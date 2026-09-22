@@ -33,7 +33,7 @@ theorem trustedAnchor_slot_eq_start_of_trajectory
       (E := E) (anchor := anchor)) :
     (E.genesis_store.blocks anchor.root).slot =
       compute_start_slot_at_epoch cfg anchor.epoch := by
-  obtain ⟨ast, ablk, hgen, hslot, _hparent⟩ := hT.genesis
+  obtain ⟨ast, ablk, hgen, hslot, _hparent⟩ := hT.genesis_structure
   have hroot : anchor.root = ablk.root := by
     rw [hanchor, hgen]
     rfl
@@ -59,7 +59,7 @@ theorem trustedAnchor_epoch_le_currentEpoch_of_trajectory
       (E := E) (anchor := anchor))
     (v : ValidatorIndex) (n : ℕ) :
     anchor.epoch ≤ get_current_store_epoch cfg (E.store cfg ext v n) := by
-  obtain ⟨ast, ablk, hgen, hslot, hparent⟩ := hT.genesis
+  obtain ⟨ast, ablk, hgen, hslot, hparent⟩ := hT.genesis_structure
   have hroot : anchor.root = ablk.root := by
     rw [hanchor, hgen]
     rfl
@@ -104,7 +104,7 @@ theorem trustedAnchor_boundaryWalkAtEpoch_of_trajectory
     {r : Root} (hr : r ∈ (E.store cfg ext v n).block_roots) :
     WalkKnown (E.store cfg ext v n)
       (compute_start_slot_at_epoch cfg e) r := by
-  obtain ⟨ast, ablk, hgen, hslot, hparent⟩ := hT.genesis
+  obtain ⟨ast, ablk, hgen, hslot, hparent⟩ := hT.genesis_structure
   have hroot : anchor.root = ablk.root := by
     rw [hanchor, hgen]
     rfl
@@ -166,11 +166,11 @@ noncomputable def carriedCurrentNoCrossingLineageAt_of_acceptedGlobalTrajectory
       (E.confirmed cfg ext v n) e) :
     E.AcceptedHistoricalA32LineageAt cfg ext B
       (E.getLatestConfirmedTraceAt cfg ext v n).result e := by
-  let ast : BeaconState Root := Classical.choose hT.genesis
+  let ast : BeaconState Root := Classical.choose hT.genesis_structure
   let ablk : SignedBeaconBlock Root :=
-    Classical.choose (Classical.choose_spec hT.genesis)
+    Classical.choose (Classical.choose_spec hT.genesis_structure)
   have hgenFacts :=
-    Classical.choose_spec (Classical.choose_spec hT.genesis)
+    Classical.choose_spec (Classical.choose_spec hT.genesis_structure)
   have hgen : E.genesis_store = get_forkchoice_store cfg ast ablk :=
     hgenFacts.1
   have hslot : ast.slot = ablk.message.slot := hgenFacts.2.1
@@ -293,11 +293,11 @@ noncomputable def
     E.AcceptedHistoricalA32LineageAt cfg ext B
       (E.getLatestConfirmedTraceAt cfg ext v n).result
       (get_current_store_epoch cfg (E.fcrStep cfg ext v n).store) := by
-  let ast : BeaconState Root := Classical.choose hT.genesis
+  let ast : BeaconState Root := Classical.choose hT.genesis_structure
   let ablk : SignedBeaconBlock Root :=
-    Classical.choose (Classical.choose_spec hT.genesis)
+    Classical.choose (Classical.choose_spec hT.genesis_structure)
   have hgenFacts :=
-    Classical.choose_spec (Classical.choose_spec hT.genesis)
+    Classical.choose_spec (Classical.choose_spec hT.genesis_structure)
   have hgen : E.genesis_store = get_forkchoice_store cfg ast ablk :=
     hgenFacts.1
   have hslot : ast.slot = ablk.message.slot := hgenFacts.2.1

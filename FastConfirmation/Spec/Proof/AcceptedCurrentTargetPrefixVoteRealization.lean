@@ -131,15 +131,21 @@ structure CurrentTargetPrefixVoteAssumptions : Prop where
         (E.store cfg ext w m).block_roots
 
 /-- Project the narrow vote-realization interface from the existing selected
-bundle.  Final action producers may instead construct the narrow interface
+bundle and explicit committed-anchor evidence. Final action producers may
+instead construct the narrow interface
 directly from accepted trajectory facts; no legacy justification-interface
 field is built into its definition. -/
 def CurrentTargetPrefixVoteAssumptions.of_selectedMarginAssumptions
-    (hA : SelectedMarginAssumptions cfg ext E) :
+    (hA : SelectedMarginAssumptions cfg ext E)
+    (hgen : ∃ (anchorState : BeaconState Root) (anchorBlock : SignedBeaconBlock Root),
+      E.genesis_store = get_forkchoice_store cfg anchorState anchorBlock ∧
+      anchorState.slot = anchorBlock.message.slot ∧
+      ext.AnchorCommitsToState anchorBlock.message anchorState ∧
+      anchorBlock.message.parent_root ≠ anchorBlock.root) :
     E.CurrentTargetPrefixVoteAssumptions cfg ext where
   trajectory :=
     ScheduledPrefixTrajectoryAssumptions.of_selectedMarginAssumptions
-      cfg ext E hA
+      cfg ext E hA hgen
   justified_root_known := hA.domain.justified_root_known
 
 /-- Every exact scheduled-event prefix retains the target epoch of the actual
@@ -149,7 +155,7 @@ theorem ScheduledEventPrefix.currentTargetScheduledLatestMessageProvenance
     (p : E.ScheduledEventPrefix) :
     CurrentTargetScheduledLatestMessageProvenance cfg E
       (p.store cfg ext) := by
-  obtain ⟨anchorState, anchorBlock, hgen, _hslot, _hparent⟩ := hT.genesis
+  obtain ⟨anchorState, anchorBlock, hgen, _hslot, _hparent⟩ := hT.genesis_structure
   rw [ScheduledEventPrefix.store]
   refine prefixCurrentTargetProvenance_foldl cfg ext _ _ ?_ ?_
   · intro a ifb hmem
@@ -368,11 +374,16 @@ theorem currentTargetObservedHonestSupporter_vote_of_prefix
     (haSlotEpoch.trans htargetEpoch.symm)
 
 /-- Convenience specialization for callers which already carry the selected
-lower-assumption bundle.  The proof projects only the fields documented by
-`CurrentTargetPrefixVoteAssumptions`. -/
+lower-assumption bundle and committed-anchor evidence. The proof uses the
+fields documented by `CurrentTargetPrefixVoteAssumptions`. -/
 theorem currentTargetObservedHonestSupporter_vote_of_prefix_of_selected
     (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
     (hA : SelectedMarginAssumptions cfg ext E)
+    (hgen : ∃ (anchorState : BeaconState Root) (anchorBlock : SignedBeaconBlock Root),
+      E.genesis_store = get_forkchoice_store cfg anchorState anchorBlock ∧
+      anchorState.slot = anchorBlock.message.slot ∧
+      ext.AnchorCommitsToState anchorBlock.message anchorState ∧
+      anchorBlock.message.parent_root ≠ anchorBlock.root)
     (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg) (E := E)
       (anchor := E.genesis_store.justified_checkpoint))
     (p : E.ScheduledEventPrefix)
@@ -386,7 +397,7 @@ theorem currentTargetObservedHonestSupporter_vote_of_prefix_of_selected
       (get_current_target cfg (p.store cfg ext))) :=
   E.currentTargetObservedHonestSupporter_vote_of_prefix cfg ext B
     (CurrentTargetPrefixVoteAssumptions.of_selectedMarginAssumptions
-      cfg ext E hA) hboundary p hqH hiObserved
+      cfg ext E hA hgen) hboundary p hqH hiObserved
 
 end Execution
 

@@ -134,7 +134,7 @@ theorem trustedAnchor_checkpointForBlock_of_trajectory
       (E := E) (anchor := anchor)) :
     get_checkpoint_for_block cfg E.genesis_store anchor.root
         (get_block_epoch cfg E.genesis_store anchor.root) = anchor := by
-  obtain ⟨ast, ablk, hgen, hslot, _hparent⟩ := hT.genesis
+  obtain ⟨ast, ablk, hgen, hslot, _hparent⟩ := hT.genesis_structure
   have hroot : anchor.root = ablk.root := by
     have h := congrArg Checkpoint.root hanchor
     rw [hgen] at h
@@ -164,7 +164,7 @@ noncomputable def acceptedHistoricalA32CurrentLineageAt_zero
       (E := E) (anchor := B.anchor))
     (v : ValidatorIndex) :
     E.AcceptedHistoricalA32CurrentLineageAt cfg ext B v 0 := by
-  obtain ⟨ast, ablk, hgen, _hslot, _hparent⟩ := hT.genesis
+  obtain ⟨ast, ablk, hgen, _hslot, _hparent⟩ := hT.genesis_structure
   have hconfirmedAnchor : E.confirmed cfg ext v 0 = B.anchor.root := by
     rw [E.confirmed_zero, hanchor]
     change E.genesis_store.finalized_checkpoint.root =

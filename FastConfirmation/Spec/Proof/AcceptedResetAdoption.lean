@@ -64,7 +64,7 @@ theorem includedCertifiedFinalized_epoch_lt_acceptedCarrierBlock
       _hiAttests, _haSource, haTarget⟩ :=
     F.finalizing_link.signer_attestation i hi
   have hevidence := B.state.includedAttestations.evidence hincluded
-  obtain ⟨ast, ablk, hgenEq, hslot, hparent⟩ := hT.genesis
+  obtain ⟨ast, ablk, hgenEq, hslot, hparent⟩ := hT.genesis_structure
   have hcontainingRoot : E.ExecutionRoot containing :=
     ⟨hevidence.carrier_message, hevidence.carrier_at⟩
   have hreflection :=
@@ -152,7 +152,7 @@ theorem finalized_epoch_le_justified_of_acceptedCarrierKnown
         r ∈ (E.store cfg ext w m).block_roots) :
     (E.store cfg ext v q).finalized_checkpoint.epoch ≤
       (E.store cfg ext w m).justified_checkpoint.epoch := by
-  obtain ⟨ast, ablk, hgenEq, hslot, _hparent⟩ := hT.genesis
+  obtain ⟨ast, ablk, hgenEq, hslot, _hparent⟩ := hT.genesis_structure
   have hgenShort : ∃ (ast : BeaconState Root)
       (ablk : SignedBeaconBlock Root),
       E.genesis_store = get_forkchoice_store cfg ast ablk ∧

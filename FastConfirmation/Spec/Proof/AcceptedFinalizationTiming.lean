@@ -134,7 +134,7 @@ theorem acceptedPulledUpFinalized_succ_le_blockEpoch
         _hiAttests, _haSource, haTarget⟩ :=
       F.finalizing_link.signer_attestation i hi
     have hevidence := B.state.includedAttestations.evidence hincluded
-    obtain ⟨ast, ablk, hgenEq, hslot, hparent⟩ := hT.genesis
+    obtain ⟨ast, ablk, hgenEq, hslot, hparent⟩ := hT.genesis_structure
     have htipKnown : t.signedBlock.root ∈
         (E.store cfg ext t.atPrefix.node
           (t.atPrefix.previousSecond + 1)).block_roots :=
@@ -875,7 +875,7 @@ private theorem genesisAcceptedFinalizationLagAt
     (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint) :
     AcceptedFinalizationLagAt cfg B.anchor E.genesis_store := by
-  obtain ⟨ast, ablk, hgenEq, _hslot, _hparent⟩ := hT.genesis
+  obtain ⟨ast, ablk, hgenEq, _hslot, _hparent⟩ := hT.genesis_structure
   rw [hgenEq] at hanchor ⊢
   constructor <;> apply Or.inl <;>
     simpa only [get_forkchoice_store] using hanchor.symm
@@ -955,7 +955,7 @@ theorem acceptedFinalizationLagAt
     (w : ValidatorIndex) (n : ℕ) :
     AcceptedFinalizationLagAt cfg B.anchor (E.store cfg ext w n) := by
   have hgenTime : E.genesis_store.genesis_time ≤ E.genesis_store.time := by
-    obtain ⟨ast, ablk, hgenEq, _hslot, _hparent⟩ := hT.genesis
+    obtain ⟨ast, ablk, hgenEq, _hslot, _hparent⟩ := hT.genesis_structure
     rw [hgenEq]
     simp only [get_forkchoice_store]
     omega
@@ -983,7 +983,7 @@ theorem ScheduledEventPrefix.acceptedFinalizationLagAt
     (hDelay : E.AcceptedRealizedFinalizationDelay cfg ext B) :
     AcceptedFinalizationLagAt cfg B.anchor (p.store cfg ext) := by
   have hgenTime : E.genesis_store.genesis_time ≤ E.genesis_store.time := by
-    obtain ⟨ast, ablk, hgenEq, _hslot, _hparent⟩ := hT.genesis
+    obtain ⟨ast, ablk, hgenEq, _hslot, _hparent⟩ := hT.genesis_structure
     rw [hgenEq]
     simp only [get_forkchoice_store]
     omega

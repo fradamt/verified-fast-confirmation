@@ -474,11 +474,13 @@ def on_attester_slashing (store : Store Root)
       some { store with equivocating_indices := store.equivocating_indices ∪ indices }
 
 /-- `get_forkchoice_store`: the trusted-anchor initialization. The python
-`assert anchor_block.state_root == hash_tree_root(anchor_state)` is
-**dropped** (untranscribable in the projection — the modeled block carries no
-`state_root`); anchor block/state consistency is an execution
-well-formedness premise (design §11a). Dict fields outside their singleton
-domains are junk-totalized.
+`assert anchor_block.state_root == hash_tree_root(anchor_state)` is omitted
+from this executable function: the projected block carries no `state_root`.
+`ScheduledPrefixTrajectoryAssumptions.genesis` requires the abstract
+`Externals.AnchorCommitsToState` contract from the external interpretation,
+along with separate slot agreement and parent/root inequality premises
+(design §11a). This is not a concrete hashing proof. Dict fields outside their
+singleton domains are junk-totalized.
 ```python
 anchor_root = hash_tree_root(anchor_block)
 anchor_epoch = get_current_epoch(anchor_state)

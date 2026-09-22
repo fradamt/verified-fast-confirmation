@@ -78,7 +78,7 @@ def noConflictPinningAssumptions_of_acceptedGlobalTrajectory
     (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
       (E := E) (anchor := B.anchor)) :
     NoConflictPinningAssumptions cfg ext E where
-  genesis := hT.genesis
+  genesis := hT.genesis_structure
   wellFormed := hT.wellFormed
   whole_seconds := hT.whole_seconds
   honest_behavior := hT.honest_behavior
@@ -146,7 +146,7 @@ theorem completedPrefix_noConflict_certifiedJustified_root_eq_currentTarget
     c.root =
       (get_current_target cfg (E.store cfg ext v (n + 1))).root := by
   classical
-  obtain ⟨ast, ablk, hgen, hgenSlot, _hgenParent⟩ := hT.genesis
+  obtain ⟨ast, ablk, hgen, hgenSlot, _hgenParent⟩ := hT.genesis_structure
   have hgenShort : ∃ (ast : BeaconState Root)
       (ablk : SignedBeaconBlock Root),
       E.genesis_store = get_forkchoice_store cfg ast ablk ∧
@@ -412,7 +412,7 @@ private theorem AcceptedHistoricalA32LineageAt.payloadAtExecutionStore
     (htip : tip ∈ (E.store cfg ext v q).block_roots)
     (htipEpoch : get_block_epoch cfg (E.store cfg ext v q) tip = e) :
     Nonempty (E.AcceptedHistoricalA32GatePayloadAt cfg ext B tip e) := by
-  obtain ⟨ast, ablk, hgen, hgenSlot, hgenParent⟩ := hT.genesis
+  obtain ⟨ast, ablk, hgen, hgenSlot, hgenParent⟩ := hT.genesis_structure
   let store := E.store cfg ext v q
   have hstoreCausal : E.CausalStore cfg ext store := by
     simpa only [store] using E.store_causal cfg ext v q
@@ -656,7 +656,7 @@ theorem actualCall_strictSelected_result_and_child_ancestor_of_endpointJustified
   let query := E.fcrStep cfg ext v n
   let trace := E.getLatestConfirmedTraceAt cfg ext v n
   let hA : SelectedMarginAssumptions cfg ext E :=
-    { genesis := hT.genesis
+    { genesis := hT.genesis_structure
       wellFormed := hT.wellFormed
       whole_seconds := hT.whole_seconds
       honest_behavior := hT.honest_behavior
@@ -669,7 +669,7 @@ theorem actualCall_strictSelected_result_and_child_ancestor_of_endpointJustified
     simpa only [query] using E.fcrStep_store cfg ext v n
   have hinput' : trace.afterObserved ∈ query.store.block_roots := by
     simpa only [query, trace] using hinput
-  obtain ⟨ast, ablk, hgen, hgenSlot, _hgenParent⟩ := hT.genesis
+  obtain ⟨ast, ablk, hgen, hgenSlot, _hgenParent⟩ := hT.genesis_structure
   have hgenShort : ∃ (ast : BeaconState Root)
       (ablk : SignedBeaconBlock Root),
       E.genesis_store = get_forkchoice_store cfg ast ablk ∧
