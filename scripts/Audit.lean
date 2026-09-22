@@ -41,7 +41,11 @@ private def publicWitnesses : Array Name :=
     ``FastConfirmation.Spec.Execution.weak_safeFrom_find_latest_confirmed_descendant_discharged,
     ``FastConfirmation.Spec.Execution.weak_confirmed_head_discharged,
     ``FastConfirmation.Spec.Execution.weakConfirmed_safeFromFollowingSlot_of_acceptedWeakFullRuleFold,
-    ``FastConfirmation.Spec.Execution.weakConfirmed_head_of_acceptedWeakFullRuleFold_nextSlot
+    ``FastConfirmation.Spec.Execution.weakConfirmed_head_of_acceptedWeakFullRuleFold_nextSlot,
+    ``FastConfirmation.Spec.replay_eq_weakStore,
+    ``FastConfirmation.Spec.replay_eq_weakFcr,
+    ``FastConfirmation.Spec.replay_eq_weakConfirmed,
+    ``FastConfirmation.Spec.replay_bounded_witness
   ]
 
 private def unexpectedAxioms (axioms : Array Name) : Array Name :=
@@ -74,8 +78,8 @@ private def isGeneratedSafePartial (env : Environment) (name : Name)
 
 elab "audit_project_trust" : command => do
   let env ← getEnv
-  unless publicWitnesses.size == 21 do
-    throwError "public theorem witness set must contain exactly 21 declarations"
+  unless publicWitnesses.size == 25 do
+    throwError "public theorem witness set must contain exactly 25 declarations"
   unless publicWitnesses.toList.eraseDups.length == publicWitnesses.size do
     throwError "public theorem witness set contains duplicate declarations"
 

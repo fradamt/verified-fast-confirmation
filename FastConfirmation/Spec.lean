@@ -20,6 +20,7 @@ import FastConfirmation.Spec.Proof.WeakSelectedTrace
 import FastConfirmation.Spec.Proof.WeakCertificateMonotone
 import FastConfirmation.Spec.Proof.WeakFCRCallContracts
 import FastConfirmation.Spec.Proof.WeakObserverReplay
+import FastConfirmation.Spec.Proof.WeakReplayRelation
 import FastConfirmation.Spec.Proof.WeakBankedJustification
 import FastConfirmation.Spec.Proof.WeakJustificationTiming
 import FastConfirmation.Spec.Proof.WeakSeedDissemination
