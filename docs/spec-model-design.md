@@ -305,9 +305,11 @@ The accepted theorem surface is
 `acceptedSpec_safety_next_slot`. It proves that a root stored by an honest
 node's FCR is an ancestor of every in-horizon honest head from the following
 slot onward. The literal descendant-selector result is also safe at an actual
-scheduled boundary call. Reset safety is derived from accepted execution and
-FFG semantics rather than assumed. The proof is entirely spec-side; the paper
-model supplies mathematical guidance but is not imported.
+scheduled boundary call. Reset safety is a proved result. Its finalized-reset
+case uses the separate `AcceptedRealizedFinalizationDelay` premise, and its
+active-observed case uses the accepted execution and FFG premises. The proof
+is entirely spec-side; the paper model supplies mathematical guidance but is
+not imported.
 
 The next-slot boundary matters. Optional queries at arbitrary in-slot action
 prefixes can run after one honest endpoint has processed an event and before
