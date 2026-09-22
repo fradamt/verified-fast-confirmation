@@ -52,10 +52,12 @@ Useful entry points:
 
 The theorem concerns stored FCR outputs at completed execution boundaries.
 Its assumption bundle includes the execution trajectory, honest behavior,
-synchronous relay deadlines, a static validator set over the finite horizon,
-the Byzantine-weight bound, accepted FFG semantics, trusted-anchor coherence,
-checkpoint projection, and the paper's Assumption 3.2. Reset safety and the
-head-ancestry conclusion are derived, not assumed.
+synchronous relay deadlines, the one-slot vote delivery lookahead, a static
+validator set over the finite horizon, the Byzantine-weight bound, the balance
+floor, the Phase0 source-coherence contracts, accepted FFG semantics,
+trusted-anchor coherence, checkpoint projection, the paper's Assumption 3.2,
+and call-scoped helper provisos. Reset safety and the head-ancestry conclusion
+are derived, not assumed.
 
 The same facade proves
 `findLatestConfirmedDescendant_safeFrom_of_actualCall` for the literal helper
