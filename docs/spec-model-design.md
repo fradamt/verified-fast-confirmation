@@ -166,6 +166,33 @@ decision 13).
     `enumerate` in `get_active_validator_indices` becomes a filter over
     `List.range validators.length` (order-preserving).
 
+## Module system
+
+Each library file starts with `module`. Use `public import` for library
+imports to keep declarations visible through the existing import paths.
+Files with declarations put `@[expose] public section` after the import
+header and close it with `end`. This keeps definition bodies available for
+reduction and theorem statements available to importers. Import-only files
+do not need a public section.
+
+The module system keeps theorem proof bodies private. Keep explicit
+`private theorem` and `private lemma` helpers private. A definition used in
+a public statement or exposed definition must be public, as must the
+definitions that it depends on. Keep other local helpers private when the
+module rules permit this. Close each namespace and section before closing
+the public section; use the scope name on each named `end`.
+
+A proof-body edit can rebuild only its own module when its public interface
+stays the same. Changes to public statements or exposed definitions can
+rebuild dependent modules. Build caches must retain `.olean.private` and
+`.olean.server` files with the other Lake build files.
+
+`scripts/Audit.lean` stays outside the library and does not start with
+`module`. Its ordinary imports load private proof bodies, so its body checks
+and axiom checks still apply. If the audit becomes a module, it needs
+`import all` to inspect those bodies. Run `scripts/validate.sh` to check
+imports, build the library, and run the audit.
+
 ## Module map (build order)
 
 | Module | Content |
