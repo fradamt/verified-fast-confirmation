@@ -1,4 +1,7 @@
-import FastConfirmation.Spec.Proof.StoreInvariants
+module
+public import FastConfirmation.Spec.Proof.StoreInvariants
+
+@[expose] public section
 
 /-!
 # Spec / Proof / Trajectory
@@ -147,3 +150,5 @@ theorem Execution.store_current_slot (E : Execution Root) (v : ValidatorIndex)
 end TimeLemmas
 
 end FastConfirmation.Spec
+
+end

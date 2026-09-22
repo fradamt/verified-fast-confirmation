@@ -1,7 +1,10 @@
-import FastConfirmation.Spec.Proof.AcceptedHistoricalA32Payload
-import FastConfirmation.Spec.Proof.AcceptedSameEpochSegmentRealization
-import FastConfirmation.Spec.Proof.GetLatestConfirmedTrace
-import FastConfirmation.Spec.Proof.HistoricalCurrentTargetTrajectory
+module
+public import FastConfirmation.Spec.Proof.AcceptedHistoricalA32Payload
+public import FastConfirmation.Spec.Proof.AcceptedSameEpochSegmentRealization
+public import FastConfirmation.Spec.Proof.GetLatestConfirmedTrace
+public import FastConfirmation.Spec.Proof.HistoricalCurrentTargetTrajectory
+
+@[expose] public section
 
 /-!
 # First payload-preserving actual evaluator branch
@@ -571,3 +574,5 @@ end Execution
 
 
 end FastConfirmation.Spec
+
+end

@@ -1,5 +1,8 @@
-import FastConfirmation.Spec.Proof.Suppliers
-import FastConfirmation.Spec.Proof.SameSlotProvenance
+module
+public import FastConfirmation.Spec.Proof.Suppliers
+public import FastConfirmation.Spec.Proof.SameSlotProvenance
+
+@[expose] public section
 
 /-!
 # Spec / Proof / Closing: the disjunctive safety composition
@@ -287,3 +290,5 @@ theorem Spec_Monotonicity_closed
     (hkc_of_confirmed_known cfg ext hck)
 
 end FastConfirmation.Spec
+
+end

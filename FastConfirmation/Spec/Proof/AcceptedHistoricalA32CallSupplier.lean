@@ -1,4 +1,7 @@
-import FastConfirmation.Spec.Proof.AcceptedHistoricalA32Induction
+module
+public import FastConfirmation.Spec.Proof.AcceptedHistoricalA32Induction
+
+@[expose] public section
 
 /-!
 # Completed-prefix supplier for historical A3.2 call interfaces
@@ -484,3 +487,5 @@ end Execution
 
 
 end FastConfirmation.Spec
+
+end

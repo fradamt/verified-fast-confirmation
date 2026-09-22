@@ -1,4 +1,7 @@
-import FastConfirmation.Spec.Proof.ShellCompose
+module
+public import FastConfirmation.Spec.Proof.ShellCompose
+
+@[expose] public section
 
 /-!
 # Spec / Proof / Definitive: composition of the safety residuals
@@ -127,3 +130,5 @@ theorem Spec_Monotonicity_of_sameSlot_and_engine
     (hkc_of_confirmed_known cfg ext hck)
 
 end FastConfirmation.Spec
+
+end

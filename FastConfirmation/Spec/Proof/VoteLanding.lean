@@ -1,5 +1,8 @@
-import FastConfirmation.Spec.Proof.IHMechanize
-import FastConfirmation.Spec.Proof.ByzVpre
+module
+public import FastConfirmation.Spec.Proof.IHMechanize
+public import FastConfirmation.Spec.Proof.ByzVpre
+
+@[expose] public section
 
 /-!
 # Spec / Proof / VoteLanding: vote and sibling-confinement inputs
@@ -372,3 +375,5 @@ theorem hdeltas_sameEpoch (hec : ExternalsCoherence cfg ext E)
 end Execution
 
 end FastConfirmation.Spec
+
+end

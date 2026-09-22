@@ -1,4 +1,7 @@
-import FastConfirmation.Spec.Proof.SelectedPreQuerySIR
+module
+public import FastConfirmation.Spec.Proof.SelectedPreQuerySIR
+
+@[expose] public section
 
 /-!
 # Trusted-anchor part of the pre-query SIR bracket
@@ -307,3 +310,5 @@ theorem preQuerySelectedSIRBracketAt_of_voteBracket_strict
 end Execution
 
 end FastConfirmation.Spec
+
+end

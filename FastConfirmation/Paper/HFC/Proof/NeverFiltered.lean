@@ -1,9 +1,12 @@
-import FastConfirmation.Paper.HFC.Proof.Justification
-import FastConfirmation.Paper.HFC.Proof.Recency
-import FastConfirmation.Paper.HFC.Proof.CrossEpoch
-import FastConfirmation.Paper.LMDGhost.Proof.Blocks
-import FastConfirmation.Paper.LMDGhost.Proof.HeadSafety
-import FastConfirmation.Paper.LMDGhost.Proof.Rule
+module
+public import FastConfirmation.Paper.HFC.Proof.Justification
+public import FastConfirmation.Paper.HFC.Proof.Recency
+public import FastConfirmation.Paper.HFC.Proof.CrossEpoch
+public import FastConfirmation.Paper.LMDGhost.Proof.Blocks
+public import FastConfirmation.Paper.LMDGhost.Proof.HeadSafety
+public import FastConfirmation.Paper.LMDGhost.Proof.Rule
+
+@[expose] public section
 
 /-!
 # HFC / Proof / NeverFiltered
@@ -475,3 +478,5 @@ theorem confirmedNotFFGFiltered_proved (bal₀ : Stakes n)
       exact keep_of_ancestor_GJ hsel (Block.Ancestor.trans hB'B hBleGJ)
 
 end FastConfirmation.HFC
+
+end

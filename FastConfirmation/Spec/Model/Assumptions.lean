@@ -1,4 +1,7 @@
-import FastConfirmation.Spec.Model.AcceptedExecution
+module
+public import FastConfirmation.Spec.Model.AcceptedExecution
+
+@[expose] public section
 
 /-!
 # Spec / Model / Assumptions
@@ -421,3 +424,5 @@ structure ByzantineBound (E : Execution Root) : Prop where
         E.weight (E.span_committee a b)
 
 end FastConfirmation.Spec
+
+end

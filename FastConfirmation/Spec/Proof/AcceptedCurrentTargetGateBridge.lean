@@ -1,9 +1,12 @@
-import FastConfirmation.Spec.Proof.AcceptedSameEpochSegmentRealization
-import FastConfirmation.Spec.Proof.AcceptedCurrentTargetPrefixVoteRealization
-import FastConfirmation.Spec.Proof.AcceptedCurrentTargetLowerContracts
-import FastConfirmation.Spec.Proof.AcceptedScheduledPrefixGeometry
-import FastConfirmation.Spec.Proof.CurrentTargetPrefixAccounting
-import FastConfirmation.Spec.Proof.CurrentTargetCertificateRealization
+module
+public import FastConfirmation.Spec.Proof.AcceptedSameEpochSegmentRealization
+public import FastConfirmation.Spec.Proof.AcceptedCurrentTargetPrefixVoteRealization
+public import FastConfirmation.Spec.Proof.AcceptedCurrentTargetLowerContracts
+public import FastConfirmation.Spec.Proof.AcceptedScheduledPrefixGeometry
+public import FastConfirmation.Spec.Proof.CurrentTargetPrefixAccounting
+public import FastConfirmation.Spec.Proof.CurrentTargetCertificateRealization
+
+@[expose] public section
 
 /-!
 # Accepted current-target gate bridge
@@ -2488,3 +2491,5 @@ end AllowedFCRCalls
 
 
 end FastConfirmation.Spec
+
+end

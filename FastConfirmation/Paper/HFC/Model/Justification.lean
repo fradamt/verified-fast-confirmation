@@ -1,5 +1,8 @@
-import FastConfirmation.Paper.HFC.Model.FFGVote
-import FastConfirmation.Paper.LMDGhost.Model
+module
+public import FastConfirmation.Paper.HFC.Model.FFGVote
+public import FastConfirmation.Paper.LMDGhost.Model
+
+@[expose] public section
 
 /-!
 # HFC / Model / Justification
@@ -407,3 +410,5 @@ noncomputable def gjFFG (bal₀ : Stakes n) :
   fun _ _ _ => bal₀
 
 end FastConfirmation.HFC
+
+end

@@ -1,5 +1,8 @@
-import FastConfirmation.Paper.HFC.Proof.Monotonicity
-import FastConfirmation.Paper.HFC.Proof.MonotonicityAlg1
+module
+public import FastConfirmation.Paper.HFC.Proof.Monotonicity
+public import FastConfirmation.Paper.HFC.Proof.MonotonicityAlg1
+
+@[expose] public section
 
 /-!
 # HFC / ProvenTheorems
@@ -76,3 +79,5 @@ theorem HFC_Monotonicity_Alg1_proved (τ : Timing) (bal₀ : Stakes n) :
     hv hsg hle hcover hconf
 
 end FastConfirmation.HFC
+
+end

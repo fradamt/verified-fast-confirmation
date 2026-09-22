@@ -1,5 +1,8 @@
-import FastConfirmation.Spec.Proof.ResidualDischarge
-import FastConfirmation.Spec.Proof.ForkAssembly
+module
+public import FastConfirmation.Spec.Proof.ResidualDischarge
+public import FastConfirmation.Spec.Proof.ForkAssembly
+
+@[expose] public section
 
 /-!
 # Spec / Proof / E5Filter: the E5 filter route for the observed anchor
@@ -528,3 +531,5 @@ theorem spec_safety_of_hypsFilter
     (fun E hSA => E.l4Residual_of_hypsFilter cfg ext (hres E hSA))
 
 end FastConfirmation.Spec
+
+end

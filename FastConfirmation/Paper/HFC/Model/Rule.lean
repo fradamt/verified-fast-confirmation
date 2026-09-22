@@ -1,4 +1,7 @@
-import FastConfirmation.Paper.HFC.Model.Justification
+module
+public import FastConfirmation.Paper.HFC.Model.Justification
+
+@[expose] public section
 
 /-!
 # HFC / Model / Rule
@@ -275,3 +278,5 @@ def OnChainAnchorInterfacesForRule (A : Anchor n) (fm : FaultModel n) (τ : Timi
         OnChainAnchorInterface A fm τ 𝒱 b' t
 
 end FastConfirmation.HFC
+
+end

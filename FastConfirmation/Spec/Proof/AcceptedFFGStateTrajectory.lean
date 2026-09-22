@@ -1,4 +1,7 @@
-import FastConfirmation.Spec.Model.FFGStateSemantics
+module
+public import FastConfirmation.Spec.Model.FFGStateSemantics
+
+@[expose] public section
 
 /-!
 # Spec / Proof / AcceptedFFGStateTrajectory
@@ -599,3 +602,5 @@ theorem accepted_get_voting_source_eq
 end Execution
 
 end FastConfirmation.Spec
+
+end

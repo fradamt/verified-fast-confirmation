@@ -1,5 +1,8 @@
-import Mathlib.Order.Interval.Finset.Nat
-import FastConfirmation.Paper.Core.Model.View
+module
+public import Mathlib.Order.Interval.Finset.Nat
+public import FastConfirmation.Paper.Core.Model.View
+
+@[expose] public section
 
 /-!
 # LMDGhost / Model / Weights
@@ -70,3 +73,5 @@ def safetyThreshold (A : Anchor n) (cm : Committees n) (fm : FaultModel n) (pb :
   (1 / 2) * (1 + Wp A pb / W A cm b s) + fm.β
 
 end FastConfirmation.LMDGhost
+
+end

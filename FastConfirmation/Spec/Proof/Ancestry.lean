@@ -1,4 +1,7 @@
-import FastConfirmation.Spec.Proof.Genesis
+module
+public import FastConfirmation.Spec.Proof.Genesis
+
+@[expose] public section
 
 /-!
 # Spec / Proof / Ancestry
@@ -123,3 +126,5 @@ theorem get_ancestor_spec {store : Store Root}
     exact ih
 
 end FastConfirmation.Spec
+
+end

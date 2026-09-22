@@ -1,11 +1,12 @@
-import FastConfirmation.Paper.Core.Model.Time
-import FastConfirmation.Paper.Core.Model.Blocks
-import FastConfirmation.Paper.Core.Model.Validators
-import FastConfirmation.Paper.Core.Model.Vote
-import FastConfirmation.Paper.Core.Model.View
-import FastConfirmation.Paper.Core.Model.Filter
-import FastConfirmation.Paper.Core.Model.ForkChoice
-import FastConfirmation.Paper.Core.Model.Honest
+module
+public import FastConfirmation.Paper.Core.Model.Time
+public import FastConfirmation.Paper.Core.Model.Blocks
+public import FastConfirmation.Paper.Core.Model.Validators
+public import FastConfirmation.Paper.Core.Model.Vote
+public import FastConfirmation.Paper.Core.Model.View
+public import FastConfirmation.Paper.Core.Model.Filter
+public import FastConfirmation.Paper.Core.Model.ForkChoice
+public import FastConfirmation.Paper.Core.Model.Honest
 
 /-!
 # Core / Model

@@ -1,5 +1,8 @@
-import FastConfirmation.Spec.Proof.L4Fold
-import FastConfirmation.Spec.Proof.Crossing
+module
+public import FastConfirmation.Spec.Proof.L4Fold
+public import FastConfirmation.Spec.Proof.Crossing
+
+@[expose] public section
 
 /-!
 # Spec / Proof / ResidualDischarge: deriving `L4Fold.L4Residual`
@@ -342,3 +345,5 @@ theorem spec_safety_of_residualHyps
   spec_safety_of_residual cfg ext (fun E hSA => E.l4Residual_of_hyps cfg ext (hres E hSA))
 
 end FastConfirmation.Spec
+
+end

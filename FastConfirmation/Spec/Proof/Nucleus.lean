@@ -1,6 +1,9 @@
-import FastConfirmation.Spec.Proof.AnchorClose
-import FastConfirmation.Spec.Proof.CertExtract
-import FastConfirmation.Spec.Proof.VoterIndex
+module
+public import FastConfirmation.Spec.Proof.AnchorClose
+public import FastConfirmation.Spec.Proof.CertExtract
+public import FastConfirmation.Spec.Proof.VoterIndex
+
+@[expose] public section
 
 /-!
 # Spec / Proof / Nucleus
@@ -360,3 +363,5 @@ theorem covering_comparability (hSA : SpecAssumptions cfg ext E)
 end Execution
 
 end FastConfirmation.Spec
+
+end

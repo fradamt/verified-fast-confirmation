@@ -1,4 +1,7 @@
-import FastConfirmation.Spec.Proof.Registry
+module
+public import FastConfirmation.Spec.Proof.Registry
+
+@[expose] public section
 
 /-!
 # Spec / Proof / CheckpointDomain: exactness of the totalized checkpoint map
@@ -288,3 +291,5 @@ theorem checkpoint_state_key_of_one_confirmed (E : Execution Root)
 end Execution
 
 end FastConfirmation.Spec
+
+end

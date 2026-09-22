@@ -1,7 +1,10 @@
-import Mathlib.Tactic
-import FastConfirmation.Spec.Proof.AcceptedPhaseSourceCarriers
-import FastConfirmation.Spec.Proof.SelectedPreQuerySIR
-import FastConfirmation.Spec.Proof.HistoricalCurrentTargetTrajectory
+module
+public import Mathlib.Tactic
+public import FastConfirmation.Spec.Proof.AcceptedPhaseSourceCarriers
+public import FastConfirmation.Spec.Proof.SelectedPreQuerySIR
+public import FastConfirmation.Spec.Proof.HistoricalCurrentTargetTrajectory
+
+@[expose] public section
 
 /-!
 # Accepted early-phase source supply
@@ -255,3 +258,5 @@ theorem recentSourceSeedAt_endpointNext_of_lemma13
 end Execution
 
 end FastConfirmation.Spec
+
+end

@@ -1,6 +1,9 @@
-import FastConfirmation.Spec.Proof.FFGCertificates
-import FastConfirmation.Spec.Proof.EconomicRounding
-import FastConfirmation.Spec.Proof.Registry
+module
+public import FastConfirmation.Spec.Proof.FFGCertificates
+public import FastConfirmation.Spec.Proof.EconomicRounding
+public import FastConfirmation.Spec.Proof.Registry
+
+@[expose] public section
 
 /-!
 # Spec / Proof / FFGAccountability
@@ -239,3 +242,5 @@ theorem certified_finalized_prefix (hA : FFGAccountabilityAssumptions cfg ext E)
 end Execution
 
 end FastConfirmation.Spec
+
+end

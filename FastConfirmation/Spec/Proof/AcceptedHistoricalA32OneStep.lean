@@ -1,4 +1,7 @@
-import FastConfirmation.Spec.Proof.AcceptedHistoricalA32Step
+module
+public import FastConfirmation.Spec.Proof.AcceptedHistoricalA32Step
+
+@[expose] public section
 
 /-!
 # Exact one-call historical A3.2 transformer
@@ -250,3 +253,5 @@ end Execution
 
 
 end FastConfirmation.Spec
+
+end

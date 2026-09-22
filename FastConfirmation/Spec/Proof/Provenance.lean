@@ -1,6 +1,9 @@
-import FastConfirmation.Spec.Proof.BlockAgreement
-import FastConfirmation.Spec.Proof.Preservation
-import FastConfirmation.Spec.Proof.Clock
+module
+public import FastConfirmation.Spec.Proof.BlockAgreement
+public import FastConfirmation.Spec.Proof.Preservation
+public import FastConfirmation.Spec.Proof.Clock
+
+@[expose] public section
 
 /-!
 # Spec / Proof / Provenance
@@ -461,3 +464,5 @@ theorem Execution.latestMessageProvenance {E : Execution Root}
       exact .scheduledPrefix ⟨v, n, k, hk⟩ hv hn
 
 end FastConfirmation.Spec
+
+end

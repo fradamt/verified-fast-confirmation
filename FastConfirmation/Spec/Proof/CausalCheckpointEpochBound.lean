@@ -1,4 +1,7 @@
-import FastConfirmation.Spec.Proof.CausalCheckpointCompatibility
+module
+public import FastConfirmation.Spec.Proof.CausalCheckpointCompatibility
+
+@[expose] public section
 
 /-!
 # Causal checkpoint epoch bound
@@ -268,3 +271,5 @@ theorem query_justified_epoch_le_of_causal_honest_target_minimal
 end Execution
 
 end FastConfirmation.Spec
+
+end

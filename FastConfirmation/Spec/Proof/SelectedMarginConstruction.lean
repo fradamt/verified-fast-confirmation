@@ -1,5 +1,8 @@
-import FastConfirmation.Spec.Proof.ArbitraryQueryMargin
-import FastConfirmation.Spec.Proof.RecordedEpochSupplier
+module
+public import FastConfirmation.Spec.Proof.ArbitraryQueryMargin
+public import FastConfirmation.Spec.Proof.RecordedEpochSupplier
+
+@[expose] public section
 
 /-!
 # Concrete constructors for arbitrary-query selected margins
@@ -392,3 +395,5 @@ theorem base_strip_of_confirmed_at_minimal
 end Execution
 
 end FastConfirmation.Spec
+
+end

@@ -1,5 +1,8 @@
-import FastConfirmation.Spec.Proof.AcceptedCurrentTargetLowerContracts
-import FastConfirmation.Spec.Proof.AcceptedHistoricalA32Crossing
+module
+public import FastConfirmation.Spec.Proof.AcceptedCurrentTargetLowerContracts
+public import FastConfirmation.Spec.Proof.AcceptedHistoricalA32Crossing
+
+@[expose] public section
 
 /-!
 # Historical A3.2 evaluator branches over accepted global trajectory data
@@ -423,3 +426,5 @@ end Execution
 
 
 end FastConfirmation.Spec
+
+end

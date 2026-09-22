@@ -1,5 +1,8 @@
-import FastConfirmation.Spec.Proof.AcceptedHistoricalFinalizedPlacement
-import FastConfirmation.Spec.Proof.SelectedTraceFFGRealizationPipeline
+module
+public import FastConfirmation.Spec.Proof.AcceptedHistoricalFinalizedPlacement
+public import FastConfirmation.Spec.Proof.SelectedTraceFFGRealizationPipeline
+
+@[expose] public section
 
 /-!
 # Adapters for historical finalized placement
@@ -284,3 +287,5 @@ end Execution
 
 
 end FastConfirmation.Spec
+
+end

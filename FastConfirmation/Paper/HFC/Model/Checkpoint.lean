@@ -1,4 +1,7 @@
-import FastConfirmation.Paper.Core.Model
+module
+public import FastConfirmation.Paper.Core.Model
+
+@[expose] public section
 
 /-!
 # HFC / Model / Checkpoint
@@ -28,3 +31,5 @@ structure Checkpoint (n : ℕ) where
   deriving DecidableEq
 
 end FastConfirmation.HFC
+
+end

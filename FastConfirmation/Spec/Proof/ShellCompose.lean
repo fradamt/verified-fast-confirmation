@@ -1,7 +1,10 @@
-import FastConfirmation.Spec.Proof.Remainder
-import FastConfirmation.Spec.Proof.FinalWiring
-import FastConfirmation.Spec.Proof.Identities
-import FastConfirmation.Spec.Proof.StrongPrefixSafety
+module
+public import FastConfirmation.Spec.Proof.Remainder
+public import FastConfirmation.Spec.Proof.FinalWiring
+public import FastConfirmation.Spec.Proof.Identities
+public import FastConfirmation.Spec.Proof.StrongPrefixSafety
+
+@[expose] public section
 
 /-!
 # Spec / Proof / ShellCompose: the shell-IH composition
@@ -381,3 +384,5 @@ theorem Spec_Safety_of_engineResiduals
     (fun E hSA => E.specSafetyResiduals_of_engine cfg ext hSA (h E hSA))
 
 end FastConfirmation.Spec
+
+end

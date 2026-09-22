@@ -1,6 +1,9 @@
-import FastConfirmation.Paper.HFC.TheoremStatements
-import FastConfirmation.Paper.LMDGhost.Proof.Positivity
-import FastConfirmation.Paper.LMDGhost.Proof.Blocks
+module
+public import FastConfirmation.Paper.HFC.TheoremStatements
+public import FastConfirmation.Paper.LMDGhost.Proof.Positivity
+public import FastConfirmation.Paper.LMDGhost.Proof.Blocks
+
+@[expose] public section
 
 /-!
 # HFC / Proof / Justification
@@ -868,3 +871,5 @@ theorem greatestRealizedJustified_on_chain {bal₀ : Stakes n} {τ : Timing} {fm
     exact (Or.symm hcompat)
 
 end FastConfirmation.HFC
+
+end

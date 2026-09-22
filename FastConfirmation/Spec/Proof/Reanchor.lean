@@ -1,5 +1,8 @@
-import FastConfirmation.Spec.Proof.LedgerV2
-import FastConfirmation.Spec.Proof.Provenance
+module
+public import FastConfirmation.Spec.Proof.LedgerV2
+public import FastConfirmation.Spec.Proof.Provenance
+
+@[expose] public section
 
 /-!
 # Spec / Proof / Reanchor: the crossing endpoint on `[slot(b′), σ]`
@@ -434,3 +437,5 @@ theorem crossing_ledger_descendStep {store : Store Root}
 end Execution
 
 end FastConfirmation.Spec
+
+end

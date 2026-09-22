@@ -1,4 +1,7 @@
-import FastConfirmation.Spec.Proof.AcceptedFFGGlobalCheckpointTrajectory
+module
+public import FastConfirmation.Spec.Proof.AcceptedFFGGlobalCheckpointTrajectory
+
+@[expose] public section
 
 /-!
 # Accepted-domain justified-checkpoint maximality
@@ -1283,3 +1286,5 @@ end ExactPrefixAcceptedFFGSemantics
 
 
 end FastConfirmation.Spec
+
+end

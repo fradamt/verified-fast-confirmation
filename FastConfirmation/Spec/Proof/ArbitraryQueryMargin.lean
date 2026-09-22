@@ -1,4 +1,7 @@
-import FastConfirmation.Spec.Proof.SameSlotLMD
+module
+public import FastConfirmation.Spec.Proof.SameSlotLMD
+
+@[expose] public section
 
 /-!
 # Arbitrary-query selected margins
@@ -784,3 +787,5 @@ theorem safeFrom_find_latest_confirmed_descendant_of_selectedMarginsAt_minimal
 end Execution
 
 end FastConfirmation.Spec
+
+end

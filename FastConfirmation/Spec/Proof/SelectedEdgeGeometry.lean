@@ -1,4 +1,7 @@
-import FastConfirmation.Spec.Proof.SelectedMarginConstruction
+module
+public import FastConfirmation.Spec.Proof.SelectedMarginConstruction
+
+@[expose] public section
 
 /-!
 # Query-local geometry of a strict selected edge
@@ -406,3 +409,5 @@ theorem strictSelectedEdgeGeometry_of_query_minimal
 end Execution
 
 end FastConfirmation.Spec
+
+end

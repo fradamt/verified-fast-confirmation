@@ -1,7 +1,10 @@
-import FastConfirmation.Spec.Proof.Ledger
-import FastConfirmation.Spec.Proof.Discount
-import FastConfirmation.Spec.Proof.MajorityPersists
-import FastConfirmation.Spec.Proof.Quorum
+module
+public import FastConfirmation.Spec.Proof.Ledger
+public import FastConfirmation.Spec.Proof.Discount
+public import FastConfirmation.Spec.Proof.MajorityPersists
+public import FastConfirmation.Spec.Proof.Quorum
+
+@[expose] public section
 
 /-!
 # Spec / Proof / Base: (O1\*) — the INV\* base from the rule
@@ -259,3 +262,5 @@ theorem weak_base_of_rule
 end Execution
 
 end FastConfirmation.Spec
+
+end

@@ -1,11 +1,14 @@
-import Mathlib.Tactic
-import FastConfirmation.Spec.Proof.AcceptedCurrentSameSourceHistory
-import FastConfirmation.Spec.Proof.AcceptedPhaseSourceCarriers
-import FastConfirmation.Spec.Proof.AcceptedFFGJustifiedMaximality
-import FastConfirmation.Spec.Proof.ExactCheckpointLinks
-import FastConfirmation.Spec.Proof.AcceptedHistoricalFinalizedPlacement
-import FastConfirmation.Spec.Proof.AcceptedRealizedJustifiedOrigin
-import FastConfirmation.Spec.Proof.AcceptedHistoricalLineageFinalizedPlacement
+module
+public import Mathlib.Tactic
+public import FastConfirmation.Spec.Proof.AcceptedCurrentSameSourceHistory
+public import FastConfirmation.Spec.Proof.AcceptedPhaseSourceCarriers
+public import FastConfirmation.Spec.Proof.AcceptedFFGJustifiedMaximality
+public import FastConfirmation.Spec.Proof.ExactCheckpointLinks
+public import FastConfirmation.Spec.Proof.AcceptedHistoricalFinalizedPlacement
+public import FastConfirmation.Spec.Proof.AcceptedRealizedJustifiedOrigin
+public import FastConfirmation.Spec.Proof.AcceptedHistoricalLineageFinalizedPlacement
+
+@[expose] public section
 
 /-!
 # Current-same historical source transport to an endpoint
@@ -762,3 +765,5 @@ end AcceptedCurrentSameSourceHistoryOutcome
 end Execution
 
 end FastConfirmation.Spec
+
+end

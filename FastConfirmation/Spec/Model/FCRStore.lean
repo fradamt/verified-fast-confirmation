@@ -1,4 +1,7 @@
-import FastConfirmation.Spec.Model.ForkChoice
+module
+public import FastConfirmation.Spec.Model.ForkChoice
+
+@[expose] public section
 
 /-!
 # Spec / Model / FCRStore
@@ -200,3 +203,5 @@ def get_current_balance_source (fcr_store : FastConfirmationStore Root) :
   store.checkpoint_states fcr_store.current_epoch_observed_justified_checkpoint
 
 end FastConfirmation.Spec
+
+end

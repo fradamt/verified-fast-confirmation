@@ -1,7 +1,10 @@
-import Mathlib.Tactic
-import FastConfirmation.Spec.Proof.AcceptedDynamicFinalizedPlacement
-import FastConfirmation.Spec.Proof.AcceptedPathLocalFinalizedTransport
-import FastConfirmation.Spec.Proof.AcceptedFinalizationTiming
+module
+public import Mathlib.Tactic
+public import FastConfirmation.Spec.Proof.AcceptedDynamicFinalizedPlacement
+public import FastConfirmation.Spec.Proof.AcceptedPathLocalFinalizedTransport
+public import FastConfirmation.Spec.Proof.AcceptedFinalizationTiming
+
+@[expose] public section
 
 /-!
 # Finalized placement for an early recent-source carrier
@@ -100,3 +103,5 @@ end Execution
 
 
 end FastConfirmation.Spec
+
+end

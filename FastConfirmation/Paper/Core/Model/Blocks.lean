@@ -1,4 +1,7 @@
-import FastConfirmation.Paper.Core.Model.Validators
+module
+public import FastConfirmation.Paper.Core.Model.Validators
+
+@[expose] public section
 
 /-!
 # Core / Model / Blocks
@@ -109,3 +112,5 @@ def Compatible (B C : Block n) : Prop := B ≼ C ∨ C ≼ B
 end Block
 
 end FastConfirmation
+
+end

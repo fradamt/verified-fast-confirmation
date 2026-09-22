@@ -1,4 +1,7 @@
-import FastConfirmation.Spec.Model.Execution
+module
+public import FastConfirmation.Spec.Model.Execution
+
+@[expose] public section
 
 /-!
 # Spec / Proof / StoreInvariants
@@ -292,3 +295,5 @@ theorem Execution.store_storeLE (E : Execution Root) (v : ValidatorIndex)
     · cases Nat.le_antisymm hnm hge; exact StoreLE.refl _
 
 end FastConfirmation.Spec
+
+end

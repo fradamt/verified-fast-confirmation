@@ -1,5 +1,8 @@
-import Mathlib.Tactic
-import FastConfirmation.Paper.LMDGhost.Model.Weights
+module
+public import Mathlib.Tactic
+public import FastConfirmation.Paper.LMDGhost.Model.Weights
+
+@[expose] public section
 
 /-!
 # LMDGhost / Proof / Positivity
@@ -86,3 +89,5 @@ theorem Timing.st_le_st (τ : Timing) {s s' : Slot} (h : s ≤ s') : τ.st s ≤
   exact Nat.mul_le_mul_right τ.slotDur h
 
 end FastConfirmation.LMDGhost
+
+end

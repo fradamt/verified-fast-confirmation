@@ -1,5 +1,8 @@
-import FastConfirmation.Spec.Proof.AcceptedFFGGlobalCheckpointTrajectory
-import FastConfirmation.Spec.Proof.FFGGlobalCheckpointTrajectory
+module
+public import FastConfirmation.Spec.Proof.AcceptedFFGGlobalCheckpointTrajectory
+public import FastConfirmation.Spec.Proof.FFGGlobalCheckpointTrajectory
+
+@[expose] public section
 
 /-!
 # Global FFG checkpoint epoch order
@@ -719,3 +722,5 @@ theorem globalUnrealizedFinalizedEpoch_le_unrealizedJustified
 end ExactPrefixAcceptedFFGSemantics
 
 end FastConfirmation.Spec
+
+end

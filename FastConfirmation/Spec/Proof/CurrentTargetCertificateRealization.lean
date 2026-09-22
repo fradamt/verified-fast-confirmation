@@ -1,6 +1,9 @@
-import FastConfirmation.Spec.Proof.NoConflictCertificatePinning
-import FastConfirmation.Spec.Proof.SelectedPreQueryHistoricalSIR
-import FastConfirmation.Spec.Proof.FFGSelectedDomainRealization
+module
+public import FastConfirmation.Spec.Proof.NoConflictCertificatePinning
+public import FastConfirmation.Spec.Proof.SelectedPreQueryHistoricalSIR
+public import FastConfirmation.Spec.Proof.FFGSelectedDomainRealization
+
+@[expose] public section
 
 /-!
 # Realizing the current-target certificate
@@ -1769,3 +1772,5 @@ theorem phase0_source_semantics_jointly_satisfiable :
 end CurrentTargetCertificateRealizationNonvacuity
 
 end FastConfirmation.Spec
+
+end

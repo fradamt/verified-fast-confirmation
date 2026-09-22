@@ -1,4 +1,7 @@
-import FastConfirmation.Paper.LMDGhost.Model.Weights
+module
+public import FastConfirmation.Paper.LMDGhost.Model.Weights
+
+@[expose] public section
 
 /-!
 # LMDGhost / Model / Assumptions
@@ -74,3 +77,5 @@ def AnchorsCoincide (gj : ViewFamily n P → Validator n → Time → Anchor n)
   ∀ ⦃j : Validator n⦄, j ∈ fm.honest → ∀ (kk : Slot), gj 𝒱 j (τ.st kk) = C
 
 end FastConfirmation.LMDGhost
+
+end

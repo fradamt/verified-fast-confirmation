@@ -1,4 +1,7 @@
-import FastConfirmation.Spec.Proof.MinimalSelectedDomain
+module
+public import FastConfirmation.Spec.Proof.MinimalSelectedDomain
+
+@[expose] public section
 
 /-!
 # Same-slot transport for confirmation-time LMD classes
@@ -577,3 +580,5 @@ theorem confirmed_honest_class_transports_of_cutoff_minimal
 end Execution
 
 end FastConfirmation.Spec
+
+end

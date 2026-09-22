@@ -1,5 +1,8 @@
-import FastConfirmation.Spec.Proof.ExportWiring
-import FastConfirmation.Spec.Proof.IHMechanize
+module
+public import FastConfirmation.Spec.Proof.ExportWiring
+public import FastConfirmation.Spec.Proof.IHMechanize
+
+@[expose] public section
 
 /-!
 # Spec / Proof / FinalWiring: residual wiring
@@ -261,3 +264,5 @@ slot regime with only the honest transports. -/
 end Execution
 
 end FastConfirmation.Spec
+
+end

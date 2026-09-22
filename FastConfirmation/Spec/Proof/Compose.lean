@@ -1,4 +1,7 @@
-import FastConfirmation.Spec.Proof.Structural
+module
+public import FastConfirmation.Spec.Proof.Structural
+
+@[expose] public section
 
 /-!
 # Spec / Proof / Compose: `EngineGroundResiduals` from the shell
@@ -187,3 +190,5 @@ theorem Spec_Monotonicity_proved
     (hkc_of_confirmed_known cfg ext hck)
 
 end FastConfirmation.Spec
+
+end

@@ -1,7 +1,10 @@
-import FastConfirmation.Spec.Proof.Engine
-import FastConfirmation.Spec.Proof.Provenance
-import FastConfirmation.Spec.Proof.HonestWeight
-import FastConfirmation.Spec.Proof.MajorityPersists
+module
+public import FastConfirmation.Spec.Proof.Engine
+public import FastConfirmation.Spec.Proof.Provenance
+public import FastConfirmation.Spec.Proof.HonestWeight
+public import FastConfirmation.Spec.Proof.MajorityPersists
+
+@[expose] public section
 
 /-!
 # Spec / Proof / EngineBudget: the sibling budget
@@ -210,3 +213,5 @@ frozen-assumption lemma. The disjointness half (`sibling_disjoint_from_bsupport`
 and the score-weight/superadditive core are delivered. -/
 
 end FastConfirmation.Spec
+
+end

@@ -1,6 +1,9 @@
-import FastConfirmation.Spec.Model.Assumptions
-import FastConfirmation.Spec.Proof.Clock
-import FastConfirmation.Spec.Proof.EconomicRounding
+module
+public import FastConfirmation.Spec.Model.Assumptions
+public import FastConfirmation.Spec.Proof.Clock
+public import FastConfirmation.Spec.Proof.EconomicRounding
+
+@[expose] public section
 
 /-!
 # Spec / Proof / Registry
@@ -864,3 +867,5 @@ theorem ByzantineBound.span_bound {cfg : Config} {E : Execution Root}
   exact h4
 
 end FastConfirmation.Spec
+
+end

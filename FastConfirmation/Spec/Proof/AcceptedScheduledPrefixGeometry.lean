@@ -1,4 +1,7 @@
-import FastConfirmation.Spec.Proof.AcceptedCurrentTargetLowerContracts
+module
+public import FastConfirmation.Spec.Proof.AcceptedCurrentTargetLowerContracts
+
+@[expose] public section
 
 /-!
 # Accepted geometry at exact scheduled-event prefixes
@@ -494,3 +497,5 @@ theorem ScheduledEventPrefix.currentTarget_anchor_epoch_lt_of_ne
 end Execution
 
 end FastConfirmation.Spec
+
+end

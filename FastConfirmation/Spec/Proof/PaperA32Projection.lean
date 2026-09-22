@@ -1,7 +1,10 @@
-import FastConfirmation.Spec.Proof.PaperA32ProjectionCore
-import FastConfirmation.Spec.Proof.FFGStateTrajectory
-import FastConfirmation.Spec.Proof.BlockAgreement
-import FastConfirmation.Spec.Proof.ExecutionRootReflection
+module
+public import FastConfirmation.Spec.Proof.PaperA32ProjectionCore
+public import FastConfirmation.Spec.Proof.FFGStateTrajectory
+public import FastConfirmation.Spec.Proof.BlockAgreement
+public import FastConfirmation.Spec.Proof.ExecutionRootReflection
+
+@[expose] public section
 
 /-!
 # Exact paper-A3.2 conclusion projected into the executable store
@@ -131,3 +134,5 @@ theorem a32IncludedAtTip_of_paper_at_known
 end Execution
 
 end FastConfirmation.Spec
+
+end

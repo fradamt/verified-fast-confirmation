@@ -1,5 +1,8 @@
-import Mathlib.Data.Nat.Basic
-import Mathlib.Tactic
+module
+public import Mathlib.Data.Nat.Basic
+public import Mathlib.Tactic
+
+@[expose] public section
 
 /-!
 # Spec / Model / Config
@@ -102,3 +105,5 @@ theorem mainnet_epochEndsFitUint64 : EpochEndsFitUint64 mainnet_config := by
   norm_num [EpochEndsFitUint64, UINT64_MAX, mainnet_config]
 
 end FastConfirmation.Spec
+
+end

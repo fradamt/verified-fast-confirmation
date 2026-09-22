@@ -1,5 +1,8 @@
-import FastConfirmation.Spec.Proof.RecordedEpochSupplier
-import FastConfirmation.Spec.Proof.EdgeResiduals
+module
+public import FastConfirmation.Spec.Proof.RecordedEpochSupplier
+public import FastConfirmation.Spec.Proof.EdgeResiduals
+
+@[expose] public section
 
 /-!
 # Endpoint ledger fields over the selected-margin domain
@@ -564,3 +567,5 @@ theorem endpointLedgerFields_from_execution_minimal
 end Execution
 
 end FastConfirmation.Spec
+
+end

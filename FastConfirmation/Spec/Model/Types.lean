@@ -1,7 +1,10 @@
-import Mathlib.Algebra.BigOperators.Group.Finset.Basic
-import Mathlib.Data.Finset.Image
-import Mathlib.Order.Interval.Finset.Nat
-import FastConfirmation.Spec.Model.Config
+module
+public import Mathlib.Algebra.BigOperators.Group.Finset.Basic
+public import Mathlib.Data.Finset.Image
+public import Mathlib.Order.Interval.Finset.Nat
+public import FastConfirmation.Spec.Model.Config
+
+@[expose] public section
 
 /-!
 # Spec / Model / Types
@@ -254,3 +257,5 @@ def get_total_active_balance (state : BeaconState Root) : Gwei :=
     (get_active_validator_indices state (get_current_epoch cfg state)).toFinset
 
 end FastConfirmation.Spec
+
+end

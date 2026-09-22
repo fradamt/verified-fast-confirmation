@@ -1,5 +1,8 @@
-import FastConfirmation.Spec.Proof.AcceptedCurrentTargetLowerContracts
-import FastConfirmation.Spec.Proof.ActualResetCheckpointRealization
+module
+public import FastConfirmation.Spec.Proof.AcceptedCurrentTargetLowerContracts
+public import FastConfirmation.Spec.Proof.ActualResetCheckpointRealization
+
+@[expose] public section
 
 /-!
 # Accepted realization of the executable FCR reset checkpoints
@@ -375,3 +378,5 @@ end Execution
 
 
 end FastConfirmation.Spec
+
+end

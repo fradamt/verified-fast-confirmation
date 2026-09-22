@@ -1,7 +1,10 @@
-import FastConfirmation.Spec.Proof.Closing
-import FastConfirmation.Spec.Proof.Provenance
-import FastConfirmation.Spec.Proof.Delivery
-import FastConfirmation.Spec.Proof.EngineTransport
+module
+public import FastConfirmation.Spec.Proof.Closing
+public import FastConfirmation.Spec.Proof.Provenance
+public import FastConfirmation.Spec.Proof.Delivery
+public import FastConfirmation.Spec.Proof.EngineTransport
+
+@[expose] public section
 
 /-!
 # Spec / Proof / Knownness: the confirmed-block knownness family
@@ -441,3 +444,5 @@ theorem Spec_Monotonicity_of_knownness
       (fun E hSA v hv k => E.hck_of_genesisStart cfg ext hSA (hanchor0 E hSA) v hv k))
 
 end FastConfirmation.Spec
+
+end

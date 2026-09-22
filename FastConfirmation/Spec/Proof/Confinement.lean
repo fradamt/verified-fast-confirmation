@@ -1,6 +1,9 @@
-import FastConfirmation.Spec.Proof.EdgeDynamics
-import FastConfirmation.Spec.Proof.StepDischarge
-import FastConfirmation.Spec.Proof.Discount
+module
+public import FastConfirmation.Spec.Proof.EdgeDynamics
+public import FastConfirmation.Spec.Proof.StepDischarge
+public import FastConfirmation.Spec.Proof.Discount
+
+@[expose] public section
 
 /-!
 # Spec / Proof / Confinement: accounting and sibling-confinement lemmas
@@ -293,3 +296,5 @@ theorem hS_of_confirmed (hhb : HonestBehavior cfg ext E) (hec : ExternalsCoheren
 end Execution
 
 end FastConfirmation.Spec
+
+end

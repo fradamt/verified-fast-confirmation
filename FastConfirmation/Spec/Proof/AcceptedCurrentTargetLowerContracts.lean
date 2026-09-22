@@ -1,5 +1,8 @@
-import FastConfirmation.Spec.Proof.AcceptedSameEpochSegmentRealization
-import FastConfirmation.Spec.Proof.AcceptedCurrentTargetPrefixVoteRealization
+module
+public import FastConfirmation.Spec.Proof.AcceptedSameEpochSegmentRealization
+public import FastConfirmation.Spec.Proof.AcceptedCurrentTargetPrefixVoteRealization
+
+@[expose] public section
 
 /-!
 # Accepted current-target lower contracts
@@ -291,3 +294,5 @@ theorem postAnchorHonestVoteTargetWalkDomain_of_acceptedGlobalTrajectory
 end Execution
 
 end FastConfirmation.Spec
+
+end

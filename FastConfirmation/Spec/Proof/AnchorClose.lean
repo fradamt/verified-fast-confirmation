@@ -1,9 +1,12 @@
-import FastConfirmation.Spec.Proof.AnchorThread
-import FastConfirmation.Spec.Proof.Assembly
-import FastConfirmation.Spec.Proof.Reanchor
-import FastConfirmation.Spec.Proof.HeadRerootChain
-import FastConfirmation.Spec.Proof.SameSlotProvenance
-import FastConfirmation.Spec.Proof.Knownness
+module
+public import FastConfirmation.Spec.Proof.AnchorThread
+public import FastConfirmation.Spec.Proof.Assembly
+public import FastConfirmation.Spec.Proof.Reanchor
+public import FastConfirmation.Spec.Proof.HeadRerootChain
+public import FastConfirmation.Spec.Proof.SameSlotProvenance
+public import FastConfirmation.Spec.Proof.Knownness
+
+@[expose] public section
 
 /-!
 # Spec / Proof / AnchorClose: the closing composition
@@ -1423,3 +1426,5 @@ theorem Spec_Monotonicity_of_chainConfirmMargin
       (fun E hSA v hv k => E.confirmed_root_known_selected cfg ext hSA v hv k))
 
 end FastConfirmation.Spec
+
+end

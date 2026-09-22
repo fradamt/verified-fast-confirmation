@@ -1,5 +1,8 @@
-import FastConfirmation.Spec.Proof.AcceptedFinalizedSameTip
-import FastConfirmation.Spec.Proof.GetLatestConfirmedTrace
+module
+public import FastConfirmation.Spec.Proof.AcceptedFinalizedSameTip
+public import FastConfirmation.Spec.Proof.GetLatestConfirmedTrace
+
+@[expose] public section
 
 /-!
 # Accepted classification of finalized and observed FCR reset inputs
@@ -338,3 +341,5 @@ end Execution
 
 
 end FastConfirmation.Spec
+
+end

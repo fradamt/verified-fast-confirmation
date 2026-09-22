@@ -1,5 +1,8 @@
-import FastConfirmation.Spec.Proof.CausalQueryTraceAdapter
-import FastConfirmation.Spec.Proof.CurrentTargetA32Support
+module
+public import FastConfirmation.Spec.Proof.CausalQueryTraceAdapter
+public import FastConfirmation.Spec.Proof.CurrentTargetA32Support
+
+@[expose] public section
 
 /-!
 # Current-target accounting at an exact scheduled prefix
@@ -416,3 +419,5 @@ end ScheduledPrefixCommitteeCoherenceNonvacuity
 
 
 end FastConfirmation.Spec
+
+end

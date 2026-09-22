@@ -1,4 +1,7 @@
-import FastConfirmation.Spec.Proof.ChainInput
+module
+public import FastConfirmation.Spec.Proof.ChainInput
+
+@[expose] public section
 
 /-!
 # Spec / Proof / DynamicsClosure: endpoint input families
@@ -330,3 +333,5 @@ theorem hSmem_of_recorded (hhb : HonestBehavior cfg ext E) (hec : ExternalsCoher
 end Execution
 
 end FastConfirmation.Spec
+
+end

@@ -1,5 +1,8 @@
-import FastConfirmation.Spec.Proof.AcceptedFFGStateTrajectory
-import FastConfirmation.Spec.Proof.ExecutionRootReflection
+module
+public import FastConfirmation.Spec.Proof.AcceptedFFGStateTrajectory
+public import FastConfirmation.Spec.Proof.ExecutionRootReflection
+
+@[expose] public section
 
 /-!
 # Accepted global FFG checkpoint trajectory
@@ -838,3 +841,5 @@ theorem globalFinalized_anchor_or_checkpointRoot_known
 end ExactPrefixAcceptedFFGSemantics
 
 end FastConfirmation.Spec
+
+end

@@ -1,15 +1,18 @@
-import Mathlib.Tactic
-import FastConfirmation.Spec.Proof.AcceptedRetainedPhaseSourceRetarget
-import FastConfirmation.Spec.Proof.AcceptedEarlyPhaseSourceWiring
-import FastConfirmation.Spec.Proof.AcceptedHistoricalLineageFinalizedPlacement
-import FastConfirmation.Spec.Proof.AcceptedFFGJustifiedMaximality
-import FastConfirmation.Spec.Proof.PaperA32SupportRealization
-import FastConfirmation.Spec.Proof.SelectedCoveredMarginConstruction
-import FastConfirmation.Spec.Proof.AcceptedActualSelectedJustifiedOrientation
-import FastConfirmation.Spec.Proof.AcceptedCurrentSameEndpointSource
-import FastConfirmation.Spec.Proof.AcceptedRecentCarrierFinalizedPlacement
-import FastConfirmation.Spec.Proof.AcceptedPreviousEpochStartSupply
-import FastConfirmation.Spec.Proof.SelectedA32Semantics
+module
+public import Mathlib.Tactic
+public import FastConfirmation.Spec.Proof.AcceptedRetainedPhaseSourceRetarget
+public import FastConfirmation.Spec.Proof.AcceptedEarlyPhaseSourceWiring
+public import FastConfirmation.Spec.Proof.AcceptedHistoricalLineageFinalizedPlacement
+public import FastConfirmation.Spec.Proof.AcceptedFFGJustifiedMaximality
+public import FastConfirmation.Spec.Proof.PaperA32SupportRealization
+public import FastConfirmation.Spec.Proof.SelectedCoveredMarginConstruction
+public import FastConfirmation.Spec.Proof.AcceptedActualSelectedJustifiedOrientation
+public import FastConfirmation.Spec.Proof.AcceptedCurrentSameEndpointSource
+public import FastConfirmation.Spec.Proof.AcceptedRecentCarrierFinalizedPlacement
+public import FastConfirmation.Spec.Proof.AcceptedPreviousEpochStartSupply
+public import FastConfirmation.Spec.Proof.SelectedA32Semantics
+
+@[expose] public section
 
 /-!
 # Mechanical selected-result to strict-edge filter supply
@@ -2185,3 +2188,5 @@ end Execution
 
 
 end FastConfirmation.Spec
+
+end

@@ -1,7 +1,10 @@
-import FastConfirmation.Spec.Proof.LastAlgebra
-import FastConfirmation.Spec.Proof.Bridge
-import FastConfirmation.Spec.Proof.AnchorFacade
-import FastConfirmation.Spec.Proof.ExportWiring
+module
+public import FastConfirmation.Spec.Proof.LastAlgebra
+public import FastConfirmation.Spec.Proof.Bridge
+public import FastConfirmation.Spec.Proof.AnchorFacade
+public import FastConfirmation.Spec.Proof.ExportWiring
+
+@[expose] public section
 
 /-!
 # Spec / Proof / Cruxes: store-dynamics lemmas
@@ -307,3 +310,5 @@ theorem hPS_crux (hhb : HonestBehavior cfg ext E) (hec : ExternalsCoherence cfg 
 end Execution
 
 end FastConfirmation.Spec
+
+end

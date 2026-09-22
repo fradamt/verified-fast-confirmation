@@ -1,6 +1,9 @@
-import FastConfirmation.Spec.Proof.SelectedTraceCoverage
-import FastConfirmation.Spec.Proof.SelectedEdgeGeometry
-import FastConfirmation.Spec.Proof.SelectedFilterChainGeometry
+module
+public import FastConfirmation.Spec.Proof.SelectedTraceCoverage
+public import FastConfirmation.Spec.Proof.SelectedEdgeGeometry
+public import FastConfirmation.Spec.Proof.SelectedFilterChainGeometry
+
+@[expose] public section
 
 /-!
 # Complete retained-trace FFG/filter contract
@@ -289,3 +292,5 @@ theorem strictSelectedEdge_child_filtered_of_trace_pipeline_minimal
 end Execution
 
 end FastConfirmation.Spec
+
+end

@@ -1,8 +1,11 @@
-import FastConfirmation.Spec.Proof.AnchorClose
-import FastConfirmation.Spec.Proof.CertExtract
-import FastConfirmation.Spec.Proof.FreshProducer
-import FastConfirmation.Spec.Proof.FutureCrossingMargin
-import FastConfirmation.Spec.Proof.SameSlotProvenance
+module
+public import FastConfirmation.Spec.Proof.AnchorClose
+public import FastConfirmation.Spec.Proof.CertExtract
+public import FastConfirmation.Spec.Proof.FreshProducer
+public import FastConfirmation.Spec.Proof.FutureCrossingMargin
+public import FastConfirmation.Spec.Proof.SameSlotProvenance
+
+@[expose] public section
 
 /-!
 # Spec / Proof / MarginProducer: selected-result edge margins
@@ -405,3 +408,5 @@ theorem selectedAnchorCharge
 end Execution
 
 end FastConfirmation.Spec
+
+end

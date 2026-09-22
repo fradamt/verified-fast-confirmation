@@ -1,5 +1,8 @@
-import FastConfirmation.Spec.Proof.Confinement
-import FastConfirmation.Spec.Proof.EngineWindows
+module
+public import FastConfirmation.Spec.Proof.Confinement
+public import FastConfirmation.Spec.Proof.EngineWindows
+
+@[expose] public section
 
 /-!
 # Spec / Proof / ByzVpre: the byz sibling reconciliation and the V/pre accessors
@@ -353,3 +356,5 @@ theorem byz_sibling_confinement
 end Execution
 
 end FastConfirmation.Spec
+
+end

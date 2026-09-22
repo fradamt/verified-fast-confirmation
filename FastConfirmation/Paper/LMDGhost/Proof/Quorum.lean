@@ -1,7 +1,10 @@
-import Mathlib.Tactic
-import FastConfirmation.Paper.LMDGhost.Proof.Weights
-import FastConfirmation.Paper.LMDGhost.Proof.Positivity
-import FastConfirmation.Paper.LMDGhost.Model.Confirm
+module
+public import Mathlib.Tactic
+public import FastConfirmation.Paper.LMDGhost.Proof.Weights
+public import FastConfirmation.Paper.LMDGhost.Proof.Positivity
+public import FastConfirmation.Paper.LMDGhost.Model.Confirm
+
+@[expose] public section
 
 /-!
 # LMDGhost / Proof / Quorum
@@ -216,3 +219,5 @@ theorem Hmaj_of_isOneConfirmed (τ : Timing) (A : Anchor n) (cm : Committees n)
   exact Q_imp_H_majority A cm fm V b (τ.slotOf t - 1) pb hcm hW h1c
 
 end FastConfirmation.LMDGhost
+
+end

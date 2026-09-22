@@ -1,5 +1,8 @@
-import FastConfirmation.Spec.Model.Assumptions
-import Mathlib.Algebra.Order.BigOperators.Group.Finset
+module
+public import FastConfirmation.Spec.Model.Assumptions
+public import Mathlib.Algebra.Order.BigOperators.Group.Finset
+
+@[expose] public section
 
 /-!
 # Spec / Proof / FFGQuorum
@@ -112,3 +115,5 @@ theorem one_third_honest_intersects_two_thirds
   exact one_third_intersection_arith hS hT hsum
 
 end FastConfirmation.Spec
+
+end

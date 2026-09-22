@@ -1,4 +1,7 @@
-import FastConfirmation.Spec.Proof.INVstarTrack
+module
+public import FastConfirmation.Spec.Proof.INVstarTrack
+
+@[expose] public section
 
 /-!
 # Spec / Proof / LastCruxes: ancestor transport and the residual reduction
@@ -137,3 +140,5 @@ theorem Spec_Monotonicity_of_ground
     (hkc_of_confirmed_known cfg ext hck)
 
 end FastConfirmation.Spec
+
+end

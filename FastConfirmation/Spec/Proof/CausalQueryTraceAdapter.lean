@@ -1,5 +1,8 @@
-import FastConfirmation.Spec.Proof.CausalQueryEvidence
-import FastConfirmation.Spec.Proof.SelectedMarginConstruction
+module
+public import FastConfirmation.Spec.Proof.CausalQueryEvidence
+public import FastConfirmation.Spec.Proof.SelectedMarginConstruction
+
+@[expose] public section
 
 /-!
 # Legal-query trace adapters
@@ -1224,3 +1227,5 @@ theorem GlobalQueryActionCompatibility.preexistingVoteActionCoverage
 
 end AllowedFCRCalls
 end FastConfirmation.Spec
+
+end

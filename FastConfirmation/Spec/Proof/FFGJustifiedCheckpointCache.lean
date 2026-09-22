@@ -1,6 +1,9 @@
-import FastConfirmation.Spec.Proof.Delivery
-import FastConfirmation.Spec.Proof.FinalizedResetSafety
-import FastConfirmation.Spec.Proof.MinimalSelectedDomain
+module
+public import FastConfirmation.Spec.Proof.Delivery
+public import FastConfirmation.Spec.Proof.FinalizedResetSafety
+public import FastConfirmation.Spec.Proof.MinimalSelectedDomain
+
+@[expose] public section
 
 /-!
 # Realized justified-checkpoint cache provenance
@@ -773,3 +776,5 @@ theorem selectedMarginAssumptions_of_globalTrajectory
 end Execution
 
 end FastConfirmation.Spec
+
+end

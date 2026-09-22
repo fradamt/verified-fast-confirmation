@@ -1,5 +1,8 @@
-import FastConfirmation.Spec.Proof.LastCruxes
-import FastConfirmation.Spec.Proof.Cruxes
+module
+public import FastConfirmation.Spec.Proof.LastCruxes
+public import FastConfirmation.Spec.Proof.Cruxes
+
+@[expose] public section
 
 /-!
 # Spec / Proof / Shrink: the minimal input bundle
@@ -68,3 +71,5 @@ theorem Spec_Monotonicity_shrunk
     (hkc_of_confirmed_known cfg ext hck)
 
 end FastConfirmation.Spec
+
+end

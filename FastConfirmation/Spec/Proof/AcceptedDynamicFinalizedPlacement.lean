@@ -1,6 +1,9 @@
-import FastConfirmation.Spec.Proof.AcceptedResetCheckpointClassification
-import FastConfirmation.Spec.Proof.FFGCheckpointEpochOrder
-import FastConfirmation.Spec.Proof.SelectedFFGRealization
+module
+public import FastConfirmation.Spec.Proof.AcceptedResetCheckpointClassification
+public import FastConfirmation.Spec.Proof.FFGCheckpointEpochOrder
+public import FastConfirmation.Spec.Proof.SelectedFFGRealization
+
+@[expose] public section
 
 /-!
 # Accepted dynamic finalized placement at a retained tip
@@ -263,3 +266,5 @@ theorem sourceRecency_does_not_imply_finalizedDominance :
 
 
 end FastConfirmation.Spec
+
+end

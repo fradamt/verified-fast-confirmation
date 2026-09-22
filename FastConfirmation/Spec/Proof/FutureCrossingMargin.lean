@@ -1,7 +1,10 @@
-import FastConfirmation.Spec.Proof.HeadSafetyEngine
-import FastConfirmation.Spec.Proof.DynamicsClosure
-import FastConfirmation.Spec.Proof.CrossingCert
-import FastConfirmation.Spec.Proof.CrossEpochDynamics
+module
+public import FastConfirmation.Spec.Proof.HeadSafetyEngine
+public import FastConfirmation.Spec.Proof.DynamicsClosure
+public import FastConfirmation.Spec.Proof.CrossingCert
+public import FastConfirmation.Spec.Proof.CrossEpochDynamics
+
+@[expose] public section
 
 /-!
 # Spec / Proof / FutureCrossingMargin: intra-edge future-crossing margins
@@ -1132,3 +1135,5 @@ theorem recurring_supporter_breaks_preStep_partition :
 end Execution
 
 end FastConfirmation.Spec
+
+end

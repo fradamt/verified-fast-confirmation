@@ -1,6 +1,9 @@
-import FastConfirmation.Spec.Proof.AnchorFacade
-import FastConfirmation.Spec.Proof.BlockAgreement
-import FastConfirmation.Spec.Model.FFGStateSemantics
+module
+public import FastConfirmation.Spec.Proof.AnchorFacade
+public import FastConfirmation.Spec.Proof.BlockAgreement
+public import FastConfirmation.Spec.Model.FFGStateSemantics
+
+@[expose] public section
 
 /-!
 # Reflection between semantic execution descent and reachable-store ancestry
@@ -301,3 +304,5 @@ theorem store_ancestor_of_rootDescends_for_storeReflection
 end Execution
 
 end FastConfirmation.Spec
+
+end

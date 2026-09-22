@@ -1,7 +1,10 @@
-import FastConfirmation.Spec.Proof.Identities
-import FastConfirmation.Spec.Proof.Reanchor
-import FastConfirmation.Spec.Proof.ByzVpre
-import FastConfirmation.Spec.Proof.IHMechanize
+module
+public import FastConfirmation.Spec.Proof.Identities
+public import FastConfirmation.Spec.Proof.Reanchor
+public import FastConfirmation.Spec.Proof.ByzVpre
+public import FastConfirmation.Spec.Proof.IHMechanize
+
+@[expose] public section
 
 /-!
 # Spec / Proof / LastAlgebra: the `VpreIdentities` class algebra + coverage/head/sat
@@ -457,3 +460,5 @@ theorem saturated_majority_of_crux (hbb : ByzantineBound cfg E)
 end Execution
 
 end FastConfirmation.Spec
+
+end

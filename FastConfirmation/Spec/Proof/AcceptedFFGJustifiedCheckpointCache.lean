@@ -1,5 +1,8 @@
-import FastConfirmation.Spec.Proof.FFGJustifiedCheckpointCache
-import FastConfirmation.Spec.Proof.AcceptedCurrentTargetLowerContracts
+module
+public import FastConfirmation.Spec.Proof.FFGJustifiedCheckpointCache
+public import FastConfirmation.Spec.Proof.AcceptedCurrentTargetLowerContracts
+
+@[expose] public section
 
 /-!
 # Accepted justified-checkpoint cache provenance
@@ -254,3 +257,5 @@ theorem selectedMarginDomain_of_acceptedGlobalTrajectory
 end Execution
 
 end FastConfirmation.Spec
+
+end

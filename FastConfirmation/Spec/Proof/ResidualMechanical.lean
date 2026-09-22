@@ -1,5 +1,8 @@
-import FastConfirmation.Spec.Proof.ResidualDischarge
-import FastConfirmation.Spec.Proof.WFTrajectory
+module
+public import FastConfirmation.Spec.Proof.ResidualDischarge
+public import FastConfirmation.Spec.Proof.WFTrajectory
+
+@[expose] public section
 
 /-!
 # Spec / Proof / ResidualMechanical: deriving `L4ResidualHyps`
@@ -293,3 +296,5 @@ theorem spec_safety_of_mechanical
     (fun E hSA => E.l4ResidualHyps_of_mechanical cfg ext hSA (hmech E hSA))
 
 end FastConfirmation.Spec
+
+end

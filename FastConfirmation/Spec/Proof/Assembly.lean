@@ -1,9 +1,12 @@
-import FastConfirmation.Spec.Proof.Dominance
-import FastConfirmation.Spec.Proof.Bridge
-import FastConfirmation.Spec.Proof.Engine
-import FastConfirmation.Spec.Proof.Registry
-import FastConfirmation.Spec.Proof.EdgeDynamics
-import FastConfirmation.Spec.Proof.Endpoint
+module
+public import FastConfirmation.Spec.Proof.Dominance
+public import FastConfirmation.Spec.Proof.Bridge
+public import FastConfirmation.Spec.Proof.Engine
+public import FastConfirmation.Spec.Proof.Registry
+public import FastConfirmation.Spec.Proof.EdgeDynamics
+public import FastConfirmation.Spec.Proof.Endpoint
+
+@[expose] public section
 
 /-!
 # Spec / Proof / Assembly: the `descendStep_of_confirmMargin` input assembly
@@ -273,3 +276,5 @@ theorem descendStep_of_assemblyResidual
 end Execution
 
 end FastConfirmation.Spec
+
+end

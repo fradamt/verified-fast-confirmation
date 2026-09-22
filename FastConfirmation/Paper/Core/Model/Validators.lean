@@ -1,7 +1,10 @@
-import Mathlib.Data.Fintype.Basic
-import Mathlib.Algebra.BigOperators.Group.Finset.Basic
-import Mathlib.Algebra.Order.Field.Rat
-import FastConfirmation.Paper.Core.Model.Time
+module
+public import Mathlib.Data.Fintype.Basic
+public import Mathlib.Algebra.BigOperators.Group.Finset.Basic
+public import Mathlib.Algebra.Order.Field.Rat
+public import FastConfirmation.Paper.Core.Model.Time
+
+@[expose] public section
 
 /-!
 # Core / Model / Validators
@@ -67,3 +70,5 @@ def GlobalByzantineBound {n : ℕ} (C : Anchor n) (fm : FaultModel n) : Prop :=
   totalWeight C (Finset.univ.filter (fun i => i ∉ fm.honest)) ≤ fm.β * totalWeight C Finset.univ
 
 end FastConfirmation
+
+end

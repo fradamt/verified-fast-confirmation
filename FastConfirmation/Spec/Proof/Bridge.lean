@@ -1,7 +1,10 @@
-import FastConfirmation.Spec.Proof.Base
-import FastConfirmation.Spec.Proof.Delivery
-import FastConfirmation.Spec.Proof.EngineSupport
-import FastConfirmation.Spec.Proof.FractionBase
+module
+public import FastConfirmation.Spec.Proof.Base
+public import FastConfirmation.Spec.Proof.Delivery
+public import FastConfirmation.Spec.Proof.EngineSupport
+public import FastConfirmation.Spec.Proof.FractionBase
+
+@[expose] public section
 
 /-!
 # Spec / Proof / Bridge: the reverse-provenance bridge
@@ -451,3 +454,5 @@ theorem weak_base_discharged
 end Execution
 
 end FastConfirmation.Spec
+
+end

@@ -1,6 +1,9 @@
-import FastConfirmation.Spec.Proof.MajorityPersists
-import FastConfirmation.Spec.Proof.Descent
-import FastConfirmation.Spec.Proof.FilterViability
+module
+public import FastConfirmation.Spec.Proof.MajorityPersists
+public import FastConfirmation.Spec.Proof.Descent
+public import FastConfirmation.Spec.Proof.FilterViability
+
+@[expose] public section
 
 /-!
 # Spec / Proof / Engine: head membership and boost congruence
@@ -121,3 +124,5 @@ theorem compute_proposer_score_congr {st st' : BeaconState Root}
   rw [get_total_active_balance_congr cfg hval hact]
 
 end FastConfirmation.Spec
+
+end

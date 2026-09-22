@@ -1,5 +1,8 @@
-import FastConfirmation.Spec.Proof.EngineInduction
-import FastConfirmation.Spec.Proof.BlockAgreement
+module
+public import FastConfirmation.Spec.Proof.EngineInduction
+public import FastConfirmation.Spec.Proof.BlockAgreement
+
+@[expose] public section
 
 /-!
 # Spec / Proof / EngineTransport (package facts at later stores)
@@ -584,3 +587,5 @@ theorem sibling_disjoint_of_supports_c {store : Store Root}
   exact no_index_supports_both_siblings hwf_pl hc hc' hp hpc hpc' hne hwc hwc' hsc hsc'
 
 end FastConfirmation.Spec
+
+end

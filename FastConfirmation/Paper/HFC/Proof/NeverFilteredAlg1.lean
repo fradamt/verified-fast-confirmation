@@ -1,7 +1,10 @@
-import FastConfirmation.Paper.HFC.Proof.NeverFiltered
-import FastConfirmation.Paper.HFC.Proof.Certificate
-import FastConfirmation.Paper.HFC.Proof.Compose
-import FastConfirmation.Paper.HFC.Proof.FFGRule
+module
+public import FastConfirmation.Paper.HFC.Proof.NeverFiltered
+public import FastConfirmation.Paper.HFC.Proof.Certificate
+public import FastConfirmation.Paper.HFC.Proof.Compose
+public import FastConfirmation.Paper.HFC.Proof.FFGRule
+
+@[expose] public section
 
 /-!
 # HFC / Proof / NeverFilteredAlg1 — the Algorithm-1 never-filter
@@ -945,3 +948,5 @@ theorem hfc_safety_alg1_public (τ : Timing) (bal₀ : Stakes n) : HFC_Safety_Al
     hv hs1 hgst hbwf hbslot hwe0 hconf hIF
 
 end FastConfirmation.HFC
+
+end

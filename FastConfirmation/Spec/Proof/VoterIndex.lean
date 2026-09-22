@@ -1,4 +1,7 @@
-import FastConfirmation.Spec.Proof.Clock
+module
+public import FastConfirmation.Spec.Proof.Clock
+
+@[expose] public section
 
 /-!
 # Spec / Proof / Voter Index
@@ -49,3 +52,5 @@ theorem voter_index_bound {ni n : ℕ} {s' es : Slot}
 end Execution
 
 end FastConfirmation.Spec
+
+end

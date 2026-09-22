@@ -1,6 +1,9 @@
-import FastConfirmation.Paper.HFC.Proof.CanonicalReuse
-import FastConfirmation.Paper.HFC.Proof.NeverFiltered
-import FastConfirmation.Paper.HFC.Proof.Compose
+module
+public import FastConfirmation.Paper.HFC.Proof.CanonicalReuse
+public import FastConfirmation.Paper.HFC.Proof.NeverFiltered
+public import FastConfirmation.Paper.HFC.Proof.Compose
+
+@[expose] public section
 
 /-!
 # HFC / Proof / Monotonicity
@@ -238,3 +241,5 @@ theorem hfc_monotonicity_proved {τ : Timing} (bal₀ : Stakes n) : HFC_Monotoni
     exact hB''slot
 
 end FastConfirmation.HFC
+
+end

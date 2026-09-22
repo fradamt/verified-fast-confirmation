@@ -1,4 +1,7 @@
-import FastConfirmation.Spec.Proof.CurrentTargetPrefixAccounting
+module
+public import FastConfirmation.Spec.Proof.CurrentTargetPrefixAccounting
+
+@[expose] public section
 
 /-!
 # Current-target vote realization at an exact scheduled prefix
@@ -404,3 +407,5 @@ theorem currentTargetObservedHonestSupporter_vote_of_prefix_of_selected
 end Execution
 
 end FastConfirmation.Spec
+
+end

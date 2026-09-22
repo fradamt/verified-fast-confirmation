@@ -1,5 +1,8 @@
-import FastConfirmation.Spec.Proof.GroundBeta
-import FastConfirmation.Spec.Proof.Definitive
+module
+public import FastConfirmation.Spec.Proof.GroundBeta
+public import FastConfirmation.Spec.Proof.Definitive
+
+@[expose] public section
 
 /-!
 # Spec / Proof / INVstarTrack: the `hBb`-free per-edge pipeline
@@ -458,3 +461,5 @@ theorem Spec_Safety_of_ground
     (fun E hSA => E.soundResidualsGround_of_split cfg ext hSA (hSameSlot E hSA) (hEng E hSA))
 
 end FastConfirmation.Spec
+
+end

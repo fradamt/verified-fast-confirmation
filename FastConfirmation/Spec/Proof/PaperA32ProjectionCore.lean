@@ -1,5 +1,8 @@
-import FastConfirmation.Spec.Proof.AcceptedFFGStateTrajectory
-import FastConfirmation.Spec.Proof.SelectedFFGRealization
+module
+public import FastConfirmation.Spec.Proof.AcceptedFFGStateTrajectory
+public import FastConfirmation.Spec.Proof.SelectedFFGRealization
+
+@[expose] public section
 
 /-!
 # Generic and accepted paper-A3.2 projection
@@ -279,3 +282,5 @@ theorem accepted_a32IncludedAtTip_of_paper_at_known
 end Execution
 
 end FastConfirmation.Spec
+
+end

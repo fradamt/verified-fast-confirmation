@@ -1,6 +1,9 @@
-import FastConfirmation.Spec.Proof.Fraction
-import FastConfirmation.Spec.Proof.HonestWeight
-import FastConfirmation.Spec.Proof.EngineInduction
+module
+public import FastConfirmation.Spec.Proof.Fraction
+public import FastConfirmation.Spec.Proof.HonestWeight
+public import FastConfirmation.Spec.Proof.EngineInduction
+
+@[expose] public section
 
 /-!
 # Spec / Proof / FractionBase (the base conversion)
@@ -91,3 +94,5 @@ theorem honest_supporter_weight_eq_Hspec {store : Store Root} {bs : BeaconState 
 end Execution
 
 end FastConfirmation.Spec
+
+end

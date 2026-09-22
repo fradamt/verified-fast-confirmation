@@ -1,6 +1,9 @@
-import FastConfirmation.Spec.Proof.AheadFacade
-import FastConfirmation.Spec.Proof.MicroSteps
-import FastConfirmation.Spec.Proof.HeadStack
+module
+public import FastConfirmation.Spec.Proof.AheadFacade
+public import FastConfirmation.Spec.Proof.MicroSteps
+public import FastConfirmation.Spec.Proof.HeadStack
+
+@[expose] public section
 
 /-!
 # Spec / Proof / ExportWiring: justification-interface wiring
@@ -254,3 +257,5 @@ theorem vote_ubiquity_export_closed
 end Execution
 
 end FastConfirmation.Spec
+
+end

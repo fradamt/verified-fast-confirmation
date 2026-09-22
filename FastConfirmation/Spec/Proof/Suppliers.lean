@@ -1,4 +1,7 @@
-import FastConfirmation.Spec.Proof.Compose
+module
+public import FastConfirmation.Spec.Proof.Compose
+
+@[expose] public section
 
 /-!
 # Spec / Proof / Suppliers: wiring the engine-ground advance leg
@@ -326,3 +329,5 @@ theorem spec_safety_of_advance_genesisStart
     hbk hdisj heng
 
 end FastConfirmation.Spec
+
+end

@@ -1,5 +1,8 @@
-import FastConfirmation.Spec.Proof.AncestryRoots
-import FastConfirmation.Spec.Model.Assumptions
+module
+public import FastConfirmation.Spec.Proof.AncestryRoots
+public import FastConfirmation.Spec.Model.Assumptions
+
+@[expose] public section
 
 /-!
 # Spec / Proof / BlockAgreement
@@ -417,3 +420,5 @@ theorem Execution.is_ancestor_mono (E : Execution Root) (hwf : WellFormedExecuti
   exact is_ancestor_congr hagree hnode hanc hw
 
 end FastConfirmation.Spec
+
+end

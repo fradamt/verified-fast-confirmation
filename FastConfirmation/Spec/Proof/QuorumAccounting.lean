@@ -1,8 +1,11 @@
-import FastConfirmation.Spec.Proof.Provenance
-import FastConfirmation.Spec.Proof.Registry
-import FastConfirmation.Spec.Proof.Quorum
-import FastConfirmation.Spec.Proof.SupportTransport
-import Mathlib.Algebra.Order.BigOperators.Group.Finset
+module
+public import FastConfirmation.Spec.Proof.Provenance
+public import FastConfirmation.Spec.Proof.Registry
+public import FastConfirmation.Spec.Proof.Quorum
+public import FastConfirmation.Spec.Proof.SupportTransport
+public import Mathlib.Algebra.Order.BigOperators.Group.Finset
+
+@[expose] public section
 
 /-!
 # Spec / Proof / QuorumAccounting
@@ -293,3 +296,5 @@ honest equivocator weight is `0`). That invariant is a trajectory fact about
 invariant. -/
 
 end FastConfirmation.Spec
+
+end

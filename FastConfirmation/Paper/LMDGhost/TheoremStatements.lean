@@ -1,5 +1,8 @@
-import FastConfirmation.Paper.Core.Model
-import FastConfirmation.Paper.LMDGhost.Model
+module
+public import FastConfirmation.Paper.Core.Model
+public import FastConfirmation.Paper.LMDGhost.Model
+
+@[expose] public section
 
 /-!
 # LMDGhost / TheoremStatements
@@ -154,3 +157,5 @@ def Theorem1_Monotonicity (τ : Timing)
       isConfirmed τ fm cm pb gj 𝒱 v b t → isConfirmed τ fm cm pb gj 𝒱 v b t'
 
 end FastConfirmation.LMDGhost
+
+end

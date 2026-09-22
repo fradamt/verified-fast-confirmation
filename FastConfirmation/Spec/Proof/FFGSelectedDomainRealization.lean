@@ -1,4 +1,7 @@
-import FastConfirmation.Spec.Proof.FFGGlobalCheckpointTrajectory
+module
+public import FastConfirmation.Spec.Proof.FFGGlobalCheckpointTrajectory
+
+@[expose] public section
 
 /-!
 # Selected-domain facts from the common FFG trajectory
@@ -269,3 +272,5 @@ theorem postAnchorHonestVoteTargetWalkDomain_of_globalTrajectory
 end Execution
 
 end FastConfirmation.Spec
+
+end

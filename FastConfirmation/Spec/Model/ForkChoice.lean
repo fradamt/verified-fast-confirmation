@@ -1,6 +1,9 @@
-import Mathlib.Data.List.MinMax
-import Mathlib.Data.Prod.Lex
-import FastConfirmation.Spec.Model.Types
+module
+public import Mathlib.Data.List.MinMax
+public import Mathlib.Data.Prod.Lex
+public import FastConfirmation.Spec.Model.Types
+
+@[expose] public section
 
 /-!
 # Spec / Model / ForkChoice
@@ -382,3 +385,5 @@ def get_attestation_due_ms : ℕ :=
   get_slot_component_duration_ms cfg cfg.attestation_due_bps
 
 end FastConfirmation.Spec
+
+end

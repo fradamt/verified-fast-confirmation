@@ -1,4 +1,7 @@
-import FastConfirmation.Paper.Core.Model.ForkChoice
+module
+public import FastConfirmation.Paper.Core.Model.ForkChoice
+
+@[expose] public section
 
 /-!
 # Core / Model / Honest
@@ -35,3 +38,5 @@ structure HonestBehavior (τ : Timing) (fm : FaultModel n) (cm : Committees n)
     ¬ (𝒱 w t).equivocator v
 
 end FastConfirmation
+
+end

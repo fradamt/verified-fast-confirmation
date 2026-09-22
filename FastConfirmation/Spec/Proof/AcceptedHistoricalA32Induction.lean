@@ -1,4 +1,7 @@
-import FastConfirmation.Spec.Proof.AcceptedHistoricalA32OneStep
+module
+public import FastConfirmation.Spec.Proof.AcceptedHistoricalA32OneStep
+
+@[expose] public section
 
 /-!
 # Strong induction for the accepted historical A3.2 payload
@@ -358,3 +361,5 @@ end Execution
 
 
 end FastConfirmation.Spec
+
+end

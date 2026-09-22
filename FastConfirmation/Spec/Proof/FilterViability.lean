@@ -1,5 +1,8 @@
-import FastConfirmation.Spec.Proof.Forks
-import FastConfirmation.Spec.Proof.FilterFuel
+module
+public import FastConfirmation.Spec.Proof.Forks
+public import FastConfirmation.Spec.Proof.FilterFuel
+
+@[expose] public section
 
 /-!
 # Spec / Proof / FilterViability (E5, slice 1)
@@ -266,3 +269,5 @@ theorem confirmed_mem_filtered {store : Store Root} {mids : List Root} {b t : Ro
   · exact htmem
   · exact htop
 end FastConfirmation.Spec
+
+end

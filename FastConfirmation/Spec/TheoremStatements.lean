@@ -1,4 +1,7 @@
-import FastConfirmation.Spec.Model.FFGStateSemantics
+module
+public import FastConfirmation.Spec.Model.FFGStateSemantics
+
+@[expose] public section
 
 /-!
 # Spec / supporting statement vocabulary
@@ -384,3 +387,5 @@ def Spec_Monotonicity_no_revert : Prop :=
         (get_node_for_root (E.confirmed cfg ext v n)) = true
 
 end FastConfirmation.Spec
+
+end

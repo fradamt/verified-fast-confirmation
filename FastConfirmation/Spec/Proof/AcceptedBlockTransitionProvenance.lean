@@ -1,6 +1,9 @@
-import Mathlib.Tactic
-import FastConfirmation.Spec.Proof.ExecutionRootReflection
-import FastConfirmation.Spec.Proof.Preservation
+module
+public import Mathlib.Tactic
+public import FastConfirmation.Spec.Proof.ExecutionRootReflection
+public import FastConfirmation.Spec.Proof.Preservation
+
+@[expose] public section
 
 /-!
 # Last accepted-writer provenance at exact execution prefixes
@@ -561,3 +564,5 @@ theorem AcceptedBlockAt.exists_acceptedBlockTransition
 end Execution
 
 end FastConfirmation.Spec
+
+end

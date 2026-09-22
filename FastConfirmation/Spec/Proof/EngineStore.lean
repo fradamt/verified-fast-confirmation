@@ -1,5 +1,8 @@
-import FastConfirmation.Spec.Proof.EngineTransport
-import FastConfirmation.Spec.Proof.Engine
+module
+public import FastConfirmation.Spec.Proof.EngineTransport
+public import FastConfirmation.Spec.Proof.Engine
+
+@[expose] public section
 
 /-!
 # Spec / Proof / EngineStore (per-store head descent)
@@ -338,3 +341,5 @@ theorem head_ge_of_justified_ge {store : Store Root}
     exact hjb
 
 end FastConfirmation.Spec
+
+end

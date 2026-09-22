@@ -1,4 +1,7 @@
-import FastConfirmation.Paper.Core.Model.View
+module
+public import FastConfirmation.Paper.Core.Model.View
+
+@[expose] public section
 
 /-!
 # Core / Model / Filter
@@ -17,3 +20,5 @@ abbrev BlockFilter (n : ℕ) (P : Type) := View n P → Time → Block n → Pro
 def trivialFilter {n : ℕ} {P : Type} : BlockFilter n P := fun _ _ _ => True
 
 end FastConfirmation
+
+end

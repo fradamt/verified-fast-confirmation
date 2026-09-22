@@ -1,6 +1,9 @@
-import FastConfirmation.Spec.Proof.AcceptedFFGJustifiedMaximality
-import FastConfirmation.Spec.Proof.AcceptedResetCheckpointClassification
-import FastConfirmation.Spec.Proof.ObservedResetSafety
+module
+public import FastConfirmation.Spec.Proof.AcceptedFFGJustifiedMaximality
+public import FastConfirmation.Spec.Proof.AcceptedResetCheckpointClassification
+public import FastConfirmation.Spec.Proof.ObservedResetSafety
+
+@[expose] public section
 
 /-!
 # Accepted reset adoption
@@ -289,3 +292,5 @@ def ObservedRestartJustifiedSourceLockAt
 end Execution
 
 end FastConfirmation.Spec
+
+end

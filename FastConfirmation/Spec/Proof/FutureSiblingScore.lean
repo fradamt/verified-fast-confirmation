@@ -1,6 +1,9 @@
-import FastConfirmation.Spec.Proof.EndpointLedgerMinimal
-import FastConfirmation.Spec.Proof.CrossEpochDynamics
-import FastConfirmation.Spec.Proof.EdgeDynamics
+module
+public import FastConfirmation.Spec.Proof.EndpointLedgerMinimal
+public import FastConfirmation.Spec.Proof.CrossEpochDynamics
+public import FastConfirmation.Spec.Proof.EdgeDynamics
+
+@[expose] public section
 
 /-!
 # Re-anchored sibling scores for future-crossing selected margins
@@ -456,3 +459,5 @@ theorem crossingEdge_sibling_score_of_endpointLedger_minimal
 end Execution
 
 end FastConfirmation.Spec
+
+end

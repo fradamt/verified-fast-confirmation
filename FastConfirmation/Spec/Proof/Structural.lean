@@ -1,4 +1,7 @@
-import FastConfirmation.Spec.Proof.Shrink
+module
+public import FastConfirmation.Spec.Proof.Shrink
+
+@[expose] public section
 
 /-!
 # Spec / Proof / Structural: the disjunctive `hcase` and shared-anchor knownness
@@ -279,3 +282,5 @@ theorem sameSlotFinalizedRootKnownNonGenesis_of_genesis_start (hSA : SpecAssumpt
 end Execution
 
 end FastConfirmation.Spec
+
+end

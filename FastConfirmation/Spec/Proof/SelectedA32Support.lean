@@ -1,5 +1,8 @@
-import FastConfirmation.Spec.Proof.SelectedTraceFilterPipeline
-import FastConfirmation.Spec.Proof.Delivery
+module
+public import FastConfirmation.Spec.Proof.SelectedTraceFilterPipeline
+public import FastConfirmation.Spec.Proof.Delivery
+
+@[expose] public section
 
 /-!
 # Selected current-target support: the exact executable consequence
@@ -172,3 +175,5 @@ theorem currentTargetAcceptedEdge_honest_vote_before_next_epoch
 end Execution
 
 end FastConfirmation.Spec
+
+end

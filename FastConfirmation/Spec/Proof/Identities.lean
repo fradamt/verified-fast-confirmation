@@ -1,5 +1,8 @@
-import FastConfirmation.Spec.Proof.Remainder
-import FastConfirmation.Spec.Proof.Delivery
+module
+public import FastConfirmation.Spec.Proof.Remainder
+public import FastConfirmation.Spec.Proof.Delivery
+
+@[expose] public section
 
 /-!
 # Spec / Proof / Identities: the economic-core coherence package
@@ -596,3 +599,5 @@ theorem INV2_base_bridged_instantiated
     hV.hJV rfl hV.hJfull rfl hV.hR4b hV.hBbadfin hV.hXval rfl
 
 end FastConfirmation.Spec
+
+end

@@ -1,4 +1,7 @@
-import FastConfirmation.Spec.Proof.Registry
+module
+public import FastConfirmation.Spec.Proof.Registry
+
+@[expose] public section
 
 /-!
 # Spec / Proof / Preservation
@@ -465,3 +468,5 @@ theorem on_block_parentSlotLt
       hpar hbss hfresh hno_child hp hpre
 
 end FastConfirmation.Spec
+
+end

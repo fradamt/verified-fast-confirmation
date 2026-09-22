@@ -1,5 +1,8 @@
-import FastConfirmation.Spec.Proof.AcceptedActualFCRContractScaffold
-import FastConfirmation.Spec.Proof.AcceptedSelectedStrictEdgeFilterSupply
+module
+public import FastConfirmation.Spec.Proof.AcceptedActualFCRContractScaffold
+public import FastConfirmation.Spec.Proof.AcceptedSelectedStrictEdgeFilterSupply
+
+@[expose] public section
 
 /-!
 # Accepted actual-FCR strict-helper integration
@@ -148,3 +151,5 @@ theorem getLatestConfirmedTraceAt_result_safeFrom_of_acceptedDispatcher
 end Execution
 
 end FastConfirmation.Spec
+
+end

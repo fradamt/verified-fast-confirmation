@@ -1,4 +1,7 @@
-import FastConfirmation.Spec.Proof.CurrentTargetSupportAccounting
+module
+public import FastConfirmation.Spec.Proof.CurrentTargetSupportAccounting
+
+@[expose] public section
 
 /-!
 # Future honest support for the current-target prediction
@@ -457,3 +460,5 @@ theorem will_current_target_be_justified_honest_quorum
 end Execution
 
 end FastConfirmation.Spec
+
+end

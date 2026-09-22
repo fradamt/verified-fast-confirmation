@@ -1,8 +1,11 @@
-import Mathlib.Tactic
-import FastConfirmation.Spec.Proof.AcceptedSelectedJustifiedOrientation
-import FastConfirmation.Spec.Proof.AcceptedHistoricalA32CallSupplier
-import FastConfirmation.Spec.Proof.AcceptedCurrentSameSourceHistory
-import FastConfirmation.Spec.Proof.NoConflictCertificatePinning
+module
+public import Mathlib.Tactic
+public import FastConfirmation.Spec.Proof.AcceptedSelectedJustifiedOrientation
+public import FastConfirmation.Spec.Proof.AcceptedHistoricalA32CallSupplier
+public import FastConfirmation.Spec.Proof.AcceptedCurrentSameSourceHistory
+public import FastConfirmation.Spec.Proof.NoConflictCertificatePinning
+
+@[expose] public section
 
 /-!
 # Actual-call accepted selected / justified orientation
@@ -766,3 +769,5 @@ end Execution
 
 
 end FastConfirmation.Spec
+
+end

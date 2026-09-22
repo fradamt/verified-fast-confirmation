@@ -1,8 +1,11 @@
-import FastConfirmation.Spec.Proof.CheckpointDomain
-import FastConfirmation.Spec.Proof.HonestWeight
-import FastConfirmation.Spec.Proof.Discount
-import FastConfirmation.Spec.Proof.AnchorFacade
-import FastConfirmation.Spec.Proof.MicroSteps
+module
+public import FastConfirmation.Spec.Proof.CheckpointDomain
+public import FastConfirmation.Spec.Proof.HonestWeight
+public import FastConfirmation.Spec.Proof.Discount
+public import FastConfirmation.Spec.Proof.AnchorFacade
+public import FastConfirmation.Spec.Proof.MicroSteps
+
+@[expose] public section
 
 /-!
 # Spec / Proof / SameSlotProvenance
@@ -906,3 +909,5 @@ theorem get_latest_confirmed_strict_advance_known
 end Execution
 
 end FastConfirmation.Spec
+
+end

@@ -1,5 +1,8 @@
-import FastConfirmation.Paper.HFC.Model.FFGFilter
-import FastConfirmation.Paper.HFC.Model.Rule
+module
+public import FastConfirmation.Paper.HFC.Model.FFGFilter
+public import FastConfirmation.Paper.HFC.Model.Rule
+
+@[expose] public section
 
 /-!
 # HFC / Model / HonestFFG
@@ -57,3 +60,5 @@ def HonestFFGNoEquivocation (τ : Timing) (fm : FaultModel n) (_cm : Committees 
       (τ.st m.ghost.slot)
 
 end FastConfirmation.HFC
+
+end

@@ -1,6 +1,9 @@
-import Mathlib.Tactic
-import FastConfirmation.Spec.Proof.AcceptedPhaseSourceSupply
-import FastConfirmation.Spec.Proof.QueryFilterViability
+module
+public import Mathlib.Tactic
+public import FastConfirmation.Spec.Proof.AcceptedPhaseSourceSupply
+public import FastConfirmation.Spec.Proof.QueryFilterViability
+
+@[expose] public section
 
 /-!
 # Accepted early-phase source wiring
@@ -793,3 +796,5 @@ theorem StrictSelectedResultMechanicalFacts.not_epochStart_of_current_of_selecte
 end Execution
 
 end FastConfirmation.Spec
+
+end

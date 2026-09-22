@@ -1,4 +1,7 @@
-import FastConfirmation.Spec.Proof.E5Filter
+module
+public import FastConfirmation.Spec.Proof.E5Filter
+
+@[expose] public section
 
 /-!
 # Spec / Proof / AheadFacade: the ahead-regime observed-anchor interface
@@ -215,3 +218,5 @@ theorem justifiedIn_root_known_of_realized (hji : JustificationInterface cfg ext
 end Execution
 
 end FastConfirmation.Spec
+
+end

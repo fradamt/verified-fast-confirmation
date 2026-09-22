@@ -1,5 +1,8 @@
-import FastConfirmation.Spec.Proof.AllowedFCRCallTrace
-import FastConfirmation.Spec.Proof.CurrentTargetFutureSupport
+module
+public import FastConfirmation.Spec.Proof.AllowedFCRCallTrace
+public import FastConfirmation.Spec.Proof.CurrentTargetFutureSupport
+
+@[expose] public section
 
 /-!
 # Causal query evidence
@@ -153,3 +156,5 @@ theorem fromMoment_and_preexisting_actions_implies_formal
 
 end CausalQueryEvidence
 end FastConfirmation.Spec
+
+end

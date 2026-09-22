@@ -1,4 +1,7 @@
-import FastConfirmation.Spec.Proof.AcceptedHistoricalA32Trajectory
+module
+public import FastConfirmation.Spec.Proof.AcceptedHistoricalA32Trajectory
+
+@[expose] public section
 
 /-!
 # Fresh historical A3.2 lineage at a retained current-target crossing
@@ -505,3 +508,5 @@ end Execution
 
 
 end FastConfirmation.Spec
+
+end

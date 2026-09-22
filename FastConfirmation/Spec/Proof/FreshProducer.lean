@@ -1,6 +1,9 @@
-import FastConfirmation.Spec.Proof.Growth
-import FastConfirmation.Spec.Proof.VoterIndex
-import FastConfirmation.Spec.Proof.Dominance
+module
+public import FastConfirmation.Spec.Proof.Growth
+public import FastConfirmation.Spec.Proof.VoterIndex
+public import FastConfirmation.Spec.Proof.Dominance
+
+@[expose] public section
 
 /-!
 # Spec / Proof / Fresh Producer
@@ -277,3 +280,5 @@ theorem strip_of_IH (hSA : SpecAssumptions cfg ext E)
 end Execution
 
 end FastConfirmation.Spec
+
+end

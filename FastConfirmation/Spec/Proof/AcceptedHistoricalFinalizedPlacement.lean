@@ -1,7 +1,10 @@
-import FastConfirmation.Spec.Proof.AcceptedPathLocalFinalizedTransport
-import FastConfirmation.Spec.Proof.AcceptedResetCheckpointClassification
-import FastConfirmation.Spec.Proof.AcceptedCurrentTargetLowerContracts
-import FastConfirmation.Spec.Proof.AcceptedHistoricalA32GlobalTrajectory
+module
+public import FastConfirmation.Spec.Proof.AcceptedPathLocalFinalizedTransport
+public import FastConfirmation.Spec.Proof.AcceptedResetCheckpointClassification
+public import FastConfirmation.Spec.Proof.AcceptedCurrentTargetLowerContracts
+public import FastConfirmation.Spec.Proof.AcceptedHistoricalA32GlobalTrajectory
+
+@[expose] public section
 
 /-!
 # Historical finalized placement on the retained source tip
@@ -650,3 +653,5 @@ end Execution
 
 
 end FastConfirmation.Spec
+
+end

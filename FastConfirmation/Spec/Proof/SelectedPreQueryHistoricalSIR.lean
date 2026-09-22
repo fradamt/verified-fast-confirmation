@@ -1,7 +1,10 @@
-import FastConfirmation.Spec.Proof.SelectedPreQueryAnchor
-import FastConfirmation.Spec.Proof.SelectedA32Support
-import FastConfirmation.Spec.Proof.CausalCheckpointEpochBound
-import FastConfirmation.Spec.Proof.CheckpointGeometry
+module
+public import FastConfirmation.Spec.Proof.SelectedPreQueryAnchor
+public import FastConfirmation.Spec.Proof.SelectedA32Support
+public import FastConfirmation.Spec.Proof.CausalCheckpointEpochBound
+public import FastConfirmation.Spec.Proof.CheckpointGeometry
+
+@[expose] public section
 
 /-!
 # Historical, non-anchor pre-query SIR producers
@@ -1388,3 +1391,5 @@ theorem preQueryVoteSelectedSIRBracketAt_of_historicalCertificateProducers
 end Execution
 
 end FastConfirmation.Spec
+
+end

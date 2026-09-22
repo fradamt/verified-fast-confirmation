@@ -1,5 +1,8 @@
-import FastConfirmation.Spec.Proof.AcceptedResetAdoption
-import FastConfirmation.Spec.Proof.SelectedCoveredMarginConstruction
+module
+public import FastConfirmation.Spec.Proof.AcceptedResetAdoption
+public import FastConfirmation.Spec.Proof.SelectedCoveredMarginConstruction
+
+@[expose] public section
 
 /-!
 # Shared mechanics for actual FCR calls
@@ -371,3 +374,5 @@ theorem GetLatestConfirmedTrace.result_safeFrom_of_actualCall_strictSupplier
 end Execution
 
 end FastConfirmation.Spec
+
+end

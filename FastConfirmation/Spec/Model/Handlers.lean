@@ -1,5 +1,8 @@
-import Mathlib.Logic.Function.Basic
-import FastConfirmation.Spec.Model.ForkChoice
+module
+public import Mathlib.Logic.Function.Basic
+public import FastConfirmation.Spec.Model.ForkChoice
+
+@[expose] public section
 
 /-!
 # Spec / Model / Handlers
@@ -523,3 +526,5 @@ def get_forkchoice_store (anchor_state : BeaconState Root)
       Function.update (fun _ => default) anchor_root justified_checkpoint }
 
 end FastConfirmation.Spec
+
+end

@@ -1,6 +1,9 @@
-import FastConfirmation.Spec.Proof.SelectedPreQueryHistoricalSIR
-import FastConfirmation.Spec.Proof.FCRCallContracts
-import FastConfirmation.Spec.Proof.TrustedAnchorGeometry
+module
+public import FastConfirmation.Spec.Proof.SelectedPreQueryHistoricalSIR
+public import FastConfirmation.Spec.Proof.FCRCallContracts
+public import FastConfirmation.Spec.Proof.TrustedAnchorGeometry
+
+@[expose] public section
 
 /-!
 # Historical current-target certificates along the concrete FCR trajectory
@@ -1262,3 +1265,5 @@ theorem historicalCurrentTargetCertificateProducerAt_of_actualTrajectory
 end Execution
 
 end FastConfirmation.Spec
+
+end

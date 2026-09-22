@@ -1,9 +1,12 @@
-import Mathlib.Tactic
-import FastConfirmation.Paper.LMDGhost.Proof.Canonical
-import FastConfirmation.Paper.LMDGhost.Proof.Monotone
-import FastConfirmation.Paper.LMDGhost.Proof.Propagation
-import FastConfirmation.Paper.LMDGhost.Proof.Quorum
-import FastConfirmation.Paper.LMDGhost.TheoremStatements
+module
+public import Mathlib.Tactic
+public import FastConfirmation.Paper.LMDGhost.Proof.Canonical
+public import FastConfirmation.Paper.LMDGhost.Proof.Monotone
+public import FastConfirmation.Paper.LMDGhost.Proof.Propagation
+public import FastConfirmation.Paper.LMDGhost.Proof.Quorum
+public import FastConfirmation.Paper.LMDGhost.TheoremStatements
+
+@[expose] public section
 
 /-!
 # LMDGhost / Proof / HeadSafety
@@ -615,3 +618,5 @@ theorem neverFiltered_to_hNFilOfHead {b : Block n} {t : Time}
 end Engine
 
 end FastConfirmation.LMDGhost
+
+end

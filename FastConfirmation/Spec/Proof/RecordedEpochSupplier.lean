@@ -1,4 +1,7 @@
-import FastConfirmation.Spec.Proof.SameSlotLMD
+module
+public import FastConfirmation.Spec.Proof.SameSlotLMD
+
+@[expose] public section
 
 /-!
 # Recorded-epoch domination at an arbitrary query
@@ -826,3 +829,5 @@ theorem prefixWindowRecordedEpochMax_at_query_of_boundaryReplay
   exact congr_fun hreplay i
 
 end FastConfirmation.Spec
+
+end

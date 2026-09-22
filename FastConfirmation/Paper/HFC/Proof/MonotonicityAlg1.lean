@@ -1,5 +1,8 @@
-import FastConfirmation.Paper.HFC.Proof.Monotonicity
-import FastConfirmation.Paper.HFC.Proof.NeverFilteredAlg1
+module
+public import FastConfirmation.Paper.HFC.Proof.Monotonicity
+public import FastConfirmation.Paper.HFC.Proof.NeverFilteredAlg1
+
+@[expose] public section
 
 /-!
 # HFC / Proof / MonotonicityAlg1 — monotonicity about Algorithm 1 (both branches)
@@ -197,3 +200,5 @@ theorem hfc_monotonicity_alg1 {τ : Timing} (bal₀ : Stakes n)
     exact hB''slot
 
 end FastConfirmation.HFC
+
+end

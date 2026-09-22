@@ -1,5 +1,8 @@
-import FastConfirmation.Spec.Proof.E5Filter
-import FastConfirmation.Spec.Proof.WFTrajectory
+module
+public import FastConfirmation.Spec.Proof.E5Filter
+public import FastConfirmation.Spec.Proof.WFTrajectory
+
+@[expose] public section
 
 /-!
 # Spec / Proof / AnchorFacade: Layer-0 anchor facts and the safety interface
@@ -576,3 +579,5 @@ theorem spec_safety_sound_residuals
     (fun E hSA => E.l4Residual_of_soundResiduals cfg ext hSA (h E hSA))
 
 end FastConfirmation.Spec
+
+end

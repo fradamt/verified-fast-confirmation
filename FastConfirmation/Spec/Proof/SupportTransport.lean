@@ -1,4 +1,7 @@
-import FastConfirmation.Spec.Proof.Forks
+module
+public import FastConfirmation.Spec.Proof.Forks
+
+@[expose] public section
 
 /-!
 # Spec / Proof / SupportTransport
@@ -117,3 +120,5 @@ theorem no_index_supports_both_siblings {store : Store Root}
   exact siblings_incompatible hwf hc hc' hp hpc hpc' hne hwc hwc' hsc hsc'
 
 end FastConfirmation.Spec
+
+end

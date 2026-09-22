@@ -1,4 +1,7 @@
-import FastConfirmation.Spec.Proof.FFGEndpointRealization
+module
+public import FastConfirmation.Spec.Proof.FFGEndpointRealization
+
+@[expose] public section
 
 /-!
 # Global FFG checkpoint trajectory
@@ -2046,3 +2049,5 @@ theorem endpointSelectorRealization_of_globalTrajectory
 end Execution
 
 end FastConfirmation.Spec
+
+end

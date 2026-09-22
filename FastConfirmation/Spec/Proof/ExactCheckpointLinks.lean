@@ -1,7 +1,10 @@
-import FastConfirmation.Spec.Model.ExactCheckpointLinks
-import FastConfirmation.Spec.Proof.AncestryRoots
-import FastConfirmation.Spec.Proof.CheckpointGeometry
-import FastConfirmation.Spec.Proof.FFGAccountability
+module
+public import FastConfirmation.Spec.Model.ExactCheckpointLinks
+public import FastConfirmation.Spec.Proof.AncestryRoots
+public import FastConfirmation.Spec.Proof.CheckpointGeometry
+public import FastConfirmation.Spec.Proof.FFGAccountability
+
+@[expose] public section
 
 /-!
 # Spec / Proof / ExactCheckpointLinks
@@ -516,3 +519,5 @@ theorem exactCheckpointRootAt_of_accountable
 end AcceptedChainFFGState
 
 end FastConfirmation.Spec
+
+end

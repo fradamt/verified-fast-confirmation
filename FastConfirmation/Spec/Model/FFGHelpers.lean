@@ -1,4 +1,7 @@
-import FastConfirmation.Spec.Model.LMDHelpers
+module
+public import FastConfirmation.Spec.Model.LMDHelpers
+
+@[expose] public section
 
 /-!
 # Spec / Model / FFGHelpers
@@ -123,3 +126,5 @@ def will_current_target_be_justified (store : Store Root) : Bool :=
   decide (3 * honest_ffg_support ≥ 2 * total_active_balance)
 
 end FastConfirmation.Spec
+
+end

@@ -1,8 +1,11 @@
-import Mathlib.Tactic
-import FastConfirmation.Spec.Proof.AcceptedFFGGlobalCheckpointTrajectory
-import FastConfirmation.Spec.Proof.FFGStateTrajectory
-import FastConfirmation.Spec.Proof.Preservation
-import FastConfirmation.Spec.Proof.BlockAgreement
+module
+public import Mathlib.Tactic
+public import FastConfirmation.Spec.Proof.AcceptedFFGGlobalCheckpointTrajectory
+public import FastConfirmation.Spec.Proof.FFGStateTrajectory
+public import FastConfirmation.Spec.Proof.Preservation
+public import FastConfirmation.Spec.Proof.BlockAgreement
+
+@[expose] public section
 
 /-!
 # Spec / Proof / FFGSourceCoherence
@@ -1215,3 +1218,5 @@ theorem source_coherence_contracts_nonvacuous :
 end SourceCoherenceNonVacuity
 
 end FastConfirmation.Spec
+
+end

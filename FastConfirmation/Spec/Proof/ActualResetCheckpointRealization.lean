@@ -1,5 +1,8 @@
-import FastConfirmation.Spec.Proof.FCRCallContracts
-import FastConfirmation.Spec.Proof.TrustedAnchorGeometry
+module
+public import FastConfirmation.Spec.Proof.FCRCallContracts
+public import FastConfirmation.Spec.Proof.TrustedAnchorGeometry
+
+@[expose] public section
 
 /-!
 # Concrete realization of the two actual FCR reset checkpoints
@@ -511,3 +514,5 @@ theorem actualResetInputCheckpointRealization_of_globalTrajectory
 end Execution
 
 end FastConfirmation.Spec
+
+end

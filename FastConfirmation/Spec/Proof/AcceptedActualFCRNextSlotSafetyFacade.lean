@@ -1,4 +1,7 @@
-import FastConfirmation.Spec.Proof.AcceptedActualFCRNextSlotSafetyFold
+module
+public import FastConfirmation.Spec.Proof.AcceptedActualFCRNextSlotSafetyFold
+
+@[expose] public section
 
 /-!
 # Accepted actual-FCR next-slot safety facade
@@ -224,3 +227,5 @@ theorem acceptedSpec_safety_next_slot :
   exact h.confirmed_head_nextSlot cfg ext E hv hw hnm hnext hHm
 
 end FastConfirmation.Spec
+
+end

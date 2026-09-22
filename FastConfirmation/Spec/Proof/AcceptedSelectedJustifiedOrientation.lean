@@ -1,7 +1,10 @@
-import Mathlib.Tactic
-import FastConfirmation.Spec.Proof.AcceptedCurrentTargetLowerContracts
-import FastConfirmation.Spec.Proof.AcceptedHistoricalA32Payload
-import FastConfirmation.Spec.Proof.CurrentTargetCertificateRealization
+module
+public import Mathlib.Tactic
+public import FastConfirmation.Spec.Proof.AcceptedCurrentTargetLowerContracts
+public import FastConfirmation.Spec.Proof.AcceptedHistoricalA32Payload
+public import FastConfirmation.Spec.Proof.CurrentTargetCertificateRealization
+
+@[expose] public section
 
 /-!
 # Accepted selected-result / endpoint-justification orientation
@@ -427,3 +430,5 @@ end Execution
 
 
 end FastConfirmation.Spec
+
+end

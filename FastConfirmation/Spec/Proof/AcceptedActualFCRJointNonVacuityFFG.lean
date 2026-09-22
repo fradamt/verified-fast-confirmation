@@ -1,8 +1,11 @@
-import Mathlib.Tactic
-import FastConfirmation.Spec.Proof.AcceptedActualFCRJointNonVacuityBase
-import FastConfirmation.Spec.Proof.AcceptedBlockTransitionProvenance
-import FastConfirmation.Spec.Proof.AcceptedScheduledPrefixGeometry
-import FastConfirmation.Spec.Proof.ExactCheckpointLinks
+module
+public import Mathlib.Tactic
+public import FastConfirmation.Spec.Proof.AcceptedActualFCRJointNonVacuityBase
+public import FastConfirmation.Spec.Proof.AcceptedBlockTransitionProvenance
+public import FastConfirmation.Spec.Proof.AcceptedScheduledPrefixGeometry
+public import FastConfirmation.Spec.Proof.ExactCheckpointLinks
+
+@[expose] public section
 
 /-!
 # Accepted FFG semantics for the joint non-vacuity witness
@@ -1063,3 +1066,5 @@ theorem witness_slashableOnChain_eq_empty (tip : WitnessRoot) :
 
 end AcceptedActualFCRJointNonVacuityFFG
 end FastConfirmation.Spec
+
+end

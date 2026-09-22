@@ -1,7 +1,10 @@
-import FastConfirmation.Spec.Proof.AcceptedActualFCRCommon
-import FastConfirmation.Spec.Proof.AcceptedActualFCRStrictHelperIntegration
-import FastConfirmation.Spec.Proof.AcceptedFinalizedNextSlotSafety
-import FastConfirmation.Spec.Proof.AcceptedObservedRestartDynamicSafety
+module
+public import FastConfirmation.Spec.Proof.AcceptedActualFCRCommon
+public import FastConfirmation.Spec.Proof.AcceptedActualFCRStrictHelperIntegration
+public import FastConfirmation.Spec.Proof.AcceptedFinalizedNextSlotSafety
+public import FastConfirmation.Spec.Proof.AcceptedObservedRestartDynamicSafety
+
+@[expose] public section
 
 /-!
 # Accepted actual-FCR next-slot safety fold
@@ -401,3 +404,5 @@ theorem confirmed_head_of_acceptedActualFCRFold_nextSlot
 end Execution
 
 end FastConfirmation.Spec
+
+end

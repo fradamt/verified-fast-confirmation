@@ -1,8 +1,11 @@
-import Mathlib.Tactic
-import FastConfirmation.Spec.Proof.AcceptedFFGGlobalCheckpointTrajectory
-import FastConfirmation.Spec.Proof.AcceptedFFGJustifiedMaximality
-import FastConfirmation.Spec.Proof.AcceptedBlockTransitionProvenance
-import FastConfirmation.Spec.Proof.CausalQueryTraceAdapter
+module
+public import Mathlib.Tactic
+public import FastConfirmation.Spec.Proof.AcceptedFFGGlobalCheckpointTrajectory
+public import FastConfirmation.Spec.Proof.AcceptedFFGJustifiedMaximality
+public import FastConfirmation.Spec.Proof.AcceptedBlockTransitionProvenance
+public import FastConfirmation.Spec.Proof.CausalQueryTraceAdapter
+
+@[expose] public section
 
 /-!
 # Accepted realized-justified executable origins
@@ -897,3 +900,5 @@ theorem acceptedRealizedJustifiedOrigins
 end Execution
 
 end FastConfirmation.Spec
+
+end

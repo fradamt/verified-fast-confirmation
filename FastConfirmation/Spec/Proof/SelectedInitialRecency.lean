@@ -1,4 +1,7 @@
-import FastConfirmation.Spec.Proof.SelectedTraceCoverage
+module
+public import FastConfirmation.Spec.Proof.SelectedTraceCoverage
+
+@[expose] public section
 
 /-!
 # Query-local initial source recency from the selected wrapper
@@ -270,3 +273,5 @@ theorem selected_strict_result_previous_witness_of_not_tentative
   · exact False.elim (hnotTentative htentative)
 
 end FastConfirmation.Spec
+
+end

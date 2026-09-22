@@ -1,11 +1,14 @@
-import FastConfirmation.Spec.Proof.CoveredMargin
-import FastConfirmation.Spec.Proof.SelectedEdgeGeometry
-import FastConfirmation.Spec.Proof.SelectedTraceFilterPipeline
-import FastConfirmation.Spec.Proof.SelectedTraceFFGRealizationPipeline
-import FastConfirmation.Spec.Proof.SelectedCommitteeSupport
-import FastConfirmation.Spec.Proof.SelectedMarginConstruction
-import FastConfirmation.Spec.Proof.EndpointLedgerMinimal
-import FastConfirmation.Spec.Proof.FutureSiblingScore
+module
+public import FastConfirmation.Spec.Proof.CoveredMargin
+public import FastConfirmation.Spec.Proof.SelectedEdgeGeometry
+public import FastConfirmation.Spec.Proof.SelectedTraceFilterPipeline
+public import FastConfirmation.Spec.Proof.SelectedTraceFFGRealizationPipeline
+public import FastConfirmation.Spec.Proof.SelectedCommitteeSupport
+public import FastConfirmation.Spec.Proof.SelectedMarginConstruction
+public import FastConfirmation.Spec.Proof.EndpointLedgerMinimal
+public import FastConfirmation.Spec.Proof.FutureSiblingScore
+
+@[expose] public section
 
 /-!
 # Complete construction of coverage-aware selected margins
@@ -1039,3 +1042,5 @@ theorem Spec_Monotonicity_of_selectedPipeline_minimal
         E.confirmed_root_known_selected cfg ext hSA v hv k))
 
 end FastConfirmation.Spec
+
+end

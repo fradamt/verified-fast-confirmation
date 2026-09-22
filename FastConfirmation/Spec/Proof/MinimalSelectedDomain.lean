@@ -1,5 +1,8 @@
-import FastConfirmation.Spec.Proof.FindLatestSafety
-import FastConfirmation.Spec.Proof.MarginProducer
+module
+public import FastConfirmation.Spec.Proof.FindLatestSafety
+public import FastConfirmation.Spec.Proof.MarginProducer
+
+@[expose] public section
 
 /-!
 # Minimal coherence domain for strict selected-result safety
@@ -1333,3 +1336,5 @@ theorem safeFrom_find_latest_confirmed_descendant_of_selectedMargins_minimal
 end Execution
 
 end FastConfirmation.Spec
+
+end

@@ -1,7 +1,10 @@
-import FastConfirmation.Spec.Proof.Engine
-import FastConfirmation.Spec.Proof.Delivery
-import FastConfirmation.Spec.Proof.SupportTransport
-import FastConfirmation.Spec.Proof.QuorumAccounting
+module
+public import FastConfirmation.Spec.Proof.Engine
+public import FastConfirmation.Spec.Proof.Delivery
+public import FastConfirmation.Spec.Proof.SupportTransport
+public import FastConfirmation.Spec.Proof.QuorumAccounting
+
+@[expose] public section
 
 /-!
 # Spec / Proof / EngineSupport: recorded-support membership
@@ -231,3 +234,5 @@ theorem recorded_support_lower_HS {E : Execution Root}
   exact mem_AttSupporters_honest cfg ext (hw := hw) (hmH := hmH) hhb hec hgen hih hact huns hlm hsupp
 
 end FastConfirmation.Spec
+
+end

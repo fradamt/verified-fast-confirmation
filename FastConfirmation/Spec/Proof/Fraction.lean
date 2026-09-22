@@ -1,6 +1,9 @@
-import FastConfirmation.Spec.Proof.Registry
-import Mathlib.Algebra.Order.BigOperators.Group.Finset
-import Mathlib.Tactic
+module
+public import FastConfirmation.Spec.Proof.Registry
+public import Mathlib.Algebra.Order.BigOperators.Group.Finset
+public import Mathlib.Tactic
+
+@[expose] public section
 
 /-!
 # Spec / Proof / Fraction
@@ -186,3 +189,5 @@ theorem Pspec_nondecreasing (a : Slot) {b b' : Slot}
 end Execution
 
 end FastConfirmation.Spec
+
+end

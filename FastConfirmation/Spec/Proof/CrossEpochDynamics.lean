@@ -1,5 +1,8 @@
-import FastConfirmation.Spec.Proof.Remainder
-import FastConfirmation.Spec.Proof.Growth
+module
+public import FastConfirmation.Spec.Proof.Remainder
+public import FastConfirmation.Spec.Proof.Growth
+
+@[expose] public section
 
 /-!
 # Cross-epoch honest-class dynamics
@@ -210,3 +213,5 @@ theorem hgrowAX_of_committee_support
 end Execution
 
 end FastConfirmation.Spec
+
+end

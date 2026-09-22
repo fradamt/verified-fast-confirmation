@@ -1,5 +1,8 @@
-import FastConfirmation.Spec.Proof.AnchorFacade
-import FastConfirmation.Spec.Proof.ResidualMechanicalII
+module
+public import FastConfirmation.Spec.Proof.AnchorFacade
+public import FastConfirmation.Spec.Proof.ResidualMechanicalII
+
+@[expose] public section
 
 /-!
 # Spec / Proof / ShellInstantiation: constructing the engine certificate input
@@ -192,3 +195,5 @@ theorem spec_safety_shell_residuals
     (fun E hSA => E.soundResiduals_of_shell cfg ext hSA (h E hSA))
 
 end FastConfirmation.Spec
+
+end

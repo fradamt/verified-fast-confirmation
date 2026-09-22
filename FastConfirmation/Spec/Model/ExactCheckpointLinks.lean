@@ -1,4 +1,7 @@
-import FastConfirmation.Spec.Model.FFGStateSemantics
+module
+public import FastConfirmation.Spec.Model.FFGStateSemantics
+
+@[expose] public section
 
 /-!
 # Spec / Model / ExactCheckpointLinks
@@ -182,3 +185,5 @@ abbrev ExactLinkValidity
 end ChainFFGState
 
 end FastConfirmation.Spec
+
+end

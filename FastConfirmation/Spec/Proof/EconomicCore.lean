@@ -1,5 +1,8 @@
-import FastConfirmation.Spec.Proof.ExportWiring
-import FastConfirmation.Spec.Proof.HonestWeight
+module
+public import FastConfirmation.Spec.Proof.ExportWiring
+public import FastConfirmation.Spec.Proof.HonestWeight
+
+@[expose] public section
 
 /-!
 # Spec / Proof / EconomicCore: the economic-core closure
@@ -307,3 +310,5 @@ theorem hXmono_of_fresh (hhb : HonestBehavior cfg ext E) (hec : ExternalsCoheren
 end Execution
 
 end FastConfirmation.Spec
+
+end

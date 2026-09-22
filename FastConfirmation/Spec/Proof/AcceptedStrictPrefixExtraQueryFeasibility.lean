@@ -1,5 +1,8 @@
-import FastConfirmation.Spec.Proof.CausalQueryTraceAdapter
-import FastConfirmation.Spec.Proof.SelectedMarginConstruction
+module
+public import FastConfirmation.Spec.Proof.CausalQueryTraceAdapter
+public import FastConfirmation.Spec.Proof.SelectedMarginConstruction
+
+@[expose] public section
 
 /-!
 # Strict-prefix ground-vote accounting at an accepted query prefix
@@ -292,3 +295,5 @@ theorem GlobalScheduledQueryPrefixCompatibility.baseStrip_of_staleGroundReplay
 
 end AllowedFCRCalls
 end FastConfirmation.Spec
+
+end

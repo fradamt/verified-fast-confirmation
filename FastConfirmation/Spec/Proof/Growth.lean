@@ -1,4 +1,7 @@
-import FastConfirmation.Spec.Proof.Remainder
+module
+public import FastConfirmation.Spec.Proof.Remainder
+
+@[expose] public section
 
 /-!
 # Spec / Proof / Growth: the aggregate window-growth facts
@@ -295,3 +298,5 @@ theorem hbudget_sameEpoch (hbb : ByzantineBound cfg E) (hec : ExternalsCoherence
 end Execution
 
 end FastConfirmation.Spec
+
+end

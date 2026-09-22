@@ -1,7 +1,10 @@
-import FastConfirmation.Spec.Proof.Anchoring
-import FastConfirmation.Spec.Proof.Dominance
-import FastConfirmation.Spec.Proof.Closing
-import FastConfirmation.Spec.Proof.EngineCore
+module
+public import FastConfirmation.Spec.Proof.Anchoring
+public import FastConfirmation.Spec.Proof.Dominance
+public import FastConfirmation.Spec.Proof.Closing
+public import FastConfirmation.Spec.Proof.EngineCore
+
+@[expose] public section
 
 /-!
 # Spec / Proof / AnchorThread: `ConfirmedWithAnchor` and the covering composition
@@ -427,3 +430,5 @@ theorem Spec_Monotonicity_of_selectedCore
       (fun E hSA v hv k => E.confirmed_root_known_selected cfg ext hSA v hv k))
 
 end FastConfirmation.Spec
+
+end

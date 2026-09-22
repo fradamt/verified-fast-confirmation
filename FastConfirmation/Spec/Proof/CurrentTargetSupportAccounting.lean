@@ -1,6 +1,9 @@
-import FastConfirmation.Spec.Proof.EconomicRounding
-import FastConfirmation.Spec.Proof.HonestWeight
-import FastConfirmation.Spec.Proof.SelectedA32Support
+module
+public import FastConfirmation.Spec.Proof.EconomicRounding
+public import FastConfirmation.Spec.Proof.HonestWeight
+public import FastConfirmation.Spec.Proof.SelectedA32Support
+
+@[expose] public section
 
 /-!
 # Exact accounting for the current-target prediction score
@@ -312,3 +315,5 @@ theorem currentTarget_nonhonest_weight_le_adversarial
 end Execution
 
 end FastConfirmation.Spec
+
+end

@@ -1,6 +1,9 @@
-import Mathlib.Tactic
-import FastConfirmation.Spec.Proof.AcceptedResetCheckpointClassification
-import FastConfirmation.Spec.Proof.AcceptedScheduledPrefixGeometry
+module
+public import Mathlib.Tactic
+public import FastConfirmation.Spec.Proof.AcceptedResetCheckpointClassification
+public import FastConfirmation.Spec.Proof.AcceptedScheduledPrefixGeometry
+
+@[expose] public section
 
 /-!
 # Accepted realized-finalization timing
@@ -1143,3 +1146,5 @@ end AcceptedFinalizationLagCounterpattern
 
 
 end FastConfirmation.Spec
+
+end

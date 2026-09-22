@@ -1,7 +1,8 @@
-import FastConfirmation.Spec.Model
-import FastConfirmation.Spec.ProvenTheorems
-import FastConfirmation.Spec.Proof.AcceptedStrictPrefixExtraQueryCounterexample
-import FastConfirmation.Spec.Proof.AcceptedPinnedEconomicsStrictPrefixExtraQueryCounterexample
+module
+public import FastConfirmation.Spec.Model
+public import FastConfirmation.Spec.ProvenTheorems
+public import FastConfirmation.Spec.Proof.AcceptedStrictPrefixExtraQueryCounterexample
+public import FastConfirmation.Spec.Proof.AcceptedPinnedEconomicsStrictPrefixExtraQueryCounterexample
 
 /-!
 # Spec — facade

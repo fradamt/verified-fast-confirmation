@@ -1,10 +1,11 @@
-import FastConfirmation.Paper.HFC.Model.Checkpoint
-import FastConfirmation.Paper.HFC.Model.FFGVote
-import FastConfirmation.Paper.HFC.Model.Justification
-import FastConfirmation.Paper.HFC.Model.FFGFilter
-import FastConfirmation.Paper.HFC.Model.Rule
-import FastConfirmation.Paper.HFC.Model.FFGRule
-import FastConfirmation.Paper.HFC.Model.HonestFFG
+module
+public import FastConfirmation.Paper.HFC.Model.Checkpoint
+public import FastConfirmation.Paper.HFC.Model.FFGVote
+public import FastConfirmation.Paper.HFC.Model.Justification
+public import FastConfirmation.Paper.HFC.Model.FFGFilter
+public import FastConfirmation.Paper.HFC.Model.Rule
+public import FastConfirmation.Paper.HFC.Model.FFGRule
+public import FastConfirmation.Paper.HFC.Model.HonestFFG
 
 /-!
 # HFC / Model

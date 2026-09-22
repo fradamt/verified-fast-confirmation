@@ -1,5 +1,8 @@
-import FastConfirmation.Spec.Proof.FilterFuel
-import FastConfirmation.Spec.Proof.AncestryRoots
+module
+public import FastConfirmation.Spec.Proof.FilterFuel
+public import FastConfirmation.Spec.Proof.AncestryRoots
+
+@[expose] public section
 
 /-!
 # Spec / Proof / Descent
@@ -150,3 +153,5 @@ theorem is_ancestor_get_head {store : Store Root}
     ((get_filtered_block_tree cfg store).length + 1) hfuel
 
 end FastConfirmation.Spec
+
+end

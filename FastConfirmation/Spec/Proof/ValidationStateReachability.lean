@@ -1,4 +1,7 @@
-import FastConfirmation.Spec.Proof.Registry
+module
+public import FastConfirmation.Spec.Proof.Registry
+
+@[expose] public section
 
 /-!
 The totalized block-state map retains `default` outside its keyed domain.
@@ -203,3 +206,5 @@ theorem Execution.ScheduledEventPrefix.unknownBlockStatesDefault
       (E.unknownBlockStatesDefault_store cfg ext hgen p.node p.previousSecond))
 
 end FastConfirmation.Spec
+
+end

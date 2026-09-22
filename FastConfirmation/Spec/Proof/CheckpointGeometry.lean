@@ -1,4 +1,7 @@
-import FastConfirmation.Spec.Model.Execution
+module
+public import FastConfirmation.Spec.Model.Execution
+
+@[expose] public section
 
 /-!
 # Elementary checkpoint geometry
@@ -21,3 +24,5 @@ theorem checkpoint_eq_of_epoch_root_eq
   simp_all
 
 end FastConfirmation.Spec
+
+end

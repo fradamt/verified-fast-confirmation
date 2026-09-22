@@ -1,4 +1,7 @@
-import FastConfirmation.Spec.Proof.AnchorClose
+module
+public import FastConfirmation.Spec.Proof.AnchorClose
+
+@[expose] public section
 
 /-!
 # Safety of the exact `find_latest_confirmed_descendant` call
@@ -121,3 +124,5 @@ theorem safeFrom_find_latest_confirmed_descendant_of_confirmMargin
 end Execution
 
 end FastConfirmation.Spec
+
+end

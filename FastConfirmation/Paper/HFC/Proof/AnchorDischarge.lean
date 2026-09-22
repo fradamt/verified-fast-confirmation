@@ -1,4 +1,7 @@
-import FastConfirmation.Paper.HFC.Proof.Justification
+module
+public import FastConfirmation.Paper.HFC.Proof.Justification
+
+@[expose] public section
 
 /-!
 # HFC / Proof / AnchorDischarge
@@ -48,3 +51,5 @@ theorem greatestJustifiedAnchorInputs_of_interface {C : Anchor n} {fm : FaultMod
   exact ⟨⟨GUc, hdel.justified hble ⟨v, hv, hjust⟩ hw ht', hep, hble⟩, hGF hw ht'⟩
 
 end FastConfirmation.HFC
+
+end

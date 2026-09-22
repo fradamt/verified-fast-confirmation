@@ -1,4 +1,7 @@
-import FastConfirmation.Spec.Proof.SelectedFilterChainGeometry
+module
+public import FastConfirmation.Spec.Proof.SelectedFilterChainGeometry
+
+@[expose] public section
 
 /-!
 # Mechanical selected-FFG realization
@@ -524,3 +527,5 @@ theorem retainedFilterTipPlacement_of_available_seed
   exact ⟨hplace, hfresh⟩
 
 end FastConfirmation.Spec
+
+end

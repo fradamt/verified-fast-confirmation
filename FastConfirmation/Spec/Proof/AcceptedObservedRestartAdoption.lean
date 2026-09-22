@@ -1,5 +1,8 @@
-import FastConfirmation.Spec.Proof.AcceptedCandidateHistoryRecurrence
-import FastConfirmation.Spec.Proof.AcceptedResetAdoption
+module
+public import FastConfirmation.Spec.Proof.AcceptedCandidateHistoryRecurrence
+public import FastConfirmation.Spec.Proof.AcceptedResetAdoption
+
+@[expose] public section
 
 /-!
 # Accepted active-observed restart adoption
@@ -159,3 +162,5 @@ theorem ObservedResetCandidateInputAt.actualFCRGuardedObservedAdoption
 end Execution
 
 end FastConfirmation.Spec
+
+end

@@ -1,4 +1,7 @@
-import FastConfirmation.Spec.Proof.FCRCallContracts
+module
+public import FastConfirmation.Spec.Proof.FCRCallContracts
+
+@[expose] public section
 
 /-!
 # Allowed fast-confirmation call traces
@@ -176,13 +179,13 @@ def canUpdate (runtime : Runtime Root) : Bool :=
     decide (slotPhaseMs cfg runtime.elapsedMs < get_attestation_due_ms cfg) &&
     pastAttestationsApplied runtime currentSlot
 
-private def bump (runtime : Runtime Root) : Runtime Root :=
+def bump (runtime : Runtime Root) : Runtime Root :=
   { runtime with nextActionPosition := runtime.nextActionPosition + 1 }
 
-private def reseatStore (runtime : Runtime Root) (store : Store Root) : Runtime Root :=
+def reseatStore (runtime : Runtime Root) (store : Store Root) : Runtime Root :=
   { runtime with fcrStore := { runtime.fcrStore with store := store } }
 
-private def setElapsed (runtime : Runtime Root) (elapsedMs : ℕ) : Runtime Root :=
+def setElapsed (runtime : Runtime Root) (elapsedMs : ℕ) : Runtime Root :=
   { runtime with elapsedMs := elapsedMs }
 
 /-- Execute one scheduler action.  `none` means that the proposed action order
@@ -548,3 +551,5 @@ theorem execution_boundary_recurrence_embeds
 end AllowedFCRCalls
 
 end FastConfirmation.Spec
+
+end

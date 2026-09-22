@@ -1,6 +1,9 @@
-import FastConfirmation.Spec.Proof.Provenance
-import FastConfirmation.Spec.Proof.WFTrajectory
-import FastConfirmation.Spec.Proof.HonestWeight
+module
+public import FastConfirmation.Spec.Proof.Provenance
+public import FastConfirmation.Spec.Proof.WFTrajectory
+public import FastConfirmation.Spec.Proof.HonestWeight
+
+@[expose] public section
 
 /-!
 # Spec / Proof / Delivery
@@ -992,3 +995,5 @@ theorem Execution.latest_message_root_head {E : Execution Root}
   exact E.latest_message_root cfg ext hhb hec hgen hv hvote hmsg hmepoch.symm
 
 end FastConfirmation.Spec
+
+end

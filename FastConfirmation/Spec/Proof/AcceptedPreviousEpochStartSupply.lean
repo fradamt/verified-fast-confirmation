@@ -1,6 +1,9 @@
-import Mathlib.Tactic
-import FastConfirmation.Spec.Proof.AcceptedHistoricalA32CallSupplier
-import FastConfirmation.Spec.Proof.AcceptedCurrentSameSourceHistory
+module
+public import Mathlib.Tactic
+public import FastConfirmation.Spec.Proof.AcceptedHistoricalA32CallSupplier
+public import FastConfirmation.Spec.Proof.AcceptedCurrentSameSourceHistory
+
+@[expose] public section
 
 /-!
 # Previous-epoch result supply at an actual epoch-start call
@@ -527,3 +530,5 @@ end Execution
 
 
 end FastConfirmation.Spec
+
+end

@@ -1,9 +1,12 @@
-import FastConfirmation.Spec.Proof.ShellInstantiation
-import FastConfirmation.Spec.Proof.InterfaceRewire
-import FastConfirmation.Spec.Proof.Engine
-import FastConfirmation.Spec.Proof.EdgeDynamics
-import FastConfirmation.Spec.Proof.EngineTransport
-import FastConfirmation.Spec.Proof.DynamicsClosure
+module
+public import FastConfirmation.Spec.Proof.ShellInstantiation
+public import FastConfirmation.Spec.Proof.InterfaceRewire
+public import FastConfirmation.Spec.Proof.Engine
+public import FastConfirmation.Spec.Proof.EdgeDynamics
+public import FastConfirmation.Spec.Proof.EngineTransport
+public import FastConfirmation.Spec.Proof.DynamicsClosure
+
+@[expose] public section
 
 /-!
 # Spec / Proof / IHMechanize: constructing IH-dependent inputs
@@ -321,3 +324,5 @@ theorem hdeltas_of_monotone (w : ValidatorIndex) (m : ℕ) (b : Root) (lo es : S
 end Execution
 
 end FastConfirmation.Spec
+
+end

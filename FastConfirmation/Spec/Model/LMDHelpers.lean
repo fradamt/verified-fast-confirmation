@@ -1,4 +1,7 @@
-import FastConfirmation.Spec.Model.FCRStore
+module
+public import FastConfirmation.Spec.Model.FCRStore
+
+@[expose] public section
 
 /-!
 # Spec / Model / LMDHelpers
@@ -347,3 +350,5 @@ def is_confirmed_chain_safe (fcr_store : FastConfirmationStore Root)
       is_one_confirmed cfg ext store (get_previous_balance_source fcr_store) root)
 
 end FastConfirmation.Spec
+
+end

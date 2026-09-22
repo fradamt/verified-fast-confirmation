@@ -1,6 +1,9 @@
-import Mathlib.Tactic
-import FastConfirmation.Paper.LMDGhost.Proof.Support
-import FastConfirmation.Paper.LMDGhost.Proof.Positivity
+module
+public import Mathlib.Tactic
+public import FastConfirmation.Paper.LMDGhost.Proof.Support
+public import FastConfirmation.Paper.LMDGhost.Proof.Positivity
+
+@[expose] public section
 
 /-!
 # LMDGhost / Proof / Monotone
@@ -137,3 +140,5 @@ theorem P_nondecreasing (A : Anchor n) (cm : Committees n) (fm : FaultModel n)
   nlinarith [hHgrow, hHJ0, hgH0, hJpos.le]
 
 end FastConfirmation.LMDGhost
+
+end

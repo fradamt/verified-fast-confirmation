@@ -1,6 +1,9 @@
-import FastConfirmation.Spec.Proof.SelectedFilter
-import FastConfirmation.Spec.Proof.CheckpointDomain
-import FastConfirmation.Spec.Proof.FFGAccountability
+module
+public import FastConfirmation.Spec.Proof.SelectedFilter
+public import FastConfirmation.Spec.Proof.CheckpointDomain
+public import FastConfirmation.Spec.Proof.FFGAccountability
+
+@[expose] public section
 
 /-!
 # Spec / Proof / SelectedFilterBridge: concrete FFG/store visibility
@@ -746,3 +749,5 @@ theorem child_filtered_of_filterTipCertificate_nonempty
   exact hcert.child_filtered cfg hparent
 
 end FastConfirmation.Spec
+
+end

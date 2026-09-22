@@ -1,5 +1,8 @@
-import FastConfirmation.Spec.Proof.CurrentTargetA32Support
-import FastConfirmation.Spec.Proof.FFGAccountability
+module
+public import FastConfirmation.Spec.Proof.CurrentTargetA32Support
+public import FastConfirmation.Spec.Proof.FFGAccountability
+
+@[expose] public section
 
 /-!
 # No-conflict certificate pinning (paper Lemma 42)
@@ -864,3 +867,5 @@ theorem noConflict_certifiedJustified_root_eq_currentTarget
 end Execution
 
 end FastConfirmation.Spec
+
+end

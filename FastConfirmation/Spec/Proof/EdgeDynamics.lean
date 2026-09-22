@@ -1,4 +1,7 @@
-import FastConfirmation.Spec.Proof.ForkAssembly
+module
+public import FastConfirmation.Spec.Proof.ForkAssembly
+
+@[expose] public section
 
 /-!
 # Spec / Proof / EdgeDynamics: constructing `ForkEdgeInput`
@@ -323,3 +326,5 @@ theorem justified_balance_source_epoch_lt_horizon
 end Execution
 
 end FastConfirmation.Spec
+
+end

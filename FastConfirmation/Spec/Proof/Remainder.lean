@@ -1,6 +1,9 @@
-import FastConfirmation.Spec.Proof.EconomicCore
-import FastConfirmation.Spec.Proof.EngineTransport
-import FastConfirmation.Spec.Proof.VoteLanding
+module
+public import FastConfirmation.Spec.Proof.EconomicCore
+public import FastConfirmation.Spec.Proof.EngineTransport
+public import FastConfirmation.Spec.Proof.VoteLanding
+
+@[expose] public section
 
 /-!
 # Spec / Proof / Remainder: the mechanical remainder
@@ -219,3 +222,5 @@ theorem hjc_le_of_store_epoch_bound (hec : ExternalsCoherence cfg ext E)
 end Execution
 
 end FastConfirmation.Spec
+
+end

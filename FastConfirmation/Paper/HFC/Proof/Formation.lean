@@ -1,6 +1,9 @@
-import FastConfirmation.Paper.HFC.Proof.Justification
-import FastConfirmation.Paper.LMDGhost.Proof.Support
-import FastConfirmation.Paper.LMDGhost.Model.Assumptions
+module
+public import FastConfirmation.Paper.HFC.Proof.Justification
+public import FastConfirmation.Paper.LMDGhost.Proof.Support
+public import FastConfirmation.Paper.LMDGhost.Model.Assumptions
+
+@[expose] public section
 
 /-!
 # HFC / Proof / Formation
@@ -139,3 +142,5 @@ theorem checkpoint_justified_of_canonical (bal₀ : Stakes n) {τ : Timing}
   exact Justified.link (hSjust hw ht') hbound
 
 end FastConfirmation.HFC
+
+end

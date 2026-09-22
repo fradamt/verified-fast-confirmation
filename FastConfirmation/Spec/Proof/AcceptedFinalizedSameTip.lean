@@ -1,5 +1,8 @@
-import FastConfirmation.Spec.Proof.AcceptedResetCheckpointRealization
-import FastConfirmation.Spec.Proof.ExactCheckpointLinks
+module
+public import FastConfirmation.Spec.Proof.AcceptedResetCheckpointRealization
+public import FastConfirmation.Spec.Proof.ExactCheckpointLinks
+
+@[expose] public section
 
 /-!
 # Accepted finalized/justified evidence on one concrete tip
@@ -363,3 +366,5 @@ end AcceptedUnrealizedFinalitySameTipAt
 
 
 end FastConfirmation.Spec
+
+end

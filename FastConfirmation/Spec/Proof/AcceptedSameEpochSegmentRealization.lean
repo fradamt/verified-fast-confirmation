@@ -1,6 +1,9 @@
-import Mathlib.Tactic
-import FastConfirmation.Spec.Proof.AcceptedBlockTransitionProvenance
-import FastConfirmation.Spec.Proof.FFGSourceCoherence
+module
+public import Mathlib.Tactic
+public import FastConfirmation.Spec.Proof.AcceptedBlockTransitionProvenance
+public import FastConfirmation.Spec.Proof.FFGSourceCoherence
+
+@[expose] public section
 
 /-!
 # Guarded realization of accepted same-epoch ancestry segments
@@ -244,3 +247,5 @@ theorem knownSameEpochAncestrySegment_toAcceptedProjectedSameEpochSegment_of_cor
 end Execution
 
 end FastConfirmation.Spec
+
+end

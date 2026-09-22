@@ -1,9 +1,12 @@
-import FastConfirmation.Spec.Proof.CurrentTargetFutureSupport
-import FastConfirmation.Spec.Proof.SelectedA32Support
-import FastConfirmation.Spec.Proof.FFGSourceCoherence
-import FastConfirmation.Spec.Proof.FFGGlobalCheckpointTrajectory
-import FastConfirmation.Spec.Proof.Nucleus
-import FastConfirmation.Spec.Proof.ExportWiring
+module
+public import FastConfirmation.Spec.Proof.CurrentTargetFutureSupport
+public import FastConfirmation.Spec.Proof.SelectedA32Support
+public import FastConfirmation.Spec.Proof.FFGSourceCoherence
+public import FastConfirmation.Spec.Proof.FFGGlobalCheckpointTrajectory
+public import FastConfirmation.Spec.Proof.Nucleus
+public import FastConfirmation.Spec.Proof.ExportWiring
+
+@[expose] public section
 
 /-!
 # Current-target support as concrete A3.2 votes
@@ -939,3 +942,5 @@ theorem will_current_target_be_justified_honestTargetQuorumBefore
 end Execution
 
 end FastConfirmation.Spec
+
+end

@@ -1,6 +1,9 @@
-import FastConfirmation.Spec.Proof.CurrentTargetA32Support
-import FastConfirmation.Spec.Proof.FFGJustifiedCheckpointCache
-import FastConfirmation.Spec.Proof.PaperA32ProjectionCore
+module
+public import FastConfirmation.Spec.Proof.CurrentTargetA32Support
+public import FastConfirmation.Spec.Proof.FFGJustifiedCheckpointCache
+public import FastConfirmation.Spec.Proof.PaperA32ProjectionCore
+
+@[expose] public section
 
 /-!
 # Concrete realization of one paper-A3.2 support record
@@ -453,3 +456,5 @@ theorem accepted_paperA32IncludedAtTip_of_concreteQuorum
 end Execution
 
 end FastConfirmation.Spec
+
+end

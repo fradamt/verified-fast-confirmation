@@ -1,5 +1,8 @@
-import Mathlib.Tactic
-import FastConfirmation.Spec.Model.Execution
+module
+public import Mathlib.Tactic
+public import FastConfirmation.Spec.Model.Execution
+
+@[expose] public section
 
 /-!
 # Spec / Model / AcceptedExecution
@@ -423,3 +426,5 @@ end AcceptedBlockTransition
 end Execution
 
 end FastConfirmation.Spec
+
+end

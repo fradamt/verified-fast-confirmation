@@ -1,5 +1,8 @@
-import Mathlib.Tactic
-import FastConfirmation.Spec.Proof.AcceptedActualFCRNextSlotSafetyFold
+module
+public import Mathlib.Tactic
+public import FastConfirmation.Spec.Proof.AcceptedActualFCRNextSlotSafetyFold
+
+@[expose] public section
 
 /-!
 # Base execution for joint accepted-FCR non-vacuity
@@ -994,3 +997,5 @@ theorem witnessTrustedAnchorBoundaryAligned :
 
 end AcceptedActualFCRJointNonVacuityBase
 end FastConfirmation.Spec
+
+end

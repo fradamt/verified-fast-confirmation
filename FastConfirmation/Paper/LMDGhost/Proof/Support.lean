@@ -1,8 +1,11 @@
-import Mathlib.Tactic
-import FastConfirmation.Paper.Core.Model.View
-import FastConfirmation.Paper.Core.Model.Honest
-import FastConfirmation.Paper.LMDGhost.Model.Weights
-import FastConfirmation.Paper.LMDGhost.Proof.Blocks
+module
+public import Mathlib.Tactic
+public import FastConfirmation.Paper.Core.Model.View
+public import FastConfirmation.Paper.Core.Model.Honest
+public import FastConfirmation.Paper.LMDGhost.Model.Weights
+public import FastConfirmation.Paper.LMDGhost.Proof.Blocks
+
+@[expose] public section
 
 /-!
 # LMDGhost / Proof / Support
@@ -216,3 +219,5 @@ theorem H_view_indep {fm : FaultModel n} {τ : Timing} {cm : Committees n}
   · simp only [hih, false_and]
 
 end FastConfirmation.LMDGhost
+
+end

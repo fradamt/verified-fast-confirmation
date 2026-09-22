@@ -1,6 +1,9 @@
-import FastConfirmation.Spec.Proof.AcceptedHistoricalA32GlobalTrajectory
-import FastConfirmation.Spec.Proof.AcceptedResetCheckpointClassification
-import FastConfirmation.Spec.Proof.AcceptedCurrentTargetGateBridge
+module
+public import FastConfirmation.Spec.Proof.AcceptedHistoricalA32GlobalTrajectory
+public import FastConfirmation.Spec.Proof.AcceptedResetCheckpointClassification
+public import FastConfirmation.Spec.Proof.AcceptedCurrentTargetGateBridge
+
+@[expose] public section
 
 /-!
 # One-step historical A3.2 payload induction
@@ -988,3 +991,5 @@ end Execution
 
 
 end FastConfirmation.Spec
+
+end

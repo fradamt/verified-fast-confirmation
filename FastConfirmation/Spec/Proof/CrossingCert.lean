@@ -1,6 +1,9 @@
-import FastConfirmation.Spec.Proof.CertExtract
-import FastConfirmation.Spec.Proof.Growth
-import FastConfirmation.Spec.Proof.LastAlgebra
+module
+public import FastConfirmation.Spec.Proof.CertExtract
+public import FastConfirmation.Spec.Proof.Growth
+public import FastConfirmation.Spec.Proof.LastAlgebra
+
+@[expose] public section
 
 /-!
 # Spec / Proof / CrossingCert: the full-span crossing certificate
@@ -811,3 +814,5 @@ theorem crossing_endpoint_of_confirmed
 end Execution
 
 end FastConfirmation.Spec
+
+end

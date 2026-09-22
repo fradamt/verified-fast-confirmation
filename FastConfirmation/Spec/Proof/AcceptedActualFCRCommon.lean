@@ -1,6 +1,9 @@
-import FastConfirmation.Spec.Proof.AcceptedHistoricalA32Induction
-import FastConfirmation.Spec.Proof.AcceptedSelectedJustifiedOrientation
-import FastConfirmation.Spec.Proof.AcceptedCandidateHistoryRecurrence
+module
+public import FastConfirmation.Spec.Proof.AcceptedHistoricalA32Induction
+public import FastConfirmation.Spec.Proof.AcceptedSelectedJustifiedOrientation
+public import FastConfirmation.Spec.Proof.AcceptedCandidateHistoryRecurrence
+
+@[expose] public section
 
 /-!
 # Common accepted actual-FCR invariants
@@ -197,3 +200,5 @@ theorem confirmed_known_of_acceptedGlobalTrajectory
 end Execution
 
 end FastConfirmation.Spec
+
+end

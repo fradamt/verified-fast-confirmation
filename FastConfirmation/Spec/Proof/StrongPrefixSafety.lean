@@ -1,8 +1,11 @@
-import FastConfirmation.Spec.Proof.ShellInstantiation
-import FastConfirmation.Spec.Proof.AheadFacade
-import FastConfirmation.Spec.Proof.ExportWiring
-import FastConfirmation.Spec.Proof.FinalWiring
-import FastConfirmation.Spec.Proof.Remainder
+module
+public import FastConfirmation.Spec.Proof.ShellInstantiation
+public import FastConfirmation.Spec.Proof.AheadFacade
+public import FastConfirmation.Spec.Proof.ExportWiring
+public import FastConfirmation.Spec.Proof.FinalWiring
+public import FastConfirmation.Spec.Proof.Remainder
+
+@[expose] public section
 
 /-!
 # Strong-prefix safety interfaces
@@ -264,3 +267,5 @@ theorem Spec_Monotonicity_of_strongPrefix_inputs_of_confirmed_known
   Spec_Monotonicity_of_strongPrefix_inputs cfg ext h (hkc_of_confirmed_known cfg ext hck)
 
 end FastConfirmation.Spec
+
+end

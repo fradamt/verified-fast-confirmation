@@ -1,6 +1,9 @@
-import Mathlib.Tactic
-import FastConfirmation.Spec.Proof.AcceptedHistoricalFinalizedPlacementAdapters
-import FastConfirmation.Spec.Proof.AcceptedPhaseSourceCarriers
+module
+public import Mathlib.Tactic
+public import FastConfirmation.Spec.Proof.AcceptedHistoricalFinalizedPlacementAdapters
+public import FastConfirmation.Spec.Proof.AcceptedPhaseSourceCarriers
+
+@[expose] public section
 
 /-!
 # Historical-lineage finalized placement
@@ -766,3 +769,5 @@ end AcceptedRetainedPhaseSourceCarrierAt
 end Execution
 
 end FastConfirmation.Spec
+
+end

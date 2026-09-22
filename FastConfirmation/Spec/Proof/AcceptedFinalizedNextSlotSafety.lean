@@ -1,8 +1,11 @@
-import FastConfirmation.Spec.Proof.AcceptedActualFCRContractScaffold
-import FastConfirmation.Spec.Proof.AcceptedSelectedJustifiedOrientation
-import FastConfirmation.Spec.Proof.AcceptedCurrentTargetLowerContracts
-import FastConfirmation.Spec.Proof.AnchorFacade
-import FastConfirmation.Spec.Proof.AcceptedCandidateHistoryRecurrence
+module
+public import FastConfirmation.Spec.Proof.AcceptedActualFCRContractScaffold
+public import FastConfirmation.Spec.Proof.AcceptedSelectedJustifiedOrientation
+public import FastConfirmation.Spec.Proof.AcceptedCurrentTargetLowerContracts
+public import FastConfirmation.Spec.Proof.AnchorFacade
+public import FastConfirmation.Spec.Proof.AcceptedCandidateHistoryRecurrence
+
+@[expose] public section
 
 /-!
 # Accepted finalized-reset safety from the next slot
@@ -165,3 +168,5 @@ theorem finalizedResetCandidateInput_safeFrom_of_nextSlotSynchrony
 end Execution
 
 end FastConfirmation.Spec
+
+end

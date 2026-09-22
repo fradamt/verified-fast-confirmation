@@ -1,7 +1,10 @@
-import FastConfirmation.Spec.Proof.Confinement
-import FastConfirmation.Spec.Proof.ByzVpre
-import FastConfirmation.Spec.Proof.Cruxes
-import FastConfirmation.Spec.Proof.DynamicsClosure
+module
+public import FastConfirmation.Spec.Proof.Confinement
+public import FastConfirmation.Spec.Proof.ByzVpre
+public import FastConfirmation.Spec.Proof.Cruxes
+public import FastConfirmation.Spec.Proof.DynamicsClosure
+
+@[expose] public section
 
 /-!
 # Spec / Proof / EdgeResiduals: per-edge inputs for the confirm-margin supply
@@ -254,3 +257,5 @@ theorem sclass_subset_attSupporters (hSA : SpecAssumptions cfg ext E)
 end Execution
 
 end FastConfirmation.Spec
+
+end

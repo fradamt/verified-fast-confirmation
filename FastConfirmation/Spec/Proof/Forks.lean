@@ -1,4 +1,7 @@
-import FastConfirmation.Spec.Proof.AncestryRoots
+module
+public import FastConfirmation.Spec.Proof.AncestryRoots
+
+@[expose] public section
 
 /-!
 # Spec / Proof / Forks
@@ -106,3 +109,5 @@ theorem siblings_incompatible {store : Store Root}
   · exact no_common_descendant_of_slot_le hwf hc' hc hp hpc' hpc hne.symm hle hwc' hac' hac
 
 end FastConfirmation.Spec
+
+end

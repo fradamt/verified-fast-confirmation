@@ -1,5 +1,8 @@
-import Mathlib.Tactic
-import FastConfirmation.Paper.Core.Model.View
+module
+public import Mathlib.Tactic
+public import FastConfirmation.Paper.Core.Model.View
+
+@[expose] public section
 
 /-!
 # LMDGhost / Proof / Blocks
@@ -227,3 +230,5 @@ theorem honest_supports_at_most_one_sibling {c d : Block n} (V : View n P) (i : 
     exact hincomp (ancestor_comparable (isAncestorOf_imp hc) (isAncestorOf_imp hd))
 
 end FastConfirmation
+
+end

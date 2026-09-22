@@ -1,4 +1,7 @@
-import FastConfirmation.Spec.Proof.StepDischarge
+module
+public import FastConfirmation.Spec.Proof.StepDischarge
+
+@[expose] public section
 
 /-!
 # Spec / Proof / HeadSafetyEngine: the head-safety engine shell
@@ -281,3 +284,5 @@ theorem spec_head_safety_engine {E : Execution Root} {b : Root} {n₀ : ℕ}
       exact head_descends_of_ledger_chain_v2 cfg ext hwf hsub hb hnd hchain hlast
 
 end FastConfirmation.Spec
+
+end

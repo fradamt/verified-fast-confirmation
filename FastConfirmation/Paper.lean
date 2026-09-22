@@ -1,6 +1,7 @@
-import FastConfirmation.Paper.Core
-import FastConfirmation.Paper.LMDGhost
-import FastConfirmation.Paper.HFC
+module
+public import FastConfirmation.Paper.Core
+public import FastConfirmation.Paper.LMDGhost
+public import FastConfirmation.Paper.HFC
 
 /-!
 # Paper companion

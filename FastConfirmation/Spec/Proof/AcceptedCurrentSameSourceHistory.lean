@@ -1,9 +1,12 @@
-import Mathlib.Tactic
-import FastConfirmation.Spec.Proof.AcceptedEarlyPhaseSourceWiring
-import FastConfirmation.Spec.Proof.AcceptedPathLocalFinalizedTransport
-import FastConfirmation.Spec.Proof.AcceptedFFGJustifiedMaximality
-import FastConfirmation.Spec.Proof.AcceptedCandidateHistoryRecurrence
-import FastConfirmation.Spec.Proof.AcceptedFinalizationTiming
+module
+public import Mathlib.Tactic
+public import FastConfirmation.Spec.Proof.AcceptedEarlyPhaseSourceWiring
+public import FastConfirmation.Spec.Proof.AcceptedPathLocalFinalizedTransport
+public import FastConfirmation.Spec.Proof.AcceptedFFGJustifiedMaximality
+public import FastConfirmation.Spec.Proof.AcceptedCandidateHistoryRecurrence
+public import FastConfirmation.Spec.Proof.AcceptedFinalizationTiming
+
+@[expose] public section
 
 /-!
 # Accepted current/same-epoch source history
@@ -2487,3 +2490,5 @@ theorem StrictSelectedResultMechanicalFacts.actualCurrentSame_sourceHistoryOutco
 end Execution
 
 end FastConfirmation.Spec
+
+end

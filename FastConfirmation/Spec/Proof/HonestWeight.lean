@@ -1,7 +1,10 @@
-import FastConfirmation.Spec.Proof.QuorumAccounting
-import FastConfirmation.Spec.Proof.Registry
-import FastConfirmation.Spec.Proof.StoreInvariants
-import FastConfirmation.Spec.Proof.ValidationStateReachability
+module
+public import FastConfirmation.Spec.Proof.QuorumAccounting
+public import FastConfirmation.Spec.Proof.Registry
+public import FastConfirmation.Spec.Proof.StoreInvariants
+public import FastConfirmation.Spec.Proof.ValidationStateReachability
+
+@[expose] public section
 
 /-!
 # Spec / Proof / HonestWeight
@@ -525,3 +528,5 @@ theorem honest_support_majority {E : Execution Root}
       hval htab hprov hwalk)
 
 end FastConfirmation.Spec
+
+end

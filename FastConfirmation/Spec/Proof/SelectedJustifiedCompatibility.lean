@@ -1,4 +1,7 @@
-import FastConfirmation.Spec.Proof.CausalCheckpointCompatibility
+module
+public import FastConfirmation.Spec.Proof.CausalCheckpointCompatibility
+
+@[expose] public section
 
 /-!
 # Selected-result compatibility with an endpoint justification
@@ -329,3 +332,5 @@ theorem selected_result_and_child_ancestor_of_endpoint_justified_causal_minimal
 end Execution
 
 end FastConfirmation.Spec
+
+end

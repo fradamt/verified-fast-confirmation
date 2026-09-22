@@ -1,5 +1,8 @@
-import FastConfirmation.Spec.Proof.Base
-import FastConfirmation.Spec.Proof.Registry
+module
+public import FastConfirmation.Spec.Proof.Base
+public import FastConfirmation.Spec.Proof.Registry
+
+@[expose] public section
 
 /-!
 # Spec / Proof / Arms: the base arms
@@ -278,3 +281,5 @@ theorem arms_of_confirmed
     hR8cW (Nat.mul_div_le _ 100) (div_le_hundred_mul_div_add _) hBbad
 
 end FastConfirmation.Spec
+
+end

@@ -1,5 +1,8 @@
-import FastConfirmation.Spec.Proof.HeadReroot
-import FastConfirmation.Spec.Proof.EngineStore
+module
+public import FastConfirmation.Spec.Proof.HeadReroot
+public import FastConfirmation.Spec.Proof.EngineStore
+
+@[expose] public section
 
 /-!
 # Query-local inversion of the executable FFG filter
@@ -409,3 +412,5 @@ theorem queryHead_direct_or_viableLeafBelow
     rwa [hheadJustified] at hheadResult
 
 end FastConfirmation.Spec
+
+end

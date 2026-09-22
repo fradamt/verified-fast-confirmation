@@ -1,7 +1,10 @@
-import Mathlib.Tactic
-import FastConfirmation.Spec.Proof.AcceptedActualFCRJointNonVacuityFFG
-import FastConfirmation.Spec.Proof.AcceptedActualFCRNextSlotSafetyFacade
-import FastConfirmation.Spec.Proof.AcceptedFinalizedNextSlotSafety
+module
+public import Mathlib.Tactic
+public import FastConfirmation.Spec.Proof.AcceptedActualFCRJointNonVacuityFFG
+public import FastConfirmation.Spec.Proof.AcceptedActualFCRNextSlotSafetyFacade
+public import FastConfirmation.Spec.Proof.AcceptedFinalizedNextSlotSafety
+
+@[expose] public section
 
 /-!
 # Joint accepted-FCR non-vacuity: paper inclusion and next-slot bundle
@@ -822,3 +825,5 @@ theorem acceptedActualFCRNextSlotSafetyAssumptions_nonvacuous :
 
 end AcceptedActualFCRJointNonVacuityFinal
 end FastConfirmation.Spec
+
+end

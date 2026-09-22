@@ -1,7 +1,10 @@
-import FastConfirmation.Spec.Proof.AcceptedDynamicFinalizedPlacement
-import FastConfirmation.Spec.Proof.AcceptedPhaseSourceCarriers
-import FastConfirmation.Spec.Proof.ExecutionRootReflection
-import FastConfirmation.Spec.Proof.QueryFilterViability
+module
+public import FastConfirmation.Spec.Proof.AcceptedDynamicFinalizedPlacement
+public import FastConfirmation.Spec.Proof.AcceptedPhaseSourceCarriers
+public import FastConfirmation.Spec.Proof.ExecutionRootReflection
+public import FastConfirmation.Spec.Proof.QueryFilterViability
+
+@[expose] public section
 
 /-!
 # Path-local finalized transport for accepted retained tips
@@ -387,3 +390,5 @@ end AcceptedRetainedPhaseSourceCarrierAt
 end Execution
 
 end FastConfirmation.Spec
+
+end

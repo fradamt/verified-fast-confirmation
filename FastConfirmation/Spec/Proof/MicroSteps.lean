@@ -1,5 +1,8 @@
-import FastConfirmation.Spec.Proof.ObservedDom
-import FastConfirmation.Spec.Proof.L4Fold
+module
+public import FastConfirmation.Spec.Proof.ObservedDom
+public import FastConfirmation.Spec.Proof.L4Fold
+
+@[expose] public section
 
 /-!
 # Spec / Proof / MicroSteps: structural reductions
@@ -264,3 +267,5 @@ theorem prev_greatest_justifiedIn_of_boundarySource
 end Execution
 
 end FastConfirmation.Spec
+
+end

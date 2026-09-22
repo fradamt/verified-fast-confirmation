@@ -1,5 +1,8 @@
-import FastConfirmation.Spec.Proof.InterfaceRewire
-import FastConfirmation.Spec.Proof.DynamicsClosure
+module
+public import FastConfirmation.Spec.Proof.InterfaceRewire
+public import FastConfirmation.Spec.Proof.DynamicsClosure
+
+@[expose] public section
 
 /-!
 # Spec / Proof / ForkAssembly: the `dynamics_edges` per-fork assembly
@@ -302,3 +305,5 @@ theorem spec_safety_final_residuals
     (fun E hSA => E.finalResiduals_of_ER cfg ext hSA (h E hSA))
 
 end FastConfirmation.Spec
+
+end

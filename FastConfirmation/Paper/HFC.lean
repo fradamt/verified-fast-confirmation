@@ -1,8 +1,9 @@
-import FastConfirmation.Paper.Core
-import FastConfirmation.Paper.LMDGhost
-import FastConfirmation.Paper.HFC.Model
-import FastConfirmation.Paper.HFC.TheoremStatements
-import FastConfirmation.Paper.HFC.ProvenTheorems
+module
+public import FastConfirmation.Paper.Core
+public import FastConfirmation.Paper.LMDGhost
+public import FastConfirmation.Paper.HFC.Model
+public import FastConfirmation.Paper.HFC.TheoremStatements
+public import FastConfirmation.Paper.HFC.ProvenTheorems
 
 /-!
 # HFC

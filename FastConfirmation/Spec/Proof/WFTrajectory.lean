@@ -1,5 +1,8 @@
-import FastConfirmation.Spec.Proof.BlockAgreement
-import FastConfirmation.Spec.Proof.Preservation
+module
+public import FastConfirmation.Spec.Proof.BlockAgreement
+public import FastConfirmation.Spec.Proof.Preservation
+
+@[expose] public section
 
 /-!
 # Spec / Proof / WFTrajectory
@@ -364,3 +367,5 @@ theorem Execution.store_wellFormedStore_core_plus (E : Execution Root)
     E.store_time_ge_genesis cfg ext hgws.time_ge_genesis v n⟩
 
 end FastConfirmation.Spec
+
+end

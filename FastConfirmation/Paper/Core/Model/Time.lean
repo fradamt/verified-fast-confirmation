@@ -1,4 +1,7 @@
-import Mathlib.Data.Nat.Basic
+module
+public import Mathlib.Data.Nat.Basic
+
+@[expose] public section
 
 /-!
 # Core / Model / Time
@@ -47,3 +50,5 @@ def AfterGST (t : Time) : Prop := τ.gst ≤ t
 end Timing
 
 end FastConfirmation
+
+end

@@ -1,5 +1,8 @@
-import FastConfirmation.Spec.Proof.StepDischargeII
-import FastConfirmation.Spec.Proof.Endpoint
+module
+public import FastConfirmation.Spec.Proof.StepDischargeII
+public import FastConfirmation.Spec.Proof.Endpoint
+
+@[expose] public section
 
 /-!
 # Spec / Proof / GroundBeta: the ground-truth-β same-slot argument
@@ -384,3 +387,5 @@ slot. The `SameSlotFinalizedRootKnown` field
 tax-arm arithmetic and not addressed here. -/
 
 end FastConfirmation.Spec
+
+end

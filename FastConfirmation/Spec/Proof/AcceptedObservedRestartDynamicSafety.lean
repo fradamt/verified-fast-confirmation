@@ -1,11 +1,14 @@
-import Mathlib.Tactic
-import FastConfirmation.Spec.Proof.AcceptedCurrentSameEndpointSource
-import FastConfirmation.Spec.Proof.AcceptedObservedRestartAdoption
-import FastConfirmation.Spec.Proof.AcceptedHistoricalA32Induction
-import FastConfirmation.Spec.Proof.AcceptedFFGJustifiedCheckpointCache
-import FastConfirmation.Spec.Proof.AcceptedSelectedJustifiedOrientation
-import FastConfirmation.Spec.Proof.AcceptedActualFCRContractScaffold
-import FastConfirmation.Spec.Proof.SelectedCoveredMarginConstruction
+module
+public import Mathlib.Tactic
+public import FastConfirmation.Spec.Proof.AcceptedCurrentSameEndpointSource
+public import FastConfirmation.Spec.Proof.AcceptedObservedRestartAdoption
+public import FastConfirmation.Spec.Proof.AcceptedHistoricalA32Induction
+public import FastConfirmation.Spec.Proof.AcceptedFFGJustifiedCheckpointCache
+public import FastConfirmation.Spec.Proof.AcceptedSelectedJustifiedOrientation
+public import FastConfirmation.Spec.Proof.AcceptedActualFCRContractScaffold
+public import FastConfirmation.Spec.Proof.SelectedCoveredMarginConstruction
+
+@[expose] public section
 
 /-!
 # Dynamic safety of an accepted active-observed restart
@@ -435,3 +438,5 @@ theorem ObservedResetCandidateInputAt.safeFrom_of_acceptedDynamics
 end Execution
 
 end FastConfirmation.Spec
+
+end
