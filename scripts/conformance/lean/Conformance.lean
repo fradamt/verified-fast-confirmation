@@ -1,5 +1,5 @@
 import Lean.Data.Json
-import FastConfirmation.Spec.Model
+import FastConfirmation.Spec.Model.Execution
 
 namespace FastConfirmation.Conformance
 
@@ -94,13 +94,25 @@ def parseValidator (j : J) : Except String Validator := do
     exit_epoch := ← natField j "exit_epoch"
   }
 
+def parseCommitteeRead (j : J) : Except String (Slot × CommitteeIndex × List ValidatorIndex) := do
+  let result ← arrayMap natValue (← arrayField j "result")
+  return (← natField j "slot", ← natField j "index", result.toList)
+
+def parseCountRead (j : J) : Except String (Epoch × Nat) := do
+  return (← natField j "epoch", ← natField j "result")
+
 def parseState (j : J) : Except String (BeaconState Nat) := do
   let validatorsJson ← arrayField j "validators"
   let validators ← arrayMap parseValidator validatorsJson
+  let committeeReads ← arrayMap parseCommitteeRead (← arrayField j "beacon_committee_reads")
+  let countReads ← arrayMap parseCountRead (← arrayField j "committee_count_reads")
   return {
+    source_identity := some (← rootField j "id")
     genesis_time := ← natField j "genesis_time"
     slot := ← natField j "slot"
     validators := validators.toList
+    beacon_committee_reads := committeeReads.toList
+    committee_count_reads := countReads.toList
     current_justified_checkpoint := ← parseCheckpoint (← field j "current_justified_checkpoint")
     finalized_checkpoint := ← parseCheckpoint (← field j "finalized_checkpoint")
   }
@@ -119,10 +131,13 @@ def listEq (eq : α → α → Bool) : List α → List α → Bool
   | _, _ => false
 
 def stateEq (a b : BeaconState Nat) : Bool :=
-  a.genesis_time == b.genesis_time && a.slot == b.slot &&
+  a.source_identity == b.source_identity &&
+    a.genesis_time == b.genesis_time && a.slot == b.slot &&
     listEq validatorEq a.validators b.validators &&
     checkpointEq a.current_justified_checkpoint b.current_justified_checkpoint &&
-    checkpointEq a.finalized_checkpoint b.finalized_checkpoint
+    checkpointEq a.finalized_checkpoint b.finalized_checkpoint &&
+    a.beacon_committee_reads == b.beacon_committee_reads &&
+    a.committee_count_reads == b.committee_count_reads
 
 def lookupNat (key : Nat) : List (Nat × α) → Option α
   | [] => none
@@ -134,25 +149,79 @@ def lookupCheckpoint (key : Checkpoint Nat) :
   | (key', value) :: rest =>
       if checkpointEq key key' then some value else lookupCheckpoint key rest
 
+def parsePayloadAttestationData (j : J) : Except String (PayloadAttestationData Nat) := do
+  return {
+    beacon_block_root := ← rootField j "beacon_block_root"
+    slot := ← natField j "slot"
+    payload_present := ← boolField j "payload_present"
+    blob_data_available := ← boolField j "blob_data_available"
+  }
+
+def parsePayloadAttestation (j : J) : Except String (IndexedPayloadAttestation Nat) := do
+  let indices ← arrayMap natValue (← arrayField j "attesting_indices")
+  return {
+    attesting_indices := indices.toList
+    data := ← parsePayloadAttestationData (← field j "data")
+    signature := ← rootField j "signature"
+  }
+
 def parseBlock (j : J) : Except String (Nat × BeaconBlock Nat) := do
+  let attestations ← arrayMap parsePayloadAttestation (← arrayField j "payload_attestations")
   return (← rootField j "root", {
     slot := ← natField j "slot"
     parent_root := ← rootField j "parent_root"
+    proposer_index := ← natField j "proposer_index"
+    parent_block_hash := ← rootField j "parent_block_hash"
+    block_hash := ← rootField j "block_hash"
+    payload_attestations := attestations.toList
   })
 
 def parseBlockState (j : J) : Except String (Nat × BeaconState Nat) := do
   return (← rootField j "root", ← parseState (← field j "state"))
 
-def parseTimeliness (j : J) : Except String (Nat × Bool) := do
-  return (← rootField j "root", ← boolField j "timely")
+def parseTimeliness (j : J) : Except String (Nat × (Bool × Bool)) := do
+  let values ← arrayMap boolValue (← arrayField j "timely")
+  match values.toList with
+  | [attestation, ptc] => return (← rootField j "root", (attestation, ptc))
+  | _ => throw "block timeliness requires exactly two booleans"
+
+def parsePayload (j : J) : Except String (Nat × ExecutionPayloadEnvelope Nat) := do
+  let root ← rootField j "root"
+  let beaconRoot ← rootField j "beacon_block_root"
+  if root != beaconRoot then throw "payload map key differs from beacon_block_root"
+  return (root, {
+    beacon_block_root := beaconRoot
+    parent_beacon_block_root := ← rootField j "parent_beacon_block_root"
+    identity := ← rootField j "identity"
+  })
+
+def parseVote (j : J) : Except String (Option Bool) :=
+  match j with
+  | .null => pure none
+  | _ => some <$> boolValue j
+
+def parseVotes (cfg : Config) (j : J) : Except String (Nat × List (Option Bool)) := do
+  let votes ← arrayMap parseVote (← arrayField j "votes")
+  if votes.size != cfg.ptc_size then throw "PTC vote list length differs from ptc_size"
+  return (← rootField j "root", votes.toList)
+
+def parseNode (j : J) : Except String (ForkChoiceNode Nat) := do
+  let status ← natField j "payload_status"
+  let payloadStatus ← match status with
+    | 0 => pure PayloadStatus.empty
+    | 1 => pure PayloadStatus.full
+    | 2 => pure PayloadStatus.pending
+    | _ => throw "payload_status must be 0, 1, or 2"
+  return { root := ← rootField j "root", payload_status := payloadStatus }
 
 def parseCheckpointState (j : J) : Except String (Checkpoint Nat × BeaconState Nat) := do
   return (← parseCheckpoint (← field j "checkpoint"), ← parseState (← field j "state"))
 
 def parseLatestMessage (j : J) : Except String (Nat × LatestMessage Nat) := do
   return (← natField j "index", {
-    epoch := ← natField j "epoch"
+    slot := ← natField j "slot"
     root := ← rootField j "root"
+    payload_present := ← boolField j "payload_present"
   })
 
 def parseUnrealizedJustification (j : J) : Except String (Nat × Checkpoint Nat) := do
@@ -167,6 +236,10 @@ def parseConfig (j : J) : Except String Config := do
   let increment ← natField j "effective_balance_increment"
   let attestationDue ← natField j "attestation_due_bps"
   let minLookahead ← natField j "min_seed_lookahead"
+  let ptcSize ← natField j "ptc_size"
+  let payloadDue ← natField j "payload_due_bps"
+  let payloadAttestationDue ← natField j "payload_attestation_due_bps"
+  let reorgHeadWeight ← natField j "reorg_head_weight_threshold"
   if h : 0 < slotsPerEpoch then
     if hSlot : 0 < slotDurationMs then
       if hThreshold : threshold ≤ 25 then
@@ -186,6 +259,10 @@ def parseConfig (j : J) : Except String Config := do
               hundred_dvd_effective_balance_increment := hHundred
               attestation_due_bps := attestationDue
               min_seed_lookahead := minLookahead
+              ptc_size := ptcSize
+              payload_due_bps := payloadDue
+              payload_attestation_due_bps := payloadAttestationDue
+              reorg_head_weight_threshold := reorgHeadWeight
             }
           else throw "config check failed: effective_balance_increment is not divisible by 100"
         else throw "config check failed: effective_balance_increment is not positive"
@@ -196,7 +273,7 @@ def parseConfig (j : J) : Except String Config := do
 structure ParsedStore where
   store : Store Nat
 
-def parseStore (j : J) : Except String ParsedStore := do
+def parseStore (cfg : Config) (j : J) : Except String ParsedStore := do
   let blockJson ← arrayField j "blocks"
   let blockStatesJson ← arrayField j "block_states"
   let timelinessJson ← arrayField j "block_timeliness"
@@ -209,6 +286,9 @@ def parseStore (j : J) : Except String ParsedStore := do
   let checkpointStates ← arrayMap parseCheckpointState checkpointStatesJson
   let latestMessages ← arrayMap parseLatestMessage latestMessagesJson
   let unrealized ← arrayMap parseUnrealizedJustification unrealizedJson
+  let payloads ← arrayMap parsePayload (← arrayField j "payloads")
+  let payloadTimeliness ← arrayMap (parseVotes cfg) (← arrayField j "payload_timeliness_vote")
+  let payloadAvailability ← arrayMap (parseVotes cfg) (← arrayField j "payload_data_availability_vote")
   let finalized ← parseCheckpoint (← field j "finalized_checkpoint")
   let justified ← parseCheckpoint (← field j "justified_checkpoint")
   let unrealizedJustified ← parseCheckpoint (← field j "unrealized_justified_checkpoint")
@@ -234,6 +314,9 @@ def parseStore (j : J) : Except String ParsedStore := do
     blocks := fun root => (lookupNat root blockList).getD default
     block_states := fun root => (lookupNat root blockStateList).getD default
     block_timeliness := fun root => lookupNat root timelinessList
+    payloads := fun root => lookupNat root payloads.toList
+    payload_timeliness_vote := fun root => lookupNat root payloadTimeliness.toList
+    payload_data_availability_vote := fun root => lookupNat root payloadAvailability.toList
     checkpoint_state_keys := checkpointStateList.map Prod.fst |>.toFinset
     checkpoint_states := fun checkpoint =>
       (lookupCheckpoint checkpoint checkpointStateList).getD default
@@ -333,13 +416,26 @@ structure Record where
   before : FastConfirmationStore Nat
   after : FastConfirmationStore Nat
   answers : Answers
+  headBefore : ForkChoiceNode Nat
+  safeExecutionBlockHashAfter : Option Nat
 
 def parseRecord (j : J) : Except String Record := do
-  let parsedStore ← parseStore (← field j "store")
+  let schema ← natField j "schema"
+  if schema == 1 then
+    throw "schema v1 describes a phase0 store; schema v2 is required"
+  if schema != 2 then throw "unsupported schema; expected v2"
+  if (← stringField j "fork") != "gloas" then throw "schema v2 requires Gloas"
+  let cfg ← parseConfig (← field j "config")
+  let parsedStore ← parseStore cfg (← field j "store")
+  let safeExecutionBlockHashAfter ← match j.getObjVal? "safe_execution_block_hash_after" with
+    | .ok value => some <$> rootValue value
+    | .error _ => pure none
   return {
     testId := ← stringField j "test_id"
     callIndex := ← natField j "call_index"
-    cfg := ← parseConfig (← field j "config")
+    cfg := cfg
+    safeExecutionBlockHashAfter := safeExecutionBlockHashAfter
+    headBefore := ← parseNode (← field j "head_before")
     before := ← parseFcr parsedStore.store (← field j "fcr_before")
     after := ← parseFcr parsedStore.store (← field j "fcr_after")
     answers := ← parseAnswers (← field j "externals")
@@ -378,10 +474,16 @@ def findFinal (answers : List ProcessFinalAnswer) (state : BeaconState Nat) :
       if stateEq answer.state state then some answer.result
       else findFinal rest state
 
-unsafe def noteMiss (misses : IO.Ref (List String)) (message : String) : Unit :=
-  match unsafeIO (misses.modify (fun old => message :: old)) with
-  | .ok _ => ()
-  | .error _ => ()
+/-- Return the fallback through the IO call so recording a miss is required
+for evaluation of the external result. An unused pure Unit binding could
+otherwise be removed by the compiler. -/
+unsafe def missingValue (misses : IO.Ref (List String)) (message : String)
+    (fallback : α) : α :=
+  match unsafeIO (do
+    misses.modify (fun old => message :: old)
+    pure fallback) with
+  | .ok value => value
+  | .error _ => fallback
 
 unsafe def makeExternals (answers : Answers) (misses : IO.Ref (List String)) :
     Externals Nat := {
@@ -389,27 +491,23 @@ unsafe def makeExternals (answers : Answers) (misses : IO.Ref (List String)) :
     match findCommittee answers.committees state slot index with
     | some result => result
     | none =>
-        let _ := noteMiss misses s!"get_beacon_committee slot={slot} index={index}"
-        []
+        missingValue misses s!"get_beacon_committee slot={slot} index={index}" []
   get_committee_count_per_slot := fun state epoch =>
     match findCount answers.counts state epoch with
     | some result => result
     | none =>
-        let _ := noteMiss misses s!"get_committee_count_per_slot epoch={epoch}"
-        0
+        missingValue misses s!"get_committee_count_per_slot epoch={epoch}" 0
   process_slots := fun state slot =>
     match findSlots answers.slots state slot with
     | some result => result
     | none =>
-        let _ := noteMiss misses s!"process_slots slot={slot}"
-        state
+        missingValue misses s!"process_slots slot={slot}" state
   state_transition := fun _ _ => none
   process_justification_and_finalization := fun state =>
     match findFinal answers.finals state with
     | some result => result
     | none =>
-        let _ := noteMiss misses "process_justification_and_finalization"
-        state
+        missingValue misses "process_justification_and_finalization" state
   is_valid_indexed_attestation := fun _ _ => false
 }
 
@@ -447,18 +545,56 @@ def compareFcr (leanValue pythonValue : FastConfirmationStore Nat) :
       rootText pythonValue.current_slot_head)
   else none
 
+def nodeText (node : ForkChoiceNode Nat) : String :=
+  s!"({rootText node.root},{node.payload_status.toNat})"
+
+/-- Check the complete state-read domain that Gloas proposer boost can use.
+The exporter fills this domain even when its first head call skips it. -/
+def missingHeadRead (cfg : Config) (store : Store Nat) : Option String := do
+  if store.proposer_boost_root == 0 then none else do
+    let block := store.blocks store.proposer_boost_root
+    let parent := store.blocks block.parent_root
+    if parent.slot + 1 < block.slot then none else do
+      let state := store.block_states block.parent_root
+      let epoch := compute_epoch_at_slot cfg parent.slot
+      match state.committee_count_reads.find? (fun entry => entry.1 == epoch) with
+      | none => some s!"get_committee_count_per_slot head epoch={epoch}"
+      | some (_, count) =>
+          let missing := (List.range count).find? (fun index =>
+            !(state.beacon_committee_reads.any (fun entry =>
+              entry.1 == parent.slot && entry.2.1 == index)))
+          match missing with
+          | none => none
+          | some index => some s!"get_beacon_committee head slot={parent.slot} index={index}"
+
 unsafe def evaluate (record : Record) : IO (Option String) := do
+  if let some missing := missingHeadRead record.cfg record.before.store then
+    return some s!"MISSING_EXTERNAL {missing}"
   let misses ← IO.mkRef []
   let ext := makeExternals record.answers misses
+  let head := get_head record.cfg record.before.store
   let leanValue := on_fast_confirmation record.cfg ext record.before
+  -- Store the comparison through IO before reading the miss log. This
+  -- forces the pure external callers before the effectful log inspection.
+  let comparisonRef ← IO.mkRef (compareFcr leanValue record.after)
   let missList ← misses.get
+  let comparison ← comparisonRef.get
   match missList with
   | miss :: _ => return some s!"MISSING_EXTERNAL {miss}"
   | [] =>
-      match compareFcr leanValue record.after with
-      | none => return none
+      if head != record.headBefore then
+        return some (fieldResult "head_before" (nodeText head) (nodeText record.headBefore))
+      match comparison with
       | some (name, leanText, pythonText) =>
           return some (fieldResult name leanText pythonText)
+      | none =>
+          match record.safeExecutionBlockHashAfter with
+          | none => return none
+          | some expected =>
+              let actual := get_safe_execution_block_hash leanValue
+              if actual == expected then return none
+              return some (fieldResult "safe_execution_block_hash_after"
+                (rootText actual) (rootText expected))
 
 unsafe def processLine (line : String) : IO (Bool × Bool) := do
   match Lean.Json.parse line with
@@ -482,12 +618,14 @@ unsafe def processLine (line : String) : IO (Bool × Bool) := do
 unsafe def main (args : List String) : IO UInt32 := do
   match args with
   | [path] =>
-      let contents ← IO.FS.readFile path
+      let input ← IO.FS.Handle.mk path .read
       let mut records := 0
       let mut ok := 0
       let mut mismatch := 0
       let mut missing := 0
-      for line in contents.splitOn "\n" do
+      repeat
+        let line ← input.getLine
+        if line.isEmpty then break
         if line.trimAscii != "" then
           let (recordOk, recordMissing) ← processLine line
           if recordOk then
@@ -500,7 +638,8 @@ unsafe def main (args : List String) : IO UInt32 := do
             records := records + 1
             mismatch := mismatch + 1
       IO.println s!"SUMMARY records={records} ok={ok} mismatch={mismatch} missing_external={missing}"
-      return if mismatch = 0 ∧ missing = 0 then 0 else 1
+      if records == 0 then IO.eprintln "ERROR empty trace: at least one Gloas record is required"
+      return if records > 0 ∧ mismatch = 0 ∧ missing = 0 then 0 else 1
   | _ =>
       IO.eprintln "usage: lake env lean --run scripts/conformance/lean/Conformance.lean <trace.jsonl>"
       return 2

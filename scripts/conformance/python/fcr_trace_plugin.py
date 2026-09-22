@@ -1,4 +1,4 @@
-"""Export Python fast-confirmation calls as schema-versioned JSON Lines."""
+"""Export Gloas fast-confirmation calls as schema v2 JSON Lines."""
 
 from __future__ import annotations
 
@@ -50,6 +50,19 @@ def _state(spec: Any, state: Any) -> dict[str, Any]:
     }
 
 
+def _node(node: Any) -> dict[str, Any]:
+    return {"root": _root(node.root), "payload_status": _int(node.payload_status)}
+
+
+def _payload_attestation_data(data: Any) -> dict[str, Any]:
+    return {
+        "beacon_block_root": _root(data.beacon_block_root),
+        "slot": _int(data.slot),
+        "payload_present": bool(data.payload_present),
+        "blob_data_available": bool(data.blob_data_available),
+    }
+
+
 def _store(spec: Any, store: Any) -> dict[str, Any]:
     return {
         "time": _int(store.time),
@@ -65,6 +78,19 @@ def _store(spec: Any, store: Any) -> dict[str, Any]:
                 "root": _root(root),
                 "slot": _int(block.slot),
                 "parent_root": _root(block.parent_root),
+                "proposer_index": _int(block.proposer_index),
+                "parent_block_hash": _root(block.body.signed_execution_payload_bid.message.parent_block_hash),
+                "block_hash": _root(block.body.signed_execution_payload_bid.message.block_hash),
+                "payload_attestations": [
+                    {
+                        "attesting_indices": [_int(i) for i in spec.get_indexed_payload_attestation(
+                            store.block_states[root], attestation
+                        ).attesting_indices],
+                        "data": _payload_attestation_data(attestation.data),
+                        "signature": _root(spec.hash_tree_root(attestation.signature)),
+                    }
+                    for attestation in block.body.payload_attestations
+                ],
             }
             for root, block in store.blocks.items()
         ],
@@ -73,7 +99,7 @@ def _store(spec: Any, store: Any) -> dict[str, Any]:
             for root, state in store.block_states.items()
         ],
         "block_timeliness": [
-            {"root": _root(root), "timely": bool(timely)}
+            {"root": _root(root), "timely": [bool(value) for value in timely]}
             for root, timely in store.block_timeliness.items()
         ],
         "checkpoint_states": [
@@ -83,10 +109,28 @@ def _store(spec: Any, store: Any) -> dict[str, Any]:
         "latest_messages": [
             {
                 "index": _int(index),
-                "epoch": _int(message.epoch),
+                "slot": _int(message.slot),
+                "payload_present": bool(message.payload_present),
                 "root": _root(message.root),
             }
             for index, message in sorted(store.latest_messages.items(), key=lambda item: _int(item[0]))
+        ],
+        "payloads": [
+            {
+                "root": _root(root),
+                "beacon_block_root": _root(envelope.beacon_block_root),
+                "parent_beacon_block_root": _root(envelope.parent_beacon_block_root),
+                "identity": _root(spec.hash_tree_root(envelope)),
+            }
+            for root, envelope in store.payloads.items()
+        ],
+        "payload_timeliness_vote": [
+            {"root": _root(root), "votes": [None if vote is None else bool(vote) for vote in votes]}
+            for root, votes in store.payload_timeliness_vote.items()
+        ],
+        "payload_data_availability_vote": [
+            {"root": _root(root), "votes": [None if vote is None else bool(vote) for vote in votes]}
+            for root, votes in store.payload_data_availability_vote.items()
         ],
         "unrealized_justifications": [
             {"root": _root(root), "checkpoint": _checkpoint(checkpoint)}
@@ -124,7 +168,11 @@ def _config(spec: Any) -> dict[str, Any]:
             spec.COMMITTEE_WEIGHT_ESTIMATION_ADJUSTMENT_FACTOR
         ),
         "effective_balance_increment": _int(spec.EFFECTIVE_BALANCE_INCREMENT),
-        "attestation_due_bps": _int(spec.config.ATTESTATION_DUE_BPS),
+        "attestation_due_bps": _int(spec.config.ATTESTATION_DUE_BPS_GLOAS),
+        "ptc_size": _int(spec.PTC_SIZE),
+        "payload_due_bps": _int(spec.config.PAYLOAD_DUE_BPS),
+        "payload_attestation_due_bps": _int(spec.config.PAYLOAD_ATTESTATION_DUE_BPS),
+        "reorg_head_weight_threshold": _int(spec.config.REORG_HEAD_WEIGHT_THRESHOLD),
         "min_seed_lookahead": _int(spec.MIN_SEED_LOOKAHEAD),
     }
 
@@ -144,6 +192,63 @@ def _ambiguity_guard(
     previous[key] = answer_key
 
 
+def _encode_large_integers(value: Any) -> Any:
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, int):
+        return str(value) if value > 2**53 else value
+    if isinstance(value, dict):
+        return {key: _encode_large_integers(item) for key, item in value.items()}
+    if isinstance(value, (list, tuple)):
+        return [_encode_large_integers(item) for item in value]
+    return value
+
+
+def _attach_read_views(record: dict[str, Any]) -> None:
+    """Build finite source read views from all calls reached in this record."""
+    committees: dict[str, dict[tuple[int, int], list[int]]] = {}
+    counts: dict[str, dict[int, int]] = {}
+    for answer in record["externals"]["get_beacon_committee"]:
+        key = (answer["slot"], answer["index"])
+        values = committees.setdefault(answer["state"]["id"], {})
+        if key in values and values[key] != answer["result"]:
+            raise RuntimeError(f"inconsistent committee read test_id={record['test_id']}")
+        values[key] = answer["result"]
+    for answer in record["externals"]["get_committee_count_per_slot"]:
+        values = counts.setdefault(answer["state"]["id"], {})
+        if answer["epoch"] in values and values[answer["epoch"]] != answer["result"]:
+            raise RuntimeError(f"inconsistent committee count test_id={record['test_id']}")
+        values[answer["epoch"]] = answer["result"]
+
+    def visit(value: Any) -> None:
+        if isinstance(value, dict):
+            if "id" in value and "validators" in value:
+                identity = value["id"]
+                value["beacon_committee_reads"] = [
+                    {"slot": slot, "index": index, "result": result}
+                    for (slot, index), result in sorted(committees.get(identity, {}).items())
+                ]
+                value["committee_count_reads"] = [
+                    {"epoch": epoch, "result": result}
+                    for epoch, result in sorted(counts.get(identity, {}).items())
+                ]
+            for item in value.values():
+                visit(item)
+        elif isinstance(value, list):
+            for item in value:
+                visit(item)
+
+    visit(record)
+
+
+def _check_projection_answers(record: dict[str, Any]) -> None:
+    seen: dict[str, dict[str, Any]] = {}
+    for function, answers in record["externals"].items():
+        for answer in answers:
+            key = tuple((key, value) for key, value in answer.items() if key != "result")
+            _ambiguity_guard(seen, function, key, answer["result"], record["test_id"])
+
+
 def _wrap_externals(spec: Any, test_id: str, externals: dict[str, list[dict[str, Any]]]):
     originals = {
         name: getattr(spec, name)
@@ -154,19 +259,11 @@ def _wrap_externals(spec: Any, test_id: str, externals: dict[str, list[dict[str,
             "process_justification_and_finalization",
         )
     }
-    seen: dict[str, dict[str, str]] = {}
 
     def get_beacon_committee(state: Any, slot: Any, index: Any) -> Any:
         before = _state(spec, state)
         result = originals["get_beacon_committee"](state, slot, index)
         answer = {"state": before, "slot": _int(slot), "index": _int(index), "result": [_int(i) for i in result]}
-        _ambiguity_guard(
-            seen,
-            "get_beacon_committee",
-            (before, _int(slot), _int(index)),
-            answer["result"],
-            test_id,
-        )
         externals["get_beacon_committee"].append(answer)
         return result
 
@@ -174,13 +271,6 @@ def _wrap_externals(spec: Any, test_id: str, externals: dict[str, list[dict[str,
         before = _state(spec, state)
         result = originals["get_committee_count_per_slot"](state, epoch)
         answer = {"state": before, "epoch": _int(epoch), "result": _int(result)}
-        _ambiguity_guard(
-            seen,
-            "get_committee_count_per_slot",
-            (before, _int(epoch)),
-            answer["result"],
-            test_id,
-        )
         externals["get_committee_count_per_slot"].append(answer)
         return result
 
@@ -188,13 +278,6 @@ def _wrap_externals(spec: Any, test_id: str, externals: dict[str, list[dict[str,
         before = _state(spec, state)
         result = originals["process_slots"](state, slot)
         answer = {"state": before, "slot": _int(slot), "result": _state(spec, state)}
-        _ambiguity_guard(
-            seen,
-            "process_slots",
-            (before, _int(slot)),
-            answer["result"],
-            test_id,
-        )
         externals["process_slots"].append(answer)
         return result
 
@@ -202,13 +285,6 @@ def _wrap_externals(spec: Any, test_id: str, externals: dict[str, list[dict[str,
         before = _state(spec, state)
         result = originals["process_justification_and_finalization"](state)
         answer = {"state": before, "result": _state(spec, state)}
-        _ambiguity_guard(
-            seen,
-            "process_justification_and_finalization",
-            (before,),
-            answer["result"],
-            test_id,
-        )
         externals["process_justification_and_finalization"].append(answer)
         return result
 
@@ -227,6 +303,8 @@ def _capture(self: Any) -> None:
     if _writer is None:
         raise RuntimeError("FCR_TRACE_OUT is not configured")
     spec = self.spec
+    if str(spec.fork) != "gloas":
+        raise RuntimeError("schema v2 requires Gloas; pre-Gloas stores are historical")
     fcr_store = self.fcr_store
     test_id = _current_item.nodeid if _current_item is not None else "<unknown>"
     call_index = _call_indices.get(test_id, 0)
@@ -242,6 +320,19 @@ def _capture(self: Any) -> None:
     }
     originals = _wrap_externals(spec, test_id, externals)
     try:
+        # Fill the only state-read domain used by Gloas head scoring. These
+        # queries also cover paths that the extra head call does not take.
+        store = fcr_store.store
+        if store.proposer_boost_root != spec.Root():
+            boost = store.blocks[store.proposer_boost_root]
+            parent = store.blocks[boost.parent_root]
+            if parent.slot + 1 >= boost.slot:
+                state = store.block_states[boost.parent_root]
+                epoch = spec.compute_epoch_at_slot(parent.slot)
+                count = spec.get_committee_count_per_slot(state, epoch)
+                for index in range(count):
+                    spec.get_beacon_committee(state, parent.slot, spec.CommitteeIndex(index))
+        head_before = _node(spec.get_head(fcr_store.store))
         spec.on_fast_confirmation(fcr_store)
     finally:
         for name, original in originals.items():
@@ -255,7 +346,8 @@ def _capture(self: Any) -> None:
         raise RuntimeError(f"store mutation unknown test_id={test_id}")
 
     record = {
-        "schema": 1,
+        "schema": 2,
+        "head_before": head_before,
         "test_id": test_id,
         "fork": str(spec.fork),
         "preset": str(spec.config.PRESET_BASE),
@@ -264,9 +356,12 @@ def _capture(self: Any) -> None:
         "store": store_before,
         "fcr_before": fcr_before,
         "fcr_after": _fcr_store(fcr_store),
+        "safe_execution_block_hash_after": _root(spec.get_safe_execution_block_hash(fcr_store)),
         "externals": externals,
     }
-    _writer.write(json.dumps(record, separators=(",", ":")) + "\n")
+    _attach_read_views(record)
+    _check_projection_answers(record)
+    _writer.write(json.dumps(_encode_large_integers(record), separators=(",", ":")) + "\n")
     _writer.flush()
 
     from eth_consensus_specs.test.helpers.fast_confirmation import output_fast_confirmation_checks

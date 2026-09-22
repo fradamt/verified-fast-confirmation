@@ -20,6 +20,10 @@ CONFIG_KEYS = {
     "effective_balance_increment",
     "attestation_due_bps",
     "min_seed_lookahead",
+    "ptc_size",
+    "payload_due_bps",
+    "payload_attestation_due_bps",
+    "reorg_head_weight_threshold",
 }
 STORE_KEYS = {
     "time",
@@ -36,6 +40,9 @@ STORE_KEYS = {
     "checkpoint_states",
     "latest_messages",
     "unrealized_justifications",
+    "payloads",
+    "payload_timeliness_vote",
+    "payload_data_availability_vote",
 }
 FCR_KEYS = {
     "confirmed_root",
@@ -61,6 +68,8 @@ def integer(value: Any, path: str) -> int:
     if isinstance(value, bool):
         fail(f"{path}: boolean is not an integer")
     if isinstance(value, int):
+        if value < 0:
+            fail(f"{path}: expected a nonnegative integer")
         return value
     if isinstance(value, str) and value.isdecimal():
         return int(value)
@@ -93,6 +102,8 @@ def state(value: Any, path: str) -> None:
             "validators",
             "current_justified_checkpoint",
             "finalized_checkpoint",
+            "beacon_committee_reads",
+            "committee_count_reads",
         },
         path,
     )
@@ -114,6 +125,16 @@ def state(value: Any, path: str) -> None:
         integer(validator["exit_epoch"], f"{path}.validators[{index}].exit_epoch")
     checkpoint(value["current_justified_checkpoint"], f"{path}.current_justified_checkpoint")
     checkpoint(value["finalized_checkpoint"], f"{path}.finalized_checkpoint")
+    for index, item in enumerate(value["beacon_committee_reads"]):
+        exact_keys(item, {"slot", "index", "result"}, f"{path}.beacon_committee_reads[{index}]")
+        integer(item["slot"], f"{path}.beacon_committee_reads[{index}].slot")
+        integer(item["index"], f"{path}.beacon_committee_reads[{index}].index")
+        for result in item["result"]:
+            integer(result, f"{path}.beacon_committee_reads[{index}].result")
+    for index, item in enumerate(value["committee_count_reads"]):
+        exact_keys(item, {"epoch", "result"}, f"{path}.committee_count_reads[{index}]")
+        integer(item["epoch"], f"{path}.committee_count_reads[{index}].epoch")
+        integer(item["result"], f"{path}.committee_count_reads[{index}].result")
 
 
 def store(value: Any, path: str) -> None:
@@ -137,10 +158,25 @@ def store(value: Any, path: str) -> None:
         integer(item, f"{path}.equivocating_indices[{index}]")
 
     for index, block in enumerate(value["blocks"]):
-        exact_keys(block, {"root", "slot", "parent_root"}, f"{path}.blocks[{index}]")
+        exact_keys(block, {"root", "slot", "parent_root", "proposer_index", "parent_block_hash", "block_hash", "payload_attestations"}, f"{path}.blocks[{index}]")
         root(block["root"], f"{path}.blocks[{index}].root")
         integer(block["slot"], f"{path}.blocks[{index}].slot")
         root(block["parent_root"], f"{path}.blocks[{index}].parent_root")
+        integer(block["proposer_index"], f"{path}.blocks[{index}].proposer_index")
+        root(block["parent_block_hash"], f"{path}.blocks[{index}].parent_block_hash")
+        root(block["block_hash"], f"{path}.blocks[{index}].block_hash")
+        for att_index, attestation in enumerate(block["payload_attestations"]):
+            att_path = f"{path}.blocks[{index}].payload_attestations[{att_index}]"
+            exact_keys(attestation, {"attesting_indices", "data", "signature"}, att_path)
+            root(attestation["signature"], f"{att_path}.signature")
+            for validator in attestation["attesting_indices"]:
+                integer(validator, f"{att_path}.attesting_indices")
+            data = attestation["data"]
+            exact_keys(data, {"slot", "beacon_block_root", "payload_present", "blob_data_available"}, f"{att_path}.data")
+            integer(data["slot"], f"{att_path}.data.slot")
+            root(data["beacon_block_root"], f"{att_path}.data.beacon_block_root")
+            if not isinstance(data["payload_present"], bool) or not isinstance(data["blob_data_available"], bool):
+                fail(f"{att_path}.data: expected payload and data booleans")
     for name in ("block_states", "checkpoint_states"):
         if not isinstance(value[name], list):
             fail(f"{path}.{name}: expected list")
@@ -155,17 +191,34 @@ def store(value: Any, path: str) -> None:
     for index, item in enumerate(value["block_timeliness"]):
         exact_keys(item, {"root", "timely"}, f"{path}.block_timeliness[{index}]")
         root(item["root"], f"{path}.block_timeliness[{index}].root")
-        if not isinstance(item["timely"], bool):
-            fail(f"{path}.block_timeliness[{index}].timely: expected boolean")
+        if not isinstance(item["timely"], list) or len(item["timely"]) != 2 or not all(isinstance(bit, bool) for bit in item["timely"]):
+            fail(f"{path}.block_timeliness[{index}].timely: expected two booleans")
     for index, item in enumerate(value["latest_messages"]):
-        exact_keys(item, {"index", "epoch", "root"}, f"{path}.latest_messages[{index}]")
+        exact_keys(item, {"index", "slot", "root", "payload_present"}, f"{path}.latest_messages[{index}]")
         integer(item["index"], f"{path}.latest_messages[{index}].index")
-        integer(item["epoch"], f"{path}.latest_messages[{index}].epoch")
+        integer(item["slot"], f"{path}.latest_messages[{index}].slot")
+        if not isinstance(item["payload_present"], bool):
+            fail(f"{path}.latest_messages[{index}].payload_present: expected boolean")
         root(item["root"], f"{path}.latest_messages[{index}].root")
     for index, item in enumerate(value["unrealized_justifications"]):
         exact_keys(item, {"root", "checkpoint"}, f"{path}.unrealized_justifications[{index}]")
         root(item["root"], f"{path}.unrealized_justifications[{index}].root")
         checkpoint(item["checkpoint"], f"{path}.unrealized_justifications[{index}].checkpoint")
+
+    for index, item in enumerate(value["payloads"]):
+        item_path = f"{path}.payloads[{index}]"
+        exact_keys(item, {"root", "beacon_block_root", "parent_beacon_block_root", "identity"}, item_path)
+        for name in item:
+            root(item[name], f"{item_path}.{name}")
+        if item["root"] != item["beacon_block_root"]:
+            fail(f"{item_path}: payload map key differs from beacon_block_root")
+    for name in ("payload_timeliness_vote", "payload_data_availability_vote"):
+        for index, item in enumerate(value[name]):
+            item_path = f"{path}.{name}[{index}]"
+            exact_keys(item, {"root", "votes"}, item_path)
+            root(item["root"], f"{item_path}.root")
+            if not isinstance(item["votes"], list) or not all(vote is None or isinstance(vote, bool) for vote in item["votes"]):
+                fail(f"{item_path}.votes: expected nullable booleans")
 
 
 def fcr(value: Any, path: str) -> None:
@@ -222,10 +275,13 @@ def main() -> int:
                 if not line.strip():
                     fail(f"line {line_number}: blank line")
                 record = json.loads(line)
+                if isinstance(record, dict) and record.get("schema") == 1:
+                    fail(f"line {line_number}: schema v1 describes a phase0 store; schema v2 is required")
                 exact_keys(
                     record,
                     {
                         "schema",
+                        "head_before",
                         "test_id",
                         "fork",
                         "preset",
@@ -235,20 +291,36 @@ def main() -> int:
                         "fcr_before",
                         "fcr_after",
                         "externals",
-                    },
+                    } | ({"safe_execution_block_hash_after"}
+                         if isinstance(record, dict) and "safe_execution_block_hash_after" in record
+                         else set()),
                     f"line {line_number}",
                 )
-                if record["schema"] != 1:
-                    fail(f"line {line_number}: unsupported schema")
+                if record["schema"] == 1:
+                    fail(f"line {line_number}: schema v1 describes a phase0 store; schema v2 is required")
+                if type(record["schema"]) is not int or record["schema"] != 2:
+                    fail(f"line {line_number}: unsupported schema; expected v2")
+                if "safe_execution_block_hash_after" in record:
+                    root(record["safe_execution_block_hash_after"], f"line {line_number}.safe_execution_block_hash_after")
+                exact_keys(record["head_before"], {"root", "payload_status"}, f"line {line_number}.head_before")
+                root(record["head_before"]["root"], f"line {line_number}.head_before.root")
+                if integer(record["head_before"]["payload_status"], f"line {line_number}.head_before.payload_status") not in (0, 1, 2):
+                    fail(f"line {line_number}.head_before.payload_status: expected 0, 1, or 2")
                 if not isinstance(record["test_id"], str):
                     fail(f"line {line_number}.test_id: expected string")
                 if not isinstance(record["fork"], str) or not isinstance(record["preset"], str):
                     fail(f"line {line_number}: fork and preset must be strings")
+                if record["fork"] != "gloas":
+                    fail(f"line {line_number}: schema v2 requires Gloas")
                 integer(record["call_index"], f"line {line_number}.call_index")
                 exact_keys(record["config"], CONFIG_KEYS, f"line {line_number}.config")
                 for name, item in record["config"].items():
                     integer(item, f"line {line_number}.config.{name}")
                 store(record["store"], f"line {line_number}.store")
+                for name in ("payload_timeliness_vote", "payload_data_availability_vote"):
+                    for item in record["store"][name]:
+                        if len(item["votes"]) != integer(record["config"]["ptc_size"], "ptc_size"):
+                            fail(f"line {line_number}.store.{name}: vote list length differs from ptc_size")
                 fcr(record["fcr_before"], f"line {line_number}.fcr_before")
                 fcr(record["fcr_after"], f"line {line_number}.fcr_after")
                 exact_keys(record["externals"], EXTERNAL_KEYS, f"line {line_number}.externals")
