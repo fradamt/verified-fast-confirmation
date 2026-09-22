@@ -57,11 +57,11 @@ honest validators always vote the target derived from their own head
 support for *`v`'s* target `T` only under **cross-validator head/boundary
 agreement** (every honest head's epoch-boundary block is `T.root`), which is
 exactly what the FCR's preceding checks are mid-way through establishing
-when the gates are consulted. Hence it enters the interface as an explicit
-hypothesis (avoiding circularity) and is **discharged at the algorithm's
-call sites** by the L3/L4 proof from `HonestBehavior.votes_head` + the
-established head agreement — never assumed globally; `SpecAssumptions` is
-not strengthened by it. Without the gating the fields would be inconsistent:
+when the gates are consulted. The property is an explicit, call-scoped
+hypothesis. The older `SpecAssumptions` record does not contain it. The
+accepted theorem requires it through `completed_calls.helper_provisos` at each
+actual guarded FCR call whose next second is in the verification horizon.
+Without the gating the fields would be inconsistent:
 the `will_*` booleans are arithmetically true early in every epoch (the
 elapsed-committee estimate is still small) even while honest heads — and
 hence honest targets — are split across an adversarial boundary proposal. -/
@@ -294,16 +294,14 @@ structure JustificationInterface (E : Execution Root) : Prop where
           (E.store cfg ext w m).justified_checkpoint.root).slot ≤
         compute_start_slot_at_epoch cfg t.epoch
 
-/-- The full premise bundle of the FCR guarantee: the genesis store is the
-spec's own trusted-anchor initialization (`get_forkchoice_store`, with the
-two facts its projection cannot carry: the dropped
-`anchor_block.state_root == hash_tree_root(anchor_state)` assert renders as
-slot agreement, and genuine hashing separates the anchor's parent from its
-own root — `WellFormedStore` then *derives* via
-`wellFormedStore_get_forkchoice_store`, it is not assumed), whole-second
-slot boundaries (mainnet: `12000 ms`), the behavioral/network records, the
-externals-coherence and static-set idealizations, the economic assumptions,
-and the FFG interface. -/
+/-- The full premise bundle of the FCR guarantee uses the spec's trusted-anchor
+initialization. The projection drops
+`anchor_block.state_root == hash_tree_root(anchor_state)` and does not
+represent this commitment. The accepted trajectory instead requires anchor
+slot agreement and anchor parent/root inequality. The bundle also requires
+whole-second slot boundaries (mainnet: `12000 ms`), the behavioral and
+network records, the externals-coherence and static-set idealisations, the
+economic assumptions, and the FFG interface. -/
 def SpecAssumptions (E : Execution Root) : Prop :=
   (∃ (anchor_state : BeaconState Root) (anchor_block : SignedBeaconBlock Root),
     E.genesis_store = get_forkchoice_store cfg anchor_state anchor_block ∧

@@ -20,10 +20,12 @@ mandatory boundary-call result is also proved. Optional calls at arbitrary
 in-slot action prefixes are not covered; the two exported strict-prefix
 counterexamples are required regression results, not ancillary examples.
 
-The primary assumption surface is the GST-0 specialization over a static
-validator registry for the finite verification horizon. Legacy or
-exact-current statement vocabularies are diagnostic surfaces, not substitutes
-for the accepted theorem.
+The primary assumption surface is the GST-0 specialization. Public safety
+endpoints and static-set laws use a finite verification horizon.
+`HorizonVoteDeliveryLookahead` can also require the mandated receipt at the
+first second of the following slot, just outside the endpoint cutoff. Legacy
+or exact-current statement vocabularies are diagnostic surfaces, not
+substitutes for the accepted theorem.
 
 ## Consensus source
 

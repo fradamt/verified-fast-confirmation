@@ -210,10 +210,11 @@ spec's own dynamics: the fork-choice **handlers** driving store evolution,
     `on_tick` catch-up while-loop is a fuel site like decision 4's (fuel
     `tick_slot + 1`; the loop advances one slot per iteration on
     whole-second-boundary configs); `get_forkchoice_store` drops python's
-    `assert anchor_block.state_root == hash_tree_root(anchor_state)` (the
-    block-commits-to-state consistency is an execution well-formedness
-    premise on the anchor, and the function takes the *signed* wire container
-    because the root travels on it); `Event.attestation` with
+    `assert anchor_block.state_root == hash_tree_root(anchor_state)`; the
+    accepted anchor relation does not represent this state-root commitment
+    and requires only slot agreement and parent/root inequality. The function
+    takes the *signed* wire container because the root travels on it);
+    `Event.attestation` with
     `is_from_block = true` may appear in adversarial schedules unaccompanied
     by a block — a **conservative over-approximation** (the adversary gets
     strictly more latitude than the spec's block-embedded path; honest
@@ -305,9 +306,11 @@ The accepted theorem surface is
 `acceptedSpec_safety_next_slot`. It proves that a root stored by an honest
 node's FCR is an ancestor of every in-horizon honest head from the following
 slot onward. The literal descendant-selector result is also safe at an actual
-scheduled boundary call. Reset safety is derived from accepted execution and
-FFG semantics rather than assumed. The proof is entirely spec-side; the paper
-model supplies mathematical guidance but is not imported.
+scheduled boundary call. Reset safety is a proved result. Its finalized-reset
+case uses the separate `AcceptedRealizedFinalizationDelay` premise, and its
+active-observed case uses the accepted execution and FFG premises. The proof
+is entirely spec-side; the paper model supplies mathematical guidance but is
+not imported.
 
 The next-slot boundary matters. Optional queries at arbitrary in-slot action
 prefixes can run after one honest endpoint has processed an event and before
