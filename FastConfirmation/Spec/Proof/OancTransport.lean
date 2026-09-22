@@ -1,6 +1,7 @@
 module
 public import FastConfirmation.Spec.Proof.Endpoint
 public import FastConfirmation.Spec.Proof.EngineTransport
+public import FastConfirmation.Spec.Proof.StepDischarge
 
 @[expose] public section
 
@@ -22,6 +23,63 @@ theorem WindowRecordedEpochMax_mono_end
   intro i hi hiSpan lm hlm t k a ht hvote
   exact hmax i hi (E.span_committee_mono lo hesσ hiSpan)
     lm hlm t k a (ht.trans hesσ) hvote
+
+/-- A message recorded at the confirming store has a slot in its completed
+vote window. This is the validation gate in latest-message provenance. -/
+theorem recorded_slot_le_completed_cutoff
+    {v i : ValidatorIndex} {n : ℕ} {es : Slot} {lm : LatestMessage Root}
+    (hes : es = get_current_slot cfg (E.store cfg ext v n) - 1)
+    (hprov : LatestMessageProvenance E cfg
+      (get_current_slot cfg (E.store cfg ext v n)) (E.store cfg ext v n))
+    (hlm : (E.store cfg ext v n).latest_messages i = some lm) :
+    lm.slot ≤ es := by
+  obtain ⟨a, _, _, _, _, hgate, _, _, _, hslot⟩ := hprov i lm hlm
+  rw [hslot, hes]
+  exact Nat.le_sub_one_of_lt (Nat.lt_of_succ_le hgate)
+
+/-- Completed-window delivery coverage supplies a source message for an
+honest endpoint message from the old window. Exact scheduled provenance
+identifies the honest vote that the coverage theorem applies to. -/
+theorem old_message_recorded_at_source_of_coverage
+    (hhb : HonestBehavior cfg ext E)
+    (hgen : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
+      E.genesis_store = get_forkchoice_store cfg ast ablk)
+    {v w i : ValidatorIndex} {n m : ℕ} {es : Slot} {dst : LatestMessage Root}
+    (hi : i ∈ E.honest)
+    (hdst : (E.store cfg ext w m).latest_messages i = some dst)
+    (hold : dst.slot ≤ es)
+    (hcover : ∀ t k (a : Attestation Root), t ≤ es →
+      E.vote i t = some (k, a) →
+      ∃ src, (E.store cfg ext v n).latest_messages i = some src ∧
+        compute_epoch_at_slot cfg t ≤ get_latest_message_epoch cfg src) :
+    ∃ src, (E.store cfg ext v n).latest_messages i = some src := by
+  obtain ⟨a, u, t, ifb, hsched, hia, hmsg⟩ :=
+    E.schedLMProvExact cfg ext hgen w m i dst hdst
+  obtain ⟨k, a', hvote, _⟩ := hhb.no_forgery u t a ifb hsched i hi hia
+  have ht : a.data.slot ≤ es := by simpa only [hmsg] using hold
+  obtain ⟨src, hsrc, _⟩ := hcover a.data.slot k a' ht hvote
+  exact ⟨src, hsrc⟩
+
+/-- The confirming store's old-window epoch maximality identifies its
+recorded message with the validator's newest genuine vote by `es`. -/
+theorem old_source_recorded_is_newest
+    (hhb : HonestBehavior cfg ext E) (hec : ExternalsCoherence cfg ext E)
+    (hgen : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
+      E.genesis_store = get_forkchoice_store cfg ast ablk)
+    {v i : ValidatorIndex} {n : ℕ} {lo es : Slot}
+    {src : LatestMessage Root}
+    (hes : es = get_current_slot cfg (E.store cfg ext v n) - 1)
+    (hprov : LatestMessageProvenance E cfg
+      (get_current_slot cfg (E.store cfg ext v n)) (E.store cfg ext v n))
+    (hmax : E.WindowRecordedEpochMax cfg ext v n lo es)
+    (hi : i ∈ E.honest) (hiSpan : i ∈ E.span_committee lo es)
+    (hsrc : (E.store cfg ext v n).latest_messages i = some src) :
+    ∃ (t : Slot) (k : ℕ) (a : Attestation Root),
+      t ≤ es ∧ E.vote i t = some (k, a) ∧
+      (∀ t' : Slot, t < t' → t' ≤ es → E.vote i t' = none) ∧
+      a.data.beacon_block_root = src.root :=
+  E.recorded_lm_is_newest_at cfg ext hhb hec hgen hprov hes hi hsrc
+    (hmax i hi hiSpan src hsrc)
 
 /-- An old ancestor-class member remains in the source ancestor class when
 the source message is the same old vote seen at the endpoint. The forward
@@ -378,6 +436,277 @@ theorem oppositeAncestorClass_old_cutoff
   have hiAes := E.Aclass_old_cutoff_of_no_late_vote cfg ext hesσ
     hiOldSpan hiAσ hNoVote
   exact Finset.mem_inter.mpr ⟨hiAes, List.mem_toFinset.mpr hiOpp⟩
+
+/-- Old opposite ancestor voters at a later honest endpoint belong to the
+confirming store's fixed debt class. Delivery coverage supplies the source
+cell; provenance, epoch maximality, and block agreement identify its message
+and resolved ancestry. The remaining premises are existing execution-domain
+facts rather than an added assumption field. -/
+theorem oppositeAncestorClass_old_back_of_execution
+    (hwf : WellFormedExecution E) (hhb : HonestBehavior cfg ext E)
+    (hec : ExternalsCoherence cfg ext E) (hsv : StaticValidatorSet cfg E)
+    (hgen : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
+      E.genesis_store = get_forkchoice_store cfg ast ablk)
+    {v w i : ValidatorIndex} {n m : ℕ} {b h : Root}
+    {lo es σ : Slot} {other : PayloadStatus}
+    {bsSrc bsDst : BeaconState Root} {dst : LatestMessage Root}
+    (hv : v ∈ E.honest) (hw : w ∈ E.honest)
+    (hnH : E.WithinHorizon cfg n) (hmH : E.WithinHorizon cfg m)
+    (hes : es = get_current_slot cfg (E.store cfg ext v n) - 1)
+    (hesH : E.SlotWithinHorizon cfg es) (hesσ : es ≤ σ)
+    (hval : bsSrc.validators = E.registry)
+    (hbsH : get_current_epoch cfg bsSrc < E.verification_horizon)
+    (hb : b ∈ (E.store cfg ext v n).block_roots)
+    (hh : h ∈ (E.store cfg ext v n).block_roots)
+    (hsub : (E.store cfg ext v n).block_roots ⊆
+      (E.store cfg ext w m).block_roots)
+    (hwalkSrc : ∀ t ∈ (E.store cfg ext v n).block_roots,
+      ∀ r ∈ (E.store cfg ext v n).block_roots,
+        WalkKnown (E.store cfg ext v n)
+          ((E.store cfg ext v n).blocks t).slot r)
+    (hwalkDst : ∀ t ∈ (E.store cfg ext w m).block_roots,
+      ∀ r ∈ (E.store cfg ext w m).block_roots,
+        WalkKnown (E.store cfg ext w m)
+          ((E.store cfg ext w m).blocks t).slot r)
+    (hwfDst : ∀ r ∈ (E.store cfg ext w m).block_roots,
+      ((E.store cfg ext w m).blocks r).parent_root ∈
+          (E.store cfg ext w m).block_roots →
+        ((E.store cfg ext w m).blocks
+          ((E.store cfg ext w m).blocks r).parent_root).slot <
+          ((E.store cfg ext w m).blocks r).slot)
+    (hprovSrc : LatestMessageProvenance E cfg
+      (get_current_slot cfg (E.store cfg ext v n)) (E.store cfg ext v n))
+    (hprovDst : LatestMessageProvenance E cfg
+      (get_current_slot cfg (E.store cfg ext w m)) (E.store cfg ext w m))
+    (hmaxSrc : E.WindowRecordedEpochMax cfg ext v n lo es)
+    (hmaxDst : E.WindowRecordedEpochMax cfg ext w m lo σ)
+    (hcover : ∀ t k (a : Attestation Root), t ≤ es →
+      E.vote i t = some (k, a) →
+      ∃ src, (E.store cfg ext v n).latest_messages i = some src ∧
+        compute_epoch_at_slot cfg t ≤ get_latest_message_epoch cfg src)
+    (hSt : E.SupportsDesc cfg ext v n b es i →
+      E.SupportsDesc cfg ext w m b es i)
+    (hother : other ≠ .pending)
+    (hlo : lo ≤ ((E.store cfg ext w m).blocks h).slot + 1)
+    (hiO : i ∈ OppositeAncestorClass cfg ext E (E.store cfg ext w m)
+      bsDst w m b h lo σ other)
+    (hdst : (E.store cfg ext w m).latest_messages i = some dst)
+    (hold : dst.slot ≤ es) :
+    i ∈ OppositeAncestorClass cfg ext E (E.store cfg ext v n)
+      bsSrc v n b h lo es other := by
+  have hiAσ := (Finset.mem_inter.mp hiO).1
+  have hiHon : i ∈ E.honest := by
+    simp only [Execution.Aclass, Finset.mem_filter] at hiAσ
+    exact hiAσ.1.2
+  obtain ⟨src, hsrc⟩ := E.old_message_recorded_at_source_of_coverage
+    cfg ext hhb hgen hiHon hdst hold hcover
+  have hsrcSlot := E.recorded_slot_le_completed_cutoff cfg ext hes hprovSrc hsrc
+  obtain ⟨aSrc, _, _, _, _, _, _, hsrcRoot, _, _⟩ := hprovSrc i src hsrc
+  obtain ⟨aDst, _, _, _, _, _, _, hdstRoot, _, _⟩ := hprovDst i dst hdst
+  have hagree : ∀ x ∈ (E.store cfg ext v n).block_roots,
+      (E.store cfg ext v n).blocks x = (E.store cfg ext w m).blocks x := by
+    intro x hx
+    exact hwf.blocks_agree (E.blockProvenance cfg ext v n)
+      (E.blockProvenance cfg ext w m) hx (hsub hx)
+  have hiOes := E.oppositeAncestorClass_old_cutoff cfg ext hhb hec hesσ
+    hwfDst hprovDst hmaxDst hother hlo
+    (hwalkDst h (hsub hh) dst.root hdstRoot) hiO hdst hold
+  have hiOldSpan : i ∈ E.span_committee lo es := by
+    have hiA := (Finset.mem_inter.mp hiOes).1
+    simp only [Execution.Aclass, Finset.mem_filter] at hiA
+    exact hiA.1.1
+  have hnew := E.old_source_recorded_is_newest cfg ext hhb hec hgen
+    hes hprovSrc hmaxSrc hiHon hiOldSpan hsrc
+  obtain ⟨t, k, a, ht, hvote, hlater, hroot⟩ := hnew
+  have htH : E.SlotWithinHorizon cfg t :=
+    E.slotWithinHorizon_mono cfg ht hesH
+  have hcomm : i ∈ E.committee t :=
+    hhb.votes_assigned i hiHon t (by rw [hvote]; exact Option.some_ne_none _)
+  obtain ⟨hact, huns⟩ := honest_active_unslashed cfg ext hhb hec hsv
+    hval hbsH hiHon htH hcomm
+  have hne := E.honest_not_equivocating cfg ext hhb hec hgen
+    hiHon v n hv hnH
+  exact E.oppositeAncestorClass_old_back cfg ext hhb hec hgen hiOes
+    hsrc hdst hsrcSlot hold hmaxSrc
+    (E.WindowRecordedEpochMax_mono_end cfg ext hesσ hmaxDst)
+    hSt ⟨t, k, a, ht, hvote, hlater, hroot⟩
+    hact huns hne hb hh hsrcRoot
+    (hwalkSrc src.root hsrcRoot b hb)
+    (hwalkSrc h hh src.root hsrcRoot) hagree
+
+/-- Honest opposite-status supporters split into the current sibling class or
+the confirming store's fixed ancestor debt. The old-message premise is
+supplied by `oppositeAncestorClass_old_back_of_execution`; the late-message
+premise is supplied by `opposite_supporter_not_newvote`. -/
+theorem opposite_honest_classification_of_transport
+    {v w : ValidatorIndex} {n m : ℕ} {b h c : Root}
+    {lo es σ : Slot} {selected other : PayloadStatus}
+    {bsSrc bsDst : BeaconState Root}
+    (hselected : selected ≠ .pending) (hother : other ≠ .pending)
+    (hne : other ≠ selected)
+    (hSmem : ∀ i ∈ E.Sclass cfg ext w m b lo σ,
+      i ∈ AttSupporters cfg (E.store cfg ext w m) (get_node_for_root c) bsDst)
+    (hchildSubset : (AttSupporters cfg (E.store cfg ext w m)
+      (get_node_for_root c) bsDst).toFinset ⊆
+      (AttSupporters cfg (E.store cfg ext w m)
+        (ForkChoiceNode.mk h selected) bsDst).toFinset)
+    (hspan : ∀ i ∈ AttSupporters cfg (E.store cfg ext w m)
+      (ForkChoiceNode.mk h other) bsDst,
+      i ∈ E.honest → i ∈ E.span_committee lo σ)
+    (hXback : E.Xclass cfg ext w m b lo σ ⊆
+      E.Xclass cfg ext v n b lo σ)
+    (hOld : ∀ i (lm : LatestMessage Root),
+      i ∈ OppositeAncestorClass cfg ext E (E.store cfg ext w m)
+        bsDst w m b h lo σ other →
+      (E.store cfg ext w m).latest_messages i = some lm →
+      lm.slot ≤ es →
+      i ∈ OppositeAncestorClass cfg ext E (E.store cfg ext v n)
+        bsSrc v n b h lo es other)
+    (hLate : ∀ i (lm : LatestMessage Root),
+      i ∈ E.honest →
+      i ∈ AttSupporters cfg (E.store cfg ext w m)
+        (ForkChoiceNode.mk h other) bsDst →
+      (E.store cfg ext w m).latest_messages i = some lm →
+      es + 1 ≤ lm.slot → False) :
+    ∀ i ∈ AttSupporters cfg (E.store cfg ext w m)
+      (ForkChoiceNode.mk h other) bsDst,
+      i ∈ E.honest →
+        i ∈ E.Xclass cfg ext v n b lo σ ∨
+        i ∈ OppositeAncestorClass cfg ext E (E.store cfg ext v n)
+          bsSrc v n b h lo es other := by
+  intro i hiOpp hiHon
+  obtain ⟨lm, hlm, _, _⟩ := mem_AttSupporters cfg hiOpp
+  have hold : lm.slot ≤ es := by
+    by_contra hn
+    exact hLate i lm hiHon hiOpp hlm (Nat.succ_le_of_lt (Nat.lt_of_not_ge hn))
+  have hiSpan := hspan i hiOpp hiHon
+  have hnotS : i ∉ E.Sclass cfg ext w m b lo σ := by
+    intro hiS
+    have hiSelected := List.mem_toFinset.mp
+      (hchildSubset (List.mem_toFinset.mpr (hSmem i hiS)))
+    obtain ⟨lm', hlm', _, hs⟩ := mem_AttSupporters cfg hiSelected
+    obtain ⟨lm'', hlm'', _, ho⟩ := mem_AttSupporters cfg hiOpp
+    have heq : lm' = lm'' := Option.some.inj (hlm'.symm.trans hlm'')
+    cases heq
+    exact not_ancestor_two_resolved_statuses (E.store cfg ext w m)
+      (get_supported_node (E.store cfg ext w m) lm') h selected other
+      hselected hother hne ⟨hs, ho⟩
+  have hnotDesc : ¬ E.SupportsDesc cfg ext w m b σ i := by
+    intro hDesc
+    apply hnotS
+    simp only [Execution.Sclass, Finset.mem_filter]
+    exact ⟨⟨hiSpan, hiHon⟩, hDesc⟩
+  by_cases hAnc : E.AncestorOrVoteless cfg ext w m b σ i
+  · right
+    have hiA : i ∈ E.Aclass cfg ext w m b lo σ := by
+      simp only [Execution.Aclass, Finset.mem_filter]
+      exact ⟨⟨hiSpan, hiHon⟩, hnotDesc, hAnc⟩
+    exact hOld i lm (Finset.mem_inter.mpr
+      ⟨hiA, List.mem_toFinset.mpr hiOpp⟩) hlm hold
+  · left
+    apply hXback
+    simp only [Execution.Xclass, Finset.mem_filter]
+    exact ⟨⟨hiSpan, hiHon⟩, hnotDesc, hAnc⟩
+
+/-- The execution form of honest opposite-score confinement. Every premise is
+an existing execution fact or a fork-choice domain fact. In particular,
+completed-window delivery is uniform over the honest validators in the score,
+and the late branch uses the head-safety induction hypothesis. -/
+theorem opposite_honest_classification_of_execution
+    (hwf : WellFormedExecution E) (hhb : HonestBehavior cfg ext E)
+    (hec : ExternalsCoherence cfg ext E) (hsv : StaticValidatorSet cfg E)
+    (hgen : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
+      E.genesis_store = get_forkchoice_store cfg ast ablk)
+    {v w : ValidatorIndex} {n m : ℕ} {b h c : Root}
+    {lo es σ k : Slot} {selected other : PayloadStatus}
+    {bsSrc bsDst : BeaconState Root}
+    (hv : v ∈ E.honest) (hw : w ∈ E.honest)
+    (hnH : E.WithinHorizon cfg n) (hmH : E.WithinHorizon cfg m)
+    (hes : es = get_current_slot cfg (E.store cfg ext v n) - 1)
+    (hesH : E.SlotWithinHorizon cfg es) (hesσ : es ≤ σ)
+    (hslot_m : E.slot_at cfg m = k)
+    (hval : bsSrc.validators = E.registry)
+    (hbsH : get_current_epoch cfg bsSrc < E.verification_horizon)
+    (hb : b ∈ (E.store cfg ext v n).block_roots)
+    (hh : h ∈ (E.store cfg ext v n).block_roots)
+    (hsub : (E.store cfg ext v n).block_roots ⊆
+      (E.store cfg ext w m).block_roots)
+    (hcDst : c ∈ (E.store cfg ext w m).block_roots)
+    (hwalkSrc : ∀ t ∈ (E.store cfg ext v n).block_roots,
+      ∀ r ∈ (E.store cfg ext v n).block_roots,
+        WalkKnown (E.store cfg ext v n)
+          ((E.store cfg ext v n).blocks t).slot r)
+    (hwalkDst : ∀ t ∈ (E.store cfg ext w m).block_roots,
+      ∀ r ∈ (E.store cfg ext w m).block_roots,
+        WalkKnown (E.store cfg ext w m)
+          ((E.store cfg ext w m).blocks t).slot r)
+    (hwfDst : ∀ r ∈ (E.store cfg ext w m).block_roots,
+      ((E.store cfg ext w m).blocks r).parent_root ∈
+          (E.store cfg ext w m).block_roots →
+        ((E.store cfg ext w m).blocks
+          ((E.store cfg ext w m).blocks r).parent_root).slot <
+          ((E.store cfg ext w m).blocks r).slot)
+    (hprovSrc : LatestMessageProvenance E cfg
+      (get_current_slot cfg (E.store cfg ext v n)) (E.store cfg ext v n))
+    (hprovDst : LatestMessageProvenance E cfg
+      (get_current_slot cfg (E.store cfg ext w m)) (E.store cfg ext w m))
+    (hmaxSrc : E.WindowRecordedEpochMax cfg ext v n lo es)
+    (hmaxDst : E.WindowRecordedEpochMax cfg ext w m lo σ)
+    (hcover : ∀ i ∈ E.honest, ∀ t j (a : Attestation Root), t ≤ es →
+      E.vote i t = some (j, a) →
+      ∃ src, (E.store cfg ext v n).latest_messages i = some src ∧
+        compute_epoch_at_slot cfg t ≤ get_latest_message_epoch cfg src)
+    (hSt_es : ∀ i, E.SupportsDesc cfg ext v n b es i →
+      E.SupportsDesc cfg ext w m b es i)
+    (hStσ : ∀ i, E.SupportsDesc cfg ext v n b σ i →
+      E.SupportsDesc cfg ext w m b σ i)
+    (hAtσ : ∀ i, E.AncestorOrVoteless cfg ext v n b σ i →
+      E.AncestorOrVoteless cfg ext w m b σ i)
+    (hselected : selected ≠ .pending) (hother : other ≠ .pending)
+    (hne : other ≠ selected)
+    (hlo : lo ≤ ((E.store cfg ext w m).blocks h).slot + 1)
+    (hSmem : ∀ i ∈ E.Sclass cfg ext w m b lo σ,
+      i ∈ AttSupporters cfg (E.store cfg ext w m) (get_node_for_root c) bsDst)
+    (hchildSubset : (AttSupporters cfg (E.store cfg ext w m)
+      (get_node_for_root c) bsDst).toFinset ⊆
+      (AttSupporters cfg (E.store cfg ext w m)
+        (ForkChoiceNode.mk h selected) bsDst).toFinset)
+    (hspan : ∀ i ∈ AttSupporters cfg (E.store cfg ext w m)
+      (ForkChoiceNode.mk h other) bsDst,
+      i ∈ E.honest → i ∈ E.span_committee lo σ)
+    (hIH : ∀ j ∈ E.honest, ∀ t'' : Slot, es + 1 ≤ t'' → t'' < k →
+      ∀ jj (a' : Attestation Root), E.vote j t'' = some (jj, a') →
+      is_ancestor (E.store cfg ext w m)
+        (get_node_for_root a'.data.beacon_block_root) (get_node_for_root b) = true)
+    (hbc : is_ancestor (E.store cfg ext w m)
+      (ForkChoiceNode.mk b .pending) (ForkChoiceNode.mk c .pending) = true) :
+    ∀ i ∈ AttSupporters cfg (E.store cfg ext w m)
+      (ForkChoiceNode.mk h other) bsDst,
+      i ∈ E.honest →
+        i ∈ E.Xclass cfg ext v n b lo σ ∨
+        i ∈ OppositeAncestorClass cfg ext E (E.store cfg ext v n)
+          bsSrc v n b h lo es other := by
+  apply E.opposite_honest_classification_of_transport cfg ext hselected hother hne
+    hSmem hchildSubset hspan
+    (by
+      intro i hi
+      simp only [Execution.Xclass, Finset.mem_filter] at hi ⊢
+      exact ⟨hi.1, fun hS => hi.2.1 (hStσ i hS),
+        fun hA => hi.2.2 (hAtσ i hA)⟩)
+  · intro i lm hiO hlm hold
+    exact E.oppositeAncestorClass_old_back_of_execution cfg ext hwf hhb hec hsv hgen
+      hv hw hnH hmH hes hesH hesσ hval hbsH hb hh hsub hwalkSrc hwalkDst
+      hwfDst hprovSrc hprovDst hmaxSrc hmaxDst (hcover i (by
+        have hiA := (Finset.mem_inter.mp hiO).1
+        simp only [Execution.Aclass, Finset.mem_filter] at hiA
+        exact hiA.1.2)) (hSt_es i) hother hlo hiO hlm hold
+  · intro i lm hiHon hiOpp hlm hlate
+    obtain ⟨_, _, _, _, _, _, _, hroot, _, _⟩ := hprovDst i lm hlm
+    exact E.opposite_supporter_not_newvote cfg ext hwf hhb hec hgen
+      hiHon hw hmH hslot_m hprovDst hiOpp hlm hlate
+      hselected hother hne hIH hwfDst
+      (hwalkDst c hcDst lm.root hroot)
+      (hwalkDst c hcDst b (hsub hb)) hbc hchildSubset
 
 end Execution
 end FastConfirmation.Spec
