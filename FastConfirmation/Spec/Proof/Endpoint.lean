@@ -232,6 +232,83 @@ theorem oppositeAncestorClass_region_split {E : Execution Root}
     rw [hsum] at hsplitP
     exact hsplitP
 
+/-- The opposite ancestor region split gives the exact honest accounting
+identities used by the payload-aware confirmation arms. -/
+theorem oppositeAncestorClass_region_identities {E : Execution Root}
+    {store : Store Root} {bs : BeaconState Root}
+    {v₀ : ValidatorIndex} {n₀ : ℕ} {b' h : Root} {lo sa es : Slot}
+    {other : PayloadStatus} {G : Finset ValidatorIndex}
+    (hlo : lo ≤ sa)
+    (hSanchor : E.Sval cfg ext v₀ n₀ b' lo es =
+      E.Sval cfg ext v₀ n₀ b' sa es)
+    (hG : G ⊆ E.Aclass cfg ext v₀ n₀ b' lo es \
+      E.Aclass cfg ext v₀ n₀ b' sa es)
+    (hdisj : Disjoint G
+      (AttSupporters cfg store (ForkChoiceNode.mk h other) bs).toFinset) :
+    let O := OppositeAncestorClass cfg ext E store bs v₀ n₀ b' h lo es other
+    let V := E.Aclass cfg ext v₀ n₀ b' sa es
+    let P := E.Aclass cfg ext v₀ n₀ b' lo es \ V
+    let OV := E.weight (O ∩ V)
+    let Opre := E.weight (O ∩ P)
+    let aV := E.weight (V \ O)
+    let apre := E.weight (P \ (G ∪ (O ∩ P)))
+    let xV := E.Xval cfg ext v₀ n₀ b' sa es
+    let xpre := E.weight (E.Xclass cfg ext v₀ n₀ b' lo es \
+      E.Xclass cfg ext v₀ n₀ b' sa es)
+    E.Sval cfg ext v₀ n₀ b' lo es + (aV + OV) + xV = E.Jspec sa es ∧
+    E.Sval cfg ext v₀ n₀ b' lo es + (aV + OV) + xV +
+      (E.weight G + Opre + apre + xpre) = E.Jspec lo es ∧
+    xV + xpre = E.Xval cfg ext v₀ n₀ b' lo es ∧
+    OV + Opre = E.weight O := by
+  classical
+  dsimp
+  let O := OppositeAncestorClass cfg ext E store bs v₀ n₀ b' h lo es other
+  let V := E.Aclass cfg ext v₀ n₀ b' sa es
+  let A := E.Aclass cfg ext v₀ n₀ b' lo es
+  let P := A \ V
+  have hregion := oppositeAncestorClass_region_split cfg ext hlo hG hdisj
+  dsimp at hregion
+  obtain ⟨hO, hV, hP⟩ := hregion
+  have hspan : E.span_committee sa es ⊆ E.span_committee lo es := by
+    intro i hi
+    simp only [Execution.span_committee, Finset.mem_biUnion, Finset.mem_Icc] at hi ⊢
+    obtain ⟨t, ⟨ht, hte⟩, hit⟩ := hi
+    exact ⟨t, ⟨le_trans hlo ht, hte⟩, hit⟩
+  have hVA : V ⊆ A := by
+    simp only [V, A, Execution.Aclass]
+    exact Finset.filter_subset_filter _ (Finset.filter_subset_filter _ hspan)
+  have hXV : E.Xclass cfg ext v₀ n₀ b' sa es ⊆
+      E.Xclass cfg ext v₀ n₀ b' lo es := by
+    simp only [Execution.Xclass]
+    exact Finset.filter_subset_filter _ (Finset.filter_subset_filter _ hspan)
+  have hAsplit := opposite_weight_add_sdiff (E := E) hVA
+  have hXsplit := opposite_weight_add_sdiff (E := E) hXV
+  have hVpart := E.weight_partition cfg ext v₀ n₀ b' sa es
+  have hFullpart := E.weight_partition cfg ext v₀ n₀ b' lo es
+  simp only [Execution.Aval, Execution.Xval] at hV hAsplit hXsplit hVpart hFullpart
+  dsimp [V, A] at hAsplit
+  simp only [Execution.Xval]
+  constructor
+  · rw [hSanchor, hV]
+    exact hVpart.symm
+  constructor
+  · rw [hV, hP]
+    calc
+      _ = E.Sval cfg ext v₀ n₀ b' lo es +
+          (E.weight (E.Aclass cfg ext v₀ n₀ b' sa es) +
+            E.weight (E.Aclass cfg ext v₀ n₀ b' lo es \
+              E.Aclass cfg ext v₀ n₀ b' sa es)) +
+          (E.weight (E.Xclass cfg ext v₀ n₀ b' sa es) +
+            E.weight (E.Xclass cfg ext v₀ n₀ b' lo es \
+              E.Xclass cfg ext v₀ n₀ b' sa es)) := by ac_rfl
+      _ = E.Sval cfg ext v₀ n₀ b' lo es +
+          E.weight (E.Aclass cfg ext v₀ n₀ b' lo es) +
+          E.weight (E.Xclass cfg ext v₀ n₀ b' lo es) := by rw [hAsplit, hXsplit]
+      _ = E.Jspec lo es := hFullpart.symm
+  constructor
+  · exact hXsplit
+  · exact hO
+
 /-- Confirmation arithmetic with the ancestor class charged once. The
 matching-parent discount funds `G`; the remaining ancestor weight funds the
 opposite branch's ancestor votes. -/

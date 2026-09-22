@@ -406,6 +406,77 @@ theorem recorded_sibling_le_v2 {store : Store Root}
   · exact Or.inl (hHon i hi hh)
   · exact Or.inr (Finset.mem_union.mpr (hByz i hi hh))
 
+/-- The complete opposite resolved-status score is charged to the current
+sibling class, the v2 enemy, and the fixed source opposite ancestor debt. -/
+theorem recorded_opposite_status_le_v2
+    {store source : Store Root} {bs bsSource : BeaconState Root}
+    (hval : bs.validators = E.registry)
+    {v₀ : ValidatorIndex} {n₀ : ℕ} {b' h : Root}
+    {lo es σ : Slot} {other : PayloadStatus}
+    (hHon : ∀ i ∈ AttSupporters cfg store (ForkChoiceNode.mk h other) bs,
+      i ∈ E.honest →
+        i ∈ E.Xclass cfg ext v₀ n₀ b' lo σ ∨
+          i ∈ OppositeAncestorClass cfg ext E source bsSource
+            v₀ n₀ b' h lo es other)
+    (hByz : ∀ i ∈ AttSupporters cfg store (ForkChoiceNode.mk h other) bs,
+      i ∉ E.honest →
+        i ∈ E.BbadSet cfg ext v₀ n₀ b' lo es ∨ i ∈ E.SpentSet es σ) :
+    get_attestation_score cfg store (ForkChoiceNode.mk h other) bs ≤
+      E.Xval cfg ext v₀ n₀ b' lo σ + E.Enemy cfg ext v₀ n₀ b' lo es σ +
+        E.weight (OppositeAncestorClass cfg ext E source bsSource
+          v₀ n₀ b' h lo es other) := by
+  rw [attestation_score_eq_weight cfg hval, Execution.Xval, Execution.Enemy]
+  refine le_trans (E.weight_mono ?_)
+    ((weight_union_le _ _).trans
+      (Nat.add_le_add_right (weight_union_le _ _) _))
+  intro i hi
+  rw [List.mem_toFinset] at hi
+  rw [Finset.mem_union]
+  by_cases hh : i ∈ E.honest
+  · rcases hHon i hi hh with hX | hO
+    · exact Or.inl (Finset.mem_union.mpr (Or.inl hX))
+    · exact Or.inr hO
+  · exact Or.inl (Finset.mem_union.mpr
+      (Or.inr (Finset.mem_union.mpr (hByz i hi hh))))
+
+private theorem inv2_opposite_margin_arith
+    {X B boost O S opp selected : ℕ}
+    (hstrip : X + B + (boost + O) + 1 ≤ S)
+    (hopp : opp ≤ X + B + O) (hselected : S ≤ selected) :
+    opp + boost < selected := by omega
+
+/-- The strengthened `INV2` debt yields the required payload status margin
+once each competing status score is confined to `X + Enemy + O`. -/
+theorem pendingStatusMargin_of_INV2_opposite
+    {store : Store Root} {blocks : List Root}
+    {v₀ : ValidatorIndex} {n₀ : ℕ} {b' h : Root}
+    {lo es σ : Slot} {status : PayloadStatus} {boost O : ℕ}
+    (hmem : ForkChoiceNode.mk h status ∈
+      get_node_children store blocks (ForkChoiceNode.mk h .pending))
+    (hnotPrev : is_previous_slot_payload_decision cfg store
+      (ForkChoiceNode.mk h status) = false)
+    (hselected : E.Sval cfg ext v₀ n₀ b' lo σ ≤
+      get_attestation_score cfg store (ForkChoiceNode.mk h status)
+        (store.checkpoint_states store.justified_checkpoint))
+    (hboost : boost = get_proposer_score cfg store)
+    (hinv : E.INV2 cfg ext v₀ n₀ b' lo es σ (boost + O))
+    (hopp : ∀ other ∈ get_node_children store blocks (ForkChoiceNode.mk h .pending),
+      other ≠ ForkChoiceNode.mk h status →
+      get_attestation_score cfg store other
+        (store.checkpoint_states store.justified_checkpoint) ≤
+          E.Xval cfg ext v₀ n₀ b' lo σ +
+            E.Enemy cfg ext v₀ n₀ b' lo es σ + O) :
+    PendingStatusMargin cfg store blocks h status := by
+  refine ⟨hmem, ?_⟩
+  intro other hm hne
+  left
+  constructor
+  · have hstrip := E.INV2_endpoint cfg ext v₀ n₀ b' lo es σ
+      (boost + O) hinv
+    rw [hboost] at hstrip
+    exact inv2_opposite_margin_arith hstrip (hopp other hm hne) hselected
+  · exact hnotPrev
+
 /-! ## Section 9 — the pure-ℕ v2 step ("defections pay")
 
 The floored ledger step: `INV2(σ) ⟹ INV2(σ')` over the per-slot class deltas the
