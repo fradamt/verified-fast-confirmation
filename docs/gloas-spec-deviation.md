@@ -106,12 +106,22 @@ slot 6. The source does not confirm `c`. The receiver still follows `P` EMPTY.
 The g3 projected-source replay gives discount 150 units, threshold 545 units,
 and support 400 units at slot 11; it also does not confirm `c`.
 
-The Lean implementation is in `FastConfirmation/Spec/Model/LMDHelpers.lean`.
-Its discount bound is in `FastConfirmation/Spec/Proof/Discount.lean`.
-`FastConfirmation/Spec/Proof/Endpoint.lean:137` is still open. Its current
-`ledger_descendStep` statement is false: at the g3 receiver in slot 12,
-`hchild`, `hbside`, `hledger`, and `hsib` hold, but the pending parent selects
-EMPTY while `c` needs FULL. This run does not confirm `c`; it refutes the
-local lemma, not the repaired safety rule. See `docs/gloas-negative-result.md`
-for the old rule's confirmed counterexample and the g5 lane report for the
-new local proof obstruction.
+The Lean model change is in `FastConfirmation/Spec/Model/LMDHelpers.lean`.
+`Discount.lean` proves the matching-parent discount bound.
+`Endpoint.lean` proves the source Oanc strip from actual confirmation and
+the source V/pre partition. `OancTransport.lean` proves honest old-vote
+transport, the complete-window opposite score bound, and transport of a
+fixed Oanc debt when the aggregate growth facts hold. `LedgerV2.lean`
+defines the status enemy. It includes old Byzantine votes on the ancestor
+line and fits inside the existing complete-window Byzantine budget.
+
+The safety shell is still open. `ChainInput.lean` and `GroundBeta.lean` lack
+a derived `PendingStatusMargin` at the later honest store. The direct-window
+and crossing paths also need this margin. The present edge certificates
+do not carry the actual confirmation of each edge or the status-specific
+old-vote classification. The full library build stops at those call sites.
+No confirmed-child exclusion has been found for the revised rule. The g3
+receiver case excludes an unconfirmed child and shows why the old root-only
+ledger inputs cannot select its payload status. The earlier confirmed
+counterexample applies to the upstream rule; see
+`docs/gloas-negative-result.md` for that historical result.
