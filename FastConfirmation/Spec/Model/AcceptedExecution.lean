@@ -202,9 +202,12 @@ theorem on_block_root_known
     {store store' : Store Root} {sb : SignedBeaconBlock Root}
     (hh : on_block cfg ext store sb = some store') :
     sb.root ∈ store'.block_roots := by
-  simp only [on_block] at hh
-  split_ifs at hh <;> try cases hh
-  all_goals
+  by_cases hknown : sb.root ∈ store.block_roots
+  · simp [on_block, hknown] at hh
+    cases hh
+    exact hknown
+  · simp only [on_block, hknown] at hh
+    split_ifs at hh <;> try simp_all
     cases hst : ext.state_transition
         (store.block_states sb.message.parent_root) sb with
     | none => rw [hst] at hh; cases hh
@@ -254,18 +257,18 @@ theorem on_block_root_known
       · rw [if_neg hknown]
         exact List.mem_append_right _ (List.mem_singleton_self _)
 
-/-- Mechanical handler inversion: the block-state entry installed at a
-successful root is exactly the opaque transition result. -/
-theorem on_block_inserted_state
+/-- Mechanical handler inversion: either a known root is a no-op, or a fresh
+root installs exactly the opaque transition result. -/
+theorem on_block_inserted_state_fresh
     {store store' : Store Root} {sb : SignedBeaconBlock Root}
+    (hfresh : sb.root ∉ store.block_roots)
     (hh : on_block cfg ext store sb = some store') :
     ∃ post : BeaconState Root,
       ext.state_transition (store.block_states sb.message.parent_root) sb =
           some post ∧
         store'.block_states sb.root = post := by
-  simp only [on_block] at hh
-  split_ifs at hh <;> try cases hh
-  all_goals
+    simp only [on_block, hfresh] at hh
+    split_ifs at hh <;> try simp_all
     cases hst : ext.state_transition
         (store.block_states sb.message.parent_root) sb with
     | none => rw [hst] at hh; cases hh
@@ -288,27 +291,44 @@ theorem on_block_inserted_state
         dsimp only [realized, boosted, timed, added]
         split_ifs
         all_goals exact Option.some.inj hh
-      refine ⟨post, rfl, ?_⟩
-      rw [← hresult]
-      have hpulled :
-          (compute_pulled_up_tip cfg ext realized sb.root).block_states =
-            realized.block_states := by
-        simp only [compute_pulled_up_tip]
-        split_ifs <;>
-          simp only [update_unrealized_checkpoints, update_checkpoints] <;>
+      have hstate : store'.block_states sb.root = post := by
+        rw [← hresult]
+        have hpulled :
+            (compute_pulled_up_tip cfg ext realized sb.root).block_states =
+              realized.block_states := by
+          simp only [compute_pulled_up_tip]
+          split_ifs <;>
+            simp only [update_unrealized_checkpoints, update_checkpoints] <;>
+            split_ifs <;> rfl
+        rw [hpulled]
+        have hrealized : realized.block_states = boosted.block_states := by
+          dsimp only [realized]
+          simp only [update_checkpoints]
           split_ifs <;> rfl
-      rw [hpulled]
-      have hrealized : realized.block_states = boosted.block_states := by
-        dsimp only [realized]
-        simp only [update_checkpoints]
-        split_ifs <;> rfl
-      rw [hrealized]
-      have hboosted : boosted.block_states = timed.block_states := by
-        dsimp only [boosted]
-        simp only [update_proposer_boost_root]
-        split_ifs <;> rfl
-      rw [hboosted]
-      exact Function.update_self sb.root post store.block_states
+        rw [hrealized]
+        have hboosted : boosted.block_states = timed.block_states := by
+          dsimp only [boosted]
+          simp only [update_proposer_boost_root]
+          split_ifs <;> rfl
+        rw [hboosted]
+        exact Function.update_self sb.root post store.block_states
+      exact congrArg some hstate.symm
+
+/-- Mechanical handler inversion: either a known root is a no-op, or a fresh
+root installs exactly the opaque transition result. -/
+theorem on_block_inserted_state
+    {store store' : Store Root} {sb : SignedBeaconBlock Root}
+    (hh : on_block cfg ext store sb = some store') :
+    (sb.root ∈ store.block_roots ∧ store' = store) ∨
+      ∃ post : BeaconState Root,
+        ext.state_transition (store.block_states sb.message.parent_root) sb =
+            some post ∧
+          store'.block_states sb.root = post := by
+  by_cases hknown : sb.root ∈ store.block_roots
+  · left
+    simp [on_block, hknown] at hh
+    exact ⟨hknown, hh.symm⟩
+  · exact Or.inr (on_block_inserted_state_fresh cfg ext hknown hh)
 
 /-- The accepted result is a causal exact successor prefix. -/
 theorem post_causal (t : AcceptedBlockTransition cfg ext E) :
