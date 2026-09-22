@@ -42,9 +42,10 @@ if [[ $pytest_status -ne 0 ]]; then
   rg -n "FAILED|ERROR|E   " "$pytest_log" | head -20 || true
 fi
 
-if [[ -x "$repo_root/.lake/build/bin/conformance" ]]; then
+runner="$repo_root/scripts/conformance/lean/Conformance.lean"
+if [[ -f "$runner" ]]; then
   echo "runner-summary:"
-  "$repo_root/.lake/build/bin/conformance" "$out" | tail -n 1
+  (cd "$repo_root" && lake env lean --run "$runner" "$out" | tail -n 1)
 else
   echo "runner absent"
 fi
