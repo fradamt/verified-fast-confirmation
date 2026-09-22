@@ -19,6 +19,7 @@ pytest_parallel=${MAYBE_PARALLEL:-}
 trap 'rm -rf "$tmp_dir"' EXIT
 
 mkdir -p "$(dirname "$out")"
+export_start=$SECONDS
 export FCR_TRACE_OUT="$trace_base"
 set +e
 (
@@ -39,6 +40,8 @@ if [[ ${#trace_files[@]} -gt 0 ]]; then
 fi
 record_count=$(wc -l <"$out" | tr -d ' ')
 echo "records=$record_count"
+export_wall=$((SECONDS - export_start))
+echo "export-wall-seconds=$export_wall"
 if [[ $pytest_status -ne 0 ]]; then
   echo "pytest-status=$pytest_status"
   rg -n "FAILED|ERROR|E   " "$pytest_log" | head -20 || true
@@ -46,8 +49,11 @@ fi
 
 runner="$repo_root/scripts/conformance/lean/Conformance.lean"
 if [[ -f "$runner" ]]; then
+  runner_start=$SECONDS
   echo "runner-summary:"
   (cd "$repo_root" && lake env lean --run "$runner" "$out" | tail -n 1)
+  runner_wall=$((SECONDS - runner_start))
+  echo "runner-wall-seconds=$runner_wall"
 else
   echo "runner absent"
 fi
