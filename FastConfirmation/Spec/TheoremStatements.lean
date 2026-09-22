@@ -294,16 +294,14 @@ structure JustificationInterface (E : Execution Root) : Prop where
           (E.store cfg ext w m).justified_checkpoint.root).slot ≤
         compute_start_slot_at_epoch cfg t.epoch
 
-/-- The full premise bundle of the FCR guarantee: the genesis store is the
-spec's own trusted-anchor initialization (`get_forkchoice_store`, with the
-two facts its projection cannot carry: the dropped
-`anchor_block.state_root == hash_tree_root(anchor_state)` assert renders as
-slot agreement, and genuine hashing separates the anchor's parent from its
-own root — `WellFormedStore` then *derives* via
-`wellFormedStore_get_forkchoice_store`, it is not assumed), whole-second
-slot boundaries (mainnet: `12000 ms`), the behavioral/network records, the
-externals-coherence and static-set idealizations, the economic assumptions,
-and the FFG interface. -/
+/-- The full premise bundle of the FCR guarantee uses the spec's trusted-anchor
+initialization. The projection drops
+`anchor_block.state_root == hash_tree_root(anchor_state)` and does not
+represent this commitment. The accepted trajectory instead requires anchor
+slot agreement and anchor parent/root inequality. The bundle also requires
+whole-second slot boundaries (mainnet: `12000 ms`), the behavioral and
+network records, the externals-coherence and static-set idealisations, the
+economic assumptions, and the FFG interface. -/
 def SpecAssumptions (E : Execution Root) : Prop :=
   (∃ (anchor_state : BeaconState Root) (anchor_block : SignedBeaconBlock Root),
     E.genesis_store = get_forkchoice_store cfg anchor_state anchor_block ∧
