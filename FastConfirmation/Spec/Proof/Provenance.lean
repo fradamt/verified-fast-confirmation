@@ -211,9 +211,13 @@ theorem on_tick_latest (store : Store Root) (time : ℕ) :
 theorem on_block_latest {store store' : Store Root} {sb : SignedBeaconBlock Root}
     (h : on_block cfg ext store sb = some store') :
     store'.latest_messages = store.latest_messages := by
-  simp only [on_block] at h
-  split_ifs at h <;> try cases h
-  all_goals
+  by_cases hknown : sb.root ∈ store.block_roots
+  · simp [on_block, hknown] at h
+    cases h
+    rfl
+  · simp only [on_block, if_neg hknown] at h
+    split_ifs at h
+    all_goals try contradiction
     cases hst : ext.state_transition (store.block_states sb.message.parent_root) sb with
     | none => rw [hst] at h; cases h
     | some state =>

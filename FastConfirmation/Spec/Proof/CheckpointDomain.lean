@@ -129,9 +129,13 @@ theorem on_block_exact {store store' : Store Root} {b : SignedBeaconBlock Root}
     (h : CheckpointStatesExact store)
     (hh : on_block cfg ext store b = some store') :
     CheckpointStatesExact store' := by
-  simp only [on_block] at hh
-  split_ifs at hh <;> try cases hh
-  all_goals
+  by_cases hknown : b.root ∈ store.block_roots
+  · simp [on_block, hknown] at hh
+    cases hh
+    exact h
+  · simp only [on_block, if_neg hknown] at hh
+    split_ifs at hh
+    all_goals try contradiction
     cases hst : ext.state_transition (store.block_states b.message.parent_root) b with
     | none => rw [hst] at hh; cases hh
     | some state =>

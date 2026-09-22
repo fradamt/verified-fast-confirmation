@@ -145,13 +145,11 @@ theorem noConflict_arithmeticBranch_oneThird
       Execution.currentTargetObservedNonhonestSupporters] using
       E.currentTarget_nonhonest_weight_le_adversarial cfg ext
         hhb hec hbb hgen0 hv hnH hval htab hprov
-  have hobserved : score - min adversarial score ≤
+  have hobserved : score - adversarial ≤
       E.weight observedHonest := by
-    rw [hscore, Nat.min_def]
-    split_ifs
-    · apply (Nat.sub_le_iff_le_add).2
-      exact Nat.add_le_add_left hbyz _
-    · simp only [Nat.sub_self, Nat.zero_le]
+    rw [hscore]
+    apply (Nat.sub_le_iff_le_add).2
+    exact Nat.add_le_add_left hbyz _
   have hfuture : remaining ≤ E.weight futureHonest := by
     simpa only [remaining, estimate, start, finish, futureHonest, store] using
       E.currentTarget_remaining_honest_le_future_weight cfg ext
@@ -165,10 +163,10 @@ theorem noConflict_arithmeticBranch_oneThird
     decide_eq_true_eq] at hgateArithmetic
   rw [← hstate, htab] at hgateArithmetic
   have hgateArithmetic' : E.total_active cfg <
-      3 * (score - min adversarial score + remaining) := by
+      3 * (score - adversarial + remaining) := by
     simpa only [score, adversarial, remaining, estimate, start, finish,
       store, one_mul] using hgateArithmetic
-  have hpredict : score - min adversarial score + remaining ≤
+  have hpredict : score - adversarial + remaining ≤
       E.weight observedHonest + E.weight futureHonest :=
     Nat.add_le_add hobserved hfuture
   have honeThird : E.total_active cfg <

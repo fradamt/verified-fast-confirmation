@@ -524,9 +524,12 @@ private theorem on_block_of_selectors
     (h : AcceptedRealizedJustifiedOrigins cfg ext S store)
     (hh : FastConfirmation.Spec.on_block cfg ext store sb = some store') :
     AcceptedRealizedJustifiedOrigins cfg ext S store' := by
-  simp only [FastConfirmation.Spec.on_block] at hh
-  split_ifs at hh <;> try cases hh
-  all_goals
+  by_cases hknown : sb.root ∈ store.block_roots
+  · simp only [FastConfirmation.Spec.on_block, if_pos hknown] at hh
+    cases hh
+    exact h
+  · simp only [FastConfirmation.Spec.on_block, if_neg hknown] at hh
+    split_ifs at hh <;> try cases hh
     rw [hst] at hh
     cases hh
     have hsub : store.block_roots ⊆
@@ -636,20 +639,31 @@ theorem acceptedBlockTransition
     (h : AcceptedRealizedJustifiedOrigins cfg ext S
       (t.atPrefix.store cfg ext)) :
     AcceptedRealizedJustifiedOrigins cfg ext S t.postStore := by
-  obtain ⟨post, hst, hinserted⟩ :=
-    Execution.AcceptedBlockTransition.on_block_inserted_state
-      cfg ext t.accepted
-  have hnewAt : E.AcceptedBlockAt cfg ext t.signedBlock.root
-      t.signedBlock.message :=
-    ⟨t.postStore, t.post_causal, t.root_known, t.inserted_message⟩
-  apply on_block_of_selectors cfg ext hwf (.scheduledPrefix t.atPrefix)
-    hnewAt hst
-  · rw [← hinserted]
-    exact hcoh.transition_gj t
-  · rw [← hinserted]
-    exact hcoh.transition_gu t
-  · exact h
-  · exact t.accepted
+  by_cases hfresh : t.signedBlock.root ∉
+      (t.atPrefix.store cfg ext).block_roots
+  · obtain ⟨post, hst, hinserted⟩ :=
+      Execution.AcceptedBlockTransition.on_block_inserted_state_fresh
+        cfg ext hfresh t.accepted
+    have hnewAt : E.AcceptedBlockAt cfg ext t.signedBlock.root
+        t.signedBlock.message :=
+      ⟨t.postStore, t.post_causal, t.root_known,
+        Execution.AcceptedBlockTransition.inserted_message_fresh t hfresh⟩
+    apply on_block_of_selectors cfg ext hwf (.scheduledPrefix t.atPrefix)
+      hnewAt hst
+    · rw [← hinserted]
+      exact hcoh.transition_gj t
+    · rw [← hinserted]
+      exact hcoh.transition_gu t
+    · exact h
+    · exact t.accepted
+  · have hknown : t.signedBlock.root ∈
+        (t.atPrefix.store cfg ext).block_roots :=
+      Classical.byContradiction hfresh
+    have hsame : t.postStore = t.atPrefix.store cfg ext := by
+      exact (Option.some.inj (by
+        simpa only [on_block, if_pos hknown] using t.accepted)).symm
+    rw [hsame]
+    exact h
 
 end AcceptedRealizedJustifiedOrigins
 

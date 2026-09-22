@@ -422,9 +422,12 @@ private theorem on_block_of_selectors
     (h : AcceptedFFGJustifiedLedger S store)
     (hh : on_block cfg ext store sb = some store') :
     AcceptedFFGJustifiedLedger S store' := by
-  simp only [on_block] at hh
-  split_ifs at hh <;> try cases hh
-  all_goals
+  by_cases hknown : sb.root ∈ store.block_roots
+  · simp only [on_block, if_pos hknown] at hh
+    cases hh
+    exact h
+  · simp only [on_block, if_neg hknown] at hh
+    split_ifs at hh <;> try cases hh
     rw [hst] at hh
     cases hh
     let added : Store Root :=
@@ -522,16 +525,18 @@ theorem acceptedBlockTransition
     (t : E.AcceptedBlockTransition cfg ext)
     (h : AcceptedFFGJustifiedLedger S (t.atPrefix.store cfg ext)) :
     AcceptedFFGJustifiedLedger S t.postStore := by
-  obtain ⟨post, hst, hinserted⟩ :=
-    Execution.AcceptedBlockTransition.on_block_inserted_state
-      cfg ext t.accepted
-  apply on_block_of_selectors t.root_accepted hst
-  · rw [← hinserted]
-    exact hcoh.transition_gj t
-  · rw [← hinserted]
-    exact hcoh.transition_gu t
-  · exact h
-  · exact t.accepted
+  rcases Execution.AcceptedBlockTransition.on_block_inserted_state
+      cfg ext t.accepted with
+    (⟨_hknown, hsame⟩ | ⟨post, hst, hinserted⟩)
+  · rw [hsame]
+    exact h
+  · apply on_block_of_selectors t.root_accepted hst
+    · rw [← hinserted]
+      exact hcoh.transition_gj t
+    · rw [← hinserted]
+      exact hcoh.transition_gu t
+    · exact h
+    · exact t.accepted
 
 end AcceptedFFGJustifiedLedger
 
@@ -744,9 +749,12 @@ private theorem on_block_of_selector
     (h : AcceptedOldGURealized S store)
     (hh : FastConfirmation.Spec.on_block cfg ext store sb = some store') :
     AcceptedOldGURealized S store' := by
-  simp only [FastConfirmation.Spec.on_block] at hh
-  split_ifs at hh <;> try cases hh
-  all_goals
+  by_cases hknown : sb.root ∈ store.block_roots
+  · simp only [FastConfirmation.Spec.on_block, if_pos hknown] at hh
+    cases hh
+    exact h
+  · simp only [FastConfirmation.Spec.on_block, if_neg hknown] at hh
+    split_ifs at hh <;> try cases hh
     rw [hst] at hh
     cases hh
     let added : Store Root :=
@@ -850,14 +858,16 @@ theorem acceptedBlockTransition
     (t : E.AcceptedBlockTransition cfg ext)
     (h : AcceptedOldGURealized S (t.atPrefix.store cfg ext)) :
     AcceptedOldGURealized S t.postStore := by
-  obtain ⟨post, hst, hinserted⟩ :=
-    Execution.AcceptedBlockTransition.on_block_inserted_state
-      cfg ext t.accepted
-  apply on_block_of_selector hst
-  · rw [← hinserted]
-    exact hcoh.transition_gu t
-  · exact h
-  · exact t.accepted
+  rcases Execution.AcceptedBlockTransition.on_block_inserted_state
+      cfg ext t.accepted with
+    (⟨_hknown, hsame⟩ | ⟨post, hst, hinserted⟩)
+  · rw [hsame]
+    exact h
+  · apply on_block_of_selector hst
+    · rw [← hinserted]
+      exact hcoh.transition_gu t
+    · exact h
+    · exact t.accepted
 
 theorem after_store_target_checkpoint_state
     (store : Store Root) (target : Checkpoint Root)

@@ -379,7 +379,9 @@ theorem child_acceptedBlockAt :
       childSignedBlock.message := by
   refine ⟨childTransition.postStore, childTransition.post_causal, ?_, ?_⟩
   · simpa [childSignedBlock] using childTransition.root_known
-  · simpa [childSignedBlock] using childTransition.inserted_message
+  · simpa [childSignedBlock] using
+      childTransition.inserted_message_fresh (by
+        set_option maxRecDepth 50000 in decide)
 
 theorem child_canonical_throughout_epoch_two :
     witnessExecution.CanonicalThroughoutEpoch witnessConfig witnessExternals

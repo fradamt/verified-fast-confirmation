@@ -7,16 +7,14 @@ import FastConfirmation.Spec.Proof.Preservation
 
 For every non-genesis root known in an exact execution prefix, this file
 retains the actual successful scheduled `AcceptedBlockTransition` that most
-recently wrote that root.  The witness agrees with both block-identity fields
-of the current store: its signed message is the current block message, and its
-post-store block state is the current block state.
+recently wrote that root.  Duplicate deliveries are no-ops under the pinned
+handler, so they carry the prior writer forward; only fresh deliveries install
+the current block's identity fields.
 
 The prefix-indexed invariant additionally records execution chronology.  A
 writer is earlier than the prefix when it is on the same node and either lies
 in an earlier scheduled second or at a lower event index in the same second.
-Successful duplicate-root writes deliberately replace the old witness with
-the current transition; every other successful or rejected event carries the
-old witness forward.
+Every other successful or rejected event carries the old witness forward.
 -/
 
 namespace FastConfirmation.Spec
@@ -27,12 +25,12 @@ variable {cfg : Config} {ext : Externals Root}
 /-! ## Handler-local block-identity facts -/
 
 /-- Peel the block-identity-preserving tail of a successful block handler.
-The only write to `block_roots`, `blocks`, or `block_states` is therefore the
-displayed insertion/overwrite. -/
+The result is either the pinned known-root no-op or the displayed fresh
+insertion. -/
 private theorem on_block_inserted_sameBlocks_for_lastWriter
     {store store' : Store Root} {sb : SignedBeaconBlock Root}
     (hh : on_block cfg ext store sb = some store') :
-    ∃ post : BeaconState Root,
+    (∃ post : BeaconState Root,
       ext.state_transition (store.block_states sb.message.parent_root) sb =
           some post ∧
         SameBlocks
@@ -42,10 +40,15 @@ private theorem on_block_inserted_sameBlocks_for_lastWriter
               else store.block_roots ++ [sb.root]
             blocks := Function.update store.blocks sb.root sb.message
             block_states := Function.update store.block_states sb.root post }
-          store' := by
-  simp only [on_block] at hh
-  split_ifs at hh <;> try cases hh
-  all_goals
+          store') ∨
+      (sb.root ∈ store.block_roots ∧ store' = store) := by
+  by_cases hknown : sb.root ∈ store.block_roots
+  · right
+    simp [on_block, hknown] at hh
+    exact ⟨hknown, hh.symm⟩
+  · left
+    simp only [on_block, if_neg hknown] at hh
+    split_ifs at hh <;> try cases hh
     cases hst : ext.state_transition
         (store.block_states sb.message.parent_root) sb with
     | none => rw [hst] at hh; cases hh
@@ -84,10 +87,10 @@ theorem on_block_other_root_blocks
     (hh : on_block cfg ext store sb = some store')
     {r : Root} (hne : r ≠ sb.root) :
     store'.blocks r = store.blocks r := by
-  obtain ⟨post, _hst, hsame⟩ :=
-    on_block_inserted_sameBlocks_for_lastWriter hh
-  calc
-    store'.blocks r =
+  rcases on_block_inserted_sameBlocks_for_lastWriter hh with
+    (⟨post, _hst, hsame⟩ | ⟨_hknown, rfl⟩)
+  · calc
+      store'.blocks r =
         ({ store with
           block_roots :=
             if sb.root ∈ store.block_roots then store.block_roots
@@ -95,9 +98,10 @@ theorem on_block_other_root_blocks
           blocks := Function.update store.blocks sb.root sb.message
           block_states := Function.update store.block_states sb.root post } :
           Store Root).blocks r := congrFun hsame.2.1.symm r
-    _ = store.blocks r := by
-      change Function.update store.blocks sb.root sb.message r = _
-      rw [Function.update_of_ne hne]
+      _ = store.blocks r := by
+        change Function.update store.blocks sb.root sb.message r = _
+        rw [Function.update_of_ne hne]
+  · rfl
 
 /-- A successful block write leaves every other block state unchanged. -/
 theorem on_block_other_root_block_states
@@ -105,10 +109,10 @@ theorem on_block_other_root_block_states
     (hh : on_block cfg ext store sb = some store')
     {r : Root} (hne : r ≠ sb.root) :
     store'.block_states r = store.block_states r := by
-  obtain ⟨post, _hst, hsame⟩ :=
-    on_block_inserted_sameBlocks_for_lastWriter hh
-  calc
-    store'.block_states r =
+  rcases on_block_inserted_sameBlocks_for_lastWriter hh with
+    (⟨post, _hst, hsame⟩ | ⟨_hknown, rfl⟩)
+  · calc
+      store'.block_states r =
         ({ store with
           block_roots :=
             if sb.root ∈ store.block_roots then store.block_roots
@@ -116,9 +120,10 @@ theorem on_block_other_root_block_states
           blocks := Function.update store.blocks sb.root sb.message
           block_states := Function.update store.block_states sb.root post } :
           Store Root).block_states r := congrFun hsame.2.2.symm r
-    _ = store.block_states r := by
-      change Function.update store.block_states sb.root post r = _
-      rw [Function.update_of_ne hne]
+      _ = store.block_states r := by
+        change Function.update store.block_states sb.root post r = _
+        rw [Function.update_of_ne hne]
+  · rfl
 
 /-- A non-written root known after a successful block was already known
 before that handler call. -/
@@ -128,15 +133,16 @@ theorem on_block_other_root_known
     {r : Root} (hne : r ≠ sb.root)
     (hr : r ∈ store'.block_roots) :
     r ∈ store.block_roots := by
-  obtain ⟨_post, _hst, hsame⟩ :=
-    on_block_inserted_sameBlocks_for_lastWriter hh
-  rw [← hsame.1] at hr
-  change r ∈ (if sb.root ∈ store.block_roots then store.block_roots
-    else store.block_roots ++ [sb.root]) at hr
-  by_cases hroot : sb.root ∈ store.block_roots
-  · simpa only [if_pos hroot] using hr
-  · simp only [if_neg hroot, List.mem_append, List.mem_singleton] at hr
-    exact hr.resolve_right hne
+  rcases on_block_inserted_sameBlocks_for_lastWriter hh with
+    (⟨_post, _hst, hsame⟩ | ⟨_hknown, rfl⟩)
+  · rw [← hsame.1] at hr
+    change r ∈ (if sb.root ∈ store.block_roots then store.block_roots
+      else store.block_roots ++ [sb.root]) at hr
+    by_cases hroot : sb.root ∈ store.block_roots
+    · simpa only [if_pos hroot] using hr
+    · simp only [if_neg hroot, List.mem_append, List.mem_singleton] at hr
+      exact hr.resolve_right hne
+  · exact hr
 
 namespace Execution
 
@@ -144,32 +150,35 @@ namespace AcceptedBlockTransition
 
 variable {E : Execution Root}
 
-/-- The current accepted writer installs its exact signed message. -/
-theorem inserted_message (t : E.AcceptedBlockTransition cfg ext) :
+/-- A fresh accepted writer installs its exact signed message. -/
+theorem inserted_message_fresh (t : E.AcceptedBlockTransition cfg ext)
+    (hfresh : t.signedBlock.root ∉
+      (t.atPrefix.store cfg ext).block_roots) :
     t.postStore.blocks t.signedBlock.root = t.signedBlock.message := by
-  obtain ⟨post, _hst, hsame⟩ :=
-    on_block_inserted_sameBlocks_for_lastWriter t.accepted
-  calc
-    t.postStore.blocks t.signedBlock.root =
-        ({ t.atPrefix.store cfg ext with
-          block_roots :=
-            if t.signedBlock.root ∈
-                (t.atPrefix.store cfg ext).block_roots then
-              (t.atPrefix.store cfg ext).block_roots
-            else
-              (t.atPrefix.store cfg ext).block_roots ++
-                [t.signedBlock.root]
-          blocks := Function.update (t.atPrefix.store cfg ext).blocks
-            t.signedBlock.root t.signedBlock.message
-          block_states := Function.update
-            (t.atPrefix.store cfg ext).block_states
-            t.signedBlock.root post } : Store Root).blocks
-              t.signedBlock.root :=
-      congrFun hsame.2.1.symm t.signedBlock.root
-    _ = t.signedBlock.message := by
-      change Function.update (t.atPrefix.store cfg ext).blocks
-        t.signedBlock.root t.signedBlock.message t.signedBlock.root = _
-      exact Function.update_self _ _ _
+  rcases on_block_inserted_sameBlocks_for_lastWriter t.accepted with
+    (⟨post, _hst, hsame⟩ | ⟨hknown, _⟩)
+  · calc
+      t.postStore.blocks t.signedBlock.root =
+          ({ t.atPrefix.store cfg ext with
+            block_roots :=
+              if t.signedBlock.root ∈
+                  (t.atPrefix.store cfg ext).block_roots then
+                (t.atPrefix.store cfg ext).block_roots
+              else
+                (t.atPrefix.store cfg ext).block_roots ++
+                  [t.signedBlock.root]
+            blocks := Function.update (t.atPrefix.store cfg ext).blocks
+              t.signedBlock.root t.signedBlock.message
+            block_states := Function.update
+              (t.atPrefix.store cfg ext).block_states
+              t.signedBlock.root post } : Store Root).blocks
+                t.signedBlock.root :=
+        congrFun hsame.2.1.symm t.signedBlock.root
+      _ = t.signedBlock.message := by
+        change Function.update (t.atPrefix.store cfg ext).blocks
+          t.signedBlock.root t.signedBlock.message t.signedBlock.root = _
+        exact Function.update_self _ _ _
+  · exact (hfresh hknown).elim
 
 end AcceptedBlockTransition
 
@@ -220,6 +229,8 @@ structure AcceptedBlockLastWriterCarrier
     (E : Execution Root) (store : Store Root) (r : Root) where
   transition : E.AcceptedBlockTransition cfg ext
   root_eq : transition.signedBlock.root = r
+  fresh : transition.signedBlock.root ∉
+    (transition.atPrefix.store cfg ext).block_roots
   message_eq : transition.signedBlock.message = store.blocks r
   block_state_eq :
     transition.postStore.block_states r = store.block_states r
@@ -235,6 +246,7 @@ def of_sameBlocks
     AcceptedBlockLastWriterCarrier cfg ext E store' r where
   transition := w.transition
   root_eq := w.root_eq
+  fresh := w.fresh
   message_eq := w.message_eq.trans (congrFun hsame.2.1 r)
   block_state_eq := w.block_state_eq.trans (congrFun hsame.2.2 r)
 
@@ -301,18 +313,35 @@ theorem acceptedBlockTransition
   intro r hr hnonGenesis
   by_cases hroot : r = t.signedBlock.root
   · subst r
-    exact ⟨
-      { writer :=
-          { transition := t
-            root_eq := rfl
-            message_eq := t.inserted_message.symm.trans
-              (congrArg (fun s => s.blocks t.signedBlock.root)
-                t.successorPrefix_store.symm)
-            block_state_eq := congrArg
-              (fun s => s.block_states t.signedBlock.root)
-                t.successorPrefix_store.symm }
-        earlier := ScheduledEventPrefix.EarlierThan.self_successor
-          t.atPrefix t.processedCount_lt }⟩
+    by_cases hfresh : t.signedBlock.root ∉
+        (t.atPrefix.store cfg ext).block_roots
+    · have hmessage :=
+        Execution.AcceptedBlockTransition.inserted_message_fresh t hfresh
+      exact ⟨
+        { writer :=
+            { transition := t
+              root_eq := rfl
+              fresh := hfresh
+              message_eq := hmessage.symm.trans
+                (congrArg (fun s => s.blocks t.signedBlock.root)
+                  t.successorPrefix_store.symm)
+              block_state_eq := congrArg
+                (fun s => s.block_states t.signedBlock.root)
+                  t.successorPrefix_store.symm }
+          earlier := ScheduledEventPrefix.EarlierThan.self_successor
+            t.atPrefix t.processedCount_lt }⟩
+    · have hknown := Classical.byContradiction hfresh
+      obtain ⟨old⟩ := h t.signedBlock.root hknown hnonGenesis
+      have hpost : t.postStore = t.atPrefix.store cfg ext := by
+        exact (Option.some.inj (by
+          simpa only [on_block, if_pos hknown] using t.accepted)).symm
+      have hsame : SameBlocks (t.atPrefix.store cfg ext)
+          (t.successorPrefix.store cfg ext) := by
+        rw [t.successorPrefix_store, hpost]
+        exact SameBlocks.refl _
+      exact ⟨
+        { writer := old.writer.of_sameBlocks hsame
+          earlier := old.earlier.successor_right t.processedCount_lt }⟩
   · have hrpre : r ∈ (t.atPrefix.store cfg ext).block_roots :=
       on_block_other_root_known t.accepted hroot hr
     obtain ⟨old⟩ := h r hrpre hnonGenesis
@@ -320,6 +349,7 @@ theorem acceptedBlockTransition
       { writer :=
           { transition := old.writer.transition
             root_eq := old.writer.root_eq
+            fresh := old.writer.fresh
             message_eq := old.writer.message_eq.trans
               ((on_block_other_root_blocks t.accepted hroot).symm.trans
                 (congrArg (fun s => s.blocks r)
