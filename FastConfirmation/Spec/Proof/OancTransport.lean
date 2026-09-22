@@ -904,6 +904,120 @@ theorem pendingStatusMargin_of_INVstar_opposite
     exact invstar_opposite_margin_arith hstrip hscore hselected
   · exact hnotPrev
 
+private theorem ancestor_strip_survives_growth
+    {x0 B0 P s0 xg Bg sg dJ dB : ℕ}
+    (hstrip : x0 + B0 + P + 1 ≤ s0) (hs : s0 + dJ ≤ sg)
+    (hx : xg ≤ x0) (hB : Bg ≤ B0 + dB) (hbudget : dB ≤ dJ) :
+    xg + Bg + P + 1 ≤ sg := by omega
+
+private theorem ancestor_strip_transports
+    {x0 x1 B P O s0 s1 : ℕ}
+    (hsource : x0 + B + P + O + 1 ≤ s0)
+    (hX : x1 ≤ x0) (hS : s0 ≤ s1) :
+    x1 + B + (P + O) + 1 ≤ s1 := by omega
+
+private theorem ancestor_le_add_tsub (a b : ℕ) : a ≤ b + (a - b) := by omega
+
+/-- A fixed opposite-ancestor debt survives the complete-window growth
+argument. The source strip comes from actual confirmation; the two honest
+class movements, honest growth, and window capacity are the existing engine
+transport and induction inputs. -/
+theorem opposite_ancestor_strip_window_uniform
+    {v w : ValidatorIndex} {n m : ℕ} {b : Root}
+    {lo es σ : Slot} {P O : ℕ}
+    (hSt : ∀ i, i ∈ E.honest → i ∈ E.span_committee lo es →
+      E.SupportsDesc cfg ext v n b es i → E.SupportsDesc cfg ext w m b es i)
+    (hAt : ∀ i, i ∈ E.honest → i ∈ E.span_committee lo es →
+      E.AncestorOrVoteless cfg ext v n b es i →
+        E.AncestorOrVoteless cfg ext w m b es i)
+    (hsource : E.Xval cfg ext v n b lo es + E.Bval lo es + P + O + 1
+      ≤ E.Sval cfg ext v n b lo es)
+    (hgrowS : E.Sval cfg ext w m b lo es + (E.Jspec lo σ - E.Jspec lo es)
+      ≤ E.Sval cfg ext w m b lo σ)
+    (hgrowX : E.Xval cfg ext w m b lo σ ≤ E.Xval cfg ext w m b lo es)
+    (hbudget : (100 - cfg.confirmation_byzantine_threshold) *
+        (E.Bval lo σ - E.Bval lo es) ≤
+      cfg.confirmation_byzantine_threshold * (E.Jspec lo σ - E.Jspec lo es)) :
+    E.Xval cfg ext w m b lo σ + E.Bval lo σ + P + O + 1
+      ≤ E.Sval cfg ext w m b lo σ := by
+  have hSbase : E.Sval cfg ext v n b lo es ≤ E.Sval cfg ext w m b lo es := by
+    apply E.weight_mono
+    intro i hi
+    simp only [Execution.Sclass, Finset.mem_filter] at hi ⊢
+    exact ⟨hi.1, hSt i hi.1.2 hi.1.1 hi.2⟩
+  have hXbase : E.Xval cfg ext w m b lo es ≤ E.Xval cfg ext v n b lo es := by
+    apply E.weight_mono
+    intro i hi
+    simp only [Execution.Xclass, Finset.mem_filter] at hi ⊢
+    exact ⟨hi.1,
+      fun hs => hi.2.1 (hSt i hi.1.2 hi.1.1 hs),
+      fun ha => hi.2.2 (hAt i hi.1.2 hi.1.1 ha)⟩
+  have hbase : E.Xval cfg ext w m b lo es + E.Bval lo es +
+      (P + O) + 1 ≤ E.Sval cfg ext w m b lo es :=
+    ancestor_strip_transports hsource hXbase hSbase
+  have hDpos : 0 < 100 - cfg.confirmation_byzantine_threshold := by
+    have := cfg.confirmation_byzantine_threshold_le
+    omega
+  have hCD : cfg.confirmation_byzantine_threshold ≤
+      100 - cfg.confirmation_byzantine_threshold := by
+    have := cfg.confirmation_byzantine_threshold_le
+    omega
+  have hbud : E.Bval lo σ - E.Bval lo es ≤
+      E.Jspec lo σ - E.Jspec lo es :=
+    Nat.le_of_mul_le_mul_left
+      (le_trans hbudget (Nat.mul_le_mul hCD (le_refl _))) hDpos
+  have hB : E.Bval lo σ ≤ E.Bval lo es +
+      (E.Bval lo σ - E.Bval lo es) :=
+    ancestor_le_add_tsub _ _
+  have hfinal := ancestor_strip_survives_growth hbase hgrowS hgrowX hB hbud
+  simpa only [add_assoc] using hfinal
+
+/-- The full-window route composes the transported source strip with the
+opposite-score bound to produce the exact payload status margin used by a
+fork-choice descent step. -/
+theorem pendingStatusMargin_of_opposite_window
+    {v w : ValidatorIndex} {n m : ℕ} {b h : Root}
+    {lo es σ : Slot} {O : ℕ} {status : PayloadStatus}
+    (hSt : ∀ i, i ∈ E.honest → i ∈ E.span_committee lo es →
+      E.SupportsDesc cfg ext v n b es i → E.SupportsDesc cfg ext w m b es i)
+    (hAt : ∀ i, i ∈ E.honest → i ∈ E.span_committee lo es →
+      E.AncestorOrVoteless cfg ext v n b es i →
+        E.AncestorOrVoteless cfg ext w m b es i)
+    (hsource : E.Xval cfg ext v n b lo es + E.Bval lo es +
+      get_proposer_score cfg (E.store cfg ext w m) + O + 1
+      ≤ E.Sval cfg ext v n b lo es)
+    (hgrowS : E.Sval cfg ext w m b lo es + (E.Jspec lo σ - E.Jspec lo es)
+      ≤ E.Sval cfg ext w m b lo σ)
+    (hgrowX : E.Xval cfg ext w m b lo σ ≤ E.Xval cfg ext w m b lo es)
+    (hbudget : (100 - cfg.confirmation_byzantine_threshold) *
+        (E.Bval lo σ - E.Bval lo es) ≤
+      cfg.confirmation_byzantine_threshold * (E.Jspec lo σ - E.Jspec lo es))
+    (hmem : ForkChoiceNode.mk h status ∈
+      get_node_children (E.store cfg ext w m)
+        (get_filtered_block_tree cfg (E.store cfg ext w m))
+        (ForkChoiceNode.mk h .pending))
+    (hnotPrev : is_previous_slot_payload_decision cfg
+      (E.store cfg ext w m) (ForkChoiceNode.mk h status) = false)
+    (hselected : E.Sval cfg ext w m b lo σ ≤
+      get_attestation_score cfg (E.store cfg ext w m)
+        (ForkChoiceNode.mk h status)
+        ((E.store cfg ext w m).checkpoint_states
+          (E.store cfg ext w m).justified_checkpoint))
+    (hopp : ∀ other ∈ get_node_children (E.store cfg ext w m)
+        (get_filtered_block_tree cfg (E.store cfg ext w m))
+        (ForkChoiceNode.mk h .pending),
+      other ≠ ForkChoiceNode.mk h status →
+      get_attestation_score cfg (E.store cfg ext w m) other
+        ((E.store cfg ext w m).checkpoint_states
+          (E.store cfg ext w m).justified_checkpoint) ≤
+        E.Xval cfg ext w m b lo σ + E.Bval lo σ + O) :
+    PendingStatusMargin cfg (E.store cfg ext w m)
+      (get_filtered_block_tree cfg (E.store cfg ext w m)) h status := by
+  have hstrip := E.opposite_ancestor_strip_window_uniform cfg ext
+    hSt hAt hsource hgrowS hgrowX hbudget
+  exact pendingStatusMargin_of_ancestor_strip cfg ext hmem hnotPrev
+    hselected hstrip hopp
+
 end Execution
 end FastConfirmation.Spec
 
