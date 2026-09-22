@@ -41,7 +41,37 @@ private def publicWitnesses : Array Name :=
     ``FastConfirmation.Spec.Execution.weak_safeFrom_find_latest_confirmed_descendant_discharged,
     ``FastConfirmation.Spec.Execution.weak_confirmed_head_discharged,
     ``FastConfirmation.Spec.Execution.weakConfirmed_safeFromFollowingSlot_of_acceptedWeakFullRuleFold,
-    ``FastConfirmation.Spec.Execution.weakConfirmed_head_of_acceptedWeakFullRuleFold_nextSlot
+    ``FastConfirmation.Spec.Execution.weakConfirmed_head_of_acceptedWeakFullRuleFold_nextSlot,
+    ``FastConfirmation.Spec.CompleteEvidence.raw_score_eq,
+    ``FastConfirmation.Spec.CompleteEvidence.attestation_score_eq,
+    ``FastConfirmation.Spec.CompleteEvidence.block_support_eq,
+    ``FastConfirmation.Spec.CompleteEvidence.adversarial_weight_eq,
+    ``FastConfirmation.Spec.CompleteEvidence.block_adversarial_weight_eq,
+    ``FastConfirmation.Spec.CompleteEvidence.support_discount_eq,
+    ``FastConfirmation.Spec.CompleteEvidence.safety_threshold_eq,
+    ``FastConfirmation.Spec.CompleteEvidence.is_one_confirmed_eq,
+    ``FastConfirmation.Spec.CompleteEvidence.honest_ffg_support_eq,
+    ``FastConfirmation.Spec.CompleteEvidence.current_target_eq,
+    ``FastConfirmation.Spec.CompleteEvidence.carrier_certificate,
+    ``FastConfirmation.Spec.CompleteEvidence.witness_certificate,
+    ``FastConfirmation.Spec.CompleteEvidence.no_conflict_eq,
+    ``FastConfirmation.Spec.CompleteEvidence.prev_epoch_loop_eq,
+    ``FastConfirmation.Spec.CompleteEvidence.tentative_loop_eq,
+    ``FastConfirmation.Spec.CompleteEvidence.banking_eq,
+    ``FastConfirmation.Spec.CompleteEvidence.certified_head_eq_of_certificate,
+    ``FastConfirmation.Spec.CompleteEvidence.descendant_eq_of_head_eq,
+    ``FastConfirmation.Spec.CompleteEvidence.get_latest_confirmed_eq_of_head_eq,
+    ``FastConfirmation.Spec.CompleteEvidence.on_fast_confirmation_eq_of_head_eq,
+    ``FastConfirmation.Spec.CompleteEvidenceWitness.before_head_confirms_nonanchor,
+    ``FastConfirmation.Spec.CompleteEvidenceWitness.before_head_is_certified,
+    ``FastConfirmation.Spec.CompleteEvidenceWitness.after_head_carrier_differs,
+    ``FastConfirmation.Spec.CompleteEvidenceWitness.after_head_confirms_nonanchor,
+    ``FastConfirmation.Spec.CompleteEvidenceWitness.prior_slot_committees_present,
+    ``FastConfirmation.Spec.CompleteEvidenceWitness.after_head_prior_slot_committees_present,
+    ``FastConfirmation.Spec.CompleteEvidenceWitness.complete_evidence,
+    ``FastConfirmation.Spec.CompleteEvidenceWitness.after_head_complete_evidence,
+    ``FastConfirmation.Spec.CompleteEvidenceWitness.nonvacuity,
+    ``FastConfirmation.Spec.CompleteEvidenceWitness.certified_head_equality_false
   ]
 
 private def unexpectedAxioms (axioms : Array Name) : Array Name :=
@@ -74,8 +104,8 @@ private def isGeneratedSafePartial (env : Environment) (name : Name)
 
 elab "audit_project_trust" : command => do
   let env ← getEnv
-  unless publicWitnesses.size == 21 do
-    throwError "public theorem witness set must contain exactly 21 declarations"
+  unless publicWitnesses.size == 51 do
+    throwError "public theorem witness set must contain exactly 51 declarations"
   unless publicWitnesses.toList.eraseDups.length == publicWitnesses.size do
     throwError "public theorem witness set contains duplicate declarations"
 
