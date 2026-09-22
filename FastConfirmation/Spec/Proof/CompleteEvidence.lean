@@ -10,9 +10,10 @@ The generator scripts are unavailable. This record is a store-level contract,
 not a claim to reconstruct those traces or their Altair transitions.
 `prior_votes` expresses delivery after LMD overwrites: a later epoch may
 replace a delivered vote. `fresh` is an added premise for all recorded cells.
-The balance and checkpoint alignment fields are added premises; the note
-does not prove them. Certificates are strict inequalities on actual stored
-attestation weight, not assumptions about the rule's output.
+The balance, checkpoint alignment, and strictly newer banking epoch fields
+are added premises; the note does not prove them. Certificates are strict
+inequalities on actual stored attestation weight, not assumptions about the
+rule's output.
 
 There is deliberately no actual-head certificate field. After-head calls in
 the note have no completed-slot vote for the new head. The concrete regression
@@ -79,6 +80,14 @@ structure CompleteEvidence (cfg : Config) (ext : Externals Root)
     (if is_start_slot_at_epoch cfg (get_current_slot cfg f.store + 1) then
       f.store.unrealized_justified_checkpoint
     else f.previous_epoch_greatest_unrealized_checkpoint)
+
+  /-- At an epoch boundary, the certified carrier supplies a checkpoint whose
+  epoch is strictly newer than the current observed checkpoint. This is extra
+  store evidence for parity with the strong rule's unconditional bank write. -/
+  bank_epoch_newer : is_start_slot_at_epoch cfg (get_current_slot cfg f.store) = true →
+    f.current_epoch_observed_justified_checkpoint.epoch <
+      (f.store.unrealized_justifications
+        (Weak.get_certified_head cfg ext f.store (get_current_balance_source f))).epoch
 
 namespace CompleteEvidence
 
@@ -166,6 +175,14 @@ theorem is_one_confirmed_eq (h : CompleteEvidence cfg ext f)
   simp only [Strong.is_one_confirmed, Weak.is_one_confirmed,
     attestation_score_eq cfg ext h, safety_threshold_eq cfg ext h]
 
+/-- Complete evidence gives the same check on each root, using previous balances. -/
+theorem is_confirmed_chain_safe_eq (h : CompleteEvidence cfg ext f) :
+    Strong.is_confirmed_chain_safe cfg ext f =
+      Weak.is_confirmed_chain_safe cfg ext f := by
+  funext b
+  simp only [Strong.is_confirmed_chain_safe, Weak.is_confirmed_chain_safe,
+    is_one_confirmed_eq cfg ext h]
+
 theorem honest_ffg_support_eq (h : CompleteEvidence cfg ext f) :
     Strong.compute_honest_ffg_support_for_current_target cfg ext f.store =
       Weak.compute_honest_ffg_support_for_current_target cfg ext f.store := by
@@ -220,7 +237,7 @@ theorem tentative_loop_eq (h : CompleteEvidence cfg ext f)
       Weak.find_latest_confirmed_descendant_tentative_loop, is_one_confirmed_eq cfg ext h,
       current_target_eq cfg ext h, ih]
 
-/-- Banking needs checkpoint alignment, not equality of the two selected heads. -/
+/-- Banking needs checkpoint alignment and a strictly newer certified epoch. -/
 theorem banking_eq (h : CompleteEvidence cfg ext f) :
     Strong.update_fast_confirmation_variables cfg f =
       Weak.update_fast_confirmation_variables cfg ext f := by
@@ -228,10 +245,11 @@ theorem banking_eq (h : CompleteEvidence cfg ext f) :
     Weak.update_fast_confirmation_variables, carrier_certificate cfg ext h]
   by_cases hs : is_start_slot_at_epoch cfg (get_current_slot cfg f.store) = true
   · have hb := h.bank_alignment hs
+    have hn := h.bank_epoch_newer hs
     by_cases hl : is_start_slot_at_epoch cfg (get_current_slot cfg f.store + 1) = true
-    · simp only [hs, hl, if_true] at hb ⊢
+    · simp only [hs, hl, if_true, hn] at hb ⊢
       rw [hb]
-    · simp only [hs, hl, Bool.false_eq_true, if_true, if_false] at hb ⊢
+    · simp only [hs, hl, Bool.false_eq_true, if_true, if_false, hn] at hb ⊢
       rw [hb]
   · simp [hs]
 
@@ -260,11 +278,14 @@ theorem get_latest_confirmed_eq_of_head_eq (h : CompleteEvidence cfg ext f)
     (hh : Weak.get_certified_head cfg ext f.store (get_current_balance_source f) =
       (get_head cfg f.store).root) :
     Strong.get_latest_confirmed cfg ext f = Weak.get_latest_confirmed cfg ext f := by
-  have hs : Strong.is_confirmed_chain_safe cfg ext f = is_confirmed_chain_safe cfg ext f := rfl
-  simp only [Strong.get_latest_confirmed, Weak.get_latest_confirmed, hs, hh,
+  simp only [Strong.get_latest_confirmed, Weak.get_latest_confirmed,
+    is_confirmed_chain_safe_eq cfg ext h, hh,
     carrier_certificate cfg ext h, Bool.and_true, descendant_eq_of_head_eq cfg ext h hh]
 
-/-- The handler uses evidence and head alignment at its updated query state. -/
+/-- The handler uses evidence and head alignment at its updated query state.
+Evidence is not claimed to be preserved by banking: at an epoch boundary,
+`hu.bank_epoch_newer` fails if the updated query selects the checkpoint just
+banked. The concrete slot-two witnesses do not exercise that boundary. -/
 theorem on_fast_confirmation_eq_of_head_eq (h : CompleteEvidence cfg ext f)
     (hu : CompleteEvidence cfg ext (Weak.update_fast_confirmation_variables cfg ext f))
     (hh : Weak.get_certified_head cfg ext

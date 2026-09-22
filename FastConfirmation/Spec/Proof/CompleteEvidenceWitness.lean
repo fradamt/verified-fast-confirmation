@@ -164,6 +164,7 @@ theorem complete_evidence : CompleteEvidence cfg ext fcr where
   carrier_support := by decide
   witness_support := by decide
   realized_target_carrier := by intro _; rfl
+  bank_epoch_newer := by decide
   bank_alignment := by
     intro h
     change false = true at h
@@ -207,6 +208,7 @@ theorem after_head_complete_evidence : CompleteEvidence cfg ext afterHeadFcr whe
   carrier_support := by decide
   witness_support := by decide
   realized_target_carrier := by intro _; rfl
+  bank_epoch_newer := by decide
   bank_alignment := by
     intro h
     change false = true at h
