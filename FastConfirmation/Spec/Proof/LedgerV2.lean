@@ -82,6 +82,15 @@ noncomputable def BbadSet (v₀ : ValidatorIndex) (n₀ : ℕ) (b' : Root) (lo e
 def SpentSet (es σ : Slot) : Finset ValidatorIndex :=
   (E.span_committee (es + 1) σ).filter (fun i => i ∉ E.honest)
 
+/-- The base status enemy includes every Byzantine member of the source window.
+Unlike the sibling enemy, it also includes recorded votes on the confirmed
+block's ancestor line, where an opposite payload status can score. -/
+def StatusBaseByzSet (lo es : Slot) : Finset ValidatorIndex := E.Bwin lo es
+
+/-- The complete status enemy. The source and tail slices are charged once. -/
+def StatusEnemySet (lo es σ : Slot) : Finset ValidatorIndex :=
+  E.StatusBaseByzSet lo es ∪ E.SpentSet es σ
+
 /-! ## Section 2 — weight accessors -/
 
 /-- `Bbad` — base-enemy weight. -/
@@ -100,6 +109,10 @@ vanishes. `Enemy ≤ Bbad + spent` (`Enemy_le_sum`) keeps the step's additive ar
 accounting. -/
 noncomputable def Enemy (v₀ : ValidatorIndex) (n₀ : ℕ) (b' : Root) (lo es σ : Slot) : Gwei :=
   E.weight (E.BbadSet cfg ext v₀ n₀ b' lo es ∪ E.SpentSet es σ)
+
+/-- Weight of the complete status enemy. -/
+noncomputable def StatusEnemyVal (lo es σ : Slot) : Gwei :=
+  E.weight (E.StatusEnemySet lo es σ)
 
 /-- **Sum-form upper bound.** `Enemy(σ) ≤ Bbad + spent(σ)` — subadditivity of
 `E.weight` over the union. The step's arrival accounting (`hE' : Enemy σ' ≤ Enemy σ +
@@ -139,6 +152,28 @@ theorem BbadSet_subset_Bwin (v₀ : ValidatorIndex) (n₀ : ℕ) (b' : Root) (lo
   intro i hi
   simp only [Execution.BbadSet, Finset.mem_filter] at hi
   exact Finset.mem_filter.mpr ⟨hi.1.1, hi.1.2⟩
+
+/-- The status enemy extends the sibling enemy without changing the source
+window's Byzantine budget. -/
+theorem BbadSet_subset_StatusBaseByzSet
+    (v₀ : ValidatorIndex) (n₀ : ℕ) (b' : Root) (lo es : Slot) :
+    E.BbadSet cfg ext v₀ n₀ b' lo es ⊆ E.StatusBaseByzSet lo es :=
+  E.BbadSet_subset_Bwin cfg ext v₀ n₀ b' lo es
+
+/-- The status enemy fits the same complete-window Byzantine budget. -/
+theorem StatusEnemyVal_le_Bval {lo es σ : Slot}
+    (hlo : lo ≤ es + 1) (hes : es ≤ σ) :
+    E.StatusEnemyVal lo es σ ≤ E.Bval lo σ := by
+  apply E.weight_mono
+  intro i hi
+  simp only [Execution.StatusEnemyVal, Execution.StatusEnemySet,
+    Execution.StatusBaseByzSet, Execution.Bval, Execution.Bwin,
+    Execution.SpentSet, Finset.mem_union, Finset.mem_filter,
+    Execution.span_committee, Finset.mem_biUnion, Finset.mem_Icc] at hi ⊢
+  rcases hi with ⟨⟨t, ⟨htlo, htes⟩, hcomm⟩, hbyz⟩ |
+    ⟨⟨t, ⟨htes, htσ⟩, hcomm⟩, hbyz⟩
+  · exact ⟨⟨t, ⟨htlo, htes.trans hes⟩, hcomm⟩, hbyz⟩
+  · exact ⟨⟨t, ⟨hlo.trans htes, htσ⟩, hcomm⟩, hbyz⟩
 
 /-- `Bbad ≤ B(es)` — the base enemy weight is at most the window byz weight. -/
 theorem BbadVal_le_Bval (v₀ : ValidatorIndex) (n₀ : ℕ) (b' : Root) (lo es : Slot) :
@@ -407,7 +442,8 @@ theorem recorded_sibling_le_v2 {store : Store Root}
   · exact Or.inr (Finset.mem_union.mpr (hByz i hi hh))
 
 /-- The complete opposite resolved-status score is charged to the current
-sibling class, the v2 enemy, and the fixed source opposite ancestor debt. -/
+sibling class, the complete status enemy, and the fixed source opposite ancestor
+debt. The wider base class admits old ancestor-line Byzantine votes. -/
 theorem recorded_opposite_status_le_v2
     {store source : Store Root} {bs bsSource : BeaconState Root}
     (hval : bs.validators = E.registry)
@@ -420,12 +456,13 @@ theorem recorded_opposite_status_le_v2
             v₀ n₀ b' h lo es other)
     (hByz : ∀ i ∈ AttSupporters cfg store (ForkChoiceNode.mk h other) bs,
       i ∉ E.honest →
-        i ∈ E.BbadSet cfg ext v₀ n₀ b' lo es ∨ i ∈ E.SpentSet es σ) :
+        i ∈ E.StatusBaseByzSet lo es ∨ i ∈ E.SpentSet es σ) :
     get_attestation_score cfg store (ForkChoiceNode.mk h other) bs ≤
-      E.Xval cfg ext v₀ n₀ b' lo σ + E.Enemy cfg ext v₀ n₀ b' lo es σ +
+      E.Xval cfg ext v₀ n₀ b' lo σ + E.StatusEnemyVal lo es σ +
         E.weight (OppositeAncestorClass cfg ext E source bsSource
           v₀ n₀ b' h lo es other) := by
-  rw [attestation_score_eq_weight cfg hval, Execution.Xval, Execution.Enemy]
+  rw [attestation_score_eq_weight cfg hval, Execution.Xval, Execution.StatusEnemyVal,
+    Execution.StatusEnemySet]
   refine le_trans (E.weight_mono ?_)
     ((weight_union_le _ _).trans
       (Nat.add_le_add_right (weight_union_le _ _) _))

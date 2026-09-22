@@ -826,33 +826,9 @@ theorem recorded_opposite_status_le_full_window
       E.Xval cfg ext v n b lo σ + E.Bval lo σ +
         E.weight (OppositeAncestorClass cfg ext E source bsSource
           v n b h lo es other) := by
-  rw [attestation_score_eq_weight cfg hval, Execution.Xval]
-  have hsub : (AttSupporters cfg store (ForkChoiceNode.mk h other) bs).toFinset ⊆
-      (E.Xclass cfg ext v n b lo σ ∪
-        (E.Bwin lo es ∪ E.SpentSet es σ)) ∪
-        OppositeAncestorClass cfg ext E source bsSource
-          v n b h lo es other := by
-    intro i hi
-    have hi' := List.mem_toFinset.mp hi
-    by_cases hh : i ∈ E.honest
-    · rcases hHon i hi' hh with hX | hO
-      · exact Finset.mem_union.mpr (Or.inl (Finset.mem_union.mpr (Or.inl hX)))
-      · exact Finset.mem_union.mpr (Or.inr hO)
-    · exact Finset.mem_union.mpr (Or.inl (Finset.mem_union.mpr
-        (Or.inr (Finset.mem_union.mpr (hByz i hi' hh)))))
-  have hscore := (E.weight_mono hsub).trans
-    ((weight_union_le _ _).trans
-      (Nat.add_le_add_right (weight_union_le _ _) _))
-  have hB := E.old_byz_union_spent_le_Bval hlo hesσ
-  calc
-    _ ≤ E.weight (E.Xclass cfg ext v n b lo σ) +
-        E.weight (E.Bwin lo es ∪ E.SpentSet es σ) +
-        E.weight (OppositeAncestorClass cfg ext E source bsSource
-          v n b h lo es other) := by simpa only [add_assoc] using hscore
-    _ ≤ E.weight (E.Xclass cfg ext v n b lo σ) + E.Bval lo σ +
-        E.weight (OppositeAncestorClass cfg ext E source bsSource
-          v n b h lo es other) := by
-            exact Nat.add_le_add_right (Nat.add_le_add_left hB _) _
+  have hscore := E.recorded_opposite_status_le_v2 cfg ext hval hHon hByz
+  have hB := E.StatusEnemyVal_le_Bval hlo hesσ
+  exact le_trans hscore (Nat.add_le_add_right (Nat.add_le_add_left hB _) _)
 
 /-- The endpoint strip of `INVstar`, used here without importing the later
 ground-step module. -/
