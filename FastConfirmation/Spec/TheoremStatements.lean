@@ -57,11 +57,11 @@ honest validators always vote the target derived from their own head
 support for *`v`'s* target `T` only under **cross-validator head/boundary
 agreement** (every honest head's epoch-boundary block is `T.root`), which is
 exactly what the FCR's preceding checks are mid-way through establishing
-when the gates are consulted. Hence it enters the interface as an explicit
-hypothesis (avoiding circularity) and is **discharged at the algorithm's
-call sites** by the L3/L4 proof from `HonestBehavior.votes_head` + the
-established head agreement — never assumed globally; `SpecAssumptions` is
-not strengthened by it. Without the gating the fields would be inconsistent:
+when the gates are consulted. The property is an explicit, call-scoped
+hypothesis. The older `SpecAssumptions` record does not contain it. The
+accepted theorem requires it through `completed_calls.helper_provisos` at each
+actual guarded FCR call whose next second is in the verification horizon.
+Without the gating the fields would be inconsistent:
 the `will_*` booleans are arithmetically true early in every epoch (the
 elapsed-committee estimate is still small) even while honest heads — and
 hence honest targets — are split across an adversarial boundary proposal. -/
