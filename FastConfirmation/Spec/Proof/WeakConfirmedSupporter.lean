@@ -1,7 +1,11 @@
-import FastConfirmation.Spec.Proof.MinimalSelectedDomain
-import FastConfirmation.Spec.Proof.WeakEconomicReadback
-import FastConfirmation.Spec.Proof.CheckpointDomain
-import FastConfirmation.Spec.Model.WeakSynchrony
+module
+public import FastConfirmation.Spec.Proof.MinimalSelectedDomain
+public import FastConfirmation.Spec.Proof.WeakEconomicReadback
+public import FastConfirmation.Spec.Proof.WeakObserverProvenance
+public import FastConfirmation.Spec.Proof.CheckpointDomain
+public import FastConfirmation.Spec.Model.WeakSynchrony
+
+@[expose] public section
 
 /-!
 # Spec / Proof / WeakConfirmedSupporter
@@ -91,6 +95,7 @@ unchanged. -/
 theorem honestSupporter_of_confirmed_known_at_observer
     (hA : SelectedMarginAssumptions cfg ext E)
     (v : ValidatorIndex) (n : ℕ)
+    (hvalid : E.ObserverValidity cfg ext v)
     (hcomm : E.PrefixCommitteeAgreement cfg ext (E.store cfg ext v n))
     (fcrStore : FastConfirmationStore Root)
     (hstore : fcrStore.store = E.store cfg ext v n) (b : Root)
@@ -129,8 +134,8 @@ theorem honestSupporter_of_confirmed_known_at_observer
     rw [hbseq]
     exact E.checkpoint_states_total_active_balance cfg ext hA.static_validators
       hA.externals_coherence (hdiv := hA.whole_seconds) v n c hkey hH
-  have hprov := E.latestMessageProvenance cfg ext hA.wellFormed
-    hA.externals_coherence hgen0 v n
+  have hprov := E.latestMessageProvenance_of_observer_validity cfg ext
+    hA.wellFormed v hvalid hgen0 n
   rw [← E.store_current_slot cfg ext v n] at hprov
   have hwf : ParentSlotLt (E.store cfg ext v n) :=
     E.store_parentSlotLt cfg ext hA.wellFormed hA.externals_coherence
@@ -144,9 +149,8 @@ theorem honestSupporter_of_confirmed_known_at_observer
         WalkKnown (E.store cfg ext v n)
           ((E.store cfg ext v n).blocks b).slot lm.root := by
     intro i _ lm hlm
-    obtain ⟨_, _, _, _, _, _, _, hlmKnown, _⟩ :=
-      E.latestMessageProvenance cfg ext hA.wellFormed hA.externals_coherence
-        hgen0 v n i lm hlm
+    have hlmKnown :=
+      E.latestMessageRootKnown cfg ext hgen0 v n i lm hlm
     exact hwalkK b hb lm.root hlmKnown
   have hbslot : ((E.store cfg ext v n).blocks b).slot ≤
       get_current_slot cfg (E.store cfg ext v n) :=
@@ -168,12 +172,12 @@ theorem honestSupporter_of_confirmed_known_at_observer
     ⟨hstart.trans hbH.1,
       lt_of_le_of_lt (Nat.div_le_div_right hstart) hbH.2⟩
   have hsm := honest_support_majority_of_prefix cfg ext hA.honest_behavior
-    hA.externals_coherence hA.byzantine_bound hgen0 hH hcomm hwf hbH hval htab
+    hA.externals_coherence hA.byzantine_bound hgen0 hvalid hH hcomm hwf hbH hval htab
     hprov hconf' hwalk
   have hne : ∀ i ∈ (E.store cfg ext v n).equivocating_indices,
       i ∉ E.honest := fun i hi hih =>
-    E.honest_not_equivocating cfg ext hA.honest_behavior
-      hA.externals_coherence hgen0 hih v n hi
+    E.honest_not_equivocating_of_observer_validity cfg ext hA.honest_behavior
+      hA.externals_coherence hvalid hgen0 hih n hi
   have hdisc := support_discount_le_parent_stuck_of_prefix cfg ext
     hA.byzantine_bound hcomm hval hstartH hbH htab hne
   have hsub : ParentStuck cfg E (E.store cfg ext v n) bs b ⊆
@@ -276,3 +280,5 @@ theorem checkpoint_state_key_of_broadcast_certificate (E : Execution Root)
 end Execution
 
 end FastConfirmation.Spec
+
+end

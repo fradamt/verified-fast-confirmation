@@ -1,4 +1,7 @@
-import FastConfirmation.Spec.Proof.WeakHistoricalA32LazyCrossing
+module
+public import FastConfirmation.Spec.Proof.WeakHistoricalA32LazyCrossing
+
+@[expose] public section
 
 /-!
 # Spec / Proof / WeakHistoricalA32OneStep
@@ -440,3 +443,5 @@ abbrev LazySuppFamily (E : Execution Root)
 end Weak
 
 end FastConfirmation.Spec
+
+end

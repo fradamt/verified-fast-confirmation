@@ -1,6 +1,9 @@
-import FastConfirmation.Spec.Proof.AcceptedHistoricalA32OriginCall
-import FastConfirmation.Spec.Proof.WeakFCRCallContracts
-import FastConfirmation.Spec.Proof.WeakHistoricalA32Geometry
+module
+public import FastConfirmation.Spec.Proof.AcceptedHistoricalA32OriginCall
+public import FastConfirmation.Spec.Proof.WeakFCRCallContracts
+public import FastConfirmation.Spec.Proof.WeakHistoricalA32Geometry
+
+@[expose] public section
 
 /-!
 # Spec / Proof / WeakHistoricalA32OriginCall
@@ -396,7 +399,7 @@ theorem honestVotesSupportTarget_capped
       E.WithinHorizon cfg k → origin ∈ (E.store cfg ext i k).block_roots := by
     intro i hi k hqk hHk
     refine E.confirmed_known_at_all_honest_endpoints_at_observer cfg ext hA
-      obs q (hcoh.committees_agree q hqH)
+      obs q hcoh.validity (hcoh.committees_agree q hqH)
       (E.weakFcrStep cfg ext obs second) hqStore origin
       hqH horiginKnownQ ?_ ?_ i hi k (E.slot_at_mono cfg hqk) hHk
     · rw [← hqStore]; exact h.origin_parent_known
@@ -590,3 +593,5 @@ end ObserverHistoricalA32OriginCallAt
 end Weak
 
 end FastConfirmation.Spec
+
+end

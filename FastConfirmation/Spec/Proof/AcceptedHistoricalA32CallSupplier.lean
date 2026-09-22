@@ -448,7 +448,7 @@ theorem selectedMarginAssumptions_of_completedPrefixes
     (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
       (E := E) (anchor := B.anchor)) :
     SelectedMarginAssumptions cfg ext E :=
-  { genesis := hT.genesis
+  { genesis := hT.genesis_structure
     wellFormed := hT.wellFormed
     whole_seconds := hT.whole_seconds
     honest_behavior := hT.honest_behavior

@@ -1,5 +1,8 @@
-import FastConfirmation.Spec.Proof.WeakCertifiedHead
-import FastConfirmation.Spec.Proof.WeakCertificateDissemination
+module
+public import FastConfirmation.Spec.Proof.WeakCertifiedHead
+public import FastConfirmation.Spec.Proof.WeakCertificateDissemination
+
+@[expose] public section
 
 /-!
 # Spec / Proof / WeakRulePredicateBridge
@@ -44,7 +47,7 @@ private theorem threshold_mono {M P A A' D D' : ℕ} (hA : A ≤ A') (hD : D' �
   · exact Nat.le_refl 0
 
 private theorem ffg_antitone {F A A' R : ℕ} (h : A ≤ A') :
-    F - min A' F + R ≤ F - min A F + R := by omega
+    F - min A' F + R ≤ F - A + R := by omega
 
 theorem weak_adversarial_weight_ge (store : Store Root) (bs : BeaconState Root)
     (a b : Slot) :
@@ -175,3 +178,5 @@ theorem will_no_conflicting_of_weak (store : Store Root) (bs : BeaconState Root)
     exact lt_of_lt_of_le h (Nat.mul_le_mul_left 3 hm)
 
 end FastConfirmation.Spec
+
+end

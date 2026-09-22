@@ -1,6 +1,9 @@
-import FastConfirmation.Spec.Proof.WeakCertifiedHead
-import FastConfirmation.Spec.Proof.CertExtract
-import FastConfirmation.Spec.Model.WeakSynchrony
+module
+public import FastConfirmation.Spec.Proof.WeakCertifiedHead
+public import FastConfirmation.Spec.Proof.CertExtract
+public import FastConfirmation.Spec.Model.WeakSynchrony
+
+@[expose] public section
 
 /-!
 # Spec / Proof / WeakSelectorBetween
@@ -235,3 +238,5 @@ theorem find_latest_confirmed_descendant_between (fcr_store : FastConfirmationSt
 end Weak
 
 end FastConfirmation.Spec
+
+end

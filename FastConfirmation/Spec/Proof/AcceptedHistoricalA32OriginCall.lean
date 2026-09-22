@@ -1,7 +1,10 @@
-import FastConfirmation.Spec.Proof.HonestTargetAgreement
-import FastConfirmation.Spec.Proof.TrustedAnchorGeometry
-import FastConfirmation.Spec.Proof.SelectedCoveredMarginConstruction
-import FastConfirmation.Spec.Proof.AcceptedHistoricalA32Payload
+module
+public import FastConfirmation.Spec.Proof.HonestTargetAgreement
+public import FastConfirmation.Spec.Proof.TrustedAnchorGeometry
+public import FastConfirmation.Spec.Proof.SelectedCoveredMarginConstruction
+public import FastConfirmation.Spec.Proof.AcceptedHistoricalA32Payload
+
+@[expose] public section
 
 /-!
 # Origin-call data for a historical A3.2 crossing, and its lazy proviso
@@ -754,3 +757,5 @@ end AcceptedHistoricalA32OriginCallAt
 end Execution
 
 end FastConfirmation.Spec
+
+end

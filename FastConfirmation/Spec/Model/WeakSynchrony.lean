@@ -1,5 +1,8 @@
-import FastConfirmation.Spec.Model.Confirmation
-import FastConfirmation.Spec.Model.Assumptions
+module
+public import FastConfirmation.Spec.Model.Confirmation
+public import FastConfirmation.Spec.Model.Assumptions
+
+@[expose] public section
 
 /-!
 # Spec / Model / WeakSynchrony
@@ -654,3 +657,5 @@ def CertificateDissemination (E : Execution Root) : Prop :=
 end Weak
 
 end FastConfirmation.Spec
+
+end

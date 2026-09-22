@@ -1,7 +1,10 @@
-import FastConfirmation.Spec.Proof.WeakSiblingScore
-import FastConfirmation.Spec.Proof.SelectedEdgeGeometry
-import FastConfirmation.Spec.Proof.MarginProducer
-import FastConfirmation.Spec.Proof.WeakOneShotSafety
+module
+public import FastConfirmation.Spec.Proof.WeakSiblingScore
+public import FastConfirmation.Spec.Proof.SelectedEdgeGeometry
+public import FastConfirmation.Spec.Proof.MarginProducer
+public import FastConfirmation.Spec.Proof.WeakOneShotSafety
+
+@[expose] public section
 
 /-!
 # Spec / Proof / WeakSelectedMarginInputs
@@ -357,8 +360,8 @@ theorem crossing_descendStep_of_selectedInputs_at_observer
   have hwf : ParentSlotLt (E.store cfg ext obs q) :=
     E.store_parentSlotLt cfg ext hA.wellFormed hA.externals_coherence
       ⟨ast, ablk, hgeq, hslot, hparent⟩ hA.wellFormed.anchor_parent_unscheduled obs q
-  have hprov := E.latestMessageProvenance cfg ext hA.wellFormed
-    hA.externals_coherence hgen obs q
+  have hprov := E.latestMessageProvenance_of_observer_validity cfg ext hA.wellFormed
+    obs hW.validity hgen q
   rw [← E.store_current_slot cfg ext obs q] at hprov
   have hsched : SchedLMProv E cfg (E.store cfg ext obs q) :=
     E.schedLMProv cfg ext hgen obs q
@@ -430,3 +433,5 @@ theorem crossing_descendStep_of_selectedInputs_at_observer
 end Weak
 
 end FastConfirmation.Spec
+
+end

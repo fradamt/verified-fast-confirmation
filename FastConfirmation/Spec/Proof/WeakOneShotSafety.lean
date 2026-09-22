@@ -1,7 +1,11 @@
-import FastConfirmation.Spec.Proof.WeakSelectorInversion
-import FastConfirmation.Spec.Proof.WeakConfirmedDissemination
-import FastConfirmation.Spec.Proof.CoveredMargin
-import FastConfirmation.Spec.Proof.AcceptedCurrentTargetLowerContracts
+module
+public import FastConfirmation.Spec.Proof.WeakSelectorInversion
+public import FastConfirmation.Spec.Proof.WeakConfirmedDissemination
+public import FastConfirmation.Spec.Proof.CoveredMargin
+public import FastConfirmation.Spec.Proof.AcceptedCurrentTargetLowerContracts
+public import FastConfirmation.Spec.Proof.WeakObserverValidity
+
+@[expose] public section
 
 /-!
 # Spec / Proof / WeakOneShotSafety
@@ -84,6 +88,7 @@ an implementation that always computes committees from its own head state and
 always keeps its own justified root in its block map satisfies them whether
 or not the observer is Byzantine. -/
 structure ObserverCoherence (obs : ValidatorIndex) : Prop where
+  validity : E.ObserverValidity cfg ext obs
   committees_agree : ∀ n : ℕ, E.WithinHorizon cfg n → ∀ s : Slot,
     E.SlotWithinHorizon cfg s →
     get_slot_committee cfg ext (E.store cfg ext obs n) s = E.committee s
@@ -124,7 +129,7 @@ theorem ObserverCoherence.justified_root_known_of_acceptedGlobalTrajectory
       (E.store cfg ext obs n).justified_checkpoint.root ∈
         (E.store cfg ext obs n).block_roots := by
   intro n _hHn
-  obtain ⟨ast, ablk, hgenEq, hslot, hparent⟩ := hT.genesis
+  obtain ⟨ast, ablk, hgenEq, hslot, hparent⟩ := hT.genesis_structure
   have hgenShort : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
       E.genesis_store = get_forkchoice_store cfg ast ablk ∧
       ast.slot = ablk.message.slot :=
@@ -198,10 +203,12 @@ def ObserverCoherence.of_acceptedTrajectory
     (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg) (E := E)
       (anchor := B.anchor))
     (obs : ValidatorIndex)
+    (hvalid : E.ObserverValidity cfg ext obs)
     (hcomm : ∀ n : ℕ, E.WithinHorizon cfg n → ∀ s : Slot,
       E.SlotWithinHorizon cfg s →
       get_slot_committee cfg ext (E.store cfg ext obs n) s = E.committee s) :
     E.ObserverCoherence cfg ext obs where
+  validity := hvalid
   committees_agree := hcomm
   justified_root_known :=
     ObserverCoherence.justified_root_known_of_acceptedGlobalTrajectory
@@ -216,7 +223,7 @@ field: carrying it would only narrow the statements.)
 This record is *not* the premise surface of the weak development's top-level
 statements: `coherence.justified_root_known` is a derived fact, never a
 caller-supplied one. Callers hand in `WeakObserverAssumptions` below, whose
-only observer-store field is `committees_agree`, and every statement carrying
+observer-store fields are `validity` and `committees_agree`, and every statement carrying
 the accepted-FFG package (`B`, `hT`, `hanchor`, `hboundary`) — the folds, the
 closed call theorems, and the finalized-base corollaries — builds this bundle
 internally with `WeakObserverAssumptions.toMarginAssumptions`. Only the
@@ -226,14 +233,16 @@ endpoint forms), which carry no `B` at all and so have nothing to derive
 `justified_root_known` from, still take this bundle directly. -/
 structure WeakObserverMarginAssumptions (obs : ValidatorIndex) : Prop where
   base : SelectedMarginAssumptions cfg ext E
+  validity : E.ObserverValidity cfg ext obs
   coherence : E.ObserverCoherence cfg ext obs
 
 /-- **The observer premise surface of the weak development.** Everything a
 caller must supply about the observer `obs`, and nothing that is derivable:
 
 * `base` — the ordinary (observer-independent) `SelectedMarginAssumptions`;
-* `committees_agree` — the one genuinely free observer-store fact: the
-  observer reads back the scheduled committees from its own store.
+* `genesis` — the committed-anchor initialization required by the accepted trajectory;
+* `validity` — the indexed-attestation laws on keyed observer-run states;
+* `committees_agree` — the observer reads back the scheduled committees from its own store.
 
 The observer `obs` is arbitrary and **may** be honest: the weak development's
 point is that nothing is assumed *in the observer's favour* (no delivery, no
@@ -248,6 +257,12 @@ every top-level weak statement carries the accepted-FFG/trajectory premises
 that prove it, so it is derived rather than assumed. -/
 structure WeakObserverAssumptions (obs : ValidatorIndex) : Prop where
   base : SelectedMarginAssumptions cfg ext E
+  genesis : ∃ (anchorState : BeaconState Root) (anchorBlock : SignedBeaconBlock Root),
+    E.genesis_store = get_forkchoice_store cfg anchorState anchorBlock ∧
+    anchorState.slot = anchorBlock.message.slot ∧
+    ext.AnchorCommitsToState anchorBlock.message anchorState ∧
+    anchorBlock.message.parent_root ≠ anchorBlock.root
+  validity : E.ObserverValidity cfg ext obs
   committees_agree : ∀ n : ℕ, E.WithinHorizon cfg n → ∀ s : Slot,
     E.SlotWithinHorizon cfg s →
     get_slot_committee cfg ext (E.store cfg ext obs n) s = E.committee s
@@ -267,9 +282,10 @@ def WeakObserverAssumptions.toMarginAssumptions {obs : ValidatorIndex}
       (anchor := B.anchor)) :
     E.WeakObserverMarginAssumptions cfg ext obs where
   base := hW.base
+  validity := hW.validity
   coherence :=
     ObserverCoherence.of_acceptedTrajectory cfg ext E B hT hanchor hboundary obs
-      hW.committees_agree
+      hW.validity hW.committees_agree
 
 /-! ## Section 1 — the three `_of_prefix` crossing-arithmetic clones
 
@@ -402,6 +418,7 @@ theorem intraEpochFuture_endpoint_inequality_of_confirmed_window_of_prefix
     (hgen : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
       E.genesis_store = get_forkchoice_store cfg ast ablk)
     {v : ValidatorIndex} {n : ℕ}
+    (hvalid : E.ObserverValidity cfg ext v)
     (hnH : E.WithinHorizon cfg n)
     (hcomm : E.PrefixCommitteeAgreement cfg ext (E.store cfg ext v n))
     (hwf : ∀ r ∈ (E.store cfg ext v n).block_roots,
@@ -474,7 +491,8 @@ theorem intraEpochFuture_endpoint_inequality_of_confirmed_window_of_prefix
   have hloH : E.SlotWithinHorizon cfg lo :=
     E.slotWithinHorizon_mono cfg hlo hmidH
   have hne : ∀ i ∈ (E.store cfg ext v n).equivocating_indices, i ∉ E.honest :=
-    fun i hi hih => (Execution.honest_not_equivocating cfg ext hhb hec hgen hih v n) hi
+    fun i hi hih =>
+      E.honest_not_equivocating_of_observer_validity cfg ext hhb hec hvalid hgen hih n hi
   have hbaseQ := E.crossing_hbase_of_confirmed_window cfg ext hhb hec hgen hwf hval hprov
     hconf hwalk es hes hdom
   rw [hboost] at hbaseQ
@@ -557,6 +575,7 @@ theorem crossingEdgeFuture_endpoint_inequality_of_confirmed_window_of_prefix
     (hgen : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
       E.genesis_store = get_forkchoice_store cfg ast ablk)
     {v : ValidatorIndex} {n : ℕ}
+    (hvalid : E.ObserverValidity cfg ext v)
     (hnH : E.WithinHorizon cfg n)
     (hcomm : E.PrefixCommitteeAgreement cfg ext (E.store cfg ext v n))
     (hwf : ParentSlotLt (E.store cfg ext v n))
@@ -632,7 +651,8 @@ theorem crossingEdgeFuture_endpoint_inequality_of_confirmed_window_of_prefix
   have hloH : E.SlotWithinHorizon cfg lo :=
     E.slotWithinHorizon_mono cfg hlo hsaH
   have hne : ∀ i ∈ (E.store cfg ext v n).equivocating_indices, i ∉ E.honest :=
-    fun i hi hih => (Execution.honest_not_equivocating cfg ext hhb hec hgen hih v n) hi
+    fun i hi hih =>
+      E.honest_not_equivocating_of_observer_validity cfg ext hhb hec hvalid hgen hih n hi
   have hbaseQ := E.crossing_hbase_of_confirmed_window cfg ext hhb hec hgen hwf hval hprov
     hconf hwalk es hes hdom
   rw [hboost, ← hes] at hbaseQ
@@ -775,8 +795,8 @@ theorem futureCrossing_descendStep_of_selectedInputs_at_observer
     E.store_parentSlotLt cfg ext hA.wellFormed hA.externals_coherence
       ⟨ast, ablk, hgeq, hslot, hparent⟩
       hA.wellFormed.anchor_parent_unscheduled obs q
-  have hprov := E.latestMessageProvenance cfg ext hA.wellFormed
-    hA.externals_coherence hgen obs q
+  have hprov := E.latestMessageProvenance_of_observer_validity cfg ext hA.wellFormed
+    obs hW.validity hgen q
   rw [← E.store_current_slot cfg ext obs q] at hprov
   have hwalkK := E.store_walkKnownK cfg ext hA.wellFormed
     hA.externals_coherence ⟨ast, ablk, hgeq, hslot, hparent⟩ obs q
@@ -819,7 +839,7 @@ theorem futureCrossing_descendStep_of_selectedInputs_at_observer
   have hxS := E.hgrowX_of_committee_support cfg ext hA.honest_behavior w m b
     ((E.store cfg ext obs q).blocks b).slot hin.es_le_sigma hin.committee_support
   have hend := E.intraEpochFuture_endpoint_inequality_of_confirmed_window_of_prefix cfg ext
-    hA.honest_behavior hA.externals_coherence hA.byzantine_bound hgen hqH hcomm
+    hA.honest_behavior hA.externals_coherence hA.byzantine_bound hgen hW.validity hqH hcomm
     hwf hval htab hprov hconf hwalk hin.cutoff_eq hslotlt hbcur
     hin.recorded_epoch_max hin.edge_same_epoch hin.es_le_sigma hin.sigma_horizon
     hboost hSbase (by simpa only [bs] using hin.parent_sub_endpoint) hAX hxS
@@ -874,8 +894,8 @@ theorem crossingEdge_descendStep_of_selectedInputs_at_observer
     E.store_parentSlotLt cfg ext hA.wellFormed hA.externals_coherence
       ⟨ast, ablk, hgeq, hslot, hparent⟩
       hA.wellFormed.anchor_parent_unscheduled obs q
-  have hprov := E.latestMessageProvenance cfg ext hA.wellFormed
-    hA.externals_coherence hgen obs q
+  have hprov := E.latestMessageProvenance_of_observer_validity cfg ext hA.wellFormed
+    obs hW.validity hgen q
   rw [← E.store_current_slot cfg ext obs q] at hprov
   have hwalkK := E.store_walkKnownK cfg ext hA.wellFormed
     hA.externals_coherence ⟨ast, ablk, hgeq, hslot, hparent⟩ obs q
@@ -918,7 +938,7 @@ theorem crossingEdge_descendStep_of_selectedInputs_at_observer
   have hxS := E.hgrowX_of_committee_support cfg ext hA.honest_behavior w m b
     ((E.store cfg ext obs q).blocks b).slot hin.es_le_sigma hin.committee_support
   have hend := E.crossingEdgeFuture_endpoint_inequality_of_confirmed_window_of_prefix cfg ext
-    hA.honest_behavior hA.externals_coherence hA.byzantine_bound hgen hqH hcomm
+    hA.honest_behavior hA.externals_coherence hA.byzantine_bound hgen hW.validity hqH hcomm
     hwf hval htab hprov hconf hwalk hin.cutoff_eq hslotlt hbcur
     hin.recorded_epoch_max hin.edge_crosses hin.es_le_sigma hin.sigma_horizon
     hboost hSbase (by simpa only [bs] using hin.parent_sub_endpoint) hAX hxS
@@ -969,7 +989,7 @@ theorem coveredDescendStepChainSupply_of_selectedMarginsAt_weak
       rw [← hslotStart]
       exact E.slot_at_mono cfg hm'
     exact E.confirmed_known_at_all_honest_endpoints_at_observer cfg ext hA
-      obs q hcomm query hstore glc hqH hglc hparent hconf
+      obs q hW.validity hcomm query hstore glc hqH hglc hparent hconf
       w' hw' m' hslotQM' hHm'
   rcases hsupply w hw m hslotQM hHm hIH
       a c ha hc hlink hscope hscopeR₀ hcne with hcovered | hmargin
@@ -1088,7 +1108,7 @@ theorem safeFrom_find_latest_confirmed_descendant_covered_at_slotStart_weak
     exact E.slot_at_mono cfg hm
   obtain ⟨hlcrEndpoint, hbEndpoint, hbgeEndpoint⟩ :=
     E.confirmed_ancestry_at_all_honest_endpoints_at_observer cfg ext hA
-      obs q hcomm query hstore _ lcr hqH hbConfirm hpConfirm hlcrConfirm
+      obs q hW.validity hcomm query hstore _ lcr hqH hbConfirm hpConfirm hlcrConfirm
         hbgeConfirm hconf w hw m hslotQM hHm
   have hheadLcr : is_ancestor (E.store cfg ext w m)
       (get_head cfg (E.store cfg ext w m)) (get_node_for_root lcr) = true :=
@@ -1211,3 +1231,5 @@ theorem weak_confirmed_head
 end Execution
 
 end FastConfirmation.Spec
+
+end

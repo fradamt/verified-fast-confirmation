@@ -1,6 +1,9 @@
-import FastConfirmation.Spec.Proof.WeakCertificateSupporter
-import FastConfirmation.Spec.Proof.WeakAncestryTransport
-import FastConfirmation.Spec.Proof.HeadStack
+module
+public import FastConfirmation.Spec.Proof.WeakCertificateSupporter
+public import FastConfirmation.Spec.Proof.WeakAncestryTransport
+public import FastConfirmation.Spec.Proof.HeadStack
+
+@[expose] public section
 
 /-!
 # Spec / Proof / WeakCertificateDissemination
@@ -94,3 +97,5 @@ theorem Execution.certificate_dissemination (E : Execution Root)
   exact hsyn.block_relay u hu nu block_root hHnu htrans w hw m hHm htiming
 
 end FastConfirmation.Spec
+
+end

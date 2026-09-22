@@ -1,7 +1,10 @@
-import FastConfirmation.Spec.Proof.AcceptedActualFCRNextSlotSafetyFold
-import FastConfirmation.Spec.Proof.WeakCandidateSourceHistory
-import FastConfirmation.Spec.Proof.WeakHistoricalA32OriginCall
-import FastConfirmation.Spec.Proof.WeakOneShotSafetyClosed
+module
+public import FastConfirmation.Spec.Proof.AcceptedActualFCRNextSlotSafetyFold
+public import FastConfirmation.Spec.Proof.WeakCandidateSourceHistory
+public import FastConfirmation.Spec.Proof.WeakHistoricalA32OriginCall
+public import FastConfirmation.Spec.Proof.WeakOneShotSafetyClosed
+
+@[expose] public section
 
 /-!
 # Spec / Proof / WeakTrajectorySafety
@@ -221,7 +224,7 @@ def AcceptedHistoricalA32CompletedPrefixCallSupplement.toCompletedPrefixCallAssu
 private theorem weakFold_genesisTime_le
     (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext) :
     E.genesis_store.genesis_time ≤ E.genesis_store.time := by
-  obtain ⟨ast, ablk, hgen, _hslot, _hparent⟩ := hT.genesis
+  obtain ⟨ast, ablk, hgen, _hslot, _hparent⟩ := hT.genesis_structure
   rw [hgen]
   simp only [get_forkchoice_store]
   omega
@@ -293,7 +296,7 @@ theorem weakConfirmedSafeFromFollowingSlot_zero
       (E := E) (anchor := B.anchor))
     (obs : ValidatorIndex) :
     E.WeakConfirmedSafeFromFollowingSlot cfg ext obs 0 := by
-  obtain ⟨ast, ablk, hgen, _hslot, _hparent⟩ := hT.genesis
+  obtain ⟨ast, ablk, hgen, _hslot, _hparent⟩ := hT.genesis_structure
   have hseed : E.weakConfirmed cfg ext obs 0 = B.anchor.root := by
     rw [E.weakConfirmed_zero, hanchor]
     change E.genesis_store.finalized_checkpoint.root =
@@ -628,7 +631,7 @@ theorem weakConfirmed_safeFromFollowingSlot_of_weakFullRuleFold
       E.WeakConfirmedSafeFromFollowingSlot cfg ext obs n := by
   have hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext :=
     ScheduledPrefixTrajectoryAssumptions.of_selectedMarginAssumptions cfg ext E
-      hW.base
+      hW.base hW.genesis
   exact fun n hHn =>
     (E.weakConfirmedSafeFromFollowingSlot_of_weakFullRuleFold_all_le cfg ext B
       hT
@@ -636,7 +639,7 @@ theorem weakConfirmed_safeFromFollowingSlot_of_weakFullRuleFold
       hCbase.phase0_boundary_source hpaper P V
       (E.acceptedAnchorExact_of_trajectory cfg ext B hT hanchor hboundary) hW
       (E.postAnchorHonestVoteTargetWalkDomain_of_selectedMarginAssumptions cfg ext
-        hW.base hanchor hboundary)
+        hW.base hT.genesis hanchor hboundary)
       (AcceptedHistoricalA32CompletedPrefixCallSupplement.toCompletedPrefixCallAssumptions
         cfg ext E hCbase hW.base)
       hfit hOR n n (Nat.le_refl n) hHn).followingSlot
@@ -706,7 +709,7 @@ theorem weakConfirmed_head_of_weakFullRuleFold_nextSlot
       (get_node_for_root (E.weakConfirmed cfg ext obs n)) = true := by
   have hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext :=
     ScheduledPrefixTrajectoryAssumptions.of_selectedMarginAssumptions cfg ext E
-      hW.base
+      hW.base hW.genesis
   have hHn : E.WithinHorizon cfg n := E.withinHorizon_mono cfg hnm hHm
   have hsafe := E.weakConfirmed_safeFromFollowingSlot_of_weakFullRuleFold cfg ext
     B hji hanchor hboundary hDelay hpaper P V
@@ -722,3 +725,5 @@ theorem weakConfirmed_head_of_weakFullRuleFold_nextSlot
 end Execution
 
 end FastConfirmation.Spec
+
+end

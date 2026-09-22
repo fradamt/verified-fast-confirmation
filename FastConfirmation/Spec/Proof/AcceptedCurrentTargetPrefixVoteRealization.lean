@@ -189,13 +189,14 @@ The prefix node is honest. `hqH` bounds the exact query
 second, while `B.coherence.checkpoint_of_known` identifies the checkpoint
 projection of the same accepted LMD/head root in the voter's causal boundary
 store and the query prefix. -/
-theorem currentTargetObservedHonestSupporter_vote_of_prefix
+theorem currentTargetObservedHonestSupporter_vote_of_prefix_of_provenance
     (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
     (hV : E.CurrentTargetPrefixVoteAssumptions cfg ext)
     (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg) (E := E)
       (anchor := E.genesis_store.justified_checkpoint))
     (p : E.ScheduledEventPrefix)
-    (hp : p.node ∈ E.honest)
+    (hprov : LatestMessageProvenance E cfg
+      (get_current_slot cfg (p.store cfg ext)) (p.store cfg ext))
     (hqH : E.WithinHorizon cfg (p.previousSecond + 1))
     {state : BeaconState Root} {i : ValidatorIndex}
     (hiObserved : i ∈ E.currentTargetObservedHonestSupporters cfg
@@ -227,7 +228,6 @@ theorem currentTargetObservedHonestSupporter_vote_of_prefix
   have hiCommittee : i ∈ E.committee a.data.slot :=
     hhb.votes_assigned i hi a.data.slot
       (by rw [hvoteGround]; exact Option.some_ne_none _)
-  have hprov := p.latestMessageProvenance cfg ext E hV.trajectory hp hqH
   obtain ⟨ap, _hapAttests, _hapTargetEpoch, _hapRoot, hapSlotEpoch,
       hapApplied, hapCommittee, hlmKnown, _hlmSlot⟩ :=
     hprov i lm hlm
@@ -376,6 +376,26 @@ theorem currentTargetObservedHonestSupporter_vote_of_prefix
     htargetExact⟩⟩
   exact slot_lt_prefix_next_epoch_start cfg
     (haSlotEpoch.trans htargetEpoch.symm)
+
+
+theorem currentTargetObservedHonestSupporter_vote_of_prefix
+    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (hV : E.CurrentTargetPrefixVoteAssumptions cfg ext)
+    (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg) (E := E)
+      (anchor := E.genesis_store.justified_checkpoint))
+    (p : E.ScheduledEventPrefix)
+    (hp : p.node ∈ E.honest)
+    (hqH : E.WithinHorizon cfg (p.previousSecond + 1))
+    {state : BeaconState Root} {i : ValidatorIndex}
+    (hiObserved : i ∈ E.currentTargetObservedHonestSupporters cfg
+      (p.store cfg ext) state) :
+    Nonempty (ConcreteHonestTargetVoteBefore cfg ext E i
+      (compute_start_slot_at_epoch cfg
+        ((get_current_target cfg (p.store cfg ext)).epoch + 1))
+      (get_current_target cfg (p.store cfg ext))) := by
+  exact E.currentTargetObservedHonestSupporter_vote_of_prefix_of_provenance
+    cfg ext B hV hboundary p
+    (p.latestMessageProvenance cfg ext E hV.trajectory hp hqH) hqH hiObserved
 
 /-- Convenience specialization for callers which already carry the selected
 lower-assumption bundle and committed-anchor evidence. The proof uses the

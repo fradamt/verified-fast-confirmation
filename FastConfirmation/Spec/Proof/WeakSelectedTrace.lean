@@ -1,5 +1,8 @@
-import FastConfirmation.Spec.Proof.WeakSourceHistory
-import FastConfirmation.Spec.Proof.SelectedPreQuerySIR
+module
+public import FastConfirmation.Spec.Proof.WeakSourceHistory
+public import FastConfirmation.Spec.Proof.SelectedPreQuerySIR
+
+@[expose] public section
 
 /-!
 # Spec / Proof / WeakSelectedTrace
@@ -975,15 +978,18 @@ application of it once S2 exists"). Weak twin of
 theorem StrictSelectedResultMechanicalFacts.confirmedPastDescendantSlotWitness_at_observer
     (hA : SelectedMarginAssumptions cfg ext E)
     {obs : ValidatorIndex} {q : Nat}
+    (hvalid : E.ObserverValidity cfg ext obs)
     (hcomm : E.PrefixCommitteeAgreement cfg ext (E.store cfg ext obs q))
     (hqH : E.WithinHorizon cfg q)
     {query : FastConfirmationStore Root} {input result : Root}
     (hquery : query.store = E.store cfg ext obs q)
     (h : StrictSelectedResultMechanicalFacts cfg ext query input result) :
     E.ConfirmedPastDescendantSlotWitnessAt cfg q query.store result :=
-  Weak.confirmedPastDescendantSlotWitness_core cfg ext hA hcomm hqH hquery
+  Weak.confirmedPastDescendantSlotWitness_core cfg ext hA hvalid hcomm hqH hquery
     h.result_known h.parent_known h.confirmed
 
 end Weak
 
 end FastConfirmation.Spec
+
+end

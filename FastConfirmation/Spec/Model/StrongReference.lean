@@ -1,4 +1,7 @@
-import FastConfirmation.Spec.Model.FCRStore
+module
+public import FastConfirmation.Spec.Model.FCRStore
+
+@[expose] public section
 
 /-!
 # Frozen strong rule reference
@@ -805,3 +808,5 @@ def on_fast_confirmation (fcr_store : FastConfirmationStore Root) :
   { fcr_store with confirmed_root := get_latest_confirmed cfg ext fcr_store }
 
 end FastConfirmation.Spec.Strong
+
+end

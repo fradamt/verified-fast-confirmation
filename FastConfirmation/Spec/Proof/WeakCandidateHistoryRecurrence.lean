@@ -1,7 +1,10 @@
-import Mathlib.Tactic
-import FastConfirmation.Spec.Proof.AcceptedCandidateHistoryRecurrence
-import FastConfirmation.Spec.Proof.WeakSelectorInversion
-import FastConfirmation.Spec.Proof.WeakFCRCallContracts
+module
+public import Mathlib.Tactic
+public import FastConfirmation.Spec.Proof.AcceptedCandidateHistoryRecurrence
+public import FastConfirmation.Spec.Proof.WeakSelectorInversion
+public import FastConfirmation.Spec.Proof.WeakFCRCallContracts
+
+@[expose] public section
 
 /-!
 # Spec / Proof / WeakCandidateHistoryRecurrence
@@ -725,3 +728,5 @@ theorem weakActualCandidateHistoryRecurrence
 end Execution
 
 end FastConfirmation.Spec
+
+end

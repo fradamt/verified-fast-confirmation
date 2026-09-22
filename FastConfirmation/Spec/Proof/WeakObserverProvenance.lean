@@ -1,5 +1,6 @@
 module
 public import FastConfirmation.Spec.Proof.Provenance
+public import FastConfirmation.Spec.Proof.WeakObserverValidity
 
 @[expose] public section
 
@@ -103,6 +104,206 @@ theorem Execution.latestMessageRootKnown {E : Execution Root}
       (fun store event => (apply_event cfg ext store event).getD store)
       (latestMessageRootKnown_apply_event cfg ext) _ _
       (latestMessageRootKnown_on_tick cfg _ _ ih)
+
+/-! ## Full provenance for an arbitrary observer under its validation contract -/
+
+private theorem update_latest_messages_checkpointData
+    (store : Store Root) (indices : List ValidatorIndex) (a : Attestation Root) :
+    ((update_latest_messages store indices a).checkpoint_state_keys,
+      (update_latest_messages store indices a).checkpoint_states) =
+      (store.checkpoint_state_keys, store.checkpoint_states) := by
+  simp only [update_latest_messages]
+  generalize hindices :
+    indices.filter (fun i => decide (i ∉ store.equivocating_indices)) = remaining
+  clear hindices
+  induction remaining generalizing store with
+  | nil => rfl
+  | cons i rest ih =>
+      rw [List.foldl_cons, ih]
+      split_ifs <;> rfl
+
+theorem on_attestation_LMP_of_observer {E : Execution Root} {obs : ValidatorIndex} {sl : Slot}
+    (hvalid : E.ObserverValidity cfg ext obs) {store store' : Store Root}
+    {a : Attestation Root} {ifb : Bool} (hcur : get_current_slot cfg store ≤ sl)
+    (h : LatestMessageProvenance E cfg sl store)
+    (hh : on_attestation cfg ext store a ifb = some store')
+    (hpost : E.ObserverCausalStore cfg ext obs store') :
+    LatestMessageProvenance E cfg sl store' := by
+  have hsb := on_attestation_sameBlocks cfg ext hh
+  simp only [on_attestation] at hh
+  split_ifs at hh with hv hvi
+  cases hh
+  have hcache := update_latest_messages_checkpointData
+    (store_target_checkpoint_state cfg ext store a.data.target) a.attesting_indices a
+  have hkeys := congrArg Prod.fst hcache
+  have hstates := congrArg Prod.snd hcache
+  dsimp only at hkeys hstates
+  have htarget : a.data.target ∈
+      (store_target_checkpoint_state cfg ext store a.data.target).checkpoint_state_keys := by
+    by_cases hcached : a.data.target ∈ store.checkpoint_state_keys
+    · simp [store_target_checkpoint_state, hcached]
+    · simp [store_target_checkpoint_state, hcached]
+  have hreachable : E.ObserverValidationState cfg ext obs
+      ((store_target_checkpoint_state cfg ext store a.data.target).checkpoint_states
+        a.data.target) := by
+    have hkey : a.data.target ∈
+        (update_latest_messages
+          (store_target_checkpoint_state cfg ext store a.data.target)
+          a.attesting_indices a).checkpoint_state_keys := by
+      rw [hkeys]
+      exact htarget
+    simpa only [hstates] using hpost.checkpointState cfg ext hkey
+  simp only [validate_on_attestation, Bool.and_eq_true, decide_eq_true_eq] at hv
+  obtain ⟨⟨⟨⟨⟨⟨_, hB⟩, _⟩, hD⟩, hE⟩, _⟩, hG⟩ := hv
+  intro i m hm
+  rcases update_latest_messages_mem _ _ _ _ _ hm with hold | ⟨hi, hmeq⟩
+  · rw [store_target_checkpoint_state_latest] at hold
+    obtain ⟨a', h1, h2, h3, h4, h5, h6, h7, h8⟩ := h i m hold
+    exact ⟨a', h1, h2, h3, h4, h5, h6, hsb.1 ▸ h7, hsb.2.1 ▸ h8⟩
+  · exact ⟨a, hi, by rw [hmeq], by rw [hmeq], by rw [hmeq]; exact hB.symm,
+      le_trans hG hcur, hvalid.valid_attestation_committee _ a hreachable hvi i hi,
+      by rw [hmeq]; exact hsb.1 ▸ hD, by rw [hmeq]; exact hsb.2.1 ▸ hE⟩
+
+
+theorem apply_event_LMP_of_observer {E : Execution Root} {obs : ValidatorIndex} {sl : Slot} (hwf : WellFormedExecution E)
+    (hvalid : E.ObserverValidity cfg ext obs) {store store' : Store Root} {e : Event Root}
+    (hsched : ∀ b, e = Event.block b → IsScheduledBlock E b)
+    (hprov : BlockProvenance E store) (hcur : get_current_slot cfg store ≤ sl)
+    (h : LatestMessageProvenance E cfg sl store)
+    (he : apply_event cfg ext store e = some store')
+    (hpost : E.ObserverCausalStore cfg ext obs store') :
+    LatestMessageProvenance E cfg sl store' := by
+  cases e with
+  | block b =>
+    simp only [apply_event] at he
+    exact on_block_LMP cfg ext hwf (hsched b rfl) hprov h he
+  | attestation a ifb =>
+    simp only [apply_event] at he
+    exact on_attestation_LMP_of_observer cfg ext hvalid hcur h he hpost
+  | attester_slashing asl =>
+    simp only [apply_event] at he
+    exact h.of_sameBlocks (on_attester_slashing_sameBlocks ext he)
+      (on_attester_slashing_latest ext he)
+
+
+theorem LMP_foldl_of_observer {E : Execution Root} {obs : ValidatorIndex} {sl : Slot} (hwf : WellFormedExecution E)
+    (hvalid : E.ObserverValidity cfg ext obs) :
+    ∀ (l : List (Event Root)) (s : Store Root),
+      (∀ b, Event.block b ∈ l → IsScheduledBlock E b) →
+      BlockProvenance E s → get_current_slot cfg s ≤ sl →
+      LatestMessageProvenance E cfg sl s →
+      (∀ k, k ≤ l.length → E.ObserverCausalStore cfg ext obs
+        ((l.take k).foldl
+          (fun store event => (apply_event cfg ext store event).getD store) s)) →
+      LatestMessageProvenance E cfg sl
+        (l.foldl (fun store event => (apply_event cfg ext store event).getD store) s) := by
+  intro l
+  induction l with
+  | nil => intro s _ _ _ h _; exact h
+  | cons e l ih =>
+    intro s hl hprov hcur h hcausal
+    have htail : ∀ k, k ≤ l.length → E.ObserverCausalStore cfg ext obs
+        ((l.take k).foldl
+          (fun store event => (apply_event cfg ext store event).getD store)
+          ((apply_event cfg ext s e).getD s)) := by
+      intro k hk
+      simpa only [List.take_succ_cons, List.foldl_cons] using
+        hcausal (k + 1) (by simpa using Nat.succ_le_succ hk)
+    have hstep : E.ObserverCausalStore cfg ext obs
+        ((apply_event cfg ext s e).getD s) := by
+      simpa using htail 0 (Nat.zero_le _)
+    rw [List.foldl_cons]
+    have hbsched : ∀ b, e = Event.block b → IsScheduledBlock E b :=
+      fun b hbe => hl b (by rw [← hbe]; exact List.mem_cons_self)
+    cases he : apply_event cfg ext s e with
+    | none =>
+      simp only [Option.getD_none]
+      exact ih _ (fun b hb => hl b (List.mem_cons_of_mem e hb)) hprov hcur h
+        (by simpa only [he, Option.getD_none] using htail)
+    | some s' =>
+      simp only [Option.getD_some]
+      refine ih _ (fun b hb => hl b (List.mem_cons_of_mem e hb)) ?_ ?_ ?_ ?_
+      · exact apply_event_blockProvenance cfg ext hbsched hprov he
+      · rw [apply_event_get_current_slot cfg ext he]; exact hcur
+      · exact apply_event_LMP_of_observer cfg ext hwf hvalid hbsched hprov hcur h he
+          (by simpa only [he, Option.getD_some] using hstep)
+      · simpa only [he, Option.getD_some] using htail
+
+
+theorem Execution.latestMessageProvenance_of_observer_validity {E : Execution Root}
+    (hwf : WellFormedExecution E) (v : ValidatorIndex)
+    (hvalid : E.ObserverValidity cfg ext v)
+    (hgen : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
+      E.genesis_store = get_forkchoice_store cfg ast ablk)
+    (n : ℕ) :
+    LatestMessageProvenance E cfg (E.slot_at cfg n) (E.store cfg ext v n) := by
+  induction n with
+  | zero =>
+    obtain ⟨ast, ablk, hg⟩ := hgen
+    intro i m hm
+    have hm' : E.genesis_store.latest_messages i = some m := hm
+    rw [hg] at hm'
+    simp [get_forkchoice_store] at hm'
+  | succ n ih =>
+    change LatestMessageProvenance E cfg (E.slot_at cfg (n + 1))
+      ((E.schedule v (n + 1)).foldl
+        (fun store event => (apply_event cfg ext store event).getD store)
+        (on_tick cfg (E.store cfg ext v n) (E.time_at (n + 1))))
+    have hontickgen :
+        (on_tick cfg (E.store cfg ext v n) (E.time_at (n + 1))).genesis_time =
+          E.genesis_store.genesis_time := by
+      rw [← (on_tick_storeLE cfg (E.store cfg ext v n) (E.time_at (n + 1))).2.1,
+        E.store_genesis_time cfg ext v n]
+    have hslot :
+        get_current_slot cfg (on_tick cfg (E.store cfg ext v n) (E.time_at (n + 1))) =
+          E.slot_at cfg (n + 1) := by
+      rw [get_current_slot, get_slots_since_genesis, on_tick_time, hontickgen,
+        Execution.slot_at]
+    refine LMP_foldl_of_observer cfg ext hwf hvalid _ _ (fun b hb => ⟨v, n + 1, hb⟩) ?_ ?_ ?_ ?_
+    · exact on_tick_blockProvenance cfg _ _ (E.blockProvenance cfg ext v n)
+    · rw [hslot]
+    · exact on_tick_LMP cfg _ _
+        (ih.mono_sl
+          (E.slot_at_mono cfg (Nat.le_succ n)))
+    · intro k hk
+      exact .scheduledPrefix ⟨v, n, k, hk⟩ rfl
+
+
+namespace Execution
+
+variable {E : Execution Root}
+
+theorem ScheduledEventPrefix.latestMessageProvenance_of_observer_validity
+    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
+    (p : E.ScheduledEventPrefix)
+    (hvalid : E.ObserverValidity cfg ext p.node)
+    (hn : E.WithinHorizon cfg (p.previousSecond + 1)) :
+    LatestMessageProvenance E cfg (get_current_slot cfg (p.store cfg ext))
+      (p.store cfg ext) := by
+  obtain ⟨anchorState, anchorBlock, hgen, _hslot, _hparent⟩ := hT.genesis_structure
+  have hcur : get_current_slot cfg
+      (on_tick cfg (E.store cfg ext p.node p.previousSecond)
+        (E.time_at (p.previousSecond + 1))) =
+      E.slot_at cfg (p.previousSecond + 1) := by
+    have hp := p.current_slot cfg ext
+    rwa [ScheduledEventPrefix.store, foldl_get_current_slot] at hp
+  have hresult : LatestMessageProvenance E cfg
+      (E.slot_at cfg (p.previousSecond + 1)) (p.store cfg ext) := by
+    rw [ScheduledEventPrefix.store]
+    refine LMP_foldl_of_observer cfg ext hT.wellFormed hvalid _ _ ?_ ?_ ?_ ?_ ?_
+    · intro block hmem
+      exact ⟨p.node, p.previousSecond + 1, List.mem_of_mem_take hmem⟩
+    · exact on_tick_blockProvenance cfg _ _
+        (E.blockProvenance cfg ext p.node p.previousSecond)
+    · exact le_of_eq hcur
+    · exact on_tick_LMP cfg _ _
+        ((E.latestMessageProvenance_of_observer_validity cfg ext hT.wellFormed
+            p.node hvalid ⟨anchorState, anchorBlock, hgen⟩ p.previousSecond).mono_sl
+          (E.slot_at_mono cfg (Nat.le_succ p.previousSecond)))
+    · exact p.observerCausal_take cfg ext
+  rwa [p.current_slot cfg ext]
+
+end Execution
 
 end FastConfirmation.Spec
 

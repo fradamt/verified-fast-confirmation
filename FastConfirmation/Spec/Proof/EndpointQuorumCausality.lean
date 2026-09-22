@@ -1,5 +1,8 @@
-import FastConfirmation.Spec.Proof.AcceptedSelectedJustifiedOrientation
-import FastConfirmation.Spec.Proof.SelectedJustifiedCompatibility
+module
+public import FastConfirmation.Spec.Proof.AcceptedSelectedJustifiedOrientation
+public import FastConfirmation.Spec.Proof.SelectedJustifiedCompatibility
+
+@[expose] public section
 
 /-!
 # Spec / Proof / EndpointQuorumCausality: the endpoint justification's quorum
@@ -170,7 +173,7 @@ theorem ExactPrefixAcceptedFFGSemantics.endpointJustified_quorumAt
     {w : ValidatorIndex} {m : ℕ}
     (hne : (E.store cfg ext w m).justified_checkpoint ≠ B.anchor) :
     Nonempty (E.EndpointJustifiedQuorumAt cfg ext B.anchor w m) := by
-  obtain ⟨ast, ablk, hgenEq, hslot, hparent⟩ := hT.genesis
+  obtain ⟨ast, ablk, hgenEq, hslot, hparent⟩ := hT.genesis_structure
   have hgenShort : ∃ (ast : BeaconState Root)
       (ablk : SignedBeaconBlock Root),
       E.genesis_store = get_forkchoice_store cfg ast ablk ∧
@@ -332,3 +335,5 @@ theorem EndpointJustifiedQuorumAt.causalHonestTargetAt_of_postQuerySigner
 end Execution
 
 end FastConfirmation.Spec
+
+end

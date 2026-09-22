@@ -1,4 +1,7 @@
-import FastConfirmation.Spec.Proof.CompleteEvidence
+module
+public import FastConfirmation.Spec.Proof.CompleteEvidence
+
+@[expose] public section
 
 /-!
 # Concrete complete-evidence examples
@@ -231,3 +234,5 @@ theorem certified_head_equality_false :
   exact after_head_carrier_differs.2.2 (h afterHeadFcr after_head_complete_evidence)
 
 end FastConfirmation.Spec.CompleteEvidenceWitness
+
+end

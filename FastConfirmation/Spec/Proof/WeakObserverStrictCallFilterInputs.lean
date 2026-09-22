@@ -1,4 +1,7 @@
-import FastConfirmation.Spec.Proof.WeakHistoricalA32PayloadProducer
+module
+public import FastConfirmation.Spec.Proof.WeakHistoricalA32PayloadProducer
+
+@[expose] public section
 
 /-!
 # Spec / Proof / WeakObserverStrictCallFilterInputs
@@ -156,7 +159,7 @@ theorem observerStrictCallFilterInputsAt_of_observerCall_lazy
       (Weak.LazyCertFamily cfg ext E B obs)
       (Weak.LazySuppFamily cfg ext E B obs) := by
   have hMargin : SelectedMarginAssumptions cfg ext E :=
-    { genesis := hT.genesis
+    { genesis := hT.genesis_structure
       wellFormed := hT.wellFormed
       whole_seconds := hT.whole_seconds
       honest_behavior := hT.honest_behavior
@@ -247,3 +250,5 @@ noncomputable def
 end Weak
 
 end FastConfirmation.Spec
+
+end

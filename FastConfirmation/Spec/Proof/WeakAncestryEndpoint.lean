@@ -1,4 +1,7 @@
-import FastConfirmation.Spec.Proof.WeakAncestryTransport
+module
+public import FastConfirmation.Spec.Proof.WeakAncestryTransport
+
+@[expose] public section
 
 /-!
 # Spec / Proof / WeakAncestryEndpoint: cross-store `is_ancestor` replay
@@ -93,3 +96,5 @@ theorem Execution.is_ancestor_replay_closed (hwf : WellFormedExecution E)
   exact hlands_w
 
 end FastConfirmation.Spec
+
+end

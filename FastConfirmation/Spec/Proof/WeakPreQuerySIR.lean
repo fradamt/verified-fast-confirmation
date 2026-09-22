@@ -1,5 +1,8 @@
-import FastConfirmation.Spec.Proof.SelectedPreQueryHistoricalSIR
-import FastConfirmation.Spec.Proof.WeakSelectedStrictEdgeFilterSupply
+module
+public import FastConfirmation.Spec.Proof.SelectedPreQueryHistoricalSIR
+public import FastConfirmation.Spec.Proof.WeakSelectedStrictEdgeFilterSupply
+
+@[expose] public section
 
 /-!
 # Spec / Proof / WeakPreQuerySIR
@@ -180,7 +183,7 @@ theorem trustedAnchor_below_strictSelected_at_endpoint
     hcoh.committees_agree q hqH
   obtain ⟨hinputM, hresultM, _hresultInputM⟩ :=
     E.confirmed_ancestry_at_all_honest_endpoints_at_observer cfg ext hA
-      obs q hcomm query hquery result input hqH hresultKnownE hparentKnownE
+      obs q hcoh.validity hcomm query hquery result input hqH hresultKnownE hparentKnownE
       hinputKnownE hresultInputQ hright.1 w hw m hslotQM hHm
   have hinputAnchor := E.known_descends_trustedAnchor cfg ext hA
     hanchor w m hinputM
@@ -628,7 +631,7 @@ theorem selectedSIRThreeRegionBracket_of_preQueryVote_and_pinning
     simpa only [← hquery] using hresultInputQ
   obtain ⟨hinputM, hresultM, _hresultInputM⟩ :=
     E.confirmed_ancestry_at_all_honest_endpoints_at_observer cfg ext hA
-      obs q hcomm query hquery result input hqH hresultE hparentE hinputE
+      obs q hcoh.validity hcomm query hquery result input hqH hresultE hparentE hinputE
       hresultInputE (by simpa only [result] using hfacts.confirmed)
       w hw m hslotQM hHm
   have hgeom := E.postAnchorHonestTargetGeometryAt_of_vote cfg ext hA
@@ -711,7 +714,7 @@ theorem selectedSIRThreeRegionBracket_of_preQueryVote_and_pinning
       simpa only [← hquery] using hresultTQ
     obtain ⟨_hTM', _hresultM', hresultTM⟩ :=
       E.confirmed_ancestry_at_all_honest_endpoints_at_observer cfg ext hA
-        obs q hcomm query hquery result T.root hqH hresultE hparentE hTE
+        obs q hcoh.validity hcomm query hquery result T.root hqH hresultE hparentE hTE
         hresultTE (by simpa only [result] using hfacts.confirmed)
         w hw m hslotQM hHm
     have hTinputE : is_ancestor (E.store cfg ext obs q)
@@ -839,7 +842,7 @@ theorem preQuerySelectedJustifiedCompatibilityAt_of_threeRegionBracket
     hcoh.committees_agree q hqH
   obtain ⟨hinputM, hresultM, hresultInputM⟩ :=
     E.confirmed_ancestry_at_all_honest_endpoints_at_observer cfg ext hA
-      obs q hcomm query hquery result input hqH hresultKnownE hparentKnownE
+      obs q hcoh.validity hcomm query hquery result input hqH hresultKnownE hparentKnownE
       hinputKnownE hresultInputQ hright.1 w hw m hslotQM hHm
   obtain ⟨hwfM, hwalkM, hjustifiedM⟩ :=
     E.store_domainK_of_selectedMarginDomain cfg ext hA.wellFormed
@@ -949,3 +952,5 @@ theorem preQuerySelectedJustifiedCompatibilityAt_of_voteBracket
 end Weak
 
 end FastConfirmation.Spec
+
+end

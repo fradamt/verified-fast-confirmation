@@ -1,5 +1,8 @@
-import FastConfirmation.Spec.Model.WeakSynchrony
-import FastConfirmation.Spec.Proof.AncestryRoots
+module
+public import FastConfirmation.Spec.Model.WeakSynchrony
+public import FastConfirmation.Spec.Proof.AncestryRoots
+
+@[expose] public section
 
 namespace FastConfirmation.Spec.Weak
 
@@ -76,3 +79,5 @@ theorem get_certified_head_eq_parent (store : Store Root) (bs : BeaconState Root
   simp [hknown, hbelow, hcert]
 
 end FastConfirmation.Spec.Weak
+
+end

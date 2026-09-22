@@ -677,7 +677,7 @@ theorem AcceptedHistoricalA32LineageCoreAt.payloadAtQuery_nonempty
       Supp hlineage.origin e → Supp selected e) :
     Nonempty (E.AcceptedHistoricalA32GatePayloadCoreAt
       cfg ext B selected e Cert Supp) := by
-  obtain ⟨ast, ablk, hgen, hgenSlot, hgenParent⟩ := hT.genesis
+  obtain ⟨ast, ablk, hgen, hgenSlot, hgenParent⟩ := hT.genesis_structure
 
   let query := E.store cfg ext v q
   have hqueryCausal : E.CausalStore cfg ext query := by

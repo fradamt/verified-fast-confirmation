@@ -1,7 +1,10 @@
-import FastConfirmation.Spec.Proof.WeakSelectedMarginInputs
-import FastConfirmation.Spec.Proof.WeakSelectedEdgeGeometry
-import FastConfirmation.Spec.Proof.EndpointLedgerMinimal
-import FastConfirmation.Spec.Proof.SelectedCommitteeSupport
+module
+public import FastConfirmation.Spec.Proof.WeakSelectedMarginInputs
+public import FastConfirmation.Spec.Proof.WeakSelectedEdgeGeometry
+public import FastConfirmation.Spec.Proof.EndpointLedgerMinimal
+public import FastConfirmation.Spec.Proof.SelectedCommitteeSupport
+
+@[expose] public section
 
 /-!
 # Spec / Proof / WeakCoveredMarginConstruction
@@ -143,7 +146,7 @@ theorem selectedCoveredMarginSupplyAt_of_filterSupply_at_observer
       rw [← hslotStart]
       exact E.slot_at_mono cfg hm'
     exact E.confirmed_known_at_all_honest_endpoints_at_observer cfg ext hA
-      obs q hcomm query hquery glc hqH hglcQ hglcParentQ hglcConf
+      obs q hW.validity hcomm query hquery glc hqH hglcQ hglcParentQ hglcConf
       w' hw' m' hslotQM' hm'H
   have hchild := hfilter hw hmH hgeom hcne hcM hparentM hglcC_M
     hglcKnown hIH hcovered
@@ -192,7 +195,7 @@ theorem selectedCoveredMarginSupplyAt_of_filterSupply_at_observer
     E.endpointLedgerFields_from_execution_minimal cfg ext hA hwalkDomain
       hw hmH hsigmaEnd haM hcM hparentM (le_of_eq hloEnd) hlo₀
   -- the weak-native base strip, entirely at the endpoint
-  have hbase := Weak.base_strip_of_confirmed_at_observer cfg ext hA hqH hcomm hquery
+  have hbase := Weak.base_strip_of_confirmed_at_observer cfg ext hA hqH hW.validity hcomm hquery
     hgeom.block_known hgeom.parent_known hgeom.confirmation hgeom.lo_eq hcutoffQ hw hmH
     hslotQM hgeom.endpoint_parent_known hgeom.endpoint_block_known hgeom.endpoint_parent_eq
   by_cases heqCutoff : sigma = es
@@ -241,8 +244,8 @@ theorem selectedCoveredMarginSupplyAt_of_filterSupply_at_observer
   have hvalC : bs.validators = E.registry := by
     rw [hbsEq]
     exact (E.registryConstant cfg ext hA.externals_coherence hgen obs q).2 cp hkeyC
-  have hprovC := E.latestMessageProvenance cfg ext hA.wellFormed
-    hA.externals_coherence hgen obs q
+  have hprovC := E.latestMessageProvenance_of_observer_validity cfg ext hA.wellFormed
+    obs hW.validity hgen q
   rw [← E.store_current_slot cfg ext obs q] at hprovC
   have hschedC : SchedLMProv E cfg (E.store cfg ext obs q) :=
     E.schedLMProv cfg ext hgen obs q
@@ -333,3 +336,5 @@ theorem selectedCoveredMarginSupplyAt_of_filterSupply_at_observer
 end Weak
 
 end FastConfirmation.Spec
+
+end

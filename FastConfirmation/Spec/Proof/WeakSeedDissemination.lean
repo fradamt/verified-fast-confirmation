@@ -1,6 +1,9 @@
-import FastConfirmation.Spec.Proof.WeakCertificateMonotone
-import FastConfirmation.Spec.Proof.WeakObserverDomain
-import FastConfirmation.Spec.Proof.WeakBankedJustification
+module
+public import FastConfirmation.Spec.Proof.WeakCertificateMonotone
+public import FastConfirmation.Spec.Proof.WeakObserverDomain
+public import FastConfirmation.Spec.Proof.WeakBankedJustification
+
+@[expose] public section
 
 /-!
 # Spec / Proof / WeakSeedDissemination
@@ -377,3 +380,5 @@ theorem headSeed_ancestor_known_at_all_honest_endpoints_at_observer
 end Weak
 
 end FastConfirmation.Spec
+
+end

@@ -1,7 +1,10 @@
-import FastConfirmation.Spec.Proof.WeakSeedDissemination
-import FastConfirmation.Spec.Proof.WeakSelectedTrace
-import FastConfirmation.Spec.Proof.WeakSelectorInversion
-import FastConfirmation.Spec.Proof.AcceptedPhaseSourceSupply
+module
+public import FastConfirmation.Spec.Proof.WeakSeedDissemination
+public import FastConfirmation.Spec.Proof.WeakSelectedTrace
+public import FastConfirmation.Spec.Proof.WeakSelectorInversion
+public import FastConfirmation.Spec.Proof.AcceptedPhaseSourceSupply
+
+@[expose] public section
 
 /-!
 # Spec / Proof / WeakEarlyPhaseSourceWiring
@@ -362,7 +365,7 @@ theorem StrictSelectedResultMechanicalFacts.fcrStep_previous_endpointRecentSourc
       get_current_store_epoch cfg (E.weakFcrStep cfg ext obs n).store) :
     Execution.RecentSourceSeedAt cfg (E.store cfg ext w m) result := by
   let hA : SelectedMarginAssumptions cfg ext E :=
-    { genesis := hT.genesis
+    { genesis := hT.genesis_structure
       wellFormed := hT.wellFormed
       whole_seconds := hT.whole_seconds
       honest_behavior := hT.honest_behavior
@@ -371,7 +374,7 @@ theorem StrictSelectedResultMechanicalFacts.fcrStep_previous_endpointRecentSourc
       static_validators := hstatic
       byzantine_bound := hbyz
       domain := hdomain }
-  obtain ⟨ast, ablk, hgen, hgenSlot, hgenParent⟩ := hT.genesis
+  obtain ⟨ast, ablk, hgen, hgenSlot, hgenParent⟩ := hT.genesis_structure
   have hcommN1 : E.PrefixCommitteeAgreement cfg ext (E.store cfg ext obs (n + 1)) :=
     hcoh.committees_agree (n + 1) hn1H
   have hqCurrent : (E.weakFcrStep cfg ext obs n).store = E.store cfg ext obs (n + 1) :=
@@ -380,7 +383,7 @@ theorem StrictSelectedResultMechanicalFacts.fcrStep_previous_endpointRecentSourc
     E.slot_at_mono cfg hnm
   have hselectedM : result ∈ (E.store cfg ext w m).block_roots :=
     E.confirmed_known_at_all_honest_endpoints_at_observer cfg ext hA
-      obs (n + 1) hcommN1 (E.weakFcrStep cfg ext obs n) hqCurrent result hn1H
+      obs (n + 1) hcoh.validity hcommN1 (E.weakFcrStep cfg ext obs n) hqCurrent result hn1H
       (by simpa only [hqCurrent] using h.result_known)
       (by simpa only [hqCurrent] using h.parent_known)
       h.confirmed w hw m hslotForward hmH
@@ -390,7 +393,7 @@ theorem StrictSelectedResultMechanicalFacts.fcrStep_previous_endpointRecentSourc
   have hendpointCausal := E.store_causal cfg ext w m
   obtain ⟨hparentN1, hwalkN1, _hjustifiedN1⟩ :=
     E.observerStoreDomainK cfg ext hT.wellFormed hT.externals_coherence
-      hT.genesis hcoh (n + 1) hn1H
+      hT.genesis_structure hcoh (n + 1) hn1H
   have hqueryParent : ParentSlotLt (E.weakFcrStep cfg ext obs n).store := by
     simpa only [hqCurrent] using hparentN1
   have hqueryProvenance : BlockProvenance E
@@ -410,7 +413,7 @@ theorem StrictSelectedResultMechanicalFacts.fcrStep_previous_endpointRecentSourc
   · -- previous-loop origin: the witness certificate discharges the
     -- observer-as-sender relay.
     have hseedQ :=
-      weakFcrStep_previousSlotHead_known cfg ext hT.genesis hcoh n hn1H
+      weakFcrStep_previousSlotHead_known cfg ext hT.genesis_structure hcoh n hn1H
     have hwitness_known : (E.weakFcrStep cfg ext obs n).previous_slot_head ∈
         (E.store cfg ext obs (n + 1)).block_roots := by
       rw [← hqCurrent]; exact hseedQ
@@ -555,7 +558,7 @@ theorem StrictSelectedResultMechanicalFacts.fcrStep_currentNext_endpointRecentSo
       get_current_store_epoch cfg (E.weakFcrStep cfg ext obs n).store + 1) :
     Execution.RecentSourceSeedAt cfg (E.store cfg ext w m) result := by
   let hA : SelectedMarginAssumptions cfg ext E :=
-    { genesis := hT.genesis
+    { genesis := hT.genesis_structure
       wellFormed := hT.wellFormed
       whole_seconds := hT.whole_seconds
       honest_behavior := hT.honest_behavior
@@ -564,7 +567,7 @@ theorem StrictSelectedResultMechanicalFacts.fcrStep_currentNext_endpointRecentSo
       static_validators := hstatic
       byzantine_bound := hbyz
       domain := hdomain }
-  obtain ⟨ast, ablk, hgen, hgenSlot, hgenParent⟩ := hT.genesis
+  obtain ⟨ast, ablk, hgen, hgenSlot, hgenParent⟩ := hT.genesis_structure
   have hqCurrent : (E.weakFcrStep cfg ext obs n).store = E.store cfg ext obs (n + 1) :=
     E.weakFcrStep_store cfg ext obs n
   have hcommN1 : E.PrefixCommitteeAgreement cfg ext (E.store cfg ext obs (n + 1)) :=
@@ -575,7 +578,7 @@ theorem StrictSelectedResultMechanicalFacts.fcrStep_currentNext_endpointRecentSo
   have hendpointCausal := E.store_causal cfg ext w m
   obtain ⟨hparentN1, hwalkN1, _hjustifiedN1⟩ :=
     E.observerStoreDomainK cfg ext hT.wellFormed hT.externals_coherence
-      hT.genesis hcoh (n + 1) hn1H
+      hT.genesis_structure hcoh (n + 1) hn1H
   have hqueryParent : ParentSlotLt (E.weakFcrStep cfg ext obs n).store := by
     simpa only [hqCurrent] using hparentN1
   have hqueryProvenance : BlockProvenance E
@@ -591,7 +594,7 @@ theorem StrictSelectedResultMechanicalFacts.fcrStep_currentNext_endpointRecentSo
     simpa only [hqCurrent] using
       E.head_root_known_at_observer cfg ext hcoh (n + 1) hn1H
   have hpast := h.confirmedPastDescendantSlotWitness_at_observer cfg ext hA
-    hcommN1 hn1H hqCurrent
+    hcoh.validity hcommN1 hn1H hqCurrent
   have hnotStart := h.not_epochStart_of_current cfg ext
     (q := n + 1)
     (by rw [hqCurrent, E.store_current_slot cfg ext obs (n + 1)])
@@ -615,7 +618,7 @@ theorem StrictSelectedResultMechanicalFacts.fcrStep_currentNext_endpointRecentSo
   have hslotForward : E.slot_at cfg (n + 1) ≤ E.slot_at cfg m := hslotLt.le
   have hselectedM : result ∈ (E.store cfg ext w m).block_roots :=
     E.confirmed_known_at_all_honest_endpoints_at_observer cfg ext hA
-      obs (n + 1) hcommN1 (E.weakFcrStep cfg ext obs n) hqCurrent result hn1H
+      obs (n + 1) hcoh.validity hcommN1 (E.weakFcrStep cfg ext obs n) hqCurrent result hn1H
       (by simpa only [hqCurrent] using h.result_known)
       (by simpa only [hqCurrent] using h.parent_known)
       h.confirmed w hw m hslotForward hmH
@@ -655,3 +658,5 @@ theorem StrictSelectedResultMechanicalFacts.fcrStep_currentNext_endpointRecentSo
 end Weak
 
 end FastConfirmation.Spec
+
+end

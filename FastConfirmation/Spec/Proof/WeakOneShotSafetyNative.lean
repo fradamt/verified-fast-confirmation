@@ -1,5 +1,8 @@
-import FastConfirmation.Spec.Proof.WeakCoveredMarginConstruction
-import FastConfirmation.Spec.Proof.WeakFinalizedInput
+module
+public import FastConfirmation.Spec.Proof.WeakCoveredMarginConstruction
+public import FastConfirmation.Spec.Proof.WeakFinalizedInput
+
+@[expose] public section
 
 /-!
 # Spec / Proof / WeakOneShotSafetyNative
@@ -90,7 +93,7 @@ theorem coveredDescendStepChainSupply_of_selectedMarginsAt_weak_native
       rw [← hslotStart]
       exact E.slot_at_mono cfg hm'
     exact E.confirmed_known_at_all_honest_endpoints_at_observer cfg ext hA
-      obs q hcomm query hstore glc hqH hglc hparent hconf
+      obs q hW.validity hcomm query hstore glc hqH hglc hparent hconf
       w' hw' m' hslotQM' hHm'
   rcases hsupply w hw m hslotQM hHm hIH
       a c ha hc hlink hscope hscopeR₀ hcne with hcovered | hmargin
@@ -284,7 +287,7 @@ theorem weak_safeFrom_find_latest_confirmed_descendant_discharged_from_finalized
       (Weak.find_latest_confirmed_descendant cfg ext fcr_store
         fcr_store.store.finalized_checkpoint.root) q := by
   have hT := ScheduledPrefixTrajectoryAssumptions.of_selectedMarginAssumptions
-    cfg ext E hW.base
+    cfg ext E hW.base hW.genesis
   have hacc := SelectedMarginAssumptions.toFFGAccountabilityAssumptions
     cfg ext E hW.base
   have hlcr : fcr_store.store.finalized_checkpoint.root ∈
@@ -339,3 +342,5 @@ theorem weak_confirmed_head_discharged_from_finalized
 end Execution
 
 end FastConfirmation.Spec
+
+end

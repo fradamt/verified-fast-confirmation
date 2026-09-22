@@ -1,6 +1,9 @@
-import FastConfirmation.Spec.Model.StrongReference
-import FastConfirmation.Spec.Model.WeakSynchrony
-import FastConfirmation.Spec.Proof.AncestryRoots
+module
+public import FastConfirmation.Spec.Model.StrongReference
+public import FastConfirmation.Spec.Model.WeakSynchrony
+public import FastConfirmation.Spec.Proof.AncestryRoots
+
+@[expose] public section
 
 /-!
 # Weak-to-strong containment: initialization and a negative handler result
@@ -200,3 +203,5 @@ theorem not_one_shot_containment :
 
 end Negative
 end FastConfirmation.Spec.Containment
+
+end

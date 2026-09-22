@@ -1,7 +1,11 @@
-import FastConfirmation.Spec.Proof.AcceptedActualSelectedJustifiedOrientation
-import FastConfirmation.Spec.Proof.EndpointQuorumCausality
-import FastConfirmation.Spec.Proof.WeakObserverDomain
-import FastConfirmation.Spec.Proof.WeakFCRCallContracts
+module
+public import FastConfirmation.Spec.Proof.AcceptedActualSelectedJustifiedOrientation
+public import FastConfirmation.Spec.Proof.EndpointQuorumCausality
+public import FastConfirmation.Spec.Proof.WeakObserverDomain
+public import FastConfirmation.Spec.Proof.WeakFCRCallContracts
+public import FastConfirmation.Spec.Proof.WeakObserverProvenance
+
+@[expose] public section
 
 /-!
 # Spec / Proof / WeakHistoricalA32CallSupplier
@@ -108,6 +112,23 @@ variable {E : Execution Root}
 
 /-! ## The completed scheduled prefix at an observer -/
 
+theorem ScheduledEventPrefix.operationalEvidence_of_observer_validity
+    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
+    (p : E.ScheduledEventPrefix)
+    (hvalid : E.ObserverValidity cfg ext p.node)
+    (hn : E.WithinHorizon cfg (p.previousSecond + 1)) :
+    E.ScheduledPrefixOperationalEvidence cfg ext (p.store cfg ext)
+      (p.previousSecond + 1) :=
+  { causal := .scheduledPrefix p
+    current_slot := p.current_slot cfg ext
+    scheduled_provenance := p.schedLMProv cfg ext E hT
+    latest_message_provenance :=
+      p.latestMessageProvenance_of_observer_validity cfg ext hT hvalid hn
+    parent_slot_lt := p.parentSlotLt cfg ext E hT
+    blocks_slot_le_current := p.blocksSlotLeCurrent cfg ext E hT
+    honest_not_equivocating :=
+      p.honest_not_equivocating_of_observer_validity cfg ext hT hvalid }
+
 /-- All prefix accounting evidence at an observer's own execution boundary is
 mechanical: the operational half comes from exact replay of the observer's
 schedule (`ScheduledEventPrefix.operationalEvidence` never inspects
@@ -127,7 +148,8 @@ theorem completedScheduledEventPrefix_accountingEvidence_at_observer
     simpa only [p] using E.completedScheduledEventPrefix_store cfg ext obs n
   have hp : E.CurrentTargetPrefixAccountingEvidence cfg ext
       (p.store cfg ext) (p.previousSecond + 1) :=
-    { operational := p.operationalEvidence cfg ext E hT
+    { operational := p.operationalEvidence_of_observer_validity cfg ext hT
+        hcoh.validity hHn1
       committees := by
         intro slot hslot
         rw [hpstore]
@@ -154,7 +176,7 @@ theorem completedPrefix_pulledUpHead_validators_at_observer
   have hhead := E.head_root_known_at_observer cfg ext hcoh n hHn
   have hgen : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
       E.genesis_store = get_forkchoice_store cfg ast ablk := by
-    obtain ⟨ast, ablk, hgeq, _, _⟩ := hT.genesis
+    obtain ⟨ast, ablk, hgeq, _, _⟩ := hT.genesis_structure
     exact ⟨ast, ablk, hgeq⟩
   have hregistry :=
     (E.registryConstant cfg ext hT.externals_coherence hgen obs n).1
@@ -184,7 +206,7 @@ theorem completedPrefix_pulledUpHead_epoch_at_observer
   have hhead : head ∈ store.block_roots := by
     simpa only [store, head] using
       E.head_root_known_at_observer cfg ext hcoh n hHn
-  obtain ⟨ast, ablk, hgen, _hslot, _hparent⟩ := hT.genesis
+  obtain ⟨ast, ablk, hgen, _hslot, _hparent⟩ := hT.genesis_structure
   have hstateSlots := E.stateSlotsLE cfg ext hT.whole_seconds
     hT.externals_coherence ⟨ast, ablk, hgen⟩ obs n
   have hheadSlot : (store.block_states head).slot ≤
@@ -348,11 +370,13 @@ noncomputable def observerCall_acceptedTargetGateProducerAt
       (get_current_target cfg (E.store cfg ext obs (n + 1))) (n + 1)
     exact hsupportBoundary
   have hrealized :=
-    E.scheduledEventPrefix_acceptedTargetA32GateRealization_withLookahead
-    cfg ext B hT hC.synchrony hC.static_validators
+    E.scheduledEventPrefix_acceptedTargetA32GateRealization_core_of_operationalEvidence
+    cfg ext B hT hC.static_validators
       hC.byzantine_bound
       hC.phase0_source hC.phase0_boundary_source hanchor hboundary p hHn1
-      hevidence hstate hval htab hendHP hanchorH hC.balance_floor
+      hevidence hstate hval htab hendHP
+      (fun Q => Q.scheduledDelivery_of_lookahead cfg ext E hC.synchrony)
+      hanchorH hC.balance_floor
       hgateP hsupportP
   rw [hpstore] at hrealized
   simpa only [E.weakFcrStep_store] using hrealized
@@ -447,8 +471,7 @@ theorem noConflict_arithmeticBranch_oneThird_of_rawGate
       Execution.currentTargetObservedNonhonestSupporters] using
       E.current_target_score_eq_honest_add_nonhonest_weight
         cfg ext hstate hval
-  have hprov := E.latestMessageProvenance cfg ext hwf hec hgen0 v n
-  rw [← E.store_current_slot cfg ext v n] at hprov
+  have hprov := hevidence.operational.latest_message_provenance
   have hbyz : E.weight observedNonhonest ≤ adversarial := by
     simpa only [observedNonhonest, adversarial, start, finish, store,
       currentTargetEpochStart,
@@ -474,6 +497,13 @@ theorem noConflict_arithmeticBranch_oneThird_of_rawGate
   rw [← hstate, htab] at hgateArithmetic
   have hgateArithmetic' : E.total_active cfg <
       3 * (score - min adversarial score + remaining) := by
+    have hsub : score - adversarial = score - min adversarial score := by
+      by_cases hle : adversarial ≤ score
+      · rw [min_eq_left hle]
+      · have hgt : score ≤ adversarial := Nat.le_of_lt (Nat.lt_of_not_ge hle)
+        rw [min_eq_right hgt, Nat.sub_self, Nat.sub_eq_zero_of_le hgt]
+    change E.total_active cfg < 3 * (score - adversarial + remaining) at hgateArithmetic
+    rw [hsub] at hgateArithmetic
     simpa only [score, adversarial, remaining, estimate, start, finish,
       store, one_mul] using hgateArithmetic
   have hpredict : score - min adversarial score + remaining ≤
@@ -665,7 +695,7 @@ theorem noConflict_endpointJustifiedQuorum_root_eq_currentTarget_at_observer
     (E.store cfg ext w m).justified_checkpoint.root =
       (get_current_target cfg (E.store cfg ext obs (n + 1))).root := by
   classical
-  obtain ⟨ast, ablk, hgen, hgenSlot, _hgenParent⟩ := hT.genesis
+  obtain ⟨ast, ablk, hgen, hgenSlot, _hgenParent⟩ := hT.genesis_structure
   have hgenShort : ∃ (ast : BeaconState Root)
       (ablk : SignedBeaconBlock Root),
       E.genesis_store = get_forkchoice_store cfg ast ablk ∧
@@ -782,8 +812,10 @@ theorem noConflict_endpointJustifiedQuorum_root_eq_currentTarget_at_observer
           (anchor := E.genesis_store.justified_checkpoint) := by
         simpa only [← hanchor] using hboundary
       have hvote :=
-        E.currentTargetObservedHonestSupporter_vote_of_prefix
-          cfg ext B hV hboundaryZero p hHn1
+        E.currentTargetObservedHonestSupporter_vote_of_prefix_of_provenance
+          cfg ext B hV hboundaryZero p
+            (p.latestMessageProvenance_of_observer_validity cfg ext hT
+              hcoh.validity hHn1) hHn1
             (by simpa only [hpstore, state, store] using hiObserved)
       rw [hpstore] at hvote
       simpa only [store, target, deadline] using hvote
@@ -982,3 +1014,5 @@ theorem observerCall_endpointOriginOrPinnedProducerAt
 end Execution
 
 end FastConfirmation.Spec
+
+end

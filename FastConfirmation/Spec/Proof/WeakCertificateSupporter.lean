@@ -1,6 +1,10 @@
-import FastConfirmation.Spec.Model.WeakSynchrony
-import FastConfirmation.Spec.Proof.Delivery
-import FastConfirmation.Spec.Proof.Ledger
+module
+public import FastConfirmation.Spec.Model.WeakSynchrony
+public import FastConfirmation.Spec.Proof.Delivery
+public import FastConfirmation.Spec.Proof.Ledger
+public import FastConfirmation.Spec.Proof.WeakObserverProvenance
+
+@[expose] public section
 
 /-!
 # Spec / Proof / WeakCertificateSupporter
@@ -267,10 +271,11 @@ theorem Execution.certificate_honest_supporter (E : Execution Root)
     rw [← hcomm s hsSWH]; exact hcsstore
   obtain ⟨k, a, hvote, hslot_eq, hbroot⟩ :=
     E.honest_latest_message_vote cfg ext hhb hec hgen hiHonest hlm hcs hepocheq
-  obtain ⟨-, -, -, -, -, -, -, hroot_mem, -⟩ :=
-    E.latestMessageProvenance cfg ext hwf hec hgen v n i lm hlm
+  have hroot_mem := E.latestMessageRootKnown cfg ext hgen v n i lm hlm
   refine ⟨i, hiHonest, s, hsIccle.1, hsIccle.2, hcs, k, a, hvote, hslot_eq, ?_, ?_⟩
   · rw [hbroot]; exact hroot_mem
   · rw [hbroot]; exact hisanc
 
 end FastConfirmation.Spec
+
+end

@@ -1,6 +1,9 @@
-import FastConfirmation.Spec.Proof.MinimalSelectedDomain
-import FastConfirmation.Spec.Proof.Anchoring
-import FastConfirmation.Spec.Proof.WeakRulePredicateBridge
+module
+public import FastConfirmation.Spec.Proof.MinimalSelectedDomain
+public import FastConfirmation.Spec.Proof.Anchoring
+public import FastConfirmation.Spec.Proof.WeakRulePredicateBridge
+
+@[expose] public section
 
 /-!
 # Spec / Proof / WeakSelectorInversion
@@ -592,3 +595,5 @@ theorem find_latest_confirmed_descendant_selected_minimal_weak
 end Execution
 
 end FastConfirmation.Spec
+
+end

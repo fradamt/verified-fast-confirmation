@@ -1,5 +1,8 @@
-import Mathlib.Tactic
-import FastConfirmation.Spec.Proof.AcceptedResetAdoption
+module
+public import Mathlib.Tactic
+public import FastConfirmation.Spec.Proof.AcceptedResetAdoption
+
+@[expose] public section
 
 /-!
 # Spec / Proof / WeakJustificationTiming
@@ -58,7 +61,7 @@ theorem anchorRoot_mem_genesis
     (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint) :
     B.anchor.root ∈ E.genesis_store.block_roots := by
-  obtain ⟨ast, ablk, hgen, _hslot, _hparent⟩ := hT.genesis
+  obtain ⟨ast, ablk, hgen, _hslot, _hparent⟩ := hT.genesis_structure
   have hroot : B.anchor.root = ablk.root := by
     rw [hanchor, hgen]
     rfl
@@ -84,7 +87,7 @@ theorem auCheckpoint_startSlot_lt_currentSlot
     (hAU : B.state.AU cfg ext tip c) (hne : c ≠ B.anchor) :
     compute_start_slot_at_epoch cfg c.epoch <
       get_current_slot cfg (E.store cfg ext obs n) := by
-  obtain ⟨ast, ablk, hgenEq, hslotEq, hparentNe⟩ := hT.genesis
+  obtain ⟨ast, ablk, hgenEq, hslotEq, hparentNe⟩ := hT.genesis_structure
   have hgenShort : ∃ (ast : BeaconState Root)
       (ablk : SignedBeaconBlock Root),
       E.genesis_store = get_forkchoice_store cfg ast ablk ∧
@@ -136,3 +139,5 @@ theorem auCheckpoint_startSlot_lt_currentSlot
 end Weak
 
 end FastConfirmation.Spec
+
+end

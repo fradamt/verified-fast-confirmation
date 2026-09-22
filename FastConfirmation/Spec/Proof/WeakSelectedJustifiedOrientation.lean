@@ -1,7 +1,10 @@
-import FastConfirmation.Spec.Proof.WeakPreQuerySIR
-import FastConfirmation.Spec.Proof.WeakHistoricalA32Step
-import FastConfirmation.Spec.Proof.WeakHistoricalA32CallSupplier
-import FastConfirmation.Spec.Proof.WeakSelectedStrictEdgeFilterSupply
+module
+public import FastConfirmation.Spec.Proof.WeakPreQuerySIR
+public import FastConfirmation.Spec.Proof.WeakHistoricalA32Step
+public import FastConfirmation.Spec.Proof.WeakHistoricalA32CallSupplier
+public import FastConfirmation.Spec.Proof.WeakSelectedStrictEdgeFilterSupply
+
+@[expose] public section
 
 /-!
 # Spec / Proof / WeakSelectedJustifiedOrientation
@@ -288,7 +291,7 @@ theorem strictSelected_result_and_child_ancestor_of_endpointJustified_at_observe
           (Weak.find_latest_confirmed_descendant cfg ext query input))
         (get_node_for_root
           (E.store cfg ext w m).justified_checkpoint.root) = true := by
-  obtain ⟨ast, ablk, hgen, hgenSlot, _hgenParent⟩ := hT.genesis
+  obtain ⟨ast, ablk, hgen, hgenSlot, _hgenParent⟩ := hT.genesis_structure
   have hgenShort : ∃ (ast : BeaconState Root)
       (ablk : SignedBeaconBlock Root),
       E.genesis_store = get_forkchoice_store cfg ast ablk ∧
@@ -366,7 +369,7 @@ private theorem observerCall_orientation_inputs
   have hquery : (E.weakFcrStep cfg ext obs n).store =
       E.store cfg ext obs (n + 1) :=
     E.weakFcrStep_store cfg ext obs n
-  obtain ⟨ast, ablk, hgen, hgenSlot, _hgenParent⟩ := hT.genesis
+  obtain ⟨ast, ablk, hgen, hgenSlot, _hgenParent⟩ := hT.genesis_structure
   have hgenShort : ∃ (ast : BeaconState Root)
       (ablk : SignedBeaconBlock Root),
       E.genesis_store = get_forkchoice_store cfg ast ablk ∧
@@ -464,7 +467,7 @@ theorem observerCall_strictSelected_result_and_child_ancestor_of_endpointJustifi
   let query := E.weakFcrStep cfg ext obs n
   let trace := E.weakGetLatestConfirmedTraceAt cfg ext obs n
   let hA : SelectedMarginAssumptions cfg ext E :=
-    { genesis := hT.genesis
+    { genesis := hT.genesis_structure
       wellFormed := hT.wellFormed
       whole_seconds := hT.whole_seconds
       honest_behavior := hT.honest_behavior
@@ -586,7 +589,7 @@ theorem observerCall_strictSelected_endpointJustifiedEpoch_le_result
       get_block_epoch cfg (E.weakFcrStep cfg ext obs n).store
         (E.weakGetLatestConfirmedTraceAt cfg ext obs n).result := by
   let hA : SelectedMarginAssumptions cfg ext E :=
-    { genesis := hT.genesis
+    { genesis := hT.genesis_structure
       wellFormed := hT.wellFormed
       whole_seconds := hT.whole_seconds
       honest_behavior := hT.honest_behavior
@@ -597,7 +600,7 @@ theorem observerCall_strictSelected_endpointJustifiedEpoch_le_result
       domain := hdomain }
   have hquery : (E.weakFcrStep cfg ext obs n).store = E.store cfg ext obs (n + 1) :=
     E.weakFcrStep_store cfg ext obs n
-  obtain ⟨ast, ablk, hgen, hgenSlot, _hgenParent⟩ := hT.genesis
+  obtain ⟨ast, ablk, hgen, hgenSlot, _hgenParent⟩ := hT.genesis_structure
   have hgenShort : ∃ (ast : BeaconState Root)
       (ablk : SignedBeaconBlock Root),
       E.genesis_store = get_forkchoice_store cfg ast ablk ∧
@@ -644,7 +647,7 @@ theorem observerCall_strictSelected_endpointJustifiedEpoch_le_result
     hselectedKnown w hw m hstartM hHm
   obtain ⟨hparentM, hwalkM, hjustifiedM⟩ :=
     E.store_domainK_of_selectedMarginDomain cfg ext hT.wellFormed
-      hT.externals_coherence hT.genesis hdomain w hw m hHm
+      hT.externals_coherence hT.genesis_structure hdomain w hw m hHm
   have hnotJResult : is_ancestor (E.store cfg ext w m)
       (get_node_for_root
         (E.store cfg ext w m).justified_checkpoint.root)
@@ -704,3 +707,5 @@ theorem observerCall_strictSelected_endpointJustifiedEpoch_le_result
 end Weak
 
 end FastConfirmation.Spec
+
+end

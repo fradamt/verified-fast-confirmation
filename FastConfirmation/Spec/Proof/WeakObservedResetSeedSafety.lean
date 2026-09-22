@@ -1,5 +1,8 @@
-import FastConfirmation.Spec.Proof.WeakObservedRestartDynamicSafety
-import FastConfirmation.Spec.Proof.WeakTrajectorySafety
+module
+public import FastConfirmation.Spec.Proof.WeakObservedRestartDynamicSafety
+public import FastConfirmation.Spec.Proof.WeakTrajectorySafety
+
+@[expose] public section
 
 /-!
 # Spec / Proof / WeakObservedResetSeedSafety
@@ -86,6 +89,11 @@ anchor arm outright, and otherwise run the slot-indexed strong induction
 epoch against the banked one. -/
 theorem observedResetSeedSafety_of_acceptedDynamics
     {E : Execution Root} (hA : SelectedMarginAssumptions cfg ext E)
+    (hgen : ∃ (anchorState : BeaconState Root) (anchorBlock : SignedBeaconBlock Root),
+      E.genesis_store = get_forkchoice_store cfg anchorState anchorBlock ∧
+      anchorState.slot = anchorBlock.message.slot ∧
+      ext.AnchorCommitsToState anchorBlock.message anchorState ∧
+      anchorBlock.message.parent_root ≠ anchorBlock.root)
     (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
     (hji : JustificationInterface cfg ext E)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
@@ -97,7 +105,7 @@ theorem observedResetSeedSafety_of_acceptedDynamics
     Weak.ObservedResetSeedSafety cfg ext E obs := by
   have hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext :=
     Execution.ScheduledPrefixTrajectoryAssumptions.of_selectedMarginAssumptions
-      cfg ext E hA
+      cfg ext E hA hgen
   intro n hHn1 hcall trace hinput
   rcases Weak.weakFcrStep_certifiedBankedJustification cfg ext hA B hT hanchor
     hboundary hHn1 hcall with hgenesisArm | hcertified
@@ -196,7 +204,7 @@ theorem weakConfirmed_safeFromFollowingSlot_of_acceptedWeakFullRuleFold
   E.weakConfirmed_safeFromFollowingSlot_of_weakFullRuleFold cfg ext B hji
     hanchor hboundary hDelay hpaper P V hW
     hCbase hfit
-    (Weak.observedResetSeedSafety_of_acceptedDynamics cfg ext hW.base B hji
+    (Weak.observedResetSeedSafety_of_acceptedDynamics cfg ext hW.base hW.genesis B hji
       hanchor hboundary hW.committees_agree)
 
 /-- Endpoint form of the unconditional weak full-rule theorem, matching the
@@ -229,10 +237,12 @@ theorem weakConfirmed_head_of_acceptedWeakFullRuleFold_nextSlot
   E.weakConfirmed_head_of_weakFullRuleFold_nextSlot cfg ext B hji hanchor
     hboundary hDelay hpaper P V hW
     hCbase hfit
-    (Weak.observedResetSeedSafety_of_acceptedDynamics cfg ext hW.base B hji
+    (Weak.observedResetSeedSafety_of_acceptedDynamics cfg ext hW.base hW.genesis B hji
       hanchor hboundary hW.committees_agree)
     hw hnm hnext hHm
 
 end Execution
 
 end FastConfirmation.Spec
+
+end

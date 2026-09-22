@@ -1,7 +1,10 @@
-import FastConfirmation.Spec.Proof.AcceptedPhaseSourceCarriers
-import FastConfirmation.Spec.Proof.AcceptedResetAdoption
-import FastConfirmation.Spec.Proof.AcceptedFinalizedNextSlotSafety
-import FastConfirmation.Spec.Proof.WeakOneShotSafety
+module
+public import FastConfirmation.Spec.Proof.AcceptedPhaseSourceCarriers
+public import FastConfirmation.Spec.Proof.AcceptedResetAdoption
+public import FastConfirmation.Spec.Proof.AcceptedFinalizedNextSlotSafety
+public import FastConfirmation.Spec.Proof.WeakOneShotSafety
+
+@[expose] public section
 
 /-!
 # Honest origin of a store-read finalized checkpoint
@@ -68,7 +71,7 @@ private theorem causalStore_blocks_slot_le_current
     {store : Store Root} (hstore : E.CausalStore cfg ext store) :
     ∀ r ∈ store.block_roots,
       (store.blocks r).slot ≤ get_current_slot cfg store := by
-  obtain ⟨ast, ablk, hgenEq, hslot, _hparent⟩ := hT.genesis
+  obtain ⟨ast, ablk, hgenEq, hslot, _hparent⟩ := hT.genesis_structure
   cases hstore with
   | genesis =>
       exact E.store_blocks_slot_le_current cfg ext hT.whole_seconds
@@ -144,7 +147,7 @@ theorem includedAttestationSlot_lt_causalStoreCurrentSlot
     a.data.slot < get_current_slot cfg store := by
   obtain ⟨containing, hcarrierContaining, hincluded⟩ := hchain
   have hevidence := B.state.includedAttestations.evidence hincluded
-  obtain ⟨_ast, _ablk, hgenEq, _hslot, hparent⟩ := hT.genesis
+  obtain ⟨_ast, _ablk, hgenEq, _hslot, hparent⟩ := hT.genesis_structure
   have hcontainingRoot : E.ExecutionRoot containing :=
     ⟨hevidence.carrier_message, hevidence.carrier_at⟩
   have hcontainingKnown : containing ∈ store.block_roots :=
@@ -216,7 +219,7 @@ theorem finalizedHonestVotingSourceOrigin_of_causalStore
     {store : Store Root} (hstore : E.CausalStore cfg ext store) :
     store.finalized_checkpoint = B.anchor ∨
       Nonempty (E.FinalizedHonestVotingSourceOrigin cfg ext B store) := by
-  obtain ⟨ast, ablk, hgenEq, hslot, hparent⟩ := hT.genesis
+  obtain ⟨ast, ablk, hgenEq, hslot, hparent⟩ := hT.genesis_structure
   have hgenShort : ∃ (ast : BeaconState Root)
       (ablk : SignedBeaconBlock Root),
       E.genesis_store = get_forkchoice_store cfg ast ablk ∧
@@ -464,7 +467,7 @@ theorem weak_finalized_epoch_le_remoteJustified
     (hrelay : E.slot_at cfg q ≤ E.slot_at cfg m) :
     (E.store cfg ext v q).finalized_checkpoint.epoch ≤
       (E.store cfg ext w m).justified_checkpoint.epoch := by
-  obtain ⟨ast, ablk, hgenEq, hslot, _hparent⟩ := hT.genesis
+  obtain ⟨ast, ablk, hgenEq, hslot, _hparent⟩ := hT.genesis_structure
   have hgenShort : ∃ (ast : BeaconState Root)
       (ablk : SignedBeaconBlock Root),
       E.genesis_store = get_forkchoice_store cfg ast ablk ∧
@@ -554,7 +557,7 @@ theorem weak_finalizedReset_justifiedDom_of_synchrony
           (get_node_for_root finalized.root) = true := by
   intro w hw m hqm hHm
   let finalized := (E.store cfg ext v q).finalized_checkpoint
-  obtain ⟨ast, ablk, hgen, hslot, hparent⟩ := hT.genesis
+  obtain ⟨ast, ablk, hgen, hslot, hparent⟩ := hT.genesis_structure
   have hgenShort : ∃ (ast : BeaconState Root)
       (ablk : SignedBeaconBlock Root),
       E.genesis_store = get_forkchoice_store cfg ast ablk ∧
@@ -700,7 +703,7 @@ theorem weak_safeFrom_find_latest_confirmed_descendant_from_finalized
       (Weak.find_latest_confirmed_descendant cfg ext fcr_store
         fcr_store.store.finalized_checkpoint.root) q := by
   have hT := ScheduledPrefixTrajectoryAssumptions.of_selectedMarginAssumptions
-    cfg ext E hW.base
+    cfg ext E hW.base hW.genesis
   have hacc := SelectedMarginAssumptions.toFFGAccountabilityAssumptions
     cfg ext E hW.base
   have hlcr : fcr_store.store.finalized_checkpoint.root ∈
@@ -756,3 +759,5 @@ theorem weak_confirmed_head_from_finalized
 end Execution
 
 end FastConfirmation.Spec
+
+end

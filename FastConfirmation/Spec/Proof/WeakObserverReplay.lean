@@ -1,4 +1,7 @@
-import FastConfirmation.Spec.Proof.WeakFCRCallContracts
+module
+public import FastConfirmation.Spec.Proof.WeakFCRCallContracts
+
+@[expose] public section
 
 /-!
 # Local replay determines the weak confirmation output
@@ -68,3 +71,5 @@ theorem weakConfirmed_eq_of_local_log_prefix {E F : Execution Root}
     (weakFcr_eq_of_local_log_prefix cfg ext hanchor v w n hlog)
 
 end FastConfirmation.Spec.Execution
+
+end

@@ -1,6 +1,9 @@
-import FastConfirmation.Spec.Proof.SelectedA32Support
-import FastConfirmation.Spec.Proof.L4Fold
-import FastConfirmation.Spec.Proof.AcceptedPathLocalFinalizedTransport
+module
+public import FastConfirmation.Spec.Proof.SelectedA32Support
+public import FastConfirmation.Spec.Proof.L4Fold
+public import FastConfirmation.Spec.Proof.AcceptedPathLocalFinalizedTransport
+
+@[expose] public section
 
 /-!
 # Spec / Proof / HonestTargetAgreement
@@ -435,3 +438,5 @@ theorem honestVotesSupportTarget_of_safeFrom_currentEpochCandidate
 end Execution
 
 end FastConfirmation.Spec
+
+end

@@ -1,5 +1,8 @@
-import FastConfirmation.Spec.Proof.WeakHistoricalA32Step
-import FastConfirmation.Spec.Proof.WeakHistoricalA32OriginCall
+module
+public import FastConfirmation.Spec.Proof.WeakHistoricalA32Step
+public import FastConfirmation.Spec.Proof.WeakHistoricalA32OriginCall
+
+@[expose] public section
 
 /-!
 # Spec / Proof / WeakHistoricalA32LazyCrossing
@@ -228,3 +231,5 @@ noncomputable def selectedCurrentCrossingLazyLineage
 end Weak
 
 end FastConfirmation.Spec
+
+end

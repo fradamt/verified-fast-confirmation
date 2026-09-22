@@ -1,4 +1,7 @@
-import FastConfirmation.Spec.Proof.WeakOneShotSafety
+module
+public import FastConfirmation.Spec.Proof.WeakOneShotSafety
+
+@[expose] public section
 
 /-!
 # Spec / Proof / WeakObserverDomain
@@ -113,3 +116,5 @@ theorem observerStoreDomainK
 end Execution
 
 end FastConfirmation.Spec
+
+end

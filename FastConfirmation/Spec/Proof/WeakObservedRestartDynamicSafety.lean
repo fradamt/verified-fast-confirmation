@@ -1,9 +1,12 @@
-import FastConfirmation.Spec.Proof.AcceptedActualFCRCommon
-import FastConfirmation.Spec.Proof.AcceptedCurrentSameEndpointSource
-import FastConfirmation.Spec.Proof.SelectedCoveredMarginConstruction
-import FastConfirmation.Spec.Proof.SelectedTraceFFGRealizationPipeline
-import FastConfirmation.Spec.Proof.WeakObservedRestartAdoption
-import FastConfirmation.Spec.Proof.WeakSelectedStrictEdgeFilterSupply
+module
+public import FastConfirmation.Spec.Proof.AcceptedActualFCRCommon
+public import FastConfirmation.Spec.Proof.AcceptedCurrentSameEndpointSource
+public import FastConfirmation.Spec.Proof.SelectedCoveredMarginConstruction
+public import FastConfirmation.Spec.Proof.SelectedTraceFFGRealizationPipeline
+public import FastConfirmation.Spec.Proof.WeakObservedRestartAdoption
+public import FastConfirmation.Spec.Proof.WeakSelectedStrictEdgeFilterSupply
+
+@[expose] public section
 
 /-!
 # Spec / Proof / WeakObservedRestartDynamicSafety
@@ -142,7 +145,7 @@ theorem genesisRoot_safeFrom_of_acceptedGlobalTrajectory
       (anchor := B.anchor))
     {r : Root} (hr : r ∈ E.genesis_store.block_roots) (q : ℕ) :
     E.SafeFrom cfg ext r q := by
-  obtain ⟨ast, ablk, hgeq, _hslot, _hparent⟩ := hT.genesis
+  obtain ⟨ast, ablk, hgeq, _hslot, _hparent⟩ := hT.genesis_structure
   have hanchorRoot : B.anchor.root = ablk.root := by
     have hroot := congrArg Checkpoint.root hanchor
     rw [hgeq] at hroot
@@ -228,7 +231,7 @@ theorem sameEpochCertified_head_at_endpoint
     (hepoch : c.epoch = (E.store cfg ext w m).justified_checkpoint.epoch) :
     is_ancestor (E.store cfg ext w m) (get_head cfg (E.store cfg ext w m))
       (get_node_for_root c.root) = true := by
-  obtain ⟨ast, ablk, hgeq, hslotEq, _hparentNe⟩ := hT.genesis
+  obtain ⟨ast, ablk, hgeq, hslotEq, _hparentNe⟩ := hT.genesis_structure
   have hgenShort : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
       E.genesis_store = get_forkchoice_store cfg ast ablk ∧
         ast.slot = ablk.message.slot :=
@@ -501,7 +504,7 @@ theorem ObservedResetCandidateInputAt.head_of_laterEpoch
     is_ancestor (E.store cfg ext w m) (get_head cfg (E.store cfg ext w m))
       (get_node_for_root ((E.weakFcrStep cfg ext obs n
         ).current_epoch_observed_justified_checkpoint).root) = true := by
-  obtain ⟨ast, ablk, hgen, hgenSlot, hgenParent⟩ := hT.genesis
+  obtain ⟨ast, ablk, hgen, hgenSlot, hgenParent⟩ := hT.genesis_structure
   let c := (E.weakFcrStep cfg ext obs n
     ).current_epoch_observed_justified_checkpoint
   let J := (E.store cfg ext w m).justified_checkpoint
@@ -688,3 +691,5 @@ theorem ObservedResetCandidateInputAt.head_of_laterEpoch
 end Weak
 
 end FastConfirmation.Spec
+
+end

@@ -1,5 +1,8 @@
-import FastConfirmation.Spec.Model.StrongReference
-import FastConfirmation.Spec.Model.WeakSynchrony
+module
+public import FastConfirmation.Spec.Model.StrongReference
+public import FastConfirmation.Spec.Model.WeakSynchrony
+
+@[expose] public section
 
 /-!
 # Complete prior-slot evidence
@@ -266,3 +269,5 @@ unrealized reset can make their outputs differ. See docs/weak-synchrony.md. -/
 
 end CompleteEvidence
 end FastConfirmation.Spec
+
+end

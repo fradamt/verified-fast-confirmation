@@ -1,4 +1,7 @@
-import FastConfirmation.Spec.Proof.WeakObserverReplay
+module
+public import FastConfirmation.Spec.Proof.WeakObserverReplay
+
+@[expose] public section
 
 /-!
 # A pure weak-FCR replay relation
@@ -146,3 +149,5 @@ theorem replay_bounded_witness
       rw [hlast]
 
 end FastConfirmation.Spec
+
+end

@@ -1,5 +1,8 @@
-import FastConfirmation.Spec.Proof.AnchorFacade
-import FastConfirmation.Spec.Proof.BlockAgreement
+module
+public import FastConfirmation.Spec.Proof.AnchorFacade
+public import FastConfirmation.Spec.Proof.BlockAgreement
+
+@[expose] public section
 
 /-!
 # Spec / Proof / WeakAncestryTransport: containment-free `is_ancestor` transport
@@ -196,3 +199,5 @@ theorem Execution.is_ancestor_transport_closed (hwf : WellFormedExecution E)
   exact hspec
 
 end FastConfirmation.Spec
+
+end

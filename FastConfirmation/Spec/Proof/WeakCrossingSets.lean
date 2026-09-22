@@ -1,7 +1,10 @@
-import FastConfirmation.Spec.Proof.WeakEndpointClasses
-import FastConfirmation.Spec.Proof.CrossingCert
-import FastConfirmation.Spec.Proof.FutureCrossingMargin
-import FastConfirmation.Spec.Proof.Reanchor
+module
+public import FastConfirmation.Spec.Proof.WeakEndpointClasses
+public import FastConfirmation.Spec.Proof.CrossingCert
+public import FastConfirmation.Spec.Proof.FutureCrossingMargin
+public import FastConfirmation.Spec.Proof.Reanchor
+
+@[expose] public section
 
 /-!
 # Spec / Proof / WeakCrossingSets
@@ -655,3 +658,5 @@ theorem crossingEdgeFuture_endpoint_inequality_at_observer {E : Execution Root}
 end Weak
 
 end FastConfirmation.Spec
+
+end

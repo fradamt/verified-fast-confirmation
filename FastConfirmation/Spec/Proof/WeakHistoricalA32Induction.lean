@@ -1,6 +1,9 @@
-import FastConfirmation.Spec.Proof.WeakHistoricalA32OneStep
-import FastConfirmation.Spec.Proof.WeakHistoricalA32CallSupplier
-import FastConfirmation.Spec.Proof.WeakCandidateSourceHistory
+module
+public import FastConfirmation.Spec.Proof.WeakHistoricalA32OneStep
+public import FastConfirmation.Spec.Proof.WeakHistoricalA32CallSupplier
+public import FastConfirmation.Spec.Proof.WeakCandidateSourceHistory
+
+@[expose] public section
 
 /-!
 # Spec / Proof / WeakHistoricalA32Induction
@@ -137,7 +140,7 @@ theorem observerLineageRoute_lazy
     crossing := by
       intro k hcall hHk1 hresultCurrent a c hinputKnown hselector hedge
       have hMargin : SelectedMarginAssumptions cfg ext E :=
-        { genesis := hT.genesis
+        { genesis := hT.genesis_structure
           wellFormed := hT.wellFormed
           whole_seconds := hT.whole_seconds
           honest_behavior := hT.honest_behavior
@@ -246,7 +249,7 @@ noncomputable def observerHistoricalA32CurrentLineageAt_zero
     (hroute : Weak.ObserverLineageRouteAt cfg ext E B obs Cert Supp) :
     Weak.ObserverHistoricalA32CurrentLineageAt cfg ext E B obs 0
       Cert Supp := by
-  obtain ⟨ast, ablk, hgen, _hslot, _hparent⟩ := hT.genesis
+  obtain ⟨ast, ablk, hgen, _hslot, _hparent⟩ := hT.genesis_structure
   have hconfirmedAnchor : E.weakConfirmed cfg ext obs 0 = B.anchor.root := by
     rw [E.weakConfirmed_zero, hanchor]
     change E.genesis_store.finalized_checkpoint.root =
@@ -660,7 +663,7 @@ private theorem AcceptedHistoricalA32LineageCoreAt.payloadAtObserverStore
       B.state.GJ tip' = B.state.GJ origin → Supp origin e → Supp tip' e) :
     Nonempty (E.AcceptedHistoricalA32GatePayloadCoreAt cfg ext B tip e
       Cert Supp) := by
-  obtain ⟨ast, ablk, hgen, hgenSlot, hgenParent⟩ := hT.genesis
+  obtain ⟨ast, ablk, hgen, hgenSlot, hgenParent⟩ := hT.genesis_structure
   let store := E.store cfg ext v q
   have hstoreCausal : E.CausalStore cfg ext store := by
     simpa only [store] using E.store_causal cfg ext v q
@@ -831,3 +834,5 @@ theorem observerCall_currentTargetHistoricalCertificate
 end Weak
 
 end FastConfirmation.Spec
+
+end

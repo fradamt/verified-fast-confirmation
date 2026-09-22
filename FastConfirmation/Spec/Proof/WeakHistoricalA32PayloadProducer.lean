@@ -1,5 +1,8 @@
-import FastConfirmation.Spec.Proof.WeakHistoricalA32Induction
-import FastConfirmation.Spec.Proof.WeakSelectedJustifiedOrientation
+module
+public import FastConfirmation.Spec.Proof.WeakHistoricalA32Induction
+public import FastConfirmation.Spec.Proof.WeakSelectedJustifiedOrientation
+
+@[expose] public section
 
 /-!
 # Spec / Proof / WeakHistoricalA32PayloadProducer
@@ -81,3 +84,5 @@ theorem observerCall_historicalCertificateProducerAt
 end Weak
 
 end FastConfirmation.Spec
+
+end

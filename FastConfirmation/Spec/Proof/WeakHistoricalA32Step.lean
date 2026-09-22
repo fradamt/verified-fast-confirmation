@@ -1,7 +1,10 @@
-import FastConfirmation.Spec.Proof.WeakHistoricalA32Geometry
-import FastConfirmation.Spec.Proof.WeakSelectedStrictEdgeFilterSupply
-import FastConfirmation.Spec.Proof.WeakEarlyPhaseSourceWiring
-import FastConfirmation.Spec.Proof.WeakCandidateHistoryRecurrence
+module
+public import FastConfirmation.Spec.Proof.WeakHistoricalA32Geometry
+public import FastConfirmation.Spec.Proof.WeakSelectedStrictEdgeFilterSupply
+public import FastConfirmation.Spec.Proof.WeakEarlyPhaseSourceWiring
+public import FastConfirmation.Spec.Proof.WeakCandidateHistoryRecurrence
+
+@[expose] public section
 
 /-!
 # Spec / Proof / WeakHistoricalA32Step
@@ -516,7 +519,7 @@ theorem confirmed_current_at_previousStore_of_query
       get_current_store_epoch cfg (E.weakFcrStep cfg ext v n).store) :
     get_block_epoch cfg (E.store cfg ext v n) (E.weakConfirmed cfg ext v n) =
       get_current_store_epoch cfg (E.store cfg ext v n) := by
-  obtain ⟨ast, ablk, hgen, hslot, _hparent⟩ := hT.genesis
+  obtain ⟨ast, ablk, hgen, hslot, _hparent⟩ := hT.genesis_structure
   have hknownN1 : E.weakConfirmed cfg ext v n ∈
       (E.store cfg ext v (n + 1)).block_roots :=
     (E.store_storeLE cfg ext v (Nat.le_succ n)).1 hknownN
@@ -844,3 +847,5 @@ noncomputable def
 end Weak
 
 end FastConfirmation.Spec
+
+end

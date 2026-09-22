@@ -1,7 +1,10 @@
-import FastConfirmation.Spec.Proof.WeakQuorumAccounting
-import FastConfirmation.Spec.Proof.WeakConfirmedDissemination
-import FastConfirmation.Spec.Proof.WeakRulePredicateBridge
-import FastConfirmation.Spec.Proof.SelectedMarginConstruction
+module
+public import FastConfirmation.Spec.Proof.WeakQuorumAccounting
+public import FastConfirmation.Spec.Proof.WeakConfirmedDissemination
+public import FastConfirmation.Spec.Proof.WeakRulePredicateBridge
+public import FastConfirmation.Spec.Proof.SelectedMarginConstruction
+
+@[expose] public section
 
 /-!
 # Spec / Proof / WeakEndpointClasses
@@ -372,6 +375,7 @@ ground-vote replay premise.  The only observer-side inputs are the boolean
 theorem base_strip_of_confirmed_at_observer {E : Execution Root}
     (hA : SelectedMarginAssumptions cfg ext E)
     {obs : ValidatorIndex} {q : ℕ} (hqH : E.WithinHorizon cfg q)
+    (hvalid : E.ObserverValidity cfg ext obs)
     (hcomm : E.PrefixCommitteeAgreement cfg ext (E.store cfg ext obs q))
     {query : FastConfirmationStore Root}
     (hstore : query.store = E.store cfg ext obs q)
@@ -430,8 +434,8 @@ theorem base_strip_of_confirmed_at_observer {E : Execution Root}
     E.store_parentSlotLt cfg ext hA.wellFormed hA.externals_coherence
       ⟨ast, ablk, hgeq, hslot, hparentne⟩
       hA.wellFormed.anchor_parent_unscheduled obs q
-  have hprov := E.latestMessageProvenance cfg ext hA.wellFormed
-    hA.externals_coherence hgen obs q
+  have hprov := E.latestMessageProvenance_of_observer_validity cfg ext hA.wellFormed
+    obs hvalid hgen q
   rw [← E.store_current_slot cfg ext obs q] at hprov
   have hsched : SchedLMProv E cfg (E.store cfg ext obs q) :=
     E.schedLMProv cfg ext hgen obs q
@@ -473,7 +477,7 @@ theorem base_strip_of_confirmed_at_observer {E : Execution Root}
   -- the cutoff precedes the query slot (from the confirmed past descendant)
   have hesq : es < E.slot_at cfg q := by
     obtain ⟨_, _, _, _, _, hnuq, _, _, _⟩ :=
-      E.confirmed_pastDescendant_at_observer cfg ext hA obs q hcomm query hstore b
+      E.confirmed_pastDescendant_at_observer cfg ext hA obs q hvalid hcomm query hstore b
         hqH hb hp (by rw [hstore]; exact hconfStrong)
     have hqpos : 0 < E.slot_at cfg q := lt_of_le_of_lt (Nat.zero_le _) hnuq
     rw [hes, E.store_current_slot cfg ext obs q]
@@ -584,3 +588,5 @@ theorem crossing_hbase_of_confirmed_at_observer {E : Execution Root}
 end Weak
 
 end FastConfirmation.Spec
+
+end

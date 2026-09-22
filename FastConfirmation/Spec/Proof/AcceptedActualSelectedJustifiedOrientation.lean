@@ -323,7 +323,7 @@ theorem completedPrefix_noConflict_endpointJustifiedQuorum_root_eq_currentTarget
         simpa only [← hanchor] using hboundary
       have hvote :=
         E.currentTargetObservedHonestSupporter_vote_of_prefix
-          cfg ext B hV hboundaryZero p hHn1
+          cfg ext B hV hboundaryZero p (by simpa [p, Execution.completedScheduledEventPrefix] using hv) hHn1
             (by simpa only [hpstore, state, store] using hiObserved)
       rw [hpstore] at hvote
       simpa only [store, target, deadline] using hvote
@@ -553,7 +553,7 @@ private theorem AcceptedHistoricalA32LineageCoreAt.payloadAtExecutionStore
       Supp hlineage.origin e → Supp tip e) :
     Nonempty (E.AcceptedHistoricalA32GatePayloadCoreAt cfg ext B tip e
       Cert Supp) := by
-  obtain ⟨ast, ablk, hgen, hgenSlot, hgenParent⟩ := hT.genesis
+  obtain ⟨ast, ablk, hgen, hgenSlot, hgenParent⟩ := hT.genesis_structure
 
   let store := E.store cfg ext v q
   have hstoreCausal : E.CausalStore cfg ext store := by

@@ -1,6 +1,9 @@
-import FastConfirmation.Spec.Proof.AcceptedHistoricalA32Step
-import FastConfirmation.Spec.Proof.WeakObserverDomain
-import FastConfirmation.Spec.Proof.WeakFCRCallContracts
+module
+public import FastConfirmation.Spec.Proof.AcceptedHistoricalA32Step
+public import FastConfirmation.Spec.Proof.WeakObserverDomain
+public import FastConfirmation.Spec.Proof.WeakFCRCallContracts
+
+@[expose] public section
 
 /-!
 # Spec / Proof / WeakHistoricalA32Geometry
@@ -61,11 +64,11 @@ theorem historicalA32QueryGeometryAt_at_observer
     {query : FastConfirmationStore Root}
     (hquery : query.store = E.store cfg ext obs (n + 1)) :
     E.HistoricalA32QueryGeometryAt cfg ext query := by
-  let ast : BeaconState Root := Classical.choose hT.genesis
+  let ast : BeaconState Root := Classical.choose hT.genesis_structure
   let ablk : SignedBeaconBlock Root :=
-    Classical.choose (Classical.choose_spec hT.genesis)
+    Classical.choose (Classical.choose_spec hT.genesis_structure)
   have hgenFacts :=
-    Classical.choose_spec (Classical.choose_spec hT.genesis)
+    Classical.choose_spec (Classical.choose_spec hT.genesis_structure)
   have hgen : E.genesis_store = get_forkchoice_store cfg ast ablk :=
     hgenFacts.1
   have hslot : ast.slot = ablk.message.slot := hgenFacts.2.1
@@ -78,7 +81,7 @@ theorem historicalA32QueryGeometryAt_at_observer
     exact E.store_causal cfg ext obs (n + 1)
   obtain ⟨hparentN1, hwalkN1, _hjustifiedN1⟩ :=
     E.observerStoreDomainK cfg ext hT.wellFormed hT.externals_coherence
-      hT.genesis hcoh (n + 1) hHn1
+      hT.genesis_structure hcoh (n + 1) hHn1
   have hparent : ParentSlotLt query.store := by
     simpa only [hquery] using hparentN1
   have hwalk : ∀ t ∈ query.store.block_roots,
@@ -159,3 +162,5 @@ theorem weakFcrStep_historicalA32QueryGeometryAt
 end Weak
 
 end FastConfirmation.Spec
+
+end

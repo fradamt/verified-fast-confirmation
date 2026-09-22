@@ -1,5 +1,8 @@
-import FastConfirmation.Spec.Proof.AcceptedHistoricalA32Step
-import FastConfirmation.Spec.Proof.AcceptedHistoricalA32OriginCall
+module
+public import FastConfirmation.Spec.Proof.AcceptedHistoricalA32Step
+public import FastConfirmation.Spec.Proof.AcceptedHistoricalA32OriginCall
+
+@[expose] public section
 
 /-!
 # The lazy crossing constructor
@@ -222,3 +225,5 @@ noncomputable def selectedCurrentCrossingLazyLineage
 end Execution
 
 end FastConfirmation.Spec
+
+end

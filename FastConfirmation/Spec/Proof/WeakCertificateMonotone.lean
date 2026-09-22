@@ -1,6 +1,9 @@
-import FastConfirmation.Spec.Proof.WeakCertificateSupporter
-import FastConfirmation.Spec.Proof.WeakCertificateDissemination
-import FastConfirmation.Spec.Proof.WFTrajectory
+module
+public import FastConfirmation.Spec.Proof.WeakCertificateSupporter
+public import FastConfirmation.Spec.Proof.WeakCertificateDissemination
+public import FastConfirmation.Spec.Proof.WFTrajectory
+
+@[expose] public section
 
 /-!
 # Spec / Proof / WeakCertificateMonotone
@@ -159,3 +162,5 @@ theorem Weak.certificate_chain_dissemination (E : Execution Root)
     hanc_obs hcert_anc w hw m hHm htiming_m
 
 end FastConfirmation.Spec
+
+end

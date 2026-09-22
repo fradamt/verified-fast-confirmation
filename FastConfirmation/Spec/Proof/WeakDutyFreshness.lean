@@ -1,4 +1,7 @@
-import FastConfirmation.Spec.Model.WeakSynchrony
+module
+public import FastConfirmation.Spec.Model.WeakSynchrony
+
+@[expose] public section
 
 /-!
 # Duty-based vote freshness
@@ -104,3 +107,5 @@ theorem duty_fresh_false_of_newer_completed_duty {store : Store Root}
         (epoch_le_of_duty_fresh_cell cfg ext h rfl ht hi))
 
 end FastConfirmation.Spec.Weak
+
+end

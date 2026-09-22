@@ -1,13 +1,16 @@
-import FastConfirmation.Spec.Proof.WeakCertifiedHead
-import FastConfirmation.Spec.Model.WeakSynchrony
-import FastConfirmation.Spec.Proof.CheckpointDomain
-import FastConfirmation.Spec.Proof.WeakCertificateDissemination
-import FastConfirmation.Spec.Proof.WeakAncestryTransport
-import FastConfirmation.Spec.Proof.AnchorFacade
-import FastConfirmation.Spec.Proof.Trajectory
-import FastConfirmation.Spec.Proof.MinimalSelectedDomain
-import FastConfirmation.Spec.Proof.AcceptedCurrentTargetLowerContracts
-import FastConfirmation.Spec.Proof.WeakFCRCallContracts
+module
+public import FastConfirmation.Spec.Proof.WeakCertifiedHead
+public import FastConfirmation.Spec.Model.WeakSynchrony
+public import FastConfirmation.Spec.Proof.CheckpointDomain
+public import FastConfirmation.Spec.Proof.WeakCertificateDissemination
+public import FastConfirmation.Spec.Proof.WeakAncestryTransport
+public import FastConfirmation.Spec.Proof.AnchorFacade
+public import FastConfirmation.Spec.Proof.Trajectory
+public import FastConfirmation.Spec.Proof.MinimalSelectedDomain
+public import FastConfirmation.Spec.Proof.AcceptedCurrentTargetLowerContracts
+public import FastConfirmation.Spec.Proof.WeakFCRCallContracts
+
+@[expose] public section
 
 /-!
 # Spec / Proof / WeakBankedJustification
@@ -265,7 +268,7 @@ private theorem auTip_walkKnown
     (hAU : B.state.AU cfg ext tip c) :
     WalkKnown (E.store cfg ext obs n)
       (compute_start_slot_at_epoch cfg c.epoch) tip := by
-  obtain ⟨ast, ablk, hgenEq, hslot, hparent⟩ := hT.genesis
+  obtain ⟨ast, ablk, hgenEq, hslot, hparent⟩ := hT.genesis_structure
   have hanchorRoot : B.anchor.root = ablk.root := by
     have hr := congrArg Checkpoint.root hanchor
     rw [hgenEq] at hr
@@ -320,7 +323,7 @@ theorem acceptedOriginRoot_known_at_observer
     (horigin : c = B.anchor ∨
       AcceptedSelectorAUEvidence B.state (E.store cfg ext obs n) c) :
     c.root ∈ (E.store cfg ext obs n).block_roots := by
-  obtain ⟨ast, ablk, hgenEq, hslot, hparent⟩ := hT.genesis
+  obtain ⟨ast, ablk, hgenEq, hslot, hparent⟩ := hT.genesis_structure
   have hanchorRoot : B.anchor.root = ablk.root := by
     have hr := congrArg Checkpoint.root hanchor
     rw [hgenEq] at hr
@@ -357,7 +360,7 @@ theorem unrealizedJustifiedRoot_known_of_acceptedGlobalTrajectory
     (obs : ValidatorIndex) (n : ℕ) :
     (E.store cfg ext obs n).unrealized_justified_checkpoint.root ∈
       (E.store cfg ext obs n).block_roots := by
-  obtain ⟨ast, ablk, hgenEq, hslot, _hparent⟩ := hT.genesis
+  obtain ⟨ast, ablk, hgenEq, hslot, _hparent⟩ := hT.genesis_structure
   exact Weak.acceptedOriginRoot_known_at_observer cfg ext B hT hanchor hboundary obs n
     (unrealizedJustified_anchor_or_AUEvidence cfg ext
       ((B.causalStoreGlobalProjection ⟨ast, ablk, hgenEq, hslot⟩ hanchor
@@ -374,7 +377,7 @@ theorem justifiedRoot_known_at_observer
     (obs : ValidatorIndex) (n : ℕ) :
     (E.store cfg ext obs n).justified_checkpoint.root ∈
       (E.store cfg ext obs n).block_roots := by
-  obtain ⟨ast, ablk, hgenEq, hslot, _hparent⟩ := hT.genesis
+  obtain ⟨ast, ablk, hgenEq, hslot, _hparent⟩ := hT.genesis_structure
   exact Weak.acceptedOriginRoot_known_at_observer cfg ext B hT hanchor hboundary obs n
     (B.globalJustified_anchor_or_AUEvidence ⟨ast, ablk, hgenEq, hslot⟩ hanchor
       (E.store_causal cfg ext obs n))
@@ -425,7 +428,7 @@ theorem auCheckpoint_known_and_below_tip
     c.root ∈ (E.store cfg ext obs n).block_roots ∧
       is_ancestor (E.store cfg ext obs n) (get_node_for_root tip)
         (get_node_for_root c.root) = true := by
-  obtain ⟨ast, ablk, hgenEq, hslot, hparent⟩ := hT.genesis
+  obtain ⟨ast, ablk, hgenEq, hslot, hparent⟩ := hT.genesis_structure
   have hstore : E.CausalStore cfg ext (E.store cfg ext obs n) :=
     E.store_causal cfg ext obs n
   have hparentSlots : ParentSlotLt (E.store cfg ext obs n) :=
@@ -518,7 +521,7 @@ theorem bankedBelowHead_of_bankedBelowJustified
       (get_node_for_root b) = true) :
     is_ancestor (E.store cfg ext obs n)
       (get_head cfg (E.store cfg ext obs n)) (get_node_for_root b) = true := by
-  obtain ⟨ast, ablk, hgenEq, hslot, hparent⟩ := hT.genesis
+  obtain ⟨ast, ablk, hgenEq, hslot, hparent⟩ := hT.genesis_structure
   exact head_ge_of_justified_ge_K cfg
     (E.store_parentSlotLt cfg ext hT.wellFormed hT.externals_coherence
       ⟨ast, ablk, hgenEq, hslot, hparent⟩
@@ -877,7 +880,7 @@ theorem weakFcr_previousGreatest_known {E : Execution Root}
     ((E.weakFcr cfg ext obs n
         ).previous_epoch_greatest_unrealized_checkpoint).root ∈
       (E.store cfg ext obs m).block_roots := by
-  obtain ⟨ast, ablk, hgenEq, _hslot, _hparent⟩ := hT.genesis
+  obtain ⟨ast, ablk, hgenEq, _hslot, _hparent⟩ := hT.genesis_structure
   obtain ⟨k, hk, hfield⟩ :=
     Weak.weakFcr_previousGreatest_origin cfg ext ⟨ast, ablk, hgenEq⟩ obs n
   rw [hfield]
@@ -906,7 +909,7 @@ theorem weakFcr_observed_known {E : Execution Root}
       ((E.weakFcr cfg ext obs n
           ).current_epoch_observed_justified_checkpoint).root ∈
         (E.store cfg ext obs n).block_roots := by
-  obtain ⟨ast, ablk, hgenEq, _hslot, _hparent⟩ := hT.genesis
+  obtain ⟨ast, ablk, hgenEq, _hslot, _hparent⟩ := hT.genesis_structure
   intro n
   induction n with
   | zero =>
@@ -1282,3 +1285,5 @@ theorem weakFcr_certifiedBankedJustification
 end Weak
 
 end FastConfirmation.Spec
+
+end

@@ -1,5 +1,8 @@
-import FastConfirmation.Spec.Proof.WeakOneShotSafetyNative
-import FastConfirmation.Spec.Proof.WeakObserverStrictCallFilterInputs
+module
+public import FastConfirmation.Spec.Proof.WeakOneShotSafetyNative
+public import FastConfirmation.Spec.Proof.WeakObserverStrictCallFilterInputs
+
+@[expose] public section
 
 /-!
 # Spec / Proof / WeakOneShotSafetyClosed
@@ -172,3 +175,5 @@ theorem weak_safeFrom_observerCall_closed_lazy
 end Execution
 
 end FastConfirmation.Spec
+
+end

@@ -324,13 +324,18 @@ selected-margin floor plus the anchor identification and its boundary
 alignment. -/
 theorem postAnchorHonestVoteTargetWalkDomain_of_selectedMarginAssumptions
     (hA : SelectedMarginAssumptions cfg ext E)
+    (hgen : ∃ (anchorState : BeaconState Root) (anchorBlock : SignedBeaconBlock Root),
+      E.genesis_store = get_forkchoice_store cfg anchorState anchorBlock ∧
+      anchorState.slot = anchorBlock.message.slot ∧
+      ext.AnchorCommitsToState anchorBlock.message anchorState ∧
+      anchorBlock.message.parent_root ≠ anchorBlock.root)
     {anchor : Checkpoint Root}
     (hanchor : anchor = E.genesis_store.justified_checkpoint)
     (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg) (E := E)
       (anchor := anchor)) :
     E.PostAnchorHonestVoteTargetWalkDomain cfg ext :=
   E.postAnchorHonestVoteTargetWalkDomain_of_prefixVoteAssumptions cfg ext
-    (CurrentTargetPrefixVoteAssumptions.of_selectedMarginAssumptions cfg ext E hA)
+    (CurrentTargetPrefixVoteAssumptions.of_selectedMarginAssumptions cfg ext E hA hgen)
     hanchor hboundary
 
 

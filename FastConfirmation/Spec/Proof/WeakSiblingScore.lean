@@ -1,5 +1,8 @@
-import FastConfirmation.Spec.Proof.WeakCrossingSets
-import FastConfirmation.Spec.Proof.FutureSiblingScore
+module
+public import FastConfirmation.Spec.Proof.WeakCrossingSets
+public import FastConfirmation.Spec.Proof.FutureSiblingScore
+
+@[expose] public section
 
 /-!
 # Spec / Proof / WeakSiblingScore
@@ -144,3 +147,5 @@ theorem crossing_sibling_score_of_endpointLedger {E : Execution Root}
 end Weak
 
 end FastConfirmation.Spec
+
+end

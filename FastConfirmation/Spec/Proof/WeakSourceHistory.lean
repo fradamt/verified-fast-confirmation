@@ -1,6 +1,9 @@
-import FastConfirmation.Spec.Proof.AcceptedCurrentSameSourceHistory
-import FastConfirmation.Spec.Proof.WeakConfirmedDissemination
-import FastConfirmation.Spec.Proof.WeakObserverDomain
+module
+public import FastConfirmation.Spec.Proof.AcceptedCurrentSameSourceHistory
+public import FastConfirmation.Spec.Proof.WeakConfirmedDissemination
+public import FastConfirmation.Spec.Proof.WeakObserverDomain
+
+@[expose] public section
 
 /-!
 # Spec / Proof / WeakSourceHistory
@@ -87,7 +90,7 @@ private def selectedMarginAssumptions_of_weakSourceHistoryInputs
     (hbyz : ByzantineBound cfg E)
     (hdomain : SelectedMarginDomain cfg ext E) :
     SelectedMarginAssumptions cfg ext E :=
-  { genesis := hT.genesis
+  { genesis := hT.genesis_structure
     wellFormed := hT.wellFormed
     whole_seconds := hT.whole_seconds
     honest_behavior := hT.honest_behavior
@@ -122,6 +125,7 @@ theorem pastHead_known_at_observer
     (hbyz : ByzantineBound cfg E)
     (hdomain : SelectedMarginDomain cfg ext E)
     (obs : ValidatorIndex) (q : Nat) (b : Root)
+    (hvalid : E.ObserverValidity cfg ext obs)
     (hH : E.WithinHorizon cfg q)
     (i : ValidatorIndex) (hi : i ∈ E.honest) (lm : LatestMessage Root)
     (hlm : (E.store cfg ext obs q).latest_messages i = some lm)
@@ -138,7 +142,7 @@ theorem pastHead_known_at_observer
         (get_node_for_root b) = true ∧
       (get_head cfg (E.store cfg ext i nu)).root ∈
         (E.store cfg ext obs q).block_roots := by
-  obtain ⟨ast, ablk, hgeq, hslot, hroot⟩ := hT.genesis
+  obtain ⟨ast, ablk, hgeq, hslot, hroot⟩ := hT.genesis_structure
   have hgen0 : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
       E.genesis_store = get_forkchoice_store cfg ast ablk :=
     ⟨ast, ablk, hgeq⟩
@@ -157,8 +161,8 @@ theorem pastHead_known_at_observer
       (by rw [hvote]; exact Option.some_ne_none _)
   obtain ⟨ap, _hiap, _htarget, _hbbrap, hapEpoch, hapBound, hapComm,
       hlmKnown, hlmSlot⟩ :=
-    E.latestMessageProvenance cfg ext hT.wellFormed
-      hT.externals_coherence hgen0 obs q i lm hlm
+    E.latestMessageProvenance_of_observer_validity cfg ext hT.wellFormed
+      obs hvalid hgen0 q i lm hlm
   have hepoch : compute_epoch_at_slot cfg s =
       compute_epoch_at_slot cfg ap.data.slot := by
     rw [hslotep, hapEpoch]
@@ -225,6 +229,7 @@ theorem confirmed_honestPastHeadBelow_at_observer
     (hbyz : ByzantineBound cfg E)
     (hdomain : SelectedMarginDomain cfg ext E)
     {obs : ValidatorIndex} {q : Nat}
+    (hvalid : E.ObserverValidity cfg ext obs)
     (hcomm : E.PrefixCommitteeAgreement cfg ext (E.store cfg ext obs q))
     (hqH : E.WithinHorizon cfg q)
     {query : FastConfirmationStore Root}
@@ -239,16 +244,16 @@ theorem confirmed_honestPastHeadBelow_at_observer
   let hA := E.selectedMarginAssumptions_of_weakSourceHistoryInputs cfg ext
     hT hsync hstatic hbyz hdomain
   obtain ⟨i, lm, hi, hlm, hsupp⟩ :=
-    E.honestSupporter_of_confirmed_known_at_observer cfg ext hA obs q hcomm
+    E.honestSupporter_of_confirmed_known_at_observer cfg ext hA obs q hvalid hcomm
       query hquery candidate hqH
       (by simpa only [hquery] using hcandidate)
       (by simpa only [hquery] using hparentCandidate) hconfirmed
   obtain ⟨nu, hnuH, hnuq, hheadPast, hheadCandidateQ, hheadQueryE⟩ :=
     E.pastHead_known_at_observer cfg ext hT hsync hstatic hbyz
-      hdomain obs q candidate hqH i hi lm hlm hsupp
+      hdomain obs q candidate hvalid hqH i hi lm hlm hsupp
   obtain ⟨hparentQ, hwalkQ⟩ :=
     E.storeDomainParentWalk cfg ext hT.wellFormed hT.externals_coherence
-      hT.genesis obs q
+      hT.genesis_structure obs q
   have hsemantic : E.RootDescends
       (get_head cfg (E.store cfg ext i nu)).root candidate :=
     E.rootDescends_of_store_ancestor (E.blockProvenance cfg ext obs q)
@@ -259,7 +264,7 @@ theorem confirmed_honestPastHeadBelow_at_observer
           (get_head cfg (E.store cfg ext i nu)).root hheadQueryE
         simpa only [hquery] using hw)
       (by simpa only [hquery] using hheadCandidateQ)
-  obtain ⟨ast, ablk, hgen, hslot, hanchorParent⟩ := hT.genesis
+  obtain ⟨ast, ablk, hgen, hslot, hanchorParent⟩ := hT.genesis_structure
   have hcandidateRoot : E.ExecutionRoot candidate :=
     ⟨query.store.blocks candidate,
       by
@@ -315,6 +320,7 @@ confirmation predicate meant here is the ordinary one. -/
 theorem confirmedPastDescendantSlotWitness_core
     (hA : SelectedMarginAssumptions cfg ext E)
     {obs : ValidatorIndex} {q : Nat}
+    (hvalid : E.ObserverValidity cfg ext obs)
     (hcomm : E.PrefixCommitteeAgreement cfg ext (E.store cfg ext obs q))
     (hqH : E.WithinHorizon cfg q)
     {query : FastConfirmationStore Root} {result : Root}
@@ -326,7 +332,7 @@ theorem confirmedPastDescendantSlotWitness_core
       (Spec.get_current_balance_source query) result = true) :
     E.ConfirmedPastDescendantSlotWitnessAt cfg q query.store result := by
   obtain ⟨u, nu, d, hu, hnuH, hnuq, hdPast, hdQueryE, hdResult⟩ :=
-    E.confirmed_pastDescendant_at_observer cfg ext hA obs q hcomm
+    E.confirmed_pastDescendant_at_observer cfg ext hA obs q hvalid hcomm
       query hquery result hqH
       (by simpa only [hquery] using hresult)
       (by simpa only [hquery] using hparent) hconfirmed
@@ -353,3 +359,5 @@ theorem confirmedPastDescendantSlotWitness_core
 end Weak
 
 end FastConfirmation.Spec
+
+end

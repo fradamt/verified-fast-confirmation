@@ -1,6 +1,9 @@
-import FastConfirmation.Spec.Proof.SelectedEdgeGeometry
-import FastConfirmation.Spec.Proof.WeakSelectorBetween
-import FastConfirmation.Spec.Proof.WeakOneShotSafety
+module
+public import FastConfirmation.Spec.Proof.SelectedEdgeGeometry
+public import FastConfirmation.Spec.Proof.WeakSelectorBetween
+public import FastConfirmation.Spec.Proof.WeakOneShotSafety
+
+@[expose] public section
 
 /-!
 # Spec / Proof / WeakSelectedEdgeGeometry
@@ -226,12 +229,12 @@ theorem strictSelectedEdgeGeometry_at_observer {E : Execution Root}
     simpa only [hquery] using hge
   obtain ⟨hr0M, hglcM, _hglcR0M⟩ :=
     E.confirmed_ancestry_at_all_honest_endpoints_at_observer cfg ext hA
-      obs q hcomm query hquery glc r0 hqH hglcQ hglcParentQ hr0Q
+      obs q hW.validity hcomm query hquery glc r0 hqH hglcQ hglcParentQ hr0Q
         hglcR0_Q hglcConf w hw m hslotQM hmH
   -- the doubly-known past descendant: `d` is known at `u`'s own store *and* at
   -- the observer's, which is what replaces the forbidden observer relay
   obtain ⟨u, nu, d, hu, hnuH, hnuq, hdU, hdQ, hdGlc_Q⟩ :=
-    E.confirmed_pastDescendant_at_observer cfg ext hA obs q hcomm query hquery
+    E.confirmed_pastDescendant_at_observer cfg ext hA obs q hW.validity hcomm query hquery
       glc hqH hglcQ hglcParentQ hglcConf
   -- the endpoint leg is unchanged: `u` and `w` are both honest
   have hgateUM : E.slot_at cfg nu + 1 ≤ E.slot_at cfg (m + 1) :=
@@ -504,3 +507,5 @@ theorem strictSelectedEdgeGeometry_at_observer {E : Execution Root}
 end Weak
 
 end FastConfirmation.Spec
+
+end

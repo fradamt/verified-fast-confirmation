@@ -1,5 +1,8 @@
-import FastConfirmation.Spec.Model.WeakSynchrony
-import FastConfirmation.Spec.Proof.FCRCallContracts
+module
+public import FastConfirmation.Spec.Model.WeakSynchrony
+public import FastConfirmation.Spec.Proof.FCRCallContracts
+
+@[expose] public section
 
 /-!
 # Spec / Proof / WeakFCRCallContracts
@@ -74,3 +77,5 @@ theorem weakFcrStep_store (v : ValidatorIndex) (n : ℕ) :
 end Execution
 
 end FastConfirmation.Spec
+
+end

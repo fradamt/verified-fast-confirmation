@@ -1,6 +1,9 @@
-import FastConfirmation.Spec.Proof.AcceptedFFGJustifiedMaximality
-import FastConfirmation.Spec.Proof.WeakBankedJustification
-import FastConfirmation.Spec.Proof.WeakCandidateHistoryRecurrence
+module
+public import FastConfirmation.Spec.Proof.AcceptedFFGJustifiedMaximality
+public import FastConfirmation.Spec.Proof.WeakBankedJustification
+public import FastConfirmation.Spec.Proof.WeakCandidateHistoryRecurrence
+
+@[expose] public section
 
 /-!
 # Spec / Proof / WeakObservedRestartAdoption
@@ -136,7 +139,7 @@ theorem bankedCheckpoint_epoch_le_honestJustified
     (hstart : is_start_slot_at_epoch cfg (E.slot_at cfg m) = true) :
     fcr_store.current_epoch_observed_justified_checkpoint.epoch ≤
       (E.store cfg ext w m).justified_checkpoint.epoch := by
-  obtain ⟨ast, ablk, hgeq, hslotEq, _hparentNe⟩ := hT.genesis
+  obtain ⟨ast, ablk, hgeq, hslotEq, _hparentNe⟩ := hT.genesis_structure
   have hgenShort : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
       E.genesis_store = get_forkchoice_store cfg ast ablk ∧
         ast.slot = ablk.message.slot :=
@@ -241,3 +244,5 @@ theorem ObservedResetCandidateInputAt.guardedObservedAdoption
 end Weak
 
 end FastConfirmation.Spec
+
+end

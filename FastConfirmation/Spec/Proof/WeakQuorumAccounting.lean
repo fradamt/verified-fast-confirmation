@@ -1,6 +1,9 @@
-import FastConfirmation.Spec.Proof.WeakFreshSupport
-import FastConfirmation.Spec.Proof.HonestWeight
-import FastConfirmation.Spec.Proof.Preservation
+module
+public import FastConfirmation.Spec.Proof.WeakFreshSupport
+public import FastConfirmation.Spec.Proof.HonestWeight
+public import FastConfirmation.Spec.Proof.Preservation
+
+@[expose] public section
 
 /-!
 # Spec / Proof / WeakQuorumAccounting
@@ -240,3 +243,5 @@ theorem honest_support_majority_at_observer {E : Execution Root}
 end Weak
 
 end FastConfirmation.Spec
+
+end

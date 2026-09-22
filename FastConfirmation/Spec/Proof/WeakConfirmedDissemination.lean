@@ -1,5 +1,8 @@
-import FastConfirmation.Spec.Proof.WeakConfirmedSupporter
-import FastConfirmation.Spec.Proof.WeakAncestryEndpoint
+module
+public import FastConfirmation.Spec.Proof.WeakConfirmedSupporter
+public import FastConfirmation.Spec.Proof.WeakAncestryEndpoint
+
+@[expose] public section
 
 /-!
 # Spec / Proof / WeakConfirmedDissemination
@@ -103,6 +106,7 @@ as `i`/`lm.root` throughout instead of re-existentializing them. -/
 private theorem past_descendant_known_at_observer
     (hA : SelectedMarginAssumptions cfg ext E)
     (v : ValidatorIndex) (n : ℕ) (b : Root)
+    (hvalid : E.ObserverValidity cfg ext v)
     (hH : E.WithinHorizon cfg n)
     (i : ValidatorIndex) (hi : i ∈ E.honest) (lm : LatestMessage Root)
     (hlm : (E.store cfg ext v n).latest_messages i = some lm)
@@ -133,8 +137,8 @@ private theorem past_descendant_known_at_observer
       (by rw [hvote]; exact Option.some_ne_none _)
   obtain ⟨ap, _hiap, _htarget, _hbbrap, hapEpoch, hapBound, hapComm,
       hlmKnown, hlmSlot⟩ :=
-    E.latestMessageProvenance cfg ext hA.wellFormed hA.externals_coherence
-      hgen0 v n i lm hlm
+    E.latestMessageProvenance_of_observer_validity cfg ext hA.wellFormed
+      v hvalid hgen0 n i lm hlm
   have hepoch : compute_epoch_at_slot cfg s =
       compute_epoch_at_slot cfg ap.data.slot := by
     rw [hslotep, hapEpoch]
@@ -186,6 +190,7 @@ before the arbitrary selecting slot. Verbatim conclusion match for
 theorem confirmed_known_at_all_honest_endpoints_at_observer
     (hA : SelectedMarginAssumptions cfg ext E)
     (v : ValidatorIndex) (n : ℕ)
+    (hvalid : E.ObserverValidity cfg ext v)
     (hcomm : E.PrefixCommitteeAgreement cfg ext (E.store cfg ext v n))
     (fcrStore : FastConfirmationStore Root)
     (hstore : fcrStore.store = E.store cfg ext v n) (b : Root)
@@ -201,10 +206,10 @@ theorem confirmed_known_at_all_honest_endpoints_at_observer
     b ∈ (E.store cfg ext w m).block_roots := by
   obtain ⟨ast, ablk, hgeq, hslot, hparentne⟩ := hA.genesis
   obtain ⟨i, lm, hi, hlm, hsupp⟩ :=
-    E.honestSupporter_of_confirmed_known_at_observer cfg ext hA v n hcomm
+    E.honestSupporter_of_confirmed_known_at_observer cfg ext hA v n hvalid hcomm
       fcrStore hstore b hHn hb hparent hconf
   obtain ⟨nu, hHnu, hslt, hd_i, hd_v, hanc⟩ :=
-    E.past_descendant_known_at_observer cfg ext hA v n b hHn i hi lm hlm hsupp
+    E.past_descendant_known_at_observer cfg ext hA v n b hvalid hHn i hi lm hlm hsupp
   have hanchor : ablk.message.slot ≤ ((E.store cfg ext v n).blocks b).slot :=
     E.store_anchor_min_slot cfg ext hA.wellFormed hA.externals_coherence
       hgeq hslot hparentne v n b hb
@@ -232,6 +237,7 @@ supporter's store is required. -/
 theorem confirmed_ancestry_at_all_honest_endpoints_at_observer
     (hA : SelectedMarginAssumptions cfg ext E)
     (v : ValidatorIndex) (n : ℕ)
+    (hvalid : E.ObserverValidity cfg ext v)
     (hcomm : E.PrefixCommitteeAgreement cfg ext (E.store cfg ext v n))
     (fcrStore : FastConfirmationStore Root)
     (hstore : fcrStore.store = E.store cfg ext v n) (b r₀ : Root)
@@ -253,7 +259,7 @@ theorem confirmed_ancestry_at_all_honest_endpoints_at_observer
         (get_node_for_root b) (get_node_for_root r₀) = true := by
   obtain ⟨ast, ablk, hgeq, hslot, hparentne⟩ := hA.genesis
   have hbw : b ∈ (E.store cfg ext w m).block_roots :=
-    E.confirmed_known_at_all_honest_endpoints_at_observer cfg ext hA v n hcomm
+    E.confirmed_known_at_all_honest_endpoints_at_observer cfg ext hA v n hvalid hcomm
       fcrStore hstore b hHn hb hparent hconf w hw m hnm hHm
   have hanchorR : ablk.message.slot ≤ ((E.store cfg ext v n).blocks r₀).slot :=
     E.store_anchor_min_slot cfg ext hA.wellFormed hA.externals_coherence
@@ -282,6 +288,7 @@ discard. -/
 theorem confirmed_pastDescendant_at_observer
     (hA : SelectedMarginAssumptions cfg ext E)
     (obs : ValidatorIndex) (q : ℕ)
+    (hvalid : E.ObserverValidity cfg ext obs)
     (hcomm : E.PrefixCommitteeAgreement cfg ext (E.store cfg ext obs q))
     (query : FastConfirmationStore Root)
     (hstore : query.store = E.store cfg ext obs q) (b : Root)
@@ -297,12 +304,14 @@ theorem confirmed_pastDescendant_at_observer
       d ∈ (E.store cfg ext obs q).block_roots ∧
       is_ancestor (E.store cfg ext obs q) (get_node_for_root d) (get_node_for_root b) = true := by
   obtain ⟨i, lm, hi, hlm, hsupp⟩ :=
-    E.honestSupporter_of_confirmed_known_at_observer cfg ext hA obs q hcomm
+    E.honestSupporter_of_confirmed_known_at_observer cfg ext hA obs q hvalid hcomm
       query hstore b hqH hb hparent hconf
   obtain ⟨nu, hHnu, hslt, hd_i, hd_v, hanc⟩ :=
-    E.past_descendant_known_at_observer cfg ext hA obs q b hqH i hi lm hlm hsupp
+    E.past_descendant_known_at_observer cfg ext hA obs q b hvalid hqH i hi lm hlm hsupp
   exact ⟨i, nu, lm.root, hi, hHnu, hslt, hd_i, hd_v, hanc⟩
 
 end Execution
 
 end FastConfirmation.Spec
+
+end

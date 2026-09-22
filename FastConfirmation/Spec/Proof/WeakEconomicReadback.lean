@@ -1,5 +1,9 @@
-import FastConfirmation.Spec.Proof.Discount
-import FastConfirmation.Spec.Proof.CurrentTargetPrefixAccounting
+module
+public import FastConfirmation.Spec.Proof.Discount
+public import FastConfirmation.Spec.Proof.CurrentTargetPrefixAccounting
+public import FastConfirmation.Spec.Proof.WeakObserverValidity
+
+@[expose] public section
 
 /-!
 # Spec / Proof / WeakEconomicReadback
@@ -274,6 +278,7 @@ theorem byz_score_le_adversarial_weight_of_prefix {E : Execution Root}
     (hgen : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
       E.genesis_store = get_forkchoice_store cfg ast ablk)
     {v : ValidatorIndex} {n : ℕ}
+    (hvalid : E.ObserverValidity cfg ext v)
     (hnH : E.WithinHorizon cfg n)
     (hcomm : E.PrefixCommitteeAgreement cfg ext (E.store cfg ext v n))
     (hwf : ∀ r ∈ (E.store cfg ext v n).block_roots,
@@ -295,7 +300,7 @@ theorem byz_score_le_adversarial_weight_of_prefix {E : Execution Root}
       ≤ get_adversarial_weight cfg ext (E.store cfg ext v n) bs b := by
   have hne : ∀ i ∈ (E.store cfg ext v n).equivocating_indices, i ∉ E.honest := by
     intro i hi hih
-    exact Execution.honest_not_equivocating cfg ext hhb hec hgen hih v n hi
+    exact E.honest_not_equivocating_of_observer_validity cfg ext hhb hec hvalid hgen hih n hi
   have hsa : (if get_block_epoch cfg (E.store cfg ext v n) b >
         get_block_epoch cfg (E.store cfg ext v n) ((E.store cfg ext v n).blocks b).parent_root then
         compute_start_slot_at_epoch cfg (get_block_epoch cfg (E.store cfg ext v n) b)
@@ -346,6 +351,7 @@ theorem honest_support_majority_of_prefix {E : Execution Root}
     (hgen : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
       E.genesis_store = get_forkchoice_store cfg ast ablk)
     {v : ValidatorIndex} {n : ℕ}
+    (hvalid : E.ObserverValidity cfg ext v)
     (hnH : E.WithinHorizon cfg n)
     (hcomm : E.PrefixCommitteeAgreement cfg ext (E.store cfg ext v n))
     (hwf : ∀ r ∈ (E.store cfg ext v n).block_roots,
@@ -371,7 +377,9 @@ theorem honest_support_majority_of_prefix {E : Execution Root}
           (get_current_slot cfg (E.store cfg ext v n) - 1)
         + compute_proposer_score cfg bs + 1 :=
   honest_support_majority_of_byz_le cfg ext hconf
-    (byz_score_le_adversarial_weight_of_prefix cfg ext hhb hec hbb hgen hnH hcomm hwf hbH
+    (byz_score_le_adversarial_weight_of_prefix cfg ext hhb hec hbb hgen hvalid hnH hcomm hwf hbH
       hval htab hprov hwalk)
 
 end FastConfirmation.Spec
+
+end

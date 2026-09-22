@@ -1,8 +1,11 @@
-import Mathlib.Tactic
-import FastConfirmation.Spec.Proof.AcceptedSelectedStrictEdgeFilterSupply
-import FastConfirmation.Spec.Proof.WeakCandidateSourceHistory
-import FastConfirmation.Spec.Proof.WeakCoveredMarginConstruction
-import FastConfirmation.Spec.Proof.WeakJustificationTiming
+module
+public import Mathlib.Tactic
+public import FastConfirmation.Spec.Proof.AcceptedSelectedStrictEdgeFilterSupply
+public import FastConfirmation.Spec.Proof.WeakCandidateSourceHistory
+public import FastConfirmation.Spec.Proof.WeakCoveredMarginConstruction
+public import FastConfirmation.Spec.Proof.WeakJustificationTiming
+
+@[expose] public section
 
 /-!
 # Spec / Proof / WeakSelectedStrictEdgeFilterSupply
@@ -290,7 +293,7 @@ noncomputable def StrictSelectedResultMechanicalFacts.fcrStep_previous_endpointF
     E.AcceptedSelectedResultFilterOutcomeAt cfg ext B
       (E.store cfg ext w m) result := by
   let hMargin : SelectedMarginAssumptions cfg ext E :=
-    { genesis := hT.genesis
+    { genesis := hT.genesis_structure
       wellFormed := hT.wellFormed
       whole_seconds := hT.whole_seconds
       honest_behavior := hT.honest_behavior
@@ -311,14 +314,14 @@ noncomputable def StrictSelectedResultMechanicalFacts.fcrStep_previous_endpointF
     hgeom.actualCall_queryIndex_le_endpoint cfg ext hcall
   have hselectedEndpoint : result ∈ (E.store cfg ext w m).block_roots :=
     E.confirmed_known_at_all_honest_endpoints_at_observer cfg ext hMargin
-      obs (n + 1) hcommN1 (E.weakFcrStep cfg ext obs n) hqCurrent result hn1H
+      obs (n + 1) hcoh.validity hcommN1 (E.weakFcrStep cfg ext obs n) hqCurrent result hn1H
       (by simpa only [hqCurrent] using h.result_known)
       (by simpa only [hqCurrent] using h.parent_known)
       h.confirmed w hw m hslotQM hmH
   obtain ⟨hparent, hwalkK, _hjustifiedKnown⟩ :=
     E.store_domainK_of_selectedMarginDomain cfg ext hT.wellFormed
-      hT.externals_coherence hT.genesis hdomain w hw m hmH
-  obtain ⟨ast, ablk, hgen, hgenSlot, _hgenParent⟩ := hT.genesis
+      hT.externals_coherence hT.genesis_structure hdomain w hw m hmH
+  obtain ⟨ast, ablk, hgen, hgenSlot, _hgenParent⟩ := hT.genesis_structure
   have hnonfuture : BlocksSlotLe
       (get_current_slot cfg (E.store cfg ext w m))
       (E.store cfg ext w m) :=
@@ -382,7 +385,7 @@ noncomputable def
       (E.store cfg ext w m)
         (E.weakGetLatestConfirmedTraceAt cfg ext obs n).result := by
   let hMargin : SelectedMarginAssumptions cfg ext E :=
-    { genesis := hT.genesis
+    { genesis := hT.genesis_structure
       wellFormed := hT.wellFormed
       whole_seconds := hT.whole_seconds
       honest_behavior := hT.honest_behavior
@@ -403,7 +406,7 @@ noncomputable def
       (E.weakGetLatestConfirmedTraceAt cfg ext obs n).result ∈
         (E.store cfg ext w m).block_roots :=
     E.confirmed_known_at_all_honest_endpoints_at_observer cfg ext hMargin
-      obs (n + 1) hcommN1 (E.weakFcrStep cfg ext obs n) hqCurrent
+      obs (n + 1) hcoh.validity hcommN1 (E.weakFcrStep cfg ext obs n) hqCurrent
       (E.weakGetLatestConfirmedTraceAt cfg ext obs n).result hn1H
       (by simpa only [hqCurrent] using h.result_known)
       (by simpa only [hqCurrent] using h.parent_known)
@@ -430,7 +433,7 @@ noncomputable def
       hselectedEndpoint
   obtain ⟨hparent, hwalkK, _hjustifiedKnown⟩ :=
     E.store_domainK_of_selectedMarginDomain cfg ext hT.wellFormed
-      hT.externals_coherence hT.genesis hdomain w hw m hmH
+      hT.externals_coherence hT.genesis_structure hdomain w hw m hmH
   exact E.acceptedSelectedResultFilterOutcome_retained_of_carrier
     cfg ext B hT hanchor hboundary hDelay P V hanchorExact hacc
       carrier hparent hwalkK hresultJustified
@@ -481,7 +484,7 @@ noncomputable def StrictSelectedResultMechanicalFacts.fcrStep_currentNext_endpoi
     E.AcceptedSelectedResultFilterOutcomeAt cfg ext B
       (E.store cfg ext w m) result := by
   let hMargin : SelectedMarginAssumptions cfg ext E :=
-    { genesis := hT.genesis
+    { genesis := hT.genesis_structure
       wellFormed := hT.wellFormed
       whole_seconds := hT.whole_seconds
       honest_behavior := hT.honest_behavior
@@ -500,14 +503,14 @@ noncomputable def StrictSelectedResultMechanicalFacts.fcrStep_currentNext_endpoi
     hgeom.query_slot_le_endpoint cfg ext
   have hselectedEndpoint : result ∈ (E.store cfg ext w m).block_roots :=
     E.confirmed_known_at_all_honest_endpoints_at_observer cfg ext hMargin
-      obs (n + 1) hcommN1 (E.weakFcrStep cfg ext obs n) hqCurrent result hn1H
+      obs (n + 1) hcoh.validity hcommN1 (E.weakFcrStep cfg ext obs n) hqCurrent result hn1H
       (by simpa only [hqCurrent] using h.result_known)
       (by simpa only [hqCurrent] using h.parent_known)
       h.confirmed w hw m hslotQM hmH
   obtain ⟨hparent, hwalkK, _hjustifiedKnown⟩ :=
     E.store_domainK_of_selectedMarginDomain cfg ext hT.wellFormed
-      hT.externals_coherence hT.genesis hdomain w hw m hmH
-  obtain ⟨ast, ablk, hgen, hgenSlot, _hgenParent⟩ := hT.genesis
+      hT.externals_coherence hT.genesis_structure hdomain w hw m hmH
+  obtain ⟨ast, ablk, hgen, hgenSlot, _hgenParent⟩ := hT.genesis_structure
   have hnonfuture : BlocksSlotLe
       (get_current_slot cfg (E.store cfg ext w m))
       (E.store cfg ext w m) :=
@@ -588,7 +591,7 @@ noncomputable def
         (E.store cfg ext w m).justified_checkpoint.root) = true) :
     E.AcceptedSelectedResultFilterOutcomeAt cfg ext B
       (E.store cfg ext w m) selected := by
-  obtain ⟨ast, ablk, hgen, hgenSlot, hgenParent⟩ := hT.genesis
+  obtain ⟨ast, ablk, hgen, hgenSlot, hgenParent⟩ := hT.genesis_structure
   have hgenShort : ∃ (ast : BeaconState Root)
       (ablk : SignedBeaconBlock Root),
       E.genesis_store = get_forkchoice_store cfg ast ablk ∧
@@ -602,10 +605,10 @@ noncomputable def
     simpa only [endpoint] using E.store_causal cfg ext w m
   obtain ⟨hqueryParent, hqueryWalk, _hqueryJustified⟩ :=
     E.observerStoreDomainK cfg ext hT.wellFormed hT.externals_coherence
-      hT.genesis hcoh q hqH
+      hT.genesis_structure hcoh q hqH
   obtain ⟨hendpointParent, hendpointWalk, hendpointJustified⟩ :=
     E.store_domainK_of_selectedMarginDomain cfg ext hT.wellFormed
-      hT.externals_coherence hT.genesis hdomain w hw m hmH
+      hT.externals_coherence hT.genesis_structure hdomain w hw m hmH
   have hendpointParent' : ParentSlotLt endpoint := by
     simpa only [endpoint] using hendpointParent
   have hendpointWalk' : ∀ t ∈ endpoint.block_roots,
@@ -773,7 +776,7 @@ theorem StrictSelectedResultMechanicalFacts.previousOffStart_queryGUEpochSeed
           E.slot_at cfg (n + 1) ≤ E.slot_at cfg m →
           seed ∈ (E.store cfg ext w m).block_roots) := by
   let hA : SelectedMarginAssumptions cfg ext E :=
-    { genesis := hT.genesis
+    { genesis := hT.genesis_structure
       wellFormed := hT.wellFormed
       whole_seconds := hT.whole_seconds
       honest_behavior := hT.honest_behavior
@@ -789,7 +792,7 @@ theorem StrictSelectedResultMechanicalFacts.previousOffStart_queryGUEpochSeed
     rw [hqCurrent]; exact E.store_causal cfg ext obs (n + 1)
   obtain ⟨hparent, hwalk, _hjustifiedKnown⟩ :=
     E.observerStoreDomainK cfg ext hT.wellFormed hT.externals_coherence
-      hT.genesis hcoh (n + 1) hn1H
+      hT.genesis_structure hcoh (n + 1) hn1H
   have hparentQ : ParentSlotLt query.store := by
     simpa only [query, hqCurrent] using hparent
   have hwalkQ : ∀ t ∈ query.store.block_roots,
@@ -804,7 +807,7 @@ theorem StrictSelectedResultMechanicalFacts.previousOffStart_queryGUEpochSeed
   have hpreviousHeadKnown : query.previous_slot_head ∈
       query.store.block_roots := by
     simpa only [query] using
-      Weak.weakFcrStep_previousSlotHead_known cfg ext hT.genesis hcoh n hn1H
+      Weak.weakFcrStep_previousSlotHead_known cfg ext hT.genesis_structure hcoh n hn1H
   have hheadSelected : is_ancestor query.store
       (get_node_for_root (Weak.get_certified_head cfg ext query.store (get_current_balance_source query))) (get_node_for_root selected) = true := by
     have hstrict' : Weak.find_latest_confirmed_descendant cfg ext query
@@ -964,6 +967,7 @@ for a confirmed current-epoch result at a possibly-Byzantine observer. -/
 theorem canonicalThroughoutNextEpoch_of_selectedCanonical_currentEpoch_at_observer
     (hA : SelectedMarginAssumptions cfg ext E)
     {obs : ValidatorIndex} {q : ℕ}
+    (hvalid : E.ObserverValidity cfg ext obs)
     (hcomm : E.PrefixCommitteeAgreement cfg ext (E.store cfg ext obs q))
     (hqH : E.WithinHorizon cfg q)
     {query : FastConfirmationStore Root}
@@ -1017,7 +1021,7 @@ theorem canonicalThroughoutNextEpoch_of_selectedCanonical_currentEpoch_at_observ
     exact (Nat.not_succ_le_self (e + 1)) hbad
   have hknown : selected ∈ (E.store cfg ext w' m').block_roots :=
     E.confirmed_known_at_all_honest_endpoints_at_observer cfg ext hA
-      obs q hcomm query hquery selected hqH hselected hparentKnown hconf
+      obs q hvalid hcomm query hquery selected hqH hselected hparentKnown hconf
       w' hw' m' hslotLower.le hm'H
   exact ⟨hknown, hcanonical w' hw' m' hindexLower hslotUpper hm'H⟩
 
@@ -1054,11 +1058,11 @@ noncomputable def
     E.AcceptedHistoricalA32LineageCoreAt cfg ext B trace.result e
       Cert Supp := by
   let query := E.weakFcrStep cfg ext obs n
-  let ast : BeaconState Root := Classical.choose hT.genesis
+  let ast : BeaconState Root := Classical.choose hT.genesis_structure
   let ablk : SignedBeaconBlock Root :=
-    Classical.choose (Classical.choose_spec hT.genesis)
+    Classical.choose (Classical.choose_spec hT.genesis_structure)
   have hgenFacts :=
-    Classical.choose_spec (Classical.choose_spec hT.genesis)
+    Classical.choose_spec (Classical.choose_spec hT.genesis_structure)
   have hgen : E.genesis_store = get_forkchoice_store cfg ast ablk :=
     hgenFacts.1
   have hgenSlot : ast.slot = ablk.message.slot := hgenFacts.2.1
@@ -1076,7 +1080,7 @@ noncomputable def
       E.store_causal cfg ext obs (n + 1)
   obtain ⟨hparentN1, hwalkN1, _hjustifiedN1⟩ :=
     E.observerStoreDomainK cfg ext hT.wellFormed hT.externals_coherence
-      hT.genesis hcoh (n + 1) hHn1
+      hT.genesis_structure hcoh (n + 1) hHn1
   have hparent : ParentSlotLt query.store := by
     simpa only [query, E.weakFcrStep_store] using hparentN1
   have hwalk : ∀ t ∈ query.store.block_roots,
@@ -1205,7 +1209,7 @@ theorem StrictSelectorAdvanceAt.previousFinalizedReset_anchorLineage
     exact (Nat.not_lt_of_ge hrecentFinalized) hstale
   obtain ⟨hparentN1, hwalkN1, _hjustifiedN1⟩ :=
     E.observerStoreDomainK cfg ext hT.wellFormed hT.externals_coherence
-      hT.genesis hcoh (n + 1) hHn1
+      hT.genesis_structure hcoh (n + 1) hHn1
   have hparent : ParentSlotLt query.store := by
     simpa only [query, E.weakFcrStep_store] using hparentN1
   have hwalk : ∀ t ∈ query.store.block_roots,
@@ -1302,7 +1306,7 @@ private theorem auTip_walkKnown
     (hAU : B.state.AU cfg ext tip c) :
     WalkKnown (E.store cfg ext obs n)
       (compute_start_slot_at_epoch cfg c.epoch) tip := by
-  obtain ⟨ast, ablk, hgenEq, hslot, hparent⟩ := hT.genesis
+  obtain ⟨ast, ablk, hgenEq, hslot, hparent⟩ := hT.genesis_structure
   have hanchorRoot : B.anchor.root = ablk.root := by
     have hr := congrArg Checkpoint.root hanchor
     rw [hgenEq] at hr
@@ -1359,7 +1363,7 @@ theorem auCheckpoint_blockEpoch_le
     (htip : tip ∈ (E.store cfg ext obs n).block_roots)
     (hAU : B.state.AU cfg ext tip c) :
     get_block_epoch cfg (E.store cfg ext obs n) c.root ≤ c.epoch := by
-  obtain ⟨ast, ablk, hgenEq, hslot, hparent⟩ := hT.genesis
+  obtain ⟨ast, ablk, hgenEq, hslot, hparent⟩ := hT.genesis_structure
   have hstore : E.CausalStore cfg ext (E.store cfg ext obs n) :=
     E.store_causal cfg ext obs n
   have hparentSlots : ParentSlotLt (E.store cfg ext obs n) :=
@@ -1428,7 +1432,7 @@ theorem StrictSelectorAdvanceAt.previousObservedReset_queryGUEpochSeed
   let head := (Weak.get_certified_head cfg ext query.store (get_current_balance_source query))
   obtain ⟨hparentN1, hwalkN1, _hjustifiedN1⟩ :=
     E.observerStoreDomainK cfg ext hT.wellFormed hT.externals_coherence
-      hT.genesis hcoh (n + 1) hHn1
+      hT.genesis_structure hcoh (n + 1) hHn1
   have hparentQ : ParentSlotLt query.store := by
     simpa only [query, hqCurrent] using hparentN1
   have hwalkQ : ∀ t ∈ query.store.block_roots,
@@ -1585,7 +1589,7 @@ theorem observedReset_genesisObserved_absurd
         n).current_epoch_observed_justified_checkpoint.root ∈
           E.genesis_store.block_roots) :
     False := by
-  obtain ⟨ast, ablk, hgenEq, hslotEq, hparentNe⟩ := hT.genesis
+  obtain ⟨ast, ablk, hgenEq, hslotEq, hparentNe⟩ := hT.genesis_structure
   have hqCurrent : (E.weakFcrStep cfg ext obs n).store =
       E.store cfg ext obs (n + 1) :=
     E.weakFcrStep_store cfg ext obs n
@@ -1853,6 +1857,7 @@ the query second itself — at an epoch-start call the query slot's first second
 theorem StrictSelectedResultMechanicalFacts.canonicalThroughoutNextEpoch_of_previousEpochStart
     (hA : SelectedMarginAssumptions cfg ext E)
     {obs : ValidatorIndex} {n : Nat}
+    (hvalid : E.ObserverValidity cfg ext obs)
     (hcomm : E.PrefixCommitteeAgreement cfg ext
       (E.store cfg ext obs (n + 1)))
     (hn1H : E.WithinHorizon cfg (n + 1))
@@ -1908,7 +1913,7 @@ theorem StrictSelectedResultMechanicalFacts.canonicalThroughoutNextEpoch_of_prev
   have hselectedAtQ : selected ∈
       (E.store cfg ext w' (n + 1)).block_roots :=
     E.confirmed_known_at_all_honest_endpoints_at_observer cfg ext hA
-      obs (n + 1) hcomm (E.weakFcrStep cfg ext obs n) hqCurrent selected
+      obs (n + 1) hvalid hcomm (E.weakFcrStep cfg ext obs n) hqCurrent selected
       hn1H (by simpa only [hqCurrent] using h.result_known)
       (by simpa only [hqCurrent] using h.parent_known)
       h.confirmed w' hw' (n + 1) (Nat.le_refl _) hn1H
@@ -2188,7 +2193,7 @@ noncomputable def
   classical
   let trace := E.weakGetLatestConfirmedTraceAt cfg ext obs n
   let hMargin : SelectedMarginAssumptions cfg ext E :=
-    { genesis := hT.genesis
+    { genesis := hT.genesis_structure
       wellFormed := hT.wellFormed
       whole_seconds := hT.whole_seconds
       honest_behavior := hT.honest_behavior
@@ -2277,7 +2282,7 @@ noncomputable def
         have hcanonical : E.CanonicalThroughoutEpoch cfg ext
             trace.result (e + 1) :=
           Weak.canonicalThroughoutNextEpoch_of_selectedCanonical_currentEpoch_at_observer
-            cfg ext hMargin (hcoh.committees_agree (n + 1) hn1H) hn1H
+            cfg ext hMargin hcoh.validity (hcoh.committees_agree (n + 1) hn1H) hn1H
             hqCurrent hselectedQ
             (by simpa only [hqCurrent] using h.parent_known)
             h.confirmed heCurrent hlateE hIH
@@ -2358,7 +2363,7 @@ noncomputable def
           have hcanonical : E.CanonicalThroughoutEpoch cfg ext
               trace.result (e + 1) :=
             h.canonicalThroughoutNextEpoch_of_previousEpochStart cfg ext
-              hMargin (hcoh.committees_agree (n + 1) hn1H) hn1H hcall
+              hMargin hcoh.validity (hcoh.committees_agree (n + 1) hn1H) hn1H hcall
               hpreviousE (by simpa only [hqCurrent] using hstart)
               hlateE hIH
           have hselectedEpochM : get_block_epoch cfg
@@ -2469,7 +2474,7 @@ noncomputable def
       (E.weakGetLatestConfirmedTraceAt cfg ext obs n).afterObserved
       obs (n + 1) (E.weakFcrStep cfg ext obs n) := by
   have hmechanical := Weak.StrictSelectorAdvanceAt.mechanicalFacts cfg ext
-    { genesis := hT.genesis
+    { genesis := hT.genesis_structure
       wellFormed := hT.wellFormed
       whole_seconds := hT.whole_seconds
       honest_behavior := hT.honest_behavior
@@ -2491,10 +2496,12 @@ noncomputable def
       cfg ext B hT hanchor hboundary w m
   obtain ⟨hparent, hwalkK, hjustifiedKnown⟩ :=
     E.store_domainK_of_selectedMarginDomain cfg ext hT.wellFormed
-      hT.externals_coherence hT.genesis hdomain w hw m hmH
+      hT.externals_coherence hT.genesis_structure hdomain w hw m hmH
   exact houtcome.child_filtered cfg ext hfinalized hparent hwalkK
     hjustifiedKnown hcM hparentEdge hselectedC hnotCovered
 
 end Weak
 
 end FastConfirmation.Spec
+
+end

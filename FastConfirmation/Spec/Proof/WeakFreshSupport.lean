@@ -1,6 +1,9 @@
-import FastConfirmation.Spec.Proof.QuorumAccounting
-import FastConfirmation.Spec.Proof.WeakEconomicReadback
-import FastConfirmation.Spec.Proof.WeakDutyFreshness
+module
+public import FastConfirmation.Spec.Proof.QuorumAccounting
+public import FastConfirmation.Spec.Proof.WeakEconomicReadback
+public import FastConfirmation.Spec.Proof.WeakDutyFreshness
+
+@[expose] public section
 
 /-!
 # Spec / Proof / WeakFreshSupport
@@ -363,3 +366,5 @@ theorem support_discount_le_fresh_parent_stuck_of_prefix {E : Execution Root}
 end Weak
 
 end FastConfirmation.Spec
+
+end
