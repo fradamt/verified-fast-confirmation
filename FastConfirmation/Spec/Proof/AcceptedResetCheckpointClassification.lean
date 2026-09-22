@@ -1,5 +1,8 @@
-import FastConfirmation.Spec.Proof.AcceptedFinalizedSameTip
-import FastConfirmation.Spec.Proof.GetLatestConfirmedTrace
+module
+public import FastConfirmation.Spec.Proof.AcceptedFinalizedSameTip
+public import FastConfirmation.Spec.Proof.GetLatestConfirmedTrace
+
+@[expose] public section
 
 /-!
 # Accepted classification of finalized and observed FCR reset inputs
@@ -140,7 +143,7 @@ theorem includedCertifiedFinalized_epoch_lt_current_of_acceptedCarrier
       _hiAttests, _haSource, haTarget⟩ :=
     F.finalizing_link.signer_attestation i hi
   have hevidence := B.state.includedAttestations.evidence hincluded
-  obtain ⟨ast, ablk, hgenEq, hslot, hparent⟩ := hT.genesis
+  obtain ⟨ast, ablk, hgenEq, hslot, hparent⟩ := hT.genesis_structure
   have hgenShort : ∃ (ast : BeaconState Root)
       (ablk : SignedBeaconBlock Root),
       E.genesis_store = get_forkchoice_store cfg ast ablk ∧
@@ -194,7 +197,7 @@ theorem finalizedCheckpoint_eq_anchor_of_epoch_eq_current
     (hepoch : (E.store cfg ext w m).finalized_checkpoint.epoch =
       get_current_store_epoch cfg (E.store cfg ext w m)) :
     (E.store cfg ext w m).finalized_checkpoint = B.anchor := by
-  obtain ⟨ast, ablk, hgenEq, hslot, _hparent⟩ := hT.genesis
+  obtain ⟨ast, ablk, hgenEq, hslot, _hparent⟩ := hT.genesis_structure
   have hgenShort : ∃ (ast : BeaconState Root)
       (ablk : SignedBeaconBlock Root),
       E.genesis_store = get_forkchoice_store cfg ast ablk ∧
@@ -338,3 +341,5 @@ end Execution
 
 
 end FastConfirmation.Spec
+
+end

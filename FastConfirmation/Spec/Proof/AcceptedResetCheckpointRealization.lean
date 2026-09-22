@@ -1,5 +1,8 @@
-import FastConfirmation.Spec.Proof.AcceptedCurrentTargetLowerContracts
-import FastConfirmation.Spec.Proof.ActualResetCheckpointRealization
+module
+public import FastConfirmation.Spec.Proof.AcceptedCurrentTargetLowerContracts
+public import FastConfirmation.Spec.Proof.ActualResetCheckpointRealization
+
+@[expose] public section
 
 /-!
 # Accepted realization of the executable FCR reset checkpoints
@@ -73,7 +76,7 @@ theorem resetCheckpointRealizedAt_anchor_of_acceptedTrajectory
       (E := E) (anchor := anchor))
     (v : ValidatorIndex) (n : ℕ) :
     E.ResetCheckpointRealizedAt cfg anchor (E.store cfg ext v n) anchor := by
-  obtain ⟨ast, ablk, hgenEq, _hanchorSlot, _hanchorParent⟩ := hT.genesis
+  obtain ⟨ast, ablk, hgenEq, _hanchorSlot, _hanchorParent⟩ := hT.genesis_structure
   have hanchorRoot : anchor.root = ablk.root := by
     have hr := congrArg Checkpoint.root hanchor
     rw [hgenEq] at hr
@@ -134,7 +137,7 @@ theorem AcceptedSelectorAUCarrier.resetCheckpointRealizedAt
     (h : AcceptedSelectorAUCarrier B.state (E.store cfg ext w m) c) :
     E.ResetCheckpointRealizedAt cfg B.anchor
       (E.store cfg ext w m) c := by
-  obtain ⟨ast, ablk, hgenEq, hslot, hparent⟩ := hT.genesis
+  obtain ⟨ast, ablk, hgenEq, hslot, hparent⟩ := hT.genesis_structure
   have hgenShort : ∃ (ast : BeaconState Root)
       (ablk : SignedBeaconBlock Root),
       E.genesis_store = get_forkchoice_store cfg ast ablk ∧
@@ -226,7 +229,7 @@ theorem finalizedCheckpoint_resetRealizedAt_of_acceptedGlobalTrajectory
     {w : ValidatorIndex} (m : ℕ) :
     E.ResetCheckpointRealizedAt cfg B.anchor (E.store cfg ext w m)
       (E.store cfg ext w m).finalized_checkpoint := by
-  obtain ⟨ast, ablk, hgenEq, hslot, _hparent⟩ := hT.genesis
+  obtain ⟨ast, ablk, hgenEq, hslot, _hparent⟩ := hT.genesis_structure
   have hgenShort : ∃ (ast : BeaconState Root)
       (ablk : SignedBeaconBlock Root),
       E.genesis_store = get_forkchoice_store cfg ast ablk ∧
@@ -254,7 +257,7 @@ theorem unrealizedJustifiedCheckpoint_resetRealizedAt_of_acceptedGlobalTrajector
     {w : ValidatorIndex} (m : ℕ) :
     E.ResetCheckpointRealizedAt cfg B.anchor (E.store cfg ext w m)
       (E.store cfg ext w m).unrealized_justified_checkpoint := by
-  obtain ⟨ast, ablk, hgenEq, hslot, _hparent⟩ := hT.genesis
+  obtain ⟨ast, ablk, hgenEq, hslot, _hparent⟩ := hT.genesis_structure
   have hgenShort : ∃ (ast : BeaconState Root)
       (ablk : SignedBeaconBlock Root),
       E.genesis_store = get_forkchoice_store cfg ast ablk ∧
@@ -375,3 +378,5 @@ end Execution
 
 
 end FastConfirmation.Spec
+
+end

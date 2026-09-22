@@ -1,5 +1,8 @@
-import FastConfirmation.Paper.HFC.Model.Rule
-import FastConfirmation.Paper.LMDGhost.Model.Rule
+module
+public import FastConfirmation.Paper.HFC.Model.Rule
+public import FastConfirmation.Paper.LMDGhost.Model.Rule
+
+@[expose] public section
 
 /-!
 # HFC / Model / FFGRule
@@ -162,3 +165,5 @@ noncomputable def isConfirmedAlg1 (bal₀ : Stakes n) (fm : FaultModel n) (cm : 
   Alg1.isConfirmed (n := n) bal₀ fm cm pb we τ 𝒱 v b t
 
 end FastConfirmation.HFC
+
+end

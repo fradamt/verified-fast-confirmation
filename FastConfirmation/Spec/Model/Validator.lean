@@ -1,4 +1,7 @@
-import FastConfirmation.Spec.Model.Handlers
+module
+public import FastConfirmation.Spec.Model.Handlers
+
+@[expose] public section
 
 /-!
 # Spec / Model / Validator
@@ -57,3 +60,5 @@ def honest_attestation (store : Store Root) (slot : Slot) (index : CommitteeInde
     data := honest_attestation_data cfg ext store slot index }
 
 end FastConfirmation.Spec
+
+end

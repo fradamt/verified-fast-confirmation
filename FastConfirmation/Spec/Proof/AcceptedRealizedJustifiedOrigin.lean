@@ -1,8 +1,11 @@
-import Mathlib.Tactic
-import FastConfirmation.Spec.Proof.AcceptedFFGGlobalCheckpointTrajectory
-import FastConfirmation.Spec.Proof.AcceptedFFGJustifiedMaximality
-import FastConfirmation.Spec.Proof.AcceptedBlockTransitionProvenance
-import FastConfirmation.Spec.Proof.CausalQueryTraceAdapter
+module
+public import Mathlib.Tactic
+public import FastConfirmation.Spec.Proof.AcceptedFFGGlobalCheckpointTrajectory
+public import FastConfirmation.Spec.Proof.AcceptedFFGJustifiedMaximality
+public import FastConfirmation.Spec.Proof.AcceptedBlockTransitionProvenance
+public import FastConfirmation.Spec.Proof.CausalQueryTraceAdapter
+
+@[expose] public section
 
 /-!
 # Accepted realized-justified executable origins
@@ -524,9 +527,12 @@ private theorem on_block_of_selectors
     (h : AcceptedRealizedJustifiedOrigins cfg ext S store)
     (hh : FastConfirmation.Spec.on_block cfg ext store sb = some store') :
     AcceptedRealizedJustifiedOrigins cfg ext S store' := by
-  simp only [FastConfirmation.Spec.on_block] at hh
-  split_ifs at hh <;> try cases hh
-  all_goals
+  by_cases hknown : sb.root ∈ store.block_roots
+  · simp only [FastConfirmation.Spec.on_block, if_pos hknown] at hh
+    cases hh
+    exact h
+  · simp only [FastConfirmation.Spec.on_block, if_neg hknown] at hh
+    split_ifs at hh <;> try cases hh
     rw [hst] at hh
     cases hh
     have hsub : store.block_roots ⊆
@@ -636,20 +642,31 @@ theorem acceptedBlockTransition
     (h : AcceptedRealizedJustifiedOrigins cfg ext S
       (t.atPrefix.store cfg ext)) :
     AcceptedRealizedJustifiedOrigins cfg ext S t.postStore := by
-  obtain ⟨post, hst, hinserted⟩ :=
-    Execution.AcceptedBlockTransition.on_block_inserted_state
-      cfg ext t.accepted
-  have hnewAt : E.AcceptedBlockAt cfg ext t.signedBlock.root
-      t.signedBlock.message :=
-    ⟨t.postStore, t.post_causal, t.root_known, t.inserted_message⟩
-  apply on_block_of_selectors cfg ext hwf (.scheduledPrefix t.atPrefix)
-    hnewAt hst
-  · rw [← hinserted]
-    exact hcoh.transition_gj t
-  · rw [← hinserted]
-    exact hcoh.transition_gu t
-  · exact h
-  · exact t.accepted
+  by_cases hfresh : t.signedBlock.root ∉
+      (t.atPrefix.store cfg ext).block_roots
+  · obtain ⟨post, hst, hinserted⟩ :=
+      Execution.AcceptedBlockTransition.on_block_inserted_state_fresh
+        cfg ext hfresh t.accepted
+    have hnewAt : E.AcceptedBlockAt cfg ext t.signedBlock.root
+        t.signedBlock.message :=
+      ⟨t.postStore, t.post_causal, t.root_known,
+        Execution.AcceptedBlockTransition.inserted_message_fresh t hfresh⟩
+    apply on_block_of_selectors cfg ext hwf (.scheduledPrefix t.atPrefix)
+      hnewAt hst
+    · rw [← hinserted]
+      exact hcoh.transition_gj t
+    · rw [← hinserted]
+      exact hcoh.transition_gu t
+    · exact h
+    · exact t.accepted
+  · have hknown : t.signedBlock.root ∈
+        (t.atPrefix.store cfg ext).block_roots :=
+      Classical.byContradiction hfresh
+    have hsame : t.postStore = t.atPrefix.store cfg ext := by
+      exact (Option.some.inj (by
+        simpa only [on_block, if_pos hknown] using t.accepted)).symm
+    rw [hsame]
+    exact h
 
 end AcceptedRealizedJustifiedOrigins
 
@@ -694,7 +711,7 @@ private theorem realizedJustifiedOrigins_after_execution_tick
     AcceptedRealizedJustifiedOrigins cfg ext S
       (FastConfirmation.Spec.on_tick cfg (E.store cfg ext w n)
         (E.time_at (n + 1))) := by
-  obtain ⟨ast, ablk, hgen, hgenSlot, hgenParent⟩ := hT.genesis
+  obtain ⟨ast, ablk, hgen, hgenSlot, hgenParent⟩ := hT.genesis_structure
   have hgenTime : E.genesis_store.genesis_time ≤
       E.genesis_store.time := by
     rw [hgen]
@@ -786,7 +803,7 @@ private theorem genesisAcceptedRealizedJustifiedOrigins
     (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint) :
     AcceptedRealizedJustifiedOrigins cfg ext B.state E.genesis_store := by
-  obtain ⟨ast, ablk, hgen, _hslot, _hparent⟩ := hT.genesis
+  obtain ⟨ast, ablk, hgen, _hslot, _hparent⟩ := hT.genesis_structure
   rw [hgen] at hanchor ⊢
   constructor <;> apply Or.inl <;>
     simpa only [get_forkchoice_store] using hanchor.symm
@@ -883,3 +900,5 @@ theorem acceptedRealizedJustifiedOrigins
 end Execution
 
 end FastConfirmation.Spec
+
+end

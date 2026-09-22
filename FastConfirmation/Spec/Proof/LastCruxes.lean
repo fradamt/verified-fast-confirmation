@@ -1,4 +1,7 @@
-import FastConfirmation.Spec.Proof.INVstarTrack
+module
+public import FastConfirmation.Spec.Proof.INVstarTrack
+
+@[expose] public section
 
 /-!
 # Spec / Proof / LastCruxes: ancestor transport and the residual reduction
@@ -124,3 +127,5 @@ cone (P-6). The ancestor-transport cruxes above are unaffected. See
 `docs/p6-justified-descends-derivation.md` §8. -/
 
 end FastConfirmation.Spec
+
+end

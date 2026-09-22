@@ -1,5 +1,8 @@
-import FastConfirmation.Spec.Proof.AcceptedResetAdoption
-import FastConfirmation.Spec.Proof.SelectedCoveredMarginConstruction
+module
+public import FastConfirmation.Spec.Proof.AcceptedResetAdoption
+public import FastConfirmation.Spec.Proof.SelectedCoveredMarginConstruction
+
+@[expose] public section
 
 /-!
 # Shared mechanics for actual FCR calls
@@ -188,9 +191,12 @@ private theorem justified_epoch_le_on_block
     (hh : FastConfirmation.Spec.on_block cfg ext store sb = some store') :
     store.justified_checkpoint.epoch ≤
       store'.justified_checkpoint.epoch := by
-  simp only [FastConfirmation.Spec.on_block] at hh
-  split_ifs at hh <;> try cases hh
-  all_goals
+  by_cases hknown : sb.root ∈ store.block_roots
+  · simp only [FastConfirmation.Spec.on_block, if_pos hknown] at hh
+    cases hh
+    exact Nat.le_refl _
+  · simp only [FastConfirmation.Spec.on_block, if_neg hknown] at hh
+    split_ifs at hh <;> try cases hh
     cases hst : ext.state_transition
         (store.block_states sb.message.parent_root) sb with
     | none =>
@@ -368,3 +374,5 @@ theorem GetLatestConfirmedTrace.result_safeFrom_of_actualCall_strictSupplier
 end Execution
 
 end FastConfirmation.Spec
+
+end

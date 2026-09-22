@@ -1,7 +1,10 @@
-import FastConfirmation.Spec.Proof.Anchoring
-import FastConfirmation.Spec.Proof.Dominance
-import FastConfirmation.Spec.Proof.Closing
-import FastConfirmation.Spec.Proof.EngineCore
+module
+public import FastConfirmation.Spec.Proof.Anchoring
+public import FastConfirmation.Spec.Proof.Dominance
+public import FastConfirmation.Spec.Proof.Closing
+public import FastConfirmation.Spec.Proof.EngineCore
+
+@[expose] public section
 
 /-!
 # Spec / Proof / AnchorThread: `ConfirmedWithAnchor` and the covering composition
@@ -229,3 +232,5 @@ closes its `SafeFrom` alone. Sections 1-3 (`confirmedWithAnchor_of_advance`,
 `docs/p6-justified-descends-derivation.md` §8. -/
 
 end FastConfirmation.Spec
+
+end

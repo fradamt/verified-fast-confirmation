@@ -1,9 +1,12 @@
-import Mathlib.Tactic
-import FastConfirmation.Paper.Core.Model.ForkChoice
-import FastConfirmation.Paper.LMDGhost.Proof.Blocks
-import FastConfirmation.Paper.LMDGhost.Proof.Positivity
-import FastConfirmation.Paper.LMDGhost.Proof.Support
-import FastConfirmation.Paper.LMDGhost.Proof.Weights
+module
+public import Mathlib.Tactic
+public import FastConfirmation.Paper.Core.Model.ForkChoice
+public import FastConfirmation.Paper.LMDGhost.Proof.Blocks
+public import FastConfirmation.Paper.LMDGhost.Proof.Positivity
+public import FastConfirmation.Paper.LMDGhost.Proof.Support
+public import FastConfirmation.Paper.LMDGhost.Proof.Weights
+
+@[expose] public section
 
 /-!
 # LMDGhost / Proof / Canonical
@@ -431,3 +434,5 @@ theorem head_of_Hmajority (τ : Timing) (A : Anchor n) (cm : Committees n) (fm :
   exact le_trans hslot (Nat.le_succ _)
 
 end FastConfirmation.LMDGhost
+
+end

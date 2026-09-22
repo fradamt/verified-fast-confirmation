@@ -1,8 +1,12 @@
-import FastConfirmation.Spec.Proof.GroundBeta
-import FastConfirmation.Spec.Proof.Remainder
-import FastConfirmation.Spec.Proof.FinalWiring
-import FastConfirmation.Spec.Proof.Identities
-import FastConfirmation.Spec.Proof.StrongPrefixSafety
+module
+public import FastConfirmation.Spec.Proof.GroundBeta
+public import FastConfirmation.Spec.Proof.Remainder
+public import FastConfirmation.Spec.Proof.FinalWiring
+public import FastConfirmation.Spec.Proof.Identities
+public import FastConfirmation.Spec.Proof.StrongPrefixSafety
+
+@[expose] public section
+
 
 /-!
 # Spec / Proof / INVstarTrack: the `hBb`-free per-edge pipeline
@@ -216,3 +220,5 @@ rest of the legacy `SpecAssumptions` observed-anchor cone (P-6). See
 `docs/p6-justified-descends-derivation.md` §8. -/
 
 end FastConfirmation.Spec
+
+end

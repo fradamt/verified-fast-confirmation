@@ -1,8 +1,11 @@
-import FastConfirmation.Spec.Proof.SelectedTraceFFGRealizationPipeline
-import FastConfirmation.Spec.Proof.CurrentTargetCertificateRealization
-import FastConfirmation.Spec.Proof.PaperA32SupportRealization
-import FastConfirmation.Spec.Proof.ActualResetCheckpointRealization
-import FastConfirmation.Spec.Proof.HistoricalCurrentTargetTrajectory
+module
+public import FastConfirmation.Spec.Proof.SelectedTraceFFGRealizationPipeline
+public import FastConfirmation.Spec.Proof.CurrentTargetCertificateRealization
+public import FastConfirmation.Spec.Proof.PaperA32SupportRealization
+public import FastConfirmation.Spec.Proof.ActualResetCheckpointRealization
+public import FastConfirmation.Spec.Proof.HistoricalCurrentTargetTrajectory
+
+@[expose] public section
 
 /-!
 # Assumption 3.2 at actual calls
@@ -540,3 +543,5 @@ theorem selectedA32Semantic_or_placementResidual_of_fixedSourceGate_currentEpoch
 end Execution
 
 end FastConfirmation.Spec
+
+end

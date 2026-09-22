@@ -3,6 +3,7 @@ import FastConfirmation.Spec.Model
 import FastConfirmation.Spec.Model.WeakSynchrony
 import FastConfirmation.Spec.Model.StrongReference
 
+
 namespace FastConfirmation.Conformance
 
 open FastConfirmation.Spec
@@ -349,6 +350,7 @@ def parseFcr (store : Store Nat) (j : J) (schema : Nat) :
     if schema == 2 then do
       parseCheckpoint (← field j "current_epoch_greatest_unrealized_checkpoint")
     else pure store.finalized_checkpoint
+
   return {
     store := store
     confirmed_root := ← rootField j "confirmed_root"
@@ -359,12 +361,14 @@ def parseFcr (store : Store Nat) (j : J) (schema : Nat) :
     previous_epoch_greatest_unrealized_checkpoint :=
       ← parseCheckpoint (← field j "previous_epoch_greatest_unrealized_checkpoint")
     current_epoch_greatest_unrealized_checkpoint := currentGreatest
+
     previous_slot_head := ← rootField j "previous_slot_head"
     current_slot_head := ← rootField j "current_slot_head"
   }
 
 structure Record where
   schema : Nat
+
   testId : String
   callIndex : Nat
   cfg : Config
@@ -401,6 +405,7 @@ def parseContainmentRecord (j : J) : Except String Record := do
     after := ← parseFcr parsedStore.store (← field j "fcr_after") schema
     answers := ← parseContainmentAnswers (← field j "externals")
   }
+
 
 def findCommittee (answers : List CommitteeAnswer) (state : BeaconState Nat)
     (slot index : Nat) : Option (List Nat) :=
@@ -530,6 +535,7 @@ unsafe def makeContainmentExternals (answers : Answers) (misses : IO.Ref (List S
     | none => missingContainmentAnswer misses "process_justification_and_finalization" state
 }
 
+
 def checkpointText (checkpoint : Checkpoint Nat) : String :=
   s!"({checkpoint.epoch},{rootText checkpoint.root})"
 
@@ -538,6 +544,7 @@ def fieldResult (name : String) (leanValue pythonValue : String) : String :=
 
 def compareFcr (leanValue pythonValue : FastConfirmationStore Nat)
     (compareGreatest : Bool) :
+
     Option (String × String × String) :=
   if leanValue.confirmed_root != pythonValue.confirmed_root then
     some ("confirmed_root", rootText leanValue.confirmed_root,
@@ -562,6 +569,7 @@ def compareFcr (leanValue pythonValue : FastConfirmationStore Nat)
     some ("current_epoch_greatest_unrealized_checkpoint",
       checkpointText leanValue.current_epoch_greatest_unrealized_checkpoint,
       checkpointText pythonValue.current_epoch_greatest_unrealized_checkpoint)
+
   else if leanValue.previous_slot_head != pythonValue.previous_slot_head then
     some ("previous_slot_head", rootText leanValue.previous_slot_head,
       rootText pythonValue.previous_slot_head)
@@ -573,12 +581,18 @@ def compareFcr (leanValue pythonValue : FastConfirmationStore Nat)
 unsafe def evaluate (record : Record) : IO (Option String) := do
   let misses ← IO.mkRef []
   let ext := makeExternals record.answers misses
-  let leanValue := Weak.on_fast_confirmation record.cfg ext record.before
+  let leanValue :=
+    if record.schema == 2 then
+      Weak.on_fast_confirmation record.cfg ext record.before
+    else
+      Strong.on_fast_confirmation record.cfg ext record.before
+
   let missList ← misses.get
   match missList with
   | miss :: _ => return some s!"MISSING_EXTERNAL {miss}"
   | [] =>
       match compareFcr leanValue record.after (record.schema == 2) with
+
       | none => return none
       | some (name, leanText, pythonText) =>
           return some (fieldResult name leanText pythonText)
@@ -735,6 +749,7 @@ unsafe def runSelected (options : RunnerOptions) : IO UInt32 := do
     IO.println s!"SUMMARY records={records + errors} ok={ok} mismatch={mismatch + errors} missing_external={missing}"
     return if mismatch = 0 ∧ missing = 0 ∧ errors = 0 then 0 else 1
 
+
 unsafe def main (args : List String) : IO UInt32 := do
   match args with
   | [path] =>
@@ -764,6 +779,7 @@ unsafe def main (args : List String) : IO UInt32 := do
           IO.eprintln s!"ERROR arguments: {message}"
           IO.eprintln "usage: lake env lean --run scripts/conformance/lean/Conformance.lean [--containment] [--test <substring>]... <trace.jsonl>"
           return 2
+
 
 end FastConfirmation.Conformance
 

@@ -1,7 +1,10 @@
-import FastConfirmation.Spec.Proof.CertExtract
-import FastConfirmation.Spec.Proof.FFGAccountability
-import FastConfirmation.Spec.Proof.FilterViability
-import FastConfirmation.Spec.Proof.FilterFuelMonotonicity
+module
+public import FastConfirmation.Spec.Proof.CertExtract
+public import FastConfirmation.Spec.Proof.FFGAccountability
+public import FastConfirmation.Spec.Proof.FilterViability
+public import FastConfirmation.Spec.Proof.FilterFuelMonotonicity
+
+@[expose] public section
 
 /-!
 # Spec / Proof / SelectedFilter: executable gate traces and the filter boundary
@@ -281,3 +284,5 @@ theorem FilterTipCertificate.child_filtered {store : Store Root} {a c : Root}
   exact ⟨h.mem_filtered cfg, by simp [hparent]⟩
 
 end FastConfirmation.Spec
+
+end

@@ -1,5 +1,8 @@
-import FastConfirmation.Paper.Core.Model.Blocks
-import FastConfirmation.Paper.Core.Model.Validators
+module
+public import FastConfirmation.Paper.Core.Model.Blocks
+public import FastConfirmation.Paper.Core.Model.Validators
+
+@[expose] public section
 
 /-!
 # Core / Model / Vote
@@ -34,3 +37,5 @@ structure Message (n : ℕ) (Payload : Type) where
   deriving DecidableEq
 
 end FastConfirmation
+
+end

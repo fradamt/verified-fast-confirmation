@@ -1,4 +1,7 @@
-import FastConfirmation.Spec.Proof.Trajectory
+module
+public import FastConfirmation.Spec.Proof.Trajectory
+
+@[expose] public section
 
 /-!
 # Spec / Proof / Genesis
@@ -48,3 +51,5 @@ theorem wellFormedStore_get_forkchoice_store
     simp
 
 end FastConfirmation.Spec
+
+end

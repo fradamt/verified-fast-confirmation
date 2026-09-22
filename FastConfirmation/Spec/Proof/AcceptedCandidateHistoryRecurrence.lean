@@ -1,8 +1,11 @@
-import Mathlib.Tactic
-import FastConfirmation.Spec.Proof.GetLatestConfirmedTrace
-import FastConfirmation.Spec.Proof.Anchoring
-import FastConfirmation.Spec.Proof.L4Fold
-import FastConfirmation.Spec.Proof.AcceptedFFGGlobalCheckpointTrajectory
+module
+public import Mathlib.Tactic
+public import FastConfirmation.Spec.Proof.GetLatestConfirmedTrace
+public import FastConfirmation.Spec.Proof.Anchoring
+public import FastConfirmation.Spec.Proof.L4Fold
+public import FastConfirmation.Spec.Proof.AcceptedFFGGlobalCheckpointTrajectory
+
+@[expose] public section
 
 /-!
 # Exact candidate-history recurrence for one FCR call
@@ -684,3 +687,5 @@ end Execution
 
 
 end FastConfirmation.Spec
+
+end

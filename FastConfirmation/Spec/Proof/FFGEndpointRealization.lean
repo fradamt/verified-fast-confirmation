@@ -1,7 +1,10 @@
-import FastConfirmation.Spec.Proof.FFGStateTrajectory
-import FastConfirmation.Spec.Proof.SelectedFFGRealization
-import FastConfirmation.Spec.Proof.PaperA32Projection
-import FastConfirmation.Spec.Proof.MinimalSelectedDomain
+module
+public import FastConfirmation.Spec.Proof.FFGStateTrajectory
+public import FastConfirmation.Spec.Proof.SelectedFFGRealization
+public import FastConfirmation.Spec.Proof.PaperA32Projection
+public import FastConfirmation.Spec.Proof.MinimalSelectedDomain
+
+@[expose] public section
 
 /-!
 # Endpoint facts derivable from the block-local FFG projection
@@ -429,3 +432,5 @@ The constructors above leave the following exact producers:
 end Execution
 
 end FastConfirmation.Spec
+
+end

@@ -1,6 +1,9 @@
-import Mathlib.Tactic
-import FastConfirmation.Paper.LMDGhost.Proof.HeadSafety
-import FastConfirmation.Paper.LMDGhost.TheoremStatements
+module
+public import Mathlib.Tactic
+public import FastConfirmation.Paper.LMDGhost.Proof.HeadSafety
+public import FastConfirmation.Paper.LMDGhost.TheoremStatements
+
+@[expose] public section
 
 /-!
 # LMDGhost / Proof / Rule
@@ -748,3 +751,5 @@ theorem proof_Theorem1_Monotonicity : Theorem1_Monotonicity (n := n) (P := P) τ
 end Theorems
 
 end FastConfirmation.LMDGhost
+
+end

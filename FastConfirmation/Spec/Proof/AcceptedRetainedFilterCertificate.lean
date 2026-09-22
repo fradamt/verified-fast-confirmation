@@ -1,5 +1,8 @@
-import FastConfirmation.Spec.Proof.AcceptedPathLocalFinalizedTransport
-import FastConfirmation.Spec.Proof.SelectedFilterChainGeometry
+module
+public import FastConfirmation.Spec.Proof.AcceptedPathLocalFinalizedTransport
+public import FastConfirmation.Spec.Proof.SelectedFilterChainGeometry
+
+@[expose] public section
 
 /-!
 # Accepted retained-source filter certificates
@@ -263,3 +266,5 @@ end Execution
 
 
 end FastConfirmation.Spec
+
+end

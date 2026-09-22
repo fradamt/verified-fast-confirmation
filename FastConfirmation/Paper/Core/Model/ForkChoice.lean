@@ -1,4 +1,7 @@
-import FastConfirmation.Paper.Core.Model.Filter
+module
+public import FastConfirmation.Paper.Core.Model.Filter
+
+@[expose] public section
 
 /-!
 # Core / Model / ForkChoice
@@ -86,3 +89,5 @@ def WellFormedBoost (τ : Timing) (boost : ProposerBoost n P) : Prop :=
     boost.proposalAt V t = some bp → bp.slot = τ.slotOf t ∧ bp ∈ V.blocks ∧ bp.WellFormed
 
 end FastConfirmation
+
+end

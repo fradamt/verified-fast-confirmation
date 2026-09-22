@@ -1,6 +1,9 @@
-import FastConfirmation.Paper.LMDGhost.Proof.Rule
-import FastConfirmation.Paper.HFC.TheoremStatements
-import FastConfirmation.Paper.HFC.Proof.AnchorDischarge
+module
+public import FastConfirmation.Paper.LMDGhost.Proof.Rule
+public import FastConfirmation.Paper.HFC.TheoremStatements
+public import FastConfirmation.Paper.HFC.Proof.AnchorDischarge
+
+@[expose] public section
 
 /-!
 # HFC / Proof / Compose
@@ -128,3 +131,5 @@ theorem hfc_safety_of_notFiltered (bal₀ : Stakes n)
       exact Block.Ancestor.trans hbB (hcanon hw ht')
 
 end FastConfirmation.HFC
+
+end

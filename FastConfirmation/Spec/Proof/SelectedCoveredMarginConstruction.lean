@@ -1,10 +1,14 @@
-import FastConfirmation.Spec.Proof.CoveredMargin
-import FastConfirmation.Spec.Proof.SelectedEdgeGeometry
-import FastConfirmation.Spec.Proof.SelectedTraceFFGRealizationPipeline
-import FastConfirmation.Spec.Proof.SelectedCommitteeSupport
-import FastConfirmation.Spec.Proof.SelectedMarginConstruction
-import FastConfirmation.Spec.Proof.EndpointLedgerMinimal
-import FastConfirmation.Spec.Proof.FutureSiblingScore
+module
+public import FastConfirmation.Spec.Proof.CoveredMargin
+public import FastConfirmation.Spec.Proof.SelectedEdgeGeometry
+public import FastConfirmation.Spec.Proof.SelectedTraceFFGRealizationPipeline
+public import FastConfirmation.Spec.Proof.SelectedCommitteeSupport
+public import FastConfirmation.Spec.Proof.SelectedMarginConstruction
+public import FastConfirmation.Spec.Proof.EndpointLedgerMinimal
+public import FastConfirmation.Spec.Proof.FutureSiblingScore
+
+@[expose] public section
+
 
 /-!
 # Complete construction of coverage-aware selected margins
@@ -247,7 +251,7 @@ theorem selectedCoveredMarginSupplyAt_of_filterSupply_minimal
       ((E.store cfg ext v q).blocks c).slot es) ≤
       E.Aval cfg ext w m c ((E.store cfg ext v q).blocks c).slot es :=
     E.crossingParentSub_le_endpoint_Aval_minimal cfg ext hA
-      hcutoffQ haQ hgeom.block_known hgeom.parent_eq
+      hv hqH hcutoffQ haQ hgeom.block_known hgeom.parent_eq
       haM hcM hparentM (by simpa only [hgeom.lo_eq] using hmaxQuery)
   have hselectedMid : ∀ i ∈ E.Sclass cfg ext w m c
       ((E.store cfg ext v q).blocks c).slot sigma,
@@ -302,6 +306,7 @@ theorem selectedCoveredMarginSupplyAt_of_filterSupply_minimal
           simpa only [hgeom.lo_eq] using hsibling }
   · have hsibling :=
       E.futureCrossing_sibling_score_of_endpointLedger_minimal cfg ext hA
+        hv hqH
         (bs := get_current_balance_source query)
         hgeom.block_known hgeom.parent_known hgeom.lo_eq hcutoffQ
         hgeom.child_slot_le_cutoff hgeom.cutoff_le_sigma hmaxQuery
@@ -354,3 +359,5 @@ theorem slot_start_eq_succ_of_advance_minimal
 end Execution
 
 end FastConfirmation.Spec
+
+end

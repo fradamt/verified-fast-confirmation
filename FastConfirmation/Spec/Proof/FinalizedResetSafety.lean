@@ -1,8 +1,11 @@
-import FastConfirmation.Spec.Proof.ActualResetCheckpointRealization
-import FastConfirmation.Spec.Proof.FFGSelectedDomainRealization
-import FastConfirmation.Spec.Proof.FFGAccountability
-import FastConfirmation.Spec.Proof.ExactCheckpointLinks
-import FastConfirmation.Spec.Proof.SelectedTraceFFGRealizationPipeline
+module
+public import FastConfirmation.Spec.Proof.ActualResetCheckpointRealization
+public import FastConfirmation.Spec.Proof.FFGSelectedDomainRealization
+public import FastConfirmation.Spec.Proof.FFGAccountability
+public import FastConfirmation.Spec.Proof.ExactCheckpointLinks
+public import FastConfirmation.Spec.Proof.SelectedTraceFFGRealizationPipeline
+
+@[expose] public section
 
 /-!
 # Finalized-reset safety from the common FFG trajectory
@@ -1001,3 +1004,5 @@ theorem finalizedReset_safeFrom_of_finalizedEpochPropagation
 end Execution
 
 end FastConfirmation.Spec
+
+end

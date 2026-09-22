@@ -1,5 +1,8 @@
-import FastConfirmation.Spec.Proof.EngineStore
-import FastConfirmation.Spec.Proof.HeadReroot
+module
+public import FastConfirmation.Spec.Proof.EngineStore
+public import FastConfirmation.Spec.Proof.HeadReroot
+
+@[expose] public section
 
 /-!
 # Spec / Proof / HeadRerootChain: the mid-walk `DescendStep`-chain adapter
@@ -46,3 +49,5 @@ theorem head_ge_of_intermediate_ledger {store : Store Root}
     (descendsTo_of_chain cfg hb ds x hchain hlast)
 
 end FastConfirmation.Spec
+
+end

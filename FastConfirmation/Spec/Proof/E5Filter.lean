@@ -1,5 +1,8 @@
-import FastConfirmation.Spec.Proof.ResidualDischarge
-import FastConfirmation.Spec.Proof.ForkAssembly
+module
+public import FastConfirmation.Spec.Proof.ResidualDischarge
+public import FastConfirmation.Spec.Proof.ForkAssembly
+
+@[expose] public section
 
 /-!
 # Spec / Proof / E5Filter: the E5 filter route for the observed anchor
@@ -350,3 +353,5 @@ See `docs/p6-justified-descends-derivation.md` §8. -/
 end Execution
 
 end FastConfirmation.Spec
+
+end

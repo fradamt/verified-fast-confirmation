@@ -1,6 +1,9 @@
-import Mathlib.Data.List.MinMax
-import Mathlib.Data.Prod.Lex
-import FastConfirmation.Spec.Model.Types
+module
+public import Mathlib.Data.List.MinMax
+public import Mathlib.Data.Prod.Lex
+public import FastConfirmation.Spec.Model.Types
+
+@[expose] public section
 
 /-!
 # Spec / Model / ForkChoice
@@ -59,7 +62,7 @@ def get_slots_since_genesis (store : Store Root) : ℕ :=
 
 /-- `get_current_slot`:
 ```python
-return Slot(GENESIS_SLOT + get_slots_since_genesis(store))
+return GENESIS_SLOT + get_slots_since_genesis(store)
 ``` -/
 def get_current_slot (store : Store Root) : Slot :=
   GENESIS_SLOT + get_slots_since_genesis cfg store
@@ -160,7 +163,7 @@ def get_attestation_score (store : Store Root) (node : ForkChoiceNode Root)
 
 /-- `compute_proposer_score`:
 ```python
-committee_weight = get_total_active_balance(state) // SLOTS_PER_EPOCH
+committee_weight = get_total_active_balance(state) // Uint64(SLOTS_PER_EPOCH)
 return (committee_weight * PROPOSER_SCORE_BOOST) // 100
 ``` -/
 def compute_proposer_score (state : BeaconState Root) : Gwei :=
@@ -382,3 +385,5 @@ def get_attestation_due_ms : ℕ :=
   get_slot_component_duration_ms cfg cfg.attestation_due_bps
 
 end FastConfirmation.Spec
+
+end

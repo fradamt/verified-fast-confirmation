@@ -1,5 +1,8 @@
-import FastConfirmation.Spec.Proof.EngineWindows
-import FastConfirmation.Spec.Proof.EngineSupport
+module
+public import FastConfirmation.Spec.Proof.EngineWindows
+public import FastConfirmation.Spec.Proof.EngineSupport
+
+@[expose] public section
 
 /-!
 # Spec / Proof / EngineInduction: the input package and invariant
@@ -62,3 +65,5 @@ theorem EngineInv.mono {E : Execution Root} {b : Root} {n₀ : ℕ} {k k' : Slot
   fun w hw m hm hsl hH => h w hw m hm (le_trans hsl hk) hH
 
 end FastConfirmation.Spec
+
+end

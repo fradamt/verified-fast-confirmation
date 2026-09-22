@@ -1,9 +1,12 @@
-import FastConfirmation.Spec.Proof.AcceptedSameEpochSegmentRealization
-import FastConfirmation.Spec.Proof.AcceptedCurrentTargetPrefixVoteRealization
-import FastConfirmation.Spec.Proof.AcceptedCurrentTargetLowerContracts
-import FastConfirmation.Spec.Proof.AcceptedScheduledPrefixGeometry
-import FastConfirmation.Spec.Proof.CurrentTargetPrefixAccounting
-import FastConfirmation.Spec.Proof.CurrentTargetCertificateRealization
+module
+public import FastConfirmation.Spec.Proof.AcceptedSameEpochSegmentRealization
+public import FastConfirmation.Spec.Proof.AcceptedCurrentTargetPrefixVoteRealization
+public import FastConfirmation.Spec.Proof.AcceptedCurrentTargetLowerContracts
+public import FastConfirmation.Spec.Proof.AcceptedScheduledPrefixGeometry
+public import FastConfirmation.Spec.Proof.CurrentTargetPrefixAccounting
+public import FastConfirmation.Spec.Proof.CurrentTargetCertificateRealization
+
+@[expose] public section
 
 /-!
 # Accepted current-target gate bridge
@@ -190,7 +193,8 @@ theorem acceptedCrossEpochParentGJEqGU_of_known_parent
   have htParent : t.signedBlock.message.parent_root = parent :=
     (congrArg BeaconBlock.parent_root htMessage).trans hparent
   have htParentKnown : t.signedBlock.message.parent_root ∈
-      (t.atPrefix.store cfg ext).block_roots := t.parent_known
+      (t.atPrefix.store cfg ext).block_roots :=
+    t.parent_known writer.fresh
   have hprefixParentKnown : parent ∈
       (t.atPrefix.store cfg ext).block_roots := by
     rw [← htParent]
@@ -230,8 +234,8 @@ theorem acceptedCrossEpochParentGJEqGU_of_known_parent
         (congrArg (fun b => compute_epoch_at_slot cfg b.slot)
           htMessage).symm
   obtain ⟨post, htransition, hpost⟩ :=
-    Execution.AcceptedBlockTransition.on_block_inserted_state
-      cfg ext t.accepted
+    Execution.AcceptedBlockTransition.on_block_inserted_state_fresh
+      cfg ext writer.fresh t.accepted
   have hprojection : AcceptedFFGStoreProjection B.state
       (t.atPrefix.store cfg ext) :=
     Execution.ExactPrefixAcceptedFFGSemantics.causalStoreProjection B
@@ -572,7 +576,7 @@ theorem concreteHonestTargetVote_acceptedOldTargetSourceEvidence
       (E.store cfg ext i vote.time) vote.slot vote.index target.root := by
   let voteStore := E.store cfg ext i vote.time
   let head := (get_head cfg voteStore).root
-  obtain ⟨ast, ablk, hgen, hgenSlot, hgenParent⟩ := hT.genesis
+  obtain ⟨ast, ablk, hgen, hgenSlot, hgenParent⟩ := hT.genesis_structure
   have hgenTrajectory :
       ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
         E.genesis_store = get_forkchoice_store cfg ast ablk ∧
@@ -598,7 +602,7 @@ theorem concreteHonestTargetVote_acceptedOldTargetSourceEvidence
   have hparentSlots : ParentSlotLt voteStore := by
     simpa only [voteStore] using
       E.store_parentSlotLt cfg ext hT.wellFormed
-        hT.externals_coherence hT.genesis
+        hT.externals_coherence hT.genesis_structure
         hT.wellFormed.anchor_parent_unscheduled i vote.time
   have htargetData : (honest_attestation_data cfg ext voteStore
       vote.slot vote.index).target = target := by
@@ -799,7 +803,7 @@ theorem concreteHonestTargetVote_knownCurrentEpochSegment
       (get_head cfg (E.store cfg ext i vote.time)).root := by
   let voteStore := E.store cfg ext i vote.time
   let head := (get_head cfg voteStore).root
-  obtain ⟨ast, ablk, hgen, hgenSlot, hgenParent⟩ := hT.genesis
+  obtain ⟨ast, ablk, hgen, hgenSlot, hgenParent⟩ := hT.genesis_structure
   have hgenTrajectory :
       ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
         E.genesis_store = get_forkchoice_store cfg ast ablk ∧
@@ -820,7 +824,7 @@ theorem concreteHonestTargetVote_knownCurrentEpochSegment
   have hparentSlots : ParentSlotLt voteStore := by
     simpa only [voteStore] using
       E.store_parentSlotLt cfg ext hT.wellFormed
-        hT.externals_coherence hT.genesis
+        hT.externals_coherence hT.genesis_structure
         hT.wellFormed.anchor_parent_unscheduled i vote.time
   have htargetData :
       (honest_attestation_data cfg ext voteStore vote.slot vote.index).target =
@@ -930,7 +934,7 @@ theorem concreteHonestTargetVote_acceptedCurrentEpochSegment
     (vote : ConcreteHonestTargetVoteBefore cfg ext E i deadline target) :
     AcceptedProjectedSameEpochSegment cfg ext E B.state target.root
       (get_head cfg (E.store cfg ext i vote.time)).root := by
-  obtain ⟨ast, ablk, hgen, hgenSlot, hgenParent⟩ := hT.genesis
+  obtain ⟨ast, ablk, hgen, hgenSlot, hgenParent⟩ := hT.genesis_structure
   have hgenCore : WellFormedStoreCore E.genesis_store := by
     rw [hgen]
     exact (wellFormedStore_get_forkchoice_store cfg ast ablk hgenSlot
@@ -972,7 +976,7 @@ theorem concreteHonestTargetVote_acceptedCurrentEpochSourceGeometry
         (get_head cfg (E.store cfg ext i vote.time)).root := by
   let voteStore := E.store cfg ext i vote.time
   let head := (get_head cfg voteStore).root
-  obtain ⟨ast, ablk, hgen, hgenSlot, hgenParent⟩ := hT.genesis
+  obtain ⟨ast, ablk, hgen, hgenSlot, hgenParent⟩ := hT.genesis_structure
   have hgenTrajectory :
       ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
         E.genesis_store = get_forkchoice_store cfg ast ablk ∧
@@ -1049,6 +1053,7 @@ theorem scheduledEventPrefix_acceptedConcreteCurrentTargetQuorum
     (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg) (E := E)
       (anchor := B.anchor))
     (p : E.ScheduledEventPrefix)
+    (hp : p.node ∈ E.honest)
     (hqH : E.WithinHorizon cfg (p.previousSecond + 1))
     (hevidence : E.CurrentTargetPrefixAccountingEvidence cfg ext
       (p.store cfg ext) (p.previousSecond + 1))
@@ -1112,7 +1117,7 @@ theorem scheduledEventPrefix_acceptedConcreteCurrentTargetQuorum
     rcases hiSigner with hiObserved | hiFuture
     · simpa only [store, target, deadline] using
         E.currentTargetObservedHonestSupporter_vote_of_prefix
-          cfg ext B hV hboundary0 p hqH hiObserved
+          cfg ext B hV hboundary0 p hp hqH hiObserved
     · simpa only [store, target, deadline] using
         E.currentTargetFutureHonestSeat_vote_of_currentSlot cfg ext
           hT.honest_behavior hevidence.operational.current_slot hendH
@@ -1218,6 +1223,7 @@ theorem scheduledEventPrefix_acceptedConcreteOldTargetQuorum
     (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg) (E := E)
       (anchor := B.anchor))
     (p : E.ScheduledEventPrefix)
+    (hp : p.node ∈ E.honest)
     (hqH : E.WithinHorizon cfg (p.previousSecond + 1))
     (hevidence : E.CurrentTargetPrefixAccountingEvidence cfg ext
       (p.store cfg ext) (p.previousSecond + 1))
@@ -1281,7 +1287,7 @@ theorem scheduledEventPrefix_acceptedConcreteOldTargetQuorum
     rcases hiSigner with hiObserved | hiFuture
     · simpa only [store, target, deadline] using
         E.currentTargetObservedHonestSupporter_vote_of_prefix
-          cfg ext B hV hboundary0 p hqH hiObserved
+          cfg ext B hV hboundary0 p hp hqH hiObserved
     · simpa only [store, target, deadline] using
         E.currentTargetFutureHonestSeat_vote_of_currentSlot cfg ext
           hT.honest_behavior hevidence.operational.current_slot hendH
@@ -1364,6 +1370,7 @@ theorem scheduledEventPrefix_acceptedCurrentTargetA32GateRealization_core
     (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg) (E := E)
       (anchor := B.anchor))
     (p : E.ScheduledEventPrefix)
+    (hp : p.node ∈ E.honest)
     (hqH : E.WithinHorizon cfg (p.previousSecond + 1))
     (hevidence : E.CurrentTargetPrefixAccountingEvidence cfg ext
       (p.store cfg ext) (p.previousSecond + 1))
@@ -1413,7 +1420,7 @@ theorem scheduledEventPrefix_acceptedCurrentTargetA32GateRealization_core
   change B.anchor.epoch < target.epoch at hanchorBefore
   obtain ⟨Q, hgeometry⟩ :=
     E.scheduledEventPrefix_acceptedConcreteCurrentTargetQuorum cfg ext B hT
-      hsv hbb hphase hanchor hboundary p hqH hevidence hstate hval htab
+      hsv hbb hphase hanchor hboundary p hp hqH hevidence hstate hval htab
       hendH hanchorH hfloor hgate hsupport htargetKnown htargetEpoch
       hanchorBefore
   have htargetSpan :
@@ -1456,6 +1463,7 @@ theorem scheduledEventPrefix_acceptedCurrentTargetA32GateRealization
     (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg) (E := E)
       (anchor := B.anchor))
     (p : E.ScheduledEventPrefix)
+    (hp : p.node ∈ E.honest)
     (hqH : E.WithinHorizon cfg (p.previousSecond + 1))
     (hevidence : E.CurrentTargetPrefixAccountingEvidence cfg ext
       (p.store cfg ext) (p.previousSecond + 1))
@@ -1487,7 +1495,7 @@ theorem scheduledEventPrefix_acceptedCurrentTargetA32GateRealization
     AcceptedCurrentTargetA32GateRealization cfg ext E B.anchor B.state
       (p.store cfg ext) := by
   apply E.scheduledEventPrefix_acceptedCurrentTargetA32GateRealization_core
-    cfg ext B hT hsv hbb hphase hanchor hboundary p hqH hevidence hstate
+    cfg ext B hT hsv hbb hphase hanchor hboundary p hp hqH hevidence hstate
       hval htab hendH ?_ hanchorH hfloor hgate hsupport htargetKnown
         htargetEpoch hanchorBefore
   intro Q
@@ -1507,6 +1515,7 @@ theorem
     (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg) (E := E)
       (anchor := B.anchor))
     (p : E.ScheduledEventPrefix)
+    (hp : p.node ∈ E.honest)
     (hqH : E.WithinHorizon cfg (p.previousSecond + 1))
     (hevidence : E.CurrentTargetPrefixAccountingEvidence cfg ext
       (p.store cfg ext) (p.previousSecond + 1))
@@ -1535,7 +1544,7 @@ theorem
     AcceptedCurrentTargetA32GateRealization cfg ext E B.anchor B.state
       (p.store cfg ext) := by
   apply E.scheduledEventPrefix_acceptedCurrentTargetA32GateRealization_core
-    cfg ext B hT hsv hbb hphase hanchor hboundary p hqH hevidence hstate
+    cfg ext B hT hsv hbb hphase hanchor hboundary p hp hqH hevidence hstate
       hval htab hendH ?_ hanchorH hfloor hgate hsupport htargetKnown
         htargetEpoch hanchorBefore
   intro Q
@@ -1766,6 +1775,7 @@ theorem scheduledEventPrefix_acceptedOldTargetA32GateRealization_core
     (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg) (E := E)
       (anchor := B.anchor))
     (p : E.ScheduledEventPrefix)
+    (hp : p.node ∈ E.honest)
     (hqH : E.WithinHorizon cfg (p.previousSecond + 1))
     (hevidence : E.CurrentTargetPrefixAccountingEvidence cfg ext
       (p.store cfg ext) (p.previousSecond + 1))
@@ -1815,7 +1825,7 @@ theorem scheduledEventPrefix_acceptedOldTargetA32GateRealization_core
   change B.anchor.epoch < target.epoch at hanchorBefore
   obtain ⟨Q, hgeometry⟩ :=
     E.scheduledEventPrefix_acceptedConcreteOldTargetQuorum cfg ext B hT
-      hsv hbb hphase hboundaryPhase hanchor hboundary p hqH hevidence
+      hsv hbb hphase hboundaryPhase hanchor hboundary p hp hqH hevidence
       hstate hval htab hendH hanchorH hfloor hgate hsupport htargetKnown
       htargetOld hanchorBefore
   have htargetSpan :
@@ -1857,6 +1867,7 @@ theorem scheduledEventPrefix_acceptedOldTargetA32GateRealization
     (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg) (E := E)
       (anchor := B.anchor))
     (p : E.ScheduledEventPrefix)
+    (hp : p.node ∈ E.honest)
     (hqH : E.WithinHorizon cfg (p.previousSecond + 1))
     (hevidence : E.CurrentTargetPrefixAccountingEvidence cfg ext
       (p.store cfg ext) (p.previousSecond + 1))
@@ -1888,7 +1899,7 @@ theorem scheduledEventPrefix_acceptedOldTargetA32GateRealization
     AcceptedCurrentTargetA32GateRealization cfg ext E B.anchor B.state
       (p.store cfg ext) := by
   apply E.scheduledEventPrefix_acceptedOldTargetA32GateRealization_core
-    cfg ext B hT hsv hbb hphase hboundaryPhase hanchor hboundary p hqH
+    cfg ext B hT hsv hbb hphase hboundaryPhase hanchor hboundary p hp hqH
       hevidence hstate hval htab hendH ?_ hanchorH hfloor hgate hsupport
         htargetKnown htargetOld hanchorBefore
   intro Q
@@ -1908,6 +1919,7 @@ theorem
     (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg) (E := E)
       (anchor := B.anchor))
     (p : E.ScheduledEventPrefix)
+    (hp : p.node ∈ E.honest)
     (hqH : E.WithinHorizon cfg (p.previousSecond + 1))
     (hevidence : E.CurrentTargetPrefixAccountingEvidence cfg ext
       (p.store cfg ext) (p.previousSecond + 1))
@@ -1936,7 +1948,7 @@ theorem
     AcceptedCurrentTargetA32GateRealization cfg ext E B.anchor B.state
       (p.store cfg ext) := by
   apply E.scheduledEventPrefix_acceptedOldTargetA32GateRealization_core
-    cfg ext B hT hsv hbb hphase hboundaryPhase hanchor hboundary p hqH
+    cfg ext B hT hsv hbb hphase hboundaryPhase hanchor hboundary p hp hqH
       hevidence hstate hval htab hendH ?_ hanchorH hfloor hgate hsupport
         htargetKnown htargetOld hanchorBefore
   intro Q
@@ -1964,6 +1976,7 @@ theorem scheduledEventPrefix_acceptedTargetA32GateRealization_core
     (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg) (E := E)
       (anchor := B.anchor))
     (p : E.ScheduledEventPrefix)
+    (hp : p.node ∈ E.honest)
     (hqH : E.WithinHorizon cfg (p.previousSecond + 1))
     (hevidence : E.CurrentTargetPrefixAccountingEvidence cfg ext
       (p.store cfg ext) (p.previousSecond + 1))
@@ -2020,13 +2033,13 @@ theorem scheduledEventPrefix_acceptedTargetA32GateRealization_core
     by_cases htargetEpoch :
         get_block_epoch cfg store target.root = target.epoch
     · exact E.scheduledEventPrefix_acceptedCurrentTargetA32GateRealization_core
-        cfg ext B hT hsv hbb hphase hanchor hboundary p hqH hevidence
+        cfg ext B hT hsv hbb hphase hanchor hboundary p hp hqH hevidence
         hstate hval htab hendH hdelivery hanchorH hfloor hgate hsupport
         htargetKnown htargetEpoch hanchorBefore
     · have htargetOld : get_block_epoch cfg store target.root <
           target.epoch := lt_of_le_of_ne htargetEpochLe htargetEpoch
       exact E.scheduledEventPrefix_acceptedOldTargetA32GateRealization_core
-        cfg ext B hT hsv hbb hphase hboundaryPhase hanchor hboundary p hqH
+        cfg ext B hT hsv hbb hphase hboundaryPhase hanchor hboundary p hp hqH
         hevidence hstate hval htab hendH hdelivery hanchorH hfloor hgate
         hsupport htargetKnown htargetOld hanchorBefore
 
@@ -2044,6 +2057,7 @@ theorem scheduledEventPrefix_acceptedTargetA32GateRealization
     (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg) (E := E)
       (anchor := B.anchor))
     (p : E.ScheduledEventPrefix)
+    (hp : p.node ∈ E.honest)
     (hqH : E.WithinHorizon cfg (p.previousSecond + 1))
     (hevidence : E.CurrentTargetPrefixAccountingEvidence cfg ext
       (p.store cfg ext) (p.previousSecond + 1))
@@ -2068,7 +2082,7 @@ theorem scheduledEventPrefix_acceptedTargetA32GateRealization
     AcceptedCurrentTargetA32GateRealization cfg ext E B.anchor B.state
       (p.store cfg ext) := by
   apply E.scheduledEventPrefix_acceptedTargetA32GateRealization_core
-    cfg ext B hT hsv hbb hphase hboundaryPhase hanchor hboundary p hqH
+    cfg ext B hT hsv hbb hphase hboundaryPhase hanchor hboundary p hp hqH
       hevidence hstate hval htab hendH ?_ hanchorH hfloor hgate hsupport
   intro Q
   exact Q.scheduledDelivery_of_synchrony cfg ext E hsync hnextH
@@ -2088,6 +2102,7 @@ theorem scheduledEventPrefix_acceptedTargetA32GateRealization_withLookahead
     (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg) (E := E)
       (anchor := B.anchor))
     (p : E.ScheduledEventPrefix)
+    (hp : p.node ∈ E.honest)
     (hqH : E.WithinHorizon cfg (p.previousSecond + 1))
     (hevidence : E.CurrentTargetPrefixAccountingEvidence cfg ext
       (p.store cfg ext) (p.previousSecond + 1))
@@ -2109,7 +2124,7 @@ theorem scheduledEventPrefix_acceptedTargetA32GateRealization_withLookahead
     AcceptedCurrentTargetA32GateRealization cfg ext E B.anchor B.state
       (p.store cfg ext) := by
   apply E.scheduledEventPrefix_acceptedTargetA32GateRealization_core
-    cfg ext B hT hsv hbb hphase hboundaryPhase hanchor hboundary p hqH
+    cfg ext B hT hsv hbb hphase hboundaryPhase hanchor hboundary p hp hqH
       hevidence hstate hval htab hendH ?_ hanchorH hfloor hgate hsupport
   intro Q
   exact Q.scheduledDelivery_of_lookahead cfg ext E hdelivery
@@ -2150,6 +2165,7 @@ theorem GlobalScheduledQueryPrefixCompatibility.acceptedCurrentEpochTargetGate
     (actor : ValidatorIndex) (kind : QueryKind)
     (haction : actions.getD position (.honestVoteCast 0 0 0) =
       .nodeAction actor (.query kind))
+    (hhonest : scheduledPrefix.node ∈ E.honest)
     {state : BeaconState Root}
     (hstate : state = get_pulled_up_head_state cfg ext
       (before.nodeState actor).fcrStore.store)
@@ -2212,7 +2228,7 @@ theorem GlobalScheduledQueryPrefixCompatibility.acceptedCurrentEpochTargetGate
       cfg E target before before.nextGlobalActionPosition querySecond hmoment
       h.action_compatibility.preexistingVoteActionCoverage hpreexisting
   have hevidence := h.currentTargetPrefixAccountingEvidence cfg ext hT
-    hcommittees actor kind haction
+    hcommittees actor kind haction hhonest hmoment.1
   have hqH : E.WithinHorizon cfg querySecond := hmoment.1
   have hqueryEq : queryStore = scheduledPrefix.store cfg ext := by
     simpa only [queryStore] using h.query_store_eq actor kind haction
@@ -2242,7 +2258,7 @@ theorem GlobalScheduledQueryPrefixCompatibility.acceptedCurrentEpochTargetGate
   rw [hqueryEq] at hanchorBefore
   rw [h.query_store_eq actor kind haction]
   exact E.scheduledEventPrefix_acceptedCurrentTargetA32GateRealization
-    cfg ext B hT hsync hsv hbb hphase hanchor hboundary scheduledPrefix hqH
+    cfg ext B hT hsync hsv hbb hphase hanchor hboundary scheduledPrefix hhonest hqH
     hevidence hstate hval htab hendH hnextH hanchorH hfloor hgate hsupport
     htargetKnown htargetEpoch hanchorBefore
 
@@ -2271,6 +2287,7 @@ theorem GlobalScheduledQueryPrefixCompatibility.acceptedOldEpochTargetGate
     (actor : ValidatorIndex) (kind : QueryKind)
     (haction : actions.getD position (.honestVoteCast 0 0 0) =
       .nodeAction actor (.query kind))
+    (hhonest : scheduledPrefix.node ∈ E.honest)
     {state : BeaconState Root}
     (hstate : state = get_pulled_up_head_state cfg ext
       (before.nodeState actor).fcrStore.store)
@@ -2333,7 +2350,7 @@ theorem GlobalScheduledQueryPrefixCompatibility.acceptedOldEpochTargetGate
       cfg E target before before.nextGlobalActionPosition querySecond hmoment
       h.action_compatibility.preexistingVoteActionCoverage hpreexisting
   have hevidence := h.currentTargetPrefixAccountingEvidence cfg ext hT
-    hcommittees actor kind haction
+    hcommittees actor kind haction hhonest hmoment.1
   have hqH : E.WithinHorizon cfg querySecond := hmoment.1
   have hqueryEq : queryStore = scheduledPrefix.store cfg ext := by
     simpa only [queryStore] using h.query_store_eq actor kind haction
@@ -2364,7 +2381,7 @@ theorem GlobalScheduledQueryPrefixCompatibility.acceptedOldEpochTargetGate
   rw [h.query_store_eq actor kind haction]
   exact E.scheduledEventPrefix_acceptedOldTargetA32GateRealization
     cfg ext B hT hsync hsv hbb hphase hboundaryPhase hanchor hboundary
-    scheduledPrefix hqH hevidence hstate hval htab hendH hnextH hanchorH
+    scheduledPrefix hhonest hqH hevidence hstate hval htab hendH hnextH hanchorH
     hfloor hgate hsupport htargetKnown htargetOld hanchorBefore
 
 /-- Preferred action-facing accepted target gate.
@@ -2399,6 +2416,7 @@ theorem GlobalScheduledQueryPrefixCompatibility.acceptedTargetGate
     (actor : ValidatorIndex) (kind : QueryKind)
     (haction : actions.getD position (.honestVoteCast 0 0 0) =
       .nodeAction actor (.query kind))
+    (hhonest : scheduledPrefix.node ∈ E.honest)
     {state : BeaconState Root}
     (hstate : state = get_pulled_up_head_state cfg ext
       (before.nodeState actor).fcrStore.store)
@@ -2445,7 +2463,7 @@ theorem GlobalScheduledQueryPrefixCompatibility.acceptedTargetGate
       cfg E target before before.nextGlobalActionPosition querySecond hmoment
       h.action_compatibility.preexistingVoteActionCoverage hpreexisting
   have hevidence := h.currentTargetPrefixAccountingEvidence cfg ext hT
-    hcommittees actor kind haction
+    hcommittees actor kind haction hhonest hmoment.1
   have hqH : E.WithinHorizon cfg querySecond := hmoment.1
   have hqueryEq : queryStore = scheduledPrefix.store cfg ext := by
     simpa only [queryStore] using h.query_store_eq actor kind haction
@@ -2466,10 +2484,12 @@ theorem GlobalScheduledQueryPrefixCompatibility.acceptedTargetGate
   rw [h.query_store_eq actor kind haction]
   exact E.scheduledEventPrefix_acceptedTargetA32GateRealization
     cfg ext B hT hsync hsv hbb hphase hboundaryPhase hanchor hboundary
-    scheduledPrefix hqH hevidence hstate hval htab hendH hnextH hanchorH
+    scheduledPrefix hhonest hqH hevidence hstate hval htab hendH hnextH hanchorH
     hfloor hgate hsupport
 
 end AllowedFCRCalls
 
 
 end FastConfirmation.Spec
+
+end

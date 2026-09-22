@@ -1,5 +1,8 @@
-import FastConfirmation.Spec.Proof.FinalizedResetSafety
-import FastConfirmation.Spec.Proof.Descent
+module
+public import FastConfirmation.Spec.Proof.FinalizedResetSafety
+public import FastConfirmation.Spec.Proof.Descent
+
+@[expose] public section
 
 /-!
 # Genesis and observed-reset safety without the legacy justification interface
@@ -495,3 +498,5 @@ theorem spec_safety_of_restartScopedResidual
 end Execution
 
 end FastConfirmation.Spec
+
+end

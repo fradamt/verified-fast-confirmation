@@ -1,6 +1,9 @@
-import FastConfirmation.Spec.Proof.Closing
-import FastConfirmation.Spec.Proof.INVstarTrack
-import FastConfirmation.Spec.Proof.AncestryRoots
+module
+public import FastConfirmation.Spec.Proof.Closing
+public import FastConfirmation.Spec.Proof.INVstarTrack
+public import FastConfirmation.Spec.Proof.AncestryRoots
+
+@[expose] public section
 
 /-!
 # Spec / Proof / EngineCore: the `hadv_hi` geometric core and per-edge assembly
@@ -193,3 +196,5 @@ theorem forkEdgeGroundInputs_of_base (hbb : ByzantineBound cfg E)
 end Execution
 
 end FastConfirmation.Spec
+
+end

@@ -1,4 +1,7 @@
-import FastConfirmation.Spec.Proof.Ancestry
+module
+public import FastConfirmation.Spec.Proof.Ancestry
+
+@[expose] public section
 
 /-!
 # Spec / Proof / AncestryRoots
@@ -314,3 +317,5 @@ theorem is_ancestor_trans {store : Store Root}
   exact hcomp.symm
 
 end FastConfirmation.Spec
+
+end

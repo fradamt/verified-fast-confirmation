@@ -1,5 +1,6 @@
-import FastConfirmation.Spec
-import FastConfirmation.Paper
+module
+public import FastConfirmation.Spec
+public import FastConfirmation.Paper
 
 /-!
 # Fast Confirmation Rule — repository facade

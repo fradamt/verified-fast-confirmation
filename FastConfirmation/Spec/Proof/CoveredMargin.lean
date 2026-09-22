@@ -1,4 +1,7 @@
-import FastConfirmation.Spec.Proof.ArbitraryQueryMargin
+module
+public import FastConfirmation.Spec.Proof.ArbitraryQueryMargin
+
+@[expose] public section
 
 /-!
 # Justified coverage or a selected margin
@@ -447,3 +450,5 @@ theorem safeFrom_find_latest_confirmed_descendant_of_selectedCoveredMarginsAt_mi
 end Execution
 
 end FastConfirmation.Spec
+
+end

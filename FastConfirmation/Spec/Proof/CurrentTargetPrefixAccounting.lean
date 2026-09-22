@@ -1,5 +1,8 @@
-import FastConfirmation.Spec.Proof.CausalQueryTraceAdapter
-import FastConfirmation.Spec.Proof.CurrentTargetA32Support
+module
+public import FastConfirmation.Spec.Proof.CausalQueryTraceAdapter
+public import FastConfirmation.Spec.Proof.CurrentTargetA32Support
+
+@[expose] public section
 
 /-!
 # Current-target accounting at an exact scheduled prefix
@@ -269,13 +272,11 @@ theorem will_current_target_be_justified_honest_quorum_of_prefix
       Execution.currentTargetObservedNonhonestSupporters] using
       E.currentTarget_nonhonest_weight_le_adversarial_of_prefix cfg ext hbb
         hevidence hqH hval htab
-  have hobserved : score - min adversarial score ≤
+  have hobserved : score - adversarial ≤
       E.weight observedHonest := by
-    rw [hscore, Nat.min_def]
-    split_ifs
-    · apply (Nat.sub_le_iff_le_add).2
-      exact Nat.add_le_add_left hbyz _
-    · simp only [Nat.sub_self, Nat.zero_le]
+    rw [hscore]
+    apply (Nat.sub_le_iff_le_add).2
+    exact Nat.add_le_add_left hbyz _
   have hfuture : remaining ≤ E.weight futureHonest := by
     simpa only [remaining, estimate, start, finish, futureHonest] using
       E.currentTarget_remaining_honest_le_future_weight cfg ext
@@ -290,8 +291,8 @@ theorem will_current_target_be_justified_honest_quorum_of_prefix
       at hgateArithmetic
   rw [← hstate, htab] at hgateArithmetic
   change 2 * E.total_active cfg ≤
-    3 * (score - min adversarial score + remaining) at hgateArithmetic
-  have hpredict : score - min adversarial score + remaining ≤
+    3 * (score - adversarial + remaining) at hgateArithmetic
+  have hpredict : score - adversarial + remaining ≤
       E.weight observedHonest + E.weight futureHonest :=
     Nat.add_le_add hobserved hfuture
   have hquorum : 2 * E.total_active cfg ≤
@@ -324,11 +325,13 @@ theorem GlobalScheduledQueryPrefixCompatibility.currentTargetPrefixAccountingEvi
     (hcommittees : E.ScheduledPrefixCommitteeCoherence cfg ext)
     (actor : ValidatorIndex) (kind : QueryKind)
     (haction : actions.getD position (.honestVoteCast 0 0 0) =
-      .nodeAction actor (.query kind)) :
+      .nodeAction actor (.query kind))
+    (hhonest : scheduledPrefix.node ∈ E.honest)
+    (hH : E.WithinHorizon cfg querySecond) :
     E.CurrentTargetPrefixAccountingEvidence cfg ext
       (before.nodeState actor).fcrStore.store querySecond := by
   refine
-    { operational := h.operationalEvidence cfg ext hT actor kind haction
+    { operational := h.operationalEvidence cfg ext hT actor kind haction hhonest hH
       committees := ?_ }
   rw [h.query_store_eq actor kind haction]
   exact hcommittees scheduledPrefix
@@ -416,3 +419,5 @@ end ScheduledPrefixCommitteeCoherenceNonvacuity
 
 
 end FastConfirmation.Spec
+
+end

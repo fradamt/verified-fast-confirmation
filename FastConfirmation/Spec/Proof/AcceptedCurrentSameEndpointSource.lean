@@ -1,11 +1,15 @@
-import Mathlib.Tactic
-import FastConfirmation.Spec.Proof.AcceptedCurrentSameSourceHistory
-import FastConfirmation.Spec.Proof.AcceptedPhaseSourceCarriers
-import FastConfirmation.Spec.Proof.AcceptedFFGJustifiedMaximality
-import FastConfirmation.Spec.Proof.ExactCheckpointLinks
-import FastConfirmation.Spec.Proof.AcceptedHistoricalFinalizedPlacement
-import FastConfirmation.Spec.Proof.AcceptedRealizedJustifiedOrigin
-import FastConfirmation.Spec.Proof.AcceptedHistoricalFinalizedPlacementAdapters
+module
+public import Mathlib.Tactic
+public import FastConfirmation.Spec.Proof.AcceptedCurrentSameSourceHistory
+public import FastConfirmation.Spec.Proof.AcceptedPhaseSourceCarriers
+public import FastConfirmation.Spec.Proof.AcceptedFFGJustifiedMaximality
+public import FastConfirmation.Spec.Proof.ExactCheckpointLinks
+public import FastConfirmation.Spec.Proof.AcceptedHistoricalFinalizedPlacement
+public import FastConfirmation.Spec.Proof.AcceptedRealizedJustifiedOrigin
+public import FastConfirmation.Spec.Proof.AcceptedHistoricalFinalizedPlacementAdapters
+
+@[expose] public section
+
 
 /-!
 # Current-same historical source transport to an endpoint
@@ -81,7 +85,7 @@ theorem globalJustified_honestTarget
   have hwalkDomain : E.PostAnchorHonestVoteTargetWalkDomain cfg ext :=
     E.postAnchorHonestVoteTargetWalkDomain_of_acceptedGlobalTrajectory
       cfg ext B hT hanchor hboundary
-  obtain ⟨ast, ablk, hgenEq, hslot, hparent⟩ := hT.genesis
+  obtain ⟨ast, ablk, hgenEq, hslot, hparent⟩ := hT.genesis_structure
   have hgenShort : ∃ (ast : BeaconState Root)
       (ablk : SignedBeaconBlock Root),
       E.genesis_store = get_forkchoice_store cfg ast ablk ∧
@@ -238,7 +242,7 @@ theorem retainedAt_currentSameEndpoint
       (E.store cfg ext w m).block_roots) :
     Nonempty (E.AcceptedRetainedPhaseSourceCarrierAt
       cfg ext B (E.store cfg ext w m) selected) := by
-  obtain ⟨ast, ablk, hgen, hgenSlot, hgenParent⟩ := hT.genesis
+  obtain ⟨ast, ablk, hgen, hgenSlot, hgenParent⟩ := hT.genesis_structure
   have hgenShort : ∃ (ast : BeaconState Root)
       (ablk : SignedBeaconBlock Root),
       E.genesis_store = get_forkchoice_store cfg ast ablk ∧
@@ -349,7 +353,7 @@ theorem justified_epoch_eq_queryCurrent
       get_current_store_epoch cfg (E.store cfg ext v q) := by
   let past := E.store cfg ext h.past.validator h.past.second
   let e := get_current_store_epoch cfg (E.store cfg ext v q)
-  obtain ⟨ast, ablk, hgen, hgenSlot, hgenParent⟩ := hT.genesis
+  obtain ⟨ast, ablk, hgen, hgenSlot, hgenParent⟩ := hT.genesis_structure
   have hgenShort : ∃ (ast : BeaconState Root)
       (ablk : SignedBeaconBlock Root),
       E.genesis_store = get_forkchoice_store cfg ast ablk ∧
@@ -490,7 +494,7 @@ theorem retainedAt_currentSameEndpoint
       cfg ext B (E.store cfg ext w m) selected) := by
   let past := E.store cfg ext h.past.validator h.past.second
   let endpoint := E.store cfg ext w m
-  obtain ⟨ast, ablk, hgen, hgenSlot, hgenParent⟩ := hT.genesis
+  obtain ⟨ast, ablk, hgen, hgenSlot, hgenParent⟩ := hT.genesis_structure
   have hgenShort : ∃ (ast : BeaconState Root)
       (ablk : SignedBeaconBlock Root),
       E.genesis_store = get_forkchoice_store cfg ast ablk ∧
@@ -691,3 +695,5 @@ end AcceptedCurrentSameSourceHistoryOutcome
 end Execution
 
 end FastConfirmation.Spec
+
+end

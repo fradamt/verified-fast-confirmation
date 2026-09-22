@@ -1,54 +1,56 @@
-import FastConfirmation.Spec.Model
-import FastConfirmation.Spec.Proof.CompleteEvidenceWitness
-import FastConfirmation.Spec.Proof.Containment
-import FastConfirmation.Spec.ProvenTheorems
-import FastConfirmation.Spec.Proof.AcceptedStrictPrefixExtraQueryCounterexample
-import FastConfirmation.Spec.Proof.AcceptedPinnedEconomicsStrictPrefixExtraQueryCounterexample
-import FastConfirmation.Spec.Proof.WeakOneShotSafety
-import FastConfirmation.Spec.Proof.WeakFinalizedInput
-import FastConfirmation.Spec.Proof.WeakFreshSupport
-import FastConfirmation.Spec.Proof.WeakQuorumAccounting
-import FastConfirmation.Spec.Proof.WeakEndpointClasses
-import FastConfirmation.Spec.Proof.WeakCrossingSets
-import FastConfirmation.Spec.Proof.WeakSiblingScore
-import FastConfirmation.Spec.Proof.WeakSelectorBetween
-import FastConfirmation.Spec.Proof.WeakSelectedEdgeGeometry
-import FastConfirmation.Spec.Proof.WeakSelectedMarginInputs
-import FastConfirmation.Spec.Proof.WeakCoveredMarginConstruction
-import FastConfirmation.Spec.Proof.WeakOneShotSafetyNative
-import FastConfirmation.Spec.Proof.WeakObserverDomain
-import FastConfirmation.Spec.Proof.WeakSourceHistory
-import FastConfirmation.Spec.Proof.WeakSelectedTrace
-import FastConfirmation.Spec.Proof.WeakCertificateMonotone
-import FastConfirmation.Spec.Proof.WeakFCRCallContracts
-import FastConfirmation.Spec.Proof.WeakObserverReplay
-import FastConfirmation.Spec.Proof.WeakReplayRelation
-import FastConfirmation.Spec.Proof.WeakBankedJustification
-import FastConfirmation.Spec.Proof.WeakJustificationTiming
-import FastConfirmation.Spec.Proof.WeakSeedDissemination
-import FastConfirmation.Spec.Proof.WeakEarlyPhaseSourceWiring
-import FastConfirmation.Spec.Proof.WeakCandidateHistoryRecurrence
-import FastConfirmation.Spec.Proof.WeakCandidateSourceHistory
-import FastConfirmation.Spec.Proof.WeakHistoricalA32OriginCall
-import FastConfirmation.Spec.Proof.WeakSelectedStrictEdgeFilterSupply
-import FastConfirmation.Spec.Proof.WeakPreQuerySIR
-import FastConfirmation.Spec.Proof.WeakHistoricalA32Geometry
-import FastConfirmation.Spec.Proof.WeakHistoricalA32Step
-import FastConfirmation.Spec.Proof.WeakHistoricalA32CallSupplier
-import FastConfirmation.Spec.Proof.WeakHistoricalA32LazyCrossing
-import FastConfirmation.Spec.Proof.WeakHistoricalA32OneStep
-import FastConfirmation.Spec.Proof.WeakHistoricalA32Induction
-import FastConfirmation.Spec.Proof.WeakSelectedJustifiedOrientation
-import FastConfirmation.Spec.Proof.WeakHistoricalA32PayloadProducer
-import FastConfirmation.Spec.Proof.WeakObserverStrictCallFilterInputs
-import FastConfirmation.Spec.Proof.WeakOneShotSafetyClosed
-import FastConfirmation.Spec.Proof.WeakObservedRestartAdoption
-import FastConfirmation.Spec.Proof.WeakObservedRestartDynamicSafety
-import FastConfirmation.Spec.Proof.WeakTrajectorySafety
-import FastConfirmation.Spec.Proof.WeakObservedResetSeedSafety
-import FastConfirmation.Spec.Proof.HonestTargetAgreement
-import FastConfirmation.Spec.Proof.AcceptedHistoricalA32OriginCall
-import FastConfirmation.Spec.Proof.EndpointQuorumCausality
+module
+public import FastConfirmation.Spec.Model
+public import FastConfirmation.Spec.Proof.CompleteEvidenceWitness
+public import FastConfirmation.Spec.Proof.Containment
+public import FastConfirmation.Spec.ProvenTheorems
+public import FastConfirmation.Spec.Proof.AcceptedStrictPrefixExtraQueryCounterexample
+public import FastConfirmation.Spec.Proof.AcceptedPinnedEconomicsStrictPrefixExtraQueryCounterexample
+public import FastConfirmation.Spec.Proof.WeakOneShotSafety
+public import FastConfirmation.Spec.Proof.WeakFinalizedInput
+public import FastConfirmation.Spec.Proof.WeakFreshSupport
+public import FastConfirmation.Spec.Proof.WeakQuorumAccounting
+public import FastConfirmation.Spec.Proof.WeakEndpointClasses
+public import FastConfirmation.Spec.Proof.WeakCrossingSets
+public import FastConfirmation.Spec.Proof.WeakSiblingScore
+public import FastConfirmation.Spec.Proof.WeakSelectorBetween
+public import FastConfirmation.Spec.Proof.WeakSelectedEdgeGeometry
+public import FastConfirmation.Spec.Proof.WeakSelectedMarginInputs
+public import FastConfirmation.Spec.Proof.WeakCoveredMarginConstruction
+public import FastConfirmation.Spec.Proof.WeakOneShotSafetyNative
+public import FastConfirmation.Spec.Proof.WeakObserverDomain
+public import FastConfirmation.Spec.Proof.WeakSourceHistory
+public import FastConfirmation.Spec.Proof.WeakSelectedTrace
+public import FastConfirmation.Spec.Proof.WeakCertificateMonotone
+public import FastConfirmation.Spec.Proof.WeakFCRCallContracts
+public import FastConfirmation.Spec.Proof.WeakObserverReplay
+public import FastConfirmation.Spec.Proof.WeakReplayRelation
+public import FastConfirmation.Spec.Proof.WeakBankedJustification
+public import FastConfirmation.Spec.Proof.WeakJustificationTiming
+public import FastConfirmation.Spec.Proof.WeakSeedDissemination
+public import FastConfirmation.Spec.Proof.WeakEarlyPhaseSourceWiring
+public import FastConfirmation.Spec.Proof.WeakCandidateHistoryRecurrence
+public import FastConfirmation.Spec.Proof.WeakCandidateSourceHistory
+public import FastConfirmation.Spec.Proof.WeakHistoricalA32OriginCall
+public import FastConfirmation.Spec.Proof.WeakSelectedStrictEdgeFilterSupply
+public import FastConfirmation.Spec.Proof.WeakPreQuerySIR
+public import FastConfirmation.Spec.Proof.WeakHistoricalA32Geometry
+public import FastConfirmation.Spec.Proof.WeakHistoricalA32Step
+public import FastConfirmation.Spec.Proof.WeakHistoricalA32CallSupplier
+public import FastConfirmation.Spec.Proof.WeakHistoricalA32LazyCrossing
+public import FastConfirmation.Spec.Proof.WeakHistoricalA32OneStep
+public import FastConfirmation.Spec.Proof.WeakHistoricalA32Induction
+public import FastConfirmation.Spec.Proof.WeakSelectedJustifiedOrientation
+public import FastConfirmation.Spec.Proof.WeakHistoricalA32PayloadProducer
+public import FastConfirmation.Spec.Proof.WeakObserverStrictCallFilterInputs
+public import FastConfirmation.Spec.Proof.WeakOneShotSafetyClosed
+public import FastConfirmation.Spec.Proof.WeakObservedRestartAdoption
+public import FastConfirmation.Spec.Proof.WeakObservedRestartDynamicSafety
+public import FastConfirmation.Spec.Proof.WeakTrajectorySafety
+public import FastConfirmation.Spec.Proof.WeakObservedResetSeedSafety
+public import FastConfirmation.Spec.Proof.HonestTargetAgreement
+public import FastConfirmation.Spec.Proof.AcceptedHistoricalA32OriginCall
+public import FastConfirmation.Spec.Proof.EndpointQuorumCausality
+
 
 /-!
 # Spec — facade

@@ -1,4 +1,7 @@
-import FastConfirmation.Spec.Proof.ArbitraryQueryMargin
+module
+public import FastConfirmation.Spec.Proof.ArbitraryQueryMargin
+
+@[expose] public section
 
 /-!
 # Committee support from the arbitrary-query slot-start induction
@@ -136,3 +139,5 @@ theorem committeeSupportsAt_of_slotStart_IH_minimal
 end Execution
 
 end FastConfirmation.Spec
+
+end

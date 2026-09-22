@@ -1,5 +1,8 @@
-import FastConfirmation.Spec.Proof.CheckpointGeometry
-import FastConfirmation.Spec.Proof.FFGGlobalCheckpointTrajectory
+module
+public import FastConfirmation.Spec.Proof.CheckpointGeometry
+public import FastConfirmation.Spec.Proof.FFGGlobalCheckpointTrajectory
+
+@[expose] public section
 
 /-!
 # Safety-free trusted-anchor geometry
@@ -227,3 +230,5 @@ theorem checkpointForBlock_storeLE
 end Execution
 
 end FastConfirmation.Spec
+
+end

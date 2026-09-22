@@ -1,4 +1,7 @@
-import FastConfirmation.Spec.Proof.FFGEndpointRealization
+module
+public import FastConfirmation.Spec.Proof.FFGEndpointRealization
+
+@[expose] public section
 
 /-!
 # Global FFG checkpoint trajectory
@@ -377,9 +380,12 @@ theorem on_block
     (h : FFGGlobalCheckpointOrigins cfg S store)
     (hh : FastConfirmation.Spec.on_block cfg ext store sb = some store') :
     FFGGlobalCheckpointOrigins cfg S store' := by
-  simp only [FastConfirmation.Spec.on_block] at hh
-  split_ifs at hh <;> try cases hh
-  all_goals
+  by_cases hknown : sb.root ∈ store.block_roots
+  · simp only [FastConfirmation.Spec.on_block, if_pos hknown] at hh
+    cases hh
+    exact h
+  · simp only [FastConfirmation.Spec.on_block, if_neg hknown] at hh
+    split_ifs at hh <;> try cases hh
     cases hst : ext.state_transition
         (store.block_states sb.message.parent_root) sb with
     | none => rw [hst] at hh; cases hh
@@ -1407,9 +1413,12 @@ theorem on_block
     (h : FFGGlobalCheckpointLedger cfg S store)
     (hh : FastConfirmation.Spec.on_block cfg ext store sb = some store') :
     FFGGlobalCheckpointLedger cfg S store' := by
-  simp only [FastConfirmation.Spec.on_block] at hh
-  split_ifs at hh <;> try cases hh
-  all_goals
+  by_cases hknown : sb.root ∈ store.block_roots
+  · simp only [FastConfirmation.Spec.on_block, if_pos hknown] at hh
+    cases hh
+    exact h
+  · simp only [FastConfirmation.Spec.on_block, if_neg hknown] at hh
+    split_ifs at hh <;> try cases hh
     cases hst : ext.state_transition
         (store.block_states sb.message.parent_root) sb with
     | none => rw [hst] at hh; cases hh
@@ -1553,9 +1562,12 @@ theorem oldGU_on_block
     (h : OldGURealized cfg S store)
     (hh : FastConfirmation.Spec.on_block cfg ext store sb = some store') :
     OldGURealized cfg S store' := by
-  simp only [FastConfirmation.Spec.on_block] at hh
-  split_ifs at hh <;> try cases hh
-  all_goals
+  by_cases hknown : sb.root ∈ store.block_roots
+  · simp only [FastConfirmation.Spec.on_block, if_pos hknown] at hh
+    cases hh
+    exact h
+  · simp only [FastConfirmation.Spec.on_block, if_neg hknown] at hh
+    split_ifs at hh <;> try cases hh
     cases hst : ext.state_transition
         (store.block_states sb.message.parent_root) sb with
     | none => rw [hst] at hh; cases hh
@@ -2037,3 +2049,5 @@ theorem endpointSelectorRealization_of_globalTrajectory
 end Execution
 
 end FastConfirmation.Spec
+
+end

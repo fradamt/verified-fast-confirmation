@@ -1,5 +1,8 @@
-import FastConfirmation.Spec.Proof.FindLatestSafety
-import FastConfirmation.Spec.Proof.MarginProducer
+module
+public import FastConfirmation.Spec.Proof.FindLatestSafety
+public import FastConfirmation.Spec.Proof.MarginProducer
+
+@[expose] public section
 
 /-!
 # Minimal coherence domain for strict selected-result safety
@@ -255,7 +258,7 @@ theorem honestSupporter_of_confirmed_known_at_minimal
     exact E.checkpoint_states_total_active_balance cfg ext hA.static_validators
       hA.externals_coherence (hdiv := hA.whole_seconds) v n c hkey hH
   have hprov := E.latestMessageProvenance cfg ext hA.wellFormed
-    hA.externals_coherence hgen0 v n
+    hA.externals_coherence hgen0 v n (by assumption) (by assumption)
   rw [← E.store_current_slot cfg ext v n] at hprov
   have hwf : ParentSlotLt (E.store cfg ext v n) :=
     E.store_parentSlotLt cfg ext hA.wellFormed hA.externals_coherence
@@ -271,7 +274,7 @@ theorem honestSupporter_of_confirmed_known_at_minimal
     intro i _ lm hlm
     obtain ⟨_, _, _, _, _, _, _, hlmKnown, _⟩ :=
       E.latestMessageProvenance cfg ext hA.wellFormed hA.externals_coherence
-        hgen0 v n i lm hlm
+        hgen0 v n (by assumption) (by assumption) i lm hlm
     exact hwalkK b hb lm.root hlmKnown
   have hbslot : ((E.store cfg ext v n).blocks b).slot ≤
       get_current_slot cfg (E.store cfg ext v n) :=
@@ -298,7 +301,7 @@ theorem honestSupporter_of_confirmed_known_at_minimal
   have hne : ∀ i ∈ (E.store cfg ext v n).equivocating_indices,
       i ∉ E.honest := fun i hi hih =>
     E.honest_not_equivocating cfg ext hA.honest_behavior
-      hA.externals_coherence hgen0 hih v n hi
+      hA.externals_coherence hgen0 hih v n (by assumption) (by assumption) hi
   have hdisc := support_discount_le_parent_stuck cfg ext hA.externals_coherence
     hA.byzantine_bound hv hH hval hstartH hbH htab hne
   have hsub : ParentStuck cfg E (E.store cfg ext v n) bs b ⊆
@@ -344,7 +347,7 @@ theorem honestSupporter_of_confirmed_known_at_minimal
 earlier honest voting store, using only justified-root fallback knownness. -/
 theorem past_descendant_of_honest_supporter_known_minimal
     (hA : SelectedMarginAssumptions cfg ext E)
-    (v : ValidatorIndex) (n : ℕ) (b : Root)
+    (v : ValidatorIndex) (hv : v ∈ E.honest) (n : ℕ) (b : Root)
     (hH : E.WithinHorizon cfg n)
     (i : ValidatorIndex) (hi : i ∈ E.honest) (lm : LatestMessage Root)
     (hlm : (E.store cfg ext v n).latest_messages i = some lm)
@@ -375,7 +378,7 @@ theorem past_descendant_of_honest_supporter_known_minimal
   obtain ⟨ap, _hiap, _htarget, _hbbrap, hapEpoch, hapBound, hapComm,
       hlmKnown, hlmSlot⟩ :=
     E.latestMessageProvenance cfg ext hA.wellFormed hA.externals_coherence
-      hgen0 v n i lm hlm
+      hgen0 v n hv hH i lm hlm
   have hepoch : compute_epoch_at_slot cfg s =
       compute_epoch_at_slot cfg ap.data.slot := by
     rw [hslotep, hapEpoch]
@@ -606,7 +609,7 @@ theorem confirmed_known_at_all_honest_endpoints_minimal
       fcrStore hstore b hHn hb hparent hconf
   obtain ⟨u, nu, d, hu, hHnu, hslot, hd, hanc⟩ :=
     E.past_descendant_of_honest_supporter_known_minimal cfg ext hA
-      v n b hHn i hi lm hlm hsupp
+      v hv n b hHn i hi lm hlm hsupp
   exact E.mem_of_known_honest_past_descendant_minimal cfg ext hA
     v hv n b hHn hb w hw m hnm hHm u hu nu hHnu d hslot hd hanc
 
@@ -638,7 +641,7 @@ theorem confirmed_ancestry_at_all_honest_endpoints_minimal
       fcrStore hstore b hHn hb hparent hconf
   obtain ⟨u, nu, d, hu, hHnu, hslot, hd, hdb⟩ :=
     E.past_descendant_of_honest_supporter_known_minimal cfg ext hA
-      v n b hHn i hi lm hlm hsupp
+      v hv n b hHn i hi lm hlm hsupp
   exact E.ancestry_of_known_honest_past_descendant_minimal cfg ext hA
     v hv n b r₀ hHn hb hr₀ hbge w hw m hnm hHm
       u hu nu hHnu d hslot hd hdb
@@ -1115,7 +1118,7 @@ theorem futureCrossing_descendStep_of_selectedInputs_minimal
       ⟨ast, ablk, hgeq, hslot, hparent⟩
       hA.wellFormed.anchor_parent_unscheduled v q
   have hprov := E.latestMessageProvenance cfg ext hA.wellFormed
-    hA.externals_coherence hgen v q
+    hA.externals_coherence hgen v q (by assumption) (by assumption)
   rw [← E.store_current_slot cfg ext v q] at hprov
   have hwalkK := E.store_walkKnownK cfg ext hA.wellFormed
     hA.externals_coherence ⟨ast, ablk, hgeq, hslot, hparent⟩ v q
@@ -1212,7 +1215,7 @@ theorem crossingEdge_descendStep_of_selectedInputs_minimal
       ⟨ast, ablk, hgeq, hslot, hparent⟩
       hA.wellFormed.anchor_parent_unscheduled v q
   have hprov := E.latestMessageProvenance cfg ext hA.wellFormed
-    hA.externals_coherence hgen v q
+    hA.externals_coherence hgen v q (by assumption) (by assumption)
   rw [← E.store_current_slot cfg ext v q] at hprov
   have hwalkK := E.store_walkKnownK cfg ext hA.wellFormed
     hA.externals_coherence ⟨ast, ablk, hgeq, hslot, hparent⟩ v q
@@ -1333,3 +1336,5 @@ theorem safeFrom_find_latest_confirmed_descendant_of_selectedMargins_minimal
 end Execution
 
 end FastConfirmation.Spec
+
+end

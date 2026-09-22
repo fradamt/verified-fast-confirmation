@@ -1,5 +1,8 @@
-import FastConfirmation.Spec.Proof.EngineInduction
-import FastConfirmation.Spec.Proof.BlockAgreement
+module
+public import FastConfirmation.Spec.Proof.EngineInduction
+public import FastConfirmation.Spec.Proof.BlockAgreement
+
+@[expose] public section
 
 /-!
 # Spec / Proof / EngineTransport (package facts at later stores)
@@ -196,11 +199,12 @@ theorem mem_AttSupporters_of_honest_committee {E : Execution Root}
     (hcomm : i ∈ E.committee t)
     (hlm : (E.store cfg ext w m).latest_messages i = some lm)
     (hsupp : is_ancestor (E.store cfg ext w m)
-      (get_supported_node (E.store cfg ext w m) lm) node = true) :
+      (get_supported_node (E.store cfg ext w m) lm) node = true)
+    (hw : w ∈ E.honest) (hmH : E.WithinHorizon cfg m) :
     i ∈ AttSupporters cfg (E.store cfg ext w m) node bs := by
   obtain ⟨hact, huns⟩ :=
     honest_active_unslashed cfg ext hhb hec hsv hval hbsH hi htH hcomm
-  exact mem_AttSupporters_honest cfg ext hhb hec hgen hi hact huns hlm hsupp
+  exact mem_AttSupporters_honest cfg ext (hw := hw) (hmH := hmH) hhb hec hgen hi hact huns hlm hsupp
 
 /-! ## The recorded-support lower bound: the ledger's `hscore` producer
 
@@ -233,9 +237,10 @@ theorem recorded_support_lower_of_honest_committee {E : Execution Root}
       (∃ t : Slot, E.SlotWithinHorizon cfg t ∧ i ∈ E.committee t) ∧
       ∃ lm, (E.store cfg ext w m).latest_messages i = some lm ∧
         is_ancestor (E.store cfg ext w m)
-          (get_supported_node (E.store cfg ext w m) lm) node = true) :
+          (get_supported_node (E.store cfg ext w m) lm) node = true)
+    (hw : w ∈ E.honest) (hmH : E.WithinHorizon cfg m) :
     E.weight HS ≤ get_attestation_score cfg (E.store cfg ext w m) node bs := by
-  refine recorded_support_lower_HS cfg ext hhb hec hgen hval HS (fun i hi => ?_)
+  refine recorded_support_lower_HS cfg ext (hw := hw) (hmH := hmH) hhb hec hgen hval HS (fun i hi => ?_)
   obtain ⟨hih, ⟨t, htH, hcomm⟩, lm, hlm, hsupp⟩ := hHS i hi
   obtain ⟨hact, huns⟩ :=
     honest_active_unslashed cfg ext hhb hec hsv hval hbsH hih htH hcomm
@@ -308,7 +313,8 @@ theorem recorded_supports_c_of_IH {E : Execution Root}
     (hwa_wm : WalkKnown (E.store cfg ext w m) ((E.store cfg ext w m).blocks c).slot lm.root)
     (hwb_wm : WalkKnown (E.store cfg ext w m) ((E.store cfg ext w m).blocks c).slot b)
     (hbc_wm : is_ancestor (E.store cfg ext w m)
-      (ForkChoiceNode.mk b) (ForkChoiceNode.mk c) = true) :
+      (ForkChoiceNode.mk b) (ForkChoiceNode.mk c) = true)
+    (hw : w ∈ E.honest) (hmH : E.WithinHorizon cfg m) :
     is_ancestor (E.store cfg ext w m)
       (get_supported_node (E.store cfg ext w m) lm) (get_node_for_root c) = true := by
   rcases eq_or_lt_of_le hepge with heq | hlt
@@ -327,7 +333,7 @@ theorem recorded_supports_c_of_IH {E : Execution Root}
     have hcomm_sl : i ∈ E.committee a'.data.slot :=
       hhb.votes_assigned i hi a'.data.slot (by rw [hvote_sl]; exact Option.some_ne_none _)
     obtain ⟨a2, -, -, -, hep2, hbound2, hcomm2, -, -⟩ :=
-      E.latestMessageProvenance cfg ext hwf hec hgen w m i lm hlm
+      E.latestMessageProvenance cfg ext hwf hec hgen w m hw hmH i lm hlm
     have hslot_eq : a'.data.slot = a2.data.slot :=
       hec.committee_assignment_unique i a'.data.slot a2.data.slot hcomm_sl hcomm2
         (by rw [hep', hep2])
@@ -405,7 +411,8 @@ theorem HS0_in_AttSupporters {E : Execution Root}
       WalkKnown (E.store cfg ext v₀ n₀)
         ((E.store cfg ext v₀ n₀).blocks b).slot a.data.beacon_block_root)
     (hwalk_wm : ∀ i ∈ HS₀, ∀ lm, (E.store cfg ext w m).latest_messages i = some lm →
-      WalkKnown (E.store cfg ext w m) ((E.store cfg ext w m).blocks c).slot lm.root) :
+      WalkKnown (E.store cfg ext w m) ((E.store cfg ext w m).blocks c).slot lm.root)
+    (hw : w ∈ E.honest) (hmH : E.WithinHorizon cfg m) :
     ∀ i ∈ HS₀, i ∈ AttSupporters cfg (E.store cfg ext w m) (get_node_for_root c) bs := by
   intro i hi
   obtain ⟨t, kk, a, hts, hvt, hmid, hgvn⟩ := hpkg.votes i hi
@@ -419,9 +426,9 @@ theorem HS0_in_AttSupporters {E : Execution Root}
     hhb.votes_assigned i hih t (by rw [hvt]; exact Option.some_ne_none _)
   have hsupp : is_ancestor (E.store cfg ext w m)
       (get_supported_node (E.store cfg ext w m) lm) (get_node_for_root c) = true :=
-    recorded_supports_c_of_IH cfg ext hwf hhb hec hgen hih hts hvt hmid hgvn hlm hepge
+    recorded_supports_c_of_IH cfg ext (hw := hw) (hmH := hmH) hwf hhb hec hgen hih hts hvt hmid hgvn hlm hepge
       hslot_m hIH hsub hbbr_vn hb_vn hwa_vn hwf_pl (hwalk_wm i hi lm hlm) hwb_wm hbc_wm
-  exact mem_AttSupporters_of_honest_committee cfg ext hhb hec hsv hgen hval hbsH
+  exact mem_AttSupporters_of_honest_committee cfg ext (hw := hw) (hmH := hmH) hhb hec hsv hgen hval hbsH
     hih htH hcomm hlm hsupp
 
 /-! ## `EngineTransport` result 2: the new-window honest voters support the fork child
@@ -463,7 +470,8 @@ theorem newvoter_recorded_supports_c_of_IH {E : Execution Root}
     (hwa_wm : WalkKnown (E.store cfg ext w m) ((E.store cfg ext w m).blocks c).slot lm.root)
     (hwb_wm : WalkKnown (E.store cfg ext w m) ((E.store cfg ext w m).blocks c).slot b)
     (hbc_wm : is_ancestor (E.store cfg ext w m)
-      (ForkChoiceNode.mk b) (ForkChoiceNode.mk c) = true) :
+      (ForkChoiceNode.mk b) (ForkChoiceNode.mk c) = true)
+    (hw : w ∈ E.honest) (hmH : E.WithinHorizon cfg m) :
     is_ancestor (E.store cfg ext w m)
       (get_supported_node (E.store cfg ext w m) lm) (get_node_for_root c) = true := by
   obtain ⟨a', u, tt, ifb, hsched, hvin, hbbr', hep'⟩ :=
@@ -472,7 +480,7 @@ theorem newvoter_recorded_supports_c_of_IH {E : Execution Root}
   have hcomm_sl : i ∈ E.committee a'.data.slot :=
     hhb.votes_assigned i hi a'.data.slot (by rw [hvote_sl]; exact Option.some_ne_none _)
   obtain ⟨a2, -, -, -, hep2, hbound2, hcomm2, -, -⟩ :=
-    E.latestMessageProvenance cfg ext hwf hec hgen w m i lm hlm
+    E.latestMessageProvenance cfg ext hwf hec hgen w m hw hmH i lm hlm
   have hslot_eq : a'.data.slot = a2.data.slot :=
     hec.committee_assignment_unique i a'.data.slot a2.data.slot hcomm_sl hcomm2
       (by rw [hep', hep2])
@@ -524,13 +532,14 @@ theorem NewVoters_in_AttSupporters {E : Execution Root}
       E.SlotWithinHorizon cfg t' ∧ i ∈ E.committee t' ∧ s ≤ t' ∧
       (E.store cfg ext w m).latest_messages i = some lm ∧
       compute_epoch_at_slot cfg t' ≤ lm.epoch ∧
-      WalkKnown (E.store cfg ext w m) ((E.store cfg ext w m).blocks c).slot lm.root) :
+      WalkKnown (E.store cfg ext w m) ((E.store cfg ext w m).blocks c).slot lm.root)
+    (hw : w ∈ E.honest) (hmH : E.WithinHorizon cfg m) :
     ∀ i ∈ NV, i ∈ AttSupporters cfg (E.store cfg ext w m) (get_node_for_root c) bs := by
   intro i hi
   obtain ⟨hih, t', lm, ht'H, hcomm_t', hst', hlm, hepge, hwa_wm⟩ := hNV i hi
-  have hsupp := newvoter_recorded_supports_c_of_IH cfg ext hwf hhb hec hgen hih hcomm_t' hst'
+  have hsupp := newvoter_recorded_supports_c_of_IH cfg ext (hw := hw) (hmH := hmH) hwf hhb hec hgen hih hcomm_t' hst'
     hlm hepge hslot_m hIH hwf_pl hwa_wm hwb_wm hbc_wm
-  exact mem_AttSupporters_of_honest_committee cfg ext hhb hec hsv hgen hval hbsH
+  exact mem_AttSupporters_of_honest_committee cfg ext (hw := hw) (hmH := hmH) hhb hec hsv hgen hval hbsH
     hih ht'H hcomm_t' hlm hsupp
 
 /-! ## `EngineTransport` result 3: sibling disjointness against a `c`-supporting set
@@ -578,3 +587,5 @@ theorem sibling_disjoint_of_supports_c {store : Store Root}
   exact no_index_supports_both_siblings hwf_pl hc hc' hp hpc hpc' hne hwc hwc' hsc hsc'
 
 end FastConfirmation.Spec
+
+end

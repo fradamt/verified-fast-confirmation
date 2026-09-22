@@ -1,4 +1,7 @@
-import FastConfirmation.Spec.Model.Assumptions
+module
+public import FastConfirmation.Spec.Model.Assumptions
+
+@[expose] public section
 
 /-!
 # Spec / Model / FFGCertificates
@@ -88,3 +91,5 @@ structure CertifiedFinalized (E : Execution Root) (anchor c : Checkpoint Root) w
   finalizing_link : SupermajorityLink cfg E c child
 
 end FastConfirmation.Spec
+
+end

@@ -1,4 +1,7 @@
-import FastConfirmation.Spec.Proof.ResidualMechanical
+module
+public import FastConfirmation.Spec.Proof.ResidualMechanical
+
+@[expose] public section
 
 /-!
 # Spec / Proof / ResidualMechanicalII: refining `MechanicalResiduals`
@@ -455,3 +458,5 @@ theorem spec_safety_of_mechanicalII
     (fun E hSA => E.mechanicalResiduals_of_II cfg ext hSA (hmech E hSA))
 
 end FastConfirmation.Spec
+
+end

@@ -1,7 +1,11 @@
-import FastConfirmation.Spec.Proof.SelectedTraceCoverage
-import FastConfirmation.Spec.Proof.SelectedEdgeGeometry
-import FastConfirmation.Spec.Proof.SelectedFilterChainGeometry
-import FastConfirmation.Spec.Proof.Delivery
+module
+public import FastConfirmation.Spec.Proof.SelectedTraceCoverage
+public import FastConfirmation.Spec.Proof.SelectedEdgeGeometry
+public import FastConfirmation.Spec.Proof.SelectedFilterChainGeometry
+public import FastConfirmation.Spec.Proof.Delivery
+
+@[expose] public section
+
 
 /-!
 # Selected current-target support: the exact executable consequence
@@ -67,3 +71,5 @@ theorem current_target_eq_checkpoint_of_current_epoch_ancestor
 end Execution
 
 end FastConfirmation.Spec
+
+end

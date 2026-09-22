@@ -1,4 +1,7 @@
-import FastConfirmation.Spec.Proof.SelectedFilterBridge
+module
+public import FastConfirmation.Spec.Proof.SelectedFilterBridge
+
+@[expose] public section
 
 /-!
 # Complete selected-loop edge coverage
@@ -467,3 +470,5 @@ theorem retained_selected_edge_child_slot_gt_input
   · exact Or.inr htent
 
 end FastConfirmation.Spec
+
+end

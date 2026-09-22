@@ -1,4 +1,7 @@
-import FastConfirmation.Spec.Proof.MicroSteps
+module
+public import FastConfirmation.Spec.Proof.MicroSteps
+
+@[expose] public section
 
 /-!
 # Spec / Proof / Covering FFG interface
@@ -37,3 +40,5 @@ def CoveringFFG (b : Root) (w : ValidatorIndex) (m : ℕ) : Prop :=
 end Execution
 
 end FastConfirmation.Spec
+
+end

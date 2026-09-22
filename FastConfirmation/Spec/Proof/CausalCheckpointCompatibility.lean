@@ -1,5 +1,8 @@
-import FastConfirmation.Spec.Proof.SelectedCommitteeSupport
-import FastConfirmation.Spec.Proof.CertExtract
+module
+public import FastConfirmation.Spec.Proof.SelectedCommitteeSupport
+public import FastConfirmation.Spec.Proof.CertExtract
+
+@[expose] public section
 
 /-!
 # Causal checkpoint compatibility for a post-query selected edge
@@ -183,3 +186,5 @@ theorem endpoint_justified_ancestor_of_causal_honest_target_minimal
 end Execution
 
 end FastConfirmation.Spec
+
+end

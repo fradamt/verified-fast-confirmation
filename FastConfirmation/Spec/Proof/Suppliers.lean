@@ -1,4 +1,8 @@
-import FastConfirmation.Spec.Proof.Structural
+module
+public import FastConfirmation.Spec.Proof.Structural
+
+@[expose] public section
+
 
 /-!
 # Spec / Proof / Suppliers: wiring the engine-ground advance leg
@@ -213,3 +217,5 @@ machinery of Sections 1-2 (`advance_safe_of_disjunctive`, `hbk_of_confirming`,
 `docs/p6-justified-descends-derivation.md` §8. -/
 
 end FastConfirmation.Spec
+
+end

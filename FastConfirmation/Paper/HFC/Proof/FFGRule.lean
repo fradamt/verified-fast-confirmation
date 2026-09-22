@@ -1,5 +1,8 @@
-import FastConfirmation.Paper.HFC.Model.FFGRule
-import FastConfirmation.Paper.HFC.Proof.Justification
+module
+public import FastConfirmation.Paper.HFC.Model.FFGRule
+public import FastConfirmation.Paper.HFC.Proof.Justification
+
+@[expose] public section
 
 /-!
 # HFC / Proof / FFGRule — the anchor bridge (Algorithm 1 ⇒ the GU-anchor precondition)
@@ -113,3 +116,5 @@ theorem highestConfirmedAlg1_slot_ge_of_mem {τ : Timing} {fm : FaultModel n} {c
     exact List.le_of_mem_argmax (Finset.mem_toList.mpr hmemcand) harg
 
 end FastConfirmation.HFC
+
+end

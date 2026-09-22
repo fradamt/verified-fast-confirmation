@@ -1,5 +1,8 @@
-import FastConfirmation.Spec.Proof.ObservedDom
-import FastConfirmation.Spec.Proof.L4Fold
+module
+public import FastConfirmation.Spec.Proof.ObservedDom
+public import FastConfirmation.Spec.Proof.L4Fold
+
+@[expose] public section
 
 /-!
 # Spec / Proof / MicroSteps: structural reductions
@@ -215,3 +218,5 @@ theorem walkClosure_of_anchorGuard {P : Root}
 end Execution
 
 end FastConfirmation.Spec
+
+end

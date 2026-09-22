@@ -1,5 +1,8 @@
-import FastConfirmation.Spec.Proof.AcceptedSameEpochSegmentRealization
-import FastConfirmation.Spec.Proof.AcceptedCurrentTargetPrefixVoteRealization
+module
+public import FastConfirmation.Spec.Proof.AcceptedSameEpochSegmentRealization
+public import FastConfirmation.Spec.Proof.AcceptedCurrentTargetPrefixVoteRealization
+
+@[expose] public section
 
 /-!
 # Accepted current-target lower contracts
@@ -43,7 +46,7 @@ theorem justifiedRootKnown_of_acceptedGlobalTrajectory
     (_hHm : E.WithinHorizon cfg m) :
     (E.store cfg ext w m).justified_checkpoint.root ∈
       (E.store cfg ext w m).block_roots := by
-  obtain ⟨ast, ablk, hgenEq, hslot, hparent⟩ := hT.genesis
+  obtain ⟨ast, ablk, hgenEq, hslot, hparent⟩ := hT.genesis_structure
   have hgenShort : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
       E.genesis_store = get_forkchoice_store cfg ast ablk ∧
       ast.slot = ablk.message.slot :=
@@ -122,9 +125,9 @@ theorem storeDomainK_of_acceptedGlobalTrajectory
   intro w hw m hHm
   exact
     ⟨E.store_parentSlotLt cfg ext hT.wellFormed hT.externals_coherence
-        hT.genesis hT.wellFormed.anchor_parent_unscheduled w m,
+        hT.genesis_structure hT.wellFormed.anchor_parent_unscheduled w m,
       E.store_walkKnownK cfg ext hT.wellFormed hT.externals_coherence
-        hT.genesis w m,
+        hT.genesis_structure w m,
       E.justifiedRootKnown_of_acceptedGlobalTrajectory cfg ext B hT
         hanchor hboundary hw m hHm⟩
 
@@ -153,7 +156,7 @@ pure consequence of scheduled-prefix trajectory data. -/
 theorem exactCausalStoreWellFormedCore_of_trajectory
     (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext) :
     E.ExactCausalStoreWellFormedCore cfg ext := by
-  obtain ⟨ast, ablk, hgen, hslot, hparent⟩ := hT.genesis
+  obtain ⟨ast, ablk, hgen, hslot, hparent⟩ := hT.genesis_structure
   have hbase : WellFormedStoreCore E.genesis_store := by
     rw [hgen]
     exact (wellFormedStore_get_forkchoice_store cfg ast ablk hslot hparent).core
@@ -190,7 +193,7 @@ theorem postAnchorHonestVoteTargetWalkDomain_of_prefixVoteAssumptions
       (anchor := anchor)) :
     E.PostAnchorHonestVoteTargetWalkDomain cfg ext := by
   obtain ⟨hdiv, hwf, hec, _hhb, hgen⟩ := hV.trajectory
-  obtain ⟨ast, ablk, hgenEq, hslot, hparent⟩ := hgen
+  obtain ⟨ast, ablk, hgenEq, hslot, _hcommit, hparent⟩ := hgen
   have hgenShort : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
       E.genesis_store = get_forkchoice_store cfg ast ablk ∧
       ast.slot = ablk.message.slot :=
@@ -334,3 +337,5 @@ theorem postAnchorHonestVoteTargetWalkDomain_of_selectedMarginAssumptions
 end Execution
 
 end FastConfirmation.Spec
+
+end

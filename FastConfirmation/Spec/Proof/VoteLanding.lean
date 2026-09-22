@@ -1,5 +1,8 @@
-import FastConfirmation.Spec.Proof.IHMechanize
-import FastConfirmation.Spec.Proof.ByzVpre
+module
+public import FastConfirmation.Spec.Proof.IHMechanize
+public import FastConfirmation.Spec.Proof.ByzVpre
+
+@[expose] public section
 
 /-!
 # Spec / Proof / VoteLanding: vote and sibling-confinement inputs
@@ -310,3 +313,5 @@ theorem hmaj_of_saturation_lb (v₀ : ValidatorIndex) (n₀ : ℕ) (b' : Root) (
 end Execution
 
 end FastConfirmation.Spec
+
+end

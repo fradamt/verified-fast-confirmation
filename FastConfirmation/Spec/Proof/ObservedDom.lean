@@ -1,4 +1,7 @@
-import FastConfirmation.Spec.Proof.ResidualMechanicalII
+module
+public import FastConfirmation.Spec.Proof.ResidualMechanicalII
+
+@[expose] public section
 
 /-!
 # Spec / Proof / ObservedDom: deriving `observed_dom`
@@ -220,3 +223,5 @@ theorem observed_dom_of_residuals (hji : JustificationInterface cfg ext E)
 end Execution
 
 end FastConfirmation.Spec
+
+end

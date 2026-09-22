@@ -1,5 +1,8 @@
-import FastConfirmation.Spec.Proof.Fraction
-import FastConfirmation.Spec.Proof.EngineInduction
+module
+public import FastConfirmation.Spec.Proof.Fraction
+public import FastConfirmation.Spec.Proof.EngineInduction
+
+@[expose] public section
 
 /-!
 # Spec / Proof / Ledger: INV\* — the single ledger invariant
@@ -341,3 +344,5 @@ theorem INVstar_step (hbb : ByzantineBound cfg E)
 end Execution
 
 end FastConfirmation.Spec
+
+end

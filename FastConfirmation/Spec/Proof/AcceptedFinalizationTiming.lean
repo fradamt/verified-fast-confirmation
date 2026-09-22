@@ -1,6 +1,9 @@
-import Mathlib.Tactic
-import FastConfirmation.Spec.Proof.AcceptedResetCheckpointClassification
-import FastConfirmation.Spec.Proof.AcceptedScheduledPrefixGeometry
+module
+public import Mathlib.Tactic
+public import FastConfirmation.Spec.Proof.AcceptedResetCheckpointClassification
+public import FastConfirmation.Spec.Proof.AcceptedScheduledPrefixGeometry
+
+@[expose] public section
 
 /-!
 # Accepted realized-finalization timing
@@ -134,7 +137,7 @@ theorem acceptedPulledUpFinalized_succ_le_blockEpoch
         _hiAttests, _haSource, haTarget⟩ :=
       F.finalizing_link.signer_attestation i hi
     have hevidence := B.state.includedAttestations.evidence hincluded
-    obtain ⟨ast, ablk, hgenEq, hslot, hparent⟩ := hT.genesis
+    obtain ⟨ast, ablk, hgenEq, hslot, hparent⟩ := hT.genesis_structure
     have htipKnown : t.signedBlock.root ∈
         (E.store cfg ext t.atPrefix.node
           (t.atPrefix.previousSecond + 1)).block_roots :=
@@ -174,8 +177,39 @@ theorem acceptedPulledUpFinalized_succ_le_blockEpoch
         hT.wellFormed hstoreCausal hcontainingKnown).mp
           hevidence.carrier_accepted
     have htipAt : E.AcceptedBlockAt cfg ext t.signedBlock.root
-        t.signedBlock.message :=
-      ⟨t.postStore, t.post_causal, t.root_known, t.inserted_message⟩
+        t.signedBlock.message := by
+      refine ⟨t.postStore, t.post_causal, t.root_known, ?_⟩
+      by_cases hfresh : t.signedBlock.root ∉
+          (t.atPrefix.store cfg ext).block_roots
+      · exact t.inserted_message_fresh hfresh
+      · have hknown : t.signedBlock.root ∈
+            (t.atPrefix.store cfg ext).block_roots :=
+          Classical.byContradiction hfresh
+        have hpreStore : E.CausalStore cfg ext
+            (t.atPrefix.store cfg ext) := .scheduledPrefix t.atPrefix
+        have hprov := hpreStore.blockProvenance
+          cfg ext E t.signedBlock.root hknown
+        have hpreAt : E.BlockAt t.signedBlock.root
+            ((t.atPrefix.store cfg ext).blocks t.signedBlock.root) := by
+          rcases hprov with hgen | ⟨b, hsched, hroot, hmessage⟩
+          · exact Or.inl ⟨hgen.1, hgen.2⟩
+          · rcases hsched with ⟨w, n, hb⟩
+            exact Or.inr ⟨w, n, b, hb, hroot, hmessage.symm⟩
+        obtain ⟨hlt, hevent⟩ :=
+          List.getElem?_eq_some_iff.mp t.event_at
+        have hmemAt := List.getElem_mem hlt
+        rw [hevent] at hmemAt
+        have hsignedAt : E.BlockAt t.signedBlock.root
+            t.signedBlock.message :=
+          Or.inr ⟨t.atPrefix.node, t.atPrefix.previousSecond + 1,
+            t.signedBlock, hmemAt, rfl, rfl⟩
+        have hmessage := E.blockAt_unique_for_storeReflection
+          hT.wellFormed hpreAt hsignedAt
+        have hpost : t.postStore = t.atPrefix.store cfg ext := by
+          exact (Option.some.inj (by
+            simpa only [on_block, if_pos hknown] using t.accepted)).symm
+        rw [hpost]
+        exact hmessage
     have htipBlock : store.blocks t.signedBlock.root =
         t.signedBlock.message :=
       (Execution.CausalStore.acceptedBlockAt_iff_eq cfg ext E
@@ -449,15 +483,16 @@ end AcceptedFinalizationLagAt
 
 /-- Successful `on_block` exposes the handler's not-in-the-future gate. -/
 private theorem AcceptedBlockTransition.blockEpoch_le_current
-    (t : E.AcceptedBlockTransition cfg ext) :
+    (t : E.AcceptedBlockTransition cfg ext)
+    (hfresh : t.signedBlock.root ∉
+      (t.atPrefix.store cfg ext).block_roots) :
     compute_epoch_at_slot cfg t.signedBlock.message.slot ≤
       get_current_store_epoch cfg (t.atPrefix.store cfg ext) := by
   have hh := t.accepted
-  simp only [FastConfirmation.Spec.on_block] at hh
+  simp only [FastConfirmation.Spec.on_block, if_neg hfresh] at hh
   split_ifs at hh <;> try cases hh
-  all_goals
-    apply ce_mono cfg
-    simp_all
+  apply ce_mono cfg
+  simp_all
 
 /-- Handler-local block preservation once the realized and pulled-up timing
 facts have been supplied for this concrete transition output. -/
@@ -480,9 +515,12 @@ private theorem AcceptedFinalizationLagAt.on_block_of_delays
     (h : AcceptedFinalizationLagAt cfg anchor store)
     (hh : FastConfirmation.Spec.on_block cfg ext store sb = some store') :
     AcceptedFinalizationLagAt cfg anchor store' := by
-  simp only [FastConfirmation.Spec.on_block] at hh
-  split_ifs at hh <;> try cases hh
-  all_goals
+  by_cases hknown : sb.root ∈ store.block_roots
+  · simp only [FastConfirmation.Spec.on_block, if_pos hknown] at hh
+    cases hh
+    exact h
+  · simp only [FastConfirmation.Spec.on_block, if_neg hknown] at hh
+    split_ifs at hh <;> try cases hh
     rw [hst] at hh
     cases hh
     let added : Store Root :=
@@ -569,17 +607,28 @@ theorem AcceptedFinalizationLagAt.acceptedBlockTransition
     (h : AcceptedFinalizationLagAt cfg B.anchor
       (t.atPrefix.store cfg ext)) :
     AcceptedFinalizationLagAt cfg B.anchor t.postStore := by
-  obtain ⟨post, hst, hinserted⟩ :=
-    Execution.AcceptedBlockTransition.on_block_inserted_state
-      cfg ext t.accepted
-  apply AcceptedFinalizationLagAt.on_block_of_delays
-    (cfg := cfg) (ext := ext) hst
-  · simpa only [hinserted] using hDelay t
-  · simpa only [hinserted] using
-      E.acceptedPulledUpFinalized_succ_le_blockEpoch cfg ext B hT t
-  · exact t.blockEpoch_le_current cfg ext
-  · exact h
-  · exact t.accepted
+  by_cases hfresh : t.signedBlock.root ∉
+      (t.atPrefix.store cfg ext).block_roots
+  · obtain ⟨post, hst, hinserted⟩ :=
+      Execution.AcceptedBlockTransition.on_block_inserted_state_fresh
+        cfg ext hfresh t.accepted
+    apply AcceptedFinalizationLagAt.on_block_of_delays
+      (cfg := cfg) (ext := ext) hst
+    · simpa only [hinserted] using hDelay t
+    · simpa only [hinserted] using
+        E.acceptedPulledUpFinalized_succ_le_blockEpoch cfg ext B hT t
+    · exact AcceptedBlockTransition.blockEpoch_le_current
+        cfg ext E t hfresh
+    · exact h
+    · exact t.accepted
+  · have hknown : t.signedBlock.root ∈
+        (t.atPrefix.store cfg ext).block_roots :=
+      Classical.byContradiction hfresh
+    have hsame : t.postStore = t.atPrefix.store cfg ext := by
+      exact (Option.some.inj (by
+        simpa only [on_block, if_pos hknown] using t.accepted)).symm
+    rw [hsame]
+    exact h
 
 /-! ## One-second tick preservation -/
 
@@ -829,7 +878,7 @@ private theorem genesisAcceptedFinalizationLagAt
     (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint) :
     AcceptedFinalizationLagAt cfg B.anchor E.genesis_store := by
-  obtain ⟨ast, ablk, hgenEq, _hslot, _hparent⟩ := hT.genesis
+  obtain ⟨ast, ablk, hgenEq, _hslot, _hparent⟩ := hT.genesis_structure
   rw [hgenEq] at hanchor ⊢
   constructor <;> apply Or.inl <;>
     simpa only [get_forkchoice_store] using hanchor.symm
@@ -909,7 +958,7 @@ theorem acceptedFinalizationLagAt
     (w : ValidatorIndex) (n : ℕ) :
     AcceptedFinalizationLagAt cfg B.anchor (E.store cfg ext w n) := by
   have hgenTime : E.genesis_store.genesis_time ≤ E.genesis_store.time := by
-    obtain ⟨ast, ablk, hgenEq, _hslot, _hparent⟩ := hT.genesis
+    obtain ⟨ast, ablk, hgenEq, _hslot, _hparent⟩ := hT.genesis_structure
     rw [hgenEq]
     simp only [get_forkchoice_store]
     omega
@@ -937,7 +986,7 @@ theorem ScheduledEventPrefix.acceptedFinalizationLagAt
     (hDelay : E.AcceptedRealizedFinalizationDelay cfg ext B) :
     AcceptedFinalizationLagAt cfg B.anchor (p.store cfg ext) := by
   have hgenTime : E.genesis_store.genesis_time ≤ E.genesis_store.time := by
-    obtain ⟨ast, ablk, hgenEq, _hslot, _hparent⟩ := hT.genesis
+    obtain ⟨ast, ablk, hgenEq, _hslot, _hparent⟩ := hT.genesis_structure
     rw [hgenEq]
     simp only [get_forkchoice_store]
     omega
@@ -1097,3 +1146,5 @@ end AcceptedFinalizationLagCounterpattern
 
 
 end FastConfirmation.Spec
+
+end

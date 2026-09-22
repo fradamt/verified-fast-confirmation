@@ -1,4 +1,7 @@
-import FastConfirmation.Paper.LMDGhost.Proof.ProvenTheorems
+module
+public import FastConfirmation.Paper.LMDGhost.Proof.ProvenTheorems
+
+@[expose] public section
 
 /-!
 # LMDGhost / ProvenTheorems
@@ -35,3 +38,5 @@ theorem Theorem1_Monotonicity_proved (τ : Timing)
   proof_Theorem1_Monotonicity (τ := τ) (gj := gj)
 
 end FastConfirmation.LMDGhost
+
+end

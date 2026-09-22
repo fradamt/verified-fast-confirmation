@@ -1,4 +1,7 @@
-import FastConfirmation.Spec.Proof.Trajectory
+module
+public import FastConfirmation.Spec.Proof.Trajectory
+
+@[expose] public section
 
 /-!
 # Spec / Proof / Clock
@@ -192,3 +195,5 @@ theorem slot_at_lt_iff (hdiv : 1000 ∣ cfg.slot_duration_ms)
 end Execution
 
 end FastConfirmation.Spec
+
+end

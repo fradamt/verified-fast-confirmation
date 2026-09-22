@@ -1,4 +1,7 @@
-import FastConfirmation.Spec.Proof.HeadSafetyEngine
+module
+public import FastConfirmation.Spec.Proof.HeadSafetyEngine
+
+@[expose] public section
 
 /-!
 # Spec / Proof / StepDischargeII: same-epoch closure of the INV2 ledger
@@ -339,3 +342,5 @@ theorem INV2_maintained_same_epoch (hec : ExternalsCoherence cfg ext E)
 end Execution
 
 end FastConfirmation.Spec
+
+end

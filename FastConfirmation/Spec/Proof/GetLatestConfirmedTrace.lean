@@ -1,4 +1,7 @@
-import FastConfirmation.Spec.Proof.FCRCallContracts
+module
+public import FastConfirmation.Spec.Proof.FCRCallContracts
+
+@[expose] public section
 
 /-!
 # Exact evaluator provenance for `get_latest_confirmed`
@@ -365,3 +368,5 @@ end Execution
 
 
 end FastConfirmation.Spec
+
+end

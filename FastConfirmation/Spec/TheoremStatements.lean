@@ -1,4 +1,7 @@
-import FastConfirmation.Spec.Model.FFGStateSemantics
+module
+public import FastConfirmation.Spec.Model.FFGStateSemantics
+
+@[expose] public section
 
 /-!
 # Spec / supporting statement vocabulary
@@ -78,6 +81,7 @@ algorithm's call sites** by the L3/L4 proof from `HonestBehavior.votes_head` +
 the established head agreement — never assumed globally; `SpecAssumptions` is
 not strengthened by it. Without the gating a gate-soundness claim would be
 inconsistent:
+
 the `will_*` booleans are arithmetically true early in every epoch (the
 elapsed-committee estimate is still small) even while honest heads — and
 hence honest targets — are split across an adversarial boundary proposal. -/
@@ -329,16 +333,16 @@ structure JustificationInterface (E : Execution Root) : Prop where
           (E.store cfg ext w m).justified_checkpoint.root).slot ≤
         compute_start_slot_at_epoch cfg t.epoch
 
-/-- The full premise bundle of the FCR guarantee: the genesis store is the
-spec's own trusted-anchor initialization (`get_forkchoice_store`, with the
-two facts its projection cannot carry: the dropped
-`anchor_block.state_root == hash_tree_root(anchor_state)` assert renders as
-slot agreement, and genuine hashing separates the anchor's parent from its
-own root — `WellFormedStore` then *derives* via
-`wellFormedStore_get_forkchoice_store`, it is not assumed), whole-second
-slot boundaries (mainnet: `12000 ms`), the behavioral/network records, the
-externals-coherence and static-set idealizations, the economic assumptions,
-and the FFG interface. -/
+/-- The legacy premise bundle uses the spec's trusted-anchor initialization
+with anchor slot agreement and parent/root inequality. This legacy bundle
+does not require a state-root commitment. The accepted trajectory additionally
+requires `Externals.AnchorCommitsToState` in its `genesis` premise. This
+abstract contract comes from the external interpretation; slot agreement is
+independent, and the model does not prove a concrete hashing result.
+The legacy bundle also requires
+whole-second slot boundaries (mainnet: `12000 ms`), the behavioral and
+network records, the externals-coherence and static-set idealisations, the
+economic assumptions, and the FFG interface. -/
 def SpecAssumptions (E : Execution Root) : Prop :=
   (∃ (anchor_state : BeaconState Root) (anchor_block : SignedBeaconBlock Root),
     E.genesis_store = get_forkchoice_store cfg anchor_state anchor_block ∧
@@ -410,3 +414,5 @@ def Spec_Monotonicity_no_revert : Prop :=
         (get_node_for_root (E.confirmed cfg ext v n)) = true
 
 end FastConfirmation.Spec
+
+end

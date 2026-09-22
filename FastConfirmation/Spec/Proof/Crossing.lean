@@ -1,4 +1,7 @@
-import FastConfirmation.Spec.Proof.LedgerV2
+module
+public import FastConfirmation.Spec.Proof.LedgerV2
+
+@[expose] public section
 
 /-!
 # Spec / Proof / Crossing: the epoch-crossing window
@@ -221,3 +224,5 @@ theorem INVmem_maintained (v₀ : ValidatorIndex) (n₀ : ℕ) (b' : Root) (lo e
 end Execution
 
 end FastConfirmation.Spec
+
+end

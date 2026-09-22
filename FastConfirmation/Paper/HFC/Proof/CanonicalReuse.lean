@@ -1,5 +1,8 @@
-import Mathlib.Tactic
-import FastConfirmation.Paper.LMDGhost.Proof.Rule
+module
+public import Mathlib.Tactic
+public import FastConfirmation.Paper.LMDGhost.Proof.Rule
+
+@[expose] public section
 
 /-!
 # HFC / Proof / CanonicalReuse
@@ -252,3 +255,5 @@ theorem canonical_ancestor_of_slot_le_flt {w : Validator n} {t' : Time} {B B' : 
 end CanonicalReuse
 
 end FastConfirmation.LMDGhost
+
+end

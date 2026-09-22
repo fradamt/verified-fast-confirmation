@@ -1,5 +1,8 @@
-import FastConfirmation.Spec.Proof.Arms
-import FastConfirmation.Spec.Proof.Endpoint
+module
+public import FastConfirmation.Spec.Proof.Arms
+public import FastConfirmation.Spec.Proof.Endpoint
+
+@[expose] public section
 
 /-!
 # Spec / Proof / LedgerV2: enemy = `Bbad` + spent capacity
@@ -545,3 +548,5 @@ theorem INV2_of_saturated (v₀ : ValidatorIndex) (n₀ : ℕ) (b' : Root) (lo e
 end Execution
 
 end FastConfirmation.Spec
+
+end

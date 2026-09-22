@@ -1,4 +1,7 @@
-import FastConfirmation.Spec.Model.FFGCertificates
+module
+public import FastConfirmation.Spec.Model.FFGCertificates
+
+@[expose] public section
 
 /-!
 # Low-level contracts for concrete fast-confirmation calls
@@ -79,3 +82,5 @@ def ActualResetInputCheckpointRealization
 end Execution
 
 end FastConfirmation.Spec
+
+end

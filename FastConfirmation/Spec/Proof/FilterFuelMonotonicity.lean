@@ -1,4 +1,7 @@
-import FastConfirmation.Spec.Proof.AnchorClose
+module
+public import FastConfirmation.Spec.Proof.AnchorClose
+
+@[expose] public section
 
 /-!
 # Fuel-monotone filtered-tree membership
@@ -197,3 +200,5 @@ theorem confirmed_mem_filtered_mono {store : Store Root}
   exact hbwrap
 
 end FastConfirmation.Spec
+
+end

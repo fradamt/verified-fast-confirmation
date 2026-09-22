@@ -1,5 +1,8 @@
-import Mathlib.Tactic
-import FastConfirmation.Paper.LMDGhost.Proof.Blocks
+module
+public import Mathlib.Tactic
+public import FastConfirmation.Paper.LMDGhost.Proof.Blocks
+
+@[expose] public section
 
 /-!
 # LMDGhost / Proof / Propagation
@@ -35,3 +38,5 @@ theorem safe_in_every_view' (τ : Timing) (fm : FaultModel n) {𝒱 : ViewFamily
   exact hSync.blocksAncestorClosed (hSync.votesCarryBlocks hdeliv) hmb
 
 end FastConfirmation.LMDGhost
+
+end

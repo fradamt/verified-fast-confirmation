@@ -1,4 +1,7 @@
-import FastConfirmation.Spec.Proof.ChainInput
+module
+public import FastConfirmation.Spec.Proof.ChainInput
+
+@[expose] public section
 
 /-!
 # Spec / Proof / DynamicsClosure: endpoint input families
@@ -311,7 +314,8 @@ theorem hSmem_of_recorded (hhb : HonestBehavior cfg ext E) (hec : ExternalsCoher
     (hrec : ∀ i ∈ E.Sclass cfg ext v₀ n₀ b' lo σ,
       ∃ lm, (E.store cfg ext w m).latest_messages i = some lm ∧
         is_ancestor (E.store cfg ext w m)
-          (get_supported_node (E.store cfg ext w m) lm) (get_node_for_root c) = true) :
+          (get_supported_node (E.store cfg ext w m) lm) (get_node_for_root c) = true)
+    (hw : w ∈ E.honest) (hmH : E.WithinHorizon cfg m) :
     ∀ i ∈ E.Sclass cfg ext v₀ n₀ b' lo σ,
       i ∈ AttSupporters cfg (E.store cfg ext w m) (get_node_for_root c) bs := by
   intro i hi
@@ -323,9 +327,11 @@ theorem hSmem_of_recorded (hhb : HonestBehavior cfg ext E) (hec : ExternalsCoher
     ⟨htle.trans hσH.1,
       lt_of_le_of_lt (Nat.div_le_div_right htle) hσH.2⟩
   obtain ⟨lm, hlm, hsupp⟩ := hrec i hi
-  exact mem_AttSupporters_of_honest_committee cfg ext hhb hec hsv hgen hval hbsH
+  exact mem_AttSupporters_of_honest_committee cfg ext (hw := hw) (hmH := hmH) hhb hec hsv hgen hval hbsH
     hi'.1.2 htH hcomm hlm hsupp
 
 end Execution
 
 end FastConfirmation.Spec
+
+end

@@ -1,4 +1,7 @@
-import FastConfirmation.Spec.Proof.LedgerV2
+module
+public import FastConfirmation.Spec.Proof.LedgerV2
+
+@[expose] public section
 
 /-!
 # Spec / Proof / StepDischarge: the per-slot class deltas
@@ -218,3 +221,5 @@ theorem span_fraction_slot (hbb : ByzantineBound cfg E) (t : Slot)
 end Execution
 
 end FastConfirmation.Spec
+
+end

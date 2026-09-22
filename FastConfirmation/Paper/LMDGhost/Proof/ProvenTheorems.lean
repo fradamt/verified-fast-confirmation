@@ -1,6 +1,9 @@
-import FastConfirmation.Paper.LMDGhost.Proof.HeadSafety
-import FastConfirmation.Paper.LMDGhost.Proof.Rule
-import FastConfirmation.Paper.LMDGhost.TheoremStatements
+module
+public import FastConfirmation.Paper.LMDGhost.Proof.HeadSafety
+public import FastConfirmation.Paper.LMDGhost.Proof.Rule
+public import FastConfirmation.Paper.LMDGhost.TheoremStatements
+
+@[expose] public section
 
 /-!
 # LMDGhost / Proof / ProvenTheorems
@@ -43,3 +46,5 @@ theorem proof_HeadFutureAgreement (τ : Timing) (flt : BlockFilter n P) :
 -- available to the public `ProvenTheorems` facade.
 
 end FastConfirmation.LMDGhost
+
+end

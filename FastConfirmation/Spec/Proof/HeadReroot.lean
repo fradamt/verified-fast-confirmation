@@ -1,4 +1,7 @@
-import FastConfirmation.Spec.Proof.Engine
+module
+public import FastConfirmation.Spec.Proof.Engine
+
+@[expose] public section
 
 /-!
 # Spec / Proof / HeadReroot: the mid-walk head-descent lemma
@@ -374,3 +377,5 @@ theorem head_ge_of_intermediate_chain {store : Store Root}
   exact head_ge_of_reroot_leaf cfg hwf hsub hleaf hdesc hreroot hhx
 
 end FastConfirmation.Spec
+
+end

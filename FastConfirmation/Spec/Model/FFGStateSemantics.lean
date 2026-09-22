@@ -1,5 +1,8 @@
-import FastConfirmation.Spec.Model.FFGCertificates
-import FastConfirmation.Spec.Model.AcceptedExecution
+module
+public import FastConfirmation.Spec.Model.FFGCertificates
+public import FastConfirmation.Spec.Model.AcceptedExecution
+
+@[expose] public section
 
 /-!
 # Spec / Model / FFGStateSemantics
@@ -1236,3 +1239,5 @@ abbrev PaperA32Inclusion
   PaperA32InclusionCore cfg ext (S.paperA32View cfg)
 
 end FastConfirmation.Spec
+
+end

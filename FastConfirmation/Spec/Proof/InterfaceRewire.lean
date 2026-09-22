@@ -1,4 +1,7 @@
-import FastConfirmation.Spec.Proof.MicroSteps
+module
+public import FastConfirmation.Spec.Proof.MicroSteps
+
+@[expose] public section
 
 /-!
 # Spec / Proof / InterfaceRewire: rewire the residual bundles to the
@@ -206,3 +209,5 @@ theorem spec_safety_of_final
     (fun E hSA => E.mechanicalResidualsII_of_final cfg ext hSA (hfinal E hSA))
 
 end FastConfirmation.Spec
+
+end

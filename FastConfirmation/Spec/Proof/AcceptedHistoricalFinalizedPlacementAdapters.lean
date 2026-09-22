@@ -1,5 +1,8 @@
-import FastConfirmation.Spec.Proof.AcceptedHistoricalFinalizedPlacement
-import FastConfirmation.Spec.Proof.SelectedTraceFFGRealizationPipeline
+module
+public import FastConfirmation.Spec.Proof.AcceptedHistoricalFinalizedPlacement
+public import FastConfirmation.Spec.Proof.SelectedTraceFFGRealizationPipeline
+
+@[expose] public section
 
 /-!
 # Adapters for historical finalized placement
@@ -43,7 +46,7 @@ theorem finalizedCheckpoint_epoch_lt_current_of_ne_anchor
     (hne : (E.store cfg ext w m).finalized_checkpoint ≠ B.anchor) :
     (E.store cfg ext w m).finalized_checkpoint.epoch <
       get_current_store_epoch cfg (E.store cfg ext w m) := by
-  obtain ⟨ast, ablk, hgen, hslot, _hparent⟩ := hT.genesis
+  obtain ⟨ast, ablk, hgen, hslot, _hparent⟩ := hT.genesis_structure
   have hgenShort : ∃ (ast : BeaconState Root)
       (ablk : SignedBeaconBlock Root),
       E.genesis_store = get_forkchoice_store cfg ast ablk ∧
@@ -248,11 +251,11 @@ theorem finalized_check_of_targetBeforeQueryPlacement
   have hqueryParent : ParentSlotLt query.store := by
     rw [hquery]
     exact E.store_parentSlotLt cfg ext hT.wellFormed
-      hT.externals_coherence hT.genesis
+      hT.externals_coherence hT.genesis_structure
       hT.wellFormed.anchor_parent_unscheduled v q
   have hendpointParent : ParentSlotLt (E.store cfg ext w m) :=
     E.store_parentSlotLt cfg ext hT.wellFormed
-      hT.externals_coherence hT.genesis
+      hT.externals_coherence hT.genesis_structure
       hT.wellFormed.anchor_parent_unscheduled w m
   have hselectedTransport : get_checkpoint_block cfg query.store selected
         (E.store cfg ext w m).finalized_checkpoint.epoch =
@@ -284,3 +287,5 @@ end Execution
 
 
 end FastConfirmation.Spec
+
+end

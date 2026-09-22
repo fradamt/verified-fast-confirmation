@@ -1,9 +1,13 @@
-import FastConfirmation.Spec.Proof.AnchorFacade
-import FastConfirmation.Spec.Proof.ResidualMechanicalII
-import FastConfirmation.Spec.Proof.AheadFacade
-import FastConfirmation.Spec.Proof.ExportWiring
-import FastConfirmation.Spec.Proof.FinalWiring
-import FastConfirmation.Spec.Proof.Remainder
+module
+public import FastConfirmation.Spec.Proof.AnchorFacade
+public import FastConfirmation.Spec.Proof.ResidualMechanicalII
+public import FastConfirmation.Spec.Proof.AheadFacade
+public import FastConfirmation.Spec.Proof.ExportWiring
+public import FastConfirmation.Spec.Proof.FinalWiring
+public import FastConfirmation.Spec.Proof.Remainder
+
+@[expose] public section
+
 
 /-!
 # Strong-prefix safety interfaces (retired)
@@ -108,3 +112,5 @@ theorem ancestor_comparable {store : Store Root}
   · exact Or.inr (ancestor_comparable_of_common hwf hle hwb hb ha)
 
 end FastConfirmation.Spec
+
+end

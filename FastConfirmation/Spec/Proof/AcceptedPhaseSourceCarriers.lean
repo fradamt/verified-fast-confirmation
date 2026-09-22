@@ -1,7 +1,10 @@
-import FastConfirmation.Spec.Proof.AcceptedCurrentTargetGateBridge
-import FastConfirmation.Spec.Proof.AcceptedHistoricalA32Payload
-import FastConfirmation.Spec.Proof.SelectedFFGRealization
-import FastConfirmation.Spec.Proof.FFGEndpointRealization
+module
+public import FastConfirmation.Spec.Proof.AcceptedCurrentTargetGateBridge
+public import FastConfirmation.Spec.Proof.AcceptedHistoricalA32Payload
+public import FastConfirmation.Spec.Proof.SelectedFFGRealization
+public import FastConfirmation.Spec.Proof.FFGEndpointRealization
+
+@[expose] public section
 
 /-!
 # Accepted phase-source carriers
@@ -427,3 +430,5 @@ theorem earlySelectedEndpointPhase
 end Execution
 
 end FastConfirmation.Spec
+
+end

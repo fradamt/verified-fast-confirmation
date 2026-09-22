@@ -1,4 +1,7 @@
-import FastConfirmation.Spec.Proof.Trajectory
+module
+public import FastConfirmation.Spec.Proof.Trajectory
+
+@[expose] public section
 
 /-!
 # Spec / Proof / Quorum (part 1: the threshold arithmetic)
@@ -114,3 +117,5 @@ theorem get_adversarial_weight_eq {store : Store Root} {bs : BeaconState Root}
   split_ifs <;> rfl
 
 end FastConfirmation.Spec
+
+end

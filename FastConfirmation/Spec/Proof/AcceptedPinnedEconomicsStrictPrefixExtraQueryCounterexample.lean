@@ -1,5 +1,8 @@
-import Mathlib.Tactic
-import FastConfirmation.Spec.Proof.CausalQueryTraceAdapter
+module
+public import Mathlib.Tactic
+public import FastConfirmation.Spec.Proof.CausalQueryTraceAdapter
+
+@[expose] public section
 
 /-!
 # Pinned-economic-constants strict-prefix extra-query counterexample
@@ -39,13 +42,13 @@ open AllowedFCRCalls
 
 abbrev WitnessRoot := Fin 5
 
-private def junkRoot : WitnessRoot := 0
-private def anchorRoot : WitnessRoot := 1
-private def parentRoot : WitnessRoot := 2
-private def candidateRoot : WitnessRoot := 3
-private def siblingRoot : WitnessRoot := 4
+def junkRoot : WitnessRoot := 0
+def anchorRoot : WitnessRoot := 1
+def parentRoot : WitnessRoot := 2
+def candidateRoot : WitnessRoot := 3
+def siblingRoot : WitnessRoot := 4
 
-private def witnessConfig : Config where
+def witnessConfig : Config where
   slots_per_epoch := 4
   slots_per_epoch_pos := by decide
   slot_duration_ms := 1000
@@ -60,16 +63,16 @@ private def witnessConfig : Config where
   attestation_due_bps := 3333
   min_seed_lookahead := 0
 
-private def anchorCheckpoint : Checkpoint WitnessRoot :=
+def anchorCheckpoint : Checkpoint WitnessRoot :=
   { epoch := 0, root := anchorRoot }
 
-private def witnessValidator : Validator :=
+def witnessValidator : Validator :=
   { effective_balance := 100
     slashed := false
     activation_epoch := 0
     exit_epoch := 1 }
 
-private def stateAt (slot : Slot) : BeaconState WitnessRoot :=
+def stateAt (slot : Slot) : BeaconState WitnessRoot :=
   { genesis_time := 0
     slot := slot
     validators :=
@@ -77,68 +80,68 @@ private def stateAt (slot : Slot) : BeaconState WitnessRoot :=
     current_justified_checkpoint := anchorCheckpoint
     finalized_checkpoint := anchorCheckpoint }
 
-private def anchorState : BeaconState WitnessRoot := stateAt 0
+def anchorState : BeaconState WitnessRoot := stateAt 0
 
-private def anchorSignedBlock : SignedBeaconBlock WitnessRoot :=
+def anchorSignedBlock : SignedBeaconBlock WitnessRoot :=
   { message := { slot := 0, parent_root := junkRoot }
     root := anchorRoot }
 
-private def parentSignedBlock : SignedBeaconBlock WitnessRoot :=
+def parentSignedBlock : SignedBeaconBlock WitnessRoot :=
   { message := { slot := 1, parent_root := anchorRoot }
     root := parentRoot }
 
-private def candidateSignedBlock : SignedBeaconBlock WitnessRoot :=
+def candidateSignedBlock : SignedBeaconBlock WitnessRoot :=
   { message := { slot := 2, parent_root := parentRoot }
     root := candidateRoot }
 
-private def siblingSignedBlock : SignedBeaconBlock WitnessRoot :=
+def siblingSignedBlock : SignedBeaconBlock WitnessRoot :=
   { message := { slot := 3, parent_root := parentRoot }
     root := siblingRoot }
 
-private def voteData0 : AttestationData WitnessRoot :=
+def voteData0 : AttestationData WitnessRoot :=
   { slot := 0
     index := 0
     beacon_block_root := anchorRoot
     source := anchorCheckpoint
     target := anchorCheckpoint }
 
-private def voteData1 : AttestationData WitnessRoot :=
+def voteData1 : AttestationData WitnessRoot :=
   { slot := 1
     index := 0
     beacon_block_root := parentRoot
     source := anchorCheckpoint
     target := anchorCheckpoint }
 
-private def voteData2 : AttestationData WitnessRoot :=
+def voteData2 : AttestationData WitnessRoot :=
   { slot := 2
     index := 0
     beacon_block_root := candidateRoot
     source := anchorCheckpoint
     target := anchorCheckpoint }
 
-private def voteData3 : AttestationData WitnessRoot :=
+def voteData3 : AttestationData WitnessRoot :=
   { slot := 3
     index := 0
     beacon_block_root := candidateRoot
     source := anchorCheckpoint
     target := anchorCheckpoint }
 
-private def vote0 : Attestation WitnessRoot :=
+def vote0 : Attestation WitnessRoot :=
   { attesting_indices := [0], data := voteData0 }
 
-private def vote1 : Attestation WitnessRoot :=
+def vote1 : Attestation WitnessRoot :=
   { attesting_indices := [1], data := voteData1 }
 
-private def vote2 : Attestation WitnessRoot :=
+def vote2 : Attestation WitnessRoot :=
   { attesting_indices := [2], data := voteData2 }
 
-private def vote3 : Attestation WitnessRoot :=
+def vote3 : Attestation WitnessRoot :=
   { attesting_indices := [3], data := voteData3 }
 
 /-! The abstract state functions preserve realized checkpoints everywhere.
 This makes both phase0 source-coherence laws true, not merely true on the
 reachable states used below. -/
-private def witnessExternals : Externals WitnessRoot where
+def witnessExternals : Externals WitnessRoot where
   get_beacon_committee := fun _ slot _ => [slot % 4]
   get_committee_count_per_slot := fun _ _ => 1
   process_slots := fun st slot => { st with slot := slot }
@@ -159,10 +162,10 @@ private def witnessExternals : Externals WitnessRoot where
     { st with
       current_justified_checkpoint :=
         { st.current_justified_checkpoint with epoch := 0 } }
-  is_valid_indexed_attestation := fun _ a =>
-    decide (a = vote0 ∨ a = vote1 ∨ a = vote2 ∨ a = vote3)
+  is_valid_indexed_attestation := fun state a =>
+    decide (state.validators ≠ [] ∧ (a = vote0 ∨ a = vote1 ∨ a = vote2 ∨ a = vote3))
 
-private def witnessSchedule (_w : ValidatorIndex) (n : ℕ) :
+def witnessSchedule (_w : ValidatorIndex) (n : ℕ) :
     List (Event WitnessRoot) :=
   if n = 1 then
     [.block parentSignedBlock, .attestation vote0 false]
@@ -175,10 +178,10 @@ private def witnessSchedule (_w : ValidatorIndex) (n : ℕ) :
   else
     []
 
-private def witnessCommittee (slot : Slot) : Finset ValidatorIndex :=
+def witnessCommittee (slot : Slot) : Finset ValidatorIndex :=
   {slot % 4}
 
-private def witnessVote (v : ValidatorIndex) (slot : Slot) :
+def witnessVote (v : ValidatorIndex) (slot : Slot) :
     Option (ℕ × Attestation WitnessRoot) :=
   if v = 0 ∧ slot = 0 then some (0, vote0)
   else if v = 1 ∧ slot = 1 then some (1, vote1)
@@ -186,7 +189,7 @@ private def witnessVote (v : ValidatorIndex) (slot : Slot) :
   else if v = 3 ∧ slot = 3 then some (3, vote3)
   else none
 
-private def witnessExecution : Execution WitnessRoot where
+def witnessExecution : Execution WitnessRoot where
   verification_horizon := 1
   genesis_store :=
     get_forkchoice_store witnessConfig anchorState anchorSignedBlock
@@ -341,13 +344,13 @@ private theorem witnessHonestBehavior :
   · intro v hv
     rcases honest_eq hv with rfl | rfl | rfl | rfl <;> decide
 
-private def anchorMessage : LatestMessage WitnessRoot :=
+def anchorMessage : LatestMessage WitnessRoot :=
   { epoch := 0, root := anchorRoot }
 
-private def parentMessage : LatestMessage WitnessRoot :=
+def parentMessage : LatestMessage WitnessRoot :=
   { epoch := 0, root := parentRoot }
 
-private def candidateMessage : LatestMessage WitnessRoot :=
+def candidateMessage : LatestMessage WitnessRoot :=
   { epoch := 0, root := candidateRoot }
 
 private lemma block_roots_at_zero :
@@ -476,10 +479,71 @@ private theorem witnessSynchrony :
         equivocating_indices_at_two, equivocating_indices_at_three]
 
 private lemma witness_valid_iff (state : BeaconState WitnessRoot)
-    (a : Attestation WitnessRoot) :
+    (a : Attestation WitnessRoot) (hstate : state.validators ≠ []) :
     witnessExternals.is_valid_indexed_attestation state a = true ↔
       a = vote0 ∨ a = vote1 ∨ a = vote2 ∨ a = vote3 := by
-  simp [witnessExternals]
+  simp [witnessExternals, hstate]
+
+private theorem witnessProcessSlots_registry (st : BeaconState WitnessRoot) (s : Slot) :
+    (witnessExternals.process_slots st s).validators = st.validators := rfl
+
+private theorem witnessTransition_registry (st : BeaconState WitnessRoot)
+    (b : SignedBeaconBlock WitnessRoot) (st' : BeaconState WitnessRoot)
+    (h : witnessExternals.state_transition st b = some st') :
+    st'.validators = st.validators := by
+  simp [witnessExternals] at h
+  rcases h with ⟨_hguard, rfl⟩
+  rfl
+
+private theorem witnessStore_registryConstant (v : ValidatorIndex) (n : ℕ) :
+    RegistryConstant witnessExecution.registry
+      (witnessExecution.store witnessConfig witnessExternals v n) := by
+  induction n with
+  | zero =>
+      exact witnessExecution.genesis_registryConstant witnessConfig
+        ⟨anchorState, anchorSignedBlock, rfl⟩
+  | succ n ih =>
+      change RegistryConstant witnessExecution.registry
+        ((witnessExecution.schedule v (n + 1)).foldl
+          (fun store event =>
+            (apply_event witnessConfig witnessExternals store event).getD store)
+          (on_tick witnessConfig
+            (witnessExecution.store witnessConfig witnessExternals v n)
+            (witnessExecution.time_at (n + 1))))
+      refine registryConstant_foldl
+        (fun store event hstore => apply_event_getD_registryConstant
+          witnessConfig witnessExternals witnessTransition_registry
+          witnessProcessSlots_registry store event hstore) _ _ ?_
+      exact on_tick_registryConstant witnessConfig _ _ ih
+
+private theorem witnessCausalStore_registryConstant {store : Store WitnessRoot}
+    (hstore : witnessExecution.CausalStore witnessConfig witnessExternals store) :
+    RegistryConstant witnessExecution.registry store := by
+  cases hstore with
+  | genesis =>
+      exact witnessExecution.genesis_registryConstant witnessConfig
+        ⟨anchorState, anchorSignedBlock, rfl⟩
+  | scheduledPrefix p =>
+      unfold Execution.ScheduledEventPrefix.store
+      refine registryConstant_foldl
+        (fun store event hstore => apply_event_getD_registryConstant
+          witnessConfig witnessExternals witnessTransition_registry
+          witnessProcessSlots_registry store event hstore) _ _ ?_
+      exact on_tick_registryConstant witnessConfig _ _
+        (witnessStore_registryConstant p.node p.previousSecond)
+
+private theorem witnessReachableValidationState_nonempty {state : BeaconState WitnessRoot}
+    (hstate : witnessExecution.ReachableValidationState
+      witnessConfig witnessExternals state) : state.validators ≠ [] := by
+  obtain ⟨store, hstore, hstate⟩ := hstate
+  have hreg := witnessCausalStore_registryConstant
+    (hstore.causal witnessConfig witnessExternals)
+  have heq : state.validators = witnessExecution.registry := by
+    rcases hstate with ⟨root, hroot, rfl⟩ | ⟨checkpoint, hcheckpoint, rfl⟩
+    · exact hreg.1 root hroot
+    · exact hreg.2 checkpoint hcheckpoint
+  rw [heq]
+  decide
 
 private theorem witnessExternalsCoherence :
     ExternalsCoherence witnessConfig witnessExternals witnessExecution := by
@@ -508,7 +572,8 @@ private theorem witnessExternalsCoherence :
   · intro v hv n s hn hs
     simp [get_slot_committee, witnessExternals, witnessExecution,
       witnessCommittee]
-  · intro state a v hv hsingle hcommittee hvote
+  · intro state a hreachable v hv hsingle hcommittee hvote
+    have hstate := witnessReachableValidationState_nonempty hreachable
     rcases hvote with ⟨m, a', hvote, hdata⟩
     rw [vote_some_cases] at hvote
     rcases hvote with h0 | h1 | h2 | h3
@@ -518,30 +583,31 @@ private theorem witnessExternalsCoherence :
       subst a'
       have ha : a = vote0 := by cases a; simp_all [vote0]
       rw [ha]
-      exact (witness_valid_iff state vote0).2 (Or.inl rfl)
+      exact (witness_valid_iff state vote0 hstate).2 (Or.inl rfl)
     · rcases h1 with ⟨hv1, hs1, hm1, ha'⟩
       subst v
       subst m
       subst a'
       have ha : a = vote1 := by cases a; simp_all [vote1]
       rw [ha]
-      exact (witness_valid_iff state vote1).2 (Or.inr (Or.inl rfl))
+      exact (witness_valid_iff state vote1 hstate).2 (Or.inr (Or.inl rfl))
     · rcases h2 with ⟨hv2, hs2, hm2, ha'⟩
       subst v
       subst m
       subst a'
       have ha : a = vote2 := by cases a; simp_all [vote2]
       rw [ha]
-      exact (witness_valid_iff state vote2).2 (Or.inr (Or.inr (Or.inl rfl)))
+      exact (witness_valid_iff state vote2 hstate).2 (Or.inr (Or.inr (Or.inl rfl)))
     · rcases h3 with ⟨hv3, hs3, hm3, ha'⟩
       subst v
       subst m
       subst a'
       have ha : a = vote3 := by cases a; simp_all [vote3]
       rw [ha]
-      exact (witness_valid_iff state vote3).2 (Or.inr (Or.inr (Or.inr rfl)))
-  · intro state a hvalid v hv hvin
-    rcases (witness_valid_iff state a).1 hvalid with rfl | rfl | rfl | rfl
+      exact (witness_valid_iff state vote3 hstate).2 (Or.inr (Or.inr (Or.inr rfl)))
+  · intro state a hreachable hvalid v hv hvin
+    have hstate := witnessReachableValidationState_nonempty hreachable
+    rcases (witness_valid_iff state a hstate).1 hvalid with rfl | rfl | rfl | rfl
     · have : v = 0 := by simpa [vote0] using hvin
       subst v
       exact ⟨0, vote0, by decide, rfl⟩
@@ -554,8 +620,9 @@ private theorem witnessExternalsCoherence :
     · have : v = 3 := by simpa [vote3] using hvin
       subst v
       exact ⟨3, vote3, by decide, rfl⟩
-  · intro state a hvalid i hi
-    rcases (witness_valid_iff state a).1 hvalid with rfl | rfl | rfl | rfl
+  · intro state a hreachable hvalid i hi
+    have hstate := witnessReachableValidationState_nonempty hreachable
+    rcases (witness_valid_iff state a hstate).1 hvalid with rfl | rfl | rfl | rfl
     · have : i = 0 := by simpa [vote0] using hi
       subst i
       decide
@@ -600,6 +667,12 @@ private theorem witnessExternalsCoherence :
     interval_cases s <;>
       simp [witnessExecution, witnessCommittee] at hi <;>
       subst i <;> decide
+
+  · intro a
+    have hdefault : (default : BeaconState WitnessRoot).validators = [] := rfl
+    simp [witnessExternals, hdefault]
+  · intro state slot a _hreachable _hlt
+    rfl
 
 private theorem witnessStaticValidatorSet :
     StaticValidatorSet witnessConfig witnessExecution := by
@@ -648,19 +721,19 @@ private theorem witnessByzantineBound :
 
 /-! ## Exact strict prefixes and executable query -/
 
-private def endpointPrefix : witnessExecution.ScheduledEventPrefix where
+def endpointPrefix : witnessExecution.ScheduledEventPrefix where
   node := 1
   previousSecond := 2
   processedCount := 1
   count_le := by simp [witnessExecution, witnessSchedule]
 
-private def actorPrefix : witnessExecution.ScheduledEventPrefix where
+def actorPrefix : witnessExecution.ScheduledEventPrefix where
   node := 0
   previousSecond := 2
   processedCount := 2
   count_le := by simp [witnessExecution, witnessSchedule]
 
-private def queryFcr : FastConfirmationStore WitnessRoot :=
+def queryFcr : FastConfirmationStore WitnessRoot :=
   { witnessExecution.fcr witnessConfig witnessExternals 0 2 with
     store := actorPrefix.store witnessConfig witnessExternals }
 
@@ -720,7 +793,7 @@ theorem strict_extra_query_result :
   set_option maxRecDepth 30000 in
     decide
 
-private def directQueryRuntime : Runtime WitnessRoot :=
+def directQueryRuntime : Runtime WitnessRoot :=
   initRuntime witnessConfig queryFcr .updateInitialSlot
 
 set_option maxRecDepth 50000 in
@@ -773,14 +846,14 @@ theorem direct_extra_query_is_legal_preUpdate :
 
 /-! ## Same-position global query witness -/
 
-private def endpointFcr : FastConfirmationStore WitnessRoot :=
+def endpointFcr : FastConfirmationStore WitnessRoot :=
   { witnessExecution.fcr witnessConfig witnessExternals 1 2 with
     store := endpointPrefix.store witnessConfig witnessExternals }
 
-private def endpointRuntime : Runtime WitnessRoot :=
+def endpointRuntime : Runtime WitnessRoot :=
   initRuntime witnessConfig endpointFcr .updateInitialSlot
 
-private def globalInitial : GlobalRuntime WitnessRoot where
+def globalInitial : GlobalRuntime WitnessRoot where
   nodeState := fun node =>
     if node = 0 then directQueryRuntime
     else if node = 1 then endpointRuntime
@@ -788,14 +861,14 @@ private def globalInitial : GlobalRuntime WitnessRoot where
   voteCasts := []
   nextGlobalActionPosition := 0
 
-private def globalActions : List (GlobalAction WitnessRoot) :=
+def globalActions : List (GlobalAction WitnessRoot) :=
   [.nodeAction 0 (.query .extra)]
 
-private def directQueryAfter : Runtime WitnessRoot :=
+def directQueryAfter : Runtime WitnessRoot :=
   (step? witnessConfig witnessExternals directQueryRuntime
     (.query .extra)).getD directQueryRuntime
 
-private def globalAfter : GlobalRuntime WitnessRoot where
+def globalAfter : GlobalRuntime WitnessRoot where
   nodeState := Function.update globalInitial.nodeState 0 directQueryAfter
   voteCasts := []
   nextGlobalActionPosition := 1
@@ -988,3 +1061,5 @@ theorem pinned_economics_strict_prefix_extra_query_counterexample :
 
 end AcceptedPinnedEconomicsStrictPrefixExtraQueryCounterexample
 end FastConfirmation.Spec
+
+end

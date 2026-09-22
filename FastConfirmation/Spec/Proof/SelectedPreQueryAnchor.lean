@@ -1,4 +1,7 @@
-import FastConfirmation.Spec.Proof.SelectedPreQuerySIR
+module
+public import FastConfirmation.Spec.Proof.SelectedPreQuerySIR
+
+@[expose] public section
 
 /-!
 # Trusted-anchor part of the pre-query SIR bracket
@@ -364,3 +367,5 @@ theorem preQuerySelectedJustifiedCompatibilityAt_of_voteBracket
 end Execution
 
 end FastConfirmation.Spec
+
+end

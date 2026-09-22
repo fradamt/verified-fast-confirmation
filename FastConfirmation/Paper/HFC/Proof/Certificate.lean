@@ -1,6 +1,9 @@
-import FastConfirmation.Paper.HFC.Proof.Formation
-import FastConfirmation.Paper.HFC.Proof.CrossEpoch
-import FastConfirmation.Paper.HFC.Model.FFGRule
+module
+public import FastConfirmation.Paper.HFC.Proof.Formation
+public import FastConfirmation.Paper.HFC.Proof.CrossEpoch
+public import FastConfirmation.Paper.HFC.Model.FFGRule
+
+@[expose] public section
 
 /-!
 # HFC / Proof / Certificate — `willChkpBeJustified ⇒ C(b,e) justified` (paper Lemma 13)
@@ -722,3 +725,5 @@ theorem greatestRealizedJustified_on_chain_from_confirmation_prev (bal₀ : Stak
     rw [hblockeq]; exact boundaryBlock_ancestor _ b
 
 end FastConfirmation.HFC
+
+end

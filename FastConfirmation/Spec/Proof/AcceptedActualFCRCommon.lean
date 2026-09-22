@@ -1,6 +1,9 @@
-import FastConfirmation.Spec.Proof.AcceptedHistoricalA32Induction
-import FastConfirmation.Spec.Proof.AcceptedSelectedJustifiedOrientation
-import FastConfirmation.Spec.Proof.AcceptedCandidateHistoryRecurrence
+module
+public import FastConfirmation.Spec.Proof.AcceptedHistoricalA32Induction
+public import FastConfirmation.Spec.Proof.AcceptedSelectedJustifiedOrientation
+public import FastConfirmation.Spec.Proof.AcceptedCandidateHistoryRecurrence
+
+@[expose] public section
 
 /-!
 # Common accepted actual-FCR invariants
@@ -68,7 +71,7 @@ theorem trustedAnchor_safeFrom_of_acceptedGlobalTrajectory
   apply E.safeFrom_of_justified_dom_K cfg ext hdomainK
   intro w hw m _h0m hHm
   obtain ⟨_hparent, _hwalk, hjustifiedKnown⟩ := hdomainK w hw m hHm
-  obtain ⟨ast, ablk, hgen, hslot, hparent⟩ := hT.genesis
+  obtain ⟨ast, ablk, hgen, hslot, hparent⟩ := hT.genesis_structure
   have hgenShort : ∃ (ast : BeaconState Root)
       (ablk : SignedBeaconBlock Root),
       E.genesis_store = get_forkchoice_store cfg ast ablk ∧
@@ -98,7 +101,7 @@ theorem confirmed_zero_safeFrom_of_acceptedGlobalTrajectory
     (v : ValidatorIndex) :
     E.SafeFrom cfg ext (E.confirmed cfg ext v 0) 0 := by
   have hconfirmedAnchor : E.confirmed cfg ext v 0 = B.anchor.root := by
-    obtain ⟨ast, ablk, hgen, _hslot, _hparent⟩ := hT.genesis
+    obtain ⟨ast, ablk, hgen, _hslot, _hparent⟩ := hT.genesis_structure
     rw [E.confirmed_zero, hanchor]
     change E.genesis_store.finalized_checkpoint.root =
       E.genesis_store.justified_checkpoint.root
@@ -197,3 +200,5 @@ theorem confirmed_known_of_acceptedGlobalTrajectory
 end Execution
 
 end FastConfirmation.Spec
+
+end

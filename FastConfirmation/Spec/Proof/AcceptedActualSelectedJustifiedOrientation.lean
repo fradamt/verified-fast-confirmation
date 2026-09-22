@@ -1,10 +1,14 @@
-import Mathlib.Tactic
-import FastConfirmation.Spec.Proof.AcceptedSelectedJustifiedOrientation
-import FastConfirmation.Spec.Proof.AcceptedHistoricalA32CallSupplier
-import FastConfirmation.Spec.Proof.AcceptedCurrentSameSourceHistory
-import FastConfirmation.Spec.Proof.NoConflictCertificatePinning
-import FastConfirmation.Spec.Proof.EndpointQuorumCausality
-import FastConfirmation.Spec.Proof.AcceptedHistoricalA32OriginCall
+module
+public import Mathlib.Tactic
+public import FastConfirmation.Spec.Proof.AcceptedSelectedJustifiedOrientation
+public import FastConfirmation.Spec.Proof.AcceptedHistoricalA32CallSupplier
+public import FastConfirmation.Spec.Proof.AcceptedCurrentSameSourceHistory
+public import FastConfirmation.Spec.Proof.NoConflictCertificatePinning
+public import FastConfirmation.Spec.Proof.EndpointQuorumCausality
+public import FastConfirmation.Spec.Proof.AcceptedHistoricalA32OriginCall
+
+@[expose] public section
+
 
 /-!
 # Actual-call accepted selected / justified orientation
@@ -86,7 +90,7 @@ def noConflictPinningAssumptions_of_acceptedGlobalTrajectory
     (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
       (E := E) (anchor := B.anchor)) :
     NoConflictPinningAssumptions cfg ext E where
-  genesis := hT.genesis
+  genesis := hT.genesis_structure
   wellFormed := hT.wellFormed
   whole_seconds := hT.whole_seconds
   honest_behavior := hT.honest_behavior
@@ -201,7 +205,7 @@ theorem completedPrefix_noConflict_endpointJustifiedQuorum_root_eq_currentTarget
     (E.store cfg ext w m).justified_checkpoint.root =
       (get_current_target cfg (E.store cfg ext v (n + 1))).root := by
   classical
-  obtain ⟨ast, ablk, hgen, hgenSlot, _hgenParent⟩ := hT.genesis
+  obtain ⟨ast, ablk, hgen, hgenSlot, _hgenParent⟩ := hT.genesis_structure
   have hgenShort : ∃ (ast : BeaconState Root)
       (ablk : SignedBeaconBlock Root),
       E.genesis_store = get_forkchoice_store cfg ast ablk ∧
@@ -348,6 +352,7 @@ theorem completedPrefix_noConflict_endpointJustifiedQuorum_root_eq_currentTarget
           · simpa only [currentTargetEpochEnd, currentTargetEpochStart,
               compute_start_slot_at_epoch] using hs.2
         exact hsEpoch
+
     have hsignersHonest : signers ⊆ E.honest := by
       intro i hi
       simp only [signers, Execution.currentTargetA32Signers,
@@ -549,6 +554,7 @@ private theorem AcceptedHistoricalA32LineageCoreAt.payloadAtExecutionStore
     Nonempty (E.AcceptedHistoricalA32GatePayloadCoreAt cfg ext B tip e
       Cert Supp) := by
   obtain ⟨ast, ablk, hgen, hgenSlot, hgenParent⟩ := hT.genesis
+
   let store := E.store cfg ext v q
   have hstoreCausal : E.CausalStore cfg ext store := by
     simpa only [store] using E.store_causal cfg ext v q
@@ -791,7 +797,7 @@ theorem actualCall_strictSelected_result_and_child_ancestor_of_endpointJustified
   let query := E.fcrStep cfg ext v n
   let trace := E.getLatestConfirmedTraceAt cfg ext v n
   let hA : SelectedMarginAssumptions cfg ext E :=
-    { genesis := hT.genesis
+    { genesis := hT.genesis_structure
       wellFormed := hT.wellFormed
       whole_seconds := hT.whole_seconds
       honest_behavior := hT.honest_behavior
@@ -804,7 +810,7 @@ theorem actualCall_strictSelected_result_and_child_ancestor_of_endpointJustified
     simpa only [query] using E.fcrStep_store cfg ext v n
   have hinput' : trace.afterObserved ∈ query.store.block_roots := by
     simpa only [query, trace] using hinput
-  obtain ⟨ast, ablk, hgen, hgenSlot, _hgenParent⟩ := hT.genesis
+  obtain ⟨ast, ablk, hgen, hgenSlot, _hgenParent⟩ := hT.genesis_structure
   have hgenShort : ∃ (ast : BeaconState Root)
       (ablk : SignedBeaconBlock Root),
       E.genesis_store = get_forkchoice_store cfg ast ablk ∧
@@ -893,3 +899,5 @@ end Execution
 
 
 end FastConfirmation.Spec
+
+end

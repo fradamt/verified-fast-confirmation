@@ -1,5 +1,8 @@
-import FastConfirmation.Spec.Proof.ExportWiring
-import FastConfirmation.Spec.Proof.HonestWeight
+module
+public import FastConfirmation.Spec.Proof.ExportWiring
+public import FastConfirmation.Spec.Proof.HonestWeight
+
+@[expose] public section
 
 /-!
 # Spec / Proof / EconomicCore: the economic-core closure
@@ -126,7 +129,7 @@ theorem INV2_base_bridged
     (hBbadVal : Bbad = E.BbadVal cfg ext v n b lo es) :
     E.INV2 cfg ext v n b lo es es (compute_proposer_score cfg bs) := by
   have hne : ∀ i ∈ (E.store cfg ext v n).equivocating_indices, i ∉ E.honest :=
-    fun i hi hih => Execution.honest_not_equivocating cfg ext hhb hec hgen hih v n hi
+    fun i hi hih => Execution.honest_not_equivocating cfg ext hhb hec hgen hih v n (by assumption) (by assumption) hi
   subst hlo hes hsa
   set sa : Slot :=
     (if get_block_epoch cfg (E.store cfg ext v n) b >
@@ -307,3 +310,5 @@ theorem hXmono_of_fresh (hhb : HonestBehavior cfg ext E) (hec : ExternalsCoheren
 end Execution
 
 end FastConfirmation.Spec
+
+end

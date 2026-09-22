@@ -1,4 +1,7 @@
-import FastConfirmation.Spec.Model.Execution
+module
+public import FastConfirmation.Spec.Model.AcceptedExecution
+
+@[expose] public section
 
 /-!
 # Spec / Model / Assumptions
@@ -324,11 +327,12 @@ theorem Synchrony.toDeliveryLookahead
         Event.attestation a false ∈ E.schedule w (E.slot_start cfg (s + 1)) :=
   h.attestation_delivery
 
-/-- Coherence facts about the abstract `Externals`, true of the real
-beacon-chain functions they stand for (registry/slot behavior of the state
-transition; shuffling agreement with the ground-truth assignment — the spec's
-own `MAX_SEED_LOOKAHEAD` consistency note; validity of honestly constructed
-attestations). -/
+/-- Contracts for the abstract `Externals` under the static-registry model.
+The three indexed-attestation laws apply only to keyed states in honest,
+in-horizon causal stores. Default-state rejection and validity preservation
+under Phase0 slot processing are separate contracts. The other fields state
+slot/registry behavior and committee agreement; this record is not a proof
+that the external interpretation refines the full beacon-chain functions. -/
 structure ExternalsCoherence (E : Execution Root) : Prop where
   /-- `process_slots` targets its slot.  Verbatim from the pinned loop
       `while state.slot < slot: … state.slot = Slot(state.slot + 1)`
@@ -406,27 +410,31 @@ structure ExternalsCoherence (E : Execution Root) : Prop where
     E.WithinHorizon cfg n → E.SlotWithinHorizon cfg s →
     get_slot_committee cfg ext (E.store cfg ext v n) s = E.committee s
   /-- honestly *cast* singleton attestations pass the abstract
-      index/signature validity check (restricted to data the validator
+      index/signature validity check on keyed states of honest, in-horizon
+      causal stores (restricted to data the validator
       actually signed — an unrestricted version would force fabricated data
       naming honest validators to validate, handing forged slashings to the
       adversary). -/
   honest_attestation_valid : ∀ (state : BeaconState Root) (a : Attestation Root),
+    E.ReachableValidationState cfg ext state →
     ∀ v ∈ E.honest, a.attesting_indices = [v] → v ∈ E.committee a.data.slot →
     (∃ m a', E.vote v a.data.slot = some (m, a') ∧ a.data = a'.data) →
       ext.is_valid_indexed_attestation state a = true
-  /-- BLS soundness (the converse): a validating attestation naming an honest
+  /-- BLS soundness on the same reachable-state domain: a validating attestation naming an honest
       validator carries data that validator actually signed — no forged
       slashings against honest validators. -/
   valid_attestation_honest : ∀ (state : BeaconState Root) (a : Attestation Root),
+    E.ReachableValidationState cfg ext state →
     ext.is_valid_indexed_attestation state a = true →
     ∀ v ∈ E.honest, v ∈ a.attesting_indices →
       ∃ m a', E.vote v a.data.slot = some (m, a') ∧ a.data = a'.data
-  /-- committee confinement: validating attestations carry only indices from
+  /-- Committee confinement on the same reachable-state domain: validating attestations carry only indices from
       the slot's committee (in the real pipeline `get_indexed_attestation`
       derives indices from the committee and aggregation bits — absorbed into
       the wire object, so the constraint is restored here; confines LMD
       supporters to the spans `ByzantineBound` budgets). -/
   valid_attestation_committee : ∀ (state : BeaconState Root) (a : Attestation Root),
+    E.ReachableValidationState cfg ext state →
     ext.is_valid_indexed_attestation state a = true →
     ∀ i ∈ a.attesting_indices, i ∈ E.committee a.data.slot
   /-- the beacon chain assigns each validator to exactly one slot per epoch
@@ -452,6 +460,24 @@ structure ExternalsCoherence (E : Execution Root) : Prop where
     i ∈ E.committee s →
       is_active_validator (E.registry.getD i default)
         (compute_epoch_at_slot cfg s) = true
+  /-- The default state has no validator public keys. Empty or noncanonical
+      indices fail the Python check; a nonempty canonical list fails its
+      validator lookup. This contract represents either rejection as `false`
+      in the total Boolean primitive. It also rules out successful reads
+      outside a state map's keyed domain. -/
+  valid_attestation_default : ∀ a : Attestation Root,
+    ext.is_valid_indexed_attestation (default : BeaconState Root) a = false
+  /-- Successful Phase0 empty-slot processing preserves validator public keys
+      and the fork/genesis inputs of the signing domain. The attestation fixes
+      the target epoch. On a reachable base state the abstract primitive must
+      preserve indexed validity; this contract covers the prepared checkpoint
+      state before a handler commits it. It is an explicit contract of the
+      total abstraction, not a theorem about Python exceptions. -/
+  process_slots_attestation_valid : ∀ (state : BeaconState Root) (slot : Slot)
+      (a : Attestation Root), E.ReachableValidationState cfg ext state →
+    state.slot < slot →
+    ext.is_valid_indexed_attestation (ext.process_slots state slot) a =
+      ext.is_valid_indexed_attestation state a
 
 /-- The static-validator-set idealization over the verified execution segment.
 The trusted genesis initialization itself seeds registry constancy
@@ -533,3 +559,5 @@ structure ByzantineBound (E : Execution Root) : Prop where
         E.weight (E.span_committee a b)
 
 end FastConfirmation.Spec
+
+end

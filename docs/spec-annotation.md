@@ -1,7 +1,7 @@
 # Spec ↔ Lean annotation — `FastConfirmation/Spec/`
 
 Per-function mapping between public `consensus-specs` commit
-[`30aa65f`](https://github.com/ethereum/consensus-specs/tree/30aa65fc21cf7f7c7dd1f7d6b686d0250462d04f) and the Lean
+[`4773213`](https://github.com/ethereum/consensus-specs/tree/477321355d48d527e7e1e4d572f6a40a0b41072a) and the Lean
 model. Lean names equal python names (the faithfulness device — diff each def's
 docstring, which quotes the python, against its body). "Deviations" lists
 only per-function items; the global conventions (ℕ arithmetic, totalized
@@ -106,7 +106,7 @@ there the Spec column cites the prose being rendered.
 | Spec | Lean | Deviations / notes |
 |---|---|---|
 | `get_current_target_score` | same | — |
-| `compute_honest_ffg_support_for_current_target` | same | `total - ffg_weight_till_now` non-negative (within-epoch estimate ≤ total); `min`-cap subtraction safe by construction; two `Slot(current_slot - 1)` sites truncate at `current_slot = 0` (benign at slot 0 for the same reason as `get_adversarial_weight`'s site); `100 - confirmation_byzantine_threshold` non-truncating by `Config.confirmation_byzantine_threshold_le` |
+| `compute_honest_ffg_support_for_current_target` | same | `total - ffg_weight_till_now` non-negative (within-epoch estimate ≤ total); two `current_slot - 1` sites use saturating ℕ subtraction; `100 - confirmation_byzantine_threshold` non-truncating by `Config.confirmation_byzantine_threshold_le` |
 | `will_no_conflicting_checkpoint_be_justified` | same | — |
 | `will_current_target_be_justified` | same | — |
 
@@ -128,17 +128,19 @@ there the Spec column cites the prose being rendered.
 | `compute_pulled_up_tip` | same | `process_justification_and_finalization` abstract (`Externals`); python `copy()` moot under state-passing; `unrealized_justifications` write = `Function.update` (no domain field — the dict is never iterated) |
 | `on_tick_per_slot` | same | `Root()` = `Inhabited.default`; both `if`s literal |
 | `on_tick` | `on_tick_aux` + wrapper | catch-up while-loop → fuel `tick_slot + 1` (advances a slot per iteration only when slot boundaries land on whole seconds — `1000 ∣ slot_duration_ms`, a `SpecAssumptions` conjunct; fuel-out = python's nontermination, design §11a); `time - store.genesis_time` truncates where python `uint64` raises — unreachable from trajectories (`time_at` increasing) |
-| `validate_target_epoch_against_current_time` | same | assert-only body → `Bool`; `current_epoch - 1` guarded by the spec's own `current_epoch > GENESIS_EPOCH` check |
+| `validate_target_epoch_against_current_time` | same | assert-only body → `Bool`; `current_epoch - 1` is the spec's explicit saturating subtraction |
 | `validate_on_attestation` | same | assert-only body → `Bool` (`false` = "delay consideration"/drop); `if not is_from_block:` = short-circuit `is_from_block \|\|`; `in store.blocks` tested against `block_roots`; assert order preserved by the `&&` chain |
 | `store_target_checkpoint_state` | same | `target not in store.checkpoint_states` = `checkpoint_state_keys` membership (design §14); `process_slots` abstract, the spec's own slot guard transcribed; `copy` moot |
 | `update_latest_messages` | same | for-loop → `List.foldl` over the non-equivocating filter; `i not in … or epoch >` = `Option` match |
 | `record_block_timeliness` | same | `store.time - store.genesis_time` truncates (store invariant `WellFormedStore.time_ge_genesis`); writes `some is_timely` |
-| `get_dependent_root` | same | `Root()` = `default`; `epoch - MIN_SEED_LOOKAHEAD` guarded by the early return; trailing `- 1` non-truncating in-branch (`epoch - lookahead ≥ 1` ⇒ start slot ≥ `slots_per_epoch` ≥ 1) |
-| `update_proposer_boost_root` | same | `store.block_timeliness[root]` = `.getD false` — default unreachable (`on_block` sets it immediately before) |
-| `on_block` | same | handler asserts → `Option (Store Root)` (`none` = not applied); `parent_root in store.block_states` tested against `block_roots` (shared key set — design §14); `state_transition` abstract, `none` = python raise; `hash_tree_root(block)` = `signed_block.root` (design §12); dict insert = `Function.update` + append-if-absent (design §14); `head` computed before the insert — python mutation order preserved |
+| `compute_shuffling_lookahead_start_slot` | same | `epoch - MIN_SEED_LOOKAHEAD` is the spec's explicit saturating subtraction |
+| `compute_shuffling_dependent_slot` | same | `lookahead_start_slot - 1` is the spec's explicit saturating subtraction |
+| `get_shuffling_dependent_root` | same | `hash_tree_root`/`Root()` are represented by the projected root and totalized node model (design §12) |
+| `update_proposer_boost_root` | same | `store.block_timeliness[root]` = `.getD false` — default unreachable (`on_block` sets it immediately before); dependent roots are computed at the current store epoch |
+| `on_block` | same | handler asserts → `Option (Store Root)` (`none` = not applied); known roots return the unchanged store before validation; `parent_root in store.block_states` tested against `block_roots` (shared key set — design §14); `state_transition` abstract, `none` = python raise; `hash_tree_root(block)` = `signed_block.root` (design §12); fresh dict insert = `Function.update` + append (design §14); `head` computed before the insert — python mutation order preserved |
 | `on_attestation` | same | asserts → `Option`; **documented divergence**: on the signature-failure path the reference python's in-place checkpoint-state cache write survives the raise — the model discards it, the normative "invalid calls to handlers must not modify store" reading (see docstring); `get_indexed_attestation` absorbed (wire attestation already indexed — design §12); `is_from_block := false` default kept |
 | `on_attester_slashing` | same | asserts → `Option`; python set intersection = `toFinset ∩`; the add-loop = `Finset ∪` |
-| `get_forkchoice_store` | same | takes `SignedBeaconBlock` (the root travels on the wire object); python's `assert anchor_block.state_root == hash_tree_root(anchor_state)` dropped — an execution well-formedness premise on the anchor (design §11a); singleton dicts = `Function.update` over junk-totalized defaults |
+| `get_forkchoice_store` | same | takes `SignedBeaconBlock` (the root travels on the wire object); the executable function omits python's `assert anchor_block.state_root == hash_tree_root(anchor_state)`, while accepted `trajectory.genesis` requires the abstract `Externals.AnchorCommitsToState` contract supplied by the external interpretation; slot agreement and parent/root inequality are separate premises, and no concrete hashing result is proved (design §11a); singleton dicts = `Function.update` over junk-totalized defaults |
 
 ## Honest validator (`Spec/Model/Validator.lean`)
 
@@ -167,7 +169,7 @@ there the Spec column cites the prose being rendered.
 | — (ground truth) | `anchor_state`, `registry`, `weight_of`, `weight`, `total_active`, `span_committee` | derived quantities over an `Execution` (anchor state = the genesis store's justified-checkpoint state) |
 | validator.md "Attesting" + slashing discipline | `HonestBehavior` | `votes_head` (the recorded vote is `honest_attestation` from the node's own store at a second of the assigned slot), `votes_assigned`, `no_forgery` (BLS unforgeability + equivocation slashing) |
 | FCR intro synchrony sentence | `PaperSafetySynchrony` | The primary theorem uses `attestation_delivery` (slot-`s` honest attestations processed at the first second of slot `s+1`), `block_relay` (known blocks propagate by the following slot), and `attester_slashing_relay` (known equivocation evidence propagates by the following slot). The fields hold throughout the checked execution, so this is the GST-0 specialization of the paper's post-GST timing model. |
-| behavior of the abstracted beacon-chain functions | `ExternalsCoherence` | slot/registry behavior of `process_slots`/`state_transition`/`process_justification_and_finalization`; `committees_agree` (the spec's committee-consistency window, idealized to the whole execution); `honest_attestation_valid`; `committee_assignment_unique` (one assigned slot per epoch) |
+| contracts for the abstracted beacon-chain functions | `ExternalsCoherence` | slot/registry behavior; horizon-scoped committee agreement; the three indexed-validity laws require `Execution.ReachableValidationState` (a keyed state in an honest, in-horizon causal store); separate default-state rejection (including totalized index failure) and Phase0 `process_slots` validity preservation from reachable base states; committee assignment and coverage |
 | balance-source design note (static set) | `StaticValidatorSet` | the trusted anchor lies inside the verification horizon and validator activity is constant below that horizon (paper Assumption 1); genesis registry constancy is derived from the already-required `get_forkchoice_store` initialization |
 | `CONFIRMATION_BYZANTINE_THRESHOLD` + the 5‰ estimation note | `ByzantineBound` | balance quantization, `estimate_sound` (the estimate upper-bounds actual span-committee weight), and `span_fraction` (the non-honest span weight is at most the configured percentage, cross-multiplied) |
 

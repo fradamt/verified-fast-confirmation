@@ -1,8 +1,12 @@
-import FastConfirmation.Spec.Proof.AcceptedActualFCRCommon
-import FastConfirmation.Spec.Proof.AcceptedActualFCRStrictHelperIntegration
-import FastConfirmation.Spec.Proof.AcceptedFinalizedNextSlotSafety
-import FastConfirmation.Spec.Proof.AcceptedObservedRestartDynamicSafety
-import FastConfirmation.Spec.Proof.AcceptedHistoricalA32OriginCall
+module
+public import FastConfirmation.Spec.Proof.AcceptedActualFCRCommon
+public import FastConfirmation.Spec.Proof.AcceptedActualFCRStrictHelperIntegration
+public import FastConfirmation.Spec.Proof.AcceptedFinalizedNextSlotSafety
+public import FastConfirmation.Spec.Proof.AcceptedObservedRestartDynamicSafety
+public import FastConfirmation.Spec.Proof.AcceptedHistoricalA32OriginCall
+
+@[expose] public section
+
 
 /-!
 # Accepted actual-FCR next-slot safety fold
@@ -71,7 +75,7 @@ structure AcceptedFoldSafetyAt (v : ValidatorIndex) (n : ℕ) : Prop where
 private theorem nextSlotFold_genesisTime_le
     (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext) :
     E.genesis_store.genesis_time ≤ E.genesis_store.time := by
-  obtain ⟨ast, ablk, hgen, _hslot, _hparent⟩ := hT.genesis
+  obtain ⟨ast, ablk, hgen, _hslot, _hparent⟩ := hT.genesis_structure
   rw [hgen]
   simp only [get_forkchoice_store]
   omega
@@ -304,7 +308,7 @@ theorem confirmed_safeFromFollowingSlot_of_acceptedActualFCRFold_all_le
       B.state.C B.anchor.root B.anchor.epoch :=
     acceptedAnchorExact_of_trajectory cfg ext E B hT hanchor hboundary
   let hMargin : SelectedMarginAssumptions cfg ext E :=
-    { genesis := hT.genesis
+    { genesis := hT.genesis_structure
       wellFormed := hT.wellFormed
       whole_seconds := hT.whole_seconds
       honest_behavior := hT.honest_behavior
@@ -550,3 +554,5 @@ theorem confirmed_head_of_acceptedActualFCRFold_nextSlot
 end Execution
 
 end FastConfirmation.Spec
+
+end

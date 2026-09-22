@@ -1,8 +1,11 @@
-import FastConfirmation.Spec.Proof.DynamicsClosure
-import FastConfirmation.Spec.Proof.EngineStore
-import FastConfirmation.Spec.Proof.FilterViability
-import FastConfirmation.Spec.Proof.FCRCallContracts
-import FastConfirmation.Spec.TheoremStatements
+module
+public import FastConfirmation.Spec.Proof.DynamicsClosure
+public import FastConfirmation.Spec.Proof.EngineStore
+public import FastConfirmation.Spec.Proof.FilterViability
+public import FastConfirmation.Spec.Proof.FCRCallContracts
+public import FastConfirmation.Spec.TheoremStatements
+
+@[expose] public section
 
 /-!
 # Spec / Proof / L4Fold: the algorithm fold and reset branches
@@ -473,3 +476,5 @@ theorem spec_safety_next_slot_of_residual
   spec_safety_next_slot_of_safety cfg ext (spec_safety_of_residual cfg ext hres)
 
 end FastConfirmation.Spec
+
+end

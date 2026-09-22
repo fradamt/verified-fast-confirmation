@@ -1,7 +1,10 @@
-import FastConfirmation.Spec.Proof.Base
-import FastConfirmation.Spec.Proof.Delivery
-import FastConfirmation.Spec.Proof.EngineSupport
-import FastConfirmation.Spec.Proof.FractionBase
+module
+public import FastConfirmation.Spec.Proof.Base
+public import FastConfirmation.Spec.Proof.Delivery
+public import FastConfirmation.Spec.Proof.EngineSupport
+public import FastConfirmation.Spec.Proof.FractionBase
+
+@[expose] public section
 
 /-!
 # Spec / Proof / Bridge: the reverse-provenance bridge
@@ -387,7 +390,7 @@ theorem support_discount_le_Aval
       ≤ E.Aval cfg ext v₀ n₀ b' lo es := by
   have hne : ∀ i ∈ (E.store cfg ext v₀ n₀).equivocating_indices, i ∉ E.honest :=
     fun i hi_eq hi_honest =>
-      Execution.honest_not_equivocating cfg ext hhb hec hgen hi_honest v₀ n₀ hi_eq
+      Execution.honest_not_equivocating cfg ext hhb hec hgen hi_honest v₀ n₀ (by assumption) (by assumption) hi_eq
   refine le_trans (support_discount_le_parent_stuck cfg ext hec hbb hv₀ hnH hval
     (hlo ▸ hloH) hbH htab hne) ?_
   rw [Execution.Aval]
@@ -451,3 +454,5 @@ theorem weak_base_discharged
 end Execution
 
 end FastConfirmation.Spec
+
+end

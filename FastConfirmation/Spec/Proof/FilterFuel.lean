@@ -1,4 +1,7 @@
-import FastConfirmation.Spec.Proof.AncestryRoots
+module
+public import FastConfirmation.Spec.Proof.AncestryRoots
+
+@[expose] public section
 
 /-!
 # Spec / Proof / FilterFuel
@@ -259,3 +262,5 @@ theorem get_head_argmax_dominant {store : Store Root} {blocks : List Root}
     · exact absurd (lt_of_lt_of_le (key a (hdom a ha hab)) hle) (lt_irrefl _)
 
 end FastConfirmation.Spec
+
+end

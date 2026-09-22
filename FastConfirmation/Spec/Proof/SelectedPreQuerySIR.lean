@@ -1,5 +1,8 @@
-import FastConfirmation.Spec.Proof.SelectedInitialRecency
-import FastConfirmation.Spec.Proof.SelectedJustifiedCompatibility
+module
+public import FastConfirmation.Spec.Proof.SelectedInitialRecency
+public import FastConfirmation.Spec.Proof.SelectedJustifiedCompatibility
+
+@[expose] public section
 
 /-!
 # Mechanical pre-query SIR bracket
@@ -388,3 +391,5 @@ theorem preQuerySelectedJustifiedCompatibilityAt_of_threeRegionBracket
 end Execution
 
 end FastConfirmation.Spec
+
+end

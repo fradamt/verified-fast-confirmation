@@ -1,6 +1,9 @@
-import FastConfirmation.Spec.Proof.Provenance
-import FastConfirmation.Spec.Proof.WFTrajectory
-import FastConfirmation.Spec.Proof.HonestWeight
+module
+public import FastConfirmation.Spec.Proof.Provenance
+public import FastConfirmation.Spec.Proof.WFTrajectory
+public import FastConfirmation.Spec.Proof.HonestWeight
+
+@[expose] public section
 
 /-!
 # Spec / Proof / Delivery
@@ -111,9 +114,13 @@ theorem on_block_blocksSlotLe {sl : Slot} {store store' : Store Root}
     {sb : SignedBeaconBlock Root} (hcur : get_current_slot cfg store ≤ sl)
     (h : BlocksSlotLe sl store) (hh : on_block cfg ext store sb = some store') :
     BlocksSlotLe sl store' := by
-  simp only [on_block] at hh
-  split_ifs at hh with hp hslot hfin hfc <;> try cases hh
-  all_goals
+  by_cases hknown : sb.root ∈ store.block_roots
+  · simp [on_block, hknown] at hh
+    cases hh
+    exact h
+  · simp only [on_block, if_neg hknown] at hh
+    split_ifs at hh with hp hslot hfin hfc
+    all_goals try contradiction
     cases hst : ext.state_transition (store.block_states sb.message.parent_root) sb with
     | none => rw [hst] at hh; cases hh
     | some state =>
@@ -294,10 +301,10 @@ the seven conjuncts, taking the cross-store transport ones (known blocks,
 not-future, LMD/FFG consistency) as explicit premises. -/
 
 /-- Pure epoch-window arithmetic on the two epoch numbers: if `es ≤ es1 ≤ es + 1`
-then `es` is `es1` or `es1`'s predecessor (guarded at `0`). -/
+then `es` is `es1` or `es1`'s saturating predecessor. -/
 private theorem epoch_window_nat (es es1 : ℕ) (h1 : es ≤ es1) (h2 : es1 ≤ es + 1) :
-    es = es1 ∨ es = (if es1 > 0 then es1 - 1 else 0) := by
-  split_ifs with hpos <;> omega
+    es = es1 ∨ es = es1 - 1 := by
+  omega
 
 omit [LinearOrder Root] [Inhabited Root] in
 /-- Epoch-window conjunct: when the receiving store's current slot is exactly one
@@ -555,6 +562,33 @@ The two source-store facts left as hypotheses — the head block is known
 are the `get_head`/`get_checkpoint_block` well-formedness inputs used by this
 lemma. -/
 
+/-- A fresh checkpoint state is validated through its reachable block-state
+base. Slot processing preserves the indexed check; the cache need not already
+contain the prepared state. -/
+theorem honest_attestation_valid_prepared {E : Execution Root}
+    (hec : ExternalsCoherence cfg ext E) {store : Store Root}
+    (hstore : E.HonestCausalStore cfg ext store) (a : Attestation Root)
+    (hroot : a.data.target.root ∈ store.block_roots)
+    (v : ValidatorIndex) (hv : v ∈ E.honest)
+    (hsingle : a.attesting_indices = [v])
+    (hcommittee : v ∈ E.committee a.data.slot)
+    (hvote : ∃ m a', E.vote v a.data.slot = some (m, a') ∧ a.data = a'.data) :
+    ext.is_valid_indexed_attestation
+      ((store_target_checkpoint_state cfg ext store a.data.target).checkpoint_states
+        a.data.target) a = true := by
+  by_cases hkey : a.data.target ∈ store.checkpoint_state_keys
+  · simpa only [store_target_checkpoint_state, if_neg (not_not_intro hkey)] using
+      hec.honest_attestation_valid _ a
+        (hstore.checkpointState cfg ext hkey) v hv hsingle hcommittee hvote
+  · have hbase := hec.honest_attestation_valid _ a
+      (hstore.blockState cfg ext hroot) v hv hsingle hcommittee hvote
+    simp only [store_target_checkpoint_state, if_pos hkey, Function.update_self]
+    split_ifs with hslot
+    · rw [hec.process_slots_attestation_valid _ _ _
+        (hstore.blockState cfg ext hroot) hslot]
+      exact hbase
+    · exact hbase
+
 /-- **Application-second effect.** Under honest behaviour, synchrony, externals
 coherence and a well-formed execution from a `get_forkchoice_store` genesis,
 the honest attestation `v` casts for its assigned slot `s` (at second `n`) is,
@@ -697,9 +731,13 @@ theorem Execution.vote_lands {E : Execution Root}
       ((store_target_checkpoint_state cfg ext
           (pre.foldl (fun store event => (apply_event cfg ext store event).getD store) tb)
           a.data.target).checkpoint_states a.data.target) a = true :=
-    hec.honest_attestation_valid _ a v hv hsingle hcomm_slot hvote_ex
+    honest_attestation_valid_prepared cfg ext hec
+      (E.honestCausalStore_prefix cfg ext w hw Nm1
+        (by simpa only [← hNeq] using hHdeliver)
+        pre (Event.attestation a false :: suf) hl)
+      a (hsub htroot) v hv hsingle hcomm_slot hvote_ex
   have hne_full : v ∉ (E.store cfg ext w (Nm1 + 1)).equivocating_indices :=
-    Execution.honest_not_equivocating cfg ext hhb hec ⟨ast, ablk, hgeq⟩ hv w (Nm1 + 1)
+    Execution.honest_not_equivocating cfg ext hhb hec ⟨ast, ablk, hgeq⟩ hv w (Nm1 + 1) hw (by simpa only [← hNeq] using hHdeliver)
   have hle_pf : StoreLE
       (pre.foldl (fun store event => (apply_event cfg ext store event).getD store) tb)
       (E.store cfg ext w (Nm1 + 1)) := by
@@ -957,3 +995,5 @@ theorem Execution.latest_message_root_head {E : Execution Root}
   exact E.latest_message_root cfg ext hhb hec hgen hv hvote hmsg hmepoch.symm
 
 end FastConfirmation.Spec
+
+end

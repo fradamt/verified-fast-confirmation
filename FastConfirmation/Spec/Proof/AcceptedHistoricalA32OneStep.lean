@@ -1,4 +1,8 @@
-import FastConfirmation.Spec.Proof.AcceptedHistoricalA32LazyCrossing
+module
+public import FastConfirmation.Spec.Proof.AcceptedHistoricalA32LazyCrossing
+
+@[expose] public section
+
 
 /-!
 # Exact one-call historical A3.2 transformer
@@ -334,3 +338,5 @@ end Execution
 
 
 end FastConfirmation.Spec
+
+end

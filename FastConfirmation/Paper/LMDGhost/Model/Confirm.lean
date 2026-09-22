@@ -1,4 +1,7 @@
-import FastConfirmation.Paper.LMDGhost.Model.Weights
+module
+public import FastConfirmation.Paper.LMDGhost.Model.Weights
+
+@[expose] public section
 
 /-!
 # LMDGhost / Model / Confirm
@@ -27,3 +30,5 @@ def isLMDGHOSTSafe (τ : Timing) (fm : FaultModel n) (cm : Committees n) (pb : W
   ∀ ⦃b' : Block n⦄, b' ≼ b → b' = Block.genesis ∨ isOneConfirmed τ fm cm pb A V b' t
 
 end FastConfirmation.LMDGhost
+
+end

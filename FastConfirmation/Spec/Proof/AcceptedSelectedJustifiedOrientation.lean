@@ -1,7 +1,10 @@
-import Mathlib.Tactic
-import FastConfirmation.Spec.Proof.AcceptedCurrentTargetLowerContracts
-import FastConfirmation.Spec.Proof.AcceptedHistoricalA32Payload
-import FastConfirmation.Spec.Proof.CurrentTargetCertificateRealization
+module
+public import Mathlib.Tactic
+public import FastConfirmation.Spec.Proof.AcceptedCurrentTargetLowerContracts
+public import FastConfirmation.Spec.Proof.AcceptedHistoricalA32Payload
+public import FastConfirmation.Spec.Proof.CurrentTargetCertificateRealization
+
+@[expose] public section
 
 /-!
 # Accepted selected-result / endpoint-justification orientation
@@ -45,7 +48,7 @@ theorem ExactPrefixAcceptedFFGSemantics.endpointJustificationOriginAt
       (E := E) (anchor := B.anchor))
     {w : ValidatorIndex} {m : Nat} :
     E.EndpointJustificationOriginAt cfg ext B.anchor w m := by
-  obtain ⟨ast, ablk, hgenEq, hslot, hparent⟩ := hT.genesis
+  obtain ⟨ast, ablk, hgenEq, hslot, hparent⟩ := hT.genesis_structure
   have hgenShort : ∃ (ast : BeaconState Root)
       (ablk : SignedBeaconBlock Root),
       E.genesis_store = get_forkchoice_store cfg ast ablk ∧
@@ -341,7 +344,7 @@ theorem strictSelected_result_and_child_ancestor_of_endpointJustified_accepted
           (find_latest_confirmed_descendant cfg ext query input))
         (get_node_for_root
           (E.store cfg ext w m).justified_checkpoint.root) = true := by
-  obtain ⟨ast, ablk, hgen, hgenSlot, _hgenParent⟩ := hT.genesis
+  obtain ⟨ast, ablk, hgen, hgenSlot, _hgenParent⟩ := hT.genesis_structure
   have hgenShort : ∃ (ast : BeaconState Root)
       (ablk : SignedBeaconBlock Root),
       E.genesis_store = get_forkchoice_store cfg ast ablk ∧
@@ -372,3 +375,5 @@ end Execution
 
 
 end FastConfirmation.Spec
+
+end

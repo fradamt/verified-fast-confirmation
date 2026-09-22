@@ -1,6 +1,7 @@
-import FastConfirmation.Paper.LMDGhost.Model
-import FastConfirmation.Paper.LMDGhost.TheoremStatements
-import FastConfirmation.Paper.LMDGhost.ProvenTheorems
+module
+public import FastConfirmation.Paper.LMDGhost.Model
+public import FastConfirmation.Paper.LMDGhost.TheoremStatements
+public import FastConfirmation.Paper.LMDGhost.ProvenTheorems
 
 /-!
 # LMDGhost

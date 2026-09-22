@@ -1,6 +1,9 @@
-import FastConfirmation.Spec.Proof.CurrentTargetA32Support
-import FastConfirmation.Spec.Proof.FFGJustifiedCheckpointCache
-import FastConfirmation.Spec.Proof.PaperA32ProjectionCore
+module
+public import FastConfirmation.Spec.Proof.CurrentTargetA32Support
+public import FastConfirmation.Spec.Proof.FFGJustifiedCheckpointCache
+public import FastConfirmation.Spec.Proof.PaperA32ProjectionCore
+
+@[expose] public section
 
 /-!
 # Concrete realization of one paper-A3.2 support record
@@ -142,7 +145,9 @@ theorem paperA32LinkSupportAtCore_of_concreteHonestTargetVotes
       vote.assigned, ?_, ?_⟩
     · simp only [a, honest_attestation_attesting_indices,
         List.mem_singleton]
-    · apply hec.honest_attestation_valid _ a i vote.honest
+    · apply hec.honest_attestation_valid _ a
+        ((E.honestCausalStore_store cfg ext w m hw hHm).checkpointState
+          cfg ext hkeyed) i vote.honest
       · simp only [a, honest_attestation_attesting_indices]
       · simpa only [a, honest_attestation_data_eq,
           honest_attestation_data_slot] using vote.assigned
@@ -451,3 +456,5 @@ theorem accepted_paperA32IncludedAtTip_of_concreteQuorum
 end Execution
 
 end FastConfirmation.Spec
+
+end

@@ -1,7 +1,10 @@
-import FastConfirmation.Spec.Proof.MicroSteps
-import FastConfirmation.Spec.Proof.CoveringFFG
-import FastConfirmation.Spec.Proof.Confinement
-import FastConfirmation.Spec.Proof.INVstarTrack
+module
+public import FastConfirmation.Spec.Proof.MicroSteps
+public import FastConfirmation.Spec.Proof.CoveringFFG
+public import FastConfirmation.Spec.Proof.Confinement
+public import FastConfirmation.Spec.Proof.INVstarTrack
+
+@[expose] public section
 
 /-!
 # Spec / Proof / Anchoring: the additive anchoring lemma and `coveringFFG_of_anchor`
@@ -283,3 +286,5 @@ theorem coveringFFG_of_anchor (hwfE : WellFormedExecution E)
 end Execution
 
 end FastConfirmation.Spec
+
+end

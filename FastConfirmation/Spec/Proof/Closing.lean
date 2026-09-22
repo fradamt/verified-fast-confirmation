@@ -1,5 +1,8 @@
-import FastConfirmation.Spec.Proof.Suppliers
-import FastConfirmation.Spec.Proof.SameSlotProvenance
+module
+public import FastConfirmation.Spec.Proof.Suppliers
+public import FastConfirmation.Spec.Proof.SameSlotProvenance
+
+@[expose] public section
 
 /-!
 # Spec / Proof / Closing: the disjunctive safety composition
@@ -163,3 +166,5 @@ and went with it in the orphan sweep. See
 `docs/p6-justified-descends-derivation.md` §8. -/
 
 end FastConfirmation.Spec
+
+end

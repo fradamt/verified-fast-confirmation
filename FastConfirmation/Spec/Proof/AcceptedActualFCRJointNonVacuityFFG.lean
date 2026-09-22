@@ -1,8 +1,11 @@
-import Mathlib.Tactic
-import FastConfirmation.Spec.Proof.AcceptedActualFCRJointNonVacuityBase
-import FastConfirmation.Spec.Proof.AcceptedBlockTransitionProvenance
-import FastConfirmation.Spec.Proof.AcceptedScheduledPrefixGeometry
-import FastConfirmation.Spec.Proof.ExactCheckpointLinks
+module
+public import Mathlib.Tactic
+public import FastConfirmation.Spec.Proof.AcceptedActualFCRJointNonVacuityBase
+public import FastConfirmation.Spec.Proof.AcceptedBlockTransitionProvenance
+public import FastConfirmation.Spec.Proof.AcceptedScheduledPrefixGeometry
+public import FastConfirmation.Spec.Proof.ExactCheckpointLinks
+
+@[expose] public section
 
 /-!
 # Accepted FFG semantics for the joint non-vacuity witness
@@ -91,7 +94,9 @@ theorem carrier_acceptedBlockAt :
       carrierSignedBlock.message := by
   refine ⟨carrierTransition.postStore, carrierTransition.post_causal, ?_, ?_⟩
   · simpa [carrierSignedBlock] using carrierTransition.root_known
-  · simpa [carrierSignedBlock] using carrierTransition.inserted_message
+  · simpa [carrierSignedBlock] using
+      carrierTransition.inserted_message_fresh (by
+        set_option maxRecDepth 50000 in decide)
 
 /-! ## Finite block projection of every causal prefix -/
 
@@ -293,7 +298,7 @@ def acceptedIncludedEvidenceAt (s : Slot) (hlo : 4 ≤ s) (hhi : s ≤ 6) :
     rfl
   valid := by
     apply (witness_valid_iff anchorState (vote s)).2
-    exact vote_mem_ground (hhi.trans_lt (by decide : 6 < 16))
+    exact ⟨by decide, vote_mem_ground (hhi.trans_lt (by decide : 6 < 16))⟩
   slot_within_horizon := by
     rw [vote_data_slot]
     exact slot_within_of_lt_sixteen (hhi.trans_lt (by decide : 6 < 16))
@@ -343,7 +348,7 @@ def witnessAcceptedIncludedAttestations :
         valid := by
           rcases h.2 with rfl | rfl | rfl <;>
             apply (witness_valid_iff anchorState _).2 <;>
-            exact vote_mem_ground (by decide)
+            exact ⟨by decide, vote_mem_ground (by decide)⟩
         slot_within_horizon := by
           rcases h.2 with rfl | rfl | rfl <;>
             exact slot_within_of_lt_sixteen (by decide)
@@ -725,25 +730,65 @@ theorem acceptedTransition_cases
       t.postStore.block_states childRoot = childState) ∨
     (t.signedBlock = carrierSignedBlock ∧
       t.postStore.block_states carrierRoot = carrierState) := by
-  obtain ⟨post, htransition, hpost⟩ :=
-    Execution.AcceptedBlockTransition.on_block_inserted_state
-      witnessConfig witnessExternals t.accepted
-  simp only [witnessExternals, witnessTransition] at htransition
-  split at htransition
-  · next hguard =>
-      left
-      refine ⟨hguard.2, ?_⟩
-      have hpostEq : childState = post := Option.some.inj htransition
-      rw [hguard.2] at hpost
-      exact hpost.trans hpostEq.symm
-  · split at htransition
-    · next hguard =>
-        right
-        refine ⟨hguard.2, ?_⟩
-        have hpostEq : carrierState = post := Option.some.inj htransition
-        rw [hguard.2] at hpost
-        exact hpost.trans hpostEq.symm
-    · contradiction
+  have heventMem : Event.block t.signedBlock ∈
+      witnessExecution.schedule t.atPrefix.node
+        (t.atPrefix.previousSecond + 1) := by
+    obtain ⟨hlt, hevent⟩ :=
+      List.getElem?_eq_some_iff.mp t.event_at
+    have hmem := List.getElem_mem hlt
+    rw [hevent] at hmem
+    exact hmem
+  rcases block_mem_schedule_iff.mp heventMem with hchild | hcarrier
+  · left
+    have hprev : t.atPrefix.previousSecond = 0 := by omega
+    have hcountLe : t.atPrefix.processedCount ≤ 2 := by
+      simpa [witnessExecution, witnessSchedule, hprev] using
+        t.atPrefix.count_le
+    have hevent := t.event_at
+    simp only [witnessExecution, witnessSchedule, hprev] at hevent
+    have hcount : t.atPrefix.processedCount = 0 := by
+      interval_cases hp : t.atPrefix.processedCount <;> simp_all
+    have hpostPrefix :
+        t.successorPrefix.store witnessConfig witnessExternals =
+          childPostPrefix.store witnessConfig witnessExternals := by
+      simp only [Execution.AcceptedBlockTransition.successorPrefix,
+        Execution.ScheduledEventPrefix.successor,
+        Execution.ScheduledEventPrefix.store, childPostPrefix, childPrefix,
+        hprev, hcount]
+      rw [witness_store_symmetric t.atPrefix.node 0 0]
+      rfl
+    have hpostStore : t.postStore =
+        childPostPrefix.store witnessConfig witnessExternals := by
+      rw [← t.successorPrefix_store]
+      exact hpostPrefix
+    refine ⟨hchild.2, ?_⟩
+    rw [hpostStore]
+    rfl
+  · right
+    have hprev : t.atPrefix.previousSecond = 6 := by omega
+    have hcountLe : t.atPrefix.processedCount ≤ 5 := by
+      simpa [witnessExecution, witnessSchedule, hprev] using
+        t.atPrefix.count_le
+    have hevent := t.event_at
+    simp only [witnessExecution, witnessSchedule, hprev] at hevent
+    have hcount : t.atPrefix.processedCount = 1 := by
+      interval_cases hp : t.atPrefix.processedCount <;> simp_all
+    have hpostPrefix :
+        t.successorPrefix.store witnessConfig witnessExternals =
+          carrierPostPrefix.store witnessConfig witnessExternals := by
+      simp only [Execution.AcceptedBlockTransition.successorPrefix,
+        Execution.ScheduledEventPrefix.successor,
+        Execution.ScheduledEventPrefix.store, carrierPostPrefix, carrierPrefix,
+        hprev, hcount]
+      rw [witness_store_symmetric t.atPrefix.node 0 6]
+      rfl
+    refine ⟨hcarrier.2, ?_⟩
+    have hpostStore : t.postStore =
+        carrierPostPrefix.store witnessConfig witnessExternals := by
+      rw [← t.successorPrefix_store]
+      exact hpostPrefix
+    rw [hpostStore]
+    set_option maxRecDepth 50000 in rfl
 
 theorem genesis_known_eq_anchor {r : WitnessRoot}
     (hr : r ∈ witnessExecution.genesis_store.block_roots) :
@@ -1021,3 +1066,5 @@ theorem witness_slashableOnChain_eq_empty (tip : WitnessRoot) :
 
 end AcceptedActualFCRJointNonVacuityFFG
 end FastConfirmation.Spec
+
+end

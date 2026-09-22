@@ -1,7 +1,10 @@
-import FastConfirmation.Spec.Proof.Engine
-import FastConfirmation.Spec.Proof.Delivery
-import FastConfirmation.Spec.Proof.SupportTransport
-import FastConfirmation.Spec.Proof.QuorumAccounting
+module
+public import FastConfirmation.Spec.Proof.Engine
+public import FastConfirmation.Spec.Proof.Delivery
+public import FastConfirmation.Spec.Proof.SupportTransport
+public import FastConfirmation.Spec.Proof.QuorumAccounting
+
+@[expose] public section
 
 /-!
 # Spec / Proof / EngineSupport: recorded-support membership
@@ -189,10 +192,11 @@ theorem mem_AttSupporters_honest {E : Execution Root}
     (huns : (bs.validators.getD i default).slashed = false)
     (hlm : (E.store cfg ext w m).latest_messages i = some lm)
     (hsupp : is_ancestor (E.store cfg ext w m)
-      (get_supported_node (E.store cfg ext w m) lm) node = true) :
+      (get_supported_node (E.store cfg ext w m) lm) node = true)
+    (hw : w ∈ E.honest) (hmH : E.WithinHorizon cfg m) :
     i ∈ AttSupporters cfg (E.store cfg ext w m) node bs := by
   have hne : i ∉ (E.store cfg ext w m).equivocating_indices :=
-    Execution.honest_not_equivocating cfg ext hhb hec hgen hi w m
+    Execution.honest_not_equivocating cfg ext hhb hec hgen hi w m hw hmH
   exact mem_AttSupporters_of cfg hact huns hlm hne hsupp
 
 /-! ## The headline: recorded-support lower bound for a validator set
@@ -222,10 +226,13 @@ theorem recorded_support_lower_HS {E : Execution Root}
       (bs.validators.getD i default).slashed = false ∧
       ∃ lm, (E.store cfg ext w m).latest_messages i = some lm ∧
         is_ancestor (E.store cfg ext w m)
-          (get_supported_node (E.store cfg ext w m) lm) node = true) :
+          (get_supported_node (E.store cfg ext w m) lm) node = true)
+    (hw : w ∈ E.honest) (hmH : E.WithinHorizon cfg m) :
     E.weight HS ≤ get_attestation_score cfg (E.store cfg ext w m) node bs := by
   refine recorded_support_lower cfg hval HS (fun i hi => ?_)
   obtain ⟨hih, hact, huns, lm, hlm, hsupp⟩ := hHS i hi
-  exact mem_AttSupporters_honest cfg ext hhb hec hgen hih hact huns hlm hsupp
+  exact mem_AttSupporters_honest cfg ext (hw := hw) (hmH := hmH) hhb hec hgen hih hact huns hlm hsupp
 
 end FastConfirmation.Spec
+
+end

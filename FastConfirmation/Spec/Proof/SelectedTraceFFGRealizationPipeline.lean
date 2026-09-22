@@ -1,9 +1,13 @@
-import FastConfirmation.Spec.Proof.SelectedEdgeGeometry
-import FastConfirmation.Spec.Proof.SelectedJustifiedCompatibility
-import FastConfirmation.Spec.Proof.SelectedPreQueryAnchor
-import FastConfirmation.Spec.Proof.CausalCheckpointEpochBound
-import FastConfirmation.Spec.Proof.SelectedFFGRealization
-import FastConfirmation.Spec.Proof.PaperA32Projection
+module
+public import FastConfirmation.Spec.Proof.SelectedEdgeGeometry
+public import FastConfirmation.Spec.Proof.SelectedJustifiedCompatibility
+public import FastConfirmation.Spec.Proof.SelectedPreQueryAnchor
+public import FastConfirmation.Spec.Proof.CausalCheckpointEpochBound
+public import FastConfirmation.Spec.Proof.SelectedFFGRealization
+public import FastConfirmation.Spec.Proof.PaperA32Projection
+
+@[expose] public section
+
 
 /-!
 # Selected-call A3.2 semantics vocabulary
@@ -91,3 +95,5 @@ def SelectedMarginAssumptions.toFFGAccountabilityAssumptions
 end Execution
 
 end FastConfirmation.Spec
+
+end

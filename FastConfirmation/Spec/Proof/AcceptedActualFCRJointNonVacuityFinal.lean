@@ -1,7 +1,10 @@
-import Mathlib.Tactic
-import FastConfirmation.Spec.Proof.AcceptedActualFCRJointNonVacuityFFG
-import FastConfirmation.Spec.Proof.AcceptedActualFCRNextSlotSafetyFacade
-import FastConfirmation.Spec.Proof.AcceptedFinalizedNextSlotSafety
+module
+public import Mathlib.Tactic
+public import FastConfirmation.Spec.Proof.AcceptedActualFCRJointNonVacuityFFG
+public import FastConfirmation.Spec.Proof.AcceptedActualFCRNextSlotSafetyFacade
+public import FastConfirmation.Spec.Proof.AcceptedFinalizedNextSlotSafety
+
+@[expose] public section
 
 /-!
 # Joint accepted-FCR non-vacuity: paper inclusion and next-slot bundle
@@ -286,7 +289,9 @@ theorem child_acceptedBlockAt :
       childSignedBlock.message := by
   refine ⟨childTransition.postStore, childTransition.post_causal, ?_, ?_⟩
   · simpa [childSignedBlock] using childTransition.root_known
-  · simpa [childSignedBlock] using childTransition.inserted_message
+  · simpa [childSignedBlock] using
+      childTransition.inserted_message_fresh (by
+        set_option maxRecDepth 50000 in decide)
 
 theorem child_canonical_throughout_epoch_two :
     witnessExecution.CanonicalThroughoutEpoch witnessConfig witnessExternals
@@ -344,8 +349,10 @@ noncomputable def witnessAnchorChildLinkSupportAt
           (s := 4) (by decide) (by decide) h8m, ?_, ?_, ?_, ?_, ?_, ?_,
           ?_, ?_⟩
       · decide
-      · exact (witness_valid_iff _ _).2
-          (vote_mem_ground (by decide))
+      · apply (witness_valid_iff _ _).2
+        refine ⟨?_, vote_mem_ground (by decide)⟩
+        rw [(witnessStore_registryConstant w m).2 _ hlate.child_target_key]
+        decide
       · exact slot_within_of_lt_sixteen (by decide)
       · simpa only [vote4, vote_data_slot, slot_at_eq] using
           (by omega : 4 ≤ m)
@@ -357,8 +364,10 @@ noncomputable def witnessAnchorChildLinkSupportAt
           (s := 5) (by decide) (by decide) h8m, ?_, ?_, ?_, ?_, ?_, ?_,
           ?_, ?_⟩
       · decide
-      · exact (witness_valid_iff _ _).2
-          (vote_mem_ground (by decide))
+      · apply (witness_valid_iff _ _).2
+        refine ⟨?_, vote_mem_ground (by decide)⟩
+        rw [(witnessStore_registryConstant w m).2 _ hlate.child_target_key]
+        decide
       · exact slot_within_of_lt_sixteen (by decide)
       · simpa only [vote5, vote_data_slot, slot_at_eq] using
           (by omega : 5 ≤ m)
@@ -370,8 +379,10 @@ noncomputable def witnessAnchorChildLinkSupportAt
           (s := 6) (by decide) (by decide) h8m, ?_, ?_, ?_, ?_, ?_, ?_,
           ?_, ?_⟩
       · decide
-      · exact (witness_valid_iff _ _).2
-          (vote_mem_ground (by decide))
+      · apply (witness_valid_iff _ _).2
+        refine ⟨?_, vote_mem_ground (by decide)⟩
+        rw [(witnessStore_registryConstant w m).2 _ hlate.child_target_key]
+        decide
       · exact slot_within_of_lt_sixteen (by decide)
       · simpa only [vote6, vote_data_slot, slot_at_eq] using
           (by omega : 6 ≤ m)
@@ -717,3 +728,5 @@ theorem acceptedActualFCRNextSlotSafetyAssumptions_nonvacuous :
 
 end AcceptedActualFCRJointNonVacuityFinal
 end FastConfirmation.Spec
+
+end

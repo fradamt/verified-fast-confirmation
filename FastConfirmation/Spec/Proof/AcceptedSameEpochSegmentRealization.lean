@@ -1,6 +1,9 @@
-import Mathlib.Tactic
-import FastConfirmation.Spec.Proof.AcceptedBlockTransitionProvenance
-import FastConfirmation.Spec.Proof.FFGSourceCoherence
+module
+public import Mathlib.Tactic
+public import FastConfirmation.Spec.Proof.AcceptedBlockTransitionProvenance
+public import FastConfirmation.Spec.Proof.FFGSourceCoherence
+
+@[expose] public section
 
 /-!
 # Guarded realization of accepted same-epoch ancestry segments
@@ -108,13 +111,15 @@ namespace AcceptedBlockTransition
 
 variable {E : Execution Root}
 
-/-- The successful handler's parent guard exposes parent knownness at the
+/-- A fresh successful handler's parent guard exposes parent knownness at the
 transition's exact pre-prefix. -/
-theorem parent_known (t : E.AcceptedBlockTransition cfg ext) :
+theorem parent_known (t : E.AcceptedBlockTransition cfg ext)
+    (hfresh : t.signedBlock.root ∉
+      (t.atPrefix.store cfg ext).block_roots) :
     t.signedBlock.message.parent_root ∈
       (t.atPrefix.store cfg ext).block_roots := by
   have haccepted := t.accepted
-  simp only [on_block] at haccepted
+  simp only [on_block, if_neg hfresh] at haccepted
   split_ifs at haccepted with hparent <;> try cases haccepted
   all_goals simpa only [not_not] using hparent
 
@@ -149,7 +154,7 @@ theorem acceptedProjectedSameEpochTransition_of_known_parent
     (congrArg BeaconBlock.parent_root htMessage).trans hparent
   have htParentKnown : t.signedBlock.message.parent_root ∈
       (t.atPrefix.store cfg ext).block_roots :=
-    t.parent_known
+    t.parent_known writer.fresh
   have hprefixParentKnown : parent ∈
       (t.atPrefix.store cfg ext).block_roots := by
     rw [← htParent]
@@ -191,7 +196,7 @@ theorem acceptedProjectedSameEpochTransition_of_known_parent
         (congrArg (fun b => compute_epoch_at_slot cfg b.slot)
           htMessage).symm
   have hedge := AcceptedProjectedSameEpochTransition.of_transition
-    (S := S) t htParentKnown hinsertionSameEpoch
+    (S := S) t writer.fresh htParentKnown hinsertionSameEpoch
   rw [htParent, htRoot] at hedge
   exact hedge
 
@@ -242,3 +247,5 @@ theorem knownSameEpochAncestrySegment_toAcceptedProjectedSameEpochSegment_of_cor
 end Execution
 
 end FastConfirmation.Spec
+
+end

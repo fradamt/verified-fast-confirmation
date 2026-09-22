@@ -1,5 +1,8 @@
-import FastConfirmation.Spec.Proof.SelectedFilterBridge
-import FastConfirmation.Spec.Proof.AnchorClose
+module
+public import FastConfirmation.Spec.Proof.SelectedFilterBridge
+public import FastConfirmation.Spec.Proof.AnchorClose
+
+@[expose] public section
 
 /-!
 # Selected filter-tip chain geometry
@@ -312,3 +315,5 @@ theorem exists_filterTipSkeleton_of_placement {store : Store Root} {c : Root}
 end SelectedFilterChainGeometry
 
 end FastConfirmation.Spec
+
+end

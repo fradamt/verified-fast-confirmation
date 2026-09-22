@@ -1,4 +1,7 @@
-import FastConfirmation.Spec.Proof.AnchorClose
+module
+public import FastConfirmation.Spec.Proof.AnchorClose
+
+@[expose] public section
 
 /-!
 # Spec / Proof / CertExtract: the per-edge `is_one_confirmed` extractor
@@ -451,3 +454,5 @@ theorem edgeCert_of_confirmation (hSA : SpecAssumptions cfg ext E)
 end Execution
 
 end FastConfirmation.Spec
+
+end

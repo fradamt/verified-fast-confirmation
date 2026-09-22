@@ -1,7 +1,10 @@
-import FastConfirmation.Spec.Proof.Closing
-import FastConfirmation.Spec.Proof.Provenance
-import FastConfirmation.Spec.Proof.Delivery
-import FastConfirmation.Spec.Proof.EngineTransport
+module
+public import FastConfirmation.Spec.Proof.Closing
+public import FastConfirmation.Spec.Proof.Provenance
+public import FastConfirmation.Spec.Proof.Delivery
+public import FastConfirmation.Spec.Proof.EngineTransport
+
+@[expose] public section
 
 /-!
 # Spec / Proof / Knownness: the confirmed-block knownness family
@@ -38,7 +41,7 @@ start `b` sits at or above the slot-`0` anchor trivially, so
 `LastCruxes.mem_of_is_ancestor_above_anchor` concludes `b ∈ S.block_roots` — exactly the confirming
 store `(v, n+1)`. This is the same transport `Structural.finalized_cross_known_of_boundary` runs
 at the finalized reset anchor, here with `a := lm.root` (a supporter's recorded block) and `b` the
-confirmed block; it needs no honesty (`LatestMessageProvenance` holds at every node) and no relay
+confirmed block; it needs an honest node and an in-horizon second, but no relay
 (same store).
 
 ## The genesis-start scope
@@ -111,11 +114,11 @@ variable (E : Execution Root)
 a supporter whose recorded `lm.root` descends from `b` and is known (`LatestMessageProvenance`); the
 `store_walkKnownK` walk from `lm.root` down to the slot-`0` anchor, with `b` trivially above the
 anchor at a genesis start, lands `b` in `block_roots` via `mem_of_is_ancestor_above_anchor`. No
-honesty, no relay. -/
+relay is needed; the node and second are in the validity-law domain. -/
 theorem hbconf_of_genesisStart (hSA : SpecAssumptions cfg ext E)
     (hanchor0 : ∀ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
       E.genesis_store = get_forkchoice_store cfg ast ablk → ablk.message.slot = GENESIS_SLOT)
-    (v : ValidatorIndex) (n : ℕ) (b : Root)
+    (v : ValidatorIndex) (hv : v ∈ E.honest) (n : ℕ) (b : Root)
     (_hHn1 : E.WithinHorizon cfg (n + 1))
     (hconf : is_one_confirmed cfg ext (E.fcrStep cfg ext v n).store
       (get_current_balance_source (E.fcrStep cfg ext v n)) b = true) :
@@ -135,7 +138,7 @@ theorem hbconf_of_genesisStart (hSA : SpecAssumptions cfg ext E)
   obtain ⟨i, lm, hlm, hanc⟩ := exists_supporter_of_score_pos cfg hsupp_pos
   -- the recorded block is known at `(v, n+1)`
   obtain ⟨_a, _, _, _, _, _, _, hlm_known, _⟩ :=
-    E.latestMessageProvenance cfg ext hwfE hec ⟨ast, ablk, hgeq⟩ v (n + 1) i lm hlm
+    E.latestMessageProvenance cfg ext hwfE hec ⟨ast, ablk, hgeq⟩ v (n + 1) (by assumption) (by assumption) i lm hlm
   -- the anchor root and the walk domain
   have hanchor_mem0 : ablk.root ∈ (E.store cfg ext v 0).block_roots := by
     change ablk.root ∈ E.genesis_store.block_roots
@@ -258,7 +261,7 @@ theorem hck_of_genesisStart (hSA : SpecAssumptions cfg ext E)
       · rw [h, E.fcrStep_store cfg ext v n]
         exact (hji.checkpoint_known v hv (n + 1) hHn1).2
       · rw [h]; exact E.fcrStep_observed_known cfg ext hji v hv n hHn1
-      · exact E.hbconf_of_genesisStart cfg ext hSA hanchor0 v n _ hHn1 h
+      · exact E.hbconf_of_genesisStart cfg ext hSA hanchor0 v hv n _ hHn1 h
     · rw [E.confirmed_succ_of_no_advance cfg ext v n hadv]
       exact (E.store_storeLE cfg ext v (Nat.le_succ n)).1 (ih hHn)
 
@@ -276,4 +279,7 @@ The knownness content of Sections 1-3b is unaffected: `hbconf_of_genesisStart`,
 `hck_of_genesisStart` all stand, and none of them touches the ahead regime. See
 `docs/p6-justified-descends-derivation.md` §8. -/
 
+
 end FastConfirmation.Spec
+
+end

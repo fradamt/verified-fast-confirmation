@@ -1,8 +1,11 @@
-import FastConfirmation.Spec.Proof.CheckpointDomain
-import FastConfirmation.Spec.Proof.HonestWeight
-import FastConfirmation.Spec.Proof.Discount
-import FastConfirmation.Spec.Proof.AnchorFacade
-import FastConfirmation.Spec.Proof.MicroSteps
+module
+public import FastConfirmation.Spec.Proof.CheckpointDomain
+public import FastConfirmation.Spec.Proof.HonestWeight
+public import FastConfirmation.Spec.Proof.Discount
+public import FastConfirmation.Spec.Proof.AnchorFacade
+public import FastConfirmation.Spec.Proof.MicroSteps
+
+@[expose] public section
 
 /-!
 # Spec / Proof / SameSlotProvenance
@@ -161,7 +164,8 @@ theorem honestSupporter_of_confirmed_known
   have htab : get_total_active_balance cfg bs = E.total_active cfg := by
     rw [hbseq]
     exact E.checkpoint_states_total_active_balance cfg ext hsv hec v (n + 1) c hkey hH
-  have hprov := E.latestMessageProvenance cfg ext hwfE hec hgen0 v (n + 1)
+  have hprov := E.latestMessageProvenance cfg ext hwfE hec hgen0 v (n + 1) hv hH
+
   rw [← E.store_current_slot cfg ext v (n + 1)] at hprov
   have hwf : ParentSlotLt (E.store cfg ext v (n + 1)) :=
     E.store_parentSlotLt cfg ext hwfE hec ⟨ast, ablk, hgeq, hslot, hroot⟩
@@ -175,7 +179,7 @@ theorem honestSupporter_of_confirmed_known
           ((E.store cfg ext v (n + 1)).blocks b).slot lm.root := by
     intro i _ lm hlm
     obtain ⟨_, _, _, _, _, _, _, hlmKnown, _⟩ :=
-      E.latestMessageProvenance cfg ext hwfE hec hgen0 v (n + 1) i lm hlm
+      E.latestMessageProvenance cfg ext hwfE hec hgen0 v (n + 1) hv hH i lm hlm
     exact hwalkK b hb lm.root hlmKnown
   have hbslot : ((E.store cfg ext v (n + 1)).blocks b).slot ≤
       get_current_slot cfg (E.store cfg ext v (n + 1)) :=
@@ -200,7 +204,7 @@ theorem honestSupporter_of_confirmed_known
     (n := n + 1) hH hwf hbH hval htab hprov hconf' hwalk
   have hne : ∀ i ∈ (E.store cfg ext v (n + 1)).equivocating_indices,
       i ∉ E.honest := fun i hi hih =>
-    E.honest_not_equivocating cfg ext hhb hec hgen0 hih v (n + 1) hi
+    E.honest_not_equivocating cfg ext hhb hec hgen0 hih v (n + 1) hv hH hi
   have hdisc := support_discount_le_parent_stuck cfg ext hec hbb hv hH hval
     hstartH hbH htab hne
   have hsub : ParentStuck cfg E (E.store cfg ext v (n + 1)) bs b ⊆
@@ -257,7 +261,8 @@ theorem past_descendant_of_honest_supporter_known
     (i : ValidatorIndex) (hi : i ∈ E.honest) (lm : LatestMessage Root)
     (hlm : (E.store cfg ext v n).latest_messages i = some lm)
     (hsupp : is_ancestor (E.store cfg ext v n)
-      (get_supported_node (E.store cfg ext v n) lm) (get_node_for_root b) = true) :
+      (get_supported_node (E.store cfg ext v n) lm) (get_node_for_root b) = true)
+    (hv : v ∈ E.honest) :
     ∃ (u : ValidatorIndex) (nu : ℕ) (d : Root),
       u ∈ E.honest ∧ E.WithinHorizon cfg nu ∧
       E.slot_at cfg nu < E.slot_at cfg n ∧
@@ -282,7 +287,7 @@ theorem past_descendant_of_honest_supporter_known
     hhb.votes_assigned i hi s (by rw [hvote]; exact Option.some_ne_none _)
   obtain ⟨ap, _hiap, _htarget, _hbbrap, hapEpoch, hapBound, hapComm,
       hlmKnown, hlmSlot⟩ :=
-    E.latestMessageProvenance cfg ext hwfE hec hgen0 v n i lm hlm
+    E.latestMessageProvenance cfg ext hwfE hec hgen0 v n hv hH i lm hlm
   have hepoch : compute_epoch_at_slot cfg s =
       compute_epoch_at_slot cfg ap.data.slot := by
     rw [hslotep, hapEpoch]
@@ -520,7 +525,7 @@ theorem confirmed_known_at_all_honest_endpoints
   obtain ⟨i, lm, hi, hlm, hsupp⟩ :=
     E.honestSupporter_of_confirmed_known cfg ext hSA v hv k b hHk hb hparent hconf
   obtain ⟨u, nu, d, hu, hHnu, hslot, hd, hanc⟩ :=
-    E.past_descendant_of_honest_supporter_known cfg ext hSA v (k + 1) b hHk
+    E.past_descendant_of_honest_supporter_known cfg ext (hv := hv) hSA v (k + 1) b hHk
       i hi lm hlm hsupp
   exact E.mem_of_known_honest_past_descendant cfg ext hSA v hv (k + 1) b hHk hb
     w hw m hkm hHm u hu nu hHnu d hslot hd hanc
@@ -550,7 +555,7 @@ theorem confirmed_ancestry_at_all_honest_endpoints
   obtain ⟨i, lm, hi, hlm, hsupp⟩ :=
     E.honestSupporter_of_confirmed_known cfg ext hSA v hv k b hHk hb hparent hconf
   obtain ⟨u, nu, d, hu, hHnu, hslot, hd, hdb⟩ :=
-    E.past_descendant_of_honest_supporter_known cfg ext hSA v (k + 1) b hHk
+    E.past_descendant_of_honest_supporter_known cfg ext (hv := hv) hSA v (k + 1) b hHk
       i hi lm hlm hsupp
   exact E.ancestry_of_known_honest_past_descendant cfg ext hSA v hv (k + 1) b r₀
     hHk hb hr₀ hbge w hw m hkm hHm u hu nu hHnu d hslot hd hdb
@@ -908,3 +913,5 @@ theorem get_latest_confirmed_strict_advance_known
 end Execution
 
 end FastConfirmation.Spec
+
+end

@@ -1,5 +1,8 @@
-import FastConfirmation.Spec.Proof.CausalQueryTraceAdapter
-import FastConfirmation.Spec.Proof.SelectedMarginConstruction
+module
+public import FastConfirmation.Spec.Proof.CausalQueryTraceAdapter
+public import FastConfirmation.Spec.Proof.SelectedMarginConstruction
+
+@[expose] public section
 
 /-!
 # Strict-prefix ground-vote accounting at an accepted query prefix
@@ -276,6 +279,7 @@ theorem GlobalScheduledQueryPrefixCompatibility.baseStrip_of_staleGroundReplay
     (actor : ValidatorIndex) (kind : QueryKind)
     (haction : actions.getD position (.honestVoteCast 0 0 0) =
       .nodeAction actor (.query kind))
+    (hhonest : scheduledPrefix.node ∈ E.honest)
     {bs : BeaconState Root} {b : Root} {lo es : Slot}
     (hres : E.QueryStoreBaseStripTraceResidual cfg ext
       (before.nodeState actor).fcrStore.store bs b lo es querySecond)
@@ -285,9 +289,11 @@ theorem GlobalScheduledQueryPrefixCompatibility.baseStrip_of_staleGroundReplay
         E.Bval lo es + compute_proposer_score cfg bs + 1 ≤
       E.StoreSval (before.nodeState actor).fcrStore.store b lo es := by
   apply E.base_strip_of_confirmed_in_store_stale_minimal cfg ext hA
-  · exact h.queryStoreBaseStripEvidence cfg ext hT actor kind haction hres
+  · exact h.queryStoreBaseStripEvidence cfg ext hT actor kind haction hhonest hres
   · exact hreplay
 
 
 end AllowedFCRCalls
 end FastConfirmation.Spec
+
+end

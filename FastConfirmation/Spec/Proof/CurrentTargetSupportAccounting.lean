@@ -1,6 +1,9 @@
-import FastConfirmation.Spec.Proof.EconomicRounding
-import FastConfirmation.Spec.Proof.HonestWeight
-import FastConfirmation.Spec.Proof.SelectedA32Support
+module
+public import FastConfirmation.Spec.Proof.EconomicRounding
+public import FastConfirmation.Spec.Proof.HonestWeight
+public import FastConfirmation.Spec.Proof.SelectedA32Support
+
+@[expose] public section
 
 /-!
 # Exact accounting for the current-target prediction score
@@ -289,7 +292,7 @@ theorem currentTarget_nonhonest_weight_le_adversarial
       i ∉ E.honest := by
     intro i hi hih
     exact Execution.honest_not_equivocating cfg ext hhb hec hgen
-      hih v n hi
+      hih v n (by assumption) (by assumption) hi
   have hbudget := E.currentTarget_nonhonest_add_equiv_le_budget cfg ext
     hec hbb hv hnH hval htab hne hprov
   let byz := E.weight
@@ -312,3 +315,5 @@ theorem currentTarget_nonhonest_weight_le_adversarial
 end Execution
 
 end FastConfirmation.Spec
+
+end

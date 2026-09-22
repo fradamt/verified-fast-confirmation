@@ -1,4 +1,7 @@
-import FastConfirmation.Spec.Proof.INVstarTrack
+module
+public import FastConfirmation.Spec.Proof.INVstarTrack
+
+@[expose] public section
 
 /-!
 # Spec / Proof / Dominance: per-edge dominance in confirm-margin form
@@ -230,3 +233,5 @@ theorem descendStep_of_confirmMargin (v₀ w : ValidatorIndex) (n₀ m : ℕ)
 end Execution
 
 end FastConfirmation.Spec
+
+end

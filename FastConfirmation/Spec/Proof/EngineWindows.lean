@@ -1,5 +1,8 @@
-import FastConfirmation.Spec.Proof.EngineBudget
-import FastConfirmation.Spec.Proof.EngineSupport
+module
+public import FastConfirmation.Spec.Proof.EngineBudget
+public import FastConfirmation.Spec.Proof.EngineSupport
+
+@[expose] public section
 
 /-!
 # Spec / Proof / EngineWindows — shared slot-window / set-weight helpers
@@ -94,3 +97,5 @@ theorem weight_add4_le {E : Execution Root} {A B C F U : Finset ValidatorIndex}
   exact Finset.union_subset (Finset.union_subset (Finset.union_subset hAU hBU) hCU) hFU
 
 end FastConfirmation.Spec
+
+end

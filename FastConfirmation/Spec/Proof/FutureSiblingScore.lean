@@ -1,6 +1,9 @@
-import FastConfirmation.Spec.Proof.EndpointLedgerMinimal
-import FastConfirmation.Spec.Proof.CrossEpochDynamics
-import FastConfirmation.Spec.Proof.EdgeDynamics
+module
+public import FastConfirmation.Spec.Proof.EndpointLedgerMinimal
+public import FastConfirmation.Spec.Proof.CrossEpochDynamics
+public import FastConfirmation.Spec.Proof.EdgeDynamics
+
+@[expose] public section
 
 /-!
 # Re-anchored sibling scores for future-crossing selected margins
@@ -85,6 +88,7 @@ theorem parentStuck_subset_query_Aclass_minimal
     (hA : SelectedMarginAssumptions cfg ext E)
     {v : ValidatorIndex} {q : ℕ} {bs : BeaconState Root}
     {b : Root} {lo es : Slot}
+    (hv : v ∈ E.honest) (hqH : E.WithinHorizon cfg q)
     (hb : b ∈ (E.store cfg ext v q).block_roots)
     (hparent : ((E.store cfg ext v q).blocks b).parent_root ∈
       (E.store cfg ext v q).block_roots)
@@ -103,7 +107,7 @@ theorem parentStuck_subset_query_Aclass_minimal
       ⟨ast, ablk, hgenEq, hgenSlot, hgenParent⟩
       hA.wellFormed.anchor_parent_unscheduled v q
   have hprov := E.latestMessageProvenance cfg ext hA.wellFormed
-    hA.externals_coherence hgen v q
+    hA.externals_coherence hgen v q hv hqH
   rw [← E.store_current_slot cfg ext v q] at hprov
   have hslotlt : ((E.store cfg ext v q).blocks
       ((E.store cfg ext v q).blocks b).parent_root).slot <
@@ -156,6 +160,7 @@ theorem futureCrossing_sibling_score_of_endpointLedger_minimal
     (hA : SelectedMarginAssumptions cfg ext E)
     {v : ValidatorIndex} {q : ℕ} {w : ValidatorIndex} {m : ℕ}
     {bs : BeaconState Root} {a b : Root} {lo mid es sigma : Slot}
+    (hv : v ∈ E.honest) (hqH : E.WithinHorizon cfg q)
     (hbQuery : b ∈ (E.store cfg ext v q).block_roots)
     (hparentQuery : ((E.store cfg ext v q).blocks b).parent_root ∈
       (E.store cfg ext v q).block_roots)
@@ -188,7 +193,7 @@ theorem futureCrossing_sibling_score_of_endpointLedger_minimal
   classical
   have hparentA : ParentStuck cfg E (E.store cfg ext v q) bs b ⊆
       E.Aclass cfg ext v q b lo es :=
-    E.parentStuck_subset_query_Aclass_minimal cfg ext hA hbQuery
+    E.parentStuck_subset_query_Aclass_minimal cfg ext hA hv hqH hbQuery
       hparentQuery hlo hes hmaxQuery
   have hXback : E.Xclass cfg ext w m b lo sigma ⊆
       E.Xclass cfg ext w m b lo es :=
@@ -326,7 +331,7 @@ theorem crossingEdge_sibling_score_of_endpointLedger_minimal
   let BPre := E.crossingByzPre lo mid es
   have hparentA : ParentStuck cfg E (E.store cfg ext v q) bs b ⊆
       E.Aclass cfg ext v q b lo es :=
-    E.parentStuck_subset_query_Aclass_minimal cfg ext hA hbQuery
+    E.parentStuck_subset_query_Aclass_minimal cfg ext hA hv hqH hbQuery
       hparentQuery hlo hes hmaxQuery
   have hXback : E.Xclass cfg ext w m b lo sigma ⊆
       E.Xclass cfg ext w m b lo es :=
@@ -369,7 +374,7 @@ theorem crossingEdge_sibling_score_of_endpointLedger_minimal
       i ∉ E.honest :=
     fun i hi hih =>
       (Execution.honest_not_equivocating cfg ext hA.honest_behavior
-        hA.externals_coherence hgen hih v q) hi
+        hA.externals_coherence hgen hih v q (by assumption) (by assumption)) hi
   have hloSa : lo ≤ sa := by
     dsimp only [sa]
     rw [hlo]
@@ -454,3 +459,5 @@ theorem crossingEdge_sibling_score_of_endpointLedger_minimal
 end Execution
 
 end FastConfirmation.Spec
+
+end

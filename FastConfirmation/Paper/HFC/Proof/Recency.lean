@@ -1,6 +1,9 @@
-import FastConfirmation.Paper.HFC.Proof.Justification
-import FastConfirmation.Paper.HFC.Model.HonestFFG
-import FastConfirmation.Paper.LMDGhost.Proof.Rule
+module
+public import FastConfirmation.Paper.HFC.Proof.Justification
+public import FastConfirmation.Paper.HFC.Model.HonestFFG
+public import FastConfirmation.Paper.LMDGhost.Proof.Rule
+
+@[expose] public section
 
 /-!
 # HFC / Proof / Recency — shared helpers for the §4 recency descendant argument
@@ -165,3 +168,5 @@ theorem honest_voter_of_link {bal₀ : Stakes n} {fm : FaultModel n} {V : View n
   exact ⟨i, hhon, m, hm, hmv, hms, hmt⟩
 
 end FastConfirmation.HFC
+
+end

@@ -1,5 +1,8 @@
-import FastConfirmation.Spec.Model.Validator
-import FastConfirmation.Spec.Model.Confirmation
+module
+public import FastConfirmation.Spec.Model.Validator
+public import FastConfirmation.Spec.Model.Confirmation
+
+@[expose] public section
 
 /-!
 # Spec / Model / Execution
@@ -153,3 +156,5 @@ structure WellFormedStore (store : Store Root) : Prop where
       (ForkChoiceNode.mk store.finalized_checkpoint.root) = true
 
 end FastConfirmation.Spec
+
+end

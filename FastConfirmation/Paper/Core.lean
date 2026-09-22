@@ -1,4 +1,5 @@
-import FastConfirmation.Paper.Core.Model
+module
+public import FastConfirmation.Paper.Core.Model
 
 /-!
 # Core

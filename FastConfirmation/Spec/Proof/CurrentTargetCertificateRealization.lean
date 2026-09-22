@@ -1,6 +1,9 @@
-import FastConfirmation.Spec.Proof.NoConflictCertificatePinning
-import FastConfirmation.Spec.Proof.SelectedPreQueryHistoricalSIR
-import FastConfirmation.Spec.Proof.FFGSelectedDomainRealization
+module
+public import FastConfirmation.Spec.Proof.NoConflictCertificatePinning
+public import FastConfirmation.Spec.Proof.SelectedPreQueryHistoricalSIR
+public import FastConfirmation.Spec.Proof.FFGSelectedDomainRealization
+
+@[expose] public section
 
 /-!
 # Realizing the current-target certificate
@@ -649,7 +652,7 @@ theorem certifiedCurrentTarget_of_gate_and_stateSemantics
       simp only [Execution.span_committee, Finset.mem_biUnion]
       exact ⟨vote.slot, Finset.mem_Icc.mpr ⟨hlo, hhi⟩, vote.assigned⟩
     have hprov := E.latestMessageProvenance cfg ext hA0.wellFormed hec
-      hgen0 v n
+      hgen0 v n (by assumption) (by assumption)
     rw [← E.store_current_slot cfg ext v n] at hprov
     have hquorum : 2 * E.total_active cfg ≤ 3 * E.weight signers := by
       simpa only [signers, Execution.currentTargetA32Signers, store] using
@@ -1771,3 +1774,5 @@ theorem phase0_source_semantics_jointly_satisfiable :
 end CurrentTargetCertificateRealizationNonvacuity
 
 end FastConfirmation.Spec
+
+end

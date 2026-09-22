@@ -1,4 +1,7 @@
-import FastConfirmation.Spec.Proof.StepDischargeII
+module
+public import FastConfirmation.Spec.Proof.StepDischargeII
+
+@[expose] public section
 
 /-!
 # Spec / Proof / ChainInput: constructing `LedgerChainInput`
@@ -263,3 +266,5 @@ theorem ledgerCertInput_of_endpoint {E : Execution Root} {w : ValidatorIndex} {m
     hchild, hSmem, hHon, hByz⟩
 
 end FastConfirmation.Spec
+
+end

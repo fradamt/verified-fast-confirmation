@@ -20,15 +20,17 @@ mandatory boundary-call result is also proved. Optional calls at arbitrary
 in-slot action prefixes are not covered; the two exported strict-prefix
 counterexamples are required regression results, not ancillary examples.
 
-The primary assumption surface is the GST-0 specialization over a static
-validator registry for the finite verification horizon. Legacy or
-exact-current statement vocabularies are diagnostic surfaces, not substitutes
-for the accepted theorem.
+The primary assumption surface is the GST-0 specialization. Public safety
+endpoints and static-set laws use a finite verification horizon.
+`HorizonVoteDeliveryLookahead` can also require the mandated receipt at the
+first second of the following slot, just outside the endpoint cutoff. Legacy
+or exact-current statement vocabularies are diagnostic surfaces, not
+substitutes for the accepted theorem.
 
 ## Consensus source
 
 The authoritative public source is `ethereum/consensus-specs` commit
-`30aa65fc21cf7f7c7dd1f7d6b686d0250462d04f`. The manifest in
+`477321355d48d527e7e1e4d572f6a40a0b41072a`. The manifest in
 `spec_source/manifest.json` records the exact six source and configuration
 objects consumed by the model.
 

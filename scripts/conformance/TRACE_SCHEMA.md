@@ -1,5 +1,6 @@
 # FCR conformance trace schema, versions 1 and 2
 
+
 One trace file is JSON Lines: one JSON object per executed `on_fast_confirmation`
 call in the Python reference tests. The Python exporter writes it; the Lean
 runner reads it, rebuilds the store, runs the Lean `on_fast_confirmation`, and
@@ -24,6 +25,7 @@ updating both sides and bumping `schema`.
 ## Record fields
 ```text
 schema                 1 (legacy) or 2 (weak greatest-unrealized reset)
+
 test_id                pytest node id
 fork                   e.g. "altair"
 preset                 "minimal" | "mainnet"
@@ -50,6 +52,7 @@ fcr_before             confirmed_root,
                        current_epoch_greatest_unrealized_checkpoint (v2 only),
                        previous_slot_head, current_slot_head
 fcr_after              same fields, after the Python call
+
 externals              recorded answers, see below
 ```
 
@@ -111,11 +114,11 @@ and `fcr_before`, runs `Weak.on_fast_confirmation cfg ext`, and compares the six
 legacy `fcr_after` fields, plus the new checkpoint for version 2. Version 1 does
 not compare an output field that was absent from its source record.
 Output: one line per record,
+
 `OK <test_id> <call_index>` or `MISMATCH <test_id> <call_index> <field> lean=<v> python=<v>`
 or `MISSING_EXTERNAL ...`, then a summary line
 `SUMMARY records=<n> ok=<n> mismatch=<n> missing_external=<n>`.
 Exit status 0 only when mismatch and missing_external are both 0.
-
 ## Same-input containment check
 
 Run `lake env lean --run scripts/conformance/lean/Conformance.lean --containment

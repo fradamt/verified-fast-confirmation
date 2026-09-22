@@ -1,5 +1,8 @@
-import FastConfirmation.Spec.Proof.AcceptedActualFCRContractScaffold
-import FastConfirmation.Spec.Proof.AcceptedSelectedStrictEdgeFilterSupply
+module
+public import FastConfirmation.Spec.Proof.AcceptedActualFCRContractScaffold
+public import FastConfirmation.Spec.Proof.AcceptedSelectedStrictEdgeFilterSupply
+
+@[expose] public section
 
 /-!
 # Accepted actual-FCR strict-helper integration
@@ -121,7 +124,7 @@ theorem getLatestConfirmedTraceAt_result_safeFrom_of_acceptedDispatcher
     E.SafeFrom cfg ext
       (E.getLatestConfirmedTraceAt cfg ext v n).result (n + 1) := by
   let hA : SelectedMarginAssumptions cfg ext E :=
-    { genesis := hT.genesis
+    { genesis := hT.genesis_structure
       wellFormed := hT.wellFormed
       whole_seconds := hT.whole_seconds
       honest_behavior := hT.honest_behavior
@@ -150,3 +153,5 @@ theorem getLatestConfirmedTraceAt_result_safeFrom_of_acceptedDispatcher
 end Execution
 
 end FastConfirmation.Spec
+
+end

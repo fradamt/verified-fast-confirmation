@@ -1,4 +1,7 @@
-import FastConfirmation.Spec.Model.LMDHelpers
+module
+public import FastConfirmation.Spec.Model.LMDHelpers
+
+@[expose] public section
 
 /-!
 # Spec / Model / FFGHelpers
@@ -60,15 +63,14 @@ balance_source = get_pulled_up_head_state(store)
 total_active_balance = get_total_active_balance(balance_source)
 ffg_support_for_checkpoint = get_current_target_score(store)
 ffg_weight_till_now = estimate_committee_weight_between_slots(
-    total_active_balance, compute_start_slot_at_epoch(current_epoch), Slot(current_slot - 1))
+    total_active_balance, compute_start_slot_at_epoch(current_epoch), current_slot - 1)
 remaining_ffg_weight = total_active_balance - ffg_weight_till_now
-remaining_honest_ffg_weight = Gwei(
+remaining_honest_ffg_weight = (
     remaining_ffg_weight // 100 * (100 - CONFIRMATION_BYZANTINE_THRESHOLD))
 adversarial_weight = compute_adversarial_weight(
-    store, balance_source, compute_start_slot_at_epoch(current_epoch), Slot(current_slot - 1))
-min_honest_ffg_support = ffg_support_for_checkpoint - min(
-    adversarial_weight, ffg_support_for_checkpoint)
-return Gwei(min_honest_ffg_support + remaining_honest_ffg_weight)
+    store, balance_source, compute_start_slot_at_epoch(current_epoch), current_slot - 1)
+min_honest_ffg_support = saturating_sub(ffg_support_for_checkpoint, adversarial_weight)
+return min_honest_ffg_support + remaining_honest_ffg_weight
 ``` -/
 def compute_honest_ffg_support_for_current_target (store : Store Root) : Gwei :=
   let current_slot := get_current_slot cfg store
@@ -85,8 +87,7 @@ def compute_honest_ffg_support_for_current_target (store : Store Root) : Gwei :=
   let adversarial_weight :=
     compute_adversarial_weight cfg ext store balance_source
       (compute_start_slot_at_epoch cfg current_epoch) (current_slot - 1)
-  let min_honest_ffg_support :=
-    ffg_support_for_checkpoint - min adversarial_weight ffg_support_for_checkpoint
+  let min_honest_ffg_support := ffg_support_for_checkpoint - adversarial_weight
   min_honest_ffg_support + remaining_honest_ffg_weight
 
 /-- `will_no_conflicting_checkpoint_be_justified`: Return ``True`` if and only
@@ -125,3 +126,5 @@ def will_current_target_be_justified (store : Store Root) : Bool :=
   decide (3 * honest_ffg_support ≥ 2 * total_active_balance)
 
 end FastConfirmation.Spec
+
+end

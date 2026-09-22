@@ -1,6 +1,9 @@
-import FastConfirmation.Spec.Proof.BlockAgreement
-import FastConfirmation.Spec.Proof.Preservation
-import FastConfirmation.Spec.Proof.Clock
+module
+public import FastConfirmation.Spec.Proof.BlockAgreement
+public import FastConfirmation.Spec.Proof.Preservation
+public import FastConfirmation.Spec.Proof.Clock
+
+@[expose] public section
 
 /-!
 # Spec / Proof / Provenance
@@ -37,7 +40,9 @@ takes the sanctioned `∃`-form `E.genesis_store = get_forkchoice_store …`
 (latest messages start empty). `WellFormedExecution` (wire-root injectivity,
 already in `SpecAssumptions`) preserves the known-block slot fact across
 `on_block` (block records are stable at commonly-known roots — `BlockAgreement`),
-and `ExternalsCoherence` supplies the committee confinement.
+and `ExternalsCoherence` supplies committee confinement on reachable validation
+states. The trajectory theorem requires an honest node and an in-horizon
+second.
 -/
 
 namespace FastConfirmation.Spec
@@ -211,9 +216,13 @@ theorem on_tick_latest (store : Store Root) (time : ℕ) :
 theorem on_block_latest {store store' : Store Root} {sb : SignedBeaconBlock Root}
     (h : on_block cfg ext store sb = some store') :
     store'.latest_messages = store.latest_messages := by
-  simp only [on_block] at h
-  split_ifs at h <;> try cases h
-  all_goals
+  by_cases hknown : sb.root ∈ store.block_roots
+  · simp [on_block, hknown] at h
+    cases h
+    rfl
+  · simp only [on_block, if_neg hknown] at h
+    split_ifs at h
+    all_goals try contradiction
     cases hst : ext.state_transition (store.block_states sb.message.parent_root) sb with
     | none => rw [hst] at h; cases h
     | some state =>
@@ -263,21 +272,59 @@ theorem on_block_LMP {E : Execution Root} {sl : Slot} (hwf : WellFormedExecution
   · rw [on_block_latest cfg ext hh] at hm; exact hm
   · rw [hwf.blocks_agree hprov hprov' hr (hle.1 hr)]
 
+/-- Updating LMD messages leaves the checkpoint cache unchanged. -/
+private theorem update_latest_messages_checkpointData
+    (store : Store Root) (indices : List ValidatorIndex) (a : Attestation Root) :
+    ((update_latest_messages store indices a).checkpoint_state_keys,
+      (update_latest_messages store indices a).checkpoint_states) =
+      (store.checkpoint_state_keys, store.checkpoint_states) := by
+  simp only [update_latest_messages]
+  generalize hindices :
+    indices.filter (fun i => decide (i ∉ store.equivocating_indices)) = remaining
+  clear hindices
+  induction remaining generalizing store with
+  | nil => rfl
+  | cons i rest ih =>
+      rw [List.foldl_cons, ih]
+      split_ifs <;> rfl
+
 /-- `on_attestation` records the applied attestation's provenance for the freshly
 set messages (via `update_latest_messages_mem` + the `validate_on_attestation`
 conjuncts + `ExternalsCoherence.valid_attestation_committee`) and transports the
-pre-existing ones (the block set and clock are unchanged). `hcur` bounds the
-store's current slot by `sl`. -/
+pre-existing ones (the block set and clock are unchanged). The successful
+post-store supplies the reachable checkpoint state. `hcur` bounds the store's
+current slot by `sl`. -/
 theorem on_attestation_LMP {E : Execution Root} {sl : Slot}
     (hec : ExternalsCoherence cfg ext E) {store store' : Store Root}
     {a : Attestation Root} {ifb : Bool} (hcur : get_current_slot cfg store ≤ sl)
     (h : LatestMessageProvenance E cfg sl store)
-    (hh : on_attestation cfg ext store a ifb = some store') :
+    (hh : on_attestation cfg ext store a ifb = some store')
+    (hpost : E.HonestCausalStore cfg ext store') :
     LatestMessageProvenance E cfg sl store' := by
   have hsb := on_attestation_sameBlocks cfg ext hh
   simp only [on_attestation] at hh
   split_ifs at hh with hv hvi
   cases hh
+  have hcache := update_latest_messages_checkpointData
+    (store_target_checkpoint_state cfg ext store a.data.target) a.attesting_indices a
+  have hkeys := congrArg Prod.fst hcache
+  have hstates := congrArg Prod.snd hcache
+  dsimp only at hkeys hstates
+  have htarget : a.data.target ∈
+      (store_target_checkpoint_state cfg ext store a.data.target).checkpoint_state_keys := by
+    by_cases hcached : a.data.target ∈ store.checkpoint_state_keys
+    · simp [store_target_checkpoint_state, hcached]
+    · simp [store_target_checkpoint_state, hcached]
+  have hreachable : E.ReachableValidationState cfg ext
+      ((store_target_checkpoint_state cfg ext store a.data.target).checkpoint_states
+        a.data.target) := by
+    have hkey : a.data.target ∈
+        (update_latest_messages
+          (store_target_checkpoint_state cfg ext store a.data.target)
+          a.attesting_indices a).checkpoint_state_keys := by
+      rw [hkeys]
+      exact htarget
+    simpa only [hstates] using hpost.checkpointState cfg ext hkey
   simp only [validate_on_attestation, Bool.and_eq_true, decide_eq_true_eq] at hv
   obtain ⟨⟨⟨⟨⟨⟨_, hB⟩, _⟩, hD⟩, hE⟩, _⟩, hG⟩ := hv
   intro i m hm
@@ -286,7 +333,7 @@ theorem on_attestation_LMP {E : Execution Root} {sl : Slot}
     obtain ⟨a', h1, h2, h3, h4, h5, h6, h7, h8⟩ := h i m hold
     exact ⟨a', h1, h2, h3, h4, h5, h6, hsb.1 ▸ h7, hsb.2.1 ▸ h8⟩
   · exact ⟨a, hi, by rw [hmeq], by rw [hmeq], by rw [hmeq]; exact hB.symm,
-      le_trans hG hcur, hec.valid_attestation_committee _ a hvi i hi,
+      le_trans hG hcur, hec.valid_attestation_committee _ a hreachable hvi i hi,
       by rw [hmeq]; exact hsb.1 ▸ hD, by rw [hmeq]; exact hsb.2.1 ▸ hE⟩
 
 /-! ## Event dispatch, the event fold, and the trajectory invariant -/
@@ -308,7 +355,8 @@ theorem apply_event_LMP {E : Execution Root} {sl : Slot} (hwf : WellFormedExecut
     (hsched : ∀ b, e = Event.block b → IsScheduledBlock E b)
     (hprov : BlockProvenance E store) (hcur : get_current_slot cfg store ≤ sl)
     (h : LatestMessageProvenance E cfg sl store)
-    (he : apply_event cfg ext store e = some store') :
+    (he : apply_event cfg ext store e = some store')
+    (hpost : E.HonestCausalStore cfg ext store') :
     LatestMessageProvenance E cfg sl store' := by
   cases e with
   | block b =>
@@ -316,7 +364,7 @@ theorem apply_event_LMP {E : Execution Root} {sl : Slot} (hwf : WellFormedExecut
     exact on_block_LMP cfg ext hwf (hsched b rfl) hprov h he
   | attestation a ifb =>
     simp only [apply_event] at he
-    exact on_attestation_LMP cfg ext hec hcur h he
+    exact on_attestation_LMP cfg ext hec hcur h he hpost
   | attester_slashing asl =>
     simp only [apply_event] at he
     exact h.of_sameBlocks (on_attester_slashing_sameBlocks ext he)
@@ -324,20 +372,34 @@ theorem apply_event_LMP {E : Execution Root} {sl : Slot} (hwf : WellFormedExecut
 
 /-- Folding the second's scheduled events preserves provenance: every block
 event is scheduled, so `BlockProvenance` (fed to `on_block`'s block-slot
-stability) and the slot bound are re-established at each step. -/
+stability) and the slot bound are re-established at each step. Every prefix
+store must belong to the honest, in-horizon causal domain. -/
 theorem LMP_foldl {E : Execution Root} {sl : Slot} (hwf : WellFormedExecution E)
     (hec : ExternalsCoherence cfg ext E) :
     ∀ (l : List (Event Root)) (s : Store Root),
       (∀ b, Event.block b ∈ l → IsScheduledBlock E b) →
       BlockProvenance E s → get_current_slot cfg s ≤ sl →
       LatestMessageProvenance E cfg sl s →
+      (∀ k, k ≤ l.length → E.HonestCausalStore cfg ext
+        ((l.take k).foldl
+          (fun store event => (apply_event cfg ext store event).getD store) s)) →
       LatestMessageProvenance E cfg sl
         (l.foldl (fun store event => (apply_event cfg ext store event).getD store) s) := by
   intro l
   induction l with
-  | nil => intro s _ _ _ h; exact h
+  | nil => intro s _ _ _ h _; exact h
   | cons e l ih =>
-    intro s hl hprov hcur h
+    intro s hl hprov hcur h hcausal
+    have htail : ∀ k, k ≤ l.length → E.HonestCausalStore cfg ext
+        ((l.take k).foldl
+          (fun store event => (apply_event cfg ext store event).getD store)
+          ((apply_event cfg ext s e).getD s)) := by
+      intro k hk
+      simpa only [List.take_succ_cons, List.foldl_cons] using
+        hcausal (k + 1) (by simpa using Nat.succ_le_succ hk)
+    have hstep : E.HonestCausalStore cfg ext
+        ((apply_event cfg ext s e).getD s) := by
+      simpa using htail 0 (Nat.zero_le _)
     rw [List.foldl_cons]
     have hbsched : ∀ b, e = Event.block b → IsScheduledBlock E b :=
       fun b hbe => hl b (by rw [← hbe]; exact List.mem_cons_self)
@@ -345,14 +407,17 @@ theorem LMP_foldl {E : Execution Root} {sl : Slot} (hwf : WellFormedExecution E)
     | none =>
       simp only [Option.getD_none]
       exact ih _ (fun b hb => hl b (List.mem_cons_of_mem e hb)) hprov hcur h
+        (by simpa only [he, Option.getD_none] using htail)
     | some s' =>
       simp only [Option.getD_some]
-      refine ih _ (fun b hb => hl b (List.mem_cons_of_mem e hb)) ?_ ?_ ?_
+      refine ih _ (fun b hb => hl b (List.mem_cons_of_mem e hb)) ?_ ?_ ?_ ?_
       · exact apply_event_blockProvenance cfg ext hbsched hprov he
       · rw [apply_event_get_current_slot cfg ext he]; exact hcur
       · exact apply_event_LMP cfg ext hwf hec hbsched hprov hcur h he
+          (by simpa only [he, Option.getD_some] using hstep)
+      · simpa only [he, Option.getD_some] using htail
 
-/-- Latest-message provenance holds at every honest-or-Byzantine node and second
+/-- Latest-message provenance holds at every honest node and in-horizon second
 of a well-formed execution whose genesis store is a `get_forkchoice_store`
 (empty latest messages), with ambient bound the wall-clock slot `E.slot_at cfg
 n`. Base: genesis has no recorded messages; step: weaken the bound by
@@ -361,16 +426,20 @@ theorem Execution.latestMessageProvenance {E : Execution Root}
     (hwf : WellFormedExecution E) (hec : ExternalsCoherence cfg ext E)
     (hgen : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
       E.genesis_store = get_forkchoice_store cfg ast ablk)
-    (v : ValidatorIndex) (n : ℕ) :
+    (v : ValidatorIndex) (n : ℕ) (hv : v ∈ E.honest)
+    (hn : E.WithinHorizon cfg n) :
     LatestMessageProvenance E cfg (E.slot_at cfg n) (E.store cfg ext v n) := by
+  revert hn
   induction n with
   | zero =>
+    intro _hn
     obtain ⟨ast, ablk, hg⟩ := hgen
     intro i m hm
     have hm' : E.genesis_store.latest_messages i = some m := hm
     rw [hg] at hm'
     simp [get_forkchoice_store] at hm'
   | succ n ih =>
+    intro hn
     change LatestMessageProvenance E cfg (E.slot_at cfg (n + 1))
       ((E.schedule v (n + 1)).foldl
         (fun store event => (apply_event cfg ext store event).getD store)
@@ -385,9 +454,15 @@ theorem Execution.latestMessageProvenance {E : Execution Root}
           E.slot_at cfg (n + 1) := by
       rw [get_current_slot, get_slots_since_genesis, on_tick_time, hontickgen,
         Execution.slot_at]
-    refine LMP_foldl cfg ext hwf hec _ _ (fun b hb => ⟨v, n + 1, hb⟩) ?_ ?_ ?_
+    refine LMP_foldl cfg ext hwf hec _ _ (fun b hb => ⟨v, n + 1, hb⟩) ?_ ?_ ?_ ?_
     · exact on_tick_blockProvenance cfg _ _ (E.blockProvenance cfg ext v n)
     · rw [hslot]
-    · exact on_tick_LMP cfg _ _ (ih.mono_sl (E.slot_at_mono cfg (Nat.le_succ n)))
+    · exact on_tick_LMP cfg _ _
+        ((ih (E.withinHorizon_mono cfg (Nat.le_succ n) hn)).mono_sl
+          (E.slot_at_mono cfg (Nat.le_succ n)))
+    · intro k hk
+      exact .scheduledPrefix ⟨v, n, k, hk⟩ hv hn
 
 end FastConfirmation.Spec
+
+end

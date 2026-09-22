@@ -97,6 +97,7 @@ def _store(spec: Any, store: Any) -> dict[str, Any]:
 
 def _fcr_store(fcr_store: Any) -> dict[str, Any]:
     fields = {
+
         "confirmed_root": _root(fcr_store.confirmed_root),
         "previous_epoch_observed_justified_checkpoint": _checkpoint(
             fcr_store.previous_epoch_observed_justified_checkpoint
@@ -115,6 +116,7 @@ def _fcr_store(fcr_store: Any) -> dict[str, Any]:
             fcr_store.current_epoch_greatest_unrealized_checkpoint
         )
     return fields
+
 
 
 def _config(spec: Any) -> dict[str, Any]:
@@ -142,6 +144,7 @@ def _ambiguity_guard(
     test_id: str,
 ) -> None:
     key = json.dumps(_without_state_ids(key_data), separators=(",", ":"), sort_keys=True)
+
     previous = seen.setdefault(function, {})
     answer_key = json.dumps(answer, separators=(",", ":"), sort_keys=True)
     if key in previous and previous[key] != answer_key:
@@ -162,6 +165,7 @@ def _without_state_ids(value: Any) -> Any:
     if isinstance(value, list):
         return [_without_state_ids(item) for item in value]
     return value
+
 
 
 def _wrap_externals(spec: Any, test_id: str, externals: dict[str, list[dict[str, Any]]]):
@@ -276,6 +280,7 @@ def _capture(self: Any) -> None:
 
     record = {
         "schema": 2 if "current_epoch_greatest_unrealized_checkpoint" in fcr_before else 1,
+
         "test_id": test_id,
         "fork": str(spec.fork),
         "preset": str(spec.config.PRESET_BASE),

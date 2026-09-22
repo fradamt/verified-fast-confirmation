@@ -1,8 +1,11 @@
-import FastConfirmation.Spec.Proof.AcceptedActualFCRContractScaffold
-import FastConfirmation.Spec.Proof.AcceptedSelectedJustifiedOrientation
-import FastConfirmation.Spec.Proof.AcceptedCurrentTargetLowerContracts
-import FastConfirmation.Spec.Proof.AnchorFacade
-import FastConfirmation.Spec.Proof.AcceptedCandidateHistoryRecurrence
+module
+public import FastConfirmation.Spec.Proof.AcceptedActualFCRContractScaffold
+public import FastConfirmation.Spec.Proof.AcceptedSelectedJustifiedOrientation
+public import FastConfirmation.Spec.Proof.AcceptedCurrentTargetLowerContracts
+public import FastConfirmation.Spec.Proof.AnchorFacade
+public import FastConfirmation.Spec.Proof.AcceptedCandidateHistoryRecurrence
+
+@[expose] public section
 
 /-!
 # Accepted finalized-reset safety from the next slot
@@ -55,7 +58,7 @@ theorem finalizedReset_justifiedDom_of_nextSlotSynchrony
   intro w hw m hqm hHm
   let finalized :=
     (E.fcrStep cfg ext v n).store.finalized_checkpoint
-  obtain ⟨ast, ablk, hgen, hslot, hparent⟩ := hT.genesis
+  obtain ⟨ast, ablk, hgen, hslot, hparent⟩ := hT.genesis_structure
   have hgenShort : ∃ (ast : BeaconState Root)
       (ablk : SignedBeaconBlock Root),
       E.genesis_store = get_forkchoice_store cfg ast ablk ∧
@@ -165,3 +168,5 @@ theorem finalizedResetCandidateInput_safeFrom_of_nextSlotSynchrony
 end Execution
 
 end FastConfirmation.Spec
+
+end

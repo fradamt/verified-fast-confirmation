@@ -1,6 +1,9 @@
-import FastConfirmation.Spec.Proof.AcceptedFFGJustifiedMaximality
-import FastConfirmation.Spec.Proof.AcceptedResetCheckpointClassification
-import FastConfirmation.Spec.Proof.ObservedResetSafety
+module
+public import FastConfirmation.Spec.Proof.AcceptedFFGJustifiedMaximality
+public import FastConfirmation.Spec.Proof.AcceptedResetCheckpointClassification
+public import FastConfirmation.Spec.Proof.ObservedResetSafety
+
+@[expose] public section
 
 /-!
 # Accepted reset adoption
@@ -53,7 +56,7 @@ theorem includedAttestationSlot_lt_acceptedCarrierBlock
     a.data.slot < ((E.store cfg ext v q).blocks carrier).slot := by
   obtain ⟨containing, hcarrierContaining, hincluded⟩ := hchain
   have hevidence := B.state.includedAttestations.evidence hincluded
-  obtain ⟨ast, ablk, hgenEq, hslot, hparent⟩ := hT.genesis
+  obtain ⟨ast, ablk, hgenEq, hslot, hparent⟩ := hT.genesis_structure
   have hcontainingRoot : E.ExecutionRoot containing :=
     ⟨hevidence.carrier_message, hevidence.carrier_at⟩
   have hreflection :=
@@ -174,7 +177,7 @@ theorem finalized_epoch_le_justified_of_acceptedCarrierKnown
         r ∈ (E.store cfg ext w m).block_roots) :
     (E.store cfg ext v q).finalized_checkpoint.epoch ≤
       (E.store cfg ext w m).justified_checkpoint.epoch := by
-  obtain ⟨ast, ablk, hgenEq, hslot, _hparent⟩ := hT.genesis
+  obtain ⟨ast, ablk, hgenEq, hslot, _hparent⟩ := hT.genesis_structure
   have hgenShort : ∃ (ast : BeaconState Root)
       (ablk : SignedBeaconBlock Root),
       E.genesis_store = get_forkchoice_store cfg ast ablk ∧
@@ -311,3 +314,5 @@ def ObservedRestartJustifiedSourceLockAt
 end Execution
 
 end FastConfirmation.Spec
+
+end

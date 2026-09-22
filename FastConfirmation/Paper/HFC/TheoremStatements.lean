@@ -1,5 +1,8 @@
-import FastConfirmation.Paper.LMDGhost.TheoremStatements
-import FastConfirmation.Paper.HFC.Model
+module
+public import FastConfirmation.Paper.LMDGhost.TheoremStatements
+public import FastConfirmation.Paper.HFC.Model
+
+@[expose] public section
 
 /-!
 # HFC / TheoremStatements
@@ -590,3 +593,5 @@ def HFC_Monotonicity_Alg1 (τ : Timing) (bal₀ : Stakes n) : Prop :=
         isConfirmedAlg1 C fm cm pb we τ 𝒱 v b t'
 
 end FastConfirmation.HFC
+
+end

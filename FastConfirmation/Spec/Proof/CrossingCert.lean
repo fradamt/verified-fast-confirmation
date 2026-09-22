@@ -1,6 +1,9 @@
-import FastConfirmation.Spec.Proof.CertExtract
-import FastConfirmation.Spec.Proof.Growth
-import FastConfirmation.Spec.Proof.LastAlgebra
+module
+public import FastConfirmation.Spec.Proof.CertExtract
+public import FastConfirmation.Spec.Proof.Growth
+public import FastConfirmation.Spec.Proof.LastAlgebra
+
+@[expose] public section
 
 /-!
 # Spec / Proof / CrossingCert: the full-span crossing certificate
@@ -654,7 +657,7 @@ theorem crossing_endpoint_inequality_of_confirmed
   have hloH : E.SlotWithinHorizon cfg lo :=
     E.slotWithinHorizon_mono cfg hlo hsaH
   have hne : ∀ i ∈ (E.store cfg ext v n).equivocating_indices, i ∉ E.honest :=
-    fun i hi hih => (Execution.honest_not_equivocating cfg ext hhb hec hgen hih v n) hi
+    fun i hi hih => (Execution.honest_not_equivocating cfg ext hhb hec hgen hih v n (by assumption) (by assumption)) hi
   have hbase := E.crossing_hbase_of_confirmed cfg ext hhb hec hgen hwf hval hprov
     hconf hwalk es hes hdom
   rw [E.boost_reconcile cfg ext hsv hec hgen hji hval hbsH hw m hHm hEstH] at hbase
@@ -811,3 +814,5 @@ theorem crossing_endpoint_of_confirmed
 end Execution
 
 end FastConfirmation.Spec
+
+end

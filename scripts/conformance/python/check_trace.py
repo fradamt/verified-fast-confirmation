@@ -171,6 +171,7 @@ def store(value: Any, path: str) -> None:
 def fcr(value: Any, path: str, schema: int) -> None:
     keys = FCR_KEYS | {"current_epoch_greatest_unrealized_checkpoint"} if schema == 2 else FCR_KEYS
     exact_keys(value, keys, path)
+
     for name, item in value.items():
         if name.endswith("checkpoint"):
             checkpoint(item, f"{path}.{name}")
@@ -240,6 +241,7 @@ def main() -> int:
                     f"line {line_number}",
                 )
                 if record["schema"] not in {1, 2}:
+
                     fail(f"line {line_number}: unsupported schema")
                 if not isinstance(record["test_id"], str):
                     fail(f"line {line_number}.test_id: expected string")
@@ -252,6 +254,7 @@ def main() -> int:
                 store(record["store"], f"line {line_number}.store")
                 fcr(record["fcr_before"], f"line {line_number}.fcr_before", record["schema"])
                 fcr(record["fcr_after"], f"line {line_number}.fcr_after", record["schema"])
+
                 exact_keys(record["externals"], EXTERNAL_KEYS, f"line {line_number}.externals")
                 for function in EXTERNAL_KEYS:
                     external(record["externals"][function], function, f"line {line_number}.externals.{function}")

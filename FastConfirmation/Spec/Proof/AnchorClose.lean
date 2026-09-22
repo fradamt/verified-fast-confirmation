@@ -1,9 +1,12 @@
-import FastConfirmation.Spec.Proof.AnchorThread
-import FastConfirmation.Spec.Proof.Assembly
-import FastConfirmation.Spec.Proof.Reanchor
-import FastConfirmation.Spec.Proof.HeadRerootChain
-import FastConfirmation.Spec.Proof.SameSlotProvenance
-import FastConfirmation.Spec.Proof.Knownness
+module
+public import FastConfirmation.Spec.Proof.AnchorThread
+public import FastConfirmation.Spec.Proof.Assembly
+public import FastConfirmation.Spec.Proof.Reanchor
+public import FastConfirmation.Spec.Proof.HeadRerootChain
+public import FastConfirmation.Spec.Proof.SameSlotProvenance
+public import FastConfirmation.Spec.Proof.Knownness
+
+@[expose] public section
 
 /-!
 # Spec / Proof / AnchorClose: the closing composition
@@ -686,8 +689,9 @@ theorem anchorRoots_known (hSA : SpecAssumptions cfg ext E)
       (E.store cfg ext v (n + 1)).block_roots := by
   have hji : JustificationInterface cfg ext E := hSA.2.2.2.2.2.2.2.2
   have hHn := E.withinHorizon_mono cfg (Nat.le_succ n) hHn1
-  refine ⟨E.hbconf_of_genesisStart cfg ext hSA hanchor0 v n _ hHn1 hconf, ?_,
+  refine ⟨E.hbconf_of_genesisStart cfg ext hSA hanchor0 v hv n _ hHn1 hconf, ?_,
     (hji.checkpoint_known v hv (n + 1) hHn1).2,
+
     E.fcrStep_observed_known cfg ext hji v hv n hHn1⟩
   rw [E.fcrStep_confirmed_root]
   exact (E.store_storeLE cfg ext v (Nat.le_succ n)).1
@@ -832,3 +836,5 @@ that premise, and the audited route does not need it —
 `docs/p6-justified-descends-derivation.md` §8 and `docs/plumbing-spec-citations.md` P-6. -/
 
 end FastConfirmation.Spec
+
+end

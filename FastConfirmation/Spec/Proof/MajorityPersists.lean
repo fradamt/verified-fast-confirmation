@@ -1,4 +1,7 @@
-import FastConfirmation.Spec.Proof.Delivery
+module
+public import FastConfirmation.Spec.Proof.Delivery
+
+@[expose] public section
 
 /-!
 # Spec / Proof / MajorityPersists: the persistence ledger
@@ -212,3 +215,5 @@ theorem supporters_disjoint {store : Store Root}
   exact no_index_supports_both_siblings hwf hc hc' hp hpc hpc' hne hwc hwc' hancc (hlmeq ▸ hancc')
 
 end FastConfirmation.Spec
+
+end

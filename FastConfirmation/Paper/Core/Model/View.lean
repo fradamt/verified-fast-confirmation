@@ -1,6 +1,9 @@
-import Mathlib.Data.Finset.Image
-import Mathlib.Data.List.MinMax
-import FastConfirmation.Paper.Core.Model.Vote
+module
+public import Mathlib.Data.Finset.Image
+public import Mathlib.Data.List.MinMax
+public import FastConfirmation.Paper.Core.Model.Vote
+
+@[expose] public section
 
 /-!
 # Core / Model / View
@@ -165,3 +168,5 @@ def HonestNoForgery {n : ℕ} {P : Type} (fm : FaultModel n) (τ : Timing)
     m ∈ (𝒱 w t).msgs → m.ghost.validator ∈ fm.honest → HonestCast fm 𝒱 τ m
 
 end FastConfirmation
+
+end

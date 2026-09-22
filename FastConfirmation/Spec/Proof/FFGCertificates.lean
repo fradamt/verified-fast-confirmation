@@ -1,5 +1,8 @@
-import FastConfirmation.Spec.Proof.FFGQuorum
-import FastConfirmation.Spec.Model.FFGCertificates
+module
+public import FastConfirmation.Spec.Proof.FFGQuorum
+public import FastConfirmation.Spec.Model.FFGCertificates
+
+@[expose] public section
 
 /-!
 # Spec / Proof / FFGCertificates
@@ -244,3 +247,5 @@ theorem prefix_of_accountable
 end CertifiedFinalized
 
 end FastConfirmation.Spec
+
+end

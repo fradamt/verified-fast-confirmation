@@ -1,4 +1,7 @@
-import FastConfirmation.Paper.HFC.Model.Checkpoint
+module
+public import FastConfirmation.Paper.HFC.Model.Checkpoint
+
+@[expose] public section
 
 /-!
 # HFC / Model / FFGVote
@@ -27,3 +30,5 @@ structure FFGVote (n : ℕ) where
   deriving DecidableEq
 
 end FastConfirmation.HFC
+
+end

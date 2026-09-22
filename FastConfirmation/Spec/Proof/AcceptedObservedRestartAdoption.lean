@@ -1,5 +1,8 @@
-import FastConfirmation.Spec.Proof.AcceptedCandidateHistoryRecurrence
-import FastConfirmation.Spec.Proof.AcceptedResetAdoption
+module
+public import FastConfirmation.Spec.Proof.AcceptedCandidateHistoryRecurrence
+public import FastConfirmation.Spec.Proof.AcceptedResetAdoption
+
+@[expose] public section
 
 /-!
 # Accepted active-observed restart adoption
@@ -63,7 +66,7 @@ theorem ObservedResetCandidateInputAt.actualFCRGuardedObservedAdoption
     (h : ObservedResetCandidateInputAt cfg ext
       (E.fcrStep cfg ext v n) trace) :
     E.ActualFCRGuardedObservedAdoption cfg ext v n := by
-  obtain ⟨ast, ablk, hgen, hgenSlot, _hgenParent⟩ := hT.genesis
+  obtain ⟨ast, ablk, hgen, hgenSlot, _hgenParent⟩ := hT.genesis_structure
   have hgenShort : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
       E.genesis_store = get_forkchoice_store cfg ast ablk ∧
         ast.slot = ablk.message.slot :=
@@ -159,3 +162,5 @@ theorem ObservedResetCandidateInputAt.actualFCRGuardedObservedAdoption
 end Execution
 
 end FastConfirmation.Spec
+
+end

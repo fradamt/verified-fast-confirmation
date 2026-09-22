@@ -1,4 +1,7 @@
-import FastConfirmation.Spec.Model.Assumptions
+module
+public import FastConfirmation.Spec.Model.Assumptions
+
+@[expose] public section
 
 /-!
 # Spec / Proof / EconomicRounding
@@ -66,3 +69,5 @@ theorem estimate_floor_dominates (cfg : Config) (E : Execution Root)
   le_hundred_mul_div_of_dvd (E.hundred_dvd_weight cfg hbb S) hle
 
 end FastConfirmation.Spec
+
+end

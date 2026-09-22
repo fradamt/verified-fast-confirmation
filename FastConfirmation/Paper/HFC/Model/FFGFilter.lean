@@ -1,4 +1,7 @@
-import FastConfirmation.Paper.HFC.Model.Rule
+module
+public import FastConfirmation.Paper.HFC.Model.Rule
+
+@[expose] public section
 
 /-!
 # HFC / Model / FFGFilter
@@ -68,3 +71,5 @@ def ffgFilter (A : Anchor n) (τ : Timing) : BlockFilter n (FFGVote n) :=
   ffgFilterAt A τ
 
 end FastConfirmation.HFC
+
+end

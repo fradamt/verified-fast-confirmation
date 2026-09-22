@@ -1,4 +1,7 @@
-import FastConfirmation.Paper.LMDGhost.Model.Confirm
+module
+public import FastConfirmation.Paper.LMDGhost.Model.Confirm
+
+@[expose] public section
 
 /-!
 # LMDGhost / Model / Rule
@@ -45,3 +48,5 @@ def sg (τ : Timing) (b : Block n) (t : Time) : Prop :=
     τ.AfterGST (τ.st (τ.fslot (τ.epochOf (τ.slotOf t) - 1)))
 
 end FastConfirmation.LMDGhost
+
+end

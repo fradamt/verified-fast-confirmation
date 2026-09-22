@@ -1,7 +1,10 @@
-import FastConfirmation.Spec.Proof.Confinement
-import FastConfirmation.Spec.Proof.ByzVpre
-import FastConfirmation.Spec.Proof.Cruxes
-import FastConfirmation.Spec.Proof.DynamicsClosure
+module
+public import FastConfirmation.Spec.Proof.Confinement
+public import FastConfirmation.Spec.Proof.ByzVpre
+public import FastConfirmation.Spec.Proof.Cruxes
+public import FastConfirmation.Spec.Proof.DynamicsClosure
+
+@[expose] public section
 
 /-!
 # Spec / Proof / EdgeResiduals: per-edge inputs for the confirm-margin supply
@@ -246,11 +249,13 @@ theorem sclass_subset_attSupporters (hSA : SpecAssumptions cfg ext E)
   have hval := E.hval_of_interface cfg ext hec hgen0 hji w hw m hHm
   have hbsH := E.justified_balance_source_epoch_lt_horizon cfg ext hec hji hdiv hgen0
     w hw m hHm
-  have hrec := E.hrec_crux cfg ext ⟨hgen, hwfE, hdiv, hhb, hsync, hec, hsv, hbb, hji⟩
+  have hrec := E.hrec_crux cfg ext (hmH := hHm) ⟨hgen, hwfE, hdiv, hhb, hsync, hec, hsv, hbb, hji⟩
     hw hb_wm hc_wm hbc_wm hIH hubiq hbbr_known hlm_known
-  exact E.hSmem_of_recorded cfg ext hhb hec hsv hgen0 w m w m b c lo σ
+  exact E.hSmem_of_recorded cfg ext (hw := hw) (hmH := hHm) hhb hec hsv hgen0 w m w m b c lo σ
     hval hbsH hσH hrec
 
 end Execution
 
 end FastConfirmation.Spec
+
+end

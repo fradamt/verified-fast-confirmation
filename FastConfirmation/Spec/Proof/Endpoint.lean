@@ -1,7 +1,10 @@
-import FastConfirmation.Spec.Proof.Ledger
-import FastConfirmation.Spec.Proof.EngineStore
-import FastConfirmation.Spec.Proof.Bridge
-import FastConfirmation.Spec.Proof.Forks
+module
+public import FastConfirmation.Spec.Proof.Ledger
+public import FastConfirmation.Spec.Proof.EngineStore
+public import FastConfirmation.Spec.Proof.Bridge
+public import FastConfirmation.Spec.Proof.Forks
+
+@[expose] public section
 
 /-!
 # Spec / Proof / Endpoint: ledger inequality ⟹ head descent at `(w, m)`
@@ -233,3 +236,5 @@ theorem head_descends_of_ledger_chain {E : Execution Root} {store : Store Root}
     (hchain.imp (fun _ _ hab => descendStep_of_ledgerStep cfg ext hab)) hlast
 
 end FastConfirmation.Spec
+
+end

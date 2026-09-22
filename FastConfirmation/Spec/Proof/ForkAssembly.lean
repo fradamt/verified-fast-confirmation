@@ -1,5 +1,8 @@
-import FastConfirmation.Spec.Proof.InterfaceRewire
-import FastConfirmation.Spec.Proof.DynamicsClosure
+module
+public import FastConfirmation.Spec.Proof.InterfaceRewire
+public import FastConfirmation.Spec.Proof.DynamicsClosure
+
+@[expose] public section
 
 /-!
 # Spec / Proof / ForkAssembly: the `dynamics_edges` per-fork assembly
@@ -161,7 +164,8 @@ theorem dynamicsResidual_of_forkEdgeInput
     (hgen : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
       E.genesis_store = get_forkchoice_store cfg ast ablk)
     {w : ValidatorIndex} {m : ℕ} {b h c : Root}
-    (hin : E.ForkEdgeInput cfg ext w m b h c) :
+    (hin : E.ForkEdgeInput cfg ext w m b h c)
+    (hw : w ∈ E.honest) (hmH : E.WithinHorizon cfg m) :
     E.DynamicsResidual cfg ext w m h c := by
   obtain ⟨vc, nc, lo, es, σ, boost, hσ, hloH, hσH, hbase, htS, htA, hBb, hlo,
     hdeltas, hmaj, hval, hbsH, hboost, hchild, hrec, hHon, hByz⟩ := hin
@@ -174,7 +178,7 @@ theorem dynamicsResidual_of_forkEdgeInput
     exact E.INV2_pre_step_of_deltas cfg ext hbb w m b lo es σ' boost ξ α
       hloH hσ'H hσ1H hlo h1 hs' hx' hρ hinv
   · exact E.hsat_functional cfg ext hbb w m b lo es boost hloH hlo hmaj
-  · exact E.hSmem_of_recorded cfg ext hhb hec hsv hgen w m w m b c lo σ
+  · exact E.hSmem_of_recorded cfg ext (hw := hw) (hmH := hmH) hhb hec hsv hgen w m w m b c lo σ
       hval hbsH hσH hrec
 
 /-! ## Section 2 — the endpoint/edge quantification: `DynamicsEdgeSupply` -/
@@ -208,7 +212,7 @@ theorem dynamicsEdgeSupply_of_forkEdgeSupply
     (hsupply : E.ForkEdgeSupply cfg ext b n₀) :
     E.DynamicsEdgeSupply cfg ext b n₀ := by
   intro w hw m hm hHm hIH a c ha hc hlink
-  exact E.dynamicsResidual_of_forkEdgeInput cfg ext hbb hhb hec hsv hgen
+  exact E.dynamicsResidual_of_forkEdgeInput cfg ext (hw := hw) (hmH := hHm) hbb hhb hec hsv hgen
     (hsupply w hw m hm hHm hIH a c ha hc hlink)
 
 /-! ## Section 3 — the edge-reduced input bundle
@@ -301,3 +305,5 @@ theorem spec_safety_final_residuals
     (fun E hSA => E.finalResiduals_of_ER cfg ext hSA (h E hSA))
 
 end FastConfirmation.Spec
+
+end

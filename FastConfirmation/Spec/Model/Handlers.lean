@@ -1,5 +1,8 @@
-import Mathlib.Logic.Function.Basic
-import FastConfirmation.Spec.Model.ForkChoice
+module
+public import Mathlib.Logic.Function.Basic
+public import FastConfirmation.Spec.Model.ForkChoice
+
+@[expose] public section
 
 /-!
 # Spec / Model / Handlers
@@ -157,7 +160,7 @@ def on_tick (store : Store Root) (time : ℕ) : Store Root :=
 ```python
 target = attestation.data.target
 current_epoch = get_current_store_epoch(store)
-previous_epoch = current_epoch - 1 if current_epoch > GENESIS_EPOCH else GENESIS_EPOCH
+previous_epoch = saturating_sub(current_epoch, 1)
 assert target.epoch in [current_epoch, previous_epoch]
 ``` -/
 def validate_target_epoch_against_current_time (store : Store Root)
@@ -165,9 +168,7 @@ def validate_target_epoch_against_current_time (store : Store Root)
   let target := attestation.data.target
   -- Attestations must be from the current or previous epoch
   let current_epoch := get_current_store_epoch cfg store
-  -- Use GENESIS_EPOCH for previous when genesis to avoid underflow
-  let previous_epoch :=
-    if current_epoch > GENESIS_EPOCH then current_epoch - 1 else GENESIS_EPOCH
+  let previous_epoch := current_epoch - 1
   decide (target.epoch = current_epoch ∨ target.epoch = previous_epoch)
 
 /-- `validate_on_attestation` (python body is asserts; `true` = valid — a
@@ -205,7 +206,7 @@ def validate_on_attestation (store : Store Root) (attestation : Attestation Root
 /-- `store_target_checkpoint_state`:
 ```python
 if target not in store.checkpoint_states:
-    base_state = copy(store.block_states[target.root])
+    base_state = store.block_states[target.root].copy()
     if base_state.slot < compute_start_slot_at_epoch(target.epoch):
         process_slots(base_state, compute_start_slot_at_epoch(target.epoch))
     store.checkpoint_states[target] = base_state
@@ -279,26 +280,37 @@ def record_block_timeliness (store : Store Root) (root : Root) : Store Root :=
   { store with
     block_timeliness := Function.update store.block_timeliness root (some is_timely) }
 
-/-- `get_dependent_root`:
+/-- `compute_shuffling_lookahead_start_slot`:
 ```python
-epoch = get_current_store_epoch(store)
-if epoch <= MIN_SEED_LOOKAHEAD:
-    # Genesis block parent
-    return Root()
-node = ForkChoiceNode(root=root)
-dependent_slot = Slot(compute_start_slot_at_epoch(epoch - MIN_SEED_LOOKAHEAD) - 1)
-return get_ancestor(store, node, dependent_slot).root
+def compute_shuffling_lookahead_start_slot(epoch: Epoch) -> Slot:
+    lookahead_epoch = saturating_sub(epoch, MIN_SEED_LOOKAHEAD)
+    return compute_start_slot_at_epoch(lookahead_epoch)
 ``` -/
-def get_dependent_root (store : Store Root) (root : Root) : Root :=
-  let epoch := get_current_store_epoch cfg store
-  if epoch ≤ cfg.min_seed_lookahead then
-    -- Genesis block parent
-    (default : Root)
-  else
-    let node := ForkChoiceNode.mk root
-    let dependent_slot :=
-      compute_start_slot_at_epoch cfg (epoch - cfg.min_seed_lookahead) - 1
-    (get_ancestor store node dependent_slot).root
+def compute_shuffling_lookahead_start_slot (epoch : Epoch) : Slot :=
+  let lookahead_epoch := epoch - cfg.min_seed_lookahead
+  compute_start_slot_at_epoch cfg lookahead_epoch
+
+/-- `compute_shuffling_dependent_slot`:
+```python
+def compute_shuffling_dependent_slot(epoch: Epoch) -> Slot:
+    lookahead_start_slot = compute_shuffling_lookahead_start_slot(epoch)
+    return saturating_sub(lookahead_start_slot, 1)
+``` -/
+def compute_shuffling_dependent_slot (epoch : Epoch) : Slot :=
+  let lookahead_start_slot := compute_shuffling_lookahead_start_slot cfg epoch
+  lookahead_start_slot - 1
+
+/-- `get_shuffling_dependent_root`:
+```python
+def get_shuffling_dependent_root(store: Store, root: Root, epoch: Epoch) -> Root:
+    node = ForkChoiceNode(root=root)
+    dependent_slot = compute_shuffling_dependent_slot(epoch)
+    return get_ancestor(store, node, dependent_slot).root
+``` -/
+def get_shuffling_dependent_root (store : Store Root) (root : Root) (epoch : Epoch) : Root :=
+  let node := ForkChoiceNode.mk root
+  let dependent_slot := compute_shuffling_dependent_slot cfg epoch
+  (get_ancestor store node dependent_slot).root
 
 /-- `update_proposer_boost_root` (python reads `store.block_timeliness[root]`,
 always set by `on_block` immediately before — the `getD false` default is
@@ -306,15 +318,24 @@ unreachable there):
 ```python
 is_first_block = store.proposer_boost_root == Root()
 is_timely = store.block_timeliness[root]
-is_same_dependent_root = get_dependent_root(store, root) == get_dependent_root(store, head)
+epoch = get_current_store_epoch(store)
+head_dependent_root = get_shuffling_dependent_root(store, head, epoch)
+block_dependent_root = get_shuffling_dependent_root(store, root, epoch)
+is_same_dependent_root = head_dependent_root == block_dependent_root
+
+# Add proposer score boost if the block is timely, not conflicting with an
+# existing block, with the same dependent root as the canonical chain head.
 if is_timely and is_first_block and is_same_dependent_root:
     store.proposer_boost_root = root
 ``` -/
 def update_proposer_boost_root (store : Store Root) (head root : Root) : Store Root :=
   let is_first_block := decide (store.proposer_boost_root = (default : Root))
   let is_timely := (store.block_timeliness root).getD false
+  let epoch := get_current_store_epoch cfg store
+  let head_dependent_root := get_shuffling_dependent_root cfg store head epoch
+  let block_dependent_root := get_shuffling_dependent_root cfg store root epoch
   let is_same_dependent_root :=
-    decide (get_dependent_root cfg store root = get_dependent_root cfg store head)
+    decide (head_dependent_root = block_dependent_root)
   -- Add proposer score boost if the block is timely, not conflicting with an
   -- existing block, with the same dependent root as the canonical chain head
   if is_timely && is_first_block && is_same_dependent_root then
@@ -322,14 +343,22 @@ def update_proposer_boost_root (store : Store Root) (head root : Root) : Store R
   else store
 
 /-- `on_block` handler. `none` = one of the python asserts failed or
-`state_transition` raised (the block is not applied). Python's
-`assert block.parent_root in store.block_states` is tested against
-`block_roots` (`blocks` and `block_states` share their key set by
-construction — design decision 14).
+`state_transition` raised (the block is not applied). A known block returns
+the unchanged store. Python's `assert block.parent_root in store.block_states`
+is tested against `block_roots` (`blocks` and `block_states` share their key
+set by construction — design decision 14).
 ```python
 block = signed_block.message
+block_root = hash_tree_root(block)
+
+# Return early if the block is already known
+if block_root in store.blocks:
+    return
+
+# Parent block must be known
 assert block.parent_root in store.block_states
-pre_state = copy(store.block_states[block.parent_root])
+# Make a copy of the state to avoid mutability issues
+pre_state = store.block_states[block.parent_root].copy()
 assert get_current_slot(store) >= block.slot
 finalized_slot = compute_start_slot_at_epoch(store.finalized_checkpoint.epoch)
 assert block.slot > finalized_slot
@@ -337,7 +366,6 @@ finalized_checkpoint_block = get_checkpoint_block(store, block.parent_root,
                                                   store.finalized_checkpoint.epoch)
 assert store.finalized_checkpoint.root == finalized_checkpoint_block
 state = pre_state.copy()
-block_root = hash_tree_root(block)
 state_transition(state, signed_block, validate_result=True)
 head = get_head(store)
 store.blocks[block_root] = block
@@ -350,45 +378,46 @@ compute_pulled_up_tip(store, block_root)
 def on_block (store : Store Root) (signed_block : SignedBeaconBlock Root) :
     Option (Store Root) :=
   let block := signed_block.message
-  -- Parent block must be known
-  if block.parent_root ∉ store.block_roots then none
+  let block_root := signed_block.root
+  -- Return early if the block is already known
+  if block_root ∈ store.block_roots then some store
   else
-    let pre_state := store.block_states block.parent_root
-    -- Blocks cannot be in the future
-    if ¬ get_current_slot cfg store ≥ block.slot then none
+    -- Parent block must be known
+    if block.parent_root ∉ store.block_roots then none
     else
-      -- Check that block is later than the finalized epoch slot
-      let finalized_slot := compute_start_slot_at_epoch cfg store.finalized_checkpoint.epoch
-      if ¬ block.slot > finalized_slot then none
+      let pre_state := store.block_states block.parent_root
+      -- Blocks cannot be in the future
+      if ¬ get_current_slot cfg store ≥ block.slot then none
       else
-        -- Check block is a descendant of the finalized block
-        let finalized_checkpoint_block :=
-          get_checkpoint_block cfg store block.parent_root store.finalized_checkpoint.epoch
-        if store.finalized_checkpoint.root ≠ finalized_checkpoint_block then none
+        -- Check that block is later than the finalized epoch slot
+        let finalized_slot := compute_start_slot_at_epoch cfg store.finalized_checkpoint.epoch
+        if ¬ block.slot > finalized_slot then none
         else
-          -- Check the block is valid and compute the post-state
-          let block_root := signed_block.root
-          match ext.state_transition pre_state signed_block with
-          | none => none
-          | some state =>
-            -- Compute head before applying the block
-            let head := get_head cfg store
-            -- Add new block and its state to the store
-            let store :=
-              { store with
-                block_roots :=
-                  if block_root ∈ store.block_roots then store.block_roots
-                  else store.block_roots ++ [block_root]
-                blocks := Function.update store.blocks block_root block
-                block_states := Function.update store.block_states block_root state }
-            let store := record_block_timeliness cfg store block_root
-            let store := update_proposer_boost_root cfg store head.root block_root
-            -- Update checkpoints in store if necessary
-            let store :=
-              update_checkpoints store state.current_justified_checkpoint
-                state.finalized_checkpoint
-            -- Eagerly compute unrealized justification and finality
-            some (compute_pulled_up_tip cfg ext store block_root)
+          -- Check block is a descendant of the finalized block
+          let finalized_checkpoint_block :=
+            get_checkpoint_block cfg store block.parent_root store.finalized_checkpoint.epoch
+          if store.finalized_checkpoint.root ≠ finalized_checkpoint_block then none
+          else
+            -- Check that the block is valid and compute the post-state
+            match ext.state_transition pre_state signed_block with
+            | none => none
+            | some state =>
+              -- Compute head before applying the block
+              let head := get_head cfg store
+              -- Add new block and its state to the store
+              let store :=
+                { store with
+                  block_roots := store.block_roots ++ [block_root]
+                  blocks := Function.update store.blocks block_root block
+                  block_states := Function.update store.block_states block_root state }
+              let store := record_block_timeliness cfg store block_root
+              let store := update_proposer_boost_root cfg store head.root block_root
+              -- Update checkpoints in store if necessary
+              let store :=
+                update_checkpoints store state.current_justified_checkpoint
+                  state.finalized_checkpoint
+              -- Eagerly compute unrealized justification and finality
+              some (compute_pulled_up_tip cfg ext store block_root)
 
 /-- `on_attestation` handler. `none` = validation failed (python assert — the
 attestation is not applied now). Note: on the python validity-failure path
@@ -448,11 +477,13 @@ def on_attester_slashing (store : Store Root)
       some { store with equivocating_indices := store.equivocating_indices ∪ indices }
 
 /-- `get_forkchoice_store`: the trusted-anchor initialization. The python
-`assert anchor_block.state_root == hash_tree_root(anchor_state)` is
-**dropped** (untranscribable in the projection — the modeled block carries no
-`state_root`); anchor block/state consistency is an execution
-well-formedness premise (design §11a). Dict fields outside their singleton
-domains are junk-totalized.
+`assert anchor_block.state_root == hash_tree_root(anchor_state)` is omitted
+from this executable function: the projected block carries no `state_root`.
+`ScheduledPrefixTrajectoryAssumptions.genesis` requires the abstract
+`Externals.AnchorCommitsToState` contract from the external interpretation,
+along with separate slot agreement and parent/root inequality premises
+(design §11a). This is not a concrete hashing proof. Dict fields outside their
+singleton domains are junk-totalized.
 ```python
 anchor_root = hash_tree_root(anchor_block)
 anchor_epoch = get_current_epoch(anchor_state)
@@ -460,11 +491,13 @@ justified_checkpoint = Checkpoint(epoch=anchor_epoch, root=anchor_root)
 finalized_checkpoint = Checkpoint(epoch=anchor_epoch, root=anchor_root)
 proposer_boost_root = Root()
 return Store(
-    time=uint64(anchor_state.genesis_time + SLOT_DURATION_MS * anchor_state.slot // 1000),
+    time=Uint64(anchor_state.genesis_time + SLOT_DURATION_MS * anchor_state.slot // 1000),
     genesis_time=anchor_state.genesis_time, ...,
-    blocks={anchor_root: copy(anchor_block)},
-    block_states={anchor_root: copy(anchor_state)},
-    checkpoint_states={justified_checkpoint: copy(anchor_state)},
+    blocks={anchor_root: anchor_block.copy()},
+    block_states={anchor_root: anchor_state.copy()},
+    block_timeliness={},
+    checkpoint_states={justified_checkpoint: anchor_state.copy()},
+    latest_messages={},
     unrealized_justifications={anchor_root: justified_checkpoint})
 ``` -/
 def get_forkchoice_store (anchor_state : BeaconState Root)
@@ -493,3 +526,5 @@ def get_forkchoice_store (anchor_state : BeaconState Root)
       Function.update (fun _ => default) anchor_root justified_checkpoint }
 
 end FastConfirmation.Spec
+
+end

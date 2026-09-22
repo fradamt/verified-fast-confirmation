@@ -4,8 +4,8 @@ This repository models both the FCR **paper** (arXiv:2405.00549) and the FCR
 **consensus spec**. This document describes the consensus-spec layer:
 
 - **Source of truth**:
-  [`consensus-specs/specs/phase0/fast-confirmation.md`](https://github.com/ethereum/consensus-specs/blob/30aa65fc21cf7f7c7dd1f7d6b686d0250462d04f/specs/phase0/fast-confirmation.md)
-  at public commit `30aa65fc21cf7f7c7dd1f7d6b686d0250462d04f`.
+  [`consensus-specs/specs/phase0/fast-confirmation.md`](https://github.com/ethereum/consensus-specs/blob/477321355d48d527e7e1e4d572f6a40a0b41072a/specs/phase0/fast-confirmation.md)
+  at public commit `477321355d48d527e7e1e4d572f6a40a0b41072a`.
 - **Environment**: `specs/phase0/fork-choice.md` (Store, `get_head`,
   `get_attestation_score`, `get_voting_source`, …) and `specs/phase0/beacon-chain.md`
   (epoch arithmetic, `is_active_validator`, `get_total_active_balance`) at the same
@@ -166,6 +166,33 @@ decision 13).
     `enumerate` in `get_active_validator_indices` becomes a filter over
     `List.range validators.length` (order-preserving).
 
+## Module system
+
+Each library file starts with `module`. Use `public import` for library
+imports to keep declarations visible through the existing import paths.
+Files with declarations put `@[expose] public section` after the import
+header and close it with `end`. This keeps definition bodies available for
+reduction and theorem statements available to importers. Import-only files
+do not need a public section.
+
+The module system keeps theorem proof bodies private. Keep explicit
+`private theorem` and `private lemma` helpers private. A definition used in
+a public statement or exposed definition must be public, as must the
+definitions that it depends on. Keep other local helpers private when the
+module rules permit this. Close each namespace and section before closing
+the public section; use the scope name on each named `end`.
+
+A proof-body edit can rebuild only its own module when its public interface
+stays the same. Changes to public statements or exposed definitions can
+rebuild dependent modules. Build caches must retain `.olean.private` and
+`.olean.server` files with the other Lake build files.
+
+`scripts/Audit.lean` stays outside the library and does not start with
+`module`. Its ordinary imports load private proof bodies, so its body checks
+and axiom checks still apply. If the audit becomes a module, it needs
+`import all` to inspect those bodies. Run `scripts/validate.sh` to check
+imports, build the library, and run the audit.
+
 ## Module map (build order)
 
 | Module | Content |
@@ -199,8 +226,10 @@ spec's own dynamics: the fork-choice **handlers** driving store evolution,
     `on_tick_per_slot`/`on_tick`, the `on_attestation` helper chain
     (`validate_target_epoch_against_current_time`, `validate_on_attestation`,
     `store_target_checkpoint_state`, `update_latest_messages`), the `on_block`
-    helper chain (`record_block_timeliness`, `get_dependent_root`,
-    `update_proposer_boost_root`), the four handlers, and
+    helper chain (`record_block_timeliness`,
+    `compute_shuffling_lookahead_start_slot`, `compute_shuffling_dependent_slot`,
+    `get_shuffling_dependent_root`, `update_proposer_boost_root`), the four
+    handlers, and
     `get_forkchoice_store`. Python mutation → `Store → … → Store`; python
     `assert`-rejection in handlers → `Option Store` (`none` = the message is
     not applied now — python's "delay consideration"/drop). Validation
@@ -209,11 +238,20 @@ spec's own dynamics: the fork-choice **handlers** driving store evolution,
 11a. **Additional dynamics modeling choices:** the
     `on_tick` catch-up while-loop is a fuel site like decision 4's (fuel
     `tick_slot + 1`; the loop advances one slot per iteration on
-    whole-second-boundary configs); `get_forkchoice_store` drops python's
-    `assert anchor_block.state_root == hash_tree_root(anchor_state)` (the
-    block-commits-to-state consistency is an execution well-formedness
-    premise on the anchor, and the function takes the *signed* wire container
-    because the root travels on it); `Event.attestation` with
+    whole-second-boundary configs). The executable `get_forkchoice_store`
+    omits python's
+    `assert anchor_block.state_root == hash_tree_root(anchor_state)`.
+    The accepted `ScheduledPrefixTrajectoryAssumptions.genesis` requires
+    `Externals.AnchorCommitsToState anchorBlock.message anchorState`.
+    This abstract contract must come from the external interpretation of the
+    full block and state; the model does not prove a concrete hashing result.
+    Slot agreement and parent/root inequality remain separate premises.
+    The legacy `SpecAssumptions` bundle still has only those two premises.
+    The relation defaults to `False`, so an external implementation must
+    supply a relation and anchor evidence to satisfy the accepted trajectory.
+    The function takes the *signed* wire container because the root travels
+    on it;
+    `Event.attestation` with
     `is_from_block = true` may appear in adversarial schedules unaccompanied
     by a block — a **conservative over-approximation** (the adversary gets
     strictly more latitude than the spec's block-embedded path; honest
@@ -244,6 +282,23 @@ spec's own dynamics: the fork-choice **handlers** driving store evolution,
     read. `Config` includes `attestation_due_bps` (mainnet 3333) and
     `min_seed_lookahead` (1); `BASIS_POINTS = 10000` and `UINT64_MAX` are
     constants.
+
+    `ExternalsCoherence` restricts `honest_attestation_valid`,
+    `valid_attestation_honest`, and `valid_attestation_committee` to
+    `Execution.ReachableValidationState`. A state is in this domain only if
+    it occurs at a known block or checkpoint key in an honest node's
+    in-horizon causal store. A fresh checkpoint state can be prepared before
+    a successful handler stores it. Its check uses the reachable base state
+    and the separate `process_slots_attestation_valid` contract on that base. In Phase0,
+    slot processing preserves public keys, fork data, and the genesis
+    validators root; the attestation supplies its target epoch.
+    `valid_attestation_default` maps rejection and an invalid validator-index
+    lookup on the empty default state to `false`; Python need not return a
+    Boolean on that lookup failure.
+    The handler proofs establish that an unkeyed block-state read returns
+    that default. These are explicit contracts for the abstract functions,
+    not a refinement proof. Supporting validity-based trajectory invariants
+    now require an honest node and an in-horizon second.
 
 14. **Dict-update fidelity.** `blocks[root] = block` preserves python dict
     semantics: `Function.update` on the totalized map plus key-list append
@@ -305,9 +360,11 @@ The accepted theorem surface is
 `acceptedSpec_safety_next_slot`. It proves that a root stored by an honest
 node's FCR is an ancestor of every in-horizon honest head from the following
 slot onward. The literal descendant-selector result is also safe at an actual
-scheduled boundary call. Reset safety is derived from accepted execution and
-FFG semantics rather than assumed. The proof is entirely spec-side; the paper
-model supplies mathematical guidance but is not imported.
+scheduled boundary call. Reset safety is a proved result. Its finalized-reset
+case uses the separate `AcceptedRealizedFinalizationDelay` premise, and its
+active-observed case uses the accepted execution and FFG premises. The proof
+is entirely spec-side; the paper model supplies mathematical guidance but is
+not imported.
 
 The next-slot boundary matters. Optional queries at arbitrary in-slot action
 prefixes can run after one honest endpoint has processed an event and before

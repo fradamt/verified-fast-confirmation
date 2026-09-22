@@ -1,4 +1,7 @@
-import FastConfirmation.Spec.Proof.AcceptedCurrentTargetLowerContracts
+module
+public import FastConfirmation.Spec.Proof.AcceptedCurrentTargetLowerContracts
+
+@[expose] public section
 
 /-!
 # Accepted geometry at exact scheduled-event prefixes
@@ -163,7 +166,7 @@ theorem ScheduledEventPrefix.walkKnownK
     ∀ t ∈ (p.store cfg ext).block_roots,
       ∀ r ∈ (p.store cfg ext).block_roots,
         WalkKnown (p.store cfg ext) ((p.store cfg ext).blocks t).slot r := by
-  obtain ⟨ast, ablk, hgen, _hslot, hparent⟩ := hT.genesis
+  obtain ⟨ast, ablk, hgen, _hslot, hparent⟩ := hT.genesis_structure
   have hQ : ParentInRootsOr ablk.message.parent_root (p.store cfg ext) := by
     intro r hr
     rcases p.nonAnchorParentKnown cfg ext hgen r hr with heq | hknown
@@ -190,7 +193,7 @@ theorem ScheduledEventPrefix.justifiedRootKnown_of_acceptedGlobalTrajectory
       (anchor := B.anchor)) :
     (p.store cfg ext).justified_checkpoint.root ∈
       (p.store cfg ext).block_roots := by
-  obtain ⟨ast, ablk, hgen, hslot, hparent⟩ := hT.genesis
+  obtain ⟨ast, ablk, hgen, hslot, hparent⟩ := hT.genesis_structure
   have hgenShort : ∃ ast ablk,
       E.genesis_store = get_forkchoice_store cfg ast ablk ∧
         ast.slot = ablk.message.slot := ⟨ast, ablk, hgen, hslot⟩
@@ -280,7 +283,7 @@ theorem ScheduledEventPrefix.currentTargetKnown_and_blockEpoch_le
   let store := p.store cfg ext
   let target := get_current_target cfg store
   let head := (get_head cfg store).root
-  obtain ⟨ast, ablk, hgen, hslot, _hparent⟩ := hT.genesis
+  obtain ⟨ast, ablk, hgen, hslot, _hparent⟩ := hT.genesis_structure
   have hanchorRoot : B.anchor.root = ablk.root := by
     have hr := congrArg Checkpoint.root hanchor
     rw [hgen] at hr
@@ -351,7 +354,7 @@ theorem ScheduledEventPrefix.currentTarget_anchor_epoch_le
     B.anchor.epoch ≤
       (get_current_target cfg (p.store cfg ext)).epoch := by
   let store := p.store cfg ext
-  obtain ⟨ast, ablk, hgen, hslot, _hparent⟩ := hT.genesis
+  obtain ⟨ast, ablk, hgen, hslot, _hparent⟩ := hT.genesis_structure
   have hanchorRoot : B.anchor.root = ablk.root := by
     have hr := congrArg Checkpoint.root hanchor
     rw [hgen] at hr
@@ -401,7 +404,7 @@ theorem ScheduledEventPrefix.currentTarget_anchor_epoch_lt_of_ne
   change B.anchor.epoch ≤ target.epoch at hanchorLe
   rcases lt_or_eq_of_le hanchorLe with hlt | hepoch
   · exact hlt
-  · obtain ⟨ast, ablk, hgen, hslot, _hparent⟩ := hT.genesis
+  · obtain ⟨ast, ablk, hgen, hslot, _hparent⟩ := hT.genesis_structure
     have hanchorRoot : B.anchor.root = ablk.root := by
       have hr := congrArg Checkpoint.root hanchor
       rw [hgen] at hr
@@ -494,3 +497,5 @@ theorem ScheduledEventPrefix.currentTarget_anchor_epoch_lt_of_ne
 end Execution
 
 end FastConfirmation.Spec
+
+end

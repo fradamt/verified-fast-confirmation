@@ -1,5 +1,8 @@
-import FastConfirmation.Spec.Proof.Remainder
-import FastConfirmation.Spec.Proof.Delivery
+module
+public import FastConfirmation.Spec.Proof.Remainder
+public import FastConfirmation.Spec.Proof.Delivery
+
+@[expose] public section
 
 /-!
 # Spec / Proof / Identities: the economic-core coherence package
@@ -242,9 +245,13 @@ theorem on_block_CkptEpochLe (cfg : Config) (ext : Externals Root) (SL : Slot)
     (hcur : get_current_slot cfg store ≤ SL) (h : CkptEpochLe cfg SL store)
     (hh : on_block cfg ext store sb = some store') :
     CkptEpochLe cfg SL store' := by
-  simp only [on_block] at hh
-  split_ifs at hh with hp hslot hfin hfc <;> try cases hh
-  all_goals
+  by_cases hknown : sb.root ∈ store.block_roots
+  · simp [on_block, hknown] at hh
+    cases hh
+    exact h
+  · simp only [on_block, if_neg hknown] at hh
+    split_ifs at hh with hp hslot hfin hfc
+    all_goals try contradiction
     cases hst : ext.state_transition (store.block_states sb.message.parent_root) sb with
     | none => rw [hst] at hh; cases hh
     | some state =>
@@ -592,3 +599,5 @@ theorem INV2_base_bridged_instantiated
     hV.hJV rfl hV.hJfull rfl hV.hR4b hV.hBbadfin hV.hXval rfl
 
 end FastConfirmation.Spec
+
+end

@@ -1,5 +1,8 @@
-import Mathlib.Tactic
-import FastConfirmation.Spec.Proof.AcceptedRetainedFilterCertificate
+module
+public import Mathlib.Tactic
+public import FastConfirmation.Spec.Proof.AcceptedRetainedFilterCertificate
+
+@[expose] public section
 
 /-!
 # Retargeting one retained phase-source carrier down the selected chain
@@ -106,3 +109,5 @@ end Execution
 
 
 end FastConfirmation.Spec
+
+end

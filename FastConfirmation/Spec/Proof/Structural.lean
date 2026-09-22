@@ -1,5 +1,9 @@
-import FastConfirmation.Spec.Proof.LastCruxes
-import FastConfirmation.Spec.Proof.Cruxes
+module
+public import FastConfirmation.Spec.Proof.LastCruxes
+public import FastConfirmation.Spec.Proof.Cruxes
+
+@[expose] public section
+
 
 /-!
 # Spec / Proof / Structural: the disjunctive `hcase` and shared-anchor knownness
@@ -218,3 +222,5 @@ See `docs/p6-justified-descends-derivation.md` §8. -/
 end Execution
 
 end FastConfirmation.Spec
+
+end

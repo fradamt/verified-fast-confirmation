@@ -1,6 +1,9 @@
-import FastConfirmation.Spec.Proof.CurrentTargetA32Support
-import FastConfirmation.Spec.Proof.FilterViability
-import FastConfirmation.Spec.Proof.SelectedPreQueryHistoricalSIR
+module
+public import FastConfirmation.Spec.Proof.CurrentTargetA32Support
+public import FastConfirmation.Spec.Proof.FilterViability
+public import FastConfirmation.Spec.Proof.SelectedPreQueryHistoricalSIR
+
+@[expose] public section
 
 /-!
 # Accepted historical A3.2 payloads
@@ -657,3 +660,5 @@ end Execution
 
 
 end FastConfirmation.Spec
+
+end

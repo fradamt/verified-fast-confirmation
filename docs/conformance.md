@@ -1,11 +1,11 @@
 # FCR conformance harness
 
-The weak Lean runner checks the Comparison section of the conformance trace
-schema.
+The Lean runner checks the Comparison section of the conformance trace schema.
 For each JSON Lines record, it rebuilds the `Store Nat` and
 `FastConfirmationStore Nat`, builds `Config` from the recorded values, supplies
 the recorded answers for the four executable external functions, runs
-`Weak.on_fast_confirmation`, and compares the six FCR fields.
+`Strong.on_fast_confirmation` for schema 1 or `Weak.on_fast_confirmation` for
+schema 2, and compares the recorded FCR fields.
 
 The runner also checks the runtime proof conditions required by `Config`:
 positive slot and duration values, the threshold bound, a positive effective
@@ -27,3 +27,7 @@ The authoritative schema is
 [`scripts/conformance/TRACE_SCHEMA.md`](../scripts/conformance/TRACE_SCHEMA.md).
 The runner is interpreted on purpose. It is a plain Lean file and is not part
 of a `lean_lib`; this avoids native linking of the Mathlib import closure.
+
+Schema 1 covers the main strong rule. Schema 2 adds the weak rule's
+`current_epoch_greatest_unrealized_checkpoint` field. The runner compares that
+field only for schema 2.

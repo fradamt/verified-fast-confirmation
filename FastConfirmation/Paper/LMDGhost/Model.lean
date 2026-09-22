@@ -1,7 +1,8 @@
-import FastConfirmation.Paper.LMDGhost.Model.Weights
-import FastConfirmation.Paper.LMDGhost.Model.Confirm
-import FastConfirmation.Paper.LMDGhost.Model.Rule
-import FastConfirmation.Paper.LMDGhost.Model.Assumptions
+module
+public import FastConfirmation.Paper.LMDGhost.Model.Weights
+public import FastConfirmation.Paper.LMDGhost.Model.Confirm
+public import FastConfirmation.Paper.LMDGhost.Model.Rule
+public import FastConfirmation.Paper.LMDGhost.Model.Assumptions
 
 /-!
 # LMDGhost / Model

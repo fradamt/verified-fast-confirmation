@@ -1,4 +1,7 @@
-import FastConfirmation.Spec.Model.FCRStore
+module
+public import FastConfirmation.Spec.Model.FCRStore
+
+@[expose] public section
 
 /-!
 # Spec / Model / LMDHelpers
@@ -54,8 +57,8 @@ def get_block_support_between_slots (store : Store Root)
 /-- `is_full_validator_set_covered`: Return ``True`` if the range between
 ``start_slot`` and ``end_slot`` (inclusive of both) includes an entire epoch.
 ```python
-start_full_epoch = compute_epoch_at_slot(start_slot + (SLOTS_PER_EPOCH - 1))
-end_full_epoch = compute_epoch_at_slot(Slot(end_slot + 1))
+start_full_epoch = compute_epoch_at_slot(start_slot + SLOTS_PER_EPOCH - 1)
+end_full_epoch = compute_epoch_at_slot(end_slot + 1)
 return start_full_epoch < end_full_epoch
 ``` -/
 def is_full_validator_set_covered (start_slot end_slot : Slot) : Bool :=
@@ -69,7 +72,7 @@ epoch boundary that does not cover any full epoch (per-mille inflation; the
 `999`/`1000` literals are the spec's own per-mille encoding).
 ```python
 ceil = (estimate + 999) // 1000
-return Gwei(ceil * (1000 + COMMITTEE_WEIGHT_ESTIMATION_ADJUSTMENT_FACTOR))
+return ceil * (1000 + COMMITTEE_WEIGHT_ESTIMATION_ADJUSTMENT_FACTOR)
 ``` -/
 def adjust_committee_weight_estimate_to_ensure_safety (estimate : Gwei) : Gwei :=
   let ceil := (estimate + 999) / 1000
@@ -85,20 +88,22 @@ if is_full_validator_set_covered(start_slot, end_slot):
     return total_active_balance
 start_epoch = compute_epoch_at_slot(start_slot)
 end_epoch = compute_epoch_at_slot(end_slot)
-committee_weight = total_active_balance // SLOTS_PER_EPOCH
+committee_weight = total_active_balance // Uint64(SLOTS_PER_EPOCH)
 if start_epoch == end_epoch:
-    return committee_weight * (end_slot - start_slot + 1)
+    return committee_weight * Uint64(end_slot - start_slot + 1)
 else:
-    num_slots_in_end_epoch = compute_slots_since_epoch_start(end_slot) + 1
-    remaining_slots_in_end_epoch = SLOTS_PER_EPOCH - num_slots_in_end_epoch
-    num_slots_in_start_epoch = SLOTS_PER_EPOCH - compute_slots_since_epoch_start(start_slot)
+    num_slots_in_end_epoch = Uint64(compute_slots_since_epoch_start(end_slot) + 1)
+    remaining_slots_in_end_epoch = Uint64(SLOTS_PER_EPOCH) - num_slots_in_end_epoch
+    num_slots_in_start_epoch = Uint64(
+        SLOTS_PER_EPOCH - compute_slots_since_epoch_start(start_slot)
+    )
     start_epoch_weight = committee_weight * num_slots_in_start_epoch
     end_epoch_weight = committee_weight * num_slots_in_end_epoch
     start_epoch_weight_pro_rated = (
-        start_epoch_weight // SLOTS_PER_EPOCH * remaining_slots_in_end_epoch
+        start_epoch_weight // Uint64(SLOTS_PER_EPOCH) * remaining_slots_in_end_epoch
     )
     return adjust_committee_weight_estimate_to_ensure_safety(
-        Gwei(start_epoch_weight_pro_rated + end_epoch_weight)
+        start_epoch_weight_pro_rated + end_epoch_weight
     )
 ``` -/
 def estimate_committee_weight_between_slots (total_active_balance : Gwei)
@@ -160,7 +165,7 @@ maximum_weight = estimate_committee_weight_between_slots(total_active_balance, s
 max_adversarial_weight = maximum_weight // 100 * CONFIRMATION_BYZANTINE_THRESHOLD
 equivocation_score = get_equivocation_score(store, balance_source, start_slot, end_slot)
 if max_adversarial_weight > equivocation_score:
-    return Gwei(max_adversarial_weight - equivocation_score)
+    return max_adversarial_weight - equivocation_score
 else:
     return Gwei(0)
 ``` -/
@@ -183,9 +188,9 @@ current_slot = get_current_slot(store)
 block = store.blocks[block_root]
 if get_block_epoch(store, block_root) > get_block_epoch(store, block.parent_root):
     start_slot = compute_start_slot_at_epoch(get_block_epoch(store, block_root))
-    return compute_adversarial_weight(store, balance_source, start_slot, Slot(current_slot - 1))
+    return compute_adversarial_weight(store, balance_source, start_slot, current_slot - 1)
 else:
-    return compute_adversarial_weight(store, balance_source, block.slot, Slot(current_slot - 1))
+    return compute_adversarial_weight(store, balance_source, block.slot, current_slot - 1)
 ``` -/
 def get_adversarial_weight (store : Store Root) (balance_source : BeaconState Root)
     (block_root : Root) : Gwei :=
@@ -206,9 +211,9 @@ parent_block = store.blocks[block.parent_root]
 if parent_block.slot + 1 == block.slot:
     return Gwei(0)
 parent_support_in_empty_slots = get_block_support_between_slots(
-    store, balance_source, block.parent_root, Slot(parent_block.slot + 1), Slot(block.slot - 1))
+    store, balance_source, block.parent_root, parent_block.slot + 1, block.slot - 1)
 adversarial_weight = compute_adversarial_weight(
-    store, balance_source, Slot(parent_block.slot + 1), Slot(block.slot - 1))
+    store, balance_source, parent_block.slot + 1, block.slot - 1)
 if parent_support_in_empty_slots > adversarial_weight:
     return parent_support_in_empty_slots - adversarial_weight
 else:
@@ -250,7 +255,7 @@ parent_block = store.blocks[block.parent_root]
 total_active_balance = get_total_active_balance(balance_source)
 proposer_score = compute_proposer_score(balance_source)
 maximum_support = estimate_committee_weight_between_slots(
-    total_active_balance, Slot(parent_block.slot + 1), Slot(current_slot - 1))
+    total_active_balance, parent_block.slot + 1, current_slot - 1)
 support_discount = get_support_discount(store, balance_source, block_root)
 adversarial_weight = get_adversarial_weight(store, balance_source, block_root)
 # (maximum_support + proposer_score - support_discount) // 2 + adversarial_weight
@@ -308,7 +313,7 @@ if fcr_store.current_epoch_observed_justified_checkpoint.epoch + 1 >= current_ep
 else:
     ancestor_at_previous_epoch_start = get_ancestor(
         store, get_node_for_root(confirmed_root),
-        compute_start_slot_at_epoch(Epoch(current_epoch - 1)),
+        compute_start_slot_at_epoch(current_epoch - 1),
     ).root
     if get_block_epoch(store, ancestor_at_previous_epoch_start) + 1 == current_epoch:
         start_root_exclusive = store.blocks[ancestor_at_previous_epoch_start].parent_root
@@ -345,3 +350,5 @@ def is_confirmed_chain_safe (fcr_store : FastConfirmationStore Root)
       is_one_confirmed cfg ext store (get_previous_balance_source fcr_store) root)
 
 end FastConfirmation.Spec
+
+end

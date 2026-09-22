@@ -1,4 +1,7 @@
-import FastConfirmation.Spec.Proof.VoteLanding
+module
+public import FastConfirmation.Spec.Proof.VoteLanding
+
+@[expose] public section
 
 /-!
 # Spec / Proof / HeadStack: the head-stack knownness toolkit
@@ -267,3 +270,5 @@ theorem b_known_of_relay (hsyn : Synchrony cfg ext E)
 end Execution
 
 end FastConfirmation.Spec
+
+end

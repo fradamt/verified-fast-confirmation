@@ -1,4 +1,7 @@
-import FastConfirmation.Spec.Proof.HonestWeight
+module
+public import FastConfirmation.Spec.Proof.HonestWeight
+
+@[expose] public section
 
 /-!
 # Spec / Proof / Discount
@@ -248,3 +251,5 @@ theorem support_discount_le_parent_stuck {E : Execution Root}
     (parentstuck_byz_plus_equiv_le cfg ext hec hbb hv hnH hval hstartH hbH htab hne)
 
 end FastConfirmation.Spec
+
+end

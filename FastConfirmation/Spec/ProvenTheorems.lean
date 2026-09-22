@@ -1,5 +1,6 @@
-import FastConfirmation.Spec.Proof.AcceptedActualFCRNextSlotSafetyFacade
-import FastConfirmation.Spec.Proof.AcceptedActualFCRJointNonVacuityFinal
+module
+public import FastConfirmation.Spec.Proof.AcceptedActualFCRNextSlotSafetyFacade
+public import FastConfirmation.Spec.Proof.AcceptedActualFCRJointNonVacuityFinal
 
 /-!
 # Consensus-spec proved theorems

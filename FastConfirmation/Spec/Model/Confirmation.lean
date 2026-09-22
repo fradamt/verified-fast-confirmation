@@ -1,4 +1,7 @@
-import FastConfirmation.Spec.Model.FFGHelpers
+module
+public import FastConfirmation.Spec.Model.FFGHelpers
+
+@[expose] public section
 
 /-!
 # Spec / Model / Confirmation
@@ -280,3 +283,5 @@ def on_fast_confirmation (fcr_store : FastConfirmationStore Root) :
   { fcr_store with confirmed_root := get_latest_confirmed cfg ext fcr_store }
 
 end FastConfirmation.Spec
+
+end

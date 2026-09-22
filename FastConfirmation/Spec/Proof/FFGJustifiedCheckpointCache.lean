@@ -1,6 +1,9 @@
-import FastConfirmation.Spec.Proof.Delivery
-import FastConfirmation.Spec.Proof.FinalizedResetSafety
-import FastConfirmation.Spec.Proof.MinimalSelectedDomain
+module
+public import FastConfirmation.Spec.Proof.Delivery
+public import FastConfirmation.Spec.Proof.FinalizedResetSafety
+public import FastConfirmation.Spec.Proof.MinimalSelectedDomain
+
+@[expose] public section
 
 /-!
 # Realized justified-checkpoint cache provenance
@@ -172,9 +175,12 @@ theorem on_block_checkpointKeysLE {store store' : Store Root}
     {block : SignedBeaconBlock Root}
     (h : on_block cfg ext store block = some store') :
     CheckpointKeysLE store store' := by
-  simp only [on_block] at h
-  split_ifs at h <;> try cases h
-  all_goals
+  by_cases hknown : block.root ∈ store.block_roots
+  · simp only [on_block, if_pos hknown] at h
+    cases h
+    exact CheckpointKeysLE.refl _
+  · simp only [on_block, if_neg hknown] at h
+    split_ifs at h <;> try cases h
     cases htransition :
         ext.state_transition (store.block_states block.message.parent_root) block with
     | none => rw [htransition] at h; cases h
@@ -448,8 +454,11 @@ theorem honestVoteTarget_cached_at_delivery
         (pre.foldl
           (fun store event => (apply_event cfg ext store event).getD store)
           ticked) a.data.target).checkpoint_states a.data.target) a = true :=
-    hec.honest_attestation_valid _ a v hv hsingle
-      hcommitteeAtVote hvoteExists
+    honest_attestation_valid_prepared cfg ext hec
+      (E.honestCausalStore_prefix cfg ext w hw deliveryPred
+        (by simpa only [← hdeliveryEq] using hHdeliver)
+        pre (Event.attestation a false :: suf) hscheduleEq)
+      a (hroots htargetRoot) v hv hsingle hcommitteeAtVote hvoteExists
   let applied := update_latest_messages
     (store_target_checkpoint_state cfg ext
       (pre.foldl
@@ -767,3 +776,5 @@ theorem selectedMarginAssumptions_of_globalTrajectory
 end Execution
 
 end FastConfirmation.Spec
+
+end

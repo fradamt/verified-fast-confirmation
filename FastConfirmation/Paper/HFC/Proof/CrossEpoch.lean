@@ -1,5 +1,8 @@
-import FastConfirmation.Paper.HFC.Proof.Recency
-import FastConfirmation.Paper.HFC.Proof.Justification
+module
+public import FastConfirmation.Paper.HFC.Proof.Recency
+public import FastConfirmation.Paper.HFC.Proof.Justification
+
+@[expose] public section
 
 /-!
 # HFC / Proof / CrossEpoch — the cross-epoch joint induction (§4)
@@ -367,3 +370,5 @@ theorem canonicalEpoch_of_headWindow
   exact hHead (le_trans he_lo hjlo) (lt_of_le_of_lt hjhi he_hi) hi
 
 end FastConfirmation.HFC
+
+end

@@ -1,6 +1,9 @@
-import Mathlib.Tactic
-import FastConfirmation.Paper.LMDGhost.Model.Weights
-import FastConfirmation.Paper.LMDGhost.Model.Assumptions
+module
+public import Mathlib.Tactic
+public import FastConfirmation.Paper.LMDGhost.Model.Weights
+public import FastConfirmation.Paper.LMDGhost.Model.Assumptions
+
+@[expose] public section
 
 /-!
 # LMDGhost / Proof / Weights
@@ -83,3 +86,5 @@ theorem adv_support_le_beta (A : Anchor n) (cm : Committees n) (fm : FaultModel 
   le_trans (adv_support_le_committee A cm fm V b s) (adv_committee_le A cm fm b s h)
 
 end FastConfirmation.LMDGhost
+
+end

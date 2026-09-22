@@ -1,5 +1,8 @@
-import FastConfirmation.Spec.Proof.BlockAgreement
-import FastConfirmation.Spec.Proof.Preservation
+module
+public import FastConfirmation.Spec.Proof.BlockAgreement
+public import FastConfirmation.Spec.Proof.Preservation
+
+@[expose] public section
 
 /-!
 # Spec / Proof / WFTrajectory
@@ -144,23 +147,9 @@ theorem on_block_parentSlotLt_traj (P : Root) {E : Execution Root}
     ParentSlotLt store' := by
   by_cases hfresh : sb.root ∈ store.block_roots
   · -- already present: the `blocks` write is a no-op
-    have hbeq : store.blocks sb.root = sb.message :=
-      blocks_eq_of_scheduled_mem hwf hprov hsched hfresh
-    simp only [on_block] at hh
-    split_ifs at hh with hp hslot hfin hfc
-    cases hst : ext.state_transition (store.block_states sb.message.parent_root) sb with
-    | none => rw [hst] at hh; cases hh
-    | some state =>
-      rw [hst] at hh
-      cases hh
-      refine (compute_pulled_up_tip_sameBlocks cfg ext _ _).parentSlotLt ?_
-      refine (update_checkpoints_sameBlocks _ _ _).parentSlotLt ?_
-      refine (update_proposer_boost_root_sameBlocks cfg _ _ _).parentSlotLt ?_
-      refine (record_block_timeliness_sameBlocks cfg _ _).parentSlotLt ?_
-      have hupd : Function.update store.blocks sb.root sb.message = store.blocks := by
-        rw [← hbeq]; exact Function.update_eq_self sb.root store.blocks
-      rw [hupd]
-      exact hpar
+    simp [on_block, hfresh] at hh
+    cases hh
+    exact hpar
   · -- fresh: derive `hno_child` from `ParentInRootsOr P` and `hP`
     have hno_child : ∀ r ∈ store.block_roots, (store.blocks r).parent_root ≠ sb.root := by
       intro r hr
@@ -176,9 +165,13 @@ theorem on_block_parentInRootsOr (P : Root) {store store' : Store Root}
     {sb : SignedBeaconBlock Root} (hQ : ParentInRootsOr P store)
     (hh : on_block cfg ext store sb = some store') :
     ParentInRootsOr P store' := by
-  simp only [on_block] at hh
-  split_ifs at hh with hp hslot hfin hfc <;> try cases hh
-  all_goals
+  by_cases hknown : sb.root ∈ store.block_roots
+  · simp [on_block, hknown] at hh
+    cases hh
+    exact hQ
+  · simp only [on_block, if_neg hknown] at hh
+    split_ifs at hh with hp hslot hfin hfc
+    all_goals try contradiction
     cases hst : ext.state_transition (store.block_states sb.message.parent_root) sb with
     | none => rw [hst] at hh; cases hh
     | some state =>
@@ -374,3 +367,5 @@ theorem Execution.store_wellFormedStore_core_plus (E : Execution Root)
     E.store_time_ge_genesis cfg ext hgws.time_ge_genesis v n⟩
 
 end FastConfirmation.Spec
+
+end
