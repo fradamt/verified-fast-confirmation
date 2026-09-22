@@ -830,6 +830,29 @@ theorem recorded_opposite_status_le_full_window
   have hB := E.StatusEnemyVal_le_Bval hlo hesσ
   exact le_trans hscore (Nat.add_le_add_right (Nat.add_le_add_left hB _) _)
 
+/-- Endpoint child recording lifts the selected honest class into the
+resolved parent status. This is the `hselected` input of the status margin. -/
+theorem selected_parent_score_ge_Sval
+    {store : Store Root} {bs : BeaconState Root}
+    (hval : bs.validators = E.registry)
+    {v : ValidatorIndex} {n : ℕ} {b c : Root} {lo σ : Slot}
+    (hwf : ∀ r ∈ store.block_roots,
+      (store.blocks r).parent_root ∈ store.block_roots →
+        (store.blocks (store.blocks r).parent_root).slot < (store.blocks r).slot)
+    (hc : c ∈ store.block_roots)
+    (hp : (store.blocks c).parent_root ∈ store.block_roots)
+    (hwalk : ∀ i lm, store.latest_messages i = some lm →
+      i ∈ AttSupporters cfg store (get_node_for_root c) bs →
+        WalkKnown store (store.blocks (store.blocks c).parent_root).slot lm.root)
+    (hSmem : ∀ i ∈ E.Sclass cfg ext v n b lo σ,
+      i ∈ AttSupporters cfg store (get_node_for_root c) bs) :
+    E.Sval cfg ext v n b lo σ ≤
+      get_attestation_score cfg store
+        (ForkChoiceNode.mk (store.blocks c).parent_root
+          (get_parent_payload_status store (store.blocks c))) bs := by
+  exact le_trans (recorded_bside_ge cfg ext hval hSmem)
+    (selected_parent_score_ge_child_score cfg hval hwf hc hp hwalk)
+
 /-- The endpoint strip of `INVstar`, used here without importing the later
 ground-step module. -/
 private theorem invstar_endpoint_local
