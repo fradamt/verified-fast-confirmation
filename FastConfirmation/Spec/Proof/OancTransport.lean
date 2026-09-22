@@ -726,6 +726,24 @@ theorem ancestor_recorded_message_not_BbadSet
   · exact (hi.2.2 lm hlm).1 h
   · exact (hi.2.2 lm hlm).2 h
 
+/-- An old ancestor-line Byzantine message remains charged by the status
+base enemy whenever its validator is in the source window. The root relation
+is irrelevant to the Byzantine budget. -/
+theorem ancestor_recorded_message_mem_StatusBaseByzSet
+    {v i : ValidatorIndex} {n : ℕ} {b : Root} {lo es : Slot}
+    {lm : LatestMessage Root}
+    (hlm : (E.store cfg ext v n).latest_messages i = some lm)
+    (hline : is_ancestor (E.store cfg ext v n)
+        (get_node_for_root lm.root) (get_node_for_root b) = true ∨
+      is_ancestor (E.store cfg ext v n)
+        (get_node_for_root b) (get_node_for_root lm.root) = true)
+    (hspan : i ∈ E.span_committee lo es)
+    (hbyz : i ∉ E.honest) :
+    i ∉ E.BbadSet cfg ext v n b lo es ∧
+      i ∈ E.StatusBaseByzSet lo es := by
+  exact ⟨E.ancestor_recorded_message_not_BbadSet cfg ext hlm hline,
+    Finset.mem_filter.mpr ⟨hspan, hbyz⟩⟩
+
 /-- A validator with no tail committee assignment also lies outside the
 current v2 spent set. Together with the preceding lemma, this records the
 precise old ancestor branch that the current enemy does not charge. -/
@@ -852,6 +870,17 @@ theorem selected_parent_score_ge_Sval
           (get_parent_payload_status store (store.blocks c))) bs := by
   exact le_trans (recorded_bside_ge cfg ext hval hSmem)
     (selected_parent_score_ge_child_score cfg hval hwf hc hp hwalk)
+
+/-- The required status appears in the pending parent's fork-choice children
+when it is empty or its full payload has been verified at this store. -/
+theorem selected_parent_status_mem_pending
+    {store : Store Root} {blocks : List Root} {h : Root}
+    {status : PayloadStatus}
+    (havailable : status = .empty ∨
+      (status = .full ∧ is_payload_verified store h = true)) :
+    ForkChoiceNode.mk h status ∈
+      get_node_children store blocks (ForkChoiceNode.mk h .pending) := by
+  exact (mem_get_node_children_pending rfl).mpr ⟨rfl, havailable⟩
 
 /-- The endpoint strip of `INVstar`, used here without importing the later
 ground-step module. -/
