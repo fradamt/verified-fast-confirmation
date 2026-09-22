@@ -28,7 +28,7 @@ for the accepted theorem.
 ## Consensus source
 
 The authoritative public source is `ethereum/consensus-specs` commit
-`30aa65fc21cf7f7c7dd1f7d6b686d0250462d04f`. The manifest in
+`477321355d48d527e7e1e4d572f6a40a0b41072a`. The manifest in
 `spec_source/manifest.json` records the exact six source and configuration
 objects consumed by the model.
 
