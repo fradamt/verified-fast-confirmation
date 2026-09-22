@@ -15,6 +15,7 @@ plugin_dir="$repo_root/scripts/conformance/python"
 tmp_dir="$(mktemp -d "${TMPDIR:-/tmp}/fcr-conformance.XXXXXX")"
 trace_base="$tmp_dir/trace.jsonl"
 pytest_log="$tmp_dir/pytest.log"
+pytest_parallel=${MAYBE_PARALLEL:-}
 trap 'rm -rf "$tmp_dir"' EXIT
 
 mkdir -p "$(dirname "$out")"
@@ -24,6 +25,7 @@ set +e
   cd "$consensus_specs_dir" || exit 1
   PYTHONPATH="$plugin_dir${PYTHONPATH:+:$PYTHONPATH}" \
     uv run pytest "tests/core/pyspec/eth_consensus_specs/test/phase0/fast_confirmation" \
+      ${pytest_parallel} \
       --reftests --fork="$fork" --preset="$preset" -p fcr_trace_plugin
 ) >"$pytest_log" 2>&1
 pytest_status=$?
