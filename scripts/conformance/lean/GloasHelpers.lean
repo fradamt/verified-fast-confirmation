@@ -137,7 +137,7 @@ def run (path : String) : IO UInt32 := do
     let j ← Json.parse text
     if (← (← j.getObjVal? "format").getStr?) != "gloas-helper-observations-v1" then
       throw "unexpected helper observation format"
-    if (← (← j.getObjVal? "pin").getStr?) != "477321355d48d527e7e1e4d572f6a40a0b41072a" then
+    if (← (← j.getObjVal? "pin").getStr?) != "6b9bd532cca16555e2f3282d757622ebff29743e" then
       throw "unexpected consensus source pin"
     (← j.getObjVal? "fixtures").getArr?
   match parsed with

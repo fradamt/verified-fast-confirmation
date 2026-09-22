@@ -21,7 +21,7 @@ from types import SimpleNamespace
 from typing import Any
 
 
-PIN = "477321355d48d527e7e1e4d572f6a40a0b41072a"
+PIN = "6b9bd532cca16555e2f3282d757622ebff29743e"
 NS = SimpleNamespace
 
 BEACON_HELPERS = (
@@ -89,14 +89,18 @@ class Checkpoint:
     root: int
 
 
-def source_functions(repo: Path, path: str) -> dict[str, str]:
-    """Read the pinned object; ignore the checkout's branch and local edits."""
-    source = subprocess.run(
-        ["git", "--no-replace-objects", "-C", str(repo), "show", f"{PIN}:{path}"],
-        check=True,
-        capture_output=True,
-        text=True,
-    ).stdout
+def source_functions(repo: Path, path: str, *, local_override: bool = False) -> dict[str, str]:
+    """Read the pinned object, or the documented Gloas discount override."""
+    if local_override:
+        assert path == "specs/gloas/fast-confirmation.md"
+        source = (repo / path).read_text()
+    else:
+        source = subprocess.run(
+            ["git", "--no-replace-objects", "-C", str(repo), "show", f"{PIN}:{path}"],
+            check=True,
+            capture_output=True,
+            text=True,
+        ).stdout
     functions = {}
     for match in re.finditer(r"```python\n(.*?)```", source, re.S):
         block = match.group(1)

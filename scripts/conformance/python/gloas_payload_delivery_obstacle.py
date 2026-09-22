@@ -90,7 +90,8 @@ def load_source(repo: Path) -> dict:
         "specs/gloas/fork-choice.md",
         "specs/gloas/fast-confirmation.md",
     ):
-        for body in source_functions(repo, path).values():
+        for body in source_functions(repo, path,
+                local_override=path == "specs/gloas/fast-confirmation.md").values():
             exec("from __future__ import annotations\n" + body, env)
 
     def transition(state, signed_block, validate_result=True):

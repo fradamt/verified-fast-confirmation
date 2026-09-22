@@ -1,4 +1,4 @@
-"""Two honest views expose the Gloas payload-branch safety obstruction.
+"""Replay the old Gloas payload-branch fixture under the repaired discount.
 
 Execute unchanged fork-choice and FCR function bodies from the pinned source.
 The explicit external projection matches the Lean model: fixed committees and
@@ -9,8 +9,8 @@ payloads satisfy the authorized end-of-slot relay field. Byzantine validators
 send conflicting payload-status votes to the two views; neither view receives
 both versions, and no slashing event occurs.
 
-At slot 11 the source FCR confirms child 2. At slot 12 the honest target head
-is anchor 1 EMPTY, so it excludes child 2 although both envelopes are verified.
+At slot 11 the source FCR no longer confirms child 2. At slot 12 the honest
+target head is anchor 1 EMPTY, but this does not exclude a confirmed child.
 This is an exact-source execution at the model external boundary. It is not a
 full generated-pyspec state transition trace or a kernel proof of every public
 accepted-theorem assumption record. No selected source function body changes.
@@ -221,11 +221,11 @@ def check(repo: Path) -> None:
                 empty=spec["get_weight"](target, GloasNode(1, 0)))
             observations.append(item)
             if slot == 11:
-                assert item == dict(slot=11, source_confirmed=2, source_head=2,
-                    target_head=1, support=400*UNIT, threshold=395*UNIT,
-                    discount=450*UNIT, full=450*UNIT, empty=550*UNIT), item
+                assert item == dict(slot=11, source_confirmed=1, source_head=2,
+                    target_head=1, support=400*UNIT, threshold=545*UNIT,
+                    discount=150*UNIT, full=450*UNIT, empty=550*UNIT), item
             if slot == 12:
-                assert fcr["source"].confirmed_root == 2
+                assert fcr["source"].confirmed_root == 1
                 assert spec["get_head"](target) == GloasNode(1, 0)
                 assert not spec["is_ancestor"](target, spec["get_head"](target), spec["get_node_for_root"](2))
                 assert (item["full"], item["empty"]) == (525*UNIT, 575*UNIT)
@@ -254,6 +254,24 @@ def check(repo: Path) -> None:
                     for k in ("X", "B", "P")) + 1
                 assert item["full"] == ledger_observation["S"] + ledger_observation["ancestor_FULL"]
                 assert item["empty"] == ledger_observation["B"] + ledger_observation["ancestor_EMPTY"]
+                # The existing Endpoint.ledger_descendStep hypotheses still hold
+                # at this store, but its required parent-status choice is false.
+                filtered = spec["get_filtered_block_tree"](target)
+                required_status = spec["get_parent_payload_status"](target, target.blocks[2])
+                assert required_status == 1
+                required_node = GloasNode(1, required_status)
+                resolved_children = spec["get_node_children"](target, filtered, required_node)
+                assert GloasNode(2, 2) in resolved_children  # hchild
+                balance = target.checkpoint_states[target.justified_checkpoint]
+                child_score = spec["get_attestation_score"](target, GloasNode(2, 2), balance)
+                assert child_score >= ledger_observation["S"]  # hbside
+                for sibling in resolved_children:
+                    if sibling.root != 2:
+                        sibling_score = spec["get_attestation_score"](target, sibling, balance)
+                        assert sibling_score <= ledger_observation["X"] + ledger_observation["B"]
+                assert item["empty"] > item["full"]  # hresolve is false
+                ledger_observation["child_score"] = child_score
+                ledger_observation["resolved_siblings"] = len(resolved_children) - 1
         if slot < 7:
             common = [vote(slot, range(slot*100+25, slot*100+50), "source"),
                       vote(slot, range(slot*100+50, slot*100+100), "target")]
@@ -295,8 +313,12 @@ def check(repo: Path) -> None:
                                       for key, value in item.items()) + " weight_unit=1000000000_Gwei")
     assert ledger_observation is not None
     print("LEDGER slot=12 lo=1 sigma=11 " + " ".join(f"{key}={value // UNIT}U"
-        for key, value in ledger_observation.items()) + " inequality=true")
-    print("RESULT: source confirms child at slot11; honest receiver head excludes child at slot12")
+        for key, value in ledger_observation.items() if key not in ("child_score", "resolved_siblings")) + " inequality=true")
+    print("ENDPOINT slot=12 hchild=true hbside=true hledger=true hsib=true "
+          f"child_score={ledger_observation['child_score'] // UNIT}U "
+          f"siblings={ledger_observation['resolved_siblings']} "
+          "pending_parent_choice=EMPTY required=FULL")
+    print("RESULT: source does not confirm child; receiver head excludes only unconfirmed child")
     print("SCOPE: exact-source handler execution with explicit Lean-model external projections")
 
 
