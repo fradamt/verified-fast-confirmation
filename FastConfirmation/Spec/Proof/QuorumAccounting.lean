@@ -145,7 +145,7 @@ theorem supporter_mem_span_committee {E : Execution Root}
     (hsa : sa ≤ (store.blocks b).slot) :
     i ∈ E.span_committee sa (get_current_slot cfg store - 1) := by
   obtain ⟨lm, hlm, _, hanc⟩ := mem_AttSupporters cfg hi
-  obtain ⟨a, hia, _, _, _, h5, hcomm, _, h8⟩ := hprov i lm hlm
+  obtain ⟨a, hia, _, _, _, h5, hcomm, _, h8, _⟩ := hprov i lm hlm
   -- `b` is an ancestor of `lm.root`, so `(blocks b).slot ≤ (blocks lm.root).slot`.
   have hble : (store.blocks b).slot ≤ (store.blocks lm.root).slot := by
     have hsle := get_ancestor_slot_le hwf (hwalk lm hlm)

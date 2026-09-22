@@ -243,7 +243,7 @@ theorem honest_sibling_confinement_at_endpoint_minimal
       (E.store cfg ext w m).latest_messages i = some lm →
         lm.root ∈ (E.store cfg ext w m).block_roots := by
     intro lm i hlm
-    obtain ⟨_, _, _, _, _, _, _, hlmKnown, _⟩ := hprov i lm hlm
+    obtain ⟨_, _, _, _, _, _, _, hlmKnown, _, _⟩ := hprov i lm hlm
     exact hlmKnown
   have hjc := hA.domain.justified_root_known w hw m hmH
   intro c' hchild hne i hisupp hih
@@ -303,7 +303,7 @@ theorem byzantine_sibling_confinement_at_endpoint_minimal
       (E.store cfg ext w m).latest_messages i = some lm →
         lm.root ∈ (E.store cfg ext w m).block_roots := by
     intro lm i hlm
-    obtain ⟨_, _, _, _, _, _, _, hlmKnown, _⟩ := hprov i lm hlm
+    obtain ⟨_, _, _, _, _, _, _, hlmKnown, _, _⟩ := hprov i lm hlm
     exact hlmKnown
   have hjc := hA.domain.justified_root_known w hw m hmH
   have hparentLt : ((E.store cfg ext w m).blocks a).slot <

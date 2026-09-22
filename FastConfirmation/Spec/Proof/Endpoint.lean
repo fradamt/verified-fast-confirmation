@@ -137,6 +137,76 @@ theorem confirmed_payload_margin_transport_arith
     (hselected : H + Hnew ≤ selectedScore) :
     O + P < selectedScore := by omega
 
+/-- The confirmation-store form after Byzantine child support is paid by the
+rule's adversarial term.  The three disjoint status sets fit in the old
+window, so the complete opposite score plus proposer score is below honest
+child support even before adding matching parent support. -/
+theorem confirmed_payload_source_arith
+    {H d M P G O : ℕ}
+    (hconf : M + P + 1 ≤ 2 * H + d)
+    (hdiscount : d ≤ G)
+    (hbudget : O + H + G ≤ M) :
+    O + P < H := by omega
+
+/-- The actual Boolean confirmation implies a strict source-store payload
+score margin over the opposite resolved status.  Set geometry is supplied by
+`recorded_payload_status_budget_le_estimate`; the discount only charges
+honest matching-parent votes. -/
+theorem confirmed_payload_score_margin_at_source {E : Execution Root}
+    (hec : ExternalsCoherence cfg ext E) (hbb : ByzantineBound cfg E)
+    {v : ValidatorIndex} (hv : v ∈ E.honest) {n : ℕ}
+    (hnH : E.WithinHorizon cfg n)
+    {bs : BeaconState Root} {b : Root} (other : PayloadStatus)
+    (hval : bs.validators = E.registry)
+    (hwf : ∀ r ∈ (E.store cfg ext v n).block_roots,
+      ((E.store cfg ext v n).blocks r).parent_root ∈
+        (E.store cfg ext v n).block_roots →
+        ((E.store cfg ext v n).blocks
+          ((E.store cfg ext v n).blocks r).parent_root).slot <
+          ((E.store cfg ext v n).blocks r).slot)
+    (hb : b ∈ (E.store cfg ext v n).block_roots)
+    (hp : ((E.store cfg ext v n).blocks b).parent_root ∈
+      (E.store cfg ext v n).block_roots)
+    (hother : other ≠ .pending)
+    (hneStatus : other ≠ get_parent_payload_status
+      (E.store cfg ext v n) ((E.store cfg ext v n).blocks b))
+    (hprov : LatestMessageProvenance E cfg
+      (get_current_slot cfg (E.store cfg ext v n)) (E.store cfg ext v n))
+    (hwalk : ∀ i lm, (E.store cfg ext v n).latest_messages i = some lm →
+      WalkKnown (E.store cfg ext v n)
+        ((E.store cfg ext v n).blocks
+          ((E.store cfg ext v n).blocks b).parent_root).slot lm.root ∧
+      WalkKnown (E.store cfg ext v n)
+        ((E.store cfg ext v n).blocks b).slot lm.root)
+    (hstartH : E.SlotWithinHorizon cfg
+      (((E.store cfg ext v n).blocks
+        ((E.store cfg ext v n).blocks b).parent_root).slot + 1))
+    (hbH : E.SlotWithinHorizon cfg ((E.store cfg ext v n).blocks b).slot)
+    (hendH : E.SlotWithinHorizon cfg
+      (get_current_slot cfg (E.store cfg ext v n) - 1))
+    (htab : get_total_active_balance cfg bs = E.total_active cfg)
+    (hneEquiv : ∀ i ∈ (E.store cfg ext v n).equivocating_indices,
+      i ∉ E.honest)
+    (hbyz : (((AttSupporters cfg (E.store cfg ext v n) (get_node_for_root b) bs).filter
+        (fun i => i ∉ E.honest)).map
+        (fun i => (bs.validators.getD i default).effective_balance)).sum
+      ≤ get_adversarial_weight cfg ext (E.store cfg ext v n) bs b)
+    (hconf : is_one_confirmed cfg ext (E.store cfg ext v n) bs b = true) :
+    get_attestation_score cfg (E.store cfg ext v n)
+        (ForkChoiceNode.mk ((E.store cfg ext v n).blocks b).parent_root other) bs
+      + compute_proposer_score cfg bs <
+      (((AttSupporters cfg (E.store cfg ext v n) (get_node_for_root b) bs).filter
+        (fun i => i ∈ E.honest)).map
+        (fun i => (bs.validators.getD i default).effective_balance)).sum := by
+  have hmajor := honest_support_majority_of_byz_le cfg ext hconf hbyz
+  have hdiscount := support_discount_le_matching_parent_stuck cfg ext
+    hec hbb hv hnH hval hstartH hbH htab hneEquiv
+  have hbudget := recorded_payload_status_budget_le_estimate cfg ext hbb other
+    hwf hb hp hother hneStatus hprov hwalk hstartH hendH htab hconf
+  rw [E.honest_score_eq_weight cfg hval] at hmajor ⊢
+  rw [attestation_score_eq_weight cfg hval]
+  exact confirmed_payload_source_arith hmajor hdiscount hbudget
+
 /-- The pending parent's payload contest. A strict margin pays the complete
 proposer score. If Gloas gives both previous-slot payload decisions zero
 weight, the status tie breaker supplies the second route. -/

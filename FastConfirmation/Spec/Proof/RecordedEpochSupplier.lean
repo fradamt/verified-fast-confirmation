@@ -171,7 +171,7 @@ theorem recorded_lm_is_newest_in_store
   have hcomm0 : i ∈ E.committee a'.data.slot :=
     hhb.votes_assigned i hi a'.data.slot
       (by rw [hvote']; exact Option.some_ne_none _)
-  obtain ⟨ap, _, _, _, h4, h5, h6, _, _⟩ := hprov i lm hlm
+  obtain ⟨ap, _, _, _, h4, h5, h6, _, _, _⟩ := hprov i lm hlm
   have hepeq : compute_epoch_at_slot cfg a'.data.slot =
       compute_epoch_at_slot cfg ap.data.slot := by
     rw [hslotep, h4]

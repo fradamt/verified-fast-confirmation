@@ -67,7 +67,8 @@ def LatestMessageProvenance (E : Execution Root) (cfg : Config) (sl : Slot)
       a.data.slot + 1 ≤ sl ∧
       i ∈ E.committee a.data.slot ∧
       m.root ∈ store.block_roots ∧
-      (store.blocks m.root).slot ≤ a.data.slot
+      (store.blocks m.root).slot ≤ a.data.slot ∧
+      m.slot = a.data.slot
 
 namespace LatestMessageProvenance
 
@@ -76,8 +77,8 @@ theorem mono_sl {E : Execution Root} {cfg : Config} {sl sl' : Slot} {store : Sto
     (hle : sl ≤ sl') (h : LatestMessageProvenance E cfg sl store) :
     LatestMessageProvenance E cfg sl' store := by
   intro i m hm
-  obtain ⟨a, h1, h2, h3, h4, h5, h6, h7, h8⟩ := h i m hm
-  exact ⟨a, h1, h2, h3, h4, h5.trans hle, h6, h7, h8⟩
+  obtain ⟨a, h1, h2, h3, h4, h5, h6, h7, h8, h9⟩ := h i m hm
+  exact ⟨a, h1, h2, h3, h4, h5.trans hle, h6, h7, h8, h9⟩
 
 /-- Transfer provenance across a store update that only grows the block set and
 whose recorded messages come from the source, keeping the block slot at every
@@ -90,8 +91,8 @@ theorem of_transfer {E : Execution Root} {cfg : Config} {sl : Slot}
     (hblk : ∀ r ∈ store.block_roots, (store'.blocks r).slot = (store.blocks r).slot) :
     LatestMessageProvenance E cfg sl store' := by
   intro i m hm
-  obtain ⟨a, h1, h2, h3, h4, h5, h6, h7, h8⟩ := h i m (hlm i m hm)
-  exact ⟨a, h1, h2, h3, h4, h5, h6, hbr h7, (hblk m.root h7) ▸ h8⟩
+  obtain ⟨a, h1, h2, h3, h4, h5, h6, h7, h8, h9⟩ := h i m (hlm i m hm)
+  exact ⟨a, h1, h2, h3, h4, h5, h6, hbr h7, (hblk m.root h7) ▸ h8, h9⟩
 
 /-- Transfer provenance across a `SameBlocks`-related store that leaves
 `latest_messages` untouched (`on_tick`, `on_attester_slashing`, and the
@@ -335,11 +336,12 @@ theorem on_attestation_LMP {E : Execution Root} {sl : Slot}
   intro i m hm
   rcases update_latest_messages_mem _ _ _ _ _ hm with hold | ⟨hi, hmeq⟩
   · rw [store_target_checkpoint_state_latest] at hold
-    obtain ⟨a', h1, h2, h3, h4, h5, h6, h7, h8⟩ := h i m hold
-    exact ⟨a', h1, h2, h3, h4, h5, h6, hsb.1 ▸ h7, hsb.2.1 ▸ h8⟩
+    obtain ⟨a', h1, h2, h3, h4, h5, h6, h7, h8, h9⟩ := h i m hold
+    exact ⟨a', h1, h2, h3, h4, h5, h6, hsb.1 ▸ h7, hsb.2.1 ▸ h8, h9⟩
   · exact ⟨a, hi, by rw [hmeq]; exact hB, by rw [hmeq], by rw [hmeq]; rfl,
       le_trans hG hcur, hec.valid_attestation_committee _ a hreachable hvi i hi,
-      by rw [hmeq]; exact hsb.1 ▸ hD, by rw [hmeq]; exact hsb.2.1 ▸ hE⟩
+      by rw [hmeq]; exact hsb.1 ▸ hD, by rw [hmeq]; exact hsb.2.1 ▸ hE,
+      by rw [hmeq]⟩
 
 /-! ## Event dispatch, the event fold, and the trajectory invariant -/
 

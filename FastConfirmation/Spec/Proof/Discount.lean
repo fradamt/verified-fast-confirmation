@@ -258,6 +258,77 @@ theorem recorded_payload_status_budget (E : Execution Root)
   exact Finset.sum_le_sum_of_subset_of_nonneg hsub
     (fun _ _ _ => Nat.zero_le _)
 
+/-- At an actual confirmed edge, all three disjoint recorded status classes
+fit inside the rule's complete parent-to-cutoff committee estimate.  The
+resolved-status class starts after the parent slot by exact latest-message
+slot provenance. -/
+theorem recorded_payload_status_budget_le_estimate {E : Execution Root}
+    (hbb : ByzantineBound cfg E)
+    {store : Store Root} {bs : BeaconState Root} {b : Root}
+    (other : PayloadStatus)
+    (hwf : ∀ r ∈ store.block_roots,
+      (store.blocks r).parent_root ∈ store.block_roots →
+        (store.blocks (store.blocks r).parent_root).slot < (store.blocks r).slot)
+    (hb : b ∈ store.block_roots)
+    (hp : (store.blocks b).parent_root ∈ store.block_roots)
+    (hother : other ≠ .pending)
+    (hne : other ≠ get_parent_payload_status store (store.blocks b))
+    (hprov : LatestMessageProvenance E cfg (get_current_slot cfg store) store)
+    (hwalk : ∀ i lm, store.latest_messages i = some lm →
+      WalkKnown store (store.blocks (store.blocks b).parent_root).slot lm.root ∧
+      WalkKnown store (store.blocks b).slot lm.root)
+    (hstartH : E.SlotWithinHorizon cfg
+      ((store.blocks (store.blocks b).parent_root).slot + 1))
+    (hendH : E.SlotWithinHorizon cfg (get_current_slot cfg store - 1))
+    (htab : get_total_active_balance cfg bs = E.total_active cfg)
+    (hconf : is_one_confirmed cfg ext store bs b = true) :
+    E.weight (AttSupporters cfg store
+        (ForkChoiceNode.mk (store.blocks b).parent_root other) bs).toFinset +
+      E.weight ((AttSupporters cfg store (get_node_for_root b) bs).filter
+        (fun i => i ∈ E.honest)).toFinset +
+      E.weight (ParentPayloadStuck cfg E store bs b) ≤
+        estimate_committee_weight_between_slots cfg (get_total_active_balance cfg bs)
+          ((store.blocks (store.blocks b).parent_root).slot + 1)
+          (get_current_slot cfg store - 1) := by
+  let lo := (store.blocks (store.blocks b).parent_root).slot + 1
+  let es := get_current_slot cfg store - 1
+  have hslot := hwf b hb hp
+  have hlo : lo ≤ (store.blocks b).slot := Nat.succ_le_of_lt hslot
+  have hcutoff : (store.blocks b).slot ≤ es :=
+    confirmed_block_slot_le_cutoff cfg ext hwf hprov
+      (fun i _hi lm hlm => (hwalk i lm hlm).2) hconf
+  have hspanChild : ∀ i ∈ AttSupporters cfg store (get_node_for_root b) bs,
+      i ∈ E.honest → i ∈ E.span_committee lo es := by
+    intro i hi _
+    have hspan := supporter_mem_span_committee cfg hwf hprov hi
+      (fun lm hlm => (hwalk i lm hlm).2) (le_refl _)
+    obtain ⟨s, hs, hcomm⟩ := Finset.mem_biUnion.mp hspan
+    exact Finset.mem_biUnion.mpr ⟨s,
+      Finset.mem_Icc.mpr ⟨hlo.trans (Finset.mem_Icc.mp hs).1,
+        (Finset.mem_Icc.mp hs).2⟩, hcomm⟩
+  have hspanOpp : ∀ i ∈ AttSupporters cfg store
+      (ForkChoiceNode.mk (store.blocks b).parent_root other) bs,
+      i ∈ E.span_committee lo es := by
+    intro i hi
+    exact resolved_supporter_mem_post_root_span cfg hwf hprov hother hi
+      (fun lm hlm => (hwalk i lm hlm).1)
+  have hspanParent : ParentPayloadStuck cfg E store bs b ⊆
+      E.span_committee lo es := by
+    intro i hi
+    simp only [ParentPayloadStuck, ParentPayloadSupport, ParentSupport,
+      Finset.mem_filter] at hi
+    obtain ⟨s, hs, hcomm⟩ := Finset.mem_biUnion.mp hi.1.1.1.1
+    exact Finset.mem_biUnion.mpr ⟨s,
+      Finset.mem_Icc.mpr ⟨(Finset.mem_Icc.mp hs).1,
+        (Finset.mem_Icc.mp hs).2.trans ((Nat.sub_le _ _).trans hcutoff)⟩,
+      hcomm⟩
+  have hbudget := recorded_payload_status_budget cfg E store bs b other
+    (E.span_committee lo es) hwf hb hp hother hne
+    (fun i lm hlm _ => (hwalk i lm hlm).1)
+    hspanChild hspanOpp hspanParent
+  exact hbudget.trans (by
+    simpa only [lo, es, htab] using hbb.estimate_sound lo es hstartH hendH)
+
 omit [Inhabited Root] in
 /-- A parent supporter is in the pre-region span committee and does not
 equivocate (its recorded latest message pins `i ∉ equivocating_indices`). -/

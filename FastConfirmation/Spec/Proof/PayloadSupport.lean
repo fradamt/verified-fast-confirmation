@@ -195,6 +195,59 @@ theorem childSupporters_disjoint_oppositeParentStatus {store : Store Root}
     (store.blocks b).parent_root selected other hselected hother hne
     ⟨hsupportsSelected, hsupportsOther⟩
 
+/-- A recorded vote for a resolved payload status at `root` belongs to a
+committee after `root`'s slot.  The exact latest-message slot in provenance
+is needed when the message is at `root` itself; a descendant message is
+confined by its later block slot. -/
+theorem resolved_supporter_mem_post_root_span {E : Execution Root}
+    {store : Store Root} {bs : BeaconState Root} {root : Root}
+    {status : PayloadStatus} {i : ValidatorIndex}
+    (hwf : ∀ r ∈ store.block_roots,
+      (store.blocks r).parent_root ∈ store.block_roots →
+        (store.blocks (store.blocks r).parent_root).slot < (store.blocks r).slot)
+    (hprov : LatestMessageProvenance E cfg (get_current_slot cfg store) store)
+    (hresolved : status ≠ .pending)
+    (hi : i ∈ AttSupporters cfg store (ForkChoiceNode.mk root status) bs)
+    (hwalk : ∀ lm, store.latest_messages i = some lm →
+      WalkKnown store (store.blocks root).slot lm.root) :
+    i ∈ E.span_committee ((store.blocks root).slot + 1)
+      (get_current_slot cfg store - 1) := by
+  obtain ⟨lm, hlm, _, hsupport⟩ := mem_AttSupporters cfg hi
+  obtain ⟨a, _, _, _, _, hupper, hcomm, _, hblock, hslotEq⟩ := hprov i lm hlm
+  have hanc : (get_ancestor store (get_supported_node store lm)
+        (store.blocks root).slot).root = root := by
+    have hsupport' := hsupport
+    simp only [is_ancestor, Bool.and_eq_true, decide_eq_true_eq] at hsupport'
+    exact hsupport'.1
+  have hrootLe : (store.blocks root).slot ≤ (store.blocks lm.root).slot := by
+    have hbound := get_ancestor_slot_le_status hwf (hwalk lm hlm)
+      (get_supported_node store lm).payload_status
+    change (store.blocks
+        (get_ancestor store (get_supported_node store lm)
+          (store.blocks root).slot).root).slot ≤ (store.blocks lm.root).slot at hbound
+    rw [hanc] at hbound
+    exact hbound
+  have hlower : (store.blocks root).slot < a.data.slot := by
+    rcases hrootLe.lt_or_eq with hlt | heq
+    · exact hlt.trans_le hblock
+    · have hstop : get_ancestor store (get_supported_node store lm)
+          (store.blocks root).slot = get_supported_node store lm :=
+        get_ancestor_stop_status (by
+          change (store.blocks lm.root).slot ≤ (store.blocks root).slot
+          exact le_of_eq heq.symm)
+      rw [hstop] at hanc
+      have hsame : lm.root = root := by
+        simpa only [get_supported_node] using hanc
+      have hown : is_ancestor store (get_supported_node store lm)
+          (ForkChoiceNode.mk lm.root status) = true := by
+        simpa only [hsame] using hsupport
+      have hafter := (supported_node_own_root_resolved_iff store lm status hresolved).mp hown
+      rw [hslotEq] at hafter
+      simpa only [hsame] using hafter.1
+  refine Finset.mem_biUnion.mpr ⟨a.data.slot,
+    Finset.mem_Icc.mpr ⟨Nat.succ_le_of_lt hlower,
+      Nat.le_sub_one_of_lt hupper⟩, hcomm⟩
+
 /-- The parent of a child whose slot is inside the completed-vote cutoff is
 older than the previous slot.  The payload tie breaker is therefore not the
 branch used for that parent at this store. -/

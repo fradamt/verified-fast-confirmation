@@ -260,7 +260,7 @@ theorem byz_sibling_recorded_dichotomy
       (get_node_for_root c') = true := by
     simpa only [get_node_for_root, is_ancestor_supported_pending] using hanc
   have hlmk : lm.root ∈ (E.store cfg ext w m).block_roots := hlmknown lm i hlm
-  obtain ⟨a, _, _, _, _, hslt, hcomm, _, hblk⟩ := hprov i lm hlm
+  obtain ⟨a, _, _, _, _, hslt, hcomm, _, hblk, _⟩ := hprov i lm hlm
   -- lower bound: lo ≤ c'.slot ≤ lm.root.slot ≤ a.data.slot
   have hc'lm : ((E.store cfg ext w m).blocks c').slot ≤
       ((E.store cfg ext w m).blocks lm.root).slot :=

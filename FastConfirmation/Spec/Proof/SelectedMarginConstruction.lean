@@ -341,7 +341,7 @@ theorem base_strip_of_confirmed_at_minimal
         WalkKnown (E.store cfg ext v q)
           ((E.store cfg ext v q).blocks b).slot lm.root := by
     intro i _ lm hlm
-    obtain ⟨_, _, _, _, _, _, _, hlmKnown, _⟩ := hprov i lm hlm
+    obtain ⟨_, _, _, _, _, _, _, hlmKnown, _, _⟩ := hprov i lm hlm
     exact hwalkK b hb lm.root hlmKnown
   have hslotlt : ((E.store cfg ext v q).blocks
       ((E.store cfg ext v q).blocks b).parent_root).slot <

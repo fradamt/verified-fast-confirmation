@@ -1130,7 +1130,7 @@ theorem futureCrossing_descendStep_of_selectedInputs_minimal
       (E.store cfg ext v q).latest_messages i = some lm →
         WalkKnown (E.store cfg ext v q) ((E.store cfg ext v q).blocks b).slot lm.root := by
     intro i _ lm hlm
-    obtain ⟨_, _, _, _, _, _, _, hlmKnown, _⟩ := hprov i lm hlm
+    obtain ⟨_, _, _, _, _, _, _, hlmKnown, _, _⟩ := hprov i lm hlm
     exact hwalkK b hin.block_known lm.root hlmKnown
   have hslotlt : ((E.store cfg ext v q).blocks
       ((E.store cfg ext v q).blocks b).parent_root).slot <
@@ -1227,7 +1227,7 @@ theorem crossingEdge_descendStep_of_selectedInputs_minimal
       (E.store cfg ext v q).latest_messages i = some lm →
         WalkKnown (E.store cfg ext v q) ((E.store cfg ext v q).blocks b).slot lm.root := by
     intro i _ lm hlm
-    obtain ⟨_, _, _, _, _, _, _, hlmKnown, _⟩ := hprov i lm hlm
+    obtain ⟨_, _, _, _, _, _, _, hlmKnown, _, _⟩ := hprov i lm hlm
     exact hwalkK b hin.block_known lm.root hlmKnown
   have hslotlt : ((E.store cfg ext v q).blocks
       ((E.store cfg ext v q).blocks b).parent_root).slot <
