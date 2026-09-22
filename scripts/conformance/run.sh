@@ -49,6 +49,10 @@ fi
 
 runner="$repo_root/scripts/conformance/lean/Conformance.lean"
 if [[ -f "$runner" ]]; then
+  if [[ "${FCR_SKIP_LEAN:-0}" == "1" ]]; then
+    echo "runner-skipped=FCR_SKIP_LEAN"
+    exit 0
+  fi
   runner_start=$SECONDS
   echo "runner-summary:"
   (cd "$repo_root" && lake env lean --run "$runner" "$out" | tail -n 1)
