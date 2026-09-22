@@ -67,7 +67,8 @@ Only one surplus honest attester is needed — the certificate threshold is
    confirmation of its certified ancestors. If no certificate exists, the
    helper falls back to the actual head; certificate-dependent guards fail.
 5. Epoch-start bookkeeping banks the selected carrier's own unrealized
-   justification, using the incoming balance source to check its certificate.
+   justification only when its epoch is strictly newer than the banked epoch,
+   using the incoming balance source to check its certificate.
    The observed-restart guard also uses a certified carrier at the query's
    balance source. The actual slot-head fields and fork-choice targets retain
    their original meaning. No certificate for an ancestor is treated as a
@@ -386,7 +387,9 @@ def has_justification_witness_certificate (fcr_store : FastConfirmationStore Roo
 
 /-- Bank only the selected certified carrier's own unrealized justification.
 The certificate uses the incoming balance source, before any fields change.
-If it fails, retain the existing banked checkpoint. The actual slot-head
+Write only if that checkpoint has a strictly newer epoch, as in Python
+`fast-confirmation.md:924-928` at `8036a74a1`. If the certificate fails or the
+epoch is not newer, retain the existing banked checkpoint. The actual slot-head
 fields, previous-epoch rotation, and legacy global-maximum snapshot retain
 their original writes. The legacy snapshot is not consumed by weak banking.
 
@@ -421,7 +424,12 @@ def update_fast_confirmation_variables (fcr_store : FastConfirmationStore Root) 
         fcr_store.current_epoch_observed_justified_checkpoint
       current_epoch_observed_justified_checkpoint :=
         if has_head_broadcast_certificate cfg ext store bs then
-          store.unrealized_justifications (get_certified_head cfg ext store bs)
+          let certified_checkpoint :=
+            store.unrealized_justifications (get_certified_head cfg ext store bs)
+          if certified_checkpoint.epoch >
+              fcr_store.current_epoch_observed_justified_checkpoint.epoch then
+            certified_checkpoint
+          else fcr_store.current_epoch_observed_justified_checkpoint
         else fcr_store.current_epoch_observed_justified_checkpoint }
   else fcr_store
 
