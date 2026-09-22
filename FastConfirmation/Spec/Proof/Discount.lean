@@ -227,6 +227,32 @@ private theorem discount_guard {c : Prop} [Decidable c] {Ppre Hp Bp eq budget : 
        then Ppre - (if budget > eq then budget - eq else 0) else 0) ≤ Hp := by
   split_ifs <;> omega
 
+/-- The Gloas payload filter only removes parent-root supporters. -/
+private theorem parent_payload_support_le_block_support
+    (store : Store Root) (bs : BeaconState Root) (parent : Root)
+    (status : PayloadStatus) (start_slot end_slot : Slot) :
+    get_parent_payload_support_between_slots cfg ext store bs parent status start_slot end_slot
+      ≤ get_block_support_between_slots cfg ext store bs parent start_slot end_slot := by
+  unfold get_parent_payload_support_between_slots get_block_support_between_slots
+  apply Finset.sum_le_sum_of_subset_of_nonneg
+  · intro i hi
+    simp only [Finset.mem_filter] at hi ⊢
+    refine ⟨hi.1, ?_⟩
+    cases hmsg : store.latest_messages i with
+    | none => simp [hmsg] at hi
+    | some msg =>
+      simp only [hmsg, Option.any_some, Bool.and_eq_true, decide_eq_true_eq] at hi ⊢
+      exact hi.2.1
+  · intro i _ _
+    exact Nat.zero_le _
+
+/-- A smaller payload-filtered support produces no larger discount. -/
+private theorem discount_guard_mono {c : Prop} [Decidable c]
+    {P Q adv : ℕ} (hPQ : P ≤ Q) :
+    (if c then 0 else if P > adv then P - adv else 0) ≤
+      (if c then 0 else if Q > adv then Q - adv else 0) := by
+  split_ifs <;> omega
+
 /-- **Piece 4 (headline).** The support discount is covered by the parent-stuck
 honest weight: `d ≤ Hpar`. Unconditional (no `hbyz`): the adjacency branch is
 `0 ≤ _`, and the empty-slot branch closes on the split (piece 2), the pre-region
@@ -247,8 +273,10 @@ theorem support_discount_le_parent_stuck {E : Execution Root}
       ≤ E.weight (ParentStuck cfg E (E.store cfg ext v n) bs b) := by
   simp only [get_support_discount, compute_empty_slot_support_discount,
     compute_adversarial_weight]
-  exact discount_guard (get_block_support_eq_parent_split cfg ext hec hv n hnH hval hbH)
-    (parentstuck_byz_plus_equiv_le cfg ext hec hbb hv hnH hval hstartH hbH htab hne)
+  exact (discount_guard_mono
+    (parent_payload_support_le_block_support cfg ext _ _ _ _ _ _)).trans
+    (discount_guard (get_block_support_eq_parent_split cfg ext hec hv n hnH hval hbH)
+      (parentstuck_byz_plus_equiv_le cfg ext hec hbb hv hnH hval hstartH hbH htab hne))
 
 end FastConfirmation.Spec
 
