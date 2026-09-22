@@ -155,6 +155,83 @@ theorem oppositeAncestorClass_plus_matching_le_Aval {E : Execution Root}
   rw [← Finset.sum_union hGO]
   exact E.weight_mono (Finset.union_subset hG hO)
 
+private theorem opposite_weight_add_sdiff {E : Execution Root}
+    {A B : Finset ValidatorIndex} (h : A ⊆ B) :
+    E.weight A + E.weight (B \ A) = E.weight B := by
+  simp only [Execution.weight]
+  rw [add_comm]
+  exact Finset.sum_sdiff h
+
+/-- Split the source opposite ancestor slice at the V-region boundary. The
+pre-region part and the matching-parent discount class are disjoint parts of
+the remaining ancestor weight. -/
+theorem oppositeAncestorClass_region_split {E : Execution Root}
+    {store : Store Root} {bs : BeaconState Root}
+    {v₀ : ValidatorIndex} {n₀ : ℕ} {b' h : Root} {lo sa es : Slot}
+    {other : PayloadStatus} {G : Finset ValidatorIndex}
+    (hlo : lo ≤ sa)
+    (hG : G ⊆ E.Aclass cfg ext v₀ n₀ b' lo es \
+      E.Aclass cfg ext v₀ n₀ b' sa es)
+    (hdisj : Disjoint G
+      (AttSupporters cfg store (ForkChoiceNode.mk h other) bs).toFinset) :
+    let O := OppositeAncestorClass cfg ext E store bs v₀ n₀ b' h lo es other
+    let V := E.Aclass cfg ext v₀ n₀ b' sa es
+    let P := E.Aclass cfg ext v₀ n₀ b' lo es \ V
+    E.weight (O ∩ V) + E.weight (O ∩ P) = E.weight O ∧
+    E.weight (V \ O) + E.weight (O ∩ V) = E.Aval cfg ext v₀ n₀ b' sa es ∧
+    E.weight G + E.weight (O ∩ P) + E.weight (P \ (G ∪ (O ∩ P))) = E.weight P := by
+  classical
+  dsimp
+  let O := OppositeAncestorClass cfg ext E store bs v₀ n₀ b' h lo es other
+  let V := E.Aclass cfg ext v₀ n₀ b' sa es
+  let A := E.Aclass cfg ext v₀ n₀ b' lo es
+  let P := A \ V
+  have hspan : E.span_committee sa es ⊆ E.span_committee lo es := by
+    intro i hi
+    simp only [Execution.span_committee, Finset.mem_biUnion, Finset.mem_Icc] at hi ⊢
+    obtain ⟨t, ⟨ht, hte⟩, hit⟩ := hi
+    exact ⟨t, ⟨le_trans hlo ht, hte⟩, hit⟩
+  have hVA : V ⊆ A := by
+    simp only [V, A, Execution.Aclass]
+    exact Finset.filter_subset_filter _ (Finset.filter_subset_filter _ hspan)
+  have hOA : O ⊆ A := Finset.inter_subset_left
+  have hOP : O ∩ P ⊆ P := Finset.inter_subset_right
+  have hOV : O ∩ V ⊆ V := Finset.inter_subset_right
+  have hGO : Disjoint G O := hdisj.mono_right Finset.inter_subset_right
+  have hGP : G ⊆ P := hG
+  have hPdisj : Disjoint G (O ∩ P) := hGO.mono_right Finset.inter_subset_left
+  have hsplit : O ∩ V ∪ O ∩ P = O := by
+    ext i
+    simp only [Finset.mem_union, Finset.mem_inter]
+    constructor
+    · rintro (⟨hiO, _⟩ | ⟨hiO, _⟩) <;> exact hiO
+    · intro hiO
+      by_cases hiV : i ∈ V
+      · exact Or.inl ⟨hiO, hiV⟩
+      · exact Or.inr ⟨hiO, Finset.mem_sdiff.mpr ⟨hOA hiO, hiV⟩⟩
+  have hOVP : Disjoint (O ∩ V) (O ∩ P) := by
+    apply Finset.disjoint_left.mpr
+    intro i hiV hiP
+    exact (Finset.mem_sdiff.mp (Finset.mem_inter.mp hiP).2).2 (Finset.mem_inter.mp hiV).2
+  constructor
+  · simp only [Execution.weight]
+    rw [← Finset.sum_union hOVP, hsplit]
+  constructor
+  · have hdiff : V \ (O ∩ V) = V \ O := by
+      ext i
+      simp only [Finset.mem_sdiff, Finset.mem_inter]
+      tauto
+    have h := opposite_weight_add_sdiff (E := E) hOV
+    simpa only [hdiff, add_comm, Execution.Aval] using h
+  · have hU : G ∪ (O ∩ P) ⊆ P := Finset.union_subset hGP hOP
+    have hsplitP := opposite_weight_add_sdiff (E := E) hU
+    have hsum : E.weight (G ∪ (O ∩ P)) =
+        E.weight G + E.weight (O ∩ P) := by
+      simp only [Execution.weight]
+      exact Finset.sum_union hPdisj
+    rw [hsum] at hsplitP
+    exact hsplitP
+
 /-- Confirmation arithmetic with the ancestor class charged once. The
 matching-parent discount funds `G`; the remaining ancestor weight funds the
 opposite branch's ancestor votes. -/
