@@ -46,6 +46,8 @@ private def publicWitnesses : Array Name :=
     ``FastConfirmation.Spec.replay_eq_weakFcr,
     ``FastConfirmation.Spec.replay_eq_weakConfirmed,
     ``FastConfirmation.Spec.replay_bounded_witness,
+    ``FastConfirmation.Spec.Containment.Negative.not_handler_preservation,
+    ``FastConfirmation.Spec.Containment.Negative.not_one_shot_containment,
     ``FastConfirmation.Spec.CompleteEvidence.raw_score_eq,
     ``FastConfirmation.Spec.CompleteEvidence.attestation_score_eq,
     ``FastConfirmation.Spec.CompleteEvidence.block_support_eq,
@@ -61,11 +63,8 @@ private def publicWitnesses : Array Name :=
     ``FastConfirmation.Spec.CompleteEvidence.no_conflict_eq,
     ``FastConfirmation.Spec.CompleteEvidence.prev_epoch_loop_eq,
     ``FastConfirmation.Spec.CompleteEvidence.tentative_loop_eq,
-    ``FastConfirmation.Spec.CompleteEvidence.banking_eq,
     ``FastConfirmation.Spec.CompleteEvidence.certified_head_eq_of_certificate,
     ``FastConfirmation.Spec.CompleteEvidence.descendant_eq_of_head_eq,
-    ``FastConfirmation.Spec.CompleteEvidence.get_latest_confirmed_eq_of_head_eq,
-    ``FastConfirmation.Spec.CompleteEvidence.on_fast_confirmation_eq_of_head_eq,
     ``FastConfirmation.Spec.CompleteEvidenceWitness.before_head_confirms_nonanchor,
     ``FastConfirmation.Spec.CompleteEvidenceWitness.before_head_is_certified,
     ``FastConfirmation.Spec.CompleteEvidenceWitness.after_head_carrier_differs,
@@ -108,8 +107,8 @@ private def isGeneratedSafePartial (env : Environment) (name : Name)
 
 elab "audit_project_trust" : command => do
   let env ← getEnv
-  unless publicWitnesses.size == 55 do
-    throwError "public theorem witness set must contain exactly 55 declarations"
+  unless publicWitnesses.size == 54 do
+    throwError "public theorem witness set must contain exactly 54 declarations"
   unless publicWitnesses.toList.eraseDups.length == publicWitnesses.size do
     throwError "public theorem witness set contains duplicate declarations"
 

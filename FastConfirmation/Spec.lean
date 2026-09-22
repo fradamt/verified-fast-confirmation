@@ -1,5 +1,6 @@
 import FastConfirmation.Spec.Model
 import FastConfirmation.Spec.Proof.CompleteEvidenceWitness
+import FastConfirmation.Spec.Proof.Containment
 import FastConfirmation.Spec.ProvenTheorems
 import FastConfirmation.Spec.Proof.AcceptedStrictPrefixExtraQueryCounterexample
 import FastConfirmation.Spec.Proof.AcceptedPinnedEconomicsStrictPrefixExtraQueryCounterexample
