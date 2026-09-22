@@ -181,6 +181,83 @@ theorem parentPayloadStuck_disjoint_childSupporters (E : Execution Root)
   rw [hEq] at hbad
   exact (lt_irrefl _ hbad).elim
 
+/-- The confirmation-store status budget as a concrete disjoint-set sum.
+`O` is the complete opposite resolved supporter set; `S` is the honest child
+supporter set; `G` is the matching parent-discount source.  The three
+confinement inputs say that these recorded sets lie in one window `C`.
+Provenance and the handler's resolved-vote slot rule supply those inputs when
+`C` is the confirmation window. -/
+theorem recorded_payload_status_budget (E : Execution Root)
+    (store : Store Root) (bs : BeaconState Root) (b : Root)
+    (other : PayloadStatus) (C : Finset ValidatorIndex)
+    (hwf : ∀ r ∈ store.block_roots,
+      (store.blocks r).parent_root ∈ store.block_roots →
+        (store.blocks (store.blocks r).parent_root).slot < (store.blocks r).slot)
+    (hb : b ∈ store.block_roots)
+    (hp : (store.blocks b).parent_root ∈ store.block_roots)
+    (hother : other ≠ .pending)
+    (hne : other ≠ get_parent_payload_status store (store.blocks b))
+    (hwalk : ∀ i lm, store.latest_messages i = some lm →
+      i ∈ AttSupporters cfg store (get_node_for_root b) bs →
+        WalkKnown store (store.blocks (store.blocks b).parent_root).slot lm.root)
+    (hspanChild : ∀ i ∈ AttSupporters cfg store (get_node_for_root b) bs,
+      i ∈ E.honest → i ∈ C)
+    (hspanOpp : ∀ i ∈ AttSupporters cfg store
+      (ForkChoiceNode.mk (store.blocks b).parent_root other) bs, i ∈ C)
+    (hspanParent : ParentPayloadStuck cfg E store bs b ⊆ C) :
+    E.weight (AttSupporters cfg store
+        (ForkChoiceNode.mk (store.blocks b).parent_root other) bs).toFinset +
+      E.weight ((AttSupporters cfg store (get_node_for_root b) bs).filter
+        (fun i => i ∈ E.honest)).toFinset +
+      E.weight (ParentPayloadStuck cfg E store bs b) ≤ E.weight C := by
+  let O := (AttSupporters cfg store
+    (ForkChoiceNode.mk (store.blocks b).parent_root other) bs).toFinset
+  let S := ((AttSupporters cfg store (get_node_for_root b) bs).filter
+    (fun i => i ∈ E.honest)).toFinset
+  let G := ParentPayloadStuck cfg E store bs b
+  have hchildOpp := childSupporters_disjoint_oppositeParentStatus cfg other
+    hwf hb hp hother hne hwalk
+  have hparentOpp := parentPayloadStuck_disjoint_oppositeStatus cfg E store bs b
+    other hother hne
+  have hparentChild := parentPayloadStuck_disjoint_childSupporters cfg E store bs b
+    (hwf b hb hp)
+  have hOS : Disjoint O S := by
+    rw [Finset.disjoint_left]
+    intro i hiO hiS
+    have hiChild : i ∈ (AttSupporters cfg store (get_node_for_root b) bs).toFinset := by
+      exact List.mem_toFinset.mpr (List.mem_of_mem_filter (List.mem_toFinset.mp hiS))
+    exact (Finset.disjoint_left.mp hchildOpp) hiChild hiO
+  have hOG : Disjoint O G := by
+    rw [Finset.disjoint_left]
+    intro i hiO hiG
+    exact (Finset.disjoint_left.mp hparentOpp) hiG hiO
+  have hSG : Disjoint S G := by
+    rw [Finset.disjoint_left]
+    intro i hiS hiG
+    have hiChild : i ∈ (AttSupporters cfg store (get_node_for_root b) bs).toFinset := by
+      exact List.mem_toFinset.mpr (List.mem_of_mem_filter (List.mem_toFinset.mp hiS))
+    exact (Finset.disjoint_left.mp hparentChild) hiG hiChild
+  have hOSG : Disjoint (O ∪ S) G := by
+    rw [Finset.disjoint_left]
+    intro i hiOS hiG
+    rcases Finset.mem_union.mp hiOS with hiO | hiS
+    · exact (Finset.disjoint_left.mp hOG) hiO hiG
+    · exact (Finset.disjoint_left.mp hSG) hiS hiG
+  have hsub : O ∪ S ∪ G ⊆ C := by
+    intro i hi
+    rcases Finset.mem_union.mp hi with hiOS | hiG
+    · rcases Finset.mem_union.mp hiOS with hiO | hiS
+      · exact hspanOpp i (List.mem_toFinset.mp hiO)
+      · have hi' := List.mem_toFinset.mp hiS
+        exact hspanChild i (List.mem_of_mem_filter hi')
+          (of_decide_eq_true (List.mem_filter.mp hi').2)
+    · exact hspanParent hiG
+  change E.weight O + E.weight S + E.weight G ≤ E.weight C
+  simp only [Execution.weight]
+  rw [← Finset.sum_union hOS, ← Finset.sum_union hOSG]
+  exact Finset.sum_le_sum_of_subset_of_nonneg hsub
+    (fun _ _ _ => Nat.zero_le _)
+
 omit [Inhabited Root] in
 /-- A parent supporter is in the pre-region span committee and does not
 equivocate (its recorded latest message pins `i ∉ equivocating_indices`). -/

@@ -153,6 +153,48 @@ theorem child_pending_descends_required_parent_status {store : Store Root}
     get_ancestor_stop_status (le_refl _)]
   exact ⟨rfl, Or.inl rfl⟩
 
+/-- A child supporter cannot be counted by the opposite resolved payload
+branch of its parent.  The latest-message walk and parent slot order are the
+same known-domain facts used by the existing sibling-support accounting. -/
+theorem childSupporters_disjoint_oppositeParentStatus {store : Store Root}
+    {bs : BeaconState Root} {b : Root} (other : PayloadStatus)
+    (hwf : ∀ r ∈ store.block_roots,
+      (store.blocks r).parent_root ∈ store.block_roots →
+        (store.blocks (store.blocks r).parent_root).slot < (store.blocks r).slot)
+    (hb : b ∈ store.block_roots)
+    (hp : (store.blocks b).parent_root ∈ store.block_roots)
+    (hother : other ≠ .pending)
+    (hne : other ≠ get_parent_payload_status store (store.blocks b))
+    (hwalk : ∀ i lm, store.latest_messages i = some lm →
+      i ∈ AttSupporters cfg store (get_node_for_root b) bs →
+        WalkKnown store (store.blocks (store.blocks b).parent_root).slot lm.root) :
+    Disjoint (AttSupporters cfg store (get_node_for_root b) bs).toFinset
+      (AttSupporters cfg store
+        (ForkChoiceNode.mk (store.blocks b).parent_root other) bs).toFinset := by
+  let selected := get_parent_payload_status store (store.blocks b)
+  have hselected : selected ≠ .pending := by
+    simp only [selected, get_parent_payload_status]
+    split_ifs <;> decide
+  have hchildWalk : WalkKnown store (store.blocks (store.blocks b).parent_root).slot b :=
+    WalkKnown.step hb (hwf b hb hp) (WalkKnown.stop hp (le_refl _))
+  have hsub : (AttSupporters cfg store (get_node_for_root b) bs).toFinset ⊆
+      (AttSupporters cfg store
+        (ForkChoiceNode.mk (store.blocks b).parent_root selected) bs).toFinset :=
+    attSupporters_subset_resolved_ancestor cfg hwf
+      (child_pending_descends_required_parent_status hwf hb hp)
+      hwalk hchildWalk
+  rw [Finset.disjoint_left]
+  intro i hiChild hiOther
+  obtain ⟨lm, hlm, _, hsupportsSelected⟩ :=
+    mem_AttSupporters cfg (List.mem_toFinset.mp (hsub hiChild))
+  obtain ⟨lm', hlm', _, hsupportsOther⟩ :=
+    mem_AttSupporters cfg (List.mem_toFinset.mp hiOther)
+  have heq : lm' = lm := Option.some.inj (hlm'.symm.trans hlm)
+  cases heq
+  exact not_ancestor_two_resolved_statuses store (get_supported_node store lm)
+    (store.blocks b).parent_root selected other hselected hother hne
+    ⟨hsupportsSelected, hsupportsOther⟩
+
 /-- The parent of a child whose slot is inside the completed-vote cutoff is
 older than the previous slot.  The payload tie breaker is therefore not the
 branch used for that parent at this store. -/
