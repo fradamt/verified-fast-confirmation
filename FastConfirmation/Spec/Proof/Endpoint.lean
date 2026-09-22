@@ -31,6 +31,9 @@ The endpoint uses the following components:
   `weight_union_le`. The honest confinement (recorded supporters of a sibling are
   in `Xclass` — `Bridge` + `Forks.siblings_incompatible`) and the byz confinement
   (`Bwin` window membership) are taken as hypotheses (store-dynamics; shell).
+* **`pending_status_selected_of_margin`** — the payload-status score margin
+  selects the child bid's resolved parent, using the Gloas tie breaker when
+  both previous-slot payload decisions have zero weight.
 * **`ghost_step_dominates`** — the ledger plus the two recorded
   bounds give `get_weight (c̃) < get_weight (c)` for every sibling, via
   `MajorityPersists.fork_weight_lt`; `ledger_descendStep` packages this into an
@@ -107,6 +110,78 @@ private theorem ghost_arith {sc scc X B P S : ℕ}
     (hbside : S ≤ sc) (hledger : X + B + P + 1 ≤ S) (hsib : scc ≤ X + B) :
     scc + P < sc := by omega
 
+/-- Arithmetic form of the payload contest at confirmation. `d` is paid only
+by matching parent votes `G`; `O` contains the opposing payload's recorded
+votes, including opposite-status parent votes. The window budget bounds the
+disjoint selected, matching-parent, and opposing groups, with `A` available
+for non-honest votes. This is the strict branch margin required later. -/
+theorem confirmation_payload_margin_arith
+    {S d M P A G O : ℕ}
+    (hconf : M + P + 2 * A + 1 ≤ 2 * S + d)
+    (hdiscount : d ≤ G)
+    (hpartition : O + S + G ≤ M + A) :
+    O + P < S + G := by omega
+
+/-- The pending parent's payload contest. A strict margin pays the complete
+proposer score. If Gloas gives both previous-slot payload decisions zero
+weight, the status tie breaker supplies the second route. -/
+def PendingStatusMargin (store : Store Root) (blocks : List Root)
+    (h : Root) (status : PayloadStatus) : Prop :=
+  let selected := ForkChoiceNode.mk h status
+  selected ∈ get_node_children store blocks (ForkChoiceNode.mk h .pending) ∧
+  ∀ other ∈ get_node_children store blocks (ForkChoiceNode.mk h .pending),
+    other ≠ selected →
+    (get_attestation_score cfg store other
+          (store.checkpoint_states store.justified_checkpoint) +
+          get_proposer_score cfg store <
+        get_attestation_score cfg store selected
+          (store.checkpoint_states store.justified_checkpoint) ∧
+      is_previous_slot_payload_decision cfg store selected = false) ∨
+      (get_weight cfg store other = get_weight cfg store selected ∧
+        get_payload_status_tiebreaker cfg store other <
+          get_payload_status_tiebreaker cfg store selected)
+
+/-- The payload ledger margin selects the required status with Gloas's full
+weight, root, and payload-status key. -/
+theorem pending_status_selected_of_margin {store : Store Root} {blocks : List Root}
+    {h : Root} {status : PayloadStatus}
+    (hmargin : PendingStatusMargin cfg store blocks h status) :
+    (get_node_children store blocks (ForkChoiceNode.mk h .pending)).argmax
+      (fun child => toLex (get_weight cfg store child,
+        toLex (child.root, get_payload_status_tiebreaker cfg store child))) =
+      some (ForkChoiceNode.mk h status) := by
+  let selected := ForkChoiceNode.mk h status
+  have hmem := hmargin.1
+  have hkey : ∀ other ∈ get_node_children store blocks (ForkChoiceNode.mk h .pending),
+      other ≠ selected →
+      (toLex (get_weight cfg store other,
+        toLex (other.root, get_payload_status_tiebreaker cfg store other)) :
+          Gwei ×ₗ (Root ×ₗ ℕ)) <
+      toLex (get_weight cfg store selected,
+        toLex (selected.root, get_payload_status_tiebreaker cfg store selected)) := by
+    intro other hm hne
+    rcases hmargin.2 other hm hne with ⟨hscore, hnotrecent⟩ | ⟨heq, htie⟩
+    · rw [Prod.Lex.toLex_lt_toLex]
+      exact Or.inl (lt_of_le_of_lt (get_weight_le cfg store other)
+        (lt_of_lt_of_le hscore
+          (get_weight_ge_of_not_payload_decision cfg store selected hnotrecent)))
+    · have hroot : other.root = h := ((mem_get_node_children_pending rfl).mp hm).1
+      rw [Prod.Lex.toLex_lt_toLex]
+      right
+      constructor
+      · exact heq
+      · rw [Prod.Lex.toLex_lt_toLex]
+        right
+        exact ⟨hroot, htie⟩
+  rw [List.argmax_eq_some_iff]
+  refine ⟨hmem, fun other hm => ?_, fun other hm hle => ?_⟩
+  · by_cases hsame : other = selected
+    · subst hsame; exact le_refl _
+    · exact le_of_lt (hkey other hm hsame)
+  · by_cases hsame : other = selected
+    · subst hsame; exact le_refl _
+    · exact absurd (lt_of_lt_of_le (hkey other hm hsame) hle) (lt_irrefl _)
+
 /-- **The GHOST step dominates.** From the ledger inequality
 `Xval + Bval + get_proposer_score + 1 ≤ Sval`, the `b′`-side lower bound `hbside`
 and a sibling upper bound `hsib`, the sibling `cc`
@@ -128,17 +203,16 @@ theorem ghost_step_dominates {E : Execution Root} {store : Store Root}
   exact fork_weight_lt cfg (ghost_arith hbside hledger hsib)
 
 /-- **A ledger certificate builds one `DescendStep`.** At a fork with parent `h`,
-`b′`-side child `c` (a `get_node_children` member of the filtered tree — the
-never-filtered / chain-in-tree fact) the ledger inequality + the `b′`-side lower
-bound + a sibling upper bound *for every competing child* dominate the fork in
-`get_weight`, so `c` is the descent-step choice. Wraps `ghost_step_dominates`
-through `EngineStore.descendStep_of_dom`. This is the per-fork producer the shell
-iterates along the confirmed chain (one `b′` certificate per fork). -/
+the status margin selects the payload status required by `c`. Within that
+resolved branch the ledger inequality, selected lower bound, and every sibling
+upper bound select `c`. The shell must derive `hstatus` from confirmation. -/
 theorem ledger_descendStep {E : Execution Root} {store : Store Root}
     {v₀ : ValidatorIndex} {n₀ : ℕ} {b' h c : Root} {lo σ : Slot}
     (hchild : ForkChoiceNode.mk c .pending ∈
       get_node_children store (get_filtered_block_tree cfg store)
         (ForkChoiceNode.mk h (get_parent_payload_status store (store.blocks c))))
+    (hstatus : PendingStatusMargin cfg store (get_filtered_block_tree cfg store)
+      h (get_parent_payload_status store (store.blocks c)))
     (hbside : E.Sval cfg ext v₀ n₀ b' lo σ ≤
       get_attestation_score cfg store (get_node_for_root c)
         (store.checkpoint_states store.justified_checkpoint))
@@ -153,11 +227,9 @@ theorem ledger_descendStep {E : Execution Root} {store : Store Root}
             (store.checkpoint_states store.justified_checkpoint)
           ≤ E.Xval cfg ext v₀ n₀ b' lo σ + E.Bval lo σ) :
     DescendStep cfg store (get_filtered_block_tree cfg store) h c :=
-  -- The sibling bound covers only this resolved parent. The pending parent's
-  -- selection of that status remains to be derived; `descendStep_of_dom`
-  -- requires that additional fact as its final argument.
   descendStep_of_dom cfg hchild
     (fun c' hc' hne => ghost_step_dominates cfg ext hbside hledger (hsib c' hc' hne))
+    (pending_status_selected_of_margin cfg hstatus)
 
 /-! ## The head descends from `b` along the confirmed chain -/
 
@@ -190,15 +262,17 @@ below expresses each fork's step as its ledger *certificate* — the raw inequal
 packaged — so the shell can present the confirmed chain as a `List.IsChain` of
 certificates, and `head_descends_of_ledger_chain` folds it to head descent. -/
 
-/-- One fork's ledger certificate: `c` is the filtered `b′`-side child of `h`, and
-for some certificate `(v₀, n₀, b′, lo, σ)` the ledger inequality, the `b′`-side
-lower bound and a sibling upper bound (for every competing child) hold at `store`.
-Exactly the hypotheses of `ledger_descendStep`, existentially bundled per fork. -/
+/-- One fork's ledger certificate: the required payload status wins the
+pending-parent contest, and the ledger selects `c` among children of that
+resolved parent. Exactly the hypotheses of `ledger_descendStep`, packaged per
+fork. -/
 def LedgerStep (E : Execution Root) (store : Store Root) (h c : Root) : Prop :=
   ∃ (v₀ : ValidatorIndex) (n₀ : ℕ) (b' : Root) (lo σ : Slot),
     ForkChoiceNode.mk c .pending ∈
         get_node_children store (get_filtered_block_tree cfg store)
           (ForkChoiceNode.mk h (get_parent_payload_status store (store.blocks c))) ∧
+    PendingStatusMargin cfg store (get_filtered_block_tree cfg store)
+      h (get_parent_payload_status store (store.blocks c)) ∧
     E.Sval cfg ext v₀ n₀ b' lo σ ≤
         get_attestation_score cfg store (get_node_for_root c)
           (store.checkpoint_states store.justified_checkpoint) ∧
@@ -218,8 +292,8 @@ def LedgerStep (E : Execution Root) (store : Store Root) (h c : Root) : Prop :=
 theorem descendStep_of_ledgerStep {E : Execution Root} {store : Store Root} {h c : Root}
     (hstep : LedgerStep cfg ext E store h c) :
     DescendStep cfg store (get_filtered_block_tree cfg store) h c := by
-  obtain ⟨v₀, n₀, b', lo, σ, hchild, hbside, hledger, hsib⟩ := hstep
-  exact ledger_descendStep cfg ext hchild hbside hledger hsib
+  obtain ⟨v₀, n₀, b', lo, σ, hchild, hstatus, hbside, hledger, hsib⟩ := hstep
+  exact ledger_descendStep cfg ext hchild hstatus hbside hledger hsib
 
 /-- **Head descent from a certificate chain.** A `List.IsChain` of per-fork ledger
 certificates from the justified checkpoint root down to `b` forces the fork-choice

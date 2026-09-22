@@ -91,6 +91,8 @@ def LedgerStepV2 (E : Execution Root) (store : Store Root) (h c : Root) : Prop :
     ForkChoiceNode.mk c .pending ∈
         get_node_children store (get_filtered_block_tree cfg store)
           (ForkChoiceNode.mk h (get_parent_payload_status store (store.blocks c))) ∧
+    PendingStatusMargin cfg store (get_filtered_block_tree cfg store)
+      h (get_parent_payload_status store (store.blocks c)) ∧
     E.Sval cfg ext v₀ n₀ b' lo σ ≤
         get_attestation_score cfg store (get_node_for_root c)
           (store.checkpoint_states store.justified_checkpoint) ∧
@@ -111,12 +113,10 @@ def LedgerStepV2 (E : Execution Root) (store : Store Root) (h c : Root) : Prop :
 theorem descendStep_of_ledgerStepV2 {E : Execution Root} {store : Store Root} {h c : Root}
     (hstep : LedgerStepV2 cfg ext E store h c) :
     DescendStep cfg store (get_filtered_block_tree cfg store) h c := by
-  obtain ⟨v₀, n₀, b', lo, es, σ, hchild, hbside, hledger, hsib⟩ := hstep
-  -- The sibling bound covers only this resolved parent. The pending parent's
-  -- selection of that status remains to be derived; `descendStep_of_dom`
-  -- requires that additional fact as its final argument.
+  obtain ⟨v₀, n₀, b', lo, es, σ, hchild, hstatus, hbside, hledger, hsib⟩ := hstep
   exact descendStep_of_dom cfg hchild
     (fun c' hc' hne => ghost_step_dominates_v2 cfg ext hbside hledger (hsib c' hc' hne))
+    (pending_status_selected_of_margin cfg hstatus)
 
 /-- **Head descent from a v2 certificate chain.** A `List.IsChain LedgerStepV2`
 from the justified checkpoint root down to `b` forces the fork-choice head to
@@ -164,6 +164,8 @@ theorem inv2_ledgerStepV2 {E : Execution Root} {store : Store Root}
     (hchild : ForkChoiceNode.mk c .pending ∈
       get_node_children store (get_filtered_block_tree cfg store)
         (ForkChoiceNode.mk h (get_parent_payload_status store (store.blocks c))))
+    (hstatus : PendingStatusMargin cfg store (get_filtered_block_tree cfg store)
+      h (get_parent_payload_status store (store.blocks c)))
     (hSmem : ∀ i ∈ E.Sclass cfg ext v₀ n₀ b' lo σ,
       i ∈ AttSupporters cfg store (get_node_for_root c)
         (store.checkpoint_states store.justified_checkpoint))
@@ -184,7 +186,8 @@ theorem inv2_ledgerStepV2 {E : Execution Root} {store : Store Root}
             (store.checkpoint_states store.justified_checkpoint),
           i ∉ E.honest → i ∈ E.BbadSet cfg ext v₀ n₀ b' lo es ∨ i ∈ E.SpentSet es σ) :
     LedgerStepV2 cfg ext E store h c := by
-  refine ⟨v₀, n₀, b', lo, es, σ, hchild, recorded_bside_ge cfg ext hval hSmem, ?_, ?_⟩
+  refine ⟨v₀, n₀, b', lo, es, σ, hchild, hstatus,
+    recorded_bside_ge cfg ext hval hSmem, ?_, ?_⟩
   · rw [← hboost]
     exact E.INV2_endpoint cfg ext v₀ n₀ b' lo es σ boost hinv
   · intro c' hc' hne

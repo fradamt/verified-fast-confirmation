@@ -77,6 +77,50 @@ def ParentStuckByz (E : Execution Root) (store : Store Root) (bs : BeaconState R
     (b : Root) : Finset ValidatorIndex :=
   (ParentSupport cfg E store bs b).filter (fun i => i ∉ E.honest)
 
+/-- Parent supporters whose vote selects the payload status required by `b`.
+The extra status test is the Gloas discount filter. -/
+def ParentPayloadSupport (E : Execution Root) (store : Store Root)
+    (bs : BeaconState Root) (b : Root) : Finset ValidatorIndex :=
+  (ParentSupport cfg E store bs b).filter (fun i =>
+    (store.latest_messages i).any (fun lm =>
+      decide ((get_supported_node store lm).payload_status =
+        get_parent_payload_status store (store.blocks b))))
+
+/-- Honest matching-parent support, the only honest weight that can fund the
+payload-aware discount. -/
+def ParentPayloadStuck (E : Execution Root) (store : Store Root)
+    (bs : BeaconState Root) (b : Root) : Finset ValidatorIndex :=
+  (ParentPayloadSupport cfg E store bs b).filter (fun i => i ∈ E.honest)
+
+/-- Non-honest matching-parent support. -/
+def ParentPayloadStuckByz (E : Execution Root) (store : Store Root)
+    (bs : BeaconState Root) (b : Root) : Finset ValidatorIndex :=
+  (ParentPayloadSupport cfg E store bs b).filter (fun i => i ∉ E.honest)
+
+/-- Parent supporters outside the child's required payload branch. This
+includes opposite-status votes and any pending votes; neither is discounted. -/
+def ParentOtherSupport (E : Execution Root) (store : Store Root)
+    (bs : BeaconState Root) (b : Root) : Finset ValidatorIndex :=
+  (ParentSupport cfg E store bs b).filter (fun i =>
+    ¬ (store.latest_messages i).any (fun lm =>
+      decide ((get_supported_node store lm).payload_status =
+        get_parent_payload_status store (store.blocks b))))
+
+omit [Inhabited Root] in
+/-- The matching and other parent votes partition root-only parent support.
+This is the payload component of the pre-region ledger. -/
+theorem parent_payload_partition (E : Execution Root) (store : Store Root)
+    (bs : BeaconState Root) (b : Root) :
+    E.weight (ParentPayloadSupport cfg E store bs b) +
+      E.weight (ParentOtherSupport cfg E store bs b) =
+      E.weight (ParentSupport cfg E store bs b) := by
+  simp only [ParentPayloadSupport, ParentOtherSupport, Execution.weight]
+  exact Finset.sum_filter_add_sum_filter_not
+    (ParentSupport cfg E store bs b)
+    (fun i => (store.latest_messages i).any (fun lm =>
+      decide ((get_supported_node store lm).payload_status =
+        get_parent_payload_status store (store.blocks b)))) E.weight_of
+
 omit [Inhabited Root] in
 /-- A parent supporter is in the pre-region span committee and does not
 equivocate (its recorded latest message pins `i ∉ equivocating_indices`). -/
@@ -143,6 +187,68 @@ theorem get_block_support_eq_parent_split {E : Execution Root}
   simp only [ParentStuck, ParentStuckByz, Execution.weight]
   exact (Finset.sum_filter_add_sum_filter_not
     (ParentSupport cfg E (E.store cfg ext v n) bs b) (fun i => i ∈ E.honest) E.weight_of).symm
+
+/-- The payload-aware parent support splits into matching honest and
+non-honest votes. The opposing payload's parent votes are absent from both
+terms. -/
+theorem get_parent_payload_support_eq_split {E : Execution Root}
+    (hec : ExternalsCoherence cfg ext E) {v : ValidatorIndex} (hv : v ∈ E.honest)
+    (n : ℕ) (hnH : E.WithinHorizon cfg n)
+    {bs : BeaconState Root} {b : Root} (hval : bs.validators = E.registry)
+    (hbH : E.SlotWithinHorizon cfg ((E.store cfg ext v n).blocks b).slot) :
+    get_parent_payload_support_between_slots cfg ext (E.store cfg ext v n) bs
+        ((E.store cfg ext v n).blocks b).parent_root
+        (get_parent_payload_status (E.store cfg ext v n)
+          ((E.store cfg ext v n).blocks b))
+        (((E.store cfg ext v n).blocks
+          ((E.store cfg ext v n).blocks b).parent_root).slot + 1)
+        (((E.store cfg ext v n).blocks b).slot - 1)
+      = E.weight (ParentPayloadStuck cfg E (E.store cfg ext v n) bs b)
+        + E.weight (ParentPayloadStuckByz cfg E (E.store cfg ext v n) bs b) := by
+  have hendH : E.SlotWithinHorizon cfg
+      (((E.store cfg ext v n).blocks b).slot - 1) :=
+    ⟨(Nat.sub_le _ _).trans hbH.1,
+      lt_of_le_of_lt (Nat.div_le_div_right (Nat.sub_le _ _)) hbH.2⟩
+  have hce : (Finset.Icc
+        (((E.store cfg ext v n).blocks
+          ((E.store cfg ext v n).blocks b).parent_root).slot + 1)
+        (((E.store cfg ext v n).blocks b).slot - 1)).biUnion
+          (fun s => get_slot_committee cfg ext (E.store cfg ext v n) s) =
+      (Finset.Icc
+        (((E.store cfg ext v n).blocks
+          ((E.store cfg ext v n).blocks b).parent_root).slot + 1)
+        (((E.store cfg ext v n).blocks b).slot - 1)).biUnion E.committee := by
+    apply Finset.biUnion_congr rfl
+    intro s hs
+    exact hec.committees_agree v hv n s hnH
+      ⟨(le_trans (Finset.mem_Icc.mp hs).2 hendH.1),
+        lt_of_le_of_lt
+          (Nat.div_le_div_right (Finset.mem_Icc.mp hs).2) hendH.2⟩
+  have hA : get_parent_payload_support_between_slots cfg ext (E.store cfg ext v n) bs
+        ((E.store cfg ext v n).blocks b).parent_root
+        (get_parent_payload_status (E.store cfg ext v n)
+          ((E.store cfg ext v n).blocks b))
+        (((E.store cfg ext v n).blocks
+          ((E.store cfg ext v n).blocks b).parent_root).slot + 1)
+        (((E.store cfg ext v n).blocks b).slot - 1)
+      = E.weight (ParentPayloadSupport cfg E (E.store cfg ext v n) bs b) := by
+    simp only [get_parent_payload_support_between_slots, ParentPayloadSupport,
+      ParentSupport, Execution.span_committee, Execution.weight,
+      Execution.weight_of, hce]
+    apply Finset.sum_congr
+    · ext i
+      simp only [Finset.mem_filter]
+      cases hmsg : (E.store cfg ext v n).latest_messages i with
+      | none => simp
+      | some msg =>
+        simp only [Option.any_some, Bool.and_eq_true, decide_eq_true_eq, and_assoc]
+    · intro i _
+      rw [hval]
+  rw [hA]
+  simp only [ParentPayloadStuck, ParentPayloadStuckByz, Execution.weight]
+  exact (Finset.sum_filter_add_sum_filter_not
+    (ParentPayloadSupport cfg E (E.store cfg ext v n) bs b)
+      (fun i => i ∈ E.honest) E.weight_of).symm
 
 /-! ## Piece 3 — the Byzantine parent-stuck budget
 
@@ -277,6 +383,42 @@ theorem support_discount_le_parent_stuck {E : Execution Root}
     (parent_payload_support_le_block_support cfg ext _ _ _ _ _ _)).trans
     (discount_guard (get_block_support_eq_parent_split cfg ext hec hv n hnH hval hbH)
       (parentstuck_byz_plus_equiv_le cfg ext hec hbb hv hnH hval hstartH hbH htab hne))
+
+/-- The repaired discount is charged only to honest parent votes for the
+child's required payload status. Opposite-status parent votes are not spent by
+the discount and remain available to the opposing fork-choice branch. -/
+theorem support_discount_le_matching_parent_stuck {E : Execution Root}
+    (hec : ExternalsCoherence cfg ext E) (hbb : ByzantineBound cfg E)
+    {v : ValidatorIndex} (hv : v ∈ E.honest) {n : ℕ}
+    (hnH : E.WithinHorizon cfg n)
+    {bs : BeaconState Root} {b : Root} (hval : bs.validators = E.registry)
+    (hstartH : E.SlotWithinHorizon cfg
+      (((E.store cfg ext v n).blocks
+        ((E.store cfg ext v n).blocks b).parent_root).slot + 1))
+    (hbH : E.SlotWithinHorizon cfg ((E.store cfg ext v n).blocks b).slot)
+    (htab : get_total_active_balance cfg bs = E.total_active cfg)
+    (hne : ∀ i ∈ (E.store cfg ext v n).equivocating_indices, i ∉ E.honest) :
+    get_support_discount cfg ext (E.store cfg ext v n) bs b
+      ≤ E.weight (ParentPayloadStuck cfg E (E.store cfg ext v n) bs b) := by
+  have hbyz : E.weight
+      (ParentPayloadStuckByz cfg E (E.store cfg ext v n) bs b) ≤
+      E.weight (ParentStuckByz cfg E (E.store cfg ext v n) bs b) := by
+    simp only [Execution.weight]
+    apply Finset.sum_le_sum_of_subset_of_nonneg
+    · intro i hi
+      simp only [ParentPayloadStuckByz, ParentPayloadSupport,
+        ParentStuckByz, Finset.mem_filter] at hi ⊢
+      exact ⟨hi.1.1, hi.2⟩
+    · intro i _ _
+      exact Nat.zero_le _
+  have hbudget := parentstuck_byz_plus_equiv_le cfg ext hec hbb hv hnH
+    hval hstartH hbH htab hne
+  have hbudget' := (Nat.add_le_add_right hbyz _).trans hbudget
+  simp only [get_support_discount, compute_empty_slot_support_discount,
+    compute_adversarial_weight]
+  exact discount_guard
+    (get_parent_payload_support_eq_split cfg ext hec hv n hnH hval hbH)
+    hbudget'
 
 end FastConfirmation.Spec
 

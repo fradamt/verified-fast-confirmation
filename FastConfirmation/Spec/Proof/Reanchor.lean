@@ -419,6 +419,8 @@ theorem crossing_ledger_descendStep {store : Store Root}
     (hchild : ForkChoiceNode.mk c .pending ∈
       get_node_children store (get_filtered_block_tree cfg store)
         (ForkChoiceNode.mk h (get_parent_payload_status store (store.blocks c))))
+    (hstatus : PendingStatusMargin cfg store (get_filtered_block_tree cfg store)
+      h (get_parent_payload_status store (store.blocks c)))
     (hbside : E.Sval cfg ext v₀ n₀ b' lo σ ≤
       get_attestation_score cfg store (get_node_for_root c)
         (store.checkpoint_states store.justified_checkpoint))
@@ -433,11 +435,9 @@ theorem crossing_ledger_descendStep {store : Store Root}
           (store.checkpoint_states store.justified_checkpoint)
         ≤ xP + E.Xval cfg ext v₀ n₀ b' lo σ + Bpre + E.Bval lo σ) :
     DescendStep cfg store (get_filtered_block_tree cfg store) h c :=
-  -- The sibling bound covers only this resolved parent. The pending parent's
-  -- selection of that status remains to be derived; `descendStep_of_dom`
-  -- requires that additional fact as its final argument.
   descendStep_of_dom cfg hchild
     (fun c' hc' hne => E.crossing_ghost_step_dominates cfg ext hbside hend (hsib c' hc' hne))
+    (pending_status_selected_of_margin cfg hstatus)
 
 end Execution
 
