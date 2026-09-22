@@ -1,18 +1,20 @@
 # Spec-model design — `FastConfirmation/Spec/`
 
-G3 status: the model and payload-delivery results build, but Gloas safety is
-stopped at the false payload-branch invariant. See
-[the negative result](gloas-negative-result.md). The inherited proof-interface
-descriptions below are not a completed Gloas theorem.
+G5 status: the payload-aware discount removes the G3 confirmed-child
+counterexample. The current endpoint lemma remains false because its inputs
+do not link the ledger to confirmation. See [the exact rule change and proof
+status](gloas-spec-deviation.md). The inherited proof-interface descriptions
+below are not a completed Gloas theorem.
 
 This repository models both the FCR **paper** (arXiv:2405.00549) and the FCR
 **consensus spec**. This document describes the consensus-spec layer:
 
 - **Source of truth**:
-  [`consensus-specs/specs/phase0/fast-confirmation.md`](https://github.com/ethereum/consensus-specs/blob/477321355d48d527e7e1e4d572f6a40a0b41072a/specs/phase0/fast-confirmation.md)
-  at public commit `477321355d48d527e7e1e4d572f6a40a0b41072a`.
+  [`consensus-specs/specs/phase0/fast-confirmation.md`](https://github.com/ethereum/consensus-specs/blob/6b9bd532cca16555e2f3282d757622ebff29743e/specs/phase0/fast-confirmation.md)
+  at public commit `6b9bd532cca16555e2f3282d757622ebff29743e`.
 - **Environment**: Gloas fork choice and its FCR overlay, with inherited
-  phase0 arithmetic and FCR helpers, at the same commit. The complete delta
+  phase0 arithmetic and FCR helpers, at the same commit except for the
+  [payload-aware discount](gloas-spec-deviation.md). The complete delta
   and external projection contract are in
   [gloas-model-design.md](gloas-model-design.md).
 - **Scope**: Gloas is the sole fork-choice model. The numbered decisions below

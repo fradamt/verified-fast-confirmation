@@ -1,10 +1,10 @@
 # Gloas model design
 
-The G3 lane ports this design onto main `4b9ef30`. The executable model and
-payload-delivery lemmas build. Payload branch selection fails on the
-[exact-source honest execution](gloas-negative-result.md), so this lane stops. The [historical G2 obligations](gloas-proof-obligations-history.md)
-record the prior gaps. The [review guide](REVIEW_GUIDE.md) states the one new
-synchrony field. This design note does not establish Gloas safety.
+The G3 lane ports this design onto main `4b9ef30`. The G5
+[payload-aware discount](gloas-spec-deviation.md) removes the G3 safety
+counterexample, but the current endpoint lemma remains false. The
+[historical G2 obligations](gloas-proof-obligations-history.md) record the
+prior gaps. This design note does not establish Gloas safety.
 
 This note specifies the Gloas model. Gloas replaces the phase0 fork-choice
 model. The revised lane contract removes the pre-Gloas equivalence
@@ -12,8 +12,8 @@ requirement. The FULL and always-available case does not have phase0
 behavior. Keep that difference explicit. No legacy fork policy is added.
 
 The source is `consensus-specs` commit
-`477321355d48d527e7e1e4d572f6a40a0b41072a`. All line numbers below refer to
-that commit. Keep the source annotation rules in
+`6b9bd532cca16555e2f3282d757622ebff29743e`. All line numbers below refer to
+that commit, except for the documented Gloas FCR discount. Keep the source annotation rules in
 [spec-annotation.md](spec-annotation.md). Keep the arithmetic, map, state,
 and projection rules in [spec-model-design.md](spec-model-design.md), except
 where this note gives a change.

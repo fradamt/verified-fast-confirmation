@@ -36,9 +36,11 @@ substitutes for the accepted theorem.
 ## Consensus source
 
 The authoritative public source is `ethereum/consensus-specs` commit
-`477321355d48d527e7e1e4d572f6a40a0b41072a`. The manifest in
+`6b9bd532cca16555e2f3282d757622ebff29743e`. The manifest in
 `spec_source/manifest.json` records the exact twelve source and configuration
 objects consumed by the model.
+The Gloas empty-slot discount is a documented local change to that source.
+See [the exact diff and proof status](gloas-spec-deviation.md).
 
 The manifest proves byte identity and provenance only. A pin change must also
 be reviewed against:

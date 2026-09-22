@@ -1,10 +1,9 @@
 # Verified Fast Confirmation
 
-Gloas lane status: **STOP-false at G2-004**. The executable model and the new
-payload-delivery lemmas build. The accepted safety proof does not build. An
-exact-source honest execution confirms a child at slot 11 while another
-honest node excludes it at slot 12, despite payload-envelope relay. See
-[the negative result](docs/gloas-negative-result.md). The proof descriptions
+Gloas lane status: **STOP-false at G2-004's current endpoint lemma**. The
+payload-aware discount prevents the old confirmed-child counterexample, but
+`Endpoint.ledger_descendStep` remains false under its current inputs. See
+[the rule change and proof status](docs/gloas-spec-deviation.md). The proof descriptions
 below describe the intended interface and retained development, not a
 validated Gloas safety result.
 
@@ -18,7 +17,7 @@ This repository contains two separate developments:
 
 | Development | Source | Role and import |
 | --- | --- | --- |
-| [`FastConfirmation/Spec/`](FastConfirmation/Spec/) | Ethereum consensus specification, pinned at public commit [`4773213`](https://github.com/ethereum/consensus-specs/blob/477321355d48d527e7e1e4d572f6a40a0b41072a/specs/phase0/fast-confirmation.md) | Primary executable model and accepted safety proof; `import FastConfirmation.Spec` |
+| [`FastConfirmation/Spec/`](FastConfirmation/Spec/) | Ethereum consensus specification, pinned at public commit [`6b9bd53`](https://github.com/ethereum/consensus-specs/blob/6b9bd532cca16555e2f3282d757622ebff29743e/specs/phase0/fast-confirmation.md) | Primary executable model; accepted Gloas safety proof remains open |
 | [`FastConfirmation/Paper/`](FastConfirmation/Paper/) | [Fast Confirmation Rule paper](https://arxiv.org/abs/2405.00549), Sections 3.1 and 4 | Independent companion model and proofs; `import FastConfirmation.Paper` |
 
 The accepted consensus-spec theorem is proved entirely within

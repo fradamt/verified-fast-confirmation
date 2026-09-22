@@ -1,7 +1,7 @@
 # Spec ↔ Lean annotation — `FastConfirmation/Spec/`
 
 Per-function mapping between public `consensus-specs` commit
-[`4773213`](https://github.com/ethereum/consensus-specs/tree/477321355d48d527e7e1e4d572f6a40a0b41072a) and the Lean
+[`6b9bd53`](https://github.com/ethereum/consensus-specs/tree/6b9bd532cca16555e2f3282d757622ebff29743e) and the Lean
 model. Lean names equal python names (the faithfulness device — diff each def's
 docstring, which quotes the python, against its body). "Deviations" lists
 only per-function items; the global conventions (ℕ arithmetic, totalized
@@ -179,7 +179,7 @@ definition cites its pinned Gloas source line. See
 │ get_adversarial_weight                            │ same │ Slot(current_slot - 1): at current_slot = 0, ℕ truncates to 0 where python uint64 would  │
 │                                                   │      │ raise — benign because at slot 0 no call path evaluates it against nonempty content (all │
 │                                                   │      │ chain segments are empty or short-circuited), not because slot 0 is pre-genesis          │
-│ compute_empty_slot_support_discount               │ same │ block.slot - 1 well-defined in the taken branch on well-formed stores                    │
+│ compute_empty_slot_support_discount               │ local│ payload-aware parent support; see gloas-spec-deviation.md                                │
 │ get_support_discount                              │ same │ —                                                                                        │
 │ compute_safety_threshold                          │ same │ the spec's own underflow guard transcribes exactly to ℕ                                  │
 │ is_one_confirmed                                  │ same │ strict >; the source optimistic-sync precondition remains an external input-domain       │
