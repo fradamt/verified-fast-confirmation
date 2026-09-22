@@ -407,8 +407,7 @@ def update_fast_confirmation_variables (fcr_store : FastConfirmationStore Root) 
       previous_slot_head := fcr_store.current_slot_head
       current_slot_head := (get_head cfg store).root }
   -- Update greatest unrealized justified checkpoint at the last slot of an
-  -- epoch (unconditional, and vestigial: rule delta 5's banking no longer
-  -- reads this field, it is kept for parity with the strong rule)
+  -- epoch. Keep a separate epoch-start copy for the weak reset below.
   let fcr_store :=
     if is_start_slot_at_epoch cfg (get_current_slot cfg store + 1) then
       { fcr_store with
@@ -420,6 +419,8 @@ def update_fast_confirmation_variables (fcr_store : FastConfirmationStore Root) 
   -- and banks that supplier's *own* unrealized justification
   if is_start_slot_at_epoch cfg (get_current_slot cfg store) then
     { fcr_store with
+      current_epoch_greatest_unrealized_checkpoint :=
+        fcr_store.previous_epoch_greatest_unrealized_checkpoint
       previous_epoch_observed_justified_checkpoint :=
         fcr_store.current_epoch_observed_justified_checkpoint
       current_epoch_observed_justified_checkpoint :=
@@ -555,6 +556,14 @@ def get_latest_confirmed (fcr_store : FastConfirmationStore Root) : Root :=
     if is_epoch_start && is_observed_justified_block_epoch_ok &&
         is_head_unrealized_justified_ok && is_confirmed_block_stale then
       fcr_store.current_epoch_observed_justified_checkpoint.root
+    else confirmed_root
+  -- Reject a chain that does not contain the greatest unrealized justified
+  -- checkpoint saved at epoch start. Check the checkpoint at its epoch, not
+  -- just its root: a skipped boundary can give another checkpoint root.
+  let greatest := fcr_store.current_epoch_greatest_unrealized_checkpoint
+  let confirmed_root :=
+    if greatest ≠ get_checkpoint_for_block cfg store confirmed_root greatest.epoch then
+      store.finalized_checkpoint.root
     else confirmed_root
   -- Attempt to further advance the latest confirmed block
   if get_block_epoch cfg store confirmed_root + 1 ≥ current_epoch then

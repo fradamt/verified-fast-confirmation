@@ -343,7 +343,12 @@ def parseContainmentAnswers (j : J) : Except String Answers := do
     finals := finals.toList
   }
 
-def parseFcr (store : Store Nat) (j : J) : Except String (FastConfirmationStore Nat) := do
+def parseFcr (store : Store Nat) (j : J) (schema : Nat) :
+    Except String (FastConfirmationStore Nat) := do
+  let currentGreatest ←
+    if schema == 2 then do
+      parseCheckpoint (← field j "current_epoch_greatest_unrealized_checkpoint")
+    else pure store.finalized_checkpoint
   return {
     store := store
     confirmed_root := ← rootField j "confirmed_root"
@@ -353,11 +358,13 @@ def parseFcr (store : Store Nat) (j : J) : Except String (FastConfirmationStore 
       ← parseCheckpoint (← field j "current_epoch_observed_justified_checkpoint")
     previous_epoch_greatest_unrealized_checkpoint :=
       ← parseCheckpoint (← field j "previous_epoch_greatest_unrealized_checkpoint")
+    current_epoch_greatest_unrealized_checkpoint := currentGreatest
     previous_slot_head := ← rootField j "previous_slot_head"
     current_slot_head := ← rootField j "current_slot_head"
   }
 
 structure Record where
+  schema : Nat
   testId : String
   callIndex : Nat
   cfg : Config
@@ -366,26 +373,32 @@ structure Record where
   answers : Answers
 
 def parseRecord (j : J) : Except String Record := do
+  let schema ← natField j "schema"
+  if schema != 1 && schema != 2 then throw s!"unsupported schema {schema}"
   let parsedStore ← parseStore (← field j "store")
   return {
+    schema := schema
     testId := ← stringField j "test_id"
     callIndex := ← natField j "call_index"
     cfg := ← parseConfig (← field j "config")
-    before := ← parseFcr parsedStore.store (← field j "fcr_before")
-    after := ← parseFcr parsedStore.store (← field j "fcr_after")
+    before := ← parseFcr parsedStore.store (← field j "fcr_before") schema
+    after := ← parseFcr parsedStore.store (← field j "fcr_after") schema
     answers := ← parseAnswers (← field j "externals")
   }
 
-/-- The normal parser remains unchanged. Only containment removes repeated
-external JSON answers; all store and FCR inputs use the same parsers. -/
+/-- Only containment removes repeated external JSON answers; all store and FCR
+inputs use the same parsers. -/
 def parseContainmentRecord (j : J) : Except String Record := do
+  let schema ← natField j "schema"
+  if schema != 1 && schema != 2 then throw s!"unsupported schema {schema}"
   let parsedStore ← parseStore (← field j "store")
   return {
+    schema := schema
     testId := ← stringField j "test_id"
     callIndex := ← natField j "call_index"
     cfg := ← parseConfig (← field j "config")
-    before := ← parseFcr parsedStore.store (← field j "fcr_before")
-    after := ← parseFcr parsedStore.store (← field j "fcr_after")
+    before := ← parseFcr parsedStore.store (← field j "fcr_before") schema
+    after := ← parseFcr parsedStore.store (← field j "fcr_after") schema
     answers := ← parseContainmentAnswers (← field j "externals")
   }
 
@@ -523,7 +536,8 @@ def checkpointText (checkpoint : Checkpoint Nat) : String :=
 def fieldResult (name : String) (leanValue pythonValue : String) : String :=
   s!"MISMATCH {name} lean={leanValue} python={pythonValue}"
 
-def compareFcr (leanValue pythonValue : FastConfirmationStore Nat) :
+def compareFcr (leanValue pythonValue : FastConfirmationStore Nat)
+    (compareGreatest : Bool) :
     Option (String × String × String) :=
   if leanValue.confirmed_root != pythonValue.confirmed_root then
     some ("confirmed_root", rootText leanValue.confirmed_root,
@@ -543,6 +557,11 @@ def compareFcr (leanValue pythonValue : FastConfirmationStore Nat) :
     some ("previous_epoch_greatest_unrealized_checkpoint",
       checkpointText leanValue.previous_epoch_greatest_unrealized_checkpoint,
       checkpointText pythonValue.previous_epoch_greatest_unrealized_checkpoint)
+  else if compareGreatest && !checkpointEq leanValue.current_epoch_greatest_unrealized_checkpoint
+      pythonValue.current_epoch_greatest_unrealized_checkpoint then
+    some ("current_epoch_greatest_unrealized_checkpoint",
+      checkpointText leanValue.current_epoch_greatest_unrealized_checkpoint,
+      checkpointText pythonValue.current_epoch_greatest_unrealized_checkpoint)
   else if leanValue.previous_slot_head != pythonValue.previous_slot_head then
     some ("previous_slot_head", rootText leanValue.previous_slot_head,
       rootText pythonValue.previous_slot_head)
@@ -559,7 +578,7 @@ unsafe def evaluate (record : Record) : IO (Option String) := do
   match missList with
   | miss :: _ => return some s!"MISSING_EXTERNAL {miss}"
   | [] =>
-      match compareFcr leanValue record.after with
+      match compareFcr leanValue record.after (record.schema == 2) with
       | none => return none
       | some (name, leanText, pythonText) =>
           return some (fieldResult name leanText pythonText)

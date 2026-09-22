@@ -1,4 +1,4 @@
-# FCR conformance trace schema, version 1
+# FCR conformance trace schema, versions 1 and 2
 
 One trace file is JSON Lines: one JSON object per executed `on_fast_confirmation`
 call in the Python reference tests. The Python exporter writes it; the Lean
@@ -23,7 +23,7 @@ updating both sides and bumping `schema`.
 
 ## Record fields
 ```text
-schema                 1
+schema                 1 (legacy) or 2 (weak greatest-unrealized reset)
 test_id                pytest node id
 fork                   e.g. "altair"
 preset                 "minimal" | "mainnet"
@@ -47,8 +47,9 @@ fcr_before             confirmed_root,
                        previous_epoch_observed_justified_checkpoint,
                        current_epoch_observed_justified_checkpoint,
                        previous_epoch_greatest_unrealized_checkpoint,
+                       current_epoch_greatest_unrealized_checkpoint (v2 only),
                        previous_slot_head, current_slot_head
-fcr_after              same six fields, after the Python call
+fcr_after              same fields, after the Python call
 externals              recorded answers, see below
 ```
 
@@ -77,16 +78,20 @@ structural equality on `(projection, args)`. A lookup miss is reported as a
 `on_fast_confirmation`; they are not recorded and Lean instantiates them with
 constant functions that are never reached (`fun _ _ => none`, `fun _ _ => false`).
 
-## v2 (weak-synchrony)
+## v2 (weak greatest-unrealized reset)
 
-The weak-synchrony Lean model changes the FCR rule implementation, but it does
-not change the wire interfaces audited for this harness: `Config`, `Store`,
-`FastConfirmationStore`, `Externals`, or the six stored FCR output fields. It
-also uses the same four executable externals. Weak FCR makes more calls to
-those externals, especially committee and committee-count queries; v1 already
-records every invocation and its projected state and answer. Therefore this
-port has no v2 record-field or external addition, and the exporter continues
-to emit `schema: 1`.
+Version 2 adds `current_epoch_greatest_unrealized_checkpoint` to `fcr_before`
+and `fcr_after`. The weak rule copies the previous-epoch greatest-unrealized
+snapshot into this field at epoch start. The field stays fixed through the
+epoch, including the last slot when the previous-epoch snapshot is overwritten.
+The getter uses this checkpoint for its reset after the certified restart, immediately before descendant search. The
+certified observed checkpoint remains the anchor for positive confirmations.
+
+The exporter emits version 2 when the Python FCR store has the new field.
+It emits version 1 for older and strong stores. Both versions use the same
+`Config`, `Store`, and four executable externals. For version 1, the Lean
+parser sets the missing field to `store.finalized_checkpoint`. Each record is
+independent, so this default does not reconstruct an earlier epoch-start value.
 
 The weak Python helper has one extra derived check,
 `safe_execution_block_hash`, for post-Bellatrix forks. It is not an
@@ -97,13 +102,15 @@ schema. A future post-Bellatrix port must add that block-payload projection
 and bump the schema together with the runner.
 
 All v1 records remain readable by the weak runner. The runner selects
-`Weak.on_fast_confirmation`; v1 records do not need a handler discriminator
-because this branch has one weak-specific runner.
+`Weak.on_fast_confirmation`; records do not need a handler discriminator
+because this branch has one weak-specific parity runner.
 
 ## Comparison
 For each record the Lean runner constructs `FastConfirmationStore` from `store`
 and `fcr_before`, runs `Weak.on_fast_confirmation cfg ext`, and compares the six
-`fcr_after` fields. Output: one line per record,
+legacy `fcr_after` fields, plus the new checkpoint for version 2. Version 1 does
+not compare an output field that was absent from its source record.
+Output: one line per record,
 `OK <test_id> <call_index>` or `MISMATCH <test_id> <call_index> <field> lean=<v> python=<v>`
 or `MISSING_EXTERNAL ...`, then a summary line
 `SUMMARY records=<n> ok=<n> mismatch=<n> missing_external=<n>`.

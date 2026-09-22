@@ -22,6 +22,9 @@ structure FastConfirmationStore (Root : Type*) where
   previous_epoch_observed_justified_checkpoint : Checkpoint Root
   current_epoch_observed_justified_checkpoint : Checkpoint Root
   previous_epoch_greatest_unrealized_checkpoint : Checkpoint Root
+  /-- Weak-rule reset checkpoint, fixed at the start of the current epoch.
+  The frozen strong rule does not read this field. -/
+  current_epoch_greatest_unrealized_checkpoint : Checkpoint Root := store.finalized_checkpoint
   previous_slot_head : Root
   current_slot_head : Root
 

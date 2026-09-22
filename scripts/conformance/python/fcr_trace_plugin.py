@@ -96,7 +96,7 @@ def _store(spec: Any, store: Any) -> dict[str, Any]:
 
 
 def _fcr_store(fcr_store: Any) -> dict[str, Any]:
-    return {
+    fields = {
         "confirmed_root": _root(fcr_store.confirmed_root),
         "previous_epoch_observed_justified_checkpoint": _checkpoint(
             fcr_store.previous_epoch_observed_justified_checkpoint
@@ -110,6 +110,11 @@ def _fcr_store(fcr_store: Any) -> dict[str, Any]:
         "previous_slot_head": _root(fcr_store.previous_slot_head),
         "current_slot_head": _root(fcr_store.current_slot_head),
     }
+    if hasattr(fcr_store, "current_epoch_greatest_unrealized_checkpoint"):
+        fields["current_epoch_greatest_unrealized_checkpoint"] = _checkpoint(
+            fcr_store.current_epoch_greatest_unrealized_checkpoint
+        )
+    return fields
 
 
 def _config(spec: Any) -> dict[str, Any]:
@@ -270,7 +275,7 @@ def _capture(self: Any) -> None:
         raise RuntimeError(f"store mutation unknown test_id={test_id}")
 
     record = {
-        "schema": 1,
+        "schema": 2 if "current_epoch_greatest_unrealized_checkpoint" in fcr_before else 1,
         "test_id": test_id,
         "fork": str(spec.fork),
         "preset": str(spec.config.PRESET_BASE),
