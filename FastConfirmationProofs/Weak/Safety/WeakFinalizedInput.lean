@@ -668,7 +668,7 @@ q)`, `obs` honest or not) rather than at a separately-supplied `SafeFrom`
 input, is `SafeFrom` at the actual query second.
 
 Observer-wise the premise surface is `hW : WeakObserverAssumptions` — the
-floor, `obs ∉ E.honest`, and committee readback at the observer's own store.
+floor and committee readback at the observer's own store. The observer may be honest.
 `B`/`hanchor`/`hboundary` are carried here anyway and `hT` is derived from
 `hW.base`, so `ObserverCoherence.justified_root_known` is *derived* via
 `WeakObserverAssumptions.toMarginAssumptions`, not assumed. -/

@@ -124,7 +124,9 @@ def get_adversarial_weight (store : Store Root) (balance_source : BeaconState Ro
 At the first slot of an epoch this is the previous epoch. Provenance places
 recorded votes before the current slot. A cell from the preceding epoch may
 also remain usable if its validator has no completed duty in this epoch; the
-predicate below checks that condition explicitly. -/
+predicate below checks that condition explicitly. At slot zero, Lean natural
+subtraction gives zero for `current_slot - 1`; Python's unsigned Slot subtraction
+underflows. This definition matches the positive-slot path. -/
 def recorded_cutoff_epoch (store : Store Root) : Epoch :=
   compute_epoch_at_slot cfg (get_current_slot cfg store - 1)
 

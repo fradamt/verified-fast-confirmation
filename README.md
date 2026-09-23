@@ -63,7 +63,7 @@ Use the pinned Lean toolchain and a local checkout of the Python fork. The full 
 scripts/validate.sh --consensus-repo /path/to/fradamt-consensus-specs
 ```
 
-`--fast` runs source, document-name, boundary, and hygiene checks. The full check covers 15 public witnesses in `scripts/Audit.lean`.
+`--fast` runs source, document-name, boundary, and hygiene checks. The full check covers 56 audit entries in `scripts/Audit.lean`: 14 main-side, 41 weak-side, and `review_claims`.
 
 ## Where to read
 

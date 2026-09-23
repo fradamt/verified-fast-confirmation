@@ -1,6 +1,6 @@
 # Review guide
 
-This page records known limits and their current status. The exact public propositions are in `FastConfirmationStatements/Review.lean`. `review_claims` in `FastConfirmationProofs/ReviewTheorem.lean` proves all three fields. `scripts/Audit.lean` checks 15 public witnesses: eight executable-side results and seven paper results.
+This page records known limits and their current status. The exact main public propositions are in `FastConfirmationStatements/Review.lean`. `review_claims` in `FastConfirmationProofs/ReviewTheorem.lean` proves all three fields. `scripts/Audit.lean` checks 56 entries: 14 main-side, 41 weak-side, and `review_claims`.
 
 ```text
 ┌───────────────────────────────────┬─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
@@ -26,6 +26,8 @@ This page records known limits and their current status. The exact public propos
 │                                   │ including a single-slot union. A global fault percentage alone does not imply these conditions.                    │
 │ Weak full-bundle witness          │ Open, user decision (W3). No accepted run witnesses all weak headline premises with a non-anchor stored output.      │
 │ Weak branch witnesses             │ Open, user decision (W11). The store fixture omits rollover and empty-slot PENDING discount; bank tests are vacuous. │
+│ Weak strong-cache interface       │ Open, user decision (W1). JustificationInterface reads the strong E.fcr cache for honest-view checkpoint fields.     │
+│                                   │ The weak full-rule headline takes that interface as a premise.                                                   │
 │ Opaque execution validation       │ Explicit abstraction. BeaconExternalsPremises and verified envelope events supply the engine verdict and            │
 │                                   │ deterministic behavior.                                                                                             │
 │ Static registry                   │ Explicit model idealisation. StaticValidatorSet covers the finite horizon; validator churn is outside the claim.    │
@@ -59,7 +61,7 @@ The source of record is fork `fradamt/consensus-specs`, tag `fcr-gloas-fix` (`13
 
 ## Weak branch status
 
-The `fcr-weak-synchrony` branch and tag `fcr-weak-synchrony-v1` have 55 trust-audit entries: 14 earlier executable and paper witnesses plus 41 weak-side results. The two full weak safety headlines take the common top-level inputs B, hji, hanchor, hboundary, hDelay, hpaper, P, V, hW, hCbase, and hfit. The endpoint also takes hw, hnm, hnext, and hHm. The exact anchor and known-walk facts are derived inside the proof; they are not headline binders. The weak live monotonicity proposition remains open. Its equivocation-budget and duty-freshness obligations remain unresolved at epoch boundaries.
+The `fcr-weak-synchrony` branch and tag `fcr-weak-synchrony-v1` have 56 trust-audit entries: 14 main-side, 41 weak-side, and `review_claims`. The two full weak safety headlines take the common top-level inputs B, hji, hanchor, hboundary, hDelay, hpaper, P, V, hW, hCbase, and hfit. The endpoint also takes hw, hnm, hnext, and hHm. The exact anchor and known-walk facts are derived inside the proof; they are not headline binders. The weak live monotonicity proposition remains open. Its equivocation-budget and duty-freshness obligations remain unresolved at epoch boundaries.
 
 ## Mechanical checks
 

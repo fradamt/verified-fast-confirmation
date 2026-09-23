@@ -26,13 +26,29 @@ The endpoint theorem also binds the honest endpoint hw, `n ≤ m`, the
 later-slot inequality, and the horizon bound. Anchor exactness and the
 walk domain are derived within the proof; they are not headline binders.
 
-The trust audit registers 56 public witnesses: the prior 55 (14 older
-Spec/Paper and 41 weak-side) plus main's `review_claims`. The 41 weak-side
+If the observer is honest, `hW.base.synchrony` delivers honest votes and
+relay messages to it. `JustificationInterface` also supplies same-slot
+cross-view checkpoint conditions on honest nodes. There is no direct receipt
+field for a non-honest observer. The observer's committee readback checks
+its local state; it does not deliver messages.
+The checkpoint fields of `JustificationInterface` read the strong `E.fcr`
+cache, so that interface remains a separate premise of the weak headlines.
+
+The trust audit registers 56 entries: 14 main-side, 41 weak-side, and
+`review_claims`. The 41 weak-side
 entries comprise eight weak safety, four replay, two negative containment,
 17 complete-evidence helper, and ten complete-evidence witness results.
 The complete-evidence witness is a store-contract witness. There is no
 accepted positive in-horizon execution that jointly supplies the full weak
 safety bundle and a non-anchor weak output.
+
+The six one-shot safety entries use a safe seed. The direct and discharged
+forms supply `SafeFrom` for the input root. The two finalized-input forms
+derive seed safety for the observer's finalized root from their FFG premises.
+If the selector advances, the direct and finalized forms require selected
+covered-margin supply; the discharged forms require strict-edge filter supply
+to derive that margin. These conditional inputs include earlier honest-head
+ancestry. They do not establish safety from an arbitrary seed.
 
 ## Open live statement
 
@@ -59,5 +75,8 @@ in `FastConfirmationProofs/Weak/`, and finite witnesses in
 non-optimistic payload verification path. As with the strong model, the
 accepted FFG semantics, network delivery, external verification, and
 scheduled execution premises require a separate implementation refinement.
+At slot zero, Lean natural subtraction in `Weak.recorded_cutoff_epoch` gives
+zero for the previous slot. The Python unsigned `Slot` subtraction underflows
+there. The duty-fresh comparison covers positive current slots.
 
 Older design and proof notes are preserved under `docs/history/`.
