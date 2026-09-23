@@ -70,7 +70,11 @@ def JustifiedIn (store : Store Root) (c : Checkpoint Root) : Prop :=
 stated at the altitude the algorithm uses it, over honest nodes' evolving
 stores; the prediction-shaped fields are gated on the spec's own
 `HonestVotesSupportTarget` proviso and on the relevant roots being known
-(the totalized ancestry walk is meaningless on unknown roots). -/
+(the totalized ancestry walk is meaningless on unknown roots).
+The observed justified checkpoint, previous greatest unrealized checkpoint,
+and observed checkpoint knownness fields below read the strong `E.fcr` cache.
+They do not state laws of `E.weakFcr`. A weak headline that takes this
+interface assumes these strong-cache laws. -/
 structure JustificationInterface (E : Execution Root) : Prop where
   /-- FFG accountable safety, consumed (< 1/3 of stake slashable under
       `CONFIRMATION_BYZANTINE_THRESHOLD ≤ 25`): checkpoints justified in
@@ -80,7 +84,7 @@ structure JustificationInterface (E : Execution Root) : Prop where
     ∀ c c' : Checkpoint Root,
     JustifiedIn (E.store cfg ext v n) c → JustifiedIn (E.store cfg ext w m) c' →
       c.epoch = c'.epoch → c.root = c'.root
-  /-- the observed justified checkpoints were attestation targets at every
+  /-- The strong `E.fcr` observed justified checkpoints were attestation targets at every
       honest node (their checkpoint states are cached — the balance-source
       reads are in-domain; an FFG export: justification requires two-thirds
       attestations targeting the checkpoint, delivered under synchrony). -/
@@ -190,7 +194,7 @@ structure JustificationInterface (E : Execution Root) : Prop where
      limit for the confirmed block's endpoint knownness).
      See `docs/p4-unrealized-justified-derivation.md` and
      `docs/plumbing-spec-citations.md` P-4. -/
-  /-- Greatest-unrealized cache:
+  /-- Strong `E.fcr` greatest-unrealized cache:
       the previous-epoch greatest unrealized checkpoint an honest node's FCR
       store carries is among its store's keyed checkpoint states (same
       ≥2/3-attested-target caching provenance as `justified_cached`
@@ -247,7 +251,7 @@ structure JustificationInterface (E : Execution Root) : Prop where
       is_ancestor (E.store cfg ext w m)
         (get_node_for_root (E.store cfg ext w m).finalized_checkpoint.root)
         (get_node_for_root (E.store cfg ext v k).finalized_checkpoint.root) = true
-  /-- Observed/unrealized
+  /-- Strong `E.fcr` observed/unrealized
       checkpoint knownness: the roots of the store's unrealized justified
       checkpoint, its previous-epoch greatest unrealized checkpoint, and the
       FCR store's observed justified checkpoint are known blocks (the same

@@ -31,8 +31,13 @@ relay messages to it. `JustificationInterface` also supplies same-slot
 cross-view checkpoint conditions on honest nodes. There is no direct receipt
 field for a non-honest observer. The observer's committee readback checks
 its local state; it does not deliver messages.
-The checkpoint fields of `JustificationInterface` read the strong `E.fcr`
-cache, so that interface remains a separate premise of the weak headlines.
+The observed justified checkpoint, previous greatest unrealized checkpoint,
+and observed checkpoint knownness fields of `JustificationInterface` read the
+strong `E.fcr` cache. They do not state laws of the weak `E.weakFcr` cache.
+Both weak headlines assume these strong-cache laws. Their safety guarantee
+therefore does not follow from weak-only premises. The strong cache is a
+computed shadow of the same schedule; the headlines give no equality between
+the strong and weak caches.
 
 The trust audit registers 56 entries: 14 main-side, 41 weak-side, and
 `review_claims`. The 41 weak-side

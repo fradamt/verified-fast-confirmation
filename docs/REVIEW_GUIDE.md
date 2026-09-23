@@ -27,8 +27,9 @@ This page records known limits and their current status. The exact main public p
 │                                   │ does not establish it. This matches CommitteeHonestMajority in the repository's formal paper Assumption 2.         │
 │ Weak full-bundle witness          │ Open, user decision (W3). No accepted run witnesses all weak headline premises with a non-anchor stored output.      │
 │ Weak branch witnesses             │ Open, user decision (W11). The store fixture omits rollover and empty-slot PENDING discount; bank tests are vacuous. │
-│ Weak strong-cache interface       │ Open, user decision (W1). JustificationInterface reads the strong E.fcr cache for honest-view checkpoint fields.     │
-│                                   │ The weak full-rule headline takes that interface as a premise.                                                   │
+│ Weak strong-cache interface       │ Confirmed, open (W1). The weak headlines assume strong E.fcr laws for observed justified checkpoints, the previous │
+│                                   │ greatest unrealized checkpoint, and observed checkpoint knownness. These are not E.weakFcr laws. The guarantee     │
+│                                   │ does not follow from weak-only premises.                                                                          │
 │ Opaque execution validation       │ Explicit abstraction. BeaconExternalsPremises and verified envelope events supply the engine verdict and            │
 │                                   │ deterministic behavior.                                                                                             │
 │ Static registry                   │ Explicit model idealisation. StaticValidatorSet covers the finite horizon; validator churn is outside the claim.    │

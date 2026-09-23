@@ -136,15 +136,21 @@ namespace Execution
 
 variable (E : Execution Root)
 
-/-! ## The unconditional weak full-rule fold -/
+/-! ## The weak full-rule fold with a derived reset seed -/
 
-/-- **The weak full-rule safety theorem, unconditionally.**
+/-- **The weak full-rule safety theorem with a derived reset seed.**
 
 Every root the observer's weak FCR trajectory holds, at every in-horizon
 second, is an ancestor of every in-horizon honest node's fork-choice head from
 the following slot onward — at an observer that is granted nothing (no honesty,
 no guaranteed delivery), and whose every use of synchrony is licensed by a
 broadcast certificate.
+
+The `hji` premise includes laws of the strong shadow cache `E.fcr`:
+observed justified checkpoints, the previous greatest unrealized checkpoint,
+and observed checkpoint knownness. These are not laws of `E.weakFcr`. Thus
+this guarantee is conditional on strong-cache facts as well as weak execution
+facts; it is not a guarantee under weak-only premises.
 
 `Execution.weakConfirmed_safeFromFollowingSlot_of_weakFullRuleFold` with its
 last premise discharged by `Weak.observedResetSeedSafety_of_acceptedDynamics`.
@@ -207,11 +213,14 @@ theorem weakConfirmed_safeFromFollowingSlot_of_acceptedWeakFullRuleFold
     (Weak.observedResetSeedSafety_of_acceptedDynamics cfg ext hW.base hW.genesis B hji
       hanchor hboundary hW.committees_agree)
 
-/-- Endpoint form of the unconditional weak full-rule theorem, matching the
+/-- Endpoint form of the weak full-rule theorem, matching the
 paper's timing: the observer's weak confirmed root at second `n` is canonical
 at every in-horizon honest endpoint in a strictly later slot.  Weak twin of
 `Execution.confirmed_head_of_acceptedActualFCRFold_nextSlot`, with no honesty
-binder at `obs` and no residual obligation. -/
+binder at `obs` and no residual reset-seed obligation. Its `hji` premise
+includes strong `E.fcr` observed justified checkpoint, previous greatest
+unrealized checkpoint, and observed checkpoint knownness laws. It does not
+state those laws for `E.weakFcr`, so this is not a weak-only guarantee. -/
 theorem weakConfirmed_head_of_acceptedWeakFullRuleFold_nextSlot
     (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
     (hji : JustificationInterface cfg ext E)
