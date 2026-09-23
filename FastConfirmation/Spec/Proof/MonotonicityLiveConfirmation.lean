@@ -2645,6 +2645,66 @@ theorem AcceptedActualFCRNextSlotSafetyAssumptions.live_epoch_suffix_estimate_ex
     (by rw [hEndEq, hUprev]; exact hEpochUZ)
   simpa only [hEndEq, hUprev] using hfull.2
 
+/-- Every keyed checkpoint balance source at an honest in-horizon store has
+the static registry, an in-horizon epoch, and the anchored active total. -/
+theorem AcceptedActualFCRNextSlotSafetyAssumptions.live_cached_source_geometry
+    (h : E.AcceptedActualFCRNextSlotSafetyAssumptions cfg ext)
+    {w : ValidatorIndex} (hw : w ∈ E.honest) {t : ℕ}
+    (hHt : E.WithinHorizon cfg t) {cp : Checkpoint Root}
+    (hkey : cp ∈ (E.store cfg ext w t).checkpoint_state_keys) :
+    ((E.store cfg ext w t).checkpoint_states cp).validators = E.registry ∧
+      get_current_epoch cfg ((E.store cfg ext w t).checkpoint_states cp) <
+        E.verification_horizon ∧
+      get_total_active_balance cfg
+        ((E.store cfg ext w t).checkpoint_states cp) = E.total_active cfg := by
+  obtain ⟨ast, ablk, hgenEq, _, _⟩ := h.trajectory.genesis_structure
+  have hgen : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
+      E.genesis_store = get_forkchoice_store cfg ast ablk :=
+    ⟨ast, ablk, hgenEq⟩
+  have hregistry := E.registryConstant cfg ext
+    h.trajectory.externals_coherence hgen w hw t
+  have hslot := (E.stateSlotsLE cfg ext h.trajectory.whole_seconds
+    h.trajectory.externals_coherence hgen w t).2 cp hkey
+  have hsourceH : get_current_epoch cfg
+      ((E.store cfg ext w t).checkpoint_states cp) <
+        E.verification_horizon :=
+    lt_of_le_of_lt (Nat.div_le_div_right hslot) hHt.2.2
+  exact ⟨hregistry.2 cp hkey, hsourceH,
+    (h.live_cached_source_accounting cfg ext E hw hHt hkey).1⟩
+
+/-- A successful old one-block confirmation pins its source checkpoint key.
+That key persists, so both the old and boundary sources have the static
+registry, in-horizon epochs, and the same anchored total. -/
+theorem AcceptedActualFCRNextSlotSafetyAssumptions.live_confirmed_source_geometry_later
+    (h : E.AcceptedActualFCRNextSlotSafetyAssumptions cfg ext)
+    {w : ValidatorIndex} (hw : w ∈ E.honest) {n m : ℕ}
+    (hnm : n ≤ m) (hHn : E.WithinHorizon cfg n)
+    (hHm : E.WithinHorizon cfg m)
+    (cp : Checkpoint Root) (b : Root)
+    (hconfirmed : is_one_confirmed cfg ext (E.store cfg ext w n)
+      ((E.store cfg ext w n).checkpoint_states cp) b = true) :
+    let oldSource := (E.store cfg ext w n).checkpoint_states cp
+    let newSource := (E.store cfg ext w m).checkpoint_states cp
+    oldSource.validators = E.registry ∧
+      newSource.validators = E.registry ∧
+      get_current_epoch cfg oldSource < E.verification_horizon ∧
+      get_current_epoch cfg newSource < E.verification_horizon ∧
+      get_total_active_balance cfg oldSource = E.total_active cfg ∧
+      get_total_active_balance cfg newSource = E.total_active cfg := by
+  obtain ⟨ast, ablk, hgenEq, _, _⟩ := h.trajectory.genesis_structure
+  have hgen : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
+      E.genesis_store = get_forkchoice_store cfg ast ablk :=
+    ⟨ast, ablk, hgenEq⟩
+  have hkeyOld : cp ∈ (E.store cfg ext w n).checkpoint_state_keys :=
+    E.checkpoint_state_key_of_one_confirmed cfg ext hgen w n cp b hconfirmed
+  have hkeyNew : cp ∈ (E.store cfg ext w m).checkpoint_state_keys :=
+    E.store_checkpointKeysLE cfg ext w hnm hkeyOld
+  obtain ⟨hvalOld, hOldH, htabOld⟩ :=
+    h.live_cached_source_geometry cfg ext E hw hHn hkeyOld
+  obtain ⟨hvalNew, hNewH, htabNew⟩ :=
+    h.live_cached_source_geometry cfg ext E hw hHm hkeyNew
+  exact ⟨hvalOld, hvalNew, hOldH, hNewH, htabOld, htabNew⟩
+
 end Execution
 
 end FastConfirmation.Spec
