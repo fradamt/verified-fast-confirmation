@@ -1,23 +1,17 @@
 # Verified Fast Confirmation
 
-Gloas lane status: **STOP-false at G2-004's current endpoint lemma**. The
-payload-aware discount prevents the old confirmed-child counterexample, but
-`Endpoint.ledger_descendStep` remains false under its current inputs. See
-[the rule change and proof status](docs/gloas-spec-deviation.md). The proof descriptions
-below describe the intended interface and retained development, not a
-validated Gloas safety result.
+Gloas status: **G2-003 and G2-004 are proved**. Full validation, including the
+trust audit, passed at commit `6d478e7`. The payload-aware empty-slot discount
+is a [documented local deviation](docs/gloas-spec-deviation.md) from upstream
+consensus-specs commit `6b9bd532c`.
 
 Lean 4 formalizations of Ethereum's Fast Confirmation Rule.
-
-This branch is migrating the executable model to Gloas. The Gloas proof port
-and full validation are not complete. The theorem descriptions below record
-the existing proof interface; they do not yet establish Gloas safety.
 
 This repository contains two separate developments:
 
 | Development | Source | Role and import |
 | --- | --- | --- |
-| [`FastConfirmation/Spec/`](FastConfirmation/Spec/) | Ethereum consensus specification, pinned at public commit [`6b9bd53`](https://github.com/ethereum/consensus-specs/blob/6b9bd532cca16555e2f3282d757622ebff29743e/specs/phase0/fast-confirmation.md) | Primary executable model; accepted Gloas safety proof remains open |
+| [`FastConfirmation/Spec/`](FastConfirmation/Spec/) | Ethereum consensus specification, pinned at public commit [`6b9bd53`](https://github.com/ethereum/consensus-specs/blob/6b9bd532cca16555e2f3282d757622ebff29743e/specs/phase0/fast-confirmation.md), with the documented payload-aware discount | Primary executable model with a proved accepted Gloas safety theorem |
 | [`FastConfirmation/Paper/`](FastConfirmation/Paper/) | [Fast Confirmation Rule paper](https://arxiv.org/abs/2405.00549), Sections 3.1 and 4 | Independent companion model and proofs; `import FastConfirmation.Paper` |
 
 The accepted consensus-spec theorem is proved entirely within
@@ -51,7 +45,9 @@ Useful entry points:
 - [Model facade](FastConfirmation/Spec/Model.lean)
 - [Public proved-theorem facade](FastConfirmation/Spec/ProvenTheorems.lean)
 - [Accepted assumptions, statement, and proof implementation](FastConfirmation/Spec/Proof/AcceptedActualFCRNextSlotSafetyFacade.lean)
-- [Concrete non-vacuity witness](FastConfirmation/Spec/Proof/AcceptedActualFCRJointNonVacuityFinal.lean)
+- [Concrete non-vacuity witness](FastConfirmation/Spec/Proof/AcceptedActualFCRJointNonVacuityFinal.lean):
+  a finite toy instance with four slots per epoch and a four-epoch horizon.
+  It does not establish a mainnet instance or unbounded liveness.
 
 ### Primary theorem
 
@@ -64,11 +60,16 @@ Useful entry points:
 The theorem concerns stored FCR outputs at completed execution boundaries.
 Its assumption bundle includes the execution trajectory, honest behavior,
 synchronous relay deadlines, the one-slot vote delivery lookahead, a static
-validator set over the finite horizon, the Byzantine-weight bound, the balance
-floor, the Phase0 source-coherence contracts, accepted FFG semantics,
+validator set over the finite horizon, a per-slot and per-span non-honest
+weight bound, the balance floor, the Phase0 source-coherence contracts,
+accepted FFG semantics,
 trusted-anchor coherence, checkpoint projection, the paper's Assumption 3.2,
 and call-scoped helper provisos. Reset safety and the head-ancestry conclusion
-are derived, not assumed.
+are derived, not assumed. The economic bound is a committee concentration
+assumption for every slot and span. A global stake bound alone does not imply it.
+
+Legacy internal proofs still take `hstatus` or `hpayload` inputs. No audited
+witness takes either input; the accepted bundle carries its own payload relay.
 
 The same facade proves
 `findLatestConfirmedDescendant_safeFrom_of_actualCall` for the literal helper

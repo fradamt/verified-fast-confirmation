@@ -1,5 +1,18 @@
 # Review guide
 
+## Known scope limits
+
+Pending user decision:
+
+- Optimistic-sync `VALID` status is not modelled. The normative `MUST` in
+  `is_one_confirmed` is not implemented in the Python function body either.
+- Execution, envelope, and bid checks are opaque Boolean externals with no
+  source-soundness law.
+- The paper-model Algorithm-1 monotonicity witness assumes future confirmation
+  of honest-view-safe blocks.
+- Live monotonicity needs an FFG timing premise. See
+  [Missing FFG timing premise](#missing-ffg-timing-premise).
+
 ## Proposed live monotonicity premises (open)
 
 `Spec_Monotonicity_live` is a proposed statement in

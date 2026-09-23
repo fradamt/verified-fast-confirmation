@@ -1,10 +1,9 @@
 # Spec-model design — `FastConfirmation/Spec/`
 
-G5 status: the payload-aware discount removes the G3 confirmed-child
-counterexample. The current endpoint lemma remains false because its inputs
-do not link the ledger to confirmation. See [the exact rule change and proof
-status](gloas-spec-deviation.md). The inherited proof-interface descriptions
-below are not a completed Gloas theorem.
+Gloas status: G2-003 and G2-004 are proved with the payload-aware discount.
+Full validation passed at commit `6d478e7`. The accepted Gloas theorem is
+proved under the stated assumption bundle. See [the exact rule change and
+proof status](gloas-spec-deviation.md).
 
 This repository models both the FCR **paper** (arXiv:2405.00549) and the FCR
 **consensus spec**. This document describes the consensus-spec layer:

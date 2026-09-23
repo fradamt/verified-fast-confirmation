@@ -207,9 +207,10 @@ end Execution
 as `Spec_Safety_next_slot`, under the accepted executable-semantics bundle.
 
 The global `PaperSafetySynchrony` inside `completed_calls` makes this the
-current model's GST-0 specialization. Its three fields are honest-attestation
-delivery, block relay, and equivocation-evidence relay; it does not require the
-additional `latest_message_relay` premise of the full `Synchrony` bundle. -/
+current model's GST-0 specialization. Its four fields are honest-attestation
+delivery, block relay, payload-envelope relay, and equivocation-evidence relay;
+it does not require the additional `latest_message_relay` premise of the full
+`Synchrony` bundle. -/
 def AcceptedSpec_Safety_next_slot : Prop :=
   ∀ E : Execution Root,
     E.AcceptedActualFCRNextSlotSafetyAssumptions cfg ext →
