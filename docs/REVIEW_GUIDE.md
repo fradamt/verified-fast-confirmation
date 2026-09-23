@@ -23,7 +23,7 @@
 `FastConfirmationStatements/Premises/LiveMonotonicity.lean`. Its accepted-bundle
 specialization, `LiveConfirmedRootMonotonicity`, is proved by
 `live_confirmed_root_monotonicity` in `MonotonicityLiveAssemble.lean` and is one of the
-15 audit witnesses. `LiveMonotonicityPremises` has five premises:
+15 audit witnesses. `LiveMonotonicityPremises` has two premises:
 
 - `honest_block_each_slot`: every slot from the execution start through the
   interval has a block with an honest proposer index, and every honest store
@@ -31,13 +31,6 @@ specialization, `LiveConfirmedRootMonotonicity`, is proved by
   see the block and support its descendants. The prefix is needed because an
   interval can begin with an already stale cached root. Same-slot support is
   needed for a full epoch's committee to support its first block.
-- `honest_votes_extend_initial_head`: honest votes in the interval support a
-  descendant of the observer's initial head in the voter's store.
-- `paper_byzantine_boost_bound`: four times the actual non-honest active stake plus
-  proposer boost is less than the total active stake.
-- `configured_threshold_margin`: twice the actual non-honest active stake, twice the
-  configured adversarial allowance, and proposer boost total less than the
-  active stake. The executable FCR uses the configured cap in its threshold.
 - `ffg_timely_justification`: the paper Assumption 6 counterpart. At each
   completed epoch's last-slot call, honest stores observe that epoch's
   checkpoint on their next head chain; the next epoch's head has matching
@@ -45,12 +38,7 @@ specialization, `LiveConfirmedRootMonotonicity`, is proved by
 
 The accepted trajectory already supplies honest committee participation and
 active-validator committee coverage in each in-horizon epoch. These facts are
-not repeated in the liveness record. The closed proof uses
-`honest_block_each_slot` for historical block certificates and
-`ffg_timely_justification` for the observed checkpoint at each completed epoch
-boundary. It does not use `honest_votes_extend_initial_head`,
-`paper_byzantine_boost_bound`, or `configured_threshold_margin`. Those fields
-remain in the statement and record.
+not repeated in the liveness record. The closed proof uses both live fields.
 
 Scope of the live premises. Both used fields are strong. The paper's Theorem 1
 monotonicity has no block-production premise; the executable rule needs one

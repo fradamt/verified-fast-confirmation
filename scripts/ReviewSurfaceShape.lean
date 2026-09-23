@@ -21,9 +21,7 @@ run_cmd do
      "slots_per_epoch_gt_one", "paper_a32", "checkpoint_projection",
      "exact_link_validity"]
   checkFields `FastConfirmation.Spec.LiveMonotonicityPremises
-    ["honest_block_each_slot", "honest_votes_extend_initial_head",
-     "paper_byzantine_boost_bound", "configured_threshold_margin",
-     "ffg_timely_justification"]
+    ["honest_block_each_slot", "ffg_timely_justification"]
   checkFields `FastConfirmation.Spec.NextSlotSynchronyPremises
     ["attestation_delivery", "block_relay", "envelope_delivery",
      "data_availability_relay", "attester_slashing_relay"]

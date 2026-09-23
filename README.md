@@ -81,9 +81,8 @@ result at an actual scheduled boundary call, including an unchanged return.
 confirmed root descends from its earlier stored confirmed root under
 `LiveMonotonicityPremises`. The proof is in
 [MonotonicityLiveAssemble.lean](FastConfirmationProofs/Monotonicity/LiveConfirmation.lean).
-It uses the live record's honest production and vote support field and its
-timely FFG checkpoint field. The other three live fields are present in the
-statement but are unused by this proof.
+It uses both live fields: honest block production with descendant vote support,
+and timely FFG checkpoint closure.
 
 The result is the GST-0 specialization: its relay laws hold throughout the
 checked execution. It does not claim cross-node safety for optional queries at

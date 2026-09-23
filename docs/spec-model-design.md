@@ -203,10 +203,10 @@ correspondence is:
 
 | Paper | Spec model |
 |---|---|
-| Assumption 4 | `paper_byzantine_boost_bound`, with actual non-honest stake |
+| Assumption 4 | No separate live premise; accepted economic premises and the live block support law supply the executable proof |
 | `CommitteeCoversEpoch` | accepted `BeaconExternalsPremises.committee_coverage` |
-| synchronous honest votes | `honest_block_each_slot`, `honest_votes_extend_initial_head`, accepted synchrony |
-| threshold with `beta` | `configured_threshold_margin`, because the executable threshold uses the configured cap |
+| synchronous honest votes | `honest_block_each_slot` (including descendant vote support), accepted synchrony |
+| threshold with `beta` | No separate live margin; the closed proof uses the accepted executable threshold premises |
 | Assumption 6, conditional eventual FFG closure | `ffg_timely_justification`, with checkpoint timing at the last-slot call and next epoch start |
 | none | FFG gates, staleness revert, observed restart, epoch-start reconfirmation |
 

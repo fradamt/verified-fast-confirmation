@@ -79,26 +79,6 @@ structure LiveMonotonicityPremises (E : Execution Root)
           is_ancestor (E.store cfg ext i k)
             (get_node_for_root a.data.beacon_block_root)
             (get_node_for_root r) = true
-  /-- Every honest committee vote in the interval supports a descendant of
-  the observer's initial head, in the voter's store when it votes. -/
-  honest_votes_extend_initial_head : ∀ i ∈ E.honest, ∀ s k a,
-    E.slot_at cfg n ≤ s → s < E.slot_at cfg m →
-    E.vote i s = some (k, a) →
-      is_ancestor (E.store cfg ext i k)
-        (get_node_for_root a.data.beacon_block_root)
-        (get_node_for_root (get_head cfg (E.store cfg ext v n)).root) = true
-  /-- Integer form of paper Assumption 4 using actual non-honest stake and
-  the proposer boost computed from the common anchor balance source. -/
-  paper_byzantine_boost_bound :
-    4 * E.activeNonHonestWeight cfg +
-      compute_proposer_score cfg E.anchor_state < E.total_active cfg
-  /-- The executable threshold budgets the configured Byzantine cap, which
-  can exceed actual Byzantine stake. This additional arithmetic margin
-  covers that conservative budget for a full-epoch committee window. -/
-  configured_threshold_margin :
-    2 * E.activeNonHonestWeight cfg +
-      2 * (E.total_active cfg / 100 * cfg.confirmation_byzantine_threshold) +
-      compute_proposer_score cfg E.anchor_state < E.total_active cfg
   /-- Paper Assumption 6 counterpart: conditional eventual FFG closure is
   visible at the last-slot call of each completed epoch. The checkpoint is
   an epoch block on every honest head chain. At the
@@ -126,15 +106,12 @@ structure LiveMonotonicityPremises (E : Execution Root)
         next.unrealized_justifications (get_head cfg next).root = c ∧
         (get_voting_source cfg next (get_head cfg last).root).epoch + 2 ≥ e + 1
 
-/-- Proposed executable-spec counterpart of the monotonicity half of paper
-Theorem 1 (arXiv:2405.00549): under the accepted execution assumptions and
-continued production, honest descendant voting, and Assumption 4, an earlier
-stored confirmed root remains an ancestor of the later stored root. The
-executable threshold also needs a margin against its configured Byzantine
-allowance; this is a separate field of the proposed liveness bundle. The
-`accepted` argument is instantiated with
-`NextSlotSafetyPremises` downstream: that record is not
-available in this upstream statement module. -/
+/-- Executable-spec counterpart of the monotonicity half of paper Theorem 1
+(arXiv:2405.00549): under accepted execution assumptions, honest block
+production and descendant voting, and timely FFG closure, an earlier stored
+confirmed root remains an ancestor of the later stored root. The `accepted`
+argument is instantiated with `NextSlotSafetyPremises` downstream: that record
+is not available in this upstream statement module. -/
 def ConfirmedRootMonotonicity
     (accepted : Execution Root → Prop) : Prop :=
   ∀ E : Execution Root, accepted E →
