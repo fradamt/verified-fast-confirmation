@@ -18,12 +18,13 @@ This page records known limits and their current status. The exact public propos
 │ Payload envelope exercise         │ Open, user decision (S9-6). The finite next-slot run has no envelope, so its envelope and data relay conditions     │
 │                                   │ hold vacuously.                                                                                                     │
 │ Guarded target-edge exercise      │ Open, user decision (S9-5). The next-slot witness selector guard excludes selected current-target accepted edges.   │
-│ Included-vote carrier relation    │ Open, user decision (S9-1; W5). Included is a free relation. Block-origin receipt does not prove that the carrier   │
-│                                   │ block contains the vote.                                                                                           │
-│ Included-vote validation state    │ Open, user decision (S9-2; W6). Inclusion may use any same-registry validating state; reachable-state soundness     │
-│                                   │ does not cover every such state.                                                                                    │
-│ Committee-union economics         │ Open, user decision (W4). The non-honest fraction bound and estimate soundness apply to every committee union,      │
-│                                   │ including a single-slot union. A global fault percentage alone does not imply these conditions.                    │
+│ Included-vote carrier relation    │ Confirmed, open (S9-1; W5). Included is supplied with causal evidence. The projected block has no ordinary FFG    │
+│                                   │ attestation body, so the relation is not checked against carrier body membership. Safety holds for each relation    │
+│                                   │ that meets the fields; it does not alone certify votes in real block bodies.                                        │
+│ Included-vote validation state    │ Confirmed, open (S9-2; W6). The state needs only the execution registry and a true validity answer. It need not be  │
+│                                   │ reachable or prepared by a handler.                                                                                 │
+│ Committee-union economics         │ Confirmed, open (W4). The fraction bound applies to every in-horizon span, including one slot. A global fault share │
+│                                   │ does not establish it. This matches CommitteeHonestMajority in the repository's formal paper Assumption 2.         │
 │ Weak full-bundle witness          │ Open, user decision (W3). No accepted run witnesses all weak headline premises with a non-anchor stored output.      │
 │ Weak branch witnesses             │ Open, user decision (W11). The store fixture omits rollover and empty-slot PENDING discount; bank tests are vacuous. │
 │ Opaque execution validation       │ Explicit abstraction. BeaconExternalsPremises and verified envelope events supply the engine verdict and            │

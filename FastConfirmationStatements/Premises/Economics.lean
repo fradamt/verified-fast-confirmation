@@ -49,14 +49,14 @@ structure ByzantineWeightPremises (E : Execution Root) : Prop where
     E.SlotWithinHorizon cfg a → E.SlotWithinHorizon cfg b →
     E.weight (E.span_committee a b) ≤
       estimate_committee_weight_between_slots cfg (E.total_active cfg) a b
-  /-- Per-span Byzantine *fraction* bound (the paper's Assumption 2 at the spec's own design point
-      `β = CONFIRMATION_BYZANTINE_THRESHOLD / 100`): in every slot span's
-      committee union the non-honest weight is at most `β` of the whole,
-      cross-multiplied to avoid division:
-      `100 · byz(span) ≤ CONFIRMATION_BYZANTINE_THRESHOLD · W(span)`. Ground
-      truth, uniform over spans — no `a ≤ b` guard, empty spans are trivially
-      `0 ≤ 0`; same committee-sampling concentration family as `span_bound`.
-      The proof uses both per-slot (`[t,t]`) and per-window instances. -/
+  /-- Non-honest weight is at most the threshold fraction of each committee
+      union for every in-horizon slot span, including a one-slot span. This is
+      the repository's formal paper Assumption 2, `CommitteeHonestMajority`,
+      at `β = CONFIRMATION_BYZANTINE_THRESHOLD / 100`:
+      `100 · byz(span) ≤ CONFIRMATION_BYZANTINE_THRESHOLD · W(span)`.
+      A global fault share does not establish this bound for each span.
+      There is no `a ≤ b` guard; an empty span gives `0 ≤ 0`. The proofs use
+      one-slot and longer-span instances. -/
   span_fraction : ∀ a b : Slot,
     E.SlotWithinHorizon cfg a → E.SlotWithinHorizon cfg b →
     100 * E.weight ((E.span_committee a b).filter (fun i => i ∉ E.honest)) ≤

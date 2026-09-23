@@ -31,7 +31,8 @@ The records in this table are in `FastConfirmationStatements/Premises/`. The pap
 │ Both safety fields  │ BeaconExternalsPremises             │ Slot and state transition coherence, committee and attestation         │ Model idealisation            │
 │                     │                                     │ validity, and deterministic envelope verification.                     │                               │
 │ Both safety fields  │ ByzantineWeightPremises             │ Quantized balances, sound committee estimates, and a non-honest weight │ Paper Assumption 2;           │
-│                     │                                     │ fraction bound for every slot span.                                    │ executable estimate           │
+│                     │                                     │ fraction bound for every span, including one slot. A global fault     │ executable estimate           │
+│                     │                                     │ share does not establish this span bound.                              │                               │
 │ Both safety fields  │ ExactPrefixAcceptedFFGSemantics;    │ Exact handler-successful prefix FFG state, causal links, and projected           │ Paper Assumption 3.2; model   │
 │                     │ AcceptedEpochCheckpointProjection   │ checkpoint roots.                                                      │ idealisation                  │
 │ Live field          │ LiveMonotonicityPremises            │ An honest block in each slot from execution start, known by the next   │ Paper Theorem 1 monotonicity  │
@@ -47,6 +48,9 @@ The records in this table are in `FastConfirmationStatements/Premises/`. The pap
 - Validator activity is fixed inside the checked horizon by `StaticValidatorSet`. The proof does not cover registry churn.
 - The model is non-optimistic. An imported payload enters the store only after `verify_execution_payload_envelope` returns true. This external includes the execution engine's `VALID` decision. Execution validation itself is opaque.
 - `BeaconExternalsPremises` supplies contracts for external state transitions and validation. The Lean proof does not implement an execution engine.
+- `AcceptedIncludedAttestationRelation.Included` is a supplied carrier-vote relation with causal evidence. The projected block keeps no ordinary FFG attestations, so the relation is not checked against its body. The safety claims hold for every relation that meets these fields. They do not alone certify the votes in real block bodies.
+- The inclusion evidence uses a validation state with the execution registry and a true validity answer. The state need not be reachable or prepared by a handler.
+- `ByzantineWeightPremises.span_fraction` must hold for every in-horizon slot span, including one slot. A global fault share does not establish this bound. The bound matches `CommitteeHonestMajority` in the repository's formal paper Assumption 2.
 - `LiveMonotonicityPremises.honest_block_each_slot` requires a block with an honest proposer index in every slot from execution start. Its vote-support law and `ffg_timely_justification` require timely descendant votes and exact FFG state outputs at epoch boundaries. These conditions are stronger than paper Assumption 6. Proposer-index membership is not an authentication theorem.
 - There is no joint finite witness for both live fields and the safety premise. The next-slot finite witness has no payload envelope, so its envelope relay conditions hold vacuously. Its selector guard excludes selected current-target accepted edges, so it does not exercise their support premise. See `FastConfirmationWitnesses/Index.lean`.
 - The result covers stored boundary outputs. `StrictPrefixExtraQuery.extra_query_changes_head_counterexample` and `PinnedEconomicsExtraQuery.extra_query_changes_head_counterexample` show why an arbitrary in-slot query needs a different statement.
