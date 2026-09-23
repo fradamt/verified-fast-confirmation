@@ -4,5 +4,6 @@ public import FastConfirmationWitnesses.Counterexamples.StrictPrefixExtraQuery
 public import FastConfirmationWitnesses.NonVacuity.FFGEvidence
 public import FastConfirmationWitnesses.NonVacuity.NextSlotPremises
 public import FastConfirmationWitnesses.NonVacuity.ScheduledRun
+public import FastConfirmationWitnesses.Index
 
 /-! Imports finite satisfying executions and strict-prefix counterexamples for the public FCR claims. -/
