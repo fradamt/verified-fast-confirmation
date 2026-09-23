@@ -51,6 +51,31 @@ theorem live_epoch_checkpoint_root_on_head
     (get_head cfg store).payload_status .pending]
   exact decide_eq_true hroot
 
+/-- The block named by an epoch checkpoint on a known head walk is exactly
+the epoch's start-slot block when it belongs to that epoch. -/
+theorem live_epoch_checkpoint_root_slot
+    (store : Store Root) (e : Epoch) (r : Root)
+    (hwf : ParentSlotLt store)
+    (hwalk : WalkKnown store (compute_start_slot_at_epoch cfg e)
+      (get_head cfg store).root)
+    (hcheckpoint : get_checkpoint_for_block cfg store
+      (get_head cfg store).root e = ⟨e, r⟩)
+    (hepoch : get_block_epoch cfg store r = e) :
+    get_block_slot store r = compute_start_slot_at_epoch cfg e := by
+  have hroot : (get_ancestor store
+      (get_node_for_root (get_head cfg store).root)
+      (compute_start_slot_at_epoch cfg e)).root = r :=
+    congrArg Checkpoint.root hcheckpoint
+  have hslotLe : (store.blocks r).slot ≤ compute_start_slot_at_epoch cfg e := by
+    rw [← hroot]
+    exact (get_ancestor_spec hwf hwalk).2
+  have hstartLe : compute_start_slot_at_epoch cfg e ≤ (store.blocks r).slot := by
+    simp only [get_block_epoch, compute_epoch_at_slot] at hepoch
+    simp only [compute_start_slot_at_epoch]
+    rw [← hepoch]
+    exact Nat.div_mul_le_self (store.blocks r).slot cfg.slots_per_epoch
+  exact Nat.le_antisymm hslotLe hstartLe
+
 /-- The slot computed as an epoch boundary satisfies the FCR start test. -/
 theorem live_epoch_start_is_start (e : Epoch) :
     is_start_slot_at_epoch cfg (compute_start_slot_at_epoch cfg e) = true := by
@@ -766,6 +791,167 @@ theorem AcceptedActualFCRNextSlotSafetyAssumptions.live_finalized_slot_le_previo
         Nat.add_le_add_left (by omega : 1 ≤ 2) _
       exact Nat.add_le_add_iff_right.mp (hstep.trans hdelay)
   exact hslot.trans (Nat.mul_le_mul_right cfg.slots_per_epoch hepoch)
+
+/-- At a live epoch boundary, a finalized reset is either below the observed
+checkpoint's start slot or has exactly that checkpoint root. The second case
+is the first-boundary anchor equality witnessed in m8. -/
+theorem AcceptedActualFCRNextSlotSafetyAssumptions.live_finalized_below_or_eq_checkpoint
+    (h : E.AcceptedActualFCRNextSlotSafetyAssumptions cfg ext)
+    (w : ValidatorIndex) (hw : w ∈ E.honest) (t : ℕ)
+    (hHt : E.WithinHorizon cfg t) (e : Epoch) (cp : Root)
+    (he0 : compute_epoch_at_slot cfg (E.slot_at cfg 0) ≤ e)
+    (hcurrent : get_current_store_epoch cfg (E.store cfg ext w t) = e + 1)
+    (hcpSlot : get_block_slot (E.store cfg ext w t) cp =
+      compute_start_slot_at_epoch cfg e)
+    (hcpHead : is_ancestor (E.store cfg ext w t)
+      (get_head cfg (E.store cfg ext w t)) (get_node_for_root cp) = true) :
+    get_block_slot (E.store cfg ext w t)
+      (E.store cfg ext w t).finalized_checkpoint.root <
+        get_block_slot (E.store cfg ext w t) cp ∨
+      (E.store cfg ext w t).finalized_checkpoint.root = cp := by
+  let st := E.store cfg ext w t
+  have hle := h.live_finalized_slot_le_previous_start cfg ext E w t e
+    he0 hcurrent
+  rw [← hcpSlot] at hle
+  by_cases hlt : get_block_slot st st.finalized_checkpoint.root <
+      get_block_slot st cp
+  · exact Or.inl hlt
+  right
+  have hslotEq : (st.blocks st.finalized_checkpoint.root).slot =
+      (st.blocks cp).slot := Nat.le_antisymm hle (Nat.le_of_not_gt hlt)
+  have hlag := (E.acceptedFinalizationLagAt cfg ext h.semantics
+    h.trajectory h.anchor_eq h.finalization_delay w t).realized
+  rcases hlag with hanchor | hdelay
+  · have hanchorHead : is_ancestor st (get_head cfg st)
+        (get_node_for_root h.semantics.anchor.root) = true := by
+      exact (E.trustedAnchor_safeFrom_of_acceptedGlobalTrajectory cfg ext
+        h.semantics h.trajectory h.anchor_eq h.anchor_boundary)
+        w hw t (Nat.zero_le _) hHt
+    rw [hanchor] at hslotEq ⊢
+    simp only [get_node_for_root, is_ancestor_pending,
+      decide_eq_true_eq] at hanchorHead hcpHead
+    rw [hslotEq] at hanchorHead
+    exact hanchorHead.symm.trans hcpHead
+  · have hfinEpoch : st.finalized_checkpoint.epoch < e := by
+      dsimp only [st] at hdelay ⊢
+      rw [hcurrent] at hdelay
+      have hsucc : (E.store cfg ext w t).finalized_checkpoint.epoch + 1 ≤ e :=
+        Nat.le_of_succ_le_succ hdelay
+      exact (Nat.lt_succ_self _).trans_le hsucc
+    have hboundary := Execution.ExactPrefixAcceptedFFGSemantics.finalizedBoundaryRealizationAt
+      cfg ext h.semantics h.trajectory h.anchor_eq h.anchor_boundary w t
+    have hstrict : get_block_slot st st.finalized_checkpoint.root <
+        compute_start_slot_at_epoch cfg e :=
+      hboundary.finalized_root_slot_le_boundary.trans_lt
+        (Nat.mul_lt_mul_of_pos_right hfinEpoch cfg.slots_per_epoch_pos)
+    have hslotEq' : get_block_slot st st.finalized_checkpoint.root =
+        compute_start_slot_at_epoch cfg e := by
+      rw [show get_block_slot st st.finalized_checkpoint.root =
+        get_block_slot st cp from hslotEq, hcpSlot]
+    rw [hslotEq'] at hstrict
+    exact False.elim (Nat.lt_irrefl _ hstrict)
+
+/-- The fifth live field supplies the checkpoint used by the repaired L3
+branch split at the actual next-epoch FCR call. -/
+theorem AcceptedActualFCRNextSlotSafetyAssumptions.live_boundary_finalized_below_or_eq_observed
+    (h : E.AcceptedActualFCRNextSlotSafetyAssumptions cfg ext)
+    {observer : ValidatorIndex} {n m : ℕ}
+    (live : MonotonicityLiveAssumptions cfg ext E observer n m)
+    {e : Epoch}
+    (he0 : compute_epoch_at_slot cfg (E.slot_at cfg 0) ≤ e)
+    (heDone : compute_start_slot_at_epoch cfg (e + 1) ≤ E.slot_at cfg m)
+    (hlastAfterZero : E.slot_at cfg 0 <
+      compute_start_slot_at_epoch cfg (e + 1) - 1)
+    (hHm : E.WithinHorizon cfg m)
+    {w : ValidatorIndex} (hw : w ∈ E.honest) :
+    let B := E.slot_start cfg (compute_start_slot_at_epoch cfg (e + 1))
+    let q := B - 1
+    get_block_slot (E.store cfg ext w B)
+      (E.store cfg ext w B).finalized_checkpoint.root <
+      get_block_slot (E.store cfg ext w B)
+        (E.fcrStep cfg ext w q).current_epoch_observed_justified_checkpoint.root ∨
+    (E.store cfg ext w B).finalized_checkpoint.root =
+      (E.fcrStep cfg ext w q).current_epoch_observed_justified_checkpoint.root := by
+  let S := compute_start_slot_at_epoch cfg (e + 1)
+  let B := E.slot_start cfg S
+  let q := B - 1
+  dsimp only
+  obtain ⟨ast, ablk, hgenEq, _, _⟩ := h.trajectory.genesis_structure
+  have hgenTime : E.genesis_store.genesis_time ≤ E.genesis_store.time := by
+    rw [hgenEq]
+    simp only [get_forkchoice_store]
+    omega
+  have hfrom : E.slot_at cfg 0 < S :=
+    lt_of_lt_of_le hlastAfterZero (Nat.sub_le _ _)
+  have hBpos : 0 < B :=
+    (E.slot_at_lt_iff cfg h.trajectory.whole_seconds hgenTime).1 hfrom
+  have hq : q + 1 = B := Nat.sub_add_cancel (Nat.succ_le_of_lt hBpos)
+  have hBslot : E.slot_at cfg B = S :=
+    E.slot_at_slot_start cfg h.trajectory.whole_seconds hfrom.le hgenTime
+  have hBleM : B ≤ m := by
+    apply Nat.le_of_not_gt
+    intro htooLate
+    have hslotLt : E.slot_at cfg m < S :=
+      (E.slot_at_lt_iff cfg h.trajectory.whole_seconds hgenTime).2 htooLate
+    exact (Nat.not_lt_of_ge heDone) hslotLt
+  have hHB : E.WithinHorizon cfg B := E.withinHorizon_mono cfg hBleM hHm
+  obtain ⟨c, hcEpoch, ⟨r, b, hblock, hbe, hroot⟩, hstores⟩ :=
+    live.ffg_timely_justification e he0 heDone
+  have hgate := h.live_ffg_actual_boundary_inputs cfg ext E live
+    he0 heDone hlastAfterZero hw
+  dsimp only at hgate
+  have hhead : (E.store cfg ext w B).unrealized_justifications
+      (get_head cfg (E.store cfg ext w B)).root = c := by
+    exact (hstores w hw).2.2.1
+  have hobs : (E.fcrStep cfg ext w q).current_epoch_observed_justified_checkpoint = c := by
+    have hgate' := hgate.1
+    rw [hq] at hgate'
+    exact hgate'.trans hhead
+  have hknown : c.root ∈ (E.store cfg ext w B).block_roots := by
+    have hk := h.live_observed_root_known cfg ext E w q
+    rw [hq, hobs] at hk
+    exact hk
+  have hrootEpoch : get_block_epoch cfg (E.store cfg ext w B) c.root = e := by
+    rw [hroot]
+    exact (h.live_known_block_epoch cfg ext E hblock
+      (by rwa [hroot] at hknown)).trans hbe
+  have hcheckpoint : get_checkpoint_for_block cfg (E.store cfg ext w B)
+      (get_head cfg (E.store cfg ext w B)).root e = ⟨e, c.root⟩ := by
+    have hcp : get_checkpoint_for_block cfg (E.store cfg ext w B)
+        (get_head cfg (E.store cfg ext w B)).root e = c := by
+      simpa only [B, S] using (hstores w hw).2.1
+    have hcStruct : c = ⟨e, c.root⟩ := by
+      cases c with
+      | mk ce cr => cases hcEpoch; rfl
+    exact hcp.trans hcStruct
+  have hheadKnown : (get_head cfg (E.store cfg ext w B)).root ∈
+      (E.store cfg ext w B).block_roots :=
+    E.headRootKnown_of_acceptedGlobalTrajectory cfg ext
+      h.semantics h.trajectory h.anchor_eq h.anchor_boundary hw B hHB
+  have hwalk : WalkKnown (E.store cfg ext w B)
+      (compute_start_slot_at_epoch cfg e)
+      (get_head cfg (E.store cfg ext w B)).root :=
+    E.trustedAnchor_boundaryWalkAtEpoch_of_trajectory cfg ext
+      h.trajectory h.anchor_eq h.anchor_boundary w B
+      (by rw [h.live_anchor_checkpoint_epoch cfg ext E]; exact he0)
+      hheadKnown
+  have hwf : ParentSlotLt (E.store cfg ext w B) :=
+    E.store_parentSlotLt cfg ext h.trajectory.wellFormed
+      h.trajectory.externals_coherence h.trajectory.genesis_structure
+      h.trajectory.wellFormed.anchor_parent_unscheduled w B
+  have hcpSlot : get_block_slot (E.store cfg ext w B) c.root =
+      compute_start_slot_at_epoch cfg e :=
+    live_epoch_checkpoint_root_slot cfg _ e _ hwf hwalk hcheckpoint hrootEpoch
+  have hcpHead : is_ancestor (E.store cfg ext w B)
+      (get_head cfg (E.store cfg ext w B)) (get_node_for_root c.root) = true :=
+    live_epoch_checkpoint_root_on_head cfg _ e _ hwf hwalk hcheckpoint hrootEpoch
+  have hcurrent : get_current_store_epoch cfg (E.store cfg ext w B) = e + 1 := by
+    rw [get_current_store_epoch, E.store_current_slot, hBslot]
+    simp [S, compute_epoch_at_slot, compute_start_slot_at_epoch,
+      cfg.slots_per_epoch_pos]
+  have hresult := h.live_finalized_below_or_eq_checkpoint cfg ext E
+    w hw B hHB e c.root he0 hcurrent hcpSlot hcpHead
+  simpa only [B, S, q, hobs] using hresult
 
 end Execution
 
