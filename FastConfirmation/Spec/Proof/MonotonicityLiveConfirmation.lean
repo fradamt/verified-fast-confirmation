@@ -2287,6 +2287,139 @@ theorem AcceptedActualFCRNextSlotSafetyAssumptions.live_boundary_score_growth
     (E.store cfg ext w n) (E.store cfg ext w m)
     oldSource newSource (get_node_for_root b) hvalOld hvalNew HS hadded
 
+/-- The arithmetic and vote-persistence core of per-block boundary
+reconfirmation. Remaining inputs are the historical old confirmation and
+exact same-epoch window geometry. -/
+theorem AcceptedActualFCRNextSlotSafetyAssumptions.live_boundary_reconfirm_of_window
+    (h : E.AcceptedActualFCRNextSlotSafetyAssumptions cfg ext)
+    {w : ValidatorIndex} (hw : w ∈ E.honest)
+    {n m : ℕ} (hnm : n ≤ m)
+    (hHn : E.WithinHorizon cfg n) (hHm : E.WithinHorizon cfg m)
+    {e : Epoch}
+    (holdCurrent : get_current_store_epoch cfg (E.store cfg ext w n) = e)
+    (hboundary : E.slot_at cfg m =
+      compute_start_slot_at_epoch cfg (e + 1))
+    {b : Root} (hb : b ∈ (E.store cfg ext w n).block_roots)
+    (hbEpoch : get_block_epoch cfg (E.store cfg ext w n) b = e)
+    (hbH : E.SlotWithinHorizon cfg
+      ((E.store cfg ext w n).blocks b).slot)
+    {s : Slot} (hs0 : E.slot_at cfg 0 ≤ s)
+    (hsupport : ∀ j ∈ E.honest, ∀ u k a,
+      s ≤ u → u < E.slot_at cfg m → E.vote j u = some (k, a) →
+        b ∈ (E.store cfg ext j k).block_roots ∧
+        is_ancestor (E.store cfg ext j k)
+          (get_node_for_root a.data.beacon_block_root)
+          (get_node_for_root b) = true)
+    (oldSource newSource : BeaconState Root)
+    (hvalOld : oldSource.validators = E.registry)
+    (hvalNew : newSource.validators = E.registry)
+    (hOldH : get_current_epoch cfg oldSource < E.verification_horizon)
+    (hNewH : get_current_epoch cfg newSource < E.verification_horizon)
+    (htabOld : get_total_active_balance cfg oldSource = E.total_active cfg)
+    (htabNew : get_total_active_balance cfg newSource = E.total_active cfg)
+    (hconfirmed : is_one_confirmed cfg ext
+      (E.store cfg ext w n) oldSource b = true)
+    (hOldDiscount : get_support_discount cfg ext
+      (E.store cfg ext w n) oldSource b = 0)
+    (hNewDiscount : get_support_discount cfg ext
+      (E.store cfg ext w m) newSource b = 0)
+    (sa added : ℕ)
+    (hsa : sa ≤ ((E.store cfg ext w n).blocks b).slot)
+    (hsaH : E.SlotWithinHorizon cfg sa)
+    (hOldEndH : E.SlotWithinHorizon cfg
+      (get_current_slot cfg (E.store cfg ext w n) - 1))
+    (hNewEndH : E.SlotWithinHorizon cfg
+      (get_current_slot cfg (E.store cfg ext w m) - 1))
+    (hEnd : get_current_slot cfg (E.store cfg ext w n) - 1 ≤
+      get_current_slot cfg (E.store cfg ext w m) - 1)
+    (hstartOld :
+      (if get_block_epoch cfg (E.store cfg ext w n) b >
+          get_block_epoch cfg (E.store cfg ext w n)
+            ((E.store cfg ext w n).blocks b).parent_root then
+        compute_start_slot_at_epoch cfg
+          (get_block_epoch cfg (E.store cfg ext w n) b)
+       else ((E.store cfg ext w n).blocks b).slot) = sa)
+    (hstartNew :
+      (if get_block_epoch cfg (E.store cfg ext w m) b >
+          get_block_epoch cfg (E.store cfg ext w m)
+            ((E.store cfg ext w m).blocks b).parent_root then
+        compute_start_slot_at_epoch cfg
+          (get_block_epoch cfg (E.store cfg ext w m) b)
+       else ((E.store cfg ext w m).blocks b).slot) = sa)
+    (hestimate : estimate_committee_weight_between_slots cfg
+        (get_total_active_balance cfg newSource) sa
+        (get_current_slot cfg (E.store cfg ext w m) - 1) =
+      estimate_committee_weight_between_slots cfg
+        (get_total_active_balance cfg oldSource) sa
+        (get_current_slot cfg (E.store cfg ext w n) - 1) + added)
+    (hOldDiv : 100 ∣ estimate_committee_weight_between_slots cfg
+      (get_total_active_balance cfg oldSource) sa
+      (get_current_slot cfg (E.store cfg ext w n) - 1))
+    (hAddedDiv : 100 ∣ added)
+    (hwindow : estimate_committee_weight_between_slots cfg
+        (get_total_active_balance cfg newSource)
+        (((E.store cfg ext w m).blocks
+          ((E.store cfg ext w m).blocks b).parent_root).slot + 1)
+        (get_current_slot cfg (E.store cfg ext w m) - 1) ≤
+      estimate_committee_weight_between_slots cfg
+        (get_total_active_balance cfg oldSource)
+        (((E.store cfg ext w n).blocks
+          ((E.store cfg ext w n).blocks b).parent_root).slot + 1)
+        (get_current_slot cfg (E.store cfg ext w n) - 1) + added)
+    (HS : Finset ValidatorIndex)
+    (hHS : ∀ i ∈ HS, i ∈ E.honest ∧
+      ∃ t : Slot, E.SlotWithinHorizon cfg t ∧
+        s ≤ t ∧ get_current_slot cfg (E.store cfg ext w n) ≤ t ∧
+        t < E.slot_at cfg m ∧
+        t < compute_start_slot_at_epoch cfg (e + 1) ∧
+        i ∈ E.committee t ∧ E.slot_start cfg (t + 1) ≤ m)
+    (hhonest : 3 * added ≤ 4 * E.weight HS) :
+    is_one_confirmed cfg ext (E.store cfg ext w m) newSource b = true := by
+  let lost := E.weight ((AttSupporters cfg (E.store cfg ext w n)
+    (get_node_for_root b) oldSource).toFinset \
+    (AttSupporters cfg (E.store cfg ext w m)
+      (get_node_for_root b) newSource).toFinset)
+  have hscore := h.live_boundary_score_growth cfg ext E hw hHn hHm
+    holdCurrent hb hbEpoch hs0 hsupport oldSource newSource
+    hvalOld hvalNew hNewH HS hHS
+  have hspan := h.live_old_supporters_in_later_span cfg ext E
+    hw hHn hb oldSource hsa hEnd
+  have hLostSpan :
+      (AttSupporters cfg (E.store cfg ext w n)
+        (get_node_for_root b) oldSource).toFinset \
+        (AttSupporters cfg (E.store cfg ext w m)
+          (get_node_for_root b) newSource).toFinset ⊆
+        E.span_committee sa
+          (get_current_slot cfg (E.store cfg ext w m) - 1) := by
+    intro i hi
+    exact hspan (Finset.mem_sdiff.mp hi).1
+  have hequiv := h.live_equivocation_score_growth_with_loss cfg ext E
+    hw hnm hHn hHm holdCurrent hboundary hb hbEpoch
+    oldSource newSource hvalOld hvalNew hOldH hNewH
+    sa _ _ hEnd hOldEndH hNewEndH hLostSpan
+  have hlost := h.live_lost_weight_le_old_adversarial cfg ext E
+    hw hnm hHn hHm holdCurrent hboundary hb hbEpoch hbH
+    oldSource newSource hvalOld hvalNew htabOld hOldH hNewH
+  have hOldEq := h.live_equivocation_le_budget cfg ext E
+    hw hHn hb oldSource hvalOld htabOld hsa hsaH hOldEndH
+  have hadversarial := get_adversarial_weight_quantized_growth_with_loss
+    cfg ext (E.store cfg ext w n) (E.store cfg ext w m)
+    oldSource newSource b sa added lost hstartOld hstartNew
+    hestimate hOldDiv hAddedDiv hOldEq hlost hequiv
+  have hboost : compute_proposer_score cfg newSource ≤
+      compute_proposer_score cfg oldSource := by
+    simp only [compute_proposer_score, htabOld, htabNew]
+    exact le_rfl
+  have hscorePositive := one_confirmed_requires_nonadversarial_support
+    cfg ext (E.store cfg ext w n) oldSource b
+    (by rw [hOldDiscount]; exact Nat.zero_le _) hconfirmed
+  exact is_one_confirmed_reconfirm_of_growth_with_equivocation_loss
+    cfg ext (E.store cfg ext w n) (E.store cfg ext w m)
+    oldSource newSource b added (E.weight HS) lost
+    hconfirmed hOldDiscount hNewDiscount hscore
+    (hlost.trans_lt hscorePositive) hwindow hboost
+    hadversarial hhonest
+
 end Execution
 
 end FastConfirmation.Spec
