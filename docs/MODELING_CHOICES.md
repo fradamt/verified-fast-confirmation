@@ -10,6 +10,10 @@ Each row states a choice in the executable or paper model, why it is used, and t
 │                                        │                                                                │ checked range.                                                           │
 │ Totalized finite maps                  │ Lean functions must return on missing keys.                    │ Proofs need domain laws for reachable keys; arbitrary missing-key reads  │
 │                                        │                                                                │ have defaults.                                                           │
+│ Injective block-root labels            │ WellFormedExecution.blocks_root_injective identifies blocks     │ It gives no hash_tree_root equation or cryptographic commitment.         │
+│                                        │ with equal roots.                                               │                                                                          │
+│ Atomic handler rejection               │ An invalid attestation returns none and leaves the run store   │ Python can keep a checkpoint-state cache write before a failed assert.   │
+│                                        │ unchanged.                                                     │ Accepted runs exclude that failed call's resulting store.               │
 │ Explicit loop fuel                     │ Makes recursive Python walks total.                            │ Equivalence needs a bound on reachable parent walks.                     │
 │ Projected BeaconState and Store        │ Keeps only fields used by the rule and checks.                 │ Unused source-state behavior is outside the model.                       │
 │ Opaque Externals                       │ Separates consensus logic from execution engine and            │ BeaconExternalsPremises must be justified by an implementation.          │

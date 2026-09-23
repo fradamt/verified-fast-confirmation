@@ -53,19 +53,20 @@ variable {n : ℕ}
 /-- **Assumption 3** (the new §4 FFG-behavior assumption; explainer p.2).
 
     **Numbering caveat:** this is the *explainer's* "Assumption 3". In arXiv:2405.00549 the
-    same FFG-inclusion property is **Assumption 5.3**; the arXiv "Assumption 3" is a different,
+    related FFG-inclusion property is **Assumption 5.3**; the arXiv "Assumption 3" is a different,
     unrelated statement (no validator gets slashed). The Lean name follows the explainer, not
     the arXiv numbering — read `Assumption3` as arXiv Assumption 5.3.
 
     (3.1) `β < 1/3` — already carried by `FaultModel.hβ`, so not restated here.
 
-    (3.2) "Byzantine validators cannot block honest FFG votes from inclusion in
-    canonical blocks for an entire epoch." Modeled, in the spirit of `honestVoteUbiq`
-    for GHOST votes, as: an honest committee member's FFG vote (riding in `extra`) cast
-    in a slot `≤ s'` is, by the next boundary `st(s'+1)`, present in *every* honest view —
+    (3.2) The paper concerns honest FFG vote inclusion in canonical blocks.
+    This Lean predicate instead requires message receipt in honest views. In the
+    spirit of `honestVoteUbiq` for GHOST votes, an honest committee member's FFG
+    vote (riding in `extra`) cast in a slot `≤ s'` is, by the next boundary
+    `st(s'+1)`, present in *every* honest view's `msgs` —
     once **slot `s'` itself** is past `gst` (the same faithful Δ-delivery gate as
     `honestVoteUbiq`; gating on `st(s'+1) ≥ gst` would be unsound). So honest FFG votes
-    are never blocked from inclusion.
+    This does not establish that any block contains the vote.
 
     **Scope:** this is not a premise of the public §4 theorems. The
     `willChkpBeJustified` certificate route (`Certificate.lean`) discharges justification from a

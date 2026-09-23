@@ -14,9 +14,9 @@ variable (cfg : Config) (ext : Externals Root)
 namespace Execution
 variable (E : Execution Root)
 end Execution
-/-- Execution-level well-formedness: wire block roots are genuine commitments.
-Equal roots identify equal block messages across scheduled block events and the
-genesis store. -/
+/-- Execution-level well-formedness: wire block roots are injective labels.
+Equal labels identify equal block messages across scheduled block events and
+the genesis store. This record does not assert a `hash_tree_root` equation. -/
 structure WellFormedExecution (E : Execution Root) : Prop where
   blocks_root_injective : ∀ w n (b : SignedBeaconBlock Root),
     Event.block b ∈ E.schedule w n →
