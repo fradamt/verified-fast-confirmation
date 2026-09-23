@@ -83,9 +83,14 @@ elif ((whitespace_status != 1)); then
   exit "$whitespace_status"
 fi
 
+python3 scripts/check_review_boundary.py
+python3 scripts/check_review_boundary.py --self-test
+
 if [[ "$mode" == "full" ]]; then
   scripts/check_build.sh
   python3 scripts/check_imports.py
+  lake env lean scripts/StatementReachability.lean
+  lake env lean scripts/ReviewSurfaceShape.lean
   lake env lean scripts/Audit.lean
   git diff --exit-code -- lake-manifest.json
 fi
