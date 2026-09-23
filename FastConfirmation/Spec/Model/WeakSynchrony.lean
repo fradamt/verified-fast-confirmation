@@ -18,17 +18,18 @@ Synchrony holds **between honest validators only**: a message produced by an
 honest validator is received by every honest validator within the delay bound.
 The `Synchrony`/`PaperSafetySynchrony` records in `Assumptions.lean` already
 quantify senders/holders and receivers over `E.honest`, so they are reused
-verbatim. The entire network-model change is that the observer running the FCR
-is **not** a member of `E.honest`: it is an inbox — no delivery is guaranteed
-*to* it, and nothing it holds is guaranteed to propagate *from* it.
+verbatim. The current weak safety statements allow any observer index,
+including an honest one. Their premise bundle has no dedicated observer
+delivery or propagation field. The older `ObserverContext` record below is a
+historical helper that requires an observer outside `E.honest`; audited
+witnesses do not use it.
 Authenticity of its inbox still follows from the global records
 (`WellFormedExecution`, `HonestBehavior.no_forgery`), which range over every
 node's schedule. Non-validator relay nodes need no separate treatment: honest
 to honest delivery is assumed as a property of the network as a whole.
 
-**Broadcast certificates.** With the observer outside `E.honest`, its local
-possession of a block no longer implies dissemination (`Synchrony.block_relay`
-no longer applies to it as a holder). The replacement evidence is a
+**Broadcast certificates.** An observer's local possession of a block does
+not by itself imply dissemination to honest nodes. The replacement evidence is a
 *broadcast certificate*: observed attesting weight, in the committees of a
 slot span, voting for a block or one of its descendants, exceeding the
 maximum adversarial weight of that span. Any surplus vote must come from an
@@ -88,12 +89,8 @@ namespace FastConfirmation.Spec
 variable {Root : Type*} [LinearOrder Root] [Inhabited Root]
 variable (cfg : Config) (ext : Externals Root)
 
-/-- The confirming observer of the weak model: a node that runs the FCR over
-its own store but is *not* an honest network participant. No synchrony law
-applies to it — messages reach it only as the adversary and the schedule
-permit, and nothing in its store is guaranteed to have propagated. It needs a
-synchronized clock and an authentic inbox, both of which are inherited from
-the global execution records rather than from `E.honest` membership. -/
+/-- Historical helper for an observer outside `E.honest`. Audited weak safety
+witnesses use an arbitrary observer index and do not use this record. -/
 structure ObserverContext (E : Execution Root) where
   obs : ValidatorIndex
   obs_not_honest : obs ∉ E.honest

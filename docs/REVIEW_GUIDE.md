@@ -2,19 +2,23 @@
 
 ## Weak observer premises after the main merge
 
-`Execution.WeakObserverAssumptions` adds committed-anchor initialization and
-observer-run attestation validity. The new `genesis` field has this exact type:
+`Execution.WeakObserverAssumptions` has this exact four-field declaration:
 
 ```lean
-genesis : ∃ (anchorState : BeaconState Root) (anchorBlock : SignedBeaconBlock Root),
-  E.genesis_store = get_forkchoice_store cfg anchorState anchorBlock ∧
-  anchorState.slot = anchorBlock.message.slot ∧
-  ext.AnchorCommitsToState anchorBlock.message anchorState ∧
-  anchorBlock.message.parent_root ≠ anchorBlock.root
+structure WeakObserverAssumptions (obs : ValidatorIndex) : Prop where
+  base : SelectedMarginAssumptions cfg ext E
+  genesis : ∃ (anchorState : BeaconState Root) (anchorBlock : SignedBeaconBlock Root),
+    E.genesis_store = get_forkchoice_store cfg anchorState anchorBlock ∧
+    anchorState.slot = anchorBlock.message.slot ∧
+    ext.AnchorCommitsToState anchorBlock.message anchorState ∧
+    anchorBlock.message.parent_root ≠ anchorBlock.root
+  validity : E.ObserverValidity cfg ext obs
+  committees_agree : ∀ n : ℕ, E.WithinHorizon cfg n → ∀ s : Slot,
+    E.SlotWithinHorizon cfg s →
+    get_slot_committee cfg ext (E.store cfg ext obs n) s = E.committee s
 ```
 
-The new `validity` field has the exact type
-`validity : E.ObserverValidity cfg ext obs`. Its record is:
+The `validity` field uses this record:
 
 ```lean
 structure ObserverValidity (E : Execution Root) (obs : ValidatorIndex) : Prop where
@@ -39,6 +43,27 @@ observer's genesis store or a scheduled handler prefix at that observer. This
 is a smaller domain than the pre-merge unconditional attestation laws. It
 does not require the observer to be honest. The weak proofs derive observer
 non-equivocation and latest-message provenance from this field.
+
+The direct one-shot forms keep their separate margin and coherence premises.
+They are not the full-rule premise bundle above.
+
+## Known scope limits
+
+Pending user decision:
+
+- Optimistic-sync `VALID` status is not modelled. The normative `MUST` in
+  `is_one_confirmed` is not implemented in the Python function body either.
+- Execution, envelope, and bid checks are opaque Boolean externals with no
+  source-soundness law.
+- The paper-model Algorithm-1 monotonicity witness assumes future confirmation
+  of honest-view-safe blocks.
+- Live monotonicity needs an FFG timing premise. See
+  [Missing FFG timing premise](#missing-ffg-timing-premise).
+
+### Missing FFG timing premise
+
+The proposed live premises do not bound when unrealized justification reaches
+the selector. A live proof needs an FFG timing premise for that update.
 
 ## Trust and architecture
 
@@ -70,9 +95,11 @@ substitutes for the accepted theorem.
 ## Consensus source
 
 The authoritative public source is `ethereum/consensus-specs` commit
-`477321355d48d527e7e1e4d572f6a40a0b41072a`. The manifest in
+`6b9bd532cca16555e2f3282d757622ebff29743e`. The manifest in
 `spec_source/manifest.json` records the exact six source and configuration
-objects consumed by the model.
+objects consumed by the model. The local Gloas payload-aware discount is a
+documented deviation. The weak Python branch `fcr-weak-synchrony-gloas` at
+`353eb0dc4` is a further overlay.
 
 The manifest proves byte identity and provenance only. A pin change must also
 be reviewed against:

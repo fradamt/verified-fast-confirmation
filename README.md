@@ -1,23 +1,19 @@
 # Verified Fast Confirmation
 
-Gloas lane status: **STOP-false at G2-004's current endpoint lemma**. The
-payload-aware discount prevents the old confirmed-child counterexample, but
-`Endpoint.ledger_descendStep` remains false under its current inputs. See
-[the rule change and proof status](docs/gloas-spec-deviation.md). The proof descriptions
-below describe the intended interface and retained development, not a
-validated Gloas safety result.
+Gloas status: **G2-003 and G2-004 are proved**. Full validation, including the
+trust audit, passed at main commit `6d478e7`. The payload-aware empty-slot
+discount is a [documented local deviation](docs/gloas-spec-deviation.md) from
+upstream consensus-specs commit `6b9bd532c`. The weak G2-004 proof is present
+at merge commit `213cf4f` and is described in
+[the weak proof note](docs/weak-synchrony.md#weak-g2-004-the-pending-parent-selects-the-status-of-c).
 
 Lean 4 formalizations of Ethereum's Fast Confirmation Rule.
-
-This branch is migrating the executable model to Gloas. The Gloas proof port
-and full validation are not complete. The theorem descriptions below record
-the existing proof interface; they do not yet establish Gloas safety.
 
 This repository contains two separate developments:
 
 | Development | Source | Role and import |
 | --- | --- | --- |
-| [`FastConfirmation/Spec/`](FastConfirmation/Spec/) | Ethereum consensus specification, pinned at public commit [`6b9bd53`](https://github.com/ethereum/consensus-specs/blob/6b9bd532cca16555e2f3282d757622ebff29743e/specs/phase0/fast-confirmation.md) | Primary executable model; accepted Gloas safety proof remains open |
+| [`FastConfirmation/Spec/`](FastConfirmation/Spec/) | Ethereum consensus specification, pinned at public commit [`6b9bd53`](https://github.com/ethereum/consensus-specs/blob/6b9bd532cca16555e2f3282d757622ebff29743e/specs/phase0/fast-confirmation.md), with the documented payload-aware discount | Primary executable model with a proved accepted Gloas safety theorem |
 | [`FastConfirmation/Paper/`](FastConfirmation/Paper/) | [Fast Confirmation Rule paper](https://arxiv.org/abs/2405.00549), Sections 3.1 and 4 | Independent companion model and proofs; `import FastConfirmation.Paper` |
 
 The accepted consensus-spec theorem is proved entirely within

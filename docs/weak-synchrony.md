@@ -1060,18 +1060,28 @@ premises are:
   entirely at the honest endpoint `(w, m)`, where honest-to-honest delivery
   is unchanged; only its observer-side instantiation
   (`windowRecordedEpochMax_at_query_minimal` at `(obs, q)`) disappears.
-* **`committees_agree`** (inside `hW`) — the observer's own store computes
-  committees consistently with the ground-truth assignment. This is the only
-  genuinely free premise about the observer's own trajectory left:
-  `ObserverCoherence.justified_root_known` is derivable
-  (`ObserverCoherence.justified_root_known_of_acceptedGlobalTrajectory`) and,
-  wherever the accepted-FFG package is in scope — i.e. at every top-level weak
-  statement — it is derived rather than assumed, so the caller-facing bundle
-  is `E.WeakObserverAssumptions` (floor + `committees_agree`; `obs` itself is
-  unconstrained). The `hmargin`/`hfilter`-carrying one-shot floor forms
-  (`weak_safeFrom_find_latest_confirmed_descendant`,
-  `…_discharged`, and their endpoint forms), which carry no `B`, still take
-  the internal `E.WeakObserverMarginAssumptions`.
+* **`hW : E.WeakObserverAssumptions cfg ext obs`** — the exact four-field
+  caller-facing record is:
+
+  ```lean
+  structure WeakObserverAssumptions (obs : ValidatorIndex) : Prop where
+    base : SelectedMarginAssumptions cfg ext E
+    genesis : ∃ (anchorState : BeaconState Root) (anchorBlock : SignedBeaconBlock Root),
+      E.genesis_store = get_forkchoice_store cfg anchorState anchorBlock ∧
+      anchorState.slot = anchorBlock.message.slot ∧
+      ext.AnchorCommitsToState anchorBlock.message anchorState ∧
+      anchorBlock.message.parent_root ≠ anchorBlock.root
+    validity : E.ObserverValidity cfg ext obs
+    committees_agree : ∀ n : ℕ, E.WithinHorizon cfg n → ∀ s : Slot,
+      E.SlotWithinHorizon cfg s →
+      get_slot_committee cfg ext (E.store cfg ext obs n) s = E.committee s
+  ```
+
+  `committees_agree` is the observer's committee readback premise.
+  `ObserverCoherence.justified_root_known` is derived from the accepted
+  trajectory and FFG package. The direct `hmargin`/`hfilter` one-shot forms
+  keep their separate margin and coherence inputs and use the internal
+  `E.WeakObserverMarginAssumptions` bundle.
 
 ### The finalized-base composition
 
@@ -1264,8 +1274,8 @@ accepted development's own unchanged `helper_provisos`.
 
 ### The audited witness list
 
-`scripts/Audit.lean`'s `publicWitnesses` set (21 declarations) registers, on
-the weak side:
+`scripts/Audit.lean`'s `publicWitnesses` set has 54 declarations: 13 older
+Spec/Paper entries and 41 weak-side entries. The weak-side entries include:
 
 * `Execution.weak_safeFrom_find_latest_confirmed_descendant` /
   `weak_confirmed_head` and their two `_from_finalized` forms — the
