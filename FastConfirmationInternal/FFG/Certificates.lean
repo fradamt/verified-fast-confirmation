@@ -3,7 +3,7 @@ public import FastConfirmationStatements.Premises.FFGCertificates
 
 @[expose] public section
 
-/-! Defines legacy proof vocabulary outside the public review claims. -/
+/-! Concrete scheduled FFG link certificates used by proofs. -/
 
 namespace FastConfirmation.Spec
 variable {Root : Type*} [LinearOrder Root] [Inhabited Root]

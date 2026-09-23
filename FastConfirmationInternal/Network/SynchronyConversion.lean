@@ -3,7 +3,7 @@ public import FastConfirmationStatements.Premises.Synchrony
 
 @[expose] public section
 
-/-! Defines legacy proof vocabulary outside the public review claims. -/
+/-! Conversion from full synchrony and Gloas delivery laws to next-slot synchrony. -/
 
 namespace FastConfirmation.Spec
 variable {Root : Type*} [LinearOrder Root] [Inhabited Root]

@@ -1,10 +1,10 @@
 module
 public import FastConfirmationStatements.Premises.CheckpointLinks
-public import FastConfirmationInternal.Legacy.ScheduledFFGState
+public import FastConfirmationInternal.FFG.ScheduledState
 
 @[expose] public section
 
-/-! Defines legacy proof vocabulary outside the public review claims. -/
+/-! Exact checkpoint-link predicates used by FFG proofs. -/
 
 namespace FastConfirmation.Spec
 variable {Root : Type*} [LinearOrder Root] [Inhabited Root]
