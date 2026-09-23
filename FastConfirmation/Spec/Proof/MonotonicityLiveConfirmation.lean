@@ -337,6 +337,122 @@ theorem reconfirm_margin_persists_with_equivocation_loss
     window + added + boost + 2 * adversarialNew < 2 * scoreNew := by
   omega
 
+/-- Old supporters and new honest assignments fit inside the new supporter
+set plus the old supporters that were lost. This set identity is the score
+accounting shape needed before charging lost supporters to equivocation. -/
+theorem Execution.weight_growth_with_support_loss (E : Execution Root)
+    {old new added : Finset ValidatorIndex}
+    (hadded : added ⊆ new \ old) :
+    E.weight old + E.weight added ≤
+      E.weight new + E.weight (old \ new) := by
+  have hdisjLeft : Disjoint old added := by
+    apply Finset.disjoint_left.mpr
+    intro i hiOld hiAdded
+    exact (Finset.mem_sdiff.mp (hadded hiAdded)).2 hiOld
+  have hdisjRight : Disjoint new (old \ new) := by
+    apply Finset.disjoint_left.mpr
+    intro i hiNew hiLost
+    exact (Finset.mem_sdiff.mp hiLost).2 hiNew
+  have hsubset : old ∪ added ⊆ new ∪ (old \ new) := by
+    intro i hi
+    rcases Finset.mem_union.mp hi with hiOld | hiAdded
+    · by_cases hiNew : i ∈ new
+      · exact Finset.mem_union.mpr (Or.inl hiNew)
+      · exact Finset.mem_union.mpr
+          (Or.inr (Finset.mem_sdiff.mpr ⟨hiOld, hiNew⟩))
+    · exact Finset.mem_union.mpr
+        (Or.inl (Finset.mem_sdiff.mp (hadded hiAdded)).1)
+  calc
+    E.weight old + E.weight added = E.weight (old ∪ added) := by
+      simpa only [Execution.weight] using
+        (Finset.sum_union hdisjLeft).symm
+    _ ≤ E.weight (new ∪ (old \ new)) := weight_mono (E := E) hsubset
+    _ = E.weight new + E.weight (old \ new) := by
+      simpa only [Execution.weight] using Finset.sum_union hdisjRight
+
+/-- Old equivocators and newly lost supporters form disjoint subsets of
+the new equivocation set. -/
+theorem Execution.weight_growth_of_new_equivocators (E : Execution Root)
+    {oldEquiv newEquiv lost : Finset ValidatorIndex}
+    (hold : oldEquiv ⊆ newEquiv)
+    (hlost : lost ⊆ newEquiv \ oldEquiv) :
+    E.weight oldEquiv + E.weight lost ≤ E.weight newEquiv := by
+  have hdisj : Disjoint oldEquiv lost := by
+    apply Finset.disjoint_left.mpr
+    intro i hiOld hiLost
+    exact (Finset.mem_sdiff.mp (hlost hiLost)).2 hiOld
+  have hsubset : oldEquiv ∪ lost ⊆ newEquiv := by
+    intro i hi
+    rcases Finset.mem_union.mp hi with hiOld | hiLost
+    · exact hold hiOld
+    · exact (Finset.mem_sdiff.mp (hlost hiLost)).1
+  calc
+    E.weight oldEquiv + E.weight lost = E.weight (oldEquiv ∪ lost) := by
+      simpa only [Execution.weight] using (Finset.sum_union hdisj).symm
+    _ ≤ E.weight newEquiv := weight_mono (E := E) hsubset
+
+/-- A disjoint set of newly recorded supporters raises the score, with the
+old supporters absent at the new store charged explicitly as a loss. -/
+theorem Execution.attestation_score_growth_with_loss (E : Execution Root)
+    (oldStore newStore : Store Root)
+    (oldSource newSource : BeaconState Root)
+    (node : ForkChoiceNode Root)
+    (hvalOld : oldSource.validators = E.registry)
+    (hvalNew : newSource.validators = E.registry)
+    (added : Finset ValidatorIndex)
+    (hadded : added ⊆
+      (AttSupporters cfg newStore node newSource).toFinset \
+        (AttSupporters cfg oldStore node oldSource).toFinset) :
+    get_attestation_score cfg oldStore node oldSource + E.weight added ≤
+      get_attestation_score cfg newStore node newSource +
+        E.weight ((AttSupporters cfg oldStore node oldSource).toFinset \
+          (AttSupporters cfg newStore node newSource).toFinset) := by
+  rw [attestation_score_eq_weight cfg hvalOld,
+    attestation_score_eq_weight cfg hvalNew]
+  exact E.weight_growth_with_support_loss hadded
+
+/-- An old supporter whose message and ancestry survive remains a supporter
+unless it entered the new equivocation set. The active and unslashed base
+lists are compared separately so cached sources may be different states. -/
+theorem old_supporter_persists_or_equivocates
+    (oldStore newStore : Store Root)
+    (oldSource newSource : BeaconState Root)
+    (node : ForkChoiceNode Root)
+    (hbase :
+      (get_active_validator_indices oldSource
+          (get_current_epoch cfg oldSource)).filter
+            (fun i => !(oldSource.validators.getD i default).slashed) =
+      (get_active_validator_indices newSource
+          (get_current_epoch cfg newSource)).filter
+            (fun i => !(newSource.validators.getD i default).slashed))
+    (hlatest : ∀ i m, i ∈ AttSupporters cfg oldStore node oldSource →
+      oldStore.latest_messages i = some m →
+      newStore.latest_messages i = some m)
+    (hancestry : ∀ i m, i ∈ AttSupporters cfg oldStore node oldSource →
+      oldStore.latest_messages i = some m →
+      is_ancestor oldStore (get_supported_node oldStore m) node = true →
+      is_ancestor newStore (get_supported_node newStore m) node = true)
+    {i : ValidatorIndex}
+    (hi : i ∈ AttSupporters cfg oldStore node oldSource) :
+    i ∈ AttSupporters cfg newStore node newSource ∨
+      i ∈ newStore.equivocating_indices := by
+  by_cases hequiv : i ∈ newStore.equivocating_indices
+  · exact Or.inr hequiv
+  left
+  obtain ⟨m, hm, _, hanc⟩ := mem_AttSupporters cfg hi
+  simp only [AttSupporters, List.mem_filter] at hi ⊢
+  refine ⟨?_, ?_⟩
+  · have hmemOld : i ∈
+        (get_active_validator_indices oldSource
+          (get_current_epoch cfg oldSource)).filter
+            (fun j => !(oldSource.validators.getD j default).slashed) :=
+        List.mem_filter.mpr hi.1
+    rw [hbase] at hmemOld
+    exact List.mem_filter.mp hmemOld
+  · rw [hlatest i m (by simpa only [AttSupporters, List.mem_filter] using hi) hm]
+    simp [hequiv, hancestry i m
+      (by simpa only [AttSupporters, List.mem_filter] using hi) hm hanc]
+
 private theorem strict_margin_of_threshold
     {window boost adversarial discount score : ℕ}
     (hscore : score >
@@ -1224,6 +1340,227 @@ theorem AcceptedActualFCRNextSlotSafetyAssumptions.live_balance_source_accountin
   have htotal := get_total_active_balance_congr cfg hval hact
   have hboost := compute_proposer_score_congr cfg hval hact
   exact ⟨htotal, hboost⟩
+
+/-- Two in-horizon balance sources with the accepted static registry have
+the same active, unslashed validator list, even when they are different
+checkpoint states. -/
+theorem AcceptedActualFCRNextSlotSafetyAssumptions.live_supporter_base_eq
+    (h : E.AcceptedActualFCRNextSlotSafetyAssumptions cfg ext)
+    (oldSource newSource : BeaconState Root)
+    (hvalOld : oldSource.validators = E.registry)
+    (hvalNew : newSource.validators = E.registry)
+    (hOldH : get_current_epoch cfg oldSource < E.verification_horizon)
+    (hNewH : get_current_epoch cfg newSource < E.verification_horizon) :
+    (get_active_validator_indices oldSource
+        (get_current_epoch cfg oldSource)).filter
+          (fun i => !(oldSource.validators.getD i default).slashed) =
+    (get_active_validator_indices newSource
+        (get_current_epoch cfg newSource)).filter
+          (fun i => !(newSource.validators.getD i default).slashed) := by
+  have hact : ∀ i : ValidatorIndex,
+      is_active_validator (oldSource.validators.getD i default)
+          (get_current_epoch cfg oldSource) =
+        is_active_validator (newSource.validators.getD i default)
+          (get_current_epoch cfg newSource) := by
+    intro i
+    rw [hvalOld, hvalNew]
+    exact h.completed_calls.static_validators.activity_constant i
+      (get_current_epoch cfg oldSource) (get_current_epoch cfg newSource)
+      hOldH hNewH
+  have hidx : get_active_validator_indices oldSource
+      (get_current_epoch cfg oldSource) =
+      get_active_validator_indices newSource
+        (get_current_epoch cfg newSource) := by
+    unfold get_active_validator_indices
+    rw [hvalOld, hvalNew]
+    apply List.filter_congr
+    intro i _
+    simpa only [hvalOld, hvalNew] using hact i
+  rw [hidx, hvalOld, hvalNew]
+
+/-- A supporter of an epoch-`e` block at an epoch-`e` call has a latest
+message from that epoch. Provenance puts the vote after the block and before
+the call. -/
+theorem AcceptedActualFCRNextSlotSafetyAssumptions.live_supporter_message_epoch
+    (h : E.AcceptedActualFCRNextSlotSafetyAssumptions cfg ext)
+    {w : ValidatorIndex} (hw : w ∈ E.honest) {t : ℕ}
+    (hHt : E.WithinHorizon cfg t)
+    {e : Epoch} (hcurrent : get_current_store_epoch cfg
+      (E.store cfg ext w t) = e)
+    {b : Root} (hb : b ∈ (E.store cfg ext w t).block_roots)
+    (hbEpoch : get_block_epoch cfg (E.store cfg ext w t) b = e)
+    (source : BeaconState Root)
+    {i : ValidatorIndex}
+    (hi : i ∈ AttSupporters cfg (E.store cfg ext w t)
+      (get_node_for_root b) source)
+    {msg : LatestMessage Root}
+    (hmsg : (E.store cfg ext w t).latest_messages i = some msg) :
+    get_latest_message_epoch cfg msg = e := by
+  obtain ⟨ast, ablk, hgenEq, _, _⟩ := h.trajectory.genesis_structure
+  have hgen : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
+      E.genesis_store = get_forkchoice_store cfg ast ablk :=
+    ⟨ast, ablk, hgenEq⟩
+  have hprov := E.latestMessageProvenance cfg ext
+    h.trajectory.wellFormed h.trajectory.externals_coherence
+    hgen w t hw hHt
+  obtain ⟨_, _, _, _, _, hbefore, _, hrootKnown, hrootSlot, hmsgSlot⟩ :=
+    hprov i msg hmsg
+  have hwalkK := E.store_walkKnownK cfg ext
+    h.trajectory.wellFormed h.trajectory.externals_coherence
+    h.trajectory.genesis_structure w t
+  have hwalk := hwalkK b hb msg.root hrootKnown
+  obtain ⟨lm, hlm, _, hanc⟩ := mem_AttSupporters cfg hi
+  rw [hmsg] at hlm
+  have hsame : lm = msg := (Option.some.inj hlm).symm
+  subst lm
+  have hancPending : is_ancestor (E.store cfg ext w t)
+      (get_node_for_root msg.root) (get_node_for_root b) = true := by
+    simpa only [get_node_for_root, is_ancestor_supported_pending] using hanc
+  have hslotLe := get_ancestor_slot_le
+    (E.store_parentSlotLt cfg ext h.trajectory.wellFormed
+      h.trajectory.externals_coherence h.trajectory.genesis_structure
+      h.trajectory.wellFormed.anchor_parent_unscheduled w t) hwalk
+  simp only [get_node_for_root, is_ancestor_pending,
+    decide_eq_true_eq] at hancPending
+  rw [hancPending] at hslotLe
+  have hlower : get_block_slot (E.store cfg ext w t) b ≤ msg.slot :=
+    hslotLe.trans (hrootSlot.trans_eq hmsgSlot.symm)
+  have hupper : msg.slot < get_current_slot cfg (E.store cfg ext w t) := by
+    rw [E.store_current_slot cfg ext w t]
+    rw [hmsgSlot]
+    exact Nat.lt_of_succ_le hbefore
+  have hepochLower : e ≤ get_latest_message_epoch cfg msg := by
+    rw [← hbEpoch]
+    exact Nat.div_le_div_right hlower
+  have hepochUpper : get_latest_message_epoch cfg msg ≤ e := by
+    rw [← hcurrent]
+    exact Nat.div_le_div_right hupper.le
+  exact Nat.le_antisymm hepochUpper hepochLower
+
+/-- At the next epoch start, an old supporter with an old-epoch message still
+supports the same known block unless that validator has been marked as an
+equivocator. The result applies to Byzantine as well as honest validators. -/
+theorem AcceptedActualFCRNextSlotSafetyAssumptions.live_old_supporter_at_boundary
+    (h : E.AcceptedActualFCRNextSlotSafetyAssumptions cfg ext)
+    {w : ValidatorIndex} (hw : w ∈ E.honest)
+    {n m : ℕ} (hnm : n ≤ m)
+    (hHn : E.WithinHorizon cfg n) (hHm : E.WithinHorizon cfg m)
+    {e : Epoch} (hboundary : E.slot_at cfg m =
+      compute_start_slot_at_epoch cfg (e + 1))
+    {b : Root} (hb : b ∈ (E.store cfg ext w n).block_roots)
+    (oldSource newSource : BeaconState Root)
+    (hvalOld : oldSource.validators = E.registry)
+    (hvalNew : newSource.validators = E.registry)
+    (hOldH : get_current_epoch cfg oldSource < E.verification_horizon)
+    (hNewH : get_current_epoch cfg newSource < E.verification_horizon)
+    (hOldEpoch : ∀ i msg,
+      i ∈ AttSupporters cfg (E.store cfg ext w n)
+        (get_node_for_root b) oldSource →
+      (E.store cfg ext w n).latest_messages i = some msg →
+      get_latest_message_epoch cfg msg = e)
+    {i : ValidatorIndex}
+    (hi : i ∈ AttSupporters cfg (E.store cfg ext w n)
+      (get_node_for_root b) oldSource) :
+    i ∈ AttSupporters cfg (E.store cfg ext w m)
+      (get_node_for_root b) newSource ∨
+      i ∈ (E.store cfg ext w m).equivocating_indices := by
+  obtain ⟨ast, ablk, hgenEq, _, _⟩ := h.trajectory.genesis_structure
+  have hgen : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
+      E.genesis_store = get_forkchoice_store cfg ast ablk :=
+    ⟨ast, ablk, hgenEq⟩
+  have hbase := h.live_supporter_base_eq cfg ext E oldSource newSource
+    hvalOld hvalNew hOldH hNewH
+  have hprovOld := E.latestMessageProvenance cfg ext
+    h.trajectory.wellFormed h.trajectory.externals_coherence
+    hgen w n hw hHn
+  have hsub := (E.store_storeLE cfg ext w hnm).1
+  have hwalk := E.store_walkKnownK cfg ext
+    h.trajectory.wellFormed h.trajectory.externals_coherence
+    h.trajectory.genesis_structure w n
+  apply old_supporter_persists_or_equivocates cfg
+    (E.store cfg ext w n) (E.store cfg ext w m)
+    oldSource newSource (get_node_for_root b) hbase
+  · intro j msg hj hmsg
+    exact E.latest_message_stable_at_next_epoch_start cfg ext
+      h.trajectory.wellFormed h.trajectory.externals_coherence
+      hgen hw hnm hHn hHm hboundary hmsg (hOldEpoch j msg hj hmsg)
+  · intro j msg hj hmsg hanc
+    obtain ⟨_, _, _, _, _, _, _, hmsgKnown, _, _⟩ :=
+      hprovOld j msg hmsg
+    have hwalkMsg := hwalk b hb msg.root hmsgKnown
+    have hancPending : is_ancestor (E.store cfg ext w n)
+        (get_node_for_root msg.root) (get_node_for_root b) = true := by
+      simpa only [get_node_for_root, is_ancestor_supported_pending] using hanc
+    have htransport := is_ancestor_transport cfg ext
+      h.trajectory.wellFormed hsub hmsgKnown hb hwalkMsg hancPending
+    simpa only [get_node_for_root, is_ancestor_supported_pending] using htransport
+  · exact hi
+
+/-- For a known block from the just-completed epoch, the old-message epoch
+condition follows from block and call geometry. -/
+theorem AcceptedActualFCRNextSlotSafetyAssumptions.live_old_supporter_at_boundary_of_block_epoch
+    (h : E.AcceptedActualFCRNextSlotSafetyAssumptions cfg ext)
+    {w : ValidatorIndex} (hw : w ∈ E.honest)
+    {n m : ℕ} (hnm : n ≤ m)
+    (hHn : E.WithinHorizon cfg n) (hHm : E.WithinHorizon cfg m)
+    {e : Epoch}
+    (holdCurrent : get_current_store_epoch cfg (E.store cfg ext w n) = e)
+    (hboundary : E.slot_at cfg m =
+      compute_start_slot_at_epoch cfg (e + 1))
+    {b : Root} (hb : b ∈ (E.store cfg ext w n).block_roots)
+    (hbEpoch : get_block_epoch cfg (E.store cfg ext w n) b = e)
+    (oldSource newSource : BeaconState Root)
+    (hvalOld : oldSource.validators = E.registry)
+    (hvalNew : newSource.validators = E.registry)
+    (hOldH : get_current_epoch cfg oldSource < E.verification_horizon)
+    (hNewH : get_current_epoch cfg newSource < E.verification_horizon)
+    {i : ValidatorIndex}
+    (hi : i ∈ AttSupporters cfg (E.store cfg ext w n)
+      (get_node_for_root b) oldSource) :
+    i ∈ AttSupporters cfg (E.store cfg ext w m)
+      (get_node_for_root b) newSource ∨
+      i ∈ (E.store cfg ext w m).equivocating_indices := by
+  exact h.live_old_supporter_at_boundary cfg ext E hw hnm hHn hHm
+    hboundary hb oldSource newSource hvalOld hvalNew hOldH hNewH
+    (fun j msg hj hmsg => h.live_supporter_message_epoch cfg ext E
+      hw hHn holdCurrent hb hbEpoch oldSource hj hmsg) hi
+
+/-- Every old supporter absent from the boundary score is a newly marked
+equivocator. This is the set-level loss that the adversarial allowance must
+refund. -/
+theorem AcceptedActualFCRNextSlotSafetyAssumptions.live_lost_supporters_newly_equivocating
+    (h : E.AcceptedActualFCRNextSlotSafetyAssumptions cfg ext)
+    {w : ValidatorIndex} (hw : w ∈ E.honest)
+    {n m : ℕ} (hnm : n ≤ m)
+    (hHn : E.WithinHorizon cfg n) (hHm : E.WithinHorizon cfg m)
+    {e : Epoch}
+    (holdCurrent : get_current_store_epoch cfg (E.store cfg ext w n) = e)
+    (hboundary : E.slot_at cfg m =
+      compute_start_slot_at_epoch cfg (e + 1))
+    {b : Root} (hb : b ∈ (E.store cfg ext w n).block_roots)
+    (hbEpoch : get_block_epoch cfg (E.store cfg ext w n) b = e)
+    (oldSource newSource : BeaconState Root)
+    (hvalOld : oldSource.validators = E.registry)
+    (hvalNew : newSource.validators = E.registry)
+    (hOldH : get_current_epoch cfg oldSource < E.verification_horizon)
+    (hNewH : get_current_epoch cfg newSource < E.verification_horizon) :
+    (AttSupporters cfg (E.store cfg ext w n)
+        (get_node_for_root b) oldSource).toFinset \
+      (AttSupporters cfg (E.store cfg ext w m)
+        (get_node_for_root b) newSource).toFinset ⊆
+      (E.store cfg ext w m).equivocating_indices \
+        (E.store cfg ext w n).equivocating_indices := by
+  intro i hi
+  have hOld : i ∈ AttSupporters cfg (E.store cfg ext w n)
+      (get_node_for_root b) oldSource :=
+    List.mem_toFinset.mp (Finset.mem_sdiff.mp hi).1
+  have hNotNew := (Finset.mem_sdiff.mp hi).2
+  have hNewEquiv := (h.live_old_supporter_at_boundary_of_block_epoch
+    cfg ext E hw hnm hHn hHm holdCurrent hboundary hb hbEpoch
+    oldSource newSource hvalOld hvalNew hOldH hNewH hOld).resolve_left
+      (fun hNew => hNotNew (List.mem_toFinset.mpr hNew))
+  obtain ⟨_, _, hNotOldEquiv, _⟩ := mem_AttSupporters cfg hOld
+  exact Finset.mem_sdiff.mpr ⟨hNewEquiv, hNotOldEquiv⟩
 
 /-- A checkpoint state already cached at an accepted call has the same
 committee total and proposer score as the anchor. Thus a historical current
