@@ -5,37 +5,9 @@ public import FastConfirmation.Spec.Proof.EngineWindows
 @[expose] public section
 
 /-!
-# Spec / Proof / ByzVpre: the byz sibling reconciliation and the V/pre accessors
+# Spec / Proof / ByzVpre
 
-This module supplies two inputs of
-`EdgeDynamics.EdgeInputResidual`:
-
-* **the `hByz` Byzantine sibling confinement.** `LedgerV2.BbadSet` is a
-  **ground-vote** set (`E.SupportsDesc` / `E.AncestorOrVoteless`
-  over `E.vote`), while a byz supporter of a sibling is only known through the store's
-  **recorded** latest message. For byzantine validators the two diverge (there is no
-  `HonestBehavior.no_forgery`), so the recorded fact cannot be pushed into the ground set.
-  This module defines the **recorded-based** byz sibling sets (`RecByzSib`), proves the
-  recorded dichotomy (recorded-at-`es` vs post-`es`-vote, from the provenance setting-slot
-  case split) — the tail half landing cleanly in `SpentSet` — and proves the
-  arms-side enemy accounting against the recorded sets (disjoint from the recorded `Bsup` /
-  equivocators / `ParentStuckByz`, all recorded). The ground `BbadSet` relation survives only
-  for honest members (`StepDischarge.recorded_lm_is_newest_at`), which do not occur in the byz
-  sets. The remaining mismatch is that `hByz`/`hBbadVal` are phrased over the
-  ground `BbadSet`.
-
-* **the V/pre accessor split** — `Confinement`'s undelivered Part-4 accessors. The confirmation
-  window `[lo, es]` (`lo := parent(b').slot + 1`, `es := current − 1`) splits into the
-  **pre-region** `[lo, b'.slot − 1]` and the **V-region** `[b'.slot, es]`. This module defines
-  the pre-region accessors (`HparVal` = `Discount.ParentStuck` weight; `xPreVal`/`aPreVal`/
-  `BpreVal` = the `Ledger` classes over the pre-region) and delivers the two estimate-domination
-  bridges `Arms.arms_of_confirmed` consumes — `hR8aW` (V-span) and `hR8cW` (full window) — as
-  inequalities anchored on `ByzantineBound.estimate_dominates`, with the atom identities
-  (`s₀ = Sval`, `xV + xpre = Xval`, the honest-window partition `= Jspec`) reduced to precisely
-  the shapes `DynamicsClosure.INV2_base_of_confirmed` needs. The pure-`Finset` split
-  inequalities (`Jspec`/`Bval` subadditive covering, `Sval` supporter-into-V confinement) are
-  proved; the recorded↔ground identity residues are enumerated.
-
+This module contains `Jspec_add_Bval_eq_weight_span`, `weight_span_le_estimate`, `ancestor_slot_le` and related declarations.
 -/
 
 namespace FastConfirmation.Spec
@@ -75,47 +47,7 @@ theorem weight_span_le_estimate (hbb : ByzantineBound cfg E) {bs : BeaconState R
   rw [htab]
   exact hbb.estimate_dominates a b haH hbH
 
-omit [LinearOrder Root] [Inhabited Root] in
-/-- **`hR8cW` from the full-window identities.** With the full honest window
-`s₀ + aV + xV + (Hpar + apre + xpre)` identified with `Jspec [lo, es]` (`lo := parent(b').slot+1`,
-`es := current − 1`) and the enemy `B0` with `Bval [lo, es]`, the U-span estimate-domination
-bound holds — exactly `arms_of_confirmed`'s `hR8cW`. -/
-theorem hR8cW_of_identities (hbb : ByzantineBound cfg E) {bs : BeaconState Root}
-    {store : Store Root} {b' : Root}
-    (htab : get_total_active_balance cfg bs = E.total_active cfg)
-    (hstartH : E.SlotWithinHorizon cfg
-      ((store.blocks (store.blocks b').parent_root).slot + 1))
-    (hendH : E.SlotWithinHorizon cfg (get_current_slot cfg store - 1))
-    {s0 aV xV Hpar apre xpre B0 : ℕ}
-    (hJ : s0 + aV + xV + (Hpar + apre + xpre)
-        = E.Jspec ((store.blocks (store.blocks b').parent_root).slot + 1)
-            (get_current_slot cfg store - 1))
-    (hB : B0 = E.Bval ((store.blocks (store.blocks b').parent_root).slot + 1)
-            (get_current_slot cfg store - 1)) :
-    s0 + aV + xV + (Hpar + apre + xpre) + B0
-      ≤ 100 * (estimate_committee_weight_between_slots cfg (get_total_active_balance cfg bs)
-          ((store.blocks (store.blocks b').parent_root).slot + 1)
-          (get_current_slot cfg store - 1) / 100) := by
-  rw [hJ, hB, E.Jspec_add_Bval_eq_weight_span]
-  exact E.weight_span_le_estimate cfg hbb htab _ _ hstartH hendH
 
-omit [LinearOrder Root] [Inhabited Root] in
-/-- **`hR8aW` from the V-region identities.** With the V-region honest classes
-`s₀ + aV + xV` identified with `Jspec [sa, es]` (`sa` the `get_adversarial_weight` span start —
-`b'.slot` in the same-epoch case, `start_slot(epoch b')` in the crossing case) and the V-span
-enemy `B_V` with `Bval [sa, es]`, the V-span estimate-domination bound holds — exactly
-`arms_of_confirmed`'s `hR8aW` with `qV := estimate [sa, es] // 100`. -/
-theorem hR8aW_of_identities (hbb : ByzantineBound cfg E) {bs : BeaconState Root}
-    (htab : get_total_active_balance cfg bs = E.total_active cfg) (sa es : Slot)
-    (hsaH : E.SlotWithinHorizon cfg sa) (hesH : E.SlotWithinHorizon cfg es)
-    {s0 aV xV B_V : ℕ}
-    (hJ : s0 + aV + xV = E.Jspec sa es)
-    (hB : B_V = E.Bval sa es) :
-    s0 + aV + xV + B_V
-      ≤ 100 * (estimate_committee_weight_between_slots cfg (get_total_active_balance cfg bs)
-          sa es / 100) := by
-  rw [hJ, hB, E.Jspec_add_Bval_eq_weight_span]
-  exact E.weight_span_le_estimate cfg hbb htab _ _ hsaH hesH
 
 /-! ## Part B — the pre/V-region accessors and the covering split
 
@@ -127,42 +59,11 @@ inequalities — `Jspec`/`Bval` over the full window are at most the pre-region 
 value — are pure `Finset` subadditivity (`weight_span_committee_split`); they are what makes the
 V/pre atom decomposition of `hR8aW`/`hR8cW`'s identities legitimate. -/
 
-/-- `Hpar` — the recorded honest parent-stuck weight (`Discount.ParentStuck`). -/
-noncomputable def HparVal (store : Store Root) (bs : BeaconState Root) (b : Root) : Gwei :=
-  E.weight (ParentStuck cfg E store bs b)
 
-/-- `xpre` — the pre-region sibling-stuck honest weight (`Ledger.Xval` over `[lo, b'.slot−1]`). -/
-noncomputable def xPreVal (v₀ : ValidatorIndex) (n₀ : ℕ) (b' : Root) (lo bslot : Slot) : Gwei :=
-  E.Xval cfg ext v₀ n₀ b' lo (bslot - 1)
 
-/-- `apre + Hpar` — the pre-region ancestor/voteless honest weight (`Ledger.Aval` over the
-pre-region; its `ParentStuck` slice is `Hpar`, the remainder `apre`). -/
-noncomputable def aPreVal (v₀ : ValidatorIndex) (n₀ : ℕ) (b' : Root) (lo bslot : Slot) : Gwei :=
-  E.Aval cfg ext v₀ n₀ b' lo (bslot - 1)
 
-/-- `Bpre` — the pre-region enemy weight (`Ledger.Bval` over `[lo, b'.slot−1]`). -/
-noncomputable def BpreVal (lo bslot : Slot) : Gwei :=
-  E.Bval lo (bslot - 1)
 
-omit [LinearOrder Root] [Inhabited Root] in
-/-- **Honest-window covering split.** `Jspec [a, b]` is at most the pre-window plus the
-V-window honest weight — the honest slice of `weight_span_committee_split`. -/
-theorem Jspec_split_le (a mid b : Slot) :
-    E.Jspec a b ≤ E.Jspec a (mid - 1) + E.Jspec mid b := by
-  simp only [Execution.Jspec]
-  refine le_trans (E.weight_mono ?_) (weight_union_le _ _)
-  rw [← Finset.filter_union]
-  exact Finset.filter_subset_filter _ (span_committee_subset_union a mid b)
 
-omit [LinearOrder Root] [Inhabited Root] in
-/-- **Enemy covering split.** `Bval [a, b]` is at most the pre-window plus the V-window enemy
-weight — the non-honest slice of `weight_span_committee_split`. -/
-theorem Bval_split_le (a mid b : Slot) :
-    E.Bval a b ≤ E.Bval a (mid - 1) + E.Bval mid b := by
-  simp only [Execution.Bval, Execution.Bwin]
-  refine le_trans (E.weight_mono ?_) (weight_union_le _ _)
-  rw [← Finset.filter_union]
-  exact Finset.filter_subset_filter _ (span_committee_subset_union a mid b)
 
 /-! ## Part C — the recorded byz sibling sets and the dichotomy
 
@@ -207,18 +108,7 @@ noncomputable def RecByzSibBase (w : ValidatorIndex) (m : ℕ) (b : Root) (lo es
         ¬ is_ancestor (E.store cfg ext w m)
             (get_node_for_root b) (get_node_for_root lm.root) = true)
 
-/-- `RecByzSibBase ⊆ Bwin`: the recorded base enemy sits inside the window byz set. -/
-theorem RecByzSibBase_subset_Bwin (w : ValidatorIndex) (m : ℕ) (b : Root) (lo es : Slot) :
-    E.RecByzSibBase cfg ext w m b lo es ⊆ E.Bwin lo es := by
-  intro i hi
-  simp only [Execution.RecByzSibBase, Finset.mem_filter] at hi
-  exact Finset.mem_filter.mpr ⟨hi.1.1, hi.1.2⟩
 
-/-- `weight(RecByzSibBase) ≤ B(es)` — the recorded base enemy weight is at most the window byz
-weight, the recorded-side analog of `LedgerV2.BbadVal_le_Bval`. -/
-theorem weight_RecByzSibBase_le_Bval (w : ValidatorIndex) (m : ℕ) (b : Root) (lo es : Slot) :
-    E.weight (E.RecByzSibBase cfg ext w m b lo es) ≤ E.Bval lo es :=
-  E.weight_mono (E.RecByzSibBase_subset_Bwin cfg ext w m b lo es)
 
 /-- **The recorded byz sibling dichotomy** (`EdgeInputResidual.hByz`, recorded variant). A
 byz supporter `i` of a sibling `c'` of the `b`-side child `c` at `(w, m)` lands in the recorded
@@ -311,10 +201,6 @@ honest-only and stays on `Confinement`) — now discharges the `hByz` obligation
 `EdgeDynamics.EdgeInputResidual` / `ForkAssembly.ForkEdgeInput` verbatim: a byz supporter
 of a filtered sibling `c'` of the `b`-side child `c` lands in `BbadSet ∪ SpentSet`. -/
 
-/-- **`RecByzSibBase = BbadSet`** (`recorded-base reduction`). The recorded byz sibling base and the reshaped
-`LedgerV2.BbadSet` are the same set (definitional). -/
-theorem RecByzSibBase_eq_BbadSet (w : ValidatorIndex) (m : ℕ) (b : Root) (lo es : Slot) :
-    E.RecByzSibBase cfg ext w m b lo es = E.BbadSet cfg ext w m b lo es := rfl
 
 /-- **`hByz`, discharged** (`recorded-base reduction`). The per-`(c', i)` core of `EdgeInputResidual.hByz` /
 `ForkEdgeInput.hByz`: a byzantine supporter `i` of a filtered sibling `c'` of the

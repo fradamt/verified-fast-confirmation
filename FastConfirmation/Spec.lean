@@ -4,11 +4,12 @@ public import FastConfirmation.Spec.Statements.Claims
 public import FastConfirmation.Spec.Internal.Legacy.Vocabulary
 public import FastConfirmation.Spec.Proof.ModelFacts
 public import FastConfirmation.Spec.ProvenTheorems
-public import FastConfirmation.Spec.Proof.PayloadStoreInvariants
+public import FastConfirmation.Spec.Proof.StoreInvariants
 public import FastConfirmation.Spec.Proof.PayloadSupport
 public import FastConfirmation.Spec.Proof.PayloadPersistence
 public import FastConfirmation.Spec.Proof.OancTransport
-public import FastConfirmation.Spec.Proof.MonotonicityTrace
+public import FastConfirmation.Spec.Proof.CertExtract
+public import FastConfirmation.Spec.Proof.GetLatestConfirmedTrace
 public import FastConfirmation.Spec.Proof.MonotonicityLiveGates
 public import FastConfirmation.Spec.Proof.MonotonicityLiveBridge
 public import FastConfirmation.Spec.Proof.MonotonicityLiveConfirmation

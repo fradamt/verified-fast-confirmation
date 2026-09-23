@@ -53,29 +53,6 @@ def legacyPaperA32RootProjectionAt
     change (E.store cfg ext w m).unrealized_justifications r = S.GU r
     exact E.unrealized_justification_eq hcoh w m hr
 
-/-- If the target checkpoint is already available/unrealized on a concrete
-descendant of the selected block, no invocation of paper Assumption 3.2 is
-needed.  State-trajectory coherence projects that existing AU fact directly
-to the executable unrealized-justification map.
-
-This is deliberately carrier-local: AU is not moved backward from a later
-tip to `selected`.  The caller supplies the concrete descendant carrier and
-its endpoint ancestry, normally by relaying a query-store carrier. -/
-theorem a32IncludedAtTip_of_existing_AU
-    {anchor : Checkpoint Root}
-    {S : ChainFFGState cfg E anchor}
-    (hcoh : FFGTransitionCoherence cfg ext S)
-    {selected seed : Root} {e : Epoch}
-    {w : ValidatorIndex} {m : ℕ}
-    (hseed : seed ∈ (E.store cfg ext w m).block_roots)
-    (hseedSelected : is_ancestor (E.store cfg ext w m)
-      (get_node_for_root seed) (get_node_for_root selected) = true)
-    (hseedEpoch : get_block_epoch cfg (E.store cfg ext w m) seed < e + 2)
-    (hAU : S.AU cfg seed (S.C selected e)) :
-    A32IncludedAtTip cfg (E.store cfg ext w m) e selected seed := by
-  exact (E.legacyPaperA32RootProjectionAt cfg ext S hcoh w m hseed)
-    |>.a32IncludedAtTip_of_existing_AU cfg ext
-      hseedSelected hseedEpoch hAU
 
 /-- The exact conclusion of paper Assumption 3.2 implies the executable
 `A32IncludedAtTip` projection at every eligible endpoint.

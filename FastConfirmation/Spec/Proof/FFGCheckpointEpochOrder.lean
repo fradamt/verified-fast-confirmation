@@ -440,28 +440,6 @@ theorem on_block
         exact S.guf_epoch_le_gu sb.root hroot
       exact on_block_of_ordered_transition cfg ext hst hstatePair hpulledPair h hcall
 
-theorem apply_event_getD
-    {E : Execution Root} {anchor : Checkpoint Root}
-    {S : ChainFFGState cfg E anchor}
-    (hcoh : FFGTransitionCoherence cfg ext S)
-    {w : ValidatorIndex} {n : Nat}
-    (store : Store Root) (event : Event Root)
-    (hscheduled : event ∈ E.schedule w n)
-    (h : CheckpointEpochOrder store) :
-    CheckpointEpochOrder
-      ((FastConfirmation.Spec.apply_event cfg ext store event).getD store) := by
-  cases heq : FastConfirmation.Spec.apply_event cfg ext store event with
-  | none => simpa using h
-  | some store' =>
-    simp only [Option.getD_some]
-    cases event with
-    | block sb => exact on_block cfg ext hcoh ⟨w, n, hscheduled⟩ h heq
-    | attestation a isFromBlock => exact on_attestation cfg ext h heq
-    | attester_slashing sl => exact on_attester_slashing ext h heq
-    | execution_payload_envelope signed observation =>
-        exact h.of_payloadFrame (on_execution_payload_envelope_frame ext heq)
-    | payload_attestation_message message fromBlock =>
-        exact h.of_payloadFrame (on_payload_attestation_message_frame cfg ext heq)
 
 end CheckpointEpochOrder
 
@@ -469,63 +447,8 @@ namespace Execution
 
 variable (E : Execution Root)
 
-private theorem checkpointEpochOrder_foldl
-    {anchor : Checkpoint Root} {S : ChainFFGState cfg E anchor}
-    (hcoh : FFGTransitionCoherence cfg ext S)
-    (w : ValidatorIndex) (n : Nat) :
-    ∀ events : List (Event Root), events ⊆ E.schedule w n →
-      ∀ store : Store Root, CheckpointEpochOrder store →
-        CheckpointEpochOrder
-          (events.foldl (fun st event =>
-            (FastConfirmation.Spec.apply_event cfg ext st event).getD st) store) := by
-  intro events
-  induction events with
-  | nil => intro _ store h; exact h
-  | cons event rest ih =>
-    intro hevents store h
-    rw [List.foldl_cons]
-    apply ih
-    · exact fun x hx => hevents (List.mem_cons_of_mem _ hx)
-    · exact CheckpointEpochOrder.apply_event_getD cfg ext hcoh store event
-        (hevents List.mem_cons_self) h
 
-/-- Both checkpoint pairs are epoch-ordered at every reachable store. -/
-theorem checkpointEpochOrder_of_globalTrajectory
-    {anchor : Checkpoint Root} {S : ChainFFGState cfg E anchor}
-    (hcoh : FFGTransitionCoherence cfg ext S)
-    (hgen : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
-      E.genesis_store = get_forkchoice_store cfg ast ablk)
-    (w : ValidatorIndex) (n : Nat) :
-    CheckpointEpochOrder (E.store cfg ext w n) := by
-  induction n with
-  | zero =>
-      obtain ⟨ast, ablk, hgenEq⟩ := hgen
-      change CheckpointEpochOrder E.genesis_store
-      rw [hgenEq]
-      constructor <;> exact Nat.le_refl _
-  | succ n ih =>
-      change CheckpointEpochOrder
-        ((E.schedule w (n + 1)).foldl
-          (fun store event =>
-            (FastConfirmation.Spec.apply_event cfg ext store event).getD store)
-          (FastConfirmation.Spec.on_tick cfg (E.store cfg ext w n)
-            (E.time_at (n + 1))))
-      apply E.checkpointEpochOrder_foldl cfg ext hcoh w (n + 1)
-        (E.schedule w (n + 1)) (List.Subset.refl _)
-      exact CheckpointEpochOrder.on_tick cfg _ _ ih
 
-/-- Direct producer for `EndpointFFGPipeline.finalized_epoch_le_justified`. -/
-theorem finalizedEpoch_le_justified_of_globalTrajectory
-    {anchor : Checkpoint Root} {S : ChainFFGState cfg E anchor}
-    (hcoh : FFGTransitionCoherence cfg ext S)
-    (hgen : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
-      E.genesis_store = get_forkchoice_store cfg ast ablk)
-    (w : ValidatorIndex) (n : Nat) :
-    (E.store cfg ext w n).finalized_checkpoint.epoch ≤
-      (E.store cfg ext w n).justified_checkpoint.epoch := by
-  have horder :=
-    E.checkpointEpochOrder_of_globalTrajectory cfg ext hcoh hgen w n
-  exact horder.finalized_le_justified
 
 /-! ## Accepted exact-prefix trajectory -/
 
@@ -700,20 +623,6 @@ theorem globalFinalizedEpoch_le_justified
     |>.checkpointOrder
     |>.finalized_le_justified
 
-/-- The eager pair has the analogous order at every exact causal store. -/
-theorem globalUnrealizedFinalizedEpoch_le_unrealizedJustified
-    {E : Execution Root}
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
-    (hgen : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
-      E.genesis_store = get_forkchoice_store cfg ast ablk ∧
-      ast.slot = ablk.message.slot)
-    (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
-    {store : Store Root} (hstore : E.CausalStore cfg ext store) :
-    store.unrealized_finalized_checkpoint.epoch ≤
-      store.unrealized_justified_checkpoint.epoch :=
-  (causalStoreOrderedGlobalProjection cfg ext B hgen hanchor hstore)
-    |>.checkpointOrder
-    |>.unrealized_finalized_le_unrealized_justified
 
 end ExactPrefixAcceptedFFGSemantics
 

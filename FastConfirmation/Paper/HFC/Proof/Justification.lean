@@ -8,30 +8,7 @@ public import FastConfirmation.Paper.LMDGhost.Proof.Blocks
 /-!
 # HFC / Proof / Justification
 
-The FFG **justification machinery** consumed by the never-filtered argument.
-These are the monotonicity and argmax facts about
-the `Model/Justification.lean` defs (`linkWeight`, `Justified`, `greatestJustified`,
-`votingSource`):
-
-* `linkWeight_mono` — `linkWeight` grows when the view's messages grow.
-* `Justified_mono` / `Justified_mono_time` — justification persists when the view
-  grows / forward in time (under monotone views).
-* `greatestJustified_justified` / `greatestJustified_max` — `greatestJustified` is
-  itself justified, and dominates (by epoch) every justified mentioned checkpoint.
-* `greatestJustifiedOfChain_justified` / `greatestJustifiedOfChain_block_le` — the
-  view-realized chain-relative analogue of `GU(b)` is justified, and its block is an ancestor of
-  `b`; these structural facts distinguish it from the global view selector `greatestJustified` and
-  let the proof-facing voting source age.
-* `votingSource_eq_gjblock` — `votingSource` on its **same-epoch** branch
-  (`epoch(b) = epoch(t)`) is the chain-relative `gjblock(b)` (Def 1/Def 2; `rfl` on that branch);
-  the never-filter's voting-source disjunct then identifies `gjblock(b'') = gjC` (the realized `GJ`)
-  in the same-epoch case via realized-max + accountable-safety uniqueness.
-* `gjblock_justified` / `gjblock_block_le` / `gjblock_realized` / `gjblock_max` — the Def-1
-  selector facts (justified, on `chain(b)`, epoch-cut realized, argmax-dominant), the same-epoch
-  voting-source analogues of the `greatestRealizedJustified_*` / `greatestJustifiedOfChain_*`
-  selectors (moved here from `Proof/FFGRule.lean` so the `votingSource` proofs can use them).
-
-`noncomputable` is forced by `Finset.image` / `totalWeight` / `argmax` upstream.
+This module contains `linkWeight_mono`, `onChainLinkWeight_le_linkWeight_of_view_reads_chain`, `onChainJustified_to_view_justified_of_view_reads_chain` and related declarations.
 -/
 
 namespace FastConfirmation.HFC
@@ -309,39 +286,7 @@ theorem genesisCheckpoint_mem_mentioned (V : View n (FFGVote n)) :
   unfold mentionedCheckpoints
   exact Finset.mem_insert_self _ _
 
-/-- **I.4a — `greatestJustified` is itself justified.** The `argmax` of the justified
-    mentioned checkpoints is justified (its `some` branch is a member of the filtered set,
-    hence justified); the `none` branch defaults to genesis, justified by `Justified.base`. -/
-theorem greatestJustified_justified (A : Anchor n) (V : View n (FFGVote n)) :
-    Justified A V (greatestJustified A V) := by
-  classical
-  unfold greatestJustified
-  cases harg :
-      ((mentionedCheckpoints V).filter (fun C => Justified A V C)).toList.argmax (·.epoch) with
-  | none => exact Justified.base
-  | some C =>
-    have hmem := List.argmax_mem harg
-    rw [Finset.mem_toList, Finset.mem_filter] at hmem
-    exact hmem.2
 
-/-- **I.4b — `greatestJustified` dominates (by epoch) every justified mentioned
-    checkpoint.** Direct from `List.le_of_mem_argmax`. -/
-theorem greatestJustified_max (A : Anchor n) (V : View n (FFGVote n)) {C : Checkpoint n}
-    (hC : C ∈ mentionedCheckpoints V) (hJ : Justified A V C) :
-    C.epoch ≤ (greatestJustified A V).epoch := by
-  classical
-  have hCmem : C ∈ (mentionedCheckpoints V).filter (fun C => Justified A V C) :=
-    Finset.mem_filter.mpr ⟨hC, hJ⟩
-  unfold greatestJustified
-  cases harg :
-      ((mentionedCheckpoints V).filter (fun C => Justified A V C)).toList.argmax (·.epoch) with
-  | none =>
-    -- argmax = none ⇒ the list is empty ⇒ the filtered set is empty, contradicting `hCmem`.
-    rw [List.argmax_eq_none, Finset.toList_eq_nil] at harg
-    rw [harg] at hCmem
-    simp at hCmem
-  | some D =>
-    exact List.le_of_mem_argmax (Finset.mem_toList.mpr hCmem) harg
 
 /-- A link-justified target whose link weight is positive is a *mentioned* checkpoint:
     a positive `linkWeight` means some FFG vote in `V` targets `Ct`, so `Ct` appears in
@@ -420,23 +365,6 @@ theorem greatestJustifiedOfChain_justified (A : Anchor n) (V : View n (FFGVote n
     rw [Finset.mem_toList, Finset.mem_filter] at hmem
     exact hmem.2.1
 
-/-- **`greatestJustifiedOfChain.block` is an ancestor of `b`** (the Def-1 "in the
-    chain of `b`" property). Its `some` branch is in the filtered set, whose predicate
-    carries `C.block ≼ b`; the `none` branch is genesis, an ancestor of everything
-    (`genesis_ancestor`). This is the structural fact that distinguishes the view-realized chain
-    selector from the global `greatestJustified` (whose block need *not* be an ancestor of `b`). -/
-theorem greatestJustifiedOfChain_block_le (A : Anchor n) (V : View n (FFGVote n))
-    (b : Block n) : (greatestJustifiedOfChain A V b).block ≼ b := by
-  classical
-  unfold greatestJustifiedOfChain
-  cases harg :
-      ((mentionedCheckpoints V).filter
-        (fun C => Justified A V C ∧ C.block ≼ b)).toList.argmax (·.epoch) with
-  | none => exact genesis_ancestor _
-  | some C =>
-    have hmem := List.argmax_mem harg
-    rw [Finset.mem_toList, Finset.mem_filter] at hmem
-    exact hmem.2.2
 
 /-- **`greatestJustifiedOfChain` dominates (by epoch) every justified *in-chain* mentioned
     checkpoint.** The chain-relative argmax mirror of `greatestJustified_max`: any checkpoint
@@ -463,23 +391,6 @@ theorem greatestJustifiedOfChain_max (A : Anchor n) (V : View n (FFGVote n)) (b 
   | some D =>
     exact List.le_of_mem_argmax (Finset.mem_toList.mpr hCmem) harg
 
-/-- **The chain-relative greatest-justified dominates the global one in epoch when the global
-    block is on the chain.** If `(greatestJustified A V).block ≼ x`, then the global
-    greatest-justified checkpoint is itself a justified, mentioned, in-chain-of-`x` checkpoint,
-    so the argmax `greatestJustifiedOfChain A V x` (which ranges over exactly that set) dominates
-    its epoch. This is the load-bearing fact letting `RecencyHolds` be *discharged* from a
-    `greatestJustified`-recency assumption: in the cross-epoch voting-source branch
-    `vs = greatestJustifiedOfChain b''`, recency of the chain-relative source follows from
-    recency of the global one (`(greatestJustified).epoch ≤ (greatestJustifiedOfChain x).epoch`).
-    The `univ.Nonempty` witness feeds `justified_mem_mentioned` (positive total stake). -/
-theorem greatestJustifiedOfChain_ge_gJ (A : Anchor n) (V : View n (FFGVote n)) (x : Block n)
-    (hwit : (Finset.univ : Finset (Validator n)).Nonempty)
-    (h : (greatestJustified A V).block ≼ x) :
-    (greatestJustified A V).epoch ≤ (greatestJustifiedOfChain A V x).epoch := by
-  have hJ : Justified A V (greatestJustified A V) := greatestJustified_justified A V
-  have hMem : (greatestJustified A V) ∈ mentionedCheckpoints V :=
-    justified_mem_mentioned A V hwit hJ
-  exact greatestJustifiedOfChain_max A V x hMem hJ h
 
 /-- **`greatestJustifiedOfChain` dominates the epoch of any justified, in-chain
     mentioned checkpoint** (the general form behind `greatestJustifiedOfChain_ge_gJ`).
@@ -527,19 +438,6 @@ theorem gjblock_justified (A : Anchor n) (τ : Timing) (V : View n (FFGVote n)) 
     rw [Finset.mem_toList, Finset.mem_filter] at hmem
     exact hmem.2.1
 
-/-- `gjblock A τ V b`'s block is an ancestor of `b` (the Def-1 "in the chain of `b`" property). -/
-theorem gjblock_block_le (A : Anchor n) (τ : Timing) (V : View n (FFGVote n)) (b : Block n) :
-    (gjblock A τ V b).block ≼ b := by
-  classical
-  unfold gjblock
-  cases harg : ((mentionedCheckpoints V).filter
-      (fun C => Justified A V C ∧ C.block ≼ b ∧ C.epoch < τ.epochOf b.slot)).toList.argmax
-      (·.epoch) with
-  | none => exact genesis_ancestor _
-  | some C =>
-    have hmem := List.argmax_mem harg
-    rw [Finset.mem_toList, Finset.mem_filter] at hmem
-    exact hmem.2.2.1
 
 /-- **`gjblock` is realized** — its epoch is strictly below `b`'s own epoch `epoch(b.slot)`, given
     `epoch(b.slot) ≥ 1` (`hpos`). On the `some` branch the filter predicate carries
@@ -585,18 +483,6 @@ theorem gjblock_max (A : Anchor n) (τ : Timing) (V : View n (FFGVote n)) (b : B
   | some D =>
     exact List.le_of_mem_argmax (Finset.mem_toList.mpr hCmem) harg
 
-/-- **`votingSource` is justified in the view** — the proof-facing voting source is justified
-    whichever branch fires: the same-epoch branch is the view-realized chain-relative `gjblock(b)`
-    (`gjblock_justified`), the cross-epoch branch is the view-realized chain selector
-    `greatestJustifiedOfChain` (`greatestJustifiedOfChain_justified`). Both are justified by
-    construction (their `some` branches lie in a justified-filtered set, their `none` branches are
-    `Justified.base`). -/
-theorem votingSource_justified (A : Anchor n) (τ : Timing) (V : View n (FFGVote n))
-    (b : Block n) (t : Time) : Justified A V (votingSource A τ V b t) := by
-  unfold votingSource
-  split
-  · exact gjblock_justified A τ V b
-  · exact greatestJustifiedOfChain_justified A V b
 
 /-- **`greatestRealizedJustified` is realized** — its epoch is strictly below the
     current epoch `epochOf(slotOf t)`, given the current epoch is `≥ 1` (`hpos`). On
@@ -673,21 +559,6 @@ theorem greatestRealizedJustified_max (A : Anchor n) (τ : Timing)
   | some D =>
     exact List.le_of_mem_argmax (Finset.mem_toList.mpr hCmem) harg
 
-/-- **The realized greatest justified epoch is `≤` the global greatest justified epoch.**
-    The realized set (justified, epoch-cut, mentioned) is a subset of all justified
-    mentioned checkpoints, so its argmax epoch is dominated by the global argmax epoch:
-    `greatestRealizedJustified A τ V t` is itself justified (`_justified`) and mentioned
-    (`justified_mem_mentioned`, fed by the `univ.Nonempty` witness `hwit`), so
-    `greatestJustified_max` dominates its epoch. -/
-theorem greatestRealizedJustified_le_greatestJustified (A : Anchor n) (τ : Timing)
-    (V : View n (FFGVote n)) (t : Time)
-    (hwit : (Finset.univ : Finset (Validator n)).Nonempty) :
-    (greatestRealizedJustified A τ V t).epoch ≤ (greatestJustified A V).epoch := by
-  have hJ : Justified A V (greatestRealizedJustified A τ V t) :=
-    greatestRealizedJustified_justified A τ V t
-  have hMem : (greatestRealizedJustified A τ V t) ∈ mentionedCheckpoints V :=
-    justified_mem_mentioned A V hwit hJ
-  exact greatestJustified_max A V hMem hJ
 
 /-- The greatest finalized checkpoint is a mentioned checkpoint. -/
 theorem greatestFinalized_mem_mentioned (A : Anchor n) (V : View n (FFGVote n)) :
@@ -726,36 +597,6 @@ above `b`). Naming: **D1** (`greatestFinalized_block_ancestor_greatestRealizedJu
 justified-uniqueness-per-epoch route, in its slot-bound-free comparability form).
 -/
 
-/-- **D1 — `greatestFinalized.block ≼ greatestJustified.block`.** The `gfC ≼ gjC` half of
-    the old `FFGAnchorsBelowConfirmed`. If there is no finalized mentioned checkpoint,
-    `greatestFinalized` defaults to `genesisCheckpoint`, whose block is an ancestor of
-    everything (`genesis_ancestor`). Otherwise `greatestFinalized` is genuinely finalized;
-    epoch-domination (it is a mentioned justified checkpoint, so `greatestJustified_max`
-    gives `gfC.epoch ≤ gjC.epoch`) plus the FFG prefix property
-    (`FinalizedPrefixOfJustified`, the faithful structural premise) supply the block-ancestry
-    direction — epoch domination alone cannot pick the direction in this weight-only model. -/
-theorem greatestFinalized_block_ancestor_greatestJustified (A : Anchor n)
-    (V : View n (FFGVote n)) (hpre : FinalizedPrefixOfJustified A V) :
-    (greatestFinalized A V).block ≼ (greatestJustified A V).block := by
-  classical
-  -- Case on whether some finalized mentioned checkpoint exists.
-  unfold greatestFinalized
-  cases harg :
-      ((mentionedCheckpoints V).filter (fun C => Finalized A V C)).toList.argmax (·.epoch) with
-  | none =>
-    -- no finalized checkpoint ⇒ greatestFinalized = genesis ⇒ ancestor of everything.
-    exact genesis_ancestor _
-  | some Cf =>
-    -- Cf is the genuine greatest finalized checkpoint: finalized, mentioned.
-    have hmem := List.argmax_mem harg
-    rw [Finset.mem_toList, Finset.mem_filter] at hmem
-    have hCfFin : Finalized A V Cf := hmem.2
-    have hCfMem : Cf ∈ mentionedCheckpoints V := hmem.1
-    have hCfJust : Justified A V Cf := hCfFin.1
-    -- epoch domination: Cf.epoch ≤ greatestJustified.epoch.
-    have hepoch : Cf.epoch ≤ (greatestJustified A V).epoch :=
-      greatestJustified_max A V hCfMem hCfJust
-    exact hpre hCfFin (greatestJustified_justified A V) hepoch
 
 /-- **The realized D1 — `greatestFinalized.block ≼ (greatestRealizedJustified).block`.** The
     realized analogue of D1: `block(GF) ≼ block(GJ_real)` for the *realized* greatest justified

@@ -1,9 +1,11 @@
 module
 public import FastConfirmation.Spec.Proof.CurrentTargetA32Support
-public import FastConfirmation.Spec.Proof.FFGJustifiedCheckpointCache
+public import FastConfirmation.Spec.Proof.HonestVoteTargetCache
+public import FastConfirmation.Spec.Proof.FinalizedResetSafety
+public import FastConfirmation.Spec.Proof.MinimalSelectedDomain
+public import FastConfirmation.Spec.Proof.ModelFacts
 public import FastConfirmation.Spec.Proof.PaperA32ProjectionCore
 
-public import FastConfirmation.Spec.Proof.ModelFacts
 @[expose] public section
 
 /-!
@@ -158,47 +160,7 @@ theorem paperA32LinkSupportAtCore_of_concreteHonestTargetVotes
     · simpa only [a] using Q.source_agreement i hi vote
     · simpa only [a] using vote.target_eq
 
-/-- Concrete-vote support specialized to the scheduled-root state. -/
-theorem paperA32LinkSupportAt_of_concreteHonestTargetVotes
-    (hhb : HonestBehavior cfg ext E)
-    (hsync : PaperSafetySynchrony cfg ext E)
-    (hec : ExternalsCoherence cfg ext E)
-    (hdiv : 1000 ∣ cfg.slot_duration_ms)
-    (hgenTime : E.genesis_store.genesis_time ≤ E.genesis_store.time)
-    {deadline : Slot} {target : Checkpoint Root}
-    (Q : ConcreteA32QuorumBefore cfg ext E deadline target)
-    {anchor : Checkpoint Root} {S : ChainFFGState cfg E anchor}
-    {w : ValidatorIndex} (hw : w ∈ E.honest) {m : ℕ}
-    (hHm : E.WithinHorizon cfg m)
-    (hdeadline : deadline ≤ E.slot_at cfg m)
-    {b' : Root}
-    (hknown : target.root ∈ (E.store cfg ext w m).block_roots)
-    (hkeyed : target ∈ (E.store cfg ext w m).checkpoint_state_keys) :
-    Nonempty (PaperA32LinkSupportAt cfg ext S w m b' Q.source target) :=
-  E.paperA32LinkSupportAtCore_of_concreteHonestTargetVotes cfg ext
-    hhb hsync hec hdiv hgenTime Q hw hHm hdeadline hknown hkeyed
 
-/-- Accepted-state wrapper around the same concrete support constructor. -/
-theorem accepted_paperA32LinkSupportAt_of_concreteHonestTargetVotes
-    (hhb : HonestBehavior cfg ext E)
-    (hsync : PaperSafetySynchrony cfg ext E)
-    (hec : ExternalsCoherence cfg ext E)
-    (hdiv : 1000 ∣ cfg.slot_duration_ms)
-    (hgenTime : E.genesis_store.genesis_time ≤ E.genesis_store.time)
-    {deadline : Slot} {target : Checkpoint Root}
-    (Q : ConcreteA32QuorumBefore cfg ext E deadline target)
-    {anchor : Checkpoint Root}
-    {S : AcceptedChainFFGState cfg ext E anchor}
-    {w : ValidatorIndex} (hw : w ∈ E.honest) {m : ℕ}
-    (hHm : E.WithinHorizon cfg m)
-    (hdeadline : deadline ≤ E.slot_at cfg m)
-    {b' : Root}
-    (hknown : target.root ∈ (E.store cfg ext w m).block_roots)
-    (hkeyed : target ∈ (E.store cfg ext w m).checkpoint_state_keys) :
-    Nonempty (S.PaperA32LinkSupportAt cfg ext
-      w m b' Q.source target) :=
-  E.paperA32LinkSupportAtCore_of_concreteHonestTargetVotes cfg ext
-    hhb hsync hec hdiv hgenTime Q hw hHm hdeadline hknown hkeyed
 
 /-- One fixed concrete gate quorum realizes the complete support antecedent
 of paper Assumption 3.2 throughout the following epoch.

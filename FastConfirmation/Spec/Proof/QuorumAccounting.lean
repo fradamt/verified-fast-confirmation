@@ -10,36 +10,7 @@ public import Mathlib.Algebra.Order.BigOperators.Group.Finset
 /-!
 # Spec / Proof / QuorumAccounting
 
-`Proof/Quorum.lean` reduces
-`is_one_confirmed = true` to the branch-free inequality
-
-`2·support + support_discount ≥ maximum_support + proposer_score +
-2·adversarial_weight + 1`.
-
-This module identifies `support` (`get_attestation_score`) with a ground-truth
-weight sum, splits it into an honest and a Byzantine part, confines the
-supporters to the slot spans `ByzantineBound` budgets (via the
-`LatestMessageProvenance` provenance record), and bounds the Byzantine part by
-`estimate // 100 * CONFIRMATION_BYZANTINE_THRESHOLD`.
-
-The pieces are:
-
-* **Step 1** (`get_attestation_score_eq_sum`, `attestation_score_honest_split`):
-  the score is a `List.sum` over the *supporter list* `AttSupporters`
-  (unslashed active non-equivocating indices whose latest message supports the
-  node), and it splits into the sub-sums over honest and non-honest supporters.
-* **Step 2** (`supporter_mem_span_committee`): every supporter of `b` at an
-  honest node carrying `LatestMessageProvenance` sits in the ground-truth span
-  committee `E.span_committee sa (current_slot - 1)` for any `sa ≤ (blocks
-  b).slot` — in particular both `get_adversarial_weight` spans.
-* **Step 3** (`byzantine_supporter_weight_le`): under `ByzantineBound` and
-  registry constancy the non-honest supporters' total (ground-truth) weight is
-  at most `estimate // 100 * CONFIRMATION_BYZANTINE_THRESHOLD`.
-
-Every hypothesis is a field of an existing assumption record, a
-`WalkKnown`/`hwf`-shaped domain condition, or a fact exported by an existing
-`Proof/` module (`LatestMessageProvenance`, `RegistryConstant`,
-`Execution.store_current_slot`). No new behavioral assumptions enter.
+This module contains `AttSupporters`, `get_attestation_score_eq_sum`, `AttSupporters_nodup` and related declarations.
 -/
 
 namespace FastConfirmation.Spec
@@ -202,71 +173,7 @@ committee (step 2, folded into `hspan`); and `ByzantineBound.span_bound`
 supplies the headline bound, with `htab` matching the two total-active-balance
 readings. -/
 
-omit [Inhabited Root] in
-/-- Step 3: the total (ground-truth = `bs`-effective) weight of the non-honest
-supporters of `b` is at most `estimate // 100 * CONFIRMATION_BYZANTINE_THRESHOLD`
-over any span `[sa, es]` that contains all of them (`hspan`). -/
-theorem byzantine_supporter_weight_le {E : Execution Root} (hbb : ByzantineBound cfg E)
-    {store : Store Root} {bs : BeaconState Root} {b : Root} {sa es : Slot}
-    (hval : bs.validators = E.registry)
-    (htab : get_total_active_balance cfg bs = E.total_active cfg)
-    (hsaH : E.SlotWithinHorizon cfg sa) (hesH : E.SlotWithinHorizon cfg es)
-    (hspan : ∀ i ∈ AttSupporters cfg store (get_node_for_root b) bs,
-      i ∉ E.honest → i ∈ E.span_committee sa es) :
-    (((AttSupporters cfg store (get_node_for_root b) bs).filter (fun i => i ∉ E.honest)).map
-        (fun i => (bs.validators.getD i default).effective_balance)).sum ≤
-      estimate_committee_weight_between_slots cfg (get_total_active_balance cfg bs) sa es
-        / 100 * cfg.confirmation_byzantine_threshold := by
-  set L := (AttSupporters cfg store (get_node_for_root b) bs).filter (fun i => i ∉ E.honest)
-    with hL
-  have hLnodup : L.Nodup := (AttSupporters_nodup cfg store _ bs).filter _
-  have hmap : L.map (fun i => (bs.validators.getD i default).effective_balance)
-      = L.map E.weight_of :=
-    List.map_congr_left (fun i _ => by rw [Execution.weight_of, hval])
-  have hsub : L.toFinset ⊆ (E.span_committee sa es).filter (fun i => i ∉ E.honest) := by
-    intro i hi
-    rw [List.mem_toFinset, hL, List.mem_filter] at hi
-    have hnh : i ∉ E.honest := of_decide_eq_true hi.2
-    exact Finset.mem_filter.mpr ⟨hspan i hi.1 hnh, hnh⟩
-  rw [htab]
-  calc (L.map (fun i => (bs.validators.getD i default).effective_balance)).sum
-      = ∑ i ∈ L.toFinset, E.weight_of i := by
-        rw [hmap]; exact (List.sum_toFinset E.weight_of hLnodup).symm
-    _ ≤ ∑ i ∈ (E.span_committee sa es).filter (fun i => i ∉ E.honest), E.weight_of i :=
-        Finset.sum_le_sum_of_subset_of_nonneg hsub (fun _ _ _ => Nat.zero_le _)
-    _ = E.weight ((E.span_committee sa es).filter (fun i => i ∉ E.honest)) := rfl
-    _ ≤ estimate_committee_weight_between_slots cfg (E.total_active cfg) sa es / 100 *
-          cfg.confirmation_byzantine_threshold := hbb.span_bound sa es hsaH hesH
 
-omit [Inhabited Root] in
-/-- Steps 2 + 3 composed at an honest node: with `LatestMessageProvenance` and
-the per-supporter `WalkKnown` witnesses discharging the confinement `hspan`, the
-non-honest supporters' weight is bounded by
-`estimate // 100 * CONFIRMATION_BYZANTINE_THRESHOLD` over any span
-`[sa, current_slot − 1]` with `sa ≤ (blocks b).slot` — in particular both
-`get_adversarial_weight` spans (`Quorum.get_adversarial_weight_eq`). -/
-theorem byzantine_supporter_weight_le_of_provenance {E : Execution Root}
-    (hbb : ByzantineBound cfg E) {store : Store Root}
-    (hwf : ∀ r ∈ store.block_roots,
-      (store.blocks r).parent_root ∈ store.block_roots →
-        (store.blocks (store.blocks r).parent_root).slot < (store.blocks r).slot)
-    {bs : BeaconState Root} {b : Root} {sa : Slot}
-    (hval : bs.validators = E.registry)
-    (htab : get_total_active_balance cfg bs = E.total_active cfg)
-    (hsaH : E.SlotWithinHorizon cfg sa)
-    (hcurH : E.SlotWithinHorizon cfg (get_current_slot cfg store))
-    (hprov : LatestMessageProvenance E cfg (get_current_slot cfg store) store)
-    (hsa : sa ≤ (store.blocks b).slot)
-    (hwalk : ∀ i ∈ AttSupporters cfg store (get_node_for_root b) bs, ∀ lm,
-      store.latest_messages i = some lm → WalkKnown store (store.blocks b).slot lm.root) :
-    (((AttSupporters cfg store (get_node_for_root b) bs).filter (fun i => i ∉ E.honest)).map
-        (fun i => (bs.validators.getD i default).effective_balance)).sum ≤
-      estimate_committee_weight_between_slots cfg (get_total_active_balance cfg bs) sa
-          (get_current_slot cfg store - 1) / 100 * cfg.confirmation_byzantine_threshold :=
-  byzantine_supporter_weight_le cfg hbb hval htab hsaH
-    ⟨(Nat.sub_le _ _).trans hcurH.1,
-      lt_of_le_of_lt (Nat.div_le_div_right (Nat.sub_le _ _)) hcurH.2⟩
-    (fun i hi _ => supporter_mem_span_committee cfg hwf hprov hi (hwalk i hi) hsa)
 
 /-! ## Step 4 — the honest-support majority (arithmetic assembly)
 
@@ -311,24 +218,7 @@ theorem honest_support_majority_of_byz_le {E : Execution Root}
   rw [attestation_score_honest_split cfg E store (get_node_for_root b) bs] at hineq
   exact majority_arith hineq hbyz
 
-/-! ## Equivocator-disjointness input for the full Step 4
 
-`honest_support_majority_of_byz_le` reduces the headline to the single bound
-`hbyz : byz_score ≤ get_adversarial_weight …`. Steps 2 + 3
-(`byzantine_supporter_weight_le_of_provenance`) discharge the *weaker*
-`byz_score ≤ estimate // 100 * CONFIRMATION_BYZANTINE_THRESHOLD` — the
-pre-discount budget — but `get_adversarial_weight` is that budget *minus* the
-span's `get_equivocation_score` (`byzantine_net_le_compute_adversarial_weight`).
-The stronger bound additionally needs
-
-  `byz_score + get_equivocation_score … ≤ E.weight (non-honest span committee)`,
-
-which follows when the equivocating validators of the span are non-honest, i.e.
-the invariant **no honest validator is in `store.equivocating_indices`** (so the
-honest equivocator weight is `0`). That invariant is a trajectory fact about
-`on_attester_slashing` under `HonestBehavior.not_slashable` /
-`no_forgery`; consumers provide it through the corresponding trajectory
-invariant. -/
 
 end FastConfirmation.Spec
 

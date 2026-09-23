@@ -118,54 +118,6 @@ theorem confirmed_succ_eq_finalized_of_stale_call
     (by rw [hstore]; exact hfinalized)
   rw [h, hstore]
 
-/-- At a non-start call with a lagging unrealized justification, a cached
-root that is recent and canonical is carried unchanged. -/
-theorem confirmed_succ_eq_of_lagging_nonstart_call
-    (v : ValidatorIndex) (n : ℕ) (hcall : E.IsFCRCallAt cfg ext v n)
-    (hstart : is_start_slot_at_epoch cfg
-      (get_current_slot cfg (E.store cfg ext v (n + 1))) = false)
-    (hrecent : ¬ get_block_epoch cfg (E.store cfg ext v (n + 1))
-        (E.confirmed cfg ext v n) + 1 <
-      get_current_store_epoch cfg (E.store cfg ext v (n + 1)))
-    (hcanonical : is_ancestor (E.store cfg ext v (n + 1))
-        (get_node_for_root (get_head cfg (E.store cfg ext v (n + 1))).root)
-        (get_node_for_root (E.confirmed cfg ext v n)) = true)
-    (hhead : ((E.store cfg ext v (n + 1)).unrealized_justifications
-        (get_head cfg (E.store cfg ext v (n + 1))).root).epoch + 1 <
-      get_current_store_epoch cfg (E.store cfg ext v (n + 1)))
-    (hprev : ((E.store cfg ext v (n + 1)).unrealized_justifications
-        (E.fcrStep cfg ext v n).previous_slot_head).epoch + 1 <
-      get_current_store_epoch cfg (E.store cfg ext v (n + 1))) :
-    E.confirmed cfg ext v (n + 1) = E.confirmed cfg ext v n := by
-  rw [E.confirmed_succ_of_advance cfg ext v n hcall,
-    ← getLatestTraceResult_eq_getLatestConfirmed]
-  have hstore := E.fcrStep_store cfg ext v n
-  have hroot := E.fcrStep_confirmed_root cfg ext v n
-  set query := E.fcrStep cfg ext v n with hquery
-  have hstart' : is_start_slot_at_epoch cfg
-      (get_current_slot cfg query.store) = false := by
-    rw [hstore]; exact hstart
-  have hafterFinalized : getLatestAfterFinalized cfg ext query =
-      E.confirmed cfg ext v n := by
-    simp only [getLatestAfterFinalized]
-    rw [if_neg, hroot]
-    rw [hstore, hroot]
-    simp [hrecent, hcanonical, hstart]
-  have hguard : getLatestObservedRestartGuard cfg query
-      (getLatestAfterFinalized cfg ext query) = false := by
-    simp [getLatestObservedRestartGuard, hstart']
-  have hafterObserved : getLatestAfterObserved cfg ext query =
-      E.confirmed cfg ext v n := by
-    simp only [getLatestAfterObserved]
-    rw [if_neg (by simp [hguard]), hafterFinalized]
-  have hselect := find_latest_confirmed_descendant_eq_of_lagging_unrealized
-    cfg ext query (E.confirmed cfg ext v n) hstart'
-    (by rw [hstore]; exact hhead) (by rw [hstore]; exact hprev)
-  simp only [getLatestTraceResult]
-  rw [hafterObserved]
-  split_ifs
-  · exact hselect
-  · rfl
 
 end Execution
 

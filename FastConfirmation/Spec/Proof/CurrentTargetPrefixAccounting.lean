@@ -37,26 +37,7 @@ def PrefixCommitteeAgreement (store : Store Root) : Prop :=
   ∀ slot : Slot, E.SlotWithinHorizon cfg slot →
     get_slot_committee cfg ext store slot = E.committee slot
 
-/-- Exact shuffling-coherence contract for causal in-second query stores.
 
-This is intentionally separate from legacy `ExternalsCoherence`.  Registry
-constancy cannot imply it: the real phase0 committee depends on the shuffling
-seed as well as the validator registry, while that seed is erased from this
-project's projected `BeaconState`.  The contract therefore speaks only about
-stores produced by actual `ScheduledEventPrefix` replay and only about slots
-inside the verified horizon.
--/
-def ScheduledPrefixCommitteeCoherence : Prop :=
-  ∀ (p : E.ScheduledEventPrefix),
-    E.PrefixCommitteeAgreement cfg ext (p.store cfg ext)
-
-/-- Specialize global scheduled-prefix committee coherence to one actual
-prefix. -/
-theorem ScheduledEventPrefix.prefixCommitteeAgreement
-    (hcoherence : E.ScheduledPrefixCommitteeCoherence cfg ext)
-    (p : E.ScheduledEventPrefix) :
-    E.PrefixCommitteeAgreement cfg ext (p.store cfg ext) :=
-  hcoherence p
 
 /-- The safety-free accounting projection of one exact scheduled-prefix
 query.  The first field is produced by `ScheduledEventPrefix`; the second is
@@ -309,32 +290,6 @@ namespace AllowedFCRCalls
 
 open Execution
 
-/-- An accepted globally ordered query and its exact scheduled-prefix
-simulation produce all current-target accounting evidence.  Operational facts
-come from prefix replay; committee equality comes from the standalone
-shuffling-coherence contract.  No target-support or safety premise is added.
--/
-theorem GlobalScheduledQueryPrefixCompatibility.currentTargetPrefixAccountingEvidence
-    {E : Execution Root}
-    {runtime : GlobalRuntime Root} {actions : List (GlobalAction Root)}
-    {position : ℕ} {before after : GlobalRuntime Root} {querySecond : ℕ}
-    {scheduledPrefix : E.ScheduledEventPrefix}
-    (h : GlobalScheduledQueryPrefixCompatibility cfg ext E runtime actions
-      position before after querySecond scheduledPrefix)
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
-    (hcommittees : E.ScheduledPrefixCommitteeCoherence cfg ext)
-    (actor : ValidatorIndex) (kind : QueryKind)
-    (haction : actions.getD position (.honestVoteCast 0 0 0) =
-      .nodeAction actor (.query kind))
-    (hhonest : scheduledPrefix.node ∈ E.honest)
-    (hH : E.WithinHorizon cfg querySecond) :
-    E.CurrentTargetPrefixAccountingEvidence cfg ext
-      (before.nodeState actor).fcrStore.store querySecond := by
-  refine
-    { operational := h.operationalEvidence cfg ext hT actor kind haction hhonest hH
-      committees := ?_ }
-  rw [h.query_store_eq actor kind haction]
-  exact hcommittees scheduledPrefix
 
 end AllowedFCRCalls
 
@@ -342,78 +297,17 @@ end AllowedFCRCalls
 
 namespace ScheduledPrefixCommitteeCoherenceNonvacuity
 
-abbrev WitnessRoot := Fin 2
 
-def junkRoot : WitnessRoot := 0
-def anchorRoot : WitnessRoot := 1
 
-def witnessConfig : Config where
-  slots_per_epoch := 2
-  slots_per_epoch_pos := by decide
-  slot_duration_ms := 1000
-  slot_duration_ms_pos := by decide
-  proposer_score_boost := 0
-  confirmation_byzantine_threshold := 25
-  confirmation_byzantine_threshold_le := by decide
-  committee_weight_estimation_adjustment_factor := 5
-  effective_balance_increment := 100
-  effective_balance_increment_pos := by decide
-  hundred_dvd_effective_balance_increment := by decide
-  attestation_due_bps := 0
-  min_seed_lookahead := 0
 
-def anchorCheckpoint : Checkpoint WitnessRoot :=
-  { epoch := 0, root := anchorRoot }
 
-def witnessValidator : Validator :=
-  { effective_balance := 100
-    slashed := false
-    activation_epoch := 0
-    exit_epoch := FAR_FUTURE_EPOCH }
 
-def anchorState : BeaconState WitnessRoot :=
-  { genesis_time := 0
-    slot := 0
-    validators := [witnessValidator]
-    current_justified_checkpoint := anchorCheckpoint
-    finalized_checkpoint := anchorCheckpoint }
 
-def anchorBlock : SignedBeaconBlock WitnessRoot :=
-  { message := { slot := 0, parent_root := junkRoot }
-    root := anchorRoot }
 
-def witnessStore : Store WitnessRoot :=
-  get_forkchoice_store witnessConfig anchorState anchorBlock
 
-/-- The external committee functions ignore the state in this finite model,
-so every accepted prefix reads the same nonempty singleton committee. -/
-def witnessExternals : Externals WitnessRoot where
-  get_beacon_committee := fun _ _ _ => [0]
-  get_committee_count_per_slot := fun _ _ => 1
-  process_slots := fun state slot => { state with slot := slot }
-  state_transition := fun _ _ => none
-  process_justification_and_finalization := id
-  is_valid_indexed_attestation := fun _ _ => false
 
-def witnessExecution : Execution WitnessRoot where
-  verification_horizon := 2
-  genesis_store := witnessStore
-  schedule := fun _ _ => []
-  honest := {0}
-  committee := fun _ => {0}
-  vote := fun _ _ => none
 
-theorem witness_scheduledPrefixCommitteeCoherence :
-    witnessExecution.ScheduledPrefixCommitteeCoherence
-      witnessConfig witnessExternals := by
-  intro p slot _hslot
-  simp [get_slot_committee, witnessExternals, witnessExecution]
 
-/-- The witness committees are genuinely nonempty, so coherence is not
-satisfied merely by an empty committee schedule. -/
-theorem witness_committee_nonempty (slot : Slot) :
-    (witnessExecution.committee slot).Nonempty := by
-  exact ⟨0, by simp [witnessExecution]⟩
 
 end ScheduledPrefixCommitteeCoherenceNonvacuity
 

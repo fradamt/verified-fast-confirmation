@@ -12,40 +12,7 @@ public import FastConfirmation.Spec.Proof.ModelFacts
 /-!
 # Spec / Proof / FFGSourceCoherence
 
-The reduced model makes phase0's `process_slots` and `state_transition`
-opaque.  Their existing coherence record constrains slots, registries, and
-checkpoint *epochs*, but it does not say when
-`current_justified_checkpoint` may change.  This file isolates the narrow
-phase0 law needed to rule out an arbitrary source split inside one epoch.
-
-There are two deliberately separate narrow contracts.  `Phase0SourceCoherence`
-says that neither empty-slot processing nor a block transition changes the
-realized justified checkpoint unless an epoch boundary is crossed.  This is a
-fact about phase0's state transition.  `BlockStateTransitionHistory` restores
-the exact parent-state transition equation erased from an arbitrary later
-reduced store view.  The handler proves it at insertion time, but the existing
-trajectory library has no block-state replay/immutability invariant carrying
-that equation through later root deliveries.
-
-Everything else below is executable bookkeeping conditional on those two
-non-overlapping facts:
-
-* `on_block_transition_witness` extracts the actual opaque transition invoked
-  by a successful transcribed handler;
-* `WellFormedStoreCore` supplies the already-proved equality between a known
-  block's slot and its stored state's slot;
-* `FFGStoreProjection`/`FFGTransitionCoherence` identify reachable block-state
-  checkpoints with `GJ`;
-* existing `BlockProvenance` supplies scheduled root/message provenance, so
-  the history contract does not assume it again;
-* `ProjectedSameEpochTransition` and its transitive closure retain explicit
-  transition witnesses, so the source-coherence conclusion does not assume
-  the desired checkpoint equality in disguise.
-
-The final honest-attestation lemmas also account for the validator spec's
-conditional `process_slots` call.  They show that heads joined by such a
-same-epoch transition segment produce equal FFG sources, provided each head
-state and its vote slot lie in one epoch.
+This module contains `storedSignedBlock`, `BlockStateTransitionHistory`, `on_block_inserted_message` and related declarations.
 -/
 
 namespace FastConfirmation.Spec
@@ -93,21 +60,6 @@ structure BlockStateTransitionHistory (cfg : Config) (ext : Externals Root)
 
 /-! ## Direct handler extraction -/
 
-/-- A fresh successful `on_block` call necessarily reached a successful
-invocation of the opaque `state_transition` on the parent block state. -/
-theorem on_block_transition_witness
-    {store store' : Store Root} {sb : SignedBeaconBlock Root}
-    (hfresh : sb.root ∉ store.block_roots)
-    (hh : on_block cfg ext store sb = some store') :
-    ∃ post : BeaconState Root,
-      ext.state_transition (store.block_states sb.message.parent_root) sb =
-        some post := by
-  simp only [on_block, if_neg hfresh] at hh
-  split_ifs at hh <;> try cases hh
-  cases hst : ext.state_transition
-      (store.block_states sb.message.parent_root) sb with
-  | none => rw [hst] at hh; cases hh
-  | some post => exact ⟨post, rfl⟩
 
 /-- A fresh successful block handler installs the accepted signed block's exact
 message at its root. -/
@@ -164,27 +116,6 @@ theorem on_block_inserted_message
       rw [← htail.2.1]
       exact Function.update_self sb.root sb.message store.blocks
 
-/-- At the state-function boundary, a same-epoch successful handler transition
-preserves the realized justified checkpoint.  The transition witness comes
-from the handler; only the equality itself comes from
-`Phase0SourceCoherence`. -/
-theorem on_block_transition_current_justified
-    (hphase : Phase0SourceCoherence cfg ext)
-    {store store' : Store Root} {sb : SignedBeaconBlock Root}
-    (hfresh : sb.root ∉ store.block_roots)
-    (hsame : compute_epoch_at_slot cfg
-        (store.block_states sb.message.parent_root).slot =
-      compute_epoch_at_slot cfg sb.message.slot)
-    (hh : on_block cfg ext store sb = some store') :
-    ∃ post : BeaconState Root,
-      ext.state_transition (store.block_states sb.message.parent_root) sb =
-          some post ∧
-        post.current_justified_checkpoint =
-          (store.block_states sb.message.parent_root).current_justified_checkpoint := by
-  obtain ⟨post, htransition⟩ := on_block_transition_witness (cfg := cfg)
-    (ext := ext) hfresh hh
-  exact ⟨post, htransition,
-    hphase.state_transition_current_justified _ _ _ htransition hsame⟩
 
 /-! ## Projected same-epoch block edges and segments -/
 
@@ -214,33 +145,6 @@ theorem Execution.storedSignedBlock_scheduled
           rw [hmessage]
     rwa [← heq]
 
-/-- Full accepted-block history statement recovered at a reachable view: a
-known non-genesis root has a scheduled signed-block witness with the stored
-root/message, a known stored parent, and the exact parent-state-to-child-state
-transition equation.  Scheduled-message provenance is derived; only replay
-of the erased state equation comes from `BlockStateTransitionHistory`. -/
-theorem Execution.known_non_genesis_block_transition_witness
-    (hhistory : BlockStateTransitionHistory cfg ext E)
-    {w : ValidatorIndex} (hw : w ∈ E.honest) {n : ℕ}
-    (hH : E.WithinHorizon cfg n) {child : Root}
-    (hchild : child ∈ (E.store cfg ext w n).block_roots)
-    (hnongenesis : child ∉ E.genesis_store.block_roots) :
-    ∃ sb : SignedBeaconBlock Root,
-      IsScheduledBlock E sb ∧
-      sb.root = child ∧
-      sb.message = (E.store cfg ext w n).blocks child ∧
-      ((E.store cfg ext w n).blocks child).parent_root ∈
-        (E.store cfg ext w n).block_roots ∧
-      ext.state_transition
-          ((E.store cfg ext w n).block_states
-            ((E.store cfg ext w n).blocks child).parent_root) sb =
-        some ((E.store cfg ext w n).block_states child) := by
-  have hreplay := hhistory.replay w hw n hH child hchild hnongenesis
-  refine ⟨storedSignedBlock (E.store cfg ext w n) child,
-    E.storedSignedBlock_scheduled (cfg := cfg) (ext := ext)
-      w n hchild hnongenesis,
-    rfl, rfl, ?_⟩
-  exact hreplay
 
 /-- One executable state-transition edge, viewed through the exact FFG store
 projection.  All fields except `same_epoch` are direct data/equalities from
@@ -303,29 +207,6 @@ theorem of_history
   rw [hcore.2 parent hreplay.1]
   exact hsame
 
-/-- Construct a projected edge directly from a successful handler call.
-`WellFormedStoreCore` turns the executable block-epoch equality into the
-state-epoch equality consumed by the phase0 contract.  No checkpoint equality
-is assumed. -/
-theorem of_on_block
-    {store store' : Store Root} {sb : SignedBeaconBlock Root}
-    (hprojection : FFGStoreProjection cfg ext S store)
-    (hcore : WellFormedStoreCore store)
-    (hscheduled : ∃ w n, Event.block sb ∈ E.schedule w n)
-    (hfresh : sb.root ∉ store.block_roots)
-    (hparent : sb.message.parent_root ∈ store.block_roots)
-    (hsame : compute_epoch_at_slot cfg
-        (store.blocks sb.message.parent_root).slot =
-      compute_epoch_at_slot cfg sb.message.slot)
-    (hh : on_block cfg ext store sb = some store') :
-    ProjectedSameEpochTransition cfg ext E S
-      sb.message.parent_root sb.root := by
-  obtain ⟨post, htransition⟩ := on_block_transition_witness (cfg := cfg)
-    (ext := ext) hfresh hh
-  refine ⟨store, hprojection, sb, rfl, rfl, hparent, hscheduled,
-    post, htransition, ?_⟩
-  rw [hcore.2 sb.message.parent_root hparent]
-  exact hsame
 
 /-- The new phase0 contract turns one explicit same-epoch transition into the
 corresponding `GJ` source equality.  Projection and transition coherence are
@@ -391,30 +272,7 @@ inductive ProjectedSameEpochSegment
 
 namespace ProjectedSameEpochSegment
 
-/-- `GJ` is constant along any explicitly witnessed same-epoch transition
-segment. -/
-theorem gj_eq_first
-    (hphase : Phase0SourceCoherence cfg ext)
-    (hcoh : FFGTransitionCoherence cfg ext S)
-    {first last : Root}
-    (h : ProjectedSameEpochSegment cfg ext E S first last) :
-    S.GJ last = S.GJ first := by
-  induction h with
-  | refl => rfl
-  | tail hsegment hedge ih =>
-      exact (hedge.gj_eq_parent hphase hcoh).trans ih
 
-/-- Two branches reached from one explicitly witnessed same-epoch transition
-ancestor have the same realized justified source. -/
-theorem gj_eq_of_common_first
-    (hphase : Phase0SourceCoherence cfg ext)
-    (hcoh : FFGTransitionCoherence cfg ext S)
-    {common left right : Root}
-    (hleft : ProjectedSameEpochSegment cfg ext E S common left)
-    (hright : ProjectedSameEpochSegment cfg ext E S common right) :
-    S.GJ left = S.GJ right :=
-  (hleft.gj_eq_first hphase hcoh).trans
-    (hright.gj_eq_first hphase hcoh).symm
 
 end ProjectedSameEpochSegment
 
@@ -452,34 +310,6 @@ theorem last_known
 
 end KnownSameEpochAncestrySegment
 
-/-- `GJ` is constant along every concrete known same-epoch ancestry segment
-in a reachable honest view.  This is the trajectory-facing closure of the
-single-edge theorem above. -/
-theorem Execution.gj_eq_of_known_same_epoch_ancestry
-    (hhistory : BlockStateTransitionHistory cfg ext E)
-    (hphase : Phase0SourceCoherence cfg ext)
-    (hcoh : FFGTransitionCoherence cfg ext S)
-    {w : ValidatorIndex} (hw : w ∈ E.honest) {n : ℕ}
-    (hH : E.WithinHorizon cfg n)
-    (hcore : WellFormedStoreCore (E.store cfg ext w n))
-    {first last : Root}
-    (hsegment : KnownSameEpochAncestrySegment cfg
-      E.genesis_store.block_roots (E.store cfg ext w n) first last) :
-    S.GJ last = S.GJ first := by
-  induction hsegment with
-  | refl => rfl
-  | @tail parent child hprefix hchild hnongenesis hparent hsame ih =>
-      have hsame' : compute_epoch_at_slot cfg
-          ((E.store cfg ext w n).blocks
-            ((E.store cfg ext w n).blocks child).parent_root).slot =
-        compute_epoch_at_slot cfg
-          ((E.store cfg ext w n).blocks child).slot := by
-        rw [hparent]
-        exact hsame
-      have hedge := E.known_same_epoch_parent_gj_eq hhistory hphase hcoh
-        hw hH hchild hnongenesis hcore hsame'
-      rw [hparent] at hedge
-      exact hedge.trans ih
 
 /-! ## Honest-attestation source readback -/
 
@@ -515,128 +345,9 @@ theorem honest_attestation_data_source_eq_gj
   rw [honest_attestation_data_source_eq_head_state hphase store slot index hsame]
   exact hprojection.block_state_gj _ hhead
 
-/-- Common-boundary-to-head source theorem for an actual reachable view.  If
-the fork-choice head is connected to `common` by known same-epoch parent
-edges, an honest vote whose slot remains in the head state's epoch uses
-exactly `GJ(common)` as its source. -/
-theorem Execution.honest_attestation_source_eq_common_ancestor
-    (hhistory : BlockStateTransitionHistory cfg ext E)
-    (hphase : Phase0SourceCoherence cfg ext)
-    (hcoh : FFGTransitionCoherence cfg ext S)
-    {w : ValidatorIndex} (hw : w ∈ E.honest) {n : ℕ}
-    (hH : E.WithinHorizon cfg n)
-    (hcore : WellFormedStoreCore (E.store cfg ext w n))
-    {common : Root} {slot : Slot} {index : CommitteeIndex}
-    (hsegment : KnownSameEpochAncestrySegment cfg
-      E.genesis_store.block_roots (E.store cfg ext w n)
-      common (get_head cfg (E.store cfg ext w n)).root)
-    (hvoteEpoch : compute_epoch_at_slot cfg
-        ((E.store cfg ext w n).block_states
-          (get_head cfg (E.store cfg ext w n)).root).slot =
-      compute_epoch_at_slot cfg slot) :
-    (honest_attestation_data cfg ext (E.store cfg ext w n) slot index).source =
-      S.GJ common := by
-  calc
-    (honest_attestation_data cfg ext (E.store cfg ext w n) slot index).source =
-        S.GJ (get_head cfg (E.store cfg ext w n)).root :=
-      honest_attestation_data_source_eq_gj hphase
-        (E.ffgStoreProjection hcoh w n) hsegment.last_known hvoteEpoch
-    _ = S.GJ common :=
-      E.gj_eq_of_known_same_epoch_ancestry hhistory hphase hcoh hw hH hcore hsegment
 
-/-- Two reachable honest views voting from heads on same-epoch branches above
-one common root use the same FFG source.  This is the executable-store form
-needed before aggregating their target votes into a source-specific link. -/
-theorem Execution.honest_attestation_sources_eq_of_known_common_ancestor
-    (hhistory : BlockStateTransitionHistory cfg ext E)
-    (hphase : Phase0SourceCoherence cfg ext)
-    (hcoh : FFGTransitionCoherence cfg ext S)
-    {w₁ w₂ : ValidatorIndex} (hw₁ : w₁ ∈ E.honest)
-    (hw₂ : w₂ ∈ E.honest) {n₁ n₂ : ℕ}
-    (hH₁ : E.WithinHorizon cfg n₁) (hH₂ : E.WithinHorizon cfg n₂)
-    (hcore₁ : WellFormedStoreCore (E.store cfg ext w₁ n₁))
-    (hcore₂ : WellFormedStoreCore (E.store cfg ext w₂ n₂))
-    {common : Root} {slot₁ slot₂ : Slot}
-    {index₁ index₂ : CommitteeIndex}
-    (hsegment₁ : KnownSameEpochAncestrySegment cfg
-      E.genesis_store.block_roots (E.store cfg ext w₁ n₁)
-      common (get_head cfg (E.store cfg ext w₁ n₁)).root)
-    (hsegment₂ : KnownSameEpochAncestrySegment cfg
-      E.genesis_store.block_roots (E.store cfg ext w₂ n₂)
-      common (get_head cfg (E.store cfg ext w₂ n₂)).root)
-    (hvoteEpoch₁ : compute_epoch_at_slot cfg
-        ((E.store cfg ext w₁ n₁).block_states
-          (get_head cfg (E.store cfg ext w₁ n₁)).root).slot =
-      compute_epoch_at_slot cfg slot₁)
-    (hvoteEpoch₂ : compute_epoch_at_slot cfg
-        ((E.store cfg ext w₂ n₂).block_states
-          (get_head cfg (E.store cfg ext w₂ n₂)).root).slot =
-      compute_epoch_at_slot cfg slot₂) :
-    (honest_attestation_data cfg ext (E.store cfg ext w₁ n₁)
-        slot₁ index₁).source =
-      (honest_attestation_data cfg ext (E.store cfg ext w₂ n₂)
-        slot₂ index₂).source := by
-  exact (E.honest_attestation_source_eq_common_ancestor hhistory hphase hcoh
-    hw₁ hH₁ hcore₁ hsegment₁ hvoteEpoch₁).trans
-      (E.honest_attestation_source_eq_common_ancestor hhistory hphase hcoh
-        hw₂ hH₂ hcore₂ hsegment₂ hvoteEpoch₂).symm
 
-/-- Two honest attestation constructions whose heads are joined by an
-explicit same-epoch transition segment have the same source.  The vote slots
-may differ, but each must remain in the epoch of its own head state. -/
-theorem honest_attestation_sources_eq_of_segment
-    (hphase : Phase0SourceCoherence cfg ext)
-    (hcoh : FFGTransitionCoherence cfg ext S)
-    {store₁ store₂ : Store Root}
-    {slot₁ slot₂ : Slot} {index₁ index₂ : CommitteeIndex}
-    (hprojection₁ : FFGStoreProjection cfg ext S store₁)
-    (hprojection₂ : FFGStoreProjection cfg ext S store₂)
-    (hhead₁ : (get_head cfg store₁).root ∈ store₁.block_roots)
-    (hhead₂ : (get_head cfg store₂).root ∈ store₂.block_roots)
-    (hsame₁ : compute_epoch_at_slot cfg
-        (store₁.block_states (get_head cfg store₁).root).slot =
-      compute_epoch_at_slot cfg slot₁)
-    (hsame₂ : compute_epoch_at_slot cfg
-        (store₂.block_states (get_head cfg store₂).root).slot =
-      compute_epoch_at_slot cfg slot₂)
-    (hsegment : ProjectedSameEpochSegment cfg ext E S
-      (get_head cfg store₁).root (get_head cfg store₂).root) :
-    (honest_attestation_data cfg ext store₁ slot₁ index₁).source =
-      (honest_attestation_data cfg ext store₂ slot₂ index₂).source := by
-  rw [honest_attestation_data_source_eq_gj hphase hprojection₁ hhead₁ hsame₁,
-    honest_attestation_data_source_eq_gj hphase hprojection₂ hhead₂ hsame₂]
-  exact (hsegment.gj_eq_first hphase hcoh).symm
 
-/-- Branching form of source coherence: honest attestation constructions on
-two heads have equal sources when both heads descend, through explicitly
-witnessed same-epoch state transitions, from one common block-state source.
-This is the form relevant to two views that share an epoch target but may have
-different descendant heads. -/
-theorem honest_attestation_sources_eq_of_common_segment
-    (hphase : Phase0SourceCoherence cfg ext)
-    (hcoh : FFGTransitionCoherence cfg ext S)
-    {store₁ store₂ : Store Root}
-    {slot₁ slot₂ : Slot} {index₁ index₂ : CommitteeIndex}
-    {common : Root}
-    (hprojection₁ : FFGStoreProjection cfg ext S store₁)
-    (hprojection₂ : FFGStoreProjection cfg ext S store₂)
-    (hhead₁ : (get_head cfg store₁).root ∈ store₁.block_roots)
-    (hhead₂ : (get_head cfg store₂).root ∈ store₂.block_roots)
-    (hsame₁ : compute_epoch_at_slot cfg
-        (store₁.block_states (get_head cfg store₁).root).slot =
-      compute_epoch_at_slot cfg slot₁)
-    (hsame₂ : compute_epoch_at_slot cfg
-        (store₂.block_states (get_head cfg store₂).root).slot =
-      compute_epoch_at_slot cfg slot₂)
-    (hsegment₁ : ProjectedSameEpochSegment cfg ext E S
-      common (get_head cfg store₁).root)
-    (hsegment₂ : ProjectedSameEpochSegment cfg ext E S
-      common (get_head cfg store₂).root) :
-    (honest_attestation_data cfg ext store₁ slot₁ index₁).source =
-      (honest_attestation_data cfg ext store₂ slot₂ index₂).source := by
-  rw [honest_attestation_data_source_eq_gj hphase hprojection₁ hhead₁ hsame₁,
-    honest_attestation_data_source_eq_gj hphase hprojection₂ hhead₂ hsame₂]
-  exact hsegment₁.gj_eq_of_common_first hphase hcoh hsegment₂
 
 /-! ## Accepted exact-prefix source coherence -/
 
@@ -799,16 +510,6 @@ theorem gj_eq_first
   | tail hprefix hedge ih =>
       exact (hedge.gj_eq_parent hphase hcoh).trans ih
 
-theorem gj_eq_of_common_first
-    {S : AcceptedChainFFGState cfg ext E anchor}
-    (hphase : Phase0SourceCoherence cfg ext)
-    (hcoh : AcceptedFFGSelectorCoherence cfg ext S)
-    {common left right : Root}
-    (hleft : AcceptedProjectedSameEpochSegment cfg ext E S common left)
-    (hright : AcceptedProjectedSameEpochSegment cfg ext E S common right) :
-    S.GJ left = S.GJ right :=
-  (hleft.gj_eq_first hphase hcoh).trans
-    (hright.gj_eq_first hphase hcoh).symm
 
 end AcceptedProjectedSameEpochSegment
 
@@ -896,101 +597,8 @@ theorem causalStoreHonestSourceEvidence
       head_gj_carrier := hgjCarrier
       source_eq := hsource }⟩
 
-/-- Exact scheduled-prefix specialization of the causal/global source
-consumer. -/
-theorem scheduledEventPrefixHonestSourceEvidence
-    {E : Execution Root}
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
-    (hphase : Phase0SourceCoherence cfg ext)
-    (hgen : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
-      E.genesis_store = get_forkchoice_store cfg ast ablk ∧
-      ast.slot = ablk.message.slot)
-    (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
-    (p : E.ScheduledEventPrefix)
-    {slot : Slot} {index : CommitteeIndex}
-    (hhead : (get_head cfg (p.store cfg ext)).root ∈
-      (p.store cfg ext).block_roots)
-    (hsame : compute_epoch_at_slot cfg
-        ((p.store cfg ext).block_states
-          (get_head cfg (p.store cfg ext)).root).slot =
-      compute_epoch_at_slot cfg slot) :
-    AcceptedHonestSourceEvidence B.state (p.store cfg ext) slot index :=
-  B.causalStoreHonestSourceEvidence hphase hgen hanchor
-    (.scheduledPrefix p) hhead hsame
 
-/-- Two causal stores whose heads are joined only by actual accepted
-same-epoch transitions produce the same honest FFG source. -/
-theorem honestAttestationSources_eq_of_segment
-    {E : Execution Root}
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
-    (hphase : Phase0SourceCoherence cfg ext)
-    (hgen : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
-      E.genesis_store = get_forkchoice_store cfg ast ablk ∧
-      ast.slot = ablk.message.slot)
-    (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
-    {store₁ store₂ : Store Root}
-    (hstore₁ : E.CausalStore cfg ext store₁)
-    (hstore₂ : E.CausalStore cfg ext store₂)
-    {slot₁ slot₂ : Slot} {index₁ index₂ : CommitteeIndex}
-    (hhead₁ : (get_head cfg store₁).root ∈ store₁.block_roots)
-    (hhead₂ : (get_head cfg store₂).root ∈ store₂.block_roots)
-    (hsame₁ : compute_epoch_at_slot cfg
-        (store₁.block_states (get_head cfg store₁).root).slot =
-      compute_epoch_at_slot cfg slot₁)
-    (hsame₂ : compute_epoch_at_slot cfg
-        (store₂.block_states (get_head cfg store₂).root).slot =
-      compute_epoch_at_slot cfg slot₂)
-    (hsegment : AcceptedProjectedSameEpochSegment cfg ext E B.state
-      (get_head cfg store₁).root (get_head cfg store₂).root) :
-    (honest_attestation_data cfg ext store₁ slot₁ index₁).source =
-      (honest_attestation_data cfg ext store₂ slot₂ index₂).source := by
-  have hsource₁ := B.causalStoreHonestSourceEvidence hphase hgen hanchor
-    hstore₁ (slot := slot₁) (index := index₁) hhead₁ hsame₁
-  have hsource₂ := B.causalStoreHonestSourceEvidence hphase hgen hanchor
-    hstore₂ (slot := slot₂) (index := index₂) hhead₂ hsame₂
-  exact hsource₁.source_eq.trans
-    ((hsegment.gj_eq_first hphase
-      B.coherence.toAcceptedFFGSelectorCoherence).symm.trans
-        hsource₂.source_eq.symm)
 
-/-- Branching causal-store consumer used by fixed-source support arguments:
-both heads may lie on different branches, but every edge on both paths from
-the common root is backed by an actual accepted scheduled-prefix transition. -/
-theorem honestAttestationSources_eq_of_common_segment
-    {E : Execution Root}
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
-    (hphase : Phase0SourceCoherence cfg ext)
-    (hgen : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
-      E.genesis_store = get_forkchoice_store cfg ast ablk ∧
-      ast.slot = ablk.message.slot)
-    (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
-    {store₁ store₂ : Store Root}
-    (hstore₁ : E.CausalStore cfg ext store₁)
-    (hstore₂ : E.CausalStore cfg ext store₂)
-    {slot₁ slot₂ : Slot} {index₁ index₂ : CommitteeIndex}
-    {common : Root}
-    (hhead₁ : (get_head cfg store₁).root ∈ store₁.block_roots)
-    (hhead₂ : (get_head cfg store₂).root ∈ store₂.block_roots)
-    (hsame₁ : compute_epoch_at_slot cfg
-        (store₁.block_states (get_head cfg store₁).root).slot =
-      compute_epoch_at_slot cfg slot₁)
-    (hsame₂ : compute_epoch_at_slot cfg
-        (store₂.block_states (get_head cfg store₂).root).slot =
-      compute_epoch_at_slot cfg slot₂)
-    (hsegment₁ : AcceptedProjectedSameEpochSegment cfg ext E B.state
-      common (get_head cfg store₁).root)
-    (hsegment₂ : AcceptedProjectedSameEpochSegment cfg ext E B.state
-      common (get_head cfg store₂).root) :
-    (honest_attestation_data cfg ext store₁ slot₁ index₁).source =
-      (honest_attestation_data cfg ext store₂ slot₂ index₂).source := by
-  have hsource₁ := B.causalStoreHonestSourceEvidence hphase hgen hanchor
-    hstore₁ (slot := slot₁) (index := index₁) hhead₁ hsame₁
-  have hsource₂ := B.causalStoreHonestSourceEvidence hphase hgen hanchor
-    hstore₂ (slot := slot₂) (index := index₂) hhead₂ hsame₂
-  exact hsource₁.source_eq.trans
-    ((hsegment₁.gj_eq_of_common_first hphase
-      B.coherence.toAcceptedFFGSelectorCoherence hsegment₂).trans
-        hsource₂.source_eq.symm)
 
 end ExactPrefixAcceptedFFGSemantics
 
@@ -998,203 +606,28 @@ end ExactPrefixAcceptedFFGSemantics
 
 namespace SourceCoherenceNonVacuity
 
-/-- A finite root domain with distinct dangling-parent, anchor, and child
-roots. -/
-abbrev WitnessRoot := Fin 3
 
-private def junkRoot : WitnessRoot := 0
-private def anchorRoot : WitnessRoot := 1
-private def childRoot : WitnessRoot := 2
 
-private def witnessConfig : Config where
-  slots_per_epoch := 2
-  slots_per_epoch_pos := by decide
-  slot_duration_ms := 1000
-  slot_duration_ms_pos := by decide
-  proposer_score_boost := 40
-  confirmation_byzantine_threshold := 25
-  confirmation_byzantine_threshold_le := by decide
-  committee_weight_estimation_adjustment_factor := 5
-  effective_balance_increment := 100
-  effective_balance_increment_pos := by decide
-  hundred_dvd_effective_balance_increment := by decide
-  attestation_due_bps := 3333
-  min_seed_lookahead := 1
 
-private def anchorCheckpoint : Checkpoint WitnessRoot :=
-  { epoch := 0, root := anchorRoot }
 
-private def witnessValidator : Validator :=
-  { effective_balance := 100
-    slashed := false
-    activation_epoch := 0
-    exit_epoch := 1 }
 
-private def stateAt (slot : Slot) : BeaconState WitnessRoot :=
-  { genesis_time := 0
-    slot := slot
-    validators := [witnessValidator]
-    current_justified_checkpoint := anchorCheckpoint
-    finalized_checkpoint := anchorCheckpoint }
 
-private def anchorState : BeaconState WitnessRoot := stateAt 0
 
-private def anchorBlock : SignedBeaconBlock WitnessRoot :=
-  { root := anchorRoot
-    message := { slot := 0, parent_root := junkRoot } }
 
-private def childBlock : SignedBeaconBlock WitnessRoot :=
-  { root := childRoot
-    message := { slot := 1, parent_root := anchorRoot } }
 
-private def vote0 : Attestation WitnessRoot :=
-  { attesting_indices := [0]
-    data :=
-      { slot := 0
-        index := 0
-        beacon_block_root := anchorRoot
-        source := anchorCheckpoint
-        target := anchorCheckpoint } }
 
-/-- The concrete opaque functions are intentionally simple but non-vacuous:
-the child transition succeeds and preserves the entire pre-state except for
-its slot. -/
-private def witnessExternals : Externals WitnessRoot where
-  get_beacon_committee := fun _ _ _ => [0]
-  get_committee_count_per_slot := fun _ _ => 1
-  process_slots := fun st slot => { st with slot := slot }
-  state_transition := fun st block =>
-    if block = childBlock ∧ st.slot < block.message.slot then
-      some { st with slot := block.message.slot }
-    else none
-  process_justification_and_finalization := id
-  is_valid_indexed_attestation := fun _ _ => false
 
-private def witnessSchedule (w : ValidatorIndex) (n : ℕ) :
-    List (Event WitnessRoot) :=
-  if w = 0 ∧ n = 1 then [Event.block childBlock] else []
 
-private def witnessVote (v : ValidatorIndex) (slot : Slot) :
-    Option (ℕ × Attestation WitnessRoot) :=
-  if v = 0 ∧ slot = 0 then some (0, vote0) else none
 
-/-- One positive-balance honest validator, one recorded vote, and one
-handler-accepted non-genesis block. -/
-private def witnessExecution : Execution WitnessRoot where
-  verification_horizon := 1
-  genesis_store := get_forkchoice_store witnessConfig anchorState anchorBlock
-  schedule := witnessSchedule
-  honest := {0}
-  committee := fun _ => {0}
-  vote := witnessVote
 
-private theorem witness_slot_at (n : ℕ) :
-    witnessExecution.slot_at witnessConfig n = n := by
-  norm_num [Execution.slot_at, Execution.time_at, witnessExecution,
-    witnessConfig, anchorState, stateAt, anchorBlock,
-    get_forkchoice_store, GENESIS_SLOT]
 
-private theorem witness_time_lt_two {n : ℕ}
-    (hn : witnessExecution.WithinHorizon witnessConfig n) : n < 2 := by
-  have hepoch := hn.2.2
-  rw [witness_slot_at] at hepoch
-  change n / 2 < 1 at hepoch
-  rwa [Nat.div_lt_iff_lt_mul (by decide : 0 < 2)] at hepoch
 
-private theorem witness_phase0_source_coherence :
-    Phase0SourceCoherence witnessConfig witnessExternals := by
-  constructor
-  · intro st target _hlt _hsame
-    rfl
-  · intro pre sb post htransition _hsame
-    simp only [witnessExternals] at htransition
-    split at htransition
-    · simp only [Option.some.injEq] at htransition
-      subst post
-      rfl
-    · contradiction
 
-private theorem witness_store_one_roots :
-    (witnessExecution.store witnessConfig witnessExternals 0 1).block_roots =
-      [anchorRoot, childRoot] := by
-  set_option maxRecDepth 20000 in decide
 
-private theorem witness_store_one_child_block :
-    (witnessExecution.store witnessConfig witnessExternals 0 1).blocks childRoot =
-      childBlock.message := by
-  rfl
 
-private theorem witness_store_one_anchor_state :
-    (witnessExecution.store witnessConfig witnessExternals 0 1).block_states anchorRoot =
-      anchorState := by
-  rfl
 
-private theorem witness_store_one_child_state :
-    (witnessExecution.store witnessConfig witnessExternals 0 1).block_states childRoot =
-      stateAt 1 := by
-  rfl
 
-private theorem witness_block_state_transition_history :
-    BlockStateTransitionHistory witnessConfig witnessExternals witnessExecution := by
-  constructor
-  intro w hw n hH child hchild hnongenesis
-  have hw0 : w = 0 := by
-    simpa [witnessExecution] using hw
-  subst w
-  have hnlt : n < 2 := witness_time_lt_two hH
-  interval_cases n
-  · exact False.elim (hnongenesis hchild)
-  · rw [witness_store_one_roots] at hchild
-    have hcases : child = anchorRoot ∨ child = childRoot := by
-      simpa using hchild
-    rcases hcases with hanchor | hchild
-    · subst child
-      exact False.elim (hnongenesis (by decide))
-    · subst child
-      dsimp only
-      rw [witness_store_one_child_block]
-      change anchorRoot ∈
-          (witnessExecution.store witnessConfig witnessExternals 0 1).block_roots ∧
-        witnessExternals.state_transition
-            ((witnessExecution.store witnessConfig witnessExternals 0 1).block_states
-              anchorRoot) childBlock =
-          some ((witnessExecution.store witnessConfig witnessExternals 0 1).block_states
-            childRoot)
-      constructor
-      · rw [witness_store_one_roots]
-        simp
-      · rw [witness_store_one_anchor_state, witness_store_one_child_state]
-        rfl
 
-/-- The two new contracts are jointly satisfiable in a finite,
-handler-driven, economically nonzero execution.  The witness includes an
-accepted non-genesis child and a recorded vote, so replay history is exercised
-rather than discharged by an empty block domain. -/
-theorem source_coherence_contracts_nonvacuous :
-    ∃ (cfg : Config) (ext : Externals WitnessRoot)
-      (E : Execution WitnessRoot),
-      Phase0SourceCoherence cfg ext ∧
-      BlockStateTransitionHistory cfg ext E ∧
-      E.honest.Nonempty ∧
-      0 < E.total_active cfg ∧
-      (∃ v s, E.vote v s ≠ none) ∧
-      ∃ w n r,
-        w ∈ E.honest ∧ E.WithinHorizon cfg n ∧
-        r ∈ (E.store cfg ext w n).block_roots ∧
-        r ∉ E.genesis_store.block_roots := by
-  refine ⟨witnessConfig, witnessExternals, witnessExecution,
-    witness_phase0_source_coherence, witness_block_state_transition_history,
-    ?_, ?_, ?_, ?_⟩
-  · exact ⟨0, by decide⟩
-  · decide
-  · exact ⟨0, 0, by decide⟩
-  · refine ⟨0, 1, childRoot, by decide, ?_, ?_, ?_⟩
-    · norm_num [Execution.WithinHorizon, Execution.time_at, witnessExecution,
-        witnessConfig, anchorState, stateAt, anchorBlock,
-        get_forkchoice_store, Execution.slot_at, compute_epoch_at_slot,
-        UINT64_MAX, GENESIS_SLOT]
-    · set_option maxRecDepth 20000 in decide
-    · decide
 
 end SourceCoherenceNonVacuity
 

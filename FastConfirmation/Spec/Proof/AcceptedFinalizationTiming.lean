@@ -1100,59 +1100,10 @@ abbrev CounterRoot := Bool
 def anchor : Checkpoint CounterRoot :=
   { epoch := 0, root := false }
 
-/-- A projected block post-state at epoch two whose realized justified and
-finalized checkpoints are both from epoch one. -/
-def postAtEpochTwo : BeaconState CounterRoot :=
-  { genesis_time := 0
-    slot := 64
-    validators := []
-    current_justified_checkpoint := { epoch := 1, root := true }
-    finalized_checkpoint := { epoch := 1, root := true } }
 
-def preAtEpochTwo : BeaconState CounterRoot :=
-  { genesis_time := 0
-    slot := 63
-    validators := []
-    current_justified_checkpoint := anchor
-    finalized_checkpoint := anchor }
 
-def blockAtEpochTwo : SignedBeaconBlock CounterRoot :=
-  { message := { slot := 64, parent_root := false }
-    root := true }
 
-/-- Every epoch fact currently required of an abstract successful
-`state_transition` output is compatible with one-epoch-late realized
-finality. -/
-theorem stateTransition_constraints_allow_oneEpochLag :
-    preAtEpochTwo.slot < blockAtEpochTwo.message.slot ∧
-      postAtEpochTwo.slot = blockAtEpochTwo.message.slot ∧
-      postAtEpochTwo.validators = preAtEpochTwo.validators ∧
-      postAtEpochTwo.current_justified_checkpoint.epoch ≤
-        compute_epoch_at_slot mainnet_config blockAtEpochTwo.message.slot ∧
-      postAtEpochTwo.finalized_checkpoint.epoch ≤
-        compute_epoch_at_slot mainnet_config blockAtEpochTwo.message.slot ∧
-      postAtEpochTwo.finalized_checkpoint ≠ anchor ∧
-      postAtEpochTwo.finalized_checkpoint.epoch <
-        compute_epoch_at_slot mainnet_config blockAtEpochTwo.message.slot ∧
-      ¬ postAtEpochTwo.finalized_checkpoint.epoch + 2 ≤
-        compute_epoch_at_slot mainnet_config blockAtEpochTwo.message.slot := by
-  decide
 
-/-- Epoch-only skeleton of the accepted certificate/selector counterpattern.
-
-`anchor < finalized`, `child = finalized + 1`, `GF ≤ GJ < blockEpoch`, and
-the finalizing child target being no later than its carrier block are all
-true at `(0, 1, 2, 1, 2)`, while the desired two-epoch lag is false. -/
-theorem acceptedCertificate_constraints_allow_oneEpochLag :
-    ∃ anchorEpoch finalizedEpoch childEpoch justifiedEpoch carrierEpoch,
-      anchorEpoch < finalizedEpoch ∧
-      childEpoch = finalizedEpoch + 1 ∧
-      finalizedEpoch ≤ justifiedEpoch ∧
-      justifiedEpoch < carrierEpoch ∧
-      childEpoch ≤ carrierEpoch ∧
-      finalizedEpoch < carrierEpoch ∧
-      ¬ finalizedEpoch + 2 ≤ carrierEpoch := by
-  exact ⟨0, 1, 2, 1, 2, by omega⟩
 
 end AcceptedFinalizationLagCounterpattern
 

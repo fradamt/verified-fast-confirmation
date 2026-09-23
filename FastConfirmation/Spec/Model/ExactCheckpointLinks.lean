@@ -51,14 +51,6 @@ variable {anchor : Checkpoint Root}
 
 /-! ## Generic certificate-scoped exact-link validity -/
 
-/-- Carrier-local exactness for an abstract formed-checkpoint predicate and
-checkpoint projection. -/
-def FormedCheckpointExact
-    (formed : Root → Checkpoint Root → Prop)
-    (C : Root → Epoch → Checkpoint Root)
-    (Accepted : Root → Prop) : Prop :=
-  ∀ {carrier c}, Accepted carrier → formed carrier c →
-    c = C carrier c.epoch
 
 namespace IncludedSupermajorityLink
 
@@ -76,33 +68,7 @@ def Contributing
 
 end IncludedSupermajorityLink
 
-/-- Accepted-carrier closure for links which extend an included certificate.
-The bare anchor constructor on an arbitrary carrier is intentionally outside
-this closure. -/
-def IncludedCertificateCarrierAccepted
-    (E : Execution Root)
-    (included : Root → Attestation Root → Prop)
-    (anchor : Checkpoint Root)
-    (Accepted : Root → Prop) : Prop :=
-  ∀ {carrier source target},
-    (L : IncludedSupermajorityLink cfg E included
-      carrier source target) →
-    IncludedSupermajorityLink.Contributing cfg anchor L →
-      Accepted carrier
 
-/-- Certificate-to-formed closure at one contributing link.  Both the already
-certified source and the target produced by applying the link are formed on
-that carrier.  The bare anchor constructor remains unconstrained. -/
-def IncludedCertificateFormedClosure
-    (E : Execution Root)
-    (included : Root → Attestation Root → Prop)
-    (anchor : Checkpoint Root)
-    (formed : Root → Checkpoint Root → Prop) : Prop :=
-  ∀ {carrier source target},
-    (L : IncludedSupermajorityLink cfg E included
-      carrier source target) →
-    IncludedSupermajorityLink.Contributing cfg anchor L →
-      formed carrier source ∧ formed carrier target
 
 /-- Both endpoints of a contributing link are formed on its accepted
 certificate carrier. -/
@@ -159,18 +125,7 @@ abbrev ExactLinkValidity
   ExactIncludedLinkValidity cfg E S.includedAttestations.Included anchor
     S.C (E.AcceptedRoot cfg ext)
 
-/-- Production accepted-state instance of formed checkpoint exactness. -/
-abbrev FormedExact
-    {ext : Externals Root}
-    (S : AcceptedChainFFGState cfg ext E anchor) : Prop :=
-  FormedCheckpointExact S.formed S.C (E.AcceptedRoot cfg ext)
 
-/-- Production accepted-state certificate-to-formed closure. -/
-abbrev CertificateFormedClosure
-    {ext : Externals Root}
-    (S : AcceptedChainFFGState cfg ext E anchor) : Prop :=
-  IncludedCertificateFormedClosure cfg E S.includedAttestations.Included
-    anchor S.formed
 
 end AcceptedChainFFGState
 

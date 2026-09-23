@@ -34,14 +34,6 @@ inductive SelectedParentTrace (store : Store Root) :
 
 namespace SelectedParentTrace
 
-omit [LinearOrder Root] [Inhabited Root] in
-theorem start_known {store : Store Root} {start result : Root}
-    {edges : List (Root × Root)}
-    (h : SelectedParentTrace store start result edges) :
-    start ∈ store.block_roots := by
-  cases h with
-  | nil hr => exact hr
-  | cons hs _ _ _ => exact hs
 
 omit [LinearOrder Root] [Inhabited Root] in
 theorem result_known {store : Store Root} {start result : Root}
@@ -52,23 +44,6 @@ theorem result_known {store : Store Root} {start result : Root}
   | nil hr => exact hr
   | cons _ _ _ _ ih => exact ih
 
-omit [LinearOrder Root] [Inhabited Root] in
-/-- Every listed transition of a parent trace is an actual direct parent
-edge in the traced store. -/
-theorem edge_parent {store : Store Root} {start result : Root}
-    {edges : List (Root × Root)}
-    (h : SelectedParentTrace store start result edges)
-    {a c : Root} (hm : (a, c) ∈ edges) :
-    (store.blocks c).parent_root = a := by
-  induction h with
-  | nil hr => simp at hm
-  | @cons start next result rest hs hn hp tail ih =>
-      rw [List.mem_cons] at hm
-      rcases hm with hm | hm
-      · simp only [Prod.mk.injEq] at hm
-        obtain ⟨rfl, rfl⟩ := hm
-        exact hp
-      · exact ih hm
 
 omit [LinearOrder Root] [Inhabited Root] in
 /-- The child of every listed edge is strictly later than the trace start. -/
@@ -419,55 +394,7 @@ theorem strict_selected_edge_mem_trace
   · exact Or.inl hprev
   · exact Or.inr htent
 
-/-- Conversely, either retained edge list contains only direct parent
-transitions in the query store. -/
-theorem retained_selected_edge_parent
-    (fcrStore : FastConfirmationStore Root)
-    (hwf : ParentSlotLt fcrStore.store)
-    (hwalk : ∀ t ∈ fcrStore.store.block_roots,
-      ∀ r ∈ fcrStore.store.block_roots,
-        WalkKnown fcrStore.store (fcrStore.store.blocks t).slot r)
-    (hhead : (get_head cfg fcrStore.store).root ∈
-      fcrStore.store.block_roots)
-    (latestConfirmedRoot : Root)
-    (hlcr : latestConfirmedRoot ∈ fcrStore.store.block_roots)
-    {a c : Root}
-    (h : PreviousAcceptedEdge cfg ext fcrStore latestConfirmedRoot a c ∨
-      (a, c) ∈
-        (findLatestSelectedTrace cfg ext fcrStore latestConfirmedRoot).2.2) :
-    (fcrStore.store.blocks c).parent_root = a := by
-  have htrace := findLatestSelectedTrace_parentTrace cfg ext fcrStore hwf
-    hwalk hhead latestConfirmedRoot hlcr
-  apply htrace.edge_parent
-  apply List.mem_append.mpr
-  rcases h with hprev | htent
-  · exact Or.inl hprev
-  · exact Or.inr htent
 
-/-- A retained edge's child is strictly later than the wrapper input. -/
-theorem retained_selected_edge_child_slot_gt_input
-    (fcrStore : FastConfirmationStore Root)
-    (hwf : ParentSlotLt fcrStore.store)
-    (hwalk : ∀ t ∈ fcrStore.store.block_roots,
-      ∀ r ∈ fcrStore.store.block_roots,
-        WalkKnown fcrStore.store (fcrStore.store.blocks t).slot r)
-    (hhead : (get_head cfg fcrStore.store).root ∈
-      fcrStore.store.block_roots)
-    (latestConfirmedRoot : Root)
-    (hlcr : latestConfirmedRoot ∈ fcrStore.store.block_roots)
-    {a c : Root}
-    (h : PreviousAcceptedEdge cfg ext fcrStore latestConfirmedRoot a c ∨
-      (a, c) ∈
-        (findLatestSelectedTrace cfg ext fcrStore latestConfirmedRoot).2.2) :
-    (fcrStore.store.blocks latestConfirmedRoot).slot <
-      (fcrStore.store.blocks c).slot := by
-  have htrace := findLatestSelectedTrace_parentTrace cfg ext fcrStore hwf
-    hwalk hhead latestConfirmedRoot hlcr
-  apply htrace.edge_child_slot_gt_start hwf
-  apply List.mem_append.mpr
-  rcases h with hprev | htent
-  · exact Or.inl hprev
-  · exact Or.inr htent
 
 end FastConfirmation.Spec
 

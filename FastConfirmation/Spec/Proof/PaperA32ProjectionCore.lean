@@ -44,37 +44,11 @@ structure PaperA32IncludedAtTip
 
 namespace PaperA32IncludedAtTip
 
-omit [Inhabited Root] in
-/-- Expose the concrete formed-carrier witness without weakening it to a GU
-epoch bound. -/
-theorem formed_carrier
-    {E : Execution Root} {V : PaperA32StateView cfg E}
-    {store : Store Root} {e : Epoch} {selected seed : Root}
-    (h : PaperA32IncludedAtTip cfg V store e selected seed) :
-    ∃ carrier : Root,
-      E.RootDescends seed carrier ∧
-        V.formed carrier (V.C selected e) :=
-  h.exact_AU
 
 end PaperA32IncludedAtTip
 
 namespace AcceptedChainFFGState
 
-/-- The exact AU carrier retained by the accepted A.3.2 result is itself in
-the accepted causal-prefix domain. -/
-theorem paperA32IncludedAtTip_accepted_carrier
-    {E : Execution Root} {anchor : Checkpoint Root}
-    (S : AcceptedChainFFGState cfg ext E anchor)
-    {store : Store Root} {e : Epoch} {selected seed : Root}
-    (h : PaperA32IncludedAtTip cfg (S.paperA32View cfg ext)
-      store e selected seed) :
-    ∃ carrier : Root,
-      E.RootDescends seed carrier ∧
-        S.formed carrier (S.C selected e) ∧
-        E.AcceptedRoot cfg ext carrier := by
-  obtain ⟨carrier, hdesc, hformed⟩ := h.formed_carrier
-  change S.formed carrier (S.C selected e) at hformed
-  exact ⟨carrier, hdesc, hformed, S.formed_carrier_accepted hformed⟩
 
 /-- Accepted-state realization of the root-local executable projection. -/
 def paperA32RootProjectionAt
@@ -204,27 +178,6 @@ theorem accepted_paperA32IncludedAtTip_of_paper
   exact S.paperA32RootProjectionAt cfg ext hcoh
     (E.store_causal cfg ext w m) hr
 
-/-- Weak executable projection retained for existing consumers. -/
-theorem accepted_a32IncludedAtTip_of_paper
-    {anchor : Checkpoint Root}
-    {S : AcceptedChainFFGState cfg ext E anchor}
-    (hcoh : AcceptedFFGSelectorCoherence cfg ext S)
-    (hpaper : S.PaperA32Inclusion cfg ext)
-    {b : Root} {bb : BeaconBlock Root} {e : Epoch}
-    (hb : E.AcceptedBlockAt cfg ext b bb)
-    (hbe : compute_epoch_at_slot cfg bb.slot ≤ e)
-    (hcanonical : E.CanonicalThroughoutEpoch cfg ext b (e + 1))
-    (hsupport : S.PaperA32SupportThroughoutEpoch cfg ext b e)
-    {w : ValidatorIndex} (hw : w ∈ E.honest) {m : ℕ}
-    (hHm : E.WithinHorizon cfg m)
-    (hboundary : compute_start_slot_at_epoch cfg (e + 2) ≤
-      E.slot_at cfg m) :
-    ∃ seed : Root,
-      A32IncludedAtTip cfg (E.store cfg ext w m) e b seed := by
-  obtain ⟨seed, hstrong⟩ :=
-    E.accepted_paperA32IncludedAtTip_of_paper cfg ext hcoh hpaper hb hbe
-      hcanonical hsupport hw hHm hboundary
-  exact ⟨seed, hstrong.executable⟩
 
 /-- Strong reachable-store specialization deriving the accepted base-block
 witness from finite-domain knownness. -/
@@ -257,28 +210,6 @@ theorem accepted_paperA32IncludedAtTip_of_paper_at_known
   · exact hHm
   · exact hboundary
 
-/-- Weak known-root specialization retained for migration consumers. -/
-theorem accepted_a32IncludedAtTip_of_paper_at_known
-    {anchor : Checkpoint Root}
-    {S : AcceptedChainFFGState cfg ext E anchor}
-    (hcoh : AcceptedFFGSelectorCoherence cfg ext S)
-    (hpaper : S.PaperA32Inclusion cfg ext)
-    {u : ValidatorIndex} {q : ℕ} {b : Root}
-    (hbKnown : b ∈ (E.store cfg ext u q).block_roots)
-    {e : Epoch}
-    (hbe : get_block_epoch cfg (E.store cfg ext u q) b ≤ e)
-    (hcanonical : E.CanonicalThroughoutEpoch cfg ext b (e + 1))
-    (hsupport : S.PaperA32SupportThroughoutEpoch cfg ext b e)
-    {w : ValidatorIndex} (hw : w ∈ E.honest) {m : ℕ}
-    (hHm : E.WithinHorizon cfg m)
-    (hboundary : compute_start_slot_at_epoch cfg (e + 2) ≤
-      E.slot_at cfg m) :
-    ∃ seed : Root,
-      A32IncludedAtTip cfg (E.store cfg ext w m) e b seed := by
-  obtain ⟨seed, hstrong⟩ :=
-    E.accepted_paperA32IncludedAtTip_of_paper_at_known cfg ext hcoh
-      hpaper hbKnown hbe hcanonical hsupport hw hHm hboundary
-  exact ⟨seed, hstrong.executable⟩
 
 end Execution
 

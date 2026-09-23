@@ -95,11 +95,6 @@ theorem slotWithinHorizon_mono {a b : Slot} (hab : a ≤ b)
   ⟨hab.trans hb.1,
     lt_of_le_of_lt (Nat.div_le_div_right hab) hb.2⟩
 
-/-- Epoch-only projection of `slotWithinHorizon_of_le`. -/
-theorem epoch_lt_horizon_of_slot_le {s : Slot} {n : ℕ}
-    (hs : s ≤ E.slot_at cfg n) (hn : E.WithinHorizon cfg n) :
-    compute_epoch_at_slot cfg s < E.verification_horizon :=
-  (E.slotWithinHorizon_of_le cfg hs hn).2
 
 /-- Under whole-second slots, `slot_at` is the seconds-per-slot division
 `(time + n - genesis_time) / (slot_duration_ms / 1000)`: the model's

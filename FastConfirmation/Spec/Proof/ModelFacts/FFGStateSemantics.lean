@@ -17,26 +17,9 @@ variable (cfg : Config) (ext : Externals Root)
 namespace Execution
 variable (E : Execution Root)
 namespace AcceptedIncludedAttestationRelation
-theorem carrier_root_accepted
-    {validity : BeaconState Root → Attestation Root → Bool}
-    (I : AcceptedIncludedAttestationRelation cfg ext E validity)
-    {carrier : Root} {a : Attestation Root} (h : I.Included carrier a) :
-    E.AcceptedRoot cfg ext carrier := by
-  obtain ⟨store, hstore, hroot, _hmessage⟩ := (I.evidence h).carrier_accepted
-  exact ⟨store, hstore, hroot⟩
 
 end AcceptedIncludedAttestationRelation
 end Execution
-/-- Forgetting inclusion recovers the older causal ground-vote interface. -/
-theorem HonestTargetIncludedBeforeCarrier.toHonestTargetBeforeCarrier
-    {E : Execution Root}
-    {included : Root → Attestation Root → Prop}
-    {carrier : Root} {c : Checkpoint Root}
-    (h : HonestTargetIncludedBeforeCarrier cfg E included carrier c) :
-    E.HonestTargetBeforeCarrier cfg carrier c := by
-  obtain ⟨b, hb, i, hi, s, k, a, hslot, hH, hvote, _haSlot,
-    htarget, _hincluded⟩ := h
-  exact ⟨b, hb, i, hi, s, k, a, hslot, hH, hvote, htarget⟩
 
 namespace IncludedSupermajorityLink
 end IncludedSupermajorityLink
@@ -46,28 +29,7 @@ namespace IncludedCertifiedFinalized
 end IncludedCertifiedFinalized
 namespace ChainFFGState
 variable {E : Execution Root} {anchor : Checkpoint Root}
-/-- Valid included attestations name only ground-registry validators, so the
-finite registry filter in `D_b` loses no semantic offenders. -/
-theorem hasSlashablePairOnChain_in_registry
-    (S : ChainFFGState cfg E anchor) {tip : Root} {i : ValidatorIndex}
-    (h : S.HasSlashablePairOnChain cfg tip i) :
-    i < E.registry.length := by
-  obtain ⟨a₁, _a₂, hinc₁, _hinc₂, hi₁, _hi₂, _hslash⟩ := h
-  obtain ⟨carrier, _hdesc, hincluded⟩ := hinc₁
-  exact (S.includedAttestations.evidence hincluded).attesters_in_registry i hi₁
 
-@[simp] theorem mem_slashableOnChain
-    (S : ChainFFGState cfg E anchor) (tip : Root) (i : ValidatorIndex) :
-    i ∈ S.slashableOnChain cfg tip ↔
-      S.HasSlashablePairOnChain cfg tip i := by
-  classical
-  constructor
-  · intro hi
-    exact (Finset.mem_filter.mp hi).2
-  · intro h
-    exact Finset.mem_filter.mpr
-      ⟨Finset.mem_range.mpr
-          (S.hasSlashablePairOnChain_in_registry (cfg := cfg) h), h⟩
 
 /-- AU evidence is monotone down the descendant relation. -/
 theorem AU.mono (S : ChainFFGState cfg E anchor)
@@ -100,26 +62,8 @@ theorem gu_AU (S : ChainFFGState cfg E anchor) (r : Root)
     S.AU cfg r (S.GU r) :=
   S.gu_mem r hr
 
-/-- The realized finalized selector is available/unrealized justified on its
-own block chain. -/
-theorem gf_AU (S : ChainFFGState cfg E anchor) (r : Root)
-    (hr : E.ExecutionRoot r) :
-    S.AU cfg r (S.GF r) :=
-  S.gf_mem r hr
 
-/-- The eagerly pulled-up finalized selector is available/unrealized
-justified on its own block chain. -/
-theorem guf_AU (S : ChainFFGState cfg E anchor) (r : Root)
-    (hr : E.ExecutionRoot r) :
-    S.AU cfg r (S.GUF r) :=
-  S.guf_mem r hr
 
-/-- At a fixed block, greatest-unrealized justification is no older than
-greatest-realized justification. -/
-theorem gj_epoch_le_gu (S : ChainFFGState cfg E anchor) (r : Root)
-    (hr : E.ExecutionRoot r) :
-    (S.GJ r).epoch ≤ (S.GU r).epoch :=
-  S.gu_max hr (S.gj_mem r hr)
 
 end ChainFFGState
 namespace AcceptedChainFFGState
@@ -188,56 +132,7 @@ theorem gj_epoch_le_gu (S : AcceptedChainFFGState cfg ext E anchor)
   S.gu_max hr (S.gj_mem r hr)
 
 end AcceptedChainFFGState
-/-- Same-root accepted transitions expose identical post-state selectors.
-There is no freshness premise, so this theorem explicitly includes duplicate
-accepted deliveries at different compatible prefixes. -/
-theorem accepted_post_selectors_unique
-    {E : Execution Root} {anchor : Checkpoint Root}
-    {S : AcceptedChainFFGState cfg ext E anchor}
-    (hcoh : AcceptedFFGSelectorCoherence cfg ext S)
-    (t₁ t₂ : E.AcceptedBlockTransition cfg ext)
-    (hroot : t₁.signedBlock.root = t₂.signedBlock.root) :
-    (t₁.postStore.block_states t₁.signedBlock.root).current_justified_checkpoint =
-        (t₂.postStore.block_states t₂.signedBlock.root).current_justified_checkpoint ∧
-    (t₁.postStore.block_states t₁.signedBlock.root).finalized_checkpoint =
-        (t₂.postStore.block_states t₂.signedBlock.root).finalized_checkpoint ∧
-    (ext.process_justification_and_finalization
-      (t₁.postStore.block_states t₁.signedBlock.root)
-    ).current_justified_checkpoint =
-        (ext.process_justification_and_finalization
-          (t₂.postStore.block_states t₂.signedBlock.root)
-        ).current_justified_checkpoint ∧
-    (ext.process_justification_and_finalization
-      (t₁.postStore.block_states t₁.signedBlock.root)
-    ).finalized_checkpoint =
-        (ext.process_justification_and_finalization
-          (t₂.postStore.block_states t₂.signedBlock.root)
-        ).finalized_checkpoint := by
-  constructor
-  · rw [hcoh.transition_gj t₁, hcoh.transition_gj t₂, hroot]
-  constructor
-  · rw [hcoh.transition_gf t₁, hcoh.transition_gf t₂, hroot]
-  constructor
-  · rw [hcoh.transition_gu t₁, hcoh.transition_gu t₂, hroot]
-  · rw [hcoh.transition_guf t₁, hcoh.transition_guf t₂, hroot]
 
-/-- The same already-selected state interprets accepted roots in two
-compatible exact prefixes. -/
-theorem one_state_interprets_compatible_prefixes
-    {E : Execution Root}
-    (B : ExactPrefixAcceptedFFGSelectors cfg ext E)
-    (p q : E.ScheduledEventPrefix) (hcompat : p.Compatible q)
-    {r s : Root}
-    (hr : r ∈ (p.store cfg ext).block_roots)
-    (hs : s ∈ (q.store cfg ext).block_roots) :
-    B.state.AU cfg ext r (B.state.GJ r) ∧
-      B.state.AU cfg ext s (B.state.GJ s) := by
-  have _ := hcompat
-  constructor
-  · exact B.state.gj_AU cfg ext
-      (E.acceptedRoot_of_causal_known cfg ext (.scheduledPrefix p) hr)
-  · exact B.state.gj_AU cfg ext
-      (E.acceptedRoot_of_causal_known cfg ext (.scheduledPrefix q) hs)
 
 namespace PaperA32StateView
 variable {E : Execution Root}

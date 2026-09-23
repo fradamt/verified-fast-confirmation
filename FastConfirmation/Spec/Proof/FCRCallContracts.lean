@@ -51,22 +51,6 @@ theorem fcrStep_store (v : ValidatorIndex) (n : ℕ) :
 
 /-! ## Safety-free reset payload -/
 
-/-- Concrete certificate evidence for the two non-carried reset candidates of
-an actual FCR invocation.  Global FFG origins construct this interface.  It
-contains only root knownness and a conditional certificate for the reset
-block's epoch checkpoint; it contains no FCR ancestry, safety, canonicality,
-filter, source, placement, takeover, or historical conclusion. -/
-def ActualResetInputCheckpointRealization
-    (anchor : Checkpoint Root) (v : ValidatorIndex) : Prop :=
-  ∀ n : ℕ, E.WithinHorizon cfg (n + 1) → ∀ input : Root,
-    (input = (E.fcrStep cfg ext v n).store.finalized_checkpoint.root ∨
-      input = (E.fcrStep cfg ext v n).current_epoch_observed_justified_checkpoint.root) →
-    input ∈ (E.fcrStep cfg ext v n).store.block_roots ∧
-      (get_block_epoch cfg (E.fcrStep cfg ext v n).store input =
-          get_current_store_epoch cfg (E.fcrStep cfg ext v n).store →
-        Nonempty (CertifiedJustified cfg E anchor
-          (get_checkpoint_for_block cfg (E.fcrStep cfg ext v n).store input
-            (get_block_epoch cfg (E.fcrStep cfg ext v n).store input))))
 
 end Execution
 

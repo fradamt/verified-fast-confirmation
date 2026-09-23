@@ -258,26 +258,7 @@ structure AcceptedRetainedPhaseSourceCarrierAt
 
 namespace AcceptedRetainedPhaseSourceCarrierAt
 
-/-- The retained accepted carrier supplies the consumer's availability
-predicate through its numeric arm, never by assuming visibility. -/
-theorem sourceAvailable
-    {B : ExactPrefixAcceptedFFGSemantics cfg ext E}
-    {store : Store Root} {selected : Root}
-    (h : E.AcceptedRetainedPhaseSourceCarrierAt cfg ext B store selected) :
-    SourceAvailableAtTip cfg store h.tip :=
-  Or.inr h.source_recent
 
-/-- Retain the formed/included accepted source witness behind the tip's
-selector value. -/
-theorem sourceAUEvidence
-    {B : ExactPrefixAcceptedFFGSemantics cfg ext E}
-    {store : Store Root} {selected : Root}
-    (h : E.AcceptedRetainedPhaseSourceCarrierAt cfg ext B store selected) :
-    AcceptedSelectorAUEvidence B.state store
-      (get_voting_source cfg store h.tip) := by
-  let htip : E.AcceptedCarrierIn (cfg := cfg) (ext := ext) store h.tip :=
-    AcceptedCarrierIn.of_causal_known h.store_causal h.tip_known
-  exact AcceptedSelectorAUEvidence.of_AU htip h.source_au
 
 end AcceptedRetainedPhaseSourceCarrierAt
 
@@ -401,73 +382,10 @@ inductive EarlySelectedEndpointPhase (e queryEpoch endpointEpoch : Epoch) :
       (hquery : e = queryEpoch)
       (hendpoint : endpointEpoch = e + 1)
 
-/-- A current-or-previous query result and a no-earlier early endpoint fall
-in exactly the three S1 cells. -/
-theorem earlySelectedEndpointPhase
-    {e queryEpoch endpointEpoch : Epoch}
-    (hresult : e = queryEpoch ∨ e + 1 = queryEpoch)
-    (hforward : queryEpoch ≤ endpointEpoch)
-    (hearly : endpointEpoch < e + 2) :
-    EarlySelectedEndpointPhase e queryEpoch endpointEpoch := by
-  rcases hresult with hcurrent | hprevious
-  · have hlower : e ≤ endpointEpoch := by
-      simpa only [hcurrent] using hforward
-    have hupper : endpointEpoch ≤ e + 1 := by
-      exact Nat.le_of_lt_succ (by simpa only [Nat.add_eq, Nat.succ_eq_add_one,
-        Nat.add_assoc] using hearly)
-    by_cases heq : endpointEpoch = e
-    · exact .currentSame hcurrent heq
-    · have hstrict : e < endpointEpoch :=
-        Nat.lt_of_le_of_ne hlower (fun h => heq h.symm)
-      have hsucc : e + 1 ≤ endpointEpoch := by
-        simpa only [Nat.succ_eq_add_one] using Nat.succ_le_of_lt hstrict
-      exact .currentNext hcurrent (Nat.le_antisymm hupper hsucc)
-  · have hlower : e + 1 ≤ endpointEpoch := by
-      simpa only [hprevious] using hforward
-    have hupper : endpointEpoch ≤ e + 1 := by
-      exact Nat.le_of_lt_succ (by simpa only [Nat.add_eq, Nat.succ_eq_add_one,
-        Nat.add_assoc] using hearly)
-    exact .previous hprevious (Nat.le_antisymm hupper hlower)
 
 /-! ## Historical A3.2 source placement -/
 
-/-- The non-anchor historical quorum and its accepted source remain placed
-on the current retained lineage tip.  This is store-independent semantic
-placement; endpoint recency still depends on the phase/history argument. -/
-structure AcceptedHistoricalRetainedQuorumSourceAt
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
-    (tip : Root) (e : Epoch) where
-  origin : Root
-  quorum_at : E.AcceptedHistoricalA32QuorumAt cfg ext B origin e
-  source_eq_tip : quorum_at.quorum.source = B.state.GJ tip
-  source_au_tip : B.state.AU cfg ext tip quorum_at.quorum.source
 
-/-- Project the anchor disjunct or the positive retained-tip quorum source
-from a safety-free historical lineage. -/
-theorem AcceptedHistoricalA32LineageAt.anchor_or_retainedQuorumSource
-    {B : ExactPrefixAcceptedFFGSemantics cfg ext E}
-    {tip : Root} {e : Epoch}
-    (hphase : Phase0SourceCoherence cfg ext)
-    (h : E.AcceptedHistoricalA32LineageAt cfg ext B tip e) :
-    B.state.C h.origin e = B.anchor ∨
-      Nonempty (E.AcceptedHistoricalRetainedQuorumSourceAt cfg ext B tip e) := by
-  rcases h.payload.support_branch with hanchor | hquorum
-  · exact Or.inl hanchor
-  · obtain ⟨hquorum⟩ := hquorum
-    have hgj : B.state.GJ tip = B.state.GJ h.origin :=
-      h.same_epoch_segment.gj_eq_first hphase
-        B.coherence.toAcceptedFFGSelectorCoherence
-    have hsource : hquorum.quorum.source = B.state.GJ tip :=
-      hquorum.source_eq.trans hgj.symm
-    have htipAccepted : E.AcceptedRoot cfg ext tip := h.tip_at.acceptedRoot
-    exact Or.inr ⟨{
-      origin := h.origin
-      quorum_at := hquorum
-      source_eq_tip := hsource
-      source_au_tip := by
-        rw [hsource]
-        exact B.state.gj_AU cfg ext htipAccepted
-    }⟩
 
 
 end Execution

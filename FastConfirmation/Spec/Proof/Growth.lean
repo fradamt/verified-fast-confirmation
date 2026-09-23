@@ -4,37 +4,9 @@ public import FastConfirmation.Spec.Proof.Remainder
 @[expose] public section
 
 /-!
-# Spec / Proof / Growth: the aggregate window-growth facts
+# Spec / Proof / Growth
 
-The three **aggregate window-growth facts** consumed by
-`AnchorClose.ForkEdgeConfirmMarginSupply` — the residual interface of the confirm-margin
-collapse (`Dominance.bval_strip_window_uniform`). At the Spec_Safety endpoint `(w, m)` the
-fork-contest window is `[lo, σ]` with `σ = slot_at m − 1 ≥ es` (`es = slot_at n₀` the confirming
-base). `Dominance.bval_strip_window_uniform` carries the plain confirm-margin strip from `es` to
-`σ` in one **window-uniform** step, given exactly these three facts:
-
-* **`hgrowS`** — honest-support growth: `Sval(es) + (Jspec σ − Jspec es) ≤ Sval(σ)`. Every fresh
-  honest window entrant lands in `Sclass` under the head-safety IH. Delivered by
-  **telescoping** `Remainder.hSmono_of_engine`'s per-slot delta over `[es, σ]`; each per-slot
-  weight-growth is exactly the `Jspec`-difference (`Fraction.Jspec_eq_add_growth`), so the
-  telescope collapses to `Jspec σ − Jspec es`.
-* **`hgrowX`** — `Xclass` never grows post-`es`: `Xval(σ) ≤ Xval(es)`. Telescoping
-  `Remainder.hXmono_of_engine`'s per-slot antitonicity.
-* **`hbudget`** — the aggregate `span_fraction` on the growth span:
-  `(100−C)·(Bval σ − Bval es) ≤ C·(Jspec σ − Jspec es)`. Delivered **unconditionally in the
-  same-epoch regime** (`Dominance` Part 2b): under `committee_assignment_unique` seat-uniqueness
-  the window growth `span lo σ \ span lo es` is exactly the disjoint span `span (es+1) σ`, so
-  `ByzantineBound.span_fraction (es+1) σ` **is** the aggregate budget. The cross-epoch regime
-  needs the `INVstar` min-reserve tax carried once (`Dominance` Part 3) — surfaced as a residual,
-  not forced here.
-
-`hgrowS`/`hgrowX` are IH-dependent: their per-slot supplier `Remainder.hSmono_of_engine` /
-`hXmono_of_engine` consumes the head-safety induction hypothesis at each fresh entrant's voting
-store. `AnchorClose.ForkEdgeConfirmMarginSupply` (and `DescendStepChainSupply`) **already**
-carries that IH clause as a hypothesis field (the `∀ w' ∈ E.honest, … slot_at m' < slot_at m →
-head(w',m') ⪰ b` premise), so no IH-carrying variant of the def is needed — the fold in
-`advance_safe_of_descendStepChain` supplies it at the call site.
-
+This module contains `sub_mul_le_of_span`, `telescope_S`, `hgrowX_aux` and related declarations.
 -/
 
 namespace FastConfirmation.Spec

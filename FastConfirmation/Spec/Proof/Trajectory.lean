@@ -52,9 +52,6 @@ private theorem foldl_time {α : Type*} {f : Store Root → α → Store Root}
   dsimp only
   rcases hmi : s.latest_messages i with _ | lm <;> split_ifs <;> rfl
 
-@[simp] theorem record_block_timeliness_time [LinearOrder Root]
-    (cfg : Config) (store : Store Root) (root : Root) :
-    (record_block_timeliness cfg store root).time = store.time := rfl
 
 @[simp] theorem update_proposer_boost_root_time [LinearOrder Root] [Inhabited Root]
     (cfg : Config) (store : Store Root) (head root : Root) :
@@ -117,10 +114,6 @@ theorem on_execution_payload_envelope_time {store store' : Store Root}
     (h : on_execution_payload_envelope ext store envelope observation = some store') :
     store'.time = store.time := (on_execution_payload_envelope_frame ext h).time
 
-theorem notify_ptc_messages_time {store store' : Store Root}
-    {state : BeaconState Root} {attestations : List (IndexedPayloadAttestation Root)}
-    (h : notify_ptc_messages cfg ext store state attestations = some store') :
-    store'.time = store.time := (notify_ptc_messages_frame cfg ext h).time
 
 theorem apply_event_time {store store' : Store Root} {e : Event Root}
     (h : apply_event cfg ext store e = some store') : store'.time = store.time := by

@@ -7,34 +7,9 @@ public import FastConfirmation.Spec.Proof.ModelFacts
 @[expose] public section
 
 /-!
-# Spec / Proof / Identities: the economic-core coherence package
+# Spec / Proof / Identities
 
-This module packages the coherence identities used by the proof decomposition.
-The closing package for the three enumerated residuals of the economic core that
-`EconomicCore` / `Remainder` / `IHMechanize` bottom out in:
-
-* **Section A — the store-epoch trajectory invariant** (Remainder item-2 residual).
-  `Remainder.hjc_le_of_store_epoch_bound` reduces the epoch-ordering side condition
-  `hjc_le` of the closed vote-landing exports to the single transparent invariant
-  `justified_checkpoint.epoch ≤ get_current_store_epoch`. This section proves that
-  invariant along execution trajectories (mirroring the `WFTrajectory` /
-  `Delivery.store_blocksSlotLe` induction pattern exactly) and closes `hjc_le`. The
-  invariant needs the `ExternalsCoherence.pjf_checkpoint_epoch` bound that
-  `process_justification_and_finalization` justifies no future epoch
-  (`PjfCheckpointEpoch`, the companion of `state_transition_checkpoint_epoch`); it is
-  taken as an explicit hypothesis.
-
-* **Section B — `hspan`**: the saturated-regime `Jspec` lower bound
-  `2·(boost+1) ≤ Jspec lo σ'` that `VoteLanding.boost_dilution` (`hJlb`) consumes.
-  Delivered modulo a minimal nondegeneracy hypothesis `4·(boost+1) ≤ total_active`
-  and the full-epoch honest-coverage floor — the genuine tiny-`TAB` edge, **explicit**.
-
-* **Section C — the V/pre class-decomposition identities** feeding
-  `EconomicCore.INV2_base_bridged`: the three definitional enemy-atom choices
-  (`B_V`/`B0`/`Bbad`, discharged by `rfl`), leaving the five genuine class-decomposition
-  identities packaged as the transparent `VpreIdentities` coherence bundle, composed into
-  a fully-instantiated `INV2_base_bridged`.
-
+This module contains `SameCkpt`, `refl`, `trans` and related declarations.
 -/
 
 namespace FastConfirmation.Spec
@@ -464,24 +439,6 @@ theorem Execution.store_justified_epoch_le (E : Execution Root) (cfg : Config)
   rw [E.store_current_slot cfg ext v n]
   exact hb.1
 
-/-- **`hjc_le` CLOSED.** The epoch-ordering side condition carried by
-`ExportWiring`'s vote-landing exports (`Remainder.hjc_le_of_store_epoch_bound`),
-discharged from the store-epoch invariant. The head-slot bound `hhead` is taken
-as an input in `Remainder`'s exact shape (`Delivery.store_blocks_slot_le_current`
-+ block-state slot). -/
-theorem Execution.hjc_le_closed (E : Execution Root) (cfg : Config) (ext : Externals Root)
-    (hec : ExternalsCoherence cfg ext E)
-    (hdiv : 1000 ∣ cfg.slot_duration_ms)
-    (hgen : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
-      E.genesis_store = get_forkchoice_store cfg ast ablk ∧ ast.slot = ablk.message.slot)
-    {v : ValidatorIndex} {n : ℕ} {s : Slot} {index : CommitteeIndex}
-    (hn : E.slot_at cfg n = s)
-    (hhead : ((E.store cfg ext v n).block_states
-        (get_head cfg (E.store cfg ext v n)).root).slot ≤ s) :
-    (E.store cfg ext v n).justified_checkpoint.epoch ≤
-      (honest_attestation cfg ext (E.store cfg ext v n) s index v).data.target.epoch :=
-  E.hjc_le_of_store_epoch_bound cfg ext hec hn hhead
-    (E.store_justified_epoch_le cfg ext hec hdiv hgen v n)
 
 /-! ## Section B — `hspan`: the saturated `Jspec` lower bound (EXPLICIT tiny-`TAB` edge)
 
@@ -503,135 +460,15 @@ It is delivered modulo two explicit coherence inputs (no new assumption fields):
   coverage-weight identity `weight(active) = total_active` is the residual, **explicit**
   (not delivered here). -/
 
-/-- Pure-ℕ core (over plain variables — `omega` mis-atomizes the `Gwei`-typed
-opaque `Jspec`/`total_active` terms inline). -/
-private theorem hspan_arith {x T J : ℕ} (h1 : 4 * x ≤ T) (h2 : T ≤ 2 * J) : 2 * x ≤ J := by
-  omega
 
 variable (E : Execution Root)
 
-omit [LinearOrder Root] [Inhabited Root] in
-/-- **`hspan`**, in `VoteLanding.boost_dilution`'s exact `hJlb` shape. From the
-tiny-`TAB` nondegeneracy `4·(boost+1) ≤ total_active` and the saturated-span
-honest-coverage floor `total_active ≤ 2·Jspec lo σ'`, the saturated `Jspec` lower
-bound `2·(boost+1) ≤ Jspec lo σ'` holds. Both inputs are **explicit** (see the
-section docstring); the arithmetic `4x ≤ T ≤ 2J ⟹ 2x ≤ J` is `hspan_arith`. -/
-theorem hspan_of_coverage (cfg : Config) (lo es : Slot) (boost : ℕ)
-    (hnondeg : 4 * (boost + 1) ≤ E.total_active cfg)
-    (hcov : ∀ σ' : Slot, es ≤ σ' →
-      compute_epoch_at_slot cfg es + 2 ≤ compute_epoch_at_slot cfg σ' →
-      E.SlotWithinHorizon cfg σ' →
-      E.total_active cfg ≤ 2 * E.Jspec lo σ') :
-    ∀ σ' : Slot, es ≤ σ' →
-      compute_epoch_at_slot cfg es + 2 ≤ compute_epoch_at_slot cfg σ' →
-      E.SlotWithinHorizon cfg σ' →
-      2 * (boost + 1) ≤ E.Jspec lo σ' := by
-  intro σ' h1 h2 hσH
-  exact hspan_arith hnondeg (hcov σ' h1 h2 hσH)
 
-/-! ## Section C — the V/pre class-decomposition identities and `INV2_base_bridged`
 
-`EconomicCore.INV2_base_bridged` takes eight V/pre identities as free inputs over
-free atoms `aV xV apre xpre B_V B0 Bbad`. This section **pins the atom choices** and
-discharges the three definitional identities (`hBV`/`hBfull`/`hBbadVal` — the enemy
-atoms `B_V := Bval sa es`, `B0 := Bval lo es`, `Bbad := BbadVal`), leaving the five
-genuine `Finset` class-decomposition identities as the transparent `VpreIdentities`
-coherence bundle:
-
-* `hJV` — supporter confinement `Sval [lo,es] + aV + xV = Jspec [sa,es]` (the honest
-  `weight_partition` at `lo := sa`, once `Sval [lo,es] = Sval [sa,es]` — a supporter
-  is assigned in the V-region `[sa,es]`, a `LatestMessageProvenance` + slot-monotone
-  confinement);
-* `hJfull` — the two-region window partition with `ParentStuck` (`span_committee`
-  slot-split + `committee_assignment_unique` same-epoch disjointness);
-* `hXval` — the sibling-stuck two-region split `xV + xpre = Xval [lo,es]`;
-* `hR4b` / `hBbadfin` — the byz-partition inequalities over disjoint recorded
-  predicates (`Bval` covering + `weight_add`-family).
-
-These five form the explicit residual bundle (the `same-slot availability` family — the
-supporter-confinement / two-region-split / byz-partition `Finset` algebra); the
-bundle makes the atom choices and the definitional identities machine-checked, so
-`INV2_base_bridged_instantiated` reduces `INV2(es)` to exactly the five
-`VpreIdentities` fields plus the store-coherence package. -/
 
 variable (cfg : Config) (ext : Externals Root)
 
-/-- The five genuine V/pre class-decomposition identities feeding
-`INV2_base_bridged`, with the enemy atoms pinned definitionally
-(`B_V := Bval sa es`, `B0 := Bval lo es`, `Bbad := BbadVal`). The carried residual
-(supporter confinement + two-region splits + byz partition). -/
-structure VpreIdentities (v : ValidatorIndex) (n : ℕ) (bs : BeaconState Root) (b : Root)
-    (lo es sa : Slot) (aV xV apre xpre : ℕ) : Prop where
-  /-- Supporter confinement: honest window `[lo,es]` supporters partition `Jspec [sa,es]`. -/
-  hJV : E.Sval cfg ext v n b lo es + aV + xV = E.Jspec sa es
-  /-- Two-region honest window partition with `ParentStuck`. -/
-  hJfull : E.Sval cfg ext v n b lo es + aV + xV
-      + (E.weight (ParentStuck cfg E (E.store cfg ext v n) bs b) + apre + xpre)
-    = E.Jspec lo es
-  /-- Sibling-stuck two-region split. -/
-  hXval : xV + xpre = E.Xval cfg ext v n b lo es
-  /-- V-span byz partition inequality. -/
-  hR4b : (((AttSupporters cfg (E.store cfg ext v n) (get_node_for_root b) bs).filter
-        (fun i => i ∉ E.honest)).map
-      (fun i => (bs.validators.getD i default).effective_balance)).sum
-      + get_equivocation_score cfg ext (E.store cfg ext v n) bs sa es ≤ E.Bval sa es
-  /-- Full-window byz partition inequality. -/
-  hBbadfin : E.BbadVal cfg ext v n b lo es
-      + (((AttSupporters cfg (E.store cfg ext v n) (get_node_for_root b) bs).filter
-          (fun i => i ∉ E.honest)).map
-        (fun i => (bs.validators.getD i default).effective_balance)).sum
-      + get_equivocation_score cfg ext (E.store cfg ext v n) bs sa es
-      + E.weight (ParentStuckByz cfg E (E.store cfg ext v n) bs b) ≤ E.Bval lo es
 
-/-- **`INV2_base_bridged` fully instantiated per confirmed block** (`Identities` item 1).
-The three definitional atom identities (`hBV`/`hBfull`/`hBbadVal`, i.e. the enemy-atom
-choices) are discharged by `rfl`; the five genuine class-decomposition identities are
-supplied by the transparent `VpreIdentities` bundle. Reduces `INV2(es)` from a
-confirmed instance to exactly `VpreIdentities` + the per-store coherence package. -/
-theorem INV2_base_bridged_instantiated
-    (hhb : HonestBehavior cfg ext E) (hec : ExternalsCoherence cfg ext E)
-    (hbb : ByzantineBound cfg E)
-    (hgen : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
-      E.genesis_store = get_forkchoice_store cfg ast ablk)
-    {v : ValidatorIndex} (hv : v ∈ E.honest) {n : ℕ}
-    (hnH : E.WithinHorizon cfg n)
-    (hwf : ∀ r ∈ (E.store cfg ext v n).block_roots,
-      ((E.store cfg ext v n).blocks r).parent_root ∈ (E.store cfg ext v n).block_roots →
-        ((E.store cfg ext v n).blocks ((E.store cfg ext v n).blocks r).parent_root).slot <
-          ((E.store cfg ext v n).blocks r).slot)
-    (hprov : LatestMessageProvenance E cfg (get_current_slot cfg (E.store cfg ext v n))
-      (E.store cfg ext v n))
-    {bs : BeaconState Root} {b : Root} {lo es sa : Slot}
-    {aV xV apre xpre : ℕ}
-    (hconf : is_one_confirmed cfg ext (E.store cfg ext v n) bs b = true)
-    (hval : bs.validators = E.registry)
-    (htab : get_total_active_balance cfg bs = E.total_active cfg)
-    (hlo : lo = ((E.store cfg ext v n).blocks
-      ((E.store cfg ext v n).blocks b).parent_root).slot + 1)
-    (hes : es = get_current_slot cfg (E.store cfg ext v n) - 1)
-    (hsa : sa =
-      (if get_block_epoch cfg (E.store cfg ext v n) b >
-          get_block_epoch cfg (E.store cfg ext v n) ((E.store cfg ext v n).blocks b).parent_root
-        then compute_start_slot_at_epoch cfg (get_block_epoch cfg (E.store cfg ext v n) b)
-        else ((E.store cfg ext v n).blocks b).slot))
-    (hloH : E.SlotWithinHorizon cfg lo)
-    (hesH : E.SlotWithinHorizon cfg es)
-    (hsaH : E.SlotWithinHorizon cfg sa)
-    (hbH : E.SlotWithinHorizon cfg ((E.store cfg ext v n).blocks b).slot)
-    (hslotlt : ((E.store cfg ext v n).blocks
-        ((E.store cfg ext v n).blocks b).parent_root).slot <
-      ((E.store cfg ext v n).blocks b).slot)
-    (hwalk : ∀ i ∈ AttSupporters cfg (E.store cfg ext v n) (get_node_for_root b) bs, ∀ lm,
-      (E.store cfg ext v n).latest_messages i = some lm →
-        WalkKnown (E.store cfg ext v n) ((E.store cfg ext v n).blocks b).slot lm.root)
-    (hdom : E.RecordedEpochMax cfg ext v n es)
-    (hV : VpreIdentities E cfg ext v n bs b lo es sa aV xV apre xpre) :
-    E.INV2 cfg ext v n b lo es es (compute_proposer_score cfg bs) :=
-  E.INV2_base_bridged cfg ext hhb hec hbb hgen hv hnH hwf hprov
-    hconf hval htab hlo hes hsa hloH hesH hsaH hbH
-    hslotlt hwalk hdom (aV := aV) (xV := xV) (apre := apre) (xpre := xpre)
-    (B_V := E.Bval sa es) (B0 := E.Bval lo es) (Bbad := E.BbadVal cfg ext v n b lo es)
-    hV.hJV rfl hV.hJfull rfl hV.hR4b hV.hBbadfin hV.hXval rfl
 
 end FastConfirmation.Spec
 

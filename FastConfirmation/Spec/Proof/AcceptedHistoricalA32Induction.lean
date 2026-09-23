@@ -335,28 +335,6 @@ theorem acceptedHistoricalA32CurrentLineage_invariant
     hboundaryPhase hanchor hboundary hv
       (fun k hk hkH => hcalls v hv k hk hkH) n hHn
 
-/-- Headline projection: every honest in-horizon cached confirmed root that
-lies in its store's current epoch has a nonempty accepted historical A3.2
-lineage, retaining the exact original target, source, and deadline payload. -/
-theorem acceptedHistoricalA32CurrentLineage
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
-    (hphase : Phase0SourceCoherence cfg ext)
-    (hboundaryPhase : Phase0BoundarySourceCoherence cfg ext)
-    (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
-    (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
-      (E := E) (anchor := B.anchor))
-    (hcalls : E.AcceptedHistoricalA32CallInterfaces cfg ext B)
-    {v : ValidatorIndex} (hv : v ∈ E.honest)
-    {n : ℕ} (hHn : E.WithinHorizon cfg n)
-    (hcurrent : get_block_epoch cfg (E.store cfg ext v n)
-        (E.confirmed cfg ext v n) =
-      get_current_store_epoch cfg (E.store cfg ext v n)) :
-    ∃ e : Epoch, Nonempty (E.AcceptedHistoricalA32LineageAt
-      cfg ext B (E.confirmed cfg ext v n) e) :=
-  (E.acceptedHistoricalA32CurrentLineage_invariant cfg ext B hT hphase
-    hboundaryPhase hanchor hboundary hcalls v hv n hHn).current_lineage
-      hcurrent
 
 end Execution
 

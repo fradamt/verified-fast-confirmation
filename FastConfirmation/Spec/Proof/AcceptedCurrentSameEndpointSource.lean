@@ -6,9 +6,9 @@ public import FastConfirmation.Spec.Proof.AcceptedFFGJustifiedMaximality
 public import FastConfirmation.Spec.Proof.ExactCheckpointLinks
 public import FastConfirmation.Spec.Proof.AcceptedHistoricalFinalizedPlacement
 public import FastConfirmation.Spec.Proof.AcceptedRealizedJustifiedOrigin
-public import FastConfirmation.Spec.Proof.AcceptedHistoricalLineageFinalizedPlacement
-
+public import FastConfirmation.Spec.Proof.SelectedTraceFFGRealizationPipeline
 public import FastConfirmation.Spec.Proof.ModelFacts
+
 @[expose] public section
 
 /-!
@@ -694,71 +694,9 @@ end AcceptedCurrentSameSourceHistoryOutcome
 
 /-! ## Finality attachment for strict-edge integration -/
 
-/-- The exact current-same retained payload immediately before endpoint
-justification orientation is attached. -/
-structure AcceptedCurrentSameRetainedFinalizedCarrierAt
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
-    (w : ValidatorIndex) (m : Nat) (selected : Root) where
-  carrier : E.AcceptedRetainedPhaseSourceCarrierAt cfg ext B
-    (E.store cfg ext w m) selected
-  finalized_check : (E.store cfg ext w m).finalized_checkpoint.root =
-    get_checkpoint_block cfg (E.store cfg ext w m) carrier.tip
-      (E.store cfg ext w m).finalized_checkpoint.epoch
 
 namespace AcceptedCurrentSameSourceHistoryOutcome
 
-/-- Attach the already-proved historical-lineage finality theorem to the
-unified current-same retained source carrier.  Endpoint justified orientation
-is intentionally not a premise or conclusion here; it is the separate
-non-covered strict-edge fact. -/
-theorem retainedFinalizedAt_currentSameEndpoint
-    {B : ExactPrefixAcceptedFFGSemantics cfg ext E}
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
-    (hsync : PaperSafetySynchrony cfg ext E)
-    (hphase0 : Phase0SourceCoherence cfg ext)
-    (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
-    (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
-      (E := E) (anchor := B.anchor))
-    (P : AcceptedEpochCheckpointProjection B.anchor
-      (E.AcceptedRoot cfg ext) B.state.C)
-    (V : B.state.ExactLinkValidity)
-    (hanchorExact : B.anchor =
-      B.state.C B.anchor.root B.anchor.epoch)
-    (hacc : CheckpointCertificateAccountability cfg E B.anchor)
-    (hA : FFGAccountabilityAssumptions cfg ext E)
-    (hdomain : SelectedMarginDomain cfg ext E)
-    {v : ValidatorIndex} {q : Nat} {selected : Root} {e : Epoch}
-    (h : E.AcceptedCurrentSameSourceHistoryOutcome cfg ext B v q selected)
-    (hlineage : E.AcceptedHistoricalA32LineageAt cfg ext B selected e)
-    (hselectedQuery : selected ∈
-      (E.store cfg ext v q).block_roots)
-    (hselectedEpoch : get_block_epoch cfg (E.store cfg ext v q) selected = e)
-    (hcurrent : get_block_epoch cfg (E.store cfg ext v q) selected =
-      get_current_store_epoch cfg (E.store cfg ext v q))
-    {w : ValidatorIndex} (hw : w ∈ E.honest) {m : Nat}
-    (hmH : E.WithinHorizon cfg m)
-    (hqueryEndpoint : E.slot_at cfg q ≤ E.slot_at cfg m)
-    (hcurrentSame : get_current_store_epoch cfg (E.store cfg ext w m) =
-      get_current_store_epoch cfg (E.store cfg ext v q))
-    (hselectedEndpoint : selected ∈
-      (E.store cfg ext w m).block_roots) :
-    Nonempty (E.AcceptedCurrentSameRetainedFinalizedCarrierAt
-      cfg ext B w m selected) := by
-  obtain ⟨carrier⟩ := h.retainedAt_currentSameEndpoint cfg ext hT hsync
-    hanchor hboundary P V hanchorExact hdomain hselectedQuery hcurrent
-      hw hmH hqueryEndpoint hcurrentSame hselectedEndpoint
-  have hqueryEpoch : e = get_current_store_epoch cfg
-      (E.store cfg ext v q) := hselectedEpoch.symm.trans hcurrent
-  have hendpointEpoch : get_current_store_epoch cfg
-      (E.store cfg ext w m) = e := hcurrentSame.trans hqueryEpoch.symm
-  let hphase : EarlySelectedEndpointPhase e
-      (get_current_store_epoch cfg (E.store cfg ext v q))
-      (get_current_store_epoch cfg (E.store cfg ext w m)) :=
-    .currentSame hqueryEpoch hendpointEpoch
-  have hfinalized := carrier.finalized_check_of_earlyHistoricalLineage
-    cfg ext hT hphase0 hanchor hboundary P V hanchorExact hacc hA
-      hphase hlineage hselectedQuery hselectedEpoch
-  exact ⟨⟨carrier, hfinalized⟩⟩
 
 end AcceptedCurrentSameSourceHistoryOutcome
 

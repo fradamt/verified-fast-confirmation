@@ -76,20 +76,6 @@ already known carries exactly the store's recorded block — genesis roots via
 `genesis_blocks_agree`, scheduled roots via `blocks_root_injective`. This is the
 no-op witness for the already-present branch of the `on_block` step. -/
 
-/-- The block a store records at a known scheduled root is that scheduled
-block's message. -/
-theorem blocks_eq_of_scheduled_mem {E : Execution Root} (hwf : WellFormedExecution E)
-    {store : Store Root} (hprov : BlockProvenance E store)
-    {sb : SignedBeaconBlock Root} (hsched : IsScheduledBlock E sb)
-    (hin : sb.root ∈ store.block_roots) : store.blocks sb.root = sb.message := by
-  rcases hprov sb.root hin with ⟨hg, hbs⟩ | ⟨b, hbsched, hbr, hbb⟩
-  · obtain ⟨w, m, hmem⟩ := hsched
-    rw [hbs]
-    exact (hwf.genesis_blocks_agree w m sb hmem hg).symm
-  · obtain ⟨w, m, hmem⟩ := hsched
-    obtain ⟨w', m', hmem'⟩ := hbsched
-    rw [hbb]
-    exact hwf.blocks_root_injective w' m' b hmem' w m sb hmem hbr
 
 variable [LinearOrder Root] [Inhabited Root] (cfg : Config) (ext : Externals Root)
 
@@ -121,15 +107,7 @@ theorem parentInRootsOr_insert (P : Root) (store : Store Root) (block_root : Roo
     · exact Or.inl (hsub _ hin)
     · exact Or.inr hP
 
-/-! ## `on_block` preserves the parent-slot order along trajectories
 
-The block insertion splits on whether the wire root is already known:
-
-* **fresh** — `on_block_parentSlotLt`, with `hno_child` discharged from
-  `ParentInRootsOr P` and the guarded `hP : sb.root ≠ P`;
-* **present** — the `blocks` write is a no-op (`blocks_eq_of_scheduled_mem`), so
-  the order rides across unchanged.
--/
 
 /-- `on_block` preserves `ParentSlotLt` under the trajectory-supplied facts:
 `WellFormedExecution` + `BlockProvenance` (block identification / no-op),
@@ -376,26 +354,6 @@ theorem Execution.store_parentSlotLt (E : Execution Root)
       _ _ (fun b hb => ⟨v, k + 1, hb⟩) ?_
     exact on_tick_WFPlus cfg ablk.message.parent_root _ _ ih
 
-/-- Bundle of the three derivable-core `WellFormedStore` fields at every node and
-second: the handler-local core, the parent-slot order, and `time ≥ genesis`.
-Combines `store_wellFormedStoreCore` + `store_parentSlotLt` + `store_time_ge_genesis`
-from the `get_forkchoice_store` base (under the guarded `hanchor`). -/
-theorem Execution.store_wellFormedStore_core_plus (E : Execution Root)
-    (hwf : WellFormedExecution E) (hec : ExternalsCoherence cfg ext E)
-    (hgen : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
-      E.genesis_store = get_forkchoice_store cfg ast ablk ∧
-      ast.slot = ablk.message.slot ∧ ablk.message.parent_root ≠ ablk.root)
-    (hanchor : ∀ r ∈ E.genesis_store.block_roots, ∀ w n (b : SignedBeaconBlock Root),
-      Event.block b ∈ E.schedule w n → b.root ≠ (E.genesis_store.blocks r).parent_root)
-    (v : ValidatorIndex) (n : ℕ) :
-    WellFormedStoreCore (E.store cfg ext v n) ∧ ParentSlotLt (E.store cfg ext v n) ∧
-      (E.store cfg ext v n).genesis_time ≤ (E.store cfg ext v n).time := by
-  obtain ⟨ast, ablk, hgeq, hslot, hparent⟩ := hgen
-  have hgws : WellFormedStore E.genesis_store := by
-    rw [hgeq]; exact wellFormedStore_get_forkchoice_store cfg ast ablk hslot hparent
-  exact ⟨E.store_wellFormedStoreCore cfg ext hec.state_transition_slot hgws.core v n,
-    E.store_parentSlotLt cfg ext hwf hec ⟨ast, ablk, hgeq, hslot, hparent⟩ hanchor v n,
-    E.store_time_ge_genesis cfg ext hgws.time_ge_genesis v n⟩
 
 end FastConfirmation.Spec
 

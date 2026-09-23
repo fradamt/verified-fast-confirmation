@@ -375,16 +375,6 @@ theorem Execution.store_wellFormedStoreCore (E : Execution Root)
       (fun s e hs => apply_event_getD_wellFormedStoreCore cfg ext hst_slot s e hs) _ _ ?_
     exact on_tick_wellFormedStoreCore cfg _ _ ih
 
-/-- The store clock never precedes genesis along any trajectory whose genesis
-store carries `genesis_time ≤ time` (`WellFormedStore.time_ge_genesis`): the
-clock tracks `time_at = genesis_store.time + n` and `genesis_time` is constant
-(`Proof/Trajectory`). This is the trajectory-level `time_ge_genesis` field. -/
-theorem Execution.store_time_ge_genesis (E : Execution Root)
-    (hbase : E.genesis_store.genesis_time ≤ E.genesis_store.time)
-    (v : ValidatorIndex) (n : ℕ) :
-    (E.store cfg ext v n).genesis_time ≤ (E.store cfg ext v n).time := by
-  rw [E.store_time cfg ext v n, E.store_genesis_time cfg ext v n]
-  exact le_trans hbase (Nat.le_add_right _ _)
 
 /-! ## `parent_slot_lt` preservation by `on_block` (handler-level)
 

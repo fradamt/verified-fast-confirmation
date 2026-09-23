@@ -7,29 +7,7 @@ public import FastConfirmation.Spec.Proof.EdgeResiduals
 /-!
 # Endpoint ledger fields over the selected-margin domain
 
-The selected-margin consumers need three facts at every honest endpoint:
-
-* the endpoint's selected class is represented in the executable latest-message
-  score;
-* honest supporters of a competing child are confined to `Xclass`; and
-* non-honest supporters of a competing child are confined to `Bwin`.
-
-At the canonical endpoint cutoff
-`sigma = get_current_slot (store w m) - 1`, these facts use only
-`SelectedMarginAssumptions`.  In particular, they do not use the broad
-`JustificationInterface`.  Provenance, parent-walk closure, recorded-root
-knownness, the endpoint registry, and all horizon facts are derived below.
-
-The one delivery input kept explicit is the presence of a recorded latest
-message for every member of the selected class.  Together with
-`WindowRecordedEpochMax`, this is exactly the output of the honest-vote delivery
-supplier.  Keeping it explicit is important: `RecordedEpochMax` is a domination
-property conditional on a message being present and, by itself, cannot prove
-message existence.
-
-No target-checkpoint-boundary walk is assumed here.  At the endpoint cutoff a
-selected member's ground newest vote is identified directly with its recorded
-latest message by `recorded_lm_is_newest_at`.
+This module contains `EndpointRecordedPresence`, `recorded_support_of_sclass_at_endpoint_minimal`, `selected_recording_at_endpoint_minimal` and related declarations.
 -/
 
 namespace FastConfirmation.Spec
@@ -139,34 +117,6 @@ theorem selected_recording_at_endpoint_minimal
     hA.externals_coherence hA.static_validators hgen w m w m b b lo sigma
     hval hbsH hsigmaH hrec
 
-/-- A full honest-vote ubiquity statement through `sigma` supplies both pieces
-used above: `RecordedEpochMax` and selected-class message presence.  This is the
-direct adapter for the delivery supplier. -/
-theorem selected_recording_of_endpoint_ubiquity_minimal
-    (hA : SelectedMarginAssumptions cfg ext E)
-    {w : ValidatorIndex} (hw : w ∈ E.honest) {m : ℕ}
-    (hmH : E.WithinHorizon cfg m)
-    {b : Root} {lo sigma : Slot}
-    (hsigma : sigma = get_current_slot cfg (E.store cfg ext w m) - 1)
-    (hubiq : ∀ i ∈ E.honest, ∀ (t : Slot) (k : ℕ) (a : Attestation Root),
-      t ≤ sigma → E.vote i t = some (k, a) →
-      ∃ lm, (E.store cfg ext w m).latest_messages i = some lm ∧
-        compute_epoch_at_slot cfg t ≤ (get_latest_message_epoch cfg lm)) :
-    ∀ i ∈ E.Sclass cfg ext w m b lo sigma,
-      i ∈ AttSupporters cfg (E.store cfg ext w m) (get_node_for_root b)
-        ((E.store cfg ext w m).checkpoint_states
-          (E.store cfg ext w m).justified_checkpoint) := by
-  have hmax : E.WindowRecordedEpochMax cfg ext w m lo sigma :=
-    (E.RecordedEpochMax_of_ubiquity cfg ext hubiq).toWindow cfg ext
-  have hpresence : E.EndpointRecordedPresence cfg ext w m b lo sigma := by
-    intro i hi
-    have hi' := hi
-    simp only [Execution.Sclass, Finset.mem_filter] at hi'
-    obtain ⟨⟨_hspan, hih⟩, t, k, a, ht, hvote, _hnew, _hsupport⟩ := hi'
-    obtain ⟨lm, hlm, _⟩ := hubiq i hih t k a ht hvote
-    exact ⟨lm, hlm⟩
-  exact E.selected_recording_at_endpoint_minimal cfg ext hA hw hmH
-    hsigma hmax hpresence
 
 /-- Selected-class message presence from the faithful post-anchor delivery
 supplier.  A selected member belongs to `span_committee lo sigma`; one of those

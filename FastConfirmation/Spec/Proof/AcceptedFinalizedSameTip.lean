@@ -94,18 +94,6 @@ end IncludedCertifiedJustified
 
 namespace IncludedCertifiedFinalized
 
-/-- Reindex an included finalization certificate and its finalizing link onto
-a semantic descendant tip. -/
-def transport_descendant
-    {E : Execution Root} {included : Root → Attestation Root → Prop}
-    {anchor : Checkpoint Root} {tip carrier : Root} {c : Checkpoint Root}
-    (htip : E.RootDescends tip carrier)
-    (F : IncludedCertifiedFinalized cfg E included anchor carrier c) :
-    IncludedCertifiedFinalized cfg E included anchor tip c where
-  justified := F.justified.transport_descendant cfg htip
-  child := F.child
-  child_epoch := F.child_epoch
-  finalizing_link := F.finalizing_link.transport_descendant cfg htip
 
 end IncludedCertifiedFinalized
 
@@ -156,103 +144,17 @@ structure AcceptedUnrealizedFinalitySameTipAt
 
 namespace AcceptedChainFFGState
 
-/-- Construct the realized `GF`/`GJ` same-tip package directly from the
-accepted state. -/
-def realizedFinalitySameTipAt
-    {E : Execution Root} {anchor : Checkpoint Root}
-    (S : AcceptedChainFFGState cfg ext E anchor)
-    {tip : Root} (htip : E.AcceptedRoot cfg ext tip) :
-    AcceptedRealizedFinalitySameTipAt cfg ext S tip := by
-  have hjustified := S.includedJustifiedAtTip_of_AU cfg ext
-    (S.gj_AU cfg ext htip)
-  have hfinalized := S.gf_evidence tip htip
-  have hanchorLe : anchor.epoch ≤ (S.GF tip).epoch := by
-    rcases hfinalized with hanchor | hcertificate
-    · rw [hanchor]
-    · obtain ⟨hcertificate⟩ := hcertificate
-      exact IncludedCertifiedJustified.anchor_epoch_le
-        (cfg := cfg) hcertificate.justified
-  exact {
-    tip_accepted := htip
-    justified := hjustified
-    finalized := hfinalized
-    anchor_epoch_le_finalized := hanchorLe
-    finalized_epoch_le_justified := S.gf_epoch_le_gj tip htip
-  }
 
-/-- Construct the pulled-up `GUF`/`GU` same-tip package directly from the
-accepted state. -/
-def unrealizedFinalitySameTipAt
-    {E : Execution Root} {anchor : Checkpoint Root}
-    (S : AcceptedChainFFGState cfg ext E anchor)
-    {tip : Root} (htip : E.AcceptedRoot cfg ext tip) :
-    AcceptedUnrealizedFinalitySameTipAt cfg ext S tip := by
-  have hjustified := S.includedJustifiedAtTip_of_AU cfg ext
-    (S.gu_AU cfg ext htip)
-  have hfinalized := S.guf_evidence tip htip
-  have hanchorLe : anchor.epoch ≤ (S.GUF tip).epoch := by
-    rcases hfinalized with hanchor | hcertificate
-    · rw [hanchor]
-    · obtain ⟨hcertificate⟩ := hcertificate
-      exact IncludedCertifiedJustified.anchor_epoch_le
-        (cfg := cfg) hcertificate.justified
-  exact {
-    tip_accepted := htip
-    justified := hjustified
-    finalized := hfinalized
-    anchor_epoch_le_finalized := hanchorLe
-    finalized_epoch_le_justified := S.guf_epoch_le_gu tip htip
-  }
 
 end AcceptedChainFFGState
 
 namespace AcceptedRealizedFinalitySameTipAt
 
-/-- Exact accountable finalized prefix with source and target certificates on
-the same accepted tip. -/
-theorem exactPrefix
-    {E : Execution Root} {anchor : Checkpoint Root}
-    {S : AcceptedChainFFGState cfg ext E anchor} {tip : Root}
-    (h : AcceptedRealizedFinalitySameTipAt cfg ext S tip)
-    (P : AcceptedEpochCheckpointProjection anchor
-      (E.AcceptedRoot cfg ext) S.C)
-    (V : S.ExactLinkValidity)
-    (hanchorExact : anchor = S.C anchor.root anchor.epoch)
-    (hacc : CheckpointCertificateAccountability cfg E anchor) :
-    ExactCheckpointPrefix S.C (S.GF tip) (S.GJ tip) := by
-  obtain ⟨hjustified⟩ := h.justified
-  rcases h.finalized with hanchor | hfinalized
-  · rw [hanchor]
-    exact IncludedCertifiedJustified.anchor_prefix
-      (cfg := cfg) P V hanchorExact hjustified
-  · obtain ⟨hfinalized⟩ := hfinalized
-    exact S.exactFinalizedPrefix_of_accountable cfg P V hanchorExact hacc
-      hfinalized hjustified h.finalized_epoch_le_justified
 
 end AcceptedRealizedFinalitySameTipAt
 
 namespace AcceptedUnrealizedFinalitySameTipAt
 
-/-- Exact accountable pulled-up finalized prefix with both certificates on
-the same accepted tip. -/
-theorem exactPrefix
-    {E : Execution Root} {anchor : Checkpoint Root}
-    {S : AcceptedChainFFGState cfg ext E anchor} {tip : Root}
-    (h : AcceptedUnrealizedFinalitySameTipAt cfg ext S tip)
-    (P : AcceptedEpochCheckpointProjection anchor
-      (E.AcceptedRoot cfg ext) S.C)
-    (V : S.ExactLinkValidity)
-    (hanchorExact : anchor = S.C anchor.root anchor.epoch)
-    (hacc : CheckpointCertificateAccountability cfg E anchor) :
-    ExactCheckpointPrefix S.C (S.GUF tip) (S.GU tip) := by
-  obtain ⟨hjustified⟩ := h.justified
-  rcases h.finalized with hanchor | hfinalized
-  · rw [hanchor]
-    exact IncludedCertifiedJustified.anchor_prefix
-      (cfg := cfg) P V hanchorExact hjustified
-  · obtain ⟨hfinalized⟩ := hfinalized
-    exact S.exactFinalizedPrefix_of_accountable cfg P V hanchorExact hacc
-      hfinalized hjustified h.finalized_epoch_le_justified
 
 end AcceptedUnrealizedFinalitySameTipAt
 
@@ -314,54 +216,11 @@ theorem exactCheckpointPrefix_root_eq_at_sameTip
 
 namespace AcceptedRealizedFinalitySameTipAt
 
-/-- F2's realized-state leaf equation: exact finalized compatibility at the
-same accepted tip that carries the justified source. -/
-theorem finalizedRoot_eq_checkpointBlock_at_tip
-    {E : Execution Root} {anchor : Checkpoint Root}
-    {S : AcceptedChainFFGState cfg ext E anchor} {tip : Root}
-    (h : AcceptedRealizedFinalitySameTipAt cfg ext S tip)
-    (hcoh : AcceptedFFGTransitionCoherence cfg ext S)
-    (P : AcceptedEpochCheckpointProjection anchor
-      (E.AcceptedRoot cfg ext) S.C)
-    (V : S.ExactLinkValidity)
-    (hanchorExact : anchor = S.C anchor.root anchor.epoch)
-    (hacc : CheckpointCertificateAccountability cfg E anchor)
-    {store : Store Root} (hstore : E.CausalStore cfg ext store)
-    (hparent : ParentSlotLt store)
-    (htip : tip ∈ store.block_roots)
-    (hwalk : WalkKnown store
-      (compute_start_slot_at_epoch cfg (S.GF tip).epoch) tip) :
-    (S.GF tip).root =
-      get_checkpoint_block cfg store tip (S.GF tip).epoch := by
-  exact exactCheckpointPrefix_root_eq_at_sameTip cfg ext hcoh hstore hparent
-    htip (h.exactPrefix cfg ext P V hanchorExact hacc)
-    (S.gj_AU cfg ext h.tip_accepted) h.finalized_epoch_le_justified hwalk
 
 end AcceptedRealizedFinalitySameTipAt
 
 namespace AcceptedUnrealizedFinalitySameTipAt
 
-/-- F2's pulled-up-state leaf equation on one accepted tip. -/
-theorem finalizedRoot_eq_checkpointBlock_at_tip
-    {E : Execution Root} {anchor : Checkpoint Root}
-    {S : AcceptedChainFFGState cfg ext E anchor} {tip : Root}
-    (h : AcceptedUnrealizedFinalitySameTipAt cfg ext S tip)
-    (hcoh : AcceptedFFGTransitionCoherence cfg ext S)
-    (P : AcceptedEpochCheckpointProjection anchor
-      (E.AcceptedRoot cfg ext) S.C)
-    (V : S.ExactLinkValidity)
-    (hanchorExact : anchor = S.C anchor.root anchor.epoch)
-    (hacc : CheckpointCertificateAccountability cfg E anchor)
-    {store : Store Root} (hstore : E.CausalStore cfg ext store)
-    (hparent : ParentSlotLt store)
-    (htip : tip ∈ store.block_roots)
-    (hwalk : WalkKnown store
-      (compute_start_slot_at_epoch cfg (S.GUF tip).epoch) tip) :
-    (S.GUF tip).root =
-      get_checkpoint_block cfg store tip (S.GUF tip).epoch := by
-  exact exactCheckpointPrefix_root_eq_at_sameTip cfg ext hcoh hstore hparent
-    htip (h.exactPrefix cfg ext P V hanchorExact hacc)
-    (S.gu_AU cfg ext h.tip_accepted) h.finalized_epoch_le_justified hwalk
 
 end AcceptedUnrealizedFinalitySameTipAt
 

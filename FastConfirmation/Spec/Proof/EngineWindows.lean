@@ -7,17 +7,7 @@ public import FastConfirmation.Spec.Proof.EngineSupport
 /-!
 # Spec / Proof / EngineWindows — shared slot-window / set-weight helpers
 
-Pure `Finset` and `span_committee` weight helpers used by `StepDischarge`,
-`ByzVpre`, `Endpoint`, `LastAlgebra`, `Reanchor`, and `LedgerV2`:
-
-* **`weight_union_le`** — set-weight subadditivity over a union.
-* **`span_committee_subset_union` / `span_committee_mono_lo`** — the slot-window
-  covering and lower-bound-widening facts for `span_committee`.
-* **`weight_span_committee_split`** — the union window's weight is at most the sum
-  of the two sub-window weights.
-* **`weight_add4_le`** — four-disjoint-parts superadditivity into a common
-  superset (the four-way analogue of `EngineBudget.weight_add3_le`).
-
+This module contains `weight_union_le`, `span_committee_subset_union`, `span_committee_mono_lo` and related declarations.
 -/
 
 namespace FastConfirmation.Spec
@@ -81,20 +71,6 @@ its weight cancels against the honest half of the new window on the estimate
 side, which is what turns `weight U ≤ Wold + Bnew + Hnew` into the ledger's
 `sib + H0 + D ≤ Wold + Bnew`. -/
 
-omit [LinearOrder Root] [Inhabited Root] in
-/-- Superadditivity into a common superset over four pairwise-disjoint parts. -/
-theorem weight_add4_le {E : Execution Root} {A B C F U : Finset ValidatorIndex}
-    (hAB : Disjoint A B) (hAC : Disjoint A C) (hAF : Disjoint A F)
-    (hBC : Disjoint B C) (hBF : Disjoint B F) (hCF : Disjoint C F)
-    (hAU : A ⊆ U) (hBU : B ⊆ U) (hCU : C ⊆ U) (hFU : F ⊆ U) :
-    E.weight A + E.weight B + E.weight C + E.weight F ≤ E.weight U := by
-  simp only [Execution.weight]
-  rw [← Finset.sum_union hAB]
-  rw [← Finset.sum_union (Finset.disjoint_union_left.mpr ⟨hAC, hBC⟩)]
-  rw [← Finset.sum_union (Finset.disjoint_union_left.mpr
-        ⟨Finset.disjoint_union_left.mpr ⟨hAF, hBF⟩, hCF⟩)]
-  refine Finset.sum_le_sum_of_subset_of_nonneg ?_ (fun _ _ _ => Nat.zero_le _)
-  exact Finset.union_subset (Finset.union_subset (Finset.union_subset hAU hBU) hCU) hFU
 
 end FastConfirmation.Spec
 

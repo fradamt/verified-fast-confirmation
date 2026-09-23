@@ -80,78 +80,9 @@ variable {E : Execution Root} {anchor : Checkpoint Root}
 
 /-! ## Certificate-level constructors -/
 
-omit [LinearOrder Root] [Inhabited Root] in
-/-- The link-level closure follows from the carrier-accepted and formed
-closures at certificate-contributing links. -/
-theorem IncludedLinkEndpointsFormed.of_certificate_closure
-    {included : Root → Attestation Root → Prop}
-    {formed : Root → Checkpoint Root → Prop}
-    {Accepted : Root → Prop}
-    (haccepted : IncludedCertificateCarrierAccepted cfg E included
-      anchor Accepted)
-    (hformed : IncludedCertificateFormedClosure cfg E included
-      anchor formed) :
-    IncludedLinkEndpointsFormed cfg E included anchor formed Accepted where
-  carrier_accepted := by
-    intro carrier source target L hsource
-    exact haccepted L hsource
-  endpoints_formed := by
-    intro carrier source target L hsource
-    exact hformed L hsource
 
-omit [LinearOrder Root] [Inhabited Root] in
-/-- Formed-checkpoint exactness plus contributing-link closure realizes the
-narrow exact included-link interface. -/
-theorem ExactIncludedLinkValidity.of_formed
-    {included : Root → Attestation Root → Prop}
-    {formed : Root → Checkpoint Root → Prop}
-    {C : Root → Epoch → Checkpoint Root}
-    {Accepted : Root → Prop}
-    (hexact : FormedCheckpointExact formed C Accepted)
-    (hlinks : IncludedLinkEndpointsFormed cfg E included anchor
-      formed Accepted) :
-    ExactIncludedLinkValidity cfg E included anchor C Accepted where
-  carrier_accepted := hlinks.carrier_accepted
-  endpoints_on_carrier := by
-    intro carrier source target L hcontributing
-    obtain ⟨hsource, htarget⟩ :=
-      hlinks.endpoints_formed L hcontributing
-    exact ⟨hexact (hlinks.carrier_accepted L hcontributing) hsource,
-      hexact (hlinks.carrier_accepted L hcontributing) htarget⟩
 
-omit [LinearOrder Root] [Inhabited Root] in
-/-- Preferred production adapter: all premises are scoped to included
-certificates rather than arbitrary links or body attestations. -/
-theorem ExactIncludedLinkValidity.of_certificate_formed
-    {included : Root → Attestation Root → Prop}
-    {formed : Root → Checkpoint Root → Prop}
-    {C : Root → Epoch → Checkpoint Root}
-    {Accepted : Root → Prop}
-    (hexact : FormedCheckpointExact formed C Accepted)
-    (haccepted : IncludedCertificateCarrierAccepted cfg E included
-      anchor Accepted)
-    (hformed : IncludedCertificateFormedClosure cfg E included
-      anchor formed) :
-    ExactIncludedLinkValidity cfg E included anchor C Accepted :=
-  ExactIncludedLinkValidity.of_formed cfg hexact
-    (IncludedLinkEndpointsFormed.of_certificate_closure cfg haccepted hformed)
 
-/-- Production accepted-state adapter.  Accepted carrier closure is derived
-from the state's `formed_carrier_accepted` field after the certificate-to-
-formed closure supplies the contributing source. -/
-theorem AcceptedChainFFGState.exactLinkValidity_of_certificate_formed
-    {ext : Externals Root}
-    {S : AcceptedChainFFGState cfg ext E anchor}
-    (hexact : S.FormedExact)
-    (hformed : S.CertificateFormedClosure) :
-    S.ExactLinkValidity :=
-  ExactIncludedLinkValidity.of_formed cfg hexact {
-    carrier_accepted := by
-      intro carrier source target L hsource
-      exact S.formed_carrier_accepted (hformed L hsource).1
-    endpoints_formed := by
-      intro carrier source target L hsource
-      exact hformed L hsource }
 
 namespace ExactIncludedLinkValidity
 
@@ -466,54 +397,9 @@ theorem exactFinalizedPrefix_of_accountable
 
 end AcceptedChainFFGState
 
-omit [Inhabited Root] in
-/-- Reflection of an exact semantic prefix into the executable checkpoint
-equation at a store.  Placement of the target on a retained tip remains a
-separate history proof. -/
-theorem exactCheckpointPrefix_root_eq_of_reflection
-    {C : Root → Epoch → Checkpoint Root}
-    {source target : Checkpoint Root} {store : Store Root}
-    (hprefix : ExactCheckpointPrefix C source target)
-    (hreflect : C target.root source.epoch =
-      get_checkpoint_for_block cfg store target.root source.epoch) :
-    source.root = get_checkpoint_block cfg store target.root source.epoch := by
-  have h := congrArg Checkpoint.root hprefix
-  rw [hreflect] at h
-  simpa only [get_checkpoint_for_block] using h
 
 namespace AcceptedChainFFGState
 
-/-- Accepted-prefix endpoint consumer: exact included certificates plus
-causal-store checkpoint reflection produce the executable checkpoint-root
-equation at the later justified checkpoint.
-
-This stops at the justified checkpoint carrier.  It assumes no selected tip,
-filter membership, finality safety/takeover conclusion, or same-tip placement. -/
-theorem exactCheckpointRootAt_of_accountable
-    {ext : Externals Root}
-    {S : AcceptedChainFFGState cfg ext E anchor}
-    (hcoh : AcceptedFFGTransitionCoherence cfg ext S)
-    (P : AcceptedEpochCheckpointProjection anchor
-      (E.AcceptedRoot cfg ext) S.C)
-    (V : S.ExactLinkValidity)
-    (hanchorExact : anchor = S.C anchor.root anchor.epoch)
-    (hacc : CheckpointCertificateAccountability cfg E anchor)
-    {store : Store Root} (hstore : E.CausalStore cfg ext store)
-    {finalizedCarrier justifiedCarrier : Root}
-    {finalized justified : Checkpoint Root}
-    (hfinalized : IncludedCertifiedFinalized cfg E
-      S.includedAttestations.Included anchor finalizedCarrier finalized)
-    (hjustified : IncludedCertifiedJustified cfg E
-      S.includedAttestations.Included anchor justifiedCarrier justified)
-    (hepoch : finalized.epoch ≤ justified.epoch)
-    (hjustifiedKnown : justified.root ∈ store.block_roots) :
-    finalized.root =
-      get_checkpoint_block cfg store justified.root finalized.epoch := by
-  have hprefix := S.exactFinalizedPrefix_of_accountable cfg P V
-    hanchorExact hacc hfinalized hjustified hepoch
-  have hreflect := hcoh.checkpoint_of_known hstore justified.root
-    hjustifiedKnown finalized.epoch
-  exact exactCheckpointPrefix_root_eq_of_reflection cfg hprefix hreflect
 
 end AcceptedChainFFGState
 

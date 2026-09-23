@@ -57,18 +57,6 @@ def BlockAt (r : Root) (b : BeaconBlock Root) : Prop :=
 def ExecutionRoot (r : Root) : Prop :=
   ∃ b : BeaconBlock Root, E.BlockAt r b
 
-/-- A checkpoint carried by `carrier` has a genuine honest target vote whose
-vote slot strictly precedes the carrier block.  This is the temporal validity
-law which cannot be recovered from an untimed scheduled-gossip certificate.
-It contains no endpoint, selected result, head, or safety conclusion. -/
-def HonestTargetBeforeCarrier (carrier : Root)
-    (c : Checkpoint Root) : Prop :=
-  ∃ b : BeaconBlock Root, E.BlockAt carrier b ∧
-    ∃ i ∈ E.honest, ∃ (s : Slot) (k : ℕ) (a : Attestation Root),
-      s < b.slot ∧
-      E.SlotWithinHorizon cfg s ∧
-      E.vote i s = some (k, a) ∧
-      a.data.target = c
 
 /-- Canonicity throughout one execution epoch.  This is used only as an
 antecedent of the paper's Assumption 3.2. -/
@@ -463,10 +451,6 @@ namespace ChainFFGState
 
 variable {E : Execution Root} {anchor : Checkpoint Root}
 
-/-- The primitive block-body inclusion relation carried by `S`. -/
-def IncludedAt (S : ChainFFGState cfg E anchor)
-    (carrier : Root) (a : Attestation Root) : Prop :=
-  S.includedAttestations.Included carrier a
 
 /-- Inclusion somewhere on a concrete tip's ancestor chain. -/
 def IncludedOnChain (S : ChainFFGState cfg E anchor)
@@ -646,9 +630,6 @@ namespace AcceptedChainFFGState
 
 variable {E : Execution Root} {anchor : Checkpoint Root}
 
-def IncludedAt (S : AcceptedChainFFGState cfg ext E anchor)
-    (carrier : Root) (a : Attestation Root) : Prop :=
-  S.includedAttestations.Included carrier a
 
 def IncludedOnChain (S : AcceptedChainFFGState cfg ext E anchor)
     (tip : Root) (a : Attestation Root) : Prop :=
@@ -988,14 +969,6 @@ end AcceptedChainFFGState
 
 /-! ## Scheduled-root specializations -/
 
-/-- Exact link support for the scheduled-root state. -/
-abbrev PaperA32LinkSupportAt
-    {E : Execution Root} {anchor : Checkpoint Root}
-    (S : ChainFFGState cfg E anchor)
-    (w : ValidatorIndex) (m : ℕ) (b' : Root)
-    (source target : Checkpoint Root) : Type :=
-  PaperA32LinkSupportAtCore cfg ext (S.paperA32View cfg)
-    w m b' source target
 
 /-- Support antecedent for the scheduled-root state. -/
 abbrev PaperA32SupportThroughoutEpoch

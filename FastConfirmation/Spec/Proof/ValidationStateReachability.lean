@@ -44,10 +44,6 @@ theorem update_checkpoints_unknownBlockStatesDefault (store : Store Root)
     UnknownBlockStatesDefault (update_checkpoints store justified finalized) :=
   h.of_eq (by simp) (by simp)
 
-theorem update_unrealized_checkpoints_unknownBlockStatesDefault (store : Store Root)
-    (justified finalized : Checkpoint Root) (h : UnknownBlockStatesDefault store) :
-    UnknownBlockStatesDefault (update_unrealized_checkpoints store justified finalized) :=
-  h.of_eq (by simp) (by simp)
 
 theorem record_block_timeliness_unknownBlockStatesDefault (store : Store Root)
     (root : Root) (h : UnknownBlockStatesDefault store) :
@@ -236,13 +232,6 @@ theorem Execution.unknownBlockStatesDefault_store {E : Execution Root}
       (apply_event_unknownBlockStatesDefault cfg ext) _ _
       (on_tick_unknownBlockStatesDefault cfg _ _ ih)
 
-theorem Execution.ScheduledEventPrefix.unknownBlockStatesDefault
-    {E : Execution Root} (p : E.ScheduledEventPrefix)
-    (hgen : ∃ state block, E.genesis_store = get_forkchoice_store cfg state block) :
-    UnknownBlockStatesDefault (p.store cfg ext) :=
-  unknownBlockStatesDefault_foldl (apply_event_unknownBlockStatesDefault cfg ext) _ _
-    (on_tick_unknownBlockStatesDefault cfg _ _
-      (E.unknownBlockStatesDefault_store cfg ext hgen p.node p.previousSecond))
 
 end FastConfirmation.Spec
 

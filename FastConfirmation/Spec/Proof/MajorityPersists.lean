@@ -194,36 +194,6 @@ theorem attestation_score_eq_weight {E : Execution Root} {store : Store Root}
   rw [get_attestation_score_eq_sum, hmapeq, ← List.sum_toFinset E.weight_of hnodup]
   rfl
 
-omit [Inhabited Root] in
-/-- **Sibling supporter disjointness (set form).** The supporter sets of two
-distinct children `c ≠ c'` of one parent `p` are disjoint at any store: no index
-supports both siblings (`SupportTransport.no_index_supports_both_siblings`). The
-`hwalk` domain condition supplies, for every recorded latest message, the
-`WalkKnown` witnesses down to each sibling's slot the incompatibility needs.
-This is the disjointness core of the sibling upper bound (result 2): with
-`attestation_score_eq_weight` it gives `score c' + weight(b-supporters) ≤
-weight(any common superset)`. -/
-theorem supporters_disjoint {store : Store Root}
-    (hwf : ∀ r ∈ store.block_roots,
-      (store.blocks r).parent_root ∈ store.block_roots →
-        (store.blocks (store.blocks r).parent_root).slot < (store.blocks r).slot)
-    {bs : BeaconState Root} {p c c' : Root}
-    (hc : c ∈ store.block_roots) (hc' : c' ∈ store.block_roots) (hp : p ∈ store.block_roots)
-    (hpc : (store.blocks c).parent_root = p) (hpc' : (store.blocks c').parent_root = p)
-    (hne : c ≠ c')
-    (hwalk : ∀ i lm, store.latest_messages i = some lm →
-      WalkKnown store (store.blocks c).slot lm.root ∧
-      WalkKnown store (store.blocks c').slot lm.root) :
-    Disjoint (AttSupporters cfg store (get_node_for_root c) bs).toFinset
-      (AttSupporters cfg store (get_node_for_root c') bs).toFinset := by
-  rw [Finset.disjoint_left]
-  intro i hic hic'
-  rw [List.mem_toFinset] at hic hic'
-  obtain ⟨lm, hlm, _, hancc⟩ := mem_AttSupporters cfg hic
-  obtain ⟨lm', hlm', _, hancc'⟩ := mem_AttSupporters cfg hic'
-  have hlmeq : lm' = lm := Option.some_inj.mp (hlm'.symm.trans hlm)
-  obtain ⟨hwc, hwc'⟩ := hwalk i lm hlm
-  exact no_index_supports_both_siblings hwf hc hc' hp hpc hpc' hne hwc hwc' hancc (hlmeq ▸ hancc')
 
 end FastConfirmation.Spec
 

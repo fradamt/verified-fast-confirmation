@@ -252,133 +252,7 @@ theorem hfc_canonical_alg1 (bal₀ : Stakes n)
     (confirmedNotFFGFiltered_alg1_proved bal₀ hSync hNF hHB hVV hcm hpb hv hAS hnoequiv hByz hs1
       hgst (Block.Ancestor.refl b) hsafe hwe0 hbwf hte hpart hwill hsrc hSjust hGUb hGFr hselAt)
 
-/-- **§4 HFC safety from Algorithm 1 (current-epoch) — the gate eliminated.** For a current-epoch
-    LMD-GHOST-safe block `b` (`hte : epochOf s = epochOf b.slot`), with Algorithm 1's local
-    `willChkpBeJustified(b)` (`hwill`) in place of the assumed semantic gate, the Gasper `P-link`
-    (`hsrc`), the committee partition (`hpart`), and the delivered GU/finalized anchor facts for
-    `b`, `b` is on every honest LMD-GHOST-HFC head from `st s` on. This is the §4.1 safety theorem
-    about the **paper's Algorithm 1** rather than the semantic `WillNoConflictingChkpBeJustified`:
-    the never-filter (`confirmedNotFFGFiltered_alg1_proved`, `b` itself the safe block) feeds the
-    §3.1 engine (`hfc_canonical_from_engine`). -/
-theorem hfc_safety_alg1 (bal₀ : Stakes n)
-    {τ : Timing} {fm : FaultModel n} {cm : Committees n} {pb : Weight} {we : Weight}
-    {boost : ProposerBoost n (FFGVote n)} {𝒱 : ViewFamily n (FFGVote n)}
-    (hSync : Synchrony n (FFGVote n) τ fm 𝒱) (hNF : HonestNoForgery fm τ 𝒱)
-    (hHB : HonestBehavior τ fm cm (gjFFG bal₀) boost pb (ffgFilter bal₀ τ) 𝒱)
-    (hVV : ViewsValid cm 𝒱)
-    (hcm : ∀ ⦃w : Validator n⦄ ⦃t : Time⦄, CommitteeHonestMajority fm cm (gjFFG bal₀ 𝒱 w t))
-    (hpb : 0 ≤ pb)
-    {v : Validator n} {b : Block n} (hv : v ∈ fm.honest)
-    (hAS : FFG_AccountableSafety bal₀ fm 𝒱)
-    (hnoequiv : HonestFFGNoEquivocation τ fm cm bal₀ boost pb 𝒱)
-    (hByz : GlobalByzantineBound bal₀ fm)
-    {s : Slot} (hs1 : 1 ≤ s) (hgst : τ.AfterGST (τ.st (s - 1)))
-    (hbwf : b.WellFormed) (hbslot : b.slot ≤ s)
-    (hsafe : isLMDGHOSTSafe τ fm cm pb bal₀ (𝒱 v (τ.st s)) b (τ.st s))
-    (hwe0 : 0 ≤ we) (hte : τ.epochOf s = τ.epochOf b.slot)
-    (hpart : Disjoint (committeeUnion cm (τ.fslot (τ.epochOf b.slot)) (τ.slotOf (τ.st s) - 1))
-                      (committeeUnion cm (τ.slotOf (τ.st s)) (τ.lslot (τ.epochOf b.slot))))
-    (hwill : willChkpBeJustified bal₀ cm fm we τ 𝒱 v b (τ.epochOf b.slot) (τ.st s))
-    (hsrc : ∀ ⦃i : Validator n⦄, i ∈ fm.honest → ∀ ⦃sl : Slot⦄, τ.slotOf (τ.st s) ≤ sl →
-      τ.epochOf sl = τ.epochOf b.slot → i ∈ cm.member sl →
-      ruleVotingSource bal₀ τ (forkChoiceHead τ (gjFFG bal₀ 𝒱 i (τ.st sl)) boost pb
-        (ffgFilter bal₀ τ) (𝒱 i (τ.st sl)) (τ.st sl)) (τ.st sl)
-        = ruleVotingSource bal₀ τ b (τ.st s))
-    (hSjust : ∀ ⦃w : Validator n⦄, w ∈ fm.honest → ∀ ⦃t' : Time⦄,
-      τ.st (τ.lslot (τ.epochOf b.slot) + 1) ≤ t' →
-      Justified bal₀ (𝒱 w t') (ruleVotingSource bal₀ τ b (τ.st s)))
-    (hGUb : ∀ ⦃w : Validator n⦄, w ∈ fm.honest → ∀ ⦃t' : Time⦄, τ.st (τ.slotOf (τ.st s)) ≤ t' →
-      ∃ GUc : Checkpoint n, Justified bal₀ (𝒱 w t') GUc ∧
-        GUc.epoch = τ.epochOf b.slot - 1 ∧ GUc.block ≼ b)
-    (hGFr : ∀ ⦃w : Validator n⦄, w ∈ fm.honest → ∀ ⦃t' : Time⦄, τ.st (τ.slotOf (τ.st s)) ≤ t' →
-      (greatestFinalized bal₀ (𝒱 w t')).block ≼
-        (greatestRealizedJustified bal₀ τ (𝒱 w t') t').block)
-    (hselAt : ∀ ⦃w : Validator n⦄, w ∈ fm.honest → ∀ ⦃t' : Time⦄,
-      τ.st (τ.slotOf (τ.st s)) ≤ t' → FilterSelectorAgreementAt bal₀ τ (𝒱 w t') t') :
-    ∃ t0 : Time, ∀ ⦃w : Validator n⦄ ⦃t' : Time⦄, w ∈ fm.honest → t0 ≤ t' →
-      b ≼ forkChoiceHead τ (gjFFG bal₀ 𝒱 w t') boost pb (ffgFilter bal₀ τ) (𝒱 w t') t' := by
-  exact ⟨τ.st s, hfc_canonical_alg1 bal₀ hSync hNF hHB hVV hcm hpb hv hAS hnoequiv hByz hs1 hgst
-    hbwf hbslot hsafe hwe0 hte hpart hwill hsrc hSjust hGUb hGFr hselAt⟩
 
-/-- **§4 HFC safety from `isConfirmedNoCaching` directly (current-epoch) — the theorem about
-    Algorithm 1's literal predicate.** Folds `hfc_safety_alg1`'s `willChkp` / `isLMDGHOSTSafe` /
-    GU-anchor premises into a single `isConfirmedNoCaching(b, st s)` hypothesis (`hconf`): the
-    current-epoch branch yields `willChkpBeJustified` and `isLMDGHOSTSafe` directly, and the
-    GU-anchor (`hGUb`) is obtained from `OnChainAnchorInterface`: the rule's precondition is
-    realized as an AU fact on `chain(b)` and then made visible to honest views.
-    (`greatestJustifiedAnchorPrecondition_of_confirmedNoCaching`, Phase 2a) via
-    `greatestJustifiedAnchorInputs_of_interface`. The finalized-prefix `hGFr` comes from
-    `FFG_AccountableSafety` (`hAS.2.2`) + the realization `hGF`. The remaining hypotheses are the
-    sanctioned Gasper/anchor interface (`OnChainAnchorInterface`, `hGF` realization, `P-link`,
-    partition, `hSjust`). -/
-theorem hfc_safety_alg1_of_confirmed (bal₀ : Stakes n)
-    {τ : Timing} {fm : FaultModel n} {cm : Committees n} {pb : Weight} {we : Weight}
-    {boost : ProposerBoost n (FFGVote n)} {𝒱 : ViewFamily n (FFGVote n)}
-    (hSync : Synchrony n (FFGVote n) τ fm 𝒱) (hNF : HonestNoForgery fm τ 𝒱)
-    (hHB : HonestBehavior τ fm cm (gjFFG bal₀) boost pb (ffgFilter bal₀ τ) 𝒱)
-    (hVV : ViewsValid cm 𝒱)
-    (hcm : ∀ ⦃w : Validator n⦄ ⦃t : Time⦄, CommitteeHonestMajority fm cm (gjFFG bal₀ 𝒱 w t))
-    (hpb : 0 ≤ pb)
-    {v : Validator n} {b : Block n} (hv : v ∈ fm.honest)
-    (hAS : FFG_AccountableSafety bal₀ fm 𝒱)
-    (hnoequiv : HonestFFGNoEquivocation τ fm cm bal₀ boost pb 𝒱)
-    (hByz : GlobalByzantineBound bal₀ fm)
-    {s : Slot} (hs1 : 1 ≤ s) (hgst : τ.AfterGST (τ.st (s - 1)))
-    (hbwf : b.WellFormed) (hbslot : b.slot ≤ s) (hwe0 : 0 ≤ we)
-    (hcur : τ.epochOf b.slot = τ.epochOf (τ.slotOf (τ.st s)))
-    (hconf : isConfirmedNoCaching bal₀ fm cm pb we τ 𝒱 v b (τ.st s))
-    (hdel : OnChainAnchorInterface bal₀ fm τ 𝒱 b (τ.st s))
-    (hGF : ∀ ⦃w : Validator n⦄, w ∈ fm.honest → ∀ ⦃t' : Time⦄, τ.st (τ.slotOf (τ.st s)) ≤ t' →
-      (greatestFinalized bal₀ (𝒱 w t')).epoch < τ.epochOf (τ.slotOf t') ∧
-      FilterSelectorAgreementAt bal₀ τ (𝒱 w t') t')
-    (hpart : Disjoint (committeeUnion cm (τ.fslot (τ.epochOf b.slot)) (τ.slotOf (τ.st s) - 1))
-                      (committeeUnion cm (τ.slotOf (τ.st s)) (τ.lslot (τ.epochOf b.slot))))
-    (hsrc : ∀ ⦃i : Validator n⦄, i ∈ fm.honest → ∀ ⦃sl : Slot⦄, τ.slotOf (τ.st s) ≤ sl →
-      τ.epochOf sl = τ.epochOf b.slot → i ∈ cm.member sl →
-      ruleVotingSource bal₀ τ (forkChoiceHead τ (gjFFG bal₀ 𝒱 i (τ.st sl)) boost pb
-        (ffgFilter bal₀ τ) (𝒱 i (τ.st sl)) (τ.st sl)) (τ.st sl)
-        = ruleVotingSource bal₀ τ b (τ.st s)) :
-    ∃ t0 : Time, ∀ ⦃w : Validator n⦄ ⦃t' : Time⦄, w ∈ fm.honest → t0 ≤ t' →
-      b ≼ forkChoiceHead τ (gjFFG bal₀ 𝒱 w t') boost pb (ffgFilter bal₀ τ) (𝒱 w t') t' := by
-  have hslots : τ.slotOf (τ.st s) = s := Timing.slotOf_st τ s
-  -- isConfirmedNoCaching (current-epoch branch) ⇒ willChkpBeJustified + isLMDGHOSTSafe.
-  have hconf' := hconf
-  unfold isConfirmedNoCaching at hconf'
-  rw [if_pos hcur] at hconf'
-  obtain ⟨hwill0, _hgjep, hsafe⟩ := hconf'
-  have hwill : willChkpBeJustified bal₀ cm fm we τ 𝒱 v b (τ.epochOf b.slot) (τ.st s) := by
-    rw [hcur]; exact hwill0
-  -- GU anchor for b: precondition (Phase 2a) + AU realization and derived visibility (`hdel`).
-  have hInputs := greatestJustifiedAnchorInputs_of_interface hdel
-    (greatestJustifiedAnchorPrecondition_of_confirmedNoCaching bal₀ hv hconf hdel hcur) hGF
-  have hGUb : ∀ ⦃w : Validator n⦄, w ∈ fm.honest → ∀ ⦃t' : Time⦄, τ.st (τ.slotOf (τ.st s)) ≤ t' →
-      ∃ GUc : Checkpoint n, Justified bal₀ (𝒱 w t') GUc ∧
-        GUc.epoch = τ.epochOf b.slot - 1 ∧ GUc.block ≼ b :=
-    fun w hw t' ht' => (hInputs hw ht').1
-  have hGFr : ∀ ⦃w : Validator n⦄, w ∈ fm.honest → ∀ ⦃t' : Time⦄, τ.st (τ.slotOf (τ.st s)) ≤ t' →
-      (greatestFinalized bal₀ (𝒱 w t')).block ≼
-        (greatestRealizedJustified bal₀ τ (𝒱 w t') t').block :=
-    fun w hw t' ht' => greatestFinalized_block_ancestor_greatestRealizedJustified bal₀ τ (𝒱 w t') t'
-      (hAS.2.2 hw (t := t')) (hGF hw ht').1
-  have hselAt : ∀ ⦃w : Validator n⦄, w ∈ fm.honest → ∀ ⦃t' : Time⦄,
-      τ.st (τ.slotOf (τ.st s)) ≤ t' → FilterSelectorAgreementAt bal₀ τ (𝒱 w t') t' :=
-    fun w hw t' ht' => (hGF hw ht').2
-  have hte : τ.epochOf s = τ.epochOf b.slot := by
-    have h := hcur; rw [hslots] at h; exact h.symm
-  have hSjust : ∀ ⦃w : Validator n⦄, w ∈ fm.honest → ∀ ⦃t' : Time⦄,
-      τ.st (τ.lslot (τ.epochOf b.slot) + 1) ≤ t' →
-      Justified bal₀ (𝒱 w t') (ruleVotingSource bal₀ τ b (τ.st s)) := by
-    intro w hw t' ht'
-    refine hdel.ruleVotingSource_justified hw ?_
-    have hsle : s ≤ τ.lslot (τ.epochOf b.slot) + 1 := by
-      have hsl : s ≤ τ.lslot (τ.epochOf b.slot) := by
-        rw [← hte]
-        exact le_lslot_epochOf τ s
-      exact Nat.le_succ_of_le hsl
-    rw [hslots]
-    exact le_trans (Timing.st_le_st τ hsle) ht'
-  exact hfc_safety_alg1 bal₀ hSync hNF hHB hVV hcm hpb hv hAS hnoequiv hByz hs1 hgst hbwf hbslot
-    hsafe hwe0 hte hpart hwill hsrc hSjust hGUb hGFr hselAt
 
 /-- The canonicity function (no `∃ t0`) of `hfc_safety_alg1_of_confirmed` — `b` on every honest head
     from `st s` on, from `isConfirmedNoCaching(b, st s)` + the Gasper/anchor interface. Monotonicity
@@ -662,45 +536,6 @@ theorem hfc_canonical_alg1_prev (bal₀ : Stakes n)
     (confirmedNotFFGFiltered_alg1_prev_proved bal₀ hSync hNF hHB hVV hcm hpb hv hAS hnoequiv hByz
       hs1 hgst hsafe hwe0 hbwf hteP hsfirst hTv hbb' hdel' hWitV hWitUb hWitLo hGFr hselAt)
 
-/-- **§4 HFC safety from Algorithm 1 (PREVIOUS-epoch) — the gate eliminated, faithful route.** For a
-    previous-epoch confirmation of an LMD-GHOST-safe `b` at the first slot of the next epoch
-    (`hsfirst`, `hteP : epochOf s = ec + 1`), with the observed-only in-view certificate `hTv` (Case
-    A, via `messageRelay`) and the witness source `vs(b',t)` delivered b'-keyed (`hdel'`, Case B)
-    realized via the proven bound `hWitUb` in place of the assumed semantic gate, `b` is on every
-    honest LMD-GHOST-HFC head from `st s` on. The previous-epoch analogue of `hfc_safety_alg1`. -/
-theorem hfc_safety_alg1_prev (bal₀ : Stakes n)
-    {τ : Timing} {fm : FaultModel n} {cm : Committees n} {pb : Weight} {we : Weight}
-    {boost : ProposerBoost n (FFGVote n)} {𝒱 : ViewFamily n (FFGVote n)}
-    (hSync : Synchrony n (FFGVote n) τ fm 𝒱) (hNF : HonestNoForgery fm τ 𝒱)
-    (hHB : HonestBehavior τ fm cm (gjFFG bal₀) boost pb (ffgFilter bal₀ τ) 𝒱)
-    (hVV : ViewsValid cm 𝒱)
-    (hcm : ∀ ⦃w : Validator n⦄ ⦃t : Time⦄, CommitteeHonestMajority fm cm (gjFFG bal₀ 𝒱 w t))
-    (hpb : 0 ≤ pb)
-    {v : Validator n} {b : Block n} (hv : v ∈ fm.honest)
-    (hAS : FFG_AccountableSafety bal₀ fm 𝒱)
-    (hnoequiv : HonestFFGNoEquivocation τ fm cm bal₀ boost pb 𝒱)
-    (hByz : GlobalByzantineBound bal₀ fm)
-    {s : Slot} {ec : Epoch} (hs1 : 1 ≤ s) (hgst : τ.AfterGST (τ.st (s - 1)))
-    (hbwf : b.WellFormed) (hbslot : b.slot ≤ s)
-    (hsafe : isLMDGHOSTSafe τ fm cm pb bal₀ (𝒱 v (τ.st s)) b (τ.st s))
-    (hwe0 : 0 ≤ we)
-    (hteP : τ.epochOf s = ec + 1)
-    (hsfirst : s = τ.fslot (τ.epochOf s))
-    (hTv : Justified bal₀ (𝒱 v (τ.st s)) (checkpointOf τ b ec))
-    {b' : Block n} (hbb' : b ≼ b')
-    (hdel' : OnChainAnchorInterface bal₀ fm τ 𝒱 b' (τ.st s))
-    (hWitV : Justified bal₀ (𝒱 v (τ.st s)) (ruleVotingSource bal₀ τ b' (τ.st s)))
-    (hWitUb : (ruleVotingSource bal₀ τ b' (τ.st s)).epoch ≤ ec)
-    (hWitLo : ec ≤ (ruleVotingSource bal₀ τ b' (τ.st s)).epoch + 1)
-    (hGFr : ∀ ⦃w : Validator n⦄, w ∈ fm.honest → ∀ ⦃t' : Time⦄, τ.st (τ.slotOf (τ.st s)) ≤ t' →
-      (greatestFinalized bal₀ (𝒱 w t')).block ≼
-        (greatestRealizedJustified bal₀ τ (𝒱 w t') t').block)
-    (hselAt : ∀ ⦃w : Validator n⦄, w ∈ fm.honest → ∀ ⦃t' : Time⦄,
-      τ.st (τ.slotOf (τ.st s)) ≤ t' → FilterSelectorAgreementAt bal₀ τ (𝒱 w t') t') :
-    ∃ t0 : Time, ∀ ⦃w : Validator n⦄ ⦃t' : Time⦄, w ∈ fm.honest → t0 ≤ t' →
-      b ≼ forkChoiceHead τ (gjFFG bal₀ 𝒱 w t') boost pb (ffgFilter bal₀ τ) (𝒱 w t') t' :=
-  ⟨τ.st s, hfc_canonical_alg1_prev bal₀ hSync hNF hHB hVV hcm hpb hv hAS hnoequiv hByz hs1 hgst hbwf
-    hbslot hsafe hwe0 hteP hsfirst hTv hbb' hdel' hWitV hWitUb hWitLo hGFr hselAt⟩
 
 /-- **Canonicity helper from `isConfirmedNoCaching` directly (PREVIOUS-epoch) — faithful route.**
     The previous-epoch analogue of `hfc_canonical_alg1_of_confirmed`: it folds the rule's literal
@@ -794,37 +629,6 @@ theorem hfc_canonical_alg1_prev_of_confirmed (bal₀ : Stakes n)
   exact hfc_canonical_alg1_prev bal₀ hSync hNF hHB hVV hcm hpb hv hAS hnoequiv hByz hs1 hgst hbwf
     hbslot hsafe hwe0 hteP hsfirst hTv hbb' hdel' hWitV hWitUb hWitLo hGFr hselAt
 
-/-- **§4 HFC safety from `isConfirmedNoCaching` directly (PREVIOUS-epoch) — the theorem about
-    Algorithm 1's rule predicate.** The previous-epoch analogue of
-    `hfc_safety_alg1_of_confirmed`:
-    the confirmation hypothesis is the `isConfirmedNoCaching(b, st s)` else branch, with the
-    epoch-`ec` certificate and the witness anchor both DERIVED from the rule (see
-    `hfc_canonical_alg1_prev_of_confirmed`) rather than carried as free `Justified` premises. -/
-theorem hfc_safety_alg1_prev_of_confirmed (bal₀ : Stakes n)
-    {τ : Timing} {fm : FaultModel n} {cm : Committees n} {pb : Weight} {we : Weight}
-    {boost : ProposerBoost n (FFGVote n)} {𝒱 : ViewFamily n (FFGVote n)}
-    (hSync : Synchrony n (FFGVote n) τ fm 𝒱) (hNF : HonestNoForgery fm τ 𝒱)
-    (hHB : HonestBehavior τ fm cm (gjFFG bal₀) boost pb (ffgFilter bal₀ τ) 𝒱)
-    (hVV : ViewsValid cm 𝒱)
-    (hcm : ∀ ⦃w : Validator n⦄ ⦃t : Time⦄, CommitteeHonestMajority fm cm (gjFFG bal₀ 𝒱 w t))
-    (hpb : 0 ≤ pb)
-    {v : Validator n} {b : Block n} (hv : v ∈ fm.honest)
-    (hAS : FFG_AccountableSafety bal₀ fm 𝒱)
-    (hnoequiv : HonestFFGNoEquivocation τ fm cm bal₀ boost pb 𝒱)
-    (hByz : GlobalByzantineBound bal₀ fm)
-    {s : Slot} (hs1 : 1 ≤ s) (hgst : τ.AfterGST (τ.st (s - 1)))
-    (hbwf : b.WellFormed) (hbslot : b.slot ≤ s) (hwe0 : 0 ≤ we)
-    (hprev : ¬ τ.epochOf b.slot = τ.epochOf (τ.slotOf (τ.st s)))
-    (hconf : isConfirmedNoCaching bal₀ fm cm pb we τ 𝒱 v b (τ.st s))
-    (hdelRule : OnChainAnchorInterfacesForRule bal₀ fm τ 𝒱 b (τ.st s))
-    (hSCM : SlotCommitteeMinority fm cm bal₀)
-    (hGF : ∀ ⦃w : Validator n⦄, w ∈ fm.honest → ∀ ⦃t' : Time⦄, τ.st (τ.slotOf (τ.st s)) ≤ t' →
-      (greatestFinalized bal₀ (𝒱 w t')).epoch < τ.epochOf (τ.slotOf t') ∧
-      FilterSelectorAgreementAt bal₀ τ (𝒱 w t') t') :
-    ∃ t0 : Time, ∀ ⦃w : Validator n⦄ ⦃t' : Time⦄, w ∈ fm.honest → t0 ≤ t' →
-      b ≼ forkChoiceHead τ (gjFFG bal₀ 𝒱 w t') boost pb (ffgFilter bal₀ τ) (𝒱 w t') t' :=
-  ⟨τ.st s, hfc_canonical_alg1_prev_of_confirmed bal₀ hSync hNF hHB hVV hcm hpb hv hAS hnoequiv hByz
-    hs1 hgst hbwf hbslot hwe0 hprev hconf hdelRule hSCM hGF⟩
 
 /-- **Unified canonicity from `isConfirmedNoCaching` (both branches).** Dispatches on
     `epoch(b) = epoch(t)` to `hfc_canonical_alg1_of_confirmed` (current-epoch) or

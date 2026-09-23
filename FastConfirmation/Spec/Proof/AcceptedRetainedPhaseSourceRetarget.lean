@@ -59,6 +59,7 @@ def retarget_ancestor
     (hwalkK candidate hcandidate selected h.selected_known)
     h.tip_descends_selected hselectedCandidate
 
+
 /-- The retargeting theorem preserves the concrete retained tip exactly. -/
 @[simp] theorem retarget_ancestor_tip
     {B : ExactPrefixAcceptedFFGSemantics cfg ext E}

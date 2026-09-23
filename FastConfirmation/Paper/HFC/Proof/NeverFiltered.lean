@@ -11,41 +11,7 @@ public import FastConfirmation.Paper.LMDGhost.Proof.Rule
 /-!
 # HFC / Proof / NeverFiltered
 
-`ConfirmedNotFFGFiltered` — the one genuinely new §4 safety obligation: an
-FFG-confirmed block's safe descendants are `NeverFiltered` at `ffgFilter`.
-The cross-epoch induction the paper performs
-is organized in Lean as a per-`(w, t', B')` case split (the semantic gate
-`WillNoConflictingChkpBeJustified` is already `∀ t'`-quantified, so no
-`Nat.strong_induction`). The proof-facing `votingSource` is chain-relative in both branches
-inside the view (`gjblock(b'')` same-epoch, view-realized `gujblock(b'')` cross-epoch; the AU-based
-Def-2 selector is `onChainVotingSource`),
-and the voting-source recency disjunct is **proved structurally rather than assumed**: with the
-filter's `gjC` the **realized** `GJ` (Def 3,
-`greatestRealizedJustified`), the same-epoch case has `vs = gjblock(b'')`
-(`votingSource_eq_gjblock`), which equals `gjC` (left disjunct) because — same-epoch —
-`gjblock(b'')` is itself realized (`gjblock_realized`), so realized-max + accountable-safety
-uniqueness pin it to `gjC`; the
-cross-epoch case has `vs = greatestJustifiedOfChain b'' = GU(b'')`, whose epoch dominates
-`(GJ_real).epoch` (`greatestJustifiedOfChain_ge_of_justified`, via the derived placement
-`block(GJ_real) ≼ b''`). Either `GU(b'')` is realized — then `greatestRealizedJustified_max` forces
-`(GU(b'')).epoch = (GJ_real).epoch`, so accountable-safety **justified-uniqueness** makes it the
-realized `GJ` (left disjunct) — or it is not realized, so its epoch is `≥` the current epoch (right
-disjunct). **No recency/liveness premise is required.**
-
-Sub-lemmas (Group II):
-
-* `gate_gives_GJ_compatible` (II.1) — gate + `greatestJustified_justified` ⇒
-  `b ~ greatestJustified.block` (when `epochOf b.slot ≤ greatestJustified.epoch`).
-* `keep_of_ancestor_GJ` (II.2) — the D1 close (`Or.inl`), against the realized `GJ`.
-* `votingSource_disjunct` (II.4) — the voting-source disjunct (Def-2 epoch split):
-  same-epoch ⇒ `vs = gjblock(b'')`, identified with `gjC` (`Or.inl`) via realized-max +
-  accountable-safety uniqueness (`gjblock(b'')` is realized when `epoch(b'')=epoch(t')`);
-  cross-epoch ⇒ follows **structurally** from the on-chain placement + accountable-safety uniqueness
-  + realization (`greatestRealizedJustified_max`), with no recency premise.
-* `greatestFinalized_justified` (I.5a) — `greatestFinalized` is justified.
-* `view_leaf_witness` (II.5a) — the structural finite-tree leaf walk.
-* `ffg_leaf_witness` (II.5) — supplies the D2 existential without an additional premise.
-* `confirmedNotFFGFiltered_proved` (II.6) — the assembly.
+This module contains `keep_of_ancestor_GJ`, `votingSource_disjunct`, `GJ_le_or_ge_B'` and related declarations.
 -/
 
 namespace FastConfirmation.HFC
@@ -55,17 +21,6 @@ open scoped Block
 
 variable {n : ℕ}
 
-/-- **II.1 — gate ⇒ `greatestJustified` block is compatible with `b`.** The greatest
-    justified checkpoint is itself justified (`greatestJustified_justified`); if its
-    epoch is `≥ epoch(b)`, the gate `WillNoConflictingChkpBeJustified` yields
-    `b ~ greatestJustified.block`. This is the entire role of the gate. -/
-theorem gate_gives_GJ_compatible {τ : Timing} {fm : FaultModel n} {bal₀ : Stakes n}
-    {𝒱 : ViewFamily n (FFGVote n)} {b : Block n} {t : Time}
-    (hgate : WillNoConflictingChkpBeJustified bal₀ fm τ 𝒱 b t)
-    {w : Validator n} (hw : w ∈ fm.honest) {t' : Time} (ht' : τ.st (τ.slotOf t) ≤ t')
-    (hep : τ.epochOf b.slot ≤ (greatestJustified bal₀ (𝒱 w t')).epoch) :
-    b ~ (greatestJustified bal₀ (𝒱 w t')).block :=
-  hgate hw ht' (greatestJustified_justified bal₀ (𝒱 w t')) hep
 
 /-- **II.2 — D1 close.** If `B'` is an ancestor of the *realized* greatest-justified block
     (the filter's `gjC = greatestRealizedJustified bal₀ τ V t'`), the `ffgFilterAt` keep-disjunction

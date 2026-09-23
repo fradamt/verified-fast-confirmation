@@ -7,46 +7,7 @@ public import FastConfirmation.Spec.Proof.BlockAgreement
 /-!
 # Spec / Proof / EngineTransport (package facts at later stores)
 
-This module carries the confirmation-time support package `ConfirmedSupport`
-(`EngineInduction.lean`)
-forward to a *later* honest store `(w, m)` in slot `k ≥ s`, phrasing the facts in
-the **exact hypothesis shapes** `EngineWindows.fork_majority_of_windows` and
-`EngineSupport.recorded_support_lower_HS` consume.
-
-`fork_majority_of_windows` reads its recorded-support lower bound `hscore` against
-the justified-checkpoint balance source and needs, for the fork child `c` on `b`'s
-chain, that both the frozen old honest supporter set `HS₀` and the new-window
-honest committee sit in `AttSupporters cfg store_wm (get_node_for_root c) bs`. Two
-facts per supporter feed that membership (`EngineSupport.mem_AttSupporters_honest`):
-
-* **active + unslashed** in the balance source `bs` (registry-constant), and
-* a **recorded latest message supporting `c`** at `(w, m)`.
-
-This module proves the first component — active and unslashed membership via
-`committee_members_active` + `registry_activity_constant`, unslashed via
-`honest_unslashed`" — from bare **honest + committee membership**, uniformly for
-`HS₀` and the new-window voters. An honest committee member of any slot `t` is
-active in the ground registry at that slot's epoch (`committee_members_active`),
-hence at every epoch (`registry_activity_constant`), hence in the active list of
-any registry-constant balance source (`mem_active_of_active`, using that the
-`Inhabited` `Validator` default is inactive so activity forces an in-range index);
-its slashed flag is `false` on the ground registry (`honest_unslashed`). These
-compose (`honest_active_unslashed`) into the active/unslashed inputs of
-`mem_AttSupporters_honest`.
-
-The two assembly lemmas package the result:
-
-* **`mem_AttSupporters_of_honest_committee`** — honest + committee membership + a
-  recorded `c`-supporting message ⟹ `AttSupporters` membership at `(w, m)`.
-* **`recorded_support_lower_of_honest_committee`** — a validator set all of whose
-  members carry (honest + committee membership + recorded `c`-support) lower-bounds
-  `c`'s attestation score at `(w, m)` by its ground-truth weight: the ledger's
-  `hscore` producer, in `recorded_support_lower_HS`'s shape.
-
-The genuinely-hard input left as a per-member hypothesis is the **recorded
-`c`-supporting message** itself — the epoch-cased root identification
-(`vote_ubiquity` gives only the epoch bound; the displacement case needs the
-engine IH and a slot-confinement of the displacing vote).
+This module contains `is_active_validator_default_false`, `mem_active_of_active`, `honest_active_unslashed` and related declarations.
 -/
 
 namespace FastConfirmation.Spec
@@ -219,32 +180,6 @@ membership: an honest set whose members are each committee-assigned and record a
 `E.weight HS` when disjoint by slot range; provenance provides the required
 disjointness. -/
 
-/-- **Recorded-support lower bound from honest + committee membership.** For a
-validator set `HS` all of whose members are honest, assigned to some slot, and
-record a `node`-supporting latest message at `(w, m)`, the ground-truth weight of
-`HS` is at most `node`'s attestation score at `(w, m)` against any registry-constant
-balance source `bs`. -/
-theorem recorded_support_lower_of_honest_committee {E : Execution Root}
-    (hhb : HonestBehavior cfg ext E) (hec : ExternalsCoherence cfg ext E)
-    (hsv : StaticValidatorSet cfg E)
-    (hgen : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
-      E.genesis_store = get_forkchoice_store cfg ast ablk)
-    {w : ValidatorIndex} {m : ℕ} {bs : BeaconState Root} {node : ForkChoiceNode Root}
-    (hval : bs.validators = E.registry)
-    (hbsH : get_current_epoch cfg bs < E.verification_horizon)
-    (HS : Finset ValidatorIndex)
-    (hHS : ∀ i ∈ HS, i ∈ E.honest ∧
-      (∃ t : Slot, E.SlotWithinHorizon cfg t ∧ i ∈ E.committee t) ∧
-      ∃ lm, (E.store cfg ext w m).latest_messages i = some lm ∧
-        is_ancestor (E.store cfg ext w m)
-          (get_supported_node (E.store cfg ext w m) lm) node = true)
-    (hw : w ∈ E.honest) (hmH : E.WithinHorizon cfg m) :
-    E.weight HS ≤ get_attestation_score cfg (E.store cfg ext w m) node bs := by
-  refine recorded_support_lower_HS cfg ext (hw := hw) (hmH := hmH) hhb hec hgen hval HS (fun i hi => ?_)
-  obtain ⟨hih, ⟨t, htH, hcomm⟩, lm, hlm, hsupp⟩ := hHS i hi
-  obtain ⟨hact, huns⟩ :=
-    honest_active_unslashed cfg ext hhb hec hsv hval hbsH hih htH hcomm
-  exact ⟨hih, hact, huns, lm, hlm, hsupp⟩
 
 /-! ## `EngineTransport`: the epoch-cased recorded-support closer
 
@@ -442,105 +377,7 @@ so `committee_assignment_unique` (both `i`-assigned) gives `sl = t'`, contradict
 setting slot lands in `[s, k)` where the engine IH `hIH` puts `i`'s vote block
 `⪰ b` at `(w, m)` — no equality/displacement split needed. -/
 
-/-- **A new-window voter's recorded message supports `c` at `(w, m)`.** For honest
-`i` assigned to a slot `t'` with `s ≤ t'`, and a recorded latest message `lm` at
-`(w, m in slot k)` with `epochOf t' ≤ (get_latest_message_epoch cfg lm)` (ubiquity), the message supports
-the fork child `c` on `b`'s chain, under the engine IH `hIH` and the walk domain
-conditions. The setting slot is forced into `[s, k)` by the within-epoch seat
-uniqueness. -/
-theorem newvoter_recorded_supports_c_of_IH {E : Execution Root}
-    (hwf : WellFormedExecution E) (hhb : HonestBehavior cfg ext E)
-    (hec : ExternalsCoherence cfg ext E)
-    (hgen : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
-      E.genesis_store = get_forkchoice_store cfg ast ablk)
-    {w : ValidatorIndex} {m : ℕ} {b c : Root} {i : ValidatorIndex}
-    {t' : Slot} {s k : Slot} {lm : LatestMessage Root}
-    (hi : i ∈ E.honest) (hcomm_t' : i ∈ E.committee t') (hst' : s ≤ t')
-    (hlm : (E.store cfg ext w m).latest_messages i = some lm)
-    (hepge : compute_epoch_at_slot cfg t' ≤ (get_latest_message_epoch cfg lm))
-    (hslot_m : E.slot_at cfg m = k)
-    (hIH : ∀ j ∈ E.honest, ∀ t'' : Slot, s ≤ t'' → t'' < k →
-      ∀ jj (a' : Attestation Root), E.vote j t'' = some (jj, a') →
-      is_ancestor (E.store cfg ext w m)
-        (get_node_for_root a'.data.beacon_block_root) (get_node_for_root b) = true)
-    (hwf_pl : ∀ r ∈ (E.store cfg ext w m).block_roots,
-      ((E.store cfg ext w m).blocks r).parent_root ∈ (E.store cfg ext w m).block_roots →
-        ((E.store cfg ext w m).blocks ((E.store cfg ext w m).blocks r).parent_root).slot <
-          ((E.store cfg ext w m).blocks r).slot)
-    (hwa_wm : WalkKnown (E.store cfg ext w m) ((E.store cfg ext w m).blocks c).slot lm.root)
-    (hwb_wm : WalkKnown (E.store cfg ext w m) ((E.store cfg ext w m).blocks c).slot b)
-    (hbc_wm : is_ancestor (E.store cfg ext w m)
-      (ForkChoiceNode.mk b .pending) (ForkChoiceNode.mk c .pending) = true)
-    (hw : w ∈ E.honest) (hmH : E.WithinHorizon cfg m) :
-    is_ancestor (E.store cfg ext w m)
-      (get_supported_node (E.store cfg ext w m) lm) (get_node_for_root c) = true := by
-  obtain ⟨a', u, tt, ifb, hsched, hvin, hbbr', hep'⟩ :=
-    E.schedLMProv cfg ext hgen w m i lm hlm
-  obtain ⟨m1, av, hvote_sl, hdata'⟩ := hhb.no_forgery u tt a' ifb hsched i hi hvin
-  have hcomm_sl : i ∈ E.committee a'.data.slot :=
-    hhb.votes_assigned i hi a'.data.slot (by rw [hvote_sl]; exact Option.some_ne_none _)
-  obtain ⟨a2, -, -, -, hep2, hbound2, hcomm2, -, -⟩ :=
-    E.latestMessageProvenance cfg ext hwf hec hgen w m hw hmH i lm hlm
-  have hslot_eq : a'.data.slot = a2.data.slot :=
-    hec.committee_assignment_unique i a'.data.slot a2.data.slot hcomm_sl hcomm2
-      (by rw [hep', hep2])
-  have hsl_lt_k : a'.data.slot < k := by
-    rw [hslot_eq, ← hslot_m]; exact Nat.lt_of_succ_le hbound2
-  have hsl_ge_s : s ≤ a'.data.slot := by
-    by_contra hlt'
-    have hslt : a'.data.slot < s := not_le.mp hlt'
-    have hmono : compute_epoch_at_slot cfg a'.data.slot ≤ compute_epoch_at_slot cfg t' :=
-      compute_epoch_at_slot_mono cfg (le_of_lt (lt_of_lt_of_le hslt hst'))
-    rw [hep'] at hmono
-    have heq_ep : compute_epoch_at_slot cfg a'.data.slot = compute_epoch_at_slot cfg t' := by
-      rw [hep']; exact le_antisymm hmono hepge
-    have hsl_t' : a'.data.slot = t' :=
-      hec.committee_assignment_unique i a'.data.slot t' hcomm_sl hcomm_t' heq_ep
-    exact absurd hsl_t' (Nat.ne_of_lt (lt_of_lt_of_le hslt hst'))
-  have hge_wm := hIH i hi a'.data.slot hsl_ge_s hsl_lt_k m1 av hvote_sl
-  have hbbr_eq : av.data.beacon_block_root = lm.root := by rw [← hdata']; exact hbbr'
-  rw [hbbr_eq] at hge_wm
-  exact supports_of_ge_b hwf_pl hwa_wm hwb_wm hge_wm hbc_wm
 
-/-- **New-window voters at `(w, m)`.** Every member of a new-window voter set `NV`
-(honest committee members of some slot `t' ≥ s`, with a recorded message of epoch
-`≥ epochOf t'` by ubiquity) sits in `AttSupporters cfg store_wm (get_node_for_root c)
-bs` at the later honest store. The recorded-support half is
-`newvoter_recorded_supports_c_of_IH`; active/unslashed/non-equivocation are internal
-to `mem_AttSupporters_of_honest_committee`. -/
-theorem NewVoters_in_AttSupporters {E : Execution Root}
-    (hwf : WellFormedExecution E) (hhb : HonestBehavior cfg ext E)
-    (hec : ExternalsCoherence cfg ext E) (hsv : StaticValidatorSet cfg E)
-    (hgen : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
-      E.genesis_store = get_forkchoice_store cfg ast ablk)
-    {b : Root} {s : Slot} {w : ValidatorIndex} {m : ℕ} {k : Slot} {c : Root}
-    {bs : BeaconState Root} (hslot_m : E.slot_at cfg m = k) (hval : bs.validators = E.registry)
-    (hbsH : get_current_epoch cfg bs < E.verification_horizon)
-    (hIH : ∀ j ∈ E.honest, ∀ t'' : Slot, s ≤ t'' → t'' < k →
-      ∀ jj (a' : Attestation Root), E.vote j t'' = some (jj, a') →
-      is_ancestor (E.store cfg ext w m)
-        (get_node_for_root a'.data.beacon_block_root) (get_node_for_root b) = true)
-    (hwf_pl : ∀ r ∈ (E.store cfg ext w m).block_roots,
-      ((E.store cfg ext w m).blocks r).parent_root ∈ (E.store cfg ext w m).block_roots →
-        ((E.store cfg ext w m).blocks ((E.store cfg ext w m).blocks r).parent_root).slot <
-          ((E.store cfg ext w m).blocks r).slot)
-    (hbc_wm : is_ancestor (E.store cfg ext w m)
-      (ForkChoiceNode.mk b .pending) (ForkChoiceNode.mk c .pending) = true)
-    (hwb_wm : WalkKnown (E.store cfg ext w m) ((E.store cfg ext w m).blocks c).slot b)
-    (NV : Finset ValidatorIndex)
-    (hNV : ∀ i ∈ NV, i ∈ E.honest ∧ ∃ (t' : Slot) (lm : LatestMessage Root),
-      E.SlotWithinHorizon cfg t' ∧ i ∈ E.committee t' ∧ s ≤ t' ∧
-      (E.store cfg ext w m).latest_messages i = some lm ∧
-      compute_epoch_at_slot cfg t' ≤ (get_latest_message_epoch cfg lm) ∧
-      WalkKnown (E.store cfg ext w m) ((E.store cfg ext w m).blocks c).slot lm.root)
-    (hw : w ∈ E.honest) (hmH : E.WithinHorizon cfg m) :
-    ∀ i ∈ NV, i ∈ AttSupporters cfg (E.store cfg ext w m) (get_node_for_root c) bs := by
-  intro i hi
-  obtain ⟨hih, t', lm, ht'H, hcomm_t', hst', hlm, hepge, hwa_wm⟩ := hNV i hi
-  have hsupp := newvoter_recorded_supports_c_of_IH cfg ext (hw := hw) (hmH := hmH) hwf hhb hec hgen hih hcomm_t' hst'
-    hlm hepge hslot_m hIH hwf_pl hwa_wm hwb_wm hbc_wm
-  exact mem_AttSupporters_of_honest_committee cfg ext (hw := hw) (hmH := hmH) hhb hec hsv hgen hval hbsH
-    hih ht'H hcomm_t' hlm hsupp
 
 /-! ## `EngineTransport` result 3: sibling disjointness against a `c`-supporting set
 
@@ -554,37 +391,6 @@ the second set's members support `c`. The remaining `hHS0_D`, `hHS0_new`, `hD_ne
 disjointnesses are pure slot-range/stuck-set bookkeeping and stay as hypotheses in
 `fork_majority_of_windows`'s shape (`EngineTransport` scope note). -/
 
-omit [Inhabited Root] in
-/-- **Sibling supporters are disjoint from any `c`-supporting set.** With `c`, `c'`
-distinct children of a common parent `p`, the supporter list of the sibling `c'`
-is disjoint from any `HS` all of whose members record a latest message supporting
-`c`: a shared index would carry one recorded message supporting both siblings,
-impossible by `no_index_supports_both_siblings`. Discharges `fork_majority_of_windows`'s
-`hSib_HS0` (with `HS := HS₀`, `c`-support from `HS0_in_AttSupporters`) and `hSib_new`
-(with `HS :=` the new voters, `c`-support from `NewVoters_in_AttSupporters`). -/
-theorem sibling_disjoint_of_supports_c {store : Store Root}
-    (hwf_pl : ∀ r ∈ store.block_roots,
-      (store.blocks r).parent_root ∈ store.block_roots →
-        (store.blocks (store.blocks r).parent_root).slot < (store.blocks r).slot)
-    {p c c' : Root} {bs' : BeaconState Root}
-    (hc : c ∈ store.block_roots) (hc' : c' ∈ store.block_roots) (hp : p ∈ store.block_roots)
-    (hpc : (store.blocks c).parent_root = p) (hpc' : (store.blocks c').parent_root = p)
-    (hne : c ≠ c') (HS : Finset ValidatorIndex)
-    (hwalk : ∀ i lm, store.latest_messages i = some lm →
-      WalkKnown store (store.blocks c).slot lm.root ∧
-      WalkKnown store (store.blocks c').slot lm.root)
-    (hHS_supp : ∀ i ∈ HS, ∃ lm, store.latest_messages i = some lm ∧
-      is_ancestor store (get_supported_node store lm) (get_node_for_root c) = true) :
-    Disjoint (AttSupporters cfg store (get_node_for_root c') bs').toFinset HS := by
-  rw [Finset.disjoint_left]
-  intro i hsib hHS
-  rw [List.mem_toFinset] at hsib
-  obtain ⟨lm', hlm', -, hsc'⟩ := mem_AttSupporters cfg hsib
-  obtain ⟨lm, hlm, hsc⟩ := hHS_supp i hHS
-  have hlmeq : lm = lm' := by rw [hlm] at hlm'; exact Option.some.inj hlm'
-  rw [hlmeq] at hsc
-  obtain ⟨hwc, hwc'⟩ := hwalk i lm' hlm'
-  exact no_index_supports_both_siblings hwf_pl hc hc' hp hpc hpc' hne hwc hwc' hsc hsc'
 
 end FastConfirmation.Spec
 

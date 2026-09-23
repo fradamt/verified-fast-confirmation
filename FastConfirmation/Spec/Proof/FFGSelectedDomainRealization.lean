@@ -21,59 +21,10 @@ variable (cfg : Config) (ext : Externals Root)
 
 /-! ## Exact cache-write obstruction -/
 
-/-- The local cache property requested by `SelectedMarginDomain`. -/
-def JustifiedCheckpointCached (store : Store Root) : Prop :=
-  store.justified_checkpoint ∈ store.checkpoint_state_keys
 
-/-- `update_checkpoints` changes no cache key.  Consequently its output is
-cached exactly when either the winning candidate was already keyed, or the
-old justified checkpoint remains cached. -/
-theorem justifiedCheckpointCached_update_checkpoints_iff
-    (store : Store Root) (jc fc : Checkpoint Root) :
-    JustifiedCheckpointCached
-        (FastConfirmation.Spec.update_checkpoints store jc fc) ↔
-      if jc.epoch > store.justified_checkpoint.epoch then
-        jc ∈ store.checkpoint_state_keys
-      else JustifiedCheckpointCached store := by
-  have hj :
-      (FastConfirmation.Spec.update_checkpoints store jc fc).justified_checkpoint =
-        if jc.epoch > store.justified_checkpoint.epoch then jc
-        else store.justified_checkpoint := by
-    simp only [FastConfirmation.Spec.update_checkpoints]
-    split_ifs <;> rfl
-  unfold JustifiedCheckpointCached
-  rw [hj, FastConfirmation.Spec.update_checkpoints_checkpoint_state_keys]
-  split_ifs <;> rfl
 
-/-- Weakest handler-local postcondition which closes the cache induction at
-an `update_checkpoints` call: a candidate which actually wins must already be
-present in the checkpoint-state key set. -/
-def WinningJustifiedCandidateCached
-    (store : Store Root) (jc : Checkpoint Root) : Prop :=
-  jc.epoch > store.justified_checkpoint.epoch →
-    jc ∈ store.checkpoint_state_keys
 
-theorem justifiedCheckpointCached_update_checkpoints
-    (store : Store Root) (jc fc : Checkpoint Root)
-    (hold : JustifiedCheckpointCached store)
-    (hwinning : WinningJustifiedCandidateCached store jc) :
-    JustifiedCheckpointCached
-      (FastConfirmation.Spec.update_checkpoints store jc fc) := by
-  rw [justifiedCheckpointCached_update_checkpoints_iff]
-  split_ifs with hwinner
-  · exact hwinning hwinner
-  · exact hold
 
-/-- Formal failure mode: a strictly newer unkeyed candidate becomes the
-global justified checkpoint while the cache-key set is unchanged. -/
-theorem update_checkpoints_uncaches_winning_unkeyed
-    (store : Store Root) (jc fc : Checkpoint Root)
-    (hwinner : jc.epoch > store.justified_checkpoint.epoch)
-    (hunkeyed : jc ∉ store.checkpoint_state_keys) :
-    ¬ JustifiedCheckpointCached
-      (FastConfirmation.Spec.update_checkpoints store jc fc) := by
-  rw [justifiedCheckpointCached_update_checkpoints_iff, if_pos hwinner]
-  exact hunkeyed
 
 namespace Execution
 

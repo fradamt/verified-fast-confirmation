@@ -5,44 +5,9 @@ public import FastConfirmation.Spec.Proof.EngineInduction
 @[expose] public section
 
 /-!
-# Spec / Proof / Ledger: INV\* — the single ledger invariant
+# Spec / Proof / Ledger
 
-The head-safety engine's persistence invariant, ported from the paper's proven
-fraction engine but stated as **one min-potential inequality per chain block**
-(the `INVstar` design). All quantities are
-ground-truth weights over `E.span_committee` (recurrence-proof set form), so the
-cross-epoch committee-overlap problem cannot arise.
-
-Fix a confirming anchor `(cfg, ext, v₀, n₀)`, a chain block `b′`, a window start
-`lo` (`:= parent(b′).slot + 1` at the call site) and a base end `es`
-(`:= slot_at n₀`). The honest members of the growing window `[lo, σ]` split into
-three classes by their **ground-truth newest vote** (`E.vote`, node-independent):
-
-* `Sclass σ` — newest vote by `σ` exists and its block **descends from** `b′`
-  (supports `subtree(b′)`); weight `s(σ)`.
-* `Aclass σ` — voteless by `σ`, or newest vote's block is an **ancestor of** `b′`
-  (backs no sibling); weight `a(σ)`. Defined disjoint from `Sclass` (the `¬S`
-  guard) so the three classes partition the honest window.
-* `Xclass σ` — the rest (`¬S ∧ ¬A`; sibling-stuck); weight `x(σ)`.
-
-`weight_partition` gives `J(σ) = s(σ) + a(σ) + x(σ)` with `J := Jspec lo σ`
-(Fraction's honest committee-union weight). The enemy is the window's non-honest
-weight `B(σ) := weight (Bwin σ)`, always inside the window by the slot-cap. The
-potential's two caps are the recurrence tax on the not-yet-recurred base
-supporters `U(σ)` (weight of `Sclass es` members with no assignment in `(es, σ]`)
-and the remaining F3 (`span_fraction`) capacity `C·J − (100−C)·B`, kept
-cross-multiplied to avoid division:
-
-  INV\*(σ):  `(100−C)·s(σ) ≥ (100−C)·(x(σ) + B(σ) + boost + 1)`
-             `+ min (C·U(σ)) (C·J(σ) − (100−C)·B(σ))`
-
-with `C := cfg.confirmation_byzantine_threshold ≤ 25`. This module delivers the
-**vocabulary** (classes, accessors, `weight_partition`, `Rterm_nonneg`,
-monotonicity) and the **pure-ℕ step lemma** (`invstar_step_arith`, the four-case
-ledger arithmetic wrapped as `INVstar_step`). No store-dynamics obligations: the
-per-slot class-delta facts (every honest member of slot `t`'s committee re-votes
-`desc(b′)` by the engine IH + `votes_head` + delivery) are discharged by the
-engine shell (the reduction), which instantiates the step lemma's abstract deltas.
+This module contains `SupportsDesc`, `AncestorOrVoteless`, `Sclass` and related declarations.
 -/
 
 namespace FastConfirmation.Spec
@@ -224,18 +189,7 @@ theorem weight_mono {s t : Finset ValidatorIndex} (h : s ⊆ t) :
   simp only [Execution.weight]
   exact Finset.sum_le_sum_of_subset_of_nonneg h (fun i _ _ => Nat.zero_le _)
 
-omit [LinearOrder Root] [Inhabited Root] in
-/-- The enemy set grows with the window (`span_committee_mono` + filter). -/
-theorem Bwin_mono (lo : Slot) {σ σ' : Slot} (h : σ ≤ σ') :
-    E.Bwin lo σ ⊆ E.Bwin lo σ' := by
-  simp only [Execution.Bwin]
-  exact Finset.filter_subset_filter _ (E.span_committee_mono lo h)
 
-omit [LinearOrder Root] [Inhabited Root] in
-/-- Enemy weight `B` is monotone in the window end. -/
-theorem Bval_mono (lo : Slot) {σ σ' : Slot} (h : σ ≤ σ') :
-    E.Bval lo σ ≤ E.Bval lo σ' :=
-  E.weight_mono (E.Bwin_mono lo h)
 
 omit [LinearOrder Root] [Inhabited Root] in
 /-- Honest committee-union weight `J` is monotone in the window end. -/
@@ -244,102 +198,10 @@ theorem Jspec_mono (lo : Slot) {σ σ' : Slot} (h : σ ≤ σ') :
   simp only [Execution.Jspec]
   exact E.weight_mono (Finset.filter_subset_filter _ (E.span_committee_mono lo h))
 
-/-- `Unrec` is **antitone**: a later window end can only remove base supporters
-(more slots in `(es, σ']` to avoid an assignment in), so
-`σ ≤ σ' → Unrec σ' ⊆ Unrec σ`. -/
-theorem Unrec_anti (v₀ : ValidatorIndex) (n₀ : ℕ) (b' : Root) (lo es : Slot)
-    {σ σ' : Slot} (h : σ ≤ σ') :
-    E.Unrec cfg ext v₀ n₀ b' lo es σ' ⊆ E.Unrec cfg ext v₀ n₀ b' lo es σ := by
-  intro i hi
-  simp only [Execution.Unrec, Finset.mem_filter] at hi ⊢
-  exact ⟨hi.1, fun t ht1 ht2 => hi.2 t ht1 (le_trans ht2 h)⟩
 
 /-! ## Section 6 — the pure-ℕ ledger step -/
 
-/-- **The INV\* step, pure-ℕ abstract form** (all quantities pre-scaled by `C`
-or `D := 100 − C`, so the four-case ledger arithmetic is linear and `omega`
-discharges it). Reading the atoms as `Ds = D·s`, `Dx = D·x`, `DB = D·B`,
-`CU = C·U`, `CJ = C·J`, `e1 = D·(boost+1)`, and the deltas `Dξ = D·ξ` … the
-hypotheses are the per-slot facts the engine shell supplies:
 
-* `hs'` — honest support grows by the migrants + fresh (`s' ≥ s + ξ + α + φ`);
-* `hx'` — the sibling-stuck class loses the `x→s` migrants (`x' + ξ ≤ x`);
-* `hB'` — the enemy grows by at most the new byz `β` (`B' ≤ B + β`);
-* `hJ'` — the honest window grows by exactly the fresh members (`J' = J + φ`);
-* `hUσt` — the recurring **base** supporters leave the unrecurred set
-  (`U' + σt ≤ U`; here `σt = U − U'` is the base-supporter recurrence, which is
-  `0` within an epoch by `committee_assignment_unique` and accrues only across
-  epoch boundaries — it is what funds the tax when `min = C·U`);
-* `hQ`/`hQ'` — the R-term is un-truncated at both ends (`Rterm_nonneg`);
-* `hF3` — the per-slot `span_fraction` on `[t,t]` (`D·β ≤ C·(σt+ξ+α+φ)`);
-* `hbξ`/`hbα`/`hbφ` — the `C ≤ D` coefficient bridges (`C·ξ ≤ D·ξ`, …).
-
-Tax branch (`min = C·U`): the freed tax `C·(U−U') ≥ C·σt` plus the bridges
-absorb `D·β`. R branch (`min = C·J − D·B`): the `D·B` cancels and `C·φ ≤ D·φ`
-covers the growth. -/
-private theorem invstar_step_arith
-    {Ds Ds' Dx Dx' DB DB' CU CU' CJ CJ' e1 Dξ Dα Dφ Dβ Cξ Cα Cφ Cσt : ℕ}
-    (hINV : Dx + DB + e1 + min CU (CJ - DB) ≤ Ds)
-    (hs' : Ds + Dξ + Dα + Dφ ≤ Ds')
-    (hx' : Dx' + Dξ ≤ Dx)
-    (hB' : DB' ≤ DB + Dβ)
-    (hJ' : CJ' = CJ + Cφ)
-    (hUσt : CU' + Cσt ≤ CU)
-    (hQ : DB ≤ CJ) (hQ' : DB' ≤ CJ')
-    (hF3 : Dβ ≤ Cσt + Cξ + Cα + Cφ)
-    (hbξ : Cξ ≤ Dξ) (hbα : Cα ≤ Dα) (hbφ : Cφ ≤ Dφ) :
-    Dx' + DB' + e1 + min CU' (CJ' - DB') ≤ Ds' := by
-  omega
-
-/-- **The INV\* step over the ledger defs.** Given the per-slot class deltas
-`ξ` (`x→s` migrants), `α` (`a→s` migrants), `φ` (fresh honest joining `s`), `β`
-(new byz), `σt` (base-supporter recurrers leaving `Unrec`, i.e. `U − U'`),
-phrased as ℕ relations between the accessor values at `σ` and `σ'` (the
-"class-delta facts" the engine shell discharges from `votes_head` + IH +
-delivery + `committee_assignment_unique`),
-`INVstar` at `σ` propagates to `σ'`. The `span_fraction` R-term floor
-(`Rterm_nonneg`) is supplied at both ends from `hbb`; the coefficient bridges
-`C ≤ 100 − C` follow from `C ≤ 25`. No store dynamics: this scales the raw
-deltas by `C`/`(100−C)` and hands the linear ledger arithmetic to
-`invstar_step_arith`. -/
-theorem INVstar_step (hbb : ByzantineBound cfg E)
-    (v₀ : ValidatorIndex) (n₀ : ℕ) (b' : Root) (lo es : Slot) {σ σ' : Slot}
-    (hloH : E.SlotWithinHorizon cfg lo)
-    (hσH : E.SlotWithinHorizon cfg σ) (hσ'H : E.SlotWithinHorizon cfg σ')
-    (boost ξ α φ β σt : ℕ)
-    (hs' : E.Sval cfg ext v₀ n₀ b' lo σ + ξ + α + φ ≤ E.Sval cfg ext v₀ n₀ b' lo σ')
-    (hx' : E.Xval cfg ext v₀ n₀ b' lo σ' + ξ ≤ E.Xval cfg ext v₀ n₀ b' lo σ)
-    (hB' : E.Bval lo σ' ≤ E.Bval lo σ + β)
-    (hJ' : E.Jspec lo σ' = E.Jspec lo σ + φ)
-    (hUσt : E.Uval cfg ext v₀ n₀ b' lo es σ' + σt ≤ E.Uval cfg ext v₀ n₀ b' lo es σ)
-    (hF3 : (100 - cfg.confirmation_byzantine_threshold) * β ≤
-      cfg.confirmation_byzantine_threshold * (σt + ξ + α + φ))
-    (hinv : E.INVstar cfg ext v₀ n₀ b' lo es σ boost) :
-    E.INVstar cfg ext v₀ n₀ b' lo es σ' boost := by
-  have hQ := E.Rterm_nonneg cfg hbb lo σ hloH hσH
-  have hQ' := E.Rterm_nonneg cfg hbb lo σ' hloH hσ'H
-  simp only [Execution.INVstar] at hinv ⊢
-  set C := cfg.confirmation_byzantine_threshold with hCdef
-  have hC25 : C ≤ 25 := cfg.confirmation_byzantine_threshold_le
-  -- scale the raw deltas by `C` / `100 − C`:
-  have i1 : (100 - C) * (E.Sval cfg ext v₀ n₀ b' lo σ + ξ + α + φ)
-      ≤ (100 - C) * E.Sval cfg ext v₀ n₀ b' lo σ' := by gcongr
-  have i2 : (100 - C) * (E.Xval cfg ext v₀ n₀ b' lo σ' + ξ)
-      ≤ (100 - C) * E.Xval cfg ext v₀ n₀ b' lo σ := by gcongr
-  have i3 : (100 - C) * E.Bval lo σ' ≤ (100 - C) * (E.Bval lo σ + β) := by gcongr
-  have i5 : C * (E.Uval cfg ext v₀ n₀ b' lo es σ' + σt)
-      ≤ C * E.Uval cfg ext v₀ n₀ b' lo es σ := by gcongr
-  have i6 : C * ξ ≤ (100 - C) * ξ := by gcongr; omega
-  have i7 : C * α ≤ (100 - C) * α := by gcongr; omega
-  have i8 : C * φ ≤ (100 - C) * φ := by gcongr; omega
-  have i9 : C * E.Jspec lo σ' = C * E.Jspec lo σ + C * φ := by rw [hJ', mul_add]
-  -- the R-term subtractions are un-truncated (`Rterm_nonneg`), so `omega` can
-  -- atomize `C·J` and relate it to the `min`'s second argument:
-  have hR := Nat.sub_add_cancel hQ
-  have hR' := Nat.sub_add_cancel hQ'
-  -- distribute every scaled product in place, leaving only atoms `omega` combines:
-  simp only [mul_add, mul_one] at i1 i2 i3 i5 hinv hF3 ⊢
-  omega
 
 end Execution
 

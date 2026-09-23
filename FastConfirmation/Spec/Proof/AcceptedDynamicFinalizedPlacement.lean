@@ -137,26 +137,6 @@ theorem dynamicFinalizedPlacementAt_of_sourceVisible
         hfinalizedLeGU⟩
     }
 
-/-- `SourceAvailableAtTip` closes dynamic finalized placement exactly in its
-visibility branch.  Its recency branch remains explicit rather than being
-silently strengthened to finalized dominance. -/
-theorem dynamicFinalizedPlacementAt_or_recent_of_sourceAvailable
-    {E : Execution Root}
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
-    (hgen : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
-      E.genesis_store = get_forkchoice_store cfg ast ablk ∧
-        ast.slot = ablk.message.slot)
-    (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
-    {store : Store Root} (hstore : E.CausalStore cfg ext store)
-    {tip : Root} (htip : tip ∈ store.block_roots)
-    (havailable : SourceAvailableAtTip cfg store tip) :
-    AcceptedDynamicFinalizedPlacementAt cfg ext B.state store tip ∨
-      (get_voting_source cfg store tip).epoch + 2 ≥
-        get_current_store_epoch cfg store := by
-  rcases havailable with hvisible | hrecent
-  · exact Or.inl (B.dynamicFinalizedPlacementAt_of_sourceVisible cfg ext
-      hgen hanchor hstore htip hvisible)
-  · exact Or.inr hrecent
 
 end ExactPrefixAcceptedFFGSemantics
 
@@ -245,25 +225,7 @@ end RetainedFilterTipPlacement
 
 /-! ## Checked interface obstructions -/
 
-/-- An existential selector origin carries no equality at an independently
-chosen retained tip.  This is the logical shape of
-`AcceptedGlobalFinalizedOrigin`; additional history must relate the tips or,
-as above, derive a dominating retained target instead. -/
-theorem existentialOrigin_does_not_identify_retainedSelector :
-    ∃ (selector : Bool → Nat) (field : Nat) (origin retained : Bool),
-      field = selector origin ∧ origin ≠ retained ∧
-        field ≠ selector retained := by
-  refine ⟨fun b => if b then 1 else 0, 0, false, true, ?_⟩
-  decide
 
-/-- The recency disjunct of `SourceAvailableAtTip` is arithmetically too weak
-to place finality.  Even with `F ≤ J ≤ current`, a source satisfying
-`source + 2 ≥ current` may still be older than `F`. -/
-theorem sourceRecency_does_not_imply_finalizedDominance :
-    ∃ finalized justified source current : Nat,
-      finalized ≤ justified ∧ justified ≤ current ∧
-        source + 2 ≥ current ∧ ¬ finalized ≤ source := by
-  exact ⟨5, 5, 4, 6, by omega⟩
 
 
 end FastConfirmation.Spec

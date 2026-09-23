@@ -7,38 +7,9 @@ public import FastConfirmation.Spec.Proof.Quorum
 @[expose] public section
 
 /-!
-# Spec / Proof / Base: (O1\*) — the INV\* base from the rule
+# Spec / Proof / Base
 
-The head-safety ledger invariant `INVstar` (`Proof/Ledger.lean`) at the
-**window start** `σ = es` (`es := get_current_slot store − 1`, `lo :=
-parent(b′).slot + 1`). This is the induction base the engine shell iterates the
-`INVstar_step` from.
-
-At `σ = es` the not-yet-recurred set `Unrec lo es es` is all of `Sclass lo es`
-(the "no assignment in `(es, es]`" filter is vacuous), so `U(es) = s₀`
-(`Uval_es_eq_Sval`) and the invariant reads, cross-multiplied
-(`C := confirmation_byzantine_threshold`):
-
-  INV\*(es):  `(100−C)·(x₀ + B(es) + boost + 1) + min (C·s₀) (C·J₀ − (100−C)·B(es))`
-             `≤ (100−C)·s₀`.
-
-**The min collapses to whichever branch the confirmed instance funds.** Bounding
-`min` by its left argument `C·s₀` needs the recurrence-tax funded base
-`(★): (100−2C)·s₀ ≥ (100−C)·(x₀ + B(es) + boost + 1)`; bounding it by the right
-argument `C·J₀ − (100−C)·B(es)` needs the F3-capacity base `(★R)`. The corner
-analysis shows **each branch alone fails one corner** — corner-1 (byz at cap,
-`R = 0`) needs the R-branch, corner-3 (`a₀`-heavy) needs the tax branch — so the
-assembly consumes the *disjunction*. Both branch inequalities and the min
-assembly are pure ℕ (this module's core, machine-checked against both
-corners as `example`s).
-
-The disjunction's two arms are the confirmed-instance obligation. The **weak
-base** `s₀ ≥ x₀ + B(es) + boost + 1` (the endpoint-form margin, weaker than
-either arm by the `C`-scaling) *is* derivable here from `honest_support_majority`
-(`weak_base_of_rule`) modulo the two store-dynamics bridges
-`Hsup ≤ s₀` / `d ≤ a₀` (recorded latest messages ⇒ ground-truth newest votes).
-Selecting the funded arm from the weak base is represented separately by the
-recurrence-tax / F3-capacity premise.
+This module contains `base_min_of_tax`, `base_min_of_R`, `weak_base_arith` and related declarations.
 -/
 
 namespace FastConfirmation.Spec
@@ -69,25 +40,7 @@ private theorem base_min_of_R {C s x B J boost : ℕ}
     (100 - C) * (x + B + boost + 1) + min (C * s) (C * J - (100 - C) * B) ≤ (100 - C) * s :=
   le_trans (by gcongr; exact min_le_right _ _) hR
 
-/-- **The min assembly.** INV\*(es) in pure-ℕ form from the *disjunction* of the
-two branch obligations. Each arm fails one corner, so the confirmed instance
-must supply the disjunction; the `min` is bounded by whichever arm holds. -/
-private theorem base_min_assembly {C s x B J boost : ℕ}
-    (h : (100 - C) * (x + B + boost + 1) + C * s ≤ (100 - C) * s
-       ∨ (100 - C) * (x + B + boost + 1) + (C * J - (100 - C) * B) ≤ (100 - C) * s) :
-    (100 - C) * (x + B + boost + 1) + min (C * s) (C * J - (100 - C) * B) ≤ (100 - C) * s :=
-  h.elim base_min_of_tax base_min_of_R
 
-/-- The tax arm in the `(★)` form `(100−2C)·s ≥ (100−C)·(x+B+boost+1)` implies the
-additive tax hypothesis of `base_min_of_tax` (needs `C ≤ 50` so `(100−C)·s`
-splits as `(100−2C)·s + C·s`). -/
-private theorem tax_of_star {C s x B boost : ℕ} (hC : C ≤ 50)
-    (hstar : (100 - C) * (x + B + boost + 1) ≤ (100 - 2 * C) * s) :
-    (100 - C) * (x + B + boost + 1) + C * s ≤ (100 - C) * s := by
-  have hid : (100 - C) * s = (100 - 2 * C) * s + C * s := by
-    have h100 : 100 - C = (100 - 2 * C) + C := by omega
-    rw [h100, Nat.add_mul]
-  omega
 
 /-- Pure-ℕ core of the weak base. From the rule `2·Hsup + d ≥ MS + boost + 1`,
 the estimate domination `J + B ≤ MS`, the honest partition `J = s + a + x`, and
@@ -138,38 +91,12 @@ At the window start the not-yet-recurred set is all of `Sclass es`: the filter
 "no committee assignment in `(es, es]`" is vacuous (`es < t ∧ t ≤ es` is
 unsatisfiable). -/
 
-/-- `Unrec lo es es = Sclass lo es`, hence `U(es) = s(es) = s₀`. -/
-theorem Uval_es_eq_Sval (v₀ : ValidatorIndex) (n₀ : ℕ) (b' : Root) (lo es : Slot) :
-    E.Uval cfg ext v₀ n₀ b' lo es es = E.Sval cfg ext v₀ n₀ b' lo es := by
-  classical
-  simp only [Execution.Uval, Execution.Sval, Execution.Unrec]
-  congr 1
-  exact Finset.filter_true_of_mem (fun i _ t ht1 ht2 => absurd ht1 (Nat.not_lt.mpr ht2))
 
 /-! ## Section 3 — INV\*(es) from the branch disjunction
 
 The min-assembly over the ledger accessor values: given the confirmed instance's
 branch disjunction on `s₀`/`x₀`/`B(es)`/`J₀`, INV\* holds at `σ = es`. -/
 
-/-- **INV\*(es) from the branch disjunction.** With `U(es) = s₀`
-(`Uval_es_eq_Sval`), the confirmed instance's tax-or-R disjunction discharges
-`INVstar` at the window start. This is the base the engine iterates
-`INVstar_step` from. -/
-theorem INVstar_base_of_branches (v₀ : ValidatorIndex) (n₀ : ℕ) (b' : Root) (lo es : Slot)
-    (boost : ℕ)
-    (h : (100 - cfg.confirmation_byzantine_threshold)
-            * (E.Xval cfg ext v₀ n₀ b' lo es + E.Bval lo es + boost + 1)
-          + cfg.confirmation_byzantine_threshold * E.Sval cfg ext v₀ n₀ b' lo es
-        ≤ (100 - cfg.confirmation_byzantine_threshold) * E.Sval cfg ext v₀ n₀ b' lo es
-      ∨ (100 - cfg.confirmation_byzantine_threshold)
-            * (E.Xval cfg ext v₀ n₀ b' lo es + E.Bval lo es + boost + 1)
-          + (cfg.confirmation_byzantine_threshold * E.Jspec lo es
-              - (100 - cfg.confirmation_byzantine_threshold) * E.Bval lo es)
-        ≤ (100 - cfg.confirmation_byzantine_threshold) * E.Sval cfg ext v₀ n₀ b' lo es) :
-    E.INVstar cfg ext v₀ n₀ b' lo es es boost := by
-  simp only [Execution.INVstar]
-  rw [E.Uval_es_eq_Sval cfg ext v₀ n₀ b' lo es]
-  exact base_min_assembly h
 
 /-! ## Section 4 — the weak base from the confirmation rule
 

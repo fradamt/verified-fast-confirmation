@@ -6,15 +6,7 @@ public import FastConfirmation.Spec.Proof.ArbitraryQueryMargin
 /-!
 # Justified coverage or a selected margin
 
-An endpoint's filtered tree is rooted at its realized justified checkpoint.
-Consequently, a historical selected edge which lies strictly above that root
-cannot itself be a filtered-tree edge.  It also needs no LMD margin: the
-endpoint head already descends from the justified root and hence from the
-covered child.
-
-This module gives the exact disjunctive chain interface.  It differs from the
-older `DescendStepChainSupply` only at the per-edge conclusion: direct
-justified coverage is accepted in place of an impossible `DescendStep`.
+This module contains `covered_roots_isSome_of_ancestor`, `covered_hcase_of_ancestor`, `head_ge_of_covered_or_descend_chain` and related declarations.
 -/
 
 namespace FastConfirmation.Spec

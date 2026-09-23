@@ -93,11 +93,6 @@ theorem update_checkpoints_exact {store : Store Root} (jc fc : Checkpoint Root)
     CheckpointStatesExact (update_checkpoints store jc fc) :=
   h.of_eq (by simp) (by simp)
 
-omit [LinearOrder Root] in
-theorem update_unrealized_checkpoints_exact {store : Store Root}
-    (jc fc : Checkpoint Root) (h : CheckpointStatesExact store) :
-    CheckpointStatesExact (update_unrealized_checkpoints store jc fc) :=
-  h.of_eq (by simp) (by simp)
 
 theorem record_block_timeliness_exact {store : Store Root} (r : Root)
     (h : CheckpointStatesExact store) :

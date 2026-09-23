@@ -61,34 +61,6 @@ def AcceptedLemma13SourceSeedAt
 
 /-! ## Query-local executable producers -/
 
-/-- A strict previous-epoch result has a query-local recent seed.
-
-If the actual producing trace is the previous loop, its exact entry guard
-supplies previous_slot_head. If it is the tentative loop, the result cannot
-take the current-epoch arm of the final guard, so its own voting source is
-recent. Knownness of the previous-slot head is kept explicit because the
-total executable is_ancestor function alone does not imply domain membership.
--/
-theorem StrictSelectedResultMechanicalFacts.previous_queryRecentSourceSeed
-    {query : FastConfirmationStore Root} {input result : Root}
-    (h : StrictSelectedResultMechanicalFacts cfg ext query input result)
-    (hprevious : get_block_epoch cfg query.store result + 1 =
-      get_current_store_epoch cfg query.store)
-    (hpreviousHeadKnown : query.previous_slot_head ∈
-      query.store.block_roots) :
-    RecentSourceSeedAt cfg query.store result := by
-  rcases h.trace_origin with
-    ⟨a, _hedge, _hentry, hrecent, hdesc⟩ |
-      ⟨a, _hedge, _hentry, hfinal⟩
-  · exact ⟨query.previous_slot_head, hpreviousHeadKnown, hdesc, hrecent⟩
-  · unfold TentativeSelectedResultWitness at hfinal
-    rcases hfinal with hcurrent | ⟨hrecent, _houter⟩
-    · have hbad : get_block_epoch cfg query.store result + 1 =
-          get_block_epoch cfg query.store result :=
-        hprevious.trans hcurrent.symm
-      exact False.elim ((Nat.ne_of_gt (Nat.lt_succ_self _)) hbad)
-    · exact ⟨result, h.result_known,
-        is_ancestor_refl query.store (get_node_for_root result), hrecent⟩
 
 /-- Away from the epoch-start escape, a strict current-epoch tentative result
 mechanically realizes the Lemma 13 GU seed using the exact query head.
@@ -144,54 +116,6 @@ theorem StrictSelectedResultMechanicalFacts.current_lemma13SourceSeed_of_notStar
 
 /-! ## Cross-store accepted transport -/
 
-/-- Same-epoch transport of a query-local recent seed to an endpoint.
-
-Local query ancestry is converted to semantic accepted descent and then
-reflected in the concrete execution endpoint. Fixed-root accepted selector
-monotonicity transports the numeric source bound.
--/
-theorem recentSourceSeedAt_endpoint_of_query_sameEpoch
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
-    (hwf : WellFormedExecution E)
-    (hec : ExternalsCoherence cfg ext E)
-    {ast : BeaconState Root} {ablk : SignedBeaconBlock Root}
-    (hgen : E.genesis_store = get_forkchoice_store cfg ast ablk)
-    (hgenSlot : ast.slot = ablk.message.slot)
-    (hgenParent : ablk.message.parent_root ≠ ablk.root)
-    {query : Store Root} {w : ValidatorIndex} {m : Nat} {selected : Root}
-    (hquery : E.CausalStore cfg ext query)
-    (hendpoint : E.CausalStore cfg ext (E.store cfg ext w m))
-    (hqueryParent : ParentSlotLt query)
-    (hqueryProvenance : BlockProvenance E query)
-    (hqueryWalk : ∀ t ∈ query.block_roots,
-      ∀ r ∈ query.block_roots,
-        WalkKnown query (query.blocks t).slot r)
-    (hselectedQ : selected ∈ query.block_roots)
-    (hselectedM : selected ∈ (E.store cfg ext w m).block_roots)
-    (hseedM : ∀ seed, seed ∈ query.block_roots →
-      seed ∈ (E.store cfg ext w m).block_roots)
-    (hclock : get_current_store_epoch cfg query ≤
-      get_current_store_epoch cfg (E.store cfg ext w m))
-    (hsameEpoch : get_current_store_epoch cfg (E.store cfg ext w m) =
-      get_current_store_epoch cfg query)
-    (hseed : RecentSourceSeedAt cfg query selected) :
-    RecentSourceSeedAt cfg (E.store cfg ext w m) selected := by
-  obtain ⟨seed, hseedQ, hseedSelectedQ, hrecentQ⟩ := hseed
-  have hseedEndpoint : seed ∈ (E.store cfg ext w m).block_roots :=
-    hseedM seed hseedQ
-  have hsemantic : E.RootDescends seed selected :=
-    E.rootDescends_of_store_ancestor hqueryProvenance hqueryParent
-      (hqueryWalk selected hselectedQ seed hseedQ) hseedSelectedQ
-  have hseedSelectedM : is_ancestor (E.store cfg ext w m)
-      (get_node_for_root seed)
-      (get_node_for_root selected) = true :=
-    E.store_ancestor_of_rootDescends_for_storeReflection cfg ext hwf hec
-      hgen hgenSlot hgenParent hseedEndpoint hselectedM hsemantic
-  have hsourceMono := E.acceptedVotingSource_epoch_le_of_currentEpoch_le
-    cfg ext B hwf hquery hendpoint hseedQ hseedEndpoint hclock
-  refine ⟨seed, hseedEndpoint, hseedSelectedM, ?_⟩
-  rw [hsameEpoch]
-  exact hrecentQ.trans (Nat.add_le_add_right hsourceMono 2)
 
 /-- A Lemma 13 GU seed at a current-epoch query becomes an executable recent
 source seed at the next-epoch endpoint. The endpoint selector is forced onto

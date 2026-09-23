@@ -571,20 +571,6 @@ theorem CausalStore.acceptedBlockLastWriterProvenance
   | scheduledPrefix p =>
       exact p.acceptedBlockLastWriterProvenance
 
-/-- A non-genesis accepted block carrier comes from an actual successful
-scheduled block transition.  Chronology is intentionally erased because a
-bare `AcceptedBlockAt` hides its carrier prefix. -/
-theorem AcceptedBlockAt.exists_acceptedBlockTransition
-    {E : Execution Root} {r : Root} {b : BeaconBlock Root}
-    (h : E.AcceptedBlockAt cfg ext r b)
-    (hnonGenesis : r ∉ E.genesis_store.block_roots) :
-    ∃ t : E.AcceptedBlockTransition cfg ext,
-      t.signedBlock.root = r ∧ t.signedBlock.message = b := by
-  obtain ⟨store, hstore, hr, hblock⟩ := h
-  obtain ⟨writer⟩ :=
-    hstore.acceptedBlockLastWriterProvenance r hr hnonGenesis
-  exact ⟨writer.transition, writer.root_eq,
-    writer.message_eq.trans hblock⟩
 
 end Execution
 

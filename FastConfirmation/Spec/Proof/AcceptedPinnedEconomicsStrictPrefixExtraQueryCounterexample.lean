@@ -763,18 +763,6 @@ def queryFcr : FastConfirmationStore WitnessRoot :=
   { witnessExecution.fcr witnessConfig witnessExternals 0 2 with
     store := actorPrefix.store witnessConfig witnessExternals }
 
-/-- The two stores are prefixes of node-independent copies of the same
-scheduled event list and represent the same execution second.  They are not
-`ScheduledEventPrefix.Compatible`, whose definition intentionally requires
-one node as well as one second. -/
-theorem strict_prefixes_same_position :
-    endpointPrefix.previousSecond = actorPrefix.previousSecond ∧
-      witnessExecution.schedule endpointPrefix.node 3 =
-        witnessExecution.schedule actorPrefix.node 3 ∧
-      endpointPrefix.processedCount + 1 = actorPrefix.processedCount ∧
-      endpointPrefix.previousSecond + 1 = 3 ∧
-      actorPrefix.previousSecond + 1 = 3 := by
-  exact ⟨rfl, rfl, rfl, rfl, rfl⟩
 
 /-- The synchronized vote flips the head between two prefixes of one second. -/
 theorem strict_prefix_heads_diverge :

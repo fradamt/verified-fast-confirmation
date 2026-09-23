@@ -384,32 +384,6 @@ theorem currentTargetObservedHonestSupporter_vote_of_prefix
   exact slot_lt_prefix_next_epoch_start cfg
     (haSlotEpoch.trans htargetEpoch.symm)
 
-/-- Convenience specialization for callers which already carry the selected
-lower-assumption bundle and committed-anchor evidence. The proof uses the
-fields documented by `CurrentTargetPrefixVoteAssumptions`. -/
-theorem currentTargetObservedHonestSupporter_vote_of_prefix_of_selected
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
-    (hA : SelectedMarginAssumptions cfg ext E)
-    (hgen : ∃ (anchorState : BeaconState Root) (anchorBlock : SignedBeaconBlock Root),
-      E.genesis_store = get_forkchoice_store cfg anchorState anchorBlock ∧
-      anchorState.slot = anchorBlock.message.slot ∧
-      ext.AnchorCommitsToState anchorBlock.message anchorState ∧
-      anchorBlock.message.parent_root ≠ anchorBlock.root)
-    (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg) (E := E)
-      (anchor := E.genesis_store.justified_checkpoint))
-    (p : E.ScheduledEventPrefix)
-    (hp : p.node ∈ E.honest)
-    (hqH : E.WithinHorizon cfg (p.previousSecond + 1))
-    {state : BeaconState Root} {i : ValidatorIndex}
-    (hiObserved : i ∈ E.currentTargetObservedHonestSupporters cfg
-      (p.store cfg ext) state) :
-    Nonempty (ConcreteHonestTargetVoteBefore cfg ext E i
-      (compute_start_slot_at_epoch cfg
-        ((get_current_target cfg (p.store cfg ext)).epoch + 1))
-      (get_current_target cfg (p.store cfg ext))) :=
-  E.currentTargetObservedHonestSupporter_vote_of_prefix cfg ext B
-    (CurrentTargetPrefixVoteAssumptions.of_selectedMarginAssumptions
-      cfg ext E hA hgen) hboundary p hp hqH hiObserved
 
 end Execution
 

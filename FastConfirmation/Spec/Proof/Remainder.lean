@@ -181,49 +181,8 @@ theorem hXmono_of_engine (hhb : HonestBehavior cfg ext E) (hec : ExternalsCohere
   E.hXmono_of_fresh cfg ext hhb hec v₀ n₀ b' lo σ' hsame
     (E.hfresh_of_engine cfg ext hhb hwf hσ1H hs0 hin)
 
-/-! ## Section 2 — `hjc_le` reduced to the store-epoch invariant
 
-`ExportWiring.vote_ubiquity_export_closed` / `vote_lands_export_closed` carry a single
-free hypothesis `hjc_le`:
-`(store v n).justified_checkpoint.epoch ≤ (honest_attestation … s index v).data.target.epoch`.
-The honest target epoch is exactly the vote slot's epoch
-(`Delivery.honest_attestation_data_target_epoch`, once the head-state has been pulled up to
-the vote slot — the head-slot bound `hhead`), and the vote slot's epoch is the store's own
-current epoch (`store_current_slot` + `hn`). So `hjc_le` reduces, with **zero** remaining
-plumbing, to the transparent **store-epoch invariant**
 
-  `(store v n).justified_checkpoint.epoch ≤ get_current_store_epoch (store v n)`
-
-— "a store's justified checkpoint never sits in a future epoch." This is the genuine
-residual: a multi-handler trajectory invariant (genesis `get_forkchoice_store`; `on_tick`
-preserves it as the current epoch is monotone; `on_block`/`on_attestation` raise
-`justified_checkpoint` only via `update_checkpoints`, and
-`ExternalsCoherence.state_transition_checkpoint_epoch` bounds the adopted checkpoint's epoch
-by the block's epoch `≤` the current epoch; `on_attester_slashing` leaves it untouched).
-`hhead` is the standard head-slot bound (`Delivery.store_blocks_slot_le_current` +
-`block_state_slot_eq`), taken here as an input to keep the reduction self-contained. -/
-
-/-- **`hjc_le` from the store-epoch invariant.** Given the store-epoch bound `hbound`
-(`justified_checkpoint.epoch ≤ get_current_store_epoch`) and the head-slot bound `hhead`,
-the epoch-ordering hypothesis `hjc_le` that `ExportWiring`'s vote-landing exports carry
-holds outright. Reduces the free `hjc_le` to the single transparent store trajectory
-invariant. -/
-theorem hjc_le_of_store_epoch_bound (hec : ExternalsCoherence cfg ext E)
-    {v : ValidatorIndex} {n : ℕ} {s : Slot} {index : CommitteeIndex}
-    (hn : E.slot_at cfg n = s)
-    (hhead : ((E.store cfg ext v n).block_states
-        (get_head cfg (E.store cfg ext v n)).root).slot ≤ s)
-    (hbound : (E.store cfg ext v n).justified_checkpoint.epoch ≤
-      get_current_store_epoch cfg (E.store cfg ext v n)) :
-    (E.store cfg ext v n).justified_checkpoint.epoch ≤
-      (honest_attestation cfg ext (E.store cfg ext v n) s index v).data.target.epoch := by
-  have htgt : (honest_attestation cfg ext (E.store cfg ext v n) s index v).data.target.epoch =
-      compute_epoch_at_slot cfg s :=
-    honest_attestation_data_target_epoch cfg ext (E.store cfg ext v n) s index
-      hec.process_slots_slot hhead
-  have hcur : get_current_store_epoch cfg (E.store cfg ext v n) = compute_epoch_at_slot cfg s := by
-    simp only [get_current_store_epoch]; rw [E.store_current_slot cfg ext v n, hn]
-  rw [htgt, ← hcur]; exact hbound
 
 end Execution
 

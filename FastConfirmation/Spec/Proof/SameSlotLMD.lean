@@ -457,53 +457,6 @@ theorem honest_ancestorOrVoteless_at_slot_endpoint_minimal
       w hw m hmH hslotTarget u hu nu0 hnu0H d hnu0q hd hdb).2.2
     exact Or.inr ⟨t, k, a, ht, hvote, hnewest, hancEnd⟩
 
-/-- The ledger-facing honest base transport.  This is deliberately a pair of
-weight inequalities, rather than the historical `∀ i` predicate transport:
-the classes filter to honest window members, while synchrony imposes no
-same-slot delivery discipline on Byzantine ground votes. -/
-theorem honest_classes_base_at_slot_endpoint_minimal
-    (hA : SelectedMarginAssumptions cfg ext E)
-    (v : ValidatorIndex) (hv : v ∈ E.honest) (q : ℕ) (b : Root)
-    (hqH : E.WithinHorizon cfg q)
-    (hb : b ∈ (E.store cfg ext v q).block_roots)
-    (w : ValidatorIndex) (hw : w ∈ E.honest) (m : ℕ)
-    (hmH : E.WithinHorizon cfg m)
-    (hslotTarget : E.slot_at cfg q ≤ E.slot_at cfg (m + 1))
-    (lo es : Slot) (hlo0 : E.slot_at cfg 0 ≤ lo)
-    (hesH : E.SlotWithinHorizon cfg es) (hesq : es < E.slot_at cfg q)
-    (u : ValidatorIndex) (hu : u ∈ E.honest) (nu0 : ℕ)
-    (hnu0H : E.WithinHorizon cfg nu0) (d : Root)
-    (hnu0q : E.slot_at cfg nu0 < E.slot_at cfg q)
-    (hd : d ∈ (E.store cfg ext u nu0).block_roots)
-    (hdb : is_ancestor (E.store cfg ext v q)
-      (get_node_for_root d) (get_node_for_root b) = true) :
-    E.Sval cfg ext v q b lo es ≤ E.Sval cfg ext w m b lo es ∧
-      E.Xval cfg ext w m b lo es ≤ E.Xval cfg ext v q b lo es := by
-  classical
-  have hSt : ∀ i, i ∈ E.honest → i ∈ E.span_committee lo es →
-      E.SupportsDesc cfg ext v q b es i →
-      E.SupportsDesc cfg ext w m b es i := by
-    intro i hi hiSpan hS
-    exact E.honest_supportsDesc_at_slot_endpoint_minimal cfg ext hA
-      v hv q b hqH hb w hw m hmH hslotTarget hlo0 hesH hesq hi hiSpan hS
-  have hAt : ∀ i, i ∈ E.honest → i ∈ E.span_committee lo es →
-      E.AncestorOrVoteless cfg ext v q b es i →
-      E.AncestorOrVoteless cfg ext w m b es i := by
-    intro i hi hiSpan hAnc
-    exact E.honest_ancestorOrVoteless_at_slot_endpoint_minimal cfg ext hA
-      v hv q b hqH hb w hw m hmH hslotTarget hlo0 hesH hesq
-      u hu nu0 hnu0H d hnu0q hd hdb hi hiSpan hAnc
-  constructor
-  · apply E.weight_mono
-    intro i hi
-    simp only [Execution.Sclass, Finset.mem_filter] at hi ⊢
-    exact ⟨hi.1, hSt i hi.1.2 hi.1.1 hi.2⟩
-  · apply E.weight_mono
-    intro i hi
-    simp only [Execution.Xclass, Finset.mem_filter] at hi ⊢
-    exact ⟨hi.1,
-      fun hS => hi.2.1 (hSt i hi.1.2 hi.1.1 hS),
-      fun hAnc => hi.2.2 (hAt i hi.1.2 hi.1.1 hAnc)⟩
 
 /-- Concrete confirmation wrapper exposing exactly the two honest-window
 transport functions used by the selected-margin records.  The confirmed past

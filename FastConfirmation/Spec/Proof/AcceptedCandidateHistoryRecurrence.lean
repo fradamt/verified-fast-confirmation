@@ -149,24 +149,6 @@ inductive SelectorUnchangedAt
 
 namespace SelectorUnchangedAt
 
-/-- Exact epoch information retained by an unchanged selector result. -/
-theorem epoch_cases
-    {query : FastConfirmationStore Root}
-    {trace : GetLatestConfirmedTrace cfg ext query}
-    (h : SelectorUnchangedAt cfg ext query trace) :
-    (get_block_epoch cfg query.store trace.afterObserved + 1 <
-        get_current_store_epoch cfg query.store) ∨
-      (get_block_epoch cfg query.store trace.afterObserved + 1 ≥
-          get_current_store_epoch cfg query.store ∧
-        find_latest_confirmed_descendant cfg ext query
-          trace.afterObserved = trace.afterObserved) := by
-  cases h with
-  | skipped _ hguard =>
-      left
-      simpa only [getLatestSelectorGuard, not_le] using hguard
-  | selectedFixed _ hguard hfixed =>
-      right
-      exact ⟨hguard, hfixed⟩
 
 /-- In either operational unchanged case, the trace result is the selector
 input. -/
@@ -217,45 +199,6 @@ inductive CandidateHistoryCallBranch
 
 namespace CandidateHistoryCallBranch
 
-/-- Off an epoch boundary, a recent result has a recent carried predecessor
-or a recent finalized reset base.  This is the exact source-free backward
-step: without a separate finalized-age theorem, the second arm is real and
-must not be silently eliminated. -/
-theorem midEpoch_recent_previousOrFinalized
-    {query : FastConfirmationStore Root}
-    {trace : GetLatestConfirmedTrace cfg ext query}
-    (h : CandidateHistoryCallBranch cfg ext query trace)
-    (hmid : is_start_slot_at_epoch cfg
-      (get_current_slot cfg query.store) ≠ true)
-    (hresultRecent :
-      get_block_epoch cfg query.store trace.result + 1 ≥
-        get_current_store_epoch cfg query.store) :
-    get_block_epoch cfg query.store query.confirmed_root + 1 ≥
-        get_current_store_epoch cfg query.store ∨
-      get_block_epoch cfg query.store
-          query.store.finalized_checkpoint.root + 1 ≥
-        get_current_store_epoch cfg query.store := by
-  cases h with
-  | carriedUnchanged hinput _ =>
-      exact Or.inl (hinput.confirmed_recent cfg ext)
-  | finalizedResetUnchanged hinput hselector =>
-      right
-      have hresult : trace.result =
-          query.store.finalized_checkpoint.root :=
-        hselector.result_eq_input cfg ext |>.trans hinput.input_eq
-      simpa only [hresult] using hresultRecent
-  | observedResetUnchanged hinput _ =>
-      exact False.elim (hmid hinput.epoch_start)
-  | strictSelected horigin hselector =>
-      cases horigin with
-      | carried hinput =>
-          left
-          simpa only [hinput.input_eq] using hselector.input_recent
-      | finalizedReset hinput =>
-          right
-          simpa only [hinput.input_eq] using hselector.input_recent
-      | observedReset hinput =>
-          exact False.elim (hmid hinput.epoch_start)
 
 end CandidateHistoryCallBranch
 
@@ -389,66 +332,6 @@ end StrictSelectorAdvanceAt
 
 namespace CandidateHistoryCallBranch
 
-/-- Geometry-strengthened form of
-`midEpoch_recent_previousOrFinalized`.  On the carried arm it additionally
-shows that the present result descends from the previous cached confirmed
-root.  A recent finalized base remains an explicit alternative. -/
-theorem midEpoch_recent_previousWithAncestry_or_finalized
-    {query : FastConfirmationStore Root}
-    {trace : GetLatestConfirmedTrace cfg ext query}
-    (h : CandidateHistoryCallBranch cfg ext query trace)
-    (hmid : is_start_slot_at_epoch cfg
-      (get_current_slot cfg query.store) ≠ true)
-    (hresultRecent :
-      get_block_epoch cfg query.store trace.result + 1 ≥
-        get_current_store_epoch cfg query.store)
-    (hwf : ParentSlotLt query.store)
-    (hwalk : ∀ t ∈ query.store.block_roots,
-      ∀ r ∈ query.store.block_roots,
-        WalkKnown query.store (query.store.blocks t).slot r)
-    (hhead : (get_head cfg query.store).root ∈ query.store.block_roots)
-    (hconfirmed : query.confirmed_root ∈ query.store.block_roots) :
-    (get_block_epoch cfg query.store query.confirmed_root + 1 ≥
-          get_current_store_epoch cfg query.store ∧
-        is_ancestor query.store (get_node_for_root trace.result)
-          (get_node_for_root query.confirmed_root) = true) ∨
-      get_block_epoch cfg query.store
-          query.store.finalized_checkpoint.root + 1 ≥
-        get_current_store_epoch cfg query.store := by
-  cases h with
-  | carriedUnchanged hinput hselector =>
-      left
-      refine ⟨hinput.confirmed_recent cfg ext, ?_⟩
-      have hresult : trace.result = query.confirmed_root :=
-        (hselector.result_eq_input cfg ext).trans hinput.input_eq
-      rw [hresult]
-      exact is_ancestor_refl query.store
-        (get_node_for_root query.confirmed_root)
-  | finalizedResetUnchanged hinput hselector =>
-      right
-      have hresult : trace.result =
-          query.store.finalized_checkpoint.root :=
-        (hselector.result_eq_input cfg ext).trans hinput.input_eq
-      simpa only [hresult] using hresultRecent
-  | observedResetUnchanged hinput _ =>
-      exact False.elim (hmid hinput.epoch_start)
-  | strictSelected horigin hselector =>
-      cases horigin with
-      | carried hinput =>
-          left
-          have hinputKnown : trace.afterObserved ∈
-              query.store.block_roots := by
-            simpa only [hinput.input_eq] using hconfirmed
-          have hgeometry := hselector.geometry cfg ext hwf hwalk
-            hhead hinputKnown
-          constructor
-          · simpa only [hinput.input_eq] using hselector.input_recent
-          · simpa only [hinput.input_eq] using hgeometry.descends_input
-      | finalizedReset hinput =>
-          right
-          simpa only [hinput.input_eq] using hselector.input_recent
-      | observedReset hinput =>
-          exact False.elim (hmid hinput.epoch_start)
 
 end CandidateHistoryCallBranch
 

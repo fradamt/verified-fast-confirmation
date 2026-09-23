@@ -119,11 +119,6 @@ theorem acceptedBlockAt_of_causal_known {E : Execution Root}
     AcceptedBlockAt cfg ext E r (store.blocks r) :=
   ⟨store, hstore, hr, rfl⟩
 
-theorem acceptedRoot_of_store_known (E : Execution Root)
-    (v : ValidatorIndex) (n : ℕ) {r : Root}
-    (hr : r ∈ (E.store cfg ext v n).block_roots) :
-    AcceptedRoot cfg ext E r :=
-  acceptedRoot_of_causal_known cfg ext (E.store_causal cfg ext v n) hr
 
 theorem acceptedBlockAt_of_store_known (E : Execution Root)
     (v : ValidatorIndex) (n : ℕ) {r : Root}
