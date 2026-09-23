@@ -1,4 +1,5 @@
 module
+public import FastConfirmationInternal.Legacy.LatestTraceResult
 public import FastConfirmationProofs.Monotonicity.ObservedCheckpointRestart
 public import FastConfirmationProofs.Discount.ByzantineSiblingWeight
 public import FastConfirmationProofs.FFG.SourceHistory.LaterStoreSupport

@@ -21,6 +21,16 @@ namespace FastConfirmation.Spec
 variable {Root : Type*} [LinearOrder Root] [Inhabited Root]
 variable (cfg : Config) (ext : Externals Root)
 
+namespace Execution
+/-- Actual non-honest active stake in the execution's initial epoch. The
+accepted static-validator-set law keeps the active set fixed in the horizon. -/
+def activeNonHonestWeight (E : Execution Root) : Gwei :=
+  E.weight ((Finset.range E.registry.length).filter fun i =>
+    i ∉ E.honest ∧
+      is_active_validator (E.registry.getD i default)
+        (compute_epoch_at_slot cfg (E.slot_at cfg 0)) = true)
+
+end Execution
 /-- Checkpoint `c` is justified according to `store`'s knowledge: it is one
 of the store's justified/finalized checkpoint fields (finalized ⊆ justified),
 their unrealized counterparts, or the unrealized justification of a known

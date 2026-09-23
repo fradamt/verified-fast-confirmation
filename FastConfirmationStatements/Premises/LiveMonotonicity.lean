@@ -44,16 +44,6 @@ def HonestVotesSupportTarget (E : Execution Root) (T : Checkpoint Root) (n : ℕ
       compute_epoch_at_slot cfg s = T.epoch → E.slot_at cfg n ≤ s →
       ∀ k a, E.vote v s = some (k, a) → a.data.target = T
 
-namespace Execution
-/-- Actual non-honest active stake in the execution's initial epoch. The
-accepted static-validator-set law keeps the active set fixed in the horizon. -/
-def activeNonHonestWeight (E : Execution Root) : Gwei :=
-  E.weight ((Finset.range E.registry.length).filter fun i =>
-    i ∉ E.honest ∧
-      is_active_validator (E.registry.getD i default)
-        (compute_epoch_at_slot cfg (E.slot_at cfg 0)) = true)
-
-end Execution
 /-- Execution-level liveness proposed for strict monotonicity. The initial
 head is used as the common voting branch; no field names a confirmed root or
 an FCR branch condition. Committee coverage and honest vote production are

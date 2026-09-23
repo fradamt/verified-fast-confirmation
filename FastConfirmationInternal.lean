@@ -12,5 +12,6 @@ public import FastConfirmationInternal.Legacy.ScheduledCertificates
 public import FastConfirmationInternal.Legacy.ScheduledCheckpointLinks
 public import FastConfirmationInternal.Legacy.ScheduledFFGState
 public import FastConfirmationInternal.Legacy.SynchronyConversion
+public import FastConfirmationInternal.Legacy.LatestTraceResult
 
 /-! Imports the legacy predicates and reusable proof vocabulary below the public claim surface. -/
