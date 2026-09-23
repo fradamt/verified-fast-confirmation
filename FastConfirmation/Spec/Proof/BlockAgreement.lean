@@ -2,6 +2,7 @@ module
 public import FastConfirmation.Spec.Proof.AncestryRoots
 public import FastConfirmation.Spec.Model.Assumptions
 public import FastConfirmation.Spec.Model.PayloadEffects
+public import FastConfirmation.Spec.Proof.ModelFacts
 
 @[expose] public section
 

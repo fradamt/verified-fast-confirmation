@@ -4,6 +4,7 @@ public import FastConfirmation.Spec.Proof.AcceptedActualFCRStrictHelperIntegrati
 public import FastConfirmation.Spec.Proof.AcceptedFinalizedNextSlotSafety
 public import FastConfirmation.Spec.Proof.AcceptedObservedRestartDynamicSafety
 public import FastConfirmation.Spec.Proof.AcceptedHistoricalA32OriginCall
+public import FastConfirmation.Spec.Proof.ModelFacts
 
 @[expose] public section
 

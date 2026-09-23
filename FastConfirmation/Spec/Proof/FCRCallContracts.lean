@@ -1,6 +1,7 @@
 module
 public import FastConfirmation.Spec.Model.FFGCertificates
 
+public import FastConfirmation.Spec.Statements.Traces
 @[expose] public section
 
 /-!
@@ -35,13 +36,6 @@ theorem update_fcv_confirmed_root (fcrStore : FastConfirmationStore Root) :
   simp only [update_fast_confirmation_variables]
   split_ifs <;> rfl
 
-/-- The variable-updated FCR store at a slot boundary: `E.fcr v n` re-seated
-on the current store and run through `update_fast_confirmation_variables`,
-before `get_latest_confirmed` is evaluated. -/
-def fcrStep (v : ValidatorIndex) (n : ℕ) : FastConfirmationStore Root :=
-  update_fast_confirmation_variables cfg
-    { E.fcr cfg ext v n with store := E.store cfg ext v (n + 1) }
-
 /-- `fcrStep`'s confirmed-root input is the previous `E.confirmed`. -/
 theorem fcrStep_confirmed_root (v : ValidatorIndex) (n : ℕ) :
     (E.fcrStep cfg ext v n).confirmed_root = E.confirmed cfg ext v n := by
@@ -54,11 +48,6 @@ theorem fcrStep_store (v : ValidatorIndex) (n : ℕ) :
   rw [Execution.fcrStep]
   simp only [update_fast_confirmation_variables]
   split_ifs <;> rfl
-
-/-- The actual call from `n` to `n+1` advanced a slot. -/
-def IsFCRCallAt (v : ValidatorIndex) (n : ℕ) : Prop :=
-  get_current_slot cfg (E.store cfg ext v (n + 1)) >
-    get_current_slot cfg (E.store cfg ext v n)
 
 /-! ## Safety-free reset payload -/
 

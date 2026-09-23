@@ -7,6 +7,7 @@ public import FastConfirmation.Spec.Proof.AcceptedFFGJustifiedCheckpointCache
 public import FastConfirmation.Spec.Proof.AcceptedSelectedJustifiedOrientation
 public import FastConfirmation.Spec.Proof.AcceptedActualFCRContractScaffold
 public import FastConfirmation.Spec.Proof.SelectedCoveredMarginConstruction
+public import FastConfirmation.Spec.Proof.ModelFacts
 
 @[expose] public section
 

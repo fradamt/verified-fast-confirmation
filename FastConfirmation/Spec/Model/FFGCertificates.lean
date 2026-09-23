@@ -39,13 +39,6 @@ inductive RootDescends : Root → Root → Prop
       RootDescends parent ancestor →
       RootDescends child ancestor
 
-theorem RootDescends.trans {a b c : Root}
-    (hab : E.RootDescends a b) (hbc : E.RootDescends b c) :
-    E.RootDescends a c := by
-  induction hab with
-  | refl => exact hbc
-  | step hedge _ ih => exact .step hedge (ih hbc)
-
 end Execution
 
 /-- A two-thirds source-to-target link backed by concrete scheduled

@@ -3,6 +3,7 @@ public import FastConfirmation.Spec.Proof.PaperA32ProjectionCore
 public import FastConfirmation.Spec.Proof.FFGStateTrajectory
 public import FastConfirmation.Spec.Proof.BlockAgreement
 public import FastConfirmation.Spec.Proof.ExecutionRootReflection
+public import FastConfirmation.Spec.Proof.ModelFacts
 
 @[expose] public section
 

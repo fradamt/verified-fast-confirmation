@@ -1,6 +1,7 @@
 module
 public import Mathlib.Tactic
 public import FastConfirmation.Spec.Proof.AcceptedStrictPrefixExtraQueryFeasibility
+public import FastConfirmation.Spec.Proof.ModelFacts
 
 @[expose] public section
 

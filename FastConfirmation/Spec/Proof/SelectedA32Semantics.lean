@@ -4,6 +4,7 @@ public import FastConfirmation.Spec.Proof.CurrentTargetCertificateRealization
 public import FastConfirmation.Spec.Proof.PaperA32SupportRealization
 public import FastConfirmation.Spec.Proof.ActualResetCheckpointRealization
 public import FastConfirmation.Spec.Proof.HistoricalCurrentTargetTrajectory
+public import FastConfirmation.Spec.Proof.ModelFacts
 
 @[expose] public section
 

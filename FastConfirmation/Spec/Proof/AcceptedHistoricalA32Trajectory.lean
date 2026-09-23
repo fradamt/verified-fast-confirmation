@@ -3,6 +3,7 @@ public import FastConfirmation.Spec.Proof.AcceptedHistoricalA32Payload
 public import FastConfirmation.Spec.Proof.AcceptedSameEpochSegmentRealization
 public import FastConfirmation.Spec.Proof.GetLatestConfirmedTrace
 public import FastConfirmation.Spec.Proof.HistoricalCurrentTargetTrajectory
+public import FastConfirmation.Spec.Proof.ModelFacts
 
 @[expose] public section
 

@@ -4,6 +4,7 @@ public import FastConfirmation.Spec.Proof.FFGSelectedDomainRealization
 public import FastConfirmation.Spec.Proof.FFGAccountability
 public import FastConfirmation.Spec.Proof.ExactCheckpointLinks
 public import FastConfirmation.Spec.Proof.SelectedTraceFFGRealizationPipeline
+public import FastConfirmation.Spec.Proof.ModelFacts
 
 @[expose] public section
 

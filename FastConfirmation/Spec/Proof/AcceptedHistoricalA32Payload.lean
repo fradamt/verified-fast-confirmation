@@ -2,6 +2,7 @@ module
 public import FastConfirmation.Spec.Proof.CurrentTargetA32Support
 public import FastConfirmation.Spec.Proof.FilterViability
 public import FastConfirmation.Spec.Proof.SelectedPreQueryHistoricalSIR
+public import FastConfirmation.Spec.Proof.ModelFacts
 
 @[expose] public section
 

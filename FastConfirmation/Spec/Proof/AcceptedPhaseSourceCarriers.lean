@@ -3,6 +3,7 @@ public import FastConfirmation.Spec.Proof.AcceptedCurrentTargetGateBridge
 public import FastConfirmation.Spec.Proof.AcceptedHistoricalA32Payload
 public import FastConfirmation.Spec.Proof.SelectedFFGRealization
 public import FastConfirmation.Spec.Proof.FFGEndpointRealization
+public import FastConfirmation.Spec.Proof.ModelFacts
 
 @[expose] public section
 

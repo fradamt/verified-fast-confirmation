@@ -4,6 +4,7 @@ public import FastConfirmation.Spec.Proof.AcceptedActualFCRJointNonVacuityBase
 public import FastConfirmation.Spec.Proof.AcceptedBlockTransitionProvenance
 public import FastConfirmation.Spec.Proof.AcceptedScheduledPrefixGeometry
 public import FastConfirmation.Spec.Proof.ExactCheckpointLinks
+public import FastConfirmation.Spec.Proof.ModelFacts
 
 @[expose] public section
 

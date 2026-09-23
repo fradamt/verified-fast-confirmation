@@ -3,6 +3,7 @@ public import FastConfirmation.Spec.Model.Assumptions
 public import FastConfirmation.Spec.Proof.Clock
 public import FastConfirmation.Spec.Proof.EconomicRounding
 public import FastConfirmation.Spec.Model.PayloadEffects
+public import FastConfirmation.Spec.Proof.ModelFacts
 
 @[expose] public section
 

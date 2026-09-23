@@ -2,7 +2,9 @@ module
 public import FastConfirmation.Spec.Proof.SelectedFilter
 public import FastConfirmation.Spec.Proof.CheckpointDomain
 public import FastConfirmation.Spec.Proof.FFGAccountability
+public import FastConfirmation.Spec.Proof.ModelFacts
 
+public import FastConfirmation.Spec.Statements.Traces
 @[expose] public section
 
 /-!
@@ -78,60 +80,6 @@ theorem Execution.fcr_store_eq (E : Execution Root) (v : ValidatorIndex) :
       · rw [on_fast_confirmation_store]
       · rfl
 
-/-- Ghost trace of the complete executable wrapper.  The first edge list is
-the selected previous-epoch trace.  The second is the tentative trace only
-when the wrapper's final acceptance guard keeps its result; if that guard
-rejects the tentative accumulator, its edges are erased as well. -/
-def findLatestSelectedTrace (fcrStore : FastConfirmationStore Root)
-    (latestConfirmedRoot : Root) : Root × (List (Root × Root) × List (Root × Root)) :=
-  let store := fcrStore.store
-  let head := (get_head cfg store).root
-  let currentEpoch := get_current_store_epoch cfg store
-  let previousGuard :=
-    get_block_epoch cfg store latestConfirmedRoot + 1 = currentEpoch ∧
-        (get_voting_source cfg store fcrStore.previous_slot_head).epoch + 2 ≥
-          currentEpoch ∧
-        (is_start_slot_at_epoch cfg (get_current_slot cfg store) = true ∨
-          (will_no_conflicting_checkpoint_be_justified cfg ext store = true ∧
-            ((store.unrealized_justifications fcrStore.previous_slot_head).epoch + 1 ≥
-                currentEpoch ∨
-              (store.unrealized_justifications head).epoch + 1 ≥ currentEpoch)))
-  let previousRoot :=
-    if previousGuard then
-      find_latest_confirmed_descendant_prev_epoch_loop cfg ext fcrStore currentEpoch
-        (get_ancestor_roots store head latestConfirmedRoot) latestConfirmedRoot
-    else
-      latestConfirmedRoot
-  let previousEdges :=
-    if previousGuard then
-      (prevEpochLoopTrace cfg ext fcrStore currentEpoch
-        (get_ancestor_roots store head latestConfirmedRoot) latestConfirmedRoot).2
-    else
-      []
-  let tentativeGuard :=
-    is_start_slot_at_epoch cfg (get_current_slot cfg store) = true ∨
-      (store.unrealized_justifications head).epoch + 1 ≥ currentEpoch
-  let tentativeRoot :=
-    if tentativeGuard then
-      find_latest_confirmed_descendant_tentative_loop cfg ext fcrStore
-        (get_ancestor_roots store head previousRoot) previousRoot
-    else
-      previousRoot
-  let tentativeAccepted :=
-    tentativeGuard ∧
-      (get_block_epoch cfg store tentativeRoot = currentEpoch ∨
-        ((get_voting_source cfg store tentativeRoot).epoch + 2 ≥ currentEpoch ∧
-            (is_start_slot_at_epoch cfg (get_current_slot cfg store) = true ∨
-              will_no_conflicting_checkpoint_be_justified cfg ext store = true)))
-  let tentativeEdges :=
-    if tentativeAccepted then
-      (tentativeLoopTrace cfg ext fcrStore
-        (get_ancestor_roots store head previousRoot) previousRoot).2
-    else
-      []
-  (find_latest_confirmed_descendant cfg ext fcrStore latestConfirmedRoot,
-    (previousEdges, tentativeEdges))
-
 /-- Erasing both ghost edge lists gives the exact executable wrapper result. -/
 theorem findLatestSelectedTrace_fst
     (fcrStore : FastConfirmationStore Root) (latestConfirmedRoot : Root) :
@@ -153,11 +101,6 @@ theorem mem_findLatestSelectedTrace_tentative
   split_ifs at h <;> try simp at h
   all_goals
     exact mem_tentativeLoopTrace cfg ext fcrStore _ _ a c h
-
-/-- A previous-loop edge retained by the complete wrapper trace. -/
-def PreviousAcceptedEdge (fcrStore : FastConfirmationStore Root)
-    (latestConfirmedRoot a c : Root) : Prop :=
-  (a, c) ∈ (findLatestSelectedTrace cfg ext fcrStore latestConfirmedRoot).2.1
 
 /-- Every retained previous-loop edge passed confirmation; its wrapper entry
 also passed either the epoch-start escape or the no-conflict prediction. -/
@@ -194,15 +137,6 @@ theorem PreviousAcceptedEdge.no_conflict_gate
   rcases (h.gates cfg ext).2.2.2 with hstart | hgate
   · exact False.elim (hnot_start hstart)
   · exact hgate
-
-/-- A selected-path tentative edge which actually crossed to a later block
-epoch.  Unlike bare loop instrumentation, this predicate is indexed by the
-wrapper input and excludes tentative edges discarded by the final acceptance
-guard. -/
-def CurrentTargetAcceptedEdge (fcrStore : FastConfirmationStore Root)
-    (latestConfirmedRoot a c : Root) : Prop :=
-  (a, c) ∈ (findLatestSelectedTrace cfg ext fcrStore latestConfirmedRoot).2.2 ∧
-    get_block_epoch cfg fcrStore.store a < get_block_epoch cfg fcrStore.store c
 
 /-- A crossing tentative edge passed the executable
 `will_current_target_be_justified` guard. -/

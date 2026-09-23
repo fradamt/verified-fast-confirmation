@@ -2,6 +2,7 @@ module
 public import Mathlib.Tactic
 public import FastConfirmation.Spec.Proof.AcceptedHistoricalA32CallSupplier
 public import FastConfirmation.Spec.Proof.AcceptedCurrentSameSourceHistory
+public import FastConfirmation.Spec.Proof.ModelFacts
 
 @[expose] public section
 

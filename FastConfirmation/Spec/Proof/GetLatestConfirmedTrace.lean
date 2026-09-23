@@ -1,6 +1,7 @@
 module
 public import FastConfirmation.Spec.Proof.FCRCallContracts
 
+public import FastConfirmation.Spec.Statements.Traces
 @[expose] public section
 
 /-!
@@ -26,56 +27,6 @@ variable (cfg : Config) (ext : Externals Root)
 
 /-! ## The three exact executable guards -/
 
-/-- The first guard, before any finalized reset has occurred. -/
-def getLatestFinalizedRevertGuard
-    (query : FastConfirmationStore Root) : Prop :=
-  get_block_epoch cfg query.store query.confirmed_root + 1 <
-      get_current_store_epoch cfg query.store ∨
-    ¬ is_ancestor query.store
-      (get_node_for_root (get_head cfg query.store).root)
-      (get_node_for_root query.confirmed_root) ∨
-    (is_start_slot_at_epoch cfg (get_current_slot cfg query.store) ∧
-      ¬ is_confirmed_chain_safe cfg ext query query.confirmed_root)
-
-/-- Candidate after the finalized-revert phase. -/
-def getLatestAfterFinalized
-    (query : FastConfirmationStore Root) : Root :=
-  if get_block_epoch cfg query.store query.confirmed_root + 1 <
-        get_current_store_epoch cfg query.store ∨
-      ¬ is_ancestor query.store
-        (get_node_for_root (get_head cfg query.store).root)
-        (get_node_for_root query.confirmed_root) ∨
-      (is_start_slot_at_epoch cfg (get_current_slot cfg query.store) ∧
-        ¬ is_confirmed_chain_safe cfg ext query query.confirmed_root) then
-    query.store.finalized_checkpoint.root
-  else
-    query.confirmed_root
-
-/-- The second Boolean guard, parameterized by the candidate produced by the
-first phase.  In particular, its stale comparison is not made against the
-original cached root when the finalized guard fired. -/
-def getLatestObservedRestartGuard
-    (query : FastConfirmationStore Root) (candidate : Root) : Bool :=
-  is_start_slot_at_epoch cfg (get_current_slot cfg query.store) &&
-    decide (get_block_epoch cfg query.store
-        query.current_epoch_observed_justified_checkpoint.root + 1 =
-      get_current_store_epoch cfg query.store) &&
-    decide (query.current_epoch_observed_justified_checkpoint =
-      query.store.unrealized_justifications
-        (get_head cfg query.store).root) &&
-    decide (get_block_slot query.store candidate <
-      get_block_slot query.store
-        query.current_epoch_observed_justified_checkpoint.root)
-
-/-- Candidate after the observed-restart phase. -/
-def getLatestAfterObserved
-    (query : FastConfirmationStore Root) : Root :=
-  let afterFinalized := getLatestAfterFinalized cfg ext query
-  if getLatestObservedRestartGuard cfg query afterFinalized then
-    query.current_epoch_observed_justified_checkpoint.root
-  else
-    afterFinalized
-
 /-- The observed-checkpoint restart can only raise the candidate block slot.
 This follows from the executable guard's strict stale comparison. -/
 theorem getLatestAfterObserved_slot_ge_afterFinalized
@@ -98,62 +49,7 @@ theorem getLatestAfterObserved_slot_ge_afterFinalized
           (getLatestAfterFinalized cfg ext query) <;> simp_all
     simp [getLatestAfterObserved, hfalse]
 
-/-- The final recency guard deciding whether the descendant selector runs. -/
-def getLatestSelectorGuard
-    (query : FastConfirmationStore Root) (candidate : Root) : Prop :=
-  get_block_epoch cfg query.store candidate + 1 ≥
-    get_current_store_epoch cfg query.store
-
-/-- The phased evaluator reconstructed from the three named guards. -/
-def getLatestTraceResult
-    (query : FastConfirmationStore Root) : Root :=
-  let candidate := getLatestAfterObserved cfg ext query
-  if get_block_epoch cfg query.store candidate + 1 ≥
-      get_current_store_epoch cfg query.store then
-    find_latest_confirmed_descendant cfg ext query candidate
-  else
-    candidate
-
-/-- The named phased evaluator is definitionally the pinned executable
-`get_latest_confirmed`. -/
-theorem getLatestTraceResult_eq_getLatestConfirmed
-    (query : FastConfirmationStore Root) :
-    getLatestTraceResult cfg ext query = get_latest_confirmed cfg ext query := by
-  rfl
-
 /-! ## Branch-indexed phase traces -/
-
-/-- Exact provenance for the first phase. -/
-inductive GetLatestFinalizedPhase
-    (query : FastConfirmationStore Root) : Root → Prop
-  | carried
-      (guard_false : ¬ getLatestFinalizedRevertGuard cfg ext query) :
-      GetLatestFinalizedPhase query query.confirmed_root
-  | reverted
-      (guard_true : getLatestFinalizedRevertGuard cfg ext query) :
-      GetLatestFinalizedPhase query query.store.finalized_checkpoint.root
-
-/-- Exact provenance for the second phase. -/
-inductive GetLatestObservedPhase
-    (query : FastConfirmationStore Root) (before : Root) : Root → Prop
-  | unchanged
-      (guard_false : getLatestObservedRestartGuard cfg query before = false) :
-      GetLatestObservedPhase query before before
-  | restarted
-      (guard_true : getLatestObservedRestartGuard cfg query before = true) :
-      GetLatestObservedPhase query before
-        query.current_epoch_observed_justified_checkpoint.root
-
-/-- Exact provenance for the final phase. -/
-inductive GetLatestSelectorPhase
-    (query : FastConfirmationStore Root) (input : Root) : Root → Prop
-  | unchanged
-      (guard_false : ¬ getLatestSelectorGuard cfg query input) :
-      GetLatestSelectorPhase query input input
-  | selected
-      (guard_true : getLatestSelectorGuard cfg query input) :
-      GetLatestSelectorPhase query input
-        (find_latest_confirmed_descendant cfg ext query input)
 
 namespace GetLatestFinalizedPhase
 
@@ -199,69 +95,7 @@ theorem branch_cases
 
 end GetLatestSelectorPhase
 
-/-- Complete ordered evaluator trace.  Intermediate roots are data, while
-each phase proof fixes their operational provenance independently of any root
-equalities. -/
-structure GetLatestConfirmedTrace
-    (query : FastConfirmationStore Root) where
-  afterFinalized : Root
-  afterObserved : Root
-  result : Root
-  finalized : GetLatestFinalizedPhase cfg ext query afterFinalized
-  observed : GetLatestObservedPhase cfg query afterFinalized afterObserved
-  selector : GetLatestSelectorPhase cfg ext query afterObserved result
-  result_eq : result = get_latest_confirmed cfg ext query
-
 /-! ## Canonical evaluator trace and projections -/
-
-/-- Every arbitrary query store has an exact evaluator trace. -/
-def getLatestConfirmedTrace
-    (query : FastConfirmationStore Root) :
-    GetLatestConfirmedTrace cfg ext query := by
-  let afterFinalized := getLatestAfterFinalized cfg ext query
-  let afterObserved := getLatestAfterObserved cfg ext query
-  let result := getLatestTraceResult cfg ext query
-  refine {
-    afterFinalized := afterFinalized
-    afterObserved := afterObserved
-    result := result
-    finalized := ?_
-    observed := ?_
-    selector := ?_
-    result_eq := ?_
-  }
-  · dsimp only [afterFinalized, getLatestAfterFinalized]
-    by_cases hguard : getLatestFinalizedRevertGuard cfg ext query
-    · have hnamed := hguard
-      simp only [getLatestFinalizedRevertGuard] at hguard
-      rw [if_pos hguard]
-      exact .reverted hnamed
-    · have hnamed := hguard
-      simp only [getLatestFinalizedRevertGuard] at hguard
-      rw [if_neg hguard]
-      exact .carried hnamed
-  · dsimp only [afterObserved, getLatestAfterObserved]
-    by_cases hguard : getLatestObservedRestartGuard cfg query
-        (getLatestAfterFinalized cfg ext query) = true
-    · rw [if_pos hguard]
-      exact .restarted hguard
-    · have hfalse : getLatestObservedRestartGuard cfg query
-          (getLatestAfterFinalized cfg ext query) = false :=
-        Bool.eq_false_of_not_eq_true hguard
-      rw [if_neg hguard]
-      exact .unchanged hfalse
-  · dsimp only [result, getLatestTraceResult, afterObserved]
-    by_cases hguard : getLatestSelectorGuard cfg query
-        (getLatestAfterObserved cfg ext query)
-    · have hnamed := hguard
-      simp only [getLatestSelectorGuard] at hguard
-      rw [if_pos hguard]
-      exact .selected hnamed
-    · have hnamed := hguard
-      simp only [getLatestSelectorGuard] at hguard
-      rw [if_neg hguard]
-      exact .unchanged hnamed
-  · exact getLatestTraceResult_eq_getLatestConfirmed cfg ext query
 
 namespace GetLatestConfirmedTrace
 
@@ -363,12 +197,6 @@ end GetLatestConfirmedTrace
 namespace Execution
 
 variable (E : Execution Root)
-
-/-- The same arbitrary-store evaluator trace specialized to the exact
-variable-updated store used by one execution call. -/
-def getLatestConfirmedTraceAt (v : ValidatorIndex) (n : ℕ) :
-    GetLatestConfirmedTrace cfg ext (E.fcrStep cfg ext v n) :=
-  getLatestConfirmedTrace cfg ext (E.fcrStep cfg ext v n)
 
 /-- The eventual call induction receives the exact selector input kind while
 retaining the stronger ordered branch objects in `getLatestConfirmedTraceAt`.

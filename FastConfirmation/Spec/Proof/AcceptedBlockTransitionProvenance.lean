@@ -2,6 +2,7 @@ module
 public import Mathlib.Tactic
 public import FastConfirmation.Spec.Proof.BlockAgreement
 public import FastConfirmation.Spec.Proof.Preservation
+public import FastConfirmation.Spec.Proof.ModelFacts
 
 @[expose] public section
 

@@ -5,6 +5,7 @@ public import FastConfirmation.Spec.Proof.FFGSourceCoherence
 public import FastConfirmation.Spec.Proof.FFGGlobalCheckpointTrajectory
 public import FastConfirmation.Spec.Proof.Nucleus
 public import FastConfirmation.Spec.Proof.ExportWiring
+public import FastConfirmation.Spec.Proof.ModelFacts
 
 @[expose] public section
 

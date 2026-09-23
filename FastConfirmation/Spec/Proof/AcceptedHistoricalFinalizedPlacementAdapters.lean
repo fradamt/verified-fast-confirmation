@@ -1,6 +1,7 @@
 module
 public import FastConfirmation.Spec.Proof.AcceptedHistoricalFinalizedPlacement
 public import FastConfirmation.Spec.Proof.SelectedTraceFFGRealizationPipeline
+public import FastConfirmation.Spec.Proof.ModelFacts
 
 @[expose] public section
 

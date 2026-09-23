@@ -2,7 +2,9 @@ module
 public import FastConfirmation.Spec.Proof.NoConflictCertificatePinning
 public import FastConfirmation.Spec.Proof.SelectedPreQueryHistoricalSIR
 public import FastConfirmation.Spec.Proof.FFGSelectedDomainRealization
+public import FastConfirmation.Spec.Proof.ModelFacts
 
+public import FastConfirmation.Spec.Statements.Premises.FFG
 @[expose] public section
 
 /-!
@@ -43,39 +45,6 @@ variable {Root : Type*} [LinearOrder Root] [Inhabited Root]
 variable (cfg : Config) (ext : Externals Root)
 
 /-! ## The epoch-boundary source law -/
-
-/-- The remaining phase0 fact hidden by the reduced model's opaque state
-functions.
-
-After at least one epoch boundary, empty-slot processing exposes exactly the
-eager `process_justification_and_finalization` value of the starting state.
-The same value is installed by a block transition whose block crosses an
-epoch boundary from its pre-state.  Additional empty epochs cannot create a
-new justified checkpoint: without a new block there are no newly included
-attestations.
-
-This is deliberately a state-function contract only.  It mentions no
-execution, fork-choice target, certificate, ancestry, or safety conclusion.
-Together with `Phase0SourceCoherence`, it is the exact phase0 distinction in
-paper Definition 7: a head in the voting epoch reads `GJ`, while a head from
-an earlier epoch reads the eager `GU` value. -/
-structure Phase0BoundarySourceCoherence
-    (cfg : Config) (ext : Externals Root) : Prop where
-  process_slots_current_justified :
-    ∀ (st : BeaconState Root) (target : Slot),
-      st.slot < target →
-      compute_epoch_at_slot cfg st.slot <
-        compute_epoch_at_slot cfg target →
-      (ext.process_slots st target).current_justified_checkpoint =
-        (ext.process_justification_and_finalization st).current_justified_checkpoint
-  state_transition_current_justified :
-    ∀ (pre : BeaconState Root) (sb : SignedBeaconBlock Root)
-      (post : BeaconState Root),
-      ext.state_transition pre sb = some post →
-      compute_epoch_at_slot cfg pre.slot <
-        compute_epoch_at_slot cfg sb.message.slot →
-      post.current_justified_checkpoint =
-        (ext.process_justification_and_finalization pre).current_justified_checkpoint
 
 omit [LinearOrder Root] [Inhabited Root] in
 /-- A slot whose epoch precedes `e` is strictly before `e`'s boundary. -/

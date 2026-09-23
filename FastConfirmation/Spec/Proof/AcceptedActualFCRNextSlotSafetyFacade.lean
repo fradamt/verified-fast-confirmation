@@ -1,7 +1,9 @@
 module
 public import FastConfirmation.Spec.Proof.AcceptedActualFCRNextSlotSafetyFold
 public import FastConfirmation.Spec.TheoremStatements
+public import FastConfirmation.Spec.Internal.Legacy.Vocabulary
 
+public import FastConfirmation.Spec.Statements.Claims
 @[expose] public section
 
 /-!
@@ -28,28 +30,6 @@ variable (cfg : Config) (ext : Externals Root)
 namespace Execution
 
 variable (E : Execution Root)
-
-/-- Assumptions for the stored-output following-slot theorem.
-
-There is deliberately no finalized-reset, observed-adoption, observed-lock,
-head-ancestry, filter-result, or safety field.  Finalized next-slot safety and
-active-observed restart safety are already derived by the fold. -/
-structure AcceptedActualFCRNextSlotSafetyAssumptions where
-  semantics : ExactPrefixAcceptedFFGSemantics cfg ext E
-  trajectory : E.ScheduledPrefixTrajectoryAssumptions cfg ext
-  completed_calls :
-    E.AcceptedHistoricalA32CompletedPrefixCallAssumptions cfg ext
-  epoch_ends_fit : EpochEndsFitUint64 cfg
-  anchor_eq : semantics.anchor = E.genesis_store.justified_checkpoint
-  anchor_boundary : TrustedAnchorBoundaryAligned (cfg := cfg)
-    (E := E) (anchor := semantics.anchor)
-  finalization_delay :
-    E.AcceptedRealizedFinalizationDelay cfg ext semantics
-  slots_per_epoch_gt_one : 1 < cfg.slots_per_epoch
-  paper_a32 : semantics.state.PaperA32Inclusion cfg ext
-  checkpoint_projection : AcceptedEpochCheckpointProjection
-    semantics.anchor (E.AcceptedRoot cfg ext) semantics.state.C
-  exact_link_validity : semantics.state.ExactLinkValidity
 
 namespace AcceptedActualFCRNextSlotSafetyAssumptions
 
@@ -251,38 +231,11 @@ end AcceptedActualFCRNextSlotSafetyAssumptions
 
 end Execution
 
-/-- Accepted whole-output safety with the same endpoint quantifiers and timing
-as `Spec_Safety_next_slot`, under the accepted executable-semantics bundle.
-
-The global `PaperSafetySynchrony` inside `completed_calls` makes this the
-current model's GST-0 specialization. Its four fields are honest-attestation
-delivery, block relay, payload-envelope relay, and equivocation-evidence relay;
-it does not require the additional `latest_message_relay` premise of the full
-`Synchrony` bundle. -/
-def AcceptedSpec_Safety_next_slot : Prop :=
-  ∀ E : Execution Root,
-    E.AcceptedActualFCRNextSlotSafetyAssumptions cfg ext →
-      ∀ v ∈ E.honest, ∀ n : ℕ,
-        ∀ w ∈ E.honest, ∀ m : ℕ, n ≤ m →
-          E.slot_at cfg n + 1 ≤ E.slot_at cfg m →
-          E.WithinHorizon cfg m →
-            is_ancestor (E.store cfg ext w m)
-              (get_head cfg (E.store cfg ext w m))
-              (get_node_for_root (E.confirmed cfg ext v n)) = true
-
 /-- Stored-output safety theorem at the following-slot deadline. -/
 theorem acceptedSpec_safety_next_slot :
     AcceptedSpec_Safety_next_slot cfg ext := by
   intro E h v hv n w hw m hnm hnext hHm
   exact h.confirmed_head_nextSlot cfg ext E hv hw hnm hnext hHm
-
-/-- Accepted-bundle specialization of the upstream strict-monotonicity
-statement. The fifth live field now bounds FFG checkpoint visibility at
-epoch boundaries. The one-confirmation, reconfirmation, and fork-choice
-bridges are developed in the live-monotonicity proof modules. -/
-def AcceptedSpec_Monotonicity_live : Prop :=
-  Spec_Monotonicity_live cfg ext
-    (fun E => Nonempty (E.AcceptedActualFCRNextSlotSafetyAssumptions cfg ext))
 
 end FastConfirmation.Spec
 

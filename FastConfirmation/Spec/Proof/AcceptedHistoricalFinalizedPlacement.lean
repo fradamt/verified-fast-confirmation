@@ -3,6 +3,7 @@ public import FastConfirmation.Spec.Proof.AcceptedPathLocalFinalizedTransport
 public import FastConfirmation.Spec.Proof.AcceptedResetCheckpointClassification
 public import FastConfirmation.Spec.Proof.AcceptedCurrentTargetLowerContracts
 public import FastConfirmation.Spec.Proof.AcceptedHistoricalA32GlobalTrajectory
+public import FastConfirmation.Spec.Proof.ModelFacts
 
 @[expose] public section
 

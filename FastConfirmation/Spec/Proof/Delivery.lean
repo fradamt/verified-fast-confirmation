@@ -4,6 +4,7 @@ public import FastConfirmation.Spec.Proof.WFTrajectory
 public import FastConfirmation.Spec.Proof.HonestWeight
 public import FastConfirmation.Spec.Proof.PayloadPersistence
 public import FastConfirmation.Spec.Proof.BlockStateAgreement
+public import FastConfirmation.Spec.Proof.ModelFacts
 
 @[expose] public section
 

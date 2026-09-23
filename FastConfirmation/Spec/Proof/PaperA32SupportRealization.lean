@@ -2,6 +2,7 @@ module
 public import FastConfirmation.Spec.Proof.CurrentTargetA32Support
 public import FastConfirmation.Spec.Proof.FFGJustifiedCheckpointCache
 public import FastConfirmation.Spec.Proof.PaperA32ProjectionCore
+public import FastConfirmation.Spec.Proof.ModelFacts
 
 @[expose] public section
 

@@ -5,6 +5,7 @@ public import FastConfirmation.Spec.Proof.AcceptedPathLocalFinalizedTransport
 public import FastConfirmation.Spec.Proof.AcceptedFFGJustifiedMaximality
 public import FastConfirmation.Spec.Proof.AcceptedCandidateHistoryRecurrence
 public import FastConfirmation.Spec.Proof.AcceptedFinalizationTiming
+public import FastConfirmation.Spec.Proof.ModelFacts
 
 @[expose] public section
 

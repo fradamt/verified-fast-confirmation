@@ -1,7 +1,9 @@
 module
 public import FastConfirmation.Spec.Proof.FFGEndpointRealization
 public import FastConfirmation.Spec.Model.PayloadEffects
+public import FastConfirmation.Spec.Proof.ModelFacts
 
+public import FastConfirmation.Spec.Statements.Premises.Execution
 @[expose] public section
 
 /-!
@@ -644,14 +646,6 @@ theorem globalFinalized_anchor_or_known_AU
     refine ⟨r, hr, ?_⟩
     rw [hguf]
     exact S.guf_AU cfg r ⟨_, E.blockAt_of_store_known cfg ext hr⟩
-
-/-- Minimal checkpoint-sync boundary premise.  It asks only that the trusted
-anchor block represent a block at or before its declared epoch boundary; it
-does not require the anchor epoch or slot to be genesis.  Together with the
-ordinary slot/epoch relation this is exactly boundary alignment. -/
-def TrustedAnchorBoundaryAligned : Prop :=
-  (E.genesis_store.blocks anchor.root).slot ≤
-    compute_start_slot_at_epoch cfg anchor.epoch
 
 /-- Global finalized provenance plus a boundary-aligned trusted anchor
 discharges `FinalizedBoundaryRealization` at every honest endpoint. -/

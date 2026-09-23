@@ -2,6 +2,7 @@ module
 public import Mathlib.Tactic
 public import FastConfirmation.Spec.Proof.PayloadPersistence
 public import FastConfirmation.Spec.Proof.AcceptedActualFCRNextSlotSafetyFold
+public import FastConfirmation.Spec.Proof.ModelFacts
 
 @[expose] public section
 

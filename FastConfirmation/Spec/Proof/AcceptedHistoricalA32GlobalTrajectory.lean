@@ -1,6 +1,7 @@
 module
 public import FastConfirmation.Spec.Proof.AcceptedCurrentTargetLowerContracts
 public import FastConfirmation.Spec.Proof.AcceptedHistoricalA32Crossing
+public import FastConfirmation.Spec.Proof.ModelFacts
 
 @[expose] public section
 
