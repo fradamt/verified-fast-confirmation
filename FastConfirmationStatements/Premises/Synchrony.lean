@@ -18,7 +18,8 @@ received by the end of that slot"), made operational, plus the block/message
 propagation the spec leaves implicit (explicit in the paper's `Synchrony`
 bundle). The fork choice's own `current_slot ≥ slot + 1` gate makes the first
 second of slot `s+1` the earliest applicable processing time for a slot-`s`
-attestation. -/
+attestation. The exact relation to `NextSlotSynchronyPremises` is proved by
+`synchrony_and_delivery_iff_nextSlot_and_latestMessageRelay`. -/
 structure Synchrony (E : Execution Root) : Prop where
   /-- honest attestations of slot `s` are processed by every honest node at
       the first second of slot `s+1`. -/
@@ -114,7 +115,9 @@ def DataAvailabilityRelay (E : Execution Root) : Prop :=
 
 The accepted next-slot argument needs honest-attestation delivery, block relay,
 envelope delivery, data-availability relay, and equivocation-evidence relay. It does not use the additional
-`latest_message_relay` field of the full `Synchrony` bundle. -/
+`latest_message_relay` field of the full `Synchrony` bundle. The exact
+relation is proved by
+`synchrony_and_delivery_iff_nextSlot_and_latestMessageRelay`. -/
 structure NextSlotSynchronyPremises (E : Execution Root) : Prop where
   attestation_delivery : ∀ v ∈ E.honest, ∀ s n (a : Attestation Root),
     E.SlotWithinHorizon cfg s →
