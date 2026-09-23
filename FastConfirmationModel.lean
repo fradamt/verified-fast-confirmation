@@ -11,6 +11,7 @@ public import FastConfirmationModel.Spec.Validator.Attesting
 public import FastConfirmationModel.Execution.Run
 public import FastConfirmationModel.Execution.ScheduledPrefixes
 public import FastConfirmationModel.Weak.Execution
+public import FastConfirmationModel.Weak.ObserverState
 public import FastConfirmationModel.Weak.StrongReference
 public import FastConfirmationModel.Weak.WeakSynchrony
 public import FastConfirmationModel.Spec.BeaconChain.Helpers

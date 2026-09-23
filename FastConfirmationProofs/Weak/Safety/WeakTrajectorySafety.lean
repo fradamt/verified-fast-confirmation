@@ -3,6 +3,7 @@ public import FastConfirmationProofs.Safety.ConfirmedCacheSafety
 public import FastConfirmationProofs.Weak.History.WeakCandidateSourceHistory
 public import FastConfirmationProofs.Weak.History.WeakHistoricalA32OriginCall
 public import FastConfirmationProofs.Weak.Safety.WeakOneShotSafetyClosed
+public import FastConfirmationStatements.Weak.CompletedCall
 
 @[expose] public section
 
@@ -183,28 +184,6 @@ namespace Execution
 variable (E : Execution Root)
 
 /-! ## The non-duplicated part of the completed-prefix call contract -/
-
-/-- The part of `E.CompletedFCRCallPremises` that is
-**not** already contained in `SelectedMarginAssumptions`: the two phase-0
-source-coherence contracts and the anchor-active balance floor.
-
-The full 6-field call contract additionally carries `synchrony`,
-`static_validators` and `byzantine_bound`, which are literally three fields of
-`SelectedMarginAssumptions` — a record every weak trajectory headline already
-carries inside `hW.base`.  Taking those three a second time would only
-double-count the premise *surface*, so the headlines take this 3-field
-supplement and rebuild the full contract internally with
-`toCompletedPrefixCallAssumptions` below.
-
-The supplement used to have a fourth field, `delivery_lookahead`.  It is gone:
-the boundary delivery case is now part of the single `synchrony` assumption,
-which the headlines already carry inside `hW.base`, so dropping it weakened
-the premise surface without moving any assumption content. -/
-structure AcceptedHistoricalA32CompletedPrefixCallSupplement : Prop where
-  phase0_source : Phase0SourceCoherence cfg ext
-  phase0_boundary_source : Phase0BoundarySourceCoherence cfg ext
-  balance_floor : cfg.effective_balance_increment ≤
-    E.weight (E.currentTargetAnchorActive cfg)
 
 /-- The 3-field supplement together with the selected-margin floor rebuilds the
 full 6-field completed-prefix call contract: the three shared fields are read

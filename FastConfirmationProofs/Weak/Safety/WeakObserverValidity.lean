@@ -1,6 +1,7 @@
 module
 public import FastConfirmationProofs.Discount.HonestWeight
 public import FastConfirmationProofs.Execution.History.CausalQueryTraceAdapter
+public import FastConfirmationStatements.Weak.ObserverPremises
 
 @[expose] public section
 
@@ -10,21 +11,6 @@ variable {Root : Type*} [LinearOrder Root] [Inhabited Root]
 variable (cfg : Config) (ext : Externals Root)
 
 namespace Execution
-
-/-- Stores produced by the observer's own validated handler run. -/
-inductive ObserverCausalStore (E : Execution Root) (obs : ValidatorIndex) :
-    Store Root → Prop
-  | genesis : ObserverCausalStore E obs E.genesis_store
-  | scheduledPrefix (p : ScheduledEventPrefix E) : p.node = obs →
-      ObserverCausalStore E obs (p.store cfg ext)
-
-/-- Keyed states of the observer's handler run. -/
-def ObserverValidationState (E : Execution Root) (obs : ValidatorIndex)
-    (state : BeaconState Root) : Prop :=
-  ∃ store, ObserverCausalStore cfg ext E obs store ∧
-    ((∃ root ∈ store.block_roots, store.block_states root = state) ∨
-      ∃ checkpoint ∈ store.checkpoint_state_keys,
-        store.checkpoint_states checkpoint = state)
 
 theorem ObserverCausalStore.blockState {E : Execution Root} {obs : ValidatorIndex}
     {store : Store Root} (h : ObserverCausalStore cfg ext E obs store)
@@ -78,23 +64,6 @@ theorem ScheduledEventPrefix.observerCausal_take {E : Execution Root}
     .scheduledPrefix _ rfl
   simpa only [ScheduledEventPrefix.store, List.take_take,
     Nat.min_eq_left hkCount, Nat.min_eq_right hkCount] using hshort
-
-/-- The three indexed-attestation laws on the observer's own keyed states. -/
-structure ObserverValidity (E : Execution Root) (obs : ValidatorIndex) : Prop where
-  honest_attestation_valid : ∀ (state : BeaconState Root) (a : Attestation Root),
-    E.ObserverValidationState cfg ext obs state →
-    ∀ v ∈ E.honest, a.attesting_indices = [v] → v ∈ E.committee a.data.slot →
-    (∃ m a', E.vote v a.data.slot = some (m, a') ∧ a.data = a'.data) →
-      ext.is_valid_indexed_attestation state a = true
-  valid_attestation_honest : ∀ (state : BeaconState Root) (a : Attestation Root),
-    E.ObserverValidationState cfg ext obs state →
-    ext.is_valid_indexed_attestation state a = true →
-    ∀ v ∈ E.honest, v ∈ a.attesting_indices →
-      ∃ m a', E.vote v a.data.slot = some (m, a') ∧ a.data = a'.data
-  valid_attestation_committee : ∀ (state : BeaconState Root) (a : Attestation Root),
-    E.ObserverValidationState cfg ext obs state →
-    ext.is_valid_indexed_attestation state a = true →
-    ∀ i ∈ a.attesting_indices, i ∈ E.committee a.data.slot
 
 private theorem on_attester_slashing_honest_not_added_of_observer
     {E : Execution Root} {obs : ValidatorIndex}
