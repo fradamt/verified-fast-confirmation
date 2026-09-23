@@ -10,7 +10,8 @@ public import FastConfirmationProofs.ModelFacts
 /-!
 # Joint accepted-FCR non-vacuity: paper inclusion and next-slot bundle
 
-This module combines the two parts of the horizon-four witness.  The
+This file proves that one finite execution satisfies the complete next-slot
+premise bundle. It combines the two parts of the horizon-four witness.  The
 operational execution lives in `AcceptedActualFCRJointNonVacuityBase`; the
 accepted FFG state and exact-link interpretation live in
 `AcceptedActualFCRJointNonVacuityFFG`.  It supplies the paper A3.2 law, the

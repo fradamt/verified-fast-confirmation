@@ -41,12 +41,6 @@ structure AcceptedEpochCheckpointProjection
     anchor.epoch ≤ sourceEpoch → sourceEpoch ≤ targetEpoch →
     C (C r targetEpoch).root sourceEpoch = C r sourceEpoch
 
-/-- The exact epoch-indexed checkpoint-prefix relation represented by `C`. -/
-def ExactCheckpointPrefix
-    (C : Root → Epoch → Checkpoint Root)
-    (source target : Checkpoint Root) : Prop :=
-  source = C target.root source.epoch
-
 variable {anchor : Checkpoint Root}
 
 /-! ## Generic certificate-scoped exact-link validity -/
@@ -69,25 +63,6 @@ def Contributing
 end IncludedSupermajorityLink
 
 
-
-/-- Both endpoints of a contributing link are formed on its accepted
-certificate carrier. -/
-structure IncludedLinkEndpointsFormed
-    (E : Execution Root)
-    (included : Root → Attestation Root → Prop)
-    (anchor : Checkpoint Root)
-    (formed : Root → Checkpoint Root → Prop)
-    (Accepted : Root → Prop) : Prop where
-  carrier_accepted : ∀ {carrier source target},
-    (L : IncludedSupermajorityLink cfg E included
-      carrier source target) →
-    IncludedSupermajorityLink.Contributing cfg anchor L →
-    Accepted carrier
-  endpoints_formed : ∀ {carrier source target},
-    (L : IncludedSupermajorityLink cfg E included
-      carrier source target) →
-    IncludedSupermajorityLink.Contributing cfg anchor L →
-    formed carrier source ∧ formed carrier target
 
 /-- Exact carrier law for the included links which actually extend a
 carrier-local justification certificate.
@@ -130,12 +105,6 @@ abbrev ExactLinkValidity
 end AcceptedChainFFGState
 
 namespace ChainFFGState
-
-/-- Exact-link validity specialized to the scheduled-root state. -/
-abbrev ExactLinkValidity
-    (S : ChainFFGState cfg E anchor) (Accepted : Root → Prop) : Prop :=
-  ExactIncludedLinkValidity cfg E S.includedAttestations.Included anchor
-    S.C Accepted
 
 end ChainFFGState
 

@@ -21,6 +21,12 @@ bundle and the two executions that refute strict-prefix safety variants.
   `AcceptedActualFCRJointNonVacuityBase.witnessScheduledPrefixTrajectoryAssumptions`.
   The same execution has whole-second scheduling, honest votes, a valid genesis
   store, and well-formed external functions.
+* `Execution.WellFormedExecution`:
+  `AcceptedActualFCRJointNonVacuityBase.witnessWellFormedExecution`. The four
+  honest nodes start from one valid anchor store and process finite schedules.
+* `HonestBehavior`:
+  `AcceptedActualFCRJointNonVacuityBase.witnessHonestBehavior`. Every scheduled
+  honest vote belongs to its assigned slot committee in that execution.
 * `Execution.CompletedFCRCallPremises`:
   `NextSlotPremiseWitness.witnessCompletedPrefixCallAssumptions`. The same
   execution has synchronized votes and blocks, stable validators and weights,
@@ -29,12 +35,50 @@ bundle and the two executions that refute strict-prefix safety variants.
   `AcceptedActualFCRJointNonVacuityBase.witnessPaperSafetySynchrony`.
   The same execution satisfies the delivery and relay laws. It contains no
   execution payload envelope, so its envelope laws are vacuous.
+* `Synchrony`:
+  `AcceptedActualFCRJointNonVacuityBase.witnessSynchrony`. The same finite
+  schedule delivers each honest vote to all four honest nodes.
 * `BeaconExternalsPremises`:
   `AcceptedActualFCRJointNonVacuityBase.witnessExternalsCoherence`. The same
   execution uses deterministic slot processing and envelope verification.
 * `ByzantineWeightPremises`:
   `AcceptedActualFCRJointNonVacuityBase.witnessByzantineBound`. The same
   execution has four equal-weight honest validators and no Byzantine weight.
+* `StaticValidatorSet`:
+  `AcceptedActualFCRJointNonVacuityBase.witnessStaticValidatorSet`. All four
+  validators remain active throughout the finite horizon.
+* `Phase0SourceCoherence`:
+  `AcceptedActualFCRJointNonVacuityBase.witnessPhase0SourceCoherence`. Slot
+  processing preserves the chosen source within an epoch.
+* `Phase0BoundarySourceCoherence`:
+  `AcceptedActualFCRJointNonVacuityBase.witnessPhase0BoundarySourceCoherence`.
+  The same finite state transition supplies the epoch-boundary source law.
+* `HorizonVoteDeliveryLookahead`:
+  `AcceptedActualFCRJointNonVacuityBase.witnessHorizonVoteDeliveryLookahead`.
+  The slot-fifteen vote reaches every honest node at second sixteen, outside
+  the verification horizon.
+* `ExactPrefixAcceptedFFGSemantics`:
+  `AcceptedActualFCRJointNonVacuityFFG.witnessAcceptedSemantics`. The child
+  and carrier in the same execution have an accepted FFG interpretation at
+  every causal schedule prefix.
+* `AcceptedEpochCheckpointProjection`:
+  `AcceptedActualFCRJointNonVacuityFFG.witnessAcceptedEpochCheckpointProjection`.
+  The anchor, child, and carrier give concrete epoch checkpoint roots.
+* `AcceptedChainFFGState.ExactLinkValidity`:
+  `AcceptedActualFCRJointNonVacuityFFG.witnessExactLinkValidity`. Included
+  attestations on the carrier support its exact checkpoint link.
+* `AcceptedChainFFGState.PaperA32Inclusion`:
+  `NextSlotPremiseWitness.witnessPaperA32Inclusion`. The slot-seven carrier
+  includes the vote evidence for the slot-one child.
+* `Execution.RealizedFinalizationDelay`:
+  `NextSlotPremiseWitness.witnessAcceptedRealizedFinalizationDelay`. The
+  finite FFG state meets the delay bound over the horizon.
+* `EpochEndsFitUint64`:
+  `AcceptedActualFCRJointNonVacuityBase.witnessEpochEndsFitUint64`. The
+  four-slot epochs fit the execution's integer bounds.
+* `TrustedAnchorBoundaryAligned`:
+  `AcceptedActualFCRJointNonVacuityBase.witnessTrustedAnchorBoundaryAligned`.
+  The trusted anchor lies at its declared epoch boundary.
 
 ## Counterexamples
 

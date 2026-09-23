@@ -9,8 +9,8 @@ public import FastConfirmationProofs.ModelFacts
 /-!
 # Base execution for joint accepted-FCR non-vacuity
 
-This module supplies the concrete, operational half of the horizon-four
-joint witness.  The accepted FFG semantics and Paper A3.2 witness are kept in
+This file proves the operational laws of a finite, horizon-four execution.
+The accepted FFG semantics and Paper A3.2 witness are kept in
 a follow-on module; all declarations here are intentionally public so that
 the semantic layer can reuse the exact executable trace.
 

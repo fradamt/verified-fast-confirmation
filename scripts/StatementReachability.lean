@@ -30,13 +30,19 @@ private def isSourceDeclaration (env : Environment) (decl : Name) : Bool :=
     | some _ =>
         let final := decl.getString!
         final != "casesOn" && final != "recOn" && final != "noConfusion" &&
-          final != "noConfusionType" && final != "ctorIdx" &&
+        final != "noConfusionType" && final != "ctorIdx" &&
+          final != "below" && final != "brecOn" &&
           !final.startsWith "_sizeOf" && !decl.toString.contains ".mk."
     | none => false
 
--- Each approved helper needs a reason tied to a public witness or
--- counterexample type. Add only after checking the printed SU list.
-private def approved : List Name := []
+-- The strict-prefix counterexample's public environment record has a
+-- `Synchrony` field, so its theorem type needs this older premise bundle.
+-- The finite next-slot witness states paper support through the accepted
+-- FFG state's specialization, so its theorem type needs that abbreviation.
+private def approved : List Name := [
+  ``FastConfirmation.Spec.Synchrony,
+  ``FastConfirmation.Spec.AcceptedChainFFGState.PaperA32SupportThroughoutEpoch
+]
 
 run_cmd do
   let env ← getEnv

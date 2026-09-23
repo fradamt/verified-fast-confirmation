@@ -11,8 +11,8 @@ public import FastConfirmationProofs.ModelFacts
 /-!
 # Accepted FFG semantics for the joint non-vacuity witness
 
-This module supplies the semantic half of the concrete horizon-four witness
-from `AcceptedActualFCRJointNonVacuityBase`.  In particular, it interprets
+This file proves that the finite scheduled run admits accepted FFG semantics
+and included-link evidence. It interprets
 every exact causal schedule prefix with one accepted FFG state.  The causal
 store quantifier is discharged through block provenance; it is deliberately
 not reduced by interval-casing the unbounded prefix second.
