@@ -191,10 +191,54 @@ structure Synchrony (E : Execution Root) : Prop where
     E.slot_at cfg n + 1 ≤ E.slot_at cfg m →
     i ∈ (E.store cfg ext w m).equivocating_indices
 
+/-- A verified envelope received by an honest node is scheduled at every
+honest receiver by the block-relay deadline. The receiver processes preceding
+events first: its block must be known at the envelope's position, since the
+handler rejects an envelope for an unknown block. -/
+def EnvelopeDelivery (E : Execution Root) : Prop :=
+  ∀ v ∈ E.honest, ∀ n r,
+    E.WithinHorizon cfg n →
+    is_payload_verified (E.store cfg ext v n) r = true →
+    ∀ w ∈ E.honest, ∀ m,
+      E.WithinHorizon cfg m →
+      E.slot_at cfg n + 1 ≤ E.slot_at cfg (m + 1) →
+      ∃ (d k : ℕ) (signed : SignedExecutionPayloadEnvelope Root)
+        (sourceObservation receiverObservation : EnvelopeObservation Root)
+        (before after : List (Event Root)),
+        0 < d ∧ d ≤ m ∧
+        E.slot_at cfg n + 1 ≤ E.slot_at cfg (d + 1) ∧ k ≤ n ∧
+        Event.execution_payload_envelope signed sourceObservation ∈ E.schedule v k ∧
+        signed.message.beacon_block_root = r ∧
+        r ∈ (E.store cfg ext v n).block_roots ∧
+        ext.is_data_available r sourceObservation = true ∧
+        ext.verify_execution_payload_envelope
+          ((E.store cfg ext v n).block_states r) signed sourceObservation = true ∧
+        E.schedule w d = before ++
+          Event.execution_payload_envelope signed receiverObservation :: after ∧
+        r ∈ (before.foldl
+          (fun store event => (apply_event cfg ext store event).getD store)
+          (on_tick cfg (E.store cfg ext w (d - 1)) (E.time_at d))).block_roots
+
+/-- Data available at an honest node's envelope observation is available at
+every honest receiver's corresponding observation by the relay deadline. -/
+def DataAvailabilityRelay (E : Execution Root) : Prop :=
+  ∀ v ∈ E.honest, ∀ k n (signed : SignedExecutionPayloadEnvelope Root)
+      (sourceObservation : EnvelopeObservation Root),
+    k ≤ n → E.WithinHorizon cfg n →
+    Event.execution_payload_envelope signed sourceObservation ∈ E.schedule v k →
+    ext.is_data_available signed.message.beacon_block_root sourceObservation = true →
+    ∀ w ∈ E.honest, ∀ m,
+      E.WithinHorizon cfg m →
+      E.slot_at cfg n + 1 ≤ E.slot_at cfg (m + 1) →
+      ∀ receiverSigned receiverObservation,
+        receiverSigned.message.beacon_block_root = signed.message.beacon_block_root →
+        Event.execution_payload_envelope receiverSigned receiverObservation ∈ E.schedule w m →
+        ext.is_data_available signed.message.beacon_block_root receiverObservation = true
+
 /-- The synchrony fragment used by the accepted spec next-slot proof.
 
 The accepted next-slot argument needs honest-attestation delivery, block relay,
-payload-envelope relay, and equivocation-evidence relay. It does not use the additional
+envelope delivery, data-availability relay, and equivocation-evidence relay. It does not use the additional
 `latest_message_relay` field of the full `Synchrony` bundle. -/
 structure PaperSafetySynchrony (E : Execution Root) : Prop where
   /-- Same single delivery clause as `Synchrony.attestation_delivery`: the
@@ -215,16 +259,8 @@ structure PaperSafetySynchrony (E : Execution Root) : Prop where
       E.WithinHorizon cfg m →
       E.slot_at cfg n + 1 ≤ E.slot_at cfg (m + 1) →
       r ∈ (E.store cfg ext w m).block_roots
-  /-- Verified payload envelopes known to an honest node reach every honest
-      node by the last second of the same slot. As in `block_relay`, the
-      receiving state is horizon-scoped; `m + 1` only locates its deadline. -/
-  payload_envelope_relay : ∀ v ∈ E.honest, ∀ n r,
-    E.WithinHorizon cfg n →
-    is_payload_verified (E.store cfg ext v n) r = true →
-    ∀ w ∈ E.honest, ∀ m,
-      E.WithinHorizon cfg m →
-      E.slot_at cfg n + 1 ≤ E.slot_at cfg (m + 1) →
-      is_payload_verified (E.store cfg ext w m) r = true
+  envelope_delivery : EnvelopeDelivery cfg ext E
+  data_availability_relay : DataAvailabilityRelay cfg ext E
   attester_slashing_relay : ∀ v ∈ E.honest, ∀ n (i : ValidatorIndex),
     E.WithinHorizon cfg n →
     i ∈ (E.store cfg ext v n).equivocating_indices →
@@ -233,20 +269,16 @@ structure PaperSafetySynchrony (E : Execution Root) : Prop where
     i ∈ (E.store cfg ext w m).equivocating_indices
 
 /-- The legacy synchrony bundle supplies the beacon and attestation fields.
-Gloas also needs explicit evidence of payload-envelope relay. -/
+Gloas also needs envelope delivery and data-availability relay. -/
 def Synchrony.toPaperSafetySynchrony
     (h : Synchrony cfg ext E)
-    (hpayload : ∀ v ∈ E.honest, ∀ n r,
-      E.WithinHorizon cfg n →
-      is_payload_verified (E.store cfg ext v n) r = true →
-      ∀ w ∈ E.honest, ∀ m,
-        E.WithinHorizon cfg m →
-        E.slot_at cfg n + 1 ≤ E.slot_at cfg (m + 1) →
-        is_payload_verified (E.store cfg ext w m) r = true) :
+    (henvelope : EnvelopeDelivery cfg ext E)
+    (hdata : DataAvailabilityRelay cfg ext E) :
     PaperSafetySynchrony cfg ext E where
   attestation_delivery := h.attestation_delivery
   block_relay := h.block_relay
-  payload_envelope_relay := hpayload
+  envelope_delivery := henvelope
+  data_availability_relay := hdata
   attester_slashing_relay := h.attester_slashing_relay
 
 
@@ -497,6 +529,11 @@ structure ExternalsCoherence (E : Execution Root) : Prop where
     state.slot < slot →
     ext.is_valid_indexed_attestation (ext.process_slots state slot) a =
       ext.is_valid_indexed_attestation state a
+  /-- Execution-envelope validation depends on the state and signed envelope,
+      not on which honest node observed the available data. -/
+  verify_envelope_deterministic : ∀ state signed o o',
+    ext.verify_execution_payload_envelope state signed o =
+      ext.verify_execution_payload_envelope state signed o'
 
 /-- The static-validator-set idealization over the verified execution segment.
 The trusted genesis initialization itself seeds registry constancy

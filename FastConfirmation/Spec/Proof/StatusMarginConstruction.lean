@@ -337,9 +337,11 @@ theorem endpoint_opposite_not_parentPayloadStuck
       hsrcSlot hdstSlot hmaxQ hmaxW
     subst hmsg
     have hsrcRoot : src.root = a := hroot.1.trans hparentQ
-    have hstatusW : (get_supported_node (E.store cfg ext w m) src).payload_status =
-        get_parent_payload_status (E.store cfg ext w m)
-          ((E.store cfg ext w m).blocks b) := by
+    have hstatusW :
+        (get_supported_node (E.store cfg ext w m) src).payload_status =
+          get_parent_payload_status (E.store cfg ext w m)
+            ((E.store cfg ext w m).blocks b) ∨
+        (get_supported_node (E.store cfg ext w m) src).payload_status = .pending := by
       have h1 : get_supported_node (E.store cfg ext w m) src =
           get_supported_node (E.store cfg ext v q) src := by
         simp only [get_supported_node]
@@ -352,21 +354,30 @@ theorem endpoint_opposite_not_parentPayloadStuck
         rw [← hagreeB, hparentQ, hagreeA]
       rw [h1, h2]
       exact hstatus
-    have hnode : get_supported_node (E.store cfg ext w m) src =
-        ForkChoiceNode.mk a (get_parent_payload_status (E.store cfg ext w m)
-          ((E.store cfg ext w m).blocks b)) := by
-      rw [← hstatusW, ← hsrcRoot]
-      rfl
     have hs : get_parent_payload_status (E.store cfg ext w m)
         ((E.store cfg ext w m).blocks b) ≠ .pending := by
       simp only [get_parent_payload_status]
       split_ifs <;> decide
     obtain ⟨lm, hlm, _, hsupp⟩ := mem_AttSupporters cfg hopp
     have hlmEq : lm = src := Option.some.inj (hlm.symm.trans hdst)
-    subst hlmEq
-    rw [hnode] at hsupp
-    exact not_ancestor_two_resolved_statuses (E.store cfg ext w m) _ a _ o
-      hs ho hne ⟨is_ancestor_refl _ _, hsupp⟩
+    rw [hlmEq] at hsupp
+    rcases hstatusW with hmatch | hpending
+    · have hnode : get_supported_node (E.store cfg ext w m) src =
+          ForkChoiceNode.mk a (get_parent_payload_status (E.store cfg ext w m)
+            ((E.store cfg ext w m).blocks b)) := by
+        rw [← hmatch, ← hsrcRoot]
+        rfl
+      rw [hnode] at hsupp
+      exact not_ancestor_two_resolved_statuses (E.store cfg ext w m) _ a _ o
+        hs ho hne ⟨is_ancestor_refl _ _, hsupp⟩
+    · have hsuppOwn : is_ancestor (E.store cfg ext w m)
+          (get_supported_node (E.store cfg ext w m) src)
+          (ForkChoiceNode.mk src.root o) = true := by
+        simpa only [hsrcRoot] using hsupp
+      have hresolved := (supported_node_own_root_resolved_iff
+        (E.store cfg ext w m) src o ho).mp hsuppOwn
+      simp only [get_supported_node, hresolved.1, ↓reduceIte] at hpending
+      cases hp : src.payload_present <;> simp [hp] at hpending
 
 /-- Honest endpoint supporters of the opposite resolved status of `a` are
 sibling-stuck at the endpoint, or they are old ancestor-class voters that the

@@ -10,8 +10,11 @@ the voted block, so the Gloas index-1 check rejects the vote.
 
 This refutes that private transport step with its former premises. It does not
 by itself refute a public safety theorem or construct a full accepted execution.
-The new `PaperSafetySynchrony.payload_envelope_relay` field excludes this
-missing-envelope delivery pattern within its synchrony horizon.
+The `PaperSafetySynchrony.envelope_delivery` premise excludes this
+missing-envelope delivery pattern within its synchrony horizon. Together
+with data-availability relay and deterministic verification, it yields
+`Execution.payload_envelope_relay_of_parts`, the verified-payload relay used
+by the safety proof.
 No Python specification change, extra axiom, or proof-layer import is used.
 -/
 

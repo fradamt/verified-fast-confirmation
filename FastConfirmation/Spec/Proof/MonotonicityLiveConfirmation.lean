@@ -1,0 +1,944 @@
+module
+public import FastConfirmation.Spec.Proof.MonotonicityLiveBridge
+
+@[expose] public section
+
+/-!
+# Full-window one-confirmation inputs for live monotonicity
+
+Recorded honest votes contribute their weight to the executable score.
+The configured liveness margin then suffices when the confirmation window
+has full-epoch estimate and the balance source uses the anchored registry.
+The interval and balance-source equalities remain to be established at calls.
+-/
+
+namespace FastConfirmation.Spec
+
+variable {Root : Type*} [LinearOrder Root] [Inhabited Root]
+variable (cfg : Config) (ext : Externals Root)
+
+/-- An exact epoch window is recognized by the executable estimator as a
+full validator-set window. -/
+theorem full_epoch_estimate_eq (e : Epoch) (total : Gwei) :
+    estimate_committee_weight_between_slots cfg total
+      (compute_start_slot_at_epoch cfg e)
+      (compute_start_slot_at_epoch cfg (e + 1) - 1) = total := by
+  have hL : 0 < cfg.slots_per_epoch := cfg.slots_per_epoch_pos
+  have hend : (e + 1) * cfg.slots_per_epoch - 1 =
+      e * cfg.slots_per_epoch + (cfg.slots_per_epoch - 1) := by
+    simpa only [Nat.add_mul, one_mul] using
+      (Nat.add_sub_assoc (show 1 ≤ cfg.slots_per_epoch from hL)
+        (e * cfg.slots_per_epoch))
+  have hfirst : (e * cfg.slots_per_epoch + (cfg.slots_per_epoch - 1)) /
+      cfg.slots_per_epoch = e := by
+    apply Nat.div_eq_of_lt_le
+    · exact Nat.le_add_right _ _
+    · calc
+        e * cfg.slots_per_epoch + (cfg.slots_per_epoch - 1) <
+            e * cfg.slots_per_epoch + cfg.slots_per_epoch :=
+          Nat.add_lt_add_left (Nat.sub_lt hL (by omega)) _
+        _ = (e + 1) * cfg.slots_per_epoch := by
+          simp only [Nat.add_mul, one_mul]
+  have hnext : (((e + 1) * cfg.slots_per_epoch - 1) + 1) /
+      cfg.slots_per_epoch = e + 1 := by
+    have hnum : ((e + 1) * cfg.slots_per_epoch - 1) + 1 =
+        (e + 1) * cfg.slots_per_epoch :=
+      Nat.sub_add_cancel (by
+        simp only [Nat.add_mul, one_mul]
+        exact (Nat.succ_le_of_lt hL).trans (Nat.le_add_left _ _))
+    rw [hnum]
+    apply Nat.div_eq_of_lt_le
+    · exact Nat.le_refl _
+    · simpa only [Nat.add_mul, one_mul, Nat.add_assoc] using
+        (Nat.lt_add_of_pos_right hL :
+          (e + 1) * cfg.slots_per_epoch <
+            (e + 1) * cfg.slots_per_epoch + cfg.slots_per_epoch)
+  have hfull : is_full_validator_set_covered cfg
+      (compute_start_slot_at_epoch cfg e)
+      (compute_start_slot_at_epoch cfg (e + 1) - 1) = true := by
+    simp only [is_full_validator_set_covered, compute_epoch_at_slot,
+      compute_start_slot_at_epoch, decide_eq_true_eq]
+    rw [hfirst, hnext]
+    exact Nat.lt_succ_self e
+  have hordered : compute_start_slot_at_epoch cfg e ≤
+      compute_start_slot_at_epoch cfg (e + 1) - 1 := by
+    simp only [compute_start_slot_at_epoch, hend]
+    exact Nat.le_add_right _ _
+  simp [estimate_committee_weight_between_slots, hordered, hfull]
+
+/-- Every window containing a whole epoch has exact total-balance estimate,
+even if it begins before the epoch or ends after it. -/
+theorem estimate_eq_total_of_full_epoch_inside
+    (e : Epoch) (total : Gwei) (a b : Slot)
+    (ha : a ≤ compute_start_slot_at_epoch cfg e)
+    (hb : compute_start_slot_at_epoch cfg (e + 1) - 1 ≤ b) :
+    estimate_committee_weight_between_slots cfg total a b = total := by
+  have hL : 0 < cfg.slots_per_epoch := cfg.slots_per_epoch_pos
+  have hend : (e + 1) * cfg.slots_per_epoch - 1 =
+      e * cfg.slots_per_epoch + (cfg.slots_per_epoch - 1) := by
+    simpa only [Nat.add_mul, one_mul] using
+      (Nat.add_sub_assoc (show 1 ≤ cfg.slots_per_epoch from hL)
+        (e * cfg.slots_per_epoch))
+  have hfirst : (e * cfg.slots_per_epoch + (cfg.slots_per_epoch - 1)) /
+      cfg.slots_per_epoch = e := by
+    apply Nat.div_eq_of_lt_le
+    · exact Nat.le_add_right _ _
+    · calc
+        e * cfg.slots_per_epoch + (cfg.slots_per_epoch - 1) <
+            e * cfg.slots_per_epoch + cfg.slots_per_epoch :=
+          Nat.add_lt_add_left (Nat.sub_lt hL (by omega)) _
+        _ = (e + 1) * cfg.slots_per_epoch := by
+          simp only [Nat.add_mul, one_mul]
+  have hnext : (((e + 1) * cfg.slots_per_epoch - 1) + 1) /
+      cfg.slots_per_epoch = e + 1 := by
+    have hnum : ((e + 1) * cfg.slots_per_epoch - 1) + 1 =
+        (e + 1) * cfg.slots_per_epoch :=
+      Nat.sub_add_cancel (by
+        simp only [Nat.add_mul, one_mul]
+        exact (Nat.succ_le_of_lt hL).trans (Nat.le_add_left _ _))
+    rw [hnum]
+    apply Nat.div_eq_of_lt_le
+    · exact Nat.le_refl _
+    · simpa only [Nat.add_mul, one_mul, Nat.add_assoc] using
+        (Nat.lt_add_of_pos_right hL :
+          (e + 1) * cfg.slots_per_epoch <
+            (e + 1) * cfg.slots_per_epoch + cfg.slots_per_epoch)
+  have hleft : compute_epoch_at_slot cfg (a + (cfg.slots_per_epoch - 1)) ≤ e := by
+    calc
+      compute_epoch_at_slot cfg (a + (cfg.slots_per_epoch - 1)) ≤
+          compute_epoch_at_slot cfg
+            (compute_start_slot_at_epoch cfg e + (cfg.slots_per_epoch - 1)) :=
+        Nat.div_le_div_right (Nat.add_le_add_right ha _)
+      _ = e := by simpa only [compute_epoch_at_slot, compute_start_slot_at_epoch]
+        using hfirst
+  have hright : e + 1 ≤ compute_epoch_at_slot cfg (b + 1) := by
+    calc
+      e + 1 = compute_epoch_at_slot cfg
+          (compute_start_slot_at_epoch cfg (e + 1) - 1 + 1) := by
+        simpa only [compute_epoch_at_slot, compute_start_slot_at_epoch] using hnext.symm
+      _ ≤ compute_epoch_at_slot cfg (b + 1) :=
+        Nat.div_le_div_right (Nat.add_le_add_right hb 1)
+  have hfull : is_full_validator_set_covered cfg a b = true := by
+    simp only [is_full_validator_set_covered, decide_eq_true_eq]
+    exact lt_of_le_of_lt hleft (lt_of_lt_of_le (Nat.lt_succ_self e) hright)
+  have hordered : a ≤ b := by
+    calc
+      a ≤ compute_start_slot_at_epoch cfg e := ha
+      _ ≤ compute_start_slot_at_epoch cfg (e + 1) - 1 := by
+        simp only [compute_start_slot_at_epoch, hend]
+        exact Nat.le_add_right _ _
+      _ ≤ b := hb
+  simp [estimate_committee_weight_between_slots, hordered, hfull]
+
+/-- A first block of an epoch uses that whole epoch as its adversarial
+window at the next epoch start. The executable equivocation discount can
+only reduce the configured budget. -/
+theorem first_epoch_block_adversarial_bound
+    (store : Store Root) (balanceSource : BeaconState Root)
+    (r : Root) (e : Epoch)
+    (hblockEpoch : get_block_epoch cfg store r = e)
+    (hparentEpoch : get_block_epoch cfg store (store.blocks r).parent_root < e)
+    (hcurrentSlot : get_current_slot cfg store =
+      compute_start_slot_at_epoch cfg (e + 1)) :
+    get_adversarial_weight cfg ext store balanceSource r ≤
+      get_total_active_balance cfg balanceSource / 100 *
+        cfg.confirmation_byzantine_threshold := by
+  rw [get_adversarial_weight_eq]
+  have hspan : (if get_block_epoch cfg store r >
+      get_block_epoch cfg store (store.blocks r).parent_root then
+        compute_start_slot_at_epoch cfg (get_block_epoch cfg store r)
+      else (store.blocks r).slot) = compute_start_slot_at_epoch cfg e := by
+    simp [hblockEpoch, hparentEpoch]
+  rw [hspan, hcurrentSlot]
+  have hle := compute_adversarial_weight_le cfg ext
+    (store := store) (bs := balanceSource)
+    (compute_start_slot_at_epoch cfg e)
+    (compute_start_slot_at_epoch cfg (e + 1) - 1)
+  simpa only [full_epoch_estimate_eq] using hle
+
+/-- Once two disjoint parts exhaust a full epoch, estimation soundness on
+both parts forces exact accounting whenever their estimates exhaust the
+full-epoch estimate. -/
+theorem complementary_epoch_window_exact
+    {whole left right estimateLeft estimateRight : ℕ}
+    (hwhole : left + right = whole)
+    (hest : estimateLeft + estimateRight = whole)
+    (hleft : left ≤ estimateLeft)
+    (hright : right ≤ estimateRight) :
+    left = estimateLeft ∧ right = estimateRight := by
+  omega
+
+theorem complementary_epoch_window_exact_of_le
+    {whole left right estimateLeft estimateRight : ℕ}
+    (hwhole : left + right = whole)
+    (hest : estimateLeft + estimateRight ≤ whole)
+    (hleft : left ≤ estimateLeft)
+    (hright : right ≤ estimateRight) :
+    left = estimateLeft ∧ right = estimateRight := by
+  omega
+
+/-- Two adjacent partial windows with a combined length of one epoch cannot
+overestimate the active total. The divisor truncation only makes the sum
+smaller. -/
+theorem complementary_partial_estimates_le_total
+    (tab : Gwei) (a b c : Slot)
+    (hab : a ≤ b) (hbc : b + 1 ≤ c)
+    (hcovLeft : is_full_validator_set_covered cfg a b = false)
+    (hcovRight : is_full_validator_set_covered cfg (b + 1) c = false)
+    (hepochLeft : compute_epoch_at_slot cfg a = compute_epoch_at_slot cfg b)
+    (hepochRight : compute_epoch_at_slot cfg (b + 1) = compute_epoch_at_slot cfg c)
+    (hlength : b - a + 1 + (c - (b + 1) + 1) = cfg.slots_per_epoch) :
+    estimate_committee_weight_between_slots cfg tab a b +
+      estimate_committee_weight_between_slots cfg tab (b + 1) c ≤ tab := by
+  rw [estimate_same_epoch cfg tab a b hab hcovLeft hepochLeft,
+    estimate_same_epoch cfg tab (b + 1) c hbc hcovRight hepochRight,
+    ← Nat.mul_add, hlength]
+  exact Nat.div_mul_le_self tab cfg.slots_per_epoch
+
+private theorem partial_slot_count
+    {a b length : ℕ} (hpositive : 0 < length)
+    (hab : a ≤ b) (hbc : b + 1 ≤ a + (length - 1)) :
+    b - a + 1 + (a + (length - 1) - (b + 1) + 1) = length := by
+  omega
+
+/-- The configured at-most-25% Byzantine fraction makes the honest part
+of any committee span at least three quarters of its weight. -/
+theorem Config.honest_span_three_quarters
+    {span byzantine honest : ℕ}
+    (hpart : honest + byzantine = span)
+    (hbound : 100 * byzantine ≤
+      cfg.confirmation_byzantine_threshold * span) :
+    3 * span ≤ 4 * honest := by
+  have hcap : cfg.confirmation_byzantine_threshold * span ≤ 25 * span :=
+    Nat.mul_le_mul_right span cfg.confirmation_byzantine_threshold_le
+  omega
+
+/-- The integer margin retained by a previously confirmed block survives
+an added window if its new honest support covers three quarters of that
+window, the adversarial allowance grows by at most one quarter, and the
+empty-slot discount does not shrink. -/
+theorem reconfirm_margin_persists
+    {score window boost adversarial discount added honestAdded
+      adversarialNew discountNew : ℕ}
+    (hconfirmed : window + boost + 2 * adversarial <
+      2 * score + discount)
+    (hhonest : 3 * added ≤ 4 * honestAdded)
+    (hadversarial : 4 * adversarialNew ≤
+      4 * adversarial + added)
+    (hdiscount : discount ≤ discountNew) :
+    window + added + boost + 2 * adversarialNew <
+      2 * (score + honestAdded) + discountNew := by
+  omega
+
+/-- Gloas may remove an empty-slot discount as parent-root messages move to
+the child. The strict margin still persists if the lost discount is covered
+by twice that additional child support. -/
+theorem reconfirm_margin_persists_with_discount_loss
+    {score window boost adversarial discount added honestAdded movedSupport
+      adversarialNew discountNew : ℕ}
+    (hconfirmed : window + boost + 2 * adversarial <
+      2 * score + discount)
+    (hhonest : 3 * added ≤ 4 * honestAdded)
+    (hadversarial : 4 * adversarialNew ≤
+      4 * adversarial + added)
+    (hdiscount : discount ≤ discountNew + 2 * movedSupport) :
+    window + added + boost + 2 * adversarialNew <
+      2 * (score + honestAdded + movedSupport) + discountNew := by
+  have hmargin := reconfirm_margin_persists hconfirmed hhonest
+    hadversarial hdiscount
+  omega
+
+private theorem strict_margin_of_threshold
+    {window boost adversarial discount score : ℕ}
+    (hscore : score >
+      if discount < window + boost + 2 * adversarial then
+        (window + boost + 2 * adversarial - discount) / 2
+      else 0) :
+    window + boost + 2 * adversarial < 2 * score + discount := by
+  split_ifs at hscore <;> omega
+
+private theorem threshold_of_strict_margin
+    {window boost adversarial discount score : ℕ}
+    (hmargin : window + boost + 2 * adversarial <
+      2 * score + discount)
+    (hpositive : 0 < score) :
+    score >
+      if discount < window + boost + 2 * adversarial then
+        (window + boost + 2 * adversarial - discount) / 2
+      else 0 := by
+  split_ifs <;> omega
+
+/-- The executable Boolean one-confirmation result yields its exact strict
+integer margin, including the threshold's underflow branch. -/
+theorem one_confirmed_has_integer_margin
+    (store : Store Root) (balanceSource : BeaconState Root) (r : Root)
+    (hconfirmed : is_one_confirmed cfg ext store balanceSource r = true) :
+    let support := get_attestation_score cfg store (get_node_for_root r)
+      balanceSource
+    let maximum := estimate_committee_weight_between_slots cfg
+      (get_total_active_balance cfg balanceSource)
+      ((store.blocks (store.blocks r).parent_root).slot + 1)
+      (get_current_slot cfg store - 1)
+    let boost := compute_proposer_score cfg balanceSource
+    let adversarial := get_adversarial_weight cfg ext store balanceSource r
+    let discount := get_support_discount cfg ext store balanceSource r
+    maximum + boost + 2 * adversarial < 2 * support + discount := by
+  dsimp only
+  simp only [is_one_confirmed, decide_eq_true_eq] at hconfirmed
+  dsimp only [compute_safety_threshold] at hconfirmed
+  exact strict_margin_of_threshold hconfirmed
+
+/-- A positive score satisfying the executable strict integer margin is
+one-confirmed, even in the threshold's underflow branch. -/
+theorem one_confirmed_of_integer_margin
+    (store : Store Root) (balanceSource : BeaconState Root) (r : Root)
+    (hpositive : 0 < get_attestation_score cfg store
+      (get_node_for_root r) balanceSource)
+    (hmargin :
+      estimate_committee_weight_between_slots cfg
+          (get_total_active_balance cfg balanceSource)
+          ((store.blocks (store.blocks r).parent_root).slot + 1)
+          (get_current_slot cfg store - 1) +
+        compute_proposer_score cfg balanceSource +
+        2 * get_adversarial_weight cfg ext store balanceSource r <
+      2 * get_attestation_score cfg store (get_node_for_root r) balanceSource +
+        get_support_discount cfg ext store balanceSource r) :
+    is_one_confirmed cfg ext store balanceSource r = true := by
+  simp only [is_one_confirmed, decide_eq_true_eq]
+  dsimp only [compute_safety_threshold]
+  exact threshold_of_strict_margin hmargin hpositive
+
+/-- Reconfirmation across two executable stores reduces to recorded-support
+growth, window growth, adversarial growth, and discount persistence. The
+current work leaves those concrete accounting facts to the execution proof. -/
+theorem is_one_confirmed_reconfirm_of_growth
+    (oldStore newStore : Store Root)
+    (oldSource newSource : BeaconState Root)
+    (r : Root) (added honestAdded : ℕ)
+    (hOld : is_one_confirmed cfg ext oldStore oldSource r = true)
+    (hscore :
+      get_attestation_score cfg oldStore (get_node_for_root r) oldSource +
+        honestAdded ≤
+      get_attestation_score cfg newStore (get_node_for_root r) newSource)
+    (hwindow :
+      estimate_committee_weight_between_slots cfg
+          (get_total_active_balance cfg newSource)
+          ((newStore.blocks (newStore.blocks r).parent_root).slot + 1)
+          (get_current_slot cfg newStore - 1) ≤
+      estimate_committee_weight_between_slots cfg
+          (get_total_active_balance cfg oldSource)
+          ((oldStore.blocks (oldStore.blocks r).parent_root).slot + 1)
+          (get_current_slot cfg oldStore - 1) + added)
+    (hboost : compute_proposer_score cfg newSource ≤
+      compute_proposer_score cfg oldSource)
+    (hadversarial :
+      4 * get_adversarial_weight cfg ext newStore newSource r ≤
+        4 * get_adversarial_weight cfg ext oldStore oldSource r + added)
+    (hdiscount : get_support_discount cfg ext oldStore oldSource r ≤
+      get_support_discount cfg ext newStore newSource r)
+    (hhonest : 3 * added ≤ 4 * honestAdded) :
+    is_one_confirmed cfg ext newStore newSource r = true := by
+  have hOldMargin := one_confirmed_has_integer_margin cfg ext
+    oldStore oldSource r hOld
+  dsimp only at hOldMargin
+  have hmarginGrowth := reconfirm_margin_persists hOldMargin
+    hhonest hadversarial hdiscount
+  have hmarginNew :
+      estimate_committee_weight_between_slots cfg
+          (get_total_active_balance cfg newSource)
+          ((newStore.blocks (newStore.blocks r).parent_root).slot + 1)
+          (get_current_slot cfg newStore - 1) +
+        compute_proposer_score cfg newSource +
+        2 * get_adversarial_weight cfg ext newStore newSource r <
+      2 * get_attestation_score cfg newStore (get_node_for_root r) newSource +
+        get_support_discount cfg ext newStore newSource r := by
+    calc
+      _ ≤
+        (estimate_committee_weight_between_slots cfg
+            (get_total_active_balance cfg oldSource)
+            ((oldStore.blocks (oldStore.blocks r).parent_root).slot + 1)
+            (get_current_slot cfg oldStore - 1) + added) +
+          compute_proposer_score cfg oldSource +
+          2 * get_adversarial_weight cfg ext newStore newSource r :=
+        Nat.add_le_add (Nat.add_le_add hwindow hboost) (Nat.le_refl _)
+      _ < 2 * (get_attestation_score cfg oldStore
+          (get_node_for_root r) oldSource + honestAdded) +
+          get_support_discount cfg ext newStore newSource r := hmarginGrowth
+      _ ≤ 2 * get_attestation_score cfg newStore
+          (get_node_for_root r) newSource +
+          get_support_discount cfg ext newStore newSource r :=
+        Nat.add_le_add_right (Nat.mul_le_mul_left 2 hscore) _
+  have hOldPos : 0 < get_attestation_score cfg oldStore
+      (get_node_for_root r) oldSource := by
+    have hOldScore := hOld
+    simp only [is_one_confirmed, decide_eq_true_eq] at hOldScore
+    exact lt_of_le_of_lt (Nat.zero_le _) hOldScore
+  have hNewPos : 0 < get_attestation_score cfg newStore
+      (get_node_for_root r) newSource :=
+    hOldPos.trans_le ((Nat.le_add_right _ _).trans hscore)
+  exact one_confirmed_of_integer_margin cfg ext newStore newSource r
+    hNewPos hmarginNew
+
+/-- Reconfirmation with Gloas discount loss charged to additional child
+support. Its concrete moved-support inequality remains an execution-level
+obligation. -/
+theorem is_one_confirmed_reconfirm_of_growth_with_discount_loss
+    (oldStore newStore : Store Root)
+    (oldSource newSource : BeaconState Root)
+    (r : Root) (added honestAdded movedSupport : ℕ)
+    (hOld : is_one_confirmed cfg ext oldStore oldSource r = true)
+    (hscore :
+      get_attestation_score cfg oldStore (get_node_for_root r) oldSource +
+        honestAdded + movedSupport ≤
+      get_attestation_score cfg newStore (get_node_for_root r) newSource)
+    (hwindow :
+      estimate_committee_weight_between_slots cfg
+          (get_total_active_balance cfg newSource)
+          ((newStore.blocks (newStore.blocks r).parent_root).slot + 1)
+          (get_current_slot cfg newStore - 1) ≤
+      estimate_committee_weight_between_slots cfg
+          (get_total_active_balance cfg oldSource)
+          ((oldStore.blocks (oldStore.blocks r).parent_root).slot + 1)
+          (get_current_slot cfg oldStore - 1) + added)
+    (hboost : compute_proposer_score cfg newSource ≤
+      compute_proposer_score cfg oldSource)
+    (hadversarial :
+      4 * get_adversarial_weight cfg ext newStore newSource r ≤
+        4 * get_adversarial_weight cfg ext oldStore oldSource r + added)
+    (hdiscount : get_support_discount cfg ext oldStore oldSource r ≤
+      get_support_discount cfg ext newStore newSource r + 2 * movedSupport)
+    (hhonest : 3 * added ≤ 4 * honestAdded) :
+    is_one_confirmed cfg ext newStore newSource r = true := by
+  have hOldMargin := one_confirmed_has_integer_margin cfg ext
+    oldStore oldSource r hOld
+  dsimp only at hOldMargin
+  have hmarginGrowth := reconfirm_margin_persists_with_discount_loss
+    hOldMargin hhonest hadversarial hdiscount
+  have hmarginNew :
+      estimate_committee_weight_between_slots cfg
+          (get_total_active_balance cfg newSource)
+          ((newStore.blocks (newStore.blocks r).parent_root).slot + 1)
+          (get_current_slot cfg newStore - 1) +
+        compute_proposer_score cfg newSource +
+        2 * get_adversarial_weight cfg ext newStore newSource r <
+      2 * get_attestation_score cfg newStore (get_node_for_root r) newSource +
+        get_support_discount cfg ext newStore newSource r := by
+    calc
+      _ ≤
+        (estimate_committee_weight_between_slots cfg
+            (get_total_active_balance cfg oldSource)
+            ((oldStore.blocks (oldStore.blocks r).parent_root).slot + 1)
+            (get_current_slot cfg oldStore - 1) + added) +
+          compute_proposer_score cfg oldSource +
+          2 * get_adversarial_weight cfg ext newStore newSource r :=
+        Nat.add_le_add (Nat.add_le_add hwindow hboost) (Nat.le_refl _)
+      _ < 2 * (get_attestation_score cfg oldStore
+          (get_node_for_root r) oldSource + honestAdded + movedSupport) +
+          get_support_discount cfg ext newStore newSource r := hmarginGrowth
+      _ ≤ 2 * get_attestation_score cfg newStore
+          (get_node_for_root r) newSource +
+          get_support_discount cfg ext newStore newSource r :=
+        Nat.add_le_add_right (Nat.mul_le_mul_left 2 hscore) _
+  have hOldScore := hOld
+  simp only [is_one_confirmed, decide_eq_true_eq] at hOldScore
+  have hOldPos : 0 < get_attestation_score cfg oldStore
+      (get_node_for_root r) oldSource :=
+    lt_of_le_of_lt (Nat.zero_le _) hOldScore
+  have hNewPos : 0 < get_attestation_score cfg newStore
+      (get_node_for_root r) newSource := by
+    apply hOldPos.trans_le
+    calc
+      get_attestation_score cfg oldStore (get_node_for_root r) oldSource ≤
+          get_attestation_score cfg oldStore (get_node_for_root r) oldSource +
+            honestAdded := Nat.le_add_right _ _
+      _ ≤ get_attestation_score cfg oldStore (get_node_for_root r) oldSource +
+          honestAdded + movedSupport := Nat.le_add_right _ _
+      _ ≤ get_attestation_score cfg newStore
+          (get_node_for_root r) newSource := hscore
+  exact one_confirmed_of_integer_margin cfg ext newStore newSource r
+    hNewPos hmarginNew
+
+namespace Execution
+
+variable (E : Execution Root)
+
+omit [LinearOrder Root] [Inhabited Root] in
+/-- The initial active weight splits into honest and non-honest parts. -/
+theorem initial_active_weight_partition :
+    E.weight ((Finset.range E.registry.length).filter fun i =>
+      i ∈ E.honest ∧
+        is_active_validator (E.registry.getD i default)
+          (compute_epoch_at_slot cfg (E.slot_at cfg 0)) = true) +
+      E.activeNonHonestWeight cfg =
+    E.weight ((Finset.range E.registry.length).filter fun i =>
+      is_active_validator (E.registry.getD i default)
+        (compute_epoch_at_slot cfg (E.slot_at cfg 0)) = true) := by
+  let active := (Finset.range E.registry.length).filter fun i =>
+    is_active_validator (E.registry.getD i default)
+      (compute_epoch_at_slot cfg (E.slot_at cfg 0)) = true
+  have hsplit := Finset.sum_filter_add_sum_filter_not active
+    (fun i => i ∈ E.honest) E.weight_of
+  simpa only [Execution.weight, Execution.activeNonHonestWeight,
+    active, Finset.filter_filter, and_comm] using hsplit
+
+/-- In an accepted execution, the anchor state and initial execution slot
+name the same epoch. -/
+theorem AcceptedActualFCRNextSlotSafetyAssumptions.anchor_epoch_eq_initial
+    (h : E.AcceptedActualFCRNextSlotSafetyAssumptions cfg ext) :
+    get_current_epoch cfg E.anchor_state =
+      compute_epoch_at_slot cfg (E.slot_at cfg 0) := by
+  obtain ⟨ast, ablk, hgenEq, hslot, _⟩ := h.trajectory.genesis_structure
+  have hanchorState : E.anchor_state = ast := by
+    simp only [Execution.anchor_state, hgenEq, get_forkchoice_store,
+      Function.update_self]
+  have hslot0 : E.slot_at cfg 0 = ast.slot := by
+    have hcurrent0 := E.store_current_slot cfg ext 0 0
+    change get_current_slot cfg E.genesis_store = E.slot_at cfg 0 at hcurrent0
+    rw [hgenEq, get_current_slot_get_forkchoice_store cfg
+      h.trajectory.whole_seconds] at hcurrent0
+    exact hcurrent0.symm
+  rw [hanchorState, hslot0]
+  rfl
+
+/-- In every in-horizon committee span, accepted Byzantine concentration
+leaves at least three quarters of the assigned weight honest. -/
+theorem AcceptedActualFCRNextSlotSafetyAssumptions.honest_span_three_quarters
+    (h : E.AcceptedActualFCRNextSlotSafetyAssumptions cfg ext)
+    (a b : Slot)
+    (haH : E.SlotWithinHorizon cfg a)
+    (hbH : E.SlotWithinHorizon cfg b) :
+    3 * E.weight (E.span_committee a b) ≤
+      4 * E.weight ((E.span_committee a b).filter fun i => i ∈ E.honest) := by
+  have hpart :
+      E.weight ((E.span_committee a b).filter fun i => i ∈ E.honest) +
+        E.weight ((E.span_committee a b).filter fun i => i ∉ E.honest) =
+      E.weight (E.span_committee a b) := by
+    simpa only [Execution.weight] using
+      Finset.sum_filter_add_sum_filter_not (E.span_committee a b)
+        (fun i => i ∈ E.honest) E.weight_of
+  exact cfg.honest_span_three_quarters hpart
+    (h.completed_calls.byzantine_bound.span_fraction a b haH hbH)
+
+/-- Disjoint consecutive slot spans inside one epoch have disjoint
+validator assignments. -/
+theorem AcceptedActualFCRNextSlotSafetyAssumptions.same_epoch_spans_disjoint
+    (h : E.AcceptedActualFCRNextSlotSafetyAssumptions cfg ext)
+    {a b c : Slot}
+    (hepoch : compute_epoch_at_slot cfg a = compute_epoch_at_slot cfg c) :
+    Disjoint (E.span_committee a b) (E.span_committee (b + 1) c) := by
+  apply Finset.disjoint_left.mpr
+  intro i hiLeft hiRight
+  simp only [Execution.span_committee, Finset.mem_biUnion,
+    Finset.mem_Icc] at hiLeft hiRight
+  obtain ⟨s, hs, his⟩ := hiLeft
+  obtain ⟨t, ht, hit⟩ := hiRight
+  have hst : s < t :=
+    lt_of_le_of_lt hs.2 (Nat.lt_of_succ_le ht.1)
+  have hse : compute_epoch_at_slot cfg s = compute_epoch_at_slot cfg t := by
+    apply Nat.le_antisymm
+    · exact Nat.div_le_div_right hst.le
+    · calc
+        compute_epoch_at_slot cfg t ≤ compute_epoch_at_slot cfg c :=
+          Nat.div_le_div_right ht.2
+        _ = compute_epoch_at_slot cfg a := hepoch.symm
+        _ ≤ compute_epoch_at_slot cfg s :=
+          Nat.div_le_div_right hs.1
+  have heq := h.trajectory.externals_coherence.committee_assignment_unique
+    i s t his hit hse
+  exact (Nat.ne_of_lt hst) heq
+
+omit [LinearOrder Root] [Inhabited Root] in
+/-- Splitting an inclusive slot span after `b` preserves exactly the
+assigned-validator set. -/
+theorem span_committee_split (a b c : Slot)
+    (hab : a ≤ b) (hbc : b < c) :
+    E.span_committee a c =
+      E.span_committee a b ∪ E.span_committee (b + 1) c := by
+  ext i
+  simp only [Execution.span_committee, Finset.mem_biUnion,
+    Finset.mem_Icc, Finset.mem_union]
+  constructor
+  · rintro ⟨s, hs, his⟩
+    by_cases hsb : s ≤ b
+    · exact Or.inl ⟨s, ⟨hs.1, hsb⟩, his⟩
+    · exact Or.inr ⟨s, ⟨Nat.succ_le_iff.mpr (Nat.lt_of_not_ge hsb), hs.2⟩, his⟩
+  · rintro (⟨s, hs, his⟩ | ⟨s, hs, his⟩)
+    · exact ⟨s, ⟨hs.1, hs.2.trans hbc.le⟩, his⟩
+    · exact ⟨s, ⟨hab.trans ((Nat.le_succ b).trans hs.1), hs.2⟩, his⟩
+
+/-- Within one epoch, disjoint adjacent slot ranges partition committee
+weight exactly. -/
+theorem AcceptedActualFCRNextSlotSafetyAssumptions.same_epoch_span_weight_partition
+    (h : E.AcceptedActualFCRNextSlotSafetyAssumptions cfg ext)
+    {a b c : Slot} (hab : a ≤ b) (hbc : b < c)
+    (hepoch : compute_epoch_at_slot cfg a = compute_epoch_at_slot cfg c) :
+    E.weight (E.span_committee a b) +
+      E.weight (E.span_committee (b + 1) c) =
+      E.weight (E.span_committee a c) := by
+  rw [span_committee_split E a b c hab hbc]
+  exact (Finset.sum_union (h.same_epoch_spans_disjoint cfg ext E hepoch)).symm
+
+/-- In an accepted horizon-bounded epoch, the committee union has the exact
+anchored total active weight. -/
+theorem AcceptedActualFCRNextSlotSafetyAssumptions.full_epoch_span_weight_eq_total
+    (h : E.AcceptedActualFCRNextSlotSafetyAssumptions cfg ext)
+    (store : Store Root)
+    (hcurrentH : E.SlotWithinHorizon cfg (get_current_slot cfg store))
+    (hendH : E.SlotWithinHorizon cfg (currentTargetEpochEnd cfg store)) :
+    E.weight (E.span_committee (currentTargetEpochStart cfg store)
+      (currentTargetEpochEnd cfg store)) = E.total_active cfg := by
+  have hanchorH : get_current_epoch cfg E.anchor_state <
+      E.verification_horizon := by
+    rw [h.anchor_epoch_eq_initial cfg ext E]
+    exact (h.completed_calls.static_validators.genesis_within_horizon).2.2
+  rw [current_epoch_span_eq_anchorActive cfg ext E
+    h.trajectory.externals_coherence h.completed_calls.static_validators
+    hcurrentH hendH hanchorH]
+  exact E.total_active_eq_anchorActive_weight cfg
+    h.completed_calls.balance_floor |>.symm
+
+/-- Estimation soundness on complementary same-epoch ranges is exact once
+their disjoint union is the full active committee. -/
+theorem AcceptedActualFCRNextSlotSafetyAssumptions.complementary_partial_window_exact
+    (h : E.AcceptedActualFCRNextSlotSafetyAssumptions cfg ext)
+    (a b c : Slot) (hab : a ≤ b) (hbc : b + 1 ≤ c)
+    (hepoch : compute_epoch_at_slot cfg a = compute_epoch_at_slot cfg c)
+    (hwhole : E.weight (E.span_committee a c) = E.total_active cfg)
+    (haH : E.SlotWithinHorizon cfg a)
+    (hbH : E.SlotWithinHorizon cfg b)
+    (hb1H : E.SlotWithinHorizon cfg (b + 1))
+    (hcH : E.SlotWithinHorizon cfg c)
+    (hcovLeft : is_full_validator_set_covered cfg a b = false)
+    (hcovRight : is_full_validator_set_covered cfg (b + 1) c = false)
+    (hepochLeft : compute_epoch_at_slot cfg a = compute_epoch_at_slot cfg b)
+    (hepochRight : compute_epoch_at_slot cfg (b + 1) = compute_epoch_at_slot cfg c)
+    (hlength : b - a + 1 + (c - (b + 1) + 1) = cfg.slots_per_epoch) :
+    E.weight (E.span_committee a b) =
+        estimate_committee_weight_between_slots cfg (E.total_active cfg) a b ∧
+      E.weight (E.span_committee (b + 1) c) =
+        estimate_committee_weight_between_slots cfg (E.total_active cfg)
+          (b + 1) c := by
+  have hpart := h.same_epoch_span_weight_partition cfg ext E
+    hab (Nat.lt_of_succ_le hbc) hepoch
+  rw [hwhole] at hpart
+  have hest := complementary_partial_estimates_le_total cfg
+    (E.total_active cfg) a b c hab hbc hcovLeft hcovRight
+    hepochLeft hepochRight hlength
+  have hleft := h.completed_calls.byzantine_bound.estimate_sound a b haH hbH
+  have hright := h.completed_calls.byzantine_bound.estimate_sound
+    (b + 1) c hb1H hcH
+  exact complementary_epoch_window_exact_of_le hpart hest hleft hright
+
+/-- The accepted full-epoch committee identity supplies the whole-weight
+premise of complementary partial-window exactness. -/
+theorem AcceptedActualFCRNextSlotSafetyAssumptions.current_epoch_partial_window_exact
+    (h : E.AcceptedActualFCRNextSlotSafetyAssumptions cfg ext)
+    (store : Store Root) (b : Slot)
+    (hcurrentH : E.SlotWithinHorizon cfg (get_current_slot cfg store))
+    (hstartH : E.SlotWithinHorizon cfg (currentTargetEpochStart cfg store))
+    (hendH : E.SlotWithinHorizon cfg (currentTargetEpochEnd cfg store))
+    (hbH : E.SlotWithinHorizon cfg b)
+    (hb1H : E.SlotWithinHorizon cfg (b + 1))
+    (hab : currentTargetEpochStart cfg store ≤ b)
+    (hbc : b + 1 ≤ currentTargetEpochEnd cfg store)
+    (hepoch : compute_epoch_at_slot cfg (currentTargetEpochStart cfg store) =
+      compute_epoch_at_slot cfg (currentTargetEpochEnd cfg store))
+    (hcovLeft : is_full_validator_set_covered cfg
+      (currentTargetEpochStart cfg store) b = false)
+    (hcovRight : is_full_validator_set_covered cfg
+      (b + 1) (currentTargetEpochEnd cfg store) = false)
+    (hepochLeft : compute_epoch_at_slot cfg (currentTargetEpochStart cfg store) =
+      compute_epoch_at_slot cfg b)
+    (hepochRight : compute_epoch_at_slot cfg (b + 1) =
+      compute_epoch_at_slot cfg (currentTargetEpochEnd cfg store)) :
+    E.weight (E.span_committee (currentTargetEpochStart cfg store) b) =
+        estimate_committee_weight_between_slots cfg (E.total_active cfg)
+          (currentTargetEpochStart cfg store) b ∧
+      E.weight (E.span_committee (b + 1) (currentTargetEpochEnd cfg store)) =
+        estimate_committee_weight_between_slots cfg (E.total_active cfg)
+          (b + 1) (currentTargetEpochEnd cfg store) := by
+  have hlen : b - currentTargetEpochStart cfg store + 1 +
+      (currentTargetEpochEnd cfg store - (b + 1) + 1) =
+      cfg.slots_per_epoch := by
+    exact partial_slot_count cfg.slots_per_epoch_pos hab hbc
+  exact h.complementary_partial_window_exact cfg ext E
+    (currentTargetEpochStart cfg store) b
+    (currentTargetEpochEnd cfg store) hab hbc hepoch
+    (h.full_epoch_span_weight_eq_total cfg ext E store hcurrentH hendH)
+    hstartH hbH hb1H hendH hcovLeft hcovRight
+    hepochLeft hepochRight hlen
+
+/-- Every vote slot in a completed epoch has reached its next-slot delivery
+deadline by the endpoint, including the last slot of that epoch. -/
+theorem AcceptedActualFCRNextSlotSafetyAssumptions.completed_epoch_vote_delivery
+    (h : E.AcceptedActualFCRNextSlotSafetyAssumptions cfg ext)
+    {e : Epoch} {m : ℕ}
+    (heDone : compute_start_slot_at_epoch cfg (e + 1) ≤ E.slot_at cfg m)
+    {t : Slot} (htEpoch : compute_epoch_at_slot cfg t = e) :
+    E.slot_start cfg (t + 1) ≤ m := by
+  obtain ⟨ast, ablk, hgenEq, _, _⟩ := h.trajectory.genesis_structure
+  have hgenTime : E.genesis_store.genesis_time ≤ E.genesis_store.time := by
+    rw [hgenEq]
+    simp only [get_forkchoice_store]
+    omega
+  have htNext : t + 1 ≤ compute_start_slot_at_epoch cfg (e + 1) := by
+    have hlt := Nat.lt_mul_div_succ t cfg.slots_per_epoch_pos
+    simp only [compute_epoch_at_slot] at htEpoch
+    rw [htEpoch] at hlt
+    simpa only [compute_start_slot_at_epoch, Nat.mul_comm] using hlt
+  apply Nat.le_of_not_gt
+  intro htooLate
+  have hslotLt : E.slot_at cfg m < t + 1 :=
+    (E.slot_at_lt_iff cfg h.trajectory.whole_seconds hgenTime).2 htooLate
+  exact (Nat.not_lt_of_ge (htNext.trans heDone)) hslotLt
+
+/-- Any in-horizon balance source with the static registry has the anchor's
+total balance and proposer boost. -/
+theorem AcceptedActualFCRNextSlotSafetyAssumptions.live_balance_source_accounting
+    (h : E.AcceptedActualFCRNextSlotSafetyAssumptions cfg ext)
+    (bs : BeaconState Root)
+    (hval : bs.validators = E.registry)
+    (hbsH : get_current_epoch cfg bs < E.verification_horizon) :
+    get_total_active_balance cfg bs = E.total_active cfg ∧
+      compute_proposer_score cfg bs =
+        compute_proposer_score cfg E.anchor_state := by
+  have hanchorH : get_current_epoch cfg E.anchor_state <
+      E.verification_horizon := by
+    rw [h.anchor_epoch_eq_initial cfg ext E]
+    exact (h.completed_calls.static_validators.genesis_within_horizon).2.2
+  have hact : ∀ i : ValidatorIndex,
+      is_active_validator (bs.validators.getD i default)
+        (get_current_epoch cfg bs) =
+      is_active_validator (E.anchor_state.validators.getD i default)
+        (get_current_epoch cfg E.anchor_state) := by
+    intro i
+    rw [hval]
+    exact h.completed_calls.static_validators.activity_constant i
+      (get_current_epoch cfg bs) (get_current_epoch cfg E.anchor_state)
+      hbsH hanchorH
+  have htotal := get_total_active_balance_congr cfg hval hact
+  have hboost := compute_proposer_score_congr cfg hval hact
+  exact ⟨htotal, hboost⟩
+
+/-- With a nondegenerate active balance, the live margin's non-honest
+weight is exactly the complement of the honest anchor active set. -/
+theorem AcceptedActualFCRNextSlotSafetyAssumptions.anchor_honest_weight_partition
+    (h : E.AcceptedActualFCRNextSlotSafetyAssumptions cfg ext)
+    (hfloor : cfg.effective_balance_increment ≤
+      E.weight (E.currentTargetAnchorActive cfg)) :
+    E.weight ((E.currentTargetAnchorActive cfg).filter fun i => i ∈ E.honest) +
+      E.activeNonHonestWeight cfg = E.total_active cfg := by
+  have hset : E.currentTargetAnchorActive cfg =
+      (Finset.range E.registry.length).filter fun i =>
+        is_active_validator (E.registry.getD i default)
+          (compute_epoch_at_slot cfg (E.slot_at cfg 0)) = true := by
+    ext i
+    simp [Execution.currentTargetAnchorActive, get_active_validator_indices,
+      Execution.registry, h.anchor_epoch_eq_initial cfg ext E]
+  have hpart := E.initial_active_weight_partition cfg
+  have htotal := E.total_active_eq_anchorActive_weight cfg hfloor
+  rw [hset] at htotal
+  simpa only [hset, Finset.filter_filter, and_comm] using
+    hpart.trans htotal.symm
+
+/-- Committee coverage places every honest anchor-active validator into
+the completed epoch. Delivery of each such slot is stated separately so
+this lemma can be used at the exact FCR call time. -/
+theorem AcceptedActualFCRNextSlotSafetyAssumptions.honest_full_epoch_assignments
+    (h : E.AcceptedActualFCRNextSlotSafetyAssumptions cfg ext)
+    {e : Epoch} {m : ℕ}
+    (heDone : compute_start_slot_at_epoch cfg (e + 1) ≤ E.slot_at cfg m)
+    (hHm : E.WithinHorizon cfg m)
+    (hdelivery : ∀ t : Slot, compute_epoch_at_slot cfg t = e →
+      E.slot_start cfg (t + 1) ≤ m) :
+    ∀ i ∈ (E.currentTargetAnchorActive cfg).filter (fun i => i ∈ E.honest),
+      i ∈ E.honest ∧
+      ∃ t : Slot, E.SlotWithinHorizon cfg t ∧
+        compute_start_slot_at_epoch cfg e ≤ t ∧
+        t < E.slot_at cfg m ∧ i ∈ E.committee t ∧
+        E.slot_start cfg (t + 1) ≤ m := by
+  intro i hiHS
+  obtain ⟨hiActive, hiHonest⟩ := Finset.mem_filter.mp hiHS
+  have hactiveAnchor : is_active_validator (E.registry.getD i default)
+      (get_current_epoch cfg E.anchor_state) = true := by
+    simp only [Execution.currentTargetAnchorActive,
+      get_active_validator_indices, List.mem_toFinset, List.mem_filter,
+      List.mem_range] at hiActive
+    simpa only [Execution.registry] using hiActive.2
+  have hanchorH : get_current_epoch cfg E.anchor_state <
+      E.verification_horizon := by
+    rw [h.anchor_epoch_eq_initial cfg ext E]
+    exact (h.completed_calls.static_validators.genesis_within_horizon).2.2
+  have heEpochLe : e + 1 ≤ compute_epoch_at_slot cfg (E.slot_at cfg m) := by
+    simp only [compute_epoch_at_slot]
+    exact (Nat.le_div_iff_mul_le cfg.slots_per_epoch_pos).mpr
+      (by simpa only [compute_start_slot_at_epoch] using heDone)
+  have heH : e < E.verification_horizon :=
+    (Nat.lt_succ_self e).trans (heEpochLe.trans_lt hHm.2.2)
+  have hactiveE : is_active_validator (E.registry.getD i default) e = true := by
+    rw [← h.completed_calls.static_validators.activity_constant i
+      (get_current_epoch cfg E.anchor_state) e hanchorH heH]
+    exact hactiveAnchor
+  obtain ⟨t, htH, htEpoch, hcommittee⟩ :=
+    h.trajectory.externals_coherence.committee_coverage i e heH hactiveE
+  have hstartT : compute_start_slot_at_epoch cfg e ≤ t := by
+    simp only [compute_start_slot_at_epoch, compute_epoch_at_slot] at htEpoch ⊢
+    rw [← htEpoch]
+    exact Nat.div_mul_le_self t cfg.slots_per_epoch
+  have hnextT : t < compute_start_slot_at_epoch cfg (e + 1) := by
+    have hlt := Nat.lt_mul_div_succ t cfg.slots_per_epoch_pos
+    simp only [compute_epoch_at_slot] at htEpoch
+    rw [htEpoch] at hlt
+    simpa only [compute_start_slot_at_epoch, Nat.mul_comm] using hlt
+  exact ⟨hiHonest, t, htH, hstartT, hnextT.trans_le heDone,
+    hcommittee, hdelivery t htEpoch⟩
+
+/-- One-confirmation of a live block from a full-epoch set of delivered
+honest assignments. The explicit equalities are accounting results about the
+actual call window, not additional live assumptions. -/
+theorem AcceptedActualFCRNextSlotSafetyAssumptions.one_confirmed_of_full_window
+    (h : E.AcceptedActualFCRNextSlotSafetyAssumptions cfg ext)
+    {observer : ValidatorIndex} {n m : ℕ}
+    (live : MonotonicityLiveAssumptions cfg ext E observer n m)
+    {s : Slot} (hs0 : E.slot_at cfg 0 ≤ s)
+    (hHm : E.WithinHorizon cfg m)
+    {r : Root}
+    (hsupport : ∀ j ∈ E.honest, ∀ u k a,
+      s ≤ u → u < E.slot_at cfg m → E.vote j u = some (k, a) →
+        r ∈ (E.store cfg ext j k).block_roots ∧
+        is_ancestor (E.store cfg ext j k)
+          (get_node_for_root a.data.beacon_block_root)
+          (get_node_for_root r) = true)
+    {w : ValidatorIndex} (hw : w ∈ E.honest)
+    (balanceSource : BeaconState Root)
+    (hval : balanceSource.validators = E.registry)
+    (hbsH : get_current_epoch cfg balanceSource < E.verification_horizon)
+    (HS : Finset ValidatorIndex)
+    (hHS : ∀ i ∈ HS, i ∈ E.honest ∧
+      ∃ t : Slot, E.SlotWithinHorizon cfg t ∧
+        s ≤ t ∧ t < E.slot_at cfg m ∧ i ∈ E.committee t ∧
+        E.slot_start cfg (t + 1) ≤ m)
+    (hpartition : E.weight HS + E.activeNonHonestWeight cfg =
+      E.total_active cfg)
+    (hwindow : estimate_committee_weight_between_slots cfg
+      (get_total_active_balance cfg balanceSource)
+      (((E.store cfg ext w m).blocks
+        ((E.store cfg ext w m).blocks r).parent_root).slot + 1)
+      (get_current_slot cfg (E.store cfg ext w m) - 1) ≤ E.total_active cfg)
+    (hboost : compute_proposer_score cfg balanceSource ≤
+      compute_proposer_score cfg E.anchor_state)
+    (hadversarial : get_adversarial_weight cfg ext
+      (E.store cfg ext w m) balanceSource r ≤
+      E.total_active cfg / 100 * cfg.confirmation_byzantine_threshold) :
+    is_one_confirmed cfg ext (E.store cfg ext w m) balanceSource r = true := by
+  have hscore := h.fixed_live_block_score_lower cfg ext E hs0 hHm
+    hsupport hw balanceSource hval hbsH HS hHS
+  exact one_confirmed_of_bounded_window cfg ext
+    (E.store cfg ext w m) balanceSource r hpartition
+    live.configured_threshold_margin hscore hwindow hboost hadversarial
+
+/-- A live epoch-entry block is one-confirmed at the next epoch start when
+the endpoint balance source is the anchored registry and the entire epoch's
+honest assignments have arrived. The parent-window and balance-floor facts
+are kept explicit for the actual-call application. -/
+theorem AcceptedActualFCRNextSlotSafetyAssumptions.first_epoch_live_block_one_confirmed
+    (h : E.AcceptedActualFCRNextSlotSafetyAssumptions cfg ext)
+    {observer : ValidatorIndex} {n m : ℕ}
+    (live : MonotonicityLiveAssumptions cfg ext E observer n m)
+    {e : Epoch}
+    (heStart : E.slot_at cfg 0 ≤ compute_start_slot_at_epoch cfg e)
+    (heDone : compute_start_slot_at_epoch cfg (e + 1) ≤ E.slot_at cfg m)
+    (hHm : E.WithinHorizon cfg m)
+    (hdelivery : ∀ t : Slot, compute_epoch_at_slot cfg t = e →
+      E.slot_start cfg (t + 1) ≤ m)
+    (hfloor : cfg.effective_balance_increment ≤
+      E.weight (E.currentTargetAnchorActive cfg))
+    {r : Root}
+    (hsupport : ∀ j ∈ E.honest, ∀ u k a,
+      compute_start_slot_at_epoch cfg e ≤ u →
+      u < E.slot_at cfg m → E.vote j u = some (k, a) →
+        r ∈ (E.store cfg ext j k).block_roots ∧
+        is_ancestor (E.store cfg ext j k)
+          (get_node_for_root a.data.beacon_block_root)
+          (get_node_for_root r) = true)
+    {w : ValidatorIndex} (hw : w ∈ E.honest)
+    (balanceSource : BeaconState Root)
+    (hval : balanceSource.validators = E.registry)
+    (hbsH : get_current_epoch cfg balanceSource < E.verification_horizon)
+    (htab : get_total_active_balance cfg balanceSource = E.total_active cfg)
+    (hboost : compute_proposer_score cfg balanceSource ≤
+      compute_proposer_score cfg E.anchor_state)
+    (hcurrentSlot : get_current_slot cfg (E.store cfg ext w m) =
+      compute_start_slot_at_epoch cfg (e + 1))
+    (hparentWindow : ((E.store cfg ext w m).blocks
+      ((E.store cfg ext w m).blocks r).parent_root).slot + 1 ≤
+        compute_start_slot_at_epoch cfg e)
+    (hblockEpoch : get_block_epoch cfg (E.store cfg ext w m) r = e)
+    (hparentEpoch : get_block_epoch cfg (E.store cfg ext w m)
+      ((E.store cfg ext w m).blocks r).parent_root < e) :
+    is_one_confirmed cfg ext (E.store cfg ext w m) balanceSource r = true := by
+  let HS := (E.currentTargetAnchorActive cfg).filter fun i => i ∈ E.honest
+  have hassign := h.honest_full_epoch_assignments cfg ext E
+    heDone hHm hdelivery
+  have hpartition := h.anchor_honest_weight_partition cfg ext E hfloor
+  have hwindow : estimate_committee_weight_between_slots cfg
+      (get_total_active_balance cfg balanceSource)
+      (((E.store cfg ext w m).blocks
+        ((E.store cfg ext w m).blocks r).parent_root).slot + 1)
+      (get_current_slot cfg (E.store cfg ext w m) - 1) ≤ E.total_active cfg := by
+    rw [htab, hcurrentSlot]
+    exact le_of_eq (estimate_eq_total_of_full_epoch_inside cfg e
+      (E.total_active cfg) _ _ hparentWindow (Nat.le_refl _))
+  have hadversarial := first_epoch_block_adversarial_bound cfg ext
+    (E.store cfg ext w m) balanceSource r e
+    hblockEpoch hparentEpoch hcurrentSlot
+  rw [htab] at hadversarial
+  exact h.one_confirmed_of_full_window cfg ext E live heStart hHm
+    hsupport hw balanceSource hval hbsH HS hassign hpartition
+    hwindow hboost hadversarial
+
+/-- The accepted clock and static-balance laws discharge all accounting
+inputs of the first-epoch-block confirmation lemma. -/
+theorem AcceptedActualFCRNextSlotSafetyAssumptions.first_epoch_live_block_one_confirmed_at_boundary
+    (h : E.AcceptedActualFCRNextSlotSafetyAssumptions cfg ext)
+    {observer : ValidatorIndex} {n m : ℕ}
+    (live : MonotonicityLiveAssumptions cfg ext E observer n m)
+    {e : Epoch}
+    (heStart : E.slot_at cfg 0 ≤ compute_start_slot_at_epoch cfg e)
+    (heDone : compute_start_slot_at_epoch cfg (e + 1) ≤ E.slot_at cfg m)
+    (hHm : E.WithinHorizon cfg m)
+    {r : Root}
+    (hsupport : ∀ j ∈ E.honest, ∀ u k a,
+      compute_start_slot_at_epoch cfg e ≤ u →
+      u < E.slot_at cfg m → E.vote j u = some (k, a) →
+        r ∈ (E.store cfg ext j k).block_roots ∧
+        is_ancestor (E.store cfg ext j k)
+          (get_node_for_root a.data.beacon_block_root)
+          (get_node_for_root r) = true)
+    {w : ValidatorIndex} (hw : w ∈ E.honest)
+    (balanceSource : BeaconState Root)
+    (hval : balanceSource.validators = E.registry)
+    (hbsH : get_current_epoch cfg balanceSource < E.verification_horizon)
+    (hcurrentSlot : get_current_slot cfg (E.store cfg ext w m) =
+      compute_start_slot_at_epoch cfg (e + 1))
+    (hparentWindow : ((E.store cfg ext w m).blocks
+      ((E.store cfg ext w m).blocks r).parent_root).slot + 1 ≤
+        compute_start_slot_at_epoch cfg e)
+    (hblockEpoch : get_block_epoch cfg (E.store cfg ext w m) r = e)
+    (hparentEpoch : get_block_epoch cfg (E.store cfg ext w m)
+      ((E.store cfg ext w m).blocks r).parent_root < e) :
+    is_one_confirmed cfg ext (E.store cfg ext w m) balanceSource r = true := by
+  obtain ⟨htab, hboost⟩ := h.live_balance_source_accounting cfg ext E
+    balanceSource hval hbsH
+  exact h.first_epoch_live_block_one_confirmed cfg ext E live
+    heStart heDone hHm
+    (fun t ht => h.completed_epoch_vote_delivery cfg ext E heDone ht)
+    h.completed_calls.balance_floor hsupport hw balanceSource
+    hval hbsH htab hboost.le hcurrentSlot hparentWindow
+    hblockEpoch hparentEpoch
+
+end Execution
+
+end FastConfirmation.Spec
+
+end

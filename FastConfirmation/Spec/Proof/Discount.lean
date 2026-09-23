@@ -78,34 +78,35 @@ def ParentStuckByz (E : Execution Root) (store : Store Root) (bs : BeaconState R
     (b : Root) : Finset ValidatorIndex :=
   (ParentSupport cfg E store bs b).filter (fun i => i ∉ E.honest)
 
-/-- Parent supporters whose vote selects the payload status required by `b`.
-The extra status test is the Gloas discount filter. -/
+/-- Parent supporters whose vote selects the payload status required by `b`
+or remains PENDING. These are the Gloas discount filter. -/
 def ParentPayloadSupport (E : Execution Root) (store : Store Root)
     (bs : BeaconState Root) (b : Root) : Finset ValidatorIndex :=
   (ParentSupport cfg E store bs b).filter (fun i =>
     (store.latest_messages i).any (fun lm =>
       decide ((get_supported_node store lm).payload_status =
-        get_parent_payload_status store (store.blocks b))))
+        get_parent_payload_status store (store.blocks b) ∨
+        (get_supported_node store lm).payload_status = .pending)))
 
-/-- Honest matching-parent support, the only honest weight that can fund the
-payload-aware discount. -/
+/-- Honest matching or PENDING parent support that can fund the discount. -/
 def ParentPayloadStuck (E : Execution Root) (store : Store Root)
     (bs : BeaconState Root) (b : Root) : Finset ValidatorIndex :=
   (ParentPayloadSupport cfg E store bs b).filter (fun i => i ∈ E.honest)
 
-/-- Non-honest matching-parent support. -/
+/-- Non-honest matching or PENDING parent support. -/
 def ParentPayloadStuckByz (E : Execution Root) (store : Store Root)
     (bs : BeaconState Root) (b : Root) : Finset ValidatorIndex :=
   (ParentPayloadSupport cfg E store bs b).filter (fun i => i ∉ E.honest)
 
-/-- Parent supporters outside the child's required payload branch. This
-includes opposite-status votes and any pending votes; neither is discounted. -/
+/-- Parent supporters outside the child's required payload branch and PENDING.
+These are votes for the opposing resolved status and are not discounted. -/
 def ParentOtherSupport (E : Execution Root) (store : Store Root)
     (bs : BeaconState Root) (b : Root) : Finset ValidatorIndex :=
   (ParentSupport cfg E store bs b).filter (fun i =>
     ¬ (store.latest_messages i).any (fun lm =>
       decide ((get_supported_node store lm).payload_status =
-        get_parent_payload_status store (store.blocks b))))
+        get_parent_payload_status store (store.blocks b) ∨
+        (get_supported_node store lm).payload_status = .pending)))
 
 omit [Inhabited Root] in
 /-- The matching and other parent votes partition root-only parent support.
@@ -120,7 +121,8 @@ theorem parent_payload_partition (E : Execution Root) (store : Store Root)
     (ParentSupport cfg E store bs b)
     (fun i => (store.latest_messages i).any (fun lm =>
       decide ((get_supported_node store lm).payload_status =
-        get_parent_payload_status store (store.blocks b)))) E.weight_of
+        get_parent_payload_status store (store.blocks b) ∨
+        (get_supported_node store lm).payload_status = .pending))) E.weight_of
 
 /-- A matching parent-root vote cannot support a different resolved payload
 status at that root.  The statement uses the complete opposite-status
@@ -145,7 +147,10 @@ theorem parentPayloadStuck_disjoint_oppositeStatus (E : Execution Root)
     (by simpa only [hroot.1] using hsupp)
   have hmatch' : (if lm.payload_present then .full else .empty) =
       get_parent_payload_status store (store.blocks b) := by
-    simpa only [get_supported_node, hstatus.1, ↓reduceIte] using hmatch
+    simp only [get_supported_node, hstatus.1, ↓reduceIte] at hmatch
+    rcases hmatch with hmatch | hpending
+    · exact hmatch
+    · cases hp : lm.payload_present <;> simp [hp] at hpending
   exact hne (hstatus.2.trans hmatch')
 
 /-- Matching parent-root votes and votes supporting the child are disjoint

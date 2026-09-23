@@ -1,5 +1,6 @@
 module
 public import FastConfirmation.Spec.Proof.AcceptedActualFCRNextSlotSafetyFold
+public import FastConfirmation.Spec.TheoremStatements
 
 @[expose] public section
 
@@ -254,9 +255,10 @@ end Execution
 as `Spec_Safety_next_slot`, under the accepted executable-semantics bundle.
 
 The global `PaperSafetySynchrony` inside `completed_calls` makes this the
-current model's GST-0 specialization. Its three fields are honest-attestation
-delivery, block relay, and equivocation-evidence relay; it does not require the
-additional `latest_message_relay` premise of the full `Synchrony` bundle. -/
+current model's GST-0 specialization. Its four fields are honest-attestation
+delivery, block relay, payload-envelope relay, and equivocation-evidence relay;
+it does not require the additional `latest_message_relay` premise of the full
+`Synchrony` bundle. -/
 def AcceptedSpec_Safety_next_slot : Prop :=
   ∀ E : Execution Root,
     E.AcceptedActualFCRNextSlotSafetyAssumptions cfg ext →
@@ -273,6 +275,14 @@ theorem acceptedSpec_safety_next_slot :
     AcceptedSpec_Safety_next_slot cfg ext := by
   intro E h v hv n w hw m hnm hnext hHm
   exact h.confirmed_head_nextSlot cfg ext E hv hw hnm hnext hHm
+
+/-- Accepted-bundle specialization of the upstream strict-monotonicity
+statement. The fifth live field now bounds FFG checkpoint visibility at
+epoch boundaries. The one-confirmation, reconfirmation, and fork-choice
+bridges are developed in the live-monotonicity proof modules. -/
+def AcceptedSpec_Monotonicity_live : Prop :=
+  Spec_Monotonicity_live cfg ext
+    (fun E => Nonempty (E.AcceptedActualFCRNextSlotSafetyAssumptions cfg ext))
 
 end FastConfirmation.Spec
 

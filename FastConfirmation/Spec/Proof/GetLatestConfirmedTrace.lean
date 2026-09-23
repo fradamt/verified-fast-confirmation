@@ -76,6 +76,28 @@ def getLatestAfterObserved
   else
     afterFinalized
 
+/-- The observed-checkpoint restart can only raise the candidate block slot.
+This follows from the executable guard's strict stale comparison. -/
+theorem getLatestAfterObserved_slot_ge_afterFinalized
+    (query : FastConfirmationStore Root) :
+    get_block_slot query.store (getLatestAfterFinalized cfg ext query) ≤
+      get_block_slot query.store (getLatestAfterObserved cfg ext query) := by
+  by_cases hguard : getLatestObservedRestartGuard cfg query
+      (getLatestAfterFinalized cfg ext query) = true
+  · have hlt : get_block_slot query.store
+        (getLatestAfterFinalized cfg ext query) <
+        get_block_slot query.store
+          query.current_epoch_observed_justified_checkpoint.root := by
+      simp only [getLatestObservedRestartGuard, Bool.and_eq_true,
+        decide_eq_true_eq] at hguard
+      exact hguard.2
+    simpa only [getLatestAfterObserved, hguard, ite_true] using hlt.le
+  · have hfalse : getLatestObservedRestartGuard cfg query
+        (getLatestAfterFinalized cfg ext query) = false := by
+      cases h : getLatestObservedRestartGuard cfg query
+          (getLatestAfterFinalized cfg ext query) <;> simp_all
+    simp [getLatestAfterObserved, hfalse]
+
 /-- The final recency guard deciding whether the descendant selector runs. -/
 def getLatestSelectorGuard
     (query : FastConfirmationStore Root) (candidate : Root) : Prop :=

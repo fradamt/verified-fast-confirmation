@@ -1,10 +1,9 @@
 # Spec-model design — `FastConfirmation/Spec/`
 
 Gloas status: G2-003 and G2-004 are proved with the payload-aware discount.
-Full validation passed at main commit `6d478e7`. The accepted Gloas theorem is
-proved under the stated assumption bundle. The weak G2-004 proof is present at
-merge commit `213cf4f`. See [the exact rule change and proof
-status](gloas-spec-deviation.md).
+The accepted Gloas theorem and the weak G2-004 proof are proved under their
+stated assumption bundles. The discount counts parent-status-or-PENDING votes;
+see [the exact rule change and proof status](gloas-spec-deviation.md).
 
 This repository models both the FCR **paper** (arXiv:2405.00549) and the FCR
 **consensus spec**. This document describes the consensus-spec layer:
@@ -173,21 +172,52 @@ decision 13).
 
 ## Gloas payload-envelope synchrony
 
-On 22 September 2026, the accepted synchrony assumption was strengthened by
-one field, `PaperSafetySynchrony.payload_envelope_relay`. Once an honest
-validator has verified a payload envelope, every honest validator must have
-it by the last second of that slot. This uses the same delivery bound and
-horizon handling as `block_relay`. Both the sender state and receiver state
-are within the verification horizon. The successor clock read only identifies
-the deadline; it does not require a successor state within the horizon.
+The accepted synchrony assumption has separate `envelope_delivery` and
+`data_availability_relay` fields. A verified envelope reaches each honest
+receiver at an event position where its block is known, by the same deadline
+as `block_relay`. An earlier rejected envelope needs redelivery after the
+block. Data availability propagates to the receiver's envelope observation
+by that deadline. `ExternalsCoherence.verify_envelope_deterministic` states
+that verification depends on the state and envelope, not the observation.
+The sender and receiver states are within the verification horizon. The
+successor clock read identifies the deadline only.
 
 An honest index-1 attestation has a FULL head, whose envelope is locally
-verified. Relay supplies that envelope before the next-slot delivery tick.
-Handler preservation carries it through any events before the attestation.
+verified. `Execution.payload_envelope_relay_of_parts` derives the old relay
+outcome, using block-state agreement proved from deterministic state
+transitions. Handler preservation carries it through any events before the
+attestation.
 This closes the payload part of validation without adding a branch-weight
-assumption. The exact field is in [the review guide](REVIEW_GUIDE.md). The
+assumption. The exact premises are in [the review guide](REVIEW_GUIDE.md). The
 legacy `Synchrony` record is unchanged; conversion to `PaperSafetySynchrony`
-now takes explicit payload-relay evidence.
+now takes explicit envelope-delivery and data-relay evidence.
+
+## Live monotonicity and the paper
+
+The paper's `Theorem1_Monotonicity` (`FastConfirmation/Paper/LMDGhost/`)
+states that the LMD-GHOST safety predicate persists: a block confirmed at
+`t` is confirmed at each later `t'`. It uses Assumption 4,
+`beta < (1 - pb) / 4`, and `CommitteeCoversEpoch`. The proposed spec statement
+`Spec_Monotonicity_live` is about the cached executable root. The
+correspondence is:
+
+| Paper | Spec model |
+|---|---|
+| Assumption 4 | `paper_byzantine_boost_bound`, with actual non-honest stake |
+| `CommitteeCoversEpoch` | accepted `ExternalsCoherence.committee_coverage` |
+| synchronous honest votes | `honest_block_each_slot`, `honest_votes_extend_initial_head`, accepted synchrony |
+| threshold with `beta` | `configured_threshold_margin`, because the executable threshold uses the configured cap |
+| Assumption 6, conditional eventual FFG closure | `ffg_timely_justification`, with checkpoint timing at the last-slot call and next epoch start |
+| none | FFG gates, staleness revert, observed restart, epoch-start reconfirmation |
+
+The last row has no counterpart in the paper's LMD-only theorem. The paper's
+Assumption 3.2 lets a justification appear two epochs late; the executable
+selector needs it one epoch earlier. `Proof/MonotonicityLiveGates.lean`
+records the resulting gate and revert facts. The fifth live field supplies the
+earlier checkpoint observation; `Proof/MonotonicityLiveBridge.lean`,
+`MonotonicityLiveConfirmation.lean`, and `MonotonicityLiveRestart.lean` prove
+parts of its executable bridge, including the actual stale-cache restart and
+the numeric reconfirmation rule. The statement remains open.
 
 ## Module system
 

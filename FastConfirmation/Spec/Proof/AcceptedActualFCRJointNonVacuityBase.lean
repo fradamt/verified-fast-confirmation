@@ -789,6 +789,8 @@ theorem witnessExternalsCoherence :
     change decide ((witnessExternals.process_slots state slot).validators ≠ [] ∧
       a ∈ groundVotes) = decide (state.validators ≠ [] ∧ a ∈ groundVotes)
     rw [witnessProcessSlots_registry]
+  · intro state signed o o'
+    rfl
 
 theorem witnessStaticValidatorSet :
     StaticValidatorSet witnessConfig witnessExecution := by
@@ -895,16 +897,99 @@ theorem witnessSynchrony :
     exact
       (witnessExecution.store_storeLE witnessConfig witnessExternals v hnm).2.2.1 hi
 
+/-- No event in this finite witness carries an execution envelope. -/
+private theorem witnessSchedule_no_envelope (v n : ℕ) (event : Event WitnessRoot)
+    (hmem : event ∈ witnessSchedule v n) :
+    ∀ signed observation,
+      event ≠ Event.execution_payload_envelope signed observation := by
+  intro signed observation heq
+  subst event
+  simp [witnessSchedule] at hmem
+  split_ifs at hmem <;> simp_all
 
-/-- The Gloas relay field follows from the common schedule and payload persistence. -/
+private theorem witness_other_event_payloads (store : Store WitnessRoot)
+    (event : Event WitnessRoot)
+    (hne : ∀ signed observation,
+      event ≠ Event.execution_payload_envelope signed observation) :
+    ((apply_event witnessConfig witnessExternals store event).getD store).payloads =
+      store.payloads := by
+  cases event with
+  | block block =>
+      cases h : on_block witnessConfig witnessExternals store block with
+      | none => simp [apply_event, h]
+      | some next =>
+          simpa [apply_event, h] using on_block_payloads witnessConfig witnessExternals h
+  | attestation attestation fromBlock =>
+      cases h : on_attestation witnessConfig witnessExternals store attestation fromBlock with
+      | none => simp [apply_event, h]
+      | some next =>
+          simpa [apply_event, h] using on_attestation_payloads witnessConfig witnessExternals h
+  | attester_slashing slashing =>
+      cases h : on_attester_slashing witnessExternals store slashing with
+      | none => simp [apply_event, h]
+      | some next =>
+          simpa [apply_event, h] using on_attester_slashing_payloads witnessExternals h
+  | execution_payload_envelope signed observation => exact (hne signed observation rfl).elim
+  | payload_attestation_message message fromBlock =>
+      cases h : on_payload_attestation_message witnessConfig witnessExternals store message fromBlock with
+      | none => simp [apply_event, h]
+      | some next =>
+          simpa [apply_event, h] using
+            on_payload_attestation_message_payloads witnessConfig witnessExternals h
+
+private theorem witness_fold_no_envelope (events : List (Event WitnessRoot))
+    (store : Store WitnessRoot)
+    (hno : ∀ event ∈ events, ∀ signed observation,
+      event ≠ Event.execution_payload_envelope signed observation) :
+    (events.foldl
+      (fun s event => (apply_event witnessConfig witnessExternals s event).getD s)
+      store).payloads = store.payloads := by
+  induction events generalizing store with
+  | nil => rfl
+  | cons event tail ih =>
+      simp only [List.foldl_cons]
+      have he := hno event (List.mem_cons_self)
+      have ht : ∀ e ∈ tail, ∀ signed observation,
+          e ≠ Event.execution_payload_envelope signed observation := by
+        intro e he'; exact hno e (List.mem_cons_of_mem event he')
+      exact (ih _ ht).trans (witness_other_event_payloads store event he)
+
+private theorem witness_schedule_fold_payloads (v n : ℕ) (store : Store WitnessRoot) :
+    ((witnessSchedule v n).foldl
+      (fun s event => (apply_event witnessConfig witnessExternals s event).getD s)
+      store).payloads = store.payloads := by
+  apply witness_fold_no_envelope
+  intro event hmem
+  exact witnessSchedule_no_envelope v n event hmem
+
+private theorem witness_payloads_empty (v n : ℕ) :
+    (witnessExecution.store witnessConfig witnessExternals v n).payloads =
+      witnessExecution.genesis_store.payloads := by
+  induction n with
+  | zero => rfl
+  | succ n ih =>
+      simpa only [Execution.store] using
+        (witness_schedule_fold_payloads v (n + 1)
+          (on_tick witnessConfig
+            (witnessExecution.store witnessConfig witnessExternals v n)
+            (witnessExecution.time_at (n + 1)))).trans
+          ((on_tick_payloads witnessConfig _ _).trans ih)
+
+/-- The Gloas envelope and data premises hold for this finite witness. -/
 theorem witnessPaperSafetySynchrony :
     PaperSafetySynchrony witnessConfig witnessExternals witnessExecution := by
   apply witnessSynchrony.toPaperSafetySynchrony witnessConfig witnessExternals
-  intro v hv n r hn hr w hw m hm hslot
-  have hnm : n ≤ m := Nat.le_of_succ_le_succ
-    (by simpa only [slot_at_eq] using hslot)
-  rw [← witness_store_symmetric v w m]
-  exact witnessExecution.is_payload_verified_mono witnessConfig witnessExternals v hnm hr
+  · intro v hv n r hn hr
+    have hempty := witness_payloads_empty v n
+    have hnone : witnessExecution.genesis_store.payloads r = none := rfl
+    have hfalse : is_payload_verified
+        (witnessExecution.store witnessConfig witnessExternals v n) r = false := by
+      simp only [is_payload_verified, hempty, hnone, Option.isSome_none]
+    rw [hfalse] at hr
+    cases hr
+  · intro v hv k n signed sourceObservation hk hn hevent havailable
+    have hno := witnessSchedule_no_envelope v k _ hevent signed sourceObservation
+    exact (hno rfl).elim
 
 
 theorem witnessScheduledPrefixTrajectoryAssumptions :

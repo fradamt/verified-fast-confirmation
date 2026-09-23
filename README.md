@@ -1,11 +1,9 @@
 # Verified Fast Confirmation
 
-Gloas status: **G2-003 and G2-004 are proved**. Full validation, including the
-trust audit, passed at main commit `6d478e7`. The payload-aware empty-slot
-discount is a [documented local deviation](docs/gloas-spec-deviation.md) from
-upstream consensus-specs commit `6b9bd532c`. The weak G2-004 proof is present
-at merge commit `213cf4f` and is described in
-[the weak proof note](docs/weak-synchrony.md#weak-g2-004-the-pending-parent-selects-the-status-of-c).
+Gloas status: **G2-003 and G2-004 are proved** for the parent-status-or-PENDING
+empty-slot discount. The rule is a [documented local deviation](docs/gloas-spec-deviation.md)
+from upstream consensus-specs commit `6b9bd532c`. The weak G2-004 proof is
+explained in [the weak proof note](docs/weak-synchrony.md#weak-g2-004-the-pending-parent-selects-the-status-of-c).
 
 Lean 4 formalizations of Ethereum's Fast Confirmation Rule.
 
@@ -47,7 +45,9 @@ Useful entry points:
 - [Model facade](FastConfirmation/Spec/Model.lean)
 - [Public proved-theorem facade](FastConfirmation/Spec/ProvenTheorems.lean)
 - [Accepted assumptions, statement, and proof implementation](FastConfirmation/Spec/Proof/AcceptedActualFCRNextSlotSafetyFacade.lean)
-- [Concrete non-vacuity witness](FastConfirmation/Spec/Proof/AcceptedActualFCRJointNonVacuityFinal.lean)
+- [Concrete non-vacuity witness](FastConfirmation/Spec/Proof/AcceptedActualFCRJointNonVacuityFinal.lean):
+  a finite toy instance with four slots per epoch and a four-epoch horizon.
+  It does not establish a mainnet instance or unbounded liveness.
 
 ### Primary theorem
 
@@ -60,11 +60,16 @@ Useful entry points:
 The theorem concerns stored FCR outputs at completed execution boundaries.
 Its assumption bundle includes the execution trajectory, honest behavior,
 synchronous relay deadlines, the one-slot vote delivery lookahead, a static
-validator set over the finite horizon, the Byzantine-weight bound, the balance
-floor, the Phase0 source-coherence contracts, accepted FFG semantics,
+validator set over the finite horizon, a per-slot and per-span non-honest
+weight bound, the balance floor, the Phase0 source-coherence contracts,
+accepted FFG semantics,
 trusted-anchor coherence, checkpoint projection, the paper's Assumption 3.2,
 and call-scoped helper provisos. Reset safety and the head-ancestry conclusion
-are derived, not assumed.
+are derived, not assumed. The economic bound is a committee concentration
+assumption for every slot and span. A global stake bound alone does not imply it.
+
+Legacy internal proofs still take `hstatus` or `hpayload` inputs. No audited
+witness takes either input; the accepted bundle carries its own payload relay.
 
 The same facade proves
 `findLatestConfirmedDescendant_safeFrom_of_actualCall` for the literal helper
