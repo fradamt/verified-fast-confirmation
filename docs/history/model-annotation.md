@@ -1,3 +1,5 @@
+> Historical document. Replaced by [docs/PAPER_MAP.md](../PAPER_MAP.md).
+
 # Model annotation — paper ↔ Lean correspondence
 
 A side-by-side map from Ethereum's **Fast Confirmation Rule** paper (arXiv:2405.00549,

@@ -1,3 +1,5 @@
+> Historical document. Replaced by [docs/MODELING_CHOICES.md](../MODELING_CHOICES.md).
+
 # Algorithm 1 Gate Discharge
 
 The public §4 Algorithm-1 facades are proved over

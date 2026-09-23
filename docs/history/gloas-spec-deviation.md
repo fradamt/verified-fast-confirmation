@@ -1,3 +1,5 @@
+> Historical document. Replaced by [docs/SPEC_MAP.md](../SPEC_MAP.md).
+
 # Gloas payload-aware empty-slot discount
 
 The upstream source pin is `6b9bd532cca16555e2f3282d757622ebff29743e`.

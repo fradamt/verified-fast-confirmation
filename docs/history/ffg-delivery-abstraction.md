@@ -1,3 +1,5 @@
+> Historical document. Replaced by [docs/MODELING_CHOICES.md](../MODELING_CHOICES.md).
+
 # FFG on-chain vote model and AU visibility bridge
 
 The §4 model has two connected surfaces:

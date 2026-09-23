@@ -1,3 +1,5 @@
+> Historical document. Replaced by [docs/MODELING_CHOICES.md](../MODELING_CHOICES.md).
+
 # Paper-model design
 
 This document describes the companion formalization of Sections 3.1 and 4 of

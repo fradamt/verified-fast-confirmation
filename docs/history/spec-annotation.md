@@ -1,3 +1,5 @@
+> Historical document. Replaced by [docs/SPEC_MAP.md](../SPEC_MAP.md).
+
 # Spec ↔ Lean annotation — `FastConfirmationModel/`
 
 Per-function mapping between public `consensus-specs` commit

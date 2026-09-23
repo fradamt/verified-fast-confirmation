@@ -1,3 +1,5 @@
+> Historical document. Replaced by [docs/MODELING_CHOICES.md](../MODELING_CHOICES.md).
+
 # Gloas model design
 
 The G3 lane ports this design onto main `4b9ef30`. The G5

@@ -1,3 +1,5 @@
+> Historical document. Replaced by [docs/MODELING_CHOICES.md](../MODELING_CHOICES.md).
+
 # Spec-model design — `FastConfirmationModel/`
 
 Gloas status: G2-003 and G2-004 are proved with the payload-aware discount.

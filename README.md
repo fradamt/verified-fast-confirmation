@@ -1,185 +1,70 @@
 # Verified Fast Confirmation
 
-Gloas status: **G2-003 and G2-004 are proved** for the parent-status-or-PENDING
-empty-slot discount. The rule and proof are a
-[documented local deviation](docs/gloas-spec-deviation.md) from upstream
-consensus-specs commit `6b9bd532c`.
+This Lean 4 repository verifies three properties of the executable Fast Confirmation Rule (FCR) under explicit execution, network, economic, and Casper FFG premises. The primary model follows the Python specification in the fork `fradamt/consensus-specs`, tag `fcr-gloas-fix` (`13f391516`). That tag includes the public Gloas empty-slot discount fix. The paper library is independent of the executable model. The proofs are kernel checked; the stated premises and the model boundary need separate review.
 
-Lean 4 formalizations of Ethereum's Fast Confirmation Rule.
+## Review theorem
 
-This repository contains two separate developments:
+`review_claims` in `FastConfirmationProofs/ReviewTheorem.lean` proves all three fields of `ReviewClaims` in `FastConfirmationStatements/Review.lean`:
 
-| Development | Source | Role and import |
-| --- | --- | --- |
-| [`FastConfirmationModel/`](FastConfirmationModel/) | Ethereum consensus specification, pinned at public commit [`6b9bd53`](https://github.com/ethereum/consensus-specs/blob/6b9bd532cca16555e2f3282d757622ebff29743e/specs/phase0/fast-confirmation.md), with the documented payload-aware discount | Primary executable model with a proved accepted Gloas safety theorem |
-| [`FastConfirmationPaper/`](FastConfirmationPaper/) | [Fast Confirmation Rule paper](https://arxiv.org/abs/2405.00549), Sections 3.1 and 4 | Independent companion model and proofs; `import FastConfirmationPaper` |
+- `confirmed_root_safe_from_next_slot`: an honest node's stored confirmed root is on every honest head from the following slot, within the verification horizon.
+- `live_confirmed_root_monotonicity`: an honest node's later stored confirmed root descends from its earlier one when honest blocks and timely FFG justification meet the live premises.
+- `selected_result_safe_from_next_slot_of_scheduled_call`: the selected helper result at a scheduled boundary call is safe from the following slot when its selector guard holds. This covers an unchanged helper result.
 
-The accepted consensus-spec theorem is proved entirely within
-`FastConfirmationProofs/`. It does not import the paper-model modules, and
-there is currently no formal refinement theorem connecting the two models.
-The paper's arguments guide the spec proof, but every fact used by the
-accepted theorem is represented and proved—or stated as an explicit
-assumption—inside the spec development.
+## Premise ledger
 
-## Consensus-spec formalization
-
-This is the primary result of the repository.
-
-In declaration names, `Accepted` means that the scheduled protocol events were
-accepted by their handlers; it is not a review-status label.
-
-The executable functions in
-[`FastConfirmationModel/Spec/`](FastConfirmationModel/Spec/) follow
-`consensus-specs/specs/gloas/fast-confirmation.md`, Gloas fork choice, and
-the phase0 FCR and beacon-chain helpers inherited by Gloas. They preserve the Python names and
-control-flow structure to support line-by-line review.
-
-The surrounding execution, synchrony, FFG-semantics, and assumption records
-are verification infrastructure rather than Python transcriptions. Together
-they model scheduled node executions, honest behavior, message delivery,
-fork-choice state, and the semantic facts connecting accepted block
-transitions to Casper FFG.
-
-Useful entry points:
-
-- [Model facade](FastConfirmationModel.lean)
-- [Public proved-theorem facade](FastConfirmationProofs/ReviewTheorem.lean)
-- [Accepted assumptions, statement, and proof implementation](FastConfirmationProofs/Safety/NextSlotSafety.lean)
-- [Concrete non-vacuity witness](FastConfirmationWitnesses/NonVacuity/NextSlotPremises.lean):
-  a finite toy instance with four slots per epoch and a four-epoch horizon.
-  It does not establish a mainnet instance or unbounded liveness.
-
-### Primary theorem
-
-`review_claims` in `FastConfirmationProofs/ReviewTheorem.lean` proves the three fields of `ReviewClaims` in `FastConfirmationStatements/Review.lean`.
-
-`confirmed_root_safe_from_next_slot` proves:
-
-> If an honest node stores a block root as confirmed, then from the following
-> slot onward that root is an ancestor of every in-horizon honest node's
-> fork-choice head.
-
-The theorem concerns stored FCR outputs at completed execution boundaries.
-Its assumption bundle includes the execution trajectory, honest behavior,
-synchronous relay deadlines, the one-slot vote delivery lookahead, a static
-validator set over the finite horizon, a per-slot and per-span non-honest
-weight bound, the balance floor, the Phase0 source-coherence contracts,
-accepted FFG semantics,
-trusted-anchor coherence, checkpoint projection, the paper's Assumption 3.2,
-and call-scoped helper provisos. Reset safety and the head-ancestry conclusion
-are derived, not assumed. The economic bound is a committee concentration
-assumption for every slot and span. A global stake bound alone does not imply it.
-
-Legacy internal proofs still take `hstatus` or `hpayload` inputs. No audited
-witness takes either input; the accepted bundle carries its own payload relay.
-
-The same facade proves
-`selected_result_safe_from_next_slot_of_scheduled_call` for the literal helper
-result at an actual scheduled boundary call, including an unchanged return.
-
-`live_confirmed_root_monotonicity` proves that an honest node's later stored
-confirmed root descends from its earlier stored confirmed root under
-`LiveMonotonicityPremises`. The proof is in
-[MonotonicityLiveAssemble.lean](FastConfirmationProofs/Monotonicity/LiveConfirmation.lean).
-It uses both live fields: honest block production with descendant vote support,
-and timely FFG checkpoint closure.
-
-The result is the GST-0 specialization: its relay laws hold throughout the
-checked execution. It does not claim cross-node safety for optional queries at
-arbitrary in-slot action prefixes. The exported finite counterexamples exhibit
-that failure under the proved structural, synchrony, and economic packages.
-They deliberately do not assume the accepted FFG semantics, so they are not
-countermodels to a strengthening under the complete accepted assumption bundle.
-
-### Spec model layout
+The records in this table are in `FastConfirmationStatements/Premises/`. The paper is [arXiv:2405.00549](https://arxiv.org/abs/2405.00549). The source of each condition is shown in the last column.
 
 ```text
-FastConfirmationModel/Spec/
-  Config.lean                protocol configuration and mainnet values
-  Types.lean                 beacon types, helpers, and abstract Externals
-  ForkChoice.lean            Store and fork-choice functions
-  FCRStore.lean              FastConfirmationStore and state helpers
-  LMDHelpers.lean            LMD-GHOST support and safety helpers
-  FFGHelpers.lean            current-target and justification predictors
-  Confirmation.lean          the Fast Confirmation Rule
-  Handlers.lean              fork-choice event handlers
-  Validator.lean             honest attestation construction
-  Execution.lean             scheduled multi-node executions
-  AcceptedExecution.lean     exact accepted-prefix semantics
-  Assumptions.lean           honest, network, external, and economic contracts
-  FFGCertificates.lean       included FFG certificate objects
-  FFGStateSemantics.lean     accepted Casper-FFG semantic interface
-  ExactCheckpointLinks.lean  exact epoch-checkpoint projection laws
+┌─────────────────────┬─────────────────────────────────────┬────────────────────────────────────────────────────────────────────────┬───────────────────────────────┐
+│ Claim               │ Premise record                      │ Fields in plain words                                                  │ Source                        │
+├─────────────────────┼─────────────────────────────────────┼────────────────────────────────────────────────────────────────────────┼───────────────────────────────┤
+│ Both safety fields  │ Execution.NextSlotSafetyPremises    │ Exact FFG state at every accepted prefix; a well formed scheduled run; │ Paper Assumption 3.2; Gloas   │
+│                     │                                     │ completed FCR calls; epoch arithmetic; anchor alignment; finalization  │ extension; model idealisation │
+│                     │                                     │ delay; more than one slot per epoch; checkpoint and link evidence.     │                               │
+│ Both safety fields  │ Execution.ScheduledPrefixPremises   │ Whole seconds, well formed stores, coherent external calls, honest     │ Model idealisation            │
+│                     │                                     │ behavior, and a valid genesis store.                                   │                               │
+│ Both safety fields  │ Execution.CompletedFCRCallPremises  │ Five delivery laws; fixed active validators; committee and Byzantine   │ Paper Assumptions 1 and 2;    │
+│                     │                                     │ weight bounds; Phase0 source coherence; a nonzero balance floor;       │ Gloas extension; model        │
+│                     │                                     │ next-slot vote receipt; guarded prediction support.                    │ idealisation                  │
+│ Both safety fields  │ NextSlotSynchronyPremises           │ Honest vote delivery, block relay, verified envelope delivery, data    │ Paper synchrony; Gloas        │
+│                     │                                     │ availability relay, and equivocation evidence relay.                   │ extension                     │
+│ Both safety fields  │ BeaconExternalsPremises             │ Slot and state transition coherence, committee and attestation         │ Model idealisation            │
+│                     │                                     │ validity, and deterministic envelope verification.                     │                               │
+│ Both safety fields  │ ByzantineWeightPremises             │ Quantized balances, sound committee estimates, and a non-honest weight │ Paper Assumption 2;           │
+│                     │                                     │ fraction bound for every slot span.                                    │ executable estimate           │
+│ Both safety fields  │ ExactPrefixAcceptedFFGSemantics;    │ Exact accepted-prefix FFG state, causal links, and projected           │ Paper Assumption 3.2; model   │
+│                     │ AcceptedEpochCheckpointProjection   │ checkpoint roots.                                                      │ idealisation                  │
+│ Live field          │ LiveMonotonicityPremises            │ An honest block in each slot from execution start, known by the next   │ Paper Theorem 1 monotonicity  │
+│                     │                                     │ slot and supported by honest votes; timely observed FFG justification  │ and Assumption 6,             │
+│                     │                                     │ at epoch boundaries.                                                   │ strengthened                  │
+└─────────────────────┴─────────────────────────────────────┴────────────────────────────────────────────────────────────────────────┴───────────────────────────────┘
 ```
 
-## Paper companion
+`Execution.NextSlotSafetyPremises` supplies the common safety premise to the first and third fields. `LiveConfirmedRootMonotonicity` adds `LiveMonotonicityPremises` to that same execution premise. The FFG and finalization laws quantify over accepted prefixes beyond the safety endpoint where their declarations require it; the finite conclusion does not reduce their premise range.
 
-The paper companion is an independent abstract formalization of
-[arXiv:2405.00549](https://arxiv.org/abs/2405.00549):
+## Scope limits
 
-- [`Core/`](FastConfirmationPaper/Core/) defines time, blocks, validators, votes,
-  views, filters, and fork choice.
-- [`LMDGhost/`](FastConfirmationPaper/LMDGhost/) formalizes the Section 3.1
-  LMD-GHOST safety and monotonicity results.
-- [`HFC/`](FastConfirmationPaper/HFC/) formalizes the Section 4 LMD-GHOST-HFC rule
-  and its Algorithm-1 safety and monotonicity results.
+- Validator activity is fixed inside the checked horizon by `StaticValidatorSet`. The proof does not cover registry churn.
+- The model is non-optimistic. An imported payload enters the store only after `verify_execution_payload_envelope` returns true. This external includes the execution engine's `VALID` decision. Execution validation itself is opaque.
+- `BeaconExternalsPremises` supplies contracts for external state transitions and validation. The Lean proof does not implement an execution engine.
+- `LiveMonotonicityPremises.honest_block_each_slot` requires a block with an honest proposer index in every slot from execution start. Its vote-support law and `ffg_timely_justification` require timely descendant votes and exact FFG state outputs at epoch boundaries. These conditions are stronger than paper Assumption 6. Proposer-index membership is not an authentication theorem.
+- There is no joint finite witness for both live fields and the safety premise. The next-slot finite witness has no payload envelope, so its envelope relay conditions hold vacuously. See `FastConfirmationWitnesses/Index.lean`.
+- The result covers stored boundary outputs. `StrictPrefixExtraQuery.extra_query_changes_head_counterexample` and `PinnedEconomicsExtraQuery.extra_query_changes_head_counterexample` show why an arbitrary in-slot query needs a different statement.
 
-Its complete facade is [`FastConfirmationPaper.lean`](FastConfirmationPaper.lean).
+## Paper library
 
-Public paper-facing entry points:
+`FastConfirmationPaper/Core/` defines the abstract objects. `FastConfirmationPaper/LMDGhost/` proves the Section 3.1 Theorem 1 safety and monotonicity claims through `confirmed_block_safety` and `confirmed_block_monotonicity`. `FastConfirmationPaper/HFC/` proves the Section 4 Algorithm 1 safety and monotonicity claims through `rule_confirmed_block_safety` and `rule_confirmed_block_monotonicity`. `head_agreement_after_confirmation` is the reusable Lemma 6 style result. `SafeConfirmedAlg1Inputs` requires later rule confirmation for each honest-view-safe block. That input is stronger than paper Assumption 6. There is no refinement theorem between the paper and executable models.
 
-- [Section 3.1 statements](FastConfirmationPaper/LMDGhost/Claims.lean)
-- [Section 3.1 proved facade](FastConfirmationPaper/LMDGhost/ReviewTheorem.lean)
-- [Section 4 statements](FastConfirmationPaper/HFC/Claims.lean)
-- [Section 4 proved facade](FastConfirmationPaper/HFC/ReviewTheorem.lean)
+## How to verify
 
-The headline paper theorems are `confirmed_block_safety`,
-`confirmed_block_monotonicity`, `rule_confirmed_block_safety`, and
-`rule_confirmed_block_monotonicity`.
-
-## Documentation
-
-Consensus-spec development:
-
-- [Spec-model design](docs/spec-model-design.md)
-- [Spec-to-Lean function mapping](docs/spec-annotation.md)
-
-Paper companion:
-
-- [Paper-to-Lean model mapping](docs/model-annotation.md)
-- [Paper-model design](docs/paper-model-design.md)
-- [Algorithm-1 proof interface](docs/algorithm1-gate-discharge.md)
-- [FFG vote and AU model](docs/ffg-delivery-abstraction.md)
-- [Source and predicate notes](docs/source-notes.md)
-
-Repository review:
-
-- [Architecture, trust, and source review guide](docs/REVIEW_GUIDE.md)
-
-## Build
-
-The project uses Lean `v4.30.0-rc2` with the matching mathlib release.
+Use the pinned Lean toolchain and a local checkout of the Python fork. The full check builds the six libraries, checks their imports and review surface, and audits the public witnesses for non-standard axioms:
 
 ```sh
-lake exe cache get
-lake build
+scripts/validate.sh --consensus-repo /path/to/fradamt-consensus-specs
 ```
 
-`lake build` elaborates every model, proof, witness, and counterexample. The
-project contains no `sorry`, `admit`, or project-defined axioms.
+`--fast` runs source, document-name, boundary, and hygiene checks. The full check covers 15 public witnesses in `scripts/Audit.lean`.
 
-## Verification
+## Where to read
 
-The deterministic validation suite also checks the public consensus-source
-objects, facade reachability and independence, project declaration trust, and
-the axiom dependencies of the public Spec and Paper theorems:
-
-```sh
-scripts/validate.sh --fast  # source provenance and repository hygiene
-scripts/validate.sh         # plus import graph, build, and Lean-native trust audit
-```
-
-By default the source audit looks for `consensus-specs` beside this checkout,
-then one directory higher. Pass `--consensus-repo PATH` if the checkout
-containing the pinned public commit lives elsewhere. GitHub CI runs these
-checks without a model API or repository write permission.
+Read [architecture](docs/ARCHITECTURE.md), [source map](docs/SPEC_MAP.md), [paper map](docs/PAPER_MAP.md), [modeling choices](docs/MODELING_CHOICES.md), [review guide](docs/REVIEW_GUIDE.md), and [audit brief](docs/AI_AUDIT.md). The [conformance guide](docs/conformance.md) covers trace comparison. Source declarations are in `FastConfirmationStatements/Review.lean`, `FastConfirmationProofs/ReviewTheorem.lean`, and `FastConfirmationWitnesses/Index.lean`.

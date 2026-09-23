@@ -36,3 +36,16 @@
   import check, and trust audit. Do not change proof statements to fix a
   module visibility error. Use `scripts/check_imports.py` to check the
   library graph.
+
+# Current review documents
+
+- `README.md` states the three public claims and the premise ledger.
+- `docs/ARCHITECTURE.md` gives the six-library layout and checks.
+- `docs/CONVENTIONS.md` gives naming, module, and import rules.
+- `docs/AI_AUDIT.md` gives the cold review reading order.
+- `docs/SPEC_MAP.md` maps Python sections and functions to Model.
+- `docs/PAPER_MAP.md` maps the paper to the independent Paper library.
+- `docs/MODELING_CHOICES.md` records choices and limits.
+- `docs/REVIEW_GUIDE.md` records current findings and proof status.
+- `docs/conformance.md` describes the trace comparison.
+- Earlier notes are in `docs/history/`.

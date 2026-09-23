@@ -1,3 +1,5 @@
+> Historical document. Replaced by [docs/MODELING_CHOICES.md](../MODELING_CHOICES.md).
+
 # FCR β-bounds and refined-predicate terms
 
 This note summarizes the distinct adversary bounds and confirmation-predicate
