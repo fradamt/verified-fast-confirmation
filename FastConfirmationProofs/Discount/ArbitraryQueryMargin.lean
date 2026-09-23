@@ -353,7 +353,7 @@ theorem sameEpoch_descendStep_of_selectedInputsAt_minimal
     hin.σ_lt_endpoint hHm hsame hchain hc hglcKnown hIH
   have hσH : E.SlotWithinHorizon cfg σ :=
     E.slotWithinHorizon_of_le cfg (Nat.le_of_lt hin.σ_lt_endpoint) hHm
-  have hbudget := E.hbudget_sameEpoch_of_IH cfg ext hA.byzantine_bound
+  have hbudget := E.hbudget_sameEpoch cfg ext hA.byzantine_bound
     hA.externals_coherence hin.lo_le_es hin.es_le_σ hσH hsame
   have hval : ((E.store cfg ext w m).checkpoint_states
       (E.store cfg ext w m).justified_checkpoint).validators = E.registry :=

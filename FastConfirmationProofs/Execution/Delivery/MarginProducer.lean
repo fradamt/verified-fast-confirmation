@@ -89,19 +89,6 @@ theorem chain_descent_restrict (hwfE : WellFormedExecution E)
 
 
 
-/-- The same-epoch aggregate Byzantine budget from `es`. -/
-theorem hbudget_sameEpoch_of_IH (hbb : ByzantineBound cfg E)
-    (hec : ExternalsCoherence cfg ext E) {lo es σ : Slot}
-    (hlo : lo ≤ es) (hbase : es ≤ σ)
-    (hσH : E.SlotWithinHorizon cfg σ)
-    (hsame : ∀ t : Slot, lo ≤ t → t ≤ σ →
-      compute_epoch_at_slot cfg t = compute_epoch_at_slot cfg lo) :
-    (100 - cfg.confirmation_byzantine_threshold) *
-        (E.Bval lo σ - E.Bval lo es) ≤
-      cfg.confirmation_byzantine_threshold *
-        (E.Jspec lo σ - E.Jspec lo es) :=
-  E.hbudget_sameEpoch cfg ext hbb hec hlo hbase hσH hsame
-
 /-! ## Complete same-epoch endpoint strip -/
 
 

@@ -169,7 +169,7 @@ theorem apply_event_blocksSlotLe {sl : Slot} {s s' : Store Root} {e : Event Root
     exact (on_payload_attestation_message_sameBlocks cfg ext he).blocksSlotLe h
 
 /-- Folding the second's events preserves the block-slot bound: every event
-keeps the store's current slot fixed (`apply_event_get_current_slot`), so the
+keeps the store's current slot fixed (`apply_event_current_slot`), so the
 current-slot bound is re-established at each step. -/
 theorem blocksSlotLe_foldl {sl : Slot} :
     ∀ (l : List (Event Root)) (s : Store Root),
@@ -187,7 +187,7 @@ theorem blocksSlotLe_foldl {sl : Slot} :
     | some s' =>
       simp only [Option.getD_some]
       refine ih s' ?_ (apply_event_blocksSlotLe cfg ext hcur h he)
-      rw [apply_event_get_current_slot cfg ext he]; exact hcur
+      rw [apply_event_current_slot cfg ext he]; exact hcur
 
 /-- Every known block's slot is at most the wall-clock slot `E.slot_at cfg n` at
 every node and second of a trajectory whose genesis store is a
@@ -691,7 +691,7 @@ theorem Execution.store_latest_message_ge_mono (E : Execution Root) {v w : Valid
 
 
 /-- The event fold keeps the store's current slot fixed: every handler preserves
-`get_current_slot` (`apply_event_get_current_slot`), and a rejected event leaves
+`get_current_slot` (`apply_event_current_slot`), and a rejected event leaves
 the store unchanged. -/
 theorem foldl_get_current_slot (l : List (Event Root)) (s : Store Root) :
     get_current_slot cfg
@@ -704,7 +704,7 @@ theorem foldl_get_current_slot (l : List (Event Root)) (s : Store Root) :
     show get_current_slot cfg ((apply_event cfg ext s e).getD s) = get_current_slot cfg s
     cases he : apply_event cfg ext s e with
     | none => rw [Option.getD_none]
-    | some s' => rw [Option.getD_some]; exact apply_event_get_current_slot cfg ext he
+    | some s' => rw [Option.getD_some]; exact apply_event_current_slot cfg ext he
 
 
 omit [Inhabited Root] in

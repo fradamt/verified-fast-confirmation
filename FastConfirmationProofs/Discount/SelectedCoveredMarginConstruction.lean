@@ -274,7 +274,7 @@ theorem selectedCoveredMarginSupplyAt_of_filterSupply_minimal
   · have hsameT : ∀ t : Slot, lo ≤ t → t ≤ sigma →
         compute_epoch_at_slot cfg t = compute_epoch_at_slot cfg lo :=
       fun t htlo htσ => epoch_eq_of_between cfg htlo htσ hsame
-    have hbudget := E.hbudget_sameEpoch_of_IH cfg ext hA.byzantine_bound
+    have hbudget := E.hbudget_sameEpoch cfg ext hA.byzantine_bound
       hA.externals_coherence hgeom.lo_le_cutoff hgeom.cutoff_le_sigma
       hgeom.sigma_horizon hsameT
     have hstatus := E.statusMargin_loWindow_minimal cfg ext hA hwalkDomain

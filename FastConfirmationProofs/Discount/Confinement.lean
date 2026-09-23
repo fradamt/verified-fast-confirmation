@@ -70,7 +70,7 @@ variable (E : Execution Root)
 
 At the base cutoff `es = get_current_slot(store w m) − 1`, an honest recorded supporter of a
 sibling `c'` of the `b`-side child `c` lands in `Xclass … es`. The recorded newest-by-`es`
-message *is* the newest-by-`es` ground vote (`StepDischarge.recorded_lm_is_newest_at`), so the
+message *is* the newest-by-`es` ground vote (`StepDischarge.recorded_lm_is_newest`), so the
 recorded block `lm.root` is the sole newest vote block; `Forks.siblings_incompatible` (with
 `c ⪯ b`) then rules out both class-membership branches:
 

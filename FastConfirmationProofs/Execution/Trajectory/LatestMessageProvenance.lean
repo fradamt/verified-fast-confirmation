@@ -341,14 +341,6 @@ theorem on_attestation_LMP {E : Execution Root} {sl : Slot}
 
 /-! ## Event dispatch, the event fold, and the trajectory invariant -/
 
-/-- `apply_event` preserves the store's current slot (every handler preserves
-`time` and `genesis_time`). -/
-theorem apply_event_get_current_slot {store store' : Store Root} {e : Event Root}
-    (he : apply_event cfg ext store e = some store') :
-    get_current_slot cfg store' = get_current_slot cfg store :=
-  get_current_slot_congr cfg (apply_event_time cfg ext he)
-    (apply_event_storeLE cfg ext he).2.1.symm
-
 /-- One dispatched event preserves provenance: block events use `on_block_LMP`
 (needing the block to be scheduled + `BlockProvenance`), attestations
 `on_attestation_LMP` (needing the slot bound `hcur`), attester slashings ride
@@ -423,7 +415,7 @@ theorem LMP_foldl {E : Execution Root} {sl : Slot} (hwf : WellFormedExecution E)
       simp only [Option.getD_some]
       refine ih _ (fun b hb => hl b (List.mem_cons_of_mem e hb)) ?_ ?_ ?_ ?_
       · exact apply_event_blockProvenance cfg ext hbsched hprov he
-      · rw [apply_event_get_current_slot cfg ext he]; exact hcur
+      · rw [apply_event_current_slot cfg ext he]; exact hcur
       · exact apply_event_LMP cfg ext hwf hec hbsched hprov hcur h he
           (by simpa only [he, Option.getD_some] using hstep)
       · simpa only [he, Option.getD_some] using htail

@@ -58,7 +58,7 @@ theorem recorded_support_of_sclass_at_endpoint_minimal
   obtain ⟨⟨hspan, hih⟩, t, k, a, ht, hvote, hnew, hsupport⟩ := hi'
   obtain ⟨lm, hlm⟩ := hpresence i hi
   obtain ⟨t', k', a', ht', hvote', hnew', hroot'⟩ :=
-    E.recorded_lm_is_newest_at cfg ext hA.honest_behavior
+    E.recorded_lm_is_newest cfg ext hA.honest_behavior
       hA.externals_coherence hgen hprov hsigma hih hlm
       (hmax i hih hspan lm hlm)
   have htt' : t = t' := newest_vote_unique
@@ -427,7 +427,7 @@ theorem crossingParentSub_le_endpoint_Aval_minimal
       decide_eq_true_eq] at hiRecorded
     obtain ⟨hlmParent, _hiNotEquiv⟩ := hiRecorded
     obtain ⟨t, k, att, htle, hvote, hnew, hattRoot⟩ :=
-      E.recorded_lm_is_newest_at cfg ext hA.honest_behavior
+      E.recorded_lm_is_newest cfg ext hA.honest_behavior
         hA.externals_coherence hgen hprovQ hes hih hlm
         (hmax i hih hiSpanFull lm hlm)
     have hrootA : att.data.beacon_block_root = a := by

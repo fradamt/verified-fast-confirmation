@@ -352,7 +352,7 @@ theorem on_tick_CkptEpochLe (cfg : Config) (SL : Slot) (store : Store Root) (tim
 /-! ### The event fold and the trajectory invariant -/
 
 /-- Folding a second's scheduled events preserves the bound: every event keeps
-the store's current slot fixed (`apply_event_get_current_slot`), so the
+the store's current slot fixed (`apply_event_current_slot`), so the
 current-slot bound is re-established at each step. -/
 theorem CkptEpochLe_foldl (cfg : Config) (ext : Externals Root) (SL : Slot)
     (hst_ckpt : ∀ (st : BeaconState Root) (b : SignedBeaconBlock Root) (st' : BeaconState Root),
@@ -376,7 +376,7 @@ theorem CkptEpochLe_foldl (cfg : Config) (ext : Externals Root) (SL : Slot)
     | some s' =>
       simp only [Option.getD_some]
       refine ih s' ?_ (apply_event_CkptEpochLe cfg ext SL hst_ckpt hst_slot hpjf hcur h he)
-      rw [apply_event_get_current_slot cfg ext he]; exact hcur
+      rw [apply_event_current_slot cfg ext he]; exact hcur
 
 /-- **The store-epoch invariant.** At every node and second of a trajectory whose
 genesis store is a `get_forkchoice_store`, both tracked checkpoint epochs are at

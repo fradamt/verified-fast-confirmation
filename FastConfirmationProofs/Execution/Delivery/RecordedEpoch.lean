@@ -637,7 +637,7 @@ theorem honest_sibling_confinement_window
       (fun lm2 hlm2 =>
         hwalkK c' hc' lm2.root (hlmknown lm2 i hlm2)) hlo
   obtain ⟨t, k, a, htle, hvote, hnew, hbbreq⟩ :=
-    E.recorded_lm_is_newest_at cfg ext hhb hec hgen hprov hes hi hlm
+    E.recorded_lm_is_newest cfg ext hhb hec hgen hprov hes hi hlm
       (hdom i hi hiSpan lm hlm)
   have hlmk : lm.root ∈ (E.store cfg ext w m).block_roots :=
     hlmknown lm i hlm
