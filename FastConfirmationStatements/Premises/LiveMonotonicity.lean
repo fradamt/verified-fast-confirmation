@@ -6,7 +6,7 @@ public import FastConfirmationModel.Execution.Stake
 @[expose] public section
 
 /-!
-# Premises/Live
+# Premises/LiveMonotonicity
 
 Vote support and live monotonicity premises. Reads the Spec Model. Read Claims next.
 -/

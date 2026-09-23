@@ -6,7 +6,7 @@ public import FastConfirmationModel
 /-!
 # Traces
 
-Executable call, loop, and selected result traces. Reads the Spec Model. Read Premises/Trajectory next.
+Executable call, loop, and selected result traces. Reads the Spec Model. Read Premises/FCRCallPremises next.
 -/
 
 section

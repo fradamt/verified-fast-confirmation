@@ -43,7 +43,8 @@ variable {n : ℕ}
     validator's LMD-GHOST-HFC head. Discharges the public `GateConfirmedBlockSafety` statement by
     composing the filter-generic §3.1 engine (`hfc_safety_of_notFiltered`) with the §4
     never-filter (`confirmedNotFFGFiltered_proved`), threading the gate out of
-    `isHFCConfirmed`. -/
+    `isHFCConfirmed`.
+Paper source: Section 4 safety claim, semantic gate form of arXiv:2405.00549. -/
 theorem gate_confirmed_block_safety (τ : Timing) (bal₀ : Stakes n) : GateConfirmedBlockSafety τ bal₀ := by
   intro fm cm pb boost 𝒱 gj C hSync hNF hHB hVV hcm hWFB hpb hsb hAS hnoequiv hByz hSGJ
     v b t hv hsg hHFCconf
@@ -53,7 +54,8 @@ theorem gate_confirmed_block_safety (τ : Timing) (bal₀ : Stakes n) : GateConf
 
 /-- **§4 HFC Confirmation-Rule MONOTONICITY proved** (arXiv:2405.00549 §4.2): once
     HFC-confirmed, always HFC-confirmed. Discharges the public `GateConfirmedBlockMonotonicity`
-    statement via `hfc_monotonicity_proved`. -/
+    statement via `hfc_monotonicity_proved`.
+Paper source: Section 4 monotonicity claim, semantic gate form of arXiv:2405.00549. -/
 theorem gate_confirmed_block_monotonicity (τ : Timing) (bal₀ : Stakes n) : GateConfirmedBlockMonotonicity τ bal₀ :=
   hfc_monotonicity_proved bal₀
 
@@ -62,7 +64,8 @@ theorem gate_confirmed_block_monotonicity (τ : Timing) (bal₀ : Stakes n) : Ga
     the selected highest `isConfirmedNoCaching` block and its actual selector witness slot, runs the
     current/previous-epoch Algorithm-1 safety fold there, and transfers canonicity back to the
     requested ancestor. `Alg1SelectorSafetyInterface` supplies the witness-slot GST guard plus the
-    explicit AU, `P-link`, committee-partition, and realization premises. -/
+    explicit AU, `P-link`, committee-partition, and realization premises.
+Paper source: Algorithm 1 safety claim, Section 4 of arXiv:2405.00549. -/
 theorem rule_confirmed_block_safety (τ : Timing) (bal₀ : Stakes n) : RuleConfirmedBlockSafety τ bal₀ := by
   exact hfc_safety_alg1_public τ bal₀
 
@@ -70,7 +73,8 @@ theorem rule_confirmed_block_safety (τ : Timing) (bal₀ : Stakes n) : RuleConf
     Discharges the public `RuleConfirmedBlockMonotonicity` statement via `hfc_monotonicity_alg1`, whose two
     `highestConfirmedSinceEpochAlg1` never-filter sites are driven by the rule
     `isConfirmedNoCaching` (both branches, through the unified canonicity dispatcher) fed by the
-    `SafeConfirmedAlg1Inputs` bundle, rather than the assumed `WillNoConflictingChkpBeJustified`. -/
+    `SafeConfirmedAlg1Inputs` bundle, rather than the assumed `WillNoConflictingChkpBeJustified`.
+Paper source: Algorithm 1 monotonicity claim, Section 4 of arXiv:2405.00549. -/
 theorem rule_confirmed_block_monotonicity (τ : Timing) (bal₀ : Stakes n) :
     RuleConfirmedBlockMonotonicity τ bal₀ := by
   intro fm cm pb we boost 𝒱 gj C hSync hNF hHB hVV hcm hpb hβ4 hAS hnoequiv hByz hSCM hwe0 hBundle

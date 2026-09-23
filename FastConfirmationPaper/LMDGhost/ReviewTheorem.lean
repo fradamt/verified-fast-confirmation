@@ -61,13 +61,15 @@ namespace FastConfirmation.LMDGhost
 variable {n : ℕ} {P : Type}
 
 /-- **Reusable engine (Lemma 6).** Filter-generic, arbitrary-anchor head safety and
-    future agreement. -/
+    future agreement.
+Paper source: Lemma 6, Section 3.1 of arXiv:2405.00549. -/
 theorem head_agreement_after_confirmation (τ : Timing) (flt : BlockFilter n P) :
     HeadAgreementAfterConfirmation τ flt :=
   proof_HeadFutureAgreement τ flt
 
 /-- **Theorem 1, Safety half** (Definition 4, Lemmas 7–8) for plain LMD-GHOST: a confirmed
-    block is, from some time on, on every honest validator's LMD-GHOST head. -/
+    block is, from some time on, on every honest validator's LMD-GHOST head.
+Paper source: Theorem 1, safety part, Section 3.1 of arXiv:2405.00549. -/
 theorem confirmed_block_safety (τ : Timing)
     (gj : ViewFamily n P → Validator n → Time → Anchor n) :
     ConfirmedBlockSafety τ gj :=
@@ -75,7 +77,8 @@ theorem confirmed_block_safety (τ : Timing)
 
 /-- **Theorem 1, Monotonicity half** (Definition 4, Lemma 9) for plain LMD-GHOST: once
     confirmed, always confirmed. The cross-epoch step (Lemma 8) consumes Assumption 4
-    (`β < (1 - pb)/4`) and the full-epoch coverage premise `CommitteeCoversEpoch`. -/
+    (`β < (1 - pb)/4`) and the full-epoch coverage premise `CommitteeCoversEpoch`.
+Paper source: Theorem 1, monotonicity part, Section 3.1 of arXiv:2405.00549. -/
 theorem confirmed_block_monotonicity (τ : Timing)
     (gj : ViewFamily n P → Validator n → Time → Anchor n) :
     ConfirmedBlockMonotonicity τ gj :=

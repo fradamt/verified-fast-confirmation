@@ -37,7 +37,7 @@ structure WellFormedExecution (E : Execution Root) : Prop where
 end FastConfirmation.Spec
 
 /-!
-# Premises/Execution
+# Premises/ScheduledExecutionConditions
 
 Execution, timing, and boundary premises. Reads the Spec Model. Read Claims next.
 -/

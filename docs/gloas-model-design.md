@@ -97,8 +97,8 @@ verdict. Every imported payload is fully validated. The `is_one_confirmed`
 The execution layer remains uninterpreted, as intended at this boundary.
 
 The safety interface now separates envelope delivery and data-availability
-relay in `PaperSafetySynchrony` from observation-independent verification in
-`ExternalsCoherence.verify_envelope_deterministic`. A receiver must process
+relay in `NextSlotSynchronyPremises` from observation-independent verification in
+`BeaconExternalsPremises.verify_envelope_deterministic`. A receiver must process
 an envelope after its block is known. An envelope received earlier is
 rejected by the handler, so the schedule must redeliver it after the block.
 Availability at an honest node's envelope observation propagates to the

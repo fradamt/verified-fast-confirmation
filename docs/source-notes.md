@@ -75,7 +75,7 @@ the empty-slot discount, the slashable/equivocation adjustment, and (§5) the
 
 ## What the Lean does, and what is packaged more strongly
 
-`HFC_Monotonicity` requires the visible bound `β < min(1/6, (1−pb)/4)`: the `1/6` side is the
+`GateConfirmedBlockMonotonicity` requires the visible bound `β < min(1/6, (1−pb)/4)`: the `1/6` side is the
 paper's FFG-closure constant from Assumption 6.2, and `(1−pb)/4` is the LMD-GHOST monotonicity
 bound used by the canonical-epoch crux. The additional FFG strength is supplied by
 `FFG_AccountableSafety`, `HonestFFGNoEquivocation`, `GlobalByzantineBound`, and

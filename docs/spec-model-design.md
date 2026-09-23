@@ -177,7 +177,7 @@ The accepted synchrony assumption has separate `envelope_delivery` and
 receiver at an event position where its block is known, by the same deadline
 as `block_relay`. An earlier rejected envelope needs redelivery after the
 block. Data availability propagates to the receiver's envelope observation
-by that deadline. `ExternalsCoherence.verify_envelope_deterministic` states
+by that deadline. `BeaconExternalsPremises.verify_envelope_deterministic` states
 that verification depends on the state and envelope, not the observation.
 The sender and receiver states are within the verification horizon. The
 successor clock read identifies the deadline only.
@@ -189,22 +189,22 @@ transitions. Handler preservation carries it through any events before the
 attestation.
 This closes the payload part of validation without adding a branch-weight
 assumption. The exact premises are in [the review guide](REVIEW_GUIDE.md). The
-legacy `Synchrony` record is unchanged; conversion to `PaperSafetySynchrony`
+legacy `Synchrony` record is unchanged; conversion to `NextSlotSynchronyPremises`
 now takes explicit envelope-delivery and data-relay evidence.
 
 ## Live monotonicity and the paper
 
-The paper's `Theorem1_Monotonicity` (`FastConfirmationPaper/LMDGhost/`)
+The paper's `ConfirmedBlockMonotonicity` (`FastConfirmationPaper/LMDGhost/`)
 states that the LMD-GHOST safety predicate persists: a block confirmed at
 `t` is confirmed at each later `t'`. It uses Assumption 4,
 `beta < (1 - pb) / 4`, and `CommitteeCoversEpoch`. The proved spec statement
-`Spec_Monotonicity_live` is about the cached executable root. The
+`ConfirmedRootMonotonicity` is about the cached executable root. The
 correspondence is:
 
 | Paper | Spec model |
 |---|---|
 | Assumption 4 | `paper_byzantine_boost_bound`, with actual non-honest stake |
-| `CommitteeCoversEpoch` | accepted `ExternalsCoherence.committee_coverage` |
+| `CommitteeCoversEpoch` | accepted `BeaconExternalsPremises.committee_coverage` |
 | synchronous honest votes | `honest_block_each_slot`, `honest_votes_extend_initial_head`, accepted synchrony |
 | threshold with `beta` | `configured_threshold_margin`, because the executable threshold uses the configured cap |
 | Assumption 6, conditional eventual FFG closure | `ffg_timely_justification`, with checkpoint timing at the last-slot call and next epoch start |
@@ -220,7 +220,7 @@ the historical certificates and restart rules.
 `MonotonicityLiveAssemble.lean` applies those certificates to each block
 between the checkpoint and a cache ahead of it, proves chain safety, and
 combines start and non-start calls by induction over seconds. Its public
-`acceptedSpec_monotonicity_live` theorem uses live fields 1 and 5. Live fields
+`live_confirmed_root_monotonicity` theorem uses live fields 1 and 5. Live fields
 2–4 remain in the record and statement but are unused in this proof.
 
 ## Module system
@@ -264,7 +264,7 @@ imports, build the library, and run the audit.
 | `Spec/Model/Handlers.lean` | fork-choice handlers: `update_checkpoints` … `get_forkchoice_store`, the `on_tick`/`on_attestation`/`on_block` chains |
 | `Spec/Model/Validator.lean` | honest attesting (`honest_attestation_data`, `honest_attestation`) |
 | `Spec/Model/Execution.lean` | `Event`, `Execution`, store/FCR trajectories, `WellFormedStore` |
-| `Spec/Model/Assumptions.lean` | ground-truth quantities; `HonestBehavior`, `Synchrony`, `ExternalsCoherence`, `StaticValidatorSet`, `ByzantineBound` |
+| `Spec/Model/Assumptions.lean` | ground-truth quantities; `HonestBehavior`, `Synchrony`, `BeaconExternalsPremises`, `StaticValidatorSet`, `ByzantineWeightPremises` |
 | `Spec/Internal/Legacy/Vocabulary.lean` | `JustifiedIn`, `JustificationInterface`, `SpecAssumptions`, `Spec_Safety`, `Spec_Monotonicity` |
 | `Spec/Proof/StoreInvariants.lean`, `Spec/Proof/Trajectory.lean` | proof layer 0: store-extension order `StoreLE` + handler preservation; clock coherence |
 | `Spec/Model.lean`, `Spec.lean` | facades |
@@ -298,7 +298,7 @@ spec's own dynamics: the fork-choice **handlers** driving store evolution,
     whole-second-boundary configs). The executable `get_forkchoice_store`
     omits python's
     `assert anchor_block.state_root == hash_tree_root(anchor_state)`.
-    The accepted `ScheduledPrefixTrajectoryAssumptions.genesis` requires
+    The accepted `ScheduledPrefixPremises.genesis` requires
     `Externals.AnchorCommitsToState anchorBlock.message anchorState`.
     This abstract contract must come from the external interpretation of the
     full block and state; the model does not prove a concrete hashing result.
@@ -340,7 +340,7 @@ spec's own dynamics: the fork-choice **handlers** driving store evolution,
     `min_seed_lookahead` (1); `BASIS_POINTS = 10000` and `UINT64_MAX` are
     constants.
 
-    `ExternalsCoherence` restricts `honest_attestation_valid`,
+    `BeaconExternalsPremises` restricts `honest_attestation_valid`,
     `valid_attestation_honest`, and `valid_attestation_committee` to
     `Execution.ReachableValidationState`. A state is in this domain only if
     it occurs at a known block or checkpoint key in an honest node's
@@ -413,12 +413,12 @@ spec's own dynamics: the fork-choice **handlers** driving store evolution,
     exactly the spec's stated assumptions, consumed, not derived.
 
 The accepted theorem surface is
-`AcceptedActualFCRNextSlotSafetyAssumptions` together with
-`acceptedSpec_safety_next_slot`. Its intended conclusion is that a root
+`NextSlotSafetyPremises` together with
+`confirmed_root_safe_from_next_slot`. Its intended conclusion is that a root
 stored by an honest node's FCR is an ancestor of every in-horizon honest head from the following
 slot onward. The literal descendant-selector result is also safe at an actual
 scheduled boundary call. Reset safety is a proved result. Its finalized-reset
-case uses the separate `AcceptedRealizedFinalizationDelay` premise, and its
+case uses the separate `RealizedFinalizationDelay` premise, and its
 active-observed case uses the accepted execution and FFG premises. The proof
 is entirely spec-side; the paper model supplies mathematical guidance but is
 not imported.

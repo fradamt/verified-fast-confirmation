@@ -1,7 +1,7 @@
 module
-public import FastConfirmationStatements.Premises.ExecutionConditions
+public import FastConfirmationStatements.Premises.ScheduledExecutionConditions
 public import FastConfirmationStatements.Premises.FFGState
-public import FastConfirmationStatements.Premises.Live
+public import FastConfirmationStatements.Premises.LiveMonotonicity
 
 @[expose] public section
 

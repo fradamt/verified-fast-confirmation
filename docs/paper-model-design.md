@@ -67,9 +67,9 @@ proved public facades.
 
 The public proved constants are:
 
-- `Theorem1_Safety_proved`
-- `Theorem1_Monotonicity_proved`
-- `HeadFutureAgreement_proved`
+- `confirmed_block_safety`
+- `confirmed_block_monotonicity`
+- `head_agreement_after_confirmation`
 
 The assumptions distinguish:
 
@@ -80,15 +80,15 @@ The assumptions distinguish:
   proposer-boost well-formedness, epoch committee coverage, and the paper's
   adversary bound for monotonicity.
 
-`HeadFutureAgreement_proved` is filter-generic and anchor-generic. This is the
+`head_agreement_after_confirmation` is filter-generic and anchor-generic. This is the
 interface reused by the HFC proof.
 
 ## Section 4 result
 
 The headline proved constants are:
 
-- `HFC_Safety_Alg1_proved`
-- `HFC_Monotonicity_Alg1_proved`
+- `rule_confirmed_block_safety`
+- `rule_confirmed_block_monotonicity`
 
 Algorithm 1 uses AU-based selectors computed from FFG votes contained in a
 block's ancestry. `OnChainAnchorInterface` states the remaining connection
@@ -101,16 +101,16 @@ confirmed block. This is stronger and more direct than the paper's conditional
 eventual-closure Assumption 6; the distinction is part of the theorem surface,
 not hidden in the proof.
 
-The gate-based `HFC_Safety` and `HFC_Monotonicity` constants are internal proof
+The gate-based `GateConfirmedBlockSafety` and `GateConfirmedBlockMonotonicity` constants are internal proof
 interfaces. The `_Alg1` theorems are the public paper-facing results.
 
 ## Reading map
 
 - [`FastConfirmationPaper/LMDGhost/Claims.lean`](../FastConfirmationPaper/LMDGhost/Claims.lean)
-  and [`ProvenTheorems.lean`](../FastConfirmationPaper/LMDGhost/ReviewTheorem.lean)
+  and [`ReviewTheorem.lean`](../FastConfirmationPaper/LMDGhost/ReviewTheorem.lean)
   expose the Section 3.1 statements and proofs.
 - [`FastConfirmationPaper/HFC/Claims.lean`](../FastConfirmationPaper/HFC/Claims.lean)
-  and [`ProvenTheorems.lean`](../FastConfirmationPaper/HFC/ReviewTheorem.lean)
+  and [`ReviewTheorem.lean`](../FastConfirmationPaper/HFC/ReviewTheorem.lean)
   expose the Section 4 statements and proofs.
 - [`model-annotation.md`](model-annotation.md) maps paper definitions,
   assumptions, and theorems to Lean declarations.

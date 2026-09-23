@@ -3,7 +3,7 @@ public import FastConfirmationProofs.FCRRule.SelectedTraceCoverage
 public import FastConfirmationProofs.FCRRule.SelectedEdgeGeometry
 public import FastConfirmationProofs.ForkChoice.Filter.SelectedFilterChainGeometry
 
-public import FastConfirmationStatements.Premises.Trajectory
+public import FastConfirmationStatements.Premises.FCRCallPremises
 @[expose] public section
 
 /-!

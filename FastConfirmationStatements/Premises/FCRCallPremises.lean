@@ -1,14 +1,14 @@
 module
 public import FastConfirmationModel
 public import FastConfirmationStatements.Traces
-public import FastConfirmationStatements.Premises.Live
+public import FastConfirmationStatements.Premises.LiveMonotonicity
 public import FastConfirmationStatements.Premises.FFG
-public import FastConfirmationStatements.Premises.ExecutionConditions
+public import FastConfirmationStatements.Premises.ScheduledExecutionConditions
 
 @[expose] public section
 
 /-!
-# Premises/Trajectory
+# Premises/FCRCallPremises
 
 Completed call and selected helper premises. Reads the Spec Model and earlier Statements modules. Read Claims next.
 -/

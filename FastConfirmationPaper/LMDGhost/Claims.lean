@@ -87,7 +87,8 @@ def NeverFilteredFromHead (τ : Timing) (fm : FaultModel n)
     maintained quantity (`P_nondecreasing` + `P_base_of_Q` + `Hmargin_of_P` internally);
     `CommitteeHonestMajority` (Assumption 2) is the **only** honest-fraction hypothesis;
     no per-slot honest-growth premise is used, because such a premise is neither a paper
-    assumption nor implied by the others. -/
+    assumption nor implied by the others.
+Paper source: Lemma 6, Section 3.1 of arXiv:2405.00549. -/
 def HeadAgreementAfterConfirmation (τ : Timing) (flt : BlockFilter n P) : Prop :=
   ∀ {fm : FaultModel n} {cm : Committees n} {pb : Weight}
     {gj : ViewFamily n P → Validator n → Time → Anchor n} {boost : ProposerBoost n P}
@@ -108,7 +109,8 @@ def HeadAgreementAfterConfirmation (τ : Timing) (flt : BlockFilter n P) : Prop 
         b ≼ forkChoiceHead τ C boost pb flt (𝒱 w t') t'
 
 /-- **Theorem 1, Safety half** (Definition 4) for plain LMD-GHOST: a confirmed block
-    is, from some time on, on every honest validator's LMD-GHOST head. -/
+    is, from some time on, on every honest validator's LMD-GHOST head.
+Paper source: Theorem 1, safety part, Section 3.1 of arXiv:2405.00549. -/
 def ConfirmedBlockSafety (τ : Timing)
     (gj : ViewFamily n P → Validator n → Time → Anchor n) : Prop :=
   ∀ {fm : FaultModel n} {cm : Committees n} {pb : Weight} {boost : ProposerBoost n P}
@@ -137,7 +139,8 @@ def ConfirmedBlockSafety (τ : Timing)
     * `CommitteeCoversEpoch` (Assumption-1 corollary): over a full epoch the committee
       union is the whole validator set, so `W_{b'}^{slot(t')-1} = totalWeight univ` and
       `Wp / W_{b'} = pb`. This pins the later-epoch safety threshold to `½(1 + pb) + β`,
-      which Assumption 4 then dominates (paper Lemma 8). -/
+      which Assumption 4 then dominates (paper Lemma 8).
+Paper source: Theorem 1, monotonicity part, Section 3.1 of arXiv:2405.00549. -/
 def ConfirmedBlockMonotonicity (τ : Timing)
     (gj : ViewFamily n P → Validator n → Time → Anchor n) : Prop :=
   ∀ {fm : FaultModel n} {cm : Committees n} {pb : Weight} {boost : ProposerBoost n P}

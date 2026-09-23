@@ -55,7 +55,7 @@ answers. Distinct source states can have different external answers when
 their other projected fields are equal.
 
 The runner checks the executable configuration conditions. It does not
-prove the `ExternalsCoherence` assumptions or replay the block, envelope,
+prove the `BeaconExternalsPremises` assumptions or replay the block, envelope,
 and PTC handlers. The envelope's local data and execution validation are
 preconditions of the source snapshot. A successful snapshot comparison is
 not an end-to-end proof of those preconditions.

@@ -20,19 +20,19 @@ name, its `file:line`, and a trimmed signature (long premise lists abbreviated a
 - *gate eliminated* — used for an Algorithm-1 result that removes the semantic
   confirmation gate `WillNoConflictingChkpBeJustified`.
 
-> The primary §4 results are `HFC_Safety_Alg1` / `HFC_Monotonicity_Alg1` (over the HFC
+> The primary §4 results are `RuleConfirmedBlockSafety` / `RuleConfirmedBlockMonotonicity` (over the HFC
 > Algorithm-1 wrapper `isConfirmedAlg1`, whose selector ranges over the paper-shaped
 > `isConfirmedNoCaching` rule). Algorithm 1 and `ffgFilterAt` consume AU selectors:
 > `ruleVotingSource`, `ruleGJBlock`, `ruleRealizedGJ`, and `ruleRealizedGF`; the
 > `votingSource` / `greatestRealizedJustified` names are proof-facing view-realized helpers. The
-> gate-based `HFC_Safety` / `HFC_Monotonicity` provide a separate semantic-gate formulation.
+> gate-based `GateConfirmedBlockSafety` / `GateConfirmedBlockMonotonicity` provide a separate semantic-gate formulation.
 
 ## Contents
 
 - [Core vocabulary](#core-vocabulary)
 - [§3.1 LMD-GHOST layer (defs + statements)](#31-lmd-ghost-layer-defs--statements)
 - [§4 HFC model (defs)](#4-hfc-model-defs)
-- [§4 HFC statements (TheoremStatements.lean + ProvenTheorems.lean)](#4-hfc-statements-theoremstatementslean--proventheoremslean)
+- [§4 HFC statements (TheoremStatements.lean + ReviewTheorem.lean)](#4-hfc-statements-theoremstatementslean--proventheoremslean)
 
 ## Core vocabulary
 
@@ -790,7 +790,7 @@ inductive Block (n : ℕ)
 
 > **Faithfulness:** faithful; the §4-reuse functional form, no circularity (NeverFiltered(k) depends on head-safety(&lt;k))
 
-#### HeadFutureAgreement — reusable engine (≈ Lemma 6)
+#### HeadAgreementAfterConfirmation — reusable engine (≈ Lemma 6)
 
 <table>
 <tr>
@@ -801,7 +801,7 @@ inductive Block (n : ℕ)
 </td>
 <td width="50%" valign="top">
 
-<b>Lean</b> — <code>FastConfirmation.LMDGhost.HeadFutureAgreement</code><br><sub>FastConfirmationPaper/LMDGhost/Claims.lean:88 · <i>statement</i></sub><pre>def HeadFutureAgreement (τ) (flt : BlockFilter n P) : Prop := ∀ {fm cm pb gj boost 𝒱} (C : Anchor n), Synchrony … → HonestNoForgery … → HonestBehavior … → ViewsValid … → CommitteeHonestMajority fm cm C → 0 ≤ pb → AnchorsCoincide gj 𝒱 fm τ C → ∀ {v b t}, v ∈ fm.honest → b.WellFormed → b.slot ≤ τ.slotOf t → 1 ≤ τ.slotOf t → τ.AfterGST (τ.st (τ.slotOf t - 1)) → isLMDGHOSTSafe τ fm cm pb C (𝒱 v t) b t → NeverFiltered τ fm flt 𝒱 b t → ∀ ⦃w ∈ fm.honest⦄ ⦃t'⦄, τ.st (τ.slotOf t) ≤ t' → b ≼ forkChoiceHead τ C boost pb flt (𝒱 w t') t'</pre>
+<b>Lean</b> — <code>FastConfirmation.LMDGhost.HeadAgreementAfterConfirmation</code><br><sub>FastConfirmationPaper/LMDGhost/Claims.lean:88 · <i>statement</i></sub><pre>def HeadAgreementAfterConfirmation (τ) (flt : BlockFilter n P) : Prop := ∀ {fm cm pb gj boost 𝒱} (C : Anchor n), Synchrony … → HonestNoForgery … → HonestBehavior … → ViewsValid … → CommitteeHonestMajority fm cm C → 0 ≤ pb → AnchorsCoincide gj 𝒱 fm τ C → ∀ {v b t}, v ∈ fm.honest → b.WellFormed → b.slot ≤ τ.slotOf t → 1 ≤ τ.slotOf t → τ.AfterGST (τ.st (τ.slotOf t - 1)) → isLMDGHOSTSafe τ fm cm pb C (𝒱 v t) b t → NeverFiltered τ fm flt 𝒱 b t → ∀ ⦃w ∈ fm.honest⦄ ⦃t'⦄, τ.st (τ.slotOf t) ≤ t' → b ≼ forkChoiceHead τ C boost pb flt (𝒱 w t') t'</pre>
 
 </td>
 </tr>
@@ -820,7 +820,7 @@ inductive Block (n : ℕ)
 </td>
 <td width="50%" valign="top">
 
-<b>Lean</b> — <code>FastConfirmation.LMDGhost.Theorem1_Safety</code><br><sub>FastConfirmationPaper/LMDGhost/Claims.lean:109 · <i>statement</i></sub><pre>def Theorem1_Safety (τ) (gj) : Prop := ∀ {fm cm pb boost 𝒱}, Synchrony … → HonestNoForgery … → HonestBehavior … trivialFilter 𝒱 → ViewsValid … → (∀ ⦃w t⦄, CommitteeHonestMajority fm cm (gj 𝒱 w t)) → WellFormedBoost τ boost → 0 ≤ pb → StaticBalances gj 𝒱 → ∀ {v b t}, v ∈ fm.honest → sg τ b t → isConfirmed τ fm cm pb gj 𝒱 v b t → ∃ t0 : Time, ∀ ⦃w ∈ fm.honest⦄ ⦃t'⦄, t0 ≤ t' → b ≼ forkChoiceHead τ (gj 𝒱 w t') boost pb trivialFilter (𝒱 w t') t'</pre>
+<b>Lean</b> — <code>FastConfirmation.LMDGhost.ConfirmedBlockSafety</code><br><sub>FastConfirmationPaper/LMDGhost/Claims.lean:109 · <i>statement</i></sub><pre>def ConfirmedBlockSafety (τ) (gj) : Prop := ∀ {fm cm pb boost 𝒱}, Synchrony … → HonestNoForgery … → HonestBehavior … trivialFilter 𝒱 → ViewsValid … → (∀ ⦃w t⦄, CommitteeHonestMajority fm cm (gj 𝒱 w t)) → WellFormedBoost τ boost → 0 ≤ pb → StaticBalances gj 𝒱 → ∀ {v b t}, v ∈ fm.honest → sg τ b t → isConfirmed τ fm cm pb gj 𝒱 v b t → ∃ t0 : Time, ∀ ⦃w ∈ fm.honest⦄ ⦃t'⦄, t0 ≤ t' → b ≼ forkChoiceHead τ (gj 𝒱 w t') boost pb trivialFilter (𝒱 w t') t'</pre>
 
 </td>
 </tr>
@@ -839,7 +839,7 @@ inductive Block (n : ℕ)
 </td>
 <td width="50%" valign="top">
 
-<b>Lean</b> — <code>FastConfirmation.LMDGhost.Theorem1_Monotonicity</code><br><sub>FastConfirmationPaper/LMDGhost/Claims.lean:138 · <i>statement</i></sub><pre>def Theorem1_Monotonicity (τ) (gj) : Prop := ∀ {fm cm pb boost 𝒱}, Synchrony … → HonestNoForgery … → HonestBehavior … trivialFilter 𝒱 → ViewsValid … → (∀ ⦃w t⦄, CommitteeHonestMajority fm cm (gj 𝒱 w t)) → WellFormedBoost τ boost → 0 ≤ pb → StaticBalances gj 𝒱 → fm.β &lt; (1 - pb) / 4 → ∀ {v b t t'}, v ∈ fm.honest → sg τ b t → t ≤ t' → CommitteeCoversEpoch τ cm (τ.epochOf (τ.slotOf t') - 1) → isConfirmed τ fm cm pb gj 𝒱 v b t → isConfirmed τ fm cm pb gj 𝒱 v b t'</pre>
+<b>Lean</b> — <code>FastConfirmation.LMDGhost.ConfirmedBlockMonotonicity</code><br><sub>FastConfirmationPaper/LMDGhost/Claims.lean:138 · <i>statement</i></sub><pre>def ConfirmedBlockMonotonicity (τ) (gj) : Prop := ∀ {fm cm pb boost 𝒱}, Synchrony … → HonestNoForgery … → HonestBehavior … trivialFilter 𝒱 → ViewsValid … → (∀ ⦃w t⦄, CommitteeHonestMajority fm cm (gj 𝒱 w t)) → WellFormedBoost τ boost → 0 ≤ pb → StaticBalances gj 𝒱 → fm.β &lt; (1 - pb) / 4 → ∀ {v b t t'}, v ∈ fm.honest → sg τ b t → t ≤ t' → CommitteeCoversEpoch τ cm (τ.epochOf (τ.slotOf t') - 1) → isConfirmed τ fm cm pb gj 𝒱 v b t → isConfirmed τ fm cm pb gj 𝒱 v b t'</pre>
 
 </td>
 </tr>
@@ -1369,7 +1369,7 @@ inductive Block (n : ℕ)
 
 > **Faithfulness:** Definitional honest behavior (not an additional economic assumption): the FFG mirror of GHOST noEquivocation. Source is the AU chain-relative source of the head (`ruleVotingSource(head,·)`), NOT the global greatest-justified. Pairs with HonestNoForgery (delivers HonestCast) to pin every honest FFG message to the prescribed head-checkpoint cast — consumed by the cross-epoch never-filter argument. Balances constant (bal₀ via gjFFG).
 
-## §4 HFC statements (TheoremStatements.lean + ProvenTheorems.lean)
+## §4 HFC statements (TheoremStatements.lean + ReviewTheorem.lean)
 
 #### Assumption3 — alternative per-message FFG inclusion surface
 
@@ -1412,7 +1412,7 @@ inductive Block (n : ℕ)
 </tr>
 </table>
 
-> **Faithfulness:** scoped to honest views of the active view family, matching the Gasper/Casper safety consequences used by the proofs rather than asserting uniqueness for arbitrary syntactic views. `FFG_AccountableSafety` is an explicit premise of `ConfirmedNotFFGFiltered`, `HFC_Safety`, `HFC_Monotonicity`, and their `_Alg1` counterparts.
+> **Faithfulness:** scoped to honest views of the active view family, matching the Gasper/Casper safety consequences used by the proofs rather than asserting uniqueness for arbitrary syntactic views. `FFG_AccountableSafety` is an explicit premise of `ConfirmedNotFFGFiltered`, `GateConfirmedBlockSafety`, `GateConfirmedBlockMonotonicity`, and their `_Alg1` counterparts.
 
 #### WillNoConflictingChkpBeJustified — the semantic FFG confirmation gate
 
@@ -1433,7 +1433,7 @@ inductive Block (n : ℕ)
 </tr>
 </table>
 
-> **Faithfulness:** the semantic gate; used by the gate-based `HFC_Safety` / `HFC_Monotonicity` formulation and derived rather than assumed by the `_Alg1` pair.
+> **Faithfulness:** the semantic gate; used by the gate-based `GateConfirmedBlockSafety` / `GateConfirmedBlockMonotonicity` formulation and derived rather than assumed by the `_Alg1` pair.
 
 #### AU / GU / OnChainJustifiedAtTransition — block-contained on-chain FFG votes
 
@@ -1563,7 +1563,7 @@ def OnChainAnchorInterfacesForRule (A fm τ 𝒱 b t) : Prop := …</pre>
 </tr>
 </table>
 
-> **Faithfulness:** gate-based bundle; carries the semantic gate per safe block for `HFC_Monotonicity` (the `_Alg1` analogue is `SafeConfirmedAlg1Inputs`).
+> **Faithfulness:** gate-based bundle; carries the semantic gate per safe block for `GateConfirmedBlockMonotonicity` (the `_Alg1` analogue is `SafeConfirmedAlg1Inputs`).
 
 #### ConfirmedNotFFGFiltered — the §4 never-filter obligation
 
@@ -1610,18 +1610,18 @@ def OnChainAnchorInterfacesForRule (A fm τ 𝒱 b t) : Prop := …</pre>
 
 > **Faithfulness:** Def 4 modeled with the semantic gate (not the local 2/3 weight reservation); the gate-based pair is built on this, while the `_Alg1` pair uses `isConfirmedNoCaching` and derives the gate.
 
-#### HFC_Safety — §4 confirmation-rule safety (gate-based)
+#### GateConfirmedBlockSafety — §4 confirmation-rule safety (gate-based)
 
 <table>
 <tr>
 <td width="50%" valign="top">
 
-<b>Paper</b> — <i>arXiv:2405.00549 §4.1/§4.3 (analogue of Theorem 1 safety)</i><br><br>An honest validator FFG-confirming b at t ⇒ from some time on, b is on every honest validator's LMD-GHOST-HFC head. Same shape as Theorem1_Safety with flt := ffgFilter C τ, gj := gjFFG bal₀, C := bal₀, plus FFG_AccountableSafety, HonestFFGNoEquivocation, GlobalByzantineBound, SafeGreatestJustifiedAnchorInputs, and the per-block FFG gate (carried in isHFCConfirmed). The D2 leaf existential is derived structurally (no EpochLeafWitness premise).
+<b>Paper</b> — <i>arXiv:2405.00549 §4.1/§4.3 (analogue of Theorem 1 safety)</i><br><br>An honest validator FFG-confirming b at t ⇒ from some time on, b is on every honest validator's LMD-GHOST-HFC head. Same shape as ConfirmedBlockSafety with flt := ffgFilter C τ, gj := gjFFG bal₀, C := bal₀, plus FFG_AccountableSafety, HonestFFGNoEquivocation, GlobalByzantineBound, SafeGreatestJustifiedAnchorInputs, and the per-block FFG gate (carried in isHFCConfirmed). The D2 leaf existential is derived structurally (no EpochLeafWitness premise).
 
 </td>
 <td width="50%" valign="top">
 
-<b>Lean</b> — <code>FastConfirmation.HFC.HFC_Safety</code><br><sub>FastConfirmationPaper/HFC/Claims.lean:353 · <i>statement</i></sub><pre>def HFC_Safety (τ : Timing) (bal₀ : Stakes n) : Prop :=
+<b>Lean</b> — <code>FastConfirmation.HFC.GateConfirmedBlockSafety</code><br><sub>FastConfirmationPaper/HFC/Claims.lean:353 · <i>statement</i></sub><pre>def GateConfirmedBlockSafety (τ : Timing) (bal₀ : Stakes n) : Prop :=
   ∀ {fm cm pb boost 𝒱}, let gj := gjFFG bal₀; let C := bal₀;
     … (Synchrony, HonestNoForgery, HonestBehavior, ViewsValid, CommitteeHonestMajority, WellFormedBoost, 0≤pb, StaticBalances, FFG_AccountableSafety, HonestFFGNoEquivocation, GlobalByzantineBound, SafeGreatestJustifiedAnchorInputs) … →
     ∀ {v b t}, v ∈ fm.honest → sg τ b t → isHFCConfirmed τ fm cm pb gj C 𝒱 v b t →
@@ -1632,20 +1632,20 @@ def OnChainAnchorInterfacesForRule (A fm τ 𝒱 b t) : Prop := …</pre>
 </tr>
 </table>
 
-> **Faithfulness:** This gate-based form is implied by the stronger `HFC_Safety_Alg1`, which derives the semantic gate from the Algorithm 1 assumptions.
+> **Faithfulness:** This gate-based form is implied by the stronger `RuleConfirmedBlockSafety`, which derives the semantic gate from the Algorithm 1 assumptions.
 
-#### HFC_Monotonicity — §4 confirmation-rule monotonicity (gate-based)
+#### GateConfirmedBlockMonotonicity — §4 confirmation-rule monotonicity (gate-based)
 
 <table>
 <tr>
 <td width="50%" valign="top">
 
-<b>Paper</b> — <i>arXiv:2405.00549 §4.2 (analogue of Theorem 1 monotonicity); β-bound = Assumption 6.2</i><br><br>Once HFC-confirmed, always HFC-confirmed. Same shape as Theorem1_Monotonicity at flt := ffgFilter, gj := gjFFG bal₀, C := bal₀; the semantic FFG gate persists because it is already a future-closed invariant. β-bound carries β &lt; min(1/6, (1−pb)/4): the 1/6 is Assumption 6.2's FFG-closure bound (honFFGratio(β) = (2/3+β)/(1−β) ≤ 1, matched verbatim); (1−pb)/4 (Assumption 4, the LMD-GHOST monotonicity bound ¼(1−p/E)) stands in for the paper's 1/3−d (safety decay d abstracted).
+<b>Paper</b> — <i>arXiv:2405.00549 §4.2 (analogue of Theorem 1 monotonicity); β-bound = Assumption 6.2</i><br><br>Once HFC-confirmed, always HFC-confirmed. Same shape as ConfirmedBlockMonotonicity at flt := ffgFilter, gj := gjFFG bal₀, C := bal₀; the semantic FFG gate persists because it is already a future-closed invariant. β-bound carries β &lt; min(1/6, (1−pb)/4): the 1/6 is Assumption 6.2's FFG-closure bound (honFFGratio(β) = (2/3+β)/(1−β) ≤ 1, matched verbatim); (1−pb)/4 (Assumption 4, the LMD-GHOST monotonicity bound ¼(1−p/E)) stands in for the paper's 1/3−d (safety decay d abstracted).
 
 </td>
 <td width="50%" valign="top">
 
-<b>Lean</b> — <code>FastConfirmation.HFC.HFC_Monotonicity</code><br><sub>FastConfirmationPaper/HFC/Claims.lean:403 · <i>statement</i></sub><pre>def HFC_Monotonicity (τ : Timing) (bal₀ : Stakes n) : Prop :=
+<b>Lean</b> — <code>FastConfirmation.HFC.GateConfirmedBlockMonotonicity</code><br><sub>FastConfirmationPaper/HFC/Claims.lean:403 · <i>statement</i></sub><pre>def GateConfirmedBlockMonotonicity (τ : Timing) (bal₀ : Stakes n) : Prop :=
   ∀ {fm cm pb boost 𝒱}, let gj := gjFFG bal₀; let C := bal₀;
     … (explicit interface premises) … fm.β &lt; min (1 / 6) ((1 - pb) / 4) → FFG_AccountableSafety → HonestFFGNoEquivocation → GlobalByzantineBound → SafeGreatestJustifiedAnchorInputs … →
     ∀ {v b t t'}, v ∈ fm.honest → sg τ b t → t ≤ t' → CommitteeCoversEpoch τ cm (τ.epochOf (τ.slotOf t') - 1) →
@@ -1655,7 +1655,7 @@ def OnChainAnchorInterfacesForRule (A fm τ 𝒱 b t) : Prop := …</pre>
 </tr>
 </table>
 
-> **Faithfulness:** Gate-based form; `HFC_Monotonicity_Alg1` derives the semantic gate. The β-bound 1/6⊓(1−pb)/4 matches Assumption 6.2's FFG-closure; (1−pb)/4 abstracts safety decay d.
+> **Faithfulness:** Gate-based form; `RuleConfirmedBlockMonotonicity` derives the semantic gate. The β-bound 1/6⊓(1−pb)/4 matches Assumption 6.2's FFG-closure; (1−pb)/4 abstracts safety decay d.
 
 #### Alg1SafetyInterface — explicit per-confirmation interface for the Alg-1 safety theorem
 
@@ -1680,7 +1680,7 @@ def OnChainAnchorInterfacesForRule (A fm τ 𝒱 b t) : Prop := …</pre>
 
 > **Faithfulness:** Uses the explicit AU block-vote surface through the active `OnChainAnchorInterface`. The selector's local `isConfirmedNoCaching` witness is carried separately by `Alg1SelectorSafetyInterface`; execution participation flags and block capacity limits are omitted.
 
-#### HFC_Safety_Alg1 — primary §4 safety theorem for the paper's Algorithm 1 (gate eliminated)
+#### RuleConfirmedBlockSafety — primary §4 safety theorem for the paper's Algorithm 1 (gate eliminated)
 
 <table>
 <tr>
@@ -1691,7 +1691,7 @@ def OnChainAnchorInterfacesForRule (A fm τ 𝒱 b t) : Prop := …</pre>
 </td>
 <td width="50%" valign="top">
 
-<b>Lean</b> — <code>FastConfirmation.HFC.HFC_Safety_Alg1</code><br><sub>FastConfirmationPaper/HFC/Claims.lean:498 · <i>statement</i></sub><pre>def HFC_Safety_Alg1 (τ : Timing) (bal₀ : Stakes n) : Prop :=
+<b>Lean</b> — <code>FastConfirmation.HFC.RuleConfirmedBlockSafety</code><br><sub>FastConfirmationPaper/HFC/Claims.lean:498 · <i>statement</i></sub><pre>def RuleConfirmedBlockSafety (τ : Timing) (bal₀ : Stakes n) : Prop :=
   ∀ {fm cm pb boost 𝒱}, let gj := gjFFG bal₀; let C := bal₀;
     … (Synchrony, HonestNoForgery, HonestBehavior, ViewsValid, CommitteeHonestMajority, 0≤pb, FFG_AccountableSafety, HonestFFGNoEquivocation, GlobalByzantineBound, SlotCommitteeMinority) … →
     ∀ {v b s we}, v ∈ fm.honest → 1 ≤ s → τ.AfterGST (τ.st (s - 1)) → b.WellFormed → b.slot ≤ s → 0 ≤ we →
@@ -1704,7 +1704,7 @@ def OnChainAnchorInterfacesForRule (A fm τ 𝒱 b t) : Prop := …</pre>
 </tr>
 </table>
 
-> **Faithfulness:** Algorithm-1 form of `HFC_Safety`; the semantic gate `WillNoConflictingChkpBeJustified` is eliminated in favor of the `isConfirmedAlg1` wrapper plus the selector-scoped Algorithm-1 safety interfaces.
+> **Faithfulness:** Algorithm-1 form of `GateConfirmedBlockSafety`; the semantic gate `WillNoConflictingChkpBeJustified` is eliminated in favor of the `isConfirmedAlg1` wrapper plus the selector-scoped Algorithm-1 safety interfaces.
 
 #### SafeConfirmedAlg1Inputs — Algorithm-1 monotonicity input bundle (gate-free)
 
@@ -1731,7 +1731,7 @@ def OnChainAnchorInterfacesForRule (A fm τ 𝒱 b t) : Prop := …</pre>
 
 > **Faithfulness:** Uses the explicit AU block-vote surface and active AU interface, but packages paper Assumption 6's conditional eventual FFG-closure as a stronger per-safe-block premise: every honest-view-safe `X` must already satisfy `isConfirmedNoCaching` plus the AU/visibility interfaces needed by the monotonicity proof. This is stronger and more direct than Assumption 6 itself; it is the Algorithm-1 analogue of the gate-based per-safe-block bundle.
 
-#### HFC_Monotonicity_Alg1 — primary §4 monotonicity theorem for Algorithm 1 (gate eliminated)
+#### RuleConfirmedBlockMonotonicity — primary §4 monotonicity theorem for Algorithm 1 (gate eliminated)
 
 <table>
 <tr>
@@ -1742,7 +1742,7 @@ def OnChainAnchorInterfacesForRule (A fm τ 𝒱 b t) : Prop := …</pre>
 </td>
 <td width="50%" valign="top">
 
-<b>Lean</b> — <code>FastConfirmation.HFC.HFC_Monotonicity_Alg1</code><br><sub>FastConfirmationPaper/HFC/Claims.lean:568 · <i>statement</i></sub><pre>def HFC_Monotonicity_Alg1 (τ : Timing) (bal₀ : Stakes n) : Prop :=
+<b>Lean</b> — <code>FastConfirmation.HFC.RuleConfirmedBlockMonotonicity</code><br><sub>FastConfirmationPaper/HFC/Claims.lean:568 · <i>statement</i></sub><pre>def RuleConfirmedBlockMonotonicity (τ : Timing) (bal₀ : Stakes n) : Prop :=
   ∀ {fm cm pb we boost 𝒱}, let gj := gjFFG bal₀; let C := bal₀;
     … (explicit interface premises) … fm.β &lt; min (1 / 6) ((1 - pb) / 4) → FFG_AccountableSafety → HonestFFGNoEquivocation → GlobalByzantineBound → SlotCommitteeMinority → 0 ≤ we → SafeConfirmedAlg1Inputs τ fm cm pb we boost C 𝒱 →
     ∀ {v b t t'}, v ∈ fm.honest → sg τ b t → t ≤ t' → CommitteeCoversEpoch τ cm (τ.epochOf (τ.slotOf t') - 1) →
@@ -1752,20 +1752,20 @@ def OnChainAnchorInterfacesForRule (A fm τ 𝒱 b t) : Prop := …</pre>
 </tr>
 </table>
 
-> **Faithfulness:** Algorithm-1 form of `HFC_Monotonicity`; the semantic gate is eliminated and the proof is driven by `isConfirmedAlg1` via `SafeConfirmedAlg1Inputs`.
+> **Faithfulness:** Algorithm-1 form of `GateConfirmedBlockMonotonicity`; the semantic gate is eliminated and the proof is driven by `isConfirmedAlg1` via `SafeConfirmedAlg1Inputs`.
 
-#### HFC_Safety_proved — proved facade for gate-based safety
+#### gate_confirmed_block_safety — proved facade for gate-based safety
 
 <table>
 <tr>
 <td width="50%" valign="top">
 
-<b>Paper</b> — <i>arXiv:2405.00549 §4.1/§4.3 (facade discharging HFC_Safety)</i><br><br>Theorem constant discharging the public HFC_Safety statement by composing the filter-generic §3.1 engine (hfc_safety_of_notFiltered) with the §4 never-filter (confirmedNotFFGFiltered_proved), threading the gate out of isHFCConfirmed.
+<b>Paper</b> — <i>arXiv:2405.00549 §4.1/§4.3 (facade discharging GateConfirmedBlockSafety)</i><br><br>Theorem constant discharging the public GateConfirmedBlockSafety statement by composing the filter-generic §3.1 engine (hfc_safety_of_notFiltered) with the §4 never-filter (confirmedNotFFGFiltered_proved), threading the gate out of isHFCConfirmed.
 
 </td>
 <td width="50%" valign="top">
 
-<b>Lean</b> — <code>FastConfirmation.HFC.HFC_Safety_proved</code><br><sub>FastConfirmationPaper/HFC/ReviewTheorem.lean:44 · <i>statement</i></sub><pre>theorem HFC_Safety_proved (τ : Timing) (bal₀ : Stakes n) : HFC_Safety τ bal₀ := by
+<b>Lean</b> — <code>FastConfirmation.HFC.gate_confirmed_block_safety</code><br><sub>FastConfirmationPaper/HFC/ReviewTheorem.lean:44 · <i>statement</i></sub><pre>theorem gate_confirmed_block_safety (τ : Timing) (bal₀ : Stakes n) : GateConfirmedBlockSafety τ bal₀ := by
   intro … ; obtain ⟨hconf, _hgate⟩ := hHFCconf
   exact hfc_safety_of_notFiltered bal₀ … hconf (confirmedNotFFGFiltered_proved bal₀ …)</pre>
 
@@ -1775,18 +1775,18 @@ def OnChainAnchorInterfacesForRule (A fm τ 𝒱 b t) : Prop := …</pre>
 
 > **Faithfulness:** proved facade for the gate-based formulation.
 
-#### HFC_Monotonicity_proved — proved facade for gate-based monotonicity
+#### gate_confirmed_block_monotonicity — proved facade for gate-based monotonicity
 
 <table>
 <tr>
 <td width="50%" valign="top">
 
-<b>Paper</b> — <i>arXiv:2405.00549 §4.2 (facade discharging HFC_Monotonicity)</i><br><br>Theorem constant discharging the public HFC_Monotonicity statement via hfc_monotonicity_proved.
+<b>Paper</b> — <i>arXiv:2405.00549 §4.2 (facade discharging GateConfirmedBlockMonotonicity)</i><br><br>Theorem constant discharging the public GateConfirmedBlockMonotonicity statement via hfc_monotonicity_proved.
 
 </td>
 <td width="50%" valign="top">
 
-<b>Lean</b> — <code>FastConfirmation.HFC.HFC_Monotonicity_proved</code><br><sub>FastConfirmationPaper/HFC/ReviewTheorem.lean:54 · <i>statement</i></sub><pre>theorem HFC_Monotonicity_proved (τ : Timing) (bal₀ : Stakes n) : HFC_Monotonicity τ bal₀ :=
+<b>Lean</b> — <code>FastConfirmation.HFC.gate_confirmed_block_monotonicity</code><br><sub>FastConfirmationPaper/HFC/ReviewTheorem.lean:54 · <i>statement</i></sub><pre>theorem gate_confirmed_block_monotonicity (τ : Timing) (bal₀ : Stakes n) : GateConfirmedBlockMonotonicity τ bal₀ :=
   hfc_monotonicity_proved bal₀</pre>
 
 </td>
@@ -1795,18 +1795,18 @@ def OnChainAnchorInterfacesForRule (A fm τ 𝒱 b t) : Prop := …</pre>
 
 > **Faithfulness:** proved facade for the gate-based formulation.
 
-#### HFC_Safety_Alg1_proved — proved facade for Algorithm-1 safety
+#### rule_confirmed_block_safety — proved facade for Algorithm-1 safety
 
 <table>
 <tr>
 <td width="50%" valign="top">
 
-<b>Paper</b> — <i>arXiv:2405.00549 §4.1/§4.3 (facade discharging HFC_Safety_Alg1)</i><br><br>Theorem constant discharging the public HFC_Safety_Alg1 statement. The public confirmation hypothesis is `isConfirmedAlg1`; the proof extracts the selected highest `isConfirmedNoCaching` block and its actual witness slot, runs the current/previous-epoch Algorithm-1 safety fold there, and then transfers canonicity back to the requested ancestor. `Alg1SelectorSafetyInterface` supplies the witness-slot GST guard plus the `Alg1SafetyInterface` AU/P-link/partition/realization facts.
+<b>Paper</b> — <i>arXiv:2405.00549 §4.1/§4.3 (facade discharging RuleConfirmedBlockSafety)</i><br><br>Theorem constant discharging the public RuleConfirmedBlockSafety statement. The public confirmation hypothesis is `isConfirmedAlg1`; the proof extracts the selected highest `isConfirmedNoCaching` block and its actual witness slot, runs the current/previous-epoch Algorithm-1 safety fold there, and then transfers canonicity back to the requested ancestor. `Alg1SelectorSafetyInterface` supplies the witness-slot GST guard plus the `Alg1SafetyInterface` AU/P-link/partition/realization facts.
 
 </td>
 <td width="50%" valign="top">
 
-<b>Lean</b> — <code>FastConfirmation.HFC.HFC_Safety_Alg1_proved</code><br><sub>FastConfirmationPaper/HFC/ReviewTheorem.lean · <i>statement</i></sub><pre>theorem HFC_Safety_Alg1_proved (τ : Timing) (bal₀ : Stakes n) : HFC_Safety_Alg1 τ bal₀ := by
+<b>Lean</b> — <code>FastConfirmation.HFC.rule_confirmed_block_safety</code><br><sub>FastConfirmationPaper/HFC/ReviewTheorem.lean · <i>statement</i></sub><pre>theorem rule_confirmed_block_safety (τ : Timing) (bal₀ : Stakes n) : RuleConfirmedBlockSafety τ bal₀ := by
   exact hfc_safety_alg1_public τ bal₀</pre>
 
 </td>
@@ -1815,7 +1815,7 @@ def OnChainAnchorInterfacesForRule (A fm τ 𝒱 b t) : Prop := …</pre>
 
 > **Faithfulness:** facade for gate-free safety; case-splits current vs previous epoch
 
-#### HFC_Monotonicity_Alg1_proved — proved facade for Algorithm-1 monotonicity
+#### rule_confirmed_block_monotonicity — proved facade for Algorithm-1 monotonicity
 
 <table>
 <tr>
@@ -1826,8 +1826,8 @@ def OnChainAnchorInterfacesForRule (A fm τ 𝒱 b t) : Prop := …</pre>
 </td>
 <td width="50%" valign="top">
 
-<b>Lean</b> — <code>FastConfirmation.HFC.HFC_Monotonicity_Alg1_proved</code><br><sub>FastConfirmationPaper/HFC/ReviewTheorem.lean · <i>theorem</i></sub><pre>theorem HFC_Monotonicity_Alg1_proved (τ : Timing) (bal₀ : Stakes n) :
-    HFC_Monotonicity_Alg1 τ bal₀ := by
+<b>Lean</b> — <code>FastConfirmation.HFC.rule_confirmed_block_monotonicity</code><br><sub>FastConfirmationPaper/HFC/ReviewTheorem.lean · <i>theorem</i></sub><pre>theorem rule_confirmed_block_monotonicity (τ : Timing) (bal₀ : Stakes n) :
+    RuleConfirmedBlockMonotonicity τ bal₀ := by
   … exact hfc_monotonicity_alg1 bal₀ … hconf</pre>
 
 </td>

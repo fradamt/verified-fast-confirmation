@@ -5,7 +5,7 @@ public import FastConfirmationProofs.ForkChoice.Filter.FilterViability
 public import FastConfirmationProofs.FCRRule.FCRCallContracts
 public import FastConfirmationInternal.Legacy.Vocabulary
 
-public import FastConfirmationStatements.Premises.ExecutionConditions
+public import FastConfirmationStatements.Premises.ScheduledExecutionConditions
 @[expose] public section
 
 /-!

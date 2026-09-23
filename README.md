@@ -43,7 +43,7 @@ transitions to Casper FFG.
 Useful entry points:
 
 - [Model facade](FastConfirmationModel.lean)
-- [Public proved-theorem facade](FastConfirmationProofs/ProvenTheorems.lean)
+- [Public proved-theorem facade](FastConfirmationProofs/ReviewTheorem.lean)
 - [Accepted assumptions, statement, and proof implementation](FastConfirmationProofs/Safety/NextSlotSafety.lean)
 - [Concrete non-vacuity witness](FastConfirmationWitnesses/NonVacuity/NextSlotPremises.lean):
   a finite toy instance with four slots per epoch and a four-epoch horizon.
@@ -51,7 +51,9 @@ Useful entry points:
 
 ### Primary theorem
 
-`acceptedSpec_safety_next_slot` proves:
+`review_claims` in `FastConfirmationProofs/ReviewTheorem.lean` proves the three fields of `ReviewClaims` in `FastConfirmationStatements/Review.lean`.
+
+`confirmed_root_safe_from_next_slot` proves:
 
 > If an honest node stores a block root as confirmed, then from the following
 > slot onward that root is an ancestor of every in-horizon honest node's
@@ -72,12 +74,12 @@ Legacy internal proofs still take `hstatus` or `hpayload` inputs. No audited
 witness takes either input; the accepted bundle carries its own payload relay.
 
 The same facade proves
-`findLatestConfirmedDescendant_safeFrom_of_actualCall` for the literal helper
+`selected_result_safe_from_next_slot_of_scheduled_call` for the literal helper
 result at an actual scheduled boundary call, including an unchanged return.
 
-`acceptedSpec_monotonicity_live` proves that an honest node's later stored
+`live_confirmed_root_monotonicity` proves that an honest node's later stored
 confirmed root descends from its earlier stored confirmed root under
-`MonotonicityLiveAssumptions`. The proof is in
+`LiveMonotonicityPremises`. The proof is in
 [MonotonicityLiveAssemble.lean](FastConfirmationProofs/Monotonicity/LiveConfirmation.lean).
 It uses the live record's honest production and vote support field and its
 timely FFG checkpoint field. The other three live fields are present in the
@@ -132,9 +134,9 @@ Public paper-facing entry points:
 - [Section 4 statements](FastConfirmationPaper/HFC/Claims.lean)
 - [Section 4 proved facade](FastConfirmationPaper/HFC/ReviewTheorem.lean)
 
-The headline paper theorems are `Theorem1_Safety_proved`,
-`Theorem1_Monotonicity_proved`, `HFC_Safety_Alg1_proved`, and
-`HFC_Monotonicity_Alg1_proved`.
+The headline paper theorems are `confirmed_block_safety`,
+`confirmed_block_monotonicity`, `rule_confirmed_block_safety`, and
+`rule_confirmed_block_monotonicity`.
 
 ## Documentation
 

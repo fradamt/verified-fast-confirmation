@@ -129,7 +129,7 @@ line and fits inside the existing complete-window Byzantine budget.
 ## Proof of the pending-parent status margin (G2-004)
 
 Full validation passes. The accepted public theorem
-`acceptedSpec_safety_next_slot` depends on the constructions below; the
+`confirmed_root_safe_from_next_slot` depends on the constructions below; the
 trust audit reports only `propext`, `Classical.choice`, and `Quot.sound`.
 
 ```text

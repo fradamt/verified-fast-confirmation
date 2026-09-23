@@ -14,6 +14,7 @@
   functions. Statements holds premises and claims; Internal holds proof
   vocabulary; Proofs is grouped by subject; Witnesses holds concrete runs and
   counterexamples.
+- The three public executable claims are in `ReviewClaims` in `FastConfirmationStatements/Review.lean`; `review_claims` is proved in `FastConfirmationProofs/ReviewTheorem.lean`.
 - Start each new library `.lean` file with `module`.
 - Use `public import` to preserve the library's transitive imports.
 - Every library module needs a module docstring. Its first sentence states the

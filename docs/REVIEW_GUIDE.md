@@ -19,11 +19,11 @@
 
 ## Live monotonicity premises and proof
 
-`Spec_Monotonicity_live` is stated in
-`FastConfirmationStatements/Premises/Live.lean`. Its accepted-bundle
-specialization, `AcceptedSpec_Monotonicity_live`, is proved by
-`acceptedSpec_monotonicity_live` in `MonotonicityLiveAssemble.lean` and is the
-14th audit witness. `MonotonicityLiveAssumptions` has five premises:
+`ConfirmedRootMonotonicity` is stated in
+`FastConfirmationStatements/Premises/LiveMonotonicity.lean`. Its accepted-bundle
+specialization, `LiveConfirmedRootMonotonicity`, is proved by
+`live_confirmed_root_monotonicity` in `MonotonicityLiveAssemble.lean` and is one of the
+15 audit witnesses. `LiveMonotonicityPremises` has five premises:
 
 - `honest_block_each_slot`: every slot from the execution start through the
   interval has a block with an honest proposer index, and every honest store
@@ -105,7 +105,7 @@ first four fields hold in this run. This argument is not a kernel-checked accept
 execution: the finite witness does not yet have a block in each slot.
 
 A live proof therefore needs the fifth FFG timing field, now present in
-`Statements/Premises/Live.lean`. It says: at the last-slot call of each epoch `e` in the interval, each
+`Statements/Premises/LiveMonotonicity.lean`. It says: at the last-slot call of each epoch `e` in the interval, each
 honest store's `unrealized_justified_checkpoint` is the epoch-`e` checkpoint
 of the honest chain; at the next epoch start the head's unrealized
 justification is equal to it; and the voting source of the previous-slot head
@@ -152,7 +152,7 @@ accepted execution.
 
 Gloas status: **proved** for the payload-aware discount in
 [the spec deviation](gloas-spec-deviation.md). Full validation passes,
-including the trust audit of the 14 public witnesses. The payload envelope
+including the trust audit of the 15 public witnesses. The payload envelope
 relay closes G2-003. `StatusMarginConstruction.lean` closes G2-004: it
 constructs the pending-parent payload status margin for every selected edge.
 The original 13 public witness declaration texts are unchanged. The G3 negative result
@@ -242,7 +242,7 @@ routine hosted CI.
 
 ## Gloas envelope premises (23 September 2026)
 
-`PaperSafetySynchrony` has two operational premises. Their definitions are
+`NextSlotSynchronyPremises` has two operational premises. Their definitions are
 verbatim:
 
 ```lean
@@ -288,7 +288,7 @@ def DataAvailabilityRelay (E : Execution Root) : Prop :=
   data_availability_relay : DataAvailabilityRelay cfg ext E
 ```
 
-`ExternalsCoherence` has this law, verbatim:
+`BeaconExternalsPremises` has this law, verbatim:
 
 ```lean
   verify_envelope_deterministic : ∀ state signed o o',

@@ -2,7 +2,7 @@ module
 public import FastConfirmationProofs.FCRRule.AllowedFCRCallTrace
 public import FastConfirmationProofs.FFG.CurrentTarget.CurrentTargetFutureSupport
 public import FastConfirmationProofs.Discount.SelectedMarginConstruction
-public import FastConfirmationStatements.Premises.ExecutionConditions
+public import FastConfirmationStatements.Premises.ScheduledExecutionConditions
 public import FastConfirmationProofs.ModelFacts
 
 @[expose] public section

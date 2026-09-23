@@ -1,7 +1,7 @@
 module
 public import FastConfirmationProofs.Execution.History.HistoricalCheckpointInclusionCallInduction
 
-public import FastConfirmationStatements.Premises.Trajectory
+public import FastConfirmationStatements.Premises.FCRCallPremises
 @[expose] public section
 
 /-!

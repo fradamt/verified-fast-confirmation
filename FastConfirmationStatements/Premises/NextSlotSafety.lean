@@ -2,10 +2,10 @@ module
 public import FastConfirmationModel
 public import FastConfirmationStatements.Premises.CheckpointLinks
 public import FastConfirmationStatements.Traces
-public import FastConfirmationStatements.Premises.Live
+public import FastConfirmationStatements.Premises.LiveMonotonicity
 public import FastConfirmationStatements.Premises.FFG
-public import FastConfirmationStatements.Premises.ExecutionConditions
-public import FastConfirmationStatements.Premises.Trajectory
+public import FastConfirmationStatements.Premises.ScheduledExecutionConditions
+public import FastConfirmationStatements.Premises.FCRCallPremises
 
 @[expose] public section
 

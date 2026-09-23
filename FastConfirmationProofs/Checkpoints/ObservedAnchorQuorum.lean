@@ -38,7 +38,7 @@ the current-epoch FFG/LMD interplay condition:
 the spec gates current-epoch confirmations on
 `will_current_target_be_justified` precisely so this holds; formal derivation
 requires the cross-validator target-agreement export whose non-circularity
-constraint `Statements/Premises/Live.lean` documents. Concretely,
+constraint `Statements/Premises/LiveMonotonicity.lean` documents. Concretely,
 `HonestVotesSupportTarget` quantifies over same-slot and future target-epoch
 votes, whereas the available shell IH covers only strictly earlier endpoint
 stores, and `justified_requires_targets` carries no processed-by-endpoint time

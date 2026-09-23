@@ -352,7 +352,8 @@ def ConfirmedNotFFGFiltered (τ : Timing) (fm : FaultModel n) (cm : Committees n
     `RuleConfirmedBlockSafety` removes the semantic gate
     `WillNoConflictingChkpBeJustified` by driving safety from `isConfirmedNoCaching`
     together with the explicit `Alg1SafetyInterface`; this definition records the
-    corresponding gate-based form. -/
+    corresponding gate-based form.
+Paper source: Section 4 safety claim, semantic gate form of arXiv:2405.00549. -/
 def GateConfirmedBlockSafety (τ : Timing) (bal₀ : Stakes n) : Prop :=
   ∀ {fm : FaultModel n} {cm : Committees n} {pb : Weight}
     {boost : ProposerBoost n (FFGVote n)} {𝒱 : ViewFamily n (FFGVote n)},
@@ -402,7 +403,8 @@ def GateConfirmedBlockSafety (τ : Timing) (bal₀ : Stakes n) : Prop :=
 
     `RuleConfirmedBlockMonotonicity` removes the semantic gate by driving each
     `highestConfirmedSinceEpoch` block canonical from `isConfirmedNoCaching`
-    via `SafeConfirmedAlg1Inputs`; this definition records the corresponding gate-based form. -/
+    via `SafeConfirmedAlg1Inputs`; this definition records the corresponding gate-based form.
+Paper source: Section 4 monotonicity claim, semantic gate form of arXiv:2405.00549. -/
 def GateConfirmedBlockMonotonicity (τ : Timing) (bal₀ : Stakes n) : Prop :=
   ∀ {fm : FaultModel n} {cm : Committees n} {pb : Weight}
     {boost : ProposerBoost n (FFGVote n)} {𝒱 : ViewFamily n (FFGVote n)},
@@ -497,7 +499,8 @@ def Alg1SelectorSafetyInterface (τ : Timing) (fm : FaultModel n) (cm : Committe
     Unlike `GateConfirmedBlockSafety`, the precondition is the rule's slot-boundary form (`1 ≤ s`, `b.slot ≤ s`,
     `AfterGST(st (s-1))`) rather than the semantic guard `sg` + `isHFCConfirmed`; `sg`'s GST/range
     content is discharged for free at the slot boundary (Algorithm 4's candidate range starts at the
-    epoch's second slot — see `ConfirmedNotFFGFiltered`'s GST-guard note). -/
+    epoch's second slot — see `ConfirmedNotFFGFiltered`'s GST-guard note).
+Paper source: Algorithm 1 safety claim, Section 4 of arXiv:2405.00549. -/
 def RuleConfirmedBlockSafety (τ : Timing) (bal₀ : Stakes n) : Prop :=
   ∀ {fm : FaultModel n} {cm : Committees n} {pb : Weight}
     {boost : ProposerBoost n (FFGVote n)} {𝒱 : ViewFamily n (FFGVote n)},
@@ -567,7 +570,8 @@ def SafeConfirmedAlg1Inputs (τ : Timing) (fm : FaultModel n) (cm : Committees n
     explicit `SafeConfirmedAlg1Inputs` block-vote bundle, not the assumed
     `WillNoConflictingChkpBeJustified`. The
     β-bound is Assumption 6.2's FFG-closure `1/6` ⊓ the LMD-GHOST monotonicity bound `(1-pb)/4`
-    (matched to `GateConfirmedBlockMonotonicity`). -/
+    (matched to `GateConfirmedBlockMonotonicity`).
+Paper source: Algorithm 1 monotonicity claim, Section 4 of arXiv:2405.00549. It assumes later rule confirmation of every honest-view-safe block, which is stronger than the paper's Assumption 6. -/
 def RuleConfirmedBlockMonotonicity (τ : Timing) (bal₀ : Stakes n) : Prop :=
   ∀ {fm : FaultModel n} {cm : Committees n} {pb : Weight} {we : Weight}
     {boost : ProposerBoost n (FFGVote n)} {𝒱 : ViewFamily n (FFGVote n)},
