@@ -9,7 +9,7 @@ public import FastConfirmationStatements.Premises.Trajectory
 
 @[expose] public section
 
-/-! Execution declarations from FastConfirmation.Spec.Statements.Claims. -/
+/-! Defines the accepted next-slot safety premise bundle from exact FFG semantics, scheduled calls, timing, and checkpoint projection. -/
 
 section
 namespace FastConfirmation.Spec

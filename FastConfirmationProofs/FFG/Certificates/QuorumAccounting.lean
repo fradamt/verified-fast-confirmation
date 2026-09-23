@@ -10,6 +10,8 @@ public import Mathlib.Algebra.Order.BigOperators.Group.Finset
 /-!
 # Spec / Proof / QuorumAccounting
 
+Relates attestation supporters and score sums to certificate quorum weight.
+
 This module contains `AttSupporters`, `get_attestation_score_eq_sum`, `AttSupporters_nodup` and related declarations.
 -/
 

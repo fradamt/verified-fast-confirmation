@@ -4,7 +4,7 @@ public import FastConfirmationModel.Spec.FastConfirmation.Store
 
 @[expose] public section
 
-/-! SafeExecutionBlock declarations from FastConfirmation.Spec.Model.FCRStore. -/
+/-! Defines the Gloas safe execution block hash selector from the confirmed block's parent payload. Python: `specs/gloas/fast-confirmation.md`, `get_safe_execution_block_hash`. -/
 
 namespace FastConfirmation.Spec
 variable {Root : Type*} [LinearOrder Root] [Inhabited Root]

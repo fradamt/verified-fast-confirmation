@@ -8,6 +8,8 @@ public import FastConfirmationProofs.Discount.SupportDiscount
 /-!
 # Spec / Proof / Confinement
 
+Confines adversarial weight charged to a sibling branch within the configured budget.
+
 This module contains `le_guarded_sub_add`, `le_compute_adversarial_weight_add_equiv`, `qV_le_get_adversarial_add_eqV` and related declarations.
 -/
 

@@ -2,11 +2,11 @@
 
 This document describes the companion formalization of Sections 3.1 and 4 of
 the [Fast Confirmation Rule paper](https://arxiv.org/abs/2405.00549). It covers
-`FastConfirmation/Paper/Core/`, `FastConfirmation/Paper/LMDGhost/`, and
-`FastConfirmation/Paper/HFC/`.
+`FastConfirmationPaper/Core/`, `FastConfirmationPaper/LMDGhost/`, and
+`FastConfirmationPaper/HFC/`.
 
 This is not the consensus-spec model. The primary verification target lives in
-`FastConfirmation/Spec/`, follows the executable consensus specification, and
+`FastConfirmationModel/`, follows the executable consensus specification, and
 does not import the paper-model modules. The two developments currently have no
 formal refinement theorem between them.
 
@@ -21,7 +21,7 @@ The paper model formalizes:
 
 It does not formalize the Section 5 variable-balance generalization or the
 paper's best-case liveness result. The production consensus-spec predicate is
-modeled separately under `FastConfirmation/Spec/`.
+modeled separately under `FastConfirmationModel/`.
 
 ## Architecture
 
@@ -106,11 +106,11 @@ interfaces. The `_Alg1` theorems are the public paper-facing results.
 
 ## Reading map
 
-- [`FastConfirmation/Paper/LMDGhost/TheoremStatements.lean`](../FastConfirmation/Paper/LMDGhost/TheoremStatements.lean)
-  and [`ProvenTheorems.lean`](../FastConfirmation/Paper/LMDGhost/ProvenTheorems.lean)
+- [`FastConfirmationPaper/LMDGhost/Claims.lean`](../FastConfirmationPaper/LMDGhost/Claims.lean)
+  and [`ProvenTheorems.lean`](../FastConfirmationPaper/LMDGhost/ReviewTheorem.lean)
   expose the Section 3.1 statements and proofs.
-- [`FastConfirmation/Paper/HFC/TheoremStatements.lean`](../FastConfirmation/Paper/HFC/TheoremStatements.lean)
-  and [`ProvenTheorems.lean`](../FastConfirmation/Paper/HFC/ProvenTheorems.lean)
+- [`FastConfirmationPaper/HFC/Claims.lean`](../FastConfirmationPaper/HFC/Claims.lean)
+  and [`ProvenTheorems.lean`](../FastConfirmationPaper/HFC/ReviewTheorem.lean)
   expose the Section 4 statements and proofs.
 - [`model-annotation.md`](model-annotation.md) maps paper definitions,
   assumptions, and theorems to Lean declarations.

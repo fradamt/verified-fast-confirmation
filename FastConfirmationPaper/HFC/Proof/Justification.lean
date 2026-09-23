@@ -8,6 +8,8 @@ public import FastConfirmationPaper.LMDGhost.Proof.BlockAncestry
 /-!
 # HFC / Proof / Justification
 
+Proves monotonicity and chain transport for FFG link weights and on-chain justification.
+
 This module contains `linkWeight_mono`, `onChainLinkWeight_le_linkWeight_of_view_reads_chain`, `onChainJustified_to_view_justified_of_view_reads_chain` and related declarations.
 -/
 

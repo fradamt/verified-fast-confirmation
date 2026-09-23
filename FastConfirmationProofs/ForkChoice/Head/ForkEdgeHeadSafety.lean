@@ -9,6 +9,8 @@ public import FastConfirmationProofs.Safety.ConfirmedPrefixSafety
 /-!
 # Spec / Proof / ShellCompose
 
+Packages the score and ancestry inputs used to prove head safety at a fork edge.
+
 This module contains `ForkEdgeEngineInputs` and related declarations.
 -/
 

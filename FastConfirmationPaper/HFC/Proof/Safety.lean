@@ -6,7 +6,7 @@ public import FastConfirmationPaper.HFC.Claims
 @[expose] public section
 
 /-!
-# HFC / Proof / AnchorDischarge
+# HFC / Proof / Safety
 
 **Discharging the GU-anchor conjunct of `GreatestJustifiedAnchorInputs`** from the paper's actual
 FFG interface, rather than carrying it as a bespoke standalone assumption.

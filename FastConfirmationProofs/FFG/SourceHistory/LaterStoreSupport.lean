@@ -7,6 +7,8 @@ public import FastConfirmationProofs.Safety.BlockAgreement
 /-!
 # Spec / Proof / EngineTransport (package facts at later stores)
 
+Shows that later stores retain active honest votes and their ancestry support.
+
 This module contains `is_active_validator_default_false`, `mem_active_of_active`, `honest_active_unslashed` and related declarations.
 -/
 

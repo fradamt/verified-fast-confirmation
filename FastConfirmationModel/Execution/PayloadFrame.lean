@@ -6,6 +6,8 @@ public import FastConfirmationModel.Spec.Handlers
 /-!
 # Payload handler preservation
 
+Proves that Gloas envelope and PTC handlers preserve every store field outside the payload maps. Python: `specs/gloas/fork-choice.md`, Payload envelope and PTC handlers.
+
 The envelope and PTC handlers change only the three payload maps. The frame
 relation below records every other field without an assumption about payload
 validity or delivery. Block PTC notification preserves the same relation.

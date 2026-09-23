@@ -47,7 +47,7 @@ name, its `file:line`, and a trimmed signature (long premise lists abbreviated a
 </td>
 <td width="50%" valign="top">
 
-<b>Lean</b> — <code>Slot / Epoch / Time / Validator / Weight</code><br><sub>FastConfirmation/Paper/Core/Model/Time.lean:15; FastConfirmation/Paper/Core/Model/Validators.lean:18 · <i>structure</i></sub><pre>abbrev Slot := ℕ ; abbrev Epoch := ℕ ; abbrev Time := ℕ ; abbrev Validator (n : ℕ) := Fin n ; abbrev Weight := ℚ</pre>
+<b>Lean</b> — <code>Slot / Epoch / Time / Validator / Weight</code><br><sub>FastConfirmationPaper/Core/Model/Time.lean:15; FastConfirmationPaper/Core/Model/Validators.lean:18 · <i>structure</i></sub><pre>abbrev Slot := ℕ ; abbrev Epoch := ℕ ; abbrev Time := ℕ ; abbrev Validator (n : ℕ) := Fin n ; abbrev Weight := ℚ</pre>
 
 </td>
 </tr>
@@ -66,7 +66,7 @@ name, its `file:line`, and a trimmed signature (long premise lists abbreviated a
 </td>
 <td width="50%" valign="top">
 
-<b>Lean</b> — <code>Timing (+ slotOf, st, epochOf, fslot, lslot, AfterGST)</code><br><sub>FastConfirmation/Paper/Core/Model/Time.lean:23 · <i>def</i></sub><pre>structure Timing where slotsPerEpoch slotDur : ℕ; gst : Time; hSlotsPerEpoch : 0 &lt; slotsPerEpoch; hSlot : 0 &lt; slotDur
+<b>Lean</b> — <code>Timing (+ slotOf, st, epochOf, fslot, lslot, AfterGST)</code><br><sub>FastConfirmationPaper/Core/Model/Time.lean:23 · <i>def</i></sub><pre>structure Timing where slotsPerEpoch slotDur : ℕ; gst : Time; hSlotsPerEpoch : 0 &lt; slotsPerEpoch; hSlot : 0 &lt; slotDur
   slotOf t := t / slotDur ; st s := s * slotDur ; epochOf s := s / slotsPerEpoch
   fslot e := e * slotsPerEpoch ; lslot e := e * slotsPerEpoch + (slotsPerEpoch - 1) ; AfterGST t := gst ≤ t</pre>
 
@@ -87,7 +87,7 @@ name, its `file:line`, and a trimmed signature (long premise lists abbreviated a
 </td>
 <td width="50%" valign="top">
 
-<b>Lean</b> — <code>ContainedFFGVote / Block (+ slot, parentSlot, psPlus1)</code><br><sub>FastConfirmation/Paper/Core/Model/Blocks.lean:30 · <i>structure</i></sub><pre>structure ContainedFFGVote (n : ℕ) where
+<b>Lean</b> — <code>ContainedFFGVote / Block (+ slot, parentSlot, psPlus1)</code><br><sub>FastConfirmationPaper/Core/Model/BlockAncestry.lean:30 · <i>structure</i></sub><pre>structure ContainedFFGVote (n : ℕ) where
   validator : Validator n
   slot : Slot
   sourceEpoch : Epoch
@@ -117,7 +117,7 @@ inductive Block (n : ℕ)
 </td>
 <td width="50%" valign="top">
 
-<b>Lean</b> — <code>Block.Ancestor (≼) / Block.Compatible (~) / Block.WellFormed</code><br><sub>FastConfirmation/Paper/Core/Model/Blocks.lean:87 · <i>def</i></sub><pre>inductive Ancestor : Block n → Block n → Prop | refl (B) : Ancestor B B | step (h : Ancestor B C) : Ancestor B (mk bid C s)
+<b>Lean</b> — <code>Block.Ancestor (≼) / Block.Compatible (~) / Block.WellFormed</code><br><sub>FastConfirmationPaper/Core/Model/BlockAncestry.lean:87 · <i>def</i></sub><pre>inductive Ancestor : Block n → Block n → Prop | refl (B) : Ancestor B B | step (h : Ancestor B C) : Ancestor B (mk bid C s)
   Compatible B C := B ≼ C ∨ C ≼ B
   WellFormed : genesis ↦ True | mk _ p s ↦ p.slot &lt; s ∧ WellFormed p</pre>
 
@@ -138,7 +138,7 @@ inductive Block (n : ℕ)
 </td>
 <td width="50%" valign="top">
 
-<b>Lean</b> — <code>Stakes / Anchor / totalWeight</code><br><sub>FastConfirmation/Paper/Core/Model/Validators.lean:25 · <i>structure</i></sub><pre>structure Stakes (n) where bal : Validator n → Weight ; hpos : ∀ i, 0 &lt; bal i
+<b>Lean</b> — <code>Stakes / Anchor / totalWeight</code><br><sub>FastConfirmationPaper/Core/Model/Validators.lean:25 · <i>structure</i></sub><pre>structure Stakes (n) where bal : Validator n → Weight ; hpos : ∀ i, 0 &lt; bal i
   abbrev Anchor (n) := Stakes n ; def totalWeight (A : Anchor n) (X : Finset (Validator n)) : Weight := ∑ i ∈ X, A.bal i</pre>
 
 </td>
@@ -158,7 +158,7 @@ inductive Block (n : ℕ)
 </td>
 <td width="50%" valign="top">
 
-<b>Lean</b> — <code>Committees</code><br><sub>FastConfirmation/Paper/Core/Model/Validators.lean:38 · <i>structure</i></sub><pre>structure Committees (n : ℕ) where member : Slot → Finset (Validator n)</pre>
+<b>Lean</b> — <code>Committees</code><br><sub>FastConfirmationPaper/Core/Model/Validators.lean:38 · <i>structure</i></sub><pre>structure Committees (n : ℕ) where member : Slot → Finset (Validator n)</pre>
 
 </td>
 </tr>
@@ -177,7 +177,7 @@ inductive Block (n : ℕ)
 </td>
 <td width="50%" valign="top">
 
-<b>Lean</b> — <code>FaultModel</code><br><sub>FastConfirmation/Paper/Core/Model/Validators.lean:56 · <i>structure</i></sub><pre>structure FaultModel (n) where honest : Finset (Validator n) ; β : Weight ; hβ0 : 0 ≤ β ; hβ : β &lt; 1 / 3</pre>
+<b>Lean</b> — <code>FaultModel</code><br><sub>FastConfirmationPaper/Core/Model/Validators.lean:56 · <i>structure</i></sub><pre>structure FaultModel (n) where honest : Finset (Validator n) ; β : Weight ; hβ0 : 0 ≤ β ; hβ : β &lt; 1 / 3</pre>
 
 </td>
 </tr>
@@ -196,7 +196,7 @@ inductive Block (n : ℕ)
 </td>
 <td width="50%" valign="top">
 
-<b>Lean</b> — <code>GlobalByzantineBound</code><br><sub>FastConfirmation/Paper/Core/Model/Validators.lean:66 · <i>def</i></sub><pre>def GlobalByzantineBound (C : Anchor n) (fm : FaultModel n) : Prop :=
+<b>Lean</b> — <code>GlobalByzantineBound</code><br><sub>FastConfirmationPaper/Core/Model/Validators.lean:66 · <i>def</i></sub><pre>def GlobalByzantineBound (C : Anchor n) (fm : FaultModel n) : Prop :=
   totalWeight C (univ.filter (· ∉ fm.honest)) ≤ fm.β * totalWeight C univ</pre>
 
 </td>
@@ -216,7 +216,7 @@ inductive Block (n : ℕ)
 </td>
 <td width="50%" valign="top">
 
-<b>Lean</b> — <code>GhostVote / Message</code><br><sub>FastConfirmation/Paper/Core/Model/Vote.lean:21 · <i>structure</i></sub><pre>structure GhostVote (n) where validator : Validator n ; slot : Slot ; block : Block n
+<b>Lean</b> — <code>GhostVote / Message</code><br><sub>FastConfirmationPaper/Core/Model/GhostVote.lean:21 · <i>structure</i></sub><pre>structure GhostVote (n) where validator : Validator n ; slot : Slot ; block : Block n
   structure Message (n) (Payload : Type) where
     ghost : GhostVote n
     countsForLMD : Bool := true
@@ -239,7 +239,7 @@ inductive Block (n : ℕ)
 </td>
 <td width="50%" valign="top">
 
-<b>Lean</b> — <code>View (+ ghostVotes, votesOf, latestVote, effectiveVote, supportsLMD, equivocator)</code><br><sub>FastConfirmation/Paper/Core/Model/View.lean:22 · <i>structure</i></sub><pre>structure View (n) (P) where blocks : Finset (Block n) ; msgs : Finset (Message n P)
+<b>Lean</b> — <code>View (+ ghostVotes, votesOf, latestVote, effectiveVote, supportsLMD, equivocator)</code><br><sub>FastConfirmationPaper/Core/Model/ValidatorView.lean:22 · <i>structure</i></sub><pre>structure View (n) (P) where blocks : Finset (Block n) ; msgs : Finset (Message n P)
   ghostVotes V := (V.msgs.filter (fun m => m.countsForLMD)).image Message.ghost
   latestVote V i upTo := ((votesOf i).filter (·.slot ≤ upTo)).toList.argmax (·.slot)
   equivocator V i := ∃ gv₁ gv₂ ∈ votesOf i, gv₁ ≠ gv₂ ∧ gv₁.slot = gv₂.slot
@@ -263,7 +263,7 @@ inductive Block (n : ℕ)
 </td>
 <td width="50%" valign="top">
 
-<b>Lean</b> — <code>ViewFamily / ViewsMonotone / ViewValid / ViewsValid</code><br><sub>FastConfirmation/Paper/Core/Model/View.lean:67 · <i>def</i></sub><pre>abbrev ViewFamily (n) (P) := Validator n → Time → View n P
+<b>Lean</b> — <code>ViewFamily / ViewsMonotone / ViewValid / ViewsValid</code><br><sub>FastConfirmationPaper/Core/Model/ValidatorView.lean:67 · <i>def</i></sub><pre>abbrev ViewFamily (n) (P) := Validator n → Time → View n P
   ViewsMonotone 𝒱 := ∀ v t t', t ≤ t' → (𝒱 v t).msgs ⊆ (𝒱 v t').msgs ∧ (𝒱 v t).blocks ⊆ (𝒱 v t').blocks
   ViewValid cm V := ∀ m ∈ V.msgs,
     m.ghost.validator ∈ cm.member m.ghost.slot ∧
@@ -286,7 +286,7 @@ inductive Block (n : ℕ)
 </td>
 <td width="50%" valign="top">
 
-<b>Lean</b> — <code>HonestCast</code><br><sub>FastConfirmation/Paper/Core/Model/View.lean:77 · <i>def</i></sub><pre>def HonestCast (fm) (𝒱) (τ) (m) : Prop :=
+<b>Lean</b> — <code>HonestCast</code><br><sub>FastConfirmationPaper/Core/Model/ValidatorView.lean:77 · <i>def</i></sub><pre>def HonestCast (fm) (𝒱) (τ) (m) : Prop :=
   m.ghost.validator ∈ fm.honest ∧ m ∈ (𝒱 m.ghost.validator (τ.st m.ghost.slot)).msgs</pre>
 
 </td>
@@ -306,7 +306,7 @@ inductive Block (n : ℕ)
 </td>
 <td width="50%" valign="top">
 
-<b>Lean</b> — <code>Synchrony</code><br><sub>FastConfirmation/Paper/Core/Model/View.lean:82 · <i>assumption</i></sub><pre>structure Synchrony (n) (P) (τ) (fm) (𝒱) : Prop where
+<b>Lean</b> — <code>Synchrony</code><br><sub>FastConfirmationPaper/Core/Model/ValidatorView.lean:82 · <i>assumption</i></sub><pre>structure Synchrony (n) (P) (τ) (fm) (𝒱) : Prop where
   monotone : ViewsMonotone 𝒱
   honestVoteUbiq : w ∈ honest → HonestCast m → m.ghost.slot ≤ s' → AfterGST (st s') → m ∈ (𝒱 w (st (s'+1))).msgs
   votesCarryBlocks : m ∈ (𝒱 v t).msgs → m.ghost.block ∈ (𝒱 v t).blocks
@@ -332,7 +332,7 @@ inductive Block (n : ℕ)
 </td>
 <td width="50%" valign="top">
 
-<b>Lean</b> — <code>HonestNoForgery</code><br><sub>FastConfirmation/Paper/Core/Model/View.lean:162 · <i>assumption</i></sub><pre>def HonestNoForgery (fm) (τ) (𝒱) : Prop :=
+<b>Lean</b> — <code>HonestNoForgery</code><br><sub>FastConfirmationPaper/Core/Model/ValidatorView.lean:162 · <i>assumption</i></sub><pre>def HonestNoForgery (fm) (τ) (𝒱) : Prop :=
   ∀ w ∈ fm.honest, ∀ t m, m ∈ (𝒱 w t).msgs → m.ghost.validator ∈ fm.honest → HonestCast fm 𝒱 τ m</pre>
 
 </td>
@@ -352,7 +352,7 @@ inductive Block (n : ℕ)
 </td>
 <td width="50%" valign="top">
 
-<b>Lean</b> — <code>BlockFilter / trivialFilter</code><br><sub>FastConfirmation/Paper/Core/Model/Filter.lean:14 · <i>def</i></sub><pre>abbrev BlockFilter (n) (P) := View n P → Time → Block n → Prop
+<b>Lean</b> — <code>BlockFilter / trivialFilter</code><br><sub>FastConfirmationPaper/Core/Model/ForkChoice.lean:14 · <i>def</i></sub><pre>abbrev BlockFilter (n) (P) := View n P → Time → Block n → Prop
   def trivialFilter : BlockFilter n P := fun _ _ _ =&gt; True</pre>
 
 </td>
@@ -372,7 +372,7 @@ inductive Block (n : ℕ)
 </td>
 <td width="50%" valign="top">
 
-<b>Lean</b> — <code>forkChoiceHead (+ ProposerBoost, latestSupportWeight, boostWeight, childWeight, eligibleChildren, ghostStep, ghostAux, WellFormedBoost)</code><br><sub>FastConfirmation/Paper/Core/Model/ForkChoice.lean:72 · <i>def</i></sub><pre>structure ProposerBoost (n) (P) where proposalAt : View n P → Time → Option (Block n)
+<b>Lean</b> — <code>forkChoiceHead (+ ProposerBoost, latestSupportWeight, boostWeight, childWeight, eligibleChildren, ghostStep, ghostAux, WellFormedBoost)</code><br><sub>FastConfirmationPaper/Core/Model/ForkChoice.lean:72 · <i>def</i></sub><pre>structure ProposerBoost (n) (P) where proposalAt : View n P → Time → Option (Block n)
   latestSupportWeight A V upTo c := totalWeight A (univ.filter (V.supportsLMD c · upTo))
   boostWeight A boost pb V t c := match boost.proposalAt V t | some bp =&gt; if c.isAncestorOf bp then pb * totalWeight A univ else 0 | none =&gt; 0
   childWeight := latestSupportWeight + boostWeight
@@ -397,7 +397,7 @@ inductive Block (n : ℕ)
 </td>
 <td width="50%" valign="top">
 
-<b>Lean</b> — <code>HonestBehavior</code><br><sub>FastConfirmation/Paper/Core/Model/Honest.lean:22 · <i>structure</i></sub><pre>structure HonestBehavior (τ) (fm) (cm) (gj) (boost) (pb) (flt) (𝒱) : Prop where
+<b>Lean</b> — <code>HonestBehavior</code><br><sub>FastConfirmationPaper/Core/Model/HonestVoting.lean:22 · <i>structure</i></sub><pre>structure HonestBehavior (τ) (fm) (cm) (gj) (boost) (pb) (flt) (𝒱) : Prop where
   votesHead : v ∈ honest → v ∈ cm.member s → ∃ gv ∈ (𝒱 v (st s)).votesOf v, gv.slot = s ∧ gv.block = forkChoiceHead τ (gj 𝒱 v (st s)) boost pb flt (𝒱 v (st s)) (st s)
   votesInCommittee : v ∈ honest → gv ∈ (𝒱 w t).votesOf v → v ∈ cm.member gv.slot
   noEquivocation : v ∈ honest → ¬ (𝒱 w t).equivocator v</pre>
@@ -421,7 +421,7 @@ inductive Block (n : ℕ)
 </td>
 <td width="50%" valign="top">
 
-<b>Lean</b> — <code>FastConfirmation.LMDGhost.committeeUnion</code><br><sub>FastConfirmation/Paper/LMDGhost/Model/Weights.lean:30 · <i>def</i></sub><pre>def committeeUnion (cm : Committees n) (lo hi : Slot) : Finset (Validator n) := (Finset.Icc lo hi).biUnion cm.member</pre>
+<b>Lean</b> — <code>FastConfirmation.LMDGhost.committeeUnion</code><br><sub>FastConfirmationPaper/LMDGhost/Model/Weights.lean:30 · <i>def</i></sub><pre>def committeeUnion (cm : Committees n) (lo hi : Slot) : Finset (Validator n) := (Finset.Icc lo hi).biUnion cm.member</pre>
 
 </td>
 </tr>
@@ -440,7 +440,7 @@ inductive Block (n : ℕ)
 </td>
 <td width="50%" valign="top">
 
-<b>Lean</b> — <code>FastConfirmation.LMDGhost.W</code><br><sub>FastConfirmation/Paper/LMDGhost/Model/Weights.lean:34 · <i>def</i></sub><pre>def W (A : Anchor n) (cm : Committees n) (b : Block n) (s : Slot) : Weight := totalWeight A (committeeUnion cm b.psPlus1 s)</pre>
+<b>Lean</b> — <code>FastConfirmation.LMDGhost.W</code><br><sub>FastConfirmationPaper/LMDGhost/Model/Weights.lean:34 · <i>def</i></sub><pre>def W (A : Anchor n) (cm : Committees n) (b : Block n) (s : Slot) : Weight := totalWeight A (committeeUnion cm b.psPlus1 s)</pre>
 
 </td>
 </tr>
@@ -459,7 +459,7 @@ inductive Block (n : ℕ)
 </td>
 <td width="50%" valign="top">
 
-<b>Lean</b> — <code>FastConfirmation.LMDGhost.S</code><br><sub>FastConfirmation/Paper/LMDGhost/Model/Weights.lean:39 · <i>def</i></sub><pre>noncomputable def S (A) (cm) (V : View n P) (b : Block n) (s : Slot) : Weight := totalWeight A ((committeeUnion cm b.psPlus1 s).filter (fun i =&gt; V.supportsLMD b i s = true))</pre>
+<b>Lean</b> — <code>FastConfirmation.LMDGhost.S</code><br><sub>FastConfirmationPaper/LMDGhost/Model/Weights.lean:39 · <i>def</i></sub><pre>noncomputable def S (A) (cm) (V : View n P) (b : Block n) (s : Slot) : Weight := totalWeight A ((committeeUnion cm b.psPlus1 s).filter (fun i =&gt; V.supportsLMD b i s = true))</pre>
 
 </td>
 </tr>
@@ -478,7 +478,7 @@ inductive Block (n : ℕ)
 </td>
 <td width="50%" valign="top">
 
-<b>Lean</b> — <code>FastConfirmation.LMDGhost.Q</code><br><sub>FastConfirmation/Paper/LMDGhost/Model/Weights.lean:44 · <i>def</i></sub><pre>noncomputable def Q (A) (cm) (V : View n P) (b : Block n) (s : Slot) : Weight := S A cm V b s / W A cm b s</pre>
+<b>Lean</b> — <code>FastConfirmation.LMDGhost.Q</code><br><sub>FastConfirmationPaper/LMDGhost/Model/Weights.lean:44 · <i>def</i></sub><pre>noncomputable def Q (A) (cm) (V : View n P) (b : Block n) (s : Slot) : Weight := S A cm V b s / W A cm b s</pre>
 
 </td>
 </tr>
@@ -497,7 +497,7 @@ inductive Block (n : ℕ)
 </td>
 <td width="50%" valign="top">
 
-<b>Lean</b> — <code>FastConfirmation.LMDGhost.J</code><br><sub>FastConfirmation/Paper/LMDGhost/Model/Weights.lean:49 · <i>def</i></sub><pre>def J (A) (cm) (fm : FaultModel n) (b : Block n) (s : Slot) : Weight := totalWeight A ((committeeUnion cm b.psPlus1 s).filter (fun i =&gt; i ∈ fm.honest))</pre>
+<b>Lean</b> — <code>FastConfirmation.LMDGhost.J</code><br><sub>FastConfirmationPaper/LMDGhost/Model/Weights.lean:49 · <i>def</i></sub><pre>def J (A) (cm) (fm : FaultModel n) (b : Block n) (s : Slot) : Weight := totalWeight A ((committeeUnion cm b.psPlus1 s).filter (fun i =&gt; i ∈ fm.honest))</pre>
 
 </td>
 </tr>
@@ -516,7 +516,7 @@ inductive Block (n : ℕ)
 </td>
 <td width="50%" valign="top">
 
-<b>Lean</b> — <code>FastConfirmation.LMDGhost.H</code><br><sub>FastConfirmation/Paper/LMDGhost/Model/Weights.lean:53 · <i>def</i></sub><pre>noncomputable def H (A) (cm) (fm) (V) (b) (s) : Weight := totalWeight A ((committeeUnion cm b.psPlus1 s).filter (fun i =&gt; i ∈ fm.honest ∧ V.supportsLMD b i s = true))</pre>
+<b>Lean</b> — <code>FastConfirmation.LMDGhost.H</code><br><sub>FastConfirmationPaper/LMDGhost/Model/Weights.lean:53 · <i>def</i></sub><pre>noncomputable def H (A) (cm) (fm) (V) (b) (s) : Weight := totalWeight A ((committeeUnion cm b.psPlus1 s).filter (fun i =&gt; i ∈ fm.honest ∧ V.supportsLMD b i s = true))</pre>
 
 </td>
 </tr>
@@ -535,7 +535,7 @@ inductive Block (n : ℕ)
 </td>
 <td width="50%" valign="top">
 
-<b>Lean</b> — <code>FastConfirmation.LMDGhost.Phon</code><br><sub>FastConfirmation/Paper/LMDGhost/Model/Weights.lean:60 · <i>def</i></sub><pre>noncomputable def Phon (A) (cm) (fm) (V) (b) (s) : Weight := H A cm fm V b s / J A cm fm b s</pre>
+<b>Lean</b> — <code>FastConfirmation.LMDGhost.Phon</code><br><sub>FastConfirmationPaper/LMDGhost/Model/Weights.lean:60 · <i>def</i></sub><pre>noncomputable def Phon (A) (cm) (fm) (V) (b) (s) : Weight := H A cm fm V b s / J A cm fm b s</pre>
 
 </td>
 </tr>
@@ -554,7 +554,7 @@ inductive Block (n : ℕ)
 </td>
 <td width="50%" valign="top">
 
-<b>Lean</b> — <code>FastConfirmation.LMDGhost.Wp</code><br><sub>FastConfirmation/Paper/LMDGhost/Model/Weights.lean:65 · <i>def</i></sub><pre>def Wp (A : Anchor n) (pb : Weight) : Weight := pb * totalWeight A Finset.univ</pre>
+<b>Lean</b> — <code>FastConfirmation.LMDGhost.Wp</code><br><sub>FastConfirmationPaper/LMDGhost/Model/Weights.lean:65 · <i>def</i></sub><pre>def Wp (A : Anchor n) (pb : Weight) : Weight := pb * totalWeight A Finset.univ</pre>
 
 </td>
 </tr>
@@ -573,7 +573,7 @@ inductive Block (n : ℕ)
 </td>
 <td width="50%" valign="top">
 
-<b>Lean</b> — <code>FastConfirmation.LMDGhost.safetyThreshold</code><br><sub>FastConfirmation/Paper/LMDGhost/Model/Weights.lean:68 · <i>def</i></sub><pre>def safetyThreshold (A) (cm) (fm : FaultModel n) (pb : Weight) (b : Block n) (s : Slot) : Weight := (1 / 2) * (1 + Wp A pb / W A cm b s) + fm.β</pre>
+<b>Lean</b> — <code>FastConfirmation.LMDGhost.safetyThreshold</code><br><sub>FastConfirmationPaper/LMDGhost/Model/Weights.lean:68 · <i>def</i></sub><pre>def safetyThreshold (A) (cm) (fm : FaultModel n) (pb : Weight) (b : Block n) (s : Slot) : Weight := (1 / 2) * (1 + Wp A pb / W A cm b s) + fm.β</pre>
 
 </td>
 </tr>
@@ -592,7 +592,7 @@ inductive Block (n : ℕ)
 </td>
 <td width="50%" valign="top">
 
-<b>Lean</b> — <code>FastConfirmation.LMDGhost.isOneConfirmed</code><br><sub>FastConfirmation/Paper/LMDGhost/Model/Confirm.lean:20 · <i>def</i></sub><pre>def isOneConfirmed (τ) (fm) (cm) (pb) (A) (V) (b : Block n) (t : Time) : Prop := Q A cm V b (τ.slotOf t - 1) &gt; safetyThreshold A cm fm pb b (τ.slotOf t - 1)</pre>
+<b>Lean</b> — <code>FastConfirmation.LMDGhost.isOneConfirmed</code><br><sub>FastConfirmationPaper/LMDGhost/Model/OneBlockConfirmation.lean:20 · <i>def</i></sub><pre>def isOneConfirmed (τ) (fm) (cm) (pb) (A) (V) (b : Block n) (t : Time) : Prop := Q A cm V b (τ.slotOf t - 1) &gt; safetyThreshold A cm fm pb b (τ.slotOf t - 1)</pre>
 
 </td>
 </tr>
@@ -611,7 +611,7 @@ inductive Block (n : ℕ)
 </td>
 <td width="50%" valign="top">
 
-<b>Lean</b> — <code>FastConfirmation.LMDGhost.isLMDGHOSTSafe</code><br><sub>FastConfirmation/Paper/LMDGhost/Model/Confirm.lean:25 · <i>def</i></sub><pre>def isLMDGHOSTSafe (τ) (fm) (cm) (pb) (A) (V) (b : Block n) (t : Time) : Prop := ∀ ⦃b' : Block n⦄, b' ≼ b → b' = Block.genesis ∨ isOneConfirmed τ fm cm pb A V b' t</pre>
+<b>Lean</b> — <code>FastConfirmation.LMDGhost.isLMDGHOSTSafe</code><br><sub>FastConfirmationPaper/LMDGhost/Model/OneBlockConfirmation.lean:25 · <i>def</i></sub><pre>def isLMDGHOSTSafe (τ) (fm) (cm) (pb) (A) (V) (b : Block n) (t : Time) : Prop := ∀ ⦃b' : Block n⦄, b' ≼ b → b' = Block.genesis ∨ isOneConfirmed τ fm cm pb A V b' t</pre>
 
 </td>
 </tr>
@@ -630,7 +630,7 @@ inductive Block (n : ℕ)
 </td>
 <td width="50%" valign="top">
 
-<b>Lean</b> — <code>FastConfirmation.LMDGhost.highestConfirmedSinceEpoch</code><br><sub>FastConfirmation/Paper/LMDGhost/Model/Rule.lean:23 · <i>def</i></sub><pre>noncomputable def highestConfirmedSinceEpoch (τ) (fm) (cm) (pb) (gj) (𝒱) (v) (e : Epoch) (t : Time) : Block n := let cand := (Finset.Icc (τ.fslot e + 1) (τ.slotOf t)).biUnion (fun s' =&gt; (𝒱 v (τ.st s')).blocks.filter (fun b' =&gt; isLMDGHOSTSafe τ fm cm pb (gj 𝒱 v (τ.st s')) (𝒱 v (τ.st s')) b' (τ.st s'))); match cand.toList.argmax (·.slot) with | some b =&gt; b | none =&gt; Block.genesis</pre>
+<b>Lean</b> — <code>FastConfirmation.LMDGhost.highestConfirmedSinceEpoch</code><br><sub>FastConfirmationPaper/LMDGhost/Model/ConfirmationRule.lean:23 · <i>def</i></sub><pre>noncomputable def highestConfirmedSinceEpoch (τ) (fm) (cm) (pb) (gj) (𝒱) (v) (e : Epoch) (t : Time) : Block n := let cand := (Finset.Icc (τ.fslot e + 1) (τ.slotOf t)).biUnion (fun s' =&gt; (𝒱 v (τ.st s')).blocks.filter (fun b' =&gt; isLMDGHOSTSafe τ fm cm pb (gj 𝒱 v (τ.st s')) (𝒱 v (τ.st s')) b' (τ.st s'))); match cand.toList.argmax (·.slot) with | some b =&gt; b | none =&gt; Block.genesis</pre>
 
 </td>
 </tr>
@@ -649,7 +649,7 @@ inductive Block (n : ℕ)
 </td>
 <td width="50%" valign="top">
 
-<b>Lean</b> — <code>FastConfirmation.LMDGhost.isConfirmed</code><br><sub>FastConfirmation/Paper/LMDGhost/Model/Rule.lean:36 · <i>def</i></sub><pre>def isConfirmed (τ) (fm) (cm) (pb) (gj) (𝒱) (v) (b : Block n) (t : Time) : Prop := b ≼ highestConfirmedSinceEpoch τ fm cm pb gj 𝒱 v (τ.epochOf (τ.slotOf t) - 1) t</pre>
+<b>Lean</b> — <code>FastConfirmation.LMDGhost.isConfirmed</code><br><sub>FastConfirmationPaper/LMDGhost/Model/ConfirmationRule.lean:36 · <i>def</i></sub><pre>def isConfirmed (τ) (fm) (cm) (pb) (gj) (𝒱) (v) (b : Block n) (t : Time) : Prop := b ≼ highestConfirmedSinceEpoch τ fm cm pb gj 𝒱 v (τ.epochOf (τ.slotOf t) - 1) t</pre>
 
 </td>
 </tr>
@@ -668,7 +668,7 @@ inductive Block (n : ℕ)
 </td>
 <td width="50%" valign="top">
 
-<b>Lean</b> — <code>FastConfirmation.LMDGhost.sg</code><br><sub>FastConfirmation/Paper/LMDGhost/Model/Rule.lean:43 · <i>def</i></sub><pre>def sg (τ : Timing) (b : Block n) (t : Time) : Prop := τ.epochOf (τ.slotOf t) ≤ τ.epochOf b.slot + 1 ∧ τ.AfterGST (τ.st (τ.fslot (τ.epochOf (τ.slotOf t) - 1)))</pre>
+<b>Lean</b> — <code>FastConfirmation.LMDGhost.sg</code><br><sub>FastConfirmationPaper/LMDGhost/Model/ConfirmationRule.lean:43 · <i>def</i></sub><pre>def sg (τ : Timing) (b : Block n) (t : Time) : Prop := τ.epochOf (τ.slotOf t) ≤ τ.epochOf b.slot + 1 ∧ τ.AfterGST (τ.st (τ.fslot (τ.epochOf (τ.slotOf t) - 1)))</pre>
 
 </td>
 </tr>
@@ -687,7 +687,7 @@ inductive Block (n : ℕ)
 </td>
 <td width="50%" valign="top">
 
-<b>Lean</b> — <code>FastConfirmation.LMDGhost.CommitteeHonestMajority</code><br><sub>FastConfirmation/Paper/LMDGhost/Model/Assumptions.lean:21 · <i>assumption</i></sub><pre>def CommitteeHonestMajority (fm) (cm) (A : Anchor n) : Prop := ∀ lo hi : Slot, (1 - fm.β) * totalWeight A (committeeUnion cm lo hi) ≤ totalWeight A ((committeeUnion cm lo hi).filter (fun i =&gt; i ∈ fm.honest))</pre>
+<b>Lean</b> — <code>FastConfirmation.LMDGhost.CommitteeHonestMajority</code><br><sub>FastConfirmationPaper/LMDGhost/Model/Assumptions.lean:21 · <i>assumption</i></sub><pre>def CommitteeHonestMajority (fm) (cm) (A : Anchor n) : Prop := ∀ lo hi : Slot, (1 - fm.β) * totalWeight A (committeeUnion cm lo hi) ≤ totalWeight A ((committeeUnion cm lo hi).filter (fun i =&gt; i ∈ fm.honest))</pre>
 
 </td>
 </tr>
@@ -706,7 +706,7 @@ inductive Block (n : ℕ)
 </td>
 <td width="50%" valign="top">
 
-<b>Lean</b> — <code>FastConfirmation.LMDGhost.StaticBalances</code><br><sub>FastConfirmation/Paper/LMDGhost/Model/Assumptions.lean:46 · <i>assumption</i></sub><pre>def StaticBalances (gj) (𝒱) : Prop := ∀ (v) (t) (v') (t') (i : Validator n), (gj 𝒱 v t).bal i = (gj 𝒱 v' t').bal i</pre>
+<b>Lean</b> — <code>FastConfirmation.LMDGhost.StaticBalances</code><br><sub>FastConfirmationPaper/LMDGhost/Model/Assumptions.lean:46 · <i>assumption</i></sub><pre>def StaticBalances (gj) (𝒱) : Prop := ∀ (v) (t) (v') (t') (i : Validator n), (gj 𝒱 v t).bal i = (gj 𝒱 v' t').bal i</pre>
 
 </td>
 </tr>
@@ -725,7 +725,7 @@ inductive Block (n : ℕ)
 </td>
 <td width="50%" valign="top">
 
-<b>Lean</b> — <code>FastConfirmation.LMDGhost.CommitteeCoversEpoch</code><br><sub>FastConfirmation/Paper/LMDGhost/Model/Assumptions.lean:62 · <i>assumption</i></sub><pre>def CommitteeCoversEpoch (τ) (cm) (e : Epoch) : Prop := committeeUnion cm (τ.fslot e) (τ.lslot e) = Finset.univ</pre>
+<b>Lean</b> — <code>FastConfirmation.LMDGhost.CommitteeCoversEpoch</code><br><sub>FastConfirmationPaper/LMDGhost/Model/Assumptions.lean:62 · <i>assumption</i></sub><pre>def CommitteeCoversEpoch (τ) (cm) (e : Epoch) : Prop := committeeUnion cm (τ.fslot e) (τ.lslot e) = Finset.univ</pre>
 
 </td>
 </tr>
@@ -744,7 +744,7 @@ inductive Block (n : ℕ)
 </td>
 <td width="50%" valign="top">
 
-<b>Lean</b> — <code>FastConfirmation.LMDGhost.AnchorsCoincide</code><br><sub>FastConfirmation/Paper/LMDGhost/Model/Assumptions.lean:72 · <i>assumption</i></sub><pre>def AnchorsCoincide (gj) (𝒱) (fm) (τ) (C : Anchor n) : Prop := ∀ ⦃j : Validator n⦄, j ∈ fm.honest → ∀ (kk : Slot), gj 𝒱 j (τ.st kk) = C</pre>
+<b>Lean</b> — <code>FastConfirmation.LMDGhost.AnchorsCoincide</code><br><sub>FastConfirmationPaper/LMDGhost/Model/Assumptions.lean:72 · <i>assumption</i></sub><pre>def AnchorsCoincide (gj) (𝒱) (fm) (τ) (C : Anchor n) : Prop := ∀ ⦃j : Validator n⦄, j ∈ fm.honest → ∀ (kk : Slot), gj 𝒱 j (τ.st kk) = C</pre>
 
 </td>
 </tr>
@@ -763,7 +763,7 @@ inductive Block (n : ℕ)
 </td>
 <td width="50%" valign="top">
 
-<b>Lean</b> — <code>FastConfirmation.LMDGhost.NeverFiltered</code><br><sub>FastConfirmation/Paper/LMDGhost/TheoremStatements.lean:35 · <i>statement</i></sub><pre>def NeverFiltered (τ) (fm) (flt : BlockFilter n P) (𝒱) (b : Block n) (t : Time) : Prop := ∀ ⦃w : Validator n⦄, w ∈ fm.honest → ∀ ⦃t' : Time⦄, τ.st (τ.slotOf t) ≤ t' → ∀ ⦃b' : Block n⦄, b' ≼ b → flt (𝒱 w t') t' b'</pre>
+<b>Lean</b> — <code>FastConfirmation.LMDGhost.NeverFiltered</code><br><sub>FastConfirmationPaper/LMDGhost/Claims.lean:35 · <i>statement</i></sub><pre>def NeverFiltered (τ) (fm) (flt : BlockFilter n P) (𝒱) (b : Block n) (t : Time) : Prop := ∀ ⦃w : Validator n⦄, w ∈ fm.honest → ∀ ⦃t' : Time⦄, τ.st (τ.slotOf t) ≤ t' → ∀ ⦃b' : Block n⦄, b' ≼ b → flt (𝒱 w t') t' b'</pre>
 
 </td>
 </tr>
@@ -782,7 +782,7 @@ inductive Block (n : ℕ)
 </td>
 <td width="50%" valign="top">
 
-<b>Lean</b> — <code>FastConfirmation.LMDGhost.NeverFilteredFromHead</code><br><sub>FastConfirmation/Paper/LMDGhost/TheoremStatements.lean:50 · <i>statement</i></sub><pre>def NeverFilteredFromHead (τ) (fm) (gj) (boost) (pb) (flt) (𝒱) (b) (t) : Prop := ∀ ⦃k : Slot⦄, τ.slotOf t ≤ k → (∀ ⦃j : Slot⦄, τ.slotOf t ≤ j → j &lt; k → ∀ ⦃i' ∈ fm.honest⦄, b ≼ forkChoiceHead τ (gj 𝒱 i' (τ.st j)) boost pb flt (𝒱 i' (τ.st j)) (τ.st j)) → ∀ ⦃w ∈ fm.honest⦄ ⦃t' : Time⦄, τ.slotOf t' = k → τ.st (τ.slotOf t) ≤ t' → ∀ ⦃b' ≼ b⦄, flt (𝒱 w t') t' b'</pre>
+<b>Lean</b> — <code>FastConfirmation.LMDGhost.NeverFilteredFromHead</code><br><sub>FastConfirmationPaper/LMDGhost/Claims.lean:50 · <i>statement</i></sub><pre>def NeverFilteredFromHead (τ) (fm) (gj) (boost) (pb) (flt) (𝒱) (b) (t) : Prop := ∀ ⦃k : Slot⦄, τ.slotOf t ≤ k → (∀ ⦃j : Slot⦄, τ.slotOf t ≤ j → j &lt; k → ∀ ⦃i' ∈ fm.honest⦄, b ≼ forkChoiceHead τ (gj 𝒱 i' (τ.st j)) boost pb flt (𝒱 i' (τ.st j)) (τ.st j)) → ∀ ⦃w ∈ fm.honest⦄ ⦃t' : Time⦄, τ.slotOf t' = k → τ.st (τ.slotOf t) ≤ t' → ∀ ⦃b' ≼ b⦄, flt (𝒱 w t') t' b'</pre>
 
 </td>
 </tr>
@@ -801,7 +801,7 @@ inductive Block (n : ℕ)
 </td>
 <td width="50%" valign="top">
 
-<b>Lean</b> — <code>FastConfirmation.LMDGhost.HeadFutureAgreement</code><br><sub>FastConfirmation/Paper/LMDGhost/TheoremStatements.lean:88 · <i>statement</i></sub><pre>def HeadFutureAgreement (τ) (flt : BlockFilter n P) : Prop := ∀ {fm cm pb gj boost 𝒱} (C : Anchor n), Synchrony … → HonestNoForgery … → HonestBehavior … → ViewsValid … → CommitteeHonestMajority fm cm C → 0 ≤ pb → AnchorsCoincide gj 𝒱 fm τ C → ∀ {v b t}, v ∈ fm.honest → b.WellFormed → b.slot ≤ τ.slotOf t → 1 ≤ τ.slotOf t → τ.AfterGST (τ.st (τ.slotOf t - 1)) → isLMDGHOSTSafe τ fm cm pb C (𝒱 v t) b t → NeverFiltered τ fm flt 𝒱 b t → ∀ ⦃w ∈ fm.honest⦄ ⦃t'⦄, τ.st (τ.slotOf t) ≤ t' → b ≼ forkChoiceHead τ C boost pb flt (𝒱 w t') t'</pre>
+<b>Lean</b> — <code>FastConfirmation.LMDGhost.HeadFutureAgreement</code><br><sub>FastConfirmationPaper/LMDGhost/Claims.lean:88 · <i>statement</i></sub><pre>def HeadFutureAgreement (τ) (flt : BlockFilter n P) : Prop := ∀ {fm cm pb gj boost 𝒱} (C : Anchor n), Synchrony … → HonestNoForgery … → HonestBehavior … → ViewsValid … → CommitteeHonestMajority fm cm C → 0 ≤ pb → AnchorsCoincide gj 𝒱 fm τ C → ∀ {v b t}, v ∈ fm.honest → b.WellFormed → b.slot ≤ τ.slotOf t → 1 ≤ τ.slotOf t → τ.AfterGST (τ.st (τ.slotOf t - 1)) → isLMDGHOSTSafe τ fm cm pb C (𝒱 v t) b t → NeverFiltered τ fm flt 𝒱 b t → ∀ ⦃w ∈ fm.honest⦄ ⦃t'⦄, τ.st (τ.slotOf t) ≤ t' → b ≼ forkChoiceHead τ C boost pb flt (𝒱 w t') t'</pre>
 
 </td>
 </tr>
@@ -820,7 +820,7 @@ inductive Block (n : ℕ)
 </td>
 <td width="50%" valign="top">
 
-<b>Lean</b> — <code>FastConfirmation.LMDGhost.Theorem1_Safety</code><br><sub>FastConfirmation/Paper/LMDGhost/TheoremStatements.lean:109 · <i>statement</i></sub><pre>def Theorem1_Safety (τ) (gj) : Prop := ∀ {fm cm pb boost 𝒱}, Synchrony … → HonestNoForgery … → HonestBehavior … trivialFilter 𝒱 → ViewsValid … → (∀ ⦃w t⦄, CommitteeHonestMajority fm cm (gj 𝒱 w t)) → WellFormedBoost τ boost → 0 ≤ pb → StaticBalances gj 𝒱 → ∀ {v b t}, v ∈ fm.honest → sg τ b t → isConfirmed τ fm cm pb gj 𝒱 v b t → ∃ t0 : Time, ∀ ⦃w ∈ fm.honest⦄ ⦃t'⦄, t0 ≤ t' → b ≼ forkChoiceHead τ (gj 𝒱 w t') boost pb trivialFilter (𝒱 w t') t'</pre>
+<b>Lean</b> — <code>FastConfirmation.LMDGhost.Theorem1_Safety</code><br><sub>FastConfirmationPaper/LMDGhost/Claims.lean:109 · <i>statement</i></sub><pre>def Theorem1_Safety (τ) (gj) : Prop := ∀ {fm cm pb boost 𝒱}, Synchrony … → HonestNoForgery … → HonestBehavior … trivialFilter 𝒱 → ViewsValid … → (∀ ⦃w t⦄, CommitteeHonestMajority fm cm (gj 𝒱 w t)) → WellFormedBoost τ boost → 0 ≤ pb → StaticBalances gj 𝒱 → ∀ {v b t}, v ∈ fm.honest → sg τ b t → isConfirmed τ fm cm pb gj 𝒱 v b t → ∃ t0 : Time, ∀ ⦃w ∈ fm.honest⦄ ⦃t'⦄, t0 ≤ t' → b ≼ forkChoiceHead τ (gj 𝒱 w t') boost pb trivialFilter (𝒱 w t') t'</pre>
 
 </td>
 </tr>
@@ -839,7 +839,7 @@ inductive Block (n : ℕ)
 </td>
 <td width="50%" valign="top">
 
-<b>Lean</b> — <code>FastConfirmation.LMDGhost.Theorem1_Monotonicity</code><br><sub>FastConfirmation/Paper/LMDGhost/TheoremStatements.lean:138 · <i>statement</i></sub><pre>def Theorem1_Monotonicity (τ) (gj) : Prop := ∀ {fm cm pb boost 𝒱}, Synchrony … → HonestNoForgery … → HonestBehavior … trivialFilter 𝒱 → ViewsValid … → (∀ ⦃w t⦄, CommitteeHonestMajority fm cm (gj 𝒱 w t)) → WellFormedBoost τ boost → 0 ≤ pb → StaticBalances gj 𝒱 → fm.β &lt; (1 - pb) / 4 → ∀ {v b t t'}, v ∈ fm.honest → sg τ b t → t ≤ t' → CommitteeCoversEpoch τ cm (τ.epochOf (τ.slotOf t') - 1) → isConfirmed τ fm cm pb gj 𝒱 v b t → isConfirmed τ fm cm pb gj 𝒱 v b t'</pre>
+<b>Lean</b> — <code>FastConfirmation.LMDGhost.Theorem1_Monotonicity</code><br><sub>FastConfirmationPaper/LMDGhost/Claims.lean:138 · <i>statement</i></sub><pre>def Theorem1_Monotonicity (τ) (gj) : Prop := ∀ {fm cm pb boost 𝒱}, Synchrony … → HonestNoForgery … → HonestBehavior … trivialFilter 𝒱 → ViewsValid … → (∀ ⦃w t⦄, CommitteeHonestMajority fm cm (gj 𝒱 w t)) → WellFormedBoost τ boost → 0 ≤ pb → StaticBalances gj 𝒱 → fm.β &lt; (1 - pb) / 4 → ∀ {v b t t'}, v ∈ fm.honest → sg τ b t → t ≤ t' → CommitteeCoversEpoch τ cm (τ.epochOf (τ.slotOf t') - 1) → isConfirmed τ fm cm pb gj 𝒱 v b t → isConfirmed τ fm cm pb gj 𝒱 v b t'</pre>
 
 </td>
 </tr>
@@ -860,7 +860,7 @@ inductive Block (n : ℕ)
 </td>
 <td width="50%" valign="top">
 
-<b>Lean</b> — <code>FastConfirmation.HFC.Checkpoint</code><br><sub>FastConfirmation/Paper/HFC/Model/Checkpoint.lean:25 · <i>structure</i></sub><pre>structure Checkpoint (n : ℕ) where
+<b>Lean</b> — <code>FastConfirmation.HFC.Checkpoint</code><br><sub>FastConfirmationPaper/HFC/Model/Checkpoint.lean:25 · <i>structure</i></sub><pre>structure Checkpoint (n : ℕ) where
   block : Block n
   epoch : Epoch
   deriving DecidableEq</pre>
@@ -882,7 +882,7 @@ inductive Block (n : ℕ)
 </td>
 <td width="50%" valign="top">
 
-<b>Lean</b> — <code>FastConfirmation.HFC.FFGVote</code><br><sub>FastConfirmation/Paper/HFC/Model/FFGVote.lean:24 · <i>structure</i></sub><pre>structure FFGVote (n : ℕ) where
+<b>Lean</b> — <code>FastConfirmation.HFC.FFGVote</code><br><sub>FastConfirmationPaper/HFC/Model/FFGVote.lean:24 · <i>structure</i></sub><pre>structure FFGVote (n : ℕ) where
   source : Checkpoint n
   target : Checkpoint n
   deriving DecidableEq</pre>
@@ -904,7 +904,7 @@ inductive Block (n : ℕ)
 </td>
 <td width="50%" valign="top">
 
-<b>Lean</b> — <code>FastConfirmation.HFC.genesisCheckpoint</code><br><sub>FastConfirmation/Paper/HFC/Model/Justification.lean:62 · <i>def</i></sub><pre>def genesisCheckpoint : Checkpoint n := ⟨Block.genesis, 0⟩</pre>
+<b>Lean</b> — <code>FastConfirmation.HFC.genesisCheckpoint</code><br><sub>FastConfirmationPaper/HFC/Model/Justification.lean:62 · <i>def</i></sub><pre>def genesisCheckpoint : Checkpoint n := ⟨Block.genesis, 0⟩</pre>
 
 </td>
 </tr>
@@ -923,7 +923,7 @@ inductive Block (n : ℕ)
 </td>
 <td width="50%" valign="top">
 
-<b>Lean</b> — <code>FastConfirmation.View.ffgVotes</code><br><sub>FastConfirmation/Paper/HFC/Model/Justification.lean:79 · <i>def</i></sub><pre>def View.ffgVotes (V : View n (FFGVote n)) : Finset (FFGVote n) :=
+<b>Lean</b> — <code>FastConfirmation.View.ffgVotes</code><br><sub>FastConfirmationPaper/HFC/Model/Justification.lean:79 · <i>def</i></sub><pre>def View.ffgVotes (V : View n (FFGVote n)) : Finset (FFGVote n) :=
   V.msgs.image Message.extra</pre>
 
 </td>
@@ -943,7 +943,7 @@ inductive Block (n : ℕ)
 </td>
 <td width="50%" valign="top">
 
-<b>Lean</b> — <code>FastConfirmation.HFC.linkWeight</code><br><sub>FastConfirmation/Paper/HFC/Model/Justification.lean:259 · <i>def</i></sub><pre>noncomputable def linkWeight (A : Anchor n) (V) (src tgt : Checkpoint n) : Weight :=
+<b>Lean</b> — <code>FastConfirmation.HFC.linkWeight</code><br><sub>FastConfirmationPaper/HFC/Model/Justification.lean:259 · <i>def</i></sub><pre>noncomputable def linkWeight (A : Anchor n) (V) (src tgt : Checkpoint n) : Weight :=
   totalWeight A (univ.filter (fun i =&gt; ∃ m ∈ V.msgs,
     m.ghost.validator = i ∧ m.extra.source = src ∧ m.extra.target = tgt))</pre>
 
@@ -964,7 +964,7 @@ inductive Block (n : ℕ)
 </td>
 <td width="50%" valign="top">
 
-<b>Lean</b> — <code>FastConfirmation.HFC.Justified</code><br><sub>FastConfirmation/Paper/HFC/Model/Justification.lean:267 · <i>def</i></sub><pre>inductive Justified (A) (V) : Checkpoint n → Prop
+<b>Lean</b> — <code>FastConfirmation.HFC.Justified</code><br><sub>FastConfirmationPaper/HFC/Model/Justification.lean:267 · <i>def</i></sub><pre>inductive Justified (A) (V) : Checkpoint n → Prop
   | base : Justified A V genesisCheckpoint
   | link {Cs Ct} (hs : Justified A V Cs)
       (hsup : 3 * linkWeight A V Cs Ct ≥ 2 * totalWeight A univ) :
@@ -987,7 +987,7 @@ inductive Block (n : ℕ)
 </td>
 <td width="50%" valign="top">
 
-<b>Lean</b> — <code>FastConfirmation.HFC.Finalized</code><br><sub>FastConfirmation/Paper/HFC/Model/Justification.lean:276 · <i>def</i></sub><pre>def Finalized (A) (V) (C) : Prop :=
+<b>Lean</b> — <code>FastConfirmation.HFC.Finalized</code><br><sub>FastConfirmationPaper/HFC/Model/Justification.lean:276 · <i>def</i></sub><pre>def Finalized (A) (V) (C) : Prop :=
   Justified A V C ∧ ∃ C', C'.epoch = C.epoch + 1 ∧ C.block ≼ C'.block ∧ Justified A V C'</pre>
 
 </td>
@@ -1007,7 +1007,7 @@ inductive Block (n : ℕ)
 </td>
 <td width="50%" valign="top">
 
-<b>Lean</b> — <code>FastConfirmation.HFC.mentionedCheckpoints</code><br><sub>FastConfirmation/Paper/HFC/Model/Justification.lean:284 · <i>def</i></sub><pre>noncomputable def mentionedCheckpoints (V) : Finset (Checkpoint n) :=
+<b>Lean</b> — <code>FastConfirmation.HFC.mentionedCheckpoints</code><br><sub>FastConfirmationPaper/HFC/Model/Justification.lean:284 · <i>def</i></sub><pre>noncomputable def mentionedCheckpoints (V) : Finset (Checkpoint n) :=
   insert genesisCheckpoint (V.ffgVotes.image FFGVote.source ∪ V.ffgVotes.image FFGVote.target)</pre>
 
 </td>
@@ -1027,7 +1027,7 @@ inductive Block (n : ℕ)
 </td>
 <td width="50%" valign="top">
 
-<b>Lean</b> — <code>FastConfirmation.HFC.greatestJustified</code><br><sub>FastConfirmation/Paper/HFC/Model/Justification.lean:295 · <i>def</i></sub><pre>noncomputable def greatestJustified (A) (V) : Checkpoint n :=
+<b>Lean</b> — <code>FastConfirmation.HFC.greatestJustified</code><br><sub>FastConfirmationPaper/HFC/Model/Justification.lean:295 · <i>def</i></sub><pre>noncomputable def greatestJustified (A) (V) : Checkpoint n :=
   match ((mentionedCheckpoints V).filter (Justified A V ·)).toList.argmax (·.epoch) with
   | some C =&gt; C | none =&gt; genesisCheckpoint</pre>
 
@@ -1048,7 +1048,7 @@ inductive Block (n : ℕ)
 </td>
 <td width="50%" valign="top">
 
-<b>Lean</b> — <code>FastConfirmation.HFC.greatestFinalized</code><br><sub>FastConfirmation/Paper/HFC/Model/Justification.lean:303 · <i>def</i></sub><pre>noncomputable def greatestFinalized (A) (V) : Checkpoint n :=
+<b>Lean</b> — <code>FastConfirmation.HFC.greatestFinalized</code><br><sub>FastConfirmationPaper/HFC/Model/Justification.lean:303 · <i>def</i></sub><pre>noncomputable def greatestFinalized (A) (V) : Checkpoint n :=
   match ((mentionedCheckpoints V).filter (Finalized A V ·)).toList.argmax (·.epoch) with
   | some C =&gt; C | none =&gt; genesisCheckpoint</pre>
 
@@ -1069,7 +1069,7 @@ inductive Block (n : ℕ)
 </td>
 <td width="50%" valign="top">
 
-<b>Lean</b> — <code>FastConfirmation.HFC.greatestJustifiedOfChain</code><br><sub>FastConfirmation/Paper/HFC/Model/Justification.lean:315 · <i>def</i></sub><pre>noncomputable def greatestJustifiedOfChain (A) (V) (b : Block n) : Checkpoint n :=
+<b>Lean</b> — <code>FastConfirmation.HFC.greatestJustifiedOfChain</code><br><sub>FastConfirmationPaper/HFC/Model/Justification.lean:315 · <i>def</i></sub><pre>noncomputable def greatestJustifiedOfChain (A) (V) (b : Block n) : Checkpoint n :=
   match ((mentionedCheckpoints V).filter
       (fun C =&gt; Justified A V C ∧ C.block ≼ b)).toList.argmax (·.epoch) with
   | some C =&gt; C | none =&gt; genesisCheckpoint</pre>
@@ -1091,7 +1091,7 @@ inductive Block (n : ℕ)
 </td>
 <td width="50%" valign="top">
 
-<b>Lean</b> — <code>FastConfirmation.HFC.greatestRealizedJustified</code><br><sub>FastConfirmation/Paper/HFC/Model/Justification.lean:339 · <i>def</i></sub><pre>noncomputable def greatestRealizedJustified (A) (τ : Timing) (V) (t : Time) : Checkpoint n :=
+<b>Lean</b> — <code>FastConfirmation.HFC.greatestRealizedJustified</code><br><sub>FastConfirmationPaper/HFC/Model/Justification.lean:339 · <i>def</i></sub><pre>noncomputable def greatestRealizedJustified (A) (τ : Timing) (V) (t : Time) : Checkpoint n :=
   match ((mentionedCheckpoints V).filter
       (fun C =&gt; Justified A V C ∧ C.epoch &lt; τ.epochOf (τ.slotOf t))).toList.argmax (·.epoch) with
   | some C =&gt; C | none =&gt; genesisCheckpoint</pre>
@@ -1113,7 +1113,7 @@ inductive Block (n : ℕ)
 </td>
 <td width="50%" valign="top">
 
-<b>Lean</b> — <code>FastConfirmation.HFC.votingSource</code><br><sub>FastConfirmation/Paper/HFC/Model/Justification.lean:377 · <i>def</i></sub><pre>noncomputable def votingSource (A) (τ) (V) (b : Block n) (t : Time) : Checkpoint n :=
+<b>Lean</b> — <code>FastConfirmation.HFC.votingSource</code><br><sub>FastConfirmationPaper/HFC/Model/Justification.lean:377 · <i>def</i></sub><pre>noncomputable def votingSource (A) (τ) (V) (b : Block n) (t : Time) : Checkpoint n :=
   if τ.epochOf b.slot = τ.epochOf (τ.slotOf t) then gjblock A τ V b
   else greatestJustifiedOfChain A V b</pre>
 
@@ -1134,7 +1134,7 @@ inductive Block (n : ℕ)
 </td>
 <td width="50%" valign="top">
 
-<b>Lean</b> — <code>FastConfirmation.HFC.FinalizedPrefixOfJustified</code><br><sub>FastConfirmation/Paper/HFC/Model/Justification.lean:391 · <i>assumption</i></sub><pre>def FinalizedPrefixOfJustified (A) (V) : Prop :=
+<b>Lean</b> — <code>FastConfirmation.HFC.FinalizedPrefixOfJustified</code><br><sub>FastConfirmationPaper/HFC/Model/Justification.lean:391 · <i>assumption</i></sub><pre>def FinalizedPrefixOfJustified (A) (V) : Prop :=
   ∀ ⦃Cf Cj⦄, Finalized A V Cf → Justified A V Cj → Cf.epoch ≤ Cj.epoch → Cf.block ≼ Cj.block</pre>
 
 </td>
@@ -1154,7 +1154,7 @@ inductive Block (n : ℕ)
 </td>
 <td width="50%" valign="top">
 
-<b>Lean</b> — <code>FastConfirmation.HFC.gjFFG</code><br><sub>FastConfirmation/Paper/HFC/Model/Justification.lean:405 · <i>def</i></sub><pre>noncomputable def gjFFG (bal₀ : Stakes n) :
+<b>Lean</b> — <code>FastConfirmation.HFC.gjFFG</code><br><sub>FastConfirmationPaper/HFC/Model/Justification.lean:405 · <i>def</i></sub><pre>noncomputable def gjFFG (bal₀ : Stakes n) :
     ViewFamily n (FFGVote n) → Validator n → Time → Anchor n :=
   fun _ _ _ =&gt; bal₀</pre>
 
@@ -1175,7 +1175,7 @@ inductive Block (n : ℕ)
 </td>
 <td width="50%" valign="top">
 
-<b>Lean</b> — <code>FastConfirmation.HFC.boundaryBlock</code><br><sub>FastConfirmation/Paper/HFC/Model/Rule.lean:24 · <i>def</i></sub><pre>def boundaryBlock (bound : Slot) : Block n → Block n
+<b>Lean</b> — <code>FastConfirmation.HFC.boundaryBlock</code><br><sub>FastConfirmationPaper/HFC/Model/ConfirmationRule.lean:24 · <i>def</i></sub><pre>def boundaryBlock (bound : Slot) : Block n → Block n
   | Block.genesis =&gt; Block.genesis
   | Block.mk bid p s =&gt; if s ≤ bound then Block.mk bid p s else boundaryBlock bound p</pre>
 
@@ -1196,7 +1196,7 @@ inductive Block (n : ℕ)
 </td>
 <td width="50%" valign="top">
 
-<b>Lean</b> — <code>FastConfirmation.HFC.checkpointOf</code><br><sub>FastConfirmation/Paper/HFC/Model/Rule.lean:43 · <i>def</i></sub><pre>def checkpointOf (τ : Timing) (b : Block n) (e : Epoch) : Checkpoint n :=
+<b>Lean</b> — <code>FastConfirmation.HFC.checkpointOf</code><br><sub>FastConfirmationPaper/HFC/Model/ConfirmationRule.lean:43 · <i>def</i></sub><pre>def checkpointOf (τ : Timing) (b : Block n) (e : Epoch) : Checkpoint n :=
   ⟨boundaryBlock (τ.fslot e) b, e⟩</pre>
 
 </td>
@@ -1216,7 +1216,7 @@ inductive Block (n : ℕ)
 </td>
 <td width="50%" valign="top">
 
-<b>Lean</b> — <code>FastConfirmation.HFC.gjblock</code><br><sub>FastConfirmation/Paper/HFC/Model/Justification.lean:352 · <i>def</i></sub><pre>noncomputable def gjblock (A) (τ) (V) (b : Block n) : Checkpoint n :=
+<b>Lean</b> — <code>FastConfirmation.HFC.gjblock</code><br><sub>FastConfirmationPaper/HFC/Model/Justification.lean:352 · <i>def</i></sub><pre>noncomputable def gjblock (A) (τ) (V) (b : Block n) : Checkpoint n :=
   match ((mentionedCheckpoints V).filter (fun C =&gt;
       Justified A V C ∧ C.block ≼ b ∧ C.epoch &lt; τ.epochOf b.slot)).toList.argmax (·.epoch) with
   | some C =&gt; C | none =&gt; genesisCheckpoint</pre>
@@ -1238,7 +1238,7 @@ inductive Block (n : ℕ)
 </td>
 <td width="50%" valign="top">
 
-<b>Lean</b> — <code>FastConfirmation.HFC.linkWeightUpTo</code><br><sub>FastConfirmation/Paper/HFC/Model/FFGRule.lean:46 · <i>def</i></sub><pre>noncomputable def linkWeightUpTo (A) (cm : Committees n) (τ) (V) (src tgt : Checkpoint n) (upTo : Slot) : Weight :=
+<b>Lean</b> — <code>FastConfirmation.HFC.linkWeightUpTo</code><br><sub>FastConfirmationPaper/HFC/Model/AnchorRule.lean:46 · <i>def</i></sub><pre>noncomputable def linkWeightUpTo (A) (cm : Committees n) (τ) (V) (src tgt : Checkpoint n) (upTo : Slot) : Weight :=
   totalWeight A ((committeeUnion cm (τ.fslot tgt.epoch) upTo).filter (fun i =&gt;
     ∃ m ∈ V.msgs, m.ghost.validator = i ∧ m.extra.source = src ∧ m.extra.target = tgt))</pre>
 
@@ -1259,7 +1259,7 @@ inductive Block (n : ℕ)
 </td>
 <td width="50%" valign="top">
 
-<b>Lean</b> — <code>FastConfirmation.HFC.willChkpBeJustified</code><br><sub>FastConfirmation/Paper/HFC/Model/FFGRule.lean:59 · <i>def</i></sub><pre>def willChkpBeJustified (bal₀) (cm) (fm) (we : Weight) (τ) (𝒱) (v) (b) (e : Epoch) (t : Time) : Prop :=
+<b>Lean</b> — <code>FastConfirmation.HFC.willChkpBeJustified</code><br><sub>FastConfirmationPaper/HFC/Model/AnchorRule.lean:59 · <i>def</i></sub><pre>def willChkpBeJustified (bal₀) (cm) (fm) (we : Weight) (τ) (𝒱) (v) (b) (e : Epoch) (t : Time) : Prop :=
   linkWeightUpTo bal₀ cm τ (𝒱 v t) (ruleVotingSource bal₀ τ b t) (checkpointOf τ b e) (τ.slotOf t - 1)
     + (1 - fm.β) * totalWeight bal₀ (committeeUnion cm (τ.slotOf t) (τ.lslot e))
     ≥ (2 / 3) * totalWeight bal₀ Finset.univ + min we (fm.β * totalWeight bal₀ Finset.univ)</pre>
@@ -1281,7 +1281,7 @@ inductive Block (n : ℕ)
 </td>
 <td width="50%" valign="top">
 
-<b>Lean</b> — <code>FastConfirmation.HFC.isConfirmedNoCaching</code><br><sub>FastConfirmation/Paper/HFC/Model/FFGRule.lean:108 · <i>def</i></sub><pre>noncomputable def isConfirmedNoCaching (bal₀) (fm) (cm) (pb we : Weight) (τ) (𝒱) (v) (b) (t) : Prop :=
+<b>Lean</b> — <code>FastConfirmation.HFC.isConfirmedNoCaching</code><br><sub>FastConfirmationPaper/HFC/Model/AnchorRule.lean:108 · <i>def</i></sub><pre>noncomputable def isConfirmedNoCaching (bal₀) (fm) (cm) (pb we : Weight) (τ) (𝒱) (v) (b) (t) : Prop :=
   if τ.epochOf b.slot = τ.epochOf (τ.slotOf t) then
     willChkpBeJustified … b (τ.epochOf (τ.slotOf t)) t ∧
       (gjblock … b).epoch = τ.epochOf (τ.slotOf t) - 1 ∧
@@ -1311,7 +1311,7 @@ inductive Block (n : ℕ)
 </td>
 <td width="50%" valign="top">
 
-<b>Lean</b> — <code>FastConfirmation.HFC.ffgFilterAt</code><br><sub>FastConfirmation/Paper/HFC/Model/FFGFilter.lean:52 · <i>def</i></sub><pre>def ffgFilterAt (A) (τ) (V) (t) (b : Block n) : Prop :=
+<b>Lean</b> — <code>FastConfirmation.HFC.ffgFilterAt</code><br><sub>FastConfirmationPaper/HFC/Model/FFGFilter.lean:52 · <i>def</i></sub><pre>def ffgFilterAt (A) (τ) (V) (t) (b : Block n) : Prop :=
   let gjC := ruleRealizedGJ A τ V t
   let gfC := ruleRealizedGF A τ V t
   b ≼ gjC.block ∨
@@ -1338,7 +1338,7 @@ inductive Block (n : ℕ)
 </td>
 <td width="50%" valign="top">
 
-<b>Lean</b> — <code>FastConfirmation.HFC.ffgFilter</code><br><sub>FastConfirmation/Paper/HFC/Model/FFGFilter.lean:67 · <i>def</i></sub><pre>def ffgFilter (A : Anchor n) (τ : Timing) : BlockFilter n (FFGVote n) :=
+<b>Lean</b> — <code>FastConfirmation.HFC.ffgFilter</code><br><sub>FastConfirmationPaper/HFC/Model/FFGFilter.lean:67 · <i>def</i></sub><pre>def ffgFilter (A : Anchor n) (τ : Timing) : BlockFilter n (FFGVote n) :=
   ffgFilterAt A τ</pre>
 
 </td>
@@ -1353,12 +1353,12 @@ inductive Block (n : ℕ)
 <tr>
 <td width="50%" valign="top">
 
-<b>Paper</b> — <i>arXiv:2405.00549 §4 (honest FFG-Casper voting); FFG mirror of HonestBehavior.noEquivocation (FastConfirmation/Paper/Core/Model/Honest.lean)</i><br><br>Honest FFG non-equivocation (definitional): an honest committee member casts at most one FFG link vote per slot — its prescribed head-vote — whose source is the voting source vs(head, epoch(t)) (Def 2) of its own view and whose target is the checkpoint (at the slot's epoch) of its own LMD-GHOST-HFC fork-choice head. Any honest-attributed HonestCast FFG message is that prescribed cast.
+<b>Paper</b> — <i>arXiv:2405.00549 §4 (honest FFG-Casper voting); FFG mirror of HonestBehavior.noEquivocation (FastConfirmationPaper/Core/Model/HonestVoting.lean)</i><br><br>Honest FFG non-equivocation (definitional): an honest committee member casts at most one FFG link vote per slot — its prescribed head-vote — whose source is the voting source vs(head, epoch(t)) (Def 2) of its own view and whose target is the checkpoint (at the slot's epoch) of its own LMD-GHOST-HFC fork-choice head. Any honest-attributed HonestCast FFG message is that prescribed cast.
 
 </td>
 <td width="50%" valign="top">
 
-<b>Lean</b> — <code>FastConfirmation.HFC.HonestFFGNoEquivocation</code><br><sub>FastConfirmation/Paper/HFC/Model/HonestFFG.lean:46 · <i>assumption</i></sub><pre>def HonestFFGNoEquivocation (τ) (fm) (_cm) (bal₀) (boost) (pb) (𝒱) : Prop :=
+<b>Lean</b> — <code>FastConfirmation.HFC.HonestFFGNoEquivocation</code><br><sub>FastConfirmationPaper/HFC/Model/HonestFFG.lean:46 · <i>assumption</i></sub><pre>def HonestFFGNoEquivocation (τ) (fm) (_cm) (bal₀) (boost) (pb) (𝒱) : Prop :=
   ∀ ⦃m⦄, HonestCast fm 𝒱 τ m →
     m.extra.target = checkpointOf τ (forkChoiceHead τ (gjFFG bal₀ 𝒱 m.ghost.validator (τ.st m.ghost.slot)) boost pb (ffgFilter bal₀ τ) (𝒱 m.ghost.validator (τ.st m.ghost.slot)) (τ.st m.ghost.slot)) (τ.epochOf m.ghost.slot) ∧
     m.extra.source = ruleVotingSource bal₀ τ (forkChoiceHead τ …) (τ.st m.ghost.slot)</pre>
@@ -1382,7 +1382,7 @@ inductive Block (n : ℕ)
 </td>
 <td width="50%" valign="top">
 
-<b>Lean</b> — <code>FastConfirmation.HFC.Assumption3</code><br><sub>FastConfirmation/Paper/HFC/TheoremStatements.lean:72 · <i>assumption</i></sub><pre>def Assumption3 (τ : Timing) (fm : FaultModel n) (𝒱 : ViewFamily n (FFGVote n)) : Prop :=
+<b>Lean</b> — <code>FastConfirmation.HFC.Assumption3</code><br><sub>FastConfirmationPaper/HFC/Claims.lean:72 · <i>assumption</i></sub><pre>def Assumption3 (τ : Timing) (fm : FaultModel n) (𝒱 : ViewFamily n (FFGVote n)) : Prop :=
   ∀ ⦃w⦄, w ∈ fm.honest → ∀ ⦃m⦄ ⦃s'⦄, HonestCast fm 𝒱 τ m → m.ghost.slot ≤ s' →
     τ.AfterGST (τ.st s') → m ∈ (𝒱 w (τ.st (s' + 1))).msgs</pre>
 
@@ -1403,7 +1403,7 @@ inductive Block (n : ℕ)
 </td>
 <td width="50%" valign="top">
 
-<b>Lean</b> — <code>FastConfirmation.HFC.FFG_AccountableSafety</code><br><sub>FastConfirmation/Paper/HFC/TheoremStatements.lean:262 · <i>assumption</i></sub><pre>def FFG_AccountableSafety (A : Anchor n) (fm : FaultModel n) (𝒱 : ViewFamily n (FFGVote n)) : Prop :=
+<b>Lean</b> — <code>FastConfirmation.HFC.FFG_AccountableSafety</code><br><sub>FastConfirmationPaper/HFC/Claims.lean:262 · <i>assumption</i></sub><pre>def FFG_AccountableSafety (A : Anchor n) (fm : FaultModel n) (𝒱 : ViewFamily n (FFGVote n)) : Prop :=
   (∀ ⦃w⦄, w ∈ fm.honest → ∀ ⦃t C₁ C₂⦄, Finalized A (𝒱 w t) C₁ → Finalized A (𝒱 w t) C₂ → (C₁.block ~ C₂.block)) ∧
   (∀ ⦃w⦄, w ∈ fm.honest → ∀ ⦃t C₁ C₂⦄, Justified A (𝒱 w t) C₁ → Justified A (𝒱 w t) C₂ → C₁.epoch = C₂.epoch → C₁.block = C₂.block) ∧
   (∀ ⦃w⦄, w ∈ fm.honest → ∀ ⦃t⦄, FinalizedPrefixOfJustified A (𝒱 w t))</pre>
@@ -1425,7 +1425,7 @@ inductive Block (n : ℕ)
 </td>
 <td width="50%" valign="top">
 
-<b>Lean</b> — <code>FastConfirmation.HFC.WillNoConflictingChkpBeJustified</code><br><sub>FastConfirmation/Paper/HFC/TheoremStatements.lean:156 · <i>def</i></sub><pre>def WillNoConflictingChkpBeJustified (C fm τ 𝒱 b t) : Prop :=
+<b>Lean</b> — <code>FastConfirmation.HFC.WillNoConflictingChkpBeJustified</code><br><sub>FastConfirmationPaper/HFC/Claims.lean:156 · <i>def</i></sub><pre>def WillNoConflictingChkpBeJustified (C fm τ 𝒱 b t) : Prop :=
   ∀ ⦃w⦄, w ∈ fm.honest → ∀ ⦃t'⦄, τ.st (τ.slotOf t) ≤ t' →
     ∀ ⦃Cc⦄, Justified C (𝒱 w t') Cc → τ.epochOf b.slot ≤ Cc.epoch → (b ~ Cc.block)</pre>
 
@@ -1446,7 +1446,7 @@ inductive Block (n : ℕ)
 </td>
 <td width="50%" valign="top">
 
-<b>Lean</b> — <code>BlockFFGVotes / chainIncludedFFGVotes / OnChainJustifiedAtTransition / AU / GU / onChainGJBlock / onChainVotingSource / GF</code><br><sub>FastConfirmation/Paper/HFC/Model/Justification.lean · <i>defs</i></sub><pre>abbrev BlockFFGVotes (n) := Block n → Finset (Message n (FFGVote n))
+<b>Lean</b> — <code>BlockFFGVotes / chainIncludedFFGVotes / OnChainJustifiedAtTransition / AU / GU / onChainGJBlock / onChainVotingSource / GF</code><br><sub>FastConfirmationPaper/HFC/Model/Justification.lean · <i>defs</i></sub><pre>abbrev BlockFFGVotes (n) := Block n → Finset (Message n (FFGVote n))
 def BlockFFGVotes.WellFormedOnChain (τ blockVotes tip) : Prop := …
 def chainIncludedFFGVotes (blockVotes) : Block n → Finset (Message n (FFGVote n))
 inductive OnChainJustified (A τ blockVotes) : Block n → Checkpoint n → Prop
@@ -1473,7 +1473,7 @@ noncomputable def onChainVotingSource (A τ blockVotes b t) : Checkpoint n</pre>
 </td>
 <td width="50%" valign="top">
 
-<b>Lean</b> — <code>FastConfirmation.HFC.OnChainAnchorInterface</code><br><sub>FastConfirmation/Paper/HFC/Model/Rule.lean · <i>defs</i></sub><pre>def OnChainAnchorWellFormed (A τ b) : Prop := …
+<b>Lean</b> — <code>FastConfirmation.HFC.OnChainAnchorInterface</code><br><sub>FastConfirmationPaper/HFC/Model/ConfirmationRule.lean · <i>defs</i></sub><pre>def OnChainAnchorWellFormed (A τ b) : Prop := …
 def HonestProposerIncludesKnownVotes (fm τ 𝒱 tip) : Prop := …
 def OnChainAnchorBlockAvailable (fm 𝒱 b t) : Prop := …
 theorem OnChainAnchorBlockAvailable.of_blockRelay : …
@@ -1509,7 +1509,7 @@ def OnChainAnchorInterfacesForRule (A fm τ 𝒱 b t) : Prop := …</pre>
 </td>
 <td width="50%" valign="top">
 
-<b>Lean</b> — <code>FastConfirmation.HFC.GreatestJustifiedAnchorPrecondition</code><br><sub>FastConfirmation/Paper/HFC/TheoremStatements.lean:167 · <i>def</i></sub><pre>def GreatestJustifiedAnchorPrecondition (C fm τ 𝒱 b t) : Prop :=
+<b>Lean</b> — <code>FastConfirmation.HFC.GreatestJustifiedAnchorPrecondition</code><br><sub>FastConfirmationPaper/HFC/Claims.lean:167 · <i>def</i></sub><pre>def GreatestJustifiedAnchorPrecondition (C fm τ 𝒱 b t) : Prop :=
   ∃ GUc : Checkpoint n, GUc.epoch = τ.epochOf b.slot - 1 ∧ GUc.block ≼ b ∧
     ∃ v, v ∈ fm.honest ∧ Justified C (𝒱 v t) GUc</pre>
 
@@ -1530,7 +1530,7 @@ def OnChainAnchorInterfacesForRule (A fm τ 𝒱 b t) : Prop := …</pre>
 </td>
 <td width="50%" valign="top">
 
-<b>Lean</b> — <code>FastConfirmation.HFC.GreatestJustifiedAnchorInputs</code><br><sub>FastConfirmation/Paper/HFC/TheoremStatements.lean:141 · <i>def</i></sub><pre>def GreatestJustifiedAnchorInputs (C fm τ 𝒱 b t) : Prop :=
+<b>Lean</b> — <code>FastConfirmation.HFC.GreatestJustifiedAnchorInputs</code><br><sub>FastConfirmationPaper/HFC/Claims.lean:141 · <i>def</i></sub><pre>def GreatestJustifiedAnchorInputs (C fm τ 𝒱 b t) : Prop :=
   ∀ ⦃w⦄, w ∈ fm.honest → ∀ ⦃t'⦄, τ.st (τ.slotOf t) ≤ t' →
     (∃ GUc, Justified C (𝒱 w t') GUc ∧ GUc.epoch = τ.epochOf b.slot - 1 ∧ GUc.block ≼ b) ∧
       (greatestFinalized C (𝒱 w t')).epoch &lt; τ.epochOf (τ.slotOf t') ∧
@@ -1553,7 +1553,7 @@ def OnChainAnchorInterfacesForRule (A fm τ 𝒱 b t) : Prop := …</pre>
 </td>
 <td width="50%" valign="top">
 
-<b>Lean</b> — <code>FastConfirmation.HFC.SafeGreatestJustifiedAnchorInputs</code><br><sub>FastConfirmation/Paper/HFC/TheoremStatements.lean:194 · <i>def</i></sub><pre>def SafeGreatestJustifiedAnchorInputs (τ fm cm pb C 𝒱) : Prop :=
+<b>Lean</b> — <code>FastConfirmation.HFC.SafeGreatestJustifiedAnchorInputs</code><br><sub>FastConfirmationPaper/HFC/Claims.lean:194 · <i>def</i></sub><pre>def SafeGreatestJustifiedAnchorInputs (τ fm cm pb C 𝒱) : Prop :=
   ∀ ⦃w⦄, w ∈ fm.honest → ∀ ⦃t'⦄ ⦃X⦄, isLMDGHOSTSafe τ fm cm pb C (𝒱 w t') X t' →
     WillNoConflictingChkpBeJustified C fm τ 𝒱 X t' ∧
     OnChainAnchorWellFormed C τ X ∧
@@ -1576,7 +1576,7 @@ def OnChainAnchorInterfacesForRule (A fm τ 𝒱 b t) : Prop := …</pre>
 </td>
 <td width="50%" valign="top">
 
-<b>Lean</b> — <code>FastConfirmation.HFC.ConfirmedNotFFGFiltered</code><br><sub>FastConfirmation/Paper/HFC/TheoremStatements.lean:329 · <i>statement</i></sub><pre>def ConfirmedNotFFGFiltered (τ fm cm pb boost C 𝒱 v b) : Prop :=
+<b>Lean</b> — <code>FastConfirmation.HFC.ConfirmedNotFFGFiltered</code><br><sub>FastConfirmationPaper/HFC/Claims.lean:329 · <i>statement</i></sub><pre>def ConfirmedNotFFGFiltered (τ fm cm pb boost C 𝒱 v b) : Prop :=
   FFG_AccountableSafety (n:=n) → HonestFFGNoEquivocation … →
   GlobalByzantineBound C fm →
   ∀ ⦃s⦄ ⦃B⦄, 1 ≤ s → τ.AfterGST (τ.st (s - 1)) → b ≼ B →
@@ -1601,7 +1601,7 @@ def OnChainAnchorInterfacesForRule (A fm τ 𝒱 b t) : Prop := …</pre>
 </td>
 <td width="50%" valign="top">
 
-<b>Lean</b> — <code>FastConfirmation.HFC.isHFCConfirmed</code><br><sub>FastConfirmation/Paper/HFC/TheoremStatements.lean:216 · <i>def</i></sub><pre>def isHFCConfirmed (τ fm cm pb gj C 𝒱 v b t) : Prop :=
+<b>Lean</b> — <code>FastConfirmation.HFC.isHFCConfirmed</code><br><sub>FastConfirmationPaper/HFC/Claims.lean:216 · <i>def</i></sub><pre>def isHFCConfirmed (τ fm cm pb gj C 𝒱 v b t) : Prop :=
   isConfirmed τ fm cm pb gj 𝒱 v b t ∧ WillNoConflictingChkpBeJustified C fm τ 𝒱 b t</pre>
 
 </td>
@@ -1621,7 +1621,7 @@ def OnChainAnchorInterfacesForRule (A fm τ 𝒱 b t) : Prop := …</pre>
 </td>
 <td width="50%" valign="top">
 
-<b>Lean</b> — <code>FastConfirmation.HFC.HFC_Safety</code><br><sub>FastConfirmation/Paper/HFC/TheoremStatements.lean:353 · <i>statement</i></sub><pre>def HFC_Safety (τ : Timing) (bal₀ : Stakes n) : Prop :=
+<b>Lean</b> — <code>FastConfirmation.HFC.HFC_Safety</code><br><sub>FastConfirmationPaper/HFC/Claims.lean:353 · <i>statement</i></sub><pre>def HFC_Safety (τ : Timing) (bal₀ : Stakes n) : Prop :=
   ∀ {fm cm pb boost 𝒱}, let gj := gjFFG bal₀; let C := bal₀;
     … (Synchrony, HonestNoForgery, HonestBehavior, ViewsValid, CommitteeHonestMajority, WellFormedBoost, 0≤pb, StaticBalances, FFG_AccountableSafety, HonestFFGNoEquivocation, GlobalByzantineBound, SafeGreatestJustifiedAnchorInputs) … →
     ∀ {v b t}, v ∈ fm.honest → sg τ b t → isHFCConfirmed τ fm cm pb gj C 𝒱 v b t →
@@ -1645,7 +1645,7 @@ def OnChainAnchorInterfacesForRule (A fm τ 𝒱 b t) : Prop := …</pre>
 </td>
 <td width="50%" valign="top">
 
-<b>Lean</b> — <code>FastConfirmation.HFC.HFC_Monotonicity</code><br><sub>FastConfirmation/Paper/HFC/TheoremStatements.lean:403 · <i>statement</i></sub><pre>def HFC_Monotonicity (τ : Timing) (bal₀ : Stakes n) : Prop :=
+<b>Lean</b> — <code>FastConfirmation.HFC.HFC_Monotonicity</code><br><sub>FastConfirmationPaper/HFC/Claims.lean:403 · <i>statement</i></sub><pre>def HFC_Monotonicity (τ : Timing) (bal₀ : Stakes n) : Prop :=
   ∀ {fm cm pb boost 𝒱}, let gj := gjFFG bal₀; let C := bal₀;
     … (explicit interface premises) … fm.β &lt; min (1 / 6) ((1 - pb) / 4) → FFG_AccountableSafety → HonestFFGNoEquivocation → GlobalByzantineBound → SafeGreatestJustifiedAnchorInputs … →
     ∀ {v b t t'}, v ∈ fm.honest → sg τ b t → t ≤ t' → CommitteeCoversEpoch τ cm (τ.epochOf (τ.slotOf t') - 1) →
@@ -1668,7 +1668,7 @@ def OnChainAnchorInterfacesForRule (A fm τ 𝒱 b t) : Prop := …</pre>
 </td>
 <td width="50%" valign="top">
 
-<b>Lean</b> — <code>FastConfirmation.HFC.Alg1SafetyInterface</code><br><sub>FastConfirmation/Paper/HFC/TheoremStatements.lean · <i>def</i></sub><pre>def Alg1SafetyInterface (τ fm cm pb boost bal₀ 𝒱 v b s) : Prop :=
+<b>Lean</b> — <code>FastConfirmation.HFC.Alg1SafetyInterface</code><br><sub>FastConfirmationPaper/HFC/Claims.lean · <i>def</i></sub><pre>def Alg1SafetyInterface (τ fm cm pb boost bal₀ 𝒱 v b s) : Prop :=
   OnChainAnchorInterfacesForRule bal₀ fm τ 𝒱 b (τ.st s) ∧
   (∀ ⦃w⦄, w ∈ fm.honest → ∀ ⦃t'⦄, τ.st (τ.slotOf (τ.st s)) ≤ t' → (greatestFinalized bal₀ (𝒱 w t')).epoch &lt; τ.epochOf (τ.slotOf t')) ∧
   Disjoint (committeeUnion cm (τ.fslot (τ.epochOf b.slot)) (τ.slotOf (τ.st s) - 1)) (committeeUnion cm (τ.slotOf (τ.st s)) (τ.lslot (τ.epochOf b.slot))) ∧
@@ -1691,7 +1691,7 @@ def OnChainAnchorInterfacesForRule (A fm τ 𝒱 b t) : Prop := …</pre>
 </td>
 <td width="50%" valign="top">
 
-<b>Lean</b> — <code>FastConfirmation.HFC.HFC_Safety_Alg1</code><br><sub>FastConfirmation/Paper/HFC/TheoremStatements.lean:498 · <i>statement</i></sub><pre>def HFC_Safety_Alg1 (τ : Timing) (bal₀ : Stakes n) : Prop :=
+<b>Lean</b> — <code>FastConfirmation.HFC.HFC_Safety_Alg1</code><br><sub>FastConfirmationPaper/HFC/Claims.lean:498 · <i>statement</i></sub><pre>def HFC_Safety_Alg1 (τ : Timing) (bal₀ : Stakes n) : Prop :=
   ∀ {fm cm pb boost 𝒱}, let gj := gjFFG bal₀; let C := bal₀;
     … (Synchrony, HonestNoForgery, HonestBehavior, ViewsValid, CommitteeHonestMajority, 0≤pb, FFG_AccountableSafety, HonestFFGNoEquivocation, GlobalByzantineBound, SlotCommitteeMinority) … →
     ∀ {v b s we}, v ∈ fm.honest → 1 ≤ s → τ.AfterGST (τ.st (s - 1)) → b.WellFormed → b.slot ≤ s → 0 ≤ we →
@@ -1717,7 +1717,7 @@ def OnChainAnchorInterfacesForRule (A fm τ 𝒱 b t) : Prop := …</pre>
 </td>
 <td width="50%" valign="top">
 
-<b>Lean</b> — <code>FastConfirmation.HFC.SafeConfirmedAlg1Inputs</code><br><sub>FastConfirmation/Paper/HFC/TheoremStatements.lean:541 · <i>def</i></sub><pre>def SafeConfirmedAlg1Inputs (τ fm cm pb we boost bal₀ 𝒱) : Prop :=
+<b>Lean</b> — <code>FastConfirmation.HFC.SafeConfirmedAlg1Inputs</code><br><sub>FastConfirmationPaper/HFC/Claims.lean:541 · <i>def</i></sub><pre>def SafeConfirmedAlg1Inputs (τ fm cm pb we boost bal₀ 𝒱) : Prop :=
   ∀ ⦃v⦄, v ∈ fm.honest → ∀ ⦃s⦄ ⦃X⦄, isLMDGHOSTSafe τ fm cm pb bal₀ (𝒱 v (τ.st s)) X (τ.st s) →
     isConfirmedNoCaching bal₀ fm cm pb we τ 𝒱 v X (τ.st s) ∧
     OnChainAnchorInterfacesForRule bal₀ fm τ 𝒱 X (τ.st s) ∧
@@ -1742,7 +1742,7 @@ def OnChainAnchorInterfacesForRule (A fm τ 𝒱 b t) : Prop := …</pre>
 </td>
 <td width="50%" valign="top">
 
-<b>Lean</b> — <code>FastConfirmation.HFC.HFC_Monotonicity_Alg1</code><br><sub>FastConfirmation/Paper/HFC/TheoremStatements.lean:568 · <i>statement</i></sub><pre>def HFC_Monotonicity_Alg1 (τ : Timing) (bal₀ : Stakes n) : Prop :=
+<b>Lean</b> — <code>FastConfirmation.HFC.HFC_Monotonicity_Alg1</code><br><sub>FastConfirmationPaper/HFC/Claims.lean:568 · <i>statement</i></sub><pre>def HFC_Monotonicity_Alg1 (τ : Timing) (bal₀ : Stakes n) : Prop :=
   ∀ {fm cm pb we boost 𝒱}, let gj := gjFFG bal₀; let C := bal₀;
     … (explicit interface premises) … fm.β &lt; min (1 / 6) ((1 - pb) / 4) → FFG_AccountableSafety → HonestFFGNoEquivocation → GlobalByzantineBound → SlotCommitteeMinority → 0 ≤ we → SafeConfirmedAlg1Inputs τ fm cm pb we boost C 𝒱 →
     ∀ {v b t t'}, v ∈ fm.honest → sg τ b t → t ≤ t' → CommitteeCoversEpoch τ cm (τ.epochOf (τ.slotOf t') - 1) →
@@ -1765,7 +1765,7 @@ def OnChainAnchorInterfacesForRule (A fm τ 𝒱 b t) : Prop := …</pre>
 </td>
 <td width="50%" valign="top">
 
-<b>Lean</b> — <code>FastConfirmation.HFC.HFC_Safety_proved</code><br><sub>FastConfirmation/Paper/HFC/ProvenTheorems.lean:44 · <i>statement</i></sub><pre>theorem HFC_Safety_proved (τ : Timing) (bal₀ : Stakes n) : HFC_Safety τ bal₀ := by
+<b>Lean</b> — <code>FastConfirmation.HFC.HFC_Safety_proved</code><br><sub>FastConfirmationPaper/HFC/ReviewTheorem.lean:44 · <i>statement</i></sub><pre>theorem HFC_Safety_proved (τ : Timing) (bal₀ : Stakes n) : HFC_Safety τ bal₀ := by
   intro … ; obtain ⟨hconf, _hgate⟩ := hHFCconf
   exact hfc_safety_of_notFiltered bal₀ … hconf (confirmedNotFFGFiltered_proved bal₀ …)</pre>
 
@@ -1786,7 +1786,7 @@ def OnChainAnchorInterfacesForRule (A fm τ 𝒱 b t) : Prop := …</pre>
 </td>
 <td width="50%" valign="top">
 
-<b>Lean</b> — <code>FastConfirmation.HFC.HFC_Monotonicity_proved</code><br><sub>FastConfirmation/Paper/HFC/ProvenTheorems.lean:54 · <i>statement</i></sub><pre>theorem HFC_Monotonicity_proved (τ : Timing) (bal₀ : Stakes n) : HFC_Monotonicity τ bal₀ :=
+<b>Lean</b> — <code>FastConfirmation.HFC.HFC_Monotonicity_proved</code><br><sub>FastConfirmationPaper/HFC/ReviewTheorem.lean:54 · <i>statement</i></sub><pre>theorem HFC_Monotonicity_proved (τ : Timing) (bal₀ : Stakes n) : HFC_Monotonicity τ bal₀ :=
   hfc_monotonicity_proved bal₀</pre>
 
 </td>
@@ -1806,7 +1806,7 @@ def OnChainAnchorInterfacesForRule (A fm τ 𝒱 b t) : Prop := …</pre>
 </td>
 <td width="50%" valign="top">
 
-<b>Lean</b> — <code>FastConfirmation.HFC.HFC_Safety_Alg1_proved</code><br><sub>FastConfirmation/Paper/HFC/ProvenTheorems.lean · <i>statement</i></sub><pre>theorem HFC_Safety_Alg1_proved (τ : Timing) (bal₀ : Stakes n) : HFC_Safety_Alg1 τ bal₀ := by
+<b>Lean</b> — <code>FastConfirmation.HFC.HFC_Safety_Alg1_proved</code><br><sub>FastConfirmationPaper/HFC/ReviewTheorem.lean · <i>statement</i></sub><pre>theorem HFC_Safety_Alg1_proved (τ : Timing) (bal₀ : Stakes n) : HFC_Safety_Alg1 τ bal₀ := by
   exact hfc_safety_alg1_public τ bal₀</pre>
 
 </td>
@@ -1826,7 +1826,7 @@ def OnChainAnchorInterfacesForRule (A fm τ 𝒱 b t) : Prop := …</pre>
 </td>
 <td width="50%" valign="top">
 
-<b>Lean</b> — <code>FastConfirmation.HFC.HFC_Monotonicity_Alg1_proved</code><br><sub>FastConfirmation/Paper/HFC/ProvenTheorems.lean · <i>theorem</i></sub><pre>theorem HFC_Monotonicity_Alg1_proved (τ : Timing) (bal₀ : Stakes n) :
+<b>Lean</b> — <code>FastConfirmation.HFC.HFC_Monotonicity_Alg1_proved</code><br><sub>FastConfirmationPaper/HFC/ReviewTheorem.lean · <i>theorem</i></sub><pre>theorem HFC_Monotonicity_Alg1_proved (τ : Timing) (bal₀ : Stakes n) :
     HFC_Monotonicity_Alg1 τ bal₀ := by
   … exact hfc_monotonicity_alg1 bal₀ … hconf</pre>
 

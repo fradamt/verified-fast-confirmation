@@ -7,13 +7,20 @@ public import FastConfirmationProofs.FFG.SourceHistory.SafeFromInvariant
 /-!
 # Live monotonicity gate limits
 
-Proves two executable FCR gate facts that limit live monotonicity when FFG justification arrives late.
+Proves two executable FCR gate facts that limit live monotonicity when FFG
+justification arrives late.
 
-The accepted finalization delay permits the anchor checkpoint at the first epoch boundary. It does not imply a strict later-epoch finalization bound.
+The accepted finalization delay permits the anchor checkpoint at the first
+epoch boundary. It does not imply a strict later-epoch finalization bound.
 
-In a non-start slot, stale unrealized justifications make the descendant selector return its input. At a later FCR call, a stale cached root and stale observed and finalized checkpoints make `get_latest_confirmed` return the finalized root.
+In a non-start slot, stale unrealized justifications make the descendant
+selector return its input. At a later FCR call, a stale cached root and stale
+observed and finalized checkpoints make `get_latest_confirmed` return the
+finalized root.
 
-The live economic bounds cover total stake. They do not make one slot's honest committee outweigh the proposer boost. A delivered honest vote can therefore leave a boosted sibling as the head.
+The live economic bounds cover total stake. They do not make one slot's honest
+committee outweigh the proposer boost. A delivered honest vote can therefore
+leave a boosted sibling as the head.
 -/
 
 namespace FastConfirmation.Spec

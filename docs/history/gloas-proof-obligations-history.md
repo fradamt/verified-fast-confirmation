@@ -3,7 +3,7 @@
 > **History.** This record applies to the upstream discount rule before the
 > payload-aware change in [the spec deviation](../gloas-spec-deviation.md).
 > The current Gloas proof constructs the pending-parent status margin in
-> `FastConfirmation/Spec/Proof/StatusMarginConstruction.lean`. The G2b port
+> `FastConfirmationProofs/Discount/StatusMarginConstruction.lean`. The G2b port
 > archive was removed after commit `28faf6d`.
 
 This is the preserved G2b record. The G3 lane is allowed to strengthen payload
@@ -161,7 +161,7 @@ flock /home/fradamt/lean/orch/g2-lean-slot.lock scripts/validate.sh --consensus-
 Full check 07 exits 1 with this first error:
 
 ```text
-error: FastConfirmation/Spec/Proof/Endpoint.lean:156:2: Type mismatch
+error: FastConfirmationProofs/FFG/SelectedSource/EndpointMargin.lean:156:2: Type mismatch
   descendStep_of_dom cfg hchild fun c' hc' hne ↦ ghost_step_dominates cfg ext hbside hledger (hsib c' hc' hne)
 has type
   List.argmax

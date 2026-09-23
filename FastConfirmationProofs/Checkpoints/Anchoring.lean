@@ -8,6 +8,8 @@ public import FastConfirmationProofs.FFG.SourceHistory.MarginInvariant
 /-!
 # Spec / Proof / Anchoring
 
+Connects ancestor walks and confirmed descendants to the trusted chain terminal.
+
 This module contains `chain_descends_terminal`, `get_ancestor_roots_descends`, `find_latest_confirmed_descendant_ge` and related declarations.
 -/
 

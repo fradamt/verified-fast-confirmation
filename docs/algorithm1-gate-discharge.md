@@ -9,7 +9,7 @@ The public §4 Algorithm-1 facades are proved over
 
 - `HFC_Safety_Alg1` and `HFC_Monotonicity_Alg1` are the headline Algorithm-1 statements.
 - `HFC_Safety_Alg1_proved` and `HFC_Monotonicity_Alg1_proved` discharge those statements in
-  `FastConfirmation/Paper/HFC/ProvenTheorems.lean`.
+  `FastConfirmationPaper/HFC/ReviewTheorem.lean`.
 - `Alg1SelectorSafetyInterface` keys the safety theorem's auxiliary facts to the actual
   selector witness slot `s'` where the selected block satisfies `isConfirmedNoCaching`.
 - `Alg1SafetyInterface` and `SafeConfirmedAlg1Inputs` expose the remaining Gasper/AU obligations:

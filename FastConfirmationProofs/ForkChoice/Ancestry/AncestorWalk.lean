@@ -4,7 +4,7 @@ public import FastConfirmationProofs.Execution.Trajectory.ExecutionClock
 @[expose] public section
 
 /-!
-# Spec / Proof / Genesis
+# ForkChoice / Ancestry / AncestorWalk
 
 The trusted-anchor store satisfies `WellFormedStore` — the witness for the
 genesis premise of `SpecAssumptions` and the `n = 0` base of safety. The two

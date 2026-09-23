@@ -4,7 +4,9 @@ public import FastConfirmationProofs.Discount.ByzantineBudgetLedger
 @[expose] public section
 
 /-!
-# Spec / Proof / StepDischarge
+# Handlers / HandlerVoteClasses
+
+Proves vote-class facts across attestation and block handler steps.
 
 This module contains `recorded_lm_is_newest_at` and related declarations.
 -/

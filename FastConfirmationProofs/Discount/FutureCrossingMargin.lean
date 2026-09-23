@@ -9,6 +9,8 @@ public import FastConfirmationProofs.Execution.Trajectory.CrossEpochDynamics
 /-!
 # Spec / Proof / FutureCrossingMargin
 
+Supplies the tax and member cases that preserve a confirmation margin across future crossings.
+
 This module contains `ConfirmTaxArm`, `ConfirmMemberArm`, `ConfirmedArmSupply` and related declarations.
 -/
 

@@ -3,7 +3,7 @@
 > **History.** This record applies to the upstream discount rule before the
 > payload-aware change in [the spec deviation](../gloas-spec-deviation.md).
 > The current Gloas proof constructs the pending-parent status margin in
-> `FastConfirmation/Spec/Proof/StatusMarginConstruction.lean`. The G2b port
+> `FastConfirmationProofs/Discount/StatusMarginConstruction.lean`. The G2b port
 > archive was removed after commit `28faf6d`.
 
 G2-004 is false on the exact-source execution below. Payload-envelope relay

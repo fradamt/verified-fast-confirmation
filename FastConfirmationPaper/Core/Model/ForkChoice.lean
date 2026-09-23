@@ -4,7 +4,7 @@ public import FastConfirmationPaper.Core.Model.ValidatorView
 @[expose] public section
 
 /-!
-# Core / Model / Filter
+# Core / Model / ForkChoice
 
 The block-eligibility filter that parameterizes the fork choice. Plain
 LMD-GHOST uses `trivialFilter`; the §4 HFC layer instantiates the same seam with

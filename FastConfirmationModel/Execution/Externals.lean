@@ -7,7 +7,7 @@ public import FastConfirmationModel.Spec.BeaconChain.Types
 
 @[expose] public section
 
-/-! Externals declarations from FastConfirmation.Spec.Model.Types. -/
+/-! Defines the abstract committee, state-transition, signature, payload, and observation functions required by fork choice. Python: `specs/gloas/fork-choice.md`, Handlers; `specs/phase0/beacon-chain.md`, Helpers. -/
 
 namespace FastConfirmation.Spec
 /-- The abstract beacon-chain primitives the transcription bottoms out in:

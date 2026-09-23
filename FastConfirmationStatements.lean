@@ -14,4 +14,4 @@ public import FastConfirmationStatements.Premises.Synchrony
 public import FastConfirmationStatements.Premises.Trajectory
 public import FastConfirmationStatements.Traces
 
-/-! Contents of the Statements library. -/
+/-! Imports the execution, synchrony, economic, and FFG premises together with the public safety and monotonicity claims. -/

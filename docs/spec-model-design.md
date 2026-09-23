@@ -1,4 +1,4 @@
-# Spec-model design — `FastConfirmation/Spec/`
+# Spec-model design — `FastConfirmationModel/`
 
 Gloas status: G2-003 and G2-004 are proved with the payload-aware discount.
 Full validation passed at commit `6d478e7`. The accepted Gloas theorem is
@@ -21,8 +21,8 @@ This repository models both the FCR **paper** (arXiv:2405.00549) and the FCR
   their root-only node, epoch-only latest-message, single-deadline, and
   head-fuel details. Historical phase0 traces do not instantiate Gloas.
 
-`FastConfirmation/Paper/` contains a separate formalization of the paper. The
-consensus-spec layer is `FastConfirmation/Spec/` and imports only Mathlib—not
+`FastConfirmationPaper/` contains a separate formalization of the paper. The
+consensus-spec layer is `FastConfirmationModel/` and imports only Mathlib—not
 the paper-model modules—so the accepted spec proof stands alone. No formal
 refinement theorem connecting the two models is currently claimed.
 
@@ -194,7 +194,7 @@ now takes explicit envelope-delivery and data-relay evidence.
 
 ## Live monotonicity and the paper
 
-The paper's `Theorem1_Monotonicity` (`FastConfirmation/Paper/LMDGhost/`)
+The paper's `Theorem1_Monotonicity` (`FastConfirmationPaper/LMDGhost/`)
 states that the LMD-GHOST safety predicate persists: a block confirmed at
 `t` is confirmed at each later `t'`. It uses Assumption 4,
 `beta < (1 - pb) / 4`, and `CommitteeCoversEpoch`. The proved spec statement

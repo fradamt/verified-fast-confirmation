@@ -20,7 +20,7 @@
 ## Live monotonicity premises and proof
 
 `Spec_Monotonicity_live` is stated in
-`FastConfirmation/Spec/Statements/Premises/Live.lean`. Its accepted-bundle
+`FastConfirmationStatements/Premises/Live.lean`. Its accepted-bundle
 specialization, `AcceptedSpec_Monotonicity_live`, is proved by
 `acceptedSpec_monotonicity_live` in `MonotonicityLiveAssemble.lean` and is the
 14th audit witness. `MonotonicityLiveAssumptions` has five premises:
@@ -162,7 +162,7 @@ applies to the upstream discount rule; it is kept in the [history](#history).
 
 The repository publishes two independent developments. `FastConfirmation.Spec`
 models the executable Ethereum consensus specification and contains the primary
-accepted theorem. `FastConfirmation.Paper` formalizes the companion paper. There
+accepted theorem. `FastConfirmationPaper` formalizes the companion paper. There
 is no refinement theorem between them, and cross-imports are prohibited.
 
 All Lean modules must be reachable through their own public facade and then
@@ -199,7 +199,7 @@ be reviewed against:
 
 - `docs/spec-model-design.md`
 - `docs/spec-annotation.md`
-- `FastConfirmation/Spec/Model/`
+- `FastConfirmationModel/Spec/`
 - the accepted assumption surface and theorem statement
 
 Regenerating hashes never establishes semantic faithfulness by itself.

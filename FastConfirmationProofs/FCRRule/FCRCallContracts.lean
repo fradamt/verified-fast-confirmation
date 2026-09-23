@@ -7,6 +7,8 @@ public import FastConfirmationStatements.Traces
 /-!
 # Low-level contracts for concrete fast-confirmation calls
 
+Relates scheduled FCR calls to their exact pre-call stores and selected results.
+
 This module contains only executable call-state definitions and certificate
 payloads over the existing `Execution.fcr` trajectory.  In particular, it
 does not mention safety, canonicality, filter viability, source availability,

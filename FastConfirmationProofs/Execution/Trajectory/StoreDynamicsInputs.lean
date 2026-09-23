@@ -6,6 +6,8 @@ public import FastConfirmationProofs.Handlers.HandlerVoteClasses
 /-!
 # Spec / Proof / DynamicsClosure
 
+Supplies recorded-support facts needed by the store-dynamics induction.
+
 This module contains `hSmem_of_recorded` and related declarations.
 -/
 

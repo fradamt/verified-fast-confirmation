@@ -201,4 +201,4 @@ public import FastConfirmationProofs.Safety.NextSlotSafety
 public import FastConfirmationProofs.Safety.ObservedResetSafety
 public import FastConfirmationProofs.Safety.ObservedRestartSafety
 
-/-! Contents of the Proofs library. -/
+/-! Imports the fork-choice, FFG, discount, execution, safety, and monotonicity proofs of the executable FCR. -/

@@ -11,6 +11,8 @@ public import FastConfirmationProofs.ForkChoice.Head.HeadStack
 /-!
 # Spec / Proof / Cruxes
 
+Carries checkpoint epoch ordering and safety conditions across FFG source history.
+
 This module contains `ce_mono` and related declarations.
 -/
 

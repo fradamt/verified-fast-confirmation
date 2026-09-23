@@ -7,6 +7,8 @@ public import FastConfirmationProofs.Discount.ByzantineSiblingWeight
 /-!
 # Spec / Proof / VoteLanding
 
+Proves that honest committee votes land in the expected FFG certificate window.
+
 This module contains `honest_committee_vote` and related declarations.
 -/
 

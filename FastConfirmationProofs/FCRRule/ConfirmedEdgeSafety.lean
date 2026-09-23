@@ -12,6 +12,8 @@ public import FastConfirmationProofs.Handlers.HandlerStepFacts
 /-!
 # Spec / Proof / Closing
 
+Proves safety of each newly selected FCR descendant edge.
+
 This module contains `EngineAdvanceCore` and related declarations.
 -/
 

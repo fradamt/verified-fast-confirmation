@@ -9,6 +9,8 @@ public import FastConfirmationProofs.FFG.Certificates.QuorumAccounting
 /-!
 # Spec / Proof / EngineSupport
 
+Relates recorded latest messages to honest attestation supporters in the score ledger.
+
 This module contains `mem_AttSupporters_of`, `supports_of_ge_b`, `mem_AttSupporters_honest` and related declarations.
 -/
 

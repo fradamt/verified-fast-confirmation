@@ -11,11 +11,11 @@ This repository contains two separate developments:
 
 | Development | Source | Role and import |
 | --- | --- | --- |
-| [`FastConfirmation/Spec/`](FastConfirmation/Spec/) | Ethereum consensus specification, pinned at public commit [`6b9bd53`](https://github.com/ethereum/consensus-specs/blob/6b9bd532cca16555e2f3282d757622ebff29743e/specs/phase0/fast-confirmation.md), with the documented payload-aware discount | Primary executable model with a proved accepted Gloas safety theorem |
-| [`FastConfirmation/Paper/`](FastConfirmation/Paper/) | [Fast Confirmation Rule paper](https://arxiv.org/abs/2405.00549), Sections 3.1 and 4 | Independent companion model and proofs; `import FastConfirmation.Paper` |
+| [`FastConfirmationModel/`](FastConfirmationModel/) | Ethereum consensus specification, pinned at public commit [`6b9bd53`](https://github.com/ethereum/consensus-specs/blob/6b9bd532cca16555e2f3282d757622ebff29743e/specs/phase0/fast-confirmation.md), with the documented payload-aware discount | Primary executable model with a proved accepted Gloas safety theorem |
+| [`FastConfirmationPaper/`](FastConfirmationPaper/) | [Fast Confirmation Rule paper](https://arxiv.org/abs/2405.00549), Sections 3.1 and 4 | Independent companion model and proofs; `import FastConfirmationPaper` |
 
 The accepted consensus-spec theorem is proved entirely within
-`FastConfirmation/Spec/`. It does not import the paper-model modules, and
+`FastConfirmationProofs/`. It does not import the paper-model modules, and
 there is currently no formal refinement theorem connecting the two models.
 The paper's arguments guide the spec proof, but every fact used by the
 accepted theorem is represented and proved—or stated as an explicit
@@ -29,7 +29,7 @@ In declaration names, `Accepted` means that the scheduled protocol events were
 accepted by their handlers; it is not a review-status label.
 
 The executable functions in
-[`FastConfirmation/Spec/Model/`](FastConfirmation/Spec/Model/) follow
+[`FastConfirmationModel/Spec/`](FastConfirmationModel/Spec/) follow
 `consensus-specs/specs/gloas/fast-confirmation.md`, Gloas fork choice, and
 the phase0 FCR and beacon-chain helpers inherited by Gloas. They preserve the Python names and
 control-flow structure to support line-by-line review.
@@ -42,10 +42,10 @@ transitions to Casper FFG.
 
 Useful entry points:
 
-- [Model facade](FastConfirmation/Spec/Model.lean)
-- [Public proved-theorem facade](FastConfirmation/Spec/ProvenTheorems.lean)
-- [Accepted assumptions, statement, and proof implementation](FastConfirmation/Spec/Proof/AcceptedActualFCRNextSlotSafetyFacade.lean)
-- [Concrete non-vacuity witness](FastConfirmation/Spec/Proof/AcceptedActualFCRJointNonVacuityFinal.lean):
+- [Model facade](FastConfirmationModel.lean)
+- [Public proved-theorem facade](FastConfirmationProofs/ProvenTheorems.lean)
+- [Accepted assumptions, statement, and proof implementation](FastConfirmationProofs/Safety/NextSlotSafety.lean)
+- [Concrete non-vacuity witness](FastConfirmationWitnesses/NonVacuity/NextSlotPremises.lean):
   a finite toy instance with four slots per epoch and a four-epoch horizon.
   It does not establish a mainnet instance or unbounded liveness.
 
@@ -78,7 +78,7 @@ result at an actual scheduled boundary call, including an unchanged return.
 `acceptedSpec_monotonicity_live` proves that an honest node's later stored
 confirmed root descends from its earlier stored confirmed root under
 `MonotonicityLiveAssumptions`. The proof is in
-[MonotonicityLiveAssemble.lean](FastConfirmation/Spec/Proof/MonotonicityLiveAssemble.lean).
+[MonotonicityLiveAssemble.lean](FastConfirmationProofs/Monotonicity/LiveConfirmation.lean).
 It uses the live record's honest production and vote support field and its
 timely FFG checkpoint field. The other three live fields are present in the
 statement but are unused by this proof.
@@ -93,7 +93,7 @@ countermodels to a strengthening under the complete accepted assumption bundle.
 ### Spec model layout
 
 ```text
-FastConfirmation/Spec/Model/
+FastConfirmationModel/Spec/
   Config.lean                protocol configuration and mainnet values
   Types.lean                 beacon types, helpers, and abstract Externals
   ForkChoice.lean            Store and fork-choice functions
@@ -116,21 +116,21 @@ FastConfirmation/Spec/Model/
 The paper companion is an independent abstract formalization of
 [arXiv:2405.00549](https://arxiv.org/abs/2405.00549):
 
-- [`Core/`](FastConfirmation/Paper/Core/) defines time, blocks, validators, votes,
+- [`Core/`](FastConfirmationPaper/Core/) defines time, blocks, validators, votes,
   views, filters, and fork choice.
-- [`LMDGhost/`](FastConfirmation/Paper/LMDGhost/) formalizes the Section 3.1
+- [`LMDGhost/`](FastConfirmationPaper/LMDGhost/) formalizes the Section 3.1
   LMD-GHOST safety and monotonicity results.
-- [`HFC/`](FastConfirmation/Paper/HFC/) formalizes the Section 4 LMD-GHOST-HFC rule
+- [`HFC/`](FastConfirmationPaper/HFC/) formalizes the Section 4 LMD-GHOST-HFC rule
   and its Algorithm-1 safety and monotonicity results.
 
-Its complete facade is [`FastConfirmation/Paper.lean`](FastConfirmation/Paper.lean).
+Its complete facade is [`FastConfirmationPaper.lean`](FastConfirmationPaper.lean).
 
 Public paper-facing entry points:
 
-- [Section 3.1 statements](FastConfirmation/Paper/LMDGhost/TheoremStatements.lean)
-- [Section 3.1 proved facade](FastConfirmation/Paper/LMDGhost/ProvenTheorems.lean)
-- [Section 4 statements](FastConfirmation/Paper/HFC/TheoremStatements.lean)
-- [Section 4 proved facade](FastConfirmation/Paper/HFC/ProvenTheorems.lean)
+- [Section 3.1 statements](FastConfirmationPaper/LMDGhost/Claims.lean)
+- [Section 3.1 proved facade](FastConfirmationPaper/LMDGhost/ReviewTheorem.lean)
+- [Section 4 statements](FastConfirmationPaper/HFC/Claims.lean)
+- [Section 4 proved facade](FastConfirmationPaper/HFC/ReviewTheorem.lean)
 
 The headline paper theorems are `Theorem1_Safety_proved`,
 `Theorem1_Monotonicity_proved`, `HFC_Safety_Alg1_proved`, and

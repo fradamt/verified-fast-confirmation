@@ -6,6 +6,8 @@ public import FastConfirmationProofs.ForkChoice.Filter.AnchorFilterViability
 /-!
 # Spec / Proof / AheadFacade
 
+Proves that a justified descendant can dominate a competing fork-choice head.
+
 This module contains `obs_descends_justified`, `justifiedIn_root_known_of_realized` and related declarations.
 -/
 

@@ -9,6 +9,8 @@ public import FastConfirmationProofs.ModelFacts
 /-!
 # Common accepted actual-FCR invariants
 
+Proves that confirmed-root cache updates preserve the safety invariant across FCR calls.
+
 This module contains the reset-independent facts used by the primary
 following-slot fold. It deliberately contains no reset-safety premise,
 head conclusion, or observed source-lock law.

@@ -6,7 +6,7 @@ public import FastConfirmationProofs.FFG.CurrentTarget.CurrentTargetWalkKnownnes
 @[expose] public section
 
 /-!
-# Fresh historical A3.2 lineage at a retained current-target crossing
+# Execution / History / HistoricalCheckpointInclusionBranches
 
 This file handles the payload-producing complement of the carried/current/
 no-crossing branch.  A retained tentative crossing exposes the exact helper

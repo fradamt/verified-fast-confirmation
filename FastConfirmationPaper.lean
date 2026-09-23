@@ -3,4 +3,4 @@ public import FastConfirmationPaper.Core
 public import FastConfirmationPaper.HFC
 public import FastConfirmationPaper.LMDGhost
 
-/-! Contents of the Paper library. -/
+/-! Imports the paper model and proofs for the LMD-GHOST and HFC confirmation rules. -/

@@ -3,7 +3,7 @@ public import FastConfirmationModel.Execution.ScheduledPrefixes
 
 @[expose] public section
 
-/-! Stake declarations from FastConfirmation.Spec.Model.Assumptions. -/
+/-! Defines anchor-registry balances and committee-union weights for scheduled executions. Python: `specs/phase0/beacon-chain.md`, `BeaconState` and balance helpers. -/
 
 namespace FastConfirmation.Spec
 variable {Root : Type*} [LinearOrder Root] [Inhabited Root]

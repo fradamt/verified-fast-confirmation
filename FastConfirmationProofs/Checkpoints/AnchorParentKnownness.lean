@@ -8,6 +8,8 @@ public import FastConfirmationProofs.ModelFacts
 /-!
 # Spec / Proof / AnchorFacade
 
+Proves that non-anchor parent blocks are known in stores used by ancestry arguments.
+
 This module contains `NonAnchorParentKnown`, `SameBlocks.nonAnchorParentKnown`, `nonAnchorParentKnown_insert` and related declarations.
 -/
 

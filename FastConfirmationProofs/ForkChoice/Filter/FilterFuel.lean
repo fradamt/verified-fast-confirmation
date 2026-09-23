@@ -6,6 +6,8 @@ public import FastConfirmationProofs.ForkChoice.Ancestry.AncestryRoots
 /-!
 # Spec / Proof / FilterFuel
 
+Proves the bounded recursion and tree facts of the block-tree filter.
+
 This module contains `TreeBounded`, `TreeBounded.mono`, `filter_block_tree_aux_internal` and related declarations.
 -/
 

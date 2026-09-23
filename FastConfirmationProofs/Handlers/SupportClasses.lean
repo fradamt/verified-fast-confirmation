@@ -7,6 +7,8 @@ public import FastConfirmationProofs.Discount.HeadSafetyInduction
 /-!
 # Spec / Proof / Ledger
 
+Defines vote support classes used by the honest and Byzantine score ledger.
+
 This module contains `SupportsDesc`, `AncestorOrVoteless`, `Sclass` and related declarations.
 -/
 

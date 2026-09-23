@@ -1,4 +1,4 @@
-# Spec ↔ Lean annotation — `FastConfirmation/Spec/`
+# Spec ↔ Lean annotation — `FastConfirmationModel/`
 
 Per-function mapping between public `consensus-specs` commit
 [`6b9bd53`](https://github.com/ethereum/consensus-specs/tree/6b9bd532cca16555e2f3282d757622ebff29743e) and the Lean

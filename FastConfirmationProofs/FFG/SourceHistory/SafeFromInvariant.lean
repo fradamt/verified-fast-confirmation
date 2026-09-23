@@ -11,6 +11,8 @@ public import FastConfirmationStatements.Premises.ExecutionConditions
 /-!
 # Spec / Proof / L4Fold
 
+Carries the safe-from invariant through previous-epoch FCR loop updates.
+
 This module contains `safeFrom_of_engineInv`, `prev_epoch_loop_cons_eq`, `prev_epoch_loop_spec` and related declarations.
 -/
 

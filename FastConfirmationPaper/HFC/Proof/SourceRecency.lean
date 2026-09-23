@@ -8,6 +8,8 @@ public import FastConfirmationPaper.LMDGhost.Proof.RuleSafety
 /-!
 # HFC / Proof / Recency — shared helpers for the §4 recency descendant argument
 
+Proves source-epoch recency bounds for votes that justify an HFC checkpoint.
+
 This module contains `ancestor_boundaryBlock`, `le_lslot_epochOf`, `honest_voter_of_link` and related declarations.
 -/
 

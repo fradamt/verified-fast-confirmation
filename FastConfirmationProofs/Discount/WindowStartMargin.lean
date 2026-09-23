@@ -9,6 +9,8 @@ public import FastConfirmationProofs.FFG.Certificates.Quorum
 /-!
 # Spec / Proof / Base
 
+Derives the initial score margin from confirmation tax and recorded support.
+
 This module contains `base_min_of_tax`, `base_min_of_R`, `weak_base_arith` and related declarations.
 -/
 

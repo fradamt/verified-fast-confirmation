@@ -12,6 +12,8 @@ public import FastConfirmationProofs.Checkpoints.CheckpointMarginInputs
 /-!
 # Strong-prefix safety interfaces
 
+Proves ancestor comparability for confirmed roots in a common safe execution prefix.
+
 This module contains `ancestor_comparable_of_common` and related declarations.
 -/
 

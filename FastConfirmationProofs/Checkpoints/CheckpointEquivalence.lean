@@ -9,6 +9,8 @@ public import FastConfirmationProofs.ModelFacts
 /-!
 # Spec / Proof / Identities
 
+Proves reflexivity and transitivity for checkpoint agreement across stores.
+
 This module contains `SameCkpt`, `refl`, `trans` and related declarations.
 -/
 

@@ -7,6 +7,8 @@ public import FastConfirmationProofs.FFG.SourceHistory.EdgeSupportInputs
 /-!
 # Endpoint ledger fields over the selected-margin domain
 
+Records selected endpoint support and derives its vote-ledger bounds.
+
 This module contains `EndpointRecordedPresence`, `recorded_support_of_sclass_at_endpoint_minimal`, `selected_recording_at_endpoint_minimal` and related declarations.
 -/
 

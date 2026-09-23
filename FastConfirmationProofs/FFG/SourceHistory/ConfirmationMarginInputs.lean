@@ -9,6 +9,8 @@ public import FastConfirmationProofs.Execution.Trajectory.InductionHypothesis
 /-!
 # Spec / Proof / FinalWiring
 
+Extracts the committee and branch inputs needed by the confirmation margin proof.
+
 This module contains `hb_of_confirming` and related declarations.
 -/
 

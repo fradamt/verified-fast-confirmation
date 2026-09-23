@@ -15,4 +15,4 @@ public import FastConfirmationModel.Execution.Externals
 public import FastConfirmationModel.Execution.Stake
 public import FastConfirmationModel.Spec.FastConfirmation.SafeExecutionBlock
 
-/-! The Python FCR model and its scheduled execution. -/
+/-! Imports the Python FCR function families and their scheduled execution model. Python: `specs/gloas/fast-confirmation.md`, Fast Confirmation; `specs/gloas/fork-choice.md`, Fork choice. -/

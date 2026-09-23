@@ -4,7 +4,7 @@ public import FastConfirmationStatements.Premises.Behavior
 
 @[expose] public section
 
-/-! Synchrony declarations from FastConfirmation.Spec.Model.Assumptions. -/
+/-! Defines message, block, envelope, and equivocation-evidence delivery deadlines used by FCR safety. -/
 
 namespace FastConfirmation.Spec
 variable {Root : Type*} [LinearOrder Root] [Inhabited Root]

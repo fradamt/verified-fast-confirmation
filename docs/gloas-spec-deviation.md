@@ -117,7 +117,7 @@ The original upstream epoch-boundary test with validator 35 in the parent slot
 vote has PENDING status and can be discounted. The Gloas minimal reftest passes
 on this branch.
 
-The Lean model change is in `FastConfirmation/Spec/Model/LMDHelpers.lean`.
+The Lean model change is in `FastConfirmationModel/Spec/FastConfirmation/LMD.lean`.
 `Discount.lean` proves the matching-or-PENDING parent discount bound.
 `Endpoint.lean` proves the source Oanc strip from actual confirmation and
 the source V/pre partition. `OancTransport.lean` proves honest old-vote

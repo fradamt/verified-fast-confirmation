@@ -26,6 +26,8 @@ public import FastConfirmationProofs.FFG.SourceHistory.LaterStoreSupport
 /-!
 # Spec / Proof / AnchorClose
 
+Transports safety along parent edges from the trusted anchor to later blocks.
+
 This module contains `parentChain_at`, `parentChain_edge_child_slot_gt_head`, `safeFrom_of_headStep` and related declarations.
 -/
 

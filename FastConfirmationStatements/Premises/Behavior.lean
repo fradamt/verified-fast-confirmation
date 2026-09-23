@@ -4,7 +4,7 @@ public import FastConfirmationModel.Execution.Stake
 
 @[expose] public section
 
-/-! Behavior declarations from FastConfirmation.Spec.Model.Assumptions. -/
+/-! Defines honest validator vote production, assignment, and non-forgery conditions over scheduled executions. -/
 
 namespace FastConfirmation.Spec
 variable {Root : Type*} [LinearOrder Root] [Inhabited Root]

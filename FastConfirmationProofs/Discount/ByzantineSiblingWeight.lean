@@ -7,6 +7,8 @@ public import FastConfirmationProofs.Discount.CommitteeWindowWeight
 /-!
 # Spec / Proof / ByzVpre
 
+Bounds Byzantine and honest support of a sibling branch with committee estimates.
+
 This module contains `Jspec_add_Bval_eq_weight_span`, `weight_span_le_estimate`, `ancestor_slot_le` and related declarations.
 -/
 

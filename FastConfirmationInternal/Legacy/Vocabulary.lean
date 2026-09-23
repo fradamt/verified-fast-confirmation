@@ -8,6 +8,8 @@ public import FastConfirmationStatements.Premises.Live
 /-!
 # Legacy proof vocabulary
 
+Defines legacy predicates that still serve as proof vocabulary below the public safety claim.
+
 This module contains supporting predicates and old candidate statements used
 by internal proofs. They are proof vocabulary, not the accepted claims.
 It reads the Spec Model and the live premise definitions. Read

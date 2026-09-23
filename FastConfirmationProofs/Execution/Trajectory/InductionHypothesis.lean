@@ -12,6 +12,8 @@ public import FastConfirmationProofs.Execution.Trajectory.StoreDynamicsInputs
 /-!
 # Spec / Proof / IHMechanize
 
+Proves the filtered-root subset fact used by the execution induction.
+
 This module contains `filtered_subset_block_roots` and related declarations.
 -/
 

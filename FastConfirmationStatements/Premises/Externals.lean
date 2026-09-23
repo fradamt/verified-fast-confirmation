@@ -4,7 +4,7 @@ public import FastConfirmationStatements.Premises.Synchrony
 
 @[expose] public section
 
-/-! Externals declarations from FastConfirmation.Spec.Model.Assumptions. -/
+/-! Defines coherence conditions for abstract state transitions, committees, signatures, and payload observations. -/
 
 namespace FastConfirmation.Spec
 variable {Root : Type*} [LinearOrder Root] [Inhabited Root]

@@ -9,7 +9,7 @@ public import FastConfirmationStatements.Premises.Trajectory
 
 @[expose] public section
 
-/-! Claims declarations from FastConfirmation.Spec.Statements.Claims. -/
+/-! Defines the public next-slot safety and live monotonicity propositions over accepted executions. -/
 
 section
 namespace FastConfirmation.Spec

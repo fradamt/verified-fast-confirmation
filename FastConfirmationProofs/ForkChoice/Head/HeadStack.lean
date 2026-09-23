@@ -6,6 +6,8 @@ public import FastConfirmationProofs.FFG.Certificates.VoteLanding
 /-!
 # Spec / Proof / HeadStack
 
+Proves known-root and relay facts required by the fork-choice head walk.
+
 This module contains `head_root_known`, `b_known_of_relay` and related declarations.
 -/
 

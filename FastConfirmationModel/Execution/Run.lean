@@ -7,6 +7,8 @@ public import FastConfirmationModel.Spec.FastConfirmation.Rule
 /-!
 # Spec / Model / Execution
 
+Defines each node's scheduled store run and its once-per-slot FCR update. Python: `specs/gloas/fork-choice.md`, Handlers; `specs/gloas/fast-confirmation.md`, `on_fast_confirmation`.
+
 Store evolution over time. Time is discrete seconds (the spec's own
 `store.time` granularity), counted relative to the genesis store's initial
 time; nodes are identified with validators (as in the paper model). A

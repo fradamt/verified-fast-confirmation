@@ -9,6 +9,8 @@ public import FastConfirmationProofs.ForkChoice.Ancestry.Forks
 /-!
 # Spec / Proof / Endpoint
 
+Bounds recorded competing support at the selected FFG endpoint.
+
 This module contains `recorded_bside_ge`, `recorded_sibling_le`, `ghost_arith` and related declarations.
 -/
 

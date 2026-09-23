@@ -6,7 +6,9 @@ public import FastConfirmationProofs.FFG.SelectedSource.EndpointMargin
 @[expose] public section
 
 /-!
-# Spec / Proof / Arms
+# Discount / ByzantineBudgetLedger
+
+Combines recorded enemy sets with the second Byzantine vote-budget invariant.
 
 This module contains `estimate_same_epoch`, `slotcount_split`, `estimate_additive` and related declarations.
 -/

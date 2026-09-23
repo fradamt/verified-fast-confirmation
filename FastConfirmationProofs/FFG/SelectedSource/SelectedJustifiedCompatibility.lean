@@ -6,6 +6,8 @@ public import FastConfirmationProofs.Execution.History.CausalCheckpointCompatibi
 /-!
 # Selected-result compatibility with an endpoint justification
 
+Proves that selected justified sources agree with causal honest target evidence.
+
 This module contains `CausalHonestTargetAt`, `HonestTargetBeforeEndpointAt`, `EndpointJustificationOriginAt` and related declarations.
 -/
 

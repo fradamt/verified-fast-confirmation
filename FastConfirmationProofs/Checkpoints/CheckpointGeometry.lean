@@ -6,6 +6,8 @@ public import FastConfirmationModel.Execution.Run
 /-!
 # Elementary checkpoint geometry
 
+Proves epoch and root-order facts for checkpoints on one block chain.
+
 This module contains structural facts about checkpoint values which do not
 depend on the selected FCR pipeline or on any safety conclusion.
 -/

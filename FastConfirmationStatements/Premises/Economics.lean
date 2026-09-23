@@ -4,7 +4,7 @@ public import FastConfirmationStatements.Premises.Externals
 
 @[expose] public section
 
-/-! Economics declarations from FastConfirmation.Spec.Model.Assumptions. -/
+/-! Defines the static validator-set and Byzantine committee-weight bounds used by the safety claim. -/
 
 namespace FastConfirmation.Spec
 variable {Root : Type*} [LinearOrder Root] [Inhabited Root]

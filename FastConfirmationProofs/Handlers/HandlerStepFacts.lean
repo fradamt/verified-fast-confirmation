@@ -7,6 +7,8 @@ public import FastConfirmationProofs.FFG.SourceHistory.SafeFromInvariant
 /-!
 # Spec / Proof / MicroSteps
 
+Proves that handler updates preserve observed checkpoints and ancestor walks.
+
 This module contains `walkClosure_of_min`, `update_fcv_observed_boundary`, `fcrStep_observed_boundary` and related declarations.
 -/
 

@@ -6,7 +6,7 @@ public import Mathlib.Tactic
 @[expose] public section
 
 /-!
-# Accepted retained-source filter certificates
+# FFG / SelectedSource / RetainedSourceRetarget
 
 This module is the mechanical merge point for the early phase-source and
 finalized-placement developments.  A retained accepted source carrier already

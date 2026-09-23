@@ -7,8 +7,8 @@ public import FastConfirmationProofs.ModelFacts.ScheduledPrefixes
 public import FastConfirmationProofs.ModelFacts.FFGState
 
 /-!
-# Model facts facade
+# Model facts
 
-This module exports proofs about the six Model files that formerly held
-theorems. It reads those Model files. Read the subject proof modules next.
+Imports proofs about configuration, scheduled prefixes, execution weights,
+payload frames, and FFG state in the executable model.
 -/

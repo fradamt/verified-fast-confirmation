@@ -8,6 +8,8 @@ public import Mathlib.Tactic
 /-!
 # Spec / Proof / Fraction
 
+Defines honest committee fractions and proves their span-weight identities.
+
 This module contains `Jspec`, `span_committee_mono`, `weight_split_honest` and related declarations.
 -/
 

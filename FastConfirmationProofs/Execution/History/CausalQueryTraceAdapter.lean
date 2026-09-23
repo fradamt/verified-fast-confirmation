@@ -8,7 +8,9 @@ public import FastConfirmationProofs.ModelFacts
 @[expose] public section
 
 /-!
-# Causal query evidence
+# Execution / History / CausalQueryTraceAdapter
+
+Builds exact-position query evidence from scheduled event prefixes.
 
 This module contains the safety-free evidence adapters needed by a query that
 occurs at an exact global action position.  In particular, execution seconds

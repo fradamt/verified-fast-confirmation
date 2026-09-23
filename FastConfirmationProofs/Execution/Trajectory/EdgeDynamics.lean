@@ -7,6 +7,8 @@ public import FastConfirmationProofs.Execution.Trajectory.StoreDynamicsInputs
 /-!
 # Spec / Proof / EdgeDynamics
 
+Derives relay and vote-class updates for one execution trajectory edge.
+
 This module contains `blockRoots_subset_of_relay`, `equiv_subset_of_relay`, `EdgeInputResidual` and related declarations.
 -/
 

@@ -12,6 +12,8 @@ public import FastConfirmationProofs.ModelFacts
 /-!
 # Spec / Proof / FFGSourceCoherence
 
+Relates stored signed blocks and transition history to FFG source certificates.
+
 This module contains `storedSignedBlock`, `BlockStateTransitionHistory`, `on_block_inserted_message` and related declarations.
 -/
 

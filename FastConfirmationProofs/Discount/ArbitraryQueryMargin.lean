@@ -6,6 +6,8 @@ public import FastConfirmationProofs.LMD.SameSlotLMD
 /-!
 # Arbitrary-query selected margins
 
+Carries the head-safety margin from a selected confirmation to later arbitrary queries.
+
 This module contains `query_slot_start_le_of_slot_ge_minimal`, `freshEngineInputs_of_slotStart_IH_minimal`, `hgrowS_of_slotStart_IH_minimal` and related declarations.
 -/
 

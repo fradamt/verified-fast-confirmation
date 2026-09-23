@@ -10,7 +10,7 @@ public import FastConfirmationPaper.LMDGhost.Claims
 @[expose] public section
 
 /-!
-# LMDGhost / Proof / Monotone
+# LMDGhost / Proof / FutureHeadAgreement
 
 Lemma 1 building blocks: how the committee weight `W` and honest committee weight
 `J` grow with the cutoff slot, and the support-set monotonicity that makes the

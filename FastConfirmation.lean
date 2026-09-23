@@ -6,4 +6,4 @@ public import FastConfirmationProofs
 public import FastConfirmationWitnesses
 public import FastConfirmationPaper
 
-/-! Contents of the executable FCR and paper libraries. -/
+/-! Imports the executable FCR model, premises, proofs, witnesses, and the independent paper formalization. -/

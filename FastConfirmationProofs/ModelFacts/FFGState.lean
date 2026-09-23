@@ -6,7 +6,7 @@ public import FastConfirmationProofs.ModelFacts.ScheduledPrefixes
 @[expose] public section
 
 /-!
-# FFGCertificates model facts
+# ModelFacts / FFGState
 
 Proofs about Model/FFGCertificates. Read the corresponding Model file first.
 -/

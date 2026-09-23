@@ -7,6 +7,8 @@ public import FastConfirmationProofs.FFG.SelectedSource.EndpointMargin
 /-!
 # Spec / Proof / GroundBeta
 
+Transports ground-truth vote weights when an execution window is stripped or extended.
+
 This module contains `strip_transport_arith`, `bval_strip_transport` and related declarations.
 -/
 

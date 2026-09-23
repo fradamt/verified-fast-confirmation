@@ -7,6 +7,8 @@ public import FastConfirmationProofs.Execution.Delivery.RecordedEpoch
 /-!
 # Concrete constructors for arbitrary-query selected margins
 
+Constructs the selected-edge margin from the minimal confirmation base case.
+
 This module contains `base_strip_of_confirmed_at_minimal` and related declarations.
 -/
 

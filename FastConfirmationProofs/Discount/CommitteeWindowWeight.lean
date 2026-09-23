@@ -8,7 +8,9 @@ public import FastConfirmationProofs.Discount.RecordedSupport
 @[expose] public section
 
 /-!
-# Spec / Proof / EngineBudget
+# Discount / CommitteeWindowWeight
+
+Bounds honest committee weight across a slot window and its subwindows.
 
 This module contains `weight_mono` and related declarations.
 -/

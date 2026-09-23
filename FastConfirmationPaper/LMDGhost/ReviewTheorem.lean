@@ -6,7 +6,7 @@ public import FastConfirmationPaper.LMDGhost.Claims
 @[expose] public section
 
 /-!
-# LMDGhost / Proof / ProvenTheorems
+# LMDGhost / ReviewTheorem
 
 The internal proven facade: theorem constants discharging each public statement of
 `LMDGhost.TheoremStatements`, delegating to the proof scripts under `Proof/`. The

@@ -6,6 +6,8 @@ public import FastConfirmationProofs.Execution.Trajectory.ChainWalkClosure
 /-!
 # Spec / Proof / ObservedDom
 
+Proves ancestry and update equations for observed checkpoints across FCR steps.
+
 This module contains `update_fcv_observed_else`, `fcrStep_observed_else`, `fcrStep_observed_eq_fcr_succ` and related declarations.
 -/
 

@@ -14,7 +14,7 @@ public import FastConfirmationProofs.Handlers.HandlerStepFacts
 @[expose] public section
 
 /-!
-# Spec / Proof / Fresh Producer
+# Execution / Delivery / MarginProducer
 
 The fresh-voter producer and the growth package starting at the confirming
 cutoff `es`.  The equality-slot voter-index argument closes the former

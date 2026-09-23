@@ -7,6 +7,8 @@ public import FastConfirmationProofs.ForkChoice.Head.ForkEdgeHeadSafety
 /-!
 # Spec / Proof / INVstarTrack
 
+Connects FFG source-history edges to the recorded fork-choice margin invariant.
+
 This module contains `ForkEdgeGroundInputs`, `mem_isAncestor_of_parentChain` and related declarations.
 -/
 

@@ -8,6 +8,8 @@ public import FastConfirmationProofs.Execution.Trajectory.StoreDynamicsInputs
 /-!
 # Spec / Proof / E5Filter
 
+Proves that the trusted anchor remains a viable filtered fork-choice candidate.
+
 This module contains `walkClosure_of_anchorSlot`, `walkKnown_of_anchorSlot`, `output_descends_step_K` and related declarations.
 -/
 

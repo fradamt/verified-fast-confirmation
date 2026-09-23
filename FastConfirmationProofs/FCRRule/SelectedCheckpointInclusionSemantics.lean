@@ -11,6 +11,8 @@ public import FastConfirmationProofs.ModelFacts
 /-!
 # Assumption 3.2 at actual calls
 
+Connects selected checkpoints to included attestations and canonical chain evidence.
+
 This module contains `currentTarget_eq_selectedCheckpoint_of_currentEpochAncestor`, `canonicalThroughoutNextEpoch_of_selectedCanonical_currentEpoch`, `selectedEarlyA32Carrier_of_currentTarget_eq_anchor` and related declarations.
 -/
 

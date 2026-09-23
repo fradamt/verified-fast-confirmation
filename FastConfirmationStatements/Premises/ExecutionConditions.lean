@@ -6,7 +6,7 @@ public import FastConfirmationStatements.Premises.FFGState
 
 @[expose] public section
 
-/-! ExecutionConditions declarations from FastConfirmation.Spec.Model.Assumptions. -/
+/-! Defines well-formed scheduled blocks and the execution, boundary, and finalization conditions used by the safety proof. -/
 
 namespace FastConfirmation.Spec
 variable {Root : Type*} [LinearOrder Root] [Inhabited Root]

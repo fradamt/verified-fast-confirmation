@@ -9,6 +9,8 @@ public import FastConfirmationProofs.Discount.HonestWeight
 /-!
 # Spec / Proof / EconomicCore
 
+Tracks honest descendant support and voteless validators across slots.
+
 This module contains `SupportsDesc_succ_of_novote`, `AncestorOrVoteless_succ_of_novote`, `novote_succ_of_span` and related declarations.
 -/
 

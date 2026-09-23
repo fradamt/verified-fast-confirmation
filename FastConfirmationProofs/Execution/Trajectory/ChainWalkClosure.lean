@@ -5,7 +5,9 @@ public import FastConfirmationProofs.Execution.Trajectory.WFTrajectory
 @[expose] public section
 
 /-!
-# Spec / Proof / ResidualMechanical
+# Execution / Trajectory / ChainWalkClosure
+
+Proves chain-walk closure and store dynamics from scheduled handler steps.
 
 This module contains `DynamicsChainSupply`, `MechanicalResiduals` and related declarations.
 -/

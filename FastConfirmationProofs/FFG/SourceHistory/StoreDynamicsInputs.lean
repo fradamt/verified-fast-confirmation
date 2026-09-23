@@ -7,6 +7,8 @@ public import FastConfirmationProofs.Discount.ByzantineBudgetLedger
 /-!
 # Spec / Proof / ResidualDischarge
 
+Packages the store-transition facts needed to extend FFG source history.
+
 This module contains `DynamicsResidual` and related declarations.
 -/
 

@@ -3,7 +3,7 @@ public import FastConfirmationModel.Spec.ForkChoice
 
 @[expose] public section
 
-/-! Store declarations from FastConfirmation.Spec.Model.FCRStore. -/
+/-! Defines `FastConfirmationStore` initialization and the FCR state helper functions. Python: `specs/gloas/fast-confirmation.md`, Fast Confirmation Store and State helpers. -/
 
 namespace FastConfirmation.Spec
 variable {Root : Type*} [LinearOrder Root] [Inhabited Root]

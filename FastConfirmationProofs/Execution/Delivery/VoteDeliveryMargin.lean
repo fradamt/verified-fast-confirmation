@@ -9,6 +9,8 @@ public import FastConfirmationProofs.Handlers.ConfirmationCommitteeWeight
 /-!
 # Spec / Proof / Bridge
 
+Carries delivered honest vote support into the following-slot score margin.
+
 This module contains `old_window_latest_messages_agree`, `PostAnchorHonestVoteTargetWalkDomain`, `PostAnchorRecordedEpochMax` and related declarations.
 -/
 

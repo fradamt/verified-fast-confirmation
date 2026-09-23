@@ -11,6 +11,8 @@ public import FastConfirmationPaper.LMDGhost.Proof.RuleSafety
 /-!
 # HFC / Proof / NeverFiltered
 
+Proves that an honestly justified chain block survives the HFC FFG filter.
+
 This module contains `keep_of_ancestor_GJ`, `votingSource_disjunct`, `GJ_le_or_ge_B'` and related declarations.
 -/
 

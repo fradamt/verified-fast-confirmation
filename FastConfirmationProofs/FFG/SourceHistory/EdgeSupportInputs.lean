@@ -9,6 +9,8 @@ public import FastConfirmationProofs.Execution.Trajectory.StoreDynamicsInputs
 /-!
 # Spec / Proof / EdgeResiduals
 
+Bounds the Byzantine and honest vote support used by an FFG source edge.
+
 This module contains `bwin_of_bbad_or_spent`, `byz_confinement_bwin` and related declarations.
 -/
 
