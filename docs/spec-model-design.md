@@ -203,13 +203,16 @@ correspondence is:
 | `CommitteeCoversEpoch` | accepted `ExternalsCoherence.committee_coverage` |
 | synchronous honest votes | `honest_block_each_slot`, `honest_votes_extend_initial_head`, accepted synchrony |
 | threshold with `beta` | `configured_threshold_margin`, because the executable threshold uses the configured cap |
+| Assumption 6, conditional eventual FFG closure | `ffg_timely_justification`, with checkpoint timing at the last-slot call and next epoch start |
 | none | FFG gates, staleness revert, observed restart, epoch-start reconfirmation |
 
 The last row has no counterpart in the paper's LMD-only theorem. The paper's
 Assumption 3.2 lets a justification appear two epochs late; the executable
 selector needs it one epoch earlier. `Proof/MonotonicityLiveGates.lean`
-records the resulting gate and revert facts, and `docs/REVIEW_GUIDE.md` gives
-the scenario and the candidate FFG timing field. The statement is not proved.
+records the resulting gate and revert facts. The fifth live field supplies the
+earlier checkpoint observation; `Proof/MonotonicityLiveBridge.lean`,
+`MonotonicityLiveConfirmation.lean`, and `MonotonicityLiveRestart.lean` prove
+parts of its executable bridge. The statement remains open.
 
 ## Module system
 

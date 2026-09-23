@@ -11,14 +11,14 @@ Pending user decision:
 - The paper-model Algorithm-1 monotonicity witness assumes future confirmation
   of honest-view-safe blocks.
 - Live monotonicity needs an FFG timing premise. See
-  [Missing FFG timing premise](#missing-ffg-timing-premise).
+  [FFG timing premise](#ffg-timing-premise).
 
 ## Proposed live monotonicity premises (open)
 
 `Spec_Monotonicity_live` is a proposed statement in
 `FastConfirmation/Spec/TheoremStatements.lean`. Its accepted-bundle
 specialization is `AcceptedSpec_Monotonicity_live`. No proof or audit witness
-is claimed yet. The new `MonotonicityLiveAssumptions` has four premises:
+is claimed yet. `MonotonicityLiveAssumptions` has five premises:
 
 - `honest_block_each_slot`: every slot from the execution start through the
   interval has a block with an honest proposer index, and every honest store
@@ -33,6 +33,10 @@ is claimed yet. The new `MonotonicityLiveAssumptions` has four premises:
 - `configured_threshold_margin`: twice the actual non-honest active stake, twice the
   configured adversarial allowance, and proposer boost total less than the
   active stake. The executable FCR uses the configured cap in its threshold.
+- `ffg_timely_justification`: the paper Assumption 6 counterpart. At each
+  completed epoch's last-slot call, honest stores observe that epoch's
+  checkpoint on their next head chain; the next epoch's head has matching
+  unrealized justification, and the previous head has a recent voting source.
 
 The accepted trajectory already supplies honest committee participation and
 active-validator committee coverage in each in-horizon epoch. These facts are
@@ -45,9 +49,9 @@ selector cannot lower the candidate's block slot on the known-walk domain.
 The finalized-revert phase remains the open branch; this local fact does not
 establish the live statement.
 
-### Missing FFG timing premise
+### FFG timing premise
 
-The four fields do not bound the delay before a justification appears in
+The first four fields do not bound the delay before a justification appears in
 `store.unrealized_justifications`. The accepted paper Assumption 3.2
 (`PaperA32Inclusion`) lets the checkpoint of epoch `e` appear there only by
 the start of epoch `e + 2`, through the last block of epoch `e + 1`. The
@@ -73,21 +77,24 @@ then both selector gates stay closed in every non-start slot of epoch 2. The
 start-slot call cannot confirm the epoch's own first block, because no vote
 supports it yet. At the start of epoch 3 the cached epoch-1 root is stale,
 the observed checkpoint is from epoch 0, and the call returns the anchor. The
-four fields hold in this run. This argument is not a kernel-checked accepted
+first four fields hold in this run. This argument is not a kernel-checked accepted
 execution: the finite witness does not yet have a block in each slot.
 
-A live proof therefore needs an additional FFG timing field. The minimal
-candidate is: at the last-slot call of each epoch `e` in the interval, each
+A live proof therefore needs the fifth FFG timing field, now present in
+`TheoremStatements.lean`. It says: at the last-slot call of each epoch `e` in the interval, each
 honest store's `unrealized_justified_checkpoint` is the epoch-`e` checkpoint
 of the honest chain; at the next epoch start the head's unrealized
 justification is equal to it; and the voting source of the previous-slot head
-is at most two epochs old. The observed restart then moves a stale cached
-root forward to the epoch-`e` boundary block. Epoch-start reconfirmation of a
+is at most two epochs old. `MonotonicityLiveRestart.lean` proves that an observed
+checkpoint at or beyond the old cached root prevents a slot rollback at an
+actual accepted call. Connecting the field to every relevant call and proving
+the cache-ahead reconfirmation case remain open. Epoch-start reconfirmation of a
 same-epoch cached root can use the configured bound
 `CONFIRMATION_BYZANTINE_THRESHOLD <= 25` (`Config`) with the accepted
-`span_fraction` and `estimate_sound`: each added committee adds honest support
-of at least `3/4` of its weight, and the threshold grows by at most half of
-`3/2` of that weight. These parts are not yet proved.
+`span_fraction` and `estimate_sound`. The first-epoch-block full-window
+one-confirmation bound is proved in `MonotonicityLiveConfirmation.lean` under
+explicit chain support and parent-window facts. The partial-window
+reconfirmation inequality is open.
 
 The accepted finite witness proves the need for prefix production:
 `descendant_votes_without_continuous_production_revert` has all honest stake,

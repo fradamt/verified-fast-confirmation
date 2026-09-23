@@ -329,6 +329,66 @@ theorem AcceptedActualFCRNextSlotSafetyAssumptions.recorded_live_block_support
   exact ⟨r, b, hblock, hslot, hproposer, hsub hrKnown,
     by simpa only [hroot] using htransport⟩
 
+/-- Fixed-block form of the endpoint bridge. The live witness is selected
+once outside the validator quantifier so the same block receives every
+honest committee member's recorded support. -/
+theorem AcceptedActualFCRNextSlotSafetyAssumptions.recorded_fixed_live_block_support
+    (h : E.AcceptedActualFCRNextSlotSafetyAssumptions cfg ext)
+    {i : ValidatorIndex} (hi : i ∈ E.honest)
+    {m : ℕ} (hHm : E.WithinHorizon cfg m)
+    {s : Slot} (hs0 : E.slot_at cfg 0 ≤ s)
+    {r : Root}
+    (hsupport : ∀ j ∈ E.honest, ∀ t k a,
+      s ≤ t → t < E.slot_at cfg m → E.vote j t = some (k, a) →
+        r ∈ (E.store cfg ext j k).block_roots ∧
+        is_ancestor (E.store cfg ext j k)
+          (get_node_for_root a.data.beacon_block_root)
+          (get_node_for_root r) = true)
+    {t : Slot} (hst : s ≤ t)
+    {k : ℕ} {a : Attestation Root}
+    (hvote : E.vote i t = some (k, a))
+    {w : ValidatorIndex} (hw : w ∈ E.honest)
+    {msg : LatestMessage Root}
+    (hmsg : (E.store cfg ext w m).latest_messages i = some msg)
+    (hepoch : compute_epoch_at_slot cfg t ≤ get_latest_message_epoch cfg msg) :
+    r ∈ (E.store cfg ext w m).block_roots ∧
+      is_ancestor (E.store cfg ext w m)
+        (get_node_for_root msg.root) (get_node_for_root r) = true := by
+  obtain ⟨ast, ablk, hgenEq, _, _⟩ := h.trajectory.genesis_structure
+  have hgen : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
+      E.genesis_store = get_forkchoice_store cfg ast ablk :=
+    ⟨ast, ablk, hgenEq⟩
+  obtain ⟨s', k', a', hvote', hmsgEq, hslotEnd⟩ :=
+    E.latest_message_has_honest_vote_before_endpoint cfg ext
+      h.trajectory.wellFormed h.trajectory.honest_behavior
+      h.trajectory.externals_coherence hgen hi hw hHm hmsg
+  have hslotEq : s' = msg.slot := by rw [hmsgEq]
+  have hslotStart : s ≤ s' := by
+    rw [hslotEq]
+    exact hst.trans (E.honest_latest_message_slot_ge_vote cfg ext
+      h.trajectory.honest_behavior h.trajectory.externals_coherence
+      hgen hi hvote hmsg hepoch)
+  obtain ⟨hrKnown, hanc⟩ := hsupport i hi s' k' a'
+    hslotStart hslotEnd hvote'
+  have hs0' : E.slot_at cfg 0 ≤ msg.slot := hs0.trans (hslotEq ▸ hslotStart)
+  have hrootKnown : a'.data.beacon_block_root ∈
+      (E.store cfg ext i k').block_roots :=
+    h.honest_vote_root_known cfg ext E hi hs0'
+      (by simpa only [hslotEq] using hslotEnd) hHm
+      (by simpa only [hslotEq] using hvote')
+  have htransport := E.live_vote_support_transport cfg ext
+    h.trajectory.wellFormed h.trajectory.honest_behavior
+    h.completed_calls.synchrony h.trajectory.externals_coherence
+    h.trajectory.genesis_structure hi hw hs0'
+    (by simpa only [hslotEq] using hslotEnd) hHm
+    (by simpa only [hslotEq] using hvote') hrKnown hrootKnown hanc
+  have hsub := E.honest_vote_store_blocks_relay cfg ext
+    h.trajectory.honest_behavior h.completed_calls.synchrony
+    hi hw hs0' (by simpa only [hslotEq] using hslotEnd) hHm
+    (by simpa only [hslotEq] using hvote')
+  refine ⟨hsub hrKnown, ?_⟩
+  simpa only [hmsgEq] using htransport
+
 /-- Vote delivery from the accepted proof's local store domain. This is the
 `vote_ubiquity` route without the legacy broad justification interface. -/
 theorem vote_ubiquity_of_selected_margin_domain
@@ -439,6 +499,120 @@ theorem AcceptedActualFCRNextSlotSafetyAssumptions.live_vote_recorded_support
     h.recorded_live_block_support cfg ext E hi live hs0 hsm hvote
       hw hHm hmsg hEpoch'
   exact ⟨msg, r, b, hmsg, hblock, hblockSlot, hproposer, hr, hanc⟩
+
+/-- An honest assignment at a later slot supplies endpoint support to a
+fixed earlier live block once that vote has met the delivery deadline. -/
+theorem AcceptedActualFCRNextSlotSafetyAssumptions.fixed_live_block_support_of_assignment
+    (h : E.AcceptedActualFCRNextSlotSafetyAssumptions cfg ext)
+    {s : Slot} (hs0 : E.slot_at cfg 0 ≤ s)
+    {m : ℕ} (hHm : E.WithinHorizon cfg m)
+    {r : Root}
+    (hsupport : ∀ j ∈ E.honest, ∀ u k a,
+      s ≤ u → u < E.slot_at cfg m → E.vote j u = some (k, a) →
+        r ∈ (E.store cfg ext j k).block_roots ∧
+        is_ancestor (E.store cfg ext j k)
+          (get_node_for_root a.data.beacon_block_root)
+          (get_node_for_root r) = true)
+    {t : Slot} (hst : s ≤ t) (htm : t < E.slot_at cfg m)
+    {i w : ValidatorIndex} (hi : i ∈ E.honest) (hcommittee : i ∈ E.committee t)
+    (hw : w ∈ E.honest)
+    (hdelivery : E.slot_start cfg (t + 1) ≤ m) :
+    ∃ msg, (E.store cfg ext w m).latest_messages i = some msg ∧
+      is_ancestor (E.store cfg ext w m)
+        (get_node_for_root msg.root) (get_node_for_root r) = true := by
+  obtain ⟨k, index, hHk, hslotVote, hvote⟩ :=
+    h.trajectory.honest_behavior.votes_head i hi t hcommittee
+      (E.slotWithinHorizon_of_le cfg htm.le hHm) (hs0.trans hst)
+  obtain ⟨msg, hmsg, hEpoch⟩ :=
+    h.vote_ubiquity cfg ext E hi hw (hs0.trans hst)
+      hslotVote hHk hvote hdelivery hHm
+  have htarget := h.honest_vote_target_epoch cfg ext E hi
+    (index := index) hslotVote hHk
+  have hEpoch' : compute_epoch_at_slot cfg t ≤
+      get_latest_message_epoch cfg msg := by
+    rw [← htarget]
+    exact hEpoch
+  have hrecorded := h.recorded_fixed_live_block_support cfg ext E
+    hi hHm hs0 hsupport hst hvote hw hmsg hEpoch'
+  exact ⟨msg, hmsg, hrecorded.2⟩
+
+/-- Any set of honest validators assigned after a fixed live block and
+delivered by the endpoint contributes its full ground-truth weight to that
+block's attestation score. This is the score input for full-epoch windows. -/
+theorem AcceptedActualFCRNextSlotSafetyAssumptions.fixed_live_block_score_lower
+    (h : E.AcceptedActualFCRNextSlotSafetyAssumptions cfg ext)
+    {s : Slot} (hs0 : E.slot_at cfg 0 ≤ s)
+    {m : ℕ} (hHm : E.WithinHorizon cfg m)
+    {r : Root}
+    (hsupport : ∀ j ∈ E.honest, ∀ u k a,
+      s ≤ u → u < E.slot_at cfg m → E.vote j u = some (k, a) →
+        r ∈ (E.store cfg ext j k).block_roots ∧
+        is_ancestor (E.store cfg ext j k)
+          (get_node_for_root a.data.beacon_block_root)
+          (get_node_for_root r) = true)
+    {w : ValidatorIndex} (hw : w ∈ E.honest)
+    (balanceSource : BeaconState Root)
+    (hval : balanceSource.validators = E.registry)
+    (hbsH : get_current_epoch cfg balanceSource < E.verification_horizon)
+    (HS : Finset ValidatorIndex)
+    (hHS : ∀ i ∈ HS, i ∈ E.honest ∧
+      ∃ t : Slot, E.SlotWithinHorizon cfg t ∧
+        s ≤ t ∧ t < E.slot_at cfg m ∧ i ∈ E.committee t ∧
+        E.slot_start cfg (t + 1) ≤ m) :
+    E.weight HS ≤ get_attestation_score cfg (E.store cfg ext w m)
+      (get_node_for_root r) balanceSource := by
+  obtain ⟨ast, ablk, hgenEq, _, _⟩ := h.trajectory.genesis_structure
+  have hgen : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
+      E.genesis_store = get_forkchoice_store cfg ast ablk :=
+    ⟨ast, ablk, hgenEq⟩
+  apply recorded_support_lower_of_honest_committee cfg ext
+    h.trajectory.honest_behavior h.trajectory.externals_coherence
+    h.completed_calls.static_validators hgen hval hbsH HS _ hw hHm
+  intro i hiHS
+  obtain ⟨hi, t, htH, hst, htm, hcommittee, hdelivery⟩ := hHS i hiHS
+  obtain ⟨msg, hmsg, hanc⟩ := h.fixed_live_block_support_of_assignment
+    cfg ext E hs0 hHm hsupport hst htm hi hcommittee hw hdelivery
+  refine ⟨hi, ⟨t, htH, hcommittee⟩, msg, hmsg, ?_⟩
+  simpa only [get_node_for_root, is_ancestor_supported_pending] using hanc
+
+/-- A single live block of a slot receives the recorded support of every
+honest member of that slot's committee at an endpoint after delivery. -/
+theorem AcceptedActualFCRNextSlotSafetyAssumptions.live_slot_common_recorded_support
+    (h : E.AcceptedActualFCRNextSlotSafetyAssumptions cfg ext)
+    {observer : ValidatorIndex}
+    {n m : ℕ} (live : MonotonicityLiveAssumptions cfg ext E observer n m)
+    {s : Slot} (hs0 : E.slot_at cfg 0 ≤ s) (hsm : s < E.slot_at cfg m)
+    {w : ValidatorIndex} (hw : w ∈ E.honest)
+    (hHm : E.WithinHorizon cfg m)
+    (hdelivery : E.slot_start cfg (s + 1) ≤ m) :
+    ∃ r b, E.BlockAt r b ∧ b.slot = s ∧
+      b.proposer_index ∈ E.honest ∧
+      r ∈ (E.store cfg ext w m).block_roots ∧
+      ∀ i ∈ E.honest, i ∈ E.committee s →
+        ∃ msg, (E.store cfg ext w m).latest_messages i = some msg ∧
+          is_ancestor (E.store cfg ext w m)
+            (get_node_for_root msg.root) (get_node_for_root r) = true := by
+  obtain ⟨r, b, hblock, hslot, hproposer, hknownNext, hsupport⟩ :=
+    live.honest_block_each_slot s hs0 hsm
+  have hrEnd : r ∈ (E.store cfg ext w m).block_roots :=
+    (E.store_storeLE cfg ext w hdelivery).1 (hknownNext w hw)
+  refine ⟨r, b, hblock, hslot, hproposer, hrEnd, ?_⟩
+  intro i hi hcommittee
+  obtain ⟨k, index, hHk, hslotVote, hvote⟩ :=
+    h.trajectory.honest_behavior.votes_head i hi s hcommittee
+      (E.slotWithinHorizon_of_le cfg hsm.le hHm) hs0
+  obtain ⟨msg, hmsg, hEpoch⟩ :=
+    h.vote_ubiquity cfg ext E hi hw hs0 hslotVote hHk hvote
+      hdelivery hHm
+  have htarget := h.honest_vote_target_epoch cfg ext E hi
+    (index := index) hslotVote hHk
+  have hEpoch' : compute_epoch_at_slot cfg s ≤
+      get_latest_message_epoch cfg msg := by
+    rw [← htarget]
+    exact hEpoch
+  have hrecorded := h.recorded_fixed_live_block_support cfg ext E
+    hi hHm hs0 hsupport (Nat.le_refl s) hvote hw hmsg hEpoch'
+  exact ⟨msg, hmsg, hrecorded.2⟩
 
 /-- A latest message from an honest vote in the live interval names a vote
 for a descendant of that slot's honestly proposed block. The ancestry is

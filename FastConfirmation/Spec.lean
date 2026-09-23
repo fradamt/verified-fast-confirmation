@@ -8,6 +8,8 @@ public import FastConfirmation.Spec.Proof.OancTransport
 public import FastConfirmation.Spec.Proof.MonotonicityTrace
 public import FastConfirmation.Spec.Proof.MonotonicityLiveGates
 public import FastConfirmation.Spec.Proof.MonotonicityLiveBridge
+public import FastConfirmation.Spec.Proof.MonotonicityLiveConfirmation
+public import FastConfirmation.Spec.Proof.MonotonicityLiveRestart
 public import FastConfirmation.Spec.Proof.AcceptedStrictPrefixExtraQueryCounterexample
 public import FastConfirmation.Spec.Proof.AcceptedPinnedEconomicsStrictPrefixExtraQueryCounterexample
 

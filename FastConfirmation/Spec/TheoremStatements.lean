@@ -445,7 +445,7 @@ structure MonotonicityLiveAssumptions (E : Execution Root)
       compute_proposer_score cfg E.anchor_state < E.total_active cfg
   /-- Paper Assumption 6 counterpart: conditional eventual FFG closure is
   visible at the last-slot call of each completed epoch. The checkpoint is
-  carried by an honestly proposed block on every honest head chain. At the
+  an epoch block on every honest head chain. At the
   next epoch start the head agrees with that observation and the previous
   head has a recent voting source. Paper Assumption 3.2 alone permits a
   two-epoch lag, which closes the executable gates in
@@ -455,7 +455,7 @@ structure MonotonicityLiveAssumptions (E : Execution Root)
     compute_start_slot_at_epoch cfg (e + 1) ≤ E.slot_at cfg m →
     ∃ c : Checkpoint Root,
       c.epoch = e ∧
-      (∃ r b, E.BlockAt r b ∧ b.proposer_index ∈ E.honest ∧
+      (∃ r b, E.BlockAt r b ∧
         compute_epoch_at_slot cfg b.slot = e ∧ c.root = r) ∧
       ∀ w ∈ E.honest,
         let last := E.store cfg ext w
