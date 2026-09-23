@@ -405,6 +405,41 @@ theorem Execution.hundred_dvd_same_epoch_estimate_of_one_slot_exact
   rw [estimate_same_epoch cfg tab s t hst hcov hepoch, hrate]
   exact dvd_mul_of_dvd_left (E.hundred_dvd_weight cfg hbb (E.committee a)) _
 
+/-- A range beginning strictly after an epoch's start and ending in that
+epoch cannot contain every slot of a complete epoch. -/
+theorem no_full_coverage_inside_epoch_after_start
+    (e : Epoch) (a b : Slot)
+    (ha : compute_start_slot_at_epoch cfg e < a)
+    (hb : b < compute_start_slot_at_epoch cfg (e + 1)) :
+    is_full_validator_set_covered cfg a b = false := by
+  have hle : b + 1 ≤ a + (cfg.slots_per_epoch - 1) := by
+    have hnext : compute_start_slot_at_epoch cfg (e + 1) =
+        compute_start_slot_at_epoch cfg e + cfg.slots_per_epoch := by
+      simp [compute_start_slot_at_epoch, Nat.add_mul]
+    rw [hnext] at hb
+    have hpos := cfg.slots_per_epoch_pos
+    have hminus : cfg.slots_per_epoch - 1 + 1 = cfg.slots_per_epoch :=
+      Nat.sub_add_cancel hpos
+    have heq : compute_start_slot_at_epoch cfg e + cfg.slots_per_epoch =
+        compute_start_slot_at_epoch cfg e + 1 + (cfg.slots_per_epoch - 1) := by
+      calc
+        compute_start_slot_at_epoch cfg e + cfg.slots_per_epoch =
+            compute_start_slot_at_epoch cfg e +
+              ((cfg.slots_per_epoch - 1) + 1) :=
+          congrArg (fun x => compute_start_slot_at_epoch cfg e + x) hminus.symm
+        _ = compute_start_slot_at_epoch cfg e + 1 +
+              (cfg.slots_per_epoch - 1) := by ac_rfl
+    calc
+      b + 1 ≤ compute_start_slot_at_epoch cfg e + cfg.slots_per_epoch :=
+        Nat.succ_le_of_lt hb
+      _ = compute_start_slot_at_epoch cfg e + 1 + (cfg.slots_per_epoch - 1) := heq
+      _ ≤ a + (cfg.slots_per_epoch - 1) :=
+        Nat.add_le_add_right (Nat.succ_le_of_lt ha) _
+  have hnot : ¬ ((a + (cfg.slots_per_epoch - 1)) / cfg.slots_per_epoch <
+      (b + 1) / cfg.slots_per_epoch) :=
+    Nat.not_lt_of_ge (Nat.div_le_div_right hle)
+  simpa [is_full_validator_set_covered, compute_epoch_at_slot] using hnot
+
 /-- Integer reconfirmation margin with equivocation-neutral support loss. -/
 theorem reconfirm_margin_persists_with_equivocation_loss
     {score window boost adversarial added honestAdded lost
