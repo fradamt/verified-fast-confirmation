@@ -114,6 +114,28 @@ theorem is_confirmed_chain_safe_at_observed_checkpoint
   rw [hnil] at hb
   cases hb
 
+/-- Honest span growth preserves a strict weak margin when old support does
+not disappear. The weak budget has no equivocation credit, so the conclusion
+needs the score growth without a loss term. -/
+private theorem margin_growth_without_support_loss
+    (window boost adversarial score added honestAdded adversarialNew : ℕ)
+    (hold : window + boost + 2 * adversarial < 2 * score)
+    (hbudget : 4 * adversarialNew ≤ 4 * adversarial + added)
+    (hhonest : 3 * added ≤ 4 * honestAdded) :
+    window + added + boost + 2 * adversarialNew <
+      2 * (score + honestAdded) := by
+  omega
+
+/-- The bare strong-rule loss argument is false for the weak budget: one
+lost supporter can consume the entire strict margin with no new slot. This
+is only an arithmetic witness, not an accepted execution. -/
+private theorem support_loss_can_destroy_weak_margin :
+    ∃ window boost adversarial oldScore newScore lost : ℕ,
+      oldScore = newScore + lost ∧
+      window + boost + 2 * adversarial < 2 * oldScore ∧
+      ¬ (window + boost + 2 * adversarial < 2 * newScore) := by
+  refine ⟨100, 0, 25, 76, 75, 1, rfl, ?_, ?_⟩ <;> decide
+
 end FastConfirmation.Spec.Weak
 
 end
