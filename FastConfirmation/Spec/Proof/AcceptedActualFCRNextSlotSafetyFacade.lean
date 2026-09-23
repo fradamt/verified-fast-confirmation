@@ -1,5 +1,6 @@
 module
 public import FastConfirmation.Spec.Proof.AcceptedActualFCRNextSlotSafetyFold
+public import FastConfirmation.Spec.TheoremStatements
 
 @[expose] public section
 
@@ -225,6 +226,12 @@ theorem acceptedSpec_safety_next_slot :
     AcceptedSpec_Safety_next_slot cfg ext := by
   intro E h v hv n w hw m hnm hnext hHm
   exact h.confirmed_head_nextSlot cfg ext E hv hw hnm hnext hHm
+
+/-- Accepted-bundle specialization of the upstream strict-monotonicity
+statement. This is a proposed statement; no proof is claimed here. -/
+def AcceptedSpec_Monotonicity_live : Prop :=
+  Spec_Monotonicity_live cfg ext
+    (fun E => Nonempty (E.AcceptedActualFCRNextSlotSafetyAssumptions cfg ext))
 
 end FastConfirmation.Spec
 

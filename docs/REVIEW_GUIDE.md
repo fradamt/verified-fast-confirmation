@@ -1,5 +1,60 @@
 # Review guide
 
+## Proposed live monotonicity premises (open)
+
+`Spec_Monotonicity_live` is a proposed statement in
+`FastConfirmation/Spec/TheoremStatements.lean`. Its accepted-bundle
+specialization is `AcceptedSpec_Monotonicity_live`. No proof or audit witness
+is claimed yet. The new `MonotonicityLiveAssumptions` has four premises:
+
+- `honest_block_each_slot`: every slot from the execution start through the
+  interval has a block with an honest proposer index, and every honest store
+  knows it at the next slot start. Honest votes in that slot and later slots
+  see the block and support its descendants. The prefix is needed because an
+  interval can begin with an already stale cached root. Same-slot support is
+  needed for a full epoch's committee to support its first block.
+- `honest_votes_extend_initial_head`: honest votes in the interval support a
+  descendant of the observer's initial head in the voter's store.
+- `paper_byzantine_boost_bound`: four times the actual non-honest active stake plus
+  proposer boost is less than the total active stake.
+- `configured_threshold_margin`: twice the actual non-honest active stake, twice the
+  configured adversarial allowance, and proposer boost total less than the
+  active stake. The executable FCR uses the configured cap in its threshold.
+
+The accepted trajectory already supplies honest committee participation and
+active-validator committee coverage in each in-horizon epoch. These facts are
+not repeated in the new liveness record. The live monotonicity statement
+remains open until staleness and epoch-start reconfirmation are derived from
+these execution premises.
+
+`MonotonicityTrace.lean` proves that the observed restart and descendant
+selector cannot lower the candidate's block slot on the known-walk domain.
+The finalized-revert phase remains the open branch; this local fact does not
+establish the live statement.
+
+The accepted finite witness proves the need for prefix production:
+`descendant_votes_without_continuous_production_revert` has all honest stake,
+descendant votes in slots 2–7, and the paper's strict economic bound. The
+cached child still reverts to the anchor at second 8 because slots 2–6 have
+no new block. A kernel check also showed that the first interval-only draft
+of the three-field bundle held for seconds 7–8 while strict monotonicity
+failed. The production field now starts at the execution's initial slot.
+
+The paper inequality alone is too weak for the executable threshold when
+actual Byzantine stake is below the configured cap. With total stake 10000,
+actual Byzantine stake 2300, proposer score 500, and a configured 25% cap,
+`4*2300+500 < 10000` holds. Honest support is 7700, while the executable
+threshold is 7750. The extra margin excludes this case. This arithmetic
+check does not construct a complete accepted execution.
+
+Same-slot voting is another explicit timing premise. In a two-slot epoch
+with 10000 all-honest stake, if the first slot's 5000-stake committee votes
+before the first block arrives, later votes supply only 5000 support. The
+configured 25% FCR threshold is 7500 even with zero actual Byzantine stake
+and zero proposer boost. Production by the next slot alone cannot establish
+one-confirmation for that block. This is an arithmetic check, not a complete
+accepted execution.
+
 Gloas status: **proved** for the payload-aware discount in
 [the spec deviation](gloas-spec-deviation.md). Full validation passes,
 including the trust audit of the 13 public witnesses. The payload envelope
