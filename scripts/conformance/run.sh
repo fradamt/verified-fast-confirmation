@@ -75,7 +75,7 @@ fi
 
 runner_start=$SECONDS
 set +e
-(cd "$repo_root" && flock /home/fradamt/lean/orch/g2-lean-slot.lock lake env lean --run scripts/conformance/lean/Conformance.lean "$out") \
+(cd "$repo_root" && flock /home/fradamt/lean/orch/lean-slot-main.lock lake env lean --run scripts/conformance/lean/Conformance.lean "$out") \
   >"$runner_log" 2>&1
 runner_status=$?
 set -e

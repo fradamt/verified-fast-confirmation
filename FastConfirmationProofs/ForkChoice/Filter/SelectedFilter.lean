@@ -1,0 +1,239 @@
+module
+public import FastConfirmationProofs.FFG.Certificates.CertExtract
+public import FastConfirmationProofs.FFG.Certificates.FFGAccountability
+public import FastConfirmationProofs.ForkChoice.Filter.FilterViability
+public import FastConfirmationProofs.Monotonicity.FilterFuelMonotonicity
+
+public import FastConfirmationStatements.Traces
+@[expose] public section
+
+/-!
+# Spec / Proof / SelectedFilter: executable gate traces and the filter boundary
+
+This module records, without strengthening the executable rule, the FFG facts
+that are actually retained when either loop in
+`find_latest_confirmed_descendant` advances.
+
+* A previous-epoch step passed all three loop guards: it is not in the current
+  epoch, the previous-slot head descends from it, and it passed
+  `is_one_confirmed`.
+* A tentative step passed `is_one_confirmed`; when that step crosses to a
+  strictly later block epoch, the same executable branch proves
+  `will_current_target_be_justified = true`.
+
+The trace functions below are ghost instrumentation only.  Their first
+projection is proved equal to the corresponding executable loop, while their
+edge list retains the guards that the result-only inversions necessarily erase.
+
+The final section states the exact finite-tree certificate sufficient for the
+`child_filtered` field used by the selected-margin producer.  It is deliberately
+mechanical: the concrete FFG certificate layer proves quorum intersection,
+same-epoch uniqueness, no-surround, and finalized prefix, but currently has no
+bridge from an honest `Store`'s realized/unrealized checkpoint fields and
+`get_voting_source` reads to those certificates.  Nor does it turn the local
+`will_*` booleans into future store-visible certificates at the actual loop call
+sites.  Consequently this module does not manufacture that missing bridge.
+-/
+
+namespace FastConfirmation.Spec
+
+variable {Root : Type*} [LinearOrder Root] [Inhabited Root]
+variable (cfg : Config) (ext : Externals Root)
+
+/-! ## Exact ghost traces of the two executable loops -/
+
+/-- Erasing the previous-epoch ghost edge list gives the executable loop. -/
+theorem prevEpochLoopTrace_fst (fcrStore : FastConfirmationStore Root)
+    (currentEpoch : Epoch) : ∀ roots acc,
+    (prevEpochLoopTrace cfg ext fcrStore currentEpoch roots acc).1 =
+      find_latest_confirmed_descendant_prev_epoch_loop cfg ext fcrStore
+        currentEpoch roots acc := by
+  intro roots
+  induction roots with
+  | nil => intro acc; rfl
+  | cons b rest ih =>
+      intro acc
+      simp only [prevEpochLoopTrace,
+        find_latest_confirmed_descendant_prev_epoch_loop]
+      split_ifs <;> simp only [ih]
+
+/-- Erasing the tentative ghost edge list gives the executable loop. -/
+theorem tentativeLoopTrace_fst (fcrStore : FastConfirmationStore Root) : ∀ roots acc,
+    (tentativeLoopTrace cfg ext fcrStore roots acc).1 =
+      find_latest_confirmed_descendant_tentative_loop cfg ext fcrStore roots acc := by
+  intro roots
+  induction roots with
+  | nil => intro acc; rfl
+  | cons b rest ih =>
+      intro acc
+      simp only [tentativeLoopTrace,
+        find_latest_confirmed_descendant_tentative_loop]
+      split_ifs <;> simp only [ih]
+
+/-- Every recorded previous-epoch transition retains all three executable
+guards.  In particular, this is stronger than the result-only
+`prev_epoch_loop_spec`: it applies to every accepted edge. -/
+theorem mem_prevEpochLoopTrace (fcrStore : FastConfirmationStore Root)
+    (currentEpoch : Epoch) : ∀ roots acc a b,
+    (a, b) ∈ (prevEpochLoopTrace cfg ext fcrStore currentEpoch roots acc).2 →
+      get_block_epoch cfg fcrStore.store b ≠ currentEpoch ∧
+      is_ancestor fcrStore.store (get_node_for_root fcrStore.previous_slot_head)
+        (get_node_for_root b) = true ∧
+      is_one_confirmed cfg ext fcrStore.store
+        (get_current_balance_source fcrStore) b = true := by
+  intro roots
+  induction roots with
+  | nil => simp [prevEpochLoopTrace]
+  | cons x rest ih =>
+      intro acc a b hab
+      simp only [prevEpochLoopTrace] at hab
+      by_cases hEpoch : get_block_epoch cfg fcrStore.store x = currentEpoch
+      · rw [if_pos hEpoch] at hab
+        simp at hab
+      · rw [if_neg hEpoch] at hab
+        by_cases hAncestor : is_ancestor fcrStore.store
+            (get_node_for_root fcrStore.previous_slot_head) (get_node_for_root x) = true
+        · rw [if_neg (not_not_intro hAncestor)] at hab
+          by_cases hConfirmed : is_one_confirmed cfg ext fcrStore.store
+              (get_current_balance_source fcrStore) x = true
+          · rw [if_neg (not_not_intro hConfirmed)] at hab
+            rw [List.mem_cons] at hab
+            rcases hab with hab | hab
+            · simp only [Prod.mk.injEq] at hab
+              rcases hab with ⟨rfl, rfl⟩
+              exact ⟨hEpoch, hAncestor, hConfirmed⟩
+            · exact ih x a b hab
+          · rw [if_pos hConfirmed] at hab
+            simp at hab
+        · rw [if_pos hAncestor] at hab
+          simp at hab
+
+/-- Every recorded tentative transition passed confirmation.  If it raised
+the block epoch, the negated break guard retained by that transition forces
+the local `will_current_target_be_justified` boolean to be true. -/
+theorem mem_tentativeLoopTrace (fcrStore : FastConfirmationStore Root) :
+    ∀ roots acc a b,
+    (a, b) ∈ (tentativeLoopTrace cfg ext fcrStore roots acc).2 →
+      is_one_confirmed cfg ext fcrStore.store
+          (get_current_balance_source fcrStore) b = true ∧
+      (get_block_epoch cfg fcrStore.store a < get_block_epoch cfg fcrStore.store b →
+        will_current_target_be_justified cfg ext fcrStore.store = true) := by
+  intro roots
+  induction roots with
+  | nil => simp [tentativeLoopTrace]
+  | cons x rest ih =>
+      intro acc a b hab
+      simp only [tentativeLoopTrace] at hab
+      by_cases hGate : get_block_epoch cfg fcrStore.store x >
+          get_block_epoch cfg fcrStore.store acc ∧
+          ¬ will_current_target_be_justified cfg ext fcrStore.store
+      · rw [if_pos hGate] at hab
+        simp at hab
+      · rw [if_neg hGate] at hab
+        by_cases hConfirmed : is_one_confirmed cfg ext fcrStore.store
+            (get_current_balance_source fcrStore) x = true
+        · rw [if_neg (not_not_intro hConfirmed)] at hab
+          rw [List.mem_cons] at hab
+          rcases hab with hab | hab
+          · simp only [Prod.mk.injEq] at hab
+            rcases hab with ⟨rfl, rfl⟩
+            refine ⟨hConfirmed, ?_⟩
+            intro hEpoch
+            by_contra hWill
+            exact hGate ⟨hEpoch, hWill⟩
+          · exact ih x a b hab
+        · rw [if_pos hConfirmed] at hab
+          simp at hab
+
+/-- A strict result which is not in the current epoch necessarily retained
+the executable no-conflict protection: either the call is at an epoch-start
+slot, or `will_no_conflicting_checkpoint_be_justified` evaluated to true.
+
+This guard is not attached to either recursive loop.  It comes from the outer
+previous-epoch entry condition and from the final acceptance condition for a
+tentative result that remains in the previous epoch. -/
+theorem selected_previous_result_outer_gate
+    (fcrStore : FastConfirmationStore Root) (lcr result : Root)
+    (hout : find_latest_confirmed_descendant cfg ext fcrStore lcr = result)
+    (hstrict : result ≠ lcr)
+    (hprevious : get_block_epoch cfg fcrStore.store result ≠
+      get_current_store_epoch cfg fcrStore.store) :
+    is_start_slot_at_epoch cfg (get_current_slot cfg fcrStore.store) = true ∨
+      will_no_conflicting_checkpoint_be_justified cfg ext fcrStore.store = true := by
+  have entry_gate :
+      (get_block_epoch cfg fcrStore.store lcr + 1 =
+          get_current_store_epoch cfg fcrStore.store ∧
+        (get_voting_source cfg fcrStore.store fcrStore.previous_slot_head).epoch + 2 ≥
+          get_current_store_epoch cfg fcrStore.store ∧
+        (is_start_slot_at_epoch cfg (get_current_slot cfg fcrStore.store) = true ∨
+          (will_no_conflicting_checkpoint_be_justified cfg ext fcrStore.store = true ∧
+            ((fcrStore.store.unrealized_justifications
+                  fcrStore.previous_slot_head).epoch + 1 ≥
+                get_current_store_epoch cfg fcrStore.store ∨
+              (fcrStore.store.unrealized_justifications
+                  (get_head cfg fcrStore.store).root).epoch + 1 ≥
+                get_current_store_epoch cfg fcrStore.store)))) →
+        is_start_slot_at_epoch cfg (get_current_slot cfg fcrStore.store) = true ∨
+          will_no_conflicting_checkpoint_be_justified cfg ext fcrStore.store = true := by
+    rintro ⟨_, _, hstart | ⟨hwill, _⟩⟩
+    · exact Or.inl hstart
+    · exact Or.inr hwill
+  rw [find_latest_confirmed_descendant] at hout
+  simp only at hout
+  split_ifs at hout <;> subst result <;> simp_all
+
+/-! ## The concrete selected-margin regime gap -/
+
+
+/-! ## The exact mechanical certificate for `child_filtered` -/
+
+/-- A finite-tree certificate that a selected-chain child survives an endpoint
+store's FFG filter.  The non-mechanical proof obligation is precisely the
+production of `justified_ok`, `finalized_ok`, and the chain placement from the
+actual FCR gates and store-visible FFG certificates. -/
+structure FilterTipCertificate (store : Store Root) (c : Root) where
+  mids : List Root
+  tip : Root
+  chain : ChainDown store store.justified_checkpoint.root (mids ++ [tip])
+  child_on_chain : c ∈ mids ∨ c = tip ∨ c = store.justified_checkpoint.root
+  tip_is_leaf : store.block_roots.filter
+    (fun x => (store.blocks x).parent_root = tip) = []
+  parent_slot_lt : ∀ r ∈ store.block_roots,
+    (store.blocks r).parent_root ∈ store.block_roots →
+      (store.blocks (store.blocks r).parent_root).slot < (store.blocks r).slot
+  justified_ok : store.justified_checkpoint.epoch = GENESIS_EPOCH ∨
+    (get_voting_source cfg store tip).epoch = store.justified_checkpoint.epoch ∨
+    (get_voting_source cfg store tip).epoch + 2 ≥ get_current_store_epoch cfg store
+  finalized_ok : store.finalized_checkpoint.epoch = GENESIS_EPOCH ∨
+    store.finalized_checkpoint.root =
+      get_checkpoint_block cfg store tip store.finalized_checkpoint.epoch
+
+omit [Inhabited Root] in
+/-- Filtered-list membership from the exact viable-tip certificate. -/
+theorem FilterTipCertificate.mem_filtered {store : Store Root} {c : Root}
+    (h : FilterTipCertificate cfg store c) :
+    c ∈ get_filtered_block_tree cfg store := by
+  exact confirmed_mem_filtered_mono cfg h.parent_slot_lt h.chain
+    h.child_on_chain h.tip_is_leaf h.justified_ok h.finalized_ok
+
+omit [Inhabited Root] in
+/-- The selected beacon child is available below the resolved parent status
+in its bid once the endpoint FFG proof supplies a viable-tip certificate.
+This membership does not establish which payload branch fork choice selects. -/
+theorem FilterTipCertificate.child_filtered {store : Store Root} {a c : Root}
+    (h : FilterTipCertificate cfg store c)
+    (hparent : (store.blocks c).parent_root = a) :
+    ForkChoiceNode.mk c .pending ∈
+      get_node_children store (get_filtered_block_tree cfg store)
+        (ForkChoiceNode.mk a (get_parent_payload_status store (store.blocks c))) := by
+  apply (mem_get_node_children_resolved
+    (node := ForkChoiceNode.mk a (get_parent_payload_status store (store.blocks c)))
+    (by
+      change get_parent_payload_status store (store.blocks c) ≠ .pending
+      simp only [get_parent_payload_status]
+      split_ifs <;> decide)).mpr
+  exact ⟨rfl, h.mem_filtered cfg, hparent, rfl⟩
+
+end FastConfirmation.Spec
+
+end

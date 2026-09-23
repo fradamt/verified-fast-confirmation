@@ -1,7 +1,7 @@
 name = "FastConfirmation"
 version = "0.1.0"
 keywords = ["lean", "consensus", "fast-confirmation-rule", "lmd-ghost"]
-defaultTargets = ["FastConfirmation"]
+defaultTargets = ["FastConfirmationModel", "FastConfirmationStatements", "FastConfirmationInternal", "FastConfirmationProofs", "FastConfirmationWitnesses", "FastConfirmationPaper", "FastConfirmation"]
 # Lake consumes Lean's JSON diagnostic severity and fails project-module builds
 # that emit `hasSorry`. The build wrapper also checks the diagnostic text as
 # defense in depth against direct Lean's surprising zero exit status.
@@ -19,7 +19,29 @@ scope = "leanprover-community"
 rev = "v4.30.0-rc2"
 
 [[lean_lib]]
+name = "FastConfirmationModel"
+globs = ["FastConfirmationModel", "FastConfirmationModel.+"]
+
+[[lean_lib]]
+name = "FastConfirmationStatements"
+globs = ["FastConfirmationStatements", "FastConfirmationStatements.+"]
+
+[[lean_lib]]
+name = "FastConfirmationInternal"
+globs = ["FastConfirmationInternal", "FastConfirmationInternal.+"]
+
+[[lean_lib]]
+name = "FastConfirmationProofs"
+globs = ["FastConfirmationProofs", "FastConfirmationProofs.+"]
+
+[[lean_lib]]
+name = "FastConfirmationWitnesses"
+globs = ["FastConfirmationWitnesses", "FastConfirmationWitnesses.+"]
+
+[[lean_lib]]
+name = "FastConfirmationPaper"
+globs = ["FastConfirmationPaper", "FastConfirmationPaper.+"]
+
+[[lean_lib]]
 name = "FastConfirmation"
-# Build both independent module trees under `FastConfirmation/`: `Spec` and
-# `Paper`.
-globs = ["FastConfirmation", "FastConfirmation.+"]
+globs = ["FastConfirmation"]

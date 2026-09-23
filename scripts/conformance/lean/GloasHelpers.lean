@@ -1,5 +1,5 @@
 import Lean.Data.Json
-import FastConfirmation.Spec.Model.Execution
+import FastConfirmationModel.Execution.Run
 
 /-! Direct helper comparisons for the four-block projected source fixture.
 These stores are not claimed to be accepted executions. -/

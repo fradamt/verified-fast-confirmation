@@ -1,5 +1,6 @@
 import Lean.Data.Json
-import FastConfirmation.Spec.Model.Execution
+import FastConfirmationModel.Execution.Run
+import FastConfirmationModel.Spec.FastConfirmation.SafeExecutionBlock
 
 namespace FastConfirmation.Conformance
 

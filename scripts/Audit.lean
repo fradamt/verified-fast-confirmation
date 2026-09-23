@@ -46,7 +46,10 @@ private def isProjectModule (env : Environment) (name : Name) : Bool :=
   | some moduleIdx =>
       let moduleName := (env.allImportedModuleNames[moduleIdx.toNat]!).toString
       moduleName == "FastConfirmation" ||
-        moduleName.startsWith "FastConfirmation."
+        (#["FastConfirmationModel", "FastConfirmationStatements",
+          "FastConfirmationInternal", "FastConfirmationProofs",
+          "FastConfirmationWitnesses", "FastConfirmationPaper"].any
+          fun libName => moduleName == libName || moduleName.startsWith (libName ++ "."))
 
 private def isGeneratedSafePartial (env : Environment) (name : Name)
     (info : ConstantInfo) : CommandElabM Bool := do
