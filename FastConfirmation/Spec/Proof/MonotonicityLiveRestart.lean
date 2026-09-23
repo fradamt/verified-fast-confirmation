@@ -119,6 +119,103 @@ theorem get_latest_confirmed_preserves_high_chain_property
     · rw [h] at hold
       exact False.elim ((Nat.not_lt_of_ge (hold.trans hobservedFloor)) hbFloor)
 
+namespace Execution
+
+variable (E : Execution Root)
+
+/-- A later store cannot invent an ancestor of a block already known in an
+earlier store. The execution parent relation reflects that ancestor back to
+the earlier store. -/
+theorem AcceptedActualFCRNextSlotSafetyAssumptions.live_ancestor_reflect_earlier
+    (h : E.AcceptedActualFCRNextSlotSafetyAssumptions cfg ext)
+    {w : ValidatorIndex} {n m : ℕ} (hnm : n ≤ m)
+    {tip b : Root}
+    (htip : tip ∈ (E.store cfg ext w n).block_roots)
+    (hb : b ∈ (E.store cfg ext w m).block_roots)
+    (hanc : is_ancestor (E.store cfg ext w m)
+      (get_node_for_root tip) (get_node_for_root b) = true) :
+    b ∈ (E.store cfg ext w n).block_roots ∧
+      is_ancestor (E.store cfg ext w n)
+        (get_node_for_root tip) (get_node_for_root b) = true := by
+  obtain ⟨ast, ablk, hgen, hslot, hparent⟩ := h.trajectory.genesis_structure
+  have htipM : tip ∈ (E.store cfg ext w m).block_roots :=
+    (E.store_storeLE cfg ext w hnm).1 htip
+  have hwfM : ParentSlotLt (E.store cfg ext w m) :=
+    E.store_parentSlotLt cfg ext h.trajectory.wellFormed
+      h.trajectory.externals_coherence
+      ⟨ast, ablk, hgen, hslot, hparent⟩
+      h.trajectory.wellFormed.anchor_parent_unscheduled w m
+  have hwalkM : WalkKnown (E.store cfg ext w m)
+      ((E.store cfg ext w m).blocks b).slot tip :=
+    E.store_walkKnownK cfg ext h.trajectory.wellFormed
+      h.trajectory.externals_coherence
+      ⟨ast, ablk, hgen, hslot, hparent⟩ w m b hb tip htipM
+  have hsemantic : E.RootDescends tip b :=
+    E.rootDescends_of_store_ancestor
+      (E.blockProvenance cfg ext w m) hwfM hwalkM hanc
+  have hbRoot : E.ExecutionRoot b :=
+    ⟨(E.store cfg ext w m).blocks b,
+      E.blockAt_of_store_known cfg ext hb⟩
+  exact E.store_known_ancestor_of_rootDescends_for_storeReflection
+    cfg ext h.trajectory.wellFormed h.trajectory.externals_coherence
+    hgen hslot hparent htip hbRoot hsemantic
+
+/-- Time-transport version of the high-chain frame rule. The old chain is
+read at an earlier store, while the selector runs on the later query store. -/
+theorem AcceptedActualFCRNextSlotSafetyAssumptions.live_high_chain_property_step
+    (h : E.AcceptedActualFCRNextSlotSafetyAssumptions cfg ext)
+    (query : FastConfirmationStore Root) (floor : Slot) (P : Root → Prop)
+    {w : ValidatorIndex} {n m : ℕ} (hnm : n ≤ m)
+    (hqueryStore : query.store = E.store cfg ext w m)
+    (htip : query.confirmed_root ∈ (E.store cfg ext w n).block_roots)
+    (hwf : ParentSlotLt query.store)
+    (hwalk : ∀ t ∈ query.store.block_roots, ∀ r ∈ query.store.block_roots,
+      WalkKnown query.store (query.store.blocks t).slot r)
+    (hhead : (get_head cfg query.store).root ∈ query.store.block_roots)
+    (hfinal : query.store.finalized_checkpoint.root ∈ query.store.block_roots)
+    (hobserved : query.current_epoch_observed_justified_checkpoint.root ∈
+      query.store.block_roots)
+    (hresult : get_latest_confirmed cfg ext query ∈ query.store.block_roots)
+    (hfinalFloor : (query.store.blocks query.store.finalized_checkpoint.root).slot ≤ floor)
+    (hobservedFloor :
+      (query.store.blocks query.current_epoch_observed_justified_checkpoint.root).slot ≤ floor)
+    (hprevious : ∀ b ∈ (E.store cfg ext w n).block_roots,
+      is_ancestor (E.store cfg ext w n)
+        (get_node_for_root query.confirmed_root) (get_node_for_root b) = true →
+      floor < ((E.store cfg ext w n).blocks b).slot → P b)
+    (hfresh : ∀ b ∈ query.store.block_roots,
+      is_one_confirmed cfg ext query.store
+        (get_current_balance_source query) b = true → P b)
+    {b : Root} (hb : b ∈ query.store.block_roots)
+    (hbresult : is_ancestor query.store
+      (get_node_for_root (get_latest_confirmed cfg ext query))
+      (get_node_for_root b) = true)
+    (hbFloor : floor < (query.store.blocks b).slot) : P b := by
+  have hcached : query.confirmed_root ∈ query.store.block_roots := by
+    rw [hqueryStore]
+    exact (E.store_storeLE cfg ext w hnm).1 htip
+  apply get_latest_confirmed_preserves_high_chain_property cfg ext query floor P
+    hwf hwalk hhead hcached hfinal hobserved hresult
+    hfinalFloor hobservedFloor ?_ hfresh hb hbresult hbFloor
+  intro x hx hanc hfloor
+  have hxm : x ∈ (E.store cfg ext w m).block_roots := by
+    simpa only [hqueryStore] using hx
+  have hancM : is_ancestor (E.store cfg ext w m)
+      (get_node_for_root query.confirmed_root) (get_node_for_root x) = true := by
+    simpa only [hqueryStore] using hanc
+  obtain ⟨hxN, hancN⟩ := h.live_ancestor_reflect_earlier cfg ext E
+    hnm htip hxm hancM
+  have hblock : (E.store cfg ext w n).blocks x =
+      (E.store cfg ext w m).blocks x :=
+    h.trajectory.wellFormed.blocks_agree
+      (E.blockProvenance cfg ext w n) (E.blockProvenance cfg ext w m)
+      hxN hxm
+  apply hprevious x hxN hancN
+  rw [hblock]
+  simpa only [hqueryStore] using hfloor
+
+end Execution
+
 /-- The epoch-start chain check reduces to one-confirmation of each strict
 descendant of the observed checkpoint. This is the executable interface for
 the historical reconfirmation invariant. -/
@@ -946,6 +1043,50 @@ theorem AcceptedActualFCRNextSlotSafetyAssumptions.live_anchor_checkpoint_epoch
   have hstate := h.anchor_epoch_eq_initial cfg ext E
   simpa only [Execution.anchor_state, hgenEq, get_forkchoice_store,
     Function.update_self] using hstate
+
+/-- The finalized input never lies after the start of its store's current
+epoch. The anchor branch uses the trusted anchor epoch; other branches use
+the accepted finalized lag and checkpoint-root boundary. -/
+theorem AcceptedActualFCRNextSlotSafetyAssumptions.live_finalized_slot_le_current_start
+    (h : E.AcceptedActualFCRNextSlotSafetyAssumptions cfg ext)
+    (w : ValidatorIndex) (t : ℕ) (e : Epoch)
+    (he0 : compute_epoch_at_slot cfg (E.slot_at cfg 0) ≤ e)
+    (hcurrent : get_current_store_epoch cfg (E.store cfg ext w t) = e) :
+    get_block_slot (E.store cfg ext w t)
+      (E.store cfg ext w t).finalized_checkpoint.root ≤
+        compute_start_slot_at_epoch cfg e := by
+  let st := E.store cfg ext w t
+  have hboundary := Execution.ExactPrefixAcceptedFFGSemantics.finalizedBoundaryRealizationAt
+    cfg ext h.semantics h.trajectory h.anchor_eq h.anchor_boundary w t
+  have hslot : get_block_slot st st.finalized_checkpoint.root ≤
+      compute_start_slot_at_epoch cfg st.finalized_checkpoint.epoch :=
+    hboundary.finalized_root_slot_le_boundary
+  have hlag := (E.acceptedFinalizationLagAt cfg ext h.semantics
+    h.trajectory h.anchor_eq h.finalization_delay w t).realized
+  have hepoch : st.finalized_checkpoint.epoch ≤ e := by
+    rcases hlag with hanchor | hdelay
+    · rw [hanchor]
+      exact (h.live_anchor_checkpoint_epoch cfg ext E).trans_le he0
+    · rw [hcurrent] at hdelay
+      dsimp only [st] at hdelay ⊢
+      exact (Nat.le_add_right _ _).trans hdelay
+  exact hslot.trans (Nat.mul_le_mul_right cfg.slots_per_epoch hepoch)
+
+/-- The observed cache's reset realization bounds its root by the current
+epoch start at every actual FCR query. -/
+theorem AcceptedActualFCRNextSlotSafetyAssumptions.live_observed_slot_le_current_start
+    (h : E.AcceptedActualFCRNextSlotSafetyAssumptions cfg ext)
+    (w : ValidatorIndex) (q : ℕ) :
+    get_block_slot (E.fcrStep cfg ext w q).store
+      (E.fcrStep cfg ext w q).current_epoch_observed_justified_checkpoint.root ≤
+    compute_start_slot_at_epoch cfg
+      (get_current_store_epoch cfg (E.fcrStep cfg ext w q).store) := by
+  have hreal := E.fcrStep_observed_resetRealizedAt_of_acceptedGlobalTrajectory
+    cfg ext h.semantics h.trajectory h.anchor_eq h.anchor_boundary w q
+  have hbound := hreal.root_slot_le_boundary.trans
+    (Nat.mul_le_mul_right cfg.slots_per_epoch hreal.epoch_le_current)
+  simpa only [get_block_slot, compute_start_slot_at_epoch,
+    E.fcrStep_store] using hbound
 
 /-- Repaired L3 age bound. At the first boundary the finalized root may be
 the previous epoch's start block, so the bound is non-strict. -/
