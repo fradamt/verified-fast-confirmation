@@ -55,7 +55,8 @@ sets.
 ### Payload-aware duty-fresh discount
 
 The weak empty-slot discount of a block `c` with parent `a` counts only
-the parent votes that agree with the payload status that `c` requires:
+duty-fresh parent votes that select the payload status that `c` requires
+or remain PENDING:
 
 ```lean
 Weak.get_duty_fresh_parent_payload_support_between_slots cfg ext store bs
@@ -69,11 +70,12 @@ A counted cell must satisfy all of these conditions:
 - it is duty-fresh (rule delta 3);
 - its validator is not in `store.equivocating_indices`;
 - `get_supported_node` of the cell selects the payload status of `a` that
-  `c` requires.
+  `c` requires, or is PENDING. A PENDING vote supports neither resolved status
+  at its own root.
 
 A parent vote for the opposite payload status is not discounted. It stays
-in the weight that opposes `c`. The Python twin is branch
-`fcr-weak-synchrony-gloas` in `consensus-specs-weak`, commit `4a6b336ec`.
+in the weight that opposes `c`. The Python twin is the local branch
+`fcr-weak-synchrony-gloas-pending` in `consensus-specs-weak-pending`.
 
 `Weak.has_broadcast_certificate` returns `false` when the current slot is
 zero. This matches Python commit `353eb0dc4`, where `current_slot - 1`
@@ -116,9 +118,10 @@ with these changes:
    completed duty (`epoch_le_of_duty_fresh_cell`). The honest endpoint has
    the recorded-epoch bound (`windowRecordedEpochMax_at_query_minimal`).
    `old_window_latest_messages_agree` then gives the same message at both
-   stores. That message selects the opposite status, so it is not in
-   `FreshParentPayloadStuck`. This replaces the strong argument, which uses
-   an honest query owner.
+   stores. A matching-status cell cannot select the opposite status. A PENDING
+   cell cannot support a resolved status at its own root, by
+   `PayloadSupport.supported_node_own_root_resolved_iff`. Thus the old voter is
+   outside `FreshParentPayloadStuck`.
 3. The confirmation strip keeps the debt
    `O = w(Aclass(W, lo, es) \ FreshParentPayloadStuck)`. The discount is at
    most `w(FreshParentPayloadStuck)`.
@@ -130,11 +133,13 @@ with these changes:
 
 ### Premises
 
-The weak bundle carries one new premise from `main`:
-`PaperSafetySynchrony.payload_envelope_relay`, through
-`SelectedMarginAssumptions.synchrony`. The weak G2-004 proof adds no
-premise. It uses `WeakObserverAssumptions.validity` (observer provenance),
-the observer committee readback, and `PostAnchorHonestVoteTargetWalkDomain`
+The weak bundle carries `PaperSafetySynchrony.envelope_delivery` and
+`PaperSafetySynchrony.data_availability_relay`, and
+`ExternalsCoherence.verify_envelope_deterministic`, through
+`SelectedMarginAssumptions`. These three premises derive the verified-payload
+relay. The weak G2-004 proof adds no premise. It uses
+`WeakObserverAssumptions.validity` (observer provenance), the observer
+committee readback, and `PostAnchorHonestVoteTargetWalkDomain`
 at the honest endpoint. All three were already in the weak premise surface.
 
 ## Current carrier rule — 21 September 2026

@@ -317,8 +317,9 @@ theorem fcrStep_observed_of_previousGreatest
       (get_current_slot cfg (E.store cfg ext v (n + 1)) + 1) = false) :
     (E.fcrStep cfg ext v n).current_epoch_observed_justified_checkpoint =
       (E.fcr cfg ext v n).previous_epoch_greatest_unrealized_checkpoint := by
-  rw [E.fcrStep_observed_boundary cfg ext v n hstart]
-  simp [hnextNot]
+  rw [Execution.fcrStep]
+  simp only [update_fast_confirmation_variables]
+  simp [hstart, hnextNot]
 
 /-- An actual FCR call saves the head it sees for the next slot's
 previous-head test. -/

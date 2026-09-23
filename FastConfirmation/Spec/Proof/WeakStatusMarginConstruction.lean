@@ -67,7 +67,8 @@ def FreshParentPayloadSupport (E : Execution Root) (store : Store Root)
         Weak.is_duty_fresh_message cfg ext store i lm &&
         decide (i ∉ store.equivocating_indices) &&
         decide ((get_supported_node store lm).payload_status =
-          get_parent_payload_status store (store.blocks b))))
+          get_parent_payload_status store (store.blocks b) ∨
+          (get_supported_node store lm).payload_status = .pending)))
 
 /-- The honest members of `FreshParentPayloadSupport`. -/
 def FreshParentPayloadStuck (E : Execution Root) (store : Store Root)
@@ -88,8 +89,9 @@ theorem mem_FreshParentPayloadSupport {E : Execution Root} {store : Store Root}
       ∃ lm, store.latest_messages i = some lm ∧
         lm.root = (store.blocks b).parent_root ∧
         Weak.is_duty_fresh_message cfg ext store i lm = true ∧
-        (get_supported_node store lm).payload_status =
-          get_parent_payload_status store (store.blocks b) := by
+        ((get_supported_node store lm).payload_status =
+          get_parent_payload_status store (store.blocks b) ∨
+         (get_supported_node store lm).payload_status = .pending) := by
   simp only [FreshParentPayloadSupport, Finset.mem_filter] at hi
   obtain ⟨⟨hspan, _⟩, hP2⟩ := hi
   cases hlm : store.latest_messages i with
@@ -262,7 +264,8 @@ theorem endpoint_opposite_not_freshParentPayloadStuck {E : Execution Root}
   have hsrcRoot : src.root = a := hroot.trans hparentQ
   have hstatusW : (get_supported_node (E.store cfg ext w m) src).payload_status =
       get_parent_payload_status (E.store cfg ext w m)
-        ((E.store cfg ext w m).blocks b) := by
+        ((E.store cfg ext w m).blocks b) ∨
+      (get_supported_node (E.store cfg ext w m) src).payload_status = .pending := by
     have h1 : get_supported_node (E.store cfg ext w m) src =
         get_supported_node (E.store cfg ext obs q) src := by
       simp only [get_supported_node]
@@ -275,21 +278,30 @@ theorem endpoint_opposite_not_freshParentPayloadStuck {E : Execution Root}
       rw [← hagreeB, hparentQ, hagreeA]
     rw [h1, h2]
     exact hstatus
-  have hnode : get_supported_node (E.store cfg ext w m) src =
-      ForkChoiceNode.mk a (get_parent_payload_status (E.store cfg ext w m)
-        ((E.store cfg ext w m).blocks b)) := by
-    rw [← hstatusW, ← hsrcRoot]
-    rfl
   have hs : get_parent_payload_status (E.store cfg ext w m)
       ((E.store cfg ext w m).blocks b) ≠ .pending := by
     simp only [get_parent_payload_status]
     split_ifs <;> decide
   obtain ⟨lm, hlm, _, hsupp⟩ := mem_AttSupporters cfg hopp
   have hlmEq : lm = src := Option.some.inj (hlm.symm.trans hdst)
-  subst hlmEq
-  rw [hnode] at hsupp
-  exact not_ancestor_two_resolved_statuses (E.store cfg ext w m) _ a _ o
-    hs ho hne ⟨is_ancestor_refl _ _, hsupp⟩
+  rw [hlmEq] at hsupp
+  rcases hstatusW with hmatch | hpending
+  · have hnode : get_supported_node (E.store cfg ext w m) src =
+        ForkChoiceNode.mk a (get_parent_payload_status (E.store cfg ext w m)
+          ((E.store cfg ext w m).blocks b)) := by
+      rw [← hmatch, ← hsrcRoot]
+      rfl
+    rw [hnode] at hsupp
+    exact not_ancestor_two_resolved_statuses (E.store cfg ext w m) _ a _ o
+      hs ho hne ⟨is_ancestor_refl _ _, hsupp⟩
+  · have hsuppOwn : is_ancestor (E.store cfg ext w m)
+        (get_supported_node (E.store cfg ext w m) src)
+        (ForkChoiceNode.mk src.root o) = true := by
+      simpa only [hsrcRoot] using hsupp
+    have hresolved := (supported_node_own_root_resolved_iff
+      (E.store cfg ext w m) src o ho).mp hsuppOwn
+    simp only [get_supported_node, hresolved.1, ↓reduceIte] at hpending
+    cases hp : src.payload_present <;> simp [hp] at hpending
 
 /-- Honest endpoint supporters of the opposite resolved status of `a` are
 sibling-stuck at the endpoint, or they are old ancestor-class voters outside

@@ -138,11 +138,13 @@ theorem parent_payload_support_eq (h : CompleteEvidence cfg ext f)
       Weak.get_duty_fresh_parent_payload_support_between_slots cfg ext f.store bs b status a z := by
   have hp : (fun i => (f.store.latest_messages i).any (fun lm =>
       decide (lm.root = b) && decide (i ∉ f.store.equivocating_indices) &&
-        decide ((get_supported_node f.store lm).payload_status = status))) =
+        decide ((get_supported_node f.store lm).payload_status = status ∨
+          (get_supported_node f.store lm).payload_status = .pending))) =
       (fun i => (f.store.latest_messages i).any (fun lm =>
       decide (lm.root = b) && Weak.is_duty_fresh_message cfg ext f.store i lm &&
         decide (i ∉ f.store.equivocating_indices) &&
-        decide ((get_supported_node f.store lm).payload_status = status))) := by
+        decide ((get_supported_node f.store lm).payload_status = status ∨
+          (get_supported_node f.store lm).payload_status = .pending))) := by
     funext i
     cases hlm : f.store.latest_messages i with
     | none => rfl

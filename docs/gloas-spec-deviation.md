@@ -10,6 +10,12 @@ annotation of `compute_weak_subjectivity_period` from `Uint64` to `Epoch` in
 phase0, electra, and Gloas weak subjectivity files. None of the twelve pinned
 blobs changes.
 
+The weak branch `fcr-weak-synchrony-gloas-pending` adds the duty-freshness
+filter while keeping the parent-status-or-PENDING rule. Its local overlay hash is
+`e2ae85bc314e71645973093948f75992b8f10b74f308a7547af8b8d91af1c597`.
+The exact diff below records the strong overlay; the weak branch also keeps its
+slot-zero broadcast-certificate guard.
+
 The empty-slot range and adversarial weight are unchanged. The discount counts
 parent votes whose supported node has the payload status selected by the
 child's parent bid, plus PENDING parent votes. A PENDING vote supports neither

@@ -192,7 +192,8 @@ def get_duty_fresh_parent_payload_support_between_slots (store : Store Root)
         decide (latest_message.root = block_root) &&
           is_duty_fresh_message cfg ext store i latest_message &&
           decide (i ∉ store.equivocating_indices) &&
-          decide ((get_supported_node store latest_message).payload_status = payload_status))),
+          decide ((get_supported_node store latest_message).payload_status = payload_status ∨
+            (get_supported_node store latest_message).payload_status = .pending))),
     (balance_source.validators.getD i default).effective_balance
 
 /-- Weak-model `compute_empty_slot_support_discount` (as in `LMDHelpers`, over
