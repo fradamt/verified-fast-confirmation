@@ -2,6 +2,8 @@ module
 public import FastConfirmation.Spec.Proof.WeakSelectorBetween
 public import FastConfirmation.Spec.Proof.WeakDutyFreshness
 public import FastConfirmation.Spec.Proof.WeakObservedResetSeedSafety
+public import FastConfirmation.Spec.Proof.AcceptedActualFCRNextSlotSafetyFacade
+public import FastConfirmation.Spec.Proof.CausalQueryTraceAdapter
 public import FastConfirmation.Spec.TheoremStatements
 
 @[expose] public section
@@ -40,6 +42,34 @@ statement. Its accepted premises match the weak full-rule safety witness. -/
 def AcceptedWeakSpec_Monotonicity_live : Prop :=
   WeakSpec_Monotonicity_live cfg ext
     (AcceptedWeakObserverLivePremises cfg ext)
+
+/-- The weak safety floor contains the strong accepted trajectory fields.
+The strong record's additional epoch-length condition is explicit here. -/
+theorem accepted_weak_observer_to_strong_bundle
+    {E : Execution Root} {v : ValidatorIndex}
+    (hW : AcceptedWeakObserverLivePremises cfg ext E v)
+    (hslots : 1 < cfg.slots_per_epoch) :
+    Nonempty (E.AcceptedActualFCRNextSlotSafetyAssumptions cfg ext) := by
+  rcases hW with ⟨B, _hji, hanchor, hboundary, hDelay, hpaper,
+    P, V, hObs, hCbase, hfit⟩
+  let hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext :=
+    Execution.ScheduledPrefixTrajectoryAssumptions.of_selectedMarginAssumptions
+      cfg ext E hObs.base hObs.genesis
+  let hC := Execution.AcceptedHistoricalA32CompletedPrefixCallSupplement.toCompletedPrefixCallAssumptions
+    cfg ext E hCbase hObs.base
+  exact ⟨{
+    semantics := B
+    trajectory := hT
+    completed_calls := hC
+    epoch_ends_fit := hfit
+    anchor_eq := hanchor
+    anchor_boundary := hboundary
+    finalization_delay := hDelay
+    slots_per_epoch_gt_one := hslots
+    paper_a32 := hpaper
+    checkpoint_projection := P
+    exact_link_validity := V
+  }⟩
 
 /-- Consecutive parent and child slots make the weak empty-slot discount
 zero, even with the duty-fresh and PENDING parent support rules. -/
