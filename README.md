@@ -1,8 +1,8 @@
 # Verified Fast Confirmation
 
-Gloas status: **G2-003 and G2-004 are proved**. Full validation, including the
-trust audit, passed at commit `6d478e7`. The payload-aware empty-slot discount
-is a [documented local deviation](docs/gloas-spec-deviation.md) from upstream
+Gloas status: **G2-003 and G2-004 are proved** for the parent-status-or-PENDING
+empty-slot discount. The rule and proof are a
+[documented local deviation](docs/gloas-spec-deviation.md) from upstream
 consensus-specs commit `6b9bd532c`.
 
 Lean 4 formalizations of Ethereum's Fast Confirmation Rule.

@@ -19,7 +19,7 @@ EXPECTED_TOP_LEVEL_KEYS = {"schema", "repository", "commit", "license", "files"}
 EXPECTED_FILE_KEYS = {"path", "role", "git_blob", "bytes", "sha256"}
 EXPECTED_REPOSITORY = "https://github.com/ethereum/consensus-specs.git"
 EXPECTED_COMMIT = "6b9bd532cca16555e2f3282d757622ebff29743e"
-EXPECTED_GLOAS_DISCOUNT_SHA256 = "16c9df0facd3c7254fb1b0ac84168c5e01c0717363075f18db27790bf9158b63"
+EXPECTED_GLOAS_DISCOUNT_SHA256 = "e62ba45c9024b6621493b9b2ac7a21913bd6426a61b3e02827e164ac4968742b"
 EXPECTED_LICENSE = "CC0-1.0"
 EXPECTED_ROLES = {
     "specs/gloas/validator.md": "Gloas honest validator behavior",

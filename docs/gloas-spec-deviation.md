@@ -1,33 +1,38 @@
 # Gloas payload-aware empty-slot discount
 
 The upstream source pin is `6b9bd532cca16555e2f3282d757622ebff29743e`.
-The local Python change is `e40df4fe5`. The pin audit checks the twelve
-unchanged upstream blobs and the exact local Gloas overlay hash. Between the
+The local Python changes are `e40df4fe5` and `13f391516` on the
+`fcr-gloas-pending-discount` branch. The pin audit checks the twelve unchanged
+upstream blobs and the exact local Gloas overlay hash
+`e62ba45c9024b6621493b9b2ac7a21913bd6426a61b3e02827e164ac4968742b`. Between the
 old pin `477321355` and the new pin, upstream changes only the return type
 annotation of `compute_weak_subjectivity_period` from `Uint64` to `Epoch` in
 phase0, electra, and Gloas weak subjectivity files. None of the twelve pinned
 blobs changes.
 
 The empty-slot range and adversarial weight are unchanged. The discount counts
-only parent votes whose supported node has the payload status selected by the
-child's parent bid. A parent vote for the other status supports the competing
-payload branch and must remain in the safety threshold.
+parent votes whose supported node has the payload status selected by the
+child's parent bid, plus PENDING parent votes. A PENDING vote supports neither
+the FULL nor the EMPTY child of its root. A parent vote for the other resolved
+status supports the competing payload branch and must remain in the safety
+threshold.
 
 ## Exact Python diff against upstream
 
 ````diff
 diff --git a/specs/gloas/fast-confirmation.md b/specs/gloas/fast-confirmation.md
-index cf1259fd9..ae638befa 100644
+index cf1259fd9..2db7b981f 100644
 --- a/specs/gloas/fast-confirmation.md
 +++ b/specs/gloas/fast-confirmation.md
 @@ -8,0 +9,2 @@
 +    - [New `get_parent_payload_support_between_slots`](#new-get_parent_payload_support_between_slots)
 +    - [Modified `compute_empty_slot_support_discount`](#modified-compute_empty_slot_support_discount)
-@@ -30,0 +33,71 @@ def get_node_for_root(block_root: Root) -> ForkChoiceNode:
+@@ -30,0 +33,73 @@ def get_node_for_root(block_root: Root) -> ForkChoiceNode:
 +#### New `get_parent_payload_support_between_slots`
 +
-+Count parent votes only when they support the payload branch required by the
-+child. A parent vote for the other payload status supports the competing branch.
++Count parent votes when they support the payload branch required by the child
++or have PENDING status. A PENDING parent vote supports neither resolved payload
++branch. A vote for the other resolved status supports the competing branch.
 +
 +```python
 +def get_parent_payload_support_between_slots(
@@ -59,7 +64,8 @@ index cf1259fd9..ae638befa 100644
 +                i in store.latest_messages
 +                and store.latest_messages[i].root == block_root
 +                and i not in store.equivocating_indices
-+                and get_supported_node(store, store.latest_messages[i]).payload_status == payload_status
++                and get_supported_node(store, store.latest_messages[i]).payload_status
++                in (payload_status, PAYLOAD_STATUS_PENDING)
 +            )
 +        )
 +    )
@@ -106,8 +112,13 @@ slot 6. The source does not confirm `c`. The receiver still follows `P` EMPTY.
 The g3 projected-source replay gives discount 150 units, threshold 545 units,
 and support 400 units at slot 11; it also does not confirm `c`.
 
+The original upstream epoch-boundary test with validator 35 in the parent slot
+55 and the empty slot 56 keeps its confirmation expectation. Its last parent
+vote has PENDING status and can be discounted. The Gloas minimal reftest passes
+on this branch.
+
 The Lean model change is in `FastConfirmation/Spec/Model/LMDHelpers.lean`.
-`Discount.lean` proves the matching-parent discount bound.
+`Discount.lean` proves the matching-or-PENDING parent discount bound.
 `Endpoint.lean` proves the source Oanc strip from actual confirmation and
 the source V/pre partition. `OancTransport.lean` proves honest old-vote
 transport, the complete-window opposite score bound, and transport of a
@@ -150,8 +161,9 @@ The argument has three parts.
 1. An honest endpoint supporter of the opposite resolved status of the parent
    is sibling-stuck (`Xclass`), or it is an ancestor-class voter whose message
    is from the query window. The query holds the same message, so the voter is
-   not a matching parent-payload supporter at the query.
-2. The discount is at most the weight of the matching parent-payload
+   neither a matching nor a PENDING parent-payload supporter at the query.
+   A PENDING message cannot support either resolved parent status.
+2. The discount is at most the weight of the matching-or-PENDING parent-payload
    supporters (`Discount.lean` `support_discount_le_matching_parent_stuck`).
    The remaining ancestor-class weight stays in the confirmation strip. It
    pays for the opposite ancestor voters.
