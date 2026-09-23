@@ -19,6 +19,52 @@ namespace FastConfirmation.Spec
 variable {Root : Type*} [LinearOrder Root] [Inhabited Root]
 variable (cfg : Config) (ext : Externals Root)
 
+/-- The epoch-start chain check reduces to one-confirmation of each strict
+descendant of the observed checkpoint. This is the executable interface for
+the historical reconfirmation invariant. -/
+theorem is_confirmed_chain_safe_of_checkpoint_certificates
+    (query : FastConfirmationStore Root) (c : Root)
+    (hcheckpoint : query.current_epoch_observed_justified_checkpoint =
+      get_checkpoint_for_block cfg query.store c
+        query.current_epoch_observed_justified_checkpoint.epoch)
+    (hepoch : query.current_epoch_observed_justified_checkpoint.epoch + 1 ≥
+      get_current_store_epoch cfg query.store)
+    (hcert : ∀ b ∈ get_ancestor_roots query.store c
+        query.current_epoch_observed_justified_checkpoint.root,
+      is_one_confirmed cfg ext query.store
+        (get_previous_balance_source query) b = true) :
+    is_confirmed_chain_safe cfg ext query c = true := by
+  have hall : (get_ancestor_roots query.store c
+      query.current_epoch_observed_justified_checkpoint.root).all
+      (fun b => is_one_confirmed cfg ext query.store
+        (get_previous_balance_source query) b) = true := by
+    exact List.all_eq_true.mpr hcert
+  simp only [is_confirmed_chain_safe]
+  rw [if_neg (by intro hne; exact hne hcheckpoint)]
+  rw [if_pos hepoch]
+  exact hall
+
+/-- A cached root equal to the observed checkpoint has an empty strict
+descendant chain, so the epoch-start chain check is automatic. -/
+theorem is_confirmed_chain_safe_at_observed_checkpoint
+    (query : FastConfirmationStore Root)
+    (hcheckpoint : query.current_epoch_observed_justified_checkpoint =
+      get_checkpoint_for_block cfg query.store
+        query.current_epoch_observed_justified_checkpoint.root
+        query.current_epoch_observed_justified_checkpoint.epoch)
+    (hepoch : query.current_epoch_observed_justified_checkpoint.epoch + 1 ≥
+      get_current_store_epoch cfg query.store) :
+    is_confirmed_chain_safe cfg ext query
+      query.current_epoch_observed_justified_checkpoint.root = true := by
+  apply is_confirmed_chain_safe_of_checkpoint_certificates cfg ext query _
+    hcheckpoint hepoch
+  intro b hb
+  have hnil := get_ancestor_roots_stop (store := query.store)
+    (block_root := query.current_epoch_observed_justified_checkpoint.root)
+    (terminal_root := query.current_epoch_observed_justified_checkpoint.root) (le_refl _)
+  rw [hnil] at hb
+  cases hb
+
 /-- An epoch checkpoint whose root is an actual block of that epoch is the
 start-slot block on the head's ancestor walk. The pending target accepts
 either Gloas payload status of the head walk. -/
