@@ -174,17 +174,6 @@ inductive OnChainJustified (A : Anchor n) (τ : Timing) (blockVotes : BlockFFGVo
       (hsup : 3 * onChainLinkWeight A blockVotes B Cs Ct ≥ 2 * totalWeight A Finset.univ) :
       OnChainJustified A τ blockVotes b Ct
 
-/-- Transition-witness view of `OnChainJustified`: `C` is genesis or is justified by a
-    source→target link carried by an epoch-`N` witness block on `chain(b)`. -/
-def OnChainJustifiedAtTransition (A : Anchor n) (τ : Timing)
-    (blockVotes : BlockFFGVotes n) (b : Block n) (N : Epoch) (C : Checkpoint n) : Prop :=
-  C = genesisCheckpoint ∨
-    ∃ B : Block n, ∃ Cs : Checkpoint n,
-      B ≼ b ∧ τ.epochOf B.slot = N ∧
-        OnChainJustified A τ blockVotes B Cs ∧
-          (C.epoch = N ∨ C.epoch + 1 = N) ∧
-            C = onChainCheckpointOf τ b C.epoch ∧
-              3 * onChainLinkWeight A blockVotes B Cs C ≥ 2 * totalWeight A Finset.univ
 
 /-- `C` is finalized on-chain in `chain(b)`: it and an immediate next-epoch descendant checkpoint
     are both in `AU(b)`. -/

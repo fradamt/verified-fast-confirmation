@@ -1,4 +1,5 @@
 module
+public import FastConfirmationProofs.ModelFacts.SynchronyRelation
 public import FastConfirmationProofs.Checkpoints.AnchorChainSafety
 public import FastConfirmationProofs.Checkpoints.AnchorParentKnownness
 public import FastConfirmationProofs.Checkpoints.Anchoring
@@ -10,7 +11,6 @@ public import FastConfirmationProofs.Checkpoints.EdgeWeightAlgebra
 public import FastConfirmationProofs.Checkpoints.ExactCheckpointLinks
 public import FastConfirmationProofs.Checkpoints.ExecutionRootReflection
 public import FastConfirmationProofs.Checkpoints.GlobalResetCheckpointRealization
-public import FastConfirmationProofs.Checkpoints.ObservedAnchorQuorum
 public import FastConfirmationProofs.Checkpoints.PaperCheckpointInclusionSupportRealization
 public import FastConfirmationProofs.Checkpoints.ProcessedResetCheckpointRealization
 public import FastConfirmationProofs.Checkpoints.ResetCheckpointClassification

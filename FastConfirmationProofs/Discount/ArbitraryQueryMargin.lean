@@ -6,6 +6,8 @@ public import FastConfirmationProofs.LMD.SameSlotLMD
 /-!
 # Arbitrary-query selected margins
 
+Carries the head-safety margin from a selected confirmation to later arbitrary queries.
+
 This module contains `query_slot_start_le_of_slot_ge_minimal`, `freshEngineInputs_of_slotStart_IH_minimal`, `hgrowS_of_slotStart_IH_minimal` and related declarations.
 -/
 
@@ -214,51 +216,13 @@ store-indexed view needed by the confirmation base and its direct-window
 transport; endpoint classes remain the existing execution-store classes.
 -/
 
-/-- Newest-through-`σ` support for `b` measured in an explicit store. -/
-def StoreSupportsDesc (store : Store Root) (b : Root) (σ : Slot)
-    (i : ValidatorIndex) : Prop :=
-  ∃ (t : Slot) (k : ℕ) (a : Attestation Root),
-    t ≤ σ ∧ E.vote i t = some (k, a) ∧
-    (∀ t' : Slot, t < t' → t' ≤ σ → E.vote i t' = none) ∧
-    is_ancestor store (get_node_for_root a.data.beacon_block_root)
-      (get_node_for_root b) = true
-
-/-- Voteless-or-ancestor classification measured in an explicit store. -/
-def StoreAncestorOrVoteless (store : Store Root) (b : Root) (σ : Slot)
-    (i : ValidatorIndex) : Prop :=
-  (∀ t' : Slot, t' ≤ σ → E.vote i t' = none) ∨
-  (∃ (t : Slot) (k : ℕ) (a : Attestation Root),
-    t ≤ σ ∧ E.vote i t = some (k, a) ∧
-    (∀ t' : Slot, t < t' → t' ≤ σ → E.vote i t' = none) ∧
-    is_ancestor store (get_node_for_root b)
-      (get_node_for_root a.data.beacon_block_root) = true)
-
-open Classical in
-/-- Honest supporting class in the exact query store. -/
-noncomputable def StoreSclass (store : Store Root) (b : Root)
-    (lo σ : Slot) : Finset ValidatorIndex :=
-  ((E.span_committee lo σ).filter (fun i => i ∈ E.honest)).filter
-    (fun i => E.StoreSupportsDesc store b σ i)
 
 
-open Classical in
-/-- Remaining honest class in the exact query store. -/
-noncomputable def StoreXclass (store : Store Root) (b : Root)
-    (lo σ : Slot) : Finset ValidatorIndex :=
-  ((E.span_committee lo σ).filter (fun i => i ∈ E.honest)).filter
-    (fun i => ¬ E.StoreSupportsDesc store b σ i ∧
-      ¬ E.StoreAncestorOrVoteless store b σ i)
-
-/-- Weight of the store-indexed supporting class. -/
-noncomputable def StoreSval (store : Store Root) (b : Root)
-    (lo σ : Slot) : Gwei :=
-  E.weight (E.StoreSclass store b lo σ)
 
 
-/-- Weight of the store-indexed remaining class. -/
-noncomputable def StoreXval (store : Store Root) (b : Root)
-    (lo σ : Slot) : Gwei :=
-  E.weight (E.StoreXclass store b lo σ)
+
+
+
 
 
 
@@ -351,7 +315,7 @@ theorem sameEpoch_descendStep_of_selectedInputsAt_minimal
     hin.σ_lt_endpoint hHm hsame hchain hc hglcKnown hIH
   have hσH : E.SlotWithinHorizon cfg σ :=
     E.slotWithinHorizon_of_le cfg (Nat.le_of_lt hin.σ_lt_endpoint) hHm
-  have hbudget := E.hbudget_sameEpoch_of_IH cfg ext hA.byzantine_bound
+  have hbudget := E.hbudget_sameEpoch cfg ext hA.byzantine_bound
     hA.externals_coherence hin.lo_le_es hin.es_le_σ hσH hsame
   have hval : ((E.store cfg ext w m).checkpoint_states
       (E.store cfg ext w m).justified_checkpoint).validators = E.registry :=
@@ -423,45 +387,6 @@ structure DirectWindowSelectedMarginInputsAt
           (E.store cfg ext w m).justified_checkpoint) ≤
       E.Xval cfg ext w m c lo es + E.Bval lo es
 
-/-- Direct-window selected inputs whose confirmation base is classified in
-the exact store read by the query.  No equality with `E.store v q` is a field
-of this record. -/
-structure PrefixDirectWindowSelectedMarginInputsAt
-    (glc a c : Root) (v : ValidatorIndex) (q : ℕ)
-    (query : FastConfirmationStore Root)
-    (w : ValidatorIndex) (m : ℕ) (lo es : Slot) : Prop where
-  support_transport : ∀ i, i ∈ E.honest → i ∈ E.span_committee lo es →
-    E.StoreSupportsDesc query.store c es i →
-      E.SupportsDesc cfg ext w m c es i
-  ancestor_transport : ∀ i, i ∈ E.honest →
-    i ∈ E.span_committee lo es →
-    E.StoreAncestorOrVoteless query.store c es i →
-      E.AncestorOrVoteless cfg ext w m c es i
-  base_strip : E.StoreXval query.store c lo es + E.Bval lo es
-      + get_proposer_score cfg (E.store cfg ext w m) + 1 ≤
-    E.StoreSval query.store c lo es
-  child_filtered : ForkChoiceNode.mk c .pending ∈
-    get_node_children (E.store cfg ext w m)
-      (get_filtered_block_tree cfg (E.store cfg ext w m))
-      (ForkChoiceNode.mk a (get_parent_payload_status (E.store cfg ext w m)
-        ((E.store cfg ext w m).blocks c)))
-  status_margin : PendingStatusMargin cfg (E.store cfg ext w m)
-    (get_filtered_block_tree cfg (E.store cfg ext w m)) a
-    (get_parent_payload_status (E.store cfg ext w m)
-      ((E.store cfg ext w m).blocks c))
-  selected_score : E.Sval cfg ext w m c lo es ≤
-    get_attestation_score cfg (E.store cfg ext w m) (get_node_for_root c)
-      ((E.store cfg ext w m).checkpoint_states
-        (E.store cfg ext w m).justified_checkpoint)
-  sibling_score : ∀ c' : Root,
-    ForkChoiceNode.mk c' .pending ∈ get_node_children (E.store cfg ext w m)
-      (get_filtered_block_tree cfg (E.store cfg ext w m))
-      (ForkChoiceNode.mk a (get_parent_payload_status (E.store cfg ext w m)
-        ((E.store cfg ext w m).blocks c))) → c' ≠ c →
-    get_attestation_score cfg (E.store cfg ext w m) (get_node_for_root c')
-        ((E.store cfg ext w m).checkpoint_states
-          (E.store cfg ext w m).justified_checkpoint) ≤
-      E.Xval cfg ext w m c lo es + E.Bval lo es
 
 
 

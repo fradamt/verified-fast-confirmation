@@ -98,23 +98,6 @@ def getLatestSelectorGuard
   get_block_epoch cfg query.store candidate + 1 ≥
     get_current_store_epoch cfg query.store
 
-/-- The phased evaluator reconstructed from the three named guards. -/
-def getLatestTraceResult
-    (query : FastConfirmationStore Root) : Root :=
-  let candidate := getLatestAfterObserved cfg ext query
-  if get_block_epoch cfg query.store candidate + 1 ≥
-      get_current_store_epoch cfg query.store then
-    find_latest_confirmed_descendant cfg ext query candidate
-  else
-    candidate
-
-/-- The named phased evaluator is definitionally the pinned executable
-`get_latest_confirmed`. -/
-theorem getLatestTraceResult_eq_getLatestConfirmed
-    (query : FastConfirmationStore Root) :
-    getLatestTraceResult cfg ext query = get_latest_confirmed cfg ext query := by
-  rfl
-
 /-- Exact provenance for the first phase. -/
 inductive GetLatestFinalizedPhase
     (query : FastConfirmationStore Root) : Root → Prop
@@ -172,7 +155,7 @@ def getLatestConfirmedTrace
     LatestConfirmedCallTrace cfg ext query := by
   let afterFinalized := getLatestAfterFinalized cfg ext query
   let afterObserved := getLatestAfterObserved cfg ext query
-  let result := getLatestTraceResult cfg ext query
+  let result := get_latest_confirmed cfg ext query
   refine {
     afterFinalized := afterFinalized
     afterObserved := afterObserved
@@ -202,7 +185,13 @@ def getLatestConfirmedTrace
         Bool.eq_false_of_not_eq_true hguard
       rw [if_neg hguard]
       exact .unchanged hfalse
-  · dsimp only [result, getLatestTraceResult, afterObserved]
+  · change GetLatestSelectorPhase cfg ext query
+      (getLatestAfterObserved cfg ext query)
+      (if get_block_epoch cfg query.store (getLatestAfterObserved cfg ext query) + 1 ≥
+            get_current_store_epoch cfg query.store then
+        find_latest_confirmed_descendant cfg ext query
+          (getLatestAfterObserved cfg ext query)
+       else getLatestAfterObserved cfg ext query)
     by_cases hguard : getLatestSelectorGuard cfg query
         (getLatestAfterObserved cfg ext query)
     · have hnamed := hguard
@@ -213,7 +202,7 @@ def getLatestConfirmedTrace
       simp only [getLatestSelectorGuard] at hguard
       rw [if_neg hguard]
       exact .unchanged hnamed
-  · exact getLatestTraceResult_eq_getLatestConfirmed cfg ext query
+  · rfl
 
 namespace LatestConfirmedCallTrace
 end LatestConfirmedCallTrace

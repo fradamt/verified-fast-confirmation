@@ -99,90 +99,13 @@ theorem descendStep_of_dom {store : Store Root} {blocks : List Root} {h c : Root
 
 /-! ## The descent chain builds a `DescendsTo` path -/
 
-/-- A `List.IsChain DescendStep` over `h :: ds` ending at `b` (the last node of
-`h :: ds`) is a `Descent.DescendsTo … b ds.length h` path. Structural recursion on
-`ds`, `h` general: the `nil` base forces `h = b` (`DescendsTo.here`); each `cons`
-peels one dominant child (`DescendsTo.step`) and recurses. -/
-theorem descendsTo_of_chain {store : Store Root} {blocks : List Root} {b : Root}
-    (hb : b ∈ store.block_roots) :
-    ∀ (ds : List Root) (h : Root),
-      List.IsChain (DescendStep cfg store blocks) (h :: ds) →
-      (h :: ds).getLast (List.cons_ne_nil h ds) = b →
-      DescendsTo cfg store blocks b ds.length h := by
-  intro ds
-  induction ds with
-  | nil =>
-    intro h _ hlast
-    have hhb : h = b := hlast
-    subst hhb
-    exact DescendsTo.here hb
-  | cons a rest ih =>
-    intro h hchain hlast
-    rw [List.isChain_cons_cons] at hchain
-    obtain ⟨hstep, hchain'⟩ := hchain
-    have hlast' : (a :: rest).getLast (List.cons_ne_nil a rest) = b :=
-      (List.getLast_cons (List.cons_ne_nil a rest)).symm.trans hlast
-    exact hstep.descendsTo (ih a hchain' hlast')
 
 /-! ## The descent nodes live in the filtered tree -/
 
-/-- Every non-root node on a `DescendStep` chain sits in the candidate list
-`blocks`: each is a chosen `get_node_children` member, whose root is drawn from
-`blocks` (`mem_get_node_children`). This is the subset feeding the path-length /
-fuel bound. -/
-theorem chain_descendStep_mem {store : Store Root} {blocks : List Root} :
-    ∀ (ds : List Root) (h : Root),
-      List.IsChain (DescendStep cfg store blocks) (h :: ds) →
-      ∀ c ∈ ds, c ∈ blocks := by
-  intro ds
-  induction ds with
-  | nil => intro _ _ c hc; exact absurd hc List.not_mem_nil
-  | cons a rest ih =>
-    intro h hchain c hc
-    rw [List.isChain_cons_cons] at hchain
-    obtain ⟨hstep, hchain'⟩ := hchain
-    rw [List.mem_cons] at hc
-    rcases hc with rfl | hc
-    · exact hstep.child_mem
-    · exact ih a hchain' c hc
 
-omit [Inhabited Root] in
-/-- A `Nodup` list injects into any list it is a subset of, so its length is
-bounded (`toFinset` card comparison). The path-length discharge for the fuel
-hypothesis of `Descent.is_ancestor_get_head`. -/
-private theorem length_le_of_nodup_subset {l₁ l₂ : List Root}
-    (hnd : l₁.Nodup) (hsub : l₁ ⊆ l₂) : l₁.length ≤ l₂.length := by
-  rw [← List.toFinset_card_of_nodup hnd]
-  have hfs : l₁.toFinset ⊆ l₂.toFinset := by
-    intro x hx
-    rw [List.mem_toFinset] at hx ⊢
-    exact hsub hx
-  exact le_trans (Finset.card_le_card hfs) (List.toFinset_card_le (l := l₂))
 
 /-! ## The headline: the head descends from `b` -/
 
-/-- A chain of actual payload selections and dominant beacon children from
-the justified root to `b` forces the head to descend from `b`. Distinct chain
-roots bound the beacon depth; the Gloas fuel then covers both node steps of
-each edge. The statement uses the existing store and filter conditions. -/
-theorem is_ancestor_get_head_of_chain {store : Store Root}
-    (hwf : ∀ r ∈ store.block_roots,
-      (store.blocks r).parent_root ∈ store.block_roots →
-        (store.blocks (store.blocks r).parent_root).slot < (store.blocks r).slot)
-    (hsub : ∀ r ∈ get_filtered_block_tree cfg store, r ∈ store.block_roots)
-    {b : Root} {ds : List Root}
-    (hb : b ∈ store.block_roots)
-    (hnd : ds.Nodup)
-    (hchain : List.IsChain (DescendStep cfg store (get_filtered_block_tree cfg store))
-      (store.justified_checkpoint.root :: ds))
-    (hlast : (store.justified_checkpoint.root :: ds).getLast (List.cons_ne_nil _ _) = b) :
-    is_ancestor store (get_head cfg store) (get_node_for_root b) = true := by
-  have hdesc := descendsTo_of_chain cfg hb ds store.justified_checkpoint.root hchain hlast
-  have hmem := chain_descendStep_mem cfg ds store.justified_checkpoint.root hchain
-  have hfuel : ds.length ≤ (get_filtered_block_tree cfg store).length + 1 :=
-    Nat.le_succ_of_le (length_le_of_nodup_subset hnd (fun c hc => hmem c hc))
-  change is_ancestor store (get_head cfg store) (ForkChoiceNode.mk b .pending) = true
-  exact is_ancestor_get_head cfg hwf hsub hdesc hfuel
 
 /-! ## The filter complement: filtered roots descend from the justified root
 

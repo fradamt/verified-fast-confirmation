@@ -3,7 +3,6 @@ public import FastConfirmationProofs.FFG.CurrentTarget.CurrentTargetFutureSuppor
 public import FastConfirmationProofs.FCRRule.SelectedCheckpointInclusionSupport
 public import FastConfirmationProofs.FFG.SourceHistory.FFGSourceCoherence
 public import FastConfirmationProofs.FFG.State.ScheduledFFGGlobalCheckpointTrajectory
-public import FastConfirmationProofs.Checkpoints.ObservedAnchorQuorum
 public import FastConfirmationProofs.ForkChoice.Head.AheadHeadDominance
 public import FastConfirmationProofs.Handlers.HandlerStepFacts
 public import FastConfirmationProofs.ForkChoice.Head.HeadStack

@@ -9,6 +9,8 @@ public import FastConfirmationProofs.Execution.Trajectory.InductionHypothesis
 /-!
 # Spec / Proof / LastAlgebra
 
+Proves additive committee-weight bounds for the checkpoint edge safety argument.
+
 This module contains `weight_add_sdiff`, `weight_add_le`, `hR4b_of_confinement` and related declarations.
 -/
 

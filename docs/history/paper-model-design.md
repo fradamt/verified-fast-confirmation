@@ -1,12 +1,14 @@
+> Historical document. Replaced by [docs/MODELING_CHOICES.md](../MODELING_CHOICES.md).
+
 # Paper-model design
 
 This document describes the companion formalization of Sections 3.1 and 4 of
 the [Fast Confirmation Rule paper](https://arxiv.org/abs/2405.00549). It covers
-`FastConfirmation/Paper/Core/`, `FastConfirmation/Paper/LMDGhost/`, and
-`FastConfirmation/Paper/HFC/`.
+`FastConfirmationPaper/Core/`, `FastConfirmationPaper/LMDGhost/`, and
+`FastConfirmationPaper/HFC/`.
 
 This is not the consensus-spec model. The primary verification target lives in
-`FastConfirmation/Spec/`, follows the executable consensus specification, and
+`FastConfirmationModel/`, follows the executable consensus specification, and
 does not import the paper-model modules. The two developments currently have no
 formal refinement theorem between them.
 
@@ -21,7 +23,7 @@ The paper model formalizes:
 
 It does not formalize the Section 5 variable-balance generalization or the
 paper's best-case liveness result. The production consensus-spec predicate is
-modeled separately under `FastConfirmation/Spec/`.
+modeled separately under `FastConfirmationModel/`.
 
 ## Architecture
 
@@ -67,9 +69,9 @@ proved public facades.
 
 The public proved constants are:
 
-- `Theorem1_Safety_proved`
-- `Theorem1_Monotonicity_proved`
-- `HeadFutureAgreement_proved`
+- `confirmed_block_safety`
+- `confirmed_block_monotonicity`
+- `head_agreement_after_confirmation`
 
 The assumptions distinguish:
 
@@ -80,15 +82,15 @@ The assumptions distinguish:
   proposer-boost well-formedness, epoch committee coverage, and the paper's
   adversary bound for monotonicity.
 
-`HeadFutureAgreement_proved` is filter-generic and anchor-generic. This is the
+`head_agreement_after_confirmation` is filter-generic and anchor-generic. This is the
 interface reused by the HFC proof.
 
 ## Section 4 result
 
 The headline proved constants are:
 
-- `HFC_Safety_Alg1_proved`
-- `HFC_Monotonicity_Alg1_proved`
+- `rule_confirmed_block_safety`
+- `rule_confirmed_block_monotonicity`
 
 Algorithm 1 uses AU-based selectors computed from FFG votes contained in a
 block's ancestry. `OnChainAnchorInterface` states the remaining connection
@@ -101,16 +103,16 @@ confirmed block. This is stronger and more direct than the paper's conditional
 eventual-closure Assumption 6; the distinction is part of the theorem surface,
 not hidden in the proof.
 
-The gate-based `HFC_Safety` and `HFC_Monotonicity` constants are internal proof
+The gate-based `GateConfirmedBlockSafety` and `GateConfirmedBlockMonotonicity` constants are internal proof
 interfaces. The `_Alg1` theorems are the public paper-facing results.
 
 ## Reading map
 
-- [`FastConfirmation/Paper/LMDGhost/TheoremStatements.lean`](../FastConfirmation/Paper/LMDGhost/TheoremStatements.lean)
-  and [`ReviewTheorem.lean`](../FastConfirmation/Paper/LMDGhost/ReviewTheorem.lean)
+- [`FastConfirmationPaper/LMDGhost/Claims.lean`](../FastConfirmationPaper/LMDGhost/Claims.lean)
+  and [`ReviewTheorem.lean`](../FastConfirmationPaper/LMDGhost/ReviewTheorem.lean)
   expose the Section 3.1 statements and proofs.
-- [`FastConfirmation/Paper/HFC/TheoremStatements.lean`](../FastConfirmation/Paper/HFC/TheoremStatements.lean)
-  and [`ReviewTheorem.lean`](../FastConfirmation/Paper/HFC/ReviewTheorem.lean)
+- [`FastConfirmationPaper/HFC/Claims.lean`](../FastConfirmationPaper/HFC/Claims.lean)
+  and [`ReviewTheorem.lean`](../FastConfirmationPaper/HFC/ReviewTheorem.lean)
   expose the Section 4 statements and proofs.
 - [`model-annotation.md`](model-annotation.md) maps paper definitions,
   assumptions, and theorems to Lean declarations.

@@ -6,6 +6,8 @@ public import FastConfirmationProofs.Discount.ArbitraryQueryMargin
 /-!
 # Justified coverage or a selected margin
 
+Shows that covered selected roots retain enough score to dominate competing heads.
+
 This module contains `covered_roots_isSome_of_ancestor`, `covered_hcase_of_ancestor`, `head_ge_of_covered_or_descend_chain` and related declarations.
 -/
 

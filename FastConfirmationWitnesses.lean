@@ -1,4 +1,5 @@
 module
+public import FastConfirmationWitnesses.Index
 public import FastConfirmationWitnesses.Counterexamples.PinnedEconomicsExtraQuery
 public import FastConfirmationWitnesses.Counterexamples.StrictPrefixExtraQuery
 public import FastConfirmationWitnesses.NonVacuity.FFGEvidence

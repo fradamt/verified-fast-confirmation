@@ -105,7 +105,7 @@ theorem blockAt_of_store_known
 
 omit [LinearOrder Root] [Inhabited Root] in
 /-- Two concrete messages at one execution root agree. -/
-theorem blockAt_unique_for_storeReflection
+theorem blockAt_unique
     (hwf : WellFormedExecution E)
     {r : Root} {b b' : BeaconBlock Root}
     (hb : E.BlockAt r b) (hb' : E.BlockAt r b') :
@@ -143,14 +143,14 @@ theorem parentEdge_parent_eq_of_store_known_for_storeReflection
   · obtain ⟨r, hr, hchildEq, hparentEq⟩ := hgen
     subst child
     subst parent
-    have heq := E.blockAt_unique_for_storeReflection hwf
+    have heq := E.blockAt_unique hwf
       (show E.BlockAt r (E.genesis_store.blocks r) from Or.inl ⟨hr, rfl⟩)
       hstoreAt
     exact congrArg BeaconBlock.parent_root heq
   · obtain ⟨w, n, sb, hs, hchildEq, hparentEq⟩ := hsched
     subst child
     subst parent
-    have heq := E.blockAt_unique_for_storeReflection hwf
+    have heq := E.blockAt_unique hwf
       (show E.BlockAt sb.root sb.message from
         Or.inr ⟨w, n, sb, hs, rfl, rfl⟩)
       hstoreAt

@@ -7,6 +7,8 @@ public import FastConfirmationProofs.Execution.Trajectory.LatestMessageProvenanc
 /-!
 # Spec / Proof / Reanchor
 
+Proves the margin bounds when a confirmed chain crosses an epoch checkpoint.
+
 This module contains `reanchored_endpoint_fullSpan`, `crossing_ghost_arith`, `reanchored_endpoint_of_fullSpan_certificate` and related declarations.
 -/
 

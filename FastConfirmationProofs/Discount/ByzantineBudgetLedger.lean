@@ -7,9 +7,12 @@ public import FastConfirmationInternal.Discount.ByzantineBudget
 @[expose] public section
 
 /-!
-# Spec / Proof / Arms
+# Discount / ByzantineBudgetLedger
 
-This module contains `estimate_same_epoch`, `slotcount_split`, `estimate_additive` and related declarations.
+Proves same-epoch estimate facts used by the recorded enemy budget ledger.
+
+The recorded enemy sets and `INV2` are in
+`FastConfirmationInternal.Discount.ByzantineBudget`.
 -/
 
 namespace FastConfirmation.Spec
@@ -63,19 +66,6 @@ theorem estimate_additive (cfg : Config) (tab : Gwei) (a b c : Slot)
       estimate_same_epoch cfg tab a b hab hcovAB hepAB,
       estimate_same_epoch cfg tab (b + 1) c hbc hcovBC hepBC,
       ← Nat.mul_add, slotcount_split a b c hab hbc]
-
-
-
-
-
-
-
-
-
-variable {Root : Type*} [LinearOrder Root] [Inhabited Root]
-variable (cfg : Config) (ext : Externals Root)
-
-
 
 
 

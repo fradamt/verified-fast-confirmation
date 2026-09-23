@@ -8,6 +8,8 @@ public import FastConfirmationModel.Execution.PayloadFrame
 /-!
 # Spec / Model / AcceptedExecution
 
+Defines exact event prefixes and accepted block transitions in a scheduled node execution. Python: `specs/gloas/fork-choice.md`, `on_block` and event handlers.
+
 Exact, handler-derived reachability for one execution second's scheduled
 event list.
 

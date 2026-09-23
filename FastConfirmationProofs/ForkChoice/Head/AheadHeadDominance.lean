@@ -1,5 +1,6 @@
 module
 public import FastConfirmationProofs.ForkChoice.Filter.AnchorFilterViability
+public import FastConfirmationProofs.FFG.State.ObservedCheckpointAncestry
 
 @[expose] public section
 

@@ -199,19 +199,6 @@ def OnChainAnchorBlockAvailable (fm : FaultModel n) (𝒱 : ViewFamily n (FFGVot
     ∀ ⦃w : Validator n⦄, w ∈ fm.honest → ∀ ⦃t' : Time⦄, t ≤ t' →
       b ∈ (𝒱 w t').blocks
 
-/-- Block availability discharged from synchrony: once an honest view has `b`, `blockRelay` puts
-    `b` in every honest view at the next post-GST slot boundary, and view monotonicity keeps it
-    there afterward. -/
-theorem OnChainAnchorBlockAvailable.of_blockRelay {fm : FaultModel n} {τ : Timing}
-    {𝒱 : ViewFamily n (FFGVote n)} (hSync : Synchrony n (FFGVote n) τ fm 𝒱)
-    {v : Validator n} (hv : v ∈ fm.honest) {t : Time} {b : Block n} {s' : Slot}
-    (hb : b ∈ (𝒱 v t).blocks) (htslot : τ.slotOf t ≤ s') (hgst : τ.AfterGST (τ.st s')) :
-    OnChainAnchorBlockAvailable fm 𝒱 b (τ.st (s' + 1)) := by
-  constructor
-  · exact ⟨v, hv, hSync.blockRelay hv hv hb htslot hgst⟩
-  · intro w hw t' ht'
-    exact (hSync.monotone w (τ.st (s' + 1)) t' ht').2
-      (hSync.blockRelay hv hw hb htslot hgst)
 
 /-- HFC view consistency for well-formed block-contained FFG payloads: when a block tip is in a
     view, the FFG vote records carried by any well-formed ancestor payload on that tip's chain are

@@ -9,7 +9,9 @@ public import FastConfirmationInternal.Discount.CommitteeWeight
 /-!
 # Spec / Proof / Fraction
 
-This module contains `Jspec`, `span_committee_mono`, `weight_split_honest` and related declarations.
+Proves honest committee span-weight identities using the `Jspec` accessor in Internal.
+
+This module contains `span_committee_mono`, `weight_split_honest` and related lemmas.
 -/
 
 namespace FastConfirmation.Spec

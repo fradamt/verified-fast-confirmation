@@ -1,4 +1,5 @@
 module
+public import FastConfirmationInternal.Execution.LatestTraceResult
 public import FastConfirmationInternal.Legacy.Vocabulary
 
 public import FastConfirmationInternal.Discount.ByzantineBudget

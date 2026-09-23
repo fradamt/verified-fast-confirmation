@@ -1,3 +1,5 @@
+> Historical document. Replaced by [docs/SPEC_MAP.md](../SPEC_MAP.md).
+
 # Gloas payload-aware empty-slot discount
 
 The upstream source pin is `6b9bd532cca16555e2f3282d757622ebff29743e`.
@@ -123,7 +125,7 @@ The original upstream epoch-boundary test with validator 35 in the parent slot
 vote has PENDING status and can be discounted. The Gloas minimal reftest passes
 on this branch.
 
-The Lean model change is in `FastConfirmation/Spec/Model/LMDHelpers.lean`.
+The Lean model change is in `FastConfirmationModel/Spec/FastConfirmation/LMD.lean`.
 `Discount.lean` proves the matching-or-PENDING parent discount bound.
 `Endpoint.lean` proves the source Oanc strip from actual confirmation and
 the source V/pre partition. `OancTransport.lean` proves honest old-vote
@@ -135,7 +137,7 @@ line and fits inside the existing complete-window Byzantine budget.
 ## Proof of the pending-parent status margin (G2-004)
 
 Full validation passes. The accepted public theorem
-`acceptedSpec_safety_next_slot` depends on the constructions below; the
+`confirmed_root_safe_from_next_slot` depends on the constructions below; the
 trust audit reports only `propext`, `Classical.choice`, and `Quot.sound`.
 
 ```text

@@ -213,7 +213,7 @@ theorem parentStuck_endpoint_Aclass_minimal
       decide_eq_true_eq] at hiRecorded
     obtain ⟨hlmParent, _hiNotEquiv⟩ := hiRecorded
     obtain ⟨t, k, att, htle, hvote, hnew, hattRoot⟩ :=
-      E.recorded_lm_is_newest_at cfg ext hA.honest_behavior
+      E.recorded_lm_is_newest cfg ext hA.honest_behavior
         hA.externals_coherence hgen hprovQ hes hih hlm
         (hmax i hih hiSpanFull lm hlm)
     have hrootA : att.data.beacon_block_root = a := by

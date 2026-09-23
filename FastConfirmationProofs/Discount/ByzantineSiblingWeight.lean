@@ -7,6 +7,8 @@ public import FastConfirmationProofs.Discount.CommitteeWindowWeight
 /-!
 # Spec / Proof / ByzVpre
 
+Bounds Byzantine and honest support of a sibling branch with committee estimates.
+
 This module contains `Jspec_add_Bval_eq_weight_span`, `weight_span_le_estimate`, `ancestor_slot_le` and related declarations.
 -/
 
@@ -116,7 +118,7 @@ base enemy `RecByzSibBase … lo es` (its provenance setting slot `≤ es`) or t
 `SpentSet es σ` (setting slot `> es`). The recorded sibling-ward conditions are closed by
 `siblings_incompatible` on the recorded supported node — the same fork geometry as
 `Confinement.honest_sibling_confinement`, but kept recorded throughout (no
-`recorded_lm_is_newest_at`, which is honest-only). -/
+`recorded_lm_is_newest`, which is honest-only). -/
 theorem byz_sibling_recorded_dichotomy
     {w : ValidatorIndex} {m : ℕ}
     (hprov : LatestMessageProvenance E cfg (get_current_slot cfg (E.store cfg ext w m))
@@ -196,7 +198,7 @@ theorem byz_sibling_recorded_dichotomy
 After the `recorded-base reduction` reshape, `LedgerV2.BbadSet` is **definitionally** `RecByzSibBase` (both
 are the recorded, sibling-ward, non-`(w,m)`-equivocating byz window set). Hence the
 recorded dichotomy `byz_sibling_recorded_dichotomy` — proved above with no
-`recorded_lm_is_newest_at` (byz have no `no_forgery`, so the ground↔recorded bridge is
+`recorded_lm_is_newest` (byz have no `no_forgery`, so the ground↔recorded bridge is
 honest-only and stays on `Confinement`) — now discharges the `hByz` obligation of
 `EdgeDynamics.EdgeInputResidual` / `ForkAssembly.ForkEdgeInput` verbatim: a byz supporter
 of a filtered sibling `c'` of the `b`-side child `c` lands in `BbadSet ∪ SpentSet`. -/

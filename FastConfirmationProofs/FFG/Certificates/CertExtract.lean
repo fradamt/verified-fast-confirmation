@@ -6,6 +6,8 @@ public import FastConfirmationProofs.Checkpoints.AnchorChainSafety
 /-!
 # Spec / Proof / CertExtract
 
+Extracts comparable checkpoint ancestry and certificate facts from accepted stores.
+
 This module contains `is_ancestor_antisymm`, `is_ancestor_comparable`, `between_parent_child` and related declarations.
 -/
 

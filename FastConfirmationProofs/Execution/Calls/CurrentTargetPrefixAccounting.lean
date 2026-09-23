@@ -49,16 +49,6 @@ structure CurrentTargetPrefixAccountingEvidence
   committees : E.PrefixCommitteeAgreement cfg ext store
 
 omit [LinearOrder Root] [Inhabited Root] in
-private theorem prefix_weight_add_le
-    {A B C : Finset ValidatorIndex}
-    (hdisjoint : Disjoint A B) (hAC : A ⊆ C) (hBC : B ⊆ C) :
-    E.weight A + E.weight B ≤ E.weight C := by
-  simp only [Execution.weight]
-  rw [← Finset.sum_union hdisjoint]
-  exact Finset.sum_le_sum_of_subset_of_nonneg
-    (Finset.union_subset hAC hBC) (fun _ _ _ => Nat.zero_le _)
-
-omit [LinearOrder Root] [Inhabited Root] in
 private theorem prefix_byz_le_net_of_add
     {byz equiv budget : ℕ} (hbudget : byz + equiv ≤ budget) :
     byz ≤ if budget > equiv then budget - equiv else 0 := by
@@ -143,7 +133,7 @@ theorem currentTarget_nonhonest_add_equiv_le_budget_of_prefix
   let BS := ((CurrentTargetSupporters cfg store state).filter
     (fun i => i ∉ E.honest)).toFinset
   let EA := EquivActive cfg E store state start finish
-  refine (prefix_weight_add_le E ?_ ?_ ?_).trans
+  refine (E.weight_add_le ?_ ?_ ?_).trans
     (hbb.span_bound start finish hstartH hfinishH)
   · rw [Finset.disjoint_left]
     intro i hiBS hiEA

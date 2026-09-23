@@ -5,6 +5,8 @@ public import FastConfirmationProofs.Handlers.HandlerVoteClasses
 
 @[expose] public section
 
+/-! Proves that recorded vote windows and observed checkpoint ancestry remain valid when an execution window is shortened. -/
+
 namespace FastConfirmation.Spec
 
 variable {Root : Type*} [LinearOrder Root] [Inhabited Root]

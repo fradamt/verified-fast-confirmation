@@ -1,33 +1,17 @@
-# FCR conformance harness
+# Gloas FCR conformance
 
-The Lean runner checks the Comparison section of the conformance trace schema.
-For each JSON Lines record, it rebuilds the `Store Nat` and
-`FastConfirmationStore Nat`, builds `Config` from the recorded values, supplies
-the recorded answers for the four executable external functions, runs
-`Strong.on_fast_confirmation` for schema 1 or `Weak.on_fast_confirmation` for
-schema 2, and compares the recorded FCR fields.
+The conformance target is `gloas-minimal` with schema v2. The Python source is fork `fradamt/consensus-specs`, tag `fcr-gloas-fix` (`13f391516`). Branch `fcr-gloas-discount-fix` contains the public fix on upstream master `63a81afa6`. The harness rebuilds the projected Lean store and compares the Gloas head, including payload status, the six FCR store fields, and the safe execution block hash when a trace contains it.
 
-The runner also checks the runtime proof conditions required by `Config`:
-positive slot and duration values, the threshold bound, a positive effective
-balance increment, and divisibility of that increment by 100. A failed check
-rejects the record with an error.
-
-It does not check the `ExternalsCoherence` assumptions. The abstract FFG
-semantics propositions are also not executable checks. The `id` field in a
-state is informational; matching uses the five projected state fields defined
-by the schema.
-
-Run the interpreted runner with:
+Use an existing local Python environment and a local source checkout:
 
 ```sh
-lake env lean --run scripts/conformance/lean/Conformance.lean <trace.jsonl>
+scripts/conformance/run.sh /path/to/fradamt-consensus-specs gloas minimal out/gloas-minimal.jsonl
 ```
 
-The authoritative schema is
-[`scripts/conformance/TRACE_SCHEMA.md`](../scripts/conformance/TRACE_SCHEMA.md).
-The runner is interpreted on purpose. It is a plain Lean file and is not part
-of a `lean_lib`; this avoids native linking of the Mathlib import closure.
+The runner uses the checkout's Python environment. It performs no setup. It writes Python and Lean logs next to the trace and returns a nonzero status for an empty export, schema error, test failure, or Lean mismatch. `FCR_EXPORT_ONLY=1` exports and checks the trace without invoking Lean. The Lean runner is a script outside the library.
 
-Schema 1 covers the main strong rule. Schema 2 adds the weak rule's
-`current_epoch_greatest_unrealized_checkpoint` field. The runner compares that
-field only for schema 2.
+Schema v2 records payload membership, PTC vote maps, block deadlines, bid hashes, message slots and payload flags, and committee reads. The projection keeps a source state identity for opaque external calls. The runner checks executable configuration conditions. It does not replay block, envelope, or PTC handlers, prove `BeaconExternalsPremises`, or implement execution engine validation. Each imported payload must already have passed source validation. A trace match is an observation comparison.
+
+The [trace schema](../scripts/conformance/TRACE_SCHEMA.md) defines the format. The safe execution hash fixtures in `scripts/conformance/lean/examples/` check both a matching and a mismatching parent hash. The direct helper exporter in `scripts/conformance/python/gloas_helper_observations.py` covers strict PTC majorities, missing payloads, payload ties, previous-slot zero weight, and early proposer equivocations. Its Lean comparison is `scripts/conformance/lean/GloasHelpers.lean`.
+
+Schema v1 phase0 traces remain historical and both readers reject them. Gloas FULL and available payload nodes do not establish equality with phase0 fork choice. See [modeling choices](MODELING_CHOICES.md). A recorded partial minimal export and an upstream-discount negative result are in [history](history/gloas-negative-result.md); they are not a full current conformance result.

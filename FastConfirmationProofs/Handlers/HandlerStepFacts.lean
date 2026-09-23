@@ -1,42 +1,15 @@
 module
-public import FastConfirmationProofs.FFG.State.ObservedCheckpointAncestry
+public import FastConfirmationProofs.Execution.Trajectory.ChainWalkClosure
 public import FastConfirmationProofs.FFG.SourceHistory.SafeFromInvariant
 
 @[expose] public section
 
 /-!
-# Spec / Proof / MicroSteps: structural reductions
+# Spec / Proof / MicroSteps
 
-This module supplies two reductions used by `ResidualMechanicalII` and
-`ObservedDom`:
+Proves that handler updates preserve observed checkpoints and ancestor walks.
 
-* **`walk_closure` from an anchor-minimum guard.** `ResidualMechanicalII.WalkClosure`
-  asks every known block above the target slot to have a *known* parent. Its
-  "parent is known **or** the anchor's dangling pointer `P`" half is Layer-0:
-  `Execution.store_parentInRootsOr` re-exposes the `ParentInRootsOr P` component of
-  `WFTrajectory.WFPlus` at the trajectory level (the same induction as
-  `store_parentSlotLt`, extracting `.2.2.1`). `walkClosure_of_min` then derives
-  `WalkClosure` from `ParentInRootsOr P` plus the flat
-  **anchor/minimal-slot guard** `∀ r, parent = P → slot ≤ sl` (only the anchor's own
-  dangling edge, not every block). So `walk_closure` shrinks to `anchor_slot_guard`.
-
-* **The confirming-store descent used by `dynamics_struct`.** The loops in
-  inversions (`L4Fold.find_latest_confirmed_descendant_spec` /
-  `get_latest_confirmed_spec`) already expose that the confirmed block is a reset
-  anchor or passed `is_one_confirmed`; strengthened here to `..._mem`, they also
-  expose that a non-anchor result is a **member of `get_ancestor_roots store head r₀`**
-  — i.e. it descends from the reset anchor `r₀` *at the confirming store*. This is the
-  loop-structural half of `hcase`. Lifting it to the arbitrary endpoint `(w, m)` of
-  `DynamicsChainStruct` uses an explicit cross-store transport premise.
-
-A third reduction — the on-boundary source for `prev_greatest_justifiedIn`
-(`update_fcv_observed_boundary`, `fcrStep_observed_boundary`,
-`prev_greatest_justifiedIn_of_boundarySource`) — stood here too. It unfolded
-`update_fast_confirmation_variables`' epoch-boundary rotation of
-`current_epoch_observed_justified_checkpoint` for the observed-anchor filter bundle, and is
-deleted with the legacy `SpecAssumptions` observed-anchor cone's orphan sweep (P-6; see the
-section note below and `docs/p6-justified-descends-derivation.md` §8). The off-boundary
-`fcrStep_observed_else` is unaffected.
+This module contains `walkClosure_of_min`, `update_fcv_observed_boundary`, `fcrStep_observed_boundary` and related declarations.
 -/
 
 namespace FastConfirmation.Spec
@@ -89,22 +62,46 @@ next slot is also an epoch start — only possible for `slots_per_epoch = 1`) or
 carried `previous_epoch_greatest_unrealized_checkpoint`. Both are greatest-unrealized
 / unrealized-justified checkpoints supplied by the boundary-source premise. -/
 
-/-! ### Deleted: the epoch-boundary observed-rotation micro-steps
-
-`update_fcv_observed_boundary`, `fcrStep_observed_boundary` and
-`prev_greatest_justifiedIn_of_boundarySource` stood here. They unfolded the on-boundary
-rotation of `current_epoch_observed_justified_checkpoint` for the observed-anchor filter
-bundle's `observed_known` / `prev_greatest_justifiedIn` fields. The off-boundary
-`fcrStep_observed_else` and the rest of the module are unaffected.
-
-They are deleted by the orphan sweep that follows the retirement of the legacy
-`SpecAssumptions` observed-anchor cone (P-6): every consumer they had was in that cone.
-See `docs/p6-justified-descends-derivation.md` §8. -/
+/-- **`update_fast_confirmation_variables`' observed rotation, on an epoch boundary.**
+When the store's current slot is an epoch start, the rotation writes
+`current_epoch_observed_justified_checkpoint` from the (possibly just-updated)
+`previous_epoch_greatest_unrealized_checkpoint`: the store's
+`unrealized_justified_checkpoint` if the *next* slot is also an epoch start (the
+last-slot-of-epoch branch fired, `slots_per_epoch = 1`), else the carried
+`previous_epoch_greatest_unrealized_checkpoint`. The `else` branch of the outer `if`
+is `update_fcv_observed_else` (`ObservedDom`); this is its `then` branch. -/
+theorem update_fcv_observed_boundary (fcr_store : FastConfirmationStore Root)
+    (hstart : is_start_slot_at_epoch cfg (get_current_slot cfg fcr_store.store) = true) :
+    (update_fast_confirmation_variables cfg fcr_store).current_epoch_observed_justified_checkpoint
+      = (if is_start_slot_at_epoch cfg (get_current_slot cfg fcr_store.store + 1) then
+          fcr_store.store.unrealized_justified_checkpoint
+        else fcr_store.previous_epoch_greatest_unrealized_checkpoint) := by
+  simp only [update_fast_confirmation_variables]
+  rw [if_pos hstart]
+  split_ifs <;> rfl
 
 namespace Execution
 
 variable (E : Execution Root)
 
+
+
+/-- **`fcrStoreAtCall`'s observed checkpoint on an epoch boundary.** Re-seating
+`update_fcv_observed_boundary` on `store v (n+1)`: on the boundary the `fcrStoreAtCall`-observed
+checkpoint is the store's `unrealized_justified_checkpoint` (`slots_per_epoch = 1`
+degenerate branch) or the carried `(fcr v n).previous_epoch_greatest_unrealized_checkpoint`.
+This exposes the rotation `fcrStoreAtCall` applies even at a non-advance second
+(the `fcr` recursion itself discards it), exposing the actual checkpoint source. -/
+theorem fcrStep_observed_boundary (v : ValidatorIndex) (n : ℕ)
+    (hstart : is_start_slot_at_epoch cfg (get_current_slot cfg (E.store cfg ext v (n + 1)))
+      = true) :
+    (E.fcrStoreAtCall cfg ext v n).current_epoch_observed_justified_checkpoint
+      = (if is_start_slot_at_epoch cfg (get_current_slot cfg (E.store cfg ext v (n + 1)) + 1) then
+          (E.store cfg ext v (n + 1)).unrealized_justified_checkpoint
+        else (E.fcr cfg ext v n).previous_epoch_greatest_unrealized_checkpoint) := by
+  rw [Execution.fcrStoreAtCall]
+  exact update_fcv_observed_boundary cfg
+    { E.fcr cfg ext v n with store := E.store cfg ext v (n + 1) } hstart
 
 
 end Execution

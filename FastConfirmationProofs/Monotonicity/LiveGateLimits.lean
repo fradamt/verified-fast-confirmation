@@ -1,5 +1,6 @@
 module
 public import FastConfirmationProofs.FCRRule.GetLatestConfirmedTrace
+public import FastConfirmationInternal.Execution.LatestTraceResult
 public import FastConfirmationProofs.FFG.SourceHistory.SafeFromInvariant
 
 @[expose] public section

@@ -99,7 +99,6 @@ def audit() -> tuple[int, list[str]]:
         r"(?:theorem|lemma)\s+([\w'.₀-₉]+)", re.M)
     allowed = {
         ("FastConfirmationModel.Execution.ScheduledPrefixes", "processedCount_lt"),
-        ("FastConfirmationStatements.Traces", "getLatestTraceResult_eq_getLatestConfirmed"),
     }
     found: set[tuple[str, str]] = set()
     for module, path in modules.items():

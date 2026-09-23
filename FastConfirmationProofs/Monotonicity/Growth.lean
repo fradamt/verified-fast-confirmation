@@ -6,6 +6,8 @@ public import FastConfirmationProofs.Checkpoints.CheckpointMarginInputs
 /-!
 # Spec / Proof / Growth
 
+Proves that honest vote support grows across later committee windows.
+
 This module contains `sub_mul_le_of_span`, `telescope_S`, `hgrowX_aux` and related declarations.
 -/
 
