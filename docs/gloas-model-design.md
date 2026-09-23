@@ -88,6 +88,25 @@ not mean successful verification. The payload map changes only after a
 successful envelope handler. Source: `specs/gloas/fork-choice.md:293`,
 `:658`, and `:1089`.
 
+The model is non-optimistic by design. No optimistic status will be added.
+`on_execution_payload_envelope` is the only entry to `store.payloads`. It
+requires `verify_execution_payload_envelope = true`. This external represents
+the complete Python validation, including the execution engine's `VALID`
+verdict. Every imported payload is fully validated. The `is_one_confirmed`
+`MUST` about non-`VALID` blocks therefore holds by construction in this model.
+The execution layer remains uninterpreted, as intended at this boundary.
+
+The safety interface now separates envelope delivery and data-availability
+relay in `PaperSafetySynchrony` from observation-independent verification in
+`ExternalsCoherence.verify_envelope_deterministic`. A receiver must process
+an envelope after its block is known. An envelope received earlier is
+rejected by the handler, so the schedule must redeliver it after the block.
+Availability at an honest node's envelope observation propagates to the
+corresponding receiver observation by the same deadline as block relay.
+Root commitment and deterministic `state_transition` give equal block states
+at common roots; the proof derives this equality rather than assuming it.
+These premises yield the old verified-payload relay as a theorem.
+
 The coherence contract is as follows. Each accepted projected input must
 have a source input. External outputs must equal the projection of the
 source operation on that input and its recorded observation. Inputs that

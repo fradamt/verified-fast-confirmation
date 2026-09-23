@@ -54,8 +54,9 @@ def get_block_support_between_slots (store : Store Root)
           decide (i ∉ store.equivocating_indices))),
     (balance_source.validators.getD i default).effective_balance
 
-/-- Gloas override: count only votes for the parent's payload branch used by
-the child. Votes for the other payload status support its competing branch. -/
+/-- Gloas override: count votes for the parent's payload branch used by the
+child and PENDING parent votes. PENDING votes support neither resolved branch.
+Votes for the other resolved status support the competing branch. -/
 def get_parent_payload_support_between_slots (store : Store Root)
     (balance_source : BeaconState Root) (block_root : Root)
     (payload_status : PayloadStatus) (start_slot end_slot : Slot) : Gwei :=
@@ -70,7 +71,8 @@ def get_parent_payload_support_between_slots (store : Store Root)
       (store.latest_messages i).any (fun latest_message =>
         decide (latest_message.root = block_root) &&
           decide (i ∉ store.equivocating_indices) &&
-          decide ((get_supported_node store latest_message).payload_status = payload_status))),
+          decide ((get_supported_node store latest_message).payload_status = payload_status ∨
+            (get_supported_node store latest_message).payload_status = .pending))),
     (balance_source.validators.getD i default).effective_balance
 
 /-- `is_full_validator_set_covered`: Return ``True`` if the range between
