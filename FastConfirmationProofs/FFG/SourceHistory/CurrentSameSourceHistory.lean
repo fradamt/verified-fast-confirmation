@@ -52,10 +52,10 @@ variable {E : Execution Root}
 Public current-same theorems expose its independent constituents instead of
 exporting `SelectedMarginAssumptions` as a completion premise. -/
 private def selectedMarginAssumptions_of_sourceHistoryInputs
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
-    (hsync : PaperSafetySynchrony cfg ext E)
+    (hT : E.ScheduledPrefixPremises cfg ext)
+    (hsync : NextSlotSynchronyPremises cfg ext E)
     (hstatic : StaticValidatorSet cfg E)
-    (hbyz : ByzantineBound cfg E)
+    (hbyz : ByzantineWeightPremises cfg E)
     (hdomain : SelectedMarginDomain cfg ext E) :
     SelectedMarginAssumptions cfg ext E :=
   { genesis := hT.genesis_structure
@@ -95,10 +95,10 @@ structure AcceptedHonestPastHeadBelowAt
 in the result.  This is the same validator-spec argument as the old minimal
 projection, but no longer erases the fact needed for HFC inversion. -/
 theorem pastHead_of_honestSupporter_known
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
-    (hsync : PaperSafetySynchrony cfg ext E)
+    (hT : E.ScheduledPrefixPremises cfg ext)
+    (hsync : NextSlotSynchronyPremises cfg ext E)
     (hstatic : StaticValidatorSet cfg E)
-    (hbyz : ByzantineBound cfg E)
+    (hbyz : ByzantineWeightPremises cfg E)
     (hdomain : SelectedMarginDomain cfg ext E)
     (v : ValidatorIndex) (hv : v ∈ E.honest) (n : Nat) (b : Root)
     (hH : E.WithinHorizon cfg n)
@@ -184,10 +184,10 @@ theorem pastHead_of_honestSupporter_known
 carrier.  Semantic execution ancestry is extracted in the query store and
 reflected into the past store, so no cross-store total-map equality is used. -/
 theorem confirmed_honestPastHeadBelow
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
-    (hsync : PaperSafetySynchrony cfg ext E)
+    (hT : E.ScheduledPrefixPremises cfg ext)
+    (hsync : NextSlotSynchronyPremises cfg ext E)
     (hstatic : StaticValidatorSet cfg E)
-    (hbyz : ByzantineBound cfg E)
+    (hbyz : ByzantineWeightPremises cfg E)
     (hdomain : SelectedMarginDomain cfg ext E)
     {v : ValidatorIndex} (hv : v ∈ E.honest) {q : Nat}
     (hqH : E.WithinHorizon cfg q)
@@ -276,7 +276,7 @@ theorem pathLocalFilterViableLeafBelow_of_filterViable
 /-- Exact past-head split.  The right branch is the same HFC leaf and path
 which later supplies both source recency and finalized compatibility. -/
 theorem AcceptedHonestPastHeadBelowAt.directJustified_or_pathLocal
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
+    (hT : E.ScheduledPrefixPremises cfg ext)
     (hdomain : SelectedMarginDomain cfg ext E)
     {v : ValidatorIndex} {q : Nat} {candidate : Root}
     (h : E.AcceptedHonestPastHeadBelowAt cfg ext v q candidate) :
@@ -459,7 +459,7 @@ its concrete root is current-epoch.  This handles initialization and the
 only finalized-reset exception left by the causal finalization-lag law. -/
 theorem acceptedCurrentCandidateSourceOriginAt_anchor
     (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
+    (hT : E.ScheduledPrefixPremises cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
       (E := E) (anchor := B.anchor))
@@ -511,10 +511,10 @@ induction proves them once from the actual FCR call and reuses this theorem in
 both the carried and strict-carried boundary branches. -/
 theorem AcceptedCurrentCandidateSourceOriginAt.toLemma22AtNextBoundary
     (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
+    (hT : E.ScheduledPrefixPremises cfg ext)
     {v : ValidatorIndex} (hv : v ∈ E.honest) {n : Nat}
     (hHn1 : E.WithinHorizon cfg (n + 1))
-    (hcall : E.IsFCRCallAt cfg ext v n)
+    (hcall : E.IsScheduledFCRCallAt cfg ext v n)
     {e : Epoch} {candidate : Root}
     (hboundarySecond : E.slot_start cfg
       (compute_start_slot_at_epoch cfg e) = n + 1)
@@ -599,7 +599,7 @@ theorem AcceptedCurrentCandidateSourceOriginAt.toLemma22AtNextBoundary
         (E.slot_start cfg (compute_start_slot_at_epoch cfg e) + 1) := by
     rw [hboundarySecond]
     have hslotAdvance : E.slot_at cfg n < E.slot_at cfg (n + 1) := by
-      unfold IsFCRCallAt at hcall
+      unfold IsScheduledFCRCallAt at hcall
       simpa only [E.store_current_slot] using hcall
     calc
       E.slot_at cfg h.originSecond + 1 ≤ E.slot_at cfg n + 1 :=
@@ -642,8 +642,8 @@ boundary.  Accepted fixed-root selector monotonicity then transports the
 source epoch between the two same-epoch causal stores. -/
 theorem AcceptedLemma22EpochStartCandidateSourceAt.lemma24
     (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
-    (hsync : PaperSafetySynchrony cfg ext E)
+    (hT : E.ScheduledPrefixPremises cfg ext)
+    (hsync : NextSlotSynchronyPremises cfg ext E)
     {e : Epoch} {candidate : Root}
     (h : E.AcceptedLemma22EpochStartCandidateSourceAt
       cfg ext B e candidate)
@@ -684,10 +684,10 @@ equation, and the accepted reset realization supplies the checkpoint-root
 geometry. -/
 theorem ObservedResetCandidateInputAt.acceptedLemma22EpochStartCandidateSource
     (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
-    (hsync : PaperSafetySynchrony cfg ext E)
+    (hT : E.ScheduledPrefixPremises cfg ext)
+    (hsync : NextSlotSynchronyPremises cfg ext E)
     (hstatic : StaticValidatorSet cfg E)
-    (hbyz : ByzantineBound cfg E)
+    (hbyz : ByzantineWeightPremises cfg E)
     (hdomain : SelectedMarginDomain cfg ext E)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
@@ -695,18 +695,18 @@ theorem ObservedResetCandidateInputAt.acceptedLemma22EpochStartCandidateSource
     (hspe : 1 < cfg.slots_per_epoch)
     {v : ValidatorIndex} (hv : v ∈ E.honest) {n : ℕ}
     (hHn1 : E.WithinHorizon cfg (n + 1))
-    (hcall : E.IsFCRCallAt cfg ext v n)
-    {trace : GetLatestConfirmedTrace cfg ext (E.fcrStep cfg ext v n)}
+    (hcall : E.IsScheduledFCRCallAt cfg ext v n)
+    {trace : LatestConfirmedCallTrace cfg ext (E.fcrStoreAtCall cfg ext v n)}
     (h : ObservedResetCandidateInputAt cfg ext
-      (E.fcrStep cfg ext v n) trace) :
+      (E.fcrStoreAtCall cfg ext v n) trace) :
     Nonempty (E.AcceptedLemma22EpochStartCandidateSourceAt cfg ext B
       (get_current_store_epoch cfg (E.store cfg ext v (n + 1)))
-      (E.fcrStep cfg ext v n
+      (E.fcrStoreAtCall cfg ext v n
         ).current_epoch_observed_justified_checkpoint.root) := by
   let hA := E.selectedMarginAssumptions_of_sourceHistoryInputs cfg ext
     hT hsync hstatic hbyz hdomain
   let e := get_current_store_epoch cfg (E.store cfg ext v (n + 1))
-  let c := (E.fcrStep cfg ext v n
+  let c := (E.fcrStoreAtCall cfg ext v n
     ).current_epoch_observed_justified_checkpoint
   obtain ⟨ast, ablk, hgen, hgenSlot, hgenParent⟩ := hT.genesis_structure
   have hgenShort : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
@@ -724,7 +724,7 @@ theorem ObservedResetCandidateInputAt.acceptedLemma22EpochStartCandidateSource
     simpa only [E.fcrStep_store, E.store_current_slot] using h.epoch_start
   have hslotAdvance : E.slot_at cfg n < E.slot_at cfg (n + 1) := by
     have hslotAdvanceRaw := hcall
-    unfold IsFCRCallAt at hslotAdvanceRaw
+    unfold IsScheduledFCRCallAt at hslotAdvanceRaw
     rw [E.store_current_slot cfg ext v n,
       E.store_current_slot cfg ext v (n + 1)] at hslotAdvanceRaw
     exact hslotAdvanceRaw
@@ -980,7 +980,7 @@ epoch.  In that setting the correct base region is
 accepted selector arm (`GJ` or `GU`) is certified above the anchor. -/
 theorem acceptedLemma24EpochStartSourceAt_of_anchor_near
     (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
+    (hT : E.ScheduledPrefixPremises cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
       (E := E) (anchor := B.anchor))
@@ -1070,9 +1070,9 @@ private theorem sourceHistory_slotsSince_succ_eq_zero_of_epoch_lt
 /-- An actual call which lands away from an epoch start stays in the previous
 store's epoch. -/
 theorem actualCall_currentEpoch_eq_of_notStart
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
+    (hT : E.ScheduledPrefixPremises cfg ext)
     {v : ValidatorIndex} {n : Nat}
-    (hcall : E.IsFCRCallAt cfg ext v n)
+    (hcall : E.IsScheduledFCRCallAt cfg ext v n)
     (hnotStart : is_start_slot_at_epoch cfg
       (get_current_slot cfg (E.store cfg ext v (n + 1))) ≠ true) :
     get_current_store_epoch cfg (E.store cfg ext v n) =
@@ -1086,7 +1086,7 @@ theorem actualCall_currentEpoch_eq_of_notStart
   let next := E.slot_at cfg (n + 1)
   have hslt : s < next := by
     have hsltRaw := hcall
-    unfold IsFCRCallAt at hsltRaw
+    unfold IsScheduledFCRCallAt at hsltRaw
     rw [E.store_current_slot cfg ext v n,
       E.store_current_slot cfg ext v (n + 1)] at hsltRaw
     exact hsltRaw
@@ -1113,9 +1113,9 @@ theorem actualCall_currentEpoch_eq_of_notStart
 /-- An actual call which lands at an epoch start came from the immediately
 previous epoch. -/
 theorem actualCall_currentEpoch_succ_of_start
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
+    (hT : E.ScheduledPrefixPremises cfg ext)
     {v : ValidatorIndex} {n : Nat}
-    (hcall : E.IsFCRCallAt cfg ext v n)
+    (hcall : E.IsScheduledFCRCallAt cfg ext v n)
     (hstart : is_start_slot_at_epoch cfg
       (get_current_slot cfg (E.store cfg ext v (n + 1))) = true) :
     get_current_store_epoch cfg (E.store cfg ext v n) + 1 =
@@ -1129,7 +1129,7 @@ theorem actualCall_currentEpoch_succ_of_start
   let next := E.slot_at cfg (n + 1)
   have hslt : s < next := by
     have hsltRaw := hcall
-    unfold IsFCRCallAt at hsltRaw
+    unfold IsScheduledFCRCallAt at hsltRaw
     rw [E.store_current_slot cfg ext v n,
       E.store_current_slot cfg ext v (n + 1)] at hsltRaw
     exact hsltRaw
@@ -1175,14 +1175,14 @@ theorem actualCall_currentEpoch_succ_of_start
 /-- The execution second of an actual call landing at an epoch boundary is
 the canonical `slot_start` second used in Lemmas 22 and 24. -/
 theorem actualCall_epochStart_boundarySecond
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
-    (hsync : PaperSafetySynchrony cfg ext E)
+    (hT : E.ScheduledPrefixPremises cfg ext)
+    (hsync : NextSlotSynchronyPremises cfg ext E)
     (hstatic : StaticValidatorSet cfg E)
-    (hbyz : ByzantineBound cfg E)
+    (hbyz : ByzantineWeightPremises cfg E)
     (hdomain : SelectedMarginDomain cfg ext E)
     {v : ValidatorIndex} (_hv : v ∈ E.honest) {n : Nat}
     (hHn1 : E.WithinHorizon cfg (n + 1))
-    (hcall : E.IsFCRCallAt cfg ext v n)
+    (hcall : E.IsScheduledFCRCallAt cfg ext v n)
     (hstart : is_start_slot_at_epoch cfg
       (get_current_slot cfg (E.store cfg ext v (n + 1))) = true) :
     E.slot_start cfg (compute_start_slot_at_epoch cfg
@@ -1218,7 +1218,7 @@ theorem actualCall_epochStart_boundarySecond
   rw [hslotStart] at hslotLe
   have hslotAdvance : E.slot_at cfg n < E.slot_at cfg (n + 1) := by
     have hslotAdvanceRaw := hcall
-    unfold IsFCRCallAt at hslotAdvanceRaw
+    unfold IsScheduledFCRCallAt at hslotAdvanceRaw
     rw [E.store_current_slot cfg ext v n,
       E.store_current_slot cfg ext v (n + 1)] at hslotAdvanceRaw
     exact hslotAdvanceRaw
@@ -1284,15 +1284,15 @@ query-local mechanical facts.  The selector guard plus ordinary block
 non-futurity supplies its only missing premise: the input is in the current
 or previous block epoch. -/
 theorem StrictSelectorAdvanceAt.mechanicalFacts
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
-    (hsync : PaperSafetySynchrony cfg ext E)
+    (hT : E.ScheduledPrefixPremises cfg ext)
+    (hsync : NextSlotSynchronyPremises cfg ext E)
     (hstatic : StaticValidatorSet cfg E)
-    (hbyz : ByzantineBound cfg E)
+    (hbyz : ByzantineWeightPremises cfg E)
     (hdomain : SelectedMarginDomain cfg ext E)
     {v : ValidatorIndex} (hv : v ∈ E.honest) {q : Nat}
     (hqH : E.WithinHorizon cfg q)
     {query : FastConfirmationStore Root}
-    {trace : GetLatestConfirmedTrace cfg ext query}
+    {trace : LatestConfirmedCallTrace cfg ext query}
     (hquery : query.store = E.store cfg ext v q)
     (hinput : trace.afterObserved ∈ query.store.block_roots)
     (h : StrictSelectorAdvanceAt cfg ext query trace) :
@@ -1336,16 +1336,16 @@ theorem StrictSelectorAdvanceAt.mechanicalFacts
 current-epoch in the immediately preceding store.  This is the exact bridge
 from Lemma 23's boundary backtracking to the retained current-origin field. -/
 theorem previousConfirmed_current_of_boundary_recent
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
+    (hT : E.ScheduledPrefixPremises cfg ext)
     {v : ValidatorIndex} {n : Nat}
-    (hcall : E.IsFCRCallAt cfg ext v n)
+    (hcall : E.IsScheduledFCRCallAt cfg ext v n)
     (hstart : is_start_slot_at_epoch cfg
       (get_current_slot cfg (E.store cfg ext v (n + 1))) = true)
     (hknownN : E.confirmed cfg ext v n ∈
       (E.store cfg ext v n).block_roots)
-    (hrecentQ : get_block_epoch cfg (E.fcrStep cfg ext v n).store
+    (hrecentQ : get_block_epoch cfg (E.fcrStoreAtCall cfg ext v n).store
           (E.confirmed cfg ext v n) + 1 ≥
-        get_current_store_epoch cfg (E.fcrStep cfg ext v n).store) :
+        get_current_store_epoch cfg (E.fcrStoreAtCall cfg ext v n).store) :
     get_block_epoch cfg (E.store cfg ext v n)
         (E.confirmed cfg ext v n) =
       get_current_store_epoch cfg (E.store cfg ext v n) := by
@@ -1367,7 +1367,7 @@ theorem previousConfirmed_current_of_boundary_recent
       (E.blockProvenance cfg ext v (n + 1)) hknownN hknownN1
   have hblockEpochEq : get_block_epoch cfg (E.store cfg ext v n)
         (E.confirmed cfg ext v n) =
-      get_block_epoch cfg (E.fcrStep cfg ext v n).store
+      get_block_epoch cfg (E.fcrStoreAtCall cfg ext v n).store
         (E.confirmed cfg ext v n) := by
     rw [E.fcrStep_store]
     simp only [get_block_epoch, hblockAgree]
@@ -1390,7 +1390,7 @@ theorem previousConfirmed_current_of_boundary_recent
       get_current_store_epoch cfg (E.store cfg ext v n) + 1 =
           get_current_store_epoch cfg (E.store cfg ext v (n + 1)) :=
         hepochSucc
-      _ ≤ get_block_epoch cfg (E.fcrStep cfg ext v n).store
+      _ ≤ get_block_epoch cfg (E.fcrStoreAtCall cfg ext v n).store
             (E.confirmed cfg ext v n) + 1 := by
         simpa only [E.fcrStep_store] using hrecentQ
       _ = get_block_epoch cfg (E.store cfg ext v n)
@@ -1434,7 +1434,7 @@ checkpoint-sync safe: the numeric base is relative to the trusted anchor
 epoch rather than to absolute genesis epoch zero. -/
 theorem acceptedConfirmedSourceHistoryAt_zero
     (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
+    (hT : E.ScheduledPrefixPremises cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
       (E := E) (anchor := B.anchor))
@@ -1483,9 +1483,9 @@ candidate-specific history are all carried definitionally through the
 monotone store trajectory. -/
 theorem AcceptedConfirmedSourceHistoryAt.succ_of_noCall
     {B : ExactPrefixAcceptedFFGSemantics cfg ext E}
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
+    (hT : E.ScheduledPrefixPremises cfg ext)
     {v : ValidatorIndex} {n : Nat}
-    (hnoCall : ¬ E.IsFCRCallAt cfg ext v n)
+    (hnoCall : ¬ E.IsScheduledFCRCallAt cfg ext v n)
     (h : E.AcceptedConfirmedSourceHistoryAt cfg ext B v n) :
     E.AcceptedConfirmedSourceHistoryAt cfg ext B v (n + 1) := by
   have hknownN1 : E.confirmed cfg ext v n ∈
@@ -1548,10 +1548,10 @@ reduce to the trusted anchor, observed-reset roots are previous-epoch, and a
 strict current result installs a fresh Lemma-13 origin. -/
 theorem AcceptedConfirmedSourceHistoryAt.currentOrigin_succ_of_call
     (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
-    (hsync : PaperSafetySynchrony cfg ext E)
+    (hT : E.ScheduledPrefixPremises cfg ext)
+    (hsync : NextSlotSynchronyPremises cfg ext E)
     (hstatic : StaticValidatorSet cfg E)
-    (hbyz : ByzantineBound cfg E)
+    (hbyz : ByzantineWeightPremises cfg E)
     (hdomain : SelectedMarginDomain cfg ext E)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
@@ -1559,14 +1559,14 @@ theorem AcceptedConfirmedSourceHistoryAt.currentOrigin_succ_of_call
     (hLag : E.CausalRealizedFinalizationLag cfg ext B)
     {v : ValidatorIndex} (hv : v ∈ E.honest) {n : Nat}
     (hHn1 : E.WithinHorizon cfg (n + 1))
-    (hcall : E.IsFCRCallAt cfg ext v n)
+    (hcall : E.IsScheduledFCRCallAt cfg ext v n)
     (h : E.AcceptedConfirmedSourceHistoryAt cfg ext B v n)
     (hcurrent : get_block_epoch cfg (E.store cfg ext v (n + 1))
           (E.confirmed cfg ext v (n + 1)) =
         get_current_store_epoch cfg (E.store cfg ext v (n + 1))) :
     Nonempty (E.AcceptedCurrentCandidateSourceOriginAt cfg ext B v (n + 1)
       (E.confirmed cfg ext v (n + 1))) := by
-  let query := E.fcrStep cfg ext v n
+  let query := E.fcrStoreAtCall cfg ext v n
   let trace := E.getLatestConfirmedTraceAt cfg ext v n
   have hrec := E.actualCandidateHistoryRecurrence cfg ext hcall
   have hconfirmedOut : E.confirmed cfg ext v (n + 1) = trace.result := by
@@ -1706,13 +1706,13 @@ theorem AcceptedConfirmedSourceHistoryAt.currentOrigin_succ_of_call
         cases horigin with
         | carried hinput =>
             change trace.afterObserved ∈
-              (E.fcrStep cfg ext v n).store.block_roots
+              (E.fcrStoreAtCall cfg ext v n).store.block_roots
             rw [hinput.input_eq, E.fcrStep_confirmed_root,
               E.fcrStep_store]
             exact hknownN1
         | finalizedReset hinput =>
             change trace.afterObserved ∈
-              (E.fcrStep cfg ext v n).store.block_roots
+              (E.fcrStoreAtCall cfg ext v n).store.block_roots
             rw [hinput.input_eq, E.fcrStep_store]
             exact hfinalized.root_known
         | observedReset hinput =>
@@ -1747,10 +1747,10 @@ observed resets use their accepted installation witness, and finalized resets
 are confined to the trusted-anchor base region by the causal lag law. -/
 theorem AcceptedConfirmedSourceHistoryAt.recentSource_succ_of_call
     (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
-    (hsync : PaperSafetySynchrony cfg ext E)
+    (hT : E.ScheduledPrefixPremises cfg ext)
+    (hsync : NextSlotSynchronyPremises cfg ext E)
     (hstatic : StaticValidatorSet cfg E)
-    (hbyz : ByzantineBound cfg E)
+    (hbyz : ByzantineWeightPremises cfg E)
     (hdomain : SelectedMarginDomain cfg ext E)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
@@ -1759,7 +1759,7 @@ theorem AcceptedConfirmedSourceHistoryAt.recentSource_succ_of_call
     (hspe : 1 < cfg.slots_per_epoch)
     {v : ValidatorIndex} (hv : v ∈ E.honest) {n : Nat}
     (hHn1 : E.WithinHorizon cfg (n + 1))
-    (hcall : E.IsFCRCallAt cfg ext v n)
+    (hcall : E.IsScheduledFCRCallAt cfg ext v n)
     (h : E.AcceptedConfirmedSourceHistoryAt cfg ext B v n)
     (hrecent : get_block_epoch cfg (E.store cfg ext v (n + 1))
           (E.confirmed cfg ext v (n + 1)) + 1 ≥
@@ -1767,7 +1767,7 @@ theorem AcceptedConfirmedSourceHistoryAt.recentSource_succ_of_call
     (w : ValidatorIndex) (hw : w ∈ E.honest) :
     Nonempty (E.AcceptedLemma24EpochStartSourceAt cfg ext B
       (get_current_store_epoch cfg (E.store cfg ext v (n + 1))) w) := by
-  let query := E.fcrStep cfg ext v n
+  let query := E.fcrStoreAtCall cfg ext v n
   let trace := E.getLatestConfirmedTraceAt cfg ext v n
   have hrec := E.actualCandidateHistoryRecurrence cfg ext hcall
   have hconfirmedOut : E.confirmed cfg ext v (n + 1) = trace.result := by
@@ -1940,18 +1940,18 @@ accepted realization, while a strict selected result uses the ordinary
 query-local descendant geometry. -/
 theorem AcceptedConfirmedSourceHistoryAt.confirmedKnown_succ_of_call
     (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
+    (hT : E.ScheduledPrefixPremises cfg ext)
     (hdomain : SelectedMarginDomain cfg ext E)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
       (E := E) (anchor := B.anchor))
     {v : ValidatorIndex} (hv : v ∈ E.honest) {n : Nat}
     (hHn1 : E.WithinHorizon cfg (n + 1))
-    (hcall : E.IsFCRCallAt cfg ext v n)
+    (hcall : E.IsScheduledFCRCallAt cfg ext v n)
     (h : E.AcceptedConfirmedSourceHistoryAt cfg ext B v n) :
     E.confirmed cfg ext v (n + 1) ∈
       (E.store cfg ext v (n + 1)).block_roots := by
-  let query := E.fcrStep cfg ext v n
+  let query := E.fcrStoreAtCall cfg ext v n
   let trace := E.getLatestConfirmedTraceAt cfg ext v n
   have hrec := E.actualCandidateHistoryRecurrence cfg ext hcall
   have hconfirmedOut : E.confirmed cfg ext v (n + 1) = trace.result := by
@@ -2010,10 +2010,10 @@ theorem AcceptedConfirmedSourceHistoryAt.confirmedKnown_succ_of_call
 history invariant. -/
 theorem AcceptedConfirmedSourceHistoryAt.succ_of_call
     (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
-    (hsync : PaperSafetySynchrony cfg ext E)
+    (hT : E.ScheduledPrefixPremises cfg ext)
+    (hsync : NextSlotSynchronyPremises cfg ext E)
     (hstatic : StaticValidatorSet cfg E)
-    (hbyz : ByzantineBound cfg E)
+    (hbyz : ByzantineWeightPremises cfg E)
     (hdomain : SelectedMarginDomain cfg ext E)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
@@ -2022,7 +2022,7 @@ theorem AcceptedConfirmedSourceHistoryAt.succ_of_call
     (hspe : 1 < cfg.slots_per_epoch)
     {v : ValidatorIndex} (hv : v ∈ E.honest) {n : Nat}
     (hHn1 : E.WithinHorizon cfg (n + 1))
-    (hcall : E.IsFCRCallAt cfg ext v n)
+    (hcall : E.IsScheduledFCRCallAt cfg ext v n)
     (h : E.AcceptedConfirmedSourceHistoryAt cfg ext B v n) :
     E.AcceptedConfirmedSourceHistoryAt cfg ext B v (n + 1) := {
   confirmed_known := h.confirmedKnown_succ_of_call cfg ext B hT hdomain
@@ -2040,15 +2040,15 @@ The sole primitive paper-facing timing contract is the faithful accepted
 realized-finalization delay at the opaque state-transition boundary. -/
 theorem acceptedConfirmedSourceHistoryAt
     (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
-    (hsync : PaperSafetySynchrony cfg ext E)
+    (hT : E.ScheduledPrefixPremises cfg ext)
+    (hsync : NextSlotSynchronyPremises cfg ext E)
     (hstatic : StaticValidatorSet cfg E)
-    (hbyz : ByzantineBound cfg E)
+    (hbyz : ByzantineWeightPremises cfg E)
     (hdomain : SelectedMarginDomain cfg ext E)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
       (E := E) (anchor := B.anchor))
-    (hDelay : E.AcceptedRealizedFinalizationDelay cfg ext B)
+    (hDelay : E.RealizedFinalizationDelay cfg ext B)
     (hspe : 1 < cfg.slots_per_epoch)
     {v : ValidatorIndex} (hv : v ∈ E.honest) :
     ∀ n : Nat, E.WithinHorizon cfg n →
@@ -2067,7 +2067,7 @@ theorem acceptedConfirmedSourceHistoryAt
       have hHn : E.WithinHorizon cfg n :=
         E.withinHorizon_mono cfg (Nat.le_succ n) hHn1
       have hn := ih hHn
-      by_cases hcall : E.IsFCRCallAt cfg ext v n
+      by_cases hcall : E.IsScheduledFCRCallAt cfg ext v n
       · exact hn.succ_of_call cfg ext B hT hsync hstatic hbyz hdomain
           hanchor hboundary hLag hspe hv hHn1 hcall
       · exact hn.succ_of_noCall cfg ext hT hcall
@@ -2077,25 +2077,25 @@ evaluator call.  The result is tied to the executable write-back equation, so
 the all-seconds invariant supplies the epoch-start source directly. -/
 theorem getLatestConfirmedTraceAt_current_epochStartSource
     (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
-    (hsync : PaperSafetySynchrony cfg ext E)
+    (hT : E.ScheduledPrefixPremises cfg ext)
+    (hsync : NextSlotSynchronyPremises cfg ext E)
     (hstatic : StaticValidatorSet cfg E)
-    (hbyz : ByzantineBound cfg E)
+    (hbyz : ByzantineWeightPremises cfg E)
     (hdomain : SelectedMarginDomain cfg ext E)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
       (E := E) (anchor := B.anchor))
-    (hDelay : E.AcceptedRealizedFinalizationDelay cfg ext B)
+    (hDelay : E.RealizedFinalizationDelay cfg ext B)
     (hspe : 1 < cfg.slots_per_epoch)
     {v : ValidatorIndex} (hv : v ∈ E.honest) {n : Nat}
     (hHn1 : E.WithinHorizon cfg (n + 1))
-    (hcall : E.IsFCRCallAt cfg ext v n)
-    (hcurrent : get_block_epoch cfg (E.fcrStep cfg ext v n).store
+    (hcall : E.IsScheduledFCRCallAt cfg ext v n)
+    (hcurrent : get_block_epoch cfg (E.fcrStoreAtCall cfg ext v n).store
           (E.getLatestConfirmedTraceAt cfg ext v n).result =
-        get_current_store_epoch cfg (E.fcrStep cfg ext v n).store)
+        get_current_store_epoch cfg (E.fcrStoreAtCall cfg ext v n).store)
     (w : ValidatorIndex) (hw : w ∈ E.honest) :
     Nonempty (E.AcceptedLemma24EpochStartSourceAt cfg ext B
-      (get_current_store_epoch cfg (E.fcrStep cfg ext v n).store) w) := by
+      (get_current_store_epoch cfg (E.fcrStoreAtCall cfg ext v n).store) w) := by
   have hhistory := E.acceptedConfirmedSourceHistoryAt cfg ext B hT hsync
     hstatic hbyz hdomain hanchor hboundary hDelay hspe hv (n + 1) hHn1
   have hrec := E.actualCandidateHistoryRecurrence cfg ext hcall
@@ -2117,7 +2117,7 @@ The epoch-start seed is transported only forward in the same validator's
 store trajectory; no endpoint source freshness is assumed. -/
 theorem AcceptedLemma24EpochStartSourceAt.justified_recent
     (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
+    (hT : E.ScheduledPrefixPremises cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     {e : Epoch} {w : ValidatorIndex}
     (h : E.AcceptedLemma24EpochStartSourceAt cfg ext B e w)
@@ -2227,7 +2227,7 @@ structure AcceptedRecentCandidateSourceCarrierAt
 `source = J`, and numeric arms remain separate until this constructor. -/
 theorem AcceptedRecentCandidateSourceCarrierAt.of_pathLocal
     (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
+    (hT : E.ScheduledPrefixPremises cfg ext)
     {v : ValidatorIndex} {q : Nat} {candidate : Root}
     (hpast : E.AcceptedHonestPastHeadBelowAt cfg ext v q candidate)
     (hepoch : get_current_store_epoch cfg
@@ -2310,10 +2310,10 @@ inductive AcceptedCurrentSameSourceHistoryOutcome
 has been supplied for every honest receiving validator. -/
 theorem StrictSelectedResultMechanicalFacts.currentSame_sourceHistoryOutcome_of_epochStartSource
     (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
-    (hsync : PaperSafetySynchrony cfg ext E)
+    (hT : E.ScheduledPrefixPremises cfg ext)
+    (hsync : NextSlotSynchronyPremises cfg ext E)
     (hstatic : StaticValidatorSet cfg E)
-    (hbyz : ByzantineBound cfg E)
+    (hbyz : ByzantineWeightPremises cfg E)
     (hdomain : SelectedMarginDomain cfg ext E)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     {v : ValidatorIndex} (hv : v ∈ E.honest) {q : Nat}
@@ -2386,26 +2386,26 @@ the actual evaluator.  Its only paper-facing timing premise is the accepted
 realized-finalization delay at the opaque state-transition boundary. -/
 theorem StrictSelectedResultMechanicalFacts.actualCurrentSame_sourceHistoryOutcome
     (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
-    (hsync : PaperSafetySynchrony cfg ext E)
+    (hT : E.ScheduledPrefixPremises cfg ext)
+    (hsync : NextSlotSynchronyPremises cfg ext E)
     (hstatic : StaticValidatorSet cfg E)
-    (hbyz : ByzantineBound cfg E)
+    (hbyz : ByzantineWeightPremises cfg E)
     (hdomain : SelectedMarginDomain cfg ext E)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
       (E := E) (anchor := B.anchor))
-    (hDelay : E.AcceptedRealizedFinalizationDelay cfg ext B)
+    (hDelay : E.RealizedFinalizationDelay cfg ext B)
     (hspe : 1 < cfg.slots_per_epoch)
     {v : ValidatorIndex} (hv : v ∈ E.honest) {n : Nat}
     (hHn1 : E.WithinHorizon cfg (n + 1))
-    (hcall : E.IsFCRCallAt cfg ext v n)
+    (hcall : E.IsScheduledFCRCallAt cfg ext v n)
     {input : Root}
     (h : StrictSelectedResultMechanicalFacts cfg ext
-      (E.fcrStep cfg ext v n) input
+      (E.fcrStoreAtCall cfg ext v n) input
         (E.getLatestConfirmedTraceAt cfg ext v n).result)
-    (hcurrent : get_block_epoch cfg (E.fcrStep cfg ext v n).store
+    (hcurrent : get_block_epoch cfg (E.fcrStoreAtCall cfg ext v n).store
           (E.getLatestConfirmedTraceAt cfg ext v n).result =
-        get_current_store_epoch cfg (E.fcrStep cfg ext v n).store) :
+        get_current_store_epoch cfg (E.fcrStoreAtCall cfg ext v n).store) :
     E.AcceptedCurrentSameSourceHistoryOutcome cfg ext B v (n + 1)
       (E.getLatestConfirmedTraceAt cfg ext v n).result := by
   apply h.currentSame_sourceHistoryOutcome_of_epochStartSource cfg ext B hT

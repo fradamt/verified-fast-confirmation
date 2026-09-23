@@ -16,14 +16,14 @@ weights and, once supporters are confined to the span committee, into
 honest-support term. (The denominator `J₀ = Jspec a b` is definitionally the
 honest committee weight — no lemma needed.)
 
-**`ByzantineBound` revision.** The former endpoint-base results — honest-committee
+**`ByzantineWeightPremises` revision.** The former endpoint-base results — honest-committee
 positivity `Jspec_pos` and the `strong_base_unprovable_witness` β-mismatch
 analysis — are **removed**: they served `Fraction.lean`'s deleted
 absolute-margin endpoint (`Hmargin_of_fraction`), calibrated at a committee
 Byzantine fraction `β = 1/3` that mismatched the confirmation's own
 `β = CONFIRMATION_BYZANTINE_THRESHOLD/100 ≤ 1/4` reservation. The INV\* ledger
 (`Proof/Ledger.lean`, `Proof/Base.lean`) supersedes that endpoint with a single
-min-potential invariant consuming `ByzantineBound.span_fraction` directly. What
+min-potential invariant consuming `ByzantineWeightPremises.span_fraction` directly. What
 remains — and what INV\*'s base still uses — is the registry identification of
 the honest-supporter list-sum with `E.Hspec`.
 -/

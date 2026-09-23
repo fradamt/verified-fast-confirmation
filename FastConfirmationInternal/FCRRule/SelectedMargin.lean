@@ -31,10 +31,10 @@ structure SelectedMarginAssumptions (E : Execution Root) : Prop where
   wellFormed : WellFormedExecution E
   whole_seconds : 1000 ∣ cfg.slot_duration_ms
   honest_behavior : HonestBehavior cfg ext E
-  synchrony : PaperSafetySynchrony cfg ext E
-  externals_coherence : ExternalsCoherence cfg ext E
+  synchrony : NextSlotSynchronyPremises cfg ext E
+  externals_coherence : BeaconExternalsPremises cfg ext E
   static_validators : StaticValidatorSet cfg E
-  byzantine_bound : ByzantineBound cfg E
+  byzantine_bound : ByzantineWeightPremises cfg E
   domain : SelectedMarginDomain cfg ext E
 
 /-- Compatibility name for the two operational payload premises used with

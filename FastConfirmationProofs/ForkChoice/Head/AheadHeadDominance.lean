@@ -36,20 +36,20 @@ theorem obs_descends_justified (hji : JustificationInterface cfg ext E)
       ¬ (get_current_slot cfg (E.store cfg ext v (n + 1)) >
           get_current_slot cfg (E.store cfg ext v n)) →
       JustifiedIn (E.store cfg ext w m)
-        ((E.fcrStep cfg ext v n).current_epoch_observed_justified_checkpoint))
+        ((E.fcrStoreAtCall cfg ext v n).current_epoch_observed_justified_checkpoint))
     (v : ValidatorIndex) (hv : v ∈ E.honest) (n : ℕ)
     (w : ValidatorIndex) (hw : w ∈ E.honest) (m : ℕ) (hm : n + 1 ≤ m)
     (hH : E.WithinHorizon cfg m)
-    (hknown : (E.fcrStep cfg ext v n).current_epoch_observed_justified_checkpoint.root ∈
+    (hknown : (E.fcrStoreAtCall cfg ext v n).current_epoch_observed_justified_checkpoint.root ∈
       (E.store cfg ext w m).block_roots)
     (hahead : (E.store cfg ext w m).justified_checkpoint.epoch <
-      (E.fcrStep cfg ext v n).current_epoch_observed_justified_checkpoint.epoch) :
+      (E.fcrStoreAtCall cfg ext v n).current_epoch_observed_justified_checkpoint.epoch) :
     is_ancestor (E.store cfg ext w m)
       (get_node_for_root
-        (E.fcrStep cfg ext v n).current_epoch_observed_justified_checkpoint.root)
+        (E.fcrStoreAtCall cfg ext v n).current_epoch_observed_justified_checkpoint.root)
       (get_node_for_root (E.store cfg ext w m).justified_checkpoint.root) = true :=
   hji.justified_ancestry w hw m (E.store cfg ext w m).justified_checkpoint
-    ((E.fcrStep cfg ext v n).current_epoch_observed_justified_checkpoint)
+    ((E.fcrStoreAtCall cfg ext v n).current_epoch_observed_justified_checkpoint)
     hH (Or.inl rfl)
     (E.fcrStep_observed_justifiedIn cfg ext hji hprev v hv n w hw m hm hH)
     (le_of_lt hahead) (hji.checkpoint_known w hw m).1 hknown

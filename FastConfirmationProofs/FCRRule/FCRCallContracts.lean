@@ -38,16 +38,16 @@ theorem update_fcv_confirmed_root (fcrStore : FastConfirmationStore Root) :
   simp only [update_fast_confirmation_variables]
   split_ifs <;> rfl
 
-/-- `fcrStep`'s confirmed-root input is the previous `E.confirmed`. -/
+/-- `fcrStoreAtCall`'s confirmed-root input is the previous `E.confirmed`. -/
 theorem fcrStep_confirmed_root (v : ValidatorIndex) (n : ℕ) :
-    (E.fcrStep cfg ext v n).confirmed_root = E.confirmed cfg ext v n := by
-  rw [Execution.fcrStep, update_fcv_confirmed_root]
+    (E.fcrStoreAtCall cfg ext v n).confirmed_root = E.confirmed cfg ext v n := by
+  rw [Execution.fcrStoreAtCall, update_fcv_confirmed_root]
   rfl
 
-/-- `fcrStep`'s store is the current-second store. -/
+/-- `fcrStoreAtCall`'s store is the current-second store. -/
 theorem fcrStep_store (v : ValidatorIndex) (n : ℕ) :
-    (E.fcrStep cfg ext v n).store = E.store cfg ext v (n + 1) := by
-  rw [Execution.fcrStep]
+    (E.fcrStoreAtCall cfg ext v n).store = E.store cfg ext v (n + 1) := by
+  rw [Execution.fcrStoreAtCall]
   simp only [update_fast_confirmation_variables]
   split_ifs <;> rfl
 

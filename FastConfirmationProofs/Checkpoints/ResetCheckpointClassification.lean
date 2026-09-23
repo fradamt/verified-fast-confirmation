@@ -123,7 +123,7 @@ before a block on the known carrier's chain.  Hence the store has already
 reached at least the next epoch. -/
 theorem includedCertifiedFinalized_epoch_lt_current_of_acceptedCarrier
     (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
+    (hT : E.ScheduledPrefixPremises cfg ext)
     {w : ValidatorIndex} {m : ℕ} {carrier : Root}
     (hcarrier : carrier ∈ (E.store cfg ext w m).block_roots)
     {c : Checkpoint Root}
@@ -192,7 +192,7 @@ theorem includedCertifiedFinalized_epoch_lt_current_of_acceptedCarrier
 epoch is necessarily the trusted anchor. -/
 theorem finalizedCheckpoint_eq_anchor_of_epoch_eq_current
     (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
+    (hT : E.ScheduledPrefixPremises cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     {w : ValidatorIndex} {m : ℕ}
     (hepoch : (E.store cfg ext w m).finalized_checkpoint.epoch =
@@ -221,15 +221,15 @@ theorem finalizedCheckpoint_eq_anchor_of_epoch_eq_current
 checkpoint field is the trusted anchor. -/
 theorem actualFinalizedReset_eq_anchor_of_root_current
     (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
+    (hT : E.ScheduledPrefixPremises cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
       (E := E) (anchor := B.anchor))
     (v : ValidatorIndex) (n : ℕ)
-    (hcurrent : get_block_epoch cfg (E.fcrStep cfg ext v n).store
-        (E.fcrStep cfg ext v n).store.finalized_checkpoint.root =
-      get_current_store_epoch cfg (E.fcrStep cfg ext v n).store) :
-    (E.fcrStep cfg ext v n).store.finalized_checkpoint = B.anchor := by
+    (hcurrent : get_block_epoch cfg (E.fcrStoreAtCall cfg ext v n).store
+        (E.fcrStoreAtCall cfg ext v n).store.finalized_checkpoint.root =
+      get_current_store_epoch cfg (E.fcrStoreAtCall cfg ext v n).store) :
+    (E.fcrStoreAtCall cfg ext v n).store.finalized_checkpoint = B.anchor := by
   have hrealized :=
     E.finalizedCheckpoint_resetRealizedAt_of_acceptedGlobalTrajectory
       cfg ext B hT hanchor hboundary (w := v) (n + 1)
@@ -248,17 +248,17 @@ classification: the current-epoch checkpoint of the actual finalized input is
 exactly the trusted anchor. -/
 theorem actualFinalizedReset_currentCheckpoint_eq_anchor
     (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
+    (hT : E.ScheduledPrefixPremises cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
       (E := E) (anchor := B.anchor))
     (v : ValidatorIndex) (n : ℕ)
-    (hcurrent : get_block_epoch cfg (E.fcrStep cfg ext v n).store
-        (E.fcrStep cfg ext v n).store.finalized_checkpoint.root =
-      get_current_store_epoch cfg (E.fcrStep cfg ext v n).store) :
-    get_checkpoint_for_block cfg (E.fcrStep cfg ext v n).store
-        (E.fcrStep cfg ext v n).store.finalized_checkpoint.root
-        (get_current_store_epoch cfg (E.fcrStep cfg ext v n).store) =
+    (hcurrent : get_block_epoch cfg (E.fcrStoreAtCall cfg ext v n).store
+        (E.fcrStoreAtCall cfg ext v n).store.finalized_checkpoint.root =
+      get_current_store_epoch cfg (E.fcrStoreAtCall cfg ext v n).store) :
+    get_checkpoint_for_block cfg (E.fcrStoreAtCall cfg ext v n).store
+        (E.fcrStoreAtCall cfg ext v n).store.finalized_checkpoint.root
+        (get_current_store_epoch cfg (E.fcrStoreAtCall cfg ext v n).store) =
       B.anchor := by
   have hrealized :=
     E.finalizedCheckpoint_resetRealizedAt_of_acceptedGlobalTrajectory
@@ -282,7 +282,7 @@ theorem actualFinalizedReset_currentCheckpoint_eq_anchor
 structure AcceptedObservedRestartInputAt
     (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
     (query : FastConfirmationStore Root)
-    (trace : GetLatestConfirmedTrace cfg ext query) : Prop where
+    (trace : LatestConfirmedCallTrace cfg ext query) : Prop where
   afterObserved_eq : trace.afterObserved =
     query.current_epoch_observed_justified_checkpoint.root
   realized : E.ResetCheckpointRealizedAt cfg B.anchor query.store
@@ -296,7 +296,7 @@ namespace AcceptedObservedRestartInputAt
 theorem root_known
     {B : ExactPrefixAcceptedFFGSemantics cfg ext E}
     {query : FastConfirmationStore Root}
-    {trace : GetLatestConfirmedTrace cfg ext query}
+    {trace : LatestConfirmedCallTrace cfg ext query}
     (h : E.AcceptedObservedRestartInputAt cfg ext B query trace) :
     query.current_epoch_observed_justified_checkpoint.root ∈
       query.store.block_roots :=
@@ -309,20 +309,20 @@ selector input.  Root coincidences with the carried or finalized candidates do
 not erase this branch tag. -/
 theorem actualObservedRestartInputAt
     (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
+    (hT : E.ScheduledPrefixPremises cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
       (E := E) (anchor := B.anchor))
     (v : ValidatorIndex) (n : ℕ)
-    (trace : GetLatestConfirmedTrace cfg ext (E.fcrStep cfg ext v n))
-    (hactive : getLatestObservedRestartGuard cfg (E.fcrStep cfg ext v n)
+    (trace : LatestConfirmedCallTrace cfg ext (E.fcrStoreAtCall cfg ext v n))
+    (hactive : getLatestObservedRestartGuard cfg (E.fcrStoreAtCall cfg ext v n)
       trace.afterFinalized = true) :
     E.AcceptedObservedRestartInputAt cfg ext B
-      (E.fcrStep cfg ext v n) trace := by
-  have hfacts := GetLatestConfirmedTrace.observedRestart_facts
+      (E.fcrStoreAtCall cfg ext v n) trace := by
+  have hfacts := LatestConfirmedCallTrace.observedRestart_facts
     cfg ext trace hactive
   have hafterObserved : trace.afterObserved =
-      (E.fcrStep cfg ext v n
+      (E.fcrStoreAtCall cfg ext v n
         ).current_epoch_observed_justified_checkpoint.root := by
     rcases trace.afterObserved_cases with ⟨hunchanged, hfalse⟩ |
         ⟨hrestarted, _htrue⟩

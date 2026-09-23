@@ -18,7 +18,7 @@ in-horizon causal stores. Default-state rejection and validity preservation
 under Phase0 slot processing are separate contracts. The other fields state
 slot/registry behavior and committee agreement; this record is not a proof
 that the external interpretation refines the full beacon-chain functions. -/
-structure ExternalsCoherence (E : Execution Root) : Prop where
+structure BeaconExternalsPremises (E : Execution Root) : Prop where
   /-- `process_slots` targets its slot and preserves the registry. -/
   process_slots_slot : ∀ st (s : Slot), st.slot < s → (ext.process_slots st s).slot = s
   process_slots_registry : ∀ st s, (ext.process_slots st s).validators = st.validators
@@ -81,7 +81,7 @@ structure ExternalsCoherence (E : Execution Root) : Prop where
       the slot's committee (in the real pipeline `get_indexed_attestation`
       derives indices from the committee and aggregation bits — absorbed into
       the wire object, so the constraint is restored here; confines LMD
-      supporters to the spans `ByzantineBound` budgets). -/
+      supporters to the spans `ByzantineWeightPremises` budgets). -/
   valid_attestation_committee : ∀ (state : BeaconState Root) (a : Attestation Root),
     E.ReachableValidationState cfg ext state →
     ext.is_valid_indexed_attestation state a = true →

@@ -368,7 +368,7 @@ theorem strict_selected_edge_mem_trace
     (hcLcr : is_ancestor fcrStore.store (get_node_for_root c)
       (get_node_for_root latestConfirmedRoot) = true)
     (hcne : c ≠ latestConfirmedRoot) :
-    PreviousAcceptedEdge cfg ext fcrStore latestConfirmedRoot a c ∨
+    PreviousEpochSelectedEdge cfg ext fcrStore latestConfirmedRoot a c ∨
       (a, c) ∈
         (findLatestSelectedTrace cfg ext fcrStore latestConfirmedRoot).2.2 := by
   have htrace := findLatestSelectedTrace_parentTrace cfg ext fcrStore hwf

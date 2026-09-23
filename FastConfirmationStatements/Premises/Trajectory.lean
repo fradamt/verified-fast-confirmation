@@ -23,16 +23,16 @@ variable (cfg : Config) (ext : Externals Root)
 /-- Normative support provisos for prediction helpers actually used by one
 selector call.  Epoch-start short-circuit paths carry no no-conflict proviso,
 because that helper need not be evaluated there. -/
-structure SelectedHelperProvisosAt (E : Execution Root)
+structure FCRPredictionSupportAt (E : Execution Root)
     (v : ValidatorIndex) (q : ℕ)
     (fcrStore : FastConfirmationStore Root)
     (latestConfirmedRoot : Root) : Prop where
   current_target : ∀ a c : Root,
-    CurrentTargetAcceptedEdge cfg ext fcrStore latestConfirmedRoot a c →
+    CurrentTargetSelectedEdge cfg ext fcrStore latestConfirmedRoot a c →
     HonestVotesSupportTarget cfg E
       (get_current_target cfg fcrStore.store) q
   no_conflict : ∀ a c : Root,
-    PreviousAcceptedEdge cfg ext fcrStore latestConfirmedRoot a c →
+    PreviousEpochSelectedEdge cfg ext fcrStore latestConfirmedRoot a c →
     is_start_slot_at_epoch cfg
       (get_current_slot cfg fcrStore.store) ≠ true →
     HonestVotesSupportTarget cfg E
@@ -81,21 +81,21 @@ Everything else needed by the accepted target gate--causal replay, current
 slot, latest-message provenance, non-equivocation, committee accounting,
 pulled-up registry and total balance, target geometry, anchor horizon, and
 current-epoch-end horizon--is derived in this module or upstream. -/
-structure AcceptedHistoricalA32CompletedPrefixCallAssumptions : Prop where
-  synchrony : PaperSafetySynchrony cfg ext E
+structure CompletedFCRCallPremises : Prop where
+  synchrony : NextSlotSynchronyPremises cfg ext E
   static_validators : StaticValidatorSet cfg E
-  byzantine_bound : ByzantineBound cfg E
+  byzantine_bound : ByzantineWeightPremises cfg E
   phase0_source : Phase0SourceCoherence cfg ext
   phase0_boundary_source : Phase0BoundarySourceCoherence cfg ext
   balance_floor : cfg.effective_balance_increment ≤
     E.weight (E.currentTargetAnchorActive cfg)
   delivery_lookahead : HorizonVoteDeliveryLookahead cfg E
   helper_provisos : ∀ v ∈ E.honest, ∀ n : ℕ,
-    E.IsFCRCallAt cfg ext v n → E.WithinHorizon cfg (n + 1) →
-      getLatestSelectorGuard cfg (E.fcrStep cfg ext v n)
+    E.IsScheduledFCRCallAt cfg ext v n → E.WithinHorizon cfg (n + 1) →
+      getLatestSelectorGuard cfg (E.fcrStoreAtCall cfg ext v n)
           (E.getLatestConfirmedTraceAt cfg ext v n).afterObserved →
-        SelectedHelperProvisosAt cfg ext E v (n + 1)
-          (E.fcrStep cfg ext v n)
+        FCRPredictionSupportAt cfg ext E v (n + 1)
+          (E.fcrStoreAtCall cfg ext v n)
           (E.getLatestConfirmedTraceAt cfg ext v n).afterObserved
 
 end Execution

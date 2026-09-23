@@ -55,7 +55,7 @@ the confirming store*. The lift to an arbitrary endpoint `(w, m)` is represented
 /-! ## Section 3 — the source of `prev_greatest_justifiedIn`
 
 `ObservedDom`'s sole corner (`is_start_slot_at_epoch = true`, no slot advance) has the
-`fcrStep`-observed checkpoint set by `update_fast_confirmation_variables`' rotation.
+`fcrStoreAtCall`-observed checkpoint set by `update_fast_confirmation_variables`' rotation.
 `update_fcv_observed_boundary` computes that rotation **on** the epoch boundary: the
 observed checkpoint becomes the store's `unrealized_justified_checkpoint` (when the
 next slot is also an epoch start — only possible for `slots_per_epoch = 1`) or the
@@ -86,20 +86,20 @@ variable (E : Execution Root)
 
 
 
-/-- **`fcrStep`'s observed checkpoint on an epoch boundary.** Re-seating
-`update_fcv_observed_boundary` on `store v (n+1)`: on the boundary the `fcrStep`-observed
+/-- **`fcrStoreAtCall`'s observed checkpoint on an epoch boundary.** Re-seating
+`update_fcv_observed_boundary` on `store v (n+1)`: on the boundary the `fcrStoreAtCall`-observed
 checkpoint is the store's `unrealized_justified_checkpoint` (`slots_per_epoch = 1`
 degenerate branch) or the carried `(fcr v n).previous_epoch_greatest_unrealized_checkpoint`.
-This exposes the rotation `fcrStep` applies even at a non-advance second
+This exposes the rotation `fcrStoreAtCall` applies even at a non-advance second
 (the `fcr` recursion itself discards it), exposing the actual checkpoint source. -/
 theorem fcrStep_observed_boundary (v : ValidatorIndex) (n : ℕ)
     (hstart : is_start_slot_at_epoch cfg (get_current_slot cfg (E.store cfg ext v (n + 1)))
       = true) :
-    (E.fcrStep cfg ext v n).current_epoch_observed_justified_checkpoint
+    (E.fcrStoreAtCall cfg ext v n).current_epoch_observed_justified_checkpoint
       = (if is_start_slot_at_epoch cfg (get_current_slot cfg (E.store cfg ext v (n + 1)) + 1) then
           (E.store cfg ext v (n + 1)).unrealized_justified_checkpoint
         else (E.fcr cfg ext v n).previous_epoch_greatest_unrealized_checkpoint) := by
-  rw [Execution.fcrStep]
+  rw [Execution.fcrStoreAtCall]
   exact update_fcv_observed_boundary cfg
     { E.fcr cfg ext v n with store := E.store cfg ext v (n + 1) } hstart
 

@@ -49,24 +49,24 @@ def CurrentEpochCoveringBridge (E : Execution Root) : Prop :=
   ∀ v ∈ E.honest, ∀ n : ℕ,
     get_current_slot cfg (E.store cfg ext v (n + 1)) >
         get_current_slot cfg (E.store cfg ext v n) →
-    is_one_confirmed cfg ext (E.fcrStep cfg ext v n).store
-        (get_current_balance_source (E.fcrStep cfg ext v n))
-        (get_latest_confirmed cfg ext (E.fcrStep cfg ext v n)) = true →
+    is_one_confirmed cfg ext (E.fcrStoreAtCall cfg ext v n).store
+        (get_current_balance_source (E.fcrStoreAtCall cfg ext v n))
+        (get_latest_confirmed cfg ext (E.fcrStoreAtCall cfg ext v n)) = true →
     ∀ w ∈ E.honest, ∀ m : ℕ, n + 1 ≤ m →
       E.WithinHorizon cfg m →
       E.slot_at cfg (n + 1) + 1 ≤ E.slot_at cfg (m + 1) →
       E.ConfirmedWithAnchor cfg ext
-        (get_latest_confirmed cfg ext (E.fcrStep cfg ext v n))
-        (E.fcrStep cfg ext v n).current_epoch_observed_justified_checkpoint.root
+        (get_latest_confirmed cfg ext (E.fcrStoreAtCall cfg ext v n))
+        (E.fcrStoreAtCall cfg ext v n).current_epoch_observed_justified_checkpoint.root
         v (n + 1) →
       (E.store cfg ext w m).justified_checkpoint.epoch =
         compute_epoch_at_slot cfg (E.slot_at cfg (n + 1)) →
       is_ancestor (E.store cfg ext w m)
-          (get_node_for_root (get_latest_confirmed cfg ext (E.fcrStep cfg ext v n)))
+          (get_node_for_root (get_latest_confirmed cfg ext (E.fcrStoreAtCall cfg ext v n)))
           (get_node_for_root (E.store cfg ext w m).justified_checkpoint.root) = true ∨
         is_ancestor (E.store cfg ext w m)
           (get_node_for_root (E.store cfg ext w m).justified_checkpoint.root)
-          (get_node_for_root (get_latest_confirmed cfg ext (E.fcrStep cfg ext v n))) = true
+          (get_node_for_root (get_latest_confirmed cfg ext (E.fcrStoreAtCall cfg ext v n))) = true
 
 
 end Execution

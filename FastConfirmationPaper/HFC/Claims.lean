@@ -10,13 +10,13 @@ public import FastConfirmationPaper.HFC.Model
 The public, proof-free §4 surface — the claims checked against arXiv:2405.00549 §4
 and the explainer (Kalinin/Saltini/Zanolini). Every result structurally mirrors a
 §3.1 statement at `P := FFGVote n`, `flt := ffgFilter C τ`, reusing the
-filter-generic engine `HeadFutureAgreement`
+filter-generic engine `HeadAgreementAfterConfirmation`
 (`FastConfirmation/Paper/LMDGhost/TheoremStatements.lean`). The proved module
 facade is `FastConfirmation.Paper.HFC.ProvenTheorems`.
 
 Results:
 
-* **`HFC_Safety_Alg1` / `HFC_Monotonicity_Alg1`** — the primary §4 theorems. Same
+* **`RuleConfirmedBlockSafety` / `RuleConfirmedBlockMonotonicity`** — the primary §4 theorems. Same
   conclusion as the Theorem-1 analogues, but the confirmation hypothesis is the
   HFC Algorithm-1 wrapper `isConfirmedAlg1`, whose selector ranges over the paper-shaped local rule
   `isConfirmedNoCaching` (both the current-epoch and previous-epoch branches; `vs` is represented
@@ -27,7 +27,7 @@ Results:
   `SafeConfirmedAlg1Inputs` bundles, which expose the AU, `P-link`, committee-partition,
   realization, and selector-slot premises used by the proofs.
   See `docs/algorithm1-gate-discharge.md`.
-* `HFC_Safety` / `HFC_Monotonicity` — the gate-based §4 confirmation-rule theorems (the
+* `GateConfirmedBlockSafety` / `GateConfirmedBlockMonotonicity` — the gate-based §4 confirmation-rule theorems (the
   analogue of Theorem 1), at `flt := ffgFilter`, stated over the combined predicate
   `isHFCConfirmed` (LMD-safe + the *semantic* gate). The `_Alg1` pair states the
   Algorithm-1 result directly.
@@ -189,7 +189,7 @@ def GreatestJustifiedAnchorPrecondition (C : Anchor n) (fm : FaultModel n) (τ :
     honest-view-safe block (a faithful behavioral invariant parameterized by explicit
     AU-style block vote contents; see `docs/ffg-delivery-abstraction.md`). Like
     `GreatestJustifiedAnchorInputs`, this interface records the required fork-choice and FFG
-    dynamics as an explicit premise of `HFC_Monotonicity`.
+    dynamics as an explicit premise of `GateConfirmedBlockMonotonicity`.
 
     The D2 leaf voting-source recency disjunct follows structurally in the never-filter from the on-chain
     placement `block(GJ_real) ≼ B'` (D2) plus accountable-safety justified-uniqueness and the
@@ -205,15 +205,15 @@ def SafeGreatestJustifiedAnchorInputs (τ : Timing) (fm : FaultModel n) (cm : Co
 /-- **The HFC (§4) confirmation predicate** — the paper's HFC confirmation rule as a single
     object (Definition 4): `b` is HFC-confirmed by honest `v` at `t` when it is
     LMD-GHOST-confirmed (Algorithm 4, `isConfirmed`) **and** the FFG gate holds (no checkpoint
-    conflicting with `b` will ever be justified in an honest view). `HFC_Safety` /
-    `HFC_Monotonicity` are stated on this combined predicate, mirroring Definition 4.
+    conflicting with `b` will ever be justified in an honest view). `GateConfirmedBlockSafety` /
+    `GateConfirmedBlockMonotonicity` are stated on this combined predicate, mirroring Definition 4.
 
     The gate is the **semantic** invariant `WillNoConflictingChkpBeJustified` (no checkpoint
     conflicting with `C(b)` is ever justified in any honest view), *not* the validator's local
     weight reservation at Algorithm 1 line 16 (the FFG-target `≥ 2/3` check an honest validator
     computes from its own view); the bridge from that local weight reservation to this semantic
     honest-view invariant is FFG accountable safety, represented by the explicit
-    `FFG_AccountableSafety` premise of `HFC_Safety`. We
+    `FFG_AccountableSafety` premise of `GateConfirmedBlockSafety`. We
     take the gate semantically so the never-filter argument consumes the honest-view invariant
     directly. -/
 def isHFCConfirmed (τ : Timing) (fm : FaultModel n) (cm : Committees n) (pb : Weight)
@@ -255,7 +255,7 @@ def isHFCConfirmed (τ : Timing) (fm : FaultModel n) (cm : Committees n) (pb : W
     validator spanning several epoch-`e` slots may legitimately re-target as its head moves), so
     none of the three clauses is derivable from the weight-only model. They require the Casper
     slashing-evidence and 2/3-link-intersection argument, so `FFG_AccountableSafety` is an explicit
-    premise of `ConfirmedNotFFGFiltered`, `HFC_Safety`, and `HFC_Monotonicity`. The
+    premise of `ConfirmedNotFFGFiltered`, `GateConfirmedBlockSafety`, and `GateConfirmedBlockMonotonicity`. The
     justified-uniqueness clause is what the never-filter consumes via
     `greatestRealizedJustified_on_chain` (the GU-recency case) to pin `block(GJ_real)` to the
     previous-epoch GU anchor without honest head agreement; the finalized-prefix clause discharges
@@ -325,8 +325,8 @@ def FFG_AccountableSafety (A : Anchor n) (fm : FaultModel n)
     **GST guard `AfterGST(st(s-1))`** (one slot before the safe slot `s`, not `st s`): the
     never-filter's base delivery (`chain_in_view`) puts the safe block's prefix into every
     honest view by `st s`, which under the faithful `honestVoteUbiq` (delivery gated on the
-    *circulating* slot being post-`gst`) needs slot `s-1` post-`gst`. `HFC_Safety` /
-    `HFC_Monotonicity` discharge it from `sg` for free: Algorithm 4's candidate range starts
+    *circulating* slot being post-`gst`) needs slot `s-1` post-`gst`. `GateConfirmedBlockSafety` /
+    `GateConfirmedBlockMonotonicity` discharge it from `sg` for free: Algorithm 4's candidate range starts
     at the *second* slot of the epoch (`fslot e + 1 ≤ s`), so `fslot e ≤ s-1`, and `sg` gives
     `AfterGST(st(fslot e))`. -/
 def ConfirmedNotFFGFiltered (τ : Timing) (fm : FaultModel n) (cm : Committees n) (pb : Weight)
@@ -344,16 +344,16 @@ def ConfirmedNotFFGFiltered (τ : Timing) (fm : FaultModel n) (cm : Committees n
 /-- **§4 HFC Confirmation-Rule SAFETY** (the analogue of Theorem 1's safety half,
     arXiv §4.1/§4.3): an honest validator FFG-confirming `b` at `t` ⇒ from some time
     on, `b` is on every honest validator's **LMD-GHOST-HFC** head. Same shape as
-    `Theorem1_Safety`, with `flt := ffgFilter C τ`, `gj := gjFFG bal₀`, `C := bal₀`,
+    `ConfirmedBlockSafety`, with `flt := ffgFilter C τ`, `gj := gjFFG bal₀`, `C := bal₀`,
     and the extra `FFG_AccountableSafety` and the per-block FFG gate
     (carried in `isHFCConfirmed`). The D2 leaf existential is derived structurally, so no
     `EpochLeafWitness` premise is needed.
 
-    `HFC_Safety_Alg1` removes the semantic gate
+    `RuleConfirmedBlockSafety` removes the semantic gate
     `WillNoConflictingChkpBeJustified` by driving safety from `isConfirmedNoCaching`
     together with the explicit `Alg1SafetyInterface`; this definition records the
     corresponding gate-based form. -/
-def HFC_Safety (τ : Timing) (bal₀ : Stakes n) : Prop :=
+def GateConfirmedBlockSafety (τ : Timing) (bal₀ : Stakes n) : Prop :=
   ∀ {fm : FaultModel n} {cm : Committees n} {pb : Weight}
     {boost : ProposerBoost n (FFGVote n)} {𝒱 : ViewFamily n (FFGVote n)},
     let gj := gjFFG bal₀
@@ -377,7 +377,7 @@ def HFC_Safety (τ : Timing) (bal₀ : Stakes n) : Prop :=
 
 /-- **§4 HFC Confirmation-Rule MONOTONICITY** (the analogue of Theorem 1's
     monotonicity half, arXiv §4.2): once HFC-confirmed, always HFC-confirmed. Same shape as
-    `Theorem1_Monotonicity`, at `flt := ffgFilter C τ`, `gj := gjFFG bal₀`, `C := bal₀`, plus the
+    `ConfirmedBlockMonotonicity`, at `flt := ffgFilter C τ`, `gj := gjFFG bal₀`, `C := bal₀`, plus the
     FFG gate persisting (immediate: the gate `WillNoConflictingChkpBeJustified` is a future-closed
     `∀`-over-future-times invariant, so it carries to every `t' ≥ t` for free).
 
@@ -400,10 +400,10 @@ def HFC_Safety (τ : Timing) (bal₀ : Stakes n) : Prop :=
     paper also assumes — §2.2.1 l.2522). (Verified verbatim against arXiv:2405.00549v3;
     see `docs/source-notes.md`.)
 
-    `HFC_Monotonicity_Alg1` removes the semantic gate by driving each
+    `RuleConfirmedBlockMonotonicity` removes the semantic gate by driving each
     `highestConfirmedSinceEpoch` block canonical from `isConfirmedNoCaching`
     via `SafeConfirmedAlg1Inputs`; this definition records the corresponding gate-based form. -/
-def HFC_Monotonicity (τ : Timing) (bal₀ : Stakes n) : Prop :=
+def GateConfirmedBlockMonotonicity (τ : Timing) (bal₀ : Stakes n) : Prop :=
   ∀ {fm : FaultModel n} {cm : Committees n} {pb : Weight}
     {boost : ProposerBoost n (FFGVote n)} {𝒱 : ViewFamily n (FFGVote n)},
     let gj := gjFFG bal₀
@@ -485,7 +485,7 @@ def Alg1SelectorSafetyInterface (τ : Timing) (fm : FaultModel n) (cm : Committe
         Alg1SafetyInterface τ fm cm pb boost bal₀ 𝒱 v b s'
 
 /-- **§4 HFC Confirmation-Rule SAFETY about the paper's ALGORITHM 1** (the gate eliminated). The
-    public analogue of `HFC_Safety` whose confirmation hypothesis is the top-level HFC wrapper
+    public analogue of `GateConfirmedBlockSafety` whose confirmation hypothesis is the top-level HFC wrapper
     `isConfirmedAlg1`: its selector chooses the highest block satisfying the paper's local,
     computable rule `isConfirmedNoCaching`, and the public predicate confirms that block's
     ancestors. The semantic gate `WillNoConflictingChkpBeJustified` is gone; in its place are the
@@ -494,11 +494,11 @@ def Alg1SelectorSafetyInterface (τ : Timing) (fm : FaultModel n) (cm : Committe
     (`blockContainedFFGVotes τ`) through `OnChainAnchorInterfacesForRule`: AU interfaces for the
     selected block and the previous-slot witness blocks that Algorithm 1 can actually consume.
 
-    Unlike `HFC_Safety`, the precondition is the rule's slot-boundary form (`1 ≤ s`, `b.slot ≤ s`,
+    Unlike `GateConfirmedBlockSafety`, the precondition is the rule's slot-boundary form (`1 ≤ s`, `b.slot ≤ s`,
     `AfterGST(st (s-1))`) rather than the semantic guard `sg` + `isHFCConfirmed`; `sg`'s GST/range
     content is discharged for free at the slot boundary (Algorithm 4's candidate range starts at the
     epoch's second slot — see `ConfirmedNotFFGFiltered`'s GST-guard note). -/
-def HFC_Safety_Alg1 (τ : Timing) (bal₀ : Stakes n) : Prop :=
+def RuleConfirmedBlockSafety (τ : Timing) (bal₀ : Stakes n) : Prop :=
   ∀ {fm : FaultModel n} {cm : Committees n} {pb : Weight}
     {boost : ProposerBoost n (FFGVote n)} {𝒱 : ViewFamily n (FFGVote n)},
     let gj := gjFFG bal₀
@@ -535,7 +535,7 @@ def HFC_Safety_Alg1 (τ : Timing) (bal₀ : Stakes n) : Prop :=
     current-epoch-only interface conjuncts are ignored by the previous-epoch fold; the AU side is
     represented by actual chain-targeted `Block.mkWithVotes` payloads through
     `blockContainedFFGVotes τ` and rule-targeted `OnChainAnchorInterfacesForRule`, with
-    `SlotCommitteeMinority` threaded into `HFC_Monotonicity_Alg1`.
+    `SlotCommitteeMinority` threaded into `RuleConfirmedBlockMonotonicity`.
 
     Disclosure: this is stronger and more direct than paper Assumption 6's conditional-eventual
     FFG-closure premise. The Lean bundle packages that closure as a per-safe-block obligation:
@@ -560,15 +560,15 @@ def SafeConfirmedAlg1Inputs (τ : Timing) (fm : FaultModel n) (cm : Committees n
           = ruleVotingSource bal₀ τ X (τ.st s))
 
 /-- **§4 HFC Confirmation-Rule MONOTONICITY about the paper's ALGORITHM 1** (without the semantic gate).
-    The public analogue of `HFC_Monotonicity` is stated over the HFC wrapper
+    The public analogue of `GateConfirmedBlockMonotonicity` is stated over the HFC wrapper
     `isConfirmedAlg1`, not LMD-GHOST's imported `isConfirmed`: once `b` is Algorithm-1-confirmed
     at `t`, it stays Algorithm-1-confirmed at every `t' ≥ t`. The FFG soundness that keeps each
     Algorithm-1 `highestConfirmedSinceEpoch` block canonical is supplied by the rule + the
     explicit `SafeConfirmedAlg1Inputs` block-vote bundle, not the assumed
     `WillNoConflictingChkpBeJustified`. The
     β-bound is Assumption 6.2's FFG-closure `1/6` ⊓ the LMD-GHOST monotonicity bound `(1-pb)/4`
-    (matched to `HFC_Monotonicity`). -/
-def HFC_Monotonicity_Alg1 (τ : Timing) (bal₀ : Stakes n) : Prop :=
+    (matched to `GateConfirmedBlockMonotonicity`). -/
+def RuleConfirmedBlockMonotonicity (τ : Timing) (bal₀ : Stakes n) : Prop :=
   ∀ {fm : FaultModel n} {cm : Committees n} {pb : Weight} {we : Weight}
     {boost : ProposerBoost n (FFGVote n)} {𝒱 : ViewFamily n (FFGVote n)},
     let gj := gjFFG bal₀

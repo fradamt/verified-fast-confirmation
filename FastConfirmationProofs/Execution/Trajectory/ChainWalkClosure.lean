@@ -113,12 +113,12 @@ structure MechanicalResiduals (E : Execution Root) : Prop where
     is_ancestor (E.store cfg ext w m)
       (get_node_for_root (E.store cfg ext w m).justified_checkpoint.root)
       (get_node_for_root
-        (E.fcrStep cfg ext v n).current_epoch_observed_justified_checkpoint.root) = true
+        (E.fcrStoreAtCall cfg ext v n).current_epoch_observed_justified_checkpoint.root) = true
   /-- Every `is_one_confirmed` block at an update store carries a
       same-epoch `DynamicsChainSupply` (the per-edge `DynamicsResidual` seeds). -/
   dynamics_chain : ∀ v ∈ E.honest, ∀ n : ℕ, ∀ b : Root,
-    is_one_confirmed cfg ext (E.fcrStep cfg ext v n).store
-      (get_current_balance_source (E.fcrStep cfg ext v n)) b = true →
+    is_one_confirmed cfg ext (E.fcrStoreAtCall cfg ext v n).store
+      (get_current_balance_source (E.fcrStoreAtCall cfg ext v n)) b = true →
     E.DynamicsChainSupply cfg ext b (n + 1)
 
 
@@ -323,17 +323,17 @@ structure MechanicalResidualsII (E : Execution Root) : Prop where
     is_ancestor (E.store cfg ext w m)
       (get_node_for_root (E.store cfg ext w m).justified_checkpoint.root)
       (get_node_for_root
-        (E.fcrStep cfg ext v n).current_epoch_observed_justified_checkpoint.root) = true
+        (E.fcrStoreAtCall cfg ext v n).current_epoch_observed_justified_checkpoint.root) = true
   /-- The structural confirmed-chain per `is_one_confirmed` block (the
       `get_ancestor_roots` parent-link chain — fork-choice-mechanical). -/
   dynamics_struct : ∀ v ∈ E.honest, ∀ n : ℕ, ∀ b : Root,
-    is_one_confirmed cfg ext (E.fcrStep cfg ext v n).store
-      (get_current_balance_source (E.fcrStep cfg ext v n)) b = true →
+    is_one_confirmed cfg ext (E.fcrStoreAtCall cfg ext v n).store
+      (get_current_balance_source (E.fcrStoreAtCall cfg ext v n)) b = true →
     E.DynamicsChainStruct cfg ext b (n + 1)
   /-- The per-edge `DynamicsResidual` supply. -/
   dynamics_edges : ∀ v ∈ E.honest, ∀ n : ℕ, ∀ b : Root,
-    is_one_confirmed cfg ext (E.fcrStep cfg ext v n).store
-      (get_current_balance_source (E.fcrStep cfg ext v n)) b = true →
+    is_one_confirmed cfg ext (E.fcrStoreAtCall cfg ext v n).store
+      (get_current_balance_source (E.fcrStoreAtCall cfg ext v n)) b = true →
     E.DynamicsEdgeSupply cfg ext b (n + 1)
 
 

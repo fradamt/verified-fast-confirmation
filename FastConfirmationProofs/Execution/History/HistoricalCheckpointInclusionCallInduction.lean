@@ -45,7 +45,7 @@ structure AcceptedHistoricalA32CurrentLineageAt
 
 /-- The exact non-operational interface consumed at one actual FCR call.
 
-`SelectedHelperProvisosAt` records the spec's normative helper provisos only
+`FCRPredictionSupportAt` records the spec's normative helper provisos only
 when the outer evaluator actually invokes the descendant selector.  The gate
 producer is intentionally conditional on the executable target gate and
 matching target-support proviso; concrete global/scheduled action evidence can
@@ -55,21 +55,21 @@ structure AcceptedHistoricalA32CallInterfaceAt
     (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
     (v : ValidatorIndex) (n : ℕ) : Prop where
   helper_provisos :
-    getLatestSelectorGuard cfg (E.fcrStep cfg ext v n)
+    getLatestSelectorGuard cfg (E.fcrStoreAtCall cfg ext v n)
         (E.getLatestConfirmedTraceAt cfg ext v n).afterObserved →
-      SelectedHelperProvisosAt cfg ext E v (n + 1)
-        (E.fcrStep cfg ext v n)
+      FCRPredictionSupportAt cfg ext E v (n + 1)
+        (E.fcrStoreAtCall cfg ext v n)
         (E.getLatestConfirmedTraceAt cfg ext v n).afterObserved
   target_gate_producer : E.AcceptedCurrentTargetA32GateRealizationProducerAt
-    cfg ext B.anchor B.state (n + 1) (E.fcrStep cfg ext v n)
+    cfg ext B.anchor B.state (n + 1) (E.fcrStoreAtCall cfg ext v n)
 
 /-- Call interfaces for every honest, in-horizon invocation.  The
-`IsFCRCallAt` argument ensures no interface is demanded between slot
+`IsScheduledFCRCallAt` argument ensures no interface is demanded between slot
 advances. -/
 def AcceptedHistoricalA32CallInterfaces
     (B : ExactPrefixAcceptedFFGSemantics cfg ext E) : Prop :=
   ∀ v ∈ E.honest, ∀ n : ℕ,
-    E.IsFCRCallAt cfg ext v n → E.WithinHorizon cfg (n + 1) →
+    E.IsScheduledFCRCallAt cfg ext v n → E.WithinHorizon cfg (n + 1) →
       E.AcceptedHistoricalA32CallInterfaceAt cfg ext B v n
 
 /-! ## Exact evaluator knownness -/
@@ -80,7 +80,7 @@ realizations; a selected result uses the ordinary known-descendant theorem.
 This proof has no justification-interface or selected-margin premise. -/
 theorem getLatestConfirmedTraceAt_result_known
     (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
+    (hT : E.ScheduledPrefixPremises cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
       (E := E) (anchor := B.anchor))
@@ -89,8 +89,8 @@ theorem getLatestConfirmedTraceAt_result_known
     (hknownN : E.confirmed cfg ext v n ∈
       (E.store cfg ext v n).block_roots) :
     (E.getLatestConfirmedTraceAt cfg ext v n).result ∈
-      (E.fcrStep cfg ext v n).store.block_roots := by
-  let query := E.fcrStep cfg ext v n
+      (E.fcrStoreAtCall cfg ext v n).store.block_roots := by
+  let query := E.fcrStoreAtCall cfg ext v n
   let trace := E.getLatestConfirmedTraceAt cfg ext v n
   have hG := E.historicalA32QueryGeometryAt_of_acceptedGlobalTrajectory
     cfg ext B hT hanchor hboundary hv hHn1
@@ -131,7 +131,7 @@ theorem getLatestConfirmedTraceAt_result_known
 /-- Boundary alignment makes the accepted trusted anchor its own block
 checkpoint, using only the scheduled trajectory's genesis facts. -/
 theorem trustedAnchor_checkpointForBlock_of_trajectory
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
+    (hT : E.ScheduledPrefixPremises cfg ext)
     {anchor : Checkpoint Root}
     (hanchor : anchor = E.genesis_store.justified_checkpoint)
     (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
@@ -162,7 +162,7 @@ theorem trustedAnchor_checkpointForBlock_of_trajectory
 lineage.  The anchor disjunct is recorded directly; no quorum is fabricated. -/
 noncomputable def acceptedHistoricalA32CurrentLineageAt_zero
     (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
+    (hT : E.ScheduledPrefixPremises cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
       (E := E) (anchor := B.anchor))
@@ -217,14 +217,14 @@ trace transformer is used; between calls, block agreement and the unchanged
 slot transport the preceding lineage. -/
 noncomputable def acceptedHistoricalA32CurrentLineageAt_all
     (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
+    (hT : E.ScheduledPrefixPremises cfg ext)
     (hphase : Phase0SourceCoherence cfg ext)
     (hboundaryPhase : Phase0BoundarySourceCoherence cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
       (E := E) (anchor := B.anchor))
     {v : ValidatorIndex} (hv : v ∈ E.honest)
-    (hcalls : ∀ n : ℕ, E.IsFCRCallAt cfg ext v n →
+    (hcalls : ∀ n : ℕ, E.IsScheduledFCRCallAt cfg ext v n →
       E.WithinHorizon cfg (n + 1) →
         E.AcceptedHistoricalA32CallInterfaceAt cfg ext B v n) :
     ∀ n : ℕ, E.WithinHorizon cfg n →
@@ -244,7 +244,7 @@ noncomputable def acceptedHistoricalA32CurrentLineageAt_all
           (E.store cfg ext v (n + 1)).block_roots :=
         (E.store_storeLE cfg ext v (Nat.le_succ n)).1
           hprevious.confirmed_known
-      by_cases hadv : E.IsFCRCallAt cfg ext v n
+      by_cases hadv : E.IsScheduledFCRCallAt cfg ext v n
       · let trace := E.getLatestConfirmedTraceAt cfg ext v n
         have hcall := hcalls n hadv hHn1
         have htraceKnown := E.getLatestConfirmedTraceAt_result_known
@@ -262,9 +262,9 @@ noncomputable def acceptedHistoricalA32CurrentLineageAt_all
           simpa only [trace, E.fcrStep_store] using htraceKnown
         · intro hcurrentN1
           have htraceCurrent : get_block_epoch cfg
-                (E.fcrStep cfg ext v n).store trace.result =
+                (E.fcrStoreAtCall cfg ext v n).store trace.result =
               get_current_store_epoch cfg
-                (E.fcrStep cfg ext v n).store := by
+                (E.fcrStoreAtCall cfg ext v n).store := by
             rw [hconfirmedOut] at hcurrentN1
             simpa only [trace, E.fcrStep_store] using hcurrentN1
           obtain ⟨e, hlineage⟩ :=
@@ -321,7 +321,7 @@ noncomputable def acceptedHistoricalA32CurrentLineageAt_all
 /-- Global bounded invariant for all honest validators. -/
 theorem acceptedHistoricalA32CurrentLineage_invariant
     (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
+    (hT : E.ScheduledPrefixPremises cfg ext)
     (hphase : Phase0SourceCoherence cfg ext)
     (hboundaryPhase : Phase0BoundarySourceCoherence cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)

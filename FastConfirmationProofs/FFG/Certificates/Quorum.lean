@@ -18,7 +18,7 @@ division absorbed), and the adversarial-budget algebra
 (`compute_adversarial_weight`'s equivocation discount is sound for any
 actual Byzantine weight within the pre-discount budget). The accounting
 half — identifying `support`'s summands with ground-truth weights and
-bounding the Byzantine part via `ByzantineBound` — lands with Layer 1.
+bounding the Byzantine part via `ByzantineWeightPremises` — lands with Layer 1.
 -/
 
 namespace FastConfirmation.Spec

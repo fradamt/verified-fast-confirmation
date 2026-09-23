@@ -41,9 +41,9 @@ checkpoint roots and does not itself imply the all-future observed source
 lock. -/
 def ActualFCRGuardedObservedAdoption
     (v : ValidatorIndex) (n : ℕ) : Prop :=
-  ObservedRestartCompatible cfg (E.fcrStep cfg ext v n) →
+  ObservedRestartCompatible cfg (E.fcrStoreAtCall cfg ext v n) →
     ∀ w ∈ E.honest, E.WithinHorizon cfg (n + 1) →
-      (E.fcrStep cfg ext v n
+      (E.fcrStoreAtCall cfg ext v n
         ).current_epoch_observed_justified_checkpoint.epoch ≤
         (E.store cfg ext w (n + 1)).justified_checkpoint.epoch
 
@@ -56,16 +56,16 @@ unused: the stronger branch-indexed `ObservedResetCandidateInputAt` premise
 already contains the exact active restart facts. -/
 theorem ObservedResetCandidateInputAt.actualFCRGuardedObservedAdoption
     (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
-    (hsync : PaperSafetySynchrony cfg ext E)
+    (hT : E.ScheduledPrefixPremises cfg ext)
+    (hsync : NextSlotSynchronyPremises cfg ext E)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hspe : 1 < cfg.slots_per_epoch)
     {v : ValidatorIndex} (hv : v ∈ E.honest) {n : ℕ}
     (hHn1 : E.WithinHorizon cfg (n + 1))
-    (hcall : E.IsFCRCallAt cfg ext v n)
-    {trace : GetLatestConfirmedTrace cfg ext (E.fcrStep cfg ext v n)}
+    (hcall : E.IsScheduledFCRCallAt cfg ext v n)
+    {trace : LatestConfirmedCallTrace cfg ext (E.fcrStoreAtCall cfg ext v n)}
     (h : ObservedResetCandidateInputAt cfg ext
-      (E.fcrStep cfg ext v n) trace) :
+      (E.fcrStoreAtCall cfg ext v n) trace) :
     E.ActualFCRGuardedObservedAdoption cfg ext v n := by
   obtain ⟨ast, ablk, hgen, hgenSlot, _hgenParent⟩ := hT.genesis_structure
   have hgenShort : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
@@ -81,7 +81,7 @@ theorem ObservedResetCandidateInputAt.actualFCRGuardedObservedAdoption
     E.withinHorizon_mono cfg horiginLeBoundary hHn1
   have hslotAdvance : E.slot_at cfg n < E.slot_at cfg (n + 1) := by
     have hslotAdvanceRaw := hcall
-    unfold IsFCRCallAt at hslotAdvanceRaw
+    unfold IsScheduledFCRCallAt at hslotAdvanceRaw
     rw [E.store_current_slot cfg ext v n,
       E.store_current_slot cfg ext v (n + 1)] at hslotAdvanceRaw
     exact hslotAdvanceRaw
@@ -109,7 +109,7 @@ theorem ObservedResetCandidateInputAt.actualFCRGuardedObservedAdoption
   intro _hrestart w hw hHn1'
   rcases hi.accepted_origin with hanchorField | ⟨tip, htip, hguField⟩
   · have hcAnchor :
-        (E.fcrStep cfg ext v n
+        (E.fcrStoreAtCall cfg ext v n
           ).current_epoch_observed_justified_checkpoint = B.anchor :=
       hi.field_eq.trans hanchorField
     rw [hcAnchor]
@@ -154,7 +154,7 @@ theorem ObservedResetCandidateInputAt.actualFCRGuardedObservedAdoption
     have hmax := hendpoint.acceptedFFGJustifiedMaximality
       B hT.whole_seconds hgenShort hanchor
     have hcGU :
-        (E.fcrStep cfg ext v n
+        (E.fcrStoreAtCall cfg ext v n
           ).current_epoch_observed_justified_checkpoint = B.state.GU tip :=
       hi.field_eq.trans hguField
     rw [hcGU]

@@ -44,7 +44,7 @@ def ConfirmedSafeFromFollowingSlot (v : ValidatorIndex) (n : ℕ) : Prop :=
   E.SafeFrom cfg ext (E.confirmed cfg ext v n) (E.followingSlotStart cfg n)
 
 private theorem nextSlotFold_genesisTime_le
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext) :
+    (hT : E.ScheduledPrefixPremises cfg ext) :
     E.genesis_store.genesis_time ≤ E.genesis_store.time := by
   obtain ⟨ast, ablk, hgen, _hslot, _hparent⟩ := hT.genesis_structure
   rw [hgen]
@@ -86,7 +86,7 @@ private theorem nextSlotFold_slot_at_succ_le
 
 /-- The following-slot boundary really lies in the following slot. -/
 theorem slot_at_followingSlotStart
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
+    (hT : E.ScheduledPrefixPremises cfg ext)
     (n : ℕ) :
     E.slot_at cfg (E.followingSlotStart cfg n) = E.slot_at cfg n + 1 := by
   have hgenTime : E.genesis_store.genesis_time ≤
@@ -99,7 +99,7 @@ theorem slot_at_followingSlotStart
 
 /-- Every second precedes the boundary of its following slot. -/
 theorem lt_followingSlotStart
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
+    (hT : E.ScheduledPrefixPremises cfg ext)
     (n : ℕ) :
     n < E.followingSlotStart cfg n := by
   have hgenTime : E.genesis_store.genesis_time ≤
@@ -113,17 +113,17 @@ deadline is exactly the call second.  The second equality is the accepted
 minimal call-boundary theorem; the one-second clock bound identifies the new
 slot with the successor of the old slot. -/
 theorem followingSlotStart_eq_succ_of_call
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
+    (hT : E.ScheduledPrefixPremises cfg ext)
     (hA : SelectedMarginAssumptions cfg ext E)
     {v : ValidatorIndex} {n : ℕ}
     (hHn1 : E.WithinHorizon cfg (n + 1))
-    (hcall : E.IsFCRCallAt cfg ext v n) :
+    (hcall : E.IsScheduledFCRCallAt cfg ext v n) :
     E.followingSlotStart cfg n = n + 1 := by
   have hgenTime : E.genesis_store.genesis_time ≤
       E.genesis_store.time :=
     E.nextSlotFold_genesisTime_le cfg ext hT
   have hadvance : E.slot_at cfg n < E.slot_at cfg (n + 1) := by
-    unfold IsFCRCallAt at hcall
+    unfold IsScheduledFCRCallAt at hcall
     simpa only [E.store_current_slot] using hcall
   have hstep : E.slot_at cfg (n + 1) = E.slot_at cfg n + 1 :=
     Nat.le_antisymm
@@ -141,13 +141,13 @@ theorem followingSlotStart_eq_succ_of_call
 unchanged as well. -/
 theorem followingSlotStart_succ_eq_of_noCall
     {v : ValidatorIndex} {n : ℕ}
-    (hnoCall : ¬ E.IsFCRCallAt cfg ext v n) :
+    (hnoCall : ¬ E.IsScheduledFCRCallAt cfg ext v n) :
     E.followingSlotStart cfg (n + 1) = E.followingSlotStart cfg n := by
   have hslotMono : E.slot_at cfg n ≤ E.slot_at cfg (n + 1) :=
     E.slot_at_mono cfg (Nat.le_succ n)
   have hslotEq : E.slot_at cfg (n + 1) = E.slot_at cfg n := by
     apply Nat.le_antisymm
-    · unfold IsFCRCallAt at hnoCall
+    · unfold IsScheduledFCRCallAt at hnoCall
       rw [E.store_current_slot, E.store_current_slot] at hnoCall
       exact Nat.le_of_not_gt hnoCall
     · exact hslotMono
@@ -160,20 +160,20 @@ require the selector to advance strictly, so it also covers a selected helper
 call whose return is unchanged. -/
 theorem finalizedResetCandidateInput_safeFrom_anchor_of_recent
     (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
+    (hT : E.ScheduledPrefixPremises cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
       (E := E) (anchor := B.anchor))
-    (hDelay : E.AcceptedRealizedFinalizationDelay cfg ext B)
+    (hDelay : E.RealizedFinalizationDelay cfg ext B)
     {v : ValidatorIndex} {n : ℕ}
-    {trace : GetLatestConfirmedTrace cfg ext (E.fcrStep cfg ext v n)}
+    {trace : LatestConfirmedCallTrace cfg ext (E.fcrStoreAtCall cfg ext v n)}
     (hinput : FinalizedResetCandidateInputAt cfg ext
-      (E.fcrStep cfg ext v n) trace)
-    (hrecent : get_block_epoch cfg (E.fcrStep cfg ext v n).store
+      (E.fcrStoreAtCall cfg ext v n) trace)
+    (hrecent : get_block_epoch cfg (E.fcrStoreAtCall cfg ext v n).store
         trace.afterObserved + 1 ≥
-      get_current_store_epoch cfg (E.fcrStep cfg ext v n).store) :
+      get_current_store_epoch cfg (E.fcrStoreAtCall cfg ext v n).store) :
     E.SafeFrom cfg ext trace.afterObserved (n + 1) := by
-  let query := E.fcrStep cfg ext v n
+  let query := E.fcrStoreAtCall cfg ext v n
   have hLag : E.CausalRealizedFinalizationLag cfg ext B :=
     E.causalRealizedFinalizationLag_of_acceptedDelay
       cfg ext B hT hanchor hDelay
@@ -207,17 +207,17 @@ theorem finalizedResetCandidateInput_safeFrom_anchor_of_recent
 /-- Strict-selector convenience wrapper around the plain recency theorem. -/
 theorem strictFinalizedResetCandidateInput_safeFrom_anchor
     (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
+    (hT : E.ScheduledPrefixPremises cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
       (E := E) (anchor := B.anchor))
-    (hDelay : E.AcceptedRealizedFinalizationDelay cfg ext B)
+    (hDelay : E.RealizedFinalizationDelay cfg ext B)
     {v : ValidatorIndex} {n : ℕ}
-    {trace : GetLatestConfirmedTrace cfg ext (E.fcrStep cfg ext v n)}
+    {trace : LatestConfirmedCallTrace cfg ext (E.fcrStoreAtCall cfg ext v n)}
     (hinput : FinalizedResetCandidateInputAt cfg ext
-      (E.fcrStep cfg ext v n) trace)
+      (E.fcrStoreAtCall cfg ext v n) trace)
     (hselector : StrictSelectorAdvanceAt cfg ext
-      (E.fcrStep cfg ext v n) trace) :
+      (E.fcrStoreAtCall cfg ext v n) trace) :
     E.SafeFrom cfg ext trace.afterObserved (n + 1) := by
   exact E.finalizedResetCandidateInput_safeFrom_anchor_of_recent
     cfg ext B hT hanchor hboundary hDelay hinput hselector.input_recent
@@ -233,13 +233,13 @@ resets reduce to the trusted anchor before the strict-helper dispatcher is
 invoked.  Active observed resets use the accepted dynamic checkpoint proof. -/
 theorem confirmed_safeFromFollowingSlot_of_acceptedActualFCRFold
     (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
-    (hC : E.AcceptedHistoricalA32CompletedPrefixCallAssumptions cfg ext)
+    (hT : E.ScheduledPrefixPremises cfg ext)
+    (hC : E.CompletedFCRCallPremises cfg ext)
     (hfit : EpochEndsFitUint64 cfg)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
       (E := E) (anchor := B.anchor))
-    (hDelay : E.AcceptedRealizedFinalizationDelay cfg ext B)
+    (hDelay : E.RealizedFinalizationDelay cfg ext B)
     (hspe : 1 < cfg.slots_per_epoch)
     (hpaper : B.state.PaperA32Inclusion cfg ext)
     (P : AcceptedEpochCheckpointProjection B.anchor
@@ -279,7 +279,7 @@ theorem confirmed_safeFromFollowingSlot_of_acceptedActualFCRFold
       have hHn : E.WithinHorizon cfg n :=
         E.withinHorizon_mono cfg (Nat.le_succ n) hHn1
       have hsafeN := ih hHn
-      by_cases hcall : E.IsFCRCallAt cfg ext v n
+      by_cases hcall : E.IsScheduledFCRCallAt cfg ext v n
       · let trace := E.getLatestConfirmedTraceAt cfg ext v n
         have hrec := E.actualCandidateHistoryRecurrence cfg ext hcall
         have hpreviousDeadline : E.followingSlotStart cfg n = n + 1 :=
@@ -294,7 +294,7 @@ theorem confirmed_safeFromFollowingSlot_of_acceptedActualFCRFold
           E.confirmed_known_of_acceptedGlobalTrajectory
             cfg ext B hT hanchor hboundary hv n hHn
         have hinputKnown : trace.afterObserved ∈
-            (E.fcrStep cfg ext v n).store.block_roots := by
+            (E.fcrStoreAtCall cfg ext v n).store.block_roots := by
           simpa only [trace] using
             E.getLatestConfirmedTraceAt_input_known
               cfg ext B hT hanchor hboundary hknownN
@@ -305,7 +305,7 @@ theorem confirmed_safeFromFollowingSlot_of_acceptedActualFCRFold
             E.slot_at cfg (E.followingSlotStart cfg (n + 1)) := by
           rw [E.slot_at_followingSlotStart cfg ext hT (n + 1)]
         have hbranch : CandidateHistoryCallBranch cfg ext
-            (E.fcrStep cfg ext v n) trace := by
+            (E.fcrStoreAtCall cfg ext v n) trace := by
           simpa only [trace] using hrec.branch
         have hresultSafe : E.SafeFrom cfg ext trace.result
             (E.followingSlotStart cfg (n + 1)) := by
@@ -369,13 +369,13 @@ theorem confirmed_safeFromFollowingSlot_of_acceptedActualFCRFold
 at every in-horizon honest endpoint in a strictly later slot. -/
 theorem confirmed_head_of_acceptedActualFCRFold_nextSlot
     (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
-    (hC : E.AcceptedHistoricalA32CompletedPrefixCallAssumptions cfg ext)
+    (hT : E.ScheduledPrefixPremises cfg ext)
+    (hC : E.CompletedFCRCallPremises cfg ext)
     (hfit : EpochEndsFitUint64 cfg)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
       (E := E) (anchor := B.anchor))
-    (hDelay : E.AcceptedRealizedFinalizationDelay cfg ext B)
+    (hDelay : E.RealizedFinalizationDelay cfg ext B)
     (hspe : 1 < cfg.slots_per_epoch)
     (hpaper : B.state.PaperA32Inclusion cfg ext)
     (P : AcceptedEpochCheckpointProjection B.anchor

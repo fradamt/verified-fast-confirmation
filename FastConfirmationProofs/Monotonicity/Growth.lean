@@ -78,7 +78,7 @@ theorem hgrowX_of_steps (v₀ : ValidatorIndex) (n₀ : ℕ) (b' : Root) (lo : S
 `Remainder.hXmono_of_engine` over `[es, σ]`. The single-epoch window hypothesis `hsame` (the
 confinement flag the shell supplies) implies each per-slot same-epoch scoping; the head-safety IH
 + block-relay domain conditions enter through the per-slot `FreshEngineInputs`. -/
-theorem hgrowX_of_engine (hhb : HonestBehavior cfg ext E) (hec : ExternalsCoherence cfg ext E)
+theorem hgrowX_of_engine (hhb : HonestBehavior cfg ext E) (hec : BeaconExternalsPremises cfg ext E)
     (hwf : WellFormedExecution E)
     (v₀ : ValidatorIndex) (n₀ : ℕ) (b' : Root) (lo : Slot) {es σ : Slot}
     (hlo : lo ≤ es) (hes : es ≤ σ) (hσH : E.SlotWithinHorizon cfg σ)
@@ -143,7 +143,7 @@ theorem hgrowS_of_steps (v₀ : ValidatorIndex) (n₀ : ℕ) (b' : Root) (lo : S
 /-- **The per-slot `Jspec`-difference growth step from the fresh-entrant engine inputs.** Turns
 `Remainder.hSmono_of_engine`'s weight-form step into the `Jspec`-difference form by identifying the
 fresh honest window growth with `Jspec(σ'+1) − Jspec(σ')` (`Fraction.Jspec_eq_add_growth`). -/
-theorem hSstep_of_engine (hhb : HonestBehavior cfg ext E) (hec : ExternalsCoherence cfg ext E)
+theorem hSstep_of_engine (hhb : HonestBehavior cfg ext E) (hec : BeaconExternalsPremises cfg ext E)
     (hwf : WellFormedExecution E)
     (v₀ : ValidatorIndex) (n₀ : ℕ) (b' : Root) (lo σ' : Slot)
     (hσ1H : E.SlotWithinHorizon cfg (σ' + 1))
@@ -162,7 +162,7 @@ theorem hSstep_of_engine (hhb : HonestBehavior cfg ext E) (hec : ExternalsCohere
 `Remainder.hSmono_of_engine` (in `Jspec`-difference form) over `[es, σ]`. The single-epoch window
 hypothesis `hsame` implies each per-slot same-epoch scoping; the head-safety IH + block-relay
 domain conditions enter through the per-slot `FreshEngineInputs`. -/
-theorem hgrowS_of_engine (hhb : HonestBehavior cfg ext E) (hec : ExternalsCoherence cfg ext E)
+theorem hgrowS_of_engine (hhb : HonestBehavior cfg ext E) (hec : BeaconExternalsPremises cfg ext E)
     (hwf : WellFormedExecution E)
     (v₀ : ValidatorIndex) (n₀ : ℕ) (b' : Root) (lo : Slot) {es σ : Slot}
     (hlo : lo ≤ es) (hes : es ≤ σ) (hσH : E.SlotWithinHorizon cfg σ)
@@ -188,7 +188,7 @@ theorem hgrowS_of_engine (hhb : HonestBehavior cfg ext E) (hec : ExternalsCohere
 `(100−C)·(Bval σ − Bval es) ≤ C·(Jspec σ − Jspec es)`. In the **same-epoch regime**
 `committee_assignment_unique` seat-uniqueness makes the window growth `span lo σ \ span lo es`
 exactly the disjoint span `span (es+1) σ`, so the `Bval`/`Jspec` differences are the byz/honest
-weights of that span and `ByzantineBound.span_fraction (es+1) σ` **is** the budget. The cross-epoch
+weights of that span and `ByzantineWeightPremises.span_fraction (es+1) σ` **is** the budget. The cross-epoch
 regime — where recurring seats break the disjointness — needs the `INVstar` min-reserve tax carried
 once (`Dominance` Part 3); it is surfaced as a residual, not delivered here. -/
 
@@ -214,7 +214,7 @@ theorem weight_filter_span_add_growth (p : ValidatorIndex → Prop) [DecidablePr
 seat-uniqueness identifies the window growth with the span `[es+1, σ]`: a validator in `(es, σ]`
 cannot recur in `[lo, es]` (same epoch ⟹ one assignment), and every growth member is assigned
 strictly past `es`. -/
-theorem span_growth_eq_of_sameEpoch (hec : ExternalsCoherence cfg ext E) {lo es σ : Slot}
+theorem span_growth_eq_of_sameEpoch (hec : BeaconExternalsPremises cfg ext E) {lo es σ : Slot}
     (hlo : lo ≤ es) (hes : es ≤ σ)
     (hsame : ∀ t : Slot, lo ≤ t → t ≤ σ →
       compute_epoch_at_slot cfg t = compute_epoch_at_slot cfg lo) :
@@ -239,10 +239,10 @@ theorem span_growth_eq_of_sameEpoch (hec : ExternalsCoherence cfg ext E) {lo es 
 `(100−C)·(Bval σ − Bval es) ≤ C·(Jspec σ − Jspec es)`, unconditional under a single-epoch window
 `hsame`. The window growth is the disjoint span `[es+1, σ]` (`span_growth_eq_of_sameEpoch`), so the
 `Bval`/`Jspec` differences are that span's byz/honest weights (`weight_filter_span_add_growth` /
-`Jspec_eq_add_growth`), and `ByzantineBound.span_fraction (es+1) σ` reduces (via
+`Jspec_eq_add_growth`), and `ByzantineWeightPremises.span_fraction (es+1) σ` reduces (via
 `sub_mul_le_of_span`, `C ≤ 25 ⟹ C ≤ 100`) to the budget. Cross-epoch is the `INVstar` min-reserve
 residual (`Dominance` Part 3). -/
-theorem hbudget_sameEpoch (hbb : ByzantineBound cfg E) (hec : ExternalsCoherence cfg ext E)
+theorem hbudget_sameEpoch (hbb : ByzantineWeightPremises cfg E) (hec : BeaconExternalsPremises cfg ext E)
     {lo es σ : Slot} (hlo : lo ≤ es) (hes : es ≤ σ)
     (hσH : E.SlotWithinHorizon cfg σ)
     (hsame : ∀ t : Slot, lo ≤ t → t ≤ σ →

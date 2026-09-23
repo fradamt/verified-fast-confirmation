@@ -977,7 +977,7 @@ theorem weight_union6_le (A1 A2 A3 A4 A5 A6 : Finset ValidatorIndex) :
   exact weight_union_le _ _
 
 /-- The full-span crossing certificate with an extra ancestor debt `O`. -/
-theorem reanchored_endpoint_of_fullSpan_certificate_opp (hbb : ByzantineBound cfg E)
+theorem reanchored_endpoint_of_fullSpan_certificate_opp (hbb : ByzantineWeightPremises cfg E)
     {v₀ : ValidatorIndex} {n₀ : ℕ} {b' : Root} {lo es σ : Slot}
     {Bsup eqSub eqExtra HAextra Bextra A d MU qFull Hpre Hsub xP Bpre boost O : ℕ}
     (hes : es ≤ σ) (hloH : E.SlotWithinHorizon cfg lo)
@@ -1018,8 +1018,8 @@ theorem reanchored_endpoint_of_fullSpan_certificate_opp (hbb : ByzantineBound cf
 
 
 theorem intraEpochFuture_endpoint_inequality_opp
-    (hhb : HonestBehavior cfg ext E) (hec : ExternalsCoherence cfg ext E)
-    (hbb : ByzantineBound cfg E)
+    (hhb : HonestBehavior cfg ext E) (hec : BeaconExternalsPremises cfg ext E)
+    (hbb : ByzantineWeightPremises cfg E)
     (hgen : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
       E.genesis_store = get_forkchoice_store cfg ast ablk)
     {v : ValidatorIndex} (hv : v ∈ E.honest) {n : ℕ}
@@ -1209,8 +1209,8 @@ theorem intraEpochFuture_endpoint_inequality_opp
   simpa only [Nat.sub_zero] using hend
 
 theorem crossingEdgeFuture_endpoint_inequality_opp
-    (hhb : HonestBehavior cfg ext E) (hec : ExternalsCoherence cfg ext E)
-    (hbb : ByzantineBound cfg E)
+    (hhb : HonestBehavior cfg ext E) (hec : BeaconExternalsPremises cfg ext E)
+    (hbb : ByzantineWeightPremises cfg E)
     (hgen : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
       E.genesis_store = get_forkchoice_store cfg ast ablk)
     {v : ValidatorIndex} (hv : v ∈ E.honest) {n : ℕ}

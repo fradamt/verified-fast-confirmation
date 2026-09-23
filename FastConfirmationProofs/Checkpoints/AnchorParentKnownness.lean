@@ -266,7 +266,7 @@ fixed store: `NonAnchorParentKnown` bottoms the walk at the anchor
 (`slot = anchorSlot`), and every non-anchor block's parent (known, `ParentSlotLt`)
 has a strictly smaller slot bounded below by the induction hypothesis. -/
 theorem Execution.store_anchor_min_slot (E : Execution Root) (hwf : WellFormedExecution E)
-    (hec : ExternalsCoherence cfg ext E)
+    (hec : BeaconExternalsPremises cfg ext E)
     {ast : BeaconState Root} {ablk : SignedBeaconBlock Root}
     (hgeq : E.genesis_store = get_forkchoice_store cfg ast ablk)
     (hslot : ast.slot = ablk.message.slot) (hparent : ablk.message.parent_root ≠ ablk.root)
@@ -300,7 +300,7 @@ anchor-minimal-slot fact (a) at `t`, `ParentSlotLt`, and `ParentInRootsOr P`
 (recovered from `NonAnchorParentKnown` + the anchor's own dangling edge). This
 discharges the `_K` descent lemmas' walk domain with **no** `anchor_guard`. -/
 theorem Execution.store_walkKnownK (E : Execution Root) (hwf : WellFormedExecution E)
-    (hec : ExternalsCoherence cfg ext E)
+    (hec : BeaconExternalsPremises cfg ext E)
     (hgen : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
       E.genesis_store = get_forkchoice_store cfg ast ablk ∧
       ast.slot = ablk.message.slot ∧ ablk.message.parent_root ≠ ablk.root)
@@ -335,13 +335,13 @@ insert that checkpoint into `checkpoint_state_keys`; only `store_target_checkpoi
 (`update_checkpoints` + `compute_pulled_up_tip`) and `on_tick_per_slot`'s
 epoch-boundary branch (`update_checkpoints store.unrealized_justified_checkpoint …`)
 both move `justified_checkpoint` to an **unkeyed** checkpoint. No
-`ExternalsCoherence` / `JustificationInterface` field guarantees a keyed justified
+`BeaconExternalsPremises` / `JustificationInterface` field guarantees a keyed justified
 checkpoint (the closest, `state_transition_checkpoint_epoch`, bounds epochs only).
 
 Deriving the trajectory property would require either a behavioral premise
 ("every checkpoint that becomes
 justified via `update_checkpoints` was previously target-cached" — an
-`ExternalsCoherence`-family fact, absent) or a `Model/` change to `on_block`
+`BeaconExternalsPremises`-family fact, absent) or a `Model/` change to `on_block`
 (cache the justified checkpoint state, as newer deployed fork-choice does). This
 module proves the genesis instance that follows from the current interface. -/
 

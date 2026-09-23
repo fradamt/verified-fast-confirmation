@@ -50,7 +50,7 @@ private theorem slot_start_mono_for_paperA32 {a b : Slot} (hab : a ≤ b) :
 Outside the list domain, `getD` is the inactive default validator, contrary to
 `committee_members_active`. -/
 private theorem concreteVote_signer_in_registry
-    (hec : ExternalsCoherence cfg ext E)
+    (hec : BeaconExternalsPremises cfg ext E)
     {i : ValidatorIndex} {deadline : Slot} {target : Checkpoint Root}
     (vote : ConcreteHonestTargetVoteBefore cfg ext E i deadline target) :
     i ∈ Finset.range E.registry.length := by
@@ -106,8 +106,8 @@ state-semantic derivation is G3's phase0/source-coherence result.  `hknown` and
 `hkeyed` are finite-map domain facts, not an AU or safety conclusion. -/
 theorem paperA32LinkSupportAtCore_of_concreteHonestTargetVotes
     (hhb : HonestBehavior cfg ext E)
-    (hsync : PaperSafetySynchrony cfg ext E)
-    (hec : ExternalsCoherence cfg ext E)
+    (hsync : NextSlotSynchronyPremises cfg ext E)
+    (hec : BeaconExternalsPremises cfg ext E)
     (hdiv : 1000 ∣ cfg.slot_duration_ms)
     (hgenTime : E.genesis_store.genesis_time ≤ E.genesis_store.time)
     {deadline : Slot} {target : Checkpoint Root}
@@ -178,8 +178,8 @@ fixed `VSAt(b,e)` source identical in every view. -/
 theorem paperA32SupportThroughoutEpochCore_of_concreteQuorum
     (hwf : WellFormedExecution E)
     (hhb : HonestBehavior cfg ext E)
-    (hsync : PaperSafetySynchrony cfg ext E)
-    (hec : ExternalsCoherence cfg ext E)
+    (hsync : NextSlotSynchronyPremises cfg ext E)
+    (hec : BeaconExternalsPremises cfg ext E)
     (hdiv : 1000 ∣ cfg.slot_duration_ms)
     (hgen : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
       E.genesis_store = get_forkchoice_store cfg ast ablk ∧
@@ -323,8 +323,8 @@ theorem paperA32SupportThroughoutEpochCore_of_concreteQuorum
 theorem paperA32SupportThroughoutEpoch_of_concreteQuorum
     (hwf : WellFormedExecution E)
     (hhb : HonestBehavior cfg ext E)
-    (hsync : PaperSafetySynchrony cfg ext E)
-    (hec : ExternalsCoherence cfg ext E)
+    (hsync : NextSlotSynchronyPremises cfg ext E)
+    (hec : BeaconExternalsPremises cfg ext E)
     (hdiv : 1000 ∣ cfg.slot_duration_ms)
     (hgen : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
       E.genesis_store = get_forkchoice_store cfg ast ablk ∧
@@ -352,8 +352,8 @@ antecedent.  It shares the generic proof and introduces no legacy state. -/
 theorem accepted_paperA32SupportThroughoutEpoch_of_concreteQuorum
     (hwf : WellFormedExecution E)
     (hhb : HonestBehavior cfg ext E)
-    (hsync : PaperSafetySynchrony cfg ext E)
-    (hec : ExternalsCoherence cfg ext E)
+    (hsync : NextSlotSynchronyPremises cfg ext E)
+    (hec : BeaconExternalsPremises cfg ext E)
     (hdiv : 1000 ∣ cfg.slot_duration_ms)
     (hgen : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
       E.genesis_store = get_forkchoice_store cfg ast ablk ∧
@@ -384,8 +384,8 @@ projection.  No migration state occurs in this dependency theorem. -/
 theorem accepted_paperA32IncludedAtTip_of_concreteQuorum
     (hwf : WellFormedExecution E)
     (hhb : HonestBehavior cfg ext E)
-    (hsync : PaperSafetySynchrony cfg ext E)
-    (hec : ExternalsCoherence cfg ext E)
+    (hsync : NextSlotSynchronyPremises cfg ext E)
+    (hec : BeaconExternalsPremises cfg ext E)
     (hdiv : 1000 ∣ cfg.slot_duration_ms)
     (hgen : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
       E.genesis_store = get_forkchoice_store cfg ast ablk ∧

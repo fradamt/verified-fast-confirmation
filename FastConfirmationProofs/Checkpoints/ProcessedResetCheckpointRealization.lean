@@ -34,7 +34,7 @@ variable (E : Execution Root)
 The proof needs only root-list monotonicity, accepted block-message uniqueness,
 and clock monotonicity; it does not use any FFG or safety interface. -/
 theorem ResetCheckpointRealizedAt.mono_of_trajectory
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
+    (hT : E.ScheduledPrefixPremises cfg ext)
     {anchor c : Checkpoint Root} {v : ValidatorIndex} {n m : ℕ}
     (hnm : n ≤ m)
     (h : E.ResetCheckpointRealizedAt cfg anchor
@@ -70,7 +70,7 @@ theorem ResetCheckpointRealizedAt.mono_of_trajectory
 /-- The boundary-aligned trusted anchor is a realized reset checkpoint in
 every execution store under the safety-free trajectory assumptions. -/
 theorem resetCheckpointRealizedAt_anchor_of_acceptedTrajectory
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
+    (hT : E.ScheduledPrefixPremises cfg ext)
     {anchor : Checkpoint Root}
     (hanchor : anchor = E.genesis_store.justified_checkpoint)
     (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
@@ -130,7 +130,7 @@ upper bound; accepted AU formation supplies the included certificate and the
 checkpoint epoch bound. -/
 theorem AcceptedSelectorAUCarrier.resetCheckpointRealizedAt
     (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
+    (hT : E.ScheduledPrefixPremises cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
       (E := E) (anchor := B.anchor))
@@ -223,7 +223,7 @@ theorem AcceptedSelectorAUCarrier.resetCheckpointRealizedAt
 field without passing through the legacy global FFG trajectory. -/
 theorem finalizedCheckpoint_resetRealizedAt_of_acceptedGlobalTrajectory
     (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
+    (hT : E.ScheduledPrefixPremises cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
       (E := E) (anchor := B.anchor))
@@ -251,7 +251,7 @@ theorem finalizedCheckpoint_resetRealizedAt_of_acceptedGlobalTrajectory
 fresh checkpoint which the ordered FCR rotation may cache. -/
 theorem unrealizedJustifiedCheckpoint_resetRealizedAt_of_acceptedGlobalTrajectory
     (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
+    (hT : E.ScheduledPrefixPremises cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
       (E := E) (anchor := B.anchor))
@@ -290,7 +290,7 @@ theorem unrealizedJustifiedCheckpoint_resetRealizedAt_of_acceptedGlobalTrajector
 trajectory.  The induction follows the executable write order exactly. -/
 theorem resetCheckpointHistoryAt_of_acceptedGlobalTrajectory
     (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
+    (hT : E.ScheduledPrefixPremises cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
       (E := E) (anchor := B.anchor))
@@ -328,13 +328,13 @@ in that query's store, independently of whether the speculative query becomes
 a real slot call. -/
 theorem fcrStep_observed_resetRealizedAt_of_acceptedGlobalTrajectory
     (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
+    (hT : E.ScheduledPrefixPremises cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
       (E := E) (anchor := B.anchor))
     (v : ValidatorIndex) (n : ℕ) :
     E.ResetCheckpointRealizedAt cfg B.anchor (E.store cfg ext v (n + 1))
-      (E.fcrStep cfg ext v n).current_epoch_observed_justified_checkpoint := by
+      (E.fcrStoreAtCall cfg ext v n).current_epoch_observed_justified_checkpoint := by
   have hhistory :=
     E.resetCheckpointHistoryAt_of_acceptedGlobalTrajectory cfg ext B hT
       hanchor hboundary v n

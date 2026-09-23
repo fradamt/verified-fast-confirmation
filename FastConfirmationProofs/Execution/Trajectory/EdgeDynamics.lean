@@ -28,7 +28,7 @@ confirming anchor `(vc, nc)` is known at the endpoint `(w, m)`, provided the end
 least one slot past the anchor (`slot_at nc + 1 ≤ slot_at (m + 1)`). This is the block
 propagation deadline `Synchrony.block_relay` for each root, packaged as a set containment;
 it feeds both `is_ancestor` transports so they carry no raw containment premise. -/
-theorem blockRoots_subset_of_relay (hsync : PaperSafetySynchrony cfg ext E)
+theorem blockRoots_subset_of_relay (hsync : NextSlotSynchronyPremises cfg ext E)
     {vc w : ValidatorIndex} {nc m : ℕ}
     (hvc : vc ∈ E.honest) (hw : w ∈ E.honest)
     (hHnc : E.WithinHorizon cfg nc) (hHm : E.WithinHorizon cfg m)
@@ -41,7 +41,7 @@ theorem blockRoots_subset_of_relay (hsync : PaperSafetySynchrony cfg ext E)
 known at the confirming anchor `(vc, nc)` is known at the endpoint `(w, m)`, under the
 one-slot ordering `slot_at nc + 1 ≤ slot_at m`. This supplies
 `ForkEdgeInput`'s `hequiv` field. -/
-theorem equiv_subset_of_relay (hsync : PaperSafetySynchrony cfg ext E)
+theorem equiv_subset_of_relay (hsync : NextSlotSynchronyPremises cfg ext E)
     {vc w : ValidatorIndex} {nc m : ℕ}
     (hvc : vc ∈ E.honest) (hw : w ∈ E.honest)
     (hHnc : E.WithinHorizon cfg nc) (hHm : E.WithinHorizon cfg m)

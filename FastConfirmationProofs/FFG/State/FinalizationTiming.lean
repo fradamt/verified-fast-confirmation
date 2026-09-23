@@ -21,7 +21,7 @@ finalizing link out of epoch `f` targets epoch `f + 1`, and that target may be
 included in a carrier in the same epoch.  Thus the existing evidence permits
 `f + 1 = e`.  The real beacon-state transition does not realize that
 finalization until the following epoch boundary, but this processing delay is
-not one of the current `ExternalsCoherence` or accepted-selector laws.
+not one of the current `BeaconExternalsPremises` or accepted-selector laws.
 
 Concretely, pinned Phase0 calls `process_epoch` while `state.slot` is still the
 last slot of the old epoch, before incrementing the slot into the new epoch.
@@ -110,7 +110,7 @@ ancestor of the accepted tip, and ordinary-store reflection turns the
 semantic ancestry into the executable slot order. -/
 theorem acceptedPulledUpFinalized_succ_le_blockEpoch
     (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
+    (hT : E.ScheduledPrefixPremises cfg ext)
     (t : E.AcceptedBlockTransition cfg ext) :
     let pulledFinalized :=
       (ext.process_justification_and_finalization
@@ -603,8 +603,8 @@ private theorem AcceptedFinalizationLagAt.on_block_of_delays
 /-- One accepted block preserves the paired lag invariant. -/
 theorem AcceptedFinalizationLagAt.acceptedBlockTransition
     (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
-    (hDelay : E.AcceptedRealizedFinalizationDelay cfg ext B)
+    (hT : E.ScheduledPrefixPremises cfg ext)
+    (hDelay : E.RealizedFinalizationDelay cfg ext B)
     (t : E.AcceptedBlockTransition cfg ext)
     (h : AcceptedFinalizationLagAt cfg B.anchor
       (t.atPrefix.store cfg ext)) :
@@ -877,7 +877,7 @@ def CausalRealizedFinalizationLag
 
 private theorem genesisAcceptedFinalizationLagAt
     (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
+    (hT : E.ScheduledPrefixPremises cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint) :
     AcceptedFinalizationLagAt cfg B.anchor E.genesis_store := by
   obtain ⟨ast, ablk, hgenEq, _hslot, _hparent⟩ := hT.genesis_structure
@@ -887,8 +887,8 @@ private theorem genesisAcceptedFinalizationLagAt
 
 private theorem acceptedFinalizationLagAt_take
     (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
-    (hDelay : E.AcceptedRealizedFinalizationDelay cfg ext B)
+    (hT : E.ScheduledPrefixPremises cfg ext)
+    (hDelay : E.RealizedFinalizationDelay cfg ext B)
     (w : ValidatorIndex) (n : ℕ)
     (hbase : AcceptedFinalizationLagAt cfg B.anchor
       (on_tick cfg (E.store cfg ext w n) (E.time_at (n + 1)))) :
@@ -964,9 +964,9 @@ private theorem acceptedFinalizationLagAt_take
 boundary. -/
 theorem acceptedFinalizationLagAt
     (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
+    (hT : E.ScheduledPrefixPremises cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
-    (hDelay : E.AcceptedRealizedFinalizationDelay cfg ext B)
+    (hDelay : E.RealizedFinalizationDelay cfg ext B)
     (w : ValidatorIndex) (n : ℕ) :
     AcceptedFinalizationLagAt cfg B.anchor (E.store cfg ext w n) := by
   have hgenTime : E.genesis_store.genesis_time ≤ E.genesis_store.time := by
@@ -993,9 +993,9 @@ theorem acceptedFinalizationLagAt
 theorem ScheduledEventPrefix.acceptedFinalizationLagAt
     (p : E.ScheduledEventPrefix)
     (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
+    (hT : E.ScheduledPrefixPremises cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
-    (hDelay : E.AcceptedRealizedFinalizationDelay cfg ext B) :
+    (hDelay : E.RealizedFinalizationDelay cfg ext B) :
     AcceptedFinalizationLagAt cfg B.anchor (p.store cfg ext) := by
   have hgenTime : E.genesis_store.genesis_time ≤ E.genesis_store.time := by
     obtain ⟨ast, ablk, hgenEq, _hslot, _hparent⟩ := hT.genesis_structure
@@ -1014,9 +1014,9 @@ theorem ScheduledEventPrefix.acceptedFinalizationLagAt
 theorem CausalStore.acceptedFinalizationLagAt
     {store : Store Root} (hstore : E.CausalStore cfg ext store)
     (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
+    (hT : E.ScheduledPrefixPremises cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
-    (hDelay : E.AcceptedRealizedFinalizationDelay cfg ext B) :
+    (hDelay : E.RealizedFinalizationDelay cfg ext B) :
     AcceptedFinalizationLagAt cfg B.anchor store := by
   cases hstore with
   | genesis =>
@@ -1030,9 +1030,9 @@ two-epoch lag at every causal store.  The GUF half is derived from accepted
 certificate inclusion; no second finalization timing premise is exposed. -/
 theorem causalRealizedFinalizationLag_of_acceptedDelay
     (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
+    (hT : E.ScheduledPrefixPremises cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
-    (hDelay : E.AcceptedRealizedFinalizationDelay cfg ext B) :
+    (hDelay : E.RealizedFinalizationDelay cfg ext B) :
     E.CausalRealizedFinalizationLag cfg ext B := by
   intro store hstore
   exact (hstore.acceptedFinalizationLagAt

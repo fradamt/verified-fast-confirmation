@@ -23,7 +23,7 @@ it inside construction of the combined assumption record.
 -/
 
 namespace FastConfirmation.Spec
-namespace AcceptedActualFCRJointNonVacuityFinal
+namespace NextSlotPremiseWitness
 
 open AcceptedActualFCRJointNonVacuityBase
 open AcceptedActualFCRJointNonVacuityFFG
@@ -59,10 +59,10 @@ theorem descendant_votes_without_continuous_production_revert :
       compute_proposer_score witnessConfig witnessExecution.anchor_state <
         witnessExecution.total_active witnessConfig ∧
     get_block_epoch witnessConfig
-      (witnessExecution.fcrStep witnessConfig witnessExternals 0 7).store
-      (witnessExecution.fcrStep witnessConfig witnessExternals 0 7).confirmed_root + 1 <
+      (witnessExecution.fcrStoreAtCall witnessConfig witnessExternals 0 7).store
+      (witnessExecution.fcrStoreAtCall witnessConfig witnessExternals 0 7).confirmed_root + 1 <
         get_current_store_epoch witnessConfig
-          (witnessExecution.fcrStep witnessConfig witnessExternals 0 7).store ∧
+          (witnessExecution.fcrStoreAtCall witnessConfig witnessExternals 0 7).store ∧
     witnessExecution.confirmed witnessConfig witnessExternals 0 2 = childRoot ∧
     witnessExecution.confirmed witnessConfig witnessExternals 0 8 = anchorRoot := by
   set_option maxRecDepth 50000 in decide
@@ -74,21 +74,21 @@ theorem descendant_votes_without_continuous_production_revert :
 private theorem bounded_no_currentTargetAcceptedEdge_under_selector :
     ∀ (v : Fin 4) (n : Fin 15) (a c : WitnessRoot),
       getLatestSelectorGuard witnessConfig
-          (witnessExecution.fcrStep witnessConfig witnessExternals
+          (witnessExecution.fcrStoreAtCall witnessConfig witnessExternals
             v.val n.val)
           (witnessExecution.getLatestConfirmedTraceAt witnessConfig
             witnessExternals v.val n.val).afterObserved →
         (a, c) ∈
           (findLatestSelectedTrace witnessConfig witnessExternals
-            (witnessExecution.fcrStep witnessConfig witnessExternals
+            (witnessExecution.fcrStoreAtCall witnessConfig witnessExternals
               v.val n.val)
             (witnessExecution.getLatestConfirmedTraceAt witnessConfig
               witnessExternals v.val n.val).afterObserved).2.2 →
         get_block_epoch witnessConfig
-            (witnessExecution.fcrStep witnessConfig witnessExternals
+            (witnessExecution.fcrStoreAtCall witnessConfig witnessExternals
               v.val n.val).store a <
         get_block_epoch witnessConfig
-            (witnessExecution.fcrStep witnessConfig witnessExternals
+            (witnessExecution.fcrStoreAtCall witnessConfig witnessExternals
               v.val n.val).store c →
         False := by
   simp only [getLatestSelectorGuard]
@@ -98,25 +98,25 @@ private theorem bounded_no_previousAcceptedEdge_away_from_epoch_start :
     ∀ (v : Fin 4) (n : Fin 15) (a c : WitnessRoot),
       (a, c) ∈
           (findLatestSelectedTrace witnessConfig witnessExternals
-            (witnessExecution.fcrStep witnessConfig witnessExternals
+            (witnessExecution.fcrStoreAtCall witnessConfig witnessExternals
               v.val n.val)
             (witnessExecution.getLatestConfirmedTraceAt witnessConfig
               witnessExternals v.val n.val).afterObserved).2.1 →
         is_start_slot_at_epoch witnessConfig
           (get_current_slot witnessConfig
-            (witnessExecution.fcrStep witnessConfig witnessExternals
+            (witnessExecution.fcrStoreAtCall witnessConfig witnessExternals
               v.val n.val).store) ≠ true → False := by
   set_option maxRecDepth 50000 in decide
 
 private theorem bounded_no_selectedPreviousResult_under_selector :
     ∀ (v : Fin 4) (n : Fin 15) (result : WitnessRoot),
       getLatestSelectorGuard witnessConfig
-          (witnessExecution.fcrStep witnessConfig witnessExternals
+          (witnessExecution.fcrStoreAtCall witnessConfig witnessExternals
             v.val n.val)
           (witnessExecution.getLatestConfirmedTraceAt witnessConfig
             witnessExternals v.val n.val).afterObserved →
         find_latest_confirmed_descendant witnessConfig witnessExternals
-          (witnessExecution.fcrStep witnessConfig witnessExternals
+          (witnessExecution.fcrStoreAtCall witnessConfig witnessExternals
             v.val n.val)
           (witnessExecution.getLatestConfirmedTraceAt witnessConfig
             witnessExternals v.val n.val).afterObserved = result →
@@ -124,14 +124,14 @@ private theorem bounded_no_selectedPreviousResult_under_selector :
           (witnessExecution.getLatestConfirmedTraceAt witnessConfig
             witnessExternals v.val n.val).afterObserved →
         get_block_epoch witnessConfig
-            (witnessExecution.fcrStep witnessConfig witnessExternals
+            (witnessExecution.fcrStoreAtCall witnessConfig witnessExternals
               v.val n.val).store result ≠
           get_current_store_epoch witnessConfig
-            (witnessExecution.fcrStep witnessConfig witnessExternals
+            (witnessExecution.fcrStoreAtCall witnessConfig witnessExternals
               v.val n.val).store →
         is_start_slot_at_epoch witnessConfig
           (get_current_slot witnessConfig
-            (witnessExecution.fcrStep witnessConfig witnessExternals
+            (witnessExecution.fcrStoreAtCall witnessConfig witnessExternals
               v.val n.val).store) ≠ true →
         False := by
   simp only [getLatestSelectorGuard]
@@ -144,12 +144,12 @@ theorem no_currentTargetAcceptedEdge_under_selector
     {v : ValidatorIndex} (hv : v ∈ witnessExecution.honest) {n : ℕ}
     (hHn1 : witnessExecution.WithinHorizon witnessConfig (n + 1))
     (hselector : getLatestSelectorGuard witnessConfig
-      (witnessExecution.fcrStep witnessConfig witnessExternals v n)
+      (witnessExecution.fcrStoreAtCall witnessConfig witnessExternals v n)
       (witnessExecution.getLatestConfirmedTraceAt witnessConfig
         witnessExternals v n).afterObserved)
     (a c : WitnessRoot)
-    (hedge : CurrentTargetAcceptedEdge witnessConfig witnessExternals
-      (witnessExecution.fcrStep witnessConfig witnessExternals v n)
+    (hedge : CurrentTargetSelectedEdge witnessConfig witnessExternals
+      (witnessExecution.fcrStoreAtCall witnessConfig witnessExternals v n)
       (witnessExecution.getLatestConfirmedTraceAt witnessConfig
         witnessExternals v n).afterObserved a c) : False := by
   have hnlt := time_lt_sixteen hHn1
@@ -169,13 +169,13 @@ theorem no_previousAcceptedEdge_away_from_epoch_start
     {v : ValidatorIndex} (hv : v ∈ witnessExecution.honest) {n : ℕ}
     (hHn1 : witnessExecution.WithinHorizon witnessConfig (n + 1))
     (a c : WitnessRoot)
-    (hedge : PreviousAcceptedEdge witnessConfig witnessExternals
-      (witnessExecution.fcrStep witnessConfig witnessExternals v n)
+    (hedge : PreviousEpochSelectedEdge witnessConfig witnessExternals
+      (witnessExecution.fcrStoreAtCall witnessConfig witnessExternals v n)
       (witnessExecution.getLatestConfirmedTraceAt witnessConfig
         witnessExternals v n).afterObserved a c)
     (hnotStart : is_start_slot_at_epoch witnessConfig
       (get_current_slot witnessConfig
-        (witnessExecution.fcrStep witnessConfig witnessExternals v n).store)
+        (witnessExecution.fcrStoreAtCall witnessConfig witnessExternals v n).store)
         ≠ true) : False := by
   have hnlt := time_lt_sixteen hHn1
   have hnlt' : n < 15 := by omega
@@ -186,7 +186,7 @@ theorem no_previousAcceptedEdge_away_from_epoch_start
   let nf : Fin 15 := ⟨n, hnlt'⟩
   change (a, c) ∈
     (findLatestSelectedTrace witnessConfig witnessExternals
-      (witnessExecution.fcrStep witnessConfig witnessExternals v n)
+      (witnessExecution.fcrStoreAtCall witnessConfig witnessExternals v n)
       (witnessExecution.getLatestConfirmedTraceAt witnessConfig
         witnessExternals v n).afterObserved).2.1 at hedge
   exact bounded_no_previousAcceptedEdge_away_from_epoch_start
@@ -198,24 +198,24 @@ theorem no_selectedPreviousResult_under_selector
     {v : ValidatorIndex} (hv : v ∈ witnessExecution.honest) {n : ℕ}
     (hHn1 : witnessExecution.WithinHorizon witnessConfig (n + 1))
     (hselector : getLatestSelectorGuard witnessConfig
-      (witnessExecution.fcrStep witnessConfig witnessExternals v n)
+      (witnessExecution.fcrStoreAtCall witnessConfig witnessExternals v n)
       (witnessExecution.getLatestConfirmedTraceAt witnessConfig
         witnessExternals v n).afterObserved)
     (result : WitnessRoot)
     (hout : find_latest_confirmed_descendant witnessConfig witnessExternals
-      (witnessExecution.fcrStep witnessConfig witnessExternals v n)
+      (witnessExecution.fcrStoreAtCall witnessConfig witnessExternals v n)
       (witnessExecution.getLatestConfirmedTraceAt witnessConfig
         witnessExternals v n).afterObserved = result)
     (hstrict : result ≠
       (witnessExecution.getLatestConfirmedTraceAt witnessConfig
         witnessExternals v n).afterObserved)
     (hprevious : get_block_epoch witnessConfig
-      (witnessExecution.fcrStep witnessConfig witnessExternals v n).store
+      (witnessExecution.fcrStoreAtCall witnessConfig witnessExternals v n).store
         result ≠ get_current_store_epoch witnessConfig
-          (witnessExecution.fcrStep witnessConfig witnessExternals v n).store)
+          (witnessExecution.fcrStoreAtCall witnessConfig witnessExternals v n).store)
     (hnotStart : is_start_slot_at_epoch witnessConfig
       (get_current_slot witnessConfig
-        (witnessExecution.fcrStep witnessConfig witnessExternals v n).store)
+        (witnessExecution.fcrStoreAtCall witnessConfig witnessExternals v n).store)
         ≠ true) : False := by
   have hnlt := time_lt_sixteen hHn1
   have hnlt' : n < 15 := by omega
@@ -231,12 +231,12 @@ theorem witnessSelectedHelperProvisos
     {v : ValidatorIndex} (hv : v ∈ witnessExecution.honest) {n : ℕ}
     (hHn1 : witnessExecution.WithinHorizon witnessConfig (n + 1))
     (hselector : getLatestSelectorGuard witnessConfig
-      (witnessExecution.fcrStep witnessConfig witnessExternals v n)
+      (witnessExecution.fcrStoreAtCall witnessConfig witnessExternals v n)
       (witnessExecution.getLatestConfirmedTraceAt witnessConfig
         witnessExternals v n).afterObserved) :
-    SelectedHelperProvisosAt witnessConfig witnessExternals witnessExecution
+    FCRPredictionSupportAt witnessConfig witnessExternals witnessExecution
       v (n + 1)
-      (witnessExecution.fcrStep witnessConfig witnessExternals v n)
+      (witnessExecution.fcrStoreAtCall witnessConfig witnessExternals v n)
       (witnessExecution.getLatestConfirmedTraceAt witnessConfig
         witnessExternals v n).afterObserved := by
   refine
@@ -587,7 +587,7 @@ finalization-delay witness below.
 -/
 
 theorem witnessAcceptedRealizedFinalizationDelay :
-    witnessExecution.AcceptedRealizedFinalizationDelay witnessConfig
+    witnessExecution.RealizedFinalizationDelay witnessConfig
       witnessExternals witnessAcceptedSemantics := by
   intro t
   change
@@ -611,7 +611,7 @@ theorem witnessAcceptedRealizedFinalizationDelay :
     rfl
 
 def witnessCompletedPrefixCallAssumptions :
-    witnessExecution.AcceptedHistoricalA32CompletedPrefixCallAssumptions
+    witnessExecution.CompletedFCRCallPremises
       witnessConfig witnessExternals where
   synchrony := witnessPaperSafetySynchrony
   static_validators := witnessStaticValidatorSet
@@ -625,7 +625,7 @@ def witnessCompletedPrefixCallAssumptions :
     exact witnessSelectedHelperProvisos hv hHn1 hselector
 
 def witnessAcceptedActualFCRNextSlotSafetyAssumptions :
-    witnessExecution.AcceptedActualFCRNextSlotSafetyAssumptions witnessConfig
+    witnessExecution.NextSlotSafetyPremises witnessConfig
       witnessExternals where
   semantics := witnessAcceptedSemantics
   trajectory := witnessScheduledPrefixTrajectoryAssumptions
@@ -672,9 +672,9 @@ theorem second_sixteen_outside_horizon :
 
 structure JointWitnessFacts : Prop where
   assumptions : Nonempty
-    (witnessExecution.AcceptedActualFCRNextSlotSafetyAssumptions witnessConfig
+    (witnessExecution.NextSlotSafetyPremises witnessConfig
       witnessExternals)
-  strict_call : witnessExecution.IsFCRCallAt witnessConfig witnessExternals 0 1
+  strict_call : witnessExecution.IsScheduledFCRCallAt witnessConfig witnessExternals 0 1
   strict_input : witnessExecution.confirmed witnessConfig witnessExternals
     0 1 = anchorRoot
   strict_output : witnessExecution.confirmed witnessConfig witnessExternals
@@ -711,7 +711,7 @@ structure JointWitnessFacts : Prop where
       (witnessExecution.store witnessConfig witnessExternals 0 15))
     (get_node_for_root childRoot) = true
 
-theorem witnessJointNonvacuity : JointWitnessFacts := by
+theorem finite_execution_satisfies_premises : JointWitnessFacts := by
   refine
     { assumptions := ⟨witnessAcceptedActualFCRNextSlotSafetyAssumptions⟩
       strict_call := by
@@ -733,7 +733,7 @@ theorem witnessJointNonvacuity : JointWitnessFacts := by
   · exact witnessPaperA32_child_one_conclusion 0 (by decide) 12
       (time_within_of_lt_sixteen (by decide)) (by decide)
   · have hsafe :=
-      Execution.AcceptedActualFCRNextSlotSafetyAssumptions.confirmed_head_nextSlot
+      Execution.NextSlotSafetyPremises.confirmed_head_nextSlot
         witnessConfig witnessExternals witnessExecution
         witnessAcceptedActualFCRNextSlotSafetyAssumptions
         (v := 0) (n := 2) (w := 0) (m := 15)
@@ -741,14 +741,14 @@ theorem witnessJointNonvacuity : JointWitnessFacts := by
         (time_within_of_lt_sixteen (by decide))
     simpa only [actual_fcr_transition_strict_advance] using hsafe
 
-theorem acceptedActualFCRNextSlotSafetyAssumptions_nonvacuous :
+theorem next_slot_premises_nonempty :
     ∃ (cfg : Config) (ext : Externals WitnessRoot)
       (E : Execution WitnessRoot),
-      Nonempty (E.AcceptedActualFCRNextSlotSafetyAssumptions cfg ext) := by
+      Nonempty (E.NextSlotSafetyPremises cfg ext) := by
   exact ⟨witnessConfig, witnessExternals, witnessExecution,
     ⟨witnessAcceptedActualFCRNextSlotSafetyAssumptions⟩⟩
 
-end AcceptedActualFCRJointNonVacuityFinal
+end NextSlotPremiseWitness
 end FastConfirmation.Spec
 
 end

@@ -44,7 +44,7 @@ member `i`, given a recorded latest message at `(w, m)` that supports
 justified source `bs`. Honest-ness and committee assignment come from
 `Sclass ⊆ span_committee` + the honest filter; active/unslashed/non-equivocation are
 internal to `mem_AttSupporters_of_honest_committee`. This is `hSmem`. -/
-theorem hSmem_of_recorded (hhb : HonestBehavior cfg ext E) (hec : ExternalsCoherence cfg ext E)
+theorem hSmem_of_recorded (hhb : HonestBehavior cfg ext E) (hec : BeaconExternalsPremises cfg ext E)
     (hsv : StaticValidatorSet cfg E)
     (hgen : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
       E.genesis_store = get_forkchoice_store cfg ast ablk)

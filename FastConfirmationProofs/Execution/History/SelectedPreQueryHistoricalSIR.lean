@@ -22,7 +22,7 @@ There are three materially different layers.
   boundary in every store which knows it.
 * The selector's exact call-site split is executable.  A previous-epoch result
   is either at epoch start or carries the actual no-conflict gate and its
-  `SelectedHelperProvisosAt` support premise.  A current-epoch result either
+  `FCRPredictionSupportAt` support premise.  A current-epoch result either
   has a retained crossing edge, which carries the actual current-target gate,
   or needs the historical gate propagation of paper Lemma 27.
 * Turning those gates into historical checkpoint ordering is the paper SIR
@@ -68,7 +68,7 @@ inductive StrictSelectedHistoricalSIRCallSite
       (result_current : get_block_epoch cfg query.store result =
         get_current_store_epoch cfg query.store)
       (a c : Root)
-      (edge : CurrentTargetAcceptedEdge cfg ext query input a c)
+      (edge : CurrentTargetSelectedEdge cfg ext query input a c)
       (gate : will_current_target_be_justified cfg ext query.store = true)
       (support : HonestVotesSupportTarget cfg E
         (get_current_target cfg query.store) q)
@@ -76,7 +76,7 @@ inductive StrictSelectedHistoricalSIRCallSite
       (result_current : get_block_epoch cfg query.store result =
         get_current_store_epoch cfg query.store)
       (no_crossing : ¬ ∃ a c : Root,
-        CurrentTargetAcceptedEdge cfg ext query input a c)
+        CurrentTargetSelectedEdge cfg ext query input a c)
   | previousEpochStart
       (result_previous : get_block_epoch cfg query.store result + 1 =
         get_current_store_epoch cfg query.store)
@@ -95,7 +95,7 @@ inductive StrictSelectedHistoricalSIRCallSite
 /-- The exact selector and proviso facts classify a strict result into the
 paper's historical-current, epoch-boundary, and mid-epoch no-conflict cases.
 
-The support premise is stored by `SelectedHelperProvisosAt` at execution index
+The support premise is stored by `FCRPredictionSupportAt` at execution index
 `q`, whereas the executable query store's current slot is `E.slot_at cfg q`.
 The equality premise below performs only that clock rewrite. -/
 theorem strictSelectedHistoricalSIRCallSite
@@ -111,7 +111,7 @@ theorem strictSelectedHistoricalSIRCallSite
         get_block_epoch cfg query.store input + 1 =
           get_current_store_epoch cfg query.store)
     (hstrict : find_latest_confirmed_descendant cfg ext query input ≠ input)
-    (hprovisos : SelectedHelperProvisosAt cfg ext E v q query input) :
+    (hprovisos : FCRPredictionSupportAt cfg ext E v q query input) :
     StrictSelectedHistoricalSIRCallSite cfg ext E q query input
       (find_latest_confirmed_descendant cfg ext query input) := by
   let result := find_latest_confirmed_descendant cfg ext query input
@@ -119,7 +119,7 @@ theorem strictSelectedHistoricalSIRCallSite
     query hquery input hinput hinputEpoch hstrict
   rcases hfacts.current_or_previous_epoch with hcurrent | hprevious
   · by_cases hcross : ∃ a c : Root,
-        CurrentTargetAcceptedEdge cfg ext query input a c
+        CurrentTargetSelectedEdge cfg ext query input a c
     · obtain ⟨a, c, hedge⟩ := hcross
       obtain ⟨hgate, hsupport⟩ :=
         E.currentTargetAcceptedEdge_gate_and_support cfg ext hprovisos hedge
@@ -732,7 +732,7 @@ def HistoricalCurrentTargetCertificateProducerAt
     (query : FastConfirmationStore Root) (input result : Root) : Prop :=
   get_block_epoch cfg query.store result =
       get_current_store_epoch cfg query.store →
-  (¬ ∃ a c : Root, CurrentTargetAcceptedEdge cfg ext query input a c) →
+  (¬ ∃ a c : Root, CurrentTargetSelectedEdge cfg ext query input a c) →
     Nonempty (CertifiedJustified cfg E anchor
       (get_current_target cfg query.store))
 

@@ -175,7 +175,7 @@ theorem get_adversarial_weight_quantized_growth_with_loss
 ground-truth committee weight. Phase0 quantization then makes every partial
 same-epoch estimate a multiple of one hundred. -/
 theorem Execution.hundred_dvd_same_epoch_estimate_of_one_slot_exact
-    (E : Execution Root) (hbb : ByzantineBound cfg E)
+    (E : Execution Root) (hbb : ByzantineWeightPremises cfg E)
     (tab : Gwei) (a s t : Slot)
     (hfirstCov : is_full_validator_set_covered cfg a a = false)
     (hfirstExact : estimate_committee_weight_between_slots cfg tab a a =
@@ -592,8 +592,8 @@ namespace Execution
 
 variable (E : Execution Root)
 
-private def AcceptedActualFCRNextSlotSafetyAssumptions.live_selected_margin
-    (h : E.AcceptedActualFCRNextSlotSafetyAssumptions cfg ext) :
+private def NextSlotSafetyPremises.live_selected_margin
+    (h : E.NextSlotSafetyPremises cfg ext) :
     SelectedMarginAssumptions cfg ext E :=
   { genesis := h.trajectory.genesis_structure
     wellFormed := h.trajectory.wellFormed
@@ -610,10 +610,10 @@ private def AcceptedActualFCRNextSlotSafetyAssumptions.live_selected_margin
 
 /-- A confirmed live block is the exact produced root supported by all
 honest votes from its slot through the live endpoint. -/
-theorem AcceptedActualFCRNextSlotSafetyAssumptions.live_one_confirmed_supports_live_votes
-    (h : E.AcceptedActualFCRNextSlotSafetyAssumptions cfg ext)
+theorem NextSlotSafetyPremises.live_one_confirmed_supports_live_votes
+    (h : E.NextSlotSafetyPremises cfg ext)
     {observer : ValidatorIndex} {n m : ℕ}
-    (live : MonotonicityLiveAssumptions cfg ext E observer n m)
+    (live : LiveMonotonicityPremises cfg ext E observer n m)
     {w : ValidatorIndex} (hw : w ∈ E.honest) {q : ℕ}
     (hHq1 : E.WithinHorizon cfg (q + 1))
     (hqm : q + 1 ≤ m)
@@ -621,8 +621,8 @@ theorem AcceptedActualFCRNextSlotSafetyAssumptions.live_one_confirmed_supports_l
     (hb : b ∈ (E.store cfg ext w (q + 1)).block_roots)
     (hp : ((E.store cfg ext w (q + 1)).blocks b).parent_root ∈
       (E.store cfg ext w (q + 1)).block_roots)
-    (hconf : is_one_confirmed cfg ext (E.fcrStep cfg ext w q).store
-      (get_current_balance_source (E.fcrStep cfg ext w q)) b = true)
+    (hconf : is_one_confirmed cfg ext (E.fcrStoreAtCall cfg ext w q).store
+      (get_current_balance_source (E.fcrStoreAtCall cfg ext w q)) b = true)
     (hs0 : E.slot_at cfg 0 ≤
       get_block_slot (E.store cfg ext w (q + 1)) b)
     (hsm : get_block_slot (E.store cfg ext w (q + 1)) b <
@@ -641,7 +641,7 @@ theorem AcceptedActualFCRNextSlotSafetyAssumptions.live_one_confirmed_supports_l
   let hA := h.live_selected_margin cfg ext E
   obtain ⟨i, lm, hi, hlm, hancB⟩ :=
     E.honestSupporter_of_confirmed_known_at_minimal cfg ext hA
-      w hw (q + 1) (E.fcrStep cfg ext w q)
+      w hw (q + 1) (E.fcrStoreAtCall cfg ext w q)
       (E.fcrStep_store cfg ext w q) b hHq1 hb hp hconf
   obtain ⟨ast, ablk, hgenEq, _, _⟩ := h.trajectory.genesis_structure
   have hgen : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
@@ -718,18 +718,18 @@ theorem AcceptedActualFCRNextSlotSafetyAssumptions.live_one_confirmed_supports_l
 
 /-- The parent of a confirmed live block after the initial slot is the
 honest block produced in the preceding slot. -/
-theorem AcceptedActualFCRNextSlotSafetyAssumptions.live_one_confirmed_parent
-    (h : E.AcceptedActualFCRNextSlotSafetyAssumptions cfg ext)
+theorem NextSlotSafetyPremises.live_one_confirmed_parent
+    (h : E.NextSlotSafetyPremises cfg ext)
     {observer : ValidatorIndex} {n m : ℕ}
-    (live : MonotonicityLiveAssumptions cfg ext E observer n m)
+    (live : LiveMonotonicityPremises cfg ext E observer n m)
     {w : ValidatorIndex} (hw : w ∈ E.honest) {q : ℕ}
     (hHq1 : E.WithinHorizon cfg (q + 1))
     (hqm : q + 1 ≤ m)
     {b : Root} (hb : b ∈ (E.store cfg ext w (q + 1)).block_roots)
     (hp : ((E.store cfg ext w (q + 1)).blocks b).parent_root ∈
       (E.store cfg ext w (q + 1)).block_roots)
-    (hconf : is_one_confirmed cfg ext (E.fcrStep cfg ext w q).store
-      (get_current_balance_source (E.fcrStep cfg ext w q)) b = true)
+    (hconf : is_one_confirmed cfg ext (E.fcrStoreAtCall cfg ext w q).store
+      (get_current_balance_source (E.fcrStoreAtCall cfg ext w q)) b = true)
     (hs0 : E.slot_at cfg 0 <
       get_block_slot (E.store cfg ext w (q + 1)) b)
     (hsm : get_block_slot (E.store cfg ext w (q + 1)) b <
@@ -748,7 +748,7 @@ theorem AcceptedActualFCRNextSlotSafetyAssumptions.live_one_confirmed_parent
   let hA := h.live_selected_margin cfg ext E
   obtain ⟨i, lm, hi, hlm, hancB⟩ :=
     E.honestSupporter_of_confirmed_known_at_minimal cfg ext hA
-      w hw (q + 1) (E.fcrStep cfg ext w q)
+      w hw (q + 1) (E.fcrStoreAtCall cfg ext w q)
       (E.fcrStep_store cfg ext w q) b hHq1 hb hp hconf
   obtain ⟨ast, ablk, hgenEq, _, _⟩ := h.trajectory.genesis_structure
   have hgen : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
@@ -852,8 +852,8 @@ theorem AcceptedActualFCRNextSlotSafetyAssumptions.live_one_confirmed_parent
 
 /-- In an accepted execution, the anchor state and initial execution slot
 name the same epoch. -/
-theorem AcceptedActualFCRNextSlotSafetyAssumptions.anchor_epoch_eq_initial
-    (h : E.AcceptedActualFCRNextSlotSafetyAssumptions cfg ext) :
+theorem NextSlotSafetyPremises.anchor_epoch_eq_initial
+    (h : E.NextSlotSafetyPremises cfg ext) :
     get_current_epoch cfg E.anchor_state =
       compute_epoch_at_slot cfg (E.slot_at cfg 0) := by
   obtain ⟨ast, ablk, hgenEq, hslot, _⟩ := h.trajectory.genesis_structure
@@ -871,8 +871,8 @@ theorem AcceptedActualFCRNextSlotSafetyAssumptions.anchor_epoch_eq_initial
 
 /-- In every in-horizon committee span, accepted Byzantine concentration
 leaves at least three quarters of the assigned weight honest. -/
-theorem AcceptedActualFCRNextSlotSafetyAssumptions.honest_span_three_quarters
-    (h : E.AcceptedActualFCRNextSlotSafetyAssumptions cfg ext)
+theorem NextSlotSafetyPremises.honest_span_three_quarters
+    (h : E.NextSlotSafetyPremises cfg ext)
     (a b : Slot)
     (haH : E.SlotWithinHorizon cfg a)
     (hbH : E.SlotWithinHorizon cfg b) :
@@ -890,8 +890,8 @@ theorem AcceptedActualFCRNextSlotSafetyAssumptions.honest_span_three_quarters
 
 /-- Disjoint consecutive slot spans inside one epoch have disjoint
 validator assignments. -/
-theorem AcceptedActualFCRNextSlotSafetyAssumptions.same_epoch_spans_disjoint
-    (h : E.AcceptedActualFCRNextSlotSafetyAssumptions cfg ext)
+theorem NextSlotSafetyPremises.same_epoch_spans_disjoint
+    (h : E.NextSlotSafetyPremises cfg ext)
     {a b c : Slot}
     (hepoch : compute_epoch_at_slot cfg a = compute_epoch_at_slot cfg c) :
     Disjoint (E.span_committee a b) (E.span_committee (b + 1) c) := by
@@ -937,8 +937,8 @@ theorem span_committee_split (a b c : Slot)
 
 /-- Within one epoch, disjoint adjacent slot ranges partition committee
 weight exactly. -/
-theorem AcceptedActualFCRNextSlotSafetyAssumptions.same_epoch_span_weight_partition
-    (h : E.AcceptedActualFCRNextSlotSafetyAssumptions cfg ext)
+theorem NextSlotSafetyPremises.same_epoch_span_weight_partition
+    (h : E.NextSlotSafetyPremises cfg ext)
     {a b c : Slot} (hab : a ≤ b) (hbc : b < c)
     (hepoch : compute_epoch_at_slot cfg a = compute_epoch_at_slot cfg c) :
     E.weight (E.span_committee a b) +
@@ -949,8 +949,8 @@ theorem AcceptedActualFCRNextSlotSafetyAssumptions.same_epoch_span_weight_partit
 
 /-- In an accepted horizon-bounded epoch, the committee union has the exact
 anchored total active weight. -/
-theorem AcceptedActualFCRNextSlotSafetyAssumptions.full_epoch_span_weight_eq_total
-    (h : E.AcceptedActualFCRNextSlotSafetyAssumptions cfg ext)
+theorem NextSlotSafetyPremises.full_epoch_span_weight_eq_total
+    (h : E.NextSlotSafetyPremises cfg ext)
     (store : Store Root)
     (hcurrentH : E.SlotWithinHorizon cfg (get_current_slot cfg store))
     (hendH : E.SlotWithinHorizon cfg (currentTargetEpochEnd cfg store)) :
@@ -968,8 +968,8 @@ theorem AcceptedActualFCRNextSlotSafetyAssumptions.full_epoch_span_weight_eq_tot
 
 /-- Estimation soundness on complementary same-epoch ranges is exact once
 their disjoint union is the full active committee. -/
-theorem AcceptedActualFCRNextSlotSafetyAssumptions.complementary_partial_window_exact
-    (h : E.AcceptedActualFCRNextSlotSafetyAssumptions cfg ext)
+theorem NextSlotSafetyPremises.complementary_partial_window_exact
+    (h : E.NextSlotSafetyPremises cfg ext)
     (a b c : Slot) (hab : a ≤ b) (hbc : b + 1 ≤ c)
     (hepoch : compute_epoch_at_slot cfg a = compute_epoch_at_slot cfg c)
     (hwhole : E.weight (E.span_committee a c) = E.total_active cfg)
@@ -1000,8 +1000,8 @@ theorem AcceptedActualFCRNextSlotSafetyAssumptions.complementary_partial_window_
 
 /-- The accepted full-epoch committee identity supplies the whole-weight
 premise of complementary partial-window exactness. -/
-theorem AcceptedActualFCRNextSlotSafetyAssumptions.current_epoch_partial_window_exact
-    (h : E.AcceptedActualFCRNextSlotSafetyAssumptions cfg ext)
+theorem NextSlotSafetyPremises.current_epoch_partial_window_exact
+    (h : E.NextSlotSafetyPremises cfg ext)
     (store : Store Root) (b : Slot)
     (hcurrentH : E.SlotWithinHorizon cfg (get_current_slot cfg store))
     (hstartH : E.SlotWithinHorizon cfg (currentTargetEpochStart cfg store))
@@ -1039,8 +1039,8 @@ theorem AcceptedActualFCRNextSlotSafetyAssumptions.current_epoch_partial_window_
 
 /-- Every vote slot in a completed epoch has reached its next-slot delivery
 deadline by the endpoint, including the last slot of that epoch. -/
-theorem AcceptedActualFCRNextSlotSafetyAssumptions.completed_epoch_vote_delivery
-    (h : E.AcceptedActualFCRNextSlotSafetyAssumptions cfg ext)
+theorem NextSlotSafetyPremises.completed_epoch_vote_delivery
+    (h : E.NextSlotSafetyPremises cfg ext)
     {e : Epoch} {m : ℕ}
     (heDone : compute_start_slot_at_epoch cfg (e + 1) ≤ E.slot_at cfg m)
     {t : Slot} (htEpoch : compute_epoch_at_slot cfg t = e) :
@@ -1065,8 +1065,8 @@ theorem AcceptedActualFCRNextSlotSafetyAssumptions.completed_epoch_vote_delivery
 /-- Two in-horizon balance sources with the accepted static registry have
 the same active, unslashed validator list, even when they are different
 checkpoint states. -/
-theorem AcceptedActualFCRNextSlotSafetyAssumptions.live_supporter_base_eq
-    (h : E.AcceptedActualFCRNextSlotSafetyAssumptions cfg ext)
+theorem NextSlotSafetyPremises.live_supporter_base_eq
+    (h : E.NextSlotSafetyPremises cfg ext)
     (oldSource newSource : BeaconState Root)
     (hvalOld : oldSource.validators = E.registry)
     (hvalNew : newSource.validators = E.registry)
@@ -1102,8 +1102,8 @@ theorem AcceptedActualFCRNextSlotSafetyAssumptions.live_supporter_base_eq
 /-- A supporter of an epoch-`e` block at an epoch-`e` call has a latest
 message from that epoch. Provenance puts the vote after the block and before
 the call. -/
-theorem AcceptedActualFCRNextSlotSafetyAssumptions.live_supporter_message_epoch
-    (h : E.AcceptedActualFCRNextSlotSafetyAssumptions cfg ext)
+theorem NextSlotSafetyPremises.live_supporter_message_epoch
+    (h : E.NextSlotSafetyPremises cfg ext)
     {w : ValidatorIndex} (hw : w ∈ E.honest) {t : ℕ}
     (hHt : E.WithinHorizon cfg t)
     {e : Epoch} (hcurrent : get_current_store_epoch cfg
@@ -1161,8 +1161,8 @@ theorem AcceptedActualFCRNextSlotSafetyAssumptions.live_supporter_message_epoch
 /-- At the next epoch start, an old supporter with an old-epoch message still
 supports the same known block unless that validator has been marked as an
 equivocator. The result applies to Byzantine as well as honest validators. -/
-theorem AcceptedActualFCRNextSlotSafetyAssumptions.live_old_supporter_at_boundary
-    (h : E.AcceptedActualFCRNextSlotSafetyAssumptions cfg ext)
+theorem NextSlotSafetyPremises.live_old_supporter_at_boundary
+    (h : E.NextSlotSafetyPremises cfg ext)
     {w : ValidatorIndex} (hw : w ∈ E.honest)
     {n m : ℕ} (hnm : n ≤ m)
     (hHn : E.WithinHorizon cfg n) (hHm : E.WithinHorizon cfg m)
@@ -1219,8 +1219,8 @@ theorem AcceptedActualFCRNextSlotSafetyAssumptions.live_old_supporter_at_boundar
 
 /-- For a known block from the just-completed epoch, the old-message epoch
 condition follows from block and call geometry. -/
-theorem AcceptedActualFCRNextSlotSafetyAssumptions.live_old_supporter_at_boundary_of_block_epoch
-    (h : E.AcceptedActualFCRNextSlotSafetyAssumptions cfg ext)
+theorem NextSlotSafetyPremises.live_old_supporter_at_boundary_of_block_epoch
+    (h : E.NextSlotSafetyPremises cfg ext)
     {w : ValidatorIndex} (hw : w ∈ E.honest)
     {n m : ℕ} (hnm : n ≤ m)
     (hHn : E.WithinHorizon cfg n) (hHm : E.WithinHorizon cfg m)
@@ -1249,8 +1249,8 @@ theorem AcceptedActualFCRNextSlotSafetyAssumptions.live_old_supporter_at_boundar
 /-- Every old supporter absent from the boundary score is a newly marked
 equivocator. This is the set-level loss that the adversarial allowance must
 refund. -/
-theorem AcceptedActualFCRNextSlotSafetyAssumptions.live_lost_supporters_newly_equivocating
-    (h : E.AcceptedActualFCRNextSlotSafetyAssumptions cfg ext)
+theorem NextSlotSafetyPremises.live_lost_supporters_newly_equivocating
+    (h : E.NextSlotSafetyPremises cfg ext)
     {w : ValidatorIndex} (hw : w ∈ E.honest)
     {n m : ℕ} (hnm : n ≤ m)
     (hHn : E.WithinHorizon cfg n) (hHm : E.WithinHorizon cfg m)
@@ -1285,8 +1285,8 @@ theorem AcceptedActualFCRNextSlotSafetyAssumptions.live_lost_supporters_newly_eq
 
 /-- On nested committee windows, the equivocation score grows by at least
 the weight of old supporters lost to newly recorded equivocation. -/
-theorem AcceptedActualFCRNextSlotSafetyAssumptions.live_equivocation_score_growth_with_loss
-    (h : E.AcceptedActualFCRNextSlotSafetyAssumptions cfg ext)
+theorem NextSlotSafetyPremises.live_equivocation_score_growth_with_loss
+    (h : E.NextSlotSafetyPremises cfg ext)
     {w : ValidatorIndex} (hw : w ∈ E.honest)
     {n m : ℕ} (hnm : n ≤ m)
     (hHn : E.WithinHorizon cfg n) (hHm : E.WithinHorizon cfg m)
@@ -1381,8 +1381,8 @@ theorem AcceptedActualFCRNextSlotSafetyAssumptions.live_equivocation_score_growt
 set_option maxRecDepth 4096 in
 /-- Old supporters of a known block are in every later span that starts no
 later than the block slot and ends after the old call's vote cutoff. -/
-theorem AcceptedActualFCRNextSlotSafetyAssumptions.live_old_supporters_in_later_span
-    (h : E.AcceptedActualFCRNextSlotSafetyAssumptions cfg ext)
+theorem NextSlotSafetyPremises.live_old_supporters_in_later_span
+    (h : E.NextSlotSafetyPremises cfg ext)
     {w : ValidatorIndex} (hw : w ∈ E.honest)
     {n : ℕ} (hHn : E.WithinHorizon cfg n)
     {b : Root} (hb : b ∈ (E.store cfg ext w n).block_roots)
@@ -1420,8 +1420,8 @@ theorem AcceptedActualFCRNextSlotSafetyAssumptions.live_old_supporters_in_later_
 
 /-- The score lost at the boundary is part of the old Byzantine supporter
 weight, so it is covered by the old executable adversarial allowance. -/
-theorem AcceptedActualFCRNextSlotSafetyAssumptions.live_lost_weight_le_old_adversarial
-    (h : E.AcceptedActualFCRNextSlotSafetyAssumptions cfg ext)
+theorem NextSlotSafetyPremises.live_lost_weight_le_old_adversarial
+    (h : E.NextSlotSafetyPremises cfg ext)
     {w : ValidatorIndex} (hw : w ∈ E.honest)
     {n m : ℕ} (hnm : n ≤ m)
     (hHn : E.WithinHorizon cfg n) (hHm : E.WithinHorizon cfg m)
@@ -1493,8 +1493,8 @@ theorem AcceptedActualFCRNextSlotSafetyAssumptions.live_lost_weight_le_old_adver
 
 /-- The equivocation score of a live block's committee window is within the
 configured cap at an accepted old call. -/
-theorem AcceptedActualFCRNextSlotSafetyAssumptions.live_equivocation_le_budget
-    (h : E.AcceptedActualFCRNextSlotSafetyAssumptions cfg ext)
+theorem NextSlotSafetyPremises.live_equivocation_le_budget
+    (h : E.NextSlotSafetyPremises cfg ext)
     {w : ValidatorIndex} (hw : w ∈ E.honest)
     {n : ℕ} (hHn : E.WithinHorizon cfg n)
     {b : Root} (hb : b ∈ (E.store cfg ext w n).block_roots)
@@ -1533,8 +1533,8 @@ theorem AcceptedActualFCRNextSlotSafetyAssumptions.live_equivocation_le_budget
 committee total and proposer score as the anchor. Thus a historical current
 source and the next boundary's previous source need not be identical states
 for the numerical reconfirmation argument. -/
-theorem AcceptedActualFCRNextSlotSafetyAssumptions.live_cached_source_accounting
-    (h : E.AcceptedActualFCRNextSlotSafetyAssumptions cfg ext)
+theorem NextSlotSafetyPremises.live_cached_source_accounting
+    (h : E.NextSlotSafetyPremises cfg ext)
     {w : ValidatorIndex} (hw : w ∈ E.honest) {t : ℕ}
     (hHt : E.WithinHorizon cfg t) {cp : Checkpoint Root}
     (hkey : cp ∈ (E.store cfg ext w t).checkpoint_state_keys) :
@@ -1563,8 +1563,8 @@ theorem AcceptedActualFCRNextSlotSafetyAssumptions.live_cached_source_accounting
 /-- Every delivered honest assignment after a fixed live block is in the
 endpoint supporter set. This set inclusion, rather than just its score lower
 bound, identifies the new voters that can be added without double counting. -/
-theorem AcceptedActualFCRNextSlotSafetyAssumptions.fixed_live_block_new_supporters
-    (h : E.AcceptedActualFCRNextSlotSafetyAssumptions cfg ext)
+theorem NextSlotSafetyPremises.fixed_live_block_new_supporters
+    (h : E.NextSlotSafetyPremises cfg ext)
     {s : Slot} (hs0 : E.slot_at cfg 0 ≤ s)
     {m : ℕ} (hHm : E.WithinHorizon cfg m)
     {r : Root}
@@ -1605,8 +1605,8 @@ theorem AcceptedActualFCRNextSlotSafetyAssumptions.fixed_live_block_new_supporte
 /-- Honest assignments after an old call in one epoch are disjoint from the
 old supporter set of a block from that epoch. An old supporter already used
 its unique committee slot before the call. -/
-theorem AcceptedActualFCRNextSlotSafetyAssumptions.live_new_assignments_disjoint_old_supporters
-    (h : E.AcceptedActualFCRNextSlotSafetyAssumptions cfg ext)
+theorem NextSlotSafetyPremises.live_new_assignments_disjoint_old_supporters
+    (h : E.NextSlotSafetyPremises cfg ext)
     {w : ValidatorIndex} (hw : w ∈ E.honest)
     {n : ℕ} (hHn : E.WithinHorizon cfg n)
     {e : Epoch}
@@ -1658,8 +1658,8 @@ theorem AcceptedActualFCRNextSlotSafetyAssumptions.live_new_assignments_disjoint
 /-- Added honest assignments after an old call raise the boundary support
 score, with old supporters subsequently marked equivocating counted as the
 only possible loss. -/
-theorem AcceptedActualFCRNextSlotSafetyAssumptions.live_boundary_score_growth
-    (h : E.AcceptedActualFCRNextSlotSafetyAssumptions cfg ext)
+theorem NextSlotSafetyPremises.live_boundary_score_growth
+    (h : E.NextSlotSafetyPremises cfg ext)
     {w : ValidatorIndex} (hw : w ∈ E.honest)
     {n m : ℕ} (hHn : E.WithinHorizon cfg n)
     (hHm : E.WithinHorizon cfg m)
@@ -1719,8 +1719,8 @@ theorem AcceptedActualFCRNextSlotSafetyAssumptions.live_boundary_score_growth
 /-- The arithmetic and vote-persistence core of per-block boundary
 reconfirmation. Remaining inputs are the historical old confirmation and
 exact same-epoch window geometry. -/
-theorem AcceptedActualFCRNextSlotSafetyAssumptions.live_boundary_reconfirm_of_window
-    (h : E.AcceptedActualFCRNextSlotSafetyAssumptions cfg ext)
+theorem NextSlotSafetyPremises.live_boundary_reconfirm_of_window
+    (h : E.NextSlotSafetyPremises cfg ext)
     {w : ValidatorIndex} (hw : w ∈ E.honest)
     {n m : ℕ} (hnm : n ≤ m)
     (hHn : E.WithinHorizon cfg n) (hHm : E.WithinHorizon cfg m)
@@ -1852,8 +1852,8 @@ theorem AcceptedActualFCRNextSlotSafetyAssumptions.live_boundary_reconfirm_of_wi
 /-- The honest assignments from an old call slot through the previous
 epoch's last slot supply the new-support set and its three-quarter weight
 bound at the next boundary. -/
-theorem AcceptedActualFCRNextSlotSafetyAssumptions.live_boundary_added_honest_span
-    (h : E.AcceptedActualFCRNextSlotSafetyAssumptions cfg ext)
+theorem NextSlotSafetyPremises.live_boundary_added_honest_span
+    (h : E.NextSlotSafetyPremises cfg ext)
     {e : Epoch} {m : ℕ}
     (hHm : E.WithinHorizon cfg m)
     (hboundary : E.slot_at cfg m = compute_start_slot_at_epoch cfg (e + 1))
@@ -1906,8 +1906,8 @@ theorem AcceptedActualFCRNextSlotSafetyAssumptions.live_boundary_added_honest_sp
 
 /-- The accepted full-epoch committee partition makes every suffix after the
 epoch's first slot exact at the configured estimator. -/
-theorem AcceptedActualFCRNextSlotSafetyAssumptions.live_epoch_suffix_estimate_exact
-    (h : E.AcceptedActualFCRNextSlotSafetyAssumptions cfg ext)
+theorem NextSlotSafetyPremises.live_epoch_suffix_estimate_exact
+    (h : E.NextSlotSafetyPremises cfg ext)
     (store : Store Root) (e : Epoch)
     (hcurrent : get_current_store_epoch cfg store = e)
     (hcurrentH : E.SlotWithinHorizon cfg (get_current_slot cfg store))
@@ -1990,8 +1990,8 @@ theorem AcceptedActualFCRNextSlotSafetyAssumptions.live_epoch_suffix_estimate_ex
 
 /-- Every keyed checkpoint balance source at an honest in-horizon store has
 the static registry, an in-horizon epoch, and the anchored active total. -/
-theorem AcceptedActualFCRNextSlotSafetyAssumptions.live_cached_source_geometry
-    (h : E.AcceptedActualFCRNextSlotSafetyAssumptions cfg ext)
+theorem NextSlotSafetyPremises.live_cached_source_geometry
+    (h : E.NextSlotSafetyPremises cfg ext)
     {w : ValidatorIndex} (hw : w ∈ E.honest) {t : ℕ}
     (hHt : E.WithinHorizon cfg t) {cp : Checkpoint Root}
     (hkey : cp ∈ (E.store cfg ext w t).checkpoint_state_keys) :
@@ -2018,8 +2018,8 @@ theorem AcceptedActualFCRNextSlotSafetyAssumptions.live_cached_source_geometry
 /-- A successful old one-block confirmation pins its source checkpoint key.
 That key persists, so both the old and boundary sources have the static
 registry, in-horizon epochs, and the same anchored total. -/
-theorem AcceptedActualFCRNextSlotSafetyAssumptions.live_confirmed_source_geometry_later
-    (h : E.AcceptedActualFCRNextSlotSafetyAssumptions cfg ext)
+theorem NextSlotSafetyPremises.live_confirmed_source_geometry_later
+    (h : E.NextSlotSafetyPremises cfg ext)
     {w : ValidatorIndex} (hw : w ∈ E.honest) {n m : ℕ}
     (hnm : n ≤ m) (hHn : E.WithinHorizon cfg n)
     (hHm : E.WithinHorizon cfg m)
@@ -2050,21 +2050,21 @@ theorem AcceptedActualFCRNextSlotSafetyAssumptions.live_confirmed_source_geometr
 
 /-- A one-confirmed known block at an actual call has an honest recorded
 supporter from an earlier slot, so its slot precedes the call slot. -/
-theorem AcceptedActualFCRNextSlotSafetyAssumptions.live_one_confirmed_slot_before_call
-    (h : E.AcceptedActualFCRNextSlotSafetyAssumptions cfg ext)
+theorem NextSlotSafetyPremises.live_one_confirmed_slot_before_call
+    (h : E.NextSlotSafetyPremises cfg ext)
     {w : ValidatorIndex} (hw : w ∈ E.honest) {q : ℕ}
     (hHq1 : E.WithinHorizon cfg (q + 1))
     {b : Root} (hb : b ∈ (E.store cfg ext w (q + 1)).block_roots)
     (hp : ((E.store cfg ext w (q + 1)).blocks b).parent_root ∈
       (E.store cfg ext w (q + 1)).block_roots)
-    (hconf : is_one_confirmed cfg ext (E.fcrStep cfg ext w q).store
-      (get_current_balance_source (E.fcrStep cfg ext w q)) b = true) :
+    (hconf : is_one_confirmed cfg ext (E.fcrStoreAtCall cfg ext w q).store
+      (get_current_balance_source (E.fcrStoreAtCall cfg ext w q)) b = true) :
     get_block_slot (E.store cfg ext w (q + 1)) b < E.slot_at cfg (q + 1) := by
   let st := E.store cfg ext w (q + 1)
   let hA := h.live_selected_margin cfg ext E
   obtain ⟨i, lm, hi, hlm, hancB⟩ :=
     E.honestSupporter_of_confirmed_known_at_minimal cfg ext hA
-      w hw (q + 1) (E.fcrStep cfg ext w q)
+      w hw (q + 1) (E.fcrStoreAtCall cfg ext w q)
       (E.fcrStep_store cfg ext w q) b hHq1 hb hp hconf
   obtain ⟨ast, ablk, hgenEq, _, _⟩ := h.trajectory.genesis_structure
   have hgen : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),

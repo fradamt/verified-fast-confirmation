@@ -127,7 +127,7 @@ theorem mem_ParentSupport {E : Execution Root} {store : Store Root} {bs : Beacon
 source, the pre-region parent support splits into the honest parent-stuck weight
 plus the Byzantine parent-stuck weight (committees agree, `hval`). -/
 theorem get_block_support_eq_parent_split {E : Execution Root}
-    (hec : ExternalsCoherence cfg ext E) {v : ValidatorIndex} (hv : v ∈ E.honest) (n : ℕ)
+    (hec : BeaconExternalsPremises cfg ext E) {v : ValidatorIndex} (hv : v ∈ E.honest) (n : ℕ)
     (hnH : E.WithinHorizon cfg n)
     {bs : BeaconState Root} {b : Root} (hval : bs.validators = E.registry)
     (hbH : E.SlotWithinHorizon cfg ((E.store cfg ext v n).blocks b).slot) :
@@ -175,7 +175,7 @@ theorem get_block_support_eq_parent_split {E : Execution Root}
 non-honest votes. The opposing payload's parent votes are absent from both
 terms. -/
 theorem get_parent_payload_support_eq_split {E : Execution Root}
-    (hec : ExternalsCoherence cfg ext E) {v : ValidatorIndex} (hv : v ∈ E.honest)
+    (hec : BeaconExternalsPremises cfg ext E) {v : ValidatorIndex} (hv : v ∈ E.honest)
     (n : ℕ) (hnH : E.WithinHorizon cfg n)
     {bs : BeaconState Root} {b : Root} (hval : bs.validators = E.registry)
     (hbH : E.SlotWithinHorizon cfg ((E.store cfg ext v n).blocks b).slot) :
@@ -241,7 +241,7 @@ supporters (`ParentStuckByz`) and the active equivocators (`EquivActive`) are
 equivocators equivocate — and both sit inside the non-honest pre-region span
 committee (`ParentStuckByz` by construction, `EquivActive` by Step 1's `hne`), so
 their combined weight is within `estimate // 100 *
-CONFIRMATION_BYZANTINE_THRESHOLD` (`ByzantineBound.span_bound`). -/
+CONFIRMATION_BYZANTINE_THRESHOLD` (`ByzantineWeightPremises.span_bound`). -/
 
 omit [LinearOrder Root] [Inhabited Root] in
 /-- Weight is superadditive-into a common superset over disjoint parts. -/
@@ -257,7 +257,7 @@ private theorem weight_add_le {E : Execution Root} {A B C : Finset ValidatorInde
 the Byzantine parent-stuck weight plus the pre-region equivocation score is
 within `estimate // 100 * CONFIRMATION_BYZANTINE_THRESHOLD`. -/
 theorem parentstuck_byz_plus_equiv_le {E : Execution Root}
-    (hec : ExternalsCoherence cfg ext E) (hbb : ByzantineBound cfg E)
+    (hec : BeaconExternalsPremises cfg ext E) (hbb : ByzantineWeightPremises cfg E)
     {v : ValidatorIndex} (hv : v ∈ E.honest) {n : ℕ}
     (hnH : E.WithinHorizon cfg n)
     {bs : BeaconState Root} {b : Root} (hval : bs.validators = E.registry)
@@ -348,7 +348,7 @@ honest weight: `d ≤ Hpar`. Unconditional (no `hbyz`): the adjacency branch is
 Byzantine budget (piece 3), and the guard arithmetic. `hne` (no honest
 equivocators) is `HonestWeight.Execution.honest_not_equivocating`. -/
 theorem support_discount_le_parent_stuck {E : Execution Root}
-    (hec : ExternalsCoherence cfg ext E) (hbb : ByzantineBound cfg E)
+    (hec : BeaconExternalsPremises cfg ext E) (hbb : ByzantineWeightPremises cfg E)
     {v : ValidatorIndex} (hv : v ∈ E.honest) {n : ℕ}
     (hnH : E.WithinHorizon cfg n)
     {bs : BeaconState Root} {b : Root} (hval : bs.validators = E.registry)
@@ -371,7 +371,7 @@ theorem support_discount_le_parent_stuck {E : Execution Root}
 child's required payload status. Opposite-status parent votes are not spent by
 the discount and remain available to the opposing fork-choice branch. -/
 theorem support_discount_le_matching_parent_stuck {E : Execution Root}
-    (hec : ExternalsCoherence cfg ext E) (hbb : ByzantineBound cfg E)
+    (hec : BeaconExternalsPremises cfg ext E) (hbb : ByzantineWeightPremises cfg E)
     {v : ValidatorIndex} (hv : v ∈ E.honest) {n : ℕ}
     (hnH : E.WithinHorizon cfg n)
     {bs : BeaconState Root} {b : Root} (hval : bs.validators = E.registry)

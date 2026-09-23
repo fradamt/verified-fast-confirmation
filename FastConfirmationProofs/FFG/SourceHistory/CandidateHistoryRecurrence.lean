@@ -16,8 +16,8 @@ Paper Lemmas 22--23 reason about the ordered candidate updates in one actual
 induction: roots may coincide, and the final descendant selector may run but
 return its input unchanged.
 
-This file keeps the canonical `GetLatestConfirmedTrace` and classifies an
-actual `Execution.fcrStep` write-back into exactly four operational outcomes:
+This file keeps the canonical `LatestConfirmedCallTrace` and classifies an
+actual `Execution.fcrStoreAtCall` write-back into exactly four operational outcomes:
 
 1. the carried confirmed candidate is unchanged;
 2. a finalized reset candidate is unchanged;
@@ -42,7 +42,7 @@ variable (cfg : Config) (ext : Externals Root)
 Both guard failures are recorded, rather than inferred from root equality. -/
 structure CarriedCandidateInputAt
     (query : FastConfirmationStore Root)
-    (trace : GetLatestConfirmedTrace cfg ext query) : Prop where
+    (trace : LatestConfirmedCallTrace cfg ext query) : Prop where
   afterFinalized_eq : trace.afterFinalized = query.confirmed_root
   finalized_guard_false :
     ¬ getLatestFinalizedRevertGuard cfg ext query
@@ -56,7 +56,7 @@ namespace CarriedCandidateInputAt
 /-- A carried input necessarily passed the first guard's stale test. -/
 theorem confirmed_recent
     {query : FastConfirmationStore Root}
-    {trace : GetLatestConfirmedTrace cfg ext query}
+    {trace : LatestConfirmedCallTrace cfg ext query}
     (h : CarriedCandidateInputAt cfg ext query trace) :
     get_block_epoch cfg query.store query.confirmed_root + 1 ≥
       get_current_store_epoch cfg query.store := by
@@ -70,7 +70,7 @@ end CarriedCandidateInputAt
 candidate.  Operational guard provenance is kept even if roots coincide. -/
 structure FinalizedResetCandidateInputAt
     (query : FastConfirmationStore Root)
-    (trace : GetLatestConfirmedTrace cfg ext query) : Prop where
+    (trace : LatestConfirmedCallTrace cfg ext query) : Prop where
   afterFinalized_eq :
     trace.afterFinalized = query.store.finalized_checkpoint.root
   finalized_guard_true : getLatestFinalizedRevertGuard cfg ext query
@@ -86,7 +86,7 @@ the previous-epoch equation, checkpoint identity, and the strict slot
 improvement over the post-finalized candidate. -/
 structure ObservedResetCandidateInputAt
     (query : FastConfirmationStore Root)
-    (trace : GetLatestConfirmedTrace cfg ext query) : Prop where
+    (trace : LatestConfirmedCallTrace cfg ext query) : Prop where
   afterFinalized_cases :
     (trace.afterFinalized = query.confirmed_root ∧
         ¬ getLatestFinalizedRevertGuard cfg ext query) ∨
@@ -117,7 +117,7 @@ structure ObservedResetCandidateInputAt
 selector. -/
 inductive OrderedCandidateInputOrigin
     (query : FastConfirmationStore Root)
-    (trace : GetLatestConfirmedTrace cfg ext query) : Prop
+    (trace : LatestConfirmedCallTrace cfg ext query) : Prop
   | carried : CarriedCandidateInputAt cfg ext query trace →
       OrderedCandidateInputOrigin query trace
   | finalizedReset : FinalizedResetCandidateInputAt cfg ext query trace →
@@ -133,7 +133,7 @@ find no strict descendant.  Keeping both cases is necessary when roots
 coincide. -/
 inductive SelectorUnchangedAt
     (query : FastConfirmationStore Root)
-    (trace : GetLatestConfirmedTrace cfg ext query) : Prop
+    (trace : LatestConfirmedCallTrace cfg ext query) : Prop
   | skipped
       (result_eq : trace.result = trace.afterObserved)
       (guard_false :
@@ -154,7 +154,7 @@ namespace SelectorUnchangedAt
 input. -/
 theorem result_eq_input
     {query : FastConfirmationStore Root}
-    {trace : GetLatestConfirmedTrace cfg ext query}
+    {trace : LatestConfirmedCallTrace cfg ext query}
     (h : SelectorUnchangedAt cfg ext query trace) :
     trace.result = trace.afterObserved := by
   cases h with
@@ -167,7 +167,7 @@ end SelectorUnchangedAt
 named executable selector guard unfolded; it is not a source-recency fact. -/
 structure StrictSelectorAdvanceAt
     (query : FastConfirmationStore Root)
-    (trace : GetLatestConfirmedTrace cfg ext query) : Prop where
+    (trace : LatestConfirmedCallTrace cfg ext query) : Prop where
   result_eq : trace.result =
     find_latest_confirmed_descendant cfg ext query trace.afterObserved
   guard_true : getLatestSelectorGuard cfg query trace.afterObserved
@@ -179,7 +179,7 @@ structure StrictSelectorAdvanceAt
 /-- The exhaustive four-way operational result classification. -/
 inductive CandidateHistoryCallBranch
     (query : FastConfirmationStore Root)
-    (trace : GetLatestConfirmedTrace cfg ext query) : Prop
+    (trace : LatestConfirmedCallTrace cfg ext query) : Prop
   | carriedUnchanged
       (input : CarriedCandidateInputAt cfg ext query trace)
       (selector : SelectorUnchangedAt cfg ext query trace) :
@@ -202,13 +202,13 @@ namespace CandidateHistoryCallBranch
 
 end CandidateHistoryCallBranch
 
-namespace GetLatestConfirmedTrace
+namespace LatestConfirmedCallTrace
 
 /-- An arbitrary canonical evaluator trace has the exact four-way candidate
 history classification.  This is purely an ordered evaluator theorem. -/
 theorem candidateHistoryCallBranch
     {query : FastConfirmationStore Root}
-    (trace : GetLatestConfirmedTrace cfg ext query) :
+    (trace : LatestConfirmedCallTrace cfg ext query) :
     CandidateHistoryCallBranch cfg ext query trace := by
   have mkSelector :
       SelectorUnchangedAt cfg ext query trace ∨
@@ -266,7 +266,7 @@ theorem candidateHistoryCallBranch
     · exact .observedResetUnchanged hinput hselector
     · exact .strictSelected (.observedReset hinput) hselector
 
-end GetLatestConfirmedTrace
+end LatestConfirmedCallTrace
 
 /-! ## Minimal query-local geometry for a strict branch -/
 
@@ -275,7 +275,7 @@ query-local fork-choice domain and input knownness are supplied explicitly.
 This adapter does not derive those facts from a broad assumption bundle. -/
 structure StrictSelectorAdvanceGeometryAt
     (query : FastConfirmationStore Root)
-    (trace : GetLatestConfirmedTrace cfg ext query) : Prop where
+    (trace : LatestConfirmedCallTrace cfg ext query) : Prop where
   result_known : trace.result ∈ query.store.block_roots
   descends_input : is_ancestor query.store
     (get_node_for_root trace.result)
@@ -293,7 +293,7 @@ namespace StrictSelectorAdvanceAt
 facts using only explicit query-local geometry. -/
 theorem geometry
     {query : FastConfirmationStore Root}
-    {trace : GetLatestConfirmedTrace cfg ext query}
+    {trace : LatestConfirmedCallTrace cfg ext query}
     (h : StrictSelectorAdvanceAt cfg ext query trace)
     (hwf : ParentSlotLt query.store)
     (hwalk : ∀ t ∈ query.store.block_roots,
@@ -345,11 +345,11 @@ variable (E : Execution Root)
 advance, exact write-back equation, and exhaustive ordered candidate branch. -/
 structure ActualCandidateHistoryRecurrenceAt
     (v : ValidatorIndex) (n : ℕ) : Prop where
-  call : E.IsFCRCallAt cfg ext v n
+  call : E.IsScheduledFCRCallAt cfg ext v n
   query_store_eq :
-    (E.fcrStep cfg ext v n).store = E.store cfg ext v (n + 1)
+    (E.fcrStoreAtCall cfg ext v n).store = E.store cfg ext v (n + 1)
   query_confirmed_eq :
-    (E.fcrStep cfg ext v n).confirmed_root = E.confirmed cfg ext v n
+    (E.fcrStoreAtCall cfg ext v n).confirmed_root = E.confirmed cfg ext v n
   slot_advanced :
     get_current_slot cfg (E.store cfg ext v n) <
       get_current_slot cfg (E.store cfg ext v (n + 1))
@@ -357,14 +357,14 @@ structure ActualCandidateHistoryRecurrenceAt
     E.confirmed cfg ext v (n + 1) =
       (E.getLatestConfirmedTraceAt cfg ext v n).result
   branch : CandidateHistoryCallBranch cfg ext
-    (E.fcrStep cfg ext v n)
+    (E.fcrStoreAtCall cfg ext v n)
     (E.getLatestConfirmedTraceAt cfg ext v n)
 
 /-- The exact one-second/one-call recurrence consumed by the paper
 Lemmas-22--23 candidate-history induction. -/
 theorem actualCandidateHistoryRecurrence
     {v : ValidatorIndex} {n : ℕ}
-    (hcall : E.IsFCRCallAt cfg ext v n) :
+    (hcall : E.IsScheduledFCRCallAt cfg ext v n) :
     E.ActualCandidateHistoryRecurrenceAt cfg ext v n := by
   let trace := E.getLatestConfirmedTraceAt cfg ext v n
   have hwrite : E.confirmed cfg ext v (n + 1) = trace.result := by
@@ -404,7 +404,7 @@ structure AcceptedUJCacheInstallationAt
 checkpoint realization or history bundle. -/
 private theorem fcr_previousGreatest_succ_exact
     (v : ValidatorIndex) (n : ℕ)
-    (hcall : E.IsFCRCallAt cfg ext v n) :
+    (hcall : E.IsScheduledFCRCallAt cfg ext v n) :
     (E.fcr cfg ext v (n + 1)).previous_epoch_greatest_unrealized_checkpoint =
       if is_start_slot_at_epoch cfg
           (get_current_slot cfg (E.store cfg ext v (n + 1)) + 1) then
@@ -452,7 +452,7 @@ theorem previousGreatest_acceptedInstallation
       simp only [get_forkchoice_store]
   | succ n ih =>
       obtain ⟨ih⟩ := ih
-      by_cases hcall : E.IsFCRCallAt cfg ext v n
+      by_cases hcall : E.IsScheduledFCRCallAt cfg ext v n
       · rw [E.fcr_previousGreatest_succ_exact cfg ext v n hcall]
         by_cases hrotate : is_start_slot_at_epoch cfg
             (get_current_slot cfg (E.store cfg ext v (n + 1)) + 1) = true
@@ -526,10 +526,10 @@ private theorem fcrStep_observed_eq_previousGreatest_of_start
     (v : ValidatorIndex) (n : ℕ)
     (hstart : is_start_slot_at_epoch cfg
       (get_current_slot cfg (E.store cfg ext v (n + 1))) = true) :
-    (E.fcrStep cfg ext v n).current_epoch_observed_justified_checkpoint =
+    (E.fcrStoreAtCall cfg ext v n).current_epoch_observed_justified_checkpoint =
       (E.fcr cfg ext v n).previous_epoch_greatest_unrealized_checkpoint := by
   have hnext := next_not_epochStart_of_epochStart cfg hspe hstart
-  rw [Execution.fcrStep]
+  rw [Execution.fcrStoreAtCall]
   simp only [update_fast_confirmation_variables]
   rw [if_neg hnext, if_pos hstart]
 
@@ -546,11 +546,11 @@ theorem ObservedResetCandidateInputAt.acceptedInstallation
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hspe : 1 < cfg.slots_per_epoch)
     {v : ValidatorIndex} {n : ℕ}
-    {trace : GetLatestConfirmedTrace cfg ext (E.fcrStep cfg ext v n)}
+    {trace : LatestConfirmedCallTrace cfg ext (E.fcrStoreAtCall cfg ext v n)}
     (h : ObservedResetCandidateInputAt cfg ext
-      (E.fcrStep cfg ext v n) trace) :
+      (E.fcrStoreAtCall cfg ext v n) trace) :
     Nonempty (E.AcceptedUJCacheInstallationAt cfg ext B v n
-      (E.fcrStep cfg ext v n
+      (E.fcrStoreAtCall cfg ext v n
         ).current_epoch_observed_justified_checkpoint) := by
   have hstart : is_start_slot_at_epoch cfg
       (get_current_slot cfg (E.store cfg ext v (n + 1))) = true := by

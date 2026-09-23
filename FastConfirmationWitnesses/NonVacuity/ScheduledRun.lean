@@ -234,7 +234,7 @@ def witnessExecution : Execution WitnessRoot where
   vote := witnessVote
 
 def confirmingFcr : FastConfirmationStore WitnessRoot :=
-  witnessExecution.fcrStep witnessConfig witnessExternals 0 1
+  witnessExecution.fcrStoreAtCall witnessConfig witnessExternals 0 1
 
 /-! ## Basic clock and finite classifiers -/
 
@@ -614,7 +614,7 @@ theorem witnessReachableValidationState_nonempty {state : BeaconState WitnessRoo
   decide
 
 theorem witnessExternalsCoherence :
-    ExternalsCoherence witnessConfig witnessExternals witnessExecution := by
+    BeaconExternalsPremises witnessConfig witnessExternals witnessExecution := by
   constructor
   · intro st s hlt
     simp only [witnessExternals, witnessProcessSlots]
@@ -777,7 +777,7 @@ theorem witnessStaticValidatorSet :
 
 set_option maxRecDepth 20000 in
 theorem witnessByzantineBound :
-    ByzantineBound witnessConfig witnessExecution := by
+    ByzantineWeightPremises witnessConfig witnessExecution := by
   constructor
   · intro i
     cases i with
@@ -938,7 +938,7 @@ private theorem witness_payloads_empty (v n : ℕ) :
 
 /-- The Gloas envelope and data premises hold for this finite witness. -/
 theorem witnessPaperSafetySynchrony :
-    PaperSafetySynchrony witnessConfig witnessExternals witnessExecution := by
+    NextSlotSynchronyPremises witnessConfig witnessExternals witnessExecution := by
   apply witnessSynchrony.toPaperSafetySynchrony witnessConfig witnessExternals
   · intro v hv n r hn hr
     have hempty := witness_payloads_empty v n
@@ -962,7 +962,7 @@ theorem witnessHorizonVoteDeliveryLookahead :
   exact witness_vote_false_delivery hslt w
 
 theorem witnessScheduledPrefixTrajectoryAssumptions :
-    witnessExecution.ScheduledPrefixTrajectoryAssumptions
+    witnessExecution.ScheduledPrefixPremises
       witnessConfig witnessExternals := by
   exact
     { whole_seconds := by decide

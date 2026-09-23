@@ -41,9 +41,9 @@ and the normative target-support proviso attached to that gate. -/
 theorem currentTargetAcceptedEdge_gate_and_support
     {v : ValidatorIndex} {q : ℕ}
     {query : FastConfirmationStore Root} {latestConfirmedRoot a c : Root}
-    (hprovisos : SelectedHelperProvisosAt cfg ext E v q query
+    (hprovisos : FCRPredictionSupportAt cfg ext E v q query
       latestConfirmedRoot)
-    (hedge : CurrentTargetAcceptedEdge cfg ext query latestConfirmedRoot a c) :
+    (hedge : CurrentTargetSelectedEdge cfg ext query latestConfirmedRoot a c) :
     will_current_target_be_justified cfg ext query.store = true ∧
       HonestVotesSupportTarget cfg E
         (get_current_target cfg query.store) q := by
@@ -53,11 +53,11 @@ theorem currentTargetAcceptedEdge_gate_and_support
 /-- A strict selected previous-epoch result away from epoch start exposes both
 the wrapper's actual no-conflict boolean and the matching call-site support
 proviso.  This result-level form covers tentative-loop outputs which are not
-themselves `PreviousAcceptedEdge`s. -/
+themselves `PreviousEpochSelectedEdge`s. -/
 theorem selectedPreviousResult_noConflict_gate_and_support
     {v : ValidatorIndex} {q : ℕ}
     {query : FastConfirmationStore Root} {latestConfirmedRoot result : Root}
-    (hprovisos : SelectedHelperProvisosAt cfg ext E v q query
+    (hprovisos : FCRPredictionSupportAt cfg ext E v q query
       latestConfirmedRoot)
     (hout : find_latest_confirmed_descendant cfg ext query
       latestConfirmedRoot = result)
@@ -77,7 +77,7 @@ theorem selectedPreviousResult_noConflict_gate_and_support
 /-- Once a concrete child is known to be on the query head's chain and to
 belong to the query's current epoch, the helper target is exactly that child's
 epoch checkpoint.  These geometric hypotheses are separate from
-`CurrentTargetAcceptedEdge`: that predicate records trace membership and a
+`CurrentTargetSelectedEdge`: that predicate records trace membership and a
 strict epoch increase, but does not by itself state that the child has reached
 the query's current epoch. -/
 theorem current_target_eq_checkpoint_of_current_epoch_ancestor

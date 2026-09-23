@@ -30,12 +30,12 @@ open scoped Block
 
 variable {n : ℕ} {P : Type}
 
-/-- **The reusable engine (Lemma 6) is proved.** `HeadFutureAgreement` for any filter
+/-- **The reusable engine (Lemma 6) is proved.** `HeadAgreementAfterConfirmation` for any filter
     `flt` follows directly from the arbitrary-time `head_safety_engine`: the public
     statement's premises are exactly the engine's hypotheses (with `AnchorsCoincide`
     the §3.1 form of hyp (4)). -/
 theorem proof_HeadFutureAgreement (τ : Timing) (flt : BlockFilter n P) :
-    HeadFutureAgreement τ flt := by
+    HeadAgreementAfterConfirmation τ flt := by
   intro fm cm pb gj boost 𝒱 C hSync hNF hHB hVV hcm hpb hAnchor
     v b t hv hbwf hbslot h1 hgst0 hsafe hNFil w t' hw ht'
   exact head_safety_engine hSync hNF hHB hVV hcm hpb hAnchor hv hbwf hbslot
@@ -62,23 +62,23 @@ variable {n : ℕ} {P : Type}
 
 /-- **Reusable engine (Lemma 6).** Filter-generic, arbitrary-anchor head safety and
     future agreement. -/
-theorem HeadFutureAgreement_proved (τ : Timing) (flt : BlockFilter n P) :
-    HeadFutureAgreement τ flt :=
+theorem head_agreement_after_confirmation (τ : Timing) (flt : BlockFilter n P) :
+    HeadAgreementAfterConfirmation τ flt :=
   proof_HeadFutureAgreement τ flt
 
 /-- **Theorem 1, Safety half** (Definition 4, Lemmas 7–8) for plain LMD-GHOST: a confirmed
     block is, from some time on, on every honest validator's LMD-GHOST head. -/
-theorem Theorem1_Safety_proved (τ : Timing)
+theorem confirmed_block_safety (τ : Timing)
     (gj : ViewFamily n P → Validator n → Time → Anchor n) :
-    Theorem1_Safety τ gj :=
+    ConfirmedBlockSafety τ gj :=
   proof_Theorem1_Safety (τ := τ) (gj := gj)
 
 /-- **Theorem 1, Monotonicity half** (Definition 4, Lemma 9) for plain LMD-GHOST: once
     confirmed, always confirmed. The cross-epoch step (Lemma 8) consumes Assumption 4
     (`β < (1 - pb)/4`) and the full-epoch coverage premise `CommitteeCoversEpoch`. -/
-theorem Theorem1_Monotonicity_proved (τ : Timing)
+theorem confirmed_block_monotonicity (τ : Timing)
     (gj : ViewFamily n P → Validator n → Time → Anchor n) :
-    Theorem1_Monotonicity τ gj :=
+    ConfirmedBlockMonotonicity τ gj :=
   proof_Theorem1_Monotonicity (τ := τ) (gj := gj)
 
 end FastConfirmation.LMDGhost

@@ -104,9 +104,9 @@ theorem fcrStep_previous_observed_of_start
     (v : ValidatorIndex) (q : ℕ)
     (hstart : is_start_slot_at_epoch cfg
       (get_current_slot cfg (E.store cfg ext v (q + 1))) = true) :
-    (E.fcrStep cfg ext v q).previous_epoch_observed_justified_checkpoint =
+    (E.fcrStoreAtCall cfg ext v q).previous_epoch_observed_justified_checkpoint =
       (E.fcr cfg ext v q).current_epoch_observed_justified_checkpoint := by
-  simp only [Execution.fcrStep, update_fast_confirmation_variables,
+  simp only [Execution.fcrStoreAtCall, update_fast_confirmation_variables,
     hstart]
   split_ifs <;> rfl
 
@@ -121,8 +121,8 @@ theorem fcr_current_observed_succ_of_not_start
   by_cases hcall : get_current_slot cfg (E.store cfg ext v (q + 1)) >
       get_current_slot cfg (E.store cfg ext v q)
   · have hpost : (E.fcr cfg ext v (q + 1)).current_epoch_observed_justified_checkpoint =
-        (E.fcrStep cfg ext v q).current_epoch_observed_justified_checkpoint := by
-      simp [Execution.fcr, hcall, Execution.fcrStep, on_fast_confirmation]
+        (E.fcrStoreAtCall cfg ext v q).current_epoch_observed_justified_checkpoint := by
+      simp [Execution.fcr, hcall, Execution.fcrStoreAtCall, on_fast_confirmation]
     rw [hpost, E.fcrStep_observed_exact]
     simp [hnoStart]
   · simp [Execution.fcr, hcall]
@@ -161,10 +161,10 @@ theorem fcrStep_previous_source_eq_earlier_current
         (get_current_slot cfg (E.store cfg ext v (j + 1))) = false)
     (hstart : is_start_slot_at_epoch cfg
       (get_current_slot cfg (E.store cfg ext v (T + 1))) = true) :
-    (E.fcrStep cfg ext v T).previous_epoch_observed_justified_checkpoint =
-      (E.fcrStep cfg ext v q).current_epoch_observed_justified_checkpoint := by
+    (E.fcrStoreAtCall cfg ext v T).previous_epoch_observed_justified_checkpoint =
+      (E.fcrStoreAtCall cfg ext v q).current_epoch_observed_justified_checkpoint := by
   have hqNo := hno q (Nat.le_refl _) hqT
-  have hOld : (E.fcrStep cfg ext v q).current_epoch_observed_justified_checkpoint =
+  have hOld : (E.fcrStoreAtCall cfg ext v q).current_epoch_observed_justified_checkpoint =
       (E.fcr cfg ext v q).current_epoch_observed_justified_checkpoint := by
     rw [E.fcrStep_observed_exact]
     simp [hqNo]
@@ -174,13 +174,13 @@ theorem fcrStep_previous_source_eq_earlier_current
       intro j hj hTj
       exact hno j (Nat.le_trans (Nat.le_succ q) hj) hTj)
   calc
-    (E.fcrStep cfg ext v T).previous_epoch_observed_justified_checkpoint =
+    (E.fcrStoreAtCall cfg ext v T).previous_epoch_observed_justified_checkpoint =
         (E.fcr cfg ext v T).current_epoch_observed_justified_checkpoint :=
       E.fcrStep_previous_observed_of_start cfg ext v T hstart
     _ = (E.fcr cfg ext v (q + 1)).current_epoch_observed_justified_checkpoint :=
       hCarry
     _ = (E.fcr cfg ext v q).current_epoch_observed_justified_checkpoint := hQsucc
-    _ = (E.fcrStep cfg ext v q).current_epoch_observed_justified_checkpoint := hOld.symm
+    _ = (E.fcrStoreAtCall cfg ext v q).current_epoch_observed_justified_checkpoint := hOld.symm
 
 /-- A call after the epoch's first slot and before its next boundary has no
 epoch-start seconds in the intervening cache trajectory. -/
@@ -201,8 +201,8 @@ theorem no_epoch_start_between_of_slot_bounds
 
 /-- A historical certificate for a post-start block uses the checkpoint
 that becomes the previous balance source at the next epoch boundary. -/
-theorem AcceptedActualFCRNextSlotSafetyAssumptions.live_boundary_source_checkpoint_eq
-    (h : E.AcceptedActualFCRNextSlotSafetyAssumptions cfg ext)
+theorem NextSlotSafetyPremises.live_boundary_source_checkpoint_eq
+    (h : E.NextSlotSafetyPremises cfg ext)
     (v : ValidatorIndex) (e : Epoch) {q T : ℕ} (hqT : q < T)
     (hT : E.slot_at cfg T < compute_start_slot_at_epoch cfg (e + 1))
     (hstart : is_start_slot_at_epoch cfg
@@ -210,8 +210,8 @@ theorem AcceptedActualFCRNextSlotSafetyAssumptions.live_boundary_source_checkpoi
     {b : Root} (hb : b ∈ (E.store cfg ext v (q + 1)).block_roots)
     (hbSlot : compute_start_slot_at_epoch cfg e <
       ((E.store cfg ext v (q + 1)).blocks b).slot) :
-    (E.fcrStep cfg ext v T).previous_epoch_observed_justified_checkpoint =
-      (E.fcrStep cfg ext v q).current_epoch_observed_justified_checkpoint := by
+    (E.fcrStoreAtCall cfg ext v T).previous_epoch_observed_justified_checkpoint =
+      (E.fcrStoreAtCall cfg ext v q).current_epoch_observed_justified_checkpoint := by
   obtain ⟨ast, ablk, hgenEq, hstateSlot, _⟩ := h.trajectory.genesis_structure
   have hgen : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
       E.genesis_store = get_forkchoice_store cfg ast ablk ∧
@@ -228,8 +228,8 @@ theorem AcceptedActualFCRNextSlotSafetyAssumptions.live_boundary_source_checkpoi
 /-- A later store cannot invent an ancestor of a block already known in an
 earlier store. The execution parent relation reflects that ancestor back to
 the earlier store. -/
-theorem AcceptedActualFCRNextSlotSafetyAssumptions.live_ancestor_reflect_earlier
-    (h : E.AcceptedActualFCRNextSlotSafetyAssumptions cfg ext)
+theorem NextSlotSafetyPremises.live_ancestor_reflect_earlier
+    (h : E.NextSlotSafetyPremises cfg ext)
     {w : ValidatorIndex} {n m : ℕ} (hnm : n ≤ m)
     {tip b : Root}
     (htip : tip ∈ (E.store cfg ext w n).block_roots)
@@ -264,8 +264,8 @@ theorem AcceptedActualFCRNextSlotSafetyAssumptions.live_ancestor_reflect_earlier
 
 /-- Time-transport version of the high-chain frame rule. The old chain is
 read at an earlier store, while the selector runs on the later query store. -/
-theorem AcceptedActualFCRNextSlotSafetyAssumptions.live_high_chain_property_step
-    (h : E.AcceptedActualFCRNextSlotSafetyAssumptions cfg ext)
+theorem NextSlotSafetyPremises.live_high_chain_property_step
+    (h : E.NextSlotSafetyPremises cfg ext)
     (query : FastConfirmationStore Root) (floor : Slot) (P : Root → Prop)
     {w : ValidatorIndex} {n m : ℕ} (hnm : n ≤ m)
     (hqueryStore : query.store = E.store cfg ext w m)
@@ -491,8 +491,8 @@ variable (E : Execution Root)
 
 /-- At the first execution second of an epoch boundary, the actual FCR
 store satisfies the start-slot test. -/
-theorem AcceptedActualFCRNextSlotSafetyAssumptions.live_boundary_is_start
-    (h : E.AcceptedActualFCRNextSlotSafetyAssumptions cfg ext)
+theorem NextSlotSafetyPremises.live_boundary_is_start
+    (h : E.NextSlotSafetyPremises cfg ext)
     (v : ValidatorIndex) (e : Epoch)
     (hfrom : E.slot_at cfg 0 ≤ compute_start_slot_at_epoch cfg e) :
     is_start_slot_at_epoch cfg
@@ -523,7 +523,7 @@ theorem adjacent_slot_start_call_geometry
       L ≤ B - 1 ∧
       E.slot_at cfg L = s ∧
       E.slot_at cfg (B - 1) = s ∧
-      E.IsFCRCallAt cfg ext v (L - 1) := by
+      E.IsScheduledFCRCallAt cfg ext v (L - 1) := by
   let L := E.slot_start cfg s
   let B := E.slot_start cfg (s + 1)
   have hLpos : 0 < L :=
@@ -545,7 +545,7 @@ theorem adjacent_slot_start_call_geometry
     Nat.le_antisymm (Nat.lt_succ_iff.mp hQlt) hQge
   have hbefore : E.slot_at cfg (L - 1) < s :=
     (E.slot_at_lt_iff cfg hdiv hgenTime).2 (by omega)
-  have hcall : E.IsFCRCallAt cfg ext v (L - 1) := by
+  have hcall : E.IsScheduledFCRCallAt cfg ext v (L - 1) := by
     change get_current_slot cfg (E.store cfg ext v ((L - 1) + 1)) >
       get_current_slot cfg (E.store cfg ext v (L - 1))
     rw [Nat.sub_add_cancel (Nat.succ_le_of_lt hLpos),
@@ -562,7 +562,7 @@ theorem slot_start_is_fcr_call
     (hgenTime : E.genesis_store.genesis_time ≤ E.genesis_store.time)
     (v : ValidatorIndex) {s : Slot}
     (hs0 : E.slot_at cfg 0 < s) :
-    E.IsFCRCallAt cfg ext v (E.slot_start cfg s - 1) := by
+    E.IsScheduledFCRCallAt cfg ext v (E.slot_start cfg s - 1) := by
   let B := E.slot_start cfg s
   have hBpos : 0 < B :=
     (E.slot_at_lt_iff cfg hdiv hgenTime).1 hs0
@@ -619,7 +619,7 @@ theorem fcrStep_observed_of_previousGreatest
       (get_current_slot cfg (E.store cfg ext v (n + 1))) = true)
     (hnextNot : is_start_slot_at_epoch cfg
       (get_current_slot cfg (E.store cfg ext v (n + 1)) + 1) = false) :
-    (E.fcrStep cfg ext v n).current_epoch_observed_justified_checkpoint =
+    (E.fcrStoreAtCall cfg ext v n).current_epoch_observed_justified_checkpoint =
       (E.fcr cfg ext v n).previous_epoch_greatest_unrealized_checkpoint := by
   rw [E.fcrStep_observed_boundary cfg ext v n hstart]
   simp [hnextNot]
@@ -628,7 +628,7 @@ theorem fcrStep_observed_of_previousGreatest
 previous-head test. -/
 theorem fcr_currentSlotHead_succ_of_call
     (v : ValidatorIndex) (n : ℕ)
-    (hcall : E.IsFCRCallAt cfg ext v n) :
+    (hcall : E.IsScheduledFCRCallAt cfg ext v n) :
     (E.fcr cfg ext v (n + 1)).current_slot_head =
       (get_head cfg (E.store cfg ext v (n + 1))).root := by
   simp only [Execution.fcr]
@@ -642,7 +642,7 @@ theorem fcr_currentSlotHead_succ_of_call
 that call's unrealized justified checkpoint. -/
 theorem fcr_previousGreatest_succ_of_last_call
     (v : ValidatorIndex) (n : ℕ)
-    (hcall : E.IsFCRCallAt cfg ext v n)
+    (hcall : E.IsScheduledFCRCallAt cfg ext v n)
     (hlast : is_start_slot_at_epoch cfg
       (get_current_slot cfg (E.store cfg ext v (n + 1)) + 1) = true) :
     (E.fcr cfg ext v (n + 1)).previous_epoch_greatest_unrealized_checkpoint =
@@ -659,7 +659,7 @@ theorem fcr_previousGreatest_succ_of_last_call
 boundary. The explicit clock facts identify the two FCR calls. -/
 theorem fcrStep_boundary_caches_of_last_call
     (v : ValidatorIndex) {lastCall q : ℕ}
-    (hcall : E.IsFCRCallAt cfg ext v lastCall)
+    (hcall : E.IsScheduledFCRCallAt cfg ext v lastCall)
     (hle : lastCall + 1 ≤ q)
     (hsameSlot : E.slot_at cfg (lastCall + 1) = E.slot_at cfg q)
     (hlast : is_start_slot_at_epoch cfg
@@ -668,9 +668,9 @@ theorem fcrStep_boundary_caches_of_last_call
       (get_current_slot cfg (E.store cfg ext v (q + 1))) = true)
     (hnextNot : is_start_slot_at_epoch cfg
       (get_current_slot cfg (E.store cfg ext v (q + 1)) + 1) = false) :
-    (E.fcrStep cfg ext v q).current_epoch_observed_justified_checkpoint =
+    (E.fcrStoreAtCall cfg ext v q).current_epoch_observed_justified_checkpoint =
         (E.store cfg ext v (lastCall + 1)).unrealized_justified_checkpoint ∧
-      (E.fcrStep cfg ext v q).previous_slot_head =
+      (E.fcrStoreAtCall cfg ext v q).previous_slot_head =
         (get_head cfg (E.store cfg ext v (lastCall + 1))).root := by
   obtain ⟨hgreatest, hhead⟩ :=
     E.fcr_boundary_inputs_constant_in_slot cfg ext v hle hsameSlot
@@ -687,7 +687,7 @@ voting-source tests at the boundary once the ordinary FCR cache rotation is
 identified with the last-slot store. -/
 theorem live_ffg_boundary_gate_inputs
     {observer : ValidatorIndex} {n m : ℕ}
-    (live : MonotonicityLiveAssumptions cfg ext E observer n m)
+    (live : LiveMonotonicityPremises cfg ext E observer n m)
     {e : Epoch}
     (he0 : compute_epoch_at_slot cfg (E.slot_at cfg 0) ≤ e)
     (heDone : compute_start_slot_at_epoch cfg (e + 1) ≤ E.slot_at cfg m)
@@ -695,17 +695,17 @@ theorem live_ffg_boundary_gate_inputs
     {q : ℕ}
     (hq : q + 1 = E.slot_start cfg
       (compute_start_slot_at_epoch cfg (e + 1)))
-    (hobserved : (E.fcrStep cfg ext w q).current_epoch_observed_justified_checkpoint =
+    (hobserved : (E.fcrStoreAtCall cfg ext w q).current_epoch_observed_justified_checkpoint =
       (E.store cfg ext w
         (E.slot_start cfg (compute_start_slot_at_epoch cfg (e + 1) - 1))).unrealized_justified_checkpoint)
-    (hprevious : (E.fcrStep cfg ext w q).previous_slot_head =
+    (hprevious : (E.fcrStoreAtCall cfg ext w q).previous_slot_head =
       (get_head cfg (E.store cfg ext w
         (E.slot_start cfg (compute_start_slot_at_epoch cfg (e + 1) - 1)))).root) :
-    (E.fcrStep cfg ext w q).current_epoch_observed_justified_checkpoint =
+    (E.fcrStoreAtCall cfg ext w q).current_epoch_observed_justified_checkpoint =
       (E.store cfg ext w (q + 1)).unrealized_justifications
         (get_head cfg (E.store cfg ext w (q + 1))).root ∧
     (get_voting_source cfg (E.store cfg ext w (q + 1))
-      (E.fcrStep cfg ext w q).previous_slot_head).epoch + 2 ≥ e + 1 := by
+      (E.fcrStoreAtCall cfg ext w q).previous_slot_head).epoch + 2 ≥ e + 1 := by
   obtain ⟨c, _, _, hstores⟩ := live.ffg_timely_justification e he0 heDone
   obtain ⟨hlast, _, hnext, hsource⟩ := hstores w hw
   rw [hq]
@@ -718,10 +718,10 @@ theorem live_ffg_boundary_gate_inputs
 fifth live field reaches the actual next-boundary FCR query. Its observed
 checkpoint agrees with the head's unrealized justification and its cached
 previous head has a recent voting source. -/
-theorem AcceptedActualFCRNextSlotSafetyAssumptions.live_ffg_actual_boundary_inputs
-    (h : E.AcceptedActualFCRNextSlotSafetyAssumptions cfg ext)
+theorem NextSlotSafetyPremises.live_ffg_actual_boundary_inputs
+    (h : E.NextSlotSafetyPremises cfg ext)
     {observer : ValidatorIndex} {n m : ℕ}
-    (live : MonotonicityLiveAssumptions cfg ext E observer n m)
+    (live : LiveMonotonicityPremises cfg ext E observer n m)
     {e : Epoch}
     (he0 : compute_epoch_at_slot cfg (E.slot_at cfg 0) ≤ e)
     (heDone : compute_start_slot_at_epoch cfg (e + 1) ≤ E.slot_at cfg m)
@@ -730,11 +730,11 @@ theorem AcceptedActualFCRNextSlotSafetyAssumptions.live_ffg_actual_boundary_inpu
     {w : ValidatorIndex} (hw : w ∈ E.honest) :
     let B := E.slot_start cfg (compute_start_slot_at_epoch cfg (e + 1))
     let q := B - 1
-    (E.fcrStep cfg ext w q).current_epoch_observed_justified_checkpoint =
+    (E.fcrStoreAtCall cfg ext w q).current_epoch_observed_justified_checkpoint =
       (E.store cfg ext w (q + 1)).unrealized_justifications
         (get_head cfg (E.store cfg ext w (q + 1))).root ∧
     (get_voting_source cfg (E.store cfg ext w (q + 1))
-      (E.fcrStep cfg ext w q).previous_slot_head).epoch + 2 ≥ e + 1 := by
+      (E.fcrStoreAtCall cfg ext w q).previous_slot_head).epoch + 2 ≥ e + 1 := by
   let s := compute_start_slot_at_epoch cfg (e + 1) - 1
   let L := E.slot_start cfg s
   let B := E.slot_start cfg (s + 1)
@@ -754,7 +754,7 @@ theorem AcceptedActualFCRNextSlotSafetyAssumptions.live_ffg_actual_boundary_inpu
   change (L - 1) + 1 = L ∧ (B - 1) + 1 = B ∧
     L ≤ B - 1 ∧ E.slot_at cfg L = s ∧
     E.slot_at cfg (B - 1) = s ∧
-    E.IsFCRCallAt cfg ext w (L - 1) at hgeom
+    E.IsScheduledFCRCallAt cfg ext w (L - 1) at hgeom
   obtain ⟨hLidx, hBidx, hLq, hLslot, hQslot, hcall⟩ := hgeom
   have hBslot : E.slot_at cfg B = s + 1 :=
     E.slot_at_slot_start cfg h.trajectory.whole_seconds
@@ -784,12 +784,12 @@ theorem AcceptedActualFCRNextSlotSafetyAssumptions.live_ffg_actual_boundary_inpu
       (compute_start_slot_at_epoch cfg (e + 1) - 1) := by
     simpa only [L, s] using hLidx
   have hcacheObserved' :
-      (E.fcrStep cfg ext w q).current_epoch_observed_justified_checkpoint =
+      (E.fcrStoreAtCall cfg ext w q).current_epoch_observed_justified_checkpoint =
       (E.store cfg ext w
         (E.slot_start cfg (compute_start_slot_at_epoch cfg (e + 1) - 1))).unrealized_justified_checkpoint := by
     simpa only [hlastIndex] using hcacheObserved
   have hcacheHead' :
-      (E.fcrStep cfg ext w q).previous_slot_head =
+      (E.fcrStoreAtCall cfg ext w q).previous_slot_head =
       (get_head cfg (E.store cfg ext w
         (E.slot_start cfg (compute_start_slot_at_epoch cfg (e + 1) - 1)))).root := by
     simpa only [hlastIndex] using hcacheHead
@@ -799,10 +799,10 @@ theorem AcceptedActualFCRNextSlotSafetyAssumptions.live_ffg_actual_boundary_inpu
 
 /-- The exact observed FCR cache root is known in the query store. This
 holds regardless of whether the observed restart branch is taken. -/
-theorem AcceptedActualFCRNextSlotSafetyAssumptions.live_observed_root_known
-    (h : E.AcceptedActualFCRNextSlotSafetyAssumptions cfg ext)
+theorem NextSlotSafetyPremises.live_observed_root_known
+    (h : E.NextSlotSafetyPremises cfg ext)
     (v : ValidatorIndex) (q : ℕ) :
-    (E.fcrStep cfg ext v q).current_epoch_observed_justified_checkpoint.root ∈
+    (E.fcrStoreAtCall cfg ext v q).current_epoch_observed_justified_checkpoint.root ∈
       (E.store cfg ext v (q + 1)).block_roots := by
   have hrealized :=
     E.fcrStep_observed_resetRealizedAt_of_acceptedGlobalTrajectory
@@ -811,8 +811,8 @@ theorem AcceptedActualFCRNextSlotSafetyAssumptions.live_observed_root_known
 
 /-- A known execution block has the same epoch in its accepted carrier and
 in the actual query store's block map. -/
-theorem AcceptedActualFCRNextSlotSafetyAssumptions.live_known_block_epoch
-    (h : E.AcceptedActualFCRNextSlotSafetyAssumptions cfg ext)
+theorem NextSlotSafetyPremises.live_known_block_epoch
+    (h : E.NextSlotSafetyPremises cfg ext)
     {v : ValidatorIndex} {q : ℕ} {r : Root} {b : BeaconBlock Root}
     (hblock : E.BlockAt r b)
     (hknown : r ∈ (E.store cfg ext v q).block_roots) :
@@ -826,10 +826,10 @@ theorem AcceptedActualFCRNextSlotSafetyAssumptions.live_known_block_epoch
 /-- At a completed next-epoch boundary, the observed checkpoint's block
 epoch is exactly the previous epoch. This closes the executable restart
 guard's epoch test from the fifth live field. -/
-theorem AcceptedActualFCRNextSlotSafetyAssumptions.live_ffg_observed_epoch_at_boundary
-    (h : E.AcceptedActualFCRNextSlotSafetyAssumptions cfg ext)
+theorem NextSlotSafetyPremises.live_ffg_observed_epoch_at_boundary
+    (h : E.NextSlotSafetyPremises cfg ext)
     {observer : ValidatorIndex} {n m : ℕ}
-    (live : MonotonicityLiveAssumptions cfg ext E observer n m)
+    (live : LiveMonotonicityPremises cfg ext E observer n m)
     {e : Epoch}
     (he0 : compute_epoch_at_slot cfg (E.slot_at cfg 0) ≤ e)
     (heDone : compute_start_slot_at_epoch cfg (e + 1) ≤ E.slot_at cfg m)
@@ -839,7 +839,7 @@ theorem AcceptedActualFCRNextSlotSafetyAssumptions.live_ffg_observed_epoch_at_bo
     let B := E.slot_start cfg (compute_start_slot_at_epoch cfg (e + 1))
     let q := B - 1
     get_block_epoch cfg (E.store cfg ext w (q + 1))
-      (E.fcrStep cfg ext w q).current_epoch_observed_justified_checkpoint.root + 1 =
+      (E.fcrStoreAtCall cfg ext w q).current_epoch_observed_justified_checkpoint.root + 1 =
     get_current_store_epoch cfg (E.store cfg ext w (q + 1)) := by
   let B := E.slot_start cfg (compute_start_slot_at_epoch cfg (e + 1))
   let q := B - 1
@@ -861,7 +861,7 @@ theorem AcceptedActualFCRNextSlotSafetyAssumptions.live_ffg_observed_epoch_at_bo
     simpa only [B] using (hstores w hw).2.2.1
   have hgate := h.live_ffg_actual_boundary_inputs cfg ext E live
     he0 heDone hlastAfterZero hw
-  have hobs : (E.fcrStep cfg ext w q).current_epoch_observed_justified_checkpoint = c := by
+  have hobs : (E.fcrStoreAtCall cfg ext w q).current_epoch_observed_justified_checkpoint = c := by
     have hhead := hgate.1
     rw [hBidx] at hhead
     exact hhead.trans hAU
@@ -885,8 +885,8 @@ theorem AcceptedActualFCRNextSlotSafetyAssumptions.live_ffg_observed_epoch_at_bo
 
 /-- The trusted anchor checkpoint has the epoch of the execution's first
 slot. This also covers checkpoint-sync starts after genesis. -/
-theorem AcceptedActualFCRNextSlotSafetyAssumptions.live_anchor_checkpoint_epoch
-    (h : E.AcceptedActualFCRNextSlotSafetyAssumptions cfg ext) :
+theorem NextSlotSafetyPremises.live_anchor_checkpoint_epoch
+    (h : E.NextSlotSafetyPremises cfg ext) :
     h.semantics.anchor.epoch =
       compute_epoch_at_slot cfg (E.slot_at cfg 0) := by
   obtain ⟨ast, ablk, hgenEq, _, _⟩ := h.trajectory.genesis_structure
@@ -900,8 +900,8 @@ theorem AcceptedActualFCRNextSlotSafetyAssumptions.live_anchor_checkpoint_epoch
     Function.update_self] using hstate
 
 /-- The checkpoint-sync start itself is the first slot of the anchor epoch. -/
-theorem AcceptedActualFCRNextSlotSafetyAssumptions.live_initial_slot_eq_epoch_start
-    (h : E.AcceptedActualFCRNextSlotSafetyAssumptions cfg ext) :
+theorem NextSlotSafetyPremises.live_initial_slot_eq_epoch_start
+    (h : E.NextSlotSafetyPremises cfg ext) :
     E.slot_at cfg 0 = compute_start_slot_at_epoch cfg
       (compute_epoch_at_slot cfg (E.slot_at cfg 0)) := by
   obtain ⟨ast, ablk, hgenEq, hstateSlot, _⟩ := h.trajectory.genesis_structure
@@ -931,8 +931,8 @@ theorem AcceptedActualFCRNextSlotSafetyAssumptions.live_initial_slot_eq_epoch_st
 /-- The finalized input never lies after the start of its store's current
 epoch. The anchor branch uses the trusted anchor epoch; other branches use
 the accepted finalized lag and checkpoint-root boundary. -/
-theorem AcceptedActualFCRNextSlotSafetyAssumptions.live_finalized_slot_le_current_start
-    (h : E.AcceptedActualFCRNextSlotSafetyAssumptions cfg ext)
+theorem NextSlotSafetyPremises.live_finalized_slot_le_current_start
+    (h : E.NextSlotSafetyPremises cfg ext)
     (w : ValidatorIndex) (t : ℕ) (e : Epoch)
     (he0 : compute_epoch_at_slot cfg (E.slot_at cfg 0) ≤ e)
     (hcurrent : get_current_store_epoch cfg (E.store cfg ext w t) = e) :
@@ -958,13 +958,13 @@ theorem AcceptedActualFCRNextSlotSafetyAssumptions.live_finalized_slot_le_curren
 
 /-- The observed cache's reset realization bounds its root by the current
 epoch start at every actual FCR query. -/
-theorem AcceptedActualFCRNextSlotSafetyAssumptions.live_observed_slot_le_current_start
-    (h : E.AcceptedActualFCRNextSlotSafetyAssumptions cfg ext)
+theorem NextSlotSafetyPremises.live_observed_slot_le_current_start
+    (h : E.NextSlotSafetyPremises cfg ext)
     (w : ValidatorIndex) (q : ℕ) :
-    get_block_slot (E.fcrStep cfg ext w q).store
-      (E.fcrStep cfg ext w q).current_epoch_observed_justified_checkpoint.root ≤
+    get_block_slot (E.fcrStoreAtCall cfg ext w q).store
+      (E.fcrStoreAtCall cfg ext w q).current_epoch_observed_justified_checkpoint.root ≤
     compute_start_slot_at_epoch cfg
-      (get_current_store_epoch cfg (E.fcrStep cfg ext w q).store) := by
+      (get_current_store_epoch cfg (E.fcrStoreAtCall cfg ext w q).store) := by
   have hreal := E.fcrStep_observed_resetRealizedAt_of_acceptedGlobalTrajectory
     cfg ext h.semantics h.trajectory h.anchor_eq h.anchor_boundary w q
   have hbound := hreal.root_slot_le_boundary.trans
@@ -974,8 +974,8 @@ theorem AcceptedActualFCRNextSlotSafetyAssumptions.live_observed_slot_le_current
 
 /-- Repaired L3 age bound. At the first boundary the finalized root may be
 the previous epoch's start block, so the bound is non-strict. -/
-theorem AcceptedActualFCRNextSlotSafetyAssumptions.live_finalized_slot_le_previous_start
-    (h : E.AcceptedActualFCRNextSlotSafetyAssumptions cfg ext)
+theorem NextSlotSafetyPremises.live_finalized_slot_le_previous_start
+    (h : E.NextSlotSafetyPremises cfg ext)
     (w : ValidatorIndex) (t : ℕ) (e : Epoch)
     (he0 : compute_epoch_at_slot cfg (E.slot_at cfg 0) ≤ e)
     (hcurrent : get_current_store_epoch cfg (E.store cfg ext w t) = e + 1) :
@@ -1005,8 +1005,8 @@ theorem AcceptedActualFCRNextSlotSafetyAssumptions.live_finalized_slot_le_previo
 /-- At a live epoch boundary, a finalized reset is either below the observed
 checkpoint's start slot or has exactly that checkpoint root. The second case
 is the first-boundary anchor equality witnessed in m8. -/
-theorem AcceptedActualFCRNextSlotSafetyAssumptions.live_finalized_below_or_eq_checkpoint
-    (h : E.AcceptedActualFCRNextSlotSafetyAssumptions cfg ext)
+theorem NextSlotSafetyPremises.live_finalized_below_or_eq_checkpoint
+    (h : E.NextSlotSafetyPremises cfg ext)
     (w : ValidatorIndex) (hw : w ∈ E.honest) (t : ℕ)
     (hHt : E.WithinHorizon cfg t) (e : Epoch) (cp : Root)
     (he0 : compute_epoch_at_slot cfg (E.slot_at cfg 0) ≤ e)
@@ -1063,10 +1063,10 @@ theorem AcceptedActualFCRNextSlotSafetyAssumptions.live_finalized_below_or_eq_ch
 
 /-- The fifth live field supplies the checkpoint used by the repaired L3
 branch split at the actual next-epoch FCR call. -/
-theorem AcceptedActualFCRNextSlotSafetyAssumptions.live_boundary_finalized_below_or_eq_observed
-    (h : E.AcceptedActualFCRNextSlotSafetyAssumptions cfg ext)
+theorem NextSlotSafetyPremises.live_boundary_finalized_below_or_eq_observed
+    (h : E.NextSlotSafetyPremises cfg ext)
     {observer : ValidatorIndex} {n m : ℕ}
-    (live : MonotonicityLiveAssumptions cfg ext E observer n m)
+    (live : LiveMonotonicityPremises cfg ext E observer n m)
     {e : Epoch}
     (he0 : compute_epoch_at_slot cfg (E.slot_at cfg 0) ≤ e)
     (heDone : compute_start_slot_at_epoch cfg (e + 1) ≤ E.slot_at cfg m)
@@ -1079,9 +1079,9 @@ theorem AcceptedActualFCRNextSlotSafetyAssumptions.live_boundary_finalized_below
     get_block_slot (E.store cfg ext w B)
       (E.store cfg ext w B).finalized_checkpoint.root <
       get_block_slot (E.store cfg ext w B)
-        (E.fcrStep cfg ext w q).current_epoch_observed_justified_checkpoint.root ∨
+        (E.fcrStoreAtCall cfg ext w q).current_epoch_observed_justified_checkpoint.root ∨
     (E.store cfg ext w B).finalized_checkpoint.root =
-      (E.fcrStep cfg ext w q).current_epoch_observed_justified_checkpoint.root := by
+      (E.fcrStoreAtCall cfg ext w q).current_epoch_observed_justified_checkpoint.root := by
   let S := compute_start_slot_at_epoch cfg (e + 1)
   let B := E.slot_start cfg S
   let q := B - 1
@@ -1113,7 +1113,7 @@ theorem AcceptedActualFCRNextSlotSafetyAssumptions.live_boundary_finalized_below
   have hhead : (E.store cfg ext w B).unrealized_justifications
       (get_head cfg (E.store cfg ext w B)).root = c := by
     exact (hstores w hw).2.2.1
-  have hobs : (E.fcrStep cfg ext w q).current_epoch_observed_justified_checkpoint = c := by
+  have hobs : (E.fcrStoreAtCall cfg ext w q).current_epoch_observed_justified_checkpoint = c := by
     have hgate' := hgate.1
     rw [hq] at hgate'
     exact hgate'.trans hhead
@@ -1167,8 +1167,8 @@ theorem AcceptedActualFCRNextSlotSafetyAssumptions.live_boundary_finalized_below
 /-- During an interval of calls in one epoch, each cached-chain block after
 the epoch start has a current-source confirmation at some call in that
 interval. The base store is before such blocks can be known. -/
-theorem AcceptedActualFCRNextSlotSafetyAssumptions.live_historical_chain_known_in_epoch
-    (h : E.AcceptedActualFCRNextSlotSafetyAssumptions cfg ext)
+theorem NextSlotSafetyPremises.live_historical_chain_known_in_epoch
+    (h : E.NextSlotSafetyPremises cfg ext)
     {w : ValidatorIndex} (hw : w ∈ E.honest)
     (B T : ℕ) (e : Epoch) (hBT : B ≤ T)
     (he0 : compute_epoch_at_slot cfg (E.slot_at cfg 0) ≤ e)
@@ -1184,16 +1184,16 @@ theorem AcceptedActualFCRNextSlotSafetyAssumptions.live_historical_chain_known_i
         (get_node_for_root b) = true →
       compute_start_slot_at_epoch cfg e <
         ((E.store cfg ext w T).blocks b).slot →
-      ∃ q, B ≤ q ∧ q < T ∧ E.IsFCRCallAt cfg ext w q ∧
+      ∃ q, B ≤ q ∧ q < T ∧ E.IsScheduledFCRCallAt cfg ext w q ∧
         b ∈ (E.store cfg ext w (q + 1)).block_roots ∧
-        is_one_confirmed cfg ext (E.fcrStep cfg ext w q).store
-          (get_current_balance_source (E.fcrStep cfg ext w q)) b = true := by
+        is_one_confirmed cfg ext (E.fcrStoreAtCall cfg ext w q).store
+          (get_current_balance_source (E.fcrStoreAtCall cfg ext w q)) b = true := by
   let floor := compute_start_slot_at_epoch cfg e
   let P : Root → Prop := fun b =>
-    ∃ q, B ≤ q ∧ q < T ∧ E.IsFCRCallAt cfg ext w q ∧
+    ∃ q, B ≤ q ∧ q < T ∧ E.IsScheduledFCRCallAt cfg ext w q ∧
       b ∈ (E.store cfg ext w (q + 1)).block_roots ∧
-      is_one_confirmed cfg ext (E.fcrStep cfg ext w q).store
-        (get_current_balance_source (E.fcrStep cfg ext w q)) b = true
+      is_one_confirmed cfg ext (E.fcrStoreAtCall cfg ext w q).store
+        (get_current_balance_source (E.fcrStoreAtCall cfg ext w q)) b = true
   have hInv : ∀ d : ℕ, B + d ≤ T →
       ∀ b ∈ (E.store cfg ext w (B + d)).block_roots,
         is_ancestor (E.store cfg ext w (B + d))
@@ -1221,8 +1221,8 @@ theorem AcceptedActualFCRNextSlotSafetyAssumptions.live_historical_chain_known_i
           E.confirmed_known_of_acceptedGlobalTrajectory cfg ext
             h.semantics h.trajectory h.anchor_eq h.anchor_boundary hw k hHk
         rw [hnext] at hb hbanc hbfloor
-        by_cases hcall : E.IsFCRCallAt cfg ext w k
-        · let query := E.fcrStep cfg ext w k
+        by_cases hcall : E.IsScheduledFCRCallAt cfg ext w k
+        · let query := E.fcrStoreAtCall cfg ext w k
           have hG := E.historicalA32QueryGeometryAt_of_acceptedGlobalTrajectory
             cfg ext h.semantics h.trajectory h.anchor_eq h.anchor_boundary
               hw hHk1
@@ -1294,8 +1294,8 @@ theorem AcceptedActualFCRNextSlotSafetyAssumptions.live_historical_chain_known_i
 /-- Clock-shaped input for the historical-chain induction: the base store
 is at or before the epoch start, and all subsequent queried slots through
 the terminal store remain in that epoch. -/
-theorem AcceptedActualFCRNextSlotSafetyAssumptions.live_historical_chain_known_of_clock
-    (h : E.AcceptedActualFCRNextSlotSafetyAssumptions cfg ext)
+theorem NextSlotSafetyPremises.live_historical_chain_known_of_clock
+    (h : E.NextSlotSafetyPremises cfg ext)
     {w : ValidatorIndex} (hw : w ∈ E.honest)
     (B T : ℕ) (e : Epoch) (hBT : B ≤ T)
     (he0 : compute_epoch_at_slot cfg (E.slot_at cfg 0) ≤ e)
@@ -1309,10 +1309,10 @@ theorem AcceptedActualFCRNextSlotSafetyAssumptions.live_historical_chain_known_o
         (get_node_for_root b) = true →
       compute_start_slot_at_epoch cfg e <
         ((E.store cfg ext w T).blocks b).slot →
-      ∃ q, B ≤ q ∧ q < T ∧ E.IsFCRCallAt cfg ext w q ∧
+      ∃ q, B ≤ q ∧ q < T ∧ E.IsScheduledFCRCallAt cfg ext w q ∧
         b ∈ (E.store cfg ext w (q + 1)).block_roots ∧
-        is_one_confirmed cfg ext (E.fcrStep cfg ext w q).store
-          (get_current_balance_source (E.fcrStep cfg ext w q)) b = true := by
+        is_one_confirmed cfg ext (E.fcrStoreAtCall cfg ext w q).store
+          (get_current_balance_source (E.fcrStoreAtCall cfg ext w q)) b = true := by
   obtain ⟨ast, ablk, hgen, hstateSlot, _⟩ := h.trajectory.genesis_structure
   have hgenShort : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
       E.genesis_store = get_forkchoice_store cfg ast ablk ∧
@@ -1347,8 +1347,8 @@ theorem AcceptedActualFCRNextSlotSafetyAssumptions.live_historical_chain_known_o
 /-- Historical one-block certificates on the cached chain just before a
 completed epoch boundary, for epochs whose start is after execution time
 zero. The initial epoch has a distinct base store at second zero. -/
-theorem AcceptedActualFCRNextSlotSafetyAssumptions.live_historical_chain_before_boundary
-    (h : E.AcceptedActualFCRNextSlotSafetyAssumptions cfg ext)
+theorem NextSlotSafetyPremises.live_historical_chain_before_boundary
+    (h : E.NextSlotSafetyPremises cfg ext)
     {w : ValidatorIndex} (hw : w ∈ E.honest) (e : Epoch)
     (he0 : compute_epoch_at_slot cfg (E.slot_at cfg 0) ≤ e)
     (hstartAfterZero : E.slot_at cfg 0 < compute_start_slot_at_epoch cfg e)
@@ -1362,10 +1362,10 @@ theorem AcceptedActualFCRNextSlotSafetyAssumptions.live_historical_chain_before_
         (get_node_for_root b) = true →
       compute_start_slot_at_epoch cfg e <
         ((E.store cfg ext w T).blocks b).slot →
-      ∃ q, B ≤ q ∧ q < T ∧ E.IsFCRCallAt cfg ext w q ∧
+      ∃ q, B ≤ q ∧ q < T ∧ E.IsScheduledFCRCallAt cfg ext w q ∧
         b ∈ (E.store cfg ext w (q + 1)).block_roots ∧
-        is_one_confirmed cfg ext (E.fcrStep cfg ext w q).store
-          (get_current_balance_source (E.fcrStep cfg ext w q)) b = true := by
+        is_one_confirmed cfg ext (E.fcrStoreAtCall cfg ext w q).store
+          (get_current_balance_source (E.fcrStoreAtCall cfg ext w q)) b = true := by
   let S := compute_start_slot_at_epoch cfg e
   let U := compute_start_slot_at_epoch cfg (e + 1)
   let Bs := E.slot_start cfg S
@@ -1425,8 +1425,8 @@ theorem AcceptedActualFCRNextSlotSafetyAssumptions.live_historical_chain_before_
 
 /-- Initial-epoch version of the historical certificate invariant. The
 second-zero trusted anchor is already at that epoch's first slot. -/
-theorem AcceptedActualFCRNextSlotSafetyAssumptions.live_initial_historical_chain_before_boundary
-    (h : E.AcceptedActualFCRNextSlotSafetyAssumptions cfg ext)
+theorem NextSlotSafetyPremises.live_initial_historical_chain_before_boundary
+    (h : E.NextSlotSafetyPremises cfg ext)
     {w : ValidatorIndex} (hw : w ∈ E.honest)
     {m : ℕ} (hHm : E.WithinHorizon cfg m)
     (heDone : compute_start_slot_at_epoch cfg
@@ -1439,10 +1439,10 @@ theorem AcceptedActualFCRNextSlotSafetyAssumptions.live_initial_historical_chain
         (get_node_for_root b) = true →
       compute_start_slot_at_epoch cfg e <
         ((E.store cfg ext w T).blocks b).slot →
-      ∃ q, q < T ∧ E.IsFCRCallAt cfg ext w q ∧
+      ∃ q, q < T ∧ E.IsScheduledFCRCallAt cfg ext w q ∧
         b ∈ (E.store cfg ext w (q + 1)).block_roots ∧
-        is_one_confirmed cfg ext (E.fcrStep cfg ext w q).store
-          (get_current_balance_source (E.fcrStep cfg ext w q)) b = true := by
+        is_one_confirmed cfg ext (E.fcrStoreAtCall cfg ext w q).store
+          (get_current_balance_source (E.fcrStoreAtCall cfg ext w q)) b = true := by
   let e := compute_epoch_at_slot cfg (E.slot_at cfg 0)
   let U := compute_start_slot_at_epoch cfg (e + 1)
   let Ts := E.slot_start cfg U

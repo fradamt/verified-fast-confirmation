@@ -125,7 +125,7 @@ right input for this cell.
 theorem recentSourceSeedAt_endpointNext_of_lemma13
     (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
     (hwf : WellFormedExecution E)
-    (hec : ExternalsCoherence cfg ext E)
+    (hec : BeaconExternalsPremises cfg ext E)
     {ast : BeaconState Root} {ablk : SignedBeaconBlock Root}
     (hgen : E.genesis_store = get_forkchoice_store cfg ast ablk)
     (hgenSlot : ast.slot = ablk.message.slot)

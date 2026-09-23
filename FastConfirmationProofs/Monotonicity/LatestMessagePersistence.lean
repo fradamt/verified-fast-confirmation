@@ -179,7 +179,7 @@ strictly later slot, but the validator has at most one committee assignment
 in that epoch. -/
 theorem latest_message_eq_of_same_epoch_at_observer
     (hwf : WellFormedExecution E)
-    (hec : ExternalsCoherence cfg ext E)
+    (hec : BeaconExternalsPremises cfg ext E)
     (hgen : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
       E.genesis_store = get_forkchoice_store cfg ast ablk)
     {w : ValidatorIndex} (hw : w ∈ E.honest)
@@ -212,7 +212,7 @@ epoch's first slot. The handler cannot apply an attestation from that new
 slot yet, and a validator has only one committee slot in the old epoch. -/
 theorem latest_message_stable_at_next_epoch_start
     (hwf : WellFormedExecution E)
-    (hec : ExternalsCoherence cfg ext E)
+    (hec : BeaconExternalsPremises cfg ext E)
     (hgen : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
       E.genesis_store = get_forkchoice_store cfg ast ablk)
     {w : ValidatorIndex} (hw : w ∈ E.honest)

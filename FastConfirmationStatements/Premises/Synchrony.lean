@@ -115,7 +115,7 @@ def DataAvailabilityRelay (E : Execution Root) : Prop :=
 The accepted next-slot argument needs honest-attestation delivery, block relay,
 envelope delivery, data-availability relay, and equivocation-evidence relay. It does not use the additional
 `latest_message_relay` field of the full `Synchrony` bundle. -/
-structure PaperSafetySynchrony (E : Execution Root) : Prop where
+structure NextSlotSynchronyPremises (E : Execution Root) : Prop where
   attestation_delivery : ∀ v ∈ E.honest, ∀ s n (a : Attestation Root),
     E.SlotWithinHorizon cfg s →
     E.WithinHorizon cfg n →
@@ -145,7 +145,7 @@ def Synchrony.toPaperSafetySynchrony
     (h : Synchrony cfg ext E)
     (henvelope : EnvelopeDelivery cfg ext E)
     (hdata : DataAvailabilityRelay cfg ext E) :
-    PaperSafetySynchrony cfg ext E where
+    NextSlotSynchronyPremises cfg ext E where
   attestation_delivery := h.attestation_delivery
   block_relay := h.block_relay
   envelope_delivery := henvelope

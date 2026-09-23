@@ -17,20 +17,20 @@ variable {Root : Type*} [LinearOrder Root] [Inhabited Root]
 variable (cfg : Config) (ext : Externals Root)
 namespace Execution
 variable (E : Execution Root)
-namespace AcceptedActualFCRNextSlotSafetyAssumptions
-end AcceptedActualFCRNextSlotSafetyAssumptions
+namespace NextSlotSafetyPremises
+end NextSlotSafetyPremises
 end Execution
 /-- Accepted whole-output safety with the same endpoint quantifiers and timing
 as `Spec_Safety_next_slot`, under the accepted executable-semantics bundle.
 
-The global `PaperSafetySynchrony` inside `completed_calls` makes this the
+The global `NextSlotSynchronyPremises` inside `completed_calls` makes this the
 current model's GST-0 specialization. Its four fields are honest-attestation
 delivery, block relay, payload-envelope relay, and equivocation-evidence relay;
 it does not require the additional `latest_message_relay` premise of the full
 `Synchrony` bundle. -/
-def AcceptedSpec_Safety_next_slot : Prop :=
+def ConfirmedRootSafeFromNextSlot : Prop :=
   ∀ E : Execution Root,
-    E.AcceptedActualFCRNextSlotSafetyAssumptions cfg ext →
+    E.NextSlotSafetyPremises cfg ext →
       ∀ v ∈ E.honest, ∀ n : ℕ,
         ∀ w ∈ E.honest, ∀ m : ℕ, n ≤ m →
           E.slot_at cfg n + 1 ≤ E.slot_at cfg m →
@@ -43,9 +43,9 @@ def AcceptedSpec_Safety_next_slot : Prop :=
 statement. The fifth live field now bounds FFG checkpoint visibility at
 epoch boundaries. The one-confirmation, reconfirmation, and fork-choice
 bridges are developed in the live-monotonicity proof modules. -/
-def AcceptedSpec_Monotonicity_live : Prop :=
-  Spec_Monotonicity_live cfg ext
-    (fun E => Nonempty (E.AcceptedActualFCRNextSlotSafetyAssumptions cfg ext))
+def LiveConfirmedRootMonotonicity : Prop :=
+  ConfirmedRootMonotonicity cfg ext
+    (fun E => Nonempty (E.NextSlotSafetyPremises cfg ext))
 
 end FastConfirmation.Spec
 end

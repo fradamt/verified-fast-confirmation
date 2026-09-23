@@ -170,11 +170,11 @@ theorem confirmed_succ_of_no_advance (v : ValidatorIndex) (n : ℕ)
   simp only [Execution.confirmed, Execution.fcr]
   rw [if_neg h]
 
-/-- At a slot update the confirmed root is `get_latest_confirmed` of `fcrStep`. -/
+/-- At a slot update the confirmed root is `get_latest_confirmed` of `fcrStoreAtCall`. -/
 theorem confirmed_succ_of_advance (v : ValidatorIndex) (n : ℕ)
     (h : get_current_slot cfg (E.store cfg ext v (n + 1)) >
       get_current_slot cfg (E.store cfg ext v n)) :
-    E.confirmed cfg ext v (n + 1) = get_latest_confirmed cfg ext (E.fcrStep cfg ext v n) := by
+    E.confirmed cfg ext v (n + 1) = get_latest_confirmed cfg ext (E.fcrStoreAtCall cfg ext v n) := by
   simp only [Execution.confirmed, Execution.fcr]
   rw [if_pos h]
   rfl

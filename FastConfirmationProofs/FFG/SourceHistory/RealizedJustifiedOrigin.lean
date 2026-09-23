@@ -715,7 +715,7 @@ private theorem realizedJustifiedOrigin_slot_at_succ_le
 private theorem realizedJustifiedOrigins_after_execution_tick
     {anchor : Checkpoint Root}
     (S : AcceptedChainFFGState cfg ext E anchor)
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
+    (hT : E.ScheduledPrefixPremises cfg ext)
     (w : ValidatorIndex) (n : ℕ)
     (h : AcceptedRealizedJustifiedOrigins cfg ext S
       (E.store cfg ext w n)) :
@@ -811,7 +811,7 @@ private theorem realizedJustifiedOrigins_after_execution_tick
 
 private theorem genesisAcceptedRealizedJustifiedOrigins
     (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
+    (hT : E.ScheduledPrefixPremises cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint) :
     AcceptedRealizedJustifiedOrigins cfg ext B.state E.genesis_store := by
   obtain ⟨ast, ablk, hgen, _hslot, _hparent⟩ := hT.genesis_structure
@@ -821,7 +821,7 @@ private theorem genesisAcceptedRealizedJustifiedOrigins
 
 private theorem acceptedRealizedJustifiedOrigins_take
     (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
+    (hT : E.ScheduledPrefixPremises cfg ext)
     (w : ValidatorIndex) (n : ℕ)
     (hbase : AcceptedRealizedJustifiedOrigins cfg ext B.state
       (on_tick cfg (E.store cfg ext w n) (E.time_at (n + 1)))) :
@@ -892,7 +892,7 @@ private theorem acceptedRealizedJustifiedOrigins_take
 origin of its realized justified checkpoint. -/
 theorem acceptedRealizedJustifiedOrigins
     (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
+    (hT : E.ScheduledPrefixPremises cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (w : ValidatorIndex) (n : ℕ) :
     AcceptedRealizedJustifiedOrigins cfg ext B.state

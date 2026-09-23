@@ -39,7 +39,7 @@ root.
 the start of its declared epoch cannot support this downward walk. -/
 theorem justifiedRootKnown_of_acceptedGlobalTrajectory
     (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
+    (hT : E.ScheduledPrefixPremises cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg) (E := E)
       (anchor := B.anchor))
@@ -118,7 +118,7 @@ This is the accepted replacement for routing action-facing proofs through
 `SelectedMarginDomain` merely to obtain store geometry. -/
 theorem storeDomainK_of_acceptedGlobalTrajectory
     (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
+    (hT : E.ScheduledPrefixPremises cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg) (E := E)
       (anchor := B.anchor)) :
@@ -138,7 +138,7 @@ now derived from accepted global semantics rather than a selected-margin or
 legacy justification premise. -/
 theorem headRootKnown_of_acceptedGlobalTrajectory
     (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
+    (hT : E.ScheduledPrefixPremises cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg) (E := E)
       (anchor := B.anchor))
@@ -155,7 +155,7 @@ theorem headRootKnown_of_acceptedGlobalTrajectory
 /-- The handler-local well-formed core over every exact causal prefix is a
 pure consequence of scheduled-prefix trajectory data. -/
 theorem exactCausalStoreWellFormedCore_of_trajectory
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext) :
+    (hT : E.ScheduledPrefixPremises cfg ext) :
     E.ExactCausalStoreWellFormedCore cfg ext := by
   obtain ⟨ast, ablk, hgen, hslot, hparent⟩ := hT.genesis_structure
   have hbase : WellFormedStoreCore E.genesis_store := by
@@ -169,7 +169,7 @@ theorem exactCausalStoreWellFormedCore_of_trajectory
 realization from accepted global semantics and lower trajectory geometry. -/
 def CurrentTargetPrefixVoteAssumptions.of_acceptedGlobalTrajectory
     (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
+    (hT : E.ScheduledPrefixPremises cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg) (E := E)
       (anchor := B.anchor)) :
@@ -281,7 +281,7 @@ theorem postAnchorHonestVoteTargetWalkDomain_of_prefixVoteAssumptions
 walk domain used by the current-target gate. -/
 theorem postAnchorHonestVoteTargetWalkDomain_of_acceptedGlobalTrajectory
     (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
+    (hT : E.ScheduledPrefixPremises cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg) (E := E)
       (anchor := B.anchor)) :

@@ -273,9 +273,9 @@ def SpecAssumptions (E : Execution Root) : Prop :=
   1000 ∣ cfg.slot_duration_ms ∧
   HonestBehavior cfg ext E ∧
   Synchrony cfg ext E ∧
-  ExternalsCoherence cfg ext E ∧
+  BeaconExternalsPremises cfg ext E ∧
   StaticValidatorSet cfg E ∧
-  ByzantineBound cfg E ∧
+  ByzantineWeightPremises cfg E ∧
   JustificationInterface cfg ext E
 
 /-- Strong all-prefix safety candidate used by the internal proof
@@ -290,8 +290,8 @@ def Spec_Safety : Prop :=
         (get_node_for_root (E.confirmed cfg ext v n)) = true
 
 /-- Next-slot form over the older `SpecAssumptions` vocabulary. The accepted
-public theorem uses `AcceptedActualFCRNextSlotSafetyAssumptions` and is stated as
-`AcceptedSpec_Safety_next_slot`. -/
+public theorem uses `NextSlotSafetyPremises` and is stated as
+`ConfirmedRootSafeFromNextSlot`. -/
 def Spec_Safety_next_slot : Prop :=
   ∀ E : Execution Root, SpecAssumptions cfg ext E →
     ∀ v ∈ E.honest, ∀ n : ℕ, ∀ w ∈ E.honest, ∀ m : ℕ, n ≤ m →

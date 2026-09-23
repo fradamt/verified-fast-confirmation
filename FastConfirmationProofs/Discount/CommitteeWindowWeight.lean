@@ -47,7 +47,7 @@ the `get_ancestor_slot_le` slot chain inside that lemma. -/
 `c'`'s recorded score is the ground-truth weight of its supporter set
 (`attestation_score_eq_weight`); that set is confined to the span committee
 `[c'.slot, k−1]` (result 1), whose weight the estimate bounds
-(`ByzantineBound.estimate_sound`). Hence the sibling score never exceeds the
+(`ByzantineWeightPremises.estimate_sound`). Hence the sibling score never exceeds the
 union-window committee estimate — the top of the `hsib` ledger's right-hand
 side. -/
 

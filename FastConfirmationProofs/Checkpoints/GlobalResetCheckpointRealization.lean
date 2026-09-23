@@ -174,7 +174,7 @@ theorem fcr_observed_succ_of_advance
 /-- The actual query's observed checkpoint follows the same exact rotation,
 whether or not that speculative query is a real slot call. -/
 theorem fcrStep_observed_exact (v : ValidatorIndex) (n : ℕ) :
-    (E.fcrStep cfg ext v n).current_epoch_observed_justified_checkpoint =
+    (E.fcrStoreAtCall cfg ext v n).current_epoch_observed_justified_checkpoint =
       if is_start_slot_at_epoch cfg
           (get_current_slot cfg (E.store cfg ext v (n + 1))) then
         if is_start_slot_at_epoch cfg
@@ -184,7 +184,7 @@ theorem fcrStep_observed_exact (v : ValidatorIndex) (n : ℕ) :
           (E.fcr cfg ext v n).previous_epoch_greatest_unrealized_checkpoint
       else
         (E.fcr cfg ext v n).current_epoch_observed_justified_checkpoint := by
-  rw [Execution.fcrStep]
+  rw [Execution.fcrStoreAtCall]
   exact update_fcv_observed_exact cfg
     { E.fcr cfg ext v n with store := E.store cfg ext v (n + 1) }
 

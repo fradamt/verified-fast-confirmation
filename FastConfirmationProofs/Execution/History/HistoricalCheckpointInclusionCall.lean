@@ -29,7 +29,7 @@ The only fresh payload branches are the trusted anchor and a concrete
 current-target crossing. -/
 noncomputable def getLatestConfirmedTraceAt_currentLineage_step
     (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
+    (hT : E.ScheduledPrefixPremises cfg ext)
     (hphase : Phase0SourceCoherence cfg ext)
     (hboundaryPhase : Phase0BoundarySourceCoherence cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
@@ -39,17 +39,17 @@ noncomputable def getLatestConfirmedTraceAt_currentLineage_step
     {n : ℕ} (hHn1 : E.WithinHorizon cfg (n + 1))
     (hknownN : E.confirmed cfg ext v n ∈
       (E.store cfg ext v n).block_roots)
-    (hresultCurrent : get_block_epoch cfg (E.fcrStep cfg ext v n).store
+    (hresultCurrent : get_block_epoch cfg (E.fcrStoreAtCall cfg ext v n).store
         (E.getLatestConfirmedTraceAt cfg ext v n).result =
-      get_current_store_epoch cfg (E.fcrStep cfg ext v n).store)
+      get_current_store_epoch cfg (E.fcrStoreAtCall cfg ext v n).store)
     (hprovisos :
-      getLatestSelectorGuard cfg (E.fcrStep cfg ext v n)
+      getLatestSelectorGuard cfg (E.fcrStoreAtCall cfg ext v n)
           (E.getLatestConfirmedTraceAt cfg ext v n).afterObserved →
-        SelectedHelperProvisosAt cfg ext E v (n + 1)
-          (E.fcrStep cfg ext v n)
+        FCRPredictionSupportAt cfg ext E v (n + 1)
+          (E.fcrStoreAtCall cfg ext v n)
           (E.getLatestConfirmedTraceAt cfg ext v n).afterObserved)
     (htargetProducer : E.AcceptedCurrentTargetA32GateRealizationProducerAt
-      cfg ext B.anchor B.state (n + 1) (E.fcrStep cfg ext v n))
+      cfg ext B.anchor B.state (n + 1) (E.fcrStoreAtCall cfg ext v n))
     (hprevious :
       get_block_epoch cfg (E.store cfg ext v n) (E.confirmed cfg ext v n) =
           get_current_store_epoch cfg (E.store cfg ext v n) →
@@ -57,12 +57,12 @@ noncomputable def getLatestConfirmedTraceAt_currentLineage_step
           cfg ext B (E.confirmed cfg ext v n) e)) :
     ∃ e : Epoch, Nonempty (E.AcceptedHistoricalA32LineageAt cfg ext B
       (E.getLatestConfirmedTraceAt cfg ext v n).result e) := by
-  let query := E.fcrStep cfg ext v n
+  let query := E.fcrStoreAtCall cfg ext v n
   let trace := E.getLatestConfirmedTraceAt cfg ext v n
   change get_block_epoch cfg query.store trace.result =
     get_current_store_epoch cfg query.store at hresultCurrent
   change getLatestSelectorGuard cfg query trace.afterObserved →
-    SelectedHelperProvisosAt cfg ext E v (n + 1) query
+    FCRPredictionSupportAt cfg ext E v (n + 1) query
       trace.afterObserved at hprovisos
   change E.AcceptedCurrentTargetA32GateRealizationProducerAt cfg ext B.anchor
     B.state (n + 1) query at htargetProducer
@@ -82,7 +82,7 @@ noncomputable def getLatestConfirmedTraceAt_currentLineage_step
       (hinputKnown : trace.afterObserved ∈ query.store.block_roots)
       (hselector : getLatestSelectorGuard cfg query trace.afterObserved)
       {a c : Root}
-      (hedge : CurrentTargetAcceptedEdge cfg ext query
+      (hedge : CurrentTargetSelectedEdge cfg ext query
         trace.afterObserved a c) :
       E.AcceptedHistoricalA32LineageAt cfg ext B trace.result
         (get_current_store_epoch cfg query.store) := by
@@ -105,7 +105,7 @@ noncomputable def getLatestConfirmedTraceAt_currentLineage_step
       (hinputKnown : trace.afterObserved ∈ query.store.block_roots)
       (hselector : getLatestSelectorGuard cfg query trace.afterObserved)
       (hnoCrossing : ¬ ∃ a c : Root,
-        CurrentTargetAcceptedEdge cfg ext query trace.afterObserved a c)
+        CurrentTargetSelectedEdge cfg ext query trace.afterObserved a c)
       {e : Epoch}
       (hinputLineage : E.AcceptedHistoricalA32LineageAt cfg ext B
         trace.afterObserved e) :
@@ -137,12 +137,12 @@ noncomputable def getLatestConfirmedTraceAt_currentLineage_step
             (E.fcrStep_confirmed_root cfg ext v n))
         simpa only [htip] using hlineage
       · by_cases hcrossing : ∃ a c : Root,
-            CurrentTargetAcceptedEdge cfg ext query
+            CurrentTargetSelectedEdge cfg ext query
               trace.afterObserved a c
         · obtain ⟨a, c, hedge⟩ := hcrossing
           exact ⟨_, ⟨hcrossingLineage hinputKnown hselector hedge⟩⟩
         · have hinputCurrent :=
-            Execution.GetLatestConfirmedTrace.input_current_of_selected_current_no_crossing
+            Execution.LatestConfirmedCallTrace.input_current_of_selected_current_no_crossing
               cfg ext trace
               hG.parent hG.walk hG.head_known hinputKnown
               (hG.slot_upper _ hinputKnown) hselector hresultCurrent hcrossing
@@ -181,12 +181,12 @@ noncomputable def getLatestConfirmedTraceAt_currentLineage_step
             (by simpa only [query] using hcurrentFinalized)
         exact ⟨_, ⟨by simpa only [hresultEq, hinputEq, query] using hlineage⟩⟩
       · by_cases hcrossing : ∃ a c : Root,
-            CurrentTargetAcceptedEdge cfg ext query
+            CurrentTargetSelectedEdge cfg ext query
               trace.afterObserved a c
         · obtain ⟨a, c, hedge⟩ := hcrossing
           exact ⟨_, ⟨hcrossingLineage hinputKnown hselector hedge⟩⟩
         · have hinputCurrent :=
-            Execution.GetLatestConfirmedTrace.input_current_of_selected_current_no_crossing
+            Execution.LatestConfirmedCallTrace.input_current_of_selected_current_no_crossing
               cfg ext trace
               hG.parent hG.walk hG.head_known hinputKnown
               (hG.slot_upper _ hinputKnown) hselector hresultCurrent hcrossing
@@ -227,11 +227,11 @@ noncomputable def getLatestConfirmedTraceAt_currentLineage_step
           simpa only [Nat.add_one] using hbad)
       exact hfalse.elim
     · by_cases hcrossing : ∃ a c : Root,
-          CurrentTargetAcceptedEdge cfg ext query trace.afterObserved a c
+          CurrentTargetSelectedEdge cfg ext query trace.afterObserved a c
       · obtain ⟨a, c, hedge⟩ := hcrossing
         exact ⟨_, ⟨hcrossingLineage hinputKnown hselector hedge⟩⟩
       · have hinputCurrent :=
-          Execution.GetLatestConfirmedTrace.input_current_of_selected_current_no_crossing
+          Execution.LatestConfirmedCallTrace.input_current_of_selected_current_no_crossing
             cfg ext trace
             hG.parent hG.walk hG.head_known hinputKnown
             (hG.slot_upper _ hinputKnown) hselector hresultCurrent hcrossing

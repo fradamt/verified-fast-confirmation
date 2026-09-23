@@ -38,14 +38,14 @@ consumed by the dispatcher. -/
 noncomputable def
     getLatestConfirmedTraceAt_actualFCRStrictSelectedFilterSupplierAt
     (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
-    (hC : E.AcceptedHistoricalA32CompletedPrefixCallAssumptions cfg ext)
+    (hT : E.ScheduledPrefixPremises cfg ext)
+    (hC : E.CompletedFCRCallPremises cfg ext)
     (hfit : EpochEndsFitUint64 cfg)
     (hdomain : SelectedMarginDomain cfg ext E)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
       (E := E) (anchor := B.anchor))
-    (hDelay : E.AcceptedRealizedFinalizationDelay cfg ext B)
+    (hDelay : E.RealizedFinalizationDelay cfg ext B)
     (hspe : 1 < cfg.slots_per_epoch)
     (hpaper : B.state.PaperA32Inclusion cfg ext)
     (P : AcceptedEpochCheckpointProjection B.anchor
@@ -55,9 +55,9 @@ noncomputable def
       B.state.C B.anchor.root B.anchor.epoch)
     {v : ValidatorIndex} (hv : v ∈ E.honest) {n : ℕ}
     (hHn1 : E.WithinHorizon cfg (n + 1))
-    (hcall : E.IsFCRCallAt cfg ext v n)
+    (hcall : E.IsScheduledFCRCallAt cfg ext v n)
     (hinput : (E.getLatestConfirmedTraceAt cfg ext v n).afterObserved ∈
-      (E.fcrStep cfg ext v n).store.block_roots)
+      (E.fcrStoreAtCall cfg ext v n).store.block_roots)
     (hbase : E.SafeFrom cfg ext
       (E.getLatestConfirmedTraceAt cfg ext v n).afterObserved
       (E.slot_start cfg (E.slot_at cfg (n + 1)))) :
@@ -97,14 +97,14 @@ no reset `SafeFrom`, whole-output `Spec_Safety`, justification interface, or
 legacy pipeline is assumed. -/
 theorem getLatestConfirmedTraceAt_result_safeFrom_of_acceptedDispatcher
     (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
-    (hC : E.AcceptedHistoricalA32CompletedPrefixCallAssumptions cfg ext)
+    (hT : E.ScheduledPrefixPremises cfg ext)
+    (hC : E.CompletedFCRCallPremises cfg ext)
     (hfit : EpochEndsFitUint64 cfg)
     (hdomain : SelectedMarginDomain cfg ext E)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
       (E := E) (anchor := B.anchor))
-    (hDelay : E.AcceptedRealizedFinalizationDelay cfg ext B)
+    (hDelay : E.RealizedFinalizationDelay cfg ext B)
     (hspe : 1 < cfg.slots_per_epoch)
     (hpaper : B.state.PaperA32Inclusion cfg ext)
     (P : AcceptedEpochCheckpointProjection B.anchor
@@ -114,9 +114,9 @@ theorem getLatestConfirmedTraceAt_result_safeFrom_of_acceptedDispatcher
       B.state.C B.anchor.root B.anchor.epoch)
     {v : ValidatorIndex} (hv : v ∈ E.honest) {n : ℕ}
     (hHn1 : E.WithinHorizon cfg (n + 1))
-    (hcall : E.IsFCRCallAt cfg ext v n)
+    (hcall : E.IsScheduledFCRCallAt cfg ext v n)
     (hinput : (E.getLatestConfirmedTraceAt cfg ext v n).afterObserved ∈
-      (E.fcrStep cfg ext v n).store.block_roots)
+      (E.fcrStoreAtCall cfg ext v n).store.block_roots)
     (hinputSafe : E.SafeFrom cfg ext
       (E.getLatestConfirmedTraceAt cfg ext v n).afterObserved (n + 1)) :
     E.SafeFrom cfg ext
@@ -141,7 +141,7 @@ theorem getLatestConfirmedTraceAt_result_safeFrom_of_acceptedDispatcher
     E.postAnchorHonestVoteTargetWalkDomain_of_acceptedGlobalTrajectory
       cfg ext B hT hanchor hboundary
   exact
-    Execution.GetLatestConfirmedTrace.result_safeFrom_of_actualCall_strictSupplier
+    Execution.LatestConfirmedCallTrace.result_safeFrom_of_actualCall_strictSupplier
       cfg ext E hA hwalkDomain hv hHn1 hcall
         (E.getLatestConfirmedTraceAt cfg ext v n) hinput hinputSafe
           (E.getLatestConfirmedTraceAt_actualFCRStrictSelectedFilterSupplierAt

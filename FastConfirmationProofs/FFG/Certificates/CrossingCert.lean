@@ -61,7 +61,7 @@ theorem parent_slot_succ_le_crossing_start {store : Store Root} {b : Root}
 `supporter_mem_span_committee` with the start slot specialized to the block
 slot; reverse provenance supplies the ground newest vote used by `Sclass`. -/
 private theorem recorded_supporter_mem_crossing_Sclass
-    (hhb : HonestBehavior cfg ext E) (hec : ExternalsCoherence cfg ext E)
+    (hhb : HonestBehavior cfg ext E) (hec : BeaconExternalsPremises cfg ext E)
     (hgen : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
       E.genesis_store = get_forkchoice_store cfg ast ablk)
     {v₀ : ValidatorIndex} {n₀ : ℕ}
@@ -115,7 +115,7 @@ supporters.  Reverse provenance puts every honest supporter into the
 re-anchored `Sval` window whose lower slot is `(blocks b').slot`; enlarging the
 honest summand gives the certificate's base inequality. -/
 theorem crossing_hbase_of_confirmed_window
-    (hhb : HonestBehavior cfg ext E) (hec : ExternalsCoherence cfg ext E)
+    (hhb : HonestBehavior cfg ext E) (hec : BeaconExternalsPremises cfg ext E)
     (hgen : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
       E.genesis_store = get_forkchoice_store cfg ast ablk)
     {v₀ : ValidatorIndex} {n₀ : ℕ}
@@ -180,7 +180,7 @@ omit [LinearOrder Root] [Inhabited Root] in
 `crossingPreRegion lo mid es` partition the full validator union exactly.
 Consequently the rule's full-window estimate dominates the sub-window honest
 and enemy mass plus the set-difference pre mass. -/
-theorem crossing_hMU_of_preRegion (hbb : ByzantineBound cfg E)
+theorem crossing_hMU_of_preRegion (hbb : ByzantineWeightPremises cfg E)
     {bs : BeaconState Root}
     (htab : get_total_active_balance cfg bs = E.total_active cfg)
     {lo mid es : Slot} (hlo : lo ≤ mid)
@@ -246,7 +246,7 @@ theorem crossing_equivPre_subset_byzPre {store : Store Root} {bs : BeaconState R
 /-- The full-span equivocation score is the sub-window score plus exactly the
 wide-span-only active-equivocator mass. -/
 theorem crossing_equivocation_score_split
-    (hec : ExternalsCoherence cfg ext E)
+    (hec : BeaconExternalsPremises cfg ext E)
     {v : ValidatorIndex} (hv : v ∈ E.honest) {n : ℕ}
     (hnH : E.WithinHorizon cfg n)
     {bs : BeaconState Root} (hval : bs.validators = E.registry)
@@ -355,7 +355,7 @@ theorem crossing_parentPre_subset_honestPre
 `ParentPre`, `XPre`, and `ByzPre` is exactly the full-window committee union;
 the rule's full-window estimate therefore dominates this concrete coordinate
 sum. -/
-theorem crossing_hMU_of_canonicalPre (hbb : ByzantineBound cfg E)
+theorem crossing_hMU_of_canonicalPre (hbb : ByzantineWeightPremises cfg E)
     {v : ValidatorIndex} {n : ℕ} {bs : BeaconState Root} {b : Root} {es : Slot}
     (htab : get_total_active_balance cfg bs = E.total_active cfg)
     (hes : es = get_current_slot cfg (E.store cfg ext v n) - 1)
@@ -420,7 +420,7 @@ theorem crossing_hMU_of_canonicalPre (hbb : ByzantineBound cfg E)
 the parent-stuck validators outside the sub-window and those already present
 inside it.  No cross-epoch disjointness premise is used. -/
 theorem crossing_hd_of_preRegion
-    (hec : ExternalsCoherence cfg ext E) (hbb : ByzantineBound cfg E)
+    (hec : BeaconExternalsPremises cfg ext E) (hbb : ByzantineWeightPremises cfg E)
     {v : ValidatorIndex} (hv : v ∈ E.honest) {n : ℕ}
     (hnH : E.WithinHorizon cfg n)
     {bs : BeaconState Root} {b : Root}
@@ -464,7 +464,7 @@ full span supplies both facts used by the k-independent endpoint arithmetic:
 its actual honest-plus-enemy union is dominated by `100 * (estimate / 100)`,
 and its floored adversarial budget is at most the net adversarial weight plus
 the full-span equivocation score. -/
-theorem crossing_fullSpan_adversarial_guard (hbb : ByzantineBound cfg E)
+theorem crossing_fullSpan_adversarial_guard (hbb : ByzantineWeightPremises cfg E)
     {store : Store Root} {bs : BeaconState Root} {b : Root} {es : Slot}
     (htab : get_total_active_balance cfg bs = E.total_active cfg)
     (hcross : get_block_epoch cfg store b >

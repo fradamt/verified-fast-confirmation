@@ -25,7 +25,7 @@ variable (E : Execution Root)
 
 Both `Arms.arms_of_confirmed` estimate bounds reduce to one fact: the honest window weight
 (`Jspec`) plus the enemy weight (`Bval`) is exactly the span-committee weight, which
-`ByzantineBound.estimate_dominates` bounds by `100 · (estimate // 100)`. `hR8aW`/`hR8cW` then
+`ByzantineWeightPremises.estimate_dominates` bounds by `100 · (estimate // 100)`. `hR8aW`/`hR8cW` then
 follow from the atom identities that split those class weights across the confirmation window
 (the identities themselves — `s₀ = Sval`, `Jspec` partition — are the enumerated residues). -/
 
@@ -38,9 +38,9 @@ theorem Jspec_add_Bval_eq_weight_span (a b : Slot) :
   exact (E.weight_split_honest (E.span_committee a b)).symm
 
 omit [LinearOrder Root] [Inhabited Root] in
-/-- **Span weight dominated by the estimate floor.** `ByzantineBound.estimate_dominates` at the
+/-- **Span weight dominated by the estimate floor.** `ByzantineWeightPremises.estimate_dominates` at the
 balance source's total active balance (`htab` matches the two readings). -/
-theorem weight_span_le_estimate (hbb : ByzantineBound cfg E) {bs : BeaconState Root}
+theorem weight_span_le_estimate (hbb : ByzantineWeightPremises cfg E) {bs : BeaconState Root}
     (htab : get_total_active_balance cfg bs = E.total_active cfg) (a b : Slot)
     (haH : E.SlotWithinHorizon cfg a) (hbH : E.SlotWithinHorizon cfg b) :
     E.weight (E.span_committee a b) ≤

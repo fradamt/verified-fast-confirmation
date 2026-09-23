@@ -210,7 +210,7 @@ theorem anchorParent_not_executionRoot_for_storeReflection
 reachable store, and semantic descent is represented by executable ancestry. -/
 theorem store_known_ancestor_of_rootDescends_for_storeReflection
     (hwf : WellFormedExecution E)
-    (hec : ExternalsCoherence cfg ext E)
+    (hec : BeaconExternalsPremises cfg ext E)
     {ast : BeaconState Root} {ablk : SignedBeaconBlock Root}
     (hgen : E.genesis_store = get_forkchoice_store cfg ast ablk)
     (hslot : ast.slot = ablk.message.slot)
@@ -284,7 +284,7 @@ theorem store_known_ancestor_of_rootDescends_for_storeReflection
 domain, specialized to callers which already know both endpoints. -/
 theorem store_ancestor_of_rootDescends_for_storeReflection
     (hwf : WellFormedExecution E)
-    (hec : ExternalsCoherence cfg ext E)
+    (hec : BeaconExternalsPremises cfg ext E)
     {ast : BeaconState Root} {ablk : SignedBeaconBlock Root}
     (hgen : E.genesis_store = get_forkchoice_store cfg ast ablk)
     (hslot : ast.slot = ablk.message.slot)

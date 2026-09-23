@@ -74,7 +74,7 @@ causal formation vote.  This is the justified analogue of
 does not conclude any selected-branch orientation. -/
 theorem globalJustified_honestTarget
     (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
+    (hT : E.ScheduledPrefixPremises cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
       (E := E) (anchor := B.anchor))
@@ -229,8 +229,8 @@ selected-edge geometry.  Current-same equality is used only to preserve the
 numeric `+2` recency bound. -/
 theorem retainedAt_currentSameEndpoint
     {B : ExactPrefixAcceptedFFGSemantics cfg ext E}
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
-    (hsync : PaperSafetySynchrony cfg ext E)
+    (hT : E.ScheduledPrefixPremises cfg ext)
+    (hsync : NextSlotSynchronyPremises cfg ext E)
     {v : ValidatorIndex} {q : Nat} {selected : Root}
     (h : E.AcceptedRecentCandidateSourceCarrierAt cfg ext B v q selected)
     {w : ValidatorIndex} (hw : w ∈ E.honest) {m : Nat}
@@ -332,7 +332,7 @@ at its declared epoch boundary.  The ordinary store checkpoint-epoch bound
 gives the reverse inequality. -/
 theorem justified_epoch_eq_queryCurrent
     {B : ExactPrefixAcceptedFFGSemantics cfg ext E}
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
+    (hT : E.ScheduledPrefixPremises cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
       (E := E) (anchor := B.anchor))
@@ -466,8 +466,8 @@ the old-block guard, so the executable selector is exactly `GU`.  The anchor
 arm uses positive AU/certificate evidence for the anchor-root source. -/
 theorem retainedAt_currentSameEndpoint
     {B : ExactPrefixAcceptedFFGSemantics cfg ext E}
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
-    (hsync : PaperSafetySynchrony cfg ext E)
+    (hT : E.ScheduledPrefixPremises cfg ext)
+    (hsync : NextSlotSynchronyPremises cfg ext E)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
       (E := E) (anchor := B.anchor))
@@ -655,8 +655,8 @@ discharged by the executable-origin invariant rather than a cross-store
 checkpoint monotonicity premise. -/
 theorem retainedAt_currentSameEndpoint
     {B : ExactPrefixAcceptedFFGSemantics cfg ext E}
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
-    (hsync : PaperSafetySynchrony cfg ext E)
+    (hT : E.ScheduledPrefixPremises cfg ext)
+    (hsync : NextSlotSynchronyPremises cfg ext E)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
       (E := E) (anchor := B.anchor))

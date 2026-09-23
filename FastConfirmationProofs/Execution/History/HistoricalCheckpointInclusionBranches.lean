@@ -111,7 +111,7 @@ variable {E : Execution Root}
 /-- Boundary alignment identifies the trusted anchor block slot using only
 the scheduled trajectory's genesis facts. -/
 theorem trustedAnchor_slot_eq_start_of_trajectory
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
+    (hT : E.ScheduledPrefixPremises cfg ext)
     {anchor : Checkpoint Root}
     (hanchor : anchor = E.genesis_store.justified_checkpoint)
     (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
@@ -137,7 +137,7 @@ theorem trustedAnchor_slot_eq_start_of_trajectory
 /-- The trusted anchor epoch is no later than a concrete execution store's
 clock epoch, using only trajectory timing and accepted-message provenance. -/
 theorem trustedAnchor_epoch_le_currentEpoch_of_trajectory
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
+    (hT : E.ScheduledPrefixPremises cfg ext)
     {anchor : Checkpoint Root}
     (hanchor : anchor = E.genesis_store.justified_checkpoint)
     (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
@@ -179,7 +179,7 @@ theorem trustedAnchor_epoch_le_currentEpoch_of_trajectory
 /-- The trusted anchor supplies a walk to every later epoch boundary under
 the narrow scheduled trajectory assumptions. -/
 theorem trustedAnchor_boundaryWalkAtEpoch_of_trajectory
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
+    (hT : E.ScheduledPrefixPremises cfg ext)
     {anchor : Checkpoint Root}
     (hanchor : anchor = E.genesis_store.justified_checkpoint)
     (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)

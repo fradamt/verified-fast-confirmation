@@ -41,9 +41,9 @@ structure NoConflictPinningAssumptions (E : Execution Root) : Prop where
   wellFormed : WellFormedExecution E
   whole_seconds : 1000 ∣ cfg.slot_duration_ms
   honest_behavior : HonestBehavior cfg ext E
-  externals_coherence : ExternalsCoherence cfg ext E
+  externals_coherence : BeaconExternalsPremises cfg ext E
   static_validators : StaticValidatorSet cfg E
-  byzantine_bound : ByzantineBound cfg E
+  byzantine_bound : ByzantineWeightPremises cfg E
   justified_root_known : ∀ w ∈ E.honest, ∀ m : ℕ,
     E.WithinHorizon cfg m →
       (E.store cfg ext w m).justified_checkpoint.root ∈

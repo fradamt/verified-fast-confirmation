@@ -30,7 +30,7 @@ variable (E : Execution Root)
 validator when both recorded votes are within the old window and both stores
 have the window's epoch-maximality fact. This includes the payload bit. -/
 theorem old_window_latest_messages_agree
-    (hhb : HonestBehavior cfg ext E) (hec : ExternalsCoherence cfg ext E)
+    (hhb : HonestBehavior cfg ext E) (hec : BeaconExternalsPremises cfg ext E)
     (hgen : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
       E.genesis_store = get_forkchoice_store cfg ast ablk)
     {v w i : ValidatorIndex} {n m : ℕ} {es : Slot}
@@ -110,7 +110,7 @@ def WindowRecordedEpochMax
 /-- Window-scoped maximality at both stores suffices for exact old-message
 agreement. The validator belongs to the fixed source window. -/
 theorem old_window_latest_messages_agree_window
-    (hhb : HonestBehavior cfg ext E) (hec : ExternalsCoherence cfg ext E)
+    (hhb : HonestBehavior cfg ext E) (hec : BeaconExternalsPremises cfg ext E)
     (hgen : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
       E.genesis_store = get_forkchoice_store cfg ast ablk)
     {v w i : ValidatorIndex} {n m : ℕ} {lo es : Slot}
@@ -155,7 +155,7 @@ whose LMD block is exactly `lm.root`. Existence + block-root from
 `committee_assignment_unique`; the newest characterization from the ubiquity
 domination `hdom`. -/
 theorem recorded_lm_is_newest
-    (hhb : HonestBehavior cfg ext E) (hec : ExternalsCoherence cfg ext E)
+    (hhb : HonestBehavior cfg ext E) (hec : BeaconExternalsPremises cfg ext E)
     (hgen : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
       E.genesis_store = get_forkchoice_store cfg ast ablk)
     {v₀ : ValidatorIndex} {n₀ : ℕ}

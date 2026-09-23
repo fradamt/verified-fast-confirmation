@@ -16,7 +16,7 @@ store carries — every `block_states` entry over `block_roots`, every
 `validators = E.registry`.
 
 The trusted `get_forkchoice_store` initialization seeds this at the genesis
-store; every handler preserves it (`ExternalsCoherence`'s
+store; every handler preserves it (`BeaconExternalsPremises`'s
 registry-preservation facts move it through `on_block`'s state transition and
 `on_attestation`'s `process_slots` checkpoint-state write); so it holds at
 every node and second. The payoff (`get_total_active_balance` of every balance
@@ -25,7 +25,7 @@ static-set's epoch-independent activity to move `get_total_active_balance`'s
 `get_current_epoch` read between states at different slots.
 
 No behavioral assumptions enter beyond genesis initialization and
-`ExternalsCoherence`; store monotonicity of the tracked fields is the
+`BeaconExternalsPremises`; store monotonicity of the tracked fields is the
 mechanism. `StaticValidatorSet` is needed only by the later active-balance
 corollaries, not to seed registry constancy.
 -/
@@ -377,7 +377,7 @@ theorem Execution.genesis_registryConstant (E : Execution Root)
 /-- Registry constancy holds at every node and second: the mechanically seeded
 genesis invariant propagates along the whole trajectory. -/
 theorem Execution.registryConstant (E : Execution Root)
-    (hec : ExternalsCoherence cfg ext E)
+    (hec : BeaconExternalsPremises cfg ext E)
     (hgen : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
       E.genesis_store = get_forkchoice_store cfg ast ablk) :
     ∀ v ∈ E.honest, ∀ n, RegistryConstant E.registry (E.store cfg ext v n) := by
@@ -722,7 +722,7 @@ private theorem get_current_slot_get_forkchoice_store_registry
 by that store's execution-clock slot. -/
 theorem Execution.stateSlotsLE (E : Execution Root)
     (hdiv : 1000 ∣ cfg.slot_duration_ms)
-    (hec : ExternalsCoherence cfg ext E)
+    (hec : BeaconExternalsPremises cfg ext E)
     (hgen : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
       E.genesis_store = get_forkchoice_store cfg ast ablk)
     (v : ValidatorIndex) (n : ℕ) :
@@ -829,7 +829,7 @@ theorem get_total_active_balance_congr {st st' : BeaconState Root}
 /-- Every cached checkpoint state an honest node's store carries has the
 anchor's total active balance (`E.total_active`). -/
 theorem Execution.checkpoint_states_total_active_balance (E : Execution Root)
-    (hsv : StaticValidatorSet cfg E) (hec : ExternalsCoherence cfg ext E)
+    (hsv : StaticValidatorSet cfg E) (hec : BeaconExternalsPremises cfg ext E)
     (v : ValidatorIndex) (hv : v ∈ E.honest) (n : ℕ) (c : Checkpoint Root)
     (hc : c ∈ (E.store cfg ext v n).checkpoint_state_keys)
     (hn : E.WithinHorizon cfg n)
@@ -859,8 +859,8 @@ omit [LinearOrder Root] [Inhabited Root] in
 It is not a probabilistic premise: ordinary estimate soundness plus phase0
 effective-balance quantization prove it.  Keeping the projection-shaped theorem
 name preserves existing dot-notation call sites. -/
-theorem ByzantineBound.estimate_dominates {cfg : Config} {E : Execution Root}
-    (hbb : ByzantineBound cfg E) :
+theorem ByzantineWeightPremises.estimate_dominates {cfg : Config} {E : Execution Root}
+    (hbb : ByzantineWeightPremises cfg E) :
     ∀ a b : Slot, E.SlotWithinHorizon cfg a → E.SlotWithinHorizon cfg b →
       E.weight (E.span_committee a b) ≤
       100 * (estimate_committee_weight_between_slots cfg (E.total_active cfg) a b / 100) :=
@@ -869,12 +869,12 @@ theorem ByzantineBound.estimate_dominates {cfg : Config} {E : Execution Root}
 
 /-! ## Derived: the old `span_bound`
 
-`ByzantineBound`'s primitive probabilistic pair is
+`ByzantineWeightPremises`'s primitive probabilistic pair is
 `{span_fraction, estimate_sound}`. The old `span_bound` field
 (`byz(span) ≤ (estimate // 100) * CONFIRMATION_BYZANTINE_THRESHOLD`) is exactly
 `span_fraction` (`100·byz ≤ C·W`) composed with `estimate_dominates`
 (`W ≤ 100·(estimate // 100)`): `100·byz ≤ C·W ≤ C·100·(estimate // 100) =
-100·((estimate // 100)·C)`, cancel `100`. Kept as a `ByzantineBound.span_bound`
+100·((estimate // 100)·C)`, cancel `100`. Kept as a `ByzantineWeightPremises.span_bound`
 theorem so the existing `hbb.span_bound a b` dot-notation call sites
 (`Discount`, `HonestWeight`, `QuorumAccounting`) keep working — `cfg`/`E` stay
 *implicit*, matching the old field projection so the trailing `_ _` bind
@@ -886,8 +886,8 @@ the budget `compute_adversarial_weight` allots before its equivocation discount 
 the old `span_bound` field, obtained from `span_fraction` composed with the
 derived `estimate_dominates` (`100·byz ≤ C·W ≤ 100·((estimate // 100)·C)`,
 cancel `100`). -/
-theorem ByzantineBound.span_bound {cfg : Config} {E : Execution Root}
-    (hbb : ByzantineBound cfg E) :
+theorem ByzantineWeightPremises.span_bound {cfg : Config} {E : Execution Root}
+    (hbb : ByzantineWeightPremises cfg E) :
     ∀ a b : Slot,
       E.SlotWithinHorizon cfg a → E.SlotWithinHorizon cfg b →
       E.weight ((E.span_committee a b).filter (fun i => i ∉ E.honest)) ≤

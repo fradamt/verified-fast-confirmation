@@ -21,9 +21,9 @@ The hypotheses of each theorem fall into three deliberately-separated categories
 
 Results:
 
-* `Theorem1_Safety` / `Theorem1_Monotonicity` — Algorithm 4 under `sg` is a Confirmation
+* `ConfirmedBlockSafety` / `ConfirmedBlockMonotonicity` — Algorithm 4 under `sg` is a Confirmation
   Rule for plain LMD-GHOST (Definition 4, `trivialFilter`).
-* `HeadFutureAgreement` — the **reusable engine** (≈ Lemma 6): filter-generic and
+* `HeadAgreementAfterConfirmation` — the **reusable engine** (≈ Lemma 6): filter-generic and
   arbitrary-anchor, so the §4 HFC layer reuses it at `flt := ffgFilter`.
 -/
 
@@ -80,7 +80,7 @@ def NeverFilteredFromHead (τ : Timing) (fm : FaultModel n)
       `slot(t)` (not `st(slot(t))`): the base supporters voted by slot `slot(t)-1`, and the
       faithful `honestVoteUbiq` (delivery gated on the *circulating* slot being post-`gst`)
       delivers their votes to every honest view by `st(slot(t))` only once slot `slot(t)-1`
-      is post-`gst`. `Theorem1_Safety`/`_Monotonicity` supply this from `sg` for free
+      is post-`gst`. `ConfirmedBlockSafety`/`_Monotonicity` supply this from `sg` for free
       (Algorithm 4 evaluates from the *second* slot of the epoch, giving the one-slot margin).
 
     The recurrence-robust honest LMD-GHOST safety indicator `P = H/J` (Def 7) is the
@@ -88,7 +88,7 @@ def NeverFilteredFromHead (τ : Timing) (fm : FaultModel n)
     `CommitteeHonestMajority` (Assumption 2) is the **only** honest-fraction hypothesis;
     no per-slot honest-growth premise is used, because such a premise is neither a paper
     assumption nor implied by the others. -/
-def HeadFutureAgreement (τ : Timing) (flt : BlockFilter n P) : Prop :=
+def HeadAgreementAfterConfirmation (τ : Timing) (flt : BlockFilter n P) : Prop :=
   ∀ {fm : FaultModel n} {cm : Committees n} {pb : Weight}
     {gj : ViewFamily n P → Validator n → Time → Anchor n} {boost : ProposerBoost n P}
     {𝒱 : ViewFamily n P} (C : Anchor n),
@@ -109,7 +109,7 @@ def HeadFutureAgreement (τ : Timing) (flt : BlockFilter n P) : Prop :=
 
 /-- **Theorem 1, Safety half** (Definition 4) for plain LMD-GHOST: a confirmed block
     is, from some time on, on every honest validator's LMD-GHOST head. -/
-def Theorem1_Safety (τ : Timing)
+def ConfirmedBlockSafety (τ : Timing)
     (gj : ViewFamily n P → Validator n → Time → Anchor n) : Prop :=
   ∀ {fm : FaultModel n} {cm : Committees n} {pb : Weight} {boost : ProposerBoost n P}
     {𝒱 : ViewFamily n P},
@@ -138,7 +138,7 @@ def Theorem1_Safety (τ : Timing)
       union is the whole validator set, so `W_{b'}^{slot(t')-1} = totalWeight univ` and
       `Wp / W_{b'} = pb`. This pins the later-epoch safety threshold to `½(1 + pb) + β`,
       which Assumption 4 then dominates (paper Lemma 8). -/
-def Theorem1_Monotonicity (τ : Timing)
+def ConfirmedBlockMonotonicity (τ : Timing)
     (gj : ViewFamily n P → Validator n → Time → Anchor n) : Prop :=
   ∀ {fm : FaultModel n} {cm : Committees n} {pb : Weight} {boost : ProposerBoost n P}
     {𝒱 : ViewFamily n P},

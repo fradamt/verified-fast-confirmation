@@ -115,7 +115,7 @@ theorem total_active_eq_anchorActive_weight
 activity identify the full epoch committee union with the static anchor active
 set. -/
 theorem current_epoch_span_eq_anchorActive
-    (hec : ExternalsCoherence cfg ext E)
+    (hec : BeaconExternalsPremises cfg ext E)
     (hsv : StaticValidatorSet cfg E)
     {store : Store Root}
     (hcurrentH : E.SlotWithinHorizon cfg (get_current_slot cfg store))
@@ -233,9 +233,9 @@ premise is `hfloor`, excluding the artificial tiny-active-set branch of
 
 No desired quorum or honest-support conclusion is assumed. -/
 theorem currentTarget_remaining_honest_le_future_weight
-    (hec : ExternalsCoherence cfg ext E)
+    (hec : BeaconExternalsPremises cfg ext E)
     (hsv : StaticValidatorSet cfg E)
-    (hbb : ByzantineBound cfg E)
+    (hbb : ByzantineWeightPremises cfg E)
     {store : Store Root}
     (hcurrentH : E.SlotWithinHorizon cfg (get_current_slot cfg store))
     (hendH : E.SlotWithinHorizon cfg (currentTargetEpochEnd cfg store))
@@ -323,7 +323,7 @@ members are disjoint.  The proof deliberately uses provenance's strict
 syntactic elapsed/future spans: at slot zero, natural-number subtraction makes
 `current_slot - 1 = current_slot`. -/
 theorem currentTarget_observed_future_disjoint
-    (hec : ExternalsCoherence cfg ext E)
+    (hec : BeaconExternalsPremises cfg ext E)
     {store : Store Root} {state : BeaconState Root}
     (hprov : LatestMessageProvenance E cfg
       (get_current_slot cfg store) store) :
@@ -370,9 +370,9 @@ justified by `currentTarget_observed_future_disjoint`; no desired quorum is an
 input. -/
 theorem will_current_target_be_justified_honest_quorum
     (hhb : HonestBehavior cfg ext E)
-    (hec : ExternalsCoherence cfg ext E)
+    (hec : BeaconExternalsPremises cfg ext E)
     (hsv : StaticValidatorSet cfg E)
-    (hbb : ByzantineBound cfg E)
+    (hbb : ByzantineWeightPremises cfg E)
     (hgen : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
       E.genesis_store = get_forkchoice_store cfg ast ablk)
     {v : ValidatorIndex} (hv : v ∈ E.honest) {n : Nat}

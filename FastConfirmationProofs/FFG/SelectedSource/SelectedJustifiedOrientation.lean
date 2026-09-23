@@ -43,7 +43,7 @@ carrier.  Thus downstream SIR code may use the old vote-shaped eliminator,
 but callers no longer assume a raw vote/store relation. -/
 theorem ExactPrefixAcceptedFFGSemantics.endpointJustificationOriginAt
     (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
+    (hT : E.ScheduledPrefixPremises cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
       (E := E) (anchor := B.anchor))
@@ -264,7 +264,7 @@ theorem preQueryVoteSelectedSIRBracketAt_of_acceptedProducers
     (hbase : E.SafeFrom cfg ext input
       (E.slot_start cfg (E.slot_at cfg q)))
     (hstrict : find_latest_confirmed_descendant cfg ext query input ≠ input)
-    (hprovisos : SelectedHelperProvisosAt cfg ext E v q query input)
+    (hprovisos : FCRPredictionSupportAt cfg ext E v q query input)
     (hcurrent : E.AcceptedCurrentTargetA32GateRealizationProducerAt
       cfg ext B.anchor B.state q query)
     (hhistorical : E.AcceptedHistoricalA32PayloadProducerAt cfg ext B
@@ -315,7 +315,7 @@ theorem preQuerySelectedJustifiedCompatibilityAt_of_acceptedProducers
     (hbase : E.SafeFrom cfg ext input
       (E.slot_start cfg (E.slot_at cfg q)))
     (hstrict : find_latest_confirmed_descendant cfg ext query input ≠ input)
-    (hprovisos : SelectedHelperProvisosAt cfg ext E v q query input)
+    (hprovisos : FCRPredictionSupportAt cfg ext E v q query input)
     (hcurrent : E.AcceptedCurrentTargetA32GateRealizationProducerAt
       cfg ext B.anchor B.state q query)
     (hhistorical : E.AcceptedHistoricalA32PayloadProducerAt cfg ext B
@@ -347,7 +347,7 @@ both the child and the selected result descend the endpoint justified root. -/
 theorem strictSelected_result_and_child_ancestor_of_endpointJustified_accepted
     (hA : SelectedMarginAssumptions cfg ext E)
     (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
+    (hT : E.ScheduledPrefixPremises cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
       (E := E) (anchor := B.anchor))
@@ -364,7 +364,7 @@ theorem strictSelected_result_and_child_ancestor_of_endpointJustified_accepted
     (hbase : E.SafeFrom cfg ext input
       (E.slot_start cfg (E.slot_at cfg q)))
     (hstrict : find_latest_confirmed_descendant cfg ext query input ≠ input)
-    (hprovisos : SelectedHelperProvisosAt cfg ext E v q query input)
+    (hprovisos : FCRPredictionSupportAt cfg ext E v q query input)
     (hcurrent : E.AcceptedCurrentTargetA32GateRealizationProducerAt
       cfg ext B.anchor B.state q query)
     (hhistorical : E.AcceptedHistoricalA32PayloadProducerAt cfg ext B

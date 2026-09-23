@@ -637,7 +637,7 @@ def on_attester_slashing (store : Store Root)
 `get_forkchoice_store`: the trusted-anchor initialization. The python
 `assert anchor_block.state_root == hash_tree_root(anchor_state)` is omitted
 from this executable function: the projected block carries no `state_root`.
-`ScheduledPrefixTrajectoryAssumptions.genesis` requires the abstract
+`ScheduledPrefixPremises.genesis` requires the abstract
 `Externals.AnchorCommitsToState` contract from the external interpretation,
 along with separate slot agreement and parent/root inequality premises
 (design §11a). This is not a concrete hashing proof. Dict fields outside their

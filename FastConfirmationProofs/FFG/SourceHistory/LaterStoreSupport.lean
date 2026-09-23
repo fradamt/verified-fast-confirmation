@@ -47,7 +47,7 @@ theorem mem_active_of_active {bs : BeaconState Root} {i : ValidatorIndex} {e : E
 
 The uniform active/unslashed derivation for both `HS₀` and the new-window voters.
 An honest committee member of slot `t` is active in the ground registry at that
-slot's epoch (`ExternalsCoherence.committee_members_active`), hence at every epoch
+slot's epoch (`BeaconExternalsPremises.committee_members_active`), hence at every epoch
 (`StaticValidatorSet.registry_activity_constant`), hence in the active list of any
 registry-constant balance source (`mem_active_of_active`). Its slashed flag is
 `false` on the ground registry (`HonestBehavior.honest_unslashed`). These are the
@@ -57,7 +57,7 @@ active/unslashed inputs `EngineSupport.mem_AttSupporters_honest` consumes. -/
 validator `i` assigned to some slot `t` and a registry-constant balance source
 `bs`, `i` is active in `bs` at `bs`'s current epoch and unslashed in `bs`. -/
 theorem honest_active_unslashed {E : Execution Root}
-    (hhb : HonestBehavior cfg ext E) (hec : ExternalsCoherence cfg ext E)
+    (hhb : HonestBehavior cfg ext E) (hec : BeaconExternalsPremises cfg ext E)
     (hsv : StaticValidatorSet cfg E) {bs : BeaconState Root} (hval : bs.validators = E.registry)
     (hbsH : get_current_epoch cfg bs < E.verification_horizon)
     {i : ValidatorIndex} {t : Slot} (hi : i ∈ E.honest)
@@ -150,7 +150,7 @@ registry-constant balance source `bs`. Active/unslashed are discharged internall
 (`honest_active_unslashed`); non-equivocation by `honest_not_equivocating` inside
 `mem_AttSupporters_honest`. -/
 theorem mem_AttSupporters_of_honest_committee {E : Execution Root}
-    (hhb : HonestBehavior cfg ext E) (hec : ExternalsCoherence cfg ext E)
+    (hhb : HonestBehavior cfg ext E) (hec : BeaconExternalsPremises cfg ext E)
     (hsv : StaticValidatorSet cfg E)
     (hgen : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
       E.genesis_store = get_forkchoice_store cfg ast ablk)
@@ -221,7 +221,7 @@ engine IH `hIH` (every honest `[s, k)`-vote block `⪰ b` at `(w, m)`) and the
 cross-store / walk domain conditions. Closes `EngineTransport`'s blocker 1. -/
 theorem recorded_supports_c_of_IH {E : Execution Root}
     (hwf : WellFormedExecution E) (hhb : HonestBehavior cfg ext E)
-    (hec : ExternalsCoherence cfg ext E)
+    (hec : BeaconExternalsPremises cfg ext E)
     (hgen : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
       E.genesis_store = get_forkchoice_store cfg ast ablk)
     {v₀ w : ValidatorIndex} {n₀ m : ℕ} {b c : Root} {i : ValidatorIndex}
@@ -315,7 +315,7 @@ The recorded-support half is `recorded_supports_c_of_IH` (epoch-cased, closing
 `mem_AttSupporters_of_honest_committee`. -/
 theorem HS0_in_AttSupporters {E : Execution Root}
     (hwf : WellFormedExecution E) (hhb : HonestBehavior cfg ext E)
-    (hec : ExternalsCoherence cfg ext E) (hsv : StaticValidatorSet cfg E)
+    (hec : BeaconExternalsPremises cfg ext E) (hsv : StaticValidatorSet cfg E)
     (hgen : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
       E.genesis_store = get_forkchoice_store cfg ast ablk)
     {b : Root} {s : Slot} {v₀ : ValidatorIndex} {n₀ : ℕ}

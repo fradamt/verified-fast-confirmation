@@ -21,20 +21,20 @@ private def allowedAxioms : Array Name :=
 
 private def publicWitnesses : Array Name :=
   #[
-    ``FastConfirmation.Spec.acceptedSpec_safety_next_slot,
-    ``FastConfirmation.Spec.acceptedSpec_monotonicity_live,
-    ``FastConfirmation.Spec.Execution.AcceptedActualFCRNextSlotSafetyAssumptions.findLatestConfirmedDescendant_safeFrom_of_actualCall,
-    ``FastConfirmation.Spec.AcceptedActualFCRJointNonVacuityFinal.witnessJointNonvacuity,
-    ``FastConfirmation.Spec.AcceptedActualFCRJointNonVacuityFinal.acceptedActualFCRNextSlotSafetyAssumptions_nonvacuous,
-    ``FastConfirmation.Spec.AcceptedStrictPrefixExtraQueryCounterexample.strict_prefix_extra_query_counterexample,
-    ``FastConfirmation.Spec.AcceptedPinnedEconomicsStrictPrefixExtraQueryCounterexample.pinned_economics_strict_prefix_extra_query_counterexample,
-    ``FastConfirmation.LMDGhost.HeadFutureAgreement_proved,
-    ``FastConfirmation.LMDGhost.Theorem1_Safety_proved,
-    ``FastConfirmation.LMDGhost.Theorem1_Monotonicity_proved,
-    ``FastConfirmation.HFC.HFC_Safety_proved,
-    ``FastConfirmation.HFC.HFC_Monotonicity_proved,
-    ``FastConfirmation.HFC.HFC_Safety_Alg1_proved,
-    ``FastConfirmation.HFC.HFC_Monotonicity_Alg1_proved
+    ``FastConfirmation.Spec.confirmed_root_safe_from_next_slot,
+    ``FastConfirmation.Spec.live_confirmed_root_monotonicity,
+    ``FastConfirmation.Spec.Execution.NextSlotSafetyPremises.selected_result_safe_from_next_slot_of_scheduled_call,
+    ``FastConfirmation.Spec.NextSlotPremiseWitness.finite_execution_satisfies_premises,
+    ``FastConfirmation.Spec.NextSlotPremiseWitness.next_slot_premises_nonempty,
+    ``FastConfirmation.Spec.StrictPrefixExtraQuery.extra_query_changes_head_counterexample,
+    ``FastConfirmation.Spec.PinnedEconomicsExtraQuery.extra_query_changes_head_counterexample,
+    ``FastConfirmation.LMDGhost.head_agreement_after_confirmation,
+    ``FastConfirmation.LMDGhost.confirmed_block_safety,
+    ``FastConfirmation.LMDGhost.confirmed_block_monotonicity,
+    ``FastConfirmation.HFC.gate_confirmed_block_safety,
+    ``FastConfirmation.HFC.gate_confirmed_block_monotonicity,
+    ``FastConfirmation.HFC.rule_confirmed_block_safety,
+    ``FastConfirmation.HFC.rule_confirmed_block_monotonicity
   ]
 
 private def unexpectedAxioms (axioms : Array Name) : Array Name :=

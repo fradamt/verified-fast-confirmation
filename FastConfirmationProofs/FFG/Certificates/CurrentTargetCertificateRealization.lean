@@ -467,7 +467,7 @@ vote.  A model in which honest ground votes are also explicit broadcast
 events could replace this premise with that local broadcast fact. -/
 theorem certifiedCurrentTarget_of_gate_and_stateSemantics
     (hA : NoConflictPinningAssumptions cfg ext E)
-    (hsync : PaperSafetySynchrony cfg ext E)
+    (hsync : NextSlotSynchronyPremises cfg ext E)
     (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg) (E := E)
       (anchor := E.genesis_store.justified_checkpoint))
     {anchor : Checkpoint Root} {S : ChainFFGState cfg E anchor}
@@ -1073,7 +1073,7 @@ In particular, equality with a non-anchor unrealized checkpoint remains in the
 quorum arm. -/
 theorem currentTargetA32GateRealizationProducerAt_of_stateSemantics
     (hA : NoConflictPinningAssumptions cfg ext E)
-    (hsync : PaperSafetySynchrony cfg ext E)
+    (hsync : NextSlotSynchronyPremises cfg ext E)
     (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg) (E := E)
       (anchor := E.genesis_store.justified_checkpoint))
     {anchor : Checkpoint Root} {S : ChainFFGState cfg E anchor}
@@ -1111,7 +1111,7 @@ selected current-epoch block.  All committee votes, signer weight, and source
 agreement are constructed behind this interface. -/
 theorem fixedSourceCurrentTargetA32GateRealizationProducerAt_of_stateSemantics
     (hA : NoConflictPinningAssumptions cfg ext E)
-    (hsync : PaperSafetySynchrony cfg ext E)
+    (hsync : NextSlotSynchronyPremises cfg ext E)
     (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg) (E := E)
       (anchor := E.genesis_store.justified_checkpoint))
     {anchor : Checkpoint Root} {S : ChainFFGState cfg E anchor}

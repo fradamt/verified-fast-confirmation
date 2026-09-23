@@ -144,7 +144,7 @@ structure StrictSelectedResultMechanicalFacts
         get_current_store_epoch cfg query.store
   trace_origin :
     (∃ a,
-      PreviousAcceptedEdge cfg ext query input a result ∧
+      PreviousEpochSelectedEdge cfg ext query input a result ∧
         PreviousSelectedEntryWitness cfg ext query input ∧
         ((get_voting_source cfg query.store
             query.previous_slot_head).epoch + 2 ≥
@@ -277,7 +277,7 @@ theorem strictSelectedResultMechanicalFacts
     hheadQ input hinput result rfl (by simpa only [result] using hstrict)
   have horigin :
       (∃ a,
-        PreviousAcceptedEdge cfg ext query input a result ∧
+        PreviousEpochSelectedEdge cfg ext query input a result ∧
           PreviousSelectedEntryWitness cfg ext query input ∧
           ((get_voting_source cfg query.store
               query.previous_slot_head).epoch + 2 ≥
