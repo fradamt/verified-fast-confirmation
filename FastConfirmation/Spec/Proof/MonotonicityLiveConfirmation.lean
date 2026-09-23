@@ -288,6 +288,28 @@ theorem one_confirmed_has_integer_margin
   dsimp only [compute_safety_threshold] at hconfirmed
   exact strict_margin_of_threshold hconfirmed
 
+/-- A block cannot pass the one-confirmation test on adversarial support
+alone when the empty-slot discount does not exceed the unboosted window
+budget. This is the arithmetic core of the live-chain exclusion argument. -/
+theorem one_confirmed_requires_nonadversarial_support
+    (store : Store Root) (balanceSource : BeaconState Root) (r : Root)
+    (hdiscount : get_support_discount cfg ext store balanceSource r ≤
+      estimate_committee_weight_between_slots cfg
+        (get_total_active_balance cfg balanceSource)
+        ((store.blocks (store.blocks r).parent_root).slot + 1)
+        (get_current_slot cfg store - 1) +
+      compute_proposer_score cfg balanceSource)
+    (hconfirmed : is_one_confirmed cfg ext store balanceSource r = true) :
+    get_adversarial_weight cfg ext store balanceSource r <
+      get_attestation_score cfg store (get_node_for_root r) balanceSource := by
+  have hmargin := one_confirmed_has_integer_margin cfg ext
+    store balanceSource r hconfirmed
+  dsimp only at hmargin
+  have harith {W P A S D : ℕ}
+      (hD : D ≤ W + P) (hM : W + P + 2 * A < 2 * S + D) :
+      A < S := by omega
+  exact harith hdiscount hmargin
+
 /-- A positive score satisfying the executable strict integer margin is
 one-confirmed, even in the threshold's underflow branch. -/
 theorem one_confirmed_of_integer_margin
