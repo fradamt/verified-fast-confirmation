@@ -190,7 +190,7 @@ public import FastConfirmationProofs.Monotonicity.LiveConfirmation
 public import FastConfirmationProofs.Monotonicity.LiveGateLimits
 public import FastConfirmationProofs.Monotonicity.LiveVoteSupport
 public import FastConfirmationProofs.Monotonicity.ObservedCheckpointRestart
-public import FastConfirmationProofs.ProvenTheorems
+public import FastConfirmationProofs.ReviewTheorem
 public import FastConfirmationProofs.Safety.BlockAgreement
 public import FastConfirmationProofs.Safety.ConfirmedCacheSafety
 public import FastConfirmationProofs.Safety.ConfirmedPrefixSafety
