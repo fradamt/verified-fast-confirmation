@@ -1279,6 +1279,130 @@ theorem AcceptedActualFCRNextSlotSafetyAssumptions.live_boundary_finalized_below
     w hw B hHB e c.root he0 hcurrent hcpSlot hcpHead
   simpa only [B, S, q, hobs] using hresult
 
+/-- During an interval of calls in one epoch, each cached-chain block after
+the epoch start has a current-source confirmation at some call in that
+interval. The base store is before such blocks can be known. -/
+theorem AcceptedActualFCRNextSlotSafetyAssumptions.live_historical_chain_in_epoch
+    (h : E.AcceptedActualFCRNextSlotSafetyAssumptions cfg ext)
+    {w : ValidatorIndex} (hw : w ∈ E.honest)
+    (B T : ℕ) (e : Epoch) (hBT : B ≤ T)
+    (he0 : compute_epoch_at_slot cfg (E.slot_at cfg 0) ≤ e)
+    (hHT : E.WithinHorizon cfg T)
+    (hBase : ∀ b ∈ (E.store cfg ext w B).block_roots,
+      ((E.store cfg ext w B).blocks b).slot ≤
+        compute_start_slot_at_epoch cfg e)
+    (hEpoch : ∀ q, B ≤ q → q < T →
+      get_current_store_epoch cfg (E.store cfg ext w (q + 1)) = e) :
+    ∀ b ∈ (E.store cfg ext w T).block_roots,
+      is_ancestor (E.store cfg ext w T)
+        (get_node_for_root (E.confirmed cfg ext w T))
+        (get_node_for_root b) = true →
+      compute_start_slot_at_epoch cfg e <
+        ((E.store cfg ext w T).blocks b).slot →
+      ∃ q, B ≤ q ∧ q < T ∧ E.IsFCRCallAt cfg ext w q ∧
+        is_one_confirmed cfg ext (E.fcrStep cfg ext w q).store
+          (get_current_balance_source (E.fcrStep cfg ext w q)) b = true := by
+  let floor := compute_start_slot_at_epoch cfg e
+  let P : Root → Prop := fun b =>
+    ∃ q, B ≤ q ∧ q < T ∧ E.IsFCRCallAt cfg ext w q ∧
+      is_one_confirmed cfg ext (E.fcrStep cfg ext w q).store
+        (get_current_balance_source (E.fcrStep cfg ext w q)) b = true
+  have hInv : ∀ d : ℕ, B + d ≤ T →
+      ∀ b ∈ (E.store cfg ext w (B + d)).block_roots,
+        is_ancestor (E.store cfg ext w (B + d))
+          (get_node_for_root (E.confirmed cfg ext w (B + d)))
+          (get_node_for_root b) = true →
+        floor < ((E.store cfg ext w (B + d)).blocks b).slot → P b := by
+    intro d
+    induction d with
+    | zero =>
+        intro _ b hb _ hfloor
+        exact False.elim ((Nat.not_lt_of_ge (hBase b hb)) hfloor)
+    | succ d ih =>
+        let k := B + d
+        have hnext : B + (d + 1) = k + 1 := by omega
+        intro hk1T b hb hbanc hbfloor
+        have hkT : k ≤ T := by omega
+        have hkLT : k < T := by omega
+        have hBk : B ≤ k := by omega
+        have hHk : E.WithinHorizon cfg k :=
+          E.withinHorizon_mono cfg hkT hHT
+        have hHk1 : E.WithinHorizon cfg (k + 1) :=
+          E.withinHorizon_mono cfg hk1T hHT
+        have htip : E.confirmed cfg ext w k ∈
+            (E.store cfg ext w k).block_roots :=
+          E.confirmed_known_of_acceptedGlobalTrajectory cfg ext
+            h.semantics h.trajectory h.anchor_eq h.anchor_boundary hw k hHk
+        rw [hnext] at hb hbanc hbfloor
+        by_cases hcall : E.IsFCRCallAt cfg ext w k
+        · let query := E.fcrStep cfg ext w k
+          have hG := E.historicalA32QueryGeometryAt_of_acceptedGlobalTrajectory
+            cfg ext h.semantics h.trajectory h.anchor_eq h.anchor_boundary
+              hw hHk1
+          have hfinal := E.finalizedCheckpoint_resetRealizedAt_of_acceptedGlobalTrajectory
+            cfg ext h.semantics h.trajectory h.anchor_eq h.anchor_boundary
+              (w := w) (k + 1)
+          have hobs := h.live_observed_root_known cfg ext E w k
+          have hresult : get_latest_confirmed cfg ext query ∈
+              query.store.block_roots := by
+            have hknown := E.confirmed_known_of_acceptedGlobalTrajectory
+              cfg ext h.semantics h.trajectory h.anchor_eq h.anchor_boundary
+                hw (k + 1) hHk1
+            rw [E.confirmed_succ_of_advance cfg ext w k hcall] at hknown
+            simpa only [query, E.fcrStep_store] using hknown
+          have hcurrent : get_current_store_epoch cfg
+              (E.store cfg ext w (k + 1)) = e := hEpoch k hBk hkLT
+          have hfinFloor : (query.store.blocks
+              query.store.finalized_checkpoint.root).slot ≤ floor := by
+            simpa only [query, floor, E.fcrStep_store, get_block_slot] using
+              h.live_finalized_slot_le_current_start cfg ext E
+                w (k + 1) e he0 hcurrent
+          have hobsFloor : (query.store.blocks
+              query.current_epoch_observed_justified_checkpoint.root).slot ≤
+                floor := by
+            have hbound := h.live_observed_slot_le_current_start cfg ext E w k
+            simpa only [query, floor, E.fcrStep_store, hcurrent,
+              get_block_slot] using hbound
+          have hbresult : is_ancestor query.store
+              (get_node_for_root (get_latest_confirmed cfg ext query))
+              (get_node_for_root b) = true := by
+            simpa only [query, E.fcrStep_store,
+              ← E.confirmed_succ_of_advance cfg ext w k hcall] using hbanc
+          have hbQ : b ∈ query.store.block_roots := by
+            simpa only [query, E.fcrStep_store] using hb
+          have hfloorQ : floor < (query.store.blocks b).slot := by
+            simpa only [query, E.fcrStep_store] using hbfloor
+          apply h.live_high_chain_property_step cfg ext E query floor P
+            (Nat.le_succ k) (E.fcrStep_store cfg ext w k) ?_
+            hG.parent hG.walk hG.head_known
+            (by simpa only [query, E.fcrStep_store] using hfinal.root_known)
+            (by simpa only [query, E.fcrStep_store] using hobs)
+            hresult hfinFloor hobsFloor ?_ ?_ hbQ hbresult hfloorQ
+          · simpa only [query, E.fcrStep_confirmed_root] using htip
+          · intro x hx hanc hfloor
+            have hprev : is_ancestor (E.store cfg ext w k)
+                (get_node_for_root (E.confirmed cfg ext w k))
+                (get_node_for_root x) = true := by
+              simpa only [query, E.fcrStep_confirmed_root] using hanc
+            exact ih hkT x hx hprev hfloor
+          · intro x hx hconf
+            exact ⟨k, hBk, hkLT, hcall,
+              by simpa only [query] using hconf⟩
+        · have hrootEq := E.confirmed_succ_of_no_advance cfg ext w k hcall
+          rw [hrootEq] at hbanc
+          obtain ⟨hbK, hbancK⟩ := h.live_ancestor_reflect_earlier
+            cfg ext E (Nat.le_succ k) htip hb hbanc
+          have hblock : (E.store cfg ext w k).blocks b =
+              (E.store cfg ext w (k + 1)).blocks b :=
+            h.trajectory.wellFormed.blocks_agree
+              (E.blockProvenance cfg ext w k)
+              (E.blockProvenance cfg ext w (k + 1)) hbK hb
+          apply ih hkT b hbK hbancK
+          rw [hblock]
+          exact hbfloor
+  have hT : B + (T - B) = T := Nat.add_sub_of_le hBT
+  simpa only [hT, floor, P] using hInv (T - B) (by rw [hT])
+
 end Execution
 
 end FastConfirmation.Spec
