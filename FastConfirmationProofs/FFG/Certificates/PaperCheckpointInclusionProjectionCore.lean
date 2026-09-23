@@ -128,29 +128,6 @@ theorem paperA32IncludedAtTip_of_paperCore
         hseedB hseedEpoch hAU
     exact_AU := hAU }⟩
 
-/-- Weak executable form of the root-local projection. -/
-theorem a32IncludedAtTip_of_paperCore
-    {V : PaperA32StateView cfg E}
-    (hpaper : PaperA32InclusionCore cfg ext V)
-    {b : Root} {bb : BeaconBlock Root} {e : Epoch}
-    (hb : V.BlockAt b bb)
-    (hbe : compute_epoch_at_slot cfg bb.slot ≤ e)
-    (hcanonical : E.CanonicalThroughoutEpoch cfg ext b (e + 1))
-    (hsupport : PaperA32SupportThroughoutEpochCore cfg ext V b e)
-    {w : ValidatorIndex} (hw : w ∈ E.honest) {m : ℕ}
-    (hHm : E.WithinHorizon cfg m)
-    (hboundary : compute_start_slot_at_epoch cfg (e + 2) ≤
-      E.slot_at cfg m)
-    (hprojection : ∀ {r : Root},
-      r ∈ (E.store cfg ext w m).block_roots →
-        PaperA32RootProjectionAt cfg ext V
-          (E.store cfg ext w m) r) :
-    ∃ seed : Root,
-      A32IncludedAtTip cfg (E.store cfg ext w m) e b seed := by
-  obtain ⟨seed, hstrong⟩ :=
-    E.paperA32IncludedAtTip_of_paperCore cfg ext hpaper hb hbe
-      hcanonical hsupport hw hHm hboundary hprojection
-  exact ⟨seed, hstrong.executable⟩
 
 /-- Strong production accepted-state consumer of the paper assumption.  The
 base block is accepted, and the exact AU/formed-carrier result survives the

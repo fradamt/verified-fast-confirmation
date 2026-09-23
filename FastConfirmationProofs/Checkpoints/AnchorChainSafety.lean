@@ -1,10 +1,17 @@
 module
 public import FastConfirmationProofs.Checkpoints.Anchoring
 public import FastConfirmationProofs.Handlers.Dominance
-public import FastConfirmationProofs.FCRRule.ConfirmedEdgeSafety
 public import FastConfirmationProofs.FFG.SourceHistory.MarginInvariant
-public import FastConfirmationProofs.ForkChoice.Ancestry.AncestryRoots
+public import FastConfirmationProofs.Checkpoints.EdgeWeightAlgebra
 public import FastConfirmationProofs.Execution.Delivery.VoteDeliveryMargin
+public import FastConfirmationProofs.Checkpoints.AnchorParentKnownness
+public import FastConfirmationProofs.ForkChoice.Filter.AnchorFilterViability
+public import FastConfirmationProofs.Handlers.HandlerStepFacts
+public import FastConfirmationProofs.ForkChoice.Head.HeadStack
+public import FastConfirmationProofs.Execution.StoreInvariants.CheckpointDomain
+public import FastConfirmationProofs.Discount.HonestWeight
+public import FastConfirmationProofs.Discount.SupportDiscount
+public import FastConfirmationProofs.ForkChoice.Ancestry.AncestryRoots
 public import FastConfirmationProofs.ForkChoice.Head.HeadMembership
 public import FastConfirmationProofs.Execution.Delivery.Registry
 public import FastConfirmationProofs.Execution.Trajectory.EdgeDynamics
@@ -12,11 +19,6 @@ public import FastConfirmationProofs.FFG.SelectedSource.EndpointMargin
 public import FastConfirmationProofs.Checkpoints.CrossingCheckpointMargin
 public import FastConfirmationProofs.FFG.State.PayloadAwareHead
 public import FastConfirmationProofs.ForkChoice.Head.HeadReroot
-public import FastConfirmationProofs.Execution.StoreInvariants.CheckpointDomain
-public import FastConfirmationProofs.Discount.HonestWeight
-public import FastConfirmationProofs.Discount.SupportDiscount
-public import FastConfirmationProofs.Checkpoints.AnchorParentKnownness
-public import FastConfirmationProofs.Handlers.HandlerStepFacts
 public import FastConfirmationProofs.Execution.Trajectory.LatestMessageProvenance
 public import FastConfirmationProofs.Execution.Delivery.Delivery
 public import FastConfirmationProofs.FFG.SourceHistory.LaterStoreSupport
@@ -141,35 +143,6 @@ variable (E : Execution Root)
 
 
 
-/-- **`SafeFrom` from a per-endpoint head-descent producer.** The strong-induction
-skeleton, with the per-endpoint work
-abstracted into `hstep`: strong induction on the cutoff slot supplies the head-safety IH (`head ⪰ b`
-at strictly earlier slots), and `hstep` closes `head ⪰ b` at the maximal-slot endpoint given that
-IH. The 4-case covering fold (`safeFromGlc_of_covSupply`) is the `hstep` this shell folds. -/
-theorem safeFrom_of_headStep {b : Root} {n : ℕ}
-    (hstep : ∀ w ∈ E.honest, ∀ m : ℕ, n + 1 ≤ m →
-      E.WithinHorizon cfg m →
-      (∀ w' ∈ E.honest, ∀ m' : ℕ, n + 1 ≤ m' → E.slot_at cfg m' < E.slot_at cfg m →
-        E.WithinHorizon cfg m' →
-        is_ancestor (E.store cfg ext w' m') (get_head cfg (E.store cfg ext w' m'))
-          (get_node_for_root b) = true) →
-      is_ancestor (E.store cfg ext w m) (get_head cfg (E.store cfg ext w m))
-        (get_node_for_root b) = true) :
-    E.SafeFrom cfg ext b (n + 1) := by
-  refine E.safeFrom_of_engineInv cfg ext ?_
-  intro k
-  induction k using Nat.strong_induction_on with
-  | _ k IH =>
-    intro w hw m hm hmk hH
-    by_cases hlt : E.slot_at cfg m < k
-    · exact IH (E.slot_at cfg m) hlt w hw m hm (le_refl _) hH
-    · have hIH : ∀ w' ∈ E.honest, ∀ m' : ℕ, n + 1 ≤ m' → E.slot_at cfg m' < E.slot_at cfg m →
-        E.WithinHorizon cfg m' →
-        is_ancestor (E.store cfg ext w' m') (get_head cfg (E.store cfg ext w' m'))
-          (get_node_for_root b) = true :=
-      fun w' hw' m' hm' hlt' hH' =>
-        IH (E.slot_at cfg m') (lt_of_lt_of_le hlt' hmk) w' hw' m' hm' (le_refl _) hH'
-      exact hstep w hw m hm hH hIH
 
 
 

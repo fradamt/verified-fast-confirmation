@@ -37,10 +37,6 @@ structure SelectedMarginAssumptions (E : Execution Root) : Prop where
   byzantine_bound : ByzantineWeightPremises cfg E
   domain : SelectedMarginDomain cfg ext E
 
-/-- Compatibility name for the two operational payload premises used with
-the legacy `Synchrony` bundle. -/
-def PayloadEnvelopeRelay (E : Execution Root) : Prop :=
-  EnvelopeDelivery cfg ext E ∧ DataAvailabilityRelay cfg ext E
 
 end FastConfirmation.Spec
 

@@ -312,55 +312,11 @@ These predicates mention only the actual `E.fcrStoreAtCall`/`E.confirmed` recurr
 They deliberately do not quantify over arbitrary `FastConfirmationStore`s.
 -/
 
-/-- Exact strengthening of `get_latest_confirmed_call_cases_minimal`: when the
-handler actually calls the selector, retain both its concrete reset input and
-the executable recency guard which enabled that call. -/
-theorem getLatestConfirmed_actualCallCases
-    (query : FastConfirmationStore Root) :
-    (get_latest_confirmed cfg ext query = query.confirmed_root ∨
-      get_latest_confirmed cfg ext query =
-        query.store.finalized_checkpoint.root ∨
-      get_latest_confirmed cfg ext query =
-        query.current_epoch_observed_justified_checkpoint.root) ∨
-    ∃ input : Root,
-      (input = query.confirmed_root ∨
-        input = query.store.finalized_checkpoint.root ∨
-        input = query.current_epoch_observed_justified_checkpoint.root) ∧
-      get_block_epoch cfg query.store input + 1 ≥
-        get_current_store_epoch cfg query.store ∧
-      get_latest_confirmed cfg ext query =
-        find_latest_confirmed_descendant cfg ext query input := by
-  generalize hout : get_latest_confirmed cfg ext query = result
-  simp only [get_latest_confirmed] at hout
-  split_ifs at hout <;>
-    subst hout <;>
-      first
-      | exact Or.inl (Or.inl rfl)
-      | exact Or.inl (Or.inr (Or.inl rfl))
-      | exact Or.inl (Or.inr (Or.inr rfl))
-      | exact Or.inr ⟨_, Or.inl rfl, by assumption, rfl⟩
-      | exact Or.inr ⟨_, Or.inr (Or.inl rfl), by assumption, rfl⟩
-      | exact Or.inr ⟨_, Or.inr (Or.inr rfl), by assumption, rfl⟩
 
 
 
 
 
-/-- Ghost certificate invariant attached to the checkpoint of the concrete
-confirmed root.  It is conditional on that root being current-epoch; previous
-epoch confirmed blocks need not themselves have a justified checkpoint. -/
-structure CurrentConfirmedCheckpointCertifiedAt
-    (anchor : Checkpoint Root) (v : ValidatorIndex) (n : ℕ) : Prop where
-  confirmed_known : E.confirmed cfg ext v n ∈
-    (E.store cfg ext v n).block_roots
-  certificate :
-    get_block_epoch cfg (E.store cfg ext v n) (E.confirmed cfg ext v n) =
-        get_current_store_epoch cfg (E.store cfg ext v n) →
-      Nonempty (CertifiedJustified cfg E anchor
-        (get_checkpoint_for_block cfg (E.store cfg ext v n)
-          (E.confirmed cfg ext v n)
-          (get_block_epoch cfg (E.store cfg ext v n)
-            (E.confirmed cfg ext v n))))
 
 /-! ## The concrete trajectory induction -/
 

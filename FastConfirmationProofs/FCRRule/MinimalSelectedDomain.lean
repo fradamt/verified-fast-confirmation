@@ -39,17 +39,6 @@ theorem SelectedMarginAssumptions.genesis_store
   obtain ⟨anchor_state, anchor_block, hstore, _, _⟩ := hA.genesis
   exact ⟨anchor_state, anchor_block, hstore⟩
 
-/-- Compatibility projection: the old broad bundle implies the strict local
-bundle, but none of the reverse (and in particular none of the circular
-ancestry/head fields) is required. -/
-theorem SpecAssumptions.toSelectedMarginAssumptions {E : Execution Root}
-    (hSA : SpecAssumptions cfg ext E) (hpayload : PayloadEnvelopeRelay cfg ext E) :
-    SelectedMarginAssumptions cfg ext E := by
-  obtain ⟨hgen, hwf, hdiv, hhb, hsync, hec, hsv, hbb, hji⟩ := hSA
-  exact ⟨hgen, hwf, hdiv, hhb,
-    hsync.toPaperSafetySynchrony cfg ext hpayload.1 hpayload.2, hec, hsv, hbb,
-    ⟨fun w hw m _hH => (hji.checkpoint_known w hw m).1,
-      hji.justified_checkpoint_cached⟩⟩
 
 private theorem exists_mem_of_map_sum_pos_minimal {Alpha : Type*}
     (l : List Alpha) (f : Alpha → ℕ) (h : 0 < (l.map f).sum) :

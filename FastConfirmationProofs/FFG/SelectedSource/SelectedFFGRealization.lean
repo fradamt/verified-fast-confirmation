@@ -40,27 +40,6 @@ variable (cfg : Config)
 
 /-! ## Endpoint selector semantics -/
 
-/-- Store-local realization of the FFG selectors used by the executable
-filter.  Every field is independent of a selected FCR result.
-
-The source fields are restricted to known, non-future roots, exactly the
-domain on which the real fork-choice state has a meaningful block-state /
-pulled-up-source read.  `source_realized_le_justified` is only the upper
-greatest-realized bound.  The converse bound is deliberately absent: old
-blocks do not retroactively refresh their stored voting source. -/
-structure EndpointSelectorRealization (E : Execution Root)
-    (anchor : Checkpoint Root) (store : Store Root) : Prop where
-  source_certificate : ∀ tip : Root, tip ∈ store.block_roots →
-    (store.blocks tip).slot ≤ get_current_slot cfg store →
-      Nonempty
-        (CertifiedJustified cfg E anchor (get_voting_source cfg store tip))
-  source_realized_le_justified : ∀ tip : Root,
-    tip ∈ store.block_roots →
-    (store.blocks tip).slot ≤ get_current_slot cfg store →
-    (get_voting_source cfg store tip).epoch <
-        get_current_store_epoch cfg store →
-      (get_voting_source cfg store tip).epoch ≤
-        store.justified_checkpoint.epoch
 
 /-- Store-local facts which turn ordinary known-root closure into the special
 walk required at the finalized epoch boundary.  These are kept separate from
@@ -110,14 +89,6 @@ theorem SourceVisibleAtTip.of_descendant
   exact ⟨hvisible.justified_epoch_le_source.trans
     (hpersistence.source_epoch_le_of_descends hseed htip htipSeed)⟩
 
-/-- The weakest seed-side availability needed for source freshness.  A seed is
-available either because it has incorporated the endpoint justified epoch, or
-because its voting source is recent enough that incorporation is immaterial.
-This predicate contains no leaf, filter, head, or safety conclusion. -/
-def SourceAvailableAtTip (store : Store Root) (tip : Root) : Prop :=
-  SourceVisibleAtTip cfg store tip ∨
-    (get_voting_source cfg store tip).epoch + 2 ≥
-      get_current_store_epoch cfg store
 
 /-- Store projection of the paper's Assumption 3.2 conclusion at one fresh
 descendant.  The full paper statement says that the block includes the
@@ -162,86 +133,8 @@ theorem A32IncludedAtTip.sourceVisible
     SourceVisibleAtTip cfg store seed := by
   exact ⟨hjustified.trans (h.baseEpoch_le_votingSource cfg hboundary)⟩
 
-/-- Source availability propagates down a known descendant chain.  Visibility
-uses `SourceVisibleAtTip.of_descendant`; recency uses monotonicity of the
-voting-source epoch. -/
-theorem SourceAvailableAtTip.of_descendant
-    {store : Store Root}
-    (hpersistence : VotingSourceEpochChainPersistence cfg store)
-    {seed tip : Root}
-    (hseed : seed ∈ store.block_roots)
-    (htip : tip ∈ store.block_roots)
-    (htipSeed : is_ancestor store (get_node_for_root tip)
-      (get_node_for_root seed) = true)
-    (havailable : SourceAvailableAtTip cfg store seed) :
-    SourceAvailableAtTip cfg store tip := by
-  rcases havailable with hvisible | hrecent
-  · exact Or.inl (SourceVisibleAtTip.of_descendant cfg hpersistence
-      hseed htip htipSeed hvisible)
-  · right
-    have hsourceMono :=
-      hpersistence.source_epoch_le_of_descends hseed htip htipSeed
-    exact hrecent.trans (Nat.add_le_add_right hsourceMono 2)
 
-/-- At a visible tip, a realized voting source is exactly the endpoint's
-realized justified checkpoint; a not-yet-realized source is recent.  The
-checkpoint equality (not merely epoch equality) follows from the two concrete
-certificates and accountable same-epoch uniqueness. -/
-theorem EndpointSelectorRealization.votingSource_eq_justified_or_recent
-    {E : Execution Root} {anchor : Checkpoint Root} {store : Store Root}
-    (hselector : EndpointSelectorRealization cfg E anchor store)
-    (hacc : CertificateAccountability cfg E anchor)
-    (hendpoint : EndpointFFGPipeline cfg E anchor store)
-    {tip : Root} (htip : tip ∈ store.block_roots)
-    (htipSlot : (store.blocks tip).slot ≤ get_current_slot cfg store)
-    (hvisible : SourceVisibleAtTip cfg store tip) :
-    get_voting_source cfg store tip = store.justified_checkpoint ∨
-      (get_voting_source cfg store tip).epoch + 2 ≥
-        get_current_store_epoch cfg store := by
-  by_cases hrealized : (get_voting_source cfg store tip).epoch <
-      get_current_store_epoch cfg store
-  · left
-    have hle : (get_voting_source cfg store tip).epoch ≤
-        store.justified_checkpoint.epoch :=
-      hselector.source_realized_le_justified tip htip htipSlot hrealized
-    have hepoch : (get_voting_source cfg store tip).epoch =
-        store.justified_checkpoint.epoch :=
-      Nat.le_antisymm hle hvisible.justified_epoch_le_source
-    obtain ⟨hsource⟩ := hselector.source_certificate tip htip htipSlot
-    obtain ⟨hjustified⟩ := hendpoint.justified_certificate
-    have hroot : (get_voting_source cfg store tip).root =
-        store.justified_checkpoint.root :=
-      hacc.justified_unique hsource hjustified hepoch
-    cases hsourceCheckpoint : get_voting_source cfg store tip with
-    | mk sourceEpoch sourceRoot =>
-      cases hjustifiedCheckpoint : store.justified_checkpoint with
-      | mk justifiedEpoch justifiedRoot =>
-        simp only [hsourceCheckpoint, hjustifiedCheckpoint] at hepoch hroot ⊢
-        cases hepoch
-        cases hroot
-        rfl
-  · right
-    have hcurrentLeSource : get_current_store_epoch cfg store ≤
-        (get_voting_source cfg store tip).epoch :=
-      Nat.le_of_not_gt hrealized
-    exact hcurrentLeSource.trans
-      (Nat.le_add_right (get_voting_source cfg store tip).epoch 2)
 
-/-- The exact executable `correct_justified` disjunction follows from the
-stronger checkpoint-equality-or-recency theorem. -/
-theorem EndpointSelectorRealization.tipSourceFresh
-    {E : Execution Root} {anchor : Checkpoint Root} {store : Store Root}
-    (hselector : EndpointSelectorRealization cfg E anchor store)
-    (hacc : CertificateAccountability cfg E anchor)
-    (hendpoint : EndpointFFGPipeline cfg E anchor store)
-    {tip : Root} (htip : tip ∈ store.block_roots)
-    (htipSlot : (store.blocks tip).slot ≤ get_current_slot cfg store)
-    (hvisible : SourceVisibleAtTip cfg store tip) :
-    TipSourceFresh cfg store tip := by
-  rcases hselector.votingSource_eq_justified_or_recent cfg hacc hendpoint
-      htip htipSlot hvisible with heq | hrecent
-  · exact Or.inr (Or.inl (congrArg Checkpoint.epoch heq))
-  · exact Or.inr (Or.inr hrecent)
 
 /-- The special finalized-boundary walk is not an independent placement
 assumption.  Start with the ordinary known-root walk at the finalized root's
@@ -355,91 +248,11 @@ theorem exists_visible_store_leaf_extension {store : Store Root}
       hseed htip htipSeed hvisible
   exact ⟨tip, htip, htipWalk, htipSeed, hleaf, htipVisible⟩
 
-/-- An available known seed has an available childless descendant.  This is
-the early-endpoint variant of `exists_visible_store_leaf_extension`: the
-transported witness may remain in the recency branch rather than asserting
-that the endpoint checkpoint was already visible. -/
-theorem exists_available_store_leaf_extension {store : Store Root}
-    (hwf : ParentSlotLt store)
-    (hpersistence : VotingSourceEpochChainPersistence cfg store)
-    {seed : Root} (hseed : seed ∈ store.block_roots)
-    (havailable : SourceAvailableAtTip cfg store seed) :
-    ∃ tip : Root,
-      tip ∈ store.block_roots ∧
-      WalkKnown store (store.blocks seed).slot tip ∧
-      is_ancestor store (get_node_for_root tip)
-        (get_node_for_root seed) = true ∧
-      store.block_roots.filter
-        (fun x => (store.blocks x).parent_root = tip) = [] ∧
-      SourceAvailableAtTip cfg store tip := by
-  obtain ⟨tip, htip, htipWalk, htipSeed, hleaf⟩ :=
-    exists_store_leaf_extension hwf hseed
-  have htipAvailable : SourceAvailableAtTip cfg store tip :=
-    SourceAvailableAtTip.of_descendant cfg hpersistence
-      hseed htip htipSeed havailable
-  exact ⟨tip, htip, htipWalk, htipSeed, hleaf, htipAvailable⟩
 
 /-! ## Placement assembly -/
 
 
 
-/-- Early-endpoint placement from an available seed.  The leaf and its
-availability are selected mechanically.  In the visibility branch freshness
-comes from the endpoint selector/accountability argument; in the recency
-branch it is immediate from the executable disjunction. -/
-theorem retainedFilterTipPlacement_of_available_seed
-    {E : Execution Root} {anchor : Checkpoint Root} {store : Store Root}
-    (hacc : CertificateAccountability cfg E anchor)
-    (hendpoint : EndpointFFGPipeline cfg E anchor store)
-    (hselector : EndpointSelectorRealization cfg E anchor store)
-    (hfinalized : FinalizedBoundaryRealization cfg store)
-    (hpersistence : VotingSourceEpochChainPersistence cfg store)
-    (hwf : ParentSlotLt store)
-    (hwalkK : ∀ t ∈ store.block_roots, ∀ r ∈ store.block_roots,
-      WalkKnown store (store.blocks t).slot r)
-    (hknownNonfuture : ∀ r ∈ store.block_roots,
-      (store.blocks r).slot ≤ get_current_slot cfg store)
-    {c seed : Root} (hc : c ∈ store.block_roots)
-    (hseed : seed ∈ store.block_roots)
-    (hseedC : is_ancestor store (get_node_for_root seed)
-      (get_node_for_root c) = true)
-    (hcJustified : is_ancestor store (get_node_for_root c)
-      (get_node_for_root store.justified_checkpoint.root) = true)
-    (havailable : SourceAvailableAtTip cfg store seed) :
-    ∃ hplace : RetainedFilterTipPlacement cfg store c,
-      TipSourceFresh cfg store hplace.tip := by
-  obtain ⟨tip, htip, _htipWalk, htipSeed, hleaf, htipAvailable⟩ :=
-    exists_available_store_leaf_extension cfg hwf hpersistence
-      hseed havailable
-  have htipC : is_ancestor store (get_node_for_root tip)
-      (get_node_for_root c) = true :=
-    is_ancestor_trans (a := get_node_for_root tip) (b := get_node_for_root seed)
-        (c := get_node_for_root c) hwf
-      (hwalkK c hc tip htip)
-      (hwalkK c hc seed hseed)
-      htipSeed hseedC
-  have hjustKnown : store.justified_checkpoint.root ∈ store.block_roots :=
-    hendpoint.justified_root_known
-  have htipJustified : is_ancestor store (get_node_for_root tip)
-      (get_node_for_root store.justified_checkpoint.root) = true :=
-    is_ancestor_trans (a := get_node_for_root tip) (b := get_node_for_root c)
-        (c := get_node_for_root store.justified_checkpoint.root) hwf
-      (hwalkK store.justified_checkpoint.root hjustKnown tip htip)
-      (hwalkK store.justified_checkpoint.root hjustKnown c hc)
-      htipC hcJustified
-  let hplace : RetainedFilterTipPlacement cfg store c :=
-    { tip := tip
-      tip_known := htip
-      tip_descends_justified := htipJustified
-      tip_descends_child := htipC
-      tip_is_leaf := hleaf
-      finalized_walk_known := hfinalized.finalizedWalkKnown cfg hwalkK htip }
-  have hfresh : TipSourceFresh cfg store tip := by
-    rcases htipAvailable with htipVisible | htipRecent
-    · exact hselector.tipSourceFresh cfg hacc hendpoint htip
-        (hknownNonfuture tip htip) htipVisible
-    · exact Or.inr (Or.inr htipRecent)
-  exact ⟨hplace, hfresh⟩
 
 end FastConfirmation.Spec
 

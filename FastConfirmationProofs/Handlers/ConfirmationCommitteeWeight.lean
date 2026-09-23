@@ -1,7 +1,9 @@
 module
 public import FastConfirmationProofs.Handlers.CommitteeWeightFractions
 public import FastConfirmationProofs.Discount.HonestWeight
-public import FastConfirmationProofs.Discount.HeadSafetyInduction
+public import FastConfirmationProofs.Discount.CommitteeWindowWeight
+public import FastConfirmationProofs.Discount.RecordedSupport
+public import FastConfirmationInternal.Discount.HeadSafetyInvariant
 
 @[expose] public section
 

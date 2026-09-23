@@ -4,7 +4,11 @@ public import FastConfirmationProofs.FFG.SelectedSource.SelectedJustifiedCompati
 public import FastConfirmationProofs.Checkpoints.SelectedPreQueryAnchor
 public import FastConfirmationProofs.Execution.History.CausalCheckpointEpochBound
 public import FastConfirmationProofs.FFG.SelectedSource.SelectedFFGRealization
-public import FastConfirmationProofs.FFG.Certificates.PaperCheckpointInclusionStoreProjection
+public import FastConfirmationProofs.FFG.Certificates.PaperCheckpointInclusionProjectionCore
+public import FastConfirmationProofs.FFG.State.ScheduledFFGStateTrajectory
+public import FastConfirmationProofs.Safety.BlockAgreement
+public import FastConfirmationProofs.Checkpoints.ExecutionRootReflection
+public import FastConfirmationProofs.ModelFacts
 
 @[expose] public section
 
@@ -51,33 +55,7 @@ def SelectedCanonicalBeforeEndpointAt (q : ℕ) (glc : Root) (m : ℕ) : Prop :=
       (get_head cfg (E.store cfg ext w' m'))
       (get_node_for_root glc) = true
 
-/-- An already-available query carrier for the selected checkpoint.  Keeping
-the carrier explicit avoids the invalid backward inference from AU at a later
-head to AU at `selected`.  The carrier is relayed to later endpoints before
-its AU fact is projected into the executable unrealized map. -/
-def SelectedEarlyA32CarrierAt
-    (anchor : Checkpoint Root) (state : ChainFFGState cfg E anchor)
-    (v : ValidatorIndex) (q : ℕ) (selected : Root)
-    (baseEpoch : Epoch) : Prop :=
-  ∃ carrier : Root,
-    carrier ∈ (E.store cfg ext v q).block_roots ∧
-    E.RootDescends carrier selected ∧
-    get_block_epoch cfg (E.store cfg ext v q) carrier < baseEpoch + 2 ∧
-    state.AU cfg carrier (state.C selected baseEpoch)
 
-/-- Exact semantic split for the late selected-carrier argument.
-
-If the target is already AU on a concrete query carrier above `selected`, it
-is propagated directly and paper A3.2 is not invoked.  Otherwise the paper's
-full canonicality and fixed-source support antecedents are supplied together.
-The executable `A32IncludedAtTip` projection is not a field in either branch. -/
-def SelectedA32SemanticRealizationAt
-    (anchor : Checkpoint Root) (state : ChainFFGState cfg E anchor)
-    (v : ValidatorIndex) (q : ℕ) (selected : Root)
-    (baseEpoch : Epoch) : Prop :=
-  E.SelectedEarlyA32CarrierAt cfg ext anchor state v q selected baseEpoch ∨
-    (E.CanonicalThroughoutEpoch cfg ext selected (baseEpoch + 1) ∧
-      PaperA32SupportThroughoutEpoch cfg ext state selected baseEpoch)
 
 /-- The selected-margin bundle already contains every premise used by
 concrete Casper accountability; the FFG realization must not ask for a

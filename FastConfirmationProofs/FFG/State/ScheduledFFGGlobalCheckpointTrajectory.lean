@@ -278,13 +278,6 @@ theorem update_proposer_boost_root (store : Store Root) (head r : Root)
   simp only [FastConfirmation.Spec.update_proposer_boost_root]
   split_ifs <;> exact h.of_extension (List.Subset.refl _) rfl rfl rfl rfl
 
-theorem store_target_checkpoint_state (store : Store Root)
-    (target : Checkpoint Root)
-    (h : FFGGlobalCheckpointOrigins cfg S store) :
-    FFGGlobalCheckpointOrigins cfg S
-      (FastConfirmation.Spec.store_target_checkpoint_state cfg ext store target) := by
-  simp only [FastConfirmation.Spec.store_target_checkpoint_state]
-  split_ifs <;> exact h.of_extension (List.Subset.refl _) rfl rfl rfl rfl
 
 theorem update_latest_messages (store : Store Root)
     (indices : List ValidatorIndex) (a : Attestation Root)
@@ -301,79 +294,12 @@ theorem update_latest_messages (store : Store Root)
       split_ifs <;>
         exact h.of_extension (List.Subset.refl _) rfl rfl rfl rfl
 
-theorem on_attestation {store store' : Store Root}
-    {a : Attestation Root} {is_from_block : Bool}
-    (h : FFGGlobalCheckpointOrigins cfg S store)
-    (hh : FastConfirmation.Spec.on_attestation cfg ext store a is_from_block =
-      some store') :
-    FFGGlobalCheckpointOrigins cfg S store' := by
-  simp only [FastConfirmation.Spec.on_attestation] at hh
-  split_ifs at hh
-  cases hh
-  exact update_latest_messages _ _ _
-    (store_target_checkpoint_state _ _ h)
 
-theorem on_attester_slashing {store store' : Store Root}
-    {sl : AttesterSlashing Root}
-    (h : FFGGlobalCheckpointOrigins cfg S store)
-    (hh : FastConfirmation.Spec.on_attester_slashing ext store sl = some store') :
-    FFGGlobalCheckpointOrigins cfg S store' := by
-  simp only [FastConfirmation.Spec.on_attester_slashing] at hh
-  split_ifs at hh
-  cases hh
-  exact h.of_extension (List.Subset.refl _) rfl rfl rfl rfl
 
-private theorem unrealizedJustified_to_justified {store : Store Root}
-    {c : Checkpoint Root}
-    (h : GlobalUnrealizedJustifiedOrigin cfg S store c) :
-    GlobalJustifiedOrigin cfg S store c := by
-  rcases h with hanchor | ⟨r, hr, hgu⟩
-  · exact Or.inl hanchor
-  · exact Or.inr ⟨r, hr, Or.inr hgu⟩
 
-private theorem unrealizedFinalized_to_finalized {store : Store Root}
-    {c : Checkpoint Root}
-    (h : GlobalUnrealizedFinalizedOrigin cfg S store c) :
-    GlobalFinalizedOrigin cfg S store c := by
-  rcases h with hanchor | ⟨r, hr, hguf⟩
-  · exact Or.inl hanchor
-  · exact Or.inr ⟨r, hr, Or.inr hguf⟩
 
-theorem on_tick_per_slot (store : Store Root) (time : ℕ)
-    (h : FFGGlobalCheckpointOrigins cfg S store) :
-    FFGGlobalCheckpointOrigins cfg S
-      (FastConfirmation.Spec.on_tick_per_slot cfg store time) := by
-  simp only [FastConfirmation.Spec.on_tick_per_slot]
-  split_ifs
-  all_goals
-    first
-    | exact h.of_extension (List.Subset.refl _) rfl rfl rfl rfl
-    | · apply FFGGlobalCheckpointOrigins.update_checkpoints
-        · exact h.of_extension (List.Subset.refl _) rfl rfl rfl rfl
-        · exact unrealizedJustified_to_justified
-            (by simpa using h.unrealized_justified)
-        · exact unrealizedFinalized_to_finalized
-            (by simpa using h.unrealized_finalized)
 
-theorem on_tick_aux (tick_slot fuel : ℕ) :
-    ∀ store : Store Root, FFGGlobalCheckpointOrigins cfg S store →
-      FFGGlobalCheckpointOrigins cfg S
-        (FastConfirmation.Spec.on_tick_aux cfg tick_slot fuel store) := by
-  induction fuel with
-  | zero => intro store h; exact h
-  | succ fuel ih =>
-      intro store h
-      rw [FastConfirmation.Spec.on_tick_aux]
-      split_ifs
-      · exact ih _ (on_tick_per_slot _ _ h)
-      · exact h
 
-theorem on_tick (store : Store Root) (time : ℕ)
-    (h : FFGGlobalCheckpointOrigins cfg S store) :
-    FFGGlobalCheckpointOrigins cfg S
-      (FastConfirmation.Spec.on_tick cfg store time) := by
-  simp only [FastConfirmation.Spec.on_tick]
-  exact on_tick_per_slot _ _ (on_tick_aux _ _ _ h)
 
 /-- A successful scheduled block insertion preserves exact global checkpoint
 origins.  The proof follows the handler order: install `GJ/GF`, then install
@@ -478,28 +404,6 @@ theorem on_block
           simp only [added, Function.update_self]
           exact hcoh.transition_guf _ _ _ hscheduled hst
 
-theorem apply_event_getD
-    (hcoh : FFGTransitionCoherence cfg ext S)
-    (store : Store Root) (event : Event Root)
-    (hscheduled : event ∈ E.schedule w n)
-    (h : FFGGlobalCheckpointOrigins cfg S store) :
-    FFGGlobalCheckpointOrigins cfg S
-      ((FastConfirmation.Spec.apply_event cfg ext store event).getD store) := by
-  cases heq : FastConfirmation.Spec.apply_event cfg ext store event with
-  | none => simpa using h
-  | some store' =>
-    simp only [Option.getD_some]
-    cases event with
-    | block sb =>
-        exact on_block hcoh ⟨w, n, hscheduled⟩ h heq
-    | attestation a is_from_block =>
-        exact on_attestation h heq
-    | attester_slashing sl =>
-        exact on_attester_slashing h heq
-    | execution_payload_envelope signed observation =>
-        exact h.of_payloadFrame (on_execution_payload_envelope_frame ext heq)
-    | payload_attestation_message message fromBlock =>
-        exact h.of_payloadFrame (on_payload_attestation_message_frame cfg ext heq)
 
 end FFGGlobalCheckpointOrigins
 
@@ -508,81 +412,8 @@ namespace Execution
 variable (E : Execution Root)
 
 
-private theorem globalCheckpointOrigins_foldl
-    {S : ChainFFGState cfg E anchor}
-    (hcoh : FFGTransitionCoherence cfg ext S)
-    (w : ValidatorIndex) (n : ℕ) :
-    ∀ (events : List (Event Root)), events ⊆ E.schedule w n →
-      ∀ store : Store Root, FFGGlobalCheckpointOrigins cfg S store →
-        FFGGlobalCheckpointOrigins cfg S
-          (events.foldl (fun st event =>
-            (FastConfirmation.Spec.apply_event cfg ext st event).getD st) store) := by
-  intro events
-  induction events with
-  | nil => intro _ store h; exact h
-  | cons event rest ih =>
-      intro hevents store h
-      rw [List.foldl_cons]
-      apply ih
-      · exact fun x hx => hevents (List.mem_cons_of_mem _ hx)
-      · exact FFGGlobalCheckpointOrigins.apply_event_getD hcoh store event
-          (hevents List.mem_cons_self) h
 
-/-- Every reachable store-global checkpoint has exact handler provenance:
-trusted anchor, block-state `GJ/GF`, or eager-pull-up `GU/GUF`. -/
-theorem globalCheckpointOrigins
-    {S : ChainFFGState cfg E anchor}
-    (hcoh : FFGTransitionCoherence cfg ext S)
-    (hgen : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
-      E.genesis_store = get_forkchoice_store cfg ast ablk ∧
-      ast.slot = ablk.message.slot)
-    (hanchor : anchor = E.genesis_store.justified_checkpoint)
-    (w : ValidatorIndex) (n : ℕ) :
-    FFGGlobalCheckpointOrigins cfg S (E.store cfg ext w n) := by
-  induction n with
-  | zero =>
-      obtain ⟨ast, ablk, hgeq, _hslot⟩ := hgen
-      change FFGGlobalCheckpointOrigins cfg S E.genesis_store
-      rw [hgeq] at hanchor ⊢
-      constructor <;> apply Or.inl <;>
-        simpa only [get_forkchoice_store] using hanchor.symm
-  | succ n ih =>
-      change FFGGlobalCheckpointOrigins cfg S
-        ((E.schedule w (n + 1)).foldl
-          (fun store event =>
-            (FastConfirmation.Spec.apply_event cfg ext store event).getD store)
-          (FastConfirmation.Spec.on_tick cfg (E.store cfg ext w n)
-            (E.time_at (n + 1))))
-      apply globalCheckpointOrigins_foldl (cfg := cfg) (ext := ext)
-        (E := E) hcoh w (n + 1)
-        (E.schedule w (n + 1)) (List.Subset.refl _)
-      exact FFGGlobalCheckpointOrigins.on_tick _ _ ih
 
-/-- The realized global justified checkpoint is either the trusted anchor or
-is AU at a known concrete block which installed it. -/
-theorem globalJustified_anchor_or_known_AU
-    {S : ChainFFGState cfg E anchor}
-    (hcoh : FFGTransitionCoherence cfg ext S)
-    (hgen : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
-      E.genesis_store = get_forkchoice_store cfg ast ablk ∧
-      ast.slot = ablk.message.slot)
-    (hanchor : anchor = E.genesis_store.justified_checkpoint)
-    (w : ValidatorIndex) (n : ℕ) :
-    (E.store cfg ext w n).justified_checkpoint = anchor ∨
-      ∃ r ∈ (E.store cfg ext w n).block_roots,
-        S.AU cfg r (E.store cfg ext w n).justified_checkpoint := by
-  rcases (globalCheckpointOrigins (cfg := cfg) (ext := ext) (E := E)
-    hcoh hgen hanchor w n).justified with
-    hanchor | ⟨r, hr, hgj | hgu⟩
-  · exact Or.inl hanchor
-  · right
-    refine ⟨r, hr, ?_⟩
-    rw [hgj]
-    exact S.gj_AU cfg r ⟨_, E.blockAt_of_store_known cfg ext hr⟩
-  · right
-    refine ⟨r, hr, ?_⟩
-    rw [hgu]
-    exact S.gu_AU cfg r ⟨_, E.blockAt_of_store_known cfg ext hr⟩
 
 
 
@@ -790,157 +621,11 @@ theorem of_eq {store store' : Store Root}
     exact h.gu_epoch_le_unrealized r hr
 
 
-/-- An unrealized justified origin is also an admissible realized global
-origin when `update_checkpoints` pulls it up at an epoch transition. -/
-theorem unrealizedJustified_to_justified {store : Store Root}
-    {c : Checkpoint Root}
-    (h : GlobalUnrealizedJustifiedOrigin cfg S store c) :
-    GlobalJustifiedOrigin cfg S store c := by
-  rcases h with hanchor | ⟨r, hr, hgu⟩
-  · exact Or.inl hanchor
-  · exact Or.inr ⟨r, hr, Or.inr hgu⟩
 
-/-- The finalized analogue of `unrealizedJustified_to_justified`. -/
-theorem unrealizedFinalized_to_finalized {store : Store Root}
-    {c : Checkpoint Root}
-    (h : GlobalUnrealizedFinalizedOrigin cfg S store c) :
-    GlobalFinalizedOrigin cfg S store c := by
-  rcases h with hanchor | ⟨r, hr, hguf⟩
-  · exact Or.inl hanchor
-  · exact Or.inr ⟨r, hr, Or.inr hguf⟩
 
 /-! ## Pure checkpoint-update steps -/
 
-theorem update_checkpoints (store : Store Root) (jc fc : Checkpoint Root)
-    (h : FFGGlobalCheckpointLedger cfg S store)
-    (hjc : GlobalJustifiedOrigin cfg S store jc)
-    (hfc : GlobalFinalizedOrigin cfg S store fc) :
-    FFGGlobalCheckpointLedger cfg S (update_checkpoints store jc fc) := by
-  have hroots : (FastConfirmation.Spec.update_checkpoints store jc fc).block_roots =
-      store.block_roots := by
-    simp only [FastConfirmation.Spec.update_checkpoints]
-    split_ifs <;> rfl
-  have hjField :
-      (FastConfirmation.Spec.update_checkpoints store jc fc).justified_checkpoint =
-        if jc.epoch > store.justified_checkpoint.epoch then jc
-        else store.justified_checkpoint := by
-    simp only [FastConfirmation.Spec.update_checkpoints]
-    split_ifs <;> rfl
-  have hfField :
-      (FastConfirmation.Spec.update_checkpoints store jc fc).finalized_checkpoint =
-        if fc.epoch > store.finalized_checkpoint.epoch then fc
-        else store.finalized_checkpoint := by
-    simp only [FastConfirmation.Spec.update_checkpoints]
-    split_ifs <;> rfl
-  have huEq :
-      (FastConfirmation.Spec.update_checkpoints store jc fc).unrealized_justified_checkpoint =
-        store.unrealized_justified_checkpoint := by
-    simp only [FastConfirmation.Spec.update_checkpoints]
-    split_ifs <;> rfl
-  have hufEq :
-      (FastConfirmation.Spec.update_checkpoints store jc fc).unrealized_finalized_checkpoint =
-        store.unrealized_finalized_checkpoint := by
-    simp only [FastConfirmation.Spec.update_checkpoints]
-    split_ifs <;> rfl
-  have hjOld : store.justified_checkpoint.epoch ≤
-      (FastConfirmation.Spec.update_checkpoints store jc fc).justified_checkpoint.epoch := by
-    rw [hjField]
-    split_ifs with hj
-    · exact Nat.le_of_lt hj
-    · exact Nat.le_refl _
-  constructor
-  · unfold GlobalJustifiedOrigin at hjc ⊢
-    rw [hroots]
-    rw [hjField]
-    split_ifs
-    · exact hjc
-    · exact h.justified_origin
-  · unfold GlobalUnrealizedJustifiedOrigin at ⊢
-    rw [huEq, hroots]
-    exact h.unrealized_justified_origin
-  · unfold GlobalFinalizedOrigin at hfc ⊢
-    rw [hroots]
-    rw [hfField]
-    split_ifs
-    · exact hfc
-    · exact h.finalized_origin
-  · unfold GlobalUnrealizedFinalizedOrigin at ⊢
-    rw [hufEq, hroots]
-    exact h.unrealized_finalized_origin
-  · intro r hr
-    rw [hroots] at hr
-    exact (h.gj_epoch_le_justified r hr).trans hjOld
-  · intro r hr
-    rw [hroots] at hr
-    rw [huEq]
-    exact h.gu_epoch_le_unrealized r hr
 
-theorem update_unrealized_checkpoints (store : Store Root)
-    (ujc ufc : Checkpoint Root)
-    (h : FFGGlobalCheckpointLedger cfg S store)
-    (hujc : GlobalUnrealizedJustifiedOrigin cfg S store ujc)
-    (hufc : GlobalUnrealizedFinalizedOrigin cfg S store ufc) :
-    FFGGlobalCheckpointLedger cfg S
-      (update_unrealized_checkpoints store ujc ufc) := by
-  have hroots :
-      (FastConfirmation.Spec.update_unrealized_checkpoints store ujc ufc).block_roots =
-        store.block_roots := by
-    simp only [FastConfirmation.Spec.update_unrealized_checkpoints]
-    split_ifs <;> rfl
-  have hjEq :
-      (FastConfirmation.Spec.update_unrealized_checkpoints store ujc ufc).justified_checkpoint =
-        store.justified_checkpoint := by
-    simp only [FastConfirmation.Spec.update_unrealized_checkpoints]
-    split_ifs <;> rfl
-  have hfEq :
-      (FastConfirmation.Spec.update_unrealized_checkpoints store ujc ufc).finalized_checkpoint =
-        store.finalized_checkpoint := by
-    simp only [FastConfirmation.Spec.update_unrealized_checkpoints]
-    split_ifs <;> rfl
-  have huField :
-      (FastConfirmation.Spec.update_unrealized_checkpoints store ujc ufc).unrealized_justified_checkpoint =
-        if ujc.epoch > store.unrealized_justified_checkpoint.epoch then ujc
-        else store.unrealized_justified_checkpoint := by
-    simp only [FastConfirmation.Spec.update_unrealized_checkpoints]
-    split_ifs <;> rfl
-  have hufField :
-      (FastConfirmation.Spec.update_unrealized_checkpoints store ujc ufc).unrealized_finalized_checkpoint =
-        if ufc.epoch > store.unrealized_finalized_checkpoint.epoch then ufc
-        else store.unrealized_finalized_checkpoint := by
-    simp only [FastConfirmation.Spec.update_unrealized_checkpoints]
-    split_ifs <;> rfl
-  have huOld : store.unrealized_justified_checkpoint.epoch ≤
-      (FastConfirmation.Spec.update_unrealized_checkpoints store ujc ufc).unrealized_justified_checkpoint.epoch := by
-    rw [huField]
-    split_ifs with hu
-    · exact Nat.le_of_lt hu
-    · exact Nat.le_refl _
-  constructor
-  · unfold GlobalJustifiedOrigin at ⊢
-    rw [hjEq, hroots]
-    exact h.justified_origin
-  · unfold GlobalUnrealizedJustifiedOrigin at hujc ⊢
-    rw [hroots]
-    rw [huField]
-    split_ifs
-    · exact hujc
-    · exact h.unrealized_justified_origin
-  · unfold GlobalFinalizedOrigin at ⊢
-    rw [hfEq, hroots]
-    exact h.finalized_origin
-  · unfold GlobalUnrealizedFinalizedOrigin at hufc ⊢
-    rw [hroots]
-    rw [hufField]
-    split_ifs
-    · exact hufc
-    · exact h.unrealized_finalized_origin
-  · intro r hr
-    rw [hroots] at hr
-    rw [hjEq]
-    exact h.gj_epoch_le_justified r hr
-  · intro r hr
-    rw [hroots] at hr
-    exact (h.gu_epoch_le_unrealized r hr).trans huOld
 
 /-! ## Tick preservation -/
 
@@ -1033,39 +718,8 @@ theorem on_tick_aux_one_slot
   rw [FastConfirmation.Spec.on_tick_aux]
   rw [if_neg (by rw [hstepped]; exact Nat.lt_irrefl _)]
 
-theorem on_tick_per_slot (store : Store Root) (time : ℕ)
-    (h : FFGGlobalCheckpointLedger cfg S store) :
-    FFGGlobalCheckpointLedger cfg S (on_tick_per_slot cfg store time) := by
-  simp only [FastConfirmation.Spec.on_tick_per_slot]
-  split_ifs
-  all_goals
-    first
-    | exact h.of_eq rfl rfl rfl rfl rfl
-    | · apply FFGGlobalCheckpointLedger.update_checkpoints
-        · apply h.of_eq <;> rfl
-        · exact unrealizedJustified_to_justified
-            (by simpa using h.unrealized_justified_origin)
-        · exact unrealizedFinalized_to_finalized
-            (by simpa using h.unrealized_finalized_origin)
 
-theorem on_tick_aux (tick_slot fuel : ℕ) :
-    ∀ store : Store Root, FFGGlobalCheckpointLedger cfg S store →
-      FFGGlobalCheckpointLedger cfg S
-        (FastConfirmation.Spec.on_tick_aux cfg tick_slot fuel store) := by
-  induction fuel with
-  | zero => intro store h; exact h
-  | succ fuel ih =>
-      intro store h
-      rw [FastConfirmation.Spec.on_tick_aux]
-      split_ifs
-      · exact ih _ (on_tick_per_slot _ _ h)
-      · exact h
 
-theorem on_tick (store : Store Root) (time : ℕ)
-    (h : FFGGlobalCheckpointLedger cfg S store) :
-    FFGGlobalCheckpointLedger cfg S (FastConfirmation.Spec.on_tick cfg store time) := by
-  simp only [FastConfirmation.Spec.on_tick]
-  exact on_tick_per_slot _ _ (on_tick_aux _ _ _ h)
 
 /-! ## Event-handler preservation -/
 
@@ -1083,13 +737,6 @@ theorem update_proposer_boost_root (store : Store Root) (head r : Root)
   simp only [FastConfirmation.Spec.update_proposer_boost_root]
   split_ifs <;> exact h.of_eq rfl rfl rfl rfl rfl
 
-theorem store_target_checkpoint_state (store : Store Root)
-    (target : Checkpoint Root)
-    (h : FFGGlobalCheckpointLedger cfg S store) :
-    FFGGlobalCheckpointLedger cfg S
-      (FastConfirmation.Spec.store_target_checkpoint_state cfg ext store target) := by
-  simp only [FastConfirmation.Spec.store_target_checkpoint_state]
-  split_ifs <;> exact h.of_eq rfl rfl rfl rfl rfl
 
 theorem update_latest_messages (store : Store Root)
     (indices : List ValidatorIndex) (a : Attestation Root)
@@ -1105,27 +752,7 @@ theorem update_latest_messages (store : Store Root)
       apply ih
       split_ifs <;> exact h.of_eq rfl rfl rfl rfl rfl
 
-theorem on_attestation {store store' : Store Root}
-    {a : Attestation Root} {is_from_block : Bool}
-    (h : FFGGlobalCheckpointLedger cfg S store)
-    (hh : FastConfirmation.Spec.on_attestation cfg ext store a is_from_block =
-      some store') :
-    FFGGlobalCheckpointLedger cfg S store' := by
-  simp only [FastConfirmation.Spec.on_attestation] at hh
-  split_ifs at hh
-  cases hh
-  exact update_latest_messages _ _ _
-    (store_target_checkpoint_state _ _ h)
 
-theorem on_attester_slashing {store store' : Store Root}
-    {sl : AttesterSlashing Root}
-    (h : FFGGlobalCheckpointLedger cfg S store)
-    (hh : FastConfirmation.Spec.on_attester_slashing ext store sl = some store') :
-    FFGGlobalCheckpointLedger cfg S store' := by
-  simp only [FastConfirmation.Spec.on_attester_slashing] at hh
-  split_ifs at hh
-  cases hh
-  exact h.of_eq rfl rfl rfl rfl rfl
 
 /-- A successful scheduled block insertion offers the new post-state `GJ`
 to the realized maximum and the new eager `GU` to the unrealized maximum.

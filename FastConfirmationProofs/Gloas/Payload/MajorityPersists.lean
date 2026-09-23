@@ -22,30 +22,6 @@ engine assembly.
 
 namespace FastConfirmation.Spec
 
-/-- The persistence ledger, additive form (truncation-free). Hypotheses and
-their instantiation sources:
-- `hconf`: the confirmation inequality at `v/n₀`
-  (`honest_support_majority` + `estimate_sound`, old window `Wold`);
-- `hD`: `support_discount` soundness — the discount is at most the weight
-  `D` genuinely stuck on the fork parent;
-- `hnb`: new-window Byzantine recorded support is at most new-window honest
-  recorded support (`span_bound` + honest coverage under
-  `CONFIRMATION_BYZANTINE_THRESHOLD ≤ 25` and the 5‰-adjusted estimate);
-- `hsib`: the disjoint decomposition — sibling supporters, `b`'s old honest
-  supporters, and the stuck-on-parent set are pairwise disjoint inside the
-  old-window members plus new-window Byzantine voters;
-- `hscore`: `b`'s recorded support at the later store contains the old
-  honest supporters and the new honest voters (`vote_ubiquity` + the
-  engine IH).
-Conclusion: the sibling loses even with the full proposer boost. -/
-theorem persists_ledger {H0 Hnew Bnew Wold D discount boost sib scoreC : ℕ}
-    (hconf : Wold + boost + 1 ≤ 2 * H0 + discount)
-    (hD : discount ≤ D)
-    (hnb : Bnew ≤ Hnew)
-    (hsib : sib + H0 + D ≤ Wold + Bnew)
-    (hscore : H0 + Hnew ≤ scoreC) :
-    sib + boost < scoreC := by
-  omega
 
 /-! ## The `get_weight` bridge to `Descent.DescendsTo`
 
@@ -110,36 +86,6 @@ theorem fork_weight_lt {store : Store Root} {c c' : Root}
     get_weight cfg store (ForkChoiceNode.mk c' .pending) < get_weight cfg store (ForkChoiceNode.mk c .pending) :=
   lt_of_le_of_lt (get_weight_le cfg store _) (lt_of_lt_of_le hlt (get_weight_ge cfg store _))
 
-/-- **`fork_majority`** — the per-fork weight inequality `Descent.DescendsTo`'s
-`hdom` consumes, assembled from `persists_ledger` and `fork_weight_lt`. The
-five hypotheses are the ledger inputs in their spec-side shapes at the later
-honest store, read against the justified checkpoint state:
-
-- `hconf` — the confirmation inequality (`honest_support_majority` at `v/n₀`,
-  with `Wold` the OLD-window maximum-support estimate and `boost` the proposer
-  score, which registry constancy keeps equal across stores);
-- `hD` — `support_discount` soundness (`discount ≤ D`, the fork-parent stuck
-  weight);
-- `hnb` — the new-window Byzantine budget is covered by honest voters
-  (`Bnew ≤ Hnew`, result 3);
-- `hsib` — the sibling upper bound (`c'`'s score plus `H0 + D` fits in the
-  old-window plus new-window Byzantine budget, result 2);
-- `hscore` — the recorded-support lower bound (`c`'s score at `w/m` covers the
-  old honest supporters plus the new honest voters, result 1).
-
-The conclusion is the `get_weight` strict domination of `c` over its sibling
-`c'`. -/
-theorem fork_majority {store : Store Root} {c c' : Root}
-    {H0 Hnew Bnew Wold D discount : ℕ}
-    (hconf : Wold + get_proposer_score cfg store + 1 ≤ 2 * H0 + discount)
-    (hD : discount ≤ D)
-    (hnb : Bnew ≤ Hnew)
-    (hsib : get_attestation_score cfg store (ForkChoiceNode.mk c' .pending)
-          (store.checkpoint_states store.justified_checkpoint) + H0 + D ≤ Wold + Bnew)
-    (hscore : H0 + Hnew ≤ get_attestation_score cfg store (ForkChoiceNode.mk c .pending)
-          (store.checkpoint_states store.justified_checkpoint)) :
-    get_weight cfg store (ForkChoiceNode.mk c' .pending) < get_weight cfg store (ForkChoiceNode.mk c .pending) :=
-  fork_weight_lt cfg (persists_ledger hconf hD hnb hsib hscore)
 
 /-! ## Set-accounting helper for the recorded-support lower bound (result 1)
 

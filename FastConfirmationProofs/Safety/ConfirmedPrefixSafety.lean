@@ -1,10 +1,10 @@
 module
 public import FastConfirmationProofs.Checkpoints.AnchorParentKnownness
 public import FastConfirmationProofs.Execution.Trajectory.ChainWalkClosure
-public import FastConfirmationProofs.ForkChoice.Head.AheadHeadDominance
+public import FastConfirmationProofs.ForkChoice.Filter.AnchorFilterViability
 public import FastConfirmationProofs.Handlers.HandlerStepFacts
 public import FastConfirmationProofs.ForkChoice.Head.HeadStack
-public import FastConfirmationProofs.FFG.SourceHistory.ConfirmationMarginInputs
+public import FastConfirmationProofs.Execution.Trajectory.InductionHypothesis
 public import FastConfirmationProofs.Checkpoints.CheckpointMarginInputs
 
 @[expose] public section

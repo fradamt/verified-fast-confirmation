@@ -191,61 +191,6 @@ theorem endpoint_justified_epoch_le_of_causal_honest_target_minimal
 
 /-! ## Query-store projection -/
 
-/-- Query-store form of the causal epoch bound.  The query need not precede
-the endpoint in execution index: commonly-known roots have identical block
-messages by execution provenance, so the endpoint bound rewrites to the query
-store as soon as `glc` is known in that exact query store. -/
-theorem query_justified_epoch_le_of_causal_honest_target_minimal
-    (hA : SelectedMarginAssumptions cfg ext E)
-    (hwalkDomain : E.PostAnchorHonestVoteTargetWalkDomain cfg ext)
-    {v : ValidatorIndex} {q : ℕ}
-    {query : FastConfirmationStore Root} {glc : Root}
-    (hquery : query.store = E.store cfg ext v q)
-    {w : ValidatorIndex} (hw : w ∈ E.honest) {m : ℕ}
-    (hHm : E.WithinHorizon cfg m)
-    (hglcQ : glc ∈ query.store.block_roots)
-    (hglcKnown : ∀ w' ∈ E.honest, ∀ m' : ℕ,
-      E.slot_start cfg (E.slot_at cfg q) ≤ m' →
-      E.WithinHorizon cfg m' →
-      glc ∈ (E.store cfg ext w' m').block_roots)
-    (hIH : ∀ w' ∈ E.honest, ∀ m' : ℕ,
-      E.slot_start cfg (E.slot_at cfg q) ≤ m' →
-      E.slot_at cfg m' < E.slot_at cfg m →
-      E.WithinHorizon cfg m' →
-      is_ancestor (E.store cfg ext w' m')
-        (get_head cfg (E.store cfg ext w' m'))
-        (get_node_for_root glc) = true)
-    {i : ValidatorIndex} (hi : i ∈ E.honest)
-    {s : Slot} (hqs : E.slot_at cfg q ≤ s)
-    (hsm : s < E.slot_at cfg m)
-    (hsH : E.SlotWithinHorizon cfg s)
-    {k₀ : ℕ} {a₀ : Attestation Root}
-    (hvote₀ : E.vote i s = some (k₀, a₀))
-    (htarget₀ : a₀.data.target =
-      (E.store cfg ext w m).justified_checkpoint)
-    (hnotJGlc : is_ancestor (E.store cfg ext w m)
-      (get_node_for_root (E.store cfg ext w m).justified_checkpoint.root)
-      (get_node_for_root glc) ≠ true) :
-    (E.store cfg ext w m).justified_checkpoint.epoch ≤
-      get_block_epoch cfg query.store glc := by
-  have hboundM := E.endpoint_justified_epoch_le_of_causal_honest_target_minimal
-    cfg ext hA hwalkDomain hw hHm hglcKnown hIH hi hqs hsm hsH
-      hvote₀ htarget₀ hnotJGlc
-  have hslotQM : E.slot_at cfg q ≤ E.slot_at cfg m :=
-    hqs.trans (Nat.le_of_lt hsm)
-  have hstartM : E.slot_start cfg (E.slot_at cfg q) ≤ m :=
-    E.query_slot_start_le_of_slot_ge_minimal cfg ext hA hslotQM
-  have hglcM : glc ∈ (E.store cfg ext w m).block_roots :=
-    hglcKnown w hw m hstartM hHm
-  have hglcAgree : query.store.blocks glc =
-      (E.store cfg ext w m).blocks glc :=
-    by
-      rw [hquery]
-      exact hA.wellFormed.blocks_agree
-        (E.blockProvenance cfg ext v q) (E.blockProvenance cfg ext w m)
-        (by simpa only [← hquery] using hglcQ) hglcM
-  rw [get_block_epoch, hglcAgree] at ⊢
-  simpa only [get_block_epoch] using hboundM
 
 end Execution
 

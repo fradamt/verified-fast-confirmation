@@ -67,68 +67,7 @@ theorem append {store : Store Root} {start mid result : Root}
   | cons hs hn hp _ ih =>
       simpa using SelectedParentTrace.cons hs hn hp (ih hright)
 
-omit [Inhabited Root] in
-/-- The result of a parent trace descends from its start. -/
-theorem result_descends_start {store : Store Root}
-    (hwf : ParentSlotLt store)
-    (hwalk : ∀ t ∈ store.block_roots, ∀ r ∈ store.block_roots,
-      WalkKnown store (store.blocks t).slot r)
-    {start result : Root} {edges : List (Root × Root)}
-    (h : SelectedParentTrace store start result edges) :
-    is_ancestor store (get_node_for_root result)
-      (get_node_for_root start) = true := by
-  induction h with
-  | nil hr => exact is_ancestor_refl _ _
-  | @cons start next result rest hs hn hp tail ih =>
-      have hnextStart : is_ancestor store (get_node_for_root next)
-          (get_node_for_root start) = true :=
-        is_ancestor_of_parent hwf hn hs hp
-      exact is_ancestor_trans (a := get_node_for_root result) (b := get_node_for_root next)
-          (c := get_node_for_root start) hwf
-        (hwalk start hs result tail.result_known)
-        (hwalk start hs next hn) ih hnextStart
 
-/-- Every strict direct parent edge on the ancestry interval represented by a
-parent trace occurs in its edge list. -/
-theorem edge_mem {store : Store Root}
-    (hwf : ParentSlotLt store)
-    (hwalk : ∀ t ∈ store.block_roots, ∀ r ∈ store.block_roots,
-      WalkKnown store (store.blocks t).slot r)
-    {start result : Root} {edges : List (Root × Root)}
-    (htrace : SelectedParentTrace store start result edges)
-    {a c : Root} (ha : a ∈ store.block_roots) (hc : c ∈ store.block_roots)
-    (hparent : (store.blocks c).parent_root = a)
-    (hresultC : is_ancestor store (get_node_for_root result)
-      (get_node_for_root c) = true)
-    (hcStart : is_ancestor store (get_node_for_root c)
-      (get_node_for_root start) = true)
-    (hcne : c ≠ start) :
-    (a, c) ∈ edges := by
-  induction htrace generalizing a c with
-  | @nil r hr =>
-      have heq : c = r := is_ancestor_antisymm hwf
-        (hwalk c hc r hr) hcStart hresultC
-      exact False.elim (hcne heq)
-  | @cons start next result rest hstart hnext hnextParent tail ih =>
-      have hresultNext := tail.result_descends_start hwf hwalk
-      rcases is_ancestor_comparable hwf
-          (hwalk c hc result tail.result_known)
-          (hwalk next hnext result tail.result_known)
-          hresultC hresultNext with hnextC | hcNext
-      · rcases between_parent_child hwf hnext hstart
-            (hwalk c hc next hnext) (hwalk start hstart c hc)
-            hnextParent hnextC hcStart with rfl | rfl
-        · exact False.elim (hcne rfl)
-        · have haeq : a = start := by
-            rw [← hparent, hnextParent]
-          simp [haeq]
-      · by_cases hceq : c = next
-        · subst c
-          have haeq : a = start := by
-            rw [← hparent, hnextParent]
-          simp [haeq]
-        · exact List.mem_cons_of_mem _
-            (ih ha hc hparent hresultC hcNext hceq)
 
 end SelectedParentTrace
 
@@ -343,45 +282,6 @@ theorem findLatestSelectedTrace_parentTrace
       previousRoot, previousEdges, tRoots, tExec, tTrace, tGuard,
       finalGuard, htg] using hp
 
-/-- Every strict direct parent edge between the wrapper input and its selected
-result occurs in one of the two retained executable traces.  This is the
-coverage statement needed to apply the corresponding accepted-edge filter
-facts to an arbitrary edge of the selected chain. -/
-theorem strict_selected_edge_mem_trace
-    (fcrStore : FastConfirmationStore Root)
-    (hwf : ParentSlotLt fcrStore.store)
-    (hwalk : ∀ t ∈ fcrStore.store.block_roots,
-      ∀ r ∈ fcrStore.store.block_roots,
-        WalkKnown fcrStore.store (fcrStore.store.blocks t).slot r)
-    (hhead : (get_head cfg fcrStore.store).root ∈
-      fcrStore.store.block_roots)
-    (latestConfirmedRoot : Root)
-    (hlcr : latestConfirmedRoot ∈ fcrStore.store.block_roots)
-    {a c : Root}
-    (ha : a ∈ fcrStore.store.block_roots)
-    (hc : c ∈ fcrStore.store.block_roots)
-    (hparent : (fcrStore.store.blocks c).parent_root = a)
-    (hresultC : is_ancestor fcrStore.store
-      (get_node_for_root
-        (find_latest_confirmed_descendant cfg ext fcrStore latestConfirmedRoot))
-      (get_node_for_root c) = true)
-    (hcLcr : is_ancestor fcrStore.store (get_node_for_root c)
-      (get_node_for_root latestConfirmedRoot) = true)
-    (hcne : c ≠ latestConfirmedRoot) :
-    PreviousEpochSelectedEdge cfg ext fcrStore latestConfirmedRoot a c ∨
-      (a, c) ∈
-        (findLatestSelectedTrace cfg ext fcrStore latestConfirmedRoot).2.2 := by
-  have htrace := findLatestSelectedTrace_parentTrace cfg ext fcrStore hwf
-    hwalk hhead latestConfirmedRoot hlcr
-  have hresultC' : is_ancestor fcrStore.store
-      (get_node_for_root
-        (findLatestSelectedTrace cfg ext fcrStore latestConfirmedRoot).1)
-      (get_node_for_root c) = true := by
-    simpa only [findLatestSelectedTrace_fst] using hresultC
-  have hm := htrace.edge_mem hwf hwalk ha hc hparent hresultC' hcLcr hcne
-  rcases List.mem_append.mp hm with hprev | htent
-  · exact Or.inl hprev
-  · exact Or.inr htent
 
 
 

@@ -2,7 +2,7 @@ module
 public import FastConfirmationProofs.Execution.Trajectory.LatestMessageProvenance
 public import FastConfirmationProofs.Execution.Delivery.Registry
 public import FastConfirmationProofs.FFG.Certificates.Quorum
-public import FastConfirmationProofs.ForkChoice.Head.SupportTransport
+public import FastConfirmationProofs.ForkChoice.Ancestry.Forks
 public import Mathlib.Algebra.Order.BigOperators.Group.Finset
 
 @[expose] public section

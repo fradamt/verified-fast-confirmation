@@ -44,29 +44,6 @@ theorem confirmed_at_one {v : ValidatorIndex}
 /-! ## Positive next-slot finalized-reset regression -/
 
 
-/-- Finite accepted-run regression: honest votes through slots two to seven
-support the child or its carrier descendant, all stake is honest, and the
-paper's strict economic bound holds. The cached child still becomes stale at
-the slot-eight call and resets to the anchor. This run has empty production
-slots, so continued descendant voting alone is insufficient for live
-monotonicity. -/
-theorem descendant_votes_without_continuous_production_revert :
-    (∀ s : Fin 6,
-      (voteData (s.val + 2)).beacon_block_root = childRoot ∨
-        (voteData (s.val + 2)).beacon_block_root = carrierRoot) ∧
-    4 * witnessExecution.weight
-        ((Finset.range witnessExecution.registry.length).filter
-          (fun i => i ∉ witnessExecution.honest)) +
-      compute_proposer_score witnessConfig witnessExecution.anchor_state <
-        witnessExecution.total_active witnessConfig ∧
-    get_block_epoch witnessConfig
-      (witnessExecution.fcrStoreAtCall witnessConfig witnessExternals 0 7).store
-      (witnessExecution.fcrStoreAtCall witnessConfig witnessExternals 0 7).confirmed_root + 1 <
-        get_current_store_epoch witnessConfig
-          (witnessExecution.fcrStoreAtCall witnessConfig witnessExternals 0 7).store ∧
-    witnessExecution.confirmed witnessConfig witnessExternals 0 2 = childRoot ∧
-    witnessExecution.confirmed witnessConfig witnessExternals 0 8 = anchorRoot := by
-  set_option maxRecDepth 50000 in decide
 
 
 

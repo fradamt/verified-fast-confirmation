@@ -4,7 +4,7 @@ public import FastConfirmationProofs.Discount.ByzantineSiblingWeight
 public import FastConfirmationProofs.Checkpoints.EdgeWeightAlgebra
 public import FastConfirmationProofs.Execution.Delivery.VoteDeliveryMargin
 public import FastConfirmationProofs.Checkpoints.AnchorParentKnownness
-public import FastConfirmationProofs.ForkChoice.Head.AheadHeadDominance
+public import FastConfirmationProofs.ForkChoice.Filter.AnchorFilterViability
 public import FastConfirmationProofs.Handlers.HandlerStepFacts
 public import FastConfirmationProofs.ForkChoice.Head.HeadStack
 public import FastConfirmationProofs.Execution.Trajectory.StoreDynamicsInputs

@@ -40,26 +40,6 @@ theorem get_checkpoint_block_of_ancestor {store : Store Root}
   simp only [get_checkpoint_block]
   rw [← h2, h1]
 
-omit [Inhabited Root] in
-/-- `correct_finalized` transport: if the finalized block is the finalized-
-epoch checkpoint block of `b`'s chain, it is so for every descendant of `b`
-(the second `filter_block_tree` leaf conjunct survives chain extension). -/
-theorem finalized_check_of_ancestor {store : Store Root}
-    (hwf : ∀ r ∈ store.block_roots,
-      (store.blocks r).parent_root ∈ store.block_roots →
-        (store.blocks (store.blocks r).parent_root).slot < (store.blocks r).slot)
-    {d b : Root}
-    (hanc : is_ancestor store (ForkChoiceNode.mk d .pending) (ForkChoiceNode.mk b .pending) = true)
-    (hslot : compute_start_slot_at_epoch cfg store.finalized_checkpoint.epoch ≤
-      (store.blocks b).slot)
-    (hw : WalkKnown store
-      (compute_start_slot_at_epoch cfg store.finalized_checkpoint.epoch) d)
-    (hfin : store.finalized_checkpoint.root =
-      get_checkpoint_block cfg store b store.finalized_checkpoint.epoch) :
-    store.finalized_checkpoint.root =
-      get_checkpoint_block cfg store d store.finalized_checkpoint.epoch := by
-  rw [hfin]
-  exact (get_checkpoint_block_of_ancestor cfg hwf hanc hslot hw).symm
 
 /-!
 ## Filtered membership

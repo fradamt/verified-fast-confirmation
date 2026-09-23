@@ -95,24 +95,7 @@ noncomputable def Xval (v₀ : ValidatorIndex) (n₀ : ℕ) (b' : Root) (lo σ :
 noncomputable def Bval (lo σ : Slot) : Gwei :=
   E.weight (E.Bwin lo σ)
 
-/-- `U(σ)` — not-yet-recurred base-supporter weight. -/
-noncomputable def Uval (v₀ : ValidatorIndex) (n₀ : ℕ) (b' : Root) (lo es σ : Slot) : Gwei :=
-  E.weight (E.Unrec cfg ext v₀ n₀ b' lo es σ)
 
-/-- **INV\*** at window end `σ` (cross-multiplied, `C := confirmation_byzantine_threshold`):
-`(100−C)·s ≥ (100−C)·(x + B + boost + 1) + min (C·U) (C·J − (100−C)·B)`. The single
-per-chain-block persistence invariant; the `min` caps the enemy's future
-arrivals both by the recurrence tax on unrecurred base supporters (`C·U`) and by
-the remaining F3 window capacity (`C·J − (100−C)·B`, un-truncated by
-`Rterm_nonneg`). -/
-def INVstar (v₀ : ValidatorIndex) (n₀ : ℕ) (b' : Root) (lo es σ : Slot)
-    (boost : ℕ) : Prop :=
-  (100 - cfg.confirmation_byzantine_threshold) *
-        (E.Xval cfg ext v₀ n₀ b' lo σ + E.Bval lo σ + boost + 1)
-      + min (cfg.confirmation_byzantine_threshold * E.Uval cfg ext v₀ n₀ b' lo es σ)
-          (cfg.confirmation_byzantine_threshold * E.Jspec lo σ
-            - (100 - cfg.confirmation_byzantine_threshold) * E.Bval lo σ)
-    ≤ (100 - cfg.confirmation_byzantine_threshold) * E.Sval cfg ext v₀ n₀ b' lo σ
 
 end Execution
 

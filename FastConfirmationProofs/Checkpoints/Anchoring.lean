@@ -156,19 +156,6 @@ namespace Execution
 
 variable (E : Execution Root)
 
-/-- **The confirming-store anchoring bundle.** At the confirming anchor `(vc, nc)`,
-`b` descends from the reset anchor `r₀` and both are known blocks. This is exactly Section 1's
-`get_latest_confirmed_ge` output (with the endpoint fixed at the confirming store `nc`), packaged
-for `coveringFFG_of_anchor`. `r₀`'s "kind" (finalized / observed) is not recorded here — the
-`JustifiedIn` propagation it seeds enters `coveringFFG_of_anchor` as a hypothesis. -/
-structure ConfirmedWithAnchor (b r₀ : Root) (vc : ValidatorIndex) (nc : ℕ) : Prop where
-  /-- `b` is a known block at the confirming store. -/
-  b_known : b ∈ (E.store cfg ext vc nc).block_roots
-  /-- the reset anchor `r₀` is a known block at the confirming store. -/
-  r₀_known : r₀ ∈ (E.store cfg ext vc nc).block_roots
-  /-- `b ⪰ r₀` at the confirming store (the additive anchoring). -/
-  b_ge_r₀ : is_ancestor (E.store cfg ext vc nc)
-    (get_node_for_root b) (get_node_for_root r₀) = true
 
 
 end Execution

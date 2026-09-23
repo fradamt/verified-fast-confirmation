@@ -1,5 +1,5 @@
 module
-public import FastConfirmationProofs.FFG.State.ObservedCheckpointAncestry
+public import FastConfirmationProofs.Execution.Trajectory.ChainWalkClosure
 public import FastConfirmationProofs.FFG.SourceHistory.SafeFromInvariant
 
 @[expose] public section

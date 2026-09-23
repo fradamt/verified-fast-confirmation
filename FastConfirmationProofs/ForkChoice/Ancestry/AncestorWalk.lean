@@ -174,16 +174,6 @@ theorem get_ancestor_aux_fuel_eq_status {store : Store Root}
           (Nat.lt_of_lt_of_le hparent_lt (Nat.lt_succ_iff.mp hf))
           (Nat.lt_of_lt_of_le hparent_lt (Nat.lt_succ_iff.mp hf'))
 
-/-- Pending-node form of fuel independence. -/
-theorem get_ancestor_aux_fuel_eq {store : Store Root}
-    (hwf : ∀ r ∈ store.block_roots,
-      (store.blocks r).parent_root ∈ store.block_roots →
-        (store.blocks (store.blocks r).parent_root).slot < (store.blocks r).slot)
-    {slot : Slot} {r : Root} (hw : WalkKnown store slot r) :
-    ∀ fuel fuel' : ℕ, (store.blocks r).slot < fuel → (store.blocks r).slot < fuel' →
-      get_ancestor_aux store slot fuel (ForkChoiceNode.mk r .pending) =
-        get_ancestor_aux store slot fuel' (ForkChoiceNode.mk r .pending) :=
-  get_ancestor_aux_fuel_eq_status hwf hw .pending
 
 /-- At or below the target slot, the walk preserves the complete node. -/
 theorem get_ancestor_stop_status {store : Store Root} {slot : Slot}

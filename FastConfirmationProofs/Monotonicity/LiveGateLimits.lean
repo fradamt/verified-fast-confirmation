@@ -29,27 +29,6 @@ namespace FastConfirmation.Spec
 variable {Root : Type*} [LinearOrder Root] [Inhabited Root]
 variable (cfg : Config) (ext : Externals Root)
 
-/-- In a non-start slot, a lagging unrealized justification at both the
-head and the previous-slot head closes both gates of the descendant
-selector. -/
-theorem find_latest_confirmed_descendant_eq_of_lagging_unrealized
-    (query : FastConfirmationStore Root) (input : Root)
-    (hstart : is_start_slot_at_epoch cfg
-      (get_current_slot cfg query.store) = false)
-    (hhead : (query.store.unrealized_justifications
-        (get_head cfg query.store).root).epoch + 1 <
-      get_current_store_epoch cfg query.store)
-    (hprev : (query.store.unrealized_justifications
-        query.previous_slot_head).epoch + 1 <
-      get_current_store_epoch cfg query.store) :
-    find_latest_confirmed_descendant cfg ext query input = input := by
-  have hheadNot : ¬ ((query.store.unrealized_justifications
-      (get_head cfg query.store).root).epoch + 1 ≥
-        get_current_store_epoch cfg query.store) := Nat.not_le.mpr hhead
-  have hprevNot : ¬ ((query.store.unrealized_justifications
-      query.previous_slot_head).epoch + 1 ≥
-        get_current_store_epoch cfg query.store) := Nat.not_le.mpr hprev
-  simp [find_latest_confirmed_descendant, hstart, hheadNot, hprevNot]
 
 /-- A stale cached root reverts to the finalized root when neither the
 observed restart nor the selector can move the candidate. -/

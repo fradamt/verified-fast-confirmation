@@ -29,13 +29,6 @@ inductive TreeBounded (store : Store Root) (L : List Root) : ℕ → Root → Pr
           TreeBounded store L n c) :
       TreeBounded store L (n + 1) r
 
-omit [Inhabited Root] in
-/-- The height bound is an upper bound: a subtree bounded at height `n` is also
-bounded at any larger height. -/
-theorem TreeBounded.mono {store : Store Root} {L : List Root} {n : ℕ} {r : Root}
-    (h : TreeBounded store L n r) : TreeBounded store L (n + 1) r := by
-  induction h with
-  | @mk n r hchild ih => exact TreeBounded.mk (fun c hc => ih c hc)
 
 /-! ## `filter_block_tree_aux` fuel elimination -/
 
@@ -162,13 +155,6 @@ inductive NodeTreeBounded (store : Store Root) (blocks : List Root) :
         NodeTreeBounded store blocks n child) :
       NodeTreeBounded store blocks (n + 1) node
 
-omit [Inhabited Root] in
-/-- A node height bound remains valid with one more level. -/
-theorem NodeTreeBounded.mono {store : Store Root} {blocks : List Root}
-    {n : ℕ} {node : ForkChoiceNode Root} (h : NodeTreeBounded store blocks n node) :
-    NodeTreeBounded store blocks (n + 1) node := by
-  induction h with
-  | @mk n node hchild ih => exact NodeTreeBounded.mk (fun child hc => ih child hc)
 
 
 

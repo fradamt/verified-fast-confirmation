@@ -3,8 +3,10 @@ public import FastConfirmationProofs.FFG.CurrentTarget.CurrentTargetFutureSuppor
 public import FastConfirmationProofs.FCRRule.SelectedCheckpointInclusionSupport
 public import FastConfirmationProofs.FFG.SourceHistory.FFGSourceCoherence
 public import FastConfirmationProofs.FFG.State.ScheduledFFGGlobalCheckpointTrajectory
-public import FastConfirmationProofs.Checkpoints.ObservedAnchorQuorum
-public import FastConfirmationProofs.ForkChoice.Head.AheadHeadDominance
+public import FastConfirmationProofs.Checkpoints.AnchorChainSafety
+public import FastConfirmationProofs.FFG.Certificates.CertExtract
+public import FastConfirmationProofs.Checkpoints.SlotClock
+public import FastConfirmationProofs.ForkChoice.Filter.AnchorFilterViability
 public import FastConfirmationProofs.Handlers.HandlerStepFacts
 public import FastConfirmationProofs.ForkChoice.Head.HeadStack
 
@@ -423,33 +425,9 @@ def FixedSourceCurrentTargetA32GateRealizationProducerAtCore
 
 /-! ### State specializations -/
 
-/-- Gate realization specialized to the scheduled-root state. -/
-abbrev CurrentTargetA32GateRealization
-    (anchor : Checkpoint Root) (S : ChainFFGState cfg E anchor)
-    (store : Store Root) : Prop :=
-  CurrentTargetA32GateRealizationCore cfg ext E anchor
-    (S.paperA32View cfg) store
 
-/-- Actual-call producer specialized to the scheduled-root state. -/
-abbrev CurrentTargetA32GateRealizationProducerAt
-    (anchor : Checkpoint Root) (S : ChainFFGState cfg E anchor)
-    (q : ℕ) (query : FastConfirmationStore Root) : Prop :=
-  CurrentTargetA32GateRealizationProducerAtCore cfg ext E anchor
-    (S.paperA32View cfg) q query
 
-/-- Fixed-source realization specialized to the scheduled-root state. -/
-abbrev FixedSourceCurrentTargetA32GateRealization
-    (anchor : Checkpoint Root) (S : ChainFFGState cfg E anchor)
-    (store : Store Root) (b : Root) : Prop :=
-  FixedSourceCurrentTargetA32GateRealizationCore cfg ext E anchor
-    (S.paperA32View cfg) store b
 
-/-- Fixed-source producer specialized to the scheduled-root state. -/
-abbrev FixedSourceCurrentTargetA32GateRealizationProducerAt
-    (anchor : Checkpoint Root) (S : ChainFFGState cfg E anchor)
-    (q : ℕ) (query : FastConfirmationStore Root) (b : Root) : Prop :=
-  FixedSourceCurrentTargetA32GateRealizationProducerAtCore cfg ext E anchor
-    (S.paperA32View cfg) q query b
 
 /-- Accepted-state gate realization. -/
 abbrev AcceptedCurrentTargetA32GateRealization

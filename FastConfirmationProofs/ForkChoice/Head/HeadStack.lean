@@ -85,19 +85,6 @@ chain, fed by the engine IH's justified-dominance leg + `L4Fold.find_latest_conf
 descendant_spec`. It is genuinely per-endpoint (the shell's own induction supplies the IH),
 and is represented by an explicit per-endpoint premise. -/
 
-/-- **`hb`, the block-relay leg.** A block known at an honest node's store is,
-from the next slot on, known at every honest node — so the confirmed block `b` (known at
-its confirming store `(v₀, n₀)`) is a known block at every later-slot honest endpoint
-`(w, m)`. This is `Synchrony.block_relay` specialized to the confirmed root; it discharges
-`dynamicsChainStruct_of_endpoint`'s `hb` in the later-slot regime (the same-slot residue is
-the documented intra-slot reach limit). -/
-theorem b_known_of_relay (hsyn : Synchrony cfg ext E)
-    {v₀ w : ValidatorIndex} (hv₀ : v₀ ∈ E.honest) (hw : w ∈ E.honest)
-    {n₀ m : ℕ} {b : Root} (hbknown : b ∈ (E.store cfg ext v₀ n₀).block_roots)
-    (hHn₀ : E.WithinHorizon cfg n₀) (hHm : E.WithinHorizon cfg m)
-    (hgap : E.slot_at cfg n₀ + 1 ≤ E.slot_at cfg (m + 1)) :
-    b ∈ (E.store cfg ext w m).block_roots :=
-  hsyn.block_relay v₀ hv₀ n₀ b hHn₀ hbknown w hw m hHm hgap
 
 end Execution
 

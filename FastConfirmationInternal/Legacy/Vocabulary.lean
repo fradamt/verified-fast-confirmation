@@ -264,73 +264,9 @@ structure JustificationInterface (E : Execution Root) : Prop where
           (E.store cfg ext w m).justified_checkpoint.root).slot ≤
         compute_start_slot_at_epoch cfg t.epoch
 
-/-- The legacy premise bundle uses the spec's trusted-anchor initialization
-with anchor slot agreement and parent/root inequality. This legacy bundle
-does not require a state-root commitment. The accepted trajectory additionally
-requires `Externals.AnchorCommitsToState` in its `genesis` premise. This
-abstract contract comes from the external interpretation; slot agreement is
-independent, and the model does not prove a concrete hashing result.
-The legacy bundle also requires
-whole-second slot boundaries (mainnet: `12000 ms`), the behavioral and
-network records, the externals-coherence and static-set idealisations, the
-economic assumptions, and the FFG interface. -/
-def SpecAssumptions (E : Execution Root) : Prop :=
-  (∃ (anchor_state : BeaconState Root) (anchor_block : SignedBeaconBlock Root),
-    E.genesis_store = get_forkchoice_store cfg anchor_state anchor_block ∧
-    anchor_state.slot = anchor_block.message.slot ∧
-    anchor_block.message.parent_root ≠ anchor_block.root) ∧
-  WellFormedExecution E ∧
-  1000 ∣ cfg.slot_duration_ms ∧
-  HonestBehavior cfg ext E ∧
-  Synchrony cfg ext E ∧
-  BeaconExternalsPremises cfg ext E ∧
-  StaticValidatorSet cfg E ∧
-  ByzantineWeightPremises cfg E ∧
-  JustificationInterface cfg ext E
 
-/-- Strong all-prefix safety candidate used by the internal proof
-decomposition. This is not the accepted public theorem: arbitrary in-slot
-cross-node prefixes do not satisfy this conclusion. -/
-def Spec_Safety : Prop :=
-  ∀ E : Execution Root, SpecAssumptions cfg ext E →
-    ∀ v ∈ E.honest, ∀ n : ℕ, ∀ w ∈ E.honest, ∀ m : ℕ, n ≤ m →
-      E.WithinHorizon cfg m →
-      is_ancestor (E.store cfg ext w m)
-        (get_head cfg (E.store cfg ext w m))
-        (get_node_for_root (E.confirmed cfg ext v n)) = true
 
-/-- Next-slot form over the older `SpecAssumptions` vocabulary. The accepted
-public theorem uses `NextSlotSafetyPremises` and is stated as
-`ConfirmedRootSafeFromNextSlot`. -/
-def Spec_Safety_next_slot : Prop :=
-  ∀ E : Execution Root, SpecAssumptions cfg ext E →
-    ∀ v ∈ E.honest, ∀ n : ℕ, ∀ w ∈ E.honest, ∀ m : ℕ, n ≤ m →
-      E.slot_at cfg n + 1 ≤ E.slot_at cfg m →
-      E.WithinHorizon cfg m →
-      is_ancestor (E.store cfg ext w m)
-        (get_head cfg (E.store cfg ext w m))
-        (get_node_for_root (E.confirmed cfg ext v n)) = true
 
-/-- **Chain consistency** — an honest node's confirmed roots all lie on one
-chain: any two are ancestry-comparable in the node's (later) store. This is
-the defensible spec-model rendering of the paper's monotonicity: strict
-"once confirmed, always confirmed" ancestor-monotonicity is *false* for the
-deployed algorithm without a liveness premise — the assumptions do not force
-block production, and `get_latest_confirmed`'s staleness revert
-(`get_block_epoch(confirmed) + 1 < current_epoch` → finalized root) fires by
-design when the chain stalls, moving the confirmed root *backwards* along
-the same chain. Strict monotonicity holds while the revert/restart branches
-are idle; this file records that restricted conditional statement separately. -/
-def Spec_Monotonicity : Prop :=
-  ∀ E : Execution Root, SpecAssumptions cfg ext E →
-    ∀ v ∈ E.honest, ∀ n m : ℕ, n ≤ m →
-      E.WithinHorizon cfg m →
-      is_ancestor (E.store cfg ext v m)
-        (get_node_for_root (E.confirmed cfg ext v m))
-        (get_node_for_root (E.confirmed cfg ext v n)) = true ∨
-      is_ancestor (E.store cfg ext v m)
-        (get_node_for_root (E.confirmed cfg ext v n))
-        (get_node_for_root (E.confirmed cfg ext v m)) = true
 
 end FastConfirmation.Spec
 

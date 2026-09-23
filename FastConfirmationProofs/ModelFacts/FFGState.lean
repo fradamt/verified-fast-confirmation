@@ -56,13 +56,6 @@ namespace ChainFFGState
 variable {E : Execution Root} {anchor : Checkpoint Root}
 
 
-/-- AU evidence is monotone down the descendant relation. -/
-theorem AU.mono (S : ChainFFGState cfg E anchor)
-    {old new : Root} {c : Checkpoint Root}
-    (hdesc : E.RootDescends new old) (hAU : S.AU cfg old c) :
-    S.AU cfg new c := by
-  obtain ⟨carrier, holdCarrier, hformed⟩ := hAU
-  exact ⟨carrier, Execution.RootDescends.trans E hdesc holdCarrier, hformed⟩
 
 /-- Every AU checkpoint has concrete certified, on-chain, causal formation
 evidence at some carrier. -/
@@ -75,17 +68,7 @@ theorem AU.evidence (S : ChainFFGState cfg E anchor)
   obtain ⟨carrier, hdesc, hformed⟩ := hAU
   exact ⟨carrier, hdesc, S.formed_evidence hformed⟩
 
-/-- The realized selector is available at its own block. -/
-theorem gj_AU (S : ChainFFGState cfg E anchor) (r : Root)
-    (hr : E.ExecutionRoot r) :
-    S.AU cfg r (S.GJ r) :=
-  S.gj_mem r hr
 
-/-- The unrealized selector is available at its own block. -/
-theorem gu_AU (S : ChainFFGState cfg E anchor) (r : Root)
-    (hr : E.ExecutionRoot r) :
-    S.AU cfg r (S.GU r) :=
-  S.gu_mem r hr
 
 
 

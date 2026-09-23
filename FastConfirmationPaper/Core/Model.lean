@@ -5,7 +5,6 @@ public import FastConfirmationPaper.Core.Model.Validators
 public import FastConfirmationPaper.Core.Model.GhostVote
 public import FastConfirmationPaper.Core.Model.ValidatorView
 public import FastConfirmationPaper.Core.Model.ForkChoice
-public import FastConfirmationPaper.Core.Model.ForkChoice
 public import FastConfirmationPaper.Core.Model.HonestVoting
 
 /-!

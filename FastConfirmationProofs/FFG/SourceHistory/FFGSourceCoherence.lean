@@ -124,28 +124,6 @@ theorem on_block_inserted_message
 variable {E : Execution Root} {anchor : Checkpoint Root}
 variable {S : ChainFFGState cfg E anchor}
 
-/-- Message provenance identifies the reconstructed stored block as an actual
-scheduled block whenever its root is known and non-genesis.  This is already
-derivable from the handlers; it is not part of
-`BlockStateTransitionHistory`. -/
-theorem Execution.storedSignedBlock_scheduled
-    (E : Execution Root) (w : ValidatorIndex) (n : ℕ)
-    {child : Root}
-    (hchild : child ∈ (E.store cfg ext w n).block_roots)
-    (hnongenesis : child ∉ E.genesis_store.block_roots) :
-    IsScheduledBlock E
-      (storedSignedBlock (E.store cfg ext w n) child) := by
-  rcases E.blockProvenance cfg ext w n child hchild with hgen | hscheduled
-  · exact False.elim (hnongenesis hgen.1)
-  · rcases hscheduled with ⟨sb, hschedule, hroot, hmessage⟩
-    have heq : sb = storedSignedBlock (E.store cfg ext w n) child := by
-      cases sb with
-      | mk message root =>
-          simp only at hroot hmessage ⊢
-          subst root
-          simp only [storedSignedBlock]
-          rw [hmessage]
-    rwa [← heq]
 
 
 /-- One executable state-transition edge, viewed through the exact FFG store
@@ -174,90 +152,11 @@ def ProjectedSameEpochTransition
 
 namespace ProjectedSameEpochTransition
 
-/-- Recover an explicit projected edge at an arbitrary later reachable view
-from the narrow replay-history contract.  Scheduled-message provenance and
-the FFG store projection remain derived trajectory theorems. -/
-theorem of_history
-    (hhistory : BlockStateTransitionHistory cfg ext E)
-    (hcoh : FFGTransitionCoherence cfg ext S)
-    {w : ValidatorIndex} (hw : w ∈ E.honest) {n : ℕ}
-    (hH : E.WithinHorizon cfg n)
-    {child : Root}
-    (hchild : child ∈ (E.store cfg ext w n).block_roots)
-    (hnongenesis : child ∉ E.genesis_store.block_roots)
-    (hcore : WellFormedStoreCore (E.store cfg ext w n))
-    (hsame : compute_epoch_at_slot cfg
-        ((E.store cfg ext w n).blocks
-          ((E.store cfg ext w n).blocks child).parent_root).slot =
-      compute_epoch_at_slot cfg
-        ((E.store cfg ext w n).blocks child).slot) :
-    ProjectedSameEpochTransition cfg ext E S
-      ((E.store cfg ext w n).blocks child).parent_root child := by
-  let store := E.store cfg ext w n
-  let parent := (store.blocks child).parent_root
-  have hreplay := hhistory.replay w hw n hH child hchild hnongenesis
-  change parent ∈ store.block_roots ∧
-    ext.state_transition (store.block_states parent)
-      (storedSignedBlock store child) = some (store.block_states child) at hreplay
-  have hscheduled : ∃ w' n',
-      Event.block (storedSignedBlock store child) ∈ E.schedule w' n' := by
-    exact E.storedSignedBlock_scheduled (cfg := cfg) (ext := ext)
-      w n hchild hnongenesis
-  refine ⟨store, E.ffgStoreProjection hcoh w n,
-    storedSignedBlock store child, rfl, rfl, hreplay.1, hscheduled,
-    store.block_states child, hreplay.2, ?_⟩
-  rw [hcore.2 parent hreplay.1]
-  exact hsame
 
 
-/-- The new phase0 contract turns one explicit same-epoch transition into the
-corresponding `GJ` source equality.  Projection and transition coherence are
-used only for their exact state-function equations. -/
-theorem gj_eq_parent
-    (hphase : Phase0SourceCoherence cfg ext)
-    (hcoh : FFGTransitionCoherence cfg ext S)
-    {parent child : Root}
-    (h : ProjectedSameEpochTransition cfg ext E S parent child) :
-    S.GJ child = S.GJ parent := by
-  rcases h with
-    ⟨store, hprojection, signed_block, hchild, hparent, hparentKnown,
-      hscheduled, post, htransition, hsame⟩
-  calc
-    S.GJ child = post.current_justified_checkpoint := by
-      rw [← hchild]
-      exact (hcoh.transition_gj _ _ _ hscheduled htransition).symm
-    _ = (store.block_states parent).current_justified_checkpoint :=
-      hphase.state_transition_current_justified _ _ _ htransition hsame
-    _ = S.GJ parent :=
-      hprojection.block_state_gj parent hparentKnown
 
 end ProjectedSameEpochTransition
 
-/-- Every known non-genesis same-epoch parent edge in a reachable honest view
-preserves `GJ`.  The result combines the replay-history contract with the
-separate phase0 same-epoch law; neither contract contains this conclusion. -/
-theorem Execution.known_same_epoch_parent_gj_eq
-    (hhistory : BlockStateTransitionHistory cfg ext E)
-    (hphase : Phase0SourceCoherence cfg ext)
-    (hcoh : FFGTransitionCoherence cfg ext S)
-    {w : ValidatorIndex} (hw : w ∈ E.honest) {n : ℕ}
-    (hH : E.WithinHorizon cfg n)
-    {child : Root}
-    (hchild : child ∈ (E.store cfg ext w n).block_roots)
-    (hnongenesis : child ∉ E.genesis_store.block_roots)
-    (hcore : WellFormedStoreCore (E.store cfg ext w n))
-    (hsame : compute_epoch_at_slot cfg
-        ((E.store cfg ext w n).blocks
-          ((E.store cfg ext w n).blocks child).parent_root).slot =
-      compute_epoch_at_slot cfg
-        ((E.store cfg ext w n).blocks child).slot) :
-    S.GJ child =
-      S.GJ ((E.store cfg ext w n).blocks child).parent_root := by
-  have hedge : ProjectedSameEpochTransition cfg ext E S
-      ((E.store cfg ext w n).blocks child).parent_root child :=
-    ProjectedSameEpochTransition.of_history (S := S) hhistory hcoh hw hH hchild
-      hnongenesis hcore hsame
-  exact hedge.gj_eq_parent hphase hcoh
 
 /-- Reflexive/transitive closure of explicit projected same-epoch transition
 edges.  This is the narrow block-state ancestry object needed for source
@@ -331,21 +230,6 @@ theorem honest_attestation_data_source_eq_head_state
   · exact hphase.process_slots_current_justified _ _ hlt hsame
   · rfl
 
-/-- Read the honest attestation's source as the exact block-local `GJ` value
-of its head.  Head knownness and the FFG projection are executable/reachable
-store facts; only preservation through `process_slots` uses the new contract. -/
-theorem honest_attestation_data_source_eq_gj
-    (hphase : Phase0SourceCoherence cfg ext)
-    {store : Store Root} {slot : Slot} {index : CommitteeIndex}
-    (hprojection : FFGStoreProjection cfg ext S store)
-    (hhead : (get_head cfg store).root ∈ store.block_roots)
-    (hsame : compute_epoch_at_slot cfg
-        (store.block_states (get_head cfg store).root).slot =
-      compute_epoch_at_slot cfg slot) :
-    (honest_attestation_data cfg ext store slot index).source =
-      S.GJ (get_head cfg store).root := by
-  rw [honest_attestation_data_source_eq_head_state hphase store slot index hsame]
-  exact hprojection.block_state_gj _ hhead
 
 
 

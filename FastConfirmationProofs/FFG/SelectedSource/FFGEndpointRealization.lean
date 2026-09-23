@@ -1,10 +1,12 @@
 module
 public import FastConfirmationProofs.FFG.State.ScheduledFFGStateTrajectory
 public import FastConfirmationProofs.FFG.SelectedSource.SelectedFFGRealization
-public import FastConfirmationProofs.FFG.Certificates.PaperCheckpointInclusionStoreProjection
+public import FastConfirmationProofs.FFG.Certificates.PaperCheckpointInclusionProjectionCore
+public import FastConfirmationProofs.Safety.BlockAgreement
+public import FastConfirmationProofs.Checkpoints.ExecutionRootReflection
+public import FastConfirmationProofs.ModelFacts
 public import FastConfirmationProofs.FCRRule.MinimalSelectedDomain
 
-public import FastConfirmationProofs.ModelFacts
 @[expose] public section
 
 /-!
@@ -44,33 +46,8 @@ namespace ChainFFGState
 
 variable {E : Execution Root} {anchor : Checkpoint Root}
 
-/-- Every available/unrealized checkpoint has a concrete global certificate.
-The proof only forgets carrier-local block-body inclusion from the stronger
-certificate already stored in `FormedCheckpointEvidence`. -/
-theorem certifiedJustified_of_AU
-    (S : ChainFFGState cfg E anchor)
-    {tip : Root} {c : Checkpoint Root}
-    (hAU : S.AU cfg tip c) :
-    Nonempty (CertifiedJustified cfg E anchor c) := by
-  obtain ⟨carrier, _hdesc, hevidence⟩ :=
-    ChainFFGState.AU.evidence (cfg := cfg) S hAU
-  obtain ⟨hcertified⟩ := hevidence.certified
-  exact ⟨IncludedCertifiedJustified.toCertifiedJustified
-    (cfg := cfg) S.includedAttestations hcertified⟩
 
-/-- The realized selector is concretely certified. -/
-theorem gj_certified
-    (S : ChainFFGState cfg E anchor) (r : Root)
-    (hr : E.ExecutionRoot r) :
-    Nonempty (CertifiedJustified cfg E anchor (S.GJ r)) :=
-  S.certifiedJustified_of_AU cfg (S.gj_AU cfg r hr)
 
-/-- The eager/unrealized selector is concretely certified. -/
-theorem gu_certified
-    (S : ChainFFGState cfg E anchor) (r : Root)
-    (hr : E.ExecutionRoot r) :
-    Nonempty (CertifiedJustified cfg E anchor (S.GU r)) :=
-  S.certifiedJustified_of_AU cfg (S.gu_AU cfg r hr)
 
 end ChainFFGState
 

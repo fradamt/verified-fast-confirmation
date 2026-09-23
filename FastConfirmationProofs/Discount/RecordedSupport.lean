@@ -1,7 +1,7 @@
 module
 public import FastConfirmationProofs.ForkChoice.Head.HeadMembership
 public import FastConfirmationProofs.Execution.Delivery.Delivery
-public import FastConfirmationProofs.ForkChoice.Head.SupportTransport
+public import FastConfirmationProofs.ForkChoice.Ancestry.Forks
 public import FastConfirmationProofs.FFG.Certificates.QuorumAccounting
 
 @[expose] public section
@@ -59,24 +59,6 @@ store `(w, m)`'s balance source. -/
 
 /-! ## The `SupportTransport` bridge: `⪰ b` supports every chain child `c ≼ b` -/
 
-omit [Inhabited Root] in
-/-- A recorded latest message whose root descends from `b` (`lm.root ⪰ b`, the
-engine IH's conclusion) supports every chain child `c` of `b` (`c ≼ b`), via
-`SupportTransport.supporter_of_ancestor`. The `WalkKnown` witnesses pin both
-parent-walks down to `c`'s slot. -/
-theorem supports_of_ge_b {store : Store Root}
-    (hwf : ∀ r ∈ store.block_roots,
-      (store.blocks r).parent_root ∈ store.block_roots →
-        (store.blocks (store.blocks r).parent_root).slot < (store.blocks r).slot)
-    {b c : Root} {lm : LatestMessage Root}
-    (hwa : WalkKnown store (store.blocks c).slot lm.root)
-    (hwb : WalkKnown store (store.blocks c).slot b)
-    (hge : is_ancestor store (ForkChoiceNode.mk lm.root .pending) (ForkChoiceNode.mk b .pending) = true)
-    (hcb : is_ancestor store (ForkChoiceNode.mk b .pending) (ForkChoiceNode.mk c .pending) = true) :
-    is_ancestor store (get_supported_node store lm) (get_node_for_root c) = true := by
-  unfold get_supported_node
-  rw [is_ancestor_pending_root_eq store lm.root c _ .pending]
-  exact supporter_of_ancestor hwf hwa hwb hge hcb
 
 /-! ## Honest supporter membership at the later store -/
 

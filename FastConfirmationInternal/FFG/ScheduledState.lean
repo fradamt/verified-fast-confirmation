@@ -218,30 +218,8 @@ structure ChainFFGState (E : Execution Root)
 
 namespace ChainFFGState
 variable {E : Execution Root} {anchor : Checkpoint Root}
-/-- Inclusion somewhere on a concrete tip's ancestor chain. -/
-def IncludedOnChain (S : ChainFFGState cfg E anchor)
-    (tip : Root) (a : Attestation Root) : Prop :=
-  AttestationIncludedOnChain E S.includedAttestations.Included tip a
 
-/-- A validator has two slashable FFG attestations in block bodies on the
-chain of `tip`.  This is the paper's semantic offense predicate underlying
-`D_b`; it deliberately does not read the node-local gossip slashing cache. -/
-def HasSlashablePairOnChain (S : ChainFFGState cfg E anchor)
-    (tip : Root) (i : ValidatorIndex) : Prop :=
-  ∃ a₁ a₂ : Attestation Root,
-    S.IncludedOnChain cfg tip a₁ ∧
-    S.IncludedOnChain cfg tip a₂ ∧
-    i ∈ a₁.attesting_indices ∧
-    i ∈ a₂.attesting_indices ∧
-    is_slashable_attestation_data a₁.data a₂.data = true
 
-/-- `D_b`, derived rather than supplied: registry validators for which the
-actual attestation payload of `chain(b)` contains a slashable pair. -/
-noncomputable def slashableOnChain (S : ChainFFGState cfg E anchor)
-    (tip : Root) : Finset ValidatorIndex := by
-  classical
-  exact (Finset.range E.registry.length).filter
-    (S.HasSlashablePairOnChain cfg tip)
 
 /-- Available/unrealized checkpoint evidence inherited along a concrete
 execution chain. -/
@@ -391,25 +369,9 @@ structure HonestTargetQuorumBefore (E : Execution Root)
 namespace PaperA32StateView
 variable {E : Execution Root}
 end PaperA32StateView
-/-- Lossless A.3.2 projection of the migration-only scheduled-root state. -/
-def ChainFFGState.paperA32View
-    {E : Execution Root} {anchor : Checkpoint Root}
-    (S : ChainFFGState cfg E anchor) : PaperA32StateView cfg E where
-  BlockAt := E.BlockAt
-  attestationValidity := S.attestationValidity
-  includedAttestations := S.includedAttestations
-  formed := S.formed
-  C := S.C
-  GJ := S.GJ
-  GU := S.GU
-  checkpoint_epoch := S.checkpoint_epoch
 
 namespace ChainFFGState
 variable {E : Execution Root} {anchor : Checkpoint Root}
-/-- Migration-only alias for the generic paper voting-source selector. -/
-abbrev VSAt (S : ChainFFGState cfg E anchor) (store : Store Root)
-    (b : Root) (e : Epoch) : Checkpoint Root :=
-  if get_block_epoch cfg store b = e then S.GJ b else S.GU b
 
 end ChainFFGState
 namespace AcceptedChainFFGState
@@ -428,17 +390,7 @@ abbrev PaperA32LinkSupportAt
     w m b' source target
 
 end AcceptedChainFFGState
-/-- Support antecedent for the scheduled-root state. -/
-abbrev PaperA32SupportThroughoutEpoch
-    {E : Execution Root} {anchor : Checkpoint Root}
-    (S : ChainFFGState cfg E anchor) (b : Root) (e : Epoch) : Prop :=
-  PaperA32SupportThroughoutEpochCore cfg ext (S.paperA32View cfg) b e
 
-/-- Paper inclusion assumption for the scheduled-root state. -/
-abbrev PaperA32Inclusion
-    {E : Execution Root} {anchor : Checkpoint Root}
-    (S : ChainFFGState cfg E anchor) : Prop :=
-  PaperA32InclusionCore cfg ext (S.paperA32View cfg)
 
 end FastConfirmation.Spec
 

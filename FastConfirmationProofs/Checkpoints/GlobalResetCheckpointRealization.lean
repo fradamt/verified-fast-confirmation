@@ -72,39 +72,6 @@ structure ResetCheckpointRealizedAt
   certified : Nonempty (CertifiedJustified cfg E anchor c)
 
 
-/-- Realization is stable under growth along one node's execution-store
-trajectory. -/
-theorem ResetCheckpointRealizedAt.mono
-    (hA : SelectedMarginAssumptions cfg ext E)
-    {anchor c : Checkpoint Root} {v : ValidatorIndex} {n m : ℕ}
-    (hnm : n ≤ m)
-    (h : E.ResetCheckpointRealizedAt cfg anchor
-      (E.store cfg ext v n) c) :
-    E.ResetCheckpointRealizedAt cfg anchor (E.store cfg ext v m) c := by
-  have hsub : (E.store cfg ext v n).block_roots ⊆
-      (E.store cfg ext v m).block_roots :=
-    (E.store_storeLE cfg ext v hnm).1
-  have hknownM : c.root ∈ (E.store cfg ext v m).block_roots :=
-    hsub h.root_known
-  have hagree : (E.store cfg ext v n).blocks c.root =
-      (E.store cfg ext v m).blocks c.root :=
-    hA.wellFormed.blocks_agree
-      (E.blockProvenance cfg ext v n)
-      (E.blockProvenance cfg ext v m) h.root_known hknownM
-  have hcurrentMono :
-      get_current_store_epoch cfg (E.store cfg ext v n) ≤
-        get_current_store_epoch cfg (E.store cfg ext v m) := by
-    simp only [get_current_store_epoch, E.store_current_slot cfg ext,
-      compute_epoch_at_slot]
-    exact Nat.div_le_div_right (E.slot_at_mono cfg hnm)
-  exact {
-    root_known := hknownM
-    root_slot_le_boundary := by
-      rw [← hagree]
-      exact h.root_slot_le_boundary
-    epoch_le_current := h.epoch_le_current.trans hcurrentMono
-    certified := h.certified
-  }
 
 
 

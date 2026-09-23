@@ -90,19 +90,6 @@ def PreQuerySelectedJustifiedCompatibilityAt
         (get_node_for_root glc) = true
 
 
-/-- Strictly-newer endpoint-justification realization boundary.
-
-If the endpoint's justified epoch is newer than the query store's current
-epoch, the endpoint exposes a causal honest vote targeting that checkpoint.
-The interface is intentionally result-independent: it mentions neither
-`glc` nor any selected edge, so it cannot assume the desired branch result.
--/
-def EndpointJustificationCausalityAt
-    (q : ℕ) (query : FastConfirmationStore Root)
-    (w : ValidatorIndex) (m : ℕ) : Prop :=
-  get_current_store_epoch cfg query.store <
-      (E.store cfg ext w m).justified_checkpoint.epoch →
-    E.CausalHonestTargetAt cfg ext q w m
 
 
 /-- Causal-time version of checkpoint compatibility.

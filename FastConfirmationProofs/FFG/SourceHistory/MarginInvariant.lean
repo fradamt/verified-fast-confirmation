@@ -1,6 +1,12 @@
 module
 public import FastConfirmationProofs.Discount.GroundWeightTransport
-public import FastConfirmationProofs.ForkChoice.Head.ForkEdgeHeadSafety
+public import FastConfirmationProofs.Checkpoints.CheckpointMarginInputs
+public import FastConfirmationProofs.ForkChoice.Filter.AnchorFilterViability
+public import FastConfirmationProofs.Handlers.HandlerStepFacts
+public import FastConfirmationProofs.ForkChoice.Head.HeadStack
+public import FastConfirmationProofs.Execution.Trajectory.InductionHypothesis
+public import FastConfirmationProofs.Checkpoints.CheckpointEquivalence
+public import FastConfirmationProofs.Safety.ConfirmedPrefixSafety
 
 @[expose] public section
 
@@ -40,45 +46,6 @@ fields are exactly the inputs `GroundBeta.ledger_descendStep` consumes at window
 honest descent transports `hSt`/`hAt`, the invariant `hinv`, the filtered child `hchild`, the
 `b`-side lower bound `hbside`, and the `Bval` sibling upper bound `hsib`. -/
 
-/-- **The per-edge ground bundle** — the `hBb`-free store-dynamics inputs per confirmed
-edge `a ← c` at honest endpoint `(w, m)`, over the certificate window `[lo, σ]` at the
-confirming anchor `(vc, nc)`. Mirrors `ShellCompose.ForkEdgeEngineInputs` with the `INVstar`
-base and **no** `hBb`: the endpoint enemy is the store-independent `Bval(lo, σ)`, transported
-by the honest legs only. -/
-structure ForkEdgeGroundInputs (E : Execution Root) (w : ValidatorIndex) (m : ℕ)
-    (b h c : Root) (vc : ValidatorIndex) (nc : ℕ) (lo es σ : Slot) : Prop where
-  /-- forward `SupportsDesc` transport `(vc, nc) → (w, m)` at window end σ. -/
-  hSt : ∀ i, E.SupportsDesc cfg ext vc nc b σ i → E.SupportsDesc cfg ext w m b σ i
-  /-- forward `AncestorOrVoteless` transport `(vc, nc) → (w, m)` at window end σ. -/
-  hAt : ∀ i, E.AncestorOrVoteless cfg ext vc nc b σ i → E.AncestorOrVoteless cfg ext w m b σ i
-  /-- `INVstar` at the confirming anchor over `[lo, σ]` (boost = the endpoint proposer score);
-      the `hBb`-free base — the `Bval` enemy is store-independent. -/
-  hinv : E.INVstar cfg ext vc nc b lo es σ (get_proposer_score cfg (E.store cfg ext w m))
-  /-- the fork-choice child membership of `c` under `h` at the endpoint. -/
-  hchild : ForkChoiceNode.mk c .pending ∈ get_node_children (E.store cfg ext w m)
-    (get_filtered_block_tree cfg (E.store cfg ext w m))
-      (ForkChoiceNode.mk h
-        (get_parent_payload_status (E.store cfg ext w m)
-          ((E.store cfg ext w m).blocks c)))
-  /-- the pending-parent status contest selects the status of `c`. -/
-  hstatus : PendingStatusMargin cfg (E.store cfg ext w m)
-    (get_filtered_block_tree cfg (E.store cfg ext w m)) h
-    (get_parent_payload_status (E.store cfg ext w m)
-      ((E.store cfg ext w m).blocks c))
-  /-- the recorded `b`-side lower bound: `c`'s attestation score dominates `Sval(σ)`. -/
-  hbside : E.Sval cfg ext w m b lo σ ≤ get_attestation_score cfg (E.store cfg ext w m)
-    (get_node_for_root c)
-    ((E.store cfg ext w m).checkpoint_states (E.store cfg ext w m).justified_checkpoint)
-  /-- the recorded `Bval` sibling upper bound: every competing child scores `≤ Xval + Bval`. -/
-  hsib : ∀ c' : Root, ForkChoiceNode.mk c' .pending ∈ get_node_children (E.store cfg ext w m)
-      (get_filtered_block_tree cfg (E.store cfg ext w m))
-        (ForkChoiceNode.mk h
-          (get_parent_payload_status (E.store cfg ext w m)
-            ((E.store cfg ext w m).blocks c))) →
-    c' ≠ c →
-    get_attestation_score cfg (E.store cfg ext w m) (get_node_for_root c')
-        ((E.store cfg ext w m).checkpoint_states (E.store cfg ext w m).justified_checkpoint)
-      ≤ E.Xval cfg ext w m b lo σ + E.Bval lo σ
 
 
 

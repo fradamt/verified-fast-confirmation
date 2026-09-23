@@ -158,59 +158,8 @@ theorem get_head_aux_stays_below {store : Store Root} {blocks : List Root}
 
 /-! ## Following certified selections -/
 
-/-- Enough fuel follows every actual Gloas selection in a node path and
-then remains below the target's pending node. -/
-theorem get_head_descends_node {store : Store Root} {blocks : List Root}
-    (hwf : ∀ r ∈ store.block_roots,
-      (store.blocks r).parent_root ∈ store.block_roots →
-        (store.blocks (store.blocks r).parent_root).slot < (store.blocks r).slot)
-    (hsub : ∀ r ∈ blocks, r ∈ store.block_roots)
-    {b : Root} {n : ℕ} {head : ForkChoiceNode Root}
-    (hdesc : NodeDescendsTo cfg store blocks b n head) :
-    ∀ fuel, n ≤ fuel →
-      (get_ancestor store (get_head_aux cfg store blocks fuel head)
-        (store.blocks b).slot).root = b := by
-  induction hdesc with
-  | here status hb =>
-    intro fuel _
-    apply get_head_aux_stays_below cfg hwf hsub fuel (WalkKnown.stop hb (le_refl _))
-    rw [get_ancestor_stop_status (le_refl _)]
-  | @step n head best hbest hrec ih =>
-    intro fuel hfuel
-    cases fuel with
-    | zero => omega
-    | succ fuel =>
-      rw [get_head_aux_step cfg store blocks fuel head best hbest]
-      exact ih fuel (by omega)
 
-/-- A root path of `n` beacon edges needs at least `2 * n` node steps. The
-result is beacon-root equality; the final payload status can be resolved. -/
-theorem get_head_descends {store : Store Root} {blocks : List Root}
-    (hwf : ∀ r ∈ store.block_roots,
-      (store.blocks r).parent_root ∈ store.block_roots →
-        (store.blocks (store.blocks r).parent_root).slot < (store.blocks r).slot)
-    (hsub : ∀ r ∈ blocks, r ∈ store.block_roots) {b : Root} {n : ℕ} {h : Root}
-    (hdesc : DescendsTo cfg store blocks b n h) :
-    ∀ fuel, 2 * n ≤ fuel →
-      (get_ancestor store (get_head_aux cfg store blocks fuel (ForkChoiceNode.mk h .pending))
-        (store.blocks b).slot).root = b :=
-  get_head_descends_node cfg hwf hsub hdesc
 
-/-- Root-path head safety. The existing beacon-depth bound supplies twice as
-much node fuel through the Gloas head wrapper. -/
-theorem is_ancestor_get_head {store : Store Root}
-    (hwf : ∀ r ∈ store.block_roots,
-      (store.blocks r).parent_root ∈ store.block_roots →
-        (store.blocks (store.blocks r).parent_root).slot < (store.blocks r).slot)
-    (hsub : ∀ r ∈ get_filtered_block_tree cfg store, r ∈ store.block_roots)
-    {b : Root} {n : ℕ}
-    (hdesc : DescendsTo cfg store (get_filtered_block_tree cfg store) b n
-      store.justified_checkpoint.root)
-    (hfuel : n ≤ (get_filtered_block_tree cfg store).length + 1) :
-    is_ancestor store (get_head cfg store) (ForkChoiceNode.mk b .pending) = true := by
-  rw [is_ancestor_pending, decide_eq_true_eq]
-  exact get_head_descends cfg hwf hsub hdesc
-    (2 * (get_filtered_block_tree cfg store).length + 2) (by omega)
 
 end FastConfirmation.Spec
 

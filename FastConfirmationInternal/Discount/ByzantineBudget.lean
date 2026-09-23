@@ -44,30 +44,7 @@ def SpentSet (es σ : Slot) : Finset ValidatorIndex :=
 noncomputable def BbadVal (v₀ : ValidatorIndex) (n₀ : ℕ) (b' : Root) (lo es : Slot) : Gwei :=
   E.weight (E.BbadSet cfg ext v₀ n₀ b' lo es)
 
-/-- `Enemy(σ) := weight (BbadSet ∪ SpentSet σ)` — the v2 enemy as a **union** weight
-(`LedgerV2`, §9). A validator has one latest message, so the semantic enemy is a subset of
-the union; counting members **once** is what makes the capacity cap `D·Enemy ≤ C·J`
-derivable (`Enemy_capacity`) — the cross-epoch double-seat problem of the sum form
-vanishes. `Enemy ≤ Bbad + spent` (`Enemy_le_sum`) keeps the step's additive arrival
-accounting. -/
-noncomputable def Enemy (v₀ : ValidatorIndex) (n₀ : ℕ) (b' : Root) (lo es σ : Slot) : Gwei :=
-  E.weight (E.BbadSet cfg ext v₀ n₀ b' lo es ∪ E.SpentSet es σ)
 
-/-- **INV2** at window end `σ` (floored, `C := confirmation_byzantine_threshold`,
-`D := 100 − C`): the honest support `s(σ)` covers the sibling-stuck honest `x(σ)`,
-the v2 enemy `Enemy(σ) = Bbad + spent(σ)`, the boost margin, and a floored `min`
-reserve — the recurrence tax `⌊C·U(σ)/D⌋` on unrecurred base supporters and the
-remaining member capacity `⌊C·J(σ)/D⌋ − Enemy(σ)`. Mirrors v1's `INVstar` with
-`Bval` replaced by the smaller `Enemy` and the reserve floored. -/
-def INV2 (v₀ : ValidatorIndex) (n₀ : ℕ) (b' : Root) (lo es σ : Slot)
-    (boost : ℕ) : Prop :=
-  E.Xval cfg ext v₀ n₀ b' lo σ + E.Enemy cfg ext v₀ n₀ b' lo es σ + boost + 1
-      + min (cfg.confirmation_byzantine_threshold * E.Uval cfg ext v₀ n₀ b' lo es σ
-              / (100 - cfg.confirmation_byzantine_threshold))
-          (cfg.confirmation_byzantine_threshold * E.Jspec lo σ
-              / (100 - cfg.confirmation_byzantine_threshold)
-            - E.Enemy cfg ext v₀ n₀ b' lo es σ)
-    ≤ E.Sval cfg ext v₀ n₀ b' lo σ
 
 end Execution
 

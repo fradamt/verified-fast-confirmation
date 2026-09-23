@@ -1,7 +1,7 @@
 module
 public import FastConfirmationProofs.FFG.CurrentTarget.HonestVoteTargetCache
 public import FastConfirmationProofs.Checkpoints.GlobalResetCheckpointRealization
-public import FastConfirmationProofs.FFG.SelectedSource.FFGSelectedDomainRealization
+public import FastConfirmationProofs.FFG.State.ScheduledFFGGlobalCheckpointTrajectory
 public import FastConfirmationProofs.FFG.Certificates.FFGAccountability
 public import FastConfirmationProofs.Checkpoints.ExactCheckpointLinks
 public import FastConfirmationProofs.FFG.SelectedSource.SelectedTraceFFGRealization

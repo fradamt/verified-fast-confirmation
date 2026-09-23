@@ -2,7 +2,7 @@ module
 public import FastConfirmationProofs.FFG.CurrentTarget.CurrentTargetCheckpointInclusionSupport
 public import FastConfirmationProofs.FFG.CurrentTarget.HonestVoteTargetCache
 public import FastConfirmationProofs.Checkpoints.GlobalResetCheckpointRealization
-public import FastConfirmationProofs.FFG.SelectedSource.FFGSelectedDomainRealization
+public import FastConfirmationProofs.FFG.State.ScheduledFFGGlobalCheckpointTrajectory
 public import FastConfirmationProofs.FFG.Certificates.FFGAccountability
 public import FastConfirmationProofs.Checkpoints.ExactCheckpointLinks
 public import FastConfirmationProofs.FFG.SelectedSource.SelectedTraceFFGRealization
@@ -319,33 +319,6 @@ theorem paperA32SupportThroughoutEpochCore_of_concreteQuorum
   rw [← hsourceView]
   exact hsupport
 
-/-- Full-epoch concrete-quorum support specialized to the scheduled-root state. -/
-theorem paperA32SupportThroughoutEpoch_of_concreteQuorum
-    (hwf : WellFormedExecution E)
-    (hhb : HonestBehavior cfg ext E)
-    (hsync : NextSlotSynchronyPremises cfg ext E)
-    (hec : BeaconExternalsPremises cfg ext E)
-    (hdiv : 1000 ∣ cfg.slot_duration_ms)
-    (hgen : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
-      E.genesis_store = get_forkchoice_store cfg ast ablk ∧
-      ast.slot = ablk.message.slot ∧
-      ablk.message.parent_root ≠ ablk.root)
-    (hwalkDomain : E.PostAnchorHonestVoteTargetWalkDomain cfg ext)
-    {anchor : Checkpoint Root} {S : ChainFFGState cfg E anchor}
-    {v : ValidatorIndex} (hv : v ∈ E.honest) {q : ℕ}
-    (hqH : E.WithinHorizon cfg q)
-    {b : Root} {e : Epoch}
-    (hbQuery : b ∈ (E.store cfg ext v q).block_roots)
-    (hbEpochQuery : get_block_epoch cfg (E.store cfg ext v q) b = e)
-    (hcanonical : E.CanonicalThroughoutEpoch cfg ext b (e + 1))
-    (Q : ConcreteA32QuorumBefore cfg ext E
-      (compute_start_slot_at_epoch cfg (e + 1)) (S.C b e))
-    (hsourceQuery : Q.source =
-      S.VSAt cfg (E.store cfg ext v q) b e) :
-    PaperA32SupportThroughoutEpoch cfg ext S b e :=
-  E.paperA32SupportThroughoutEpochCore_of_concreteQuorum cfg ext
-    hwf hhb hsync hec hdiv hgen hwalkDomain hv hqH hbQuery
-    hbEpochQuery hcanonical Q hsourceQuery
 
 /-- Accepted-state realization of the full source-specific A.3.2 support
 antecedent.  It shares the generic proof and introduces no legacy state. -/

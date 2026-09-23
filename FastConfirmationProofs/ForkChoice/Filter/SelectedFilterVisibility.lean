@@ -110,58 +110,9 @@ theorem CurrentTargetSelectedEdge.current_target_gate
   exact (mem_findLatestSelectedTrace_tentative cfg ext fcrStore
     latestConfirmedRoot a c h.1).2 h.2
 
-/-- Every crossing tentative edge also passed `is_one_confirmed`. -/
-theorem CurrentTargetSelectedEdge.one_confirmed
-    {fcrStore : FastConfirmationStore Root} {latestConfirmedRoot a c : Root}
-    (h : CurrentTargetSelectedEdge cfg ext fcrStore latestConfirmedRoot a c) :
-    is_one_confirmed cfg ext fcrStore.store
-      (get_current_balance_source fcrStore) c = true := by
-  exact (mem_findLatestSelectedTrace_tentative cfg ext fcrStore
-    latestConfirmedRoot a c h.1).1
 
 
-/-- The totalized checkpoint map cannot make an accepted crossing edge pass
-confirmation through an out-of-domain balance source.  At an actual execution
-store, the current observed checkpoint used by the call is necessarily keyed.
 
-This is the strongest handler-level checkpoint provenance presently derivable:
-it proves dictionary membership, but not that the keyed checkpoint was
-eventually justified or certified. -/
-theorem CurrentTargetSelectedEdge.current_balance_checkpoint_key
-    {E : Execution Root}
-    (hgen : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
-      E.genesis_store = get_forkchoice_store cfg ast ablk)
-    {v : ValidatorIndex} {n : ℕ}
-    {fcrStore : FastConfirmationStore Root} {latestConfirmedRoot a c : Root}
-    (hstore : fcrStore.store = E.store cfg ext v n)
-    (h : CurrentTargetSelectedEdge cfg ext fcrStore latestConfirmedRoot a c) :
-    fcrStore.current_epoch_observed_justified_checkpoint ∈
-      fcrStore.store.checkpoint_state_keys := by
-  have hconf := h.one_confirmed cfg ext
-  have hkey := E.checkpoint_state_key_of_one_confirmed cfg ext hgen v n
-    fcrStore.current_epoch_observed_justified_checkpoint c
-  rw [← hstore] at hkey
-  apply hkey
-  simpa only [get_current_balance_source] using hconf
-
-/-- The exact-domain conclusion for an edge in the full wrapper's retained
-previous trace. -/
-theorem PreviousEpochSelectedEdge.current_balance_checkpoint_key
-    {E : Execution Root}
-    (hgen : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
-      E.genesis_store = get_forkchoice_store cfg ast ablk)
-    {v : ValidatorIndex} {n : ℕ}
-    {fcrStore : FastConfirmationStore Root} {latestConfirmedRoot a c : Root}
-    (hstore : fcrStore.store = E.store cfg ext v n)
-    (h : PreviousEpochSelectedEdge cfg ext fcrStore latestConfirmedRoot a c) :
-    fcrStore.current_epoch_observed_justified_checkpoint ∈
-      fcrStore.store.checkpoint_state_keys := by
-  have hconf := (h.gates cfg ext).2.2.1
-  have hkey := E.checkpoint_state_key_of_one_confirmed cfg ext hgen v n
-    fcrStore.current_epoch_observed_justified_checkpoint c
-  rw [← hstore] at hkey
-  apply hkey
-  simpa only [get_current_balance_source] using hconf
 
 
 
@@ -211,16 +162,6 @@ theorem CertifiedJustified.descends_anchor
   | link _ link ih =>
       exact Execution.RootDescends.trans E link.target_descends_source ih
 
-/-- Concrete finalized-prefix from the narrow accountability record. -/
-theorem CertificateAccountability.finalized_prefix
-    {E : Execution Root} {anchor finalized justified : Checkpoint Root}
-    (hacc : CertificateAccountability cfg E anchor)
-    (hf : CertifiedFinalized cfg E anchor finalized)
-    (hj : CertifiedJustified cfg E anchor justified)
-    (hepoch : finalized.epoch ≤ justified.epoch) :
-    E.RootDescends justified.root finalized.root :=
-  CertifiedFinalized.prefix_of_accountable cfg hacc.justified_unique
-    hacc.links_not_surround hf hj hepoch
 
 /-- Build the narrow accountability record from the concrete economic,
 committee, no-forgery, and honest-slashing assumptions proved sufficient in
@@ -278,37 +219,6 @@ def TipSourceFresh (store : Store Root) (tip : Root) : Prop :=
 
 namespace ChainDown
 
-omit [Inhabited Root] in
-/-- Every member of a `ChainDown` list is known and descends from its top.
-This is the ancestry fact implicit in the list representation; exposing it
-here avoids asking the FFG pipeline to supply a duplicate chain-placement
-premise. -/
-theorem mem_known_descends {store : Store Root}
-    (hwf : ∀ r ∈ store.block_roots,
-      (store.blocks r).parent_root ∈ store.block_roots →
-        (store.blocks (store.blocks r).parent_root).slot < (store.blocks r).slot)
-    (hwalk : ∀ t ∈ store.block_roots, ∀ r ∈ store.block_roots,
-      WalkKnown store (store.blocks t).slot r) :
-    ∀ {top : Root} {roots : List Root}, ChainDown store top roots →
-      top ∈ store.block_roots →
-      ∀ r ∈ roots, r ∈ store.block_roots ∧
-        is_ancestor store (get_node_for_root r) (get_node_for_root top) = true := by
-  intro top roots hchain htop r hr
-  induction roots generalizing top with
-  | nil => simp at hr
-  | cons c rest ih =>
-      simp only [ChainDown] at hchain
-      obtain ⟨⟨hcmem, hcparent⟩, hrest⟩ := hchain
-      have hc_top : is_ancestor store (get_node_for_root c)
-          (get_node_for_root top) = true :=
-        is_ancestor_of_parent hwf hcmem htop hcparent
-      rw [List.mem_cons] at hr
-      rcases hr with rfl | hr
-      · exact ⟨hcmem, hc_top⟩
-      · obtain ⟨hrmem, hr_c⟩ := ih hrest hcmem hr
-        exact ⟨hrmem, is_ancestor_trans (a := get_node_for_root r) (b := get_node_for_root c)
-            (c := get_node_for_root top) hwf
-          (hwalk top htop r hrmem) (hwalk top htop c hcmem) hr_c hc_top⟩
 
 end ChainDown
 
@@ -424,74 +334,11 @@ is intentionally not covered here.
 
 /-! ## Mechanical assembly -/
 
-/-- The concrete certificate pipeline proves the finalized leaf check at a
-selected-branch tip.  The proof first derives finalized-prefix from concrete
-accountability, realizes that prefix at the endpoint's justified root, then
-transports the checkpoint-boundary equality down the selected branch. -/
-theorem EndpointFFGPipeline.finalized_ok_of_tip
-    {E : Execution Root} {anchor : Checkpoint Root}
-    {store : Store Root} {c : Root}
-    (hacc : CertificateAccountability cfg E anchor)
-    (hpipe : EndpointFFGPipeline cfg E anchor store)
-    (hskel : FilterTipSkeleton cfg store c) :
-    store.finalized_checkpoint.epoch = GENESIS_EPOCH ∨
-      store.finalized_checkpoint.root =
-        get_checkpoint_block cfg store hskel.tip
-          store.finalized_checkpoint.epoch := by
-  by_cases hgen : store.finalized_checkpoint.epoch = GENESIS_EPOCH
-  · exact Or.inl hgen
-  right
-  have hprefix : E.RootDescends store.justified_checkpoint.root
-      store.finalized_checkpoint.root := by
-    obtain ⟨hj⟩ := hpipe.justified_certificate
-    rcases hpipe.finalized_evidence with hgen' | htrusted | hcertified
-    · exact False.elim (hgen hgen')
-    · rw [htrusted]
-      exact hj.descends_anchor cfg
-    · obtain ⟨hf⟩ := hcertified
-      exact hacc.finalized_prefix cfg hf hj hpipe.finalized_epoch_le_justified
-  have hbase := hpipe.certified_prefix_checkpoint hgen hprefix
-  have htip_descends := (ChainDown.mem_known_descends hskel.parent_slot_lt
-    hskel.walk_known hskel.chain hpipe.justified_root_known hskel.tip
-      (by simp)).2
-  exact finalized_check_of_ancestor cfg hskel.parent_slot_lt htip_descends
-    hpipe.finalized_boundary_le_justified_slot hskel.finalized_walk_known hbase
-
-/-- Full filter-tip certificate from the exact endpoint FFG contract and a
-call-site voting-source freshness witness.  No global justified ancestry,
-head-descent, or cross-store finalized-descent premise occurs. -/
-def filterTipCertificate_of_pipeline
-    {E : Execution Root} {anchor : Checkpoint Root}
-    {store : Store Root} {c : Root}
-    (hacc : CertificateAccountability cfg E anchor)
-    (hpipe : EndpointFFGPipeline cfg E anchor store)
-    (hskel : FilterTipSkeleton cfg store c)
-    (hsource : TipSourceFresh cfg store hskel.tip) :
-    FilterTipCertificate cfg store c where
-  mids := hskel.mids
-  tip := hskel.tip
-  chain := hskel.chain
-  child_on_chain := hskel.child_on_chain
-  tip_is_leaf := hskel.tip_is_leaf
-  parent_slot_lt := hskel.parent_slot_lt
-  justified_ok := hsource
-  finalized_ok := hpipe.finalized_ok_of_tip cfg hacc hskel
 
 
 
 
-omit [Inhabited Root] in
-/-- Eliminate the call-site existential certificate directly into the
-`child_filtered` proposition consumed by the selected-margin producer. -/
-theorem child_filtered_of_filterTipCertificate_nonempty
-    {store : Store Root} {a c : Root}
-    (h : Nonempty (FilterTipCertificate cfg store c))
-    (hparent : (store.blocks c).parent_root = a) :
-    ForkChoiceNode.mk c .pending ∈
-      get_node_children store (get_filtered_block_tree cfg store)
-        (ForkChoiceNode.mk a (get_parent_payload_status store (store.blocks c))) := by
-  obtain ⟨hcert⟩ := h
-  exact hcert.child_filtered cfg hparent
+
 
 end FastConfirmation.Spec
 

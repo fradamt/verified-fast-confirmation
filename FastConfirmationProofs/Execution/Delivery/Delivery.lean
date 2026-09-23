@@ -1164,35 +1164,6 @@ attestation `a'` naming `v`; `no_forgery` pins `a'.data` to `v`'s own vote for
 forces `a'.data.slot = s`; `E.vote` functionality then identifies that vote with
 the given `a`, so `a'.data.beacon_block_root = a.data.beacon_block_root`. -/
 
-/-- **Exact-message identification.** If honest `v` votes `a` for slot `s`, and
-at honest-or-Byzantine node `w`, second `m`, the recorded latest message `msg`
-for `v` sits in slot `s`'s epoch (`compute_epoch_at_slot cfg s = (get_latest_message_epoch cfg msg)`),
-then `msg`'s LMD root is exactly `a`'s LMD block. Works for any vote `a`; the
-epoch premise is phrased on the vote slot (for an honest vote it equals the FFG
-target epoch under the head-slot bound). -/
-theorem Execution.latest_message_root {E : Execution Root}
-    (hhb : HonestBehavior cfg ext E) (hec : BeaconExternalsPremises cfg ext E)
-    (hgen : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
-      E.genesis_store = get_forkchoice_store cfg ast ablk)
-    {v w : ValidatorIndex} (hv : v ∈ E.honest)
-    {s : Slot} {k : ℕ} {a : Attestation Root} (hvote : E.vote v s = some (k, a))
-    {m : ℕ} {msg : LatestMessage Root}
-    (hmsg : (E.store cfg ext w m).latest_messages v = some msg)
-    (hepoch : compute_epoch_at_slot cfg s = (get_latest_message_epoch cfg msg)) :
-    msg.root = a.data.beacon_block_root := by
-  obtain ⟨a', u, t, ifb, hsched, hvin, hbbr, hslotep⟩ :=
-    E.schedLMProv cfg ext hgen w m v msg hmsg
-  obtain ⟨m1, a'', hvote', hdata'⟩ := hhb.no_forgery u t a' ifb hsched v hv hvin
-  have hcs : v ∈ E.committee a'.data.slot :=
-    hhb.votes_assigned v hv a'.data.slot (by rw [hvote']; exact Option.some_ne_none _)
-  have hcs' : v ∈ E.committee s :=
-    hhb.votes_assigned v hv s (by rw [hvote]; exact Option.some_ne_none _)
-  have hslot_eq : a'.data.slot = s :=
-    hec.committee_assignment_unique v a'.data.slot s hcs hcs' (by rw [hslotep, hepoch])
-  rw [hslot_eq, hvote] at hvote'
-  simp only [Option.some.injEq, Prod.mk.injEq] at hvote'
-  obtain ⟨-, haa⟩ := hvote'
-  rw [← hbbr, hdata', haa]
 
 
 /-! ## Exact recorded message, including the payload bit -/

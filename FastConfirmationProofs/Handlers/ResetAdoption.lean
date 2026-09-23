@@ -271,24 +271,6 @@ theorem finalizedReset_epoch_le_remoteJustified_nextSlot
 
 /-! ## The observed seam is a narrow source-lock law -/
 
-/-- Minimal protocol-facing source-lock for an active observed restart.
-
-The guard scopes the law to the branch which actually replaces the carried
-root.  The epoch premise scopes it further to the endpoint-adopted branch;
-when the endpoint justified epoch still lags, the filter/LMD branch is the
-appropriate consumer.  The conclusion is only semantic checkpoint descent,
-which ordinary execution reflection can turn into concrete store ancestry.
-
-Knownness, `JustifiedIn`, and ordinary certificate accountability do not imply
-this cross-carrier descent.  The accepted selector record therefore states the
-required source-lock law explicitly. -/
-def ObservedRestartJustifiedSourceLockAt
-    (query : FastConfirmationStore Root) (endpoint : Store Root) : Prop :=
-  ObservedRestartCompatible cfg query →
-    query.current_epoch_observed_justified_checkpoint.epoch ≤
-      endpoint.justified_checkpoint.epoch →
-    E.RootDescends endpoint.justified_checkpoint.root
-      query.current_epoch_observed_justified_checkpoint.root
 
 end Execution
 

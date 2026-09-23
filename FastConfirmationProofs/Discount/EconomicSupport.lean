@@ -1,5 +1,5 @@
 module
-public import FastConfirmationProofs.ForkChoice.Head.AheadHeadDominance
+public import FastConfirmationProofs.ForkChoice.Filter.AnchorFilterViability
 public import FastConfirmationProofs.Handlers.HandlerStepFacts
 public import FastConfirmationProofs.ForkChoice.Head.HeadStack
 public import FastConfirmationProofs.Discount.HonestWeight
