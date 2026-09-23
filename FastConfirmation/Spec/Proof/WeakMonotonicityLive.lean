@@ -136,6 +136,77 @@ private theorem support_loss_can_destroy_weak_margin :
       ¬ (window + boost + 2 * adversarial < 2 * newScore) := by
   refine ⟨100, 0, 25, 76, 75, 1, rfl, ?_, ?_⟩ <;> decide
 
+/-- With no recorded equivocation, the weak and strong adversarial budgets
+are equal on every slot span. -/
+theorem adversarial_weight_eq_of_no_equivocations
+    (store : Store Root) (source : BeaconState Root) (a b : Slot)
+    (hno : store.equivocating_indices = ∅) :
+    Weak.compute_adversarial_weight cfg store source a b =
+      FastConfirmation.Spec.compute_adversarial_weight cfg ext store source a b := by
+  simp only [Weak.compute_adversarial_weight,
+    FastConfirmation.Spec.compute_adversarial_weight,
+    FastConfirmation.Spec.get_equivocation_score, hno, Finset.inter_empty,
+    Finset.filter_empty, Finset.sum_empty, Nat.sub_zero]
+  by_cases hpos : 0 < estimate_committee_weight_between_slots cfg
+      (get_total_active_balance cfg source) a b / 100 *
+        cfg.confirmation_byzantine_threshold
+  · simp [hpos]
+  · have hz := Nat.eq_zero_of_not_pos hpos
+    simp [hz]
+
+/-- If every recorded cell passes the duty filter, the weak and strong LMD
+scores agree on this store and block node. -/
+theorem attestation_score_eq_of_all_fresh
+    (store : Store Root) (source : BeaconState Root)
+    (node : ForkChoiceNode Root)
+    (hfresh : ∀ i lm, store.latest_messages i = some lm →
+      Weak.is_duty_fresh_message cfg ext store i lm = true) :
+    Weak.get_duty_fresh_attestation_score cfg ext store node source =
+      FastConfirmation.Spec.get_attestation_score cfg store node source := by
+  simp only [Weak.get_duty_fresh_attestation_score,
+    FastConfirmation.Spec.get_attestation_score]
+  congr 1
+  congr 1
+  apply List.filter_congr
+  intro i hi
+  cases hmsg : store.latest_messages i with
+  | none => simp [hmsg]
+  | some lm => simp [hmsg, hfresh i lm hmsg]
+
+/-- At a consecutive child, zero equivocation and duty freshness make the
+weak and strong one-block checks agree. This is the conversion needed after
+the strong numerical reconfirmation core. -/
+theorem one_confirmed_of_strong_of_no_equiv_all_fresh_consecutive
+    (store : Store Root) (source : BeaconState Root) (b : Root)
+    (hno : store.equivocating_indices = ∅)
+    (hfresh : ∀ i lm, store.latest_messages i = some lm →
+      Weak.is_duty_fresh_message cfg ext store i lm = true)
+    (hparent : (store.blocks (store.blocks b).parent_root).slot + 1 =
+      (store.blocks b).slot)
+    (hstrong : FastConfirmation.Spec.is_one_confirmed cfg ext store source b = true) :
+    Weak.is_one_confirmed cfg ext store source b = true := by
+  have hscore := attestation_score_eq_of_all_fresh cfg ext store source
+    (get_node_for_root b) hfresh
+  have hadv : Weak.get_adversarial_weight cfg store source b =
+      FastConfirmation.Spec.get_adversarial_weight cfg ext store source b := by
+    unfold Weak.get_adversarial_weight FastConfirmation.Spec.get_adversarial_weight
+    dsimp only
+    split_ifs <;> exact adversarial_weight_eq_of_no_equivocations cfg ext
+      store source _ _ hno
+  have hweakDiscount : Weak.get_support_discount cfg ext store source b = 0 :=
+    support_discount_zero_of_consecutive cfg ext store source b hparent
+  have hstrongDiscount : FastConfirmation.Spec.get_support_discount cfg ext
+      store source b = 0 := by
+    simp [FastConfirmation.Spec.get_support_discount,
+      FastConfirmation.Spec.compute_empty_slot_support_discount, hparent]
+  have hthreshold : Weak.compute_safety_threshold cfg ext store b source =
+      FastConfirmation.Spec.compute_safety_threshold cfg ext store b source := by
+    simp only [Weak.compute_safety_threshold,
+      FastConfirmation.Spec.compute_safety_threshold, hweakDiscount,
+      hstrongDiscount, hadv]
+  simpa only [Weak.is_one_confirmed, FastConfirmation.Spec.is_one_confirmed,
+    hscore, hthreshold] using hstrong
+
 end FastConfirmation.Spec.Weak
 
 end
