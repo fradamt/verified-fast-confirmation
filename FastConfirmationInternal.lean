@@ -8,4 +8,9 @@ public import FastConfirmationInternal.Discount.SupportClasses
 public import FastConfirmationInternal.FCRRule.SelectedMargin
 public import FastConfirmationInternal.FCRRule.SelectedParentTrace
 
+public import FastConfirmationInternal.Legacy.ScheduledCertificates
+public import FastConfirmationInternal.Legacy.ScheduledCheckpointLinks
+public import FastConfirmationInternal.Legacy.ScheduledFFGState
+public import FastConfirmationInternal.Legacy.SynchronyConversion
+
 /-! Contents of the Internal library. -/

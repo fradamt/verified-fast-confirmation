@@ -146,7 +146,6 @@ variable {E : Execution Root} {anchor : Checkpoint Root}
 namespace FFGGlobalCheckpointOrigins
 variable {cfg : Config} {ext : Externals Root}
 variable {E : Execution Root} {anchor : Checkpoint Root}
-variable {S : ChainFFGState cfg E anchor}
 end FFGGlobalCheckpointOrigins
 namespace Execution
 variable (E : Execution Root)
@@ -162,7 +161,6 @@ end Execution
 namespace FFGGlobalCheckpointLedger
 variable {cfg : Config} {ext : Externals Root}
 variable {E : Execution Root} {anchor : Checkpoint Root}
-variable {S : ChainFFGState cfg E anchor}
 end FFGGlobalCheckpointLedger
 namespace Execution
 variable (E : Execution Root)

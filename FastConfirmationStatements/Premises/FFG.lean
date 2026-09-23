@@ -95,7 +95,6 @@ structure Phase0SourceCoherence (cfg : Config) (ext : Externals Root) : Prop whe
         pre.current_justified_checkpoint
 
 variable {E : Execution Root} {anchor : Checkpoint Root}
-variable {S : ChainFFGState cfg E anchor}
 namespace ProjectedSameEpochTransition
 end ProjectedSameEpochTransition
 namespace ProjectedSameEpochSegment
