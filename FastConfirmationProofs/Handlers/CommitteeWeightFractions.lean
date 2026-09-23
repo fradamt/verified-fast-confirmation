@@ -2,15 +2,16 @@ module
 public import FastConfirmationProofs.Execution.Delivery.Registry
 public import Mathlib.Algebra.Order.BigOperators.Group.Finset
 public import Mathlib.Tactic
+public import FastConfirmationInternal.Discount.CommitteeWeight
 
 @[expose] public section
 
 /-!
 # Spec / Proof / Fraction
 
-Defines honest committee fractions and proves their span-weight identities.
+Proves honest committee span-weight identities using the `Jspec` accessor in Internal.
 
-This module contains `Jspec`, `span_committee_mono`, `weight_split_honest` and related declarations.
+This module contains `span_committee_mono`, `weight_split_honest` and related lemmas.
 -/
 
 namespace FastConfirmation.Spec
@@ -23,12 +24,6 @@ namespace Execution
 variable (E : Execution Root)
 
 /-! ## Section 1 — the ground-truth fraction quantities -/
-
-/-- `J_b`: honest committee-union weight over the slot span `[a, b]` (paper `J`,
-`Weights.lean`). -/
-def Jspec (a b : Slot) : Gwei :=
-  E.weight ((E.span_committee a b).filter (fun i => i ∈ E.honest))
-
 
 omit [LinearOrder Root] [Inhabited Root] in
 /-- The span committee grows with the upper slot (paper `committeeUnion_mono`). -/

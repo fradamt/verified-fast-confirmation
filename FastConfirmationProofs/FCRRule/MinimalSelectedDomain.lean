@@ -1,11 +1,15 @@
 module
 public import FastConfirmationProofs.Checkpoints.AnchorChainSafety
 public import FastConfirmationProofs.Execution.Delivery.MarginProducer
+public import FastConfirmationInternal.FCRRule.SelectedMargin
 
 @[expose] public section
 
 /-!
 # Minimal coherence domain for strict selected-result safety
+
+The strict selected-result theorems use the two-field selected margin domain
+defined in `FastConfirmationInternal.FCRRule.SelectedMargin`.
 
 The exact `find_latest_confirmed_descendant` path does not consume the broad
 Casper/LMD conclusions bundled by `JustificationInterface`.  Its local
@@ -16,7 +20,7 @@ fork-choice plumbing needs only two model-coherence facts:
 * the store's justified checkpoint state is cached (so endpoint score reads
   use the actual validator registry).
 
-This module re-exposes the strict selected-result path over precisely that
+This module proves the strict selected-result path over precisely that
 two-field domain plus the lower execution, behavior, synchrony, and economic
 assumptions.  The legacy `SpecAssumptions` theorems remain unchanged.
 -/
@@ -26,33 +30,6 @@ namespace FastConfirmation.Spec
 variable {Root : Type*} [LinearOrder Root] [Inhabited Root]
 variable (cfg : Config) (ext : Externals Root)
 
-/-- The two local domain facts used by the strict selected-result proof. -/
-structure SelectedMarginDomain (E : Execution Root) : Prop where
-  justified_root_known : ∀ w ∈ E.honest, ∀ m : ℕ,
-    E.WithinHorizon cfg m →
-    (E.store cfg ext w m).justified_checkpoint.root ∈
-      (E.store cfg ext w m).block_roots
-  justified_checkpoint_cached : ∀ w ∈ E.honest, ∀ m : ℕ,
-    E.WithinHorizon cfg m →
-    (E.store cfg ext w m).justified_checkpoint ∈
-      (E.store cfg ext w m).checkpoint_state_keys
-
-/-- The lower protocol assumptions used by the selected-margin proof, with
-`JustificationInterface` replaced by `SelectedMarginDomain`. -/
-structure SelectedMarginAssumptions (E : Execution Root) : Prop where
-  genesis : ∃ (anchor_state : BeaconState Root) (anchor_block : SignedBeaconBlock Root),
-    E.genesis_store = get_forkchoice_store cfg anchor_state anchor_block ∧
-    anchor_state.slot = anchor_block.message.slot ∧
-    anchor_block.message.parent_root ≠ anchor_block.root
-  wellFormed : WellFormedExecution E
-  whole_seconds : 1000 ∣ cfg.slot_duration_ms
-  honest_behavior : HonestBehavior cfg ext E
-  synchrony : PaperSafetySynchrony cfg ext E
-  externals_coherence : ExternalsCoherence cfg ext E
-  static_validators : StaticValidatorSet cfg E
-  byzantine_bound : ByzantineBound cfg E
-  domain : SelectedMarginDomain cfg ext E
-
 /-- The registry seed only needs the store-equality component of the trusted
 genesis initialization. -/
 theorem SelectedMarginAssumptions.genesis_store
@@ -61,11 +38,6 @@ theorem SelectedMarginAssumptions.genesis_store
       E.genesis_store = get_forkchoice_store cfg anchor_state anchor_block := by
   obtain ⟨anchor_state, anchor_block, hstore, _, _⟩ := hA.genesis
   exact ⟨anchor_state, anchor_block, hstore⟩
-
-/-- Compatibility name for the two operational payload premises used with
-the legacy `Synchrony` bundle. -/
-def PayloadEnvelopeRelay (E : Execution Root) : Prop :=
-  EnvelopeDelivery cfg ext E ∧ DataAvailabilityRelay cfg ext E
 
 /-- Compatibility projection: the old broad bundle implies the strict local
 bundle, but none of the reverse (and in particular none of the circular
