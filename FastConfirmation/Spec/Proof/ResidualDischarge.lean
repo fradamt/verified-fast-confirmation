@@ -237,24 +237,37 @@ def DynamicsResidual (w : ValidatorIndex) (m : ℕ) (h c : Root) : Prop :=
     ((E.store cfg ext w m).checkpoint_states
       (E.store cfg ext w m).justified_checkpoint).validators = E.registry ∧
     boost = get_proposer_score cfg (E.store cfg ext w m) ∧
-    ForkChoiceNode.mk c ∈
+    ForkChoiceNode.mk c .pending ∈
       get_node_children (E.store cfg ext w m)
-        (get_filtered_block_tree cfg (E.store cfg ext w m)) (ForkChoiceNode.mk h) ∧
+        (get_filtered_block_tree cfg (E.store cfg ext w m))
+          (ForkChoiceNode.mk h
+            (get_parent_payload_status (E.store cfg ext w m)
+              ((E.store cfg ext w m).blocks c))) ∧
+    PendingStatusMargin cfg (E.store cfg ext w m)
+      (get_filtered_block_tree cfg (E.store cfg ext w m)) h
+      (get_parent_payload_status (E.store cfg ext w m)
+        ((E.store cfg ext w m).blocks c)) ∧
     (∀ i ∈ E.Sclass cfg ext w m b' lo σ,
       i ∈ AttSupporters cfg (E.store cfg ext w m) (get_node_for_root c)
         ((E.store cfg ext w m).checkpoint_states (E.store cfg ext w m).justified_checkpoint)) ∧
     (∀ c' : Root,
-      ForkChoiceNode.mk c' ∈
+      ForkChoiceNode.mk c' .pending ∈
           get_node_children (E.store cfg ext w m)
-            (get_filtered_block_tree cfg (E.store cfg ext w m)) (ForkChoiceNode.mk h) →
+            (get_filtered_block_tree cfg (E.store cfg ext w m))
+              (ForkChoiceNode.mk h
+                (get_parent_payload_status (E.store cfg ext w m)
+                  ((E.store cfg ext w m).blocks c))) →
         c' ≠ c →
         ∀ i ∈ AttSupporters cfg (E.store cfg ext w m) (get_node_for_root c')
             ((E.store cfg ext w m).checkpoint_states (E.store cfg ext w m).justified_checkpoint),
           i ∈ E.honest → i ∈ E.Xclass cfg ext w m b' lo σ) ∧
     (∀ c' : Root,
-      ForkChoiceNode.mk c' ∈
+      ForkChoiceNode.mk c' .pending ∈
           get_node_children (E.store cfg ext w m)
-            (get_filtered_block_tree cfg (E.store cfg ext w m)) (ForkChoiceNode.mk h) →
+            (get_filtered_block_tree cfg (E.store cfg ext w m))
+              (ForkChoiceNode.mk h
+                (get_parent_payload_status (E.store cfg ext w m)
+                  ((E.store cfg ext w m).blocks c))) →
         c' ≠ c →
         ∀ i ∈ AttSupporters cfg (E.store cfg ext w m) (get_node_for_root c')
             ((E.store cfg ext w m).checkpoint_states (E.store cfg ext w m).justified_checkpoint),
@@ -268,9 +281,9 @@ theorem ledgerCertInput_of_dynamicsResidual (hec : ExternalsCoherence cfg ext E)
     (hres : E.DynamicsResidual cfg ext w m h c) :
     LedgerCertInput cfg ext E (E.store cfg ext w m) h c := by
   obtain ⟨vc, nc, b', lo, es, σ, boost, hσ, hloH, hσH, hSt, hAt, hBb, hbase, hpre, hsat,
-    hval, hboost, hchild, hSmem, hHon, hByz⟩ := hres
+    hval, hboost, hchild, hstatus, hSmem, hHon, hByz⟩ := hres
   exact ledgerCertInput_of_endpoint cfg ext hec hsv vc nc b' lo es σ boost hσ hσH
-    hSt hAt hBb hbase hpre hsat hval hboost hchild hSmem hHon hByz
+    hSt hAt hBb hbase hpre hsat hval hboost hchild hstatus hSmem hHon hByz
 
 /-! ### The epoch-crossing member-arm edge (consuming `Crossing.lean`)
 
@@ -303,31 +316,45 @@ theorem ledgerStepV2_of_crossing_member (hbb : ByzantineBound cfg E)
       (E.store cfg ext w m).justified_checkpoint).validators = E.registry)
     (hboost : boost = get_proposer_score cfg (E.store cfg ext w m))
     (hinv : E.INVmem cfg ext v₀ n₀ b' lo σ boost)
-    (hchild : ForkChoiceNode.mk c ∈
+    (hchild : ForkChoiceNode.mk c .pending ∈
       get_node_children (E.store cfg ext w m)
-        (get_filtered_block_tree cfg (E.store cfg ext w m)) (ForkChoiceNode.mk h))
+        (get_filtered_block_tree cfg (E.store cfg ext w m))
+          (ForkChoiceNode.mk h
+            (get_parent_payload_status (E.store cfg ext w m)
+              ((E.store cfg ext w m).blocks c))))
+    (hstatus : PendingStatusMargin cfg (E.store cfg ext w m)
+      (get_filtered_block_tree cfg (E.store cfg ext w m)) h
+      (get_parent_payload_status (E.store cfg ext w m)
+        ((E.store cfg ext w m).blocks c)))
     (hSmem : ∀ i ∈ E.Sclass cfg ext v₀ n₀ b' lo σ,
       i ∈ AttSupporters cfg (E.store cfg ext w m) (get_node_for_root c)
         ((E.store cfg ext w m).checkpoint_states (E.store cfg ext w m).justified_checkpoint))
     (hHon : ∀ c' : Root,
-      ForkChoiceNode.mk c' ∈
+      ForkChoiceNode.mk c' .pending ∈
           get_node_children (E.store cfg ext w m)
-            (get_filtered_block_tree cfg (E.store cfg ext w m)) (ForkChoiceNode.mk h) →
+            (get_filtered_block_tree cfg (E.store cfg ext w m))
+              (ForkChoiceNode.mk h
+                (get_parent_payload_status (E.store cfg ext w m)
+                  ((E.store cfg ext w m).blocks c))) →
         c' ≠ c →
         ∀ i ∈ AttSupporters cfg (E.store cfg ext w m) (get_node_for_root c')
             ((E.store cfg ext w m).checkpoint_states (E.store cfg ext w m).justified_checkpoint),
           i ∈ E.honest → i ∈ E.Xclass cfg ext v₀ n₀ b' lo σ)
     (hByz : ∀ c' : Root,
-      ForkChoiceNode.mk c' ∈
+      ForkChoiceNode.mk c' .pending ∈
           get_node_children (E.store cfg ext w m)
-            (get_filtered_block_tree cfg (E.store cfg ext w m)) (ForkChoiceNode.mk h) →
+            (get_filtered_block_tree cfg (E.store cfg ext w m))
+              (ForkChoiceNode.mk h
+                (get_parent_payload_status (E.store cfg ext w m)
+                  ((E.store cfg ext w m).blocks c))) →
         c' ≠ c →
         ∀ i ∈ AttSupporters cfg (E.store cfg ext w m) (get_node_for_root c')
             ((E.store cfg ext w m).checkpoint_states (E.store cfg ext w m).justified_checkpoint),
           i ∉ E.honest →
             i ∈ E.BbadSet cfg ext v₀ n₀ b' lo es ∨ i ∈ E.SpentSet es σ) :
     LedgerStepV2 cfg ext E (E.store cfg ext w m) h c := by
-  refine ⟨v₀, n₀, b', lo, es, σ, hchild, recorded_bside_ge cfg ext hval hSmem, ?_, ?_⟩
+  refine ⟨v₀, n₀, b', lo, es, σ, hchild, hstatus,
+    recorded_bside_ge cfg ext hval hSmem, ?_, ?_⟩
   · rw [← hboost]
     exact E.INVmem_endpoint cfg ext hbb v₀ n₀ b' lo es σ boost hloH hσH hlo hes hinv
   · intro c' hc' hne

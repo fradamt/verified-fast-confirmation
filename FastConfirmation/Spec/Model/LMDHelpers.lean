@@ -54,6 +54,25 @@ def get_block_support_between_slots (store : Store Root)
           decide (i ∉ store.equivocating_indices))),
     (balance_source.validators.getD i default).effective_balance
 
+/-- Gloas override: count only votes for the parent's payload branch used by
+the child. Votes for the other payload status support its competing branch. -/
+def get_parent_payload_support_between_slots (store : Store Root)
+    (balance_source : BeaconState Root) (block_root : Root)
+    (payload_status : PayloadStatus) (start_slot end_slot : Slot) : Gwei :=
+  let participants :=
+    (Finset.Icc start_slot end_slot).biUnion (fun slot => get_slot_committee cfg ext store slot)
+  let unslashed_and_active_indices :=
+    participants.filter (fun i =>
+      !(balance_source.validators.getD i default).slashed &&
+        is_active_validator (balance_source.validators.getD i default)
+          (get_current_epoch cfg balance_source))
+  ∑ i ∈ unslashed_and_active_indices.filter (fun i =>
+      (store.latest_messages i).any (fun latest_message =>
+        decide (latest_message.root = block_root) &&
+          decide (i ∉ store.equivocating_indices) &&
+          decide ((get_supported_node store latest_message).payload_status = payload_status))),
+    (balance_source.validators.getD i default).effective_balance
+
 /-- `is_full_validator_set_covered`: Return ``True`` if the range between
 ``start_slot`` and ``end_slot`` (inclusive of both) includes an entire epoch.
 ```python
@@ -210,8 +229,9 @@ block = store.blocks[block_root]
 parent_block = store.blocks[block.parent_root]
 if parent_block.slot + 1 == block.slot:
     return Gwei(0)
-parent_support_in_empty_slots = get_block_support_between_slots(
-    store, balance_source, block.parent_root, parent_block.slot + 1, block.slot - 1)
+parent_support_in_empty_slots = get_parent_payload_support_between_slots(
+    store, balance_source, block.parent_root, get_parent_payload_status(store, block),
+    parent_block.slot + 1, block.slot - 1)
 adversarial_weight = compute_adversarial_weight(
     store, balance_source, parent_block.slot + 1, block.slot - 1)
 if parent_support_in_empty_slots > adversarial_weight:
@@ -227,8 +247,8 @@ def compute_empty_slot_support_discount (store : Store Root)
     0
   else
     let parent_support_in_empty_slots :=
-      get_block_support_between_slots cfg ext store balance_source block.parent_root
-        (parent_block.slot + 1) (block.slot - 1)
+      get_parent_payload_support_between_slots cfg ext store balance_source block.parent_root
+        (get_parent_payload_status store block) (parent_block.slot + 1) (block.slot - 1)
     let adversarial_weight :=
       compute_adversarial_weight cfg ext store balance_source
         (parent_block.slot + 1) (block.slot - 1)

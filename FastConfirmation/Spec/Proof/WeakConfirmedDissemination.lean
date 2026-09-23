@@ -154,7 +154,7 @@ private theorem past_descendant_known_at_observer
       hgeq hslot hroot v n lm.root hlmKnown
   have hs0 : E.slot_at cfg 0 ≤ s := by
     rw [hcur0, hsap]
-    exact hanchorle.trans hlmSlot
+    exact hanchorle.trans hlmSlot.1
   have hsH : E.SlotWithinHorizon cfg s :=
     E.slotWithinHorizon_of_le cfg (le_of_lt hslt) hH
   obtain ⟨nu, index, hHnu, hnu, hvoteHead⟩ :=
@@ -177,7 +177,7 @@ private theorem past_descendant_known_at_observer
   refine ⟨nu, hHnu, ?_, hd, hlmKnown, ?_⟩
   · rw [hnu]
     exact hslt
-  · simpa only [get_supported_node, get_node_for_root] using hsupp
+  · simpa only [is_ancestor_supported_pending, get_node_for_root] using hsupp
 
 /-! ## Deliverable 1 — confirmed knownness at all honest endpoints -/
 

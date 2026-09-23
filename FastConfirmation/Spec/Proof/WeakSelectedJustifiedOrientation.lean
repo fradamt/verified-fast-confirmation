@@ -654,7 +654,10 @@ theorem observerCall_strictSelected_endpointJustifiedEpoch_le_result
       (get_node_for_root (E.weakGetLatestConfirmedTraceAt cfg ext obs n).result) ≠ true := by
     intro hJResult
     apply hnotCovered
-    exact is_ancestor_trans hparentM
+    exact is_ancestor_trans
+      (a := get_node_for_root (E.store cfg ext w m).justified_checkpoint.root)
+      (b := get_node_for_root (E.weakGetLatestConfirmedTraceAt cfg ext obs n).result)
+      (c := get_node_for_root c) hparentM
       (hwalkM c hcM
         (E.store cfg ext w m).justified_checkpoint.root hjustifiedM)
       (hwalkM c hcM (E.weakGetLatestConfirmedTraceAt cfg ext obs n).result hresultM)

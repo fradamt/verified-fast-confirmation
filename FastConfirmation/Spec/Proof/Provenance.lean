@@ -16,9 +16,9 @@ Concretely `LatestMessageProvenance E cfg sl store` says: whenever
 `store.latest_messages i = some m`, there is an attestation `a` with
 
 * `i ∈ a.attesting_indices` — `i` is one of `a`'s attesters;
-* `a.data.target.epoch = m.epoch`, `a.data.beacon_block_root = m.root` — the
+* `a.data.target.epoch = (get_latest_message_epoch cfg m)`, `a.data.beacon_block_root = m.root` — the
   recorded message is exactly `a`'s FFG target epoch and LMD block;
-* `compute_epoch_at_slot cfg a.data.slot = m.epoch` — `a`'s slot sits in the
+* `compute_epoch_at_slot cfg a.data.slot = (get_latest_message_epoch cfg m)` — `a`'s slot sits in the
   message's epoch (the `validate_on_attestation` target/slot match);
 * `a.data.slot + 1 ≤ sl` — `a` was applied at a store whose current slot was at
   least `a.data.slot + 1` (the `validate_on_attestation` fork-choice gate),
@@ -29,6 +29,8 @@ Concretely `LatestMessageProvenance E cfg sl store` says: whenever
 * `m.root ∈ store.block_roots` and `(store.blocks m.root).slot ≤ a.data.slot` —
   the voted block is known and no later than `a`'s slot (the
   `validate_on_attestation` known-block / not-future gates).
+* `m.slot = a.data.slot` — the handler stores the exact attestation slot, so a
+  resolved payload vote at a root belongs to a later committee slot.
 
 This is the span-confinement input to L2's accounting half: an honest recorded
 supporter's message is confined to the committee of a slot in `[m.root's slot,
@@ -61,13 +63,14 @@ def LatestMessageProvenance (E : Execution Root) (cfg : Config) (sl : Slot)
     store.latest_messages i = some m →
     ∃ a : Attestation Root,
       i ∈ a.attesting_indices ∧
-      a.data.target.epoch = m.epoch ∧
+      a.data.target.epoch = (get_latest_message_epoch cfg m) ∧
       a.data.beacon_block_root = m.root ∧
-      compute_epoch_at_slot cfg a.data.slot = m.epoch ∧
+      compute_epoch_at_slot cfg a.data.slot = (get_latest_message_epoch cfg m) ∧
       a.data.slot + 1 ≤ sl ∧
       i ∈ E.committee a.data.slot ∧
       m.root ∈ store.block_roots ∧
-      (store.blocks m.root).slot ≤ a.data.slot
+      (store.blocks m.root).slot ≤ a.data.slot ∧
+      m.slot = a.data.slot
 
 namespace LatestMessageProvenance
 
@@ -76,8 +79,8 @@ theorem mono_sl {E : Execution Root} {cfg : Config} {sl sl' : Slot} {store : Sto
     (hle : sl ≤ sl') (h : LatestMessageProvenance E cfg sl store) :
     LatestMessageProvenance E cfg sl' store := by
   intro i m hm
-  obtain ⟨a, h1, h2, h3, h4, h5, h6, h7, h8⟩ := h i m hm
-  exact ⟨a, h1, h2, h3, h4, h5.trans hle, h6, h7, h8⟩
+  obtain ⟨a, h1, h2, h3, h4, h5, h6, h7, h8, h9⟩ := h i m hm
+  exact ⟨a, h1, h2, h3, h4, h5.trans hle, h6, h7, h8, h9⟩
 
 /-- Transfer provenance across a store update that only grows the block set and
 whose recorded messages come from the source, keeping the block slot at every
@@ -90,8 +93,8 @@ theorem of_transfer {E : Execution Root} {cfg : Config} {sl : Slot}
     (hblk : ∀ r ∈ store.block_roots, (store'.blocks r).slot = (store.blocks r).slot) :
     LatestMessageProvenance E cfg sl store' := by
   intro i m hm
-  obtain ⟨a, h1, h2, h3, h4, h5, h6, h7, h8⟩ := h i m (hlm i m hm)
-  exact ⟨a, h1, h2, h3, h4, h5, h6, hbr h7, (hblk m.root h7) ▸ h8⟩
+  obtain ⟨a, h1, h2, h3, h4, h5, h6, h7, h8, h9⟩ := h i m (hlm i m hm)
+  exact ⟨a, h1, h2, h3, h4, h5, h6, hbr h7, (hblk m.root h7) ▸ h8, h9⟩
 
 /-- Transfer provenance across a `SameBlocks`-related store that leaves
 `latest_messages` untouched (`on_tick`, `on_attester_slashing`, and the
@@ -111,17 +114,17 @@ end LatestMessageProvenance
 /-- Fold-membership for the `update_latest_messages` step: any surviving
 `some m` after folding the per-index update over `l` was either present before
 the fold or is `⟨target, beacon⟩` set at an index of `l`. -/
-private theorem update_lm_foldl_mem (target : Epoch) (beacon : Root) :
+private theorem update_lm_foldl_mem (slot : Slot) (beacon : Root) (payload_present : Bool) :
     ∀ (l : List ValidatorIndex) (s : Store Root) (i : ValidatorIndex)
       (m : LatestMessage Root),
       (l.foldl (fun st j =>
         if (match st.latest_messages j with
             | none => true
-            | some lm => decide (target > lm.epoch)) then
+            | some lm => decide (slot > lm.slot)) then
           { st with latest_messages :=
-              Function.update st.latest_messages j (some (LatestMessage.mk target beacon)) }
+              Function.update st.latest_messages j (some (LatestMessage.mk slot beacon payload_present)) }
         else st) s).latest_messages i = some m →
-      s.latest_messages i = some m ∨ (i ∈ l ∧ m = LatestMessage.mk target beacon) := by
+      s.latest_messages i = some m ∨ (i ∈ l ∧ m = LatestMessage.mk slot beacon payload_present) := by
   intro l
   induction l with
   | nil => intro s i m hm; exact Or.inl hm
@@ -148,9 +151,9 @@ theorem update_latest_messages_mem (store : Store Root)
     (hm : (update_latest_messages store attesting_indices a).latest_messages i = some m) :
     store.latest_messages i = some m ∨
       (i ∈ attesting_indices ∧
-        m = LatestMessage.mk a.data.target.epoch a.data.beacon_block_root) := by
+        m = LatestMessage.mk a.data.slot a.data.beacon_block_root (decide (a.data.index = 1))) := by
   simp only [update_latest_messages] at hm
-  rcases update_lm_foldl_mem a.data.target.epoch a.data.beacon_block_root _ store i m hm with
+  rcases update_lm_foldl_mem a.data.slot a.data.beacon_block_root (decide (a.data.index = 1)) _ store i m hm with
     hs | ⟨hmem, hnew⟩
   · exact Or.inl hs
   · exact Or.inr ⟨List.mem_of_mem_filter hmem, hnew⟩
@@ -227,9 +230,14 @@ theorem on_block_latest {store store' : Store Root} {sb : SignedBeaconBlock Root
     | none => rw [hst] at h; cases h
     | some state =>
       rw [hst] at h
-      cases h
-      rw [compute_pulled_up_tip_latest, update_checkpoints_latest_messages,
-        update_proposer_boost_root_latest, record_block_timeliness_latest]
+      dsimp only at h
+      split at h
+      · cases h
+      · rename_i notified hnotify
+        cases h
+        rw [compute_pulled_up_tip_latest, update_checkpoints_latest_messages,
+          update_proposer_boost_root_latest, record_block_timeliness_latest]
+        exact (notify_ptc_messages_frame cfg ext hnotify).latest_messages
 
 omit [Inhabited Root] in
 theorem on_attester_slashing_latest {store store' : Store Root}
@@ -326,15 +334,16 @@ theorem on_attestation_LMP {E : Execution Root} {sl : Slot}
       exact htarget
     simpa only [hstates] using hpost.checkpointState cfg ext hkey
   simp only [validate_on_attestation, Bool.and_eq_true, decide_eq_true_eq] at hv
-  obtain ⟨⟨⟨⟨⟨⟨_, hB⟩, _⟩, hD⟩, hE⟩, _⟩, hG⟩ := hv
+  obtain ⟨⟨⟨⟨⟨⟨⟨⟨⟨_, hB⟩, _⟩, hD⟩, hE⟩, _⟩, _⟩, _⟩, _⟩, hG⟩ := hv
   intro i m hm
   rcases update_latest_messages_mem _ _ _ _ _ hm with hold | ⟨hi, hmeq⟩
   · rw [store_target_checkpoint_state_latest] at hold
-    obtain ⟨a', h1, h2, h3, h4, h5, h6, h7, h8⟩ := h i m hold
-    exact ⟨a', h1, h2, h3, h4, h5, h6, hsb.1 ▸ h7, hsb.2.1 ▸ h8⟩
-  · exact ⟨a, hi, by rw [hmeq], by rw [hmeq], by rw [hmeq]; exact hB.symm,
+    obtain ⟨a', h1, h2, h3, h4, h5, h6, h7, h8, h9⟩ := h i m hold
+    exact ⟨a', h1, h2, h3, h4, h5, h6, hsb.1 ▸ h7, hsb.2.1 ▸ h8, h9⟩
+  · exact ⟨a, hi, by rw [hmeq]; exact hB, by rw [hmeq], by rw [hmeq]; rfl,
       le_trans hG hcur, hec.valid_attestation_committee _ a hreachable hvi i hi,
-      by rw [hmeq]; exact hsb.1 ▸ hD, by rw [hmeq]; exact hsb.2.1 ▸ hE⟩
+      by rw [hmeq]; exact hsb.1 ▸ hD, by rw [hmeq]; exact hsb.2.1 ▸ hE,
+      by rw [hmeq]⟩
 
 /-! ## Event dispatch, the event fold, and the trajectory invariant -/
 
@@ -369,6 +378,14 @@ theorem apply_event_LMP {E : Execution Root} {sl : Slot} (hwf : WellFormedExecut
     simp only [apply_event] at he
     exact h.of_sameBlocks (on_attester_slashing_sameBlocks ext he)
       (on_attester_slashing_latest ext he)
+  | execution_payload_envelope envelope observation =>
+    have hf := on_execution_payload_envelope_frame ext he
+    exact h.of_transfer (by rw [hf.block_roots]; exact List.Subset.refl _)
+      (fun _ _ hh => hf.latest_messages ▸ hh) (fun r _ => by rw [hf.blocks])
+  | payload_attestation_message message fromBlock =>
+    have hf := on_payload_attestation_message_frame cfg ext he
+    exact h.of_transfer (by rw [hf.block_roots]; exact List.Subset.refl _)
+      (fun _ _ hh => hf.latest_messages ▸ hh) (fun r _ => by rw [hf.blocks])
 
 /-- Folding the second's scheduled events preserves provenance: every block
 event is scheduled, so `BlockProvenance` (fed to `on_block`'s block-slot

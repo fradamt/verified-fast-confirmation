@@ -372,7 +372,7 @@ theorem geometry
       (query.store.blocks trace.result).slot := by
     have hsle := get_ancestor_slot_le hwf
       (hwalk trace.afterObserved hinput trace.result hknown)
-    simp only [is_ancestor, get_node_for_root, decide_eq_true_eq] at hdesc
+    simp only [get_node_for_root, is_ancestor_pending, decide_eq_true_eq] at hdesc
     rw [hdesc] at hsle
     simpa using hsle
   exact {

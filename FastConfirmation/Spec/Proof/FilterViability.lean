@@ -30,13 +30,13 @@ theorem get_checkpoint_block_of_ancestor {store : Store Root}
       (store.blocks r).parent_root ∈ store.block_roots →
         (store.blocks (store.blocks r).parent_root).slot < (store.blocks r).slot)
     {d b : Root} {e : Epoch}
-    (hanc : is_ancestor store (ForkChoiceNode.mk d) (ForkChoiceNode.mk b) = true)
+    (hanc : is_ancestor store (ForkChoiceNode.mk d .pending) (ForkChoiceNode.mk b .pending) = true)
     (hslot : compute_start_slot_at_epoch cfg e ≤ (store.blocks b).slot)
     (hw : WalkKnown store (compute_start_slot_at_epoch cfg e) d) :
     get_checkpoint_block cfg store d e = get_checkpoint_block cfg store b e := by
-  have h1 : get_ancestor store (ForkChoiceNode.mk d) (store.blocks b).slot =
-      ForkChoiceNode.mk b := by simpa [is_ancestor] using hanc
-  have h2 := get_ancestor_comp hwf hslot hw
+  have h1 : (get_ancestor store (ForkChoiceNode.mk d .pending) (store.blocks b).slot).root =
+      b := by simpa only [is_ancestor_pending, decide_eq_true_eq] using hanc
+  have h2 := get_ancestor_comp_root hwf hslot hw
   simp only [get_checkpoint_block]
   rw [← h2, h1]
 
@@ -49,7 +49,7 @@ theorem finalized_check_of_ancestor {store : Store Root}
       (store.blocks r).parent_root ∈ store.block_roots →
         (store.blocks (store.blocks r).parent_root).slot < (store.blocks r).slot)
     {d b : Root}
-    (hanc : is_ancestor store (ForkChoiceNode.mk d) (ForkChoiceNode.mk b) = true)
+    (hanc : is_ancestor store (ForkChoiceNode.mk d .pending) (ForkChoiceNode.mk b .pending) = true)
     (hslot : compute_start_slot_at_epoch cfg store.finalized_checkpoint.epoch ≤
       (store.blocks b).slot)
     (hw : WalkKnown store

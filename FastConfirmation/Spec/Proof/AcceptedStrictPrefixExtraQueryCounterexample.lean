@@ -62,7 +62,10 @@ def stateAt (slot : Slot) : BeaconState WitnessRoot :=
     validators :=
       [witnessValidator, witnessValidator, witnessValidator, witnessValidator]
     current_justified_checkpoint := anchorCheckpoint
-    finalized_checkpoint := anchorCheckpoint }
+    finalized_checkpoint := anchorCheckpoint
+    beacon_committee_reads :=
+      (List.range 4).map (fun s => (s, 0, [s % 4]))
+    committee_count_reads := [(0, 1)] }
 
 def anchorState : BeaconState WitnessRoot := stateAt 0
 
@@ -321,10 +324,13 @@ private theorem witnessHonestBehavior :
     rcases honest_eq hv with rfl | rfl | rfl | rfl <;> decide
 
 def anchorMessage : LatestMessage WitnessRoot :=
-  { epoch := 0, root := anchorRoot }
+  { slot := 0, root := anchorRoot, payload_present := false }
 
 def candidateMessage : LatestMessage WitnessRoot :=
-  { epoch := 0, root := candidateRoot }
+  { slot := 1, root := candidateRoot, payload_present := false }
+
+def candidateMessageAtTwo : LatestMessage WitnessRoot :=
+  { slot := 2, root := candidateRoot, payload_present := false }
 
 private lemma block_roots_at_zero :
     (witnessExecution.store witnessConfig witnessExternals 0 0).block_roots =
@@ -372,7 +378,7 @@ private lemma latest_message_at_two (i : ValidatorIndex) :
 
 private lemma latest_message_at_three (i : ValidatorIndex) :
     (witnessExecution.store witnessConfig witnessExternals 0 3).latest_messages i =
-      if i = 2 then some candidateMessage
+      if i = 2 then some candidateMessageAtTwo
       else if i = 1 then some candidateMessage
       else if i = 0 then some anchorMessage else none := by
   set_option maxRecDepth 20000 in
@@ -380,7 +386,7 @@ private lemma latest_message_at_three (i : ValidatorIndex) :
         (Function.update
           (Function.update (fun _ => none) 0 (some anchorMessage))
           1 (some candidateMessage))
-        2 (some candidateMessage)) i = _
+        2 (some candidateMessageAtTwo)) i = _
     by_cases h2 : i = 2
     · subst i; simp
     · by_cases h1 : i = 1
@@ -674,7 +680,8 @@ private theorem witnessByzantineBound :
         · decide
         · rcases i with _ | i
           · decide
-          · simp [Execution.weight_of, Execution.registry,
+          · set_option maxRecDepth 20000 in
+            simp [Execution.weight_of, Execution.registry,
               Execution.anchor_state, witnessExecution, anchorState, stateAt,
               anchorSignedBlock, witnessValidator, witnessConfig,
               get_forkchoice_store]

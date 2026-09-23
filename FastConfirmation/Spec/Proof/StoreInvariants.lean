@@ -1,5 +1,6 @@
 module
 public import FastConfirmation.Spec.Model.Execution
+public import FastConfirmation.Spec.Model.PayloadEffects
 
 @[expose] public section
 
@@ -22,13 +23,13 @@ variable {Root : Type*}
 /-- The store-extension order: what any single handler application can only
 grow. `StoreLE old new` tracks: the block set grows, `genesis_time` is
 constant, the equivocation set grows, and latest messages are only ever
-replaced by same-or-newer-epoch ones. -/
+replaced by messages at the same or a later slot. -/
 def StoreLE (old new : Store Root) : Prop :=
   old.block_roots ⊆ new.block_roots ∧
   old.genesis_time = new.genesis_time ∧
   old.equivocating_indices ⊆ new.equivocating_indices ∧
   ∀ i m, old.latest_messages i = some m →
-    ∃ m', new.latest_messages i = some m' ∧ m.epoch ≤ m'.epoch
+    ∃ m', new.latest_messages i = some m' ∧ m.slot ≤ m'.slot
 
 namespace StoreLE
 
@@ -43,6 +44,15 @@ theorem trans {a b c : Store Root} (hab : StoreLE a b) (hbc : StoreLE b c) :
   obtain ⟨m', hm', hle⟩ := h4 i m hm
   obtain ⟨m'', hm'', hle'⟩ := g4 i m' hm'
   exact ⟨m'', hm'', hle.trans hle'⟩
+
+/-- Slot-monotone latest messages also have monotone derived epochs. -/
+theorem latest_message_epoch_mono (cfg : Config) {old new : Store Root}
+    (h : StoreLE old new) (i : ValidatorIndex) (m : LatestMessage Root)
+    (hm : old.latest_messages i = some m) :
+    ∃ m', new.latest_messages i = some m' ∧
+      get_latest_message_epoch cfg m ≤ get_latest_message_epoch cfg m' := by
+  obtain ⟨m', hm', hslot⟩ := h.2.2.2 i m hm
+  exact ⟨m', hm', Nat.div_le_div_right hslot⟩
 
 end StoreLE
 
@@ -191,8 +201,9 @@ theorem update_latest_messages_storeLE (store : Store Root)
       rcases eq_or_ne j i with rfl | hne
       · rw [hmi] at hm
         obtain rfl : lm = m := by injection hm
-        have hlt : lm.epoch < attestation.data.target.epoch := by simpa using h
-        exact ⟨⟨attestation.data.target.epoch, attestation.data.beacon_block_root⟩,
+        have hlt : lm.slot < attestation.data.slot := by simpa using h
+        exact ⟨⟨attestation.data.slot, attestation.data.beacon_block_root,
+            decide (attestation.data.index = 1)⟩,
           by simp, le_of_lt hlt⟩
       · exact ⟨m, by simpa [Function.update_apply, hne] using hm, le_rfl⟩
     · exact StoreLE.refl _
@@ -232,6 +243,32 @@ theorem update_proposer_boost_root_storeLE (store : Store Root) (head root : Roo
   · exact storeLE_untouched rfl rfl rfl rfl
   · exact StoreLE.refl _
 
+/- Payload-only handlers leave the store-extension fields equal. -/
+omit [LinearOrder Root] [Inhabited Root] in
+theorem PayloadFrame.storeLE {store store' : Store Root}
+    (h : PayloadFrame store store') : StoreLE store store' :=
+  storeLE_untouched h.block_roots.symm h.genesis_time.symm
+    h.equivocating_indices.symm h.latest_messages.symm
+
+omit [Inhabited Root] in
+theorem on_payload_attestation_message_storeLE {store store' : Store Root}
+    {message : PayloadAttestationMessage Root} {is_from_block : Bool}
+    (h : on_payload_attestation_message cfg ext store message is_from_block =
+      some store') : StoreLE store store' :=
+  (on_payload_attestation_message_frame cfg ext h).storeLE
+
+omit [Inhabited Root] in
+theorem on_execution_payload_envelope_storeLE {store store' : Store Root}
+    {envelope : SignedExecutionPayloadEnvelope Root} {observation : EnvelopeObservation Root}
+    (h : on_execution_payload_envelope ext store envelope observation = some store') :
+    StoreLE store store' :=
+  (on_execution_payload_envelope_frame ext h).storeLE
+
+theorem notify_ptc_messages_storeLE {store store' : Store Root}
+    {state : BeaconState Root} {attestations : List (IndexedPayloadAttestation Root)}
+    (h : notify_ptc_messages cfg ext store state attestations = some store') :
+    StoreLE store store' := (notify_ptc_messages_frame cfg ext h).storeLE
+
 theorem on_block_storeLE {store store' : Store Root}
     {signed_block : SignedBeaconBlock Root}
     (h : on_block cfg ext store signed_block = some store') :
@@ -248,15 +285,36 @@ theorem on_block_storeLE {store store' : Store Root}
     | none => rw [hst] at h; cases h
     | some state =>
       rw [hst] at h
-      cases h
-      refine StoreLE.trans ?_ (compute_pulled_up_tip_storeLE cfg ext _ _)
-      refine StoreLE.trans ?_ (update_checkpoints_storeLE _ _ _)
-      refine StoreLE.trans ?_ (update_proposer_boost_root_storeLE cfg _ _ _)
-      refine StoreLE.trans ?_ (record_block_timeliness_storeLE cfg _ _)
-      refine ⟨?_, rfl, Finset.Subset.refl _, fun i m hm => ⟨m, hm, le_rfl⟩⟩
-      first
-        | exact List.Subset.refl _
-        | exact List.subset_append_left _ _
+      let added : Store Root :=
+        { store with
+          block_roots := store.block_roots ++ [signed_block.root]
+          blocks := Function.update store.blocks signed_block.root signed_block.message
+          block_states := Function.update store.block_states signed_block.root state
+          payload_timeliness_vote := Function.update store.payload_timeliness_vote
+            signed_block.root (some (List.replicate cfg.ptc_size none))
+          payload_data_availability_vote := Function.update store.payload_data_availability_vote
+            signed_block.root (some (List.replicate cfg.ptc_size none)) }
+      change (match notify_ptc_messages cfg ext added state signed_block.message.payload_attestations with
+        | none => none
+        | some notified => some (compute_pulled_up_tip cfg ext
+            (update_checkpoints
+              (update_proposer_boost_root cfg
+                (record_block_timeliness cfg notified signed_block.root)
+                (get_head cfg store).root signed_block.root)
+              state.current_justified_checkpoint state.finalized_checkpoint)
+            signed_block.root)) = some store' at h
+      cases hptc : notify_ptc_messages cfg ext added state signed_block.message.payload_attestations with
+      | none => rw [hptc] at h; cases h
+      | some after_ptc =>
+        rw [hptc] at h
+        cases h
+        refine StoreLE.trans ?_ (compute_pulled_up_tip_storeLE cfg ext _ _)
+        refine StoreLE.trans ?_ (update_checkpoints_storeLE _ _ _)
+        refine StoreLE.trans ?_ (update_proposer_boost_root_storeLE cfg _ _ _)
+        refine StoreLE.trans ?_ (record_block_timeliness_storeLE cfg _ _)
+        refine StoreLE.trans ?_ (notify_ptc_messages_storeLE cfg ext hptc)
+        exact ⟨List.subset_append_left _ _, rfl, Finset.Subset.refl _,
+          fun i m hm => ⟨m, hm, le_rfl⟩⟩
 
 theorem apply_event_storeLE {store store' : Store Root} {event : Event Root}
     (h : apply_event cfg ext store event = some store') :
@@ -265,6 +323,10 @@ theorem apply_event_storeLE {store store' : Store Root} {event : Event Root}
   | block b => exact on_block_storeLE cfg ext h
   | attestation a ifb => exact on_attestation_storeLE cfg ext h
   | attester_slashing s => exact on_attester_slashing_storeLE ext h
+  | execution_payload_envelope envelope observation =>
+      exact on_execution_payload_envelope_storeLE ext h
+  | payload_attestation_message message ifb =>
+      exact on_payload_attestation_message_storeLE cfg ext h
 
 /-- One step of the event fold extends the store. -/
 theorem apply_event_getD_storeLE (store : Store Root) (event : Event Root) :

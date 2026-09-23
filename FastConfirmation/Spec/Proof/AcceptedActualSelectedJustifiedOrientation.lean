@@ -708,7 +708,8 @@ noncomputable def completedPrefix_acceptedHistoricalCertificateProducerAt
   have hcheckpoint : get_checkpoint_block cfg query.store
         (get_head cfg query.store).root e =
       get_checkpoint_block cfg query.store trace.result e :=
-    get_checkpoint_block_of_ancestor cfg hparent hbelow
+    get_checkpoint_block_of_ancestor cfg hparent
+      (by rw [is_ancestor_node_root] at hbelow; exact hbelow)
       hboundaryResult hwalkHead
   have heCurrent : e = get_current_store_epoch cfg query.store := by
     exact hresultEpoch.symm.trans hcurrent

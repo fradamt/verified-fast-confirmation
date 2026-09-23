@@ -98,7 +98,7 @@ supplied: `hhead_known` by `head_root_known` (Section 1) and `hhead_walk` by
 boundary. -/
 theorem vote_lands_closed {E : Execution Root}
     (hwf : WellFormedExecution E) (hhb : HonestBehavior cfg ext E)
-    (hsyn : Synchrony cfg ext E) (hec : ExternalsCoherence cfg ext E)
+    (hsyn : PaperSafetySynchrony cfg ext E) (hec : ExternalsCoherence cfg ext E)
     (hji : JustificationInterface cfg ext E)
     (hdiv : 1000 ∣ cfg.slot_duration_ms)
     (hgen : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
@@ -115,7 +115,7 @@ theorem vote_lands_closed {E : Execution Root}
         (honest_attestation cfg ext (E.store cfg ext v n) s index v).data.target.epoch) :
     ∃ msg, (E.store cfg ext w (E.slot_start cfg (s + 1))).latest_messages v = some msg ∧
       (honest_attestation cfg ext (E.store cfg ext v n) s index v).data.target.epoch ≤
-        msg.epoch :=
+        (get_latest_message_epoch cfg msg) :=
   E.vote_lands cfg ext hwf hhb hsyn hec hdiv hgen hv hw hn hHn hHdeliver hvote
     (E.head_root_known cfg ext hji hv n hHn)
     (E.head_walk_of_bound cfg ext hwf hec hgen hji hv n hHn _ hbound)
@@ -128,7 +128,7 @@ site the `hSmono`/`hXmono`/`hsat` migration cruxes route their late voters throu
 bound `hbound`. -/
 theorem vote_ubiquity_closed {E : Execution Root}
     (hwf : WellFormedExecution E) (hhb : HonestBehavior cfg ext E)
-    (hsyn : Synchrony cfg ext E) (hec : ExternalsCoherence cfg ext E)
+    (hsyn : PaperSafetySynchrony cfg ext E) (hec : ExternalsCoherence cfg ext E)
     (hji : JustificationInterface cfg ext E)
     (hdiv : 1000 ∣ cfg.slot_duration_ms)
     (hgen : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
@@ -146,7 +146,7 @@ theorem vote_ubiquity_closed {E : Execution Root}
     (hHm : E.WithinHorizon cfg m) :
     ∃ msg, (E.store cfg ext w m).latest_messages v = some msg ∧
       (honest_attestation cfg ext (E.store cfg ext v n) s index v).data.target.epoch ≤
-        msg.epoch :=
+        (get_latest_message_epoch cfg msg) :=
   E.vote_ubiquity cfg ext hwf hhb hsyn hec hdiv hgen hv hw hn hHn hvote
     (E.head_root_known cfg ext hji hv n hHn)
     (E.head_walk_of_bound cfg ext hwf hec hgen hji hv n hHn _ hbound) hm hHm
@@ -221,7 +221,7 @@ would require the former `BbadSet_subset_of_relays` / `hBb_of_relays` route. Its
 recorded-root-agreement leg relied on `Synchrony.recorded_conflict_slashed` without
 it slashed on any cross-node root disagreement without a same-target-epoch guard, so
 it silently excluded legitimate cross-epoch re-voters. The corrected field now carries
-a `lm.epoch = lm'.epoch` (double-vote) guard, and with that guard the recorded-`BbadSet`
+a `(get_latest_message_epoch cfg lm) = (get_latest_message_epoch cfg lm')` (double-vote) guard, and with that guard the recorded-`BbadSet`
 subset **cannot** be proved in general: a Byzantine validator re-voting a sibling in a
 *different* target epoch is a recorded base-enemy member at `(w,m)` that the relays
 cannot move back to `(vc,nc)`.

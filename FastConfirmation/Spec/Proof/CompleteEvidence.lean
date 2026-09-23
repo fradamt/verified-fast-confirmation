@@ -41,12 +41,12 @@ structure CompleteEvidence (cfg : Config) (ext : Externals Root)
   prior_votes : ∀ s, s < get_current_slot cfg f.store →
     ∀ i ∈ get_slot_committee cfg ext f.store s,
       ∃ lm, f.store.latest_messages i = some lm ∧
-        compute_epoch_at_slot cfg s ≤ get_latest_message_epoch lm
+        compute_epoch_at_slot cfg s ≤ get_latest_message_epoch cfg lm
   fresh : ∀ i lm, f.store.latest_messages i = some lm →
     Weak.is_duty_fresh_message cfg ext f.store i lm = true
   recorded_provenance : ∀ i lm, f.store.latest_messages i = some lm →
     ∃ s, s < get_current_slot cfg f.store ∧ i ∈ get_slot_committee cfg ext f.store s ∧
-      get_latest_message_epoch lm = compute_epoch_at_slot cfg s ∧
+      get_latest_message_epoch cfg lm = compute_epoch_at_slot cfg s ∧
       get_block_slot f.store lm.root ≤ s
   balance_sources :
     (get_current_balance_source f).validators =
@@ -132,6 +132,25 @@ theorem block_support_eq (h : CompleteEvidence cfg ext f)
     Weak.get_duty_fresh_block_support_between_slots]
   simp_rw [congrFun hp]
 
+theorem parent_payload_support_eq (h : CompleteEvidence cfg ext f)
+    (bs : BeaconState Root) (b : Root) (status : PayloadStatus) (a z : Slot) :
+    get_parent_payload_support_between_slots cfg ext f.store bs b status a z =
+      Weak.get_duty_fresh_parent_payload_support_between_slots cfg ext f.store bs b status a z := by
+  have hp : (fun i => (f.store.latest_messages i).any (fun lm =>
+      decide (lm.root = b) && decide (i ∉ f.store.equivocating_indices) &&
+        decide ((get_supported_node f.store lm).payload_status = status))) =
+      (fun i => (f.store.latest_messages i).any (fun lm =>
+      decide (lm.root = b) && Weak.is_duty_fresh_message cfg ext f.store i lm &&
+        decide (i ∉ f.store.equivocating_indices) &&
+        decide ((get_supported_node f.store lm).payload_status = status))) := by
+    funext i
+    cases hlm : f.store.latest_messages i with
+    | none => rfl
+    | some lm => simp [h.fresh i lm hlm]
+  simp only [get_parent_payload_support_between_slots,
+    Weak.get_duty_fresh_parent_payload_support_between_slots]
+  simp_rw [congrFun hp]
+
 theorem adversarial_weight_eq (h : CompleteEvidence cfg ext f)
     (bs : BeaconState Root) (a z : Slot) :
     Strong.compute_adversarial_weight cfg ext f.store bs a z =
@@ -161,7 +180,7 @@ theorem support_discount_eq (h : CompleteEvidence cfg ext f)
       Weak.get_support_discount cfg ext f.store bs b := by
   simp only [Strong.get_support_discount, Weak.get_support_discount,
     Strong.compute_empty_slot_support_discount, Weak.compute_empty_slot_support_discount,
-    block_support_eq cfg ext h, adversarial_weight_eq cfg ext h]
+    parent_payload_support_eq cfg ext h, adversarial_weight_eq cfg ext h]
 
 theorem safety_threshold_eq (h : CompleteEvidence cfg ext f)
     (bs : BeaconState Root) (b : Root) :
@@ -202,11 +221,17 @@ theorem current_target_eq (h : CompleteEvidence cfg ext f) :
 theorem carrier_certificate (h : CompleteEvidence cfg ext f) :
     Weak.has_head_broadcast_certificate cfg ext f.store (get_current_balance_source f) =
       true := by
-  exact decide_eq_true h.carrier_support
+  have h0 : get_current_slot cfg f.store ≠ 0 := Nat.pos_iff_ne_zero.mp h.after_genesis
+  simp only [Weak.has_head_broadcast_certificate, Weak.has_broadcast_certificate, h0,
+    ↓reduceIte, decide_eq_true_eq]
+  exact h.carrier_support
 
 theorem witness_certificate (h : CompleteEvidence cfg ext f) :
     Weak.has_justification_witness_certificate cfg ext f = true := by
-  exact decide_eq_true h.witness_support
+  have h0 : get_current_slot cfg f.store ≠ 0 := Nat.pos_iff_ne_zero.mp h.after_genesis
+  simp only [Weak.has_justification_witness_certificate, Weak.has_broadcast_certificate, h0,
+    ↓reduceIte, decide_eq_true_eq]
+  exact h.witness_support
 
 theorem no_conflict_eq (h : CompleteEvidence cfg ext f) :
     Strong.will_no_conflicting_checkpoint_be_justified cfg ext f.store =

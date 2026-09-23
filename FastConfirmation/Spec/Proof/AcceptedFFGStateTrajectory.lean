@@ -1,5 +1,6 @@
 module
 public import FastConfirmation.Spec.Model.FFGStateSemantics
+public import FastConfirmation.Spec.Model.PayloadEffects
 
 @[expose] public section
 
@@ -263,65 +264,80 @@ private theorem on_block_acceptedFFGStoreProjection_of_selectors
   · simp only [on_block, if_neg hknown] at hh
     split_ifs at hh <;> try cases hh
     rw [hst] at hh
-    cases hh
-    apply compute_pulled_up_tip_acceptedFFGStoreProjection_of_blockState
-    · apply update_checkpoints_acceptedFFGBlockStateProjection
-      apply update_proposer_boost_root_acceptedFFGBlockStateProjection
-      apply record_block_timeliness_acceptedFFGBlockStateProjection
-      constructor <;> intro r hr
-      · simp only [Function.update_apply]
-        split_ifs with hrs
-        · subst r
-          exact hgj
-        · apply h.block_state_gj
-          first
-          | exact hr
-          | · simp only [List.mem_append, List.mem_singleton] at hr
-              exact hr.resolve_right hrs
-      · simp only [Function.update_apply]
-        split_ifs with hrs
-        · subst r
-          exact hgf
-        · apply h.block_state_gf
-          first
-          | exact hr
-          | · simp only [List.mem_append, List.mem_singleton] at hr
-              exact hr.resolve_right hrs
-      · simp only [Function.update_apply]
-        split_ifs with hrs
-        · subst r
-          exact hgu
-        · apply h.pulled_up_gu
-          first
-          | exact hr
-          | · simp only [List.mem_append, List.mem_singleton] at hr
-              exact hr.resolve_right hrs
-      · simp only [Function.update_apply]
-        split_ifs with hrs
-        · subst r
-          exact hguf
-        · apply h.pulled_up_guf
-          first
-          | exact hr
-          | · simp only [List.mem_append, List.mem_singleton] at hr
-              exact hr.resolve_right hrs
-    · intro r hr hrs
-      simp only [update_checkpoints, update_proposer_boost_root,
-        record_block_timeliness] at hr ⊢
-      split_ifs at hr ⊢
-      all_goals
-        apply h.unrealized_justification
-        first
-        | exact hr
-        | · simp only [List.mem_append, List.mem_singleton] at hr
+    let added : Store Root :=
+      { store with
+        block_roots := store.block_roots ++ [sb.root]
+        blocks := Function.update store.blocks sb.root sb.message
+        block_states := Function.update store.block_states sb.root post
+        payload_timeliness_vote := Function.update store.payload_timeliness_vote
+          sb.root (some (List.replicate cfg.ptc_size none))
+        payload_data_availability_vote := Function.update store.payload_data_availability_vote
+          sb.root (some (List.replicate cfg.ptc_size none)) }
+    change (match notify_ptc_messages cfg ext added post sb.message.payload_attestations with
+      | none => none
+      | some notified => some (FastConfirmation.Spec.compute_pulled_up_tip cfg ext
+          (FastConfirmation.Spec.update_checkpoints
+            (FastConfirmation.Spec.update_proposer_boost_root cfg
+              (FastConfirmation.Spec.record_block_timeliness cfg notified sb.root)
+              (get_head cfg store).root sb.root)
+            post.current_justified_checkpoint post.finalized_checkpoint) sb.root)) =
+        some store' at hh
+    cases hn : notify_ptc_messages cfg ext added post sb.message.payload_attestations with
+    | none => rw [hn] at hh; cases hh
+    | some notified =>
+      rw [hn] at hh
+      cases hh
+      have hf := notify_ptc_messages_frame cfg ext hn
+      apply compute_pulled_up_tip_acceptedFFGStoreProjection_of_blockState
+      · apply update_checkpoints_acceptedFFGBlockStateProjection
+        apply update_proposer_boost_root_acceptedFFGBlockStateProjection
+        apply record_block_timeliness_acceptedFFGBlockStateProjection
+        refine AcceptedFFGBlockStateProjection.of_eq ?_ hf.block_roots hf.block_states
+        constructor <;> intro r hr
+        · simp only [added, Function.update_apply]
+          split_ifs with hrs
+          · subst r
+            exact hgj
+          · apply h.block_state_gj
+            simp only [added, List.mem_append, List.mem_singleton] at hr
             exact hr.resolve_right hrs
-    · simp only [update_checkpoints, update_proposer_boost_root,
-        record_block_timeliness]
-      split_ifs
-      all_goals
-        first
-        | assumption
-        | exact List.mem_append_right _ (List.mem_singleton_self _)
+        · simp only [added, Function.update_apply]
+          split_ifs with hrs
+          · subst r
+            exact hgf
+          · apply h.block_state_gf
+            simp only [added, List.mem_append, List.mem_singleton] at hr
+            exact hr.resolve_right hrs
+        · simp only [added, Function.update_apply]
+          split_ifs with hrs
+          · subst r
+            exact hgu
+          · apply h.pulled_up_gu
+            simp only [added, List.mem_append, List.mem_singleton] at hr
+            exact hr.resolve_right hrs
+        · simp only [added, Function.update_apply]
+          split_ifs with hrs
+          · subst r
+            exact hguf
+          · apply h.pulled_up_guf
+            simp only [added, List.mem_append, List.mem_singleton] at hr
+            exact hr.resolve_right hrs
+      · intro r hr hrs
+        simp only [update_checkpoints, update_proposer_boost_root,
+          record_block_timeliness] at hr ⊢
+        split_ifs at hr ⊢
+        all_goals
+          rw [hf.block_roots] at hr
+          rw [hf.unrealized_justifications]
+          apply h.unrealized_justification
+          simp only [added, List.mem_append, List.mem_singleton] at hr
+          exact hr.resolve_right hrs
+      · simp only [update_checkpoints, update_proposer_boost_root,
+          record_block_timeliness]
+        split_ifs
+        all_goals
+          rw [hf.block_roots]
+          exact List.mem_append_right _ (List.mem_singleton_self _)
 
 /-- A concrete accepted block transition preserves the exact projection.
 The coherence law is applied to this transition value itself, never to an
@@ -471,6 +487,14 @@ private theorem acceptedFFGStoreProjection_take
         | attester_slashing sl =>
             exact on_attester_slashing_acceptedFFGStoreProjection hp
               (by simpa [apply_event, hevent] using heq)
+        | execution_payload_envelope envelope observation =>
+            have hf := on_execution_payload_envelope_frame ext
+              (by simpa [apply_event, hevent] using heq)
+            exact hp.of_eq hf.block_roots hf.block_states hf.unrealized_justifications
+        | payload_attestation_message message fromBlock =>
+            have hf := on_payload_attestation_message_frame cfg ext
+              (by simpa [apply_event, hevent] using heq)
+            exact hp.of_eq hf.block_roots hf.block_states hf.unrealized_justifications
 
 /-- Every ordinary boundary snapshot has the accepted-state FFG projection. -/
 theorem acceptedFFGStoreProjection

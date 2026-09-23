@@ -62,17 +62,18 @@ the same ancestor — no containment between the stores is needed. -/
 *commonly* known roots (`hagree`), and `r ∈ t.block_roots` is carried as an
 invariant along the walk: the recursion steps only while `slot < (blocks r).slot`,
 exactly where `t`'s parent-closure (`hclosed`) hands the invariant to the parent. -/
-theorem get_ancestor_aux_congr_closed {s t : Store Root} {slot : Slot}
+theorem get_ancestor_aux_congr_closed [LinearOrder Root] [Inhabited Root] {s t : Store Root} {slot : Slot}
     (hagree : ∀ x ∈ s.block_roots, x ∈ t.block_roots → s.blocks x = t.blocks x)
     (hclosed : ∀ x ∈ t.block_roots, slot < (t.blocks x).slot →
       (t.blocks x).parent_root ∈ t.block_roots)
     {r : Root} (hw : WalkKnown s slot r) (hrt : r ∈ t.block_roots) :
-    ∀ fuel : ℕ, get_ancestor_aux s slot fuel (ForkChoiceNode.mk r)
-      = get_ancestor_aux t slot fuel (ForkChoiceNode.mk r) := by
+    ∀ statusS statusT : PayloadStatus, ∀ fuel : ℕ,
+      (get_ancestor_aux s slot fuel (ForkChoiceNode.mk r statusS)).root =
+        (get_ancestor_aux t slot fuel (ForkChoiceNode.mk r statusT)).root := by
   revert hrt
   induction hw with
   | @stop r hr hle =>
-    intro hrt fuel
+    intro hrt statusS statusT fuel
     cases fuel with
     | zero => rfl
     | succ f =>
@@ -80,7 +81,7 @@ theorem get_ancestor_aux_congr_closed {s t : Store Root} {slot : Slot}
       rw [if_neg (by simpa using hle),
         if_neg (by rw [← hagree r hr hrt]; simpa using hle)]
   | @step r hr hgt hp ih =>
-    intro hrt fuel
+    intro hrt statusS statusT fuel
     have hb : s.blocks r = t.blocks r := hagree r hr hrt
     have hpt : (s.blocks r).parent_root ∈ t.block_roots := by
       rw [hb]; exact hclosed r hrt (by rw [← hb]; exact hgt)
@@ -89,7 +90,7 @@ theorem get_ancestor_aux_congr_closed {s t : Store Root} {slot : Slot}
     | succ f =>
       simp only [get_ancestor_aux]
       rw [if_pos (by simpa using hgt), if_pos (by rw [← hb]; simpa using hgt), ← hb]
-      exact ih hpt f
+      exact ih hpt _ _ f
 
 variable [LinearOrder Root] [Inhabited Root] (cfg : Config) (ext : Externals Root)
 variable (E : Execution Root)
@@ -183,17 +184,17 @@ theorem Execution.is_ancestor_transport_closed (hwf : WellFormedExecution E)
     E.store_parentSlotLt cfg ext hwf hec ⟨ast, ablk, hgeq, hslot, hparent⟩
       hwf.anchor_parent_unscheduled w k
   -- the walk at `(v, n)` lands on `b`
-  have hlands_v : get_ancestor (E.store cfg ext v n) (ForkChoiceNode.mk d)
-      ((E.store cfg ext v n).blocks b).slot = ForkChoiceNode.mk b := by
-    simpa only [is_ancestor, get_node_for_root, decide_eq_true_eq] using hanc
+  have hlands_v : (get_ancestor (E.store cfg ext v n) (ForkChoiceNode.mk d .pending)
+      ((E.store cfg ext v n).blocks b).slot).root = b := by
+    simpa only [is_ancestor_get_node_for_root, decide_eq_true_eq] using hanc
   -- replay it at `(w, k)`: same fuel (agreement at `d`), same walk
-  have hgw : get_ancestor (E.store cfg ext v n) (ForkChoiceNode.mk d)
-        ((E.store cfg ext v n).blocks b).slot
-      = get_ancestor (E.store cfg ext w k) (ForkChoiceNode.mk d)
-        ((E.store cfg ext v n).blocks b).slot := by
+  have hgw : (get_ancestor (E.store cfg ext v n) (ForkChoiceNode.mk d .pending)
+        ((E.store cfg ext v n).blocks b).slot).root
+      = (get_ancestor (E.store cfg ext w k) (ForkChoiceNode.mk d .pending)
+        ((E.store cfg ext v n).blocks b).slot).root := by
     simp only [get_ancestor]
     rw [hagree d hd_v hd_w]
-    exact get_ancestor_aux_congr_closed hagree hclosed hwalk_v hd_w _
+    exact get_ancestor_aux_congr_closed hagree hclosed hwalk_v hd_w _ _ _
   have hspec := (get_ancestor_spec hpsl_w hwalk_w).1
   rw [← hgw, hlands_v] at hspec
   exact hspec

@@ -178,7 +178,7 @@ theorem pastHead_known_at_observer
       hgeq hslot hroot obs q lm.root hlmKnown
   have hs0 : E.slot_at cfg 0 ≤ s := by
     rw [hcur0, hsap]
-    exact hanchorle.trans hlmSlot
+    exact hanchorle.trans hlmSlot.1
   have hsH : E.SlotWithinHorizon cfg s :=
     E.slotWithinHorizon_of_le cfg (le_of_lt hslt) hH
   obtain ⟨nu, index, hHnu, hnu, hvoteHead⟩ :=
@@ -201,10 +201,9 @@ theorem pastHead_known_at_observer
   refine ⟨nu, hHnu, ?_, hheadKnown, ?_, ?_⟩
   · rw [hnu]
     exact hslt
-  · change is_ancestor (E.store cfg ext obs q)
-      (ForkChoiceNode.mk (get_head cfg (E.store cfg ext i nu)).root)
-      (get_node_for_root b) = true
+  · rw [is_ancestor_node_root]
     rw [hhead]
+    rw [is_ancestor_node_root] at hsupp
     simpa only [get_supported_node, get_node_for_root] using hsupp
   · rw [hhead]
     exact hlmKnown
@@ -263,7 +262,9 @@ theorem confirmed_honestPastHeadBelow_at_observer
           (by simpa only [hquery] using hcandidate)
           (get_head cfg (E.store cfg ext i nu)).root hheadQueryE
         simpa only [hquery] using hw)
-      (by simpa only [hquery] using hheadCandidateQ)
+      (by
+        rw [is_ancestor_node_root] at hheadCandidateQ
+        simpa only [hquery] using hheadCandidateQ)
   obtain ⟨ast, ablk, hgen, hslot, hanchorParent⟩ := hT.genesis_structure
   have hcandidateRoot : E.ExecutionRoot candidate :=
     ⟨query.store.blocks candidate,
@@ -283,7 +284,9 @@ theorem confirmed_honestPastHeadBelow_at_observer
     strictly_past := hnuq
     candidate_known := hcandidatePast
     head_known := hheadPast
-    head_descends_candidate := hheadCandidatePast
+    head_descends_candidate := by
+      rw [is_ancestor_node_root]
+      exact hheadCandidatePast
   }⟩
 
 end Execution

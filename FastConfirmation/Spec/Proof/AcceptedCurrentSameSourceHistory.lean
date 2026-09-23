@@ -152,7 +152,7 @@ theorem pastHead_of_honestSupporter_known
       hgeq hslot hroot v n lm.root hlmKnown
   have hs0 : E.slot_at cfg 0 ≤ s := by
     rw [hcur0, hsap]
-    exact hanchorle.trans hlmSlot
+    exact hanchorle.trans hlmSlot.1
   have hsH : E.SlotWithinHorizon cfg s :=
     E.slotWithinHorizon_of_le cfg (le_of_lt hslt) hH
   obtain ⟨nu, index, hHnu, hnu, hvoteHead⟩ :=
@@ -175,11 +175,9 @@ theorem pastHead_of_honestSupporter_known
   refine ⟨nu, hHnu, ?_, hheadKnown, ?_⟩
   · rw [hnu]
     exact hslt
-  · change is_ancestor (E.store cfg ext v n)
-      (ForkChoiceNode.mk (get_head cfg (E.store cfg ext i nu)).root)
-      (get_node_for_root b) = true
+  · rw [is_ancestor_node_root]
     rw [hhead]
-    simpa only [get_supported_node, get_node_for_root] using hsupp
+    simpa only [get_node_for_root, is_ancestor_supported_pending] using hsupp
 
 /-- A concrete confirmation produces the full strictly-past honest-head
 carrier.  Semantic execution ancestry is extracted in the query store and
@@ -232,7 +230,9 @@ theorem confirmed_honestPastHeadBelow
           (by simpa only [hquery] using hcandidate)
           (get_head cfg (E.store cfg ext i nu)).root hheadQueryE
         simpa only [hquery] using hw)
-      (by simpa only [hquery] using hheadCandidateQ)
+      (by
+        rw [is_ancestor_node_root] at hheadCandidateQ
+        simpa only [hquery] using hheadCandidateQ)
   obtain ⟨ast, ablk, hgen, hslot, hanchorParent⟩ := hT.genesis_structure
   have hcandidateRoot : E.ExecutionRoot candidate :=
     ⟨query.store.blocks candidate,
@@ -252,7 +252,9 @@ theorem confirmed_honestPastHeadBelow
     strictly_past := hnuq
     candidate_known := hcandidatePast
     head_known := hheadPast
-    head_descends_candidate := hheadCandidatePast
+    head_descends_candidate := by
+      rw [is_ancestor_node_root]
+      exact hheadCandidatePast
   }⟩
 
 /-! ## Past HFC inversion -/
@@ -888,28 +890,18 @@ theorem ObservedResetCandidateInputAt.acceptedLemma22EpochStartCandidateSource
         (E.store cfg ext v hi.originSecond) tip c.epoch :=
       B.coherence.au_checkpoint_of_known
         (E.store_causal cfg ext v hi.originSecond) tip htip.known c hAU
-    have heta : get_ancestor (E.store cfg ext v hi.originSecond)
+    have heta : (get_ancestor (E.store cfg ext v hi.originSecond)
         (get_node_for_root tip)
-        (compute_start_slot_at_epoch cfg c.epoch) =
-          get_node_for_root c.root := by
+        (compute_start_slot_at_epoch cfg c.epoch)).root = c.root := by
       have hroot := congrArg Checkpoint.root hcheckpoint
       have htargetRoot : get_checkpoint_block cfg
           (E.store cfg ext v hi.originSecond) tip c.epoch = c.root := by
         simpa only [get_checkpoint_for_block] using hroot.symm
-      simp only [get_checkpoint_block] at htargetRoot
-      generalize hnode : get_ancestor (E.store cfg ext v hi.originSecond)
-        (get_node_for_root tip)
-        (compute_start_slot_at_epoch cfg c.epoch) = node
-      simp only [get_node_for_root] at hnode ⊢
-      rw [hnode] at htargetRoot
-      obtain ⟨r⟩ := node
-      change r = c.root at htargetRoot
-      cases htargetRoot
-      rfl
+      simpa only [get_checkpoint_block, get_node_for_root] using htargetRoot
     have htipCandidate : is_ancestor
         (E.store cfg ext v hi.originSecond)
         (get_node_for_root tip) (get_node_for_root c.root) = true := by
-      have hcomp := get_ancestor_comp hparentOrigin
+      have hcomp := get_ancestor_comp_root hparentOrigin
         hrealOrigin.root_slot_le_boundary hwalkTipCandidate
       simp only [get_node_for_root] at heta hcomp
       rw [heta] at hcomp
@@ -918,9 +910,10 @@ theorem ObservedResetCandidateInputAt.acceptedLemma22EpochStartCandidateSource
           ((E.store cfg ext v hi.originSecond).blocks c.root).slot =
             get_node_for_root c.root :=
         get_ancestor_stop (Nat.le_refl _)
-      simp only [get_node_for_root] at hstop hcomp
-      simp only [is_ancestor, get_node_for_root, decide_eq_true_eq]
-      exact hcomp.symm.trans hstop
+      simp only [get_node_for_root] at hstop
+      rw [hstop] at hcomp
+      simp only [is_ancestor_get_node_for_root, decide_eq_true_eq]
+      exact hcomp.symm
     have htipBlockAgree :
         (E.store cfg ext v hi.originSecond).blocks tip =
           (E.store cfg ext v (n + 1)).blocks tip :=

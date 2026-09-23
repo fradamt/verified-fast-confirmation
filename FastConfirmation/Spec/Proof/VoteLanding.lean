@@ -127,7 +127,7 @@ an explicit input by the lower-level reductions (`ByzVpre` is a leaf, and honest
 lemma). Here the two Layer-0-mechanical domain premises — `ParentSlotLt`
 (`store_parentSlotLt`) and the blanket walk domain (`store_walkKnownK`) — are
 discharged from `SpecAssumptions`, and the sibling's `hc'`/`hpc'`/`hlo` are derived
-from the fork-choice child membership (`mem_get_node_children` +
+from the fork-choice child membership (`mem_get_node_children_resolved` +
 `filtered_subset_block_roots` + `ParentSlotLt`). The provenance (`hprov`), recorded
 knownness (`hlmknown`), domination (`hdom`), and the `b`-side fork-edge geometry
 (`hh`/`hpc`/`hbc`/`hlo_h`) stay as the enumerated per-endpoint residuals. -/
@@ -156,9 +156,12 @@ theorem hHon_of_confinement (hSA : SpecAssumptions cfg ext E)
     (hbc : is_ancestor (E.store cfg ext w m) (get_node_for_root b) (get_node_for_root c) = true)
     (hlo_h : lo ≤ ((E.store cfg ext w m).blocks h).slot + 1) :
     ∀ c' : Root,
-      ForkChoiceNode.mk c' ∈
+      ForkChoiceNode.mk c' .pending ∈
           get_node_children (E.store cfg ext w m)
-            (get_filtered_block_tree cfg (E.store cfg ext w m)) (ForkChoiceNode.mk h) →
+            (get_filtered_block_tree cfg (E.store cfg ext w m))
+              (ForkChoiceNode.mk h
+                (get_parent_payload_status (E.store cfg ext w m)
+                  ((E.store cfg ext w m).blocks c))) →
         c' ≠ c →
         ∀ i ∈ AttSupporters cfg (E.store cfg ext w m) (get_node_for_root c')
             ((E.store cfg ext w m).checkpoint_states (E.store cfg ext w m).justified_checkpoint),
@@ -171,11 +174,15 @@ theorem hHon_of_confinement (hSA : SpecAssumptions cfg ext E)
     E.store_parentSlotLt cfg ext hwf hec hgen hwf.anchor_parent_unscheduled w m
   have hwalkK := E.store_walkKnownK cfg ext hwf hec hgen w m
   intro c' hchild hne' i hi_supp hih
-  rw [mem_get_node_children] at hchild
-  have hc'mem : c' ∈ get_filtered_block_tree cfg (E.store cfg ext w m) := hchild.1
+  have hchildData := (mem_get_node_children_resolved
+    (get_parent_payload_status_ne_pending (E.store cfg ext w m)
+      ((E.store cfg ext w m).blocks c))).mp hchild
+  have hc'mem : c' ∈ get_filtered_block_tree cfg (E.store cfg ext w m) :=
+    hchildData.2.1
   have hc' : c' ∈ (E.store cfg ext w m).block_roots :=
     filtered_subset_block_roots cfg (E.store cfg ext w m) hjc c' hc'mem
-  have hpc' : ((E.store cfg ext w m).blocks c').parent_root = h := hchild.2
+  have hpc' : ((E.store cfg ext w m).blocks c').parent_root = h :=
+    hchildData.2.2.1
   have hlo : lo ≤ ((E.store cfg ext w m).blocks c').slot := by
     have hlt := hpsl c' hc' (by rw [hpc']; exact hh)
     rw [hpc'] at hlt; exact le_trans hlo_h hlt
@@ -205,9 +212,12 @@ theorem hByz_of_confinement (hSA : SpecAssumptions cfg ext E)
     (hbc : is_ancestor (E.store cfg ext w m) (get_node_for_root b) (get_node_for_root c) = true)
     (hlo_h : lo ≤ ((E.store cfg ext w m).blocks h).slot + 1) :
     ∀ c' : Root,
-      ForkChoiceNode.mk c' ∈
+      ForkChoiceNode.mk c' .pending ∈
           get_node_children (E.store cfg ext w m)
-            (get_filtered_block_tree cfg (E.store cfg ext w m)) (ForkChoiceNode.mk h) →
+            (get_filtered_block_tree cfg (E.store cfg ext w m))
+              (ForkChoiceNode.mk h
+                (get_parent_payload_status (E.store cfg ext w m)
+                  ((E.store cfg ext w m).blocks c))) →
         c' ≠ c →
         ∀ i ∈ AttSupporters cfg (E.store cfg ext w m) (get_node_for_root c')
             ((E.store cfg ext w m).checkpoint_states (E.store cfg ext w m).justified_checkpoint),
@@ -217,11 +227,15 @@ theorem hByz_of_confinement (hSA : SpecAssumptions cfg ext E)
     E.store_parentSlotLt cfg ext hwf hec hgen hwf.anchor_parent_unscheduled w m
   have hwalkK := E.store_walkKnownK cfg ext hwf hec hgen w m
   intro c' hchild hne' i hi_supp hib
-  rw [mem_get_node_children] at hchild
-  have hc'mem : c' ∈ get_filtered_block_tree cfg (E.store cfg ext w m) := hchild.1
+  have hchildData := (mem_get_node_children_resolved
+    (get_parent_payload_status_ne_pending (E.store cfg ext w m)
+      ((E.store cfg ext w m).blocks c))).mp hchild
+  have hc'mem : c' ∈ get_filtered_block_tree cfg (E.store cfg ext w m) :=
+    hchildData.2.1
   have hc' : c' ∈ (E.store cfg ext w m).block_roots :=
     filtered_subset_block_roots cfg (E.store cfg ext w m) hjc c' hc'mem
-  have hpc' : ((E.store cfg ext w m).blocks c').parent_root = h := hchild.2
+  have hpc' : ((E.store cfg ext w m).blocks c').parent_root = h :=
+    hchildData.2.2.1
   have hlo : lo ≤ ((E.store cfg ext w m).blocks c').slot := by
     have hlt := hpsl c' hc' (by rw [hpc']; exact hh)
     rw [hpc'] at hlt; exact le_trans hlo_h hlt

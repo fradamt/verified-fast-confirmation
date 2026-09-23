@@ -402,7 +402,13 @@ theorem finalized_check_of_honestTargetOnSelected
           (E.store cfg ext w m).finalized_checkpoint.epoch :=
     htargetAtHead.trans
       (get_checkpoint_block_of_ancestor cfg hparentVote
-        hheadDescendsSelected hboundarySelectedVote htarget.target_walk)
+        ((congrArg (· = true) (is_ancestor_pending_root_eq
+          (E.store cfg ext htarget.validator htarget.second)
+          (get_head cfg (E.store cfg ext htarget.validator htarget.second)).root
+          selected .pending
+          (get_head cfg (E.store cfg ext htarget.validator
+            htarget.second)).payload_status)).mpr hheadDescendsSelected)
+        hboundarySelectedVote htarget.target_walk)
   have hselectedTransport :
       get_checkpoint_block cfg
           (E.store cfg ext htarget.validator htarget.second) selected
@@ -540,10 +546,9 @@ theorem finalized_check_of_laggingQuery
       · exact False.elim (hqueryGenesis hgenesis)
       · exact hfinalized
     have hqueryTipLandsOnSelected :
-        get_ancestor query (get_node_for_root queryTip)
-            (query.blocks selected).slot =
-          get_node_for_root selected := by
-      simpa only [is_ancestor, decide_eq_true_eq] using hqueryTipSelected
+        (get_ancestor query (get_node_for_root queryTip)
+            (query.blocks selected).slot).root = selected := by
+      simpa only [get_node_for_root, is_ancestor_pending, decide_eq_true_eq] using hqueryTipSelected
     have hqueryTipBoundaryWalk : WalkKnown query
         (compute_start_slot_at_epoch cfg
           query.finalized_checkpoint.epoch) queryTip :=

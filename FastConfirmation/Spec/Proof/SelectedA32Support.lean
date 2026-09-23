@@ -63,7 +63,12 @@ theorem current_target_eq_checkpoint_of_current_epoch_ancestor
       (get_current_store_epoch cfg store) ≤ (store.blocks c).slot := by
     rw [← hcEpoch]
     exact start_slot_at_block_epoch_le cfg store c
-  have hroot := get_checkpoint_block_of_ancestor cfg hwf hheadC hslot hwalk
+  have hheadC' : is_ancestor store (get_node_for_root (get_head cfg store).root)
+      (get_node_for_root c) = true :=
+    (congrArg (· = true) (is_ancestor_pending_root_eq store
+      (get_head cfg store).root c .pending
+      (get_head cfg store).payload_status)).mpr hheadC
+  have hroot := get_checkpoint_block_of_ancestor cfg hwf hheadC' hslot hwalk
   simp only [get_current_target, get_checkpoint_for_block]
   rw [hcEpoch]
   exact congrArg (Checkpoint.mk (get_current_store_epoch cfg store)) hroot

@@ -84,7 +84,8 @@ theorem chain_descends_terminal {store : Store Root}
       have hhd' : ∀ y, (d :: rest).head? = some y → (store.blocks y).parent_root = a := by
         intro y hy; rw [List.head?_cons, Option.some_inj] at hy; subst hy; exact hr
       have hx_a := ih hmem' hamem hhd' x hx'
-      exact is_ancestor_trans hwf (hwalk t ht x (hmem x (List.mem_cons_of_mem _ hx')))
+      exact is_ancestor_trans (a := get_node_for_root x) (b := get_node_for_root a)
+        (c := get_node_for_root t) hwf (hwalk t ht x (hmem x (List.mem_cons_of_mem _ hx')))
         (hwalk t ht a hamem) hx_a ha_t
 
 omit [Inhabited Root] in
@@ -144,7 +145,8 @@ theorem find_latest_confirmed_descendant_ge (fcr_store : FastConfirmationStore R
     · rw [heq]
       have hr_anc := get_ancestor_roots_descends hwf hwalk hacc_mem hhead hr
       have hr_mem := get_ancestor_roots_mem hwf (hwalk acc hacc_mem _ hhead) hr
-      exact ⟨is_ancestor_trans hwf (hwalk lcr hlcr r hr_mem)
+      exact ⟨is_ancestor_trans (a := get_node_for_root r) (b := get_node_for_root acc)
+        (c := get_node_for_root lcr) hwf (hwalk lcr hlcr r hr_mem)
         (hwalk lcr hlcr acc hacc_mem) hr_anc hacc_anc, hr_mem⟩
   have htent : ∀ (acc : Root), P acc →
       P (find_latest_confirmed_descendant_tentative_loop cfg ext fcr_store
@@ -158,7 +160,8 @@ theorem find_latest_confirmed_descendant_ge (fcr_store : FastConfirmationStore R
     · rw [heq]
       have hr_anc := get_ancestor_roots_descends hwf hwalk hacc_mem hhead hr
       have hr_mem := get_ancestor_roots_mem hwf (hwalk acc hacc_mem _ hhead) hr
-      exact ⟨is_ancestor_trans hwf (hwalk lcr hlcr r hr_mem)
+      exact ⟨is_ancestor_trans (a := get_node_for_root r) (b := get_node_for_root acc)
+        (c := get_node_for_root lcr) hwf (hwalk lcr hlcr r hr_mem)
         (hwalk lcr hlcr acc hacc_mem) hr_anc hacc_anc, hr_mem⟩
   change P (find_latest_confirmed_descendant cfg ext fcr_store lcr)
   generalize hX : find_latest_confirmed_descendant cfg ext fcr_store lcr = X

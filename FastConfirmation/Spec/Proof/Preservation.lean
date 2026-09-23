@@ -1,5 +1,6 @@
 module
 public import FastConfirmation.Spec.Proof.Registry
+public import FastConfirmation.Spec.Model.PayloadEffects
 
 @[expose] public section
 
@@ -21,12 +22,10 @@ are delivered here as trajectory theorems:
   block's slot; the other handlers leave `blocks`/`block_states` alone.
 
 The fourth field, `parent_slot_lt`, is **not** derivable from
-`WellFormedStore` + `ExternalsCoherence` alone: `on_block`
-overwrites `blocks[block_root]`/`block_states[block_root]` unconditionally, so
-re-adding a root at a changed slot — or adding a fresh root that some existing
-block already names as its `parent_root` — breaks a child's parent-slot
-ordering. Ruling both out needs the wire-block root injectivity / block
-provenance of `WellFormedExecution` (`BlockAgreement`). Its trajectory-level
+`WellFormedStore` + `ExternalsCoherence` alone: adding a fresh root that an
+existing block already names as its `parent_root` can break a child's
+parent-slot ordering. Known blocks return without a write. Fresh roots need
+the wire-block root injectivity and block provenance of `WellFormedExecution` (`BlockAgreement`). Its trajectory-level
 proof is supplied by `WFTrajectory`.
 
 The block-identity fields (`block_roots`, `blocks`, `block_states`) are the
@@ -60,6 +59,11 @@ theorem trans {a b c : Store Root} (h1 : SameBlocks a b) (h2 : SameBlocks b c) :
   ⟨h1.1.trans h2.1, h1.2.1.trans h2.2.1, h1.2.2.trans h2.2.2⟩
 
 end SameBlocks
+
+/-- Payload map writes leave all three block-identity fields equal. -/
+theorem PayloadFrame.sameBlocks {store store' : Store Root}
+    (h : PayloadFrame store store') : SameBlocks store store' :=
+  ⟨h.block_roots.symm, h.blocks.symm, h.block_states.symm⟩
 
 /-- Folding a `SameBlocks`-preserving step keeps the block identity. -/
 private theorem sameBlocks_foldl {α : Type*} {f : Store Root → α → Store Root}
@@ -143,6 +147,23 @@ theorem compute_pulled_up_tip_sameBlocks (store : Store Root) (block_root : Root
     exact ⟨rfl, rfl, rfl⟩
   · refine SameBlocks.trans ?_ (update_unrealized_checkpoints_sameBlocks _ _ _)
     exact ⟨rfl, rfl, rfl⟩
+
+omit [Inhabited Root] in
+theorem on_payload_attestation_message_sameBlocks {store store' : Store Root}
+    {message : PayloadAttestationMessage Root} {is_from_block : Bool}
+    (h : on_payload_attestation_message cfg ext store message is_from_block = some store') :
+    SameBlocks store store' := (on_payload_attestation_message_frame cfg ext h).sameBlocks
+
+omit [Inhabited Root] in
+theorem on_execution_payload_envelope_sameBlocks {store store' : Store Root}
+    {envelope : SignedExecutionPayloadEnvelope Root} {observation : EnvelopeObservation Root}
+    (h : on_execution_payload_envelope ext store envelope observation = some store') :
+    SameBlocks store store' := (on_execution_payload_envelope_frame ext h).sameBlocks
+
+theorem notify_ptc_messages_sameBlocks {store store' : Store Root}
+    {state : BeaconState Root} {attestations : List (IndexedPayloadAttestation Root)}
+    (h : notify_ptc_messages cfg ext store state attestations = some store') :
+    SameBlocks store store' := (notify_ptc_messages_frame cfg ext h).sameBlocks
 
 /-! ## The handler-preserved core -/
 
@@ -247,42 +268,40 @@ theorem on_block_wellFormedStoreCore
     cases hh
     exact h
   · simp only [on_block, if_neg hknown] at hh
-    split_ifs at hh with hp hslot hfin hfc
+    split_ifs at hh
     all_goals try contradiction
     cases hst : ext.state_transition
         (store.block_states signed_block.message.parent_root) signed_block with
     | none => rw [hst] at hh; cases hh
     | some state =>
       rw [hst] at hh
-      cases hh
-      apply compute_pulled_up_tip_wellFormedStoreCore
-      apply update_checkpoints_wellFormedStoreCore
-      apply update_proposer_boost_root_wellFormedStoreCore
-      apply record_block_timeliness_wellFormedStoreCore
-      obtain ⟨hnd, hbss⟩ := h
-      have hsloteq : state.slot = signed_block.message.slot := hst_slot _ _ _ hst
-      refine ⟨?_, fun r hr => ?_⟩
-      · -- `block_roots` stays duplicate-free (the append-if is already resolved
-        -- by the top-level `split_ifs`, so both branches are handled here)
-        first
-          | exact hnd
-          | exact hnd.append (List.nodup_singleton _)
-              (List.disjoint_singleton.mpr ‹signed_block.root ∉ store.block_roots›)
-      · -- every known block's state sits at its slot
-        simp only [Function.update_apply]
-        split_ifs with hrb
-        · exact hsloteq
-        · apply hbss
-          first
-            | exact hr
-            | · simp only [List.mem_append, List.mem_singleton] at hr
-                exact hr.resolve_right hrb
+      dsimp only at hh
+      split at hh
+      · cases hh
+      · rename_i after_ptc hptc
+        cases hh
+        apply compute_pulled_up_tip_wellFormedStoreCore
+        apply update_checkpoints_wellFormedStoreCore
+        apply update_proposer_boost_root_wellFormedStoreCore
+        apply record_block_timeliness_wellFormedStoreCore
+        apply (notify_ptc_messages_sameBlocks cfg ext hptc).wellFormedStoreCore
+        obtain ⟨hnd, hbss⟩ := h
+        have hsloteq : state.slot = signed_block.message.slot := hst_slot _ _ _ hst
+        refine ⟨?_, fun r hr => ?_⟩
+        · exact hnd.append (List.nodup_singleton _)
+            (List.disjoint_singleton.mpr hknown)
+        · simp only [Function.update_apply]
+          split_ifs with hrb
+          · exact hsloteq
+          · apply hbss
+            simp only [List.mem_append, List.mem_singleton] at hr
+            exact hr.resolve_right hrb
 
 /-! ## `apply_event` dispatch and the trajectory-level core
 
-The three-way dispatch of `apply_event` preserves the core: the block case is
-`on_block_wellFormedStoreCore`; the attestation and attester-slashing cases are
-block-identity-preserving, so the core rides across by `SameBlocks`. -/
+Event dispatch preserves the core. The block case is
+`on_block_wellFormedStoreCore`; every other handler preserves block identity,
+so the core passes across `SameBlocks`. -/
 
 /-- One wire message preserves the handler-local core (the block case needs the
 sanctioned `state_transition_slot`). -/
@@ -298,6 +317,10 @@ theorem apply_event_wellFormedStoreCore
   | block b => exact on_block_wellFormedStoreCore cfg ext hst_slot h he
   | attestation a ifb => exact (on_attestation_sameBlocks cfg ext he).wellFormedStoreCore h
   | attester_slashing s => exact (on_attester_slashing_sameBlocks ext he).wellFormedStoreCore h
+  | execution_payload_envelope envelope observation =>
+    exact (on_execution_payload_envelope_sameBlocks ext he).wellFormedStoreCore h
+  | payload_attestation_message message is_from_block =>
+    exact (on_payload_attestation_message_sameBlocks cfg ext he).wellFormedStoreCore h
 
 /-- One step of the event fold preserves the core (a rejected event leaves the
 store unchanged). -/
@@ -447,25 +470,32 @@ theorem on_block_parentSlotLt
       (store.blocks r).parent_root ≠ signed_block.root)
     (hh : on_block cfg ext store signed_block = some store') :
     ParentSlotLt store' := by
+  have hpar_in : signed_block.message.parent_root ∈ store.block_roots := by
+    by_contra habsent
+    simp [on_block, hfresh, habsent] at hh
   simp only [on_block, if_neg hfresh] at hh
-  -- With `hfresh` in context, `split_ifs` resolves the append-if to the fresh
-  -- branch and discharges the rejected `none` arms, leaving one goal.
-  split_ifs at hh with hp hslot hfin hfc
+  split_ifs at hh
+  all_goals try contradiction
   cases hst : ext.state_transition
       (store.block_states signed_block.message.parent_root) signed_block with
   | none => rw [hst] at hh; cases hh
   | some state =>
     rw [hst] at hh
-    cases hh
-    refine (compute_pulled_up_tip_sameBlocks cfg ext _ _).parentSlotLt ?_
-    refine (update_checkpoints_sameBlocks _ _ _).parentSlotLt ?_
-    refine (update_proposer_boost_root_sameBlocks cfg _ _ _).parentSlotLt ?_
-    refine (record_block_timeliness_sameBlocks cfg _ _).parentSlotLt ?_
-    obtain ⟨_, hbss⟩ := hcore
-    have hpre : (store.block_states signed_block.message.parent_root).slot
-        < signed_block.message.slot := hst_pre_lt _ _ _ hst
-    exact parentSlotLt_insert store signed_block.root signed_block.message state
-      hpar hbss hfresh hno_child hp hpre
+    dsimp only at hh
+    split at hh
+    · cases hh
+    · rename_i after_ptc hptc
+      cases hh
+      refine (compute_pulled_up_tip_sameBlocks cfg ext _ _).parentSlotLt ?_
+      refine (update_checkpoints_sameBlocks _ _ _).parentSlotLt ?_
+      refine (update_proposer_boost_root_sameBlocks cfg _ _ _).parentSlotLt ?_
+      refine (record_block_timeliness_sameBlocks cfg _ _).parentSlotLt ?_
+      refine (notify_ptc_messages_sameBlocks cfg ext hptc).parentSlotLt ?_
+      obtain ⟨_, hbss⟩ := hcore
+      have hpre : (store.block_states signed_block.message.parent_root).slot
+          < signed_block.message.slot := hst_pre_lt _ _ _ hst
+      exact parentSlotLt_insert store signed_block.root signed_block.message state
+        hpar hbss hfresh hno_child hpar_in hpre
 
 end FastConfirmation.Spec
 

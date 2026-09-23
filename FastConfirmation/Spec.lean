@@ -3,6 +3,10 @@ public import FastConfirmation.Spec.Model
 public import FastConfirmation.Spec.Proof.CompleteEvidenceWitness
 public import FastConfirmation.Spec.Proof.Containment
 public import FastConfirmation.Spec.ProvenTheorems
+public import FastConfirmation.Spec.Proof.PayloadStoreInvariants
+public import FastConfirmation.Spec.Proof.PayloadSupport
+public import FastConfirmation.Spec.Proof.PayloadPersistence
+public import FastConfirmation.Spec.Proof.OancTransport
 public import FastConfirmation.Spec.Proof.AcceptedStrictPrefixExtraQueryCounterexample
 public import FastConfirmation.Spec.Proof.AcceptedPinnedEconomicsStrictPrefixExtraQueryCounterexample
 public import FastConfirmation.Spec.Proof.WeakOneShotSafety
@@ -15,6 +19,7 @@ public import FastConfirmation.Spec.Proof.WeakSiblingScore
 public import FastConfirmation.Spec.Proof.WeakSelectorBetween
 public import FastConfirmation.Spec.Proof.WeakSelectedEdgeGeometry
 public import FastConfirmation.Spec.Proof.WeakSelectedMarginInputs
+public import FastConfirmation.Spec.Proof.WeakStatusMarginConstruction
 public import FastConfirmation.Spec.Proof.WeakCoveredMarginConstruction
 public import FastConfirmation.Spec.Proof.WeakOneShotSafetyNative
 public import FastConfirmation.Spec.Proof.WeakObserverDomain
@@ -50,7 +55,10 @@ public import FastConfirmation.Spec.Proof.WeakObservedResetSeedSafety
 public import FastConfirmation.Spec.Proof.HonestTargetAgreement
 public import FastConfirmation.Spec.Proof.AcceptedHistoricalA32OriginCall
 public import FastConfirmation.Spec.Proof.EndpointQuorumCausality
+public import FastConfirmation.Spec.Proof.SelectedTraceFilterPipeline
 
+
+@[expose] public section
 
 /-!
 # Spec — facade
@@ -77,3 +85,5 @@ four-slot preset rather than claiming to instantiate every field of
 boundary-call proof path: the primary stored-output theorem starts at the next
 slot, after the modeled synchrony deadline.
 -/
+
+end

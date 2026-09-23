@@ -84,13 +84,13 @@ equal endpoint epochs.  The separate non-genesis premise is intentionally
 visible here because root identities can be overwritten in the executable
 store; the actual-call specialization below derives it from the fixed anchor
 message and anchor-minimal-slot theorem. -/
-theorem knownSameEpochAncestrySegment_of_known_ancestor
+theorem knownSameEpochAncestrySegment_of_known_ancestor_root
     {store : Store Root}
     (hparent : ParentSlotLt store)
     {first last : Root}
     (hwalk : WalkKnown store (store.blocks first).slot last)
-    (hlands : get_ancestor store (ForkChoiceNode.mk last)
-      (store.blocks first).slot = ForkChoiceNode.mk first)
+    (hlands : (get_ancestor store (ForkChoiceNode.mk last .pending)
+      (store.blocks first).slot).root = first)
     (hsame : compute_epoch_at_slot cfg (store.blocks first).slot =
       compute_epoch_at_slot cfg (store.blocks last).slot)
     (hstrictNonGenesis : ∀ r ∈ store.block_roots,
@@ -100,8 +100,8 @@ theorem knownSameEpochAncestrySegment_of_known_ancestor
       store first last := by
   have go : ∀ {tip : Root},
       WalkKnown store (store.blocks first).slot tip →
-      get_ancestor store (ForkChoiceNode.mk tip)
-          (store.blocks first).slot = ForkChoiceNode.mk first →
+      (get_ancestor store (ForkChoiceNode.mk tip .pending)
+          (store.blocks first).slot).root = first →
       compute_epoch_at_slot cfg (store.blocks first).slot =
           compute_epoch_at_slot cfg (store.blocks tip).slot →
       KnownSameEpochAncestrySegment cfg E.genesis_store.block_roots
@@ -112,16 +112,15 @@ theorem knownSameEpochAncestrySegment_of_known_ancestor
         intro htipLands _
         have hrEq : r = first := by
           rw [get_ancestor_stop hle] at htipLands
-          exact congrArg ForkChoiceNode.root htipLands
+          exact htipLands
         subst r
         exact .refl first hr
     | @step r hr hgt hp ih =>
         intro htipLands htipEpoch
         have hparentLands :
-            get_ancestor store
-                (ForkChoiceNode.mk (store.blocks r).parent_root)
-                (store.blocks first).slot =
-              ForkChoiceNode.mk first := by
+            (get_ancestor store
+                (ForkChoiceNode.mk (store.blocks r).parent_root .pending)
+                (store.blocks first).slot).root = first := by
           rw [get_ancestor_step hparent hr hgt hp] at htipLands
           exact htipLands
         have hfirstLeParent : (store.blocks first).slot ≤
@@ -133,7 +132,7 @@ theorem knownSameEpochAncestrySegment_of_known_ancestor
             Nat.le_of_lt (Nat.lt_of_not_ge hnot)
           rw [get_ancestor_stop hparentLe] at hparentLands
           have hpEq : (store.blocks r).parent_root = first :=
-            congrArg ForkChoiceNode.root hparentLands
+            hparentLands
           rw [hpEq] at hnot
           exact hnot (le_refl _)
         have hparentLt :
@@ -160,6 +159,24 @@ theorem knownSameEpochAncestrySegment_of_known_ancestor
           (hstrictNonGenesis r hr hgt) rfl
           (hfirstEpochEqParent.symm.trans htipEpoch)
   exact go hwalk hlands hsame
+
+/-- An equality of nodes implies the root equality used by the proof. -/
+theorem knownSameEpochAncestrySegment_of_known_ancestor
+    {store : Store Root}
+    (hparent : ParentSlotLt store)
+    {first last : Root}
+    (hwalk : WalkKnown store (store.blocks first).slot last)
+    (hlands : get_ancestor store (ForkChoiceNode.mk last .pending)
+      (store.blocks first).slot = ForkChoiceNode.mk first .pending)
+    (hsame : compute_epoch_at_slot cfg (store.blocks first).slot =
+      compute_epoch_at_slot cfg (store.blocks last).slot)
+    (hstrictNonGenesis : ∀ r ∈ store.block_roots,
+      (store.blocks first).slot < (store.blocks r).slot →
+        r ∉ E.genesis_store.block_roots) :
+    KnownSameEpochAncestrySegment cfg E.genesis_store.block_roots
+      store first last := by
+  exact E.knownSameEpochAncestrySegment_of_known_ancestor_root cfg hparent hwalk
+    (congrArg ForkChoiceNode.root hlands) hsame hstrictNonGenesis
 
 /-! ## Accepted-segment semantic descent -/
 
@@ -285,10 +302,9 @@ theorem carriedCurrentNoCrossingAcceptedSegment
       (get_node_for_root query.confirmed_root) = true := by
     rw [hresult]
     exact hselectedFacts.1
-  have hlands : get_ancestor query.store (ForkChoiceNode.mk trace.result)
-      (query.store.blocks query.confirmed_root).slot =
-        ForkChoiceNode.mk query.confirmed_root := by
-    simpa only [is_ancestor, decide_eq_true_eq, get_node_for_root]
+  have hlands : (get_ancestor query.store (ForkChoiceNode.mk trace.result .pending)
+      (query.store.blocks query.confirmed_root).slot).root = query.confirmed_root := by
+    simpa only [get_node_for_root, is_ancestor_pending, decide_eq_true_eq]
       using hancestor
   have hsameEpoch : compute_epoch_at_slot cfg
         (query.store.blocks query.confirmed_root).slot =
@@ -298,7 +314,7 @@ theorem carriedCurrentNoCrossingAcceptedSegment
   have hknownSegment : KnownSameEpochAncestrySegment cfg
       E.genesis_store.block_roots query.store query.confirmed_root
         trace.result :=
-    E.knownSameEpochAncestrySegment_of_known_ancestor cfg hparent
+    E.knownSameEpochAncestrySegment_of_known_ancestor_root cfg hparent
       (hwalk query.confirmed_root hinputKnown trace.result hresultKnown)
       hlands hsameEpoch hstrictNonGenesis
   exact E.knownSameEpochAncestrySegment_toAcceptedProjectedSameEpochSegment

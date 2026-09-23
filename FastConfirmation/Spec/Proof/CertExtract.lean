@@ -66,14 +66,13 @@ theorem is_ancestor_antisymm {store : Store Root}
     (hab : is_ancestor store (get_node_for_root a) (get_node_for_root b) = true)
     (hba : is_ancestor store (get_node_for_root b) (get_node_for_root a) = true) :
     a = b := by
-  simp only [is_ancestor, get_node_for_root, decide_eq_true_eq] at hab hba
+  simp only [get_node_for_root, is_ancestor_pending, decide_eq_true_eq] at hab hba
   have h2 := get_ancestor_slot_le hwf hwb
   rw [hba] at h2
-  have hstop : get_ancestor store (ForkChoiceNode.mk a) (store.blocks b).slot
-      = ForkChoiceNode.mk a := get_ancestor_stop h2
-  exact congrArg ForkChoiceNode.root (hstop.symm.trans hab)
+  have hstop : (get_ancestor store (ForkChoiceNode.mk a .pending) (store.blocks b).slot).root
+      = a := by rw [get_ancestor_stop h2]
+  exact hstop.symm.trans hab
 
-omit [Inhabited Root] in
 /-- **Comparability of two ancestors** — the `is_ancestor` wrapper of
 `HeadReroot.reroot_comparable`. If `a` and `b` are both ancestors of a common `y`, then they are
 ancestry-comparable. -/
@@ -88,7 +87,7 @@ theorem is_ancestor_comparable {store : Store Root}
     (hyb : is_ancestor store (get_node_for_root y) (get_node_for_root b) = true) :
     is_ancestor store (get_node_for_root b) (get_node_for_root a) = true ∨
       is_ancestor store (get_node_for_root a) (get_node_for_root b) = true := by
-  simp only [is_ancestor, get_node_for_root, decide_eq_true_eq] at hya hyb ⊢
+  simp only [get_node_for_root, is_ancestor_pending, decide_eq_true_eq] at hya hyb ⊢
   exact reroot_comparable hwf hwa hwb hya hyb
 
 omit [Inhabited Root] in
@@ -107,22 +106,22 @@ theorem between_parent_child {store : Store Root}
     (hbc : is_ancestor store (get_node_for_root b) (get_node_for_root c) = true)
     (hca : is_ancestor store (get_node_for_root c) (get_node_for_root a) = true) :
     c = a ∨ c = b := by
-  simp only [is_ancestor, get_node_for_root, decide_eq_true_eq] at hbc hca
+  simp only [get_node_for_root, is_ancestor_pending, decide_eq_true_eq] at hbc hca
   have hc_le_b : (store.blocks c).slot ≤ (store.blocks b).slot := by
     have h := get_ancestor_slot_le hwf hwcb; rw [hbc] at h; exact h
   have ha_le_c : (store.blocks a).slot ≤ (store.blocks c).slot := by
     have h := get_ancestor_slot_le hwf hwac; rw [hca] at h; exact h
   rcases eq_or_lt_of_le hc_le_b with heq | hlt
   · right
-    have hstop : get_ancestor store (ForkChoiceNode.mk b) (store.blocks c).slot
-        = ForkChoiceNode.mk b := get_ancestor_stop (le_of_eq heq.symm)
-    exact congrArg ForkChoiceNode.root (hbc.symm.trans hstop)
+    have hstop : (get_ancestor store (ForkChoiceNode.mk b .pending) (store.blocks c).slot).root
+        = b := by rw [get_ancestor_stop (le_of_eq heq.symm)]
+    exact hbc.symm.trans hstop
   · left
-    have hstep : get_ancestor store (ForkChoiceNode.mk b) (store.blocks c).slot
-        = ForkChoiceNode.mk a := by
+    have hstep : (get_ancestor store (ForkChoiceNode.mk b .pending) (store.blocks c).slot).root
+        = a := by
       rw [get_ancestor_step hwf hbmem hlt (by rw [hpar]; exact WalkKnown.stop hamem ha_le_c),
         hpar, get_ancestor_stop ha_le_c]
-    exact congrArg ForkChoiceNode.root (hbc.symm.trans hstep)
+    exact hbc.symm.trans hstep
 
 /-! ## Section 1 — the strengthened loop invariant (task 1) -/
 
@@ -187,7 +186,8 @@ theorem pstr_advance (fcr_store : FastConfirmationStore Root)
   obtain ⟨hacc_lcr, hacc_mem, hacc_between⟩ := hacc
   have hb_acc : is_ancestor fcr_store.store (get_node_for_root b) (get_node_for_root acc) = true :=
     is_ancestor_of_parent hwf hb_mem hacc_mem hb_par
-  refine ⟨is_ancestor_trans hwf (hwalk lcr hlcr b hb_mem) (hwalk lcr hlcr acc hacc_mem)
+  refine ⟨is_ancestor_trans (a := get_node_for_root b) (b := get_node_for_root acc)
+      (c := get_node_for_root lcr) hwf (hwalk lcr hlcr b hb_mem) (hwalk lcr hlcr acc hacc_mem)
       hb_acc hacc_lcr, hb_mem, ?_⟩
   intro c hc_mem hbc_c hc_lcr
   rcases is_ancestor_comparable hwf (hwalk c hc_mem b hb_mem) (hwalk acc hacc_mem b hb_mem)

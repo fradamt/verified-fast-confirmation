@@ -405,7 +405,7 @@ theorem crossing_ghost_step_dominates {store : Store Root}
     (hsib : get_attestation_score cfg store (get_node_for_root cc)
         (store.checkpoint_states store.justified_checkpoint)
       ≤ xP + E.Xval cfg ext v₀ n₀ b' lo σ + Bpre + E.Bval lo σ) :
-    get_weight cfg store (ForkChoiceNode.mk cc) < get_weight cfg store (ForkChoiceNode.mk c) := by
+    get_weight cfg store (ForkChoiceNode.mk cc .pending) < get_weight cfg store (ForkChoiceNode.mk c .pending) := by
   simp only [get_node_for_root] at hbside hsib
   exact fork_weight_lt cfg (crossing_ghost_arith hbside hend hsib)
 
@@ -416,16 +416,20 @@ every competing child* dominate the fork in `get_weight`, so `c` is the descent-
 choice. The crossing analog of `Endpoint.ledger_descendStep`. -/
 theorem crossing_ledger_descendStep {store : Store Root}
     {v₀ : ValidatorIndex} {n₀ : ℕ} {b' h c : Root} {lo σ : Slot} {xP Bpre : ℕ}
-    (hchild : ForkChoiceNode.mk c ∈
-      get_node_children store (get_filtered_block_tree cfg store) (ForkChoiceNode.mk h))
+    (hchild : ForkChoiceNode.mk c .pending ∈
+      get_node_children store (get_filtered_block_tree cfg store)
+        (ForkChoiceNode.mk h (get_parent_payload_status store (store.blocks c))))
+    (hstatus : PendingStatusMargin cfg store (get_filtered_block_tree cfg store)
+      h (get_parent_payload_status store (store.blocks c)))
     (hbside : E.Sval cfg ext v₀ n₀ b' lo σ ≤
       get_attestation_score cfg store (get_node_for_root c)
         (store.checkpoint_states store.justified_checkpoint))
     (hend : xP + E.Xval cfg ext v₀ n₀ b' lo σ + Bpre + E.Bval lo σ
         + get_proposer_score cfg store + 1 ≤ E.Sval cfg ext v₀ n₀ b' lo σ)
     (hsib : ∀ c' : Root,
-      ForkChoiceNode.mk c' ∈
-        get_node_children store (get_filtered_block_tree cfg store) (ForkChoiceNode.mk h) →
+      ForkChoiceNode.mk c' .pending ∈
+        get_node_children store (get_filtered_block_tree cfg store)
+          (ForkChoiceNode.mk h (get_parent_payload_status store (store.blocks c))) →
       c' ≠ c →
       get_attestation_score cfg store (get_node_for_root c')
           (store.checkpoint_states store.justified_checkpoint)
@@ -433,6 +437,7 @@ theorem crossing_ledger_descendStep {store : Store Root}
     DescendStep cfg store (get_filtered_block_tree cfg store) h c :=
   descendStep_of_dom cfg hchild
     (fun c' hc' hne => E.crossing_ghost_step_dominates cfg ext hbside hend (hsib c' hc' hne))
+    (pending_status_selected_of_margin cfg hstatus)
 
 end Execution
 

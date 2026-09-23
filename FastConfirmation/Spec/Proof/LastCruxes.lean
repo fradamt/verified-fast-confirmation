@@ -85,9 +85,9 @@ theorem mem_of_is_ancestor_above_anchor {store : Store Root}
     {anchorSlot : Slot} {a b : Root}
     (hwa : WalkKnown store anchorSlot a)
     (hab : anchorSlot ≤ (store.blocks b).slot)
-    (hanc : is_ancestor store (ForkChoiceNode.mk a) (ForkChoiceNode.mk b) = true) :
+    (hanc : is_ancestor store (ForkChoiceNode.mk a .pending) (ForkChoiceNode.mk b .pending) = true) :
     b ∈ store.block_roots := by
-  simp only [is_ancestor, decide_eq_true_eq] at hanc
+  simp only [is_ancestor_pending, decide_eq_true_eq] at hanc
   have hwalk : WalkKnown store (store.blocks b).slot a := hwa.mono hab
   have hspec := (get_ancestor_spec hwf hwalk).1
   rw [hanc] at hspec

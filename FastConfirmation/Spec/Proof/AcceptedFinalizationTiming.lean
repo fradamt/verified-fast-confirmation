@@ -522,81 +522,97 @@ private theorem AcceptedFinalizationLagAt.on_block_of_delays
   · simp only [FastConfirmation.Spec.on_block, if_neg hknown] at hh
     split_ifs at hh <;> try cases hh
     rw [hst] at hh
-    cases hh
-    let added : Store Root :=
+    let inserted : Store Root :=
       { store with
-        block_roots :=
-          if sb.root ∈ store.block_roots then store.block_roots
-          else store.block_roots ++ [sb.root]
+        block_roots := store.block_roots ++ [sb.root]
         blocks := Function.update store.blocks sb.root sb.message
-        block_states := Function.update store.block_states sb.root post }
-    let staged := FastConfirmation.Spec.record_block_timeliness cfg added
-      sb.root
-    let boosted := FastConfirmation.Spec.update_proposer_boost_root cfg staged
-      (get_head cfg store).root sb.root
-    let realized := FastConfirmation.Spec.update_checkpoints boosted
-      post.current_justified_checkpoint post.finalized_checkpoint
-    suffices hresult : AcceptedFinalizationLagAt cfg anchor
-        (FastConfirmation.Spec.compute_pulled_up_tip cfg ext realized
-          sb.root) by
-      dsimp only [realized, boosted, staged, added] at hresult ⊢
-      split_ifs at hresult
-      all_goals exact hresult
-    have hadded : AcceptedFinalizationLagAt cfg anchor added :=
-      AcceptedFinalizationLagAt.of_eq (cfg := cfg) h rfl rfl rfl rfl
-    have hstaged : AcceptedFinalizationLagAt cfg anchor staged :=
-      AcceptedFinalizationLagAt.record_block_timeliness (cfg := cfg) added
-        sb.root hadded
-    have hboosted : AcceptedFinalizationLagAt cfg anchor boosted :=
-      AcceptedFinalizationLagAt.update_proposer_boost_root (cfg := cfg) staged
-        (get_head cfg store).root sb.root hstaged
-    have hgfCurrent : post.finalized_checkpoint = anchor ∨
-        post.finalized_checkpoint.epoch + 2 ≤
-          get_current_store_epoch cfg boosted := by
-      rcases hgf with hanchor | hlag
-      · exact Or.inl hanchor
-      · right
-        have hcurrent : get_current_store_epoch cfg boosted =
-            get_current_store_epoch cfg store := by
-          simp only [boosted, staged, added,
-            FastConfirmation.Spec.update_proposer_boost_root,
-            FastConfirmation.Spec.record_block_timeliness,
-            get_current_store_epoch, get_current_slot, get_slots_since_genesis]
-          split_ifs <;> rfl
-        rw [hcurrent]
-        exact hlag.trans hblock
-    have hrealized : AcceptedFinalizationLagAt cfg anchor realized :=
-      AcceptedFinalizationLagAt.update_checkpoints (cfg := cfg) boosted
+        block_states := Function.update store.block_states sb.root post
+        payload_timeliness_vote := Function.update store.payload_timeliness_vote
+          sb.root (some (List.replicate cfg.ptc_size none))
+        payload_data_availability_vote := Function.update store.payload_data_availability_vote
+          sb.root (some (List.replicate cfg.ptc_size none)) }
+    change (match notify_ptc_messages cfg ext inserted post sb.message.payload_attestations with
+      | none => none
+      | some notified => some (FastConfirmation.Spec.compute_pulled_up_tip cfg ext
+          (FastConfirmation.Spec.update_checkpoints
+            (FastConfirmation.Spec.update_proposer_boost_root cfg
+              (FastConfirmation.Spec.record_block_timeliness cfg notified sb.root)
+              (get_head cfg store).root sb.root)
+            post.current_justified_checkpoint post.finalized_checkpoint) sb.root)) =
+      some store' at hh
+    cases hn : notify_ptc_messages cfg ext inserted post sb.message.payload_attestations with
+    | none => rw [hn] at hh; cases hh
+    | some notified =>
+      rw [hn] at hh
+      cases hh
+      have hf : PayloadFrame inserted notified := notify_ptc_messages_frame cfg ext hn
+      let added := notified
+      let staged := FastConfirmation.Spec.record_block_timeliness cfg added
+        sb.root
+      let boosted := FastConfirmation.Spec.update_proposer_boost_root cfg staged
+        (get_head cfg store).root sb.root
+      let realized := FastConfirmation.Spec.update_checkpoints boosted
         post.current_justified_checkpoint post.finalized_checkpoint
-        hboosted hgfCurrent
-    have hrealizedBlock : get_block_epoch cfg realized sb.root =
-        compute_epoch_at_slot cfg sb.message.slot := by
-      simp only [get_block_epoch, realized, boosted, staged, added,
-        FastConfirmation.Spec.update_checkpoints,
-        FastConfirmation.Spec.update_proposer_boost_root,
-        FastConfirmation.Spec.record_block_timeliness]
-      split_ifs <;> simp only [Function.update_self]
-    have hrealizedState : realized.block_states sb.root = post := by
-      simp only [realized, boosted, staged, added,
-        FastConfirmation.Spec.update_checkpoints,
-        FastConfirmation.Spec.update_proposer_boost_root,
-        FastConfirmation.Spec.record_block_timeliness]
-      split_ifs <;> simp only [Function.update_self]
-    have hrealizedCurrent : get_current_store_epoch cfg realized =
-        get_current_store_epoch cfg store := by
-      simp only [realized, boosted, staged, added,
-        FastConfirmation.Spec.update_checkpoints,
-        FastConfirmation.Spec.update_proposer_boost_root,
-        FastConfirmation.Spec.record_block_timeliness,
-        get_current_store_epoch, get_current_slot, get_slots_since_genesis]
-      split_ifs <;> rfl
-    apply AcceptedFinalizationLagAt.compute_pulled_up_tip
-      (cfg := cfg) (ext := ext) realized
-      sb.root hrealized
-    · rw [hrealizedState, hrealizedBlock]
-      exact hguf
-    · rw [hrealizedBlock, hrealizedCurrent]
-      exact hblock
+      suffices hresult : AcceptedFinalizationLagAt cfg anchor
+          (FastConfirmation.Spec.compute_pulled_up_tip cfg ext realized
+            sb.root) by
+        exact hresult
+      have hadded : AcceptedFinalizationLagAt cfg anchor added :=
+        AcceptedFinalizationLagAt.of_eq (cfg := cfg) h hf.time hf.genesis_time
+          hf.finalized_checkpoint hf.unrealized_finalized_checkpoint
+      have hstaged : AcceptedFinalizationLagAt cfg anchor staged :=
+        AcceptedFinalizationLagAt.record_block_timeliness (cfg := cfg) added
+          sb.root hadded
+      have hboosted : AcceptedFinalizationLagAt cfg anchor boosted :=
+        AcceptedFinalizationLagAt.update_proposer_boost_root (cfg := cfg) staged
+          (get_head cfg store).root sb.root hstaged
+      have hgfCurrent : post.finalized_checkpoint = anchor ∨
+          post.finalized_checkpoint.epoch + 2 ≤
+            get_current_store_epoch cfg boosted := by
+        rcases hgf with hanchor | hlag
+        · exact Or.inl hanchor
+        · right
+          have hcurrent : get_current_store_epoch cfg boosted =
+              get_current_store_epoch cfg store := by
+            simp only [boosted, staged, added, hf.time, hf.genesis_time, inserted,
+              FastConfirmation.Spec.update_proposer_boost_root,
+              FastConfirmation.Spec.record_block_timeliness,
+              get_current_store_epoch, get_current_slot, get_slots_since_genesis]
+            split_ifs <;> simp only [hf.time, hf.genesis_time, inserted]
+          rw [hcurrent]
+          exact hlag.trans hblock
+      have hrealized : AcceptedFinalizationLagAt cfg anchor realized :=
+        AcceptedFinalizationLagAt.update_checkpoints (cfg := cfg) boosted
+          post.current_justified_checkpoint post.finalized_checkpoint
+          hboosted hgfCurrent
+      have hrealizedBlock : get_block_epoch cfg realized sb.root =
+          compute_epoch_at_slot cfg sb.message.slot := by
+        simp only [get_block_epoch, realized, boosted, staged, added, hf.blocks, inserted,
+          FastConfirmation.Spec.update_checkpoints,
+          FastConfirmation.Spec.update_proposer_boost_root,
+          FastConfirmation.Spec.record_block_timeliness]
+        split_ifs <;> simp only [hf.blocks, inserted, Function.update_self]
+      have hrealizedState : realized.block_states sb.root = post := by
+        simp only [realized, boosted, staged, added, hf.block_states, inserted,
+          FastConfirmation.Spec.update_checkpoints,
+          FastConfirmation.Spec.update_proposer_boost_root,
+          FastConfirmation.Spec.record_block_timeliness]
+        split_ifs <;> simp only [hf.block_states, inserted, Function.update_self]
+      have hrealizedCurrent : get_current_store_epoch cfg realized =
+          get_current_store_epoch cfg store := by
+        simp only [realized, boosted, staged, added, hf.time, hf.genesis_time, inserted,
+          FastConfirmation.Spec.update_checkpoints,
+          FastConfirmation.Spec.update_proposer_boost_root,
+          FastConfirmation.Spec.record_block_timeliness,
+          get_current_store_epoch, get_current_slot, get_slots_since_genesis]
+        split_ifs <;> simp only [hf.time, hf.genesis_time, inserted]
+      apply AcceptedFinalizationLagAt.compute_pulled_up_tip
+        (cfg := cfg) (ext := ext) realized
+        sb.root hrealized
+      · rw [hrealizedState, hrealizedBlock]
+        exact hguf
+      · rw [hrealizedBlock, hrealizedCurrent]
+        exact hblock
 
 /-- One accepted block preserves the paired lag invariant. -/
 theorem AcceptedFinalizationLagAt.acceptedBlockTransition
@@ -947,6 +963,16 @@ private theorem acceptedFinalizationLagAt_take
             exact AcceptedFinalizationLagAt.on_attester_slashing
               (cfg := cfg) (ext := ext) hp
               (by simpa [apply_event, hevent] using heq)
+        | execution_payload_envelope envelope observation =>
+            have hf : PayloadFrame (p.store cfg ext) store' :=
+              on_execution_payload_envelope_frame ext (by simpa [apply_event, hevent] using heq)
+            exact AcceptedFinalizationLagAt.of_eq (cfg := cfg) hp hf.time hf.genesis_time
+              hf.finalized_checkpoint hf.unrealized_finalized_checkpoint
+        | payload_attestation_message message isFromBlock =>
+            have hf : PayloadFrame (p.store cfg ext) store' :=
+              on_payload_attestation_message_frame cfg ext (by simpa [apply_event, hevent] using heq)
+            exact AcceptedFinalizationLagAt.of_eq (cfg := cfg) hp hf.time hf.genesis_time
+              hf.finalized_checkpoint hf.unrealized_finalized_checkpoint
 
 /-- The paired finalization-lag invariant at every ordinary execution
 boundary. -/

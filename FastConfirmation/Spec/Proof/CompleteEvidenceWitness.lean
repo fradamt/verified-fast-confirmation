@@ -50,6 +50,12 @@ def ext : Externals Nat where
   process_justification_and_finalization := id
   is_valid_indexed_attestation := fun _ _ => true
 
+-- Preserve the published fixture statements while interpreting their two
+-- source fields as Gloas messages with a slot and a payload flag.
+macro_rules
+  | `(⟨0, 0⟩) => `(LatestMessage.mk 0 0 false)
+  | `(⟨0, 1⟩) => `(LatestMessage.mk 1 1 false)
+
 def store : Store Nat where
   time := 2
   genesis_time := 0
@@ -60,9 +66,11 @@ def store : Store Nat where
   proposer_boost_root := 0
   equivocating_indices := ∅
   block_roots := [0, 1]
-  blocks := fun r => if r = 1 then ⟨1, 0⟩ else ⟨0, 9⟩
+  blocks := fun r =>
+    if r = 1 then { slot := 1, parent_root := 0 }
+    else { slot := 0, parent_root := 9 }
   block_states := fun _ => state
-  block_timeliness := fun _ => some true
+  block_timeliness := fun _ => some (true, true)
   checkpoint_state_keys := {anchor}
   checkpoint_states := fun _ => state
   latest_messages := fun i =>
@@ -89,7 +97,7 @@ The earlier votes and every balance source remain unchanged. -/
 def afterHeadStore : Store Nat :=
   { store with
     block_roots := [0, 1, 2]
-    blocks := fun r => if r = 2 then ⟨2, 1⟩ else store.blocks r }
+    blocks := fun r => if r = 2 then { slot := 2, parent_root := 1 } else store.blocks r }
 
 def afterHeadFcr : FastConfirmationStore Nat := get_fast_confirmation_store afterHeadStore
 

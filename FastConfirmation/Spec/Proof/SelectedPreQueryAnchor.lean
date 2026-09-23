@@ -85,9 +85,8 @@ theorem known_descends_trustedAnchor
     rwa [hanchorBlockSlot] at hwalkK
   have hlands_of_walk : ∀ {x : Root},
       WalkKnown (E.store cfg ext w m) ablk.message.slot x →
-        get_ancestor (E.store cfg ext w m)
-          (ForkChoiceNode.mk x) ablk.message.slot =
-            ForkChoiceNode.mk ablk.root := by
+        (get_ancestor (E.store cfg ext w m)
+          (ForkChoiceNode.mk x .pending) ablk.message.slot).root = ablk.root := by
     intro x hx
     induction hx with
     | @stop x hr' hle =>
@@ -99,16 +98,16 @@ theorem known_descends_trustedAnchor
             exact False.elim
               ((Nat.not_lt_of_ge hparentGe) (hparentLt.trans_le hle))
         subst x
-        exact get_ancestor_stop hle
+        exact congrArg ForkChoiceNode.root (get_ancestor_stop hle)
     | @step x hr' hgt hp ih =>
         rw [get_ancestor_step hwfM hr' hgt hp]
         exact ih
-  have hlands : get_ancestor (E.store cfg ext w m)
-      (ForkChoiceNode.mk r) ablk.message.slot =
-        ForkChoiceNode.mk ablk.root := hlands_of_walk hwalk
+  have hlands : (get_ancestor (E.store cfg ext w m)
+      (ForkChoiceNode.mk r .pending) ablk.message.slot).root =
+        ablk.root := hlands_of_walk hwalk
   have hdescends : is_ancestor (E.store cfg ext w m)
       (get_node_for_root r) (get_node_for_root ablk.root) = true := by
-    simp only [is_ancestor, get_node_for_root, decide_eq_true_eq,
+    simp only [get_node_for_root, is_ancestor_pending, decide_eq_true_eq,
       hanchorBlockSlot]
     exact hlands
   have hanchorBlockEpoch : get_current_epoch cfg ast =

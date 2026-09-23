@@ -116,16 +116,40 @@ theorem on_block_unknownBlockStatesDefault {store store' : Store Root}
     | none => rw [htransition] at hsuccess; cases hsuccess
     | some state =>
       rw [htransition] at hsuccess
-      cases hsuccess
-      apply compute_pulled_up_tip_unknownBlockStatesDefault
-      apply update_checkpoints_unknownBlockStatesDefault
-      apply update_proposer_boost_root_unknownBlockStatesDefault
-      apply record_block_timeliness_unknownBlockStatesDefault
-      intro root hroot
-      simp only [List.mem_append, List.mem_singleton, not_or] at hroot
-      simp only [Function.update_apply]
-      rw [if_neg hroot.2]
-      exact h root hroot.1
+      let added : Store Root :=
+        { store with
+          block_roots := store.block_roots ++ [block.root]
+          blocks := Function.update store.blocks block.root block.message
+          block_states := Function.update store.block_states block.root state
+          payload_timeliness_vote := Function.update store.payload_timeliness_vote
+            block.root (some (List.replicate cfg.ptc_size none))
+          payload_data_availability_vote := Function.update store.payload_data_availability_vote
+            block.root (some (List.replicate cfg.ptc_size none)) }
+      change (match notify_ptc_messages cfg ext added state block.message.payload_attestations with
+        | none => none
+        | some notified => some (compute_pulled_up_tip cfg ext
+            (update_checkpoints
+              (update_proposer_boost_root cfg
+                (record_block_timeliness cfg notified block.root)
+                (get_head cfg store).root block.root)
+              state.current_justified_checkpoint state.finalized_checkpoint) block.root)) =
+          some store' at hsuccess
+      have hadded : UnknownBlockStatesDefault added := by
+        intro root hroot
+        simp only [added, List.mem_append, List.mem_singleton, not_or] at hroot ⊢
+        rw [Function.update_of_ne hroot.2]
+        exact h root hroot.1
+      cases hn : notify_ptc_messages cfg ext added state block.message.payload_attestations with
+      | none => rw [hn] at hsuccess; cases hsuccess
+      | some notified =>
+        rw [hn] at hsuccess
+        cases hsuccess
+        apply compute_pulled_up_tip_unknownBlockStatesDefault
+        apply update_checkpoints_unknownBlockStatesDefault
+        apply update_proposer_boost_root_unknownBlockStatesDefault
+        apply record_block_timeliness_unknownBlockStatesDefault
+        exact hadded.of_eq (notify_ptc_messages_frame cfg ext hn).block_roots
+          (notify_ptc_messages_frame cfg ext hn).block_states
 
 theorem on_tick_per_slot_unknownBlockStatesDefault (store : Store Root)
     (time : Nat) (h : UnknownBlockStatesDefault store) :
@@ -174,6 +198,20 @@ theorem apply_event_unknownBlockStatesDefault (store : Store Root) (event : Even
     cases hresult : on_attester_slashing ext store slashing with
     | none => exact h
     | some result => exact on_attester_slashing_unknownBlockStatesDefault ext h hresult
+  | execution_payload_envelope envelope observation =>
+    simp only [apply_event]
+    cases hresult : on_execution_payload_envelope ext store envelope observation with
+    | none => exact h
+    | some result =>
+      exact h.of_eq (on_execution_payload_envelope_frame ext hresult).block_roots
+        (on_execution_payload_envelope_frame ext hresult).block_states
+  | payload_attestation_message message fromBlock =>
+    simp only [apply_event]
+    cases hresult : on_payload_attestation_message cfg ext store message fromBlock with
+    | none => exact h
+    | some result =>
+      exact h.of_eq (on_payload_attestation_message_frame cfg ext hresult).block_roots
+        (on_payload_attestation_message_frame cfg ext hresult).block_states
 
 theorem get_forkchoice_store_unknownBlockStatesDefault
     (state : BeaconState Root) (block : SignedBeaconBlock Root) :

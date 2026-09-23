@@ -120,27 +120,47 @@ theorem on_block_nonAnchorParentKnown (aRoot : Root) {store store' : Store Root}
     cases hh
     exact hQ
   · simp only [on_block, if_neg hknown] at hh
-    split_ifs at hh with hp hslot hfin hfc
+    split_ifs at hh with hp hpayload hslot hfin hfc
     all_goals try contradiction
     cases hst : ext.state_transition (store.block_states sb.message.parent_root) sb with
     | none => rw [hst] at hh; cases hh
     | some state =>
       rw [hst] at hh
-      cases hh
-      refine (compute_pulled_up_tip_sameBlocks cfg ext _ _).nonAnchorParentKnown aRoot ?_
-      refine (update_checkpoints_sameBlocks _ _ _).nonAnchorParentKnown aRoot ?_
-      refine (update_proposer_boost_root_sameBlocks cfg _ _ _).nonAnchorParentKnown aRoot ?_
-      refine (record_block_timeliness_sameBlocks cfg _ _).nonAnchorParentKnown aRoot ?_
-      refine nonAnchorParentKnown_insert aRoot store sb.root sb.message state _ ?_ ?_ hQ hp
-      · intro r hr
-        first
-          | exact hr
-          | exact List.mem_append_left _ hr
-      · intro r hr
-        first
-          | exact Or.inr hr
-          | · rw [List.mem_append, List.mem_singleton] at hr
-              exact hr.symm
+      let added : Store Root :=
+        { store with
+          block_roots := store.block_roots ++ [sb.root]
+          blocks := Function.update store.blocks sb.root sb.message
+          block_states := Function.update store.block_states sb.root state
+          payload_timeliness_vote := Function.update store.payload_timeliness_vote
+            sb.root (some (List.replicate cfg.ptc_size none))
+          payload_data_availability_vote := Function.update store.payload_data_availability_vote
+            sb.root (some (List.replicate cfg.ptc_size none)) }
+      change (match notify_ptc_messages cfg ext added state sb.message.payload_attestations with
+        | none => none
+        | some notified => some (compute_pulled_up_tip cfg ext
+            (update_checkpoints
+              (update_proposer_boost_root cfg
+                (record_block_timeliness cfg notified sb.root)
+                (get_head cfg store).root sb.root)
+              state.current_justified_checkpoint state.finalized_checkpoint) sb.root)) =
+          some store' at hh
+      cases hn : notify_ptc_messages cfg ext added state sb.message.payload_attestations with
+      | none => rw [hn] at hh; cases hh
+      | some notified =>
+        rw [hn] at hh
+        cases hh
+        refine (compute_pulled_up_tip_sameBlocks cfg ext _ _).nonAnchorParentKnown aRoot ?_
+        refine (update_checkpoints_sameBlocks _ _ _).nonAnchorParentKnown aRoot ?_
+        refine (update_proposer_boost_root_sameBlocks cfg _ _ _).nonAnchorParentKnown aRoot ?_
+        refine (record_block_timeliness_sameBlocks cfg _ _).nonAnchorParentKnown aRoot ?_
+        refine (notify_ptc_messages_sameBlocks cfg ext hn).nonAnchorParentKnown aRoot ?_
+        refine nonAnchorParentKnown_insert aRoot store sb.root sb.message state
+          (store.block_roots ++ [sb.root]) ?_ ?_ hQ hp
+        · intro r hr
+          exact List.mem_append_left _ hr
+        · intro r hr
+          rw [List.mem_append, List.mem_singleton] at hr
+          exact hr.symm
 
 omit [LinearOrder Root] in
 /-- `on_tick` preserves `NonAnchorParentKnown` (block-identity-preserving). -/
@@ -164,6 +184,10 @@ theorem apply_event_nonAnchorParentKnown (aRoot : Root) {store store' : Store Ro
   | attester_slashing sl =>
     simp only [apply_event] at he
     exact (on_attester_slashing_sameBlocks ext he).nonAnchorParentKnown aRoot h
+  | execution_payload_envelope envelope observation =>
+    exact (on_execution_payload_envelope_frame ext he).sameBlocks.nonAnchorParentKnown aRoot h
+  | payload_attestation_message message ifb =>
+    exact (on_payload_attestation_message_frame cfg ext he).sameBlocks.nonAnchorParentKnown aRoot h
 
 /-- Folding a second's scheduled events preserves `NonAnchorParentKnown`. -/
 theorem nonAnchorParentKnown_foldl (aRoot : Root) :

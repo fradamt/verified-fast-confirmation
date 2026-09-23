@@ -129,25 +129,38 @@ def ForkEdgeInput (E : Execution Root) (w : ValidatorIndex) (m : ℕ) (b h c : R
     get_current_epoch cfg ((E.store cfg ext w m).checkpoint_states
       (E.store cfg ext w m).justified_checkpoint) < E.verification_horizon ∧
     boost = get_proposer_score cfg (E.store cfg ext w m) ∧
-    ForkChoiceNode.mk c ∈
+    ForkChoiceNode.mk c .pending ∈
       get_node_children (E.store cfg ext w m)
-        (get_filtered_block_tree cfg (E.store cfg ext w m)) (ForkChoiceNode.mk h) ∧
+        (get_filtered_block_tree cfg (E.store cfg ext w m))
+          (ForkChoiceNode.mk h
+            (get_parent_payload_status (E.store cfg ext w m)
+              ((E.store cfg ext w m).blocks c))) ∧
+    PendingStatusMargin cfg (E.store cfg ext w m)
+      (get_filtered_block_tree cfg (E.store cfg ext w m)) h
+      (get_parent_payload_status (E.store cfg ext w m)
+        ((E.store cfg ext w m).blocks c)) ∧
     (∀ i ∈ E.Sclass cfg ext w m b lo σ,
       ∃ lm, (E.store cfg ext w m).latest_messages i = some lm ∧
         is_ancestor (E.store cfg ext w m)
           (get_supported_node (E.store cfg ext w m) lm) (get_node_for_root c) = true) ∧
     (∀ c' : Root,
-      ForkChoiceNode.mk c' ∈
+      ForkChoiceNode.mk c' .pending ∈
           get_node_children (E.store cfg ext w m)
-            (get_filtered_block_tree cfg (E.store cfg ext w m)) (ForkChoiceNode.mk h) →
+            (get_filtered_block_tree cfg (E.store cfg ext w m))
+              (ForkChoiceNode.mk h
+                (get_parent_payload_status (E.store cfg ext w m)
+                  ((E.store cfg ext w m).blocks c))) →
         c' ≠ c →
         ∀ i ∈ AttSupporters cfg (E.store cfg ext w m) (get_node_for_root c')
             ((E.store cfg ext w m).checkpoint_states (E.store cfg ext w m).justified_checkpoint),
           i ∈ E.honest → i ∈ E.Xclass cfg ext w m b lo σ) ∧
     (∀ c' : Root,
-      ForkChoiceNode.mk c' ∈
+      ForkChoiceNode.mk c' .pending ∈
           get_node_children (E.store cfg ext w m)
-            (get_filtered_block_tree cfg (E.store cfg ext w m)) (ForkChoiceNode.mk h) →
+            (get_filtered_block_tree cfg (E.store cfg ext w m))
+              (ForkChoiceNode.mk h
+                (get_parent_payload_status (E.store cfg ext w m)
+                  ((E.store cfg ext w m).blocks c))) →
         c' ≠ c →
         ∀ i ∈ AttSupporters cfg (E.store cfg ext w m) (get_node_for_root c')
             ((E.store cfg ext w m).checkpoint_states (E.store cfg ext w m).justified_checkpoint),
@@ -168,9 +181,9 @@ theorem dynamicsResidual_of_forkEdgeInput
     (hw : w ∈ E.honest) (hmH : E.WithinHorizon cfg m) :
     E.DynamicsResidual cfg ext w m h c := by
   obtain ⟨vc, nc, lo, es, σ, boost, hσ, hloH, hσH, hbase, htS, htA, hBb, hlo,
-    hdeltas, hmaj, hval, hbsH, hboost, hchild, hrec, hHon, hByz⟩ := hin
+    hdeltas, hmaj, hval, hbsH, hboost, hchild, hstatus, hrec, hHon, hByz⟩ := hin
   refine ⟨vc, nc, b, lo, es, σ, boost, hσ, hloH, hσH, ?_, ?_, hBb, hbase, ?_, ?_,
-    hval, hboost, hchild, ?_, hHon, hByz⟩
+    hval, hboost, hchild, hstatus, ?_, hHon, hByz⟩
   · exact E.SupportsDesc_transport_of_anc cfg ext vc w nc m b es htS
   · exact E.AncestorOrVoteless_transport_of_anc cfg ext vc w nc m b es htA
   · intro σ' h1 hσ'H hσ1H h2 hinv

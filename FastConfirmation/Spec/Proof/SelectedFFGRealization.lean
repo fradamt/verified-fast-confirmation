@@ -304,7 +304,7 @@ theorem exists_store_leaf_extension {store : Store Root}
   have htipSlotLe : (store.blocks c).slot ≤
       (store.blocks tip).slot := by
     have hancestorSlotLe := get_ancestor_slot_le hwf htipData.2.1
-    simp only [is_ancestor, get_node_for_root, decide_eq_true_eq] at htipData
+    simp only [get_node_for_root, is_ancestor_pending, decide_eq_true_eq] at htipData
     rw [htipData.2.2] at hancestorSlotLe
     exact hancestorSlotLe
   have htipParentKnown : (store.blocks child).parent_root ∈
@@ -322,7 +322,8 @@ theorem exists_store_leaf_extension {store : Store Root}
     is_ancestor_of_parent hwf hchild htipData.1 hparent
   have hchildC : is_ancestor store (get_node_for_root child)
       (get_node_for_root c) = true :=
-    is_ancestor_trans hwf hchildWalk htipData.2.1
+    is_ancestor_trans (a := get_node_for_root child) (b := get_node_for_root tip)
+      (c := get_node_for_root c) hwf hchildWalk htipData.2.1
       hchildTip htipData.2.2
   have hchildMem : child ∈ descendants := by
     simp only [descendants, Finset.mem_filter, List.mem_toFinset]
@@ -413,7 +414,8 @@ theorem retainedFilterTipPlacement_of_visible_leaf
     hendpoint.justified_root_known
   have htipJustified : is_ancestor store (get_node_for_root tip)
       (get_node_for_root store.justified_checkpoint.root) = true :=
-    is_ancestor_trans hwf
+    is_ancestor_trans (a := get_node_for_root tip) (b := get_node_for_root c)
+        (c := get_node_for_root store.justified_checkpoint.root) hwf
       (hwalkK store.justified_checkpoint.root hjustKnown tip htip)
       (hwalkK store.justified_checkpoint.root hjustKnown c hc)
       htipC hcJustified
@@ -459,7 +461,8 @@ theorem retainedFilterTipPlacement_of_visible_seed
     exists_visible_store_leaf_extension cfg hwf hpersistence hseed hvisible
   have htipC : is_ancestor store (get_node_for_root tip)
       (get_node_for_root c) = true :=
-    is_ancestor_trans hwf
+    is_ancestor_trans (a := get_node_for_root tip) (b := get_node_for_root seed)
+        (c := get_node_for_root c) hwf
       (hwalkK c hc tip htip)
       (hwalkK c hc seed hseed)
       htipSeed hseedC
@@ -500,7 +503,8 @@ theorem retainedFilterTipPlacement_of_available_seed
       hseed havailable
   have htipC : is_ancestor store (get_node_for_root tip)
       (get_node_for_root c) = true :=
-    is_ancestor_trans hwf
+    is_ancestor_trans (a := get_node_for_root tip) (b := get_node_for_root seed)
+        (c := get_node_for_root c) hwf
       (hwalkK c hc tip htip)
       (hwalkK c hc seed hseed)
       htipSeed hseedC
@@ -508,7 +512,8 @@ theorem retainedFilterTipPlacement_of_available_seed
     hendpoint.justified_root_known
   have htipJustified : is_ancestor store (get_node_for_root tip)
       (get_node_for_root store.justified_checkpoint.root) = true :=
-    is_ancestor_trans hwf
+    is_ancestor_trans (a := get_node_for_root tip) (b := get_node_for_root c)
+        (c := get_node_for_root store.justified_checkpoint.root) hwf
       (hwalkK store.justified_checkpoint.root hjustKnown tip htip)
       (hwalkK store.justified_checkpoint.root hjustKnown c hc)
       htipC hcJustified

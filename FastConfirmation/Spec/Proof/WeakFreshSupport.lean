@@ -344,6 +344,32 @@ private theorem weak_discount_guard {c : Prop} [Decidable c] {Ppre Hp Bp budget 
     (if c then 0 else if Ppre > budget then Ppre - budget else 0) ≤ Hp := by
   split_ifs <;> omega
 
+private theorem fresh_payload_support_le_root_support
+    (store : Store Root) (bs : BeaconState Root) (parent : Root)
+    (status : PayloadStatus) (start_slot end_slot : Slot) :
+    get_duty_fresh_parent_payload_support_between_slots cfg ext store bs parent status
+      start_slot end_slot ≤
+    get_duty_fresh_block_support_between_slots cfg ext store bs parent start_slot end_slot := by
+  unfold get_duty_fresh_parent_payload_support_between_slots
+    get_duty_fresh_block_support_between_slots
+  apply Finset.sum_le_sum_of_subset_of_nonneg
+  · intro i hi
+    simp only [Finset.mem_filter] at hi ⊢
+    refine ⟨hi.1, ?_⟩
+    cases hmsg : store.latest_messages i with
+    | none => simp [hmsg] at hi
+    | some msg =>
+      simp only [hmsg, Option.any_some, Bool.and_eq_true, decide_eq_true_eq] at hi ⊢
+      exact hi.2.1
+  · intro i _ _
+    exact Nat.zero_le _
+
+private theorem weak_discount_guard_mono {c : Prop} [Decidable c]
+    {P Q adv : ℕ} (hPQ : P ≤ Q) :
+    (if c then 0 else if P > adv then P - adv else 0) ≤
+      (if c then 0 else if Q > adv then Q - adv else 0) := by
+  split_ifs <;> omega
+
 /-- **Headline: the weak discount is covered by the FRESH parent-stuck honest
 weight.** No `hne`, no equivocation score, no honesty of the store's owner. -/
 theorem support_discount_le_fresh_parent_stuck_of_prefix {E : Execution Root}
@@ -359,9 +385,11 @@ theorem support_discount_le_fresh_parent_stuck_of_prefix {E : Execution Root}
       ≤ E.weight (FreshParentStuck cfg ext E (E.store cfg ext v n) bs b) := by
   simp only [Weak.get_support_discount, Weak.compute_empty_slot_support_discount,
     Weak.compute_adversarial_weight]
-  exact weak_discount_guard
-    (fresh_block_support_eq_parent_split_of_prefix cfg ext n hcomm hval hbH)
-    (freshParentStuckByz_le_budget cfg ext hbb hval hstartH hbH htab)
+  exact (weak_discount_guard_mono
+    (fresh_payload_support_le_root_support cfg ext _ _ _ _ _ _)).trans
+    (weak_discount_guard
+      (fresh_block_support_eq_parent_split_of_prefix cfg ext n hcomm hval hbH)
+      (freshParentStuckByz_le_budget cfg ext hbb hval hstartH hbH htab))
 
 end Weak
 

@@ -94,10 +94,9 @@ theorem selectedCurrentNoCrossingAcceptedSegment
       (get_node_for_root trace.afterObserved) = true := by
     rw [hresult]
     exact hselectedFacts.1
-  have hlands : get_ancestor query.store (ForkChoiceNode.mk trace.result)
-      (query.store.blocks trace.afterObserved).slot =
-        ForkChoiceNode.mk trace.afterObserved := by
-    simpa only [is_ancestor, decide_eq_true_eq, get_node_for_root]
+  have hlands : (get_ancestor query.store (ForkChoiceNode.mk trace.result .pending)
+      (query.store.blocks trace.afterObserved).slot).root = trace.afterObserved := by
+    simpa only [get_node_for_root, is_ancestor_pending, decide_eq_true_eq]
       using hancestor
   have hsameEpoch : compute_epoch_at_slot cfg
         (query.store.blocks trace.afterObserved).slot =
@@ -107,7 +106,7 @@ theorem selectedCurrentNoCrossingAcceptedSegment
   have hknownSegment : KnownSameEpochAncestrySegment cfg
       E.genesis_store.block_roots query.store trace.afterObserved
         trace.result :=
-    E.knownSameEpochAncestrySegment_of_known_ancestor cfg hparent
+    E.knownSameEpochAncestrySegment_of_known_ancestor_root cfg hparent
       (hwalk trace.afterObserved hinputKnown trace.result hresultKnown)
       hlands hsameEpoch hstrictNonGenesis
   exact E.knownSameEpochAncestrySegment_toAcceptedProjectedSameEpochSegment
@@ -253,10 +252,9 @@ theorem selectedCurrentCrossingAcceptedTargetSegment
   obtain ⟨htargetKnown, hresultDescendsTarget⟩ :=
     currentEpochBlock_descends_currentTarget cfg hparent hwalk hhead
       hresultKnown hbelowResult hcurrentWalk hresultCurrent
-  have hlands : get_ancestor query.store (ForkChoiceNode.mk trace.result)
-      (query.store.blocks (get_current_target cfg query.store).root).slot =
-        ForkChoiceNode.mk (get_current_target cfg query.store).root := by
-    simpa only [is_ancestor, decide_eq_true_eq, get_node_for_root]
+  have hlands : (get_ancestor query.store (ForkChoiceNode.mk trace.result .pending)
+      (query.store.blocks (get_current_target cfg query.store).root).slot).root = (get_current_target cfg query.store).root := by
+    simpa only [get_node_for_root, is_ancestor_pending, decide_eq_true_eq]
       using hresultDescendsTarget
   have htargetCurrent : (get_current_target cfg query.store).epoch =
       get_current_store_epoch cfg query.store := rfl
@@ -268,7 +266,7 @@ theorem selectedCurrentCrossingAcceptedTargetSegment
   have hknownSegment : KnownSameEpochAncestrySegment cfg
       E.genesis_store.block_roots query.store
         (get_current_target cfg query.store).root trace.result :=
-    E.knownSameEpochAncestrySegment_of_known_ancestor cfg hparent
+    E.knownSameEpochAncestrySegment_of_known_ancestor_root cfg hparent
       (hwalk (get_current_target cfg query.store).root htargetKnown
         trace.result hresultKnown)
       hlands hsameEpoch hstrictNonGenesis
@@ -683,9 +681,9 @@ noncomputable def
     current_target_eq_checkpoint_of_current_epoch_ancestor cfg hG.parent
       hbelowResult hresultCurrent hG.current_walk
   let target := get_current_target cfg query.store
-  have heta : get_ancestor query.store (get_head cfg query.store)
-      (compute_start_slot_at_epoch cfg target.epoch) =
-        get_node_for_root target.root := by
+  have heta : (get_ancestor query.store
+      (ForkChoiceNode.mk (get_head cfg query.store).root .pending)
+      (compute_start_slot_at_epoch cfg target.epoch)).root = target.root := by
     rfl
   have htargetSpec := get_ancestor_spec hG.parent hG.current_walk
   rw [show compute_start_slot_at_epoch cfg
@@ -697,30 +695,19 @@ noncomputable def
     exact (hG.walk target.root htargetSpec.1 trace.result hresultKnown).mono
       htargetSpec.2
   have hlandsRoot :
-      (get_ancestor query.store (ForkChoiceNode.mk trace.result)
+      (get_ancestor query.store (ForkChoiceNode.mk trace.result .pending)
         (compute_start_slot_at_epoch cfg target.epoch)).root = target.root := by
     have hroot := congrArg Checkpoint.root htargetCheckpoint
     simpa only [target, get_checkpoint_for_block, get_checkpoint_block,
       hresultCurrent] using hroot.symm
-  have hlands : get_ancestor query.store (ForkChoiceNode.mk trace.result)
-      (compute_start_slot_at_epoch cfg target.epoch) =
-        ForkChoiceNode.mk target.root := by
-    generalize hnode : get_ancestor query.store
-      (ForkChoiceNode.mk trace.result)
-        (compute_start_slot_at_epoch cfg target.epoch) = node
-        at hlandsRoot ⊢
-    obtain ⟨r⟩ := node
-    change r = target.root at hlandsRoot
-    cases hlandsRoot
-    rfl
   have hcarrierEpoch : get_block_epoch cfg query.store trace.result =
       target.epoch := by
     exact hresultCurrent
   have htargetGate := htargetProducer hgate hsupport
-  exact AcceptedCurrentTargetA32GateRealization.fixedSource_of_acceptedTargetWalk
+  exact AcceptedCurrentTargetA32GateRealization.fixedSource_of_acceptedTargetWalk_root
     (E := E) cfg ext B hT.wellFormed hG.exact_core hphase hboundaryPhase hG.causal
       hG.parent hcarrierEpoch (by simpa only [target] using hcurrentNonGenesis)
-      hcarrierWalk hlands htargetGate
+      hcarrierWalk hlandsRoot htargetGate
 
 /-- Action-facing arbitrary-input no-crossing wrapper. -/
 noncomputable def

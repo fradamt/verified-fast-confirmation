@@ -102,8 +102,14 @@ theorem supportsDesc_fresh (hhb : HonestBehavior cfg ext E) (hwf : WellFormedExe
   · -- the vote block is `(get_head (store i nᵢ)).root`; transport head-descent to `(v₀, n₀)`.
     have hr : (get_head cfg (E.store cfg ext i nᵢ)).root ∈ (E.store cfg ext i nᵢ).block_roots :=
       (hwalk nᵢ hslot).root_mem
+    have hpend : is_ancestor (E.store cfg ext i nᵢ)
+        (ForkChoiceNode.mk (get_head cfg (E.store cfg ext i nᵢ)).root .pending)
+        (get_node_for_root b') = true := by
+      rw [is_ancestor_pending_root_eq (E.store cfg ext i nᵢ) _ b' .pending
+        (get_head cfg (E.store cfg ext i nᵢ)).payload_status]
+      exact hIH nᵢ hslot
     exact is_ancestor_transport cfg ext hwf (hsub nᵢ hslot) hr (hbknown nᵢ hslot)
-      (hwalk nᵢ hslot) (hIH nᵢ hslot)
+      (hwalk nᵢ hslot) hpend
 
 /-! ## Section 1b — the migration monotonicities from the engine inputs
 

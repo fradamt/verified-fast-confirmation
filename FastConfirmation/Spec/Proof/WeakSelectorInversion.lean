@@ -257,7 +257,9 @@ theorem weak_find_latest_confirmed_descendant_ge (fcr_store : FastConfirmationSt
     · rw [heq]
       have hr_anc := get_ancestor_roots_descends hwf hwalk hacc_mem hhead hr
       have hr_mem := get_ancestor_roots_mem hwf (hwalk acc hacc_mem _ hhead) hr
-      exact ⟨is_ancestor_trans hwf (hwalk lcr hlcr r hr_mem)
+      exact ⟨is_ancestor_trans hwf
+        (a := get_node_for_root r) (b := get_node_for_root acc)
+        (c := get_node_for_root lcr) (hwalk lcr hlcr r hr_mem)
         (hwalk lcr hlcr acc hacc_mem) hr_anc hacc_anc, hr_mem⟩
   have htent : ∀ (acc : Root), P acc →
       P (Weak.find_latest_confirmed_descendant_tentative_loop cfg ext fcr_store
@@ -271,7 +273,9 @@ theorem weak_find_latest_confirmed_descendant_ge (fcr_store : FastConfirmationSt
     · rw [heq]
       have hr_anc := get_ancestor_roots_descends hwf hwalk hacc_mem hhead hr
       have hr_mem := get_ancestor_roots_mem hwf (hwalk acc hacc_mem _ hhead) hr
-      exact ⟨is_ancestor_trans hwf (hwalk lcr hlcr r hr_mem)
+      exact ⟨is_ancestor_trans hwf
+        (a := get_node_for_root r) (b := get_node_for_root acc)
+        (c := get_node_for_root lcr) (hwalk lcr hlcr r hr_mem)
         (hwalk lcr hlcr acc hacc_mem) hr_anc hacc_anc, hr_mem⟩
   change P (Weak.find_latest_confirmed_descendant cfg ext fcr_store lcr)
   generalize hX : Weak.find_latest_confirmed_descendant cfg ext fcr_store lcr = X

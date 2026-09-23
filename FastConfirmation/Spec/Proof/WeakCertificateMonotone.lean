@@ -88,7 +88,10 @@ theorem Weak.broadcast_certificate_support_mono_ancestor {store : Store Root}
     (Weak.mem_broadcast_certificate_support_set cfg ext store bs block_root a b i).mp hi
   exact (Weak.mem_broadcast_certificate_support_set cfg ext store bs anc a b i).mpr
     ⟨hcommem, hslashed, hactive, lm, hlm, hnoteq, hspan,
-      is_ancestor_trans hwf (hwalk i lm hlm hisanc) hwb hisanc hanc⟩
+      is_ancestor_trans hwf
+        (a := get_node_for_root lm.root) (b := get_node_for_root block_root)
+        (c := get_node_for_root anc)
+        (hwalk i lm hlm hisanc) hwb hisanc hanc⟩
 
 /-! ## Certificate transfer -/
 
@@ -107,7 +110,12 @@ theorem Weak.has_broadcast_certificate_ancestor {store : Store Root}
     (hanc : is_ancestor store (get_node_for_root block_root) (get_node_for_root anc) = true)
     (hcert : Weak.has_broadcast_certificate cfg ext store bs block_root a b = true) :
     Weak.has_broadcast_certificate cfg ext store bs anc a b = true := by
-  simp only [Weak.has_broadcast_certificate, decide_eq_true_eq] at hcert ⊢
+  simp only [Weak.has_broadcast_certificate] at hcert ⊢
+  by_cases h0 : get_current_slot cfg store = 0
+  · rw [if_pos h0] at hcert
+    exact absurd hcert Bool.false_ne_true
+  rw [if_neg h0] at hcert ⊢
+  simp only [decide_eq_true_eq] at hcert ⊢
   exact hcert.trans_le
     (Weak.broadcast_certificate_support_mono_ancestor cfg ext hwf bs a b hwb hwalk hanc)
 

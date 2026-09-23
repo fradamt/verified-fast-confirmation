@@ -83,6 +83,16 @@ theorem blockRoots_subset_of_relay (hsync : PaperSafetySynchrony cfg ext E)
     (E.store cfg ext vc nc).block_roots ⊆ (E.store cfg ext w m).block_roots :=
   fun r hr => hsync.block_relay vc hvc nc r hHnc hr w hw m hHm hslot
 
+/-- `blockRoots_subset_of_relay` from the legacy `Synchrony` bundle, whose
+`block_relay` field has the same shape. -/
+theorem blockRoots_subset_of_legacy_relay (hsync : Synchrony cfg ext E)
+    {vc w : ValidatorIndex} {nc m : ℕ}
+    (hvc : vc ∈ E.honest) (hw : w ∈ E.honest)
+    (hHnc : E.WithinHorizon cfg nc) (hHm : E.WithinHorizon cfg m)
+    (hslot : E.slot_at cfg nc + 1 ≤ E.slot_at cfg (m + 1)) :
+    (E.store cfg ext vc nc).block_roots ⊆ (E.store cfg ext w m).block_roots :=
+  fun r hr => hsync.block_relay vc hvc nc r hHnc hr w hw m hHm hslot
+
 /-- **`hequiv` — equivocator containment from `attester_slashing_relay`.** Every equivocator
 known at the confirming anchor `(vc, nc)` is known at the endpoint `(w, m)`, under the
 one-slot ordering `slot_at nc + 1 ≤ slot_at m`. This supplies
@@ -180,9 +190,130 @@ consumed only by `ShellCompose`'s engine composition. The per-field reductions o
 and `ForkEdgeInput` itself, are unaffected; docstrings elsewhere that name
 `EdgeInputResidual.<field>` still identify the field *shapes*, which are unchanged.
 
-They are deleted by the orphan sweep that follows the retirement of the legacy
-`SpecAssumptions` observed-anchor cone (P-6): every consumer they had was in that cone.
-See `docs/p6-justified-descends-derivation.md` §8. -/
+
+`hdomS`/`hdomA` are the per-root walk-domain conditions the two transports need; the block
+relay containment and equivocator containment are derived from `Synchrony` in
+`forkEdgeInput_of_residual`. -/
+structure EdgeInputResidual (E : Execution Root) (w : ValidatorIndex) (m : ℕ)
+    (b h c : Root) (vc : ValidatorIndex) (nc : ℕ) (lo es σ : Slot) : Prop where
+  /-- The window start lies in the finite verification segment. -/
+  hloH : E.SlotWithinHorizon cfg lo
+  /-- The window endpoint lies in the finite verification segment. -/
+  hσH : E.SlotWithinHorizon cfg σ
+  /-- `hbase` — `INV2(es)` at the confirming anchor (boost = the endpoint proposer score). -/
+  hbase : E.INV2 cfg ext vc nc b lo es es (get_proposer_score cfg (E.store cfg ext w m))
+  /-- the forward walk-domain condition feeding `htS`. -/
+  hdomS : ∀ r : Root, is_ancestor (E.store cfg ext vc nc)
+      (get_node_for_root r) (get_node_for_root b) = true →
+    r ∈ (E.store cfg ext vc nc).block_roots ∧
+      WalkKnown (E.store cfg ext vc nc) ((E.store cfg ext vc nc).blocks b).slot r
+  /-- the reverse walk-domain condition feeding `htA`. -/
+  hdomA : ∀ r : Root, is_ancestor (E.store cfg ext vc nc)
+      (get_node_for_root b) (get_node_for_root r) = true →
+    r ∈ (E.store cfg ext vc nc).block_roots ∧
+      WalkKnown (E.store cfg ext vc nc) ((E.store cfg ext vc nc).blocks r).slot b
+  /-- `hBb` — the recorded base-enemy weight movement `(vc, nc) → (w, m)`, carried as an
+  explicit input. The relay-based implication is invalid because the
+  recorded-`BbadSet` subset is unprovable across epochs once `recorded_conflict_slashed`
+  carries its same-target-epoch guard. The accepted route is `GroundBeta`'s
+  store-independent ground-truth-`Bval` endpoint strip (`ledger_descendStep_groundBeta`),
+  which needs **no** `hBb`. -/
+  hBb : E.BbadVal cfg ext w m b lo es ≤ E.BbadVal cfg ext vc nc b lo es
+  /-- `hdeltas` — the per-slot pre-`T1` class-migration deltas. -/
+  hdeltas : ∀ σ' : Slot, es ≤ σ' →
+    E.SlotWithinHorizon cfg σ' → E.SlotWithinHorizon cfg (σ' + 1) →
+    compute_epoch_at_slot cfg (σ' + 1) < compute_epoch_at_slot cfg es + 2 →
+    ∃ ξ α : ℕ,
+      (E.Sval cfg ext w m b lo σ' + ξ + α +
+          E.weight ((E.span_committee lo (σ' + 1) \ E.span_committee lo σ').filter
+            (fun i => i ∈ E.honest))
+        ≤ E.Sval cfg ext w m b lo (σ' + 1)) ∧
+      (E.Xval cfg ext w m b lo (σ' + 1) + ξ ≤ E.Xval cfg ext w m b lo σ') ∧
+      (E.weight ((E.span_committee (σ' + 1) (σ' + 1)).filter (fun i => i ∈ E.honest)) ≤
+        E.weight (E.Unrec cfg ext w m b lo es σ' \ E.Unrec cfg ext w m b lo es (σ' + 1))
+          + ξ + α +
+          E.weight ((E.span_committee lo (σ' + 1) \ E.span_committee lo σ').filter
+            (fun i => i ∈ E.honest)))
+  /-- `hmaj` — the post-`T1` saturated honest majority. -/
+  hmaj : ∀ σ' : Slot, es ≤ σ' →
+    compute_epoch_at_slot cfg es + 2 ≤ compute_epoch_at_slot cfg σ' →
+    E.SlotWithinHorizon cfg σ' →
+    E.Xval cfg ext w m b lo σ'
+        + cfg.confirmation_byzantine_threshold * E.Jspec lo σ'
+            / (100 - cfg.confirmation_byzantine_threshold)
+        + get_proposer_score cfg (E.store cfg ext w m) + 1 ≤ E.Sval cfg ext w m b lo σ'
+  /-- `hval` — the registry-constant justified balance source. -/
+  hval : ((E.store cfg ext w m).checkpoint_states
+    (E.store cfg ext w m).justified_checkpoint).validators = E.registry
+  /-- The justified balance source lies in the finite activity-constancy segment. -/
+  hbsH : get_current_epoch cfg ((E.store cfg ext w m).checkpoint_states
+    (E.store cfg ext w m).justified_checkpoint) < E.verification_horizon
+  /-- `hchild` — the fork-choice child membership of `c` under `h`. -/
+  hchild : ForkChoiceNode.mk c .pending ∈
+    get_node_children (E.store cfg ext w m)
+      (get_filtered_block_tree cfg (E.store cfg ext w m))
+        (ForkChoiceNode.mk h
+          (get_parent_payload_status (E.store cfg ext w m)
+            ((E.store cfg ext w m).blocks c)))
+  /-- `hrec` — every `Sclass` member records a `c`-supporting latest message. -/
+  hrec : ∀ i ∈ E.Sclass cfg ext w m b lo σ,
+    ∃ lm, (E.store cfg ext w m).latest_messages i = some lm ∧
+      is_ancestor (E.store cfg ext w m)
+        (get_supported_node (E.store cfg ext w m) lm) (get_node_for_root c) = true
+  /-- `hHon` — honest supporters of any sibling are confined to `Xclass`. -/
+  hHon : ∀ c' : Root,
+    ForkChoiceNode.mk c' .pending ∈
+        get_node_children (E.store cfg ext w m)
+          (get_filtered_block_tree cfg (E.store cfg ext w m))
+            (ForkChoiceNode.mk h
+              (get_parent_payload_status (E.store cfg ext w m)
+                ((E.store cfg ext w m).blocks c))) →
+      c' ≠ c →
+      ∀ i ∈ AttSupporters cfg (E.store cfg ext w m) (get_node_for_root c')
+          ((E.store cfg ext w m).checkpoint_states (E.store cfg ext w m).justified_checkpoint),
+        i ∈ E.honest → i ∈ E.Xclass cfg ext w m b lo σ
+  /-- `hByz` — byz supporters of any sibling are confined to `BbadSet ∪ SpentSet`. -/
+  hByz : ∀ c' : Root,
+    ForkChoiceNode.mk c' .pending ∈
+        get_node_children (E.store cfg ext w m)
+          (get_filtered_block_tree cfg (E.store cfg ext w m))
+            (ForkChoiceNode.mk h
+              (get_parent_payload_status (E.store cfg ext w m)
+                ((E.store cfg ext w m).blocks c))) →
+      c' ≠ c →
+      ∀ i ∈ AttSupporters cfg (E.store cfg ext w m) (get_node_for_root c')
+          ((E.store cfg ext w m).checkpoint_states (E.store cfg ext w m).justified_checkpoint),
+        i ∉ E.honest → i ∈ E.BbadSet cfg ext w m b lo es ∨ i ∈ E.SpentSet es σ
+
+/-- **`EdgeInputResidual ⟹ ForkEdgeInput`** (`EdgeDynamics`). The certificate
+`(vc, nc, lo, es, σ, boost := get_proposer_score cfg (store w m))` is supplied; `hσ`/`hlo`
+are the slot bounds; the two transports are built from the block relay containment
+(`blockRoots_subset_of_relay`, from `Synchrony.block_relay` under `hslotS`) and the
+walk-domain functions; `hboost` is `rfl`; the other fields come from `hres`. -/
+theorem forkEdgeInput_of_residual (hwf : WellFormedExecution E)
+    (hsync : Synchrony cfg ext E)
+    {w : ValidatorIndex} {m : ℕ} {b h c : Root} {vc : ValidatorIndex} {nc : ℕ} {lo es σ : Slot}
+    (hvc : vc ∈ E.honest) (hw : w ∈ E.honest)
+    (hHnc : E.WithinHorizon cfg nc) (hHm : E.WithinHorizon cfg m)
+    (hslotS : E.slot_at cfg nc + 1 ≤ E.slot_at cfg (m + 1))
+    (hσ : es ≤ σ) (hlo : lo ≤ es + 1)
+    (hb : b ∈ (E.store cfg ext vc nc).block_roots)
+    (hres : E.EdgeInputResidual cfg ext w m b h c vc nc lo es σ)
+    (hstatus : PendingStatusMargin cfg (E.store cfg ext w m)
+      (get_filtered_block_tree cfg (E.store cfg ext w m)) h
+      (get_parent_payload_status (E.store cfg ext w m)
+        ((E.store cfg ext w m).blocks c))) :
+    E.ForkEdgeInput cfg ext w m b h c := by
+  have hsub : (E.store cfg ext vc nc).block_roots ⊆ (E.store cfg ext w m).block_roots :=
+    fun r hr => hsync.block_relay vc hvc nc r hHnc hr w hw m hHm hslotS
+  refine ⟨vc, nc, lo, es, σ, get_proposer_score cfg (E.store cfg ext w m), hσ,
+    hres.hloH, hres.hσH, hres.hbase,
+    E.htS_of_walk cfg ext hwf hsub hb hres.hdomS,
+    E.htA_of_walk cfg ext hwf hsub hb hres.hdomA,
+    hres.hBb, hlo,
+    hres.hdeltas, hres.hmaj, hres.hval, hres.hbsH, rfl, hres.hchild, hstatus, hres.hrec,
+    hres.hHon, hres.hByz⟩
+
 
 /-- **`hval` from the justification interface.** The `EdgeInputResidual.hval`
 field states that the justified balance-source state carries the ground registry.

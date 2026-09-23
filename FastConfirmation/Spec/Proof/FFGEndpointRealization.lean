@@ -124,14 +124,13 @@ theorem rootDescends_of_getAncestor
     (hwf : ParentSlotLt store)
     {tip ancestor : Root}
     (hwalk : WalkKnown store (store.blocks ancestor).slot tip)
-    (hlands : get_ancestor store (ForkChoiceNode.mk tip)
-      (store.blocks ancestor).slot = ForkChoiceNode.mk ancestor) :
+    (hlands : (get_ancestor store (ForkChoiceNode.mk tip .pending)
+      (store.blocks ancestor).slot).root = ancestor) :
     E.RootDescends tip ancestor := by
   induction hwalk with
   | @stop r hr hle =>
       rw [get_ancestor_stop hle] at hlands
-      have hre : r = ancestor :=
-        congrArg ForkChoiceNode.root hlands
+      have hre : r = ancestor := hlands
       subst r
       exact .refl ancestor
   | @step r hr hgt hp ih =>
@@ -150,7 +149,7 @@ theorem rootDescends_of_store_ancestor
       (get_node_for_root ancestor) = true) :
     E.RootDescends tip ancestor := by
   apply E.rootDescends_of_getAncestor hprovenance hwf hwalk
-  simpa only [is_ancestor, get_node_for_root, decide_eq_true_eq] using hancestor
+  simpa only [get_node_for_root, is_ancestor_pending, decide_eq_true_eq] using hancestor
 
 end Execution
 

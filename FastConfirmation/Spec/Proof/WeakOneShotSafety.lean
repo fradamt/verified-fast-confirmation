@@ -844,7 +844,7 @@ theorem futureCrossing_descendStep_of_selectedInputs_at_observer
     hin.recorded_epoch_max hin.edge_same_epoch hin.es_le_sigma hin.sigma_horizon
     hboost hSbase (by simpa only [bs] using hin.parent_sub_endpoint) hAX hxS
   have hbside := recorded_bside_ge cfg ext hvalEnd hin.selected_recording
-  exact E.crossing_ledger_descendStep cfg ext hin.child_filtered hbside hend
+  exact E.crossing_ledger_descendStep cfg ext hin.child_filtered hin.status_margin hbside hend
     hin.sibling_score
 
 /-- `_at_observer` clone of `crossingEdge_descendStep_of_selectedInputs_minimal`. -/
@@ -943,7 +943,7 @@ theorem crossingEdge_descendStep_of_selectedInputs_at_observer
     hin.recorded_epoch_max hin.edge_crosses hin.es_le_sigma hin.sigma_horizon
     hboost hSbase (by simpa only [bs] using hin.parent_sub_endpoint) hAX hxS
   have hbside := recorded_bside_ge cfg ext hvalEnd hin.selected_recording
-  exact E.crossing_ledger_descendStep cfg ext hin.child_filtered hbside hend
+  exact E.crossing_ledger_descendStep cfg ext hin.child_filtered hin.status_margin hbside hend
     hin.sibling_score
 
 /-! ## Section 4 — the weak-observer covered chain-supply

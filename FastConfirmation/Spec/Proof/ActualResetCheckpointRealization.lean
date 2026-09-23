@@ -70,7 +70,7 @@ structure ResetCheckpointRealizedAt
   epoch_le_current : c.epoch ≤ get_current_store_epoch cfg store
   certified : Nonempty (CertifiedJustified cfg E anchor c)
 
-omit [LinearOrder Root] [Inhabited Root] in
+omit [Inhabited Root] in
 /-- A realized checkpoint supplies exactly the root/certificate pair exported
 by `ActualResetInputCheckpointRealization`. -/
 theorem ResetCheckpointRealizedAt.root_and_current_certificate

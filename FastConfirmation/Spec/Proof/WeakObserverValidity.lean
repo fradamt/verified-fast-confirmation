@@ -164,6 +164,22 @@ private theorem apply_event_honest_not_equiv_of_observer
       simp only [Option.getD_some]
       exact on_attester_slashing_honest_not_added_of_observer cfg ext hhb hec hvalid hv
         hcausal hunknown has hprev
+  | execution_payload_envelope envelope observation =>
+    simp only [apply_event]
+    cases he : on_execution_payload_envelope ext store envelope observation with
+    | none => exact hprev
+    | some next =>
+      simp only [Option.getD_some]
+      rw [(on_execution_payload_envelope_frame ext he).equivocating_indices]
+      exact hprev
+  | payload_attestation_message message fromBlock =>
+    simp only [apply_event]
+    cases he : on_payload_attestation_message cfg ext store message fromBlock with
+    | none => exact hprev
+    | some next =>
+      simp only [Option.getD_some]
+      rw [(on_payload_attestation_message_frame cfg ext he).equivocating_indices]
+      exact hprev
 
 theorem honest_not_equiv_foldl_of_observer
     {E : Execution Root} {obs : ValidatorIndex}

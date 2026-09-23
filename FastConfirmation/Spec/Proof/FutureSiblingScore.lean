@@ -180,9 +180,10 @@ theorem futureCrossing_sibling_score_of_endpointLedger_minimal
       E.CommitteeSupportsAt cfg ext w m b t)
     (hledger : E.EndpointLedgerFields cfg ext w m a b lo sigma) :
     ∀ c' : Root,
-      ForkChoiceNode.mk c' ∈ get_node_children (E.store cfg ext w m)
+      ForkChoiceNode.mk c' .pending ∈ get_node_children (E.store cfg ext w m)
         (get_filtered_block_tree cfg (E.store cfg ext w m))
-        (ForkChoiceNode.mk a) → c' ≠ b →
+        (ForkChoiceNode.mk a (get_parent_payload_status (E.store cfg ext w m)
+          ((E.store cfg ext w m).blocks b))) → c' ≠ b →
       get_attestation_score cfg (E.store cfg ext w m) (get_node_for_root c')
           ((E.store cfg ext w m).checkpoint_states
             (E.store cfg ext w m).justified_checkpoint)
@@ -310,9 +311,10 @@ theorem crossingEdge_sibling_score_of_endpointLedger_minimal
       E.CommitteeSupportsAt cfg ext w m b t)
     (hledger : E.EndpointLedgerFields cfg ext w m a b lo sigma) :
     ∀ c' : Root,
-      ForkChoiceNode.mk c' ∈ get_node_children (E.store cfg ext w m)
+      ForkChoiceNode.mk c' .pending ∈ get_node_children (E.store cfg ext w m)
         (get_filtered_block_tree cfg (E.store cfg ext w m))
-        (ForkChoiceNode.mk a) → c' ≠ b →
+        (ForkChoiceNode.mk a (get_parent_payload_status (E.store cfg ext w m)
+          ((E.store cfg ext w m).blocks b))) → c' ≠ b →
       get_attestation_score cfg (E.store cfg ext w m) (get_node_for_root c')
           ((E.store cfg ext w m).checkpoint_states
             (E.store cfg ext w m).justified_checkpoint)

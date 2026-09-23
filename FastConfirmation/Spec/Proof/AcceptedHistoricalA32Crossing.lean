@@ -138,10 +138,10 @@ theorem carriedCurrentCrossingAcceptedTargetSegment
   obtain ⟨htargetKnown, hresultDescendsTarget⟩ :=
     currentEpochBlock_descends_currentTarget cfg hparent hwalk hhead
       hresultKnown hbelowResult hcurrentWalk hresultCurrent
-  have hlands : get_ancestor query.store (ForkChoiceNode.mk trace.result)
-      (query.store.blocks (get_current_target cfg query.store).root).slot =
-        ForkChoiceNode.mk (get_current_target cfg query.store).root := by
-    simpa only [is_ancestor, decide_eq_true_eq, get_node_for_root]
+  have hlands : (get_ancestor query.store (ForkChoiceNode.mk trace.result .pending)
+      (query.store.blocks (get_current_target cfg query.store).root).slot).root =
+        (get_current_target cfg query.store).root := by
+    simpa only [get_node_for_root, is_ancestor_pending, decide_eq_true_eq]
       using hresultDescendsTarget
   have htargetCurrent : (get_current_target cfg query.store).epoch =
       get_current_store_epoch cfg query.store := rfl
@@ -153,12 +153,14 @@ theorem carriedCurrentCrossingAcceptedTargetSegment
   have hknownSegment : KnownSameEpochAncestrySegment cfg
       E.genesis_store.block_roots query.store
         (get_current_target cfg query.store).root trace.result :=
-    E.knownSameEpochAncestrySegment_of_known_ancestor cfg hparent
+    E.knownSameEpochAncestrySegment_of_known_ancestor_root cfg hparent
       (hwalk (get_current_target cfg query.store).root htargetKnown
         trace.result hresultKnown)
       hlands hsameEpoch hstrictNonGenesis
   exact E.knownSameEpochAncestrySegment_toAcceptedProjectedSameEpochSegment
     hwfE hcore hstore hknownSegment
+
+
 
 end Execution
 

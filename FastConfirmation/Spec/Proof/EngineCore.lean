@@ -95,17 +95,10 @@ theorem hadv_hi_of_head (hSA : SpecAssumptions cfg ext E)
   obtain ⟨hgen, hwfE, _hdiv, _hbeh, _hsync, hec, _hsv, _hbb, hji⟩ := hSA
   obtain ⟨hwf, hwalkK, _hjust⟩ := E.store_domainK cfg ext hwfE hec hgen hji w hw m hHm
   set S := E.store cfg ext w m with hSdef
-  -- unfold the two `is_ancestor` booleans to the `get_ancestor` equalities
-  simp only [is_ancestor, get_node_for_root, decide_eq_true_eq] at hHb ⊢
-  -- zeta-reduce `get_checkpoint_block`'s `let`s: `(get_ancestor S (mk H) boundary).root = jc.root`
+  simp only [get_node_for_root, is_ancestor_pending, decide_eq_true_eq] at hHb ⊢
   simp only [get_checkpoint_block] at hckpt
-  -- structure eta: the boundary node IS `mk jc.root`
-  have eta : get_ancestor S (ForkChoiceNode.mk H)
-      (compute_start_slot_at_epoch cfg S.justified_checkpoint.epoch)
-      = ForkChoiceNode.mk S.justified_checkpoint.root := by rw [← hckpt]
-  -- the composition step: walk to `b.slot` through the boundary block
-  have key := get_ancestor_comp (store := S) hwf hbslot (hwalkK b hb H hH)
-  rw [eta, hHb] at key
+  have key := get_ancestor_comp_root (store := S) hwf hbslot (hwalkK b hb H hH)
+  rw [hckpt, hHb] at key
   exact key
 
 /-! ## Section 2 — the per-edge `ForkEdgeGroundInputs` producer (`heng` part 1) -/
@@ -173,13 +166,23 @@ theorem forkEdgeGroundInputs_of_base (hbb : ByzantineBound cfg E)
         E.Uval cfg ext vc nc b lo es (σ' + 1) + σt ≤ E.Uval cfg ext vc nc b lo es σ' ∧
         (100 - cfg.confirmation_byzantine_threshold) * β ≤
           cfg.confirmation_byzantine_threshold * (σt + ξ + α + φ))
-    (hchild : ForkChoiceNode.mk c ∈ get_node_children (E.store cfg ext w m)
-      (get_filtered_block_tree cfg (E.store cfg ext w m)) (ForkChoiceNode.mk h))
+    (hchild : ForkChoiceNode.mk c .pending ∈ get_node_children (E.store cfg ext w m)
+      (get_filtered_block_tree cfg (E.store cfg ext w m))
+        (ForkChoiceNode.mk h
+          (get_parent_payload_status (E.store cfg ext w m)
+            ((E.store cfg ext w m).blocks c))))
+    (hstatus : PendingStatusMargin cfg (E.store cfg ext w m)
+      (get_filtered_block_tree cfg (E.store cfg ext w m)) h
+      (get_parent_payload_status (E.store cfg ext w m)
+        ((E.store cfg ext w m).blocks c)))
     (hbside : E.Sval cfg ext w m b lo σ ≤ get_attestation_score cfg (E.store cfg ext w m)
       (get_node_for_root c)
       ((E.store cfg ext w m).checkpoint_states (E.store cfg ext w m).justified_checkpoint))
-    (hsib : ∀ c' : Root, ForkChoiceNode.mk c' ∈ get_node_children (E.store cfg ext w m)
-        (get_filtered_block_tree cfg (E.store cfg ext w m)) (ForkChoiceNode.mk h) →
+    (hsib : ∀ c' : Root, ForkChoiceNode.mk c' .pending ∈ get_node_children (E.store cfg ext w m)
+        (get_filtered_block_tree cfg (E.store cfg ext w m))
+          (ForkChoiceNode.mk h
+            (get_parent_payload_status (E.store cfg ext w m)
+              ((E.store cfg ext w m).blocks c))) →
       c' ≠ c →
       get_attestation_score cfg (E.store cfg ext w m) (get_node_for_root c')
           ((E.store cfg ext w m).checkpoint_states (E.store cfg ext w m).justified_checkpoint)
@@ -190,6 +193,7 @@ theorem forkEdgeGroundInputs_of_base (hbb : ByzantineBound cfg E)
     hinv := E.invstar_sigma_of_deltas cfg ext hbb vc nc b lo es
       (get_proposer_score cfg (E.store cfg ext w m)) hloH hbase hdelta σ hσ hσH
     hchild := hchild
+    hstatus := hstatus
     hbside := hbside
     hsib := hsib }
 

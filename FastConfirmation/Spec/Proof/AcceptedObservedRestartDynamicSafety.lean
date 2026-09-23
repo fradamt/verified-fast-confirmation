@@ -394,25 +394,14 @@ theorem ObservedResetCandidateInputAt.safeFrom_of_acceptedDynamics
           htarget.vote_slot htarget.index
         rw [htargetData] at hroot
         exact hroot.symm
-      have heta : get_ancestor
+      have heta : (get_ancestor
           (E.store cfg ext htarget.validator htarget.second)
-          (get_head cfg
-            (E.store cfg ext htarget.validator htarget.second))
-          (compute_start_slot_at_epoch cfg J.epoch) =
-            get_node_for_root J.root := by
-        simp only [get_checkpoint_block] at htargetRoot
-        generalize hnode : get_ancestor
-          (E.store cfg ext htarget.validator htarget.second)
-          (get_head cfg
-            (E.store cfg ext htarget.validator htarget.second))
-          (compute_start_slot_at_epoch cfg J.epoch) = node
-        simp only [get_node_for_root] at hnode ⊢
-        rw [hnode] at htargetRoot
-        obtain ⟨r⟩ := node
-        change r = J.root at htargetRoot
-        cases htargetRoot
-        rfl
+          (get_node_for_root (get_head cfg
+            (E.store cfg ext htarget.validator htarget.second)).root)
+          (compute_start_slot_at_epoch cfg J.epoch)).root = J.root := by
+        simpa only [get_checkpoint_block, get_node_for_root] using htargetRoot
       have htargetSpec := get_ancestor_spec hwfK htarget.target_walk
+      simp only [get_node_for_root] at heta
       rw [heta] at htargetSpec
       have hJK : J.root ∈
           (E.store cfg ext htarget.validator htarget.second).block_roots :=
@@ -420,10 +409,11 @@ theorem ObservedResetCandidateInputAt.safeFrom_of_acceptedDynamics
       have hJcK : is_ancestor
           (E.store cfg ext htarget.validator htarget.second)
           (get_node_for_root J.root) (get_node_for_root c.root) = true := by
-        have hcomp := get_ancestor_comp hwfK hcSlotLeTarget
+        have hcomp := get_ancestor_comp_root hwfK hcSlotLeTarget
           (hwalkK c.root hcKnownK _ hheadK)
-        simp only [is_ancestor, get_node_for_root, decide_eq_true_eq] at hheadC ⊢
-        simp only [get_node_for_root] at heta hcomp
+        rw [is_ancestor_node_root] at hheadC
+        simp only [is_ancestor_get_node_for_root, decide_eq_true_eq] at hheadC ⊢
+        simp only [get_node_for_root] at hheadC hcomp
         rw [heta, hheadC] at hcomp
         exact hcomp
       have hsemantic : E.RootDescends J.root c.root :=

@@ -301,7 +301,7 @@ theorem past_descendant_of_honest_supporter_known
     E.store_anchor_min_slot cfg ext hwfE hec hgeq hslot hroot v n lm.root hlmKnown
   have hs0 : E.slot_at cfg 0 ≤ s := by
     rw [hcur0, hsap]
-    exact hanchorle.trans hlmSlot
+    exact hanchorle.trans hlmSlot.1
   have hsH : E.SlotWithinHorizon cfg s :=
     E.slotWithinHorizon_of_le cfg (le_of_lt hslt) hH
   obtain ⟨nu, index, hHnu, hnu, hvoteHead⟩ :=
@@ -324,7 +324,7 @@ theorem past_descendant_of_honest_supporter_known
   refine ⟨i, nu, lm.root, hi, hHnu, ?_, hd, ?_⟩
   · rw [hnu]
     exact hslt
-  · simpa only [get_supported_node, get_node_for_root] using hsupp
+  · simpa only [get_node_for_root, is_ancestor_supported_pending] using hsupp
 
 /-! ## Earlier-store ancestry transport and same-slot relay -/
 
@@ -382,11 +382,11 @@ theorem mem_of_known_honest_past_descendant
   have hbound : ablk.message.slot ≤ rb :=
     E.store_anchor_min_slot cfg ext hwfE hec hgeq hstateSlot hroot v n b hb
   have hwalk : WalkKnown (E.store cfg ext u nu) rb d := hwalk0.mono hbound
-  have hvlands : get_ancestor (E.store cfg ext v n) (ForkChoiceNode.mk d) rb =
-      ForkChoiceNode.mk b := by
-    simpa only [is_ancestor, get_node_for_root, decide_eq_true_eq] using hanc
-  have hulands : get_ancestor (E.store cfg ext u nu) (ForkChoiceNode.mk d) rb =
-      ForkChoiceNode.mk b := by
+  have hvlands : (get_ancestor (E.store cfg ext v n) (ForkChoiceNode.mk d .pending) rb).root =
+      b := by
+    simpa only [get_node_for_root, is_ancestor_pending, decide_eq_true_eq] using hanc
+  have hulands : (get_ancestor (E.store cfg ext u nu) (ForkChoiceNode.mk d .pending) rb).root =
+      b := by
     rw [get_ancestor_congr hagree hd hwalk]
     exact hvlands
   have hbu : b ∈ (E.store cfg ext u nu).block_roots := by
@@ -447,7 +447,8 @@ theorem ancestry_of_known_honest_past_descendant
   have hwalkv := E.store_walkKnownK cfg ext hwfE hec hgen' v n
   have hdr₀ : is_ancestor (E.store cfg ext v n)
       (get_node_for_root d) (get_node_for_root r₀) = true :=
-    is_ancestor_trans hwfv (hwalkv r₀ hr₀ d hdv) (hwalkv r₀ hr₀ b hb) hdb hbge
+    is_ancestor_trans (a := get_node_for_root d) (b := get_node_for_root b)
+      (c := get_node_for_root r₀) hwfv (hwalkv r₀ hr₀ d hdv) (hwalkv r₀ hr₀ b hb) hdb hbge
   have hanchor0 : ablk.root ∈ (E.store cfg ext u 0).block_roots := by
     change ablk.root ∈ E.genesis_store.block_roots
     rw [hgeq]
@@ -471,11 +472,11 @@ theorem ancestry_of_known_honest_past_descendant
     have hbound : ablk.message.slot ≤ sx :=
       E.store_anchor_min_slot cfg ext hwfE hec hgeq hstateSlot hroot v n x hx
     have hwalkx : WalkKnown (E.store cfg ext u nu) sx d := hwalk0.mono hbound
-    have hvlands : get_ancestor (E.store cfg ext v n) (ForkChoiceNode.mk d) sx =
-        ForkChoiceNode.mk x := by
-      simpa only [is_ancestor, get_node_for_root, decide_eq_true_eq, sx] using hdx
-    have hulands : get_ancestor (E.store cfg ext u nu) (ForkChoiceNode.mk d) sx =
-        ForkChoiceNode.mk x := by
+    have hvlands : (get_ancestor (E.store cfg ext v n) (ForkChoiceNode.mk d .pending) sx).root =
+        x := by
+      simpa only [get_node_for_root, is_ancestor_pending, decide_eq_true_eq, sx] using hdx
+    have hulands : (get_ancestor (E.store cfg ext u nu) (ForkChoiceNode.mk d .pending) sx).root =
+        x := by
       rw [get_ancestor_congr hagreeUV hd hwalkx]
       exact hvlands
     have hspec := (get_ancestor_spec hwfu hwalkx).1

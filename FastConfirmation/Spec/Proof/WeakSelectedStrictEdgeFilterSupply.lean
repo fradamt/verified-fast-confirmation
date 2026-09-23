@@ -690,7 +690,8 @@ noncomputable def
       hseedM hseedVisible
   have htipSelected : is_ancestor endpoint
       (get_node_for_root tip) (get_node_for_root selected) = true :=
-    is_ancestor_trans hendpointParent'
+    is_ancestor_trans (a := get_node_for_root tip)
+      (b := get_node_for_root seed) (c := get_node_for_root selected) hendpointParent'
       (hendpointWalk' selected hselectedM tip htipKnown)
       (hendpointWalk' selected hselectedM seed hseedM)
       htipSeed hseedSelectedM
@@ -704,7 +705,9 @@ noncomputable def
   have htipJustified : is_ancestor endpoint
       (get_node_for_root tip)
       (get_node_for_root endpoint.justified_checkpoint.root) = true :=
-    is_ancestor_trans hendpointParent'
+    is_ancestor_trans (a := get_node_for_root tip)
+      (b := get_node_for_root selected)
+      (c := get_node_for_root endpoint.justified_checkpoint.root) hendpointParent'
       (hendpointWalk' endpoint.justified_checkpoint.root
         hendpointJustified' tip htipKnown)
       (hendpointWalk' endpoint.justified_checkpoint.root
@@ -1094,11 +1097,11 @@ noncomputable def
     simpa only [query] using hinputKnown
   have hgeometry := hselector.geometry cfg ext hparent hwalk hhead
     hinputKnownQ
-  have hlands : get_ancestor query.store
+  have hlands : (get_ancestor query.store
       (get_node_for_root trace.result)
-      (query.store.blocks trace.afterObserved).slot =
-        get_node_for_root trace.afterObserved := by
-    simpa only [is_ancestor, decide_eq_true_eq, get_node_for_root] using
+      (query.store.blocks trace.afterObserved).slot).root =
+        trace.afterObserved := by
+    simpa only [is_ancestor_get_node_for_root, decide_eq_true_eq] using
       hgeometry.descends_input
   have hinputEpochQ : get_block_epoch cfg query.store
       trace.afterObserved = e := by
@@ -1142,7 +1145,7 @@ noncomputable def
   have hknownSegment : KnownSameEpochAncestrySegment cfg
       E.genesis_store.block_roots query.store trace.afterObserved
         trace.result :=
-    E.knownSameEpochAncestrySegment_of_known_ancestor cfg hparent
+    E.knownSameEpochAncestrySegment_of_known_ancestor_root cfg hparent
       (hwalk trace.afterObserved hinputKnownQ trace.result
         hgeometry.result_known)
       hlands hsame hstrictNonGenesis
@@ -1375,7 +1378,7 @@ theorem auCheckpoint_blockEpoch_le
     auTip_walkKnown cfg ext B hT hanchor hboundary obs n htip hAU
   have hcheckpoint := B.coherence.au_checkpoint_of_known hstore tip htip c hAU
   have hroot : c.root = (get_ancestor (E.store cfg ext obs n)
-      (ForkChoiceNode.mk tip)
+      (get_node_for_root tip)
       (compute_start_slot_at_epoch cfg c.epoch)).root := by
     have hr := congrArg Checkpoint.root hcheckpoint
     simpa only [get_checkpoint_for_block, get_checkpoint_block] using hr

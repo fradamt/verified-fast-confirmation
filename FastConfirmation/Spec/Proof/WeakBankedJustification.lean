@@ -177,9 +177,7 @@ theorem has_broadcast_certificate_span_nonempty {store : Store Root}
   have hsupp0 : Weak.get_broadcast_certificate_support cfg ext store balance_source
       block_root start_slot end_slot = 0 := by
     simp [Weak.get_broadcast_certificate_support, hempty]
-  rw [Weak.has_broadcast_certificate, hsupp0] at hcert
-  simp only [gt_iff_lt, decide_eq_true_eq] at hcert
-  exact absurd hcert (Nat.not_lt_zero _)
+  simp [Weak.has_broadcast_certificate, hsupp0] at hcert
 
 /-! ## An unkeyed balance source cannot carry a true certificate -/
 
@@ -219,9 +217,7 @@ theorem checkpoint_state_key_of_broadcast_certificate (E : Execution Root)
     simp only [Finset.mem_filter, Bool.and_eq_true] at hi
     rw [hnoactive i] at hi
     exact absurd hi.1.2.2 (by decide)
-  rw [Weak.has_broadcast_certificate, hsupp0] at hcert
-  simp only [gt_iff_lt, decide_eq_true_eq] at hcert
-  exact absurd hcert (Nat.not_lt_zero _)
+  simp [Weak.has_broadcast_certificate, hsupp0] at hcert
 
 /-! ## Observer-side accepted checkpoint geometry
 
@@ -440,7 +436,7 @@ theorem auCheckpoint_known_and_below_tip
     Weak.auTip_walkKnown cfg ext B hT hanchor hboundary obs n htip hAU
   have hcheckpoint := B.coherence.au_checkpoint_of_known hstore tip htip c hAU
   have hroot : c.root = (get_ancestor (E.store cfg ext obs n)
-      (ForkChoiceNode.mk tip) (compute_start_slot_at_epoch cfg c.epoch)).root := by
+      (ForkChoiceNode.mk tip .pending) (compute_start_slot_at_epoch cfg c.epoch)).root := by
     have hr := congrArg Checkpoint.root hcheckpoint
     simpa only [get_checkpoint_for_block, get_checkpoint_block] using hr
   obtain ⟨hknown, hslotLe⟩ := get_ancestor_spec hparentSlots hwalk
@@ -453,13 +449,10 @@ theorem auCheckpoint_known_and_below_tip
       ((E.store cfg ext obs n).blocks c.root).slot tip :=
     E.store_walkKnownK cfg ext hT.wellFormed hT.externals_coherence
       ⟨ast, ablk, hgenEq, hslot, hparent⟩ obs n c.root hcKnown tip htip
-  have hcomp := get_ancestor_comp hparentSlots hcSlot hback
-  have hinner : get_ancestor (E.store cfg ext obs n) (ForkChoiceNode.mk tip)
-      (compute_start_slot_at_epoch cfg c.epoch) = ForkChoiceNode.mk c.root := by
-    rw [hroot]
-  rw [hinner, get_ancestor_stop (le_refl _)] at hcomp
+  have hcomp := get_ancestor_comp_root hparentSlots hcSlot hback
+  rw [← hroot, get_ancestor_stop (le_refl _)] at hcomp
   refine ⟨hcKnown, ?_⟩
-  simp only [is_ancestor, get_node_for_root, decide_eq_true_eq]
+  simp only [is_ancestor_get_node_for_root, decide_eq_true_eq]
   exact hcomp.symm
 
 /-- A known block's own unrealized justification is known and lies on its

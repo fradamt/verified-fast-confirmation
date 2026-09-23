@@ -107,7 +107,7 @@ private theorem recorded_supporter_mem_crossing_Sclass
   · exact hspanEs
   · refine ⟨t, k, a, htle, hvote, hnew, ?_⟩
     rw [hbbreq]
-    simpa only [get_supported_node, get_node_for_root] using hanc
+    simpa only [get_node_for_root, is_ancestor_supported_pending] using hanc
 
 /-- **Crossing `hbase` from a confirmed instance.**  The raw
 `is_one_confirmed_ineq` score is split into honest and non-honest recorded
@@ -775,17 +775,27 @@ theorem crossing_endpoint_of_confirmed
     (hxS : E.Xval cfg ext v n b ((E.store cfg ext v n).blocks b).slot σ
       ≤ E.Xval cfg ext v n b ((E.store cfg ext v n).blocks b).slot es)
     {h c : Root}
-    (hchild : ForkChoiceNode.mk c ∈
+    (hchild : ForkChoiceNode.mk c .pending ∈
       get_node_children (E.store cfg ext w m)
-        (get_filtered_block_tree cfg (E.store cfg ext w m)) (ForkChoiceNode.mk h))
+        (get_filtered_block_tree cfg (E.store cfg ext w m))
+          (ForkChoiceNode.mk h
+            (get_parent_payload_status (E.store cfg ext w m)
+              ((E.store cfg ext w m).blocks c))))
+    (hstatus : PendingStatusMargin cfg (E.store cfg ext w m)
+      (get_filtered_block_tree cfg (E.store cfg ext w m)) h
+      (get_parent_payload_status (E.store cfg ext w m)
+        ((E.store cfg ext w m).blocks c)))
     (hbside : E.Sval cfg ext v n b ((E.store cfg ext v n).blocks b).slot σ ≤
       get_attestation_score cfg (E.store cfg ext w m) (get_node_for_root c)
         ((E.store cfg ext w m).checkpoint_states
           (E.store cfg ext w m).justified_checkpoint))
     (hsib : ∀ c' : Root,
-      ForkChoiceNode.mk c' ∈
+      ForkChoiceNode.mk c' .pending ∈
         get_node_children (E.store cfg ext w m)
-          (get_filtered_block_tree cfg (E.store cfg ext w m)) (ForkChoiceNode.mk h) →
+          (get_filtered_block_tree cfg (E.store cfg ext w m))
+            (ForkChoiceNode.mk h
+              (get_parent_payload_status (E.store cfg ext w m)
+                ((E.store cfg ext w m).blocks c))) →
       c' ≠ c →
       get_attestation_score cfg (E.store cfg ext w m) (get_node_for_root c')
           ((E.store cfg ext w m).checkpoint_states
@@ -809,7 +819,7 @@ theorem crossing_endpoint_of_confirmed
   have hend := E.crossing_endpoint_inequality_of_confirmed (m := m) cfg ext hhb hec hbb
     hsv hji hgen hv hnH hwf hval hbsH htab hprov hconf hwalk hes hslotlt hbcur
     hbanc hdom hcross hesσ hσH hw hHm hEstH hAX hxS
-  exact E.crossing_ledger_descendStep cfg ext hchild hbside hend hsib
+  exact E.crossing_ledger_descendStep cfg ext hchild hstatus hbside hend hsib
 
 end Execution
 

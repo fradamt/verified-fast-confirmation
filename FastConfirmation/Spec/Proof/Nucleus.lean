@@ -217,7 +217,7 @@ theorem head_facts_transport (hwf : WellFormedExecution E)
     le_trans hkm (E.slot_at_mono cfg (Nat.le_succ m))
   have hsub : (E.store cfg ext i k).block_roots ⊆
       (E.store cfg ext w m).block_roots :=
-    E.blockRoots_subset_of_relay cfg ext hsync hi hw hHk hHm hgate
+    E.blockRoots_subset_of_legacy_relay cfg ext hsync hi hw hHk hHm hgate
   exact ⟨hsub, hsub hH, hsub hglc,
     is_ancestor_transport cfg ext hwf hsub hH hglc hwalk hHglc⟩
 
@@ -314,7 +314,10 @@ theorem covering_comparability (hSA : SpecAssumptions cfg ext E)
     have hwalk := hwalk_i ablk.root hanchor_mem H hH
     rwa [hanchor_slot] at hwalk
   have hHglc_i : is_ancestor (E.store cfg ext i k)
-      (get_node_for_root H) (get_node_for_root glc) = true := hIH i hi k hnk hkm hHk
+      (get_node_for_root H) (get_node_for_root glc) = true := by
+    rw [get_node_for_root, is_ancestor_pending_root_eq _ _ _ .pending
+      (get_head cfg (E.store cfg ext i k)).payload_status]
+    exact hIH i hi k hnk hkm hHk
   have hglc : glc ∈ (E.store cfg ext i k).block_roots :=
     mem_of_is_ancestor_above_anchor hwf_i hwalk0 (Nat.zero_le _) hHglc_i
   have hwalk_glc_i : WalkKnown (E.store cfg ext i k)
@@ -330,7 +333,7 @@ theorem covering_comparability (hSA : SpecAssumptions cfg ext E)
   have hcheckpoint_wm : get_checkpoint_block cfg (E.store cfg ext w m) H jc.epoch =
       jc.root := hcheckpoint_transport.symm.trans hcheckpoint.symm
   have hsource_root :
-      (get_ancestor (E.store cfg ext i k) (ForkChoiceNode.mk H)
+      (get_ancestor (E.store cfg ext i k) (ForkChoiceNode.mk H .pending)
         (compute_start_slot_at_epoch cfg jc.epoch)).root = jc.root := by
     simpa only [get_checkpoint_block] using hcheckpoint.symm
   have hsource_spec := get_ancestor_spec hwf_i hwalk_boundary_i
@@ -346,15 +349,12 @@ theorem covering_comparability (hSA : SpecAssumptions cfg ext E)
     rw [← hjc_agree]
     exact hsource_spec.2
   simp only [get_checkpoint_block] at hcheckpoint_wm
-  have heta : get_ancestor (E.store cfg ext w m) (ForkChoiceNode.mk H)
-      (compute_start_slot_at_epoch cfg jc.epoch) = ForkChoiceNode.mk jc.root := by
-    rw [← hcheckpoint_wm]
   have hHjc_wm : is_ancestor (E.store cfg ext w m)
       (get_node_for_root H) (get_node_for_root jc.root) = true := by
-    simp only [is_ancestor, get_node_for_root, decide_eq_true_eq]
-    have hcomp := get_ancestor_comp hwf_wm hjc_boundary
+    simp only [get_node_for_root, is_ancestor_pending, decide_eq_true_eq]
+    have hcomp := get_ancestor_comp_root hwf_wm hjc_boundary
       (hwalk_wm jc.root hjc_wm H hH_wm)
-    rw [heta, get_ancestor_stop (le_refl _)] at hcomp
+    rw [hcheckpoint_wm, get_ancestor_stop (le_refl _)] at hcomp
     exact hcomp.symm
   exact is_ancestor_comparable hwf_wm
     (hwalk_wm jc.root hjc_wm H hH_wm)

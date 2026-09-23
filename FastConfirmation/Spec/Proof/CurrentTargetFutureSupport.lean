@@ -344,7 +344,8 @@ theorem currentTarget_observed_future_disjoint
   obtain ⟨a, _hiAttests, _htargetEpoch, _hroot, hattEpoch,
       happlied, hiCommittee, _hrootKnown, _hrootSlot⟩ :=
     hprov i latestMessage hlm
-  have hcurrentEpoch : get_current_store_epoch cfg store = latestMessage.epoch := by
+  have hcurrentEpoch : get_current_store_epoch cfg store =
+      get_latest_message_epoch cfg latestMessage := by
     have hepoch := congrArg Checkpoint.epoch htarget
     simpa only [get_current_target, get_checkpoint_for_block] using hepoch
   have haEpoch : compute_epoch_at_slot cfg a.data.slot =

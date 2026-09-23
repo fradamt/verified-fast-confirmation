@@ -241,21 +241,34 @@ theorem descendStep_of_assemblyResidual
     (hgrowX : E.Xval cfg ext w m b' lo σ ≤ E.Xval cfg ext w m b' lo es)
     (hbudget : (100 - cfg.confirmation_byzantine_threshold) * (E.Bval lo σ - E.Bval lo es)
       ≤ cfg.confirmation_byzantine_threshold * (E.Jspec lo σ - E.Jspec lo es))
-    (hchild : ForkChoiceNode.mk c ∈ get_node_children (E.store cfg ext w m)
-      (get_filtered_block_tree cfg (E.store cfg ext w m)) (ForkChoiceNode.mk h))
+    (hchild : ForkChoiceNode.mk c .pending ∈ get_node_children (E.store cfg ext w m)
+      (get_filtered_block_tree cfg (E.store cfg ext w m))
+        (ForkChoiceNode.mk h
+          (get_parent_payload_status (E.store cfg ext w m)
+            ((E.store cfg ext w m).blocks c))))
+    (hstatus : PendingStatusMargin cfg (E.store cfg ext w m)
+      (get_filtered_block_tree cfg (E.store cfg ext w m)) h
+      (get_parent_payload_status (E.store cfg ext w m)
+        ((E.store cfg ext w m).blocks c)))
     (hSmem : ∀ i ∈ E.Sclass cfg ext w m b' lo σ,
       i ∈ AttSupporters cfg (E.store cfg ext w m) (get_node_for_root c)
         ((E.store cfg ext w m).checkpoint_states (E.store cfg ext w m).justified_checkpoint))
     (hHon : ∀ c' : Root,
-      ForkChoiceNode.mk c' ∈ get_node_children (E.store cfg ext w m)
-        (get_filtered_block_tree cfg (E.store cfg ext w m)) (ForkChoiceNode.mk h) →
+      ForkChoiceNode.mk c' .pending ∈ get_node_children (E.store cfg ext w m)
+        (get_filtered_block_tree cfg (E.store cfg ext w m))
+          (ForkChoiceNode.mk h
+            (get_parent_payload_status (E.store cfg ext w m)
+              ((E.store cfg ext w m).blocks c))) →
       c' ≠ c →
       ∀ i ∈ AttSupporters cfg (E.store cfg ext w m) (get_node_for_root c')
         ((E.store cfg ext w m).checkpoint_states (E.store cfg ext w m).justified_checkpoint),
         i ∈ E.honest → i ∈ E.Xclass cfg ext w m b' lo σ)
     (hByz : ∀ c' : Root,
-      ForkChoiceNode.mk c' ∈ get_node_children (E.store cfg ext w m)
-        (get_filtered_block_tree cfg (E.store cfg ext w m)) (ForkChoiceNode.mk h) →
+      ForkChoiceNode.mk c' .pending ∈ get_node_children (E.store cfg ext w m)
+        (get_filtered_block_tree cfg (E.store cfg ext w m))
+          (ForkChoiceNode.mk h
+            (get_parent_payload_status (E.store cfg ext w m)
+              ((E.store cfg ext w m).blocks c))) →
       c' ≠ c →
       ∀ i ∈ AttSupporters cfg (E.store cfg ext w m) (get_node_for_root c')
         ((E.store cfg ext w m).checkpoint_states (E.store cfg ext w m).justified_checkpoint),
@@ -268,7 +281,7 @@ theorem descendStep_of_assemblyResidual
   refine E.descendStep_of_confirmMargin cfg ext v₀ w n₀ m lo es σ
     (fun i _ _ => E.hSt_of_walk cfg ext hwf hsub hb' hdomS i)
     (fun i _ _ => E.hAt_of_walk cfg ext hwf hsub hb' hdomA i)
-    hstrip0 hgrowS hgrowX hbudget hchild
+    hstrip0 hgrowS hgrowX hbudget hchild hstatus
     (recorded_bside_ge cfg ext hval_end hSmem)
     (fun c' hc' hne => recorded_sibling_le cfg ext hval_end
       (hHon c' hc' hne) (hByz c' hc' hne))

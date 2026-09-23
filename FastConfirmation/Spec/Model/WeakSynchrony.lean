@@ -139,8 +139,8 @@ arrival guarantee at the observer. -/
 def is_duty_fresh_message (store : Store Root) (i : ValidatorIndex)
     (lm : LatestMessage Root) : Bool :=
   let cutoff := recorded_cutoff_epoch cfg store
-  decide (cutoff ≤ get_latest_message_epoch lm) ||
-    (decide (get_latest_message_epoch lm + 1 = cutoff) &&
+  decide (cutoff ≤ get_latest_message_epoch cfg lm) ||
+    (decide (get_latest_message_epoch cfg lm + 1 = cutoff) &&
       decide (i ∉ (Finset.Icc (compute_start_slot_at_epoch cfg cutoff)
         (get_current_slot cfg store - 1)).biUnion
           (fun s => get_slot_committee cfg ext store s)))
@@ -178,6 +178,26 @@ def get_duty_fresh_block_support_between_slots (store : Store Root)
           decide (i ∉ store.equivocating_indices))),
     (balance_source.validators.getD i default).effective_balance
 
+/-- Parent support for the child's required Gloas payload branch, with the
+weak rule's duty-fresh filter. -/
+def get_duty_fresh_parent_payload_support_between_slots (store : Store Root)
+    (balance_source : BeaconState Root) (block_root : Root)
+    (payload_status : PayloadStatus) (start_slot end_slot : Slot) : Gwei :=
+  let participants :=
+    (Finset.Icc start_slot end_slot).biUnion (fun slot => get_slot_committee cfg ext store slot)
+  let unslashed_and_active_indices :=
+    participants.filter (fun i =>
+      !(balance_source.validators.getD i default).slashed &&
+        is_active_validator (balance_source.validators.getD i default)
+          (get_current_epoch cfg balance_source))
+  ∑ i ∈ unslashed_and_active_indices.filter (fun i =>
+      (store.latest_messages i).any (fun latest_message =>
+        decide (latest_message.root = block_root) &&
+          is_duty_fresh_message cfg ext store i latest_message &&
+          decide (i ∉ store.equivocating_indices) &&
+          decide ((get_supported_node store latest_message).payload_status = payload_status))),
+    (balance_source.validators.getD i default).effective_balance
+
 /-- Weak-model `compute_empty_slot_support_discount` (as in `LMDHelpers`, over
 the undiscounted budget, and duty-fresh — rule delta 3: a stale recorded
 parent-pointing cell must not fund the discount, see the module docstring). -/
@@ -189,7 +209,8 @@ def compute_empty_slot_support_discount (store : Store Root)
     0
   else
     let parent_support_in_empty_slots :=
-      get_duty_fresh_block_support_between_slots cfg ext store balance_source block.parent_root
+      get_duty_fresh_parent_payload_support_between_slots cfg ext store balance_source
+        block.parent_root (get_parent_payload_status store block)
         (parent_block.slot + 1) (block.slot - 1)
     let adversarial_weight :=
       compute_adversarial_weight cfg store balance_source
@@ -306,7 +327,7 @@ def get_broadcast_certificate_support (store : Store Root)
         decide (i ∉ store.equivocating_indices) &&
           decide (∃ s ∈ Finset.Icc start_slot end_slot,
             i ∈ get_slot_committee cfg ext store s ∧
-              get_latest_message_epoch latest_message = compute_epoch_at_slot cfg s) &&
+              get_latest_message_epoch cfg latest_message = compute_epoch_at_slot cfg s) &&
           is_ancestor store (get_node_for_root latest_message.root)
             (get_node_for_root block_root))),
     (balance_source.validators.getD i default).effective_balance
@@ -318,10 +339,12 @@ surplus honest attester suffices for dissemination, so no majority is
 required. -/
 def has_broadcast_certificate (store : Store Root) (balance_source : BeaconState Root)
     (block_root : Root) (start_slot end_slot : Slot) : Bool :=
-  let support :=
-    get_broadcast_certificate_support cfg ext store balance_source block_root
-      start_slot end_slot
-  decide (support > compute_adversarial_weight cfg store balance_source start_slot end_slot)
+  if get_current_slot cfg store = 0 then false
+  else
+    let support :=
+      get_broadcast_certificate_support cfg ext store balance_source block_root
+        start_slot end_slot
+    decide (support > compute_adversarial_weight cfg store balance_source start_slot end_slot)
 
 /-- Search from newest to oldest on the head chain. The fuel bounds the
 walk even on malformed stores. Only known ancestors can supply a certificate. -/

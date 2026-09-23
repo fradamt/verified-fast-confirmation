@@ -195,6 +195,38 @@ theorem arms_pure
   exact arms_core hC hR1 hR2d1 hR3a hR3b hR4a hR4b hR8aW hR8cW hR8cM1 hR8cM2 hBbad
     hrTlo hrThi hmclo hmchi
 
+/-- Payload-aware reclassification of the confirmation arms. Honest
+opposite-status ancestor weight in the vote region (`OV`) or the pre-region
+(`Opre`) is charged beside `X`; only the remaining matching-parent weight `G`
+can fund the discount. The two committee estimates are unchanged because
+the split only moves weight within each window. -/
+theorem arms_pure_with_opposite
+    {s0 aV xV G Opre OV apre xpre B_V B0 Bsup eqV Bpar
+     boost d A qV qU MU Bbad C : ℕ}
+    (hC : C ≤ 25)
+    (hR1 : 2 * s0 + 2 * Bsup + d ≥ MU + boost + 1 + 2 * A)
+    (hR2d1 : d ≤ G + Bpar)
+    (hR3a : A ≤ qV * C)
+    (hR3b : qV * C ≤ A + eqV)
+    (hR4a : Bsup ≤ A)
+    (hR4b : Bsup + eqV ≤ B_V)
+    (hR8aW : s0 + (aV + OV) + xV + B_V ≤ 100 * qV)
+    (hR8cW : s0 + (aV + OV) + xV +
+        (G + Opre + apre + xpre) + B0 ≤ 100 * qU)
+    (hR8cM1 : 100 * qU ≤ MU)
+    (hR8cM2 : MU ≤ 100 * qU + 99)
+    (hBbad : Bbad + Bsup + eqV + Bpar ≤ B0) :
+    s0 ≥ (xV + OV) + (xpre + Opre) + Bbad + (boost + 1) +
+        C * s0 / (100 - C)
+    ∨ s0 ≥ (xV + OV) + (xpre + Opre) + (boost + 1) +
+        C * (s0 + aV + (xV + OV) +
+          (G + apre + (xpre + Opre))) / (100 - C) := by
+  have hV : s0 + aV + (xV + OV) + B_V ≤ 100 * qV := by omega
+  have hU : s0 + aV + (xV + OV) +
+      (G + apre + (xpre + Opre)) + B0 ≤ 100 * qU := by omega
+  exact arms_pure hC hR1 hR2d1 hR3a hR3b hR4a hR4b hV hU
+    hR8cM1 hR8cM2 hBbad
+
 /-! ## Part C — assembly from a confirmed instance
 
 `arms_of_confirmed` produces the base arms from `is_one_confirmed = true`. The
@@ -279,6 +311,42 @@ theorem arms_of_confirmed
   have hR1 := rule_to_R1 (is_one_confirmed_ineq cfg ext hconf) hS
   exact arms_pure cfg.confirmation_byzantine_threshold_le hR1 hd hAhi hAlo hBsup hR4b hR8aW
     hR8cW (Nat.mul_div_le _ 100) (div_le_hundred_mul_div_add _) hBbad
+
+/-- The actual confirmation rule gives arms with opposite ancestor votes
+charged to the opposing class. The source accounting must split those votes
+between the vote and pre-regions and charge the discount only to `G`. -/
+theorem arms_of_confirmed_with_opposite
+    {store : Store Root} {bs : BeaconState Root} {b : Root}
+    (hconf : is_one_confirmed cfg ext store bs b = true)
+    {s0 aV xV G Opre OV apre xpre B_V B0 Bsup eqV Bpar Bbad qV : ℕ}
+    (hS : get_attestation_score cfg store (get_node_for_root b) bs ≤ s0 + Bsup)
+    (hd : get_support_discount cfg ext store bs b ≤ G + Bpar)
+    (hAhi : get_adversarial_weight cfg ext store bs b
+        ≤ qV * cfg.confirmation_byzantine_threshold)
+    (hAlo : qV * cfg.confirmation_byzantine_threshold
+        ≤ get_adversarial_weight cfg ext store bs b + eqV)
+    (hBsup : Bsup ≤ get_adversarial_weight cfg ext store bs b)
+    (hR4b : Bsup + eqV ≤ B_V)
+    (hR8aW : s0 + (aV + OV) + xV + B_V ≤ 100 * qV)
+    (hR8cW : s0 + (aV + OV) + xV + (G + Opre + apre + xpre) + B0
+        ≤ 100 * (estimate_committee_weight_between_slots cfg
+            (get_total_active_balance cfg bs)
+            ((store.blocks (store.blocks b).parent_root).slot + 1)
+            (get_current_slot cfg store - 1) / 100))
+    (hBbad : Bbad + Bsup + eqV + Bpar ≤ B0) :
+    s0 ≥ (xV + OV) + (xpre + Opre) + Bbad +
+        (compute_proposer_score cfg bs + 1) +
+        cfg.confirmation_byzantine_threshold * s0
+          / (100 - cfg.confirmation_byzantine_threshold)
+    ∨ s0 ≥ (xV + OV) + (xpre + Opre) +
+        (compute_proposer_score cfg bs + 1) +
+        cfg.confirmation_byzantine_threshold *
+          (s0 + aV + (xV + OV) + (G + apre + (xpre + Opre)))
+          / (100 - cfg.confirmation_byzantine_threshold) := by
+  have hR1 := rule_to_R1 (is_one_confirmed_ineq cfg ext hconf) hS
+  exact arms_pure_with_opposite cfg.confirmation_byzantine_threshold_le
+    hR1 hd hAhi hAlo hBsup hR4b hR8aW hR8cW
+    (Nat.mul_div_le _ 100) (div_le_hundred_mul_div_add _) hBbad
 
 end FastConfirmation.Spec
 

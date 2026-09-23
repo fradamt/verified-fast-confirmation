@@ -2,6 +2,7 @@ module
 public import FastConfirmation.Spec.Model.Assumptions
 public import FastConfirmation.Spec.Proof.Clock
 public import FastConfirmation.Spec.Proof.EconomicRounding
+public import FastConfirmation.Spec.Model.PayloadEffects
 
 @[expose] public section
 
@@ -53,6 +54,12 @@ theorem of_eq {reg : List Validator} {store store' : Store Root}
     (hcs : store'.checkpoint_states = store.checkpoint_states) :
     RegistryConstant reg store' :=
   ⟨by rw [hbr, hbs]; exact h.1, by rw [hck, hcs]; exact h.2⟩
+
+/-- Payload and PTC writes preserve all registry-bearing state fields. -/
+theorem of_payloadFrame {reg : List Validator} {store store' : Store Root}
+    (h : RegistryConstant reg store) (hf : PayloadFrame store store') :
+    RegistryConstant reg store' :=
+  h.of_eq hf.block_roots hf.block_states hf.checkpoint_state_keys hf.checkpoint_states
 
 end RegistryConstant
 
@@ -187,7 +194,7 @@ theorem validate_on_attestation_target_known {store : Store Root}
     (h : validate_on_attestation cfg store attestation is_from_block = true) :
     attestation.data.target.root ∈ store.block_roots := by
   simp only [validate_on_attestation, Bool.and_eq_true, decide_eq_true_eq] at h
-  exact h.1.1.1.1.2
+  tauto
 
 /-! ## Handler-level `RegistryConstant` preservation -/
 
@@ -217,6 +224,29 @@ theorem on_attestation_registryConstant {reg : List Validator}
   exact update_latest_messages_registryConstant _ _ _
     (store_target_checkpoint_state_registryConstant cfg ext hps store _ hknown h)
 
+theorem notify_ptc_messages_registryConstant {reg : List Validator}
+    {store store' : Store Root} {state : BeaconState Root}
+    {attestations : List (IndexedPayloadAttestation Root)}
+    (h : RegistryConstant reg store)
+    (hh : notify_ptc_messages cfg ext store state attestations = some store') :
+    RegistryConstant reg store' := h.of_payloadFrame (notify_ptc_messages_frame cfg ext hh)
+
+omit [Inhabited Root] in
+theorem on_payload_attestation_message_registryConstant {reg : List Validator}
+    {store store' : Store Root} {message : PayloadAttestationMessage Root}
+    {is_from_block : Bool} (h : RegistryConstant reg store)
+    (hh : on_payload_attestation_message cfg ext store message is_from_block = some store') :
+    RegistryConstant reg store' :=
+  h.of_payloadFrame (on_payload_attestation_message_frame cfg ext hh)
+
+omit [Inhabited Root] in
+theorem on_execution_payload_envelope_registryConstant {reg : List Validator}
+    {store store' : Store Root} {envelope : SignedExecutionPayloadEnvelope Root}
+    {observation : EnvelopeObservation Root} (h : RegistryConstant reg store)
+    (hh : on_execution_payload_envelope ext store envelope observation = some store') :
+    RegistryConstant reg store' :=
+  h.of_payloadFrame (on_execution_payload_envelope_frame ext hh)
+
 theorem on_block_registryConstant {reg : List Validator}
     (hst_reg : ∀ (st : BeaconState Root) (b : SignedBeaconBlock Root)
         (st' : BeaconState Root),
@@ -229,33 +259,35 @@ theorem on_block_registryConstant {reg : List Validator}
   · simp [on_block, hknown] at hh
     cases hh
     exact h
-  · simp only [on_block, if_neg hknown] at hh
-  -- `split_ifs` also splits the `block_roots` append-if inside the surviving
-  -- `some`-arm, so both "root already present" and "root appended" branches
-  -- are handled uniformly below.
-    split_ifs at hh with hp hslot hfin hfc
+  · have hpar : signed_block.message.parent_root ∈ store.block_roots := by
+      by_contra habsent
+      simp [on_block, hknown, habsent] at hh
+    simp only [on_block, if_neg hknown] at hh
+    split_ifs at hh
     all_goals try contradiction
     cases hst : ext.state_transition
         (store.block_states signed_block.message.parent_root) signed_block with
     | none => rw [hst] at hh; cases hh
     | some state =>
       rw [hst] at hh
-      cases hh
-      have hpar : signed_block.message.parent_root ∈ store.block_roots := hp
-      apply compute_pulled_up_tip_registryConstant
-      apply update_checkpoints_registryConstant
-      apply update_proposer_boost_root_registryConstant
-      apply record_block_timeliness_registryConstant
-      obtain ⟨hblk, hchk⟩ := h
-      refine ⟨fun r hr => ?_, hchk⟩
-      simp only [Function.update_apply]
-      split_ifs with hrb
-      · rw [hst_reg _ _ _ hst]; exact hblk _ hpar
-      · apply hblk
-        first
-          | exact hr
-          | · simp only [List.mem_append, List.mem_singleton] at hr
-              exact hr.resolve_right hrb
+      dsimp only at hh
+      split at hh
+      · cases hh
+      · rename_i after_ptc hptc
+        cases hh
+        apply compute_pulled_up_tip_registryConstant
+        apply update_checkpoints_registryConstant
+        apply update_proposer_boost_root_registryConstant
+        apply record_block_timeliness_registryConstant
+        refine notify_ptc_messages_registryConstant cfg ext ?_ hptc
+        obtain ⟨hblk, hchk⟩ := h
+        refine ⟨fun r hr => ?_, hchk⟩
+        simp only [Function.update_apply]
+        split_ifs with hrb
+        · rw [hst_reg _ _ _ hst]; exact hblk _ hpar
+        · apply hblk
+          simp only [List.mem_append, List.mem_singleton] at hr
+          exact hr.resolve_right hrb
 
 /-! ## `RegistryConstant` preservation by `on_tick` -/
 
@@ -305,6 +337,10 @@ theorem apply_event_registryConstant {reg : List Validator}
   | block b => exact on_block_registryConstant cfg ext hst_reg h hh
   | attestation a ifb => exact on_attestation_registryConstant cfg ext hps h hh
   | attester_slashing s => exact on_attester_slashing_registryConstant ext h hh
+  | execution_payload_envelope envelope observation =>
+    exact on_execution_payload_envelope_registryConstant ext h hh
+  | payload_attestation_message message is_from_block =>
+    exact on_payload_attestation_message_registryConstant cfg ext h hh
 
 /-- One step of the event fold preserves `RegistryConstant`. -/
 theorem apply_event_getD_registryConstant {reg : List Validator}
@@ -391,6 +427,13 @@ theorem of_eq {SL : Slot} {store store' : Store Root}
     (hcs : store'.checkpoint_states = store.checkpoint_states) :
     StateSlotsLE SL store' :=
   ⟨by rw [hbr, hbs]; exact h.1, by rw [hck, hcs]; exact h.2⟩
+
+omit [LinearOrder Root] [Inhabited Root] in
+/-- Payload and PTC writes preserve all stored-state slot bounds. -/
+theorem of_payloadFrame {SL : Slot} {store store' : Store Root}
+    (h : StateSlotsLE SL store) (hf : PayloadFrame store store') :
+    StateSlotsLE SL store' :=
+  h.of_eq hf.block_roots hf.block_states hf.checkpoint_state_keys hf.checkpoint_states
 
 end StateSlotsLE
 
@@ -509,7 +552,10 @@ theorem on_attestation_stateSlotsLE {SL : Slot} {store store' : Store Root}
   split_ifs at hh with hv hvi
   cases hh
   simp only [validate_on_attestation, Bool.and_eq_true, decide_eq_true_eq] at hv
-  obtain ⟨⟨⟨⟨⟨⟨_, hepoch⟩, hknown⟩, _⟩, _⟩, _⟩, hgate⟩ := hv
+  have hepoch : attestation.data.target.epoch = compute_epoch_at_slot cfg attestation.data.slot := by
+    tauto
+  have hknown : attestation.data.target.root ∈ store.block_roots := by tauto
+  have hgate : attestation.data.slot + 1 ≤ get_current_slot cfg store := by tauto
   have htarget : compute_start_slot_at_epoch cfg attestation.data.target.epoch ≤ SL := by
     rw [hepoch]
     refine le_trans ?_ (le_trans (Nat.le_succ _) (le_trans hgate hcur))
@@ -517,6 +563,28 @@ theorem on_attestation_stateSlotsLE {SL : Slot} {store store' : Store Root}
   exact update_latest_messages_stateSlotsLE _ _ _
     (store_target_checkpoint_state_stateSlotsLE cfg ext hps
       store _ hknown htarget h)
+
+theorem notify_ptc_messages_stateSlotsLE {SL : Slot}
+    {store store' : Store Root} {state : BeaconState Root}
+    {attestations : List (IndexedPayloadAttestation Root)} (h : StateSlotsLE SL store)
+    (hh : notify_ptc_messages cfg ext store state attestations = some store') :
+    StateSlotsLE SL store' := h.of_payloadFrame (notify_ptc_messages_frame cfg ext hh)
+
+omit [Inhabited Root] in
+theorem on_payload_attestation_message_stateSlotsLE {SL : Slot}
+    {store store' : Store Root} {message : PayloadAttestationMessage Root}
+    {is_from_block : Bool} (h : StateSlotsLE SL store)
+    (hh : on_payload_attestation_message cfg ext store message is_from_block = some store') :
+    StateSlotsLE SL store' :=
+  h.of_payloadFrame (on_payload_attestation_message_frame cfg ext hh)
+
+omit [Inhabited Root] in
+theorem on_execution_payload_envelope_stateSlotsLE {SL : Slot}
+    {store store' : Store Root} {envelope : SignedExecutionPayloadEnvelope Root}
+    {observation : EnvelopeObservation Root} (h : StateSlotsLE SL store)
+    (hh : on_execution_payload_envelope ext store envelope observation = some store') :
+    StateSlotsLE SL store' :=
+  h.of_payloadFrame (on_execution_payload_envelope_frame ext hh)
 
 theorem on_block_stateSlotsLE {SL : Slot}
     (hst_slot : ∀ (st : BeaconState Root) (b : SignedBeaconBlock Root)
@@ -530,30 +598,36 @@ theorem on_block_stateSlotsLE {SL : Slot}
   · simp [on_block, hknown] at hh
     cases hh
     exact h
-  · simp only [on_block, if_neg hknown] at hh
-    split_ifs at hh with hp hslot hfin hfc
+  · have hslot : signed_block.message.slot ≤ get_current_slot cfg store := by
+      by_contra hfuture
+      simp [on_block, hknown, hfuture] at hh
+    simp only [on_block, if_neg hknown] at hh
+    split_ifs at hh
     all_goals try contradiction
     cases hst : ext.state_transition
         (store.block_states signed_block.message.parent_root) signed_block with
     | none => rw [hst] at hh; cases hh
     | some state =>
       rw [hst] at hh
-      cases hh
-      apply compute_pulled_up_tip_stateSlotsLE
-      apply update_checkpoints_stateSlotsLE
-      apply update_proposer_boost_root_stateSlotsLE
-      apply record_block_timeliness_stateSlotsLE
-      obtain ⟨hblk, hchk⟩ := h
-      refine ⟨fun r hr => ?_, hchk⟩
-      simp only [Function.update_apply]
-      split_ifs with hrb
-      · rw [hst_slot _ _ _ hst]
-        exact le_trans hslot hcur
-      · apply hblk
-        first
-          | exact hr
-          | · simp only [List.mem_append, List.mem_singleton] at hr
-              exact hr.resolve_right hrb
+      dsimp only at hh
+      split at hh
+      · cases hh
+      · rename_i after_ptc hptc
+        cases hh
+        apply compute_pulled_up_tip_stateSlotsLE
+        apply update_checkpoints_stateSlotsLE
+        apply update_proposer_boost_root_stateSlotsLE
+        apply record_block_timeliness_stateSlotsLE
+        refine notify_ptc_messages_stateSlotsLE cfg ext ?_ hptc
+        obtain ⟨hblk, hchk⟩ := h
+        refine ⟨fun r hr => ?_, hchk⟩
+        simp only [Function.update_apply]
+        split_ifs with hrb
+        · rw [hst_slot _ _ _ hst]
+          exact le_trans hslot hcur
+        · apply hblk
+          simp only [List.mem_append, List.mem_singleton] at hr
+          exact hr.resolve_right hrb
 
 omit [LinearOrder Root] in
 theorem on_tick_per_slot_stateSlotsLE {SL : Slot} (store : Store Root)
@@ -610,6 +684,10 @@ theorem apply_event_stateSlotsLE {SL : Slot}
   | attestation a ifb =>
       exact on_attestation_stateSlotsLE cfg ext hps hcur h hh
   | attester_slashing s => exact on_attester_slashing_stateSlotsLE ext h hh
+  | execution_payload_envelope envelope observation =>
+    exact on_execution_payload_envelope_stateSlotsLE ext h hh
+  | payload_attestation_message message is_from_block =>
+    exact on_payload_attestation_message_stateSlotsLE cfg ext h hh
 
 /-- One event-fold step preserves both the state-slot and clock bounds. -/
 theorem apply_event_getD_stateSlotsLE {SL : Slot}

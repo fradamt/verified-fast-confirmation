@@ -289,7 +289,12 @@ theorem strictSelectedResult_below_head
         | exact hprev _ _ base
   rcases hresult.2 with heq | hbelow
   · exact False.elim (hstrict heq)
-  · simpa only [head, get_node_for_root] using hbelow
+  · have hbelow' := hbelow
+    simp only [head, get_node_for_root] at hbelow'
+    exact (congrArg (· = true) (is_ancestor_pending_root_eq query.store
+      (get_head cfg query.store).root
+      (find_latest_confirmed_descendant cfg ext query input) .pending
+      (get_head cfg query.store).payload_status)).mp hbelow'
 
 /-- A retained current-target edge makes the wrapper result strict. -/
 theorem CurrentTargetAcceptedEdge.result_ne_input
@@ -529,6 +534,7 @@ The sole base certificate is the trusted anchor constructor, with the
 checkpoint-sync-safe boundary alignment proved above. -/
 theorem currentConfirmedCheckpointCertified_of_carriedTrajectory
     (hSA : SpecAssumptions cfg ext E)
+    (hpayload : PayloadEnvelopeRelay cfg ext E)
     {anchor : Checkpoint Root}
     (hanchor : anchor = E.genesis_store.justified_checkpoint)
     (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
@@ -540,7 +546,7 @@ theorem currentConfirmedCheckpointCertified_of_carriedTrajectory
     ∀ n : ℕ, E.WithinHorizon cfg n →
       E.CurrentConfirmedCheckpointCertifiedAt cfg ext anchor v n := by
   have hA : SelectedMarginAssumptions cfg ext E :=
-    hSA.toSelectedMarginAssumptions cfg ext
+    hSA.toSelectedMarginAssumptions cfg ext hpayload
   obtain ⟨ast, ablk, hgenEq, hanchorSlot, hanchorParent⟩ := hA.genesis
   have hgenSlots : ∃ (ast : BeaconState Root)
       (ablk : SignedBeaconBlock Root),

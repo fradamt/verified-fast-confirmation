@@ -62,16 +62,30 @@ theorem SelectedMarginAssumptions.genesis_store
   obtain ⟨anchor_state, anchor_block, hstore, _, _⟩ := hA.genesis
   exact ⟨anchor_state, anchor_block, hstore⟩
 
+/-- Payload-envelope relay between honest nodes. The legacy `Synchrony`
+bundle does not contain it; `Synchrony.toPaperSafetySynchrony` takes it as a
+separate premise. -/
+def PayloadEnvelopeRelay (E : Execution Root) : Prop :=
+  ∀ v ∈ E.honest, ∀ n r,
+    E.WithinHorizon cfg n →
+    is_payload_verified (E.store cfg ext v n) r = true →
+    ∀ w ∈ E.honest, ∀ m,
+      E.WithinHorizon cfg m →
+      E.slot_at cfg n + 1 ≤ E.slot_at cfg (m + 1) →
+      is_payload_verified (E.store cfg ext w m) r = true
+
 /-- Compatibility projection: the old broad bundle implies the strict local
 bundle, but none of the reverse (and in particular none of the circular
 ancestry/head fields) is required. -/
 theorem SpecAssumptions.toSelectedMarginAssumptions {E : Execution Root}
-    (hSA : SpecAssumptions cfg ext E) :
+    (hSA : SpecAssumptions cfg ext E) (hpayload : PayloadEnvelopeRelay cfg ext E) :
     SelectedMarginAssumptions cfg ext E := by
   obtain ⟨hgen, hwf, hdiv, hhb, hsync, hec, hsv, hbb, hji⟩ := hSA
-  exact ⟨hgen, hwf, hdiv, hhb, hsync, hec, hsv, hbb,
+
+  exact ⟨hgen, hwf, hdiv, hhb, hsync.toPaperSafetySynchrony cfg ext hpayload, hec, hsv, hbb,
     ⟨fun w hw m hH => (hji.checkpoint_known w hw m hH).1,
       hji.justified_cached⟩⟩
+
 
 private theorem exists_mem_of_map_sum_pos_minimal {Alpha : Type*}
     (l : List Alpha) (f : Alpha → ℕ) (h : 0 < (l.map f).sum) :
@@ -394,7 +408,7 @@ theorem past_descendant_of_honest_supporter_known_minimal
       hgeq hslot hroot v n lm.root hlmKnown
   have hs0 : E.slot_at cfg 0 ≤ s := by
     rw [hcur0, hsap]
-    exact hanchorle.trans hlmSlot
+    exact hanchorle.trans hlmSlot.1
   have hsH : E.SlotWithinHorizon cfg s :=
     E.slotWithinHorizon_of_le cfg (le_of_lt hslt) hH
   obtain ⟨nu, index, hHnu, hnu, hvoteHead⟩ :=
@@ -417,7 +431,7 @@ theorem past_descendant_of_honest_supporter_known_minimal
   refine ⟨i, nu, lm.root, hi, hHnu, ?_, hd, ?_⟩
   · rw [hnu]
     exact hslt
-  · simpa only [get_supported_node, get_node_for_root] using hsupp
+  · simpa only [get_node_for_root, is_ancestor_supported_pending] using hsupp
 
 theorem mem_of_known_honest_past_descendant_minimal
     (hA : SelectedMarginAssumptions cfg ext E)
@@ -469,11 +483,11 @@ theorem mem_of_known_honest_past_descendant_minimal
     E.store_anchor_min_slot cfg ext hA.wellFormed hA.externals_coherence
       hgeq hstateSlot hroot v n b hb
   have hwalk : WalkKnown (E.store cfg ext u nu) rb d := hwalk0.mono hbound
-  have hvlands : get_ancestor (E.store cfg ext v n) (ForkChoiceNode.mk d) rb =
-      ForkChoiceNode.mk b := by
-    simpa only [is_ancestor, get_node_for_root, decide_eq_true_eq] using hanc
-  have hulands : get_ancestor (E.store cfg ext u nu) (ForkChoiceNode.mk d) rb =
-      ForkChoiceNode.mk b := by
+  have hvlands : (get_ancestor (E.store cfg ext v n) (ForkChoiceNode.mk d .pending) rb).root =
+      b := by
+    simpa only [get_node_for_root, is_ancestor_pending, decide_eq_true_eq] using hanc
+  have hulands : (get_ancestor (E.store cfg ext u nu) (ForkChoiceNode.mk d .pending) rb).root =
+      b := by
     rw [get_ancestor_congr hagree hd hwalk]
     exact hvlands
   have hbu : b ∈ (E.store cfg ext u nu).block_roots := by
@@ -527,7 +541,8 @@ theorem ancestry_of_known_honest_past_descendant_minimal
     hA.externals_coherence hgen' v n
   have hdr₀ : is_ancestor (E.store cfg ext v n)
       (get_node_for_root d) (get_node_for_root r₀) = true :=
-    is_ancestor_trans hwfv (hwalkv r₀ hr₀ d hdv) (hwalkv r₀ hr₀ b hb) hdb hbge
+    is_ancestor_trans (a := get_node_for_root d) (b := get_node_for_root b)
+        (c := get_node_for_root r₀) hwfv (hwalkv r₀ hr₀ d hdv) (hwalkv r₀ hr₀ b hb) hdb hbge
   have hanchor0 : ablk.root ∈ (E.store cfg ext u 0).block_roots := by
     change ablk.root ∈ E.genesis_store.block_roots
     rw [hgeq]
@@ -554,11 +569,11 @@ theorem ancestry_of_known_honest_past_descendant_minimal
       E.store_anchor_min_slot cfg ext hA.wellFormed hA.externals_coherence
         hgeq hstateSlot hroot v n x hx
     have hwalkx : WalkKnown (E.store cfg ext u nu) sx d := hwalk0.mono hbound
-    have hvlands : get_ancestor (E.store cfg ext v n) (ForkChoiceNode.mk d) sx =
-        ForkChoiceNode.mk x := by
-      simpa only [is_ancestor, get_node_for_root, decide_eq_true_eq, sx] using hdx
-    have hulands : get_ancestor (E.store cfg ext u nu) (ForkChoiceNode.mk d) sx =
-        ForkChoiceNode.mk x := by
+    have hvlands : (get_ancestor (E.store cfg ext v n) (ForkChoiceNode.mk d .pending) sx).root =
+        x := by
+      simpa only [get_node_for_root, is_ancestor_pending, decide_eq_true_eq, sx] using hdx
+    have hulands : (get_ancestor (E.store cfg ext u nu) (ForkChoiceNode.mk d .pending) sx).root =
+        x := by
       rw [get_ancestor_congr hagreeUV hd hwalkx]
       exact hvlands
     have hspec := (get_ancestor_spec hwfu hwalkx).1
@@ -943,10 +958,21 @@ theorem freshEngineInputs_of_IH_minimal (hA : SelectedMarginAssumptions cfg ext 
   have hanchor_le_c : ablk.message.slot ≤
       ((E.store cfg ext w m).blocks c).slot :=
     E.store_anchor_min_slot cfg ext hA.wellFormed hA.externals_coherence hgeq hslot hparent w m c hc
+  have hhead_glc' : is_ancestor (E.store cfg ext i nᵢ)
+      (get_node_for_root (get_head cfg (E.store cfg ext i nᵢ)).root)
+      (get_node_for_root glc) = true := by
+    rw [get_node_for_root, is_ancestor_pending_root_eq _ _ _ .pending
+      (get_head cfg (E.store cfg ext i nᵢ)).payload_status]
+    exact hhead_glc
   obtain ⟨hcᵢ, hhead_c⟩ := E.chain_descent_restrict hA.wellFormed
     (E.blockProvenance cfg ext i nᵢ) (E.blockProvenance cfg ext w m)
-    hparentᵢ hwalkA hanchor_le_c hsub hhead hglcᵢ hhead_glc hchain
-  exact ⟨hhead_c, hsub, hcᵢ, hwalkK c hcᵢ _ hhead⟩
+    hparentᵢ hwalkA hanchor_le_c hsub hhead hglcᵢ hhead_glc' hchain
+  have hhead_c' : is_ancestor (E.store cfg ext i nᵢ)
+      (get_head cfg (E.store cfg ext i nᵢ)) (get_node_for_root c) = true :=
+    (congrArg (· = true) (is_ancestor_pending_root_eq (E.store cfg ext i nᵢ)
+      (get_head cfg (E.store cfg ext i nᵢ)).root c .pending
+      (get_head cfg (E.store cfg ext i nᵢ)).payload_status)).mp hhead_c
+  exact ⟨hhead_c', hsub, hcᵢ, hwalkK c hcᵢ _ hhead⟩
 
 /-! ## Growth from `es` -/
 
@@ -1056,8 +1082,11 @@ theorem sameEpoch_descendStep_of_selectedInputs_minimal
       hA.genesis_store hA.domain w hw m hHm
   have hbside := recorded_bside_ge cfg ext hval hin.selected_recording
   have hsib : ∀ c' : Root,
-      ForkChoiceNode.mk c' ∈ get_node_children (E.store cfg ext w m)
-        (get_filtered_block_tree cfg (E.store cfg ext w m)) (ForkChoiceNode.mk a) →
+      ForkChoiceNode.mk c' .pending ∈ get_node_children (E.store cfg ext w m)
+        (get_filtered_block_tree cfg (E.store cfg ext w m))
+          (ForkChoiceNode.mk a
+            (get_parent_payload_status (E.store cfg ext w m)
+              ((E.store cfg ext w m).blocks c))) →
       c' ≠ c →
       get_attestation_score cfg (E.store cfg ext w m) (get_node_for_root c')
           ((E.store cfg ext w m).checkpoint_states
@@ -1069,7 +1098,7 @@ theorem sameEpoch_descendStep_of_selectedInputs_minimal
       (hin.byzantine_sibling_confinement c' hc' hne)
   exact E.descendStep_of_confirmMargin cfg ext v w (n + 1) m
     lo es σ hin.support_transport hin.ancestor_transport
-    hin.base_strip hgrowS hgrowX hbudget hin.child_filtered hbside hsib
+    hin.base_strip hgrowS hgrowX hbudget hin.child_filtered hin.status_margin hbside hsib
 
 /-- Minimal-domain version of the endpoint-anchored full-span third producer.
 The broad justification interface is unnecessary: the local cached-justified
@@ -1127,7 +1156,7 @@ theorem futureCrossing_descendStep_of_selectedInputs_minimal
       (E.store cfg ext v q).latest_messages i = some lm →
         WalkKnown (E.store cfg ext v q) ((E.store cfg ext v q).blocks b).slot lm.root := by
     intro i _ lm hlm
-    obtain ⟨_, _, _, _, _, _, _, hlmKnown, _⟩ := hprov i lm hlm
+    obtain ⟨_, _, _, _, _, _, _, hlmKnown, _, _⟩ := hprov i lm hlm
     exact hwalkK b hin.block_known lm.root hlmKnown
   have hslotlt : ((E.store cfg ext v q).blocks
       ((E.store cfg ext v q).blocks b).parent_root).slot <
@@ -1166,7 +1195,8 @@ theorem futureCrossing_descendStep_of_selectedInputs_minimal
     hin.recorded_epoch_max hin.edge_same_epoch hin.es_le_sigma hin.sigma_horizon
     hboost hSbase (by simpa only [bs] using hin.parent_sub_endpoint) hAX hxS
   have hbside := recorded_bside_ge cfg ext hvalEnd hin.selected_recording
-  exact E.crossing_ledger_descendStep cfg ext hin.child_filtered hbside hend
+  exact E.crossing_ledger_descendStep cfg ext hin.child_filtered
+    hin.status_margin hbside hend
     hin.sibling_score
 
 /-- Minimal-domain endpoint-anchored producer for a selected edge that itself
@@ -1224,7 +1254,7 @@ theorem crossingEdge_descendStep_of_selectedInputs_minimal
       (E.store cfg ext v q).latest_messages i = some lm →
         WalkKnown (E.store cfg ext v q) ((E.store cfg ext v q).blocks b).slot lm.root := by
     intro i _ lm hlm
-    obtain ⟨_, _, _, _, _, _, _, hlmKnown, _⟩ := hprov i lm hlm
+    obtain ⟨_, _, _, _, _, _, _, hlmKnown, _, _⟩ := hprov i lm hlm
     exact hwalkK b hin.block_known lm.root hlmKnown
   have hslotlt : ((E.store cfg ext v q).blocks
       ((E.store cfg ext v q).blocks b).parent_root).slot <
@@ -1263,7 +1293,8 @@ theorem crossingEdge_descendStep_of_selectedInputs_minimal
     hin.recorded_epoch_max hin.edge_crosses hin.es_le_sigma hin.sigma_horizon
     hboost hSbase (by simpa only [bs] using hin.parent_sub_endpoint) hAX hxS
   have hbside := recorded_bside_ge cfg ext hvalEnd hin.selected_recording
-  exact E.crossing_ledger_descendStep cfg ext hin.child_filtered hbside hend
+  exact E.crossing_ledger_descendStep cfg ext hin.child_filtered
+    hin.status_margin hbside hend
     hin.sibling_score
 
 theorem descendStepChainSupply_of_selectedMargins_minimal

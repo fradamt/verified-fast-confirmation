@@ -13,7 +13,8 @@ This module establishes two structural facts used by the head-safety engine:
 - **Head membership** (`get_head_root_mem_or`): `get_head` lands on a known
   block or degenerately stays at the justified root — the filtered list only
   carries known roots plus possibly the descent base itself, and every
-  descent step moves into the filtered list. This settles `Delivery`'s
+  descent step either resolves status at the same root or moves into the
+  filtered list. This settles `Delivery`'s
   `hhead_known` residue by case split, with **no** `justified_known`
   assumption: the degenerate case is threaded, not assumed away.
 - **Boost congruence** (`compute_proposer_score_congr`): registry-constant
@@ -70,8 +71,8 @@ theorem filter_block_tree_aux_output_mem {store : Store Root} :
       · exact Or.inr (List.mem_singleton.mp hr)
       · exact absurd hr (List.not_mem_nil)
 
-/-- Descent confinement: `get_head_aux` returns its start node or a member of
-the candidate list (each step's `argmax` picks a child from the list). -/
+/-- Descent confinement: the result uses the start root or a candidate root.
+Payload resolution keeps the root; beacon descent uses a candidate root. -/
 theorem get_head_aux_root_mem_or {store : Store Root} {blocks : List Root} :
     ∀ (fuel : ℕ) (h : ForkChoiceNode Root),
       (get_head_aux cfg store blocks fuel h).root ∈ blocks ∨
@@ -82,17 +83,19 @@ theorem get_head_aux_root_mem_or {store : Store Root} {blocks : List Root} :
   | succ fuel ih =>
     intro h
     cases hbest : (get_node_children store blocks h).argmax
-        (fun child => toLex (get_weight cfg store child, child.root)) with
+        (fun child => toLex (get_weight cfg store child,
+          toLex (child.root, get_payload_status_tiebreaker cfg store child))) with
     | none =>
       rw [get_head_aux_succ, hbest]
       exact Or.inr rfl
     | some best =>
       rw [get_head_aux_step cfg store blocks fuel h best hbest]
       have hmem : best ∈ get_node_children store blocks h := List.argmax_mem hbest
-      have hbb : best.root ∈ blocks := (mem_get_node_children.mp hmem).1
       rcases ih best with hin | heq
       · exact Or.inl hin
-      · exact Or.inl (heq ▸ hbb)
+      · rcases get_node_children_root_mem_or hmem with hbb | hroot
+        · exact Or.inl (heq ▸ hbb)
+        · exact Or.inr (heq.trans hroot)
 
 /-- **Head membership**: `get_head` lands on a known block, or degenerately at
 the justified checkpoint root (empty filtered descent) — the case split that
@@ -103,8 +106,8 @@ theorem get_head_root_mem_or (store : Store Root) :
   simp only [get_head]
   rcases get_head_aux_root_mem_or cfg
       (blocks := get_filtered_block_tree cfg store)
-      (get_filtered_block_tree cfg store).length.succ
-      (ForkChoiceNode.mk store.justified_checkpoint.root) with hin | heq
+      (2 * (get_filtered_block_tree cfg store).length + 2)
+      (ForkChoiceNode.mk store.justified_checkpoint.root .pending) with hin | heq
   · rcases filter_block_tree_aux_output_mem cfg _ _ _ hin with h | h
     · exact Or.inl h
     · exact Or.inr h

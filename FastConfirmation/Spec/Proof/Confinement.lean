@@ -208,7 +208,7 @@ theorem honest_sibling_confinement
   obtain ⟨lm, hlm, _, hanc⟩ := mem_AttSupporters cfg hi_supp
   have hanc' : is_ancestor (E.store cfg ext w m) (get_node_for_root lm.root)
       (get_node_for_root c') = true := by
-    simpa only [get_supported_node, get_node_for_root] using hanc
+    simpa only [get_node_for_root, is_ancestor_supported_pending] using hanc
   obtain ⟨t, k, a, htle, hvote, hnew, hbbreq⟩ :=
     E.recorded_lm_is_newest_at cfg ext hhb hec hgen hprov hes hih hlm (hdom i hih lm hlm)
   have hlmk : lm.root ∈ (E.store cfg ext w m).block_roots := hlmknown lm i hlm
@@ -228,7 +228,8 @@ theorem honest_sibling_confinement
     rw [← ha, hbbreq] at hanc1
     have hlmc : is_ancestor (E.store cfg ext w m) (get_node_for_root lm.root)
         (get_node_for_root c) = true :=
-      is_ancestor_trans hwf (hwalkK c hc lm.root hlmk) (hwalkK c hc b hb) hanc1 hbc
+      is_ancestor_trans (a := get_node_for_root lm.root) (b := get_node_for_root b)
+        (c := get_node_for_root c) hwf (hwalkK c hc lm.root hlmk) (hwalkK c hc b hb) hanc1 hbc
     exact siblings_incompatible hwf hc hc' hh hpc hpc' hne
       (hwalkK c hc lm.root hlmk) (hwalkK c' hc' lm.root hlmk) hlmc hanc'
   · rintro (hvoteless | ⟨t1, k1, a1, ht1le, hvote1, hnew1, hanc1⟩)

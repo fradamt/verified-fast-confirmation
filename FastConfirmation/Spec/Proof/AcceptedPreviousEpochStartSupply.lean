@@ -88,6 +88,7 @@ theorem StrictSelectorAdvanceAt.previousObservedReset_queryGUEpochSeed
       (get_node_for_root head) (get_node_for_root trace.result) = true := by
     have hbelow := strictSelectedResult_below_head cfg ext hparentQ hwalkQ
       hheadKnown hinputKnown hstrict
+    rw [is_ancestor_node_root] at hbelow
     simpa only [head, hselector.result_eq] using hbelow
   have hprojection : AcceptedFFGStoreProjection B.state query.store := by
     simpa only [query, E.fcrStep_store] using
@@ -205,11 +206,11 @@ noncomputable def
     simpa only [query] using hinputKnown
   have hgeometry := hselector.geometry cfg ext hparent hwalk hhead
     hinputKnownQ
-  have hlands : get_ancestor query.store
+  have hlands : (get_ancestor query.store
       (get_node_for_root trace.result)
-      (query.store.blocks trace.afterObserved).slot =
-        get_node_for_root trace.afterObserved := by
-    simpa only [is_ancestor, decide_eq_true_eq, get_node_for_root] using
+      (query.store.blocks trace.afterObserved).slot).root =
+        trace.afterObserved := by
+    simpa only [get_node_for_root, is_ancestor_pending, decide_eq_true_eq] using
       hgeometry.descends_input
   have hinputEpochQ : get_block_epoch cfg query.store
       trace.afterObserved = e := by
@@ -253,7 +254,7 @@ noncomputable def
   have hknownSegment : KnownSameEpochAncestrySegment cfg
       E.genesis_store.block_roots query.store trace.afterObserved
         trace.result :=
-    E.knownSameEpochAncestrySegment_of_known_ancestor cfg hparent
+    E.knownSameEpochAncestrySegment_of_known_ancestor_root cfg hparent
       (hwalk trace.afterObserved hinputKnownQ trace.result
         hgeometry.result_known)
       hlands hsame hstrictNonGenesis

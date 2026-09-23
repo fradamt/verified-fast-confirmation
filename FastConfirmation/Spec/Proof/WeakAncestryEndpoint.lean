@@ -74,24 +74,24 @@ theorem Execution.is_ancestor_replay_closed (hwf : WellFormedExecution E)
       ((E.store cfg ext v n).blocks b).slot d :=
     E.store_walkKnown_ge cfg ext hwf hec hgeq hslot hparent hanchor w k d hd_w
   -- the walk at `(v, n)` lands on `b`
-  have hlands_v : get_ancestor (E.store cfg ext v n) (ForkChoiceNode.mk d)
-      ((E.store cfg ext v n).blocks b).slot = ForkChoiceNode.mk b := by
-    simpa only [is_ancestor, get_node_for_root, decide_eq_true_eq] using hanc
+  have hlands_v : (get_ancestor (E.store cfg ext v n) (ForkChoiceNode.mk d .pending)
+      ((E.store cfg ext v n).blocks b).slot).root = b := by
+    simpa only [is_ancestor_get_node_for_root, decide_eq_true_eq] using hanc
   -- replay it at `(w, k)`: same fuel (agreement at `d`), same walk
-  have hgw : get_ancestor (E.store cfg ext v n) (ForkChoiceNode.mk d)
-        ((E.store cfg ext v n).blocks b).slot
-      = get_ancestor (E.store cfg ext w k) (ForkChoiceNode.mk d)
-        ((E.store cfg ext v n).blocks b).slot := by
+  have hgw : (get_ancestor (E.store cfg ext v n) (ForkChoiceNode.mk d .pending)
+        ((E.store cfg ext v n).blocks b).slot).root
+      = (get_ancestor (E.store cfg ext w k) (ForkChoiceNode.mk d .pending)
+        ((E.store cfg ext v n).blocks b).slot).root := by
     simp only [get_ancestor]
     rw [hagree d hd_v hd_w]
-    exact get_ancestor_aux_congr_closed hagree hclosed hwalk_v hd_w _
+    exact get_ancestor_aux_congr_closed hagree hclosed hwalk_v hd_w _ _ _
   -- so the walk at `(w, k)` also lands on `b`, still at the `v`-side slot expression
-  have hlands_w : get_ancestor (E.store cfg ext w k) (ForkChoiceNode.mk d)
-      ((E.store cfg ext v n).blocks b).slot = ForkChoiceNode.mk b := by
+  have hlands_w : (get_ancestor (E.store cfg ext w k) (ForkChoiceNode.mk d .pending)
+      ((E.store cfg ext v n).blocks b).slot).root = b := by
     rw [← hgw]; exact hlands_v
   -- transport the slot expression to the `w`-side via block agreement at `b`,
   -- and conclude `is_ancestor` at `(w, k)`
-  simp only [is_ancestor, get_node_for_root, decide_eq_true_eq]
+  simp only [is_ancestor_get_node_for_root, decide_eq_true_eq]
   rw [← hbb]
   exact hlands_w
 

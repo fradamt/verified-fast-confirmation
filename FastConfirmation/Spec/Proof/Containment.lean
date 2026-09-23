@@ -98,13 +98,18 @@ def storeAt (slot : Slot) : Store Nat where
   proposer_boost_root := 0
   equivocating_indices := ∅
   block_roots := [1, 2, 3]
-  blocks := fun r => if r = 3 then ⟨9, 2⟩ else if r = 2 then ⟨8, 1⟩ else ⟨0, 0⟩
+  blocks := fun r =>
+    if r = 3 then { slot := 9, parent_root := 2 }
+    else if r = 2 then { slot := 8, parent_root := 1 }
+    else { slot := 0, parent_root := 0 }
   block_states := fun r => state (if r = 3 then 9 else if r = 2 then 8 else 0)
-  block_timeliness := fun _ => some true
+  block_timeliness := fun _ => some (true, true)
   checkpoint_state_keys := {finalized, observed}
   checkpoint_states := fun _ => state 8
   latest_messages := fun i =>
-    if i = 0 then some ⟨1, 2⟩ else if i = 1 then some ⟨0, 3⟩ else none
+    if i = 0 then some { slot := 8, root := 2 }
+    else if i = 1 then some { slot := 9, root := 3 }
+    else none
   unrealized_justifications := fun r => if r = 2 then observed else finalized
 
 def weakInput : FastConfirmationStore Nat where

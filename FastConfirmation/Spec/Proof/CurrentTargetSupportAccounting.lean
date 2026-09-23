@@ -34,7 +34,7 @@ def CurrentTargetSupporters (store : Store Root) (state : BeaconState Root) :
           decide (i ∉ store.equivocating_indices) &&
             decide (get_current_target cfg store =
               get_checkpoint_for_block cfg store latestMessage.root
-                (get_latest_message_epoch latestMessage)))
+                (get_latest_message_epoch cfg latestMessage)))
 
 /-- Definitional score readback. -/
 theorem get_current_target_score_eq_supporters_sum
@@ -66,7 +66,7 @@ theorem mem_CurrentTargetSupporters
         i ∉ store.equivocating_indices ∧
         get_current_target cfg store =
           get_checkpoint_for_block cfg store latestMessage.root
-            (get_latest_message_epoch latestMessage) := by
+            (get_latest_message_epoch cfg latestMessage) := by
   simp only [CurrentTargetSupporters, List.mem_filter,
     get_active_validator_indices, List.mem_range] at hi
   obtain ⟨⟨⟨_hiRange, hactive⟩, hunslashed⟩, hscore⟩ := hi
@@ -121,7 +121,8 @@ theorem currentTargetSupporter_mem_elapsed_span
   obtain ⟨a, hiAttests, htargetEpoch, _hroot, hattEpoch,
       happlied, hiCommittee, _hrootKnown, _hrootSlot⟩ :=
     hprov i latestMessage hlm
-  have hcurrentEpoch : get_current_store_epoch cfg store = latestMessage.epoch := by
+  have hcurrentEpoch : get_current_store_epoch cfg store =
+      get_latest_message_epoch cfg latestMessage := by
     have hepoch := congrArg Checkpoint.epoch htarget
     simpa only [get_current_target, get_checkpoint_for_block] using hepoch
   have haEpoch : compute_epoch_at_slot cfg a.data.slot =

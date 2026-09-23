@@ -50,12 +50,10 @@ theorem chain_descent_restrict (hwfE : WellFormedExecution E)
   have hwalk_b_target : WalkKnown source (target.blocks c).slot b :=
     (hwalkA b hb).mono hsa_c
   have hget_target :
-      get_ancestor target (ForkChoiceNode.mk b) (target.blocks c).slot =
-        ForkChoiceNode.mk c := by
-    simpa only [is_ancestor, get_node_for_root, decide_eq_true_eq] using hbc
+      (get_ancestor target (ForkChoiceNode.mk b .pending) (target.blocks c).slot).root = c := by
+    simpa only [get_node_for_root, is_ancestor_pending, decide_eq_true_eq] using hbc
   have hget_source :
-      get_ancestor source (ForkChoiceNode.mk b) (target.blocks c).slot =
-        ForkChoiceNode.mk c := by
+      (get_ancestor source (ForkChoiceNode.mk b .pending) (target.blocks c).slot).root = c := by
     rw [get_ancestor_congr hagree hb hwalk_b_target]
     exact hget_target
   have hc_source : c ∈ source.block_roots := by
@@ -65,7 +63,7 @@ theorem chain_descent_restrict (hwfE : WellFormedExecution E)
   have hc_agree : source.blocks c = target.blocks c := hagree c hc_source
   have hbc_source :
       is_ancestor source (get_node_for_root b) (get_node_for_root c) = true := by
-    simp only [is_ancestor, get_node_for_root, decide_eq_true_eq]
+    simp only [get_node_for_root, is_ancestor_pending, decide_eq_true_eq]
     rw [hc_agree]
     exact hget_source
   have hwalk_a_c : WalkKnown source (source.blocks c).slot a :=
@@ -73,7 +71,8 @@ theorem chain_descent_restrict (hwfE : WellFormedExecution E)
   have hwalk_b_c : WalkKnown source (source.blocks c).slot b := by
     rwa [hc_agree]
   exact ⟨hc_source,
-    is_ancestor_trans hparent hwalk_a_c hwalk_b_c hab hbc_source⟩
+    is_ancestor_trans (a := get_node_for_root a) (b := get_node_for_root b)
+      (c := get_node_for_root c) hparent hwalk_a_c hwalk_b_c hab hbc_source⟩
 
 /-! ## Fresh engine inputs from the confirming cutoff onward -/
 
@@ -133,7 +132,7 @@ theorem freshEngineInputs_of_IH (hSA : SpecAssumptions cfg ext E)
     le_trans (Nat.succ_le_of_lt hni_lt_m) (E.slot_at_mono cfg (Nat.le_succ m))
   have hsub : (E.store cfg ext i nᵢ).block_roots ⊆
       (E.store cfg ext w m).block_roots :=
-    E.blockRoots_subset_of_relay cfg ext hsync hi_honest hw hHni hHm hgate
+    E.blockRoots_subset_of_legacy_relay cfg ext hsync hi_honest hw hHni hHm hgate
   obtain ⟨hparentᵢ, hwalkK, _hjust⟩ :=
     E.store_domainK cfg ext hwfE hec hgen' hji i hi_honest nᵢ hHni
   have hhead : (get_head cfg (E.store cfg ext i nᵢ)).root ∈
@@ -155,9 +154,25 @@ theorem freshEngineInputs_of_IH (hSA : SpecAssumptions cfg ext E)
   have hanchor_le_c : ablk.message.slot ≤
       ((E.store cfg ext w m).blocks c).slot :=
     E.store_anchor_min_slot cfg ext hwfE hec hgeq hslot hparent w m c hc
+  have hhead_pending (r : Root) :
+      is_ancestor (E.store cfg ext i nᵢ)
+        (get_node_for_root (get_head cfg (E.store cfg ext i nᵢ)).root)
+        (get_node_for_root r) =
+      is_ancestor (E.store cfg ext i nᵢ)
+        (get_head cfg (E.store cfg ext i nᵢ)) (get_node_for_root r) := by
+    simp only [get_node_for_root, is_ancestor_pending]
+    rw [get_ancestor_root_eq_of_root_eq (store := E.store cfg ext i nᵢ)
+      (a := ForkChoiceNode.mk (get_head cfg (E.store cfg ext i nᵢ)).root .pending)
+      (b := get_head cfg (E.store cfg ext i nᵢ)) rfl]
+  have hhead_glc_pending : is_ancestor (E.store cfg ext i nᵢ)
+      (get_node_for_root (get_head cfg (E.store cfg ext i nᵢ)).root)
+      (get_node_for_root glc) = true := by
+    rw [hhead_pending glc]
+    exact hhead_glc
   obtain ⟨hcᵢ, hhead_c⟩ := E.chain_descent_restrict hwfE
     (E.blockProvenance cfg ext i nᵢ) (E.blockProvenance cfg ext w m)
-    hparentᵢ hwalkA hanchor_le_c hsub hhead hglcᵢ hhead_glc hchain
+    hparentᵢ hwalkA hanchor_le_c hsub hhead hglcᵢ hhead_glc_pending hchain
+  rw [hhead_pending c] at hhead_c
   exact ⟨hhead_c, hsub, hcᵢ, hwalkK c hcᵢ _ hhead⟩
 
 /-! ## Growth from `es` -/

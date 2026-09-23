@@ -6,6 +6,7 @@ public import FastConfirmation.Spec.Proof.SelectedCommitteeSupport
 public import FastConfirmation.Spec.Proof.SelectedMarginConstruction
 public import FastConfirmation.Spec.Proof.EndpointLedgerMinimal
 public import FastConfirmation.Spec.Proof.FutureSiblingScore
+public import FastConfirmation.Spec.Proof.StatusMarginConstruction
 
 @[expose] public section
 
@@ -78,10 +79,11 @@ def SelectedStrictEdgeFilterSupplyAt
     is_ancestor (E.store cfg ext w m)
       (get_node_for_root (E.store cfg ext w m).justified_checkpoint.root)
       (get_node_for_root c) ≠ true →
-    ForkChoiceNode.mk c ∈
+    ForkChoiceNode.mk c .pending ∈
       get_node_children (E.store cfg ext w m)
         (get_filtered_block_tree cfg (E.store cfg ext w m))
-        (ForkChoiceNode.mk a)
+        (ForkChoiceNode.mk a (get_parent_payload_status (E.store cfg ext w m)
+          ((E.store cfg ext w m).blocks c)))
 
 /-- Every strict selected edge is either already covered by the endpoint's
 realized justified root or has the exact margin record consumed by the
@@ -209,14 +211,25 @@ theorem selectedCoveredMarginSupplyAt_of_filterSupply_minimal
   have hbase := E.base_strip_of_confirmed_at_minimal cfg ext hA hv hqH
     hquery hgeom.block_known hgeom.parent_known hgeom.confirmation
     lo es hgeom.lo_eq hcutoffQ hmaxQuery hw hmH
+  have hsigmaLt : sigma < E.slot_at cfg m := hgeom.sigma_lt_endpoint
+  have hslotQM' : E.slot_at cfg q ≤ E.slot_at cfg m := hslotQM
   by_cases heqCutoff : sigma = es
   · have hledgerEs : E.EndpointLedgerFields cfg ext w m a c lo es := by
       simpa only [heqCutoff] using hledger
+    have hstatus := E.statusMargin_loWindow_minimal cfg ext hA hwalkDomain
+      hv hqH hquery hw hmH haQ hgeom.block_known
+      (hgeom.parent_eq) haM hcM hparentM hgeom.confirmation hgeom.lo_eq hloEnd
+      hlo₀ hcutoffQ (by rw [heqCutoff] at hsigmaEnd; exact hsigmaEnd)
+      (by rw [← heqCutoff]; exact hsigmaLt) (le_refl es) hslotQM' hmaxQuery hSt
+      (fun t h1 h2 => absurd (lt_of_lt_of_le h1 h2) (lt_irrefl _))
+      (by simp only [Nat.sub_self, Nat.mul_zero, le_refl])
+      hledgerEs.selected_recording
     exact SelectedEdgeMarginInputsAt.directWindow lo es
       { support_transport := hSt
         ancestor_transport := hAt
         base_strip := hbase
         child_filtered := hchild
+        status_margin := hstatus
         selected_score := hledgerEs.selected_score
         sibling_score := hledgerEs.sibling_score }
   have hesLtSigma : es < sigma :=
@@ -264,7 +277,18 @@ theorem selectedCoveredMarginSupplyAt_of_filterSupply_minimal
     simp only [Execution.Sclass, Finset.mem_filter] at hi' ⊢
     exact ⟨⟨span_committee_mono_lo hloMid hi'.1.1, hi'.1.2⟩, hi'.2⟩
   rcases hgeom.regime with hsame | hcross | ⟨hedge, hwindow⟩
-  · exact SelectedEdgeMarginInputsAt.sameEpoch lo es sigma
+  · have hsameT : ∀ t : Slot, lo ≤ t → t ≤ sigma →
+        compute_epoch_at_slot cfg t = compute_epoch_at_slot cfg lo :=
+      fun t htlo htσ => epoch_eq_of_between cfg htlo htσ hsame
+    have hbudget := E.hbudget_sameEpoch_of_IH cfg ext hA.byzantine_bound
+      hA.externals_coherence hgeom.lo_le_cutoff hgeom.cutoff_le_sigma
+      hgeom.sigma_horizon hsameT
+    have hstatus := E.statusMargin_loWindow_minimal cfg ext hA hwalkDomain
+      hv hqH hquery hw hmH haQ hgeom.block_known
+      (hgeom.parent_eq) haM hcM hparentM hgeom.confirmation hgeom.lo_eq hloEnd
+      hlo₀ hcutoffQ hsigmaEnd hsigmaLt hgeom.cutoff_le_sigma hslotQM' hmaxQuery
+      hSt hcommittee hbudget hledger.selected_recording
+    exact SelectedEdgeMarginInputsAt.sameEpoch lo es sigma
       { query_store_eq := hquery
         confirming_cutoff := hgeom.confirming_cutoff
         lo_le_es := hgeom.lo_le_cutoff
@@ -276,10 +300,18 @@ theorem selectedCoveredMarginSupplyAt_of_filterSupply_minimal
         ancestor_transport := hAt
         base_strip := hbase
         child_filtered := hchild
+        status_margin := hstatus
         selected_recording := hledger.selected_recording
         honest_sibling_confinement := hledger.honest_sibling_confinement
         byzantine_sibling_confinement := hledger.byzantine_sibling_confinement }
-  · have hsibling :=
+  · have hstatus := E.statusMargin_crossing_minimal cfg ext hA hwalkDomain
+      hv hqH hquery hw hmH haQ hgeom.block_known
+      (hgeom.parent_eq) haM hcM hparentM hgeom.confirmation hgeom.lo_eq hloEnd
+      hlo₀ hcutoffQ hsigmaEnd hsigmaLt hgeom.cutoff_le_sigma hgeom.sigma_horizon
+      hslotQM' hgeom.child_slot_le_cutoff hmaxQuery hSt hAt hmaxMid hStMid hAtMid
+      hcommittee hledger.selected_recording hselectedMid
+      (Or.inr ⟨hcross, hrelaySlot⟩)
+    have hsibling :=
       E.crossingEdge_sibling_score_of_endpointLedger_minimal cfg ext hA
         (bs := get_current_balance_source query)
         hv hqH hw hmH hrelaySlot hgeom.block_known hgeom.parent_known
@@ -301,10 +333,17 @@ theorem selectedCoveredMarginSupplyAt_of_filterSupply_minimal
         parent_sub_endpoint := hparentSub
         committee_support := hcommittee
         child_filtered := hchild
+        status_margin := hstatus
         selected_recording := hselectedMid
         sibling_score := by
           simpa only [hgeom.lo_eq] using hsibling }
-  · have hsibling :=
+  · have hstatus := E.statusMargin_crossing_minimal cfg ext hA hwalkDomain
+      hv hqH hquery hw hmH haQ hgeom.block_known
+      (hgeom.parent_eq) haM hcM hparentM hgeom.confirmation hgeom.lo_eq hloEnd
+      hlo₀ hcutoffQ hsigmaEnd hsigmaLt hgeom.cutoff_le_sigma hgeom.sigma_horizon
+      hslotQM' hgeom.child_slot_le_cutoff hmaxQuery hSt hAt hmaxMid hStMid hAtMid
+      hcommittee hledger.selected_recording hselectedMid (Or.inl hedge)
+    have hsibling :=
       E.futureCrossing_sibling_score_of_endpointLedger_minimal cfg ext hA
         hv hqH
         (bs := get_current_balance_source query)
@@ -328,6 +367,7 @@ theorem selectedCoveredMarginSupplyAt_of_filterSupply_minimal
         parent_sub_endpoint := hparentSub
         committee_support := hcommittee
         child_filtered := hchild
+        status_margin := hstatus
         selected_recording := hselectedMid
         sibling_score := by
           simpa only [hgeom.lo_eq] using hsibling }
@@ -355,6 +395,7 @@ theorem slot_start_eq_succ_of_advance_minimal
   have hslotLe := E.slot_at_mono cfg hleN
   rw [hslotStart] at hslotLe
   exact (Nat.not_lt_of_ge hslotLe) hadvance'
+
 
 end Execution
 

@@ -48,7 +48,8 @@ def retainedFilterTipPlacement
     RetainedFilterTipPlacement cfg store selected := by
   have htipJustified : is_ancestor store (get_node_for_root h.tip)
       (get_node_for_root store.justified_checkpoint.root) = true :=
-    is_ancestor_trans hparent
+    is_ancestor_trans (a := get_node_for_root h.tip) (b := get_node_for_root selected)
+      (c := get_node_for_root store.justified_checkpoint.root) hparent
       (hwalkK store.justified_checkpoint.root hjustifiedKnown h.tip h.tip_known)
       (hwalkK store.justified_checkpoint.root hjustifiedKnown selected
         h.selected_known)
@@ -130,9 +131,10 @@ theorem child_filtered_of_finalizedCheck
         get_checkpoint_block cfg store h.tip
           store.finalized_checkpoint.epoch)
     (hparentEdge : (store.blocks selected).parent_root = parent) :
-    ForkChoiceNode.mk selected ∈
+    ForkChoiceNode.mk selected .pending ∈
       get_node_children store (get_filtered_block_tree cfg store)
-        (ForkChoiceNode.mk parent) := by
+        (ForkChoiceNode.mk parent
+          (get_parent_payload_status store (store.blocks selected))) := by
   obtain ⟨hcert⟩ := h.filterTipCertificate_of_finalizedCheck cfg ext hfinalized
     hparent hwalkK hjustifiedKnown hselectedJustified hnotCovered
       hfinalizedCheck

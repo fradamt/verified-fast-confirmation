@@ -24,15 +24,24 @@ namespace FastConfirmation.Spec
 variable {Root : Type*} [LinearOrder Root] [Inhabited Root]
 variable (cfg : Config) (ext : Externals Root)
 
-/-- A wire message a node can process: a block (`on_block`), an attestation
+/-- Sources: `specs/gloas/fork-choice.md:1020`, `:1089`, and `:1115`;
+`specs/phase0/fork-choice.md:1000` and `:1027`.
+A wire message a node can process: a block (`on_block`), an attestation
 (`on_attestation`, with its `is_from_block` flag), or an attester slashing
-(`on_attester_slashing`). -/
+(`on_attester_slashing`), an execution envelope with its local observation, or
+an individual PTC message with its block-origin flag. -/
 inductive Event (Root : Type*) where
   | block (signed_block : SignedBeaconBlock Root)
   | attestation (attestation : Attestation Root) (is_from_block : Bool)
   | attester_slashing (attester_slashing : AttesterSlashing Root)
+  | execution_payload_envelope (signed_envelope : SignedExecutionPayloadEnvelope Root)
+      (observation : EnvelopeObservation Root)
+  | payload_attestation_message (ptc_message : PayloadAttestationMessage Root)
+      (is_from_block : Bool)
 
-/-- Dispatch one wire message to its handler (`none` = the handler rejected
+/-- Sources: `specs/gloas/fork-choice.md:1020`, `:1089`, and `:1115`;
+`specs/phase0/fork-choice.md:1000` and `:1027`.
+Dispatch one wire message to its handler (`none` = the handler rejected
 it — a python assert failed / `state_transition` raised). -/
 def apply_event (store : Store Root) : Event Root → Option (Store Root)
   | .block signed_block => on_block cfg ext store signed_block
@@ -40,6 +49,10 @@ def apply_event (store : Store Root) : Event Root → Option (Store Root)
       on_attestation cfg ext store attestation is_from_block
   | .attester_slashing attester_slashing =>
       on_attester_slashing ext store attester_slashing
+  | .execution_payload_envelope signed_envelope observation =>
+      on_execution_payload_envelope ext store signed_envelope observation
+  | .payload_attestation_message ptc_message is_from_block =>
+      on_payload_attestation_message cfg ext store ptc_message is_from_block
 
 /-- An execution of the protocol: the shared trusted starting store, the
 per-node message schedule, the honest-node set, the ground-truth committee
@@ -152,8 +165,8 @@ structure WellFormedStore (store : Store Root) : Prop where
       `JustificationInterface.finalized_justified_ancestry`; this field is
       consumed only at the genesis store (the `n = 0` base of safety). -/
   finalized_ancestor_of_justified :
-    is_ancestor store (ForkChoiceNode.mk store.justified_checkpoint.root)
-      (ForkChoiceNode.mk store.finalized_checkpoint.root) = true
+    is_ancestor store (ForkChoiceNode.mk store.justified_checkpoint.root .pending)
+      (ForkChoiceNode.mk store.finalized_checkpoint.root .pending) = true
 
 end FastConfirmation.Spec
 

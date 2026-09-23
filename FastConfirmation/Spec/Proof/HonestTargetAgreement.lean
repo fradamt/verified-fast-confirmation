@@ -210,7 +210,12 @@ theorem honestVoteTarget_eq_checkpoint_of_head_ancestor_capped
       ((E.store cfg ext v k).blocks b).slot := by
     rw [← hbEpoch]
     exact start_slot_at_block_epoch_le cfg (E.store cfg ext v k) b
-  have hwalkEq := get_checkpoint_block_of_ancestor cfg hvoterParent hanc hslot
+  have hancPending : is_ancestor (E.store cfg ext v k)
+      (get_node_for_root (get_head cfg (E.store cfg ext v k)).root)
+      (get_node_for_root b) = true := by
+    rw [← is_ancestor_node_root]
+    exact hanc
+  have hwalkEq := get_checkpoint_block_of_ancestor cfg hvoterParent hancPending hslot
     hvoterHeadWalk
   rw [honest_attestation_data_eq]
   refine checkpoint_eq_of_fields hepoch ?_

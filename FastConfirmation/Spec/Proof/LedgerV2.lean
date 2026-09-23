@@ -82,6 +82,15 @@ noncomputable def BbadSet (v₀ : ValidatorIndex) (n₀ : ℕ) (b' : Root) (lo e
 def SpentSet (es σ : Slot) : Finset ValidatorIndex :=
   (E.span_committee (es + 1) σ).filter (fun i => i ∉ E.honest)
 
+/-- The base status enemy includes every Byzantine member of the source window.
+Unlike the sibling enemy, it also includes recorded votes on the confirmed
+block's ancestor line, where an opposite payload status can score. -/
+def StatusBaseByzSet (lo es : Slot) : Finset ValidatorIndex := E.Bwin lo es
+
+/-- The complete status enemy. The source and tail slices are charged once. -/
+def StatusEnemySet (lo es σ : Slot) : Finset ValidatorIndex :=
+  E.StatusBaseByzSet lo es ∪ E.SpentSet es σ
+
 /-! ## Section 2 — weight accessors -/
 
 /-- `Bbad` — base-enemy weight. -/
@@ -100,6 +109,10 @@ vanishes. `Enemy ≤ Bbad + spent` (`Enemy_le_sum`) keeps the step's additive ar
 accounting. -/
 noncomputable def Enemy (v₀ : ValidatorIndex) (n₀ : ℕ) (b' : Root) (lo es σ : Slot) : Gwei :=
   E.weight (E.BbadSet cfg ext v₀ n₀ b' lo es ∪ E.SpentSet es σ)
+
+/-- Weight of the complete status enemy. -/
+noncomputable def StatusEnemyVal (lo es σ : Slot) : Gwei :=
+  E.weight (E.StatusEnemySet lo es σ)
 
 /-- **Sum-form upper bound.** `Enemy(σ) ≤ Bbad + spent(σ)` — subadditivity of
 `E.weight` over the union. The step's arrival accounting (`hE' : Enemy σ' ≤ Enemy σ +
@@ -139,6 +152,28 @@ theorem BbadSet_subset_Bwin (v₀ : ValidatorIndex) (n₀ : ℕ) (b' : Root) (lo
   intro i hi
   simp only [Execution.BbadSet, Finset.mem_filter] at hi
   exact Finset.mem_filter.mpr ⟨hi.1.1, hi.1.2⟩
+
+/-- The status enemy extends the sibling enemy without changing the source
+window's Byzantine budget. -/
+theorem BbadSet_subset_StatusBaseByzSet
+    (v₀ : ValidatorIndex) (n₀ : ℕ) (b' : Root) (lo es : Slot) :
+    E.BbadSet cfg ext v₀ n₀ b' lo es ⊆ E.StatusBaseByzSet lo es :=
+  E.BbadSet_subset_Bwin cfg ext v₀ n₀ b' lo es
+
+/-- The status enemy fits the same complete-window Byzantine budget. -/
+theorem StatusEnemyVal_le_Bval {lo es σ : Slot}
+    (hlo : lo ≤ es + 1) (hes : es ≤ σ) :
+    E.StatusEnemyVal lo es σ ≤ E.Bval lo σ := by
+  apply E.weight_mono
+  intro i hi
+  simp only [Execution.StatusEnemyVal, Execution.StatusEnemySet,
+    Execution.StatusBaseByzSet, Execution.Bval, Execution.Bwin,
+    Execution.SpentSet, Finset.mem_union, Finset.mem_filter,
+    Execution.span_committee, Finset.mem_biUnion, Finset.mem_Icc] at hi ⊢
+  rcases hi with ⟨⟨t, ⟨htlo, htes⟩, hcomm⟩, hbyz⟩ |
+    ⟨⟨t, ⟨htes, htσ⟩, hcomm⟩, hbyz⟩
+  · exact ⟨⟨t, ⟨htlo, htes.trans hes⟩, hcomm⟩, hbyz⟩
+  · exact ⟨⟨t, ⟨hlo.trans htes, htσ⟩, hcomm⟩, hbyz⟩
 
 /-- `Bbad ≤ B(es)` — the base enemy weight is at most the window byz weight. -/
 theorem BbadVal_le_Bval (v₀ : ValidatorIndex) (n₀ : ℕ) (b' : Root) (lo es : Slot) :
@@ -307,6 +342,71 @@ theorem INV2_base_of_arms (hbb : ByzantineBound cfg E)
   exact inv2_base_arith harm
     (E.BbadVal_le_floor_capacity cfg ext hbb v₀ n₀ b' lo es hloH hesH)
 
+private theorem reclassify_tax_arm
+    {s xV xpre OV Opre X O B boost r : ℕ}
+    (hX : xV + xpre = X) (hO : OV + Opre = O)
+    (h : s ≥ (xV + OV) + (xpre + Opre) + B + (boost + 1) + r) :
+    X + B + (boost + O + 1) + r ≤ s := by omega
+
+private theorem reclassify_member_arm
+    {s xV xpre OV Opre X O boost r : ℕ}
+    (hX : xV + xpre = X) (hO : OV + Opre = O)
+    (h : s ≥ (xV + OV) + (xpre + Opre) + (boost + 1) + r) :
+    X + (boost + O + 1) + r ≤ s := by omega
+
+/-- The payload-aware base potential charges the opposite ancestor votes in
+the same `boost` position as a fixed debt. This is the invariant needed to
+carry that debt through the existing `INV2_step` recurrence. -/
+theorem INV2_base_of_confirmed_with_opposite (hbb : ByzantineBound cfg E)
+    {store : Store Root} {bs : BeaconState Root} {b' : Root}
+    (hconf : is_one_confirmed cfg ext store bs b' = true)
+    (v₀ : ValidatorIndex) (n₀ : ℕ) (lo es : Slot) (boost O : ℕ)
+    (hloH : E.SlotWithinHorizon cfg lo) (hesH : E.SlotWithinHorizon cfg es)
+    {s0 aV xV G Opre OV apre xpre B_V B0 Bsup eqV Bpar Bbad qV : ℕ}
+    (hboost : boost = compute_proposer_score cfg bs)
+    (hS : get_attestation_score cfg store (get_node_for_root b') bs ≤ s0 + Bsup)
+    (hd : get_support_discount cfg ext store bs b' ≤ G + Bpar)
+    (hAhi : get_adversarial_weight cfg ext store bs b'
+        ≤ qV * cfg.confirmation_byzantine_threshold)
+    (hAlo : qV * cfg.confirmation_byzantine_threshold
+        ≤ get_adversarial_weight cfg ext store bs b' + eqV)
+    (hBsup : Bsup ≤ get_adversarial_weight cfg ext store bs b')
+    (hR4b : Bsup + eqV ≤ B_V)
+    (hR8aW : s0 + (aV + OV) + xV + B_V ≤ 100 * qV)
+    (hR8cW : s0 + (aV + OV) + xV + (G + Opre + apre + xpre) + B0
+        ≤ 100 * (estimate_committee_weight_between_slots cfg
+            (get_total_active_balance cfg bs)
+            ((store.blocks (store.blocks b').parent_root).slot + 1)
+            (get_current_slot cfg store - 1) / 100))
+    (hBbad : Bbad + Bsup + eqV + Bpar ≤ B0)
+    (hSval : s0 = E.Sval cfg ext v₀ n₀ b' lo es)
+    (hXval : xV + xpre = E.Xval cfg ext v₀ n₀ b' lo es)
+    (hBbadVal : Bbad = E.BbadVal cfg ext v₀ n₀ b' lo es)
+    (hOval : OV + Opre = O)
+    (hJval : s0 + (aV + OV) + xV + (G + Opre + apre + xpre) =
+      E.Jspec lo es) :
+    E.INV2 cfg ext v₀ n₀ b' lo es es (boost + O) := by
+  have harm := arms_of_confirmed_with_opposite cfg ext hconf hS hd hAhi hAlo
+    hBsup hR4b hR8aW hR8cW hBbad
+  have hJval' : s0 + aV + (xV + OV) + (G + apre + (xpre + Opre)) =
+      E.Jspec lo es := by omega
+  rw [← hboost, hJval', hSval, hBbadVal] at harm
+  have harm' :
+      E.Xval cfg ext v₀ n₀ b' lo es + E.BbadVal cfg ext v₀ n₀ b' lo es +
+          (boost + O + 1) +
+          cfg.confirmation_byzantine_threshold * E.Sval cfg ext v₀ n₀ b' lo es /
+            (100 - cfg.confirmation_byzantine_threshold) ≤
+            E.Sval cfg ext v₀ n₀ b' lo es
+      ∨ E.Xval cfg ext v₀ n₀ b' lo es + (boost + O + 1) +
+          cfg.confirmation_byzantine_threshold * E.Jspec lo es /
+            (100 - cfg.confirmation_byzantine_threshold) ≤
+            E.Sval cfg ext v₀ n₀ b' lo es := by
+    rcases harm with h | h
+    · left; exact reclassify_tax_arm hXval hOval h
+    · right; exact reclassify_member_arm hXval hOval h
+  exact E.INV2_base_of_arms cfg ext hbb v₀ n₀ b' lo es (boost + O)
+    hloH hesH harm'
+
 /-! ## Section 8 — the v2 sibling bridge (endpoint result 5)
 
 `Endpoint.recorded_sibling_le` bounds a sibling's recorded score by `Xval + Bval`
@@ -340,6 +440,79 @@ theorem recorded_sibling_le_v2 {store : Store Root}
   by_cases hh : i ∈ E.honest
   · exact Or.inl (hHon i hi hh)
   · exact Or.inr (Finset.mem_union.mpr (hByz i hi hh))
+
+/-- The complete opposite resolved-status score is charged to the current
+sibling class, the complete status enemy, and the fixed source opposite ancestor
+debt. The wider base class admits old ancestor-line Byzantine votes. -/
+theorem recorded_opposite_status_le_v2
+    {store source : Store Root} {bs bsSource : BeaconState Root}
+    (hval : bs.validators = E.registry)
+    {v₀ : ValidatorIndex} {n₀ : ℕ} {b' h : Root}
+    {lo es σ : Slot} {other : PayloadStatus}
+    (hHon : ∀ i ∈ AttSupporters cfg store (ForkChoiceNode.mk h other) bs,
+      i ∈ E.honest →
+        i ∈ E.Xclass cfg ext v₀ n₀ b' lo σ ∨
+          i ∈ OppositeAncestorClass cfg ext E source bsSource
+            v₀ n₀ b' h lo es other)
+    (hByz : ∀ i ∈ AttSupporters cfg store (ForkChoiceNode.mk h other) bs,
+      i ∉ E.honest →
+        i ∈ E.StatusBaseByzSet lo es ∨ i ∈ E.SpentSet es σ) :
+    get_attestation_score cfg store (ForkChoiceNode.mk h other) bs ≤
+      E.Xval cfg ext v₀ n₀ b' lo σ + E.StatusEnemyVal lo es σ +
+        E.weight (OppositeAncestorClass cfg ext E source bsSource
+          v₀ n₀ b' h lo es other) := by
+  rw [attestation_score_eq_weight cfg hval, Execution.Xval, Execution.StatusEnemyVal,
+    Execution.StatusEnemySet]
+  refine le_trans (E.weight_mono ?_)
+    ((weight_union_le _ _).trans
+      (Nat.add_le_add_right (weight_union_le _ _) _))
+  intro i hi
+  rw [List.mem_toFinset] at hi
+  rw [Finset.mem_union]
+  by_cases hh : i ∈ E.honest
+  · rcases hHon i hi hh with hX | hO
+    · exact Or.inl (Finset.mem_union.mpr (Or.inl hX))
+    · exact Or.inr hO
+  · exact Or.inl (Finset.mem_union.mpr
+      (Or.inr (Finset.mem_union.mpr (hByz i hi hh))))
+
+private theorem inv2_opposite_margin_arith
+    {X B boost O S opp selected : ℕ}
+    (hstrip : X + B + (boost + O) + 1 ≤ S)
+    (hopp : opp ≤ X + B + O) (hselected : S ≤ selected) :
+    opp + boost < selected := by omega
+
+/-- The strengthened `INV2` debt yields the required payload status margin
+once each competing status score is confined to `X + Enemy + O`. -/
+theorem pendingStatusMargin_of_INV2_opposite
+    {store : Store Root} {blocks : List Root}
+    {v₀ : ValidatorIndex} {n₀ : ℕ} {b' h : Root}
+    {lo es σ : Slot} {status : PayloadStatus} {boost O : ℕ}
+    (hmem : ForkChoiceNode.mk h status ∈
+      get_node_children store blocks (ForkChoiceNode.mk h .pending))
+    (hnotPrev : is_previous_slot_payload_decision cfg store
+      (ForkChoiceNode.mk h status) = false)
+    (hselected : E.Sval cfg ext v₀ n₀ b' lo σ ≤
+      get_attestation_score cfg store (ForkChoiceNode.mk h status)
+        (store.checkpoint_states store.justified_checkpoint))
+    (hboost : boost = get_proposer_score cfg store)
+    (hinv : E.INV2 cfg ext v₀ n₀ b' lo es σ (boost + O))
+    (hopp : ∀ other ∈ get_node_children store blocks (ForkChoiceNode.mk h .pending),
+      other ≠ ForkChoiceNode.mk h status →
+      get_attestation_score cfg store other
+        (store.checkpoint_states store.justified_checkpoint) ≤
+          E.Xval cfg ext v₀ n₀ b' lo σ +
+            E.Enemy cfg ext v₀ n₀ b' lo es σ + O) :
+    PendingStatusMargin cfg store blocks h status := by
+  refine ⟨hmem, ?_⟩
+  intro other hm hne
+  left
+  constructor
+  · have hstrip := E.INV2_endpoint cfg ext v₀ n₀ b' lo es σ
+      (boost + O) hinv
+    rw [hboost] at hstrip
+    exact inv2_opposite_margin_arith hstrip (hopp other hm hne) hselected
+  · exact hnotPrev
 
 /-! ## Section 9 — the pure-ℕ v2 step ("defections pay")
 

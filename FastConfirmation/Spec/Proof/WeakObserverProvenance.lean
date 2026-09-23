@@ -43,7 +43,7 @@ theorem latestMessageRootKnown_on_attestation {store store' : Store Root}
   split_ifs at hsuccess with hv hvi
   cases hsuccess
   simp only [validate_on_attestation, Bool.and_eq_true, decide_eq_true_eq] at hv
-  obtain ⟨⟨⟨⟨⟨⟨_, _⟩, _⟩, hroot⟩, _⟩, _⟩, _⟩ := hv
+  obtain ⟨⟨⟨⟨⟨⟨⟨⟨⟨_, _⟩, _⟩, hroot⟩, _⟩, _⟩, _⟩, _⟩, _⟩, _⟩ := hv
   intro i m hm
   rcases update_latest_messages_mem _ _ _ _ _ hm with hold | ⟨_, hmeq⟩
   · rw [store_target_checkpoint_state_latest] at hold
@@ -73,6 +73,28 @@ theorem latestMessageRootKnown_apply_event (store : Store Root) (event : Event R
     cases hresult : on_attestation cfg ext store a fromBlock with
     | none => exact h
     | some result => exact latestMessageRootKnown_on_attestation cfg ext h hresult
+  | execution_payload_envelope envelope observation =>
+    simp only [apply_event]
+    cases he : on_execution_payload_envelope ext store envelope observation with
+    | none => exact h
+    | some next =>
+      intro i m hm
+      simp only [Option.getD_some] at hm ⊢
+      have hf := on_execution_payload_envelope_frame ext he
+      rw [hf.latest_messages] at hm
+      rw [hf.block_roots]
+      exact h i m hm
+  | payload_attestation_message message fromBlock =>
+    simp only [apply_event]
+    cases he : on_payload_attestation_message cfg ext store message fromBlock with
+    | none => exact h
+    | some next =>
+      intro i m hm
+      simp only [Option.getD_some] at hm ⊢
+      have hf := on_payload_attestation_message_frame cfg ext he
+      rw [hf.latest_messages] at hm
+      rw [hf.block_roots]
+      exact h i m hm
   | attester_slashing slashing =>
     simp only [apply_event]
     cases hresult : on_attester_slashing ext store slashing with
@@ -154,15 +176,16 @@ theorem on_attestation_LMP_of_observer {E : Execution Root} {obs : ValidatorInde
       exact htarget
     simpa only [hstates] using hpost.checkpointState cfg ext hkey
   simp only [validate_on_attestation, Bool.and_eq_true, decide_eq_true_eq] at hv
-  obtain ⟨⟨⟨⟨⟨⟨_, hB⟩, _⟩, hD⟩, hE⟩, _⟩, hG⟩ := hv
+  obtain ⟨⟨⟨⟨⟨⟨⟨⟨⟨_, hB⟩, _⟩, hD⟩, hE⟩, _⟩, _⟩, _⟩, _⟩, hG⟩ := hv
   intro i m hm
   rcases update_latest_messages_mem _ _ _ _ _ hm with hold | ⟨hi, hmeq⟩
   · rw [store_target_checkpoint_state_latest] at hold
-    obtain ⟨a', h1, h2, h3, h4, h5, h6, h7, h8⟩ := h i m hold
-    exact ⟨a', h1, h2, h3, h4, h5, h6, hsb.1 ▸ h7, hsb.2.1 ▸ h8⟩
-  · exact ⟨a, hi, by rw [hmeq], by rw [hmeq], by rw [hmeq]; exact hB.symm,
+    obtain ⟨a', h1, h2, h3, h4, h5, h6, h7, h8, h9⟩ := h i m hold
+    exact ⟨a', h1, h2, h3, h4, h5, h6, hsb.1 ▸ h7, hsb.2.1 ▸ h8, h9⟩
+  · exact ⟨a, hi, by rw [hmeq]; exact hB, by rw [hmeq], by rw [hmeq]; rfl,
       le_trans hG hcur, hvalid.valid_attestation_committee _ a hreachable hvi i hi,
-      by rw [hmeq]; exact hsb.1 ▸ hD, by rw [hmeq]; exact hsb.2.1 ▸ hE⟩
+      by rw [hmeq]; exact hsb.1 ▸ hD, by rw [hmeq]; exact hsb.2.1 ▸ hE,
+      by rw [hmeq]⟩
 
 
 theorem apply_event_LMP_of_observer {E : Execution Root} {obs : ValidatorIndex} {sl : Slot} (hwf : WellFormedExecution E)
@@ -184,6 +207,14 @@ theorem apply_event_LMP_of_observer {E : Execution Root} {obs : ValidatorIndex} 
     simp only [apply_event] at he
     exact h.of_sameBlocks (on_attester_slashing_sameBlocks ext he)
       (on_attester_slashing_latest ext he)
+  | execution_payload_envelope envelope observation =>
+    have hf := on_execution_payload_envelope_frame ext he
+    exact h.of_transfer (by rw [hf.block_roots]; exact List.Subset.refl _)
+      (fun _ _ hh => hf.latest_messages ▸ hh) (fun r _ => by rw [hf.blocks])
+  | payload_attestation_message message fromBlock =>
+    have hf := on_payload_attestation_message_frame cfg ext he
+    exact h.of_transfer (by rw [hf.block_roots]; exact List.Subset.refl _)
+      (fun _ _ hh => hf.latest_messages ▸ hh) (fun r _ => by rw [hf.blocks])
 
 
 theorem LMP_foldl_of_observer {E : Execution Root} {obs : ValidatorIndex} {sl : Slot} (hwf : WellFormedExecution E)

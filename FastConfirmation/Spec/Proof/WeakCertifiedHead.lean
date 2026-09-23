@@ -43,7 +43,9 @@ theorem get_certified_head_below_head (store : Store Root) (bs : BeaconState Roo
   unfold get_certified_head
   cases h : certified_head_search cfg ext store bs
       (get_block_slot store (get_head cfg store).root + 1) (get_head cfg store).root with
-  | none => exact is_ancestor_refl _ _
+  | none =>
+      rw [is_ancestor_node_root]
+      exact is_ancestor_refl _ _
   | some r => exact (certified_head_search_spec cfg ext store bs _ _ _ h).2.1
 
 /-- If the actual head is certified, selection returns it without delay. -/
@@ -54,7 +56,9 @@ theorem get_certified_head_eq_head (store : Store Root) (bs : BeaconState Root)
       (get_current_slot cfg store - 1) = true) :
     get_certified_head cfg ext store bs = (get_head cfg store).root := by
   have hself : is_ancestor store (get_head cfg store)
-      (get_node_for_root (get_head cfg store).root) = true := is_ancestor_refl _ _
+      (get_node_for_root (get_head cfg store).root) = true := by
+    rw [is_ancestor_node_root]
+    exact is_ancestor_refl _ _
   simp [get_certified_head, certified_head_search, hknown, hself, hcert]
 
 /-- A new uncertified head does not hide its certified parent. -/

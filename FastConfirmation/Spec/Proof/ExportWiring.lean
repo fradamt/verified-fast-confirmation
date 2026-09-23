@@ -163,7 +163,7 @@ with the checkpoint-boundary bound now sourced from the `justified_block_boundar
 only carried hypothesis is the epoch ordering `hjc_le`. -/
 theorem vote_lands_export_closed
     (hwf : WellFormedExecution E) (hhb : HonestBehavior cfg ext E)
-    (hsyn : Synchrony cfg ext E) (hec : ExternalsCoherence cfg ext E)
+    (hsyn : PaperSafetySynchrony cfg ext E) (hec : ExternalsCoherence cfg ext E)
     (hji : JustificationInterface cfg ext E)
     (hdiv : 1000 ∣ cfg.slot_duration_ms)
     (hgen : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
@@ -178,7 +178,7 @@ theorem vote_lands_export_closed
       (honest_attestation cfg ext (E.store cfg ext v n) s index v).data.target.epoch) :
     ∃ msg, (E.store cfg ext w (E.slot_start cfg (s + 1))).latest_messages v = some msg ∧
       (honest_attestation cfg ext (E.store cfg ext v n) s index v).data.target.epoch ≤
-        msg.epoch :=
+        (get_latest_message_epoch cfg msg) :=
   vote_lands_closed cfg ext hwf hhb hsyn hec hji hdiv hgen hv hw hn hHn hHdeliver hvote
     (E.hbound_of_justified_block_boundary cfg ext hji hv hHn
       (E.slotWithinHorizon_of_le cfg (by rw [hn]) hHn) hvote hjc_le)
@@ -190,7 +190,7 @@ honest node from `slot_start (s+1)` on. This is the exact call site the migratio
 leaving only the epoch ordering `hjc_le`. -/
 theorem vote_ubiquity_export_closed
     (hwf : WellFormedExecution E) (hhb : HonestBehavior cfg ext E)
-    (hsyn : Synchrony cfg ext E) (hec : ExternalsCoherence cfg ext E)
+    (hsyn : PaperSafetySynchrony cfg ext E) (hec : ExternalsCoherence cfg ext E)
     (hji : JustificationInterface cfg ext E)
     (hdiv : 1000 ∣ cfg.slot_duration_ms)
     (hgen : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
@@ -206,7 +206,7 @@ theorem vote_ubiquity_export_closed
     (hHm : E.WithinHorizon cfg m) :
     ∃ msg, (E.store cfg ext w m).latest_messages v = some msg ∧
       (honest_attestation cfg ext (E.store cfg ext v n) s index v).data.target.epoch ≤
-        msg.epoch :=
+        (get_latest_message_epoch cfg msg) :=
   vote_ubiquity_closed cfg ext hwf hhb hsyn hec hji hdiv hgen hv hw hn hHn hvote
     (E.hbound_of_justified_block_boundary cfg ext hji hv hHn
       (E.slotWithinHorizon_of_le cfg (by rw [hn]) hHn) hvote hjc_le) hm hHm

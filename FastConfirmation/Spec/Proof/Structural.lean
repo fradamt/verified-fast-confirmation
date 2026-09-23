@@ -208,6 +208,7 @@ The `mem_of_is_ancestor_above_anchor` transport instantiated at the finalized re
 its walk domain / parent-order / knownness premises discharged from `SpecAssumptions` and only the
 boundary `hab` (the reset root sits at or above the anchor slot in `w`'s store) left as input. -/
 
+
 /-! ### Deleted: the shared-anchor same-slot discharges
 
 `finalized_cross_known_of_boundary` and the two genesis-start discharges of the same-slot

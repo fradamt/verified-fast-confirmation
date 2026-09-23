@@ -437,7 +437,8 @@ theorem mem_known_descends {store : Store Root}
       rcases hr with rfl | hr
       · exact ⟨hcmem, hc_top⟩
       · obtain ⟨hrmem, hr_c⟩ := ih hrest hcmem hr
-        exact ⟨hrmem, is_ancestor_trans hwf
+        exact ⟨hrmem, is_ancestor_trans (a := get_node_for_root r) (b := get_node_for_root c)
+            (c := get_node_for_root top) hwf
           (hwalk top htop r hrmem) (hwalk top htop c hcmem) hr_c hc_top⟩
 
 end ChainDown
@@ -552,9 +553,9 @@ theorem selected_child_filtered_of_pipeline
     (hskel : FilterTipSkeleton cfg store c)
     (hsource : TipSourceFresh cfg store hskel.tip)
     (hparent : (store.blocks c).parent_root = a) :
-    ForkChoiceNode.mk c ∈
+    ForkChoiceNode.mk c .pending ∈
       get_node_children store (get_filtered_block_tree cfg store)
-        (ForkChoiceNode.mk a) := by
+        (ForkChoiceNode.mk a (get_parent_payload_status store (store.blocks c))) := by
   exact (filterTipCertificate_of_pipeline cfg hacc hpipe hskel hsource)
     |>.child_filtered cfg hparent
 
@@ -565,9 +566,9 @@ theorem child_filtered_of_filterTipCertificate_nonempty
     {store : Store Root} {a c : Root}
     (h : Nonempty (FilterTipCertificate cfg store c))
     (hparent : (store.blocks c).parent_root = a) :
-    ForkChoiceNode.mk c ∈
+    ForkChoiceNode.mk c .pending ∈
       get_node_children store (get_filtered_block_tree cfg store)
-        (ForkChoiceNode.mk a) := by
+        (ForkChoiceNode.mk a (get_parent_payload_status store (store.blocks c))) := by
   obtain ⟨hcert⟩ := h
   exact hcert.child_filtered cfg hparent
 

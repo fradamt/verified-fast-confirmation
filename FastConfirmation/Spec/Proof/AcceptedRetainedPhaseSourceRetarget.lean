@@ -53,7 +53,8 @@ def retarget_ancestor
     source_au := h.source_au
     source_recent := h.source_recent
   }
-  exact is_ancestor_trans hparent
+  exact is_ancestor_trans (a := get_node_for_root h.tip)
+    (b := get_node_for_root selected) (c := get_node_for_root candidate) hparent
     (hwalkK candidate hcandidate h.tip h.tip_known)
     (hwalkK candidate hcandidate selected h.selected_known)
     h.tip_descends_selected hselectedCandidate

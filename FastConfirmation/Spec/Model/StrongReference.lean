@@ -1,5 +1,5 @@
 module
-public import FastConfirmation.Spec.Model.FCRStore
+public import FastConfirmation.Spec.Model.LMDHelpers
 
 @[expose] public section
 
@@ -276,7 +276,8 @@ def compute_empty_slot_support_discount (store : Store Root)
     0
   else
     let parent_support_in_empty_slots :=
-      get_block_support_between_slots cfg ext store balance_source block.parent_root
+      get_parent_payload_support_between_slots cfg ext store balance_source block.parent_root
+        (get_parent_payload_status store block)
         (parent_block.slot + 1) (block.slot - 1)
     let adversarial_weight :=
       compute_adversarial_weight cfg ext store balance_source
@@ -447,7 +448,7 @@ def get_current_target_score (store : Store Root) : Gwei :=
           decide (i ∉ store.equivocating_indices) &&
             decide (target =
               get_checkpoint_for_block cfg store latest_message.root
-                (get_latest_message_epoch latest_message)))
+                (get_latest_message_epoch cfg latest_message)))
     |>.map fun i => (state.validators.getD i default).effective_balance).sum
 
 /-- `compute_honest_ffg_support_for_current_target`: Compute honest FFG support

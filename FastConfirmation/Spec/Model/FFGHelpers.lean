@@ -49,7 +49,7 @@ def get_current_target_score (store : Store Root) : Gwei :=
           decide (i ∉ store.equivocating_indices) &&
             decide (target =
               get_checkpoint_for_block cfg store latest_message.root
-                (get_latest_message_epoch latest_message)))
+                (get_latest_message_epoch cfg latest_message)))
     |>.map fun i => (state.validators.getD i default).effective_balance).sum
 
 /-- `compute_honest_ffg_support_for_current_target`: Compute honest FFG support

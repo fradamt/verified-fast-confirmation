@@ -137,7 +137,7 @@ theorem freshSupporter_mem_endpoint_Sclass {E : Execution Root}
   -- (ii) freshness ⇒ the `hdom` premise of the reverse-provenance core
   have hdom : ∀ (t : Slot) (k : ℕ) (att : Attestation Root),
       t ≤ es → E.vote i t = some (k, att) →
-      compute_epoch_at_slot cfg t ≤ lm.epoch :=
+      compute_epoch_at_slot cfg t ≤ get_latest_message_epoch cfg lm :=
     fun t _ _ ht hvote => epoch_le_of_duty_fresh_cell cfg ext hfresh hes ht (by
       rw [hcomm t (E.slotWithinHorizon_of_le cfg (ht.trans (le_of_lt hesq)) hqH)]
       exact hA.honest_behavior.votes_assigned i hi t
@@ -165,7 +165,7 @@ theorem freshSupporter_mem_endpoint_Sclass {E : Execution Root}
   have hancQ : is_ancestor (E.store cfg ext obs q)
       (get_node_for_root att.data.beacon_block_root) (get_node_for_root b) = true := by
     rw [hroot]
-    simpa only [get_supported_node, get_node_for_root] using hanc
+    simpa only [is_ancestor_supported_pending, get_node_for_root] using hanc
   have hanchorB : ablk.message.slot ≤ ((E.store cfg ext obs q).blocks b).slot :=
     E.store_anchor_min_slot cfg ext hA.wellFormed hA.externals_coherence
       hgeq hslot hparentne obs q b hbQ
@@ -260,11 +260,12 @@ theorem freshParentStuck_subset_endpoint_Aclass {E : Execution Root}
     is_ancestor_of_parent hpslM hbM haM hparentM
   have hparentNotDescM : ¬ is_ancestor (E.store cfg ext w m)
       (get_node_for_root a) (get_node_for_root b) = true := by
-    simp only [is_ancestor, get_node_for_root, decide_eq_true_eq]
+    simp only [is_ancestor, Bool.and_eq_true, decide_eq_true_eq,
+      get_node_for_root]
     rw [get_ancestor_stop (le_of_lt hslotltM)]
     intro hcon
-    injection hcon with heq
-    rw [heq] at hslotltM
+    have hab : a = b := by simpa only using hcon.1
+    rw [hab] at hslotltM
     exact lt_irrefl _ hslotltM
   have hbcurQ : ((E.store cfg ext obs q).blocks b).slot ≤
       get_current_slot cfg (E.store cfg ext obs q) :=
@@ -283,7 +284,7 @@ theorem freshParentStuck_subset_endpoint_Aclass {E : Execution Root}
     span_committee_mono_lo hloLe (E.span_committee_mono _ hbaseEs hspanBase)
   have hdom : ∀ (t : Slot) (k : ℕ) (att : Attestation Root),
       t ≤ es → E.vote i t = some (k, att) →
-      compute_epoch_at_slot cfg t ≤ lm.epoch :=
+      compute_epoch_at_slot cfg t ≤ get_latest_message_epoch cfg lm :=
     fun t _ _ ht hvote => epoch_le_of_duty_fresh_cell cfg ext hfresh hes ht (by
       rw [hcomm t (E.slotWithinHorizon_of_le cfg (ht.trans (le_of_lt hesq)) hqH)]
       exact hA.honest_behavior.votes_assigned i hih t

@@ -283,7 +283,7 @@ theorem currentTargetObservedHonestSupporter_vote_of_ffgState
   obtain ⟨_active, _unslashed, lm, hlm, _hnequiv, htarget⟩ :=
     mem_CurrentTargetSupporters cfg hiObserved.1
   have htargetEpoch :
-      (get_current_target cfg (E.store cfg ext v n)).epoch = lm.epoch := by
+      (get_current_target cfg (E.store cfg ext v n)).epoch = (get_latest_message_epoch cfg lm) := by
     have h := congrArg Checkpoint.epoch htarget
     simpa only [get_checkpoint_for_block] using h
   obtain ⟨a, u, t, ifb, hsched, hiAttests, haTargetEpoch,
@@ -316,30 +316,30 @@ theorem currentTargetObservedHonestSupporter_vote_of_ffgState
       compute_start_slot_at_epoch cfg (get_current_epoch cfg ast) := by
     simpa only [TrustedAnchorBoundaryAligned, hgeq,
       get_forkchoice_store, Function.update_self] using hboundary
-  have hqueryEpoch : compute_epoch_at_slot cfg (E.slot_at cfg n) = lm.epoch := by
+  have hqueryEpoch : compute_epoch_at_slot cfg (E.slot_at cfg n) = (get_latest_message_epoch cfg lm) := by
     calc
       compute_epoch_at_slot cfg (E.slot_at cfg n) =
           get_current_store_epoch cfg (E.store cfg ext v n) := by
         simp only [get_current_store_epoch]
         rw [E.store_current_slot cfg ext v n]
       _ = (get_current_target cfg (E.store cfg ext v n)).epoch := rfl
-      _ = lm.epoch := htargetEpoch
-  have hanchorEpochLe : get_current_epoch cfg ast ≤ lm.epoch := by
+      _ = (get_latest_message_epoch cfg lm) := htargetEpoch
+  have hanchorEpochLe : get_current_epoch cfg ast ≤ (get_latest_message_epoch cfg lm) := by
     calc
       get_current_epoch cfg ast =
           compute_epoch_at_slot cfg (E.slot_at cfg 0) := by
         simp only [get_current_epoch, hslot0]
       _ ≤ compute_epoch_at_slot cfg (E.slot_at cfg n) :=
         Nat.div_le_div_right (E.slot_at_mono cfg (Nat.zero_le n))
-      _ = lm.epoch := hqueryEpoch
+      _ = (get_latest_message_epoch cfg lm) := hqueryEpoch
   have hstartMono : compute_start_slot_at_epoch cfg
       (get_current_epoch cfg ast) ≤
-      compute_start_slot_at_epoch cfg lm.epoch :=
+      compute_start_slot_at_epoch cfg (get_latest_message_epoch cfg lm) :=
     Nat.mul_le_mul_right cfg.slots_per_epoch hanchorEpochLe
-  have hstartVote : compute_start_slot_at_epoch cfg lm.epoch ≤
+  have hstartVote : compute_start_slot_at_epoch cfg (get_latest_message_epoch cfg lm) ≤
       a.data.slot := by
     have h := Nat.div_mul_le_self a.data.slot cfg.slots_per_epoch
-    have hdivEpoch : a.data.slot / cfg.slots_per_epoch = lm.epoch := by
+    have hdivEpoch : a.data.slot / cfg.slots_per_epoch = (get_latest_message_epoch cfg lm) := by
       simpa only [compute_epoch_at_slot] using haSlotEpoch
     rw [hdivEpoch] at h
     exact h
@@ -348,7 +348,7 @@ theorem currentTargetObservedHonestSupporter_vote_of_ffgState
       E.slot_at cfg 0 = ast.slot := hslot0
       _ = ablk.message.slot := hgenSlot
       _ ≤ compute_start_slot_at_epoch cfg (get_current_epoch cfg ast) := hboundary'
-      _ ≤ compute_start_slot_at_epoch cfg lm.epoch := hstartMono
+      _ ≤ compute_start_slot_at_epoch cfg (get_latest_message_epoch cfg lm) := hstartMono
       _ ≤ a.data.slot := hstartVote
   obtain ⟨k, index, hkH, hkSlot, hvote⟩ :=
     hhb.votes_head i hi a.data.slot hiCommittee haSlotH hfrom0
@@ -379,7 +379,7 @@ theorem currentTargetObservedHonestSupporter_vote_of_ffgState
       _ = lm.root := haRoot
   have hcanonicalEpoch :
       (honest_attestation cfg ext (E.store cfg ext i k)
-        a.data.slot index i).data.target.epoch = lm.epoch :=
+        a.data.slot index i).data.target.epoch = (get_latest_message_epoch cfg lm) :=
     (congrArg (fun d : AttestationData Root => d.target.epoch) hdata).symm.trans
       haTargetEpoch
   have hgroundProjection := hcoh.checkpoint_of_known i hi k hkH
@@ -387,7 +387,7 @@ theorem currentTargetObservedHonestSupporter_vote_of_ffgState
     (honest_attestation cfg ext (E.store cfg ext i k)
       a.data.slot index i).data.target.epoch
   have hqueryProjection := hcoh.checkpoint_of_known v hv n hnH
-    lm.root hlmKnown lm.epoch
+    lm.root hlmKnown (get_latest_message_epoch cfg lm)
   have hcanonicalRoot :
       (honest_attestation cfg ext (E.store cfg ext i k)
         a.data.slot index i).data.target.root =
@@ -409,10 +409,10 @@ theorem currentTargetObservedHonestSupporter_vote_of_ffgState
             (honest_attestation cfg ext (E.store cfg ext i k)
               a.data.slot index i).data.target.epoch).root :=
         (congrArg Checkpoint.root hgroundProjection).symm
-      _ = (S.C lm.root lm.epoch).root := by
+      _ = (S.C lm.root (get_latest_message_epoch cfg lm)).root := by
         rw [hheadRoot, hcanonicalEpoch]
       _ = (get_checkpoint_for_block cfg (E.store cfg ext v n)
-            lm.root lm.epoch).root :=
+            lm.root (get_latest_message_epoch cfg lm)).root :=
         congrArg Checkpoint.root hqueryProjection
       _ = (get_current_target cfg (E.store cfg ext v n)).root :=
         congrArg Checkpoint.root htarget.symm
@@ -487,9 +487,8 @@ theorem known_descends_trustedAnchor_noConflict
     rwa [hanchorBlockSlot] at hwalkK
   have hlands_of_walk : ∀ {x : Root},
       WalkKnown (E.store cfg ext w m) ablk.message.slot x →
-        get_ancestor (E.store cfg ext w m)
-          (ForkChoiceNode.mk x) ablk.message.slot =
-            ForkChoiceNode.mk ablk.root := by
+        (get_ancestor (E.store cfg ext w m)
+          (ForkChoiceNode.mk x .pending) ablk.message.slot).root = ablk.root := by
     intro x hx
     induction hx with
     | @stop x hr' hle =>
@@ -501,16 +500,16 @@ theorem known_descends_trustedAnchor_noConflict
             exact False.elim
               ((Nat.not_lt_of_ge hparentGe) (hparentLt.trans_le hle))
         subst x
-        exact get_ancestor_stop hle
+        exact congrArg ForkChoiceNode.root (get_ancestor_stop hle)
     | @step x hr' hgt hp ih =>
         rw [get_ancestor_step hwfM hr' hgt hp]
         exact ih
-  have hlands : get_ancestor (E.store cfg ext w m)
-      (ForkChoiceNode.mk r) ablk.message.slot =
-        ForkChoiceNode.mk ablk.root := hlands_of_walk hwalk
+  have hlands : (get_ancestor (E.store cfg ext w m)
+      (ForkChoiceNode.mk r .pending) ablk.message.slot).root =
+        ablk.root := hlands_of_walk hwalk
   have hdescends : is_ancestor (E.store cfg ext w m)
       (get_node_for_root r) (get_node_for_root ablk.root) = true := by
-    simp only [is_ancestor, get_node_for_root, decide_eq_true_eq,
+    simp only [get_node_for_root, is_ancestor_pending, decide_eq_true_eq,
       hanchorBlockSlot]
     exact hlands
   have hanchorBlockEpoch : get_current_epoch cfg ast =

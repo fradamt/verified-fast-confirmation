@@ -95,7 +95,7 @@ theorem recorded_support_of_sclass_at_endpoint_minimal
     rw [haa']
     exact hroot'
   refine ⟨lm, hlm, ?_⟩
-  simpa only [get_supported_node, get_node_for_root, hroot] using hsupport
+  simpa only [get_node_for_root, is_ancestor_supported_pending, hroot] using hsupport
 
 /-- `selected_recording` at a canonical honest endpoint.  Registry and horizon
 facts for the justified balance source are derived from
@@ -151,7 +151,7 @@ theorem selected_recording_of_endpoint_ubiquity_minimal
     (hubiq : ∀ i ∈ E.honest, ∀ (t : Slot) (k : ℕ) (a : Attestation Root),
       t ≤ sigma → E.vote i t = some (k, a) →
       ∃ lm, (E.store cfg ext w m).latest_messages i = some lm ∧
-        compute_epoch_at_slot cfg t ≤ lm.epoch) :
+        compute_epoch_at_slot cfg t ≤ (get_latest_message_epoch cfg lm)) :
     ∀ i ∈ E.Sclass cfg ext w m b lo sigma,
       i ∈ AttSupporters cfg (E.store cfg ext w m) (get_node_for_root b)
         ((E.store cfg ext w m).checkpoint_states
@@ -217,9 +217,10 @@ theorem honest_sibling_confinement_at_endpoint_minimal
     (hlo : lo ≤ ((E.store cfg ext w m).blocks a).slot + 1)
     (hmax : E.WindowRecordedEpochMax cfg ext w m lo sigma) :
     ∀ c' : Root,
-      ForkChoiceNode.mk c' ∈ get_node_children (E.store cfg ext w m)
+      ForkChoiceNode.mk c' .pending ∈ get_node_children (E.store cfg ext w m)
         (get_filtered_block_tree cfg (E.store cfg ext w m))
-        (ForkChoiceNode.mk a) → c' ≠ b →
+        (ForkChoiceNode.mk a (get_parent_payload_status (E.store cfg ext w m)
+          ((E.store cfg ext w m).blocks b))) → c' ≠ b →
       ∀ i ∈ AttSupporters cfg (E.store cfg ext w m) (get_node_for_root c')
         ((E.store cfg ext w m).checkpoint_states
           (E.store cfg ext w m).justified_checkpoint),
@@ -242,14 +243,16 @@ theorem honest_sibling_confinement_at_endpoint_minimal
       (E.store cfg ext w m).latest_messages i = some lm →
         lm.root ∈ (E.store cfg ext w m).block_roots := by
     intro lm i hlm
-    obtain ⟨_, _, _, _, _, _, _, hlmKnown, _⟩ := hprov i lm hlm
+    obtain ⟨_, _, _, _, _, _, _, hlmKnown, _, _⟩ := hprov i lm hlm
     exact hlmKnown
   have hjc := hA.domain.justified_root_known w hw m hmH
   intro c' hchild hne i hisupp hih
-  rw [mem_get_node_children] at hchild
+  rw [mem_get_node_children_resolved
+    (get_parent_payload_status_ne_pending (E.store cfg ext w m)
+      ((E.store cfg ext w m).blocks b))] at hchild
   have hc' : c' ∈ (E.store cfg ext w m).block_roots :=
-    filtered_subset_block_roots cfg (E.store cfg ext w m) hjc c' hchild.1
-  have hparent' : ((E.store cfg ext w m).blocks c').parent_root = a := hchild.2
+    filtered_subset_block_roots cfg (E.store cfg ext w m) hjc c' hchild.2.1
+  have hparent' : ((E.store cfg ext w m).blocks c').parent_root = a := hchild.2.2.1
   have hlo' : lo ≤ ((E.store cfg ext w m).blocks c').slot := by
     have hlt := hpsl c' hc' (by rw [hparent']; exact ha)
     rw [hparent'] at hlt
@@ -274,9 +277,10 @@ theorem byzantine_sibling_confinement_at_endpoint_minimal
     (hparent : ((E.store cfg ext w m).blocks b).parent_root = a)
     (hlo : lo ≤ ((E.store cfg ext w m).blocks a).slot + 1) :
     ∀ c' : Root,
-      ForkChoiceNode.mk c' ∈ get_node_children (E.store cfg ext w m)
+      ForkChoiceNode.mk c' .pending ∈ get_node_children (E.store cfg ext w m)
         (get_filtered_block_tree cfg (E.store cfg ext w m))
-        (ForkChoiceNode.mk a) → c' ≠ b →
+        (ForkChoiceNode.mk a (get_parent_payload_status (E.store cfg ext w m)
+          ((E.store cfg ext w m).blocks b))) → c' ≠ b →
       ∀ i ∈ AttSupporters cfg (E.store cfg ext w m) (get_node_for_root c')
         ((E.store cfg ext w m).checkpoint_states
           (E.store cfg ext w m).justified_checkpoint),
@@ -299,7 +303,7 @@ theorem byzantine_sibling_confinement_at_endpoint_minimal
       (E.store cfg ext w m).latest_messages i = some lm →
         lm.root ∈ (E.store cfg ext w m).block_roots := by
     intro lm i hlm
-    obtain ⟨_, _, _, _, _, _, _, hlmKnown, _⟩ := hprov i lm hlm
+    obtain ⟨_, _, _, _, _, _, _, hlmKnown, _, _⟩ := hprov i lm hlm
     exact hlmKnown
   have hjc := hA.domain.justified_root_known w hw m hmH
   have hparentLt : ((E.store cfg ext w m).blocks a).slot <
@@ -318,10 +322,12 @@ theorem byzantine_sibling_confinement_at_endpoint_minimal
     rw [hsigmaSucc]
     exact hlo.trans (Nat.succ_le_of_lt hparentLt |>.trans hbcur)
   intro c' hchild hne i hisupp hib
-  rw [mem_get_node_children] at hchild
+  rw [mem_get_node_children_resolved
+    (get_parent_payload_status_ne_pending (E.store cfg ext w m)
+      ((E.store cfg ext w m).blocks b))] at hchild
   have hc' : c' ∈ (E.store cfg ext w m).block_roots :=
-    filtered_subset_block_roots cfg (E.store cfg ext w m) hjc c' hchild.1
-  have hparent' : ((E.store cfg ext w m).blocks c').parent_root = a := hchild.2
+    filtered_subset_block_roots cfg (E.store cfg ext w m) hjc c' hchild.2.1
+  have hparent' : ((E.store cfg ext w m).blocks c').parent_root = a := hchild.2.2.1
   have hlo' : lo ≤ ((E.store cfg ext w m).blocks c').slot := by
     have hlt := hpsl c' hc' (by rw [hparent']; exact ha)
     rw [hparent'] at hlt
@@ -340,17 +346,19 @@ structure EndpointLedgerFields
       ((E.store cfg ext w m).checkpoint_states
         (E.store cfg ext w m).justified_checkpoint)
   honest_sibling_confinement : ∀ c' : Root,
-    ForkChoiceNode.mk c' ∈ get_node_children (E.store cfg ext w m)
+    ForkChoiceNode.mk c' .pending ∈ get_node_children (E.store cfg ext w m)
       (get_filtered_block_tree cfg (E.store cfg ext w m))
-      (ForkChoiceNode.mk a) → c' ≠ b →
+      (ForkChoiceNode.mk a (get_parent_payload_status (E.store cfg ext w m)
+        ((E.store cfg ext w m).blocks b))) → c' ≠ b →
     ∀ i ∈ AttSupporters cfg (E.store cfg ext w m) (get_node_for_root c')
       ((E.store cfg ext w m).checkpoint_states
         (E.store cfg ext w m).justified_checkpoint),
       i ∈ E.honest → i ∈ E.Xclass cfg ext w m b lo sigma
   byzantine_sibling_confinement : ∀ c' : Root,
-    ForkChoiceNode.mk c' ∈ get_node_children (E.store cfg ext w m)
+    ForkChoiceNode.mk c' .pending ∈ get_node_children (E.store cfg ext w m)
       (get_filtered_block_tree cfg (E.store cfg ext w m))
-      (ForkChoiceNode.mk a) → c' ≠ b →
+      (ForkChoiceNode.mk a (get_parent_payload_status (E.store cfg ext w m)
+        ((E.store cfg ext w m).blocks b))) → c' ≠ b →
     ∀ i ∈ AttSupporters cfg (E.store cfg ext w m) (get_node_for_root c')
       ((E.store cfg ext w m).checkpoint_states
         (E.store cfg ext w m).justified_checkpoint),
@@ -360,9 +368,10 @@ structure EndpointLedgerFields
       ((E.store cfg ext w m).checkpoint_states
         (E.store cfg ext w m).justified_checkpoint)
   sibling_score : ∀ c' : Root,
-    ForkChoiceNode.mk c' ∈ get_node_children (E.store cfg ext w m)
+    ForkChoiceNode.mk c' .pending ∈ get_node_children (E.store cfg ext w m)
       (get_filtered_block_tree cfg (E.store cfg ext w m))
-      (ForkChoiceNode.mk a) → c' ≠ b →
+      (ForkChoiceNode.mk a (get_parent_payload_status (E.store cfg ext w m)
+        ((E.store cfg ext w m).blocks b))) → c' ≠ b →
     get_attestation_score cfg (E.store cfg ext w m) (get_node_for_root c')
       ((E.store cfg ext w m).checkpoint_states
         (E.store cfg ext w m).justified_checkpoint) ≤
@@ -432,10 +441,11 @@ theorem crossingParentSub_le_endpoint_Aval_minimal
     is_ancestor_of_parent hpslM hbM haM hparentM
   have hparentNotDescM : ¬ is_ancestor (E.store cfg ext w m)
       (get_node_for_root a) (get_node_for_root b) = true := by
-    simp only [is_ancestor, get_node_for_root, decide_eq_true_eq]
+    simp only [get_node_for_root, is_ancestor_pending, decide_eq_true_eq]
     rw [get_ancestor_stop (le_of_lt hslotltM)]
     intro hcon
-    injection hcon with heq
+    have heq := hcon
+    dsimp only at heq
     rw [heq] at hslotltM
     exact lt_irrefl _ hslotltM
   rw [Execution.Aval]

@@ -325,10 +325,9 @@ theorem finalizedHonestVotingSourceOrigin_of_causalStore
       hHk hkSlot hvoteHead
     simpa only [honest_attestation_data_eq, htargetData] using hwalkVote
   -- The link target is known at the signer's store, at or below the boundary.
-  have hlands : get_ancestor (E.store cfg ext i k)
-      (ForkChoiceNode.mk (get_head cfg (E.store cfg ext i k)).root)
-      (compute_start_slot_at_epoch cfg child.epoch) =
-        ForkChoiceNode.mk child.root := by
+  have hlands : (get_ancestor (E.store cfg ext i k)
+      (get_node_for_root (get_head cfg (E.store cfg ext i k)).root)
+      (compute_start_slot_at_epoch cfg child.epoch)).root = child.root := by
     have hroot := honest_attestation_data_target_root cfg ext
       (E.store cfg ext i k) a.data.slot index
     rw [htargetData] at hroot
@@ -336,18 +335,12 @@ theorem finalizedHonestVotingSourceOrigin_of_causalStore
         (get_head cfg (E.store cfg ext i k)).root child.epoch =
         child.root := hroot.symm
     simp only [get_checkpoint_block] at hcheckpoint
-    generalize hnode : get_ancestor (E.store cfg ext i k)
-      (ForkChoiceNode.mk (get_head cfg (E.store cfg ext i k)).root)
-      (compute_start_slot_at_epoch cfg child.epoch) = node
-      at hcheckpoint ⊢
-    obtain ⟨r⟩ := node
-    change r = child.root at hcheckpoint
-    cases hcheckpoint
-    rfl
+    simpa only [get_node_for_root] using hcheckpoint
   have hseedSpec : child.root ∈ (E.store cfg ext i k).block_roots ∧
       ((E.store cfg ext i k).blocks child.root).slot ≤
         compute_start_slot_at_epoch cfg child.epoch := by
     have hspec := get_ancestor_spec hparentSlots hwalk
+    unfold get_node_for_root at hlands
     rw [hlands] at hspec
     exact hspec
   -- The signer's clock sits exactly at the link target's epoch.

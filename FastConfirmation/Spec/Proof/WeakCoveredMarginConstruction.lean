@@ -3,6 +3,7 @@ public import FastConfirmation.Spec.Proof.WeakSelectedMarginInputs
 public import FastConfirmation.Spec.Proof.WeakSelectedEdgeGeometry
 public import FastConfirmation.Spec.Proof.EndpointLedgerMinimal
 public import FastConfirmation.Spec.Proof.SelectedCommitteeSupport
+public import FastConfirmation.Spec.Proof.WeakStatusMarginConstruction
 
 @[expose] public section
 
@@ -73,10 +74,11 @@ def SelectedStrictEdgeFilterSupplyAt
     is_ancestor (E.store cfg ext w m)
       (get_node_for_root (E.store cfg ext w m).justified_checkpoint.root)
       (get_node_for_root c) ≠ true →
-    ForkChoiceNode.mk c ∈
+    ForkChoiceNode.mk c .pending ∈
       get_node_children (E.store cfg ext w m)
         (get_filtered_block_tree cfg (E.store cfg ext w m))
-        (ForkChoiceNode.mk a)
+        (ForkChoiceNode.mk a (get_parent_payload_status (E.store cfg ext w m)
+          ((E.store cfg ext w m).blocks c)))
 
 /-- **Stage J.** Weak twin of
 `selectedCoveredMarginSupplyAt_of_filterSupply_minimal`. `hv` is gone (`obs`
@@ -201,9 +203,19 @@ theorem selectedCoveredMarginSupplyAt_of_filterSupply_at_observer
   by_cases heqCutoff : sigma = es
   · have hledgerEs : E.EndpointLedgerFields cfg ext w m a c lo es := by
       simpa only [heqCutoff] using hledger
+    -- weak G2-004, direct-window arm
+    have hstatus := Weak.statusMargin_loWindow_at_observer cfg ext hA hwalkDomain
+      hW.validity hqH hcomm hquery hw hmH haQ hgeom.block_known hgeom.parent_eq
+      haM hcM hparentM hgeom.confirmation hgeom.lo_eq hloEnd hlo₀ hcutoffQ hesLtQ
+      (by rw [heqCutoff] at hsigmaEnd; exact hsigmaEnd)
+      (by rw [← heqCutoff]; exact hgeom.sigma_lt_endpoint) (le_refl es) hslotQM
+      (fun t h1 h2 => absurd (lt_of_lt_of_le h1 h2) (lt_irrefl _))
+      (by simp only [Nat.sub_self, Nat.mul_zero, le_refl])
+      hledgerEs.selected_recording
     exact Weak.SelectedEdgeMarginInputsAt.directWindow lo es
       { endpoint_base_strip := hbase
         child_filtered := hchild
+        status_margin := hstatus
         selected_score := hledgerEs.selected_score
         sibling_score := hledgerEs.sibling_score }
   have hesLtSigma : es < sigma :=
@@ -274,8 +286,26 @@ theorem selectedCoveredMarginSupplyAt_of_filterSupply_at_observer
     have hia := hAclassLo hiP
     simp only [Execution.Aclass, Finset.mem_filter] at hia ⊢
     exact ⟨⟨hiS, hia.1.2⟩, hia.2⟩
+  -- weak G2-004, crossing arms (both edge regimes share one construction)
+  have hstatusCross := Weak.statusMargin_crossing_at_observer cfg ext hA hwalkDomain
+    hW.validity hqH hcomm hquery hw hmH haQ hgeom.block_known hgeom.parent_eq
+    haM hcM hparentM hgeom.confirmation hgeom.lo_eq hloEnd hlo₀ hcutoffQ hesLtQ
+    hsigmaEnd hgeom.sigma_lt_endpoint hgeom.cutoff_le_sigma hgeom.sigma_horizon hslotQM
+    hgeom.child_slot_le_cutoff hcommittee hledger.selected_recording hselectedMid
   rcases hgeom.regime with hsame | hcross | ⟨hedge, hwindow⟩
-  · exact Weak.SelectedEdgeMarginInputsAt.sameEpoch lo es sigma
+  · -- weak G2-004, same-epoch arm
+    have hsameT : ∀ t : Slot, lo ≤ t → t ≤ sigma →
+        compute_epoch_at_slot cfg t = compute_epoch_at_slot cfg lo :=
+      fun t htlo htσ => Execution.epoch_eq_of_between cfg htlo htσ hsame
+    have hbudget := E.hbudget_sameEpoch_of_IH cfg ext hA.byzantine_bound
+      hA.externals_coherence hgeom.lo_le_cutoff hgeom.cutoff_le_sigma
+      hgeom.sigma_horizon hsameT
+    have hstatus := Weak.statusMargin_loWindow_at_observer cfg ext hA hwalkDomain
+      hW.validity hqH hcomm hquery hw hmH haQ hgeom.block_known hgeom.parent_eq
+      haM hcM hparentM hgeom.confirmation hgeom.lo_eq hloEnd hlo₀ hcutoffQ hesLtQ
+      hsigmaEnd hgeom.sigma_lt_endpoint hgeom.cutoff_le_sigma hslotQM hcommittee
+      hbudget hledger.selected_recording
+    exact Weak.SelectedEdgeMarginInputsAt.sameEpoch lo es sigma
       { query_store_eq := hquery
         confirming_cutoff := hgeom.confirming_cutoff
         lo_le_es := hgeom.lo_le_cutoff
@@ -285,6 +315,7 @@ theorem selectedCoveredMarginSupplyAt_of_filterSupply_at_observer
         same_epoch := hsame
         endpoint_base_strip := hbase
         child_filtered := hchild
+        status_margin := hstatus
         selected_recording := hledger.selected_recording
         honest_sibling_confinement := hledger.honest_sibling_confinement
         byzantine_sibling_confinement := hledger.byzantine_sibling_confinement }
@@ -308,6 +339,7 @@ theorem selectedCoveredMarginSupplyAt_of_filterSupply_at_observer
         parent_sub_endpoint := hparentSub
         committee_support := hcommittee
         child_filtered := hchild
+        status_margin := hstatusCross
         selected_recording := hselectedMid
         sibling_score := hsibling }
   · have hsibling := Weak.crossing_sibling_score_of_endpointLedger cfg ext hA hAclassLo
@@ -330,6 +362,7 @@ theorem selectedCoveredMarginSupplyAt_of_filterSupply_at_observer
         parent_sub_endpoint := hparentSub
         committee_support := hcommittee
         child_filtered := hchild
+        status_margin := hstatusCross
         selected_recording := hselectedMid
         sibling_score := hsibling }
 

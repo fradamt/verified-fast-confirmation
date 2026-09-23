@@ -233,7 +233,8 @@ theorem selected_result_and_child_ancestor_of_endpoint_justified_minimal
         simpa only [J] using hJglc
       have hJc : is_ancestor (E.store cfg ext w m)
           (get_node_for_root J.root) (get_node_for_root c) = true :=
-        is_ancestor_trans hwfM
+        is_ancestor_trans (a := get_node_for_root J.root) (b := get_node_for_root glc)
+            (c := get_node_for_root c) hwfM
           (hwalkM c hcM J.root hJM) (hwalkM c hcM glc hglcM)
           hJglc' hglcC_M
       exact False.elim (hnotCovered (by simpa only [J] using hJc))
@@ -250,7 +251,8 @@ theorem selected_result_and_child_ancestor_of_endpoint_justified_minimal
       · simpa only [J] using hnotCovered
     have hglcJ : is_ancestor (E.store cfg ext w m)
         (get_node_for_root glc) (get_node_for_root J.root) = true :=
-      is_ancestor_trans hwfM
+      is_ancestor_trans (a := get_node_for_root glc) (b := get_node_for_root c)
+          (c := get_node_for_root J.root) hwfM
         (hwalkM J.root hJM glc hglcM) (hwalkM J.root hJM c hcM)
         hglcC_M hcJ
     exact ⟨by simpa only [J] using hcJ, by simpa only [J] using hglcJ⟩
@@ -317,6 +319,8 @@ theorem selected_result_and_child_ancestor_of_causalHonestTarget
   have hglcJ : is_ancestor (E.store cfg ext w m)
       (get_node_for_root glc) (get_node_for_root J.root) = true :=
     is_ancestor_trans hwfM
+      (a := get_node_for_root glc) (b := get_node_for_root c)
+      (c := get_node_for_root J.root)
       (hwalkM J.root hJM glc hglcM) (hwalkM J.root hJM c hcM)
       hglcC_M hcJ
   exact ⟨by simpa only [J] using hcJ, by simpa only [J] using hglcJ⟩
@@ -392,7 +396,8 @@ theorem selected_result_and_child_ancestor_of_endpoint_justified_causal_minimal
       · exact False.elim (hnotCovered (by simpa only [J] using hJc))
     · have hJc : is_ancestor (E.store cfg ext w m)
           (get_node_for_root J.root) (get_node_for_root c) = true :=
-        is_ancestor_trans hwfM
+        is_ancestor_trans (a := get_node_for_root J.root) (b := get_node_for_root glc)
+            (c := get_node_for_root c) hwfM
           (hwalkM c hcM J.root hJM) (hwalkM c hcM glc hglcM)
           hJglc hglcC_M
       exact False.elim (hnotCovered (by simpa only [J] using hJc))
@@ -410,7 +415,8 @@ theorem selected_result_and_child_ancestor_of_endpoint_justified_causal_minimal
         · simpa only [J] using hnotCovered
       have hglcJ : is_ancestor (E.store cfg ext w m)
           (get_node_for_root glc) (get_node_for_root J.root) = true :=
-        is_ancestor_trans hwfM
+        is_ancestor_trans (a := get_node_for_root glc) (b := get_node_for_root c)
+            (c := get_node_for_root J.root) hwfM
           (hwalkM J.root hJM glc hglcM) (hwalkM J.root hJM c hcM)
           hglcC_M hcJ
       exact ⟨by simpa only [J] using hcJ, by simpa only [J] using hglcJ⟩

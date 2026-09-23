@@ -810,7 +810,8 @@ theorem observerCall_currentTargetHistoricalCertificate
   have hcheckpoint : get_checkpoint_block cfg query.store
         (get_head cfg query.store).root e =
       get_checkpoint_block cfg query.store trace.result e :=
-    get_checkpoint_block_of_ancestor cfg hG.parent hbelow
+    get_checkpoint_block_of_ancestor cfg hG.parent
+      (by rw [is_ancestor_node_root] at hbelow; exact hbelow)
       hboundaryResult hwalkHead
   have heCurrent : e = get_current_store_epoch cfg query.store :=
     hresultEpoch.symm.trans hcurrent

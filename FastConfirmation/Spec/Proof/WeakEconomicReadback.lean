@@ -67,6 +67,30 @@ private theorem discount_guard {c : Prop} [Decidable c] {Ppre Hp Bp eq budget : 
        then Ppre - (if budget > eq then budget - eq else 0) else 0) ≤ Hp := by
   split_ifs <;> omega
 
+private theorem payload_support_le_block_support
+    (store : Store Root) (bs : BeaconState Root) (parent : Root)
+    (status : PayloadStatus) (start_slot end_slot : Slot) :
+    get_parent_payload_support_between_slots cfg ext store bs parent status start_slot end_slot
+      ≤ get_block_support_between_slots cfg ext store bs parent start_slot end_slot := by
+  unfold get_parent_payload_support_between_slots get_block_support_between_slots
+  apply Finset.sum_le_sum_of_subset_of_nonneg
+  · intro i hi
+    simp only [Finset.mem_filter] at hi ⊢
+    refine ⟨hi.1, ?_⟩
+    cases hmsg : store.latest_messages i with
+    | none => simp [hmsg] at hi
+    | some msg =>
+      simp only [hmsg, Option.any_some, Bool.and_eq_true, decide_eq_true_eq] at hi ⊢
+      exact hi.2.1
+  · intro i _ _
+    exact Nat.zero_le _
+
+private theorem discount_guard_mono {c : Prop} [Decidable c]
+    {P Q adv : ℕ} (hPQ : P ≤ Q) :
+    (if c then 0 else if P > adv then P - adv else 0) ≤
+      (if c then 0 else if Q > adv then Q - adv else 0) := by
+  split_ifs <;> omega
+
 /-- Pure `ℕ` core: `byz + equiv ≤ max_adv` gives `byz` within the
 `compute_adversarial_weight` guard (both branches). -/
 private theorem byz_le_adv_arith {byz equiv max_adv : ℕ} (h : byz + equiv ≤ max_adv) :
@@ -198,9 +222,11 @@ theorem support_discount_le_parent_stuck_of_prefix {E : Execution Root}
       ≤ E.weight (ParentStuck cfg E (E.store cfg ext v n) bs b) := by
   simp only [get_support_discount, compute_empty_slot_support_discount,
     compute_adversarial_weight]
-  exact discount_guard
-    (get_block_support_eq_parent_split_of_prefix cfg ext n hcomm hval hbH)
-    (parentstuck_byz_plus_equiv_le_of_prefix cfg ext hbb hcomm hval hstartH hbH htab hne)
+  exact (discount_guard_mono
+    (payload_support_le_block_support cfg ext _ _ _ _ _ _)).trans
+    (discount_guard
+      (get_block_support_eq_parent_split_of_prefix cfg ext n hcomm hval hbH)
+      (parentstuck_byz_plus_equiv_le_of_prefix cfg ext hbb hcomm hval hstartH hbH htab hne))
 
 /-! ## HonestWeight clone 4 — the equivocation-score readback, at an
 arbitrary node's store.

@@ -18,9 +18,16 @@ MANIFEST_PATH = ROOT / "spec_source" / "manifest.json"
 EXPECTED_TOP_LEVEL_KEYS = {"schema", "repository", "commit", "license", "files"}
 EXPECTED_FILE_KEYS = {"path", "role", "git_blob", "bytes", "sha256"}
 EXPECTED_REPOSITORY = "https://github.com/ethereum/consensus-specs.git"
-EXPECTED_COMMIT = "477321355d48d527e7e1e4d572f6a40a0b41072a"
+EXPECTED_COMMIT = "6b9bd532cca16555e2f3282d757622ebff29743e"
+EXPECTED_GLOAS_DISCOUNT_SHA256 = "16c9df0facd3c7254fb1b0ac84168c5e01c0717363075f18db27790bf9158b63"
 EXPECTED_LICENSE = "CC0-1.0"
 EXPECTED_ROLES = {
+    "specs/gloas/validator.md": "Gloas honest validator behavior",
+    "specs/gloas/fork-choice.md": "Gloas fork-choice environment",
+    "specs/gloas/fast-confirmation.md": "Gloas Fast Confirmation Rule overlay",
+    "specs/gloas/beacon-chain.md": "Gloas beacon-chain types and helpers",
+    "presets/mainnet/gloas.yaml": "Mainnet Gloas preset values consumed by Config",
+    "presets/minimal/gloas.yaml": "Minimal Gloas preset values consumed by conformance",
     "specs/phase0/fast-confirmation.md":
         "Fast Confirmation Rule executable specification",
     "specs/phase0/fork-choice.md": "Phase 0 fork-choice environment",
@@ -175,6 +182,20 @@ def verify_objects(repo: Path, entries: list[dict[str, Any]]) -> None:
                 f"SHA-256 mismatch for {source_path}: "
                 f"{actual_sha256} != {entry['sha256']}"
             )
+
+    # Documented local rule change: docs/gloas-spec-deviation.md. All manifest
+    # blobs remain the exact upstream objects; only this checkout source is
+    # permitted to differ from the pinned Gloas FCR overlay.
+    local_overlay = repo / "specs/gloas/fast-confirmation.md"
+    try:
+        local_hash = hashlib.sha256(local_overlay.read_bytes()).hexdigest()
+    except OSError as exc:
+        raise ManifestError(f"cannot read local Gloas discount overlay: {exc}") from exc
+    if local_hash != EXPECTED_GLOAS_DISCOUNT_SHA256:
+        raise ManifestError(
+            "Gloas discount overlay differs from documented deviation: "
+            f"{local_hash} != {EXPECTED_GLOAS_DISCOUNT_SHA256}"
+        )
 
 
 def parse_args() -> argparse.Namespace:

@@ -65,13 +65,13 @@ private theorem slot_lt_epoch_start_of_epoch_lt_accepted
 same-epoch ancestry segment from `first` to `last`.  Every nontrivial child is
 proved current-epoch before the supplied non-genesis classifier is used.
 -/
-theorem knownSameEpochAncestrySegment_of_boundary_walk
+theorem knownSameEpochAncestrySegment_of_boundary_walk_root
     {E : Execution Root} {store : Store Root}
     (hparentSlots : ParentSlotLt store)
     {e : Epoch} {first last : Root}
     (hwalk : WalkKnown store (compute_start_slot_at_epoch cfg e) last)
-    (hlands : get_ancestor store (ForkChoiceNode.mk last)
-      (compute_start_slot_at_epoch cfg e) = ForkChoiceNode.mk first)
+    (hlands : (get_ancestor store (ForkChoiceNode.mk last .pending)
+      (compute_start_slot_at_epoch cfg e)).root = first)
     (hfirstSlot : (store.blocks first).slot =
       compute_start_slot_at_epoch cfg e)
     (hlastBefore : (store.blocks last).slot <
@@ -85,15 +85,14 @@ theorem knownSameEpochAncestrySegment_of_boundary_walk
   | @stop r hr hle =>
       have hrEq : r = first := by
         rw [get_ancestor_stop hle] at hlands
-        exact congrArg ForkChoiceNode.root hlands
+        exact hlands
       subst r
       exact .refl first hr
   | @step r hr hgt hp ih =>
       have hlandsParent :
-          get_ancestor store
-              (ForkChoiceNode.mk (store.blocks r).parent_root)
-              (compute_start_slot_at_epoch cfg e) =
-            ForkChoiceNode.mk first := by
+          (get_ancestor store
+              (ForkChoiceNode.mk (store.blocks r).parent_root .pending)
+              (compute_start_slot_at_epoch cfg e)).root = first := by
         rw [get_ancestor_step hparentSlots hr hgt hp] at hlands
         exact hlands
       have hparentLt :
@@ -109,7 +108,7 @@ theorem knownSameEpochAncestrySegment_of_boundary_walk
           Nat.le_of_lt (Nat.lt_of_not_ge hnot)
         rw [get_ancestor_stop hbelow] at hlandsParent
         have hpEq : (store.blocks r).parent_root = first :=
-          congrArg ForkChoiceNode.root hlandsParent
+          hlandsParent
         rw [hpEq, hfirstSlot] at hnot
         exact hnot (le_refl _)
       have hparentBefore :
@@ -127,6 +126,26 @@ theorem knownSameEpochAncestrySegment_of_boundary_walk
         epoch_eq_of_start_le_lt_next cfg hchildStart hlastBefore
       exact .tail hprefix hr (hcurrentNonGenesis r hr hchildEpoch) rfl
         (hparentEpoch.trans hchildEpoch.symm)
+
+/-- An equality of nodes implies the root equality used by the proof. -/
+theorem knownSameEpochAncestrySegment_of_boundary_walk
+    {E : Execution Root} {store : Store Root}
+    (hparentSlots : ParentSlotLt store)
+    {e : Epoch} {first last : Root}
+    (hwalk : WalkKnown store (compute_start_slot_at_epoch cfg e) last)
+    (hlands : get_ancestor store (ForkChoiceNode.mk last .pending)
+      (compute_start_slot_at_epoch cfg e) = ForkChoiceNode.mk first .pending)
+    (hfirstSlot : (store.blocks first).slot =
+      compute_start_slot_at_epoch cfg e)
+    (hlastBefore : (store.blocks last).slot <
+      compute_start_slot_at_epoch cfg (e + 1))
+    (hcurrentNonGenesis : ∀ r ∈ store.block_roots,
+      compute_epoch_at_slot cfg (store.blocks r).slot = e →
+        r ∉ E.genesis_store.block_roots) :
+    KnownSameEpochAncestrySegment cfg E.genesis_store.block_roots
+      store first last := by
+  exact knownSameEpochAncestrySegment_of_boundary_walk_root cfg hparentSlots hwalk
+    (congrArg ForkChoiceNode.root hlands) hfirstSlot hlastBefore hcurrentNonGenesis
 
 namespace KnownSameEpochAncestrySegment
 
@@ -261,7 +280,7 @@ theorem acceptedCrossEpochParentGJEqGU_of_known_parent
 Same-epoch suffix edges preserve `GJ`; if the boundary landing is older, the
 first edge above it is realized by an actual accepted cross-epoch transition
 and changes the source to `GU` of the landing block. -/
-theorem acceptedGJEqVSAt_of_target_walk
+theorem acceptedGJEqVSAt_of_target_walk_root
     (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
     (hwf : WellFormedExecution E)
     (hcore : E.ExactCausalStoreWellFormedCore cfg ext)
@@ -274,23 +293,22 @@ theorem acceptedGJEqVSAt_of_target_walk
       get_block_epoch cfg store r = e →
         r ∉ E.genesis_store.block_roots)
     (hwalk : WalkKnown store (compute_start_slot_at_epoch cfg e) head)
-    (hlands : get_ancestor store (ForkChoiceNode.mk head)
-      (compute_start_slot_at_epoch cfg e) = ForkChoiceNode.mk targetRoot)
+    (hlands : (get_ancestor store (ForkChoiceNode.mk head .pending)
+      (compute_start_slot_at_epoch cfg e)).root = targetRoot)
     (hheadEpoch : get_block_epoch cfg store head = e) :
     B.state.GJ head = B.state.VSAt cfg ext store targetRoot e := by
   induction hwalk generalizing targetRoot with
   | @stop r hr hle =>
       rw [get_ancestor_stop hle] at hlands
-      have hre : r = targetRoot := congrArg ForkChoiceNode.root hlands
+      have hre : r = targetRoot := hlands
       subst targetRoot
       simp only [AcceptedChainFFGState.VSAt, hheadEpoch, if_pos]
   | @step r hr hgt hp ih =>
       have hparentKnown := hp.root_mem
       have hparentSlotLt := hparentSlots r hr hparentKnown
-      have hlandsParent : get_ancestor store
-          (ForkChoiceNode.mk (store.blocks r).parent_root)
-          (compute_start_slot_at_epoch cfg e) =
-          ForkChoiceNode.mk targetRoot := by
+      have hlandsParent : (get_ancestor store
+          (ForkChoiceNode.mk (store.blocks r).parent_root .pending)
+          (compute_start_slot_at_epoch cfg e)).root = targetRoot := by
         rw [get_ancestor_step hparentSlots hr hgt hp] at hlands
         exact hlands
       have hparentEpochLe :
@@ -319,7 +337,7 @@ theorem acceptedGJEqVSAt_of_target_walk
           slot_lt_epoch_start_of_epoch_lt_accepted cfg hparentOld
         rw [get_ancestor_stop hparentBelow.le] at hlandsParent
         have hparentEq : (store.blocks r).parent_root = targetRoot :=
-          congrArg ForkChoiceNode.root hlandsParent
+          hlandsParent
         have hcross : compute_epoch_at_slot cfg
             (store.blocks (store.blocks r).parent_root).slot <
             compute_epoch_at_slot cfg (store.blocks r).slot := by
@@ -335,6 +353,28 @@ theorem acceptedGJEqVSAt_of_target_walk
         simp only [AcceptedChainFFGState.VSAt, if_neg htargetOld]
         exact hedge
 
+/-- An equality of nodes implies the root equality used by the proof. -/
+theorem acceptedGJEqVSAt_of_target_walk
+    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (hwf : WellFormedExecution E)
+    (hcore : E.ExactCausalStoreWellFormedCore cfg ext)
+    (hphase : Phase0SourceCoherence cfg ext)
+    (hboundaryPhase : Phase0BoundarySourceCoherence cfg ext)
+    {store : Store Root} (hstore : E.CausalStore cfg ext store)
+    (hparentSlots : ParentSlotLt store)
+    {e : Epoch} {targetRoot head : Root}
+    (hcurrentNonGenesis : ∀ r ∈ store.block_roots,
+      get_block_epoch cfg store r = e →
+        r ∉ E.genesis_store.block_roots)
+    (hwalk : WalkKnown store (compute_start_slot_at_epoch cfg e) head)
+    (hlands : get_ancestor store (ForkChoiceNode.mk head .pending)
+      (compute_start_slot_at_epoch cfg e) = ForkChoiceNode.mk targetRoot .pending)
+    (hheadEpoch : get_block_epoch cfg store head = e) :
+    B.state.GJ head = B.state.VSAt cfg ext store targetRoot e := by
+  exact E.acceptedGJEqVSAt_of_target_walk_root cfg ext B hwf hcore hphase
+    hboundaryPhase hstore hparentSlots hcurrentNonGenesis hwalk
+    (congrArg ForkChoiceNode.root hlands) hheadEpoch
+
 namespace AcceptedCurrentTargetA32GateRealization
 
 /-- Retie an accepted target-local gate realization to a concrete
@@ -349,6 +389,51 @@ unchanged.
 
 No source-visibility, filter, safety, or historical-induction premise is
 used. -/
+def fixedSource_of_acceptedTargetWalk_root
+    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (hwf : WellFormedExecution E)
+    (hcore : E.ExactCausalStoreWellFormedCore cfg ext)
+    (hphase : Phase0SourceCoherence cfg ext)
+    (hboundaryPhase : Phase0BoundarySourceCoherence cfg ext)
+    {store : Store Root} (hstore : E.CausalStore cfg ext store)
+    (hparentSlots : ParentSlotLt store)
+    {carrier : Root}
+    (hcarrierEpoch : get_block_epoch cfg store carrier =
+      (get_current_target cfg store).epoch)
+    (hcurrentNonGenesis : ∀ r ∈ store.block_roots,
+      get_block_epoch cfg store r = (get_current_target cfg store).epoch →
+        r ∉ E.genesis_store.block_roots)
+    (hwalk : WalkKnown store
+      (compute_start_slot_at_epoch cfg
+        (get_current_target cfg store).epoch) carrier)
+    (hlands : (get_ancestor store (ForkChoiceNode.mk carrier .pending)
+      (compute_start_slot_at_epoch cfg
+        (get_current_target cfg store).epoch)).root =
+      (get_current_target cfg store).root)
+    (hgate : AcceptedCurrentTargetA32GateRealization cfg ext E
+      B.anchor B.state store) :
+    AcceptedFixedSourceCurrentTargetA32GateRealization cfg ext E
+      B.anchor B.state store carrier := by
+  refine ⟨hgate.certified, ?_⟩
+  rcases hgate.support_branch with hanchor | ⟨hne, Q, hsource⟩
+  · exact Or.inl hanchor
+  · refine Or.inr ⟨hne, Q, ?_⟩
+    have hgj : B.state.GJ carrier = B.state.VSAt cfg ext store
+        (get_current_target cfg store).root
+        (get_current_target cfg store).epoch :=
+      E.acceptedGJEqVSAt_of_target_walk_root cfg ext B hwf hcore hphase
+        hboundaryPhase hstore hparentSlots hcurrentNonGenesis hwalk hlands
+        hcarrierEpoch
+    calc
+      Q.source = B.state.VSAt cfg ext store
+          (get_current_target cfg store).root
+          (get_current_target cfg store).epoch := hsource
+      _ = B.state.GJ carrier := hgj.symm
+      _ = B.state.VSAt cfg ext store carrier
+          (get_current_target cfg store).epoch := by
+        simp only [AcceptedChainFFGState.VSAt, hcarrierEpoch, if_pos]
+
+/-- An equality of nodes implies the root equality used by the proof. -/
 def fixedSource_of_acceptedTargetWalk
     (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
     (hwf : WellFormedExecution E)
@@ -366,32 +451,18 @@ def fixedSource_of_acceptedTargetWalk
     (hwalk : WalkKnown store
       (compute_start_slot_at_epoch cfg
         (get_current_target cfg store).epoch) carrier)
-    (hlands : get_ancestor store (ForkChoiceNode.mk carrier)
+    (hlands : get_ancestor store (ForkChoiceNode.mk carrier .pending)
       (compute_start_slot_at_epoch cfg
         (get_current_target cfg store).epoch) =
-      ForkChoiceNode.mk (get_current_target cfg store).root)
+      ForkChoiceNode.mk (get_current_target cfg store).root .pending)
     (hgate : AcceptedCurrentTargetA32GateRealization cfg ext E
       B.anchor B.state store) :
     AcceptedFixedSourceCurrentTargetA32GateRealization cfg ext E
       B.anchor B.state store carrier := by
-  refine ⟨hgate.certified, ?_⟩
-  rcases hgate.support_branch with hanchor | ⟨hne, Q, hsource⟩
-  · exact Or.inl hanchor
-  · refine Or.inr ⟨hne, Q, ?_⟩
-    have hgj : B.state.GJ carrier = B.state.VSAt cfg ext store
-        (get_current_target cfg store).root
-        (get_current_target cfg store).epoch :=
-      E.acceptedGJEqVSAt_of_target_walk cfg ext B hwf hcore hphase
-        hboundaryPhase hstore hparentSlots hcurrentNonGenesis hwalk hlands
-        hcarrierEpoch
-    calc
-      Q.source = B.state.VSAt cfg ext store
-          (get_current_target cfg store).root
-          (get_current_target cfg store).epoch := hsource
-      _ = B.state.GJ carrier := hgj.symm
-      _ = B.state.VSAt cfg ext store carrier
-          (get_current_target cfg store).epoch := by
-        simp only [AcceptedChainFFGState.VSAt, hcarrierEpoch, if_pos]
+  exact fixedSource_of_acceptedTargetWalk_root (E := E) cfg ext B hwf hcore hphase
+    hboundaryPhase
+    hstore hparentSlots hcarrierEpoch hcurrentNonGenesis hwalk
+    (by rw [hlands]) hgate
 
 end AcceptedCurrentTargetA32GateRealization
 
@@ -428,17 +499,9 @@ theorem acceptedHonestAttestationDataSourceEqVSAtTarget
   rw [htarget] at hroot
   have hcheckpoint : get_checkpoint_block cfg store head target.epoch =
       target.root := hroot.symm
-  have hlands : get_ancestor store (ForkChoiceNode.mk head)
-      (compute_start_slot_at_epoch cfg target.epoch) =
-        ForkChoiceNode.mk target.root := by
-    simp only [get_checkpoint_block] at hcheckpoint
-    generalize hnode : get_ancestor store (ForkChoiceNode.mk head)
-      (compute_start_slot_at_epoch cfg target.epoch) = node
-      at hcheckpoint ⊢
-    obtain ⟨r⟩ := node
-    change r = target.root at hcheckpoint
-    cases hcheckpoint
-    rfl
+  have hlands : (get_ancestor store (ForkChoiceNode.mk head .pending)
+      (compute_start_slot_at_epoch cfg target.epoch)).root = target.root := by
+    simpa only [get_checkpoint_block] using hcheckpoint
   have hheadEpochLe : get_block_epoch cfg store head ≤ target.epoch := by
     simp only [get_block_epoch, compute_epoch_at_slot]
     calc
@@ -463,7 +526,7 @@ theorem acceptedHonestAttestationDataSourceEqVSAtTarget
         store slot index hsame]
       exact hprojection.block_state_gj head hheadKnown
     rw [hsourceGJ]
-    exact E.acceptedGJEqVSAt_of_target_walk cfg ext B hwf hcore hphase
+    exact E.acceptedGJEqVSAt_of_target_walk_root cfg ext B hwf hcore hphase
       hboundaryPhase hstore hparentSlots hcurrentNonGenesis hwalk hlands
       hheadCurrent
   · have hheadOld : get_block_epoch cfg store head < target.epoch :=
@@ -488,8 +551,7 @@ theorem acceptedHonestAttestationDataSourceEqVSAtTarget
         compute_start_slot_at_epoch cfg target.epoch :=
       slot_lt_epoch_start_of_epoch_lt_accepted cfg hheadOld
     rw [get_ancestor_stop hheadBelow.le] at hlands
-    have hheadEq : head = target.root :=
-      congrArg ForkChoiceNode.root hlands
+    have hheadEq : head = target.root := hlands
     have hboundaryEpoch : compute_epoch_at_slot cfg
         (store.block_states head).slot < compute_epoch_at_slot cfg slot :=
       hstateEpochOld.trans_eq hslotEpoch.symm
@@ -613,17 +675,9 @@ theorem concreteHonestTargetVote_acceptedOldTargetSourceEvidence
       vote.slot vote.index
     rw [htargetData] at hroot
     exact hroot.symm
-  have hlands : get_ancestor voteStore (ForkChoiceNode.mk head)
-      (compute_start_slot_at_epoch cfg target.epoch) =
-        ForkChoiceNode.mk target.root := by
-    simp only [get_checkpoint_block] at hcheckpoint
-    generalize hnode : get_ancestor voteStore (ForkChoiceNode.mk head)
-      (compute_start_slot_at_epoch cfg target.epoch) = node
-      at hcheckpoint ⊢
-    obtain ⟨r⟩ := node
-    change r = target.root at hcheckpoint
-    cases hcheckpoint
-    rfl
+  have hlands : (get_ancestor voteStore (ForkChoiceNode.mk head .pending)
+      (compute_start_slot_at_epoch cfg target.epoch)).root = target.root := by
+    simpa only [get_checkpoint_block] using hcheckpoint
   have htargetSpec : target.root ∈ voteStore.block_roots ∧
       (voteStore.blocks target.root).slot ≤
         compute_start_slot_at_epoch cfg target.epoch := by
@@ -836,17 +890,9 @@ theorem concreteHonestTargetVote_knownCurrentEpochSegment
       vote.slot vote.index
     rw [htargetData] at hroot
     exact hroot.symm
-  have hlands : get_ancestor voteStore (ForkChoiceNode.mk head)
-      (compute_start_slot_at_epoch cfg target.epoch) =
-        ForkChoiceNode.mk target.root := by
-    simp only [get_checkpoint_block] at hcheckpoint
-    generalize hnode : get_ancestor voteStore (ForkChoiceNode.mk head)
-      (compute_start_slot_at_epoch cfg target.epoch) = node
-      at hcheckpoint ⊢
-    obtain ⟨r⟩ := node
-    change r = target.root at hcheckpoint
-    cases hcheckpoint
-    rfl
+  have hlands : (get_ancestor voteStore (ForkChoiceNode.mk head .pending)
+      (compute_start_slot_at_epoch cfg target.epoch)).root = target.root := by
+    simpa only [get_checkpoint_block] using hcheckpoint
   have htargetSpec : target.root ∈ voteStore.block_roots ∧
       (voteStore.blocks target.root).slot ≤
         compute_start_slot_at_epoch cfg target.epoch := by
@@ -913,7 +959,7 @@ theorem concreteHonestTargetVote_knownCurrentEpochSegment
     exact (Nat.ne_of_lt hanchorBefore) (hrootEpoch.symm.trans hcurrent)
   have hknownSegment : KnownSameEpochAncestrySegment cfg
       E.genesis_store.block_roots voteStore target.root head :=
-    knownSameEpochAncestrySegment_of_boundary_walk cfg hparentSlots hwalk
+    knownSameEpochAncestrySegment_of_boundary_walk_root cfg hparentSlots hwalk
       hlands htargetSlot hheadBefore hcurrentNonGenesis
   simpa only [voteStore, head] using hknownSegment
 

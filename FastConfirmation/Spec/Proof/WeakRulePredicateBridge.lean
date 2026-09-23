@@ -89,6 +89,23 @@ theorem weak_fresh_block_support_le (store : Store Root) (bs : BeaconState Root)
     simp only [Option.any_some, Bool.and_eq_true] at hib ⊢
     exact ⟨hib.1.1, hib.2⟩
 
+theorem weak_fresh_parent_payload_support_le (store : Store Root) (bs : BeaconState Root)
+    (r : Root) (status : PayloadStatus) (a b : Slot) :
+    Weak.get_duty_fresh_parent_payload_support_between_slots cfg ext store bs r status a b ≤
+      get_parent_payload_support_between_slots cfg ext store bs r status a b := by
+  unfold Weak.get_duty_fresh_parent_payload_support_between_slots
+    get_parent_payload_support_between_slots
+  dsimp only
+  refine Finset.sum_le_sum_of_subset_of_nonneg
+    (Finset.monotone_filter_right _ ?_) (fun i _ _ => Nat.zero_le _)
+  intro i _hi hib
+  cases hlm : store.latest_messages i with
+  | none => rw [hlm] at hib; simp at hib
+  | some lm =>
+    rw [hlm] at hib
+    simp only [Option.any_some, Bool.and_eq_true] at hib ⊢
+    exact ⟨⟨hib.1.1.1, hib.1.2⟩, hib.2⟩
+
 theorem weak_support_discount_le (store : Store Root) (bs : BeaconState Root)
     (r : Root) :
     Weak.get_support_discount cfg ext store bs r ≤
@@ -99,7 +116,7 @@ theorem weak_support_discount_le (store : Store Root) (bs : BeaconState Root)
   by_cases h : (store.blocks (store.blocks r).parent_root).slot + 1 = (store.blocks r).slot
   · rw [if_pos h, if_pos h]
   · rw [if_neg h, if_neg h]
-    exact sub_guard_mono (weak_fresh_block_support_le cfg ext store bs _ _ _)
+    exact sub_guard_mono (weak_fresh_parent_payload_support_le cfg ext store bs _ _ _ _)
       (weak_adversarial_weight_ge cfg ext store bs _ _)
 
 theorem weak_safety_threshold_ge (store : Store Root) (r : Root) (bs : BeaconState Root) :

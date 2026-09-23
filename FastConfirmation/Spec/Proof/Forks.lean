@@ -36,10 +36,10 @@ well-formedness). If `a` and `b` are both ancestors of `x` and
 `(blocks a).slot = (blocks b).slot`, then `a = b`. -/
 theorem ancestor_unique_at_slot {store : Store Root} {x a b : Root}
     (hsl : (store.blocks a).slot = (store.blocks b).slot)
-    (ha : is_ancestor store (ForkChoiceNode.mk x) (ForkChoiceNode.mk a) = true)
-    (hb : is_ancestor store (ForkChoiceNode.mk x) (ForkChoiceNode.mk b) = true) :
+    (ha : is_ancestor store (ForkChoiceNode.mk x .pending) (ForkChoiceNode.mk a .pending) = true)
+    (hb : is_ancestor store (ForkChoiceNode.mk x .pending) (ForkChoiceNode.mk b .pending) = true) :
     a = b := by
-  simp only [is_ancestor, decide_eq_true_eq] at ha hb
+  simp only [is_ancestor_pending, decide_eq_true_eq] at ha hb
   rw [hsl] at ha
   simpa using ha.symm.trans hb
 
@@ -64,15 +64,15 @@ theorem no_common_descendant_of_slot_le {store : Store Root}
     (hne : c ≠ c')
     (hle : (store.blocks c).slot ≤ (store.blocks c').slot)
     (hwx : WalkKnown store (store.blocks c).slot x)
-    (hac : is_ancestor store (ForkChoiceNode.mk x) (ForkChoiceNode.mk c) = true)
-    (hac' : is_ancestor store (ForkChoiceNode.mk x) (ForkChoiceNode.mk c') = true) :
+    (hac : is_ancestor store (ForkChoiceNode.mk x .pending) (ForkChoiceNode.mk c .pending) = true)
+    (hac' : is_ancestor store (ForkChoiceNode.mk x .pending) (ForkChoiceNode.mk c' .pending) = true) :
     False := by
-  simp only [is_ancestor, decide_eq_true_eq] at hac hac'
+  simp only [is_ancestor_pending, decide_eq_true_eq] at hac hac'
   have hpslt : (store.blocks p).slot < (store.blocks c).slot := by
     have := hwf c hc (by rw [hpc]; exact hp)
     rwa [hpc] at this
   rcases hle.lt_or_eq with hlt | heq
-  · have hcomp := get_ancestor_comp hwf hle hwx
+  · have hcomp := get_ancestor_comp_root hwf hle hwx
     rw [hac', hac] at hcomp
     have hwp : WalkKnown store (store.blocks c).slot (store.blocks c').parent_root := by
       rw [hpc']; exact WalkKnown.stop hp hpslt.le
@@ -101,8 +101,8 @@ theorem siblings_incompatible {store : Store Root}
     (hne : c ≠ c')
     (hwc : WalkKnown store (store.blocks c).slot x)
     (hwc' : WalkKnown store (store.blocks c').slot x)
-    (hac : is_ancestor store (ForkChoiceNode.mk x) (ForkChoiceNode.mk c) = true)
-    (hac' : is_ancestor store (ForkChoiceNode.mk x) (ForkChoiceNode.mk c') = true) :
+    (hac : is_ancestor store (ForkChoiceNode.mk x .pending) (ForkChoiceNode.mk c .pending) = true)
+    (hac' : is_ancestor store (ForkChoiceNode.mk x .pending) (ForkChoiceNode.mk c' .pending) = true) :
     False := by
   rcases le_total (store.blocks c).slot (store.blocks c').slot with hle | hle
   · exact no_common_descendant_of_slot_le hwf hc hc' hp hpc hpc' hne hle hwc hac hac'

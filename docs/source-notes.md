@@ -6,8 +6,8 @@ variants used by the paper and consensus specification.
 ## Primary sources
 
 - [Fast Confirmation Rule](https://arxiv.org/abs/2405.00549), version 3.
-- [`consensus-specs/specs/phase0/fast-confirmation.md`](https://github.com/ethereum/consensus-specs/blob/477321355d48d527e7e1e4d572f6a40a0b41072a/specs/phase0/fast-confirmation.md)
-  at public commit `477321355d48d527e7e1e4d572f6a40a0b41072a`.
+- [`consensus-specs/specs/phase0/fast-confirmation.md`](https://github.com/ethereum/consensus-specs/blob/6b9bd532cca16555e2f3282d757622ebff29743e/specs/phase0/fast-confirmation.md)
+  at public commit `6b9bd532cca16555e2f3282d757622ebff29743e`.
 - [consensus-specs PR #4747](https://github.com/ethereum/consensus-specs/pull/4747).
 
 ## There are SEVERAL β-bounds, for different rules / properties — not one

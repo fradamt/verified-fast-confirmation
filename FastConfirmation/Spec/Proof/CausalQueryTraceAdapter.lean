@@ -512,6 +512,12 @@ theorem wholeSecondAligned_step
                 | attester_slashing slashing =>
                     simp only [hevent] at hstep
                     contradiction
+                | execution_payload_envelope envelope observation =>
+                    simp only [hevent] at hstep
+                    contradiction
+                | payload_attestation_message message fromBlock =>
+                    simp only [hevent] at hstep
+                    contradiction
   | updateVariables =>
       simp only [step?] at hstep
       split at hstep

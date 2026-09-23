@@ -1,12 +1,23 @@
 # Verified Fast Confirmation
 
+Gloas lane status: **STOP-false at G2-004's current endpoint lemma**. The
+payload-aware discount prevents the old confirmed-child counterexample, but
+`Endpoint.ledger_descendStep` remains false under its current inputs. See
+[the rule change and proof status](docs/gloas-spec-deviation.md). The proof descriptions
+below describe the intended interface and retained development, not a
+validated Gloas safety result.
+
 Lean 4 formalizations of Ethereum's Fast Confirmation Rule.
+
+This branch is migrating the executable model to Gloas. The Gloas proof port
+and full validation are not complete. The theorem descriptions below record
+the existing proof interface; they do not yet establish Gloas safety.
 
 This repository contains two separate developments:
 
 | Development | Source | Role and import |
 | --- | --- | --- |
-| [`FastConfirmation/Spec/`](FastConfirmation/Spec/) | Ethereum consensus specification, pinned at public commit [`4773213`](https://github.com/ethereum/consensus-specs/blob/477321355d48d527e7e1e4d572f6a40a0b41072a/specs/phase0/fast-confirmation.md) | Primary executable model and accepted safety proof; `import FastConfirmation.Spec` |
+| [`FastConfirmation/Spec/`](FastConfirmation/Spec/) | Ethereum consensus specification, pinned at public commit [`6b9bd53`](https://github.com/ethereum/consensus-specs/blob/6b9bd532cca16555e2f3282d757622ebff29743e/specs/phase0/fast-confirmation.md) | Primary executable model; accepted Gloas safety proof remains open |
 | [`FastConfirmation/Paper/`](FastConfirmation/Paper/) | [Fast Confirmation Rule paper](https://arxiv.org/abs/2405.00549), Sections 3.1 and 4 | Independent companion model and proofs; `import FastConfirmation.Paper` |
 
 The accepted consensus-spec theorem is proved entirely within
@@ -25,8 +36,8 @@ accepted by their handlers; it is not a review-status label.
 
 The executable functions in
 [`FastConfirmation/Spec/Model/`](FastConfirmation/Spec/Model/) follow
-`consensus-specs/specs/phase0/fast-confirmation.md` and the Phase 0 fork-choice
-and beacon-chain helpers it calls. They preserve the Python names and
+`consensus-specs/specs/gloas/fast-confirmation.md`, Gloas fork choice, and
+the phase0 FCR and beacon-chain helpers inherited by Gloas. They preserve the Python names and
 control-flow structure to support line-by-line review.
 
 The surrounding execution, synchrony, FFG-semantics, and assumption records

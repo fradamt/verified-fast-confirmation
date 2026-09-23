@@ -119,11 +119,11 @@ theorem result_descends_start {store : Store Root}
       have hnextStart : is_ancestor store (get_node_for_root next)
           (get_node_for_root start) = true :=
         is_ancestor_of_parent hwf hn hs hp
-      exact is_ancestor_trans hwf
+      exact is_ancestor_trans (a := get_node_for_root result) (b := get_node_for_root next)
+          (c := get_node_for_root start) hwf
         (hwalk start hs result tail.result_known)
         (hwalk start hs next hn) ih hnextStart
 
-omit [Inhabited Root] in
 /-- Every strict direct parent edge on the ancestry interval represented by a
 parent trace occurs in its edge list. -/
 theorem edge_mem {store : Store Root}

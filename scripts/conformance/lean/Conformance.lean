@@ -146,16 +146,35 @@ def parseBlock (j : J) : Except String (Nat × BeaconBlock Nat) := do
 def parseBlockState (j : J) : Except String (Nat × BeaconState Nat) := do
   return (← rootField j "root", ← parseState (← field j "state"))
 
-def parseTimeliness (j : J) : Except String (Nat × Bool) := do
-  return (← rootField j "root", ← boolField j "timely")
+def parseTimeliness (j : J) : Except String (Nat × (Bool × Bool)) := do
+  let value ← field j "timely"
+  let pair ← match value with
+    | .bool timely => pure (timely, timely)
+    | .arr values =>
+      if values.size == 2 then
+        pure (← boolValue values[0]!, ← boolValue values[1]!)
+      else throw "timely pair must have two entries"
+    | _ => throw "timely must be a bool or pair"
+  return (← rootField j "root", pair)
 
 def parseCheckpointState (j : J) : Except String (Checkpoint Nat × BeaconState Nat) := do
   return (← parseCheckpoint (← field j "checkpoint"), ← parseState (← field j "state"))
 
-def parseLatestMessage (j : J) : Except String (Nat × LatestMessage Nat) := do
+def parseLatestMessage (cfg : Config) (j : J) : Except String (Nat × LatestMessage Nat) := do
+  let slot ← match j.getObjVal? "slot" with
+    | .ok slot => natValue slot
+    | .error _ => do
+      let epoch ← natField j "epoch"
+      -- Phase 0 traces record only an epoch. Place the legacy vote at its
+      -- final slot so its implicit payload is resolved in the Gloas model.
+      pure ((epoch + 1) * cfg.slots_per_epoch - 1)
+  let payloadPresent ← match j.getObjVal? "payload_present" with
+    | .ok present => boolValue present
+    | .error _ => pure false
   return (← natField j "index", {
-    epoch := ← natField j "epoch"
+    slot := slot
     root := ← rootField j "root"
+    payload_present := payloadPresent
   })
 
 def parseUnrealizedJustification (j : J) : Except String (Nat × Checkpoint Nat) := do
@@ -199,7 +218,7 @@ def parseConfig (j : J) : Except String Config := do
 structure ParsedStore where
   store : Store Nat
 
-def parseStore (j : J) : Except String ParsedStore := do
+def parseStore (cfg : Config) (j : J) : Except String ParsedStore := do
   let blockJson ← arrayField j "blocks"
   let blockStatesJson ← arrayField j "block_states"
   let timelinessJson ← arrayField j "block_timeliness"
@@ -210,7 +229,7 @@ def parseStore (j : J) : Except String ParsedStore := do
   let blockStates ← arrayMap parseBlockState blockStatesJson
   let timeliness ← arrayMap parseTimeliness timelinessJson
   let checkpointStates ← arrayMap parseCheckpointState checkpointStatesJson
-  let latestMessages ← arrayMap parseLatestMessage latestMessagesJson
+  let latestMessages ← arrayMap (parseLatestMessage cfg) latestMessagesJson
   let unrealized ← arrayMap parseUnrealizedJustification unrealizedJson
   let finalized ← parseCheckpoint (← field j "finalized_checkpoint")
   let justified ← parseCheckpoint (← field j "justified_checkpoint")
@@ -379,12 +398,13 @@ structure Record where
 def parseRecord (j : J) : Except String Record := do
   let schema ← natField j "schema"
   if schema != 1 && schema != 2 then throw s!"unsupported schema {schema}"
-  let parsedStore ← parseStore (← field j "store")
+  let cfg ← parseConfig (← field j "config")
+  let parsedStore ← parseStore cfg (← field j "store")
   return {
     schema := schema
     testId := ← stringField j "test_id"
     callIndex := ← natField j "call_index"
-    cfg := ← parseConfig (← field j "config")
+    cfg := cfg
     before := ← parseFcr parsedStore.store (← field j "fcr_before") schema
     after := ← parseFcr parsedStore.store (← field j "fcr_after") schema
     answers := ← parseAnswers (← field j "externals")
@@ -395,12 +415,13 @@ inputs use the same parsers. -/
 def parseContainmentRecord (j : J) : Except String Record := do
   let schema ← natField j "schema"
   if schema != 1 && schema != 2 then throw s!"unsupported schema {schema}"
-  let parsedStore ← parseStore (← field j "store")
+  let cfg ← parseConfig (← field j "config")
+  let parsedStore ← parseStore cfg (← field j "store")
   return {
     schema := schema
     testId := ← stringField j "test_id"
     callIndex := ← natField j "call_index"
-    cfg := ← parseConfig (← field j "config")
+    cfg := cfg
     before := ← parseFcr parsedStore.store (← field j "fcr_before") schema
     after := ← parseFcr parsedStore.store (← field j "fcr_after") schema
     answers := ← parseContainmentAnswers (← field j "externals")

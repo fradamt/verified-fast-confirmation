@@ -145,16 +145,51 @@ theorem supporter_mem_span_committee {E : Execution Root}
     (hsa : sa ≤ (store.blocks b).slot) :
     i ∈ E.span_committee sa (get_current_slot cfg store - 1) := by
   obtain ⟨lm, hlm, _, hanc⟩ := mem_AttSupporters cfg hi
-  obtain ⟨a, hia, _, _, _, h5, hcomm, _, h8⟩ := hprov i lm hlm
+  obtain ⟨a, hia, _, _, _, h5, hcomm, _, h8, _⟩ := hprov i lm hlm
   -- `b` is an ancestor of `lm.root`, so `(blocks b).slot ≤ (blocks lm.root).slot`.
   have hble : (store.blocks b).slot ≤ (store.blocks lm.root).slot := by
     have hsle := get_ancestor_slot_le hwf (hwalk lm hlm)
-    simp only [get_supported_node, get_node_for_root, is_ancestor, decide_eq_true_eq] at hanc
+    rw [get_node_for_root, is_ancestor_supported_pending] at hanc
+    simp only [is_ancestor_pending, decide_eq_true_eq] at hanc
     rw [hanc] at hsle
     simpa using hsle
   refine Finset.mem_biUnion.mpr ⟨a.data.slot, Finset.mem_Icc.mpr ⟨?_, ?_⟩, hcomm⟩
   · exact hsa.trans (hble.trans h8)
   · exact Nat.le_sub_one_of_lt h5
+
+/-- A confirmed block is older than the confirmation store's completed-vote
+cutoff.  Confirmation has positive score, and every recorded supporter is
+confined by provenance to a committee slot from the block slot through that
+cutoff.  Hence the parent of a confirmed child cannot be a previous-slot
+payload decision at a same-slot or later endpoint. -/
+theorem confirmed_block_slot_le_cutoff {E : Execution Root}
+    {store : Store Root} {bs : BeaconState Root} {b : Root}
+    (hwf : ∀ r ∈ store.block_roots,
+      (store.blocks r).parent_root ∈ store.block_roots →
+        (store.blocks (store.blocks r).parent_root).slot < (store.blocks r).slot)
+    (hprov : LatestMessageProvenance E cfg (get_current_slot cfg store) store)
+    (hwalk : ∀ i ∈ AttSupporters cfg store (get_node_for_root b) bs, ∀ lm,
+      store.latest_messages i = some lm →
+        WalkKnown store (store.blocks b).slot lm.root)
+    (hconf : is_one_confirmed cfg ext store bs b = true) :
+    (store.blocks b).slot ≤ get_current_slot cfg store - 1 := by
+  have hpositive : 0 < get_attestation_score cfg store (get_node_for_root b) bs := by
+    have hgt : compute_safety_threshold cfg ext store b bs <
+        get_attestation_score cfg store (get_node_for_root b) bs := by
+      simpa [is_one_confirmed] using hconf
+    exact lt_of_le_of_lt (Nat.zero_le _) hgt
+  cases hlist : AttSupporters cfg store (get_node_for_root b) bs with
+  | nil =>
+      rw [get_attestation_score_eq_sum, hlist] at hpositive
+      simp at hpositive
+  | cons i rest =>
+      have hi : i ∈ AttSupporters cfg store (get_node_for_root b) bs := by
+        rw [hlist]
+        exact List.mem_cons_self
+      have hspan := supporter_mem_span_committee cfg hwf hprov hi
+        (hwalk i hi) (le_refl (store.blocks b).slot)
+      obtain ⟨s, hs, _⟩ := Finset.mem_biUnion.mp hspan
+      exact (Finset.mem_Icc.mp hs).1.trans (Finset.mem_Icc.mp hs).2
 
 /-! ## Step 3 — the Byzantine budget
 

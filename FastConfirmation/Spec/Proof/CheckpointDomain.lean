@@ -143,12 +143,35 @@ theorem on_block_exact {store store' : Store Root} {b : SignedBeaconBlock Root}
     | none => rw [hst] at hh; cases hh
     | some state =>
         rw [hst] at hh
-        cases hh
-        apply compute_pulled_up_tip_exact cfg ext
-        apply update_checkpoints_exact
-        apply update_proposer_boost_root_exact
-        apply record_block_timeliness_exact
-        exact h.of_eq rfl rfl
+        let added : Store Root :=
+          { store with
+            block_roots := store.block_roots ++ [b.root]
+            blocks := Function.update store.blocks b.root b.message
+            block_states := Function.update store.block_states b.root state
+            payload_timeliness_vote := Function.update store.payload_timeliness_vote
+              b.root (some (List.replicate cfg.ptc_size none))
+            payload_data_availability_vote := Function.update store.payload_data_availability_vote
+              b.root (some (List.replicate cfg.ptc_size none)) }
+        change (match notify_ptc_messages cfg ext added state b.message.payload_attestations with
+          | none => none
+          | some notified => some (compute_pulled_up_tip cfg ext
+              (update_checkpoints
+                (update_proposer_boost_root cfg
+                  (record_block_timeliness cfg notified b.root)
+                  (get_head cfg store).root b.root)
+                state.current_justified_checkpoint state.finalized_checkpoint) b.root)) =
+            some store' at hh
+        cases hn : notify_ptc_messages cfg ext added state b.message.payload_attestations with
+        | none => rw [hn] at hh; cases hh
+        | some notified =>
+          rw [hn] at hh
+          cases hh
+          apply compute_pulled_up_tip_exact cfg ext
+          apply update_checkpoints_exact
+          apply update_proposer_boost_root_exact
+          apply record_block_timeliness_exact
+          have hf := notify_ptc_messages_frame cfg ext hn
+          exact h.of_eq hf.checkpoint_state_keys hf.checkpoint_states
 
 /-- A successful slashing handler preserves checkpoint-map exactness. -/
 theorem on_attester_slashing_exact {store store' : Store Root}
@@ -205,6 +228,12 @@ theorem apply_event_getD_exact (store : Store Root) (event : Event Root)
       | block b => exact on_block_exact cfg ext h heq
       | attestation a ifb => exact on_attestation_exact cfg ext h heq
       | attester_slashing sl => exact on_attester_slashing_exact ext h heq
+      | execution_payload_envelope envelope observation =>
+          have hf := on_execution_payload_envelope_frame ext heq
+          exact h.of_eq hf.checkpoint_state_keys hf.checkpoint_states
+      | payload_attestation_message message ifb =>
+          have hf := on_payload_attestation_message_frame cfg ext heq
+          exact h.of_eq hf.checkpoint_state_keys hf.checkpoint_states
 
 /-- The trusted-anchor initialization has an exact singleton checkpoint map. -/
 theorem get_forkchoice_store_checkpointStatesExact

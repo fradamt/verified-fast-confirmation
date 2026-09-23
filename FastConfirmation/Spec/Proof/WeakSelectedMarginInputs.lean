@@ -91,19 +91,25 @@ structure CrossingSelectedMarginInputs
       ((E.store cfg ext obs q).blocks b).slot es) ≤
     E.Aval cfg ext w m b ((E.store cfg ext obs q).blocks b).slot es
   committee_support : ∀ t : Slot, es < t → t ≤ sigma → E.CommitteeSupportsAt cfg ext w m b t
-  child_filtered : ForkChoiceNode.mk b ∈
+  child_filtered : ForkChoiceNode.mk b .pending ∈
     get_node_children (E.store cfg ext w m)
       (get_filtered_block_tree cfg (E.store cfg ext w m))
-      (ForkChoiceNode.mk a)
+      (ForkChoiceNode.mk a (get_parent_payload_status (E.store cfg ext w m)
+        ((E.store cfg ext w m).blocks b)))
+  status_margin : PendingStatusMargin cfg (E.store cfg ext w m)
+    (get_filtered_block_tree cfg (E.store cfg ext w m)) a
+    (get_parent_payload_status (E.store cfg ext w m)
+      ((E.store cfg ext w m).blocks b))
   selected_recording : ∀ i ∈ E.Sclass cfg ext w m b
       ((E.store cfg ext obs q).blocks b).slot sigma,
     i ∈ AttSupporters cfg (E.store cfg ext w m) (get_node_for_root b)
       ((E.store cfg ext w m).checkpoint_states
         (E.store cfg ext w m).justified_checkpoint)
   sibling_score : ∀ c' : Root,
-    ForkChoiceNode.mk c' ∈ get_node_children (E.store cfg ext w m)
+    ForkChoiceNode.mk c' .pending ∈ get_node_children (E.store cfg ext w m)
       (get_filtered_block_tree cfg (E.store cfg ext w m))
-      (ForkChoiceNode.mk a) → c' ≠ b →
+      (ForkChoiceNode.mk a (get_parent_payload_status (E.store cfg ext w m)
+        ((E.store cfg ext w m).blocks b))) → c' ≠ b →
     get_attestation_score cfg (E.store cfg ext w m) (get_node_for_root c')
         ((E.store cfg ext w m).checkpoint_states
           (E.store cfg ext w m).justified_checkpoint)
@@ -136,26 +142,33 @@ structure SameEpochSelectedMarginInputsAt
   endpoint_base_strip : E.Xval cfg ext w m c lo es + E.Bval lo es
       + get_proposer_score cfg (E.store cfg ext w m) + 1 ≤
     E.Sval cfg ext w m c lo es
-  child_filtered : ForkChoiceNode.mk c ∈
+  child_filtered : ForkChoiceNode.mk c .pending ∈
     get_node_children (E.store cfg ext w m)
       (get_filtered_block_tree cfg (E.store cfg ext w m))
-      (ForkChoiceNode.mk a)
+      (ForkChoiceNode.mk a (get_parent_payload_status (E.store cfg ext w m)
+        ((E.store cfg ext w m).blocks c)))
+  status_margin : PendingStatusMargin cfg (E.store cfg ext w m)
+    (get_filtered_block_tree cfg (E.store cfg ext w m)) a
+    (get_parent_payload_status (E.store cfg ext w m)
+      ((E.store cfg ext w m).blocks c))
   selected_recording : ∀ i ∈ E.Sclass cfg ext w m c lo σ,
     i ∈ AttSupporters cfg (E.store cfg ext w m) (get_node_for_root c)
       ((E.store cfg ext w m).checkpoint_states
         (E.store cfg ext w m).justified_checkpoint)
   honest_sibling_confinement : ∀ c' : Root,
-    ForkChoiceNode.mk c' ∈ get_node_children (E.store cfg ext w m)
+    ForkChoiceNode.mk c' .pending ∈ get_node_children (E.store cfg ext w m)
       (get_filtered_block_tree cfg (E.store cfg ext w m))
-      (ForkChoiceNode.mk a) → c' ≠ c →
+      (ForkChoiceNode.mk a (get_parent_payload_status (E.store cfg ext w m)
+        ((E.store cfg ext w m).blocks c))) → c' ≠ c →
     ∀ i ∈ AttSupporters cfg (E.store cfg ext w m) (get_node_for_root c')
       ((E.store cfg ext w m).checkpoint_states
         (E.store cfg ext w m).justified_checkpoint),
       i ∈ E.honest → i ∈ E.Xclass cfg ext w m c lo σ
   byzantine_sibling_confinement : ∀ c' : Root,
-    ForkChoiceNode.mk c' ∈ get_node_children (E.store cfg ext w m)
+    ForkChoiceNode.mk c' .pending ∈ get_node_children (E.store cfg ext w m)
       (get_filtered_block_tree cfg (E.store cfg ext w m))
-      (ForkChoiceNode.mk a) → c' ≠ c →
+      (ForkChoiceNode.mk a (get_parent_payload_status (E.store cfg ext w m)
+        ((E.store cfg ext w m).blocks c))) → c' ≠ c →
     ∀ i ∈ AttSupporters cfg (E.store cfg ext w m) (get_node_for_root c')
       ((E.store cfg ext w m).checkpoint_states
         (E.store cfg ext w m).justified_checkpoint),
@@ -170,18 +183,24 @@ structure DirectWindowSelectedMarginInputsAt
   endpoint_base_strip : E.Xval cfg ext w m c lo es + E.Bval lo es
       + get_proposer_score cfg (E.store cfg ext w m) + 1 ≤
     E.Sval cfg ext w m c lo es
-  child_filtered : ForkChoiceNode.mk c ∈
+  child_filtered : ForkChoiceNode.mk c .pending ∈
     get_node_children (E.store cfg ext w m)
       (get_filtered_block_tree cfg (E.store cfg ext w m))
-      (ForkChoiceNode.mk a)
+      (ForkChoiceNode.mk a (get_parent_payload_status (E.store cfg ext w m)
+        ((E.store cfg ext w m).blocks c)))
+  status_margin : PendingStatusMargin cfg (E.store cfg ext w m)
+    (get_filtered_block_tree cfg (E.store cfg ext w m)) a
+    (get_parent_payload_status (E.store cfg ext w m)
+      ((E.store cfg ext w m).blocks c))
   selected_score : E.Sval cfg ext w m c lo es ≤
     get_attestation_score cfg (E.store cfg ext w m) (get_node_for_root c)
       ((E.store cfg ext w m).checkpoint_states
         (E.store cfg ext w m).justified_checkpoint)
   sibling_score : ∀ c' : Root,
-    ForkChoiceNode.mk c' ∈ get_node_children (E.store cfg ext w m)
+    ForkChoiceNode.mk c' .pending ∈ get_node_children (E.store cfg ext w m)
       (get_filtered_block_tree cfg (E.store cfg ext w m))
-      (ForkChoiceNode.mk a) → c' ≠ c →
+      (ForkChoiceNode.mk a (get_parent_payload_status (E.store cfg ext w m)
+        ((E.store cfg ext w m).blocks c))) → c' ≠ c →
     get_attestation_score cfg (E.store cfg ext w m) (get_node_for_root c')
         ((E.store cfg ext w m).checkpoint_states
           (E.store cfg ext w m).justified_checkpoint) ≤
@@ -286,9 +305,10 @@ theorem sameEpoch_descendStep_of_selectedInputsAt
       hA.genesis_store hA.domain w hw m hHm
   have hbside := recorded_bside_ge cfg ext hval hin.selected_recording
   have hsib : ∀ c' : Root,
-      ForkChoiceNode.mk c' ∈ get_node_children (E.store cfg ext w m)
+      ForkChoiceNode.mk c' .pending ∈ get_node_children (E.store cfg ext w m)
         (get_filtered_block_tree cfg (E.store cfg ext w m))
-        (ForkChoiceNode.mk a) → c' ≠ c →
+        (ForkChoiceNode.mk a (get_parent_payload_status (E.store cfg ext w m)
+          ((E.store cfg ext w m).blocks c))) → c' ≠ c →
       get_attestation_score cfg (E.store cfg ext w m) (get_node_for_root c')
           ((E.store cfg ext w m).checkpoint_states
             (E.store cfg ext w m).justified_checkpoint) ≤
@@ -297,7 +317,7 @@ theorem sameEpoch_descendStep_of_selectedInputsAt
     exact recorded_sibling_le cfg ext hval
       (hin.honest_sibling_confinement c' hc' hne)
       (hin.byzantine_sibling_confinement c' hc' hne)
-  exact ledger_descendStep cfg ext hin.child_filtered hbside hstrip hsib
+  exact ledger_descendStep cfg ext hin.child_filtered hin.status_margin hbside hstrip hsib
 
 /-- Direct-window weak producer: `ledger_descendStep` directly, no transport
 step of any kind. -/
@@ -309,7 +329,7 @@ theorem directWindow_descendStep_of_selectedInputsAt
       w m lo es) :
     DescendStep cfg (E.store cfg ext w m)
       (get_filtered_block_tree cfg (E.store cfg ext w m)) a c :=
-  ledger_descendStep cfg ext hin.child_filtered hin.selected_score
+  ledger_descendStep cfg ext hin.child_filtered hin.status_margin hin.selected_score
     hin.endpoint_base_strip hin.sibling_score
 
 /-- Crossing weak producer.  Dispatches on the observer store's actual
@@ -414,7 +434,8 @@ theorem crossing_descendStep_of_selectedInputs_at_observer
       hin.cutoff_lt_query hslotlt hbcur hcross hin.es_le_sigma hin.sigma_horizon hw hmH
       hin.slot_q_le_m hboost hin.endpoint_block_known hin.endpoint_parent_known
       hin.endpoint_parent_eq hAX hxS
-    exact E.crossing_ledger_descendStep cfg ext hin.child_filtered hbside hend hin.sibling_score
+    exact E.crossing_ledger_descendStep cfg ext hin.child_filtered hin.status_margin hbside
+      hend hin.sibling_score
   · have hintra : get_block_epoch cfg (E.store cfg ext obs q) b =
         get_block_epoch cfg (E.store cfg ext obs q)
           ((E.store cfg ext obs q).blocks b).parent_root :=
@@ -428,7 +449,8 @@ theorem crossing_descendStep_of_selectedInputs_at_observer
       hin.cutoff_lt_query hslotlt hbcur hintra hin.es_le_sigma hin.sigma_horizon hw hmH
       hin.slot_q_le_m hboost hin.endpoint_block_known hin.endpoint_parent_known
       hin.endpoint_parent_eq hAX hxS
-    exact E.crossing_ledger_descendStep cfg ext hin.child_filtered hbside hend hin.sibling_score
+    exact E.crossing_ledger_descendStep cfg ext hin.child_filtered hin.status_margin hbside
+      hend hin.sibling_score
 
 end Weak
 

@@ -227,26 +227,33 @@ structure FutureCrossingINV2Inputs
     (get_proposer_score cfg (E.store cfg ext w m))
   balance_source_registry : ((E.store cfg ext w m).checkpoint_states
     (E.store cfg ext w m).justified_checkpoint).validators = E.registry
-  child_filtered : ForkChoiceNode.mk b ∈
+  child_filtered : ForkChoiceNode.mk b .pending ∈
     get_node_children (E.store cfg ext w m)
       (get_filtered_block_tree cfg (E.store cfg ext w m))
-      (ForkChoiceNode.mk a)
+      (ForkChoiceNode.mk a (get_parent_payload_status (E.store cfg ext w m)
+        ((E.store cfg ext w m).blocks b)))
+  status_margin : PendingStatusMargin cfg (E.store cfg ext w m)
+    (get_filtered_block_tree cfg (E.store cfg ext w m)) a
+    (get_parent_payload_status (E.store cfg ext w m)
+      ((E.store cfg ext w m).blocks b))
   selected_recording : ∀ i ∈ E.Sclass cfg ext w m b lo sigma,
     i ∈ AttSupporters cfg (E.store cfg ext w m) (get_node_for_root b)
       ((E.store cfg ext w m).checkpoint_states
         (E.store cfg ext w m).justified_checkpoint)
   honest_sibling_confinement : ∀ c' : Root,
-    ForkChoiceNode.mk c' ∈ get_node_children (E.store cfg ext w m)
+    ForkChoiceNode.mk c' .pending ∈ get_node_children (E.store cfg ext w m)
       (get_filtered_block_tree cfg (E.store cfg ext w m))
-      (ForkChoiceNode.mk a) -> c' ≠ b ->
+      (ForkChoiceNode.mk a (get_parent_payload_status (E.store cfg ext w m)
+        ((E.store cfg ext w m).blocks b))) -> c' ≠ b ->
     ∀ i ∈ AttSupporters cfg (E.store cfg ext w m) (get_node_for_root c')
       ((E.store cfg ext w m).checkpoint_states
         (E.store cfg ext w m).justified_checkpoint),
       i ∈ E.honest -> i ∈ E.Xclass cfg ext w m b lo sigma
   byzantine_sibling_confinement : ∀ c' : Root,
-    ForkChoiceNode.mk c' ∈ get_node_children (E.store cfg ext w m)
+    ForkChoiceNode.mk c' .pending ∈ get_node_children (E.store cfg ext w m)
       (get_filtered_block_tree cfg (E.store cfg ext w m))
-      (ForkChoiceNode.mk a) -> c' ≠ b ->
+      (ForkChoiceNode.mk a (get_parent_payload_status (E.store cfg ext w m)
+        ((E.store cfg ext w m).blocks b))) -> c' ≠ b ->
     ∀ i ∈ AttSupporters cfg (E.store cfg ext w m) (get_node_for_root c')
       ((E.store cfg ext w m).checkpoint_states
         (E.store cfg ext w m).justified_checkpoint),
@@ -296,7 +303,7 @@ theorem futureCrossing_descendStep_of_INV2Inputs
       sigma hin.es_le_sigma hin.sigma_horizon
   exact descendStep_of_ledgerStepV2 cfg ext
     (inv2_ledgerStepV2 cfg ext hin.balance_source_registry rfl hinv
-      hin.child_filtered hin.selected_recording
+      hin.child_filtered hin.status_margin hin.selected_recording
       hin.honest_sibling_confinement hin.byzantine_sibling_confinement)
 
 /-! ## 4. Endpoint-anchored full-span producer
@@ -845,19 +852,25 @@ structure FutureCrossingSelectedMarginInputs
     E.Aval cfg ext w m b ((E.store cfg ext v q).blocks b).slot es
   committee_support : ∀ t : Slot, es < t → t ≤ sigma →
     E.CommitteeSupportsAt cfg ext w m b t
-  child_filtered : ForkChoiceNode.mk b ∈
+  child_filtered : ForkChoiceNode.mk b .pending ∈
     get_node_children (E.store cfg ext w m)
       (get_filtered_block_tree cfg (E.store cfg ext w m))
-      (ForkChoiceNode.mk a)
+      (ForkChoiceNode.mk a (get_parent_payload_status (E.store cfg ext w m)
+        ((E.store cfg ext w m).blocks b)))
+  status_margin : PendingStatusMargin cfg (E.store cfg ext w m)
+    (get_filtered_block_tree cfg (E.store cfg ext w m)) a
+    (get_parent_payload_status (E.store cfg ext w m)
+      ((E.store cfg ext w m).blocks b))
   selected_recording : ∀ i ∈ E.Sclass cfg ext w m b
       ((E.store cfg ext v q).blocks b).slot sigma,
     i ∈ AttSupporters cfg (E.store cfg ext w m) (get_node_for_root b)
       ((E.store cfg ext w m).checkpoint_states
         (E.store cfg ext w m).justified_checkpoint)
   sibling_score : ∀ c' : Root,
-    ForkChoiceNode.mk c' ∈ get_node_children (E.store cfg ext w m)
+    ForkChoiceNode.mk c' .pending ∈ get_node_children (E.store cfg ext w m)
       (get_filtered_block_tree cfg (E.store cfg ext w m))
-      (ForkChoiceNode.mk a) → c' ≠ b →
+      (ForkChoiceNode.mk a (get_parent_payload_status (E.store cfg ext w m)
+        ((E.store cfg ext w m).blocks b))) → c' ≠ b →
     get_attestation_score cfg (E.store cfg ext w m) (get_node_for_root c')
         ((E.store cfg ext w m).checkpoint_states
           (E.store cfg ext w m).justified_checkpoint)
@@ -925,7 +938,7 @@ theorem futureCrossing_descendStep_of_selectedInputs
       (E.store cfg ext v q).latest_messages i = some lm →
         WalkKnown (E.store cfg ext v q) ((E.store cfg ext v q).blocks b).slot lm.root := by
     intro i _ lm hlm
-    obtain ⟨_, _, _, _, _, _, _, hlmKnown, _⟩ := hprov i lm hlm
+    obtain ⟨_, _, _, _, _, _, _, hlmKnown, _, _⟩ := hprov i lm hlm
     exact hwalkK b hin.block_known lm.root hlmKnown
   have hslotlt : ((E.store cfg ext v q).blocks
       ((E.store cfg ext v q).blocks b).parent_root).slot <
@@ -954,7 +967,8 @@ theorem futureCrossing_descendStep_of_selectedInputs
       (E.store cfg ext w m).justified_checkpoint).validators = E.registry :=
     E.hval_of_interface cfg ext hec hgen hji w hw m hmH
   have hbside := recorded_bside_ge cfg ext hvalEnd hin.selected_recording
-  exact E.crossing_ledger_descendStep cfg ext hin.child_filtered hbside hend
+  exact E.crossing_ledger_descendStep cfg ext hin.child_filtered
+    hin.status_margin hbside hend
     hin.sibling_score
 
 /-- Endpoint-anchored inputs for an edge that itself crosses an epoch.  All
@@ -991,19 +1005,25 @@ structure CrossingEdgeSelectedMarginInputs
     E.Aval cfg ext w m b ((E.store cfg ext v q).blocks b).slot es
   committee_support : ∀ t : Slot, es < t → t ≤ sigma →
     E.CommitteeSupportsAt cfg ext w m b t
-  child_filtered : ForkChoiceNode.mk b ∈
+  child_filtered : ForkChoiceNode.mk b .pending ∈
     get_node_children (E.store cfg ext w m)
       (get_filtered_block_tree cfg (E.store cfg ext w m))
-      (ForkChoiceNode.mk a)
+      (ForkChoiceNode.mk a (get_parent_payload_status (E.store cfg ext w m)
+        ((E.store cfg ext w m).blocks b)))
+  status_margin : PendingStatusMargin cfg (E.store cfg ext w m)
+    (get_filtered_block_tree cfg (E.store cfg ext w m)) a
+    (get_parent_payload_status (E.store cfg ext w m)
+      ((E.store cfg ext w m).blocks b))
   selected_recording : ∀ i ∈ E.Sclass cfg ext w m b
       ((E.store cfg ext v q).blocks b).slot sigma,
     i ∈ AttSupporters cfg (E.store cfg ext w m) (get_node_for_root b)
       ((E.store cfg ext w m).checkpoint_states
         (E.store cfg ext w m).justified_checkpoint)
   sibling_score : ∀ c' : Root,
-    ForkChoiceNode.mk c' ∈ get_node_children (E.store cfg ext w m)
+    ForkChoiceNode.mk c' .pending ∈ get_node_children (E.store cfg ext w m)
       (get_filtered_block_tree cfg (E.store cfg ext w m))
-      (ForkChoiceNode.mk a) → c' ≠ b →
+      (ForkChoiceNode.mk a (get_parent_payload_status (E.store cfg ext w m)
+        ((E.store cfg ext w m).blocks b))) → c' ≠ b →
     get_attestation_score cfg (E.store cfg ext w m) (get_node_for_root c')
         ((E.store cfg ext w m).checkpoint_states
           (E.store cfg ext w m).justified_checkpoint)
@@ -1074,7 +1094,7 @@ theorem crossingEdge_descendStep_of_selectedInputs
       (E.store cfg ext v q).latest_messages i = some lm →
         WalkKnown (E.store cfg ext v q) ((E.store cfg ext v q).blocks b).slot lm.root := by
     intro i _ lm hlm
-    obtain ⟨_, _, _, _, _, _, _, hlmKnown, _⟩ := hprov i lm hlm
+    obtain ⟨_, _, _, _, _, _, _, hlmKnown, _, _⟩ := hprov i lm hlm
     exact hwalkK b hin.block_known lm.root hlmKnown
   have hslotlt : ((E.store cfg ext v q).blocks
       ((E.store cfg ext v q).blocks b).parent_root).slot <
@@ -1103,7 +1123,8 @@ theorem crossingEdge_descendStep_of_selectedInputs
       (E.store cfg ext w m).justified_checkpoint).validators = E.registry :=
     E.hval_of_interface cfg ext hec hgen hji w hw m hmH
   have hbside := recorded_bside_ge cfg ext hvalEnd hin.selected_recording
-  exact E.crossing_ledger_descendStep cfg ext hin.child_filtered hbside hend
+  exact E.crossing_ledger_descendStep cfg ext hin.child_filtered
+    hin.status_margin hbside hend
     hin.sibling_score
 
 /-! ## 5. Machine-checked obstruction witnesses -/

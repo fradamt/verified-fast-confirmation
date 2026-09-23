@@ -65,7 +65,7 @@ theorem Weak.mem_broadcast_certificate_support_set
             decide (j ∉ store.equivocating_indices) &&
               decide (∃ s ∈ Finset.Icc start_slot end_slot,
                 j ∈ get_slot_committee cfg ext store s ∧
-                  get_latest_message_epoch latest_message = compute_epoch_at_slot cfg s) &&
+                  get_latest_message_epoch cfg latest_message = compute_epoch_at_slot cfg s) &&
               is_ancestor store (get_node_for_root latest_message.root)
                 (get_node_for_root block_root)))) ↔
       i ∈ (Finset.Icc start_slot end_slot).biUnion
@@ -77,7 +77,7 @@ theorem Weak.mem_broadcast_certificate_support_set
         i ∉ store.equivocating_indices ∧
         (∃ s ∈ Finset.Icc start_slot end_slot,
           i ∈ get_slot_committee cfg ext store s ∧
-            get_latest_message_epoch lm = compute_epoch_at_slot cfg s) ∧
+            get_latest_message_epoch cfg lm = compute_epoch_at_slot cfg s) ∧
         is_ancestor store (get_node_for_root lm.root) (get_node_for_root block_root) = true := by
   simp only [Finset.mem_filter, Option.any_eq_true, Bool.and_eq_true, decide_eq_true_eq,
     and_assoc]
@@ -111,7 +111,7 @@ theorem Weak.broadcast_certificate_support_le_of_no_honest {E : Execution Root}
               decide (j ∉ store.equivocating_indices) &&
                 decide (∃ s ∈ Finset.Icc start_slot end_slot,
                   j ∈ get_slot_committee cfg ext store s ∧
-                    get_latest_message_epoch latest_message = compute_epoch_at_slot cfg s) &&
+                    get_latest_message_epoch cfg latest_message = compute_epoch_at_slot cfg s) &&
                 is_ancestor store (get_node_for_root latest_message.root)
                   (get_node_for_root block_root))))) :
     Weak.get_broadcast_certificate_support cfg ext store balance_source block_root
@@ -133,7 +133,7 @@ theorem Weak.broadcast_certificate_support_le_of_no_honest {E : Execution Root}
               decide (j ∉ store.equivocating_indices) &&
                 decide (∃ s ∈ Finset.Icc start_slot end_slot,
                   j ∈ get_slot_committee cfg ext store s ∧
-                    get_latest_message_epoch latest_message = compute_epoch_at_slot cfg s) &&
+                    get_latest_message_epoch cfg latest_message = compute_epoch_at_slot cfg s) &&
                 is_ancestor store (get_node_for_root latest_message.root)
                   (get_node_for_root block_root)))) ⊆
       (E.span_committee start_slot end_slot).filter (fun i => i ∉ E.honest) := by
@@ -152,7 +152,7 @@ theorem Weak.broadcast_certificate_support_le_of_no_honest {E : Execution Root}
               decide (j ∉ store.equivocating_indices) &&
                 decide (∃ s ∈ Finset.Icc start_slot end_slot,
                   j ∈ get_slot_committee cfg ext store s ∧
-                    get_latest_message_epoch latest_message = compute_epoch_at_slot cfg s) &&
+                    get_latest_message_epoch cfg latest_message = compute_epoch_at_slot cfg s) &&
                 is_ancestor store (get_node_for_root latest_message.root)
                   (get_node_for_root block_root)))),
       (balance_source.validators.getD i default).effective_balance
@@ -165,7 +165,7 @@ theorem Weak.broadcast_certificate_support_le_of_no_honest {E : Execution Root}
               decide (j ∉ store.equivocating_indices) &&
                 decide (∃ s ∈ Finset.Icc start_slot end_slot,
                   j ∈ get_slot_committee cfg ext store s ∧
-                    get_latest_message_epoch latest_message = compute_epoch_at_slot cfg s) &&
+                    get_latest_message_epoch cfg latest_message = compute_epoch_at_slot cfg s) &&
                 is_ancestor store (get_node_for_root latest_message.root)
                   (get_node_for_root block_root)))) := by
         simp only [Execution.weight]
@@ -199,7 +199,7 @@ theorem Execution.honest_latest_message_vote {E : Execution Root}
     {lm : LatestMessage Root}
     (hlm : (E.store cfg ext v n).latest_messages i = some lm)
     {s : Slot} (hcs : i ∈ E.committee s)
-    (hepoch : get_latest_message_epoch lm = compute_epoch_at_slot cfg s) :
+    (hepoch : get_latest_message_epoch cfg lm = compute_epoch_at_slot cfg s) :
     ∃ (k : ℕ) (a : Attestation Root), E.vote i s = some (k, a) ∧
       a.data.slot = s ∧ a.data.beacon_block_root = lm.root := by
   obtain ⟨a1, u, t, ifb, hsched, hvin, hbbr, hslotep⟩ :=
@@ -240,8 +240,12 @@ theorem Execution.certificate_honest_supporter (E : Execution Root)
       Weak.get_broadcast_certificate_support cfg ext store balance_source block_root
         start_slot end_slot := by
     have hcert' := hcert
-    simp only [Weak.has_broadcast_certificate, decide_eq_true_eq] at hcert'
-    exact hcert'
+    simp only [Weak.has_broadcast_certificate] at hcert'
+    by_cases h0 : get_current_slot cfg store = 0
+    · rw [if_pos h0] at hcert'
+      exact absurd hcert' Bool.false_ne_true
+    · rw [if_neg h0] at hcert'
+      simpa only [decide_eq_true_eq] using hcert'
   have hex : ∃ i ∈ E.honest,
       i ∈ ((((Finset.Icc start_slot end_slot).biUnion
                 (fun slot => get_slot_committee cfg ext store slot)).filter (fun j =>
@@ -252,7 +256,7 @@ theorem Execution.certificate_honest_supporter (E : Execution Root)
               decide (j ∉ store.equivocating_indices) &&
                 decide (∃ s ∈ Finset.Icc start_slot end_slot,
                   j ∈ get_slot_committee cfg ext store s ∧
-                    get_latest_message_epoch latest_message = compute_epoch_at_slot cfg s) &&
+                    get_latest_message_epoch cfg latest_message = compute_epoch_at_slot cfg s) &&
                 is_ancestor store (get_node_for_root latest_message.root)
                   (get_node_for_root block_root)))) := by
     by_contra hcon

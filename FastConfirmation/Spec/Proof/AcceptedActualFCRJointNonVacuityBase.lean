@@ -1,5 +1,6 @@
 module
 public import Mathlib.Tactic
+public import FastConfirmation.Spec.Proof.PayloadPersistence
 public import FastConfirmation.Spec.Proof.AcceptedActualFCRNextSlotSafetyFold
 
 @[expose] public section
@@ -161,7 +162,10 @@ def SameProjectedState (a b : BeaconState WitnessRoot) : Prop :=
     a.slot = b.slot ∧
     a.validators = b.validators ∧
     a.current_justified_checkpoint = b.current_justified_checkpoint ∧
-    a.finalized_checkpoint = b.finalized_checkpoint
+    a.finalized_checkpoint = b.finalized_checkpoint ∧
+    a.beacon_committee_reads = b.beacon_committee_reads ∧
+    a.committee_count_reads = b.committee_count_reads ∧
+    a.source_identity = b.source_identity
 
 instance (a b : BeaconState WitnessRoot) : Decidable (SameProjectedState a b) :=
   by
@@ -171,12 +175,12 @@ instance (a b : BeaconState WitnessRoot) : Decidable (SameProjectedState a b) :=
 theorem sameProjectedState_iff_eq {a b : BeaconState WitnessRoot} :
     SameProjectedState a b ↔ a = b := by
   constructor
-  · rintro ⟨hgen, hslot, hvalidators, hj, hf⟩
+  · rintro ⟨hgen, hslot, hvalidators, hj, hf, hcommittees, hcounts, hidentity⟩
     cases a
     cases b
     simp_all
   · rintro rfl
-    exact ⟨rfl, rfl, rfl, rfl, rfl⟩
+    exact ⟨rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
 
 def witnessTransition (st : BeaconState WitnessRoot)
     (block : SignedBeaconBlock WitnessRoot) : Option (BeaconState WitnessRoot) :=
@@ -808,6 +812,7 @@ theorem witnessStaticValidatorSet :
                   | zero => decide
                   | succ i => rfl
 
+set_option maxRecDepth 20000 in
 theorem witnessByzantineBound :
     ByzantineBound witnessConfig witnessExecution := by
   constructor
@@ -876,8 +881,8 @@ theorem witnessSynchrony :
         simpa only [slot_at_eq] using hslot
       exact (Nat.le_succ n).trans hs
     obtain ⟨msg', hmsg', hepoch⟩ :=
-      (witnessExecution.store_storeLE witnessConfig witnessExternals v hnm).2.2.2
-        i msg hmsg
+      (witnessExecution.store_storeLE witnessConfig witnessExternals v hnm).latest_message_epoch_mono
+        witnessConfig i msg hmsg
     refine ⟨msg', ?_, hepoch⟩
     rw [← witness_store_symmetric v w m]
     exact hmsg'
@@ -889,6 +894,18 @@ theorem witnessSynchrony :
     rw [← witness_store_symmetric v w m]
     exact
       (witnessExecution.store_storeLE witnessConfig witnessExternals v hnm).2.2.1 hi
+
+
+/-- The Gloas relay field follows from the common schedule and payload persistence. -/
+theorem witnessPaperSafetySynchrony :
+    PaperSafetySynchrony witnessConfig witnessExternals witnessExecution := by
+  apply witnessSynchrony.toPaperSafetySynchrony witnessConfig witnessExternals
+  intro v hv n r hn hr w hw m hm hslot
+  have hnm : n ≤ m := Nat.le_of_succ_le_succ
+    (by simpa only [slot_at_eq] using hslot)
+  rw [← witness_store_symmetric v w m]
+  exact witnessExecution.is_payload_verified_mono witnessConfig witnessExternals v hnm hr
+
 
 theorem witnessScheduledPrefixTrajectoryAssumptions :
     witnessExecution.ScheduledPrefixTrajectoryAssumptions

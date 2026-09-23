@@ -40,58 +40,134 @@ theorem root_mem {store : Store Root} {slot : Slot} {r : Root}
 
 end WalkKnown
 
-variable [LinearOrder Root] [Inhabited Root]
+variable [LinearOrder Root]
 
-omit [LinearOrder Root] [Inhabited Root] in
-/-- Fuel independence on the known domain: any fuel above the walked block's
-slot computes the same ancestor (strong induction on the walk, slots
-strictly decreasing by `parent_slot_lt`). -/
+/-- The root of a fuel-bounded ancestor is independent of the start status.
+The first parent step reads its status from the child bid. -/
+theorem get_ancestor_aux_root_eq_status (store : Store Root) (slot fuel : ℕ)
+    (r : Root) (status status' : PayloadStatus) :
+    (get_ancestor_aux store slot fuel (ForkChoiceNode.mk r status)).root =
+      (get_ancestor_aux store slot fuel (ForkChoiceNode.mk r status')).root := by
+  cases fuel with
+  | zero => rfl
+  | succ fuel =>
+    simp only [get_ancestor_aux]
+    split_ifs <;> rfl
+
+/-- Ancestor beacon roots do not depend on the starting payload status. -/
+theorem get_ancestor_root_eq_status (store : Store Root) (slot : Slot)
+    (r : Root) (status status' : PayloadStatus) :
+    (get_ancestor store (ForkChoiceNode.mk r status) slot).root =
+      (get_ancestor store (ForkChoiceNode.mk r status') slot).root := by
+  exact get_ancestor_aux_root_eq_status store slot _ r status status'
+
+/-- Equal start roots give equal ancestor roots, including outside the known
+walk domain. -/
+theorem get_ancestor_root_eq_of_root_eq {store : Store Root}
+    {a b : ForkChoiceNode Root} (hab : a.root = b.root) (slot : Slot) :
+    (get_ancestor store a slot).root = (get_ancestor store b slot).root := by
+  cases a with
+  | mk ar ast =>
+    cases b with
+    | mk br bst =>
+      change ar = br at hab
+      subst br
+      exact get_ancestor_root_eq_status store slot ar ast bst
+
+/-- A strict parent walk discards the start status, so equal roots give
+complete equality of its result, rather than only root equality. -/
+theorem get_ancestor_eq_of_root_eq_of_lt {store : Store Root}
+    {a b : ForkChoiceNode Root} (hab : a.root = b.root) {slot : Slot}
+    (hlt : slot < (store.blocks a.root).slot) :
+    get_ancestor store a slot = get_ancestor store b slot := by
+  cases a with
+  | mk ar ast =>
+    cases b with
+    | mk br bst =>
+      change ar = br at hab
+      subst br
+      simp only [get_ancestor, get_ancestor_aux]
+      rw [if_pos hlt, if_pos hlt]
+
+/-- Fuel independence for arbitrary starting status on the known walk domain. -/
+theorem get_ancestor_aux_fuel_eq_status {store : Store Root}
+    (hwf : ∀ r ∈ store.block_roots,
+      (store.blocks r).parent_root ∈ store.block_roots →
+        (store.blocks (store.blocks r).parent_root).slot < (store.blocks r).slot)
+    {slot : Slot} {r : Root} (hw : WalkKnown store slot r) :
+    ∀ (status : PayloadStatus) (fuel fuel' : ℕ),
+      (store.blocks r).slot < fuel → (store.blocks r).slot < fuel' →
+      get_ancestor_aux store slot fuel (ForkChoiceNode.mk r status) =
+        get_ancestor_aux store slot fuel' (ForkChoiceNode.mk r status) := by
+  induction hw with
+  | stop hr hle =>
+    intro status fuel fuel' hf hf'
+    cases fuel with
+    | zero => exact absurd hf (Nat.not_lt_zero _)
+    | succ f =>
+      cases fuel' with
+      | zero => exact absurd hf' (Nat.not_lt_zero _)
+      | succ f' =>
+        simp only [get_ancestor_aux]
+        rw [if_neg (Nat.not_lt.mpr hle), if_neg (Nat.not_lt.mpr hle)]
+  | step hr hgt hp ih =>
+    intro status fuel fuel' hf hf'
+    cases fuel with
+    | zero => exact absurd hf (Nat.not_lt_zero _)
+    | succ f =>
+      cases fuel' with
+      | zero => exact absurd hf' (Nat.not_lt_zero _)
+      | succ f' =>
+        simp only [get_ancestor_aux]
+        rw [if_pos hgt, if_pos hgt]
+        have hparent_lt := hwf _ hr hp.root_mem
+        exact ih _ f f'
+          (Nat.lt_of_lt_of_le hparent_lt (Nat.lt_succ_iff.mp hf))
+          (Nat.lt_of_lt_of_le hparent_lt (Nat.lt_succ_iff.mp hf'))
+
+/-- Pending-node form of fuel independence. -/
 theorem get_ancestor_aux_fuel_eq {store : Store Root}
     (hwf : ∀ r ∈ store.block_roots,
       (store.blocks r).parent_root ∈ store.block_roots →
         (store.blocks (store.blocks r).parent_root).slot < (store.blocks r).slot)
     {slot : Slot} {r : Root} (hw : WalkKnown store slot r) :
     ∀ fuel fuel' : ℕ, (store.blocks r).slot < fuel → (store.blocks r).slot < fuel' →
-      get_ancestor_aux store slot fuel (ForkChoiceNode.mk r) =
-        get_ancestor_aux store slot fuel' (ForkChoiceNode.mk r) := by
-  induction hw with
-  | stop hr hle =>
-    intro fuel fuel' hf hf'
-    cases fuel with
-    | zero => exact absurd hf (Nat.not_lt_zero _)
-    | succ f =>
-      cases fuel' with
-      | zero => exact absurd hf' (Nat.not_lt_zero _)
-      | succ f' =>
-        rw [get_ancestor_aux, get_ancestor_aux]
-        rw [if_neg (by simpa using hle), if_neg (by simpa using hle)]
-  | step hr hgt hp ih =>
-    intro fuel fuel' hf hf'
-    cases fuel with
-    | zero => exact absurd hf (Nat.not_lt_zero _)
-    | succ f =>
-      cases fuel' with
-      | zero => exact absurd hf' (Nat.not_lt_zero _)
-      | succ f' =>
-        rw [get_ancestor_aux, get_ancestor_aux]
-        rw [if_pos (by simpa using hgt), if_pos (by simpa using hgt)]
-        have hparent_lt := hwf _ hr hp.root_mem
-        exact ih f f'
-          (Nat.lt_of_lt_of_le hparent_lt (Nat.lt_succ_iff.mp hf))
-          (Nat.lt_of_lt_of_le hparent_lt (Nat.lt_succ_iff.mp hf'))
+      get_ancestor_aux store slot fuel (ForkChoiceNode.mk r .pending) =
+        get_ancestor_aux store slot fuel' (ForkChoiceNode.mk r .pending) :=
+  get_ancestor_aux_fuel_eq_status hwf hw .pending
 
-omit [LinearOrder Root] [Inhabited Root] in
-/-- Python-shaped stop equation: at or below the requested slot the walk
-returns the node itself (no domain condition needed — the wrapper's first
-unfold suffices). -/
+/-- At or below the target slot, the walk preserves the complete node. -/
+theorem get_ancestor_stop_status {store : Store Root} {slot : Slot}
+    {node : ForkChoiceNode Root} (hle : (store.blocks node.root).slot ≤ slot) :
+    get_ancestor store node slot = node := by
+  rw [get_ancestor, get_ancestor_aux, if_neg (Nat.not_lt.mpr hle)]
+
+/-- Pending-node stop equation. -/
 theorem get_ancestor_stop {store : Store Root} {slot : Slot} {r : Root}
     (hle : (store.blocks r).slot ≤ slot) :
-    get_ancestor store (ForkChoiceNode.mk r) slot = ForkChoiceNode.mk r := by
-  rw [get_ancestor, get_ancestor_aux, if_neg (by simpa using hle)]
+    get_ancestor store (ForkChoiceNode.mk r .pending) slot = ForkChoiceNode.mk r .pending :=
+  get_ancestor_stop_status hle
 
-omit [LinearOrder Root] [Inhabited Root] in
-/-- Python-shaped step equation on the known domain: above the requested slot
-the walk continues from the parent. -/
+/-- Exact Gloas parent-step equation. The child bid resolves the status of
+its parent; the parent is not a pending node. -/
+theorem get_ancestor_step_status {store : Store Root}
+    (hwf : ∀ r ∈ store.block_roots,
+      (store.blocks r).parent_root ∈ store.block_roots →
+        (store.blocks (store.blocks r).parent_root).slot < (store.blocks r).slot)
+    {slot : Slot} {node : ForkChoiceNode Root} (hr : node.root ∈ store.block_roots)
+    (hgt : slot < (store.blocks node.root).slot)
+    (hp : WalkKnown store slot (store.blocks node.root).parent_root) :
+    get_ancestor store node slot =
+      get_ancestor store
+        (ForkChoiceNode.mk (store.blocks node.root).parent_root
+          (get_parent_payload_status store (store.blocks node.root))) slot := by
+  rw [get_ancestor, get_ancestor_aux, if_pos hgt]
+  rw [get_ancestor]
+  exact get_ancestor_aux_fuel_eq_status hwf hp _ _ _ (hwf _ hr hp.root_mem)
+    (Nat.lt_succ_self _)
+
+/-- Root form of the parent-step equation. Compared with the phase0 theorem,
+only the roots are equal: Gloas resolves the parent's payload status. -/
 theorem get_ancestor_step {store : Store Root}
     (hwf : ∀ r ∈ store.block_roots,
       (store.blocks r).parent_root ∈ store.block_roots →
@@ -99,31 +175,79 @@ theorem get_ancestor_step {store : Store Root}
     {slot : Slot} {r : Root} (hr : r ∈ store.block_roots)
     (hgt : slot < (store.blocks r).slot)
     (hp : WalkKnown store slot (store.blocks r).parent_root) :
-    get_ancestor store (ForkChoiceNode.mk r) slot =
-      get_ancestor store (ForkChoiceNode.mk (store.blocks r).parent_root) slot := by
-  rw [get_ancestor, get_ancestor_aux, if_pos (by simpa using hgt)]
-  rw [get_ancestor]
-  exact get_ancestor_aux_fuel_eq hwf hp _ _ (hwf _ hr hp.root_mem)
-    (Nat.lt_succ_self _)
+    (get_ancestor store (ForkChoiceNode.mk r .pending) slot).root =
+      (get_ancestor store (ForkChoiceNode.mk (store.blocks r).parent_root .pending) slot).root := by
+  rw [get_ancestor_step_status hwf hr hgt hp]
+  exact get_ancestor_root_eq_status store slot _ _ .pending
 
-omit [LinearOrder Root] [Inhabited Root] in
-/-- On the known domain the walk lands on a known block at or below the
-requested slot — python's postcondition. -/
+/-- On the known domain, every status lands at a known root at or below the
+requested slot. -/
+theorem get_ancestor_spec_status {store : Store Root}
+    (hwf : ∀ r ∈ store.block_roots,
+      (store.blocks r).parent_root ∈ store.block_roots →
+        (store.blocks (store.blocks r).parent_root).slot < (store.blocks r).slot)
+    {slot : Slot} {r : Root} (hw : WalkKnown store slot r) :
+    ∀ status : PayloadStatus,
+      (get_ancestor store (ForkChoiceNode.mk r status) slot).root ∈ store.block_roots ∧
+        (store.blocks (get_ancestor store (ForkChoiceNode.mk r status) slot).root).slot ≤
+          slot := by
+  induction hw with
+  | stop hr hle =>
+    intro status
+    rw [get_ancestor_stop_status hle]
+    exact ⟨hr, hle⟩
+  | step hr hgt hp ih =>
+    intro status
+    rw [get_ancestor_step_status hwf hr hgt hp]
+    exact ih _
+
+/-- Pending-node postcondition on the known domain. -/
 theorem get_ancestor_spec {store : Store Root}
     (hwf : ∀ r ∈ store.block_roots,
       (store.blocks r).parent_root ∈ store.block_roots →
         (store.blocks (store.blocks r).parent_root).slot < (store.blocks r).slot)
     {slot : Slot} {r : Root} (hw : WalkKnown store slot r) :
-    (get_ancestor store (ForkChoiceNode.mk r) slot).root ∈ store.block_roots ∧
-      (store.blocks (get_ancestor store (ForkChoiceNode.mk r) slot).root).slot ≤
-        slot := by
-  induction hw with
-  | stop hr hle =>
-    rw [get_ancestor_stop hle]
-    exact ⟨hr, hle⟩
-  | step hr hgt hp ih =>
-    rw [get_ancestor_step hwf hr hgt hp]
-    exact ih
+    (get_ancestor store (ForkChoiceNode.mk r .pending) slot).root ∈ store.block_roots ∧
+      (store.blocks (get_ancestor store (ForkChoiceNode.mk r .pending) slot).root).slot ≤ slot :=
+  get_ancestor_spec_status hwf hw .pending
+
+/-- A pending ancestor accepts every payload status at its root. -/
+@[simp] theorem is_ancestor_pending (store : Store Root)
+    (node : ForkChoiceNode Root) (r : Root) :
+    is_ancestor store node (ForkChoiceNode.mk r .pending) =
+      decide ((get_ancestor store node (store.blocks r).slot).root = r) := by
+  simp [is_ancestor]
+
+/-- Fast Confirmation's root constructor is the pending constructor. -/
+@[simp] theorem is_ancestor_get_node_for_root (store : Store Root)
+    (node : ForkChoiceNode Root) (r : Root) :
+    is_ancestor store node (get_node_for_root r) =
+      decide ((get_ancestor store node (store.blocks r).slot).root = r) :=
+  is_ancestor_pending store node r
+
+/-- Pending-root ancestry does not depend on the descendant's status. -/
+theorem is_ancestor_pending_root_eq (store : Store Root) (r a : Root)
+    (status status' : PayloadStatus) :
+    is_ancestor store (ForkChoiceNode.mk r status) (get_node_for_root a) =
+      is_ancestor store (ForkChoiceNode.mk r status') (get_node_for_root a) := by
+  simp only [is_ancestor_get_node_for_root]
+  rw [get_ancestor_root_eq_status store _ r status status']
+
+/-- Convert a status-bearing descendant to its pending root for a beacon
+ancestry query. -/
+theorem is_ancestor_node_root (store : Store Root) (node : ForkChoiceNode Root)
+    (r : Root) :
+    is_ancestor store node (get_node_for_root r) =
+      is_ancestor store (get_node_for_root node.root) (get_node_for_root r) := by
+  exact is_ancestor_pending_root_eq store node.root r node.payload_status .pending
+
+/-- A vote's payload flag does not change support for a pending beacon root. -/
+@[simp] theorem is_ancestor_supported_pending (store : Store Root)
+    (message : LatestMessage Root) (r : Root) :
+    is_ancestor store (get_supported_node store message) (ForkChoiceNode.mk r .pending) =
+      is_ancestor store (ForkChoiceNode.mk message.root .pending) (ForkChoiceNode.mk r .pending) := by
+  unfold get_supported_node
+  exact is_ancestor_pending_root_eq store message.root r _ .pending
 
 end FastConfirmation.Spec
 

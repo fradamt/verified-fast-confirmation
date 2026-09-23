@@ -302,7 +302,8 @@ theorem strictSelectedEdgeGeometry_at_observer {E : Execution Root}
     is_ancestor_of_parent hwfM hcM haM hparentM
   have hglcA_M : is_ancestor (E.store cfg ext w m)
       (get_node_for_root glc) (get_node_for_root a) = true :=
-    is_ancestor_trans hwfM (hwalkM a haM glc hglcM)
+    is_ancestor_trans (a := get_node_for_root glc) (b := get_node_for_root c)
+      (c := get_node_for_root a) hwfM (hwalkM a haM glc hglcM)
       (hwalkM a haM c hcM) hglcC_M hcA_M
   have hanchorLeAM : ablk.message.slot ≤
       ((E.store cfg ext w m).blocks a).slot :=
@@ -335,11 +336,13 @@ theorem strictSelectedEdgeGeometry_at_observer {E : Execution Root}
       hgenEq hanchorSlot hanchorRoot u nu r0 hr0U
   have hdC_U : is_ancestor (E.store cfg ext u nu)
       (get_node_for_root d) (get_node_for_root c) = true :=
-    is_ancestor_trans hwfU (hwalkU c hcU d hdU)
+    is_ancestor_trans (a := get_node_for_root d) (b := get_node_for_root glc)
+      (c := get_node_for_root c) hwfU (hwalkU c hcU d hdU)
       (hwalkU c hcU glc hglcU) hdGlc_U hglcC_U
   have hdA_U : is_ancestor (E.store cfg ext u nu)
       (get_node_for_root d) (get_node_for_root a) = true :=
-    is_ancestor_trans hwfU (hwalkU a haU d hdU)
+    is_ancestor_trans (a := get_node_for_root d) (b := get_node_for_root glc)
+      (c := get_node_for_root a) hwfU (hwalkU a haU d hdU)
       (hwalkU a haU glc hglcU) hdGlc_U hglcA_U
   have hcQ : c ∈ (E.store cfg ext obs q).block_roots :=
     E.is_ancestor_transport_closed cfg ext hA.wellFormed hA.externals_coherence
@@ -381,9 +384,11 @@ theorem strictSelectedEdgeGeometry_at_observer {E : Execution Root}
   have hcSlotLeD_U : ((E.store cfg ext u nu).blocks c).slot ≤
       ((E.store cfg ext u nu).blocks d).slot := by
     have h := get_ancestor_slot_le hwfU (hwalkU c hcU d hdU)
-    rw [show get_ancestor (E.store cfg ext u nu) (ForkChoiceNode.mk d)
-        ((E.store cfg ext u nu).blocks c).slot = ForkChoiceNode.mk c by
-      simpa only [is_ancestor, get_node_for_root, decide_eq_true_eq] using hdC_U] at h
+    have hroot : (get_ancestor (E.store cfg ext u nu) (get_node_for_root d)
+        ((E.store cfg ext u nu).blocks c).slot).root = c := by
+      simpa only [is_ancestor_get_node_for_root, decide_eq_true_eq] using hdC_U
+    unfold get_node_for_root at hroot
+    rw [hroot] at h
     exact h
   have hdSlotLeNu : ((E.store cfg ext u nu).blocks d).slot ≤
       E.slot_at cfg nu := by

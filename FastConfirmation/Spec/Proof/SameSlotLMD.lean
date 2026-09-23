@@ -85,11 +85,11 @@ theorem pastDescendant_ancestry_at_slot_endpoint_minimal
     E.store_anchor_min_slot cfg ext hA.wellFormed hA.externals_coherence
       hgeq hstateSlot hroot v q b hb
   have hwalkB : WalkKnown (E.store cfg ext u nu) sb d := hwalk0.mono hbound
-  have hlandsQ : get_ancestor (E.store cfg ext v q) (ForkChoiceNode.mk d) sb =
-      ForkChoiceNode.mk b := by
-    simpa only [is_ancestor, get_node_for_root, decide_eq_true_eq, sb] using hdb
-  have hlandsU : get_ancestor (E.store cfg ext u nu) (ForkChoiceNode.mk d) sb =
-      ForkChoiceNode.mk b := by
+  have hlandsQ : (get_ancestor (E.store cfg ext v q) (ForkChoiceNode.mk d .pending) sb).root =
+      b := by
+    simpa only [get_node_for_root, is_ancestor_pending, decide_eq_true_eq, sb] using hdb
+  have hlandsU : (get_ancestor (E.store cfg ext u nu) (ForkChoiceNode.mk d .pending) sb).root =
+      b := by
     rw [get_ancestor_congr hagreeUQ hd hwalkB]
     exact hlandsQ
   have hbU : b ∈ (E.store cfg ext u nu).block_roots := by
@@ -167,7 +167,8 @@ theorem pastDescendant_ancestorPair_at_slot_endpoint_minimal
     hA.externals_coherence hgen v q
   have hdr : is_ancestor (E.store cfg ext v q)
       (get_node_for_root d) (get_node_for_root r) = true :=
-    is_ancestor_trans hpslQ (hwalkQ r hr d hdQ) (hwalkQ r hr b hb) hdb hbr
+    is_ancestor_trans (a := get_node_for_root d) (b := get_node_for_root b)
+        (c := get_node_for_root r) hpslQ (hwalkQ r hr d hdQ) (hwalkQ r hr b hb) hdb hbr
   have hanchor0 : ablk.root ∈ (E.store cfg ext u 0).block_roots := by
     change ablk.root ∈ E.genesis_store.block_roots
     rw [hgeq]
@@ -194,11 +195,11 @@ theorem pastDescendant_ancestorPair_at_slot_endpoint_minimal
       E.store_anchor_min_slot cfg ext hA.wellFormed hA.externals_coherence
         hgeq hstateSlot hroot v q x hx
     have hwalkX : WalkKnown (E.store cfg ext u nu) sx d := hwalk0.mono hbound
-    have hlandsQ : get_ancestor (E.store cfg ext v q) (ForkChoiceNode.mk d) sx =
-        ForkChoiceNode.mk x := by
-      simpa only [is_ancestor, get_node_for_root, decide_eq_true_eq, sx] using hdx
-    have hlandsU : get_ancestor (E.store cfg ext u nu) (ForkChoiceNode.mk d) sx =
-        ForkChoiceNode.mk x := by
+    have hlandsQ : (get_ancestor (E.store cfg ext v q) (ForkChoiceNode.mk d .pending) sx).root =
+        x := by
+      simpa only [get_node_for_root, is_ancestor_pending, decide_eq_true_eq, sx] using hdx
+    have hlandsU : (get_ancestor (E.store cfg ext u nu) (ForkChoiceNode.mk d .pending) sx).root =
+        x := by
       rw [get_ancestor_congr hagreeUQ hd hwalkX]
       exact hlandsQ
     have hspec := (get_ancestor_spec hpslU hwalkX).1

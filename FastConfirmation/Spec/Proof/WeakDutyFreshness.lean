@@ -30,7 +30,7 @@ theorem epoch_le_of_duty_fresh_cell {store : Store Root} {i : ValidatorIndex}
     {es : Slot} (hes : es = get_current_slot cfg store - 1)
     {t : Slot} (ht : t ≤ es)
     (hassigned : i ∈ get_slot_committee cfg ext store t) :
-    compute_epoch_at_slot cfg t ≤ lm.epoch := by
+    compute_epoch_at_slot cfg t ≤ get_latest_message_epoch cfg lm := by
   have hupper : compute_epoch_at_slot cfg t ≤ recorded_cutoff_epoch cfg store := by
     unfold recorded_cutoff_epoch
     rw [← hes]
@@ -52,7 +52,7 @@ theorem epoch_le_of_duty_fresh_cell {store : Store Root} {i : ValidatorIndex}
 /-- Every cell admitted by the old epoch cutoff is admitted by the duty filter. -/
 theorem duty_fresh_of_epoch_fresh {store : Store Root} {i : ValidatorIndex}
     {lm : LatestMessage Root}
-    (hfresh : recorded_cutoff_epoch cfg store ≤ lm.epoch) :
+    (hfresh : recorded_cutoff_epoch cfg store ≤ get_latest_message_epoch cfg lm) :
     is_duty_fresh_message cfg ext store i lm = true := by
   simp only [is_duty_fresh_message, Bool.or_eq_true, decide_eq_true_eq,
     get_latest_message_epoch]
@@ -61,7 +61,7 @@ theorem duty_fresh_of_epoch_fresh {store : Store Root} {i : ValidatorIndex}
 /-- A previous-epoch vote remains usable before its validator's next duty. -/
 theorem duty_fresh_of_no_completed_duty {store : Store Root} {i : ValidatorIndex}
     {lm : LatestMessage Root}
-    (hepoch : lm.epoch + 1 = recorded_cutoff_epoch cfg store)
+    (hepoch : get_latest_message_epoch cfg lm + 1 = recorded_cutoff_epoch cfg store)
     (hno : ∀ s ∈ Finset.Icc
         (compute_start_slot_at_epoch cfg (recorded_cutoff_epoch cfg store))
         (get_current_slot cfg store - 1), i ∉ get_slot_committee cfg ext store s) :
@@ -78,13 +78,13 @@ completed assigned duty. Timely participation and receipt can supply this
 condition; the safety theorem does not assume that receipt. -/
 theorem duty_fresh_of_completed_duty_domination {store : Store Root}
     {i : ValidatorIndex} {lm : LatestMessage Root}
-    (hrecent : recorded_cutoff_epoch cfg store ≤ lm.epoch + 1)
+    (hrecent : recorded_cutoff_epoch cfg store ≤ get_latest_message_epoch cfg lm + 1)
     (hdom : ∀ s : Slot, s ≤ get_current_slot cfg store - 1 →
-      i ∈ get_slot_committee cfg ext store s → compute_epoch_at_slot cfg s ≤ lm.epoch) :
+      i ∈ get_slot_committee cfg ext store s → compute_epoch_at_slot cfg s ≤ get_latest_message_epoch cfg lm) :
     is_duty_fresh_message cfg ext store i lm = true := by
-  by_cases hfresh : recorded_cutoff_epoch cfg store ≤ lm.epoch
+  by_cases hfresh : recorded_cutoff_epoch cfg store ≤ get_latest_message_epoch cfg lm
   · exact duty_fresh_of_epoch_fresh cfg ext hfresh
-  have hepoch : lm.epoch + 1 = recorded_cutoff_epoch cfg store :=
+  have hepoch : get_latest_message_epoch cfg lm + 1 = recorded_cutoff_epoch cfg store :=
     le_antisymm (Nat.succ_le_of_lt (Nat.lt_of_not_ge hfresh)) hrecent
   apply duty_fresh_of_no_completed_duty cfg ext hepoch
   intro s hs hi
@@ -98,7 +98,7 @@ theorem duty_fresh_false_of_newer_completed_duty {store : Store Root}
     {i : ValidatorIndex} {lm : LatestMessage Root} {t : Slot}
     (ht : t ≤ get_current_slot cfg store - 1)
     (hi : i ∈ get_slot_committee cfg ext store t)
-    (hepoch : lm.epoch < compute_epoch_at_slot cfg t) :
+    (hepoch : get_latest_message_epoch cfg lm < compute_epoch_at_slot cfg t) :
     is_duty_fresh_message cfg ext store i lm = false := by
   cases h : is_duty_fresh_message cfg ext store i lm with
   | false => rfl

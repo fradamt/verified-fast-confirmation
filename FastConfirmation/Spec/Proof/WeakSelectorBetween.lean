@@ -91,7 +91,9 @@ theorem pstrConfirmed_step (fcr_store : FastConfirmationStore Root)
   obtain ⟨hacc_lcr, hacc_mem, hacc_between⟩ := hacc
   have hb_acc : is_ancestor fcr_store.store (get_node_for_root b) (get_node_for_root acc) = true :=
     is_ancestor_of_parent hwf hb_mem hacc_mem hb_par
-  refine ⟨is_ancestor_trans hwf (hwalk lcr hlcr b hb_mem) (hwalk lcr hlcr acc hacc_mem)
+  refine ⟨is_ancestor_trans hwf
+      (a := get_node_for_root b) (b := get_node_for_root acc) (c := get_node_for_root lcr)
+      (hwalk lcr hlcr b hb_mem) (hwalk lcr hlcr acc hacc_mem)
       hb_acc hacc_lcr, hb_mem, ?_⟩
   intro c hc_mem hbc_c hc_lcr
   rcases is_ancestor_comparable hwf (hwalk c hc_mem b hb_mem) (hwalk acc hacc_mem b hb_mem)

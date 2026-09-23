@@ -271,7 +271,12 @@ theorem checkpoint_state_key_of_broadcast_certificate (E : Execution Root)
   have hbsDefault : bs = default := by
     rw [hbs, hstore]
     exact E.checkpointStatesExact cfg ext hgen v n cp hc'
-  simp only [Weak.has_broadcast_certificate, gt_iff_lt, decide_eq_true_eq] at hcert
+  simp only [Weak.has_broadcast_certificate] at hcert
+  by_cases h0 : get_current_slot cfg store = 0
+  · rw [if_pos h0] at hcert
+    exact absurd hcert Bool.false_ne_true
+  rw [if_neg h0] at hcert
+  simp only [gt_iff_lt, decide_eq_true_eq] at hcert
   rw [hbsDefault,
     broadcast_certificate_support_default_eq_zero cfg ext store block_root
       start_slot end_slot] at hcert

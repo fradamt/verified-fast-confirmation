@@ -106,7 +106,7 @@ theorem second_eight_finalizedResetCandidateInput_safeFrom_second_nine :
       (by
         simpa only [witnessAcceptedSemantics] using
           witnessAnchorEquality.symm)
-      witnessTrustedAnchorBoundaryAligned witnessSynchrony
+      witnessTrustedAnchorBoundaryAligned witnessPaperSafetySynchrony
       (v := 0) (n := 7) (q := 9)
       (by decide)
       (time_within_of_lt_sixteen (by decide))
@@ -595,7 +595,7 @@ theorem witnessAcceptedRealizedFinalizationDelay :
 def witnessCompletedPrefixCallAssumptions :
     witnessExecution.AcceptedHistoricalA32CompletedPrefixCallAssumptions
       witnessConfig witnessExternals where
-  synchrony := witnessSynchrony
+  synchrony := witnessPaperSafetySynchrony
   static_validators := witnessStaticValidatorSet
   byzantine_bound := witnessByzantineBound
   phase0_source := witnessPhase0SourceCoherence
