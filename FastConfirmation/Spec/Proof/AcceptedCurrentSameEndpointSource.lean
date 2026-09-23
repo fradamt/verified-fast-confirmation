@@ -6,7 +6,7 @@ public import FastConfirmation.Spec.Proof.AcceptedFFGJustifiedMaximality
 public import FastConfirmation.Spec.Proof.ExactCheckpointLinks
 public import FastConfirmation.Spec.Proof.AcceptedHistoricalFinalizedPlacement
 public import FastConfirmation.Spec.Proof.AcceptedRealizedJustifiedOrigin
-public import FastConfirmation.Spec.Proof.AcceptedHistoricalFinalizedPlacementAdapters
+public import FastConfirmation.Spec.Proof.SelectedTraceFFGRealizationPipeline
 public import FastConfirmation.Spec.Proof.ModelFacts
 
 @[expose] public section

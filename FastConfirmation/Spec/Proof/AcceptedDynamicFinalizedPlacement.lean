@@ -4,7 +4,6 @@ public import FastConfirmation.Spec.Proof.FFGCheckpointEpochOrder
 public import FastConfirmation.Spec.Proof.SelectedFFGRealization
 public import FastConfirmation.Spec.Proof.ModelFacts
 
-public import FastConfirmation.Spec.Proof.ModelFacts
 @[expose] public section
 
 /-!

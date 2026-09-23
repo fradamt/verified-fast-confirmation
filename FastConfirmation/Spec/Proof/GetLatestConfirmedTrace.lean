@@ -27,27 +27,6 @@ variable (cfg : Config) (ext : Externals Root)
 
 /-! ## The three exact executable guards -/
 
-/-- The observed-checkpoint restart can only raise the candidate block slot.
-This follows from the executable guard's strict stale comparison. -/
-theorem getLatestAfterObserved_slot_ge_afterFinalized
-    (query : FastConfirmationStore Root) :
-    get_block_slot query.store (getLatestAfterFinalized cfg ext query) ≤
-      get_block_slot query.store (getLatestAfterObserved cfg ext query) := by
-  by_cases hguard : getLatestObservedRestartGuard cfg query
-      (getLatestAfterFinalized cfg ext query) = true
-  · have hlt : get_block_slot query.store
-        (getLatestAfterFinalized cfg ext query) <
-        get_block_slot query.store
-          query.current_epoch_observed_justified_checkpoint.root := by
-      simp only [getLatestObservedRestartGuard, Bool.and_eq_true,
-        decide_eq_true_eq] at hguard
-      exact hguard.2
-    simpa only [getLatestAfterObserved, hguard, ite_true] using hlt.le
-  · have hfalse : getLatestObservedRestartGuard cfg query
-        (getLatestAfterFinalized cfg ext query) = false := by
-      cases h : getLatestObservedRestartGuard cfg query
-          (getLatestAfterFinalized cfg ext query) <;> simp_all
-    simp [getLatestAfterObserved, hfalse]
 
 /-! ## Branch-indexed phase traces -/
 
@@ -150,23 +129,6 @@ theorem selected_facts
   · exact False.elim (hfalse hselector)
   · exact hresult
 
-/-- Exhaustive input classification for the selector/unchanged phase.  Guard
-priority remains in `trace.finalized` and `trace.observed`; this value-level
-projection is only a convenient consumer. -/
-theorem selectorInput_cases
-    {query : FastConfirmationStore Root}
-    (trace : GetLatestConfirmedTrace cfg ext query) :
-    trace.afterObserved = query.confirmed_root ∨
-      trace.afterObserved = query.store.finalized_checkpoint.root ∨
-      trace.afterObserved =
-        query.current_epoch_observed_justified_checkpoint.root := by
-  rcases trace.observed.branch_cases with ⟨hunchanged, _⟩ |
-      ⟨hrestarted, _⟩
-  · rcases trace.finalized.branch_cases with ⟨hcarried, _⟩ |
-        ⟨hreverted, _⟩
-    · exact Or.inl (hunchanged.trans hcarried)
-    · exact Or.inr (Or.inl (hunchanged.trans hreverted))
-  · exact Or.inr (Or.inr hrestarted)
 
 /-- An active observed restart exposes all four conjuncts of the exact guard,
 including the previous-epoch equation and the stale comparison against the
@@ -198,21 +160,6 @@ namespace Execution
 
 variable (E : Execution Root)
 
-/-- The eventual call induction receives the exact selector input kind while
-retaining the stronger ordered branch objects in `getLatestConfirmedTraceAt`.
-No reset certificate or payload conclusion is smuggled into this adapter. -/
-theorem getLatestConfirmedTraceAt_selectorInput_cases
-    (v : ValidatorIndex) (n : ℕ) :
-    let trace := E.getLatestConfirmedTraceAt cfg ext v n
-    trace.afterObserved = E.confirmed cfg ext v n ∨
-      trace.afterObserved =
-          (E.fcrStep cfg ext v n).store.finalized_checkpoint.root ∨
-        trace.afterObserved =
-          (E.fcrStep cfg ext v n
-            ).current_epoch_observed_justified_checkpoint.root := by
-  dsimp only
-  rw [← E.fcrStep_confirmed_root cfg ext v n]
-  exact (E.getLatestConfirmedTraceAt cfg ext v n).selectorInput_cases
 
 end Execution
 

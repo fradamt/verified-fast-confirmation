@@ -1,6 +1,11 @@
 module
-public import FastConfirmation.Spec.Proof.Suppliers
-public import FastConfirmation.Spec.Proof.SameSlotProvenance
+public import FastConfirmation.Spec.Proof.INVstarTrack
+public import FastConfirmation.Spec.Proof.Cruxes
+public import FastConfirmation.Spec.Proof.CheckpointDomain
+public import FastConfirmation.Spec.Proof.HonestWeight
+public import FastConfirmation.Spec.Proof.Discount
+public import FastConfirmation.Spec.Proof.AnchorFacade
+public import FastConfirmation.Spec.Proof.MicroSteps
 
 @[expose] public section
 
@@ -131,23 +136,6 @@ See `docs/p6-justified-descends-derivation.md` §8. -/
 
 /-! ## Section 2 — the advance leg from the localized cores -/
 
-/-- **The advance leg from `EngineAdvanceCore`.** For every `is_one_confirmed` block `b` at
-a slot-update store, `SafeFrom b (n+1)` — the engine leg of `L4Fold.L4Residual` — follows from the
-four localized cores: `hbk` is rebuilt by `Suppliers.hbk_of_confirming` (`hbconf` + `hb_sameslot`,
-later slot discharged by `block_relay`), `hdisj` by `Suppliers.hdisj_of_covering` (`hcov`, with the
-`≤`-epoch side closed from `justified_ancestry`), and `heng` is carried verbatim;
-`Suppliers.advance_safe_of_disjunctive` folds them on the sound disjunctive route (advance branch
-off the engine via the FFG takeover). -/
-theorem advance_safe_of_core (hSA : SpecAssumptions cfg ext E)
-    (hcore : E.EngineAdvanceCore cfg ext) :
-    ∀ v ∈ E.honest, ∀ n : ℕ, ∀ b : Root,
-      is_one_confirmed cfg ext (E.fcrStep cfg ext v n).store
-        (get_current_balance_source (E.fcrStep cfg ext v n)) b = true →
-      E.SafeFrom cfg ext b (n + 1) :=
-  E.advance_safe_of_disjunctive cfg ext hSA
-    (E.hbk_of_confirming cfg ext hSA.2.2.2.2.1 hcore.hbconf hcore.hb_sameslot)
-    (E.hdisj_of_covering cfg ext hSA hcore.hcov)
-    hcore.heng
 
 end Execution
 

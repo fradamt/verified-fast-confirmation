@@ -5,7 +5,6 @@ public import FastConfirmation.Spec.Proof.FinalizedResetSafety
 public import FastConfirmation.Spec.Proof.MinimalSelectedDomain
 public import FastConfirmation.Spec.Proof.ModelFacts
 public import FastConfirmation.Spec.Proof.PaperA32ProjectionCore
-public import FastConfirmation.Spec.Proof.ModelFacts
 
 @[expose] public section
 

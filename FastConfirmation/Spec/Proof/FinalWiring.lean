@@ -1,5 +1,7 @@
 module
-public import FastConfirmation.Spec.Proof.ExportWiring
+public import FastConfirmation.Spec.Proof.AheadFacade
+public import FastConfirmation.Spec.Proof.MicroSteps
+public import FastConfirmation.Spec.Proof.HeadStack
 public import FastConfirmation.Spec.Proof.IHMechanize
 
 @[expose] public section

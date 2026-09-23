@@ -120,10 +120,6 @@ theorem update_checkpoints_registryConstant {reg : List Validator} (store : Stor
     RegistryConstant reg (update_checkpoints store jc fc) :=
   h.of_eq (by simp) (by simp) (by simp) (by simp)
 
-theorem update_unrealized_checkpoints_registryConstant {reg : List Validator}
-    (store : Store Root) (jc fc : Checkpoint Root) (h : RegistryConstant reg store) :
-    RegistryConstant reg (update_unrealized_checkpoints store jc fc) :=
-  h.of_eq (by simp) (by simp) (by simp) (by simp)
 
 variable [LinearOrder Root] [Inhabited Root] (cfg : Config) (ext : Externals Root)
 
@@ -467,12 +463,6 @@ omit [LinearOrder Root] [Inhabited Root] in
 theorem update_checkpoints_stateSlotsLE {SL : Slot} (store : Store Root)
     (jc fc : Checkpoint Root) (h : StateSlotsLE SL store) :
     StateSlotsLE SL (update_checkpoints store jc fc) :=
-  h.of_eq (by simp) (by simp) (by simp) (by simp)
-
-omit [LinearOrder Root] [Inhabited Root] in
-theorem update_unrealized_checkpoints_stateSlotsLE {SL : Slot} (store : Store Root)
-    (jc fc : Checkpoint Root) (h : StateSlotsLE SL store) :
-    StateSlotsLE SL (update_unrealized_checkpoints store jc fc) :=
   h.of_eq (by simp) (by simp) (by simp) (by simp)
 
 omit [Inhabited Root] in
@@ -834,31 +824,6 @@ theorem get_total_active_balance_congr {st st' : BeaconState Root}
     exact hi
   simp only [get_total_active_balance, get_total_balance, hidx, hval]
 
-/-- Every block state an honest node's store carries has the anchor's total
-active balance (`E.total_active`). -/
-theorem Execution.block_states_total_active_balance (E : Execution Root)
-    (hsv : StaticValidatorSet cfg E) (hec : ExternalsCoherence cfg ext E)
-    (v : ValidatorIndex) (n : ℕ) (r : Root)
-    (hr : r ∈ (E.store cfg ext v n).block_roots)
-    (hn : E.WithinHorizon cfg n)
-    (hdiv : 1000 ∣ cfg.slot_duration_ms := by assumption)
-    (hgen : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
-      E.genesis_store = get_forkchoice_store cfg ast ablk := by
-        exact ⟨_, _, by assumption⟩) :
-    get_total_active_balance cfg ((E.store cfg ext v n).block_states r) =
-      get_total_active_balance cfg E.anchor_state := by
-  have hrc := (E.registryConstant cfg ext hec hgen v n).1 r hr
-  have hslot := (E.stateSlotsLE cfg ext hdiv hec hgen v n).1 r hr
-  have hanchor := E.anchor_state_slot_le cfg hdiv hgen
-  have hanchorN : E.anchor_state.slot ≤ E.slot_at cfg n :=
-    le_trans hanchor (E.slot_at_mono cfg (Nat.zero_le n))
-  apply get_total_active_balance_congr cfg
-  · rw [hrc]
-    rfl
-  · intro i
-    rw [hrc]
-    simpa only [get_current_epoch] using
-      hsv.activity_constant_of_slot_le (cfg := cfg) hslot hanchorN hn.2.2 hn.2.2
 
 /-- Every cached checkpoint state an honest node's store carries has the
 anchor's total active balance (`E.total_active`). -/

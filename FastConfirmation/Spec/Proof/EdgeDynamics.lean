@@ -1,5 +1,6 @@
 module
-public import FastConfirmation.Spec.Proof.ForkAssembly
+public import FastConfirmation.Spec.Proof.MicroSteps
+public import FastConfirmation.Spec.Proof.DynamicsClosure
 
 @[expose] public section
 
@@ -83,15 +84,6 @@ theorem blockRoots_subset_of_relay (hsync : PaperSafetySynchrony cfg ext E)
     (E.store cfg ext vc nc).block_roots ⊆ (E.store cfg ext w m).block_roots :=
   fun r hr => hsync.block_relay vc hvc nc r hHnc hr w hw m hHm hslot
 
-/-- `blockRoots_subset_of_relay` from the legacy `Synchrony` bundle, whose
-`block_relay` field has the same shape. -/
-theorem blockRoots_subset_of_legacy_relay (hsync : Synchrony cfg ext E)
-    {vc w : ValidatorIndex} {nc m : ℕ}
-    (hvc : vc ∈ E.honest) (hw : w ∈ E.honest)
-    (hHnc : E.WithinHorizon cfg nc) (hHm : E.WithinHorizon cfg m)
-    (hslot : E.slot_at cfg nc + 1 ≤ E.slot_at cfg (m + 1)) :
-    (E.store cfg ext vc nc).block_roots ⊆ (E.store cfg ext w m).block_roots :=
-  fun r hr => hsync.block_relay vc hvc nc r hHnc hr w hw m hHm hslot
 
 /-- **`hequiv` — equivocator containment from `attester_slashing_relay`.** Every equivocator
 known at the confirming anchor `(vc, nc)` is known at the endpoint `(w, m)`, under the
@@ -114,66 +106,8 @@ is the same `BlockAgreement.is_ancestor_congr` with the walk from `b` toward `r`
 Both consume only the block relay containment (Section 1) and the per-root `WalkKnown`
 domain conditions. -/
 
-/-- **The reverse `is_ancestor` transport.** For known `b`, `r` at the confirming anchor
-with the walk from `b` toward `r`'s slot known, a `b ⪯ r` fact transports `(vc,nc) → (w,m)`.
-Mirrors `EngineTransport.is_ancestor_transport` in the opposite orientation via
-`is_ancestor_congr`. -/
-theorem is_ancestor_transport_rev (hwf : WellFormedExecution E)
-    {vc w : ValidatorIndex} {nc m : ℕ} {r b : Root}
-    (hsub : (E.store cfg ext vc nc).block_roots ⊆ (E.store cfg ext w m).block_roots)
-    (hr : r ∈ (E.store cfg ext vc nc).block_roots)
-    (hb : b ∈ (E.store cfg ext vc nc).block_roots)
-    (hw : WalkKnown (E.store cfg ext vc nc) ((E.store cfg ext vc nc).blocks r).slot b)
-    (hanc : is_ancestor (E.store cfg ext vc nc)
-      (get_node_for_root b) (get_node_for_root r) = true) :
-    is_ancestor (E.store cfg ext w m)
-      (get_node_for_root b) (get_node_for_root r) = true := by
-  have hagree : ∀ x ∈ (E.store cfg ext vc nc).block_roots,
-      (E.store cfg ext vc nc).blocks x = (E.store cfg ext w m).blocks x := fun x hx =>
-    hwf.blocks_agree (E.blockProvenance cfg ext vc nc) (E.blockProvenance cfg ext w m)
-      hx (hsub hx)
-  simp only [get_node_for_root] at hanc ⊢
-  rwa [← is_ancestor_congr hagree hb hr hw]
 
-/-- **`htS` — the forward transport, quantified.** From the block relay containment `hsub`,
-`b`-knownness, and the per-root forward walk-domain function `hdomS`, every `r ⪯ b` fact at
-`(vc, nc)` transports to `(w, m)`. Exactly `ForkEdgeInput`'s `htS` argument, in the shape
-`SupportsDesc_transport_of_anc` consumes. -/
-theorem htS_of_walk (hwf : WellFormedExecution E)
-    {vc w : ValidatorIndex} {nc m : ℕ} {b : Root}
-    (hsub : (E.store cfg ext vc nc).block_roots ⊆ (E.store cfg ext w m).block_roots)
-    (hb : b ∈ (E.store cfg ext vc nc).block_roots)
-    (hdomS : ∀ r : Root, is_ancestor (E.store cfg ext vc nc)
-        (get_node_for_root r) (get_node_for_root b) = true →
-      r ∈ (E.store cfg ext vc nc).block_roots ∧
-        WalkKnown (E.store cfg ext vc nc) ((E.store cfg ext vc nc).blocks b).slot r) :
-    ∀ r : Root, is_ancestor (E.store cfg ext vc nc)
-        (get_node_for_root r) (get_node_for_root b) = true →
-      is_ancestor (E.store cfg ext w m)
-        (get_node_for_root r) (get_node_for_root b) = true := by
-  intro r hanc
-  obtain ⟨hr, hwalk⟩ := hdomS r hanc
-  exact is_ancestor_transport cfg ext hwf hsub hr hb hwalk hanc
 
-/-- **`htA` — the reverse transport, quantified.** From the block relay containment `hsub`,
-`b`-knownness, and the per-root reverse walk-domain function `hdomA`, every `b ⪯ r` fact at
-`(vc, nc)` transports to `(w, m)`. Exactly `ForkEdgeInput`'s `htA` argument, in the shape
-`AncestorOrVoteless_transport_of_anc` consumes. -/
-theorem htA_of_walk (hwf : WellFormedExecution E)
-    {vc w : ValidatorIndex} {nc m : ℕ} {b : Root}
-    (hsub : (E.store cfg ext vc nc).block_roots ⊆ (E.store cfg ext w m).block_roots)
-    (hb : b ∈ (E.store cfg ext vc nc).block_roots)
-    (hdomA : ∀ r : Root, is_ancestor (E.store cfg ext vc nc)
-        (get_node_for_root b) (get_node_for_root r) = true →
-      r ∈ (E.store cfg ext vc nc).block_roots ∧
-        WalkKnown (E.store cfg ext vc nc) ((E.store cfg ext vc nc).blocks r).slot b) :
-    ∀ r : Root, is_ancestor (E.store cfg ext vc nc)
-        (get_node_for_root b) (get_node_for_root r) = true →
-      is_ancestor (E.store cfg ext w m)
-        (get_node_for_root b) (get_node_for_root r) = true := by
-  intro r hanc
-  obtain ⟨hr, hwalk⟩ := hdomA r hanc
-  exact E.is_ancestor_transport_rev cfg ext hwf hsub hr hb hwalk hanc
 
 /-! ## Section 3 — `EdgeInputResidual` and assembly
 
@@ -285,68 +219,9 @@ structure EdgeInputResidual (E : Execution Root) (w : ValidatorIndex) (m : ℕ)
           ((E.store cfg ext w m).checkpoint_states (E.store cfg ext w m).justified_checkpoint),
         i ∉ E.honest → i ∈ E.BbadSet cfg ext w m b lo es ∨ i ∈ E.SpentSet es σ
 
-/-- **`EdgeInputResidual ⟹ ForkEdgeInput`** (`EdgeDynamics`). The certificate
-`(vc, nc, lo, es, σ, boost := get_proposer_score cfg (store w m))` is supplied; `hσ`/`hlo`
-are the slot bounds; the two transports are built from the block relay containment
-(`blockRoots_subset_of_relay`, from `Synchrony.block_relay` under `hslotS`) and the
-walk-domain functions; `hboost` is `rfl`; the other fields come from `hres`. -/
-theorem forkEdgeInput_of_residual (hwf : WellFormedExecution E)
-    (hsync : Synchrony cfg ext E)
-    {w : ValidatorIndex} {m : ℕ} {b h c : Root} {vc : ValidatorIndex} {nc : ℕ} {lo es σ : Slot}
-    (hvc : vc ∈ E.honest) (hw : w ∈ E.honest)
-    (hHnc : E.WithinHorizon cfg nc) (hHm : E.WithinHorizon cfg m)
-    (hslotS : E.slot_at cfg nc + 1 ≤ E.slot_at cfg (m + 1))
-    (hσ : es ≤ σ) (hlo : lo ≤ es + 1)
-    (hb : b ∈ (E.store cfg ext vc nc).block_roots)
-    (hres : E.EdgeInputResidual cfg ext w m b h c vc nc lo es σ)
-    (hstatus : PendingStatusMargin cfg (E.store cfg ext w m)
-      (get_filtered_block_tree cfg (E.store cfg ext w m)) h
-      (get_parent_payload_status (E.store cfg ext w m)
-        ((E.store cfg ext w m).blocks c))) :
-    E.ForkEdgeInput cfg ext w m b h c := by
-  have hsub : (E.store cfg ext vc nc).block_roots ⊆ (E.store cfg ext w m).block_roots :=
-    fun r hr => hsync.block_relay vc hvc nc r hHnc hr w hw m hHm hslotS
-  refine ⟨vc, nc, lo, es, σ, get_proposer_score cfg (E.store cfg ext w m), hσ,
-    hres.hloH, hres.hσH, hres.hbase,
-    E.htS_of_walk cfg ext hwf hsub hb hres.hdomS,
-    E.htA_of_walk cfg ext hwf hsub hb hres.hdomA,
-    hres.hBb, hlo,
-    hres.hdeltas, hres.hmaj, hres.hval, hres.hbsH, rfl, hres.hchild, hstatus, hres.hrec,
-    hres.hHon, hres.hByz⟩
 
 
-/-- **`hval` from the justification interface.** The `EdgeInputResidual.hval`
-field states that the justified balance-source state carries the ground registry.
-It follows from
-`JustificationInterface.justified_cached`: the justified checkpoint is a
-*keyed* checkpoint state because the real pipeline justifies only ≥2/3-attested targets that
-`on_attestation`'s `store_target_checkpoint_state` cached) together with
-`Registry.registryConstant`'s checkpoint-state clause (every keyed checkpoint state at an
-honest store carries `validators = E.registry`, from the trusted genesis initialization +
-`ExternalsCoherence`). -/
-theorem hval_of_interface (hec : ExternalsCoherence cfg ext E)
-    (hgen : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
-      E.genesis_store = get_forkchoice_store cfg ast ablk)
-    (hji : JustificationInterface cfg ext E) (w : ValidatorIndex) (hw : w ∈ E.honest) (m : ℕ)
-    (hH : E.WithinHorizon cfg m) :
-    ((E.store cfg ext w m).checkpoint_states
-      (E.store cfg ext w m).justified_checkpoint).validators = E.registry :=
-  (E.registryConstant cfg ext hec hgen w m).2 _
-    (hji.justified_cached w hw m hH)
 
-/-- The cached justified balance source is no later than the endpoint execution
-slot, hence its current epoch is below the endpoint's verification horizon. -/
-theorem justified_balance_source_epoch_lt_horizon
-    (hec : ExternalsCoherence cfg ext E) (hji : JustificationInterface cfg ext E)
-    (hdiv : 1000 ∣ cfg.slot_duration_ms)
-    (hgen : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
-      E.genesis_store = get_forkchoice_store cfg ast ablk)
-    (w : ValidatorIndex) (hw : w ∈ E.honest) (m : ℕ) (hH : E.WithinHorizon cfg m) :
-    get_current_epoch cfg ((E.store cfg ext w m).checkpoint_states
-      (E.store cfg ext w m).justified_checkpoint) < E.verification_horizon := by
-  have hcached := hji.justified_cached w hw m hH
-  have hslot := (E.stateSlotsLE cfg ext hdiv hec hgen w m).2 _ hcached
-  exact lt_of_le_of_lt (Nat.div_le_div_right hslot) hH.2.2
 
 end Execution
 

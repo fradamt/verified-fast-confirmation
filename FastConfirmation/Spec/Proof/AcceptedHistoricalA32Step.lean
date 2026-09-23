@@ -710,38 +710,6 @@ noncomputable def
       hG.parent hcarrierEpoch (by simpa only [target] using hcurrentNonGenesis)
       hcarrierWalk hlandsRoot htargetGate
 
-/-- Action-facing arbitrary-input no-crossing wrapper. -/
-noncomputable def
-    selectedCurrentNoCrossingLineageAt_of_acceptedGlobalTrajectory
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
-    (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
-    (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
-      (E := E) (anchor := B.anchor))
-    {v : ValidatorIndex} (hv : v ∈ E.honest)
-    {n : ℕ} (hHn1 : E.WithinHorizon cfg (n + 1))
-    (hinputKnown : (E.getLatestConfirmedTraceAt cfg ext v n).afterObserved ∈
-      (E.fcrStep cfg ext v n).store.block_roots)
-    (hselector : getLatestSelectorGuard cfg (E.fcrStep cfg ext v n)
-      (E.getLatestConfirmedTraceAt cfg ext v n).afterObserved)
-    (hresultCurrent : get_block_epoch cfg (E.fcrStep cfg ext v n).store
-        (E.getLatestConfirmedTraceAt cfg ext v n).result =
-      get_current_store_epoch cfg (E.fcrStep cfg ext v n).store)
-    (hnoCrossing : ¬ ∃ a c : Root,
-      CurrentTargetAcceptedEdge cfg ext (E.fcrStep cfg ext v n)
-        (E.getLatestConfirmedTraceAt cfg ext v n).afterObserved a c)
-    {e : Epoch}
-    (hprevious : E.AcceptedHistoricalA32LineageAt cfg ext B
-      (E.getLatestConfirmedTraceAt cfg ext v n).afterObserved e) :
-    E.AcceptedHistoricalA32LineageAt cfg ext B
-      (E.getLatestConfirmedTraceAt cfg ext v n).result e := by
-  have hG := E.historicalA32QueryGeometryAt_of_acceptedGlobalTrajectory
-    cfg ext B hT hanchor hboundary hv hHn1
-  exact E.selectedCurrentNoCrossingLineage cfg ext B hT.wellFormed
-    hG.exact_core hG.causal hG.parent hG.walk hG.head_known
-      (E.getLatestConfirmedTraceAt cfg ext v n) hinputKnown
-      (hG.slot_upper _ hinputKnown) hselector hresultCurrent hnoCrossing
-      (hG.strict_non_genesis _ hinputKnown) hprevious
 
 end Execution
 

@@ -4,7 +4,6 @@ public import FastConfirmation.Spec.Proof.AcceptedResetCheckpointClassification
 public import FastConfirmation.Spec.Proof.ObservedResetSafety
 public import FastConfirmation.Spec.Proof.ModelFacts
 
-public import FastConfirmation.Spec.Proof.ModelFacts
 @[expose] public section
 
 /-!

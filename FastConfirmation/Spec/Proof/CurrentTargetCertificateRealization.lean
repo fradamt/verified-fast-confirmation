@@ -199,31 +199,6 @@ theorem gj_eq_vSAt_of_target_walk_root
         simp only [ChainFFGState.VSAt, if_neg htargetOld]
         exact hedge
 
-/-- An equality of nodes implies the root equality used by the proof. -/
-theorem gj_eq_vSAt_of_target_walk
-    {anchor : Checkpoint Root} {S : ChainFFGState cfg E anchor}
-    (hhistory : BlockStateTransitionHistory cfg ext E)
-    (hphase : Phase0SourceCoherence cfg ext)
-    (hboundaryPhase : Phase0BoundarySourceCoherence cfg ext)
-    (hcoh : FFGTransitionCoherence cfg ext S)
-    {w : ValidatorIndex} (hw : w ∈ E.honest) {n : ℕ}
-    (hH : E.WithinHorizon cfg n)
-    (hcore : WellFormedStoreCore (E.store cfg ext w n))
-    (hwf : ParentSlotLt (E.store cfg ext w n))
-    {e : Epoch} {targetRoot head : Root}
-    (hcurrentNonGenesis : ∀ r ∈ (E.store cfg ext w n).block_roots,
-      get_block_epoch cfg (E.store cfg ext w n) r = e →
-      r ∉ E.genesis_store.block_roots)
-    (hwalk : WalkKnown (E.store cfg ext w n)
-      (compute_start_slot_at_epoch cfg e) head)
-    (hlands : get_ancestor (E.store cfg ext w n)
-      (ForkChoiceNode.mk head .pending) (compute_start_slot_at_epoch cfg e) =
-        ForkChoiceNode.mk targetRoot .pending)
-    (hheadEpoch : get_block_epoch cfg (E.store cfg ext w n) head = e) :
-    S.GJ head = S.VSAt cfg (E.store cfg ext w n) targetRoot e := by
-  exact E.gj_eq_vSAt_of_target_walk_root cfg ext hhistory hphase hboundaryPhase
-    hcoh hw hH hcore hwf hcurrentNonGenesis hwalk
-    (congrArg ForkChoiceNode.root hlands) hheadEpoch
 
 /-- Definition 7's selector is invariant under replacing a current-epoch
 carrier by its epoch checkpoint block.
@@ -1181,43 +1156,6 @@ theorem fixedSourceCurrentTargetA32GateRealizationProducerAt_of_stateSemantics
     cfg ext E hA hboundary hcoh hhistory hphase hboundaryPhase hanchor
     hv hqH hbKnown hheadB hbEpoch hrealization
 
-/-- Erase only the A3.2 branch to recover the certificate producer consumed
-by the existing selected crossing pipeline.  In particular, this public
-theorem still has no free producer, certificate, source-certificate, descent,
-source-agreement, or common-source-geometry premise. -/
-theorem currentTargetCertificateProducerAt_of_stateSemantics
-    (hA : NoConflictPinningAssumptions cfg ext E)
-    (hsync : PaperSafetySynchrony cfg ext E)
-    (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg) (E := E)
-      (anchor := E.genesis_store.justified_checkpoint))
-    {anchor : Checkpoint Root} {S : ChainFFGState cfg E anchor}
-    (hcoh : FFGTransitionCoherence cfg ext S)
-    (hhistory : BlockStateTransitionHistory cfg ext E)
-    (hphase : Phase0SourceCoherence cfg ext)
-    (hboundaryPhase : Phase0BoundarySourceCoherence cfg ext)
-    (hanchor : anchor = E.genesis_store.justified_checkpoint)
-    {v : ValidatorIndex} {q : ℕ}
-    (hv : v ∈ E.honest) (hqH : E.WithinHorizon cfg q)
-    {query : FastConfirmationStore Root}
-    (hquery : query.store = E.store cfg ext v q)
-    {state : BeaconState Root}
-    (hstate : state = get_pulled_up_head_state cfg ext query.store)
-    (hval : state.validators = E.registry)
-    (htab : get_total_active_balance cfg state = E.total_active cfg)
-    (hendH : E.SlotWithinHorizon cfg
-      (currentTargetEpochEnd cfg query.store))
-    (hnextH : E.WithinHorizon cfg
-      (E.slot_start cfg (compute_start_slot_at_epoch cfg
-        ((get_current_target cfg query.store).epoch + 1))))
-    (hanchorH : get_current_epoch cfg E.anchor_state < E.verification_horizon)
-    (hfloor : cfg.effective_balance_increment ≤
-      E.weight (E.currentTargetAnchorActive cfg)) :
-    E.CurrentTargetCertificateProducerAt cfg ext anchor q query := by
-  intro hgate hsupport
-  rw [hquery] at hstate hendH hnextH hgate hsupport ⊢
-  exact (E.certifiedCurrentTarget_of_gate_and_stateSemantics cfg ext hA hsync
-    hboundary hcoh hhistory hphase hboundaryPhase hanchor hv hqH hstate hval
-    htab hendH hnextH hanchorH hfloor hgate hsupport).certified
 
 /-! ## Accepted causal-store current-epoch constructor -/
 
@@ -1405,74 +1343,7 @@ theorem acceptedCurrentTargetA32GateRealization_of_currentEpochConcreteQuorum_co
   simpa only [AcceptedChainFFGState.VSAt, PaperA32StateView.VSAt,
     htargetEpoch, if_pos] using hQSource
 
-/-- Compatibility adapter for callers whose delivery deadline is itself
-inside the finite horizon. -/
-theorem acceptedCurrentTargetA32GateRealization_of_currentEpochConcreteQuorum
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
-    (hsync : PaperSafetySynchrony cfg ext E)
-    (hphase : Phase0SourceCoherence cfg ext)
-    {store : Store Root} (hstore : E.CausalStore cfg ext store)
-    (htargetKnown : (get_current_target cfg store).root ∈ store.block_roots)
-    (htargetEpoch : get_block_epoch cfg store
-      (get_current_target cfg store).root =
-        (get_current_target cfg store).epoch)
-    (htargetNotAnchor : get_current_target cfg store ≠ B.anchor)
-    (hanchorBefore : B.anchor.epoch < (get_current_target cfg store).epoch)
-    (htargetSpan :
-      E.SlotWithinHorizon cfg
-          ((get_current_target cfg store).epoch * cfg.slots_per_epoch) ∧
-        E.SlotWithinHorizon cfg
-          ((get_current_target cfg store).epoch * cfg.slots_per_epoch +
-            (cfg.slots_per_epoch - 1)))
-    (hnextH : E.WithinHorizon cfg
-      (E.slot_start cfg (compute_start_slot_at_epoch cfg
-        ((get_current_target cfg store).epoch + 1))))
-    (Q : ConcreteA32QuorumBefore cfg ext E
-      (compute_start_slot_at_epoch cfg
-        ((get_current_target cfg store).epoch + 1))
-      (get_current_target cfg store))
-    (hgeometry : AcceptedConcreteA32QuorumSourceGeometry cfg ext E B Q
-      (get_current_target cfg store).root) :
-    AcceptedCurrentTargetA32GateRealization cfg ext E B.anchor B.state
-      store := by
-  exact E.acceptedCurrentTargetA32GateRealization_of_currentEpochConcreteQuorum_core
-    cfg ext B hphase hstore htargetKnown htargetEpoch htargetNotAnchor
-      hanchorBefore htargetSpan Q
-      (Q.scheduledDelivery_of_synchrony cfg ext E hsync hnextH) hgeometry
 
-/-- Boundary-safe adapter: paper synchrony supplies delivery of every vote
-created inside the verified epoch, while the receipt of a last-slot vote may
-sit at the first second beyond the public cutoff. -/
-theorem
-    acceptedCurrentTargetA32GateRealization_of_currentEpochConcreteQuorum_withLookahead
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
-    (hdelivery : PaperSafetySynchrony cfg ext E)
-    (hphase : Phase0SourceCoherence cfg ext)
-    {store : Store Root} (hstore : E.CausalStore cfg ext store)
-    (htargetKnown : (get_current_target cfg store).root ∈ store.block_roots)
-    (htargetEpoch : get_block_epoch cfg store
-      (get_current_target cfg store).root =
-        (get_current_target cfg store).epoch)
-    (htargetNotAnchor : get_current_target cfg store ≠ B.anchor)
-    (hanchorBefore : B.anchor.epoch < (get_current_target cfg store).epoch)
-    (htargetSpan :
-      E.SlotWithinHorizon cfg
-          ((get_current_target cfg store).epoch * cfg.slots_per_epoch) ∧
-        E.SlotWithinHorizon cfg
-          ((get_current_target cfg store).epoch * cfg.slots_per_epoch +
-            (cfg.slots_per_epoch - 1)))
-    (Q : ConcreteA32QuorumBefore cfg ext E
-      (compute_start_slot_at_epoch cfg
-        ((get_current_target cfg store).epoch + 1))
-      (get_current_target cfg store))
-    (hgeometry : AcceptedConcreteA32QuorumSourceGeometry cfg ext E B Q
-      (get_current_target cfg store).root) :
-    AcceptedCurrentTargetA32GateRealization cfg ext E B.anchor B.state
-      store := by
-  exact E.acceptedCurrentTargetA32GateRealization_of_currentEpochConcreteQuorum_core
-    cfg ext B hphase hstore htargetKnown htargetEpoch htargetNotAnchor
-      hanchorBefore htargetSpan Q
-      (Q.scheduledDelivery_of_lookahead cfg ext E hdelivery) hgeometry
 
 /-- Explicitly labeled erasure consumer.  Once the remaining gate-to-Q
 obligation supplies an accepted gate producer, the existing crossing pipeline
@@ -1492,262 +1363,25 @@ end Execution
 
 namespace CurrentTargetCertificateRealizationNonvacuity
 
-/-- Two roots are enough for a trusted anchor and its deliberately dangling
-pre-anchor parent. -/
-abbrev WitnessRoot := Fin 2
 
-def junkRoot : WitnessRoot := 0
-def anchorRoot : WitnessRoot := 1
 
-def witnessConfig : Config where
-  slots_per_epoch := 2
-  slots_per_epoch_pos := by decide
-  slot_duration_ms := 1000
-  slot_duration_ms_pos := by decide
-  proposer_score_boost := 0
-  confirmation_byzantine_threshold := 25
-  confirmation_byzantine_threshold_le := by decide
-  committee_weight_estimation_adjustment_factor := 5
-  effective_balance_increment := 100
-  effective_balance_increment_pos := by decide
-  hundred_dvd_effective_balance_increment := by decide
-  attestation_due_bps := 0
-  min_seed_lookahead := 0
 
-def anchorCheckpoint : Checkpoint WitnessRoot :=
-  { epoch := 0, root := anchorRoot }
 
-def anchorState : BeaconState WitnessRoot :=
-  { genesis_time := 0
-    slot := 0
-    validators := []
-    current_justified_checkpoint := anchorCheckpoint
-    finalized_checkpoint := anchorCheckpoint }
 
-def anchorSignedBlock : SignedBeaconBlock WitnessRoot :=
-  { message := { slot := 0, parent_root := junkRoot }
-    root := anchorRoot }
 
-/-- A concrete state-function implementation.  Empty-slot processing and
-successful block transitions change only the slot, while eager PJF is the
-identity.  Hence both same-epoch and boundary source laws are genuinely
-inhabited by the same functions. -/
-def witnessExternals : Externals WitnessRoot where
-  get_beacon_committee := fun _ _ _ => []
-  get_committee_count_per_slot := fun _ _ => 0
-  process_slots := fun st slot => { st with slot := slot }
-  state_transition := fun st block =>
-    if st.slot < block.message.slot then
-      some { st with slot := block.message.slot }
-    else none
-  process_justification_and_finalization := id
-  is_valid_indexed_attestation := fun _ _ => false
 
-def witnessSchedule (_w : ValidatorIndex) (_n : ℕ) :
-    List (Event WitnessRoot) := []
 
-def witnessExecution : Execution WitnessRoot where
-  verification_horizon := 1
-  genesis_store :=
-    get_forkchoice_store witnessConfig anchorState anchorSignedBlock
-  schedule := witnessSchedule
-  honest := ∅
-  committee := fun _ => ∅
-  vote := fun _ _ => none
 
-private theorem executionRoot_eq_anchor
-    {r : WitnessRoot} (hr : witnessExecution.ExecutionRoot r) :
-    r = anchorRoot := by
-  obtain ⟨b, hb⟩ := hr
-  rcases hb with hgen | hsched
-  · simpa [witnessExecution, anchorState, anchorSignedBlock,
-      get_forkchoice_store] using hgen.1
-  · obtain ⟨w, n, sb, hmem, _hroot, _hmessage⟩ := hsched
-    simp [witnessExecution, witnessSchedule] at hmem
 
-private theorem rootDescends_anchor
-    {r : WitnessRoot} (hr : witnessExecution.ExecutionRoot r) :
-    witnessExecution.RootDescends r anchorRoot := by
-  rw [executionRoot_eq_anchor hr]
-  exact .refl anchorRoot
 
-def witnessIncludedAttestations :
-    Execution.IncludedAttestationRelation witnessConfig witnessExecution
-      witnessExternals.is_valid_indexed_attestation where
-  Included := fun _ _ => False
-  evidence := by
-    intro _ _ h
-    exact False.elim h
 
-def witnessCheckpointAt (_r : WitnessRoot) (e : Epoch) :
-    Checkpoint WitnessRoot :=
-  { epoch := e, root := anchorRoot }
 
-def witnessFormed (carrier : WitnessRoot)
-    (c : Checkpoint WitnessRoot) : Prop :=
-  carrier = anchorRoot ∧ c = anchorCheckpoint
 
-/-- A carrier-sensitive FFG state on the same concrete external functions and
-execution.  Only the certified trusted anchor is formed. -/
-def witnessChainFFGState :
-    ChainFFGState witnessConfig witnessExecution anchorCheckpoint where
-  attestationValidity := witnessExternals.is_valid_indexed_attestation
-  includedAttestations := witnessIncludedAttestations
-  formed := witnessFormed
-  C := witnessCheckpointAt
-  GJ := fun _ => anchorCheckpoint
-  GU := fun _ => anchorCheckpoint
-  GF := fun _ => anchorCheckpoint
-  GUF := fun _ => anchorCheckpoint
-  checkpoint_epoch := by
-    intro r e
-    rfl
-  formed_evidence := by
-    intro r c hformed
-    rcases hformed with ⟨rfl, rfl⟩
-    exact
-      { certified := ⟨IncludedCertifiedJustified.anchor⟩
-        on_chain := .refl anchorRoot
-        causal := Or.inl rfl }
-  gj_mem := by
-    intro r hr
-    exact ⟨anchorRoot, rootDescends_anchor hr, rfl, rfl⟩
-  gu_mem := by
-    intro r hr
-    exact ⟨anchorRoot, rootDescends_anchor hr, rfl, rfl⟩
-  gf_mem := by
-    intro r hr
-    exact ⟨anchorRoot, rootDescends_anchor hr, rfl, rfl⟩
-  guf_mem := by
-    intro r hr
-    exact ⟨anchorRoot, rootDescends_anchor hr, rfl, rfl⟩
-  gj_anchor_or_before := by
-    intro r b hr
-    exact Or.inl rfl
-  gj_max := by
-    intro r b c hr hAU hbefore
-    obtain ⟨carrier, hdesc, hformed⟩ := hAU
-    rcases hformed with ⟨rfl, rfl⟩
-    exact Nat.le_refl 0
-  gu_max := by
-    intro r c hr hAU
-    obtain ⟨carrier, hdesc, hformed⟩ := hAU
-    rcases hformed with ⟨rfl, rfl⟩
-    exact Nat.le_refl 0
-  au_epoch_le_block := by
-    intro r b c hr hAU
-    obtain ⟨carrier, hdesc, hformed⟩ := hAU
-    rcases hformed with ⟨rfl, rfl⟩
-    exact Nat.zero_le _
-  gf_evidence := by
-    intro r hr
-    exact Or.inl rfl
-  guf_evidence := by
-    intro r hr
-    exact Or.inl rfl
-  gf_epoch_le_gj := by
-    intro r hr
-    exact Nat.le_refl 0
-  guf_epoch_le_gu := by
-    intro r hr
-    exact Nat.le_refl 0
-  gf_epoch_le_guf := by
-    intro r hr
-    exact Nat.le_refl 0
 
-theorem witnessPhase0SourceCoherence :
-    Phase0SourceCoherence witnessConfig witnessExternals := by
-  constructor
-  · intro st target hlt hsame
-    rfl
-  · intro pre sb post htransition hsame
-    simp only [witnessExternals] at htransition
-    split at htransition
-    · cases htransition
-      rfl
-    · contradiction
 
-theorem witnessPhase0BoundarySourceCoherence :
-    Phase0BoundarySourceCoherence witnessConfig witnessExternals := by
-  constructor
-  · intro st target hlt hcross
-    rfl
-  · intro pre sb post htransition hcross
-    simp only [witnessExternals] at htransition
-    split at htransition
-    · cases htransition
-      rfl
-    · contradiction
 
-private theorem genesisRoot_eq_anchor {r : WitnessRoot}
-    (hr : r ∈ witnessExecution.genesis_store.block_roots) :
-    r = anchorRoot := by
-  simpa [witnessExecution, anchorState, anchorSignedBlock,
-    get_forkchoice_store] using hr
 
-theorem witnessFFGTransitionCoherence :
-    FFGTransitionCoherence witnessConfig witnessExternals
-      witnessChainFFGState := by
-  refine
-    { attestation_validity := rfl
-      genesis_gj := ?_
-      genesis_gf := ?_
-      genesis_gu := ?_
-      genesis_guf := ?_
-      genesis_unrealized_justification := ?_
-      transition_gj := ?_
-      transition_gf := ?_
-      transition_gu := ?_
-      transition_guf := ?_
-      checkpoint_of_known := ?_
-      au_checkpoint_of_known := ?_ }
-  · intro r hr
-    rw [genesisRoot_eq_anchor hr]
-    rfl
-  · intro r hr
-    rw [genesisRoot_eq_anchor hr]
-    rfl
-  · intro r hr
-    rw [genesisRoot_eq_anchor hr]
-    rfl
-  · intro r hr
-    rw [genesisRoot_eq_anchor hr]
-    rfl
-  · intro r hr
-    rw [genesisRoot_eq_anchor hr]
-    rfl
-  · intro pre sb post hsched htransition
-    obtain ⟨w, n, hmem⟩ := hsched
-    simp [witnessExecution, witnessSchedule] at hmem
-  · intro pre sb post hsched htransition
-    obtain ⟨w, n, hmem⟩ := hsched
-    simp [witnessExecution, witnessSchedule] at hmem
-  · intro pre sb post hsched htransition
-    obtain ⟨w, n, hmem⟩ := hsched
-    simp [witnessExecution, witnessSchedule] at hmem
-  · intro pre sb post hsched htransition
-    obtain ⟨w, n, hmem⟩ := hsched
-    simp [witnessExecution, witnessSchedule] at hmem
-  · intro w hw
-    simp [witnessExecution] at hw
-  · intro w hw
-    simp [witnessExecution] at hw
 
-/-- The two new source laws and the pre-existing handler/read FFG transition
-coherence are jointly inhabited by one concrete finite model.  This guards
-against closing the proof with mutually inconsistent semantic contracts. -/
-theorem phase0_source_semantics_jointly_satisfiable :
-    ∃ (cfg : Config) (ext : Externals WitnessRoot)
-      (E : Execution WitnessRoot) (anchor : Checkpoint WitnessRoot)
-      (S : ChainFFGState cfg E anchor),
-      Phase0SourceCoherence cfg ext ∧
-      Phase0BoundarySourceCoherence cfg ext ∧
-      FFGTransitionCoherence cfg ext S := by
-  exact ⟨witnessConfig, witnessExternals, witnessExecution,
-    anchorCheckpoint, witnessChainFFGState,
-    witnessPhase0SourceCoherence,
-    witnessPhase0BoundarySourceCoherence,
-    witnessFFGTransitionCoherence⟩
 
 end CurrentTargetCertificateRealizationNonvacuity
 

@@ -6,7 +6,6 @@ public import FastConfirmation.Spec.Proof.AnchorFacade
 public import FastConfirmation.Spec.Proof.AcceptedCandidateHistoryRecurrence
 public import FastConfirmation.Spec.Proof.ModelFacts
 
-public import FastConfirmation.Spec.Proof.ModelFacts
 @[expose] public section
 
 /-!

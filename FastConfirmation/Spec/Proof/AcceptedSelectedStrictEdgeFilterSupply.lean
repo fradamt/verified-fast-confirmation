@@ -2,7 +2,9 @@ module
 public import Mathlib.Tactic
 public import FastConfirmation.Spec.Proof.AcceptedRetainedPhaseSourceRetarget
 public import FastConfirmation.Spec.Proof.AcceptedEarlyPhaseSourceWiring
-public import FastConfirmation.Spec.Proof.AcceptedHistoricalFinalizedPlacementAdapters
+public import FastConfirmation.Spec.Proof.AcceptedHistoricalFinalizedPlacement
+public import FastConfirmation.Spec.Proof.SelectedTraceFFGRealizationPipeline
+public import FastConfirmation.Spec.Proof.ModelFacts
 public import FastConfirmation.Spec.Proof.AcceptedFFGJustifiedMaximality
 public import FastConfirmation.Spec.Proof.PaperA32SupportRealization
 public import FastConfirmation.Spec.Proof.SelectedCoveredMarginConstruction
@@ -12,7 +14,6 @@ public import FastConfirmation.Spec.Proof.AcceptedCurrentSameEndpointSource
 public import FastConfirmation.Spec.Proof.AcceptedRecentCarrierFinalizedPlacement
 public import FastConfirmation.Spec.Proof.AcceptedPreviousEpochStartSupply
 public import FastConfirmation.Spec.Proof.SelectedA32Semantics
-public import FastConfirmation.Spec.Proof.ModelFacts
 
 @[expose] public section
 

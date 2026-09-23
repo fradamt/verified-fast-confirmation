@@ -79,22 +79,6 @@ They are deleted by the orphan sweep that follows the retirement of the legacy
 `SpecAssumptions` observed-anchor cone (P-6): every consumer they had was in that cone.
 See `docs/p6-justified-descends-derivation.md` §8. -/
 
-/-- **`INVstar` maintenance to any window end σ ≥ es.** From the base `INVstar(es)` and
-a per-slot step functional `hstep` (each `INVstar(σ) ⟹ INVstar(σ+1)`, built by the
-caller from `Ledger.INVstar_step` + the honest class-migration deltas; the enemy leg is
-the store-independent `Bval`, monotone by `Ledger.Bval_mono`, so no arrival accounting),
-`INVstar(σ)` holds for every `σ ≥ es`. A clean `Nat.le_induction` — the v1 analog of
-`HeadSafetyEngine.INV2_maintained`, with `Bval` in place of the recorded `Enemy`. -/
-theorem INVstar_maintained (v₀ : ValidatorIndex) (n₀ : ℕ) (b' : Root) (lo es : Slot)
-    (boost : ℕ)
-    (hbase : E.INVstar cfg ext v₀ n₀ b' lo es es boost)
-    (hstep : ∀ σ : Slot, es ≤ σ → E.INVstar cfg ext v₀ n₀ b' lo es σ boost →
-      E.INVstar cfg ext v₀ n₀ b' lo es (σ + 1) boost) :
-    ∀ σ : Slot, es ≤ σ → E.INVstar cfg ext v₀ n₀ b' lo es σ boost := by
-  intro σ hσ
-  induction σ, hσ using Nat.le_induction with
-  | base => exact hbase
-  | succ σ hσ ih => exact hstep σ hσ ih
 
 /-! ## Section 2 — the `hBb`-free per-edge bundle and its `DescendStep`
 

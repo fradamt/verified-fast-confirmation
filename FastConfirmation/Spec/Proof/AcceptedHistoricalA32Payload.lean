@@ -4,7 +4,6 @@ public import FastConfirmation.Spec.Proof.FilterViability
 public import FastConfirmation.Spec.Proof.SelectedPreQueryHistoricalSIR
 public import FastConfirmation.Spec.Proof.ModelFacts
 
-public import FastConfirmation.Spec.Proof.ModelFacts
 @[expose] public section
 
 /-!

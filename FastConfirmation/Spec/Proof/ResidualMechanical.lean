@@ -63,28 +63,6 @@ the Layer-0 `ParentSlotLt`, derived by `WFTrajectory.store_parentSlotLt` under t
 `WalkKnown` walk domain and justified-knownness enter through the two named
 inputs. -/
 
-/-- **`StoreDomain` from the Layer-0 parent-slot order + the two named invariants.**
-The `parent_slot_lt` conjunct is `store_parentSlotLt` (Layer 0); `hwalk` /
-`hjust` supply the `WalkKnown` walk domain and justified-knownness. The `hgen` /
-`hanchor` hypotheses are `SpecAssumptions`' genesis form and the `WFTrajectory` anchor guard
-that `store_parentSlotLt` consumes. -/
-theorem storeDomain_of_layer0
-    (hwf : WellFormedExecution E) (hec : ExternalsCoherence cfg ext E)
-    (hgen : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
-      E.genesis_store = get_forkchoice_store cfg ast ablk ∧
-      ast.slot = ablk.message.slot ∧ ablk.message.parent_root ≠ ablk.root)
-    (hanchor : ∀ r ∈ E.genesis_store.block_roots, ∀ w n (b : SignedBeaconBlock Root),
-      Event.block b ∈ E.schedule w n → b.root ≠ (E.genesis_store.blocks r).parent_root)
-    (hwalk : ∀ w ∈ E.honest, ∀ m : ℕ, ∀ t r : Root,
-      r ∈ (E.store cfg ext w m).block_roots →
-        WalkKnown (E.store cfg ext w m) ((E.store cfg ext w m).blocks t).slot r)
-    (hjust : ∀ w ∈ E.honest, ∀ m : ℕ,
-      E.WithinHorizon cfg m →
-      (E.store cfg ext w m).justified_checkpoint.root ∈ (E.store cfg ext w m).block_roots) :
-    E.StoreDomain cfg ext := by
-  intro w hw m hH
-  exact ⟨E.store_parentSlotLt cfg ext hwf hec hgen hanchor w m,
-    hwalk w hw m, hjust w hw m hH⟩
 
 /-! ## Section 2 — finalized tracking from one cross-store residual
 
@@ -98,45 +76,7 @@ finalized-knownness `hfin_known`. The genesis anchor `(E.store v 0)` is
 Casper cross-store finalization-consistency fact represented by
 `finalized_descent`. -/
 
-/-- **`genesis_fin_track` from the finalized-descent residual.** The genesis anchor
-`(E.store v 0).finalized_checkpoint.root` is reached at `k = 0` (`0 ≤ m`). -/
-theorem genesisFinTrack_of_descent
-    (hfin_known : ∀ w ∈ E.honest, ∀ m : ℕ,
-      E.WithinHorizon cfg m →
-      (E.store cfg ext w m).finalized_checkpoint.root ∈ (E.store cfg ext w m).block_roots)
-    (hfin_descent : ∀ v ∈ E.honest, ∀ k : ℕ, ∀ w ∈ E.honest, ∀ m : ℕ, k ≤ m →
-      E.WithinHorizon cfg m →
-      is_ancestor (E.store cfg ext w m)
-        (get_node_for_root (E.store cfg ext w m).finalized_checkpoint.root)
-        (get_node_for_root (E.store cfg ext v k).finalized_checkpoint.root) = true) :
-    ∀ v ∈ E.honest, ∀ w ∈ E.honest, ∀ m : ℕ,
-      E.WithinHorizon cfg m →
-      (E.store cfg ext w m).finalized_checkpoint.root ∈ (E.store cfg ext w m).block_roots ∧
-      is_ancestor (E.store cfg ext w m)
-        (get_node_for_root (E.store cfg ext w m).finalized_checkpoint.root)
-        (get_node_for_root (E.store cfg ext v 0).finalized_checkpoint.root) = true :=
-  fun v hv w hw m hH =>
-    ⟨hfin_known w hw m hH, hfin_descent v hv 0 w hw m (Nat.zero_le m) hH⟩
 
-/-- **`finalized_track` from the finalized-descent residual.** The update anchor
-`(E.store v (n+1)).finalized_checkpoint.root` is reached at `k = n+1` (`n+1 ≤ m`). -/
-theorem finalizedTrack_of_descent
-    (hfin_known : ∀ w ∈ E.honest, ∀ m : ℕ,
-      E.WithinHorizon cfg m →
-      (E.store cfg ext w m).finalized_checkpoint.root ∈ (E.store cfg ext w m).block_roots)
-    (hfin_descent : ∀ v ∈ E.honest, ∀ k : ℕ, ∀ w ∈ E.honest, ∀ m : ℕ, k ≤ m →
-      E.WithinHorizon cfg m →
-      is_ancestor (E.store cfg ext w m)
-        (get_node_for_root (E.store cfg ext w m).finalized_checkpoint.root)
-        (get_node_for_root (E.store cfg ext v k).finalized_checkpoint.root) = true) :
-    ∀ v ∈ E.honest, ∀ n : ℕ, ∀ w ∈ E.honest, ∀ m : ℕ, n + 1 ≤ m →
-      E.WithinHorizon cfg m →
-      (E.store cfg ext w m).finalized_checkpoint.root ∈ (E.store cfg ext w m).block_roots ∧
-      is_ancestor (E.store cfg ext w m)
-        (get_node_for_root (E.store cfg ext w m).finalized_checkpoint.root)
-        (get_node_for_root (E.store cfg ext v (n + 1)).finalized_checkpoint.root) = true :=
-  fun v hv n w hw m hm hH =>
-    ⟨hfin_known w hw m hH, hfin_descent v hv (n + 1) w hw m hm hH⟩
 
 /-! ## Section 3 — the certificate chain assembly
 
@@ -178,20 +118,6 @@ def DynamicsChainSupply (E : Execution Root) (b : Root) (n₀ : ℕ) : Prop :=
         ((E.store cfg ext w m).justified_checkpoint.root :: ds) ∧
       ((E.store cfg ext w m).justified_checkpoint.root :: ds).getLast (List.cons_ne_nil _ _) = b
 
-/-- **`LedgerChainInputCert` from the dynamics-chain supply.** The
-per-edge `DynamicsResidual` chain lifts to a `LedgerCertInput` chain
-(`ledgerCertInput_of_dynamicsResidual` + `List.IsChain.imp`); the domain facts pass
-through unchanged. The chain-assembly result — everything below the per-edge
-certificate boundary is `DynamicsChainSupply`, the named residual. -/
-theorem ledgerChainInputCert_of_dynamicsChain
-    (hec : ExternalsCoherence cfg ext E) (hsv : StaticValidatorSet cfg E)
-    {b : Root} {n₀ : ℕ} (hsupply : E.DynamicsChainSupply cfg ext b n₀) :
-    LedgerChainInputCert cfg ext E b n₀ := by
-  intro w hw m hm hH hIH
-  obtain ⟨ds, hwf, hsub, hb, hnd, hdchain, hlast⟩ := hsupply w hw m hm hH hIH
-  exact ⟨ds, hwf, hsub, hb, hnd,
-    hdchain.imp (fun _ _ hab => E.ledgerCertInput_of_dynamicsResidual cfg ext hec hsv hab),
-    hlast⟩
 
 /-! ## Section 4 — the residual bundle and the `L4ResidualHyps` assembly
 
@@ -253,28 +179,6 @@ structure MechanicalResiduals (E : Execution Root) : Prop where
       (get_current_balance_source (E.fcrStep cfg ext v n)) b = true →
     E.DynamicsChainSupply cfg ext b (n + 1)
 
-/-- **`L4ResidualHyps` from `SpecAssumptions` + `MechanicalResiduals`.** All six
-`L4ResidualHyps` fields: `interface` from `SpecAssumptions`; `store_domain` from the
-Layer-0 parent-slot order + `walk_domain`/`justified_known`; the two finalized
-tracks from `finalized_known`/`finalized_descent`; `observed_dom` verbatim; and
-`advance_cert` from the chain assembly `ledgerChainInputCert_of_dynamicsChain`
-applied to `dynamics_chain`. This is `ResidualMechanical`'s contract — `L4ResidualHyps` reduces to
-exactly the `MechanicalResiduals` list. -/
-theorem l4ResidualHyps_of_mechanical (hSA : SpecAssumptions cfg ext E)
-    (hmech : E.MechanicalResiduals cfg ext) : E.L4ResidualHyps cfg ext := by
-  obtain ⟨hgen, hwf, _hdiv, _hbeh, _hsync, hec, hsv, _hbb, hji⟩ := hSA
-  exact
-    { interface := hji
-      store_domain := E.storeDomain_of_layer0 cfg ext hwf hec hgen hmech.anchor_unscheduled
-        hmech.walk_domain hmech.justified_known
-      genesis_fin_track := E.genesisFinTrack_of_descent cfg ext hmech.finalized_known
-        hmech.finalized_descent
-      finalized_track := E.finalizedTrack_of_descent cfg ext hmech.finalized_known
-        hmech.finalized_descent
-      observed_dom := hmech.observed_dom
-      advance_cert := fun v hv n b hconf =>
-        E.ledgerChainInputCert_of_dynamicsChain cfg ext hec hsv
-          (hmech.dynamics_chain v hv n b hconf) }
 
 end Execution
 
@@ -285,14 +189,6 @@ if `SpecAssumptions` supplies `MechanicalResiduals` for every execution, the FCR
 safety guarantee holds. `MechanicalResiduals` is the input bundle produced by
 this reduction. -/
 
-/-- **`Spec_Safety` from the mechanical residuals.** The final reduction: the FCR
-safety guarantee follows from a proof that every execution's `SpecAssumptions`
-supplies `MechanicalResiduals`. -/
-theorem spec_safety_of_mechanical
-    (hmech : ∀ E : Execution Root, SpecAssumptions cfg ext E → E.MechanicalResiduals cfg ext) :
-    Spec_Safety cfg ext :=
-  spec_safety_of_residualHyps cfg ext
-    (fun E hSA => E.l4ResidualHyps_of_mechanical cfg ext hSA (hmech E hSA))
 
 end FastConfirmation.Spec
 

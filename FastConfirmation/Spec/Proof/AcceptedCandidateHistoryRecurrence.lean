@@ -6,7 +6,6 @@ public import FastConfirmation.Spec.Proof.L4Fold
 public import FastConfirmation.Spec.Proof.AcceptedFFGGlobalCheckpointTrajectory
 public import FastConfirmation.Spec.Proof.ModelFacts
 
-public import FastConfirmation.Spec.Proof.ModelFacts
 @[expose] public section
 
 /-!

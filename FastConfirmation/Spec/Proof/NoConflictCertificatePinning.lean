@@ -49,24 +49,6 @@ structure NoConflictPinningAssumptions (E : Execution Root) : Prop where
       (E.store cfg ext w m).justified_checkpoint.root ∈
         (E.store cfg ext w m).block_roots
 
-/-- Compatibility projection from the legacy all-in-one bundle.  This theorem
-documents the only `JustificationInterface` field retained: local justified
-root knownness.  No gate soundness, justified uniqueness/ancestry, head
-descent, or checkpoint-boundary field is projected. -/
-theorem SpecAssumptions.toNoConflictPinningAssumptions
-    {E : Execution Root} (hSA : SpecAssumptions cfg ext E) :
-    NoConflictPinningAssumptions cfg ext E := by
-  obtain ⟨hgen, hwf, hdiv, hhb, _hsync, hec, hsv, hbb, hji⟩ := hSA
-  exact {
-    genesis := hgen
-    wellFormed := hwf
-    whole_seconds := hdiv
-    honest_behavior := hhb
-    externals_coherence := hec
-    static_validators := hsv
-    byzantine_bound := hbb
-    justified_root_known := fun w hw m hH =>
-      (hji.checkpoint_known w hw m hH).1 }
 
 /-- The already-local selected-margin assumptions project to the pinning
 bundle without mentioning `JustificationInterface` at all. -/
@@ -523,33 +505,6 @@ theorem known_descends_trustedAnchor_noConflict
       simpa only [hanchorBlockSlot] using hminimum r hr)
 
 omit [LinearOrder Root] [Inhabited Root] in
-/-- A concrete vote assigned in epoch `e` belongs to the full committee union
-for `e`.  This local arithmetic lemma keeps the certificate-pinning module
-independent of any hidden signer-set premise. -/
-private theorem mem_noConflict_epoch_span_of_committee
-    {E : Execution Root} {i : ValidatorIndex} {s : Slot} {e : Epoch}
-    (hcommittee : i ∈ E.committee s)
-    (hepoch : compute_epoch_at_slot cfg s = e) :
-    i ∈ E.span_committee (e * cfg.slots_per_epoch)
-      (e * cfg.slots_per_epoch + (cfg.slots_per_epoch - 1)) := by
-  have hdiv : s / cfg.slots_per_epoch = e := by
-    simpa only [compute_epoch_at_slot] using hepoch
-  have hlo : e * cfg.slots_per_epoch ≤ s := by
-    have h := Nat.div_mul_le_self s cfg.slots_per_epoch
-    rwa [hdiv] at h
-  have hlt : s < e * cfg.slots_per_epoch + cfg.slots_per_epoch := by
-    have h := Nat.lt_mul_div_succ s cfg.slots_per_epoch_pos
-    rw [hdiv, Nat.mul_add] at h
-    simpa only [Nat.mul_comm, Nat.add_comm, Nat.mul_one] using h
-  have hhi : s ≤ e * cfg.slots_per_epoch +
-      (cfg.slots_per_epoch - 1) := by
-    have hpred := Nat.le_pred_of_lt hlt
-    rw [Nat.pred_eq_sub_one,
-      Nat.add_sub_assoc (Nat.one_le_iff_ne_zero.mpr
-        (Nat.ne_of_gt cfg.slots_per_epoch_pos))] at hpred
-    exact hpred
-  simp only [Execution.span_committee, Finset.mem_biUnion]
-  exact ⟨s, Finset.mem_Icc.mpr ⟨hlo, hhi⟩, hcommittee⟩
 
 /-! ## Certificate pinning -/
 

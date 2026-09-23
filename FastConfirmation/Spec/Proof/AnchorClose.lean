@@ -1,10 +1,25 @@
 module
-public import FastConfirmation.Spec.Proof.AnchorThread
-public import FastConfirmation.Spec.Proof.Assembly
+public import FastConfirmation.Spec.Proof.Anchoring
+public import FastConfirmation.Spec.Proof.Dominance
+public import FastConfirmation.Spec.Proof.Closing
+public import FastConfirmation.Spec.Proof.INVstarTrack
+public import FastConfirmation.Spec.Proof.AncestryRoots
+public import FastConfirmation.Spec.Proof.Bridge
+public import FastConfirmation.Spec.Proof.Engine
+public import FastConfirmation.Spec.Proof.Registry
+public import FastConfirmation.Spec.Proof.EdgeDynamics
+public import FastConfirmation.Spec.Proof.Endpoint
 public import FastConfirmation.Spec.Proof.Reanchor
-public import FastConfirmation.Spec.Proof.HeadRerootChain
-public import FastConfirmation.Spec.Proof.SameSlotProvenance
-public import FastConfirmation.Spec.Proof.Knownness
+public import FastConfirmation.Spec.Proof.EngineStore
+public import FastConfirmation.Spec.Proof.HeadReroot
+public import FastConfirmation.Spec.Proof.CheckpointDomain
+public import FastConfirmation.Spec.Proof.HonestWeight
+public import FastConfirmation.Spec.Proof.Discount
+public import FastConfirmation.Spec.Proof.AnchorFacade
+public import FastConfirmation.Spec.Proof.MicroSteps
+public import FastConfirmation.Spec.Proof.Provenance
+public import FastConfirmation.Spec.Proof.Delivery
+public import FastConfirmation.Spec.Proof.EngineTransport
 
 @[expose] public section
 
@@ -81,58 +96,6 @@ variable (cfg : Config) (ext : Externals Root)
 /-! The selected closing uses the ancestor-roots case split directly.  Keep its
 small walk argument here instead of importing the arbitrary-root engine
 module merely for this helper. -/
-
-omit [Inhabited Root] in
-private theorem roots_isSome_of_ancestor_selected {store : Store Root}
-    (hwf : ∀ r ∈ store.block_roots,
-      (store.blocks r).parent_root ∈ store.block_roots →
-        (store.blocks (store.blocks r).parent_root).slot < (store.blocks r).slot)
-    {t r : Root} (hw : WalkKnown store (store.blocks t).slot r) :
-    (get_ancestor store (ForkChoiceNode.mk r .pending) (store.blocks t).slot).root = t →
-    ∀ fuel : ℕ, (store.blocks r).slot < fuel →
-      (get_ancestor_roots_aux store t fuel r).isSome = true ∨ r = t := by
-  induction hw with
-  | stop hr hle =>
-    intro hanc _ _
-    rw [get_ancestor_stop hle] at hanc
-    exact Or.inr (by simpa using hanc)
-  | @step r hr hgt hp ih =>
-    intro hanc fuel hfuel
-    rw [get_ancestor_step hwf hr hgt hp] at hanc
-    cases fuel with
-    | zero => exact absurd hfuel (Nat.not_lt_zero _)
-    | succ f =>
-      rw [get_ancestor_roots_aux_succ, if_pos hgt]
-      by_cases hD : (store.blocks r).parent_root = t
-      · rw [if_pos hD]; exact Or.inl rfl
-      · rw [if_neg hD]
-        have hbound : (store.blocks (store.blocks r).parent_root).slot < f :=
-          Nat.lt_of_lt_of_le (hwf r hr hp.root_mem) (Nat.lt_succ_iff.mp hfuel)
-        rcases ih hanc f hbound with hsome | hpeq
-        · left
-          obtain ⟨l, hl⟩ := Option.isSome_iff_exists.mp hsome
-          rw [hl]
-          rfl
-        · exact absurd hpeq hD
-
-omit [Inhabited Root] in
-private theorem hcase_of_ancestor_selected {store : Store Root}
-    (hwf : ∀ r ∈ store.block_roots,
-      (store.blocks r).parent_root ∈ store.block_roots →
-        (store.blocks (store.blocks r).parent_root).slot < (store.blocks r).slot)
-    {b jc : Root} (hwalk : WalkKnown store (store.blocks jc).slot b)
-    (hanc : is_ancestor store (ForkChoiceNode.mk b .pending) (ForkChoiceNode.mk jc .pending) = true) :
-    get_ancestor_roots store b jc ≠ [] ∨ b = jc := by
-  simp only [is_ancestor_pending, decide_eq_true_eq] at hanc
-  rcases roots_isSome_of_ancestor_selected hwf hwalk hanc
-      ((store.blocks b).slot + 1) (Nat.lt_succ_self _) with hsome | heq
-  · left
-    rw [get_ancestor_roots]
-    obtain ⟨l, hl⟩ := Option.isSome_iff_exists.mp hsome
-    rw [hl]
-    change l ≠ []
-    exact (get_ancestor_roots_aux_chain hwf hwalk _ (Nat.lt_succ_self _) l hl).1
-  · exact Or.inr heq
 
 /-! ## Section 0 — r₀-scoped mid-walk fold helpers
 
@@ -232,168 +195,7 @@ theorem parentChain_edge_child_slot_gt_head {store : Store Root}
       exact False.elim ((Nat.not_lt_of_ge hxLtA.le) haLt)
   · exact (List.pairwise_cons.mp hpair).1 c hcTail
 
-/-- **Mid-walk head descent from the r₀-scoped edge supply.** Re-rooted at an arbitrary node `x`
-on `b`'s chain with `x ⪰ jc.root`, `x ⪰ r₀`,
-and `head ⪰ x`: the parent-link chain `x → b` (`parentChain_at`) lifts to a `DescendStep` chain
-edge-wise (each edge child `c` descends from `x` by `get_ancestor_roots_descends`, hence from `r₀`
-by transitivity — the scoping premise `hedge` consumes), which
-`HeadRerootChain.head_ge_of_intermediate_ledger` folds to `head ⪰ b`. The mid-chain instance is
-`x = jc.root` (`head ⪰ jc.root` from the filter takeover); the deleted covering fold also used
-`x = r₀`. -/
-theorem head_ge_of_scoped_terminal {store : Store Root}
-    (hwf : ∀ r ∈ store.block_roots,
-      (store.blocks r).parent_root ∈ store.block_roots →
-        (store.blocks (store.blocks r).parent_root).slot < (store.blocks r).slot)
-    (hsub : ∀ r ∈ get_filtered_block_tree cfg store, r ∈ store.block_roots)
-    (hwalkK : ∀ t ∈ store.block_roots, ∀ r ∈ store.block_roots,
-      WalkKnown store (store.blocks t).slot r)
-    (hjust : store.justified_checkpoint.root ∈ store.block_roots)
-    {r₀ x b : Root} (hr₀ : r₀ ∈ store.block_roots) (hx : x ∈ store.block_roots)
-    (hb : b ∈ store.block_roots)
-    (hx_jc : is_ancestor store (get_node_for_root x)
-      (get_node_for_root store.justified_checkpoint.root) = true)
-    (hx_r₀ : is_ancestor store (get_node_for_root x) (get_node_for_root r₀) = true)
-    (hhead_x : is_ancestor store (get_head cfg store) (get_node_for_root x) = true)
-    (hbx : is_ancestor store (get_node_for_root b) (get_node_for_root x) = true)
-    (hedge : ∀ a c : Root, a ∈ store.block_roots → c ∈ store.block_roots →
-      (store.blocks c).parent_root = a →
-      is_ancestor store (get_node_for_root b) (get_node_for_root c) = true →
-      is_ancestor store (get_node_for_root c) (get_node_for_root r₀) = true →
-      c ≠ r₀ →
-      DescendStep cfg store (get_filtered_block_tree cfg store) a c) :
-    is_ancestor store (get_head cfg store) (get_node_for_root b) = true := by
-  have hbx' : is_ancestor store (ForkChoiceNode.mk b .pending) (ForkChoiceNode.mk x .pending) = true := by
-    simpa only [get_node_for_root] using hbx
-  have hcase := hcase_of_ancestor_selected hwf (hwalkK x hx b hb) hbx'
-  obtain ⟨hmem, hchainPL, hlast⟩ := parentChain_at hwf hwalkK hx hb hcase
-  have hlast? : (x :: get_ancestor_roots store b x).getLast? = some b := by
-    rw [List.getLast?_eq_some_getLast (List.cons_ne_nil _ _), hlast]
-  have hchainDS : List.IsChain (DescendStep cfg store (get_filtered_block_tree cfg store))
-      (x :: get_ancestor_roots store b x) := by
-    refine isChain_imp_of_mem hchainPL ?_
-    intro a ha c hc hlink
-    have hb_c := Execution.mem_isAncestor_of_parentChain hwf hwalkK hb hchainPL hmem hlast? c hc
-    have hc_r₀ : is_ancestor store (get_node_for_root c) (get_node_for_root r₀) = true := by
-      rcases List.mem_cons.mp hc with rfl | hc'
-      · exact hx_r₀
-      · have hcx := get_ancestor_roots_descends hwf hwalkK hx hb hc'
-        exact is_ancestor_trans (a := get_node_for_root c) (b := get_node_for_root x)
-          (c := get_node_for_root r₀) hwf (hwalkK r₀ hr₀ c (hmem c hc))
-          (hwalkK r₀ hr₀ x hx) hcx hx_r₀
-    have hxLtC := parentChain_edge_child_slot_gt_head hwf hmem hchainPL ha hc hlink
-    have hr₀LeX : (store.blocks r₀).slot ≤ (store.blocks x).slot := by
-      have hsle := get_ancestor_slot_le hwf (hwalkK r₀ hr₀ x hx)
-      have hlands : (get_ancestor store (ForkChoiceNode.mk x .pending)
-          (store.blocks r₀).slot).root = r₀ := by
-        simpa only [get_node_for_root, is_ancestor_pending, decide_eq_true_eq] using hx_r₀
-      rw [hlands] at hsle
-      simpa using hsle
-    have hcNeR₀ : c ≠ r₀ := by
-      intro heq
-      subst c
-      exact (Nat.not_lt_of_ge hr₀LeX) hxLtC
-    exact hedge a c (hmem a ha) (hmem c hc) hlink hb_c hc_r₀ hcNeR₀
-  exact head_ge_of_intermediate_ledger cfg hwf hsub hwalkK hjust hx hx_jc hhead_x hb
-    hchainDS hlast
 
-/-- **Mid-walk head descent from an already-safe anchor.** If the current head already descends
-from `r₀`, the `r₀`-scoped `DescendStep` chain from `r₀` to `b` carries that descent through to
-`b`. When `r₀` itself descends from the store's justified root this is exactly
-`head_ge_of_intermediate_ledger`. In the opposite orientation, the first dominant child is a
-filtered root and hence descends from the justified root; the parent/child squeeze makes the
-justified root either `r₀` or that first child, after which the same mid-walk lemma consumes the
-whole chain or its tail. -/
-theorem head_ge_of_safe_scoped_terminal {store : Store Root}
-    (hwf : ∀ r ∈ store.block_roots,
-      (store.blocks r).parent_root ∈ store.block_roots →
-        (store.blocks (store.blocks r).parent_root).slot < (store.blocks r).slot)
-    (hsub : ∀ r ∈ get_filtered_block_tree cfg store, r ∈ store.block_roots)
-    (hwalkK : ∀ t ∈ store.block_roots, ∀ r ∈ store.block_roots,
-      WalkKnown store (store.blocks t).slot r)
-    (hjust : store.justified_checkpoint.root ∈ store.block_roots)
-    {r₀ b : Root} (hr₀ : r₀ ∈ store.block_roots) (hb : b ∈ store.block_roots)
-    (hhead_r₀ : is_ancestor store (get_head cfg store) (get_node_for_root r₀) = true)
-    (hb_r₀ : is_ancestor store (get_node_for_root b) (get_node_for_root r₀) = true)
-    (hedge : ∀ a c : Root, a ∈ store.block_roots → c ∈ store.block_roots →
-      (store.blocks c).parent_root = a →
-      is_ancestor store (get_node_for_root b) (get_node_for_root c) = true →
-      is_ancestor store (get_node_for_root c) (get_node_for_root r₀) = true →
-      c ≠ r₀ →
-      DescendStep cfg store (get_filtered_block_tree cfg store) a c) :
-    is_ancestor store (get_head cfg store) (get_node_for_root b) = true := by
-  have hb_r₀' : is_ancestor store (ForkChoiceNode.mk b .pending) (ForkChoiceNode.mk r₀ .pending) = true := by
-    simpa only [get_node_for_root] using hb_r₀
-  have hcase := hcase_of_ancestor_selected hwf (hwalkK r₀ hr₀ b hb) hb_r₀'
-  obtain ⟨hmem, hchainPL, hlast⟩ := parentChain_at hwf hwalkK hr₀ hb hcase
-  have hlast? : (r₀ :: get_ancestor_roots store b r₀).getLast? = some b := by
-    rw [List.getLast?_eq_some_getLast (List.cons_ne_nil _ _), hlast]
-  have hchainDS : List.IsChain (DescendStep cfg store (get_filtered_block_tree cfg store))
-      (r₀ :: get_ancestor_roots store b r₀) := by
-    refine isChain_imp_of_mem hchainPL ?_
-    intro a ha c hc hlink
-    have hb_c := Execution.mem_isAncestor_of_parentChain hwf hwalkK hb hchainPL hmem hlast? c hc
-    have hc_r₀ : is_ancestor store (get_node_for_root c) (get_node_for_root r₀) = true := by
-      rcases List.mem_cons.mp hc with rfl | hc'
-      · exact is_ancestor_refl store _
-      · exact get_ancestor_roots_descends hwf hwalkK hr₀ hb hc'
-    have hr₀LtC := parentChain_edge_child_slot_gt_head hwf hmem hchainPL ha hc hlink
-    have hcNeR₀ : c ≠ r₀ := by
-      intro heq
-      subst c
-      exact (lt_irrefl _) hr₀LtC
-    exact hedge a c (hmem a ha) (hmem c hc) hlink hb_c hc_r₀ hcNeR₀
-  have finish (hr₀_jc : is_ancestor store (get_node_for_root r₀)
-      (get_node_for_root store.justified_checkpoint.root) = true) :
-      is_ancestor store (get_head cfg store) (get_node_for_root b) = true :=
-    head_ge_of_intermediate_ledger cfg hwf hsub hwalkK hjust hr₀ hr₀_jc hhead_r₀ hb
-      hchainDS hlast
-  cases hs : get_ancestor_roots store b r₀ with
-  | nil =>
-      have hr₀b : r₀ = b := by simpa [hs] using hlast
-      simpa [hr₀b] using hhead_r₀
-  | cons c ds =>
-      have hchainDS' : List.IsChain (DescendStep cfg store (get_filtered_block_tree cfg store))
-          (r₀ :: c :: ds) := by simpa [hs] using hchainDS
-      rw [List.isChain_cons_cons] at hchainDS'
-      obtain ⟨hstep, hchainTail⟩ := hchainDS'
-      have hchainPL' : List.IsChain (fun a c => (store.blocks c).parent_root = a)
-          (r₀ :: c :: ds) := by simpa [hs] using hchainPL
-      rw [List.isChain_cons_cons] at hchainPL'
-      have hpar : (store.blocks c).parent_root = r₀ := hchainPL'.1
-      have hcmem : c ∈ store.block_roots := hmem c (by simp [hs])
-      have hcfilter : c ∈ get_filtered_block_tree cfg store :=
-        hstep.child_mem
-      have hc_jc : is_ancestor store (get_node_for_root c)
-          (get_node_for_root store.justified_checkpoint.root) = true :=
-        filtered_through_justified_K cfg hwf hwalkK hjust hcfilter
-      have hc_r₀ : is_ancestor store (get_node_for_root c) (get_node_for_root r₀) = true :=
-        is_ancestor_of_parent hwf hcmem hr₀ hpar
-      have hc_jc' : (get_ancestor store (ForkChoiceNode.mk c .pending)
-          (store.blocks store.justified_checkpoint.root).slot).root =
-            store.justified_checkpoint.root := by
-        simpa only [get_node_for_root, is_ancestor_pending, decide_eq_true_eq] using hc_jc
-      have hc_r₀' : (get_ancestor store (ForkChoiceNode.mk c .pending) (store.blocks r₀).slot).root =
-          r₀ := by
-        simpa only [get_node_for_root, is_ancestor_pending, decide_eq_true_eq] using hc_r₀
-      rcases reroot_comparable hwf
-          (hwalkK r₀ hr₀ c hcmem)
-          (hwalkK store.justified_checkpoint.root hjust c hcmem) hc_r₀' hc_jc' with
-        hjc_r₀ | hr₀_jc
-      · rcases reroot_child_squeeze hwf hwalkK hjust hr₀ hcmem hpar hjc_r₀ hc_jc' with
-          hjceq | hjceq
-        · apply finish
-          simpa only [hjceq] using is_ancestor_refl store (get_node_for_root r₀)
-        · have hhead_c : is_ancestor store (get_head cfg store) (get_node_for_root c) = true :=
-            head_ge_of_justified_ge_K cfg hwf hwalkK hjust hcmem (by
-              simpa only [hjceq] using is_ancestor_refl store (get_node_for_root c))
-          have hlastTail : (c :: ds).getLast (List.cons_ne_nil c ds) = b := by
-            have hlast' := hlast
-            rw [hs, List.getLast_cons (List.cons_ne_nil c ds)] at hlast'
-            exact hlast'
-          exact head_ge_of_intermediate_ledger cfg hwf hsub hwalkK hjust hcmem hc_jc hhead_c hb
-            hchainTail hlastTail
-      · apply finish
-        simpa only [get_node_for_root, is_ancestor_pending, decide_eq_true_eq] using hr₀_jc
 
 namespace Execution
 
@@ -409,39 +211,6 @@ descent, lifting each edge's
 the fold consuming a per-edge `DescendStep` supply directly, so the confirm-margin producer plugs in
 without the `INVstar` intermediate. -/
 
-/-- **The per-`b`-chain-edge `DescendStep` supply** — the transparent engine interface. The
-`INVstarTrack.ForkEdgeGroundSupply` shape with the existential `ForkEdgeGroundInputs` per edge
-replaced by the `DescendStep` it lifts to. Under the shell head-safety IH, every real parent edge
-`a ← c` of known blocks **whose child `c` is on `b`'s chain** (`is_ancestor store b c`) carries a
-fork-choice descent step `DescendStep cfg (store w m) (filtered) a c`. The `b`-chain scope is the
-chain scope ensures that losing siblings appear only as `hsib` recorded-bound objects, never as descent subjects.
-The confirm-margin collapse (`Dominance.descendStep_of_confirmMargin` /
-`Assembly.descendStep_of_assemblyResidual`) is its per-edge producer.
-
-The supply carries the **anchor-root parameter `r₀`**
-and the **per-edge scoping premise** `c ⪰ r₀` (`is_ancestor (store w m) c r₀`) before the
-`DescendStep` conclusion: the producer (the L4 `find_latest_confirmed_descendant` walk, whose
-certificates live **only** on the segment `[r₀, glc]`) is faced **only** with edges whose child `c`
-descends from the reset anchor `r₀` — never the cert-less deep edges above `r₀`. The 4-case fold
-(`safeFromGlc_of_covSupply`) only ever demands `c ⪰ r₀` edges: case (ii) walks `[jc.root, b]` with
-`jc.root ⪰ r₀`, case (iii) walks `[r₀, b]`. -/
-def DescendStepChainSupply (E : Execution Root) (b r₀ : Root) (n₀ : ℕ) : Prop :=
-  ∀ w ∈ E.honest, ∀ m : ℕ, n₀ ≤ m →
-    E.WithinHorizon cfg m →
-    (∀ w' ∈ E.honest, ∀ m' : ℕ, n₀ ≤ m' → E.slot_at cfg m' < E.slot_at cfg m →
-      E.WithinHorizon cfg m' →
-      is_ancestor (E.store cfg ext w' m') (get_head cfg (E.store cfg ext w' m'))
-        (get_node_for_root b) = true) →
-    ∀ a c : Root, a ∈ (E.store cfg ext w m).block_roots →
-      c ∈ (E.store cfg ext w m).block_roots →
-      ((E.store cfg ext w m).blocks c).parent_root = a →
-      is_ancestor (E.store cfg ext w m)
-          (get_node_for_root b) (get_node_for_root c) = true →
-      is_ancestor (E.store cfg ext w m)
-          (get_node_for_root c) (get_node_for_root r₀) = true →
-      c ≠ r₀ →
-        DescendStep cfg (E.store cfg ext w m)
-          (get_filtered_block_tree cfg (E.store cfg ext w m)) a c
 
 /-- **`SafeFrom` from a per-endpoint head-descent producer.** The strong-induction
 skeleton, with the per-endpoint work
@@ -483,164 +252,7 @@ disjunction, no min-reserve `INVstar`, no `hBb`) plus the three aggregate window
 `descendStepChainSupply_of_confirmMargin` lifts it — so the confirm-margin residual bundle is an
 alternative, fully-unfolded engine flag for the closing. -/
 
-/-- **The per-`b`-chain-edge confirm-margin supply** — the transparent, fully-unfolded
-engine interface. Under the shell head-safety IH, every real
-parent edge `a ← c` of known blocks whose child `c` is on `b`'s chain carries, **at the edge child
-`c` as subject**: using terminal `b` as the subject would force `lo = parent(b).slot+1`,
-incompatible with the per-edge confinement windows `lo ≤ sibling.slot`; subject `c` gives
-`lo = parent(c).slot+1 = a.slot+1`, per-edge coherent — modelled on `ChainInput.LedgerCertInput`), a
-**regime disjunction**, because the strong aggregate `hbudget` need not hold cross-epoch:
 
-* **same-epoch arm** (`epochOf lo = epochOf σ`, the **whole** window `[lo, σ]` one epoch):
-  `epochOf lo = epochOf σ` forces every slot of `[lo, σ]` to share
-  `lo`'s epoch, exactly the per-slot `hsame` shape the growth producers
-  `Growth.hbudget_sameEpoch`/`hgrowS_of_engine`/`hgrowX_of_engine` consume; a boundary-straddling
-  edge — `epochOf lo < epochOf σ` — no longer qualifies here and routes through the crossing arm,
-  which re-anchors at `slot(c)`): the plain confirm-margin strip `hstrip0`
-  (`Base.weak_base_of_rule`, subject `c`) at a confirming anchor `(v₀, n₀')` over `[lo, es]`, the
-  block-root containment `hsub`, the two walk-domain functions `hdomS`/`hdomA` (subject `c`), the
-  three aggregate window-growth facts `hgrowS`/`hgrowX`/`hbudget` (`hbudget` producible by
-  `Growth.hbudget_sameEpoch`), the child membership `hchild`, the recorded-support transport
-  `hSmem`, and the sibling confinements `hHon`/`hByz`. Routed via
-  `Assembly.descendStep_of_assemblyResidual`.
-* **crossing arm**: the exact `Reanchor.crossing_ledger_descendStep` input bundle — the child lower
-  bound `hbside`, the re-anchored endpoint inequality `hend` (subject `c`, over `[lo, σ]`, with the
-  pre-region old-sibling backers `xP`/`Bpre`), and the per-sibling recorded upper bound `hsib`. This
-  carries the taxed/re-anchored form that survives cross-epoch. Routed via
-  `Reanchor.crossing_ledger_descendStep` directly.
-
-Both arms produce the **same** `DescendStep cfg (store w m) (filtered) a c`. **No** arms disjunction
-of the old `INVstar` kind, **no** min-reserve `INVstar`.
-
-The bundle carries the anchor-root parameter `r₀` and the
-per-edge scoping premise `c ⪰ r₀` before the regime existential, so the confirm-margin producer
-(certificates on `[r₀, glc]` only, `CertExtract.edgeCert_of_confirmation`) is faced only with
-`[r₀, glc]`-segment edges — never the cert-less deep edges above `r₀`. -/
-def ForkEdgeConfirmMarginSupply (E : Execution Root) (b r₀ : Root) (n₀ : ℕ) : Prop :=
-  ∀ w ∈ E.honest, ∀ m : ℕ, n₀ ≤ m →
-    E.WithinHorizon cfg m →
-    (∀ w' ∈ E.honest, ∀ m' : ℕ, n₀ ≤ m' → E.slot_at cfg m' < E.slot_at cfg m →
-      E.WithinHorizon cfg m' →
-      is_ancestor (E.store cfg ext w' m') (get_head cfg (E.store cfg ext w' m'))
-        (get_node_for_root b) = true) →
-    ∀ a c : Root, a ∈ (E.store cfg ext w m).block_roots →
-      c ∈ (E.store cfg ext w m).block_roots →
-      ((E.store cfg ext w m).blocks c).parent_root = a →
-      is_ancestor (E.store cfg ext w m)
-          (get_node_for_root b) (get_node_for_root c) = true →
-      is_ancestor (E.store cfg ext w m)
-          (get_node_for_root c) (get_node_for_root r₀) = true →
-      c ≠ r₀ →
-        -- same-epoch arm (subject `c`, `lo = a.slot+1`, plain strip + aggregate growth budget)
-        (∃ (v₀ : ValidatorIndex) (n₀' : ℕ) (lo es σ : Slot),
-          compute_epoch_at_slot cfg lo = compute_epoch_at_slot cfg σ ∧
-          ((E.store cfg ext v₀ n₀').block_roots ⊆ (E.store cfg ext w m).block_roots) ∧
-          c ∈ (E.store cfg ext v₀ n₀').block_roots ∧
-          (∀ r : Root, is_ancestor (E.store cfg ext v₀ n₀')
-              (get_node_for_root r) (get_node_for_root c) = true →
-            r ∈ (E.store cfg ext v₀ n₀').block_roots ∧
-              WalkKnown (E.store cfg ext v₀ n₀') ((E.store cfg ext v₀ n₀').blocks c).slot r) ∧
-          (∀ r : Root, is_ancestor (E.store cfg ext v₀ n₀')
-              (get_node_for_root c) (get_node_for_root r) = true →
-            r ∈ (E.store cfg ext v₀ n₀').block_roots ∧
-              WalkKnown (E.store cfg ext v₀ n₀') ((E.store cfg ext v₀ n₀').blocks r).slot c) ∧
-          (E.Xval cfg ext v₀ n₀' c lo es + E.Bval lo es
-              + get_proposer_score cfg (E.store cfg ext w m) + 1
-            ≤ E.Sval cfg ext v₀ n₀' c lo es) ∧
-          (E.Sval cfg ext w m c lo es + (E.Jspec lo σ - E.Jspec lo es)
-            ≤ E.Sval cfg ext w m c lo σ) ∧
-          (E.Xval cfg ext w m c lo σ ≤ E.Xval cfg ext w m c lo es) ∧
-          ((100 - cfg.confirmation_byzantine_threshold) * (E.Bval lo σ - E.Bval lo es)
-            ≤ cfg.confirmation_byzantine_threshold * (E.Jspec lo σ - E.Jspec lo es)) ∧
-          (ForkChoiceNode.mk c .pending ∈ get_node_children (E.store cfg ext w m)
-            (get_filtered_block_tree cfg (E.store cfg ext w m))
-              (ForkChoiceNode.mk a
-                (get_parent_payload_status (E.store cfg ext w m)
-                  ((E.store cfg ext w m).blocks c)))) ∧
-          PendingStatusMargin cfg (E.store cfg ext w m)
-            (get_filtered_block_tree cfg (E.store cfg ext w m)) a
-            (get_parent_payload_status (E.store cfg ext w m)
-              ((E.store cfg ext w m).blocks c)) ∧
-          (∀ i ∈ E.Sclass cfg ext w m c lo σ,
-            i ∈ AttSupporters cfg (E.store cfg ext w m) (get_node_for_root c)
-              ((E.store cfg ext w m).checkpoint_states
-                (E.store cfg ext w m).justified_checkpoint)) ∧
-          (∀ c' : Root,
-            ForkChoiceNode.mk c' .pending ∈ get_node_children (E.store cfg ext w m)
-              (get_filtered_block_tree cfg (E.store cfg ext w m))
-                (ForkChoiceNode.mk a
-                  (get_parent_payload_status (E.store cfg ext w m)
-                    ((E.store cfg ext w m).blocks c))) →
-            c' ≠ c →
-            ∀ i ∈ AttSupporters cfg (E.store cfg ext w m) (get_node_for_root c')
-              ((E.store cfg ext w m).checkpoint_states
-                (E.store cfg ext w m).justified_checkpoint),
-              i ∈ E.honest → i ∈ E.Xclass cfg ext w m c lo σ) ∧
-          (∀ c' : Root,
-            ForkChoiceNode.mk c' .pending ∈ get_node_children (E.store cfg ext w m)
-              (get_filtered_block_tree cfg (E.store cfg ext w m))
-                (ForkChoiceNode.mk a
-                  (get_parent_payload_status (E.store cfg ext w m)
-                    ((E.store cfg ext w m).blocks c))) →
-            c' ≠ c →
-            ∀ i ∈ AttSupporters cfg (E.store cfg ext w m) (get_node_for_root c')
-              ((E.store cfg ext w m).checkpoint_states
-                (E.store cfg ext w m).justified_checkpoint),
-              i ∉ E.honest → i ∈ E.Bwin lo σ)) ∨
-        -- crossing arm (subject `c`, re-anchored `[lo, σ]`; via crossing_ledger_descendStep)
-        (∃ (v₀ : ValidatorIndex) (n₀' : ℕ) (lo σ : Slot) (xP Bpre : ℕ),
-          (ForkChoiceNode.mk c .pending ∈ get_node_children (E.store cfg ext w m)
-            (get_filtered_block_tree cfg (E.store cfg ext w m))
-              (ForkChoiceNode.mk a
-                (get_parent_payload_status (E.store cfg ext w m)
-                  ((E.store cfg ext w m).blocks c)))) ∧
-          PendingStatusMargin cfg (E.store cfg ext w m)
-            (get_filtered_block_tree cfg (E.store cfg ext w m)) a
-            (get_parent_payload_status (E.store cfg ext w m)
-              ((E.store cfg ext w m).blocks c)) ∧
-          (E.Sval cfg ext v₀ n₀' c lo σ ≤
-            get_attestation_score cfg (E.store cfg ext w m) (get_node_for_root c)
-              ((E.store cfg ext w m).checkpoint_states
-                (E.store cfg ext w m).justified_checkpoint)) ∧
-          (xP + E.Xval cfg ext v₀ n₀' c lo σ + Bpre + E.Bval lo σ
-              + get_proposer_score cfg (E.store cfg ext w m) + 1
-            ≤ E.Sval cfg ext v₀ n₀' c lo σ) ∧
-          (∀ c' : Root,
-            ForkChoiceNode.mk c' .pending ∈ get_node_children (E.store cfg ext w m)
-              (get_filtered_block_tree cfg (E.store cfg ext w m))
-                (ForkChoiceNode.mk a
-                  (get_parent_payload_status (E.store cfg ext w m)
-                    ((E.store cfg ext w m).blocks c))) →
-            c' ≠ c →
-            get_attestation_score cfg (E.store cfg ext w m) (get_node_for_root c')
-                ((E.store cfg ext w m).checkpoint_states
-                  (E.store cfg ext w m).justified_checkpoint)
-              ≤ xP + E.Xval cfg ext v₀ n₀' c lo σ + Bpre + E.Bval lo σ))
-
-/-- **`ForkEdgeConfirmMarginSupply ⟹ DescendStepChainSupply`** — the confirm-margin
-collapse wired, both regimes. Each `b`-chain edge's residual bundle is composed to a `DescendStep`:
-the **same-epoch arm** through `Assembly.descendStep_of_assemblyResidual` (the plain confirm-margin
-strip at subject `c` + the three aggregate growth facts, no arms, no min-reserve `INVstar`), the
-**crossing arm** through `Reanchor.crossing_ledger_descendStep` directly (the re-anchored/taxed form
-that survives cross-epoch). Both arms yield the identical `(a, c)`-edge `DescendStep` the chain fold
-consumes. The endpoint/edge quantification and the shell head-safety IH pass through unchanged. -/
-theorem descendStepChainSupply_of_confirmMargin (hSA : SpecAssumptions cfg ext E)
-    {b r₀ : Root} {n₀ : ℕ}
-    (hsupply : E.ForkEdgeConfirmMarginSupply cfg ext b r₀ n₀) :
-    E.DescendStepChainSupply cfg ext b r₀ n₀ := by
-  obtain ⟨hgen, hwfE, hdiv, hhb, hsync, hec, _hsv, hbb, hji⟩ := hSA
-  have hgen0 : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
-      E.genesis_store = get_forkchoice_store cfg ast ablk := by
-    obtain ⟨ast, ablk, hgeq, _, _⟩ := hgen
-    exact ⟨ast, ablk, hgeq⟩
-  intro w hw m hm hH hIH a c ha hc hlink hscope hscope_r₀ hcne
-  rcases hsupply w hw m hm hH hIH a c ha hc hlink hscope hscope_r₀ hcne with
-    ⟨v₀, n₀', lo, es, σ, _hsame, hsub, hb', hdomS, hdomA, hstrip0, hgrowS, hgrowX, hbudget,
-      hchild, hstatus, hSmem, hHon, hByz⟩
-    | ⟨v₀, n₀', lo, σ, xP, Bpre, hchild, hstatus, hbside, hend, hsib⟩
-  · exact E.descendStep_of_assemblyResidual cfg ext hec hgen0 hji hwfE hw hH
-      hsub hb' hdomS hdomA hstrip0 hgrowS hgrowX hbudget hchild hstatus hSmem hHon hByz
-  · exact E.crossing_ledger_descendStep cfg ext hchild hstatus hbside hend hsib
 
 /-! ## Section 2 — the anchor-scoped covering supply and `hdisj_glc`
 
@@ -662,161 +274,9 @@ They are deleted by the orphan sweep that follows the retirement of the legacy
 `SpecAssumptions` observed-anchor cone (P-6): every consumer they had was in that cone.
 See `docs/p6-justified-descends-derivation.md` §8. -/
 
-/-- **Confirmed-anchor covering from the trajectory invariant.** At every later honest endpoint,
-the fold's pre-update confirmed-root `SafeFrom` witness is exactly `head ⪰ r₀` when the actual
-L4 anchor is the confirmed root. This is the no-quorum covering producer for that anchor kind. -/
-theorem confirmedAnchorCov_of_safeFrom
-    {v : ValidatorIndex} {n : ℕ} {w : ValidatorIndex} (hw : w ∈ E.honest) {m : ℕ}
-    (hm : n + 1 ≤ m) (hH : E.WithinHorizon cfg m) {r₀ : Root}
-    (hkind : r₀ = (E.fcrStep cfg ext v n).confirmed_root)
-    (hprev : E.SafeFrom cfg ext (E.fcrStep cfg ext v n).confirmed_root (n + 1)) :
-    r₀ = (E.fcrStep cfg ext v n).confirmed_root ∧
-      is_ancestor (E.store cfg ext w m) (get_head cfg (E.store cfg ext w m))
-        (get_node_for_root r₀) = true := by
-  refine ⟨hkind, ?_⟩
-  simpa only [hkind] using hprev w hw m hm hH
 
-/-- **Finalized-anchor covering from the trajectory invariant.** At every later honest endpoint,
-the fold's finalized-root `SafeFrom` witness is exactly `head ⪰ r₀` when the actual L4 anchor is
-the finalized root. This is the no-quorum covering producer for that anchor kind. -/
-theorem finalizedAnchorCov_of_safeFrom
-    {v : ValidatorIndex} {n : ℕ} {w : ValidatorIndex} (hw : w ∈ E.honest) {m : ℕ}
-    (hm : n + 1 ≤ m) (hH : E.WithinHorizon cfg m) {r₀ : Root}
-    (hkind : r₀ = (E.store cfg ext v (n + 1)).finalized_checkpoint.root)
-    (hfin : E.SafeFrom cfg ext
-      (E.store cfg ext v (n + 1)).finalized_checkpoint.root (n + 1)) :
-    r₀ = (E.store cfg ext v (n + 1)).finalized_checkpoint.root ∧
-      is_ancestor (E.store cfg ext w m) (get_head cfg (E.store cfg ext w m))
-        (get_node_for_root r₀) = true := by
-  refine ⟨hkind, ?_⟩
-  simpa only [hkind] using hfin w hw m hm hH
 
-/-- **The confirming-store reset-anchor knownness, discharged.** At the update store `(v, n+1)`, the
-three reset anchors — the previous confirmed root, the finalized root, and the observed-justified
-reset root — and the `get_latest_confirmed` block itself are all known blocks. The confirmed root is
-`hck_of_genesisStart` + within-node `StoreLE`; the finalized root is `checkpoint_known`; the
-observed reset root is `fcrStep_observed_known`; the `get_latest_confirmed` block is
-`hbconf_of_genesisStart` (the support-vote route). No flags. -/
-theorem anchorRoots_known (hSA : SpecAssumptions cfg ext E)
-    (hanchor0 : ∀ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
-      E.genesis_store = get_forkchoice_store cfg ast ablk → ablk.message.slot = GENESIS_SLOT)
-    (v : ValidatorIndex) (hv : v ∈ E.honest) (n : ℕ)
-    (hHn1 : E.WithinHorizon cfg (n + 1))
-    (hconf : is_one_confirmed cfg ext (E.fcrStep cfg ext v n).store
-        (get_current_balance_source (E.fcrStep cfg ext v n))
-        (get_latest_confirmed cfg ext (E.fcrStep cfg ext v n)) = true) :
-    get_latest_confirmed cfg ext (E.fcrStep cfg ext v n) ∈ (E.store cfg ext v (n + 1)).block_roots ∧
-    (E.fcrStep cfg ext v n).confirmed_root ∈ (E.store cfg ext v (n + 1)).block_roots ∧
-    (E.store cfg ext v (n + 1)).finalized_checkpoint.root ∈
-      (E.store cfg ext v (n + 1)).block_roots ∧
-    (E.fcrStep cfg ext v n).current_epoch_observed_justified_checkpoint.root ∈
-      (E.store cfg ext v (n + 1)).block_roots := by
-  have hji : JustificationInterface cfg ext E := hSA.2.2.2.2.2.2.2.2
-  have hHn := E.withinHorizon_mono cfg (Nat.le_succ n) hHn1
-  refine ⟨E.hbconf_of_genesisStart cfg ext hSA hanchor0 v hv n _ hHn1 hconf, ?_,
-    (hji.checkpoint_known v hv (n + 1) hHn1).2,
 
-    E.fcrStep_observed_known cfg ext hji v hv n hHn1⟩
-  rw [E.fcrStep_confirmed_root]
-  exact (E.store_storeLE cfg ext v (Nat.le_succ n)).1
-    (E.hck_of_genesisStart cfg ext hSA hanchor0 v hv n hHn)
-
-/-- **Same-slot anchoring through the honest past descendant.** The support-vote
-route used by `hb_sameslot_of_pastDescendant` carries more than endpoint
-knownness of `b`: the honest supporter's past store contains the whole walked
-segment from `b` to the actual reset anchor `r₀`.  Transporting that past store
-to `(w,m)` therefore preserves both endpoint knownness and `b ⪰ r₀`, without
-using the one-slot relay from the confirming store. -/
-theorem anchor_ge_of_pastDescendant (hSA : SpecAssumptions cfg ext E)
-    (hanchor0 : ∀ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
-      E.genesis_store = get_forkchoice_store cfg ast ablk → ablk.message.slot = GENESIS_SLOT)
-    (hpast : E.HonestPastDescendant cfg ext)
-    (v : ValidatorIndex) (hv : v ∈ E.honest) (n : ℕ) {b r₀ : Root}
-    (hHn1 : E.WithinHorizon cfg (n + 1))
-    (hconf : is_one_confirmed cfg ext (E.fcrStep cfg ext v n).store
-      (get_current_balance_source (E.fcrStep cfg ext v n)) b = true)
-    (hanc : E.ConfirmedWithAnchor cfg ext b r₀ v (n + 1))
-    (w : ValidatorIndex) (hw : w ∈ E.honest) (m : ℕ) (hm : n + 1 ≤ m)
-    (hHm : E.WithinHorizon cfg m) :
-    r₀ ∈ (E.store cfg ext w m).block_roots ∧
-      b ∈ (E.store cfg ext w m).block_roots ∧
-      is_ancestor (E.store cfg ext w m)
-        (get_node_for_root b) (get_node_for_root r₀) = true := by
-  obtain ⟨hgen, hwfE, _hdiv, _hhb, hsync, hec, _hsv, _hbb, hji⟩ := hSA
-  obtain ⟨ast, ablk, hgeq, hslot, hparent⟩ := hgen
-  have hgen' : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
-      E.genesis_store = get_forkchoice_store cfg ast ablk ∧
-      ast.slot = ablk.message.slot ∧ ablk.message.parent_root ≠ ablk.root :=
-    ⟨ast, ablk, hgeq, hslot, hparent⟩
-  obtain ⟨u, n_u, d, hu, hHnu, hslot_lt, hd_u, hdb_v⟩ :=
-    hpast v hv n b hHn1 hconf
-  have hgate_uv : E.slot_at cfg n_u + 1 ≤ E.slot_at cfg (n + 1 + 1) :=
-    le_trans hslot_lt (E.slot_at_mono cfg (Nat.le_succ (n + 1)))
-  have hsub_uv : (E.store cfg ext u n_u).block_roots ⊆
-      (E.store cfg ext v (n + 1)).block_roots :=
-    E.blockRoots_subset_of_legacy_relay cfg ext hsync hu hv hHnu hHn1 hgate_uv
-  have hagree_uv : ∀ x ∈ (E.store cfg ext u n_u).block_roots,
-      (E.store cfg ext u n_u).blocks x = (E.store cfg ext v (n + 1)).blocks x :=
-    fun x hx => hwfE.blocks_agree (E.blockProvenance cfg ext u n_u)
-      (E.blockProvenance cfg ext v (n + 1)) hx (hsub_uv hx)
-  obtain ⟨hwf_u, hwalk_u, _hjust_u⟩ :=
-    E.store_domainK cfg ext hwfE hec hgen' hji u hu n_u hHnu
-  obtain ⟨hwf_v, hwalk_v, _hjust_v⟩ :=
-    E.store_domainK cfg ext hwfE hec hgen' hji v hv (n + 1) hHn1
-  have hanchor_mem0 : ablk.root ∈ E.genesis_store.block_roots := by
-    rw [hgeq]
-    simp [get_forkchoice_store]
-  have hanchor_mem : ablk.root ∈ (E.store cfg ext u n_u).block_roots :=
-    (E.store_storeLE cfg ext u (Nat.zero_le n_u)).1 hanchor_mem0
-  have hanchor_slot : ((E.store cfg ext u n_u).blocks ablk.root).slot = 0 := by
-    rw [E.store_anchor_block cfg ext hwfE hgeq u n_u hanchor_mem,
-      hanchor0 ast ablk hgeq, GENESIS_SLOT]
-  have hwalk0 : WalkKnown (E.store cfg ext u n_u) 0 d := by
-    have hwalk := hwalk_u ablk.root hanchor_mem d hd_u
-    rwa [hanchor_slot] at hwalk
-  have hd_v : d ∈ (E.store cfg ext v (n + 1)).block_roots := hsub_uv hd_u
-  have hdr₀_v : is_ancestor (E.store cfg ext v (n + 1))
-      (get_node_for_root d) (get_node_for_root r₀) = true :=
-    is_ancestor_trans (a := get_node_for_root d) (b := get_node_for_root b)
-        (c := get_node_for_root r₀) hwf_v
-      (hwalk_v r₀ hanc.r₀_known d hd_v)
-      (hwalk_v r₀ hanc.r₀_known b hanc.b_known) hdb_v hanc.b_ge_r₀
-  have mem_past (x : Root) (hx_v : x ∈ (E.store cfg ext v (n + 1)).block_roots)
-      (hdx_v : is_ancestor (E.store cfg ext v (n + 1))
-        (get_node_for_root d) (get_node_for_root x) = true) :
-      x ∈ (E.store cfg ext u n_u).block_roots := by
-    let sx := ((E.store cfg ext v (n + 1)).blocks x).slot
-    have hwalk_x : WalkKnown (E.store cfg ext u n_u) sx d :=
-      hwalk0.mono (Nat.zero_le _)
-    have hv_lands : (get_ancestor (E.store cfg ext v (n + 1))
-        (ForkChoiceNode.mk d .pending) sx).root = x := by
-      simpa only [get_node_for_root, is_ancestor_pending, decide_eq_true_eq, sx] using hdx_v
-    have hu_lands : (get_ancestor (E.store cfg ext u n_u)
-        (ForkChoiceNode.mk d .pending) sx).root = x := by
-      rw [get_ancestor_congr hagree_uv hd_u hwalk_x]
-      exact hv_lands
-    have hspec := (get_ancestor_spec hwf_u hwalk_x).1
-    rw [hu_lands] at hspec
-    exact hspec
-  have hb_u : b ∈ (E.store cfg ext u n_u).block_roots :=
-    mem_past b hanc.b_known hdb_v
-  have hr₀_u : r₀ ∈ (E.store cfg ext u n_u).block_roots :=
-    mem_past r₀ hanc.r₀_known hdr₀_v
-  have hwalk_br_u : WalkKnown (E.store cfg ext u n_u)
-      ((E.store cfg ext u n_u).blocks r₀).slot b := hwalk_u r₀ hr₀_u b hb_u
-  have hbr_u : is_ancestor (E.store cfg ext u n_u)
-      (get_node_for_root b) (get_node_for_root r₀) = true := by
-    simp only [get_node_for_root]
-    rw [is_ancestor_congr hagree_uv hb_u hr₀_u hwalk_br_u]
-    simpa only [get_node_for_root] using hanc.b_ge_r₀
-  have hgate_uw : E.slot_at cfg n_u + 1 ≤ E.slot_at cfg (m + 1) :=
-    le_trans (le_trans hslot_lt (E.slot_at_mono cfg hm))
-      (E.slot_at_mono cfg (Nat.le_succ m))
-  have hsub_uw : (E.store cfg ext u n_u).block_roots ⊆
-      (E.store cfg ext w m).block_roots :=
-    E.blockRoots_subset_of_legacy_relay cfg ext hsync hu hw hHnu hHm hgate_uw
-  exact ⟨hsub_uw hr₀_u, hsub_uw hb_u,
-    E.is_ancestor_transport_rev cfg ext hwfE hsub_uw hr₀_u hb_u hwalk_br_u hbr_u⟩
 
 
 /-! ### Deleted: `head_ge_glc_endpoint`, the 4-case covering fold

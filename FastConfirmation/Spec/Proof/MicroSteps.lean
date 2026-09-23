@@ -78,54 +78,6 @@ ascending chain from `base` toward the head — so it descends from a reset anch
 the confirming store*. The lift to an arbitrary endpoint `(w, m)` is represented by the
 `DynamicsChainStruct` endpoint premise. -/
 
-/-- **`find_latest_confirmed_descendant` on the head chain.** The result
-is the input `lcr`, or it passed `is_one_confirmed` *and* lies on
-`get_ancestor_roots store head base` for a loop base `base` — the ascending canonical
-segment from `base` toward the head. Mirrors `find_latest_confirmed_descendant_spec`'s
-`P`-closure structure with the loop membership (`prev_epoch_loop_spec` /
-`tentative_loop_spec` already return `r ∈ roots`) threaded through both advancement
-stages, so every advance witnesses a concrete base. -/
-theorem find_latest_confirmed_descendant_mem (fcr_store : FastConfirmationStore Root)
-    (lcr : Root) :
-    find_latest_confirmed_descendant cfg ext fcr_store lcr = lcr ∨
-    (is_one_confirmed cfg ext fcr_store.store (get_current_balance_source fcr_store)
-        (find_latest_confirmed_descendant cfg ext fcr_store lcr) = true ∧
-      ∃ base : Root,
-        find_latest_confirmed_descendant cfg ext fcr_store lcr ∈
-          get_ancestor_roots fcr_store.store (get_head cfg fcr_store.store).root base) := by
-  set P : Root → Prop := fun r => r = lcr ∨
-    (is_one_confirmed cfg ext fcr_store.store (get_current_balance_source fcr_store) r = true ∧
-      ∃ base : Root, r ∈
-        get_ancestor_roots fcr_store.store (get_head cfg fcr_store.store).root base)
-    with hP
-  have hprev : ∀ (ce : Epoch) (base acc : Root), P acc →
-      P (find_latest_confirmed_descendant_prev_epoch_loop cfg ext fcr_store ce
-          (get_ancestor_roots fcr_store.store (get_head cfg fcr_store.store).root base) acc) := by
-    intro ce base acc hacc
-    rcases prev_epoch_loop_spec cfg ext fcr_store ce
-        (get_ancestor_roots fcr_store.store (get_head cfg fcr_store.store).root base) acc with
-      h | ⟨r, hr, heq, hc⟩
-    · rw [hP]; rw [h]; exact hacc
-    · exact Or.inr (heq ▸ ⟨hc, base, hr⟩)
-  have htent : ∀ (base acc : Root), P acc →
-      P (find_latest_confirmed_descendant_tentative_loop cfg ext fcr_store
-          (get_ancestor_roots fcr_store.store (get_head cfg fcr_store.store).root base) acc) := by
-    intro base acc hacc
-    rcases tentative_loop_spec cfg ext fcr_store
-        (get_ancestor_roots fcr_store.store (get_head cfg fcr_store.store).root base) acc with
-      h | ⟨r, hr, heq, hc⟩
-    · rw [hP]; rw [h]; exact hacc
-    · exact Or.inr (heq ▸ ⟨hc, base, hr⟩)
-  change P (find_latest_confirmed_descendant cfg ext fcr_store lcr)
-  generalize hX : find_latest_confirmed_descendant cfg ext fcr_store lcr = X
-  rw [find_latest_confirmed_descendant] at hX
-  simp only at hX
-  split_ifs at hX with hc1 hc2 hc3 hc4 hc5 <;>
-    subst hX <;>
-      first
-      | exact Or.inl rfl
-      | (apply htent; first | exact Or.inl rfl | exact hprev _ _ _ (Or.inl rfl))
-      | exact hprev _ _ _ (Or.inl rfl)
 
 /-! ## Section 3 — the source of `prev_greatest_justifiedIn`
 
@@ -153,67 +105,7 @@ namespace Execution
 
 variable (E : Execution Root)
 
-/-- **`ParentInRootsOr` at every node and second (Layer 0).** The `ParentInRootsOr P`
-component of `WFTrajectory.WFPlus`, delivered at the trajectory level by exactly the
-`store_parentSlotLt` induction (base: the `get_forkchoice_store` anchor's single
-dangling edge; step: `WFPlus_foldl` over the scheduled events). `P` is the anchor's
-dangling parent `ablk.message.parent_root`, uniform over `(v, n)`. This is the Layer-0
-half of `WalkClosure` — every known block's parent is a known root or `P`. -/
-theorem store_parentInRootsOr
-    (hwf : WellFormedExecution E) (hec : ExternalsCoherence cfg ext E)
-    (hgen : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
-      E.genesis_store = get_forkchoice_store cfg ast ablk ∧
-      ast.slot = ablk.message.slot ∧ ablk.message.parent_root ≠ ablk.root)
-    (hanchor : ∀ r ∈ E.genesis_store.block_roots, ∀ w n (b : SignedBeaconBlock Root),
-      Event.block b ∈ E.schedule w n → b.root ≠ (E.genesis_store.blocks r).parent_root) :
-    ∃ P : Root, ∀ (v : ValidatorIndex) (n : ℕ), ParentInRootsOr P (E.store cfg ext v n) := by
-  obtain ⟨ast, ablk, hgeq, hslot, hparent⟩ := hgen
-  have hgws : WellFormedStore E.genesis_store := by
-    rw [hgeq]; exact wellFormedStore_get_forkchoice_store cfg ast ablk hslot hparent
-  have hanchorP : ∀ w m (b : SignedBeaconBlock Root),
-      Event.block b ∈ E.schedule w m → b.root ≠ ablk.message.parent_root := by
-    intro w m b hb
-    have hmem : ablk.root ∈ E.genesis_store.block_roots := by
-      rw [hgeq]; simp [get_forkchoice_store]
-    have hpeq : (E.genesis_store.blocks ablk.root).parent_root = ablk.message.parent_root := by
-      rw [hgeq]; simp [get_forkchoice_store]
-    rw [← hpeq]; exact hanchor ablk.root hmem w m b hb
-  refine ⟨ablk.message.parent_root, fun v n => ?_⟩
-  suffices key : ∀ k, WFPlus ablk.message.parent_root E (E.store cfg ext v k) from
-    (key n).2.2.1
-  intro k
-  induction k with
-  | zero =>
-    refine ⟨hgws.core, hgws.parentSlotLt, ?_, E.blockProvenance cfg ext v 0⟩
-    change ParentInRootsOr ablk.message.parent_root E.genesis_store
-    rw [hgeq]
-    intro r hr
-    simp only [get_forkchoice_store, List.mem_singleton] at hr
-    subst hr
-    right
-    simp [get_forkchoice_store]
-  | succ k ih =>
-    change WFPlus ablk.message.parent_root E
-      ((E.schedule v (k + 1)).foldl
-        (fun store event => (apply_event cfg ext store event).getD store)
-        (on_tick cfg (E.store cfg ext v k) (E.time_at (k + 1))))
-    refine WFPlus_foldl cfg ext ablk.message.parent_root hwf
-      hec.state_transition_slot hec.state_transition_pre_slot_lt hanchorP
-      _ _ (fun b hb => ⟨v, k + 1, hb⟩) ?_
-    exact on_tick_WFPlus cfg ablk.message.parent_root _ _ ih
 
-/-- **`walk_closure` from the anchor-min guard.** Given the
-`ParentInRootsOr P` at every honest store (`store_parentInRootsOr`, `P` explicit) and
-the flat anchor-min guard `∀ r, parent = P → slot ≤ sl`, every `WalkClosure`
-obligation follows by `walkClosure_of_min`. -/
-theorem walkClosure_of_anchorGuard {P : Root}
-    (hP : ∀ w ∈ E.honest, ∀ m : ℕ, ParentInRootsOr P (E.store cfg ext w m))
-    (hguard : ∀ w ∈ E.honest, ∀ m : ℕ, ∀ sl : Slot,
-      ∀ r ∈ (E.store cfg ext w m).block_roots,
-        ((E.store cfg ext w m).blocks r).parent_root = P →
-          ((E.store cfg ext w m).blocks r).slot ≤ sl) :
-    ∀ w ∈ E.honest, ∀ m : ℕ, ∀ sl : Slot, WalkClosure (E.store cfg ext w m) sl :=
-  fun w hw m sl => walkClosure_of_min (hP w hw m) (hguard w hw m sl)
 
 end Execution
 

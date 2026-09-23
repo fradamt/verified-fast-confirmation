@@ -3,7 +3,6 @@ public import FastConfirmation.Spec.Proof.AcceptedResetAdoption
 public import FastConfirmation.Spec.Proof.SelectedCoveredMarginConstruction
 public import FastConfirmation.Spec.Proof.ModelFacts
 
-public import FastConfirmation.Spec.Proof.ModelFacts
 @[expose] public section
 
 /-!

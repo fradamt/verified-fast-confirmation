@@ -1,6 +1,7 @@
 module
 public import Mathlib.Tactic
-public import FastConfirmation.Spec.Proof.AcceptedStrictPrefixExtraQueryFeasibility
+public import FastConfirmation.Spec.Proof.CausalQueryTraceAdapter
+public import FastConfirmation.Spec.Proof.SelectedMarginConstruction
 public import FastConfirmation.Spec.Proof.ModelFacts
 
 @[expose] public section
@@ -741,68 +742,9 @@ theorem strict_prefix_heads_diverge :
   set_option maxRecDepth 20000 in
     decide
 
-/-- The concrete economic guard succeeds in the actor prefix. -/
-theorem candidate_support_threshold_and_confirmation :
-    get_attestation_score witnessConfig queryFcr.store
-        (get_node_for_root candidateRoot)
-        (get_current_balance_source queryFcr) = 200 ∧
-      is_one_confirmed witnessConfig witnessExternals queryFcr.store
-        (get_current_balance_source queryFcr) candidateRoot = true := by
-  set_option maxRecDepth 20000 in
-    decide
 
-private lemma candidate_attSupporters :
-    AttSupporters witnessConfig queryFcr.store
-        (get_node_for_root candidateRoot)
-        (get_current_balance_source queryFcr) = [1, 2] := by
-  set_option maxRecDepth 20000 in
-    decide
 
 set_option maxRecDepth 20000 in
-/-- The actor-side stale-cell replay condition is not what prevents
-exact-current cross-node safety in this regression.  Both visible candidate
-supporters replay to their concrete newest ground votes through slot two, and
-the candidate's empty parent interval makes the parent-stuck obligation
-vacuous. -/
-theorem actor_prefix_ground_vote_accounting_replay :
-    witnessExecution.PrefixGroundVoteAccountingReplay witnessConfig
-      queryFcr.store (get_current_balance_source queryFcr)
-      candidateRoot 1 2 := by
-  classical
-  constructor
-  · intro i hiSupport _hiHonest
-    rw [candidate_attSupporters] at hiSupport
-    simp only [List.mem_cons, List.not_mem_nil, or_false] at hiSupport
-    rcases hiSupport with rfl | rfl
-    · simp only [Execution.StoreSclass, Finset.mem_filter]
-      refine ⟨⟨by decide, by decide⟩, ?_⟩
-      refine ⟨1, 1, vote1, by decide, by decide, ?_, ?_⟩
-      · intro t ht hle
-        have ht2 : 2 ≤ t := Nat.succ_le_iff.mpr ht
-        have : t = 2 := Nat.le_antisymm hle ht2
-        subst t
-        decide
-      · set_option maxRecDepth 20000 in
-          decide
-    · simp only [Execution.StoreSclass, Finset.mem_filter]
-      refine ⟨⟨by decide, by decide⟩, ?_⟩
-      refine ⟨2, 2, vote2, by decide, by decide, ?_, ?_⟩
-      · intro t ht hle
-        exact ((Nat.not_lt_of_ge hle) ht).elim
-      · set_option maxRecDepth 20000 in
-          decide
-  · intro i hiParent
-    simp only [ParentStuck, Finset.mem_filter, ParentSupport] at hiParent
-    obtain ⟨⟨⟨hiSpan, _hiActive⟩, _hiMessage⟩, _hiHonest⟩ := hiParent
-    have hparent :
-        (queryFcr.store.blocks candidateRoot).parent_root = anchorRoot := by
-      set_option maxRecDepth 20000 in decide
-    have hanchorSlot : (queryFcr.store.blocks anchorRoot).slot = 0 := by
-      set_option maxRecDepth 20000 in decide
-    have hcandidateSlot : (queryFcr.store.blocks candidateRoot).slot = 1 := by
-      set_option maxRecDepth 20000 in decide
-    rw [hparent, hanchorSlot, hcandidateSlot] at hiSpan
-    simp [Execution.span_committee] at hiSpan
 
 /-- The pure helper and the outer evaluator both strictly advance the anchor
 to the candidate at the actor prefix. -/
@@ -1037,40 +979,6 @@ theorem strict_prefix_extra_query_counterexample :
         (get_node_for_root candidateRoot) = false
     exact strict_prefix_heads_diverge.2.2
 
-/-- The stale-cell-aware actor-side replay footprint coexists with the
-exact-current failure at the other honest endpoint.  Thus adding
-`PrefixGroundVoteAccountingReplay` to the query-side accounting route cannot
-by itself recover all-runtime-prefix cross-node ancestry. -/
-theorem ground_replay_coexists_with_failed_endpoint_ancestry :
-    witnessExecution.PrefixGroundVoteAccountingReplay witnessConfig
-        queryFcr.store (get_current_balance_source queryFcr)
-        candidateRoot 1 2 ∧
-      GlobalStrictPrefixQuerySnapshot ∧
-      get_latest_confirmed witnessConfig witnessExternals
-          (globalInitial.nodeState 0).fcrStore = candidateRoot ∧
-      (get_head witnessConfig
-          (globalInitial.nodeState 1).fcrStore.store).root = siblingRoot ∧
-      is_ancestor (globalInitial.nodeState 1).fcrStore.store
-        (get_head witnessConfig
-          (globalInitial.nodeState 1).fcrStore.store)
-        (get_node_for_root candidateRoot) = false := by
-  refine ⟨actor_prefix_ground_vote_accounting_replay,
-    global_strict_prefix_query_snapshot, ?_, ?_, ?_⟩
-  · set_option maxRecDepth 20000 in
-      change get_latest_confirmed witnessConfig witnessExternals queryFcr =
-        candidateRoot
-    exact strict_extra_query_result.2.2.1
-  · set_option maxRecDepth 20000 in
-      change (get_head witnessConfig
-        (endpointPrefix.store witnessConfig witnessExternals)).root = siblingRoot
-    exact strict_prefix_heads_diverge.2.1
-  · set_option maxRecDepth 20000 in
-      change is_ancestor
-        (endpointPrefix.store witnessConfig witnessExternals)
-        (get_head witnessConfig
-          (endpointPrefix.store witnessConfig witnessExternals))
-        (get_node_for_root candidateRoot) = false
-    exact strict_prefix_heads_diverge.2.2
 
 end AcceptedStrictPrefixExtraQueryCounterexample
 end FastConfirmation.Spec

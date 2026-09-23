@@ -3,7 +3,6 @@ public import FastConfirmation.Spec.Proof.FCRCallContracts
 public import FastConfirmation.Spec.Proof.TrustedAnchorGeometry
 public import FastConfirmation.Spec.Proof.ModelFacts
 
-public import FastConfirmation.Spec.Proof.ModelFacts
 @[expose] public section
 
 /-!

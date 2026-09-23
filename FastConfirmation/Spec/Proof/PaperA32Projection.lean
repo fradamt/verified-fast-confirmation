@@ -5,7 +5,6 @@ public import FastConfirmation.Spec.Proof.BlockAgreement
 public import FastConfirmation.Spec.Proof.ExecutionRootReflection
 public import FastConfirmation.Spec.Proof.ModelFacts
 
-public import FastConfirmation.Spec.Proof.ModelFacts
 @[expose] public section
 
 /-!

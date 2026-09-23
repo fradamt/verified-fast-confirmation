@@ -2,7 +2,8 @@ module
 public import FastConfirmation.Spec.Proof.AnchorFacade
 public import FastConfirmation.Spec.Proof.ResidualMechanicalII
 public import FastConfirmation.Spec.Proof.AheadFacade
-public import FastConfirmation.Spec.Proof.ExportWiring
+public import FastConfirmation.Spec.Proof.MicroSteps
+public import FastConfirmation.Spec.Proof.HeadStack
 public import FastConfirmation.Spec.Proof.FinalWiring
 public import FastConfirmation.Spec.Proof.Remainder
 
@@ -91,27 +92,6 @@ theorem ancestor_comparable_of_common {store : Store Root}
   have hcomp := get_ancestor_comp_root hwf hle hwa
   rw [hb, ha] at hcomp
   exact hcomp
-
-omit [Inhabited Root] in
-/-- **Ancestor comparability.** Two ancestors `a`, `b` of a common node `x` are
-ancestry-ordered (`b ⪰ a` or `a ⪰ b`) — the confirmed-root chain is linear. Symmetric
-wrapper over `ancestor_comparable_of_common`, dispatching on which slot is lower. -/
-theorem ancestor_comparable {store : Store Root}
-    (hwf : ∀ r ∈ store.block_roots,
-      (store.blocks r).parent_root ∈ store.block_roots →
-        (store.blocks (store.blocks r).parent_root).slot < (store.blocks r).slot)
-    {x a b : Root}
-    (hwa : WalkKnown store (store.blocks a).slot x)
-    (hwb : WalkKnown store (store.blocks b).slot x)
-    (ha : is_ancestor store (ForkChoiceNode.mk x .pending) (ForkChoiceNode.mk a .pending) = true)
-    (hb : is_ancestor store (ForkChoiceNode.mk x .pending) (ForkChoiceNode.mk b .pending) = true) :
-    is_ancestor store (ForkChoiceNode.mk b .pending) (ForkChoiceNode.mk a .pending) = true ∨
-    is_ancestor store (ForkChoiceNode.mk a .pending) (ForkChoiceNode.mk b .pending) = true := by
-  rcases le_total (store.blocks a).slot (store.blocks b).slot with hle | hle
-  · exact Or.inl (ancestor_comparable_of_common hwf hle hwa ha hb)
-  · exact Or.inr (ancestor_comparable_of_common hwf hle hwb hb ha)
-
-
 
 end FastConfirmation.Spec
 

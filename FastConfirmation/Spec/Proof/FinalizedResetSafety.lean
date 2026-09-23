@@ -6,7 +6,6 @@ public import FastConfirmation.Spec.Proof.ExactCheckpointLinks
 public import FastConfirmation.Spec.Proof.SelectedTraceFFGRealizationPipeline
 public import FastConfirmation.Spec.Proof.ModelFacts
 
-public import FastConfirmation.Spec.Proof.ModelFacts
 @[expose] public section
 
 /-!

@@ -5,7 +5,6 @@ public import FastConfirmation.Spec.Proof.PaperA32Projection
 public import FastConfirmation.Spec.Proof.MinimalSelectedDomain
 public import FastConfirmation.Spec.Proof.ModelFacts
 
-public import FastConfirmation.Spec.Proof.ModelFacts
 @[expose] public section
 
 /-!

@@ -385,14 +385,6 @@ justified via `update_checkpoints` was previously target-cached" — an
 (cache the justified checkpoint state, as newer deployed fork-choice does). This
 module proves the genesis instance that follows from the current interface. -/
 
-/-- **Genesis base for `hval`'s key-membership.** `get_forkchoice_store` seeds
-`checkpoint_state_keys = {justified_checkpoint}` with the store's own
-`justified_checkpoint` as the single key, so the membership holds at genesis. -/
-theorem get_forkchoice_store_justified_keyed (ast : BeaconState Root)
-    (ablk : SignedBeaconBlock Root) :
-    (get_forkchoice_store cfg ast ablk).justified_checkpoint ∈
-      (get_forkchoice_store cfg ast ablk).checkpoint_state_keys := by
-  simp [get_forkchoice_store]
 
 /-! ## Section 3 — safety interface with the target-known domain
 
@@ -418,20 +410,6 @@ def Execution.StoreDomainK (E : Execution Root) : Prop :=
         WalkKnown (E.store cfg ext w m) ((E.store cfg ext w m).blocks t).slot r) ∧
       (E.store cfg ext w m).justified_checkpoint.root ∈ (E.store cfg ext w m).block_roots
 
-/-- **`StoreDomainK` is Layer-0 discharged.** `ParentSlotLt` (`store_parentSlotLt`),
-the target-known walk domain (`store_walkKnownK` — Section 2), and justified-knownness
-(`JustificationInterface.checkpoint_known`) at every honest store. This is the whole
-content of the removed `anchor_guard` / blanket-`hwalk` residual. -/
-theorem Execution.store_domainK (E : Execution Root) (hwf : WellFormedExecution E)
-    (hec : ExternalsCoherence cfg ext E)
-    (hgen : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
-      E.genesis_store = get_forkchoice_store cfg ast ablk ∧
-      ast.slot = ablk.message.slot ∧ ablk.message.parent_root ≠ ablk.root)
-    (hji : JustificationInterface cfg ext E) :
-    E.StoreDomainK cfg ext := by
-  intro w hw m hH
-  refine ⟨E.store_parentSlotLt cfg ext hwf hec hgen hwf.anchor_parent_unscheduled w m,
-    E.store_walkKnownK cfg ext hwf hec hgen w m, (hji.checkpoint_known w hw m hH).1⟩
 
 namespace Execution
 

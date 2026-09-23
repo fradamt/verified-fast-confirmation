@@ -5,7 +5,6 @@ public import FastConfirmation.Spec.Proof.StoreInvariants
 public import FastConfirmation.Spec.Proof.ValidationStateReachability
 public import FastConfirmation.Spec.Proof.ModelFacts
 
-public import FastConfirmation.Spec.Proof.ModelFacts
 @[expose] public section
 
 /-!

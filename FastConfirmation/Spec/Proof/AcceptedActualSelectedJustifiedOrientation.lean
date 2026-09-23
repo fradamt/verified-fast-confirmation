@@ -8,7 +8,6 @@ public import FastConfirmation.Spec.Proof.EndpointQuorumCausality
 public import FastConfirmation.Spec.Proof.AcceptedHistoricalA32OriginCall
 public import FastConfirmation.Spec.Proof.ModelFacts
 
-public import FastConfirmation.Spec.Proof.ModelFacts
 @[expose] public section
 
 

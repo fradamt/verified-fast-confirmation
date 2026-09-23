@@ -6,7 +6,6 @@ public import FastConfirmation.Spec.Proof.AcceptedBlockTransitionProvenance
 public import FastConfirmation.Spec.Proof.CausalQueryTraceAdapter
 public import FastConfirmation.Spec.Proof.ModelFacts
 
-public import FastConfirmation.Spec.Proof.ModelFacts
 @[expose] public section
 
 /-!

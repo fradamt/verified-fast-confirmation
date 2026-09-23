@@ -68,53 +68,13 @@ variable (cfg : Config) (ext : Externals Root)
 
 /-! ## Section 1 — `hdil`: the boost dilution from the saturated `Jspec` lower bound -/
 
-/-- Two-sided floor bounds of `n / m` (`0 < m`) as linear atoms. Local copy of
-`Arms.div_floor_bounds` / `StepDischargeII.div_floor_bounds`. -/
-private theorem div_floor_bounds (n m : ℕ) (hm : 0 < m) :
-    m * (n / m) ≤ n ∧ n < m * (n / m + 1) := by
-  have e := Nat.div_add_mod n m
-  have hlt := Nat.mod_lt n hm
-  rw [Nat.mul_succ]
-  omega
 
-/-- **Pure-ℕ boost dilution.** For `C ≤ 25`, `q := ⌊C·J/(100−C)⌋` and the
-saturated-regime lower bound `2·(boost+1) ≤ J`, the diluted reserve plus the boost
-margin stays under `J`: `q + boost + 1 ≤ J`. The floor witness `hq`
-(`(100−C)·q ≤ C·J`) makes `interval_cases C` + `omega` linear (26 cases): for every
-`C ≤ 25` the reserve `q ≤ C·J/(100−C) ≤ J/3` and `boost+1 ≤ J/2`, so
-`q + boost + 1 ≤ 5J/6 ≤ J`. -/
-private theorem boost_dilution_arith {C J boost q : ℕ} (hC : C ≤ 25)
-    (hJ : 2 * (boost + 1) ≤ J) (hq : (100 - C) * q ≤ C * J) :
-    q + boost + 1 ≤ J := by
-  interval_cases C <;> omega
 
 namespace Execution
 
 variable (E : Execution Root)
 
 omit [LinearOrder Root] [Inhabited Root] in
-/-- **`hdil` from the saturated `Jspec` lower bound** (`VoteLanding`). Produces the exact
-boost-dilution field `IHMechanize.hmaj_of_saturation` consumes: for every post-`T1`
-slot the diluted reserve `⌊C·J(σ')/(100−C)⌋ + boost + 1 ≤ J(σ')`. Funded by the
-saturated-regime `Jspec` lower bound `hJlb` (`2·(boost+1) ≤ J(σ')`) — the genuine
-engine residual (`span_fraction` over the saturated full epoch's honest window; it
-dominates twice the per-epoch proposer boost, the paper's Assumption-2 margin). -/
-theorem boost_dilution (lo es : Slot) (boost : ℕ)
-    (hJlb : ∀ σ' : Slot, es ≤ σ' →
-      compute_epoch_at_slot cfg es + 2 ≤ compute_epoch_at_slot cfg σ' →
-      E.SlotWithinHorizon cfg σ' →
-      2 * (boost + 1) ≤ E.Jspec lo σ') :
-    ∀ σ' : Slot, es ≤ σ' →
-      compute_epoch_at_slot cfg es + 2 ≤ compute_epoch_at_slot cfg σ' →
-      E.SlotWithinHorizon cfg σ' →
-      cfg.confirmation_byzantine_threshold * E.Jspec lo σ'
-          / (100 - cfg.confirmation_byzantine_threshold) + boost + 1 ≤ E.Jspec lo σ' := by
-  intro σ' h1 h2 hσH
-  set C := cfg.confirmation_byzantine_threshold with hCdef
-  have hC25 : C ≤ 25 := cfg.confirmation_byzantine_threshold_le
-  have hDpos : 0 < 100 - C := by omega
-  obtain ⟨hqlo, _⟩ := div_floor_bounds (C * E.Jspec lo σ') (100 - C) hDpos
-  exact boost_dilution_arith hC25 (hJlb σ' h1 h2 hσH) hqlo
 
 /-! ## Section 2 — the sibling confinement wiring (`hHon` / `hByz`)
 
@@ -132,115 +92,7 @@ from the fork-choice child membership (`mem_get_node_children_resolved` +
 knownness (`hlmknown`), domination (`hdom`), and the `b`-side fork-edge geometry
 (`hh`/`hpc`/`hbc`/`hlo_h`) stay as the enumerated per-endpoint residuals. -/
 
-/-- **`hHon`, wired** (`VoteLanding`). Every honest recorded supporter of a filtered sibling
-`c'` (child of the fork point `h`, `c' ≠ c`) of the `b`-side child `c` is confined to
-`Xclass … es` at the endpoint `(w, m)`. This is `EdgeInputResidual.hHon` at the base
-slice `σ := es`, produced by `Confinement.honest_sibling_confinement` with its two
-mechanical domain premises discharged from `SpecAssumptions`; the sibling knownness
-`hc'`, its parent link `hpc'`, and its window membership `lo ≤ c'.slot` come from the
-child membership + `ParentSlotLt` (`lo ≤ h.slot + 1 = hlo_h`). -/
-theorem hHon_of_confinement (hSA : SpecAssumptions cfg ext E)
-    {w : ValidatorIndex} {m : ℕ} {b h c : Root} {lo es : Slot}
-    (hjc : (E.store cfg ext w m).justified_checkpoint.root ∈ (E.store cfg ext w m).block_roots)
-    (hprov : LatestMessageProvenance E cfg (get_current_slot cfg (E.store cfg ext w m))
-      (E.store cfg ext w m))
-    (hlmknown : ∀ (lm : LatestMessage Root) (i : ValidatorIndex),
-      (E.store cfg ext w m).latest_messages i = some lm →
-        lm.root ∈ (E.store cfg ext w m).block_roots)
-    (hdom : E.RecordedEpochMax cfg ext w m es)
-    (hes : es = get_current_slot cfg (E.store cfg ext w m) - 1)
-    (hb : b ∈ (E.store cfg ext w m).block_roots)
-    (hc : c ∈ (E.store cfg ext w m).block_roots)
-    (hh : h ∈ (E.store cfg ext w m).block_roots)
-    (hpc : ((E.store cfg ext w m).blocks c).parent_root = h)
-    (hbc : is_ancestor (E.store cfg ext w m) (get_node_for_root b) (get_node_for_root c) = true)
-    (hlo_h : lo ≤ ((E.store cfg ext w m).blocks h).slot + 1) :
-    ∀ c' : Root,
-      ForkChoiceNode.mk c' .pending ∈
-          get_node_children (E.store cfg ext w m)
-            (get_filtered_block_tree cfg (E.store cfg ext w m))
-              (ForkChoiceNode.mk h
-                (get_parent_payload_status (E.store cfg ext w m)
-                  ((E.store cfg ext w m).blocks c))) →
-        c' ≠ c →
-        ∀ i ∈ AttSupporters cfg (E.store cfg ext w m) (get_node_for_root c')
-            ((E.store cfg ext w m).checkpoint_states (E.store cfg ext w m).justified_checkpoint),
-          i ∈ E.honest → i ∈ E.Xclass cfg ext w m b lo es := by
-  obtain ⟨hgen, hwf, _hdiv, hhb, _hsync, hec, _hsv, _hbb, _hji⟩ := hSA
-  have hgen' : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
-      E.genesis_store = get_forkchoice_store cfg ast ablk := by
-    obtain ⟨ast, ablk, heq, _, _⟩ := hgen; exact ⟨ast, ablk, heq⟩
-  have hpsl : ParentSlotLt (E.store cfg ext w m) :=
-    E.store_parentSlotLt cfg ext hwf hec hgen hwf.anchor_parent_unscheduled w m
-  have hwalkK := E.store_walkKnownK cfg ext hwf hec hgen w m
-  intro c' hchild hne' i hi_supp hih
-  have hchildData := (mem_get_node_children_resolved
-    (get_parent_payload_status_ne_pending (E.store cfg ext w m)
-      ((E.store cfg ext w m).blocks c))).mp hchild
-  have hc'mem : c' ∈ get_filtered_block_tree cfg (E.store cfg ext w m) :=
-    hchildData.2.1
-  have hc' : c' ∈ (E.store cfg ext w m).block_roots :=
-    filtered_subset_block_roots cfg (E.store cfg ext w m) hjc c' hc'mem
-  have hpc' : ((E.store cfg ext w m).blocks c').parent_root = h :=
-    hchildData.2.2.1
-  have hlo : lo ≤ ((E.store cfg ext w m).blocks c').slot := by
-    have hlt := hpsl c' hc' (by rw [hpc']; exact hh)
-    rw [hpc'] at hlt; exact le_trans hlo_h hlt
-  exact E.honest_sibling_confinement cfg ext hhb hec hgen' hprov hpsl hwalkK hes
-    hb hc hc' hh hpc hpc' (Ne.symm hne') hbc hlo hlmknown hdom hi_supp hih
 
-/-- **`hByz`, wired** (`VoteLanding`). Every byzantine recorded supporter of a filtered
-sibling `c'` of the `b`-side child `c` is confined to `BbadSet … es ∪ SpentSet es σ`
-at the endpoint `(w, m)`. This is `EdgeInputResidual.hByz`, produced by
-`ByzVpre.byz_sibling_confinement` (the byz analog, purely recorded — no `no_forgery`)
-with the same mechanical-domain discharge and sibling derivation as `hHon_of_confinement`.
-The tail bound `hσcur : current_slot − 1 ≤ σ` and the fork-edge geometry are the
-per-endpoint residuals. -/
-theorem hByz_of_confinement (hSA : SpecAssumptions cfg ext E)
-    {w : ValidatorIndex} {m : ℕ} {b h c : Root} {lo es σ : Slot}
-    (hjc : (E.store cfg ext w m).justified_checkpoint.root ∈ (E.store cfg ext w m).block_roots)
-    (hprov : LatestMessageProvenance E cfg (get_current_slot cfg (E.store cfg ext w m))
-      (E.store cfg ext w m))
-    (hlmknown : ∀ (lm : LatestMessage Root) (i : ValidatorIndex),
-      (E.store cfg ext w m).latest_messages i = some lm →
-        lm.root ∈ (E.store cfg ext w m).block_roots)
-    (hσcur : get_current_slot cfg (E.store cfg ext w m) - 1 ≤ σ)
-    (hb : b ∈ (E.store cfg ext w m).block_roots)
-    (hc : c ∈ (E.store cfg ext w m).block_roots)
-    (hh : h ∈ (E.store cfg ext w m).block_roots)
-    (hpc : ((E.store cfg ext w m).blocks c).parent_root = h)
-    (hbc : is_ancestor (E.store cfg ext w m) (get_node_for_root b) (get_node_for_root c) = true)
-    (hlo_h : lo ≤ ((E.store cfg ext w m).blocks h).slot + 1) :
-    ∀ c' : Root,
-      ForkChoiceNode.mk c' .pending ∈
-          get_node_children (E.store cfg ext w m)
-            (get_filtered_block_tree cfg (E.store cfg ext w m))
-              (ForkChoiceNode.mk h
-                (get_parent_payload_status (E.store cfg ext w m)
-                  ((E.store cfg ext w m).blocks c))) →
-        c' ≠ c →
-        ∀ i ∈ AttSupporters cfg (E.store cfg ext w m) (get_node_for_root c')
-            ((E.store cfg ext w m).checkpoint_states (E.store cfg ext w m).justified_checkpoint),
-          i ∉ E.honest → i ∈ E.BbadSet cfg ext w m b lo es ∨ i ∈ E.SpentSet es σ := by
-  obtain ⟨hgen, hwf, _hdiv, _hhb, _hsync, hec, _hsv, _hbb, _hji⟩ := hSA
-  have hpsl : ParentSlotLt (E.store cfg ext w m) :=
-    E.store_parentSlotLt cfg ext hwf hec hgen hwf.anchor_parent_unscheduled w m
-  have hwalkK := E.store_walkKnownK cfg ext hwf hec hgen w m
-  intro c' hchild hne' i hi_supp hib
-  have hchildData := (mem_get_node_children_resolved
-    (get_parent_payload_status_ne_pending (E.store cfg ext w m)
-      ((E.store cfg ext w m).blocks c))).mp hchild
-  have hc'mem : c' ∈ get_filtered_block_tree cfg (E.store cfg ext w m) :=
-    hchildData.2.1
-  have hc' : c' ∈ (E.store cfg ext w m).block_roots :=
-    filtered_subset_block_roots cfg (E.store cfg ext w m) hjc c' hc'mem
-  have hpc' : ((E.store cfg ext w m).blocks c').parent_root = h :=
-    hchildData.2.2.1
-  have hlo : lo ≤ ((E.store cfg ext w m).blocks c').slot := by
-    have hlt := hpsl c' hc' (by rw [hpc']; exact hh)
-    rw [hpc'] at hlt; exact le_trans hlo_h hlt
-  exact E.byz_sibling_confinement cfg ext hprov hpsl hwalkK hb hc hc' hh hpc hpc'
-    (Ne.symm hne') hbc hlo hσcur hlmknown hi_supp hib
 
 /-! ## Section 3 — the honest committee vote existence (`votes_head` consequence)
 
@@ -297,32 +149,6 @@ the reduced cruxes: `hmaj` from support saturation + the `Jspec` lower bound, an
 `hdeltas` from the two migration monotonicities with `hρ0` discharged in the
 same-epoch regime. -/
 
-/-- **`hmaj` from support saturation + the `Jspec` lower bound** (`VoteLanding`). Composes
-`IHMechanize.hmaj_of_saturation` with `boost_dilution`: the post-`T1` saturated
-honest majority `x(σ') + ⌊C·J(σ')/(100−C)⌋ + boost + 1 ≤ s(σ')` follows from the
-support-saturation crux `hsat` (every honest window member re-votes `desc(b')` past
-`T1`) and the saturated-regime `Jspec` lower bound `hJlb`. This is exactly the
-`EdgeInputResidual.hmaj` field, reduced to its two genuine engine residuals. -/
-theorem hmaj_of_saturation_lb (v₀ : ValidatorIndex) (n₀ : ℕ) (b' : Root) (lo es : Slot)
-    (boost : ℕ)
-    (hsat : ∀ σ' : Slot, es ≤ σ' →
-      compute_epoch_at_slot cfg es + 2 ≤ compute_epoch_at_slot cfg σ' →
-      E.SlotWithinHorizon cfg σ' →
-      ∀ i ∈ (E.span_committee lo σ').filter (fun i => i ∈ E.honest),
-        E.SupportsDesc cfg ext v₀ n₀ b' σ' i)
-    (hJlb : ∀ σ' : Slot, es ≤ σ' →
-      compute_epoch_at_slot cfg es + 2 ≤ compute_epoch_at_slot cfg σ' →
-      E.SlotWithinHorizon cfg σ' →
-      2 * (boost + 1) ≤ E.Jspec lo σ') :
-    ∀ σ' : Slot, es ≤ σ' →
-      compute_epoch_at_slot cfg es + 2 ≤ compute_epoch_at_slot cfg σ' →
-      E.SlotWithinHorizon cfg σ' →
-      E.Xval cfg ext v₀ n₀ b' lo σ'
-          + cfg.confirmation_byzantine_threshold * E.Jspec lo σ'
-              / (100 - cfg.confirmation_byzantine_threshold)
-          + boost + 1 ≤ E.Sval cfg ext v₀ n₀ b' lo σ' :=
-  E.hmaj_of_saturation cfg ext v₀ n₀ b' lo es boost hsat
-    (E.boost_dilution cfg lo es boost hJlb)
 
 end Execution
 

@@ -1,6 +1,7 @@
 module
 public import FastConfirmation.Spec.Proof.ResidualDischarge
-public import FastConfirmation.Spec.Proof.ForkAssembly
+public import FastConfirmation.Spec.Proof.MicroSteps
+public import FastConfirmation.Spec.Proof.DynamicsClosure
 
 @[expose] public section
 
@@ -78,32 +79,6 @@ known. The store's own realized justified checkpoint `jc` is `JustifiedIn`
 (`EngineStore.filtered_through_justified`). For a `JustifiedIn` `c` at-or-below `jc`'s
 epoch, `justified_ancestry` puts `c` on `jc`'s chain, so the head descends past `c`. -/
 
-/-- **Filter-route head domination, `c` at-or-below `jc`'s epoch (closed).** At an
-honest store `(w, m)` with the fork-choice domain conditions, a `JustifiedIn`
-checkpoint `c` with `c.root` known and `c.epoch ≤ jc.epoch` is dominated by the head.
-`justified_ancestry` (Casper cross-epoch coherence, the justification-interface export) gives
-`jc ⪰ c` (`is_ancestor jc.root c.root`), which `EngineStore.head_ge_of_justified_ge`
-lifts to `head ⪰ c` through the filter alone — no LMD weight margin. This is the sound
-core of the observed-anchor dominance: `obs ⪯ jc` used only where it *holds*. -/
-theorem head_ge_of_justifiedIn_le (hji : JustificationInterface cfg ext E)
-    (w : ValidatorIndex) (hw : w ∈ E.honest) (m : ℕ)
-    (hH : E.WithinHorizon cfg m)
-    (hwf : ∀ r ∈ (E.store cfg ext w m).block_roots,
-      ((E.store cfg ext w m).blocks r).parent_root ∈ (E.store cfg ext w m).block_roots →
-        ((E.store cfg ext w m).blocks ((E.store cfg ext w m).blocks r).parent_root).slot
-          < ((E.store cfg ext w m).blocks r).slot)
-    (hwalk : ∀ t r : Root, r ∈ (E.store cfg ext w m).block_roots →
-      WalkKnown (E.store cfg ext w m) ((E.store cfg ext w m).blocks t).slot r)
-    (hjust : (E.store cfg ext w m).justified_checkpoint.root ∈
-      (E.store cfg ext w m).block_roots)
-    (c : Checkpoint Root) (hc_just : JustifiedIn (E.store cfg ext w m) c)
-    (hc_known : c.root ∈ (E.store cfg ext w m).block_roots)
-    (hle : c.epoch ≤ (E.store cfg ext w m).justified_checkpoint.epoch) :
-    is_ancestor (E.store cfg ext w m) (get_head cfg (E.store cfg ext w m))
-      (get_node_for_root c.root) = true :=
-  head_ge_of_justified_ge cfg hwf hwalk hjust
-    (hji.justified_ancestry w hw m c (E.store cfg ext w m).justified_checkpoint
-      hH hc_just (Or.inl rfl) hle hc_known hjust)
 
 /-! ## Section 2 — deleted: the ahead-regime proposition and the filter route above it
 

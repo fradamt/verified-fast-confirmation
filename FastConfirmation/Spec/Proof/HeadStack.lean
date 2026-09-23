@@ -63,93 +63,10 @@ theorem head_root_known (hji : JustificationInterface cfg ext E)
 
 /-! ## Section 2 — `hhead_walk`, reduced to the checkpoint-boundary bound -/
 
-/-- **The head walk domain from the justified-root bound.** For every slot
-`sl` at or above the store's justified block slot, the parent walk from `get_head`
-toward `sl` stays known: `store_walkKnownK` gives the walk down to
-`(blocks justified.root).slot` (both `justified.root` and `get_head.root` known),
-and `WalkKnown.mono` lifts the target slot up to `sl`. Instantiated at
-`sl := compute_start_slot_at_epoch cfg target.epoch` this is exactly `hhead_walk`,
-its only residual being the boundary bound `hbound`. -/
-theorem head_walk_of_bound (hwf : WellFormedExecution E)
-    (hec : ExternalsCoherence cfg ext E)
-    (hgen : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
-      E.genesis_store = get_forkchoice_store cfg ast ablk ∧
-      ast.slot = ablk.message.slot ∧ ablk.message.parent_root ≠ ablk.root)
-    (hji : JustificationInterface cfg ext E)
-    {w : ValidatorIndex} (hw : w ∈ E.honest) (m : ℕ)
-    (hH : E.WithinHorizon cfg m) (sl : Slot)
-    (hbound : ((E.store cfg ext w m).blocks
-        (E.store cfg ext w m).justified_checkpoint.root).slot ≤ sl) :
-    WalkKnown (E.store cfg ext w m) sl (get_head cfg (E.store cfg ext w m)).root := by
-  have hjc : (E.store cfg ext w m).justified_checkpoint.root ∈
-      (E.store cfg ext w m).block_roots := (hji.checkpoint_known w hw m hH).1
-  have hhead := E.head_root_known cfg ext hji hw m hH
-  have hwalk := E.store_walkKnownK cfg ext hwf hec hgen w m
-    (E.store cfg ext w m).justified_checkpoint.root hjc
-    (get_head cfg (E.store cfg ext w m)).root hhead
-  exact WalkKnown.mono hbound hwalk
 
 /-! ## Section 3 — the closed vote-landing bundle -/
 
-/-- **`vote_lands`, closed.** `Delivery.vote_lands` with both open inputs
-supplied: `hhead_known` by `head_root_known` (Section 1) and `hhead_walk` by
-`head_walk_of_bound` (Section 2). The only residual is the checkpoint-boundary bound
-`hbound` — the justified block slot sits at or below the honest target epoch's
-boundary. -/
-theorem vote_lands_closed {E : Execution Root}
-    (hwf : WellFormedExecution E) (hhb : HonestBehavior cfg ext E)
-    (hsyn : PaperSafetySynchrony cfg ext E) (hec : ExternalsCoherence cfg ext E)
-    (hji : JustificationInterface cfg ext E)
-    (hdiv : 1000 ∣ cfg.slot_duration_ms)
-    (hgen : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
-      E.genesis_store = get_forkchoice_store cfg ast ablk ∧
-      ast.slot = ablk.message.slot ∧ ablk.message.parent_root ≠ ablk.root)
-    {v w : ValidatorIndex} (hv : v ∈ E.honest) (hw : w ∈ E.honest)
-    {s : Slot} {n : ℕ} {index : CommitteeIndex} (hn : E.slot_at cfg n = s)
-    (hHn : E.WithinHorizon cfg n)
-    (hHdeliver : E.WithinHorizon cfg (E.slot_start cfg (s + 1)))
-    (hvote : E.vote v s = some (n, honest_attestation cfg ext (E.store cfg ext v n) s index v))
-    (hbound : ((E.store cfg ext v n).blocks
-        (E.store cfg ext v n).justified_checkpoint.root).slot ≤
-      compute_start_slot_at_epoch cfg
-        (honest_attestation cfg ext (E.store cfg ext v n) s index v).data.target.epoch) :
-    ∃ msg, (E.store cfg ext w (E.slot_start cfg (s + 1))).latest_messages v = some msg ∧
-      (honest_attestation cfg ext (E.store cfg ext v n) s index v).data.target.epoch ≤
-        (get_latest_message_epoch cfg msg) :=
-  E.vote_lands cfg ext hwf hhb hsyn hec hdiv hgen hv hw hn hHn hHdeliver hvote
-    (E.head_root_known cfg ext hji hv n hHn)
-    (E.head_walk_of_bound cfg ext hwf hec hgen hji hv n hHn _ hbound)
 
-/-- **`vote_ubiquity`, closed.** `Delivery.vote_ubiquity` with the two
-head-stack inputs discharged as in `vote_lands_closed`; the recorded message
-persists at every honest node from the delivery second on. This is the exact call
-site the `hSmono`/`hXmono`/`hsat` migration cruxes route their late voters through
-(`VoteLanding`'s enumerated residue), now open only in the checkpoint-boundary
-bound `hbound`. -/
-theorem vote_ubiquity_closed {E : Execution Root}
-    (hwf : WellFormedExecution E) (hhb : HonestBehavior cfg ext E)
-    (hsyn : PaperSafetySynchrony cfg ext E) (hec : ExternalsCoherence cfg ext E)
-    (hji : JustificationInterface cfg ext E)
-    (hdiv : 1000 ∣ cfg.slot_duration_ms)
-    (hgen : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
-      E.genesis_store = get_forkchoice_store cfg ast ablk ∧
-      ast.slot = ablk.message.slot ∧ ablk.message.parent_root ≠ ablk.root)
-    {v w : ValidatorIndex} (hv : v ∈ E.honest) (hw : w ∈ E.honest)
-    {s : Slot} {n : ℕ} {index : CommitteeIndex} (hn : E.slot_at cfg n = s)
-    (hHn : E.WithinHorizon cfg n)
-    (hvote : E.vote v s = some (n, honest_attestation cfg ext (E.store cfg ext v n) s index v))
-    (hbound : ((E.store cfg ext v n).blocks
-        (E.store cfg ext v n).justified_checkpoint.root).slot ≤
-      compute_start_slot_at_epoch cfg
-        (honest_attestation cfg ext (E.store cfg ext v n) s index v).data.target.epoch)
-    {m : ℕ} (hm : E.slot_start cfg (s + 1) ≤ m)
-    (hHm : E.WithinHorizon cfg m) :
-    ∃ msg, (E.store cfg ext w m).latest_messages v = some msg ∧
-      (honest_attestation cfg ext (E.store cfg ext v n) s index v).data.target.epoch ≤
-        (get_latest_message_epoch cfg msg) :=
-  E.vote_ubiquity cfg ext hwf hhb hsyn hec hdiv hgen hv hw hn hHn hvote
-    (E.head_root_known cfg ext hji hv n hHn)
-    (E.head_walk_of_bound cfg ext hwf hec hgen hji hv n hHn _ hbound) hm hHm
 
 /-! ## Section 4 — `hJlb`: the saturated-regime `Jspec` lower bound
 
@@ -168,51 +85,6 @@ epoch, whose committee union is the whole active set (`committee_coverage`), of 
 Its faithful discharge needs the `estimate`/`committee_coverage` epoch-scale weight
 identification (`W(full epoch) = TAB`); the theorem below states that premise directly. -/
 
-/-- Pure-ℕ core of the `Jspec` lower bound (avoids `omega` atomizing `Finset.filter`
-terms — the honest/byz partition `hpart`, the fraction bound `hsf`, and the
-committee-weight floor `hspan` are plain ℕ atoms here). With `C ≤ 25`:
-`100·B ≤ C·W ≤ 25·W ⟹ 3·B ≤ J` (from `J+B=W`), and `4·k ≤ W ⟹ 2·k ≤ J`. -/
-private theorem jspec_arith {J B W k C : ℕ} (hC : C ≤ 25) (hpart : J + B = W)
-    (hsf : 100 * B ≤ C * W) (hspan : 4 * k ≤ W) : 2 * k ≤ J := by
-  have hCW : C * W ≤ 25 * W := Nat.mul_le_mul_right _ hC
-  omega
-
-omit [LinearOrder Root] [Inhabited Root] in
-/-- **`Jspec` lower bound from a committee-weight floor.** The per-slot core:
-`span_fraction` bounds the byzantine window weight, so the honest weight `Jspec` is at
-least three quarters of the span committee weight `W`; a floor `4·(boost+1) ≤ W` then
-gives `2·(boost+1) ≤ Jspec` (`jspec_arith`, `Bval` kept folded so the byzantine atom
-unifies between `span_fraction` and the honest/byz partition). -/
-theorem Jspec_ge_two_boost (hbb : ByzantineBound cfg E) (lo σ' : Slot) (boost : ℕ)
-    (hloH : E.SlotWithinHorizon cfg lo) (hσH : E.SlotWithinHorizon cfg σ')
-    (hspan : 4 * (boost + 1) ≤ E.weight (E.span_committee lo σ')) :
-    2 * (boost + 1) ≤ E.Jspec lo σ' := by
-  have hC25 : cfg.confirmation_byzantine_threshold ≤ 25 :=
-    cfg.confirmation_byzantine_threshold_le
-  have hpart : E.Jspec lo σ' + E.Bval lo σ' = E.weight (E.span_committee lo σ') :=
-    E.Jspec_add_Bval_eq_weight_span lo σ'
-  have hsf : 100 * E.Bval lo σ' ≤
-      cfg.confirmation_byzantine_threshold * E.weight (E.span_committee lo σ') :=
-    hbb.span_fraction lo σ' hloH hσH
-  exact jspec_arith hC25 hpart hsf hspan
-
-omit [LinearOrder Root] [Inhabited Root] in
-/-- **`hJlb` in the saturated regime.** The exact `∀`-shape
-`VoteLanding.boost_dilution` consumes: for every window at least two epochs past `es`,
-`2·(boost+1) ≤ Jspec lo σ'`, given the saturated committee-weight floor `hspan`
-(the remaining premise `4·(boost+1) ≤ W(span lo σ')` past `T1`). -/
-theorem hJlb_of_saturated (hbb : ByzantineBound cfg E) (lo es : Slot) (boost : ℕ)
-    (hloH : E.SlotWithinHorizon cfg lo)
-    (hspan : ∀ σ' : Slot, es ≤ σ' →
-      compute_epoch_at_slot cfg es + 2 ≤ compute_epoch_at_slot cfg σ' →
-      E.SlotWithinHorizon cfg σ' →
-      4 * (boost + 1) ≤ E.weight (E.span_committee lo σ')) :
-    ∀ σ' : Slot, es ≤ σ' →
-      compute_epoch_at_slot cfg es + 2 ≤ compute_epoch_at_slot cfg σ' →
-      E.SlotWithinHorizon cfg σ' →
-      2 * (boost + 1) ≤ E.Jspec lo σ' :=
-  fun σ' h1 h2 hσH =>
-    E.Jspec_ge_two_boost cfg hbb lo σ' boost hloH hσH (hspan σ' h1 h2 hσH)
 
 /-! ## Section 5 — why `hBb` base-enemy movement is not used
 

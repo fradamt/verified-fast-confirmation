@@ -5,7 +5,6 @@ public import FastConfirmation.Spec.Proof.SelectedPreQuerySIR
 public import FastConfirmation.Spec.Proof.HistoricalCurrentTargetTrajectory
 public import FastConfirmation.Spec.Proof.ModelFacts
 
-public import FastConfirmation.Spec.Proof.ModelFacts
 @[expose] public section
 
 /-!

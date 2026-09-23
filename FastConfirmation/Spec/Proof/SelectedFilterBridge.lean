@@ -51,34 +51,8 @@ variable (cfg : Config) (ext : Externals Root)
 
 /-! ## Executable accepted-edge facts and checkpoint-map provenance -/
 
-/-- Updating the fast-confirmation bookkeeping does not mutate its fork-choice
-store snapshot. -/
-theorem update_fast_confirmation_variables_store
-    (fcrStore : FastConfirmationStore Root) :
-    (update_fast_confirmation_variables cfg fcrStore).store = fcrStore.store := by
-  unfold update_fast_confirmation_variables
-  dsimp only
-  split <;> split <;> rfl
 
-/-- The fast-confirmation handler only updates fast-confirmation bookkeeping;
-its embedded fork-choice store is read-only. -/
-theorem on_fast_confirmation_store (fcrStore : FastConfirmationStore Root) :
-    (on_fast_confirmation cfg ext fcrStore).store = fcrStore.store := by
-  simp only [on_fast_confirmation]
-  exact update_fast_confirmation_variables_store cfg _
 
-/-- The execution's FCR snapshot always carries the execution store at the
-same second, including between the once-per-slot updates. -/
-theorem Execution.fcr_store_eq (E : Execution Root) (v : ValidatorIndex) :
-    ∀ n : ℕ, (E.fcr cfg ext v n).store = E.store cfg ext v n := by
-  intro n
-  induction n with
-  | zero => rfl
-  | succ n =>
-      simp only [Execution.fcr]
-      split_ifs
-      · rw [on_fast_confirmation_store]
-      · rfl
 
 /-- Erasing both ghost edge lists gives the exact executable wrapper result. -/
 theorem findLatestSelectedTrace_fst
@@ -126,17 +100,6 @@ theorem PreviousAcceptedEdge.gates
   · exact Or.inl hstart
   · exact Or.inr hwill
 
-/-- Away from the epoch-start escape, every retained previous-loop edge
-therefore has the executable no-conflict gate. -/
-theorem PreviousAcceptedEdge.no_conflict_gate
-    {fcrStore : FastConfirmationStore Root} {latestConfirmedRoot a c : Root}
-    (h : PreviousAcceptedEdge cfg ext fcrStore latestConfirmedRoot a c)
-    (hnot_start : is_start_slot_at_epoch cfg
-      (get_current_slot cfg fcrStore.store) ≠ true) :
-    will_no_conflicting_checkpoint_be_justified cfg ext fcrStore.store = true := by
-  rcases (h.gates cfg ext).2.2.2 with hstart | hgate
-  · exact False.elim (hnot_start hstart)
-  · exact hgate
 
 /-- A crossing tentative edge passed the executable
 `will_current_target_be_justified` guard. -/
@@ -156,15 +119,6 @@ theorem CurrentTargetAcceptedEdge.one_confirmed
   exact (mem_findLatestSelectedTrace_tentative cfg ext fcrStore
     latestConfirmedRoot a c h.1).1
 
-/-- A previous-epoch trace edge also passed `is_one_confirmed`. -/
-theorem previousAcceptedEdge_one_confirmed
-    (fcrStore : FastConfirmationStore Root) (currentEpoch : Epoch)
-    (roots : List Root) (accumulator a c : Root)
-    (h : (a, c) ∈
-      (prevEpochLoopTrace cfg ext fcrStore currentEpoch roots accumulator).2) :
-    is_one_confirmed cfg ext fcrStore.store
-      (get_current_balance_source fcrStore) c = true :=
-  (mem_prevEpochLoopTrace cfg ext fcrStore currentEpoch roots accumulator a c h).2.2
 
 /-- The totalized checkpoint map cannot make an accepted crossing edge pass
 confirmation through an out-of-domain balance source.  At an actual execution
@@ -209,26 +163,6 @@ theorem PreviousAcceptedEdge.current_balance_checkpoint_key
   apply hkey
   simpa only [get_current_balance_source] using hconf
 
-/-- The same exact-domain conclusion for an accepted previous-epoch edge. -/
-theorem previousAcceptedEdge_current_balance_checkpoint_key
-    {E : Execution Root}
-    (hgen : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
-      E.genesis_store = get_forkchoice_store cfg ast ablk)
-    {v : ValidatorIndex} {n : ℕ}
-    (fcrStore : FastConfirmationStore Root)
-    (hstore : fcrStore.store = E.store cfg ext v n)
-    (currentEpoch : Epoch) (roots : List Root) (accumulator a c : Root)
-    (h : (a, c) ∈
-      (prevEpochLoopTrace cfg ext fcrStore currentEpoch roots accumulator).2) :
-    fcrStore.current_epoch_observed_justified_checkpoint ∈
-      fcrStore.store.checkpoint_state_keys := by
-  have hconf := previousAcceptedEdge_one_confirmed cfg ext fcrStore currentEpoch
-    roots accumulator a c h
-  have hkey := E.checkpoint_state_key_of_one_confirmed cfg ext hgen v n
-    fcrStore.current_epoch_observed_justified_checkpoint c
-  rw [← hstore] at hkey
-  apply hkey
-  simpa only [get_current_balance_source] using hconf
 
 /-- Away from the epoch-start escape hatch, a strict previous-epoch result
 passed the executable no-conflicting-checkpoint gate. -/
@@ -478,20 +412,6 @@ def filterTipCertificate_of_pipeline
   justified_ok := hsource
   finalized_ok := hpipe.finalized_ok_of_tip cfg hacc hskel
 
-/-- Direct `child_filtered` output for the selected-margin producer. -/
-theorem selected_child_filtered_of_pipeline
-    {E : Execution Root} {anchor : Checkpoint Root}
-    {store : Store Root} {a c : Root}
-    (hacc : CertificateAccountability cfg E anchor)
-    (hpipe : EndpointFFGPipeline cfg E anchor store)
-    (hskel : FilterTipSkeleton cfg store c)
-    (hsource : TipSourceFresh cfg store hskel.tip)
-    (hparent : (store.blocks c).parent_root = a) :
-    ForkChoiceNode.mk c .pending ∈
-      get_node_children store (get_filtered_block_tree cfg store)
-        (ForkChoiceNode.mk a (get_parent_payload_status store (store.blocks c))) := by
-  exact (filterTipCertificate_of_pipeline cfg hacc hpipe hskel hsource)
-    |>.child_filtered cfg hparent
 
 omit [Inhabited Root] in
 /-- Eliminate the call-site existential certificate directly into the

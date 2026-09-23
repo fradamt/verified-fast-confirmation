@@ -1,5 +1,5 @@
 module
-public import FastConfirmation.Spec.Proof.HeadSafetyEngine
+public import FastConfirmation.Spec.Proof.StepDischarge
 public import FastConfirmation.Spec.Proof.DynamicsClosure
 public import FastConfirmation.Spec.Proof.CrossingCert
 public import FastConfirmation.Spec.Proof.CrossEpochDynamics
@@ -42,44 +42,7 @@ variable (cfg : Config) (ext : Externals Root)
 
 /-! ## 1. Exhaustive edge/window geometry -/
 
-/-- The three mutually covering geometric cases for a real selected edge and
-its later contest window.  The third constructor covers an intra-epoch edge
-whose later contest window crosses an epoch boundary. -/
-inductive SelectedEdgeWindowRegime
-    (parentSlot childSlot lo sigma : Slot) : Prop where
-  | sameWindow
-      (h : compute_epoch_at_slot cfg lo = compute_epoch_at_slot cfg sigma) :
-      SelectedEdgeWindowRegime parentSlot childSlot lo sigma
-  | edgeCrossing
-      (h : compute_epoch_at_slot cfg parentSlot <
-        compute_epoch_at_slot cfg childSlot) :
-      SelectedEdgeWindowRegime parentSlot childSlot lo sigma
-  | intraEdgeFutureCrossing
-      (hedge : compute_epoch_at_slot cfg parentSlot =
-        compute_epoch_at_slot cfg childSlot)
-      (hwindow : compute_epoch_at_slot cfg lo <
-        compute_epoch_at_slot cfg sigma) :
-      SelectedEdgeWindowRegime parentSlot childSlot lo sigma
 
-omit [LinearOrder Root] [Inhabited Root] in
-/-- A real parent edge (`parentSlot < childSlot`) and an ordered contest window
-(`lo <= sigma`) always lie in exactly one of the three covering cases above.
-No protocol or accounting premise is used. -/
-theorem selectedEdgeWindowRegime_exhaustive
-    {parentSlot childSlot lo sigma : Slot}
-    (hedge : parentSlot < childSlot) (hwindow : lo <= sigma) :
-    SelectedEdgeWindowRegime cfg parentSlot childSlot lo sigma := by
-  by_cases hsame : compute_epoch_at_slot cfg lo = compute_epoch_at_slot cfg sigma
-  · exact .sameWindow hsame
-  · have hedge_le : compute_epoch_at_slot cfg parentSlot <=
-        compute_epoch_at_slot cfg childSlot :=
-      Nat.div_le_div_right (Nat.le_of_lt hedge)
-    have hwindow_le : compute_epoch_at_slot cfg lo <=
-        compute_epoch_at_slot cfg sigma :=
-      Nat.div_le_div_right hwindow
-    rcases lt_or_eq_of_le hedge_le with hcross | hintra
-    · exact .edgeCrossing hcross
-    · exact .intraEdgeFutureCrossing hintra (lt_of_le_of_ne hwindow_le hsame)
 
 namespace Execution
 
@@ -115,46 +78,7 @@ def ConfirmedArmSupply (queryStore : Store Root) (bs : BeaconState Root)
     E.ConfirmTaxArm cfg ext v q b lo es boost \/
       E.ConfirmMemberArm cfg ext v q b lo es boost
 
-omit [LinearOrder Root] [Inhabited Root] in
-private theorem member_arm_transport_arith
-    {Xq Xe Sq Se reserve boost : Nat}
-    (harm : Xq + (boost + 1) + reserve <= Sq)
-    (hS : Sq <= Se) (hX : Xe <= Xq) :
-    Xe + (boost + 1) + reserve <= Se := by
-  omega
 
-/-- Build `INV2(es)` directly at the consuming endpoint.
-
-The member arm transports from the query anchor with only the two honest class
-movements.  For the tax arm, the caller supplies the exact endpoint tax arm.
-This is intentionally narrower than `hBb`: it is required only if the concrete
-confirmation actually lands in the tax branch, and it does not assert a false
-set/weight ordering between two Byzantine message views. -/
-theorem endpoint_INV2_base_of_confirmed_arms
-    (hbb : ByzantineBound cfg E)
-    {queryStore : Store Root} {bs : BeaconState Root}
-    {b : Root} {v : ValidatorIndex} {q : Nat}
-    {w : ValidatorIndex} {m : Nat} {lo es : Slot} {boost : Nat}
-    (hloH : E.SlotWithinHorizon cfg lo)
-    (hesH : E.SlotWithinHorizon cfg es)
-    (hconf : is_one_confirmed cfg ext queryStore bs b = true)
-    (harms : E.ConfirmedArmSupply cfg ext queryStore bs b v q lo es boost)
-    (hSt : ∀ i, i ∈ E.honest → i ∈ E.span_committee lo es →
-      E.SupportsDesc cfg ext v q b es i -> E.SupportsDesc cfg ext w m b es i)
-    (hAt : ∀ i, i ∈ E.honest → i ∈ E.span_committee lo es →
-      E.AncestorOrVoteless cfg ext v q b es i ->
-        E.AncestorOrVoteless cfg ext w m b es i)
-    (htax : E.ConfirmTaxArm cfg ext v q b lo es boost ->
-      E.ConfirmTaxArm cfg ext w m b lo es boost) :
-    E.INV2 cfg ext w m b lo es es boost := by
-  obtain htaxQuery | hmemberQuery := harms hconf
-  · exact E.INV2_base_of_arms cfg ext hbb w m b lo es boost hloH hesH
-      (Or.inl (htax htaxQuery))
-  · obtain ⟨hS, hX⟩ :=
-      E.classes_base_transport_honest cfg ext v w q m b lo es hSt hAt
-    apply E.INV2_base_of_arms cfg ext hbb w m b lo es boost hloH hesH
-    right
-    exact member_arm_transport_arith hmemberQuery hS hX
 
 /-! ## 3. The exact cross-epoch recurrence and saturation inputs -/
 
@@ -260,51 +184,6 @@ structure FutureCrossingINV2Inputs
       i ∉ E.honest ->
         i ∈ E.BbadSet cfg ext w m b lo es \/ i ∈ E.SpentSet es sigma
 
-/-- A selected intra-epoch edge whose later window crosses epochs yields one
-`DescendStep`, provided the sound endpoint base, cross-epoch deltas, saturation,
-and endpoint recording inputs above are supplied. -/
-theorem futureCrossing_descendStep_of_INV2Inputs
-    (hbb : ByzantineBound cfg E) (hec : ExternalsCoherence cfg ext E)
-    (hsv : StaticValidatorSet cfg E)
-    {glc a b : Root} {v : ValidatorIndex} {q : Nat}
-    {w : ValidatorIndex} {m : Nat} {bs : BeaconState Root} {queryStore : Store Root}
-    {lo es sigma querySlot : Slot}
-    (hin : E.FutureCrossingINV2Inputs cfg ext glc a b v q w m bs queryStore
-      lo es sigma querySlot) :
-    DescendStep cfg (E.store cfg ext w m)
-      (get_filtered_block_tree cfg (E.store cfg ext w m)) a b := by
-  have hbase : E.INV2 cfg ext w m b lo es es
-      (get_proposer_score cfg (E.store cfg ext w m)) :=
-    E.endpoint_INV2_base_of_confirmed_arms cfg ext hbb hin.lo_horizon hin.es_horizon
-      hin.confirmation hin.base_arms hin.support_transport hin.ancestor_transport
-      hin.tax_endpoint
-  have hdeltas := hin.deltas
-  have hpre : ∀ sigma' : Slot, es <= sigma' ->
-      E.SlotWithinHorizon cfg sigma' -> E.SlotWithinHorizon cfg (sigma' + 1) ->
-      compute_epoch_at_slot cfg (sigma' + 1) < compute_epoch_at_slot cfg es + 2 ->
-      E.INV2 cfg ext w m b lo es sigma'
-          (get_proposer_score cfg (E.store cfg ext w m)) ->
-        E.INV2 cfg ext w m b lo es (sigma' + 1)
-          (get_proposer_score cfg (E.store cfg ext w m)) := by
-    intro sigma' hes' hsigH hsig1H hpreT1 hinv
-    obtain ⟨xi, alpha, hS, hX, hfund⟩ := hdeltas sigma' hes' hsigH hsig1H hpreT1
-    exact E.INV2_pre_step_of_deltas cfg ext hbb w m b lo es sigma'
-      (get_proposer_score cfg (E.store cfg ext w m)) xi alpha
-      hin.lo_horizon hsigH hsig1H (le_trans hin.lo_le_es (Nat.le_succ es))
-      hes' hS hX hfund hinv
-  have hmajority := hin.saturated_majority
-  have hsat := E.hsat_functional cfg ext hbb w m b lo es
-    (get_proposer_score cfg (E.store cfg ext w m)) hin.lo_horizon
-    (le_trans hin.lo_le_es (Nat.le_succ es)) hmajority
-  have hinv : E.INV2 cfg ext w m b lo es sigma
-      (get_proposer_score cfg (E.store cfg ext w m)) :=
-    E.INV2_maintained_same_epoch cfg ext hec hsv w m b lo es
-      (get_proposer_score cfg (E.store cfg ext w m)) hbase hpre hsat
-      sigma hin.es_le_sigma hin.sigma_horizon
-  exact descendStep_of_ledgerStepV2 cfg ext
-    (inv2_ledgerStepV2 cfg ext hin.balance_source_registry rfl hinv
-      hin.child_filtered hin.status_margin hin.selected_recording
-      hin.honest_sibling_confinement hin.byzantine_sibling_confinement)
 
 /-! ## 4. Endpoint-anchored full-span producer
 
@@ -521,69 +400,6 @@ theorem intraEpochFuture_endpoint_inequality_of_confirmed_window
       (Nat.zero_le _) (Nat.zero_le _) hbyzsub (by simpa using hbyzfull) hAX hxS
   simpa only [Nat.sub_zero] using hend
 
-/-- Compatibility wrapper for the legacy all-validator recorded-epoch
-domination premise. -/
-theorem intraEpochFuture_endpoint_inequality_of_confirmed
-    (hhb : HonestBehavior cfg ext E) (hec : ExternalsCoherence cfg ext E)
-    (hbb : ByzantineBound cfg E)
-    (hgen : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
-      E.genesis_store = get_forkchoice_store cfg ast ablk)
-    {v : ValidatorIndex} (hv : v ∈ E.honest) {n : ℕ}
-    (hnH : E.WithinHorizon cfg n)
-    (hwf : ∀ r ∈ (E.store cfg ext v n).block_roots,
-      ((E.store cfg ext v n).blocks r).parent_root ∈
-          (E.store cfg ext v n).block_roots →
-        ((E.store cfg ext v n).blocks
-            ((E.store cfg ext v n).blocks r).parent_root).slot <
-          ((E.store cfg ext v n).blocks r).slot)
-    {bs : BeaconState Root} {b : Root}
-    (hval : bs.validators = E.registry)
-    (htab : get_total_active_balance cfg bs = E.total_active cfg)
-    (hprov : LatestMessageProvenance E cfg
-      (get_current_slot cfg (E.store cfg ext v n)) (E.store cfg ext v n))
-    (hconf : is_one_confirmed cfg ext (E.store cfg ext v n) bs b = true)
-    (hwalk : ∀ i ∈ AttSupporters cfg (E.store cfg ext v n)
-        (get_node_for_root b) bs, ∀ lm,
-      (E.store cfg ext v n).latest_messages i = some lm →
-        WalkKnown (E.store cfg ext v n)
-          ((E.store cfg ext v n).blocks b).slot lm.root)
-    {es sigma : Slot}
-    (hes : es = get_current_slot cfg (E.store cfg ext v n) - 1)
-    (hslotlt : ((E.store cfg ext v n).blocks
-        ((E.store cfg ext v n).blocks b).parent_root).slot <
-      ((E.store cfg ext v n).blocks b).slot)
-    (hbcur : ((E.store cfg ext v n).blocks b).slot ≤
-      get_current_slot cfg (E.store cfg ext v n))
-    (hdom : E.RecordedEpochMax cfg ext v n es)
-    (hintra : get_block_epoch cfg (E.store cfg ext v n) b =
-      get_block_epoch cfg (E.store cfg ext v n)
-        ((E.store cfg ext v n).blocks b).parent_root)
-    (hesSigma : es ≤ sigma) (hSigmaH : E.SlotWithinHorizon cfg sigma)
-    {w : ValidatorIndex} {m : ℕ}
-    (hboost : compute_proposer_score cfg bs =
-      get_proposer_score cfg (E.store cfg ext w m))
-    (hSbase : E.Sval cfg ext v n b ((E.store cfg ext v n).blocks b).slot es ≤
-      E.Sval cfg ext w m b ((E.store cfg ext v n).blocks b).slot es)
-    (hHsub : E.weight (E.crossingParentSub cfg (E.store cfg ext v n) bs b
-        ((E.store cfg ext v n).blocks b).slot es) ≤
-      E.Aval cfg ext w m b ((E.store cfg ext v n).blocks b).slot es)
-    (hAX : E.Aval cfg ext w m b ((E.store cfg ext v n).blocks b).slot sigma
-          + E.Xval cfg ext w m b ((E.store cfg ext v n).blocks b).slot sigma
-        ≤ E.Aval cfg ext w m b ((E.store cfg ext v n).blocks b).slot es
-          + E.Xval cfg ext w m b ((E.store cfg ext v n).blocks b).slot es)
-    (hxS : E.Xval cfg ext w m b ((E.store cfg ext v n).blocks b).slot sigma ≤
-      E.Xval cfg ext w m b ((E.store cfg ext v n).blocks b).slot es) :
-    let lo := ((E.store cfg ext v n).blocks
-      ((E.store cfg ext v n).blocks b).parent_root).slot + 1
-    let mid := ((E.store cfg ext v n).blocks b).slot
-    E.weight (E.crossingXPre cfg (E.store cfg ext v n) bs b lo mid es)
-        + E.Xval cfg ext w m b mid sigma
-        + E.weight (E.crossingByzPre lo mid es)
-        + E.Bval mid sigma + get_proposer_score cfg (E.store cfg ext w m) + 1
-      ≤ E.Sval cfg ext w m b mid sigma := by
-  exact E.intraEpochFuture_endpoint_inequality_of_confirmed_window cfg ext
-    hhb hec hbb hgen hv hnH hwf hval htab hprov hconf hwalk hes hslotlt hbcur
-    (hdom.toWindow cfg ext) hintra hesSigma hSigmaH hboost hSbase hHsub hAX hxS
 
 /-- Endpoint-anchored version of the full-span crossing-edge certificate.
 This corrects the historical crossing wrapper, whose future classes were read
@@ -745,67 +561,6 @@ theorem crossingEdgeFuture_endpoint_inequality_of_confirmed_window
   exact E.reanchored_endpoint_of_fullSpan_certificate cfg ext hbb hesSigma hmidH hSigmaH
     hbase hMU hd hHsub hAguard hdomFull hBextra heqExtra hbyzsub hbyzfull hAX hxS
 
-/-- Compatibility wrapper for the legacy all-validator recorded-epoch
-domination premise. -/
-theorem crossingEdgeFuture_endpoint_inequality_of_confirmed
-    (hhb : HonestBehavior cfg ext E) (hec : ExternalsCoherence cfg ext E)
-    (hbb : ByzantineBound cfg E)
-    (hgen : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
-      E.genesis_store = get_forkchoice_store cfg ast ablk)
-    {v : ValidatorIndex} (hv : v ∈ E.honest) {n : ℕ}
-    (hnH : E.WithinHorizon cfg n)
-    (hwf : ParentSlotLt (E.store cfg ext v n))
-    {bs : BeaconState Root} {b : Root}
-    (hval : bs.validators = E.registry)
-    (htab : get_total_active_balance cfg bs = E.total_active cfg)
-    (hprov : LatestMessageProvenance E cfg
-      (get_current_slot cfg (E.store cfg ext v n)) (E.store cfg ext v n))
-    (hconf : is_one_confirmed cfg ext (E.store cfg ext v n) bs b = true)
-    (hwalk : ∀ i ∈ AttSupporters cfg (E.store cfg ext v n)
-        (get_node_for_root b) bs, ∀ lm,
-      (E.store cfg ext v n).latest_messages i = some lm →
-        WalkKnown (E.store cfg ext v n)
-          ((E.store cfg ext v n).blocks b).slot lm.root)
-    {es sigma : Slot}
-    (hes : es = get_current_slot cfg (E.store cfg ext v n) - 1)
-    (hslotlt : ((E.store cfg ext v n).blocks
-        ((E.store cfg ext v n).blocks b).parent_root).slot <
-      ((E.store cfg ext v n).blocks b).slot)
-    (hbcur : ((E.store cfg ext v n).blocks b).slot ≤
-      get_current_slot cfg (E.store cfg ext v n))
-    (hdom : E.RecordedEpochMax cfg ext v n es)
-    (hcross : get_block_epoch cfg (E.store cfg ext v n) b >
-      get_block_epoch cfg (E.store cfg ext v n)
-        ((E.store cfg ext v n).blocks b).parent_root)
-    (hesSigma : es ≤ sigma) (hSigmaH : E.SlotWithinHorizon cfg sigma)
-    {w : ValidatorIndex} {m : ℕ}
-    (hboost : compute_proposer_score cfg bs =
-      get_proposer_score cfg (E.store cfg ext w m))
-    (hSbase : E.Sval cfg ext v n b ((E.store cfg ext v n).blocks b).slot es ≤
-      E.Sval cfg ext w m b ((E.store cfg ext v n).blocks b).slot es)
-    (hHsub : E.weight (E.crossingParentSub cfg (E.store cfg ext v n) bs b
-        ((E.store cfg ext v n).blocks b).slot es) ≤
-      E.Aval cfg ext w m b ((E.store cfg ext v n).blocks b).slot es)
-    (hAX : E.Aval cfg ext w m b ((E.store cfg ext v n).blocks b).slot sigma
-          + E.Xval cfg ext w m b ((E.store cfg ext v n).blocks b).slot sigma
-        ≤ E.Aval cfg ext w m b ((E.store cfg ext v n).blocks b).slot es
-          + E.Xval cfg ext w m b ((E.store cfg ext v n).blocks b).slot es)
-    (hxS : E.Xval cfg ext w m b ((E.store cfg ext v n).blocks b).slot sigma ≤
-      E.Xval cfg ext w m b ((E.store cfg ext v n).blocks b).slot es) :
-    let lo := ((E.store cfg ext v n).blocks
-      ((E.store cfg ext v n).blocks b).parent_root).slot + 1
-    let mid := ((E.store cfg ext v n).blocks b).slot
-    let sa := compute_start_slot_at_epoch cfg
-      (get_block_epoch cfg (E.store cfg ext v n) b)
-    E.weight (E.crossingXPre cfg (E.store cfg ext v n) bs b lo mid es)
-        + E.Xval cfg ext w m b mid sigma
-        + (E.weight (E.crossingByzPre lo mid es)
-          - E.weight (E.crossingEquivPre cfg (E.store cfg ext v n) bs sa mid es))
-        + E.Bval mid sigma + get_proposer_score cfg (E.store cfg ext w m) + 1
-      ≤ E.Sval cfg ext w m b mid sigma := by
-  exact E.crossingEdgeFuture_endpoint_inequality_of_confirmed_window cfg ext
-    hhb hec hbb hgen hv hnH hwf hval htab hprov hconf hwalk hes hslotlt hbcur
-    (hdom.toWindow cfg ext) hcross hesSigma hSigmaH hboost hSbase hHsub hAX hxS
 
 /-- Concrete third-regime inputs at an arbitrary permitted query second.
 
@@ -886,90 +641,6 @@ structure FutureCrossingSelectedMarginInputs
             ((E.store cfg ext v q).blocks b).slot es)
         + E.Bval ((E.store cfg ext v q).blocks b).slot sigma
 
-/-- The concrete third producer.  It derives the full-span accounting from the
-actual query confirmation, transports only the base honest support to the
-endpoint, derives cross-epoch endpoint `A+X`/`X` antitonicity from committee
-support, and then performs the ordinary endpoint GHOST comparison. -/
-theorem futureCrossing_descendStep_of_selectedInputs
-    (hSA : SpecAssumptions cfg ext E)
-    {glc a b : Root} {v : ValidatorIndex} (hv : v ∈ E.honest) {q : ℕ}
-    (hqH : E.WithinHorizon cfg q)
-    {w : ValidatorIndex} (hw : w ∈ E.honest) {m : ℕ}
-    (hmH : E.WithinHorizon cfg m)
-    {query : FastConfirmationStore Root} {es sigma querySlot : Slot}
-    (hin : E.FutureCrossingSelectedMarginInputs cfg ext glc a b v q w m query
-      es sigma querySlot) :
-    DescendStep cfg (E.store cfg ext w m)
-      (get_filtered_block_tree cfg (E.store cfg ext w m)) a b := by
-  obtain ⟨hgenFull, hwfE, hdiv, hhb, _hsync, hec, hsv, hbb, hji⟩ := hSA
-  obtain ⟨ast, ablk, hgeq, hslot, hparent⟩ := hgenFull
-  have hgen : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
-      E.genesis_store = get_forkchoice_store cfg ast ablk := ⟨ast, ablk, hgeq⟩
-  let bs := get_current_balance_source query
-  let cp := query.current_epoch_observed_justified_checkpoint
-  have hconf : is_one_confirmed cfg ext (E.store cfg ext v q) bs b = true := by
-    simpa only [bs, hin.query_store_eq] using hin.confirmation
-  have hbsEq : bs = (E.store cfg ext v q).checkpoint_states cp := by
-    simp only [bs, cp, get_current_balance_source]
-    rw [hin.query_store_eq]
-  have hkey : cp ∈ (E.store cfg ext v q).checkpoint_state_keys := by
-    apply E.checkpoint_state_key_of_one_confirmed cfg ext hgen v q cp b
-    rw [← hbsEq]
-    exact hconf
-  have hval : bs.validators = E.registry := by
-    rw [hbsEq]
-    exact (E.registryConstant cfg ext hec hgen v q).2 cp hkey
-  have htab : get_total_active_balance cfg bs = E.total_active cfg := by
-    rw [hbsEq]
-    exact E.checkpoint_states_total_active_balance cfg ext hsv hec v q cp hkey hqH
-  have hbsH : get_current_epoch cfg bs < E.verification_horizon := by
-    have hstateSlot := (E.stateSlotsLE cfg ext hdiv hec hgen v q).2 cp hkey
-    rw [hbsEq]
-    exact lt_of_le_of_lt (Nat.div_le_div_right hstateSlot) hqH.2.2
-  have hwf : ParentSlotLt (E.store cfg ext v q) :=
-    E.store_parentSlotLt cfg ext hwfE hec
-      ⟨ast, ablk, hgeq, hslot, hparent⟩ hwfE.anchor_parent_unscheduled v q
-  have hprov := E.latestMessageProvenance cfg ext hwfE hec hgen v q (by assumption) (by assumption)
-  rw [← E.store_current_slot cfg ext v q] at hprov
-  have hwalkK := E.store_walkKnownK cfg ext hwfE hec
-    ⟨ast, ablk, hgeq, hslot, hparent⟩ v q
-  have hwalk : ∀ i ∈ AttSupporters cfg (E.store cfg ext v q)
-      (get_node_for_root b) bs, ∀ lm,
-      (E.store cfg ext v q).latest_messages i = some lm →
-        WalkKnown (E.store cfg ext v q) ((E.store cfg ext v q).blocks b).slot lm.root := by
-    intro i _ lm hlm
-    obtain ⟨_, _, _, _, _, _, _, hlmKnown, _, _⟩ := hprov i lm hlm
-    exact hwalkK b hin.block_known lm.root hlmKnown
-  have hslotlt : ((E.store cfg ext v q).blocks
-      ((E.store cfg ext v q).blocks b).parent_root).slot <
-      ((E.store cfg ext v q).blocks b).slot :=
-    hwf b hin.block_known hin.parent_known
-  have hbcur : ((E.store cfg ext v q).blocks b).slot ≤
-      get_current_slot cfg (E.store cfg ext v q) :=
-    E.store_blocks_slot_le_current cfg ext hdiv ⟨ast, ablk, hgeq, hslot⟩
-      v q b hin.block_known
-  have hEstH := E.justified_balance_source_epoch_lt_horizon cfg ext hec hji hdiv hgen
-    w hw m hmH
-  have hSbase := (E.classes_base_transport_honest cfg ext v w q m b
-    ((E.store cfg ext v q).blocks b).slot es
-    hin.support_transport hin.ancestor_transport).1
-  have hAX := E.hgrowAX_of_committee_support cfg ext hhb w m b
-    ((E.store cfg ext v q).blocks b).slot hin.es_le_sigma hin.committee_support
-  have hxS := E.hgrowX_of_committee_support cfg ext hhb w m b
-    ((E.store cfg ext v q).blocks b).slot hin.es_le_sigma hin.committee_support
-  have hboost := E.boost_reconcile cfg ext hsv hec hgen hji hval hbsH hw m hmH hEstH
-  have hend := E.intraEpochFuture_endpoint_inequality_of_confirmed_window cfg ext
-    hhb hec hbb hgen hv hqH hwf hval htab hprov hconf hwalk
-    hin.cutoff_eq hslotlt hbcur hin.recorded_epoch_max hin.edge_same_epoch
-    hin.es_le_sigma hin.sigma_horizon hboost hSbase
-    (by simpa only [bs] using hin.parent_sub_endpoint) hAX hxS
-  have hvalEnd : ((E.store cfg ext w m).checkpoint_states
-      (E.store cfg ext w m).justified_checkpoint).validators = E.registry :=
-    E.hval_of_interface cfg ext hec hgen hji w hw m hmH
-  have hbside := recorded_bside_ge cfg ext hvalEnd hin.selected_recording
-  exact E.crossing_ledger_descendStep cfg ext hin.child_filtered
-    hin.status_margin hbside hend
-    hin.sibling_score
 
 /-- Endpoint-anchored inputs for an edge that itself crosses an epoch.  All
 store-dependent fields are stated at the consuming endpoint. -/
@@ -1044,114 +715,10 @@ structure CrossingEdgeSelectedMarginInputs
               ((E.store cfg ext v q).blocks b).slot es))
         + E.Bval ((E.store cfg ext v q).blocks b).slot sigma
 
-/-- Concrete endpoint-anchored producer for a selected edge that crosses an
-epoch boundary. -/
-theorem crossingEdge_descendStep_of_selectedInputs
-    (hSA : SpecAssumptions cfg ext E)
-    {glc a b : Root} {v : ValidatorIndex} (hv : v ∈ E.honest) {q : ℕ}
-    (hqH : E.WithinHorizon cfg q)
-    {w : ValidatorIndex} (hw : w ∈ E.honest) {m : ℕ}
-    (hmH : E.WithinHorizon cfg m)
-    {query : FastConfirmationStore Root} {es sigma querySlot : Slot}
-    (hin : E.CrossingEdgeSelectedMarginInputs cfg ext glc a b v q w m query
-      es sigma querySlot) :
-    DescendStep cfg (E.store cfg ext w m)
-      (get_filtered_block_tree cfg (E.store cfg ext w m)) a b := by
-  obtain ⟨hgenFull, hwfE, hdiv, hhb, _hsync, hec, hsv, hbb, hji⟩ := hSA
-  obtain ⟨ast, ablk, hgeq, hslot, hparent⟩ := hgenFull
-  have hgen : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
-      E.genesis_store = get_forkchoice_store cfg ast ablk := ⟨ast, ablk, hgeq⟩
-  let bs := get_current_balance_source query
-  let cp := query.current_epoch_observed_justified_checkpoint
-  have hconf : is_one_confirmed cfg ext (E.store cfg ext v q) bs b = true := by
-    simpa only [bs, hin.query_store_eq] using hin.confirmation
-  have hbsEq : bs = (E.store cfg ext v q).checkpoint_states cp := by
-    simp only [bs, cp, get_current_balance_source]
-    rw [hin.query_store_eq]
-  have hkey : cp ∈ (E.store cfg ext v q).checkpoint_state_keys := by
-    apply E.checkpoint_state_key_of_one_confirmed cfg ext hgen v q cp b
-    rw [← hbsEq]
-    exact hconf
-  have hval : bs.validators = E.registry := by
-    rw [hbsEq]
-    exact (E.registryConstant cfg ext hec hgen v q).2 cp hkey
-  have htab : get_total_active_balance cfg bs = E.total_active cfg := by
-    rw [hbsEq]
-    exact E.checkpoint_states_total_active_balance cfg ext hsv hec v q cp hkey hqH
-  have hbsH : get_current_epoch cfg bs < E.verification_horizon := by
-    have hstateSlot := (E.stateSlotsLE cfg ext hdiv hec hgen v q).2 cp hkey
-    rw [hbsEq]
-    exact lt_of_le_of_lt (Nat.div_le_div_right hstateSlot) hqH.2.2
-  have hwf : ParentSlotLt (E.store cfg ext v q) :=
-    E.store_parentSlotLt cfg ext hwfE hec
-      ⟨ast, ablk, hgeq, hslot, hparent⟩ hwfE.anchor_parent_unscheduled v q
-  have hprov := E.latestMessageProvenance cfg ext hwfE hec hgen v q (by assumption) (by assumption)
-  rw [← E.store_current_slot cfg ext v q] at hprov
-  have hwalkK := E.store_walkKnownK cfg ext hwfE hec
-    ⟨ast, ablk, hgeq, hslot, hparent⟩ v q
-  have hwalk : ∀ i ∈ AttSupporters cfg (E.store cfg ext v q)
-      (get_node_for_root b) bs, ∀ lm,
-      (E.store cfg ext v q).latest_messages i = some lm →
-        WalkKnown (E.store cfg ext v q) ((E.store cfg ext v q).blocks b).slot lm.root := by
-    intro i _ lm hlm
-    obtain ⟨_, _, _, _, _, _, _, hlmKnown, _, _⟩ := hprov i lm hlm
-    exact hwalkK b hin.block_known lm.root hlmKnown
-  have hslotlt : ((E.store cfg ext v q).blocks
-      ((E.store cfg ext v q).blocks b).parent_root).slot <
-      ((E.store cfg ext v q).blocks b).slot :=
-    hwf b hin.block_known hin.parent_known
-  have hbcur : ((E.store cfg ext v q).blocks b).slot ≤
-      get_current_slot cfg (E.store cfg ext v q) :=
-    E.store_blocks_slot_le_current cfg ext hdiv ⟨ast, ablk, hgeq, hslot⟩
-      v q b hin.block_known
-  have hEstH := E.justified_balance_source_epoch_lt_horizon cfg ext hec hji hdiv hgen
-    w hw m hmH
-  have hboost := E.boost_reconcile cfg ext hsv hec hgen hji hval hbsH hw m hmH hEstH
-  have hSbase := (E.classes_base_transport_honest cfg ext v w q m b
-    ((E.store cfg ext v q).blocks b).slot es
-    hin.support_transport hin.ancestor_transport).1
-  have hAX := E.hgrowAX_of_committee_support cfg ext hhb w m b
-    ((E.store cfg ext v q).blocks b).slot hin.es_le_sigma hin.committee_support
-  have hxS := E.hgrowX_of_committee_support cfg ext hhb w m b
-    ((E.store cfg ext v q).blocks b).slot hin.es_le_sigma hin.committee_support
-  have hend := E.crossingEdgeFuture_endpoint_inequality_of_confirmed_window cfg ext
-    hhb hec hbb hgen hv hqH hwf hval htab hprov hconf hwalk hin.cutoff_eq
-    hslotlt hbcur hin.recorded_epoch_max hin.edge_crosses hin.es_le_sigma
-    hin.sigma_horizon hboost hSbase
-    (by simpa only [bs] using hin.parent_sub_endpoint) hAX hxS
-  have hvalEnd : ((E.store cfg ext w m).checkpoint_states
-      (E.store cfg ext w m).justified_checkpoint).validators = E.registry :=
-    E.hval_of_interface cfg ext hec hgen hji w hw m hmH
-  have hbside := recorded_bside_ge cfg ext hvalEnd hin.selected_recording
-  exact E.crossing_ledger_descendStep cfg ext hin.child_filtered
-    hin.status_margin hbside hend
-    hin.sibling_score
 
 /-! ## 5. Machine-checked obstruction witnesses -/
 
-omit [LinearOrder Root] [Inhabited Root] in
-/-- Honest `S`/`X` movements do not transport the tax arm when the endpoint has
-a different selectively delivered Byzantine view.  The concrete values are a
-scaled-down form of the discount-funded configuration: the query tax arm holds
-with `Bbad = 0`, while the same `S = 26`, `X = 0` at an endpoint with
-`Bbad = 18` fails by one. -/
-theorem tax_arm_not_transportable_from_honest_legs :
-    (0 + 0 + (0 + 1) + 25 * 26 / (100 - 25) <= 26) /\
-    (26 <= 26) /\ (0 <= 0) /\
-    ¬ (0 + 18 + (0 + 1) + 25 * 26 / (100 - 25) <= 26) := by
-  norm_num
 
-omit [LinearOrder Root] [Inhabited Root] in
-/-- An already-supporting honest recurrer makes the cross-epoch `rho = 0`
-partition impossible.  Here a weight-100 honest committee recurs, while `S`,
-`X`, `Unrec`, and the union window are unchanged; no migrant witnesses can
-satisfy all three delta inequalities. -/
-theorem recurring_supporter_breaks_preStep_partition :
-    ¬ (∃ xi alpha : Nat,
-      100 + xi + alpha + 0 <= 100 /\
-      0 + xi <= 0 /\
-      100 <= 0 + xi + alpha + 0) := by
-  omega
 
 end Execution
 

@@ -3,7 +3,6 @@ public import FastConfirmation.Spec.Proof.AcceptedResetCheckpointRealization
 public import FastConfirmation.Spec.Proof.ExactCheckpointLinks
 public import FastConfirmation.Spec.Proof.ModelFacts
 
-public import FastConfirmation.Spec.Proof.ModelFacts
 @[expose] public section
 
 /-!

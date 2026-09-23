@@ -3,7 +3,6 @@ public import FastConfirmation.Spec.Proof.FinalizedResetSafety
 public import FastConfirmation.Spec.Proof.Descent
 public import FastConfirmation.Spec.Proof.ModelFacts
 
-public import FastConfirmation.Spec.Proof.ModelFacts
 @[expose] public section
 
 /-!

@@ -4,7 +4,6 @@ public import FastConfirmation.Spec.Proof.AcceptedPhaseSourceSupply
 public import FastConfirmation.Spec.Proof.QueryFilterViability
 public import FastConfirmation.Spec.Proof.ModelFacts
 
-public import FastConfirmation.Spec.Proof.ModelFacts
 @[expose] public section
 
 /-!

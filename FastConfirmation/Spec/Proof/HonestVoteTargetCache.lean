@@ -2,7 +2,6 @@ module
 public import FastConfirmation.Spec.Proof.Delivery
 public import FastConfirmation.Spec.Proof.ModelFacts
 
-public import FastConfirmation.Spec.Proof.ModelFacts
 @[expose] public section
 
 /-!

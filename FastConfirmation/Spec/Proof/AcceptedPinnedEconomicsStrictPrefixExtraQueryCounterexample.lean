@@ -3,7 +3,6 @@ public import Mathlib.Tactic
 public import FastConfirmation.Spec.Proof.CausalQueryTraceAdapter
 public import FastConfirmation.Spec.Proof.ModelFacts
 
-public import FastConfirmation.Spec.Proof.ModelFacts
 @[expose] public section
 
 /-!
