@@ -1,5 +1,6 @@
 module
 public import FastConfirmation.Spec.Proof.MonotonicityLiveBridge
+public import FastConfirmation.Spec.Proof.MonotonicityLiveMessagePersistence
 
 @[expose] public section
 
