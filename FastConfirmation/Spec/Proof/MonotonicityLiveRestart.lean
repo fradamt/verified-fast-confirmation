@@ -144,6 +144,45 @@ theorem getLatestAfterObserved_slot_ge_cached_of_observed_catches_up
       simp [getLatestObservedRestartGuard, hstart, ← hhead, hepoch, hlt]
     simp [getLatestAfterObserved, hguard, hcatch]
 
+/-- At a timely epoch boundary, a finalized revert is repaired exactly to
+the observed checkpoint, including the first boundary where finalized and
+observed may coincide. -/
+theorem getLatestAfterObserved_eq_checkpoint_of_revert
+    (query : FastConfirmationStore Root)
+    (hstart : is_start_slot_at_epoch cfg
+      (get_current_slot cfg query.store) = true)
+    (hepoch : get_block_epoch cfg query.store
+      query.current_epoch_observed_justified_checkpoint.root + 1 =
+        get_current_store_epoch cfg query.store)
+    (hhead : query.current_epoch_observed_justified_checkpoint =
+      query.store.unrealized_justifications
+        (get_head cfg query.store).root)
+    (hrevert : getLatestFinalizedRevertGuard cfg ext query)
+    (hfinalized : get_block_slot query.store
+        query.store.finalized_checkpoint.root <
+        get_block_slot query.store
+          query.current_epoch_observed_justified_checkpoint.root ∨
+      query.store.finalized_checkpoint.root =
+        query.current_epoch_observed_justified_checkpoint.root) :
+    getLatestAfterObserved cfg ext query =
+      query.current_epoch_observed_justified_checkpoint.root := by
+  classical
+  have hfirst : getLatestAfterFinalized cfg ext query =
+      query.store.finalized_checkpoint.root := by
+    simp only [getLatestAfterFinalized]
+    split_ifs with hg
+    · rfl
+    · exact False.elim (hg (by simpa only [getLatestFinalizedRevertGuard] using hrevert))
+  rcases hfinalized with hlt | heq
+  · have hguard : getLatestObservedRestartGuard cfg query
+        (getLatestAfterFinalized cfg ext query) = true := by
+      simp only [getLatestObservedRestartGuard, hstart, Bool.true_and,
+        hfirst]
+      rw [← hhead]
+      simp [hepoch, hlt]
+    simp [getLatestAfterObserved, hguard]
+  · simp [getLatestAfterObserved, hfirst, heq]
+
 /-- The descendant selector preserves the catch-up result on a known walk. -/
 theorem getLatestTraceResult_slot_ge_cached_of_observed_catches_up
     (query : FastConfirmationStore Root)
