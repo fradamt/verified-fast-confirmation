@@ -2506,6 +2506,145 @@ theorem AcceptedActualFCRNextSlotSafetyAssumptions.live_boundary_reconfirm_of_wi
     (hlost.trans_lt hscorePositive) hwindow hboost
     hadversarial hhonest
 
+/-- The honest assignments from an old call slot through the previous
+epoch's last slot supply the new-support set and its three-quarter weight
+bound at the next boundary. -/
+theorem AcceptedActualFCRNextSlotSafetyAssumptions.live_boundary_added_honest_span
+    (h : E.AcceptedActualFCRNextSlotSafetyAssumptions cfg ext)
+    {e : Epoch} {m : ℕ}
+    (hHm : E.WithinHorizon cfg m)
+    (hboundary : E.slot_at cfg m = compute_start_slot_at_epoch cfg (e + 1))
+    (u s : Slot)
+    (hstart : compute_start_slot_at_epoch cfg e ≤ u)
+    (hu : u ≤ compute_start_slot_at_epoch cfg (e + 1) - 1)
+    (hs : s ≤ u) :
+    let z := compute_start_slot_at_epoch cfg (e + 1) - 1
+    let HS := (E.span_committee u z).filter fun i => i ∈ E.honest
+    (∀ i ∈ HS, i ∈ E.honest ∧
+      ∃ t : Slot, E.SlotWithinHorizon cfg t ∧
+        s ≤ t ∧ u ≤ t ∧ t < E.slot_at cfg m ∧
+        t < compute_start_slot_at_epoch cfg (e + 1) ∧
+        i ∈ E.committee t ∧ E.slot_start cfg (t + 1) ≤ m) ∧
+    3 * E.weight (E.span_committee u z) ≤ 4 * E.weight HS := by
+  let z := compute_start_slot_at_epoch cfg (e + 1) - 1
+  let HS := (E.span_committee u z).filter fun i => i ∈ E.honest
+  dsimp only
+  have hnextPos : 0 < compute_start_slot_at_epoch cfg (e + 1) := by
+    simp only [compute_start_slot_at_epoch]
+    exact Nat.mul_pos (Nat.succ_pos e) cfg.slots_per_epoch_pos
+  have hzLt : z < compute_start_slot_at_epoch cfg (e + 1) :=
+    Nat.sub_lt hnextPos (by omega)
+  have hzH : E.SlotWithinHorizon cfg z :=
+    E.slotWithinHorizon_of_le cfg (by rw [hboundary]; exact hzLt.le) hHm
+  have huH : E.SlotWithinHorizon cfg u :=
+    E.slotWithinHorizon_mono cfg hu hzH
+  refine ⟨?_, h.honest_span_three_quarters cfg ext E u z huH hzH⟩
+  intro i hi
+  obtain ⟨hiSpan, hiHonest⟩ := Finset.mem_filter.mp hi
+  simp only [Execution.span_committee, Finset.mem_biUnion,
+    Finset.mem_Icc] at hiSpan
+  obtain ⟨t, ⟨hut, htz⟩, hit⟩ := hiSpan
+  have htLt : t < compute_start_slot_at_epoch cfg (e + 1) := htz.trans_lt hzLt
+  have htH : E.SlotWithinHorizon cfg t :=
+    E.slotWithinHorizon_mono cfg htz hzH
+  have htEpoch : compute_epoch_at_slot cfg t = e := by
+    have hlo : compute_start_slot_at_epoch cfg e ≤ t := hstart.trans hut
+    have hge : e ≤ compute_epoch_at_slot cfg t := by
+      apply (Nat.le_div_iff_mul_le cfg.slots_per_epoch_pos).2
+      simpa only [compute_start_slot_at_epoch, compute_epoch_at_slot] using hlo
+    have hlt : compute_epoch_at_slot cfg t < e + 1 := by
+      apply (Nat.div_lt_iff_lt_mul cfg.slots_per_epoch_pos).2
+      simpa only [compute_start_slot_at_epoch, compute_epoch_at_slot] using htLt
+    exact Nat.le_antisymm (Nat.lt_succ_iff.mp hlt) hge
+  refine ⟨hiHonest, t, htH, hs.trans hut, hut, ?_, htLt, hit, ?_⟩
+  · rw [hboundary]
+    exact htLt
+  · exact h.completed_epoch_vote_delivery cfg ext E (by rw [hboundary]) htEpoch
+
+/-- The accepted full-epoch committee partition makes every suffix after the
+epoch's first slot exact at the configured estimator. -/
+theorem AcceptedActualFCRNextSlotSafetyAssumptions.live_epoch_suffix_estimate_exact
+    (h : E.AcceptedActualFCRNextSlotSafetyAssumptions cfg ext)
+    (store : Store Root) (e : Epoch)
+    (hcurrent : get_current_store_epoch cfg store = e)
+    (hcurrentH : E.SlotWithinHorizon cfg (get_current_slot cfg store))
+    (hstartH : E.SlotWithinHorizon cfg (compute_start_slot_at_epoch cfg e))
+    (hendH : E.SlotWithinHorizon cfg
+      (compute_start_slot_at_epoch cfg (e + 1) - 1))
+    (u : Slot) (huLo : compute_start_slot_at_epoch cfg e < u)
+    (huHi : u ≤ compute_start_slot_at_epoch cfg (e + 1) - 1) :
+    E.weight (E.span_committee u
+        (compute_start_slot_at_epoch cfg (e + 1) - 1)) =
+      estimate_committee_weight_between_slots cfg (E.total_active cfg) u
+        (compute_start_slot_at_epoch cfg (e + 1) - 1) := by
+  let A := compute_start_slot_at_epoch cfg e
+  let Z := compute_start_slot_at_epoch cfg (e + 1) - 1
+  have hnext : compute_start_slot_at_epoch cfg (e + 1) =
+      A + cfg.slots_per_epoch := by
+    simp [A, compute_start_slot_at_epoch, Nat.add_mul]
+  have hZeq : Z = A + (cfg.slots_per_epoch - 1) := by
+    dsimp only [Z]
+    rw [hnext]
+    exact Nat.add_sub_assoc (Nat.succ_le_of_lt cfg.slots_per_epoch_pos) A
+  have hZlt : Z < compute_start_slot_at_epoch cfg (e + 1) := by
+    rw [hZeq, hnext]
+    exact Nat.add_lt_add_left (Nat.sub_lt cfg.slots_per_epoch_pos (by omega)) _
+  have hUprev : u - 1 + 1 = u :=
+    Nat.sub_add_cancel (Nat.succ_le_of_lt (Nat.lt_of_le_of_lt (Nat.zero_le _) huLo))
+  have hAprev : A ≤ u - 1 := Nat.le_sub_one_of_lt huLo
+  have hprevH : E.SlotWithinHorizon cfg (u - 1) :=
+    E.slotWithinHorizon_mono cfg ((Nat.sub_le u 1).trans huHi) hendH
+  have huH : E.SlotWithinHorizon cfg u :=
+    E.slotWithinHorizon_mono cfg huHi hendH
+  have hsuccH : E.SlotWithinHorizon cfg (u - 1 + 1) := by
+    rw [hUprev]
+    exact huH
+  have hepoch : ∀ x : Slot, A ≤ x → x < compute_start_slot_at_epoch cfg (e + 1) →
+      compute_epoch_at_slot cfg x = e := by
+    intro x hlo hhi
+    have hge : e ≤ compute_epoch_at_slot cfg x := by
+      apply (Nat.le_div_iff_mul_le cfg.slots_per_epoch_pos).2
+      simpa only [A, compute_start_slot_at_epoch, compute_epoch_at_slot] using hlo
+    have hlt : compute_epoch_at_slot cfg x < e + 1 := by
+      apply (Nat.div_lt_iff_lt_mul cfg.slots_per_epoch_pos).2
+      simpa only [compute_start_slot_at_epoch, compute_epoch_at_slot] using hhi
+    exact Nat.le_antisymm (Nat.lt_succ_iff.mp hlt) hge
+  have hAeq : currentTargetEpochStart cfg store = A := by
+    simp [currentTargetEpochStart, A, hcurrent]
+  have hEndEq : currentTargetEpochEnd cfg store = Z := by
+    simp [currentTargetEpochEnd, hAeq, hZeq]
+  have hAhi : A < compute_start_slot_at_epoch cfg (e + 1) :=
+    (hAprev.trans ((Nat.sub_le u 1).trans huHi)).trans_lt hZlt
+  have hPrevHi : u - 1 < compute_start_slot_at_epoch cfg (e + 1) :=
+    ((Nat.sub_le u 1).trans huHi).trans_lt hZlt
+  have hUhi : u < compute_start_slot_at_epoch cfg (e + 1) :=
+    huHi.trans_lt hZlt
+  have hZlo : A ≤ Z := hAprev.trans ((Nat.sub_le u 1).trans huHi)
+  have hEpochAZ : compute_epoch_at_slot cfg A = compute_epoch_at_slot cfg Z := by
+    rw [hepoch A (Nat.le_refl _) hAhi, hepoch Z hZlo hZlt]
+  have hEpochAPrev : compute_epoch_at_slot cfg A =
+      compute_epoch_at_slot cfg (u - 1) := by
+    rw [hepoch A (Nat.le_refl _) hAhi, hepoch (u - 1) hAprev hPrevHi]
+  have hEpochUZ : compute_epoch_at_slot cfg u = compute_epoch_at_slot cfg Z := by
+    rw [hepoch u huLo.le hUhi, hepoch Z hZlo hZlt]
+  have hCovLeft : is_full_validator_set_covered cfg A (u - 1) = false := by
+    apply no_full_coverage_of_short_range cfg A (u - 1)
+    rw [hUprev, ← hZeq]
+    exact huHi
+  have hCovRight : is_full_validator_set_covered cfg u Z = false :=
+    no_full_coverage_inside_epoch_after_start cfg e u Z huLo hZlt
+  have hfull := h.current_epoch_partial_window_exact cfg ext E store (u - 1)
+    hcurrentH (by rw [hAeq]; exact hstartH)
+    (by rw [hEndEq]; exact hendH) hprevH hsuccH
+    (by rw [hAeq]; exact hAprev)
+    (by rw [hEndEq, hUprev]; exact huHi)
+    (by rw [hAeq, hEndEq]; exact hEpochAZ)
+    (by rw [hAeq]; exact hCovLeft)
+    (by rw [hEndEq, hUprev]; exact hCovRight)
+    (by rw [hAeq]; exact hEpochAPrev)
+    (by rw [hEndEq, hUprev]; exact hEpochUZ)
+  simpa only [hEndEq, hUprev] using hfull.2
+
 end Execution
 
 end FastConfirmation.Spec

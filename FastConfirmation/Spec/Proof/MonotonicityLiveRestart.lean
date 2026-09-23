@@ -1044,6 +1044,35 @@ theorem AcceptedActualFCRNextSlotSafetyAssumptions.live_anchor_checkpoint_epoch
   simpa only [Execution.anchor_state, hgenEq, get_forkchoice_store,
     Function.update_self] using hstate
 
+/-- The checkpoint-sync start itself is the first slot of the anchor epoch. -/
+theorem AcceptedActualFCRNextSlotSafetyAssumptions.live_initial_slot_eq_epoch_start
+    (h : E.AcceptedActualFCRNextSlotSafetyAssumptions cfg ext) :
+    E.slot_at cfg 0 = compute_start_slot_at_epoch cfg
+      (compute_epoch_at_slot cfg (E.slot_at cfg 0)) := by
+  obtain ⟨ast, ablk, hgenEq, hstateSlot, _⟩ := h.trajectory.genesis_structure
+  have hroot : h.semantics.anchor.root = ablk.root := by
+    have hr := congrArg Checkpoint.root h.anchor_eq
+    rw [hgenEq] at hr
+    simpa only [get_forkchoice_store] using hr
+  have hslot0 : E.slot_at cfg 0 = ablk.message.slot := by
+    have hc := E.store_current_slot cfg ext 0 0
+    change get_current_slot cfg E.genesis_store = E.slot_at cfg 0 at hc
+    rw [hgenEq, get_current_slot_get_forkchoice_store cfg
+      h.trajectory.whole_seconds] at hc
+    exact hc.symm.trans hstateSlot
+  have hupper : E.slot_at cfg 0 ≤ compute_start_slot_at_epoch cfg
+      (compute_epoch_at_slot cfg (E.slot_at cfg 0)) := by
+    have hb := h.anchor_boundary
+    simp only [TrustedAnchorBoundaryAligned] at hb
+    rw [hgenEq, hroot] at hb
+    simpa only [get_forkchoice_store, Function.update_self,
+      hslot0, h.live_anchor_checkpoint_epoch cfg ext E] using hb
+  have hlower : compute_start_slot_at_epoch cfg
+      (compute_epoch_at_slot cfg (E.slot_at cfg 0)) ≤ E.slot_at cfg 0 := by
+    simpa only [compute_epoch_at_slot, compute_start_slot_at_epoch] using
+      (Nat.div_mul_le_self (E.slot_at cfg 0) cfg.slots_per_epoch)
+  exact Nat.le_antisymm hupper hlower
+
 /-- The finalized input never lies after the start of its store's current
 epoch. The anchor branch uses the trusted anchor epoch; other branches use
 the accepted finalized lag and checkpoint-root boundary. -/
@@ -1633,6 +1662,143 @@ theorem AcceptedActualFCRNextSlotSafetyAssumptions.live_historical_chain_known_o
     exact Nat.le_antisymm (Nat.lt_succ_iff.mp hlt) hge
   exact h.live_historical_chain_known_in_epoch cfg ext E hw B T e hBT
     he0 hHT hBase hEpoch
+
+/-- Historical one-block certificates on the cached chain just before a
+completed epoch boundary, for epochs whose start is after execution time
+zero. The initial epoch has a distinct base store at second zero. -/
+theorem AcceptedActualFCRNextSlotSafetyAssumptions.live_historical_chain_before_boundary
+    (h : E.AcceptedActualFCRNextSlotSafetyAssumptions cfg ext)
+    {w : ValidatorIndex} (hw : w ∈ E.honest) (e : Epoch)
+    (he0 : compute_epoch_at_slot cfg (E.slot_at cfg 0) ≤ e)
+    (hstartAfterZero : E.slot_at cfg 0 < compute_start_slot_at_epoch cfg e)
+    {m : ℕ} (hHm : E.WithinHorizon cfg m)
+    (heDone : compute_start_slot_at_epoch cfg (e + 1) ≤ E.slot_at cfg m) :
+    let B := E.slot_start cfg (compute_start_slot_at_epoch cfg e) - 1
+    let T := E.slot_start cfg (compute_start_slot_at_epoch cfg (e + 1)) - 1
+    ∀ b ∈ (E.store cfg ext w T).block_roots,
+      is_ancestor (E.store cfg ext w T)
+        (get_node_for_root (E.confirmed cfg ext w T))
+        (get_node_for_root b) = true →
+      compute_start_slot_at_epoch cfg e <
+        ((E.store cfg ext w T).blocks b).slot →
+      ∃ q, B ≤ q ∧ q < T ∧ E.IsFCRCallAt cfg ext w q ∧
+        b ∈ (E.store cfg ext w (q + 1)).block_roots ∧
+        is_one_confirmed cfg ext (E.fcrStep cfg ext w q).store
+          (get_current_balance_source (E.fcrStep cfg ext w q)) b = true := by
+  let S := compute_start_slot_at_epoch cfg e
+  let U := compute_start_slot_at_epoch cfg (e + 1)
+  let Bs := E.slot_start cfg S
+  let Ts := E.slot_start cfg U
+  let B := Bs - 1
+  let T := Ts - 1
+  dsimp only
+  obtain ⟨ast, ablk, hgenEq, _, _⟩ := h.trajectory.genesis_structure
+  have hgenTime : E.genesis_store.genesis_time ≤ E.genesis_store.time := by
+    rw [hgenEq]
+    simp only [get_forkchoice_store]
+    omega
+  have hSltU : S < U := by
+    dsimp only [S, U, compute_start_slot_at_epoch]
+    rw [Nat.add_mul]
+    simpa only [Nat.one_mul] using
+      (Nat.lt_add_of_pos_right cfg.slots_per_epoch_pos (n := e * cfg.slots_per_epoch))
+  have hBsPos : 0 < Bs :=
+    (E.slot_at_lt_iff cfg h.trajectory.whole_seconds hgenTime).1
+      hstartAfterZero
+  have hTsPos : 0 < Ts :=
+    (E.slot_at_lt_iff cfg h.trajectory.whole_seconds hgenTime).1
+      (hstartAfterZero.trans hSltU)
+  have hBsucc : B + 1 = Bs := Nat.sub_add_cancel (Nat.succ_le_of_lt hBsPos)
+  have hTsucc : T + 1 = Ts := Nat.sub_add_cancel (Nat.succ_le_of_lt hTsPos)
+  have hSslot : E.slot_at cfg Bs = S :=
+    E.slot_at_slot_start cfg h.trajectory.whole_seconds
+      hstartAfterZero.le hgenTime
+  have hUslot : E.slot_at cfg Ts = U :=
+    E.slot_at_slot_start cfg h.trajectory.whole_seconds
+      (hstartAfterZero.trans hSltU).le hgenTime
+  have hBsLtTs : Bs < Ts := by
+    apply Nat.lt_of_not_ge
+    intro hge
+    have hclock := E.slot_at_mono cfg hge
+    rw [hSslot, hUslot] at hclock
+    exact (Nat.not_le_of_gt hSltU) hclock
+  have hBT : B ≤ T := Nat.sub_le_sub_right hBsLtTs.le 1
+  have hBslot : E.slot_at cfg B ≤ S := by
+    have hlt : B < Bs := Nat.sub_lt hBsPos (by omega)
+    exact (E.slot_at_lt_iff cfg h.trajectory.whole_seconds hgenTime).2 hlt |>.le
+  have hFirst : S ≤ E.slot_at cfg (B + 1) := by
+    rw [hBsucc, hSslot]
+  have hTslot : E.slot_at cfg T < U := by
+    have hlt : T < Ts := Nat.sub_lt hTsPos (by omega)
+    exact (E.slot_at_lt_iff cfg h.trajectory.whole_seconds hgenTime).2 hlt
+  have hTsLeM : Ts ≤ m := by
+    apply Nat.le_of_not_gt
+    intro hlt
+    have hslotLt :=
+      (E.slot_at_lt_iff cfg h.trajectory.whole_seconds hgenTime).2 hlt
+    exact (Nat.not_lt_of_ge heDone) hslotLt
+  have hHT : E.WithinHorizon cfg T :=
+    E.withinHorizon_mono cfg ((Nat.sub_le Ts 1).trans hTsLeM) hHm
+  exact h.live_historical_chain_known_of_clock cfg ext E hw B T e
+    hBT he0 hHT hBslot hFirst hTslot
+
+/-- Initial-epoch version of the historical certificate invariant. The
+second-zero trusted anchor is already at that epoch's first slot. -/
+theorem AcceptedActualFCRNextSlotSafetyAssumptions.live_initial_historical_chain_before_boundary
+    (h : E.AcceptedActualFCRNextSlotSafetyAssumptions cfg ext)
+    {w : ValidatorIndex} (hw : w ∈ E.honest)
+    {m : ℕ} (hHm : E.WithinHorizon cfg m)
+    (heDone : compute_start_slot_at_epoch cfg
+      (compute_epoch_at_slot cfg (E.slot_at cfg 0) + 1) ≤ E.slot_at cfg m) :
+    let e := compute_epoch_at_slot cfg (E.slot_at cfg 0)
+    let T := E.slot_start cfg (compute_start_slot_at_epoch cfg (e + 1)) - 1
+    ∀ b ∈ (E.store cfg ext w T).block_roots,
+      is_ancestor (E.store cfg ext w T)
+        (get_node_for_root (E.confirmed cfg ext w T))
+        (get_node_for_root b) = true →
+      compute_start_slot_at_epoch cfg e <
+        ((E.store cfg ext w T).blocks b).slot →
+      ∃ q, q < T ∧ E.IsFCRCallAt cfg ext w q ∧
+        b ∈ (E.store cfg ext w (q + 1)).block_roots ∧
+        is_one_confirmed cfg ext (E.fcrStep cfg ext w q).store
+          (get_current_balance_source (E.fcrStep cfg ext w q)) b = true := by
+  let e := compute_epoch_at_slot cfg (E.slot_at cfg 0)
+  let U := compute_start_slot_at_epoch cfg (e + 1)
+  let Ts := E.slot_start cfg U
+  let T := Ts - 1
+  dsimp only
+  obtain ⟨ast, ablk, hgenEq, _, _⟩ := h.trajectory.genesis_structure
+  have hgenTime : E.genesis_store.genesis_time ≤ E.genesis_store.time := by
+    rw [hgenEq]
+    simp only [get_forkchoice_store]
+    omega
+  have hS : E.slot_at cfg 0 = compute_start_slot_at_epoch cfg e :=
+    h.live_initial_slot_eq_epoch_start cfg ext E
+  have h0U : E.slot_at cfg 0 < U := by
+    rw [hS]
+    dsimp only [U, compute_start_slot_at_epoch]
+    rw [Nat.add_mul]
+    simpa only [Nat.one_mul] using
+      (Nat.lt_add_of_pos_right cfg.slots_per_epoch_pos (n := e * cfg.slots_per_epoch))
+  have hTsPos : 0 < Ts :=
+    (E.slot_at_lt_iff cfg h.trajectory.whole_seconds hgenTime).1 h0U
+  have hTslot : E.slot_at cfg T < U := by
+    have hlt : T < Ts := Nat.sub_lt hTsPos (by omega)
+    exact (E.slot_at_lt_iff cfg h.trajectory.whole_seconds hgenTime).2 hlt
+  have hTsLeM : Ts ≤ m := by
+    apply Nat.le_of_not_gt
+    intro hlt
+    have hslotLt :=
+      (E.slot_at_lt_iff cfg h.trajectory.whole_seconds hgenTime).2 hlt
+    exact (Nat.not_lt_of_ge heDone) hslotLt
+  have hHT : E.WithinHorizon cfg T :=
+    E.withinHorizon_mono cfg ((Nat.sub_le Ts 1).trans hTsLeM) hHm
+  have hFirst : compute_start_slot_at_epoch cfg e ≤ E.slot_at cfg (0 + 1) := by
+    rw [← hS]
+    exact E.slot_at_mono cfg (Nat.zero_le _)
+  have hhistory := h.live_historical_chain_known_of_clock cfg ext E hw
+    0 T e (Nat.zero_le _) (Nat.le_refl _) hHT hS.le hFirst hTslot
+  simpa only [e, T, U, Nat.zero_le, true_and] using hhistory
 
 end Execution
 
