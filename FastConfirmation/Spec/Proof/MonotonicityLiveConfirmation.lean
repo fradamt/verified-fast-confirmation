@@ -484,6 +484,130 @@ namespace Execution
 
 variable (E : Execution Root)
 
+private def AcceptedActualFCRNextSlotSafetyAssumptions.live_selected_margin
+    (h : E.AcceptedActualFCRNextSlotSafetyAssumptions cfg ext) :
+    SelectedMarginAssumptions cfg ext E :=
+  { genesis := h.trajectory.genesis_structure
+    wellFormed := h.trajectory.wellFormed
+    whole_seconds := h.trajectory.whole_seconds
+    honest_behavior := h.trajectory.honest_behavior
+    synchrony := h.completed_calls.synchrony
+    externals_coherence := h.trajectory.externals_coherence
+    static_validators := h.completed_calls.static_validators
+    byzantine_bound := h.completed_calls.byzantine_bound
+    domain := E.selectedMarginDomain_of_acceptedGlobalTrajectory
+      cfg ext h.semantics h.trajectory h.completed_calls.synchrony
+        h.anchor_eq h.anchor_boundary }
+
+/-- A block that passes the actual current-source confirmation test at a
+live call is the produced honest block of its slot. The accepted economic
+engine supplies an honest recorded supporter; the live field makes that
+supporter vote for the produced block as well. Equal ancestor slots then
+identify the two roots. -/
+theorem AcceptedActualFCRNextSlotSafetyAssumptions.live_one_confirmed_is_produced
+    (h : E.AcceptedActualFCRNextSlotSafetyAssumptions cfg ext)
+    {observer : ValidatorIndex} {n m : ℕ}
+    (live : MonotonicityLiveAssumptions cfg ext E observer n m)
+    {w : ValidatorIndex} (hw : w ∈ E.honest) {q : ℕ}
+    (hHq1 : E.WithinHorizon cfg (q + 1))
+    (hqm : q + 1 ≤ m)
+    {b : Root}
+    (hb : b ∈ (E.store cfg ext w (q + 1)).block_roots)
+    (hp : ((E.store cfg ext w (q + 1)).blocks b).parent_root ∈
+      (E.store cfg ext w (q + 1)).block_roots)
+    (hconf : is_one_confirmed cfg ext (E.fcrStep cfg ext w q).store
+      (get_current_balance_source (E.fcrStep cfg ext w q)) b = true)
+    (hs0 : E.slot_at cfg 0 ≤
+      get_block_slot (E.store cfg ext w (q + 1)) b)
+    (hsm : get_block_slot (E.store cfg ext w (q + 1)) b <
+      E.slot_at cfg m) :
+    ∃ bb : BeaconBlock Root, E.BlockAt b bb ∧
+      bb.slot = get_block_slot (E.store cfg ext w (q + 1)) b ∧
+      bb.proposer_index ∈ E.honest := by
+  let st := E.store cfg ext w (q + 1)
+  let s := get_block_slot st b
+  obtain ⟨r, br, hbr, hrs, hrHonest, _, hsupport⟩ :=
+    live.honest_block_each_slot s hs0 hsm
+  let hA := h.live_selected_margin cfg ext E
+  obtain ⟨i, lm, hi, hlm, hancB⟩ :=
+    E.honestSupporter_of_confirmed_known_at_minimal cfg ext hA
+      w hw (q + 1) (E.fcrStep cfg ext w q)
+      (E.fcrStep_store cfg ext w q) b hHq1 hb hp hconf
+  obtain ⟨ast, ablk, hgenEq, _, _⟩ := h.trajectory.genesis_structure
+  have hgen : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
+      E.genesis_store = get_forkchoice_store cfg ast ablk :=
+    ⟨ast, ablk, hgenEq⟩
+  obtain ⟨u, k, a, hvote, hlmSlot, huEnd⟩ :=
+    E.latest_message_has_honest_vote_before_endpoint cfg ext
+      h.trajectory.wellFormed h.trajectory.honest_behavior
+      h.trajectory.externals_coherence hgen hi hw hHq1 hlm
+  have hprov : LatestMessageProvenance E cfg (get_current_slot cfg st) st := by
+    rw [E.store_current_slot cfg ext w (q + 1)]
+    exact E.latestMessageProvenance cfg ext h.trajectory.wellFormed
+      h.trajectory.externals_coherence hgen w (q + 1) hw hHq1
+  obtain ⟨aProv, _, _, _, _, _, _, hlmKnown, hlmRootSlot, hmsgSlot⟩ :=
+    hprov i lm hlm
+  have hwf : ParentSlotLt st :=
+    E.store_parentSlotLt cfg ext h.trajectory.wellFormed
+      h.trajectory.externals_coherence h.trajectory.genesis_structure
+      h.trajectory.wellFormed.anchor_parent_unscheduled w (q + 1)
+  have hwalk : WalkKnown st (st.blocks b).slot lm.root :=
+    E.store_walkKnownK cfg ext h.trajectory.wellFormed
+      h.trajectory.externals_coherence h.trajectory.genesis_structure
+      w (q + 1) b hb lm.root hlmKnown
+  have hancB' : (get_ancestor st (get_node_for_root lm.root) s).root = b := by
+    have hanc : is_ancestor st (get_node_for_root lm.root)
+        (get_node_for_root b) = true := by
+      simpa only [st, get_node_for_root, is_ancestor_supported_pending]
+        using hancB
+    simpa only [s, get_block_slot, get_node_for_root,
+      is_ancestor_pending, decide_eq_true_eq] using hanc
+  have hsu : s ≤ u := by
+    have hslot := get_ancestor_slot_le hwf hwalk
+    have hancRaw : (get_ancestor st (get_node_for_root lm.root)
+        (st.blocks b).slot).root = b := by
+      simpa only [s, get_block_slot] using hancB'
+    change (st.blocks (get_ancestor st (get_node_for_root lm.root)
+      (st.blocks b).slot).root).slot ≤ (st.blocks lm.root).slot at hslot
+    rw [hancRaw] at hslot
+    have huEq : lm.slot = u := by simpa only [hlmSlot]
+    calc
+      s ≤ (st.blocks lm.root).slot := hslot
+      _ ≤ aProv.data.slot := hlmRootSlot
+      _ = lm.slot := hmsgSlot.symm
+      _ = u := huEq
+  have hsupport' : ∀ j ∈ E.honest, ∀ t kt a',
+      s ≤ t → t < E.slot_at cfg (q + 1) →
+      E.vote j t = some (kt, a') →
+      r ∈ (E.store cfg ext j kt).block_roots ∧
+        is_ancestor (E.store cfg ext j kt)
+          (get_node_for_root a'.data.beacon_block_root)
+          (get_node_for_root r) = true := by
+    intro j hj t kt a' ht htm hvt
+    exact hsupport j hj t kt a' ht
+      (htm.trans_le (E.slot_at_mono cfg hqm)) hvt
+  have hsupportAt : r ∈ st.block_roots ∧
+      is_ancestor st (get_node_for_root lm.root) (get_node_for_root r) = true := by
+    exact h.recorded_fixed_live_block_support cfg ext E hi hHq1 hs0
+      hsupport' hsu hvote hw hlm (by
+        have huEq : lm.slot = u := by simpa only [hlmSlot]
+        simp only [get_latest_message_epoch, huEq]
+        exact le_rfl)
+  have hrSlot : (st.blocks r).slot = s := by
+    have hrBlock := E.blockAt_of_store_known cfg ext hsupportAt.1
+    have heq := E.blockAt_unique h.trajectory.wellFormed hbr hrBlock
+    simpa only [hrs, s, get_block_slot] using
+      congrArg (fun x : BeaconBlock Root => x.slot) heq.symm
+  have hancR : (get_ancestor st (get_node_for_root lm.root) s).root = r := by
+    have hanc := hsupportAt.2
+    simp only [get_node_for_root, is_ancestor_pending,
+      decide_eq_true_eq] at hanc
+    rwa [hrSlot] at hanc
+  have hEq : b = r := hancB'.symm.trans hancR
+  rw [hEq]
+  exact ⟨br, hbr, by simpa only [s, get_block_slot, hEq] using hrs,
+    hrHonest⟩
+
 omit [LinearOrder Root] [Inhabited Root] in
 /-- The initial active weight splits into honest and non-honest parts. -/
 theorem initial_active_weight_partition :
