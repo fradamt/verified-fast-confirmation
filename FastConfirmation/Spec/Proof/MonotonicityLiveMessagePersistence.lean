@@ -206,6 +206,43 @@ theorem latest_message_eq_of_same_epoch_at_observer
   exact (E.store_latestMessageStrictLE cfg ext w hnm).equal_slot
     hsrc hdst hslotLe
 
+/-- A latest message from the just-completed epoch is identical at the next
+epoch's first slot. The handler cannot apply an attestation from that new
+slot yet, and a validator has only one committee slot in the old epoch. -/
+theorem latest_message_stable_at_next_epoch_start
+    (hwf : WellFormedExecution E)
+    (hec : ExternalsCoherence cfg ext E)
+    (hgen : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
+      E.genesis_store = get_forkchoice_store cfg ast ablk)
+    {w : ValidatorIndex} (hw : w ∈ E.honest)
+    {n m : ℕ} (hnm : n ≤ m)
+    (hHn : E.WithinHorizon cfg n) (hHm : E.WithinHorizon cfg m)
+    {e : Epoch} (hboundary : E.slot_at cfg m =
+      compute_start_slot_at_epoch cfg (e + 1))
+    {i : ValidatorIndex} {src : LatestMessage Root}
+    (hsrc : (E.store cfg ext w n).latest_messages i = some src)
+    (hepoch : get_latest_message_epoch cfg src = e) :
+    (E.store cfg ext w m).latest_messages i = some src := by
+  obtain ⟨dst, hdst, hslotLe⟩ :=
+    (E.store_storeLE cfg ext w hnm).2.2.2 i src hsrc
+  have hprov := E.latestMessageProvenance cfg ext hwf hec hgen w m hw hHm
+  obtain ⟨_, _, _, _, _, hbefore, _, _, _, hdstSlot⟩ := hprov i dst hdst
+  have hdstEpochLt : get_latest_message_epoch cfg dst < e + 1 := by
+    apply (Nat.div_lt_iff_lt_mul cfg.slots_per_epoch_pos).2
+    change dst.slot < (e + 1) * cfg.slots_per_epoch
+    rw [← compute_start_slot_at_epoch, ← hboundary, hdstSlot]
+    exact Nat.lt_of_succ_le hbefore
+  have hsrcEpochLe : get_latest_message_epoch cfg src ≤
+      get_latest_message_epoch cfg dst := Nat.div_le_div_right hslotLe
+  have heqEpoch : get_latest_message_epoch cfg src =
+      get_latest_message_epoch cfg dst := by
+    rw [hepoch] at hsrcEpochLe ⊢
+    exact Nat.le_antisymm hsrcEpochLe (Nat.lt_succ_iff.mp hdstEpochLt)
+  have heq := E.latest_message_eq_of_same_epoch_at_observer cfg ext
+    hwf hec hgen hw hnm hHn hHm hsrc hdst heqEpoch
+  rw [heq]
+  exact hdst
+
 end Execution
 
 end FastConfirmation.Spec
