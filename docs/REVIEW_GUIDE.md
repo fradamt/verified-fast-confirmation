@@ -87,14 +87,17 @@ of the honest chain; at the next epoch start the head's unrealized
 justification is equal to it; and the voting source of the previous-slot head
 is at most two epochs old. `MonotonicityLiveRestart.lean` proves that an observed
 checkpoint at or beyond the old cached root prevents a slot rollback at an
-actual accepted call. Connecting the field to every relevant call and proving
-the cache-ahead reconfirmation case remain open. Epoch-start reconfirmation of a
+actual accepted call. It also connects the fifth field to the actual
+next-epoch call and closes rollback for a cache from an earlier epoch. The
+cache-ahead reconfirmation case remains open. Epoch-start reconfirmation of a
 same-epoch cached root can use the configured bound
 `CONFIRMATION_BYZANTINE_THRESHOLD <= 25` (`Config`) with the accepted
 `span_fraction` and `estimate_sound`. The first-epoch-block full-window
 one-confirmation bound is proved in `MonotonicityLiveConfirmation.lean` under
-explicit chain support and parent-window facts. The partial-window
-reconfirmation inequality is open.
+explicit chain support and parent-window facts. That file also proves the
+numeric growth rule for reconfirming a block across two executable stores.
+Its partial-window support, budget-growth, and discount-persistence premises
+remain to be derived from the accepted execution.
 
 The accepted finite witness proves the need for prefix production:
 `descendant_votes_without_continuous_production_revert` has all honest stake,

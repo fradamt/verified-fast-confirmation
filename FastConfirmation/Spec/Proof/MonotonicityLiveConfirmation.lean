@@ -156,6 +156,178 @@ theorem first_epoch_block_adversarial_bound
     (compute_start_slot_at_epoch cfg (e + 1) - 1)
   simpa only [full_epoch_estimate_eq] using hle
 
+/-- Once two disjoint parts exhaust a full epoch, estimation soundness on
+both parts forces exact accounting whenever their estimates exhaust the
+full-epoch estimate. -/
+theorem complementary_epoch_window_exact
+    {whole left right estimateLeft estimateRight : ℕ}
+    (hwhole : left + right = whole)
+    (hest : estimateLeft + estimateRight = whole)
+    (hleft : left ≤ estimateLeft)
+    (hright : right ≤ estimateRight) :
+    left = estimateLeft ∧ right = estimateRight := by
+  omega
+
+/-- The configured at-most-25% Byzantine fraction makes the honest part
+of any committee span at least three quarters of its weight. -/
+theorem Config.honest_span_three_quarters
+    {span byzantine honest : ℕ}
+    (hpart : honest + byzantine = span)
+    (hbound : 100 * byzantine ≤
+      cfg.confirmation_byzantine_threshold * span) :
+    3 * span ≤ 4 * honest := by
+  have hcap : cfg.confirmation_byzantine_threshold * span ≤ 25 * span :=
+    Nat.mul_le_mul_right span cfg.confirmation_byzantine_threshold_le
+  omega
+
+/-- The integer margin retained by a previously confirmed block survives
+an added window if its new honest support covers three quarters of that
+window, the adversarial allowance grows by at most one quarter, and the
+empty-slot discount does not shrink. -/
+theorem reconfirm_margin_persists
+    {score window boost adversarial discount added honestAdded
+      adversarialNew discountNew : ℕ}
+    (hconfirmed : window + boost + 2 * adversarial <
+      2 * score + discount)
+    (hhonest : 3 * added ≤ 4 * honestAdded)
+    (hadversarial : 4 * adversarialNew ≤
+      4 * adversarial + added)
+    (hdiscount : discount ≤ discountNew) :
+    window + added + boost + 2 * adversarialNew <
+      2 * (score + honestAdded) + discountNew := by
+  omega
+
+private theorem strict_margin_of_threshold
+    {window boost adversarial discount score : ℕ}
+    (hscore : score >
+      if discount < window + boost + 2 * adversarial then
+        (window + boost + 2 * adversarial - discount) / 2
+      else 0) :
+    window + boost + 2 * adversarial < 2 * score + discount := by
+  split_ifs at hscore <;> omega
+
+private theorem threshold_of_strict_margin
+    {window boost adversarial discount score : ℕ}
+    (hmargin : window + boost + 2 * adversarial <
+      2 * score + discount)
+    (hpositive : 0 < score) :
+    score >
+      if discount < window + boost + 2 * adversarial then
+        (window + boost + 2 * adversarial - discount) / 2
+      else 0 := by
+  split_ifs <;> omega
+
+/-- The executable Boolean one-confirmation result yields its exact strict
+integer margin, including the threshold's underflow branch. -/
+theorem one_confirmed_has_integer_margin
+    (store : Store Root) (balanceSource : BeaconState Root) (r : Root)
+    (hconfirmed : is_one_confirmed cfg ext store balanceSource r = true) :
+    let support := get_attestation_score cfg store (get_node_for_root r)
+      balanceSource
+    let maximum := estimate_committee_weight_between_slots cfg
+      (get_total_active_balance cfg balanceSource)
+      ((store.blocks (store.blocks r).parent_root).slot + 1)
+      (get_current_slot cfg store - 1)
+    let boost := compute_proposer_score cfg balanceSource
+    let adversarial := get_adversarial_weight cfg ext store balanceSource r
+    let discount := get_support_discount cfg ext store balanceSource r
+    maximum + boost + 2 * adversarial < 2 * support + discount := by
+  dsimp only
+  simp only [is_one_confirmed, decide_eq_true_eq] at hconfirmed
+  dsimp only [compute_safety_threshold] at hconfirmed
+  exact strict_margin_of_threshold hconfirmed
+
+/-- A positive score satisfying the executable strict integer margin is
+one-confirmed, even in the threshold's underflow branch. -/
+theorem one_confirmed_of_integer_margin
+    (store : Store Root) (balanceSource : BeaconState Root) (r : Root)
+    (hpositive : 0 < get_attestation_score cfg store
+      (get_node_for_root r) balanceSource)
+    (hmargin :
+      estimate_committee_weight_between_slots cfg
+          (get_total_active_balance cfg balanceSource)
+          ((store.blocks (store.blocks r).parent_root).slot + 1)
+          (get_current_slot cfg store - 1) +
+        compute_proposer_score cfg balanceSource +
+        2 * get_adversarial_weight cfg ext store balanceSource r <
+      2 * get_attestation_score cfg store (get_node_for_root r) balanceSource +
+        get_support_discount cfg ext store balanceSource r) :
+    is_one_confirmed cfg ext store balanceSource r = true := by
+  simp only [is_one_confirmed, decide_eq_true_eq]
+  dsimp only [compute_safety_threshold]
+  exact threshold_of_strict_margin hmargin hpositive
+
+/-- Reconfirmation across two executable stores reduces to recorded-support
+growth, window growth, adversarial growth, and discount persistence. The
+current work leaves those concrete accounting facts to the execution proof. -/
+theorem is_one_confirmed_reconfirm_of_growth
+    (oldStore newStore : Store Root)
+    (oldSource newSource : BeaconState Root)
+    (r : Root) (added honestAdded : ℕ)
+    (hOld : is_one_confirmed cfg ext oldStore oldSource r = true)
+    (hscore :
+      get_attestation_score cfg oldStore (get_node_for_root r) oldSource +
+        honestAdded ≤
+      get_attestation_score cfg newStore (get_node_for_root r) newSource)
+    (hwindow :
+      estimate_committee_weight_between_slots cfg
+          (get_total_active_balance cfg newSource)
+          ((newStore.blocks (newStore.blocks r).parent_root).slot + 1)
+          (get_current_slot cfg newStore - 1) ≤
+      estimate_committee_weight_between_slots cfg
+          (get_total_active_balance cfg oldSource)
+          ((oldStore.blocks (oldStore.blocks r).parent_root).slot + 1)
+          (get_current_slot cfg oldStore - 1) + added)
+    (hboost : compute_proposer_score cfg newSource ≤
+      compute_proposer_score cfg oldSource)
+    (hadversarial :
+      4 * get_adversarial_weight cfg ext newStore newSource r ≤
+        4 * get_adversarial_weight cfg ext oldStore oldSource r + added)
+    (hdiscount : get_support_discount cfg ext oldStore oldSource r ≤
+      get_support_discount cfg ext newStore newSource r)
+    (hhonest : 3 * added ≤ 4 * honestAdded) :
+    is_one_confirmed cfg ext newStore newSource r = true := by
+  have hOldMargin := one_confirmed_has_integer_margin cfg ext
+    oldStore oldSource r hOld
+  dsimp only at hOldMargin
+  have hmarginGrowth := reconfirm_margin_persists hOldMargin
+    hhonest hadversarial hdiscount
+  have hmarginNew :
+      estimate_committee_weight_between_slots cfg
+          (get_total_active_balance cfg newSource)
+          ((newStore.blocks (newStore.blocks r).parent_root).slot + 1)
+          (get_current_slot cfg newStore - 1) +
+        compute_proposer_score cfg newSource +
+        2 * get_adversarial_weight cfg ext newStore newSource r <
+      2 * get_attestation_score cfg newStore (get_node_for_root r) newSource +
+        get_support_discount cfg ext newStore newSource r := by
+    calc
+      _ ≤
+        (estimate_committee_weight_between_slots cfg
+            (get_total_active_balance cfg oldSource)
+            ((oldStore.blocks (oldStore.blocks r).parent_root).slot + 1)
+            (get_current_slot cfg oldStore - 1) + added) +
+          compute_proposer_score cfg oldSource +
+          2 * get_adversarial_weight cfg ext newStore newSource r :=
+        Nat.add_le_add (Nat.add_le_add hwindow hboost) (Nat.le_refl _)
+      _ < 2 * (get_attestation_score cfg oldStore
+          (get_node_for_root r) oldSource + honestAdded) +
+          get_support_discount cfg ext newStore newSource r := hmarginGrowth
+      _ ≤ 2 * get_attestation_score cfg newStore
+          (get_node_for_root r) newSource +
+          get_support_discount cfg ext newStore newSource r :=
+        Nat.add_le_add_right (Nat.mul_le_mul_left 2 hscore) _
+  have hOldPos : 0 < get_attestation_score cfg oldStore
+      (get_node_for_root r) oldSource := by
+    have hOldScore := hOld
+    simp only [is_one_confirmed, decide_eq_true_eq] at hOldScore
+    exact lt_of_le_of_lt (Nat.zero_le _) hOldScore
+  have hNewPos : 0 < get_attestation_score cfg newStore
+      (get_node_for_root r) newSource :=
+    hOldPos.trans_le ((Nat.le_add_right _ _).trans hscore)
+  exact one_confirmed_of_integer_margin cfg ext newStore newSource r
+    hNewPos hmarginNew
+
 namespace Execution
 
 variable (E : Execution Root)

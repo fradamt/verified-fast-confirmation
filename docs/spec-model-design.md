@@ -212,7 +212,8 @@ selector needs it one epoch earlier. `Proof/MonotonicityLiveGates.lean`
 records the resulting gate and revert facts. The fifth live field supplies the
 earlier checkpoint observation; `Proof/MonotonicityLiveBridge.lean`,
 `MonotonicityLiveConfirmation.lean`, and `MonotonicityLiveRestart.lean` prove
-parts of its executable bridge. The statement remains open.
+parts of its executable bridge, including the actual stale-cache restart and
+the numeric reconfirmation rule. The statement remains open.
 
 ## Module system
 
