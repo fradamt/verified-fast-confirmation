@@ -24,8 +24,9 @@ end Execution
 as `Spec_Safety_next_slot`, under the accepted executable-semantics bundle.
 
 The global `NextSlotSynchronyPremises` inside `completed_calls` makes this the
-current model's GST-0 specialization. Its four fields are honest-attestation
-delivery, block relay, payload-envelope relay, and equivocation-evidence relay;
+current model's GST-0 specialization. Its five fields are honest-attestation
+delivery, block relay, payload-envelope relay, data-availability relay, and
+equivocation-evidence relay;
 it does not require the additional `latest_message_relay` premise of the full
 `Synchrony` bundle. -/
 def ConfirmedRootSafeFromNextSlot : Prop :=
@@ -40,7 +41,7 @@ def ConfirmedRootSafeFromNextSlot : Prop :=
               (get_node_for_root (E.confirmed cfg ext v n)) = true
 
 /-- Accepted-bundle specialization of the upstream strict-monotonicity
-statement. The fifth live field now bounds FFG checkpoint visibility at
+statement. The `ffg_timely_justification` field bounds FFG checkpoint visibility at
 epoch boundaries. The one-confirmation, reconfirmation, and fork-choice
 bridges are developed in the live-monotonicity proof modules. -/
 def LiveConfirmedRootMonotonicity : Prop :=

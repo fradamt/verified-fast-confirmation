@@ -44,7 +44,7 @@ def HonestVotesSupportTarget (E : Execution Root) (T : Checkpoint Root) (n : ℕ
       compute_epoch_at_slot cfg s = T.epoch → E.slot_at cfg n ≤ s →
       ∀ k a, E.vote v s = some (k, a) → a.data.target = T
 
-/-- Execution-level liveness proposed for strict monotonicity. The initial
+/-- Execution-level liveness used by the proved strict monotonicity claim. The initial
 head is used as the common voting branch; no field names a confirmed root or
 an FCR branch condition. Committee coverage and honest vote production are
 already fields of the accepted trajectory assumptions. -/
