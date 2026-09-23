@@ -35,6 +35,7 @@ public import FastConfirmation.Spec.Proof.WeakSourceHistory
 public import FastConfirmation.Spec.Proof.WeakSelectedTrace
 public import FastConfirmation.Spec.Proof.WeakCertificateMonotone
 public import FastConfirmation.Spec.Proof.WeakFCRCallContracts
+public import FastConfirmation.Spec.Proof.WeakMonotonicityLive
 public import FastConfirmation.Spec.Proof.WeakObserverReplay
 public import FastConfirmation.Spec.Proof.WeakReplayRelation
 public import FastConfirmation.Spec.Proof.WeakBankedJustification
