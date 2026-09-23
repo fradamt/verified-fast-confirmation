@@ -1805,6 +1805,162 @@ theorem AcceptedActualFCRNextSlotSafetyAssumptions.first_epoch_live_block_one_co
     hval hbsH htab hboost.le hcurrentSlot hparentWindow
     hblockEpoch hparentEpoch
 
+/-- Every delivered honest assignment after a fixed live block is in the
+endpoint supporter set. This set inclusion, rather than just its score lower
+bound, identifies the new voters that can be added without double counting. -/
+theorem AcceptedActualFCRNextSlotSafetyAssumptions.fixed_live_block_new_supporters
+    (h : E.AcceptedActualFCRNextSlotSafetyAssumptions cfg ext)
+    {s : Slot} (hs0 : E.slot_at cfg 0 ≤ s)
+    {m : ℕ} (hHm : E.WithinHorizon cfg m)
+    {r : Root}
+    (hsupport : ∀ j ∈ E.honest, ∀ u k a,
+      s ≤ u → u < E.slot_at cfg m → E.vote j u = some (k, a) →
+        r ∈ (E.store cfg ext j k).block_roots ∧
+        is_ancestor (E.store cfg ext j k)
+          (get_node_for_root a.data.beacon_block_root)
+          (get_node_for_root r) = true)
+    {w : ValidatorIndex} (hw : w ∈ E.honest)
+    (balanceSource : BeaconState Root)
+    (hval : balanceSource.validators = E.registry)
+    (hbsH : get_current_epoch cfg balanceSource < E.verification_horizon)
+    (HS : Finset ValidatorIndex)
+    (hHS : ∀ i ∈ HS, i ∈ E.honest ∧
+      ∃ t : Slot, E.SlotWithinHorizon cfg t ∧
+        s ≤ t ∧ t < E.slot_at cfg m ∧ i ∈ E.committee t ∧
+        E.slot_start cfg (t + 1) ≤ m) :
+    HS ⊆ (AttSupporters cfg (E.store cfg ext w m)
+      (get_node_for_root r) balanceSource).toFinset := by
+  obtain ⟨ast, ablk, hgenEq, _, _⟩ := h.trajectory.genesis_structure
+  have hgen : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
+      E.genesis_store = get_forkchoice_store cfg ast ablk :=
+    ⟨ast, ablk, hgenEq⟩
+  intro i hiHS
+  obtain ⟨hi, t, htH, hst, htm, hcommittee, hdelivery⟩ := hHS i hiHS
+  obtain ⟨msg, hmsg, hanc⟩ := h.fixed_live_block_support_of_assignment
+    cfg ext E hs0 hHm hsupport hst htm hi hcommittee hw hdelivery
+  apply List.mem_toFinset.mpr
+  apply mem_AttSupporters_of_honest_committee cfg ext
+    h.trajectory.honest_behavior h.trajectory.externals_coherence
+    h.completed_calls.static_validators hgen hval hbsH
+    hi htH hcommittee hmsg
+  · simpa only [get_node_for_root, is_ancestor_supported_pending] using hanc
+  · exact hw
+  · exact hHm
+
+/-- Honest assignments after an old call in one epoch are disjoint from the
+old supporter set of a block from that epoch. An old supporter already used
+its unique committee slot before the call. -/
+theorem AcceptedActualFCRNextSlotSafetyAssumptions.live_new_assignments_disjoint_old_supporters
+    (h : E.AcceptedActualFCRNextSlotSafetyAssumptions cfg ext)
+    {w : ValidatorIndex} (hw : w ∈ E.honest)
+    {n : ℕ} (hHn : E.WithinHorizon cfg n)
+    {e : Epoch}
+    (holdCurrent : get_current_store_epoch cfg (E.store cfg ext w n) = e)
+    {b : Root} (hb : b ∈ (E.store cfg ext w n).block_roots)
+    (hbEpoch : get_block_epoch cfg (E.store cfg ext w n) b = e)
+    (oldSource : BeaconState Root)
+    (HS : Finset ValidatorIndex)
+    (hHS : ∀ i ∈ HS, ∃ t : Slot,
+      get_current_slot cfg (E.store cfg ext w n) ≤ t ∧
+      t < compute_start_slot_at_epoch cfg (e + 1) ∧
+      i ∈ E.committee t) :
+    Disjoint HS (AttSupporters cfg (E.store cfg ext w n)
+      (get_node_for_root b) oldSource).toFinset := by
+  obtain ⟨ast, ablk, hgenEq, _, _⟩ := h.trajectory.genesis_structure
+  have hgen : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
+      E.genesis_store = get_forkchoice_store cfg ast ablk :=
+    ⟨ast, ablk, hgenEq⟩
+  have hprov := E.latestMessageProvenance cfg ext
+    h.trajectory.wellFormed h.trajectory.externals_coherence
+    hgen w n hw hHn
+  apply Finset.disjoint_left.mpr
+  intro i hiHS hiOld
+  obtain ⟨t, htLower, htUpper, htCommittee⟩ := hHS i hiHS
+  have hiOld' := List.mem_toFinset.mp hiOld
+  obtain ⟨msg, hmsg, _, _⟩ := mem_AttSupporters cfg hiOld'
+  obtain ⟨_, _, _, _, hmsgEpoch, hbefore, hmsgCommittee, _, _, hmsgSlot⟩ :=
+    hprov i msg hmsg
+  have hOldEpoch := h.live_supporter_message_epoch cfg ext E
+    hw hHn holdCurrent hb hbEpoch oldSource hiOld' hmsg
+  have htEpochLower : e ≤ compute_epoch_at_slot cfg t := by
+    rw [← holdCurrent]
+    exact Nat.div_le_div_right htLower
+  have htEpochUpper : compute_epoch_at_slot cfg t ≤ e := by
+    have hlt : compute_epoch_at_slot cfg t < e + 1 := by
+      apply (Nat.div_lt_iff_lt_mul cfg.slots_per_epoch_pos).2
+      simpa only [compute_start_slot_at_epoch] using htUpper
+    exact Nat.lt_succ_iff.mp hlt
+  have htEpoch : compute_epoch_at_slot cfg t = e :=
+    Nat.le_antisymm htEpochUpper htEpochLower
+  have hassignedSame := h.trajectory.externals_coherence.committee_assignment_unique
+    i msg.slot t (by rw [hmsgSlot]; exact hmsgCommittee) htCommittee
+    (by rw [hmsgSlot, hmsgEpoch, hOldEpoch, htEpoch])
+  have hmsgBefore : msg.slot < get_current_slot cfg (E.store cfg ext w n) := by
+    rw [E.store_current_slot cfg ext w n, hmsgSlot]
+    exact Nat.lt_of_succ_le hbefore
+  exact (Nat.ne_of_lt (hmsgBefore.trans_le htLower)) hassignedSame
+
+/-- Added honest assignments after an old call raise the boundary support
+score, with old supporters subsequently marked equivocating counted as the
+only possible loss. -/
+theorem AcceptedActualFCRNextSlotSafetyAssumptions.live_boundary_score_growth
+    (h : E.AcceptedActualFCRNextSlotSafetyAssumptions cfg ext)
+    {w : ValidatorIndex} (hw : w ∈ E.honest)
+    {n m : ℕ} (hHn : E.WithinHorizon cfg n)
+    (hHm : E.WithinHorizon cfg m)
+    {e : Epoch}
+    (holdCurrent : get_current_store_epoch cfg (E.store cfg ext w n) = e)
+    {b : Root} (hb : b ∈ (E.store cfg ext w n).block_roots)
+    (hbEpoch : get_block_epoch cfg (E.store cfg ext w n) b = e)
+    {s : Slot} (hs0 : E.slot_at cfg 0 ≤ s)
+    (hsupport : ∀ j ∈ E.honest, ∀ u k a,
+      s ≤ u → u < E.slot_at cfg m → E.vote j u = some (k, a) →
+        b ∈ (E.store cfg ext j k).block_roots ∧
+        is_ancestor (E.store cfg ext j k)
+          (get_node_for_root a.data.beacon_block_root)
+          (get_node_for_root b) = true)
+    (oldSource newSource : BeaconState Root)
+    (hvalOld : oldSource.validators = E.registry)
+    (hvalNew : newSource.validators = E.registry)
+    (hNewH : get_current_epoch cfg newSource < E.verification_horizon)
+    (HS : Finset ValidatorIndex)
+    (hHS : ∀ i ∈ HS, i ∈ E.honest ∧
+      ∃ t : Slot, E.SlotWithinHorizon cfg t ∧
+        s ≤ t ∧ get_current_slot cfg (E.store cfg ext w n) ≤ t ∧
+        t < E.slot_at cfg m ∧
+        t < compute_start_slot_at_epoch cfg (e + 1) ∧
+        i ∈ E.committee t ∧ E.slot_start cfg (t + 1) ≤ m) :
+    get_attestation_score cfg (E.store cfg ext w n)
+        (get_node_for_root b) oldSource + E.weight HS ≤
+      get_attestation_score cfg (E.store cfg ext w m)
+        (get_node_for_root b) newSource +
+        E.weight ((AttSupporters cfg (E.store cfg ext w n)
+          (get_node_for_root b) oldSource).toFinset \
+          (AttSupporters cfg (E.store cfg ext w m)
+            (get_node_for_root b) newSource).toFinset) := by
+  have hnew := h.fixed_live_block_new_supporters cfg ext E hs0 hHm
+    hsupport hw newSource hvalNew hNewH HS
+    (fun i hi => by
+      obtain ⟨hiHonest, t, htH, hst, _, htm, _, hcommittee, hdelivery⟩ :=
+        hHS i hi
+      exact ⟨hiHonest, t, htH, hst, htm, hcommittee, hdelivery⟩)
+  have hdisj := h.live_new_assignments_disjoint_old_supporters cfg ext E
+    hw hHn holdCurrent hb hbEpoch oldSource HS
+    (fun i hi => by
+      obtain ⟨_, t, _, _, htLower, _, htUpper, hcommittee, _⟩ := hHS i hi
+      exact ⟨t, htLower, htUpper, hcommittee⟩)
+  have hadded : HS ⊆
+      (AttSupporters cfg (E.store cfg ext w m)
+        (get_node_for_root b) newSource).toFinset \
+        (AttSupporters cfg (E.store cfg ext w n)
+          (get_node_for_root b) oldSource).toFinset := by
+    intro i hi
+    exact Finset.mem_sdiff.mpr ⟨hnew hi,
+      fun hOld => (Finset.disjoint_left.mp hdisj) hi hOld⟩
+  exact E.attestation_score_growth_with_loss cfg
+    (E.store cfg ext w n) (E.store cfg ext w m)
+    oldSource newSource (get_node_for_root b) hvalOld hvalNew HS hadded
+
 end Execution
 
 end FastConfirmation.Spec
