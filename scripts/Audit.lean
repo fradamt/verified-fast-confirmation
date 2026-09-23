@@ -22,6 +22,7 @@ private def allowedAxioms : Array Name :=
 private def publicWitnesses : Array Name :=
   #[
     ``FastConfirmation.Spec.acceptedSpec_safety_next_slot,
+    ``FastConfirmation.Spec.acceptedSpec_monotonicity_live,
     ``FastConfirmation.Spec.Execution.AcceptedActualFCRNextSlotSafetyAssumptions.findLatestConfirmedDescendant_safeFrom_of_actualCall,
     ``FastConfirmation.Spec.AcceptedActualFCRJointNonVacuityFinal.witnessJointNonvacuity,
     ``FastConfirmation.Spec.AcceptedActualFCRJointNonVacuityFinal.acceptedActualFCRNextSlotSafetyAssumptions_nonvacuous,
@@ -66,8 +67,8 @@ private def isGeneratedSafePartial (env : Environment) (name : Name)
 
 elab "audit_project_trust" : command => do
   let env ← getEnv
-  unless publicWitnesses.size == 13 do
-    throwError "public theorem witness set must contain exactly 13 declarations"
+  unless publicWitnesses.size == 14 do
+    throwError "public theorem witness set must contain exactly 14 declarations"
   unless publicWitnesses.toList.eraseDups.length == publicWitnesses.size do
     throwError "public theorem witness set contains duplicate declarations"
 

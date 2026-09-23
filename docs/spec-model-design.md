@@ -197,7 +197,7 @@ now takes explicit envelope-delivery and data-relay evidence.
 The paper's `Theorem1_Monotonicity` (`FastConfirmation/Paper/LMDGhost/`)
 states that the LMD-GHOST safety predicate persists: a block confirmed at
 `t` is confirmed at each later `t'`. It uses Assumption 4,
-`beta < (1 - pb) / 4`, and `CommitteeCoversEpoch`. The proposed spec statement
+`beta < (1 - pb) / 4`, and `CommitteeCoversEpoch`. The proved spec statement
 `Spec_Monotonicity_live` is about the cached executable root. The
 correspondence is:
 
@@ -216,8 +216,12 @@ selector needs it one epoch earlier. `Proof/MonotonicityLiveGates.lean`
 records the resulting gate and revert facts. The fifth live field supplies the
 earlier checkpoint observation; `Proof/MonotonicityLiveBridge.lean`,
 `MonotonicityLiveConfirmation.lean`, and `MonotonicityLiveRestart.lean` prove
-parts of its executable bridge, including the actual stale-cache restart and
-the numeric reconfirmation rule. The statement remains open.
+the historical certificates and restart rules.
+`MonotonicityLiveAssemble.lean` applies those certificates to each block
+between the checkpoint and a cache ahead of it, proves chain safety, and
+combines start and non-start calls by induction over seconds. Its public
+`acceptedSpec_monotonicity_live` theorem uses live fields 1 and 5. Live fields
+2–4 remain in the record and statement but are unused in this proof.
 
 ## Module system
 

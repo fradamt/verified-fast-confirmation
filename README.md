@@ -75,6 +75,14 @@ The same facade proves
 `findLatestConfirmedDescendant_safeFrom_of_actualCall` for the literal helper
 result at an actual scheduled boundary call, including an unchanged return.
 
+`acceptedSpec_monotonicity_live` proves that an honest node's later stored
+confirmed root descends from its earlier stored confirmed root under
+`MonotonicityLiveAssumptions`. The proof is in
+[MonotonicityLiveAssemble.lean](FastConfirmation/Spec/Proof/MonotonicityLiveAssemble.lean).
+It uses the live record's honest production and vote support field and its
+timely FFG checkpoint field. The other three live fields are present in the
+statement but are unused by this proof.
+
 The result is the GST-0 specialization: its relay laws hold throughout the
 checked execution. It does not claim cross-node safety for optional queries at
 arbitrary in-slot action prefixes. The exported finite counterexamples exhibit

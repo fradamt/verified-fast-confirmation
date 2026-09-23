@@ -1,5 +1,7 @@
 module
 public import FastConfirmation.Spec.Proof.MonotonicityLiveRestart
+public import FastConfirmation.Spec.Proof.ByzVpre
+public import FastConfirmation.Spec.Proof.EngineTransport
 
 @[expose] public section
 
@@ -54,6 +56,20 @@ theorem live_consecutive_parent_window_start
   simp [hepoch, hpEpoch]
 
 omit [LinearOrder Root] [Inhabited Root] in
+/-- A slot between consecutive epoch starts belongs to that epoch. -/
+theorem live_epoch_of_slot_between (e : Epoch) (s : Slot)
+    (hlo : compute_start_slot_at_epoch cfg e ≤ s)
+    (hhi : s < compute_start_slot_at_epoch cfg (e + 1)) :
+    compute_epoch_at_slot cfg s = e := by
+  have hge : e ≤ compute_epoch_at_slot cfg s := by
+    apply (Nat.le_div_iff_mul_le cfg.slots_per_epoch_pos).2
+    simpa only [compute_start_slot_at_epoch, compute_epoch_at_slot] using hlo
+  have hlt : compute_epoch_at_slot cfg s < e + 1 := by
+    apply (Nat.div_lt_iff_lt_mul cfg.slots_per_epoch_pos).2
+    simpa only [compute_start_slot_at_epoch, compute_epoch_at_slot] using hhi
+  exact Nat.le_antisymm (Nat.lt_succ_iff.mp hlt) hge
+
+omit [LinearOrder Root] [Inhabited Root] in
 /-- Every member of a parent-linked chain starts strictly after its
 terminal parent. -/
 theorem live_chain_member_slot_gt_terminal {store : Store Root}
@@ -106,9 +122,569 @@ theorem live_ancestor_roots_member_slot_gt_terminal {store : Store Root}
     (fun y hy => get_ancestor_roots_mem hwf hwalk hy)
     hterminal (fun y hy => get_ancestor_roots_head? hwf hwalk hy) hx
 
+/-- The selector's result descends from the candidate after the two reset
+phases, including when its recency gate is closed. -/
+theorem live_get_latest_confirmed_ge_after_observed
+    (query : FastConfirmationStore Root)
+    (hwf : ParentSlotLt query.store)
+    (hwalk : ∀ t ∈ query.store.block_roots, ∀ r ∈ query.store.block_roots,
+      WalkKnown query.store (query.store.blocks t).slot r)
+    (hhead : (get_head cfg query.store).root ∈ query.store.block_roots)
+    (hinput : getLatestAfterObserved cfg ext query ∈ query.store.block_roots) :
+    is_ancestor query.store
+      (get_node_for_root (get_latest_confirmed cfg ext query))
+      (get_node_for_root (getLatestAfterObserved cfg ext query)) = true ∧
+    get_latest_confirmed cfg ext query ∈ query.store.block_roots := by
+  rw [← getLatestTraceResult_eq_getLatestConfirmed]
+  by_cases hselector : get_block_epoch cfg query.store
+      (getLatestAfterObserved cfg ext query) + 1 ≥
+        get_current_store_epoch cfg query.store
+  · simp only [getLatestTraceResult, if_pos hselector]
+    exact find_latest_confirmed_descendant_ge cfg ext query
+      hwf hwalk hhead _ hinput
+  · simp only [getLatestTraceResult, if_neg hselector]
+    exact ⟨is_ancestor_refl _ _, hinput⟩
+
+/-- Any candidate that descends from the cached root remains so after the
+selector. -/
+theorem live_get_latest_confirmed_ge_cached_of_after_observed
+    (query : FastConfirmationStore Root)
+    (hwf : ParentSlotLt query.store)
+    (hwalk : ∀ t ∈ query.store.block_roots, ∀ r ∈ query.store.block_roots,
+      WalkKnown query.store (query.store.blocks t).slot r)
+    (hhead : (get_head cfg query.store).root ∈ query.store.block_roots)
+    (hcached : query.confirmed_root ∈ query.store.block_roots)
+    (hinput : getLatestAfterObserved cfg ext query ∈ query.store.block_roots)
+    (hinputAnc : is_ancestor query.store
+      (get_node_for_root (getLatestAfterObserved cfg ext query))
+      (get_node_for_root query.confirmed_root) = true) :
+    is_ancestor query.store
+      (get_node_for_root (get_latest_confirmed cfg ext query))
+      (get_node_for_root query.confirmed_root) = true := by
+  obtain ⟨hge, hresult⟩ := live_get_latest_confirmed_ge_after_observed
+    cfg ext query hwf hwalk hhead hinput
+  exact is_ancestor_trans hwf
+    (hwalk query.confirmed_root hcached _ hresult)
+    (hwalk query.confirmed_root hcached _ hinput)
+    hge hinputAnc
+
+/-- If neither reset phase changes the candidate, the selector starts at
+the cached root. -/
+theorem live_after_observed_eq_cached_of_idle
+    (query : FastConfirmationStore Root)
+    (hfinal : ¬ getLatestFinalizedRevertGuard cfg ext query)
+    (hrestart : getLatestObservedRestartGuard cfg query query.confirmed_root = false) :
+    getLatestAfterObserved cfg ext query = query.confirmed_root := by
+  have hfirst : getLatestAfterFinalized cfg ext query = query.confirmed_root := by
+    simp only [getLatestAfterFinalized]
+    split_ifs with hg
+    · exact False.elim (hfinal hg)
+    · rfl
+  simp [getLatestAfterObserved, hfirst, hrestart]
+
+/-- A timely checkpoint strictly ahead of the cache becomes the selector
+input, whether or not the finalized phase first reverts. -/
+theorem live_after_observed_eq_checkpoint_of_stale
+    (query : FastConfirmationStore Root)
+    (hstart : is_start_slot_at_epoch cfg
+      (get_current_slot cfg query.store) = true)
+    (hepoch : get_block_epoch cfg query.store
+      query.current_epoch_observed_justified_checkpoint.root + 1 =
+        get_current_store_epoch cfg query.store)
+    (hhead : query.current_epoch_observed_justified_checkpoint =
+      query.store.unrealized_justifications
+        (get_head cfg query.store).root)
+    (hstale : get_block_slot query.store query.confirmed_root <
+      get_block_slot query.store
+        query.current_epoch_observed_justified_checkpoint.root)
+    (hfinalized : get_block_slot query.store
+        query.store.finalized_checkpoint.root <
+        get_block_slot query.store
+          query.current_epoch_observed_justified_checkpoint.root ∨
+      query.store.finalized_checkpoint.root =
+        query.current_epoch_observed_justified_checkpoint.root) :
+    getLatestAfterObserved cfg ext query =
+      query.current_epoch_observed_justified_checkpoint.root := by
+  by_cases hrevert : getLatestFinalizedRevertGuard cfg ext query
+  · exact getLatestAfterObserved_eq_checkpoint_of_revert cfg ext query
+      hstart hepoch hhead hrevert hfinalized
+  · have hfirst : getLatestAfterFinalized cfg ext query = query.confirmed_root := by
+      simp only [getLatestAfterFinalized]
+      split_ifs with hg
+      · exact False.elim (hrevert hg)
+      · rfl
+    have hguard : getLatestObservedRestartGuard cfg query
+        (getLatestAfterFinalized cfg ext query) = true := by
+      simp only [getLatestObservedRestartGuard, hstart, Bool.true_and, hfirst]
+      rw [← hhead]
+      simp [hepoch, hstale]
+    simp [getLatestAfterObserved, hguard]
+
+/-- Recency, head ancestry, and the epoch-start chain certificate close all
+three finalized-revert disjuncts. -/
+theorem live_finalized_revert_guard_false
+    (query : FastConfirmationStore Root)
+    (hrecent : get_block_epoch cfg query.store query.confirmed_root + 1 ≥
+      get_current_store_epoch cfg query.store)
+    (hcanonical : is_ancestor query.store
+      (get_node_for_root (get_head cfg query.store).root)
+      (get_node_for_root query.confirmed_root) = true)
+    (hsafe : is_start_slot_at_epoch cfg
+      (get_current_slot cfg query.store) = true →
+      is_confirmed_chain_safe cfg ext query query.confirmed_root = true) :
+    ¬ getLatestFinalizedRevertGuard cfg ext query := by
+  simp only [getLatestFinalizedRevertGuard]
+  intro h
+  rcases h with h | h | ⟨hstart, hunsafe⟩
+  · exact (Nat.not_lt_of_ge hrecent) h
+  · exact h hcanonical
+  · exact hunsafe (hsafe hstart)
+
+/-- A non-start call cannot run the observed restart. -/
+theorem live_nonstart_restart_guard_false
+    (query : FastConfirmationStore Root)
+    (hnotStart : is_start_slot_at_epoch cfg
+      (get_current_slot cfg query.store) = false) :
+    getLatestObservedRestartGuard cfg query query.confirmed_root = false := by
+  simp [getLatestObservedRestartGuard, hnotStart]
+
+/-- At an epoch start the observed restart stays idle when the cached slot
+already reaches the observed checkpoint. -/
+theorem live_reached_checkpoint_restart_guard_false
+    (query : FastConfirmationStore Root)
+    (hreached : get_block_slot query.store
+      query.current_epoch_observed_justified_checkpoint.root ≤
+      get_block_slot query.store query.confirmed_root) :
+    getLatestObservedRestartGuard cfg query query.confirmed_root = false := by
+  have hnot : ¬ get_block_slot query.store query.confirmed_root <
+      get_block_slot query.store
+        query.current_epoch_observed_justified_checkpoint.root :=
+    Nat.not_lt_of_ge hreached
+  simp [getLatestObservedRestartGuard, hnot]
+
+/-- The local start-call split: a stale cache is repaired to the checkpoint;
+an equal or ahead cache keeps its candidate and advances from it. -/
+theorem live_start_call_ge_cached
+    (query : FastConfirmationStore Root)
+    (hwf : ParentSlotLt query.store)
+    (hwalk : ∀ t ∈ query.store.block_roots, ∀ r ∈ query.store.block_roots,
+      WalkKnown query.store (query.store.blocks t).slot r)
+    (hheadKnown : (get_head cfg query.store).root ∈ query.store.block_roots)
+    (hcached : query.confirmed_root ∈ query.store.block_roots)
+    (hcheckpointKnown :
+      query.current_epoch_observed_justified_checkpoint.root ∈
+        query.store.block_roots)
+    (hinputKnown : getLatestAfterObserved cfg ext query ∈ query.store.block_roots)
+    (hstart : is_start_slot_at_epoch cfg
+      (get_current_slot cfg query.store) = true)
+    (hepoch : get_block_epoch cfg query.store
+      query.current_epoch_observed_justified_checkpoint.root + 1 =
+        get_current_store_epoch cfg query.store)
+    (hheadObs : query.current_epoch_observed_justified_checkpoint =
+      query.store.unrealized_justifications
+        (get_head cfg query.store).root)
+    (hcanonical : is_ancestor query.store
+      (get_node_for_root (get_head cfg query.store).root)
+      (get_node_for_root query.confirmed_root) = true)
+    (hcheckpointHead : is_ancestor query.store
+      (get_node_for_root (get_head cfg query.store).root)
+      (get_node_for_root
+        query.current_epoch_observed_justified_checkpoint.root) = true)
+    (hfinalized : get_block_slot query.store
+        query.store.finalized_checkpoint.root <
+        get_block_slot query.store
+          query.current_epoch_observed_justified_checkpoint.root ∨
+      query.store.finalized_checkpoint.root =
+        query.current_epoch_observed_justified_checkpoint.root)
+    (hrecent : get_block_slot query.store
+        query.current_epoch_observed_justified_checkpoint.root ≤
+      get_block_slot query.store query.confirmed_root →
+      get_block_epoch cfg query.store query.confirmed_root + 1 ≥
+        get_current_store_epoch cfg query.store)
+    (hsafeAt : is_confirmed_chain_safe cfg ext query
+      query.current_epoch_observed_justified_checkpoint.root = true)
+    (hsafeAhead : get_block_slot query.store
+        query.current_epoch_observed_justified_checkpoint.root <
+      get_block_slot query.store query.confirmed_root →
+      is_confirmed_chain_safe cfg ext query query.confirmed_root = true) :
+    is_ancestor query.store
+      (get_node_for_root (get_latest_confirmed cfg ext query))
+      (get_node_for_root query.confirmed_root) = true := by
+  let cp := query.current_epoch_observed_justified_checkpoint.root
+  let c := query.confirmed_root
+  have hresult : ∀ (hinputAnc : is_ancestor query.store
+      (get_node_for_root (getLatestAfterObserved cfg ext query))
+      (get_node_for_root c) = true),
+      is_ancestor query.store
+        (get_node_for_root (get_latest_confirmed cfg ext query))
+        (get_node_for_root c) = true := by
+    intro hinputAnc
+    exact live_get_latest_confirmed_ge_cached_of_after_observed cfg ext
+      query hwf hwalk hheadKnown hcached hinputKnown hinputAnc
+  rcases lt_trichotomy (get_block_slot query.store c)
+      (get_block_slot query.store cp) with hbehind | hequal | hahead
+  · have hafter := live_after_observed_eq_checkpoint_of_stale cfg ext
+      query hstart hepoch hheadObs hbehind hfinalized
+    have hcpAbove : is_ancestor query.store
+        (get_node_for_root cp) (get_node_for_root c) = true := by
+      exact ancestor_comparable_of_common hwf hbehind.le
+        (hwalk c hcached _ hheadKnown) hcanonical hcheckpointHead
+    apply hresult
+    rw [hafter]
+    exact hcpAbove
+  · have hEq : c = cp := ancestor_unique_at_slot hequal
+      hcanonical hcheckpointHead
+    have hsafe : is_confirmed_chain_safe cfg ext query c = true := by
+      rw [hEq]
+      exact hsafeAt
+    have hnoFinal := live_finalized_revert_guard_false cfg ext query
+      (hrecent hequal.ge) hcanonical (fun _ => hsafe)
+    have hnoRestart := live_reached_checkpoint_restart_guard_false
+      cfg query hequal.ge
+    have hafter := live_after_observed_eq_cached_of_idle cfg ext
+      query hnoFinal hnoRestart
+    apply hresult
+    rw [hafter]
+    exact is_ancestor_refl _ _
+  · have hnoFinal := live_finalized_revert_guard_false cfg ext query
+      (hrecent hahead.le) hcanonical (fun _ => hsafeAhead hahead)
+    have hnoRestart := live_reached_checkpoint_restart_guard_false
+      cfg query hahead.le
+    have hafter := live_after_observed_eq_cached_of_idle cfg ext
+      query hnoFinal hnoRestart
+    apply hresult
+    rw [hafter]
+    exact is_ancestor_refl _ _
+
+/-- At a non-start call, a recent canonical cache passes both reset phases
+and the descendant selector preserves its ancestry. -/
+theorem live_nonstart_call_ge_cached
+    (query : FastConfirmationStore Root)
+    (hwf : ParentSlotLt query.store)
+    (hwalk : ∀ t ∈ query.store.block_roots, ∀ r ∈ query.store.block_roots,
+      WalkKnown query.store (query.store.blocks t).slot r)
+    (hheadKnown : (get_head cfg query.store).root ∈ query.store.block_roots)
+    (hcached : query.confirmed_root ∈ query.store.block_roots)
+    (hinputKnown : getLatestAfterObserved cfg ext query ∈ query.store.block_roots)
+    (hnotStart : is_start_slot_at_epoch cfg
+      (get_current_slot cfg query.store) = false)
+    (hrecent : get_block_epoch cfg query.store query.confirmed_root + 1 ≥
+      get_current_store_epoch cfg query.store)
+    (hcanonical : is_ancestor query.store
+      (get_node_for_root (get_head cfg query.store).root)
+      (get_node_for_root query.confirmed_root) = true) :
+    is_ancestor query.store
+      (get_node_for_root (get_latest_confirmed cfg ext query))
+      (get_node_for_root query.confirmed_root) = true := by
+  have hnoFinal := live_finalized_revert_guard_false cfg ext query
+    hrecent hcanonical (by intro hs; rw [hnotStart] at hs; cases hs)
+  have hnoRestart := live_nonstart_restart_guard_false cfg query hnotStart
+  have hafter := live_after_observed_eq_cached_of_idle cfg ext query
+    hnoFinal hnoRestart
+  apply live_get_latest_confirmed_ge_cached_of_after_observed cfg ext
+    query hwf hwalk hheadKnown hcached hinputKnown
+  rw [hafter]
+  exact is_ancestor_refl _ _
+
+/-- At a timely start call, an output that also descends from the cache is
+at or above the observed checkpoint's slot. -/
+theorem live_start_call_slot_ge_checkpoint
+    (query : FastConfirmationStore Root)
+    (hwf : ParentSlotLt query.store)
+    (hwalk : ∀ t ∈ query.store.block_roots, ∀ r ∈ query.store.block_roots,
+      WalkKnown query.store (query.store.blocks t).slot r)
+    (hheadKnown : (get_head cfg query.store).root ∈ query.store.block_roots)
+    (hcached : query.confirmed_root ∈ query.store.block_roots)
+    (hinputKnown : getLatestAfterObserved cfg ext query ∈ query.store.block_roots)
+    (hstart : is_start_slot_at_epoch cfg
+      (get_current_slot cfg query.store) = true)
+    (hepoch : get_block_epoch cfg query.store
+      query.current_epoch_observed_justified_checkpoint.root + 1 =
+        get_current_store_epoch cfg query.store)
+    (hheadObs : query.current_epoch_observed_justified_checkpoint =
+      query.store.unrealized_justifications
+        (get_head cfg query.store).root)
+    (hfinalized : get_block_slot query.store
+        query.store.finalized_checkpoint.root <
+        get_block_slot query.store
+          query.current_epoch_observed_justified_checkpoint.root ∨
+      query.store.finalized_checkpoint.root =
+        query.current_epoch_observed_justified_checkpoint.root)
+    (hancCached : is_ancestor query.store
+      (get_node_for_root (get_latest_confirmed cfg ext query))
+      (get_node_for_root query.confirmed_root) = true) :
+    get_block_slot query.store
+      query.current_epoch_observed_justified_checkpoint.root ≤
+      get_block_slot query.store (get_latest_confirmed cfg ext query) := by
+  obtain ⟨hancInput, hresultKnown⟩ :=
+    live_get_latest_confirmed_ge_after_observed cfg ext query
+      hwf hwalk hheadKnown hinputKnown
+  by_cases hbehind : get_block_slot query.store query.confirmed_root <
+      get_block_slot query.store
+        query.current_epoch_observed_justified_checkpoint.root
+  · have hafter := live_after_observed_eq_checkpoint_of_stale cfg ext
+      query hstart hepoch hheadObs hbehind hfinalized
+    have hcpKnown := hinputKnown
+    rw [hafter] at hcpKnown
+    rw [hafter] at hancInput
+    exact Execution.ancestor_slot_le hwf
+      (hwalk _ hcpKnown _ hresultKnown) hancInput
+  · have hcacheLe := Nat.le_of_not_gt hbehind
+    exact hcacheLe.trans (Execution.ancestor_slot_le hwf
+      (hwalk query.confirmed_root hcached _ hresultKnown) hancCached)
+
+/-- A checkpoint at its epoch's first slot is its own projection. -/
+theorem live_checkpoint_projects_to_self
+    (store : Store Root) (cp : Checkpoint Root) (e : Epoch)
+    (hcpEpoch : cp.epoch = e)
+    (hcpSlot : (store.blocks cp.root).slot =
+      compute_start_slot_at_epoch cfg e) :
+    get_checkpoint_for_block cfg store cp.root cp.epoch = cp := by
+  apply checkpoint_eq_of_epoch_root_eq
+    (a := get_checkpoint_for_block cfg store cp.root cp.epoch) (b := cp) rfl
+  simp only [get_checkpoint_for_block, get_checkpoint_block, hcpEpoch,
+    ← hcpSlot, get_node_for_root]
+  rw [get_ancestor_stop_status (le_refl _)]
+
+omit [LinearOrder Root] [Inhabited Root] in
+/-- A non-start slot immediately after another slot remains in the same
+epoch. -/
+theorem live_epoch_eq_of_nonstart_succ (s : Slot)
+    (hnotStart : is_start_slot_at_epoch cfg (s + 1) = false) :
+    compute_epoch_at_slot cfg (s + 1) = compute_epoch_at_slot cfg s := by
+  let e := compute_epoch_at_slot cfg (s + 1)
+  have hstartLe : compute_start_slot_at_epoch cfg e ≤ s + 1 := by
+    simpa only [e, compute_start_slot_at_epoch, compute_epoch_at_slot] using
+      (Nat.div_mul_le_self (s + 1) cfg.slots_per_epoch)
+  have hupper : s < compute_start_slot_at_epoch cfg (e + 1) := by
+    have hu := Nat.lt_mul_div_succ (s + 1) cfg.slots_per_epoch_pos
+    have hu' : s + 1 < compute_start_slot_at_epoch cfg (e + 1) := by
+      simpa only [e, compute_start_slot_at_epoch, compute_epoch_at_slot,
+        Nat.mul_comm] using hu
+    exact (Nat.lt_succ_self s).trans hu'
+  have hstrict : compute_start_slot_at_epoch cfg e < s + 1 := by
+    apply Nat.lt_of_le_of_ne hstartLe
+    intro heq
+    have hs : is_start_slot_at_epoch cfg (s + 1) = true := by
+      rw [← heq]
+      exact live_epoch_start_is_start cfg e
+    rw [hnotStart] at hs
+    cases hs
+  have hlow : compute_start_slot_at_epoch cfg e ≤ s :=
+    Nat.lt_succ_iff.mp hstrict
+  exact (live_epoch_of_slot_between cfg e s hlow hupper).symm
+
+omit [LinearOrder Root] [Inhabited Root] in
+/-- A slot marked as an epoch start is exactly its epoch's first slot. -/
+theorem live_start_slot_eq_epoch_start (s : Slot)
+    (hstart : is_start_slot_at_epoch cfg s = true) :
+    s = compute_start_slot_at_epoch cfg (compute_epoch_at_slot cfg s) := by
+  have hzero : s - compute_start_slot_at_epoch cfg
+      (compute_epoch_at_slot cfg s) = 0 := by
+    simpa only [is_start_slot_at_epoch, decide_eq_true_eq,
+      compute_slots_since_epoch_start] using hstart
+  have hle : compute_start_slot_at_epoch cfg
+      (compute_epoch_at_slot cfg s) ≤ s := by
+    simpa only [compute_start_slot_at_epoch, compute_epoch_at_slot] using
+      (Nat.div_mul_le_self s cfg.slots_per_epoch)
+  exact Nat.le_antisymm (Nat.sub_eq_zero_iff_le.mp hzero) hle
+
+/-- An ancestor's block epoch does not exceed the descendant's epoch. -/
+theorem live_epoch_mono_of_ancestor (store : Store Root)
+    (hwf : ParentSlotLt store)
+    {top base : Root}
+    (htop : top ∈ store.block_roots)
+    (hbase : base ∈ store.block_roots)
+    (hwalk : WalkKnown store (store.blocks base).slot top)
+    (hanc : is_ancestor store (get_node_for_root top)
+      (get_node_for_root base) = true) :
+    get_block_epoch cfg store base ≤ get_block_epoch cfg store top := by
+  have hslot := Execution.ancestor_slot_le hwf hwalk hanc
+  exact Nat.div_le_div_right hslot
+
 namespace Execution
 
 variable (E : Execution Root)
+
+/-- Consecutive execution seconds advance at most one slot. -/
+theorem live_slot_at_succ_le
+    (hdiv : 1000 ∣ cfg.slot_duration_ms)
+    (hgenTime : E.genesis_store.genesis_time ≤ E.genesis_store.time)
+    (k : ℕ) :
+    E.slot_at cfg (k + 1) ≤ E.slot_at cfg k + 1 := by
+  obtain ⟨secondsPerSlot, hduration⟩ := hdiv
+  have hsecondsPos : 0 < secondsPerSlot := by
+    have hdurationPos := cfg.slot_duration_ms_pos
+    rw [hduration] at hdurationPos
+    omega
+  have hdenPos : 0 < cfg.slot_duration_ms / 1000 := by
+    rw [hduration, Nat.mul_div_cancel_left secondsPerSlot
+      (by omega : (0 : ℕ) < 1000)]
+    exact hsecondsPos
+  rw [E.slot_at_eq cfg (by exact ⟨secondsPerSlot, hduration⟩),
+    E.slot_at_eq cfg (by exact ⟨secondsPerSlot, hduration⟩)]
+  have hnum : E.genesis_store.time + (k + 1) -
+        E.genesis_store.genesis_time =
+      (E.genesis_store.time + k - E.genesis_store.genesis_time) + 1 := by
+    omega
+  rw [hnum]
+  let a := E.genesis_store.time + k - E.genesis_store.genesis_time
+  calc
+    (a + 1) / (cfg.slot_duration_ms / 1000) ≤
+        (a + cfg.slot_duration_ms / 1000) /
+          (cfg.slot_duration_ms / 1000) :=
+      Nat.div_le_div_right (by omega)
+    _ = a / (cfg.slot_duration_ms / 1000) + 1 :=
+      Nat.add_div_right a hdenPos
+
+/-- A slot advance at one second lands at that slot's first second. -/
+theorem live_slot_start_eq_succ_of_advance
+    (hdiv : 1000 ∣ cfg.slot_duration_ms)
+    (hgenTime : E.genesis_store.genesis_time ≤ E.genesis_store.time)
+    (k : ℕ)
+    (hadvance : E.slot_at cfg k < E.slot_at cfg (k + 1)) :
+    E.slot_start cfg (E.slot_at cfg (k + 1)) = k + 1 := by
+  have hfirst : E.slot_at cfg 0 ≤ E.slot_at cfg (k + 1) :=
+    E.slot_at_mono cfg (Nat.zero_le _)
+  have hBslot := E.slot_at_slot_start cfg hdiv hfirst hgenTime
+  have hBle : E.slot_start cfg (E.slot_at cfg (k + 1)) ≤ k + 1 :=
+    E.slot_start_le_of_slot_at cfg hdiv hgenTime rfl
+  apply Nat.le_antisymm hBle
+  by_contra hnot
+  have hBk : E.slot_start cfg (E.slot_at cfg (k + 1)) ≤ k :=
+    Nat.lt_succ_iff.mp (Nat.lt_of_not_ge hnot)
+  have hslotLe := E.slot_at_mono cfg hBk
+  rw [hBslot] at hslotLe
+  exact (Nat.not_lt_of_ge hslotLe) hadvance
+
+/-- A genuine start-slot call after the initial second is the completed
+boundary for the preceding epoch. -/
+theorem AcceptedActualFCRNextSlotSafetyAssumptions.live_start_call_geometry
+    (h : E.AcceptedActualFCRNextSlotSafetyAssumptions cfg ext)
+    (k m : ℕ) (hkm : k + 1 ≤ m)
+    (hadvance : E.slot_at cfg k < E.slot_at cfg (k + 1))
+    (hstart : is_start_slot_at_epoch cfg (E.slot_at cfg (k + 1)) = true) :
+    ∃ e : Epoch,
+      compute_epoch_at_slot cfg (E.slot_at cfg 0) ≤ e ∧
+      compute_start_slot_at_epoch cfg (e + 1) ≤ E.slot_at cfg m ∧
+      E.slot_at cfg 0 < compute_start_slot_at_epoch cfg (e + 1) - 1 ∧
+      E.slot_start cfg (compute_start_slot_at_epoch cfg (e + 1)) = k + 1 := by
+  let initial := compute_epoch_at_slot cfg (E.slot_at cfg 0)
+  let current := compute_epoch_at_slot cfg (E.slot_at cfg (k + 1))
+  let e := current - 1
+  have hinitialStart : E.slot_at cfg 0 =
+      compute_start_slot_at_epoch cfg initial :=
+    h.live_initial_slot_eq_epoch_start cfg ext E
+  have hcurrentStart : E.slot_at cfg (k + 1) =
+      compute_start_slot_at_epoch cfg current :=
+    live_start_slot_eq_epoch_start cfg _ hstart
+  have hinitialLt : E.slot_at cfg 0 < E.slot_at cfg (k + 1) :=
+    (E.slot_at_mono cfg (Nat.zero_le k)).trans_lt hadvance
+  have hinitialEpochLt : initial < current := by
+    by_contra hnot
+    have hepochLe : current ≤ initial := Nat.le_of_not_gt hnot
+    have hstartLe : compute_start_slot_at_epoch cfg current ≤
+        compute_start_slot_at_epoch cfg initial := by
+      exact Nat.mul_le_mul_right cfg.slots_per_epoch hepochLe
+    rw [← hcurrentStart, ← hinitialStart] at hstartLe
+    exact (Nat.not_lt_of_ge hstartLe) hinitialLt
+  have heSucc : e + 1 = current :=
+    Nat.sub_add_cancel (Nat.succ_le_of_lt
+      ((Nat.zero_le initial).trans_lt hinitialEpochLt))
+  have he0 : initial ≤ e := Nat.le_sub_one_of_lt hinitialEpochLt
+  have hS : compute_start_slot_at_epoch cfg (e + 1) =
+      E.slot_at cfg (k + 1) := by rw [heSucc, ← hcurrentStart]
+  have heDone : compute_start_slot_at_epoch cfg (e + 1) ≤ E.slot_at cfg m := by
+    rw [hS]
+    exact E.slot_at_mono cfg hkm
+  have hstep : compute_start_slot_at_epoch cfg initial + 2 ≤
+      compute_start_slot_at_epoch cfg (initial + 1) := by
+    have hd : 2 ≤ cfg.slots_per_epoch := h.slots_per_epoch_gt_one
+    simpa only [compute_start_slot_at_epoch, Nat.add_mul, one_mul] using
+      (Nat.add_le_add_left hd (initial * cfg.slots_per_epoch))
+  have hboundaryLe : compute_start_slot_at_epoch cfg (initial + 1) ≤
+      compute_start_slot_at_epoch cfg current := by
+    exact Nat.mul_le_mul_right cfg.slots_per_epoch
+      (Nat.succ_le_iff.mpr hinitialEpochLt)
+  have hlast : E.slot_at cfg 0 <
+      compute_start_slot_at_epoch cfg (e + 1) - 1 := by
+    rw [hinitialStart, heSucc]
+    have htwo := hstep.trans hboundaryLe
+    have hle : compute_start_slot_at_epoch cfg initial + 1 ≤
+        compute_start_slot_at_epoch cfg current - 1 := by
+      apply Nat.le_sub_of_add_le
+      simpa only [Nat.add_assoc] using htwo
+    exact (Nat.lt_succ_self _).trans_le hle
+  obtain ⟨ast, ablk, hgenEq, _, _⟩ := h.trajectory.genesis_structure
+  have hgenTime : E.genesis_store.genesis_time ≤ E.genesis_store.time := by
+    rw [hgenEq]
+    simp only [get_forkchoice_store]
+    omega
+  have hB := E.live_slot_start_eq_succ_of_advance cfg
+    h.trajectory.whole_seconds hgenTime k hadvance
+  refine ⟨e, he0, heDone, hlast, ?_⟩
+  rw [hS]
+  exact hB
+
+/-- Known block epochs are fixed as the execution store grows. -/
+theorem AcceptedActualFCRNextSlotSafetyAssumptions.live_known_epoch_stable
+    (h : E.AcceptedActualFCRNextSlotSafetyAssumptions cfg ext)
+    {w : ValidatorIndex} {k l : ℕ} (hkl : k ≤ l)
+    {b : Root} (hb : b ∈ (E.store cfg ext w k).block_roots) :
+    get_block_epoch cfg (E.store cfg ext w k) b =
+      get_block_epoch cfg (E.store cfg ext w l) b := by
+  have hbLater := (E.store_storeLE cfg ext w hkl).1 hb
+  have hagree := h.trajectory.wellFormed.blocks_agree
+    (E.blockProvenance cfg ext w k)
+    (E.blockProvenance cfg ext w l) hb hbLater
+  exact congrArg (fun block : BeaconBlock Root =>
+    compute_epoch_at_slot cfg block.slot) hagree
+
+/-- A known ancestor relation survives in a later store of the same
+execution. -/
+theorem AcceptedActualFCRNextSlotSafetyAssumptions.live_ancestor_forward
+    (h : E.AcceptedActualFCRNextSlotSafetyAssumptions cfg ext)
+    {w : ValidatorIndex} {k l : ℕ} (hkl : k ≤ l)
+    {top base : Root}
+    (htop : top ∈ (E.store cfg ext w k).block_roots)
+    (hbase : base ∈ (E.store cfg ext w k).block_roots)
+    (hanc : is_ancestor (E.store cfg ext w k)
+      (get_node_for_root top) (get_node_for_root base) = true) :
+    is_ancestor (E.store cfg ext w l)
+      (get_node_for_root top) (get_node_for_root base) = true := by
+  exact is_ancestor_transport cfg ext h.trajectory.wellFormed
+    (E.store_storeLE cfg ext w hkl).1 htop hbase
+    (E.store_walkKnownK cfg ext h.trajectory.wellFormed
+      h.trajectory.externals_coherence h.trajectory.genesis_structure
+      w k base hbase top htop) hanc
+
+/-- The genesis cached root is the anchor block and is current for the
+execution's initial epoch. -/
+theorem AcceptedActualFCRNextSlotSafetyAssumptions.live_initial_confirmed_recent
+    (h : E.AcceptedActualFCRNextSlotSafetyAssumptions cfg ext)
+    (w : ValidatorIndex) :
+    get_block_epoch cfg (E.store cfg ext w 0) (E.confirmed cfg ext w 0) + 1 ≥
+      get_current_store_epoch cfg (E.store cfg ext w 0) := by
+  obtain ⟨ast, ablk, hgenEq, hslot, _⟩ := h.trajectory.genesis_structure
+  have hroot : E.confirmed cfg ext w 0 = ablk.root := by
+    rw [E.confirmed_zero]
+    change E.genesis_store.finalized_checkpoint.root = ablk.root
+    rw [hgenEq]
+    rfl
+  have hbslot : ((E.store cfg ext w 0).blocks
+      (E.confirmed cfg ext w 0)).slot = ablk.message.slot := by
+    rw [hroot]
+    change (E.genesis_store.blocks ablk.root).slot = ablk.message.slot
+    rw [hgenEq]
+    simp only [get_forkchoice_store, Function.update_self]
+  have hcurrent : get_current_slot cfg (E.store cfg ext w 0) =
+      ablk.message.slot := by
+    change get_current_slot cfg E.genesis_store = ablk.message.slot
+    rw [hgenEq, get_current_slot_get_forkchoice_store cfg
+      h.trajectory.whole_seconds ast ablk]
+    exact hslot
+  rw [get_block_epoch, get_current_store_epoch, hbslot, hcurrent]
+  exact Nat.le_succ _
 
 /-- A known block later than the execution's initial slot is not the
 genesis-store anchor and therefore has a known parent. -/
@@ -1121,7 +1697,623 @@ theorem AcceptedActualFCRNextSlotSafetyAssumptions.live_actual_boundary_chain_sa
     (by simpa only [T, B, S] using hHistory)
   exact hresult
 
+/-- The actual FCR call at a completed epoch boundary preserves the cached
+root as an ancestor of its selected result. -/
+theorem AcceptedActualFCRNextSlotSafetyAssumptions.live_boundary_call_ancestor
+    (h : E.AcceptedActualFCRNextSlotSafetyAssumptions cfg ext)
+    {observer : ValidatorIndex} {n m : ℕ}
+    (live : MonotonicityLiveAssumptions cfg ext E observer n m)
+    (e : Epoch)
+    (he0 : compute_epoch_at_slot cfg (E.slot_at cfg 0) ≤ e)
+    (heDone : compute_start_slot_at_epoch cfg (e + 1) ≤ E.slot_at cfg m)
+    (hlastAfterZero : E.slot_at cfg 0 <
+      compute_start_slot_at_epoch cfg (e + 1) - 1)
+    (hHm : E.WithinHorizon cfg m)
+    {w : ValidatorIndex} (hw : w ∈ E.honest) :
+    let B := E.slot_start cfg (compute_start_slot_at_epoch cfg (e + 1))
+    let T := B - 1
+    is_ancestor (E.store cfg ext w B)
+      (get_node_for_root (E.confirmed cfg ext w B))
+      (get_node_for_root (E.confirmed cfg ext w T)) = true := by
+  let S := compute_start_slot_at_epoch cfg (e + 1)
+  let B := E.slot_start cfg S
+  let T := B - 1
+  let later := E.store cfg ext w B
+  let tip := E.confirmed cfg ext w T
+  let query := E.fcrStep cfg ext w T
+  dsimp only
+  obtain ⟨ast, ablk, hgenEq, hgenSlot, _⟩ := h.trajectory.genesis_structure
+  have hgen : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
+      E.genesis_store = get_forkchoice_store cfg ast ablk ∧
+        ast.slot = ablk.message.slot :=
+    ⟨ast, ablk, hgenEq, hgenSlot⟩
+  have hgenTime : E.genesis_store.genesis_time ≤ E.genesis_store.time := by
+    rw [hgenEq]
+    simp only [get_forkchoice_store]
+    omega
+  have hfrom : E.slot_at cfg 0 < S :=
+    lt_of_lt_of_le hlastAfterZero (Nat.sub_le _ _)
+  have hBpos : 0 < B :=
+    (E.slot_at_lt_iff cfg h.trajectory.whole_seconds hgenTime).1 hfrom
+  have hTsucc : T + 1 = B :=
+    Nat.sub_add_cancel (Nat.succ_le_of_lt hBpos)
+  have hBslot : E.slot_at cfg B = S :=
+    E.slot_at_slot_start cfg h.trajectory.whole_seconds hfrom.le hgenTime
+  have hTslot : E.slot_at cfg T < S := by
+    exact (E.slot_at_lt_iff cfg h.trajectory.whole_seconds hgenTime).2
+      (by simpa only [T, B] using (Nat.sub_lt hBpos (by omega)))
+  have hBm : B ≤ m := by
+    apply Nat.le_of_not_gt
+    intro htooLate
+    have hslotLt : E.slot_at cfg m < S :=
+      (E.slot_at_lt_iff cfg h.trajectory.whole_seconds hgenTime).2 htooLate
+    exact (Nat.not_lt_of_ge heDone) hslotLt
+  have hHB : E.WithinHorizon cfg B := E.withinHorizon_mono cfg hBm hHm
+  have hcall : E.IsFCRCallAt cfg ext w T :=
+    E.slot_start_is_fcr_call cfg ext h.trajectory.whole_seconds
+      hgenTime w hfrom
+  have hstart : is_start_slot_at_epoch cfg
+      (get_current_slot cfg later) = true := by
+    exact h.live_boundary_is_start cfg ext E w (e + 1) hfrom.le
+  obtain ⟨cp, hcpEpoch, hobs, hcpKnown, hcpSlot, hcpHead⟩ :=
+    h.live_boundary_checkpoint_geometry cfg ext E live
+      he0 heDone hlastAfterZero hHm hw
+  have htip : tip ∈ (E.store cfg ext w T).block_roots :=
+    E.confirmed_known_of_acceptedGlobalTrajectory cfg ext
+      h.semantics h.trajectory h.anchor_eq h.anchor_boundary hw T
+      (E.withinHorizon_mono cfg (Nat.sub_le B 1) hHB)
+  have htipLater : tip ∈ later.block_roots :=
+    (E.store_storeLE cfg ext w (by rw [← hTsucc]; exact Nat.le_succ T)).1 htip
+  have hheadKnown : (get_head cfg later).root ∈ later.block_roots :=
+    E.headRootKnown_of_acceptedGlobalTrajectory cfg ext
+      h.semantics h.trajectory h.anchor_eq h.anchor_boundary hw B hHB
+  have hwf : ParentSlotLt later :=
+    E.store_parentSlotLt cfg ext h.trajectory.wellFormed
+      h.trajectory.externals_coherence h.trajectory.genesis_structure
+      h.trajectory.wellFormed.anchor_parent_unscheduled w B
+  have hwalkK := E.store_walkKnownK cfg ext h.trajectory.wellFormed
+    h.trajectory.externals_coherence h.trajectory.genesis_structure w B
+  have hheadTip : is_ancestor later (get_head cfg later)
+      (get_node_for_root tip) = true :=
+    h.confirmed_head_nextSlot cfg ext E hw hw
+      (by rw [← hTsucc]; exact Nat.le_succ T)
+      (by rw [hBslot]; exact Nat.succ_le_of_lt hTslot) hHB
+  have hheadTipPending : is_ancestor later
+      (get_node_for_root (get_head cfg later).root)
+      (get_node_for_root tip) = true := by
+    rw [← is_ancestor_node_root]
+    exact hheadTip
+  have hcpHeadPending : is_ancestor later
+      (get_node_for_root (get_head cfg later).root)
+      (get_node_for_root cp.root) = true := by
+    rw [← is_ancestor_node_root]
+    exact hcpHead
+  have hinputKnown : getLatestAfterObserved cfg ext query ∈
+      query.store.block_roots := by
+    simpa only [query, Execution.getLatestConfirmedTraceAt,
+      getLatestConfirmedTrace, getLatestAfterObserved] using
+      E.getLatestConfirmedTraceAt_input_known cfg ext
+        h.semantics h.trajectory h.anchor_eq h.anchor_boundary htip
+  have hheadObs : cp = later.unrealized_justifications
+      (get_head cfg later).root := by
+    have hgate := (h.live_ffg_actual_boundary_inputs cfg ext E live
+      he0 heDone hlastAfterZero hw).1
+    simpa only [B, S, T, later, hTsucc, hobs] using hgate
+  have hepoch : get_block_epoch cfg later cp.root + 1 =
+      get_current_store_epoch cfg later := by
+    have he := h.live_ffg_observed_epoch_at_boundary cfg ext E live
+      he0 heDone hlastAfterZero hw
+    simpa only [B, S, T, later, hTsucc, hobs] using he
+  have hfinalized : get_block_slot later later.finalized_checkpoint.root <
+      get_block_slot later cp.root ∨
+      later.finalized_checkpoint.root = cp.root := by
+    have hf := h.live_boundary_finalized_below_or_eq_observed
+      cfg ext E live he0 heDone hlastAfterZero hHm hw
+    simpa only [B, S, T, later, hTsucc, hobs] using hf
+  have hrecent : get_block_slot later cp.root ≤ get_block_slot later tip →
+      get_block_epoch cfg later tip + 1 ≥ get_current_store_epoch cfg later := by
+    intro hcpLe
+    have htipSlotOld : (later.blocks tip).slot =
+        ((E.store cfg ext w T).blocks tip).slot := by
+      exact congrArg BeaconBlock.slot
+        (h.trajectory.wellFormed.blocks_agree
+          (E.blockProvenance cfg ext w B)
+          (E.blockProvenance cfg ext w T) htipLater htip)
+    have htipUpper : (later.blocks tip).slot < S := by
+      rw [htipSlotOld]
+      have hbound : ((E.store cfg ext w T).blocks tip).slot ≤
+          E.slot_at cfg T := by
+        simpa only [E.store_current_slot] using
+          (E.store_blocks_slot_le_current cfg ext
+            h.trajectory.whole_seconds hgen w T tip htip)
+      exact hbound.trans_lt hTslot
+    have htipEpoch : get_block_epoch cfg later tip = e := by
+      exact live_epoch_of_slot_between cfg e _
+        (by rw [← hcpSlot]; exact hcpLe) htipUpper
+    rw [htipEpoch, get_current_store_epoch,
+      E.store_current_slot, hBslot]
+    simp [S, compute_epoch_at_slot, compute_start_slot_at_epoch,
+      cfg.slots_per_epoch_pos]
+  have hqueryStore : query.store = later := by
+    change (E.fcrStep cfg ext w T).store = E.store cfg ext w B
+    rw [E.fcrStep_store, hTsucc]
+  have hsafeAt : is_confirmed_chain_safe cfg ext query cp.root = true := by
+    have hcpProj : query.current_epoch_observed_justified_checkpoint =
+        get_checkpoint_for_block cfg query.store
+          query.current_epoch_observed_justified_checkpoint.root
+          query.current_epoch_observed_justified_checkpoint.epoch := by
+      rw [show query.current_epoch_observed_justified_checkpoint = cp from hobs]
+      rw [hqueryStore]
+      exact (live_checkpoint_projects_to_self cfg later cp e hcpEpoch hcpSlot).symm
+    have hcpRecent : query.current_epoch_observed_justified_checkpoint.epoch + 1 ≥
+        get_current_store_epoch cfg query.store := by
+      rw [show query.current_epoch_observed_justified_checkpoint = cp from hobs,
+        hqueryStore, hcpEpoch]
+      rw [get_current_store_epoch, E.store_current_slot, hBslot]
+      simp [S, compute_epoch_at_slot, compute_start_slot_at_epoch,
+        cfg.slots_per_epoch_pos]
+    have hs := is_confirmed_chain_safe_at_observed_checkpoint cfg ext query
+      hcpProj hcpRecent
+    change is_confirmed_chain_safe cfg ext query
+      (E.fcrStep cfg ext w T).current_epoch_observed_justified_checkpoint.root = true at hs
+    rw [hobs] at hs
+    exact hs
+  have hsafeAhead : get_block_slot later cp.root < get_block_slot later tip →
+      is_confirmed_chain_safe cfg ext query tip = true := by
+    intro hahead
+    have hahead' : compute_start_slot_at_epoch cfg e <
+        get_block_slot later tip := by rw [← hcpSlot]; exact hahead
+    exact h.live_actual_boundary_chain_safe cfg ext E live e
+      he0 heDone hlastAfterZero hHm hw hahead'
+  have hqueryTip : query.confirmed_root = tip := E.fcrStep_confirmed_root cfg ext w T
+  have hqueryObs : query.current_epoch_observed_justified_checkpoint = cp := hobs
+  have hlocal := live_start_call_ge_cached cfg ext query
+    (by simpa only [hqueryStore] using hwf)
+    (by simpa only [hqueryStore] using hwalkK)
+    (by simpa only [hqueryStore] using hheadKnown)
+    (by simpa only [hqueryStore, hqueryTip] using htipLater)
+    (by simpa only [hqueryStore, hqueryObs] using hcpKnown)
+    hinputKnown
+    (by simpa only [hqueryStore] using hstart)
+    (by simpa only [hqueryStore, hqueryObs] using hepoch)
+    (by simpa only [hqueryStore, hqueryObs] using hheadObs)
+    (by simpa only [hqueryStore, hqueryTip] using hheadTipPending)
+    (by simpa only [hqueryStore, hqueryObs] using hcpHeadPending)
+    (by simpa only [hqueryStore, hqueryObs] using hfinalized)
+    (by simpa only [hqueryStore, hqueryTip, hqueryObs] using hrecent)
+    (by simpa only [hqueryObs] using hsafeAt)
+    (by simpa only [hqueryStore, hqueryTip, hqueryObs] using hsafeAhead)
+  rw [hqueryStore, hqueryTip] at hlocal
+  have hresult : is_ancestor later
+      (get_node_for_root (E.confirmed cfg ext w B))
+      (get_node_for_root tip) = true := by
+    rw [← hTsucc, E.confirmed_succ_of_advance cfg ext w T hcall]
+    exact hlocal
+  exact hresult
+
+/-- At a non-start slot update, recency and L1 head ancestry keep the
+confirmed output above the cached root. -/
+theorem AcceptedActualFCRNextSlotSafetyAssumptions.live_nonstart_call_ancestor
+    (h : E.AcceptedActualFCRNextSlotSafetyAssumptions cfg ext)
+    {w : ValidatorIndex} (hw : w ∈ E.honest) (k : ℕ)
+    (hHk1 : E.WithinHorizon cfg (k + 1))
+    (hcall : E.IsFCRCallAt cfg ext w k)
+    (hnotStart : is_start_slot_at_epoch cfg
+      (get_current_slot cfg (E.store cfg ext w (k + 1))) = false)
+    (hrecent : get_block_epoch cfg (E.store cfg ext w (k + 1))
+        (E.confirmed cfg ext w k) + 1 ≥
+      get_current_store_epoch cfg (E.store cfg ext w (k + 1))) :
+    is_ancestor (E.store cfg ext w (k + 1))
+      (get_node_for_root (E.confirmed cfg ext w (k + 1)))
+      (get_node_for_root (E.confirmed cfg ext w k)) = true := by
+  let query := E.fcrStep cfg ext w k
+  have htip : E.confirmed cfg ext w k ∈
+      (E.store cfg ext w k).block_roots :=
+    E.confirmed_known_of_acceptedGlobalTrajectory cfg ext
+      h.semantics h.trajectory h.anchor_eq h.anchor_boundary hw k
+      (E.withinHorizon_mono cfg (Nat.le_succ k) hHk1)
+  have htipLater : E.confirmed cfg ext w k ∈
+      (E.store cfg ext w (k + 1)).block_roots :=
+    (E.store_storeLE cfg ext w (Nat.le_succ k)).1 htip
+  have hinputKnown : getLatestAfterObserved cfg ext query ∈
+      query.store.block_roots := by
+    simpa only [query, Execution.getLatestConfirmedTraceAt,
+      getLatestConfirmedTrace, getLatestAfterObserved] using
+      E.getLatestConfirmedTraceAt_input_known cfg ext
+        h.semantics h.trajectory h.anchor_eq h.anchor_boundary htip
+  have hheadKnown : (get_head cfg (E.store cfg ext w (k + 1))).root ∈
+      (E.store cfg ext w (k + 1)).block_roots :=
+    E.headRootKnown_of_acceptedGlobalTrajectory cfg ext
+      h.semantics h.trajectory h.anchor_eq h.anchor_boundary hw (k + 1) hHk1
+  have hwf : ParentSlotLt (E.store cfg ext w (k + 1)) :=
+    E.store_parentSlotLt cfg ext h.trajectory.wellFormed
+      h.trajectory.externals_coherence h.trajectory.genesis_structure
+      h.trajectory.wellFormed.anchor_parent_unscheduled w (k + 1)
+  have hwalk := E.store_walkKnownK cfg ext h.trajectory.wellFormed
+    h.trajectory.externals_coherence h.trajectory.genesis_structure w (k + 1)
+  have hheadTip : is_ancestor (E.store cfg ext w (k + 1))
+      (get_node_for_root (get_head cfg (E.store cfg ext w (k + 1))).root)
+      (get_node_for_root (E.confirmed cfg ext w k)) = true := by
+    have hslot : E.slot_at cfg k + 1 ≤ E.slot_at cfg (k + 1) := by
+      have ha : E.slot_at cfg k < E.slot_at cfg (k + 1) := by
+        have hc := hcall
+        change get_current_slot cfg (E.store cfg ext w (k + 1)) >
+          get_current_slot cfg (E.store cfg ext w k) at hc
+        rw [E.store_current_slot, E.store_current_slot] at hc
+        exact hc
+      exact Nat.succ_le_iff.mpr ha
+    rw [← is_ancestor_node_root]
+    exact h.confirmed_head_nextSlot cfg ext E hw hw
+      (Nat.le_succ k) hslot hHk1
+  have hlocal := live_nonstart_call_ge_cached cfg ext query
+    (by simpa only [query, E.fcrStep_store] using hwf)
+    (by simpa only [query, E.fcrStep_store] using hwalk)
+    (by simpa only [query, E.fcrStep_store] using hheadKnown)
+    (by simpa only [query, E.fcrStep_store, E.fcrStep_confirmed_root]
+      using htipLater)
+    hinputKnown
+    (by simpa only [query, E.fcrStep_store] using hnotStart)
+    (by simpa only [query, E.fcrStep_store, E.fcrStep_confirmed_root]
+      using hrecent)
+    (by simpa only [query, E.fcrStep_store, E.fcrStep_confirmed_root]
+      using hheadTip)
+  rw [E.confirmed_succ_of_advance cfg ext w k hcall]
+  simpa only [query, E.fcrStep_store, E.fcrStep_confirmed_root] using hlocal
+
+/-- A completed boundary call leaves its output in the preceding epoch or
+later, which is the recency premise for following non-start calls. -/
+theorem AcceptedActualFCRNextSlotSafetyAssumptions.live_boundary_call_recent
+    (h : E.AcceptedActualFCRNextSlotSafetyAssumptions cfg ext)
+    {observer : ValidatorIndex} {n m : ℕ}
+    (live : MonotonicityLiveAssumptions cfg ext E observer n m)
+    (e : Epoch)
+    (he0 : compute_epoch_at_slot cfg (E.slot_at cfg 0) ≤ e)
+    (heDone : compute_start_slot_at_epoch cfg (e + 1) ≤ E.slot_at cfg m)
+    (hlastAfterZero : E.slot_at cfg 0 <
+      compute_start_slot_at_epoch cfg (e + 1) - 1)
+    (hHm : E.WithinHorizon cfg m)
+    {w : ValidatorIndex} (hw : w ∈ E.honest) :
+    let B := E.slot_start cfg (compute_start_slot_at_epoch cfg (e + 1))
+    get_block_epoch cfg (E.store cfg ext w B) (E.confirmed cfg ext w B) + 1 ≥
+      get_current_store_epoch cfg (E.store cfg ext w B) := by
+  let S := compute_start_slot_at_epoch cfg (e + 1)
+  let B := E.slot_start cfg S
+  let T := B - 1
+  let later := E.store cfg ext w B
+  let query := E.fcrStep cfg ext w T
+  dsimp only
+  obtain ⟨ast, ablk, hgenEq, _, _⟩ := h.trajectory.genesis_structure
+  have hgenTime : E.genesis_store.genesis_time ≤ E.genesis_store.time := by
+    rw [hgenEq]
+    simp only [get_forkchoice_store]
+    omega
+  have hfrom : E.slot_at cfg 0 < S :=
+    lt_of_lt_of_le hlastAfterZero (Nat.sub_le _ _)
+  have hBpos : 0 < B :=
+    (E.slot_at_lt_iff cfg h.trajectory.whole_seconds hgenTime).1 hfrom
+  have hTsucc : T + 1 = B :=
+    Nat.sub_add_cancel (Nat.succ_le_of_lt hBpos)
+  have hBslot : E.slot_at cfg B = S :=
+    E.slot_at_slot_start cfg h.trajectory.whole_seconds hfrom.le hgenTime
+  have hBm : B ≤ m := by
+    apply Nat.le_of_not_gt
+    intro htooLate
+    have hslotLt : E.slot_at cfg m < S :=
+      (E.slot_at_lt_iff cfg h.trajectory.whole_seconds hgenTime).2 htooLate
+    exact (Nat.not_lt_of_ge heDone) hslotLt
+  have hHB : E.WithinHorizon cfg B := E.withinHorizon_mono cfg hBm hHm
+  have hcall : E.IsFCRCallAt cfg ext w T :=
+    E.slot_start_is_fcr_call cfg ext h.trajectory.whole_seconds
+      hgenTime w hfrom
+  have hstart : is_start_slot_at_epoch cfg
+      (get_current_slot cfg later) = true :=
+    h.live_boundary_is_start cfg ext E w (e + 1) hfrom.le
+  obtain ⟨cp, hcpEpoch, hobs, hcpKnown, hcpSlot, _⟩ :=
+    h.live_boundary_checkpoint_geometry cfg ext E live
+      he0 heDone hlastAfterZero hHm hw
+  have htip : E.confirmed cfg ext w T ∈
+      (E.store cfg ext w T).block_roots :=
+    E.confirmed_known_of_acceptedGlobalTrajectory cfg ext
+      h.semantics h.trajectory h.anchor_eq h.anchor_boundary hw T
+      (E.withinHorizon_mono cfg (Nat.sub_le B 1) hHB)
+  have htipLater : E.confirmed cfg ext w T ∈ later.block_roots :=
+    (E.store_storeLE cfg ext w (by rw [← hTsucc]; exact Nat.le_succ T)).1 htip
+  have hheadKnown : (get_head cfg later).root ∈ later.block_roots :=
+    E.headRootKnown_of_acceptedGlobalTrajectory cfg ext
+      h.semantics h.trajectory h.anchor_eq h.anchor_boundary hw B hHB
+  have hwf : ParentSlotLt later :=
+    E.store_parentSlotLt cfg ext h.trajectory.wellFormed
+      h.trajectory.externals_coherence h.trajectory.genesis_structure
+      h.trajectory.wellFormed.anchor_parent_unscheduled w B
+  have hwalk := E.store_walkKnownK cfg ext h.trajectory.wellFormed
+    h.trajectory.externals_coherence h.trajectory.genesis_structure w B
+  have hinputKnown : getLatestAfterObserved cfg ext query ∈
+      query.store.block_roots := by
+    simpa only [query, Execution.getLatestConfirmedTraceAt,
+      getLatestConfirmedTrace, getLatestAfterObserved] using
+      E.getLatestConfirmedTraceAt_input_known cfg ext
+        h.semantics h.trajectory h.anchor_eq h.anchor_boundary htip
+  have hheadObs : cp = later.unrealized_justifications
+      (get_head cfg later).root := by
+    have hgate := (h.live_ffg_actual_boundary_inputs cfg ext E live
+      he0 heDone hlastAfterZero hw).1
+    simpa only [B, S, T, later, hTsucc, hobs] using hgate
+  have hepoch : get_block_epoch cfg later cp.root + 1 =
+      get_current_store_epoch cfg later := by
+    have he := h.live_ffg_observed_epoch_at_boundary cfg ext E live
+      he0 heDone hlastAfterZero hw
+    simpa only [B, S, T, later, hTsucc, hobs] using he
+  have hfinalized : get_block_slot later later.finalized_checkpoint.root <
+      get_block_slot later cp.root ∨
+      later.finalized_checkpoint.root = cp.root := by
+    have hf := h.live_boundary_finalized_below_or_eq_observed
+      cfg ext E live he0 heDone hlastAfterZero hHm hw
+    simpa only [B, S, T, later, hTsucc, hobs] using hf
+  have hqueryStore : query.store = later := by
+    change (E.fcrStep cfg ext w T).store = E.store cfg ext w B
+    rw [E.fcrStep_store, hTsucc]
+  have hqueryTip : query.confirmed_root = E.confirmed cfg ext w T :=
+    E.fcrStep_confirmed_root cfg ext w T
+  have hqueryObs : query.current_epoch_observed_justified_checkpoint = cp := hobs
+  have hanc := h.live_boundary_call_ancestor cfg ext E live e
+    he0 heDone hlastAfterZero hHm hw
+  have hancQ : is_ancestor query.store
+      (get_node_for_root (get_latest_confirmed cfg ext query))
+      (get_node_for_root query.confirmed_root) = true := by
+    rw [hqueryStore, hqueryTip]
+    have ha := hanc
+    change is_ancestor later
+      (get_node_for_root (E.confirmed cfg ext w B))
+      (get_node_for_root (E.confirmed cfg ext w T)) = true at ha
+    rw [← hTsucc, E.confirmed_succ_of_advance cfg ext w T hcall] at ha
+    exact ha
+  have hslot := live_start_call_slot_ge_checkpoint cfg ext query
+    (by simpa only [hqueryStore] using hwf)
+    (by simpa only [hqueryStore] using hwalk)
+    (by simpa only [hqueryStore] using hheadKnown)
+    (by simpa only [hqueryStore, hqueryTip] using htipLater)
+    hinputKnown
+    (by simpa only [hqueryStore] using hstart)
+    (by simpa only [hqueryStore, hqueryObs] using hepoch)
+    (by simpa only [hqueryStore, hqueryObs] using hheadObs)
+    (by simpa only [hqueryStore, hqueryObs] using hfinalized)
+    hancQ
+  have hresultSlot : compute_start_slot_at_epoch cfg e ≤
+      get_block_slot later (E.confirmed cfg ext w B) := by
+    rw [← hcpSlot]
+    have hs := hslot
+    rw [hqueryStore, hqueryObs,
+      ← E.confirmed_succ_of_advance cfg ext w T hcall,
+      hTsucc] at hs
+    exact hs
+  have hresultEpoch : e ≤ get_block_epoch cfg later
+      (E.confirmed cfg ext w B) := by
+    apply (Nat.le_div_iff_mul_le cfg.slots_per_epoch_pos).2
+    simpa only [get_block_epoch, compute_epoch_at_slot,
+      compute_start_slot_at_epoch] using hresultSlot
+  have hcurrent : get_current_store_epoch cfg later = e + 1 := by
+    rw [get_current_store_epoch, E.store_current_slot, hBslot]
+    simp [S, compute_epoch_at_slot, compute_start_slot_at_epoch,
+      cfg.slots_per_epoch_pos]
+  rw [hcurrent]
+  exact Nat.add_le_add_right hresultEpoch 1
+
+/-- Recency and the one-second ancestor edge hold throughout an in-horizon
+execution with the live assumptions. -/
+theorem AcceptedActualFCRNextSlotSafetyAssumptions.live_second_invariants
+    (h : E.AcceptedActualFCRNextSlotSafetyAssumptions cfg ext)
+    {observer : ValidatorIndex} {n m : ℕ}
+    (live : MonotonicityLiveAssumptions cfg ext E observer n m)
+    {w : ValidatorIndex} (hw : w ∈ E.honest)
+    (hHm : E.WithinHorizon cfg m) :
+    ∀ k : ℕ, k ≤ m →
+      get_block_epoch cfg (E.store cfg ext w k) (E.confirmed cfg ext w k) + 1 ≥
+        get_current_store_epoch cfg (E.store cfg ext w k) ∧
+      (∀ j : ℕ, k = j + 1 →
+        is_ancestor (E.store cfg ext w k)
+          (get_node_for_root (E.confirmed cfg ext w k))
+          (get_node_for_root (E.confirmed cfg ext w j)) = true) := by
+  intro k hk
+  induction k with
+  | zero =>
+      constructor
+      · exact h.live_initial_confirmed_recent cfg ext E w
+      · intro j hj
+        omega
+  | succ k ih =>
+      have hkm : k ≤ m := (Nat.le_succ k).trans hk
+      obtain ⟨hrecentOld, _⟩ := ih hkm
+      have hHk1 : E.WithinHorizon cfg (k + 1) :=
+        E.withinHorizon_mono cfg hk hHm
+      by_cases hcall : E.IsFCRCallAt cfg ext w k
+      · have hadvance : E.slot_at cfg k < E.slot_at cfg (k + 1) := by
+          have hc := hcall
+          change get_current_slot cfg (E.store cfg ext w (k + 1)) >
+            get_current_slot cfg (E.store cfg ext w k) at hc
+          rw [E.store_current_slot, E.store_current_slot] at hc
+          exact hc
+        by_cases hstart : is_start_slot_at_epoch cfg
+            (E.slot_at cfg (k + 1)) = true
+        · obtain ⟨e, he0, heDone, hlast, hB⟩ :=
+            h.live_start_call_geometry cfg ext E k m hk hadvance hstart
+          have hanc := h.live_boundary_call_ancestor cfg ext E live e
+            he0 heDone hlast hHm hw
+          have hrec := h.live_boundary_call_recent cfg ext E live e
+            he0 heDone hlast hHm hw
+          constructor
+          · simpa only [hB] using hrec
+          · intro j hj
+            have hjeq : j = k := by omega
+            subst j
+            simpa only [hB, Nat.add_sub_cancel_left] using hanc
+        · have hslotStep : E.slot_at cfg (k + 1) =
+              E.slot_at cfg k + 1 := by
+            exact Nat.le_antisymm
+              (E.live_slot_at_succ_le cfg
+                h.trajectory.whole_seconds (by
+                  obtain ⟨_, _, hgenEq, _, _⟩ := h.trajectory.genesis_structure
+                  rw [hgenEq]
+                  simp only [get_forkchoice_store]
+                  omega) k)
+              (Nat.succ_le_iff.mpr hadvance)
+          have hnot : is_start_slot_at_epoch cfg
+              (get_current_slot cfg (E.store cfg ext w (k + 1))) = false := by
+            rw [E.store_current_slot]
+            cases hs : is_start_slot_at_epoch cfg (E.slot_at cfg (k + 1)) with
+            | false => rfl
+            | true => exact False.elim (hstart hs)
+          have hepochSame : get_current_store_epoch cfg
+              (E.store cfg ext w (k + 1)) =
+              get_current_store_epoch cfg (E.store cfg ext w k) := by
+            rw [get_current_store_epoch, get_current_store_epoch,
+              E.store_current_slot, E.store_current_slot, hslotStep]
+            exact live_epoch_eq_of_nonstart_succ cfg _
+              (by simpa only [E.store_current_slot, hslotStep] using hnot)
+          have htip : E.confirmed cfg ext w k ∈
+              (E.store cfg ext w k).block_roots :=
+            E.confirmed_known_of_acceptedGlobalTrajectory cfg ext
+              h.semantics h.trajectory h.anchor_eq h.anchor_boundary hw k
+              (E.withinHorizon_mono cfg (Nat.le_succ k) hHk1)
+          have hstable := h.live_known_epoch_stable cfg ext E
+            (Nat.le_succ k) htip
+          have hrecentQuery : get_block_epoch cfg
+              (E.store cfg ext w (k + 1)) (E.confirmed cfg ext w k) + 1 ≥
+              get_current_store_epoch cfg (E.store cfg ext w (k + 1)) := by
+            rw [← hstable, hepochSame]
+            exact hrecentOld
+          have hanc := h.live_nonstart_call_ancestor cfg ext E hw k
+            hHk1 hcall hnot hrecentQuery
+          have hresultKnown : E.confirmed cfg ext w (k + 1) ∈
+              (E.store cfg ext w (k + 1)).block_roots :=
+            E.confirmed_known_of_acceptedGlobalTrajectory cfg ext
+              h.semantics h.trajectory h.anchor_eq h.anchor_boundary hw
+              (k + 1) hHk1
+          have htipLater := (E.store_storeLE cfg ext w (Nat.le_succ k)).1 htip
+          have hwf : ParentSlotLt (E.store cfg ext w (k + 1)) :=
+            E.store_parentSlotLt cfg ext h.trajectory.wellFormed
+              h.trajectory.externals_coherence h.trajectory.genesis_structure
+              h.trajectory.wellFormed.anchor_parent_unscheduled w (k + 1)
+          have hwalk := E.store_walkKnownK cfg ext h.trajectory.wellFormed
+            h.trajectory.externals_coherence h.trajectory.genesis_structure
+            w (k + 1) (E.confirmed cfg ext w k) htipLater
+            (E.confirmed cfg ext w (k + 1)) hresultKnown
+          have hEpochLe := live_epoch_mono_of_ancestor cfg
+            (E.store cfg ext w (k + 1)) hwf hresultKnown htipLater
+            hwalk hanc
+          constructor
+          · exact hrecentQuery.trans (Nat.add_le_add_right hEpochLe 1)
+          · intro j hj
+            have hjeq : j = k := by omega
+            subst j
+            exact hanc
+      · have hsame : E.confirmed cfg ext w (k + 1) =
+            E.confirmed cfg ext w k :=
+          E.confirmed_succ_of_no_advance cfg ext w k hcall
+        have hslotEq : E.slot_at cfg (k + 1) = E.slot_at cfg k := by
+          have hmono := E.slot_at_mono cfg (Nat.le_succ k)
+          have hn := hcall
+          change ¬ get_current_slot cfg (E.store cfg ext w (k + 1)) >
+            get_current_slot cfg (E.store cfg ext w k) at hn
+          rw [E.store_current_slot, E.store_current_slot] at hn
+          exact Nat.le_antisymm (Nat.le_of_not_gt hn) hmono
+        have htip : E.confirmed cfg ext w k ∈
+            (E.store cfg ext w k).block_roots :=
+          E.confirmed_known_of_acceptedGlobalTrajectory cfg ext
+            h.semantics h.trajectory h.anchor_eq h.anchor_boundary hw k
+            (E.withinHorizon_mono cfg (Nat.le_succ k) hHk1)
+        have hstable := h.live_known_epoch_stable cfg ext E
+          (Nat.le_succ k) htip
+        constructor
+        · rw [hsame, ← hstable, get_current_store_epoch,
+            E.store_current_slot, hslotEq]
+          simpa only [get_current_store_epoch, E.store_current_slot] using
+            hrecentOld
+        · intro j hj
+          have hjeq : j = k := by omega
+          subst j
+          rw [hsame]
+          exact is_ancestor_refl _ _
+
+/-- Compose the adjacent edges in the later store to obtain the full
+time-interval ancestry relation. -/
+theorem AcceptedActualFCRNextSlotSafetyAssumptions.live_confirmed_ancestor_interval
+    (h : E.AcceptedActualFCRNextSlotSafetyAssumptions cfg ext)
+    {observer : ValidatorIndex} {n m : ℕ}
+    (live : MonotonicityLiveAssumptions cfg ext E observer n m)
+    {w : ValidatorIndex} (hw : w ∈ E.honest)
+    (hHm : E.WithinHorizon cfg m) :
+    ∀ k : ℕ, k ≤ m → ∀ j : ℕ, j ≤ k →
+      is_ancestor (E.store cfg ext w k)
+        (get_node_for_root (E.confirmed cfg ext w k))
+        (get_node_for_root (E.confirmed cfg ext w j)) = true := by
+  intro k
+  induction k with
+  | zero =>
+      intro hk j hj
+      have hj0 : j = 0 := Nat.eq_zero_of_le_zero hj
+      subst j
+      exact is_ancestor_refl _ _
+  | succ k ih =>
+      intro hk1 j hj
+      by_cases hjeq : j = k + 1
+      · subst j
+        exact is_ancestor_refl _ _
+      have hjk : j ≤ k := by omega
+      have hk : k ≤ m := (Nat.le_succ k).trans hk1
+      have hHk : E.WithinHorizon cfg k :=
+        E.withinHorizon_mono cfg hk hHm
+      have hHk1 : E.WithinHorizon cfg (k + 1) :=
+        E.withinHorizon_mono cfg hk1 hHm
+      have hHj : E.WithinHorizon cfg j :=
+        E.withinHorizon_mono cfg (hjk.trans hk) hHm
+      have htopK : E.confirmed cfg ext w k ∈
+          (E.store cfg ext w k).block_roots :=
+        E.confirmed_known_of_acceptedGlobalTrajectory cfg ext
+          h.semantics h.trajectory h.anchor_eq h.anchor_boundary hw k hHk
+      have hbaseJ : E.confirmed cfg ext w j ∈
+          (E.store cfg ext w j).block_roots :=
+        E.confirmed_known_of_acceptedGlobalTrajectory cfg ext
+          h.semantics h.trajectory h.anchor_eq h.anchor_boundary hw j hHj
+      have hbaseK : E.confirmed cfg ext w j ∈
+          (E.store cfg ext w k).block_roots :=
+        (E.store_storeLE cfg ext w hjk).1 hbaseJ
+      have hprev := ih hk j hjk
+      have hprevLater := h.live_ancestor_forward cfg ext E
+        (Nat.le_succ k) htopK hbaseK hprev
+      have hedge := (h.live_second_invariants cfg ext E live hw hHm
+        (k + 1) hk1).2 k rfl
+      have htopLater : E.confirmed cfg ext w (k + 1) ∈
+          (E.store cfg ext w (k + 1)).block_roots :=
+        E.confirmed_known_of_acceptedGlobalTrajectory cfg ext
+          h.semantics h.trajectory h.anchor_eq h.anchor_boundary hw
+          (k + 1) hHk1
+      have hbaseLater : E.confirmed cfg ext w j ∈
+          (E.store cfg ext w (k + 1)).block_roots :=
+        (E.store_storeLE cfg ext w (hjk.trans (Nat.le_succ k))).1 hbaseJ
+      have hmidLater : E.confirmed cfg ext w k ∈
+          (E.store cfg ext w (k + 1)).block_roots :=
+        (E.store_storeLE cfg ext w (Nat.le_succ k)).1 htopK
+      have hwf : ParentSlotLt (E.store cfg ext w (k + 1)) :=
+        E.store_parentSlotLt cfg ext h.trajectory.wellFormed
+          h.trajectory.externals_coherence h.trajectory.genesis_structure
+          h.trajectory.wellFormed.anchor_parent_unscheduled w (k + 1)
+      have hwalk := E.store_walkKnownK cfg ext h.trajectory.wellFormed
+        h.trajectory.externals_coherence h.trajectory.genesis_structure
+        w (k + 1)
+      exact is_ancestor_trans hwf
+        (hwalk _ hbaseLater _ htopLater)
+        (hwalk _ hbaseLater _ hmidLater)
+        hedge hprevLater
+
 end Execution
+
+/-- Accepted live monotonicity for the stored executable FCR output. -/
+theorem acceptedSpec_monotonicity_live :
+    AcceptedSpec_Monotonicity_live cfg ext := by
+  intro E haccepted v hv n m hnm hHm live
+  obtain ⟨h⟩ := haccepted
+  exact h.live_confirmed_ancestor_interval cfg ext E live hv hHm
+    m (Nat.le_refl m) n hnm
 
 end FastConfirmation.Spec
 
