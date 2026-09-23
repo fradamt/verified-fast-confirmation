@@ -1,5 +1,5 @@
 module
-public import FastConfirmationInternal.Legacy.SynchronyConversion
+public import FastConfirmationInternal.Network.SynchronyConversion
 
 @[expose] public section
 

@@ -1,10 +1,10 @@
 module
 public import FastConfirmationStatements.Premises.FFGState
-public import FastConfirmationInternal.Legacy.ScheduledCertificates
+public import FastConfirmationInternal.FFG.Certificates
 
 @[expose] public section
 
-/-! Defines legacy proof vocabulary outside the public review claims. -/
+/-! Concrete block-local FFG state predicates used by proofs. -/
 
 namespace FastConfirmation.Spec
 variable {Root : Type*} [LinearOrder Root] [Inhabited Root]

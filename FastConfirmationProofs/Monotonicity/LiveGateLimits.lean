@@ -1,5 +1,5 @@
 module
-public import FastConfirmationInternal.Legacy.LatestTraceResult
+public import FastConfirmationInternal.Execution.LatestTraceResult
 public import FastConfirmationProofs.FCRRule.GetLatestConfirmedTrace
 public import FastConfirmationProofs.FFG.SourceHistory.SafeFromInvariant
 

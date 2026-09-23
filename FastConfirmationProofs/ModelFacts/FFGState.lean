@@ -1,10 +1,10 @@
 module
 public import FastConfirmationStatements.Premises.FFGCertificates
 public import FastConfirmationStatements.Premises.FFGState
-public import FastConfirmationInternal.Legacy.ScheduledCertificates
-public import FastConfirmationInternal.Legacy.ScheduledFFGState
-public import FastConfirmationInternal.Legacy.ScheduledCheckpointLinks
-public import FastConfirmationInternal.Legacy.SynchronyConversion
+public import FastConfirmationInternal.FFG.Certificates
+public import FastConfirmationInternal.FFG.ScheduledState
+public import FastConfirmationInternal.FFG.CheckpointLinks
+public import FastConfirmationInternal.Network.SynchronyConversion
 public import FastConfirmationProofs.ModelFacts.ScheduledPrefixes
 
 @[expose] public section

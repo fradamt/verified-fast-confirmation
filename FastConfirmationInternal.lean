@@ -8,10 +8,10 @@ public import FastConfirmationInternal.Discount.SupportClasses
 public import FastConfirmationInternal.FCRRule.SelectedMargin
 public import FastConfirmationInternal.FCRRule.SelectedParentTrace
 
-public import FastConfirmationInternal.Legacy.ScheduledCertificates
-public import FastConfirmationInternal.Legacy.ScheduledCheckpointLinks
-public import FastConfirmationInternal.Legacy.ScheduledFFGState
-public import FastConfirmationInternal.Legacy.SynchronyConversion
-public import FastConfirmationInternal.Legacy.LatestTraceResult
+public import FastConfirmationInternal.FFG.Certificates
+public import FastConfirmationInternal.FFG.CheckpointLinks
+public import FastConfirmationInternal.FFG.ScheduledState
+public import FastConfirmationInternal.Network.SynchronyConversion
+public import FastConfirmationInternal.Execution.LatestTraceResult
 
 /-! Imports the legacy predicates and reusable proof vocabulary below the public claim surface. -/
