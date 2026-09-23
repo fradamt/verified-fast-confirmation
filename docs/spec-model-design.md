@@ -189,6 +189,29 @@ assumption. The exact field is in [the review guide](REVIEW_GUIDE.md). The
 legacy `Synchrony` record is unchanged; conversion to `PaperSafetySynchrony`
 now takes explicit payload-relay evidence.
 
+## Live monotonicity and the paper
+
+The paper's `Theorem1_Monotonicity` (`FastConfirmation/Paper/LMDGhost/`)
+states that the LMD-GHOST safety predicate persists: a block confirmed at
+`t` is confirmed at each later `t'`. It uses Assumption 4,
+`beta < (1 - pb) / 4`, and `CommitteeCoversEpoch`. The proposed spec statement
+`Spec_Monotonicity_live` is about the cached executable root. The
+correspondence is:
+
+| Paper | Spec model |
+|---|---|
+| Assumption 4 | `paper_byzantine_boost_bound`, with actual non-honest stake |
+| `CommitteeCoversEpoch` | accepted `ExternalsCoherence.committee_coverage` |
+| synchronous honest votes | `honest_block_each_slot`, `honest_votes_extend_initial_head`, accepted synchrony |
+| threshold with `beta` | `configured_threshold_margin`, because the executable threshold uses the configured cap |
+| none | FFG gates, staleness revert, observed restart, epoch-start reconfirmation |
+
+The last row has no counterpart in the paper's LMD-only theorem. The paper's
+Assumption 3.2 lets a justification appear two epochs late; the executable
+selector needs it one epoch earlier. `Proof/MonotonicityLiveGates.lean`
+records the resulting gate and revert facts, and `docs/REVIEW_GUIDE.md` gives
+the scenario and the candidate FFG timing field. The statement is not proved.
+
 ## Module system
 
 Each library file starts with `module`. Use `public import` for library

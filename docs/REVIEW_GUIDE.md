@@ -32,6 +32,50 @@ selector cannot lower the candidate's block slot on the known-walk domain.
 The finalized-revert phase remains the open branch; this local fact does not
 establish the live statement.
 
+### Missing FFG timing premise
+
+The four fields do not bound the delay before a justification appears in
+`store.unrealized_justifications`. The accepted paper Assumption 3.2
+(`PaperA32Inclusion`) lets the checkpoint of epoch `e` appear there only by
+the start of epoch `e + 2`, through the last block of epoch `e + 1`. The
+executable selector needs the previous epoch's justification during the
+current epoch. `MonotonicityLiveGates.lean` proves the two executable facts:
+
+- `find_latest_confirmed_descendant_eq_of_lagging_unrealized`: in a
+  non-start slot, if the unrealized justification of the head and of the
+  previous-slot head is older than the previous epoch, the selector returns
+  its input.
+- `get_latest_confirmed_eq_finalized_of_stale` and
+  `Execution.confirmed_succ_eq_finalized_of_stale_call`: a cached root that
+  is two epochs old reverts to the finalized root when the observed
+  checkpoint block is not from the previous epoch and the finalized block is
+  two epochs old.
+
+Scenario, all stake honest, one honest block in each slot: at the start of
+epoch 1 the previous-epoch loop confirms epoch-0 blocks, and in epoch 1 the
+tentative loop can confirm epoch-1 blocks (the head gate is `0 + 1 >= 1`).
+If the epoch-1 checkpoint appears in `unrealized_justifications` only through
+the last block of epoch 2, and that block arrives after the last-slot call,
+then both selector gates stay closed in every non-start slot of epoch 2. The
+start-slot call cannot confirm the epoch's own first block, because no vote
+supports it yet. At the start of epoch 3 the cached epoch-1 root is stale,
+the observed checkpoint is from epoch 0, and the call returns the anchor. The
+four fields hold in this run. This argument is not a kernel-checked accepted
+execution: the finite witness does not yet have a block in each slot.
+
+A live proof therefore needs an additional FFG timing field. The minimal
+candidate is: at the last-slot call of each epoch `e` in the interval, each
+honest store's `unrealized_justified_checkpoint` is the epoch-`e` checkpoint
+of the honest chain; at the next epoch start the head's unrealized
+justification is equal to it; and the voting source of the previous-slot head
+is at most two epochs old. The observed restart then moves a stale cached
+root forward to the epoch-`e` boundary block. Epoch-start reconfirmation of a
+same-epoch cached root can use the configured bound
+`CONFIRMATION_BYZANTINE_THRESHOLD <= 25` (`Config`) with the accepted
+`span_fraction` and `estimate_sound`: each added committee adds honest support
+of at least `3/4` of its weight, and the threshold grows by at most half of
+`3/2` of that weight. These parts are not yet proved.
+
 The accepted finite witness proves the need for prefix production:
 `descendant_votes_without_continuous_production_revert` has all honest stake,
 descendant votes in slots 2–7, and the paper's strict economic bound. The

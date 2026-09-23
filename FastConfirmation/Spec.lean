@@ -6,6 +6,7 @@ public import FastConfirmation.Spec.Proof.PayloadSupport
 public import FastConfirmation.Spec.Proof.PayloadPersistence
 public import FastConfirmation.Spec.Proof.OancTransport
 public import FastConfirmation.Spec.Proof.MonotonicityTrace
+public import FastConfirmation.Spec.Proof.MonotonicityLiveGates
 public import FastConfirmation.Spec.Proof.AcceptedStrictPrefixExtraQueryCounterexample
 public import FastConfirmation.Spec.Proof.AcceptedPinnedEconomicsStrictPrefixExtraQueryCounterexample
 

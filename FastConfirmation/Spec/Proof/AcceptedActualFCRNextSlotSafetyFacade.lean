@@ -228,7 +228,10 @@ theorem acceptedSpec_safety_next_slot :
   exact h.confirmed_head_nextSlot cfg ext E hv hw hnm hnext hHm
 
 /-- Accepted-bundle specialization of the upstream strict-monotonicity
-statement. This is a proposed statement; no proof is claimed here. -/
+statement. This is a proposed statement; no proof is claimed here. The
+liveness record does not bound the delay before a justification appears in
+`unrealized_justifications`; `MonotonicityLiveGates.lean` records the
+executable gates that then keep the cached root stale and revert it. -/
 def AcceptedSpec_Monotonicity_live : Prop :=
   Spec_Monotonicity_live cfg ext
     (fun E => Nonempty (E.AcceptedActualFCRNextSlotSafetyAssumptions cfg ext))
