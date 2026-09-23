@@ -18,6 +18,38 @@ namespace FastConfirmation.Spec
 variable {Root : Type*} [LinearOrder Root] [Inhabited Root]
 variable (cfg : Config) (ext : Externals Root)
 
+/-- An epoch checkpoint whose root is an actual block of that epoch is the
+start-slot block on the head's ancestor walk. The pending target accepts
+either Gloas payload status of the head walk. -/
+theorem live_epoch_checkpoint_root_on_head
+    (store : Store Root) (e : Epoch) (r : Root)
+    (hwf : ParentSlotLt store)
+    (hwalk : WalkKnown store (compute_start_slot_at_epoch cfg e)
+      (get_head cfg store).root)
+    (hcheckpoint : get_checkpoint_for_block cfg store
+      (get_head cfg store).root e = ⟨e, r⟩)
+    (hepoch : get_block_epoch cfg store r = e) :
+    is_ancestor store (get_head cfg store) (get_node_for_root r) = true := by
+  have hroot : (get_ancestor store
+      (get_node_for_root (get_head cfg store).root)
+      (compute_start_slot_at_epoch cfg e)).root = r := by
+    exact congrArg Checkpoint.root hcheckpoint
+  have hslotLe : (store.blocks r).slot ≤ compute_start_slot_at_epoch cfg e := by
+    rw [← hroot]
+    exact (get_ancestor_spec hwf hwalk).2
+  have hstartLe : compute_start_slot_at_epoch cfg e ≤ (store.blocks r).slot := by
+    simp only [get_block_epoch, compute_epoch_at_slot] at hepoch
+    simp only [compute_start_slot_at_epoch]
+    rw [← hepoch]
+    exact Nat.div_mul_le_self (store.blocks r).slot cfg.slots_per_epoch
+  have hslot : (store.blocks r).slot = compute_start_slot_at_epoch cfg e :=
+    Nat.le_antisymm hslotLe hstartLe
+  simp only [get_node_for_root, is_ancestor_pending, hslot]
+  rw [get_ancestor_root_eq_status store
+    (compute_start_slot_at_epoch cfg e) (get_head cfg store).root
+    (get_head cfg store).payload_status .pending]
+  exact decide_eq_true hroot
+
 /-- The slot computed as an epoch boundary satisfies the FCR start test. -/
 theorem live_epoch_start_is_start (e : Epoch) :
     is_start_slot_at_epoch cfg (compute_start_slot_at_epoch cfg e) = true := by
