@@ -172,21 +172,25 @@ decision 13).
 
 ## Gloas payload-envelope synchrony
 
-On 22 September 2026, the accepted synchrony assumption was strengthened by
-one field, `PaperSafetySynchrony.payload_envelope_relay`. Once an honest
-validator has verified a payload envelope, every honest validator must have
-it by the last second of that slot. This uses the same delivery bound and
-horizon handling as `block_relay`. Both the sender state and receiver state
-are within the verification horizon. The successor clock read only identifies
-the deadline; it does not require a successor state within the horizon.
+The accepted synchrony assumption has separate `envelope_delivery` and
+`data_availability_relay` fields. A verified envelope reaches each honest
+receiver at an event position where its block is known, by the same deadline
+as `block_relay`. An earlier rejected envelope needs redelivery after the
+block. Data availability propagates to the receiver's envelope observation
+by that deadline. `ExternalsCoherence.verify_envelope_deterministic` states
+that verification depends on the state and envelope, not the observation.
+The sender and receiver states are within the verification horizon. The
+successor clock read identifies the deadline only.
 
 An honest index-1 attestation has a FULL head, whose envelope is locally
-verified. Relay supplies that envelope before the next-slot delivery tick.
-Handler preservation carries it through any events before the attestation.
+verified. `Execution.payload_envelope_relay_of_parts` derives the old relay
+outcome, using block-state agreement proved from deterministic state
+transitions. Handler preservation carries it through any events before the
+attestation.
 This closes the payload part of validation without adding a branch-weight
-assumption. The exact field is in [the review guide](REVIEW_GUIDE.md). The
+assumption. The exact premises are in [the review guide](REVIEW_GUIDE.md). The
 legacy `Synchrony` record is unchanged; conversion to `PaperSafetySynchrony`
-now takes explicit payload-relay evidence.
+now takes explicit envelope-delivery and data-relay evidence.
 
 ## Live monotonicity and the paper
 

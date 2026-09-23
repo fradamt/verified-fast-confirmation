@@ -62,17 +62,10 @@ theorem SelectedMarginAssumptions.genesis_store
   obtain ⟨anchor_state, anchor_block, hstore, _, _⟩ := hA.genesis
   exact ⟨anchor_state, anchor_block, hstore⟩
 
-/-- Payload-envelope relay between honest nodes. The legacy `Synchrony`
-bundle does not contain it; `Synchrony.toPaperSafetySynchrony` takes it as a
-separate premise. -/
+/-- Compatibility name for the two operational payload premises used with
+the legacy `Synchrony` bundle. -/
 def PayloadEnvelopeRelay (E : Execution Root) : Prop :=
-  ∀ v ∈ E.honest, ∀ n r,
-    E.WithinHorizon cfg n →
-    is_payload_verified (E.store cfg ext v n) r = true →
-    ∀ w ∈ E.honest, ∀ m,
-      E.WithinHorizon cfg m →
-      E.slot_at cfg n + 1 ≤ E.slot_at cfg (m + 1) →
-      is_payload_verified (E.store cfg ext w m) r = true
+  EnvelopeDelivery cfg ext E ∧ DataAvailabilityRelay cfg ext E
 
 /-- Compatibility projection: the old broad bundle implies the strict local
 bundle, but none of the reverse (and in particular none of the circular
@@ -81,7 +74,8 @@ theorem SpecAssumptions.toSelectedMarginAssumptions {E : Execution Root}
     (hSA : SpecAssumptions cfg ext E) (hpayload : PayloadEnvelopeRelay cfg ext E) :
     SelectedMarginAssumptions cfg ext E := by
   obtain ⟨hgen, hwf, hdiv, hhb, hsync, hec, hsv, hbb, hji⟩ := hSA
-  exact ⟨hgen, hwf, hdiv, hhb, hsync.toPaperSafetySynchrony cfg ext hpayload, hec, hsv, hbb,
+  exact ⟨hgen, hwf, hdiv, hhb,
+    hsync.toPaperSafetySynchrony cfg ext hpayload.1 hpayload.2, hec, hsv, hbb,
     ⟨fun w hw m _hH => (hji.checkpoint_known w hw m).1,
       hji.justified_checkpoint_cached⟩⟩
 

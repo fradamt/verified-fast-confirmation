@@ -695,6 +695,8 @@ private theorem witnessExternalsCoherence :
     simp [witnessExternals, hdefault]
   · intro state slot a _hreachable _hlt
     rfl
+  · intro state signed o o'
+    rfl
 
 private theorem witnessStaticValidatorSet :
     StaticValidatorSet witnessConfig witnessExecution := by

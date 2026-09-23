@@ -2,12 +2,16 @@
 
 ## Known scope limits
 
-Pending user decision:
-
-- Optimistic-sync `VALID` status is not modelled. The normative `MUST` in
-  `is_one_confirmed` is not implemented in the Python function body either.
-- Execution, envelope, and bid checks are opaque Boolean externals with no
-  source-soundness law.
+- The model is non-optimistic by design. No optimistic status will be added.
+  A payload enters `store.payloads` only through
+  `on_execution_payload_envelope`, after
+  `verify_execution_payload_envelope = true`. That external represents the
+  complete Python validation, including the execution engine's `VALID`
+  verdict. Every imported payload is fully validated. The `is_one_confirmed`
+  `MUST` concerning non-`VALID` blocks holds by construction in this model.
+- The execution layer remains uninterpreted. Data-availability relay and
+  envelope-verification determinism are explicit premises. This is the
+  intended abstraction boundary for the external checks.
 - The paper-model Algorithm-1 monotonicity witness assumes future confirmation
   of honest-view-safe blocks.
 - Live monotonicity needs an FFG timing premise. See
@@ -202,37 +206,77 @@ The bundled `leanchecker` is intentionally not a blocking gate: on this
 an external verifier, and showed an unsuitable runtime/memory profile for
 routine hosted CI.
 
-## Gloas synchrony strengthening (22 September 2026)
+## Gloas envelope premises (23 September 2026)
 
-`PaperSafetySynchrony` gains one field. This strengthens the assumptions of
-the accepted theorem even though its public declaration text is unchanged.
-The field is verbatim:
+`PaperSafetySynchrony` has two operational premises. Their definitions are
+verbatim:
 
 ```lean
-  /-- Verified payload envelopes known to an honest node reach every honest
-      node by the last second of the same slot. As in `block_relay`, the
-      receiving state is horizon-scoped; `m + 1` only locates its deadline. -/
-  payload_envelope_relay : ∀ v ∈ E.honest, ∀ n r,
+def EnvelopeDelivery (E : Execution Root) : Prop :=
+  ∀ v ∈ E.honest, ∀ n r,
     E.WithinHorizon cfg n →
     is_payload_verified (E.store cfg ext v n) r = true →
     ∀ w ∈ E.honest, ∀ m,
       E.WithinHorizon cfg m →
       E.slot_at cfg n + 1 ≤ E.slot_at cfg (m + 1) →
-      is_payload_verified (E.store cfg ext w m) r = true
+      ∃ (d k : ℕ) (signed : SignedExecutionPayloadEnvelope Root)
+        (sourceObservation receiverObservation : EnvelopeObservation Root)
+        (before after : List (Event Root)),
+        0 < d ∧ d ≤ m ∧
+        E.slot_at cfg n + 1 ≤ E.slot_at cfg (d + 1) ∧ k ≤ n ∧
+        Event.execution_payload_envelope signed sourceObservation ∈ E.schedule v k ∧
+        signed.message.beacon_block_root = r ∧
+        r ∈ (E.store cfg ext v n).block_roots ∧
+        ext.is_data_available r sourceObservation = true ∧
+        ext.verify_execution_payload_envelope
+          ((E.store cfg ext v n).block_states r) signed sourceObservation = true ∧
+        E.schedule w d = before ++
+          Event.execution_payload_envelope signed receiverObservation :: after ∧
+        r ∈ (before.foldl
+          (fun store event => (apply_event cfg ext store event).getD store)
+          (on_tick cfg (E.store cfg ext w (d - 1)) (E.time_at d))).block_roots
+
+def DataAvailabilityRelay (E : Execution Root) : Prop :=
+  ∀ v ∈ E.honest, ∀ k n (signed : SignedExecutionPayloadEnvelope Root)
+      (sourceObservation : EnvelopeObservation Root),
+    k ≤ n → E.WithinHorizon cfg n →
+    Event.execution_payload_envelope signed sourceObservation ∈ E.schedule v k →
+    ext.is_data_available signed.message.beacon_block_root sourceObservation = true →
+    ∀ w ∈ E.honest, ∀ m,
+      E.WithinHorizon cfg m →
+      E.slot_at cfg n + 1 ≤ E.slot_at cfg (m + 1) →
+      ∀ receiverSigned receiverObservation,
+        receiverSigned.message.beacon_block_root = signed.message.beacon_block_root →
+        Event.execution_payload_envelope receiverSigned receiverObservation ∈ E.schedule w m →
+        ext.is_data_available signed.message.beacon_block_root receiverObservation = true
+
+  envelope_delivery : EnvelopeDelivery cfg ext E
+  data_availability_relay : DataAvailabilityRelay cfg ext E
 ```
 
-The bound is the same as `block_relay`: a verified envelope must be present
-at every honest receiver by the last second of the sender's slot. The
-receiving state, rather than its successor, is within the horizon. Payload
-persistence carries this fact through the tick and every event prefix at
-the next slot boundary. Thus an honest index-1 vote finds a verified payload
-before validation. No other assumption record gains a field. The legacy
-`Synchrony` conversion now needs explicit evidence for this new field.
+`ExternalsCoherence` has this law, verbatim:
+
+```lean
+  verify_envelope_deterministic : ∀ state signed o o',
+    ext.verify_execution_payload_envelope state signed o =
+      ext.verify_execution_payload_envelope state signed o'
+```
+
+The bound matches `block_relay`. Delivery occurs at a position where the
+receiver knows the block. The model does not retry a rejected envelope, so
+the premise requires delivery after the block or redelivery after an earlier
+rejection. `BlockStateAgreement.lean` derives equal block states at common
+roots from the root commitment and deterministic `state_transition` function.
+The relay lemma then derives verified-payload presence. Payload persistence
+carries it through the next tick and each event prefix, so an honest index-1
+vote finds a verified payload before validation. The 13 public witness
+statement texts are unchanged; record-dependent witness types have the new
+premises.
 
 Payload availability alone does not compare FULL and EMPTY branch weights.
 The local experiment in `scripts/GloasPayloadBranchObstacle.lean` is not an
 accepted execution. The [negative result](history/gloas-negative-result.md)
-for the upstream discount uses honest singleton votes and the new relay field.
+for the upstream discount uses honest singleton votes and the derived relay.
 The payload-aware discount charges only matching parent-payload votes; the
 opposite ancestor votes then stay in the confirmation slack and pay for the
 status margin.

@@ -470,7 +470,7 @@ theorem honestVoteTarget_cached_at_delivery
         ticked) a.data.beacon_block_root = true := by
     intro hi
     rw [ha, hticked]
-    exact E.honest_payload_verified_at_delivery_prefix cfg ext hsyn hv hw hHn
+    exact E.honest_payload_verified_at_delivery_prefix cfg ext hwf hsyn hec hv hw hHn
       (E.withinHorizon_mono cfg (Nat.le_succ deliveryPred)
         (by simpa only [Nat.succ_eq_add_one, ← hdeliveryEq] using hHdeliver))
       hrelayTiming pre s index hi

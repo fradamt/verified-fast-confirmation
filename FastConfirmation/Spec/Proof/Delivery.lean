@@ -3,6 +3,7 @@ public import FastConfirmation.Spec.Proof.Provenance
 public import FastConfirmation.Spec.Proof.WFTrajectory
 public import FastConfirmation.Spec.Proof.HonestWeight
 public import FastConfirmation.Spec.Proof.PayloadPersistence
+public import FastConfirmation.Spec.Proof.BlockStateAgreement
 
 @[expose] public section
 
@@ -372,10 +373,91 @@ private theorem foldl_payloadLE (pre : List (Event Root)) (store : Store Root) :
   | cons event pre ih =>
       exact (apply_event_getD_payloadLE cfg ext store event).trans (ih _)
 
+/-- Operational envelope delivery, availability relay, and observation
+determinism imply the former verified-payload relay outcome. State agreement
+is derived from deterministic block transitions in `BlockStateAgreement`. -/
+theorem Execution.payload_envelope_relay_of_parts {E : Execution Root}
+    (hwf : WellFormedExecution E)
+    (hsyn : PaperSafetySynchrony cfg ext E)
+    (hec : ExternalsCoherence cfg ext E)
+    {v w : ValidatorIndex} (hv : v ∈ E.honest) (hw : w ∈ E.honest)
+    {n m : ℕ} (hHn : E.WithinHorizon cfg n) (hHm : E.WithinHorizon cfg m)
+    (htiming : E.slot_at cfg n + 1 ≤ E.slot_at cfg (m + 1))
+    {r : Root} (hverified : is_payload_verified (E.store cfg ext v n) r = true) :
+    is_payload_verified (E.store cfg ext w m) r = true := by
+  obtain ⟨d, k, signed, sourceObservation, receiverObservation, before, after,
+      hpositive, hdm, htimingD, hkn, hsourceEvent, hroot, hsourceKnown, hsourceData,
+      hsourceVerify, hschedule, hreceiverKnown⟩ :=
+    hsyn.envelope_delivery v hv n r hHn hverified w hw m hHm htiming
+  have hHd : E.WithinHorizon cfg d := E.withinHorizon_mono cfg hdm hHm
+  have hAtD : is_payload_verified (E.store cfg ext w d) r = true := by
+    cases d with
+    | zero => omega
+    | succ pred =>
+      have hreceiverEvent :
+          Event.execution_payload_envelope signed receiverObservation ∈
+            E.schedule w (pred + 1) := by
+        rw [hschedule]
+        exact List.mem_append_right _ (List.mem_cons_self ..)
+      have hreceiverData :
+          ext.is_data_available signed.message.beacon_block_root receiverObservation = true :=
+        hsyn.data_availability_relay v hv k n signed sourceObservation
+          hkn hHn hsourceEvent (hroot ▸ hsourceData)
+          w hw (pred + 1) hHd htimingD signed receiverObservation rfl hreceiverEvent
+      let ticked := on_tick cfg (E.store cfg ext w pred) (E.time_at (pred + 1))
+      let receiverPrefix := before.foldl
+        (fun store event => (apply_event cfg ext store event).getD store) ticked
+      have hprefixCausal : E.CausalStore cfg ext receiverPrefix := by
+        apply Execution.HonestCausalStore.causal
+        exact E.honestCausalStore_prefix cfg ext w hw pred hHd before
+          (Event.execution_payload_envelope signed receiverObservation :: after)
+          hschedule
+      have hstates :
+          (E.store cfg ext v n).block_states r = receiverPrefix.block_states r :=
+        E.causal_block_states_agree cfg ext hwf hec
+          (E.store_causal cfg ext v n) hprefixCausal hsourceKnown hreceiverKnown
+      have hverifyReceiver :
+          ext.verify_execution_payload_envelope (receiverPrefix.block_states r)
+            signed receiverObservation = true := by
+        rw [← hstates, ← hec.verify_envelope_deterministic
+          ((E.store cfg ext v n).block_states r) signed sourceObservation receiverObservation]
+        exact hsourceVerify
+      let acceptedStore : Store Root :=
+        { receiverPrefix with
+          payloads := Function.update receiverPrefix.payloads r (some signed.message) }
+      have hknownR : r ∈ receiverPrefix.block_roots := by
+        simpa only [receiverPrefix, ticked, Nat.add_sub_cancel_left] using hreceiverKnown
+      have hdataR : ext.is_data_available r receiverObservation = true := by
+        rw [← hroot]
+        exact hreceiverData
+      have haccepted :
+          on_execution_payload_envelope ext receiverPrefix signed receiverObservation =
+            some acceptedStore := by
+        simp [on_execution_payload_envelope, hroot, hknownR,
+          hdataR, hverifyReceiver, acceptedStore]
+      have hafterEvent : is_payload_verified
+          ((apply_event cfg ext receiverPrefix
+            (Event.execution_payload_envelope signed receiverObservation)).getD receiverPrefix)
+          r = true := by
+        simp [apply_event, haccepted, is_payload_verified, acceptedStore]
+      change is_payload_verified
+        ((E.schedule w (pred + 1)).foldl
+          (fun store event => (apply_event cfg ext store event).getD store) ticked) r = true
+      rw [hschedule, List.foldl_append]
+      change is_payload_verified
+        (after.foldl
+          (fun store event => (apply_event cfg ext store event).getD store)
+          ((apply_event cfg ext receiverPrefix
+            (Event.execution_payload_envelope signed receiverObservation)).getD receiverPrefix)) r = true
+      exact (foldl_payloadLE cfg ext after _) r hafterEvent
+  exact E.is_payload_verified_mono cfg ext w hdm hAtD
+
 /-- Envelope relay reaches the receiver before its next-slot event fold. Ticking
 and every fold prefix preserve verification, including before an index-one vote. -/
 theorem Execution.honest_payload_verified_at_delivery_prefix {E : Execution Root}
+    (hwf : WellFormedExecution E)
     (hsyn : PaperSafetySynchrony cfg ext E)
+    (hec : ExternalsCoherence cfg ext E)
     {v w : ValidatorIndex} (hv : v ∈ E.honest) (hw : w ∈ E.honest)
     {n m : ℕ} (hHn : E.WithinHorizon cfg n) (hHm : E.WithinHorizon cfg m)
     (htiming : E.slot_at cfg n + 1 ≤ E.slot_at cfg (m + 1))
@@ -387,7 +469,8 @@ theorem Execution.honest_payload_verified_at_delivery_prefix {E : Execution Root
       (honest_attestation cfg ext (E.store cfg ext v n) s index v).data.beacon_block_root = true := by
   have hsource := honest_attestation_index_one_payload_verified cfg ext
     (E.store cfg ext v n) s index v hindex
-  have hrelay := hsyn.payload_envelope_relay v hv n _ hHn hsource w hw m hHm htiming
+  have hrelay := E.payload_envelope_relay_of_parts cfg ext hwf hsyn hec
+    hv hw hHn hHm htiming hsource
   exact (foldl_payloadLE cfg ext pre _)
     _ ((PayloadLE.of_payloads_eq (on_tick_payloads cfg _ _)) _ hrelay)
 
@@ -878,7 +961,7 @@ theorem Execution.vote_lands {E : Execution Root}
         a.data.beacon_block_root = true := by
     intro hi
     rw [htb]
-    exact E.honest_payload_verified_at_delivery_prefix cfg ext hsyn hv hw hHn
+    exact E.honest_payload_verified_at_delivery_prefix cfg ext hwf hsyn hec hv hw hHn
       (E.withinHorizon_mono cfg (by omega : Nm1 ≤ E.slot_start cfg (s + 1)) hHdeliver)
       htiming pre s index hi
   -- validate + indexed validity + non-equivocation at the prefix store
