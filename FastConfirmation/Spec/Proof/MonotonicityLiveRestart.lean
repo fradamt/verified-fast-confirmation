@@ -19,6 +19,106 @@ namespace FastConfirmation.Spec
 variable {Root : Type*} [LinearOrder Root] [Inhabited Root]
 variable (cfg : Config) (ext : Externals Root)
 
+/-- Any selected-chain block strictly later than all three possible reset
+anchors passed the current-source one-block confirmation test at this call. -/
+theorem get_latest_confirmed_high_slot_charged
+    (query : FastConfirmationStore Root)
+    (hwf : ParentSlotLt query.store)
+    (hwalk : ∀ t ∈ query.store.block_roots, ∀ r ∈ query.store.block_roots,
+      WalkKnown query.store (query.store.blocks t).slot r)
+    (hhead : (get_head cfg query.store).root ∈ query.store.block_roots)
+    (hcached : query.confirmed_root ∈ query.store.block_roots)
+    (hfinal : query.store.finalized_checkpoint.root ∈ query.store.block_roots)
+    (hobserved : query.current_epoch_observed_justified_checkpoint.root ∈
+      query.store.block_roots)
+    (hresult : get_latest_confirmed cfg ext query ∈ query.store.block_roots)
+    {b : Root} (hb : b ∈ query.store.block_roots)
+    (hbresult : is_ancestor query.store
+      (get_node_for_root (get_latest_confirmed cfg ext query))
+      (get_node_for_root b) = true)
+    (hslotCached : (query.store.blocks query.confirmed_root).slot <
+      (query.store.blocks b).slot)
+    (hslotFinal : (query.store.blocks query.store.finalized_checkpoint.root).slot <
+      (query.store.blocks b).slot)
+    (hslotObserved :
+      (query.store.blocks query.current_epoch_observed_justified_checkpoint.root).slot <
+        (query.store.blocks b).slot) :
+    is_one_confirmed cfg ext query.store
+      (get_current_balance_source query) b = true := by
+  obtain ⟨r₀, hkind, hr₀, hresultAnc, hcharge⟩ :=
+    get_latest_confirmed_between cfg ext query hwf hwalk hhead
+      hcached hfinal hobserved
+  have hslot : (query.store.blocks r₀).slot ≤ (query.store.blocks b).slot := by
+    rcases hkind with h | h | h
+    · simpa [h] using hslotCached.le
+    · simpa [h] using hslotFinal.le
+    · simpa [h] using hslotObserved.le
+  have hbAnc : is_ancestor query.store
+      (get_node_for_root b) (get_node_for_root r₀) = true :=
+    ancestor_comparable_of_common hwf hslot
+      (hwalk r₀ hr₀ _ hresult) hresultAnc hbresult
+  rcases hcharge b hb hbresult hbAnc with h | h
+  · subst b
+    rcases hkind with h | h | h
+    · simp [h] at hslotCached
+    · simp [h] at hslotFinal
+    · simp [h] at hslotObserved
+  · exact h
+
+/-- A certificate attached to every cached-chain block above a fixed slot
+survives one FCR selection. Finalized and observed reset anchors lie at or
+below that slot; the selector charges each newly included block. -/
+theorem get_latest_confirmed_preserves_high_chain_property
+    (query : FastConfirmationStore Root) (floor : Slot) (P : Root → Prop)
+    (hwf : ParentSlotLt query.store)
+    (hwalk : ∀ t ∈ query.store.block_roots, ∀ r ∈ query.store.block_roots,
+      WalkKnown query.store (query.store.blocks t).slot r)
+    (hhead : (get_head cfg query.store).root ∈ query.store.block_roots)
+    (hcached : query.confirmed_root ∈ query.store.block_roots)
+    (hfinal : query.store.finalized_checkpoint.root ∈ query.store.block_roots)
+    (hobserved : query.current_epoch_observed_justified_checkpoint.root ∈
+      query.store.block_roots)
+    (hresult : get_latest_confirmed cfg ext query ∈ query.store.block_roots)
+    (hfinalFloor : (query.store.blocks query.store.finalized_checkpoint.root).slot ≤ floor)
+    (hobservedFloor :
+      (query.store.blocks query.current_epoch_observed_justified_checkpoint.root).slot ≤ floor)
+    (hprevious : ∀ b ∈ query.store.block_roots,
+      is_ancestor query.store (get_node_for_root query.confirmed_root)
+        (get_node_for_root b) = true →
+      floor < (query.store.blocks b).slot → P b)
+    (hfresh : ∀ b ∈ query.store.block_roots,
+      is_one_confirmed cfg ext query.store
+        (get_current_balance_source query) b = true → P b)
+    {b : Root} (hb : b ∈ query.store.block_roots)
+    (hbresult : is_ancestor query.store
+      (get_node_for_root (get_latest_confirmed cfg ext query))
+      (get_node_for_root b) = true)
+    (hbFloor : floor < (query.store.blocks b).slot) : P b := by
+  obtain ⟨r₀, hkind, hr₀, hresultAnc, hcharge⟩ :=
+    get_latest_confirmed_between cfg ext query hwf hwalk hhead
+      hcached hfinal hobserved
+  rcases lt_or_ge (query.store.blocks r₀).slot (query.store.blocks b).slot with
+    hnew | hold
+  · have hbAnc : is_ancestor query.store
+        (get_node_for_root b) (get_node_for_root r₀) = true :=
+      ancestor_comparable_of_common hwf hnew.le
+        (hwalk r₀ hr₀ _ hresult) hresultAnc hbresult
+    rcases hcharge b hb hbresult hbAnc with h | h
+    · subst b
+      simp at hnew
+    · exact hfresh b hb h
+  · have hbAnc : is_ancestor query.store
+        (get_node_for_root r₀) (get_node_for_root b) = true :=
+      ancestor_comparable_of_common hwf hold
+        (hwalk b hb _ hresult) hbresult hresultAnc
+    rcases hkind with h | h | h
+    · rw [h] at hbAnc
+      exact hprevious b hb hbAnc hbFloor
+    · rw [h] at hold
+      exact False.elim ((Nat.not_lt_of_ge (hold.trans hfinalFloor)) hbFloor)
+    · rw [h] at hold
+      exact False.elim ((Nat.not_lt_of_ge (hold.trans hobservedFloor)) hbFloor)
+
 /-- The epoch-start chain check reduces to one-confirmation of each strict
 descendant of the observed checkpoint. This is the executable interface for
 the historical reconfirmation invariant. -/
