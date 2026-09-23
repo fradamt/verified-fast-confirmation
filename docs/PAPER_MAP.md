@@ -20,7 +20,7 @@ This map condenses the definitions, assumptions, and theorems of [arXiv:2405.005
 │ Theorem 1 safety                           │ ConfirmedBlockSafety; confirmed_block_safety                                  │ Confirmed block stays on future honest heads.                                 │
 │ Theorem 1 monotonicity                     │ ConfirmedBlockMonotonicity; confirmed_block_monotonicity                      │ Confirmed predicate persists.                                                 │
 │ Section 4 checkpoint and FFG vote          │ Checkpoint; FFGVote; Justified; Finalized                                     │ On-chain vote model and checkpoint relations.                                 │
-│ Assumption 3: FFG inclusion                │ Assumption3; OnChainAnchorInterface                                           │ Vote inclusion and AU visibility bridge.                                      │
+│ Assumption 3: FFG message receipt          │ Assumption3; OnChainAnchorInterface                                           │ Honest vote receipt in views; no block-inclusion claim from Assumption3.      │
 │ Section 4 source selectors                 │ greatestJustified; greatestFinalized; votingSource                            │ GU, GF, and source choices.                                                   │
 │ Algorithm 1 FFG gate                       │ WillNoConflictingChkpBeJustified                                              │ Predicted target support.                                                     │
 │ Algorithm 1 confirmation                   │ isConfirmedNoCaching; isHFCConfirmed                                          │ Rule predicate and selected result.                                           │

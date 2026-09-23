@@ -31,6 +31,8 @@ bundle and the two executions that refute strict-prefix safety variants.
   `NextSlotPremiseWitness.witnessCompletedPrefixCallAssumptions`. The same
   execution has synchronized votes and blocks, stable validators and weights,
   and a scheduled descendant-helper call.
+  Its selector guard excludes selected current-target accepted edges, so this
+  witness does not exercise their support premise.
 * `NextSlotSynchronyPremises`:
   `AcceptedActualFCRJointNonVacuityBase.witnessPaperSafetySynchrony`.
   The same execution satisfies the delivery and relay laws. It contains no

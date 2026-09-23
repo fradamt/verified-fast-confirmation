@@ -14,9 +14,18 @@ This page records known limits and their current status. The exact public propos
 │                                   │ bundle.                                                                                                             │
 │ Optional in-slot queries          │ No general safety claim. StrictPrefixExtraQuery.extra_query_changes_head_counterexample and                         │
 │                                   │ PinnedEconomicsExtraQuery.extra_query_changes_head_counterexample refute exact-current variants.                    │
-│ Live joint satisfiability         │ Open. No finite execution witness satisfies both live fields together with Execution.NextSlotSafetyPremises.        │
-│ Payload envelope exercise         │ Open witness gap. The finite next-slot run has no envelope, so its envelope relay and data availability conditions  │
+│ Live joint satisfiability         │ Open, user decision (S9-3). No finite run witnesses both live fields with Execution.NextSlotSafetyPremises.          │
+│ Payload envelope exercise         │ Open, user decision (S9-6). The finite next-slot run has no envelope, so its envelope and data relay conditions     │
 │                                   │ hold vacuously.                                                                                                     │
+│ Guarded target-edge exercise      │ Open, user decision (S9-5). The next-slot witness selector guard excludes selected current-target accepted edges.   │
+│ Included-vote carrier relation    │ Open, user decision (S9-1; W5). Included is a free relation. Block-origin receipt does not prove that the carrier   │
+│                                   │ block contains the vote.                                                                                           │
+│ Included-vote validation state    │ Open, user decision (S9-2; W6). Inclusion may use any same-registry validating state; reachable-state soundness     │
+│                                   │ does not cover every such state.                                                                                    │
+│ Committee-union economics         │ Open, user decision (W4). The non-honest fraction bound and estimate soundness apply to every committee union,      │
+│                                   │ including a single-slot union. A global fault percentage alone does not imply these conditions.                    │
+│ Weak full-bundle witness          │ Open, user decision (W3). No accepted run witnesses all weak headline premises with a non-anchor stored output.      │
+│ Weak branch witnesses             │ Open, user decision (W11). The store fixture omits rollover and empty-slot PENDING discount; bank tests are vacuous. │
 │ Opaque execution validation       │ Explicit abstraction. BeaconExternalsPremises and verified envelope events supply the engine verdict and            │
 │                                   │ deterministic behavior.                                                                                             │
 │ Static registry                   │ Explicit model idealisation. StaticValidatorSet covers the finite horizon; validator churn is outside the claim.    │

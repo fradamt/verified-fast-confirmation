@@ -48,7 +48,7 @@ The records in this table are in `FastConfirmationStatements/Premises/`. The pap
 - The model is non-optimistic. An imported payload enters the store only after `verify_execution_payload_envelope` returns true. This external includes the execution engine's `VALID` decision. Execution validation itself is opaque.
 - `BeaconExternalsPremises` supplies contracts for external state transitions and validation. The Lean proof does not implement an execution engine.
 - `LiveMonotonicityPremises.honest_block_each_slot` requires a block with an honest proposer index in every slot from execution start. Its vote-support law and `ffg_timely_justification` require timely descendant votes and exact FFG state outputs at epoch boundaries. These conditions are stronger than paper Assumption 6. Proposer-index membership is not an authentication theorem.
-- There is no joint finite witness for both live fields and the safety premise. The next-slot finite witness has no payload envelope, so its envelope relay conditions hold vacuously. See `FastConfirmationWitnesses/Index.lean`.
+- There is no joint finite witness for both live fields and the safety premise. The next-slot finite witness has no payload envelope, so its envelope relay conditions hold vacuously. Its selector guard excludes selected current-target accepted edges, so it does not exercise their support premise. See `FastConfirmationWitnesses/Index.lean`.
 - The result covers stored boundary outputs. `StrictPrefixExtraQuery.extra_query_changes_head_counterexample` and `PinnedEconomicsExtraQuery.extra_query_changes_head_counterexample` show why an arbitrary in-slot query needs a different statement.
 
 ## Paper library
