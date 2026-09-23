@@ -339,18 +339,13 @@ theorem on_attester_slashing
 
 /-! ## One-slot tick preservation -/
 
-private theorem compute_epoch_mono {a b : Slot} (h : a ≤ b) :
-    compute_epoch_at_slot cfg a ≤ compute_epoch_at_slot cfg b := by
-  simp only [compute_epoch_at_slot]
-  exact Nat.div_le_div_right h
-
 private theorem epoch_lt_of_slots_since_succ_eq_zero (s : Slot)
     (hzero : compute_slots_since_epoch_start cfg (s + 1) = 0) :
     compute_epoch_at_slot cfg s < compute_epoch_at_slot cfg (s + 1) := by
   by_contra hnot
   have hmono : compute_epoch_at_slot cfg s ≤
       compute_epoch_at_slot cfg (s + 1) :=
-    compute_epoch_mono (cfg := cfg) (Nat.le_succ s)
+    ce_mono (cfg := cfg) (Nat.le_succ s)
   have heq : compute_epoch_at_slot cfg (s + 1) =
       compute_epoch_at_slot cfg s :=
     Nat.le_antisymm (Nat.le_of_not_gt hnot) hmono
@@ -417,7 +412,7 @@ theorem after_on_tick_per_slot_next
     split_ifs <;> rfl
   have hcurrentLe : get_current_store_epoch cfg store ≤
       get_current_store_epoch cfg reset := by
-    apply compute_epoch_mono (cfg := cfg)
+    apply ce_mono (cfg := cfg)
     rw [hresetSlot]
     rw [show get_current_slot cfg timed = get_current_slot cfg store + 1 by
       simpa only [timed] using hcurrent]
@@ -461,7 +456,7 @@ theorem after_on_tick_per_slot_next
         simp only [get_block_epoch]
         rw [← hresetSame.2.1]
       rw [hblockEq]
-      exact (compute_epoch_mono (cfg := cfg)
+      exact (ce_mono (cfg := cfg)
         (hnonfuture r hr.known)).trans_lt hstrict
   · exact hbase
 

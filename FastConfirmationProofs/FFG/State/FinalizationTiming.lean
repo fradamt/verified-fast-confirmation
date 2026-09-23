@@ -205,7 +205,7 @@ theorem acceptedPulledUpFinalized_succ_le_blockEpoch
             t.signedBlock.message :=
           Or.inr ⟨t.atPrefix.node, t.atPrefix.previousSecond + 1,
             t.signedBlock, hmemAt, rfl, rfl⟩
-        have hmessage := E.blockAt_unique_for_storeReflection
+        have hmessage := E.blockAt_unique
           hT.wellFormed hpreAt hsignedAt
         have hpost : t.postStore = t.atPrefix.store cfg ext := by
           exact (Option.some.inj (by

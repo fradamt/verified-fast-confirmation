@@ -6,7 +6,7 @@ public import FastConfirmationProofs.ModelFacts
 @[expose] public section
 
 /-!
-# Spec / Proof / AnchorFacade
+# Checkpoints / AnchorParentKnownness
 
 Proves that non-anchor parent blocks are known in stores used by ancestry arguments.
 

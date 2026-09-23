@@ -1,11 +1,14 @@
 module
 public import FastConfirmationProofs.FFG.SourceHistory.MarginInvariant
-public import FastConfirmationProofs.FFG.SourceHistory.CheckpointSafetyInputs
+public import FastConfirmationProofs.Checkpoints.EdgeWeightAlgebra
+public import FastConfirmationProofs.Execution.Delivery.VoteDeliveryMargin
+public import FastConfirmationProofs.Checkpoints.AnchorParentKnownness
+public import FastConfirmationProofs.ForkChoice.Head.AheadHeadDominance
+public import FastConfirmationProofs.Handlers.HandlerStepFacts
+public import FastConfirmationProofs.ForkChoice.Head.HeadStack
 public import FastConfirmationProofs.Execution.StoreInvariants.CheckpointDomain
 public import FastConfirmationProofs.Discount.HonestWeight
 public import FastConfirmationProofs.Discount.SupportDiscount
-public import FastConfirmationProofs.Checkpoints.AnchorParentKnownness
-public import FastConfirmationProofs.Handlers.HandlerStepFacts
 
 @[expose] public section
 

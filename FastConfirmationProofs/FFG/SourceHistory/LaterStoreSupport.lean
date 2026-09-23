@@ -208,7 +208,7 @@ The recorded message `lm` for a supporter `i` sits, by ubiquity, at epoch
   by `committee_assignment_unique` (both `i`-assigned, same epoch). -/
 
 /-- Epoch monotonicity of `compute_epoch_at_slot` (it is `· / slots_per_epoch`). -/
-private theorem compute_epoch_at_slot_mono {x y : Slot} (h : x ≤ y) :
+theorem ce_mono {x y : Slot} (h : x ≤ y) :
     compute_epoch_at_slot cfg x ≤ compute_epoch_at_slot cfg y := by
   simp only [compute_epoch_at_slot]; exact Nat.div_le_div_right h
 
@@ -279,7 +279,7 @@ theorem recorded_supports_c_of_IH {E : Execution Root}
     have hsl_gt_t : t < a'.data.slot := by
       by_contra hle
       have hmono : compute_epoch_at_slot cfg a'.data.slot ≤ compute_epoch_at_slot cfg t :=
-        compute_epoch_at_slot_mono cfg (not_lt.mp hle)
+        ce_mono cfg (not_lt.mp hle)
       rw [hep'] at hmono
       exact absurd hlt (not_lt.mpr hmono)
     have hsl_ge_s : s ≤ a'.data.slot := by

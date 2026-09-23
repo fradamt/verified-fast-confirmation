@@ -1,8 +1,12 @@
 module
-public import FastConfirmationProofs.Safety.FinalizedResetSafety
+public import FastConfirmationProofs.Checkpoints.GlobalResetCheckpointRealization
+public import FastConfirmationProofs.FFG.SelectedSource.FFGSelectedDomainRealization
+public import FastConfirmationProofs.FFG.Certificates.FFGAccountability
+public import FastConfirmationProofs.Checkpoints.ExactCheckpointLinks
+public import FastConfirmationProofs.FFG.SelectedSource.SelectedTraceFFGRealization
+public import FastConfirmationProofs.ModelFacts
 public import FastConfirmationProofs.ForkChoice.Head.Descent
 
-public import FastConfirmationProofs.ModelFacts
 @[expose] public section
 
 /-!

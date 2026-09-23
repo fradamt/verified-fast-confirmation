@@ -8,4 +8,4 @@ public import FastConfirmationInternal.Discount.SupportClasses
 public import FastConfirmationInternal.FCRRule.SelectedMargin
 public import FastConfirmationInternal.FCRRule.SelectedParentTrace
 
-/-! Imports the legacy predicates that proofs use below the public claim surface. -/
+/-! Imports the legacy predicates and reusable proof vocabulary below the public claim surface. -/

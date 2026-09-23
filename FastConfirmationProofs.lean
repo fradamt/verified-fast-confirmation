@@ -124,7 +124,9 @@ public import FastConfirmationProofs.FFG.SelectedSource.SelectedJustifiedCompati
 public import FastConfirmationProofs.FFG.SelectedSource.SelectedJustifiedOrientation
 public import FastConfirmationProofs.FFG.SelectedSource.SelectedTraceFFGRealization
 public import FastConfirmationProofs.FFG.SourceHistory.CandidateHistoryRecurrence
-public import FastConfirmationProofs.FFG.SourceHistory.CheckpointSafetyInputs
+public import FastConfirmationProofs.ForkChoice.Head.AheadHeadDominance
+public import FastConfirmationProofs.Handlers.HandlerStepFacts
+public import FastConfirmationProofs.ForkChoice.Head.HeadStack
 public import FastConfirmationProofs.FFG.SourceHistory.ConfirmationMarginInputs
 public import FastConfirmationProofs.FFG.SourceHistory.CurrentSameSourceHistory
 public import FastConfirmationProofs.FFG.SourceHistory.EdgeSupportInputs
@@ -159,12 +161,10 @@ public import FastConfirmationProofs.ForkChoice.Filter.SelectedFilter
 public import FastConfirmationProofs.ForkChoice.Filter.SelectedFilterChainGeometry
 public import FastConfirmationProofs.ForkChoice.Filter.SelectedFilterVisibility
 public import FastConfirmationProofs.ForkChoice.Filter.SelectedTraceFilter
-public import FastConfirmationProofs.ForkChoice.Head.AheadHeadDominance
 public import FastConfirmationProofs.ForkChoice.Head.Descent
 public import FastConfirmationProofs.ForkChoice.Head.ForkEdgeHeadSafety
 public import FastConfirmationProofs.ForkChoice.Head.HeadMembership
 public import FastConfirmationProofs.ForkChoice.Head.HeadReroot
-public import FastConfirmationProofs.ForkChoice.Head.HeadStack
 public import FastConfirmationProofs.ForkChoice.Head.SupportTransport
 public import FastConfirmationProofs.Gloas.Payload.MajorityPersists
 public import FastConfirmationProofs.Gloas.Payload.PayloadSupport
@@ -173,7 +173,6 @@ public import FastConfirmationProofs.Handlers.BlockTransitionProvenance
 public import FastConfirmationProofs.Handlers.CommitteeWeightFractions
 public import FastConfirmationProofs.Handlers.ConfirmationCommitteeWeight
 public import FastConfirmationProofs.Handlers.Dominance
-public import FastConfirmationProofs.Handlers.HandlerStepFacts
 public import FastConfirmationProofs.Handlers.HandlerVoteClasses
 public import FastConfirmationProofs.Handlers.ResetAdoption
 public import FastConfirmationProofs.Handlers.SupportClasses
@@ -196,7 +195,6 @@ public import FastConfirmationProofs.Safety.BlockAgreement
 public import FastConfirmationProofs.Safety.ConfirmedCacheSafety
 public import FastConfirmationProofs.Safety.ConfirmedPrefixSafety
 public import FastConfirmationProofs.Safety.FinalizedCheckpointNextSlotSafety
-public import FastConfirmationProofs.Safety.FinalizedResetSafety
 public import FastConfirmationProofs.Safety.NextSlotSafety
 public import FastConfirmationProofs.Safety.ObservedResetSafety
 public import FastConfirmationProofs.Safety.ObservedRestartSafety

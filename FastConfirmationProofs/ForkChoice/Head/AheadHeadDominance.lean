@@ -4,7 +4,7 @@ public import FastConfirmationProofs.ForkChoice.Filter.AnchorFilterViability
 @[expose] public section
 
 /-!
-# Spec / Proof / AheadFacade
+# ForkChoice / AheadHeadDominance
 
 Proves that a justified descendant can dominate a competing fork-choice head.
 

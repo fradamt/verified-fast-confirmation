@@ -2,7 +2,7 @@ module
 public import FastConfirmationProofs.FFG.Certificates.FFGQuorumWeight
 public import FastConfirmationStatements.Premises.FFGCertificates
 
-public import FastConfirmationProofs.ModelFacts
+public import FastConfirmationProofs.ModelFacts.FFGState
 @[expose] public section
 
 /-!
