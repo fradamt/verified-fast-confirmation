@@ -257,7 +257,7 @@ def SelectedCoveredMarginSupplyAt
 /-! ## The three `DescendStep` producers -/
 
 /-- Same-epoch weak producer: `hgrowS_/hgrowX_of_slotStart_IH_minimal` +
-`hbudget_sameEpoch_of_IH` + `bval_strip_window_uniform` (`bval_strip_transport`
+`hbudget_sameEpoch` + `bval_strip_window_uniform` (`bval_strip_transport`
 is skipped — the strip is already at the endpoint) + `ledger_descendStep`. -/
 theorem sameEpoch_descendStep_of_selectedInputsAt
     {E : Execution Root} (hA : SelectedMarginAssumptions cfg ext E)
@@ -294,7 +294,7 @@ theorem sameEpoch_descendStep_of_selectedInputsAt
     hin.σ_lt_endpoint hHm hsame hchain hc hglcKnown hIH
   have hσH : E.SlotWithinHorizon cfg σ :=
     E.slotWithinHorizon_of_le cfg (Nat.le_of_lt hin.σ_lt_endpoint) hHm
-  have hbudget := E.hbudget_sameEpoch_of_IH cfg ext hA.byzantine_bound
+  have hbudget := E.hbudget_sameEpoch cfg ext hA.byzantine_bound
     hA.externals_coherence hin.lo_le_es hin.es_le_σ hσH hsame
   have hstrip := E.bval_strip_window_uniform cfg ext w m c lo es σ
     (get_proposer_score cfg (E.store cfg ext w m)) hin.endpoint_base_strip

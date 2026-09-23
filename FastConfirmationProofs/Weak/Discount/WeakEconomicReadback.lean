@@ -46,7 +46,7 @@ helpers (`weight_add_le`, `discount_guard`, `byz_le_adv_arith`) that are
 therefore invisible outside those files. They carry no honesty content at
 all — pure `Finset`/`ℕ` facts — so they are simply restated here verbatim
 (same pattern as `CurrentTargetPrefixAccounting.lean`'s local
-`prefix_weight_add_le` / `prefix_byz_le_net_of_add`). -/
+`weight_add_le` / `prefix_byz_le_net_of_add`). -/
 
 omit [LinearOrder Root] [Inhabited Root] in
 /-- Weight is superadditive-into a common superset over disjoint parts. -/

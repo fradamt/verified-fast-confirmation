@@ -255,7 +255,7 @@ theorem LMP_foldl_of_observer {E : Execution Root} {obs : ValidatorIndex} {sl : 
       simp only [Option.getD_some]
       refine ih _ (fun b hb => hl b (List.mem_cons_of_mem e hb)) ?_ ?_ ?_ ?_
       · exact apply_event_blockProvenance cfg ext hbsched hprov he
-      · rw [apply_event_get_current_slot cfg ext he]; exact hcur
+      · rw [apply_event_current_slot cfg ext he]; exact hcur
       · exact apply_event_LMP_of_observer cfg ext hwf hvalid hbsched hprov hcur h he
           (by simpa only [he, Option.getD_some] using hstep)
       · simpa only [he, Option.getD_some] using htail
