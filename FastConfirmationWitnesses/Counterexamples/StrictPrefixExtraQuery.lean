@@ -23,7 +23,7 @@ completed `Execution.store` boundaries.
 -/
 
 namespace FastConfirmation.Spec
-namespace AcceptedStrictPrefixExtraQueryCounterexample
+namespace StrictPrefixExtraQuery
 
 open AllowedFCRCalls
 
@@ -527,7 +527,7 @@ private theorem witnessReachableValidationState_nonempty {state : BeaconState Wi
   decide
 
 private theorem witnessExternalsCoherence :
-    ExternalsCoherence witnessConfig witnessExternals witnessExecution := by
+    BeaconExternalsPremises witnessConfig witnessExternals witnessExecution := by
   constructor
   · intro st s hlt
     rfl
@@ -673,7 +673,7 @@ private theorem witnessStaticValidatorSet :
     rfl
 
 private theorem witnessByzantineBound :
-    ByzantineBound witnessConfig witnessExecution := by
+    ByzantineWeightPremises witnessConfig witnessExecution := by
   constructor
   · intro i
     rcases i with _ | i
@@ -905,9 +905,9 @@ def StrictPrefixWitnessEnvironment : Prop :=
       1000 ∣ witnessConfig.slot_duration_ms ∧
       HonestBehavior witnessConfig witnessExternals witnessExecution ∧
       Synchrony witnessConfig witnessExternals witnessExecution ∧
-      ExternalsCoherence witnessConfig witnessExternals witnessExecution ∧
+      BeaconExternalsPremises witnessConfig witnessExternals witnessExecution ∧
       StaticValidatorSet witnessConfig witnessExecution ∧
-      ByzantineBound witnessConfig witnessExecution ∧
+      ByzantineWeightPremises witnessConfig witnessExecution ∧
       (∀ n, witnessExecution.time_at n = n) ∧
       (∀ n, witnessExecution.slot_at witnessConfig n = n) ∧
       (∀ s, witnessExecution.slot_start witnessConfig s = s) ∧
@@ -939,7 +939,7 @@ nevertheless a source-permitted pre-update extra query at one exact global
 action position returns a root that is not an ancestor of the other honest
 node's simultaneously represented fork-choice head.  No safety,
 canonicality, or future-head premise occurs in the statement. -/
-theorem strict_prefix_extra_query_counterexample :
+theorem extra_query_changes_head_counterexample :
     StrictPrefixWitnessEnvironment ∧
       GlobalStrictPrefixQuerySnapshot ∧
       0 ∈ witnessExecution.honest ∧
@@ -980,7 +980,7 @@ theorem strict_prefix_extra_query_counterexample :
     exact strict_prefix_heads_diverge.2.2
 
 
-end AcceptedStrictPrefixExtraQueryCounterexample
+end StrictPrefixExtraQuery
 end FastConfirmation.Spec
 
 end

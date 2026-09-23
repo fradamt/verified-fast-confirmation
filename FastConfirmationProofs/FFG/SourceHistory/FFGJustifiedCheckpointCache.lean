@@ -40,8 +40,8 @@ variable (E : Execution Root)
 justified checkpoint. -/
 theorem justifiedCheckpoint_cached_of_acceptedGlobalTrajectory
     (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
-    (hsync : PaperSafetySynchrony cfg ext E)
+    (hT : E.ScheduledPrefixPremises cfg ext)
+    (hsync : NextSlotSynchronyPremises cfg ext E)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
       (E := E) (anchor := B.anchor))
@@ -242,8 +242,8 @@ theorem justifiedCheckpoint_cached_of_acceptedGlobalTrajectory
 complete two-field domain consumed by strict selected-result geometry. -/
 theorem selectedMarginDomain_of_acceptedGlobalTrajectory
     (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
-    (hsync : PaperSafetySynchrony cfg ext E)
+    (hT : E.ScheduledPrefixPremises cfg ext)
+    (hsync : NextSlotSynchronyPremises cfg ext E)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
       (E := E) (anchor := B.anchor)) :

@@ -2,7 +2,7 @@ module
 public import FastConfirmationProofs.Execution.History.HistoricalCheckpointInclusionCallInduction
 public import FastConfirmationProofs.FFG.SourceHistory.FFGJustifiedCheckpointCache
 
-public import FastConfirmationStatements.Premises.Trajectory
+public import FastConfirmationStatements.Premises.FCRCallPremises
 @[expose] public section
 
 
@@ -18,7 +18,7 @@ The adapter does not use `SelectedMarginAssumptions`, a justification
 interface, transition history, canonicity, or safety, and it carries no
 helper-support proviso at all: the literal normative contract it used to take
 when the outer evaluator invokes the descendant selector
-(`SelectedHelperProvisosAt`) has been deleted, and the crossing call's target
+(`FCRPredictionSupportAt`) has been deleted, and the crossing call's target
 support is rebuilt from the fold's own earlier output. A one-slot operational delivery
 law covers the finite-prefix boundary case: a vote created in the last
 verified slot is scheduled just after the exclusive public cutoff.
@@ -57,7 +57,7 @@ theorem completedScheduledEventPrefix_store
 operational facts come from exact replay, while committee readback follows
 from external coherence for the completed execution store. -/
 theorem completedScheduledEventPrefix_accountingEvidence
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
+    (hT : E.ScheduledPrefixPremises cfg ext)
     (v : ValidatorIndex) (hv : v ∈ E.honest)
     (n : ℕ) (hHn1 : E.WithinHorizon cfg (n + 1)) :
     E.CurrentTargetPrefixAccountingEvidence cfg ext
@@ -81,7 +81,7 @@ theorem completedScheduledEventPrefix_accountingEvidence
 /-- The pulled-up head state reads the static execution registry. -/
 theorem completedPrefix_pulledUpHead_validators
     (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
+    (hT : E.ScheduledPrefixPremises cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
       (E := E) (anchor := B.anchor))
@@ -109,7 +109,7 @@ current epoch.  In the no-pull branch this follows from the head-state slot
 bound and the negated pull guard. -/
 theorem completedPrefix_pulledUpHead_epoch
     (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
+    (hT : E.ScheduledPrefixPremises cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
       (E := E) (anchor := B.anchor))
@@ -175,7 +175,7 @@ theorem completedPrefix_pulledUpHead_epoch
 
 /-- The trusted anchor state's epoch belongs to the verified segment. -/
 theorem completedPrefix_anchor_epoch_within
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
+    (hT : E.ScheduledPrefixPremises cfg ext)
     (hsv : StaticValidatorSet cfg E) :
     get_current_epoch cfg E.anchor_state < E.verification_horizon := by
   obtain ⟨ast, ablk, hgen, _hslot, _hparent⟩ := hT.genesis_structure
@@ -191,7 +191,7 @@ balance.  Registry equality and the two in-horizon state epochs are enough;
 no selected-domain or justification interface is involved. -/
 theorem completedPrefix_pulledUpHead_totalActive
     (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
+    (hT : E.ScheduledPrefixPremises cfg ext)
     (hsv : StaticValidatorSet cfg E)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
@@ -288,17 +288,17 @@ the executable Boolean and its matching whole-slot target-support proviso;
 neither is assumed by this theorem. -/
 noncomputable def completedPrefix_acceptedTargetGateProducerAt
     (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
-    (hC : E.AcceptedHistoricalA32CompletedPrefixCallAssumptions cfg ext)
+    (hT : E.ScheduledPrefixPremises cfg ext)
+    (hC : E.CompletedFCRCallPremises cfg ext)
     (hfit : EpochEndsFitUint64 cfg)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
       (E := E) (anchor := B.anchor))
     {v : ValidatorIndex} (hv : v ∈ E.honest)
-    {n : ℕ} (_hcall : E.IsFCRCallAt cfg ext v n)
+    {n : ℕ} (_hcall : E.IsScheduledFCRCallAt cfg ext v n)
     (hHn1 : E.WithinHorizon cfg (n + 1)) :
     E.AcceptedCurrentTargetA32GateRealizationProducerAt cfg ext
-      B.anchor B.state (n + 1) (E.fcrStep cfg ext v n) := by
+      B.anchor B.state (n + 1) (E.fcrStoreAtCall cfg ext v n) := by
   intro hgate hsupport
   let p := E.completedScheduledEventPrefix v n
   have hpstore : p.store cfg ext = E.store cfg ext v (n + 1) := by
@@ -364,8 +364,8 @@ noncomputable def completedPrefix_acceptedTargetGateProducerAt
 primitives.  The domain half is the accepted global trajectory's own. -/
 theorem selectedMarginAssumptions_of_completedPrefixes
     (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
-    (hC : E.AcceptedHistoricalA32CompletedPrefixCallAssumptions cfg ext)
+    (hT : E.ScheduledPrefixPremises cfg ext)
+    (hC : E.CompletedFCRCallPremises cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
       (E := E) (anchor := B.anchor)) :
@@ -386,8 +386,8 @@ interface required by the historical write-back induction. -/
 noncomputable def
     acceptedHistoricalA32CallInterfaces_of_completedPrefixes
     (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
-    (hC : E.AcceptedHistoricalA32CompletedPrefixCallAssumptions cfg ext)
+    (hT : E.ScheduledPrefixPremises cfg ext)
+    (hC : E.CompletedFCRCallPremises cfg ext)
     (hfit : EpochEndsFitUint64 cfg)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
@@ -404,8 +404,8 @@ noncomputable def
 abstract call interface by completed-prefix protocol assumptions. -/
 theorem acceptedHistoricalA32CurrentLineage_invariant_of_completedPrefixes
     (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
-    (hC : E.AcceptedHistoricalA32CompletedPrefixCallAssumptions cfg ext)
+    (hT : E.ScheduledPrefixPremises cfg ext)
+    (hC : E.CompletedFCRCallPremises cfg ext)
     (hfit : EpochEndsFitUint64 cfg)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
@@ -422,8 +422,8 @@ theorem acceptedHistoricalA32CurrentLineage_invariant_of_completedPrefixes
 /-- Headline current-epoch lineage using the completed-prefix supplier. -/
 theorem acceptedHistoricalA32CurrentLineage_of_completedPrefixes
     (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
-    (hC : E.AcceptedHistoricalA32CompletedPrefixCallAssumptions cfg ext)
+    (hT : E.ScheduledPrefixPremises cfg ext)
+    (hC : E.CompletedFCRCallPremises cfg ext)
     (hfit : EpochEndsFitUint64 cfg)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)

@@ -22,7 +22,7 @@ horizon (in particular the observer's), a broadcast certificate implies some
 *honest* validator cast a counted vote: a vote at its assigned slot in the
 span, for `block_root` or a descendant. Follows from the certificate
 inequality once the economic bound ties the counted non-honest weight to the
-weak adversarial budget (the `ByzantineBound`/committee-estimation soundness
+weak adversarial budget (the `ByzantineWeightPremises`/committee-estimation soundness
 package, undiscounted).
 
 Instance-specific premises: the balance source reads the ground registry
@@ -30,7 +30,7 @@ Instance-specific premises: the balance source reads the ground registry
 the rule's actual balance sources, at every node), and the store-computed slot
 committees read back the ground-truth assignment
 (`Execution.PrefixCommitteeAgreement`; cf. `ObserverContext` — the honest-only
-`ExternalsCoherence.committees_agree` is unusable at the observer). -/
+`BeaconExternalsPremises.committees_agree` is unusable at the observer). -/
 def CertificateHonestSupporter (E : Execution Root) : Prop :=
   ∀ (v : ValidatorIndex) (n : ℕ) (balance_source : BeaconState Root)
     (block_root : Root) (start_slot end_slot : Slot),

@@ -58,7 +58,7 @@ conjunct *is* `hdQuery`, `hdAgree` follows from `WellFormedExecution
 
 `StrictSelectedResultMechanicalFacts` itself is stated over the *strong*
 selector's trace and entry-witness types (`findLatestSelectedTrace`,
-`PreviousAcceptedEdge`, `PreviousSelectedEntryWitness`,
+`PreviousEpochSelectedEdge`, `PreviousSelectedEntryWitness`,
 `TentativeSelectedEntryWitness`), which the weak development only acquires in
 stage S2. The weak twin is therefore landed here in its underlying
 store-level form, `Weak.confirmedPastDescendantSlotWitness_core`, stated over
@@ -84,10 +84,10 @@ pattern `WeakConfirmedSupporter.lean` uses for `MinimalSelectedDomain.lean`'s
 private arithmetic helpers). -/
 
 private def selectedMarginAssumptions_of_weakSourceHistoryInputs
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
-    (hsync : PaperSafetySynchrony cfg ext E)
+    (hT : E.ScheduledPrefixPremises cfg ext)
+    (hsync : NextSlotSynchronyPremises cfg ext E)
     (hstatic : StaticValidatorSet cfg E)
-    (hbyz : ByzantineBound cfg E)
+    (hbyz : ByzantineWeightPremises cfg E)
     (hdomain : SelectedMarginDomain cfg ext E) :
     SelectedMarginAssumptions cfg ext E :=
   { genesis := hT.genesis_structure
@@ -119,10 +119,10 @@ The binder list is kept identical to the original's. `hsync`, `hstatic` and
 them to a `SelectedMarginAssumptions` bundle its body never reads — and are
 retained so that call sites of the two lemmas stay interchangeable. -/
 theorem pastHead_known_at_observer
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
-    (hsync : PaperSafetySynchrony cfg ext E)
+    (hT : E.ScheduledPrefixPremises cfg ext)
+    (hsync : NextSlotSynchronyPremises cfg ext E)
     (hstatic : StaticValidatorSet cfg E)
-    (hbyz : ByzantineBound cfg E)
+    (hbyz : ByzantineWeightPremises cfg E)
     (hdomain : SelectedMarginDomain cfg ext E)
     (obs : ValidatorIndex) (q : Nat) (b : Root)
     (hvalid : E.ObserverValidity cfg ext obs)
@@ -222,10 +222,10 @@ followed it; `storeDomainParentWalk` for
 `store_domainK_of_selectedMarginDomain` (whose honest-only third component was
 discarded at this call site anyway). -/
 theorem confirmed_honestPastHeadBelow_at_observer
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
-    (hsync : PaperSafetySynchrony cfg ext E)
+    (hT : E.ScheduledPrefixPremises cfg ext)
+    (hsync : NextSlotSynchronyPremises cfg ext E)
     (hstatic : StaticValidatorSet cfg E)
-    (hbyz : ByzantineBound cfg E)
+    (hbyz : ByzantineWeightPremises cfg E)
     (hdomain : SelectedMarginDomain cfg ext E)
     {obs : ValidatorIndex} {q : Nat}
     (hvalid : E.ObserverValidity cfg ext obs)

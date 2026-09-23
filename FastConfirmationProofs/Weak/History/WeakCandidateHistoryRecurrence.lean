@@ -9,7 +9,7 @@ public import FastConfirmationProofs.Weak.Common.WeakFCRCallContracts
 /-!
 # Spec / Proof / WeakCandidateHistoryRecurrence
 
-Weak twin of `GetLatestConfirmedTrace.lean`'s evaluator trace and of
+Weak twin of `LatestConfirmedCallTrace.lean`'s evaluator trace and of
 `AcceptedCandidateHistoryRecurrence.lean`'s exact ordered candidate-history
 recurrence, over the weak rule (`Weak.get_latest_confirmed`,
 `Weak.find_latest_confirmed_descendant`) and the weak actual-call trajectory
@@ -37,7 +37,7 @@ is reused from the strong layer.
 ## What is delivered
 
 * `Weak.getLatestTraceResult` (+ `…_eq_getLatestConfirmed`, by `rfl`),
-  `Weak.GetLatestSelectorPhase`, `Weak.GetLatestConfirmedTrace`,
+  `Weak.GetLatestSelectorPhase`, `Weak.LatestConfirmedCallTrace`,
   `Weak.getLatestConfirmedTrace` and the four projections.
 * `Weak.observedRestartGuard_facts` — the four conjuncts of the (shared)
   observed-restart guard, restated over a bare candidate root so it serves
@@ -46,7 +46,7 @@ is reused from the strong layer.
   `Weak.ObservedResetCandidateInputAt`, `Weak.OrderedCandidateInputOrigin`,
   `Weak.SelectorUnchangedAt`, `Weak.StrictSelectorAdvanceAt`,
   `Weak.CandidateHistoryCallBranch` and the exhaustive classifier
-  `Weak.GetLatestConfirmedTrace.candidateHistoryCallBranch`.
+  `Weak.LatestConfirmedCallTrace.candidateHistoryCallBranch`.
 * `Weak.StrictSelectorAdvanceGeometryAt` + `Weak.StrictSelectorAdvanceAt.geometry`
   (over `weak_find_latest_confirmed_descendant_ge`,
   `WeakSelectorInversion.lean`).
@@ -242,9 +242,9 @@ theorem branch_cases
 
 end GetLatestSelectorPhase
 
-/-- Weak twin of `GetLatestConfirmedTrace`: each phase records the guard
+/-- Weak twin of `LatestConfirmedCallTrace`: each phase records the guard
 and output of the weak evaluator. -/
-structure GetLatestConfirmedTrace (query : FastConfirmationStore Root) where
+structure LatestConfirmedCallTrace (query : FastConfirmationStore Root) where
   afterFinalized : Root
   afterObserved : Root
   result : Root
@@ -255,7 +255,7 @@ structure GetLatestConfirmedTrace (query : FastConfirmationStore Root) where
 
 /-- Every query store has an exact weak evaluator trace. -/
 def getLatestConfirmedTrace (query : FastConfirmationStore Root) :
-    Weak.GetLatestConfirmedTrace cfg ext query := by
+    Weak.LatestConfirmedCallTrace cfg ext query := by
   let afterFinalized := getLatestAfterFinalized cfg ext query
   let afterObserved := getLatestAfterObserved cfg ext query
   let result := Weak.getLatestTraceResult cfg ext query
@@ -309,11 +309,11 @@ def getLatestConfirmedTrace (query : FastConfirmationStore Root) :
       exact .unchanged hnamed
   · exact Weak.getLatestTraceResult_eq_getLatestConfirmed cfg ext query
 
-namespace GetLatestConfirmedTrace
+namespace LatestConfirmedCallTrace
 
 theorem afterFinalized_cases
     {query : FastConfirmationStore Root}
-    (trace : Weak.GetLatestConfirmedTrace cfg ext query) :
+    (trace : Weak.LatestConfirmedCallTrace cfg ext query) :
     (trace.afterFinalized = query.confirmed_root ∧
         ¬ getLatestFinalizedRevertGuard cfg ext query) ∨
       (trace.afterFinalized = query.store.finalized_checkpoint.root ∧
@@ -322,7 +322,7 @@ theorem afterFinalized_cases
 
 theorem afterObserved_cases
     {query : FastConfirmationStore Root}
-    (trace : Weak.GetLatestConfirmedTrace cfg ext query) :
+    (trace : Weak.LatestConfirmedCallTrace cfg ext query) :
     (trace.afterObserved = trace.afterFinalized ∧
         getLatestObservedRestartGuard cfg ext query trace.afterFinalized = false) ∨
       (trace.afterObserved =
@@ -333,7 +333,7 @@ theorem afterObserved_cases
 
 theorem selector_cases
     {query : FastConfirmationStore Root}
-    (trace : Weak.GetLatestConfirmedTrace cfg ext query) :
+    (trace : Weak.LatestConfirmedCallTrace cfg ext query) :
     (trace.result = trace.afterObserved ∧
         ¬ getLatestSelectorGuard cfg query trace.afterObserved) ∨
       (trace.result = Weak.find_latest_confirmed_descendant cfg ext query
@@ -343,7 +343,7 @@ theorem selector_cases
 
 theorem selectorInput_cases
     {query : FastConfirmationStore Root}
-    (trace : Weak.GetLatestConfirmedTrace cfg ext query) :
+    (trace : Weak.LatestConfirmedCallTrace cfg ext query) :
     trace.afterObserved = query.confirmed_root ∨
       trace.afterObserved = query.store.finalized_checkpoint.root ∨
       trace.afterObserved =
@@ -355,7 +355,7 @@ theorem selectorInput_cases
   · exact Or.inr (Or.inr hrestarted)
   · exact Or.inr (Or.inl hreset)
 
-end GetLatestConfirmedTrace
+end LatestConfirmedCallTrace
 
 /-- The four conjuncts of the (rule-independent) observed-restart guard,
 stated over a bare candidate root rather than over a trace field. -/
@@ -381,7 +381,7 @@ theorem observedRestartGuard_facts
 /-- Weak twin of `CarriedCandidateInputAt`. -/
 structure CarriedCandidateInputAt
     (query : FastConfirmationStore Root)
-    (trace : Weak.GetLatestConfirmedTrace cfg ext query) : Prop where
+    (trace : Weak.LatestConfirmedCallTrace cfg ext query) : Prop where
   afterFinalized_eq : trace.afterFinalized = query.confirmed_root
   finalized_guard_false : ¬ getLatestFinalizedRevertGuard cfg ext query
   afterObserved_eq : trace.afterObserved = trace.afterFinalized
@@ -394,7 +394,7 @@ namespace CarriedCandidateInputAt
 /-- A carried input necessarily passed the first guard's stale test. -/
 theorem confirmed_recent
     {query : FastConfirmationStore Root}
-    {trace : Weak.GetLatestConfirmedTrace cfg ext query}
+    {trace : Weak.LatestConfirmedCallTrace cfg ext query}
     (h : Weak.CarriedCandidateInputAt cfg ext query trace) :
     get_block_epoch cfg query.store query.confirmed_root + 1 ≥
       get_current_store_epoch cfg query.store := by
@@ -407,7 +407,7 @@ end CarriedCandidateInputAt
 /-- A finalized selector input can come from either reset gate. -/
 structure FinalizedResetCandidateInputAt
     (query : FastConfirmationStore Root)
-    (trace : Weak.GetLatestConfirmedTrace cfg ext query) : Prop where
+    (trace : Weak.LatestConfirmedCallTrace cfg ext query) : Prop where
   input_eq : trace.afterObserved = query.store.finalized_checkpoint.root
 
 /-- Weak twin of `ObservedResetCandidateInputAt`. Every conjunct of the
@@ -416,7 +416,7 @@ executable guard is projected explicitly, including
 the weak bookkeeping installs. -/
 structure ObservedResetCandidateInputAt
     (query : FastConfirmationStore Root)
-    (trace : Weak.GetLatestConfirmedTrace cfg ext query) : Prop where
+    (trace : Weak.LatestConfirmedCallTrace cfg ext query) : Prop where
   afterFinalized_cases :
     (trace.afterFinalized = query.confirmed_root ∧
         ¬ getLatestFinalizedRevertGuard cfg ext query) ∨
@@ -448,7 +448,7 @@ structure ObservedResetCandidateInputAt
 /-- Weak twin of `OrderedCandidateInputOrigin`. -/
 inductive OrderedCandidateInputOrigin
     (query : FastConfirmationStore Root)
-    (trace : Weak.GetLatestConfirmedTrace cfg ext query) : Prop
+    (trace : Weak.LatestConfirmedCallTrace cfg ext query) : Prop
   | carried : Weak.CarriedCandidateInputAt cfg ext query trace →
       OrderedCandidateInputOrigin query trace
   | finalizedReset : Weak.FinalizedResetCandidateInputAt cfg ext query trace →
@@ -461,7 +461,7 @@ inductive OrderedCandidateInputOrigin
 /-- Weak twin of `SelectorUnchangedAt`. -/
 inductive SelectorUnchangedAt
     (query : FastConfirmationStore Root)
-    (trace : Weak.GetLatestConfirmedTrace cfg ext query) : Prop
+    (trace : Weak.LatestConfirmedCallTrace cfg ext query) : Prop
   | skipped
       (result_eq : trace.result = trace.afterObserved)
       (guard_false :
@@ -481,7 +481,7 @@ namespace SelectorUnchangedAt
 input. -/
 theorem result_eq_input
     {query : FastConfirmationStore Root}
-    {trace : Weak.GetLatestConfirmedTrace cfg ext query}
+    {trace : Weak.LatestConfirmedCallTrace cfg ext query}
     (h : Weak.SelectorUnchangedAt cfg ext query trace) :
     trace.result = trace.afterObserved := by
   cases h with
@@ -493,7 +493,7 @@ end SelectorUnchangedAt
 /-- Weak twin of `StrictSelectorAdvanceAt`. -/
 structure StrictSelectorAdvanceAt
     (query : FastConfirmationStore Root)
-    (trace : Weak.GetLatestConfirmedTrace cfg ext query) : Prop where
+    (trace : Weak.LatestConfirmedCallTrace cfg ext query) : Prop where
   result_eq : trace.result =
     Weak.find_latest_confirmed_descendant cfg ext query trace.afterObserved
   guard_true : getLatestSelectorGuard cfg query trace.afterObserved
@@ -505,7 +505,7 @@ structure StrictSelectorAdvanceAt
 /-- Weak twin of `CandidateHistoryCallBranch`. -/
 inductive CandidateHistoryCallBranch
     (query : FastConfirmationStore Root)
-    (trace : Weak.GetLatestConfirmedTrace cfg ext query) : Prop
+    (trace : Weak.LatestConfirmedCallTrace cfg ext query) : Prop
   | carriedUnchanged
       (input : Weak.CarriedCandidateInputAt cfg ext query trace)
       (selector : Weak.SelectorUnchangedAt cfg ext query trace) :
@@ -523,13 +523,13 @@ inductive CandidateHistoryCallBranch
       (selector : Weak.StrictSelectorAdvanceAt cfg ext query trace) :
       CandidateHistoryCallBranch query trace
 
-namespace GetLatestConfirmedTrace
+namespace LatestConfirmedCallTrace
 
 /-- An arbitrary weak evaluator trace has the exact four-way candidate
 history classification. -/
 theorem candidateHistoryCallBranch
     {query : FastConfirmationStore Root}
-    (trace : Weak.GetLatestConfirmedTrace cfg ext query) :
+    (trace : Weak.LatestConfirmedCallTrace cfg ext query) :
     Weak.CandidateHistoryCallBranch cfg ext query trace := by
   have mkSelector :
       Weak.SelectorUnchangedAt cfg ext query trace ∨
@@ -591,14 +591,14 @@ theorem candidateHistoryCallBranch
     · exact .finalizedResetUnchanged hinput hselector
     · exact .strictSelected (.finalizedReset hinput) hselector
 
-end GetLatestConfirmedTrace
+end LatestConfirmedCallTrace
 
 /-! ## Minimal query-local geometry for a strict weak branch -/
 
 /-- Weak twin of `StrictSelectorAdvanceGeometryAt`. -/
 structure StrictSelectorAdvanceGeometryAt
     (query : FastConfirmationStore Root)
-    (trace : Weak.GetLatestConfirmedTrace cfg ext query) : Prop where
+    (trace : Weak.LatestConfirmedCallTrace cfg ext query) : Prop where
   result_known : trace.result ∈ query.store.block_roots
   descends_input : is_ancestor query.store
     (get_node_for_root trace.result)
@@ -616,7 +616,7 @@ namespace StrictSelectorAdvanceAt
 `Weak.weak_find_latest_confirmed_descendant_ge`. -/
 theorem geometry
     {query : FastConfirmationStore Root}
-    {trace : Weak.GetLatestConfirmedTrace cfg ext query}
+    {trace : Weak.LatestConfirmedCallTrace cfg ext query}
     (h : Weak.StrictSelectorAdvanceAt cfg ext query trace)
     (hwf : ParentSlotLt query.store)
     (hwalk : ∀ t ∈ query.store.block_roots,
@@ -688,13 +688,13 @@ theorem weakConfirmed_succ_of_advance (v : ValidatorIndex) (n : ℕ)
 /-- The weak evaluator trace specialized to the exact variable-updated store
 of one weak execution call. -/
 def weakGetLatestConfirmedTraceAt (v : ValidatorIndex) (n : ℕ) :
-    Weak.GetLatestConfirmedTrace cfg ext (E.weakFcrStep cfg ext v n) :=
+    Weak.LatestConfirmedCallTrace cfg ext (E.weakFcrStep cfg ext v n) :=
   Weak.getLatestConfirmedTrace cfg ext (E.weakFcrStep cfg ext v n)
 
 /-- Weak twin of `Execution.ActualCandidateHistoryRecurrenceAt`. -/
 structure WeakActualCandidateHistoryRecurrenceAt
     (v : ValidatorIndex) (n : ℕ) : Prop where
-  call : E.IsFCRCallAt cfg ext v n
+  call : E.IsScheduledFCRCallAt cfg ext v n
   query_store_eq :
     (E.weakFcrStep cfg ext v n).store = E.store cfg ext v (n + 1)
   query_confirmed_eq :
@@ -712,7 +712,7 @@ structure WeakActualCandidateHistoryRecurrenceAt
 /-- Weak twin of `Execution.actualCandidateHistoryRecurrence`. -/
 theorem weakActualCandidateHistoryRecurrence
     {v : ValidatorIndex} {n : ℕ}
-    (hcall : E.IsFCRCallAt cfg ext v n) :
+    (hcall : E.IsScheduledFCRCallAt cfg ext v n) :
     E.WeakActualCandidateHistoryRecurrenceAt cfg ext v n := by
   let trace := E.weakGetLatestConfirmedTraceAt cfg ext v n
   have hwrite : E.weakConfirmed cfg ext v (n + 1) = trace.result :=

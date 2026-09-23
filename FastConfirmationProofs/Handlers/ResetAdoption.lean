@@ -47,7 +47,7 @@ so the store's parent-slot order carries the inclusion-time bound
 required, no certificate and no checkpoint. -/
 theorem includedAttestationSlot_lt_acceptedCarrierBlock
     (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
+    (hT : E.ScheduledPrefixPremises cfg ext)
     {v : ValidatorIndex} {q : ℕ} {carrier : Root}
     (hcarrier : carrier ∈
       (E.store cfg ext v q).block_roots)
@@ -100,7 +100,7 @@ This is the carrier-local form of the timing argument used by reset
 classification.  It does not mention the current epoch of any store. -/
 theorem includedCertifiedFinalized_epoch_lt_acceptedCarrierBlock
     (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
+    (hT : E.ScheduledPrefixPremises cfg ext)
     {v : ValidatorIndex} {q : ℕ} {carrier : Root}
     (hcarrier : carrier ∈
       (E.store cfg ext v q).block_roots)
@@ -170,7 +170,7 @@ takeover.  The premise is only carrier membership, not same-root state
 adoption or a pre-assumed finalized/justified ordering. -/
 theorem finalized_epoch_le_justified_of_acceptedCarrierKnown
     (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
+    (hT : E.ScheduledPrefixPremises cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     {v w : ValidatorIndex} {q m : ℕ}
     (hcarriers : ∀ r,
@@ -240,9 +240,9 @@ one-slot relay gate.  This is the endpoint adoption theorem needed by the
 corrected finalized-reset facade. -/
 theorem finalized_epoch_le_remoteJustified_of_synchrony
     (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
+    (hT : E.ScheduledPrefixPremises cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
-    (hsync : PaperSafetySynchrony cfg ext E)
+    (hsync : NextSlotSynchronyPremises cfg ext E)
     {v w : ValidatorIndex} (hv : v ∈ E.honest)
     (hw : w ∈ E.honest) {q m : ℕ}
     (hHq : E.WithinHorizon cfg q)
@@ -259,9 +259,9 @@ theorem finalized_epoch_le_remoteJustified_of_synchrony
 this is directly shaped like `Spec_Safety_next_slot`. -/
 theorem finalized_epoch_le_remoteJustified_nextSlot
     (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
+    (hT : E.ScheduledPrefixPremises cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
-    (hsync : PaperSafetySynchrony cfg ext E)
+    (hsync : NextSlotSynchronyPremises cfg ext E)
     {v w : ValidatorIndex} (hv : v ∈ E.honest)
     (hw : w ∈ E.honest) {q m : ℕ}
     (hHq : E.WithinHorizon cfg q)
@@ -277,15 +277,15 @@ theorem finalized_epoch_le_remoteJustified_nextSlot
 next-slot adoption theorem. -/
 theorem finalizedReset_epoch_le_remoteJustified_nextSlot
     (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
+    (hT : E.ScheduledPrefixPremises cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
-    (hsync : PaperSafetySynchrony cfg ext E)
+    (hsync : NextSlotSynchronyPremises cfg ext E)
     {v w : ValidatorIndex} (hv : v ∈ E.honest)
     (hw : w ∈ E.honest) {n m : ℕ}
     (hHn1 : E.WithinHorizon cfg (n + 1))
     (hHm : E.WithinHorizon cfg m)
     (hnext : E.slot_at cfg (n + 1) + 1 ≤ E.slot_at cfg m) :
-    (E.fcrStep cfg ext v n).store.finalized_checkpoint.epoch ≤
+    (E.fcrStoreAtCall cfg ext v n).store.finalized_checkpoint.epoch ≤
       (E.store cfg ext w m).justified_checkpoint.epoch := by
   rw [E.fcrStep_store]
   exact E.finalized_epoch_le_remoteJustified_nextSlot cfg ext B hT

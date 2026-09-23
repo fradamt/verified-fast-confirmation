@@ -38,7 +38,7 @@ already imports the other.
 
 `E.weakGetLatestConfirmedTraceAt cfg ext obs n` has an exact four-way
 candidate-history classification
-(`Weak.GetLatestConfirmedTrace.candidateHistoryCallBranch`, mirroring the
+(`Weak.LatestConfirmedCallTrace.candidateHistoryCallBranch`, mirroring the
 strong `CandidateHistoryCallBranch`):
 
 * the three "unchanged" branches (`carriedUnchanged`, `finalizedResetUnchanged`,
@@ -86,7 +86,7 @@ variable (E : Execution Root)
 
 /-- **The closed one-shot weak safety step, at an actual FCR call.**
 
-At a genuine weak FCR call (`hcall : E.IsFCRCallAt cfg ext obs n`), with the
+At a genuine weak FCR call (`hcall : E.IsScheduledFCRCallAt cfg ext obs n`), with the
 call's own candidate input known and `SafeFrom` from the start of the query
 slot, the weak selector's actual result is `SafeFrom` at the call's own
 second `n + 1` — with no `hmargin`, `hfilter`, or other residual filter-
@@ -95,7 +95,7 @@ internally, uniformly over which of the four candidate-history branches the
 call actually took.
 
 The historical A3.2 call contract is the unchanged 6-field
-`E.AcceptedHistoricalA32CompletedPrefixCallAssumptions` together with
+`E.CompletedFCRCallPremises` together with
 `hprior : Weak.ObserverPriorCallWriteBackSafe cfg ext E obs n` — a *derived*
 trajectory fact, discharged by the weak safety fold's own strengthened
 induction hypothesis at seconds strictly below `n`; the crossing payload the
@@ -111,12 +111,12 @@ never appears as a premise. -/
 theorem weak_safeFrom_observerCall_closed_lazy
     {E : Execution Root}
     (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
+    (hT : E.ScheduledPrefixPremises cfg ext)
     (hji : JustificationInterface cfg ext E)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : Execution.TrustedAnchorBoundaryAligned (cfg := cfg)
       (E := E) (anchor := B.anchor))
-    (hDelay : E.AcceptedRealizedFinalizationDelay cfg ext B)
+    (hDelay : E.RealizedFinalizationDelay cfg ext B)
     (hphase0 : Phase0SourceCoherence cfg ext)
     (hpaper : B.state.PaperA32Inclusion cfg ext)
     (P : AcceptedEpochCheckpointProjection B.anchor
@@ -126,12 +126,12 @@ theorem weak_safeFrom_observerCall_closed_lazy
     {obs : ValidatorIndex}
     (hW : E.WeakObserverAssumptions cfg ext obs)
     (hwalkDomain : E.PostAnchorHonestVoteTargetWalkDomain cfg ext)
-    (hCbase : E.AcceptedHistoricalA32CompletedPrefixCallAssumptions cfg ext)
+    (hCbase : E.CompletedFCRCallPremises cfg ext)
     (hfit : EpochEndsFitUint64 cfg)
     {n : ℕ}
     (hprior : Weak.ObserverPriorCallWriteBackSafe cfg ext E obs n)
     (hn1H : E.WithinHorizon cfg (n + 1))
-    (hcall : E.IsFCRCallAt cfg ext obs n)
+    (hcall : E.IsScheduledFCRCallAt cfg ext obs n)
     (hinput : (E.weakGetLatestConfirmedTraceAt cfg ext obs n).afterObserved ∈
       (E.weakFcrStep cfg ext obs n).store.block_roots)
     (hbase : E.SafeFrom cfg ext

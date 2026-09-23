@@ -23,7 +23,7 @@ evaluator-free and is reused verbatim.
 
 **The substitutions.**
 
-* `E.confirmed` / `E.fcrStep` / `E.getLatestConfirmedTraceAt` →
+* `E.confirmed` / `E.fcrStoreAtCall` / `E.getLatestConfirmedTraceAt` →
   `E.weakConfirmed` / `E.weakFcrStep` / `E.weakGetLatestConfirmedTraceAt`,
   with `E.fcrStep_store` / `E.fcrStep_confirmed_root` /
   `E.confirmed_zero` / `E.confirmed_succ_of_advance` /
@@ -54,7 +54,7 @@ evaluator-free and is reused verbatim.
   obligation route `Weak.ObserverLineageRouteAt`
   (`WeakHistoricalA32OneStep.lean`), whose only instantiation is the lazy one
   below: it needs no normative proviso at all, and the unchanged 6-field
-  `E.AcceptedHistoricalA32CompletedPrefixCallAssumptions` drives
+  `E.CompletedFCRCallPremises` drives
   `Execution.observerCall_acceptedTargetGateProducerAt`
   (`WeakHistoricalA32CallSupplier.lean`) for the gate producer.  The
   per-call interface below is therefore *derived*, not assumed.
@@ -115,12 +115,12 @@ variable {E : Execution Root}
 `Cert`/`Supp` are `Weak.LazyCertAt`/`Weak.LazySupportAt` at the write-back
 bound, and the crossing builder is `Weak.selectedCurrentCrossingLazyLineage`,
 which consumes **no** normative proviso.  Only the unchanged
-6-field `E.AcceptedHistoricalA32CompletedPrefixCallAssumptions` is required. -/
+6-field `E.CompletedFCRCallPremises` is required. -/
 theorem observerLineageRoute_lazy
     (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
+    (hT : E.ScheduledPrefixPremises cfg ext)
     {obs : ValidatorIndex}
-    (hCbase : E.AcceptedHistoricalA32CompletedPrefixCallAssumptions cfg ext)
+    (hCbase : E.CompletedFCRCallPremises cfg ext)
     (hdomain : SelectedMarginDomain cfg ext E)
     (hfit : EpochEndsFitUint64 cfg)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
@@ -179,7 +179,7 @@ weak known-descendant theorem.  No justification-interface or
 selected-margin premise appears. -/
 theorem getLatestConfirmedTraceAt_result_known
     (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
+    (hT : E.ScheduledPrefixPremises cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : Execution.TrustedAnchorBoundaryAligned (cfg := cfg)
       (E := E) (anchor := B.anchor))
@@ -240,7 +240,7 @@ checkpoint identification is the reused, honesty-free
 `Execution.trustedAnchor_checkpointForBlock_of_trajectory`. -/
 noncomputable def observerHistoricalA32CurrentLineageAt_zero
     (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
+    (hT : E.ScheduledPrefixPremises cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : Execution.TrustedAnchorBoundaryAligned (cfg := cfg)
       (E := E) (anchor := B.anchor))
@@ -302,7 +302,7 @@ about `E.store`, which the two models share, so only the write-back equations
 change (`E.confirmed_succ_of_*` → `E.weakConfirmed_succ_of_*`). -/
 noncomputable def observerHistoricalA32CurrentLineageAt_all
     (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
+    (hT : E.ScheduledPrefixPremises cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : Execution.TrustedAnchorBoundaryAligned (cfg := cfg)
       (E := E) (anchor := B.anchor))
@@ -327,7 +327,7 @@ noncomputable def observerHistoricalA32CurrentLineageAt_all
           (E.store cfg ext obs (n + 1)).block_roots :=
         (E.store_storeLE cfg ext obs (Nat.le_succ n)).1
           hprevious.confirmed_known
-      by_cases hadv : E.IsFCRCallAt cfg ext obs n
+      by_cases hadv : E.IsScheduledFCRCallAt cfg ext obs n
       · let trace := E.weakGetLatestConfirmedTraceAt cfg ext obs n
         have htraceKnown := Weak.getLatestConfirmedTraceAt_result_known
           cfg ext B hT hanchor hboundary hcoh hHn1
@@ -415,7 +415,7 @@ builder and the two anchor discharges, and every top-level weak statement
 already carries `B`/`hT`/`hanchor`/`hboundary`. -/
 theorem observerHistoricalA32CurrentLineage_invariant
     (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
+    (hT : E.ScheduledPrefixPremises cfg ext)
     {obs : ValidatorIndex}
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : Execution.TrustedAnchorBoundaryAligned (cfg := cfg)
@@ -446,7 +446,7 @@ builder and the completed-prefix gate producer are both contracted at actual
 weak FCR calls only. -/
 theorem observerCall_currentLineage
     (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
+    (hT : E.ScheduledPrefixPremises cfg ext)
     {obs : ValidatorIndex}
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : Execution.TrustedAnchorBoundaryAligned (cfg := cfg)
@@ -454,7 +454,7 @@ theorem observerCall_currentLineage
     (hcoh : E.ObserverCoherence cfg ext obs)
     {Cert : ℕ → Checkpoint Root → Prop} {Supp : ℕ → Root → Epoch → Prop}
     (hroute : Weak.ObserverLineageRouteAt cfg ext E B obs Cert Supp)
-    {n : ℕ} (hcall : E.IsFCRCallAt cfg ext obs n)
+    {n : ℕ} (hcall : E.IsScheduledFCRCallAt cfg ext obs n)
     (hHn1 : E.WithinHorizon cfg (n + 1)) :
     get_block_epoch cfg (E.weakFcrStep cfg ext obs n).store
         (E.weakGetLatestConfirmedTraceAt cfg ext obs n).result =
@@ -495,7 +495,7 @@ strong `hdomain : SelectedMarginDomain` binder is gone, because
 already replaced it by observer coherence. -/
 theorem observerCall_previousCarried_epochStartLineage
     (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
+    (hT : E.ScheduledPrefixPremises cfg ext)
     {obs : ValidatorIndex}
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : Execution.TrustedAnchorBoundaryAligned (cfg := cfg)
@@ -503,7 +503,7 @@ theorem observerCall_previousCarried_epochStartLineage
     (hcoh : E.ObserverCoherence cfg ext obs)
     {Cert : ℕ → Checkpoint Root → Prop} {Supp : ℕ → Root → Epoch → Prop}
     (hroute : Weak.ObserverLineageRouteAt cfg ext E B obs Cert Supp)
-    {n : ℕ} (hcall : E.IsFCRCallAt cfg ext obs n)
+    {n : ℕ} (hcall : E.IsScheduledFCRCallAt cfg ext obs n)
     (hHn1 : E.WithinHorizon cfg (n + 1)) :
     Weak.CarriedCandidateInputAt cfg ext (E.weakFcrStep cfg ext obs n)
       (E.weakGetLatestConfirmedTraceAt cfg ext obs n) →
@@ -648,7 +648,7 @@ over an arbitrary node `v`, so no substitution at all is needed — only the
 `private` modifier on the strong copy forces the duplicate. -/
 private theorem AcceptedHistoricalA32LineageCoreAt.payloadAtObserverStore
     (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
+    (hT : E.ScheduledPrefixPremises cfg ext)
     (hphase : Phase0SourceCoherence cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : Execution.TrustedAnchorBoundaryAligned (cfg := cfg)
@@ -723,7 +723,7 @@ is D1† of `docs/crossing-call-support-residue.md` §2.1, ported to the weak
 side (`docs/weak-final-wave.md` §4). -/
 theorem observerCall_currentTargetHistoricalCertificate
     (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
+    (hT : E.ScheduledPrefixPremises cfg ext)
     (hphase : Phase0SourceCoherence cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : Execution.TrustedAnchorBoundaryAligned (cfg := cfg)
@@ -744,7 +744,7 @@ theorem observerCall_currentTargetHistoricalCertificate
         (E.weakGetLatestConfirmedTraceAt cfg ext obs n).result =
       get_current_store_epoch cfg (E.weakFcrStep cfg ext obs n).store)
     (hnoCrossing : ¬ ∃ a c : Root,
-      Weak.CurrentTargetAcceptedEdge cfg ext (E.weakFcrStep cfg ext obs n)
+      Weak.CurrentTargetSelectedEdge cfg ext (E.weakFcrStep cfg ext obs n)
         (E.weakGetLatestConfirmedTraceAt cfg ext obs n).afterObserved a c) :
     Nonempty (CertifiedJustified cfg E B.anchor
       (get_current_target cfg (E.weakFcrStep cfg ext obs n).store)) := by

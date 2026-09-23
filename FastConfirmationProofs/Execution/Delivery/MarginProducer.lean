@@ -90,8 +90,8 @@ theorem chain_descent_restrict (hwfE : WellFormedExecution E)
 
 
 /-- The same-epoch aggregate Byzantine budget from `es`. -/
-theorem hbudget_sameEpoch_of_IH (hbb : ByzantineBound cfg E)
-    (hec : ExternalsCoherence cfg ext E) {lo es σ : Slot}
+theorem hbudget_sameEpoch_of_IH (hbb : ByzantineWeightPremises cfg E)
+    (hec : BeaconExternalsPremises cfg ext E) {lo es σ : Slot}
     (hlo : lo ≤ es) (hbase : es ≤ σ)
     (hσH : E.SlotWithinHorizon cfg σ)
     (hsame : ∀ t : Slot, lo ≤ t → t ≤ σ →

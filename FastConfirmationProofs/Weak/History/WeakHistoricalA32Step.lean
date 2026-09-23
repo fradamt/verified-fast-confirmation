@@ -14,7 +14,7 @@ The weak-evaluator twin of the exact evaluator-step layer
 
 **Why a twin is needed at all.**  Every statement in the strong step layer is
 indexed by the *strong* selector — `find_latest_confirmed_descendant`,
-`findLatestSelectedTrace`, `GetLatestConfirmedTrace`, `E.fcrStep` — and rule
+`findLatestSelectedTrace`, `LatestConfirmedCallTrace`, `E.fcrStoreAtCall` — and rule
 delta 5 gives the weak model different selector functions
 (`Spec/Model/WeakSynchrony.lean`).  The strong lemmas therefore do not
 instantiate at a weak call, even though nothing in them is *about* the
@@ -44,8 +44,8 @@ honesty-free and selector-free and is imported verbatim:
 `Weak.findLatestSelectedTrace`; `find_latest_confirmed_descendant_ge` →
 `Weak.weak_find_latest_confirmed_descendant_ge`;
 `strictSelectedResult_below_head` → `Weak.strictSelectedResult_below_head`;
-`GetLatestConfirmedTrace` → `Weak.GetLatestConfirmedTrace`;
-`E.fcrStep` / `E.getLatestConfirmedTraceAt` / `E.confirmed` →
+`LatestConfirmedCallTrace` → `Weak.LatestConfirmedCallTrace`;
+`E.fcrStoreAtCall` / `E.getLatestConfirmedTraceAt` / `E.confirmed` →
 `E.weakFcrStep` / `E.weakGetLatestConfirmedTraceAt` / `E.weakConfirmed`.
 
 **The one gate substitution, and why it costs nothing.**  Rule delta 1 makes
@@ -78,14 +78,14 @@ namespace Weak
 
 /-! ## The weak accepted crossing edge -/
 
-/-- Weak twin of `CurrentTargetAcceptedEdge` (`SelectedFilterBridge.lean`): a
+/-- Weak twin of `CurrentTargetSelectedEdge` (`SelectedFilterBridge.lean`): a
 weak-selected-path tentative edge which actually crossed to a later block
 epoch.  The substitution is exactly `findLatestSelectedTrace` →
 `Weak.findLatestSelectedTrace`; the two conjuncts are kept in the same order
 and the same shape as the strong abbreviation, so that consumers which inline
 these two conjuncts as separate arguments apply to `h.1` and `h.2` directly
 and no bridging lemma is needed. -/
-def CurrentTargetAcceptedEdge (fcrStore : FastConfirmationStore Root)
+def CurrentTargetSelectedEdge (fcrStore : FastConfirmationStore Root)
     (latestConfirmedRoot a c : Root) : Prop :=
   (a, c) ∈ (Weak.findLatestSelectedTrace cfg ext fcrStore
       latestConfirmedRoot).2.2 ∧
@@ -112,26 +112,26 @@ theorem mem_findLatestSelectedTrace_tentative
   all_goals
     exact mem_tentativeLoopTrace cfg ext fcrStore _ _ a c h
 
-/-- Weak twin of `CurrentTargetAcceptedEdge.current_target_gate`: a crossing
+/-- Weak twin of `CurrentTargetSelectedEdge.current_target_gate`: a crossing
 weak tentative edge really did pass the weak executable
 `Weak.will_current_target_be_justified` guard.  Substitution: the strong
 wrapper projection is replaced by `Weak.mem_findLatestSelectedTrace_tentative`
 above. -/
-theorem CurrentTargetAcceptedEdge.current_target_gate
+theorem CurrentTargetSelectedEdge.current_target_gate
     {fcrStore : FastConfirmationStore Root} {latestConfirmedRoot a c : Root}
-    (h : Weak.CurrentTargetAcceptedEdge cfg ext fcrStore latestConfirmedRoot
+    (h : Weak.CurrentTargetSelectedEdge cfg ext fcrStore latestConfirmedRoot
       a c) :
     Weak.will_current_target_be_justified cfg ext fcrStore.store = true :=
   (Weak.mem_findLatestSelectedTrace_tentative cfg ext fcrStore
     latestConfirmedRoot a c h.1).2 h.2
 
-/-- Weak twin of `CurrentTargetAcceptedEdge.one_confirmed`: every crossing
+/-- Weak twin of `CurrentTargetSelectedEdge.one_confirmed`: every crossing
 weak tentative edge also passed weak one-confirmation at the query's current
 balance source.  Substitution: `is_one_confirmed` → `Weak.is_one_confirmed`,
 which additionally reads that balance source. -/
-theorem CurrentTargetAcceptedEdge.one_confirmed
+theorem CurrentTargetSelectedEdge.one_confirmed
     {fcrStore : FastConfirmationStore Root} {latestConfirmedRoot a c : Root}
-    (h : Weak.CurrentTargetAcceptedEdge cfg ext fcrStore latestConfirmedRoot
+    (h : Weak.CurrentTargetSelectedEdge cfg ext fcrStore latestConfirmedRoot
       a c) :
     Weak.is_one_confirmed cfg ext fcrStore.store
       (get_current_balance_source fcrStore) c = true :=
@@ -144,8 +144,8 @@ no retained epoch-crossing edge necessarily started from a current-epoch input.
 
 Substitutions: `find_latest_confirmed_descendant` →
 `Weak.find_latest_confirmed_descendant`, `findLatestSelectedTrace(_fst,
-_parentTrace)` → the `Weak.` twins, `PreviousAcceptedEdge` →
-`Weak.PreviousAcceptedEdge` (whose `.gates` is a five-conjunct weak record,
+_parentTrace)` → the `Weak.` twins, `PreviousEpochSelectedEdge` →
+`Weak.PreviousEpochSelectedEdge` (whose `.gates` is a five-conjunct weak record,
 but whose first conjunct — the retained previous-epoch child is not current —
 is unchanged, and is the only one used here).  The parent-trace geometry
 (`SelectedParentTrace.exists_edge_entering_next_epoch`) is selector-free and
@@ -167,7 +167,7 @@ theorem selectedInput_current_of_result_current_no_crossing
       (Weak.find_latest_confirmed_descendant cfg ext query input) =
         get_current_store_epoch cfg query.store)
     (hnoCrossing : ¬ ∃ a c : Root,
-      Weak.CurrentTargetAcceptedEdge cfg ext query input a c) :
+      Weak.CurrentTargetSelectedEdge cfg ext query input a c) :
     get_block_epoch cfg query.store input =
       get_current_store_epoch cfg query.store := by
   rcases hinputEpoch with hcurrent | hprevious
@@ -186,18 +186,18 @@ theorem selectedInput_current_of_result_current_no_crossing
       htrace.exists_edge_entering_next_epoch cfg hwf hstep
     rcases List.mem_append.mp hm with hprev | htent
     · have hcNotCurrent :=
-        (show Weak.PreviousAcceptedEdge cfg ext query input a c from hprev).gates
+        (show Weak.PreviousEpochSelectedEdge cfg ext query input a c from hprev).gates
           cfg ext
       exact False.elim (hcNotCurrent.1 (hcCurrent.trans hghostCurrent))
     · exact False.elim (hnoCrossing ⟨a, c, htent, hac⟩)
 
-/-- Weak twin of `CurrentTargetAcceptedEdge.result_ne_input`
+/-- Weak twin of `CurrentTargetSelectedEdge.result_ne_input`
 (`HistoricalCurrentTargetTrajectory.lean`): a retained weak current-target edge
 makes the weak wrapper result strict.  Substitutions: the ghost trace and its
 erasure lemma become `Weak.findLatestSelectedTrace(_parentTrace, _fst)`, the
 result becomes `Weak.find_latest_confirmed_descendant`.  The slot arithmetic
 on `SelectedParentTrace` is selector-free and reused verbatim. -/
-theorem CurrentTargetAcceptedEdge.result_ne_input
+theorem CurrentTargetSelectedEdge.result_ne_input
     {query : FastConfirmationStore Root}
     (hwf : ParentSlotLt query.store)
     (hwalk : ∀ t ∈ query.store.block_roots,
@@ -205,7 +205,7 @@ theorem CurrentTargetAcceptedEdge.result_ne_input
         WalkKnown query.store (query.store.blocks t).slot r)
     (hhead : (get_head cfg query.store).root ∈ query.store.block_roots)
     {input a c : Root} (hinput : input ∈ query.store.block_roots)
-    (hedge : Weak.CurrentTargetAcceptedEdge cfg ext query input a c) :
+    (hedge : Weak.CurrentTargetSelectedEdge cfg ext query input a c) :
     Weak.find_latest_confirmed_descendant cfg ext query input ≠ input := by
   have htrace := findLatestSelectedTrace_parentTrace cfg ext query
     hwf hwalk hhead input hinput
@@ -225,19 +225,19 @@ theorem CurrentTargetAcceptedEdge.result_ne_input
 
 /-! ## The weak evaluator trace's selected-result equation -/
 
-namespace GetLatestConfirmedTrace
+namespace LatestConfirmedCallTrace
 
-/-- Weak twin of `GetLatestConfirmedTrace.selected_facts`
-(`GetLatestConfirmedTrace.lean`): the exact result equation when the final
+/-- Weak twin of `LatestConfirmedCallTrace.selected_facts`
+(`LatestConfirmedCallTrace.lean`): the exact result equation when the final
 selector guard is active.  `WeakCandidateHistoryRecurrence.lean` landed
-`Weak.GetLatestConfirmedTrace.selector_cases` but not this one-line
+`Weak.LatestConfirmedCallTrace.selector_cases` but not this one-line
 consequence, which every step lemma below opens with; the substitution is
 `find_latest_confirmed_descendant` → `Weak.find_latest_confirmed_descendant`.
 Like the strong form it is indexed by `trace.afterObserved`, so it applies
 unchanged to carried, finalized-reset and observed-reset inputs. -/
 theorem selected_facts
     {query : FastConfirmationStore Root}
-    (trace : Weak.GetLatestConfirmedTrace cfg ext query)
+    (trace : Weak.LatestConfirmedCallTrace cfg ext query)
     (hselector : getLatestSelectorGuard cfg query trace.afterObserved) :
     trace.result = Weak.find_latest_confirmed_descendant cfg ext query
       trace.afterObserved := by
@@ -245,7 +245,7 @@ theorem selected_facts
   · exact False.elim (hfalse hselector)
   · exact hresult
 
-end GetLatestConfirmedTrace
+end LatestConfirmedCallTrace
 
 variable {E : Execution Root}
 
@@ -256,9 +256,9 @@ variable {E : Execution Root}
 weak final selector phase, independent of which ordered reset phase supplied
 its input.
 
-Substitutions: `GetLatestConfirmedTrace` → `Weak.GetLatestConfirmedTrace` (and
-`.selected_facts` → the twin above), `CurrentTargetAcceptedEdge` →
-`Weak.CurrentTargetAcceptedEdge`, `find_latest_confirmed_descendant` →
+Substitutions: `LatestConfirmedCallTrace` → `Weak.LatestConfirmedCallTrace` (and
+`.selected_facts` → the twin above), `CurrentTargetSelectedEdge` →
+`Weak.CurrentTargetSelectedEdge`, `find_latest_confirmed_descendant` →
 `Weak.find_latest_confirmed_descendant`, `find_latest_confirmed_descendant_ge`
 → `weak_find_latest_confirmed_descendant_ge`, and
 `selectedInput_current_of_result_current_no_crossing` → the weak twin above.
@@ -277,7 +277,7 @@ theorem selectedCurrentNoCrossingAcceptedSegment
       ∀ r ∈ query.store.block_roots,
         WalkKnown query.store (query.store.blocks t).slot r)
     (hhead : (get_head cfg query.store).root ∈ query.store.block_roots)
-    (trace : Weak.GetLatestConfirmedTrace cfg ext query)
+    (trace : Weak.LatestConfirmedCallTrace cfg ext query)
     (hinputKnown : trace.afterObserved ∈ query.store.block_roots)
     (hinputSlotUpper : (query.store.blocks trace.afterObserved).slot ≤
       get_current_slot cfg query.store)
@@ -285,7 +285,7 @@ theorem selectedCurrentNoCrossingAcceptedSegment
     (hresultCurrent : get_block_epoch cfg query.store trace.result =
       get_current_store_epoch cfg query.store)
     (hnoCrossing : ¬ ∃ a c : Root,
-      Weak.CurrentTargetAcceptedEdge cfg ext query trace.afterObserved a c)
+      Weak.CurrentTargetSelectedEdge cfg ext query trace.afterObserved a c)
     (hstrictNonGenesis : ∀ r ∈ query.store.block_roots,
       (query.store.blocks trace.afterObserved).slot <
           (query.store.blocks r).slot →
@@ -373,7 +373,7 @@ noncomputable def selectedCurrentNoCrossingLineage
       ∀ r ∈ query.store.block_roots,
         WalkKnown query.store (query.store.blocks t).slot r)
     (hhead : (get_head cfg query.store).root ∈ query.store.block_roots)
-    (trace : Weak.GetLatestConfirmedTrace cfg ext query)
+    (trace : Weak.LatestConfirmedCallTrace cfg ext query)
     (hinputKnown : trace.afterObserved ∈ query.store.block_roots)
     (hinputSlotUpper : (query.store.blocks trace.afterObserved).slot ≤
       get_current_slot cfg query.store)
@@ -381,7 +381,7 @@ noncomputable def selectedCurrentNoCrossingLineage
     (hresultCurrent : get_block_epoch cfg query.store trace.result =
       get_current_store_epoch cfg query.store)
     (hnoCrossing : ¬ ∃ a c : Root,
-      Weak.CurrentTargetAcceptedEdge cfg ext query trace.afterObserved a c)
+      Weak.CurrentTargetSelectedEdge cfg ext query trace.afterObserved a c)
     (hstrictNonGenesis : ∀ r ∈ query.store.block_roots,
       (query.store.blocks trace.afterObserved).slot <
           (query.store.blocks r).slot →
@@ -444,19 +444,19 @@ noncomputable def selectedCurrentNoCrossingLineage
 /-! ## Weak-evaluator query facts -/
 
 /-- Weak twin of
-`Execution.GetLatestConfirmedTrace.input_current_of_selected_current_no_crossing`
+`Execution.LatestConfirmedCallTrace.input_current_of_selected_current_no_crossing`
 (`AcceptedHistoricalA32Step.lean`): expose the current-input fact already used
 internally by the generic no-crossing constructor.
 
-Substitutions: `GetLatestConfirmedTrace` → `Weak.GetLatestConfirmedTrace` (so
+Substitutions: `LatestConfirmedCallTrace` → `Weak.LatestConfirmedCallTrace` (so
 that, unlike the strong declaration, this one really is reachable by dot
-notation on a weak trace), `CurrentTargetAcceptedEdge` →
-`Weak.CurrentTargetAcceptedEdge`, and the inheritance lemma → the weak twin
+notation on a weak trace), `CurrentTargetSelectedEdge` →
+`Weak.CurrentTargetSelectedEdge`, and the inheritance lemma → the weak twin
 above.  The selector guard `getLatestSelectorGuard` is shared between the two
 models and is reused verbatim. -/
-theorem GetLatestConfirmedTrace.input_current_of_selected_current_no_crossing
+theorem LatestConfirmedCallTrace.input_current_of_selected_current_no_crossing
     {query : FastConfirmationStore Root}
-    (trace : Weak.GetLatestConfirmedTrace cfg ext query)
+    (trace : Weak.LatestConfirmedCallTrace cfg ext query)
     (hparent : ParentSlotLt query.store)
     (hwalk : ∀ t ∈ query.store.block_roots,
       ∀ r ∈ query.store.block_roots,
@@ -469,7 +469,7 @@ theorem GetLatestConfirmedTrace.input_current_of_selected_current_no_crossing
     (hresultCurrent : get_block_epoch cfg query.store trace.result =
       get_current_store_epoch cfg query.store)
     (hnoCrossing : ¬ ∃ a c : Root,
-      Weak.CurrentTargetAcceptedEdge cfg ext query trace.afterObserved a c) :
+      Weak.CurrentTargetSelectedEdge cfg ext query trace.afterObserved a c) :
     get_block_epoch cfg query.store trace.afterObserved =
       get_current_store_epoch cfg query.store := by
   have hresult := trace.selected_facts cfg ext hselector
@@ -501,7 +501,7 @@ carried root from the weak query store back to the preceding execution store.
 Store growth preserves its block, while the preceding clock bound forces
 equality of the two current epochs in precisely this case.
 
-Substitutions: `E.confirmed` → `E.weakConfirmed`, `E.fcrStep` →
+Substitutions: `E.confirmed` → `E.weakConfirmed`, `E.fcrStoreAtCall` →
 `E.weakFcrStep`, and `E.fcrStep_store` / `E.fcrStep_confirmed_root` →
 `E.weakFcrStep_store` / `E.weakFcrStep_confirmed_root`
 (`WeakFCRCallContracts.lean`).  Everything else here is about `E.store`, which
@@ -509,7 +509,7 @@ the weak model shares with the strong one verbatim: `store_storeLE`,
 `blocks_agree`, `store_blocks_slot_le_current`, `store_current_slot` and
 `slot_at_mono` are reused unchanged. -/
 theorem confirmed_current_at_previousStore_of_query
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
+    (hT : E.ScheduledPrefixPremises cfg ext)
     {v : ValidatorIndex} {n : ℕ}
     (hknownN : E.weakConfirmed cfg ext v n ∈
       (E.store cfg ext v n).block_roots)
@@ -573,7 +573,7 @@ branch.
 
 This is the "store-only" case flagged in the port plan.  The strong statement
 and its whole proof mention the evaluator solely through
-`(E.fcrStep cfg ext v n).store`, and `Execution.weakFcrStep_store` gives the
+`(E.fcrStoreAtCall cfg ext v n).store`, and `Execution.weakFcrStep_store` gives the
 weak query the very same `E.store cfg ext v (n + 1)`.  So rather than replay
 roughly forty lines of reset classification, this twin *transports* the strong
 theorem along `E.weakFcrStep_store` / `E.fcrStep_store`; nothing is cloned and
@@ -581,7 +581,7 @@ the reset classifiers of `AcceptedResetCheckpointClassification.lean` are used
 only through the strong theorem. -/
 noncomputable def actualFinalizedResetCurrentAnchorLineage_core
     (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
+    (hT : E.ScheduledPrefixPremises cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : Execution.TrustedAnchorBoundaryAligned (cfg := cfg)
       (E := E) (anchor := B.anchor))
@@ -606,7 +606,7 @@ noncomputable def actualFinalizedResetCurrentAnchorLineage_core
 /-- Eager instantiation, unchanged for every pre-existing weak caller. -/
 noncomputable def actualFinalizedResetCurrentAnchorLineage
     (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
+    (hT : E.ScheduledPrefixPremises cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : Execution.TrustedAnchorBoundaryAligned (cfg := cfg)
       (E := E) (anchor := B.anchor))
@@ -638,12 +638,12 @@ Honesty substitution: the strong wrapper's `hv : v ∈ E.honest` is replaced by
 strong step layer.
 
 Selector substitutions: `E.getLatestConfirmedTraceAt` →
-`E.weakGetLatestConfirmedTraceAt`, `E.fcrStep` → `E.weakFcrStep`,
+`E.weakGetLatestConfirmedTraceAt`, `E.fcrStoreAtCall` → `E.weakFcrStep`,
 `findLatestSelectedTrace(_parentTrace, _fst)` → the `Weak.` twins,
 `find_latest_confirmed_descendant(_ge)` → `Weak.…` /
 `weak_find_latest_confirmed_descendant_ge`, `strictSelectedResult_below_head`
-→ `Weak.strictSelectedResult_below_head`, `CurrentTargetAcceptedEdge` →
-`Weak.CurrentTargetAcceptedEdge`.  Both producer types and
+→ `Weak.strictSelectedResult_below_head`, `CurrentTargetSelectedEdge` →
+`Weak.CurrentTargetSelectedEdge`.  Both producer types and
 `Execution.AcceptedCurrentTargetA32GateRealization.fixedSource_of_acceptedTargetWalk`
 are honesty-free, selector-free and gate-transparent here (the gate arrives as
 the producer's own `intro`duced antecedent, never from the weak edge), so they
@@ -651,7 +651,7 @@ are reused verbatim. -/
 noncomputable def
     acceptedFixedSourceProducerAt_of_selectedCurrentCrossing
     (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
+    (hT : E.ScheduledPrefixPremises cfg ext)
     (hphase : Phase0SourceCoherence cfg ext)
     (hboundaryPhase : Phase0BoundarySourceCoherence cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
@@ -668,7 +668,7 @@ noncomputable def
         (E.weakGetLatestConfirmedTraceAt cfg ext obs n).result =
       get_current_store_epoch cfg (E.weakFcrStep cfg ext obs n).store)
     {a c : Root}
-    (hedge : Weak.CurrentTargetAcceptedEdge cfg ext
+    (hedge : Weak.CurrentTargetSelectedEdge cfg ext
       (E.weakFcrStep cfg ext obs n)
       (E.weakGetLatestConfirmedTraceAt cfg ext obs n).afterObserved a c)
     (htargetProducer : E.AcceptedCurrentTargetA32GateRealizationProducerAt
@@ -682,7 +682,7 @@ noncomputable def
   change getLatestSelectorGuard cfg query trace.afterObserved at hselector
   change get_block_epoch cfg query.store trace.result =
     get_current_store_epoch cfg query.store at hresultCurrent
-  change Weak.CurrentTargetAcceptedEdge cfg ext query trace.afterObserved a c
+  change Weak.CurrentTargetSelectedEdge cfg ext query trace.afterObserved a c
     at hedge
   change E.AcceptedCurrentTargetA32GateRealizationProducerAt cfg ext B.anchor
     B.state (n + 1) query at htargetProducer
@@ -745,7 +745,7 @@ noncomputable def
     exact (Nat.not_le_of_gt hinputOld) hcurrentLeInput
   have hstrict : Weak.find_latest_confirmed_descendant cfg ext query
       trace.afterObserved ≠ trace.afterObserved :=
-    Weak.CurrentTargetAcceptedEdge.result_ne_input cfg ext hG.parent hG.walk
+    Weak.CurrentTargetSelectedEdge.result_ne_input cfg ext hG.parent hG.walk
       hG.head_known hinputKnown hedge
   have hbelowSelected : is_ancestor query.store (get_head cfg query.store)
       (get_node_for_root
@@ -796,13 +796,13 @@ noncomputable def
 (`AcceptedHistoricalA32Step.lean`): the action-facing arbitrary-input
 no-crossing wrapper.  Honesty substitution `hv` → `hcoh` through
 `Weak.weakFcrStep_historicalA32QueryGeometryAt`, plus the evaluator
-substitutions `E.fcrStep` → `E.weakFcrStep` and `E.getLatestConfirmedTraceAt`
+substitutions `E.fcrStoreAtCall` → `E.weakFcrStep` and `E.getLatestConfirmedTraceAt`
 → `E.weakGetLatestConfirmedTraceAt`; the body just re-plumbs the geometry
 bundle into `Weak.selectedCurrentNoCrossingLineage`. -/
 noncomputable def
     selectedCurrentNoCrossingLineageAt_at_observer
     (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
+    (hT : E.ScheduledPrefixPremises cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : Execution.TrustedAnchorBoundaryAligned (cfg := cfg)
       (E := E) (anchor := B.anchor))
@@ -817,7 +817,7 @@ noncomputable def
         (E.weakGetLatestConfirmedTraceAt cfg ext obs n).result =
       get_current_store_epoch cfg (E.weakFcrStep cfg ext obs n).store)
     (hnoCrossing : ¬ ∃ a c : Root,
-      Weak.CurrentTargetAcceptedEdge cfg ext (E.weakFcrStep cfg ext obs n)
+      Weak.CurrentTargetSelectedEdge cfg ext (E.weakFcrStep cfg ext obs n)
         (E.weakGetLatestConfirmedTraceAt cfg ext obs n).afterObserved a c)
     {e : Epoch}
     (hprevious : E.AcceptedHistoricalA32LineageAt cfg ext B

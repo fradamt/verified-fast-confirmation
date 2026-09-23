@@ -9,8 +9,8 @@ public import FastConfirmationProofs.FCRRule.PreQuerySourceCompatibility
 
 Stage S2 of the `hfilter`-discharge wave (`/tmp/hfilter-wave-design.md`): the
 weak-selector clones of `SelectedFilterBridge.lean`'s executable ghost trace
-(`findLatestSelectedTrace` / `prevEpochLoopTrace` / `PreviousAcceptedEdge` /
-`PreviousAcceptedEdge.gates`), `SelectedFilter.lean`'s trace helpers, and
+(`findLatestSelectedTrace` / `prevEpochLoopTrace` / `PreviousEpochSelectedEdge` /
+`PreviousEpochSelectedEdge.gates`), `SelectedFilter.lean`'s trace helpers, and
 `SelectedInitialRecency.lean`'s query-local entry/result witnesses, all
 re-targeted at `Weak.find_latest_confirmed_descendant`
 (`Spec/Model/WeakSynchrony.lean`), plus the weak twin of
@@ -48,7 +48,7 @@ buried at a fixed nesting depth — the concrete need flagged by
 `/tmp/hfilter-wave-design.md` §(C) site 3: "the guard must be
 branch-indexed… `Weak.PreviousSelectedEntryWitness` carrying
 `has_justification_witness_certificate = true` is needed." `Weak
-.PreviousAcceptedEdge.gates` is widened to a 5-conjunct conclusion (the
+.PreviousEpochSelectedEdge.gates` is widened to a 5-conjunct conclusion (the
 strong 4-conjunct shape plus `jwc`) for the same reason.
 
 Everything below that does not mention a certificate at all
@@ -322,7 +322,7 @@ theorem findLatestSelectedTrace_fst
   rfl
 
 /-- A previous-loop edge retained by the complete weak wrapper trace. -/
-def PreviousAcceptedEdge (fcrStore : FastConfirmationStore Root)
+def PreviousEpochSelectedEdge (fcrStore : FastConfirmationStore Root)
     (latestConfirmedRoot a c : Root) : Prop :=
   (a, c) ∈ (findLatestSelectedTrace cfg ext fcrStore latestConfirmedRoot).2.1
 
@@ -332,9 +332,9 @@ epoch-start escape or the no-conflict prediction. The certificate conjunct is
 threaded through explicitly (unlike the strong 4-conjunct `.gates`, this is a
 5-conjunct conclusion) so it is directly projectable, per
 `Weak.PreviousSelectedEntryWitness`. -/
-theorem PreviousAcceptedEdge.gates
+theorem PreviousEpochSelectedEdge.gates
     {fcrStore : FastConfirmationStore Root} {latestConfirmedRoot a c : Root}
-    (h : PreviousAcceptedEdge cfg ext fcrStore latestConfirmedRoot a c) :
+    (h : PreviousEpochSelectedEdge cfg ext fcrStore latestConfirmedRoot a c) :
     get_block_epoch cfg fcrStore.store c ≠
         get_current_store_epoch cfg fcrStore.store ∧
       is_ancestor fcrStore.store
@@ -347,7 +347,7 @@ theorem PreviousAcceptedEdge.gates
           (get_current_slot cfg fcrStore.store) = true ∨
         Weak.will_no_conflicting_checkpoint_be_justified cfg ext
           fcrStore.store (get_current_balance_source fcrStore) = true) := by
-  simp only [PreviousAcceptedEdge, findLatestSelectedTrace] at h
+  simp only [PreviousEpochSelectedEdge, findLatestSelectedTrace] at h
   split_ifs at h with hentry <;> try simp at h
   have hm := mem_prevEpochLoopTrace cfg ext fcrStore _ _ _ a c h
   refine ⟨hm.1, hm.2.1, hm.2.2, hentry.2.2.1, ?_⟩
@@ -413,16 +413,16 @@ def TentativeSelectedEntryWitness (fcrStore : FastConfirmationStore Root) : Prop
     Weak.has_head_broadcast_certificate cfg ext fcrStore.store
       (get_current_balance_source fcrStore) = true)
 
-namespace PreviousAcceptedEdge
+namespace PreviousEpochSelectedEdge
 
 /-- Membership in the retained weak previous trace mechanically proves the
 exact wrapper-entry guard. -/
 theorem entry_witness
     {fcrStore : FastConfirmationStore Root}
     {latestConfirmedRoot a c : Root}
-    (h : PreviousAcceptedEdge cfg ext fcrStore latestConfirmedRoot a c) :
+    (h : PreviousEpochSelectedEdge cfg ext fcrStore latestConfirmedRoot a c) :
     PreviousSelectedEntryWitness cfg ext fcrStore latestConfirmedRoot := by
-  simp only [PreviousAcceptedEdge, findLatestSelectedTrace] at h
+  simp only [PreviousEpochSelectedEdge, findLatestSelectedTrace] at h
   split_ifs at h with hentry <;> try simp at h
   exact ⟨hentry.1, hentry.2.1, hentry.2.2.1, hentry.2.2.2⟩
 
@@ -431,7 +431,7 @@ recency conjunct from the exact outer guard. -/
 theorem previous_slot_head_source_recent
     {fcrStore : FastConfirmationStore Root}
     {latestConfirmedRoot a c : Root}
-    (h : PreviousAcceptedEdge cfg ext fcrStore latestConfirmedRoot a c) :
+    (h : PreviousEpochSelectedEdge cfg ext fcrStore latestConfirmedRoot a c) :
     (get_voting_source cfg fcrStore.store
         fcrStore.previous_slot_head).epoch + 2 ≥
       get_current_store_epoch cfg fcrStore.store :=
@@ -442,7 +442,7 @@ slot head descends from every retained previous-edge child. -/
 theorem previous_slot_head_descends_child
     {fcrStore : FastConfirmationStore Root}
     {latestConfirmedRoot a c : Root}
-    (h : PreviousAcceptedEdge cfg ext fcrStore latestConfirmedRoot a c) :
+    (h : PreviousEpochSelectedEdge cfg ext fcrStore latestConfirmedRoot a c) :
     is_ancestor fcrStore.store
       (get_node_for_root fcrStore.previous_slot_head)
       (get_node_for_root c) = true :=
@@ -453,7 +453,7 @@ retained previous edge. -/
 theorem previous_slot_head_recency_and_ancestry
     {fcrStore : FastConfirmationStore Root}
     {latestConfirmedRoot a c : Root}
-    (h : PreviousAcceptedEdge cfg ext fcrStore latestConfirmedRoot a c) :
+    (h : PreviousEpochSelectedEdge cfg ext fcrStore latestConfirmedRoot a c) :
     (get_voting_source cfg fcrStore.store
         fcrStore.previous_slot_head).epoch + 2 ≥
         get_current_store_epoch cfg fcrStore.store ∧
@@ -463,7 +463,7 @@ theorem previous_slot_head_recency_and_ancestry
   ⟨h.previous_slot_head_source_recent cfg ext,
     h.previous_slot_head_descends_child cfg ext⟩
 
-end PreviousAcceptedEdge
+end PreviousEpochSelectedEdge
 
 /-- Retaining even one weak tentative edge proves both outer facts
 surrounding that trace. Weak twin of
@@ -723,7 +723,7 @@ theorem selected_strict_result_origin_recency_classification
       latestConfirmedRoot = result)
     (hstrict : result ≠ latestConfirmedRoot) :
     (∃ a,
-      PreviousAcceptedEdge cfg ext fcrStore latestConfirmedRoot a result ∧
+      PreviousEpochSelectedEdge cfg ext fcrStore latestConfirmedRoot a result ∧
         ((get_voting_source cfg fcrStore.store
             fcrStore.previous_slot_head).epoch + 2 ≥
             get_current_store_epoch cfg fcrStore.store ∧
@@ -743,7 +743,7 @@ theorem selected_strict_result_origin_recency_classification
   obtain ⟨a, ha⟩ := htrace.last_edge_mem_of_ne hstrict
   rcases List.mem_append.mp ha with hprevious | htentative
   · left
-    have haccepted : PreviousAcceptedEdge cfg ext fcrStore
+    have haccepted : PreviousEpochSelectedEdge cfg ext fcrStore
         latestConfirmedRoot a result := hprevious
     exact ⟨a, haccepted,
       haccepted.previous_slot_head_recency_and_ancestry cfg ext⟩
@@ -786,7 +786,7 @@ structure StrictSelectedResultMechanicalFacts
         get_current_store_epoch cfg query.store
   trace_origin :
     (∃ a,
-      PreviousAcceptedEdge cfg ext query input a result ∧
+      PreviousEpochSelectedEdge cfg ext query input a result ∧
         PreviousSelectedEntryWitness cfg ext query input ∧
         ((get_voting_source cfg query.store
             query.previous_slot_head).epoch + 2 ≥
@@ -928,7 +928,7 @@ theorem strictSelectedResultMechanicalFacts
     hheadQ input hinput result rfl (by simpa only [result] using hstrict)
   have horigin :
       (∃ a,
-        PreviousAcceptedEdge cfg ext query input a result ∧
+        PreviousEpochSelectedEdge cfg ext query input a result ∧
           PreviousSelectedEntryWitness cfg ext query input ∧
           ((get_voting_source cfg query.store
               query.previous_slot_head).epoch + 2 ≥

@@ -58,7 +58,7 @@ per `/tmp/delta5-proposal.md` §5.
   earlier cached second, the strong proof's whole "recover `previous_slot_head`
   at `(v, n)` via `fcr_currentSlotHead_known`, then relay" detour collapses:
   `Weak.weakFcrStep_previousSlotHead_known` alone supplies the witness's
-  knownness at the query second, so `hcall : E.IsFCRCallAt cfg ext obs n` and
+  knownness at the query second, so `hcall : E.IsScheduledFCRCallAt cfg ext obs n` and
   the `fcrStep_previousSlotHead_eq_currentSlotHead` bookkeeping step are both
   unused and dropped from the signature.
 * `Weak.fcrStep_currentNext_endpointRecentSourceSeed` (site 6) — weak twin of
@@ -344,10 +344,10 @@ theorem StrictSelectedResultMechanicalFacts.currentHeadLemma13SourceSeedCertifie
 endpointRecentSourceSeed`. See the module docstring for the `hcall` /
 `fcrStep_previousSlotHead_eq_currentSlotHead` simplification. -/
 theorem StrictSelectedResultMechanicalFacts.fcrStep_previous_endpointRecentSourceSeed
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
-    (hsync : PaperSafetySynchrony cfg ext E)
+    (hT : E.ScheduledPrefixPremises cfg ext)
+    (hsync : NextSlotSynchronyPremises cfg ext E)
     (hstatic : StaticValidatorSet cfg E)
-    (hbyz : ByzantineBound cfg E)
+    (hbyz : ByzantineWeightPremises cfg E)
     (hdomain : SelectedMarginDomain cfg ext E)
     (hji : JustificationInterface cfg ext E)
     (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
@@ -472,7 +472,7 @@ only sound option. -/
 theorem recentSourceSeedAt_endpointNext_of_lemma13
     (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
     (hwf : WellFormedExecution E)
-    (hec : ExternalsCoherence cfg ext E)
+    (hec : BeaconExternalsPremises cfg ext E)
     {ast : BeaconState Root} {ablk : SignedBeaconBlock Root}
     (hgen : E.genesis_store = get_forkchoice_store cfg ast ablk)
     (hgenSlot : ast.slot = ablk.message.slot)
@@ -534,10 +534,10 @@ theorem recentSourceSeedAt_endpointNext_of_lemma13
 endpointRecentSourceSeed`. See the module docstring for the `hseedM`
 non-reproduction and the `recentSourceSeedAt_endpointNext_of_lemma13` clone. -/
 theorem StrictSelectedResultMechanicalFacts.fcrStep_currentNext_endpointRecentSourceSeed
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
-    (hsync : PaperSafetySynchrony cfg ext E)
+    (hT : E.ScheduledPrefixPremises cfg ext)
+    (hsync : NextSlotSynchronyPremises cfg ext E)
     (hstatic : StaticValidatorSet cfg E)
-    (hbyz : ByzantineBound cfg E)
+    (hbyz : ByzantineWeightPremises cfg E)
     (hdomain : SelectedMarginDomain cfg ext E)
     (hji : JustificationInterface cfg ext E)
     (B : ExactPrefixAcceptedFFGSemantics cfg ext E)

@@ -19,11 +19,11 @@ are delivered here as trajectory theorems:
 * `time_ge_genesis` — the store clock equals `time_at` and `genesis_time` is
   constant (from `Proof/Trajectory`), so `≥ genesis` reduces to the base.
 * `block_state_slot_eq` — `on_block` stores the transition post-state at the
-  new block, and `ExternalsCoherence.state_transition_slot` lands it on the
+  new block, and `BeaconExternalsPremises.state_transition_slot` lands it on the
   block's slot; the other handlers leave `blocks`/`block_states` alone.
 
 The fourth field, `parent_slot_lt`, is **not** derivable from
-`WellFormedStore` + `ExternalsCoherence` alone: adding a fresh root that an
+`WellFormedStore` + `BeaconExternalsPremises` alone: adding a fresh root that an
 existing block already names as its `parent_root` can break a child's
 parent-slot ordering. Known blocks return without a write. Fresh roots need
 the wire-block root injectivity and block provenance of `WellFormedExecution` (`BlockAgreement`). Its trajectory-level
@@ -36,7 +36,7 @@ store helper except `on_block`'s block insertion, and handled explicitly
 there.
 
 No behavioral assumptions enter beyond the sanctioned
-`ExternalsCoherence.state_transition_slot` and the genesis `WellFormedStore`
+`BeaconExternalsPremises.state_transition_slot` and the genesis `WellFormedStore`
 witness.
 -/
 
@@ -252,7 +252,7 @@ The one handler that writes `blocks`/`block_states`/`block_roots`. Its block
 insertion keeps both core clauses: the key-list stays duplicate-free
 (append-only, and only if absent); and the new block's stored state sits at its
 slot because `state_transition` lands the post-state on the block's slot
-(`ExternalsCoherence.state_transition_slot`, taken here as a hypothesis). The
+(`BeaconExternalsPremises.state_transition_slot`, taken here as a hypothesis). The
 post-insertion tail (`record_block_timeliness`, `update_proposer_boost_root`,
 `update_checkpoints`, `compute_pulled_up_tip`) is block-identity-preserving, so
 the core rides across it by the helper lemmas above. -/
@@ -354,7 +354,7 @@ theorem WellFormedStore.core {store : Store Root} (h : WellFormedStore store) :
   ⟨h.block_roots_nodup, h.block_state_slot_eq⟩
 
 /-- The core holds at every node and second of any trajectory whose genesis
-store carries it. `hst_slot` is `ExternalsCoherence.state_transition_slot`; the
+store carries it. `hst_slot` is `BeaconExternalsPremises.state_transition_slot`; the
 genesis premise is discharged by `wellFormedStore_get_forkchoice_store` (via
 `WellFormedStore.core`) when the genesis store is a `get_forkchoice_store`. -/
 theorem Execution.store_wellFormedStoreCore (E : Execution Root)
@@ -385,7 +385,7 @@ by wire-block root injectivity (`WellFormedExecution`, `BlockAgreement`) but are
 handler-local, so they enter as explicit hypotheses here and the
 *trajectory-level* discharge is supplied by `WFTrajectory` using
 `BlockAgreement`. The ordering itself comes from
-`ExternalsCoherence.state_transition_pre_slot_lt` (parent state slot < new block
+`BeaconExternalsPremises.state_transition_pre_slot_lt` (parent state slot < new block
 slot) composed with `block_state_slot_eq` (parent state slot = parent block
 slot). -/
 

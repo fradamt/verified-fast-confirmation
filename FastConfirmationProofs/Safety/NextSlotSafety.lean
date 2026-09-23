@@ -31,11 +31,11 @@ namespace Execution
 
 variable (E : Execution Root)
 
-namespace AcceptedActualFCRNextSlotSafetyAssumptions
+namespace NextSlotSafetyPremises
 
 /-- Bundle-facing following-slot invariant. -/
 theorem confirmed_safeFromFollowingSlot
-    (h : E.AcceptedActualFCRNextSlotSafetyAssumptions cfg ext)
+    (h : E.NextSlotSafetyPremises cfg ext)
     {v : ValidatorIndex} (hv : v ∈ E.honest)
     {n : ℕ} (hHn : E.WithinHorizon cfg n) :
     E.ConfirmedSafeFromFollowingSlot cfg ext v n := by
@@ -53,7 +53,7 @@ proves it at every second, so no `k ≤ n` binder survives here.  This is the
 form the lazy A3.2 origin-call transport consumes at an earlier crossing call
 (`docs/trunkA-final-discharge.md` §5.3). -/
 theorem foldSafetyAt
-    (h : E.AcceptedActualFCRNextSlotSafetyAssumptions cfg ext)
+    (h : E.NextSlotSafetyPremises cfg ext)
     {v : ValidatorIndex} (hv : v ∈ E.honest)
     {n : ℕ} (hHn : E.WithinHorizon cfg n) :
     E.AcceptedFoldSafetyAt cfg ext v n :=
@@ -73,10 +73,10 @@ At a call `E.slot_start_eq_succ_of_advance_minimal` gives
 call.  Strictness is supplied at an A3.2 crossing by
 `StrictSelectorAdvanceAt.result_ne_input`. -/
 theorem confirmed_safeFrom_strictCallSecond
-    (h : E.AcceptedActualFCRNextSlotSafetyAssumptions cfg ext)
+    (h : E.NextSlotSafetyPremises cfg ext)
     {v : ValidatorIndex} (hv : v ∈ E.honest)
     {n : ℕ} (hHn1 : E.WithinHorizon cfg (n + 1))
-    (hcall : E.IsFCRCallAt cfg ext v n)
+    (hcall : E.IsScheduledFCRCallAt cfg ext v n)
     (hstrict : E.confirmed cfg ext v (n + 1) ≠
       (E.getLatestConfirmedTraceAt cfg ext v n).afterObserved) :
     E.SafeFrom cfg ext (E.confirmed cfg ext v (n + 1)) (n + 1) :=
@@ -84,7 +84,7 @@ theorem confirmed_safeFrom_strictCallSecond
 
 /-- Bundle-facing form of the threaded lazy-transport input. -/
 theorem priorStrictCallWriteBackSafe
-    (h : E.AcceptedActualFCRNextSlotSafetyAssumptions cfg ext) (n : ℕ) :
+    (h : E.NextSlotSafetyPremises cfg ext) (n : ℕ) :
     E.PriorStrictCallWriteBackSafe cfg ext n :=
   E.priorStrictCallWriteBackSafe_of_acceptedActualFCRFold
     cfg ext h.semantics h.trajectory h.completed_calls h.epoch_ends_fit
@@ -103,19 +103,19 @@ reset is forced to the trusted anchor by causal finalization lag, and an
 observed reset is safe by the accepted dynamic checkpoint theorem.  The
 accepted dispatcher then proves the literal helper return safe, including the
 case where the helper runs but returns its input unchanged. -/
-theorem findLatestConfirmedDescendant_safeFrom_of_actualCall
-    (h : E.AcceptedActualFCRNextSlotSafetyAssumptions cfg ext)
+theorem selected_result_safe_from_next_slot_of_scheduled_call
+    (h : E.NextSlotSafetyPremises cfg ext)
     {v : ValidatorIndex} (hv : v ∈ E.honest) {n : ℕ}
-    (hcall : E.IsFCRCallAt cfg ext v n)
+    (hcall : E.IsScheduledFCRCallAt cfg ext v n)
     (hHn1 : E.WithinHorizon cfg (n + 1))
-    (hselector : getLatestSelectorGuard cfg (E.fcrStep cfg ext v n)
+    (hselector : getLatestSelectorGuard cfg (E.fcrStoreAtCall cfg ext v n)
       (E.getLatestConfirmedTraceAt cfg ext v n).afterObserved) :
     E.SafeFrom cfg ext
-      (find_latest_confirmed_descendant cfg ext (E.fcrStep cfg ext v n)
+      (find_latest_confirmed_descendant cfg ext (E.fcrStoreAtCall cfg ext v n)
         (E.getLatestConfirmedTraceAt cfg ext v n).afterObserved)
       (n + 1) := by
   let trace := E.getLatestConfirmedTraceAt cfg ext v n
-  have hselectorTrace : getLatestSelectorGuard cfg (E.fcrStep cfg ext v n)
+  have hselectorTrace : getLatestSelectorGuard cfg (E.fcrStoreAtCall cfg ext v n)
       trace.afterObserved := by
     simpa only [trace] using hselector
   have hHn : E.WithinHorizon cfg n :=
@@ -153,12 +153,12 @@ theorem findLatestConfirmedDescendant_safeFrom_of_actualCall
     E.confirmed_known_of_acceptedGlobalTrajectory
       cfg ext h.semantics h.trajectory h.anchor_eq h.anchor_boundary hv n hHn
   have hinputKnown : trace.afterObserved ∈
-      (E.fcrStep cfg ext v n).store.block_roots := by
+      (E.fcrStoreAtCall cfg ext v n).store.block_roots := by
     simpa only [trace] using
       E.getLatestConfirmedTraceAt_input_known
         cfg ext h.semantics h.trajectory h.anchor_eq h.anchor_boundary hknownN
   have hbranch : CandidateHistoryCallBranch cfg ext
-      (E.fcrStep cfg ext v n) trace := by
+      (E.fcrStoreAtCall cfg ext v n) trace := by
     simpa only [trace] using hrec.branch
   have hinputSafe : E.SafeFrom cfg ext trace.afterObserved (n + 1) := by
     cases hbranch with
@@ -204,7 +204,7 @@ theorem findLatestConfirmedDescendant_safeFrom_of_actualCall
                 (h.priorStrictCallWriteBackSafe cfg ext E n) hinputKnown
                   hinputSafe
   have hselected : trace.result =
-      find_latest_confirmed_descendant cfg ext (E.fcrStep cfg ext v n)
+      find_latest_confirmed_descendant cfg ext (E.fcrStoreAtCall cfg ext v n)
         trace.afterObserved :=
     trace.selected_facts cfg ext hselectorTrace
   rw [hselected] at hresultSafe
@@ -212,7 +212,7 @@ theorem findLatestConfirmedDescendant_safeFrom_of_actualCall
 
 /-- Bundle-facing endpoint form with the literal next-slot timing premise. -/
 theorem confirmed_head_nextSlot
-    (h : E.AcceptedActualFCRNextSlotSafetyAssumptions cfg ext)
+    (h : E.NextSlotSafetyPremises cfg ext)
     {v : ValidatorIndex} (hv : v ∈ E.honest) {n : ℕ}
     {w : ValidatorIndex} (hw : w ∈ E.honest) {m : ℕ}
     (hnm : n ≤ m)
@@ -227,13 +227,13 @@ theorem confirmed_head_nextSlot
       h.slots_per_epoch_gt_one h.paper_a32 h.checkpoint_projection
       h.exact_link_validity hv hw hnm hnext hHm
 
-end AcceptedActualFCRNextSlotSafetyAssumptions
+end NextSlotSafetyPremises
 
 end Execution
 
 /-- Stored-output safety theorem at the following-slot deadline. -/
-theorem acceptedSpec_safety_next_slot :
-    AcceptedSpec_Safety_next_slot cfg ext := by
+theorem confirmed_root_safe_from_next_slot :
+    ConfirmedRootSafeFromNextSlot cfg ext := by
   intro E h v hv n w hw m hnm hnext hHm
   exact h.confirmed_head_nextSlot cfg ext E hv hw hnm hnext hHm
 

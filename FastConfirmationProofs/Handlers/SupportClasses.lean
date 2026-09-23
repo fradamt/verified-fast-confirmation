@@ -71,7 +71,7 @@ omit [LinearOrder Root] [Inhabited Root] in
 `(100−C)·B(σ) ≤ C·J(σ)`, from `span_fraction` in set form
 (`100·B ≤ C·(J + B)`) and `weight_split_honest`. This is what lets the `min`
 in `INVstar` behave as a genuine capacity rather than clamping to `0`. -/
-theorem Rterm_nonneg (hbb : ByzantineBound cfg E) (lo σ : Slot)
+theorem Rterm_nonneg (hbb : ByzantineWeightPremises cfg E) (lo σ : Slot)
     (hloH : E.SlotWithinHorizon cfg lo) (hσH : E.SlotWithinHorizon cfg σ) :
     (100 - cfg.confirmation_byzantine_threshold) * E.Bval lo σ ≤
       cfg.confirmation_byzantine_threshold * E.Jspec lo σ := by

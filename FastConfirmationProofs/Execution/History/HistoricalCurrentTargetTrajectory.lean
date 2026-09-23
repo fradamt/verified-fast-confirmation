@@ -15,7 +15,7 @@ this obligation cannot faithfully be proved for two arbitrary lookalike
 `FastConfirmationStore`s.
 
 The execution model does retain the required history without adding a mutable
-certificate field.  `Execution.fcr` is a recursive trajectory, `fcrStep v n`
+certificate field.  `Execution.fcr` is a recursive trajectory, `fcrStoreAtCall v n`
 is the exact state on which the invocation from second `n` to `n+1` runs, and
 `confirmed_succ_of_advance` identifies its executable output.  Certificate
 history can therefore be a ghost invariant over the earlier indices of this
@@ -179,7 +179,7 @@ theorem selectedInput_current_of_result_current_no_crossing
       (find_latest_confirmed_descendant cfg ext query input) =
         get_current_store_epoch cfg query.store)
     (hnoCrossing : ¬ ∃ a c : Root,
-      CurrentTargetAcceptedEdge cfg ext query input a c) :
+      CurrentTargetSelectedEdge cfg ext query input a c) :
     get_block_epoch cfg query.store input =
       get_current_store_epoch cfg query.store := by
   rcases hinputEpoch with hcurrent | hprevious
@@ -198,7 +198,7 @@ theorem selectedInput_current_of_result_current_no_crossing
       htrace.exists_edge_entering_next_epoch cfg hwf hstep
     rcases List.mem_append.mp hm with hprev | htent
     · have hcNotCurrent :=
-        (show PreviousAcceptedEdge cfg ext query input a c from hprev).gates cfg ext
+        (show PreviousEpochSelectedEdge cfg ext query input a c from hprev).gates cfg ext
       exact False.elim (hcNotCurrent.1 (hcCurrent.trans hghostCurrent))
     · exact False.elim (hnoCrossing ⟨a, c, htent, hac⟩)
 
@@ -277,7 +277,7 @@ theorem strictSelectedResult_below_head
       (get_head cfg query.store).payload_status)).mp hbelow'
 
 /-- A retained current-target edge makes the wrapper result strict. -/
-theorem CurrentTargetAcceptedEdge.result_ne_input
+theorem CurrentTargetSelectedEdge.result_ne_input
     {query : FastConfirmationStore Root}
     (hwf : ParentSlotLt query.store)
     (hwalk : ∀ t ∈ query.store.block_roots,
@@ -285,7 +285,7 @@ theorem CurrentTargetAcceptedEdge.result_ne_input
         WalkKnown query.store (query.store.blocks t).slot r)
     (hhead : (get_head cfg query.store).root ∈ query.store.block_roots)
     {input a c : Root} (hinput : input ∈ query.store.block_roots)
-    (hedge : CurrentTargetAcceptedEdge cfg ext query input a c) :
+    (hedge : CurrentTargetSelectedEdge cfg ext query input a c) :
     find_latest_confirmed_descendant cfg ext query input ≠ input := by
   have htrace := findLatestSelectedTrace_parentTrace cfg ext query
     hwf hwalk hhead input hinput
@@ -308,7 +308,7 @@ theorem CurrentTargetAcceptedEdge.result_ne_input
 
 /-! ## Concrete trajectory interfaces
 
-These predicates mention only the actual `E.fcrStep`/`E.confirmed` recurrence.
+These predicates mention only the actual `E.fcrStoreAtCall`/`E.confirmed` recurrence.
 They deliberately do not quantify over arbitrary `FastConfirmationStore`s.
 -/
 
@@ -434,71 +434,71 @@ theorem currentConfirmedCheckpointCertified_of_carriedTrajectory
         hA.wellFormed.blocks_agree
           (E.blockProvenance cfg ext v n)
           (E.blockProvenance cfg ext v (n + 1)) hknownN hknownN1
-      by_cases hadv : E.IsFCRCallAt cfg ext v n
+      by_cases hadv : E.IsScheduledFCRCallAt cfg ext v n
       · have hcall := htrajectory n hadv hcurrentN1
         have hconfirmedOut : E.confirmed cfg ext v (n + 1) =
             find_latest_confirmed_descendant cfg ext
-              (E.fcrStep cfg ext v n) (E.confirmed cfg ext v n) := by
+              (E.fcrStoreAtCall cfg ext v n) (E.confirmed cfg ext v n) := by
           calc
             E.confirmed cfg ext v (n + 1) =
-                get_latest_confirmed cfg ext (E.fcrStep cfg ext v n) :=
+                get_latest_confirmed cfg ext (E.fcrStoreAtCall cfg ext v n) :=
               E.confirmed_succ_of_advance cfg ext v n hadv
             _ = find_latest_confirmed_descendant cfg ext
-                (E.fcrStep cfg ext v n) (E.confirmed cfg ext v n) := hcall.1
+                (E.fcrStoreAtCall cfg ext v n) (E.confirmed cfg ext v n) := hcall.1
         obtain ⟨hwfQ, hwalkQ, _hjustQ⟩ :=
           E.store_domainK_of_selectedMarginDomain cfg ext hA.wellFormed
             hA.externals_coherence hA.genesis hA.domain v hv (n + 1) hHn1
-        have hheadQ : (get_head cfg (E.fcrStep cfg ext v n).store).root ∈
-            (E.fcrStep cfg ext v n).store.block_roots := by
+        have hheadQ : (get_head cfg (E.fcrStoreAtCall cfg ext v n).store).root ∈
+            (E.fcrStoreAtCall cfg ext v n).store.block_roots := by
           rw [E.fcrStep_store]
           exact E.head_root_known_of_selectedMarginDomain cfg ext hA.domain
             hv (n + 1) hHn1
-        have hwfQuery : ParentSlotLt (E.fcrStep cfg ext v n).store := by
+        have hwfQuery : ParentSlotLt (E.fcrStoreAtCall cfg ext v n).store := by
           simpa only [E.fcrStep_store] using hwfQ
-        have hwalkQuery : ∀ t ∈ (E.fcrStep cfg ext v n).store.block_roots,
-            ∀ r ∈ (E.fcrStep cfg ext v n).store.block_roots,
-              WalkKnown (E.fcrStep cfg ext v n).store
-                ((E.fcrStep cfg ext v n).store.blocks t).slot r := by
+        have hwalkQuery : ∀ t ∈ (E.fcrStoreAtCall cfg ext v n).store.block_roots,
+            ∀ r ∈ (E.fcrStoreAtCall cfg ext v n).store.block_roots,
+              WalkKnown (E.fcrStoreAtCall cfg ext v n).store
+                ((E.fcrStoreAtCall cfg ext v n).store.blocks t).slot r := by
           simpa only [E.fcrStep_store] using hwalkQ
         have hinputQ : E.confirmed cfg ext v n ∈
-            (E.fcrStep cfg ext v n).store.block_roots := by
+            (E.fcrStoreAtCall cfg ext v n).store.block_roots := by
           simpa only [E.fcrStep_store] using hknownN1
         have hinputSlotUpperQ :
-            ((E.fcrStep cfg ext v n).store.blocks
+            ((E.fcrStoreAtCall cfg ext v n).store.blocks
               (E.confirmed cfg ext v n)).slot ≤
-              get_current_slot cfg (E.fcrStep cfg ext v n).store := by
+              get_current_slot cfg (E.fcrStoreAtCall cfg ext v n).store := by
           simpa only [E.fcrStep_store] using
             E.store_blocks_slot_le_current cfg ext hA.whole_seconds hgenSlots
               v (n + 1) (E.confirmed cfg ext v n) hknownN1
         have hinputEpochUpper : get_block_epoch cfg
-              (E.fcrStep cfg ext v n).store (E.confirmed cfg ext v n) ≤
-            get_current_store_epoch cfg (E.fcrStep cfg ext v n).store := by
+              (E.fcrStoreAtCall cfg ext v n).store (E.confirmed cfg ext v n) ≤
+            get_current_store_epoch cfg (E.fcrStoreAtCall cfg ext v n).store := by
           simp only [get_block_epoch, get_current_store_epoch,
             compute_epoch_at_slot]
           exact Nat.div_le_div_right hinputSlotUpperQ
         have hinputEpoch :
-            get_block_epoch cfg (E.fcrStep cfg ext v n).store
+            get_block_epoch cfg (E.fcrStoreAtCall cfg ext v n).store
                 (E.confirmed cfg ext v n) =
-              get_current_store_epoch cfg (E.fcrStep cfg ext v n).store ∨
-            get_block_epoch cfg (E.fcrStep cfg ext v n).store
+              get_current_store_epoch cfg (E.fcrStoreAtCall cfg ext v n).store ∨
+            get_block_epoch cfg (E.fcrStoreAtCall cfg ext v n).store
                   (E.confirmed cfg ext v n) + 1 =
-              get_current_store_epoch cfg (E.fcrStep cfg ext v n).store := by
+              get_current_store_epoch cfg (E.fcrStoreAtCall cfg ext v n).store := by
           have hrecent := hcall.2
           omega
         have hresultCurrent : get_block_epoch cfg
-              (E.fcrStep cfg ext v n).store
+              (E.fcrStoreAtCall cfg ext v n).store
               (find_latest_confirmed_descendant cfg ext
-                (E.fcrStep cfg ext v n) (E.confirmed cfg ext v n)) =
-            get_current_store_epoch cfg (E.fcrStep cfg ext v n).store := by
+                (E.fcrStoreAtCall cfg ext v n) (E.confirmed cfg ext v n)) =
+            get_current_store_epoch cfg (E.fcrStoreAtCall cfg ext v n).store := by
           simpa only [E.fcrStep_store, ← hconfirmedOut] using hcurrentN1
         have hinputCertificate :
-            get_block_epoch cfg (E.fcrStep cfg ext v n).store
+            get_block_epoch cfg (E.fcrStoreAtCall cfg ext v n).store
                 (E.confirmed cfg ext v n) =
-              get_current_store_epoch cfg (E.fcrStep cfg ext v n).store →
+              get_current_store_epoch cfg (E.fcrStoreAtCall cfg ext v n).store →
             Nonempty (CertifiedJustified cfg E anchor
-              (get_checkpoint_for_block cfg (E.fcrStep cfg ext v n).store
+              (get_checkpoint_for_block cfg (E.fcrStoreAtCall cfg ext v n).store
                 (E.confirmed cfg ext v n)
-                (get_block_epoch cfg (E.fcrStep cfg ext v n).store
+                (get_block_epoch cfg (E.fcrStoreAtCall cfg ext v n).store
                   (E.confirmed cfg ext v n)))) := by
           intro hcurrentInputQ
           have hinputSlotUpperN :
@@ -557,9 +557,9 @@ theorem currentConfirmedCheckpointCertified_of_carriedTrajectory
                 (E.store cfg ext v n) (E.confirmed cfg ext v n)
                   (get_block_epoch cfg (E.store cfg ext v n)
                     (E.confirmed cfg ext v n)) =
-              get_checkpoint_for_block cfg (E.fcrStep cfg ext v n).store
+              get_checkpoint_for_block cfg (E.fcrStoreAtCall cfg ext v n).store
                 (E.confirmed cfg ext v n)
-                  (get_block_epoch cfg (E.fcrStep cfg ext v n).store
+                  (get_block_epoch cfg (E.fcrStoreAtCall cfg ext v n).store
                     (E.confirmed cfg ext v n)) := by
             rw [E.fcrStep_store, ← hblockEpochAgree]
             exact htransport

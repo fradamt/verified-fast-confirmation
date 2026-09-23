@@ -68,7 +68,7 @@ They are not the full-rule premise bundle above.
 ## Live monotonicity premises and proof
 
 `Spec_Monotonicity_live` is stated in
-`FastConfirmation/Spec/Statements/Premises/Live.lean`. Its accepted-bundle
+`FastConfirmation/Spec/Statements/Premises/LiveMonotonicity.lean`. Its accepted-bundle
 specialization, `AcceptedSpec_Monotonicity_live`, is proved by
 `acceptedSpec_monotonicity_live` in `MonotonicityLiveAssemble.lean` and is the
 14th audit witness. `MonotonicityLiveAssumptions` has five premises:
@@ -153,7 +153,7 @@ first four fields hold in this run. This argument is not a kernel-checked accept
 execution: the finite witness does not yet have a block in each slot.
 
 A live proof therefore needs the fifth FFG timing field, now present in
-`Statements/Premises/Live.lean`. It says: at the last-slot call of each epoch `e` in the interval, each
+`Statements/Premises/LiveMonotonicity.lean`. It says: at the last-slot call of each epoch `e` in the interval, each
 honest store's `unrealized_justified_checkpoint` is the epoch-`e` checkpoint
 of the honest chain; at the next epoch start the head's unrealized
 justification is equal to it; and the voting source of the previous-slot head

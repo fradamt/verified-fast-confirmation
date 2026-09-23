@@ -18,10 +18,10 @@ counterpart `HonestWeight.byz_score_le_adversarial_weight`: `Weak.
 compute_adversarial_weight` has no equivocation subtraction (rule delta 1), so
 there is no guard arithmetic to thread through — the fresh Byzantine
 supporters' weight is bounded by the raw span estimate directly
-(`ByzantineBound.span_bound`), and that raw estimate **is**
+(`ByzantineWeightPremises.span_bound`), and that raw estimate **is**
 `Weak.compute_adversarial_weight`/`Weak.get_adversarial_weight`
 (`compute_adversarial_weight_eq`, `rfl`). Consequently no `hne` (no honest
-equivocator), no `HonestBehavior`/`ExternalsCoherence`/genesis hypotheses are
+equivocator), no `HonestBehavior`/`BeaconExternalsPremises`/genesis hypotheses are
 needed here at all.
 -/
 
@@ -102,7 +102,7 @@ theorem compute_adversarial_weight_eq (store : Store Root) (bs : BeaconState Roo
 
 /-! ## Step 3 — the fresh Byzantine budget, no equivocation term -/
 
-private theorem fresh_byzantine_weight_le {E : Execution Root} (hbb : ByzantineBound cfg E)
+private theorem fresh_byzantine_weight_le {E : Execution Root} (hbb : ByzantineWeightPremises cfg E)
     {store : Store Root} {bs : BeaconState Root} {b : Root} {sa es : Slot}
     (hval : bs.validators = E.registry)
     (htab : get_total_active_balance cfg bs = E.total_active cfg)
@@ -141,7 +141,7 @@ Byzantine supporters' weight is within `Weak.get_adversarial_weight` directly:
 (`mem_AttSupporters_of_mem_fresh`), so `supporter_mem_span_committee` confines
 them to the span, and the weak budget *is* the raw span estimate
 (`compute_adversarial_weight_eq`). -/
-theorem fresh_byz_score_le_adversarial_weight {E : Execution Root} (hbb : ByzantineBound cfg E)
+theorem fresh_byz_score_le_adversarial_weight {E : Execution Root} (hbb : ByzantineWeightPremises cfg E)
     {store : Store Root} (hwf : ParentSlotLt store) {bs : BeaconState Root} {b : Root}
     (hval : bs.validators = E.registry)
     (htab : get_total_active_balance cfg bs = E.total_active cfg)
@@ -219,7 +219,7 @@ theorem honest_support_majority_of_byz_le {E : Execution Root}
 /-- Steps 3 + 4 composed: the unconditional weak headline over fresh support
 at an arbitrary (not necessarily honest) observer's store. -/
 theorem honest_support_majority_at_observer {E : Execution Root}
-    (hbb : ByzantineBound cfg E) {store : Store Root} (hwf : ParentSlotLt store)
+    (hbb : ByzantineWeightPremises cfg E) {store : Store Root} (hwf : ParentSlotLt store)
     {bs : BeaconState Root} {b : Root}
     (hval : bs.validators = E.registry)
     (htab : get_total_active_balance cfg bs = E.total_active cfg)

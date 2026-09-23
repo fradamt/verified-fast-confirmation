@@ -76,13 +76,13 @@ end GetLatestSelectorPhase
 
 /-! ## Canonical evaluator trace and projections -/
 
-namespace GetLatestConfirmedTrace
+namespace LatestConfirmedCallTrace
 
 /-- The post-finalized candidate is classified by the actual first guard,
 not by comparing its root with the two possible values. -/
 theorem afterFinalized_cases
     {query : FastConfirmationStore Root}
-    (trace : GetLatestConfirmedTrace cfg ext query) :
+    (trace : LatestConfirmedCallTrace cfg ext query) :
     (trace.afterFinalized = query.confirmed_root ∧
         ¬ getLatestFinalizedRevertGuard cfg ext query) ∨
       (trace.afterFinalized = query.store.finalized_checkpoint.root ∧
@@ -92,7 +92,7 @@ theorem afterFinalized_cases
 /-- The post-observed candidate is classified by the actual second guard. -/
 theorem afterObserved_cases
     {query : FastConfirmationStore Root}
-    (trace : GetLatestConfirmedTrace cfg ext query) :
+    (trace : LatestConfirmedCallTrace cfg ext query) :
     (trace.afterObserved = trace.afterFinalized ∧
         getLatestObservedRestartGuard cfg query trace.afterFinalized = false) ∨
       (trace.afterObserved =
@@ -104,7 +104,7 @@ theorem afterObserved_cases
 the evaluator returned that candidate unchanged. -/
 theorem selector_cases
     {query : FastConfirmationStore Root}
-    (trace : GetLatestConfirmedTrace cfg ext query) :
+    (trace : LatestConfirmedCallTrace cfg ext query) :
     (trace.result = trace.afterObserved ∧
         ¬ getLatestSelectorGuard cfg query trace.afterObserved) ∨
       (trace.result = find_latest_confirmed_descendant cfg ext query
@@ -120,7 +120,7 @@ unchanged to finalized and observed reset inputs.
 -/
 theorem selected_facts
     {query : FastConfirmationStore Root}
-    (trace : GetLatestConfirmedTrace cfg ext query)
+    (trace : LatestConfirmedCallTrace cfg ext query)
     (hselector : getLatestSelectorGuard cfg query trace.afterObserved) :
     trace.result = find_latest_confirmed_descendant cfg ext query
       trace.afterObserved := by
@@ -135,7 +135,7 @@ including the previous-epoch equation and the stale comparison against the
 candidate *after* finalized processing. -/
 theorem observedRestart_facts
     {query : FastConfirmationStore Root}
-    (trace : GetLatestConfirmedTrace cfg ext query)
+    (trace : LatestConfirmedCallTrace cfg ext query)
     (hactive : getLatestObservedRestartGuard cfg query
       trace.afterFinalized = true) :
     is_start_slot_at_epoch cfg (get_current_slot cfg query.store) = true ∧
@@ -152,7 +152,7 @@ theorem observedRestart_facts
     decide_eq_true_eq] at hactive
   exact ⟨hactive.1.1.1, hactive.1.1.2, hactive.1.2, hactive.2⟩
 
-end GetLatestConfirmedTrace
+end LatestConfirmedCallTrace
 
 /-! ## Actual-call specialization -/
 

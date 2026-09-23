@@ -3,7 +3,7 @@ public import FastConfirmationProofs.FCRRule.SelectedTraceCoverage
 public import FastConfirmationProofs.FCRRule.SelectedEdgeGeometry
 public import FastConfirmationProofs.ForkChoice.Filter.SelectedFilterChainGeometry
 
-public import FastConfirmationStatements.Premises.Trajectory
+public import FastConfirmationStatements.Premises.FCRCallPremises
 @[expose] public section
 
 /-!
@@ -75,10 +75,10 @@ structure SelectedTraceFFGPipeline (E : Execution Root)
     fcrStore.current_epoch_observed_justified_checkpoint ∈
       fcrStore.store.checkpoint_state_keys →
       ∀ a c : Root,
-      (PreviousAcceptedEdge cfg ext fcrStore latestConfirmedRoot a c ∨
+      (PreviousEpochSelectedEdge cfg ext fcrStore latestConfirmedRoot a c ∨
         (a, c) ∈
           (findLatestSelectedTrace cfg ext fcrStore latestConfirmedRoot).2.2) →
-      SelectedHelperProvisosAt cfg ext E v q fcrStore latestConfirmedRoot →
+      FCRPredictionSupportAt cfg ext E v q fcrStore latestConfirmedRoot →
       ∀ w ∈ E.honest, ∀ m : ℕ,
       E.slot_at cfg q ≤ E.slot_at cfg m →
       E.WithinHorizon cfg m →
@@ -98,10 +98,10 @@ theorem filterTipCertificate_of_retained_edge
     (hpipeline : SelectedTraceFFGPipeline cfg ext E anchor v q fcrStore
       latestConfirmedRoot)
     {a c : Root}
-    (hedge : PreviousAcceptedEdge cfg ext fcrStore latestConfirmedRoot a c ∨
+    (hedge : PreviousEpochSelectedEdge cfg ext fcrStore latestConfirmedRoot a c ∨
       (a, c) ∈
         (findLatestSelectedTrace cfg ext fcrStore latestConfirmedRoot).2.2)
-    (hprovisos : SelectedHelperProvisosAt cfg ext E v q fcrStore
+    (hprovisos : FCRPredictionSupportAt cfg ext E v q fcrStore
       latestConfirmedRoot)
     {w : ValidatorIndex} (hw : w ∈ E.honest) {m : ℕ}
     (hslot : E.slot_at cfg q ≤ E.slot_at cfg m)
@@ -154,10 +154,10 @@ theorem child_filtered_of_retained_edge_pipeline
     (hpipeline : SelectedTraceFFGPipeline cfg ext E anchor v q fcrStore
       latestConfirmedRoot)
     {a c : Root}
-    (hedge : PreviousAcceptedEdge cfg ext fcrStore latestConfirmedRoot a c ∨
+    (hedge : PreviousEpochSelectedEdge cfg ext fcrStore latestConfirmedRoot a c ∨
       (a, c) ∈
         (findLatestSelectedTrace cfg ext fcrStore latestConfirmedRoot).2.2)
-    (hprovisos : SelectedHelperProvisosAt cfg ext E v q fcrStore
+    (hprovisos : FCRPredictionSupportAt cfg ext E v q fcrStore
       latestConfirmedRoot)
     {w : ValidatorIndex} (hw : w ∈ E.honest) {m : ℕ}
     (hslot : E.slot_at cfg q ≤ E.slot_at cfg m)
@@ -201,7 +201,7 @@ theorem strictSelectedEdge_child_filtered_of_trace_pipeline_minimal
     (query : FastConfirmationStore Root)
     (r₀ : Root) (hr₀ : r₀ ∈ query.store.block_roots)
     (hpipeline : SelectedTraceFFGPipeline cfg ext E anchor v q query r₀)
-    (hprovisos : SelectedHelperProvisosAt cfg ext E v q query r₀)
+    (hprovisos : FCRPredictionSupportAt cfg ext E v q query r₀)
     {glc a c : Root}
     {w : ValidatorIndex} (hw : w ∈ E.honest) {m : ℕ}
     (hmH : E.WithinHorizon cfg m)

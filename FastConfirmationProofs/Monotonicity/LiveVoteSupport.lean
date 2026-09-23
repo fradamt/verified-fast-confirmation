@@ -45,7 +45,7 @@ strictly earlier slot. This supplies the upper interval bound needed when
 the live vote condition is applied to recorded support. -/
 theorem latest_message_has_honest_vote_before_endpoint
     (hwf : WellFormedExecution E) (hhb : HonestBehavior cfg ext E)
-    (hec : ExternalsCoherence cfg ext E)
+    (hec : BeaconExternalsPremises cfg ext E)
     (hgen : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
       E.genesis_store = get_forkchoice_store cfg ast ablk)
     {v w : ValidatorIndex} (hv : v ∈ E.honest) (hw : w ∈ E.honest)
@@ -70,7 +70,7 @@ theorem latest_message_has_honest_vote_before_endpoint
 come from an earlier slot. Within the same epoch, committee assignment
 uniqueness and no forgery identify the exact vote. -/
 theorem honest_latest_message_slot_ge_vote
-    (hhb : HonestBehavior cfg ext E) (hec : ExternalsCoherence cfg ext E)
+    (hhb : HonestBehavior cfg ext E) (hec : BeaconExternalsPremises cfg ext E)
     (hgen : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
       E.genesis_store = get_forkchoice_store cfg ast ablk)
     {v w : ValidatorIndex} (hv : v ∈ E.honest)
@@ -120,7 +120,7 @@ theorem honest_vote_time_in_slot
 its vote time into an honest endpoint after the vote's slot. -/
 theorem honest_vote_store_blocks_relay
     (hhb : HonestBehavior cfg ext E)
-    (hsyn : PaperSafetySynchrony cfg ext E)
+    (hsyn : NextSlotSynchronyPremises cfg ext E)
     {i w : ValidatorIndex} (hi : i ∈ E.honest) (hw : w ∈ E.honest)
     {s : Slot} {k : ℕ} {a : Attestation Root}
     (hs0 : E.slot_at cfg 0 ≤ s)
@@ -143,8 +143,8 @@ endpoint. The known vote root is supplied separately, since the live field
 only gives knownness of the produced block. -/
 theorem live_vote_support_transport
     (hwf : WellFormedExecution E) (hhb : HonestBehavior cfg ext E)
-    (hsyn : PaperSafetySynchrony cfg ext E)
-    (hec : ExternalsCoherence cfg ext E)
+    (hsyn : NextSlotSynchronyPremises cfg ext E)
+    (hec : BeaconExternalsPremises cfg ext E)
     (hgen : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
       E.genesis_store = get_forkchoice_store cfg ast ablk ∧
       ast.slot = ablk.message.slot ∧ ablk.message.parent_root ≠ ablk.root)
@@ -172,8 +172,8 @@ theorem live_vote_support_transport
 
 /-- An accepted honest vote names the known fork-choice head at its voting
 store. This discharges the remaining known-root input of support transport. -/
-theorem AcceptedActualFCRNextSlotSafetyAssumptions.honest_vote_root_known
-    (h : E.AcceptedActualFCRNextSlotSafetyAssumptions cfg ext)
+theorem NextSlotSafetyPremises.honest_vote_root_known
+    (h : E.NextSlotSafetyPremises cfg ext)
     {i : ValidatorIndex} (hi : i ∈ E.honest)
     {s : Slot} {k : ℕ} {a : Attestation Root}
     (hs0 : E.slot_at cfg 0 ≤ s)
@@ -203,8 +203,8 @@ theorem AcceptedActualFCRNextSlotSafetyAssumptions.honest_vote_root_known
 
 /-- The target epoch of an accepted honest vote is its assigned slot's
 epoch. The head state is at or before the voting slot. -/
-theorem AcceptedActualFCRNextSlotSafetyAssumptions.honest_vote_target_epoch
-    (h : E.AcceptedActualFCRNextSlotSafetyAssumptions cfg ext)
+theorem NextSlotSafetyPremises.honest_vote_target_epoch
+    (h : E.NextSlotSafetyPremises cfg ext)
     {i : ValidatorIndex} (hi : i ∈ E.honest)
     {s : Slot} {k : ℕ} {index : CommitteeIndex}
     (hslot : E.slot_at cfg k = s)
@@ -239,8 +239,8 @@ theorem AcceptedActualFCRNextSlotSafetyAssumptions.honest_vote_target_epoch
 /-- Fixed-block form of the endpoint bridge. The live witness is selected
 once outside the validator quantifier so the same block receives every
 honest committee member's recorded support. -/
-theorem AcceptedActualFCRNextSlotSafetyAssumptions.recorded_fixed_live_block_support
-    (h : E.AcceptedActualFCRNextSlotSafetyAssumptions cfg ext)
+theorem NextSlotSafetyPremises.recorded_fixed_live_block_support
+    (h : E.NextSlotSafetyPremises cfg ext)
     {i : ValidatorIndex} (hi : i ∈ E.honest)
     {m : ℕ} (hHm : E.WithinHorizon cfg m)
     {s : Slot} (hs0 : E.slot_at cfg 0 ≤ s)
@@ -300,8 +300,8 @@ theorem AcceptedActualFCRNextSlotSafetyAssumptions.recorded_fixed_live_block_sup
 /-- The accepted bundle supplies vote ubiquity without a legacy
 `JustificationInterface` field. The trusted-anchor target walk closes the
 last vote-landing domain condition. -/
-theorem AcceptedActualFCRNextSlotSafetyAssumptions.vote_ubiquity
-    (h : E.AcceptedActualFCRNextSlotSafetyAssumptions cfg ext)
+theorem NextSlotSafetyPremises.vote_ubiquity
+    (h : E.NextSlotSafetyPremises cfg ext)
     {v w : ValidatorIndex} (hv : v ∈ E.honest) (hw : w ∈ E.honest)
     {s : Slot} {n : ℕ} {index : CommitteeIndex}
     (hs0 : E.slot_at cfg 0 ≤ s)
@@ -337,8 +337,8 @@ theorem AcceptedActualFCRNextSlotSafetyAssumptions.vote_ubiquity
 
 /-- An honest assignment at a later slot supplies endpoint support to a
 fixed earlier live block once that vote has met the delivery deadline. -/
-theorem AcceptedActualFCRNextSlotSafetyAssumptions.fixed_live_block_support_of_assignment
-    (h : E.AcceptedActualFCRNextSlotSafetyAssumptions cfg ext)
+theorem NextSlotSafetyPremises.fixed_live_block_support_of_assignment
+    (h : E.NextSlotSafetyPremises cfg ext)
     {s : Slot} (hs0 : E.slot_at cfg 0 ≤ s)
     {m : ℕ} (hHm : E.WithinHorizon cfg m)
     {r : Root}

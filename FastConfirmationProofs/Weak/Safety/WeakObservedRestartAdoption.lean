@@ -19,7 +19,7 @@ the call second*, with the querying node's honesty binder dropped.
 The strong adoption lemma reads the observed field's installation provenance off
 `AcceptedUJCacheInstallationAt` (`anchor ∨ GU carrier`) and then relays the GU
 carrier tip from the *querying node's own store* to every honest endpoint with
-`PaperSafetySynchrony.block_relay`, which needs that node to be honest.  Rule
+`NextSlotSynchronyPremises.block_relay`, which needs that node to be honest.  Rule
 delta 5 replaces the provenance record and the relay in one move: the gated
 epoch-start write banks `store.unrealized_justifications (get_head store).root`
 for a head that carries a broadcast certificate, so
@@ -124,11 +124,11 @@ statement. -/
 theorem bankedCheckpoint_epoch_le_honestJustified
     {E : Execution Root} (hA : SelectedMarginAssumptions cfg ext E)
     (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
+    (hT : E.ScheduledPrefixPremises cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : Execution.TrustedAnchorBoundaryAligned (cfg := cfg) (E := E)
       (anchor := B.anchor))
-    (hsync : PaperSafetySynchrony cfg ext E) (hji : JustificationInterface cfg ext E)
+    (hsync : NextSlotSynchronyPremises cfg ext E) (hji : JustificationInterface cfg ext E)
     {obs : ValidatorIndex}
     (hcomm : ∀ k : ℕ, E.WithinHorizon cfg k → ∀ s : Slot, E.SlotWithinHorizon cfg s →
       get_slot_committee cfg ext (E.store cfg ext obs k) s = E.committee s)
@@ -219,16 +219,16 @@ installation second to the call second is exactly `Execution.slot_at_mono`. -/
 theorem ObservedResetCandidateInputAt.guardedObservedAdoption
     {E : Execution Root} (hA : SelectedMarginAssumptions cfg ext E)
     (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
+    (hT : E.ScheduledPrefixPremises cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : Execution.TrustedAnchorBoundaryAligned (cfg := cfg) (E := E)
       (anchor := B.anchor))
-    (hsync : PaperSafetySynchrony cfg ext E) (hji : JustificationInterface cfg ext E)
+    (hsync : NextSlotSynchronyPremises cfg ext E) (hji : JustificationInterface cfg ext E)
     {obs : ValidatorIndex}
     (hcomm : ∀ k : ℕ, E.WithinHorizon cfg k → ∀ s : Slot, E.SlotWithinHorizon cfg s →
       get_slot_committee cfg ext (E.store cfg ext obs k) s = E.committee s)
     {n : ℕ}
-    {trace : Weak.GetLatestConfirmedTrace cfg ext (E.weakFcrStep cfg ext obs n)}
+    {trace : Weak.LatestConfirmedCallTrace cfg ext (E.weakFcrStep cfg ext obs n)}
     (hinput : Weak.ObservedResetCandidateInputAt cfg ext
       (E.weakFcrStep cfg ext obs n) trace)
     (hcert : Weak.BankedJustificationCertificate cfg ext E obs (n + 1)

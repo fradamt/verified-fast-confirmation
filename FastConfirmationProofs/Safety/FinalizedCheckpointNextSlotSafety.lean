@@ -38,19 +38,19 @@ Synchrony supplies the endpoint justified-epoch bound; accepted certificate
 semantics and execution reflection supply the chain relation and knownness. -/
 theorem finalizedReset_justifiedDom_of_nextSlotSynchrony
     (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
+    (hT : E.ScheduledPrefixPremises cfg ext)
     (hacc : FFGAccountabilityAssumptions cfg ext E)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
       (E := E) (anchor := B.anchor))
-    (hsync : PaperSafetySynchrony cfg ext E)
+    (hsync : NextSlotSynchronyPremises cfg ext E)
     {v : ValidatorIndex} (hv : v ∈ E.honest) {n q : ℕ}
     (hHn1 : E.WithinHorizon cfg (n + 1))
     (hnextQ : E.slot_at cfg (n + 1) + 1 ≤ E.slot_at cfg q) :
     ∀ w ∈ E.honest, ∀ m : ℕ, q ≤ m →
       E.WithinHorizon cfg m →
       let finalized :=
-        (E.fcrStep cfg ext v n).store.finalized_checkpoint
+        (E.fcrStoreAtCall cfg ext v n).store.finalized_checkpoint
       finalized.root ∈ (E.store cfg ext w m).block_roots ∧
         is_ancestor (E.store cfg ext w m)
           (get_node_for_root
@@ -58,7 +58,7 @@ theorem finalizedReset_justifiedDom_of_nextSlotSynchrony
           (get_node_for_root finalized.root) = true := by
   intro w hw m hqm hHm
   let finalized :=
-    (E.fcrStep cfg ext v n).store.finalized_checkpoint
+    (E.fcrStoreAtCall cfg ext v n).store.finalized_checkpoint
   obtain ⟨ast, ablk, hgen, hslot, hparent⟩ := hT.genesis_structure
   have hgenShort : ∃ (ast : BeaconState Root)
       (ablk : SignedBeaconBlock Root),
@@ -125,17 +125,17 @@ slot is strictly later than the query slot.  No same-moment finalized-adoption
 law is used. -/
 theorem finalizedReset_safeFrom_of_nextSlotSynchrony
     (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
+    (hT : E.ScheduledPrefixPremises cfg ext)
     (hacc : FFGAccountabilityAssumptions cfg ext E)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
       (E := E) (anchor := B.anchor))
-    (hsync : PaperSafetySynchrony cfg ext E)
+    (hsync : NextSlotSynchronyPremises cfg ext E)
     {v : ValidatorIndex} (hv : v ∈ E.honest) {n q : ℕ}
     (hHn1 : E.WithinHorizon cfg (n + 1))
     (hnextQ : E.slot_at cfg (n + 1) + 1 ≤ E.slot_at cfg q) :
     E.SafeFrom cfg ext
-      (E.fcrStep cfg ext v n).store.finalized_checkpoint.root q := by
+      (E.fcrStoreAtCall cfg ext v n).store.finalized_checkpoint.root q := by
   have hdomainK := E.storeDomainK_of_acceptedGlobalTrajectory
     cfg ext B hT hanchor hboundary
   apply E.safeFrom_of_justified_dom_K cfg ext hdomainK
@@ -149,17 +149,17 @@ the finalized reset input, that input is safe from any chosen next-slot time.
 -/
 theorem finalizedResetCandidateInput_safeFrom_of_nextSlotSynchrony
     (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
+    (hT : E.ScheduledPrefixPremises cfg ext)
     (hacc : FFGAccountabilityAssumptions cfg ext E)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
       (E := E) (anchor := B.anchor))
-    (hsync : PaperSafetySynchrony cfg ext E)
+    (hsync : NextSlotSynchronyPremises cfg ext E)
     {v : ValidatorIndex} (hv : v ∈ E.honest) {n q : ℕ}
     (hHn1 : E.WithinHorizon cfg (n + 1))
-    {trace : GetLatestConfirmedTrace cfg ext (E.fcrStep cfg ext v n)}
+    {trace : LatestConfirmedCallTrace cfg ext (E.fcrStoreAtCall cfg ext v n)}
     (hinput : FinalizedResetCandidateInputAt cfg ext
-      (E.fcrStep cfg ext v n) trace)
+      (E.fcrStoreAtCall cfg ext v n) trace)
     (hnextQ : E.slot_at cfg (n + 1) + 1 ≤ E.slot_at cfg q) :
     E.SafeFrom cfg ext trace.afterObserved q := by
   rw [hinput.input_eq]

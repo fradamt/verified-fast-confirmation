@@ -43,7 +43,7 @@ carrier.  Thus downstream SIR code may use the old vote-shaped eliminator,
 but callers no longer assume a raw vote/store relation. -/
 theorem ExactPrefixAcceptedFFGSemantics.endpointJustificationOriginAt
     (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
+    (hT : E.ScheduledPrefixPremises cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
       (E := E) (anchor := B.anchor))
@@ -290,7 +290,7 @@ both the child and the selected result descend the endpoint justified root. -/
 theorem strictSelected_result_and_child_ancestor_of_endpointJustified_accepted
     (hA : SelectedMarginAssumptions cfg ext E)
     (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
+    (hT : E.ScheduledPrefixPremises cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
       (E := E) (anchor := B.anchor))

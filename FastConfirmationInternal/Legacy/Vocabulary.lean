@@ -1,8 +1,8 @@
 module
-public import FastConfirmationStatements.Premises.ExecutionConditions
+public import FastConfirmationStatements.Premises.ScheduledExecutionConditions
 public import FastConfirmationStatements.Premises.FFGState
 
-public import FastConfirmationStatements.Premises.Live
+public import FastConfirmationStatements.Premises.LiveMonotonicity
 @[expose] public section
 
 /-!
@@ -11,7 +11,7 @@ public import FastConfirmationStatements.Premises.Live
 This module defines supporting predicates used throughout the spec proof
 architecture. It also records strong action-prefix candidate statements used
 by the internal decomposition. The accepted public theorem is
-`acceptedSpec_safety_next_slot` in
+`confirmed_root_safe_from_next_slot` in
 `Proof/AcceptedActualFCRNextSlotSafetyFacade.lean`.
 
 The motivating spec note for `find_latest_confirmed_descendant` says:
@@ -47,7 +47,7 @@ it, and the derivation that would have replaced it reaches only the
 strictly-later-slot regime, not the same-slot corner the field asserted. See
 `docs/p4-unrealized-justified-derivation.md`.
 These predicates remain low-level proof vocabulary. The accepted theorem uses
-the separate accepted FFG-semantics and `PaperSafetySynchrony` interfaces.
+the separate accepted FFG-semantics and `NextSlotSynchronyPremises` interfaces.
 -/
 
 namespace FastConfirmation.Spec
@@ -178,7 +178,7 @@ structure JustificationInterface (E : Execution Root) : Prop where
      the checkpoint is `S.GU r` for a block `r` known in `v`'s store
      (`AcceptedFFGGlobalCheckpointOrigins.unrealized_justified`,
      `Proof/AcceptedFFGGlobalCheckpointTrajectory.lean:96`), relay `r` to `w`
-     by `PaperSafetySynchrony.block_relay` (`Model/Assumptions.lean:209-216`),
+     by `NextSlotSynchronyPremises.block_relay` (`Model/Assumptions.lean:209-216`),
      and recompute `(store w m).unrealized_justifications r = S.GU r` by
      `Execution.accepted_unrealized_justification_eq`
      (`Proof/AcceptedFFGStateTrajectory.lean:572-577`) to land `JustifiedIn`'s
@@ -326,9 +326,9 @@ def SpecAssumptions (E : Execution Root) : Prop :=
   1000 ∣ cfg.slot_duration_ms ∧
   HonestBehavior cfg ext E ∧
   Synchrony cfg ext E ∧
-  ExternalsCoherence cfg ext E ∧
+  BeaconExternalsPremises cfg ext E ∧
   StaticValidatorSet cfg E ∧
-  ByzantineBound cfg E ∧
+  ByzantineWeightPremises cfg E ∧
   JustificationInterface cfg ext E
 
 /-- Strong all-prefix safety candidate used by the internal proof
@@ -343,8 +343,8 @@ def Spec_Safety : Prop :=
         (get_node_for_root (E.confirmed cfg ext v n)) = true
 
 /-- Next-slot form over the older `SpecAssumptions` vocabulary. The accepted
-public theorem uses `AcceptedActualFCRNextSlotSafetyAssumptions` and is stated as
-`AcceptedSpec_Safety_next_slot`. -/
+public theorem uses `NextSlotSafetyPremises` and is stated as
+`ConfirmedRootSafeFromNextSlot`. -/
 def Spec_Safety_next_slot : Prop :=
   ∀ E : Execution Root, SpecAssumptions cfg ext E →
     ∀ v ∈ E.honest, ∀ n : ℕ, ∀ w ∈ E.honest, ∀ m : ℕ, n ≤ m →

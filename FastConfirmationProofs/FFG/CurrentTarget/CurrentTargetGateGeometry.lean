@@ -552,7 +552,7 @@ uniqueness.  Head-current and head-old cases are both discharged by
 `acceptedHonestAttestationDataSourceEqVSAtTarget`. -/
 theorem concreteHonestTargetVote_acceptedOldTargetSourceEvidence
     (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
+    (hT : E.ScheduledPrefixPremises cfg ext)
     (hwalkDomain : E.PostAnchorHonestVoteTargetWalkDomain cfg ext)
     (hphase : Phase0SourceCoherence cfg ext)
     (hboundaryPhase : Phase0BoundarySourceCoherence cfg ext)
@@ -772,7 +772,7 @@ and the ordinary walk is then lifted using last-writer provenance.
 -/
 theorem concreteHonestTargetVote_knownCurrentEpochSegment
     (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
+    (hT : E.ScheduledPrefixPremises cfg ext)
     (hwalkDomain : E.PostAnchorHonestVoteTargetWalkDomain cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     {queryStore : Store Root}
@@ -898,7 +898,7 @@ theorem concreteHonestTargetVote_knownCurrentEpochSegment
 `concreteHonestTargetVote_knownCurrentEpochSegment`. -/
 theorem concreteHonestTargetVote_acceptedCurrentEpochSegment
     (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
+    (hT : E.ScheduledPrefixPremises cfg ext)
     (hwalkDomain : E.PostAnchorHonestVoteTargetWalkDomain cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     {queryStore : Store Root}
@@ -935,7 +935,7 @@ This remains an internal geometry edge.  It consumes only the scheduled-prefix
 trajectory, not the broader selected-margin bundle. -/
 theorem concreteHonestTargetVote_acceptedCurrentEpochSourceGeometry
     (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
+    (hT : E.ScheduledPrefixPremises cfg ext)
     (hwalkDomain : E.PostAnchorHonestVoteTargetWalkDomain cfg ext)
     (hphase : Phase0SourceCoherence cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
@@ -1022,9 +1022,9 @@ No arbitrary signer set, supplied quorum, source agreement, ancestry segment,
 transition history, target certificate, or safety conclusion is assumed. -/
 theorem scheduledEventPrefix_acceptedConcreteCurrentTargetQuorum_of_operationalEvidence
     (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
+    (hT : E.ScheduledPrefixPremises cfg ext)
     (hsv : StaticValidatorSet cfg E)
-    (hbb : ByzantineBound cfg E)
+    (hbb : ByzantineWeightPremises cfg E)
     (hphase : Phase0SourceCoherence cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg) (E := E)
@@ -1187,9 +1187,9 @@ def AcceptedConcreteA32QuorumOldSourceGeometry
 
 theorem scheduledEventPrefix_acceptedConcreteCurrentTargetQuorum
     (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
+    (hT : E.ScheduledPrefixPremises cfg ext)
     (hsv : StaticValidatorSet cfg E)
-    (hbb : ByzantineBound cfg E)
+    (hbb : ByzantineWeightPremises cfg E)
     (hphase : Phase0SourceCoherence cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg) (E := E)
@@ -1236,9 +1236,9 @@ concrete vote is instead tied to the accepted target block's eager `GU`.
 The quorum and its source are outputs. -/
 theorem scheduledEventPrefix_acceptedConcreteOldTargetQuorum_of_operationalEvidence
     (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
+    (hT : E.ScheduledPrefixPremises cfg ext)
     (hsv : StaticValidatorSet cfg E)
-    (hbb : ByzantineBound cfg E)
+    (hbb : ByzantineWeightPremises cfg E)
     (hphase : Phase0SourceCoherence cfg ext)
     (hboundaryPhase : Phase0BoundarySourceCoherence cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
@@ -1380,9 +1380,9 @@ theorem scheduledEventPrefix_acceptedConcreteOldTargetQuorum_of_operationalEvide
 
 theorem scheduledEventPrefix_acceptedConcreteOldTargetQuorum
     (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
+    (hT : E.ScheduledPrefixPremises cfg ext)
     (hsv : StaticValidatorSet cfg E)
-    (hbb : ByzantineBound cfg E)
+    (hbb : ByzantineWeightPremises cfg E)
     (hphase : Phase0SourceCoherence cfg ext)
     (hboundaryPhase : Phase0BoundarySourceCoherence cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
@@ -1430,9 +1430,9 @@ constructed by `scheduledEventPrefix_acceptedConcreteCurrentTargetQuorum` and
 immediately consumed by the existing certificate constructor. -/
 theorem scheduledEventPrefix_acceptedCurrentTargetA32GateRealization_core_of_operationalEvidence
     (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
+    (hT : E.ScheduledPrefixPremises cfg ext)
     (hsv : StaticValidatorSet cfg E)
-    (hbb : ByzantineBound cfg E)
+    (hbb : ByzantineWeightPremises cfg E)
     (hphase : Phase0SourceCoherence cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg) (E := E)
@@ -1519,9 +1519,9 @@ theorem scheduledEventPrefix_acceptedCurrentTargetA32GateRealization_core_of_ope
 
 theorem scheduledEventPrefix_acceptedCurrentTargetA32GateRealization_core
     (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
+    (hT : E.ScheduledPrefixPremises cfg ext)
     (hsv : StaticValidatorSet cfg E)
-    (hbb : ByzantineBound cfg E)
+    (hbb : ByzantineWeightPremises cfg E)
     (hphase : Phase0SourceCoherence cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg) (E := E)
@@ -1721,9 +1721,9 @@ constructed internally and immediately consumed by the old-epoch certificate
 constructor. -/
 theorem scheduledEventPrefix_acceptedOldTargetA32GateRealization_core_of_operationalEvidence
     (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
+    (hT : E.ScheduledPrefixPremises cfg ext)
     (hsv : StaticValidatorSet cfg E)
-    (hbb : ByzantineBound cfg E)
+    (hbb : ByzantineWeightPremises cfg E)
     (hphase : Phase0SourceCoherence cfg ext)
     (hboundaryPhase : Phase0BoundarySourceCoherence cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
@@ -1810,9 +1810,9 @@ theorem scheduledEventPrefix_acceptedOldTargetA32GateRealization_core_of_operati
 
 theorem scheduledEventPrefix_acceptedOldTargetA32GateRealization_core
     (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
+    (hT : E.ScheduledPrefixPremises cfg ext)
     (hsv : StaticValidatorSet cfg E)
-    (hbb : ByzantineBound cfg E)
+    (hbb : ByzantineWeightPremises cfg E)
     (hphase : Phase0SourceCoherence cfg ext)
     (hboundaryPhase : Phase0BoundarySourceCoherence cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
@@ -1870,9 +1870,9 @@ source, segment, certificate, transition history, or safety conclusion is an
 input. -/
 theorem scheduledEventPrefix_acceptedTargetA32GateRealization_core_of_operationalEvidence
     (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
+    (hT : E.ScheduledPrefixPremises cfg ext)
     (hsv : StaticValidatorSet cfg E)
-    (hbb : ByzantineBound cfg E)
+    (hbb : ByzantineWeightPremises cfg E)
     (hphase : Phase0SourceCoherence cfg ext)
     (hboundaryPhase : Phase0BoundarySourceCoherence cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
@@ -1947,9 +1947,9 @@ theorem scheduledEventPrefix_acceptedTargetA32GateRealization_core_of_operationa
 
 theorem scheduledEventPrefix_acceptedTargetA32GateRealization_core
     (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
+    (hT : E.ScheduledPrefixPremises cfg ext)
     (hsv : StaticValidatorSet cfg E)
-    (hbb : ByzantineBound cfg E)
+    (hbb : ByzantineWeightPremises cfg E)
     (hphase : Phase0SourceCoherence cfg ext)
     (hboundaryPhase : Phase0BoundarySourceCoherence cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
@@ -1991,10 +1991,10 @@ horizon; only their one-slot-later scheduled receipt may cross its exclusive
 endpoint. -/
 theorem scheduledEventPrefix_acceptedTargetA32GateRealization_withLookahead
     (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
-    (hdelivery : PaperSafetySynchrony cfg ext E)
+    (hT : E.ScheduledPrefixPremises cfg ext)
+    (hdelivery : NextSlotSynchronyPremises cfg ext E)
     (hsv : StaticValidatorSet cfg E)
-    (hbb : ByzantineBound cfg E)
+    (hbb : ByzantineWeightPremises cfg E)
     (hphase : Phase0SourceCoherence cfg ext)
     (hboundaryPhase : Phase0BoundarySourceCoherence cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)

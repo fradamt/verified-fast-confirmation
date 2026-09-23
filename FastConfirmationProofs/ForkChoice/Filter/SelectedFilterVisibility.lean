@@ -78,9 +78,9 @@ theorem mem_findLatestSelectedTrace_tentative
 
 /-- Every retained previous-loop edge passed confirmation; its wrapper entry
 also passed either the epoch-start escape or the no-conflict prediction. -/
-theorem PreviousAcceptedEdge.gates
+theorem PreviousEpochSelectedEdge.gates
     {fcrStore : FastConfirmationStore Root} {latestConfirmedRoot a c : Root}
-    (h : PreviousAcceptedEdge cfg ext fcrStore latestConfirmedRoot a c) :
+    (h : PreviousEpochSelectedEdge cfg ext fcrStore latestConfirmedRoot a c) :
     get_block_epoch cfg fcrStore.store c ≠
         get_current_store_epoch cfg fcrStore.store ∧
       is_ancestor fcrStore.store
@@ -92,7 +92,7 @@ theorem PreviousAcceptedEdge.gates
           (get_current_slot cfg fcrStore.store) = true ∨
         will_no_conflicting_checkpoint_be_justified cfg ext
           fcrStore.store = true) := by
-  simp only [PreviousAcceptedEdge, findLatestSelectedTrace] at h
+  simp only [PreviousEpochSelectedEdge, findLatestSelectedTrace] at h
   split_ifs at h with hentry <;> try simp at h
   have hm := mem_prevEpochLoopTrace cfg ext fcrStore _ _ _ a c h
   refine ⟨hm.1, hm.2.1, hm.2.2, ?_⟩
@@ -103,17 +103,17 @@ theorem PreviousAcceptedEdge.gates
 
 /-- A crossing tentative edge passed the executable
 `will_current_target_be_justified` guard. -/
-theorem CurrentTargetAcceptedEdge.current_target_gate
+theorem CurrentTargetSelectedEdge.current_target_gate
     {fcrStore : FastConfirmationStore Root} {latestConfirmedRoot a c : Root}
-    (h : CurrentTargetAcceptedEdge cfg ext fcrStore latestConfirmedRoot a c) :
+    (h : CurrentTargetSelectedEdge cfg ext fcrStore latestConfirmedRoot a c) :
     will_current_target_be_justified cfg ext fcrStore.store = true := by
   exact (mem_findLatestSelectedTrace_tentative cfg ext fcrStore
     latestConfirmedRoot a c h.1).2 h.2
 
 /-- Every crossing tentative edge also passed `is_one_confirmed`. -/
-theorem CurrentTargetAcceptedEdge.one_confirmed
+theorem CurrentTargetSelectedEdge.one_confirmed
     {fcrStore : FastConfirmationStore Root} {latestConfirmedRoot a c : Root}
-    (h : CurrentTargetAcceptedEdge cfg ext fcrStore latestConfirmedRoot a c) :
+    (h : CurrentTargetSelectedEdge cfg ext fcrStore latestConfirmedRoot a c) :
     is_one_confirmed cfg ext fcrStore.store
       (get_current_balance_source fcrStore) c = true := by
   exact (mem_findLatestSelectedTrace_tentative cfg ext fcrStore
@@ -127,14 +127,14 @@ store, the current observed checkpoint used by the call is necessarily keyed.
 This is the strongest handler-level checkpoint provenance presently derivable:
 it proves dictionary membership, but not that the keyed checkpoint was
 eventually justified or certified. -/
-theorem CurrentTargetAcceptedEdge.current_balance_checkpoint_key
+theorem CurrentTargetSelectedEdge.current_balance_checkpoint_key
     {E : Execution Root}
     (hgen : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
       E.genesis_store = get_forkchoice_store cfg ast ablk)
     {v : ValidatorIndex} {n : ℕ}
     {fcrStore : FastConfirmationStore Root} {latestConfirmedRoot a c : Root}
     (hstore : fcrStore.store = E.store cfg ext v n)
-    (h : CurrentTargetAcceptedEdge cfg ext fcrStore latestConfirmedRoot a c) :
+    (h : CurrentTargetSelectedEdge cfg ext fcrStore latestConfirmedRoot a c) :
     fcrStore.current_epoch_observed_justified_checkpoint ∈
       fcrStore.store.checkpoint_state_keys := by
   have hconf := h.one_confirmed cfg ext
@@ -146,14 +146,14 @@ theorem CurrentTargetAcceptedEdge.current_balance_checkpoint_key
 
 /-- The exact-domain conclusion for an edge in the full wrapper's retained
 previous trace. -/
-theorem PreviousAcceptedEdge.current_balance_checkpoint_key
+theorem PreviousEpochSelectedEdge.current_balance_checkpoint_key
     {E : Execution Root}
     (hgen : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
       E.genesis_store = get_forkchoice_store cfg ast ablk)
     {v : ValidatorIndex} {n : ℕ}
     {fcrStore : FastConfirmationStore Root} {latestConfirmedRoot a c : Root}
     (hstore : fcrStore.store = E.store cfg ext v n)
-    (h : PreviousAcceptedEdge cfg ext fcrStore latestConfirmedRoot a c) :
+    (h : PreviousEpochSelectedEdge cfg ext fcrStore latestConfirmedRoot a c) :
     fcrStore.current_epoch_observed_justified_checkpoint ∈
       fcrStore.store.checkpoint_state_keys := by
   have hconf := (h.gates cfg ext).2.2.1

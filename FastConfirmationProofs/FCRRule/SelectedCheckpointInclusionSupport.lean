@@ -42,7 +42,7 @@ variable (E : Execution Root)
 /-- Once a concrete child is known to be on the query head's chain and to
 belong to the query's current epoch, the helper target is exactly that child's
 epoch checkpoint.  These geometric hypotheses are separate from
-`CurrentTargetAcceptedEdge`: that predicate records trace membership and a
+`CurrentTargetSelectedEdge`: that predicate records trace membership and a
 strict epoch increase, but does not by itself state that the child has reached
 the query's current epoch. -/
 theorem current_target_eq_checkpoint_of_current_epoch_ancestor

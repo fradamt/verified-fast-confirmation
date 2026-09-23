@@ -243,7 +243,7 @@ theorem tentative_loop_between (fcr_store : FastConfirmationStore Root)
           (pstr_advance cfg ext fcr_store hwf hwalk lcr hlcr hb_mem hb_par hg3 hacc)
       · rw [if_pos hg3]; exact hacc
 
-/-! ## Section 2 — composition + the fcrStep reconciliation (tasks 2+3) -/
+/-! ## Section 2 — composition + the fcrStoreAtCall reconciliation (tasks 2+3) -/
 
 /-- **The strengthened `find_latest_confirmed_descendant` invariant** (task 2). Folding the two
 loop preservers through the `find_latest_confirmed_descendant` structure (the `Anchoring`

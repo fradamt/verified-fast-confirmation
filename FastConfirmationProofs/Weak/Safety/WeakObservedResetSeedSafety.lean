@@ -45,7 +45,7 @@ and the observer's own committee agreement
 (`Execution.ObserverCoherence.committees_agree`).  That is the whole signature:
 the scheduled-prefix trajectory assumptions it runs on are *derived* from `hA`
 inside the proof
-(`Execution.ScheduledPrefixTrajectoryAssumptions.of_selectedMarginAssumptions`),
+(`Execution.ScheduledPrefixPremises.of_selectedMarginAssumptions`),
 never taken as a premise.  Every one of those inputs is already a premise of
 `Execution.weakConfirmed_safeFromFollowingSlot_of_weakFullRuleFold`, so the
 discharged fold below has *strictly smaller* premise surface than the
@@ -74,7 +74,7 @@ This is the weak twin of
 (`AcceptedObservedRestartDynamicSafety.lean`) with the querying node's honesty
 binder dropped, and it is the theorem that removes the single open obligation
 of the weak full-rule fold.  The three places the strong proof reads that
-node's honesty — the two sender-side `PaperSafetySynchrony.block_relay` uses
+node's honesty — the two sender-side `NextSlotSynchronyPremises.block_relay` uses
 and the observed-reset *realization* record behind them — are replaced,
 respectively, by broadcast-certificate dissemination
 (`Weak.bankedSupplier_known_at_all_honest_endpoints_at_observer`,
@@ -103,8 +103,8 @@ theorem observedResetSeedSafety_of_acceptedDynamics
     (hcomm : ∀ k : ℕ, E.WithinHorizon cfg k → ∀ s : Slot, E.SlotWithinHorizon cfg s →
       get_slot_committee cfg ext (E.store cfg ext obs k) s = E.committee s) :
     Weak.ObservedResetSeedSafety cfg ext E obs := by
-  have hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext :=
-    Execution.ScheduledPrefixTrajectoryAssumptions.of_selectedMarginAssumptions
+  have hT : E.ScheduledPrefixPremises cfg ext :=
+    Execution.ScheduledPrefixPremises.of_selectedMarginAssumptions
       cfg ext E hA hgen
   intro n hHn1 hcall trace hinput
   rcases Weak.weakFcrStep_certifiedBankedJustification cfg ext hA B hT hanchor
@@ -166,7 +166,7 @@ at the observer's own store), `hCbase`
 (`AcceptedHistoricalA32CompletedPrefixCallSupplement`: the two phase-0
 coherence contracts and the balance floor) and `hfit` — **eleven** premises.
 Five surface duplications are gone: `hT` is *derived* from `hW.base`
-(`Execution.ScheduledPrefixTrajectoryAssumptions.of_selectedMarginAssumptions`),
+(`Execution.ScheduledPrefixPremises.of_selectedMarginAssumptions`),
 `hwalkDomain : PostAnchorHonestVoteTargetWalkDomain` is *derived* from
 `hW.base`/`hanchor`/`hboundary`
 (`Execution.postAnchorHonestVoteTargetWalkDomain_of_selectedMarginAssumptions`),
@@ -190,7 +190,7 @@ theorem weakConfirmed_safeFromFollowingSlot_of_acceptedWeakFullRuleFold
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
       (E := E) (anchor := B.anchor))
-    (hDelay : E.AcceptedRealizedFinalizationDelay cfg ext B)
+    (hDelay : E.RealizedFinalizationDelay cfg ext B)
     (hpaper : B.state.PaperA32Inclusion cfg ext)
     (P : AcceptedEpochCheckpointProjection B.anchor
       (E.AcceptedRoot cfg ext) B.state.C)
@@ -218,7 +218,7 @@ theorem weakConfirmed_head_of_acceptedWeakFullRuleFold_nextSlot
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
       (E := E) (anchor := B.anchor))
-    (hDelay : E.AcceptedRealizedFinalizationDelay cfg ext B)
+    (hDelay : E.RealizedFinalizationDelay cfg ext B)
     (hpaper : B.state.PaperA32Inclusion cfg ext)
     (P : AcceptedEpochCheckpointProjection B.anchor
       (E.AcceptedRoot cfg ext) B.state.C)

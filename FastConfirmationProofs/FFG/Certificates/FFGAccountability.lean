@@ -31,9 +31,9 @@ structure FFGAccountabilityAssumptions (E : Execution Root) : Prop where
     E.genesis_store = get_forkchoice_store cfg anchor_state anchor_block
   whole_seconds : 1000 ∣ cfg.slot_duration_ms
   honest_behavior : HonestBehavior cfg ext E
-  externals_coherence : ExternalsCoherence cfg ext E
+  externals_coherence : BeaconExternalsPremises cfg ext E
   static_validator_set : StaticValidatorSet cfg E
-  byzantine_bound : ByzantineBound cfg E
+  byzantine_bound : ByzantineWeightPremises cfg E
 
 omit [LinearOrder Root] [Inhabited Root] in
 private theorem mem_active_of_active_local {bs : BeaconState Root}

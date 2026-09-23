@@ -169,7 +169,7 @@ The non-honest supporters' total weight is bounded by
 balances equal the ground-truth weights `E.weight_of` (registry constancy,
 `hval`); the Nodup supporter list identifies the list sum with a `Finset` sum,
 which is monotone under the inclusion into the non-honest slice of the span
-committee (step 2, folded into `hspan`); and `ByzantineBound.span_bound`
+committee (step 2, folded into `hspan`); and `ByzantineWeightPremises.span_bound`
 supplies the headline bound, with `htab` matching the two total-active-balance
 readings. -/
 

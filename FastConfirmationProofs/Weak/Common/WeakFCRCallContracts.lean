@@ -8,12 +8,12 @@ public import FastConfirmationProofs.FCRRule.FCRCallContracts
 # Spec / Proof / WeakFCRCallContracts
 
 Weak-model actual-call scaffolding. Mirrors `FCRCallContracts.lean`'s
-`Execution.fcr` / `Execution.fcrStep` / `Execution.confirmed` over the weak
+`Execution.fcr` / `Execution.fcrStoreAtCall` / `Execution.confirmed` over the weak
 bookkeeping functions (`Weak.on_fast_confirmation`,
 `Weak.update_fast_confirmation_variables`, rule delta 5 —
 `Spec/Model/WeakSynchrony.lean`).
 
-`Execution.IsFCRCallAt` is a pure clock predicate over `E.store` — it names
+`Execution.IsScheduledFCRCallAt` is a pure clock predicate over `E.store` — it names
 only "the store's slot advanced from `n` to `n+1`" and mentions no
 bookkeeping function at all — so it is reused verbatim for the weak
 trajectory; no `weakIsFCRCallAt` twin is defined here.

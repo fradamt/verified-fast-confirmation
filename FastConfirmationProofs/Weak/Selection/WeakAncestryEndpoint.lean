@@ -44,7 +44,7 @@ The proof composes:
   `is_ancestor_transport_closed`, to carry the `(v, n)`-side landing fact on
   `d`'s walk to `b`'s slot into `(w, k)`. -/
 theorem Execution.is_ancestor_replay_closed (hwf : WellFormedExecution E)
-    (hec : ExternalsCoherence cfg ext E)
+    (hec : BeaconExternalsPremises cfg ext E)
     {ast : BeaconState Root} {ablk : SignedBeaconBlock Root}
     (hgeq : E.genesis_store = get_forkchoice_store cfg ast ablk)
     (hslot : ast.slot = ablk.message.slot) (hparent : ablk.message.parent_root ≠ ablk.root)

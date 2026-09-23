@@ -10,7 +10,7 @@ public import FastConfirmationProofs.Weak.Safety.WeakObserverValidity
 
 Stage 2 of the weak-synchrony economic-core migration: store-generic clones of
 seven `Discount` / `HonestWeight` lemmas whose only honesty dependency was
-`ExternalsCoherence.committees_agree v hv n s hnH …` (i.e. the completed-store
+`BeaconExternalsPremises.committees_agree v hv n s hnH …` (i.e. the completed-store
 committee readback fact, only ever available at an *honest* node's store).
 
 The weak model's observer is not required to lie in `E.honest`, so its store
@@ -160,7 +160,7 @@ replaced by `Execution.get_equivocation_score_eq_weight_of_prefix` (already
 store-generic, from `CurrentTargetPrefixAccounting.lean`) driven by the same
 `hcomm`. -/
 theorem parentstuck_byz_plus_equiv_le_of_prefix {E : Execution Root}
-    (hbb : ByzantineBound cfg E)
+    (hbb : ByzantineWeightPremises cfg E)
     {v : ValidatorIndex} {n : ℕ}
     (hcomm : E.PrefixCommitteeAgreement cfg ext (E.store cfg ext v n))
     {bs : BeaconState Root} {b : Root} (hval : bs.validators = E.registry)
@@ -208,7 +208,7 @@ store. -/
 `hcomm` through clones 1 and 2 above via the same pure-`ℕ` guard core
 (`discount_guard`, imported unchanged from `Discount.lean`). -/
 theorem support_discount_le_parent_stuck_of_prefix {E : Execution Root}
-    (hbb : ByzantineBound cfg E)
+    (hbb : ByzantineWeightPremises cfg E)
     {v : ValidatorIndex} {n : ℕ}
     (hcomm : E.PrefixCommitteeAgreement cfg ext (E.store cfg ext v n))
     {bs : BeaconState Root} {b : Root} (hval : bs.validators = E.registry)
@@ -248,7 +248,7 @@ original's `hec`/`hv`/`hnH` fed only the `get_equivocation_score_eq_weight`
 call, replaced here by `Execution.get_equivocation_score_eq_weight_of_prefix`
 driven by `hcomm`. -/
 theorem byz_plus_equiv_le_of_prefix {E : Execution Root}
-    (hbb : ByzantineBound cfg E) {v : ValidatorIndex} {n : ℕ}
+    (hbb : ByzantineWeightPremises cfg E) {v : ValidatorIndex} {n : ℕ}
     (hcomm : E.PrefixCommitteeAgreement cfg ext (E.store cfg ext v n))
     {bs : BeaconState Root} {b : Root}
     (hval : bs.validators = E.registry)
@@ -299,8 +299,8 @@ favor of `hcomm`. `hnH : E.WithinHorizon cfg n` is also kept: it is used
 independently, via `Execution.store_current_slot`, to place the node's own
 current slot within the horizon (unrelated to committee readback). -/
 theorem byz_score_le_adversarial_weight_of_prefix {E : Execution Root}
-    (hhb : HonestBehavior cfg ext E) (hec : ExternalsCoherence cfg ext E)
-    (hbb : ByzantineBound cfg E)
+    (hhb : HonestBehavior cfg ext E) (hec : BeaconExternalsPremises cfg ext E)
+    (hbb : ByzantineWeightPremises cfg E)
     (hgen : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
       E.genesis_store = get_forkchoice_store cfg ast ablk)
     {v : ValidatorIndex} {n : ℕ}
@@ -372,8 +372,8 @@ use fed `byz_score_le_adversarial_weight`, replaced below by `hcomm`);
 `honest_support_majority_of_byz_le` itself is already fully store-generic
 (no honesty hypothesis), so it is reused unchanged. -/
 theorem honest_support_majority_of_prefix {E : Execution Root}
-    (hhb : HonestBehavior cfg ext E) (hec : ExternalsCoherence cfg ext E)
-    (hbb : ByzantineBound cfg E)
+    (hhb : HonestBehavior cfg ext E) (hec : BeaconExternalsPremises cfg ext E)
+    (hbb : ByzantineWeightPremises cfg E)
     (hgen : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
       E.genesis_store = get_forkchoice_store cfg ast ablk)
     {v : ValidatorIndex} {n : ℕ}

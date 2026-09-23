@@ -50,7 +50,7 @@ theorem observerHistoricalA32OriginCallAt_of_crossing
     (hA : SelectedMarginAssumptions cfg ext E)
     {obs : ValidatorIndex} (hcoh : E.ObserverCoherence cfg ext obs) {n : ℕ}
     (hHn1 : E.WithinHorizon cfg (n + 1))
-    (hcall : E.IsFCRCallAt cfg ext obs n)
+    (hcall : E.IsScheduledFCRCallAt cfg ext obs n)
     (hstore : E.CausalStore cfg ext (E.weakFcrStep cfg ext obs n).store)
     (hparent : ParentSlotLt (E.weakFcrStep cfg ext obs n).store)
     (hwalk : ∀ t ∈ (E.weakFcrStep cfg ext obs n).store.block_roots,
@@ -72,7 +72,7 @@ theorem observerHistoricalA32OriginCallAt_of_crossing
         (E.weakGetLatestConfirmedTraceAt cfg ext obs n).result =
       get_current_store_epoch cfg (E.weakFcrStep cfg ext obs n).store)
     {a c : Root}
-    (hedge : Weak.CurrentTargetAcceptedEdge cfg ext
+    (hedge : Weak.CurrentTargetSelectedEdge cfg ext
       (E.weakFcrStep cfg ext obs n)
       (E.weakGetLatestConfirmedTraceAt cfg ext obs n).afterObserved a c) :
     Weak.ObserverHistoricalA32OriginCallAt cfg ext E obs n
@@ -94,7 +94,7 @@ theorem observerHistoricalA32OriginCallAt_of_crossing
     trace.selected_facts cfg ext hselector
   have hstrict : Weak.find_latest_confirmed_descendant cfg ext query
       trace.afterObserved ≠ trace.afterObserved :=
-    Weak.CurrentTargetAcceptedEdge.result_ne_input cfg ext hparent hwalk hhead
+    Weak.CurrentTargetSelectedEdge.result_ne_input cfg ext hparent hwalk hhead
       hinputKnown hedge
   have hselectedFacts := weak_find_latest_confirmed_descendant_ge cfg ext query
     hparent hwalk hhead trace.afterObserved hinputKnown
@@ -156,7 +156,7 @@ theorem observerHistoricalA32OriginCallAt_of_crossing
     head_descends := hbelowResult
     origin_writeback := hwrite
     gate := will_current_target_be_justified_of_weak cfg ext query.store
-      (Weak.CurrentTargetAcceptedEdge.current_target_gate cfg ext hedge)
+      (Weak.CurrentTargetSelectedEdge.current_target_gate cfg ext hedge)
     target_eq := htarget }
 
 /-- **The lazy weak crossing lineage.**
@@ -168,14 +168,14 @@ certificate and quorum.  It consumes **no** normative proviso — it is the
 only weak crossing builder left. -/
 noncomputable def selectedCurrentCrossingLazyLineage
     (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
+    (hT : E.ScheduledPrefixPremises cfg ext)
     (hA : SelectedMarginAssumptions cfg ext E)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : Execution.TrustedAnchorBoundaryAligned (cfg := cfg)
       (E := E) (anchor := B.anchor))
     {obs : ValidatorIndex} (hcoh : E.ObserverCoherence cfg ext obs) {n : ℕ}
     (hHn1 : E.WithinHorizon cfg (n + 1))
-    (hcall : E.IsFCRCallAt cfg ext obs n)
+    (hcall : E.IsScheduledFCRCallAt cfg ext obs n)
     (hstore : E.CausalStore cfg ext (E.weakFcrStep cfg ext obs n).store)
     (hparent : ParentSlotLt (E.weakFcrStep cfg ext obs n).store)
     (hwalk : ∀ t ∈ (E.weakFcrStep cfg ext obs n).store.block_roots,
@@ -197,7 +197,7 @@ noncomputable def selectedCurrentCrossingLazyLineage
         (E.weakGetLatestConfirmedTraceAt cfg ext obs n).result =
       get_current_store_epoch cfg (E.weakFcrStep cfg ext obs n).store)
     {a c : Root}
-    (hedge : Weak.CurrentTargetAcceptedEdge cfg ext
+    (hedge : Weak.CurrentTargetSelectedEdge cfg ext
       (E.weakFcrStep cfg ext obs n)
       (E.weakGetLatestConfirmedTraceAt cfg ext obs n).afterObserved a c)
     (hproducer : E.AcceptedFixedSourceCurrentTargetA32GateRealizationProducerAt

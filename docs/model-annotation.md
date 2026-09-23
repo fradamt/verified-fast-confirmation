@@ -32,7 +32,7 @@ name, its `file:line`, and a trimmed signature (long premise lists abbreviated a
 - [Core vocabulary](#core-vocabulary)
 - [§3.1 LMD-GHOST layer (defs + statements)](#31-lmd-ghost-layer-defs--statements)
 - [§4 HFC model (defs)](#4-hfc-model-defs)
-- [§4 HFC statements (TheoremStatements.lean + ProvenTheorems.lean)](#4-hfc-statements-theoremstatementslean--proventheoremslean)
+- [§4 HFC statements (TheoremStatements.lean + ReviewTheorem.lean)](#4-hfc-statements-theoremstatementslean--proventheoremslean)
 
 ## Core vocabulary
 
@@ -1369,7 +1369,7 @@ inductive Block (n : ℕ)
 
 > **Faithfulness:** Definitional honest behavior (not an additional economic assumption): the FFG mirror of GHOST noEquivocation. Source is the AU chain-relative source of the head (`ruleVotingSource(head,·)`), NOT the global greatest-justified. Pairs with HonestNoForgery (delivers HonestCast) to pin every honest FFG message to the prescribed head-checkpoint cast — consumed by the cross-epoch never-filter argument. Balances constant (bal₀ via gjFFG).
 
-## §4 HFC statements (TheoremStatements.lean + ProvenTheorems.lean)
+## §4 HFC statements (TheoremStatements.lean + ReviewTheorem.lean)
 
 #### Assumption3 — alternative per-message FFG inclusion surface
 
@@ -1765,7 +1765,7 @@ def OnChainAnchorInterfacesForRule (A fm τ 𝒱 b t) : Prop := …</pre>
 </td>
 <td width="50%" valign="top">
 
-<b>Lean</b> — <code>FastConfirmation.HFC.HFC_Safety_proved</code><br><sub>FastConfirmation/Paper/HFC/ProvenTheorems.lean:44 · <i>statement</i></sub><pre>theorem HFC_Safety_proved (τ : Timing) (bal₀ : Stakes n) : HFC_Safety τ bal₀ := by
+<b>Lean</b> — <code>FastConfirmation.HFC.HFC_Safety_proved</code><br><sub>FastConfirmation/Paper/HFC/ReviewTheorem.lean:44 · <i>statement</i></sub><pre>theorem HFC_Safety_proved (τ : Timing) (bal₀ : Stakes n) : HFC_Safety τ bal₀ := by
   intro … ; obtain ⟨hconf, _hgate⟩ := hHFCconf
   exact hfc_safety_of_notFiltered bal₀ … hconf (confirmedNotFFGFiltered_proved bal₀ …)</pre>
 
@@ -1786,7 +1786,7 @@ def OnChainAnchorInterfacesForRule (A fm τ 𝒱 b t) : Prop := …</pre>
 </td>
 <td width="50%" valign="top">
 
-<b>Lean</b> — <code>FastConfirmation.HFC.HFC_Monotonicity_proved</code><br><sub>FastConfirmation/Paper/HFC/ProvenTheorems.lean:54 · <i>statement</i></sub><pre>theorem HFC_Monotonicity_proved (τ : Timing) (bal₀ : Stakes n) : HFC_Monotonicity τ bal₀ :=
+<b>Lean</b> — <code>FastConfirmation.HFC.HFC_Monotonicity_proved</code><br><sub>FastConfirmation/Paper/HFC/ReviewTheorem.lean:54 · <i>statement</i></sub><pre>theorem HFC_Monotonicity_proved (τ : Timing) (bal₀ : Stakes n) : HFC_Monotonicity τ bal₀ :=
   hfc_monotonicity_proved bal₀</pre>
 
 </td>
@@ -1806,7 +1806,7 @@ def OnChainAnchorInterfacesForRule (A fm τ 𝒱 b t) : Prop := …</pre>
 </td>
 <td width="50%" valign="top">
 
-<b>Lean</b> — <code>FastConfirmation.HFC.HFC_Safety_Alg1_proved</code><br><sub>FastConfirmation/Paper/HFC/ProvenTheorems.lean · <i>statement</i></sub><pre>theorem HFC_Safety_Alg1_proved (τ : Timing) (bal₀ : Stakes n) : HFC_Safety_Alg1 τ bal₀ := by
+<b>Lean</b> — <code>FastConfirmation.HFC.HFC_Safety_Alg1_proved</code><br><sub>FastConfirmation/Paper/HFC/ReviewTheorem.lean · <i>statement</i></sub><pre>theorem HFC_Safety_Alg1_proved (τ : Timing) (bal₀ : Stakes n) : HFC_Safety_Alg1 τ bal₀ := by
   exact hfc_safety_alg1_public τ bal₀</pre>
 
 </td>
@@ -1826,7 +1826,7 @@ def OnChainAnchorInterfacesForRule (A fm τ 𝒱 b t) : Prop := …</pre>
 </td>
 <td width="50%" valign="top">
 
-<b>Lean</b> — <code>FastConfirmation.HFC.HFC_Monotonicity_Alg1_proved</code><br><sub>FastConfirmation/Paper/HFC/ProvenTheorems.lean · <i>theorem</i></sub><pre>theorem HFC_Monotonicity_Alg1_proved (τ : Timing) (bal₀ : Stakes n) :
+<b>Lean</b> — <code>FastConfirmation.HFC.HFC_Monotonicity_Alg1_proved</code><br><sub>FastConfirmation/Paper/HFC/ReviewTheorem.lean · <i>theorem</i></sub><pre>theorem HFC_Monotonicity_Alg1_proved (τ : Timing) (bal₀ : Stakes n) :
     HFC_Monotonicity_Alg1 τ bal₀ := by
   … exact hfc_monotonicity_alg1 bal₀ … hconf</pre>
 

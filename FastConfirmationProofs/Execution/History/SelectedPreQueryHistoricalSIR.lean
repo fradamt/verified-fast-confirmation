@@ -78,13 +78,13 @@ inductive StrictSelectedHistoricalSIRCallSite
       (result_current : get_block_epoch cfg query.store result =
         get_current_store_epoch cfg query.store)
       (a c : Root)
-      (edge : CurrentTargetAcceptedEdge cfg ext query input a c)
+      (edge : CurrentTargetSelectedEdge cfg ext query input a c)
       (gate : will_current_target_be_justified cfg ext query.store = true)
   | currentHistorical
       (result_current : get_block_epoch cfg query.store result =
         get_current_store_epoch cfg query.store)
       (no_crossing : ¬ ∃ a c : Root,
-        CurrentTargetAcceptedEdge cfg ext query input a c)
+        CurrentTargetSelectedEdge cfg ext query input a c)
   | previousEpochStart
       (result_previous : get_block_epoch cfg query.store result + 1 =
         get_current_store_epoch cfg query.store)
@@ -102,7 +102,7 @@ inductive StrictSelectedHistoricalSIRCallSite
 historical-current, epoch-boundary, and mid-epoch no-conflict cases.
 
 Both executable booleans are *derived*, never assumed: the crossing gate is
-`CurrentTargetAcceptedEdge.current_target_gate` and the no-conflict gate is
+`CurrentTargetSelectedEdge.current_target_gate` and the no-conflict gate is
 `selected_previous_result_no_conflict_gate`.  Since **N5** of
 `docs/trunkB-two-case-discharge.md` §7 removed the two support fields, this
 classification mentions no helper-support proviso at all. -/
@@ -126,7 +126,7 @@ theorem strictSelectedHistoricalSIRCallSite
     query hquery input hinput hinputEpoch hstrict
   rcases hfacts.current_or_previous_epoch with hcurrent | hprevious
   · by_cases hcross : ∃ a c : Root,
-        CurrentTargetAcceptedEdge cfg ext query input a c
+        CurrentTargetSelectedEdge cfg ext query input a c
     · obtain ⟨a, c, hedge⟩ := hcross
       exact .currentCrossing hcurrent a c hedge
         (hedge.current_target_gate cfg ext)
@@ -736,7 +736,7 @@ def HistoricalCurrentTargetCertificateProducerAt
     (query : FastConfirmationStore Root) (input result : Root) : Prop :=
   get_block_epoch cfg query.store result =
       get_current_store_epoch cfg query.store →
-  (¬ ∃ a c : Root, CurrentTargetAcceptedEdge cfg ext query input a c) →
+  (¬ ∃ a c : Root, CurrentTargetSelectedEdge cfg ext query input a c) →
     Nonempty (CertifiedJustified cfg E anchor
       (get_current_target cfg query.store))
 

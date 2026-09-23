@@ -28,10 +28,10 @@ variable (cfg : Config) (ext : Externals Root)
 
 /-! ## Exact carried-selector branch projection -/
 
-namespace GetLatestConfirmedTrace
+namespace LatestConfirmedCallTrace
 
 
-end GetLatestConfirmedTrace
+end LatestConfirmedCallTrace
 
 namespace Execution
 

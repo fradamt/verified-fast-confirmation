@@ -34,7 +34,7 @@ the committee-weight-estimation soundness — both against the ground truth,
 both exactly the spec's own stated assumptions (the estimation soundness is
 the "high probability" claim behind
 `COMMITTEE_WEIGHT_ESTIMATION_ADJUSTMENT_FACTOR`; see the spec's gist link). -/
-structure ByzantineBound (E : Execution Root) : Prop where
+structure ByzantineWeightPremises (E : Execution Root) : Prop where
   /-- Effective balances used by the economic model are phase0-quantized.
       This is an executable registry invariant, not part of the probabilistic
       committee estimate.  Out-of-range totalized reads have weight zero. -/

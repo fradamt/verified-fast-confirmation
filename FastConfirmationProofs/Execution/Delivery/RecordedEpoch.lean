@@ -59,7 +59,7 @@ historical `(v,q)` wrapper, this theorem needs no equality with
 `Execution.store`; schedule-connected and ordinary provenance are stated
 directly for `queryStore`. -/
 theorem recorded_lm_is_newest_in_store
-    (hhb : HonestBehavior cfg ext E) (hec : ExternalsCoherence cfg ext E)
+    (hhb : HonestBehavior cfg ext E) (hec : BeaconExternalsPremises cfg ext E)
     {queryStore : Store Root}
     (hsched : SchedLMProv E cfg queryStore)
     (hprov : LatestMessageProvenance E cfg
@@ -323,7 +323,7 @@ theorem windowRecordedEpochMax_at_query_minimal
 /-- A recorded honest supporter belongs to `Sclass`, using domination only
 after the supporter's concrete window membership has been established. -/
 theorem recorded_supporter_mem_Sclass_window
-    (hhb : HonestBehavior cfg ext E) (hec : ExternalsCoherence cfg ext E)
+    (hhb : HonestBehavior cfg ext E) (hec : BeaconExternalsPremises cfg ext E)
     (hgen : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
       E.genesis_store = get_forkchoice_store cfg ast ablk)
     {v₀ : ValidatorIndex} {n₀ : ℕ}
@@ -373,7 +373,7 @@ theorem recorded_supporter_mem_Sclass_window
 /-- Honest supporter score is bounded by `Sval`, with only window-scoped
 recorded-epoch domination. -/
 theorem honest_supporters_sum_le_Sval_window
-    (hhb : HonestBehavior cfg ext E) (hec : ExternalsCoherence cfg ext E)
+    (hhb : HonestBehavior cfg ext E) (hec : BeaconExternalsPremises cfg ext E)
     (hgen : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
       E.genesis_store = get_forkchoice_store cfg ast ablk)
     {v₀ : ValidatorIndex} {n₀ : ℕ}
@@ -415,7 +415,7 @@ theorem honest_supporters_sum_le_Sval_window
 /-- Parent-stuck honest validators belong to `Aclass`, with domination
 specialized only after their parent-support span is widened to `[lo, es]`. -/
 theorem ParentStuck_subset_Aclass_window
-    (hhb : HonestBehavior cfg ext E) (hec : ExternalsCoherence cfg ext E)
+    (hhb : HonestBehavior cfg ext E) (hec : BeaconExternalsPremises cfg ext E)
     (hgen : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
       E.genesis_store = get_forkchoice_store cfg ast ablk)
     {v₀ : ValidatorIndex} {n₀ : ℕ}
@@ -492,8 +492,8 @@ theorem ParentStuck_subset_Aclass_window
 /-- Support discount is bounded by `Aval` using the window-scoped parent-
 stuck inclusion. -/
 theorem support_discount_le_Aval_window
-    (hhb : HonestBehavior cfg ext E) (hec : ExternalsCoherence cfg ext E)
-    (hbb : ByzantineBound cfg E)
+    (hhb : HonestBehavior cfg ext E) (hec : BeaconExternalsPremises cfg ext E)
+    (hbb : ByzantineWeightPremises cfg E)
     (hgen : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
       E.genesis_store = get_forkchoice_store cfg ast ablk)
     {v₀ : ValidatorIndex} (hv₀ : v₀ ∈ E.honest) {n₀ : ℕ}
@@ -535,8 +535,8 @@ theorem support_discount_le_Aval_window
 /-- Confirmation-rule base strip with the overbroad all-validator
 `RecordedEpochMax` premise replaced by the faithful window-scoped form. -/
 theorem weak_base_discharged_window
-    (hhb : HonestBehavior cfg ext E) (hec : ExternalsCoherence cfg ext E)
-    (hbb : ByzantineBound cfg E)
+    (hhb : HonestBehavior cfg ext E) (hec : BeaconExternalsPremises cfg ext E)
+    (hbb : ByzantineWeightPremises cfg E)
     (hgen : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
       E.genesis_store = get_forkchoice_store cfg ast ablk)
     {v₀ : ValidatorIndex} (hv : v₀ ∈ E.honest) {n₀ : ℕ}
@@ -589,7 +589,7 @@ theorem weak_base_discharged_window
 /-- Honest sibling confinement with recorded-epoch domination restricted to
 the sibling supporter's proved ledger-window membership. -/
 theorem honest_sibling_confinement_window
-    (hhb : HonestBehavior cfg ext E) (hec : ExternalsCoherence cfg ext E)
+    (hhb : HonestBehavior cfg ext E) (hec : BeaconExternalsPremises cfg ext E)
     (hgen : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
       E.genesis_store = get_forkchoice_store cfg ast ablk)
     {w : ValidatorIndex} {m : ℕ}

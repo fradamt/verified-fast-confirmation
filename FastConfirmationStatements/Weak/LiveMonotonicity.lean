@@ -1,5 +1,5 @@
 module
-public import FastConfirmationStatements.Premises.Live
+public import FastConfirmationStatements.Premises.LiveMonotonicity
 public import FastConfirmationModel.Weak.Execution
 
 @[expose] public section
@@ -11,7 +11,7 @@ namespace FastConfirmation.Spec
 variable {Root : Type*} [LinearOrder Root] [Inhabited Root]
 variable (cfg : Config) (ext : Externals Root)
 
-/-- Weak-rule counterpart of `Spec_Monotonicity_live`, with the same live
+/-- Weak-rule counterpart of `ConfirmedRootMonotonicity`, with the same live
 block, vote, and timely-checkpoint assumptions. The `acceptedWeak` parameter
 is instantiated downstream with the accepted FFG and weak observer premises
 used by the weak safety witnesses. The conclusion concerns the weak observer's
@@ -22,7 +22,7 @@ def WeakSpec_Monotonicity_live
   ∀ E : Execution Root, ∀ v : ValidatorIndex, acceptedWeak E v →
     ∀ n m : ℕ, n ≤ m →
       E.WithinHorizon cfg m →
-      MonotonicityLiveAssumptions cfg ext E v n m →
+      LiveMonotonicityPremises cfg ext E v n m →
       is_ancestor (E.store cfg ext v m)
         (get_node_for_root (E.weakConfirmed cfg ext v m))
         (get_node_for_root (E.weakConfirmed cfg ext v n)) = true

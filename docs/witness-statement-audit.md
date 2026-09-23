@@ -393,7 +393,7 @@ All seven are *strong-side* statements in the paper model (`FastConfirmation/Pap
 facade theorem discharging a proof-free `Prop` in `TheoremStatements.lean`. Hypotheses are
 the `Prop`'s own binders — the facade adds none.
 
-### W7 `LMDGhost.HeadFutureAgreement_proved` — `Paper/LMDGhost/ProvenTheorems.lean:18`
+### W7 `LMDGhost.HeadFutureAgreement_proved` — `Paper/LMDGhost/ReviewTheorem.lean:18`
 (statement `LMDGhost/TheoremStatements.lean:88`). **Reusable engine, Lemma 6.**
 *Statement.* For any anchor `C` and any block filter: if honest `v` sees `b` as
 `isLMDGHOSTSafe` at `t`, `b` is well-formed with `b.slot ≤ slot(t)`, `1 ≤ slot(t)`,
@@ -416,7 +416,7 @@ every honest validator's LMD-GHOST head.
 `epoch(slot(t'))-1`: `isConfirmed … b t → isConfirmed … b t'` for every `t' ≥ t`.
 *Hypotheses.* W8's + j + l. No [D]/[!].
 
-### W10 `HFC.HFC_Safety_proved` — `Paper/HFC/ProvenTheorems.lean:44` (statement `HFC/TheoremStatements.lean:353`)
+### W10 `HFC.HFC_Safety_proved` — `Paper/HFC/ReviewTheorem.lean:44` (statement `HFC/TheoremStatements.lean:353`)
 *Statement.* W8 at `flt := ffgFilter bal₀ τ`, `gj := gjFFG bal₀`, `C := bal₀`, with the
 confirmation predicate `isHFCConfirmed` = `isConfirmed ∧ WillNoConflictingChkpBeJustified`.
 Conclusion: `∃ t₀`, from which `b` is on every honest LMD-GHOST-HFC head.

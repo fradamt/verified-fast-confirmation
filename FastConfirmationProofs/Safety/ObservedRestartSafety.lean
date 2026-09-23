@@ -38,20 +38,20 @@ variable {E : Execution Root}
 epoch, not only whose root block epoch, is exactly the previous epoch. -/
 theorem ObservedResetCandidateInputAt.observed_checkpoint_previous_epoch
     (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
+    (hT : E.ScheduledPrefixPremises cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
       (E := E) (anchor := B.anchor))
     (hspe : 1 < cfg.slots_per_epoch)
     {v : ValidatorIndex} {n : ℕ}
-    (hcall : E.IsFCRCallAt cfg ext v n)
-    {trace : GetLatestConfirmedTrace cfg ext (E.fcrStep cfg ext v n)}
+    (hcall : E.IsScheduledFCRCallAt cfg ext v n)
+    {trace : LatestConfirmedCallTrace cfg ext (E.fcrStoreAtCall cfg ext v n)}
     (h : ObservedResetCandidateInputAt cfg ext
-      (E.fcrStep cfg ext v n) trace) :
-    (E.fcrStep cfg ext v n
+      (E.fcrStoreAtCall cfg ext v n) trace) :
+    (E.fcrStoreAtCall cfg ext v n
       ).current_epoch_observed_justified_checkpoint.epoch + 1 =
       get_current_store_epoch cfg (E.store cfg ext v (n + 1)) := by
-  let c := (E.fcrStep cfg ext v n
+  let c := (E.fcrStoreAtCall cfg ext v n
     ).current_epoch_observed_justified_checkpoint
   let e := get_current_store_epoch cfg (E.store cfg ext v (n + 1))
   obtain ⟨ast, ablk, hgen, hgenSlot, hgenParent⟩ := hT.genesis_structure
@@ -64,7 +64,7 @@ theorem ObservedResetCandidateInputAt.observed_checkpoint_previous_epoch
       (E := E) cfg ext B hgenShort hanchor hspe h
   have hslotAdvance : E.slot_at cfg n < E.slot_at cfg (n + 1) := by
     have hslotAdvanceRaw := hcall
-    unfold IsFCRCallAt at hslotAdvanceRaw
+    unfold IsScheduledFCRCallAt at hslotAdvanceRaw
     rw [E.store_current_slot cfg ext v n,
       E.store_current_slot cfg ext v (n + 1)] at hslotAdvanceRaw
     exact hslotAdvanceRaw
@@ -178,23 +178,23 @@ epoch; the induction hypothesis puts the observed root on that voter's head,
 and checkpoint-boundary walk composition puts it below the vote target. -/
 theorem ObservedResetCandidateInputAt.safeFrom_of_acceptedDynamics
     (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
-    (hsync : PaperSafetySynchrony cfg ext E)
+    (hT : E.ScheduledPrefixPremises cfg ext)
+    (hsync : NextSlotSynchronyPremises cfg ext E)
     (hstatic : StaticValidatorSet cfg E)
-    (hbyz : ByzantineBound cfg E)
+    (hbyz : ByzantineWeightPremises cfg E)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
       (E := E) (anchor := B.anchor))
     (hspe : 1 < cfg.slots_per_epoch)
     {v : ValidatorIndex} (hv : v ∈ E.honest) {n : ℕ}
     (hHn1 : E.WithinHorizon cfg (n + 1))
-    (hcall : E.IsFCRCallAt cfg ext v n)
-    {trace : GetLatestConfirmedTrace cfg ext (E.fcrStep cfg ext v n)}
+    (hcall : E.IsScheduledFCRCallAt cfg ext v n)
+    {trace : LatestConfirmedCallTrace cfg ext (E.fcrStoreAtCall cfg ext v n)}
     (h : ObservedResetCandidateInputAt cfg ext
-      (E.fcrStep cfg ext v n) trace) :
+      (E.fcrStoreAtCall cfg ext v n) trace) :
     E.SafeFrom cfg ext trace.afterObserved (n + 1) := by
   rw [h.input_eq]
-  let c := (E.fcrStep cfg ext v n
+  let c := (E.fcrStoreAtCall cfg ext v n
     ).current_epoch_observed_justified_checkpoint
   let e := get_current_store_epoch cfg (E.store cfg ext v (n + 1))
   change E.SafeFrom cfg ext c.root (n + 1)
@@ -222,7 +222,7 @@ theorem ObservedResetCandidateInputAt.safeFrom_of_acceptedDynamics
     cfg ext B hT hanchor hboundary
   have hslotAdvance : E.slot_at cfg n < E.slot_at cfg (n + 1) := by
     have hslotAdvanceRaw := hcall
-    unfold IsFCRCallAt at hslotAdvanceRaw
+    unfold IsScheduledFCRCallAt at hslotAdvanceRaw
     rw [E.store_current_slot cfg ext v n,
       E.store_current_slot cfg ext v (n + 1)] at hslotAdvanceRaw
     exact hslotAdvanceRaw
@@ -247,7 +247,7 @@ theorem ObservedResetCandidateInputAt.safeFrom_of_acceptedDynamics
     simpa only [c, e] using
       FastConfirmation.Spec.Execution.ObservedResetCandidateInputAt.observed_checkpoint_previous_epoch
         (E := E) cfg ext B hT hanchor hboundary hspe hcall h
-  have hrestart : ObservedRestartCompatible cfg (E.fcrStep cfg ext v n) :=
+  have hrestart : ObservedRestartCompatible cfg (E.fcrStoreAtCall cfg ext v n) :=
     { epoch_start := h.epoch_start
       root_previous_epoch := h.observed_previous_epoch
       observed_eq_head_unrealized := h.observed_eq_head_unrealized }

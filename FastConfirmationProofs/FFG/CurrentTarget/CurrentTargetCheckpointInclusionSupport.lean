@@ -342,7 +342,7 @@ used to be the separate `HorizonVoteDeliveryLookahead` assumption. -/
 theorem ConcreteA32QuorumBefore.scheduledDelivery_of_lookahead
     {deadline : Slot} {target : Checkpoint Root}
     (Q : ConcreteA32QuorumBefore cfg ext E deadline target)
-    (hdelivery : PaperSafetySynchrony cfg ext E) :
+    (hdelivery : NextSlotSynchronyPremises cfg ext E) :
     ConcreteA32QuorumScheduledDelivery cfg ext E Q := by
   intro i hi vote
   exact hdelivery.toDeliveryLookahead cfg ext i vote.honest vote.slot vote.time
@@ -500,7 +500,7 @@ private theorem slot_start_succ_le_of_slot_le
 /-- A concrete honest vote has reached every honest view once that view's slot
 is at least the vote slot. -/
 theorem concreteVote_receivedBy
-    (hsync : PaperSafetySynchrony cfg ext E)
+    (hsync : NextSlotSynchronyPremises cfg ext E)
     (hdiv : 1000 ∣ cfg.slot_duration_ms)
     (hgenTime : E.genesis_store.genesis_time ≤ E.genesis_store.time)
     {i : ValidatorIndex} {deadline : Slot} {target : Checkpoint Root}

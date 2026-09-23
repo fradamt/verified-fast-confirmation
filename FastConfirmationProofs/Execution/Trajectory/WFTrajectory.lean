@@ -311,7 +311,7 @@ block is the anchor's dangling parent". -/
 /-- The parent-slot order holds at every node and second of a trajectory whose
 genesis store is a `get_forkchoice_store`, under the guarded `hanchor`. -/
 theorem Execution.store_parentSlotLt (E : Execution Root)
-    (hwf : WellFormedExecution E) (hec : ExternalsCoherence cfg ext E)
+    (hwf : WellFormedExecution E) (hec : BeaconExternalsPremises cfg ext E)
     (hgen : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
       E.genesis_store = get_forkchoice_store cfg ast ablk ∧
       ast.slot = ablk.message.slot ∧ ablk.message.parent_root ≠ ablk.root)

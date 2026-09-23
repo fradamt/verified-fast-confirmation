@@ -107,10 +107,10 @@ interfaces. The `_Alg1` theorems are the public paper-facing results.
 ## Reading map
 
 - [`FastConfirmation/Paper/LMDGhost/TheoremStatements.lean`](../FastConfirmation/Paper/LMDGhost/TheoremStatements.lean)
-  and [`ProvenTheorems.lean`](../FastConfirmation/Paper/LMDGhost/ProvenTheorems.lean)
+  and [`ReviewTheorem.lean`](../FastConfirmation/Paper/LMDGhost/ReviewTheorem.lean)
   expose the Section 3.1 statements and proofs.
 - [`FastConfirmation/Paper/HFC/TheoremStatements.lean`](../FastConfirmation/Paper/HFC/TheoremStatements.lean)
-  and [`ProvenTheorems.lean`](../FastConfirmation/Paper/HFC/ProvenTheorems.lean)
+  and [`ReviewTheorem.lean`](../FastConfirmation/Paper/HFC/ReviewTheorem.lean)
   expose the Section 4 statements and proofs.
 - [`model-annotation.md`](model-annotation.md) maps paper definitions,
   assumptions, and theorems to Lean declarations.

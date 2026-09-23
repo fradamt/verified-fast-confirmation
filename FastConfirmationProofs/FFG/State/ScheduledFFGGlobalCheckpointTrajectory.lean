@@ -3,7 +3,7 @@ public import FastConfirmationProofs.FFG.SelectedSource.FFGEndpointRealization
 public import FastConfirmationModel.Execution.PayloadFrame
 public import FastConfirmationProofs.ModelFacts
 
-public import FastConfirmationStatements.Premises.ExecutionConditions
+public import FastConfirmationStatements.Premises.ScheduledExecutionConditions
 @[expose] public section
 
 /-!

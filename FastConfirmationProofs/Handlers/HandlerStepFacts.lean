@@ -82,7 +82,7 @@ the confirming store*. The lift to an arbitrary endpoint `(w, m)` is represented
 /-! ## Section 3 — the source of `prev_greatest_justifiedIn`
 
 `ObservedDom`'s sole corner (`is_start_slot_at_epoch = true`, no slot advance) has the
-`fcrStep`-observed checkpoint set by `update_fast_confirmation_variables`' rotation.
+`fcrStoreAtCall`-observed checkpoint set by `update_fast_confirmation_variables`' rotation.
 `update_fcv_observed_boundary` computes that rotation **on** the epoch boundary: the
 observed checkpoint becomes the store's `unrealized_justified_checkpoint` (when the
 next slot is also an epoch start — only possible for `slots_per_epoch = 1`) or the

@@ -84,12 +84,12 @@ variable (E : Execution Root)
 /-- Execution form of `get_latest_confirmed_eq_finalized_of_stale` at an
 actual FCR call. -/
 theorem confirmed_succ_eq_finalized_of_stale_call
-    (v : ValidatorIndex) (n : ℕ) (hcall : E.IsFCRCallAt cfg ext v n)
+    (v : ValidatorIndex) (n : ℕ) (hcall : E.IsScheduledFCRCallAt cfg ext v n)
     (hstale : get_block_epoch cfg (E.store cfg ext v (n + 1))
         (E.confirmed cfg ext v n) + 1 <
       get_current_store_epoch cfg (E.store cfg ext v (n + 1)))
     (hobserved : get_block_epoch cfg (E.store cfg ext v (n + 1))
-        (E.fcrStep cfg ext v n).current_epoch_observed_justified_checkpoint.root + 1 ≠
+        (E.fcrStoreAtCall cfg ext v n).current_epoch_observed_justified_checkpoint.root + 1 ≠
       get_current_store_epoch cfg (E.store cfg ext v (n + 1)))
     (hfinalized : get_block_epoch cfg (E.store cfg ext v (n + 1))
         (E.store cfg ext v (n + 1)).finalized_checkpoint.root + 1 <
@@ -100,7 +100,7 @@ theorem confirmed_succ_eq_finalized_of_stale_call
   have hstore := E.fcrStep_store cfg ext v n
   have hroot := E.fcrStep_confirmed_root cfg ext v n
   have h := get_latest_confirmed_eq_finalized_of_stale cfg ext
-    (E.fcrStep cfg ext v n)
+    (E.fcrStoreAtCall cfg ext v n)
     (by rw [hstore, hroot]; exact hstale)
     (by rw [hstore]; exact hobserved)
     (by rw [hstore]; exact hfinalized)

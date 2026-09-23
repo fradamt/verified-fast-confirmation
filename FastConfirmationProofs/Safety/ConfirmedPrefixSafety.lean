@@ -15,7 +15,7 @@ public import FastConfirmationProofs.Checkpoints.CheckpointMarginInputs
 
 This module held the conditional reductions for `Spec_Safety`, the statement that quantifies
 over every later completed whole-second execution state, including later states inside the same
-slot. The accepted public result is `acceptedSpec_safety_next_slot`, exported by
+slot. The accepted public result is `confirmed_root_safe_from_next_slot`, exported by
 `FastConfirmation.Spec.ProvenTheorems`, and is unaffected by anything here.
 
 All of it belonged to the legacy `SpecAssumptions` observed-anchor cone and is deleted (P-6):

@@ -8,7 +8,7 @@ public import FastConfirmationModel.Execution.Stake
 /-!
 # Premises/FFG
 
-Phase0 source coherence premises. Reads the Spec Model. Read Premises/Trajectory next.
+Phase0 source coherence premises. Reads the Spec Model. Read Premises/FCRCallPremises next.
 -/
 
 section

@@ -104,7 +104,7 @@ branch disjunction on `s₀`/`x₀`/`B(es)`/`J₀`, INV\* holds at `σ = es`. -/
 `2·Hsup + d ≥ MS + boost + 1`. Two internal identifications close the
 endpoint-form weak base `s₀ ≥ x₀ + B(es) + boost + 1`:
 
-* `MS ≥ J₀ + B(es)` — `ByzantineBound.estimate_sound` on the window
+* `MS ≥ J₀ + B(es)` — `ByzantineWeightPremises.estimate_sound` on the window
   `[lo, es] = [parent+1, current−1]` (the rule's own `maximum_support` span),
   split honest/non-honest by `weight_split_honest`;
 * `J₀ = s₀ + a₀ + x₀` — `Ledger.weight_partition`.
@@ -127,8 +127,8 @@ committee-union plus enemy weight, and the honest supporters/discount are the
 `Sclass`/`Aclass` recorded slices (`hHsup`/`hdisc`). This is the endpoint-form
 margin; the branch-selection premise funds it into `(★)`/`(★R)`. -/
 theorem weak_base_of_rule
-    (hhb : HonestBehavior cfg ext E) (hec : ExternalsCoherence cfg ext E)
-    (hbb : ByzantineBound cfg E)
+    (hhb : HonestBehavior cfg ext E) (hec : BeaconExternalsPremises cfg ext E)
+    (hbb : ByzantineWeightPremises cfg E)
     (hgen : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
       E.genesis_store = get_forkchoice_store cfg ast ablk)
     {v₀ : ValidatorIndex} (hv : v₀ ∈ E.honest) {n₀ : ℕ}

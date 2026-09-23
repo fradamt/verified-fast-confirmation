@@ -42,7 +42,7 @@ observer contributes only the cells it actually recorded, and
 4. `Execution.honest_newest_vote_source_minimal` identifies that ground vote
    with the supporter's own validator-spec head vote in its own store, placing
    `lm.root ∈ (E.store cfg ext i nu).block_roots`; honest→honest
-   `PaperSafetySynchrony.block_relay` from `i` (never *to* the observer) puts
+   `NextSlotSynchronyPremises.block_relay` from `i` (never *to* the observer) puts
    `lm.root` at the endpoint.
 5. `LatestMessageProvenance`'s knownness component puts `lm.root` in the
    observer's store as well, so `lm.root` is the doubly-known witness

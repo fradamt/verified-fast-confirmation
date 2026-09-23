@@ -6,7 +6,7 @@ public import FastConfirmationModel.Execution.Stake
 @[expose] public section
 
 /-!
-# Premises/Live
+# Premises/LiveMonotonicity
 
 Vote support and live monotonicity premises. Reads the Spec Model. Read Claims next.
 -/
@@ -60,7 +60,7 @@ end Execution
 head is used as the common voting branch; no field names a confirmed root or
 an FCR branch condition. Committee coverage and honest vote production are
 already fields of the accepted trajectory assumptions. -/
-structure MonotonicityLiveAssumptions (E : Execution Root)
+structure LiveMonotonicityPremises (E : Execution Root)
     (v : ValidatorIndex) (n m : ℕ) : Prop where
   /-- An honestly proposed block for every slot from the execution start
   through the interval is in every honest store by the next slot's first
@@ -132,14 +132,14 @@ stored confirmed root remains an ancestor of the later stored root. The
 executable threshold also needs a margin against its configured Byzantine
 allowance; this is a separate field of the proposed liveness bundle. The
 `accepted` argument is instantiated with
-`AcceptedActualFCRNextSlotSafetyAssumptions` downstream: that record is not
+`NextSlotSafetyPremises` downstream: that record is not
 available in this upstream statement module. -/
-def Spec_Monotonicity_live
+def ConfirmedRootMonotonicity
     (accepted : Execution Root → Prop) : Prop :=
   ∀ E : Execution Root, accepted E →
     ∀ v ∈ E.honest, ∀ n m : ℕ, n ≤ m →
       E.WithinHorizon cfg m →
-      MonotonicityLiveAssumptions cfg ext E v n m →
+      LiveMonotonicityPremises cfg ext E v n m →
       is_ancestor (E.store cfg ext v m)
         (get_node_for_root (E.confirmed cfg ext v m))
         (get_node_for_root (E.confirmed cfg ext v n)) = true

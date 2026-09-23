@@ -134,7 +134,7 @@ totalized `get_head` justified-root fallback in the voter's own boundary
 store.  There is no synchrony, economic bound, selected-margin domain,
 target agreement, or safety field. -/
 structure CurrentTargetPrefixVoteAssumptions : Prop where
-  trajectory : E.ScheduledPrefixTrajectoryAssumptions cfg ext
+  trajectory : E.ScheduledPrefixPremises cfg ext
   justified_root_known : ∀ w ∈ E.honest, ∀ m : ℕ,
     E.WithinHorizon cfg m →
       (E.store cfg ext w m).justified_checkpoint.root ∈
@@ -154,14 +154,14 @@ def CurrentTargetPrefixVoteAssumptions.of_selectedMarginAssumptions
       anchorBlock.message.parent_root ≠ anchorBlock.root) :
     E.CurrentTargetPrefixVoteAssumptions cfg ext where
   trajectory :=
-    ScheduledPrefixTrajectoryAssumptions.of_selectedMarginAssumptions
+    ScheduledPrefixPremises.of_selectedMarginAssumptions
       cfg ext E hA hgen
   justified_root_known := hA.domain.justified_root_known
 
 /-- Every exact scheduled-event prefix retains the target epoch of the actual
 scheduled attestation which installed each current latest message. -/
 theorem ScheduledEventPrefix.currentTargetScheduledLatestMessageProvenance
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
+    (hT : E.ScheduledPrefixPremises cfg ext)
     (p : E.ScheduledEventPrefix) :
     CurrentTargetScheduledLatestMessageProvenance cfg E
       (p.store cfg ext) := by

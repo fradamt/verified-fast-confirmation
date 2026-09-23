@@ -34,7 +34,7 @@ assumption is introduced.
 The proviso-conditional function contracts which used to close this file
 (`Spec_Safety_of_selectedStateRealization_minimal` and its siblings, the
 `SelectedGetLatest…At` records, and the `…_of_pipeline_minimal` wrappers) were
-deleted with the rest of the `SelectedHelperProvisosAt` surface; see
+deleted with the rest of the `FCRPredictionSupportAt` surface; see
 `docs/weak-final-wave.md` §8.1.
 -/
 

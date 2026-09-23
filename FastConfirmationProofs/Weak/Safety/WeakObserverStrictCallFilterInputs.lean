@@ -31,7 +31,7 @@ safety `hbase` — the same premise the strong actual-call theorem takes.
 
 The producer has exactly one instantiation,
 `observerStrictCallFilterInputsAt_of_observerCall_lazy`: it takes only the
-6-field `E.AcceptedHistoricalA32CompletedPrefixCallAssumptions` plus the
+6-field `E.CompletedFCRCallPremises` plus the
 threaded fold output `Weak.ObserverPriorCallWriteBackSafe obs n`, and the
 trajectory fold takes it.  The **eager** instantiation, driven by the
 observer-side proviso record, was deleted together with the four closed
@@ -54,9 +54,9 @@ S7 supplier's own premises plus the obligation route, the eliminations it
 carries, and the carried input safety `hbase`. -/
 theorem observerStrictCallFilterInputsAt_of_route
     (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
+    (hT : E.ScheduledPrefixPremises cfg ext)
     {obs : ValidatorIndex}
-    (hCbase : E.AcceptedHistoricalA32CompletedPrefixCallAssumptions cfg ext)
+    (hCbase : E.CompletedFCRCallPremises cfg ext)
     (hfit : EpochEndsFitUint64 cfg)
     (hdomain : SelectedMarginDomain cfg ext E)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
@@ -72,7 +72,7 @@ theorem observerStrictCallFilterInputsAt_of_route
       e + 2 ≤ get_current_store_epoch cfg (E.store cfg ext w m) →
       E.SelectedCanonicalBeforeEndpointAt cfg ext (n + 1)
         (E.weakGetLatestConfirmedTraceAt cfg ext obs n).result m →
-      E.IsFCRCallAt cfg ext obs n →
+      E.IsScheduledFCRCallAt cfg ext obs n →
         B.state.C o e = B.anchor ∨
           Nonempty (E.AcceptedHistoricalA32QuorumAt cfg ext B o e))
     (suppElimPrior : ∀ {o : Root} {e : Epoch}, Supp n o e →
@@ -80,7 +80,7 @@ theorem observerStrictCallFilterInputsAt_of_route
       e + 2 ≤ get_current_store_epoch cfg (E.store cfg ext w m) →
         B.state.C o e = B.anchor ∨
           Nonempty (E.AcceptedHistoricalA32QuorumAt cfg ext B o e))
-    (hcall : E.IsFCRCallAt cfg ext obs n)
+    (hcall : E.IsScheduledFCRCallAt cfg ext obs n)
     (hHn1 : E.WithinHorizon cfg (n + 1))
     (hinput : (E.weakGetLatestConfirmedTraceAt cfg ext obs n).afterObserved ∈
       (E.weakFcrStep cfg ext obs n).store.block_roots)
@@ -128,16 +128,16 @@ theorem observerStrictCallFilterInputsAt_of_route
 /-- **The lazy instantiation.**
 
 No proviso anywhere: the call contract is the unchanged 6-field
-`E.AcceptedHistoricalA32CompletedPrefixCallAssumptions`, and the two payload
+`E.CompletedFCRCallPremises`, and the two payload
 obligations are discharged from the trajectory fold's own strictly earlier
 output `hprior`, plus — at the late current-epoch cell only — the endpoint
 induction's own `hIH`, converted by
 `Execution.engineInv_of_selectedCanonical_lateEndpoint`. -/
 theorem observerStrictCallFilterInputsAt_of_observerCall_lazy
     (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
+    (hT : E.ScheduledPrefixPremises cfg ext)
     {obs : ValidatorIndex}
-    (hCbase : E.AcceptedHistoricalA32CompletedPrefixCallAssumptions cfg ext)
+    (hCbase : E.CompletedFCRCallPremises cfg ext)
     (hfit : EpochEndsFitUint64 cfg)
     (hdomain : SelectedMarginDomain cfg ext E)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
@@ -145,7 +145,7 @@ theorem observerStrictCallFilterInputsAt_of_observerCall_lazy
       (E := E) (anchor := B.anchor))
     (hcoh : E.ObserverCoherence cfg ext obs) {n : Nat}
     (hprior : Weak.ObserverPriorCallWriteBackSafe cfg ext E obs n)
-    (hcall : E.IsFCRCallAt cfg ext obs n)
+    (hcall : E.IsScheduledFCRCallAt cfg ext obs n)
     (hHn1 : E.WithinHorizon cfg (n + 1))
     (hinput : (E.weakGetLatestConfirmedTraceAt cfg ext obs n).afterObserved ∈
       (E.weakFcrStep cfg ext obs n).store.block_roots)
@@ -202,16 +202,16 @@ seconds).  No normative observer proviso is consumed anywhere below this. -/
 noncomputable def
     StrictSelectorAdvanceAt.observerCall_selectedStrictEdgeFilterSupplyAt_lazy
     (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
-    (hsync : PaperSafetySynchrony cfg ext E)
+    (hT : E.ScheduledPrefixPremises cfg ext)
+    (hsync : NextSlotSynchronyPremises cfg ext E)
     (hstatic : StaticValidatorSet cfg E)
-    (hbyz : ByzantineBound cfg E)
+    (hbyz : ByzantineWeightPremises cfg E)
     (hdomain : SelectedMarginDomain cfg ext E)
     (hji : JustificationInterface cfg ext E)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : Execution.TrustedAnchorBoundaryAligned (cfg := cfg)
       (E := E) (anchor := B.anchor))
-    (hDelay : E.AcceptedRealizedFinalizationDelay cfg ext B)
+    (hDelay : E.RealizedFinalizationDelay cfg ext B)
     (hphase0 : Phase0SourceCoherence cfg ext)
     (hpaper : B.state.PaperA32Inclusion cfg ext)
     (P : AcceptedEpochCheckpointProjection B.anchor
@@ -219,12 +219,12 @@ noncomputable def
     (V : B.state.ExactLinkValidity)
     (hanchorExact : B.anchor = B.state.C B.anchor.root B.anchor.epoch)
     {obs : ValidatorIndex}
-    (hCbase : E.AcceptedHistoricalA32CompletedPrefixCallAssumptions cfg ext)
+    (hCbase : E.CompletedFCRCallPremises cfg ext)
     (hfit : EpochEndsFitUint64 cfg)
     (hcoh : E.ObserverCoherence cfg ext obs) {n : Nat}
     (hprior : Weak.ObserverPriorCallWriteBackSafe cfg ext E obs n)
     (hn1H : E.WithinHorizon cfg (n + 1))
-    (hcall : E.IsFCRCallAt cfg ext obs n)
+    (hcall : E.IsScheduledFCRCallAt cfg ext obs n)
     (hinput : (E.weakGetLatestConfirmedTraceAt cfg ext obs n).afterObserved ∈
       (E.weakFcrStep cfg ext obs n).store.block_roots)
     (hbase : E.SafeFrom cfg ext

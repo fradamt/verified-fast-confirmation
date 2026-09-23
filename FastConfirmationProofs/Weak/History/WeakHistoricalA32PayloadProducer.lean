@@ -22,7 +22,7 @@ contains no proof.
 
 **Why the re-spelling is needed at all.**
 `Execution.HistoricalCurrentTargetCertificateProducerAt` states its
-no-crossing side condition over the *strong* `CurrentTargetAcceptedEdge`, hence
+no-crossing side condition over the *strong* `CurrentTargetSelectedEdge`, hence
 over `findLatestSelectedTrace`.  Rule delta 1 gives the observer a different
 selector (`Weak.findLatestSelectedTrace`), so that side condition is a
 different proposition with no bridge in the required direction; the weak
@@ -55,7 +55,7 @@ both routes (eager and lazy) flow through it unchanged, the only difference
 being which `certElim` is supplied. -/
 theorem observerCall_historicalCertificateProducerAt
     (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
+    (hT : E.ScheduledPrefixPremises cfg ext)
     (hphase : Phase0SourceCoherence cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : Execution.TrustedAnchorBoundaryAligned (cfg := cfg)

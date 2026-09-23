@@ -33,7 +33,7 @@ slot of epoch `e` is first processable at the start of `e+1`.  Therefore the
 core constructor accepts the needed local delivery law.  The legacy synchrony
 adapter keeps that exact delivery second within the verified horizon, while
 the accepted finite-horizon path uses the boundary case of the single
-synchrony premise (`PaperSafetySynchrony.toDeliveryLookahead`, formerly the
+synchrony premise (`NextSlotSynchronyPremises.toDeliveryLookahead`, formerly the
 separate `HorizonVoteDeliveryLookahead` assumption): vote creation remains
 inside the public horizon, and receipt may occur at the first second beyond
 its exclusive cutoff.
@@ -469,7 +469,7 @@ vote.  A model in which honest ground votes are also explicit broadcast
 events could replace this premise with that local broadcast fact. -/
 theorem certifiedCurrentTarget_of_gate_and_stateSemantics
     (hA : NoConflictPinningAssumptions cfg ext E)
-    (hsync : PaperSafetySynchrony cfg ext E)
+    (hsync : NextSlotSynchronyPremises cfg ext E)
     (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg) (E := E)
       (anchor := E.genesis_store.justified_checkpoint))
     {anchor : Checkpoint Root} {S : ChainFFGState cfg E anchor}
@@ -1075,7 +1075,7 @@ In particular, equality with a non-anchor unrealized checkpoint remains in the
 quorum arm. -/
 theorem currentTargetA32GateRealizationProducerAt_of_stateSemantics
     (hA : NoConflictPinningAssumptions cfg ext E)
-    (hsync : PaperSafetySynchrony cfg ext E)
+    (hsync : NextSlotSynchronyPremises cfg ext E)
     (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg) (E := E)
       (anchor := E.genesis_store.justified_checkpoint))
     {anchor : Checkpoint Root} {S : ChainFFGState cfg E anchor}
@@ -1113,7 +1113,7 @@ selected current-epoch block.  All committee votes, signer weight, and source
 agreement are constructed behind this interface. -/
 theorem fixedSourceCurrentTargetA32GateRealizationProducerAt_of_stateSemantics
     (hA : NoConflictPinningAssumptions cfg ext E)
-    (hsync : PaperSafetySynchrony cfg ext E)
+    (hsync : NextSlotSynchronyPremises cfg ext E)
     (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg) (E := E)
       (anchor := E.genesis_store.justified_checkpoint))
     {anchor : Checkpoint Root} {S : ChainFFGState cfg E anchor}

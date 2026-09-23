@@ -105,13 +105,13 @@ observed-reset arms consume.  No honesty hypothesis at `obs`. -/
 theorem weakFcrStep_certifiedBankedJustification
     {E : Execution Root} (hA : SelectedMarginAssumptions cfg ext E)
     (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
+    (hT : E.ScheduledPrefixPremises cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : Execution.TrustedAnchorBoundaryAligned (cfg := cfg) (E := E)
       (anchor := B.anchor))
     {obs : ValidatorIndex} {n : ℕ}
     (hH : E.WithinHorizon cfg (n + 1))
-    (hcall : E.IsFCRCallAt cfg ext obs n) :
+    (hcall : E.IsScheduledFCRCallAt cfg ext obs n) :
     Weak.CertifiedBankedJustification cfg ext E obs (n + 1)
       (E.weakFcrStep cfg ext obs n) := by
   have hHn : E.WithinHorizon cfg n := E.withinHorizon_mono cfg (Nat.le_succ n) hH
@@ -139,7 +139,7 @@ bound — so it cannot be routed through the adoption law of stage 2, and does
 not need to be. -/
 theorem genesisRoot_safeFrom_of_acceptedGlobalTrajectory
     {E : Execution Root} (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
+    (hT : E.ScheduledPrefixPremises cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : Execution.TrustedAnchorBoundaryAligned (cfg := cfg) (E := E)
       (anchor := B.anchor))
@@ -168,12 +168,12 @@ No honesty binder at `obs`, no certificate, and no epoch premise — the arm is
 closed before the epoch split of the strong proof is reached. -/
 theorem ObservedResetCandidateInputAt.safeFrom_of_anchorArm
     {E : Execution Root} (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
+    (hT : E.ScheduledPrefixPremises cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : Execution.TrustedAnchorBoundaryAligned (cfg := cfg) (E := E)
       (anchor := B.anchor))
     {obs : ValidatorIndex} {n : ℕ}
-    {trace : Weak.GetLatestConfirmedTrace cfg ext (E.weakFcrStep cfg ext obs n)}
+    {trace : Weak.LatestConfirmedCallTrace cfg ext (E.weakFcrStep cfg ext obs n)}
     (hinput : Weak.ObservedResetCandidateInputAt cfg ext
       (E.weakFcrStep cfg ext obs n) trace)
     (hgenesis : ((E.weakFcrStep cfg ext obs n).current_epoch_observed_justified_checkpoint).root ∈
@@ -221,7 +221,7 @@ certificate is read off its causal store by
 theorem sameEpochCertified_head_at_endpoint
     {E : Execution Root} (hacc : FFGAccountabilityAssumptions cfg ext E)
     (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
+    (hT : E.ScheduledPrefixPremises cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : Execution.TrustedAnchorBoundaryAligned (cfg := cfg) (E := E)
       (anchor := B.anchor))
@@ -262,12 +262,12 @@ carries) and the later-epoch arm (for the checkpoint's own chain geometry)
 start from it, and neither needs any honesty at `obs`. -/
 theorem ObservedResetCandidateInputAt.bankedAU
     {E : Execution Root} (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
+    (hT : E.ScheduledPrefixPremises cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : Execution.TrustedAnchorBoundaryAligned (cfg := cfg) (E := E)
       (anchor := B.anchor))
     {obs : ValidatorIndex} {n : ℕ}
-    {trace : Weak.GetLatestConfirmedTrace cfg ext (E.weakFcrStep cfg ext obs n)}
+    {trace : Weak.LatestConfirmedCallTrace cfg ext (E.weakFcrStep cfg ext obs n)}
     (hinput : Weak.ObservedResetCandidateInputAt cfg ext
       (E.weakFcrStep cfg ext obs n) trace) :
     B.state.AU cfg ext (Weak.get_certified_head cfg ext (E.store cfg ext obs (n + 1))
@@ -300,12 +300,12 @@ reads the certificate off an observed-reset *realization* record that is only
 available at an honest node. -/
 theorem ObservedResetCandidateInputAt.certifiedJustified
     {E : Execution Root} (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
+    (hT : E.ScheduledPrefixPremises cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : Execution.TrustedAnchorBoundaryAligned (cfg := cfg) (E := E)
       (anchor := B.anchor))
     {obs : ValidatorIndex} {n : ℕ}
-    {trace : Weak.GetLatestConfirmedTrace cfg ext (E.weakFcrStep cfg ext obs n)}
+    {trace : Weak.LatestConfirmedCallTrace cfg ext (E.weakFcrStep cfg ext obs n)}
     (hinput : Weak.ObservedResetCandidateInputAt cfg ext
       (E.weakFcrStep cfg ext obs n) trace) :
     CertifiedJustified cfg E B.anchor
@@ -331,16 +331,16 @@ at `obs`. -/
 theorem ObservedResetCandidateInputAt.head_of_sameEpoch
     {E : Execution Root} (hA : SelectedMarginAssumptions cfg ext E)
     (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
+    (hT : E.ScheduledPrefixPremises cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : Execution.TrustedAnchorBoundaryAligned (cfg := cfg) (E := E)
       (anchor := B.anchor))
-    (hsync : PaperSafetySynchrony cfg ext E) (hji : JustificationInterface cfg ext E)
+    (hsync : NextSlotSynchronyPremises cfg ext E) (hji : JustificationInterface cfg ext E)
     {obs : ValidatorIndex}
     (hcomm : ∀ k : ℕ, E.WithinHorizon cfg k → ∀ s : Slot, E.SlotWithinHorizon cfg s →
       get_slot_committee cfg ext (E.store cfg ext obs k) s = E.committee s)
     {n : ℕ}
-    {trace : Weak.GetLatestConfirmedTrace cfg ext (E.weakFcrStep cfg ext obs n)}
+    {trace : Weak.LatestConfirmedCallTrace cfg ext (E.weakFcrStep cfg ext obs n)}
     (hinput : Weak.ObservedResetCandidateInputAt cfg ext
       (E.weakFcrStep cfg ext obs n) trace)
     (hinv : Weak.CertifiedBankedJustification cfg ext E obs (n + 1)
@@ -383,12 +383,12 @@ form below covers both, because the later-epoch arm needs only the `≤` half of
 the previous-epoch equation. -/
 theorem ObservedResetCandidateInputAt.banked_blockEpoch_le
     {E : Execution Root} (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
+    (hT : E.ScheduledPrefixPremises cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : Execution.TrustedAnchorBoundaryAligned (cfg := cfg) (E := E)
       (anchor := B.anchor))
     {obs : ValidatorIndex} {n : ℕ}
-    {trace : Weak.GetLatestConfirmedTrace cfg ext (E.weakFcrStep cfg ext obs n)}
+    {trace : Weak.LatestConfirmedCallTrace cfg ext (E.weakFcrStep cfg ext obs n)}
     (hinput : Weak.ObservedResetCandidateInputAt cfg ext
       (E.weakFcrStep cfg ext obs n) trace) :
     get_block_epoch cfg (E.store cfg ext obs (n + 1))
@@ -416,12 +416,12 @@ querying node to be honest.  The later-epoch arm consumes only the upper bound,
 so the honest-only half is never required. -/
 theorem ObservedResetCandidateInputAt.currentEpoch_le_banked_succ
     {E : Execution Root} (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
+    (hT : E.ScheduledPrefixPremises cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : Execution.TrustedAnchorBoundaryAligned (cfg := cfg) (E := E)
       (anchor := B.anchor))
     {obs : ValidatorIndex} {n : ℕ}
-    {trace : Weak.GetLatestConfirmedTrace cfg ext (E.weakFcrStep cfg ext obs n)}
+    {trace : Weak.LatestConfirmedCallTrace cfg ext (E.weakFcrStep cfg ext obs n)}
     (hinput : Weak.ObservedResetCandidateInputAt cfg ext
       (E.weakFcrStep cfg ext obs n) trace) :
     get_current_store_epoch cfg (E.store cfg ext obs (n + 1)) ≤
@@ -457,7 +457,7 @@ The three places the strong proof reads the querying node's honesty are all
 replaced here:
 
 * the banked root's knownness at the voter's store, strongly
-  `PaperSafetySynchrony.block_relay` with `obs` as sender, weakly
+  `NextSlotSynchronyPremises.block_relay` with `obs` as sender, weakly
   `Weak.bankedRoot_known_at_all_honest_endpoints_at_observer` (certificate
   dissemination, gate discharged by `second_le` and `Execution.slot_at_mono`);
 * the banked root's knownness at the observer's own query store, strongly
@@ -475,18 +475,18 @@ epoch bound that feeds the split rather than this arm; it is stage 2's
 theorem ObservedResetCandidateInputAt.head_of_laterEpoch
     {E : Execution Root} (hA : SelectedMarginAssumptions cfg ext E)
     (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
+    (hT : E.ScheduledPrefixPremises cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : Execution.TrustedAnchorBoundaryAligned (cfg := cfg) (E := E)
       (anchor := B.anchor))
-    (hsync : PaperSafetySynchrony cfg ext E) (hji : JustificationInterface cfg ext E)
+    (hsync : NextSlotSynchronyPremises cfg ext E) (hji : JustificationInterface cfg ext E)
     {obs : ValidatorIndex}
     (hcomm : ∀ k : ℕ, E.WithinHorizon cfg k → ∀ s : Slot, E.SlotWithinHorizon cfg s →
       get_slot_committee cfg ext (E.store cfg ext obs k) s = E.committee s)
     {n : ℕ}
     (hHn1 : E.WithinHorizon cfg (n + 1))
-    (hcall : E.IsFCRCallAt cfg ext obs n)
-    {trace : Weak.GetLatestConfirmedTrace cfg ext (E.weakFcrStep cfg ext obs n)}
+    (hcall : E.IsScheduledFCRCallAt cfg ext obs n)
+    {trace : Weak.LatestConfirmedCallTrace cfg ext (E.weakFcrStep cfg ext obs n)}
     (hinput : Weak.ObservedResetCandidateInputAt cfg ext
       (E.weakFcrStep cfg ext obs n) trace)
     (hinv : Weak.CertifiedBankedJustification cfg ext E obs (n + 1)

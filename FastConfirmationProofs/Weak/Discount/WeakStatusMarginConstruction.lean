@@ -188,7 +188,7 @@ private theorem payload_discount_guard {c : Prop} [Decidable c] {Ppre Hp Bp budg
 /-- **The weak payload-aware discount is covered by the matching fresh honest
 parent support.** No observer honesty is used. -/
 theorem support_discount_le_fresh_parent_payload_stuck_of_prefix {E : Execution Root}
-    (hbb : ByzantineBound cfg E) {v : ValidatorIndex} {n : ℕ}
+    (hbb : ByzantineWeightPremises cfg E) {v : ValidatorIndex} {n : ℕ}
     (hcomm : E.PrefixCommitteeAgreement cfg ext (E.store cfg ext v n))
     {bs : BeaconState Root} {b : Root} (hval : bs.validators = E.registry)
     (hstartH : E.SlotWithinHorizon cfg

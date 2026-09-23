@@ -123,7 +123,7 @@ theorem Execution.store_parentClosedAbove (hwf : WellFormedExecution E)
 `E5Filter.walkKnown_of_anchorSlot` consumes the anchor-slot lower bound `hsl`
 directly, so no anchor-minimal-slot instance at a known target is needed. -/
 theorem Execution.store_walkKnown_ge (hwf : WellFormedExecution E)
-    (hec : ExternalsCoherence cfg ext E)
+    (hec : BeaconExternalsPremises cfg ext E)
     {ast : BeaconState Root} {ablk : SignedBeaconBlock Root}
     (hgeq : E.genesis_store = get_forkchoice_store cfg ast ablk)
     (hslot : ast.slot = ablk.message.slot) (hparent : ablk.message.parent_root ≠ ablk.root)
@@ -157,7 +157,7 @@ The `b`-slot walk from `d` is known in both stores (`store_walkKnownK` at `v`,
 replays the walk verbatim into `(w, k)`; `get_ancestor_spec` then puts its
 endpoint — which is `b` — in `(w, k)`'s block roots. -/
 theorem Execution.is_ancestor_transport_closed (hwf : WellFormedExecution E)
-    (hec : ExternalsCoherence cfg ext E)
+    (hec : BeaconExternalsPremises cfg ext E)
     {ast : BeaconState Root} {ablk : SignedBeaconBlock Root}
     (hgeq : E.genesis_store = get_forkchoice_store cfg ast ablk)
     (hslot : ast.slot = ablk.message.slot) (hparent : ablk.message.parent_root ≠ ablk.root)

@@ -303,7 +303,7 @@ theorem fresh_block_support_eq_parent_split_of_prefix {E : Execution Root}
 /-- The fresh Byzantine parent-stuck weight is within the raw (undiscounted)
 budget — a pure subset argument (`FreshParentSupport ⊆ E.span_committee`, no
 equivocation term to net against, hence no `hcomm`). -/
-theorem freshParentStuckByz_le_budget {E : Execution Root} (hbb : ByzantineBound cfg E)
+theorem freshParentStuckByz_le_budget {E : Execution Root} (hbb : ByzantineWeightPremises cfg E)
     {v : ValidatorIndex} {n : ℕ} {bs : BeaconState Root} {b : Root}
     (hval : bs.validators = E.registry)
     (hstartH : E.SlotWithinHorizon cfg
@@ -373,7 +373,7 @@ private theorem weak_discount_guard_mono {c : Prop} [Decidable c]
 /-- **Headline: the weak discount is covered by the FRESH parent-stuck honest
 weight.** No `hne`, no equivocation score, no honesty of the store's owner. -/
 theorem support_discount_le_fresh_parent_stuck_of_prefix {E : Execution Root}
-    (hbb : ByzantineBound cfg E) {v : ValidatorIndex} {n : ℕ}
+    (hbb : ByzantineWeightPremises cfg E) {v : ValidatorIndex} {n : ℕ}
     (hcomm : E.PrefixCommitteeAgreement cfg ext (E.store cfg ext v n))
     {bs : BeaconState Root} {b : Root} (hval : bs.validators = E.registry)
     (hstartH : E.SlotWithinHorizon cfg

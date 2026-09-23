@@ -25,7 +25,7 @@ proved here.
 
 The strong eager constructor
 `Execution.selectedCurrentCrossingLineage_of_fixedSourceProducer`, which took
-an `Execution.SelectedHelperProvisosAt` premise, has been deleted together
+an `Execution.FCRPredictionSupportAt` premise, has been deleted together
 with that record; neither trunk has an eager crossing constructor any more.
 -/
 
@@ -51,38 +51,38 @@ theorem acceptedHistoricalA32OriginCallAt_of_crossing
     (hA : SelectedMarginAssumptions cfg ext E)
     {v : ValidatorIndex} (hv : v ∈ E.honest) {n : ℕ}
     (hHn1 : E.WithinHorizon cfg (n + 1))
-    (hcall : E.IsFCRCallAt cfg ext v n)
-    (hstore : E.CausalStore cfg ext (E.fcrStep cfg ext v n).store)
-    (hparent : ParentSlotLt (E.fcrStep cfg ext v n).store)
-    (hwalk : ∀ t ∈ (E.fcrStep cfg ext v n).store.block_roots,
-      ∀ r ∈ (E.fcrStep cfg ext v n).store.block_roots,
-        WalkKnown (E.fcrStep cfg ext v n).store
-          ((E.fcrStep cfg ext v n).store.blocks t).slot r)
-    (hhead : (get_head cfg (E.fcrStep cfg ext v n).store).root ∈
-      (E.fcrStep cfg ext v n).store.block_roots)
-    (hcurrentWalk : WalkKnown (E.fcrStep cfg ext v n).store
+    (hcall : E.IsScheduledFCRCallAt cfg ext v n)
+    (hstore : E.CausalStore cfg ext (E.fcrStoreAtCall cfg ext v n).store)
+    (hparent : ParentSlotLt (E.fcrStoreAtCall cfg ext v n).store)
+    (hwalk : ∀ t ∈ (E.fcrStoreAtCall cfg ext v n).store.block_roots,
+      ∀ r ∈ (E.fcrStoreAtCall cfg ext v n).store.block_roots,
+        WalkKnown (E.fcrStoreAtCall cfg ext v n).store
+          ((E.fcrStoreAtCall cfg ext v n).store.blocks t).slot r)
+    (hhead : (get_head cfg (E.fcrStoreAtCall cfg ext v n).store).root ∈
+      (E.fcrStoreAtCall cfg ext v n).store.block_roots)
+    (hcurrentWalk : WalkKnown (E.fcrStoreAtCall cfg ext v n).store
       (compute_start_slot_at_epoch cfg
-        (get_current_store_epoch cfg (E.fcrStep cfg ext v n).store))
-      (get_head cfg (E.fcrStep cfg ext v n).store).root)
+        (get_current_store_epoch cfg (E.fcrStoreAtCall cfg ext v n).store))
+      (get_head cfg (E.fcrStoreAtCall cfg ext v n).store).root)
     (hinputKnown : (E.getLatestConfirmedTraceAt cfg ext v n).afterObserved ∈
-      (E.fcrStep cfg ext v n).store.block_roots)
-    (hselector : getLatestSelectorGuard cfg (E.fcrStep cfg ext v n)
+      (E.fcrStoreAtCall cfg ext v n).store.block_roots)
+    (hselector : getLatestSelectorGuard cfg (E.fcrStoreAtCall cfg ext v n)
       (E.getLatestConfirmedTraceAt cfg ext v n).afterObserved)
-    (hresultCurrent : get_block_epoch cfg (E.fcrStep cfg ext v n).store
+    (hresultCurrent : get_block_epoch cfg (E.fcrStoreAtCall cfg ext v n).store
         (E.getLatestConfirmedTraceAt cfg ext v n).result =
-      get_current_store_epoch cfg (E.fcrStep cfg ext v n).store)
+      get_current_store_epoch cfg (E.fcrStoreAtCall cfg ext v n).store)
     {a c : Root}
-    (hedge : CurrentTargetAcceptedEdge cfg ext (E.fcrStep cfg ext v n)
+    (hedge : CurrentTargetSelectedEdge cfg ext (E.fcrStoreAtCall cfg ext v n)
       (E.getLatestConfirmedTraceAt cfg ext v n).afterObserved a c) :
     E.AcceptedHistoricalA32OriginCallAt cfg ext v n
         (E.getLatestConfirmedTraceAt cfg ext v n).result
         (B.state.C (E.getLatestConfirmedTraceAt cfg ext v n).result
-          (get_current_store_epoch cfg (E.fcrStep cfg ext v n).store)) ∧
-      get_current_target cfg (E.fcrStep cfg ext v n).store =
+          (get_current_store_epoch cfg (E.fcrStoreAtCall cfg ext v n).store)) ∧
+      get_current_target cfg (E.fcrStoreAtCall cfg ext v n).store =
         B.state.C (E.getLatestConfirmedTraceAt cfg ext v n).result
-          (get_current_store_epoch cfg (E.fcrStep cfg ext v n).store) := by
+          (get_current_store_epoch cfg (E.fcrStoreAtCall cfg ext v n).store) := by
   classical
-  let query := E.fcrStep cfg ext v n
+  let query := E.fcrStoreAtCall cfg ext v n
   let trace := E.getLatestConfirmedTraceAt cfg ext v n
   have hquery : query.store = E.store cfg ext v (n + 1) :=
     E.fcrStep_store cfg ext v n
@@ -91,7 +91,7 @@ theorem acceptedHistoricalA32OriginCallAt_of_crossing
     trace.selected_facts cfg ext hselector
   have hstrict : find_latest_confirmed_descendant cfg ext query
       trace.afterObserved ≠ trace.afterObserved :=
-    CurrentTargetAcceptedEdge.result_ne_input cfg ext hparent hwalk hhead
+    CurrentTargetSelectedEdge.result_ne_input cfg ext hparent hwalk hhead
       hinputKnown hedge
   have hselectedFacts := find_latest_confirmed_descendant_ge cfg ext query
     hparent hwalk hhead trace.afterObserved hinputKnown
@@ -170,36 +170,36 @@ noncomputable def selectedCurrentCrossingLazyLineage
       (E := E) (anchor := B.anchor))
     {v : ValidatorIndex} (hv : v ∈ E.honest) {n : ℕ}
     (hHn1 : E.WithinHorizon cfg (n + 1))
-    (hcall : E.IsFCRCallAt cfg ext v n)
-    (hstore : E.CausalStore cfg ext (E.fcrStep cfg ext v n).store)
-    (hparent : ParentSlotLt (E.fcrStep cfg ext v n).store)
-    (hwalk : ∀ t ∈ (E.fcrStep cfg ext v n).store.block_roots,
-      ∀ r ∈ (E.fcrStep cfg ext v n).store.block_roots,
-        WalkKnown (E.fcrStep cfg ext v n).store
-          ((E.fcrStep cfg ext v n).store.blocks t).slot r)
-    (hhead : (get_head cfg (E.fcrStep cfg ext v n).store).root ∈
-      (E.fcrStep cfg ext v n).store.block_roots)
-    (hcurrentWalk : WalkKnown (E.fcrStep cfg ext v n).store
+    (hcall : E.IsScheduledFCRCallAt cfg ext v n)
+    (hstore : E.CausalStore cfg ext (E.fcrStoreAtCall cfg ext v n).store)
+    (hparent : ParentSlotLt (E.fcrStoreAtCall cfg ext v n).store)
+    (hwalk : ∀ t ∈ (E.fcrStoreAtCall cfg ext v n).store.block_roots,
+      ∀ r ∈ (E.fcrStoreAtCall cfg ext v n).store.block_roots,
+        WalkKnown (E.fcrStoreAtCall cfg ext v n).store
+          ((E.fcrStoreAtCall cfg ext v n).store.blocks t).slot r)
+    (hhead : (get_head cfg (E.fcrStoreAtCall cfg ext v n).store).root ∈
+      (E.fcrStoreAtCall cfg ext v n).store.block_roots)
+    (hcurrentWalk : WalkKnown (E.fcrStoreAtCall cfg ext v n).store
       (compute_start_slot_at_epoch cfg
-        (get_current_store_epoch cfg (E.fcrStep cfg ext v n).store))
-      (get_head cfg (E.fcrStep cfg ext v n).store).root)
+        (get_current_store_epoch cfg (E.fcrStoreAtCall cfg ext v n).store))
+      (get_head cfg (E.fcrStoreAtCall cfg ext v n).store).root)
     (hinputKnown : (E.getLatestConfirmedTraceAt cfg ext v n).afterObserved ∈
-      (E.fcrStep cfg ext v n).store.block_roots)
-    (hselector : getLatestSelectorGuard cfg (E.fcrStep cfg ext v n)
+      (E.fcrStoreAtCall cfg ext v n).store.block_roots)
+    (hselector : getLatestSelectorGuard cfg (E.fcrStoreAtCall cfg ext v n)
       (E.getLatestConfirmedTraceAt cfg ext v n).afterObserved)
-    (hresultCurrent : get_block_epoch cfg (E.fcrStep cfg ext v n).store
+    (hresultCurrent : get_block_epoch cfg (E.fcrStoreAtCall cfg ext v n).store
         (E.getLatestConfirmedTraceAt cfg ext v n).result =
-      get_current_store_epoch cfg (E.fcrStep cfg ext v n).store)
+      get_current_store_epoch cfg (E.fcrStoreAtCall cfg ext v n).store)
     {a c : Root}
-    (hedge : CurrentTargetAcceptedEdge cfg ext (E.fcrStep cfg ext v n)
+    (hedge : CurrentTargetSelectedEdge cfg ext (E.fcrStoreAtCall cfg ext v n)
       (E.getLatestConfirmedTraceAt cfg ext v n).afterObserved a c)
     (hproducer :
       E.AcceptedFixedSourceCurrentTargetA32GateRealizationProducerAt
-        cfg ext B.anchor B.state (n + 1) (E.fcrStep cfg ext v n)
+        cfg ext B.anchor B.state (n + 1) (E.fcrStoreAtCall cfg ext v n)
         (E.getLatestConfirmedTraceAt cfg ext v n).result) :
     E.AcceptedHistoricalA32LineageCoreAt cfg ext B
       (E.getLatestConfirmedTraceAt cfg ext v n).result
-      (get_current_store_epoch cfg (E.fcrStep cfg ext v n).store)
+      (get_current_store_epoch cfg (E.fcrStoreAtCall cfg ext v n).store)
       (E.LazyCertAt cfg ext B (n + 1))
       (E.LazySupportAt cfg ext B v (n + 1)) := by
   obtain ⟨horiginCall, _htarget⟩ :=
@@ -207,7 +207,7 @@ noncomputable def selectedCurrentCrossingLazyLineage
       hcall hstore hparent hwalk hhead hcurrentWalk hinputKnown hselector
       hresultCurrent hedge
   have hanchorLe : B.anchor.epoch ≤
-      get_current_store_epoch cfg (E.fcrStep cfg ext v n).store := by
+      get_current_store_epoch cfg (E.fcrStoreAtCall cfg ext v n).store := by
     rw [E.fcrStep_store]
     exact E.trustedAnchor_epoch_le_currentEpoch cfg ext hA hanchor hboundary
       v (n + 1)

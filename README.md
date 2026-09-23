@@ -43,7 +43,7 @@ transitions to Casper FFG.
 Useful entry points:
 
 - [Model facade](FastConfirmation/Spec/Model.lean)
-- [Public proved-theorem facade](FastConfirmation/Spec/ProvenTheorems.lean)
+- [Public proved-theorem facade](FastConfirmation/Spec/ReviewTheorem.lean)
 - [Accepted assumptions, statement, and proof implementation](FastConfirmation/Spec/Proof/AcceptedActualFCRNextSlotSafetyFacade.lean)
 - [Concrete non-vacuity witness](FastConfirmation/Spec/Proof/AcceptedActualFCRJointNonVacuityFinal.lean):
   a finite toy instance with four slots per epoch and a four-epoch horizon.
@@ -128,9 +128,9 @@ Its complete facade is [`FastConfirmation/Paper.lean`](FastConfirmation/Paper.le
 Public paper-facing entry points:
 
 - [Section 3.1 statements](FastConfirmation/Paper/LMDGhost/TheoremStatements.lean)
-- [Section 3.1 proved facade](FastConfirmation/Paper/LMDGhost/ProvenTheorems.lean)
+- [Section 3.1 proved facade](FastConfirmation/Paper/LMDGhost/ReviewTheorem.lean)
 - [Section 4 statements](FastConfirmation/Paper/HFC/TheoremStatements.lean)
-- [Section 4 proved facade](FastConfirmation/Paper/HFC/ProvenTheorems.lean)
+- [Section 4 proved facade](FastConfirmation/Paper/HFC/ReviewTheorem.lean)
 
 The headline paper theorems are `Theorem1_Safety_proved`,
 `Theorem1_Monotonicity_proved`, `HFC_Safety_Alg1_proved`, and

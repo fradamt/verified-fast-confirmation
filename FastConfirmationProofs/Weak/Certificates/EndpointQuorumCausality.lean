@@ -88,7 +88,7 @@ in the endpoint store, so its slot — and hence, strictly, the attestation slot
 — is at most the endpoint's current slot. -/
 private theorem includedCertified_quorum_data
     (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
+    (hT : E.ScheduledPrefixPremises cfg ext)
     {ast : BeaconState Root} {ablk : SignedBeaconBlock Root}
     (hgenEq : E.genesis_store = get_forkchoice_store cfg ast ablk)
     (hslot : ast.slot = ablk.message.slot)
@@ -166,7 +166,7 @@ here rather than in the helper above; it needs `B.anchor.epoch < c.epoch`,
 exactly as at `AcceptedSelectedJustifiedOrientation.lean:97-116`. -/
 theorem ExactPrefixAcceptedFFGSemantics.endpointJustified_quorumAt
     (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
+    (hT : E.ScheduledPrefixPremises cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
       (E := E) (anchor := B.anchor))

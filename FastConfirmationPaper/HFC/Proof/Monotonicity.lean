@@ -8,7 +8,7 @@ public import FastConfirmationPaper.HFC.Proof.Safety
 /-!
 # HFC / Proof / Monotonicity
 
-`HFC_Monotonicity` — once HFC-confirmed, always HFC-confirmed. The HFC predicate is
+`GateConfirmedBlockMonotonicity` — once HFC-confirmed, always HFC-confirmed. The HFC predicate is
 `isConfirmed ∧ WillNoConflictingChkpBeJustified`, so monotonicity splits into:
 
 * the **`isConfirmed`-half** — `b ≼ highestConfirmedSinceEpoch … t → b ≼ … t'` — a
@@ -49,7 +49,7 @@ theorem willNoConflicting_persists {τ : Timing} {fm : FaultModel n} {bal₀ : S
     by exact_mod_cast Nat.mul_le_mul_right τ.slotDur hslot
   exact hgate hw (le_trans hst ht'') hJ hep
 
-/-- **III.6 — `HFC_Monotonicity` proved.** Re-run of `proof_Theorem1_Monotonicity` (Rule.lean)
+/-- **III.6 — `GateConfirmedBlockMonotonicity` proved.** Re-run of `proof_Theorem1_Monotonicity` (Rule.lean)
     at `gj := gjFFG bal₀`, `flt := ffgFilter bal₀ τ`, `C := bal₀`. The `isConfirmed`-half is
     structurally identical to §3.1, with `safe_canonical_from_engine`→`hfc_canonical_from_engine`,
     `canonical_epoch_imp_safe`→`canonical_epoch_imp_safe_flt`,
@@ -57,7 +57,7 @@ theorem willNoConflicting_persists {τ : Timing} {fm : FaultModel n} {bal₀ : S
     obligation at each engine/canonical step discharged by `confirmedNotFFGFiltered_proved`
     instantiated at the safe block itself (fed its gate/anchor soundness inputs from
     `SafeNeverFilteredInputs`). The gate-half is `willNoConflicting_persists` (III.5). -/
-theorem hfc_monotonicity_proved {τ : Timing} (bal₀ : Stakes n) : HFC_Monotonicity τ bal₀ := by
+theorem hfc_monotonicity_proved {τ : Timing} (bal₀ : Stakes n) : GateConfirmedBlockMonotonicity τ bal₀ := by
   intro fm cm pb boost 𝒱 gj C hSync hNF hHB hVV hcm hWFB hpb hsb hβ4 hAS hnoequiv hByz hSGJ
     v b t t' hv hsg hle hcover hHFCconf
   classical

@@ -286,7 +286,7 @@ theorem weak_safeFrom_find_latest_confirmed_descendant_discharged_from_finalized
     E.SafeFrom cfg ext
       (Weak.find_latest_confirmed_descendant cfg ext fcr_store
         fcr_store.store.finalized_checkpoint.root) q := by
-  have hT := ScheduledPrefixTrajectoryAssumptions.of_selectedMarginAssumptions
+  have hT := ScheduledPrefixPremises.of_selectedMarginAssumptions
     cfg ext E hW.base hW.genesis
   have hacc := SelectedMarginAssumptions.toFFGAccountabilityAssumptions
     cfg ext E hW.base

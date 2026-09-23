@@ -84,7 +84,7 @@ message supports `node` sits in `AttSupporters`. Non-equivocation is discharged
 by `Execution.honest_not_equivocating` (honest validators never enter
 `equivocating_indices`); the other three facts are supplied by the caller. -/
 theorem mem_AttSupporters_honest {E : Execution Root}
-    (hhb : HonestBehavior cfg ext E) (hec : ExternalsCoherence cfg ext E)
+    (hhb : HonestBehavior cfg ext E) (hec : BeaconExternalsPremises cfg ext E)
     (hgen : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
       E.genesis_store = get_forkchoice_store cfg ast ablk)
     {w : ValidatorIndex} {m : ℕ} {bs : BeaconState Root} {node : ForkChoiceNode Root}

@@ -141,19 +141,19 @@ theorem store_target_checkpoint_state_sameCkpt (cfg : Config) (ext : Externals R
 /-! ### Epoch bound for pulled-up justification
 
 The store-epoch invariant is preserved by every handler using
-`ExternalsCoherence.state_transition_checkpoint_epoch` — **except**
+`BeaconExternalsPremises.state_transition_checkpoint_epoch` — **except**
 `compute_pulled_up_tip`, whose `update_checkpoints`/`update_unrealized_checkpoints`
 adopt `process_justification_and_finalization(block_state).current_justified_checkpoint`,
 whose epoch requires a separate bound. `PjfCheckpointEpoch` is the
 companion of `state_transition_checkpoint_epoch`: epoch processing justifies no
 future epoch (the real `process_justification_and_finalization` only ever
 justifies the current or previous epoch of the state it runs on). It is supplied
-by `ExternalsCoherence.pjf_checkpoint_epoch`, definitionally the same `Prop`. -/
+by `BeaconExternalsPremises.pjf_checkpoint_epoch`, definitionally the same `Prop`. -/
 
 /-- Epoch processing justifies no future epoch: `pjf`'s current-justified
 checkpoint has epoch at most the state's own epoch. The companion of
-`ExternalsCoherence.state_transition_checkpoint_epoch`; supplied by the frozen
-field `ExternalsCoherence.pjf_checkpoint_epoch` (definitionally identical). -/
+`BeaconExternalsPremises.state_transition_checkpoint_epoch`; supplied by the frozen
+field `BeaconExternalsPremises.pjf_checkpoint_epoch` (definitionally identical). -/
 def PjfCheckpointEpoch (cfg : Config) (ext : Externals Root) : Prop :=
   ∀ st : BeaconState Root,
     (ext.process_justification_and_finalization st).current_justified_checkpoint.epoch ≤
@@ -382,7 +382,7 @@ most `compute_epoch_at_slot (slot_at n)`. Mirrors `Delivery.store_blocksSlotLe`'
 induction exactly (genesis anchor slot from `get_current_slot_get_forkchoice_store`;
 step weakens the bound by `slot_at_mono`, rides `on_tick`, folds the events). -/
 theorem Execution.store_CkptEpochLe (E : Execution Root) (cfg : Config) (ext : Externals Root)
-    (hec : ExternalsCoherence cfg ext E)
+    (hec : BeaconExternalsPremises cfg ext E)
     (hdiv : 1000 ∣ cfg.slot_duration_ms)
     (hgen : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
       E.genesis_store = get_forkchoice_store cfg ast ablk ∧ ast.slot = ablk.message.slot)
@@ -424,10 +424,10 @@ theorem Execution.store_CkptEpochLe (E : Execution Root) (cfg : Config) (ext : E
       hec.state_transition_slot hec.pjf_checkpoint_epoch _ _ (le_of_eq honticksl) hontick
 
 /-- **The store-epoch bound** (Remainder item-2 residual, closed outright from the
-frozen field `ExternalsCoherence.pjf_checkpoint_epoch` via `PjfCheckpointEpoch`): a
+frozen field `BeaconExternalsPremises.pjf_checkpoint_epoch` via `PjfCheckpointEpoch`): a
 store's justified checkpoint never sits in a future epoch. -/
 theorem Execution.store_justified_epoch_le (E : Execution Root) (cfg : Config)
-    (ext : Externals Root) (hec : ExternalsCoherence cfg ext E)
+    (ext : Externals Root) (hec : BeaconExternalsPremises cfg ext E)
     (hdiv : 1000 ∣ cfg.slot_duration_ms)
     (hgen : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
       E.genesis_store = get_forkchoice_store cfg ast ablk ∧ ast.slot = ablk.message.slot)

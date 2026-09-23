@@ -97,16 +97,16 @@ theorem last_edge_mem_of_ne
 
 end SelectedParentTrace
 
-namespace PreviousAcceptedEdge
+namespace PreviousEpochSelectedEdge
 
 /-- Membership in the retained previous trace mechanically proves the exact
 wrapper-entry guard. -/
 theorem entry_witness
     {fcrStore : FastConfirmationStore Root}
     {latestConfirmedRoot a c : Root}
-    (h : PreviousAcceptedEdge cfg ext fcrStore latestConfirmedRoot a c) :
+    (h : PreviousEpochSelectedEdge cfg ext fcrStore latestConfirmedRoot a c) :
     PreviousSelectedEntryWitness cfg ext fcrStore latestConfirmedRoot := by
-  simp only [PreviousAcceptedEdge, findLatestSelectedTrace] at h
+  simp only [PreviousEpochSelectedEdge, findLatestSelectedTrace] at h
   split_ifs at h with hentry <;> try simp at h
   exact hentry
 
@@ -115,7 +115,7 @@ recency conjunct from the exact outer guard. -/
 theorem previous_slot_head_source_recent
     {fcrStore : FastConfirmationStore Root}
     {latestConfirmedRoot a c : Root}
-    (h : PreviousAcceptedEdge cfg ext fcrStore latestConfirmedRoot a c) :
+    (h : PreviousEpochSelectedEdge cfg ext fcrStore latestConfirmedRoot a c) :
     (get_voting_source cfg fcrStore.store
         fcrStore.previous_slot_head).epoch + 2 ≥
       get_current_store_epoch cfg fcrStore.store :=
@@ -126,7 +126,7 @@ slot head descends from every retained previous-edge child. -/
 theorem previous_slot_head_descends_child
     {fcrStore : FastConfirmationStore Root}
     {latestConfirmedRoot a c : Root}
-    (h : PreviousAcceptedEdge cfg ext fcrStore latestConfirmedRoot a c) :
+    (h : PreviousEpochSelectedEdge cfg ext fcrStore latestConfirmedRoot a c) :
     is_ancestor fcrStore.store
       (get_node_for_root fcrStore.previous_slot_head)
       (get_node_for_root c) = true :=
@@ -137,7 +137,7 @@ previous edge.  Both facts concern only the query store. -/
 theorem previous_slot_head_recency_and_ancestry
     {fcrStore : FastConfirmationStore Root}
     {latestConfirmedRoot a c : Root}
-    (h : PreviousAcceptedEdge cfg ext fcrStore latestConfirmedRoot a c) :
+    (h : PreviousEpochSelectedEdge cfg ext fcrStore latestConfirmedRoot a c) :
     (get_voting_source cfg fcrStore.store
         fcrStore.previous_slot_head).epoch + 2 ≥
         get_current_store_epoch cfg fcrStore.store ∧
@@ -147,7 +147,7 @@ theorem previous_slot_head_recency_and_ancestry
   ⟨h.previous_slot_head_source_recent cfg ext,
     h.previous_slot_head_descends_child cfg ext⟩
 
-end PreviousAcceptedEdge
+end PreviousEpochSelectedEdge
 
 /-- Retaining even one tentative edge proves both outer facts surrounding that
 trace: the tentative stage was entered, and its final accumulator passed the
@@ -191,7 +191,7 @@ theorem selected_strict_result_origin_recency_classification
       latestConfirmedRoot = result)
     (hstrict : result ≠ latestConfirmedRoot) :
     (∃ a,
-      PreviousAcceptedEdge cfg ext fcrStore latestConfirmedRoot a result ∧
+      PreviousEpochSelectedEdge cfg ext fcrStore latestConfirmedRoot a result ∧
         ((get_voting_source cfg fcrStore.store
             fcrStore.previous_slot_head).epoch + 2 ≥
             get_current_store_epoch cfg fcrStore.store ∧
@@ -211,7 +211,7 @@ theorem selected_strict_result_origin_recency_classification
   obtain ⟨a, ha⟩ := htrace.last_edge_mem_of_ne hstrict
   rcases List.mem_append.mp ha with hprevious | htentative
   · left
-    have haccepted : PreviousAcceptedEdge cfg ext fcrStore
+    have haccepted : PreviousEpochSelectedEdge cfg ext fcrStore
         latestConfirmedRoot a result := hprevious
     exact ⟨a, haccepted,
       haccepted.previous_slot_head_recency_and_ancestry cfg ext⟩

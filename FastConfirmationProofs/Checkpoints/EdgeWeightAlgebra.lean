@@ -64,7 +64,7 @@ weight `Bval sa es`. This is the disjoint-into-`Bwin` half of
 non-equivocating (`AttSupporters` filter) and confined to `span_committee sa es`
 (`hspan`, from `supporter_mem_span_committee`); active equivocators are
 `hne`-non-honest span members; the two are disjoint, both inside `Bwin sa es`. -/
-theorem hR4b_of_confinement (hec : ExternalsCoherence cfg ext E)
+theorem hR4b_of_confinement (hec : BeaconExternalsPremises cfg ext E)
     {v : ValidatorIndex} (hv : v ∈ E.honest) {n : ℕ}
     (hnH : E.WithinHorizon cfg n)
     {bs : BeaconState Root} {b : Root} (hval : bs.validators = E.registry)

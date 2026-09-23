@@ -29,7 +29,7 @@ namespace Execution
 
 variable (E : Execution Root)
 
-/-- Committee readback at an exact query store.  `ExternalsCoherence` exposes
+/-- Committee readback at an exact query store.  `BeaconExternalsPremises` exposes
 this equality only for completed `Execution.store` boundaries; strict
 scheduled prefixes need the same implementation-coherence fact explicitly.
 -/
@@ -93,7 +93,7 @@ contributors plus active equivocators fit the elapsed-epoch Byzantine budget.
 The proof uses only operational prefix evidence and committee readback.
 -/
 theorem currentTarget_nonhonest_add_equiv_le_budget_of_prefix
-    (hbb : ByzantineBound cfg E)
+    (hbb : ByzantineWeightPremises cfg E)
     {store : Store Root} {querySecond : ℕ}
     (hevidence : E.CurrentTargetPrefixAccountingEvidence cfg ext store
       querySecond)
@@ -171,7 +171,7 @@ theorem currentTarget_nonhonest_add_equiv_le_budget_of_prefix
 by the helper's post-equivocation adversarial budget.
 -/
 theorem currentTarget_nonhonest_weight_le_adversarial_of_prefix
-    (hbb : ByzantineBound cfg E)
+    (hbb : ByzantineWeightPremises cfg E)
     {store : Store Root} {querySecond : ℕ}
     (hevidence : E.CurrentTargetPrefixAccountingEvidence cfg ext store
       querySecond)
@@ -208,9 +208,9 @@ execution boundary.  The signer set is the concrete support set computed from
 that query store; it is not an arbitrary or supplied set.
 -/
 theorem will_current_target_be_justified_honest_quorum_of_prefix
-    (hec : ExternalsCoherence cfg ext E)
+    (hec : BeaconExternalsPremises cfg ext E)
     (hsv : StaticValidatorSet cfg E)
-    (hbb : ByzantineBound cfg E)
+    (hbb : ByzantineWeightPremises cfg E)
     {store : Store Root} {querySecond : ℕ}
     (hevidence : E.CurrentTargetPrefixAccountingEvidence cfg ext store
       querySecond)

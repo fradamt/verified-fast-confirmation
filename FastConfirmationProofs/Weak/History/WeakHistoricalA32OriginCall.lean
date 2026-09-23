@@ -35,7 +35,7 @@ strong side the `finalizedResetUnchanged` arm recovers safety only through
 `finalizedReset_safeFrom_of_nextSlotSynchrony`, which genuinely needs
 `slot_at (n + 1) + 1 ≤ slot_at q` and so fails at `q = n + 1`.  The weak fold
 has no such arm: `Execution.weak_safeFrom_observerCall_closed_lazy` closes **all
-four** branches of `Weak.GetLatestConfirmedTrace.candidateHistoryCallBranch`
+four** branches of `Weak.LatestConfirmedCallTrace.candidateHistoryCallBranch`
 unconditionally, because the weak fold hands it `hbase` at
 `slot_start (slot_at (n + 1)) = n + 1`.  So the weak call step already proves
 the unweakened `SafeFrom trace.result (n + 1)` on every branch and merely
@@ -63,7 +63,7 @@ the weak fold's strengthened induction hypothesis hands out at its `succ n`
 step.  Well-foundedness is the strict `k < n`. -/
 def ObserverPriorCallWriteBackSafe (obs : ValidatorIndex) (n : ℕ) : Prop :=
   ∀ k : ℕ, k < n → E.WithinHorizon cfg (k + 1) →
-    E.IsFCRCallAt cfg ext obs k →
+    E.IsScheduledFCRCallAt cfg ext obs k →
       E.SafeFrom cfg ext (E.weakConfirmed cfg ext obs (k + 1)) (k + 1)
 
 /-- Monotonicity in the horizon: a wider prior window restricts. -/
@@ -82,7 +82,7 @@ consuming call's own second, and the closure is handed this antecedent
 def ObserverCallWriteBackEngineSafeUpTo (obs : ValidatorIndex) (N : ℕ)
     (cap : Slot) : Prop :=
   ∀ k : ℕ, k + 1 ≤ N → E.WithinHorizon cfg (k + 1) →
-    E.IsFCRCallAt cfg ext obs k →
+    E.IsScheduledFCRCallAt cfg ext obs k →
       EngineInv cfg ext E (E.weakConfirmed cfg ext obs (k + 1)) (k + 1) cap
 
 /-- Anti-monotone in the second bound: a supply reaching further restricts. -/
@@ -106,7 +106,7 @@ second, which the endpoint induction supplies in capped form. -/
 theorem observerCallWriteBackEngineSafeUpTo_of_prior_and_current
     {E : Execution Root} {obs : ValidatorIndex} {n : ℕ} {cap : Slot}
     (hprior : Weak.ObserverPriorCallWriteBackSafe cfg ext E obs n)
-    (hcurrent : E.WithinHorizon cfg (n + 1) → E.IsFCRCallAt cfg ext obs n →
+    (hcurrent : E.WithinHorizon cfg (n + 1) → E.IsScheduledFCRCallAt cfg ext obs n →
       EngineInv cfg ext E (E.weakConfirmed cfg ext obs (n + 1)) (n + 1) cap) :
     Weak.ObserverCallWriteBackEngineSafeUpTo cfg ext E obs (n + 1) cap := by
   intro k hk hkH hcall
@@ -254,7 +254,7 @@ structure ObserverHistoricalA32OriginCallAt (E : Execution Root)
     (obs : ValidatorIndex) (second : ℕ) (origin : Root)
     (target : Checkpoint Root) : Prop where
   second_horizon : E.WithinHorizon cfg (second + 1)
-  is_call : E.IsFCRCallAt cfg ext obs second
+  is_call : E.IsScheduledFCRCallAt cfg ext obs second
   origin_known : origin ∈ (E.weakFcrStep cfg ext obs second).store.block_roots
   origin_parent_known :
     ((E.weakFcrStep cfg ext obs second).store.blocks origin).parent_root ∈
@@ -301,7 +301,7 @@ The voter-side families are untouched: they are already quantified over
 `E.honest`. -/
 theorem honestVotesSupportTarget_capped
     (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
+    (hT : E.ScheduledPrefixPremises cfg ext)
     (hA : SelectedMarginAssumptions cfg ext E)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : Execution.TrustedAnchorBoundaryAligned (cfg := cfg)
@@ -449,7 +449,7 @@ theorem safeFrom_of_prior {obs : ValidatorIndex} {second : ℕ} {origin : Root}
 from the rebuilt proviso.  The producer is the unchanged strong one. -/
 theorem fixedSourceGateRealization_capped
     (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
+    (hT : E.ScheduledPrefixPremises cfg ext)
     (hA : SelectedMarginAssumptions cfg ext E)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : Execution.TrustedAnchorBoundaryAligned (cfg := cfg)
@@ -476,7 +476,7 @@ theorem fixedSourceGateRealization_capped
 /-- The certificate half of the lazy payload at the observer. -/
 theorem certifiedFixedSource_capped
     (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
+    (hT : E.ScheduledPrefixPremises cfg ext)
     (hA : SelectedMarginAssumptions cfg ext E)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : Execution.TrustedAnchorBoundaryAligned (cfg := cfg)
@@ -502,7 +502,7 @@ theorem certifiedFixedSource_capped
 /-- The support half of the lazy payload at the observer. -/
 theorem deferredSupport_capped
     (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
+    (hT : E.ScheduledPrefixPremises cfg ext)
     (hA : SelectedMarginAssumptions cfg ext E)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : Execution.TrustedAnchorBoundaryAligned (cfg := cfg)
@@ -534,7 +534,7 @@ Discharged by `hprior` at the consuming call, which is legitimate exactly when
 the origin call sits strictly below the bound. -/
 theorem lazyCert
     (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
+    (hT : E.ScheduledPrefixPremises cfg ext)
     (hA : SelectedMarginAssumptions cfg ext E)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : Execution.TrustedAnchorBoundaryAligned (cfg := cfg)
@@ -556,7 +556,7 @@ theorem lazyCert
 /-- **The lazy support closure at the observer's crossing call.** -/
 theorem lazySupport
     (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
+    (hT : E.ScheduledPrefixPremises cfg ext)
     (hA : SelectedMarginAssumptions cfg ext E)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : Execution.TrustedAnchorBoundaryAligned (cfg := cfg)

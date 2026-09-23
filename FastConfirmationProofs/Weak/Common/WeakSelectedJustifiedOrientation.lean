@@ -77,11 +77,11 @@ variable {E : Execution Root}
 `Execution.HistoricalCurrentTargetCertificateProducerAt`
 (`SelectedPreQueryHistoricalSIR.lean`) is **not** reusable at the weak
 evaluator: its no-crossing hypothesis names the strong
-`CurrentTargetAcceptedEdge`, hence the strong `findLatestSelectedTrace`.  A
+`CurrentTargetSelectedEdge`, hence the strong `findLatestSelectedTrace`.  A
 Byzantine observer runs `Weak.findLatestSelectedTrace` (rule delta 1 drops the
 discount), so the two propositions are different and there is no bridge in the
 direction the producer needs.  The weak interface below is the same statement
-over `Weak.CurrentTargetAcceptedEdge` (`WeakHistoricalA32Step.lean`); the
+over `Weak.CurrentTargetSelectedEdge` (`WeakHistoricalA32Step.lean`); the
 *certificate* it produces, `CertifiedJustified`, is evaluator-free and reused
 unchanged.
 
@@ -108,7 +108,7 @@ def HistoricalCurrentTargetCertificateProducerAt (E : Execution Root)
     (query : FastConfirmationStore Root) (input result : Root) : Prop :=
   get_block_epoch cfg query.store result =
       get_current_store_epoch cfg query.store →
-  (¬ ∃ a c : Root, Weak.CurrentTargetAcceptedEdge cfg ext query input a c) →
+  (¬ ∃ a c : Root, Weak.CurrentTargetSelectedEdge cfg ext query input a c) →
     Nonempty (CertifiedJustified cfg E anchor
       (get_current_target cfg query.store))
 
@@ -235,7 +235,7 @@ reused verbatim: every one of its relays leaves from the *honest endpoint*. -/
 theorem strictSelected_result_and_child_ancestor_of_endpointJustified_at_observer
     (hA : SelectedMarginAssumptions cfg ext E)
     (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
+    (hT : E.ScheduledPrefixPremises cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : Execution.TrustedAnchorBoundaryAligned (cfg := cfg)
       (E := E) (anchor := B.anchor))
@@ -339,15 +339,15 @@ current-target gate producer: both gate arms of the call site are served by
 `Execution.EndpointOriginOrPinnedProducerAt`. -/
 private theorem observerCall_orientation_inputs
     (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
+    (hT : E.ScheduledPrefixPremises cfg ext)
     {obs : ValidatorIndex}
-    (hCbase : E.AcceptedHistoricalA32CompletedPrefixCallAssumptions cfg ext)
+    (hCbase : E.CompletedFCRCallPremises cfg ext)
     (hfit : EpochEndsFitUint64 cfg)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : Execution.TrustedAnchorBoundaryAligned (cfg := cfg)
       (E := E) (anchor := B.anchor))
     (hcoh : E.ObserverCoherence cfg ext obs) {n : Nat}
-    (_hcall : E.IsFCRCallAt cfg ext obs n)
+    (_hcall : E.IsScheduledFCRCallAt cfg ext obs n)
     (hHn1 : E.WithinHorizon cfg (n + 1))
     (hinput : (E.weakGetLatestConfirmedTraceAt cfg ext obs n).afterObserved ∈
       (E.weakFcrStep cfg ext obs n).store.block_roots)
@@ -411,16 +411,16 @@ the strong theorem; `hhistorical` is the weak historical current-target
 its no-crossing route. -/
 theorem observerCall_strictSelected_result_and_child_ancestor_of_endpointJustified
     (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
+    (hT : E.ScheduledPrefixPremises cfg ext)
     {obs : ValidatorIndex}
-    (hCbase : E.AcceptedHistoricalA32CompletedPrefixCallAssumptions cfg ext)
+    (hCbase : E.CompletedFCRCallPremises cfg ext)
     (hfit : EpochEndsFitUint64 cfg)
     (hdomain : SelectedMarginDomain cfg ext E)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : Execution.TrustedAnchorBoundaryAligned (cfg := cfg)
       (E := E) (anchor := B.anchor))
     (hcoh : E.ObserverCoherence cfg ext obs) {n : Nat}
-    (hcall : E.IsFCRCallAt cfg ext obs n)
+    (hcall : E.IsScheduledFCRCallAt cfg ext obs n)
     (hHn1 : E.WithinHorizon cfg (n + 1))
     (hinput : (E.weakGetLatestConfirmedTraceAt cfg ext obs n).afterObserved ∈
       (E.weakFcrStep cfg ext obs n).store.block_roots)
@@ -537,16 +537,16 @@ read at the honest endpoint `(w, m)`.  Only the pre-query bracket is the
 observer twin. -/
 theorem observerCall_strictSelected_endpointJustifiedEpoch_le_result
     (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
+    (hT : E.ScheduledPrefixPremises cfg ext)
     {obs : ValidatorIndex}
-    (hCbase : E.AcceptedHistoricalA32CompletedPrefixCallAssumptions cfg ext)
+    (hCbase : E.CompletedFCRCallPremises cfg ext)
     (hfit : EpochEndsFitUint64 cfg)
     (hdomain : SelectedMarginDomain cfg ext E)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : Execution.TrustedAnchorBoundaryAligned (cfg := cfg)
       (E := E) (anchor := B.anchor))
     (hcoh : E.ObserverCoherence cfg ext obs) {n : Nat}
-    (hcall : E.IsFCRCallAt cfg ext obs n)
+    (hcall : E.IsScheduledFCRCallAt cfg ext obs n)
     (hHn1 : E.WithinHorizon cfg (n + 1))
     (hinput : (E.weakGetLatestConfirmedTraceAt cfg ext obs n).afterObserved ∈
       (E.weakFcrStep cfg ext obs n).store.block_roots)

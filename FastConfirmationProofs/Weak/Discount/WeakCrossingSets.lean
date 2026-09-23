@@ -110,7 +110,7 @@ theorem crossing_parentPre_subset_honestPre {E : Execution Root}
 ledger partition plus `Weak.crossingParentPre`, `Weak.crossingXPre`, and
 `crossingByzPre` is exactly the full-window committee union, over the fresh
 parent-pre geometry. -/
-theorem crossing_hMU_of_canonicalPre {E : Execution Root} (hbb : ByzantineBound cfg E)
+theorem crossing_hMU_of_canonicalPre {E : Execution Root} (hbb : ByzantineWeightPremises cfg E)
     {obs : ValidatorIndex} {n : ℕ} {bs : BeaconState Root} {b : Root} {es : Slot}
     (htab : get_total_active_balance cfg bs = E.total_active cfg)
     (hes : es = get_current_slot cfg (E.store cfg ext obs n) - 1)
@@ -176,7 +176,7 @@ theorem crossing_hMU_of_canonicalPre {E : Execution Root} (hbb : ByzantineBound 
 (no-honest-equivocator) premise, since the weak discount already has no
 equivocation apparatus. Replaces `crossing_hd_of_preRegion_of_prefix`. -/
 theorem crossing_hd_of_preRegion_of_prefix {E : Execution Root}
-    (hbb : ByzantineBound cfg E)
+    (hbb : ByzantineWeightPremises cfg E)
     {obs : ValidatorIndex} {n : ℕ}
     (hcomm : E.PrefixCommitteeAgreement cfg ext (E.store cfg ext obs n))
     {bs : BeaconState Root} {b : Root}
@@ -234,7 +234,7 @@ equality, `F3`) -/
 
 /-- **Both regimes at once: the weak budget equals the raw span estimate, so
 `hAguard` is an equality with `eqSub = eqExtra = 0`.** Intra-epoch case. -/
-theorem adversarial_guard_intra {E : Execution Root} (hbb : ByzantineBound cfg E)
+theorem adversarial_guard_intra {E : Execution Root} (hbb : ByzantineWeightPremises cfg E)
     {store : Store Root} {bs : BeaconState Root} {b : Root} {es : Slot}
     (htab : get_total_active_balance cfg bs = E.total_active cfg)
     (hintra : get_block_epoch cfg store b =
@@ -263,7 +263,7 @@ theorem adversarial_guard_intra {E : Execution Root} (hbb : ByzantineBound cfg E
 
 /-- Crossing-branch counterpart of `adversarial_guard_intra`, over
 `sa := compute_start_slot_at_epoch cfg (get_block_epoch cfg store b)`. -/
-theorem adversarial_guard_crossing {E : Execution Root} (hbb : ByzantineBound cfg E)
+theorem adversarial_guard_crossing {E : Execution Root} (hbb : ByzantineWeightPremises cfg E)
     {store : Store Root} {bs : BeaconState Root} {b : Root} {es : Slot}
     (htab : get_total_active_balance cfg bs = E.total_active cfg)
     (hcross : get_block_epoch cfg store b >

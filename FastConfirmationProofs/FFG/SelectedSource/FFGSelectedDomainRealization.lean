@@ -41,7 +41,7 @@ theorem justifiedRootKnown_of_globalTrajectory
     {anchor : Checkpoint Root}
     {S : ChainFFGState cfg E anchor}
     (hwf : WellFormedExecution E)
-    (hec : ExternalsCoherence cfg ext E)
+    (hec : BeaconExternalsPremises cfg ext E)
     (hgen : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
       E.genesis_store = get_forkchoice_store cfg ast ablk ∧
       ast.slot = ablk.message.slot ∧
@@ -125,7 +125,7 @@ theorem postAnchorHonestVoteTargetWalkDomain_of_globalTrajectory
     {anchor : Checkpoint Root}
     {S : ChainFFGState cfg E anchor}
     (hwf : WellFormedExecution E)
-    (hec : ExternalsCoherence cfg ext E)
+    (hec : BeaconExternalsPremises cfg ext E)
     (hdiv : 1000 ∣ cfg.slot_duration_ms)
     (hgen : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
       E.genesis_store = get_forkchoice_store cfg ast ablk ∧

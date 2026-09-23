@@ -58,7 +58,7 @@ the single entry of `block_roots`.  Factored out of
 derived it inline, so that the observed-reset arm can reuse it. -/
 theorem anchorRoot_mem_genesis
     (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
+    (hT : E.ScheduledPrefixPremises cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint) :
     B.anchor.root ∈ E.genesis_store.block_roots := by
   obtain ⟨ast, ablk, hgen, _hslot, _hparent⟩ := hT.genesis_structure
@@ -81,7 +81,7 @@ need not be, since the included attestation is transported onto the tip's own
 chain by `Execution.RootDescends.trans` before the slot bound is read. -/
 theorem auCheckpoint_startSlot_lt_currentSlot
     (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
+    (hT : E.ScheduledPrefixPremises cfg ext)
     {obs : ValidatorIndex} {n : ℕ} {tip : Root} {c : Checkpoint Root}
     (htip : tip ∈ (E.store cfg ext obs n).block_roots)
     (hAU : B.state.AU cfg ext tip c) (hne : c ≠ B.anchor) :

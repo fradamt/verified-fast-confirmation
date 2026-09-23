@@ -131,7 +131,7 @@ theorem ScheduledEventPrefix.anchorGuard
 /-- The anchor slot is a lower bound on every block known at an exact prefix. -/
 theorem ScheduledEventPrefix.anchorMinSlot
     (p : E.ScheduledEventPrefix)
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
+    (hT : E.ScheduledPrefixPremises cfg ext)
     {ast : BeaconState Root} {ablk : SignedBeaconBlock Root}
     (hgen : E.genesis_store = get_forkchoice_store cfg ast ablk) :
     ∀ r ∈ (p.store cfg ext).block_roots,
@@ -162,7 +162,7 @@ theorem ScheduledEventPrefix.anchorMinSlot
 /-- Target-known walk geometry at an exact scheduled prefix. -/
 theorem ScheduledEventPrefix.walkKnownK
     (p : E.ScheduledEventPrefix)
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext) :
+    (hT : E.ScheduledPrefixPremises cfg ext) :
     ∀ t ∈ (p.store cfg ext).block_roots,
       ∀ r ∈ (p.store cfg ext).block_roots,
         WalkKnown (p.store cfg ext) ((p.store cfg ext).blocks t).slot r := by
@@ -187,7 +187,7 @@ scheduled prefix, including in the middle of its event fold. -/
 theorem ScheduledEventPrefix.justifiedRootKnown_of_acceptedGlobalTrajectory
     (p : E.ScheduledEventPrefix)
     (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
+    (hT : E.ScheduledPrefixPremises cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg) (E := E)
       (anchor := B.anchor)) :
@@ -254,7 +254,7 @@ prefix under accepted global semantics. -/
 theorem ScheduledEventPrefix.headRootKnown_of_acceptedGlobalTrajectory
     (p : E.ScheduledEventPrefix)
     (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
+    (hT : E.ScheduledPrefixPremises cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg) (E := E)
       (anchor := B.anchor)) :
@@ -273,7 +273,7 @@ accepted GJ/GU gate facade. -/
 theorem ScheduledEventPrefix.currentTargetKnown_and_blockEpoch_le
     (p : E.ScheduledEventPrefix)
     (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
+    (hT : E.ScheduledPrefixPremises cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg) (E := E)
       (anchor := B.anchor)) :
@@ -347,7 +347,7 @@ This is clock/retention geometry, not an FFG-safety assumption. -/
 theorem ScheduledEventPrefix.currentTarget_anchor_epoch_le
     (p : E.ScheduledEventPrefix)
     (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
+    (hT : E.ScheduledPrefixPremises cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg) (E := E)
       (anchor := B.anchor)) :
@@ -390,7 +390,7 @@ has a strictly later epoch. -/
 theorem ScheduledEventPrefix.currentTarget_anchor_epoch_lt_of_ne
     (p : E.ScheduledEventPrefix)
     (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
+    (hT : E.ScheduledPrefixPremises cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg) (E := E)
       (anchor := B.anchor))

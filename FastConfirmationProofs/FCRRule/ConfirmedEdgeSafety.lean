@@ -85,14 +85,14 @@ structure EngineAdvanceCore (E : Execution Root) : Prop where
   /-- The confirmed block is known at its own confirming store `(v, n+1)` (the `hck` family). -/
   hbconf : ∀ v ∈ E.honest, ∀ n : ℕ, ∀ b : Root,
     E.WithinHorizon cfg (n + 1) →
-    is_one_confirmed cfg ext (E.fcrStep cfg ext v n).store
-      (get_current_balance_source (E.fcrStep cfg ext v n)) b = true →
+    is_one_confirmed cfg ext (E.fcrStoreAtCall cfg ext v n).store
+      (get_current_balance_source (E.fcrStoreAtCall cfg ext v n)) b = true →
     b ∈ (E.store cfg ext v (n + 1)).block_roots
   /-- The confirmed block is known at a foreign endpoint `(w, m)` inside the confirming slot
       (the same-slot availability corner for `b`). -/
   hb_sameslot : ∀ v ∈ E.honest, ∀ n : ℕ, ∀ b : Root,
-    is_one_confirmed cfg ext (E.fcrStep cfg ext v n).store
-      (get_current_balance_source (E.fcrStep cfg ext v n)) b = true →
+    is_one_confirmed cfg ext (E.fcrStoreAtCall cfg ext v n).store
+      (get_current_balance_source (E.fcrStoreAtCall cfg ext v n)) b = true →
     ∀ w ∈ E.honest, ∀ m : ℕ, n + 1 ≤ m →
       E.WithinHorizon cfg m →
       ¬ (E.slot_at cfg (n + 1) + 1 ≤ E.slot_at cfg (m + 1)) →
@@ -100,8 +100,8 @@ structure EngineAdvanceCore (E : Execution Root) : Prop where
   /-- A per-endpoint covering justified checkpoint `jcb` with `b ⪰ jcb`, plus the strict-epoch
       advance sub-case `hadv_hi` — the disjunction's localized engine content. -/
   hcov : ∀ v ∈ E.honest, ∀ n : ℕ, ∀ b : Root,
-    is_one_confirmed cfg ext (E.fcrStep cfg ext v n).store
-      (get_current_balance_source (E.fcrStep cfg ext v n)) b = true →
+    is_one_confirmed cfg ext (E.fcrStoreAtCall cfg ext v n).store
+      (get_current_balance_source (E.fcrStoreAtCall cfg ext v n)) b = true →
     ∀ w ∈ E.honest, ∀ m : ℕ, n + 1 ≤ m →
       E.WithinHorizon cfg m →
       ∃ jcb : Checkpoint Root,
@@ -116,8 +116,8 @@ structure EngineAdvanceCore (E : Execution Root) : Prop where
             (get_node_for_root b) = true)
   /-- The chain-branch head-safety engine (`b ⪰ jc → head ⪰ b`) — the `INVstar` core. -/
   heng : ∀ v ∈ E.honest, ∀ n : ℕ, ∀ b : Root,
-    is_one_confirmed cfg ext (E.fcrStep cfg ext v n).store
-      (get_current_balance_source (E.fcrStep cfg ext v n)) b = true →
+    is_one_confirmed cfg ext (E.fcrStoreAtCall cfg ext v n).store
+      (get_current_balance_source (E.fcrStoreAtCall cfg ext v n)) b = true →
     ∀ w ∈ E.honest, ∀ m : ℕ, n + 1 ≤ m →
       E.WithinHorizon cfg m →
       is_ancestor (E.store cfg ext w m) (get_node_for_root b)

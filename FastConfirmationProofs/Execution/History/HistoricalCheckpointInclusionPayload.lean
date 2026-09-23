@@ -637,7 +637,7 @@ def AcceptedHistoricalA32PayloadProducerAt
     (query : FastConfirmationStore Root) (input result : Root) : Prop :=
   get_block_epoch cfg query.store result =
       get_current_store_epoch cfg query.store →
-  (¬ ∃ a c : Root, CurrentTargetAcceptedEdge cfg ext query input a c) →
+  (¬ ∃ a c : Root, CurrentTargetSelectedEdge cfg ext query input a c) →
     ∃ e : Epoch,
       get_current_target cfg query.store = B.state.C result e ∧
       Nonempty (E.AcceptedHistoricalA32GatePayloadAt cfg ext B result e)

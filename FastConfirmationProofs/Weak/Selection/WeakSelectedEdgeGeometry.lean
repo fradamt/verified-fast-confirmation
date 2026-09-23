@@ -25,7 +25,7 @@ The strong record leaves those last three implicit because its consumers
 re-derive them from the whole-store inclusion
 `(E.store cfg ext u nu).block_roots ⊆ (E.store cfg ext v q).block_roots`
 (`hsubUQ` in the strong producer), which is obtained by relaying the honest
-past store *into the observer* — `PaperSafetySynchrony.block_relay u hu nu …
+past store *into the observer* — `NextSlotSynchronyPremises.block_relay u hu nu …
 v hv q hqH`. That relay direction is exactly what the weak model forbids: the
 observer need not be honest, so nothing is ever delivered to it. Here the
 endpoint-side block data therefore becomes structure data, supplied by the

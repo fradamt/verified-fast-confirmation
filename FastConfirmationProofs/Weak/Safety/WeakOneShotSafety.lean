@@ -31,7 +31,7 @@ strong proof used `v`'s honesty:
 
 * wherever the strong proof calls a `MinimalSelectedDomain`/`ArbitraryQueryMargin`
   theorem whose *only* honesty use was `SelectedMarginDomain.justified_root_known`
-  or `ExternalsCoherence.committees_agree` at `v`'s own store, the weak proof
+  or `BeaconExternalsPremises.committees_agree` at `v`'s own store, the weak proof
   calls the corresponding `_weak` / `_at_observer` / `_of_prefix` twin already
   proved in `WeakSelectorInversion.lean`, `WeakConfirmedDissemination.lean`,
   `WeakConfirmedSupporter.lean` and `WeakEconomicReadback.lean`, driven by
@@ -42,7 +42,7 @@ strong proof used `v`'s honesty:
   to have a **genuine** residual `hv : v ∈ E.honest` dependency in their
   *signatures* (routed through `CrossingCert.crossing_hd_of_preRegion` and
   `LastAlgebra.hR4b_of_confinement`, both of which read `v`'s committee via
-  `ExternalsCoherence.committees_agree`) — contrary to what a first read of
+  `BeaconExternalsPremises.committees_agree`) — contrary to what a first read of
   the docstrings suggests. Both of those, and the one additional crossing
   lemma with the same dependency
   (`CrossingCert.crossing_equivocation_score_split`), have exactly the same
@@ -81,7 +81,7 @@ variable (E : Execution Root)
 /-- The two store-level coherence facts an arbitrary (not necessarily honest)
 observer's own store must still satisfy for the confirmed-margin machinery to
 run: committee readback (feeding `PrefixCommitteeAgreement`, in place of
-`ExternalsCoherence.committees_agree v hv …`) and justified-root knownness
+`BeaconExternalsPremises.committees_agree v hv …`) and justified-root knownness
 (in place of `SelectedMarginDomain.justified_root_known v hv …`). Both are
 facts about the observer's own trajectory, not about the observer's honesty;
 an implementation that always computes committees from its own head state and
@@ -99,7 +99,7 @@ structure ObserverCoherence (obs : ValidatorIndex) : Prop where
 /-- **`ObserverCoherence.justified_root_known` is derivable, not an extra
 assumption**, given accepted global justified-root origins
 (`ExactPrefixAcceptedFFGSemantics`) and the ordinary execution trajectory
-(`ScheduledPrefixTrajectoryAssumptions`). This is exactly
+(`ScheduledPrefixPremises`). This is exactly
 `AcceptedCurrentTargetLowerContracts.justifiedRootKnown_of_acceptedGlobalTrajectory`
 restated at an arbitrary `obs` — that theorem's honesty premise `_hw : w ∈
 E.honest` is already unused in its proof (every lemma it calls,
@@ -120,7 +120,7 @@ promote it to the internal `WeakObserverMarginAssumptions` with
 `justified_root_known` here. -/
 theorem ObserverCoherence.justified_root_known_of_acceptedGlobalTrajectory
     (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
+    (hT : E.ScheduledPrefixPremises cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg) (E := E)
       (anchor := B.anchor))
@@ -198,7 +198,7 @@ theorem ObserverCoherence.justified_root_known_of_acceptedGlobalTrajectory
 independent premise on top of the accepted FFG semantics bundle. -/
 def ObserverCoherence.of_acceptedTrajectory
     (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
+    (hT : E.ScheduledPrefixPremises cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg) (E := E)
       (anchor := B.anchor))
@@ -276,7 +276,7 @@ available there and `justified_root_known` never reaches a premise list. -/
 def WeakObserverAssumptions.toMarginAssumptions {obs : ValidatorIndex}
     (hW : E.WeakObserverAssumptions cfg ext obs)
     (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
+    (hT : E.ScheduledPrefixPremises cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg) (E := E)
       (anchor := B.anchor)) :
@@ -300,7 +300,7 @@ already uses one layer down. -/
 of `hv : v ∈ E.honest` (via `hec`) fed `support_discount_le_parent_stuck`,
 replaced here by its `_of_prefix` twin driven by `hcomm`. -/
 private theorem crossing_hd_of_preRegion_of_prefix
-    (hbb : ByzantineBound cfg E)
+    (hbb : ByzantineWeightPremises cfg E)
     {v : ValidatorIndex} {n : ℕ}
     (hcomm : E.PrefixCommitteeAgreement cfg ext (E.store cfg ext v n))
     {bs : BeaconState Root} {b : Root}
@@ -413,8 +413,8 @@ private theorem fullSpan_base_transport_arith_weak
 
 /-- `_of_prefix` clone of `intraEpochFuture_endpoint_inequality_of_confirmed_window`. -/
 theorem intraEpochFuture_endpoint_inequality_of_confirmed_window_of_prefix
-    (hhb : HonestBehavior cfg ext E) (hec : ExternalsCoherence cfg ext E)
-    (hbb : ByzantineBound cfg E)
+    (hhb : HonestBehavior cfg ext E) (hec : BeaconExternalsPremises cfg ext E)
+    (hbb : ByzantineWeightPremises cfg E)
     (hgen : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
       E.genesis_store = get_forkchoice_store cfg ast ablk)
     {v : ValidatorIndex} {n : ℕ}
@@ -570,8 +570,8 @@ theorem intraEpochFuture_endpoint_inequality_of_confirmed_window_of_prefix
 
 /-- `_of_prefix` clone of `crossingEdgeFuture_endpoint_inequality_of_confirmed_window`. -/
 theorem crossingEdgeFuture_endpoint_inequality_of_confirmed_window_of_prefix
-    (hhb : HonestBehavior cfg ext E) (hec : ExternalsCoherence cfg ext E)
-    (hbb : ByzantineBound cfg E)
+    (hhb : HonestBehavior cfg ext E) (hec : BeaconExternalsPremises cfg ext E)
+    (hbb : ByzantineWeightPremises cfg E)
     (hgen : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
       E.genesis_store = get_forkchoice_store cfg ast ablk)
     {v : ValidatorIndex} {n : ℕ}
@@ -1143,7 +1143,7 @@ weak layer: the honesty binder is dropped, and in its place the record carries
 committees_agree` (committee readback) and `ObserverCoherence.
 justified_root_known` (the observer's justified root is in its own block map).
 Honesty supplied both on the strong side, via
-`ExternalsCoherence.committees_agree` and
+`BeaconExternalsPremises.committees_agree` and
 `SelectedMarginDomain.justified_root_known`; neither is implied by the weak
 floor alone at an arbitrary node, which is why this one-shot floor form — the
 only weak form with no accepted-FFG package to derive `justified_root_known`

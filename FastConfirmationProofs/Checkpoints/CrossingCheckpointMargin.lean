@@ -105,7 +105,7 @@ adversarial span explicit and consumes the authorized endpoint pair: combined
 antitonicity of `Aval + Xval` plus separate antitonicity of `Xval`. Prefix
 equivocators `eqExtra` are removed from the pre-region enemy mass available to
 an old sibling. -/
-theorem reanchored_endpoint_of_fullSpan_certificate (hbb : ByzantineBound cfg E)
+theorem reanchored_endpoint_of_fullSpan_certificate (hbb : ByzantineWeightPremises cfg E)
     {v₀ : ValidatorIndex} {n₀ : ℕ} {b' : Root} {lo es σ : Slot}
     {Bsup eqSub eqExtra HAextra Bextra A d MU qFull Hpre Hsub xP Bpre boost : ℕ}
     (hes : es ≤ σ) (hloH : E.SlotWithinHorizon cfg lo)

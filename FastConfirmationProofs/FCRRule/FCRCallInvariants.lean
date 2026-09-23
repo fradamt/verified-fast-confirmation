@@ -331,11 +331,11 @@ a trace pipeline, justification interface, safety conclusion, or helper
 proviso under another name. -/
 def ActualFCRStrictSelectedFilterSupplierAt
     (v : ValidatorIndex) (n : ℕ)
-    (trace : GetLatestConfirmedTrace cfg ext
-      (E.fcrStep cfg ext v n)) : Prop :=
+    (trace : LatestConfirmedCallTrace cfg ext
+      (E.fcrStoreAtCall cfg ext v n)) : Prop :=
   trace.result ≠ trace.afterObserved →
     E.SelectedStrictEdgeFilterSupplyAt cfg ext trace.result
-      trace.afterObserved v (n + 1) (E.fcrStep cfg ext v n)
+      trace.afterObserved v (n + 1) (E.fcrStoreAtCall cfg ext v n)
 
 /-! ## Strict helper preservation -/
 
@@ -346,23 +346,23 @@ input property directly.
 
 The input is stated at `n+1`, which equals the start of the newly entered slot
 for an actual advancing call. -/
-theorem GetLatestConfirmedTrace.result_safeFrom_of_actualCall_strictSupplier
+theorem LatestConfirmedCallTrace.result_safeFrom_of_actualCall_strictSupplier
     (hA : SelectedMarginAssumptions cfg ext E)
     (hwalkDomain : E.PostAnchorHonestVoteTargetWalkDomain cfg ext)
     {v : ValidatorIndex} (hv : v ∈ E.honest) {n : ℕ}
     (hHn1 : E.WithinHorizon cfg (n + 1))
-    (hcall : E.IsFCRCallAt cfg ext v n)
-    (trace : GetLatestConfirmedTrace cfg ext
-      (E.fcrStep cfg ext v n))
+    (hcall : E.IsScheduledFCRCallAt cfg ext v n)
+    (trace : LatestConfirmedCallTrace cfg ext
+      (E.fcrStoreAtCall cfg ext v n))
     (hinputKnown : trace.afterObserved ∈
-      (E.fcrStep cfg ext v n).store.block_roots)
+      (E.fcrStoreAtCall cfg ext v n).store.block_roots)
     (hinputSafe : E.SafeFrom cfg ext trace.afterObserved (n + 1))
     (hsupplier : E.ActualFCRStrictSelectedFilterSupplierAt cfg ext
       v n trace) :
     E.SafeFrom cfg ext trace.result (n + 1) := by
   have hstartEq : E.slot_start cfg (E.slot_at cfg (n + 1)) = n + 1 :=
     E.slot_start_eq_succ_of_advance_minimal cfg ext hA n hHn1 hcall
-  have hquery : (E.fcrStep cfg ext v n).store =
+  have hquery : (E.fcrStoreAtCall cfg ext v n).store =
       E.store cfg ext v (n + 1) := E.fcrStep_store cfg ext v n
   have hbase : E.SafeFrom cfg ext trace.afterObserved
       (E.slot_start cfg (E.slot_at cfg (n + 1))) := by
@@ -373,21 +373,21 @@ theorem GetLatestConfirmedTrace.result_safeFrom_of_actualCall_strictSupplier
     exact hinputSafe
   · rw [hresult]
     apply E.safeFrom_find_latest_confirmed_descendant_of_selectedCoveredMarginsAt_minimal
-      cfg ext hA v hv (n + 1) hHn1 (E.fcrStep cfg ext v n)
+      cfg ext hA v hv (n + 1) hHn1 (E.fcrStoreAtCall cfg ext v n)
         hquery trace.afterObserved hinputKnown hbase
     intro hstrict
     have hresultStrict : trace.result ≠ trace.afterObserved := by
       rw [hresult]
       exact hstrict
     have hsupply : E.SelectedStrictEdgeFilterSupplyAt cfg ext trace.result
-        trace.afterObserved v (n + 1) (E.fcrStep cfg ext v n) :=
+        trace.afterObserved v (n + 1) (E.fcrStoreAtCall cfg ext v n) :=
       hsupplier hresultStrict
     rw [hresult] at hsupply
     exact E.selectedCoveredMarginSupplyAt_of_filterSupply_minimal
       cfg ext hA hwalkDomain v hv (n + 1) hHn1
-        (E.fcrStep cfg ext v n) hquery trace.afterObserved hinputKnown
+        (E.fcrStoreAtCall cfg ext v n) hquery trace.afterObserved hinputKnown
         (find_latest_confirmed_descendant cfg ext
-          (E.fcrStep cfg ext v n) trace.afterObserved)
+          (E.fcrStoreAtCall cfg ext v n) trace.afterObserved)
         rfl hstrict hsupply
 
 end Execution

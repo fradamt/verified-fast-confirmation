@@ -53,7 +53,7 @@ theorem Execution.total_active_pos (cfg : Config) (E : Execution Root) :
 /-- Phase0 quantization makes every finite ground-truth validator-set weight a
 multiple of `100`. -/
 theorem Execution.hundred_dvd_weight (cfg : Config) (E : Execution Root)
-    (hbb : ByzantineBound cfg E) (S : Finset ValidatorIndex) :
+    (hbb : ByzantineWeightPremises cfg E) (S : Finset ValidatorIndex) :
     100 ∣ E.weight S := by
   apply E.dvd_weight
   intro i
@@ -63,7 +63,7 @@ theorem Execution.hundred_dvd_weight (cfg : Config) (E : Execution Root)
 /-- Ordinary estimate soundness implies the exact post-floor inequality used
 by the FCR arithmetic once real effective-balance quantization is restored. -/
 theorem estimate_floor_dominates (cfg : Config) (E : Execution Root)
-    (hbb : ByzantineBound cfg E) (S : Finset ValidatorIndex)
+    (hbb : ByzantineWeightPremises cfg E) (S : Finset ValidatorIndex)
     {estimate : ℕ} (hle : E.weight S ≤ estimate) :
     E.weight S ≤ 100 * (estimate / 100) :=
   le_hundred_mul_div_of_dvd (E.hundred_dvd_weight cfg hbb S) hle

@@ -12,7 +12,7 @@ accepted filter-supply stack consumes at the *query* node.
 
 Across the accepted stack the query node's honesty binder `hv : v ∈ E.honest`
 is only ever consumed in three ways: a synchrony relay, committee readback
-(`ExternalsCoherence.committees_agree`), and justified-root knownness
+(`BeaconExternalsPremises.committees_agree`), and justified-root knownness
 (`SelectedMarginDomain.justified_root_known`, reached either directly or
 through `store_domainK_of_selectedMarginDomain` /
 `head_root_known_of_selectedMarginDomain`). The last two are exactly the two
@@ -61,7 +61,7 @@ parent-slot order and the target-known walk domain, at an arbitrary node and
 second. Neither component consults `E.honest`. -/
 theorem storeDomainParentWalk
     (hwf : WellFormedExecution E)
-    (hec : ExternalsCoherence cfg ext E)
+    (hec : BeaconExternalsPremises cfg ext E)
     (hgen : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
       E.genesis_store = get_forkchoice_store cfg ast ablk ∧
       ast.slot = ablk.message.slot ∧ ablk.message.parent_root ≠ ablk.root)
@@ -96,7 +96,7 @@ components are `storeDomainParentWalk`, the third is
 `ObserverCoherence.justified_root_known`. -/
 theorem observerStoreDomainK
     (hwf : WellFormedExecution E)
-    (hec : ExternalsCoherence cfg ext E)
+    (hec : BeaconExternalsPremises cfg ext E)
     (hgen : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
       E.genesis_store = get_forkchoice_store cfg ast ablk ∧
       ast.slot = ablk.message.slot ∧ ablk.message.parent_root ≠ ablk.root)

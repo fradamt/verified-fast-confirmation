@@ -25,7 +25,7 @@ and `Proof/HonestWeight.lean`, replayed over
   constituent facts.
 * `Weak.broadcast_certificate_support_le_of_no_honest` is the economic core:
   if no honest validator is counted, the counted weight is confined to the
-  ground-truth span committee's non-honest part, which `ByzantineBound.span_bound`
+  ground-truth span committee's non-honest part, which `ByzantineWeightPremises.span_bound`
   bounds by the undiscounted `Weak.compute_adversarial_weight`.
 * `Execution.honest_latest_message_vote` extracts, from an honest validator's
   recorded latest message at its assigned slot's epoch, that validator's
@@ -90,10 +90,10 @@ theorem Weak.mem_broadcast_certificate_support_set
 adversarial budget of the span: every counted index sits in the ground-truth
 span committee (`hcomm` readback, valid on `[start_slot, end_slot]` since every
 slot in the span is at or below `end_slot`) and, absent an honest counted
-index, in its non-honest part, whose ground-truth weight `ByzantineBound.span_bound`
+index, in its non-honest part, whose ground-truth weight `ByzantineWeightPremises.span_bound`
 bounds. -/
 theorem Weak.broadcast_certificate_support_le_of_no_honest {E : Execution Root}
-    (hbb : ByzantineBound cfg E)
+    (hbb : ByzantineWeightPremises cfg E)
     {store : Store Root} {balance_source : BeaconState Root} {block_root : Root}
     {start_slot end_slot : Slot}
     (hval : balance_source.validators = E.registry)
@@ -193,7 +193,7 @@ pinned to `s` by `committee_assignment_unique` from the committee memberships
 `hcs` and the one `votes_assigned` derives from the genuine vote, instead of
 from an already-known vote at `s`. -/
 theorem Execution.honest_latest_message_vote {E : Execution Root}
-    (hhb : HonestBehavior cfg ext E) (hec : ExternalsCoherence cfg ext E)
+    (hhb : HonestBehavior cfg ext E) (hec : BeaconExternalsPremises cfg ext E)
     (hgen : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
       E.genesis_store = get_forkchoice_store cfg ast ablk)
     {i : ValidatorIndex} (hi : i ∈ E.honest) {v : ValidatorIndex} {n : ℕ}
@@ -230,8 +230,8 @@ and whose root is known to the observing store
 (`Execution.latestMessageProvenance`'s block-roots conjunct). -/
 theorem Execution.certificate_honest_supporter (E : Execution Root)
     (hwf : WellFormedExecution E)
-    (hhb : HonestBehavior cfg ext E) (hec : ExternalsCoherence cfg ext E)
-    (hbb : ByzantineBound cfg E)
+    (hhb : HonestBehavior cfg ext E) (hec : BeaconExternalsPremises cfg ext E)
+    (hbb : ByzantineWeightPremises cfg E)
     (hgen : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
       E.genesis_store = get_forkchoice_store cfg ast ablk) :
     Weak.CertificateHonestSupporter cfg ext E := by

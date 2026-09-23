@@ -37,7 +37,7 @@ position, not to the stored-boundary `Execution.confirmed` theorem.
 -/
 
 namespace FastConfirmation.Spec
-namespace AcceptedPinnedEconomicsStrictPrefixExtraQueryCounterexample
+namespace PinnedEconomicsExtraQuery
 
 open AllowedFCRCalls
 
@@ -550,7 +550,7 @@ private theorem witnessReachableValidationState_nonempty {state : BeaconState Wi
   decide
 
 private theorem witnessExternalsCoherence :
-    ExternalsCoherence witnessConfig witnessExternals witnessExecution := by
+    BeaconExternalsPremises witnessConfig witnessExternals witnessExecution := by
   constructor
   · intro st s hlt
     rfl
@@ -696,7 +696,7 @@ private theorem witnessStaticValidatorSet :
     rfl
 
 private theorem witnessByzantineBound :
-    ByzantineBound witnessConfig witnessExecution := by
+    ByzantineWeightPremises witnessConfig witnessExecution := by
   constructor
   · intro i
     rcases i with _ | i
@@ -939,9 +939,9 @@ def PinnedEconomicsStrictPrefixWitnessEnvironment : Prop :=
       1000 ∣ witnessConfig.slot_duration_ms ∧
       HonestBehavior witnessConfig witnessExternals witnessExecution ∧
       Synchrony witnessConfig witnessExternals witnessExecution ∧
-      ExternalsCoherence witnessConfig witnessExternals witnessExecution ∧
+      BeaconExternalsPremises witnessConfig witnessExternals witnessExecution ∧
       StaticValidatorSet witnessConfig witnessExecution ∧
-      ByzantineBound witnessConfig witnessExecution ∧
+      ByzantineWeightPremises witnessConfig witnessExecution ∧
       witnessConfig.proposer_score_boost = 40 ∧
       witnessConfig.confirmation_byzantine_threshold = 25 ∧
       (∀ n, witnessExecution.time_at n = n) ∧
@@ -980,7 +980,7 @@ same-second prefix has head `sibling` and `candidate` is not its ancestor.
 
 The statement does not assume safety, canonicality, a future head, or accepted
 FFG semantics. -/
-theorem pinned_economics_strict_prefix_extra_query_counterexample :
+theorem extra_query_changes_head_counterexample :
     PinnedEconomicsStrictPrefixWitnessEnvironment ∧
       GlobalPinnedEconomicsStrictPrefixQuerySnapshot ∧
       0 ∈ witnessExecution.honest ∧
@@ -1054,7 +1054,7 @@ theorem pinned_economics_strict_prefix_extra_query_counterexample :
     exact strict_prefix_heads_diverge.2.2
 
 
-end AcceptedPinnedEconomicsStrictPrefixExtraQueryCounterexample
+end PinnedEconomicsExtraQuery
 end FastConfirmation.Spec
 
 end

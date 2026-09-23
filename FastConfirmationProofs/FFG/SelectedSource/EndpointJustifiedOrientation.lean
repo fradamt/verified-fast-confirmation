@@ -84,9 +84,9 @@ theorem ExactPrefixAcceptedFFGSemantics.unrealizedJustified_certificate
 of the otherwise protocol-level no-conflict arithmetic bundle. -/
 def noConflictPinningAssumptions_of_acceptedGlobalTrajectory
     (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
+    (hT : E.ScheduledPrefixPremises cfg ext)
     (hstatic : StaticValidatorSet cfg E)
-    (hbyz : ByzantineBound cfg E)
+    (hbyz : ByzantineWeightPremises cfg E)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
       (E := E) (anchor := B.anchor)) :
@@ -172,7 +172,7 @@ one seat argument swapped:
   `no_forgery` plus `HonestBehavior.not_slashable`;
 * a **future** seat is now excluded outright: by N1 the quorum attestation is
   assigned to the signer's committee slot and carries the target epoch, so
-  `ExternalsCoherence.committee_assignment_unique` identifies its slot with the
+  `BeaconExternalsPremises.committee_assignment_unique` identifies its slot with the
   future seat's slot, which is at or after the query slot — contradicting
   `hnoPostQuery`.  This is where the proviso used to be consumed
   (`currentTargetFutureHonestSeat_vote`), and the replacement needs no
@@ -184,8 +184,8 @@ without the proviso, as §5.2 items 1-2 record.  Mirrors
 with the observer coherence binder replaced by the query node's honesty. -/
 theorem completedPrefix_noConflict_endpointJustifiedQuorum_root_eq_currentTarget
     (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
-    (hC : E.AcceptedHistoricalA32CompletedPrefixCallAssumptions cfg ext)
+    (hT : E.ScheduledPrefixPremises cfg ext)
+    (hC : E.CompletedFCRCallPremises cfg ext)
     (hfit : EpochEndsFitUint64 cfg)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
@@ -483,8 +483,8 @@ proviso's entire Trunk-B duty is discharged by the endpoint's own
 `IncludedCertifiedJustified` evidence (§4) plus the helper arithmetic. -/
 theorem completedPrefix_endpointOriginOrPinnedProducerAt
     (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
-    (hC : E.AcceptedHistoricalA32CompletedPrefixCallAssumptions cfg ext)
+    (hT : E.ScheduledPrefixPremises cfg ext)
+    (hC : E.CompletedFCRCallPremises cfg ext)
     (hfit : EpochEndsFitUint64 cfg)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
@@ -492,7 +492,7 @@ theorem completedPrefix_endpointOriginOrPinnedProducerAt
     {v : ValidatorIndex} (hv : v ∈ E.honest) {n : Nat}
     (hHn1 : E.WithinHorizon cfg (n + 1)) :
     E.EndpointOriginOrPinnedProducerAt cfg ext B.anchor (n + 1)
-      (E.fcrStep cfg ext v n) := by
+      (E.fcrStoreAtCall cfg ext v n) := by
   classical
   intro hgate w m
   simp only [E.fcrStep_store] at hgate ⊢
@@ -538,7 +538,7 @@ This is accepted-root reflection plus the trusted-anchor boundary walk; it
 does not use an endpoint, no-crossing fact, or safety conclusion. -/
 private theorem AcceptedHistoricalA32LineageCoreAt.payloadAtExecutionStore
     (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
+    (hT : E.ScheduledPrefixPremises cfg ext)
     (hphase : Phase0SourceCoherence cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
@@ -610,27 +610,27 @@ discharged by `hprior` — the strictly earlier fold output.  This is D1† of
 `docs/crossing-call-support-residue.md` §2.1, now recorded in the types. -/
 noncomputable def completedPrefix_acceptedHistoricalCertificateProducerAt
     (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
-    (hC : E.AcceptedHistoricalA32CompletedPrefixCallAssumptions cfg ext)
+    (hT : E.ScheduledPrefixPremises cfg ext)
+    (hC : E.CompletedFCRCallPremises cfg ext)
     (hfit : EpochEndsFitUint64 cfg)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
       (E := E) (anchor := B.anchor))
     {v : ValidatorIndex} (hv : v ∈ E.honest) {n : Nat}
-    (hcall : E.IsFCRCallAt cfg ext v n)
+    (hcall : E.IsScheduledFCRCallAt cfg ext v n)
     (hHn1 : E.WithinHorizon cfg (n + 1))
     (hprior : E.PriorStrictCallWriteBackSafe cfg ext n)
     (hinput : (E.getLatestConfirmedTraceAt cfg ext v n).afterObserved ∈
-      (E.fcrStep cfg ext v n).store.block_roots)
+      (E.fcrStoreAtCall cfg ext v n).store.block_roots)
     (hselector : StrictSelectorAdvanceAt cfg ext
-      (E.fcrStep cfg ext v n)
+      (E.fcrStoreAtCall cfg ext v n)
       (E.getLatestConfirmedTraceAt cfg ext v n)) :
     E.HistoricalCurrentTargetCertificateProducerAt cfg ext B.anchor (n + 1)
-      (E.fcrStep cfg ext v n)
+      (E.fcrStoreAtCall cfg ext v n)
       (E.getLatestConfirmedTraceAt cfg ext v n).afterObserved
       (E.getLatestConfirmedTraceAt cfg ext v n).result := by
   intro hcurrent hnoCrossing
-  let query := E.fcrStep cfg ext v n
+  let query := E.fcrStoreAtCall cfg ext v n
   let trace := E.getLatestConfirmedTraceAt cfg ext v n
   have hqueryStore : query.store = E.store cfg ext v (n + 1) := by
     simpa only [query] using E.fcrStep_store cfg ext v n
@@ -743,24 +743,24 @@ the endpoint, and noncoverage.  No FFG pipeline, filter conclusion, or
 historical-certificate premise remains. -/
 theorem actualCall_strictSelected_result_and_child_ancestor_of_endpointJustified
     (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
-    (hC : E.AcceptedHistoricalA32CompletedPrefixCallAssumptions cfg ext)
+    (hT : E.ScheduledPrefixPremises cfg ext)
+    (hC : E.CompletedFCRCallPremises cfg ext)
     (hfit : EpochEndsFitUint64 cfg)
     (hdomain : SelectedMarginDomain cfg ext E)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
       (E := E) (anchor := B.anchor))
     {v : ValidatorIndex} (hv : v ∈ E.honest) {n : Nat}
-    (hcall : E.IsFCRCallAt cfg ext v n)
+    (hcall : E.IsScheduledFCRCallAt cfg ext v n)
     (hHn1 : E.WithinHorizon cfg (n + 1))
     (hprior : E.PriorStrictCallWriteBackSafe cfg ext n)
     (hinput : (E.getLatestConfirmedTraceAt cfg ext v n).afterObserved ∈
-      (E.fcrStep cfg ext v n).store.block_roots)
+      (E.fcrStoreAtCall cfg ext v n).store.block_roots)
     (hbase : E.SafeFrom cfg ext
       (E.getLatestConfirmedTraceAt cfg ext v n).afterObserved
       (E.slot_start cfg (E.slot_at cfg (n + 1))))
     (hselector : StrictSelectorAdvanceAt cfg ext
-      (E.fcrStep cfg ext v n)
+      (E.fcrStoreAtCall cfg ext v n)
       (E.getLatestConfirmedTraceAt cfg ext v n))
     {c : Root} {w : ValidatorIndex} (hw : w ∈ E.honest) {m : Nat}
     (hHm : E.WithinHorizon cfg m)
@@ -796,7 +796,7 @@ theorem actualCall_strictSelected_result_and_child_ancestor_of_endpointJustified
           (E.getLatestConfirmedTraceAt cfg ext v n).result)
         (get_node_for_root
           (E.store cfg ext w m).justified_checkpoint.root) = true := by
-  let query := E.fcrStep cfg ext v n
+  let query := E.fcrStoreAtCall cfg ext v n
   let trace := E.getLatestConfirmedTraceAt cfg ext v n
   let hA : SelectedMarginAssumptions cfg ext E :=
     { genesis := hT.genesis_structure

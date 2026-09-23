@@ -37,7 +37,7 @@ structure WellFormedExecution (E : Execution Root) : Prop where
 end FastConfirmation.Spec
 
 /-!
-# Premises/Execution
+# Premises/ScheduledExecutionConditions
 
 Execution, timing, and boundary premises. Reads the Spec Model. Read Claims next.
 -/
@@ -55,10 +55,10 @@ variable (E : Execution Root)
 an in-second prefix. These are the operational fields of
 `SelectedMarginAssumptions`, with an explicit anchor commitment. No Byzantine
 estimate, selected-margin domain, or head conclusion is included. -/
-structure ScheduledPrefixTrajectoryAssumptions : Prop where
+structure ScheduledPrefixPremises : Prop where
   whole_seconds : 1000 ∣ cfg.slot_duration_ms
   wellFormed : WellFormedExecution E
-  externals_coherence : ExternalsCoherence cfg ext E
+  externals_coherence : BeaconExternalsPremises cfg ext E
   honest_behavior : HonestBehavior cfg ext E
   genesis : ∃ (anchorState : BeaconState Root)
       (anchorBlock : SignedBeaconBlock Root),
@@ -117,7 +117,7 @@ either the checkpoint-sync anchor or at least two epochs behind the block.
 This is exactly the reachable-post-state consequence of Phase0's
 process-epoch-before-slot-increment order which is erased by the abstract
 `state_transition` field. -/
-def AcceptedRealizedFinalizationDelay
+def RealizedFinalizationDelay
     (B : ExactPrefixAcceptedFFGSemantics cfg ext E) : Prop :=
   ∀ t : E.AcceptedBlockTransition cfg ext,
     let finalized :=

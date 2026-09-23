@@ -30,7 +30,7 @@ The route composes the two proved ingredients:
   store with no containment between the two stores, landing `block_root` in
   `u`'s store at the vote's second.
 * `u` is honest and holds `block_root` at that second, so
-  `PaperSafetySynchrony.block_relay` disseminates it to every honest validator
+  `NextSlotSynchronyPremises.block_relay` disseminates it to every honest validator
   from the following slot on — in particular from `end_slot + 1`, since the
   vote's slot lies at or below `end_slot`.
 -/
@@ -44,8 +44,8 @@ variable (cfg : Config) (ext : Externals Root)
 numbered step below matches the docstring's bullets. -/
 theorem Execution.certificate_dissemination (E : Execution Root)
     (hwf : WellFormedExecution E) (hhb : HonestBehavior cfg ext E)
-    (hsyn : PaperSafetySynchrony cfg ext E) (hec : ExternalsCoherence cfg ext E)
-    (hbb : ByzantineBound cfg E) (hji : JustificationInterface cfg ext E)
+    (hsyn : NextSlotSynchronyPremises cfg ext E) (hec : BeaconExternalsPremises cfg ext E)
+    (hbb : ByzantineWeightPremises cfg E) (hji : JustificationInterface cfg ext E)
     (hgen : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
       E.genesis_store = get_forkchoice_store cfg ast ablk ∧
       ast.slot = ablk.message.slot ∧ ablk.message.parent_root ≠ ablk.root) :

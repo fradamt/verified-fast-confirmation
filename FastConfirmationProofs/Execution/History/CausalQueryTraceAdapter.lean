@@ -3,7 +3,7 @@ public import FastConfirmationProofs.FCRRule.AllowedFCRCallTrace
 public import FastConfirmationProofs.FFG.CurrentTarget.CurrentTargetFutureSupport
 public import FastConfirmationProofs.Discount.SelectedMarginConstruction
 public import FastConfirmationProofs.ModelFacts
-public import FastConfirmationStatements.Premises.ExecutionConditions
+public import FastConfirmationStatements.Premises.ScheduledExecutionConditions
 
 @[expose] public section
 
@@ -131,9 +131,9 @@ theorem ScheduledEventPrefix.current_slot (p : E.ScheduledEventPrefix) :
 
 /-- Structural initialization facts used by store invariant proofs. The
 anchor commitment remains a separate conjunct of `genesis`. -/
-theorem ScheduledPrefixTrajectoryAssumptions.genesis_structure
+theorem ScheduledPrefixPremises.genesis_structure
     {cfg : Config} {ext : Externals Root} {E : Execution Root}
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext) :
+    (hT : E.ScheduledPrefixPremises cfg ext) :
     ∃ (anchorState : BeaconState Root) (anchorBlock : SignedBeaconBlock Root),
       E.genesis_store = get_forkchoice_store cfg anchorState anchorBlock ∧
       anchorState.slot = anchorBlock.message.slot ∧
@@ -143,14 +143,14 @@ theorem ScheduledPrefixTrajectoryAssumptions.genesis_structure
 
 /-- The legacy selected-margin bundle supplies the operational fields. Its
 anchor facts must also carry the explicit commitment required here. -/
-theorem ScheduledPrefixTrajectoryAssumptions.of_selectedMarginAssumptions
+theorem ScheduledPrefixPremises.of_selectedMarginAssumptions
     (hA : SelectedMarginAssumptions cfg ext E)
     (hgen : ∃ (anchorState : BeaconState Root) (anchorBlock : SignedBeaconBlock Root),
       E.genesis_store = get_forkchoice_store cfg anchorState anchorBlock ∧
       anchorState.slot = anchorBlock.message.slot ∧
       ext.AnchorCommitsToState anchorBlock.message anchorState ∧
       anchorBlock.message.parent_root ≠ anchorBlock.root) :
-    E.ScheduledPrefixTrajectoryAssumptions cfg ext :=
+    E.ScheduledPrefixPremises cfg ext :=
   { whole_seconds := hA.whole_seconds
     wellFormed := hA.wellFormed
     externals_coherence := hA.externals_coherence
@@ -176,7 +176,7 @@ structure ScheduledPrefixOperationalEvidence
 /-- Schedule-connected latest-message provenance holds at every exact
 scheduled prefix. -/
 theorem ScheduledEventPrefix.schedLMProv
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
+    (hT : E.ScheduledPrefixPremises cfg ext)
     (p : E.ScheduledEventPrefix) :
     SchedLMProv E cfg (p.store cfg ext) := by
   obtain ⟨anchorState, anchorBlock, hgen, _hslot, _hparent⟩ := hT.genesis_structure
@@ -219,7 +219,7 @@ theorem ScheduledEventPrefix.honestCausal_take
 /-- Latest-message provenance at an honest node's in-horizon prefix, with the
 prefix store's exact current slot as ambient bound. -/
 theorem ScheduledEventPrefix.latestMessageProvenance
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
+    (hT : E.ScheduledPrefixPremises cfg ext)
     (p : E.ScheduledEventPrefix) (hp : p.node ∈ E.honest)
     (hn : E.WithinHorizon cfg (p.previousSecond + 1)) :
     LatestMessageProvenance E cfg (get_current_slot cfg (p.store cfg ext))
@@ -252,7 +252,7 @@ theorem ScheduledEventPrefix.latestMessageProvenance
 /-- Every block known at a scheduled prefix is no later than that prefix's
 current slot. -/
 theorem ScheduledEventPrefix.blocksSlotLeCurrent
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
+    (hT : E.ScheduledPrefixPremises cfg ext)
     (p : E.ScheduledEventPrefix) :
     BlocksSlotLe (get_current_slot cfg (p.store cfg ext))
       (p.store cfg ext) := by
@@ -277,7 +277,7 @@ theorem ScheduledEventPrefix.blocksSlotLeCurrent
 
 /-- Parent slots strictly decrease at every exact scheduled prefix. -/
 theorem ScheduledEventPrefix.parentSlotLt
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
+    (hT : E.ScheduledPrefixPremises cfg ext)
     (p : E.ScheduledEventPrefix) :
     ParentSlotLt (p.store cfg ext) := by
   obtain ⟨anchorState, anchorBlock, hgen, hslot, hparent⟩ := hT.genesis_structure
@@ -341,7 +341,7 @@ theorem ScheduledEventPrefix.parentSlotLt
 /-- No honest validator is marked equivocating at an honest node's
 in-horizon scheduled prefix. -/
 theorem ScheduledEventPrefix.honest_not_equivocating
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
+    (hT : E.ScheduledPrefixPremises cfg ext)
     (p : E.ScheduledEventPrefix) (hp : p.node ∈ E.honest)
     (hn : E.WithinHorizon cfg (p.previousSecond + 1)) :
     ∀ i ∈ E.honest, i ∉ (p.store cfg ext).equivocating_indices := by
@@ -362,7 +362,7 @@ theorem ScheduledEventPrefix.honest_not_equivocating
 
 /-- Assemble the inherited facts at an honest node's in-horizon prefix. -/
 theorem ScheduledEventPrefix.operationalEvidence
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
+    (hT : E.ScheduledPrefixPremises cfg ext)
     (p : E.ScheduledEventPrefix) (hp : p.node ∈ E.honest)
     (hn : E.WithinHorizon cfg (p.previousSecond + 1)) :
     E.ScheduledPrefixOperationalEvidence cfg ext (p.store cfg ext)

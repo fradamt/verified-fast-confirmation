@@ -282,7 +282,7 @@ theorem findLatestSelectedTrace_crossing_currentTargetGate
 (`SelectedPreQueryHistoricalSIR.lean:62`).
 
 Two shape changes, both forced by the weak rule rather than by the observer:
-the strong `CurrentTargetAcceptedEdge` abbreviation has no weak twin (stage
+the strong `CurrentTargetSelectedEdge` abbreviation has no weak twin (stage
 S2 landed none), so its two conjuncts are inlined; and the executable
 gates are the weak-rule booleans
 `Weak.will_current_target_be_justified` /

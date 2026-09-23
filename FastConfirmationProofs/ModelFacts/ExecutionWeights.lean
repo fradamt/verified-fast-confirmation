@@ -51,8 +51,8 @@ theorem attestation_delivery_pair_iff (E : Execution Root) :
 
 /-- The old receipt-gated delivery clause, derived from the merged one by
 discarding the receipt-side horizon hypothesis. -/
-theorem PaperSafetySynchrony.toHorizonScopedDelivery
-    {E : Execution Root} (h : PaperSafetySynchrony cfg ext E) :
+theorem NextSlotSynchronyPremises.toHorizonScopedDelivery
+    {E : Execution Root} (h : NextSlotSynchronyPremises cfg ext E) :
     ∀ v ∈ E.honest, ∀ s n (a : Attestation Root),
       E.SlotWithinHorizon cfg s →
       E.WithinHorizon cfg n →
@@ -64,8 +64,8 @@ theorem PaperSafetySynchrony.toHorizonScopedDelivery
 
 /-- The old `HorizonVoteDeliveryLookahead` boundary clause — now a special
 case of the merged delivery field rather than a separate assumption. -/
-theorem PaperSafetySynchrony.toDeliveryLookahead
-    {E : Execution Root} (h : PaperSafetySynchrony cfg ext E) :
+theorem NextSlotSynchronyPremises.toDeliveryLookahead
+    {E : Execution Root} (h : NextSlotSynchronyPremises cfg ext E) :
     ∀ v ∈ E.honest, ∀ s n (a : Attestation Root),
       E.SlotWithinHorizon cfg s →
       E.WithinHorizon cfg n →

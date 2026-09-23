@@ -29,7 +29,7 @@ premise is therefore redundant once trajectory initialization and boundary
 alignment are present. -/
 theorem acceptedAnchorExact_of_trajectory
     (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
+    (hT : E.ScheduledPrefixPremises cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
       (E := E) (anchor := B.anchor)) :
@@ -62,7 +62,7 @@ turns that semantic prefix into the concrete store ancestry consumed by fork
 choice. -/
 theorem trustedAnchor_safeFrom_of_acceptedGlobalTrajectory
     (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
+    (hT : E.ScheduledPrefixPremises cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
       (E := E) (anchor := B.anchor)) :
@@ -95,7 +95,7 @@ theorem trustedAnchor_safeFrom_of_acceptedGlobalTrajectory
 case of either executable fold needs no reset or selected-helper premise. -/
 theorem confirmed_zero_safeFrom_of_acceptedGlobalTrajectory
     (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
+    (hT : E.ScheduledPrefixPremises cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
       (E := E) (anchor := B.anchor))
@@ -117,7 +117,7 @@ previous cached confirmed root is known.  Each reset arm uses its accepted
 installation realization. -/
 theorem getLatestConfirmedTraceAt_input_known
     (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
+    (hT : E.ScheduledPrefixPremises cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
       (E := E) (anchor := B.anchor))
@@ -125,8 +125,8 @@ theorem getLatestConfirmedTraceAt_input_known
     (hknown : E.confirmed cfg ext v n ∈
       (E.store cfg ext v n).block_roots) :
     (E.getLatestConfirmedTraceAt cfg ext v n).afterObserved ∈
-      (E.fcrStep cfg ext v n).store.block_roots := by
-  let query := E.fcrStep cfg ext v n
+      (E.fcrStoreAtCall cfg ext v n).store.block_roots := by
+  let query := E.fcrStoreAtCall cfg ext v n
   let trace := E.getLatestConfirmedTraceAt cfg ext v n
   have hknownN1 : E.confirmed cfg ext v n ∈
       (E.store cfg ext v (n + 1)).block_roots :=
@@ -167,7 +167,7 @@ known result of the exact phased evaluator; between calls the cached root and
 store membership are monotone. -/
 theorem confirmed_known_of_acceptedGlobalTrajectory
     (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
+    (hT : E.ScheduledPrefixPremises cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
       (E := E) (anchor := B.anchor))
@@ -185,7 +185,7 @@ theorem confirmed_known_of_acceptedGlobalTrajectory
       have hHn : E.WithinHorizon cfg n :=
         E.withinHorizon_mono cfg (Nat.le_succ n) hHn1
       have hknownN := ih hHn
-      by_cases hcall : E.IsFCRCallAt cfg ext v n
+      by_cases hcall : E.IsScheduledFCRCallAt cfg ext v n
       · have hresultKnown := E.getLatestConfirmedTraceAt_result_known
           cfg ext B hT hanchor hboundary hv hHn1 hknownN
         have hwrite :=

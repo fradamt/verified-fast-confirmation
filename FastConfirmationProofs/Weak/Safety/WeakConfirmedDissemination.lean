@@ -16,7 +16,7 @@ the observer being honest.
 `confirmed_known_at_all_honest_endpoints_minimal` (`:589`) and
 `confirmed_ancestry_at_all_honest_endpoints_minimal` (`:615`) all route the
 observer's own store into the honest supporter's store through
-`PaperSafetySynchrony.block_relay` with the *observer* as receiver
+`NextSlotSynchronyPremises.block_relay` with the *observer* as receiver
 (`... v hv n hHn ...`), so that the ancestor walk computed at the observer can
 be replayed into the supporter's store via `BlockAgreement`-style containment
 congruence. That relay direction is unavailable here: the observer `v` need
@@ -57,7 +57,7 @@ observer.
    `latestMessageProvenance` call, known at `i` via step 2's `votes_head`
    computation) and `Execution.store_anchor_min_slot` for the anchor-slot
    bound `is_ancestor_transport_closed` needs.
-4. `PaperSafetySynchrony.block_relay`, now from the *honest supporter* `i` as
+4. `NextSlotSynchronyPremises.block_relay`, now from the *honest supporter* `i` as
    sender (never touching the observer), disseminates `b` to every honest
    `(w, m)` past the vote slot — the same slot-gate arithmetic the strong
    original uses, since `i`'s vote slot is `< E.slot_at cfg n ≤ E.slot_at cfg

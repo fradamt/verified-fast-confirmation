@@ -67,7 +67,7 @@ private theorem causalStore_anchorBlock
   | scheduledPrefix p => exact p.anchorBlock cfg ext hwf hgen hr
 
 private theorem causalStore_blocks_slot_le_current
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
+    (hT : E.ScheduledPrefixPremises cfg ext)
     {store : Store Root} (hstore : E.CausalStore cfg ext store) :
     ∀ r ∈ store.block_roots,
       (store.blocks r).slot ≤ get_current_slot cfg store := by
@@ -138,7 +138,7 @@ Unlike the carrier-block form, this bound is stated against the store clock,
 which is what a relay gate consumes. -/
 theorem includedAttestationSlot_lt_causalStoreCurrentSlot
     (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
+    (hT : E.ScheduledPrefixPremises cfg ext)
     {store : Store Root} (hstore : E.CausalStore cfg ext store)
     {carrier : Root} (hcarrier : carrier ∈ store.block_roots)
     {a : Attestation Root}
@@ -209,7 +209,7 @@ readback's non-genesis side condition is re-derived here from
 `CertifiedJustified.anchor_epoch_le` and the link's `source_before_target`. -/
 theorem finalizedHonestVotingSourceOrigin_of_causalStore
     (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
+    (hT : E.ScheduledPrefixPremises cfg ext)
     (hacc : FFGAccountabilityAssumptions cfg ext E)
     (hphase : Phase0SourceCoherence cfg ext)
     (hboundaryPhase : Phase0BoundarySourceCoherence cfg ext)
@@ -446,14 +446,14 @@ strong theorem and is deliberately unused: nothing is relayed *from* that
 store. -/
 theorem weak_finalized_epoch_le_remoteJustified
     (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
+    (hT : E.ScheduledPrefixPremises cfg ext)
     (hacc : FFGAccountabilityAssumptions cfg ext E)
     (hphase : Phase0SourceCoherence cfg ext)
     (hboundaryPhase : Phase0BoundarySourceCoherence cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
       (E := E) (anchor := B.anchor))
-    (hsync : PaperSafetySynchrony cfg ext E)
+    (hsync : NextSlotSynchronyPremises cfg ext E)
     {v w : ValidatorIndex} (hw : w ∈ E.honest) {q m : ℕ}
     (_hHq : E.WithinHorizon cfg q)
     (hHm : E.WithinHorizon cfg m)
@@ -530,14 +530,14 @@ query slot, the query's finalized checkpoint (read at `v`, honest or not) is
 known and lies on the endpoint's realized justified chain. -/
 theorem weak_finalizedReset_justifiedDom_of_synchrony
     (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
+    (hT : E.ScheduledPrefixPremises cfg ext)
     (hacc : FFGAccountabilityAssumptions cfg ext E)
     (hphase : Phase0SourceCoherence cfg ext)
     (hboundaryPhase : Phase0BoundarySourceCoherence cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
       (E := E) (anchor := B.anchor))
-    (hsync : PaperSafetySynchrony cfg ext E)
+    (hsync : NextSlotSynchronyPremises cfg ext E)
     {v : ValidatorIndex} {q : ℕ}
     (hHq : E.WithinHorizon cfg q) :
     ∀ w ∈ E.honest, ∀ m : ℕ, E.slot_start cfg (E.slot_at cfg q) ≤ m →
@@ -623,14 +623,14 @@ theorem weak_finalizedReset_justifiedDom_of_synchrony
 genuinely `SafeFrom` from the start of the query's own slot. -/
 theorem weak_finalizedReset_safeFrom_of_synchrony
     (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
+    (hT : E.ScheduledPrefixPremises cfg ext)
     (hacc : FFGAccountabilityAssumptions cfg ext E)
     (hphase : Phase0SourceCoherence cfg ext)
     (hboundaryPhase : Phase0BoundarySourceCoherence cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
       (E := E) (anchor := B.anchor))
-    (hsync : PaperSafetySynchrony cfg ext E)
+    (hsync : NextSlotSynchronyPremises cfg ext E)
     {v : ValidatorIndex} {q : ℕ}
     (hHq : E.WithinHorizon cfg q) :
     E.SafeFrom cfg ext (E.store cfg ext v q).finalized_checkpoint.root
@@ -655,7 +655,7 @@ ordinary phase/anchor floor already used throughout the accepted pipeline.
 
 Every field of `hW.base : SelectedMarginAssumptions` this corollary needs
 beyond the ratified floor is derived, not assumed:
-`ScheduledPrefixTrajectoryAssumptions.of_selectedMarginAssumptions` and
+`ScheduledPrefixPremises.of_selectedMarginAssumptions` and
 `SelectedMarginAssumptions.toFFGAccountabilityAssumptions` project the
 narrower trajectory and accountability interfaces the finalized-base
 machinery actually consumes. The FFG accountability statements
@@ -695,7 +695,7 @@ theorem weak_safeFrom_find_latest_confirmed_descendant_from_finalized
     E.SafeFrom cfg ext
       (Weak.find_latest_confirmed_descendant cfg ext fcr_store
         fcr_store.store.finalized_checkpoint.root) q := by
-  have hT := ScheduledPrefixTrajectoryAssumptions.of_selectedMarginAssumptions
+  have hT := ScheduledPrefixPremises.of_selectedMarginAssumptions
     cfg ext E hW.base hW.genesis
   have hacc := SelectedMarginAssumptions.toFFGAccountabilityAssumptions
     cfg ext E hW.base

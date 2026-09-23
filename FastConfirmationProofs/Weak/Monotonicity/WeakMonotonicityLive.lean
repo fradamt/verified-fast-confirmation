@@ -28,7 +28,7 @@ def AcceptedWeakObserverLivePremises (E : Execution Root)
     JustificationInterface cfg ext E ∧
     B.anchor = E.genesis_store.justified_checkpoint ∧
     E.TrustedAnchorBoundaryAligned (cfg := cfg) (anchor := B.anchor) ∧
-    E.AcceptedRealizedFinalizationDelay cfg ext B ∧
+    E.RealizedFinalizationDelay cfg ext B ∧
     B.state.PaperA32Inclusion cfg ext ∧
     (∃ P : AcceptedEpochCheckpointProjection B.anchor
         (E.AcceptedRoot cfg ext) B.state.C,
@@ -49,11 +49,11 @@ theorem accepted_weak_observer_to_strong_bundle
     {E : Execution Root} {v : ValidatorIndex}
     (hW : AcceptedWeakObserverLivePremises cfg ext E v)
     (hslots : 1 < cfg.slots_per_epoch) :
-    Nonempty (E.AcceptedActualFCRNextSlotSafetyAssumptions cfg ext) := by
+    Nonempty (E.NextSlotSafetyPremises cfg ext) := by
   rcases hW with ⟨B, _hji, hanchor, hboundary, hDelay, hpaper,
     P, V, hObs, hCbase, hfit⟩
-  let hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext :=
-    Execution.ScheduledPrefixTrajectoryAssumptions.of_selectedMarginAssumptions
+  let hT : E.ScheduledPrefixPremises cfg ext :=
+    Execution.ScheduledPrefixPremises.of_selectedMarginAssumptions
       cfg ext E hObs.base hObs.genesis
   let hC := Execution.AcceptedHistoricalA32CompletedPrefixCallSupplement.toCompletedPrefixCallAssumptions
     cfg ext E hCbase hObs.base

@@ -37,7 +37,7 @@ by `i`'s ground newest-by-`es` vote (a vote at `t ≤ es`, no later vote through
 `committee_assignment_unique`; the newest characterisation from the ubiquity
 domination `hdom`. `Endpoint`'s flag (`Bridge.recorded_lm_is_newest at (w,m)`). -/
 theorem recorded_lm_is_newest_at
-    (hhb : HonestBehavior cfg ext E) (hec : ExternalsCoherence cfg ext E)
+    (hhb : HonestBehavior cfg ext E) (hec : BeaconExternalsPremises cfg ext E)
     (hgen : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
       E.genesis_store = get_forkchoice_store cfg ast ablk)
     {w : ValidatorIndex} {m : ℕ}

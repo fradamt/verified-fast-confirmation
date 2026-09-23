@@ -22,7 +22,7 @@ This module proves that bound and derives
   no honest validator ever appears in an honest node's `equivocating_indices`.
   Genesis has an empty set (`get_forkchoice_store`); only `on_attester_slashing`
   adds, and inverting it against `HonestBehavior.not_slashable` /
-  `ExternalsCoherence.valid_attestation_honest` shows an honest validator is
+  `BeaconExternalsPremises.valid_attestation_honest` shows an honest validator is
   never among the added intersection.
 * **Step 2** (`get_equivocation_score_eq_weight`): the equivocation score over an
   honest store's balance source equals the ground-truth `E.weight` of the
@@ -31,14 +31,14 @@ This module proves that bound and derives
   span members are *disjoint* subsets of the non-honest span committee (Step 1
   places equivocators outside the honest set; supporters are non-equivocating by
   the score's own filter), so their combined weight is within
-  `estimate // 100 * CONFIRMATION_BYZANTINE_THRESHOLD` (`ByzantineBound.span_bound`).
+  `estimate // 100 * CONFIRMATION_BYZANTINE_THRESHOLD` (`ByzantineWeightPremises.span_bound`).
 * **Step 4** (`byz_score_le_adversarial_weight`, `honest_support_majority`): the
   arithmetic assembly — `byz + equiv ≤ max_adv` gives `byz ≤ compute_adversarial_weight`
   (= `get_adversarial_weight`), discharging `honest_support_majority_of_byz_le`'s
   hypothesis.
 
 No new behavioral assumptions enter beyond the existing records
-(`HonestBehavior`, `ExternalsCoherence`, `ByzantineBound`) and the sanctioned
+(`HonestBehavior`, `BeaconExternalsPremises`, `ByzantineWeightPremises`) and the sanctioned
 `∃`-genesis form.
 -/
 
@@ -163,7 +163,7 @@ never among the added (equivocating) intersection. Both attestations validate
 (handler guards) so, by `valid_attestation_honest`, they carry `v`'s own vote
 data; `not_slashable` then contradicts the handler's slashable guard. -/
 theorem on_attester_slashing_honest_not_added {E : Execution Root}
-    (hhb : HonestBehavior cfg ext E) (hec : ExternalsCoherence cfg ext E)
+    (hhb : HonestBehavior cfg ext E) (hec : BeaconExternalsPremises cfg ext E)
     {store store' : Store Root} {asl : AttesterSlashing Root}
     {v : ValidatorIndex} (hv : v ∈ E.honest)
     (hcausal : E.HonestCausalStore cfg ext store)
@@ -202,7 +202,7 @@ theorem on_attester_slashing_honest_not_added {E : Execution Root}
 attestation events leave `equivocating_indices` fixed; attester slashings ride
 across by `on_attester_slashing_honest_not_added`. -/
 theorem apply_event_honest_not_equiv {E : Execution Root}
-    (hhb : HonestBehavior cfg ext E) (hec : ExternalsCoherence cfg ext E)
+    (hhb : HonestBehavior cfg ext E) (hec : BeaconExternalsPremises cfg ext E)
     {v : ValidatorIndex} (hv : v ∈ E.honest)
     (store : Store Root) (e : Event Root) (hprev : v ∉ store.equivocating_indices)
     (hcausal : E.HonestCausalStore cfg ext store)
@@ -249,7 +249,7 @@ theorem apply_event_honest_not_equiv {E : Execution Root}
 /-- Folding a second's events preserves non-equivocation when each exact
 prefix belongs to an honest node inside the horizon. -/
 theorem honest_not_equiv_foldl {E : Execution Root}
-    (hhb : HonestBehavior cfg ext E) (hec : ExternalsCoherence cfg ext E)
+    (hhb : HonestBehavior cfg ext E) (hec : BeaconExternalsPremises cfg ext E)
     {v : ValidatorIndex} (hv : v ∈ E.honest) :
     ∀ (l : List (Event Root)) (s : Store Root), v ∉ s.equivocating_indices →
       UnknownBlockStatesDefault s →
@@ -275,7 +275,7 @@ theorem honest_not_equiv_foldl {E : Execution Root}
 verification horizon. Genesis starts empty; each scheduled prefix supplies
 its keyed validation-state reachability. -/
 theorem Execution.honest_not_equivocating {E : Execution Root}
-    (hhb : HonestBehavior cfg ext E) (hec : ExternalsCoherence cfg ext E)
+    (hhb : HonestBehavior cfg ext E) (hec : BeaconExternalsPremises cfg ext E)
     (hgen : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
       E.genesis_store = get_forkchoice_store cfg ast ablk)
     {v : ValidatorIndex} (hv : v ∈ E.honest) (w : ValidatorIndex) (n : ℕ)
@@ -323,7 +323,7 @@ def EquivActive (E : Execution Root) (store : Store Root) (bs : BeaconState Root
 equivocation score of the span `[sa, es]` equals the ground-truth weight of the
 active equivocating span members. -/
 theorem get_equivocation_score_eq_weight {E : Execution Root}
-    (hec : ExternalsCoherence cfg ext E) {v : ValidatorIndex} (hv : v ∈ E.honest) (n : ℕ)
+    (hec : BeaconExternalsPremises cfg ext E) {v : ValidatorIndex} (hv : v ∈ E.honest) (n : ℕ)
     (hnH : E.WithinHorizon cfg n)
     {bs : BeaconState Root} (hval : bs.validators = E.registry) (sa es : Slot)
     (hesH : E.SlotWithinHorizon cfg es) :
@@ -348,7 +348,7 @@ The Byzantine supporters (`AttSupporters ∩ non-honest`) and the active
 equivocators (`EquivActive`) are *disjoint* — supporters are non-equivocating by
 `AttSupporters`' own filter, equivocators are equivocating — and both sit inside
 the non-honest span committee (supporters by `hspan`; equivocators by Step 1,
-`hne`). So their combined ground-truth weight is within `ByzantineBound.span_bound`. -/
+`hne`). So their combined ground-truth weight is within `ByzantineWeightPremises.span_bound`. -/
 
 omit [LinearOrder Root] [Inhabited Root] in
 /-- Weight is superadditive-into a common superset over disjoint parts. -/
@@ -383,8 +383,8 @@ theorem byz_score_eq_weight {E : Execution Root} {store : Store Root} {bs : Beac
 supporters confined to the span (`hspan`), the Byzantine supporters' weight plus
 the equivocation score of `[sa, es]` is within
 `estimate // 100 * CONFIRMATION_BYZANTINE_THRESHOLD`. -/
-theorem byz_plus_equiv_le {E : Execution Root} (hec : ExternalsCoherence cfg ext E)
-    (hbb : ByzantineBound cfg E) {v : ValidatorIndex} (hv : v ∈ E.honest) {n : ℕ}
+theorem byz_plus_equiv_le {E : Execution Root} (hec : BeaconExternalsPremises cfg ext E)
+    (hbb : ByzantineWeightPremises cfg E) {v : ValidatorIndex} (hv : v ∈ E.honest) {n : ℕ}
     (hnH : E.WithinHorizon cfg n)
     {bs : BeaconState Root} {b : Root}
     (hval : bs.validators = E.registry)
@@ -447,8 +447,8 @@ branches (`start_slot_at_block_epoch_le`), so `supporter_mem_span_committee`
 confines every non-honest supporter to it; Step 3 then bounds
 `byz + equiv ≤ max_adv`, and the guard arithmetic gives `byz ≤ get_adversarial_weight`. -/
 theorem byz_score_le_adversarial_weight {E : Execution Root}
-    (hhb : HonestBehavior cfg ext E) (hec : ExternalsCoherence cfg ext E)
-    (hbb : ByzantineBound cfg E)
+    (hhb : HonestBehavior cfg ext E) (hec : BeaconExternalsPremises cfg ext E)
+    (hbb : ByzantineWeightPremises cfg E)
     (hgen : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
       E.genesis_store = get_forkchoice_store cfg ast ablk)
     {v : ValidatorIndex} (hv : v ∈ E.honest) {n : ℕ}
@@ -517,8 +517,8 @@ proposer_score + 1`. This closes `QuorumAccounting`'s obligation: the Byzantine 
 (`byz ≤ get_adversarial_weight`, `byz_score_le_adversarial_weight`) is now
 discharged from the assumption records, so no `hbyz` hypothesis remains. -/
 theorem honest_support_majority {E : Execution Root}
-    (hhb : HonestBehavior cfg ext E) (hec : ExternalsCoherence cfg ext E)
-    (hbb : ByzantineBound cfg E)
+    (hhb : HonestBehavior cfg ext E) (hec : BeaconExternalsPremises cfg ext E)
+    (hbb : ByzantineWeightPremises cfg E)
     (hgen : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
       E.genesis_store = get_forkchoice_store cfg ast ablk)
     {v : ValidatorIndex} (hv : v ∈ E.honest) {n : ℕ}

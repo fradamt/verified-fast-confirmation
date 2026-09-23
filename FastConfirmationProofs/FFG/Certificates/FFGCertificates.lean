@@ -62,7 +62,7 @@ same-epoch targets would make them slashable.
 
 The universe-weight and Byzantine-fraction premises are deliberately explicit;
 they are derived for a horizon-bounded epoch from committee activity and
-`ByzantineBound.span_fraction` at the model boundary. -/
+`ByzantineWeightPremises.span_fraction` at the model boundary. -/
 theorem root_eq_of_same_epoch
     {E : Execution Root} (hhb : HonestBehavior cfg (ext := ext) E)
     {s c s' c' : Checkpoint Root}

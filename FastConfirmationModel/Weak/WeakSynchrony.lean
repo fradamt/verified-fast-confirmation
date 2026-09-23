@@ -16,7 +16,7 @@ honest *and not eclipsed* (eclipsing a validator is weaker than controlling
 it, so eclipsed validators are simply accounted inside the Byzantine budget).
 Synchrony holds **between honest validators only**: a message produced by an
 honest validator is received by every honest validator within the delay bound.
-The `Synchrony`/`PaperSafetySynchrony` records in `Assumptions.lean` already
+The `Synchrony`/`NextSlotSynchronyPremises` records in `Assumptions.lean` already
 quantify senders/holders and receivers over `E.honest`, so they are reused
 verbatim. The current weak safety statements allow any observer index,
 including an honest one. Their premise bundle has no dedicated observer

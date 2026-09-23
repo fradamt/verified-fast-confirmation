@@ -15,7 +15,7 @@ public import FastConfirmationProofs.FFG.Certificates.PaperCheckpointInclusionSt
 The contract records which once stood here — the proviso-conditional
 `SelectedTraceFFGStateRealizationFor` state realization and its two filter
 consequences — were deleted with the rest of the
-`SelectedHelperProvisosAt` surface; see `docs/weak-final-wave.md` §8.1.
+`FCRPredictionSupportAt` surface; see `docs/weak-final-wave.md` §8.1.
 
 What remains are the shared A3.2 vocabulary pieces used by the live selected
 and weak trunks:

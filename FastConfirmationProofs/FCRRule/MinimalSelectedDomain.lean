@@ -119,7 +119,7 @@ variable (E : Execution Root)
 /-- `StoreDomainK` from the local justified-root knownness fact. -/
 theorem store_domainK_of_selectedMarginDomain
     (hwf : WellFormedExecution E)
-    (hec : ExternalsCoherence cfg ext E)
+    (hec : BeaconExternalsPremises cfg ext E)
     (hgen : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
       E.genesis_store = get_forkchoice_store cfg ast ablk ∧
       ast.slot = ablk.message.slot ∧ ablk.message.parent_root ≠ ablk.root)
@@ -145,7 +145,7 @@ theorem head_root_known_of_selectedMarginDomain
 
 /-- Endpoint registry identity from the local justified-cache fact. -/
 theorem hval_of_selectedMarginDomain
-    (hec : ExternalsCoherence cfg ext E)
+    (hec : BeaconExternalsPremises cfg ext E)
     (hgen : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
       E.genesis_store = get_forkchoice_store cfg ast ablk)
     (hdom : SelectedMarginDomain cfg ext E)

@@ -77,32 +77,32 @@ structure AcceptedHistoricalA32OriginCallAt
     (target : Checkpoint Root) : Prop where
   node_honest : node ∈ E.honest
   second_horizon : E.WithinHorizon cfg (second + 1)
-  is_call : E.IsFCRCallAt cfg ext node second
-  origin_known : origin ∈ (E.fcrStep cfg ext node second).store.block_roots
+  is_call : E.IsScheduledFCRCallAt cfg ext node second
+  origin_known : origin ∈ (E.fcrStoreAtCall cfg ext node second).store.block_roots
   origin_parent_known :
-    ((E.fcrStep cfg ext node second).store.blocks origin).parent_root ∈
-      (E.fcrStep cfg ext node second).store.block_roots
+    ((E.fcrStoreAtCall cfg ext node second).store.blocks origin).parent_root ∈
+      (E.fcrStoreAtCall cfg ext node second).store.block_roots
   origin_confirmed : is_one_confirmed cfg ext
-    (E.fcrStep cfg ext node second).store
-    (get_current_balance_source (E.fcrStep cfg ext node second)) origin = true
-  origin_current : get_block_epoch cfg (E.fcrStep cfg ext node second).store
+    (E.fcrStoreAtCall cfg ext node second).store
+    (get_current_balance_source (E.fcrStoreAtCall cfg ext node second)) origin = true
+  origin_current : get_block_epoch cfg (E.fcrStoreAtCall cfg ext node second).store
       origin =
-    get_current_store_epoch cfg (E.fcrStep cfg ext node second).store
-  head_descends : is_ancestor (E.fcrStep cfg ext node second).store
-    (get_head cfg (E.fcrStep cfg ext node second).store)
+    get_current_store_epoch cfg (E.fcrStoreAtCall cfg ext node second).store
+  head_descends : is_ancestor (E.fcrStoreAtCall cfg ext node second).store
+    (get_head cfg (E.fcrStoreAtCall cfg ext node second).store)
     (get_node_for_root origin) = true
   /-- The origin *is* the root this call writes back. -/
   origin_writeback : E.confirmed cfg ext node (second + 1) = origin
   /-- …and the write-back strictly advanced.  Both facts hold at a crossing by
   `AcceptedCandidateHistoryRecurrence`'s `result_writeback` and
-  `CurrentTargetAcceptedEdge.result_ne_input`; together they are exactly the
+  `CurrentTargetSelectedEdge.result_ne_input`; together they are exactly the
   shape `Execution.AcceptedFoldSafetyAt.callSecond` consumes, which is how the
   origin's safety is recovered from a strictly earlier fold output. -/
   origin_strict : origin ≠
     (E.getLatestConfirmedTraceAt cfg ext node second).afterObserved
   gate : will_current_target_be_justified cfg ext
-    (E.fcrStep cfg ext node second).store = true
-  target_eq : get_current_target cfg (E.fcrStep cfg ext node second).store =
+    (E.fcrStoreAtCall cfg ext node second).store = true
+  target_eq : get_current_target cfg (E.fcrStoreAtCall cfg ext node second).store =
     target
 
 /-- Existential wrapper: *some* crossing call produced this checkpoint.
@@ -132,7 +132,7 @@ second `n` necessarily happened at an earlier call, because the
 (§2.4).  An eager variant would need `k = n` and would be circular. -/
 def PriorStrictCallWriteBackSafe (n : ℕ) : Prop :=
   ∀ i ∈ E.honest, ∀ k : ℕ, k < n → E.WithinHorizon cfg (k + 1) →
-    E.IsFCRCallAt cfg ext i k →
+    E.IsScheduledFCRCallAt cfg ext i k →
     E.confirmed cfg ext i (k + 1) ≠
       (E.getLatestConfirmedTraceAt cfg ext i k).afterObserved →
       E.SafeFrom cfg ext (E.confirmed cfg ext i (k + 1)) (k + 1)
@@ -158,7 +158,7 @@ about its own fold step; the consuming call discharges it from `hprior` for
 def CallWriteBackEngineSafeUpTo (v : ValidatorIndex) (N : ℕ) (cap : Slot) :
     Prop :=
   ∀ k : ℕ, k + 1 ≤ N → E.WithinHorizon cfg (k + 1) →
-    E.IsFCRCallAt cfg ext v k →
+    E.IsScheduledFCRCallAt cfg ext v k →
     E.confirmed cfg ext v (k + 1) ≠
       (E.getLatestConfirmedTraceAt cfg ext v k).afterObserved →
       EngineInv cfg ext E (E.confirmed cfg ext v (k + 1)) (k + 1) cap
@@ -185,7 +185,7 @@ the endpoint induction supplies in capped form. -/
 theorem callWriteBackEngineSafeUpTo_of_prior_and_current
     {v : ValidatorIndex} (hv : v ∈ E.honest) {n : ℕ} {cap : Slot}
     (hprior : E.PriorStrictCallWriteBackSafe cfg ext n)
-    (hcurrent : E.WithinHorizon cfg (n + 1) → E.IsFCRCallAt cfg ext v n →
+    (hcurrent : E.WithinHorizon cfg (n + 1) → E.IsScheduledFCRCallAt cfg ext v n →
       E.confirmed cfg ext v (n + 1) ≠
         (E.getLatestConfirmedTraceAt cfg ext v n).afterObserved →
         EngineInv cfg ext E (E.confirmed cfg ext v (n + 1)) (n + 1) cap) :
@@ -235,7 +235,7 @@ theorem honestVotesSupportTarget_capped
     {cap : Slot}
     (heng : EngineInv cfg ext E origin (second + 1) cap)
     (hcap : compute_start_slot_at_epoch cfg
-      (get_current_store_epoch cfg (E.fcrStep cfg ext node second).store + 1) ≤
+      (get_current_store_epoch cfg (E.fcrStoreAtCall cfg ext node second).store + 1) ≤
       cap) :
     HonestVotesSupportTarget cfg E target (second + 1) := by
   classical
@@ -250,7 +250,7 @@ theorem honestVotesSupportTarget_capped
     ⟨ast, ablk, hgenEq⟩
   set q : ℕ := second + 1 with hq
   have hqH : E.WithinHorizon cfg q := h.second_horizon
-  have hqStore : (E.fcrStep cfg ext node second).store =
+  have hqStore : (E.fcrStoreAtCall cfg ext node second).store =
       E.store cfg ext node q := E.fcrStep_store cfg ext node second
   -- the query second is the first second of its slot
   have hqStart : E.slot_start cfg (E.slot_at cfg q) = q := by
@@ -267,7 +267,7 @@ theorem honestVotesSupportTarget_capped
     fun w m => E.trustedAnchor_epoch_le_currentEpoch cfg ext hA hanchor
       hboundary w m
   set epochQ : Epoch :=
-    get_current_store_epoch cfg (E.fcrStep cfg ext node second).store
+    get_current_store_epoch cfg (E.fcrStoreAtCall cfg ext node second).store
     with hepochQ
   have hanchorLeQ : anchor.epoch ≤ epochQ := by
     rw [hepochQ, hqStore]
@@ -276,22 +276,22 @@ theorem honestVotesSupportTarget_capped
   obtain ⟨hparentQ, _hwalkQ, _hjustQ⟩ :=
     E.store_domainK_of_selectedMarginDomain cfg ext hA.wellFormed
       hA.externals_coherence hgen hA.domain node h.node_honest q hqH
-  have hqueryParent : ParentSlotLt (E.fcrStep cfg ext node second).store := by
+  have hqueryParent : ParentSlotLt (E.fcrStoreAtCall cfg ext node second).store := by
     rw [hqStore]; exact hparentQ
   have hheadQ : (get_head cfg (E.store cfg ext node q)).root ∈
       (E.store cfg ext node q).block_roots :=
     E.head_root_known_of_selectedMarginDomain cfg ext hA.domain
       h.node_honest q hqH
-  have hqueryHeadWalk : WalkKnown (E.fcrStep cfg ext node second).store
+  have hqueryHeadWalk : WalkKnown (E.fcrStoreAtCall cfg ext node second).store
       (compute_start_slot_at_epoch cfg epochQ)
-      (get_head cfg (E.fcrStep cfg ext node second).store).root := by
+      (get_head cfg (E.fcrStoreAtCall cfg ext node second).store).root := by
     rw [hqStore]
     exact E.trustedAnchor_boundaryWalkAtEpoch cfg ext hA hanchor hboundary
       node q (by rw [hepochQ, hqStore] at hanchorLeQ ⊢; exact hanchorLeQ)
       hheadQ
   have horiginKnownQ : origin ∈ (E.store cfg ext node q).block_roots := by
     rw [← hqStore]; exact h.origin_known
-  have hqueryWalk : WalkKnown (E.fcrStep cfg ext node second).store
+  have hqueryWalk : WalkKnown (E.fcrStoreAtCall cfg ext node second).store
       (compute_start_slot_at_epoch cfg epochQ) origin := by
     rw [hqStore]
     exact E.trustedAnchor_boundaryWalkAtEpoch cfg ext hA hanchor hboundary
@@ -328,7 +328,7 @@ theorem honestVotesSupportTarget_capped
       E.WithinHorizon cfg k → origin ∈ (E.store cfg ext i k).block_roots := by
     intro i hi k hqk hHk
     refine E.confirmed_known_at_all_honest_endpoints_minimal cfg ext hA
-      node h.node_honest q (E.fcrStep cfg ext node second) hqStore origin
+      node h.node_honest q (E.fcrStoreAtCall cfg ext node second) hqStore origin
       hqH horiginKnownQ ?_ ?_ i hi k (E.slot_at_mono cfg hqk) hHk
     · rw [← hqStore]; exact h.origin_parent_known
     · exact h.origin_confirmed
@@ -341,9 +341,9 @@ theorem honestVotesSupportTarget_capped
       i k hanchorLeQ (horiginKnownAt i hi k hqk hHk)
   have hagree : ∀ i ∈ E.honest, ∀ k : ℕ, q ≤ k → E.WithinHorizon cfg k →
       ∀ r : Root, r ∈ (E.store cfg ext i k).block_roots →
-        r ∈ (E.fcrStep cfg ext node second).store.block_roots →
+        r ∈ (E.fcrStoreAtCall cfg ext node second).store.block_roots →
         (E.store cfg ext i k).blocks r =
-          (E.fcrStep cfg ext node second).store.blocks r := by
+          (E.fcrStoreAtCall cfg ext node second).store.blocks r := by
     intro i _hi k _hqk _hHk r hrK hrQ
     rw [hqStore] at hrQ ⊢
     exact hA.wellFormed.blocks_agree (E.blockProvenance cfg ext i k)
@@ -352,7 +352,7 @@ theorem honestVotesSupportTarget_capped
   have hsupport := E.honestVotesSupportTarget_of_engineInv_currentEpochCandidate
     cfg ext hA.honest_behavior hA.externals_coherence.process_slots_slot
     hA.whole_seconds hgenTime
-    (query := E.fcrStep cfg ext node second) (b := origin) (q := q)
+    (query := E.fcrStoreAtCall cfg ext node second) (b := origin) (q := q)
     hqH hqStart heng hcap hqueryParent h.head_descends h.origin_current
     hqueryHeadWalk hqueryWalk hvoterHeadSlot hvoterParent hvoterHeadWalk
     hvoterWalk hagree
@@ -413,12 +413,12 @@ theorem gateRealization_capped
     {cap : Slot}
     (heng : EngineInv cfg ext E origin (second + 1) cap)
     (hcap : compute_start_slot_at_epoch cfg
-      (get_current_store_epoch cfg (E.fcrStep cfg ext node second).store + 1) ≤
+      (get_current_store_epoch cfg (E.fcrStoreAtCall cfg ext node second).store + 1) ≤
       cap)
     (hproducer : E.AcceptedCurrentTargetA32GateRealizationProducerAt cfg ext
-      anchor S (second + 1) (E.fcrStep cfg ext node second)) :
+      anchor S (second + 1) (E.fcrStoreAtCall cfg ext node second)) :
     AcceptedCurrentTargetA32GateRealization cfg ext E anchor S
-      (E.fcrStep cfg ext node second).store := by
+      (E.fcrStoreAtCall cfg ext node second).store := by
   refine hproducer h.gate ?_
   rw [h.target_eq]
   exact h.honestVotesSupportTarget_capped cfg ext E hA hanchor hboundary heng
@@ -437,9 +437,9 @@ theorem gateRealization
     (h : E.AcceptedHistoricalA32OriginCallAt cfg ext node second origin target)
     (hsafe : E.SafeFrom cfg ext origin (second + 1))
     (hproducer : E.AcceptedCurrentTargetA32GateRealizationProducerAt cfg ext
-      anchor S (second + 1) (E.fcrStep cfg ext node second)) :
+      anchor S (second + 1) (E.fcrStoreAtCall cfg ext node second)) :
     AcceptedCurrentTargetA32GateRealization cfg ext E anchor S
-      (E.fcrStep cfg ext node second).store :=
+      (E.fcrStoreAtCall cfg ext node second).store :=
   h.gateRealization_capped cfg ext E hA hanchor hboundary
     (E.engineInv_of_safeFrom cfg ext hsafe) (le_refl _) hproducer
 
@@ -460,12 +460,12 @@ theorem fixedSourceGateRealization_capped
     {cap : Slot}
     (heng : EngineInv cfg ext E origin (second + 1) cap)
     (hcap : compute_start_slot_at_epoch cfg
-      (get_current_store_epoch cfg (E.fcrStep cfg ext node second).store + 1) ≤
+      (get_current_store_epoch cfg (E.fcrStoreAtCall cfg ext node second).store + 1) ≤
       cap)
     (hproducer : E.AcceptedFixedSourceCurrentTargetA32GateRealizationProducerAt
-      cfg ext anchor S (second + 1) (E.fcrStep cfg ext node second) origin) :
+      cfg ext anchor S (second + 1) (E.fcrStoreAtCall cfg ext node second) origin) :
     AcceptedFixedSourceCurrentTargetA32GateRealization cfg ext E anchor S
-      (E.fcrStep cfg ext node second).store origin := by
+      (E.fcrStoreAtCall cfg ext node second).store origin := by
   refine hproducer h.gate ?_
   rw [h.target_eq]
   exact h.honestVotesSupportTarget_capped cfg ext E hA hanchor hboundary heng
@@ -491,7 +491,7 @@ theorem certified
     (h : E.AcceptedHistoricalA32OriginCallAt cfg ext node second origin target)
     (hsafe : E.SafeFrom cfg ext origin (second + 1))
     (hproducer : E.AcceptedCurrentTargetA32GateRealizationProducerAt cfg ext
-      anchor S (second + 1) (E.fcrStep cfg ext node second)) :
+      anchor S (second + 1) (E.fcrStoreAtCall cfg ext node second)) :
     Nonempty (CertifiedJustified cfg E anchor target) := by
   have hreal := h.gateRealization cfg ext E hA hanchor hboundary hsafe hproducer
   have hcert := hreal.certified
@@ -513,10 +513,10 @@ theorem certifiedFixedSource_capped
     {cap : Slot}
     (heng : EngineInv cfg ext E origin (second + 1) cap)
     (hcap : compute_start_slot_at_epoch cfg
-      (get_current_store_epoch cfg (E.fcrStep cfg ext node second).store + 1) ≤
+      (get_current_store_epoch cfg (E.fcrStoreAtCall cfg ext node second).store + 1) ≤
       cap)
     (hproducer : E.AcceptedFixedSourceCurrentTargetA32GateRealizationProducerAt
-      cfg ext anchor S (second + 1) (E.fcrStep cfg ext node second) origin) :
+      cfg ext anchor S (second + 1) (E.fcrStoreAtCall cfg ext node second) origin) :
     Nonempty (CertifiedJustified cfg E anchor target) := by
   have hreal := h.fixedSourceGateRealization_capped cfg ext E hA hanchor
     hboundary heng hcap hproducer
@@ -541,14 +541,14 @@ theorem deferredSupport_capped
     (h : E.AcceptedHistoricalA32OriginCallAt cfg ext node second origin
       (B.state.C origin e))
     (horiginEpoch : get_block_epoch cfg
-      (E.fcrStep cfg ext node second).store origin = e)
+      (E.fcrStoreAtCall cfg ext node second).store origin = e)
     {cap : Slot}
     (heng : EngineInv cfg ext E origin (second + 1) cap)
     (hcap : compute_start_slot_at_epoch cfg
-      (get_current_store_epoch cfg (E.fcrStep cfg ext node second).store + 1) ≤
+      (get_current_store_epoch cfg (E.fcrStoreAtCall cfg ext node second).store + 1) ≤
       cap)
     (hproducer : E.AcceptedFixedSourceCurrentTargetA32GateRealizationProducerAt
-      cfg ext B.anchor B.state (second + 1) (E.fcrStep cfg ext node second)
+      cfg ext B.anchor B.state (second + 1) (E.fcrStoreAtCall cfg ext node second)
       origin) :
     B.state.C origin e = B.anchor ∨
       Nonempty (E.AcceptedHistoricalA32QuorumAt cfg ext B origin e) := by
@@ -703,7 +703,7 @@ theorem lazyCert
       (B.state.C origin e))
     {N : ℕ} (hlt : second < N)
     (hproducer : E.AcceptedFixedSourceCurrentTargetA32GateRealizationProducerAt
-      cfg ext B.anchor B.state (second + 1) (E.fcrStep cfg ext node second)
+      cfg ext B.anchor B.state (second + 1) (E.fcrStoreAtCall cfg ext node second)
       origin) :
     E.LazyCertAt cfg ext B N (B.state.C origin e) := by
   intro hprior
@@ -728,16 +728,16 @@ theorem lazySupport
     (h : E.AcceptedHistoricalA32OriginCallAt cfg ext node second origin
       (B.state.C origin e))
     (horiginEpoch : get_block_epoch cfg
-      (E.fcrStep cfg ext node second).store origin = e)
+      (E.fcrStoreAtCall cfg ext node second).store origin = e)
     {N : ℕ} (hle : second + 1 ≤ N)
     (hproducer : E.AcceptedFixedSourceCurrentTargetA32GateRealizationProducerAt
-      cfg ext B.anchor B.state (second + 1) (E.fcrStep cfg ext node second)
+      cfg ext B.anchor B.state (second + 1) (E.fcrStoreAtCall cfg ext node second)
       origin) :
     E.LazySupportAt cfg ext B node N origin e := by
   intro w hw m hmH _hlate hsupply
   -- the origin call's store is current at epoch `e`
   have hcurrent : get_current_store_epoch cfg
-      (E.fcrStep cfg ext node second).store = e :=
+      (E.fcrStoreAtCall cfg ext node second).store = e :=
     h.origin_current.symm.trans horiginEpoch
   -- the capped fold supply at the origin call's own second
   have heng0 := hsupply second hle h.second_horizon h.is_call
@@ -746,7 +746,7 @@ theorem lazySupport
       (compute_start_slot_at_epoch cfg (e + 1)) := by
     rwa [h.origin_writeback] at heng0
   have hcap : compute_start_slot_at_epoch cfg
-      (get_current_store_epoch cfg (E.fcrStep cfg ext node second).store + 1) ≤
+      (get_current_store_epoch cfg (E.fcrStoreAtCall cfg ext node second).store + 1) ≤
       compute_start_slot_at_epoch cfg (e + 1) := by
     rw [hcurrent]
   exact h.deferredSupport_capped cfg ext E hA B hanchor hboundary

@@ -440,7 +440,7 @@ variable {τ : Timing} {gj : ViewFamily n P → Validator n → Time → Anchor 
     `StaticBalances`, `NeverFiltered` trivial), and using that `StaticBalances` pins every
     honest fork-choice anchor to the engine anchor, yields `b ≼ forkChoiceHead` for every
     honest validator from time `st s'` on. -/
-theorem proof_Theorem1_Safety : Theorem1_Safety (n := n) (P := P) τ gj := by
+theorem proof_Theorem1_Safety : ConfirmedBlockSafety (n := n) (P := P) τ gj := by
   intro fm cm pb boost 𝒱 hSync hNF hHB hVV hcm hWFB hpb hsb
     v b t hv _hsg hconf
   -- `b ≼ B := highestConfirmedSinceEpoch …`.
@@ -511,7 +511,7 @@ theorem proof_Theorem1_Safety : Theorem1_Safety (n := n) (P := P) τ gj := by
       (Lemma 8, Assumption 4) makes `B` safe at `st(slot t')`, a candidate slot, again giving
       `slot B ≤ slot B''`.
     Both `B`, `B''` are on `v`'s head at `t'`, so `slot B ≤ slot B''` gives `B ≼ B''`. -/
-theorem proof_Theorem1_Monotonicity : Theorem1_Monotonicity (n := n) (P := P) τ gj := by
+theorem proof_Theorem1_Monotonicity : ConfirmedBlockMonotonicity (n := n) (P := P) τ gj := by
   intro fm cm pb boost 𝒱 hSync hNF hHB hVV hcm hWFB hpb hsb hβ4
     v b t t' hv hsg hle hcover hconf
   classical

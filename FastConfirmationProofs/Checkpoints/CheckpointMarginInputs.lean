@@ -151,7 +151,7 @@ theorem hfresh_of_engine (hhb : HonestBehavior cfg ext E) (hwf : WellFormedExecu
 /-- **`hSmono` from the engine inputs** — `EconomicCore.hSmono_of_fresh` composed with
 `hfresh_of_engine`. Closes the pre-`T1` honest-support growth to the head-safety IH and
 the block-relay domain conditions. -/
-theorem hSmono_of_engine (hhb : HonestBehavior cfg ext E) (hec : ExternalsCoherence cfg ext E)
+theorem hSmono_of_engine (hhb : HonestBehavior cfg ext E) (hec : BeaconExternalsPremises cfg ext E)
     (hwf : WellFormedExecution E)
     (v₀ : ValidatorIndex) (n₀ : ℕ) (b' : Root) (lo σ' : Slot)
     (hσ1H : E.SlotWithinHorizon cfg (σ' + 1))
@@ -169,7 +169,7 @@ theorem hSmono_of_engine (hhb : HonestBehavior cfg ext E) (hec : ExternalsCohere
 /-- **`hXmono` from the engine inputs** — `EconomicCore.hXmono_of_fresh` composed with
 `hfresh_of_engine`. Closes the pre-`T1` sibling-stuck antitonicity, `Xclass`-exit leg
 included. -/
-theorem hXmono_of_engine (hhb : HonestBehavior cfg ext E) (hec : ExternalsCoherence cfg ext E)
+theorem hXmono_of_engine (hhb : HonestBehavior cfg ext E) (hec : BeaconExternalsPremises cfg ext E)
     (hwf : WellFormedExecution E)
     (v₀ : ValidatorIndex) (n₀ : ℕ) (b' : Root) (lo σ' : Slot)
     (hσ1H : E.SlotWithinHorizon cfg (σ' + 1))

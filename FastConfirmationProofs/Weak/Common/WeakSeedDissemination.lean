@@ -199,7 +199,7 @@ the `hfilter` design (`AcceptedEarlyPhaseSourceWiring.lean`'s
 `fcrStep_previous_endpointRecentSourceSeed`) is exactly this call. -/
 theorem witnessSeed_known_at_all_honest_endpoints_at_observer
     {E : Execution Root} (hA : SelectedMarginAssumptions cfg ext E)
-    (hsync : PaperSafetySynchrony cfg ext E) (hji : JustificationInterface cfg ext E)
+    (hsync : NextSlotSynchronyPremises cfg ext E) (hji : JustificationInterface cfg ext E)
     {obs : ValidatorIndex} {q : ℕ} (hqH : E.WithinHorizon cfg q)
     (hcomm : E.PrefixCommitteeAgreement cfg ext (E.store cfg ext obs q))
     {fcrStore : FastConfirmationStore Root}
@@ -237,7 +237,7 @@ ancestor of the witness rather than the witness itself), but landed as the
 safety net the design calls for. -/
 theorem witnessSeed_ancestor_known_at_all_honest_endpoints_at_observer
     {E : Execution Root} (hA : SelectedMarginAssumptions cfg ext E)
-    (hsync : PaperSafetySynchrony cfg ext E) (hji : JustificationInterface cfg ext E)
+    (hsync : NextSlotSynchronyPremises cfg ext E) (hji : JustificationInterface cfg ext E)
     {obs : ValidatorIndex} {q : ℕ} (hqH : E.WithinHorizon cfg q)
     (hcomm : E.PrefixCommitteeAgreement cfg ext (E.store cfg ext obs q))
     {fcrStore : FastConfirmationStore Root}
@@ -289,7 +289,7 @@ design (`fcrStep_currentNext_endpointRecentSourceSeed`'s query-head leg, and
 `previousOffStart_queryGUEpochSeed`'s `head` arm) are exactly this call. -/
 theorem headSeed_known_at_all_honest_endpoints_at_observer
     {E : Execution Root} (hA : SelectedMarginAssumptions cfg ext E)
-    (hsync : PaperSafetySynchrony cfg ext E) (hji : JustificationInterface cfg ext E)
+    (hsync : NextSlotSynchronyPremises cfg ext E) (hji : JustificationInterface cfg ext E)
     {obs : ValidatorIndex} {q : ℕ} (hqH : E.WithinHorizon cfg q)
     (hcoh : E.ObserverCoherence cfg ext obs)
     {fcrStore : FastConfirmationStore Root}
@@ -335,7 +335,7 @@ is arbitrary, which is what a relay site with its own `WalkKnown` witness
 needs. -/
 theorem headSeed_ancestor_known_at_all_honest_endpoints_at_observer
     {E : Execution Root} (hA : SelectedMarginAssumptions cfg ext E)
-    (hsync : PaperSafetySynchrony cfg ext E) (hji : JustificationInterface cfg ext E)
+    (hsync : NextSlotSynchronyPremises cfg ext E) (hji : JustificationInterface cfg ext E)
     {obs : ValidatorIndex} {q : ℕ} (hqH : E.WithinHorizon cfg q)
     (hcoh : E.ObserverCoherence cfg ext obs)
     {fcrStore : FastConfirmationStore Root}

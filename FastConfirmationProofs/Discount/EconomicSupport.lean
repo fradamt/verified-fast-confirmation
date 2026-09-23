@@ -71,7 +71,7 @@ theorem AncestorOrVoteless_succ_of_novote (v₀ : ValidatorIndex) (n₀ : ℕ) (
 span lo σ'` is assigned at some slot `s ∈ [lo, σ']`; `committee_assignment_unique` (same
 epoch) forbids a second assignment at `σ' + 1`, so `votes_assigned` (honest) forces
 `vote i (σ' + 1) = none`. -/
-theorem novote_succ_of_span (hhb : HonestBehavior cfg ext E) (hec : ExternalsCoherence cfg ext E)
+theorem novote_succ_of_span (hhb : HonestBehavior cfg ext E) (hec : BeaconExternalsPremises cfg ext E)
     {i : ValidatorIndex} (hih : i ∈ E.honest) {lo σ' : Slot}
     (hmem : i ∈ E.span_committee lo σ')
     (hsame : ∀ t : Slot, lo ≤ t → t ≤ σ' →
@@ -98,7 +98,7 @@ honest support grows by (at least) the fresh honest committee: `Sclass σ'` lift
 honest window growth `G := (span lo (σ'+1) \ span lo σ').filter honest` lands in
 `Sclass (σ' + 1)` by `hfresh`, disjointly. Hence
 `Sval σ' + weight G ≤ Sval (σ' + 1)` — exactly `hdeltas_of_monotone`'s `hSmono`. -/
-theorem hSmono_of_fresh (hhb : HonestBehavior cfg ext E) (hec : ExternalsCoherence cfg ext E)
+theorem hSmono_of_fresh (hhb : HonestBehavior cfg ext E) (hec : BeaconExternalsPremises cfg ext E)
     (v₀ : ValidatorIndex) (n₀ : ℕ) (b' : Root) (lo σ' : Slot)
     (hsame : ∀ t : Slot, lo ≤ t → t ≤ σ' →
       compute_epoch_at_slot cfg t = compute_epoch_at_slot cfg (σ' + 1))
@@ -141,7 +141,7 @@ sibling-stuck honest class never grows: `Xclass (σ'+1) ⊆ Xclass σ'`. A membe
 so it is a non-fresh window member; as such it casts no vote at `σ' + 1`, so both class
 predicates are preserved backwards. Hence `Xval (σ' + 1) ≤ Xval σ'` — `hdeltas_of_monotone`'s
 `hXmono`. -/
-theorem hXmono_of_fresh (hhb : HonestBehavior cfg ext E) (hec : ExternalsCoherence cfg ext E)
+theorem hXmono_of_fresh (hhb : HonestBehavior cfg ext E) (hec : BeaconExternalsPremises cfg ext E)
     (v₀ : ValidatorIndex) (n₀ : ℕ) (b' : Root) (lo σ' : Slot)
     (hsame : ∀ t : Slot, lo ≤ t → t ≤ σ' →
       compute_epoch_at_slot cfg t = compute_epoch_at_slot cfg (σ' + 1))

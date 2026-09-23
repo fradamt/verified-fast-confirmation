@@ -305,7 +305,7 @@ namespace Execution
 variable {E : Execution Root}
 
 theorem ScheduledEventPrefix.latestMessageProvenance_of_observer_validity
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
+    (hT : E.ScheduledPrefixPremises cfg ext)
     (p : E.ScheduledEventPrefix)
     (hvalid : E.ObserverValidity cfg ext p.node)
     (hn : E.WithinHorizon cfg (p.previousSecond + 1)) :

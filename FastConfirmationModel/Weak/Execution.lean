@@ -33,7 +33,7 @@ def weakConfirmed (v : ValidatorIndex) (n : ℕ) : Root :=
 /-- The weak variable-updated FCR store at a slot boundary: `E.weakFcr v n`
 re-seated on the current store and run through
 `Weak.update_fast_confirmation_variables` (rule delta 5), before
-`Weak.get_latest_confirmed` is evaluated. Mirrors `Execution.fcrStep` with the
+`Weak.get_latest_confirmed` is evaluated. Mirrors `Execution.fcrStoreAtCall` with the
 weak bookkeeping function substituted (hfilter architecture correction: the
 two are not the same function — `Weak.update_fast_confirmation_variables`
 also needs `ext`, for the certificate gate). -/

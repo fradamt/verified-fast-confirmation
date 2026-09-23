@@ -166,7 +166,7 @@ private theorem Execution.AcceptedBlockLastWriterCarrier.parent_known
 uses the parent's earlier slot; each accepted child state is a deterministic
 `state_transition` result on that parent and the root-committed block. -/
 theorem Execution.causal_block_states_agree (E : Execution Root)
-    (hwf : WellFormedExecution E) (hec : ExternalsCoherence cfg ext E)
+    (hwf : WellFormedExecution E) (hec : BeaconExternalsPremises cfg ext E)
     {s t : Store Root} (hs : E.CausalStore cfg ext s)
     (ht : E.CausalStore cfg ext t) {r : Root}
     (hrs : r ∈ s.block_roots) (hrt : r ∈ t.block_roots) :

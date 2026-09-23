@@ -19,7 +19,7 @@ identical.
 
 **The substitutions**, all of them already landed:
 
-* `E.fcrStep` / `E.getLatestConfirmedTraceAt` / `E.confirmed` →
+* `E.fcrStoreAtCall` / `E.getLatestConfirmedTraceAt` / `E.confirmed` →
   `E.weakFcrStep` / `E.weakGetLatestConfirmedTraceAt` / `E.weakConfirmed`
   (`WeakFCRCallContracts.lean`, `WeakCandidateHistoryRecurrence.lean`), with
   `E.fcrStep_store` / `E.fcrStep_confirmed_root` →
@@ -80,7 +80,7 @@ disjunction, so the finalized and observed reset tags stay distinguishable
 even when their roots coincide with another candidate. -/
 noncomputable def getLatestConfirmedTraceAt_currentLineage_step_core
     (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
+    (hT : E.ScheduledPrefixPremises cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : Execution.TrustedAnchorBoundaryAligned (cfg := cfg)
       (E := E) (anchor := B.anchor))
@@ -100,7 +100,7 @@ noncomputable def getLatestConfirmedTraceAt_currentLineage_step_core
         (E.weakFcrStep cfg ext obs n).store.block_roots →
       getLatestSelectorGuard cfg (E.weakFcrStep cfg ext obs n)
         (E.weakGetLatestConfirmedTraceAt cfg ext obs n).afterObserved →
-      Weak.CurrentTargetAcceptedEdge cfg ext (E.weakFcrStep cfg ext obs n)
+      Weak.CurrentTargetSelectedEdge cfg ext (E.weakFcrStep cfg ext obs n)
         (E.weakGetLatestConfirmedTraceAt cfg ext obs n).afterObserved a c →
       Nonempty (E.AcceptedHistoricalA32LineageCoreAt cfg ext B
         (E.weakGetLatestConfirmedTraceAt cfg ext obs n).result
@@ -134,7 +134,7 @@ noncomputable def getLatestConfirmedTraceAt_currentLineage_step_core
       (hinputKnown : trace.afterObserved ∈ query.store.block_roots)
       (hselector : getLatestSelectorGuard cfg query trace.afterObserved)
       {a c : Root}
-      (hedge : Weak.CurrentTargetAcceptedEdge cfg ext query
+      (hedge : Weak.CurrentTargetSelectedEdge cfg ext query
         trace.afterObserved a c) :
       Nonempty (E.AcceptedHistoricalA32LineageCoreAt cfg ext B trace.result
         (get_current_store_epoch cfg query.store) Cert Supp) :=
@@ -143,7 +143,7 @@ noncomputable def getLatestConfirmedTraceAt_currentLineage_step_core
       (hinputKnown : trace.afterObserved ∈ query.store.block_roots)
       (hselector : getLatestSelectorGuard cfg query trace.afterObserved)
       (hnoCrossing : ¬ ∃ a c : Root,
-        Weak.CurrentTargetAcceptedEdge cfg ext query trace.afterObserved a c)
+        Weak.CurrentTargetSelectedEdge cfg ext query trace.afterObserved a c)
       {e : Epoch}
       (hinputLineage : E.AcceptedHistoricalA32LineageCoreAt cfg ext B
         trace.afterObserved e Cert Supp) :
@@ -179,12 +179,12 @@ noncomputable def getLatestConfirmedTraceAt_currentLineage_step_core
             hanchorCert hanchorSupp
       exact ⟨_, ⟨by simpa only [hresultEq, hinputEq, query] using hlineage⟩⟩
     · by_cases hcrossing : ∃ a c : Root,
-          Weak.CurrentTargetAcceptedEdge cfg ext query
+          Weak.CurrentTargetSelectedEdge cfg ext query
             trace.afterObserved a c
       · obtain ⟨a, c, hedge⟩ := hcrossing
         exact ⟨_, hcrossingLineage hinputKnown hselector hedge⟩
       · have hinputCurrent :=
-          Weak.GetLatestConfirmedTrace.input_current_of_selected_current_no_crossing
+          Weak.LatestConfirmedCallTrace.input_current_of_selected_current_no_crossing
             cfg ext trace
             hG.parent hG.walk hG.head_known hinputKnown
             (hG.slot_upper _ hinputKnown) hselector hresultCurrent hcrossing
@@ -227,12 +227,12 @@ noncomputable def getLatestConfirmedTraceAt_currentLineage_step_core
             (E.weakFcrStep_confirmed_root cfg ext obs n))
         simpa only [htip] using hlineage
       · by_cases hcrossing : ∃ a c : Root,
-            Weak.CurrentTargetAcceptedEdge cfg ext query
+            Weak.CurrentTargetSelectedEdge cfg ext query
               trace.afterObserved a c
         · obtain ⟨a, c, hedge⟩ := hcrossing
           exact ⟨_, hcrossingLineage hinputKnown hselector hedge⟩
         · have hinputCurrent :=
-            Weak.GetLatestConfirmedTrace.input_current_of_selected_current_no_crossing
+            Weak.LatestConfirmedCallTrace.input_current_of_selected_current_no_crossing
               cfg ext trace
               hG.parent hG.walk hG.head_known hinputKnown
               (hG.slot_upper _ hinputKnown) hselector hresultCurrent hcrossing
@@ -275,12 +275,12 @@ noncomputable def getLatestConfirmedTraceAt_currentLineage_step_core
         ⟨hresultEq, _hselectorFalse⟩ | ⟨_resultEq, hselector⟩
     · exact (hfalseOf (by simpa only [hresultEq] using hresultCurrent)).elim
     · by_cases hcrossing : ∃ a c : Root,
-          Weak.CurrentTargetAcceptedEdge cfg ext query
+          Weak.CurrentTargetSelectedEdge cfg ext query
             trace.afterObserved a c
       · obtain ⟨a, c, hedge⟩ := hcrossing
         exact ⟨_, hcrossingLineage hinputKnown hselector hedge⟩
       · exact (hfalseOf
-          (Weak.GetLatestConfirmedTrace.input_current_of_selected_current_no_crossing
+          (Weak.LatestConfirmedCallTrace.input_current_of_selected_current_no_crossing
             cfg ext trace hG.parent hG.walk hG.head_known hinputKnown
             (hG.slot_upper _ hinputKnown) hselector hresultCurrent
             hcrossing)).elim
@@ -294,7 +294,7 @@ quorum, so **no normative proviso is consumed anywhere in this theorem**.  The g
 proviso, and the closures capture it. -/
 noncomputable def getLatestConfirmedTraceAt_currentLineage_step_lazy
     (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
+    (hT : E.ScheduledPrefixPremises cfg ext)
     (hA : SelectedMarginAssumptions cfg ext E)
     (hphase : Phase0SourceCoherence cfg ext)
     (hboundaryPhase : Phase0BoundarySourceCoherence cfg ext)
@@ -303,7 +303,7 @@ noncomputable def getLatestConfirmedTraceAt_currentLineage_step_lazy
       (E := E) (anchor := B.anchor))
     {obs : ValidatorIndex} (hcoh : E.ObserverCoherence cfg ext obs)
     {n : ℕ} (hHn1 : E.WithinHorizon cfg (n + 1))
-    (hcall : E.IsFCRCallAt cfg ext obs n)
+    (hcall : E.IsScheduledFCRCallAt cfg ext obs n)
     (hknownN : E.weakConfirmed cfg ext obs n ∈
       (E.store cfg ext obs n).block_roots)
     (hresultCurrent : get_block_epoch cfg (E.weakFcrStep cfg ext obs n).store
@@ -346,7 +346,7 @@ creates no payload at all: it transports the input's.  This is the route the
 only ever needs the threaded fold output strictly below its own call (D1†). -/
 noncomputable def getLatestConfirmedTraceAt_currentLineage_step_noCrossing
     (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
+    (hT : E.ScheduledPrefixPremises cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : Execution.TrustedAnchorBoundaryAligned (cfg := cfg)
       (E := E) (anchor := B.anchor))
@@ -358,7 +358,7 @@ noncomputable def getLatestConfirmedTraceAt_currentLineage_step_noCrossing
         (E.weakGetLatestConfirmedTraceAt cfg ext obs n).result =
       get_current_store_epoch cfg (E.weakFcrStep cfg ext obs n).store)
     (hnoCrossing : ¬ ∃ a c : Root,
-      Weak.CurrentTargetAcceptedEdge cfg ext (E.weakFcrStep cfg ext obs n)
+      Weak.CurrentTargetSelectedEdge cfg ext (E.weakFcrStep cfg ext obs n)
         (E.weakGetLatestConfirmedTraceAt cfg ext obs n).afterObserved a c)
     {Cert : Checkpoint Root → Prop} {Supp : Root → Epoch → Prop}
     (hanchorCert : Cert B.anchor)
@@ -411,7 +411,7 @@ structure ObserverLineageRouteAt (E : Execution Root)
     B.state.C tip e = B.state.C origin e →
     B.state.GJ tip = B.state.GJ origin →
     Supp N origin e → Supp N tip e
-  crossing : ∀ {n : ℕ}, E.IsFCRCallAt cfg ext obs n →
+  crossing : ∀ {n : ℕ}, E.IsScheduledFCRCallAt cfg ext obs n →
     E.WithinHorizon cfg (n + 1) →
     get_block_epoch cfg (E.weakFcrStep cfg ext obs n).store
         (E.weakGetLatestConfirmedTraceAt cfg ext obs n).result =
@@ -421,7 +421,7 @@ structure ObserverLineageRouteAt (E : Execution Root)
         (E.weakFcrStep cfg ext obs n).store.block_roots →
       getLatestSelectorGuard cfg (E.weakFcrStep cfg ext obs n)
         (E.weakGetLatestConfirmedTraceAt cfg ext obs n).afterObserved →
-      Weak.CurrentTargetAcceptedEdge cfg ext (E.weakFcrStep cfg ext obs n)
+      Weak.CurrentTargetSelectedEdge cfg ext (E.weakFcrStep cfg ext obs n)
         (E.weakGetLatestConfirmedTraceAt cfg ext obs n).afterObserved a c →
       Nonempty (E.AcceptedHistoricalA32LineageCoreAt cfg ext B
         (E.weakGetLatestConfirmedTraceAt cfg ext obs n).result

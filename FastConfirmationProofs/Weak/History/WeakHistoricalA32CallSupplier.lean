@@ -35,7 +35,7 @@ imported and applied unchanged rather than cloned:
 * `Execution.currentTargetEpochEnd_within_of_epochEndsFitUint64` (`:221`) and
   `Execution.completedPrefix_currentTargetEpochEnd_within` (`:276`).
 
-`Execution.AcceptedHistoricalA32CompletedPrefixCallAssumptions` (`:332`) is
+`Execution.CompletedFCRCallPremises` (`:332`) is
 also reused verbatim as the premise bundle of the gate producer below; the
 producer reads only its protocol fields, never its honest-quantified
 `helper_provisos`.
@@ -113,7 +113,7 @@ variable {E : Execution Root}
 /-! ## The completed scheduled prefix at an observer -/
 
 theorem ScheduledEventPrefix.operationalEvidence_of_observer_validity
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
+    (hT : E.ScheduledPrefixPremises cfg ext)
     (p : E.ScheduledEventPrefix)
     (hvalid : E.ObserverValidity cfg ext p.node)
     (hn : E.WithinHorizon cfg (p.previousSecond + 1)) :
@@ -133,12 +133,12 @@ theorem ScheduledEventPrefix.operationalEvidence_of_observer_validity
 mechanical: the operational half comes from exact replay of the observer's
 schedule (`ScheduledEventPrefix.operationalEvidence` never inspects
 `p.node`), while committee readback is the observer's own coherence field
-instead of `ExternalsCoherence.committees_agree` at an honest node.
+instead of `BeaconExternalsPremises.committees_agree` at an honest node.
 
 Substitution (a).  Mirrors
 `Execution.completedScheduledEventPrefix_accountingEvidence`. -/
 theorem completedScheduledEventPrefix_accountingEvidence_at_observer
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
+    (hT : E.ScheduledPrefixPremises cfg ext)
     {obs : ValidatorIndex} (hcoh : E.ObserverCoherence cfg ext obs)
     (n : ℕ) (hHn1 : E.WithinHorizon cfg (n + 1)) :
     E.CurrentTargetPrefixAccountingEvidence cfg ext
@@ -168,7 +168,7 @@ Substitution (b), and the reason `B`, `hanchor` and `hboundary` disappear from
 the signature.  Mirrors
 `Execution.completedPrefix_pulledUpHead_validators`. -/
 theorem completedPrefix_pulledUpHead_validators_at_observer
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
+    (hT : E.ScheduledPrefixPremises cfg ext)
     {obs : ValidatorIndex} (hcoh : E.ObserverCoherence cfg ext obs)
     {n : ℕ} (hHn : E.WithinHorizon cfg n) :
     (get_pulled_up_head_state cfg ext
@@ -195,7 +195,7 @@ is again head-root knownness.
 
 Substitution (b).  Mirrors `Execution.completedPrefix_pulledUpHead_epoch`. -/
 theorem completedPrefix_pulledUpHead_epoch_at_observer
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
+    (hT : E.ScheduledPrefixPremises cfg ext)
     {obs : ValidatorIndex} (hcoh : E.ObserverCoherence cfg ext obs)
     {n : ℕ} (hHn : E.WithinHorizon cfg n) :
     get_current_epoch cfg (get_pulled_up_head_state cfg ext
@@ -264,7 +264,7 @@ from the strong module — it never mentions a node at all.
 Composes the two substitution-(b) lemmas above.  Mirrors
 `Execution.completedPrefix_pulledUpHead_totalActive`. -/
 theorem completedPrefix_pulledUpHead_totalActive_at_observer
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
+    (hT : E.ScheduledPrefixPremises cfg ext)
     (hsv : StaticValidatorSet cfg E)
     {obs : ValidatorIndex} (hcoh : E.ObserverCoherence cfg ext obs)
     {n : ℕ} (hHn : E.WithinHorizon cfg n) :
@@ -308,14 +308,14 @@ Mirrors `Execution.completedPrefix_acceptedTargetGateProducerAt`, with
 substitutions (a) and (b) entering through the three lemmas above. -/
 noncomputable def observerCall_acceptedTargetGateProducerAt
     (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
-    (hC : E.AcceptedHistoricalA32CompletedPrefixCallAssumptions cfg ext)
+    (hT : E.ScheduledPrefixPremises cfg ext)
+    (hC : E.CompletedFCRCallPremises cfg ext)
     (hfit : EpochEndsFitUint64 cfg)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
       (E := E) (anchor := B.anchor))
     {obs : ValidatorIndex} (hcoh : E.ObserverCoherence cfg ext obs)
-    {n : ℕ} (_hcall : E.IsFCRCallAt cfg ext obs n)
+    {n : ℕ} (_hcall : E.IsScheduledFCRCallAt cfg ext obs n)
     (hHn1 : E.WithinHorizon cfg (n + 1)) :
     E.AcceptedCurrentTargetA32GateRealizationProducerAt cfg ext
       B.anchor B.state (n + 1) (E.weakFcrStep cfg ext obs n) := by
@@ -663,7 +663,7 @@ arithmetic-branch argument with one seat argument swapped:
   `no_forgery` plus `HonestBehavior.not_slashable`;
 * a **future** seat is now excluded outright: by N1 the quorum attestation is
   assigned to the signer's committee slot and carries the target epoch, so
-  `ExternalsCoherence.committee_assignment_unique` identifies its slot with the
+  `BeaconExternalsPremises.committee_assignment_unique` identifies its slot with the
   future seat's slot, which is at or after the query slot — contradicting
   `hnoPostQuery`.  This is where the proviso used to be consumed
   (`currentTargetFutureHonestSeat_vote`), and the replacement needs no
@@ -673,8 +673,8 @@ The honesty and epoch-span side conditions on the signer set are re-derived
 without the proviso, as §5.2 items 1-2 record. -/
 theorem noConflict_endpointJustifiedQuorum_root_eq_currentTarget_at_observer
     (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
-    (hC : E.AcceptedHistoricalA32CompletedPrefixCallAssumptions cfg ext)
+    (hT : E.ScheduledPrefixPremises cfg ext)
+    (hC : E.CompletedFCRCallPremises cfg ext)
     (hfit : EpochEndsFitUint64 cfg)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
@@ -973,8 +973,8 @@ mentions the observer's honesty, so this is the observer twin of
 binder replaced by `Execution.ObserverCoherence`. -/
 theorem observerCall_endpointOriginOrPinnedProducerAt
     (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
-    (hC : E.AcceptedHistoricalA32CompletedPrefixCallAssumptions cfg ext)
+    (hT : E.ScheduledPrefixPremises cfg ext)
+    (hC : E.CompletedFCRCallPremises cfg ext)
     (hfit : EpochEndsFitUint64 cfg)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)

@@ -18,7 +18,7 @@ observer.
 its conclusion from `SelectedMarginAssumptions` plus `hv : v ∈ E.honest`. That
 membership fact is used in exactly one place in the whole proof: to specialize
 `honest_support_majority` (via its own dependency on
-`ExternalsCoherence.committees_agree`, routed through
+`BeaconExternalsPremises.committees_agree`, routed through
 `support_discount_le_parent_stuck`). Both of those have store-generic
 `_of_prefix` clones in `WeakEconomicReadback.lean`, driven by an explicit
 `E.PrefixCommitteeAgreement cfg ext (E.store cfg ext v n)` fact instead of
@@ -87,7 +87,7 @@ Verbatim clone of `honestSupporter_of_confirmed_known_at_minimal`
 `hv : v ∈ E.honest` replaced by the explicit committee-readback fact
 `hcomm : E.PrefixCommitteeAgreement cfg ext (E.store cfg ext v n)`: the sole
 use of `hv` in the original proof was to specialize `honest_support_majority`
-(via `support_discount_le_parent_stuck`'s own `ExternalsCoherence
+(via `support_discount_le_parent_stuck`'s own `BeaconExternalsPremises
 .committees_agree` dependency); both calls are replaced here by their
 store-generic `_of_prefix` clones from `WeakEconomicReadback.lean`, driven by
 `hcomm` instead. Every other hypothesis, and the whole rest of the proof, is

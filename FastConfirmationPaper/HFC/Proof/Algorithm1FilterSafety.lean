@@ -742,8 +742,8 @@ theorem hfc_safety_alg1_wrapper (bal₀ : Stakes n) {τ : Timing} {fm : FaultMod
       (hfc_canonical_alg1_unified_of_confirmed bal₀ hSync hNF hHB hVV hcm hpb hv hAS hnoequiv hByz
         hsB1 hgstB hBwf hBslot hwe0 hconfB hdelAll hSCM hGF hpart hsrc hw ht')⟩
 
-/-- Public statement-shaped wrapper for `HFC_Safety_Alg1`. -/
-theorem hfc_safety_alg1_public (τ : Timing) (bal₀ : Stakes n) : HFC_Safety_Alg1 τ bal₀ := by
+/-- Public statement-shaped wrapper for `RuleConfirmedBlockSafety`. -/
+theorem hfc_safety_alg1_public (τ : Timing) (bal₀ : Stakes n) : RuleConfirmedBlockSafety τ bal₀ := by
   intro fm cm pb boost 𝒱 gj C hSync hNF hHB hVV hcm hpb hAS hnoequiv hByz hSCM v b s we
   dsimp only
   intro hv hs1 hgst hbwf hbslot hwe0 hconf hIF

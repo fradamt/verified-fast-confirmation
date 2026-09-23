@@ -379,8 +379,8 @@ determinism imply the former verified-payload relay outcome. State agreement
 is derived from deterministic block transitions in `BlockStateAgreement`. -/
 theorem Execution.payload_envelope_relay_of_parts {E : Execution Root}
     (hwf : WellFormedExecution E)
-    (hsyn : PaperSafetySynchrony cfg ext E)
-    (hec : ExternalsCoherence cfg ext E)
+    (hsyn : NextSlotSynchronyPremises cfg ext E)
+    (hec : BeaconExternalsPremises cfg ext E)
     {v w : ValidatorIndex} (hv : v ∈ E.honest) (hw : w ∈ E.honest)
     {n m : ℕ} (hHn : E.WithinHorizon cfg n) (hHm : E.WithinHorizon cfg m)
     (htiming : E.slot_at cfg n + 1 ≤ E.slot_at cfg (m + 1))
@@ -457,8 +457,8 @@ theorem Execution.payload_envelope_relay_of_parts {E : Execution Root}
 and every fold prefix preserve verification, including before an index-one vote. -/
 theorem Execution.honest_payload_verified_at_delivery_prefix {E : Execution Root}
     (hwf : WellFormedExecution E)
-    (hsyn : PaperSafetySynchrony cfg ext E)
-    (hec : ExternalsCoherence cfg ext E)
+    (hsyn : NextSlotSynchronyPremises cfg ext E)
+    (hec : BeaconExternalsPremises cfg ext E)
     {v w : ValidatorIndex} (hv : v ∈ E.honest) (hw : w ∈ E.honest)
     {n m : ℕ} (hHn : E.WithinHorizon cfg n) (hHm : E.WithinHorizon cfg m)
     (htiming : E.slot_at cfg n + 1 ≤ E.slot_at cfg (m + 1))
@@ -768,7 +768,7 @@ lemma. -/
 base. Slot processing preserves the indexed check; the cache need not already
 contain the prepared state. -/
 theorem honest_attestation_valid_prepared {E : Execution Root}
-    (hec : ExternalsCoherence cfg ext E) {store : Store Root}
+    (hec : BeaconExternalsPremises cfg ext E) {store : Store Root}
     (hstore : E.HonestCausalStore cfg ext store) (a : Attestation Root)
     (hroot : a.data.target.root ∈ store.block_roots)
     (v : ValidatorIndex) (hv : v ∈ E.honest)
@@ -801,8 +801,8 @@ transport. For an index-one vote, payload-envelope relay supplies verification
 at the receiver before the vote's fold position. -/
 theorem Execution.vote_lands {E : Execution Root}
     (hwf : WellFormedExecution E) (hhb : HonestBehavior cfg ext E)
-    (hsyn : PaperSafetySynchrony cfg ext E)
-    (hec : ExternalsCoherence cfg ext E)
+    (hsyn : NextSlotSynchronyPremises cfg ext E)
+    (hec : BeaconExternalsPremises cfg ext E)
     (hdiv : 1000 ∣ cfg.slot_duration_ms)
     (hgen : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
       E.genesis_store = get_forkchoice_store cfg ast ablk ∧
@@ -992,8 +992,8 @@ recorded message for `v` of epoch at least the vote's target epoch
 (`vote_lands` + `store_latest_message_ge_mono`). -/
 theorem Execution.vote_ubiquity {E : Execution Root}
     (hwf : WellFormedExecution E) (hhb : HonestBehavior cfg ext E)
-    (hsyn : PaperSafetySynchrony cfg ext E)
-    (hec : ExternalsCoherence cfg ext E)
+    (hsyn : NextSlotSynchronyPremises cfg ext E)
+    (hec : BeaconExternalsPremises cfg ext E)
     (hdiv : 1000 ∣ cfg.slot_duration_ms)
     (hgen : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
       E.genesis_store = get_forkchoice_store cfg ast ablk ∧
@@ -1171,7 +1171,7 @@ then `msg`'s LMD root is exactly `a`'s LMD block. Works for any vote `a`; the
 epoch premise is phrased on the vote slot (for an honest vote it equals the FFG
 target epoch under the head-slot bound). -/
 theorem Execution.latest_message_root {E : Execution Root}
-    (hhb : HonestBehavior cfg ext E) (hec : ExternalsCoherence cfg ext E)
+    (hhb : HonestBehavior cfg ext E) (hec : BeaconExternalsPremises cfg ext E)
     (hgen : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
       E.genesis_store = get_forkchoice_store cfg ast ablk)
     {v w : ValidatorIndex} (hv : v ∈ E.honest)
@@ -1309,7 +1309,7 @@ theorem Execution.schedLMProvExact {E : Execution Root}
 recorded epoch. This includes the payload bit, which the root-only provenance
 lemma does not recover. -/
 theorem Execution.latest_message_eq_honest_vote {E : Execution Root}
-    (hhb : HonestBehavior cfg ext E) (hec : ExternalsCoherence cfg ext E)
+    (hhb : HonestBehavior cfg ext E) (hec : BeaconExternalsPremises cfg ext E)
     (hgen : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
       E.genesis_store = get_forkchoice_store cfg ast ablk)
     {v w : ValidatorIndex} (hv : v ∈ E.honest)
@@ -1351,7 +1351,7 @@ theorem Execution.latest_message_eq_honest_vote {E : Execution Root}
 record the same entire message. Committee assignment uniqueness identifies the
 vote slot; no forgery then identifies its root and payload bit. -/
 theorem Execution.latest_message_eq_of_same_epoch {E : Execution Root}
-    (hhb : HonestBehavior cfg ext E) (hec : ExternalsCoherence cfg ext E)
+    (hhb : HonestBehavior cfg ext E) (hec : BeaconExternalsPremises cfg ext E)
     (hgen : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
       E.genesis_store = get_forkchoice_store cfg ast ablk)
     {i v w : ValidatorIndex} (hi : i ∈ E.honest)

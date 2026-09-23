@@ -41,28 +41,28 @@ phase dispatcher.  No lineage, canonicity, endpoint fact, filter fact, or
 safety conclusion is assumed. -/
 theorem StrictSelectorAdvanceAt.previousObservedReset_queryGUEpochSeed
     (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
+    (hT : E.ScheduledPrefixPremises cfg ext)
     (hdomain : SelectedMarginDomain cfg ext E)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
       (E := E) (anchor := B.anchor))
     {v : ValidatorIndex} (hv : v ∈ E.honest) {n : Nat}
     (hHn1 : E.WithinHorizon cfg (n + 1))
-    {trace : GetLatestConfirmedTrace cfg ext (E.fcrStep cfg ext v n)}
+    {trace : LatestConfirmedCallTrace cfg ext (E.fcrStoreAtCall cfg ext v n)}
     (horigin : ObservedResetCandidateInputAt cfg ext
-      (E.fcrStep cfg ext v n) trace)
+      (E.fcrStoreAtCall cfg ext v n) trace)
     (hselector : StrictSelectorAdvanceAt cfg ext
-      (E.fcrStep cfg ext v n) trace)
-    (hprevious : get_block_epoch cfg (E.fcrStep cfg ext v n).store
+      (E.fcrStoreAtCall cfg ext v n) trace)
+    (hprevious : get_block_epoch cfg (E.fcrStoreAtCall cfg ext v n).store
           trace.result + 1 =
-        get_current_store_epoch cfg (E.fcrStep cfg ext v n).store) :
+        get_current_store_epoch cfg (E.fcrStoreAtCall cfg ext v n).store) :
     ∃ seed : Root,
-      seed ∈ (E.fcrStep cfg ext v n).store.block_roots ∧
-        is_ancestor (E.fcrStep cfg ext v n).store
+      seed ∈ (E.fcrStoreAtCall cfg ext v n).store.block_roots ∧
+        is_ancestor (E.fcrStoreAtCall cfg ext v n).store
           (get_node_for_root seed) (get_node_for_root trace.result) = true ∧
-        get_block_epoch cfg (E.fcrStep cfg ext v n).store trace.result ≤
+        get_block_epoch cfg (E.fcrStoreAtCall cfg ext v n).store trace.result ≤
           (B.state.GU seed).epoch := by
-  let query := E.fcrStep cfg ext v n
+  let query := E.fcrStoreAtCall cfg ext v n
   let head := (get_head cfg query.store).root
   have htag := E.actualObservedRestartInputAt cfg ext B hT hanchor
     hboundary v n trace horigin.observed_guard_true
@@ -150,26 +150,26 @@ slot theorem. -/
 noncomputable def
     StrictSelectorAdvanceAt.extendHistoricalLineage_sameEpoch_actual
     (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
+    (hT : E.ScheduledPrefixPremises cfg ext)
     (hdomain : SelectedMarginDomain cfg ext E)
     {v : ValidatorIndex} (hv : v ∈ E.honest) {n : Nat}
     (hHn1 : E.WithinHorizon cfg (n + 1))
-    {trace : GetLatestConfirmedTrace cfg ext (E.fcrStep cfg ext v n)}
+    {trace : LatestConfirmedCallTrace cfg ext (E.fcrStoreAtCall cfg ext v n)}
     (hselector : StrictSelectorAdvanceAt cfg ext
-      (E.fcrStep cfg ext v n) trace)
+      (E.fcrStoreAtCall cfg ext v n) trace)
     (hinputKnown : trace.afterObserved ∈
-      (E.fcrStep cfg ext v n).store.block_roots)
+      (E.fcrStoreAtCall cfg ext v n).store.block_roots)
     {e : Epoch}
     {Cert : Checkpoint Root → Prop} {Supp : Root → Epoch → Prop}
     (hlineage : E.AcceptedHistoricalA32LineageCoreAt cfg ext B
       trace.afterObserved e Cert Supp)
-    (hinputEpoch : get_block_epoch cfg (E.fcrStep cfg ext v n).store
+    (hinputEpoch : get_block_epoch cfg (E.fcrStoreAtCall cfg ext v n).store
       trace.afterObserved = e)
-    (hresultEpoch : get_block_epoch cfg (E.fcrStep cfg ext v n).store
+    (hresultEpoch : get_block_epoch cfg (E.fcrStoreAtCall cfg ext v n).store
       trace.result = e) :
     E.AcceptedHistoricalA32LineageCoreAt cfg ext B trace.result e
       Cert Supp := by
-  let query := E.fcrStep cfg ext v n
+  let query := E.fcrStoreAtCall cfg ext v n
   let ast : BeaconState Root := Classical.choose hT.genesis_structure
   let ablk : SignedBeaconBlock Root :=
     Classical.choose (Classical.choose_spec hT.genesis_structure)
@@ -281,8 +281,8 @@ boundary clock and selector recency.  Thus this theorem does not expose a
 lineage callback or a previous-result lineage premise. -/
 theorem StrictSelectorAdvanceAt.previousCarried_epochStartLineage
     (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
-    (hC : E.AcceptedHistoricalA32CompletedPrefixCallAssumptions cfg ext)
+    (hT : E.ScheduledPrefixPremises cfg ext)
+    (hC : E.CompletedFCRCallPremises cfg ext)
     (hfit : EpochEndsFitUint64 cfg)
     (hdomain : SelectedMarginDomain cfg ext E)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
@@ -290,19 +290,19 @@ theorem StrictSelectorAdvanceAt.previousCarried_epochStartLineage
       (E := E) (anchor := B.anchor))
     {v : ValidatorIndex} (hv : v ∈ E.honest) {n : Nat}
     (hHn1 : E.WithinHorizon cfg (n + 1))
-    (hcall : E.IsFCRCallAt cfg ext v n)
+    (hcall : E.IsScheduledFCRCallAt cfg ext v n)
     (hstart : is_start_slot_at_epoch cfg
       (get_current_slot cfg (E.store cfg ext v (n + 1))) = true)
-    {trace : GetLatestConfirmedTrace cfg ext (E.fcrStep cfg ext v n)}
+    {trace : LatestConfirmedCallTrace cfg ext (E.fcrStoreAtCall cfg ext v n)}
     (horigin : CarriedCandidateInputAt cfg ext
-      (E.fcrStep cfg ext v n) trace)
+      (E.fcrStoreAtCall cfg ext v n) trace)
     (hselector : StrictSelectorAdvanceAt cfg ext
-      (E.fcrStep cfg ext v n) trace)
-    (hprevious : get_block_epoch cfg (E.fcrStep cfg ext v n).store
+      (E.fcrStoreAtCall cfg ext v n) trace)
+    (hprevious : get_block_epoch cfg (E.fcrStoreAtCall cfg ext v n).store
           trace.result + 1 =
-        get_current_store_epoch cfg (E.fcrStep cfg ext v n).store) :
+        get_current_store_epoch cfg (E.fcrStoreAtCall cfg ext v n).store) :
     Nonempty (E.AcceptedHistoricalA32LineageCoreAt cfg ext B trace.result
-      (get_block_epoch cfg (E.fcrStep cfg ext v n).store trace.result)
+      (get_block_epoch cfg (E.fcrStoreAtCall cfg ext v n).store trace.result)
       (E.LazyCertAt cfg ext B n) (E.LazySupportAt cfg ext B v n)) := by
   have hHn : E.WithinHorizon cfg n :=
     E.withinHorizon_mono cfg (Nat.le_succ n) hHn1
@@ -310,8 +310,8 @@ theorem StrictSelectorAdvanceAt.previousCarried_epochStartLineage
     E.acceptedHistoricalA32CurrentLineage_invariant_of_completedPrefixes
       cfg ext B hT hC hfit hanchor hboundary v hv n hHn
   have hrecentConfirmed : get_block_epoch cfg
-        (E.fcrStep cfg ext v n).store (E.confirmed cfg ext v n) + 1 ≥
-      get_current_store_epoch cfg (E.fcrStep cfg ext v n).store := by
+        (E.fcrStoreAtCall cfg ext v n).store (E.confirmed cfg ext v n) + 1 ≥
+      get_current_store_epoch cfg (E.fcrStoreAtCall cfg ext v n).store := by
     simpa only [horigin.input_eq, E.fcrStep_confirmed_root] using
       hselector.input_recent
   have hcurrentN := E.previousConfirmed_current_of_boundary_recent
@@ -322,27 +322,27 @@ theorem StrictSelectorAdvanceAt.previousCarried_epochStartLineage
     (E.store_storeLE cfg ext v (Nat.le_succ n)).1
       hinvariant.confirmed_known
   have hinputKnown : trace.afterObserved ∈
-      (E.fcrStep cfg ext v n).store.block_roots := by
+      (E.fcrStoreAtCall cfg ext v n).store.block_roots := by
     rw [horigin.input_eq, E.fcrStep_confirmed_root, E.fcrStep_store]
     exact hknownN1
   have hqueryCausal : E.CausalStore cfg ext
-      (E.fcrStep cfg ext v n).store := by
+      (E.fcrStoreAtCall cfg ext v n).store := by
     rw [E.fcrStep_store]
     exact E.store_causal cfg ext v (n + 1)
   have hlineageQ : E.AcceptedHistoricalA32LineageCoreAt cfg ext B
       trace.afterObserved e (E.LazyCertAt cfg ext B n)
       (E.LazySupportAt cfg ext B v n) := by
     simpa only [horigin.input_eq, E.fcrStep_confirmed_root] using hlineageN
-  have hinputBlockEq : (E.fcrStep cfg ext v n).store.blocks
+  have hinputBlockEq : (E.fcrStoreAtCall cfg ext v n).store.blocks
         trace.afterObserved = hlineageQ.tip_block :=
     (Execution.CausalStore.acceptedBlockAt_iff_eq cfg ext E
       hT.wellFormed hqueryCausal hinputKnown).mp hlineageQ.tip_at
   have hinputEpochE : get_block_epoch cfg
-      (E.fcrStep cfg ext v n).store trace.afterObserved = e := by
+      (E.fcrStoreAtCall cfg ext v n).store trace.afterObserved = e := by
     simpa only [get_block_epoch, hinputBlockEq] using hlineageQ.tip_epoch
   have hinputPrevious : get_block_epoch cfg
-          (E.fcrStep cfg ext v n).store trace.afterObserved + 1 =
-        get_current_store_epoch cfg (E.fcrStep cfg ext v n).store := by
+          (E.fcrStoreAtCall cfg ext v n).store trace.afterObserved + 1 =
+        get_current_store_epoch cfg (E.fcrStoreAtCall cfg ext v n).store := by
     have hepochSucc := E.actualCall_currentEpoch_succ_of_start
       cfg ext hT hcall hstart
     have hblockAgree : (E.store cfg ext v n).blocks
@@ -354,7 +354,7 @@ theorem StrictSelectorAdvanceAt.previousCarried_epochStartLineage
         (E.blockProvenance cfg ext v (n + 1))
         hinvariant.confirmed_known hknownN1
     calc
-      get_block_epoch cfg (E.fcrStep cfg ext v n).store
+      get_block_epoch cfg (E.fcrStoreAtCall cfg ext v n).store
             trace.afterObserved + 1 =
           get_block_epoch cfg (E.store cfg ext v n)
             (E.confirmed cfg ext v n) + 1 := by
@@ -364,13 +364,13 @@ theorem StrictSelectorAdvanceAt.previousCarried_epochStartLineage
         rw [hcurrentN]
       _ = get_current_store_epoch cfg (E.store cfg ext v (n + 1)) :=
         hepochSucc
-      _ = get_current_store_epoch cfg (E.fcrStep cfg ext v n).store := by
+      _ = get_current_store_epoch cfg (E.fcrStoreAtCall cfg ext v n).store := by
         rw [E.fcrStep_store]
   have hresultEpochE : get_block_epoch cfg
-      (E.fcrStep cfg ext v n).store trace.result = e := by
+      (E.fcrStoreAtCall cfg ext v n).store trace.result = e := by
     have hresultInputEpoch : get_block_epoch cfg
-          (E.fcrStep cfg ext v n).store trace.result =
-        get_block_epoch cfg (E.fcrStep cfg ext v n).store
+          (E.fcrStoreAtCall cfg ext v n).store trace.result =
+        get_block_epoch cfg (E.fcrStoreAtCall cfg ext v n).store
           trace.afterObserved :=
       Nat.add_right_cancel (hprevious.trans hinputPrevious.symm)
     exact hresultInputEpoch.trans hinputEpochE
@@ -399,7 +399,7 @@ initialized by the anchor payload and extended through the accepted selector
 segment. -/
 theorem StrictSelectorAdvanceAt.previousFinalizedReset_anchorLineage
     (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
+    (hT : E.ScheduledPrefixPremises cfg ext)
     (hdomain : SelectedMarginDomain cfg ext E)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
@@ -409,22 +409,22 @@ theorem StrictSelectorAdvanceAt.previousFinalizedReset_anchorLineage
       B.state.C B.anchor.root B.anchor.epoch)
     {v : ValidatorIndex} (hv : v ∈ E.honest) {n : Nat}
     (hHn1 : E.WithinHorizon cfg (n + 1))
-    {trace : GetLatestConfirmedTrace cfg ext (E.fcrStep cfg ext v n)}
+    {trace : LatestConfirmedCallTrace cfg ext (E.fcrStoreAtCall cfg ext v n)}
     (horigin : FinalizedResetCandidateInputAt cfg ext
-      (E.fcrStep cfg ext v n) trace)
+      (E.fcrStoreAtCall cfg ext v n) trace)
     (hselector : StrictSelectorAdvanceAt cfg ext
-      (E.fcrStep cfg ext v n) trace)
-    (hprevious : get_block_epoch cfg (E.fcrStep cfg ext v n).store
+      (E.fcrStoreAtCall cfg ext v n) trace)
+    (hprevious : get_block_epoch cfg (E.fcrStoreAtCall cfg ext v n).store
           trace.result + 1 =
-        get_current_store_epoch cfg (E.fcrStep cfg ext v n).store)
+        get_current_store_epoch cfg (E.fcrStoreAtCall cfg ext v n).store)
     {Cert : Checkpoint Root → Prop} {Supp : Root → Epoch → Prop}
     (hanchorCert : Cert B.anchor)
     (hanchorSupp : ∀ (o : Root) (e' : Epoch),
       B.state.C o e' = B.anchor → Supp o e') :
     Nonempty (E.AcceptedHistoricalA32LineageCoreAt cfg ext B trace.result
-      (get_block_epoch cfg (E.fcrStep cfg ext v n).store trace.result)
+      (get_block_epoch cfg (E.fcrStoreAtCall cfg ext v n).store trace.result)
       Cert Supp) := by
-  let query := E.fcrStep cfg ext v n
+  let query := E.fcrStoreAtCall cfg ext v n
   have hrealized :=
     E.finalizedCheckpoint_resetRealizedAt_of_acceptedGlobalTrajectory
       cfg ext B hT hanchor hboundary (w := v) (n + 1)

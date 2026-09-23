@@ -12,8 +12,8 @@ Wave 2 of `docs/proviso-discharge-map.md` §6: the **first constructor** for
 `HonestVotesSupportTarget` in the development.
 
 Every occurrence of `HonestVotesSupportTarget` predating this module was
-either a hypothesis or a record field (`SelectedHelperProvisosAt.current_target`,
-`SelectedHelperProvisosAt.selected_previous_result_no_conflict`, and the two
+either a hypothesis or a record field (`FCRPredictionSupportAt.current_target`,
+`FCRPredictionSupportAt.selected_previous_result_no_conflict`, and the two
 dead `JustificationInterface` gates — all since deleted).  Nothing built one.  This module builds
 one, from a trajectory-level `Execution.SafeFrom` witness plus an explicit list
 of store-geometry side conditions, and so turns a *carried* normative proviso
@@ -58,7 +58,7 @@ content is:
   the configuration the live proviso sites do *not* enjoy: there the `SafeFrom`
   root is a previous-epoch block and the current-epoch boundary block sits
   strictly above it.  So this constructor did not by itself discharge the
-  crossing-call current-target proviso (`SelectedHelperProvisosAt.current_target`,
+  crossing-call current-target proviso (`FCRPredictionSupportAt.current_target`,
   now deleted); it pins down precisely what would.
 * the voter's store must know the boundary walk from its head and from `b`, and
   must agree with the query store on the blocks both know (`hvoterHeadWalk`,

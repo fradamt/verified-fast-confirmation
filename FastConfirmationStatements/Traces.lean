@@ -6,7 +6,7 @@ public import FastConfirmationModel
 /-!
 # Traces
 
-Executable call, loop, and selected result traces. Reads the Spec Model. Read Premises/Trajectory next.
+Executable call, loop, and selected result traces. Reads the Spec Model. Read Premises/FCRCallPremises next.
 -/
 
 section
@@ -21,12 +21,12 @@ variable (E : Execution Root)
 /-- The variable-updated FCR store at a slot boundary: `E.fcr v n` re-seated
 on the current store and run through `update_fast_confirmation_variables`,
 before `get_latest_confirmed` is evaluated. -/
-def fcrStep (v : ValidatorIndex) (n : ℕ) : FastConfirmationStore Root :=
+def fcrStoreAtCall (v : ValidatorIndex) (n : ℕ) : FastConfirmationStore Root :=
   update_fast_confirmation_variables cfg
     { E.fcr cfg ext v n with store := E.store cfg ext v (n + 1) }
 
 /-- The actual call from `n` to `n+1` advanced a slot. -/
-def IsFCRCallAt (v : ValidatorIndex) (n : ℕ) : Prop :=
+def IsScheduledFCRCallAt (v : ValidatorIndex) (n : ℕ) : Prop :=
   get_current_slot cfg (E.store cfg ext v (n + 1)) >
     get_current_slot cfg (E.store cfg ext v n)
 
@@ -37,7 +37,7 @@ end
 
 section
 
-/-! ## From GetLatestConfirmedTrace -/
+/-! ## From LatestConfirmedCallTrace -/
 
 namespace FastConfirmation.Spec
 variable {Root : Type*} [LinearOrder Root] [Inhabited Root]
@@ -156,7 +156,7 @@ end GetLatestSelectorPhase
 /-- Complete ordered evaluator trace.  Intermediate roots are data, while
 each phase proof fixes their operational provenance independently of any root
 equalities. -/
-structure GetLatestConfirmedTrace
+structure LatestConfirmedCallTrace
     (query : FastConfirmationStore Root) where
   afterFinalized : Root
   afterObserved : Root
@@ -169,7 +169,7 @@ structure GetLatestConfirmedTrace
 /-- Every arbitrary query store has an exact evaluator trace. -/
 def getLatestConfirmedTrace
     (query : FastConfirmationStore Root) :
-    GetLatestConfirmedTrace cfg ext query := by
+    LatestConfirmedCallTrace cfg ext query := by
   let afterFinalized := getLatestAfterFinalized cfg ext query
   let afterObserved := getLatestAfterObserved cfg ext query
   let result := getLatestTraceResult cfg ext query
@@ -215,15 +215,15 @@ def getLatestConfirmedTrace
       exact .unchanged hnamed
   · exact getLatestTraceResult_eq_getLatestConfirmed cfg ext query
 
-namespace GetLatestConfirmedTrace
-end GetLatestConfirmedTrace
+namespace LatestConfirmedCallTrace
+end LatestConfirmedCallTrace
 namespace Execution
 variable (E : Execution Root)
 /-- The same arbitrary-store evaluator trace specialized to the exact
 variable-updated store used by one execution call. -/
 def getLatestConfirmedTraceAt (v : ValidatorIndex) (n : ℕ) :
-    GetLatestConfirmedTrace cfg ext (E.fcrStep cfg ext v n) :=
-  getLatestConfirmedTrace cfg ext (E.fcrStep cfg ext v n)
+    LatestConfirmedCallTrace cfg ext (E.fcrStoreAtCall cfg ext v n) :=
+  getLatestConfirmedTrace cfg ext (E.fcrStoreAtCall cfg ext v n)
 
 end Execution
 end FastConfirmation.Spec
@@ -338,7 +338,7 @@ def findLatestSelectedTrace (fcrStore : FastConfirmationStore Root)
     (previousEdges, tentativeEdges))
 
 /-- A previous-loop edge retained by the complete wrapper trace. -/
-def PreviousAcceptedEdge (fcrStore : FastConfirmationStore Root)
+def PreviousEpochSelectedEdge (fcrStore : FastConfirmationStore Root)
     (latestConfirmedRoot a c : Root) : Prop :=
   (a, c) ∈ (findLatestSelectedTrace cfg ext fcrStore latestConfirmedRoot).2.1
 
@@ -346,7 +346,7 @@ def PreviousAcceptedEdge (fcrStore : FastConfirmationStore Root)
 epoch.  Unlike bare loop instrumentation, this predicate is indexed by the
 wrapper input and excludes tentative edges discarded by the final acceptance
 guard. -/
-def CurrentTargetAcceptedEdge (fcrStore : FastConfirmationStore Root)
+def CurrentTargetSelectedEdge (fcrStore : FastConfirmationStore Root)
     (latestConfirmedRoot a c : Root) : Prop :=
   (a, c) ∈ (findLatestSelectedTrace cfg ext fcrStore latestConfirmedRoot).2.2 ∧
     get_block_epoch cfg fcrStore.store a < get_block_epoch cfg fcrStore.store c

@@ -25,8 +25,8 @@ Concretely `LatestMessageProvenance E cfg sl store` says: whenever
   least `a.data.slot + 1` (the `validate_on_attestation` fork-choice gate),
   bounded by the ambient slot `sl`;
 * `i ∈ E.committee a.data.slot` — `i` is in `a`'s slot committee (the span
-  confinement `ByzantineBound` budgets), from
-  `ExternalsCoherence.valid_attestation_committee`;
+  confinement `ByzantineWeightPremises` budgets), from
+  `BeaconExternalsPremises.valid_attestation_committee`;
 * `m.root ∈ store.block_roots` and `(store.blocks m.root).slot ≤ a.data.slot` —
   the voted block is known and no later than `a`'s slot (the
   `validate_on_attestation` known-block / not-future gates).
@@ -43,7 +43,7 @@ takes the sanctioned `∃`-form `E.genesis_store = get_forkchoice_store …`
 (latest messages start empty). `WellFormedExecution` (wire-root injectivity,
 already in `SpecAssumptions`) preserves the known-block slot fact across
 `on_block` (block records are stable at commonly-known roots — `BlockAgreement`),
-and `ExternalsCoherence` supplies committee confinement on reachable validation
+and `BeaconExternalsPremises` supplies committee confinement on reachable validation
 states. The trajectory theorem requires an honest node and an in-horizon
 second.
 -/
@@ -292,12 +292,12 @@ private theorem update_latest_messages_checkpointData
 
 /-- `on_attestation` records the applied attestation's provenance for the freshly
 set messages (via `update_latest_messages_mem` + the `validate_on_attestation`
-conjuncts + `ExternalsCoherence.valid_attestation_committee`) and transports the
+conjuncts + `BeaconExternalsPremises.valid_attestation_committee`) and transports the
 pre-existing ones (the block set and clock are unchanged). The successful
 post-store supplies the reachable checkpoint state. `hcur` bounds the store's
 current slot by `sl`. -/
 theorem on_attestation_LMP {E : Execution Root} {sl : Slot}
-    (hec : ExternalsCoherence cfg ext E) {store store' : Store Root}
+    (hec : BeaconExternalsPremises cfg ext E) {store store' : Store Root}
     {a : Attestation Root} {ifb : Bool} (hcur : get_current_slot cfg store ≤ sl)
     (h : LatestMessageProvenance E cfg sl store)
     (hh : on_attestation cfg ext store a ifb = some store')
@@ -354,7 +354,7 @@ theorem apply_event_get_current_slot {store store' : Store Root} {e : Event Root
 `on_attestation_LMP` (needing the slot bound `hcur`), attester slashings ride
 across by `of_sameBlocks`. -/
 theorem apply_event_LMP {E : Execution Root} {sl : Slot} (hwf : WellFormedExecution E)
-    (hec : ExternalsCoherence cfg ext E) {store store' : Store Root} {e : Event Root}
+    (hec : BeaconExternalsPremises cfg ext E) {store store' : Store Root} {e : Event Root}
     (hsched : ∀ b, e = Event.block b → IsScheduledBlock E b)
     (hprov : BlockProvenance E store) (hcur : get_current_slot cfg store ≤ sl)
     (h : LatestMessageProvenance E cfg sl store)
@@ -386,7 +386,7 @@ event is scheduled, so `BlockProvenance` (fed to `on_block`'s block-slot
 stability) and the slot bound are re-established at each step. Every prefix
 store must belong to the honest, in-horizon causal domain. -/
 theorem LMP_foldl {E : Execution Root} {sl : Slot} (hwf : WellFormedExecution E)
-    (hec : ExternalsCoherence cfg ext E) :
+    (hec : BeaconExternalsPremises cfg ext E) :
     ∀ (l : List (Event Root)) (s : Store Root),
       (∀ b, Event.block b ∈ l → IsScheduledBlock E b) →
       BlockProvenance E s → get_current_slot cfg s ≤ sl →
@@ -434,7 +434,7 @@ of a well-formed execution whose genesis store is a `get_forkchoice_store`
 n`. Base: genesis has no recorded messages; step: weaken the bound by
 `slot_at_mono`, push through `on_tick`, then fold the second's events. -/
 theorem Execution.latestMessageProvenance {E : Execution Root}
-    (hwf : WellFormedExecution E) (hec : ExternalsCoherence cfg ext E)
+    (hwf : WellFormedExecution E) (hec : BeaconExternalsPremises cfg ext E)
     (hgen : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
       E.genesis_store = get_forkchoice_store cfg ast ablk)
     (v : ValidatorIndex) (n : ℕ) (hv : v ∈ E.honest)

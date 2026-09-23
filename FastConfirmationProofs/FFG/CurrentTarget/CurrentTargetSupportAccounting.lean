@@ -190,8 +190,8 @@ equivocators are disjoint subsets of the same elapsed-epoch Byzantine span.
 Consequently their combined weight fits the prediction helper's pre-discount
 Byzantine budget. -/
 theorem currentTarget_nonhonest_add_equiv_le_budget
-    (hec : ExternalsCoherence cfg ext E)
-    (hbb : ByzantineBound cfg E)
+    (hec : BeaconExternalsPremises cfg ext E)
+    (hbb : ByzantineWeightPremises cfg E)
     {v : ValidatorIndex} (hv : v ∈ E.honest) {n : ℕ}
     (hnH : E.WithinHorizon cfg n)
     {state : BeaconState Root}
@@ -271,8 +271,8 @@ theorem currentTarget_nonhonest_add_equiv_le_budget
 post-equivocation `compute_adversarial_weight`. -/
 theorem currentTarget_nonhonest_weight_le_adversarial
     (hhb : HonestBehavior cfg ext E)
-    (hec : ExternalsCoherence cfg ext E)
-    (hbb : ByzantineBound cfg E)
+    (hec : BeaconExternalsPremises cfg ext E)
+    (hbb : ByzantineWeightPremises cfg E)
     (hgen : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
       E.genesis_store = get_forkchoice_store cfg ast ablk)
     {v : ValidatorIndex} (hv : v ∈ E.honest) {n : ℕ}

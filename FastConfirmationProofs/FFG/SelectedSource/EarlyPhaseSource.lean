@@ -32,10 +32,10 @@ variable {E : Execution Root}
 proofs.  Public early-phase constructors expose independent trajectory,
 synchrony, static-registry, economic, and local-domain inputs. -/
 private def selectedMarginAssumptions_of_earlyPhaseInputs
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
-    (hsync : PaperSafetySynchrony cfg ext E)
+    (hT : E.ScheduledPrefixPremises cfg ext)
+    (hsync : NextSlotSynchronyPremises cfg ext E)
     (hstatic : StaticValidatorSet cfg E)
-    (hbyz : ByzantineBound cfg E)
+    (hbyz : ByzantineWeightPremises cfg E)
     (hdomain : SelectedMarginDomain cfg ext E) :
     SelectedMarginAssumptions cfg ext E :=
   { genesis := hT.genesis_structure
@@ -92,7 +92,7 @@ theorem fcr_currentSlotHead_known
           (E.store_storeLE cfg ext v (Nat.le_succ n)).1 hknownN
         simpa only [Execution.fcr, hcall, if_false] using hcarry
 
-/-- Immediately before an executable `fcrStep`, its previous-slot-head cache
+/-- Immediately before an executable `fcrStoreAtCall`, its previous-slot-head cache
 is the preceding recurrence's known current-slot head, hence is known in the
 step store as well. -/
 theorem fcrStep_previousSlotHead_known
@@ -104,23 +104,23 @@ theorem fcrStep_previousSlotHead_known
     (hdom : SelectedMarginDomain cfg ext E)
     (v : ValidatorIndex) (hv : v ∈ E.honest) (n : Nat)
     (hH : E.WithinHorizon cfg (n + 1)) :
-    (E.fcrStep cfg ext v n).previous_slot_head ∈
-      (E.fcrStep cfg ext v n).store.block_roots := by
+    (E.fcrStoreAtCall cfg ext v n).previous_slot_head ∈
+      (E.fcrStoreAtCall cfg ext v n).store.block_roots := by
   have hnH : E.WithinHorizon cfg n :=
     E.withinHorizon_mono cfg (Nat.le_succ n) hH
   have hknownN := E.fcr_currentSlotHead_known cfg ext hgen hdom v hv n hnH
   have hknownN1 :=
     (E.store_storeLE cfg ext v (Nat.le_succ n)).1 hknownN
-  simp only [Execution.fcrStep, update_fast_confirmation_variables]
+  simp only [Execution.fcrStoreAtCall, update_fast_confirmation_variables]
   split_ifs <;> exact hknownN1
 
 /-- The step update shifts the preceding cached current head into the exact
 previous-slot-head field, independently of both epoch-check branches. -/
 theorem fcrStep_previousSlotHead_eq_currentSlotHead
     (v : ValidatorIndex) (n : Nat) :
-    (E.fcrStep cfg ext v n).previous_slot_head =
+    (E.fcrStoreAtCall cfg ext v n).previous_slot_head =
       (E.fcr cfg ext v n).current_slot_head := by
-  simp only [Execution.fcrStep, update_fast_confirmation_variables]
+  simp only [Execution.fcrStoreAtCall, update_fast_confirmation_variables]
   split_ifs <;> rfl
 
 /-! ## A strict current result is not produced at an epoch start -/
@@ -246,7 +246,7 @@ knownness; call-facing constructors below derive that knownness from
 theorem recentSourceSeedAt_endpoint_of_explicitSeed_sameEpoch
     (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
     (hwf : WellFormedExecution E)
-    (hec : ExternalsCoherence cfg ext E)
+    (hec : BeaconExternalsPremises cfg ext E)
     {ast : BeaconState Root} {ablk : SignedBeaconBlock Root}
     (hgen : E.genesis_store = get_forkchoice_store cfg ast ablk)
     (hgenSlot : ast.slot = ablk.message.slot)
@@ -292,25 +292,25 @@ arm the selected root itself is the seed.
 The public signature lists the independent lower contracts; it does not
 export `SelectedMarginAssumptions` as a completion premise. -/
 theorem StrictSelectedResultMechanicalFacts.fcrStep_previous_endpointRecentSourceSeed
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
-    (hsync : PaperSafetySynchrony cfg ext E)
+    (hT : E.ScheduledPrefixPremises cfg ext)
+    (hsync : NextSlotSynchronyPremises cfg ext E)
     (hstatic : StaticValidatorSet cfg E)
-    (hbyz : ByzantineBound cfg E)
+    (hbyz : ByzantineWeightPremises cfg E)
     (hdomain : SelectedMarginDomain cfg ext E)
     (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
     {v : ValidatorIndex} (hv : v ∈ E.honest) {n : Nat}
     (hn1H : E.WithinHorizon cfg (n + 1))
-    (hcall : E.IsFCRCallAt cfg ext v n)
+    (hcall : E.IsScheduledFCRCallAt cfg ext v n)
     {input result : Root}
     (h : StrictSelectedResultMechanicalFacts cfg ext
-      (E.fcrStep cfg ext v n) input result)
-    (hprevious : get_block_epoch cfg (E.fcrStep cfg ext v n).store result + 1 =
-      get_current_store_epoch cfg (E.fcrStep cfg ext v n).store)
+      (E.fcrStoreAtCall cfg ext v n) input result)
+    (hprevious : get_block_epoch cfg (E.fcrStoreAtCall cfg ext v n).store result + 1 =
+      get_current_store_epoch cfg (E.fcrStoreAtCall cfg ext v n).store)
     {w : ValidatorIndex} (hw : w ∈ E.honest) {m : Nat}
     (hmH : E.WithinHorizon cfg m)
     (hnm : n + 1 ≤ m)
     (hsameEpoch : get_current_store_epoch cfg (E.store cfg ext w m) =
-      get_current_store_epoch cfg (E.fcrStep cfg ext v n).store) :
+      get_current_store_epoch cfg (E.fcrStoreAtCall cfg ext v n).store) :
     RecentSourceSeedAt cfg (E.store cfg ext w m) result := by
   let hA := E.selectedMarginAssumptions_of_earlyPhaseInputs cfg ext
     hT hsync hstatic hbyz hdomain
@@ -321,30 +321,30 @@ theorem StrictSelectedResultMechanicalFacts.fcrStep_previous_endpointRecentSourc
     E.slot_at_mono cfg hnm
   have hselectedM : result ∈ (E.store cfg ext w m).block_roots :=
     E.confirmed_known_at_all_honest_endpoints_minimal cfg ext hA
-      v hv (n + 1) (E.fcrStep cfg ext v n)
+      v hv (n + 1) (E.fcrStoreAtCall cfg ext v n)
       (E.fcrStep_store cfg ext v n) result hn1H
       (by simpa only [E.fcrStep_store] using h.result_known)
       (by simpa only [E.fcrStep_store] using h.parent_known)
       h.confirmed w hw m hslotForward hmH
   have hqueryCausal : E.CausalStore cfg ext
-      (E.fcrStep cfg ext v n).store := by
+      (E.fcrStoreAtCall cfg ext v n).store := by
     rw [E.fcrStep_store]
     exact E.store_causal cfg ext v (n + 1)
   have hendpointCausal := E.store_causal cfg ext w m
   obtain ⟨hparentN1, hwalkN1, _hjustifiedN1⟩ :=
     E.store_domainK_of_selectedMarginDomain cfg ext hT.wellFormed
       hT.externals_coherence hT.genesis_structure hdomain v hv (n + 1) hn1H
-  have hqueryParent : ParentSlotLt (E.fcrStep cfg ext v n).store := by
+  have hqueryParent : ParentSlotLt (E.fcrStoreAtCall cfg ext v n).store := by
     simpa only [E.fcrStep_store] using hparentN1
   have hqueryProvenance : BlockProvenance E
-      (E.fcrStep cfg ext v n).store := by
+      (E.fcrStoreAtCall cfg ext v n).store := by
     simpa only [E.fcrStep_store] using E.blockProvenance cfg ext v (n + 1)
-  have hqueryWalk : ∀ t ∈ (E.fcrStep cfg ext v n).store.block_roots,
-      ∀ r ∈ (E.fcrStep cfg ext v n).store.block_roots,
-        WalkKnown (E.fcrStep cfg ext v n).store
-          ((E.fcrStep cfg ext v n).store.blocks t).slot r := by
+  have hqueryWalk : ∀ t ∈ (E.fcrStoreAtCall cfg ext v n).store.block_roots,
+      ∀ r ∈ (E.fcrStoreAtCall cfg ext v n).store.block_roots,
+        WalkKnown (E.fcrStoreAtCall cfg ext v n).store
+          ((E.fcrStoreAtCall cfg ext v n).store.blocks t).slot r := by
     simpa only [E.fcrStep_store] using hwalkN1
-  have hclock : get_current_store_epoch cfg (E.fcrStep cfg ext v n).store ≤
+  have hclock : get_current_store_epoch cfg (E.fcrStoreAtCall cfg ext v n).store ≤
       get_current_store_epoch cfg (E.store cfg ext w m) :=
     Nat.le_of_eq hsameEpoch.symm
   rcases h.trace_origin with
@@ -352,20 +352,20 @@ theorem StrictSelectedResultMechanicalFacts.fcrStep_previous_endpointRecentSourc
       ⟨_a, _hedge, _hentry, hfinal⟩
   · have hseedQ := E.fcrStep_previousSlotHead_known cfg ext
       hT.genesis_structure hdomain v hv n hn1H
-    have hseedN : (E.fcrStep cfg ext v n).previous_slot_head ∈
+    have hseedN : (E.fcrStoreAtCall cfg ext v n).previous_slot_head ∈
         (E.store cfg ext v n).block_roots := by
       rw [E.fcrStep_previousSlotHead_eq_currentSlotHead]
       exact E.fcr_currentSlotHead_known cfg ext hT.genesis_structure hdomain
         v hv n hnH
     have hslotAdvance : E.slot_at cfg n < E.slot_at cfg (n + 1) := by
-      unfold IsFCRCallAt at hcall
+      unfold IsScheduledFCRCallAt at hcall
       simpa only [E.store_current_slot cfg ext v (n + 1),
         E.store_current_slot cfg ext v n] using hcall
     have hrelayGate : E.slot_at cfg n + 1 ≤ E.slot_at cfg (m + 1) :=
       (Nat.succ_le_iff.mpr hslotAdvance).trans
         (E.slot_at_mono cfg
           (hnm.trans (Nat.le_succ m)))
-    have hseedM : (E.fcrStep cfg ext v n).previous_slot_head ∈
+    have hseedM : (E.fcrStoreAtCall cfg ext v n).previous_slot_head ∈
         (E.store cfg ext w m).block_roots :=
       hsync.block_relay v hv n _ hnH hseedN w hw m hmH hrelayGate
     exact E.recentSourceSeedAt_endpoint_of_explicitSeed_sameEpoch
@@ -376,8 +376,8 @@ theorem StrictSelectedResultMechanicalFacts.fcrStep_previous_endpointRecentSourc
       hselectedM hseedQ hseedM hdesc hclock hsameEpoch hrecent
   · unfold TentativeSelectedResultWitness at hfinal
     rcases hfinal with hcurrent | ⟨hrecent, _houter⟩
-    · have hbad : get_block_epoch cfg (E.fcrStep cfg ext v n).store result + 1 =
-          get_block_epoch cfg (E.fcrStep cfg ext v n).store result :=
+    · have hbad : get_block_epoch cfg (E.fcrStoreAtCall cfg ext v n).store result + 1 =
+          get_block_epoch cfg (E.fcrStoreAtCall cfg ext v n).store result :=
         hprevious.trans hcurrent.symm
       exact False.elim ((Nat.ne_of_gt (Nat.lt_succ_self _)) hbad)
     · exact E.recentSourceSeedAt_endpoint_of_explicitSeed_sameEpoch
@@ -388,53 +388,53 @@ theorem StrictSelectedResultMechanicalFacts.fcrStep_previous_endpointRecentSourc
         hselectedM h.result_known hselectedM
         (is_ancestor_refl _ _) hclock hsameEpoch hrecent
 
-/-- Actual `fcrStep` current/next cell.  Epoch-start exclusion is derived from
+/-- Actual `fcrStoreAtCall` current/next cell.  Epoch-start exclusion is derived from
 the narrow honest past-descendant witness.  The strict epoch gap itself gives
 the `Synchrony.block_relay` clock gate for every query seed, so neither
 selected-root nor seed endpoint knownness is a premise. -/
 theorem StrictSelectedResultMechanicalFacts.fcrStep_currentNext_endpointRecentSourceSeed
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
-    (hsync : PaperSafetySynchrony cfg ext E)
+    (hT : E.ScheduledPrefixPremises cfg ext)
+    (hsync : NextSlotSynchronyPremises cfg ext E)
     (hstatic : StaticValidatorSet cfg E)
-    (hbyz : ByzantineBound cfg E)
+    (hbyz : ByzantineWeightPremises cfg E)
     (hdomain : SelectedMarginDomain cfg ext E)
     (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
     {v : ValidatorIndex} (hv : v ∈ E.honest) {n : Nat}
     (hn1H : E.WithinHorizon cfg (n + 1))
     {input result : Root}
-    (hinput : input ∈ (E.fcrStep cfg ext v n).store.block_roots)
+    (hinput : input ∈ (E.fcrStoreAtCall cfg ext v n).store.block_roots)
     (hout : find_latest_confirmed_descendant cfg ext
-      (E.fcrStep cfg ext v n) input = result)
+      (E.fcrStoreAtCall cfg ext v n) input = result)
     (hstrict : result ≠ input)
     (h : StrictSelectedResultMechanicalFacts cfg ext
-      (E.fcrStep cfg ext v n) input result)
-    (hcurrent : get_block_epoch cfg (E.fcrStep cfg ext v n).store result =
-      get_current_store_epoch cfg (E.fcrStep cfg ext v n).store)
+      (E.fcrStoreAtCall cfg ext v n) input result)
+    (hcurrent : get_block_epoch cfg (E.fcrStoreAtCall cfg ext v n).store result =
+      get_current_store_epoch cfg (E.fcrStoreAtCall cfg ext v n).store)
     {w : ValidatorIndex} (hw : w ∈ E.honest) {m : Nat}
     (hmH : E.WithinHorizon cfg m)
     (hnextEpoch : get_current_store_epoch cfg (E.store cfg ext w m) =
-      get_current_store_epoch cfg (E.fcrStep cfg ext v n).store + 1) :
+      get_current_store_epoch cfg (E.fcrStoreAtCall cfg ext v n).store + 1) :
     RecentSourceSeedAt cfg (E.store cfg ext w m) result := by
   let hA := E.selectedMarginAssumptions_of_earlyPhaseInputs cfg ext
     hT hsync hstatic hbyz hdomain
   obtain ⟨ast, ablk, hgen, hgenSlot, hgenParent⟩ := hT.genesis_structure
   have hqueryCausal : E.CausalStore cfg ext
-      (E.fcrStep cfg ext v n).store := by
+      (E.fcrStoreAtCall cfg ext v n).store := by
     rw [E.fcrStep_store]
     exact E.store_causal cfg ext v (n + 1)
   have hendpointCausal := E.store_causal cfg ext w m
   obtain ⟨hparentN1, hwalkN1, _hjustifiedN1⟩ :=
     E.store_domainK_of_selectedMarginDomain cfg ext hT.wellFormed
       hT.externals_coherence hT.genesis_structure hdomain v hv (n + 1) hn1H
-  have hqueryParent : ParentSlotLt (E.fcrStep cfg ext v n).store := by
+  have hqueryParent : ParentSlotLt (E.fcrStoreAtCall cfg ext v n).store := by
     simpa only [E.fcrStep_store] using hparentN1
-  have hqueryWalk : ∀ t ∈ (E.fcrStep cfg ext v n).store.block_roots,
-      ∀ r ∈ (E.fcrStep cfg ext v n).store.block_roots,
-        WalkKnown (E.fcrStep cfg ext v n).store
-          ((E.fcrStep cfg ext v n).store.blocks t).slot r := by
+  have hqueryWalk : ∀ t ∈ (E.fcrStoreAtCall cfg ext v n).store.block_roots,
+      ∀ r ∈ (E.fcrStoreAtCall cfg ext v n).store.block_roots,
+        WalkKnown (E.fcrStoreAtCall cfg ext v n).store
+          ((E.fcrStoreAtCall cfg ext v n).store.blocks t).slot r := by
     simpa only [E.fcrStep_store] using hwalkN1
-  have hhead : (get_head cfg (E.fcrStep cfg ext v n).store).root ∈
-      (E.fcrStep cfg ext v n).store.block_roots := by
+  have hhead : (get_head cfg (E.fcrStoreAtCall cfg ext v n).store).root ∈
+      (E.fcrStoreAtCall cfg ext v n).store.block_roots := by
     simpa only [E.fcrStep_store] using
       E.head_root_known_of_selectedMarginDomain cfg ext hdomain hv
         (n + 1) hn1H
@@ -464,14 +464,14 @@ theorem StrictSelectedResultMechanicalFacts.fcrStep_currentNext_endpointRecentSo
     (Nat.succ_le_iff.mpr hslotLt).trans
       (E.slot_at_mono cfg (Nat.le_succ m))
   have hseedM : ∀ seed,
-      seed ∈ (E.fcrStep cfg ext v n).store.block_roots →
+      seed ∈ (E.fcrStoreAtCall cfg ext v n).store.block_roots →
       seed ∈ (E.store cfg ext w m).block_roots := by
     intro seed hseed
     apply hsync.block_relay v hv (n + 1) seed hn1H
       (by simpa only [E.fcrStep_store] using hseed) w hw m hmH hrelayGate
   have hqueryNonfuture : BlocksSlotLe
-      (get_current_slot cfg (E.fcrStep cfg ext v n).store)
-      (E.fcrStep cfg ext v n).store := by
+      (get_current_slot cfg (E.fcrStoreAtCall cfg ext v n).store)
+      (E.fcrStoreAtCall cfg ext v n).store := by
     simpa only [E.fcrStep_store] using
       E.store_blocks_slot_le_current cfg ext hT.whole_seconds
         ⟨ast, ablk, hgen, hgenSlot⟩ v (n + 1)

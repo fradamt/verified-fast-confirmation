@@ -211,7 +211,7 @@ private theorem fullSpan_base_transport_arith
 
 /-- Same-epoch blocks use their own slot as the adversarial-span start.  This
 is the non-crossing counterpart of `crossing_fullSpan_adversarial_guard`. -/
-theorem intraEpoch_adversarial_guard (hbb : ByzantineBound cfg E)
+theorem intraEpoch_adversarial_guard (hbb : ByzantineWeightPremises cfg E)
     {store : Store Root} {bs : BeaconState Root} {b : Root} {es : Slot}
     (htab : get_total_active_balance cfg bs = E.total_active cfg)
     (hintra : get_block_epoch cfg store b =
@@ -248,8 +248,8 @@ at the actual query store.  All future honest classes are read at the endpoint.
 This is why the result remains valid when future vote blocks were not yet known
 at the query. -/
 theorem intraEpochFuture_endpoint_inequality_of_confirmed_window
-    (hhb : HonestBehavior cfg ext E) (hec : ExternalsCoherence cfg ext E)
-    (hbb : ByzantineBound cfg E)
+    (hhb : HonestBehavior cfg ext E) (hec : BeaconExternalsPremises cfg ext E)
+    (hbb : ByzantineWeightPremises cfg E)
     (hgen : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
       E.genesis_store = get_forkchoice_store cfg ast ablk)
     {v : ValidatorIndex} (hv : v ∈ E.honest) {n : ℕ}
@@ -405,8 +405,8 @@ theorem intraEpochFuture_endpoint_inequality_of_confirmed_window
 This corrects the historical crossing wrapper, whose future classes were read
 at the query store even though future vote roots need not be known there. -/
 theorem crossingEdgeFuture_endpoint_inequality_of_confirmed_window
-    (hhb : HonestBehavior cfg ext E) (hec : ExternalsCoherence cfg ext E)
-    (hbb : ByzantineBound cfg E)
+    (hhb : HonestBehavior cfg ext E) (hec : BeaconExternalsPremises cfg ext E)
+    (hbb : ByzantineWeightPremises cfg E)
     (hgen : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
       E.genesis_store = get_forkchoice_store cfg ast ablk)
     {v : ValidatorIndex} (hv : v ∈ E.honest) {n : ℕ}
