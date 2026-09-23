@@ -443,6 +443,29 @@ structure MonotonicityLiveAssumptions (E : Execution Root)
     2 * E.activeNonHonestWeight cfg +
       2 * (E.total_active cfg / 100 * cfg.confirmation_byzantine_threshold) +
       compute_proposer_score cfg E.anchor_state < E.total_active cfg
+  /-- Paper Assumption 6 counterpart: conditional eventual FFG closure is
+  visible at the last-slot call of each completed epoch. The checkpoint is
+  carried by an honestly proposed block on every honest head chain. At the
+  next epoch start the head agrees with that observation and the previous
+  head has a recent voting source. Paper Assumption 3.2 alone permits a
+  two-epoch lag, which closes the executable gates in
+  `MonotonicityLiveGates.lean`. -/
+  ffg_timely_justification : ∀ e : Epoch,
+    compute_epoch_at_slot cfg (E.slot_at cfg 0) ≤ e →
+    compute_start_slot_at_epoch cfg (e + 1) ≤ E.slot_at cfg m →
+    ∃ c : Checkpoint Root,
+      c.epoch = e ∧
+      (∃ r b, E.BlockAt r b ∧ b.proposer_index ∈ E.honest ∧
+        compute_epoch_at_slot cfg b.slot = e ∧ c.root = r) ∧
+      ∀ w ∈ E.honest,
+        let last := E.store cfg ext w
+          (E.slot_start cfg (compute_start_slot_at_epoch cfg (e + 1) - 1))
+        let next := E.store cfg ext w
+          (E.slot_start cfg (compute_start_slot_at_epoch cfg (e + 1)))
+        last.unrealized_justified_checkpoint = c ∧
+        get_checkpoint_for_block cfg next (get_head cfg next).root e = c ∧
+        next.unrealized_justifications (get_head cfg next).root = c ∧
+        (get_voting_source cfg next (get_head cfg last).root).epoch + 2 ≥ e + 1
 
 /-- Proposed executable-spec counterpart of the monotonicity half of paper
 Theorem 1 (arXiv:2405.00549): under the accepted execution assumptions and
