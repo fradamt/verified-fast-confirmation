@@ -22,6 +22,9 @@ Each row states a choice in the executable or paper model, why it is used, and t
 │                                        │ VALID.                                                         │                                                                          │
 │ Accepted event prefix semantics        │ Tracks a handler result at every scheduled prefix.             │ Schedules and successful handler assumptions need a concrete network     │
 │                                        │                                                                │ argument.                                                                │
+│ Supplied FFG carrier-vote relation     │ Adds causal evidence for an accepted carrier and received vote. │ The projected block has no ordinary FFG attestation body. The relation   │
+│                                        │                                                                │ is not checked against carrier body membership.                           │
+│ Supplied FFG validation state          │ Gives the execution registry and a true validity answer.       │ The state need not be reachable or prepared by a handler.                │
 │ Static validator registry              │ Matches the paper balance setting over the horizon.            │ The safety theorem does not cover validator churn.                       │
 │ Finite horizon                         │ Makes endpoints and next-slot receipt precise.                 │ Conclusions do not extend beyond the checked horizon.                    │
 │ Global FFG and finalization laws       │ Connects opaque beacon transitions to exact checkpoint state.  │ The premises range over handler-successful prefixes beyond a conclusion endpoint.  │
@@ -36,5 +39,12 @@ Each row states a choice in the executable or paper model, why it is used, and t
 │ Algorithm 1 future confirmation input  │ Discharges the later monotonicity gate.                        │ SafeConfirmedAlg1Inputs is stronger than Assumption 6.                   │
 └────────────────────────────────────────┴────────────────────────────────────────────────────────────────┴──────────────────────────────────────────────────────────────────────────┘
 ```
+
+The safety claims hold for every carrier-vote relation that meets the stated
+fields. They do not alone certify the votes in real block bodies. The
+`ByzantineWeightPremises.span_fraction` bound applies to every in-horizon
+committee span, including one slot. A global fault share does not establish
+this bound. It matches `CommitteeHonestMajority` in the repository's formal
+paper Assumption 2.
 
 The source fork is `fradamt/consensus-specs` at tag `fcr-gloas-fix` (`13f391516`). The independent weak rule is on branch `fcr-weak-synchrony` and tag `fcr-weak-synchrony-v1`; its live monotonicity proposition remains open. See [source map](SPEC_MAP.md), [paper map](PAPER_MAP.md), and [review guide](REVIEW_GUIDE.md).
