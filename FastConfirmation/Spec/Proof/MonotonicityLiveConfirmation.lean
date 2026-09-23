@@ -248,6 +248,94 @@ theorem reconfirm_margin_persists_with_discount_loss
     hadversarial hdiscount
   omega
 
+/-- For quantized same-epoch windows, the configured adversarial allowance
+grows by at most one quarter of the added committee weight. A larger
+equivocation score can only reduce the remaining allowance. -/
+theorem quantized_adversarial_budget_growth
+    {old added cap oldEq newEq : ℕ}
+    (hOld : 100 ∣ old) (hAdded : 100 ∣ added)
+    (hcap : cap ≤ 25) (heq : oldEq ≤ newEq) :
+    4 * (((old + added) / 100 * cap) - newEq) ≤
+      4 * ((old / 100 * cap) - oldEq) + added := by
+  obtain ⟨x, hx⟩ := hOld
+  obtain ⟨y, hy⟩ := hAdded
+  subst old
+  subst added
+  have hdivOld : (100 * x) / 100 = x := by omega
+  have hdivNew : (100 * x + 100 * y) / 100 = x + y := by
+    rw [← Nat.mul_add]
+    omega
+  rw [hdivOld, hdivNew, Nat.add_mul]
+  have hsub : (x * cap + y * cap) - newEq ≤
+      (x * cap - oldEq) + y * cap := by
+    have harith {a b c d : ℕ} (hcd : c ≤ d) :
+        (a + b) - d ≤ (a - c) + b := by omega
+    exact harith heq
+  calc
+    4 * (x * cap + y * cap - newEq) ≤
+        4 * ((x * cap - oldEq) + y * cap) :=
+      Nat.mul_le_mul_left 4 hsub
+    _ = 4 * (x * cap - oldEq) + 4 * (y * cap) := by ring
+    _ ≤ 4 * (x * cap - oldEq) + 100 * y := by
+      apply Nat.add_le_add_left
+      calc
+        4 * (y * cap) = (4 * y) * cap := by ring
+        _ ≤ (4 * y) * 25 := Nat.mul_le_mul_left (4 * y) hcap
+        _ = 100 * y := by ring
+
+/-- If a previously supporting non-honest validator equivocates, its lost
+support is charged to the same increase in the equivocation score. The
+quantized allowance still covers the remaining new adversarial score and
+the lost old support. -/
+theorem quantized_adversarial_budget_growth_with_loss
+    {old added cap oldEq newEq lost : ℕ}
+    (hOld : 100 ∣ old) (hAdded : 100 ∣ added)
+    (hcap : cap ≤ 25)
+    (hOldEq : oldEq ≤ old / 100 * cap)
+    (hlost : lost ≤ old / 100 * cap - oldEq)
+    (heq : oldEq + lost ≤ newEq) :
+    4 * ((((old + added) / 100 * cap) - newEq) + lost) ≤
+      4 * ((old / 100 * cap) - oldEq) + added := by
+  obtain ⟨x, hx⟩ := hOld
+  obtain ⟨y, hy⟩ := hAdded
+  subst old
+  subst added
+  have hdivOld : (100 * x) / 100 = x := by omega
+  have hdivNew : (100 * x + 100 * y) / 100 = x + y := by
+    rw [← Nat.mul_add]
+    omega
+  rw [hdivOld] at hOldEq hlost
+  rw [hdivOld, hdivNew, Nat.add_mul]
+  have hsub : (x * cap + y * cap - newEq) + lost ≤
+      (x * cap - oldEq) + y * cap := by
+    have harith {a b c d l : ℕ}
+        (hc : c ≤ a) (hl : l ≤ a - c) (hcd : c + l ≤ d) :
+        (a + b - d) + l ≤ (a - c) + b := by omega
+    exact harith hOldEq hlost heq
+  calc
+    4 * ((x * cap + y * cap - newEq) + lost) ≤
+        4 * ((x * cap - oldEq) + y * cap) :=
+      Nat.mul_le_mul_left 4 hsub
+    _ = 4 * (x * cap - oldEq) + 4 * (y * cap) := by ring
+    _ ≤ 4 * (x * cap - oldEq) + 100 * y := by
+      apply Nat.add_le_add_left
+      calc
+        4 * (y * cap) = (4 * y) * cap := by ring
+        _ ≤ (4 * y) * 25 := Nat.mul_le_mul_left (4 * y) hcap
+        _ = 100 * y := by ring
+
+/-- Integer reconfirmation margin with equivocation-neutral support loss. -/
+theorem reconfirm_margin_persists_with_equivocation_loss
+    {score window boost adversarial added honestAdded lost
+      adversarialNew scoreNew : ℕ}
+    (hconfirmed : window + boost + 2 * adversarial < 2 * score)
+    (hhonest : 3 * added ≤ 4 * honestAdded)
+    (hscore : score + honestAdded ≤ scoreNew + lost)
+    (hadversarial : 4 * (adversarialNew + lost) ≤
+      4 * adversarial + added) :
+    window + added + boost + 2 * adversarialNew < 2 * scoreNew := by
+  omega
+
 private theorem strict_margin_of_threshold
     {window boost adversarial discount score : ℕ}
     (hscore : score >
@@ -437,6 +525,66 @@ theorem is_one_confirmed_reconfirm_of_growth
   have hNewPos : 0 < get_attestation_score cfg newStore
       (get_node_for_root r) newSource :=
     hOldPos.trans_le ((Nat.le_add_right _ _).trans hscore)
+  exact one_confirmed_of_integer_margin cfg ext newStore newSource r
+    hNewPos hmarginNew
+
+/-- Executable reconfirmation with a zero discount and equivocation-neutral
+support loss. The source and committee accounting are explicit inputs for
+the live execution bridge. -/
+theorem is_one_confirmed_reconfirm_of_growth_with_equivocation_loss
+    (oldStore newStore : Store Root)
+    (oldSource newSource : BeaconState Root)
+    (r : Root) (added honestAdded lost : ℕ)
+    (hOld : is_one_confirmed cfg ext oldStore oldSource r = true)
+    (hOldDiscount : get_support_discount cfg ext oldStore oldSource r = 0)
+    (hNewDiscount : get_support_discount cfg ext newStore newSource r = 0)
+    (hscore : get_attestation_score cfg oldStore
+        (get_node_for_root r) oldSource + honestAdded ≤
+      get_attestation_score cfg newStore
+        (get_node_for_root r) newSource + lost)
+    (hlost : lost < get_attestation_score cfg oldStore
+      (get_node_for_root r) oldSource)
+    (hwindow :
+      estimate_committee_weight_between_slots cfg
+          (get_total_active_balance cfg newSource)
+          ((newStore.blocks (newStore.blocks r).parent_root).slot + 1)
+          (get_current_slot cfg newStore - 1) ≤
+      estimate_committee_weight_between_slots cfg
+          (get_total_active_balance cfg oldSource)
+          ((oldStore.blocks (oldStore.blocks r).parent_root).slot + 1)
+          (get_current_slot cfg oldStore - 1) + added)
+    (hboost : compute_proposer_score cfg newSource ≤
+      compute_proposer_score cfg oldSource)
+    (hadversarial :
+      4 * (get_adversarial_weight cfg ext newStore newSource r + lost) ≤
+        4 * get_adversarial_weight cfg ext oldStore oldSource r + added)
+    (hhonest : 3 * added ≤ 4 * honestAdded) :
+    is_one_confirmed cfg ext newStore newSource r = true := by
+  have hOldMargin := one_confirmed_has_integer_margin cfg ext
+    oldStore oldSource r hOld
+  dsimp only at hOldMargin
+  rw [hOldDiscount, Nat.add_zero] at hOldMargin
+  have hmarginGrowth := reconfirm_margin_persists_with_equivocation_loss
+    hOldMargin hhonest hscore hadversarial
+  have hmarginNew :
+      estimate_committee_weight_between_slots cfg
+          (get_total_active_balance cfg newSource)
+          ((newStore.blocks (newStore.blocks r).parent_root).slot + 1)
+          (get_current_slot cfg newStore - 1) +
+        compute_proposer_score cfg newSource +
+        2 * get_adversarial_weight cfg ext newStore newSource r <
+      2 * get_attestation_score cfg newStore
+          (get_node_for_root r) newSource +
+        get_support_discount cfg ext newStore newSource r := by
+    rw [hNewDiscount, Nat.add_zero]
+    exact lt_of_le_of_lt
+      (Nat.add_le_add (Nat.add_le_add hwindow hboost) le_rfl)
+      hmarginGrowth
+  have hNewPos : 0 < get_attestation_score cfg newStore
+      (get_node_for_root r) newSource := by
+    have harith {a b c d : ℕ}
+        (h1 : c < a) (h2 : a + b ≤ d + c) : 0 < d := by omega
+    exact harith hlost hscore
   exact one_confirmed_of_integer_margin cfg ext newStore newSource r
     hNewPos hmarginNew
 
