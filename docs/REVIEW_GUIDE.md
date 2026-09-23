@@ -96,8 +96,10 @@ same-epoch cached root can use the configured bound
 one-confirmation bound is proved in `MonotonicityLiveConfirmation.lean` under
 explicit chain support and parent-window facts. That file also proves the
 numeric growth rule for reconfirming a block across two executable stores.
-Its partial-window support, budget-growth, and discount-persistence premises
-remain to be derived from the accepted execution.
+It now proves exact partial-window estimator accounting inside an accepted
+full epoch and a numeric rule that charges a lost Gloas discount to moved
+child support. The actual call's support growth, adversarial budget growth,
+and discount-loss bound remain to be derived from the accepted execution.
 
 The accepted finite witness proves the need for prefix production:
 `descendant_votes_without_continuous_production_revert` has all honest stake,

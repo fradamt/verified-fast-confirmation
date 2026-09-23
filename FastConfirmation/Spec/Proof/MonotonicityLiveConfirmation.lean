@@ -168,6 +168,39 @@ theorem complementary_epoch_window_exact
     left = estimateLeft ∧ right = estimateRight := by
   omega
 
+theorem complementary_epoch_window_exact_of_le
+    {whole left right estimateLeft estimateRight : ℕ}
+    (hwhole : left + right = whole)
+    (hest : estimateLeft + estimateRight ≤ whole)
+    (hleft : left ≤ estimateLeft)
+    (hright : right ≤ estimateRight) :
+    left = estimateLeft ∧ right = estimateRight := by
+  omega
+
+/-- Two adjacent partial windows with a combined length of one epoch cannot
+overestimate the active total. The divisor truncation only makes the sum
+smaller. -/
+theorem complementary_partial_estimates_le_total
+    (tab : Gwei) (a b c : Slot)
+    (hab : a ≤ b) (hbc : b + 1 ≤ c)
+    (hcovLeft : is_full_validator_set_covered cfg a b = false)
+    (hcovRight : is_full_validator_set_covered cfg (b + 1) c = false)
+    (hepochLeft : compute_epoch_at_slot cfg a = compute_epoch_at_slot cfg b)
+    (hepochRight : compute_epoch_at_slot cfg (b + 1) = compute_epoch_at_slot cfg c)
+    (hlength : b - a + 1 + (c - (b + 1) + 1) = cfg.slots_per_epoch) :
+    estimate_committee_weight_between_slots cfg tab a b +
+      estimate_committee_weight_between_slots cfg tab (b + 1) c ≤ tab := by
+  rw [estimate_same_epoch cfg tab a b hab hcovLeft hepochLeft,
+    estimate_same_epoch cfg tab (b + 1) c hbc hcovRight hepochRight,
+    ← Nat.mul_add, hlength]
+  exact Nat.div_mul_le_self tab cfg.slots_per_epoch
+
+private theorem partial_slot_count
+    {a b length : ℕ} (hpositive : 0 < length)
+    (hab : a ≤ b) (hbc : b + 1 ≤ a + (length - 1)) :
+    b - a + 1 + (a + (length - 1) - (b + 1) + 1) = length := by
+  omega
+
 /-- The configured at-most-25% Byzantine fraction makes the honest part
 of any committee span at least three quarters of its weight. -/
 theorem Config.honest_span_three_quarters
@@ -195,6 +228,24 @@ theorem reconfirm_margin_persists
     (hdiscount : discount ≤ discountNew) :
     window + added + boost + 2 * adversarialNew <
       2 * (score + honestAdded) + discountNew := by
+  omega
+
+/-- Gloas may remove an empty-slot discount as parent-root messages move to
+the child. The strict margin still persists if the lost discount is covered
+by twice that additional child support. -/
+theorem reconfirm_margin_persists_with_discount_loss
+    {score window boost adversarial discount added honestAdded movedSupport
+      adversarialNew discountNew : ℕ}
+    (hconfirmed : window + boost + 2 * adversarial <
+      2 * score + discount)
+    (hhonest : 3 * added ≤ 4 * honestAdded)
+    (hadversarial : 4 * adversarialNew ≤
+      4 * adversarial + added)
+    (hdiscount : discount ≤ discountNew + 2 * movedSupport) :
+    window + added + boost + 2 * adversarialNew <
+      2 * (score + honestAdded + movedSupport) + discountNew := by
+  have hmargin := reconfirm_margin_persists hconfirmed hhonest
+    hadversarial hdiscount
   omega
 
 private theorem strict_margin_of_threshold
@@ -328,6 +379,85 @@ theorem is_one_confirmed_reconfirm_of_growth
   exact one_confirmed_of_integer_margin cfg ext newStore newSource r
     hNewPos hmarginNew
 
+/-- Reconfirmation with Gloas discount loss charged to additional child
+support. Its concrete moved-support inequality remains an execution-level
+obligation. -/
+theorem is_one_confirmed_reconfirm_of_growth_with_discount_loss
+    (oldStore newStore : Store Root)
+    (oldSource newSource : BeaconState Root)
+    (r : Root) (added honestAdded movedSupport : ℕ)
+    (hOld : is_one_confirmed cfg ext oldStore oldSource r = true)
+    (hscore :
+      get_attestation_score cfg oldStore (get_node_for_root r) oldSource +
+        honestAdded + movedSupport ≤
+      get_attestation_score cfg newStore (get_node_for_root r) newSource)
+    (hwindow :
+      estimate_committee_weight_between_slots cfg
+          (get_total_active_balance cfg newSource)
+          ((newStore.blocks (newStore.blocks r).parent_root).slot + 1)
+          (get_current_slot cfg newStore - 1) ≤
+      estimate_committee_weight_between_slots cfg
+          (get_total_active_balance cfg oldSource)
+          ((oldStore.blocks (oldStore.blocks r).parent_root).slot + 1)
+          (get_current_slot cfg oldStore - 1) + added)
+    (hboost : compute_proposer_score cfg newSource ≤
+      compute_proposer_score cfg oldSource)
+    (hadversarial :
+      4 * get_adversarial_weight cfg ext newStore newSource r ≤
+        4 * get_adversarial_weight cfg ext oldStore oldSource r + added)
+    (hdiscount : get_support_discount cfg ext oldStore oldSource r ≤
+      get_support_discount cfg ext newStore newSource r + 2 * movedSupport)
+    (hhonest : 3 * added ≤ 4 * honestAdded) :
+    is_one_confirmed cfg ext newStore newSource r = true := by
+  have hOldMargin := one_confirmed_has_integer_margin cfg ext
+    oldStore oldSource r hOld
+  dsimp only at hOldMargin
+  have hmarginGrowth := reconfirm_margin_persists_with_discount_loss
+    hOldMargin hhonest hadversarial hdiscount
+  have hmarginNew :
+      estimate_committee_weight_between_slots cfg
+          (get_total_active_balance cfg newSource)
+          ((newStore.blocks (newStore.blocks r).parent_root).slot + 1)
+          (get_current_slot cfg newStore - 1) +
+        compute_proposer_score cfg newSource +
+        2 * get_adversarial_weight cfg ext newStore newSource r <
+      2 * get_attestation_score cfg newStore (get_node_for_root r) newSource +
+        get_support_discount cfg ext newStore newSource r := by
+    calc
+      _ ≤
+        (estimate_committee_weight_between_slots cfg
+            (get_total_active_balance cfg oldSource)
+            ((oldStore.blocks (oldStore.blocks r).parent_root).slot + 1)
+            (get_current_slot cfg oldStore - 1) + added) +
+          compute_proposer_score cfg oldSource +
+          2 * get_adversarial_weight cfg ext newStore newSource r :=
+        Nat.add_le_add (Nat.add_le_add hwindow hboost) (Nat.le_refl _)
+      _ < 2 * (get_attestation_score cfg oldStore
+          (get_node_for_root r) oldSource + honestAdded + movedSupport) +
+          get_support_discount cfg ext newStore newSource r := hmarginGrowth
+      _ ≤ 2 * get_attestation_score cfg newStore
+          (get_node_for_root r) newSource +
+          get_support_discount cfg ext newStore newSource r :=
+        Nat.add_le_add_right (Nat.mul_le_mul_left 2 hscore) _
+  have hOldScore := hOld
+  simp only [is_one_confirmed, decide_eq_true_eq] at hOldScore
+  have hOldPos : 0 < get_attestation_score cfg oldStore
+      (get_node_for_root r) oldSource :=
+    lt_of_le_of_lt (Nat.zero_le _) hOldScore
+  have hNewPos : 0 < get_attestation_score cfg newStore
+      (get_node_for_root r) newSource := by
+    apply hOldPos.trans_le
+    calc
+      get_attestation_score cfg oldStore (get_node_for_root r) oldSource ≤
+          get_attestation_score cfg oldStore (get_node_for_root r) oldSource +
+            honestAdded := Nat.le_add_right _ _
+      _ ≤ get_attestation_score cfg oldStore (get_node_for_root r) oldSource +
+          honestAdded + movedSupport := Nat.le_add_right _ _
+      _ ≤ get_attestation_score cfg newStore
+          (get_node_for_root r) newSource := hscore
+  exact one_confirmed_of_integer_margin cfg ext newStore newSource r
+    hNewPos hmarginNew
+
 namespace Execution
 
 variable (E : Execution Root)
@@ -369,6 +499,174 @@ theorem AcceptedActualFCRNextSlotSafetyAssumptions.anchor_epoch_eq_initial
     exact hcurrent0.symm
   rw [hanchorState, hslot0]
   rfl
+
+/-- In every in-horizon committee span, accepted Byzantine concentration
+leaves at least three quarters of the assigned weight honest. -/
+theorem AcceptedActualFCRNextSlotSafetyAssumptions.honest_span_three_quarters
+    (h : E.AcceptedActualFCRNextSlotSafetyAssumptions cfg ext)
+    (a b : Slot)
+    (haH : E.SlotWithinHorizon cfg a)
+    (hbH : E.SlotWithinHorizon cfg b) :
+    3 * E.weight (E.span_committee a b) ≤
+      4 * E.weight ((E.span_committee a b).filter fun i => i ∈ E.honest) := by
+  have hpart :
+      E.weight ((E.span_committee a b).filter fun i => i ∈ E.honest) +
+        E.weight ((E.span_committee a b).filter fun i => i ∉ E.honest) =
+      E.weight (E.span_committee a b) := by
+    simpa only [Execution.weight] using
+      Finset.sum_filter_add_sum_filter_not (E.span_committee a b)
+        (fun i => i ∈ E.honest) E.weight_of
+  exact cfg.honest_span_three_quarters hpart
+    (h.completed_calls.byzantine_bound.span_fraction a b haH hbH)
+
+/-- Disjoint consecutive slot spans inside one epoch have disjoint
+validator assignments. -/
+theorem AcceptedActualFCRNextSlotSafetyAssumptions.same_epoch_spans_disjoint
+    (h : E.AcceptedActualFCRNextSlotSafetyAssumptions cfg ext)
+    {a b c : Slot}
+    (hepoch : compute_epoch_at_slot cfg a = compute_epoch_at_slot cfg c) :
+    Disjoint (E.span_committee a b) (E.span_committee (b + 1) c) := by
+  apply Finset.disjoint_left.mpr
+  intro i hiLeft hiRight
+  simp only [Execution.span_committee, Finset.mem_biUnion,
+    Finset.mem_Icc] at hiLeft hiRight
+  obtain ⟨s, hs, his⟩ := hiLeft
+  obtain ⟨t, ht, hit⟩ := hiRight
+  have hst : s < t :=
+    lt_of_le_of_lt hs.2 (Nat.lt_of_succ_le ht.1)
+  have hse : compute_epoch_at_slot cfg s = compute_epoch_at_slot cfg t := by
+    apply Nat.le_antisymm
+    · exact Nat.div_le_div_right hst.le
+    · calc
+        compute_epoch_at_slot cfg t ≤ compute_epoch_at_slot cfg c :=
+          Nat.div_le_div_right ht.2
+        _ = compute_epoch_at_slot cfg a := hepoch.symm
+        _ ≤ compute_epoch_at_slot cfg s :=
+          Nat.div_le_div_right hs.1
+  have heq := h.trajectory.externals_coherence.committee_assignment_unique
+    i s t his hit hse
+  exact (Nat.ne_of_lt hst) heq
+
+omit [LinearOrder Root] [Inhabited Root] in
+/-- Splitting an inclusive slot span after `b` preserves exactly the
+assigned-validator set. -/
+theorem span_committee_split (a b c : Slot)
+    (hab : a ≤ b) (hbc : b < c) :
+    E.span_committee a c =
+      E.span_committee a b ∪ E.span_committee (b + 1) c := by
+  ext i
+  simp only [Execution.span_committee, Finset.mem_biUnion,
+    Finset.mem_Icc, Finset.mem_union]
+  constructor
+  · rintro ⟨s, hs, his⟩
+    by_cases hsb : s ≤ b
+    · exact Or.inl ⟨s, ⟨hs.1, hsb⟩, his⟩
+    · exact Or.inr ⟨s, ⟨Nat.succ_le_iff.mpr (Nat.lt_of_not_ge hsb), hs.2⟩, his⟩
+  · rintro (⟨s, hs, his⟩ | ⟨s, hs, his⟩)
+    · exact ⟨s, ⟨hs.1, hs.2.trans hbc.le⟩, his⟩
+    · exact ⟨s, ⟨hab.trans ((Nat.le_succ b).trans hs.1), hs.2⟩, his⟩
+
+/-- Within one epoch, disjoint adjacent slot ranges partition committee
+weight exactly. -/
+theorem AcceptedActualFCRNextSlotSafetyAssumptions.same_epoch_span_weight_partition
+    (h : E.AcceptedActualFCRNextSlotSafetyAssumptions cfg ext)
+    {a b c : Slot} (hab : a ≤ b) (hbc : b < c)
+    (hepoch : compute_epoch_at_slot cfg a = compute_epoch_at_slot cfg c) :
+    E.weight (E.span_committee a b) +
+      E.weight (E.span_committee (b + 1) c) =
+      E.weight (E.span_committee a c) := by
+  rw [span_committee_split E a b c hab hbc]
+  exact (Finset.sum_union (h.same_epoch_spans_disjoint cfg ext E hepoch)).symm
+
+/-- In an accepted horizon-bounded epoch, the committee union has the exact
+anchored total active weight. -/
+theorem AcceptedActualFCRNextSlotSafetyAssumptions.full_epoch_span_weight_eq_total
+    (h : E.AcceptedActualFCRNextSlotSafetyAssumptions cfg ext)
+    (store : Store Root)
+    (hcurrentH : E.SlotWithinHorizon cfg (get_current_slot cfg store))
+    (hendH : E.SlotWithinHorizon cfg (currentTargetEpochEnd cfg store)) :
+    E.weight (E.span_committee (currentTargetEpochStart cfg store)
+      (currentTargetEpochEnd cfg store)) = E.total_active cfg := by
+  have hanchorH : get_current_epoch cfg E.anchor_state <
+      E.verification_horizon := by
+    rw [h.anchor_epoch_eq_initial cfg ext E]
+    exact (h.completed_calls.static_validators.genesis_within_horizon).2.2
+  rw [current_epoch_span_eq_anchorActive cfg ext E
+    h.trajectory.externals_coherence h.completed_calls.static_validators
+    hcurrentH hendH hanchorH]
+  exact E.total_active_eq_anchorActive_weight cfg
+    h.completed_calls.balance_floor |>.symm
+
+/-- Estimation soundness on complementary same-epoch ranges is exact once
+their disjoint union is the full active committee. -/
+theorem AcceptedActualFCRNextSlotSafetyAssumptions.complementary_partial_window_exact
+    (h : E.AcceptedActualFCRNextSlotSafetyAssumptions cfg ext)
+    (a b c : Slot) (hab : a ≤ b) (hbc : b + 1 ≤ c)
+    (hepoch : compute_epoch_at_slot cfg a = compute_epoch_at_slot cfg c)
+    (hwhole : E.weight (E.span_committee a c) = E.total_active cfg)
+    (haH : E.SlotWithinHorizon cfg a)
+    (hbH : E.SlotWithinHorizon cfg b)
+    (hb1H : E.SlotWithinHorizon cfg (b + 1))
+    (hcH : E.SlotWithinHorizon cfg c)
+    (hcovLeft : is_full_validator_set_covered cfg a b = false)
+    (hcovRight : is_full_validator_set_covered cfg (b + 1) c = false)
+    (hepochLeft : compute_epoch_at_slot cfg a = compute_epoch_at_slot cfg b)
+    (hepochRight : compute_epoch_at_slot cfg (b + 1) = compute_epoch_at_slot cfg c)
+    (hlength : b - a + 1 + (c - (b + 1) + 1) = cfg.slots_per_epoch) :
+    E.weight (E.span_committee a b) =
+        estimate_committee_weight_between_slots cfg (E.total_active cfg) a b ∧
+      E.weight (E.span_committee (b + 1) c) =
+        estimate_committee_weight_between_slots cfg (E.total_active cfg)
+          (b + 1) c := by
+  have hpart := h.same_epoch_span_weight_partition cfg ext E
+    hab (Nat.lt_of_succ_le hbc) hepoch
+  rw [hwhole] at hpart
+  have hest := complementary_partial_estimates_le_total cfg
+    (E.total_active cfg) a b c hab hbc hcovLeft hcovRight
+    hepochLeft hepochRight hlength
+  have hleft := h.completed_calls.byzantine_bound.estimate_sound a b haH hbH
+  have hright := h.completed_calls.byzantine_bound.estimate_sound
+    (b + 1) c hb1H hcH
+  exact complementary_epoch_window_exact_of_le hpart hest hleft hright
+
+/-- The accepted full-epoch committee identity supplies the whole-weight
+premise of complementary partial-window exactness. -/
+theorem AcceptedActualFCRNextSlotSafetyAssumptions.current_epoch_partial_window_exact
+    (h : E.AcceptedActualFCRNextSlotSafetyAssumptions cfg ext)
+    (store : Store Root) (b : Slot)
+    (hcurrentH : E.SlotWithinHorizon cfg (get_current_slot cfg store))
+    (hstartH : E.SlotWithinHorizon cfg (currentTargetEpochStart cfg store))
+    (hendH : E.SlotWithinHorizon cfg (currentTargetEpochEnd cfg store))
+    (hbH : E.SlotWithinHorizon cfg b)
+    (hb1H : E.SlotWithinHorizon cfg (b + 1))
+    (hab : currentTargetEpochStart cfg store ≤ b)
+    (hbc : b + 1 ≤ currentTargetEpochEnd cfg store)
+    (hepoch : compute_epoch_at_slot cfg (currentTargetEpochStart cfg store) =
+      compute_epoch_at_slot cfg (currentTargetEpochEnd cfg store))
+    (hcovLeft : is_full_validator_set_covered cfg
+      (currentTargetEpochStart cfg store) b = false)
+    (hcovRight : is_full_validator_set_covered cfg
+      (b + 1) (currentTargetEpochEnd cfg store) = false)
+    (hepochLeft : compute_epoch_at_slot cfg (currentTargetEpochStart cfg store) =
+      compute_epoch_at_slot cfg b)
+    (hepochRight : compute_epoch_at_slot cfg (b + 1) =
+      compute_epoch_at_slot cfg (currentTargetEpochEnd cfg store)) :
+    E.weight (E.span_committee (currentTargetEpochStart cfg store) b) =
+        estimate_committee_weight_between_slots cfg (E.total_active cfg)
+          (currentTargetEpochStart cfg store) b ∧
+      E.weight (E.span_committee (b + 1) (currentTargetEpochEnd cfg store)) =
+        estimate_committee_weight_between_slots cfg (E.total_active cfg)
+          (b + 1) (currentTargetEpochEnd cfg store) := by
+  have hlen : b - currentTargetEpochStart cfg store + 1 +
+      (currentTargetEpochEnd cfg store - (b + 1) + 1) =
+      cfg.slots_per_epoch := by
+    exact partial_slot_count cfg.slots_per_epoch_pos hab hbc
+  exact h.complementary_partial_window_exact cfg ext E
+    (currentTargetEpochStart cfg store) b
+    (currentTargetEpochEnd cfg store) hab hbc hepoch
+    (h.full_epoch_span_weight_eq_total cfg ext E store hcurrentH hendH)
+    hstartH hbH hb1H hendH hcovLeft hcovRight
+    hepochLeft hepochRight hlen
 
 /-- Every vote slot in a completed epoch has reached its next-slot delivery
 deadline by the endpoint, including the last slot of that epoch. -/
