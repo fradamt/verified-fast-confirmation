@@ -58,6 +58,37 @@ theorem duty_fresh_of_epoch_fresh {store : Store Root} {i : ValidatorIndex}
     get_latest_message_epoch]
   exact Or.inl hfresh
 
+/-- At the first slot of a new epoch, every recorded message from the
+completed epoch passes the weak duty filter. This is the freshness fact
+needed by boundary reconfirmation. -/
+theorem duty_fresh_previous_epoch_at_boundary {store : Store Root}
+    {i : ValidatorIndex} {lm : LatestMessage Root} (e : Epoch)
+    (hslot : get_current_slot cfg store =
+      compute_start_slot_at_epoch cfg (e + 1))
+    (hepoch : get_latest_message_epoch cfg lm = e) :
+    is_duty_fresh_message cfg ext store i lm = true := by
+  have hL := cfg.slots_per_epoch_pos
+  have hmul : (e + 1) * cfg.slots_per_epoch =
+      e * cfg.slots_per_epoch + cfg.slots_per_epoch := by
+    simp [Nat.add_mul]
+  have hend : (e + 1) * cfg.slots_per_epoch - 1 =
+      e * cfg.slots_per_epoch + (cfg.slots_per_epoch - 1) := by
+    rw [hmul]
+    exact Nat.add_sub_assoc (show 1 ≤ cfg.slots_per_epoch from hL) _
+  have hle : e * cfg.slots_per_epoch ≤
+      (e + 1) * cfg.slots_per_epoch - 1 := by
+    rw [hend]
+    exact Nat.le_add_right _ _
+  have hlt : (e + 1) * cfg.slots_per_epoch - 1 <
+      (e + 1) * cfg.slots_per_epoch := by
+    rw [hend, hmul]
+    exact Nat.add_lt_add_left (Nat.sub_lt hL (by omega)) _
+  have hcutoff : recorded_cutoff_epoch cfg store = e := by
+    rw [recorded_cutoff_epoch, hslot]
+    exact Nat.div_eq_of_lt_le hle hlt
+  apply duty_fresh_of_epoch_fresh cfg ext
+  rw [hcutoff, hepoch]
+
 /-- A previous-epoch vote remains usable before its validator's next duty. -/
 theorem duty_fresh_of_no_completed_duty {store : Store Root} {i : ValidatorIndex}
     {lm : LatestMessage Root}
