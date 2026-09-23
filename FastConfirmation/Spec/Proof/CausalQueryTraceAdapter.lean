@@ -3,6 +3,7 @@ public import FastConfirmation.Spec.Proof.CausalQueryEvidence
 public import FastConfirmation.Spec.Proof.SelectedMarginConstruction
 
 public import FastConfirmation.Spec.Statements.Premises.Execution
+public import FastConfirmation.Spec.Proof.ModelFacts
 @[expose] public section
 
 /-!

@@ -2,6 +2,7 @@ module
 public import FastConfirmation.Spec.Proof.AcceptedFFGStateTrajectory
 public import FastConfirmation.Spec.Proof.ExecutionRootReflection
 
+public import FastConfirmation.Spec.Proof.ModelFacts
 @[expose] public section
 
 /-!

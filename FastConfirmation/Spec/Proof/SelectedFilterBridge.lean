@@ -4,6 +4,7 @@ public import FastConfirmation.Spec.Proof.CheckpointDomain
 public import FastConfirmation.Spec.Proof.FFGAccountability
 
 public import FastConfirmation.Spec.Statements.Traces
+public import FastConfirmation.Spec.Proof.ModelFacts
 @[expose] public section
 
 /-!

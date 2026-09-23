@@ -3,6 +3,7 @@ public import Mathlib.Tactic
 public import FastConfirmation.Spec.Proof.AcceptedPhaseSourceSupply
 public import FastConfirmation.Spec.Proof.QueryFilterViability
 
+public import FastConfirmation.Spec.Proof.ModelFacts
 @[expose] public section
 
 /-!

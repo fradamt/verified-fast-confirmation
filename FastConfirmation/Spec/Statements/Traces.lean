@@ -110,6 +110,8 @@ def getLatestTraceResult
 
 /-- The named phased evaluator is definitionally the pinned executable
 `get_latest_confirmed`. -/
+/- This lemma stays with the statements because the value of
+`getLatestConfirmedTrace` uses its proof. -/
 theorem getLatestTraceResult_eq_getLatestConfirmed
     (query : FastConfirmationStore Root) :
     getLatestTraceResult cfg ext query = get_latest_confirmed cfg ext query := by

@@ -1,5 +1,8 @@
 module
 public import FastConfirmation.Spec.Model
+public import FastConfirmation.Spec.Statements.Claims
+public import FastConfirmation.Spec.Internal.Legacy.Vocabulary
+public import FastConfirmation.Spec.Proof.ModelFacts
 public import FastConfirmation.Spec.ProvenTheorems
 public import FastConfirmation.Spec.Proof.PayloadStoreInvariants
 public import FastConfirmation.Spec.Proof.PayloadSupport

@@ -8,6 +8,7 @@ public import FastConfirmation.Spec.Proof.AcceptedHistoricalFinalizedPlacement
 public import FastConfirmation.Spec.Proof.AcceptedRealizedJustifiedOrigin
 public import FastConfirmation.Spec.Proof.AcceptedHistoricalLineageFinalizedPlacement
 
+public import FastConfirmation.Spec.Proof.ModelFacts
 @[expose] public section
 
 /-!

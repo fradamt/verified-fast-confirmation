@@ -3,7 +3,7 @@ public import FastConfirmation.Spec.Proof.DynamicsClosure
 public import FastConfirmation.Spec.Proof.EngineStore
 public import FastConfirmation.Spec.Proof.FilterViability
 public import FastConfirmation.Spec.Proof.FCRCallContracts
-public import FastConfirmation.Spec.TheoremStatements
+public import FastConfirmation.Spec.Internal.Legacy.Vocabulary
 
 public import FastConfirmation.Spec.Statements.Premises.Execution
 @[expose] public section

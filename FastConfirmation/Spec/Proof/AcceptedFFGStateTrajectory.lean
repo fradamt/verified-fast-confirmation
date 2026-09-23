@@ -2,6 +2,7 @@ module
 public import FastConfirmation.Spec.Model.FFGStateSemantics
 public import FastConfirmation.Spec.Model.PayloadEffects
 
+public import FastConfirmation.Spec.Proof.ModelFacts
 @[expose] public section
 
 /-!

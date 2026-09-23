@@ -2,6 +2,7 @@ module
 public import FastConfirmation.Spec.Proof.Registry
 public import FastConfirmation.Spec.Model.PayloadEffects
 
+public import FastConfirmation.Spec.Proof.ModelFacts
 @[expose] public section
 
 /-!

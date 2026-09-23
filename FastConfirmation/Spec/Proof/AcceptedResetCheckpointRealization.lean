@@ -2,6 +2,7 @@ module
 public import FastConfirmation.Spec.Proof.AcceptedCurrentTargetLowerContracts
 public import FastConfirmation.Spec.Proof.ActualResetCheckpointRealization
 
+public import FastConfirmation.Spec.Proof.ModelFacts
 @[expose] public section
 
 /-!

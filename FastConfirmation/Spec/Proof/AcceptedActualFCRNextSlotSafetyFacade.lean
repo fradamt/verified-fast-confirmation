@@ -1,6 +1,6 @@
 module
 public import FastConfirmation.Spec.Proof.AcceptedActualFCRNextSlotSafetyFold
-public import FastConfirmation.Spec.TheoremStatements
+public import FastConfirmation.Spec.Internal.Legacy.Vocabulary
 
 public import FastConfirmation.Spec.Statements.Claims
 @[expose] public section

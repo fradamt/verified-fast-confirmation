@@ -3,6 +3,7 @@ public import FastConfirmation.Spec.Proof.BlockAgreement
 public import FastConfirmation.Spec.Proof.Preservation
 public import FastConfirmation.Spec.Proof.Clock
 
+public import FastConfirmation.Spec.Proof.ModelFacts
 @[expose] public section
 
 /-!

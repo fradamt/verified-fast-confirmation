@@ -3,6 +3,7 @@ public import FastConfirmation.Spec.Proof.AcceptedFFGJustifiedMaximality
 public import FastConfirmation.Spec.Proof.AcceptedResetCheckpointClassification
 public import FastConfirmation.Spec.Proof.ObservedResetSafety
 
+public import FastConfirmation.Spec.Proof.ModelFacts
 @[expose] public section
 
 /-!

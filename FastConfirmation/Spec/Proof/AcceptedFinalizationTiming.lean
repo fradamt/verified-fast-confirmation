@@ -4,6 +4,7 @@ public import FastConfirmation.Spec.Proof.AcceptedResetCheckpointClassification
 public import FastConfirmation.Spec.Proof.AcceptedScheduledPrefixGeometry
 
 public import FastConfirmation.Spec.Statements.Premises.Execution
+public import FastConfirmation.Spec.Proof.ModelFacts
 @[expose] public section
 
 /-!

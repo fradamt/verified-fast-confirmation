@@ -6,6 +6,7 @@ public import FastConfirmation.Spec.Proof.Preservation
 public import FastConfirmation.Spec.Proof.BlockAgreement
 
 public import FastConfirmation.Spec.Statements.Premises.FFG
+public import FastConfirmation.Spec.Proof.ModelFacts
 @[expose] public section
 
 /-!

@@ -110,10 +110,6 @@ in that range. Phase0 presets satisfy this because `SLOTS_PER_EPOCH` divides
 def EpochEndsFitUint64 (cfg : Config) : Prop :=
   cfg.slots_per_epoch ∣ UINT64_MAX + 1
 
-theorem mainnet_epochEndsFitUint64 : EpochEndsFitUint64 mainnet_config := by
-  refine ⟨2 ^ 59, ?_⟩
-  norm_num [EpochEndsFitUint64, UINT64_MAX, mainnet_config]
-
 end FastConfirmation.Spec
 
 end

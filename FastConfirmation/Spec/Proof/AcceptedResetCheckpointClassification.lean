@@ -2,6 +2,7 @@ module
 public import FastConfirmation.Spec.Proof.AcceptedFinalizedSameTip
 public import FastConfirmation.Spec.Proof.GetLatestConfirmedTrace
 
+public import FastConfirmation.Spec.Proof.ModelFacts
 @[expose] public section
 
 /-!

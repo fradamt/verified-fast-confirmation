@@ -12,6 +12,7 @@ public import FastConfirmation.Spec.Proof.AcceptedRecentCarrierFinalizedPlacemen
 public import FastConfirmation.Spec.Proof.AcceptedPreviousEpochStartSupply
 public import FastConfirmation.Spec.Proof.SelectedA32Semantics
 
+public import FastConfirmation.Spec.Proof.ModelFacts
 @[expose] public section
 
 /-!

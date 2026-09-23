@@ -1,37 +1,16 @@
 module
 public import FastConfirmation.Spec.Model.FFGStateSemantics
-
 public import FastConfirmation.Spec.Statements.Premises.Live
+
 @[expose] public section
 
 /-!
-# Spec / supporting statement vocabulary
+# Legacy proof vocabulary
 
-This module defines supporting predicates used throughout the spec proof
-architecture. It also records strong action-prefix candidate statements used
-by the internal decomposition. The accepted public theorem is
-`acceptedSpec_safety_next_slot` in
-`Proof/AcceptedActualFCRNextSlotSafetyFacade.lean`.
-
-The motivating spec note for `find_latest_confirmed_descendant` says:
-
-> Assuming synchrony and `CONFIRMATION_BYZANTINE_THRESHOLD` value, the above
-> criteria ensures that the block returned by this function will remain
-> canonical in the view of all honest validators starting from the current
-> moment in time.
-
-The accepted result proves the helper claim at actual scheduled boundary calls
-and proves stored-output safety across nodes from the following slot. It does
-not assert the stronger cross-node claim at every arbitrary in-slot execution
-prefix; finite counterexamples show that statement is false.
-
-The FFG-side facts the algorithm consumes are isolated in
-`JustificationInterface` — the exports of Casper-FFG justification (the
-semantic soundness of `will_no_conflicting_checkpoint_be_justified` /
-`will_current_target_be_justified`, and the observation propagation the
-`FastConfirmationStore` observed-checkpoint fields are documented with).
-These predicates remain low-level proof vocabulary. The accepted theorem uses
-the separate accepted FFG-semantics and `PaperSafetySynchrony` interfaces.
+This module contains supporting predicates and old candidate statements used
+by internal proofs. They are proof vocabulary, not the accepted claims.
+It reads the Spec Model and the live premise definitions. Read
+`Spec/Statements/Claims.lean` for the accepted claims next.
 -/
 
 namespace FastConfirmation.Spec
@@ -339,31 +318,6 @@ def Spec_Monotonicity : Prop :=
       is_ancestor (E.store cfg ext v m)
         (get_node_for_root (E.confirmed cfg ext v n))
         (get_node_for_root (E.confirmed cfg ext v m)) = true
-
-/-- **Conditional strict monotonicity** — the refinement implies the comparability
-form defers: if between the two instants neither the finalized-revert nor
-the observed-justified restart branch of `get_latest_confirmed` fired at
-`v` (no slot-start second in `(n, m]` at which the algorithm reset
-`confirmed_root` to `store.finalized_checkpoint.root` or to
-`current_epoch_observed_justified_checkpoint.root` *below* the previous
-confirmed root), then confirmation is ancestor-monotone: the earlier
-confirmed root is in the later one's chain. This is the statement that
-exercises `get_latest_confirmed`'s walk structure (the comparability form
-alone is derivable from two `Spec_Safety` instances). -/
-def Spec_Monotonicity_no_revert : Prop :=
-  ∀ E : Execution Root, SpecAssumptions cfg ext E →
-    ∀ v ∈ E.honest, ∀ n m : ℕ, n ≤ m →
-      E.WithinHorizon cfg m →
-      (∀ k : ℕ, n < k → k ≤ m →
-        get_block_slot (E.store cfg ext v k) (E.confirmed cfg ext v k) ≥
-          get_block_slot (E.store cfg ext v k) (E.confirmed cfg ext v (k - 1))) →
-      is_ancestor (E.store cfg ext v m)
-        (get_node_for_root (E.confirmed cfg ext v m))
-        (get_node_for_root (E.confirmed cfg ext v n)) = true
-
-namespace Execution
-
-end Execution
 
 end FastConfirmation.Spec
 

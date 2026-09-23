@@ -4,6 +4,7 @@ public import FastConfirmation.Spec.Proof.SelectedPreQueryHistoricalSIR
 public import FastConfirmation.Spec.Proof.FFGSelectedDomainRealization
 
 public import FastConfirmation.Spec.Statements.Premises.FFG
+public import FastConfirmation.Spec.Proof.ModelFacts
 @[expose] public section
 
 /-!

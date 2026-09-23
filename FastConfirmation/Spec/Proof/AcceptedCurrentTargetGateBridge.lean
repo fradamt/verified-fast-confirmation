@@ -6,6 +6,7 @@ public import FastConfirmation.Spec.Proof.AcceptedScheduledPrefixGeometry
 public import FastConfirmation.Spec.Proof.CurrentTargetPrefixAccounting
 public import FastConfirmation.Spec.Proof.CurrentTargetCertificateRealization
 
+public import FastConfirmation.Spec.Proof.ModelFacts
 @[expose] public section
 
 /-!

@@ -3,6 +3,7 @@ public import Mathlib.Tactic
 public import FastConfirmation.Spec.Proof.AcceptedBlockTransitionProvenance
 public import FastConfirmation.Spec.Proof.FFGSourceCoherence
 
+public import FastConfirmation.Spec.Proof.ModelFacts
 @[expose] public section
 
 /-!

@@ -1,6 +1,7 @@
 module
 public import FastConfirmation.Spec.Proof.AcceptedFFGGlobalCheckpointTrajectory
 
+public import FastConfirmation.Spec.Proof.ModelFacts
 @[expose] public section
 
 /-!

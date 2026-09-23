@@ -3,6 +3,7 @@ public import FastConfirmation.Spec.Proof.AcceptedResetCheckpointClassification
 public import FastConfirmation.Spec.Proof.FFGCheckpointEpochOrder
 public import FastConfirmation.Spec.Proof.SelectedFFGRealization
 
+public import FastConfirmation.Spec.Proof.ModelFacts
 @[expose] public section
 
 /-!

@@ -3,6 +3,7 @@ public import FastConfirmation.Spec.Proof.FFGEndpointRealization
 public import FastConfirmation.Spec.Model.PayloadEffects
 
 public import FastConfirmation.Spec.Statements.Premises.Execution
+public import FastConfirmation.Spec.Proof.ModelFacts
 @[expose] public section
 
 /-!

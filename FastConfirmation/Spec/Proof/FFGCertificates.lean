@@ -2,6 +2,7 @@ module
 public import FastConfirmation.Spec.Proof.FFGQuorum
 public import FastConfirmation.Spec.Model.FFGCertificates
 
+public import FastConfirmation.Spec.Proof.ModelFacts
 @[expose] public section
 
 /-!

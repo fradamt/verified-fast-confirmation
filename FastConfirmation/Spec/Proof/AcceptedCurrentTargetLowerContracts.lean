@@ -2,6 +2,7 @@ module
 public import FastConfirmation.Spec.Proof.AcceptedSameEpochSegmentRealization
 public import FastConfirmation.Spec.Proof.AcceptedCurrentTargetPrefixVoteRealization
 
+public import FastConfirmation.Spec.Proof.ModelFacts
 @[expose] public section
 
 /-!

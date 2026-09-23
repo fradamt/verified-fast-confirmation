@@ -3,6 +3,7 @@ public import FastConfirmation.Spec.Proof.HonestVoteTargetCache
 public import FastConfirmation.Spec.Proof.FinalizedResetSafety
 public import FastConfirmation.Spec.Proof.MinimalSelectedDomain
 
+public import FastConfirmation.Spec.Proof.ModelFacts
 @[expose] public section
 
 /-!

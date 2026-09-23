@@ -2,6 +2,7 @@ module
 public import FastConfirmation.Spec.Proof.E5Filter
 public import FastConfirmation.Spec.Proof.WFTrajectory
 
+public import FastConfirmation.Spec.Proof.ModelFacts
 @[expose] public section
 
 /-!

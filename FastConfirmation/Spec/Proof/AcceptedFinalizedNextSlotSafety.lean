@@ -5,6 +5,7 @@ public import FastConfirmation.Spec.Proof.AcceptedCurrentTargetLowerContracts
 public import FastConfirmation.Spec.Proof.AnchorFacade
 public import FastConfirmation.Spec.Proof.AcceptedCandidateHistoryRecurrence
 
+public import FastConfirmation.Spec.Proof.ModelFacts
 @[expose] public section
 
 /-!

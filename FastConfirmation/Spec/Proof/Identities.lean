@@ -3,6 +3,7 @@ public import FastConfirmation.Spec.Proof.Remainder
 public import FastConfirmation.Spec.Proof.Delivery
 public import FastConfirmation.Spec.Model.PayloadEffects
 
+public import FastConfirmation.Spec.Proof.ModelFacts
 @[expose] public section
 
 /-!

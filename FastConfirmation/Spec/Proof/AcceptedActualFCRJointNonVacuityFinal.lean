@@ -4,6 +4,7 @@ public import FastConfirmation.Spec.Proof.AcceptedActualFCRJointNonVacuityFFG
 public import FastConfirmation.Spec.Proof.AcceptedActualFCRNextSlotSafetyFacade
 public import FastConfirmation.Spec.Proof.AcceptedFinalizedNextSlotSafety
 
+public import FastConfirmation.Spec.Proof.ModelFacts
 @[expose] public section
 
 /-!

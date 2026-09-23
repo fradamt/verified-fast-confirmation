@@ -5,6 +5,7 @@ public import FastConfirmation.Spec.Proof.AcceptedHistoricalA32CallSupplier
 public import FastConfirmation.Spec.Proof.AcceptedCurrentSameSourceHistory
 public import FastConfirmation.Spec.Proof.NoConflictCertificatePinning
 
+public import FastConfirmation.Spec.Proof.ModelFacts
 @[expose] public section
 
 /-!

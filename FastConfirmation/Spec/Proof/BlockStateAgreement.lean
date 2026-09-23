@@ -1,6 +1,7 @@
 module
 public import FastConfirmation.Spec.Proof.AcceptedBlockTransitionProvenance
 
+public import FastConfirmation.Spec.Proof.ModelFacts
 @[expose] public section
 
 /-! # Block-state agreement
