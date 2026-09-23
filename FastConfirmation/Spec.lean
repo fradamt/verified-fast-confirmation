@@ -65,6 +65,9 @@ public import FastConfirmation.Spec.Proof.HonestTargetAgreement
 public import FastConfirmation.Spec.Proof.AcceptedHistoricalA32OriginCall
 public import FastConfirmation.Spec.Proof.EndpointQuorumCausality
 public import FastConfirmation.Spec.Proof.SelectedTraceFilterPipeline
+public import FastConfirmation.Spec.Statements.Claims
+public import FastConfirmation.Spec.Internal.Legacy.Vocabulary
+public import FastConfirmation.Spec.Proof.ModelFacts
 
 
 @[expose] public section
