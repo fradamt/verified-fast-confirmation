@@ -3,6 +3,7 @@ public import FastConfirmation.Spec.Proof.AcceptedCandidateHistoryRecurrence
 public import FastConfirmation.Spec.Proof.AcceptedResetAdoption
 public import FastConfirmation.Spec.Proof.ModelFacts
 
+public import FastConfirmation.Spec.Proof.ModelFacts
 @[expose] public section
 
 /-!

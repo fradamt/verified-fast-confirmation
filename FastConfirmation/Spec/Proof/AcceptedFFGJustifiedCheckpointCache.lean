@@ -1,5 +1,8 @@
 module
-public import FastConfirmation.Spec.Proof.FFGJustifiedCheckpointCache
+public import FastConfirmation.Spec.Proof.HonestVoteTargetCache
+public import FastConfirmation.Spec.Proof.FinalizedResetSafety
+public import FastConfirmation.Spec.Proof.MinimalSelectedDomain
+public import FastConfirmation.Spec.Proof.ModelFacts
 public import FastConfirmation.Spec.Proof.AcceptedCurrentTargetLowerContracts
 public import FastConfirmation.Spec.Proof.ModelFacts
 

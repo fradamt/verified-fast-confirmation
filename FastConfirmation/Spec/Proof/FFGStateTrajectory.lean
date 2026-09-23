@@ -3,6 +3,7 @@ public import FastConfirmation.Spec.Model.FFGStateSemantics
 public import FastConfirmation.Spec.Model.PayloadEffects
 public import FastConfirmation.Spec.Proof.ModelFacts
 
+public import FastConfirmation.Spec.Proof.ModelFacts
 @[expose] public section
 
 /-!
@@ -60,11 +61,6 @@ variable {cfg : Config} {ext : Externals Root}
 variable {E : Execution Root} {anchor : Checkpoint Root}
 variable {S : ChainFFGState cfg E anchor}
 
-/-- Forget the unrealized-map equation. -/
-def blockState {store : Store Root}
-    (h : FFGStoreProjection cfg ext S store) :
-    FFGBlockStateProjection cfg ext S store :=
-  ⟨h.block_state_gj, h.block_state_gf, h.pulled_up_gu, h.pulled_up_guf⟩
 
 /-- Transport the projection across a store operation that leaves its block
 domain, block-state map, and per-root unrealized-justification map equal. -/
@@ -153,27 +149,8 @@ theorem update_checkpoints_ffgStoreProjection
   apply h.of_eq <;>
     (simp only [update_checkpoints]; split_ifs <;> rfl)
 
-theorem update_unrealized_checkpoints_ffgStoreProjection
-    (store : Store Root) (jc fc : Checkpoint Root)
-    (h : FFGStoreProjection cfg ext S store) :
-    FFGStoreProjection cfg ext S
-      (update_unrealized_checkpoints store jc fc) := by
-  apply h.of_eq <;>
-    (simp only [update_unrealized_checkpoints]; split_ifs <;> rfl)
 
-theorem record_block_timeliness_ffgStoreProjection
-    (store : Store Root) (r : Root)
-    (h : FFGStoreProjection cfg ext S store) :
-    FFGStoreProjection cfg ext S (record_block_timeliness cfg store r) :=
-  h.of_eq rfl rfl rfl
 
-theorem update_proposer_boost_root_ffgStoreProjection
-    (store : Store Root) (head r : Root)
-    (h : FFGStoreProjection cfg ext S store) :
-    FFGStoreProjection cfg ext S
-      (update_proposer_boost_root cfg store head r) := by
-  apply h.of_eq <;>
-    (simp only [update_proposer_boost_root]; split_ifs <;> rfl)
 
 theorem store_target_checkpoint_state_ffgStoreProjection
     (store : Store Root) (target : Checkpoint Root)
@@ -247,16 +224,6 @@ theorem compute_pulled_up_tip_ffgStoreProjection_of_blockState
       exact hstate.pulled_up_gu r hr
     · exact hmap x hx hxr
 
-/-- Ordinary eager pull-up preservation, as a corollary of the intermediate
-form above. -/
-theorem compute_pulled_up_tip_ffgStoreProjection
-    (store : Store Root) (r : Root)
-    (h : FFGStoreProjection cfg ext S store)
-    (hr : r ∈ store.block_roots) :
-    FFGStoreProjection cfg ext S
-      (compute_pulled_up_tip cfg ext store r) :=
-  compute_pulled_up_tip_ffgStoreProjection_of_blockState store r h.blockState
-    (fun x hx _ => h.unrealized_justification x hx) hr
 
 /-! ## Event handlers -/
 
@@ -478,42 +445,9 @@ theorem ffgStoreProjection
         (E.schedule w (n + 1)) (List.Subset.refl _)
       exact on_tick_ffgStoreProjection _ _ ih
 
-/-- Exact realized-justified checkpoint in every reachable block state. -/
-theorem block_state_gj_eq
-    (hcoh : FFGTransitionCoherence cfg ext S)
-    (w : ValidatorIndex) (n : ℕ)
-    {r : Root} (hr : r ∈ (E.store cfg ext w n).block_roots) :
-    ((E.store cfg ext w n).block_states r).current_justified_checkpoint =
-      S.GJ r :=
-  (E.ffgStoreProjection hcoh w n).block_state_gj r hr
 
-/-- Exact realized-finalized checkpoint in every reachable block state. -/
-theorem block_state_gf_eq
-    (hcoh : FFGTransitionCoherence cfg ext S)
-    (w : ValidatorIndex) (n : ℕ)
-    {r : Root} (hr : r ∈ (E.store cfg ext w n).block_roots) :
-    ((E.store cfg ext w n).block_states r).finalized_checkpoint = S.GF r :=
-  (E.ffgStoreProjection hcoh w n).block_state_gf r hr
 
-/-- Exact eager-pull-up justified checkpoint at every reachable root. -/
-theorem pulled_up_gu_eq
-    (hcoh : FFGTransitionCoherence cfg ext S)
-    (w : ValidatorIndex) (n : ℕ)
-    {r : Root} (hr : r ∈ (E.store cfg ext w n).block_roots) :
-    (ext.process_justification_and_finalization
-      ((E.store cfg ext w n).block_states r)
-    ).current_justified_checkpoint = S.GU r :=
-  (E.ffgStoreProjection hcoh w n).pulled_up_gu r hr
 
-/-- Exact eager-pull-up finalized checkpoint at every reachable root. -/
-theorem pulled_up_guf_eq
-    (hcoh : FFGTransitionCoherence cfg ext S)
-    (w : ValidatorIndex) (n : ℕ)
-    {r : Root} (hr : r ∈ (E.store cfg ext w n).block_roots) :
-    (ext.process_justification_and_finalization
-      ((E.store cfg ext w n).block_states r)
-    ).finalized_checkpoint = S.GUF r :=
-  (E.ffgStoreProjection hcoh w n).pulled_up_guf r hr
 
 /-- Exact per-root unrealized-justification map in every reachable store. -/
 theorem unrealized_justification_eq
@@ -523,23 +457,6 @@ theorem unrealized_justification_eq
     (E.store cfg ext w n).unrealized_justifications r = S.GU r :=
   (E.ffgStoreProjection hcoh w n).unrealized_justification r hr
 
-/-- The executable voting-source branch now reads exactly the corresponding
-paper selector: GU for an older block and GJ for a block in the current (or a
-future, rejected-by-handler) epoch. -/
-theorem get_voting_source_eq
-    (hcoh : FFGTransitionCoherence cfg ext S)
-    (w : ValidatorIndex) (n : ℕ)
-    {r : Root} (hr : r ∈ (E.store cfg ext w n).block_roots) :
-    get_voting_source cfg (E.store cfg ext w n) r =
-      if get_current_store_epoch cfg (E.store cfg ext w n) >
-          compute_epoch_at_slot cfg
-            ((E.store cfg ext w n).blocks r).slot then
-        S.GU r
-      else S.GJ r := by
-  simp only [get_voting_source]
-  split_ifs
-  · exact E.unrealized_justification_eq hcoh w n hr
-  · exact E.block_state_gj_eq hcoh w n hr
 
 end Execution
 

@@ -221,56 +221,8 @@ theorem selected_strict_result_origin_recency_classification
     rw [hout] at hwitness
     exact ⟨a, htentative, hwitness⟩
 
-/-- Assumption-free strict-result guard classification.
 
-The disjuncts here are intentionally not exclusive: a previous-entry guard can
-remain true even when a later tentative stage produced the final result.  Use
-`selected_strict_result_origin_recency_classification` when placement and the
-actual producing trace matter.  This weaker theorem requires no parent-domain
-premises and is useful for guard-only case splits.
--/
-theorem selected_strict_result_initial_recency_classification
-    (fcrStore : FastConfirmationStore Root) (latestConfirmedRoot result : Root)
-    (hout : find_latest_confirmed_descendant cfg ext fcrStore
-      latestConfirmedRoot = result)
-    (hstrict : result ≠ latestConfirmedRoot) :
-    PreviousSelectedEntryWitness cfg ext fcrStore latestConfirmedRoot ∨
-      TentativeSelectedResultWitness cfg ext fcrStore result := by
-  rw [find_latest_confirmed_descendant] at hout
-  simp only at hout
-  unfold PreviousSelectedEntryWitness TentativeSelectedResultWitness
-  split_ifs at hout <;> subst result <;> simp_all
 
-/-- If the previous-entry guard was false, every strict result necessarily
-comes from a retained final tentative accumulator and has its result-local
-current-epoch/recency witness. -/
-theorem selected_strict_result_tentative_witness_of_not_previous_entry
-    (fcrStore : FastConfirmationStore Root) (latestConfirmedRoot result : Root)
-    (hout : find_latest_confirmed_descendant cfg ext fcrStore
-      latestConfirmedRoot = result)
-    (hstrict : result ≠ latestConfirmedRoot)
-    (hnotPrevious :
-      ¬ PreviousSelectedEntryWitness cfg ext fcrStore latestConfirmedRoot) :
-    TentativeSelectedResultWitness cfg ext fcrStore result := by
-  rcases selected_strict_result_initial_recency_classification cfg ext
-      fcrStore latestConfirmedRoot result hout hstrict with hprevious | htentative
-  · exact False.elim (hnotPrevious hprevious)
-  · exact htentative
-
-/-- Conversely, if the actual result lacks the final tentative
-current-epoch/recency witness, strictness forces the exact previous-entry
-witness (and therefore previous-slot-head source recency). -/
-theorem selected_strict_result_previous_witness_of_not_tentative
-    (fcrStore : FastConfirmationStore Root) (latestConfirmedRoot result : Root)
-    (hout : find_latest_confirmed_descendant cfg ext fcrStore
-      latestConfirmedRoot = result)
-    (hstrict : result ≠ latestConfirmedRoot)
-    (hnotTentative : ¬ TentativeSelectedResultWitness cfg ext fcrStore result) :
-    PreviousSelectedEntryWitness cfg ext fcrStore latestConfirmedRoot := by
-  rcases selected_strict_result_initial_recency_classification cfg ext
-      fcrStore latestConfirmedRoot result hout hstrict with hprevious | htentative
-  · exact hprevious
-  · exact False.elim (hnotTentative htentative)
 
 end FastConfirmation.Spec
 

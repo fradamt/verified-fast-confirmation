@@ -4,6 +4,7 @@ public import FastConfirmation.Spec.Proof.Preservation
 public import FastConfirmation.Spec.Proof.Clock
 public import FastConfirmation.Spec.Proof.ModelFacts
 
+public import FastConfirmation.Spec.Proof.ModelFacts
 @[expose] public section
 
 /-!
@@ -261,13 +262,6 @@ theorem on_tick_LMP {E : Execution Root} {sl : Slot} (store : Store Root) (time 
     LatestMessageProvenance E cfg sl (on_tick cfg store time) :=
   h.of_sameBlocks (on_tick_sameBlocks cfg store time) (on_tick_latest cfg store time)
 
-omit [Inhabited Root] in
-theorem on_attester_slashing_LMP {E : Execution Root} {sl : Slot}
-    {store store' : Store Root} {asl : AttesterSlashing Root}
-    (h : LatestMessageProvenance E cfg sl store)
-    (hh : on_attester_slashing ext store asl = some store') :
-    LatestMessageProvenance E cfg sl store' :=
-  h.of_sameBlocks (on_attester_slashing_sameBlocks ext hh) (on_attester_slashing_latest ext hh)
 
 theorem on_block_LMP {E : Execution Root} {sl : Slot} (hwf : WellFormedExecution E)
     {store store' : Store Root} {sb : SignedBeaconBlock Root}

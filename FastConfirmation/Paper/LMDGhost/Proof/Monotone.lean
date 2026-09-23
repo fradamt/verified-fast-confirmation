@@ -30,29 +30,8 @@ open scoped Block
 
 variable {n : ℕ} {P : Type}
 
-/-- `committeeUnion` over `[lo, s']` decomposes into `[lo, s]` plus the growth set. -/
-theorem committeeUnion_subset_growth (cm : Committees n) (lo : Slot) {s s' : Slot}
-    (h : s ≤ s') :
-    committeeUnion cm lo s ⊆ committeeUnion cm lo s' :=
-  committeeUnion_mono cm lo h
 
-/-- `J` is monotone in the upper slot (honest committee weight grows). -/
-theorem J_le_of_slot_le (A : Anchor n) (cm : Committees n) (fm : FaultModel n) (b : Block n)
-    {s s' : Slot} (h : s ≤ s') : J A cm fm b s ≤ J A cm fm b s' := by
-  unfold J
-  apply totalWeight_mono
-  intro i hi
-  simp only [Finset.mem_filter] at hi ⊢
-  exact ⟨committeeUnion_mono cm b.psPlus1 h hi.1, hi.2⟩
 
-/-- `W` decomposes as the value at `s` plus the weight of the committee growth set. -/
-theorem W_eq_add_growth (A : Anchor n) (cm : Committees n) (b : Block n) {s s' : Slot}
-    (h : s ≤ s') :
-    W A cm b s' = W A cm b s
-      + totalWeight A (committeeUnion cm b.psPlus1 s' \ committeeUnion cm b.psPlus1 s) := by
-  unfold W totalWeight
-  rw [add_comm]
-  exact (Finset.sum_sdiff (committeeUnion_mono cm b.psPlus1 h)).symm
 
 /-- `J` decomposes as the value at `s` plus the honest weight of the committee growth set. -/
 theorem J_eq_add_growth (A : Anchor n) (cm : Committees n) (fm : FaultModel n) (b : Block n)

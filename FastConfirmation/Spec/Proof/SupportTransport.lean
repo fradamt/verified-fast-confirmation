@@ -29,15 +29,6 @@ No new behavioral assumptions enter.
 
 namespace FastConfirmation.Spec
 
-/-- Sum monotonicity under sublist for `ℕ`-valued lists (dropping elements can
-only shrink the sum). A small local helper standing in for the multiplicative
-`List.Sublist.prod_le_prod'` on the additive `ℕ` side. -/
-private theorem sum_le_sum_of_sublist {l₁ l₂ : List ℕ} (h : List.Sublist l₁ l₂) :
-    l₁.sum ≤ l₂.sum := by
-  induction h with
-  | slnil => exact le_refl _
-  | cons a _ ih => rw [List.sum_cons]; exact ih.trans (Nat.le_add_left _ _)
-  | cons_cons a _ ih => rw [List.sum_cons, List.sum_cons]; exact Nat.add_le_add_left ih a
 
 variable {Root : Type*} [LinearOrder Root]
 
@@ -64,60 +55,9 @@ theorem supporter_of_ancestor {store : Store Root}
 
 variable (cfg : Config)
 
-/-- **The attestation score is monotone down a known chain.** With `c` a
-chain-ancestor of `b` (`hbc`), every supporter of `b` is a supporter of `c`
-(`supporter_of_ancestor`), so the supporter list of `c` is a superlist of that
-of `b`; the map to effective balances being into `ℕ`, the summed score can only
-grow: `score c ≥ score b`. The `hwalk` domain condition supplies, for each
-supporter of `b`, the `WalkKnown` witness that `is_ancestor_trans` needs. -/
-theorem attestation_score_mono_of_ancestor {store : Store Root}
-    (hwf : ∀ r ∈ store.block_roots,
-      (store.blocks r).parent_root ∈ store.block_roots →
-        (store.blocks (store.blocks r).parent_root).slot < (store.blocks r).slot)
-    {b c : Root} (state : BeaconState Root)
-    (hwb : WalkKnown store (store.blocks c).slot b)
-    (hbc : is_ancestor store (ForkChoiceNode.mk b .pending) (ForkChoiceNode.mk c .pending) = true)
-    (hwalk : ∀ i lm, store.latest_messages i = some lm →
-      is_ancestor store (ForkChoiceNode.mk lm.root .pending) (ForkChoiceNode.mk b .pending) = true →
-      WalkKnown store (store.blocks c).slot lm.root) :
-    get_attestation_score cfg store (ForkChoiceNode.mk b .pending) state ≤
-      get_attestation_score cfg store (ForkChoiceNode.mk c .pending) state := by
-  simp only [get_attestation_score, is_ancestor_supported_pending]
-  refine sum_le_sum_of_sublist ?_
-  refine List.Sublist.map _ ?_
-  refine List.monotone_filter_right _ ?_
-  intro i hib
-  cases hlm : store.latest_messages i with
-  | none => simp [hlm] at hib
-  | some lm =>
-    simp only [hlm, Bool.and_eq_true] at hib ⊢
-    exact ⟨hib.1, is_ancestor_trans hwf (hwalk i lm hlm hib.2) hwb hib.2 hbc⟩
 
 /-! ## Sibling disjointness -/
 
-/-- **No validator supports two distinct siblings.** A single latest message
-`lm` cannot support both `c` and `c'` when these are distinct children of one
-parent `p`: `Forks.siblings_incompatible` rules out a common descendant, and
-`lm.root` (the supported node) would be a common ancestor of both. The
-`WalkKnown` witnesses pin `lm.root`'s parent-walk down to each sibling's slot,
-exactly as `siblings_incompatible` requires. -/
-theorem no_index_supports_both_siblings {store : Store Root}
-    (hwf : ∀ r ∈ store.block_roots,
-      (store.blocks r).parent_root ∈ store.block_roots →
-        (store.blocks (store.blocks r).parent_root).slot < (store.blocks r).slot)
-    {p c c' : Root} {lm : LatestMessage Root}
-    (hc : c ∈ store.block_roots) (hc' : c' ∈ store.block_roots)
-    (hp : p ∈ store.block_roots)
-    (hpc : (store.blocks c).parent_root = p)
-    (hpc' : (store.blocks c').parent_root = p)
-    (hne : c ≠ c')
-    (hwc : WalkKnown store (store.blocks c).slot lm.root)
-    (hwc' : WalkKnown store (store.blocks c').slot lm.root)
-    (hsc : is_ancestor store (get_supported_node store lm) (ForkChoiceNode.mk c .pending) = true)
-    (hsc' : is_ancestor store (get_supported_node store lm) (ForkChoiceNode.mk c' .pending) = true) :
-    False := by
-  simp only [is_ancestor_supported_pending] at hsc hsc'
-  exact siblings_incompatible hwf hc hc' hp hpc hpc' hne hwc hwc' hsc hsc'
 
 end FastConfirmation.Spec
 

@@ -184,24 +184,6 @@ theorem selected_previous_result_outer_gate
 
 /-! ## The concrete selected-margin regime gap -/
 
-omit [LinearOrder Root] [Inhabited Root] in
-/-- The sufficient side conditions of the two currently implemented concrete
-selected-margin producers are not exhaustive.  If the selected edge itself is
-intra-epoch, but its future contest window spans epochs, then neither the
-same-window-epoch producer nor the edge-crossing producer applies.
-
-This arithmetic lemma does not claim that `SelectedEdgeMarginInputs` is empty:
-that sum type accepts already-built certificates.  It records the gap between
-the side conditions of `FreshProducer` (same window epoch) and
-`CrossingCert.crossing_endpoint_of_confirmed` (crossing edge) that must be
-closed by a third, window-crossing/saturation producer. -/
-theorem concrete_selected_margin_regime_gap
-    {store : Store Root} {a c : Root} {lo σ : Slot}
-    (hedge : get_block_epoch cfg store c = get_block_epoch cfg store a)
-    (hwindow : compute_epoch_at_slot cfg lo < compute_epoch_at_slot cfg σ) :
-    compute_epoch_at_slot cfg lo ≠ compute_epoch_at_slot cfg σ ∧
-      ¬ get_block_epoch cfg store c > get_block_epoch cfg store a := by
-  exact ⟨ne_of_lt hwindow, by simp [hedge]⟩
 
 /-! ## The exact mechanical certificate for `child_filtered` -/
 

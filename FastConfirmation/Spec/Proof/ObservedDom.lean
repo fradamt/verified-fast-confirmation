@@ -4,39 +4,9 @@ public import FastConfirmation.Spec.Proof.ResidualMechanicalII
 @[expose] public section
 
 /-!
-# Spec / Proof / ObservedDom: deriving `observed_dom`
+# Spec / Proof / ObservedDom
 
-`ResidualMechanicalII.MechanicalResidualsII` includes the `observed_dom` field:
-
-> the rotated observed-justified anchor is on every honest justified chain —
-> `is_ancestor (store w m) (jc(w,m)) (obs(v,n)) = true`, i.e. `obs(v,n) ⪯ jc(w,m)`,
-
-where `obs(v,n) := (fcrStep v n).current_epoch_observed_justified_checkpoint` and
-`jc(w,m) := (store w m).justified_checkpoint`. This module derives its
-mechanical and equal-epoch cases from `JustificationInterface` and represents the
-two additional inputs as `ObservedDomResiduals`.
-
-The reduction has two moving parts:
-
-* **the `fcrStep` → `fcr` observed-checkpoint bridge** (mechanical). The interface's
-  `observed_justified` export speaks of `(fcr v n).current_epoch_observed_...`; the
-  residual speaks of `(fcrStep v n).current_epoch_observed_...`.
-  `update_fast_confirmation_variables` (the first half of `on_fast_confirmation`, of
-  which `fcrStep` is one application) leaves `current_epoch_observed_...` **unchanged
-  off an epoch boundary** and only rotates it at `is_start_slot_at_epoch`.
-  `fcrStep_observed_else` proves the off-boundary equality, so
-  `JustifiedIn (store w m) (obs v n)` follows from `observed_justified` there. The
-  on-boundary rotation (the value becomes `(fcr v n).previous_epoch_greatest_...`)
-  is supplied by `prev_greatest_justifiedIn`.
-
-* **the justified-dominance core** (`obs ⪯ jc`). Both `obs(v,n)` and `jc(w,m)` are
-  `JustifiedIn (store w m)`, so `justified_unique` closes the **equal-epoch** case
-  (equal roots + `is_ancestor_refl`). The **unequal-epoch** case is supplied by
-  `justified_ancestry_strict`, the cross-epoch justified-chain-coherence input.
-
-`observed_dom_of_residuals` composes them: `observed_dom` follows from the two
-named residuals `prev_greatest_justifiedIn` + `justified_ancestry_strict`, bundled as
-`ObservedDomResiduals`.
+This module contains `update_fcv_observed_else`, `fcrStep_observed_else`, `fcrStep_observed_eq_fcr_succ` and related declarations.
 -/
 
 namespace FastConfirmation.Spec
@@ -145,14 +115,7 @@ theorem fcrStep_observed_justifiedIn (hji : JustificationInterface cfg ext E)
     exact hji.observed_justified v hv n w hw m
       (E.withinHorizon_mono cfg hnm hH) hH (E.slot_at_mono cfg hnm)
 
-/-! ## Section 2 — the residual bundle and the `observed_dom` reduction
 
-`ObservedDomResiduals` collects two inputs — the
-on-boundary greatest-unrealized propagation and the unequal-epoch justified-chain
-coherence — each in an existing (interface-family) shape. `observed_dom_of_residuals`
-discharges the full `observed_dom` statement (verbatim `MechanicalResidualsII.observed_dom`)
-from `JustificationInterface` + this bundle: the equal-epoch case from `justified_unique`
-+ `is_ancestor_refl`, the unequal-epoch case from the named core. -/
 
 /-- **The two residuals `observed_dom` reduces to** (`ObservedDom`). Each in an interface-family
 shape:
@@ -189,36 +152,6 @@ structure ObservedDomResiduals (E : Execution Root) : Prop where
       (get_node_for_root
         (E.fcrStep cfg ext v n).current_epoch_observed_justified_checkpoint.root) = true
 
-/-- **`observed_dom` from `JustificationInterface` + `ObservedDomResiduals`.** The exact
-`MechanicalResidualsII.observed_dom` statement. Case split on whether the observed anchor
-and the store's justified checkpoint share an epoch: equal — both are `JustifiedIn (store
-w m)` (`fcrStep_observed_justifiedIn` / `Or.inl rfl`), so `justified_unique` equates their
-roots and `is_ancestor_refl` closes; unequal — the named `justified_ancestry_strict` core.
-This is `ObservedDom`'s contract: `observed_dom` reduces to exactly the two `ObservedDomResiduals`
-residuals. -/
-theorem observed_dom_of_residuals (hji : JustificationInterface cfg ext E)
-    (hres : E.ObservedDomResiduals cfg ext) :
-    ∀ v ∈ E.honest, ∀ n : ℕ, ∀ w ∈ E.honest, ∀ m : ℕ, n + 1 ≤ m →
-      E.WithinHorizon cfg m →
-      is_ancestor (E.store cfg ext w m)
-        (get_node_for_root (E.store cfg ext w m).justified_checkpoint.root)
-        (get_node_for_root
-          (E.fcrStep cfg ext v n).current_epoch_observed_justified_checkpoint.root) = true := by
-  intro v hv n w hw m hm hH
-  by_cases hep :
-      (E.fcrStep cfg ext v n).current_epoch_observed_justified_checkpoint.epoch =
-        (E.store cfg ext w m).justified_checkpoint.epoch
-  · -- Equal epochs give equal roots by `justified_unique`.
-    have hobs_just : JustifiedIn (E.store cfg ext w m)
-        ((E.fcrStep cfg ext v n).current_epoch_observed_justified_checkpoint) :=
-      E.fcrStep_observed_justifiedIn cfg ext hji hres.prev_greatest_justifiedIn
-        v hv n w hw m hm hH
-    have hjc_just : JustifiedIn (E.store cfg ext w m)
-        (E.store cfg ext w m).justified_checkpoint := Or.inl rfl
-    have hroot := hji.justified_unique w hw w hw m m hH hH _ _ hobs_just hjc_just hep
-    rw [hroot]
-    exact is_ancestor_refl _ _
-  · exact hres.justified_ancestry_strict v hv n w hw m hm hH hep
 
 end Execution
 

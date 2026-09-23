@@ -6,6 +6,7 @@ public import FastConfirmation.Spec.Proof.AcceptedScheduledPrefixGeometry
 public import FastConfirmation.Spec.Proof.ExactCheckpointLinks
 public import FastConfirmation.Spec.Proof.ModelFacts
 
+public import FastConfirmation.Spec.Proof.ModelFacts
 @[expose] public section
 
 /-!
@@ -265,11 +266,6 @@ def witnessIncluded (carrier : WitnessRoot)
     (a : Attestation WitnessRoot) : Prop :=
   carrier = carrierRoot ∧ (a = vote4 ∨ a = vote5 ∨ a = vote6)
 
-theorem witnessIncluded_iff {carrier : WitnessRoot}
-    {a : Attestation WitnessRoot} :
-    witnessIncluded carrier a ↔
-      carrier = carrierRoot ∧ (a = vote4 ∨ a = vote5 ∨ a = vote6) :=
-  Iff.rfl
 
 theorem carrier_blockAt :
     witnessExecution.BlockAt carrierRoot carrierSignedBlock.message := by
@@ -434,9 +430,6 @@ def witnessC (r : WitnessRoot) (e : Epoch) : Checkpoint WitnessRoot :=
     witnessC childRoot 0 = anchorCheckpoint := by
   rfl
 
-@[simp] theorem witnessC_child_succ (e : Epoch) :
-    witnessC childRoot (e + 1) = { epoch := e + 1, root := childRoot } := by
-  simp [witnessC, anchorRoot, childRoot, carrierRoot]
 
 @[simp] theorem witnessC_carrier_zero :
     witnessC carrierRoot 0 = anchorCheckpoint := by
@@ -446,10 +439,6 @@ def witnessC (r : WitnessRoot) (e : Epoch) : Checkpoint WitnessRoot :=
     witnessC carrierRoot 1 = childEpochOneCheckpoint := by
   rfl
 
-@[simp] theorem witnessC_carrier_succ_succ (e : Epoch) :
-    witnessC carrierRoot (e + 2) =
-      { epoch := e + 2, root := carrierRoot } := by
-  simp [witnessC, anchorRoot, childRoot, carrierRoot]
 
 @[simp] theorem witnessC_anchor_zero :
     witnessC anchorRoot 0 = anchorCheckpoint := by rfl
@@ -626,14 +615,6 @@ theorem causal_child_message {store : Store WitnessRoot}
   · exact h.2
   · exact False.elim ((by decide : childRoot ≠ carrierRoot) h.1)
 
-theorem causal_carrier_message {store : Store WitnessRoot}
-    (hstore : witnessExecution.CausalStore witnessConfig witnessExternals store)
-    (hknown : carrierRoot ∈ store.block_roots) :
-    store.blocks carrierRoot = carrierSignedBlock.message := by
-  rcases causal_known_table hstore hknown with h | h | h
-  · exact False.elim ((by decide : carrierRoot ≠ anchorRoot) h.1)
-  · exact False.elim ((by decide : carrierRoot ≠ childRoot) h.1)
-  · exact h.2
 
 theorem witnessCheckpointOfKnown {store : Store WitnessRoot}
     (hstore : witnessExecution.CausalStore witnessConfig witnessExternals store)
@@ -891,47 +872,16 @@ def witnessAcceptedSemantics :
   state := witnessAcceptedChainFFGState
   coherence := witnessAcceptedFFGTransitionCoherence
 
-theorem witnessIncludedAt_iff {carrier : WitnessRoot}
-    {a : Attestation WitnessRoot} :
-    witnessAcceptedChainFFGState.IncludedAt witnessConfig witnessExternals
-        carrier a ↔
-      carrier = carrierRoot ∧
-        (a = vote4 ∨ a = vote5 ∨ a = vote6) :=
-  Iff.rfl
 
 /-! ## Public selector/AU reductions -/
 
-@[simp] theorem witnessGJ (r : WitnessRoot) :
-    witnessAcceptedChainFFGState.GJ r = anchorCheckpoint := rfl
 
-@[simp] theorem witnessGF (r : WitnessRoot) :
-    witnessAcceptedChainFFGState.GF r = anchorCheckpoint := rfl
 
-@[simp] theorem witnessGUF (r : WitnessRoot) :
-    witnessAcceptedChainFFGState.GUF r = anchorCheckpoint := rfl
 
-@[simp] theorem witnessGU_anchor :
-    witnessAcceptedChainFFGState.GU anchorRoot = anchorCheckpoint := by
-  rfl
 
-@[simp] theorem witnessGU_child :
-    witnessAcceptedChainFFGState.GU childRoot = anchorCheckpoint := by
-  rfl
 
-@[simp] theorem witnessGU_carrier :
-    witnessAcceptedChainFFGState.GU carrierRoot =
-      childEpochOneCheckpoint := by
-  rfl
 
-theorem witnessAU_anchor_anchor :
-    witnessAcceptedChainFFGState.AU witnessConfig witnessExternals
-      anchorRoot anchorCheckpoint :=
-  ⟨anchorRoot, .refl anchorRoot, witnessFormed_anchor⟩
 
-theorem witnessAU_child_anchor :
-    witnessAcceptedChainFFGState.AU witnessConfig witnessExternals
-      childRoot anchorCheckpoint :=
-  ⟨anchorRoot, child_descends_anchor, witnessFormed_anchor⟩
 
 theorem witnessAU_carrier_anchor :
     witnessAcceptedChainFFGState.AU witnessConfig witnessExternals

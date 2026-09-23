@@ -279,48 +279,6 @@ theorem currentTargetEpochEnd_within_of_epochEndsFitUint64
     rw [hepochEnd]
     exact hqH.2.2
 
-/-- The genuine next-target-boundary time guard already implies the current
-epoch-end slot guard used by target accounting. -/
-theorem completedPrefix_currentTargetEpochEnd_within
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
-    {v : ValidatorIndex} {n : ℕ}
-    (hnextH : E.WithinHorizon cfg
-      (E.slot_start cfg (compute_start_slot_at_epoch cfg
-        ((get_current_target cfg (E.store cfg ext v n)).epoch + 1)))) :
-    E.SlotWithinHorizon cfg
-      (currentTargetEpochEnd cfg (E.store cfg ext v n)) := by
-  let store := E.store cfg ext v n
-  let e := get_current_store_epoch cfg store
-  let next := compute_start_slot_at_epoch cfg (e + 1)
-  obtain ⟨ast, ablk, hgen, _hslot, _hparent⟩ := hT.genesis_structure
-  have hgenTime : E.genesis_store.genesis_time ≤
-      E.genesis_store.time := by
-    rw [hgen]
-    simp only [get_forkchoice_store]
-    exact Nat.le_add_right _ _
-  have hcurrentLt : get_current_slot cfg store < next := by
-    have hlt := Nat.lt_mul_div_succ (get_current_slot cfg store)
-      cfg.slots_per_epoch_pos
-    simpa only [next, e, get_current_store_epoch, compute_epoch_at_slot,
-      compute_start_slot_at_epoch, Nat.mul_comm] using hlt
-  have hfrom0 : E.slot_at cfg 0 ≤ next := by
-    calc
-      E.slot_at cfg 0 ≤ E.slot_at cfg n := E.slot_at_mono cfg (Nat.zero_le n)
-      _ = get_current_slot cfg store := by
-        simp only [store, E.store_current_slot]
-      _ ≤ next := Nat.le_of_lt hcurrentLt
-  have hslotAtNext : E.slot_at cfg (E.slot_start cfg next) = next :=
-    E.slot_at_slot_start cfg hT.whole_seconds hfrom0 hgenTime
-  have hnextSlotH : E.SlotWithinHorizon cfg next := by
-    rw [← hslotAtNext]
-    exact ⟨hnextH.2.1, hnextH.2.2⟩
-  apply E.slotWithinHorizon_mono cfg _ hnextSlotH
-  have hendLt : currentTargetEpochEnd cfg store < next := by
-    simp only [currentTargetEpochEnd, currentTargetEpochStart,
-      compute_start_slot_at_epoch, next, e, Nat.add_mul, one_mul]
-    exact Nat.add_lt_add_left
-      (Nat.sub_lt cfg.slots_per_epoch_pos (by omega)) _
-  exact Nat.le_of_lt hendLt
 
 /-! ## Irreducible call-supply assumptions -/
 

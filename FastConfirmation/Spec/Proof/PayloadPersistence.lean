@@ -254,16 +254,6 @@ theorem on_block_fresh_full_parent_verified {store store' : Store Root}
       rw [hrejected] at h
       cases h
 
-/-- The verified FULL-parent payload remains present after block processing. -/
-theorem on_block_fresh_full_parent_verified_post {store store' : Store Root}
-    {signed_block : SignedBeaconBlock Root}
-    (hfresh : signed_block.root ∉ store.block_roots)
-    (hfull : is_parent_node_full store signed_block.message = true)
-    (h : on_block cfg ext store signed_block = some store') :
-    is_payload_verified store' signed_block.message.parent_root = true :=
-  (PayloadLE.of_payloads_eq (on_block_payloads cfg ext h))
-    signed_block.message.parent_root
-    (on_block_fresh_full_parent_verified cfg ext hfresh hfull h)
 
 /-- An accepted envelope can replace one envelope, but cannot make a root absent. -/
 theorem on_execution_payload_envelope_payloadLE {store store' : Store Root}

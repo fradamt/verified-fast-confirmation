@@ -29,10 +29,6 @@ private theorem threshold_arith {s d X : ℕ}
     (h : s > if d < X then (X - d) / 2 else 0) : 2 * s + d ≥ X + 1 := by
   split_ifs at h <;> omega
 
-/-- Pure form of the equivocation-discount soundness. -/
-private theorem net_arith {w M q : ℕ} (h : w ≤ M) :
-    w - q ≤ if M > q then M - q else 0 := by
-  split_ifs <;> omega
 
 variable {Root : Type*} [LinearOrder Root] [Inhabited Root]
 variable (cfg : Config) (ext : Externals Root)
@@ -74,32 +70,6 @@ theorem is_one_confirmed_ineq {store : Store Root} {bs : BeaconState Root}
   rw [heq] at h'
   exact threshold_arith h'
 
-/-- The equivocation discount is sound: if the actual (per-balance-source)
-Byzantine committee weight of the span is within the pre-discount budget
-`maximum_weight / 100 * CBT`, then the Byzantine weight net of the
-equivocation score is within `compute_adversarial_weight` (both guard
-branches; ℕ truncation works in our favor in the degenerate branch). -/
-theorem byzantine_net_le_compute_adversarial_weight
-    {store : Store Root} {bs : BeaconState Root} {a b : Slot}
-    {byz_weight : Gwei}
-    (hbudget : byz_weight ≤
-      estimate_committee_weight_between_slots cfg
-        (get_total_active_balance cfg bs) a b / 100 *
-        cfg.confirmation_byzantine_threshold) :
-    byz_weight - get_equivocation_score cfg ext store bs a b ≤
-      compute_adversarial_weight cfg ext store bs a b := by
-  have heq : compute_adversarial_weight cfg ext store bs a b =
-      if estimate_committee_weight_between_slots cfg
-            (get_total_active_balance cfg bs) a b / 100 *
-            cfg.confirmation_byzantine_threshold >
-          get_equivocation_score cfg ext store bs a b then
-        estimate_committee_weight_between_slots cfg
-            (get_total_active_balance cfg bs) a b / 100 *
-            cfg.confirmation_byzantine_threshold
-          - get_equivocation_score cfg ext store bs a b
-      else 0 := rfl
-  rw [heq]
-  exact net_arith hbudget
 
 /-- `get_adversarial_weight` unfolded to its span (both branches use the end
 slot `current_slot - 1`; the start is the block's slot or, across an epoch

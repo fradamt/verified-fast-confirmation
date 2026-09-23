@@ -8,23 +8,7 @@ public import FastConfirmation.Paper.LMDGhost.Proof.Rule
 /-!
 # HFC / Proof / Recency — shared helpers for the §4 recency descendant argument
 
-This module collects the reusable building blocks of the §4 recency *descendant*
-argument (arXiv:2405.00549 §4): whatever checkpoint
-gets `Justified` in an honest view descends from a safe block `B`, because `β < 1/3`
-puts an honest voter behind every `≥ 2/3` link, and §3.1 head safety places `B` on
-that honest voter's fork-choice head.
-
-The descendant lemma lives in the **cross-epoch ladder**
-(`CrossEpoch.lean`'s `realizedGJ_boundary_of_canonicalEpoch` /
-`realizedGJ_descends_of_canonicalEpoch` / `realizedGJ_ancestor_of_canonicalEpoch`),
-which `confirmedNotFFGFiltered_proved` consumes. This module provides the
-helpers used by the ladder and the never-filter:
-
-* `ancestor_boundaryBlock` — `boundaryBlock` monotonicity (Step 5): `B ≼ head` and
-  `B.slot ≤ bound` ⇒ `B ≼ boundaryBlock bound head`.
-* `lslot_mono` / `le_lslot_epochOf` — epoch-boundary slot arithmetic.
-* `honest_voter_of_link` — an honest signer behind every `≥ 2/3` supermajority link
-  (`β < 1/3`); the FFG mirror of the §3.1 honest-supporter extraction.
+This module contains `ancestor_boundaryBlock`, `le_lslot_epochOf`, `honest_voter_of_link` and related declarations.
 -/
 
 namespace FastConfirmation.HFC
@@ -83,10 +67,6 @@ theorem ancestor_boundaryBlock {b x : Block n} (bound : Slot)
 
 /-! ### Step 5 helper — epoch-boundary slot arithmetic (pure `Nat` division) -/
 
-/-- `lslot` is monotone in the epoch (`lslot e = e·E + (E−1)`). -/
-theorem lslot_mono (τ : Timing) {e e' : Epoch} (h : e ≤ e') : τ.lslot e ≤ τ.lslot e' := by
-  unfold Timing.lslot
-  exact Nat.add_le_add_right (Nat.mul_le_mul_right τ.slotsPerEpoch h) _
 
 /-- A slot sits at or below the last slot of its own epoch: `s ≤ lslot (epochOf s)`.
     `s = (s / E)·E + s % E` and `s % E ≤ E − 1`. -/

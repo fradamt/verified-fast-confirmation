@@ -143,43 +143,6 @@ theorem get_ancestor_roots_aux_succ (store : Store Root) (terminal_root : Root)
            (store.blocks root).parent_root).map (· ++ [root]))
       else none := rfl
 
-/-- Fuel independence for `get_ancestor_roots_aux` on the known domain: any two
-fuels exceeding the walked block's slot compute the same value (mirrors
-`get_ancestor_aux_fuel_eq`; the walk descends toward `terminal_root`'s slot). -/
-theorem get_ancestor_roots_aux_fuel_eq {store : Store Root}
-    (hwf : ∀ r ∈ store.block_roots,
-      (store.blocks r).parent_root ∈ store.block_roots →
-        (store.blocks (store.blocks r).parent_root).slot < (store.blocks r).slot)
-    {terminal_root : Root} {r : Root}
-    (hw : WalkKnown store (store.blocks terminal_root).slot r) :
-    ∀ fuel fuel' : ℕ, (store.blocks r).slot < fuel → (store.blocks r).slot < fuel' →
-      get_ancestor_roots_aux store terminal_root fuel r =
-        get_ancestor_roots_aux store terminal_root fuel' r := by
-  induction hw with
-  | stop hr hle =>
-    intro fuel fuel' hf hf'
-    cases fuel with
-    | zero => exact absurd hf (Nat.not_lt_zero _)
-    | succ f => cases fuel' with
-      | zero => exact absurd hf' (Nat.not_lt_zero _)
-      | succ f' =>
-        rw [get_ancestor_roots_aux_succ, get_ancestor_roots_aux_succ,
-          if_neg (by simpa using hle), if_neg (by simpa using hle)]
-  | @step r hr hgt hp ih =>
-    intro fuel fuel' hf hf'
-    cases fuel with
-    | zero => exact absurd hf (Nat.not_lt_zero _)
-    | succ f => cases fuel' with
-      | zero => exact absurd hf' (Nat.not_lt_zero _)
-      | succ f' =>
-        have hCpos : (store.blocks r).slot > (store.blocks terminal_root).slot := hgt
-        rw [get_ancestor_roots_aux_succ, get_ancestor_roots_aux_succ,
-          if_pos hCpos, if_pos hCpos]
-        by_cases hD : (store.blocks r).parent_root = terminal_root
-        · rw [if_pos hD, if_pos hD]
-        · rw [if_neg hD, if_neg hD, ih f f'
-            (Nat.lt_of_lt_of_le (hwf _ hr hp.root_mem) (Nat.lt_succ_iff.mp hf))
-            (Nat.lt_of_lt_of_le (hwf _ hr hp.root_mem) (Nat.lt_succ_iff.mp hf'))]
 
 /-- Wrapper stop equation: at or below `terminal_root`'s slot the ancestor list
 is empty (the walk's first test fails, worker returns `none`). -/
@@ -189,15 +152,6 @@ theorem get_ancestor_roots_stop {store : Store Root} {block_root terminal_root :
   rw [get_ancestor_roots, get_ancestor_roots_aux_succ, if_neg (by simpa using hle)]
   rfl
 
-/-- Wrapper hit equation: one step above `terminal_root` whose parent is
-`terminal_root` yields the singleton chain `[block_root]`. -/
-theorem get_ancestor_roots_hit {store : Store Root} {block_root terminal_root : Root}
-    (hgt : (store.blocks terminal_root).slot < (store.blocks block_root).slot)
-    (hpar : (store.blocks block_root).parent_root = terminal_root) :
-    get_ancestor_roots store block_root terminal_root = [block_root] := by
-  rw [get_ancestor_roots, get_ancestor_roots_aux_succ, if_pos (by simpa using hgt),
-    if_pos hpar]
-  rfl
 
 /-! ## `get_ancestor_roots` characterization -/
 

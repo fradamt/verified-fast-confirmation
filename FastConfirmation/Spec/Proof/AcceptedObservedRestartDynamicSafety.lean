@@ -9,6 +9,7 @@ public import FastConfirmation.Spec.Proof.AcceptedActualFCRContractScaffold
 public import FastConfirmation.Spec.Proof.SelectedCoveredMarginConstruction
 public import FastConfirmation.Spec.Proof.ModelFacts
 
+public import FastConfirmation.Spec.Proof.ModelFacts
 @[expose] public section
 
 /-!

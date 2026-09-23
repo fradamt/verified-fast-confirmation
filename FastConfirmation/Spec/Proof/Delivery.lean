@@ -6,6 +6,7 @@ public import FastConfirmation.Spec.Proof.PayloadPersistence
 public import FastConfirmation.Spec.Proof.BlockStateAgreement
 public import FastConfirmation.Spec.Proof.ModelFacts
 
+public import FastConfirmation.Spec.Proof.ModelFacts
 @[expose] public section
 
 /-!
@@ -688,15 +689,7 @@ theorem Execution.store_latest_message_ge_mono (E : Execution Root) {v w : Valid
   obtain ⟨msg', hmsg', hle'⟩ := (E.store_storeLE cfg ext w hNm).latest_message_epoch_mono cfg v msg hmsg
   exact ⟨msg', hmsg', hle.trans hle'⟩
 
-/-! ## Conjunct transport up the fold prefix (`Delivery` part 2)
 
-`validate_on_attestation` reads the store's `blocks` values (along the ancestor
-walk and for the not-future check), the block set (known-block checks), and the
-clock (epoch-window / fork-choice gate). The fold keeps the current slot fixed
-(`foldl_get_current_slot`) and only grows the block set, agreeing with its base
-on base-known blocks (`foldl_blocks_agree`). So the seven `validate` conjuncts,
-known at the honest voter's source store, transport to every fold-prefix store
-of the receiving node — `validate_at_extension`. -/
 
 /-- The event fold keeps the store's current slot fixed: every handler preserves
 `get_current_slot` (`apply_event_get_current_slot`), and a rejected event leaves
@@ -714,22 +707,6 @@ theorem foldl_get_current_slot (l : List (Event Root)) (s : Store Root) :
     | none => rw [Option.getD_none]
     | some s' => rw [Option.getD_some]; exact apply_event_get_current_slot cfg ext he
 
-/-- The event fold agrees with its base on the `blocks` value of every
-base-known root: both stores respect `BlockProvenance` (the base by `hprov`, the
-fold by `blockProvenance_foldl` since every block event is scheduled) and the
-base's roots stay known (`foldl_storeLE`), so `WellFormedExecution.blocks_agree`
-pins the recorded block. -/
-theorem foldl_blocks_agree {E : Execution Root} (hwf : WellFormedExecution E)
-    (l : List (Event Root)) (s : Store Root)
-    (hl : ∀ b, Event.block b ∈ l → IsScheduledBlock E b) (hprov : BlockProvenance E s) :
-    ∀ r ∈ s.block_roots,
-      s.blocks r =
-        (l.foldl (fun store event => (apply_event cfg ext store event).getD store) s).blocks r := by
-  intro r hr
-  have hprov' : BlockProvenance E
-      (l.foldl (fun store event => (apply_event cfg ext store event).getD store) s) :=
-    blockProvenance_foldl cfg ext l s hl hprov
-  exact hwf.blocks_agree hprov hprov' hr ((foldl_storeLE cfg ext l s).1 hr)
 
 omit [Inhabited Root] in
 /-- **Conjunct transport.** `validate_on_attestation` holds at any store `P` that
@@ -1218,29 +1195,6 @@ theorem Execution.latest_message_root {E : Execution Root}
   obtain ⟨-, haa⟩ := hvote'
   rw [← hbbr, hdata', haa]
 
-/-- **Composed convenience form.** For the honest vote of `vote_ubiquity`'s
-shape (voting the head of `v`'s slot-`s` store), a recorded message for `v`
-whose epoch is `s`'s epoch has LMD root exactly the head root `v` voted. This is
-`latest_message_root` specialised to the honest attestation, whose LMD block is
-the store's head. -/
-theorem Execution.latest_message_root_head {E : Execution Root}
-    (hhb : HonestBehavior cfg ext E) (hec : ExternalsCoherence cfg ext E)
-    (hgen : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
-      E.genesis_store = get_forkchoice_store cfg ast ablk)
-    {v w : ValidatorIndex} (hv : v ∈ E.honest)
-    {s : Slot} {n : ℕ} {index : CommitteeIndex}
-    (hvote : E.vote v s = some (n, honest_attestation cfg ext (E.store cfg ext v n) s index v))
-    {m : ℕ} {msg : LatestMessage Root}
-    (hmsg : (E.store cfg ext w m).latest_messages v = some msg)
-    (hmepoch : (get_latest_message_epoch cfg msg) = compute_epoch_at_slot cfg s) :
-    msg.root = (get_head cfg (E.store cfg ext v n)).root := by
-  have hbbr :
-      (honest_attestation cfg ext (E.store cfg ext v n) s index v).data.beacon_block_root =
-        (get_head cfg (E.store cfg ext v n)).root := by
-    rw [honest_attestation_data_eq]
-    exact honest_attestation_data_beacon_block_root cfg ext (E.store cfg ext v n) s index
-  rw [← hbbr]
-  exact E.latest_message_root cfg ext hhb hec hgen hv hvote hmsg hmepoch.symm
 
 /-! ## Exact recorded message, including the payload bit -/
 

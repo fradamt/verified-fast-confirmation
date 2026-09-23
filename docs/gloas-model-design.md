@@ -230,8 +230,8 @@ confirmed block bid's parent hash. Source:
 ## Proof interface
 
 The node field alone forces no text change in the public definitions in
-`Spec/TheoremStatements.lean`. `Spec_Safety`, `Spec_Safety_next_slot`,
-`Spec_Monotonicity`, and `Spec_Monotonicity_no_revert` already use the node
+`Spec/Internal/Legacy/Vocabulary.lean`. `Spec_Safety`, `Spec_Safety_next_slot`,
+and `Spec_Monotonicity` already use the node
 helpers. The predicates `JustifiedIn` and `HonestVotesSupportTarget`, the
 `JustificationInterface` record, and `SpecAssumptions` also need no text
 change from the added node field alone. Audit the new external dependency

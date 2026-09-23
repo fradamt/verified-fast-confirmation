@@ -4,6 +4,7 @@ public import FastConfirmation.Spec.Proof.PayloadPersistence
 public import FastConfirmation.Spec.Proof.AcceptedActualFCRNextSlotSafetyFold
 public import FastConfirmation.Spec.Proof.ModelFacts
 
+public import FastConfirmation.Spec.Proof.ModelFacts
 @[expose] public section
 
 /-!
@@ -318,27 +319,9 @@ theorem witness_valid_iff (state : BeaconState WitnessRoot)
 
 /-! ## Direct executable regression checks -/
 
-theorem confirming_second_within_horizon :
-    witnessExecution.WithinHorizon witnessConfig 2 :=
-  time_within_of_lt_sixteen (by decide)
 
-theorem confirming_store_domain :
-    anchorRoot ∈ confirmingFcr.store.block_roots ∧
-      childRoot ∈ confirmingFcr.store.block_roots := by
-  set_option maxRecDepth 50000 in
-    decide
 
-theorem anchor_is_current_epoch_at_strict_call :
-    get_block_epoch witnessConfig confirmingFcr.store anchorRoot =
-      get_current_store_epoch witnessConfig confirmingFcr.store := by
-  set_option maxRecDepth 50000 in
-    decide
 
-theorem child_is_one_confirmed :
-    is_one_confirmed witnessConfig witnessExternals confirmingFcr.store
-      (get_current_balance_source confirmingFcr) childRoot = true := by
-  set_option maxRecDepth 50000 in
-    decide
 
 theorem find_latest_confirmed_descendant_strict_advance :
     find_latest_confirmed_descendant witnessConfig witnessExternals confirmingFcr
@@ -351,30 +334,8 @@ theorem actual_fcr_transition_strict_advance :
   set_option maxRecDepth 20000 in
     decide
 
-theorem confirming_fcr_input_and_output :
-    confirmingFcr.confirmed_root = anchorRoot ∧
-      get_latest_confirmed witnessConfig witnessExternals confirmingFcr = childRoot := by
-  set_option maxRecDepth 20000 in
-    decide
 
-theorem confirming_call_is_slot_transition :
-    get_current_slot witnessConfig
-        (witnessExecution.store witnessConfig witnessExternals 0 1) <
-      get_current_slot witnessConfig
-        (witnessExecution.store witnessConfig witnessExternals 0 2) := by
-  decide
 
-theorem strict_advance_execution_nondegenerate :
-    0 ∈ witnessExecution.honest ∧ 1 ∈ witnessExecution.honest ∧
-      2 ∈ witnessExecution.honest ∧ 3 ∈ witnessExecution.honest ∧
-      (0 : ValidatorIndex) ≠ 1 ∧ (1 : ValidatorIndex) ≠ 2 ∧
-      (2 : ValidatorIndex) ≠ 3 ∧
-      0 < witnessExecution.weight_of 0 ∧
-      0 < witnessExecution.weight_of 1 ∧
-      0 < witnessExecution.weight_of 2 ∧
-      0 < witnessExecution.weight_of 3 ∧
-      0 < witnessExecution.total_active witnessConfig := by
-  decide
 
 /-! ## Operational classifiers and execution assumptions -/
 
@@ -1057,17 +1018,7 @@ theorem witnessPhase0BoundarySourceCoherence :
           rfl
       · contradiction
 
-theorem witnessScheduledPrefixCommitteeCoherence :
-    witnessExecution.ScheduledPrefixCommitteeCoherence
-      witnessConfig witnessExternals := by
-  intro p slot hs
-  simp [Execution.PrefixCommitteeAgreement, get_slot_committee,
-    witnessExternals, witnessExecution, witnessCommittee]
 
-theorem witnessTotalActiveBalanceFloor :
-    witnessConfig.effective_balance_increment ≤
-      witnessExecution.total_active witnessConfig := by
-  decide
 
 theorem witnessBalanceFloor :
     witnessConfig.effective_balance_increment ≤

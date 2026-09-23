@@ -109,17 +109,7 @@ noncomputable def ruleRealizedGF (A : Anchor n) (τ : Timing)
 def OnChainAnchorWellFormed (_A : Anchor n) (τ : Timing) (b : Block n) : Prop :=
   BlockFFGVotes.WellFormedOnChain (n := n) τ (blockContainedFFGVotes (n := n) τ) b
 
-/-- The raw on-chain FFG vote set `AU(b)` read from the votes contained in `b`'s
-    ancestry. -/
-noncomputable def onChainFFGVotes (τ : Timing) (b : Block n) :
-    Finset (Message n (FFGVote n)) :=
-  chainIncludedFFGVotes (blockContainedFFGVotes τ) b
 
-/-- AU-style chain fact: checkpoint `C` is on `chain(b)` and is justified from the FFG votes
-    carried by `chain(b)`. -/
-def OnChainAnchorFromVotes (A : Anchor n) (τ : Timing) (contents : BlockFFGVotes n)
-    (b : Block n) (C : Checkpoint n) : Prop :=
-  C.block ≼ b ∧ OnChainJustified A τ contents b C
 
 /-- A view contains an FFG equivocation for validator `i` at target epoch `e` when it contains two
     distinct FFG payloads by `i` targeting `e`. The simplified proposer-inclusion model drops all

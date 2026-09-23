@@ -54,11 +54,6 @@ def store (p : ScheduledEventPrefix E) : Store Root :=
     (on_tick cfg (E.store cfg ext p.node p.previousSecond)
       (E.time_at (p.previousSecond + 1)))
 
-/-- Two local prefixes are compatible when they observe the same node and
-the same scheduled second.  Their natural-number prefix lengths are then
-linearly ordered. -/
-def Compatible (p q : ScheduledEventPrefix E) : Prop :=
-  p.node = q.node ∧ p.previousSecond = q.previousSecond
 
 /-- Extend an exact prefix by its concrete next scheduled event. -/
 def successor (p : ScheduledEventPrefix E)

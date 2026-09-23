@@ -209,22 +209,6 @@ private theorem mem_get_ancestor_roots_aux_of_between_root {store : Store Root}
             Nat.lt_of_lt_of_le (hwf _ hr hp.root_mem) (Nat.lt_succ_iff.mp hfuel)
           exact List.mem_append.mpr (Or.inl (ih f hbound l' hl' c hcslot hget'))
 
-omit [Inhabited Root] in
-/-- Worker form of converse ancestor-list membership. -/
-theorem mem_get_ancestor_roots_aux_of_between {store : Store Root}
-    (hwf : ∀ r ∈ store.block_roots,
-      (store.blocks r).parent_root ∈ store.block_roots →
-        (store.blocks (store.blocks r).parent_root).slot < (store.blocks r).slot)
-    {top : Root} {r : Root} (hw : WalkKnown store (store.blocks top).slot r) :
-    ∀ (fuel : ℕ), (store.blocks r).slot < fuel → ∀ (l : List Root),
-      get_ancestor_roots_aux store top fuel r = some l →
-      ∀ c : Root, (store.blocks top).slot < (store.blocks c).slot →
-        get_ancestor store (ForkChoiceNode.mk r .pending) (store.blocks c).slot =
-          ForkChoiceNode.mk c .pending →
-        c ∈ l := by
-  intro fuel hfuel l hl c hcslot hget
-  exact mem_get_ancestor_roots_aux_of_between_root hwf hw fuel hfuel l hl c hcslot
-    (congrArg ForkChoiceNode.root hget)
 
 omit [Inhabited Root] in
 /-- A block strictly between the terminal and start of an ancestry walk occurs

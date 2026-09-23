@@ -37,16 +37,7 @@ namespace Execution
 
 variable (E : Execution Root)
 
-/-! ## Registry identifications: the confirmation list-sums are `Hspec`
 
-`honest_support_majority` (`HonestWeight`) states the honest-support term as a
-`List.sum` of the balance source's effective balances over the honest slice of
-`AttSupporters`. Registry constancy (`hval`) turns those into ground-truth
-weights and the supporter list's `Nodup` identifies the list-sum with a `Finset`
-weight (`E.weight`); supporter confinement (`hspan`, discharged by
-`QuorumAccounting.supporter_mem_span_committee`) then rewrites that `Finset` as
-the `Hspec` filter set. So the fraction/ledger numerator `H₀` *is*
-`honest_support_majority`'s honest term. -/
 
 omit [Inhabited Root] in
 /-- The honest-supporter list-sum equals the ground-truth weight of the honest
@@ -67,29 +58,6 @@ theorem honest_score_eq_weight {store : Store Root} {bs : BeaconState Root} {b :
   rw [hmap]
   exact (List.sum_toFinset E.weight_of hLnodup).symm
 
-omit [Inhabited Root] in
-/-- The honest supporters (as a `Finset`), once confined to the span committee
-`[a, b_slot]` (`hspan`), coincide with the `Hspec` filter set for the "is a
-supporter" predicate. Hence the honest-support list-sum *is* `E.Hspec` for that
-predicate: the fraction/ledger numerator `H₀` at the confirming store. -/
-theorem honest_supporter_weight_eq_Hspec {store : Store Root} {bs : BeaconState Root}
-    {b : Root} {a b_slot : Slot} (hval : bs.validators = E.registry)
-    (hspan : ∀ i ∈ AttSupporters cfg store (get_node_for_root b) bs, i ∈ E.honest →
-      i ∈ E.span_committee a b_slot) :
-    (((AttSupporters cfg store (get_node_for_root b) bs).filter (fun i => i ∈ E.honest)).map
-        (fun i => (bs.validators.getD i default).effective_balance)).sum
-      = E.Hspec a b_slot
-          (fun i => i ∈ (AttSupporters cfg store (get_node_for_root b) bs).toFinset) := by
-  rw [honest_score_eq_weight cfg E hval]
-  simp only [Execution.Hspec]
-  congr 1
-  ext i
-  simp only [Finset.mem_filter, List.mem_toFinset, List.mem_filter, decide_eq_true_eq]
-  constructor
-  · rintro ⟨hiA, hih⟩
-    exact ⟨hspan i hiA hih, hih, hiA⟩
-  · rintro ⟨_, hih, hiA⟩
-    exact ⟨hiA, hih⟩
 
 end Execution
 

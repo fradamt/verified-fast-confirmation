@@ -3,6 +3,7 @@ public import FastConfirmation.Spec.Proof.Provenance
 public import FastConfirmation.Spec.Proof.StoreInvariants
 public import FastConfirmation.Spec.Proof.ModelFacts
 
+public import FastConfirmation.Spec.Proof.ModelFacts
 @[expose] public section
 
 /-!

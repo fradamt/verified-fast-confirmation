@@ -1,41 +1,14 @@
 module
 public import FastConfirmation.Spec.Proof.MicroSteps
-public import FastConfirmation.Spec.Proof.CoveringFFG
 public import FastConfirmation.Spec.Proof.Confinement
 public import FastConfirmation.Spec.Proof.INVstarTrack
 
 @[expose] public section
 
 /-!
-# Spec / Proof / Anchoring: the additive anchoring lemma and `coveringFFG_of_anchor`
+# Spec / Proof / Anchoring
 
-This module supplies the **anchoring** half of the `CoveringFFG` covering package:
-the fact that the block `get_latest_confirmed` returns descends, *at the confirming store*,
-from one of the three reset anchors (`confirmed_root` / `finalized.root` /
-`observed.root`), and the assembly of that fact — transported to a foreign endpoint
-`(w, m)` — into `Execution.CoveringFFG`.
-
-Two independent pieces:
-
-* **Section 1 — the additive anchoring lemma.** `find_latest_confirmed_descendant`
-  only ever advances its accumulator through members of `get_ancestor_roots store head lcr`,
-  each a descendant of the reset input `lcr`. `find_latest_confirmed_descendant_ge` proves the
-  result `⪰ lcr` at the confirming store (the loop inversions
-  `L4Fold.{prev_epoch_loop_spec,tentative_loop_spec}` + the `get_ancestor_roots`
-  characterisation of `Proof/AncestryRoots.lean`, threaded through a "descends from the
-  terminal" chain lemma `chain_descends_terminal`). `get_latest_confirmed_ge` composes it with
-  the `get_latest_confirmed` reset case analysis: the returned `b` descends from an `r₀ ∈
-  {confirmed_root, finalized.root, observed.root}`.
-
-* **Section 2 — `ConfirmedWithAnchor` and `coveringFFG_of_anchor`.**
-  `ConfirmedWithAnchor` bundles the confirming-store anchoring (`b ⪰ r₀` + both known).
-  `coveringFFG_of_anchor` assembles `Execution.CoveringFFG` from it: the `b ⪰ jcb` conjunct is
-  the transported anchoring (`EdgeDynamics.is_ancestor_transport_rev` on the reverse
-  orientation, using `Synchrony.block_relay`'s block-root containment);
-  `jcb`'s `JustifiedIn`/knownness and the
-  head-witness geometry (the three `EngineCore.hadv_hi_of_head` inputs) enter as the covering
-  FFG hypotheses in the exact export shapes.
-
+This module contains `chain_descends_terminal`, `get_ancestor_roots_descends`, `find_latest_confirmed_descendant_ge` and related declarations.
 -/
 
 namespace FastConfirmation.Spec
@@ -174,61 +147,8 @@ theorem find_latest_confirmed_descendant_ge (fcr_store : FastConfirmationStore R
       | (apply htent; first | exact base | exact hprev _ _ base)
       | exact hprev _ _ base
 
-/-- **`get_latest_confirmed` anchoring.** The block `get_latest_confirmed` returns
-descends, at the querying store, from one of the three reset anchors `r₀ ∈ {confirmed_root,
-finalized.root, observed.root}` (and `r₀` is a known block). Case analysis on
-`get_latest_confirmed`'s two reset branches and the final advance: the reset value is one of the
-three anchors, and the advance (`find_latest_confirmed_descendant_ge`) descends from it (the
-no-advance leaf is reflexive). Needs the three anchors known + the fork-choice domain
-conditions. -/
-theorem get_latest_confirmed_ge (fcr_store : FastConfirmationStore Root)
-    (hwf : ∀ r ∈ fcr_store.store.block_roots,
-      (fcr_store.store.blocks r).parent_root ∈ fcr_store.store.block_roots →
-        (fcr_store.store.blocks (fcr_store.store.blocks r).parent_root).slot <
-          (fcr_store.store.blocks r).slot)
-    (hwalk : ∀ t ∈ fcr_store.store.block_roots, ∀ r ∈ fcr_store.store.block_roots,
-      WalkKnown fcr_store.store (fcr_store.store.blocks t).slot r)
-    (hhead : (get_head cfg fcr_store.store).root ∈ fcr_store.store.block_roots)
-    (h0 : fcr_store.confirmed_root ∈ fcr_store.store.block_roots)
-    (h1 : fcr_store.store.finalized_checkpoint.root ∈ fcr_store.store.block_roots)
-    (h2 : fcr_store.current_epoch_observed_justified_checkpoint.root ∈
-      fcr_store.store.block_roots) :
-    ∃ r₀ : Root,
-      (r₀ = fcr_store.confirmed_root ∨ r₀ = fcr_store.store.finalized_checkpoint.root ∨
-        r₀ = fcr_store.current_epoch_observed_justified_checkpoint.root) ∧
-      r₀ ∈ fcr_store.store.block_roots ∧
-      is_ancestor fcr_store.store
-        (get_node_for_root (get_latest_confirmed cfg ext fcr_store))
-        (get_node_for_root r₀) = true := by
-  generalize hX : get_latest_confirmed cfg ext fcr_store = X
-  simp only [get_latest_confirmed] at hX
-  split_ifs at hX <;>
-    subst hX <;>
-      first
-      | exact ⟨_, Or.inl rfl, h0, is_ancestor_refl _ _⟩
-      | exact ⟨_, Or.inr (Or.inl rfl), h1, is_ancestor_refl _ _⟩
-      | exact ⟨_, Or.inr (Or.inr rfl), h2, is_ancestor_refl _ _⟩
-      | exact ⟨_, Or.inl rfl, h0,
-          (find_latest_confirmed_descendant_ge cfg ext fcr_store hwf hwalk hhead _ h0).1⟩
-      | exact ⟨_, Or.inr (Or.inl rfl), h1,
-          (find_latest_confirmed_descendant_ge cfg ext fcr_store hwf hwalk hhead _ h1).1⟩
-      | exact ⟨_, Or.inr (Or.inr rfl), h2,
-          (find_latest_confirmed_descendant_ge cfg ext fcr_store hwf hwalk hhead _ h2).1⟩
 
-/-! ## Section 2 — `ConfirmedWithAnchor` and `coveringFFG_of_anchor`
 
-`ConfirmedWithAnchor cfg ext E b r₀ vc nc` is the confirming-store output of Section 1: at the
-confirming anchor `(vc, nc)` the block `b` descends from the reset anchor `r₀` (both known).
-`r₀` is one of the three anchors `get_latest_confirmed_ge` returns — its `JustifiedIn` "kind"
-(finalized via `finalized_justified_ancestry`, observed via `observed_justified`) is supplied to
-`coveringFFG_of_anchor` as the transported `JustifiedIn` conjunct, so the def stays kind-agnostic.
-
-`coveringFFG_of_anchor` assembles `Execution.CoveringFFG cfg ext b w m` at a foreign endpoint
-`(w, m)`. The `b ⪰ jcb.root` conjunct is the **transported anchoring** — `b ⪰ r₀` at `(vc, nc)`
-carried to `(w, m)` by `EdgeDynamics.is_ancestor_transport_rev` off the block-root containment
-`hsub` (`Synchrony.block_relay`) and the reverse walk domain `hw`; `jcb`'s `JustifiedIn` +
-knownness and the head-witness geometry (the three `hadv_hi_of_head` inputs) enter as the
-covering-FFG hypotheses. -/
 
 namespace Execution
 
@@ -248,43 +168,6 @@ structure ConfirmedWithAnchor (b r₀ : Root) (vc : ValidatorIndex) (nc : ℕ) :
   b_ge_r₀ : is_ancestor (E.store cfg ext vc nc)
     (get_node_for_root b) (get_node_for_root r₀) = true
 
-/-- **`CoveringFFG` from the confirming-store anchor.** Assembles
-`Execution.CoveringFFG cfg ext b w m` at a foreign endpoint `(w, m)` from the confirming-store
-anchoring `ConfirmedWithAnchor` plus the transport / export hypotheses:
-
-* the anchoring `b ⪰ jcb.root` (`jcb.root = r₀`) is the **transported** confirming-store fact —
-  `is_ancestor_transport_rev` carries `b ⪰ r₀` from `(vc, nc)` to `(w, m)` off the block-root
-  containment `hsub` (the `Synchrony.block_relay` deadline) and the reverse walk domain `hw`;
-* `jcb`'s `JustifiedIn (store w m)` (`hjust`) and knownness (`hjcb_known`) are the
-  `observed_justified` / `finalized_justified_ancestry` + `observed_checkpoint_known` /
-  `checkpoint_known` exports (the `<=`-epoch branch);
-* the head witness `head` and its geometry (`hHk`, `hHb`, `hckpt`, `hbslot`) are the three
-  `EngineCore.hadv_hi_of_head` inputs (the strict branch).
-
-The `hsub`/`hw` transport inputs and the export/geometry conjuncts are carried as hypotheses —
-their per-endpoint discharge (block-relay slot gate, the FFG exports, the head witness from a
-relayed `HonestPastDescendant`) is the covering supply this lemma feeds, not re-derived here. -/
-theorem coveringFFG_of_anchor (hwfE : WellFormedExecution E)
-    {b r₀ : Root} {vc w : ValidatorIndex} {nc m : ℕ}
-    (hanc : E.ConfirmedWithAnchor cfg ext b r₀ vc nc)
-    (hsub : (E.store cfg ext vc nc).block_roots ⊆ (E.store cfg ext w m).block_roots)
-    (hw : WalkKnown (E.store cfg ext vc nc) ((E.store cfg ext vc nc).blocks r₀).slot b)
-    (jcb : Checkpoint Root) (hjcb_root : jcb.root = r₀)
-    (hjust : JustifiedIn (E.store cfg ext w m) jcb)
-    (hjcb_known : jcb.root ∈ (E.store cfg ext w m).block_roots)
-    (head : Root)
-    (hHk : head ∈ (E.store cfg ext w m).block_roots)
-    (hHb : is_ancestor (E.store cfg ext w m)
-      (get_node_for_root head) (get_node_for_root b) = true)
-    (hckpt : get_checkpoint_block cfg (E.store cfg ext w m) head
-        (E.store cfg ext w m).justified_checkpoint.epoch =
-      (E.store cfg ext w m).justified_checkpoint.root)
-    (hbslot : ((E.store cfg ext w m).blocks b).slot ≤
-      compute_start_slot_at_epoch cfg (E.store cfg ext w m).justified_checkpoint.epoch) :
-    E.CoveringFFG cfg ext b w m := by
-  refine ⟨jcb, head, hjust, hjcb_known, ?_, hHk, hHb, hckpt, hbslot⟩
-  rw [hjcb_root]
-  exact E.is_ancestor_transport_rev cfg ext hwfE hsub hanc.r₀_known hanc.b_known hw hanc.b_ge_r₀
 
 end Execution
 

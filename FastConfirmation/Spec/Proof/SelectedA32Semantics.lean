@@ -6,32 +6,13 @@ public import FastConfirmation.Spec.Proof.ActualResetCheckpointRealization
 public import FastConfirmation.Spec.Proof.HistoricalCurrentTargetTrajectory
 public import FastConfirmation.Spec.Proof.ModelFacts
 
+public import FastConfirmation.Spec.Proof.ModelFacts
 @[expose] public section
 
 /-!
 # Assumption 3.2 at actual calls
 
-This module proves the current-epoch part of the actual-call bridge.  The
-global-UJ-only analysis below still exposes the placement fact that cannot be
-derived from a global carrier, but the executable arithmetic gate does not
-need that route: a non-anchor target, including a non-anchor UJ target,
-reconstructs the concrete fixed-source quorum.  Thus the actual direct call
-requires no separate placement premise, and this module adds neither a producer nor an
-assumption.
-
-For a selected block in the query's current epoch, the selected induction
-window covers all of the following epoch.  Synchrony supplies block knownness,
-so the paper's full canonicity antecedent follows.  In the concrete-quorum
-branch, the gate's fixed-source quorum then supplies the complete support
-antecedent.
-
-In the equality branch, the global unrealized-justified trajectory supplies
-an AU carrier.  If the checkpoint is the trusted anchor, the selected block
-itself is an early carrier.  Otherwise every required early-carrier field is
-derived except that the trajectory carrier need not descend from the later
-selected block; it may only descend from the selected epoch-boundary
-checkpoint.  `SelectedEarlyA32PlacementResidualAt` records exactly this
-remaining placement condition rather than hiding it behind a producer premise.
+This module contains `currentTarget_eq_selectedCheckpoint_of_currentEpochAncestor`, `canonicalThroughoutNextEpoch_of_selectedCanonical_currentEpoch`, `selectedEarlyA32Carrier_of_currentTarget_eq_anchor` and related declarations.
 -/
 
 namespace FastConfirmation.Spec
@@ -43,19 +24,6 @@ namespace Execution
 
 variable (E : Execution Root)
 
-/-- Exact remaining placement condition in the early-UJ branch.  All query-local carrier fields are
-present, including AU provenance and descent from the selected checkpoint
-root.  The only unavailable field is descent from the later selected block. -/
-def SelectedEarlyA32PlacementResidualAt
-    (anchor : Checkpoint Root) (S : ChainFFGState cfg E anchor)
-    (v : ValidatorIndex) (q : ℕ) (selected : Root)
-    (baseEpoch : Epoch) : Prop :=
-  ∃ carrier : Root,
-    carrier ∈ (E.store cfg ext v q).block_roots ∧
-    E.RootDescends carrier (S.C selected baseEpoch).root ∧
-    get_block_epoch cfg (E.store cfg ext v q) carrier < baseEpoch + 2 ∧
-    S.AU cfg carrier (S.C selected baseEpoch) ∧
-    ¬ E.RootDescends carrier selected
 
 /-- A current-epoch selected block identifies the executable current target
 with the common semantic checkpoint `C(selected,e)`. -/
@@ -280,104 +248,6 @@ theorem selectedEarlyA32Carrier_of_currentTarget_eq_anchor
   exact ⟨selected, hselected, RootDescends.refl selected,
     hselectedBefore, hAUSelected⟩
 
-/-- In the equality branch, concrete global-UJ history either produces the
-required selected carrier or exposes one concrete carrier for which the only
-additional fact needed is `RootDescends carrier selected`. -/
-theorem selectedEarlyA32Carrier_or_placementResidual_of_currentTarget_eq_unrealized
-    (hA : SelectedMarginAssumptions cfg ext E)
-    (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg) (E := E)
-      (anchor := E.genesis_store.justified_checkpoint))
-    {anchor : Checkpoint Root} {S : ChainFFGState cfg E anchor}
-    (hcoh : FFGTransitionCoherence cfg ext S)
-    (hanchor : anchor = E.genesis_store.justified_checkpoint)
-    {v : ValidatorIndex} (hv : v ∈ E.honest) {q : ℕ}
-    (hqH : E.WithinHorizon cfg q)
-    {selected : Root} {e : Epoch}
-    (hselected : selected ∈ (E.store cfg ext v q).block_roots)
-    (hheadSelected : is_ancestor (E.store cfg ext v q)
-      (get_head cfg (E.store cfg ext v q))
-      (get_node_for_root selected) = true)
-    (hselectedEpoch :
-      get_block_epoch cfg (E.store cfg ext v q) selected = e)
-    (heCurrent :
-      e = get_current_store_epoch cfg (E.store cfg ext v q))
-    (hequality : get_current_target cfg (E.store cfg ext v q) =
-      (E.store cfg ext v q).unrealized_justified_checkpoint) :
-    E.SelectedEarlyA32CarrierAt cfg ext anchor S v q selected e ∨
-      E.SelectedEarlyA32PlacementResidualAt cfg ext anchor S
-        v q selected e := by
-  have htargetC :=
-    E.currentTarget_eq_selectedCheckpoint_of_currentEpochAncestor cfg ext hA
-      hboundary hcoh hanchor hv hqH hselected hheadSelected
-      hselectedEpoch heCurrent
-  obtain ⟨ast, ablk, hgenEq, hgenSlot, hgenParent⟩ := hA.genesis
-  have hgen : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
-      E.genesis_store = get_forkchoice_store cfg ast ablk ∧
-      ast.slot = ablk.message.slot := ⟨ast, ablk, hgenEq, hgenSlot⟩
-  have hCeqUJ : S.C selected e =
-      (E.store cfg ext v q).unrealized_justified_checkpoint :=
-    htargetC.symm.trans hequality
-  rcases E.globalUnrealizedJustified_anchor_or_known_AU cfg ext hcoh
-      hgen hanchor v q with hUJAnchor | ⟨carrier, hcarrier, hAU⟩
-  · have hCAnchor : S.C selected e = anchor := hCeqUJ.trans hUJAnchor
-    have hanchorEpoch : e = anchor.epoch := by
-      have h := congrArg Checkpoint.epoch hCAnchor
-      simpa only [S.checkpoint_epoch] using h
-    have hselectedAt : E.BlockAt selected
-        ((E.store cfg ext v q).blocks selected) :=
-      E.blockAt_of_store_known cfg ext hselected
-    have hselectedRoot : E.ExecutionRoot selected :=
-      ⟨(E.store cfg ext v q).blocks selected, hselectedAt⟩
-    have hgjAnchor : S.GJ selected = anchor := by
-      rcases S.gj_anchor_or_before hselectedAt with hgj | hbefore
-      · exact hgj
-      · obtain ⟨hgjCert⟩ := S.certifiedJustified_of_AU cfg
-          (S.gj_AU cfg selected hselectedRoot)
-        have hanchorLe : anchor.epoch ≤ (S.GJ selected).epoch :=
-          CertifiedJustified.anchor_epoch_le (cfg := cfg) hgjCert
-        have hblockEpoch : compute_epoch_at_slot cfg
-            ((E.store cfg ext v q).blocks selected).slot = e := by
-          simpa only [get_block_epoch] using hselectedEpoch
-        rw [hblockEpoch, hanchorEpoch] at hbefore
-        exact False.elim ((Nat.not_lt_of_ge hanchorLe) hbefore)
-    have hAUSelected : S.AU cfg selected (S.C selected e) := by
-      have hgjC : S.GJ selected = S.C selected e :=
-        hgjAnchor.trans hCAnchor.symm
-      exact hgjC ▸ S.gj_AU cfg selected hselectedRoot
-    have hselectedBefore :
-        get_block_epoch cfg (E.store cfg ext v q) selected < e + 2 := by
-      rw [hselectedEpoch]
-      exact Nat.lt_add_of_pos_right (by decide)
-    exact Or.inl ⟨selected, hselected, RootDescends.refl selected,
-      hselectedBefore, hAUSelected⟩
-  · have hAUC : S.AU cfg carrier (S.C selected e) := by
-      rw [hCeqUJ]
-      exact hAU
-    have hcheckpointOnChain : E.RootDescends carrier
-        (S.C selected e).root := by
-      obtain ⟨formedAt, hcarrierFormed, hevidence⟩ :=
-        ChainFFGState.AU.evidence (cfg := cfg) S hAUC
-      exact Execution.RootDescends.trans E hcarrierFormed hevidence.on_chain
-    have hcarrierSlotLe :
-        ((E.store cfg ext v q).blocks carrier).slot ≤
-          get_current_slot cfg (E.store cfg ext v q) :=
-      E.store_blocks_slot_le_current cfg ext hA.whole_seconds hgen
-        v q carrier hcarrier
-    have hcarrierEpochLe :
-        get_block_epoch cfg (E.store cfg ext v q) carrier ≤ e := by
-      have hle := ce_mono cfg hcarrierSlotLe
-      change get_block_epoch cfg (E.store cfg ext v q) carrier ≤
-        get_current_store_epoch cfg (E.store cfg ext v q) at hle
-      rw [← heCurrent] at hle
-      exact hle
-    have hcarrierBefore :
-        get_block_epoch cfg (E.store cfg ext v q) carrier < e + 2 := by
-      exact hcarrierEpochLe.trans_lt
-        (Nat.lt_add_of_pos_right (by decide))
-    by_cases habove : E.RootDescends carrier selected
-    · exact Or.inl ⟨carrier, hcarrier, habove, hcarrierBefore, hAUC⟩
-    · exact Or.inr ⟨carrier, hcarrier, hcheckpointOnChain,
-        hcarrierBefore, hAUC, habove⟩
 
 /-- Complete current-epoch reduction of the refactored fixed-source gate.
 The anchor arm uses the selected block itself as an early carrier.  Every
@@ -435,111 +305,7 @@ theorem selectedA32Semantic_of_fixedSourceGate_currentEpoch
       hv hqH hselected hselectedEpoch hcanonicalFull Q hsource
     exact Or.inr ⟨hcanonicalFull, hsupport⟩
 
-/-- End-to-end current-epoch actual-call bridge.  The only call-site inputs are
-the executable boolean and its normative honest-target-support proviso; the
-signer set, concrete votes, common source, certificate, and anchor-or-quorum
-split are all reconstructed by the state-semantics producer. -/
-theorem selectedA32Semantic_of_actualCurrentTargetGate_currentEpoch
-    (hA : SelectedMarginAssumptions cfg ext E)
-    (hwalkDomain : E.PostAnchorHonestVoteTargetWalkDomain cfg ext)
-    (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg) (E := E)
-      (anchor := E.genesis_store.justified_checkpoint))
-    {anchor : Checkpoint Root} {S : ChainFFGState cfg E anchor}
-    (hcoh : FFGTransitionCoherence cfg ext S)
-    (hhistory : BlockStateTransitionHistory cfg ext E)
-    (hphase : Phase0SourceCoherence cfg ext)
-    (hboundaryPhase : Phase0BoundarySourceCoherence cfg ext)
-    (hanchor : anchor = E.genesis_store.justified_checkpoint)
-    {v : ValidatorIndex} (hv : v ∈ E.honest) {q : ℕ}
-    (hqH : E.WithinHorizon cfg q)
-    {query : FastConfirmationStore Root}
-    (hquery : query.store = E.store cfg ext v q)
-    {state : BeaconState Root}
-    (hstate : state = get_pulled_up_head_state cfg ext query.store)
-    (hval : state.validators = E.registry)
-    (htab : get_total_active_balance cfg state = E.total_active cfg)
-    (hendH : E.SlotWithinHorizon cfg
-      (currentTargetEpochEnd cfg query.store))
-    (hnextH : E.WithinHorizon cfg
-      (E.slot_start cfg (compute_start_slot_at_epoch cfg
-        ((get_current_target cfg query.store).epoch + 1))))
-    (hanchorH : get_current_epoch cfg E.anchor_state < E.verification_horizon)
-    (hfloor : cfg.effective_balance_increment ≤
-      E.weight (E.currentTargetAnchorActive cfg))
-    {selected : Root} {e : Epoch}
-    (hselected : selected ∈ (E.store cfg ext v q).block_roots)
-    (hheadSelected : is_ancestor (E.store cfg ext v q)
-      (get_head cfg (E.store cfg ext v q))
-      (get_node_for_root selected) = true)
-    (hselectedEpoch :
-      get_block_epoch cfg (E.store cfg ext v q) selected = e)
-    (heCurrent :
-      e = get_current_store_epoch cfg (E.store cfg ext v q))
-    {w : ValidatorIndex} {m : ℕ}
-    (hlate : e + 2 ≤
-      get_current_store_epoch cfg (E.store cfg ext w m))
-    (hcanonical : E.SelectedCanonicalBeforeEndpointAt cfg ext q selected m)
-    (hgate : will_current_target_be_justified cfg ext query.store = true)
-    (hsupport : HonestVotesSupportTarget cfg E
-      (get_current_target cfg query.store) q) :
-    E.SelectedA32SemanticRealizationAt cfg ext anchor S
-      v q selected e := by
-  have hselectedQ : selected ∈ query.store.block_roots := by
-    simpa only [hquery] using hselected
-  have hheadSelectedQ : is_ancestor query.store
-      (get_head cfg query.store) (get_node_for_root selected) = true := by
-    simpa only [hquery] using hheadSelected
-  have hselectedCurrentQ : get_block_epoch cfg query.store selected =
-      get_current_store_epoch cfg query.store := by
-    simpa only [hquery] using hselectedEpoch.trans heCurrent
-  have hfixedQ :=
-    (E.fixedSourceCurrentTargetA32GateRealizationProducerAt_of_stateSemantics
-      cfg ext (hA.toNoConflictPinningAssumptions cfg ext) hA.synchrony
-      hboundary hcoh hhistory hphase hboundaryPhase hanchor hv hqH hquery
-      hstate hval htab hendH hnextH hanchorH hfloor hselectedQ
-      hheadSelectedQ hselectedCurrentQ) hgate hsupport
-  have hfixed : E.FixedSourceCurrentTargetA32GateRealization cfg ext
-      anchor S (E.store cfg ext v q) selected := by
-    simpa only [hquery] using hfixedQ
-  exact E.selectedA32Semantic_of_fixedSourceGate_currentEpoch cfg ext hA
-    hwalkDomain hboundary hcoh hanchor hv hqH hselected hheadSelected
-    hselectedEpoch heCurrent hlate hcanonical hfixed
 
-/-- Weaker disjunctive form for the global-UJ-only analysis. The fixed-source
-gate theorem above always discharges the left side. -/
-theorem selectedA32Semantic_or_placementResidual_of_fixedSourceGate_currentEpoch
-    (hA : SelectedMarginAssumptions cfg ext E)
-    (hwalkDomain : E.PostAnchorHonestVoteTargetWalkDomain cfg ext)
-    (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg) (E := E)
-      (anchor := E.genesis_store.justified_checkpoint))
-    {anchor : Checkpoint Root} {S : ChainFFGState cfg E anchor}
-    (hcoh : FFGTransitionCoherence cfg ext S)
-    (hanchor : anchor = E.genesis_store.justified_checkpoint)
-    {v : ValidatorIndex} (hv : v ∈ E.honest) {q : ℕ}
-    (hqH : E.WithinHorizon cfg q)
-    {selected : Root} {e : Epoch}
-    (hselected : selected ∈ (E.store cfg ext v q).block_roots)
-    (hheadSelected : is_ancestor (E.store cfg ext v q)
-      (get_head cfg (E.store cfg ext v q))
-      (get_node_for_root selected) = true)
-    (hselectedEpoch :
-      get_block_epoch cfg (E.store cfg ext v q) selected = e)
-    (heCurrent :
-      e = get_current_store_epoch cfg (E.store cfg ext v q))
-    {w : ValidatorIndex} {m : ℕ}
-    (hlate : e + 2 ≤
-      get_current_store_epoch cfg (E.store cfg ext w m))
-    (hcanonical : E.SelectedCanonicalBeforeEndpointAt cfg ext q selected m)
-    (hgate : E.FixedSourceCurrentTargetA32GateRealization cfg ext
-      anchor S (E.store cfg ext v q) selected) :
-    E.SelectedA32SemanticRealizationAt cfg ext anchor S
-        v q selected e ∨
-      E.SelectedEarlyA32PlacementResidualAt cfg ext anchor S
-        v q selected e := by
-  exact Or.inl
-    (E.selectedA32Semantic_of_fixedSourceGate_currentEpoch cfg ext hA
-      hwalkDomain hboundary hcoh hanchor hv hqH hselected hheadSelected
-      hselectedEpoch heCurrent hlate hcanonical hgate)
 
 end Execution
 

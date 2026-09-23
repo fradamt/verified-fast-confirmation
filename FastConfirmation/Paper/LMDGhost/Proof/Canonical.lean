@@ -24,70 +24,12 @@ open scoped Block
 
 variable {n : ℕ} {P : Type}
 
-/-- `totalWeight` depends on the anchor only through its balance function. -/
-theorem totalWeight_congr_bal {A A' : Anchor n} (h : A.bal = A'.bal) (X : Finset (Validator n)) :
-    totalWeight A X = totalWeight A' X := by
-  unfold totalWeight; rw [h]
 
-/-- `latestSupportWeight` depends on the anchor only through its balance function. -/
-theorem latestSupportWeight_congr_bal {A A' : Anchor n} (h : A.bal = A'.bal)
-    (V : View n P) (upTo : Slot) (c : Block n) :
-    latestSupportWeight A V upTo c = latestSupportWeight A' V upTo c := by
-  unfold latestSupportWeight; exact totalWeight_congr_bal h _
 
-/-- `boostWeight` depends on the anchor only through its balance function. -/
-theorem boostWeight_congr_bal {A A' : Anchor n} (h : A.bal = A'.bal)
-    (boost : ProposerBoost n P) (pb : Weight) (V : View n P) (t : Time) (c : Block n) :
-    boostWeight A boost pb V t c = boostWeight A' boost pb V t c := by
-  unfold boostWeight
-  cases boost.proposalAt V t with
-  | none => rfl
-  | some bp =>
-    split
-    · rw [totalWeight_congr_bal h]
-    · rfl
 
-/-- `childWeight` depends on the anchor only through its balance function. -/
-theorem childWeight_congr_bal {A A' : Anchor n} (h : A.bal = A'.bal)
-    (boost : ProposerBoost n P) (pb : Weight) (V : View n P) (t : Time) (upTo : Slot)
-    (c : Block n) :
-    childWeight A boost pb V t upTo c = childWeight A' boost pb V t upTo c := by
-  unfold childWeight
-  rw [latestSupportWeight_congr_bal h, boostWeight_congr_bal h]
 
-/-- `ghostStep` depends on the anchor only through its balance function. -/
-theorem ghostStep_congr_bal {τ : Timing} {A A' : Anchor n} (h : A.bal = A'.bal)
-    (boost : ProposerBoost n P) (pb : Weight) (flt : BlockFilter n P) (V : View n P) (t : Time)
-    (b : Block n) :
-    ghostStep τ A boost pb flt V t b = ghostStep τ A' boost pb flt V t b := by
-  unfold ghostStep
-  have hfun : childWeight A boost pb V t (τ.slotOf t - 1)
-      = childWeight A' boost pb V t (τ.slotOf t - 1) := by
-    funext c; exact childWeight_congr_bal h boost pb V t (τ.slotOf t - 1) c
-  rw [hfun]
 
-/-- `ghostAux` depends on the anchor only through its balance function. -/
-theorem ghostAux_congr_bal {τ : Timing} {A A' : Anchor n} (h : A.bal = A'.bal)
-    (boost : ProposerBoost n P) (pb : Weight) (flt : BlockFilter n P) (V : View n P) (t : Time) :
-    ∀ (fuel : ℕ) (b : Block n),
-      ghostAux τ A boost pb flt V t fuel b = ghostAux τ A' boost pb flt V t fuel b := by
-  intro fuel
-  induction fuel with
-  | zero => intro b; rfl
-  | succ fuel ih =>
-    intro b
-    unfold ghostAux
-    rw [ghostStep_congr_bal h]
-    cases ghostStep τ A' boost pb flt V t b with
-    | none => rfl
-    | some best => exact ih best
 
-/-- **`forkChoiceHead` depends on the anchor only through its balance function.** -/
-theorem forkChoiceHead_congr_bal {τ : Timing} {A A' : Anchor n} (h : A.bal = A'.bal)
-    (boost : ProposerBoost n P) (pb : Weight) (flt : BlockFilter n P) (V : View n P) (t : Time) :
-    forkChoiceHead τ A boost pb flt V t = forkChoiceHead τ A' boost pb flt V t := by
-  unfold forkChoiceHead
-  exact ghostAux_congr_bal h boost pb flt V t (τ.slotOf t + 1) Block.genesis
 
 /-- A strictly dominant element is the `argmax` (the tie-break never matters). -/
 theorem argmax_eq_of_strict_dominant {α β : Type*} [LinearOrder β] {f : α → β} {l : List α}
@@ -267,71 +209,7 @@ theorem ghostAux_ge (τ : Timing) (A : Anchor n) (boost : ProposerBoost n P) (pb
       rw [mem_eligibleChildren] at hmem
       exact Block.Ancestor.trans (parent_ancestor hmem.2.1) (ih best)
 
-/-- **Lemma 2 step.** At a node `x` strictly above `b`, GHOST moves to the child of
-    `x` on the path to `b` (the chain-child strictly dominates every sibling). -/
-theorem ghostStep_eq_chain_child (τ : Timing) (A : Anchor n) (cm : Committees n)
-    (fm : FaultModel n) (pb : Weight) (boost : ProposerBoost n P) (V : View n P) (t : Time)
-    {x b : Block n} (hpb : 0 ≤ pb) (hVV : ViewValid cm V) (hbwf : b.WellFormed)
-    (hchain : ∀ ⦃b'⦄, b' ≼ b → b' ∈ V.blocks) (hslot : b.slot ≤ τ.slotOf t)
-    (hmaj : ∀ ⦃b'⦄, b' ≼ b → b' ≠ Block.genesis →
-      H A cm fm V b' (τ.slotOf t - 1) > (W A cm b' (τ.slotOf t - 1) + Wp A pb) / 2)
-    (hxb : x ≼ b) (hne : x ≠ b) :
-    ∃ c, c.parent? = some x ∧ x ≼ c ∧ c ≼ b ∧
-      ghostStep τ A boost pb trivialFilter V t x = some c := by
-  obtain ⟨c, hpar, hxc, hcb⟩ := chain_child hxb hne
-  have hcwf : c.WellFormed := WellFormed_of_ancestor hcb hbwf
-  have hcne : c ≠ Block.genesis := by
-    intro hc; rw [hc] at hpar; simp [Block.parent?] at hpar
-  have hcslot : c.slot ≤ τ.slotOf t := le_trans (slot_le_of_ancestor hcb hbwf) hslot
-  refine ⟨c, hpar, hxc, hcb, ?_⟩
-  unfold ghostStep
-  apply argmax_eq_of_strict_dominant
-  · rw [Finset.mem_toList, mem_eligibleChildren]
-    exact ⟨hchain hcb, hpar, hcwf, hcslot, trivial⟩
-  · intro c' hc'mem hc'ne
-    rw [Finset.mem_toList, mem_eligibleChildren] at hc'mem
-    obtain ⟨_, hc'par, hc'wf, _, _⟩ := hc'mem
-    have hincomp : ¬ c ~ c' := siblings_incompatible hcwf hc'wf hpar hc'par (Ne.symm hc'ne)
-    have hpsp : c'.psPlus1 = c.psPlus1 := by
-      rw [psPlus1_eq_of_parent hc'par, psPlus1_eq_of_parent hpar]
-    have hc'gen : c' ≠ Block.genesis := by
-      intro hg; rw [hg] at hc'par; simp [Block.parent?] at hc'par
-    have hge := childWeight_ge_H τ A cm fm boost pb V t c hpb hVV hcwf hcne
-    have hHmaj := hmaj hcb hcne
-    have hle := childWeight_sibling_le τ A cm fm boost pb V t hpb hVV hc'wf hc'gen hpsp hincomp
-    linarith [hge, hHmaj, hle]
 
-/-- The GHOST traversal from any `x ≼ b` (with enough fuel) reaches `b`. -/
-theorem b_le_ghostAux (τ : Timing) (A : Anchor n) (cm : Committees n) (fm : FaultModel n)
-    (pb : Weight) (boost : ProposerBoost n P) (V : View n P) (t : Time) {b : Block n}
-    (hpb : 0 ≤ pb) (hVV : ViewValid cm V) (hbwf : b.WellFormed)
-    (hchain : ∀ ⦃b'⦄, b' ≼ b → b' ∈ V.blocks) (hslot : b.slot ≤ τ.slotOf t)
-    (hmaj : ∀ ⦃b'⦄, b' ≼ b → b' ≠ Block.genesis →
-      H A cm fm V b' (τ.slotOf t - 1) > (W A cm b' (τ.slotOf t - 1) + Wp A pb) / 2) :
-    ∀ (fuel : ℕ) (x : Block n), x ≼ b → b.slot ≤ x.slot + fuel →
-      b ≼ ghostAux τ A boost pb trivialFilter V t fuel x := by
-  intro fuel
-  induction fuel with
-  | zero =>
-    intro x hxb hbnd
-    have hxle : x.slot ≤ b.slot := slot_le_of_ancestor hxb hbwf
-    have heq : x = b := eq_of_ancestor_slot hxb hbwf (le_antisymm hxle (by simpa using hbnd))
-    rw [heq]; unfold ghostAux; exact Block.Ancestor.refl _
-  | succ fuel ih =>
-    intro x hxb hbnd
-    by_cases hxe : x = b
-    · rw [hxe]; exact ghostAux_ge τ A boost pb trivialFilter V t (fuel + 1) b
-    · obtain ⟨c, hpar, _, hcb, hstep⟩ :=
-        ghostStep_eq_chain_child τ A cm fm pb boost V t hpb hVV hbwf hchain hslot hmaj hxb hxe
-      have hcwf : c.WellFormed := WellFormed_of_ancestor hcb hbwf
-      have hcgt : x.slot < c.slot := parent_slot_lt hpar hcwf
-      have hbnd' : b.slot ≤ c.slot + fuel := by
-        calc b.slot ≤ x.slot + (fuel + 1) := hbnd
-          _ = (x.slot + 1) + fuel := by ring
-          _ ≤ c.slot + fuel := Nat.add_le_add_right hcgt fuel
-      unfold ghostAux
-      rw [hstep]
-      exact ih c hcb hbnd'
 
 /-- Filtered analogue of `ghostStep_eq_chain_child`: with `flt` eligible along
     `b`'s chain, the chain-child still strictly dominates every sibling. -/
@@ -418,20 +296,6 @@ theorem head_of_Hmajority_filtered (τ : Timing) (A : Anchor n) (cm : Committees
   simp only [Block.slot, Nat.zero_add]
   exact le_trans hslot (Nat.le_succ _)
 
-/-- **Lemma 2.** If every ancestor of `b` (in view) has an honest majority, then `b`
-    is on the LMD-GHOST head. -/
-theorem head_of_Hmajority (τ : Timing) (A : Anchor n) (cm : Committees n) (fm : FaultModel n)
-    (pb : Weight) (boost : ProposerBoost n P) (V : View n P) (t : Time) {b : Block n}
-    (hpb : 0 ≤ pb) (hVV : ViewValid cm V) (hbwf : b.WellFormed)
-    (hchain : ∀ ⦃b'⦄, b' ≼ b → b' ∈ V.blocks) (hslot : b.slot ≤ τ.slotOf t)
-    (hmaj : ∀ ⦃b'⦄, b' ≼ b → b' ≠ Block.genesis →
-      H A cm fm V b' (τ.slotOf t - 1) > (W A cm b' (τ.slotOf t - 1) + Wp A pb) / 2) :
-    b ≼ forkChoiceHead τ A boost pb trivialFilter V t := by
-  unfold forkChoiceHead
-  apply b_le_ghostAux τ A cm fm pb boost V t hpb hVV hbwf hchain hslot hmaj
-    (τ.slotOf t + 1) Block.genesis (genesis_ancestor b)
-  simp only [Block.slot, Nat.zero_add]
-  exact le_trans hslot (Nat.le_succ _)
 
 end FastConfirmation.LMDGhost
 

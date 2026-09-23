@@ -226,16 +226,6 @@ def is_previous_slot_payload_decision (store : Store Root)
   decide ((store.blocks node.root).slot + 1 = get_current_slot cfg store ∧
     (node.payload_status = .empty ∨ node.payload_status = .full))
 
-/-- `should_build_on_full` (`specs/gloas/fork-choice.md:474`). The source
-requires a resolved head. Previous-slot FULL also checks negative PTC votes. -/
-def should_build_on_full (store : Store Root) (head : ForkChoiceNode Root)
-    (slot : Slot) : Bool :=
-  if (store.blocks head.root).slot + 1 ≠ slot then
-    decide (head.payload_status = .full)
-  else if head.payload_status = .empty then false
-  else if payload_timeliness cfg store head.root false then false
-  else if payload_data_availability cfg store head.root false then false
-  else true
 
 /-- `should_extend_payload` (`specs/gloas/fork-choice.md:496`). The source
 requires `root` to be from the previous slot. Without affirmative PTC votes,
@@ -498,9 +488,6 @@ configuration stores the selected fork's `ATTESTATION_DUE_BPS_GLOAS`. -/
 def get_attestation_due_ms : ℕ :=
   get_slot_component_duration_ms cfg cfg.attestation_due_bps
 
-/-- `get_payload_due_ms` (`specs/gloas/fork-choice.md:757`). -/
-def get_payload_due_ms : ℕ :=
-  get_slot_component_duration_ms cfg cfg.payload_due_bps
 
 /-- `get_payload_attestation_due_ms` (`specs/gloas/fork-choice.md:764`). -/
 def get_payload_attestation_due_ms : ℕ :=

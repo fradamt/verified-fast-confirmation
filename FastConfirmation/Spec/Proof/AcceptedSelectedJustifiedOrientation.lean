@@ -5,6 +5,7 @@ public import FastConfirmation.Spec.Proof.AcceptedHistoricalA32Payload
 public import FastConfirmation.Spec.Proof.CurrentTargetCertificateRealization
 public import FastConfirmation.Spec.Proof.ModelFacts
 
+public import FastConfirmation.Spec.Proof.ModelFacts
 @[expose] public section
 
 /-!

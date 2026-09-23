@@ -135,20 +135,7 @@ theorem bval_strip_window_uniform (v₀ : ValidatorIndex) (n₀ : ℕ) (b' : Roo
   exact strip_survives_growth hstrip hgrowS hgrowX
     (le_add_tsub (E.Bval lo σ) (E.Bval lo es)) hbud
 
-/-! ## Section 3 — the endpoint strip and the per-fork `DescendStep`
 
-`GroundBeta.bval_endpoint_strip_of_transport` immediately **strips** the min-reserve
-off `INVstar` (`INVstar_endpoint`) before transporting — only the plain strip
-`Xval + Bval + boost + 1 ≤ Sval` is ever used. The min-reserve `INVstar` existed
-solely to feed the per-slot `INVstar_step` maintenance (`hdelta`); once the
-window-uniform growth budget (§2) replaces that per-slot iteration, the min-reserve
-is dead weight. So this section takes the **plain confirm-margin strip at the
-confirming anchor** — `Base.weak_base_of_rule`'s output, straight from
-`is_one_confirmed`'s `honest_support_majority` charge — with **no** arms disjunction
-(`harm`) and **no** min-reserve `INVstar` at all. The base enemy is the
-store-independent `Bval` (§`GroundBeta`, `hBb`-free), the transport is the honest
-legs only (`classes_base_transport`), and the maintenance is the single growth budget
-(`bval_strip_window_uniform`). It feeds `Endpoint.ledger_descendStep` at every fork. -/
 
 /-- **The window-uniform endpoint strip, from the plain confirm-margin strip.** From
 the confirm-margin strip at the confirming anchor `(v₀, n₀)` over `[lo, es]`

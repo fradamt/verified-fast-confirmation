@@ -89,21 +89,6 @@ theorem not_ancestor_two_resolved_statuses (store : Store Root)
 
 variable (cfg : Config)
 
-/-- EMPTY and FULL at one root have disjoint recorded supporter sets. -/
-theorem payload_status_supporters_disjoint (store : Store Root)
-    (root : Root) (state : BeaconState Root) :
-    Disjoint (AttSupporters cfg store (ForkChoiceNode.mk root .empty) state).toFinset
-      (AttSupporters cfg store (ForkChoiceNode.mk root .full) state).toFinset := by
-  refine Finset.disjoint_left.mpr ?_
-  intro i hempty hfull
-  obtain ⟨message, hmessage, _, hsupportEmpty⟩ :=
-    mem_AttSupporters cfg (List.mem_toFinset.mp hempty)
-  obtain ⟨message', hmessage', _, hsupportFull⟩ :=
-    mem_AttSupporters cfg (List.mem_toFinset.mp hfull)
-  have heq : message = message' := Option.some.inj (hmessage.symm.trans hmessage')
-  cases heq
-  exact not_ancestor_both_payload_statuses store (get_supported_node store message) root
-    ⟨hsupportEmpty, hsupportFull⟩
 
 /-- A recorded supporter of a descendant node also supports a resolved
 ancestor, when its latest-message walk is known down to that ancestor.  This
@@ -310,77 +295,11 @@ theorem confirmed_parent_not_previous_at_later_store (ext : Externals Root)
   exact confirmed_child_parent_not_previous_slot cfg (E.store cfg ext w m)
     b status hparentLt hcutoffEndpoint
 
-open Classical in
-/-- Supporters whose recorded message names the node's own beacon root. -/
-noncomputable def SameRootAttSupporters (store : Store Root)
-    (node : ForkChoiceNode Root) (state : BeaconState Root) : Finset ValidatorIndex :=
-  (AttSupporters cfg store node state).toFinset.filter fun i =>
-    ∃ message, store.latest_messages i = some message ∧ message.root = node.root
 
-open Classical in
-/-- The remaining supporters. Each has a recorded message at another root,
-as `mem_otherRootAttSupporters` states. -/
-noncomputable def OtherRootAttSupporters (store : Store Root)
-    (node : ForkChoiceNode Root) (state : BeaconState Root) : Finset ValidatorIndex :=
-  (AttSupporters cfg store node state).toFinset.filter fun i =>
-    ¬ ∃ message, store.latest_messages i = some message ∧ message.root = node.root
 
-/-- The complement in the supporter set consists of messages at other roots;
-it contains no validator without a recorded message. -/
-theorem mem_otherRootAttSupporters {store : Store Root}
-    {node : ForkChoiceNode Root} {state : BeaconState Root} {i : ValidatorIndex} :
-    i ∈ OtherRootAttSupporters cfg store node state ↔
-      i ∈ AttSupporters cfg store node state ∧
-        ∃ message, store.latest_messages i = some message ∧ message.root ≠ node.root := by
-  classical
-  simp only [OtherRootAttSupporters, Finset.mem_filter, List.mem_toFinset]
-  constructor
-  · rintro ⟨hi, hnot⟩
-    obtain ⟨message, hmessage, _, _⟩ := mem_AttSupporters cfg hi
-    exact ⟨hi, message, hmessage, fun hroot => hnot ⟨message, hmessage, hroot⟩⟩
-  · rintro ⟨hi, message, hmessage, hroot⟩
-    refine ⟨hi, ?_⟩
-    rintro ⟨message', hmessage', hroot'⟩
-    have heq : message = message' := Option.some.inj (hmessage.symm.trans hmessage')
-    exact hroot ((congrArg LatestMessage.root heq).trans hroot')
 
-/-- The two root classes partition the complete recorded supporter set. -/
-theorem sameRoot_otherRoot_supporters_union (store : Store Root)
-    (node : ForkChoiceNode Root) (state : BeaconState Root) :
-    SameRootAttSupporters cfg store node state ∪
-        OtherRootAttSupporters cfg store node state =
-      (AttSupporters cfg store node state).toFinset := by
-  classical
-  exact Finset.filter_union_filter_not_eq
-    (p := fun i => ∃ message, store.latest_messages i = some message ∧
-      message.root = node.root) (AttSupporters cfg store node state).toFinset
 
-/-- No validator occurs in both parts of the root partition. -/
-theorem sameRoot_otherRoot_supporters_disjoint (store : Store Root)
-    (node : ForkChoiceNode Root) (state : BeaconState Root) :
-    Disjoint (SameRootAttSupporters cfg store node state)
-      (OtherRootAttSupporters cfg store node state) := by
-  classical
-  exact Finset.disjoint_filter_filter_not _ _ _
 
-/-- A node's score is the sum of its own-root and other-root support. No
-registry or execution-history premise is needed: both parts use the same
-balance source as the score. -/
-theorem attestation_score_sameRoot_otherRoot (store : Store Root)
-    (node : ForkChoiceNode Root) (state : BeaconState Root) :
-    get_attestation_score cfg store node state =
-      (∑ i ∈ SameRootAttSupporters cfg store node state,
-        (state.validators.getD i default).effective_balance) +
-      ∑ i ∈ OtherRootAttSupporters cfg store node state,
-        (state.validators.getD i default).effective_balance := by
-  classical
-  rw [get_attestation_score_eq_sum,
-    ← List.sum_toFinset (fun i => (state.validators.getD i default).effective_balance)
-      (AttSupporters_nodup cfg store node state)]
-  exact (Finset.sum_filter_add_sum_filter_not
-    (AttSupporters cfg store node state).toFinset
-    (fun i => ∃ message, store.latest_messages i = some message ∧ message.root = node.root)
-    (fun i => (state.validators.getD i default).effective_balance)).symm
 
 end FastConfirmation.Spec
 

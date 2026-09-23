@@ -68,10 +68,6 @@ theorem W_le_of_slot_le (A : Anchor n) (cm : Committees n) (b : Block n) {s s' :
   unfold W
   exact totalWeight_mono A (committeeUnion_mono cm b.psPlus1 h)
 
-/-- A nonempty committee union has positive total weight. -/
-theorem W_pos_of_nonempty_committee (A : Anchor n) (cm : Committees n) (b : Block n) (s : Slot)
-    (hne : (committeeUnion cm b.psPlus1 s).Nonempty) : 0 < W A cm b s := by
-  simpa [W] using totalWeight_pos A hne
 
 /-- `slotOf (st s) = s` (slots round-trip through their start time). -/
 theorem Timing.slotOf_st (τ : Timing) (s : Slot) : τ.slotOf (τ.st s) = s := by

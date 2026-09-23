@@ -31,9 +31,6 @@ theorem anchorsCoincide_gjFFG (bal₀ : Stakes n) (fm : FaultModel n) (τ : Timi
     (𝒱 : ViewFamily n (FFGVote n)) :
     AnchorsCoincide (gjFFG bal₀) 𝒱 fm τ bal₀ := fun _ _ _ => rfl
 
-/-- `gjFFG bal₀` is a constant anchor, so `StaticBalances` holds by `rfl`. -/
-theorem staticBalances_gjFFG (bal₀ : Stakes n) (𝒱 : ViewFamily n (FFGVote n)) :
-    StaticBalances (gjFFG bal₀) 𝒱 := fun _ _ _ _ _ => rfl
 
 variable {τ : Timing}
 

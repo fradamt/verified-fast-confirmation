@@ -68,7 +68,7 @@ They are not the full-rule premise bundle above.
 ## Live monotonicity premises and proof
 
 `Spec_Monotonicity_live` is stated in
-`FastConfirmation/Spec/TheoremStatements.lean`. Its accepted-bundle
+`FastConfirmation/Spec/Statements/Premises/Live.lean`. Its accepted-bundle
 specialization, `AcceptedSpec_Monotonicity_live`, is proved by
 `acceptedSpec_monotonicity_live` in `MonotonicityLiveAssemble.lean` and is the
 14th audit witness. `MonotonicityLiveAssumptions` has five premises:
@@ -99,6 +99,21 @@ not repeated in the liveness record. The closed proof uses
 boundary. It does not use `honest_votes_extend_initial_head`,
 `paper_byzantine_boost_bound`, or `configured_threshold_margin`. Those fields
 remain in the statement and record.
+
+Scope of the live premises. Both used fields are strong. The paper's Theorem 1
+monotonicity has no block-production premise; the executable rule needs one
+because its cached root can become stale and revert to the finalized block.
+`honest_block_each_slot` asks for a block with an honest proposer in every
+slot from the execution start, so a missed slot or a Byzantine-proposer slot
+falls outside the theorem. `ffg_timely_justification` also carries a
+production requirement: its epoch-`e` checkpoint root is a block of epoch `e`,
+so it is the block at the first slot of `e`, and the checkpoint must be
+unrealized-justified by the last slot of `e`, which needs enough blocks in
+`e` to include two thirds of its votes. This is stronger than the paper's
+eventual Assumption 6. Without such a block, a missed epoch-start slot with no
+confirmation during that epoch fails the restart's epoch test, and the stale
+revert moves the stored root back to the finalized block. The premises are
+kept as they are; they are documented here and not weakened.
 
 `MonotonicityTrace.lean` proves that the observed restart and descendant
 selector cannot lower the candidate's block slot on the known-walk domain.
@@ -138,7 +153,7 @@ first four fields hold in this run. This argument is not a kernel-checked accept
 execution: the finite witness does not yet have a block in each slot.
 
 A live proof therefore needs the fifth FFG timing field, now present in
-`TheoremStatements.lean`. It says: at the last-slot call of each epoch `e` in the interval, each
+`Statements/Premises/Live.lean`. It says: at the last-slot call of each epoch `e` in the interval, each
 honest store's `unrealized_justified_checkpoint` is the epoch-`e` checkpoint
 of the honest chain; at the next epoch start the head's unrealized
 justification is equal to it; and the voting source of the previous-slot head

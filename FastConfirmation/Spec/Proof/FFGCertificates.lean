@@ -3,6 +3,7 @@ public import FastConfirmation.Spec.Proof.FFGQuorum
 public import FastConfirmation.Spec.Model.FFGCertificates
 public import FastConfirmation.Spec.Proof.ModelFacts
 
+public import FastConfirmation.Spec.Proof.ModelFacts
 @[expose] public section
 
 /-!
@@ -145,43 +146,6 @@ theorem anchor_epoch_lt_of_ne
         (CertifiedJustified.anchor_epoch_le (cfg := cfg) hsource)
         link.source_before_target
 
-/-- Vote-backed certified checkpoints are unique within an epoch. -/
-theorem root_eq_of_same_epoch
-    {E : Execution Root} (hhb : HonestBehavior cfg (ext := ext) E)
-    {anchor c c' : Checkpoint Root}
-    (hc : CertifiedJustified cfg E anchor c)
-    (hc' : CertifiedJustified cfg E anchor c')
-    (hepoch : c.epoch = c'.epoch)
-    (htotal : 0 < E.total_active cfg)
-    (hspan_total : E.weight
-        (E.span_committee (c.epoch * cfg.slots_per_epoch)
-          (c.epoch * cfg.slots_per_epoch + (cfg.slots_per_epoch - 1))) ≤
-      E.total_active cfg)
-    (hfrac : 100 * E.weight
-        ((E.span_committee (c.epoch * cfg.slots_per_epoch)
-          (c.epoch * cfg.slots_per_epoch + (cfg.slots_per_epoch - 1))).filter
-            (fun i => i ∉ E.honest)) ≤
-      cfg.confirmation_byzantine_threshold *
-        E.weight (E.span_committee (c.epoch * cfg.slots_per_epoch)
-          (c.epoch * cfg.slots_per_epoch + (cfg.slots_per_epoch - 1)))) :
-    c.root = c'.root := by
-  cases hc with
-  | anchor =>
-      cases hc' with
-      | anchor => rfl
-      | @link source target hsource cert =>
-          have hge := anchor_epoch_le (cfg := cfg) hsource
-          exfalso
-          exact (Nat.ne_of_lt (lt_of_le_of_lt hge cert.source_before_target)) hepoch
-  | @link source target hsource cert =>
-      cases hc' with
-      | anchor =>
-          have hge := anchor_epoch_le (cfg := cfg) hsource
-          exfalso
-          exact (Nat.ne_of_lt (lt_of_le_of_lt hge cert.source_before_target)) hepoch.symm
-      | @link source' target' hsource' cert' =>
-          exact SupermajorityLink.root_eq_of_same_epoch cfg ext hhb cert cert'
-            hepoch htotal hspan_total hfrac
 
 end CertifiedJustified
 

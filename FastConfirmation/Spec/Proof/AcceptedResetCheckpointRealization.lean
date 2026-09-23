@@ -3,6 +3,7 @@ public import FastConfirmation.Spec.Proof.AcceptedCurrentTargetLowerContracts
 public import FastConfirmation.Spec.Proof.ActualResetCheckpointRealization
 public import FastConfirmation.Spec.Proof.ModelFacts
 
+public import FastConfirmation.Spec.Proof.ModelFacts
 @[expose] public section
 
 /-!
@@ -348,32 +349,6 @@ theorem fcrStep_observed_resetRealizedAt_of_acceptedGlobalTrajectory
   rw [E.fcrStep_observed_exact cfg ext v n]
   split_ifs <;> assumption
 
-/-- Accepted global semantics discharge the reset-input contract consumed by
-the executable historical trajectory.  The conclusion remains conditional on
-the reset block itself being in the query's current epoch, exactly as required
-by that lower contract. -/
-theorem actualResetInputCheckpointRealization_of_acceptedGlobalTrajectory
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
-    (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
-    (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
-      (E := E) (anchor := B.anchor))
-    (v : ValidatorIndex) :
-    E.ActualResetInputCheckpointRealization cfg ext B.anchor v := by
-  intro n _hHn1 input hkind
-  have hfinal :=
-    E.finalizedCheckpoint_resetRealizedAt_of_acceptedGlobalTrajectory
-      cfg ext B hT hanchor hboundary (w := v) (n + 1)
-  have hobserved :=
-    E.fcrStep_observed_resetRealizedAt_of_acceptedGlobalTrajectory
-      cfg ext B hT hanchor hboundary v n
-  rcases hkind with hfinalized | hobservedEq
-  · subst input
-    simpa only [E.fcrStep_store] using
-      hfinal.root_and_current_certificate (cfg := cfg)
-  · subst input
-    simpa only [E.fcrStep_store] using
-      hobserved.root_and_current_certificate (cfg := cfg)
 
 end Execution
 

@@ -84,30 +84,6 @@ theorem boundaryBlock_slot_le (bound : Slot) {x : Block n} (hwf : x.WellFormed) 
     · rw [if_pos hsb]; exact Or.inl hsb
     · rw [if_neg hsb]; exact ih hwf.2
 
-/-- **Ancestor placement of the boundary block.** If `B ≼ x` (well-formed `x`) and
-    `bound < B.slot`, then `boundaryBlock bound x ≼ B`. Both `boundaryBlock bound x` and `B` are
-    ancestors of `x`, hence comparable (`ancestor_comparable`); the boundary's slot is
-    `≤ bound < B.slot`, so the boundary is the (strictly-)lower one, i.e. an ancestor of `B`.
-    This is the **ancestor** counterpart of `ancestor_boundaryBlock`: it places a *low* boundary
-    (epoch strictly below `B`'s epoch) *below* `B` on the same chain — exactly what pins a realized
-    GJ of epoch `< epochOf B.slot`, justified by epoch-`e'` voters with `B` on their head, as an
-    ancestor of `B` (`block(GJ) ≼ B`). -/
-theorem boundaryBlock_le_of_lt_slot {B x : Block n} (bound : Slot)
-    (hBx : B ≼ x) (hwf : x.WellFormed) (hlt : bound < B.slot) :
-    boundaryBlock bound x ≼ B := by
-  have hbx : boundaryBlock bound x ≼ x := boundaryBlock_ancestor bound x
-  have hBwf : B.WellFormed := WellFormed_of_ancestor hBx hwf
-  rcases ancestor_comparable hbx hBx with hle | hge
-  · exact hle
-  · -- `B ≼ boundaryBlock bound x` would give `B.slot ≤ (boundary).slot ≤ bound < B.slot`.
-    exfalso
-    have hslot_le : (boundaryBlock bound x).slot ≤ bound := by
-      rcases boundaryBlock_slot_le bound hwf with h | h
-      · exact h
-      · rw [h]; exact Nat.zero_le _
-    have hBle : B.slot ≤ (boundaryBlock bound x).slot :=
-      slot_le_of_ancestor hge (WellFormed_of_ancestor hbx hwf)
-    exact absurd (le_trans hBle hslot_le) (not_le.mpr hlt)
 
 /-- **Prefix agreement on the epoch-onset checkpoint** (the payoff of the `fslot e` checkpoint
     convention). If `b ≼ h`, both well-formed, and the boundary `bound ≤ b.slot`, then `b` and its
@@ -249,95 +225,9 @@ theorem realizedGJ_descends_of_canonicalEpoch
   rw [hCptblock]
   exact ancestor_boundaryBlock _ hBhead hwfhead hbslot
 
-/-- **STEP placement (ancestor) — `epoch e < epochOf B.slot`.** The realized GJ of epoch `e`,
-    justified in an honest view with `B` canonical throughout epoch `e`, is an *ancestor of* `B`
-    (`Cpt.block ≼ B`) when `e < epochOf B.slot`. Then `lslot e < fslot(epochOf B.slot) ≤ B.slot`,
-    so the epoch-`e` boundary of the honest head (`B ≼ head`) sits *below* `B` on `chain(head)`,
-    i.e. `boundaryBlock (lslot e) head ≼ B` (`boundaryBlock_le_of_lt_slot`). This is the ancestor
-    counterpart that lets the cross-epoch ladder pin a realized GJ of epoch strictly below `B`'s
-    epoch as an ancestor — replacing the GU-root slot bound for that sub-band. No slot bound. -/
-theorem realizedGJ_ancestor_of_canonicalEpoch
-    {bal₀ : Stakes n} {τ : Timing} {fm : FaultModel n} {cm : Committees n}
-    {boost : ProposerBoost n (FFGVote n)} {pb : Weight} {𝒱 : ViewFamily n (FFGVote n)}
-    {w : Validator n} {t' : Time} {B : Block n} {Cpt : Checkpoint n} {e : Epoch}
-    (hwit : (Finset.univ : Finset (Validator n)).Nonempty)
-    (hByz : GlobalByzantineBound bal₀ fm)
-    (hnoforge : HonestNoForgery fm τ 𝒱)
-    (hnoequiv : HonestFFGNoEquivocation τ fm cm bal₀ boost pb 𝒱)
-    (hw : w ∈ fm.honest)
-    (hcanon : CanonicalThroughoutEpoch τ fm boost pb bal₀ 𝒱 B e)
-    (hCptpos : 1 ≤ e)
-    (hCptep : Cpt.epoch = e)
-    (hep : e < τ.epochOf B.slot)
-    (hJust : Justified bal₀ (𝒱 w t') Cpt) :
-    Cpt.block ≼ B := by
-  obtain ⟨head, hwfhead, hBhead, hCptblock⟩ :=
-    realizedGJ_boundary_of_canonicalEpoch hwit hByz hnoforge hnoequiv hw hcanon hCptpos hCptep
-      hJust
-  -- `lslot e < B.slot`: `lslot e < fslot (e+1) = (e+1)·E ≤ (epochOf B.slot)·E = fslot(epochOf
-  -- B.slot) ≤ B.slot`.  Use `lslot e < fslot (epochOf B.slot)` and
-  -- `fslot (epochOf B.slot) ≤ B.slot`.
-  have hlt : τ.fslot e < B.slot := by
-    have hstep : τ.fslot e < τ.fslot (e + 1) := by
-      unfold Timing.fslot
-      calc e * τ.slotsPerEpoch
-          < e * τ.slotsPerEpoch + τ.slotsPerEpoch := lt_add_of_pos_right _ τ.hSlotsPerEpoch
-        _ = (e + 1) * τ.slotsPerEpoch := by ring
-    have hfle : τ.fslot (e + 1) ≤ τ.fslot (τ.epochOf B.slot) := by
-      unfold Timing.fslot
-      exact Nat.mul_le_mul_right τ.slotsPerEpoch hep
-    have hfB : τ.fslot (τ.epochOf B.slot) ≤ B.slot := by
-      unfold Timing.fslot Timing.epochOf
-      exact Nat.div_mul_le_self B.slot τ.slotsPerEpoch
-    exact lt_of_lt_of_le (lt_of_lt_of_le hstep hfle) hfB
-  rw [hCptblock]
-  exact boundaryBlock_le_of_lt_slot _ hBhead hwfhead hlt
 
 /-! ### The ladder rung: head-safety-from-`st s` ⇒ `CanonicalThroughoutEpoch` for later epochs -/
 
-/-- **Ladder rung (engine output ⇒ canonical throughout a later epoch).** Given head safety for
-    `B` from the safe time `st s` (the §3.1 engine's output, after the never-filter is discharged)
-    and an epoch `e` strictly above `B`'s safe-time epoch `epochOf s` (`epochOf s < e`), `B` is
-    canonical throughout the *whole* epoch `e` — every slot `j` of epoch `e` has `fslot e ≤ j`, and
-    `fslot e = e·E > (epochOf s)·E + (E−1) = lslot(epochOf s) ≥ s` (since `e ≥ epochOf s + 1`), so
-    `st j ≥ st s`, where the engine gives `B ≼ head`. This makes steps (2) and (3) of the
-    paper's induction explicit: *not-filtered-from-`st s` ⇒ B canonical throughout every epoch
-    `> epochOf s`* — the engine's strong slot-induction IS the cross-epoch ladder, with each epoch
-    `> epochOf s` a rung reached from the single never-filter at `st s`. (Epochs `≤ epochOf s` are
-    NOT reachable: the engine bottoms out at the safe time `st s`, so early-epoch / pre-`s` slots
-    have no head-safety. The realized GJ of an epoch `≤ epochOf s` is the ANCESTOR case of the
-    never-filter, closed *not* by this ladder but by the both-directions case-split on the gate's
-    compatibility `block(GJ_real) ~ B` — see `confirmedNotFFGFiltered_proved`; no slot bound.) -/
-theorem canonicalEpoch_of_headSafety
-    {bal₀ : Stakes n} {τ : Timing} {fm : FaultModel n}
-    {boost : ProposerBoost n (FFGVote n)} {pb : Weight} {𝒱 : ViewFamily n (FFGVote n)}
-    {B : Block n} {s : Slot} {e : Epoch}
-    (hsafe : ∀ ⦃w : Validator n⦄ ⦃t' : Time⦄, w ∈ fm.honest → τ.st s ≤ t' →
-      B ≼ forkChoiceHead τ (gjFFG bal₀ 𝒱 w t') boost pb (ffgFilter bal₀ τ) (𝒱 w t') t')
-    (he : τ.epochOf s < e) :
-    CanonicalThroughoutEpoch τ fm boost pb bal₀ 𝒱 B e := by
-  intro j hj i hi
-  -- `s ≤ fslot e ≤ j`, hence `st s ≤ st j`; apply `hsafe` at `t' = st j`.
-  have hsj : s ≤ j := by
-    -- `s ≤ lslot(epochOf s) < fslot(epochOf s + 1) ≤ fslot e ≤ j`.
-    have h1 : s ≤ τ.lslot (τ.epochOf s) := le_lslot_epochOf τ s
-    have h2 : τ.lslot (τ.epochOf s) < τ.fslot (τ.epochOf s + 1) := by
-      unfold Timing.lslot Timing.fslot
-      have hE1 : τ.slotsPerEpoch - 1 < τ.slotsPerEpoch := Nat.sub_lt τ.hSlotsPerEpoch Nat.one_pos
-      calc τ.epochOf s * τ.slotsPerEpoch + (τ.slotsPerEpoch - 1)
-              < τ.epochOf s * τ.slotsPerEpoch + τ.slotsPerEpoch :=
-            Nat.add_lt_add_left hE1 _
-        _ = (τ.epochOf s + 1) * τ.slotsPerEpoch := by ring
-    have h3 : τ.fslot (τ.epochOf s + 1) ≤ τ.fslot e := by
-      unfold Timing.fslot; exact Nat.mul_le_mul_right τ.slotsPerEpoch he
-    have h4 : τ.fslot e ≤ j := by
-      -- `fslot e = e·E ≤ j` since `epochOf j = e ⇒ e·E ≤ j` (`e·E ≤ (j/E)·E ≤ j`).
-      unfold Timing.fslot
-      rw [← hj]; unfold Timing.epochOf; exact Nat.div_mul_le_self j τ.slotsPerEpoch
-    exact le_trans (le_trans h1 (le_of_lt (lt_of_lt_of_le h2 h3))) h4
-  have hstle : τ.st s ≤ τ.st j := by
-    unfold Timing.st; exact Nat.mul_le_mul_right τ.slotDur hsj
-  exact hsafe hi hstle
 
 /-- **Windowed ladder rung (the never-filter's internal hook).** The same conclusion as
     `canonicalEpoch_of_headSafety`, but fed by the engine's *windowed* head-safety

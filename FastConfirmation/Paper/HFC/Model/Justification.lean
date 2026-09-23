@@ -91,18 +91,6 @@ machinery. Instead, the on-chain selectors below ignore a validator's votes for 
 chain contains an equivocation for that validator/epoch. -/
 abbrev BlockFFGVotes (n : ℕ) := Block n → Finset (Message n (FFGVote n))
 
-/-- Well-formed block-contained FFG votes: every included FFG vote was cast in either the block's
-    current epoch or its immediately previous epoch. This is the simplified no-cap analogue of
-    "blocks may contain previous/current epoch FFG votes"; no execution-spec participation flags are
-    modeled here. -/
-def BlockFFGVotes.WellFormed (τ : Timing) (blockVotes : BlockFFGVotes n) : Prop :=
-  ∀ ⦃b : Block n⦄ ⦃m : Message n (FFGVote n)⦄, m ∈ blockVotes b →
-    (τ.epochOf m.ghost.slot = τ.epochOf b.slot ∨
-      τ.epochOf m.ghost.slot + 1 = τ.epochOf b.slot) ∧
-    m.extra.target.epoch = τ.epochOf m.ghost.slot ∧
-    m.extra.source.epoch ≤ m.extra.target.epoch ∧
-    m.extra.source = onChainCheckpointOf τ b m.extra.source.epoch ∧
-    m.extra.target = onChainCheckpointOf τ b m.extra.target.epoch
 
 /-- Chain-scoped well-formed block-contained FFG votes. Public HFC theorem bundles use this
     chain-scoped surface rather than requiring every syntactically constructible block in the model

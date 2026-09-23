@@ -43,102 +43,12 @@ only that latest-message cells actually used by the honest ledger window
 dominate the relevant ground votes.
 -/
 
-/-- Window-scoped recorded-epoch domination at an arbitrary query store. -/
-def PrefixWindowRecordedEpochMax
-    (E : Execution Root) (queryStore : Store Root) (lo es : Slot) : Prop :=
-  ∀ i ∈ E.honest, i ∈ E.span_committee lo es →
-    ∀ lm : LatestMessage Root,
-      queryStore.latest_messages i = some lm →
-      ∀ (t : Slot) (k : ℕ) (a : Attestation Root),
-        t ≤ es → E.vote i t = some (k, a) →
-        compute_epoch_at_slot cfg t ≤ (get_latest_message_epoch cfg lm)
 
-/-- Applied-event coverage form of store-explicit domination.  It asks for a
-cell only for a concrete relevant ground vote. -/
-def PrefixRecordedEpochCoverage
-    (E : Execution Root) (queryStore : Store Root) (lo es : Slot) : Prop :=
-  ∀ i ∈ E.honest, i ∈ E.span_committee lo es →
-    ∀ (t : Slot) (k : ℕ) (a : Attestation Root),
-      t ≤ es → E.vote i t = some (k, a) →
-      ∃ lm : LatestMessage Root,
-        queryStore.latest_messages i = some lm ∧
-        compute_epoch_at_slot cfg t ≤ (get_latest_message_epoch cfg lm)
 
-/-- The weakest completed-boundary replay footprint used by the current
-base strip: a cell must replay only when it is present in the prefix and its
-validator is honest and belongs to the concrete ledger window. -/
-def UsedCellLatestMessageReplay
-    (E : Execution Root) (queryStore boundaryStore : Store Root)
-    (lo es : Slot) : Prop :=
-  ∀ i ∈ E.honest, i ∈ E.span_committee lo es →
-    queryStore.latest_messages i ≠ none →
-    queryStore.latest_messages i = boundaryStore.latest_messages i
 
-omit [LinearOrder Root] [Inhabited Root] in
-/-- Coverage implies domination for every cell actually read. -/
-theorem prefixWindowRecordedEpochMax_of_coverage
-    (E : Execution Root) (queryStore : Store Root) (lo es : Slot)
-    (hcoverage : PrefixRecordedEpochCoverage cfg E queryStore lo es) :
-    PrefixWindowRecordedEpochMax cfg E queryStore lo es := by
-  intro i hi hiSpan lm hlm t k a htes hvote
-  obtain ⟨lm', hlm', hle⟩ :=
-    hcoverage i hi hiSpan t k a htes hvote
-  rw [hlm] at hlm'
-  cases Option.some.inj hlm'
-  exact hle
 
-omit [LinearOrder Root] [Inhabited Root] in
-/-- One visible cell and one newer-epoch relevant vote are the exact local
-obstruction to prefix domination.  This theorem has no safety conclusion. -/
-theorem not_prefixWindowRecordedEpochMax_of_newer_vote
-    (E : Execution Root) (queryStore : Store Root) (lo es : Slot)
-    {i : ValidatorIndex} (hi : i ∈ E.honest)
-    (hiSpan : i ∈ E.span_committee lo es)
-    {lm : LatestMessage Root}
-    (hlm : queryStore.latest_messages i = some lm)
-    {t : Slot} {k : ℕ} {a : Attestation Root}
-    (htes : t ≤ es) (hvote : E.vote i t = some (k, a))
-    (hnewer : ¬ compute_epoch_at_slot cfg t ≤ (get_latest_message_epoch cfg lm)) :
-    ¬ PrefixWindowRecordedEpochMax cfg E queryStore lo es := by
-  intro hmax
-  exact hnewer (hmax i hi hiSpan lm hlm t k a htes hvote)
 
-omit [LinearOrder Root] [Inhabited Root] in
-/-- Used-cell replay transports completed-boundary domination.  Missing cells
-and cells outside the honest ledger footprint remain unconstrained. -/
-theorem prefixWindowRecordedEpochMax_of_usedCellReplay
-    (E : Execution Root) (queryStore boundaryStore : Store Root)
-    (lo es : Slot)
-    (hreplay : UsedCellLatestMessageReplay E queryStore boundaryStore lo es)
-    (hboundary :
-      ∀ i ∈ E.honest, i ∈ E.span_committee lo es →
-        ∀ lm : LatestMessage Root,
-          boundaryStore.latest_messages i = some lm →
-          ∀ (t : Slot) (k : ℕ) (a : Attestation Root),
-            t ≤ es → E.vote i t = some (k, a) →
-            compute_epoch_at_slot cfg t ≤ (get_latest_message_epoch cfg lm)) :
-    PrefixWindowRecordedEpochMax cfg E queryStore lo es := by
-  intro i hi hiSpan lm hlm t k a htes hvote
-  apply hboundary i hi hiSpan lm
-  · rw [← hreplay i hi hiSpan (by rw [hlm]; simp)]
-    exact hlm
-  · exact htes
-  · exact hvote
 
-/-- Full latest-message-map equality is a sufficient compatibility adapter,
-not the canonical production premise. -/
-theorem prefixWindowRecordedEpochMax_of_boundaryReplay
-    (E : Execution Root) (queryStore : Store Root)
-    {v : ValidatorIndex} {q : ℕ} {lo es : Slot}
-    (hreplay : queryStore.latest_messages =
-      (E.store cfg ext v q).latest_messages)
-    (hboundary : E.WindowRecordedEpochMax cfg ext v q lo es) :
-    PrefixWindowRecordedEpochMax cfg E queryStore lo es := by
-  apply prefixWindowRecordedEpochMax_of_usedCellReplay cfg E queryStore
-    (E.store cfg ext v q) lo es
-  · intro i _hi _hiSpan _hcell
-    exact congr_fun hreplay i
-  · exact hboundary
 
 namespace Execution
 
@@ -408,13 +318,7 @@ theorem windowRecordedEpochMax_at_query_minimal
     have hts : t ≤ s := (Nat.lt_of_not_ge hlot).le.trans hloS
     exact (Nat.div_le_div_right hts).trans hsDom
 
-/-! ## Window-scoped reverse-provenance bridge
 
-These are the precise counterparts of `Bridge`'s legacy
-`RecordedEpochMax` consumers.  Each theorem first proves that the validator
-belongs to `[lo, es]`, then specializes `WindowRecordedEpochMax`; no global
-claim about unrelated validators or pre-anchor votes is introduced.
--/
 
 /-- A recorded honest supporter belongs to `Sclass`, using domination only
 after the supporter's concrete window membership has been established. -/
@@ -782,52 +686,8 @@ These theorems keep the existing synchrony supplier useful without making a
 completed store (or full map replay) the primary query-store contract.
 -/
 
-/-- A completed boundary store satisfies the store-explicit predicate
-definitionally. -/
-theorem prefixWindowRecordedEpochMax_at_boundary
-    (E : Execution Root) {v : ValidatorIndex} {q : ℕ} {lo es : Slot}
-    (hboundary : E.WindowRecordedEpochMax cfg ext v q lo es) :
-    PrefixWindowRecordedEpochMax cfg E (E.store cfg ext v q) lo es :=
-  hboundary
 
-/-- The boundary synchrony supplier transports to an arbitrary query store
-under the exact used-cell replay footprint. -/
-theorem prefixWindowRecordedEpochMax_at_query_of_usedCellReplay
-    (E : Execution Root)
-    (hA : SelectedMarginAssumptions cfg ext E)
-    (hwalkDomain : E.PostAnchorHonestVoteTargetWalkDomain cfg ext)
-    {v : ValidatorIndex} (hv : v ∈ E.honest) {q : ℕ}
-    (hqH : E.WithinHorizon cfg q)
-    {queryStore : Store Root} {lo es : Slot}
-    (hlo0 : E.slot_at cfg 0 ≤ lo)
-    (hes : es = get_current_slot cfg (E.store cfg ext v q) - 1)
-    (heslt : es < E.slot_at cfg q)
-    (hreplay : UsedCellLatestMessageReplay E queryStore
-      (E.store cfg ext v q) lo es) :
-    PrefixWindowRecordedEpochMax cfg E queryStore lo es := by
-  apply prefixWindowRecordedEpochMax_of_usedCellReplay cfg E queryStore
-    (E.store cfg ext v q) lo es hreplay
-  exact E.windowRecordedEpochMax_at_query_minimal cfg ext hA hwalkDomain
-    hv hqH hlo0 hes heslt
 
-/-- Full latest-message equality remains a stronger named adapter. -/
-theorem prefixWindowRecordedEpochMax_at_query_of_boundaryReplay
-    (E : Execution Root)
-    (hA : SelectedMarginAssumptions cfg ext E)
-    (hwalkDomain : E.PostAnchorHonestVoteTargetWalkDomain cfg ext)
-    {v : ValidatorIndex} (hv : v ∈ E.honest) {q : ℕ}
-    (hqH : E.WithinHorizon cfg q)
-    {queryStore : Store Root} {lo es : Slot}
-    (hlo0 : E.slot_at cfg 0 ≤ lo)
-    (hes : es = get_current_slot cfg (E.store cfg ext v q) - 1)
-    (heslt : es < E.slot_at cfg q)
-    (hreplay : queryStore.latest_messages =
-      (E.store cfg ext v q).latest_messages) :
-    PrefixWindowRecordedEpochMax cfg E queryStore lo es := by
-  apply prefixWindowRecordedEpochMax_at_query_of_usedCellReplay cfg ext E hA
-    hwalkDomain hv hqH hlo0 hes heslt
-  intro i _hi _hiSpan _hcell
-  exact congr_fun hreplay i
 
 end FastConfirmation.Spec
 

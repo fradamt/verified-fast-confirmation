@@ -62,12 +62,6 @@ theorem child_mem {store : Store Root} {blocks : List Root} {h c : Root}
     (get_parent_payload_status_ne_pending store (store.blocks c))).mp hstep.2.1
   exact hmem.2.1
 
-/-- A certified edge follows the beacon parent link. -/
-theorem parent_eq {store : Store Root} {blocks : List Root} {h c : Root}
-    (hstep : DescendStep cfg store blocks h c) : (store.blocks c).parent_root = h := by
-  have hmem := (mem_get_node_children_resolved
-    (get_parent_payload_status_ne_pending store (store.blocks c))).mp hstep.2.1
-  exact hmem.2.2.1
 
 /-- Prepend the payload-resolution and beacon-child selections to a path. -/
 theorem descendsTo {store : Store Root} {blocks : List Root} {b h c : Root} {n : ℕ}
@@ -222,133 +216,9 @@ theorem is_ancestor_of_parent {store : Store Root}
     (by rw [hp]; exact WalkKnown.stop hbase (le_refl _))]
   rw [hp, get_ancestor_stop (le_refl _)]
 
-omit [Inhabited Root] in
-/-- Inductive step of `filter_block_tree_aux_output_descends`: a root `r` in a
-child subtree's output descends from that child (`ih`), the child descends from
-`base` (`is_ancestor_of_parent`), so `r` descends from `base` by transitivity.
-The `WalkKnown` witnesses come from the blanket `hwalk`. -/
-private theorem output_descends_step {store : Store Root}
-    (hwf : ∀ r ∈ store.block_roots,
-      (store.blocks r).parent_root ∈ store.block_roots →
-        (store.blocks (store.blocks r).parent_root).slot < (store.blocks r).slot)
-    (hwalk : ∀ t r : Root, r ∈ store.block_roots →
-      WalkKnown store (store.blocks t).slot r)
-    {base : Root} (hbase : base ∈ store.block_roots) {fuel : ℕ}
-    (ih : ∀ b' : Root, b' ∈ store.block_roots → ∀ r,
-      r ∈ (filter_block_tree_aux cfg store fuel b').2 →
-        is_ancestor store (ForkChoiceNode.mk r .pending) (ForkChoiceNode.mk b' .pending) = true)
-    {child r : Root}
-    (hchild : child ∈ store.block_roots.filter
-      (fun root => (store.blocks root).parent_root = base))
-    (hrl : r ∈ (filter_block_tree_aux cfg store fuel child).2) :
-    is_ancestor store (ForkChoiceNode.mk r .pending) (ForkChoiceNode.mk base .pending) = true := by
-  have hchild_mem : child ∈ store.block_roots := (List.mem_filter.mp hchild).1
-  have hp : (store.blocks child).parent_root = base := by
-    have h := (List.mem_filter.mp hchild).2
-    simpa using h
-  have hac := ih child hchild_mem r hrl
-  have hcb := is_ancestor_of_parent hwf hchild_mem hbase hp
-  have hr_mem : r ∈ store.block_roots := by
-    rcases filter_block_tree_aux_output_mem cfg _ _ _ hrl with h | h
-    · exact h
-    · rw [h]; exact hchild_mem
-  exact is_ancestor_trans hwf (hwalk base r hr_mem) (hwalk base child hchild_mem) hac hcb
 
-omit [Inhabited Root] in
-/-- **Filter-output descent.** Every root the `filter_block_tree` worker emits
-from `base` descends from `base`: outputs are `base` itself (`is_ancestor_refl`)
-or outputs of a child subtree, which descend from their child and hence from
-`base` (`output_descends_step`). Mirrors `Engine.filter_block_tree_aux_output_mem`,
-tracking descent instead of membership. -/
-theorem filter_block_tree_aux_output_descends {store : Store Root}
-    (hwf : ∀ r ∈ store.block_roots,
-      (store.blocks r).parent_root ∈ store.block_roots →
-        (store.blocks (store.blocks r).parent_root).slot < (store.blocks r).slot)
-    (hwalk : ∀ t r : Root, r ∈ store.block_roots →
-      WalkKnown store (store.blocks t).slot r) :
-    ∀ (fuel : ℕ) (base : Root), base ∈ store.block_roots →
-      ∀ r, r ∈ (filter_block_tree_aux cfg store fuel base).2 →
-        is_ancestor store (ForkChoiceNode.mk r .pending) (ForkChoiceNode.mk base .pending) = true := by
-  intro fuel
-  induction fuel with
-  | zero =>
-    intro base _ r hr
-    simp only [filter_block_tree_aux] at hr
-    exact absurd hr List.not_mem_nil
-  | succ fuel ih =>
-    intro base hbase r hr
-    by_cases hne :
-      store.block_roots.filter (fun x => (store.blocks x).parent_root = base) ≠ []
-    · rw [filter_block_tree_aux_internal cfg store fuel base hne] at hr
-      dsimp only at hr
-      split_ifs at hr
-      · rcases List.mem_append.mp hr with hr' | hr'
-        · obtain ⟨l, hl, hrl⟩ := List.mem_flatten.mp hr'
-          obtain ⟨res, hres, rfl⟩ := List.mem_map.mp hl
-          obtain ⟨child, hchild, rfl⟩ := List.mem_map.mp hres
-          exact output_descends_step cfg hwf hwalk hbase ih hchild hrl
-        · rw [List.mem_singleton] at hr'
-          subst hr'
-          exact is_ancestor_refl store _
-      · obtain ⟨l, hl, hrl⟩ := List.mem_flatten.mp hr
-        obtain ⟨res, hres, rfl⟩ := List.mem_map.mp hl
-        obtain ⟨child, hchild, rfl⟩ := List.mem_map.mp hres
-        exact output_descends_step cfg hwf hwalk hbase ih hchild hrl
-    · rw [not_not] at hne
-      rw [filter_block_tree_aux_leaf cfg store fuel base hne] at hr
-      dsimp only at hr
-      split_ifs at hr
-      · rw [List.mem_singleton] at hr
-        subst hr
-        exact is_ancestor_refl store _
-      · exact absurd hr List.not_mem_nil
 
-omit [Inhabited Root] in
-/-- **Every filtered root descends from the justified root.**
-`filter_block_tree_aux_output_descends` at `base := justified_checkpoint.root`,
-which `get_filtered_block_tree` uses as the tree root. This is the filter-side
-complement to the per-fork LMD argument. -/
-theorem filtered_through_justified {store : Store Root}
-    (hwf : ∀ r ∈ store.block_roots,
-      (store.blocks r).parent_root ∈ store.block_roots →
-        (store.blocks (store.blocks r).parent_root).slot < (store.blocks r).slot)
-    (hwalk : ∀ t r : Root, r ∈ store.block_roots →
-      WalkKnown store (store.blocks t).slot r)
-    (hjust : store.justified_checkpoint.root ∈ store.block_roots)
-    {r : Root} (hr : r ∈ get_filtered_block_tree cfg store) :
-    is_ancestor store (get_node_for_root r)
-      (get_node_for_root store.justified_checkpoint.root) = true := by
-  simp only [get_node_for_root]
-  have hr' : r ∈ (filter_block_tree_aux cfg store (store.block_roots.length + 1)
-      store.justified_checkpoint.root).2 := hr
-  exact filter_block_tree_aux_output_descends cfg hwf hwalk _ _ hjust r hr'
 
-/-- If the justified block descends from `b`, every head-loop step stays
-below `b`. Payload resolution preserves its root, and beacon selection
-preserves its root ancestry. No payload-status equality is required. -/
-theorem head_ge_of_justified_ge {store : Store Root}
-    (hwf : ∀ r ∈ store.block_roots,
-      (store.blocks r).parent_root ∈ store.block_roots →
-        (store.blocks (store.blocks r).parent_root).slot < (store.blocks r).slot)
-    (hwalk : ∀ t r : Root, r ∈ store.block_roots →
-      WalkKnown store (store.blocks t).slot r)
-    (hjust : store.justified_checkpoint.root ∈ store.block_roots)
-    {b : Root}
-    (hjb : is_ancestor store (get_node_for_root store.justified_checkpoint.root)
-      (get_node_for_root b) = true) :
-    is_ancestor store (get_head cfg store) (get_node_for_root b) = true := by
-  simp only [get_node_for_root, is_ancestor_pending, decide_eq_true_eq] at hjb ⊢
-  have hsub : ∀ r ∈ get_filtered_block_tree cfg store, r ∈ store.block_roots := by
-    intro r hr
-    have hr' : r ∈ (filter_block_tree_aux cfg store (store.block_roots.length + 1)
-        store.justified_checkpoint.root).2 := hr
-    rcases filter_block_tree_aux_output_mem cfg _ _ _ hr' with h | h
-    · exact h
-    · rw [h]
-      exact hjust
-  exact get_head_aux_stays_below cfg hwf hsub
-    (2 * (get_filtered_block_tree cfg store).length + 2)
-    (hwalk b _ hjust) hjb
 
 end FastConfirmation.Spec
 

@@ -7,6 +7,7 @@ public import FastConfirmation.Spec.Proof.AcceptedCandidateHistoryRecurrence
 public import FastConfirmation.Spec.Proof.AcceptedFinalizationTiming
 public import FastConfirmation.Spec.Proof.ModelFacts
 
+public import FastConfirmation.Spec.Proof.ModelFacts
 @[expose] public section
 
 /-!
@@ -972,31 +973,6 @@ theorem ObservedResetCandidateInputAt.acceptedLemma22EpochStartCandidateSource
         exact hcRecent
     }⟩
 
-/-- Low epochs discharge the paper's truncated `e - 2` bound without any
-candidate-history induction.  The trusted genesis root is carried into the
-epoch-start store and every checkpoint epoch is nonnegative. -/
-noncomputable def acceptedLemma24EpochStartSourceAt_of_epoch_le_two
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
-    (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
-    {e : Epoch} (he : e ≤ 2) (w : ValidatorIndex) :
-    E.AcceptedLemma24EpochStartSourceAt cfg ext B e w := by
-  refine {
-    seed := B.anchor.root
-    seed_known := ?_
-    source_recent := ?_
-  }
-  · obtain ⟨ast, ablk, hgen, _hslot, _hparent⟩ := hT.genesis_structure
-    have hanchorRoot : B.anchor.root = ablk.root := by
-      rw [hanchor, hgen]
-      rfl
-    have hknown0 : B.anchor.root ∈ (E.store cfg ext w 0).block_roots := by
-      change B.anchor.root ∈ E.genesis_store.block_roots
-      rw [hgen, hanchorRoot]
-      simp only [get_forkchoice_store, List.mem_singleton]
-    exact (E.store_storeLE cfg ext w (Nat.zero_le
-      (E.slot_start cfg (compute_start_slot_at_epoch cfg e)))).1 hknown0
-  · exact he.trans (Nat.le_add_left 2 _)
 
 /-- Checkpoint-sync-safe low/base case.  Absolute `e ≤ 2` is sufficient for
 fresh genesis, but a trusted checkpoint-sync anchor may start at a nonzero
@@ -2306,21 +2282,6 @@ theorem AcceptedRecentCandidateSourceCarrierAt.of_pathLocal
 
 /-! ## Source-history split -/
 
-/-- Generic source-history interface for arbitrary query/result tuples. The
-executable theorem below instead derives the source from
-`acceptedConfirmedSourceHistoryAt` and the evaluator write-back equation. -/
-def AcceptedLemma23To24SourceHistory
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E) : Prop :=
-  ∀ v ∈ E.honest, ∀ q : Nat, E.WithinHorizon cfg q →
-    ∀ (query : FastConfirmationStore Root),
-      query.store = E.store cfg ext v q →
-    ∀ input result : Root,
-      StrictSelectedResultMechanicalFacts cfg ext query input result →
-      get_block_epoch cfg query.store result =
-        get_current_store_epoch cfg query.store →
-      ∀ w ∈ E.honest,
-        Nonempty (E.AcceptedLemma24EpochStartSourceAt cfg ext B
-          (get_current_store_epoch cfg query.store) w)
 
 /-- Preserve the executable justified-root fallback as an explicit outcome;
 it is not a filtered leaf and therefore not silently converted into a source
@@ -2420,30 +2381,6 @@ theorem StrictSelectedResultMechanicalFacts.currentSame_sourceHistoryOutcome_of_
       (AcceptedRecentCandidateSourceCarrierAt.of_pathLocal cfg ext B hT
         hpast hpastEpoch hJRecent hpath)
 
-/-- Arbitrary-query form of the source-history result. The evaluator-specific
-`actualCurrentSame_sourceHistoryOutcome` derives its source history directly
-from the executable recurrence. -/
-theorem StrictSelectedResultMechanicalFacts.currentSame_sourceHistoryOutcome
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
-    (hT : E.ScheduledPrefixTrajectoryAssumptions cfg ext)
-    (hsync : PaperSafetySynchrony cfg ext E)
-    (hstatic : StaticValidatorSet cfg E)
-    (hbyz : ByzantineBound cfg E)
-    (hdomain : SelectedMarginDomain cfg ext E)
-    (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
-    (hhistory : E.AcceptedLemma23To24SourceHistory cfg ext B)
-    {v : ValidatorIndex} (hv : v ∈ E.honest) {q : Nat}
-    (hqH : E.WithinHorizon cfg q)
-    {query : FastConfirmationStore Root} {input result : Root}
-    (hquery : query.store = E.store cfg ext v q)
-    (h : StrictSelectedResultMechanicalFacts cfg ext query input result)
-    (hcurrent : get_block_epoch cfg query.store result =
-      get_current_store_epoch cfg query.store) :
-    E.AcceptedCurrentSameSourceHistoryOutcome cfg ext B v q result := by
-  apply h.currentSame_sourceHistoryOutcome_of_epochStartSource cfg ext B hT
-    hsync hstatic hbyz hdomain hanchor hv hqH hquery hcurrent
-  intro w hw
-  exact hhistory v hv q hqH query hquery input result h hcurrent w hw
 
 /-- Preferred callback-free Lemma-26 export for a strict current result of
 the actual evaluator.  Its only paper-facing timing premise is the accepted

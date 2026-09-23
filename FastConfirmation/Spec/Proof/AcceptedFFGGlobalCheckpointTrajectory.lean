@@ -3,6 +3,7 @@ public import FastConfirmation.Spec.Proof.AcceptedFFGStateTrajectory
 public import FastConfirmation.Spec.Proof.ExecutionRootReflection
 public import FastConfirmation.Spec.Proof.ModelFacts
 
+public import FastConfirmation.Spec.Proof.ModelFacts
 @[expose] public section
 
 /-!
@@ -783,16 +784,6 @@ theorem causalStoreGlobalProjection
     hstore.acceptedFFGGlobalCheckpointOrigins
       B.coherence.toAcceptedFFGSelectorCoherence hgen hanchor⟩
 
-/-- Exact-prefix specialization of the full local/global projection. -/
-theorem scheduledEventPrefixGlobalProjection
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
-    (hgen : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
-      E.genesis_store = get_forkchoice_store cfg ast ablk ∧
-      ast.slot = ablk.message.slot)
-    (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
-    (p : E.ScheduledEventPrefix) :
-    AcceptedFFGGlobalStoreProjection B.state (p.store cfg ext) :=
-  B.causalStoreGlobalProjection hgen hanchor (.scheduledPrefix p)
 
 /-- Production justified-selector consumer at an arbitrary exact causal store.
 The conclusion is AU carrier evidence, not a mislabeled checkpoint-knownness
@@ -825,53 +816,7 @@ theorem globalFinalized_anchor_or_AUEvidence
   (B.causalStoreGlobalProjection hgen hanchor hstore).storeGlobal
     |>.finalized_anchor_or_AUEvidence
 
-/-- The separate justified checkpoint-root knownness claim, requiring the
-actual walk to the checkpoint epoch boundary. -/
-theorem globalJustified_anchor_or_checkpointRoot_known
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
-    (hgen : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
-      E.genesis_store = get_forkchoice_store cfg ast ablk ∧
-      ast.slot = ablk.message.slot)
-    (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
-    {store : Store Root} (hstore : E.CausalStore cfg ext store)
-    (hparent : ParentSlotLt store)
-    (hwalk : ∀ tip,
-      E.AcceptedCarrierIn (cfg := cfg) (ext := ext) store tip →
-      WalkKnown store
-        (compute_start_slot_at_epoch cfg store.justified_checkpoint.epoch)
-        tip) :
-    store.justified_checkpoint = B.anchor ∨
-      store.justified_checkpoint.root ∈ store.block_roots := by
-  rcases B.globalJustified_anchor_or_AUEvidence hgen hanchor hstore with
-    hanchor' | hevidence
-  · exact Or.inl hanchor'
-  · obtain ⟨carrier⟩ := hevidence
-    exact Or.inr (carrier.checkpointRoot_known B.coherence
-      hstore hparent (hwalk carrier.tip carrier.tip_carrier))
 
-/-- The separate finalized checkpoint-root knownness claim under its exact
-boundary-walk premise. -/
-theorem globalFinalized_anchor_or_checkpointRoot_known
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
-    (hgen : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
-      E.genesis_store = get_forkchoice_store cfg ast ablk ∧
-      ast.slot = ablk.message.slot)
-    (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
-    {store : Store Root} (hstore : E.CausalStore cfg ext store)
-    (hparent : ParentSlotLt store)
-    (hwalk : ∀ tip,
-      E.AcceptedCarrierIn (cfg := cfg) (ext := ext) store tip →
-      WalkKnown store
-        (compute_start_slot_at_epoch cfg store.finalized_checkpoint.epoch)
-        tip) :
-    store.finalized_checkpoint = B.anchor ∨
-      store.finalized_checkpoint.root ∈ store.block_roots := by
-  rcases B.globalFinalized_anchor_or_AUEvidence hgen hanchor hstore with
-    hanchor' | hevidence
-  · exact Or.inl hanchor'
-  · obtain ⟨carrier⟩ := hevidence
-    exact Or.inr (carrier.checkpointRoot_known B.coherence
-      hstore hparent (hwalk carrier.tip carrier.tip_carrier))
 
 end ExactPrefixAcceptedFFGSemantics
 

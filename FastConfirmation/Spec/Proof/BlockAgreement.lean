@@ -4,6 +4,7 @@ public import FastConfirmation.Spec.Model.Assumptions
 public import FastConfirmation.Spec.Model.PayloadEffects
 public import FastConfirmation.Spec.Proof.ModelFacts
 
+public import FastConfirmation.Spec.Proof.ModelFacts
 @[expose] public section
 
 /-!
@@ -97,10 +98,6 @@ theorem update_checkpoints_blockProvenance {E : Execution Root} (store : Store R
     BlockProvenance E (update_checkpoints store jc fc) :=
   h.of_eq (by simp) (by simp only [update_checkpoints]; split_ifs <;> rfl)
 
-theorem update_unrealized_checkpoints_blockProvenance {E : Execution Root}
-    (store : Store Root) (jc fc : Checkpoint Root) (h : BlockProvenance E store) :
-    BlockProvenance E (update_unrealized_checkpoints store jc fc) :=
-  h.of_eq (by simp) (by simp only [update_unrealized_checkpoints]; split_ifs <;> rfl)
 
 theorem update_latest_messages_blockProvenance {E : Execution Root} (store : Store Root)
     (attesting_indices : List ValidatorIndex) (attestation : Attestation Root)
@@ -412,14 +409,6 @@ theorem get_ancestor_aux_congr_status {s t : Store Root}
       rw [← hstatus]
       exact ih _ f
 
-omit [Inhabited Root] in
-/-- Pending-node form of complete ancestor transport. -/
-theorem get_ancestor_aux_congr {s t : Store Root}
-    (hagree : ∀ x ∈ s.block_roots, s.blocks x = t.blocks x)
-    {slot : Slot} {r : Root} (hw : WalkKnown s slot r) :
-    ∀ fuel : ℕ, get_ancestor_aux s slot fuel (ForkChoiceNode.mk r .pending) =
-      get_ancestor_aux t slot fuel (ForkChoiceNode.mk r .pending) :=
-  get_ancestor_aux_congr_status hagree hw .pending
 
 omit [Inhabited Root] in
 /-- Complete ancestor transport for an arbitrary starting node. -/
@@ -460,23 +449,6 @@ The store's block set only grows in time (`StoreLE`), and provenance +
 `is_ancestor` fact on a walk known at second `n` is invariant through second
 `m ≥ n` — the same node's later store answers `is_ancestor` identically. -/
 
-/-- `is_ancestor` on a walk known at second `n` is unchanged at any later second
-`m ≥ n` of the same node (needs only `WellFormedExecution`, no honesty). -/
-theorem Execution.is_ancestor_mono (E : Execution Root) (hwf : WellFormedExecution E)
-    (v : ValidatorIndex) {n m : ℕ} (hnm : n ≤ m) {node ancestor : ForkChoiceNode Root}
-    (hnode : node.root ∈ (E.store cfg ext v n).block_roots)
-    (hanc : ancestor.root ∈ (E.store cfg ext v n).block_roots)
-    (hw : WalkKnown (E.store cfg ext v n)
-      ((E.store cfg ext v n).blocks ancestor.root).slot node.root) :
-    is_ancestor (E.store cfg ext v n) node ancestor
-      = is_ancestor (E.store cfg ext v m) node ancestor := by
-  have hsub : (E.store cfg ext v n).block_roots ⊆ (E.store cfg ext v m).block_roots :=
-    (E.store_storeLE cfg ext v hnm).1
-  have hagree : ∀ x ∈ (E.store cfg ext v n).block_roots,
-      (E.store cfg ext v n).blocks x = (E.store cfg ext v m).blocks x := fun x hx =>
-    hwf.blocks_agree (E.blockProvenance cfg ext v n) (E.blockProvenance cfg ext v m)
-      hx (hsub hx)
-  exact is_ancestor_congr hagree hnode hanc hw
 
 end FastConfirmation.Spec
 

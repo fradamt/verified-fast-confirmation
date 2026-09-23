@@ -2,6 +2,7 @@ module
 public import FastConfirmation.Spec.Proof.AcceptedFFGGlobalCheckpointTrajectory
 public import FastConfirmation.Spec.Proof.ModelFacts
 
+public import FastConfirmation.Spec.Proof.ModelFacts
 @[expose] public section
 
 /-!
@@ -299,31 +300,6 @@ theorem after_update_checkpoints (store : Store Root) (jc fc : Checkpoint Root)
     rw [huj]
     exact h.gu_epoch_le_unrealized r hr'
 
-theorem after_update_unrealized_checkpoints (store : Store Root)
-    (ujc ufc : Checkpoint Root)
-    (h : AcceptedFFGJustifiedLedger S store) :
-    AcceptedFFGJustifiedLedger S
-      (update_unrealized_checkpoints store ujc ufc) := by
-  have hroots :
-      (update_unrealized_checkpoints store ujc ufc).block_roots =
-        store.block_roots := by
-    simp only [update_unrealized_checkpoints]
-    split_ifs <;> rfl
-  have hj : (update_unrealized_checkpoints store ujc ufc).justified_checkpoint =
-      store.justified_checkpoint := by
-    simp only [update_unrealized_checkpoints]
-    split_ifs <;> rfl
-  constructor
-  · intro r hr
-    have hr' : E.AcceptedCarrierIn (cfg := cfg) (ext := ext) store r :=
-      ⟨by rw [← hroots]; exact hr.known, hr.2⟩
-    rw [hj]
-    exact h.gj_epoch_le_justified r hr'
-  · intro r hr
-    have hr' : E.AcceptedCarrierIn (cfg := cfg) (ext := ext) store r :=
-      ⟨by rw [← hroots]; exact hr.known, hr.2⟩
-    exact (h.gu_epoch_le_unrealized r hr').trans
-      (unrealized_epoch_le_update_unrealized store ujc ufc)
 
 theorem after_on_tick_per_slot (store : Store Root) (time : ℕ)
     (h : AcceptedFFGJustifiedLedger S store) :
@@ -355,18 +331,7 @@ theorem after_on_tick (store : Store Root) (time : ℕ)
   simp only [FastConfirmation.Spec.on_tick]
   exact after_on_tick_per_slot _ _ (after_on_tick_aux _ _ _ h)
 
-theorem after_record_block_timeliness (store : Store Root) (r : Root)
-    (h : AcceptedFFGJustifiedLedger S store) :
-    AcceptedFFGJustifiedLedger S (record_block_timeliness cfg store r) := by
-  simp only [record_block_timeliness]
-  exact h.of_eq rfl rfl rfl
 
-theorem after_update_proposer_boost_root (store : Store Root) (head r : Root)
-    (h : AcceptedFFGJustifiedLedger S store) :
-    AcceptedFFGJustifiedLedger S
-      (FastConfirmation.Spec.update_proposer_boost_root cfg store head r) := by
-  simp only [FastConfirmation.Spec.update_proposer_boost_root]
-  split_ifs <;> exact h.of_eq rfl rfl rfl
 
 theorem after_store_target_checkpoint_state (store : Store Root)
     (target : Checkpoint Root)

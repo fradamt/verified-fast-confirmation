@@ -1,5 +1,8 @@
 module
 public import FastConfirmation.Spec.Model
+public import FastConfirmation.Spec.Proof.StoreInvariants
+public import FastConfirmation.Spec.Proof.CertExtract
+public import FastConfirmation.Spec.Proof.GetLatestConfirmedTrace
 public import FastConfirmation.Spec.Proof.CompleteEvidenceWitness
 public import FastConfirmation.Spec.Proof.Containment
 public import FastConfirmation.Spec.ProvenTheorems

@@ -3,6 +3,7 @@ public import FastConfirmation.Spec.Model.FFGStateSemantics
 public import FastConfirmation.Spec.Model.PayloadEffects
 public import FastConfirmation.Spec.Proof.ModelFacts
 
+public import FastConfirmation.Spec.Proof.ModelFacts
 @[expose] public section
 
 /-!
@@ -58,10 +59,6 @@ structure AcceptedFFGStoreProjection
 
 namespace AcceptedFFGStoreProjection
 
-def blockState {store : Store Root}
-    (h : AcceptedFFGStoreProjection S store) :
-    AcceptedFFGBlockStateProjection S store :=
-  ⟨h.block_state_gj, h.block_state_gf, h.pulled_up_gu, h.pulled_up_guf⟩
 
 theorem of_eq {store store' : Store Root}
     (h : AcceptedFFGStoreProjection S store)
@@ -139,27 +136,8 @@ theorem update_checkpoints_acceptedFFGStoreProjection
   apply h.of_eq <;>
     (simp only [update_checkpoints]; split_ifs <;> rfl)
 
-theorem update_unrealized_checkpoints_acceptedFFGStoreProjection
-    (store : Store Root) (jc fc : Checkpoint Root)
-    (h : AcceptedFFGStoreProjection S store) :
-    AcceptedFFGStoreProjection S
-      (update_unrealized_checkpoints store jc fc) := by
-  apply h.of_eq <;>
-    (simp only [update_unrealized_checkpoints]; split_ifs <;> rfl)
 
-theorem record_block_timeliness_acceptedFFGStoreProjection
-    (store : Store Root) (r : Root)
-    (h : AcceptedFFGStoreProjection S store) :
-    AcceptedFFGStoreProjection S (record_block_timeliness cfg store r) :=
-  h.of_eq rfl rfl rfl
 
-theorem update_proposer_boost_root_acceptedFFGStoreProjection
-    (store : Store Root) (head r : Root)
-    (h : AcceptedFFGStoreProjection S store) :
-    AcceptedFFGStoreProjection S
-      (update_proposer_boost_root cfg store head r) := by
-  apply h.of_eq <;>
-    (simp only [update_proposer_boost_root]; split_ifs <;> rfl)
 
 theorem store_target_checkpoint_state_acceptedFFGStoreProjection
     (store : Store Root) (target : Checkpoint Root)
@@ -232,14 +210,6 @@ theorem compute_pulled_up_tip_acceptedFFGStoreProjection_of_blockState
       exact hstate.pulled_up_gu r hr
     · exact hmap x hx hxr
 
-theorem compute_pulled_up_tip_acceptedFFGStoreProjection
-    (store : Store Root) (r : Root)
-    (h : AcceptedFFGStoreProjection S store)
-    (hr : r ∈ store.block_roots) :
-    AcceptedFFGStoreProjection S
-      (compute_pulled_up_tip cfg ext store r) :=
-  compute_pulled_up_tip_acceptedFFGStoreProjection_of_blockState store r
-    h.blockState (fun x hx _ => h.unrealized_justification x hx) hr
 
 /-! ## Event handlers -/
 
@@ -540,14 +510,6 @@ theorem CausalStore.acceptedFFGStoreProjection
 
 namespace ExactPrefixAcceptedFFGSemantics
 
-/-- The full accepted semantic bundle is selected before the exact prefix and
-projects that prefix with its one fixed state. -/
-theorem scheduledEventPrefixProjection
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
-    (p : E.ScheduledEventPrefix) :
-    AcceptedFFGStoreProjection B.state (p.store cfg ext) :=
-  p.acceptedFFGStoreProjection
-    B.coherence.toAcceptedFFGSelectorCoherence
 
 /-- Bundle-indexed projection of every store in the exact causal domain. -/
 theorem causalStoreProjection
@@ -557,50 +519,14 @@ theorem causalStoreProjection
   hstore.acceptedFFGStoreProjection
     B.coherence.toAcceptedFFGSelectorCoherence
 
-/-- Bundle-indexed ordinary execution-boundary corollary. -/
-theorem storeProjection
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
-    (w : ValidatorIndex) (n : ℕ) :
-    AcceptedFFGStoreProjection B.state (E.store cfg ext w n) :=
-  E.acceptedFFGStoreProjection
-    B.coherence.toAcceptedFFGSelectorCoherence w n
 
 end ExactPrefixAcceptedFFGSemantics
 
 /-! ## Boundary selector corollaries -/
 
-theorem accepted_block_state_gj_eq
-    (hcoh : AcceptedFFGSelectorCoherence cfg ext S)
-    (w : ValidatorIndex) (n : ℕ)
-    {r : Root} (hr : r ∈ (E.store cfg ext w n).block_roots) :
-    ((E.store cfg ext w n).block_states r).current_justified_checkpoint =
-      S.GJ r :=
-  (E.acceptedFFGStoreProjection hcoh w n).block_state_gj r hr
 
-theorem accepted_block_state_gf_eq
-    (hcoh : AcceptedFFGSelectorCoherence cfg ext S)
-    (w : ValidatorIndex) (n : ℕ)
-    {r : Root} (hr : r ∈ (E.store cfg ext w n).block_roots) :
-    ((E.store cfg ext w n).block_states r).finalized_checkpoint = S.GF r :=
-  (E.acceptedFFGStoreProjection hcoh w n).block_state_gf r hr
 
-theorem accepted_pulled_up_gu_eq
-    (hcoh : AcceptedFFGSelectorCoherence cfg ext S)
-    (w : ValidatorIndex) (n : ℕ)
-    {r : Root} (hr : r ∈ (E.store cfg ext w n).block_roots) :
-    (ext.process_justification_and_finalization
-      ((E.store cfg ext w n).block_states r)
-    ).current_justified_checkpoint = S.GU r :=
-  (E.acceptedFFGStoreProjection hcoh w n).pulled_up_gu r hr
 
-theorem accepted_pulled_up_guf_eq
-    (hcoh : AcceptedFFGSelectorCoherence cfg ext S)
-    (w : ValidatorIndex) (n : ℕ)
-    {r : Root} (hr : r ∈ (E.store cfg ext w n).block_roots) :
-    (ext.process_justification_and_finalization
-      ((E.store cfg ext w n).block_states r)
-    ).finalized_checkpoint = S.GUF r :=
-  (E.acceptedFFGStoreProjection hcoh w n).pulled_up_guf r hr
 
 theorem accepted_unrealized_justification_eq
     (hcoh : AcceptedFFGSelectorCoherence cfg ext S)
@@ -609,20 +535,6 @@ theorem accepted_unrealized_justification_eq
     (E.store cfg ext w n).unrealized_justifications r = S.GU r :=
   (E.acceptedFFGStoreProjection hcoh w n).unrealized_justification r hr
 
-theorem accepted_get_voting_source_eq
-    (hcoh : AcceptedFFGSelectorCoherence cfg ext S)
-    (w : ValidatorIndex) (n : ℕ)
-    {r : Root} (hr : r ∈ (E.store cfg ext w n).block_roots) :
-    get_voting_source cfg (E.store cfg ext w n) r =
-      if get_current_store_epoch cfg (E.store cfg ext w n) >
-          compute_epoch_at_slot cfg
-            ((E.store cfg ext w n).blocks r).slot then
-        S.GU r
-      else S.GJ r := by
-  simp only [get_voting_source]
-  split_ifs
-  · exact E.accepted_unrealized_justification_eq hcoh w n hr
-  · exact E.accepted_block_state_gj_eq hcoh w n hr
 
 end Execution
 

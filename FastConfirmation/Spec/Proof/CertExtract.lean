@@ -4,47 +4,9 @@ public import FastConfirmation.Spec.Proof.AnchorClose
 @[expose] public section
 
 /-!
-# Spec / Proof / CertExtract: the per-edge `is_one_confirmed` extractor
+# Spec / Proof / CertExtract
 
-The r₀-scoped supplies
-`AnchorClose.{DescendStepChainSupply,ForkEdgeConfirmMarginSupply}` demand,
-per edge child `c` on the segment `[r₀, glc]` (`glc = get_latest_confirmed`, `r₀` the L4 reset
-anchor), a confirm-margin certificate whose foundation is the raw `is_one_confirmed` charge for
-`c`. The existing loop inversions `L4Fold.{prev_epoch_loop_spec,tentative_loop_spec}` certify
-`is_one_confirmed` only for the FINAL returned block. This module **strengthens** that to the
-**per-block** invariant: every block on the L4 walk segment `[r₀, glc]` is `is_one_confirmed`
-(or the anchor `r₀` itself).
-
-Three pieces:
-
-* **Section 0 — `is_ancestor` order helpers.** `is_ancestor_antisymm` (mutual descent ⟹ equal),
-  `is_ancestor_comparable` (two ancestors of a common block are comparable — the `is_ancestor`
-  wrapper of `HeadReroot.reroot_comparable`), and `between_parent_child` (nothing strictly
-  between a block and its parent). All pure `get_ancestor` geometry on the `WalkKnown` domain.
-
-* **Section 1 — the strengthened loop invariant (task 1).** `prev_epoch_loop_between` /
-  `tentative_loop_between`: a list induction over each `find_latest_confirmed_descendant` loop
-  carrying the **`Pstr` predicate relative to a fixed anchor `lcr`** ("descends from `lcr`,
-  known, and every block between `lcr` and the accumulator is `lcr`-or-`is_one_confirmed`"),
-  preserved across every advance step — the advance gate `is_one_confirmed b` funds the new
-  edge, `between_parent_child` closes the direct-child gap, `is_ancestor_comparable` splits an
-  arbitrary intermediate block into `[lcr, acc]` (IH) versus `[acc, b]` (the new edge). No
-  `get_ancestor_roots`-membership characterisation is needed: the chain precondition (parent-
-  linked, head's parent `= acc`) is exactly what `get_ancestor_roots` delivers, and it is
-  preserved under `tail`.
-
-* **Section 2 — composition + the fcrStep reconciliation (tasks 2+3).**
-  `find_latest_confirmed_descendant_between` folds the two preservers through the
-  `find_latest_confirmed_descendant` structure (mirroring `Anchoring`'s `P`-motive skeleton).
-  `get_latest_confirmed_between` case-splits `get_latest_confirmed`'s reset branches (the reset
-  anchors give the charge by antisymmetry, the advance branch by the loop invariant), returning
-  the L4 reset anchor `r₀` (`get_latest_confirmed_ge`'s `r₀`) together with the per-block charge
-  on `[r₀, glc]`. `edgeCert_of_confirmation` restates it at the **plain store**
-  `E.store cfg ext v (n+1)` (via `L4Fold.fcrStep_store`) with the `fcrStep` balance source — the
-  exact `is_one_confirmed` charge `Assembly.hstrip0_of_confirmed` consumes at subject `c` (with
-  the recorded coordinates `es = get_current_slot(store v (n+1)) − 1` and
-  `lo = parent(c).slot + 1`).
-
+This module contains `is_ancestor_antisymm`, `is_ancestor_comparable`, `between_parent_child` and related declarations.
 -/
 
 namespace FastConfirmation.Spec
@@ -389,67 +351,6 @@ namespace Execution
 
 variable (E : Execution Root)
 
-/-- **The per-edge `is_one_confirmed` extractor**  �� the extracted result.
-At a slot-advance confirming step `(v, n+1)` with `get_latest_confirmed` block `glc`
-`is_one_confirmed`, the L4 walk yields the reset anchor `r₀` (one of the three anchors, matching
-`AnchorClose.{AnchorCovSupply,DescendStepChainSupply}`'s r₀-kind and
-`AnchorThread.confirmedWithAnchor_of_advance`'s `r₀`) with `glc ⪰ r₀`, and **every** block `c`
-on the segment `[r₀, glc]` is `r₀` or **`is_one_confirmed` at the plain store**
-`E.store cfg ext v (n+1)` with the `fcrStep` balance source `get_current_balance_source (fcrStep)`.
-
-This is exactly the charge `Assembly.hstrip0_of_confirmed` consumes at subject `c` (its
-`hconf : is_one_confirmed (E.store cfg ext v (n+1)) (get_current_balance_source (E.fcrStep …)) c`,
-with recorded coordinates `es = get_current_slot(E.store cfg ext v (n+1)) − 1` and
-`lo = parent(c).slot + 1`). The fcrStep-store reconciliation is `L4Fold.fcrStep_store`:
-`(E.fcrStep cfg ext v n).store = E.store cfg ext v (n+1)`.
-
-The reset anchor `r₀` is returned **existentially** (it is the L4 walk input — `get_latest_
-confirmed_ge`'s `r₀`), not taken as a free `r₀`-kind hypothesis: an arbitrary anchor below the
-walk input is `⪯ glc` yet its `[·, r₀)` prefix is not walked, so the walk-based charge is
-sound **only** for the walk anchor. The consumer scopes its per-edge demand by this `r₀`. -/
-theorem edgeCert_of_confirmation (hSA : SpecAssumptions cfg ext E)
-    (hanchor0 : ∀ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
-      E.genesis_store = get_forkchoice_store cfg ast ablk → ablk.message.slot = GENESIS_SLOT)
-    (v : ValidatorIndex) (hv : v ∈ E.honest) (n : ℕ)
-    (hHn1 : E.WithinHorizon cfg (n + 1))
-    (hconf : is_one_confirmed cfg ext (E.fcrStep cfg ext v n).store
-        (get_current_balance_source (E.fcrStep cfg ext v n))
-        (get_latest_confirmed cfg ext (E.fcrStep cfg ext v n)) = true) :
-    ∃ r₀ : Root,
-      (r₀ = (E.fcrStep cfg ext v n).confirmed_root ∨
-        r₀ = (E.store cfg ext v (n + 1)).finalized_checkpoint.root ∨
-        r₀ = (E.fcrStep cfg ext v n).current_epoch_observed_justified_checkpoint.root) ∧
-      r₀ ∈ (E.store cfg ext v (n + 1)).block_roots ∧
-      is_ancestor (E.store cfg ext v (n + 1))
-        (get_node_for_root (get_latest_confirmed cfg ext (E.fcrStep cfg ext v n)))
-        (get_node_for_root r₀) = true ∧
-      ∀ c : Root, c ∈ (E.store cfg ext v (n + 1)).block_roots →
-        is_ancestor (E.store cfg ext v (n + 1))
-          (get_node_for_root (get_latest_confirmed cfg ext (E.fcrStep cfg ext v n)))
-          (get_node_for_root c) = true →
-        is_ancestor (E.store cfg ext v (n + 1)) (get_node_for_root c) (get_node_for_root r₀)
-          = true →
-        c = r₀ ∨
-          is_one_confirmed cfg ext (E.store cfg ext v (n + 1))
-            (get_current_balance_source (E.fcrStep cfg ext v n)) c = true := by
-  have hs : (E.fcrStep cfg ext v n).store = E.store cfg ext v (n + 1) :=
-    E.fcrStep_store cfg ext v n
-  obtain ⟨hwf, hwalk, hjust⟩ :=
-    E.store_domainK cfg ext hSA.2.1 hSA.2.2.2.2.2.1 hSA.1 hSA.2.2.2.2.2.2.2.2
-      v hv (n + 1) hHn1
-  have hhead : (get_head cfg (E.store cfg ext v (n + 1))).root ∈
-      (E.store cfg ext v (n + 1)).block_roots := by
-    rcases get_head_root_mem_or cfg (E.store cfg ext v (n + 1)) with h | h
-    · exact h
-    · rw [h]; exact hjust
-  obtain ⟨_hbk, h0, h1, h2⟩ :=
-    E.anchorRoots_known cfg ext hSA hanchor0 v hv n hHn1 hconf
-  obtain ⟨r₀, hkind, hr0mem, hdesc, hcharge⟩ :=
-    get_latest_confirmed_between cfg ext (E.fcrStep cfg ext v n)
-      (by rw [hs]; exact hwf) (by rw [hs]; exact hwalk) (by rw [hs]; exact hhead)
-      (by rw [hs]; exact h0) (by rw [hs]; exact h1) (by rw [hs]; exact h2)
-  rw [hs] at hkind hr0mem hdesc hcharge
-  exact ⟨r₀, hkind, hr0mem, hdesc, hcharge⟩
 
 end Execution
 

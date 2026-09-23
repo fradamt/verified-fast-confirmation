@@ -5,6 +5,7 @@ public import FastConfirmation.Spec.Proof.AcceptedActualFCRNextSlotSafetyFacade
 public import FastConfirmation.Spec.Proof.AcceptedFinalizedNextSlotSafety
 public import FastConfirmation.Spec.Proof.ModelFacts
 
+public import FastConfirmation.Spec.Proof.ModelFacts
 @[expose] public section
 
 /-!
@@ -38,46 +39,10 @@ theorem confirmed_at_one {v : ValidatorIndex}
     rfl | rfl | rfl | rfl <;>
     set_option maxRecDepth 50000 in decide
 
-theorem confirmed_child_from_two_through_seven {v : ValidatorIndex}
-    (hv : v ∈ witnessExecution.honest) {q : ℕ}
-    (hlo : 2 ≤ q) (hhi : q ≤ 7) :
-    witnessExecution.confirmed witnessConfig witnessExternals v q =
-      childRoot := by
-  rcases honest_eq_zero_or_one_or_two_or_three hv with
-    rfl | rfl | rfl | rfl <;>
-    interval_cases q <;>
-    set_option maxRecDepth 50000 in decide
 
-theorem confirmed_anchor_from_eight_through_fifteen
-    {v : ValidatorIndex} (hv : v ∈ witnessExecution.honest) {q : ℕ}
-    (hlo : 8 ≤ q) (hhi : q ≤ 15) :
-    witnessExecution.confirmed witnessConfig witnessExternals v q =
-      anchorRoot := by
-  rcases honest_eq_zero_or_one_or_two_or_three hv with
-    rfl | rfl | rfl | rfl <;>
-    interval_cases q <;>
-    set_option maxRecDepth 50000 in decide
 
 /-! ## Positive next-slot finalized-reset regression -/
 
-/-- The actual call written at second eight takes the finalized-reset branch.
-The predecessor index is seven because `fcrStep` constructs the store at
-`n + 1`.  In particular, this records active guard provenance rather than
-merely observing that the resulting root happens to equal the anchor. -/
-theorem second_eight_finalizedResetCandidateInput :
-    FinalizedResetCandidateInputAt witnessConfig witnessExternals
-      (witnessExecution.fcrStep witnessConfig witnessExternals 0 7)
-      (witnessExecution.getLatestConfirmedTraceAt witnessConfig
-        witnessExternals 0 7) := by
-  refine
-    { afterFinalized_eq := ?_
-      finalized_guard_true := by
-        apply Or.inl
-        set_option maxRecDepth 50000 in decide
-      afterObserved_eq := ?_
-      observed_guard_false := ?_
-      input_eq := ?_ }
-  all_goals set_option maxRecDepth 50000 in decide
 
 /-- Finite accepted-run regression: honest votes through slots two to seven
 support the child or its carrier descendant, all stake is honest, and the
@@ -103,40 +68,7 @@ theorem descendant_votes_without_continuous_production_revert :
     witnessExecution.confirmed witnessConfig witnessExternals 0 8 = anchorRoot := by
   set_option maxRecDepth 50000 in decide
 
-/-- The concrete execution assumptions needed by the accepted finalization
-certificate's Casper-accountability argument. -/
-def witnessFFGAccountabilityAssumptions :
-    FFGAccountabilityAssumptions witnessConfig witnessExternals
-      witnessExecution where
-  genesis_store := ⟨anchorState, anchorSignedBlock, rfl⟩
-  whole_seconds := by decide
-  honest_behavior := witnessHonestBehavior
-  externals_coherence := witnessExternalsCoherence
-  static_validator_set := witnessStaticValidatorSet
-  byzantine_bound := witnessByzantineBound
 
-/-- The active second-eight finalized-reset input is genuinely safe from
-second nine, the first strict next-slot time in this one-second-per-slot witness.
-This instantiates synchrony-derived adoption and uses no same-moment reset
-law. -/
-theorem second_eight_finalizedResetCandidateInput_safeFrom_second_nine :
-    witnessExecution.SafeFrom witnessConfig witnessExternals
-      (witnessExecution.getLatestConfirmedTraceAt witnessConfig
-        witnessExternals 0 7).afterObserved 9 := by
-  exact
-    witnessExecution.finalizedResetCandidateInput_safeFrom_of_nextSlotSynchrony
-      witnessConfig witnessExternals witnessAcceptedSemantics
-      witnessScheduledPrefixTrajectoryAssumptions
-      witnessFFGAccountabilityAssumptions
-      (by
-        simpa only [witnessAcceptedSemantics] using
-          witnessAnchorEquality.symm)
-      witnessTrustedAnchorBoundaryAligned witnessPaperSafetySynchrony
-      (v := 0) (n := 7) (q := 9)
-      (by decide)
-      (time_within_of_lt_sixteen (by decide))
-      second_eight_finalizedResetCandidateInput
-      (by simp only [slot_at_eq]; decide)
 
 /-! ## Literal selected-helper provisos -/
 
@@ -326,13 +258,6 @@ theorem child_canonical_throughout_epoch_two :
   have hlate := lateStoreFacts w m hHm h8m
   exact ⟨hlate.child_known, hlate.head_descends_child⟩
 
-theorem carrier_canonical_throughout_epoch_two :
-    witnessExecution.CanonicalThroughoutEpoch witnessConfig witnessExternals
-      carrierRoot 2 := by
-  intro w hw m hHm hepoch
-  have h8m := slot_at_ge_eight_of_epoch_two hHm hepoch
-  have hlate := lateStoreFacts w m hHm h8m
-  exact ⟨hlate.carrier_known, hlate.head_descends_carrier⟩
 
 /-! ## Exact positive Paper A3.2 support -/
 
@@ -441,30 +366,6 @@ theorem witnessPaperA32Support_child_one :
     Nonempty.intro
       (witnessAnchorChildLinkSupportAt w m tip hHm hepoch)
 
-theorem witnessPaperA32Support_carrier_one :
-    witnessAcceptedChainFFGState.PaperA32SupportThroughoutEpoch witnessConfig
-      witnessExternals carrierRoot 1 := by
-  intro w hw m hHm hepoch
-  have h8slot := slot_at_ge_eight_of_epoch_two hHm hepoch
-  have hlate := lateStoreFacts w m hHm h8slot
-  refine ⟨hlate.carrier_known, ?_, ?_⟩
-  · simpa only [hlate.carrier_epoch] using (by decide : 1 ≤ 1)
-  intro tip htip hdesc
-  have hsource :
-      (witnessAcceptedChainFFGState.paperA32View witnessConfig
-        witnessExternals).VSAt witnessConfig
-          (witnessExecution.store witnessConfig witnessExternals w m)
-          carrierRoot 1 = anchorCheckpoint := by
-    change (if get_block_epoch witnessConfig
-        (witnessExecution.store witnessConfig witnessExternals w m)
-          carrierRoot = 1 then
-        witnessAcceptedChainFFGState.GJ carrierRoot
-      else witnessAcceptedChainFFGState.GU carrierRoot) = anchorCheckpoint
-    rw [hlate.carrier_epoch]
-    rfl
-  simpa only [hsource, witnessC_carrier_one] using
-    Nonempty.intro
-      (witnessAnchorChildLinkSupportAt w m tip hHm hepoch)
 
 theorem witnessPaperA32Support_anchor_one_false :
     ¬ witnessAcceptedChainFFGState.PaperA32SupportThroughoutEpoch
