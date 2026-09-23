@@ -65,12 +65,13 @@ They are not the full-rule premise bundle above.
 - Live monotonicity needs an FFG timing premise. See
   [FFG timing premise](#ffg-timing-premise).
 
-## Proposed live monotonicity premises (open)
+## Live monotonicity premises and proof
 
-`Spec_Monotonicity_live` is a proposed statement in
+`Spec_Monotonicity_live` is stated in
 `FastConfirmation/Spec/TheoremStatements.lean`. Its accepted-bundle
-specialization is `AcceptedSpec_Monotonicity_live`. No proof or audit witness
-is claimed yet. `MonotonicityLiveAssumptions` has five premises:
+specialization, `AcceptedSpec_Monotonicity_live`, is proved by
+`acceptedSpec_monotonicity_live` in `MonotonicityLiveAssemble.lean` and is the
+14th audit witness. `MonotonicityLiveAssumptions` has five premises:
 
 - `honest_block_each_slot`: every slot from the execution start through the
   interval has a block with an honest proposer index, and every honest store
@@ -92,14 +93,18 @@ is claimed yet. `MonotonicityLiveAssumptions` has five premises:
 
 The accepted trajectory already supplies honest committee participation and
 active-validator committee coverage in each in-horizon epoch. These facts are
-not repeated in the new liveness record. The live monotonicity statement
-remains open until staleness and epoch-start reconfirmation are derived from
-these execution premises.
+not repeated in the liveness record. The closed proof uses
+`honest_block_each_slot` for historical block certificates and
+`ffg_timely_justification` for the observed checkpoint at each completed epoch
+boundary. It does not use `honest_votes_extend_initial_head`,
+`paper_byzantine_boost_bound`, or `configured_threshold_margin`. Those fields
+remain in the statement and record.
 
 `MonotonicityTrace.lean` proves that the observed restart and descendant
 selector cannot lower the candidate's block slot on the known-walk domain.
-The finalized-revert phase remains the open branch; this local fact does not
-establish the live statement.
+The finalized-revert phase is discharged at actual calls in
+`MonotonicityLiveAssemble.lean`, using the cached-root epoch invariant, L1
+head ancestry, and historical reconfirmation at epoch starts.
 
 ### FFG timing premise
 
@@ -140,18 +145,20 @@ justification is equal to it; and the voting source of the previous-slot head
 is at most two epochs old. `MonotonicityLiveRestart.lean` proves that an observed
 checkpoint at or beyond the old cached root prevents a slot rollback at an
 actual accepted call. It also connects the fifth field to the actual
-next-epoch call and closes rollback for a cache from an earlier epoch. The
-cache-ahead reconfirmation case remains open. Epoch-start reconfirmation of a
+next-epoch call and closes rollback for a cache from an earlier epoch.
+`MonotonicityLiveAssemble.lean` reconfirms a cache ahead of the checkpoint,
+proves the start-call split, and composes the per-second ancestry edges.
+Epoch-start reconfirmation of a
 same-epoch cached root can use the configured bound
 `CONFIRMATION_BYZANTINE_THRESHOLD <= 25` (`Config`) with the accepted
 `span_fraction` and `estimate_sound`. The first-epoch-block full-window
 one-confirmation bound is proved in `MonotonicityLiveConfirmation.lean` under
 explicit chain support and parent-window facts. That file also proves the
 numeric growth rule for reconfirming a block across two executable stores.
-It now proves exact partial-window estimator accounting inside an accepted
+It proves exact partial-window estimator accounting inside an accepted
 full epoch and a numeric rule that charges a lost Gloas discount to moved
-child support. The actual call's support growth, adversarial budget growth,
-and discount-loss bound remain to be derived from the accepted execution.
+child support. The assembly proof supplies the actual call's support growth,
+adversarial budget growth, and discount facts for the historical chain.
 
 The accepted finite witness proves the need for prefix production:
 `descendant_votes_without_continuous_production_revert` has all honest stake,
@@ -178,11 +185,10 @@ accepted execution.
 
 Gloas status: **proved** for the payload-aware discount in
 [the spec deviation](gloas-spec-deviation.md). Full validation passes,
-including the trust audit of the 54 public witnesses. The derived
-verified-payload relay closes G2-003. `StatusMarginConstruction.lean` closes
-G2-004: it
+ including the trust audit of the 55 public witnesses. The payload envelope
+ relay closes G2-003. `StatusMarginConstruction.lean` closes G2-004: it
 constructs the pending-parent payload status margin for every selected edge.
-The public witness declaration texts are unchanged. The G3 negative result
+The original 13 public witness declaration texts are unchanged. The G3 negative result
 applies to the upstream discount rule; it is kept in the [history](#history).
 
 ## Trust and architecture
@@ -330,8 +336,8 @@ rejection. `BlockStateAgreement.lean` derives equal block states at common
 roots from the root commitment and deterministic `state_transition` function.
 The relay lemma then derives verified-payload presence. Payload persistence
 carries it through the next tick and each event prefix, so an honest index-1
-vote finds a verified payload before validation. The 54 public witness
-declaration texts are unchanged; record-dependent witness types have the new
+ vote finds a verified payload before validation. The original 54 weak-work
+ witness statement texts are unchanged; record-dependent witness types have the new
 premises.
 
 Payload availability alone does not compare FULL and EMPTY branch weights.
