@@ -1,6 +1,7 @@
 module
 public import FastConfirmation.Spec.Proof.MonotonicityLiveConfirmation
 public import FastConfirmation.Spec.Proof.MonotonicityTrace
+public import FastConfirmation.Spec.Proof.AcceptedSelectedStrictEdgeFilterSupply
 
 @[expose] public section
 
@@ -719,6 +720,52 @@ theorem AcceptedActualFCRNextSlotSafetyAssumptions.live_stale_boundary_slot_mono
   have hresult := h.confirmed_slot_ge_of_observed_catches_up cfg ext E hw
     hcall (by simpa only [hq] using hHB) hstart hepoch hhead hcatch
   simpa only [hq] using hresult
+
+/-- The trusted anchor checkpoint has the epoch of the execution's first
+slot. This also covers checkpoint-sync starts after genesis. -/
+theorem AcceptedActualFCRNextSlotSafetyAssumptions.live_anchor_checkpoint_epoch
+    (h : E.AcceptedActualFCRNextSlotSafetyAssumptions cfg ext) :
+    h.semantics.anchor.epoch =
+      compute_epoch_at_slot cfg (E.slot_at cfg 0) := by
+  obtain ⟨ast, ablk, hgenEq, _, _⟩ := h.trajectory.genesis_structure
+  have hanchor : h.semantics.anchor.epoch = get_current_epoch cfg ast := by
+    have heq := congrArg Checkpoint.epoch h.anchor_eq
+    rw [hgenEq] at heq
+    simpa only [get_forkchoice_store] using heq
+  rw [hanchor]
+  have hstate := h.anchor_epoch_eq_initial cfg ext E
+  simpa only [Execution.anchor_state, hgenEq, get_forkchoice_store,
+    Function.update_self] using hstate
+
+/-- Repaired L3 age bound. At the first boundary the finalized root may be
+the previous epoch's start block, so the bound is non-strict. -/
+theorem AcceptedActualFCRNextSlotSafetyAssumptions.live_finalized_slot_le_previous_start
+    (h : E.AcceptedActualFCRNextSlotSafetyAssumptions cfg ext)
+    (w : ValidatorIndex) (t : ℕ) (e : Epoch)
+    (he0 : compute_epoch_at_slot cfg (E.slot_at cfg 0) ≤ e)
+    (hcurrent : get_current_store_epoch cfg (E.store cfg ext w t) = e + 1) :
+    get_block_slot (E.store cfg ext w t)
+      (E.store cfg ext w t).finalized_checkpoint.root ≤
+        compute_start_slot_at_epoch cfg e := by
+  let st := E.store cfg ext w t
+  have hboundary := Execution.ExactPrefixAcceptedFFGSemantics.finalizedBoundaryRealizationAt
+    cfg ext h.semantics h.trajectory h.anchor_eq h.anchor_boundary w t
+  have hslot : get_block_slot st st.finalized_checkpoint.root ≤
+      compute_start_slot_at_epoch cfg st.finalized_checkpoint.epoch :=
+    hboundary.finalized_root_slot_le_boundary
+  have hlag := (E.acceptedFinalizationLagAt cfg ext h.semantics
+    h.trajectory h.anchor_eq h.finalization_delay w t).realized
+  have hepoch : st.finalized_checkpoint.epoch ≤ e := by
+    rcases hlag with hanchor | hdelay
+    · rw [hanchor]
+      exact (h.live_anchor_checkpoint_epoch cfg ext E).trans_le he0
+    · rw [hcurrent] at hdelay
+      dsimp only [st] at hdelay ⊢
+      have hstep : (E.store cfg ext w t).finalized_checkpoint.epoch + 1 ≤
+          (E.store cfg ext w t).finalized_checkpoint.epoch + 2 :=
+        Nat.add_le_add_left (by omega : 1 ≤ 2) _
+      exact Nat.add_le_add_iff_right.mp (hstep.trans hdelay)
+  exact hslot.trans (Nat.mul_le_mul_right cfg.slots_per_epoch hepoch)
 
 end Execution
 
