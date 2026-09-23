@@ -154,12 +154,13 @@ theorem adversarial_weight_eq_of_no_equivocations
   · have hz := Nat.eq_zero_of_not_pos hpos
     simp [hz]
 
-/-- If every recorded cell passes the duty filter, the weak and strong LMD
-scores agree on this store and block node. -/
-theorem attestation_score_eq_of_all_fresh
+/-- If every recorded supporter of this node passes the duty filter, the
+weak and strong LMD scores agree. Unrelated old cells need not be fresh. -/
+theorem attestation_score_eq_of_supporters_fresh
     (store : Store Root) (source : BeaconState Root)
     (node : ForkChoiceNode Root)
     (hfresh : ∀ i lm, store.latest_messages i = some lm →
+      is_ancestor store (get_supported_node store lm) node = true →
       Weak.is_duty_fresh_message cfg ext store i lm = true) :
     Weak.get_duty_fresh_attestation_score cfg ext store node source =
       FastConfirmation.Spec.get_attestation_score cfg store node source := by
@@ -171,21 +172,29 @@ theorem attestation_score_eq_of_all_fresh
   intro i hi
   cases hmsg : store.latest_messages i with
   | none => simp [hmsg]
-  | some lm => simp [hmsg, hfresh i lm hmsg]
+  | some lm =>
+      by_cases ha : is_ancestor store (get_supported_node store lm) node = true
+      · simp [hmsg, ha, hfresh i lm hmsg ha]
+      · have haf : is_ancestor store (get_supported_node store lm) node = false := by
+          cases h : is_ancestor store (get_supported_node store lm) node with
+          | false => rfl
+          | true => exact False.elim (ha h)
+        simp [hmsg, haf]
 
 /-- At a consecutive child, zero equivocation and duty freshness make the
 weak and strong one-block checks agree. This is the conversion needed after
 the strong numerical reconfirmation core. -/
-theorem one_confirmed_of_strong_of_no_equiv_all_fresh_consecutive
+theorem one_confirmed_of_strong_of_no_equiv_supporters_fresh_consecutive
     (store : Store Root) (source : BeaconState Root) (b : Root)
     (hno : store.equivocating_indices = ∅)
     (hfresh : ∀ i lm, store.latest_messages i = some lm →
+      is_ancestor store (get_supported_node store lm) (get_node_for_root b) = true →
       Weak.is_duty_fresh_message cfg ext store i lm = true)
     (hparent : (store.blocks (store.blocks b).parent_root).slot + 1 =
       (store.blocks b).slot)
     (hstrong : FastConfirmation.Spec.is_one_confirmed cfg ext store source b = true) :
     Weak.is_one_confirmed cfg ext store source b = true := by
-  have hscore := attestation_score_eq_of_all_fresh cfg ext store source
+  have hscore := attestation_score_eq_of_supporters_fresh cfg ext store source
     (get_node_for_root b) hfresh
   have hadv : Weak.get_adversarial_weight cfg store source b =
       FastConfirmation.Spec.get_adversarial_weight cfg ext store source b := by
@@ -206,6 +215,50 @@ theorem one_confirmed_of_strong_of_no_equiv_all_fresh_consecutive
       hstrongDiscount, hadv]
   simpa only [Weak.is_one_confirmed, FastConfirmation.Spec.is_one_confirmed,
     hscore, hthreshold] using hstrong
+
+/-- A recorded supporter cannot cast its vote before the block it
+supports. This is the slot geometry needed to apply boundary freshness. -/
+theorem supporter_vote_slot_ge_block
+    (store : Store Root) (b : Root) (lm : LatestMessage Root)
+    (hwf : ParentSlotLt store)
+    (hwalk : WalkKnown store (store.blocks b).slot lm.root)
+    (hanc : is_ancestor store (get_supported_node store lm)
+      (get_node_for_root b) = true)
+    (hmsgSlot : (store.blocks lm.root).slot ≤ lm.slot) :
+    (store.blocks b).slot ≤ lm.slot := by
+  have hancPending : is_ancestor store (get_node_for_root lm.root)
+      (get_node_for_root b) = true := by
+    simpa only [get_node_for_root, is_ancestor_supported_pending] using hanc
+  have hroot : (get_ancestor store (get_node_for_root lm.root)
+      (store.blocks b).slot).root = b := by
+    simpa only [get_node_for_root, is_ancestor_pending,
+      decide_eq_true_eq] using hancPending
+  have hslot := get_ancestor_slot_le hwf hwalk
+  change (store.blocks (get_ancestor store (get_node_for_root lm.root)
+    (store.blocks b).slot).root).slot ≤ (store.blocks lm.root).slot at hslot
+  rw [hroot] at hslot
+  exact hslot.trans hmsgSlot
+
+/-- Every recorded supporter of a block in the completed epoch is
+duty-fresh at its boundary, provided the vote was cast before that boundary. -/
+theorem boundary_supporter_is_duty_fresh
+    (store : Store Root) (e : Epoch) (b : Root)
+    (lm : LatestMessage Root) (i : ValidatorIndex)
+    (hslot : get_current_slot cfg store =
+      compute_start_slot_at_epoch cfg (e + 1))
+    (hbstart : compute_start_slot_at_epoch cfg e ≤ (store.blocks b).slot)
+    (hwf : ParentSlotLt store)
+    (hwalk : WalkKnown store (store.blocks b).slot lm.root)
+    (hanc : is_ancestor store (get_supported_node store lm)
+      (get_node_for_root b) = true)
+    (hmsgBlock : (store.blocks lm.root).slot ≤ lm.slot)
+    (hmsgPast : lm.slot < get_current_slot cfg store) :
+    Weak.is_duty_fresh_message cfg ext store i lm = true := by
+  have hlow : compute_start_slot_at_epoch cfg e ≤ lm.slot :=
+    hbstart.trans (supporter_vote_slot_ge_block store b lm
+      hwf hwalk hanc hmsgBlock)
+  exact duty_fresh_vote_slot_at_boundary cfg ext e hslot hlow
+    (hslot ▸ hmsgPast)
 
 end FastConfirmation.Spec.Weak
 

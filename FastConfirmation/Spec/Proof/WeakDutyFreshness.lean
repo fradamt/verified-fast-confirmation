@@ -89,6 +89,22 @@ theorem duty_fresh_previous_epoch_at_boundary {store : Store Root}
   apply duty_fresh_of_epoch_fresh cfg ext
   rw [hcutoff, hepoch]
 
+/-- A recorded vote cast in the completed epoch is fresh at the next
+epoch's first slot. This form uses the vote slot directly. -/
+theorem duty_fresh_vote_slot_at_boundary {store : Store Root}
+    {i : ValidatorIndex} {lm : LatestMessage Root} (e : Epoch)
+    (hslot : get_current_slot cfg store =
+      compute_start_slot_at_epoch cfg (e + 1))
+    (hlo : compute_start_slot_at_epoch cfg e ≤ lm.slot)
+    (hhi : lm.slot < compute_start_slot_at_epoch cfg (e + 1)) :
+    is_duty_fresh_message cfg ext store i lm = true := by
+  have hepoch : get_latest_message_epoch cfg lm = e := by
+    simp only [get_latest_message_epoch, compute_epoch_at_slot]
+    apply Nat.div_eq_of_lt_le
+    · simpa only [compute_start_slot_at_epoch] using hlo
+    · simpa only [compute_start_slot_at_epoch] using hhi
+  exact duty_fresh_previous_epoch_at_boundary cfg ext e hslot hepoch
+
 /-- A previous-epoch vote remains usable before its validator's next duty. -/
 theorem duty_fresh_of_no_completed_duty {store : Store Root} {i : ValidatorIndex}
     {lm : LatestMessage Root}
