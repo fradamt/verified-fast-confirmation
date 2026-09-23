@@ -18,7 +18,7 @@ The records in this table are in `FastConfirmationStatements/Premises/`. The pap
 ┌─────────────────────┬─────────────────────────────────────┬────────────────────────────────────────────────────────────────────────┬───────────────────────────────┐
 │ Claim               │ Premise record                      │ Fields in plain words                                                  │ Source                        │
 ├─────────────────────┼─────────────────────────────────────┼────────────────────────────────────────────────────────────────────────┼───────────────────────────────┤
-│ Both safety fields  │ Execution.NextSlotSafetyPremises    │ Exact FFG state at every accepted prefix; a well formed scheduled run; │ Paper Assumption 3.2; Gloas   │
+│ Both safety fields  │ Execution.NextSlotSafetyPremises    │ Exact FFG state at every handler-successful prefix; a well formed scheduled run; │ Paper Assumption 3.2; Gloas   │
 │                     │                                     │ completed FCR calls; epoch arithmetic; anchor alignment; finalization  │ extension; model idealisation │
 │                     │                                     │ delay; more than one slot per epoch; checkpoint and link evidence.     │                               │
 │ Both safety fields  │ Execution.ScheduledPrefixPremises   │ Whole seconds, well formed stores, coherent external calls, honest     │ Model idealisation            │
@@ -32,7 +32,7 @@ The records in this table are in `FastConfirmationStatements/Premises/`. The pap
 │                     │                                     │ validity, and deterministic envelope verification.                     │                               │
 │ Both safety fields  │ ByzantineWeightPremises             │ Quantized balances, sound committee estimates, and a non-honest weight │ Paper Assumption 2;           │
 │                     │                                     │ fraction bound for every slot span.                                    │ executable estimate           │
-│ Both safety fields  │ ExactPrefixAcceptedFFGSemantics;    │ Exact accepted-prefix FFG state, causal links, and projected           │ Paper Assumption 3.2; model   │
+│ Both safety fields  │ ExactPrefixAcceptedFFGSemantics;    │ Exact handler-successful prefix FFG state, causal links, and projected           │ Paper Assumption 3.2; model   │
 │                     │ AcceptedEpochCheckpointProjection   │ checkpoint roots.                                                      │ idealisation                  │
 │ Live field          │ LiveMonotonicityPremises            │ An honest block in each slot from execution start, known by the next   │ Paper Theorem 1 monotonicity  │
 │                     │                                     │ slot and supported by honest votes; timely observed FFG justification  │ and Assumption 6,             │
@@ -40,7 +40,7 @@ The records in this table are in `FastConfirmationStatements/Premises/`. The pap
 └─────────────────────┴─────────────────────────────────────┴────────────────────────────────────────────────────────────────────────┴───────────────────────────────┘
 ```
 
-`Execution.NextSlotSafetyPremises` supplies the common safety premise to the first and third fields. `LiveConfirmedRootMonotonicity` adds `LiveMonotonicityPremises` to that same execution premise. The FFG and finalization laws quantify over accepted prefixes beyond the safety endpoint where their declarations require it; the finite conclusion does not reduce their premise range.
+`Execution.NextSlotSafetyPremises` supplies the common safety premise to the first and third fields. `LiveConfirmedRootMonotonicity` adds `LiveMonotonicityPremises` to that same execution premise. The FFG and finalization laws quantify over handler-successful prefixes beyond the safety endpoint where their declarations require it; the finite conclusion does not reduce their premise range.
 
 ## Scope limits
 

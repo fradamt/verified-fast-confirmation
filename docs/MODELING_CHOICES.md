@@ -20,7 +20,7 @@ Each row states a choice in the executable or paper model, why it is used, and t
 │                                        │                                                                │ argument.                                                                │
 │ Static validator registry              │ Matches the paper balance setting over the horizon.            │ The safety theorem does not cover validator churn.                       │
 │ Finite horizon                         │ Makes endpoints and next-slot receipt precise.                 │ Conclusions do not extend beyond the checked horizon.                    │
-│ Global FFG and finalization laws       │ Connects opaque beacon transitions to exact checkpoint state.  │ The premises range over accepted prefixes beyond a conclusion endpoint.  │
+│ Global FFG and finalization laws       │ Connects opaque beacon transitions to exact checkpoint state.  │ The premises range over handler-successful prefixes beyond a conclusion endpoint.  │
 │ Guarded FCR prediction support         │ Uses the spec proviso only when the selector guard is true.    │ Real voting agreement must supply that premise.                          │
 │ Gloas payload-aware discount           │ Counts matching or PENDING parent votes in an empty slot.      │ Diverges from upstream rule; public fix at fcr-gloas-fix.                │
 │ Envelope and data relay                │ Carries verified payload state to honest receivers.            │ The finite next-slot witness has no envelope event.                      │
@@ -28,7 +28,7 @@ Each row states a choice in the executable or paper model, why it is used, and t
 │ Timely live FFG justification          │ Opens the rule restart gates at epoch boundaries.              │ Stronger than paper Assumption 6 and lacks a joint finite witness.       │
 │ Paper exact rational balances          │ Keeps the paper threshold algebra direct.                      │ Does not by itself model executable integer rounding.                    │
 │ Paper eligibility filter               │ Reuses the LMD head agreement result in HFC.                   │ The proof needs a separate never-filter premise and bridge.              │
-│ Paper AU from block-contained votes    │ Ties justification to actual ancestry evidence.                │ OnChainAnchorInterface still supplies visibility and formation laws.     │
+│ Paper AU from block-contained votes    │ Ties justification to concrete ancestry evidence.                │ OnChainAnchorInterface still supplies visibility and formation laws.     │
 │ Algorithm 1 future confirmation input  │ Discharges the later monotonicity gate.                        │ SafeConfirmedAlg1Inputs is stronger than Assumption 6.                   │
 └────────────────────────────────────────┴────────────────────────────────────────────────────────────────┴──────────────────────────────────────────────────────────────────────────┘
 ```

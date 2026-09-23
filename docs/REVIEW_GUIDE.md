@@ -24,7 +24,7 @@ This page records known limits and their current status. The exact public propos
 │                                   │ stronger than paper Assumption 6.                                                                                   │
 │ Weak live monotonicity            │ Open on the fcr-weak-synchrony branch. The weak threshold does not subtract equivocation, so a historical supporter │
 │                                   │ can disappear without a matching reduction at an epoch boundary. Duty freshness can also remove votes. No           │
-│                                   │ accepted-execution counterexample is known.                                                                         │
+│                                   │ full-premise execution counterexample is known.                                                                         │
 │ Gloas discount                    │ The public fcr-gloas-fix tag uses parent votes with matching payload status or PENDING status. The upstream         │
 │                                   │ discount can count opposite resolved status and is unsafe in the recorded source example.                           │
 └───────────────────────────────────┴─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
@@ -38,15 +38,19 @@ Paper Assumption 3.2 can allow a two-epoch FFG inclusion delay. The executable s
 
 ## Safety premise range
 
-`Execution.NextSlotSafetyPremises` contains exact accepted-prefix FFG semantics, a scheduled trajectory, completed-call premises, epoch arithmetic, anchor and checkpoint alignment, finalization delay, Assumption 3.2 support, and exact-link validity. The nested `Execution.CompletedFCRCallPremises` adds a fixed validator set, an economic span bound, Phase0 source coherence, a balance floor, a vote-delivery lookahead, and guarded FCR prediction support. None of its fields directly states the stored-root safety conclusion.
+`Execution.NextSlotSafetyPremises` contains exact handler-successful prefix FFG semantics, a scheduled trajectory, completed-call premises, epoch arithmetic, anchor and checkpoint alignment, finalization delay, Assumption 3.2 support, and exact-link validity. The nested `Execution.CompletedFCRCallPremises` adds a fixed validator set, an economic span bound, Phase0 source coherence, a balance floor, a vote-delivery lookahead, and guarded FCR prediction support. None of its fields directly states the stored-root safety conclusion.
 
-`NextSlotSynchronyPremises` has five fields: `attestation_delivery`, `block_relay`, `envelope_delivery`, `data_availability_relay`, and `attester_slashing_relay`. `Synchrony` has a separate `latest_message_relay` field. `synchrony_and_delivery_iff_nextSlot_and_latestMessageRelay` proves the relation. The global FFG and finalization premises quantify over accepted prefixes beyond a chosen safety endpoint when their declarations do. A finite endpoint restricts the conclusion, not those premise quantifiers.
+`NextSlotSynchronyPremises` has five fields: `attestation_delivery`, `block_relay`, `envelope_delivery`, `data_availability_relay`, and `attester_slashing_relay`. `Synchrony` has a separate `latest_message_relay` field. `synchrony_and_delivery_iff_nextSlot_and_latestMessageRelay` proves the relation. The global FFG and finalization premises quantify over handler-successful prefixes beyond a chosen safety endpoint when their declarations do. A finite endpoint restricts the conclusion, not those premise quantifiers.
 
 `EnvelopeDelivery` requires a receiver envelope at a schedule position where the block is already known. `DataAvailabilityRelay` requires receiver data at that observation. `BeaconExternalsPremises.verify_envelope_deterministic` makes envelope validation independent of observation for equal signed envelope and state. The model does not retry a rejected envelope. The external validation includes the execution engine's `VALID` outcome. These premises need an implementation or network argument.
 
 ## Python source and conformance
 
 The source of record is fork `fradamt/consensus-specs`, tag `fcr-gloas-fix` (`13f391516`). Branch `fcr-gloas-discount-fix` starts at upstream master `63a81afa6` and adds only the public discount fix. Branch `fcr-weak-synchrony` and tag `fcr-weak-synchrony-v1` contain the independent weak rule. The source map is [SPEC_MAP.md](SPEC_MAP.md). The local [conformance harness](conformance.md) compares projected Python and Lean FCR observations. A matching trace does not prove the opaque external contracts or all reachable executions.
+
+## Weak branch status
+
+The `fcr-weak-synchrony` branch and tag `fcr-weak-synchrony-v1` have 55 trust-audit entries: 14 earlier executable and paper witnesses plus 41 weak-side results. The two full weak safety headlines take the common top-level inputs B, hji, hanchor, hboundary, hDelay, hpaper, P, V, hW, hCbase, and hfit. The endpoint also takes hw, hnm, hnext, and hHm. The exact anchor and known-walk facts are derived inside the proof; they are not headline binders. The weak live monotonicity proposition remains open. Its equivocation-budget and duty-freshness obligations remain unresolved at epoch boundaries.
 
 ## Mechanical checks
 
