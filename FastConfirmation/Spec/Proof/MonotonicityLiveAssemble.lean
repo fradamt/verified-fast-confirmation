@@ -145,6 +145,27 @@ theorem AcceptedActualFCRNextSlotSafetyAssumptions.live_epoch_partial_estimate_d
     (no_full_coverage_inside_epoch_after_start cfg e s t hs htHi)
     ((hEpoch s hs.le hsHi).trans (hEpoch t (hs.le.trans hst) htHi).symm)
 
+/-- The future suffix is both exact and quantized when it begins after the
+first slot of the accepted epoch. -/
+theorem AcceptedActualFCRNextSlotSafetyAssumptions.live_epoch_suffix_quantized_exact
+    (h : E.AcceptedActualFCRNextSlotSafetyAssumptions cfg ext)
+    (store : Store Root) (e : Epoch)
+    (hcurrent : get_current_store_epoch cfg store = e)
+    (hcurrentH : E.SlotWithinHorizon cfg (get_current_slot cfg store))
+    (hstartH : E.SlotWithinHorizon cfg (compute_start_slot_at_epoch cfg e))
+    (hendH : E.SlotWithinHorizon cfg
+      (compute_start_slot_at_epoch cfg (e + 1) - 1))
+    (u : Slot) (huLo : compute_start_slot_at_epoch cfg e < u)
+    (huHi : u ≤ compute_start_slot_at_epoch cfg (e + 1) - 1) :
+    let z := compute_start_slot_at_epoch cfg (e + 1) - 1
+    E.weight (E.span_committee u z) =
+        estimate_committee_weight_between_slots cfg (E.total_active cfg) u z ∧
+    100 ∣ estimate_committee_weight_between_slots cfg (E.total_active cfg) u z := by
+  exact ⟨h.live_epoch_suffix_estimate_exact cfg ext E store e
+      hcurrent hcurrentH hstartH hendH u huLo huHi,
+    h.live_epoch_partial_estimate_divisible cfg ext E store e
+      hcurrent hcurrentH hstartH hendH u _ huLo huHi (Nat.le_refl _)⟩
+
 /-- A confirmed live block and its parent keep consecutive slots in every
 later store. Thus neither store charges an empty-slot support discount. -/
 theorem AcceptedActualFCRNextSlotSafetyAssumptions.live_confirmed_parent_window_later
@@ -423,6 +444,170 @@ theorem AcceptedActualFCRNextSlotSafetyAssumptions.live_historical_boundary_esti
     old e hCurrent hCurrentH hStartH hEndH u z
     (hbSlot.trans hBefore) huZ (Nat.le_refl z)
   simpa only [hOldTotal] using And.intro hOldWindow hSuffix
+
+set_option maxRecDepth 16384 in
+/-- A historical current-source certificate for a post-start cached-chain
+block survives the next boundary's previous-source check. -/
+theorem AcceptedActualFCRNextSlotSafetyAssumptions.live_historical_block_reconfirmed
+    (h : E.AcceptedActualFCRNextSlotSafetyAssumptions cfg ext)
+    {observer : ValidatorIndex} {n m : ℕ}
+    (live : MonotonicityLiveAssumptions cfg ext E observer n m)
+    {w : ValidatorIndex} (hw : w ∈ E.honest) (e : Epoch)
+    {q T : ℕ} (hqT : q < T) (hTm : T + 1 ≤ m)
+    (hHq1 : E.WithinHorizon cfg (q + 1))
+    (hHT1 : E.WithinHorizon cfg (T + 1))
+    (hT : E.slot_at cfg T < compute_start_slot_at_epoch cfg (e + 1))
+    (hboundary : E.slot_at cfg (T + 1) =
+      compute_start_slot_at_epoch cfg (e + 1))
+    (hstart : is_start_slot_at_epoch cfg
+      (get_current_slot cfg (E.store cfg ext w (T + 1))) = true)
+    {b : Root} (hb : b ∈ (E.store cfg ext w (q + 1)).block_roots)
+    (hp : ((E.store cfg ext w (q + 1)).blocks b).parent_root ∈
+      (E.store cfg ext w (q + 1)).block_roots)
+    (hbEpoch : get_block_epoch cfg (E.store cfg ext w (q + 1)) b = e)
+    (hbSlot : compute_start_slot_at_epoch cfg e <
+      ((E.store cfg ext w (q + 1)).blocks b).slot)
+    (hs0 : E.slot_at cfg 0 <
+      ((E.store cfg ext w (q + 1)).blocks b).slot)
+    (hconf : is_one_confirmed cfg ext (E.fcrStep cfg ext w q).store
+      (get_current_balance_source (E.fcrStep cfg ext w q)) b = true) :
+    is_one_confirmed cfg ext (E.store cfg ext w (T + 1))
+      (get_previous_balance_source (E.fcrStep cfg ext w T)) b = true := by
+  let old := E.store cfg ext w (q + 1)
+  let later := E.store cfg ext w (T + 1)
+  let oldSource := get_current_balance_source (E.fcrStep cfg ext w q)
+  let newSource := get_previous_balance_source (E.fcrStep cfg ext w T)
+  let a := (old.blocks b).slot
+  let u := E.slot_at cfg (q + 1)
+  let z := compute_start_slot_at_epoch cfg (e + 1) - 1
+  let added := estimate_committee_weight_between_slots cfg (E.total_active cfg) u z
+  let HS := (E.span_committee u z).filter fun i => i ∈ E.honest
+  have hqLater : q + 1 ≤ T + 1 :=
+    (Nat.succ_le_of_lt hqT).trans (Nat.le_succ T)
+  have hqm : q + 1 ≤ m := hqLater.trans hTm
+  have hBefore : a < u := h.live_one_confirmed_slot_before_call
+    cfg ext E hw hHq1 hb hp hconf
+  have huZ : u ≤ z :=
+    (E.slot_at_mono cfg (Nat.succ_le_of_lt hqT)).trans
+      (Nat.le_sub_one_of_lt hT)
+  have hUhi : u < compute_start_slot_at_epoch cfg (e + 1) :=
+    (E.slot_at_mono cfg (Nat.succ_le_of_lt hqT)).trans_lt hT
+  have hsm : a < E.slot_at cfg m :=
+    hBefore.trans_le (E.slot_at_mono cfg hqm)
+  have hCurrent : get_current_store_epoch cfg old = e := by
+    have hlo : e ≤ compute_epoch_at_slot cfg u := by
+      apply (Nat.le_div_iff_mul_le cfg.slots_per_epoch_pos).2
+      simpa only [compute_start_slot_at_epoch, compute_epoch_at_slot] using
+        (hbSlot.le.trans hBefore.le)
+    have hhi : compute_epoch_at_slot cfg u < e + 1 := by
+      apply (Nat.div_lt_iff_lt_mul cfg.slots_per_epoch_pos).2
+      simpa only [compute_start_slot_at_epoch, compute_epoch_at_slot] using hUhi
+    rw [get_current_store_epoch, E.store_current_slot]
+    exact Nat.le_antisymm (Nat.lt_succ_iff.mp hhi) hlo
+  have hCurrentH : E.SlotWithinHorizon cfg (get_current_slot cfg old) := by
+    rw [E.store_current_slot]
+    exact E.slotWithinHorizon_of_le cfg (Nat.le_refl u) hHq1
+  have hStartH : E.SlotWithinHorizon cfg (compute_start_slot_at_epoch cfg e) :=
+    E.slotWithinHorizon_mono cfg (hbSlot.le.trans hBefore.le)
+      (E.slotWithinHorizon_of_le cfg (Nat.le_refl u) hHq1)
+  have hEndH : E.SlotWithinHorizon cfg z := by
+    apply E.slotWithinHorizon_of_le cfg _ hHT1
+    rw [hboundary]
+    exact Nat.sub_le _ _
+  have hAinH : E.SlotWithinHorizon cfg a :=
+    E.slotWithinHorizon_mono cfg hBefore.le
+      (E.slotWithinHorizon_of_le cfg (Nat.le_refl u) hHq1)
+  have hOldEndH : E.SlotWithinHorizon cfg (u - 1) :=
+    E.slotWithinHorizon_mono cfg (Nat.sub_le u 1)
+      (E.slotWithinHorizon_of_le cfg (Nat.le_refl u) hHq1)
+  obtain ⟨hvalOld, hvalNew, hOldH, hNewH, htabOld, htabNew⟩ :=
+    h.live_historical_boundary_sources cfg ext E hw e hqT hHq1 hHT1
+      hT hstart hb hbSlot hconf
+  obtain ⟨hParentOld, hslotLater, hParentLater, hDiscount⟩ :=
+    h.live_confirmed_parent_window_later cfg ext E live hw
+      hHq1 hqm hqLater hb hp hconf hs0 hsm
+  obtain ⟨hStartOld, hStartLater⟩ :=
+    h.live_confirmed_window_start_later cfg ext E live hw
+      hHq1 hqm hqLater hb hp hconf hs0 hsm
+      e hbEpoch hbSlot
+  have hsupport : ∀ j ∈ E.honest, ∀ t kt att,
+      a ≤ t → t < E.slot_at cfg (T + 1) →
+      E.vote j t = some (kt, att) →
+        b ∈ (E.store cfg ext j kt).block_roots ∧
+        is_ancestor (E.store cfg ext j kt)
+          (get_node_for_root att.data.beacon_block_root)
+          (get_node_for_root b) = true := by
+    have hLive := h.live_one_confirmed_supports_live_votes cfg ext E
+      live hw hHq1 hqm hb hp hconf hs0.le hsm
+    intro j hj t kt att hat ht hVote
+    exact hLive j hj t kt att hat
+      (ht.trans_le (E.slot_at_mono cfg hTm)) hVote
+  have hOldConf : is_one_confirmed cfg ext old oldSource b = true := by
+    simpa only [old, oldSource, E.fcrStep_store] using hconf
+  have hGrowth := h.live_historical_boundary_estimate_growth cfg ext E
+    hw e hqT hHq1 hHT1 hT hstart hb hp hbSlot hconf
+  have hEstimate : estimate_committee_weight_between_slots cfg
+      (get_total_active_balance cfg newSource) a
+      (get_current_slot cfg later - 1) =
+        estimate_committee_weight_between_slots cfg
+          (get_total_active_balance cfg oldSource) a
+          (get_current_slot cfg old - 1) + added := by
+    simpa only [old, later, oldSource, newSource, added,
+      E.store_current_slot, hboundary] using hGrowth
+  obtain ⟨hOldDiv, hAddedDiv⟩ :=
+    h.live_historical_boundary_estimate_divisors cfg ext E
+      hw e hqT hHq1 hHT1 hT hboundary hstart hb hp hbSlot hconf
+  have hSuffix := h.live_epoch_suffix_quantized_exact cfg ext E
+    old e hCurrent hCurrentH hStartH hEndH u
+    (hbSlot.trans hBefore) huZ
+  have hHonestSpan := h.live_boundary_added_honest_span cfg ext E
+    hHT1 hboundary u a (hbSlot.le.trans hBefore.le) huZ hBefore.le
+  have hHS : ∀ i ∈ HS, i ∈ E.honest ∧
+      ∃ t : Slot, E.SlotWithinHorizon cfg t ∧
+        a ≤ t ∧ get_current_slot cfg (E.store cfg ext w (q + 1)) ≤ t ∧
+        t < E.slot_at cfg (T + 1) ∧
+        t < compute_start_slot_at_epoch cfg (e + 1) ∧
+        i ∈ E.committee t ∧ E.slot_start cfg (t + 1) ≤ T + 1 := by
+    intro i hi
+    obtain ⟨hih, t, htH, hat, hut, htB, htU, hit, hdel⟩ := hHonestSpan.1 i hi
+    exact ⟨hih, t, htH, hat, by rw [E.store_current_slot]; exact hut,
+      htB, htU, hit, hdel⟩
+  have hHonest : 3 * added ≤ 4 * E.weight HS := by
+    simpa only [added, hSuffix.1] using hHonestSpan.2
+  have hWindow : estimate_committee_weight_between_slots cfg
+      (get_total_active_balance cfg newSource)
+      ((later.blocks (later.blocks b).parent_root).slot + 1)
+      (get_current_slot cfg later - 1) ≤
+        estimate_committee_weight_between_slots cfg
+          (get_total_active_balance cfg oldSource)
+          ((old.blocks (old.blocks b).parent_root).slot + 1)
+          (get_current_slot cfg old - 1) + added := by
+    rw [hParentOld, hParentLater, hslotLater]
+    exact hEstimate.le
+  have hOldDiscount := (hDiscount oldSource).1
+  have hNewDiscount := (hDiscount newSource).2
+  have hsa : a ≤ ((E.store cfg ext w (q + 1)).blocks b).slot := Nat.le_refl _
+  have hOldEndHActual : E.SlotWithinHorizon cfg
+      (get_current_slot cfg old - 1) := by
+    simpa only [old, E.store_current_slot] using hOldEndH
+  have hNewEndHActual : E.SlotWithinHorizon cfg
+      (get_current_slot cfg later - 1) := by
+    simpa only [later, E.store_current_slot, hboundary] using hEndH
+  have hOldDivActual : 100 ∣ estimate_committee_weight_between_slots cfg
+      (get_total_active_balance cfg oldSource) a
+      (get_current_slot cfg old - 1) := by
+    simpa only [old, a, oldSource, E.store_current_slot] using hOldDiv
+  exact h.live_boundary_reconfirm_of_window cfg ext E
+    (w := w) (n := q + 1) (m := T + 1) (e := e) (b := b) (s := a)
+    hw hqLater
+    hHq1 hHT1 hCurrent hboundary hb hbEpoch hAinH hs0.le
+    hsupport oldSource newSource hvalOld hvalNew hOldH hNewH
+    htabOld htabNew hOldConf hOldDiscount hNewDiscount a added
+    hsa hAinH hOldEndHActual hNewEndHActual
+    (by simpa only [E.store_current_slot, hboundary] using
+      (Nat.sub_le u 1).trans huZ)
+    hStartOld hStartLater hEstimate hOldDivActual hAddedDiv hWindow
+    HS hHS hHonest
 
 end Execution
 
