@@ -45,6 +45,98 @@ Companion to `FastConfirmation/Spec/Model/WeakSynchrony.lean`. Source
 discussion: the Ethlabs working note "Weakening the synchrony assumptions of
 FCR" (September 2026).
 
+## Gloas payload status — 23 September 2026
+
+The merge of `main` brings the Gloas fork-choice nodes into the weak model.
+A block node is PENDING; its payload children are FULL and EMPTY. A vote
+from a slot after the block slot supports FULL or EMPTY, as its payload bit
+sets.
+
+### Payload-aware duty-fresh discount
+
+The weak empty-slot discount of a block `c` with parent `a` counts only
+the parent votes that agree with the payload status that `c` requires:
+
+```lean
+Weak.get_duty_fresh_parent_payload_support_between_slots cfg ext store bs
+  block.parent_root (get_parent_payload_status store block)
+  (parent_block.slot + 1) (block.slot - 1)
+```
+
+A counted cell must satisfy all of these conditions:
+
+- its root is `a`;
+- it is duty-fresh (rule delta 3);
+- its validator is not in `store.equivocating_indices`;
+- `get_supported_node` of the cell selects the payload status of `a` that
+  `c` requires.
+
+A parent vote for the opposite payload status is not discounted. It stays
+in the weight that opposes `c`. The Python twin is branch
+`fcr-weak-synchrony-gloas` in `consensus-specs-weak`, commit `4a6b336ec`.
+
+`Weak.has_broadcast_certificate` returns `false` when the current slot is
+zero. This matches Python commit `353eb0dc4`, where `current_slot - 1`
+would be out of range for `Slot`. The guard can only make the rule stricter.
+
+### Weak G2-004: the pending parent selects the status of `c`
+
+At an edge `a → c` that an arbitrary weak observer confirms, each later
+honest endpoint must select the payload status that `c` requires at the
+pending node of `a` (`PendingStatusMargin`). The proof is in
+`FastConfirmation/Spec/Proof/WeakStatusMarginConstruction.lean`:
+
+```text
+┌──────────────────────────────────────────────────────┬──────────────────────────────┐
+│ Declaration                                          │ Content                      │
+├──────────────────────────────────────────────────────┼──────────────────────────────┤
+│ support_discount_le_fresh_parent_payload_stuck_      │ discount ≤ honest matching   │
+│   of_prefix                                          │ fresh parent support         │
+│ endpoint_opposite_not_freshParentPayloadStuck        │ an old honest opposite voter │
+│                                                      │ does not fund the discount   │
+│ endpoint_opposite_honest_classification_at_observer  │ honest opposite supporters:  │
+│                                                      │ Xclass, or Aclass \ discount │
+│ endpoint_status_strip_lo_at_observer                 │ strip with debt O            │
+│ statusMargin_loWindow_at_observer                    │ direct-window, same-epoch    │
+│ statusMargin_crossing_at_observer                    │ both crossing regimes        │
+└──────────────────────────────────────────────────────┴──────────────────────────────┘
+```
+
+The call sites are in `WeakCoveredMarginConstruction.lean`
+(`selectedCoveredMarginSupplyAt_of_filterSupply_at_observer`).
+
+The proof follows the strong construction (`StatusMarginConstruction.lean`)
+with these changes:
+
+1. All classes are read at the honest endpoint `(w, m)`. The observer
+   supplies only its recorded cells.
+2. An honest endpoint supporter of the opposite status of `a` is in
+   `Xclass(W, lo, σ)`, or it is an old voter in `Aclass(W, lo, es)`. For an
+   old voter, the observer cell is duty-fresh, so its epoch dominates each
+   completed duty (`epoch_le_of_duty_fresh_cell`). The honest endpoint has
+   the recorded-epoch bound (`windowRecordedEpochMax_at_query_minimal`).
+   `old_window_latest_messages_agree` then gives the same message at both
+   stores. That message selects the opposite status, so it is not in
+   `FreshParentPayloadStuck`. This replaces the strong argument, which uses
+   an honest query owner.
+3. The confirmation strip keeps the debt
+   `O = w(Aclass(W, lo, es) \ FreshParentPayloadStuck)`. The discount is at
+   most `w(FreshParentPayloadStuck)`.
+4. The crossing arms use `reanchored_endpoint_of_fullSpan_certificate_opp`
+   with `eqSub = eqExtra = 0`. The weak budget has no equivocation
+   subtraction, so both crossing regimes use one construction.
+5. FULL availability comes from `Execution.full_parent_payload_verified`
+   (`required_parent_status_mem_pending_minimal`), as on `main`.
+
+### Premises
+
+The weak bundle carries one new premise from `main`:
+`PaperSafetySynchrony.payload_envelope_relay`, through
+`SelectedMarginAssumptions.synchrony`. The weak G2-004 proof adds no
+premise. It uses `WeakObserverAssumptions.validity` (observer provenance),
+the observer committee readback, and `PostAnchorHonestVoteTargetWalkDomain`
+at the honest endpoint. All three were already in the weak premise surface.
+
 ## Current carrier rule — 21 September 2026
 
 The current implementation uses the newest certified ancestor of the actual
