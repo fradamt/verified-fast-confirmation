@@ -440,6 +440,57 @@ theorem no_full_coverage_inside_epoch_after_start
     Nat.not_lt_of_ge (Nat.div_le_div_right hle)
   simpa [is_full_validator_set_covered, compute_epoch_at_slot] using hnot
 
+/-- The coverage test is false when the inclusive range ends before the
+first possible end of a complete epoch beginning at its start. -/
+theorem no_full_coverage_of_short_range (a b : Slot)
+    (hshort : b + 1 ≤ a + (cfg.slots_per_epoch - 1)) :
+    is_full_validator_set_covered cfg a b = false := by
+  have hnot : ¬ ((a + (cfg.slots_per_epoch - 1)) / cfg.slots_per_epoch <
+      (b + 1) / cfg.slots_per_epoch) :=
+    Nat.not_lt_of_ge (Nat.div_le_div_right hshort)
+  simpa [is_full_validator_set_covered, compute_epoch_at_slot] using hnot
+
+/-- An old window and its added suffix split exactly when both lie after
+the same epoch's first slot. -/
+theorem estimate_growth_inside_epoch_after_start
+    (tab : Gwei) (e : Epoch) (a u v : Slot)
+    (ha : compute_start_slot_at_epoch cfg e < a)
+    (hau : a ≤ u) (huv : u + 1 ≤ v)
+    (hv : v < compute_start_slot_at_epoch cfg (e + 1)) :
+    estimate_committee_weight_between_slots cfg tab a v =
+      estimate_committee_weight_between_slots cfg tab a u +
+        estimate_committee_weight_between_slots cfg tab (u + 1) v := by
+  have hepoch : ∀ x : Slot,
+      compute_start_slot_at_epoch cfg e ≤ x →
+      x < compute_start_slot_at_epoch cfg (e + 1) →
+      compute_epoch_at_slot cfg x = e := by
+    intro x hlo hhi
+    have hge : e ≤ compute_epoch_at_slot cfg x := by
+      apply (Nat.le_div_iff_mul_le cfg.slots_per_epoch_pos).2
+      simpa only [compute_start_slot_at_epoch, compute_epoch_at_slot] using hlo
+    have hlt : compute_epoch_at_slot cfg x < e + 1 := by
+      apply (Nat.div_lt_iff_lt_mul cfg.slots_per_epoch_pos).2
+      simpa only [compute_start_slot_at_epoch, compute_epoch_at_slot] using hhi
+    exact Nat.le_antisymm (Nat.lt_succ_iff.mp hlt) hge
+  have haHi : a < compute_start_slot_at_epoch cfg (e + 1) :=
+    (hau.trans (Nat.le_of_succ_le huv)).trans_lt hv
+  have huHi : u < compute_start_slot_at_epoch cfg (e + 1) :=
+    (Nat.lt_of_succ_le huv).trans_le hv.le
+  have hu1Lo : compute_start_slot_at_epoch cfg e < u + 1 :=
+    ha.trans_le (hau.trans (Nat.le_succ u))
+  have hu1Hi : u + 1 < compute_start_slot_at_epoch cfg (e + 1) :=
+    huv.trans_lt hv
+  have hvLo : compute_start_slot_at_epoch cfg e ≤ v :=
+    hu1Lo.le.trans huv
+  exact estimate_additive cfg tab a u v hau huv
+    (no_full_coverage_inside_epoch_after_start cfg e a v ha hv)
+    (no_full_coverage_inside_epoch_after_start cfg e a u ha huHi)
+    (no_full_coverage_inside_epoch_after_start cfg e (u + 1) v hu1Lo hv)
+    (by rw [hepoch a ha.le haHi, hepoch v hvLo hv])
+    (by rw [hepoch a ha.le haHi, hepoch u (ha.le.trans hau) huHi])
+    (by rw [hepoch (u + 1) hu1Lo.le hu1Hi,
+      hepoch v hvLo hv])
+
 /-- Integer reconfirmation margin with equivocation-neutral support loss. -/
 theorem reconfirm_margin_persists_with_equivocation_loss
     {score window boost adversarial added honestAdded lost
