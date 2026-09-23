@@ -5,6 +5,7 @@ public import FastConfirmation.Spec.Proof.FilterViability
 public import FastConfirmation.Spec.Proof.FCRCallContracts
 public import FastConfirmation.Spec.TheoremStatements
 
+public import FastConfirmation.Spec.Statements.Premises.Execution
 @[expose] public section
 
 /-!
@@ -55,16 +56,6 @@ honest node's fork-choice head.
 at cutoff slot `k`*; `spec_head_safety_engine` produces it for **every** `k`, so
 `SafeFrom` is the `∀ k` collapse — instantiate `k := E.slot_at cfg m` at each
 endpoint second `m`. -/
-
-/-- **The trajectory predicate.** From second `n` on, the safe block `b` is an
-ancestor of every honest node's fork-choice head. This is `EngineInv` with the
-cutoff-slot cap removed (`∀ k` folded in), retaining the pinned executable
-spec's current-moment claim. -/
-def SafeFrom (b : Root) (n : ℕ) : Prop :=
-  ∀ w ∈ E.honest, ∀ m : ℕ, n ≤ m →
-    E.WithinHorizon cfg m →
-    is_ancestor (E.store cfg ext w m) (get_head cfg (E.store cfg ext w m))
-      (get_node_for_root b) = true
 
 /-- **`EngineInv` (all cutoffs) ⟹ `SafeFrom`.** Each endpoint second `m` sits at
 cutoff slot `E.slot_at cfg m`; the engine invariant at that cutoff, applied with

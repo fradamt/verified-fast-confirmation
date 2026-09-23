@@ -2,6 +2,7 @@ module
 public import FastConfirmation.Spec.Proof.CausalQueryEvidence
 public import FastConfirmation.Spec.Proof.SelectedMarginConstruction
 
+public import FastConfirmation.Spec.Statements.Premises.Execution
 @[expose] public section
 
 /-!
@@ -107,22 +108,6 @@ theorem ScheduledEventPrefix.current_slot (p : E.ScheduledEventPrefix) :
     Execution.slot_at]
 
 /-! ## Mechanical trajectory evidence at a scheduled prefix -/
-
-/-- The exact trajectory assumptions used to replay store-local invariants to
-an in-second prefix. These are the operational fields of
-`SelectedMarginAssumptions`, with an explicit anchor commitment. No Byzantine
-estimate, selected-margin domain, or head conclusion is included. -/
-structure ScheduledPrefixTrajectoryAssumptions : Prop where
-  whole_seconds : 1000 ∣ cfg.slot_duration_ms
-  wellFormed : WellFormedExecution E
-  externals_coherence : ExternalsCoherence cfg ext E
-  honest_behavior : HonestBehavior cfg ext E
-  genesis : ∃ (anchorState : BeaconState Root)
-      (anchorBlock : SignedBeaconBlock Root),
-    E.genesis_store = get_forkchoice_store cfg anchorState anchorBlock ∧
-      anchorState.slot = anchorBlock.message.slot ∧
-      ext.AnchorCommitsToState anchorBlock.message anchorState ∧
-      anchorBlock.message.parent_root ≠ anchorBlock.root
 
 /-- Structural initialization facts used by store invariant proofs. The
 anchor commitment remains a separate conjunct of `genesis`. -/

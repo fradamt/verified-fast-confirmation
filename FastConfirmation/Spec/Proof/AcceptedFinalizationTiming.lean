@@ -3,6 +3,7 @@ public import Mathlib.Tactic
 public import FastConfirmation.Spec.Proof.AcceptedResetCheckpointClassification
 public import FastConfirmation.Spec.Proof.AcceptedScheduledPrefixGeometry
 
+public import FastConfirmation.Spec.Statements.Premises.Execution
 @[expose] public section
 
 /-!
@@ -234,22 +235,6 @@ theorem acceptedPulledUpFinalized_succ_le_blockEpoch
         _ = compute_epoch_at_slot cfg a.data.slot := hevidence.target_epoch
     rw [hchildEpoch]
     exact ce_mono cfg (Nat.le_of_lt hattestationBeforeTip)
-
-/-- Faithful primitive at the opaque beacon-state transition boundary.
-
-For an actual accepted block, its realized finalized checkpoint (`GF`) is
-either the checkpoint-sync anchor or at least two epochs behind the block.
-This is exactly the reachable-post-state consequence of Phase0's
-process-epoch-before-slot-increment order which is erased by the abstract
-`state_transition` field. -/
-def AcceptedRealizedFinalizationDelay
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E) : Prop :=
-  ∀ t : E.AcceptedBlockTransition cfg ext,
-    let finalized :=
-      (t.postStore.block_states t.signedBlock.root).finalized_checkpoint
-    finalized = B.anchor ∨
-      finalized.epoch + 2 ≤
-        compute_epoch_at_slot cfg t.signedBlock.message.slot
 
 /-! ## The paired store invariant -/
 

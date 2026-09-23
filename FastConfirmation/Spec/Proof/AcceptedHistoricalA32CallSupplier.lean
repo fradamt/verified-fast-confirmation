@@ -1,6 +1,7 @@
 module
 public import FastConfirmation.Spec.Proof.AcceptedHistoricalA32Induction
 
+public import FastConfirmation.Spec.Statements.Premises.Trajectory
 @[expose] public section
 
 /-!
@@ -318,36 +319,6 @@ theorem completedPrefix_currentTargetEpochEnd_within
   exact Nat.le_of_lt hendLt
 
 /-! ## Irreducible call-supply assumptions -/
-
-/-- Primitive bundle left after replaying the completed scheduled prefix.
-
-The first five fields are direct protocol/model contracts.  `balance_floor`
-excludes the executable helper's artificial empty-active-set minimum-balance
-branch. `delivery_lookahead` is the paper-synchrony boundary closure for
-honest votes created inside the prefix. `helper_provisos` is the literal
-normative proviso from the FCR specification, required only when the outer
-evaluator's descendant-selector guard is true.
-
-Everything else needed by the accepted target gate--causal replay, current
-slot, latest-message provenance, non-equivocation, committee accounting,
-pulled-up registry and total balance, target geometry, anchor horizon, and
-current-epoch-end horizon--is derived in this module or upstream. -/
-structure AcceptedHistoricalA32CompletedPrefixCallAssumptions : Prop where
-  synchrony : PaperSafetySynchrony cfg ext E
-  static_validators : StaticValidatorSet cfg E
-  byzantine_bound : ByzantineBound cfg E
-  phase0_source : Phase0SourceCoherence cfg ext
-  phase0_boundary_source : Phase0BoundarySourceCoherence cfg ext
-  balance_floor : cfg.effective_balance_increment ≤
-    E.weight (E.currentTargetAnchorActive cfg)
-  delivery_lookahead : HorizonVoteDeliveryLookahead cfg E
-  helper_provisos : ∀ v ∈ E.honest, ∀ n : ℕ,
-    E.IsFCRCallAt cfg ext v n → E.WithinHorizon cfg (n + 1) →
-      getLatestSelectorGuard cfg (E.fcrStep cfg ext v n)
-          (E.getLatestConfirmedTraceAt cfg ext v n).afterObserved →
-        SelectedHelperProvisosAt cfg ext E v (n + 1)
-          (E.fcrStep cfg ext v n)
-          (E.getLatestConfirmedTraceAt cfg ext v n).afterObserved
 
 /-- At one actual boundary call, the completed scheduled prefix supplies the
 accepted current-target gate producer.  The producer remains conditional on

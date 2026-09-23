@@ -3,6 +3,7 @@ public import FastConfirmation.Spec.Proof.SelectedTraceCoverage
 public import FastConfirmation.Spec.Proof.SelectedEdgeGeometry
 public import FastConfirmation.Spec.Proof.SelectedFilterChainGeometry
 
+public import FastConfirmation.Spec.Statements.Premises.Trajectory
 @[expose] public section
 
 /-!
@@ -25,38 +26,6 @@ namespace FastConfirmation.Spec
 
 variable {Root : Type*} [LinearOrder Root] [Inhabited Root]
 variable (cfg : Config) (ext : Externals Root)
-
-/-- Normative support provisos for prediction helpers actually used by one
-selector call.  Epoch-start short-circuit paths carry no no-conflict proviso,
-because that helper need not be evaluated there. -/
-structure SelectedHelperProvisosAt (E : Execution Root)
-    (v : ValidatorIndex) (q : ℕ)
-    (fcrStore : FastConfirmationStore Root)
-    (latestConfirmedRoot : Root) : Prop where
-  current_target : ∀ a c : Root,
-    CurrentTargetAcceptedEdge cfg ext fcrStore latestConfirmedRoot a c →
-    HonestVotesSupportTarget cfg E
-      (get_current_target cfg fcrStore.store) q
-  no_conflict : ∀ a c : Root,
-    PreviousAcceptedEdge cfg ext fcrStore latestConfirmedRoot a c →
-    is_start_slot_at_epoch cfg
-      (get_current_slot cfg fcrStore.store) ≠ true →
-    HonestVotesSupportTarget cfg E
-      (get_current_target cfg fcrStore.store) q
-  /-- The final tentative stage can return a previous-epoch result even when
-  that result is not a retained previous-loop edge.  In a non-start slot the
-  wrapper's final guard still used the same no-conflict helper, so its
-  normative support proviso must be indexed by the selected result as well as
-  by previous-loop edges. -/
-  selected_previous_result_no_conflict : ∀ result : Root,
-    find_latest_confirmed_descendant cfg ext fcrStore latestConfirmedRoot = result →
-    result ≠ latestConfirmedRoot →
-    get_block_epoch cfg fcrStore.store result ≠
-      get_current_store_epoch cfg fcrStore.store →
-    is_start_slot_at_epoch cfg
-      (get_current_slot cfg fcrStore.store) ≠ true →
-    HonestVotesSupportTarget cfg E
-      (get_current_target cfg fcrStore.store) q
 
 /-- Every retained tentative edge passed confirmation through the current
 observed checkpoint, so at an actual execution query that checkpoint is keyed.

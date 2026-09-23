@@ -4,6 +4,7 @@ public import FastConfirmation.Spec.Proof.FFGAccountability
 public import FastConfirmation.Spec.Proof.FilterViability
 public import FastConfirmation.Spec.Proof.FilterFuelMonotonicity
 
+public import FastConfirmation.Spec.Statements.Traces
 @[expose] public section
 
 /-!
@@ -40,41 +41,6 @@ variable {Root : Type*} [LinearOrder Root] [Inhabited Root]
 variable (cfg : Config) (ext : Externals Root)
 
 /-! ## Exact ghost traces of the two executable loops -/
-
-/-- Ghost-instrumented previous-epoch loop.  The edge list is oldest to newest
-and contains exactly the accumulator transitions that the executable loop
-took. -/
-def prevEpochLoopTrace (fcrStore : FastConfirmationStore Root) (currentEpoch : Epoch) :
-    List Root → Root → Root × List (Root × Root)
-  | [], acc => (acc, [])
-  | b :: rest, acc =>
-      if get_block_epoch cfg fcrStore.store b = currentEpoch then
-        (acc, [])
-      else if ¬ is_ancestor fcrStore.store
-          (get_node_for_root fcrStore.previous_slot_head) (get_node_for_root b) then
-        (acc, [])
-      else if ¬ is_one_confirmed cfg ext fcrStore.store
-          (get_current_balance_source fcrStore) b then
-        (acc, [])
-      else
-        let tail := prevEpochLoopTrace fcrStore currentEpoch rest b
-        (tail.1, (acc, b) :: tail.2)
-
-/-- Ghost-instrumented tentative loop. -/
-def tentativeLoopTrace (fcrStore : FastConfirmationStore Root) :
-    List Root → Root → Root × List (Root × Root)
-  | [], acc => (acc, [])
-  | b :: rest, acc =>
-      if get_block_epoch cfg fcrStore.store b >
-          get_block_epoch cfg fcrStore.store acc ∧
-          ¬ will_current_target_be_justified cfg ext fcrStore.store then
-        (acc, [])
-      else if ¬ is_one_confirmed cfg ext fcrStore.store
-          (get_current_balance_source fcrStore) b then
-        (acc, [])
-      else
-        let tail := tentativeLoopTrace fcrStore rest b
-        (tail.1, (acc, b) :: tail.2)
 
 /-- Erasing the previous-epoch ghost edge list gives the executable loop. -/
 theorem prevEpochLoopTrace_fst (fcrStore : FastConfirmationStore Root)

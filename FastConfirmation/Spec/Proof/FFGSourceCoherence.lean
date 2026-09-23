@@ -5,6 +5,7 @@ public import FastConfirmation.Spec.Proof.FFGStateTrajectory
 public import FastConfirmation.Spec.Proof.Preservation
 public import FastConfirmation.Spec.Proof.BlockAgreement
 
+public import FastConfirmation.Spec.Statements.Premises.FFG
 @[expose] public section
 
 /-!
@@ -52,33 +53,6 @@ variable {Root : Type*} [LinearOrder Root] [Inhabited Root]
 variable {cfg : Config} {ext : Externals Root}
 
 /-! ## The missing phase0 semantic contract -/
-
-/-- The narrow phase0 fact hidden by the two opaque state functions.
-
-`process_slots` invokes epoch processing only when it crosses an epoch
-boundary.  Likewise, the state transition's block-processing phase does not
-alter `current_justified_checkpoint`; that field can change only in the
-empty-slot/epoch processing preceding the block.  Consequently both
-operations preserve the checkpoint when their input and target slots are in
-the same epoch.
-
-This record is intentionally independent of an `Execution` and of all FCR
-selection/safety statements. -/
-structure Phase0SourceCoherence (cfg : Config) (ext : Externals Root) : Prop where
-  process_slots_current_justified :
-    ∀ (st : BeaconState Root) (target : Slot),
-      st.slot < target →
-      compute_epoch_at_slot cfg st.slot = compute_epoch_at_slot cfg target →
-      (ext.process_slots st target).current_justified_checkpoint =
-        st.current_justified_checkpoint
-  state_transition_current_justified :
-    ∀ (pre : BeaconState Root) (sb : SignedBeaconBlock Root)
-      (post : BeaconState Root),
-      ext.state_transition pre sb = some post →
-      compute_epoch_at_slot cfg pre.slot =
-        compute_epoch_at_slot cfg sb.message.slot →
-      post.current_justified_checkpoint =
-        pre.current_justified_checkpoint
 
 /-! ## The erased block-state transition history -/
 

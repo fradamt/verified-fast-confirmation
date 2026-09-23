@@ -1,6 +1,7 @@
 module
 public import FastConfirmation.Spec.Proof.CurrentTargetSupportAccounting
 
+public import FastConfirmation.Spec.Statements.Premises.Execution
 @[expose] public section
 
 /-!
@@ -55,12 +56,6 @@ def currentTargetObservedNonhonestSupporters
     (store : Store Root) (state : BeaconState Root) : Finset ValidatorIndex :=
   ((CurrentTargetSupporters cfg store state).filter
     (fun i => i ∉ E.honest)).toFinset
-
-/-- Active validator set whose sum appears under the minimum-balance floor in
-`E.total_active`. -/
-def currentTargetAnchorActive : Finset ValidatorIndex :=
-  (get_active_validator_indices E.anchor_state
-    (get_current_epoch cfg E.anchor_state)).toFinset
 
 omit [LinearOrder Root] [Inhabited Root] in
 /-- A slot between the canonical first and last slots of epoch `e` has epoch
