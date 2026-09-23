@@ -1224,6 +1224,32 @@ theorem AcceptedActualFCRNextSlotSafetyAssumptions.live_balance_source_accountin
   have hboost := compute_proposer_score_congr cfg hval hact
   exact ⟨htotal, hboost⟩
 
+/-- A checkpoint state already cached at an accepted call has the same
+committee total and proposer score as the anchor. Thus a historical current
+source and the next boundary's previous source need not be identical states
+for the numerical reconfirmation argument. -/
+theorem AcceptedActualFCRNextSlotSafetyAssumptions.live_cached_source_accounting
+    (h : E.AcceptedActualFCRNextSlotSafetyAssumptions cfg ext)
+    {w : ValidatorIndex} (hw : w ∈ E.honest) {t : ℕ}
+    (hHt : E.WithinHorizon cfg t) {cp : Checkpoint Root}
+    (hkey : cp ∈ (E.store cfg ext w t).checkpoint_state_keys) :
+    get_total_active_balance cfg
+        ((E.store cfg ext w t).checkpoint_states cp) = E.total_active cfg ∧
+      compute_proposer_score cfg
+        ((E.store cfg ext w t).checkpoint_states cp) =
+        compute_proposer_score cfg E.anchor_state := by
+  obtain ⟨ast, ablk, hgenEq, _, _⟩ := h.trajectory.genesis_structure
+  have hgen : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
+      E.genesis_store = get_forkchoice_store cfg ast ablk :=
+    ⟨ast, ablk, hgenEq⟩
+  have htotal := E.checkpoint_states_total_active_balance cfg ext
+    h.completed_calls.static_validators
+    h.trajectory.externals_coherence w hw t cp hkey hHt
+    (hdiv := h.trajectory.whole_seconds) (hgen := hgen)
+  refine ⟨htotal, ?_⟩
+  simp only [compute_proposer_score]
+  rw [htotal]
+
 /-- With a nondegenerate active balance, the live margin's non-honest
 weight is exactly the complement of the honest anchor active set. -/
 theorem AcceptedActualFCRNextSlotSafetyAssumptions.anchor_honest_weight_partition
