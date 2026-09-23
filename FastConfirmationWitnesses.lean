@@ -1,0 +1,11 @@
+module
+public import FastConfirmationWitnesses.Counterexamples.PinnedEconomicsExtraQuery
+public import FastConfirmationWitnesses.Counterexamples.StrictPrefixExtraQuery
+public import FastConfirmationWitnesses.NonVacuity.FFGEvidence
+public import FastConfirmationWitnesses.NonVacuity.NextSlotPremises
+public import FastConfirmationWitnesses.NonVacuity.ScheduledRun
+public import FastConfirmationWitnesses.Weak.CompleteEvidenceWitness
+public import FastConfirmationWitnesses.Weak.Containment
+public import FastConfirmationWitnesses.Weak.WeakReplayRelation
+
+/-! Contents of the Witnesses library. -/

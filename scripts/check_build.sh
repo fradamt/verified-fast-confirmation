@@ -13,6 +13,7 @@ cleanup() {
 trap cleanup EXIT
 
 cd "$repo_root"
+build_start=$SECONDS
 set +e
 lake --no-ansi build 2>&1 | tee "$build_log"
 pipeline_status=("${PIPESTATUS[@]}")
@@ -40,4 +41,4 @@ fi
 if ((build_status != 0)); then
   exit "$build_status"
 fi
-echo "Lean build passed without proof placeholders"
+echo "Lean build passed without proof placeholders (wall $((SECONDS - build_start))s)"

@@ -1,7 +1,7 @@
 import Lean.Data.Json
-import FastConfirmation.Spec.Model
-import FastConfirmation.Spec.Model.WeakSynchrony
-import FastConfirmation.Spec.Model.StrongReference
+import FastConfirmationModel
+import FastConfirmationModel.Weak.WeakSynchrony
+import FastConfirmationModel.Weak.StrongReference
 
 
 namespace FastConfirmation.Conformance

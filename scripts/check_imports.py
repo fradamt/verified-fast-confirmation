@@ -1,191 +1,129 @@
 #!/usr/bin/env python3
-"""Check facade reachability using the pinned Lean parser's import graph."""
+"""Check the six-library import order with Lean's parsed dependency graph."""
 
 from __future__ import annotations
 
 import json
+import re
 import subprocess
 import sys
 from pathlib import Path
 
-
 ROOT = Path(__file__).resolve().parents[1]
-LEAN_ROOT = ROOT / "FastConfirmation.lean"
-LEAN_TREE = ROOT / "FastConfirmation"
+SPEC = tuple("FastConfirmation" + name for name in
+             ("Model", "Statements", "Internal", "Proofs", "Witnesses"))
+PAPER = "FastConfirmationPaper"
+LIBRARIES = (*SPEC, PAPER)
 
 
-class ImportAuditError(RuntimeError):
-    pass
+def owner(module: str) -> str | None:
+    return next((lib for lib in LIBRARIES
+                 if module == lib or module.startswith(lib + ".")), None)
 
 
-def project_lean_paths() -> list[Path]:
-    if LEAN_ROOT.is_symlink() or LEAN_TREE.is_symlink():
-        raise ImportAuditError("refusing symlinked project root")
-    if not LEAN_ROOT.is_file() or not LEAN_TREE.is_dir():
-        raise ImportAuditError("project Lean roots are missing or have the wrong type")
-    for entry in LEAN_TREE.rglob("*"):
-        if entry.is_symlink():
-            raise ImportAuditError(f"refusing symlink in project source tree: {entry}")
-    return [LEAN_ROOT, *sorted(LEAN_TREE.rglob("*.lean"))]
-
-
-def module_for(path: Path) -> str:
-    return ".".join(path.relative_to(ROOT).with_suffix("").parts)
-
-
-def lean_imports(paths: list[Path]) -> list[set[str]]:
-    relative_paths = [str(path.relative_to(ROOT)) for path in paths]
-    try:
-        result = subprocess.run(
-            ["lean", "--deps-json", *relative_paths],
-            cwd=ROOT,
-            check=False,
-            capture_output=True,
-            text=True,
-            timeout=30,
-        )
-    except (OSError, subprocess.TimeoutExpired) as exc:
-        raise ImportAuditError(f"could not run pinned Lean import parser: {exc}") from exc
-    if result.returncode != 0:
-        raise ImportAuditError(
-            "Lean import parser failed"
-            + (f":\n{result.stderr.strip()}" if result.stderr.strip() else "")
-        )
-    try:
-        payload = json.loads(result.stdout)
-        parsed = payload["imports"]
-    except (json.JSONDecodeError, KeyError, TypeError) as exc:
-        raise ImportAuditError("Lean import parser returned malformed JSON") from exc
-    if len(parsed) != len(paths):
-        raise ImportAuditError(
-            f"Lean parsed {len(parsed)} headers for {len(paths)} source files"
-        )
-
-    imports: list[set[str]] = []
-    for path, entry in zip(paths, parsed, strict=True):
-        errors = entry.get("errors")
-        result_payload = entry.get("result")
-        if errors or not isinstance(result_payload, dict):
-            raise ImportAuditError(
-                f"{path.relative_to(ROOT)}: Lean rejected the module header: {errors!r}"
-            )
-        declarations = result_payload.get("imports")
-        if not isinstance(declarations, list):
-            raise ImportAuditError(
-                f"{path.relative_to(ROOT)}: Lean returned no import list"
-            )
-        names: set[str] = set()
-        for declaration in declarations:
-            name = declaration.get("module") if isinstance(declaration, dict) else None
-            if not isinstance(name, str):
-                raise ImportAuditError(
-                    f"{path.relative_to(ROOT)}: malformed Lean import entry"
-                )
-            names.add(name)
-        imports.append(names)
-    return imports
-
-
-def reachable(start: str, graph: dict[str, set[str]]) -> set[str]:
+def closure(start: str, graph: dict[str, set[str]]) -> set[str]:
     seen: set[str] = set()
     pending = [start]
     while pending:
-        module = pending.pop()
-        if module in seen:
-            continue
-        seen.add(module)
-        pending.extend(sorted(graph.get(module, set()) - seen))
+        current = pending.pop()
+        if current not in seen:
+            seen.add(current)
+            pending.extend(graph.get(current, set()) - seen)
     return seen
+
+
+def audit() -> tuple[int, list[str]]:
+    paths = [ROOT / "FastConfirmation.lean"]
+    for lib in LIBRARIES:
+        paths.append(ROOT / f"{lib}.lean")
+        folder = ROOT / lib
+        if not folder.is_dir() or folder.is_symlink():
+            raise RuntimeError(f"missing or symlinked library folder: {folder}")
+        paths.extend(sorted(folder.rglob("*.lean")))
+    if any(not path.is_file() or path.is_symlink() for path in paths):
+        raise RuntimeError("missing or symlinked project module")
+    modules = {".".join(path.relative_to(ROOT).with_suffix("").parts): path
+               for path in paths}
+    if len(modules) != len(paths):
+        raise RuntimeError("duplicate module path")
+    relative = [str(path.relative_to(ROOT)) for path in paths]
+    parsed = subprocess.run(["lean", "--deps-json", *relative], cwd=ROOT,
+                            capture_output=True, text=True, timeout=60)
+    if parsed.returncode:
+        raise RuntimeError(f"Lean import parser failed: {parsed.stderr.strip()}")
+    entries = json.loads(parsed.stdout)["imports"]
+    if len(entries) != len(paths):
+        raise RuntimeError("Lean returned an incomplete import graph")
+    graph: dict[str, set[str]] = {}
+    failures: list[str] = []
+    for module, entry in zip(modules, entries, strict=True):
+        if entry.get("errors") or not isinstance(entry.get("result"), dict):
+            raise RuntimeError(f"{module}: Lean rejected the import header: {entry.get('errors')}")
+        declarations = entry["result"].get("imports")
+        if not isinstance(declarations, list):
+            raise RuntimeError(f"{module}: Lean returned no imports")
+        imports = {row["module"] for row in declarations
+                   if row["module"].startswith("FastConfirmation")}
+        missing = imports - modules.keys()
+        if missing:
+            failures.append(f"{module}: missing local imports {sorted(missing)}")
+        graph[module] = imports & modules.keys()
+        if module == "FastConfirmation":
+            continue
+        source = owner(module)
+        if source is None:
+            failures.append(f"{module}: outside the six libraries")
+        for dep in sorted(imports):
+            target = owner(dep)
+            if target is None:
+                failures.append(f"{module}: unknown project import {dep}")
+            elif source == PAPER and target != PAPER:
+                failures.append(f"{module}: Paper imports Spec side {dep}")
+            elif source != PAPER and target == PAPER:
+                failures.append(f"{module}: Spec side imports Paper {dep}")
+            elif source in SPEC and target in SPEC and SPEC.index(target) > SPEC.index(source):
+                failures.append(f"{module}: reverse library import {dep}")
+    if graph["FastConfirmation"] != set(LIBRARIES):
+        failures.append("root aggregate must import exactly the six library roots")
+    for lib in LIBRARIES:
+        owned = {module for module in modules if owner(module) == lib}
+        orphaned = owned - closure(lib, graph)
+        if orphaned:
+            failures.append(f"{lib}: orphan modules {sorted(orphaned)}")
+    orphaned = modules.keys() - closure("FastConfirmation", graph)
+    if orphaned:
+        failures.append(f"root aggregate orphan modules {sorted(orphaned)}")
+    theorem_pattern = re.compile(
+        r"^[ \t]*(?:@\[[^\n]*\][ \t]*)*"
+        r"(?:(?:private|protected|public|noncomputable|partial|unsafe)[ \t]+)*"
+        r"(?:theorem|lemma)\s+([\w'.₀-₉]+)", re.M)
+    allowed = {
+        ("FastConfirmationModel.Execution.ScheduledPrefixes", "processedCount_lt"),
+        ("FastConfirmationStatements.Traces", "getLatestTraceResult_eq_getLatestConfirmed"),
+    }
+    found: set[tuple[str, str]] = set()
+    for module, path in modules.items():
+        if owner(module) not in SPEC[:2]:
+            continue
+        for match in theorem_pattern.finditer(path.read_text()):
+            pair = (module, match.group(1))
+            found.add(pair)
+            if pair not in allowed:
+                failures.append(f"{module}: theorem in Model or Statements: {pair[1]}")
+    if found & allowed != allowed:
+        failures.append(f"missing required proof terms: {sorted(allowed - found)}")
+    return len(modules), failures
 
 
 def main() -> int:
     try:
-        paths = project_lean_paths()
-        modules = {module_for(path): path for path in paths}
-        if len(modules) != len(paths):
-            raise ImportAuditError("duplicate module path")
-
-        parsed_imports = lean_imports(paths)
-        graph: dict[str, set[str]] = {}
-        failures: list[str] = []
-        for (module, _), imports in zip(modules.items(), parsed_imports, strict=True):
-            local_imports = {
-                name for name in imports if name.startswith("FastConfirmation")
-            }
-            missing = sorted(local_imports - modules.keys())
-            if missing:
-                failures.append(f"{module}: missing local imports {missing}")
-            graph[module] = local_imports & modules.keys()
-
-        expected_roots = {
-            "FastConfirmation",
-            "FastConfirmation.Spec",
-            "FastConfirmation.Paper",
-        }
-        if not expected_roots <= modules.keys():
-            raise ImportAuditError(
-                f"missing facade modules: {sorted(expected_roots - modules.keys())}"
-            )
-        spec_modules = {
-            name
-            for name in modules
-            if name == "FastConfirmation.Spec"
-            or name.startswith("FastConfirmation.Spec.")
-        }
-        paper_modules = {
-            name
-            for name in modules
-            if name == "FastConfirmation.Paper"
-            or name.startswith("FastConfirmation.Paper.")
-        }
-        unclassified = sorted(
-            modules.keys() - spec_modules - paper_modules - {"FastConfirmation"}
-        )
-        if unclassified:
-            failures.append(f"modules outside Spec/Paper architecture: {unclassified}")
-
-        spec_reachable = reachable("FastConfirmation.Spec", graph)
-        paper_reachable = reachable("FastConfirmation.Paper", graph)
-        root_reachable = reachable("FastConfirmation", graph)
-        spec_unreachable = sorted(spec_modules - spec_reachable)
-        paper_unreachable = sorted(paper_modules - paper_reachable)
-        root_unreachable = sorted(modules.keys() - root_reachable)
-        if spec_unreachable:
-            failures.append(f"Spec facade orphan modules: {spec_unreachable}")
-        if paper_unreachable:
-            failures.append(f"Paper facade orphan modules: {paper_unreachable}")
-        if root_unreachable:
-            failures.append(f"repository facade orphan modules: {root_unreachable}")
-
-        spec_cross = sorted(spec_reachable & paper_modules)
-        paper_cross = sorted(paper_reachable & spec_modules)
-        if spec_cross:
-            failures.append(
-                f"Spec facade transitively imports Paper modules: {spec_cross}"
-            )
-        if paper_cross:
-            failures.append(
-                f"Paper facade transitively imports Spec modules: {paper_cross}"
-            )
-        if graph["FastConfirmation"] != {
-            "FastConfirmation.Spec",
-            "FastConfirmation.Paper",
-        }:
-            failures.append(
-                "FastConfirmation.lean must directly compose exactly the Spec "
-                "and Paper facades"
-            )
+        count, failures = audit()
         if failures:
-            raise ImportAuditError("\n".join(failures))
-    except ImportAuditError as exc:
+            raise RuntimeError("\n".join(failures))
+    except (RuntimeError, OSError, ValueError, KeyError, subprocess.TimeoutExpired) as exc:
         print(f"import architecture audit failed:\n{exc}", file=sys.stderr)
         return 1
-
-    print(
-        "import architecture audit passed: "
-        f"{len(spec_modules)} Spec, {len(paper_modules)} Paper, "
-        f"{len(modules)} total modules"
-    )
+    print(f"import architecture audit passed: {count} modules, six libraries")
     return 0
 
 
