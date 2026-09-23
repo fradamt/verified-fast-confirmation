@@ -10,6 +10,7 @@ public import FastConfirmation.Spec.Proof.MonotonicityLiveGates
 public import FastConfirmation.Spec.Proof.MonotonicityLiveBridge
 public import FastConfirmation.Spec.Proof.MonotonicityLiveConfirmation
 public import FastConfirmation.Spec.Proof.MonotonicityLiveRestart
+public import FastConfirmation.Spec.Proof.MonotonicityLiveAssemble
 public import FastConfirmation.Spec.Proof.MonotonicityLiveHeadCounterexample
 public import FastConfirmation.Spec.Proof.MonotonicityLiveFinalizationCounterexample
 public import FastConfirmation.Spec.Proof.AcceptedStrictPrefixExtraQueryCounterexample

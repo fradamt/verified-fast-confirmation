@@ -2705,6 +2705,66 @@ theorem AcceptedActualFCRNextSlotSafetyAssumptions.live_confirmed_source_geometr
     h.live_cached_source_geometry cfg ext E hw hHm hkeyNew
   exact ⟨hvalOld, hvalNew, hOldH, hNewH, htabOld, htabNew⟩
 
+/-- A one-confirmed known block at an actual call has an honest recorded
+supporter from an earlier slot, so its slot precedes the call slot. -/
+theorem AcceptedActualFCRNextSlotSafetyAssumptions.live_one_confirmed_slot_before_call
+    (h : E.AcceptedActualFCRNextSlotSafetyAssumptions cfg ext)
+    {w : ValidatorIndex} (hw : w ∈ E.honest) {q : ℕ}
+    (hHq1 : E.WithinHorizon cfg (q + 1))
+    {b : Root} (hb : b ∈ (E.store cfg ext w (q + 1)).block_roots)
+    (hp : ((E.store cfg ext w (q + 1)).blocks b).parent_root ∈
+      (E.store cfg ext w (q + 1)).block_roots)
+    (hconf : is_one_confirmed cfg ext (E.fcrStep cfg ext w q).store
+      (get_current_balance_source (E.fcrStep cfg ext w q)) b = true) :
+    get_block_slot (E.store cfg ext w (q + 1)) b < E.slot_at cfg (q + 1) := by
+  let st := E.store cfg ext w (q + 1)
+  let hA := h.live_selected_margin cfg ext E
+  obtain ⟨i, lm, hi, hlm, hancB⟩ :=
+    E.honestSupporter_of_confirmed_known_at_minimal cfg ext hA
+      w hw (q + 1) (E.fcrStep cfg ext w q)
+      (E.fcrStep_store cfg ext w q) b hHq1 hb hp hconf
+  obtain ⟨ast, ablk, hgenEq, _, _⟩ := h.trajectory.genesis_structure
+  have hgen : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
+      E.genesis_store = get_forkchoice_store cfg ast ablk :=
+    ⟨ast, ablk, hgenEq⟩
+  obtain ⟨u, k, a, hvote, hlmSlot, huEnd⟩ :=
+    E.latest_message_has_honest_vote_before_endpoint cfg ext
+      h.trajectory.wellFormed h.trajectory.honest_behavior
+      h.trajectory.externals_coherence hgen hi hw hHq1 hlm
+  have hprov : LatestMessageProvenance E cfg (get_current_slot cfg st) st := by
+    rw [E.store_current_slot cfg ext w (q + 1)]
+    exact E.latestMessageProvenance cfg ext h.trajectory.wellFormed
+      h.trajectory.externals_coherence hgen w (q + 1) hw hHq1
+  obtain ⟨aProv, _, _, _, _, _, _, hlmKnown, hlmRootSlot, hmsgSlot⟩ :=
+    hprov i lm hlm
+  have hwf : ParentSlotLt st :=
+    E.store_parentSlotLt cfg ext h.trajectory.wellFormed
+      h.trajectory.externals_coherence h.trajectory.genesis_structure
+      h.trajectory.wellFormed.anchor_parent_unscheduled w (q + 1)
+  have hwalk : WalkKnown st (st.blocks b).slot lm.root :=
+    E.store_walkKnownK cfg ext h.trajectory.wellFormed
+      h.trajectory.externals_coherence h.trajectory.genesis_structure
+      w (q + 1) b hb lm.root hlmKnown
+  have hancB' : (get_ancestor st (get_node_for_root lm.root)
+      (st.blocks b).slot).root = b := by
+    have hanc : is_ancestor st (get_node_for_root lm.root)
+        (get_node_for_root b) = true := by
+      simpa only [st, get_node_for_root, is_ancestor_supported_pending]
+        using hancB
+    simpa only [get_node_for_root, is_ancestor_pending,
+      decide_eq_true_eq] using hanc
+  have hslot := get_ancestor_slot_le hwf hwalk
+  change (st.blocks (get_ancestor st (get_node_for_root lm.root)
+    (st.blocks b).slot).root).slot ≤ (st.blocks lm.root).slot at hslot
+  rw [hancB'] at hslot
+  have huEq : lm.slot = u := by simpa only [hlmSlot]
+  calc
+    get_block_slot st b ≤ (st.blocks lm.root).slot := hslot
+    _ ≤ aProv.data.slot := hlmRootSlot
+    _ = lm.slot := hmsgSlot.symm
+    _ = u := huEq
+    _ < E.slot_at cfg (q + 1) := huEnd
+
 end Execution
 
 end FastConfirmation.Spec
