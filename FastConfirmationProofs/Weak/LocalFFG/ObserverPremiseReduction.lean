@@ -454,6 +454,19 @@ def nonhonest_byzantineBound
   rw [hh, hspan, hweight, hweight] at h
   exact h
 
+/-- Operational prefix laws hold on the actual execution. They do not need
+the old selected-margin domain or the global FFG interpretation. -/
+def nonhonest_scheduledPrefix
+    (hobs : obs ∉ E.honest)
+    (core : E.WeakObserverRestrictedCore cfg ext obs)
+    (localInputs : E.ObserverLocalInputs cfg ext obs) :
+    E.ScheduledPrefixPremises cfg ext where
+  whole_seconds := core.base.whole_seconds
+  wellFormed := localInputs.wellFormed cfg ext core.base.wellFormed
+  externals_coherence := nonhonest_externals hobs core
+  honest_behavior := nonhonest_honestBehavior hobs core localInputs
+  genesis := core.genesis
+
 end
 end Execution
 end FastConfirmation.Spec
