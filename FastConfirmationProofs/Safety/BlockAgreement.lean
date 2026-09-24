@@ -423,6 +423,69 @@ theorem get_ancestor_congr_status {s t : Store Root}
     exact get_ancestor_aux_congr_status hagree hw status _
 
 omit [Inhabited Root] in
+/-- An ancestor walk needs agreement only on its own roots. A receiver that
+knows the head has its parent walk locally; other source-store forks need not
+be present at the receiver. -/
+theorem get_ancestor_aux_congr_common_walk {s t : Store Root}
+    (hagree : ∀ x, x ∈ s.block_roots → x ∈ t.block_roots →
+      s.blocks x = t.blocks x)
+    {slot : Slot} {r : Root}
+    (hs : WalkKnown s slot r) (ht : WalkKnown t slot r) :
+    ∀ (status : PayloadStatus) (fuel : ℕ),
+      get_ancestor_aux s slot fuel (ForkChoiceNode.mk r status) =
+        get_ancestor_aux t slot fuel (ForkChoiceNode.mk r status) := by
+  induction hs generalizing t with
+  | @stop r hr hle =>
+    intro status fuel
+    have hblock := hagree r hr ht.root_mem
+    cases fuel with
+    | zero => rfl
+    | succ f =>
+      simp only [get_ancestor_aux]
+      rw [if_neg (by simpa using hle), if_neg (by rw [← hblock]; simpa using hle)]
+  | @step r hr hgt hp ih =>
+    intro status fuel
+    have hblock := hagree r hr ht.root_mem
+    cases ht with
+    | stop hrt hle =>
+      rw [← hblock] at hle
+      exact False.elim ((Nat.not_lt_of_ge hle) hgt)
+    | step hrt hgtT hpT =>
+      cases fuel with
+      | zero => rfl
+      | succ f =>
+        simp only [get_ancestor_aux]
+        rw [if_pos (by simpa using hgt),
+          if_pos (by rw [← hblock]; simpa using hgt), ← hblock]
+        have hparentBlock :
+            s.blocks (s.blocks r).parent_root =
+              t.blocks (s.blocks r).parent_root := by
+          apply hagree _ hp.root_mem
+          rw [hblock]
+          exact hpT.root_mem
+        have hstatus : get_parent_payload_status s (s.blocks r) =
+            get_parent_payload_status t (s.blocks r) := by
+          simp only [get_parent_payload_status, hparentBlock]
+        rw [← hstatus]
+        have hpT' : WalkKnown t slot (s.blocks r).parent_root := by
+          rw [hblock]
+          exact hpT
+        exact ih hagree hpT' _ f
+
+omit [Inhabited Root] in
+/-- Complete ancestor transport along a head known in both stores. -/
+theorem get_ancestor_congr_common_walk {s t : Store Root}
+    (hagree : ∀ x, x ∈ s.block_roots → x ∈ t.block_roots →
+      s.blocks x = t.blocks x)
+    {slot : Slot} {r : Root}
+    (hs : WalkKnown s slot r) (ht : WalkKnown t slot r) :
+    get_ancestor s (ForkChoiceNode.mk r .pending) slot =
+      get_ancestor t (ForkChoiceNode.mk r .pending) slot := by
+  simp only [get_ancestor]
+  rw [hagree r hs.root_mem ht.root_mem]
+  exact get_ancestor_aux_congr_common_walk hagree hs ht .pending _
+
+omit [Inhabited Root] in
 /-- Pending-node wrapper for stores that agree on every known block. -/
 theorem get_ancestor_congr {s t : Store Root}
     (hagree : ∀ x ∈ s.block_roots, s.blocks x = t.blocks x)

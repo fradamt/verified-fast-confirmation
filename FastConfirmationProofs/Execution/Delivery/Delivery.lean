@@ -709,42 +709,42 @@ theorem foldl_get_current_slot (l : List (Event Root)) (s : Store Root) :
 
 omit [Inhabited Root] in
 /-- **Conjunct transport.** `validate_on_attestation` holds at any store `P` that
-extends the honest voter's source store `S` on the block set (`hsub`), agrees
-with it on `S`-known blocks (`hagree`), and reads the delivery slot on its clock
+knows the vote head and target and agrees on the head block and its target
+checkpoint walk, and reads the delivery slot on its clock
 (`hcur : get_current_slot P = a.data.slot + 1`), given the source-store facts:
 the target/head blocks are `S`-known (`hbbr`/`htroot`), the head block is not in
 the future (`hbslot`), the LMD/FFG-consistency equation holds at `S` (`hckpt`)
 on a `S`-known walk (`hwalk`), and the store-independent epoch match (`hepoch`).
-The known-block checks ride on `hsub`; the not-future and `get_checkpoint_block`
-checks transport by `hagree` (`get_ancestor_congr`); the epoch-window and gate
+The known-block checks are explicit; the not-future and `get_checkpoint_block`
+checks use the two narrow equality premises; the epoch-window and gate
 are pure `Clock` arithmetic. Index shape and the same-slot rule come from the
 source. Index-one payload verification is required directly at `P`; block
 extension does not imply payload delivery. -/
 theorem validate_at_extension (S P : Store Root) (a : Attestation Root)
-    (hagree : ∀ x ∈ S.block_roots, S.blocks x = P.blocks x)
-    (hsub : S.block_roots ⊆ P.block_roots)
+    (hheadP : a.data.beacon_block_root ∈ P.block_roots)
+    (htargetP : a.data.target.root ∈ P.block_roots)
+    (hheadBlock : S.blocks a.data.beacon_block_root =
+      P.blocks a.data.beacon_block_root)
+    (hcheckpoint : get_checkpoint_block cfg S a.data.beacon_block_root
+      a.data.target.epoch =
+      get_checkpoint_block cfg P a.data.beacon_block_root a.data.target.epoch)
     (hcur : get_current_slot cfg P = a.data.slot + 1)
     (hepoch : a.data.target.epoch = compute_epoch_at_slot cfg a.data.slot)
-    (hbbr : a.data.beacon_block_root ∈ S.block_roots)
-    (htroot : a.data.target.root ∈ S.block_roots)
     (hbslot : (S.blocks a.data.beacon_block_root).slot ≤ a.data.slot)
     (hckpt : a.data.target.root =
       get_checkpoint_block cfg S a.data.beacon_block_root a.data.target.epoch)
-    (hwalk : WalkKnown S (compute_start_slot_at_epoch cfg a.data.target.epoch)
-      a.data.beacon_block_root)
     (hindex : a.data.index = 0 ∨ a.data.index = 1)
     (hsame : (S.blocks a.data.beacon_block_root).slot = a.data.slot → a.data.index = 0)
     (hpayload : a.data.index = 1 → is_payload_verified P a.data.beacon_block_root = true) :
     validate_on_attestation cfg P a false = true := by
   refine validate_on_attestation_of_facts cfg P a
     (validate_target_epoch_of_current_succ cfg P a hcur hepoch) hepoch
-    (hsub htroot) (hsub hbbr) ?_ ?_ hcur.ge hindex ?_ hpayload
-  · rw [← hagree _ hbbr]; exact hbslot
-  · rw [hckpt]; simp only [get_checkpoint_block]
-    rw [get_ancestor_congr hagree hbbr hwalk]
+    htargetP hheadP ?_ ?_ hcur.ge hindex ?_ hpayload
+  · rw [← hheadBlock]; exact hbslot
+  · rw [hckpt, hcheckpoint]
   · intro h
     apply hsame
-    rw [hagree _ hbbr]
+    rw [hheadBlock]
     exact h
 
 /-! ## The application-second effect and ubiquity (`Delivery` parts 3–4)
@@ -947,7 +947,10 @@ theorem Execution.vote_lands {E : Execution Root}
         true :=
     validate_at_extension cfg (E.store cfg ext v n)
       (pre.foldl (fun store event => (apply_event cfg ext store event).getD store) tb) a
-      hagree hsub hcur_P hepoch hhead_known htroot hbslot hckpt hhead_walk
+      (hsub hhead_known) (hsub htroot) (hagree _ hhead_known)
+      (by simp only [get_checkpoint_block]
+          rw [get_ancestor_congr hagree hhead_known hhead_walk])
+      hcur_P hepoch hbslot hckpt
       hindex hsame hpayload_P
   have hvalid : ext.is_valid_indexed_attestation
       ((store_target_checkpoint_state cfg ext

@@ -482,8 +482,11 @@ theorem honestVoteTarget_cached_at_delivery
     validate_at_extension cfg (E.store cfg ext v n)
       (pre.foldl
         (fun store event => (apply_event cfg ext store event).getD store)
-        ticked) a hagree hroots hprefixSlot htargetEpoch hheadKnown
-      htargetRoot hbeaconSlot htargetCheckpoint hheadWalk hindex hsame hpayload
+        ticked) a (hroots hheadKnown) (hroots htargetRoot)
+      (hagree _ hheadKnown)
+      (by simp only [get_checkpoint_block]
+          rw [get_ancestor_congr hagree hheadKnown hheadWalk])
+      hprefixSlot htargetEpoch hbeaconSlot htargetCheckpoint hindex hsame hpayload
   have hindexedValid : ext.is_valid_indexed_attestation
       ((store_target_checkpoint_state cfg ext
         (pre.foldl
