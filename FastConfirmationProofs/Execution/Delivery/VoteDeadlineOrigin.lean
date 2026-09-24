@@ -1,9 +1,11 @@
 module
 public import FastConfirmationStatements.Premises.Synchrony
+public import FastConfirmationStatements.Traces
+public import FastConfirmationProofs.Checkpoints.SlotClock
 
 @[expose] public section
 
-/-! Honest vote roots have a source observation no later than the attestation deadline. -/
+/-! Honest vote and scheduled FCR call roots have source observations by the attestation deadline. -/
 
 namespace FastConfirmation.Spec
 
@@ -29,6 +31,41 @@ theorem honest_vote_root_before_deadline
   refine ⟨n, ?_, ?_, hroot⟩
   · exact (hhb.vote_deadline v hv s n a hvote).1
   · exact (hhb.vote_deadline v hv s n a hvote).2
+
+/-- A scheduled FCR call that advances a slot reads the new slot at its
+first whole second. This is the earlier cutoff origin for roots already in
+that call's store. -/
+theorem scheduled_fcr_call_at_slot_start
+    (hdiv : 1000 ∣ cfg.slot_duration_ms)
+    (hgen : E.genesis_store.genesis_time ≤ E.genesis_store.time)
+    {v : ValidatorIndex} {n : ℕ}
+    (hcall : E.IsScheduledFCRCallAt cfg ext v n) :
+    E.slot_start cfg (E.slot_at cfg (n + 1)) = n + 1 := by
+  have hslot : E.slot_at cfg n < E.slot_at cfg (n + 1) := by
+    simpa only [Execution.IsScheduledFCRCallAt,
+      E.store_current_slot cfg ext v (n + 1),
+      E.store_current_slot cfg ext v n] using hcall
+  have hbefore := (E.slot_at_lt_iff cfg hdiv hgen).mp hslot
+  have hstart := E.slot_start_le_of_slot_at cfg hdiv hgen
+    (show E.slot_at cfg (n + 1) = E.slot_at cfg (n + 1) from rfl)
+  omega
+
+/-- A root known at a scheduled call's new-slot second has a source
+observation at or before that slot's attestation deadline. -/
+theorem scheduled_fcr_call_root_before_deadline
+    (hdiv : 1000 ∣ cfg.slot_duration_ms)
+    (hgen : E.genesis_store.genesis_time ≤ E.genesis_store.time)
+    {v : ValidatorIndex} {n : ℕ} {r : Root}
+    (hcall : E.IsScheduledFCRCallAt cfg ext v n)
+    (hroot : r ∈ (E.store cfg ext v (n + 1)).block_roots) :
+    ∃ origin : ℕ,
+      origin = n + 1 ∧
+      origin ≤ E.slot_start cfg (E.slot_at cfg origin) +
+        get_attestation_due_ms cfg / 1000 ∧
+      r ∈ (E.store cfg ext v origin).block_roots := by
+  refine ⟨n + 1, rfl, ?_, hroot⟩
+  rw [E.scheduled_fcr_call_at_slot_start cfg ext hdiv hgen hcall]
+  omega
 
 /-- Under the paper's strict millisecond bound, the last whole-second vote
 time is strictly before the next slot boundary. This holds for a positive

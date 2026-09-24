@@ -1,6 +1,7 @@
 module
 public import Mathlib.Tactic
 public import FastConfirmationProofs.Execution.Delivery.EarlyPhaseSourceDelivery
+public import FastConfirmationProofs.Execution.Delivery.VoteDeadlineOrigin
 public import FastConfirmationProofs.ForkChoice.Filter.QueryFilterViability
 
 public import FastConfirmationProofs.ModelFacts
@@ -388,10 +389,10 @@ theorem StrictSelectedResultMechanicalFacts.fcrStep_previous_endpointRecentSourc
         hselectedM h.result_known hselectedM
         (is_ancestor_refl _ _) hclock hsameEpoch hrecent
 
-/-- Actual `fcrStoreAtCall` current/next cell.  Epoch-start exclusion is derived from
-the narrow honest past-descendant witness.  The strict epoch gap itself gives
-the `Synchrony.block_relay` clock gate for every query seed, so neither
-selected-root nor seed endpoint knownness is a premise. -/
+/-- Actual `fcrStoreAtCall` current/next cell. Epoch-start exclusion is derived
+from the narrow honest past-descendant witness. The one Lemma-13 seed is
+transported to the endpoint; its selected ancestor follows from the accepted
+parent chain there. -/
 theorem StrictSelectedResultMechanicalFacts.fcrStep_currentNext_endpointRecentSourceSeed
     (hT : E.ScheduledPrefixPremises cfg ext)
     (hsync : NextSlotSynchronyPremises cfg ext E)
@@ -401,6 +402,7 @@ theorem StrictSelectedResultMechanicalFacts.fcrStep_currentNext_endpointRecentSo
     (B : CausalPrefixFFGInterpretation cfg ext E)
     {v : ValidatorIndex} (hv : v ∈ E.honest) {n : Nat}
     (hn1H : E.WithinHorizon cfg (n + 1))
+    (hcall : E.IsScheduledFCRCallAt cfg ext v n)
     {input result : Root}
     (hinput : input ∈ (E.fcrStoreAtCall cfg ext v n).store.block_roots)
     (hout : find_latest_confirmed_descendant cfg ext
@@ -463,12 +465,18 @@ theorem StrictSelectedResultMechanicalFacts.fcrStep_currentNext_endpointRecentSo
       E.slot_at cfg (m + 1) :=
     (Nat.succ_le_iff.mpr hslotLt).trans
       (E.slot_at_mono cfg (Nat.le_succ m))
-  have hseedM : ∀ seed,
-      seed ∈ (E.fcrStoreAtCall cfg ext v n).store.block_roots →
-      seed ∈ (E.store cfg ext w m).block_roots := by
-    intro seed hseed
-    apply hsync.block_relay v hv (n + 1) seed hn1H
-      (by simpa only [E.fcrStep_store] using hseed) w hw m hmH hrelayGate
+  obtain ⟨seed, hseedQ, hseedSelectedQ, hguRecent⟩ := hlemma
+  have hgenTime : E.genesis_store.genesis_time ≤ E.genesis_store.time := by
+    rw [hgen]
+    exact (wellFormedStore_get_forkchoice_store cfg ast ablk
+      hgenSlot hgenParent).time_ge_genesis
+  obtain ⟨origin, horiginEq, _hcutoff, horiginKnown⟩ :=
+    E.scheduled_fcr_call_root_before_deadline cfg ext hT.whole_seconds
+      hgenTime hcall (by simpa only [E.fcrStep_store] using hseedQ)
+  have hseedM : seed ∈ (E.store cfg ext w m).block_roots :=
+    hsync.block_relay v hv origin seed
+      (by simpa only [horiginEq] using hn1H) horiginKnown
+      w hw m hmH (by simpa only [horiginEq] using hrelayGate)
   have hqueryNonfuture : BlocksSlotLe
       (get_current_slot cfg (E.fcrStoreAtCall cfg ext v n).store)
       (E.fcrStoreAtCall cfg ext v n).store := by
@@ -480,8 +488,8 @@ theorem StrictSelectedResultMechanicalFacts.fcrStep_currentNext_endpointRecentSo
     hqueryCausal hendpointCausal hqueryParent
     (by simpa only [E.fcrStep_store] using
       E.blockProvenance cfg ext v (n + 1))
-    hqueryWalk hqueryNonfuture h.result_known (hseedM result h.result_known)
-    hseedM hnextEpoch hlemma
+    hqueryWalk hqueryNonfuture h.result_known hnextEpoch
+    ⟨seed, hseedQ, hseedSelectedQ, hguRecent, hseedM⟩
 
 /-- Convenience adapter for the existing minimal assumption package.  Public
 accepted wiring should prefer `not_epochStart_of_current` with the narrow

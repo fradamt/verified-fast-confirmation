@@ -140,24 +140,29 @@ theorem recentSourceSeedAt_endpointNext_of_lemma13
         WalkKnown query (query.blocks t).slot r)
     (hqueryNonfuture : BlocksSlotLe (get_current_slot cfg query) query)
     (hselectedQ : selected ∈ query.block_roots)
-    (hselectedM : selected ∈ (E.store cfg ext w m).block_roots)
-    (hseedM : ∀ seed, seed ∈ query.block_roots →
-      seed ∈ (E.store cfg ext w m).block_roots)
     (hnextEpoch : get_current_store_epoch cfg (E.store cfg ext w m) =
       get_current_store_epoch cfg query + 1)
-    (hseed : AcceptedLemma13SourceSeedAt cfg ext B query selected) :
+    (hseed : ∃ seed : Root,
+      seed ∈ query.block_roots ∧
+      is_ancestor query (get_node_for_root seed)
+        (get_node_for_root selected) = true ∧
+      (B.state.GU seed).epoch + 1 ≥ get_current_store_epoch cfg query ∧
+      seed ∈ (E.store cfg ext w m).block_roots) :
     RecentSourceSeedAt cfg (E.store cfg ext w m) selected := by
-  obtain ⟨seed, hseedQ, hseedSelectedQ, hguRecent⟩ := hseed
-  have hseedEndpoint : seed ∈ (E.store cfg ext w m).block_roots :=
-    hseedM seed hseedQ
+  obtain ⟨seed, hseedQ, hseedSelectedQ, hguRecent, hseedEndpoint⟩ := hseed
   have hsemantic : E.RootDescends seed selected :=
     E.rootDescends_of_store_ancestor hqueryProvenance hqueryParent
       (hqueryWalk selected hselectedQ seed hseedQ) hseedSelectedQ
-  have hseedSelectedM : is_ancestor (E.store cfg ext w m)
-      (get_node_for_root seed)
-      (get_node_for_root selected) = true :=
-    E.store_ancestor_of_rootDescends_for_storeReflection cfg ext hwf hec
-      hgen hgenSlot hgenParent hseedEndpoint hselectedM hsemantic
+  have hselectedRoot : E.ExecutionRoot selected := by
+    rcases hqueryProvenance selected hselectedQ with hanchor | hscheduled
+    · exact ⟨query.blocks selected, Or.inl hanchor⟩
+    · obtain ⟨sb, ⟨u, k, hevent⟩, hroot, hmessage⟩ := hscheduled
+      exact ⟨query.blocks selected,
+        Or.inr ⟨u, k, sb, hevent, hroot, hmessage.symm⟩⟩
+  have ⟨hselectedM, hseedSelectedM⟩ :=
+    E.store_known_ancestor_of_rootDescends_for_storeReflection
+      cfg ext hwf hec hgen hgenSlot hgenParent
+      hseedEndpoint hselectedRoot hsemantic
   have hseedEpochLe : get_block_epoch cfg query seed ≤
       get_current_store_epoch cfg query := by
     exact ce_mono cfg (hqueryNonfuture seed hseedQ)

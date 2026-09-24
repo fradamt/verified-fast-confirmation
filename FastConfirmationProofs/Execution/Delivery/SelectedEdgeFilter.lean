@@ -1637,6 +1637,7 @@ noncomputable def StrictSelectedResultMechanicalFacts.fcrStep_currentNext_endpoi
     (hacc : CheckpointCertificateAccountability cfg E B.anchor)
     {v : ValidatorIndex} (hv : v ∈ E.honest) {n : Nat}
     (hn1H : E.WithinHorizon cfg (n + 1))
+    (hcall : E.IsScheduledFCRCallAt cfg ext v n)
     {input result : Root}
     (hinput : input ∈ (E.fcrStoreAtCall cfg ext v n).store.block_roots)
     (hout : find_latest_confirmed_descendant cfg ext
@@ -1695,7 +1696,7 @@ noncomputable def StrictSelectedResultMechanicalFacts.fcrStep_currentNext_endpoi
   have hrecent : RecentSourceSeedAt cfg
       (E.store cfg ext w m) result :=
     h.fcrStep_currentNext_endpointRecentSourceSeed cfg ext hT hsync
-      hstatic hbyz hdomain B hv hn1H hinput hout hstrict hcurrent
+      hstatic hbyz hdomain B hv hn1H hcall hinput hout hstrict hcurrent
         hw hmH hnextEpoch
   exact E.acceptedSelectedResultFilterOutcome_retained_of_recentSeed
     cfg ext B hT hanchor hboundary hDelay P V hanchorExact hacc
@@ -1856,7 +1857,7 @@ noncomputable def
       · exact h.fcrStep_currentNext_endpointFilterOutcome cfg ext hT
           hC.synchrony hC.static_validators hC.byzantine_bound hdomain B
           hanchor hboundary hDelay P V hanchorExact hacc hv hn1H
-          hinput hselector.result_eq.symm hselector.result_ne_input
+          hcall hinput hselector.result_eq.symm hselector.result_ne_input
           hcurrent hw hmH hnext hgeom
           (by simpa only [trace] using hresultJustified)
       · have hlate : get_block_epoch cfg
