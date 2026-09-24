@@ -79,6 +79,7 @@ public import FastConfirmationProofs.Execution.Trajectory.StoreDynamicsInputs
 public import FastConfirmationProofs.Execution.Trajectory.WFTrajectory
 public import FastConfirmationProofs.FCRRule.AllowedFCRCallTrace
 public import FastConfirmationProofs.FCRRule.ConfirmedCacheInvariant
+public import FastConfirmationProofs.FCRRule.TrustedConfirmedCacheInvariant
 public import FastConfirmationProofs.FCRRule.ConfirmedEdgeSafety
 public import FastConfirmationProofs.FCRRule.EndpointLedger
 public import FastConfirmationProofs.FCRRule.FCRCallContracts
