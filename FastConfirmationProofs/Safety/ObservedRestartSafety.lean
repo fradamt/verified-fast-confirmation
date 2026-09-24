@@ -6,6 +6,8 @@ public import FastConfirmationProofs.Execution.History.HistoricalCheckpointInclu
 public import FastConfirmationProofs.FFG.SourceHistory.FFGJustifiedCheckpointCache
 public import FastConfirmationProofs.FFG.SelectedSource.SelectedJustifiedOrientation
 public import FastConfirmationProofs.FCRRule.FCRCallInvariants
+public import FastConfirmationProofs.FCRRule.ConfirmedCacheInvariant
+public import FastConfirmationProofs.Checkpoints.DeadlineBlockAdmissibility
 public import FastConfirmationProofs.Discount.SelectedCoveredMarginConstruction
 
 public import FastConfirmationProofs.ModelFacts
@@ -186,6 +188,10 @@ theorem ObservedResetCandidateInputAt.safeFrom_of_acceptedDynamics
     (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
       (E := E) (anchor := B.anchor))
     (hspe : 1 < cfg.slots_per_epoch)
+    (hDelay : E.RealizedFinalizationDelay cfg ext B)
+    (P : EpochCheckpointClosure B.anchor
+      (E.AcceptedRoot cfg ext) B.state.C)
+    (V : B.state.ExactLinkValidity)
     {v : ValidatorIndex} (hv : v ∈ E.honest) {n : ℕ}
     (hHn1 : E.WithinHorizon cfg (n + 1))
     (hcall : E.IsScheduledFCRCallAt cfg ext v n)
@@ -253,7 +259,8 @@ theorem ObservedResetCandidateInputAt.safeFrom_of_acceptedDynamics
       observed_eq_head_unrealized := h.observed_eq_head_unrealized }
   have hadoption : E.ActualFCRGuardedObservedAdoption cfg ext v n :=
     FastConfirmation.Spec.Execution.ObservedResetCandidateInputAt.actualFCRGuardedObservedAdoption
-      (E := E) cfg ext B hT hsync hanchor hspe hv hHn1 hcall h
+      (E := E) cfg ext B hT hsync hanchor hboundary hspe
+        hA hDelay P V hacc hv hHn1 hcall h (by simpa only [c, e] using hcEpoch)
   have hreal :=
     E.fcrStep_observed_resetRealizedAt_of_acceptedGlobalTrajectory
       cfg ext B hT hanchor hboundary v n
@@ -267,26 +274,129 @@ theorem ObservedResetCandidateInputAt.safeFrom_of_acceptedDynamics
       (E := E) cfg ext B hgenShort hanchor hspe h
   have horiginH : E.WithinHorizon cfg hi.originSecond :=
     E.withinHorizon_mono cfg (hi.origin_le.trans (Nat.le_succ n)) hHn1
+  have horiginDeadline : hi.originSecond ≤
+      E.slot_start cfg (E.slot_at cfg hi.originSecond) +
+        get_attestation_due_ms cfg / 1000 := by
+    have hgenTime :
+        E.genesis_store.genesis_time ≤ E.genesis_store.time := by
+      rw [hgen]
+      simp only [get_forkchoice_store]
+      omega
+    exact hi.origin_before_deadline cfg ext E hT.whole_seconds hgenTime
   have hrealOrigin : E.ResetCheckpointRealizedAt cfg B.anchor
       (E.store cfg ext v hi.originSecond) c := by
     have hrealField :=
       E.unrealizedJustifiedCheckpoint_resetRealizedAt_of_acceptedGlobalTrajectory
         cfg ext B hT hanchor hboundary (w := v) hi.originSecond
     simpa only [c, hi.field_eq] using hrealField
+  have hcIncluded : ∃ carrier : Root,
+      Nonempty (IncludedCertifiedJustified cfg E
+        B.state.includedAttestations.Included B.anchor carrier c) := by
+    have horigin : AcceptedGlobalUnrealizedJustifiedOrigin
+        B.state (E.store cfg ext v hi.originSecond) c := by
+      simpa only [c, hi.field_eq] using hi.accepted_origin
+    rcases horigin with hanchorC | ⟨tip, htip, hcEq⟩
+    · refine ⟨B.anchor.root, ?_⟩
+      rw [hanchorC]
+      exact ⟨IncludedCertifiedJustified.anchor⟩
+    · obtain ⟨carrier, _hdesc, hformed⟩ :=
+        B.state.gu_mem tip htip.acceptedRoot
+      refine ⟨carrier, ?_⟩
+      rw [hcEq]
+      exact (B.state.formed_evidence hformed).certified
+  have hcKnownBoundary : ∀ w ∈ E.honest,
+      c.root ∈ (E.store cfg ext w (n + 1)).block_roots := by
+    intro w hw
+    have horiginNextLe : E.slot_start cfg
+        (E.slot_at cfg hi.originSecond + 1) ≤ n + 1 := by
+      have hslotLe : E.slot_at cfg hi.originSecond + 1 ≤
+          E.slot_at cfg (n + 1) := by
+        calc
+          E.slot_at cfg hi.originSecond + 1 ≤ E.slot_at cfg n + 1 :=
+            Nat.add_le_add_right (E.slot_at_mono cfg hi.origin_le) 1
+          _ ≤ E.slot_at cfg (n + 1) :=
+            Nat.succ_le_iff.mpr hslotAdvance
+      calc
+        E.slot_start cfg (E.slot_at cfg hi.originSecond + 1) ≤
+            E.slot_start cfg (E.slot_at cfg (n + 1)) :=
+          E.slot_start_mono cfg hslotLe
+        _ = n + 1 := hstartEq
+
+    have horiginLtM : hi.originSecond < n + 1 :=
+      lt_of_le_of_lt hi.origin_le (Nat.lt_succ_self n)
+    have hrelayOutcome := hsync.deadline_block_relay v hv
+      hi.originSecond c.root horiginH hrealOrigin.root_known
+      horiginDeadline w hw (n + 1) hHn1 horiginNextLe horiginLtM
+    rcases hrelayOutcome with hknown | hexcluded
+    · exact hknown
+    have hLag : E.CausalRealizedFinalizationLag cfg ext B :=
+      E.causalRealizedFinalizationLag_of_acceptedDelay
+        cfg ext B hT hanchor hDelay
+    have hendpointLag :
+        (E.store cfg ext w (n + 1)).finalized_checkpoint = B.anchor ∨
+          (E.store cfg ext w (n + 1)).finalized_checkpoint.epoch + 2 ≤
+            get_current_store_epoch cfg (E.store cfg ext w (n + 1)) :=
+      hLag (E.store_causal cfg ext w (n + 1))
+    have hfinalizedBeforeObservedAtBoundary :
+        (E.store cfg ext w (n + 1)).finalized_checkpoint.epoch ≤ c.epoch := by
+      have hcurrentEpoch : get_current_store_epoch cfg
+          (E.store cfg ext w (n + 1)) = e := by
+        simp only [get_current_store_epoch, E.store_current_slot, e]
+      rcases hendpointLag with hanchorF | hlag
+      · rw [hanchorF]
+        exact CertifiedJustified.anchor_epoch_le (cfg := cfg) hcCertified
+      · rw [hcurrentEpoch] at hlag
+        rw [← hcEpoch] at hlag
+        exact (Nat.le_succ _).trans (Nat.le_of_succ_le_succ hlag)
+    let F := (E.store cfg ext w (n + 1)).finalized_checkpoint
+    have hanchorExact : B.anchor =
+        B.state.C B.anchor.root B.anchor.epoch :=
+      acceptedAnchorExact_of_trajectory cfg ext E B hT hanchor hboundary
+    have haccExact : CheckpointCertificateAccountability cfg E B.anchor :=
+      CheckpointCertificateAccountability.of_assumptions cfg hacc
+    have hFprefixC (hepoch : F.epoch ≤ c.epoch) :
+        ExactCheckpointPrefix B.state.C F c := by
+      rcases E.acceptedGlobalFinalized_anchor_or_includedCertificate
+          cfg ext B hgenShort hanchor (E.store_causal cfg ext w (n + 1)) with
+        hFanchor | ⟨carrier, _hcarrier, hFcert⟩
+      · dsimp only [F]
+        rw [hFanchor]
+        obtain ⟨carrierC, ⟨hCcert⟩⟩ := hcIncluded
+        exact IncludedCertifiedJustified.anchor_prefix
+          (cfg := cfg) P V hanchorExact hCcert
+      · obtain ⟨hFcert⟩ := hFcert
+        obtain ⟨carrierC, ⟨hCcert⟩⟩ := hcIncluded
+        exact B.state.exactFinalizedPrefix_of_accountable cfg P V
+          hanchorExact haccExact hFcert hCcert hepoch
+    have hFprefixC' := hFprefixC hfinalizedBeforeObservedAtBoundary
+    have hFrealized :=
+      E.finalizedCheckpoint_resetRealizedAt_of_acceptedGlobalTrajectory
+        cfg ext B hT hanchor hboundary (w := w) (n + 1)
+    have hFknown : F.root ∈
+        (E.store cfg ext w (n + 1)).block_roots := by
+      simpa only [F] using hFrealized.root_known
+    have hFanchorEpochLe : B.anchor.epoch ≤ F.epoch :=
+      CertifiedJustified.anchor_epoch_le (cfg := cfg)
+        (Classical.choice hFrealized.certified)
+    let source := E.store cfg ext v hi.originSecond
+    have hsourceCheckpoint : F.root =
+        get_checkpoint_block cfg source c.root F.epoch := by
+      have hprefix := hFprefixC'
+      unfold ExactCheckpointPrefix at hprefix
+      rw [B.coherence.checkpoint_of_known
+        (E.store_causal cfg ext v hi.originSecond)
+        c.root hrealOrigin.root_known F.epoch] at hprefix
+      have hr := congrArg Checkpoint.root hprefix
+      simpa only [get_checkpoint_for_block] using hr
+    exact False.elim
+      (E.checkpointCompatible_not_permanentlyExcluded cfg ext
+        B hA hanchor hboundary hHn1 hrealOrigin.root_known
+        hFknown hFanchorEpochLe hsourceCheckpoint hexcluded)
   have hcKnown : ∀ w ∈ E.honest, ∀ m : ℕ, n + 1 ≤ m →
       E.WithinHorizon cfg m →
       c.root ∈ (E.store cfg ext w m).block_roots := by
-    intro w hw m hnm hHm
-    have hgate : E.slot_at cfg hi.originSecond + 1 ≤
-        E.slot_at cfg (m + 1) := by
-      calc
-        E.slot_at cfg hi.originSecond + 1 ≤ E.slot_at cfg n + 1 :=
-          Nat.add_le_add_right (E.slot_at_mono cfg hi.origin_le) 1
-        _ ≤ E.slot_at cfg (n + 1) := Nat.succ_le_iff.mpr hslotAdvance
-        _ ≤ E.slot_at cfg (m + 1) :=
-          E.slot_at_mono cfg (hnm.trans (Nat.le_succ m))
-    exact hsync.block_relay v hv hi.originSecond c.root horiginH
-      hrealOrigin.root_known w hw m hHm hgate
+    intro w hw m hnm _hHm
+    exact (E.store_storeLE cfg ext w hnm).1 (hcKnownBoundary w hw)
   apply E.safeFrom_of_headStep_at cfg ext
   intro w hw m hnm hHm hIH
   let J := (E.store cfg ext w m).justified_checkpoint

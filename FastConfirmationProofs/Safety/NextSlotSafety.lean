@@ -127,7 +127,8 @@ theorem selected_result_safe_from_next_slot_of_scheduled_call
             (E := E) cfg ext h.semantics h.trajectory
               h.completed_calls.synchrony h.completed_calls.static_validators
                 h.completed_calls.byzantine_bound h.anchor_eq h.anchor_boundary
-                  h.slots_per_epoch_gt_one hv hHn1 hcall hinput
+                  h.slots_per_epoch_gt_one h.finalization_delay
+                    h.checkpoint_projection h.exact_link_validity hv hHn1 hcall hinput
     | strictSelected horigin _ =>
         cases horigin with
         | carried hinput =>
@@ -144,7 +145,9 @@ theorem selected_result_safe_from_next_slot_of_scheduled_call
                   h.completed_calls.synchrony
                     h.completed_calls.static_validators
                       h.completed_calls.byzantine_bound h.anchor_eq
-                        h.anchor_boundary h.slots_per_epoch_gt_one hv hHn1
+                        h.anchor_boundary h.slots_per_epoch_gt_one
+                          h.finalization_delay h.checkpoint_projection
+                            h.exact_link_validity hv hHn1
                           hcall hinput
   have hresultSafe : E.SafeFrom cfg ext trace.result (n + 1) := by
     simpa only [trace] using

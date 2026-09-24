@@ -449,6 +449,7 @@ private theorem witnessSynchrony :
     delta := ⟨500, by decide, by decide⟩
     attestation_delivery := ?_
     block_relay := ?_
+    deadline_block_relay := ?_
     attester_slashing_relay := ?_
   }
   · intro v hv s n a hs hn hvote _hdeadline hdelivery w hw
@@ -467,6 +468,15 @@ private theorem witnessSynchrony :
       rw [slot_start_eq]
       simp [witnessExecution, witnessSchedule]
   · intro v hv n r hn hr w hw m hm hslot
+    have hnlt : n < 4 := within_implies_lt_four hn
+    have hmlt : m < 4 := within_implies_lt_four hm
+    rw [store_node_independent v 0 n] at hr
+    rw [store_node_independent w 0 m]
+    interval_cases n <;> interval_cases m <;>
+      simp_all [slot_at_eq, block_roots_at_zero, block_roots_at_one,
+        block_roots_at_two, block_roots_at_three] <;> aesop
+  · intro v hv n r hn hr _hdeadline w hw m hm _hnext hlt
+    left
     have hnlt : n < 4 := within_implies_lt_four hn
     have hmlt : m < 4 := within_implies_lt_four hm
     rw [store_node_independent v 0 n] at hr

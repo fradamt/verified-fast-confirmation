@@ -12,6 +12,43 @@ variable (cfg : Config) (ext : Externals Root)
 namespace Execution
 variable (E : Execution Root)
 end Execution
+
+/-- The only permanent block-delivery exemption is the finalized-checkpoint
+guard in `on_block`. The parent is already known at the receiver, so a late
+or parent-missing block cannot satisfy this predicate. At every later
+in-horizon second one of the two finalized guards still rejects it. -/
+def PermanentBlockExclusion (E : Execution Root)
+    (v : ValidatorIndex) (n : ℕ) (r : Root)
+    (w : ValidatorIndex) (m : ℕ) : Prop :=
+  let source := E.store cfg ext v n
+  let receiver := E.store cfg ext w m
+  r ∉ receiver.block_roots ∧
+    (source.blocks r).parent_root ∈ receiver.block_roots ∧
+    ∀ k, m ≤ k → E.WithinHorizon cfg k →
+      let later := E.store cfg ext w k
+      (source.blocks r).slot ≤
+        compute_start_slot_at_epoch cfg later.finalized_checkpoint.epoch ∨
+      later.finalized_checkpoint.root ≠
+        get_checkpoint_block cfg later (source.blocks r).parent_root
+          later.finalized_checkpoint.epoch
+
+/-- Slot-level block gossip from an honest observation no later than its
+attestation deadline. The paper's positive `Δ` and strict `A + Δ < S`, plus
+immediate honest gossip, put the raw block before the next slot. Python's
+delay consideration permits a finalized-conflicting block to remain absent;
+the exemption above is limited to exactly that `on_block` guard. -/
+def DeadlineBlockRelay (E : Execution Root) : Prop :=
+  ∀ v ∈ E.honest, ∀ n r,
+    E.WithinHorizon cfg n →
+    r ∈ (E.store cfg ext v n).block_roots →
+    n ≤ E.slot_start cfg (E.slot_at cfg n) +
+      get_attestation_due_ms cfg / 1000 →
+    ∀ w ∈ E.honest, ∀ m,
+      E.WithinHorizon cfg m →
+      E.slot_start cfg (E.slot_at cfg n + 1) ≤ m →
+      n < m →
+      r ∈ (E.store cfg ext w m).block_roots ∨
+        PermanentBlockExclusion cfg ext E v n r w m
 /-- Network synchrony — the FCR intro's assumption ("starting from the
 current slot, attestations created by honest validators in any slot are
 received by the end of that slot"), made operational, plus the block/message
@@ -58,6 +95,9 @@ structure Synchrony (E : Execution Root) : Prop where
       E.WithinHorizon cfg m →
       E.slot_at cfg n + 1 ≤ E.slot_at cfg (m + 1) →
       r ∈ (E.store cfg ext w m).block_roots
+  /-- Deadline-cutoff block relay with the exact finalized-guard exemption.
+      This field is the migration target for `block_relay`. -/
+  deadline_block_relay : DeadlineBlockRelay cfg ext E
   /-- Equivocation evidence known to an honest node is known to every honest
       node from the next slot onward. Attester slashings gossip and may be
       carried in blocks through `on_attester_slashing`; the safety argument
@@ -144,6 +184,7 @@ structure NextSlotSynchronyPremises (E : Execution Root) : Prop where
       E.WithinHorizon cfg m →
       E.slot_at cfg n + 1 ≤ E.slot_at cfg (m + 1) →
       r ∈ (E.store cfg ext w m).block_roots
+  deadline_block_relay : DeadlineBlockRelay cfg ext E
   envelope_delivery : EnvelopeDelivery cfg ext E
   data_availability_relay : DataAvailabilityRelay cfg ext E
   attester_slashing_relay : ∀ v ∈ E.honest, ∀ n (i : ValidatorIndex),

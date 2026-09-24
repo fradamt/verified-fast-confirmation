@@ -326,7 +326,8 @@ theorem confirmed_safeFromFollowingSlot_of_acceptedActualFCRFold
               have hinputSafe :=
                 Execution.ObservedResetCandidateInputAt.safeFrom_of_acceptedDynamics
                   (E := E) cfg ext B hT hC.synchrony hC.static_validators
-                    hC.byzantine_bound hanchor hboundary hspe hv hHn1 hcall hinput
+                    hC.byzantine_bound hanchor hboundary hspe hDelay P V
+                      hv hHn1 hcall hinput
               rw [hselector.result_eq_input cfg ext]
               exact hinputSafe.mono cfg ext E hcallToDeadline
           | strictSelected horigin hselector =>
@@ -343,7 +344,8 @@ theorem confirmed_safeFromFollowingSlot_of_acceptedActualFCRFold
                     exact
                       Execution.ObservedResetCandidateInputAt.safeFrom_of_acceptedDynamics
                         (E := E) cfg ext B hT hC.synchrony hC.static_validators
-                          hC.byzantine_bound hanchor hboundary hspe hv hHn1
+                          hC.byzantine_bound hanchor hboundary hspe hDelay P V
+                            hv hHn1
                             hcall hinput
               have hstrictSafe : E.SafeFrom cfg ext trace.result (n + 1) := by
                 simpa only [trace] using

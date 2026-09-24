@@ -21,6 +21,7 @@ def Synchrony.toPaperSafetySynchrony
   delta := h.delta
   attestation_delivery := h.attestation_delivery
   block_relay := h.block_relay
+  deadline_block_relay := h.deadline_block_relay
   envelope_delivery := henvelope
   data_availability_relay := hdata
   attester_slashing_relay := h.attester_slashing_relay

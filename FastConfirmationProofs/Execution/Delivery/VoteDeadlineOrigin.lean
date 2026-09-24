@@ -1,5 +1,5 @@
 module
-public import FastConfirmationStatements.Premises.Behavior
+public import FastConfirmationStatements.Premises.Synchrony
 
 @[expose] public section
 
@@ -29,6 +29,89 @@ theorem honest_vote_root_before_deadline
   refine ⟨n, ?_, ?_, hroot⟩
   · exact (hhb.vote_deadline v hv s n a hvote).1
   · exact (hhb.vote_deadline v hv s n a hvote).2
+
+/-- Under the paper's strict millisecond bound, the last whole-second vote
+time is strictly before the next slot boundary. This holds for a positive
+subsecond delay and for one-second slots. -/
+theorem deadline_before_next_slot
+    (hdiv : 1000 ∣ cfg.slot_duration_ms)
+    {s n delta_ms : ℕ}
+    (hboundary : E.genesis_store.time ≤ E.genesis_store.genesis_time +
+      s * (cfg.slot_duration_ms / 1000))
+    (hdeadline : n ≤ E.slot_start cfg s + get_attestation_due_ms cfg / 1000)
+    (hpositive : 0 < delta_ms)
+    (hfit : get_attestation_due_ms cfg + delta_ms < cfg.slot_duration_ms) :
+    n < E.slot_start cfg (s + 1) := by
+  obtain ⟨seconds, hseconds⟩ := hdiv
+  have hsecondsDiv : cfg.slot_duration_ms / 1000 = seconds := by
+    rw [hseconds]
+    exact Nat.mul_div_cancel_left seconds (by decide : 0 < (1000 : ℕ))
+  have hmul (x : ℕ) :
+      x * cfg.slot_duration_ms / 1000 = x * seconds := by
+    rw [hseconds, Nat.mul_left_comm x 1000 seconds]
+    exact Nat.mul_div_cancel_left (x * seconds) (by decide : 0 < (1000 : ℕ))
+  have hslot : E.slot_start cfg (s + 1) =
+      E.slot_start cfg s + seconds := by
+    simp only [Execution.slot_start]
+    rw [hmul (s + 1), hmul s, Nat.add_mul, one_mul]
+    have hbound : E.genesis_store.time ≤
+        E.genesis_store.genesis_time + s * seconds := by
+      simpa only [hsecondsDiv] using hboundary
+    omega
+  have hA : get_attestation_due_ms cfg / 1000 < seconds := by
+    rw [hseconds] at hfit
+    omega
+  omega
+
+/-- An honest voter's selected root reaches the next-slot receiver unless
+that receiver has permanently excluded the block under `on_block`'s finalized
+guard. The vote gives the source-time cutoff; the strict positive bound gives
+the distinct receiver second. -/
+theorem honest_vote_root_relay_or_excluded
+    (hhb : HonestBehavior cfg ext E)
+    (hsync : NextSlotSynchronyPremises cfg ext E)
+    (hdiv : 1000 ∣ cfg.slot_duration_ms)
+    {v w : ValidatorIndex} (hv : v ∈ E.honest) (hw : w ∈ E.honest)
+    {s n m : ℕ} {a : Attestation Root} {r : Root}
+    (hboundary : E.genesis_store.time ≤ E.genesis_store.genesis_time +
+      s * (cfg.slot_duration_ms / 1000))
+    (hHn : E.WithinHorizon cfg n)
+    (hHm : E.WithinHorizon cfg m)
+    (hvote : E.vote v s = some (n, a))
+    (hslot : E.slot_at cfg n = s)
+    (hroot : r ∈ (E.store cfg ext v n).block_roots)
+    (hnext : E.slot_start cfg (s + 1) ≤ m) :
+    r ∈ (E.store cfg ext w m).block_roots ∨
+      PermanentBlockExclusion cfg ext E v n r w m := by
+  have hdue := (hhb.vote_deadline v hv s n a hvote).2
+  have hlt : n < m :=
+    (E.deadline_before_next_slot cfg hdiv hboundary hdue
+      hsync.delta_pos hsync.deadline_fits).trans_le hnext
+  apply hsync.deadline_block_relay v hv n r hHn hroot
+  · simpa only [hslot] using hdue
+  · exact hw
+  · exact hHm
+  · simpa only [hslot] using hnext
+  · exact hlt
+
+/-- The finalized-only exemption is impossible when both exact `on_block`
+finalized guards pass in the receiver's current store. -/
+theorem permanentBlockExclusion_false_of_finalized_guards
+    {v w : ValidatorIndex} {n m : ℕ} {r : Root}
+    (hHm : E.WithinHorizon cfg m)
+    (hslot : compute_start_slot_at_epoch cfg
+        (E.store cfg ext w m).finalized_checkpoint.epoch <
+      ((E.store cfg ext v n).blocks r).slot)
+    (hcheckpoint : (E.store cfg ext w m).finalized_checkpoint.root =
+      get_checkpoint_block cfg (E.store cfg ext w m)
+        ((E.store cfg ext v n).blocks r).parent_root
+        (E.store cfg ext w m).finalized_checkpoint.epoch) :
+    ¬ PermanentBlockExclusion cfg ext E v n r w m := by
+  intro hreject
+  have hguard := hreject.2.2 m (Nat.le_refl m) hHm
+  rcases hguard with hbefore | hconflict
+  · exact (Nat.not_le_of_gt hslot) hbefore
+  · exact hconflict hcheckpoint
 
 /-- The paper's strict `A + Δ < S` bound places a message sent by the vote
 deadline in the receiver's store before the next slot's first second. The
