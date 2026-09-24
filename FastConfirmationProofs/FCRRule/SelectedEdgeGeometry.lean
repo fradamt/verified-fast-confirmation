@@ -158,7 +158,7 @@ theorem strictSelectedEdgeGeometry_of_query_minimal
     E.confirmed_ancestry_at_all_honest_endpoints_minimal cfg ext hA
       v hv q query hquery glc r0 hqH hglcQ hglcParentQ hr0Q
         hglcR0_Q hglcConf w hw m hslotQM hmH
-  obtain ⟨u, nu, d, hu, hnuH, hnuq, hdU, hdGlc_Q⟩ :=
+  obtain ⟨u, nu, d, hu, hnuH, hnuq, _hdeadline, hdU, hdQ, hdGlc_Q⟩ :=
     E.confirmed_pastDescendant_minimal cfg ext hA v hv q query hquery
       glc hqH hglcQ hglcParentQ hglcConf
   have hgateUQ : E.slot_at cfg nu + 1 ≤ E.slot_at cfg (q + 1) :=

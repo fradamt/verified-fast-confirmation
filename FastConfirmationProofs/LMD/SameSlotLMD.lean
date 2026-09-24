@@ -43,6 +43,7 @@ theorem pastDescendant_ancestry_at_slot_endpoint_minimal
     (hnuH : E.WithinHorizon cfg nu) (d : Root)
     (hslot : E.slot_at cfg nu < E.slot_at cfg q)
     (hd : d ∈ (E.store cfg ext u nu).block_roots)
+    (hdQ : d ∈ (E.store cfg ext v q).block_roots)
     (hdb : is_ancestor (E.store cfg ext v q)
       (get_node_for_root d) (get_node_for_root b) = true) :
     d ∈ (E.store cfg ext w m).block_roots ∧
@@ -54,16 +55,12 @@ theorem pastDescendant_ancestry_at_slot_endpoint_minimal
       E.genesis_store = get_forkchoice_store cfg ast ablk ∧
       ast.slot = ablk.message.slot ∧ ablk.message.parent_root ≠ ablk.root :=
     ⟨ast, ablk, hgeq, hstateSlot, hroot⟩
-  have hgateUQ : E.slot_at cfg nu + 1 ≤ E.slot_at cfg (q + 1) :=
-    hslot.trans_le (E.slot_at_mono cfg (Nat.le_succ q))
-  have hsubUQ : (E.store cfg ext u nu).block_roots ⊆
-      (E.store cfg ext v q).block_roots := fun r hr =>
-    hA.synchrony.block_relay u hu nu r hnuH hr v hv q hqH hgateUQ
-  have hagreeUQ : ∀ r ∈ (E.store cfg ext u nu).block_roots,
+  have hagreeUQ : ∀ r, r ∈ (E.store cfg ext u nu).block_roots →
+      r ∈ (E.store cfg ext v q).block_roots →
       (E.store cfg ext u nu).blocks r = (E.store cfg ext v q).blocks r :=
-    fun r hr => hA.wellFormed.blocks_agree
+    fun r hr hs => hA.wellFormed.blocks_agree
       (E.blockProvenance cfg ext u nu) (E.blockProvenance cfg ext v q)
-      hr (hsubUQ hr)
+      hr hs
   have hanchor0 : ablk.root ∈ (E.store cfg ext u 0).block_roots := by
     change ablk.root ∈ E.genesis_store.block_roots
     rw [hgeq]
@@ -85,26 +82,32 @@ theorem pastDescendant_ancestry_at_slot_endpoint_minimal
     E.store_anchor_min_slot cfg ext hA.wellFormed hA.externals_coherence
       hgeq hstateSlot hroot v q b hb
   have hwalkB : WalkKnown (E.store cfg ext u nu) sb d := hwalk0.mono hbound
+  have hwalkQ : WalkKnown (E.store cfg ext v q) sb d :=
+    E.store_walkKnownK cfg ext hA.wellFormed hA.externals_coherence
+      hgen v q b hb d hdQ
   have hlandsQ : (get_ancestor (E.store cfg ext v q) (ForkChoiceNode.mk d .pending) sb).root =
       b := by
     simpa only [get_node_for_root, is_ancestor_pending, decide_eq_true_eq, sb] using hdb
   have hlandsU : (get_ancestor (E.store cfg ext u nu) (ForkChoiceNode.mk d .pending) sb).root =
       b := by
-    rw [get_ancestor_congr hagreeUQ hd hwalkB]
+    rw [get_ancestor_congr_common_walk hagreeUQ hwalkB hwalkQ]
     exact hlandsQ
   have hbU : b ∈ (E.store cfg ext u nu).block_roots := by
     have hspec := (get_ancestor_spec hpslU hwalkB).1
     rw [hlandsU] at hspec
     exact hspec
+  have hslots : ((E.store cfg ext u nu).blocks b).slot = sb := by
+    rw [hagreeUQ b hbU hb]
   have hwalkUB : WalkKnown (E.store cfg ext u nu)
       ((E.store cfg ext u nu).blocks b).slot d := by
-    have hslots : ((E.store cfg ext u nu).blocks b).slot = sb := by
-      rw [hagreeUQ b hbU]
+    rwa [hslots]
+  have hwalkQB : WalkKnown (E.store cfg ext v q)
+      ((E.store cfg ext u nu).blocks b).slot d := by
     rwa [hslots]
   have hdbU : is_ancestor (E.store cfg ext u nu)
       (get_node_for_root d) (get_node_for_root b) = true := by
-    simp only [get_node_for_root] at hdb ⊢
-    rw [is_ancestor_congr hagreeUQ hd hbU hwalkUB]
+    rw [is_ancestor_congr_common_walk hagreeUQ hbU hb
+      hwalkUB hwalkQB]
     exact hdb
   have hgateUM : E.slot_at cfg nu + 1 ≤ E.slot_at cfg (m + 1) :=
     (Nat.succ_le_iff.mpr hslot).trans hslotTarget
@@ -138,6 +141,7 @@ theorem pastDescendant_ancestorPair_at_slot_endpoint_minimal
     (hnuH : E.WithinHorizon cfg nu) (d : Root)
     (hslot : E.slot_at cfg nu < E.slot_at cfg q)
     (hd : d ∈ (E.store cfg ext u nu).block_roots)
+    (hdQ : d ∈ (E.store cfg ext v q).block_roots)
     (hdb : is_ancestor (E.store cfg ext v q)
       (get_node_for_root d) (get_node_for_root b) = true) :
     b ∈ (E.store cfg ext w m).block_roots ∧
@@ -149,17 +153,12 @@ theorem pastDescendant_ancestorPair_at_slot_endpoint_minimal
       E.genesis_store = get_forkchoice_store cfg ast ablk ∧
       ast.slot = ablk.message.slot ∧ ablk.message.parent_root ≠ ablk.root :=
     ⟨ast, ablk, hgeq, hstateSlot, hroot⟩
-  have hgateUQ : E.slot_at cfg nu + 1 ≤ E.slot_at cfg (q + 1) :=
-    hslot.trans_le (E.slot_at_mono cfg (Nat.le_succ q))
-  have hsubUQ : (E.store cfg ext u nu).block_roots ⊆
-      (E.store cfg ext v q).block_roots := fun x hx =>
-    hA.synchrony.block_relay u hu nu x hnuH hx v hv q hqH hgateUQ
-  have hagreeUQ : ∀ x ∈ (E.store cfg ext u nu).block_roots,
+  have hagreeUQ : ∀ x, x ∈ (E.store cfg ext u nu).block_roots →
+      x ∈ (E.store cfg ext v q).block_roots →
       (E.store cfg ext u nu).blocks x = (E.store cfg ext v q).blocks x :=
-    fun x hx => hA.wellFormed.blocks_agree
+    fun x hx hy => hA.wellFormed.blocks_agree
       (E.blockProvenance cfg ext u nu) (E.blockProvenance cfg ext v q)
-      hx (hsubUQ hx)
-  have hdQ : d ∈ (E.store cfg ext v q).block_roots := hsubUQ hd
+      hx hy
   have hpslQ : ParentSlotLt (E.store cfg ext v q) :=
     E.store_parentSlotLt cfg ext hA.wellFormed hA.externals_coherence hgen
       hA.wellFormed.anchor_parent_unscheduled v q
@@ -195,12 +194,15 @@ theorem pastDescendant_ancestorPair_at_slot_endpoint_minimal
       E.store_anchor_min_slot cfg ext hA.wellFormed hA.externals_coherence
         hgeq hstateSlot hroot v q x hx
     have hwalkX : WalkKnown (E.store cfg ext u nu) sx d := hwalk0.mono hbound
+    have hwalkXQ : WalkKnown (E.store cfg ext v q) sx d :=
+      E.store_walkKnownK cfg ext hA.wellFormed hA.externals_coherence
+        hgen v q x hx d hdQ
     have hlandsQ : (get_ancestor (E.store cfg ext v q) (ForkChoiceNode.mk d .pending) sx).root =
         x := by
       simpa only [get_node_for_root, is_ancestor_pending, decide_eq_true_eq, sx] using hdx
     have hlandsU : (get_ancestor (E.store cfg ext u nu) (ForkChoiceNode.mk d .pending) sx).root =
         x := by
-      rw [get_ancestor_congr hagreeUQ hd hwalkX]
+      rw [get_ancestor_congr_common_walk hagreeUQ hwalkX hwalkXQ]
       exact hlandsQ
     have hspec := (get_ancestor_spec hpslU hwalkX).1
     rw [hlandsU] at hspec
@@ -209,10 +211,15 @@ theorem pastDescendant_ancestorPair_at_slot_endpoint_minimal
   have hrU : r ∈ (E.store cfg ext u nu).block_roots := recover r hr hdr
   have hwalkBR : WalkKnown (E.store cfg ext u nu)
       ((E.store cfg ext u nu).blocks r).slot b := hwalkU r hrU b hbU
+  have hwalkBRQ : WalkKnown (E.store cfg ext v q)
+      ((E.store cfg ext u nu).blocks r).slot b := by
+    rw [hagreeUQ r hrU hr]
+    exact E.store_walkKnownK cfg ext hA.wellFormed
+      hA.externals_coherence hgen v q r hr b hb
   have hbrU : is_ancestor (E.store cfg ext u nu)
       (get_node_for_root b) (get_node_for_root r) = true := by
-    simp only [get_node_for_root] at hbr ⊢
-    rw [is_ancestor_congr hagreeUQ hbU hrU hwalkBR]
+    rw [is_ancestor_congr_common_walk hagreeUQ hrU hr
+      hwalkBR hwalkBRQ]
     exact hbr
   have hgateUM : E.slot_at cfg nu + 1 ≤ E.slot_at cfg (m + 1) :=
     (Nat.succ_le_iff.mpr hslot).trans hslotTarget
@@ -275,16 +282,19 @@ theorem confirmed_pastDescendant_minimal
     ∃ (u : ValidatorIndex) (nu : ℕ) (d : Root),
       u ∈ E.honest ∧ E.WithinHorizon cfg nu ∧
       E.slot_at cfg nu < E.slot_at cfg q ∧
+      nu ≤ E.slot_start cfg (E.slot_at cfg nu) +
+        get_attestation_due_ms cfg / 1000 ∧
       d ∈ (E.store cfg ext u nu).block_roots ∧
+      d ∈ (E.store cfg ext v q).block_roots ∧
       is_ancestor (E.store cfg ext v q)
         (get_node_for_root d) (get_node_for_root b) = true := by
   obtain ⟨i, lm, hi, hlm, hsupp⟩ :=
     E.honestSupporter_of_confirmed_known_at_minimal cfg ext hA v hv q query
       hquery b hqH hb hparent hconf
-  obtain ⟨u, nu, d, hu, hHnu, hslot, _hdeadline, hd, _hdQuery, hdesc⟩ :=
+  obtain ⟨u, nu, d, hu, hHnu, hslot, hdeadline, hd, hdQuery, hdesc⟩ :=
     E.past_descendant_of_honest_supporter_known_minimal cfg ext hA
       v hv q b hqH i hi lm hlm hsupp
-  exact ⟨u, nu, d, hu, hHnu, hslot, hd, hdesc⟩
+  exact ⟨u, nu, d, hu, hHnu, hslot, hdeadline, hd, hdQuery, hdesc⟩
 
 /-- A successful selected confirmation cannot occur in the truncated
 `current_slot = 0` cutoff corner: its honest recorded supporter comes from a
@@ -303,7 +313,7 @@ theorem confirmed_cutoff_lt_query_slot_minimal
       (get_current_balance_source query) b = true)
     {es : Slot} (hes : es = get_current_slot cfg query.store - 1) :
     es < E.slot_at cfg q := by
-  obtain ⟨_, _, _, _, _, hnuq, _, _⟩ :=
+  obtain ⟨_, _, _, _, _, hnuq, _, _, _, _⟩ :=
     E.confirmed_pastDescendant_minimal cfg ext hA v hv q query hquery b
       hqH hb hparent hconf
   have hqpos : 0 < E.slot_at cfg q := lt_of_le_of_lt (Nat.zero_le _) hnuq
@@ -328,12 +338,12 @@ theorem confirmed_known_at_query_slot_start_minimal
     b ∈ (E.store cfg ext w (E.slot_start cfg (E.slot_at cfg q))).block_roots := by
   obtain ⟨_hle, hmH, _hslot, hgate⟩ :=
     E.query_slot_start_facts_minimal cfg ext hA q hqH
-  obtain ⟨u, nu, d, hu, hnuH, hnuq, hd, hdb⟩ :=
+  obtain ⟨u, nu, d, hu, hnuH, hnuq, _hdeadline, hd, hdQuery, hdb⟩ :=
     E.confirmed_pastDescendant_minimal cfg ext hA v hv q query hquery b
       hqH hb hparent hconf
   exact (E.pastDescendant_ancestry_at_slot_endpoint_minimal cfg ext hA
     v hv q b hqH hb w hw (E.slot_start cfg (E.slot_at cfg q)) hmH hgate
-    u hu nu hnuH d hnuq hd hdb).2.1
+    u hu nu hnuH d hnuq hd hdQuery hdb).2.1
 
 /-- An honest newest vote through a ledger window is its validator-spec head
 vote in an in-horizon source store.  Window membership rules out a spurious
@@ -411,9 +421,15 @@ theorem honest_supportsDesc_at_slot_endpoint_minimal
   have hnuq : E.slot_at cfg nu < E.slot_at cfg q := by
     rw [hnuSlot]
     exact lt_of_le_of_lt ht hesq
+  have hgateIQ : E.slot_at cfg nu + 1 ≤ E.slot_at cfg (q + 1) :=
+    hnuq.trans_le (E.slot_at_mono cfg (Nat.le_succ q))
+  have hrootQ : a.data.beacon_block_root ∈
+      (E.store cfg ext v q).block_roots :=
+    hA.synchrony.block_relay i hi nu a.data.beacon_block_root hnuH hroot
+      v hv q hqH hgateIQ
   have hancEnd := (E.pastDescendant_ancestry_at_slot_endpoint_minimal cfg ext hA
     v hv q b hqH hb w hw m hmH hslotTarget i hi nu hnuH
-    a.data.beacon_block_root hnuq hroot hanc).2.2
+    a.data.beacon_block_root hnuq hroot hrootQ hanc).2.2
   exact ⟨t, k, a, ht, hvote, hnewest, hancEnd⟩
 
 /-- Honest `AncestorOrVoteless` transport in the same timing regime.  The
@@ -434,6 +450,7 @@ theorem honest_ancestorOrVoteless_at_slot_endpoint_minimal
     (hnu0H : E.WithinHorizon cfg nu0) (d : Root)
     (hnu0q : E.slot_at cfg nu0 < E.slot_at cfg q)
     (hd : d ∈ (E.store cfg ext u nu0).block_roots)
+    (hdQ : d ∈ (E.store cfg ext v q).block_roots)
     (hdb : is_ancestor (E.store cfg ext v q)
       (get_node_for_root d) (get_node_for_root b) = true)
     {i : ValidatorIndex} (hi : i ∈ E.honest)
@@ -456,7 +473,7 @@ theorem honest_ancestorOrVoteless_at_slot_endpoint_minimal
         v hv q hqH hgateIQ
     have hancEnd := (E.pastDescendant_ancestorPair_at_slot_endpoint_minimal
       cfg ext hA v hv q b a.data.beacon_block_root hqH hb hrootQ hanc
-      w hw m hmH hslotTarget u hu nu0 hnu0H d hnu0q hd hdb).2.2
+      w hw m hmH hslotTarget u hu nu0 hnu0H d hnu0q hd hdQ hdb).2.2
     exact Or.inr ⟨t, k, a, ht, hvote, hnewest, hancEnd⟩
 
 
@@ -484,7 +501,7 @@ theorem confirmed_honest_class_transports_at_slot_endpoint_minimal
     (∀ i, i ∈ E.honest → i ∈ E.span_committee lo es →
       E.AncestorOrVoteless cfg ext v q b es i →
         E.AncestorOrVoteless cfg ext w m b es i) := by
-  obtain ⟨u, nu, d, hu, hnuH, hnuq, hd, hdb⟩ :=
+  obtain ⟨u, nu, d, hu, hnuH, hnuq, _hdeadline, hd, hdQuery, hdb⟩ :=
     E.confirmed_pastDescendant_minimal cfg ext hA v hv q query hquery b
       hqH hb hparent hconf
   constructor
@@ -494,7 +511,7 @@ theorem confirmed_honest_class_transports_at_slot_endpoint_minimal
   · intro i hi hiSpan hAnc
     exact E.honest_ancestorOrVoteless_at_slot_endpoint_minimal cfg ext hA
       v hv q b hqH hb w hw m hmH hslotTarget hlo0 hesH hesq
-      u hu nu hnuH d hnuq hd hdb hi hiSpan hAnc
+      u hu nu hnuH d hnuq hd hdQuery hdb hi hiSpan hAnc
 
 /-- Call-site form of the preceding wrapper.  The actual confirmation cutoff
 supplies both the cutoff horizon and its strict position before the query
