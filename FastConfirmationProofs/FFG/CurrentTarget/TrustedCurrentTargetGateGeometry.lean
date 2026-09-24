@@ -5,6 +5,9 @@ public import FastConfirmationProofs.FFG.CurrentTarget.TrustedCurrentTargetCheck
 public import FastConfirmationProofs.Checkpoints.TrustedSameEpochSegmentRealization
 public import FastConfirmationProofs.FFG.SourceHistory.TrustedFFGSourceCoherence
 public import FastConfirmationProofs.ModelFacts.TrustedFFGState
+public import FastConfirmationProofs.FFG.Certificates.TrustedCurrentTargetCertificateRealization
+public import FastConfirmationProofs.Execution.Calls.TrustedCurrentTargetPrefixVoteRealization
+public import FastConfirmationProofs.FFG.CurrentTarget.TrustedCurrentTargetWalkKnownness
 
 @[expose] public section
 namespace FastConfirmation.Spec
@@ -756,6 +759,534 @@ theorem trusted_concreteHonestTargetVote_knownCurrentEpochSegment
     knownSameEpochAncestrySegment_of_boundary_walk_root cfg hparentSlots hwalk
       hlands htargetSlot hheadBefore hcurrentNonGenesis
   simpa only [voteStore, head] using hknownSegment
+
+theorem trusted_concreteHonestTargetVote_acceptedCurrentEpochSegment
+    (B : TrustedCausalPrefixFFGInterpretation cfg ext E trusted)
+    (hT : E.ScheduledPrefixPremises cfg ext)
+    (hwalkDomain : E.PostAnchorHonestVoteTargetWalkDomain cfg ext)
+    (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
+    {queryStore : Store Root}
+    (hqueryCausal : E.CausalStore cfg ext queryStore)
+    {target : Checkpoint Root}
+    (htargetKnown : target.root ∈ queryStore.block_roots)
+    (htargetEpoch : get_block_epoch cfg queryStore target.root = target.epoch)
+    (hanchorBefore : B.anchor.epoch < target.epoch)
+    {i : ValidatorIndex} {deadline : Slot}
+    (vote : ConcreteHonestTargetVoteBefore cfg ext E i deadline target) :
+    TrustedAcceptedProjectedSameEpochSegment cfg ext E B.state target.root
+      (get_head cfg (E.store cfg ext i vote.time)).root := by
+  obtain ⟨ast, ablk, hgen, hgenSlot, hgenParent⟩ := hT.genesis_structure
+  have hgenCore : WellFormedStoreCore E.genesis_store := by
+    rw [hgen]
+    exact (wellFormedStore_get_forkchoice_store cfg ast ablk hgenSlot
+      hgenParent).core
+  have hvoteCausal : E.CausalStore cfg ext
+      (E.store cfg ext i vote.time) :=
+    E.store_causal cfg ext i vote.time
+  have hknown := E.trusted_concreteHonestTargetVote_knownCurrentEpochSegment cfg ext B
+    hT hwalkDomain hanchor hqueryCausal htargetKnown htargetEpoch
+    hanchorBefore vote
+  exact E.trusted_knownSameEpochAncestrySegment_toTrustedAcceptedProjectedSameEpochSegment_of_core
+    cfg ext hT.wellFormed hT.externals_coherence.state_transition_slot hgenCore
+    hvoteCausal hknown
+
+/-- One concrete current-epoch target vote carries both ingredients required
+by `TrustedAcceptedConcreteA32QuorumSourceGeometry`: its source is read from the
+accepted/global state at the exact causal vote store, and its head is joined
+to the target root by accepted same-epoch transitions.
+
+This remains an internal geometry edge.  It consumes only the scheduled-prefix
+trajectory, not the broader selected-margin bundle. -/
+theorem trusted_concreteHonestTargetVote_acceptedCurrentEpochSourceGeometry
+    (B : TrustedCausalPrefixFFGInterpretation cfg ext E trusted)
+    (hT : E.ScheduledPrefixPremises cfg ext)
+    (hwalkDomain : E.PostAnchorHonestVoteTargetWalkDomain cfg ext)
+    (hphase : Phase0SourceCoherence cfg ext)
+    (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
+    {queryStore : Store Root}
+    (hqueryCausal : E.CausalStore cfg ext queryStore)
+    {target : Checkpoint Root}
+    (htargetKnown : target.root ∈ queryStore.block_roots)
+    (htargetEpoch : get_block_epoch cfg queryStore target.root = target.epoch)
+    (hanchorBefore : B.anchor.epoch < target.epoch)
+    {i : ValidatorIndex} {deadline : Slot}
+    (vote : ConcreteHonestTargetVoteBefore cfg ext E i deadline target) :
+    TrustedAcceptedHonestSourceEvidence B.state
+        (E.store cfg ext i vote.time) vote.slot vote.index ∧
+      TrustedAcceptedProjectedSameEpochSegment cfg ext E B.state target.root
+        (get_head cfg (E.store cfg ext i vote.time)).root := by
+  let voteStore := E.store cfg ext i vote.time
+  let head := (get_head cfg voteStore).root
+  obtain ⟨ast, ablk, hgen, hgenSlot, hgenParent⟩ := hT.genesis_structure
+  have hgenTrajectory :
+      ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
+        E.genesis_store = get_forkchoice_store cfg ast ablk ∧
+          ast.slot = ablk.message.slot :=
+    ⟨ast, ablk, hgen, hgenSlot⟩
+  have hgenCore : WellFormedStoreCore E.genesis_store := by
+    rw [hgen]
+    exact (wellFormedStore_get_forkchoice_store cfg ast ablk hgenSlot
+      hgenParent).core
+  have hvoteCausal : E.CausalStore cfg ext voteStore := by
+    simpa only [voteStore] using E.store_causal cfg ext i vote.time
+  have hknown : KnownSameEpochAncestrySegment cfg
+      E.genesis_store.block_roots voteStore target.root head := by
+    simpa only [voteStore, head] using
+      E.trusted_concreteHonestTargetVote_knownCurrentEpochSegment cfg ext B hT
+        hwalkDomain hanchor hqueryCausal htargetKnown htargetEpoch
+        hanchorBefore vote
+  have haccepted : TrustedAcceptedProjectedSameEpochSegment cfg ext E B.state
+      target.root head := by
+    simpa only [voteStore, head] using
+      E.trusted_concreteHonestTargetVote_acceptedCurrentEpochSegment cfg ext B hT
+        hwalkDomain hanchor hqueryCausal htargetKnown htargetEpoch
+        hanchorBefore vote
+  have hheadKnown : head ∈ voteStore.block_roots := hknown.last_known
+  have htargetVoteKnown : target.root ∈ voteStore.block_roots :=
+    hknown.first_known cfg
+  have hqueryAt : E.AcceptedBlockAt cfg ext target.root
+      (queryStore.blocks target.root) :=
+    E.acceptedBlockAt_of_causal_known cfg ext hqueryCausal htargetKnown
+  have hvoteAt : E.AcceptedBlockAt cfg ext target.root
+      (voteStore.blocks target.root) :=
+    E.acceptedBlockAt_of_causal_known cfg ext hvoteCausal htargetVoteKnown
+  have htargetBlocks : voteStore.blocks target.root =
+      queryStore.blocks target.root :=
+    hvoteAt.unique cfg ext E hT.wellFormed hqueryAt
+  have hvoteTargetEpoch : get_block_epoch cfg voteStore target.root =
+      target.epoch := by
+    simp only [get_block_epoch]
+    rw [htargetBlocks]
+    exact htargetEpoch
+  have hvoteCore : WellFormedStoreCore voteStore := by
+    simpa only [voteStore] using
+      E.store_wellFormedStoreCore cfg ext
+        hT.externals_coherence.state_transition_slot hgenCore i vote.time
+  have hsame : compute_epoch_at_slot cfg
+      (voteStore.block_states head).slot =
+        compute_epoch_at_slot cfg vote.slot := by
+    rw [hvoteCore.2 head hheadKnown]
+    exact (hknown.last_epoch_eq_first cfg).trans
+      (hvoteTargetEpoch.trans vote.slot_epoch.symm)
+  have hsource : TrustedAcceptedHonestSourceEvidence B.state voteStore
+      vote.slot vote.index :=
+    B.causalStoreHonestSourceEvidence hphase hgenTrajectory hanchor
+      hvoteCausal hheadKnown hsame
+  exact ⟨by simpa only [voteStore] using hsource,
+    by simpa only [head] using haccepted⟩
+
+/-- The exact signer set computed by a successful current-target gate at a
+scheduled prefix realizes an accepted concrete A3.2 quorum.  `Q` is an output:
+its signers are definitionally the observed/future union from the executable
+helper, its votes come from exact prefix provenance and the normative
+whole-slot support property, and every source/segment pair is reconstructed
+at the vote's causal store.
+
+No arbitrary signer set, supplied quorum, source agreement, ancestry segment,
+transition history, target certificate, or safety conclusion is assumed. -/
+theorem trusted_scheduledEventPrefix_acceptedConcreteCurrentTargetQuorum_of_operationalEvidence
+    (B : TrustedCausalPrefixFFGInterpretation cfg ext E trusted)
+    (hT : E.ScheduledPrefixPremises cfg ext)
+    (hsv : StaticValidatorSet cfg E)
+    (hbb : ByzantineWeightPremises cfg E)
+    (hphase : Phase0SourceCoherence cfg ext)
+    (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
+    (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg) (E := E)
+      (anchor := B.anchor))
+    (p : E.ScheduledEventPrefix)
+    (hqH : E.WithinHorizon cfg (p.previousSecond + 1))
+    (hevidence : E.CurrentTargetPrefixAccountingEvidence cfg ext
+      (p.store cfg ext) (p.previousSecond + 1))
+    {state : BeaconState Root}
+    (hstate : state = get_pulled_up_head_state cfg ext (p.store cfg ext))
+    (hval : state.validators = E.registry)
+    (htab : get_total_active_balance cfg state = E.total_active cfg)
+    (hendH : E.SlotWithinHorizon cfg
+      (currentTargetEpochEnd cfg (p.store cfg ext)))
+    (hanchorH : get_current_epoch cfg E.anchor_state <
+      E.verification_horizon)
+    (hfloor : cfg.effective_balance_increment ≤
+      E.weight (E.currentTargetAnchorActive cfg))
+    (hgate : will_current_target_be_justified cfg ext
+      (p.store cfg ext) = true)
+    (hsupport : HonestVotesSupportTarget cfg E
+      (get_current_target cfg (p.store cfg ext))
+      (p.previousSecond + 1))
+    (htargetKnown : (get_current_target cfg
+      (p.store cfg ext)).root ∈ (p.store cfg ext).block_roots)
+    (htargetEpoch : get_block_epoch cfg (p.store cfg ext)
+      (get_current_target cfg (p.store cfg ext)).root =
+        (get_current_target cfg (p.store cfg ext)).epoch)
+    (hanchorBefore : B.anchor.epoch <
+      (get_current_target cfg (p.store cfg ext)).epoch) :
+    ∃ Q : ConcreteA32QuorumBefore cfg ext E
+        (compute_start_slot_at_epoch cfg
+          ((get_current_target cfg (p.store cfg ext)).epoch + 1))
+        (get_current_target cfg (p.store cfg ext)),
+      TrustedAcceptedConcreteA32QuorumSourceGeometry cfg ext B Q
+        (get_current_target cfg (p.store cfg ext)).root := by
+  classical
+  let store := p.store cfg ext
+  let target := get_current_target cfg store
+  let deadline := compute_start_slot_at_epoch cfg (target.epoch + 1)
+  let signers := E.currentTargetA32Signers cfg store state
+  let hV := CurrentTargetPrefixVoteAssumptions.of_trustedGlobalTrajectory
+    cfg ext E B hT hanchor hboundary
+  let hwalkDomain :=
+    E.trusted_postAnchorHonestVoteTargetWalkDomain_of_acceptedGlobalTrajectory
+      cfg ext B hT hanchor hboundary
+  have hboundary0 : TrustedAnchorBoundaryAligned
+      (cfg := cfg) (E := E)
+      (anchor := E.genesis_store.justified_checkpoint) := by
+    simpa only [← hanchor] using hboundary
+  change E.CurrentTargetPrefixAccountingEvidence cfg ext store
+    (p.previousSecond + 1) at hevidence
+  change state = get_pulled_up_head_state cfg ext store at hstate
+  change E.SlotWithinHorizon cfg (currentTargetEpochEnd cfg store) at hendH
+  change will_current_target_be_justified cfg ext store = true at hgate
+  change HonestVotesSupportTarget cfg E target
+    (p.previousSecond + 1) at hsupport
+  change target.root ∈ store.block_roots at htargetKnown
+  change get_block_epoch cfg store target.root = target.epoch at htargetEpoch
+  change B.anchor.epoch < target.epoch at hanchorBefore
+  have hvotes : ∀ i ∈ signers,
+      Nonempty (ConcreteHonestTargetVoteBefore cfg ext E i deadline target) := by
+    intro i hiSigner
+    simp only [signers, Execution.currentTargetA32Signers,
+      Finset.mem_union] at hiSigner
+    rcases hiSigner with hiObserved | hiFuture
+    · simpa only [store, target, deadline] using
+        E.trusted_currentTargetObservedHonestSupporter_vote_of_prefix_of_provenance
+          cfg ext B hV hboundary0 p
+            hevidence.operational.latest_message_provenance hqH hiObserved
+    · simpa only [store, target, deadline] using
+        E.trusted_currentTargetFutureHonestSeat_vote_of_currentSlot cfg ext
+          hT.honest_behavior hevidence.operational.current_slot hendH
+          hsupport hiFuture
+  have hsupermajority :
+      2 * E.total_active cfg ≤ 3 * E.weight signers := by
+    simpa only [signers, store] using
+      E.will_current_target_be_justified_honest_quorum_of_prefix cfg ext
+        hT.externals_coherence hsv hbb
+        hevidence hqH hstate hval htab hendH hanchorH hfloor hgate
+  have htargetSpan :
+      E.SlotWithinHorizon cfg (target.epoch * cfg.slots_per_epoch) ∧
+        E.SlotWithinHorizon cfg
+          (target.epoch * cfg.slots_per_epoch +
+            (cfg.slots_per_epoch - 1)) := by
+    have hstartLe : target.epoch * cfg.slots_per_epoch ≤
+        target.epoch * cfg.slots_per_epoch +
+          (cfg.slots_per_epoch - 1) := Nat.le_add_right _ _
+    have hstartH := E.slotWithinHorizon_mono cfg hstartLe
+      (by simpa only [target, store, currentTargetEpochEnd,
+        currentTargetEpochStart, compute_start_slot_at_epoch,
+        get_current_target, get_checkpoint_for_block] using hendH)
+    refine ⟨hstartH, ?_⟩
+    simpa only [target, store, currentTargetEpochEnd,
+      currentTargetEpochStart, compute_start_slot_at_epoch,
+      get_current_target, get_checkpoint_for_block] using hendH
+  have htargetEpochWithin : target.epoch < E.verification_horizon := by
+    have h := htargetSpan.1.2
+    calc
+      target.epoch = target.epoch * cfg.slots_per_epoch /
+          cfg.slots_per_epoch :=
+        (Nat.mul_div_left target.epoch cfg.slots_per_epoch_pos).symm
+      _ < E.verification_horizon := by
+        simpa only [compute_epoch_at_slot] using h
+  have hqueryCausal : E.CausalStore cfg ext store := by
+    simpa only [store] using (Execution.CausalStore.scheduledPrefix p)
+  have htargetAt : E.AcceptedBlockAt cfg ext target.root
+      (store.blocks target.root) :=
+    E.acceptedBlockAt_of_causal_known cfg ext hqueryCausal htargetKnown
+  have htargetBlockEpoch : compute_epoch_at_slot cfg
+      (store.blocks target.root).slot = target.epoch := by
+    simpa only [get_block_epoch] using htargetEpoch
+  have hsourceBefore : (B.state.GJ target.root).epoch < target.epoch := by
+    rcases B.state.gj_anchor_or_before htargetAt with hsourceAnchor | hbefore
+    · rw [hsourceAnchor]
+      exact hanchorBefore
+    · exact hbefore.trans_eq htargetBlockEpoch
+  have hgeometryVote : ∀ i ∈ signers,
+      ∀ vote : ConcreteHonestTargetVoteBefore cfg ext E i deadline target,
+        TrustedAcceptedHonestSourceEvidence B.state
+            (E.store cfg ext i vote.time) vote.slot vote.index ∧
+          TrustedAcceptedProjectedSameEpochSegment cfg ext E B.state target.root
+            (get_head cfg (E.store cfg ext i vote.time)).root := by
+    intro i hi vote
+    exact E.trusted_concreteHonestTargetVote_acceptedCurrentEpochSourceGeometry
+      cfg ext B hT hwalkDomain hphase hanchor hqueryCausal htargetKnown
+      htargetEpoch hanchorBefore vote
+  have hsourceAgreement : CurrentTargetSourceAgreement cfg ext E signers
+      deadline (B.state.GJ target.root) target := by
+    intro i hi vote
+    obtain ⟨hsourceEvidence, hsegment⟩ := hgeometryVote i hi vote
+    simpa only [honest_attestation_data_eq] using
+      hsourceEvidence.source_eq.trans
+        (hsegment.gj_eq_first hphase
+          B.coherence.toTrustedFFGSelectorsMatchBeaconStates)
+  let Q : ConcreteA32QuorumBefore cfg ext E deadline target :=
+    { source := B.state.GJ target.root
+      signers := signers
+      votes := hvotes
+      source_agreement := hsourceAgreement
+      supermajority := hsupermajority
+      source_before_target := hsourceBefore
+      target_epoch_within := htargetEpochWithin }
+  refine ⟨Q, ?_⟩
+  intro i hi vote
+  exact hgeometryVote i hi vote
+
+/-- Accepted per-vote geometry for a concrete quorum whose target checkpoint
+block is older than the checkpoint epoch.  Each vote retains a named accepted
+`GU(target.root)` carrier and exact source readback. -/
+def TrustedAcceptedConcreteA32QuorumOldSourceGeometry
+    (B : TrustedCausalPrefixFFGInterpretation cfg ext E trusted)
+    {deadline : Slot} {target : Checkpoint Root}
+    (Q : ConcreteA32QuorumBefore cfg ext E deadline target)
+    (common : Root) : Prop :=
+  ∀ i ∈ Q.signers,
+    ∀ vote : ConcreteHonestTargetVoteBefore cfg ext E i deadline target,
+      E.TrustedAcceptedHonestOldTargetSourceEvidence cfg ext B
+        (E.store cfg ext i vote.time) vote.slot vote.index common
+
+theorem trusted_scheduledEventPrefix_acceptedConcreteCurrentTargetQuorum
+    (B : TrustedCausalPrefixFFGInterpretation cfg ext E trusted)
+    (hT : E.ScheduledPrefixPremises cfg ext)
+    (hsv : StaticValidatorSet cfg E)
+    (hbb : ByzantineWeightPremises cfg E)
+    (hphase : Phase0SourceCoherence cfg ext)
+    (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
+    (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg) (E := E)
+      (anchor := B.anchor))
+    (p : E.ScheduledEventPrefix)
+    (hp : p.node ∈ E.honest)
+    (hqH : E.WithinHorizon cfg (p.previousSecond + 1))
+    (hevidence : E.CurrentTargetPrefixAccountingEvidence cfg ext
+      (p.store cfg ext) (p.previousSecond + 1))
+    {state : BeaconState Root}
+    (hstate : state = get_pulled_up_head_state cfg ext (p.store cfg ext))
+    (hval : state.validators = E.registry)
+    (htab : get_total_active_balance cfg state = E.total_active cfg)
+    (hendH : E.SlotWithinHorizon cfg
+      (currentTargetEpochEnd cfg (p.store cfg ext)))
+    (hanchorH : get_current_epoch cfg E.anchor_state <
+      E.verification_horizon)
+    (hfloor : cfg.effective_balance_increment ≤
+      E.weight (E.currentTargetAnchorActive cfg))
+    (hgate : will_current_target_be_justified cfg ext
+      (p.store cfg ext) = true)
+    (hsupport : HonestVotesSupportTarget cfg E
+      (get_current_target cfg (p.store cfg ext))
+      (p.previousSecond + 1))
+    (htargetKnown : (get_current_target cfg
+      (p.store cfg ext)).root ∈ (p.store cfg ext).block_roots)
+    (htargetEpoch : get_block_epoch cfg (p.store cfg ext)
+      (get_current_target cfg (p.store cfg ext)).root =
+        (get_current_target cfg (p.store cfg ext)).epoch)
+    (hanchorBefore : B.anchor.epoch <
+      (get_current_target cfg (p.store cfg ext)).epoch) :
+    ∃ Q : ConcreteA32QuorumBefore cfg ext E
+        (compute_start_slot_at_epoch cfg
+          ((get_current_target cfg (p.store cfg ext)).epoch + 1))
+        (get_current_target cfg (p.store cfg ext)),
+      TrustedAcceptedConcreteA32QuorumSourceGeometry cfg ext B Q
+        (get_current_target cfg (p.store cfg ext)).root := by
+  exact E.trusted_scheduledEventPrefix_acceptedConcreteCurrentTargetQuorum_of_operationalEvidence cfg ext
+    B hT hsv hbb hphase hanchor hboundary p hqH hevidence hstate hval htab hendH hanchorH hfloor hgate hsupport htargetKnown htargetEpoch hanchorBefore
+
+/-- Old-checkpoint counterpart of the current-boundary quorum constructor.
+The executable signer union and weight arithmetic are unchanged; every
+concrete vote is instead tied to the accepted target block's eager `GU`.
+The quorum and its source are outputs. -/
+theorem trusted_scheduledEventPrefix_acceptedConcreteOldTargetQuorum_of_operationalEvidence
+    (B : TrustedCausalPrefixFFGInterpretation cfg ext E trusted)
+    (hT : E.ScheduledPrefixPremises cfg ext)
+    (hsv : StaticValidatorSet cfg E)
+    (hbb : ByzantineWeightPremises cfg E)
+    (hphase : Phase0SourceCoherence cfg ext)
+    (hboundaryPhase : Phase0BoundarySourceCoherence cfg ext)
+    (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
+    (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg) (E := E)
+      (anchor := B.anchor))
+    (p : E.ScheduledEventPrefix)
+    (hqH : E.WithinHorizon cfg (p.previousSecond + 1))
+    (hevidence : E.CurrentTargetPrefixAccountingEvidence cfg ext
+      (p.store cfg ext) (p.previousSecond + 1))
+    {state : BeaconState Root}
+    (hstate : state = get_pulled_up_head_state cfg ext (p.store cfg ext))
+    (hval : state.validators = E.registry)
+    (htab : get_total_active_balance cfg state = E.total_active cfg)
+    (hendH : E.SlotWithinHorizon cfg
+      (currentTargetEpochEnd cfg (p.store cfg ext)))
+    (hanchorH : get_current_epoch cfg E.anchor_state <
+      E.verification_horizon)
+    (hfloor : cfg.effective_balance_increment ≤
+      E.weight (E.currentTargetAnchorActive cfg))
+    (hgate : will_current_target_be_justified cfg ext
+      (p.store cfg ext) = true)
+    (hsupport : HonestVotesSupportTarget cfg E
+      (get_current_target cfg (p.store cfg ext))
+      (p.previousSecond + 1))
+    (htargetKnown : (get_current_target cfg
+      (p.store cfg ext)).root ∈ (p.store cfg ext).block_roots)
+    (htargetOld : get_block_epoch cfg (p.store cfg ext)
+      (get_current_target cfg (p.store cfg ext)).root <
+        (get_current_target cfg (p.store cfg ext)).epoch)
+    (hanchorBefore : B.anchor.epoch <
+      (get_current_target cfg (p.store cfg ext)).epoch) :
+    ∃ Q : ConcreteA32QuorumBefore cfg ext E
+        (compute_start_slot_at_epoch cfg
+          ((get_current_target cfg (p.store cfg ext)).epoch + 1))
+        (get_current_target cfg (p.store cfg ext)),
+      E.TrustedAcceptedConcreteA32QuorumOldSourceGeometry cfg ext B Q
+        (get_current_target cfg (p.store cfg ext)).root := by
+  classical
+  let store := p.store cfg ext
+  let target := get_current_target cfg store
+  let deadline := compute_start_slot_at_epoch cfg (target.epoch + 1)
+  let signers := E.currentTargetA32Signers cfg store state
+  let hV := CurrentTargetPrefixVoteAssumptions.of_trustedGlobalTrajectory
+    cfg ext E B hT hanchor hboundary
+  let hwalkDomain :=
+    E.trusted_postAnchorHonestVoteTargetWalkDomain_of_acceptedGlobalTrajectory
+      cfg ext B hT hanchor hboundary
+  have hboundary0 : TrustedAnchorBoundaryAligned
+      (cfg := cfg) (E := E)
+      (anchor := E.genesis_store.justified_checkpoint) := by
+    simpa only [← hanchor] using hboundary
+  change E.CurrentTargetPrefixAccountingEvidence cfg ext store
+    (p.previousSecond + 1) at hevidence
+  change state = get_pulled_up_head_state cfg ext store at hstate
+  change E.SlotWithinHorizon cfg (currentTargetEpochEnd cfg store) at hendH
+  change will_current_target_be_justified cfg ext store = true at hgate
+  change HonestVotesSupportTarget cfg E target
+    (p.previousSecond + 1) at hsupport
+  change target.root ∈ store.block_roots at htargetKnown
+  change get_block_epoch cfg store target.root < target.epoch at htargetOld
+  change B.anchor.epoch < target.epoch at hanchorBefore
+  have hvotes : ∀ i ∈ signers,
+      Nonempty (ConcreteHonestTargetVoteBefore cfg ext E i deadline target) := by
+    intro i hiSigner
+    simp only [signers, Execution.currentTargetA32Signers,
+      Finset.mem_union] at hiSigner
+    rcases hiSigner with hiObserved | hiFuture
+    · simpa only [store, target, deadline] using
+        E.trusted_currentTargetObservedHonestSupporter_vote_of_prefix_of_provenance
+          cfg ext B hV hboundary0 p
+            hevidence.operational.latest_message_provenance hqH hiObserved
+    · simpa only [store, target, deadline] using
+        E.trusted_currentTargetFutureHonestSeat_vote_of_currentSlot cfg ext
+          hT.honest_behavior hevidence.operational.current_slot hendH
+          hsupport hiFuture
+  have hsupermajority :
+      2 * E.total_active cfg ≤ 3 * E.weight signers := by
+    simpa only [signers, store] using
+      E.will_current_target_be_justified_honest_quorum_of_prefix cfg ext
+        hT.externals_coherence hsv hbb
+        hevidence hqH hstate hval htab hendH hanchorH hfloor hgate
+  have htargetSpan :
+      E.SlotWithinHorizon cfg (target.epoch * cfg.slots_per_epoch) ∧
+        E.SlotWithinHorizon cfg
+          (target.epoch * cfg.slots_per_epoch +
+            (cfg.slots_per_epoch - 1)) := by
+    have hstartLe : target.epoch * cfg.slots_per_epoch ≤
+        target.epoch * cfg.slots_per_epoch +
+          (cfg.slots_per_epoch - 1) := Nat.le_add_right _ _
+    have hstartH := E.slotWithinHorizon_mono cfg hstartLe
+      (by simpa only [target, store, currentTargetEpochEnd,
+        currentTargetEpochStart, compute_start_slot_at_epoch,
+        get_current_target, get_checkpoint_for_block] using hendH)
+    refine ⟨hstartH, ?_⟩
+    simpa only [target, store, currentTargetEpochEnd,
+      currentTargetEpochStart, compute_start_slot_at_epoch,
+      get_current_target, get_checkpoint_for_block] using hendH
+  have htargetEpochWithin : target.epoch < E.verification_horizon := by
+    have h := htargetSpan.1.2
+    calc
+      target.epoch = target.epoch * cfg.slots_per_epoch /
+          cfg.slots_per_epoch :=
+        (Nat.mul_div_left target.epoch cfg.slots_per_epoch_pos).symm
+      _ < E.verification_horizon := by
+        simpa only [compute_epoch_at_slot] using h
+  have hqueryCausal : E.CausalStore cfg ext store := by
+    simpa only [store] using (Execution.CausalStore.scheduledPrefix p)
+  have htargetAt : E.AcceptedBlockAt cfg ext target.root
+      (store.blocks target.root) :=
+    E.acceptedBlockAt_of_causal_known cfg ext hqueryCausal htargetKnown
+  have hsourceBefore : (B.state.GU target.root).epoch < target.epoch :=
+    (B.state.au_epoch_le_block htargetAt
+      (B.state.gu_mem target.root htargetAt.acceptedRoot)).trans_lt
+        (by simpa only [get_block_epoch] using htargetOld)
+  have hgeometryVote : ∀ i ∈ signers,
+      ∀ vote : ConcreteHonestTargetVoteBefore cfg ext E i deadline target,
+        E.TrustedAcceptedHonestOldTargetSourceEvidence cfg ext B
+          (E.store cfg ext i vote.time) vote.slot vote.index target.root := by
+    intro i hi vote
+    exact E.trusted_concreteHonestTargetVote_acceptedOldTargetSourceEvidence
+      cfg ext B hT hwalkDomain hphase hboundaryPhase hanchor hqueryCausal
+      htargetKnown htargetOld hanchorBefore vote
+  have hsourceAgreement : CurrentTargetSourceAgreement cfg ext E signers
+      deadline (B.state.GU target.root) target := by
+    intro i hi vote
+    simpa only [honest_attestation_data_eq] using
+      (hgeometryVote i hi vote).source_eq
+  let Q : ConcreteA32QuorumBefore cfg ext E deadline target :=
+    { source := B.state.GU target.root
+      signers := signers
+      votes := hvotes
+      source_agreement := hsourceAgreement
+      supermajority := hsupermajority
+      source_before_target := hsourceBefore
+      target_epoch_within := htargetEpochWithin }
+  refine ⟨Q, ?_⟩
+  intro i hi vote
+  exact hgeometryVote i hi vote
+
+theorem trusted_scheduledEventPrefix_acceptedConcreteOldTargetQuorum
+    (B : TrustedCausalPrefixFFGInterpretation cfg ext E trusted)
+    (hT : E.ScheduledPrefixPremises cfg ext)
+    (hsv : StaticValidatorSet cfg E)
+    (hbb : ByzantineWeightPremises cfg E)
+    (hphase : Phase0SourceCoherence cfg ext)
+    (hboundaryPhase : Phase0BoundarySourceCoherence cfg ext)
+    (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
+    (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg) (E := E)
+      (anchor := B.anchor))
+    (p : E.ScheduledEventPrefix)
+    (hp : p.node ∈ E.honest)
+    (hqH : E.WithinHorizon cfg (p.previousSecond + 1))
+    (hevidence : E.CurrentTargetPrefixAccountingEvidence cfg ext
+      (p.store cfg ext) (p.previousSecond + 1))
+    {state : BeaconState Root}
+    (hstate : state = get_pulled_up_head_state cfg ext (p.store cfg ext))
+    (hval : state.validators = E.registry)
+    (htab : get_total_active_balance cfg state = E.total_active cfg)
+    (hendH : E.SlotWithinHorizon cfg
+      (currentTargetEpochEnd cfg (p.store cfg ext)))
+    (hanchorH : get_current_epoch cfg E.anchor_state <
+      E.verification_horizon)
+    (hfloor : cfg.effective_balance_increment ≤
+      E.weight (E.currentTargetAnchorActive cfg))
+    (hgate : will_current_target_be_justified cfg ext
+      (p.store cfg ext) = true)
+    (hsupport : HonestVotesSupportTarget cfg E
+      (get_current_target cfg (p.store cfg ext))
+      (p.previousSecond + 1))
+    (htargetKnown : (get_current_target cfg
+      (p.store cfg ext)).root ∈ (p.store cfg ext).block_roots)
+    (htargetOld : get_block_epoch cfg (p.store cfg ext)
+      (get_current_target cfg (p.store cfg ext)).root <
+        (get_current_target cfg (p.store cfg ext)).epoch)
+    (hanchorBefore : B.anchor.epoch <
+      (get_current_target cfg (p.store cfg ext)).epoch) :
+    ∃ Q : ConcreteA32QuorumBefore cfg ext E
+        (compute_start_slot_at_epoch cfg
+          ((get_current_target cfg (p.store cfg ext)).epoch + 1))
+        (get_current_target cfg (p.store cfg ext)),
+      E.TrustedAcceptedConcreteA32QuorumOldSourceGeometry cfg ext B Q
+        (get_current_target cfg (p.store cfg ext)).root := by
+  exact E.trusted_scheduledEventPrefix_acceptedConcreteOldTargetQuorum_of_operationalEvidence cfg ext
+    B hT hsv hbb hphase hboundaryPhase hanchor hboundary p hqH hevidence hstate hval htab hendH hanchorH hfloor hgate hsupport htargetKnown htargetOld hanchorBefore
 
 end Execution
 end FastConfirmation.Spec
