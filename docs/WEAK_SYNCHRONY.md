@@ -218,5 +218,31 @@ The local FFG modules build independently of the old weak
 headlines. `scripts/h6-observer-ffg-oracle.lean` checks arbitrary schedule
 replacement and the axioms of its consumers. The h6 use ledger covers 22 direct
 FFG/coherence entries and seven authenticity entries in h5's inventory. These
-are supplied interfaces, not 29 migrated proof bodies. The old headlines and
-the honest endpoint equal to the observer remain outside this local-FFG work.
+are supplied interfaces, not 29 migrated proof bodies. The old headlines
+remain outside this local-FFG work.
+
+## Non-honest observer integration status
+
+For `obs ∉ E.honest`, `WeakObserverRestrictedPremises` has only the shared core
+and local inputs. The independence theorem preserves the non-honest condition
+and transfers the core when only the observer schedule changes. The new run
+must satisfy its own local contracts. Honest endpoints remain all of
+`E.honest`.
+
+The current proof recovers honest behavior, all honest-to-honest timed relay
+fields, validation on honest causal stores, the static registry and economic
+bound, and the operational prefix laws for the actual run. It also transfers
+G4 paths when the receiver is honest. Local FFG proves observer head knownness
+and AU checkpoint ancestry. These are compiled facts, with no observer
+receipt deadline.
+
+A direct reduction to the old headline bundle stops at two fields. First,
+the old accepted-carrier inclusion evidence needs a separate block-derived
+attestation event and an honest validation store. The local content contract
+has the carrier body and an observer-prepared validation state. It does not
+require those remote occurrences. Second, the old head-path domain ranges
+over every receiver, including the actual observer; the restricted core
+constrains only the observer's empty-schedule view. The honest-receiver case
+has been proved separately. The remaining weak trajectory proof must use
+these local interfaces before a restricted-premise safety headline can be
+claimed. The existing weak headline types are unchanged.
