@@ -248,9 +248,11 @@ theorem confirmed_safeFromFollowingSlot_of_acceptedActualFCRFold
     {v : ValidatorIndex} (hv : v ∈ E.honest) :
     ∀ n : ℕ, E.WithinHorizon cfg n →
       E.ConfirmedSafeFromFollowingSlot cfg ext v n := by
+  have hpaths := E.honestHeadPathAdmissibility_of_accepted cfg ext B hT hC
+    hanchor hboundary hspe hDelay P V
   have hdomain : SelectedMarginDomain cfg ext E :=
     E.selectedMarginDomain_of_acceptedGlobalTrajectory
-      cfg ext B hT hC.synchrony hanchor hboundary
+      cfg ext B hT hC.synchrony hpaths hanchor hboundary
   have hanchorExact : B.anchor =
       B.state.C B.anchor.root B.anchor.epoch :=
     acceptedAnchorExact_of_trajectory cfg ext E B hT hanchor hboundary
@@ -320,12 +322,12 @@ theorem confirmed_safeFromFollowingSlot_of_acceptedActualFCRFold
           | finalizedResetUnchanged hinput hselector =>
               rw [hselector.result_eq_input cfg ext]
               exact E.finalizedResetCandidateInput_safeFrom_of_nextSlotSynchrony
-                cfg ext B hT hacc hanchor hboundary hC.synchrony hv hHn1
+                cfg ext B hT hacc hanchor hboundary hC hspe hDelay P V hv hHn1
                   hinput hdeadlineSlot
           | observedResetUnchanged hinput hselector =>
               have hinputSafe :=
                 Execution.ObservedResetCandidateInputAt.safeFrom_of_acceptedDynamics
-                  (E := E) cfg ext B hT hC.synchrony hC.static_validators
+                  (E := E) cfg ext B hT hC.synchrony hpaths hC.static_validators
                     hC.byzantine_bound hanchor hboundary hspe hDelay P V
                       hv hHn1 hcall hinput
               rw [hselector.result_eq_input cfg ext]
@@ -343,7 +345,7 @@ theorem confirmed_safeFromFollowingSlot_of_acceptedActualFCRFold
                 | observedReset hinput =>
                     exact
                       Execution.ObservedResetCandidateInputAt.safeFrom_of_acceptedDynamics
-                        (E := E) cfg ext B hT hC.synchrony hC.static_validators
+                        (E := E) cfg ext B hT hC.synchrony hpaths hC.static_validators
                           hC.byzantine_bound hanchor hboundary hspe hDelay P V
                             hv hHn1
                             hcall hinput

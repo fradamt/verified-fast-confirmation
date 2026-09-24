@@ -72,7 +72,7 @@ theorem freshEngineInputs_of_slotStart_IH_minimal
       E.genesis_store = get_forkchoice_store cfg ast ablk ∧
       ast.slot = ablk.message.slot ∧ ablk.message.parent_root ≠ ablk.root :=
     ⟨ast, ablk, hgeq, hslot, hparent⟩
-  intro i hi nᵢ hslotᵢ
+  intro i hi nᵢ index hslotᵢ hvote
   have hiHonest : i ∈ E.honest := (Finset.mem_filter.mp hi).2
   have hquery_le_i : E.slot_at cfg q ≤ E.slot_at cfg nᵢ := by
     rw [hq, hslotᵢ]
@@ -93,52 +93,24 @@ theorem freshEngineInputs_of_slotStart_IH_minimal
     hIH i hiHonest nᵢ hniLower hniSlotLt hHni
   have hglcᵢ : glc ∈ (E.store cfg ext i nᵢ).block_roots :=
     hglcKnown i hiHonest nᵢ hniLower hHni
-  have hgate : E.slot_at cfg nᵢ + 1 ≤ E.slot_at cfg (m + 1) :=
-    le_trans (Nat.succ_le_of_lt hniSlotLt)
-      (E.slot_at_mono cfg (Nat.le_succ m))
-  have hsub : (E.store cfg ext i nᵢ).block_roots ⊆
-      (E.store cfg ext w m).block_roots :=
-    E.blockRoots_subset_of_relay cfg ext hA.synchrony
-      hiHonest hw hHni hHm hgate
-  obtain ⟨hparentᵢ, hwalkK, _hjust⟩ :=
-    E.store_domainK_of_selectedMarginDomain cfg ext hA.wellFormed
-      hA.externals_coherence hgen hA.domain i hiHonest nᵢ hHni
-  have hhead : (get_head cfg (E.store cfg ext i nᵢ)).root ∈
-      (E.store cfg ext i nᵢ).block_roots :=
-    E.head_root_known_of_selectedMarginDomain cfg ext hA.domain
-      hiHonest nᵢ hHni
-  have hanchor0 : ablk.root ∈ E.genesis_store.block_roots := by
-    rw [hgeq]
-    simp [get_forkchoice_store]
-  have hanchor : ablk.root ∈ (E.store cfg ext i nᵢ).block_roots :=
-    (E.store_storeLE cfg ext i (Nat.zero_le nᵢ)).1 hanchor0
-  have hanchorSlot : ((E.store cfg ext i nᵢ).blocks ablk.root).slot =
-      ablk.message.slot := by
-    rw [E.store_anchor_block cfg ext hA.wellFormed hgeq i nᵢ hanchor]
-  have hwalkA : ∀ r ∈ (E.store cfg ext i nᵢ).block_roots,
-      WalkKnown (E.store cfg ext i nᵢ) ablk.message.slot r := by
-    intro r hr
-    have hwalk := hwalkK ablk.root hanchor r hr
-    rwa [hanchorSlot] at hwalk
-  have hanchorLeC : ablk.message.slot ≤
-      ((E.store cfg ext w m).blocks c).slot :=
-    E.store_anchor_min_slot cfg ext hA.wellFormed hA.externals_coherence
-      hgeq hslot hparent w m c hc
-  have hheadGlc' : is_ancestor (E.store cfg ext i nᵢ)
+  have hdue : nᵢ ≤ E.slot_start cfg (E.slot_at cfg nᵢ) +
+      get_attestation_due_ms cfg / 1000 := by
+    simpa only [hslotᵢ] using
+      (hA.honest_behavior.vote_deadline i hiHonest (σ' + 1) nᵢ _ hvote).2
+  have hheadM := E.honest_head_known_at_later_slot_minimal cfg ext hA
+    hiHonest hw hHni hHm hdue hniSlotLt
+  have hhead := E.head_root_known_of_selectedMarginDomain cfg ext hA.domain
+    hiHonest nᵢ hHni
+  obtain ⟨hglcM, hheadGlcM⟩ := E.ancestor_at_common_descendant_minimal cfg ext hA
+    hhead hheadM hglcᵢ (by rwa [is_ancestor_node_root] at hheadGlc)
+  obtain ⟨hparentM, hwalkM, _⟩ := E.store_domainK_of_selectedMarginDomain cfg ext
+    hA.wellFormed hA.externals_coherence hA.genesis hA.domain w hw m hHm
+  have hheadCEnd : is_ancestor (E.store cfg ext w m)
       (get_node_for_root (get_head cfg (E.store cfg ext i nᵢ)).root)
-      (get_node_for_root glc) = true :=
-    (congrArg (· = true) (is_ancestor_pending_root_eq (E.store cfg ext i nᵢ)
-      (get_head cfg (E.store cfg ext i nᵢ)).root glc .pending
-      (get_head cfg (E.store cfg ext i nᵢ)).payload_status)).mpr hheadGlc
-  obtain ⟨hcᵢ, hheadC⟩ := E.chain_descent_restrict hA.wellFormed
-    (E.blockProvenance cfg ext i nᵢ) (E.blockProvenance cfg ext w m)
-    hparentᵢ hwalkA hanchorLeC hsub hhead hglcᵢ hheadGlc' hchain
-  have hheadC' : is_ancestor (E.store cfg ext i nᵢ)
-      (get_head cfg (E.store cfg ext i nᵢ)) (get_node_for_root c) = true :=
-    (congrArg (· = true) (is_ancestor_pending_root_eq (E.store cfg ext i nᵢ)
-      (get_head cfg (E.store cfg ext i nᵢ)).root c .pending
-      (get_head cfg (E.store cfg ext i nᵢ)).payload_status)).mp hheadC
-  exact ⟨hheadC', hsub, hcᵢ, hwalkK c hcᵢ _ hhead⟩
+      (get_node_for_root c) = true :=
+    is_ancestor_trans (b := get_node_for_root glc) hparentM (hwalkM c hc _ hheadM)
+      (hwalkM c hc glc hglcM) hheadGlcM hchain
+  exact hheadCEnd
 
 theorem hgrowS_of_slotStart_IH_minimal
     (hA : SelectedMarginAssumptions cfg ext E)

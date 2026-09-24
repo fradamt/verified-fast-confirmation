@@ -107,6 +107,7 @@ state-semantic derivation is G3's phase0/source-coherence result.  `hknown` and
 theorem paperA32LinkSupportAtCore_of_concreteHonestTargetVotes
     (hhb : HonestBehavior cfg ext E)
     (hsync : NextSlotSynchronyPremises cfg ext E)
+    (hpaths : HonestHeadPathAdmissibility cfg ext E)
     (hec : BeaconExternalsPremises cfg ext E)
     (hdiv : 1000 ∣ cfg.slot_duration_ms)
     (hgenTime : E.genesis_store.genesis_time ≤ E.genesis_store.time)
@@ -179,6 +180,7 @@ theorem paperA32SupportThroughoutEpochCore_of_concreteQuorum
     (hwf : WellFormedExecution E)
     (hhb : HonestBehavior cfg ext E)
     (hsync : NextSlotSynchronyPremises cfg ext E)
+    (hpaths : HonestHeadPathAdmissibility cfg ext E)
     (hec : BeaconExternalsPremises cfg ext E)
     (hdiv : 1000 ∣ cfg.slot_duration_ms)
     (hgen : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
@@ -293,14 +295,14 @@ theorem paperA32SupportThroughoutEpochCore_of_concreteQuorum
       (E.slot_start_le_of_slot_at cfg hdiv hgenTime rfl)
   have htargetKeyed : V.C b e ∈
       (E.store cfg ext w m).checkpoint_state_keys := by
-    have hcached := E.honestVoteTarget_cached cfg ext hwf hhb hsync hec
+    have hcached := E.honestVoteTarget_cached cfg ext hwf hhb hsync hpaths hec
       hdiv ⟨ast, ablk, hgenEq, hgenSlot, hanchorParent⟩
       vote.honest hw vote.slot_at_time vote.time_within_horizon vote.vote
       hvoteHeadKnown hvoteWalk hdeliveryLe hHm
     simpa only [a, voteStore, vote.target_eq] using hcached
   have htargetKnown : (V.C b e).root ∈
       (E.store cfg ext w m).block_roots := by
-    have hreceived := E.honestVoteTarget_known cfg ext hwf hhb hsync hec
+    have hreceived := E.honestVoteTarget_known cfg ext hwf hhb hsync hpaths hec
       hdiv ⟨ast, ablk, hgenEq, hgenSlot, hanchorParent⟩
       vote.honest hw vote.slot_at_time vote.time_within_horizon vote.vote
       hvoteHeadKnown hvoteWalk hdeliveryLe hHm
@@ -311,7 +313,7 @@ theorem paperA32SupportThroughoutEpochCore_of_concreteQuorum
     simp only [PaperA32StateView.VSAt]
     rw [hbEpochQuery, hbEpochView]
   have hsupport := E.paperA32LinkSupportAtCore_of_concreteHonestTargetVotes
-    cfg ext hhb hsync hec hdiv hgenTime Q (V := V)
+    cfg ext hhb hsync hpaths hec hdiv hgenTime Q (V := V)
       hw hHm hdeadline
       (b' := b') htargetKnown htargetKeyed
   rw [← hsourceView]
@@ -324,6 +326,7 @@ theorem accepted_paperA32SupportThroughoutEpoch_of_concreteQuorum
     (hwf : WellFormedExecution E)
     (hhb : HonestBehavior cfg ext E)
     (hsync : NextSlotSynchronyPremises cfg ext E)
+    (hpaths : HonestHeadPathAdmissibility cfg ext E)
     (hec : BeaconExternalsPremises cfg ext E)
     (hdiv : 1000 ∣ cfg.slot_duration_ms)
     (hgen : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
@@ -345,7 +348,7 @@ theorem accepted_paperA32SupportThroughoutEpoch_of_concreteQuorum
       S.VSAt cfg ext (E.store cfg ext v q) b e) :
     S.PaperA32SupportThroughoutEpoch cfg ext b e :=
   E.paperA32SupportThroughoutEpochCore_of_concreteQuorum cfg ext
-    hwf hhb hsync hec hdiv hgen hwalkDomain hv hqH hbQuery
+    hwf hhb hsync hpaths hec hdiv hgen hwalkDomain hv hqH hbQuery
     hbEpochQuery hcanonical Q hsourceQuery
 
 /-- Accepted end-to-end A.3.2 consumer: one concrete fixed-source quorum
@@ -356,6 +359,7 @@ theorem accepted_paperA32IncludedAtTip_of_concreteQuorum
     (hwf : WellFormedExecution E)
     (hhb : HonestBehavior cfg ext E)
     (hsync : NextSlotSynchronyPremises cfg ext E)
+    (hpaths : HonestHeadPathAdmissibility cfg ext E)
     (hec : BeaconExternalsPremises cfg ext E)
     (hdiv : 1000 ∣ cfg.slot_duration_ms)
     (hgen : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
@@ -386,7 +390,7 @@ theorem accepted_paperA32IncludedAtTip_of_concreteQuorum
         (E.store cfg ext w m) e b seed := by
   have hsupport :=
     E.accepted_paperA32SupportThroughoutEpoch_of_concreteQuorum cfg ext
-      hwf hhb hsync hec hdiv hgen hwalkDomain hv hqH hbQuery
+      hwf hhb hsync hpaths hec hdiv hgen hwalkDomain hv hqH hbQuery
       hbEpochQuery hcanonical Q hsourceQuery
   exact E.accepted_paperA32IncludedAtTip_of_paper_at_known cfg ext
     hcoh hpaper hbQuery hbEpochQuery.le hcanonical hsupport

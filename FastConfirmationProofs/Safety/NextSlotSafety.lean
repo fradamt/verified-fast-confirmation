@@ -72,9 +72,12 @@ theorem selected_result_safe_from_next_slot_of_scheduled_call
     simpa only [trace] using hselector
   have hHn : E.WithinHorizon cfg n :=
     E.withinHorizon_mono cfg (Nat.le_succ n) hHn1
+  have hpaths := E.honestHeadPathAdmissibility_of_accepted cfg ext
+    h.semantics h.trajectory h.completed_calls h.anchor_eq h.anchor_boundary
+    h.slots_per_epoch_gt_one h.finalization_delay h.checkpoint_projection h.exact_link_validity
   have hdomain : SelectedMarginDomain cfg ext E :=
     E.selectedMarginDomain_of_acceptedGlobalTrajectory
-      cfg ext h.semantics h.trajectory h.completed_calls.synchrony
+      cfg ext h.semantics h.trajectory h.completed_calls.synchrony hpaths
         h.anchor_eq h.anchor_boundary
   have hanchorExact : h.semantics.anchor =
       h.semantics.state.C h.semantics.anchor.root h.semantics.anchor.epoch :=
@@ -125,7 +128,7 @@ theorem selected_result_safe_from_next_slot_of_scheduled_call
         exact
           Execution.ObservedResetCandidateInputAt.safeFrom_of_acceptedDynamics
             (E := E) cfg ext h.semantics h.trajectory
-              h.completed_calls.synchrony h.completed_calls.static_validators
+              h.completed_calls.synchrony hpaths h.completed_calls.static_validators
                 h.completed_calls.byzantine_bound h.anchor_eq h.anchor_boundary
                   h.slots_per_epoch_gt_one h.finalization_delay
                     h.checkpoint_projection h.exact_link_validity hv hHn1 hcall hinput
@@ -142,7 +145,7 @@ theorem selected_result_safe_from_next_slot_of_scheduled_call
             exact
               Execution.ObservedResetCandidateInputAt.safeFrom_of_acceptedDynamics
                 (E := E) cfg ext h.semantics h.trajectory
-                  h.completed_calls.synchrony
+                  h.completed_calls.synchrony hpaths
                     h.completed_calls.static_validators
                       h.completed_calls.byzantine_bound h.anchor_eq
                         h.anchor_boundary h.slots_per_epoch_gt_one

@@ -115,24 +115,7 @@ structure Synchrony (E : Execution Root) : Prop where
     E.WithinHorizon cfg (E.slot_start cfg (s + 1)) →
     ∀ w ∈ E.honest,
       Event.attestation a false ∈ E.schedule w (E.slot_start cfg (s + 1))
-  /-- blocks known to an honest node propagate by the **end of the same
-      slot**: anything in `v`'s block set at a second of slot `s` is in every
-      honest node's block set from the last second of slot `s` on — in
-      particular *before* the first second of slot `s+1`, so that second's
-      attestation fold finds the referenced blocks already known
-      (`validate_on_attestation`'s known-block asserts). The `m+1` clock read is
-      only the arithmetic characterization of "last second of the slot"; no
-      execution-state assumption is made at `m+1`, so the endpoint itself (not
-      its successor) is the horizon-scoped state. -/
-  block_relay : ∀ v ∈ E.honest, ∀ n r,
-    E.WithinHorizon cfg n →
-    r ∈ (E.store cfg ext v n).block_roots →
-    ∀ w ∈ E.honest, ∀ m,
-      E.WithinHorizon cfg m →
-      E.slot_at cfg n + 1 ≤ E.slot_at cfg (m + 1) →
-      r ∈ (E.store cfg ext w m).block_roots
-  /-- Deadline-cutoff block relay with the exact finalized-guard exemption.
-      This field is the migration target for `block_relay`. -/
+  /-- Deadline gossip with the pre-tick finalized-guard exemption. -/
   deadline_block_relay : DeadlineBlockRelay cfg ext E
   /-- Ready cutoff-time blocks precede next-slot attestation handlers. -/
   boundary_block_prefix : DeadlineBoundaryBlockPrefix cfg ext E
@@ -215,13 +198,6 @@ structure NextSlotSynchronyPremises (E : Execution Root) : Prop where
     E.WithinHorizon cfg (E.slot_start cfg (s + 1)) →
     ∀ w ∈ E.honest,
       Event.attestation a false ∈ E.schedule w (E.slot_start cfg (s + 1))
-  block_relay : ∀ v ∈ E.honest, ∀ n r,
-    E.WithinHorizon cfg n →
-    r ∈ (E.store cfg ext v n).block_roots →
-    ∀ w ∈ E.honest, ∀ m,
-      E.WithinHorizon cfg m →
-      E.slot_at cfg n + 1 ≤ E.slot_at cfg (m + 1) →
-      r ∈ (E.store cfg ext w m).block_roots
   deadline_block_relay : DeadlineBlockRelay cfg ext E
   /-- Ready cutoff-time blocks precede next-slot attestation handlers. -/
   boundary_block_prefix : DeadlineBoundaryBlockPrefix cfg ext E

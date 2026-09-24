@@ -40,6 +40,9 @@ theorem canonicalThroughoutNextEpoch_of_selectedCanonical_currentEpoch
       E.IsScheduledFCRCallAt cfg ext v n)
     {selected : Root} {e : Epoch}
     (hselected : selected ∈ (E.store cfg ext v q).block_roots)
+    (hknownLater : ∀ w' ∈ E.honest, ∀ m',
+      E.slot_start cfg (E.slot_at cfg q) ≤ m' → E.WithinHorizon cfg m' →
+      selected ∈ (E.store cfg ext w' m').block_roots)
     (heCurrent :
       e = get_current_store_epoch cfg (E.store cfg ext v q))
     {w : ValidatorIndex} {m : ℕ}
@@ -81,23 +84,7 @@ theorem canonicalThroughoutNextEpoch_of_selectedCanonical_currentEpoch
       simpa only [Nat.succ_eq_add_one, Nat.add_assoc, Nat.reduceAdd] using
         hlate.trans hepochLe
     exact (Nat.not_succ_le_self (e + 1)) hbad
-  have hrelayGate : E.slot_at cfg q + 1 ≤ E.slot_at cfg (m' + 1) :=
-    (Nat.succ_le_of_lt hslotLower).trans
-      (E.slot_at_mono cfg (Nat.le_succ m'))
-  obtain ⟨callSecond, hcallSecond, hcall⟩ := hcallAt
-  obtain ⟨ast, ablk, hgen, hgenSlot, hgenParent⟩ := hA.genesis
-  have hgenTime : E.genesis_store.genesis_time ≤ E.genesis_store.time := by
-    rw [hgen]
-    exact (wellFormedStore_get_forkchoice_store cfg ast ablk
-      hgenSlot hgenParent).time_ge_genesis
-  obtain ⟨origin, horiginEq, _hcutoff, hselectedOrigin⟩ :=
-    E.scheduled_fcr_call_root_before_deadline cfg ext hA.whole_seconds
-      hgenTime hcall (by simpa only [hcallSecond] using hselected)
-  have hknown : selected ∈ (E.store cfg ext w' m').block_roots :=
-    hA.synchrony.block_relay v hv origin selected
-      (by simpa only [horiginEq, ← hcallSecond] using hqH)
-      hselectedOrigin w' hw' m' hm'H
-      (by simpa only [horiginEq, ← hcallSecond] using hrelayGate)
+  have hknown := hknownLater w' hw' m' hindexLower hm'H
   exact ⟨hknown, hcanonical w' hw' m' hindexLower hslotUpper hm'H⟩
 
 

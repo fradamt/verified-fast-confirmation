@@ -70,23 +70,6 @@ theorem SameBlocks.blocksSlotLe {sl : Slot} {s t : Store Root} (h : SameBlocks s
 
 variable [LinearOrder Root] [Inhabited Root] (cfg : Config) (ext : Externals Root)
 
-/-- Only the roots on this vote head's target-epoch ancestor walk must avoid
-the receiver's permanent finalized-checkpoint exclusion. This is the exact
-path consumed by attestation validation. -/
-inductive VotePathAdmissible (E : Execution Root)
-    (v : ValidatorIndex) (n : ℕ) (w : ValidatorIndex)
-    (boundary : ℕ) (slot : Slot) : Root → Prop
-  | stop {r : Root} (hr : r ∈ (E.store cfg ext v n).block_roots)
-      (hnot : ¬ PermanentBlockExclusion cfg ext E v n r w boundary)
-      (hle : ((E.store cfg ext v n).blocks r).slot ≤ slot) :
-      VotePathAdmissible E v n w boundary slot r
-  | step {r : Root} (hr : r ∈ (E.store cfg ext v n).block_roots)
-      (hnot : ¬ PermanentBlockExclusion cfg ext E v n r w boundary)
-      (hgt : slot < ((E.store cfg ext v n).blocks r).slot)
-      (hp : VotePathAdmissible E v n w boundary slot
-        ((E.store cfg ext v n).blocks r).parent_root) :
-      VotePathAdmissible E v n w boundary slot r
-
 namespace VotePathAdmissible
 
 /-- The admissible path is also a known source path. -/
@@ -97,6 +80,56 @@ theorem walkKnown {E : Execution Root} {v w : ValidatorIndex}
   induction h with
   | stop hr _ hle => exact WalkKnown.stop hr hle
   | step hr _ hgt _ ih => exact WalkKnown.step hr hgt ih
+
+end VotePathAdmissible
+
+namespace VotePathAdmissible
+
+/-- The refined relay delivers the root of an admissible path at every
+receiver second at or after the next slot start. -/
+theorem root_known_of_deadline_relay
+    {E : Execution Root} (hrelay : DeadlineBlockRelay cfg ext E)
+    {v w : ValidatorIndex} {n m : ℕ} {slot : Slot} {r : Root}
+    (hv : v ∈ E.honest) (hw : w ∈ E.honest)
+    (hHn : E.WithinHorizon cfg n) (hHm : E.WithinHorizon cfg m)
+    (hdue : n ≤ E.slot_start cfg (E.slot_at cfg n) + get_attestation_due_ms cfg / 1000)
+    (hnext : E.slot_start cfg (E.slot_at cfg n + 1) ≤ m) (hlt : n < m)
+    (hpath : VotePathAdmissible cfg ext E v n w
+      (E.slot_start cfg (E.slot_at cfg n + 1) - 1) slot r) :
+    r ∈ (E.store cfg ext w m).block_roots := by
+  have hnot : ¬ PermanentBlockExclusion cfg ext E v n r w
+      (E.slot_start cfg (E.slot_at cfg n + 1) - 1) := by
+    cases hpath with
+    | stop _ hnot _ => exact hnot
+    | step _ hnot _ _ => exact hnot
+  exact (hrelay v hv n r hHn hpath.walkKnown.root_mem hdue w hw m hHm hnext hlt).resolve_right hnot
+
+/-- An admissible path is known before each next-slot attestation handler.
+This is the direct input for the vote-landing and target-cache consumers. -/
+theorem covered_at_boundary
+    {E : Execution Root} (hprefix : DeadlineBoundaryBlockPrefix cfg ext E)
+    {v w : ValidatorIndex} {n : ℕ} {slot : Slot} {r : Root}
+    (hv : v ∈ E.honest) (hw : w ∈ E.honest)
+    (hHn : E.WithinHorizon cfg n)
+    (hdue : n ≤ E.slot_start cfg (E.slot_at cfg n) + get_attestation_due_ms cfg / 1000)
+    (hHN : E.WithinHorizon cfg (E.slot_start cfg (E.slot_at cfg n + 1)))
+    (hlt : n < E.slot_start cfg (E.slot_at cfg n + 1))
+    {a : Attestation Root} {before after : List (Event Root)}
+    (hschedule : E.schedule w (E.slot_start cfg (E.slot_at cfg n + 1)) =
+      before ++ Event.attestation a false :: after)
+    (hpath : VotePathAdmissible cfg ext E v n w
+      (E.slot_start cfg (E.slot_at cfg n + 1) - 1) slot r) :
+    WalkCoveredBy (E.store cfg ext v n)
+      (before.foldl (fun store event => (apply_event cfg ext store event).getD store)
+        (on_tick cfg (E.store cfg ext w (E.slot_start cfg (E.slot_at cfg n + 1) - 1))
+          (E.time_at (E.slot_start cfg (E.slot_at cfg n + 1))))) slot r := by
+  induction hpath with
+  | @stop r hr hnot hle =>
+      exact .stop hr (hprefix v hv n r hHn hr hdue w hw hHN hlt
+        a before after hschedule hnot) hle
+  | @step r hr hnot hgt _ ih =>
+      exact .step hr (hprefix v hv n r hHn hr hdue w hw hHN hlt
+        a before after hschedule hnot) hgt ih
 
 end VotePathAdmissible
 
@@ -833,6 +866,7 @@ at the receiver before the vote's fold position. -/
 theorem Execution.vote_lands {E : Execution Root}
     (hwf : WellFormedExecution E) (hhb : HonestBehavior cfg ext E)
     (hsyn : NextSlotSynchronyPremises cfg ext E)
+    (hpaths : HonestHeadPathAdmissibility cfg ext E)
     (hec : BeaconExternalsPremises cfg ext E)
     (hdiv : 1000 ∣ cfg.slot_duration_ms)
     (hgen : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
@@ -944,51 +978,20 @@ theorem Execution.vote_lands {E : Execution Root}
     have hslotMono := E.slot_at_mono cfg hdeliveryLeN
     rw [hslotN, hn] at hslotMono
     exact (Nat.not_succ_le_self s) hslotMono
-  have hprefixRoot (root : Root)
-      (hr : root ∈ (E.store cfg ext v n).block_roots) :
-      root ∈ (pre.foldl
-        (fun store event => (apply_event cfg ext store event).getD store)
-        tb).block_roots := by
-    have hpredH := E.withinHorizon_mono cfg (Nat.sub_le
-      (E.slot_start cfg (s + 1)) 1) hHdeliver
-    have hpos : 0 < E.slot_start cfg (s + 1) := by omega
-    have hgate : E.slot_at cfg n + 1 ≤
-        E.slot_at cfg (E.slot_start cfg (s + 1) - 1 + 1) := by
-      rw [Nat.sub_add_cancel (by omega : 1 ≤ E.slot_start cfg (s + 1)), hn,
-        hslotN]
-    have hknownPred : root ∈
-        (E.store cfg ext w (E.slot_start cfg (s + 1) - 1)).block_roots :=
-      hsyn.block_relay v hv n root hHn hr w hw _ hpredH hgate
-    have hnotExcluded : ¬ PermanentBlockExclusion cfg ext E v n root w
-        (E.slot_start cfg (s + 1) - 1) := by
-      intro hexcluded
-      exact hexcluded.1 hknownPred
-    have hprefix := hsyn.boundary_block_prefix v hv n root hHn hr
-      hdeadline w hw (by simpa only [hn] using hHdeliver)
-      (by simpa only [hn] using hnBeforeDelivery)
-      a pre suf (by simpa only [hn, hNeq] using hl)
-      (by simpa only [hn] using hnotExcluded)
-    simpa only [hn, hNeq, tb] using hprefix
+  have hpath := hpaths v hv n hHn w
+    (compute_start_slot_at_epoch cfg a.data.target.epoch)
+    (by simpa only [hn] using hHdeliver) hsourceWalk
   have hcovered : WalkCoveredBy (E.store cfg ext v n)
       (pre.foldl
         (fun store event => (apply_event cfg ext store event).getD store)
         tb)
       (compute_start_slot_at_epoch cfg a.data.target.epoch)
       a.data.beacon_block_root := by
-    have key : ∀ {root}, WalkKnown (E.store cfg ext v n)
-        (compute_start_slot_at_epoch cfg a.data.target.epoch) root →
-        WalkCoveredBy (E.store cfg ext v n)
-          (pre.foldl
-            (fun store event => (apply_event cfg ext store event).getD store)
-            tb)
-          (compute_start_slot_at_epoch cfg a.data.target.epoch) root := by
-      intro root hwalk
-      induction hwalk with
-      | @stop root hr hle =>
-          exact WalkCoveredBy.stop hr (hprefixRoot root hr) hle
-      | @step root hr hgt hp ih =>
-          exact WalkCoveredBy.step hr (hprefixRoot root hr) hgt ih
-    exact key hsourceWalk
+    have h := hpath.covered_at_boundary cfg ext hsyn.boundary_block_prefix
+      hv hw hHn hdeadline (by simpa only [hn] using hHdeliver)
+      (by simpa only [hn] using hnBeforeDelivery)
+      (by simpa only [hn, hNeq] using hl)
+    simpa only [hn, hNeq, tb] using h
   have hprov_tb : BlockProvenance E tb := by
     rw [htb]
     exact on_tick_blockProvenance cfg (E.store cfg ext w Nm1) (E.time_at (Nm1 + 1))
@@ -1089,6 +1092,7 @@ recorded message for `v` of epoch at least the vote's target epoch
 theorem Execution.vote_ubiquity {E : Execution Root}
     (hwf : WellFormedExecution E) (hhb : HonestBehavior cfg ext E)
     (hsyn : NextSlotSynchronyPremises cfg ext E)
+    (hpaths : HonestHeadPathAdmissibility cfg ext E)
     (hec : BeaconExternalsPremises cfg ext E)
     (hdiv : 1000 ∣ cfg.slot_duration_ms)
     (hgen : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
@@ -1110,7 +1114,7 @@ theorem Execution.vote_ubiquity {E : Execution Root}
     ∃ msg, (E.store cfg ext w m).latest_messages v = some msg ∧
       (honest_attestation cfg ext (E.store cfg ext v n) s index v).data.target.epoch ≤ (get_latest_message_epoch cfg msg) :=
   E.store_latest_message_ge_mono cfg ext
-    (E.vote_lands cfg ext hwf hhb hsyn hec hdiv hgen hv hw hn hHn
+    (E.vote_lands cfg ext hwf hhb hsyn hpaths hec hdiv hgen hv hw hn hHn
       (E.withinHorizon_mono cfg hm hHm) hvote hhead_known hhead_walk) hm
 
 /-! ## Schedule-connected latest-message provenance (`Delivery`)

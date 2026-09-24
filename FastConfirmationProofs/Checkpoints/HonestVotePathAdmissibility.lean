@@ -194,57 +194,39 @@ theorem honest_vote_path_admissible
   exact E.head_path_admissible_before_next_tick cfg ext B hT hrelay hbyz hphase hphaseBoundary
     hanchor hboundary hspe hDelay P V hacc hv hs0 hn hHn hHN hwalk
 
+/-- The public lower execution contracts derive the internal head-path
+property. The cache and selected-margin domain are not inputs. -/
+theorem honestHeadPathAdmissibility_of_accepted
+    (B : CausalPrefixFFGInterpretation cfg ext E)
+    (hT : E.ScheduledPrefixPremises cfg ext)
+    (hC : E.CompletedFCRCallPremises cfg ext)
+    (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
+    (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
+      (E := E) (anchor := B.anchor))
+    (hspe : 1 < cfg.slots_per_epoch)
+    (hDelay : E.RealizedFinalizationDelay cfg ext B)
+    (P : EpochCheckpointClosure B.anchor (E.AcceptedRoot cfg ext) B.state.C)
+    (V : B.state.ExactLinkValidity) :
+    HonestHeadPathAdmissibility cfg ext E := by
+  have hacc : FFGAccountabilityAssumptions cfg ext E :=
+    { genesis_store := by
+        obtain ⟨ast, ablk, hgen, _⟩ := hT.genesis_structure
+        exact ⟨ast, ablk, hgen⟩
+      whole_seconds := hT.whole_seconds
+      honest_behavior := hT.honest_behavior
+      externals_coherence := hT.externals_coherence
+      static_validator_set := hC.static_validators
+      byzantine_bound := hC.byzantine_bound }
+  intro v hv n hHn w slot hHN hwalk
+  exact E.head_path_admissible_before_next_tick cfg ext B hT
+    hC.synchrony.deadline_block_relay hC.byzantine_bound
+    hC.phase0_source hC.phase0_boundary_source hanchor hboundary hspe hDelay P V
+    (CheckpointCertificateAccountability.of_assumptions cfg hacc)
+    hv (E.slot_at_mono cfg (Nat.zero_le n)) rfl hHn hHN hwalk
+
 end Execution
 
-namespace VotePathAdmissible
 
-/-- The refined relay delivers the root of an admissible path at every
-receiver second at or after the next slot start. -/
-theorem root_known_of_deadline_relay
-    {E : Execution Root} (hrelay : DeadlineBlockRelay cfg ext E)
-    {v w : ValidatorIndex} {n m : ℕ} {slot : Slot} {r : Root}
-    (hv : v ∈ E.honest) (hw : w ∈ E.honest)
-    (hHn : E.WithinHorizon cfg n) (hHm : E.WithinHorizon cfg m)
-    (hdue : n ≤ E.slot_start cfg (E.slot_at cfg n) + get_attestation_due_ms cfg / 1000)
-    (hnext : E.slot_start cfg (E.slot_at cfg n + 1) ≤ m) (hlt : n < m)
-    (hpath : VotePathAdmissible cfg ext E v n w
-      (E.slot_start cfg (E.slot_at cfg n + 1) - 1) slot r) :
-    r ∈ (E.store cfg ext w m).block_roots := by
-  have hnot : ¬ PermanentBlockExclusion cfg ext E v n r w
-      (E.slot_start cfg (E.slot_at cfg n + 1) - 1) := by
-    cases hpath with
-    | stop _ hnot _ => exact hnot
-    | step _ hnot _ _ => exact hnot
-  exact (hrelay v hv n r hHn hpath.walkKnown.root_mem hdue w hw m hHm hnext hlt).resolve_right hnot
-
-/-- An admissible path is known before each next-slot attestation handler.
-This is the direct input for the vote-landing and target-cache consumers. -/
-theorem covered_at_boundary
-    {E : Execution Root} (hprefix : DeadlineBoundaryBlockPrefix cfg ext E)
-    {v w : ValidatorIndex} {n : ℕ} {slot : Slot} {r : Root}
-    (hv : v ∈ E.honest) (hw : w ∈ E.honest)
-    (hHn : E.WithinHorizon cfg n)
-    (hdue : n ≤ E.slot_start cfg (E.slot_at cfg n) + get_attestation_due_ms cfg / 1000)
-    (hHN : E.WithinHorizon cfg (E.slot_start cfg (E.slot_at cfg n + 1)))
-    (hlt : n < E.slot_start cfg (E.slot_at cfg n + 1))
-    {a : Attestation Root} {before after : List (Event Root)}
-    (hschedule : E.schedule w (E.slot_start cfg (E.slot_at cfg n + 1)) =
-      before ++ Event.attestation a false :: after)
-    (hpath : VotePathAdmissible cfg ext E v n w
-      (E.slot_start cfg (E.slot_at cfg n + 1) - 1) slot r) :
-    WalkCoveredBy (E.store cfg ext v n)
-      (before.foldl (fun store event => (apply_event cfg ext store event).getD store)
-        (on_tick cfg (E.store cfg ext w (E.slot_start cfg (E.slot_at cfg n + 1) - 1))
-          (E.time_at (E.slot_start cfg (E.slot_at cfg n + 1))))) slot r := by
-  induction hpath with
-  | @stop r hr hnot hle =>
-      exact .stop hr (hprefix v hv n r hHn hr hdue w hw hHN hlt
-        a before after hschedule hnot) hle
-  | @step r hr hnot hgt _ ih =>
-      exact .step hr (hprefix v hv n r hHn hr hdue w hw hHN hlt
-        a before after hschedule hnot) hgt ih
-
-end VotePathAdmissible
 
 end FastConfirmation.Spec
 end

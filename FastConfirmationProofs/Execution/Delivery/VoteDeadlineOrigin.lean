@@ -1,4 +1,5 @@
 module
+public import FastConfirmationStatements.Premises.ScheduledExecutionConditions
 public import FastConfirmationStatements.Premises.Synchrony
 public import FastConfirmationStatements.Traces
 public import FastConfirmationProofs.Checkpoints.SlotClock
@@ -48,6 +49,19 @@ theorem scheduled_fcr_call_at_slot_start
   have hbefore := (E.slot_at_lt_iff cfg hdiv hgen).mp hslot
   have hstart := E.slot_start_le_of_slot_at cfg hdiv hgen
     (show E.slot_at cfg (n + 1) = E.slot_at cfg (n + 1) from rfl)
+  omega
+
+/-- Scheduled FCR calls read the new-slot store before its deadline. -/
+theorem scheduled_fcr_call_before_deadline
+    (hT : E.ScheduledPrefixPremises cfg ext)
+    {v : ValidatorIndex} {n : ℕ}
+    (hcall : E.IsScheduledFCRCallAt cfg ext v n) :
+    n + 1 ≤ E.slot_start cfg (E.slot_at cfg (n + 1)) +
+      get_attestation_due_ms cfg / 1000 := by
+  obtain ⟨ast, ablk, hgen, _, _, _⟩ := hT.genesis
+  have hgenTime : E.genesis_store.genesis_time ≤ E.genesis_store.time := by
+    rw [hgen]; simp only [get_forkchoice_store]; omega
+  rw [E.scheduled_fcr_call_at_slot_start cfg ext hT.whole_seconds hgenTime hcall]
   omega
 
 /-- A root known at a scheduled call's new-slot second has a source

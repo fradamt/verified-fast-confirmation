@@ -1,4 +1,5 @@
 module
+public import FastConfirmationProofs.Checkpoints.DeadlineCarrierAdoption
 public import Mathlib.Tactic
 public import FastConfirmationProofs.Execution.Delivery.EarlyPhaseSourceDelivery
 public import FastConfirmationProofs.Execution.Delivery.VoteDeadlineOrigin
@@ -209,7 +210,7 @@ theorem StrictSelectedResultMechanicalFacts.confirmedPastDescendantSlotWitness
       (by simpa only [hquery] using h.result_known)
       (by simpa only [hquery] using h.parent_known)
       h.confirmed
-  obtain ⟨u, nu, d, hu, hnuH, hnuq, _hdeadline, hdPast, hdQueryE, hdResult⟩ :=
+  obtain ⟨u, nu, d, hu, hnuH, hnuq, _hdeadline, _hhead, hdPast, hdQueryE, hdResult⟩ :=
     E.past_descendant_of_honest_supporter_known_minimal cfg ext hA
       v hv q result hqH i hi lm hlm hsupp
   have hdQuery : d ∈ query.store.block_roots := by
@@ -519,7 +520,7 @@ theorem StrictSelectedResultMechanicalFacts.fcrStep_previous_endpointRecentSourc
           v hv (n + 1) (E.fcrStoreAtCall cfg ext v n)
           (E.fcrStep_store cfg ext v n) result hn1H
           hselectedQ hparentQ h.confirmed
-      obtain ⟨u, nu, d, hu, hHnu, hslot, hdeadline,
+      obtain ⟨u, nu, d, hu, hHnu, hslot, hdeadline, _hhead,
           hd, hdQuery, hanc⟩ :=
         E.past_descendant_of_honest_supporter_known_minimal cfg ext hA
           v hv (n + 1) result hn1H i hi lm hlm hsupp
@@ -589,6 +590,13 @@ theorem StrictSelectedResultMechanicalFacts.fcrStep_currentNext_endpointRecentSo
     (hbyz : ByzantineWeightPremises cfg E)
     (hdomain : SelectedMarginDomain cfg ext E)
     (B : CausalPrefixFFGInterpretation cfg ext E)
+    (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
+    (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
+      (E := E) (anchor := B.anchor))
+    (hDelay : E.RealizedFinalizationDelay cfg ext B)
+    (P : EpochCheckpointClosure B.anchor (E.AcceptedRoot cfg ext) B.state.C)
+    (V : B.state.ExactLinkValidity)
+    (hacc : CheckpointCertificateAccountability cfg E B.anchor)
     {v : ValidatorIndex} (hv : v ∈ E.honest) {n : Nat}
     (hn1H : E.WithinHorizon cfg (n + 1))
     (hcall : E.IsScheduledFCRCallAt cfg ext v n)
@@ -659,13 +667,26 @@ theorem StrictSelectedResultMechanicalFacts.fcrStep_currentNext_endpointRecentSo
     rw [hgen]
     exact (wellFormedStore_get_forkchoice_store cfg ast ablk
       hgenSlot hgenParent).time_ge_genesis
-  obtain ⟨origin, horiginEq, _hcutoff, horiginKnown⟩ :=
+  obtain ⟨origin, horiginEq, hcutoff, horiginKnown⟩ :=
     E.scheduled_fcr_call_root_before_deadline cfg ext hT.whole_seconds
       hgenTime hcall (by simpa only [E.fcrStep_store] using hseedQ)
+  have hAU : B.state.AU cfg ext seed (B.state.GU seed) :=
+    B.state.gu_AU cfg ext (E.acceptedRoot_of_causal_known cfg ext
+      hqueryCausal hseedQ)
+  obtain ⟨hstart, hbefore⟩ := E.past_slot_deadline_target_gate cfg
+    hT.whole_seconds hgenTime (source := origin) (target := m)
+      (by simpa only [horiginEq] using hslotLt)
+  have hrecent : get_current_store_epoch cfg (E.store cfg ext w m) ≤
+      (B.state.GU seed).epoch + 2 := by
+    rw [hnextEpoch]
+    simpa only [Nat.add_assoc, Nat.reduceAdd] using Nat.add_le_add_right hguRecent 1
   have hseedM : seed ∈ (E.store cfg ext w m).block_roots :=
-    hsync.block_relay v hv origin seed
-      (by simpa only [horiginEq] using hn1H) horiginKnown
-      w hw m hmH (by simpa only [horiginEq] using hrelayGate)
+    E.deadline_carrier_known_of_recent_au cfg ext B hT hsync.deadline_block_relay
+      hanchor hboundary
+      (E.causalRealizedFinalizationLag_of_acceptedDelay cfg ext B hT hanchor hDelay)
+      P V hacc (n := origin) (m := m) (tip := seed) (c := B.state.GU seed)
+      hv hw (by simpa only [horiginEq] using hn1H) hmH
+      horiginKnown hcutoff hstart hbefore hAU hrecent
   have hqueryNonfuture : BlocksSlotLe
       (get_current_slot cfg (E.fcrStoreAtCall cfg ext v n).store)
       (E.fcrStoreAtCall cfg ext v n).store := by

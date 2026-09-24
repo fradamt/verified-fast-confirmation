@@ -605,6 +605,10 @@ private def NextSlotSafetyPremises.live_selected_margin
     byzantine_bound := h.completed_calls.byzantine_bound
     domain := E.selectedMarginDomain_of_acceptedGlobalTrajectory
       cfg ext h.semantics h.trajectory h.completed_calls.synchrony
+        (E.honestHeadPathAdmissibility_of_accepted cfg ext
+          h.semantics h.trajectory h.completed_calls h.anchor_eq h.anchor_boundary
+          h.slots_per_epoch_gt_one h.finalization_delay
+          h.checkpoint_projection h.exact_link_validity)
         h.anchor_eq h.anchor_boundary }
 
 

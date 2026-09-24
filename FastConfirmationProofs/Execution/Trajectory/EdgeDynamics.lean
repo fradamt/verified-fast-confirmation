@@ -9,7 +9,7 @@ public import FastConfirmationProofs.Execution.Trajectory.StoreDynamicsInputs
 
 Derives relay and vote-class updates for one execution trajectory edge.
 
-This module contains `blockRoots_subset_of_relay`, `equiv_subset_of_relay`, `EdgeInputResidual` and related declarations.
+This module contains `equiv_subset_of_relay`, `EdgeInputResidual` and related declarations.
 -/
 
 namespace FastConfirmation.Spec
@@ -22,20 +22,6 @@ namespace Execution
 variable (E : Execution Root)
 
 /-! ## Section 1 — relay containments (`hsub`, `hequiv`) -/
-
-/-- **`hsub` — block-root containment from `block_relay`.** Every root known at the
-confirming anchor `(vc, nc)` is known at the endpoint `(w, m)`, provided the endpoint is at
-least one slot past the anchor (`slot_at nc + 1 ≤ slot_at (m + 1)`). This is the block
-propagation deadline `Synchrony.block_relay` for each root, packaged as a set containment;
-it feeds both `is_ancestor` transports so they carry no raw containment premise. -/
-theorem blockRoots_subset_of_relay (hsync : NextSlotSynchronyPremises cfg ext E)
-    {vc w : ValidatorIndex} {nc m : ℕ}
-    (hvc : vc ∈ E.honest) (hw : w ∈ E.honest)
-    (hHnc : E.WithinHorizon cfg nc) (hHm : E.WithinHorizon cfg m)
-    (hslot : E.slot_at cfg nc + 1 ≤ E.slot_at cfg (m + 1)) :
-    (E.store cfg ext vc nc).block_roots ⊆ (E.store cfg ext w m).block_roots :=
-  fun r hr => hsync.block_relay vc hvc nc r hHnc hr w hw m hHm hslot
-
 
 /-- **`hequiv` — equivocator containment from `attester_slashing_relay`.** Every equivocator
 known at the confirming anchor `(vc, nc)` is known at the endpoint `(w, m)`, under the

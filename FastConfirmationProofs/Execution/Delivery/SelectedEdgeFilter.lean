@@ -735,6 +735,7 @@ theorem AcceptedHistoricalA32LineageAt.lateVisibleSeedAt
     (B : CausalPrefixFFGInterpretation cfg ext E)
     (hT : E.ScheduledPrefixPremises cfg ext)
     (hsync : NextSlotSynchronyPremises cfg ext E)
+    (hpaths : HonestHeadPathAdmissibility cfg ext E)
     (hphase0 : Phase0SourceCoherence cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
@@ -802,7 +803,8 @@ theorem AcceptedHistoricalA32LineageAt.lateVisibleSeedAt
         (Nat.le_div_iff_mul_le cfg.slots_per_epoch_pos).mp hepoch
     obtain ⟨seed, hincluded⟩ :=
       E.accepted_paperA32IncludedAtTip_of_concreteQuorum cfg ext
-        hT.wellFormed hT.honest_behavior hsync hT.externals_coherence
+        hT.wellFormed hT.honest_behavior hsync hpaths
+        hT.externals_coherence
         hT.whole_seconds hT.genesis_structure hwalkDomain
         B.coherence.toFFGSelectorsMatchBeaconStates hpaper
         hv hqH hselectedQ hselectedEpoch hcanonical Q hsourceQuery
@@ -929,6 +931,8 @@ noncomputable def
     (hacc : CheckpointCertificateAccountability cfg E B.anchor)
     {v : ValidatorIndex} (hv : v ∈ E.honest) {q : Nat}
     (hqH : E.WithinHorizon cfg q)
+    (hcutoff : q ≤ E.slot_start cfg (E.slot_at cfg q) +
+      get_attestation_due_ms cfg / 1000)
     {selected seed : Root} {e : Epoch}
     (hselectedQ : selected ∈ (E.store cfg ext v q).block_roots)
     (hseedQ : seed ∈ (E.store cfg ext v q).block_roots)
@@ -994,12 +998,17 @@ noncomputable def
       simpa only [endpoint, Nat.succ_eq_add_one, Nat.add_assoc,
         Nat.reduceAdd] using hlate.trans hepochLe
     exact (Nat.not_succ_le_self (e + 1)) hbad
-  have hrelayGate : E.slot_at cfg q + 1 ≤ E.slot_at cfg (m + 1) :=
-    (Nat.succ_le_of_lt hslotLt).trans
-      (E.slot_at_mono cfg (Nat.le_succ m))
-  have hseedM : seed ∈ endpoint.block_roots := by
-    simpa only [query, endpoint] using hsync.block_relay
-      v hv q seed hqH hseedQ w hw m hmH hrelayGate
+  have hgenTime : E.genesis_store.genesis_time ≤ E.genesis_store.time := by
+    rw [hgen]; simp only [get_forkchoice_store]; omega
+  obtain ⟨hstart, hbefore⟩ := E.past_slot_deadline_target_gate cfg
+    hT.whole_seconds hgenTime hslotLt
+  have hAU : B.state.AU cfg ext seed (B.state.GU seed) :=
+    B.state.gu_AU cfg ext (E.acceptedRoot_of_causal_known cfg ext hqueryCausal hseedQ)
+  have hseedM : seed ∈ endpoint.block_roots :=
+    E.deadline_carrier_known_of_au cfg ext B hT hsync.deadline_block_relay
+      hanchor hboundary P V hacc hv hw hqH hmH hseedQ hcutoff hstart hbefore hAU
+      ((B.globalFinalizedEpoch_le_justified cfg ext hgenShort hanchor
+        hendpointCausal).trans (hjustifiedEpoch.trans hguLower))
   have hqueryParent' : ParentSlotLt query := by
     simpa only [query] using hqueryParent
   have hsemantic : E.RootDescends seed selected :=
@@ -1134,6 +1143,7 @@ noncomputable def
     (hacc : CheckpointCertificateAccountability cfg E B.anchor)
     {v : ValidatorIndex} (hv : v ∈ E.honest) {n : Nat}
     (hn1H : E.WithinHorizon cfg (n + 1))
+    (hcall : E.IsScheduledFCRCallAt cfg ext v n)
     {input selected : Root}
     (hinput : input ∈ (E.fcrStoreAtCall cfg ext v n).store.block_roots)
     (hout : find_latest_confirmed_descendant cfg ext
@@ -1164,7 +1174,7 @@ noncomputable def
       hv hn1H hinput hout hstrict hprevious hnotStart
   exact E.acceptedSelectedResultFilterOutcome_retainedVisible_of_queryGUEpochSeed
     cfg ext B hT hsync hdomain hanchor hboundary P V hanchorExact hacc
-      hv hn1H
+      hv hn1H (E.scheduled_fcr_call_before_deadline cfg ext hT hcall)
       (by simpa only [E.fcrStep_store] using h.result_known)
       (by simpa only [E.fcrStep_store] using hseedQ)
       (by simpa only [E.fcrStep_store] using hseedSelected)
@@ -1239,7 +1249,7 @@ noncomputable def acceptedSelectedResultFilterOutcome_retainedVisible_of_lateLin
       E.store_blocks_slot_le_current cfg ext hT.whole_seconds
         hgenShort w m
   obtain ⟨seed, hseedKnown, hseedSelected, hseedVisible⟩ :=
-    hlineage.lateVisibleSeedAt cfg ext B hT hsync hphase0 hanchor
+    hlineage.lateVisibleSeedAt cfg ext B hT hsync hdomain.honest_head_paths hphase0 hanchor
       hboundary hpaper hv hqH hselectedQ hselectedEpoch hcanonical
       hw hmH hselectedM hlate hjustifiedEpoch
   have hpersistence : VotingSourceEpochChainPersistence cfg endpoint :=
@@ -1566,7 +1576,7 @@ noncomputable def
     exact Nat.succ_le_of_lt
       (hgeom.cutoff_le_sigma.trans_lt hgeom.sigma_lt_endpoint)
   have hhistory := h.actualCurrentSame_sourceHistoryOutcome cfg ext B hT
-    hsync hstatic hbyz hdomain hanchor hboundary hDelay hspe
+    hsync hstatic hbyz hdomain hanchor hboundary hDelay hspe P V hacc
       hv hn1H hcall hcurrent
   have hselectedQuery :
       (E.getLatestConfirmedTraceAt cfg ext v n).result ∈
@@ -1677,7 +1687,8 @@ noncomputable def StrictSelectedResultMechanicalFacts.fcrStep_currentNext_endpoi
   have hrecent : RecentSourceSeedAt cfg
       (E.store cfg ext w m) result :=
     h.fcrStep_currentNext_endpointRecentSourceSeed cfg ext hT hsync
-      hstatic hbyz hdomain B hv hn1H hcall hinput hout hstrict hcurrent
+      hstatic hbyz hdomain B hanchor hboundary hDelay P V hacc
+      hv hn1H hcall hinput hout hstrict hcurrent
         hw hmH hnextEpoch
   exact E.acceptedSelectedResultFilterOutcome_retained_of_recentSeed
     cfg ext B hT hanchor hboundary hDelay P V hanchorExact hacc
@@ -1892,7 +1903,7 @@ noncomputable def
         have hcanonical : E.CanonicalThroughoutEpoch cfg ext
             trace.result (e + 1) :=
           E.canonicalThroughoutNextEpoch_of_selectedCanonical_currentEpoch
-            cfg ext hMargin hv hn1H ⟨n, rfl, hcall⟩ hselectedQ heCurrent
+            cfg ext hMargin hv hn1H ⟨n, rfl, hcall⟩ hselectedQ hselectedKnown heCurrent
               (by simpa only [trace, E.fcrStep_store, hselectedEpoch]
                 using hlate) hIH
         exact E.acceptedSelectedResultFilterOutcome_retainedVisible_of_lateLineage
@@ -1998,6 +2009,7 @@ noncomputable def
             exact E.acceptedSelectedResultFilterOutcome_retainedVisible_of_queryGUEpochSeed
               cfg ext B hT hC.synchrony hdomain hanchor hboundary P V
                 hanchorExact hacc hv hn1H
+                (E.scheduled_fcr_call_before_deadline cfg ext hT hcall)
                 (by simpa only [trace, E.fcrStep_store] using h.result_known)
                 (by simpa only [E.fcrStep_store] using hseedQ)
                 (by simpa only [trace, E.fcrStep_store] using hseedSelected)
@@ -2009,7 +2021,7 @@ noncomputable def
                 (by simpa only [trace] using hresultJustified)
       · exact h.fcrStep_previousOffStart_late_endpointFilterOutcome
           cfg ext B hT hC.synchrony hdomain hanchor hboundary P V
-            hanchorExact hacc hv hn1H hinput hselector.result_eq.symm
+            hanchorExact hacc hv hn1H hcall hinput hselector.result_eq.symm
             hselector.result_ne_input hprevious hstart hw hmH hlate
             hjustifiedEpoch
             (by simpa only [trace] using hresultJustified)

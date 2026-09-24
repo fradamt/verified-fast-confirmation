@@ -82,7 +82,7 @@ two stores compute the same ancestor once they agree on `(v₀, n₀)`'s blocks
 (`BlockAgreement.is_ancestor_congr`). Provenance pins the recorded block at every
 commonly-known root (`WellFormedExecution.blocks_agree`), so the agreement follows
 from `(v₀, n₀)`'s roots being known at `(w, m)` — the cross-node block-relay
-containment `hsub`, taken as a hypothesis (`Synchrony.block_relay`'s output, the
+containment `hsub`, taken as a hypothesis (an explicit local transport input, the
 usual domain-condition shape). This carries the package's `⪰ b` fact to `(w, m)`. -/
 
 /-- **Cross-store `is_ancestor` transport.** An `is_ancestor r ⪰ b` fact on a walk

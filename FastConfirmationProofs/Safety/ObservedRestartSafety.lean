@@ -182,6 +182,7 @@ theorem ObservedResetCandidateInputAt.safeFrom_of_acceptedDynamics
     (B : CausalPrefixFFGInterpretation cfg ext E)
     (hT : E.ScheduledPrefixPremises cfg ext)
     (hsync : NextSlotSynchronyPremises cfg ext E)
+    (hpaths : HonestHeadPathAdmissibility cfg ext E)
     (hstatic : StaticValidatorSet cfg E)
     (hbyz : ByzantineWeightPremises cfg E)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
@@ -211,7 +212,7 @@ theorem ObservedResetCandidateInputAt.safeFrom_of_acceptedDynamics
     ⟨ast, ablk, hgen, hgenSlot⟩
   have hdomain : SelectedMarginDomain cfg ext E :=
     E.selectedMarginDomain_of_acceptedGlobalTrajectory
-      cfg ext B hT hsync hanchor hboundary
+      cfg ext B hT hsync hpaths hanchor hboundary
   let hA : SelectedMarginAssumptions cfg ext E :=
     { genesis := hT.genesis_structure
       wellFormed := hT.wellFormed

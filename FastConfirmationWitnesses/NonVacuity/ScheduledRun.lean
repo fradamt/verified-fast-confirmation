@@ -865,7 +865,6 @@ theorem witnessSynchrony :
   refine {
     delta := ⟨500, by decide, by decide⟩
     attestation_delivery := ?_
-    block_relay := ?_
     deadline_block_relay := ?_
     boundary_block_prefix := ?_
     attester_slashing_relay := ?_
@@ -875,14 +874,6 @@ theorem witnessSynchrony :
     subst n
     subst a
     exact witness_vote_false_delivery hslt w
-  · intro v hv n r hn hr w hw m hm hslot
-    have hnm : n ≤ m := by
-      have hs : n + 1 ≤ m + 1 := by
-        simpa only [slot_at_eq] using hslot
-      exact Nat.le_of_succ_le_succ hs
-    rw [← witness_store_symmetric v w m]
-    exact
-      (witnessExecution.store_storeLE witnessConfig witnessExternals v hnm).1 hr
   · intro v hv n r hn hr _hdeadline w hw m hm _hnext hlt
     left
     rw [← witness_store_symmetric v w m]

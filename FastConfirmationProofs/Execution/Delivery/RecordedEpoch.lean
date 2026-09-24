@@ -171,7 +171,7 @@ theorem honestVote_recorded_at_query_minimal
     exact (Nat.not_lt_of_ge hs1le) hslotLt
   obtain ⟨msg, hmsg, htarget⟩ :=
     E.vote_ubiquity cfg ext hA.wellFormed hA.honest_behavior
-      hA.synchrony hA.externals_coherence hA.whole_seconds hA.genesis
+      hA.synchrony hA.domain.honest_head_paths hA.externals_coherence hA.whole_seconds hA.genesis
       hi hv hnSlot hnH hvoteHead hheadKnown hheadWalk hdeliver hqH
   have hheadStateSlot :
       ((E.store cfg ext i n).block_states
@@ -249,7 +249,7 @@ theorem postAnchorRecordedEpochMax_at_query_minimal
     exact (Nat.not_lt_of_ge ht1le) hslotLt
   obtain ⟨msg, hmsg, htarget⟩ :=
     E.vote_ubiquity cfg ext hA.wellFormed hA.honest_behavior
-      hA.synchrony hA.externals_coherence hA.whole_seconds hA.genesis
+      hA.synchrony hA.domain.honest_head_paths hA.externals_coherence hA.whole_seconds hA.genesis
       hi hv hnSlot hnH hvoteHead hheadKnown hheadWalk hdeliver hqH
   have hmsgEq : msg = lm := by
     rw [hlm] at hmsg

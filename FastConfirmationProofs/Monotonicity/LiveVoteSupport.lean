@@ -316,8 +316,12 @@ theorem NextSlotSafetyPremises.vote_ubiquity
     simpa only [honest_attestation_data_eq,
       honest_attestation_data_beacon_block_root] using hwalk
   exact E.vote_ubiquity cfg ext h.trajectory.wellFormed h.trajectory.honest_behavior
-    h.completed_calls.synchrony h.trajectory.externals_coherence
-    h.trajectory.whole_seconds h.trajectory.genesis_structure
+    h.completed_calls.synchrony
+    (E.honestHeadPathAdmissibility_of_accepted cfg ext
+      h.semantics h.trajectory h.completed_calls h.anchor_eq h.anchor_boundary
+      h.slots_per_epoch_gt_one h.finalization_delay
+      h.checkpoint_projection h.exact_link_validity)
+    h.trajectory.externals_coherence h.trajectory.whole_seconds h.trajectory.genesis_structure
     hv hw hn hHn hvote hheadVote hwalkVote hm hHm
 
 

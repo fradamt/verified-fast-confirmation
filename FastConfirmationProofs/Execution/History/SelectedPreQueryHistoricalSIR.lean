@@ -440,6 +440,7 @@ theorem preQueryHonestTarget_sourceWitnessAtQuery
       E.slot_at cfg k < E.slot_at cfg q ∧
       k ≤ E.slot_start cfg (E.slot_at cfg k) +
         get_attestation_due_ms cfg / 1000 ∧
+      d = (get_head cfg (E.store cfg ext i k)).root ∧
       d ∈ (E.store cfg ext i k).block_roots ∧
       target.root ∈ (E.store cfg ext i k).block_roots ∧
       d ∈ (E.store cfg ext v q).block_roots ∧
@@ -507,25 +508,17 @@ theorem preQueryHonestTarget_sourceWitnessAtQuery
     rw [is_ancestor_node_root]
     simp only [is_ancestor_get_node_for_root, decide_eq_true_eq]
     exact hcomp.symm
-  have hgate : E.slot_at cfg k + 1 ≤ E.slot_at cfg (q + 1) := by
-    calc
-      E.slot_at cfg k + 1 = s + 1 := by rw [hk]
-      _ ≤ E.slot_at cfg q := Nat.succ_le_of_lt hsq
-      _ ≤ E.slot_at cfg (q + 1) :=
-        E.slot_at_mono cfg (Nat.le_succ q)
-  have hsub : (E.store cfg ext i k).block_roots ⊆
-      (E.store cfg ext v q).block_roots :=
-    E.blockRoots_subset_of_relay cfg ext hA.synchrony hi hv hHk hqH hgate
+  have hdue : k ≤ E.slot_start cfg (E.slot_at cfg k) +
+      get_attestation_due_ms cfg / 1000 := by
+    simpa only [hk] using (hA.honest_behavior.vote_deadline i hi s k _ hvoteHead).2
   let d := (get_head cfg (E.store cfg ext i k)).root
-  have hheadT_Q : is_ancestor (E.store cfg ext v q)
-      (get_node_for_root d) (get_node_for_root target.root) = true :=
-    is_ancestor_transport cfg ext hA.wellFormed hsub hheadK hTK
-      (hwalkK target.root hTK _ hheadK) (by
-        rwa [is_ancestor_node_root] at hheadT_K)
+  have hdQ : d ∈ (E.store cfg ext v q).block_roots :=
+    E.honest_head_known_at_later_slot_minimal cfg ext hA hi hv hHk hqH
+      hdue (by simpa only [hk] using hsq)
+  obtain ⟨hTQ, hheadT_Q⟩ := E.ancestor_at_common_descendant_minimal cfg ext hA
+    hheadK hdQ hTK (by rwa [is_ancestor_node_root] at hheadT_K)
   exact ⟨k, d, hHk, hk, by simpa only [hk] using hsq,
-    by simpa only [hk] using
-      (hA.honest_behavior.vote_deadline i hi s k _ hvoteHead).2,
-    hheadK, hTK, hsub hheadK, hsub hTK, hheadT_Q⟩
+    hdue, rfl, hheadK, hTK, hdQ, hTQ, hheadT_Q⟩
 
 /-- A query-store ancestry `target.root ⩾c b` can be transported to any
 slot-ordered endpoint using the actual pre-query target vote as the required
@@ -553,13 +546,13 @@ theorem preQueryTarget_descends_queryBlock_at_endpoint
     (htarget₀ : a₀.data.target = target) :
     is_ancestor (E.store cfg ext w m)
       (get_node_for_root target.root) (get_node_for_root b) = true := by
-  obtain ⟨k, d, hHk, _hk, hkq, hdeadline, hdK, _hTK, hdQ,
+  obtain ⟨k, d, hHk, _hk, hkq, hdeadline, hhead, hdK, _hTK, hdQ,
       _hTQ, hdTQ⟩ :=
     E.preQueryHonestTarget_sourceWitnessAtQuery cfg ext hA hwalkDomain
       hv hqH hi hs0 hsq hsH hvote₀ htarget₀
   exact (E.ancestry_of_known_honest_past_descendant_minimal cfg ext hA
     v hv q target.root b hqH hTQ hbQ hTbQ w hw m hslotQM hHm
-      i hi k hHk d hkq hdeadline hdK hdQ hdTQ).2.2
+      i hi k hHk d hkq hdeadline hhead hdK hdQ hdTQ).2.2
 
 /-- The complete **below-input** region is mechanical once the already-carried
 input safety and honest-target geometry are made visible.

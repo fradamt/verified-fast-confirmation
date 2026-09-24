@@ -1,4 +1,5 @@
 module
+public import FastConfirmationProofs.Checkpoints.HonestVotePathAdmissibility
 public import FastConfirmationProofs.FFG.CurrentTarget.HonestVoteTargetCache
 public import FastConfirmationProofs.Checkpoints.GlobalResetCheckpointRealization
 public import FastConfirmationProofs.FFG.State.ScheduledFFGGlobalCheckpointTrajectory
@@ -46,6 +47,7 @@ theorem justifiedCheckpoint_cached_of_acceptedGlobalTrajectory
     (B : CausalPrefixFFGInterpretation cfg ext E)
     (hT : E.ScheduledPrefixPremises cfg ext)
     (hsync : NextSlotSynchronyPremises cfg ext E)
+    (hpaths : HonestHeadPathAdmissibility cfg ext E)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
       (E := E) (anchor := B.anchor))
@@ -236,7 +238,7 @@ theorem justifiedCheckpoint_cached_of_acceptedGlobalTrajectory
         exact (Nat.not_lt_of_ge
           (Nat.succ_le_of_lt hvoteBeforeEndpoint)) hslotBeforeDelivery
       have hcached := E.honestVoteTarget_cached cfg ext
-        hT.wellFormed hT.honest_behavior hsync hT.externals_coherence
+        hT.wellFormed hT.honest_behavior hsync hpaths hT.externals_coherence
         hT.whole_seconds hgenFull hvoter hw
         hvoteTimeSlot hHvoteTime hvoteHead hheadKnown hheadWalk
         hdeliveryLe hHm
@@ -248,17 +250,18 @@ theorem selectedMarginDomain_of_acceptedGlobalTrajectory
     (B : CausalPrefixFFGInterpretation cfg ext E)
     (hT : E.ScheduledPrefixPremises cfg ext)
     (hsync : NextSlotSynchronyPremises cfg ext E)
+    (hpaths : HonestHeadPathAdmissibility cfg ext E)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
       (E := E) (anchor := B.anchor)) :
     SelectedMarginDomain cfg ext E := by
-  constructor
+  refine ⟨hpaths, ?_, ?_⟩
   · intro w hw m hHm
     exact E.justifiedRootKnown_of_acceptedGlobalTrajectory
       cfg ext B hT hanchor hboundary hw m hHm
   · intro w hw m hHm
     exact E.justifiedCheckpoint_cached_of_acceptedGlobalTrajectory
-      cfg ext B hT hsync hanchor hboundary hw m hHm
+      cfg ext B hT hsync hpaths hanchor hboundary hw m hHm
 
 
 end Execution

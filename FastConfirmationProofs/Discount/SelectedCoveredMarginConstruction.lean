@@ -197,7 +197,7 @@ theorem selectedCoveredMarginSupplyAt_of_filterSupply_minimal
     E.confirmed_honest_class_transports_of_cutoff_minimal cfg ext hA
       v hv q query hquery c hqH hgeom.block_known hgeom.parent_known
       hgeom.confirmation w hw m hmH
-      (hslotQM.trans (E.slot_at_mono cfg (Nat.le_succ m)))
+      hslotQM
       lo es hlo₀ hgeom.cutoff_eq
   have hledger : E.EndpointLedgerFields cfg ext w m a c lo sigma :=
     E.endpointLedgerFields_from_execution_minimal cfg ext hA hwalkDomain
@@ -251,7 +251,7 @@ theorem selectedCoveredMarginSupplyAt_of_filterSupply_minimal
     E.confirmed_honest_class_transports_of_cutoff_minimal cfg ext hA
       v hv q query hquery c hqH hgeom.block_known hgeom.parent_known
       hgeom.confirmation w hw m hmH
-      (hslotQM.trans (E.slot_at_mono cfg (Nat.le_succ m)))
+      hslotQM
       ((E.store cfg ext v q).blocks c).slot es hmid₀ hgeom.cutoff_eq
   have hparentSub : E.weight (E.crossingParentSub cfg
       (E.store cfg ext v q) (get_current_balance_source query) c

@@ -158,112 +158,28 @@ theorem strictSelectedEdgeGeometry_of_query_minimal
     E.confirmed_ancestry_at_all_honest_endpoints_minimal cfg ext hA
       v hv q query hquery glc r0 hqH hglcQ hglcParentQ hr0Q
         hglcR0_Q hglcConf w hw m hslotQM hmH
-  obtain ⟨u, nu, d, hu, hnuH, hnuq, _hdeadline, hdU, hdQ, hdGlc_Q⟩ :=
+  obtain ⟨u, nu, d, hu, hnuH, hnuq, _hdeadline, _hhead, hdU, hdQ, hdGlc_Q⟩ :=
     E.confirmed_pastDescendant_minimal cfg ext hA v hv q query hquery
       glc hqH hglcQ hglcParentQ hglcConf
-  have hgateUQ : E.slot_at cfg nu + 1 ≤ E.slot_at cfg (q + 1) :=
-    hnuq.trans_le (E.slot_at_mono cfg (Nat.le_succ q))
-  have hsubUQ : (E.store cfg ext u nu).block_roots ⊆
-      (E.store cfg ext v q).block_roots := fun r hr =>
-    hA.synchrony.block_relay u hu nu r hnuH hr v hv q hqH hgateUQ
-  have hgateUM : E.slot_at cfg nu + 1 ≤ E.slot_at cfg (m + 1) :=
-    (Nat.succ_le_of_lt hnuq).trans
-      (hslotQM.trans (E.slot_at_mono cfg (Nat.le_succ m)))
-  have hsubUM : (E.store cfg ext u nu).block_roots ⊆
-      (E.store cfg ext w m).block_roots := fun r hr =>
-    hA.synchrony.block_relay u hu nu r hnuH hr w hw m hmH hgateUM
-  have hagreeUQ : ∀ r ∈ (E.store cfg ext u nu).block_roots,
-      (E.store cfg ext u nu).blocks r = (E.store cfg ext v q).blocks r :=
-    fun r hr => hA.wellFormed.blocks_agree
-      (E.blockProvenance cfg ext u nu) (E.blockProvenance cfg ext v q)
-      hr (hsubUQ hr)
-  have hagreeUM : ∀ r ∈ (E.store cfg ext u nu).block_roots,
-      (E.store cfg ext u nu).blocks r = (E.store cfg ext w m).blocks r :=
-    fun r hr => hA.wellFormed.blocks_agree
-      (E.blockProvenance cfg ext u nu) (E.blockProvenance cfg ext w m)
-      hr (hsubUM hr)
-  obtain ⟨hwfU, hwalkU, _hjustU⟩ :=
-    E.store_domainK_of_selectedMarginDomain cfg ext hA.wellFormed
-      hA.externals_coherence hgen hA.domain u hu nu hnuH
-  have hanchor0U : ablk.root ∈ (E.store cfg ext u 0).block_roots := by
-    change ablk.root ∈ E.genesis_store.block_roots
-    rw [hgenEq]
-    simp [get_forkchoice_store]
-  have hanchorU : ablk.root ∈ (E.store cfg ext u nu).block_roots :=
-    (E.store_storeLE cfg ext u (Nat.zero_le nu)).1 hanchor0U
-  have hanchorBlockSlotU : ((E.store cfg ext u nu).blocks ablk.root).slot =
-      ablk.message.slot := by
-    rw [E.store_anchor_block cfg ext hA.wellFormed hgenEq u nu hanchorU]
-  have hwalkFromAnchorU : ∀ r ∈ (E.store cfg ext u nu).block_roots,
-      WalkKnown (E.store cfg ext u nu) ablk.message.slot r := by
-    intro r hr
-    have h := hwalkU ablk.root hanchorU r hr
-    rwa [hanchorBlockSlotU] at h
-  have hanchorLeGlcQ : ablk.message.slot ≤
-      ((E.store cfg ext v q).blocks glc).slot :=
-    E.store_anchor_min_slot cfg ext hA.wellFormed hA.externals_coherence
-      hgenEq hanchorSlot hanchorRoot v q glc hglcQ
-  obtain ⟨hglcU, hdGlc_U⟩ := E.chain_descent_restrict hA.wellFormed
-    (E.blockProvenance cfg ext u nu) (E.blockProvenance cfg ext v q)
-    hwfU hwalkFromAnchorU hanchorLeGlcQ hsubUQ hdU hdU
-      (is_ancestor_refl _ _) hdGlc_Q
-  have hanchorLeCM : ablk.message.slot ≤
-      ((E.store cfg ext w m).blocks c).slot :=
-    E.store_anchor_min_slot cfg ext hA.wellFormed hA.externals_coherence
-      hgenEq hanchorSlot hanchorRoot w m c hcM
-  obtain ⟨hcU, hglcC_U⟩ := E.chain_descent_restrict hA.wellFormed
-    (E.blockProvenance cfg ext u nu) (E.blockProvenance cfg ext w m)
-    hwfU hwalkFromAnchorU hanchorLeCM hsubUM hglcU hglcU
-      (is_ancestor_refl _ _) hglcC_M
   obtain ⟨hwfM, hwalkM, _hjustM⟩ :=
     E.store_domainK_of_selectedMarginDomain cfg ext hA.wellFormed
       hA.externals_coherence hgen hA.domain w hw m hmH
+  obtain ⟨hcQ, hglcC_Q⟩ := E.ancestor_at_common_descendant_minimal cfg ext hA
+    _hglcM hglcQ hcM hglcC_M
   have hcA_M : is_ancestor (E.store cfg ext w m)
       (get_node_for_root c) (get_node_for_root a) = true :=
     is_ancestor_of_parent hwfM hcM haM hparentM
-  have hglcA_M : is_ancestor (E.store cfg ext w m)
-      (get_node_for_root glc) (get_node_for_root a) = true :=
-    is_ancestor_trans (a := get_node_for_root glc) (b := get_node_for_root c)
-        (c := get_node_for_root a) hwfM (hwalkM a haM glc _hglcM)
-      (hwalkM a haM c hcM) hglcC_M hcA_M
-  have hanchorLeAM : ablk.message.slot ≤
-      ((E.store cfg ext w m).blocks a).slot :=
-    E.store_anchor_min_slot cfg ext hA.wellFormed hA.externals_coherence
-      hgenEq hanchorSlot hanchorRoot w m a haM
-  obtain ⟨haU, _hglcA_U⟩ := E.chain_descent_restrict hA.wellFormed
-    (E.blockProvenance cfg ext u nu) (E.blockProvenance cfg ext w m)
-    hwfU hwalkFromAnchorU hanchorLeAM hsubUM hglcU hglcU
-      (is_ancestor_refl _ _) hglcA_M
-  have hanchorLeR0M : ablk.message.slot ≤
-      ((E.store cfg ext w m).blocks r0).slot :=
-    E.store_anchor_min_slot cfg ext hA.wellFormed hA.externals_coherence
-      hgenEq hanchorSlot hanchorRoot w m r0 hr0M
-  obtain ⟨hr0U, hcR0_U⟩ := E.chain_descent_restrict hA.wellFormed
-    (E.blockProvenance cfg ext u nu) (E.blockProvenance cfg ext w m)
-    hwfU hwalkFromAnchorU hanchorLeR0M hsubUM hcU hcU
-      (is_ancestor_refl _ _) hcR0_M
-  have hcQ : c ∈ (E.store cfg ext v q).block_roots := hsubUQ hcU
-  have haQ : a ∈ (E.store cfg ext v q).block_roots := hsubUQ haU
-  have hglcC_Q : is_ancestor (E.store cfg ext v q)
-      (get_node_for_root glc) (get_node_for_root c) = true := by
-    have hcongr := is_ancestor_congr (node := ForkChoiceNode.mk glc .pending)
-        (ancestor := ForkChoiceNode.mk c .pending) hagreeUQ hglcU hcU
-      (hwalkU c hcU glc hglcU)
-    simp only [get_node_for_root] at hglcC_U ⊢
-    rw [← hcongr]
-    exact hglcC_U
-  have hcR0_Q : is_ancestor (E.store cfg ext v q)
-      (get_node_for_root c) (get_node_for_root r0) = true := by
-    have hcongr := is_ancestor_congr (node := ForkChoiceNode.mk c .pending)
-        (ancestor := ForkChoiceNode.mk r0 .pending) hagreeUQ hcU hr0U
-      (hwalkU r0 hr0U c hcU)
-    simp only [get_node_for_root] at hcR0_U ⊢
-    rw [← hcongr]
-    exact hcR0_U
+  obtain ⟨haQ, _hcA_Q⟩ := E.ancestor_at_common_descendant_minimal cfg ext hA
+    hcM hcQ haM hcA_M
+  have hcR0_Q := (E.ancestor_at_common_descendant_minimal cfg ext hA
+    hcM hcQ hr0M hcR0_M).2
+  have hagreeMQ : ∀ r, r ∈ (E.store cfg ext w m).block_roots →
+      r ∈ (E.store cfg ext v q).block_roots →
+      (E.store cfg ext w m).blocks r = (E.store cfg ext v q).blocks r :=
+    fun r hr hs => hA.wellFormed.blocks_agree
+      (E.blockProvenance cfg ext w m) (E.blockProvenance cfg ext v q) hr hs
   have hparentQ : ((E.store cfg ext v q).blocks c).parent_root = a := by
-    have hcUQ := hagreeUQ c hcU
-    have hcUM := hagreeUM c hcU
-    rw [← hcUQ, hcUM]
+    rw [← hagreeMQ c hcM hcQ]
     exact hparentM
   have hparentKnownQ : ((E.store cfg ext v q).blocks c).parent_root ∈
       (E.store cfg ext v q).block_roots := by
@@ -283,11 +199,18 @@ theorem strictSelectedEdgeGeometry_of_query_minimal
       ((E.store cfg ext v q).blocks c).parent_root).slot <
       ((E.store cfg ext v q).blocks c).slot :=
     hwfQ c hcQ hparentKnownQ
-  have hdC_U : is_ancestor (E.store cfg ext u nu)
+  have hdC_Q : is_ancestor (E.store cfg ext v q)
       (get_node_for_root d) (get_node_for_root c) = true :=
-    is_ancestor_trans (a := get_node_for_root d) (b := get_node_for_root glc)
-        (c := get_node_for_root c) hwfU (hwalkU c hcU d hdU)
-      (hwalkU c hcU glc hglcU) hdGlc_U hglcC_U
+    is_ancestor_trans (b := get_node_for_root glc) hwfQ (hwalkQ c hcQ d hdQ)
+      (hwalkQ c hcQ glc hglcQ) hdGlc_Q hglcC_Q
+  obtain ⟨hcU, hdC_U⟩ := E.ancestor_at_common_descendant_minimal cfg ext hA
+    hdQ hdU hcQ hdC_Q
+  obtain ⟨hwfU, hwalkU, _hjustU⟩ :=
+    E.store_domainK_of_selectedMarginDomain cfg ext hA.wellFormed
+      hA.externals_coherence hgen hA.domain u hu nu hnuH
+  have hcAgree : (E.store cfg ext u nu).blocks c =
+      (E.store cfg ext v q).blocks c := hA.wellFormed.blocks_agree
+    (E.blockProvenance cfg ext u nu) (E.blockProvenance cfg ext v q) hcU hcQ
   have hcSlotLeD_U : ((E.store cfg ext u nu).blocks c).slot ≤
       ((E.store cfg ext u nu).blocks d).slot := by
     have h := get_ancestor_slot_le hwfU (hwalkU c hcU d hdU)
@@ -301,7 +224,7 @@ theorem strictSelectedEdgeGeometry_of_query_minimal
     exact E.store_blocks_slot_le_current cfg ext hA.whole_seconds
       ⟨ast, ablk, hgenEq, hanchorSlot⟩ u nu d hdU
   have hcSlotLtQ : ((E.store cfg ext v q).blocks c).slot < E.slot_at cfg q := by
-    rw [← hagreeUQ c hcU]
+    rw [← hcAgree]
     exact hcSlotLeD_U.trans_lt (hdSlotLeNu.trans_lt hnuq)
   let lo : Slot := ((E.store cfg ext v q).blocks
     ((E.store cfg ext v q).blocks c).parent_root).slot + 1

@@ -1,4 +1,5 @@
 module
+public import FastConfirmationInternal.Network.VotePathAdmissibility
 public import FastConfirmationInternal.Legacy.Vocabulary
 
 @[expose] public section
@@ -10,8 +11,9 @@ namespace FastConfirmation.Spec
 variable {Root : Type*} [LinearOrder Root] [Inhabited Root]
 variable (cfg : Config) (ext : Externals Root)
 
-/-- The two local domain facts used by the strict selected-result proof. -/
+/-- Local cache facts and the derived G4 paths used by the selected-result proof. -/
 structure SelectedMarginDomain (E : Execution Root) : Prop where
+  honest_head_paths : HonestHeadPathAdmissibility cfg ext E
   justified_root_known : ∀ w ∈ E.honest, ∀ m : ℕ,
     E.WithinHorizon cfg m →
     (E.store cfg ext w m).justified_checkpoint.root ∈
