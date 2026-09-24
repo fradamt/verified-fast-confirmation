@@ -30,7 +30,7 @@ projection at the trusted anchor.  The previously exposed `anchor_exact`
 premise is therefore redundant once trajectory initialization and boundary
 alignment are present. -/
 theorem acceptedAnchorExact_of_trajectory
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (hT : E.ScheduledPrefixPremises cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
@@ -63,7 +63,7 @@ honest endpoint's realized justified checkpoint.  Execution reflection then
 turns that semantic prefix into the concrete store ancestry consumed by fork
 choice. -/
 theorem trustedAnchor_safeFrom_of_acceptedGlobalTrajectory
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (hT : E.ScheduledPrefixPremises cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
@@ -81,7 +81,7 @@ theorem trustedAnchor_safeFrom_of_acceptedGlobalTrajectory
         ast.slot = ablk.message.slot :=
     ⟨ast, ablk, hgen, hslot⟩
   obtain ⟨hjustified⟩ :=
-    ExactPrefixAcceptedFFGSemantics.endpointJustified_certificate
+    CausalPrefixFFGInterpretation.endpointJustified_certificate
       cfg ext B hgenShort hanchor (E.store_causal cfg ext w m)
   have hanchorRealized :=
     E.resetCheckpointRealizedAt_anchor_of_acceptedTrajectory
@@ -96,7 +96,7 @@ theorem trustedAnchor_safeFrom_of_acceptedGlobalTrajectory
 /-- The exact genesis cache field is the trusted anchor root, hence the base
 case of either executable fold needs no reset or selected-helper premise. -/
 theorem confirmed_zero_safeFrom_of_acceptedGlobalTrajectory
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (hT : E.ScheduledPrefixPremises cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
@@ -118,7 +118,7 @@ theorem confirmed_zero_safeFrom_of_acceptedGlobalTrajectory
 previous cached confirmed root is known.  Each reset arm uses its accepted
 installation realization. -/
 theorem getLatestConfirmedTraceAt_input_known
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (hT : E.ScheduledPrefixPremises cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
@@ -168,7 +168,7 @@ theorem getLatestConfirmedTraceAt_input_known
 known result of the exact phased evaluator; between calls the cached root and
 store membership are monotone. -/
 theorem confirmed_known_of_acceptedGlobalTrajectory
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (hT : E.ScheduledPrefixPremises cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)

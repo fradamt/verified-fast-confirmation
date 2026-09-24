@@ -43,13 +43,13 @@ positive AU evidence then supplies the included upper checkpoint required by
 cross-certificate accountability.  No lineage, source visibility, filter
 membership, selected safety, or finalized-placement premise occurs. -/
 theorem finalizedRoot_eq_checkpointBlock_of_causalLag
-    {B : ExactPrefixAcceptedFFGSemantics cfg ext E}
+    {B : CausalPrefixFFGInterpretation cfg ext E}
     (hgen : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
       E.genesis_store = get_forkchoice_store cfg ast ablk ∧
         ast.slot = ablk.message.slot)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hLag : E.CausalRealizedFinalizationLag cfg ext B)
-    (P : AcceptedEpochCheckpointProjection B.anchor
+    (P : EpochCheckpointClosure B.anchor
       (E.AcceptedRoot cfg ext) B.state.C)
     (V : B.state.ExactLinkValidity)
     (hanchorExact : B.anchor =

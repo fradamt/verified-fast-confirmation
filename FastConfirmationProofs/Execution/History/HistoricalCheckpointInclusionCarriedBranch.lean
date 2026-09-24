@@ -132,7 +132,7 @@ theorem knownSameEpochAncestrySegment_of_known_ancestor_root
 Schedule membership comes from the exact next-event equation carried by the
 accepted transition, not from an arbitrary scheduled-root lookup. -/
 theorem acceptedProjectedSameEpochTransition_parentEdge
-    {B : ExactPrefixAcceptedFFGSemantics cfg ext E}
+    {B : CausalPrefixFFGInterpretation cfg ext E}
     {parent child : Root}
     (h : AcceptedProjectedSameEpochTransition cfg ext E B.state parent child) :
     E.ParentEdge child parent := by
@@ -159,7 +159,7 @@ theorem acceptedProjectedSameEpochTransition_parentEdge
 /-- Every accepted same-epoch segment is semantic descent from its last root
 to its first root. -/
 theorem acceptedProjectedSameEpochSegment_rootDescends
-    {B : ExactPrefixAcceptedFFGSemantics cfg ext E}
+    {B : CausalPrefixFFGInterpretation cfg ext E}
     {first last : Root}
     (h : AcceptedProjectedSameEpochSegment cfg ext E B.state first last) :
     E.RootDescends last first := by

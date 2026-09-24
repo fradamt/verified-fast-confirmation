@@ -118,7 +118,7 @@ This is exactly the reachable-post-state consequence of Phase0's
 process-epoch-before-slot-increment order which is erased by the abstract
 `state_transition` field. -/
 def RealizedFinalizationDelay
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E) : Prop :=
+    (B : CausalPrefixFFGInterpretation cfg ext E) : Prop :=
   ∀ t : E.AcceptedBlockTransition cfg ext,
     let finalized :=
       (t.postStore.block_states t.signedBlock.root).finalized_checkpoint

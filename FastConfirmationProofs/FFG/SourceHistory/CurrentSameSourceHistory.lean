@@ -307,7 +307,7 @@ epoch `e`, this honest validator knows one root whose executable voting source
 is at most two epochs old.  This is source-only history, not a filter or
 safety conclusion. -/
 structure AcceptedLemma24EpochStartSourceAt
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (e : Epoch) (w : ValidatorIndex) where
   seed : Root
   seed_known : seed ∈
@@ -327,7 +327,7 @@ the former store, while the executable voting source is read in the latter.
 `relay_gate` is the literal one-slot synchrony deadline used by Lemma 24; it
 does not assert that any other validator has already received the seed. -/
 structure AcceptedLemma22EpochStartCandidateSourceAt
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (e : Epoch) (candidate : Root) where
   validator : ValidatorIndex
   second : Nat
@@ -370,7 +370,7 @@ installation second.  That temporal index is essential: at the next epoch
 boundary the old-block executable selector reads `GU(seed)`, and synchrony
 can relay the same concrete seed from the pre-boundary store. -/
 structure AcceptedCurrentCandidateSourceOriginAt
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (v : ValidatorIndex) (upper : Nat) (candidate : Root) where
   originSecond : Nat
   origin_le : originSecond ≤ upper
@@ -391,7 +391,7 @@ structure AcceptedCurrentCandidateSourceOriginAt
 /-- Forget only the upper time bound; the candidate-specific origin itself is
 unchanged. -/
 def AcceptedCurrentCandidateSourceOriginAt.mono_upper
-    {B : ExactPrefixAcceptedFFGSemantics cfg ext E}
+    {B : CausalPrefixFFGInterpretation cfg ext E}
     {v : ValidatorIndex} {n m : Nat} {candidate : Root}
     (h : E.AcceptedCurrentCandidateSourceOriginAt
       cfg ext B v n candidate)
@@ -404,7 +404,7 @@ candidate-specific history origin.  All expensive query reasoning remains in
 the Lemma-13 producer; this theorem retains the query
 second instead of erasing it. -/
 theorem StrictSelectedResultMechanicalFacts.currentCandidateSourceOrigin
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     {v : ValidatorIndex} {q : Nat}
     (hqH : E.WithinHorizon cfg q)
     {query : FastConfirmationStore Root} {input result : Root}
@@ -442,8 +442,8 @@ theorem StrictSelectedResultMechanicalFacts.currentCandidateSourceOrigin
 
 /-- Every accepted eager selector carries a certified checkpoint and is
 therefore no earlier than the trusted anchor. -/
-theorem ExactPrefixAcceptedFFGSemantics.anchor_epoch_le_gu
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+theorem CausalPrefixFFGInterpretation.anchor_epoch_le_gu
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     {r : Root} (hr : E.AcceptedRoot cfg ext r) :
     B.anchor.epoch ≤ (B.state.GU r).epoch := by
   obtain ⟨_carrier, _hdesc, hformed⟩ := B.state.gu_AU cfg ext hr
@@ -451,14 +451,14 @@ theorem ExactPrefixAcceptedFFGSemantics.anchor_epoch_le_gu
   exact CertifiedJustified.anchor_epoch_le (cfg := cfg)
     (IncludedCertifiedJustified.toCertifiedJustified
       (cfg := cfg)
-      (Execution.AcceptedIncludedAttestationRelation.relation
+      (Execution.CausalCarrierAttestationRelation.relation
         cfg ext E B.state.includedAttestations) hincluded)
 
 /-- The trusted anchor itself is a valid current-candidate origin whenever
 its concrete root is current-epoch.  This handles initialization and the
 only finalized-reset exception left by the causal finalization-lag law. -/
 theorem acceptedCurrentCandidateSourceOriginAt_anchor
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (hT : E.ScheduledPrefixPremises cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
@@ -484,7 +484,7 @@ theorem acceptedCurrentCandidateSourceOriginAt_anchor
           hreal.root_slot_le_boundary
     exact Nat.le_of_mul_le_mul_right hscaled cfg.slots_per_epoch_pos
   have hanchorLeGU :=
-    ExactPrefixAcceptedFFGSemantics.anchor_epoch_le_gu
+    CausalPrefixFFGInterpretation.anchor_epoch_le_gu
       (E := E) cfg ext B haccepted
   exact ⟨{
     originSecond := n
@@ -510,7 +510,7 @@ The two boundary equations are deliberately explicit.  The trajectory
 induction proves them once from the actual FCR call and reuses this theorem in
 both the carried and strict-carried boundary branches. -/
 theorem AcceptedCurrentCandidateSourceOriginAt.toLemma22AtNextBoundary
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (hT : E.ScheduledPrefixPremises cfg ext)
     {v : ValidatorIndex} (hv : v ∈ E.honest) {n : Nat}
     (hHn1 : E.WithinHorizon cfg (n + 1))
@@ -641,7 +641,7 @@ The past copy of the seed is relayed to the target validator at the epoch
 boundary.  Accepted fixed-root selector monotonicity then transports the
 source epoch between the two same-epoch causal stores. -/
 theorem AcceptedLemma22EpochStartCandidateSourceAt.lemma24
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (hT : E.ScheduledPrefixPremises cfg ext)
     (hsync : NextSlotSynchronyPremises cfg ext E)
     {e : Epoch} {candidate : Root}
@@ -683,7 +683,7 @@ seed.  In both cases the executable query guard supplies the previous-epoch
 equation, and the accepted reset realization supplies the checkpoint-root
 geometry. -/
 theorem ObservedResetCandidateInputAt.acceptedLemma22EpochStartCandidateSource
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (hT : E.ScheduledPrefixPremises cfg ext)
     (hsync : NextSlotSynchronyPremises cfg ext E)
     (hstatic : StaticValidatorSet cfg E)
@@ -834,7 +834,7 @@ theorem ObservedResetCandidateInputAt.acceptedLemma22EpochStartCandidateSource
         (B.state.GU c.root) :=
       IncludedCertifiedJustified.toCertifiedJustified
         (cfg := cfg)
-        (Execution.AcceptedIncludedAttestationRelation.relation
+        (Execution.CausalCarrierAttestationRelation.relation
           cfg ext E B.state.includedAttestations) hincluded
     have hanchorEpochLeGU : B.anchor.epoch ≤
         (B.state.GU c.root).epoch :=
@@ -979,7 +979,7 @@ epoch.  In that setting the correct base region is
 `e ≤ anchor.epoch + 2`: the anchor root is known at the boundary and either
 accepted selector arm (`GJ` or `GU`) is certified above the anchor. -/
 theorem acceptedLemma24EpochStartSourceAt_of_anchor_near
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (hT : E.ScheduledPrefixPremises cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
@@ -999,7 +999,7 @@ theorem acceptedLemma24EpochStartSourceAt_of_anchor_near
     rw [(E.store_causal cfg ext w boundary
       ).getVotingSource_eq_acceptedSelector cfg ext B hreal.root_known]
     split_ifs
-    · exact ExactPrefixAcceptedFFGSemantics.anchor_epoch_le_gu
+    · exact CausalPrefixFFGInterpretation.anchor_epoch_le_gu
         (E := E) cfg ext B haccepted
     · obtain ⟨hcertified⟩ := B.state.gj_certified cfg ext haccepted
       exact CertifiedJustified.anchor_epoch_le (cfg := cfg) hcertified
@@ -1230,7 +1230,7 @@ theorem actualCall_epochStart_boundarySecond
 For a non-anchor finalized checkpoint the causal lag theorem makes its
 realized root strictly stale, contradicting recency. -/
 theorem finalizedRecent_epoch_le_anchor_add_two
-    {B : ExactPrefixAcceptedFFGSemantics cfg ext E}
+    {B : CausalPrefixFFGInterpretation cfg ext E}
     (hLag : E.CausalRealizedFinalizationLag cfg ext B)
     {store : Store Root} (hstore : E.CausalStore cfg ext store)
     (hrealized : E.ResetCheckpointRealizedAt cfg B.anchor store
@@ -1262,7 +1262,7 @@ theorem finalizedRecent_epoch_le_anchor_add_two
 
 /-- A finalized root which is current-epoch must be the trusted anchor. -/
 theorem finalizedCheckpoint_eq_anchor_of_root_current
-    {B : ExactPrefixAcceptedFFGSemantics cfg ext E}
+    {B : CausalPrefixFFGInterpretation cfg ext E}
     (hLag : E.CausalRealizedFinalizationLag cfg ext B)
     {store : Store Root} (hstore : E.CausalStore cfg ext store)
     (hrealized : E.ResetCheckpointRealizedAt cfg B.anchor store
@@ -1411,7 +1411,7 @@ The source field is quantified over the receiving honest validator, matching
 the synchrony conclusion of Lemma 24.  It is not quantified over arbitrary
 roots or stores. -/
 structure AcceptedConfirmedSourceHistoryAt
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (v : ValidatorIndex) (n : Nat) : Prop where
   confirmed_known : E.confirmed cfg ext v n ∈
     (E.store cfg ext v n).block_roots
@@ -1433,7 +1433,7 @@ structure AcceptedConfirmedSourceHistoryAt
 checkpoint-sync safe: the numeric base is relative to the trusted anchor
 epoch rather than to absolute genesis epoch zero. -/
 theorem acceptedConfirmedSourceHistoryAt_zero
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (hT : E.ScheduledPrefixPremises cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
@@ -1482,7 +1482,7 @@ theorem acceptedConfirmedSourceHistoryAt_zero
 candidate-specific history are all carried definitionally through the
 monotone store trajectory. -/
 theorem AcceptedConfirmedSourceHistoryAt.succ_of_noCall
-    {B : ExactPrefixAcceptedFFGSemantics cfg ext E}
+    {B : CausalPrefixFFGInterpretation cfg ext E}
     (hT : E.ScheduledPrefixPremises cfg ext)
     {v : ValidatorIndex} {n : Nat}
     (hnoCall : ¬ E.IsScheduledFCRCallAt cfg ext v n)
@@ -1547,7 +1547,7 @@ unchanged carried roots reuse the induction origin, finalized-current roots
 reduce to the trusted anchor, observed-reset roots are previous-epoch, and a
 strict current result installs a fresh Lemma-13 origin. -/
 theorem AcceptedConfirmedSourceHistoryAt.currentOrigin_succ_of_call
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (hT : E.ScheduledPrefixPremises cfg ext)
     (hsync : NextSlotSynchronyPremises cfg ext E)
     (hstatic : StaticValidatorSet cfg E)
@@ -1746,7 +1746,7 @@ carried roots consume the retained current-origin field through Lemma 22,
 observed resets use their accepted installation witness, and finalized resets
 are confined to the trusted-anchor base region by the causal lag law. -/
 theorem AcceptedConfirmedSourceHistoryAt.recentSource_succ_of_call
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (hT : E.ScheduledPrefixPremises cfg ext)
     (hsync : NextSlotSynchronyPremises cfg ext E)
     (hstatic : StaticValidatorSet cfg E)
@@ -1939,7 +1939,7 @@ theorem AcceptedConfirmedSourceHistoryAt.recentSource_succ_of_call
 accepted realization, while a strict selected result uses the ordinary
 query-local descendant geometry. -/
 theorem AcceptedConfirmedSourceHistoryAt.confirmedKnown_succ_of_call
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (hT : E.ScheduledPrefixPremises cfg ext)
     (hdomain : SelectedMarginDomain cfg ext E)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
@@ -2009,7 +2009,7 @@ theorem AcceptedConfirmedSourceHistoryAt.confirmedKnown_succ_of_call
 /-- The complete one-call transformer for the candidate-indexed source
 history invariant. -/
 theorem AcceptedConfirmedSourceHistoryAt.succ_of_call
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (hT : E.ScheduledPrefixPremises cfg ext)
     (hsync : NextSlotSynchronyPremises cfg ext E)
     (hstatic : StaticValidatorSet cfg E)
@@ -2039,7 +2039,7 @@ theorem AcceptedConfirmedSourceHistoryAt.succ_of_call
 The sole primitive paper-facing timing contract is the faithful accepted
 realized-finalization delay at the opaque state-transition boundary. -/
 theorem acceptedConfirmedSourceHistoryAt
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (hT : E.ScheduledPrefixPremises cfg ext)
     (hsync : NextSlotSynchronyPremises cfg ext E)
     (hstatic : StaticValidatorSet cfg E)
@@ -2076,7 +2076,7 @@ theorem acceptedConfirmedSourceHistoryAt
 evaluator call.  The result is tied to the executable write-back equation, so
 the all-seconds invariant supplies the epoch-start source directly. -/
 theorem getLatestConfirmedTraceAt_current_epochStartSource
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (hT : E.ScheduledPrefixPremises cfg ext)
     (hsync : NextSlotSynchronyPremises cfg ext E)
     (hstatic : StaticValidatorSet cfg E)
@@ -2116,7 +2116,7 @@ theorem getLatestConfirmedTraceAt_current_epochStartSource
 The epoch-start seed is transported only forward in the same validator's
 store trajectory; no endpoint source freshness is assumed. -/
 theorem AcceptedLemma24EpochStartSourceAt.justified_recent
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (hT : E.ScheduledPrefixPremises cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     {e : Epoch} {w : ValidatorIndex}
@@ -2185,7 +2185,7 @@ theorem AcceptedLemma24EpochStartSourceAt.justified_recent
 recent accepted source and exact path-local filter evidence kept on the same
 tip. -/
 structure AcceptedRecentCandidateSourceCarrierAt
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (v : ValidatorIndex) (q : Nat) (candidate : Root) where
   validator : ValidatorIndex
   second : Nat
@@ -2226,7 +2226,7 @@ structure AcceptedRecentCandidateSourceCarrierAt
 /-- Resolve the exact viable-leaf source guard with Lemma 25.  The genesis,
 `source = J`, and numeric arms remain separate until this constructor. -/
 theorem AcceptedRecentCandidateSourceCarrierAt.of_pathLocal
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (hT : E.ScheduledPrefixPremises cfg ext)
     {v : ValidatorIndex} {q : Nat} {candidate : Root}
     (hpast : E.AcceptedHonestPastHeadBelowAt cfg ext v q candidate)
@@ -2296,7 +2296,7 @@ structure AcceptedPastJustifiedFallbackAt
     (get_node_for_root candidate) = true
 
 inductive AcceptedCurrentSameSourceHistoryOutcome
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (v : ValidatorIndex) (q : Nat) (candidate : Root) : Prop
   | justifiedFallback :
       Nonempty (E.AcceptedPastJustifiedFallbackAt cfg ext v q candidate) →
@@ -2309,7 +2309,7 @@ inductive AcceptedCurrentSameSourceHistoryOutcome
 /-- Query-local Lemma-26 consumer once the exact epoch-start Lemma-24 source
 has been supplied for every honest receiving validator. -/
 theorem StrictSelectedResultMechanicalFacts.currentSame_sourceHistoryOutcome_of_epochStartSource
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (hT : E.ScheduledPrefixPremises cfg ext)
     (hsync : NextSlotSynchronyPremises cfg ext E)
     (hstatic : StaticValidatorSet cfg E)
@@ -2385,7 +2385,7 @@ theorem StrictSelectedResultMechanicalFacts.currentSame_sourceHistoryOutcome_of_
 the actual evaluator.  Its only paper-facing timing premise is the accepted
 realized-finalization delay at the opaque state-transition boundary. -/
 theorem StrictSelectedResultMechanicalFacts.actualCurrentSame_sourceHistoryOutcome
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (hT : E.ScheduledPrefixPremises cfg ext)
     (hsync : NextSlotSynchronyPremises cfg ext E)
     (hstatic : StaticValidatorSet cfg E)

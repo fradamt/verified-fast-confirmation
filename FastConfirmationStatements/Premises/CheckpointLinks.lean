@@ -11,7 +11,7 @@ to turn arbitrary root descent into epoch-indexed checkpoint descent.  This
 module records the narrow, certificate-scoped semantic interface.
 
 The core declarations are independent of either the production
-`AcceptedChainFFGState` or the migration-only `ChainFFGState`: callers supply
+`CausalCarrierFFGState` or the migration-only `ChainFFGState`: callers supply
 the positive inclusion relation, formed predicate, checkpoint projection, and
 accepted carrier domain.  This lets the same certificate proof consume the
 accepted-prefix state without projecting through the broader scheduled-root state.
@@ -31,7 +31,7 @@ variable (cfg : Config)
 /-- A checkpoint projection on an accepted execution domain.  Composition is
 only required from the trusted anchor epoch onward; values below a
 checkpoint-sync anchor remain outside the law. -/
-structure AcceptedEpochCheckpointProjection
+structure EpochCheckpointClosure
     (anchor : Checkpoint Root)
     (Accepted : Root → Prop)
     (C : Root → Epoch → Checkpoint Root) : Prop where
@@ -91,18 +91,18 @@ structure ExactIncludedLinkValidity
 
 variable {E : Execution Root}
 
-namespace AcceptedChainFFGState
+namespace CausalCarrierFFGState
 
 /-- Production accepted-state instance of the generic exact-link law. -/
 abbrev ExactLinkValidity
     {ext : Externals Root}
-    (S : AcceptedChainFFGState cfg ext E anchor) : Prop :=
+    (S : CausalCarrierFFGState cfg ext E anchor) : Prop :=
   ExactIncludedLinkValidity cfg E S.includedAttestations.Included anchor
     S.C (E.AcceptedRoot cfg ext)
 
 
 
-end AcceptedChainFFGState
+end CausalCarrierFFGState
 
 namespace ChainFFGState
 

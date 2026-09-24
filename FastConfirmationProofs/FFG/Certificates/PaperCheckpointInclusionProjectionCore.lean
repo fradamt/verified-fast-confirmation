@@ -47,17 +47,17 @@ namespace PaperA32IncludedAtTip
 
 end PaperA32IncludedAtTip
 
-namespace AcceptedChainFFGState
+namespace CausalCarrierFFGState
 
 
 /-- Accepted-state realization of the root-local executable projection. -/
 def paperA32RootProjectionAt
     {E : Execution Root} {anchor : Checkpoint Root}
-    (S : AcceptedChainFFGState cfg ext E anchor)
-    (hcoh : AcceptedFFGSelectorCoherence cfg ext S)
+    (S : CausalCarrierFFGState cfg ext E anchor)
+    (hcoh : FFGSelectorsMatchBeaconStates cfg ext S)
     {store : Store Root} (hstore : E.CausalStore cfg ext store)
     {r : Root} (hr : r ∈ store.block_roots) :
-    PaperA32RootProjectionAt cfg ext (S.paperA32View cfg ext) store r where
+    PaperA32RootProjectionAt cfg ext (S.paperA32Inputs cfg ext) store r where
   causal_store := hstore
   root_known := hr
   gu_max := by
@@ -71,7 +71,7 @@ def paperA32RootProjectionAt
     exact (hstore.acceptedFFGStoreProjection hcoh).unrealized_justification
       r hr
 
-end AcceptedChainFFGState
+end CausalCarrierFFGState
 
 namespace PaperA32RootProjectionAt
 
@@ -134,8 +134,8 @@ base block is accepted, and the exact AU/formed-carrier result survives the
 executable projection. -/
 theorem accepted_paperA32IncludedAtTip_of_paper
     {anchor : Checkpoint Root}
-    {S : AcceptedChainFFGState cfg ext E anchor}
-    (hcoh : AcceptedFFGSelectorCoherence cfg ext S)
+    {S : CausalCarrierFFGState cfg ext E anchor}
+    (hcoh : FFGSelectorsMatchBeaconStates cfg ext S)
     (hpaper : S.PaperA32Inclusion cfg ext)
     {b : Root} {bb : BeaconBlock Root} {e : Epoch}
     (hb : E.AcceptedBlockAt cfg ext b bb)
@@ -147,7 +147,7 @@ theorem accepted_paperA32IncludedAtTip_of_paper
     (hboundary : compute_start_slot_at_epoch cfg (e + 2) ≤
       E.slot_at cfg m) :
     ∃ seed : Root,
-      PaperA32IncludedAtTip cfg (S.paperA32View cfg ext)
+      PaperA32IncludedAtTip cfg (S.paperA32Inputs cfg ext)
         (E.store cfg ext w m) e b seed := by
   apply E.paperA32IncludedAtTip_of_paperCore cfg ext hpaper hb hbe
     hcanonical hsupport hw hHm hboundary
@@ -160,8 +160,8 @@ theorem accepted_paperA32IncludedAtTip_of_paper
 witness from finite-domain knownness. -/
 theorem accepted_paperA32IncludedAtTip_of_paper_at_known
     {anchor : Checkpoint Root}
-    {S : AcceptedChainFFGState cfg ext E anchor}
-    (hcoh : AcceptedFFGSelectorCoherence cfg ext S)
+    {S : CausalCarrierFFGState cfg ext E anchor}
+    (hcoh : FFGSelectorsMatchBeaconStates cfg ext S)
     (hpaper : S.PaperA32Inclusion cfg ext)
     {u : ValidatorIndex} {q : ℕ} {b : Root}
     (hbKnown : b ∈ (E.store cfg ext u q).block_roots)
@@ -174,7 +174,7 @@ theorem accepted_paperA32IncludedAtTip_of_paper_at_known
     (hboundary : compute_start_slot_at_epoch cfg (e + 2) ≤
       E.slot_at cfg m) :
     ∃ seed : Root,
-      PaperA32IncludedAtTip cfg (S.paperA32View cfg ext)
+      PaperA32IncludedAtTip cfg (S.paperA32Inputs cfg ext)
         (E.store cfg ext w m) e b seed := by
   let bb := (E.store cfg ext u q).blocks b
   have hb : E.AcceptedBlockAt cfg ext b bb :=

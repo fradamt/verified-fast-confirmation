@@ -37,7 +37,7 @@ variable {E : Execution Root}
 /-- An actual active-observed restart carries a checkpoint whose declared
 epoch, not only whose root block epoch, is exactly the previous epoch. -/
 theorem ObservedResetCandidateInputAt.observed_checkpoint_previous_epoch
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (hT : E.ScheduledPrefixPremises cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
@@ -177,7 +177,7 @@ checkpoint has an honest causal formation vote in the current or a later
 epoch; the induction hypothesis puts the observed root on that voter's head,
 and checkpoint-boundary walk composition puts it below the vote target. -/
 theorem ObservedResetCandidateInputAt.safeFrom_of_acceptedDynamics
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (hT : E.ScheduledPrefixPremises cfg ext)
     (hsync : NextSlotSynchronyPremises cfg ext E)
     (hstatic : StaticValidatorSet cfg E)
@@ -300,7 +300,7 @@ theorem ObservedResetCandidateInputAt.safeFrom_of_acceptedDynamics
     exact hboundaryAdoption.trans
       (E.store_justified_epoch_mono cfg ext w hnm)
   obtain ⟨hJCertified⟩ :=
-    ExactPrefixAcceptedFFGSemantics.endpointJustified_certificate
+    CausalPrefixFFGInterpretation.endpointJustified_certificate
       cfg ext B hgenShort hanchor (E.store_causal cfg ext w m)
   have hJc : is_ancestor (E.store cfg ext w m)
       (get_node_for_root J.root) (get_node_for_root c.root) = true := by

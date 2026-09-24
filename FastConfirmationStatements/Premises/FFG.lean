@@ -107,8 +107,8 @@ namespace AcceptedProjectedSameEpochSegment
 end AcceptedProjectedSameEpochSegment
 namespace AcceptedHonestSourceEvidence
 end AcceptedHonestSourceEvidence
-namespace ExactPrefixAcceptedFFGSemantics
-end ExactPrefixAcceptedFFGSemantics
+namespace CausalPrefixFFGInterpretation
+end CausalPrefixFFGInterpretation
 namespace SourceCoherenceNonVacuity
 end SourceCoherenceNonVacuity
 end FastConfirmation.Spec

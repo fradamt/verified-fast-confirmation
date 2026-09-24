@@ -18,7 +18,7 @@ needed by the accepted gate path:
   the next epoch boundary.
 
 The target root is compared between the voter's boundary store and the query
-prefix through one preselected `ExactPrefixAcceptedFFGSemantics`.  No block-set
+prefix through one preselected `CausalPrefixFFGInterpretation`.  No block-set
 inclusion between those stores, target agreement across validators, quorum,
 source agreement, ancestry segment, or safety conclusion is assumed.
 -/
@@ -197,7 +197,7 @@ second, while `B.coherence.checkpoint_of_known` identifies the checkpoint
 projection of the same accepted LMD/head root in the voter's causal boundary
 store and the query prefix. -/
 theorem currentTargetObservedHonestSupporter_vote_of_prefix
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (hV : E.CurrentTargetPrefixVoteAssumptions cfg ext)
     (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg) (E := E)
       (anchor := E.genesis_store.justified_checkpoint))

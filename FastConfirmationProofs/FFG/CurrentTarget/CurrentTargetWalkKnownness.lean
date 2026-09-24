@@ -10,7 +10,7 @@ public import FastConfirmationProofs.ModelFacts
 
 This module discharges the two concrete walk/knownness contracts used below
 the accepted current-target gate.  Store-global justified origins come from one
-preselected `ExactPrefixAcceptedFFGSemantics`; the only additional geometry is
+preselected `CausalPrefixFFGInterpretation`; the only additional geometry is
 the retained trusted-anchor walk in each concrete store.
 
 No legacy `ChainFFGState`, `JustificationInterface`, quorum, target-agreement,
@@ -38,7 +38,7 @@ root.
 `hboundary` is the genuine checkpoint-sync condition: an anchor block after
 the start of its declared epoch cannot support this downward walk. -/
 theorem justifiedRootKnown_of_acceptedGlobalTrajectory
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (hT : E.ScheduledPrefixPremises cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg) (E := E)
@@ -87,7 +87,7 @@ theorem justifiedRootKnown_of_acceptedGlobalTrajectory
         (E.store cfg ext w m).justified_checkpoint :=
       IncludedCertifiedJustified.toCertifiedJustified
         (cfg := cfg)
-        (Execution.AcceptedIncludedAttestationRelation.relation cfg ext E
+        (Execution.CausalCarrierAttestationRelation.relation cfg ext E
           B.state.includedAttestations) hincluded
     have hanchorEpochLe : B.anchor.epoch ≤
         (E.store cfg ext w m).justified_checkpoint.epoch :=
@@ -117,7 +117,7 @@ strictness and retained-anchor walks are mechanical; the final component is
 This is the accepted replacement for routing action-facing proofs through
 `SelectedMarginDomain` merely to obtain store geometry. -/
 theorem storeDomainK_of_acceptedGlobalTrajectory
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (hT : E.ScheduledPrefixPremises cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg) (E := E)
@@ -137,7 +137,7 @@ The executable fallback is the store's justified root, whose knownness is
 now derived from accepted global semantics rather than a selected-margin or
 legacy justification premise. -/
 theorem headRootKnown_of_acceptedGlobalTrajectory
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (hT : E.ScheduledPrefixPremises cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg) (E := E)
@@ -168,7 +168,7 @@ theorem exactCausalStoreWellFormedCore_of_trajectory
 /-- Build the exact narrow assumption record consumed by prefix vote
 realization from accepted global semantics and lower trajectory geometry. -/
 def CurrentTargetPrefixVoteAssumptions.of_acceptedGlobalTrajectory
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (hT : E.ScheduledPrefixPremises cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg) (E := E)
@@ -280,7 +280,7 @@ theorem postAnchorHonestVoteTargetWalkDomain_of_prefixVoteAssumptions
 /-- Accepted-semantics producer for the full post-anchor honest vote-target
 walk domain used by the current-target gate. -/
 theorem postAnchorHonestVoteTargetWalkDomain_of_acceptedGlobalTrajectory
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (hT : E.ScheduledPrefixPremises cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg) (E := E)

@@ -85,7 +85,7 @@ theorem ResetCheckpointRealizedAt.current_checkpoint_eq
 /-- Preserve the exact included finalization carrier of a store-global
 accepted finalized selector. -/
 theorem acceptedGlobalFinalized_anchor_or_includedCertificate
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (hgen : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
       E.genesis_store = get_forkchoice_store cfg ast ablk ∧
         ast.slot = ablk.message.slot)
@@ -122,7 +122,7 @@ signer's target attestation has epoch `c.epoch + 1` and is included strictly
 before a block on the known carrier's chain.  Hence the store has already
 reached at least the next epoch. -/
 theorem includedCertifiedFinalized_epoch_lt_current_of_acceptedCarrier
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (hT : E.ScheduledPrefixPremises cfg ext)
     {w : ValidatorIndex} {m : ℕ} {carrier : Root}
     (hcarrier : carrier ∈ (E.store cfg ext w m).block_roots)
@@ -191,7 +191,7 @@ theorem includedCertifiedFinalized_epoch_lt_current_of_acceptedCarrier
 /-- Therefore a store-global finalized checkpoint at the store's current
 epoch is necessarily the trusted anchor. -/
 theorem finalizedCheckpoint_eq_anchor_of_epoch_eq_current
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (hT : E.ScheduledPrefixPremises cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     {w : ValidatorIndex} {m : ℕ}
@@ -220,7 +220,7 @@ theorem finalizedCheckpoint_eq_anchor_of_epoch_eq_current
 /-- If the actual finalized reset root is in the query's current epoch, its
 checkpoint field is the trusted anchor. -/
 theorem actualFinalizedReset_eq_anchor_of_root_current
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (hT : E.ScheduledPrefixPremises cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
@@ -247,7 +247,7 @@ theorem actualFinalizedReset_eq_anchor_of_root_current
 classification: the current-epoch checkpoint of the actual finalized input is
 exactly the trusted anchor. -/
 theorem actualFinalizedReset_currentCheckpoint_eq_anchor
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (hT : E.ScheduledPrefixPremises cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
@@ -280,7 +280,7 @@ theorem actualFinalizedReset_currentCheckpoint_eq_anchor
 
 /-- Accepted tag for an active observed restart at the exact evaluator phase. -/
 structure AcceptedObservedRestartInputAt
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (query : FastConfirmationStore Root)
     (trace : LatestConfirmedCallTrace cfg ext query) : Prop where
   afterObserved_eq : trace.afterObserved =
@@ -294,7 +294,7 @@ structure AcceptedObservedRestartInputAt
 namespace AcceptedObservedRestartInputAt
 
 theorem root_known
-    {B : ExactPrefixAcceptedFFGSemantics cfg ext E}
+    {B : CausalPrefixFFGInterpretation cfg ext E}
     {query : FastConfirmationStore Root}
     {trace : LatestConfirmedCallTrace cfg ext query}
     (h : E.AcceptedObservedRestartInputAt cfg ext B query trace) :
@@ -308,7 +308,7 @@ end AcceptedObservedRestartInputAt
 selector input.  Root coincidences with the carried or finalized candidates do
 not erase this branch tag. -/
 theorem actualObservedRestartInputAt
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (hT : E.ScheduledPrefixPremises cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)

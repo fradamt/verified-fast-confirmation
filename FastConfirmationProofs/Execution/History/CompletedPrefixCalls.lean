@@ -76,7 +76,7 @@ theorem completedScheduledEventPrefix_accountingEvidence
 
 /-- The pulled-up head state reads the static execution registry. -/
 theorem completedPrefix_pulledUpHead_validators
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (hT : E.ScheduledPrefixPremises cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
@@ -104,7 +104,7 @@ theorem completedPrefix_pulledUpHead_validators
 current epoch.  In the no-pull branch this follows from the head-state slot
 bound and the negated pull guard. -/
 theorem completedPrefix_pulledUpHead_epoch
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (hT : E.ScheduledPrefixPremises cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
@@ -186,7 +186,7 @@ theorem completedPrefix_anchor_epoch_within
 balance.  Registry equality and the two in-horizon state epochs are enough;
 no selected-domain or justification interface is involved. -/
 theorem completedPrefix_pulledUpHead_totalActive
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (hT : E.ScheduledPrefixPremises cfg ext)
     (hsv : StaticValidatorSet cfg E)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
@@ -283,7 +283,7 @@ accepted current-target gate producer.  The producer remains conditional on
 the executable Boolean and its matching whole-slot target-support proviso;
 neither is assumed by this theorem. -/
 noncomputable def completedPrefix_acceptedTargetGateProducerAt
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (hT : E.ScheduledPrefixPremises cfg ext)
     (hC : E.CompletedFCRCallPremises cfg ext)
     (hfit : EpochEndsFitUint64 cfg)
@@ -360,7 +360,7 @@ noncomputable def completedPrefix_acceptedTargetGateProducerAt
 interface required by the historical write-back induction. -/
 noncomputable def
     acceptedHistoricalA32CallInterfaces_of_completedPrefixes
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (hT : E.ScheduledPrefixPremises cfg ext)
     (hC : E.CompletedFCRCallPremises cfg ext)
     (hfit : EpochEndsFitUint64 cfg)
@@ -379,7 +379,7 @@ noncomputable def
 /-- End-to-end historical current-lineage invariant after replacing the
 abstract call interface by completed-prefix protocol assumptions. -/
 theorem acceptedHistoricalA32CurrentLineage_invariant_of_completedPrefixes
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (hT : E.ScheduledPrefixPremises cfg ext)
     (hC : E.CompletedFCRCallPremises cfg ext)
     (hfit : EpochEndsFitUint64 cfg)
@@ -395,7 +395,7 @@ theorem acceptedHistoricalA32CurrentLineage_invariant_of_completedPrefixes
 
 /-- Headline current-epoch lineage using the completed-prefix supplier. -/
 theorem acceptedHistoricalA32CurrentLineage_of_completedPrefixes
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (hT : E.ScheduledPrefixPremises cfg ext)
     (hC : E.CompletedFCRCallPremises cfg ext)
     (hfit : EpochEndsFitUint64 cfg)

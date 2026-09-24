@@ -35,7 +35,7 @@ variable {E : Execution Root}
 source carrier.  The carrier itself supplies every source/leaf/selected fact;
 the two remaining inputs are ordinary endpoint hierarchy and walk facts. -/
 def retainedFilterTipPlacement
-    {B : ExactPrefixAcceptedFFGSemantics cfg ext E}
+    {B : CausalPrefixFFGInterpretation cfg ext E}
     {store : Store Root} {selected : Root}
     (h : E.AcceptedRetainedPhaseSourceCarrierAt cfg ext B store selected)
     (hfinalized : FinalizedBoundaryRealization cfg store)
@@ -71,7 +71,7 @@ The finalized equation is deliberately indexed by `h.tip`: this prevents an
 existential finalized carrier elsewhere in the store from being mistaken for
 the leaf actually used by the executable filter. -/
 theorem filterTipCertificate_of_finalizedCheck
-    {B : ExactPrefixAcceptedFFGSemantics cfg ext E}
+    {B : CausalPrefixFFGInterpretation cfg ext E}
     {store : Store Root} {selected : Root}
     (h : E.AcceptedRetainedPhaseSourceCarrierAt cfg ext B store selected)
     (hfinalized : FinalizedBoundaryRealization cfg store)
@@ -150,7 +150,7 @@ variable {E : Execution Root}
 `candidate`.  The returned carrier has definitionally the same retained tip;
 only the selected-root fields are changed. -/
 def retarget_ancestor
-    {B : ExactPrefixAcceptedFFGSemantics cfg ext E}
+    {B : CausalPrefixFFGInterpretation cfg ext E}
     {store : Store Root} {selected candidate : Root}
     (h : E.AcceptedRetainedPhaseSourceCarrierAt cfg ext B store selected)
     (hparent : ParentSlotLt store)
@@ -179,7 +179,7 @@ def retarget_ancestor
 
 /-- The retargeting theorem preserves the concrete retained tip exactly. -/
 @[simp] theorem retarget_ancestor_tip
-    {B : ExactPrefixAcceptedFFGSemantics cfg ext E}
+    {B : CausalPrefixFFGInterpretation cfg ext E}
     {store : Store Root} {selected candidate : Root}
     (h : E.AcceptedRetainedPhaseSourceCarrierAt cfg ext B store selected)
     (hparent : ParentSlotLt store)
@@ -195,7 +195,7 @@ def retarget_ancestor
 the carrier to an ancestor edge child.  This is the direct bridge from one
 final-result source/finality proof to the per-edge filter quantifier. -/
 theorem filterTipCertificate_retarget_ancestor
-    {B : ExactPrefixAcceptedFFGSemantics cfg ext E}
+    {B : CausalPrefixFFGInterpretation cfg ext E}
     {store : Store Root} {selected candidate : Root}
     (h : E.AcceptedRetainedPhaseSourceCarrierAt cfg ext B store selected)
     (hfinalized : FinalizedBoundaryRealization cfg store)

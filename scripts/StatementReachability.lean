@@ -41,7 +41,7 @@ private def isSourceDeclaration (env : Environment) (decl : Name) : Bool :=
 -- FFG state's specialization, so its theorem type needs that abbreviation.
 private def approved : List Name := [
   ``FastConfirmation.Spec.Synchrony,
-  ``FastConfirmation.Spec.AcceptedChainFFGState.PaperA32SupportThroughoutEpoch
+  ``FastConfirmation.Spec.CausalCarrierFFGState.PaperA32SupportThroughoutEpoch
 ]
 
 run_cmd do

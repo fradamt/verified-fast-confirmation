@@ -28,7 +28,7 @@ argument: previous-epoch confirmed candidates need no current-epoch payload.
 The only fresh payload branches are the trusted anchor and a concrete
 current-target crossing. -/
 noncomputable def getLatestConfirmedTraceAt_currentLineage_step
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (hT : E.ScheduledPrefixPremises cfg ext)
     (hphase : Phase0SourceCoherence cfg ext)
     (hboundaryPhase : Phase0BoundarySourceCoherence cfg ext)

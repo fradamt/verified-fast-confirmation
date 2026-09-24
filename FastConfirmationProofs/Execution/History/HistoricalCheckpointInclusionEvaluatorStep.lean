@@ -30,7 +30,7 @@ variable {E : Execution Root}
 /-- The no-crossing accepted segment for the exact final selector phase,
 independent of which ordered reset phase supplied its input. -/
 theorem selectedCurrentNoCrossingAcceptedSegment
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (hwfE : WellFormedExecution E)
     (hcore : E.ExactCausalStoreWellFormedCore cfg ext)
     {query : FastConfirmationStore Root}
@@ -116,7 +116,7 @@ theorem selectedCurrentNoCrossingAcceptedSegment
 /-- Preserve a historical lineage through a no-crossing selector phase,
 regardless of whether the input was carried or supplied by a reset. -/
 noncomputable def selectedCurrentNoCrossingLineage
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (hwfE : WellFormedExecution E)
     (hcore : E.ExactCausalStoreWellFormedCore cfg ext)
     {query : FastConfirmationStore Root}
@@ -197,7 +197,7 @@ noncomputable def selectedCurrentNoCrossingLineage
 /-- Reconstruct the accepted same-epoch segment from the current target to a
 current result selected from any exact ordered evaluator input. -/
 theorem selectedCurrentCrossingAcceptedTargetSegment
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (hwfE : WellFormedExecution E)
     (hcore : E.ExactCausalStoreWellFormedCore cfg ext)
     {query : FastConfirmationStore Root}
@@ -275,7 +275,7 @@ theorem selectedCurrentCrossingAcceptedTargetSegment
 /-- A current crossing from any exact evaluator input creates a fresh
 historical payload at the concrete selected result. -/
 noncomputable def selectedCurrentCrossingLineage
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (hwfE : WellFormedExecution E)
     (hcore : E.ExactCausalStoreWellFormedCore cfg ext)
     (hphase : Phase0SourceCoherence cfg ext)
@@ -376,7 +376,7 @@ whether the epoch-boundary checkpoint block is current or old.  The separate
 target-local wrapper above is only one way to construct this producer in the
 non-skipped-boundary case. -/
 noncomputable def selectedCurrentCrossingLineage_of_fixedSourceProducer
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     {v : ValidatorIndex} {q : ℕ}
     {query : FastConfirmationStore Root}
     (hstore : E.CausalStore cfg ext query.store)
@@ -580,7 +580,7 @@ theorem confirmed_current_at_previousStore_of_query
 /-- The only current-epoch finalized reset payload is the trusted-anchor
 payload.  No quorum is synthesized in this branch. -/
 noncomputable def actualFinalizedResetCurrentAnchorLineage
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (hT : E.ScheduledPrefixPremises cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
@@ -621,7 +621,7 @@ noncomputable def actualFinalizedResetCurrentAnchorLineage
 /-- Produce the common query geometry once from the accepted global
 trajectory, rather than rebuilding it separately in every reset case. -/
 theorem historicalA32QueryGeometryAt_of_acceptedGlobalTrajectory
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (hT : E.ScheduledPrefixPremises cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
@@ -724,7 +724,7 @@ including the skipped-boundary old-target case, and eta-expand it to the
 fixed-source producer consumed by the historical dispatcher. -/
 noncomputable def
     acceptedFixedSourceProducerAt_of_selectedCurrentCrossing
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (hT : E.ScheduledPrefixPremises cfg ext)
     (hphase : Phase0SourceCoherence cfg ext)
     (hboundaryPhase : Phase0BoundarySourceCoherence cfg ext)

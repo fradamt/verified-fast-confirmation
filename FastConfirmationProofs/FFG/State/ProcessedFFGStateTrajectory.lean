@@ -21,12 +21,12 @@ namespace FastConfirmation.Spec
 variable {Root : Type*} [LinearOrder Root] [Inhabited Root]
 variable {cfg : Config} {ext : Externals Root}
 variable {E : Execution Root} {anchor : Checkpoint Root}
-variable {S : AcceptedChainFFGState cfg ext E anchor}
+variable {S : CausalCarrierFFGState cfg ext E anchor}
 
 /-- The four exact block-state equations, separated from the per-root
 unrealized-justification map while `on_block` installs a root. -/
 structure AcceptedFFGBlockStateProjection
-    (S : AcceptedChainFFGState cfg ext E anchor)
+    (S : CausalCarrierFFGState cfg ext E anchor)
     (store : Store Root) : Prop where
   block_state_gj : ∀ r ∈ store.block_roots,
     (store.block_states r).current_justified_checkpoint = S.GJ r
@@ -41,7 +41,7 @@ structure AcceptedFFGBlockStateProjection
 
 /-- Exact accepted-state projection at every root in one concrete store. -/
 structure AcceptedFFGStoreProjection
-    (S : AcceptedChainFFGState cfg ext E anchor)
+    (S : CausalCarrierFFGState cfg ext E anchor)
     (store : Store Root) : Prop where
   block_state_gj : ∀ r ∈ store.block_roots,
     (store.block_states r).current_justified_checkpoint = S.GJ r
@@ -313,7 +313,7 @@ private theorem on_block_acceptedFFGStoreProjection_of_selectors
 The coherence law is applied to this transition value itself, never to an
 arbitrary invocation of the opaque state-transition function. -/
 theorem acceptedBlockTransition_acceptedFFGStoreProjection
-    (hcoh : AcceptedFFGSelectorCoherence cfg ext S)
+    (hcoh : FFGSelectorsMatchBeaconStates cfg ext S)
     (t : E.AcceptedBlockTransition cfg ext)
     (h : AcceptedFFGStoreProjection S (t.atPrefix.store cfg ext)) :
     AcceptedFFGStoreProjection S t.postStore := by
@@ -398,7 +398,7 @@ namespace Execution
 accepted projection from the ticked boundary store.  The list index is kept
 explicit so successful block events construct an exact accepted transition. -/
 private theorem acceptedFFGStoreProjection_take
-    (hcoh : AcceptedFFGSelectorCoherence cfg ext S)
+    (hcoh : FFGSelectorsMatchBeaconStates cfg ext S)
     (w : ValidatorIndex) (n : ℕ)
     (hbase : AcceptedFFGStoreProjection S
       (on_tick cfg (E.store cfg ext w n) (E.time_at (n + 1)))) :
@@ -468,7 +468,7 @@ private theorem acceptedFFGStoreProjection_take
 
 /-- Every ordinary boundary snapshot has the accepted-state FFG projection. -/
 theorem acceptedFFGStoreProjection
-    (hcoh : AcceptedFFGSelectorCoherence cfg ext S)
+    (hcoh : FFGSelectorsMatchBeaconStates cfg ext S)
     (w : ValidatorIndex) (n : ℕ) :
     AcceptedFFGStoreProjection S (E.store cfg ext w n) := by
   induction n with
@@ -491,7 +491,7 @@ theorem acceptedFFGStoreProjection
 projection selected before the prefix. -/
 theorem ScheduledEventPrefix.acceptedFFGStoreProjection
     (p : E.ScheduledEventPrefix)
-    (hcoh : AcceptedFFGSelectorCoherence cfg ext S) :
+    (hcoh : FFGSelectorsMatchBeaconStates cfg ext S) :
     AcceptedFFGStoreProjection S (p.store cfg ext) := by
   apply E.acceptedFFGStoreProjection_take hcoh p.node p.previousSecond
   · exact on_tick_acceptedFFGStoreProjection _ _
@@ -501,25 +501,25 @@ theorem ScheduledEventPrefix.acceptedFFGStoreProjection
 /-- Exact projection for every store in the per-second causal domain. -/
 theorem CausalStore.acceptedFFGStoreProjection
     {store : Store Root} (hstore : E.CausalStore cfg ext store)
-    (hcoh : AcceptedFFGSelectorCoherence cfg ext S) :
+    (hcoh : FFGSelectorsMatchBeaconStates cfg ext S) :
     AcceptedFFGStoreProjection S store := by
   cases hstore with
   | genesis => exact E.acceptedFFGStoreProjection hcoh 0 0
   | scheduledPrefix p => exact p.acceptedFFGStoreProjection hcoh
 
-namespace ExactPrefixAcceptedFFGSemantics
+namespace CausalPrefixFFGInterpretation
 
 
 /-- Bundle-indexed projection of every store in the exact causal domain. -/
 theorem causalStoreProjection
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     {store : Store Root} (hstore : E.CausalStore cfg ext store) :
     AcceptedFFGStoreProjection B.state store :=
   hstore.acceptedFFGStoreProjection
-    B.coherence.toAcceptedFFGSelectorCoherence
+    B.coherence.toFFGSelectorsMatchBeaconStates
 
 
-end ExactPrefixAcceptedFFGSemantics
+end CausalPrefixFFGInterpretation
 
 /-! ## Boundary selector corollaries -/
 
@@ -528,7 +528,7 @@ end ExactPrefixAcceptedFFGSemantics
 
 
 theorem accepted_unrealized_justification_eq
-    (hcoh : AcceptedFFGSelectorCoherence cfg ext S)
+    (hcoh : FFGSelectorsMatchBeaconStates cfg ext S)
     (w : ValidatorIndex) (n : ℕ)
     {r : Root} (hr : r ∈ (E.store cfg ext w n).block_roots) :
     (E.store cfg ext w n).unrealized_justifications r = S.GU r :=

@@ -50,7 +50,7 @@ about semantic GU, rather than the query's executable voting-source selector:
 a current-epoch seed reads GJ at the query but reads GU at the next-epoch
 endpoint. -/
 def AcceptedLemma13SourceSeedAt
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (store : Store Root) (selected : Root) : Prop :=
   ∃ seed : Root,
     seed ∈ store.block_roots ∧
@@ -71,7 +71,7 @@ head's cached unrealized-justification bound, and the accepted causal
 projection identifies that cache entry with GU(head).
 -/
 theorem StrictSelectedResultMechanicalFacts.current_lemma13SourceSeed_of_notStart
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     {query : FastConfirmationStore Root} {input result : Root}
     (hstore : E.CausalStore cfg ext query.store)
     (hparent : ParentSlotLt query.store)
@@ -107,7 +107,7 @@ theorem StrictSelectedResultMechanicalFacts.current_lemma13SourceSeed_of_notStar
           (get_head cfg query.store).root result .pending
           (get_head cfg query.store).payload_status)).mpr hb
       have hprojection :=
-        Execution.ExactPrefixAcceptedFFGSemantics.causalStoreProjection
+        Execution.CausalPrefixFFGInterpretation.causalStoreProjection
           B hstore
       have hguEq : query.store.unrealized_justifications head =
           B.state.GU head := hprojection.unrealized_justification head hhead
@@ -123,7 +123,7 @@ its old-block GU branch; this is why Lemma 13, rather than Lemma 26, is the
 right input for this cell.
 -/
 theorem recentSourceSeedAt_endpointNext_of_lemma13
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (hwf : WellFormedExecution E)
     (hec : BeaconExternalsPremises cfg ext E)
     {ast : BeaconState Root} {ablk : SignedBeaconBlock Root}

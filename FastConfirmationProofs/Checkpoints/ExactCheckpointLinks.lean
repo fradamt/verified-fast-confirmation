@@ -50,7 +50,7 @@ theorem get_checkpoint_for_block_comp
   have hcomp := get_ancestor_comp_root hwf hboundary hwalk
   simpa only [get_checkpoint_for_block, get_checkpoint_block] using hcomp
 
-namespace AcceptedEpochCheckpointProjection
+namespace EpochCheckpointClosure
 
 omit [LinearOrder Root] [Inhabited Root] in
 /-- Exact checkpoint prefix is transitive on the accepted post-anchor
@@ -58,7 +58,7 @@ domain. -/
 theorem prefix_trans
     {anchor : Checkpoint Root} {Accepted : Root → Prop}
     {C : Root → Epoch → Checkpoint Root}
-    (P : AcceptedEpochCheckpointProjection anchor Accepted C)
+    (P : EpochCheckpointClosure anchor Accepted C)
     {a b c : Checkpoint Root}
     (hc : Accepted c.root)
     (hanchor : anchor.epoch ≤ a.epoch)
@@ -74,7 +74,7 @@ theorem prefix_trans
     _ = C c.root a.epoch :=
       P.checkpoint_comp hc hanchor habEpoch
 
-end AcceptedEpochCheckpointProjection
+end EpochCheckpointClosure
 
 variable {E : Execution Root} {anchor : Checkpoint Root}
 
@@ -92,7 +92,7 @@ theorem target_accepted
     {included : Root → Attestation Root → Prop}
     {C : Root → Epoch → Checkpoint Root}
     {Accepted : Root → Prop}
-    (P : AcceptedEpochCheckpointProjection anchor Accepted C)
+    (P : EpochCheckpointClosure anchor Accepted C)
     (V : ExactIncludedLinkValidity cfg E included anchor C Accepted)
     {carrier source target}
     (L : IncludedSupermajorityLink cfg E included carrier source target)
@@ -116,7 +116,7 @@ theorem source_prefix_target
     {included : Root → Attestation Root → Prop}
     {C : Root → Epoch → Checkpoint Root}
     {Accepted : Root → Prop}
-    (P : AcceptedEpochCheckpointProjection anchor Accepted C)
+    (P : EpochCheckpointClosure anchor Accepted C)
     (V : ExactIncludedLinkValidity cfg E included anchor C Accepted)
     {carrier source target}
     (L : IncludedSupermajorityLink cfg E included carrier source target)
@@ -141,7 +141,7 @@ theorem target_self
     {included : Root → Attestation Root → Prop}
     {C : Root → Epoch → Checkpoint Root}
     {Accepted : Root → Prop}
-    (P : AcceptedEpochCheckpointProjection anchor Accepted C)
+    (P : EpochCheckpointClosure anchor Accepted C)
     (V : ExactIncludedLinkValidity cfg E included anchor C Accepted)
     {carrier source target}
     (L : IncludedSupermajorityLink cfg E included carrier source target)
@@ -182,7 +182,7 @@ theorem exact_self
     {included : Root → Attestation Root → Prop}
     {C : Root → Epoch → Checkpoint Root}
     {Accepted : Root → Prop}
-    (P : AcceptedEpochCheckpointProjection anchor Accepted C)
+    (P : EpochCheckpointClosure anchor Accepted C)
     (V : ExactIncludedLinkValidity cfg E included anchor C Accepted)
     (hanchorExact : anchor = C anchor.root anchor.epoch)
     {carrier c}
@@ -204,7 +204,7 @@ theorem anchor_prefix
     {included : Root → Attestation Root → Prop}
     {C : Root → Epoch → Checkpoint Root}
     {Accepted : Root → Prop}
-    (P : AcceptedEpochCheckpointProjection anchor Accepted C)
+    (P : EpochCheckpointClosure anchor Accepted C)
     (V : ExactIncludedLinkValidity cfg E included anchor C Accepted)
     (hanchorExact : anchor = C anchor.root anchor.epoch)
     {carrier c}
@@ -262,7 +262,7 @@ theorem exact_prefix_of_accountable
     (I : Execution.IncludedAttestationRelation cfg E validity)
     {C : Root → Epoch → Checkpoint Root}
     {Accepted : Root → Prop}
-    (P : AcceptedEpochCheckpointProjection anchor Accepted C)
+    (P : EpochCheckpointClosure anchor Accepted C)
     (V : ExactIncludedLinkValidity cfg E I.Included anchor C Accepted)
     (hanchorExact : anchor = C anchor.root anchor.epoch)
     (hacc : CheckpointCertificateAccountability cfg E anchor)
@@ -368,7 +368,7 @@ theorem exact_prefix_of_accountable
 
 end IncludedCertifiedFinalized
 
-namespace AcceptedChainFFGState
+namespace CausalCarrierFFGState
 
 /-- Production accepted-state adapter for exact accountable finalized prefix.
 The only forgotten data is the extra proof that each positive inclusion
@@ -376,8 +376,8 @@ carrier is accepted; the inclusion predicate and every certificate witness
 remain definitionally identical. -/
 theorem exactFinalizedPrefix_of_accountable
     {ext : Externals Root}
-    {S : AcceptedChainFFGState cfg ext E anchor}
-    (P : AcceptedEpochCheckpointProjection anchor
+    {S : CausalCarrierFFGState cfg ext E anchor}
+    (P : EpochCheckpointClosure anchor
       (E.AcceptedRoot cfg ext) S.C)
     (V : S.ExactLinkValidity)
     (hanchorExact : anchor = S.C anchor.root anchor.epoch)
@@ -390,18 +390,18 @@ theorem exactFinalizedPrefix_of_accountable
       S.includedAttestations.Included anchor justifiedCarrier justified)
     (hepoch : finalized.epoch ≤ justified.epoch) :
     ExactCheckpointPrefix S.C finalized justified := by
-  let I := Execution.AcceptedIncludedAttestationRelation.relation
+  let I := Execution.CausalCarrierAttestationRelation.relation
     (cfg := cfg) (ext := ext) (E := E) S.includedAttestations
   exact IncludedCertifiedFinalized.exact_prefix_of_accountable
     (cfg := cfg) I P V hanchorExact hacc hfinalized hjustified hepoch
 
-end AcceptedChainFFGState
+end CausalCarrierFFGState
 
 
-namespace AcceptedChainFFGState
+namespace CausalCarrierFFGState
 
 
-end AcceptedChainFFGState
+end CausalCarrierFFGState
 
 end FastConfirmation.Spec
 

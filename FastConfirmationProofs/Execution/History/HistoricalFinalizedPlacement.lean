@@ -41,10 +41,10 @@ namespace Execution
 
 variable {E : Execution Root}
 
-namespace ExactPrefixAcceptedFFGSemantics
+namespace CausalPrefixFFGInterpretation
 
 
-end ExactPrefixAcceptedFFGSemantics
+end CausalPrefixFFGInterpretation
 
 /-! ## Honest target carried by an accepted finalization -/
 
@@ -55,7 +55,7 @@ This is the useful inner result of the older reset-root-delivery argument.
 It retains the voter's actual executable head and target-boundary walk rather
 than concluding only that the finalized root was relayed somewhere. -/
 structure AcceptedHonestFinalizedTargetAt
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (w : ValidatorIndex) (m : Nat) (finalized : Checkpoint Root) where
   validator : ValidatorIndex
   vote_slot : Slot

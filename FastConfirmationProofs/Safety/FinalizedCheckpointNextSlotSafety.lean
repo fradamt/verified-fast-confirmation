@@ -37,7 +37,7 @@ chain.
 Synchrony supplies the endpoint justified-epoch bound; accepted certificate
 semantics and execution reflection supply the chain relation and knownness. -/
 theorem finalizedReset_justifiedDom_of_nextSlotSynchrony
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (hT : E.ScheduledPrefixPremises cfg ext)
     (hacc : FFGAccountabilityAssumptions cfg ext E)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
@@ -92,7 +92,7 @@ theorem finalizedReset_justifiedDom_of_nextSlotSynchrony
       E.finalizedReset_epoch_le_remoteJustified_nextSlot
         cfg ext B hT hanchor hsync hv hw hHn1 hHm hnextM
   obtain ⟨hjustified⟩ :=
-    ExactPrefixAcceptedFFGSemantics.endpointJustified_certificate
+    CausalPrefixFFGInterpretation.endpointJustified_certificate
       (E := E) cfg ext B hgenShort hanchor hendpointCausal
   have hsemantic : E.RootDescends
       (E.store cfg ext w m).justified_checkpoint.root finalized.root := by
@@ -111,7 +111,7 @@ theorem finalizedReset_justifiedDom_of_nextSlotSynchrony
       have hfinalized : CertifiedFinalized cfg E B.anchor finalized :=
         IncludedCertifiedFinalized.toCertifiedFinalized
           (cfg := cfg)
-          (Execution.AcceptedIncludedAttestationRelation.relation
+          (Execution.CausalCarrierAttestationRelation.relation
             cfg ext E B.state.includedAttestations)
           hincludedFinalized
       exact E.certified_finalized_prefix cfg ext hacc
@@ -124,7 +124,7 @@ theorem finalizedReset_justifiedDom_of_nextSlotSynchrony
 slot is strictly later than the query slot.  No same-moment finalized-adoption
 law is used. -/
 theorem finalizedReset_safeFrom_of_nextSlotSynchrony
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (hT : E.ScheduledPrefixPremises cfg ext)
     (hacc : FFGAccountabilityAssumptions cfg ext E)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
@@ -148,7 +148,7 @@ theorem finalizedReset_safeFrom_of_nextSlotSynchrony
 the finalized reset input, that input is safe from any chosen next-slot time.
 -/
 theorem finalizedResetCandidateInput_safeFrom_of_nextSlotSynchrony
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (hT : E.ScheduledPrefixPremises cfg ext)
     (hacc : FFGAccountabilityAssumptions cfg ext E)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)

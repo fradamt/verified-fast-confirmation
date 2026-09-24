@@ -30,13 +30,13 @@ namespace FastConfirmation.Spec
 variable {Root : Type*} [LinearOrder Root] [Inhabited Root]
 variable {cfg : Config} {ext : Externals Root}
 variable {E : Execution Root} {anchor : Checkpoint Root}
-variable {S : AcceptedChainFFGState cfg ext E anchor}
+variable {S : CausalCarrierFFGState cfg ext E anchor}
 
 /-- The two checkpoint maxima maintained on accepted carriers.  `GU` is first
 offered to the unrealized maximum; an epoch-boundary tick later offers that
 maximum to the realized justified field. -/
 structure AcceptedFFGJustifiedLedger
-    (S : AcceptedChainFFGState cfg ext E anchor)
+    (S : CausalCarrierFFGState cfg ext E anchor)
     (store : Store Root) : Prop where
   gj_epoch_le_justified : ∀ r,
     E.AcceptedCarrierIn (cfg := cfg) (ext := ext) store r →
@@ -48,7 +48,7 @@ structure AcceptedFFGJustifiedLedger
 /-- Every accepted known block selected through the old-block arm has had its
 eager `GU` offered to the realized global justified maximum. -/
 def AcceptedOldGURealized
-    (S : AcceptedChainFFGState cfg ext E anchor)
+    (S : CausalCarrierFFGState cfg ext E anchor)
     (store : Store Root) : Prop :=
   ∀ r, E.AcceptedCarrierIn (cfg := cfg) (ext := ext) store r →
     get_block_epoch cfg store r < get_current_store_epoch cfg store →
@@ -501,7 +501,7 @@ private theorem on_block_of_selectors
 
 /-- Ledger preservation by one exact accepted block transition. -/
 theorem acceptedBlockTransition
-    (hcoh : AcceptedFFGSelectorCoherence cfg ext S)
+    (hcoh : FFGSelectorsMatchBeaconStates cfg ext S)
     (t : E.AcceptedBlockTransition cfg ext)
     (h : AcceptedFFGJustifiedLedger S (t.atPrefix.store cfg ext)) :
     AcceptedFFGJustifiedLedger S t.postStore := by
@@ -848,7 +848,7 @@ private theorem on_block_of_selector
           (cfg := cfg) (ext := ext) realized sb.root htipOld
 
 theorem acceptedBlockTransition
-    (hcoh : AcceptedFFGSelectorCoherence cfg ext S)
+    (hcoh : FFGSelectorsMatchBeaconStates cfg ext S)
     (t : E.AcceptedBlockTransition cfg ext)
     (h : AcceptedOldGURealized S (t.atPrefix.store cfg ext)) :
     AcceptedOldGURealized S t.postStore := by
@@ -914,7 +914,7 @@ end AcceptedOldGURealized
 /-! The complete invariant exposed to causal-store consumers. -/
 
 structure AcceptedFFGJustifiedMaximality
-    (S : AcceptedChainFFGState cfg ext E anchor)
+    (S : CausalCarrierFFGState cfg ext E anchor)
     (store : Store Root) : Prop where
   ledger : AcceptedFFGJustifiedLedger S store
   oldGU : AcceptedOldGURealized S store
@@ -953,7 +953,7 @@ private theorem accepted_slot_at_succ_le
       Nat.add_div_right a hdenPos
 
 private theorem acceptedOldGU_after_execution_tick
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (hdiv : 1000 ∣ cfg.slot_duration_ms)
     (hgenTime : E.genesis_store.genesis_time ≤ E.genesis_store.time)
     (w : ValidatorIndex) (n : ℕ)
@@ -1039,7 +1039,7 @@ private theorem acceptedOldGU_after_execution_tick
       (E.time_at (n + 1)) hfinalCurrent hsteppedOld
 
 private theorem genesisAcceptedFFGJustifiedMaximality
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (hdiv : 1000 ∣ cfg.slot_duration_ms)
     (hgen : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
       E.genesis_store = get_forkchoice_store cfg ast ablk ∧
@@ -1102,7 +1102,7 @@ private theorem genesisAcceptedFFGJustifiedMaximality
     exact (Nat.lt_irrefl _ himpossible).elim
 
 private theorem acceptedFFGJustifiedMaximality_take
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (w : ValidatorIndex) (n : ℕ)
     (hbase : AcceptedFFGJustifiedMaximality B.state
       (FastConfirmation.Spec.on_tick cfg (E.store cfg ext w n)
@@ -1155,9 +1155,9 @@ private theorem acceptedFFGJustifiedMaximality_take
                 accepted := by
                   simpa [apply_event, hevent] using heq }
             exact ⟨AcceptedFFGJustifiedLedger.acceptedBlockTransition
-                B.coherence.toAcceptedFFGSelectorCoherence t hp.ledger,
+                B.coherence.toFFGSelectorsMatchBeaconStates t hp.ledger,
               AcceptedOldGURealized.acceptedBlockTransition
-                B.coherence.toAcceptedFFGSelectorCoherence t hp.oldGU⟩
+                B.coherence.toFFGSelectorsMatchBeaconStates t hp.oldGU⟩
         | attestation a fromBlock =>
             exact ⟨AcceptedFFGJustifiedLedger.on_attestation hp.ledger
                 (by simpa [apply_event, hevent] using heq),
@@ -1192,7 +1192,7 @@ private theorem acceptedFFGJustifiedMaximality_take
 /-- The accepted justified-maximality invariant at every ordinary execution
 boundary.  Both block insertion and ticking are executable-handler facts. -/
 theorem acceptedFFGJustifiedMaximality
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (hdiv : 1000 ∣ cfg.slot_duration_ms)
     (hgen : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
       E.genesis_store = get_forkchoice_store cfg ast ablk ∧
@@ -1224,7 +1224,7 @@ theorem acceptedFFGJustifiedMaximality
 /-- Exact strict-prefix specialization of accepted justified maximality. -/
 theorem ScheduledEventPrefix.acceptedFFGJustifiedMaximality
     (p : E.ScheduledEventPrefix)
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (hdiv : 1000 ∣ cfg.slot_duration_ms)
     (hgen : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
       E.genesis_store = get_forkchoice_store cfg ast ablk ∧
@@ -1248,7 +1248,7 @@ theorem ScheduledEventPrefix.acceptedFFGJustifiedMaximality
 /-- Accepted justified maximality at every store in the exact causal domain. -/
 theorem CausalStore.acceptedFFGJustifiedMaximality
     {store : Store Root} (hstore : E.CausalStore cfg ext store)
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (hdiv : 1000 ∣ cfg.slot_duration_ms)
     (hgen : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
       E.genesis_store = get_forkchoice_store cfg ast ablk ∧
@@ -1263,13 +1263,13 @@ theorem CausalStore.acceptedFFGJustifiedMaximality
 
 end Execution
 
-namespace ExactPrefixAcceptedFFGSemantics
+namespace CausalPrefixFFGInterpretation
 
 /-- The actual executable voting source of every accepted known root is
 bounded by the store's realized justified checkpoint, including the strict
 old-block `GU` arm and strict in-second scheduled-event prefixes. -/
 theorem causalVotingSource_epoch_le_justified
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (hdiv : 1000 ∣ cfg.slot_duration_ms)
     (hgen : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
       E.genesis_store = get_forkchoice_store cfg ast ablk ∧
@@ -1284,7 +1284,7 @@ theorem causalVotingSource_epoch_le_justified
   have hcarrier : E.AcceptedCarrierIn (cfg := cfg) (ext := ext) store r :=
     Execution.AcceptedCarrierIn.of_causal_known hstore hr
   have hprojection :=
-    Execution.ExactPrefixAcceptedFFGSemantics.causalStoreProjection B hstore
+    Execution.CausalPrefixFFGInterpretation.causalStoreProjection B hstore
   simp only [get_voting_source]
   split_ifs with hold
   · rw [hprojection.unrealized_justification r hr]
@@ -1293,7 +1293,7 @@ theorem causalVotingSource_epoch_le_justified
   · rw [hprojection.block_state_gj r hr]
     exact hmax.ledger.gj_epoch_le_justified r hcarrier
 
-end ExactPrefixAcceptedFFGSemantics
+end CausalPrefixFFGInterpretation
 
 
 end FastConfirmation.Spec

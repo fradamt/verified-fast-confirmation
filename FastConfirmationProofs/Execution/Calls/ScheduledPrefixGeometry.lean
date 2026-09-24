@@ -186,7 +186,7 @@ theorem ScheduledEventPrefix.walkKnownK
 scheduled prefix, including in the middle of its event fold. -/
 theorem ScheduledEventPrefix.justifiedRootKnown_of_acceptedGlobalTrajectory
     (p : E.ScheduledEventPrefix)
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (hT : E.ScheduledPrefixPremises cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg) (E := E)
@@ -228,7 +228,7 @@ theorem ScheduledEventPrefix.justifiedRootKnown_of_acceptedGlobalTrajectory
         (p.store cfg ext).justified_checkpoint :=
       IncludedCertifiedJustified.toCertifiedJustified
         (cfg := cfg)
-        (Execution.AcceptedIncludedAttestationRelation.relation
+        (Execution.CausalCarrierAttestationRelation.relation
           cfg ext E B.state.includedAttestations) hincluded
     have hanchorEpochLe : B.anchor.epoch ≤
         (p.store cfg ext).justified_checkpoint.epoch :=
@@ -253,7 +253,7 @@ theorem ScheduledEventPrefix.justifiedRootKnown_of_acceptedGlobalTrajectory
 prefix under accepted global semantics. -/
 theorem ScheduledEventPrefix.headRootKnown_of_acceptedGlobalTrajectory
     (p : E.ScheduledEventPrefix)
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (hT : E.ScheduledPrefixPremises cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg) (E := E)
@@ -272,7 +272,7 @@ the target epoch or strictly older; this is the exhaustive split used by the
 accepted GJ/GU gate facade. -/
 theorem ScheduledEventPrefix.currentTargetKnown_and_blockEpoch_le
     (p : E.ScheduledEventPrefix)
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (hT : E.ScheduledPrefixPremises cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg) (E := E)
@@ -346,7 +346,7 @@ theorem ScheduledEventPrefix.currentTargetKnown_and_blockEpoch_le
 This is clock/retention geometry, not an FFG-safety assumption. -/
 theorem ScheduledEventPrefix.currentTarget_anchor_epoch_le
     (p : E.ScheduledEventPrefix)
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (hT : E.ScheduledPrefixPremises cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg) (E := E)
@@ -389,7 +389,7 @@ anchor epoch is the anchor itself.  Therefore every distinct current target
 has a strictly later epoch. -/
 theorem ScheduledEventPrefix.currentTarget_anchor_epoch_lt_of_ne
     (p : E.ScheduledEventPrefix)
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (hT : E.ScheduledPrefixPremises cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg) (E := E)

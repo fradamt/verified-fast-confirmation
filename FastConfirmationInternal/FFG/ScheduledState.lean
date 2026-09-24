@@ -16,8 +16,8 @@ def ExecutionRoot (r : Root) : Prop :=
   ∃ b : BeaconBlock Root, E.BlockAt r b
 
 
-namespace AcceptedIncludedAttestationRelation
-end AcceptedIncludedAttestationRelation
+namespace CausalCarrierAttestationRelation
+end CausalCarrierAttestationRelation
 end Execution
 /-- The causal honest witness for a non-anchor formed checkpoint is itself an
 attestation included on the carrier chain, not an unrelated ground vote. -/
@@ -313,14 +313,14 @@ structure FFGTransitionCoherence
         c = get_checkpoint_for_block cfg
           (E.store cfg ext w m) r c.epoch
 
-namespace AcceptedChainFFGState
+namespace CausalCarrierFFGState
 variable {E : Execution Root} {anchor : Checkpoint Root}
-def IncludedOnChain (S : AcceptedChainFFGState cfg ext E anchor)
+def IncludedOnChain (S : CausalCarrierFFGState cfg ext E anchor)
     (tip : Root) (a : Attestation Root) : Prop :=
   AttestationIncludedOnChain E S.includedAttestations.Included tip a
 
 def HasSlashablePairOnChain
-    (S : AcceptedChainFFGState cfg ext E anchor)
+    (S : CausalCarrierFFGState cfg ext E anchor)
     (tip : Root) (i : ValidatorIndex) : Prop :=
   ∃ a₁ a₂ : Attestation Root,
     S.IncludedOnChain cfg ext tip a₁ ∧
@@ -330,20 +330,20 @@ def HasSlashablePairOnChain
     is_slashable_attestation_data a₁.data a₂.data = true
 
 noncomputable def slashableOnChain
-    (S : AcceptedChainFFGState cfg ext E anchor)
+    (S : CausalCarrierFFGState cfg ext E anchor)
     (tip : Root) : Finset ValidatorIndex := by
   classical
   exact (Finset.range E.registry.length).filter
     (S.HasSlashablePairOnChain cfg ext tip)
 
-end AcceptedChainFFGState
+end CausalCarrierFFGState
 /-- One accepted semantic state and selector interpretation, chosen before
 any compatible-prefix variables.  This smaller bundle is the Gate-A
 feasibility surface. -/
 structure ExactPrefixAcceptedFFGSelectors (E : Execution Root) where
   anchor : Checkpoint Root
-  state : AcceptedChainFFGState cfg ext E anchor
-  coherence : AcceptedFFGSelectorCoherence cfg ext state
+  state : CausalCarrierFFGState cfg ext E anchor
+  coherence : FFGSelectorsMatchBeaconStates cfg ext state
 
 /-- A concrete, time-bounded *candidate producer* for the paper's support
 antecedent.  Restricting signers to honest validators is stronger than the
@@ -374,22 +374,22 @@ namespace ChainFFGState
 variable {E : Execution Root} {anchor : Checkpoint Root}
 
 end ChainFFGState
-namespace AcceptedChainFFGState
+namespace CausalCarrierFFGState
 variable {E : Execution Root} {anchor : Checkpoint Root}
 /-- Accepted-state paper voting-source selector. -/
-abbrev VSAt (S : AcceptedChainFFGState cfg ext E anchor)
+abbrev VSAt (S : CausalCarrierFFGState cfg ext E anchor)
     (store : Store Root) (b : Root) (e : Epoch) : Checkpoint Root :=
   if get_block_epoch cfg store b = e then S.GJ b else S.GU b
 
 /-- Accepted-state specialization of exact link support. -/
 abbrev PaperA32LinkSupportAt
-    (S : AcceptedChainFFGState cfg ext E anchor)
+    (S : CausalCarrierFFGState cfg ext E anchor)
     (w : ValidatorIndex) (m : ℕ) (b' : Root)
     (source target : Checkpoint Root) : Type :=
-  PaperA32LinkSupportAtCore cfg ext (S.paperA32View cfg ext)
+  PaperA32LinkSupportAtCore cfg ext (S.paperA32Inputs cfg ext)
     w m b' source target
 
-end AcceptedChainFFGState
+end CausalCarrierFFGState
 
 
 end FastConfirmation.Spec
