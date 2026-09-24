@@ -26,9 +26,7 @@ as `Spec_Safety_next_slot`, under the accepted executable-semantics bundle.
 The global `NextSlotSynchronyPremises` inside `completed_calls` makes this the
 current model's GST-0 specialization. Its five fields are honest-attestation
 delivery, block relay, payload-envelope relay, data-availability relay, and
-equivocation-evidence relay;
-it does not require the additional `latest_message_relay` premise of the full
-`Synchrony` bundle. -/
+equivocation-evidence relay. -/
 def ConfirmedRootSafeFromNextSlot : Prop :=
   ∀ E : Execution Root,
     E.NextSlotSafetyPremises cfg ext →

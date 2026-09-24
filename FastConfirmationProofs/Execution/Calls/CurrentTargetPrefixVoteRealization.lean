@@ -379,7 +379,8 @@ theorem currentTargetObservedHonestSupporter_vote_of_prefix
     subst_vars
     rfl
   refine ⟨⟨a.data.slot, k, index, hi, hkH, hkSlot, haSlotH,
-    hiCommittee, hvote, haSlotEpoch.trans htargetEpoch.symm, ?_,
+    hiCommittee, hvote, (hhb.vote_deadline i hi a.data.slot k _ hvote).2,
+    haSlotEpoch.trans htargetEpoch.symm, ?_,
     htargetExact⟩⟩
   exact slot_lt_prefix_next_epoch_start cfg
     (haSlotEpoch.trans htargetEpoch.symm)

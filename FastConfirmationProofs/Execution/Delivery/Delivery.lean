@@ -891,7 +891,8 @@ theorem Execution.vote_lands {E : Execution Root}
   have hmem : Event.attestation a false ∈ E.schedule w (Nm1 + 1) := by
     rw [← hNeq]
     exact hsyn.attestation_delivery v hv s n a
-      (E.slotWithinHorizon_of_le cfg (by rw [hn]) hHn) hHn hvote hHdeliver w hw
+      (E.slotWithinHorizon_of_le cfg (by rw [hn]) hHn) hHn hvote
+      (hhb.vote_deadline v hv s n a hvote).2 hHdeliver w hw
   obtain ⟨pre, suf, hl⟩ := List.append_of_mem hmem
   -- the prefix store extends and agrees with the ticked base
   have htb_br : tb.block_roots = (E.store cfg ext w Nm1).block_roots := by

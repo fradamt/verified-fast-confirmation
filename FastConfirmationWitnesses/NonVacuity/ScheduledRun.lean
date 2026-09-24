@@ -862,8 +862,13 @@ theorem witness_slot15_delivery_at_second16 (w : ValidatorIndex) :
 
 theorem witnessSynchrony :
     Synchrony witnessConfig witnessExternals witnessExecution := by
-  constructor
-  · intro v hv s n a hs hn hvote hdelivery w hw
+  refine {
+    delta := ⟨500, by decide, by decide⟩
+    attestation_delivery := ?_
+    block_relay := ?_
+    attester_slashing_relay := ?_
+  }
+  · intro v hv s n a hs hn hvote _hdeadline hdelivery w hw
     obtain ⟨hslt, hvmod, hn', ha⟩ := witness_vote_some_iff.mp hvote
     subst n
     subst a
@@ -876,17 +881,6 @@ theorem witnessSynchrony :
     rw [← witness_store_symmetric v w m]
     exact
       (witnessExecution.store_storeLE witnessConfig witnessExternals v hnm).1 hr
-  · intro v hv n i msg hn hmsg w hw m hm hslot
-    have hnm : n ≤ m := by
-      have hs : n + 1 ≤ m := by
-        simpa only [slot_at_eq] using hslot
-      exact (Nat.le_succ n).trans hs
-    obtain ⟨msg', hmsg', hepoch⟩ :=
-      (witnessExecution.store_storeLE witnessConfig witnessExternals v hnm).latest_message_epoch_mono
-        witnessConfig i msg hmsg
-    refine ⟨msg', ?_, hepoch⟩
-    rw [← witness_store_symmetric v w m]
-    exact hmsg'
   · intro v hv n i hn hi w hw m hm hslot
     have hnm : n ≤ m := by
       have hs : n + 1 ≤ m := by
@@ -993,7 +987,7 @@ theorem witnessPaperSafetySynchrony :
 theorem witnessHorizonVoteDeliveryLookahead :
     HorizonVoteDeliveryLookahead witnessConfig witnessExecution := by
   constructor
-  intro v hv s n a hs hn hvote w hw
+  intro v hv s n a hs hn hvote _hdeadline w hw
   obtain ⟨hslt, hvmod, hn', ha⟩ := witness_vote_some_iff.mp hvote
   subst n
   subst a

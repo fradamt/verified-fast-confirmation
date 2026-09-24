@@ -422,8 +422,13 @@ private lemma equivocating_indices_at_three :
 
 private theorem witnessSynchrony :
     Synchrony witnessConfig witnessExternals witnessExecution := by
-  constructor
-  · intro v hv s n a hs hn hvote hdelivery w hw
+  refine {
+    delta := ⟨500, by decide, by decide⟩
+    attestation_delivery := ?_
+    block_relay := ?_
+    attester_slashing_relay := ?_
+  }
+  · intro v hv s n a hs hn hvote _hdeadline hdelivery w hw
     rw [vote_some_cases] at hvote
     rcases hvote with h0 | h1 | h2 | h3
     · rcases h0 with ⟨rfl, rfl, rfl, rfl⟩
@@ -446,16 +451,6 @@ private theorem witnessSynchrony :
     interval_cases n <;> interval_cases m <;>
       simp_all [slot_at_eq, block_roots_at_zero, block_roots_at_one,
         block_roots_at_two, block_roots_at_three] <;> aesop
-  · intro v hv n i msg hn hmsg w hw m hm hslot
-    have hnlt : n < 4 := within_implies_lt_four hn
-    have hmlt : m < 4 := within_implies_lt_four hm
-    rw [store_node_independent v 0 n] at hmsg
-    rw [store_node_independent w 0 m]
-    interval_cases n <;> interval_cases m <;>
-      simp_all [slot_at_eq, latest_message_at_zero,
-        latest_message_at_one, latest_message_at_two,
-        latest_message_at_three]
-    all_goals aesop
   · intro v hv n i hn hi w hw m hm hslot
     have hnlt : n < 4 := within_implies_lt_four hn
     rw [store_node_independent v 0 n] at hi
@@ -466,7 +461,7 @@ private theorem witnessSynchrony :
 private theorem witnessHorizonVoteDeliveryLookahead :
     HorizonVoteDeliveryLookahead witnessConfig witnessExecution := by
   constructor
-  intro v hv s n a hs hn hvote w hw
+  intro v hv s n a hs hn hvote _hdeadline w hw
   rw [vote_some_cases] at hvote
   rcases hvote with h0 | h1 | h2 | h3
   · rcases h0 with ⟨rfl, rfl, rfl, rfl⟩

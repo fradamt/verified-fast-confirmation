@@ -403,7 +403,7 @@ theorem honestVoteTarget_cached_at_delivery
     rw [← hdeliveryEq]
     exact hsyn.attestation_delivery v hv s n a
       (E.slotWithinHorizon_of_le cfg (by rw [hn]) hHn)
-      hHn hvote hHdeliver w hw
+      hHn hvote (hhb.vote_deadline v hv s n a hvote).2 hHdeliver w hw
   obtain ⟨pre, suf, hscheduleEq⟩ := List.append_of_mem hscheduled
   have htickedRoots :
       ticked.block_roots = (E.store cfg ext w deliveryPred).block_roots := by

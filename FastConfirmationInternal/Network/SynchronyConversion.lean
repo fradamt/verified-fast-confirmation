@@ -18,6 +18,7 @@ def Synchrony.toPaperSafetySynchrony
     (henvelope : EnvelopeDelivery cfg ext E)
     (hdata : DataAvailabilityRelay cfg ext E) :
     NextSlotSynchronyPremises cfg ext E where
+  delta := h.delta
   attestation_delivery := h.attestation_delivery
   block_relay := h.block_relay
   envelope_delivery := henvelope

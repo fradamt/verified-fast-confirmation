@@ -18,15 +18,27 @@ received by the end of that slot"), made operational, plus the block/message
 propagation the spec leaves implicit (explicit in the paper's `Synchrony`
 bundle). The fork choice's own `current_slot ≥ slot + 1` gate makes the first
 second of slot `s+1` the earliest applicable processing time for a slot-`s`
-attestation. The exact relation to `NextSlotSynchronyPremises` is proved by
-`synchrony_and_delivery_iff_nextSlot_and_latestMessageRelay`. -/
+      attestation. The exact relation to `NextSlotSynchronyPremises` is proved by
+`synchrony_and_delivery_iff_nextSlot`. -/
 structure Synchrony (E : Execution Root) : Prop where
+  /-- Positive gossip delay in milliseconds, using the Python due-time unit.
+      The paper assumes gossip within `Δ` and `A + Δ < S`; a witness stores
+      both the delay and that strict bound. -/
+  delta : ∃ delay_ms : ℕ,
+    0 < delay_ms ∧
+      get_attestation_due_ms cfg + delay_ms < cfg.slot_duration_ms
+  /-- `Δ` is strictly positive. -/
+  delta_pos : 0 < Classical.choose delta := (Classical.choose_spec delta).1
+  /-- The vote deadline plus `Δ` precedes the next slot start. -/
+  deadline_fits : get_attestation_due_ms cfg + Classical.choose delta <
+      cfg.slot_duration_ms := (Classical.choose_spec delta).2
   /-- honest attestations of slot `s` are processed by every honest node at
       the first second of slot `s+1`. -/
   attestation_delivery : ∀ v ∈ E.honest, ∀ s n (a : Attestation Root),
     E.SlotWithinHorizon cfg s →
     E.WithinHorizon cfg n →
     E.vote v s = some (n, a) →
+    n ≤ E.slot_start cfg s + get_attestation_due_ms cfg / 1000 →
     E.WithinHorizon cfg (E.slot_start cfg (s + 1)) →
     ∀ w ∈ E.honest,
       Event.attestation a false ∈ E.schedule w (E.slot_start cfg (s + 1))
@@ -46,16 +58,6 @@ structure Synchrony (E : Execution Root) : Prop where
       E.WithinHorizon cfg m →
       E.slot_at cfg n + 1 ≤ E.slot_at cfg (m + 1) →
       r ∈ (E.store cfg ext w m).block_roots
-  /-- LMD messages relay: a latest message recorded by an honest node is,
-      from the next slot on, recorded (or dominated by a newer one) at every
-      honest node. -/
-  latest_message_relay : ∀ v ∈ E.honest, ∀ n i (msg : LatestMessage Root),
-    E.WithinHorizon cfg n →
-    (E.store cfg ext v n).latest_messages i = some msg →
-    ∀ w ∈ E.honest, ∀ m, E.WithinHorizon cfg m →
-      E.slot_at cfg n + 1 ≤ E.slot_at cfg m →
-      ∃ msg', (E.store cfg ext w m).latest_messages i = some msg' ∧
-        get_latest_message_epoch cfg msg ≤ get_latest_message_epoch cfg msg'
   /-- Equivocation evidence known to an honest node is known to every honest
       node from the next slot onward. Attester slashings gossip and may be
       carried in blocks through `on_attester_slashing`; the safety argument
@@ -114,15 +116,24 @@ def DataAvailabilityRelay (E : Execution Root) : Prop :=
 /-- The synchrony fragment used by the accepted spec next-slot proof.
 
 The accepted next-slot argument needs honest-attestation delivery, block relay,
-envelope delivery, data-availability relay, and equivocation-evidence relay. It does not use the additional
-`latest_message_relay` field of the full `Synchrony` bundle. The exact
-relation is proved by
-`synchrony_and_delivery_iff_nextSlot_and_latestMessageRelay`. -/
+envelope delivery, data-availability relay, and equivocation-evidence relay.
+The exact relation is proved by `synchrony_and_delivery_iff_nextSlot`. -/
 structure NextSlotSynchronyPremises (E : Execution Root) : Prop where
+  /-- Positive millisecond gossip delay with the paper's strict
+      vote-to-next-slot bound `A + Δ < S`. -/
+  delta : ∃ delay_ms : ℕ,
+    0 < delay_ms ∧
+      get_attestation_due_ms cfg + delay_ms < cfg.slot_duration_ms
+  /-- `Δ` is strictly positive. -/
+  delta_pos : 0 < Classical.choose delta := (Classical.choose_spec delta).1
+  /-- The honest vote deadline plus `Δ` precedes the next slot start. -/
+  deadline_fits : get_attestation_due_ms cfg + Classical.choose delta <
+      cfg.slot_duration_ms := (Classical.choose_spec delta).2
   attestation_delivery : ∀ v ∈ E.honest, ∀ s n (a : Attestation Root),
     E.SlotWithinHorizon cfg s →
     E.WithinHorizon cfg n →
     E.vote v s = some (n, a) →
+    n ≤ E.slot_start cfg s + get_attestation_due_ms cfg / 1000 →
     E.WithinHorizon cfg (E.slot_start cfg (s + 1)) →
     ∀ w ∈ E.honest,
       Event.attestation a false ∈ E.schedule w (E.slot_start cfg (s + 1))
@@ -156,6 +167,7 @@ structure HorizonVoteDeliveryLookahead (E : Execution Root) : Prop where
     E.SlotWithinHorizon cfg s →
     E.WithinHorizon cfg n →
     E.vote v s = some (n, a) →
+    n ≤ E.slot_start cfg s + get_attestation_due_ms cfg / 1000 →
     ∀ w ∈ E.honest,
       Event.attestation a false ∈ E.schedule w (E.slot_start cfg (s + 1))
 

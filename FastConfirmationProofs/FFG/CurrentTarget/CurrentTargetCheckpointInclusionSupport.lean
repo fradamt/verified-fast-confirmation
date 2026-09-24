@@ -201,6 +201,7 @@ structure ConcreteHonestTargetVoteBefore
   assigned : i ∈ E.committee slot
   vote : E.vote i slot = some (time,
     honest_attestation cfg ext (E.store cfg ext i time) slot index i)
+  vote_due : time ≤ E.slot_start cfg slot + get_attestation_due_ms cfg / 1000
   slot_epoch : compute_epoch_at_slot cfg slot = target.epoch
   before_deadline : slot < deadline
   target_eq :
@@ -293,6 +294,7 @@ theorem currentTargetFutureHonestSeat_vote
     hsupport.2 i hi s hsH hsTargetEpoch hquerySlot k
       (honest_attestation cfg ext (E.store cfg ext i k) s index i) hvote
   refine ⟨⟨s, k, index, hi, hkH, hkSlot, hsH, hiCommittee, hvote,
+    (hhb.vote_deadline i hi s k _ hvote).2,
     hsTargetEpoch, ?_, htarget⟩⟩
   exact slot_lt_next_epoch_start cfg hsTargetEpoch
 
@@ -352,7 +354,7 @@ theorem ConcreteA32QuorumBefore.scheduledDelivery_of_lookahead
     (honest_attestation cfg ext (E.store cfg ext i vote.time)
       vote.slot vote.index i)
     vote.slot_within_horizon vote.time_within_horizon
-    (by simpa only using vote.vote) i vote.honest
+    (by simpa only using vote.vote) vote.vote_due i vote.honest
 
 
 /-- The paper-facing information retained from one successful invocation of
@@ -499,7 +501,7 @@ theorem concreteVote_receivedBy
   exact hsync.attestation_delivery i vote.honest vote.slot vote.time
     (honest_attestation cfg ext (E.store cfg ext i vote.time)
       vote.slot vote.index i) vote.slot_within_horizon
-    vote.time_within_horizon vote.vote hdeliveryH w hw
+    vote.time_within_horizon vote.vote vote.vote_due hdeliveryH w hw
 
 
 /-! ## Gate-to-`HonestTargetQuorumBefore` -/
