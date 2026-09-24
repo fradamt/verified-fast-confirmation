@@ -336,6 +336,45 @@ def nonhonest_synchrony
   data_availability_relay := nonhonest_dataAvailabilityRelay hobs core
   attester_slashing_relay := nonhonest_attesterSlashingRelay hobs core
 
+/-- Every honest causal store of the actual run is the same exact prefix in
+the restricted view. The observer is outside the honest set. -/
+theorem nonhonest_honestCausalStore
+    (hobs : obs ∉ E.honest) {store : Store Root}
+    (h : E.HonestCausalStore cfg ext store) :
+    (E.withoutObserver obs).HonestCausalStore cfg ext store := by
+  let R := E.withoutObserver obs
+  have hh : R.honest = E.honest := withoutObserver_honest hobs
+  cases h with
+  | genesis hnonempty hhorizon =>
+    exact .genesis (hh.symm ▸ hnonempty) hhorizon
+  | scheduledPrefix p hp hn =>
+    have hne : p.node ≠ obs := by
+      intro heq
+      exact hobs (heq ▸ hp)
+    let q : R.ScheduledEventPrefix := {
+      node := p.node
+      previousSecond := p.previousSecond
+      processedCount := p.processedCount
+      count_le := by
+        simpa only [R, withoutObserver, if_neg hne] using p.count_le }
+    have htime : R.time_at (p.previousSecond + 1) =
+        E.time_at (p.previousSecond + 1) := by rfl
+    have hstore : q.store cfg ext = p.store cfg ext := by
+      simp only [ScheduledEventPrefix.store, q]
+      rw [withoutObserver_store cfg ext E obs p.node hne p.previousSecond]
+      rw [htime]
+      simp only [R, withoutObserver, if_neg hne]
+    rw [← hstore]
+    exact .scheduledPrefix q (hh.symm ▸ hp) hn
+
+/-- The honest keyed-validation domain is unchanged by observer erasure. -/
+theorem nonhonest_reachableValidationState
+    (hobs : obs ∉ E.honest) {state : BeaconState Root}
+    (h : E.ReachableValidationState cfg ext state) :
+    (E.withoutObserver obs).ReachableValidationState cfg ext state := by
+  obtain ⟨store, hs, hk⟩ := h
+  exact ⟨store, nonhonest_honestCausalStore hobs hs, hk⟩
+
 end
 end Execution
 end FastConfirmation.Spec
