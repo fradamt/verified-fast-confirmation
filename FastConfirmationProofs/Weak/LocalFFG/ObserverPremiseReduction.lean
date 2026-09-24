@@ -89,6 +89,85 @@ def nonhonest_completedCalls
       Execution.currentTargetAnchorActive] using core.completed_calls.balance_floor
   delivery_lookahead := nonhonest_deliveryLookahead hobs core
 
+/-- The permanent-exclusion test agrees when its source and receiver are
+honest. It reads only their stores and the common horizon. -/
+theorem nonhonest_permanentBlockExclusion_iff
+    (hobs : obs ∉ E.honest)
+    {v w : ValidatorIndex} (hv : v ∈ E.honest) (hw : w ∈ E.honest)
+    (n m : ℕ) (r : Root) :
+    PermanentBlockExclusion cfg ext (E.withoutObserver obs) v n r w m ↔
+      PermanentBlockExclusion cfg ext E v n r w m := by
+  have hne : v ≠ obs := by
+    intro heq
+    subst v
+    exact hobs hv
+  have hwne : w ≠ obs := by
+    intro heq
+    subst w
+    exact hobs hw
+  unfold PermanentBlockExclusion
+  simp only [withoutObserver_store cfg ext E obs v hne,
+    withoutObserver_store cfg ext E obs w hwne]
+  rfl
+
+/-- An admissible honest-to-honest vote path in the restricted view is the
+same path in the actual execution. -/
+theorem nonhonest_votePathAdmissible
+    (hobs : obs ∉ E.honest)
+    {v w : ValidatorIndex} (hv : v ∈ E.honest) (hw : w ∈ E.honest)
+    {n boundary : ℕ} {slot : Slot} {r : Root}
+    (h : VotePathAdmissible cfg ext (E.withoutObserver obs)
+      v n w boundary slot r) :
+    VotePathAdmissible cfg ext E v n w boundary slot r := by
+  have hne : v ≠ obs := by
+    intro heq
+    subst v
+    exact hobs hv
+  induction h with
+  | stop hr hnot hle =>
+    exact .stop
+      (by simpa only [withoutObserver_store cfg ext E obs v hne n] using hr)
+      ((nonhonest_permanentBlockExclusion_iff hobs hv hw n boundary _).not.mp hnot)
+      (by simpa only [withoutObserver_store cfg ext E obs v hne n] using hle)
+  | step hr hnot hgt _ ih =>
+    rw [withoutObserver_store cfg ext E obs v hne n] at ih
+    exact .step
+      (by simpa only [withoutObserver_store cfg ext E obs v hne n] using hr)
+      ((nonhonest_permanentBlockExclusion_iff hobs hv hw n boundary _).not.mp hnot)
+      (by simpa only [withoutObserver_store cfg ext E obs v hne n] using hgt)
+      ih
+
+/-- The G4 path contract transfers for honest endpoints. Its original
+all-receiver form is not asserted for the actual non-honest observer. -/
+theorem nonhonest_headPaths_honestEndpoints
+    (hobs : obs ∉ E.honest)
+    (core : E.WeakObserverRestrictedCore cfg ext obs) :
+    ∀ v ∈ E.honest, ∀ n, E.WithinHorizon cfg n →
+      ∀ w ∈ E.honest, ∀ slot,
+        E.WithinHorizon cfg (E.slot_start cfg (E.slot_at cfg n + 1)) →
+        WalkKnown (E.store cfg ext v n) slot
+          (get_head cfg (E.store cfg ext v n)).root →
+        VotePathAdmissible cfg ext E v n w
+          (E.slot_start cfg (E.slot_at cfg n + 1) - 1) slot
+          (get_head cfg (E.store cfg ext v n)).root := by
+  let R := E.withoutObserver obs
+  have hh : R.honest = E.honest := withoutObserver_honest hobs
+  intro v hv n hn w hw slot hb hwalk
+  have hne : v ≠ obs := by
+    intro heq
+    subst v
+    exact hobs hv
+  have hvR : v ∈ R.honest := hh.symm ▸ hv
+  have hwalkR : WalkKnown (R.store cfg ext v n) slot
+      (get_head cfg (R.store cfg ext v n)).root := by
+    simpa only [R, withoutObserver_store cfg ext E obs v hne n] using hwalk
+  have hR := core.base.domain.honest_head_paths v hvR n hn w slot hb hwalkR
+  change VotePathAdmissible cfg ext R v n w
+    (E.slot_start cfg (E.slot_at cfg n + 1) - 1) slot
+    (get_head cfg (R.store cfg ext v n)).root at hR
+  rw [withoutObserver_store cfg ext E obs v hne n] at hR
+  exact nonhonest_votePathAdmissible hobs hv hw hR
+
 end
 end Execution
 end FastConfirmation.Spec
