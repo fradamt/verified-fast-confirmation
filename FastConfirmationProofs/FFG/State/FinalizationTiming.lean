@@ -59,7 +59,7 @@ variable (E : Execution Root)
 same scheduled second.  This lets certificate evidence attached to the
 newly accepted root use the ordinary-store semantic-ancestry reflection
 lemmas, without postulating a second pulled-up-finalization delay law. -/
-private theorem AcceptedBlockTransition.root_known_at_second_end
+theorem AcceptedBlockTransition.root_known_at_second_end
     (t : E.AcceptedBlockTransition cfg ext) :
     t.signedBlock.root ∈
       (E.store cfg ext t.atPrefix.node
@@ -468,7 +468,7 @@ theorem compute_pulled_up_tip (store : Store Root) (r : Root)
 end AcceptedFinalizationLagAt
 
 /-- Successful `on_block` exposes the handler's not-in-the-future gate. -/
-private theorem AcceptedBlockTransition.blockEpoch_le_current
+theorem AcceptedBlockTransition.blockEpoch_le_current
     (t : E.AcceptedBlockTransition cfg ext)
     (hfresh : t.signedBlock.root ∉
       (t.atPrefix.store cfg ext).block_roots) :
@@ -482,7 +482,7 @@ private theorem AcceptedBlockTransition.blockEpoch_le_current
 
 /-- Handler-local block preservation once the realized and pulled-up timing
 facts have been supplied for this concrete transition output. -/
-private theorem AcceptedFinalizationLagAt.on_block_of_delays
+theorem AcceptedFinalizationLagAt.on_block_of_delays
     {anchor : Checkpoint Root} {store store' : Store Root}
     {sb : SignedBeaconBlock Root} {post : BeaconState Root}
     (hst : ext.state_transition (store.block_states sb.message.parent_root) sb =
@@ -777,7 +777,7 @@ private theorem finalizationLag_slot_at_succ_le
       Nat.add_div_right a hdenPos
 
 /-- The exact execution tick preserves the paired invariant. -/
-private theorem finalizationLag_after_execution_tick
+theorem finalizationLag_after_execution_tick
     {anchor : Checkpoint Root}
     (hdiv : 1000 ∣ cfg.slot_duration_ms)
     (hgenTime : E.genesis_store.genesis_time ≤ E.genesis_store.time)

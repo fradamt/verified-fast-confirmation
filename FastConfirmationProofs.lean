@@ -141,6 +141,7 @@ public import FastConfirmationProofs.FFG.SourceHistory.StoreDynamicsInputs
 public import FastConfirmationProofs.FFG.State.DynamicFinalizedPlacement
 public import FastConfirmationProofs.FFG.State.FFGCheckpointEpochOrder
 public import FastConfirmationProofs.FFG.State.FinalizationTiming
+public import FastConfirmationProofs.FFG.State.TrustedFinalizationTiming
 public import FastConfirmationProofs.FFG.State.FinalizedSameTip
 public import FastConfirmationProofs.FFG.State.ObservedCheckpointAncestry
 public import FastConfirmationProofs.FFG.State.PathLocalFinalizedTransport
