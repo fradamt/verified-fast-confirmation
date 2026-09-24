@@ -1,6 +1,7 @@
 module
 public import FastConfirmationInternal.Weak.TrustedCarrierEvidence
 public import FastConfirmationStatements.Premises.CheckpointLinks
+public import FastConfirmationStatements.Premises.ScheduledExecutionConditions
 
 /-! Accepted FFG interpretations with an explicit validation-store domain.
 The original FFG records remain available through lossless honest-store adapters. -/
@@ -185,6 +186,17 @@ structure TrustedCausalPrefixFFGInterpretation (E : Execution Root)
   coherence : TrustedFFGSelectorsAndCheckpointReadsMatchBeaconStates cfg ext state
 
 
+/-- Realized finalization delay for an arbitrary trusted validation domain. -/
+def Execution.TrustedRealizedFinalizationDelay {E : Execution Root}
+    {trusted : Store Root → Prop}
+    (B : TrustedCausalPrefixFFGInterpretation cfg ext E trusted) : Prop :=
+  ∀ t : E.AcceptedBlockTransition cfg ext,
+    let finalized :=
+      (t.postStore.block_states t.signedBlock.root).finalized_checkpoint
+    finalized = B.anchor ∨
+      finalized.epoch + 2 ≤
+        compute_epoch_at_slot cfg t.signedBlock.message.slot
+
 variable {cfg ext}
 variable {E : Execution Root} {anchor : Checkpoint Root}
 
@@ -292,6 +304,12 @@ def TrustedCausalPrefixFFGInterpretation.toHonest
   anchor := B.anchor
   state := B.state.toHonest
   coherence := B.coherence.toHonest
+
+/-- The original delay premise is the honest trusted instance. -/
+theorem CausalPrefixFFGInterpretation.realizedDelay_toTrusted
+    (B : CausalPrefixFFGInterpretation cfg ext E) :
+    E.TrustedRealizedFinalizationDelay cfg ext B.toTrusted ↔
+      E.RealizedFinalizationDelay cfg ext B := Iff.rfl
 
 /-- The honest-store adapter is lossless in both directions. -/
 theorem CausalPrefixFFGInterpretation.toHonest_toTrusted
