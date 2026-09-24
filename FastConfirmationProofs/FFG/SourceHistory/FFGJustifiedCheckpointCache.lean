@@ -114,7 +114,8 @@ theorem justifiedCheckpoint_cached_of_acceptedGlobalTrajectory
       obtain ⟨carrierBlock, hcarrierAt, voter, hvoter, voteSlot,
           groundTime, groundVote, hvoteBeforeCarrier, hvoteSlotH,
           hgroundVote, hgroundSlot, hgroundTarget, hincluded⟩ := hcausal
-      obtain ⟨includedCarrier, _hincludedDesc, hincludedAt⟩ := hincluded
+      obtain ⟨bodyVote, ⟨includedCarrier, _hincludedDesc, hincludedAt⟩,
+        _hbodySigner, hbodyData⟩ := hincluded
       have hincludedEvidence :=
         B.state.includedAttestations.evidence hincludedAt
       have hgroundTarget' : groundVote.data.target = justified := by
@@ -131,7 +132,7 @@ theorem justifiedCheckpoint_cached_of_acceptedGlobalTrajectory
           hjustifiedAnchor
       have htargetEpoch : justified.epoch =
           compute_epoch_at_slot cfg voteSlot := by
-        rw [← hgroundTarget', ← hgroundSlot]
+        rw [← hgroundTarget', ← hgroundSlot, ← hbodyData]
         exact hincludedEvidence.target_epoch
       have hstartMono :
           compute_start_slot_at_epoch cfg B.anchor.epoch ≤

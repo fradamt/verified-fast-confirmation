@@ -232,7 +232,9 @@ def HonestEarlierTargetVoteOnCarrierChain (E : Execution Root)
       E.vote i s = some (k, a) ∧
       a.data.slot = s ∧
       a.data.target = c ∧
-      AttestationIncludedOnChain E included carrier a
+      ∃ bodyVote : Attestation Root,
+        AttestationIncludedOnChain E included carrier bodyVote ∧
+        i ∈ bodyVote.attesting_indices ∧ bodyVote.data = a.data
 
 /-- Concrete evidence represented by one accepted block-local AU entry.
 Certification and inclusion remain positive, while the non-anchor temporal

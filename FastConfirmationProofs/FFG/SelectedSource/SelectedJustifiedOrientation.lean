@@ -83,7 +83,8 @@ theorem CausalPrefixFFGInterpretation.endpointJustificationOriginAt
       obtain ⟨carrierBlock, hcarrierAt, i, hiHonest, voteSlot,
           groundTime, groundVote, hvoteBeforeCarrier, hvoteSlotH,
           hvoteGround, hgroundSlot, hgroundTarget, hincluded⟩ := hcausal
-      obtain ⟨_hincludedCarrier, _hincludedDesc, hincludedAt⟩ := hincluded
+      obtain ⟨bodyVote, ⟨_hincludedCarrier, _hincludedDesc, hincludedAt⟩,
+        _hbodySigner, hbodyData⟩ := hincluded
       have hincludedEvidence :=
         B.state.includedAttestations.evidence hincludedAt
       obtain ⟨hcertified⟩ := hcarrier.formed_evidence.certified
@@ -96,7 +97,7 @@ theorem CausalPrefixFFGInterpretation.endpointJustificationOriginAt
               cfg ext E B.state.includedAttestations) hcertified) hne
       have htargetEpoch : (E.store cfg ext w m).justified_checkpoint.epoch =
           compute_epoch_at_slot cfg voteSlot := by
-        rw [← hgroundTarget, ← hgroundSlot]
+        rw [← hgroundTarget, ← hgroundSlot, ← hbodyData]
         exact hincludedEvidence.target_epoch
       have hstartMono : compute_start_slot_at_epoch cfg B.anchor.epoch ≤
           compute_start_slot_at_epoch cfg
