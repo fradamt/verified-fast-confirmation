@@ -1,4 +1,5 @@
 module
+public import FastConfirmationProofs.Weak.LocalFFG.ObserverPremiseReduction
 public import FastConfirmationProofs.Weak.LocalFFG.ObserverFFGFinalization
 public import FastConfirmationProofs.Weak.LocalFFG.ObserverFFGCounterexample
 
