@@ -38,6 +38,7 @@ public import FastConfirmationProofs.Weak.History.TrustedWeakHistoricalA32CallSu
 public import FastConfirmationProofs.Weak.History.WeakHistoricalA32Geometry
 public import FastConfirmationProofs.Weak.History.TrustedWeakHistoricalA32Geometry
 public import FastConfirmationProofs.Weak.History.WeakHistoricalA32Induction
+public import FastConfirmationProofs.Weak.History.TrustedWeakHistoricalA32Induction
 public import FastConfirmationProofs.Weak.History.WeakHistoricalA32LazyCrossing
 public import FastConfirmationProofs.Weak.History.TrustedWeakHistoricalA32LazyCrossing
 public import FastConfirmationProofs.Weak.History.WeakHistoricalA32OneStep
