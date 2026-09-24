@@ -62,3 +62,5 @@ public import FastConfirmationProofs.Weak.Selection.WeakSelectorInversion
 public import FastConfirmationProofs.Weak.Selection.WeakSiblingScore
 
 /-! Weak proof contents. -/
+
+public import FastConfirmationProofs.Weak.LocalFFG

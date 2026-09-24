@@ -127,6 +127,95 @@ coherence from the restricted record and these local clauses.
 
 One limit remains before the headlines can use this design. The
 restricted accepted-root domain omits blocks accepted only by the observer.
-The existing FFG package cannot simply be reused for those blocks. The
-observer-local content package supplies separate equations for successful
+The observer-local content package supplies separate equations for successful
 transitions and checkpoint reads. It does not require receipt at another node.
+
+## h6 local FFG extension (2026-09-24)
+
+`ObserverLocalFFG` supplies the observer part of the FFG design. The eight
+h5 input clauses now form `ObserverInputAuthenticity`. `ObserverLocalInputs`
+extends that record with `ffg : Nonempty (ObserverLocalFFG cfg ext E obs)`.
+The existing independence theorem still proves transfer after arbitrary
+observer schedule replacement, with these listed local inputs supplied again.
+The theorem does not require another node to receive an observer block.
+
+`ObserverFFGContent` has a separate content domain. `domain_local` identifies
+that domain with roots in the observer's own causal stores. Its inclusion
+relation checks the actual carrier body and a target state prepared from the
+observer's own keyed state. It does not require a separately scheduled
+attestation or a validation store at an honest node. The shared record remains
+indexed by `E.withoutObserver obs`.
+
+The additional local assumptions are the following. Each applies to the
+observer's own content or successful calls, with no receipt deadline:
+
+- `state.checkpoint_epoch`: the content checkpoint uses the requested epoch.
+- `state.formed_domain`, `formed_certificate`, `formed_on_chain`: a positive
+  formed entry belongs to the local content domain and has an included
+  certificate on its chain; this is the opaque FFG refinement contract.
+- `state.gj_mem`, `gu_mem`, `gf_mem`, `guf_mem`: each local selector selects
+  an available content certificate on that block's chain.
+- `state.gj_anchor_or_before`, `gj_max`, `gu_max`, `au_epoch_le_block`: the
+  content selectors obey their epoch bounds and maximum definitions.
+- `state.gf_evidence`, `guf_evidence`: finalized content has a justified
+  checkpoint and an included link to the next epoch.
+- `state.gf_epoch_le_gj`, `guf_epoch_le_gu`, `gf_epoch_le_guf`: the four
+  content selectors have the required epoch order.
+- `domain_local`, `block_read`: content membership and identity match the
+  observer's actual accepted inputs, including repeated roots.
+- `included_evidence`: each included attestation is in that exact carrier
+  body, validates on an observer-prepared target state, has an in-horizon
+  slot before the carrier, and has the stated target epoch and chain paths.
+- `selectors.genesis_gj`, `genesis_gf`, `genesis_gu`, `genesis_guf`,
+  `genesis_unrealized_justification`: the trusted local initial state matches
+  the content selectors; these retain the existing trusted-anchor contract.
+- `selectors.transition_gj`, `transition_gf`, `transition_gu`,
+  `transition_guf`: each successful local `on_block` post-state matches the
+  content selectors, including the result of the opaque PJF function.
+- `checkpoint_of_known`, `au_checkpoint_of_known`: checkpoint reads at local
+  causal stores reflect the content checkpoint and AU relations.
+- `finalization_delay`: a successful local block has anchor GF or GF at least
+  two epochs before its block epoch; the abstract transition omits this rule.
+- `checkpoint_projection`: local checkpoint projection is closed and
+  compositional from the trusted anchor epoch onward.
+- `exact_link_endpoints`: a contributing link on a **locally covered** carrier
+  has the exact content endpoints. This clause has a domain guard. It does
+  not require an arbitrary outside descendant to enter the observer's store.
+
+The new proofs derive keyed-state validity from prepared-state validity,
+committee confinement, an honest signer in H, the signer's actual restricted
+vote and deadline, the five block-state reads at every local prefix, all four
+store-global checkpoint origins, local justified-root knownness, carrier-body
+timing, GUF one-epoch lag, and store-global GF two-epoch lag. They also prove
+that a local body link and a shared scheduled link have the same root when
+their target epochs agree. They prove GJ/GF/GU/GUF agreement on a root
+already known locally and remotely, and C
+agreement there from the anchor epoch onward. These agreement theorems assume
+common knownness only when comparing the two stores; they impose no occurrence
+requirement on other local roots. Store origins and justified-root knownness
+are derived results, not fields of the new local input record.
+
+The certificate producer remains a local content refinement assumption.
+Signature authenticity proves who signed the data of an existing included
+certificate. It does not establish that an opaque PJF result has such a
+certificate. The observer FFG counterexample proves handler success for an
+observer-only empty-body block, all eight original local authenticity clauses,
+a GU value `(epoch 1, root 99)` whose root is unknown, absence of the block in
+the restricted accepted domain, and nonexistence of the local FFG extension.
+This is a counterexample to acceptance plus local authenticity alone. It is
+not a countermodel of the complete restricted core: the full economic and
+Phase0 package is not supplied for that run. No formal non-derivability result
+from the complete core is claimed.
+
+A body aggregate and a signer's individual vote can be different payloads.
+`link_signed_origin` retains both objects, their data equality, and the
+aggregate's body membership. It does not claim that the individual signed
+payload itself appears in the body. Old consumers of `received_from_block`
+and of the stronger exact-payload temporal witness need this explicit port.
+
+The local FFG modules build independently of the old weak
+headlines. `scripts/h6-observer-ffg-oracle.lean` checks arbitrary schedule
+replacement and the axioms of its consumers. The h6 use ledger covers 22 direct
+FFG/coherence entries and seven authenticity entries in h5's inventory. These
+are supplied interfaces, not 29 migrated proof bodies. The old headlines and
+the honest endpoint equal to the observer remain outside this local-FFG work.

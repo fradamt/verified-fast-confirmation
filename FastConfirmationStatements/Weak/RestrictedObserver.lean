@@ -1,5 +1,5 @@
 module
-public import FastConfirmationStatements.Weak.ObserverPremises
+public import FastConfirmationStatements.Weak.ObserverLocalFFG
 public import FastConfirmationStatements.Weak.CompletedCall
 public import FastConfirmationModel.Weak.Execution
 
@@ -93,7 +93,7 @@ run when the observer is honest; it is not automatically schedule invariant.
 The three block clauses restore precisely the observer part of execution
 well-formedness. The first includes agreement between two observer inputs.
 `validity` concerns keyed observer states, not guaranteed target arrival. -/
-structure ObserverLocalInputs (E : Execution Root) (obs : ValidatorIndex) : Prop where
+structure ObserverInputAuthenticity (E : Execution Root) (obs : ValidatorIndex) : Prop where
   validity : E.ObserverIndexedAttestationValidity cfg ext obs
   committees_agree : ∀ n, E.WithinHorizon cfg n → ∀ s,
     E.SlotWithinHorizon cfg s →
@@ -122,9 +122,14 @@ structure ObserverLocalInputs (E : Execution Root) (obs : ValidatorIndex) : Prop
       E.vote obs s =
         some (n, honest_attestation cfg ext (E.store cfg ext obs n) s index obs)
 
+/-- The observer input laws, with the explicitly listed local FFG refinement. -/
+structure ObserverLocalInputs (E : Execution Root) (obs : ValidatorIndex) : Prop
+    extends E.ObserverInputAuthenticity cfg ext obs where
+  ffg : Nonempty (E.ObserverLocalFFG cfg ext obs)
+
 /-- Proposed lower weak surface. The core FFG domain excludes observer-only
-accepted blocks. Extending its certificates to such blocks is a separate
-implementation obligation; this record is not claimed to imply the current
+accepted blocks. The local input record supplies a separate content certificate
+extension for them; this record is not claimed to imply the current
 headline bundle. In particular it does not hide that gap in a delivery or
 justification-interface premise. -/
 structure WeakObserverRestrictedPremises (E : Execution Root) (obs : ValidatorIndex) where
