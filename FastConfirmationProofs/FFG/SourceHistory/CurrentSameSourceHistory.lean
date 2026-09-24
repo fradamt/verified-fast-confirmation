@@ -112,6 +112,7 @@ theorem pastHead_of_honestSupporter_known
       E.slot_at cfg nu < E.slot_at cfg n ∧
       (get_head cfg (E.store cfg ext i nu)).root ∈
         (E.store cfg ext i nu).block_roots ∧
+      (get_head cfg (E.store cfg ext i nu)).root = lm.root ∧
       is_ancestor (E.store cfg ext v n)
         (get_head cfg (E.store cfg ext i nu))
         (get_node_for_root b) = true := by
@@ -173,7 +174,7 @@ theorem pastHead_of_honestSupporter_known
     · exact hmem
     · rw [heq]
       exact hdomain.justified_root_known i hi nu hHnu
-  refine ⟨nu, hHnu, ?_, hheadKnown, ?_⟩
+  refine ⟨nu, hHnu, ?_, hheadKnown, hhead, ?_⟩
   · rw [hnu]
     exact hslt
   · rw [is_ancestor_node_root]
@@ -207,15 +208,22 @@ theorem confirmed_honestPastHeadBelow
       query hquery candidate hqH
       (by simpa only [hquery] using hcandidate)
       (by simpa only [hquery] using hparentCandidate) hconfirmed
-  obtain ⟨nu, hnuH, hnuq, hheadPast, hheadCandidateQ⟩ :=
+  obtain ⟨nu, hnuH, hnuq, hheadPast, hheadEq, hheadCandidateQ⟩ :=
     E.pastHead_of_honestSupporter_known cfg ext hT hsync hstatic hbyz
       hdomain v hv q candidate hqH i hi lm hlm hsupp
-  have hrelayGate : E.slot_at cfg nu + 1 ≤ E.slot_at cfg (q + 1) :=
-    (Nat.succ_le_iff.mpr hnuq).trans
-      (E.slot_at_mono cfg (Nat.le_succ q))
+  obtain ⟨ast, ablk, hgen, hslot, hanchorParent⟩ := hT.genesis_structure
+  have hgenShort : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
+      E.genesis_store = get_forkchoice_store cfg ast ablk :=
+    ⟨ast, ablk, hgen⟩
+  have hlmKnown : lm.root ∈ (E.store cfg ext v q).block_roots := by
+    obtain ⟨_, _, _, _, _, _, _, hknown, _, _⟩ :=
+      (E.latestMessageProvenance cfg ext hT.wellFormed
+        hT.externals_coherence hgenShort v q hv hqH) i lm hlm
+    exact hknown
   have hheadQueryE : (get_head cfg (E.store cfg ext i nu)).root ∈
-      (E.store cfg ext v q).block_roots :=
-    hsync.block_relay i hi nu _ hnuH hheadPast v hv q hqH hrelayGate
+      (E.store cfg ext v q).block_roots := by
+    rw [hheadEq]
+    exact hlmKnown
   have hheadQuery : (get_head cfg (E.store cfg ext i nu)).root ∈
       query.store.block_roots := by
     simpa only [hquery] using hheadQueryE
@@ -234,7 +242,6 @@ theorem confirmed_honestPastHeadBelow
       (by
         rw [is_ancestor_node_root] at hheadCandidateQ
         simpa only [hquery] using hheadCandidateQ)
-  obtain ⟨ast, ablk, hgen, hslot, hanchorParent⟩ := hT.genesis_structure
   have hcandidateRoot : E.ExecutionRoot candidate :=
     ⟨query.store.blocks candidate,
       by
