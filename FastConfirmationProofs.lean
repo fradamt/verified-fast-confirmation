@@ -152,6 +152,7 @@ public import FastConfirmationProofs.FFG.SourceHistory.TrustedFFGSourceCoherence
 public import FastConfirmationProofs.FFG.SourceHistory.LaterStoreSupport
 public import FastConfirmationProofs.FFG.SourceHistory.MarginInvariant
 public import FastConfirmationProofs.FFG.SourceHistory.RealizedJustifiedOrigin
+public import FastConfirmationProofs.FFG.SourceHistory.TrustedRealizedJustifiedOrigin
 public import FastConfirmationProofs.FFG.SourceHistory.SafeFromInvariant
 public import FastConfirmationProofs.FFG.SourceHistory.StoreDynamicsInputs
 public import FastConfirmationProofs.FFG.State.DynamicFinalizedPlacement
