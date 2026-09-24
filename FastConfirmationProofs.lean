@@ -112,6 +112,7 @@ public import FastConfirmationProofs.FCRRule.SelectedTraceCoverage
 public import FastConfirmationProofs.FFG.Certificates.CertExtract
 public import FastConfirmationProofs.FFG.Certificates.CrossingCert
 public import FastConfirmationProofs.FFG.Certificates.CurrentTargetCertificateRealization
+public import FastConfirmationProofs.FFG.Certificates.TrustedCurrentTargetCertificateRealization
 public import FastConfirmationProofs.FFG.Certificates.FFGAccountability
 public import FastConfirmationProofs.FFG.Certificates.FFGCertificates
 public import FastConfirmationProofs.FFG.Certificates.FFGQuorumWeight
