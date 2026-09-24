@@ -1561,30 +1561,10 @@ noncomputable def
     E.AcceptedSelectedResultFilterOutcomeAt cfg ext B
       (E.store cfg ext w m)
         (E.getLatestConfirmedTraceAt cfg ext v n).result := by
-  let hMargin : SelectedMarginAssumptions cfg ext E :=
-    { genesis := hT.genesis_structure
-      wellFormed := hT.wellFormed
-      whole_seconds := hT.whole_seconds
-      honest_behavior := hT.honest_behavior
-      synchrony := hsync
-      externals_coherence := hT.externals_coherence
-      static_validators := hstatic
-      byzantine_bound := hbyz
-      domain := hdomain }
   have hslotQM : E.slot_at cfg (n + 1) ≤ E.slot_at cfg m := by
     rw [hgeom.confirming_cutoff]
     exact Nat.succ_le_of_lt
       (hgeom.cutoff_le_sigma.trans_lt hgeom.sigma_lt_endpoint)
-  have hselectedEndpoint :
-      (E.getLatestConfirmedTraceAt cfg ext v n).result ∈
-        (E.store cfg ext w m).block_roots :=
-    E.confirmed_known_at_all_honest_endpoints_minimal cfg ext hMargin
-      v hv (n + 1) (E.fcrStoreAtCall cfg ext v n)
-      (E.fcrStep_store cfg ext v n)
-      (E.getLatestConfirmedTraceAt cfg ext v n).result hn1H
-      (by simpa only [E.fcrStep_store] using h.result_known)
-      (by simpa only [E.fcrStep_store] using h.parent_known)
-      h.confirmed w hw m hslotQM hmH
   have hhistory := h.actualCurrentSame_sourceHistoryOutcome cfg ext B hT
     hsync hstatic hbyz hdomain hanchor hboundary hDelay hspe
       hv hn1H hcall hcurrent
@@ -1602,9 +1582,9 @@ noncomputable def
       get_current_store_epoch cfg (E.store cfg ext v (n + 1)) := by
     simpa only [E.fcrStep_store] using hsameEpoch
   obtain ⟨carrier⟩ := hhistory.retainedAt_currentSameEndpoint cfg ext
-    hT hsync hanchor hboundary P V hanchorExact hdomain
+    hT hsync hstatic hbyz hDelay hanchor hboundary P V hanchorExact
+      hacc hdomain
       hselectedQuery hcurrentStore hw hmH hslotQM hsameStore
-      hselectedEndpoint
   obtain ⟨hparent, hwalkK, _hjustifiedKnown⟩ :=
     E.store_domainK_of_selectedMarginDomain cfg ext hT.wellFormed
       hT.externals_coherence hT.genesis_structure hdomain w hw m hmH

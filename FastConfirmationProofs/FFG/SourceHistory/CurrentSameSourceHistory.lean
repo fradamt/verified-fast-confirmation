@@ -81,6 +81,8 @@ structure AcceptedHonestPastHeadBelowAt
   validator_honest : validator ∈ E.honest
   second_within : E.WithinHorizon cfg second
   strictly_past : E.slot_at cfg second < E.slot_at cfg q
+  second_deadline : second ≤ E.slot_start cfg (E.slot_at cfg second) +
+    get_attestation_due_ms cfg / 1000
   candidate_known : candidate ∈
     (E.store cfg ext validator second).block_roots
   head_known : (get_head cfg
@@ -110,6 +112,8 @@ theorem pastHead_of_honestSupporter_known
     ∃ nu : Nat,
       E.WithinHorizon cfg nu ∧
       E.slot_at cfg nu < E.slot_at cfg n ∧
+      nu ≤ E.slot_start cfg (E.slot_at cfg nu) +
+        get_attestation_due_ms cfg / 1000 ∧
       (get_head cfg (E.store cfg ext i nu)).root ∈
         (E.store cfg ext i nu).block_roots ∧
       (get_head cfg (E.store cfg ext i nu)).root = lm.root ∧
@@ -174,9 +178,11 @@ theorem pastHead_of_honestSupporter_known
     · exact hmem
     · rw [heq]
       exact hdomain.justified_root_known i hi nu hHnu
-  refine ⟨nu, hHnu, ?_, hheadKnown, hhead, ?_⟩
+  refine ⟨nu, hHnu, ?_, ?_, hheadKnown, hhead, ?_⟩
   · rw [hnu]
     exact hslt
+  · simpa only [hnu] using
+      (hT.honest_behavior.vote_deadline i hi s nu _ hvoteHead).2
   · rw [is_ancestor_node_root]
     rw [hhead]
     simpa only [get_node_for_root, is_ancestor_supported_pending] using hsupp
@@ -208,7 +214,8 @@ theorem confirmed_honestPastHeadBelow
       query hquery candidate hqH
       (by simpa only [hquery] using hcandidate)
       (by simpa only [hquery] using hparentCandidate) hconfirmed
-  obtain ⟨nu, hnuH, hnuq, hheadPast, hheadEq, hheadCandidateQ⟩ :=
+  obtain ⟨nu, hnuH, hnuq, hnuDeadline, hheadPast, hheadEq,
+      hheadCandidateQ⟩ :=
     E.pastHead_of_honestSupporter_known cfg ext hT hsync hstatic hbyz
       hdomain v hv q candidate hqH i hi lm hlm hsupp
   obtain ⟨ast, ablk, hgen, hslot, hanchorParent⟩ := hT.genesis_structure
@@ -258,6 +265,7 @@ theorem confirmed_honestPastHeadBelow
     validator_honest := hi
     second_within := hnuH
     strictly_past := hnuq
+    second_deadline := hnuDeadline
     candidate_known := hcandidatePast
     head_known := hheadPast
     head_descends_candidate := by
@@ -2199,6 +2207,8 @@ structure AcceptedRecentCandidateSourceCarrierAt
   validator_honest : validator ∈ E.honest
   second_within : E.WithinHorizon cfg second
   strictly_past : E.slot_at cfg second < E.slot_at cfg q
+  second_deadline : second ≤ E.slot_start cfg (E.slot_at cfg second) +
+    get_attestation_due_ms cfg / 1000
   candidate_known : candidate ∈
     (E.store cfg ext validator second).block_roots
   tip : Root
@@ -2272,6 +2282,7 @@ theorem AcceptedRecentCandidateSourceCarrierAt.of_pathLocal
     validator_honest := hpast.validator_honest
     second_within := hpast.second_within
     strictly_past := hpast.strictly_past
+    second_deadline := hpast.second_deadline
     candidate_known := hpast.candidate_known
     tip := tip
     tip_known := htip
