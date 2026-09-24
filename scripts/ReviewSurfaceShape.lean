@@ -24,10 +24,12 @@ run_cmd do
     ["honest_block_each_slot", "ffg_timely_justification"]
   checkFields `FastConfirmation.Spec.Synchrony
     ["delta", "delta_pos", "deadline_fits", "attestation_delivery",
-     "block_relay", "deadline_block_relay", "attester_slashing_relay"]
+     "block_relay", "deadline_block_relay", "boundary_block_prefix",
+     "attester_slashing_relay"]
   checkFields `FastConfirmation.Spec.NextSlotSynchronyPremises
     ["delta", "delta_pos", "deadline_fits", "attestation_delivery",
-     "block_relay", "deadline_block_relay", "envelope_delivery",
+     "block_relay", "deadline_block_relay", "boundary_block_prefix",
+     "envelope_delivery",
      "data_availability_relay", "attester_slashing_relay"]
   checkFields `FastConfirmation.Spec.BeaconExternalsPremises
     ["process_slots_slot", "process_slots_registry", "state_transition_slot",

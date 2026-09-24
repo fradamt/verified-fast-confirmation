@@ -867,6 +867,7 @@ theorem witnessSynchrony :
     attestation_delivery := ?_
     block_relay := ?_
     deadline_block_relay := ?_
+    boundary_block_prefix := ?_
     attester_slashing_relay := ?_
   }
   · intro v hv s n a hs hn hvote _hdeadline hdelivery w hw
@@ -887,6 +888,22 @@ theorem witnessSynchrony :
     rw [← witness_store_symmetric v w m]
     exact
       (witnessExecution.store_storeLE witnessConfig witnessExternals v hlt.le).1 hr
+  · intro v hv n r hn hr _hdeadline w hw boundary hHboundary hlt
+      a before after _hschedule _hnotExcluded
+    have hnpred : n ≤ boundary - 1 := by omega
+    have hrootPred : r ∈
+        (witnessExecution.store witnessConfig witnessExternals w
+          (boundary - 1)).block_roots := by
+      rw [← witness_store_symmetric v w (boundary - 1)]
+      exact (witnessExecution.store_storeLE witnessConfig witnessExternals
+        v hnpred).1 hr
+    have hrootTick : r ∈
+        (on_tick witnessConfig
+          (witnessExecution.store witnessConfig witnessExternals w
+            (boundary - 1))
+          (witnessExecution.time_at boundary)).block_roots :=
+      (on_tick_storeLE witnessConfig _ _).1 hrootPred
+    exact (foldl_storeLE witnessConfig witnessExternals before _).1 hrootTick
   · intro v hv n i hn hi w hw m hm hslot
     have hnm : n ≤ m := by
       have hs : n + 1 ≤ m := by

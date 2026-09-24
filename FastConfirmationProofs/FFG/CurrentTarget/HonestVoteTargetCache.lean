@@ -418,6 +418,39 @@ theorem honestVoteTarget_cached_at_delivery
       (compute_start_slot_at_epoch cfg a.data.target.epoch)
       a.data.beacon_block_root := by
     simpa only [ha] using hheadWalk
+  have hdeadline : n ≤ E.slot_start cfg (E.slot_at cfg n) +
+      get_attestation_due_ms cfg / 1000 := by
+    simpa only [hn] using (hhb.vote_deadline v hv s n a hvote).2
+  have hnBeforeDelivery : n < E.slot_start cfg (s + 1) := by
+    by_contra hnot
+    have hdeliveryLeN : E.slot_start cfg (s + 1) ≤ n :=
+      Nat.le_of_not_gt hnot
+    have hslotMono := E.slot_at_mono cfg hdeliveryLeN
+    rw [hdeliverySlot, hn] at hslotMono
+    exact (Nat.not_succ_le_self s) hslotMono
+  have hprefixRoot (root : Root)
+      (hr : root ∈ (E.store cfg ext v n).block_roots) :
+      root ∈ (pre.foldl
+        (fun store event => (apply_event cfg ext store event).getD store)
+        ticked).block_roots := by
+    have hgate : E.slot_at cfg n + 1 ≤
+        E.slot_at cfg (E.slot_start cfg (s + 1) + 1) := by
+      rw [hn]
+      exact hdeliverySlot.symm.trans_le
+        (E.slot_at_mono cfg (Nat.le_succ _))
+    have hknownFinal : root ∈
+        (E.store cfg ext w (E.slot_start cfg (s + 1))).block_roots :=
+      hsyn.block_relay v hv n root hHn hr w hw _ hHdeliver hgate
+    have hnotExcluded : ¬ PermanentBlockExclusion cfg ext E v n root w
+        (E.slot_start cfg (s + 1)) := by
+      intro hexcluded
+      exact hexcluded.1 hknownFinal
+    have hprefix := hsyn.boundary_block_prefix v hv n root hHn hr
+      hdeadline w hw (by simpa only [hn] using hHdeliver)
+      (by simpa only [hn] using hnBeforeDelivery)
+      a pre suf (by simpa only [hn, hdeliveryEq] using hscheduleEq)
+      (by simpa only [hn] using hnotExcluded)
+    simpa only [hn, hdeliveryEq, ticked] using hprefix
   have hcovered : WalkCoveredBy (E.store cfg ext v n)
       (pre.foldl
         (fun store event => (apply_event cfg ext store event).getD store)
@@ -434,19 +467,9 @@ theorem honestVoteTarget_cached_at_delivery
       intro root hwalk
       induction hwalk with
       | @stop root hr hle =>
-          have hpred := hsyn.block_relay v hv n root hHn hr w hw
-            deliveryPred hHpred hrelayTiming
-          have hticked : root ∈ ticked.block_roots := by
-            rw [htickedRoots]; exact hpred
-          exact WalkCoveredBy.stop hr
-            ((foldl_storeLE cfg ext pre ticked).1 hticked) hle
+          exact WalkCoveredBy.stop hr (hprefixRoot root hr) hle
       | @step root hr hgt hp ih =>
-          have hpred := hsyn.block_relay v hv n root hHn hr w hw
-            deliveryPred hHpred hrelayTiming
-          have hticked : root ∈ ticked.block_roots := by
-            rw [htickedRoots]; exact hpred
-          exact WalkCoveredBy.step hr
-            ((foldl_storeLE cfg ext pre ticked).1 hticked) hgt ih
+          exact WalkCoveredBy.step hr (hprefixRoot root hr) hgt ih
     exact key hsourceWalk
   have htickedProvenance : BlockProvenance E ticked := by
     rw [hticked]

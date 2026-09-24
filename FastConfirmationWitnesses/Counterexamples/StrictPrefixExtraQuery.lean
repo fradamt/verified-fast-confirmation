@@ -427,6 +427,7 @@ private theorem witnessSynchrony :
     attestation_delivery := ?_
     block_relay := ?_
     deadline_block_relay := ?_
+    boundary_block_prefix := ?_
     attester_slashing_relay := ?_
   }
   · intro v hv s n a hs hn hvote _hdeadline hdelivery w hw
@@ -461,6 +462,22 @@ private theorem witnessSynchrony :
     interval_cases n <;> interval_cases m <;>
       simp_all [slot_at_eq, block_roots_at_zero, block_roots_at_one,
         block_roots_at_two, block_roots_at_three] <;> aesop
+  · intro v hv n r hn hr _hdeadline w hw boundary hHboundary hlt
+      a before after _hschedule _hnotExcluded
+    have hnpred : n ≤ boundary - 1 := by omega
+    have hrootPred : r ∈
+        (witnessExecution.store witnessConfig witnessExternals w
+          (boundary - 1)).block_roots := by
+      rw [← store_node_independent v w (boundary - 1)]
+      exact (witnessExecution.store_storeLE witnessConfig witnessExternals
+        v hnpred).1 hr
+    have hrootTick : r ∈
+        (on_tick witnessConfig
+          (witnessExecution.store witnessConfig witnessExternals w
+            (boundary - 1))
+          (witnessExecution.time_at boundary)).block_roots :=
+      (on_tick_storeLE witnessConfig _ _).1 hrootPred
+    exact (foldl_storeLE witnessConfig witnessExternals before _).1 hrootTick
   · intro v hv n i hn hi w hw m hm hslot
     have hnlt : n < 4 := within_implies_lt_four hn
     rw [store_node_independent v 0 n] at hi

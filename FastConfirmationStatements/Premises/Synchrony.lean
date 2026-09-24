@@ -49,6 +49,30 @@ def DeadlineBlockRelay (E : Execution Root) : Prop :=
       n < m →
       r ∈ (E.store cfg ext w m).block_roots ∨
         PermanentBlockExclusion cfg ext E v n r w m
+
+/-- The paper's strict `A + Δ < S` places a cutoff-time block at the receiver
+before the next slot's vote handler. Immediate gossip and Python's delay
+consideration require the honest client to order a ready block before an
+attestation at that boundary. A permanently finalized-conflicting block is
+the only exemption. Both source and receiver seconds are explicit and
+distinct; this does not assert same-second inter-node state equality. -/
+def DeadlineBoundaryBlockPrefix (E : Execution Root) : Prop :=
+  ∀ v ∈ E.honest, ∀ n r,
+    E.WithinHorizon cfg n →
+    r ∈ (E.store cfg ext v n).block_roots →
+    n ≤ E.slot_start cfg (E.slot_at cfg n) +
+      get_attestation_due_ms cfg / 1000 →
+    ∀ w ∈ E.honest,
+      let boundary := E.slot_start cfg (E.slot_at cfg n + 1)
+      E.WithinHorizon cfg boundary → n < boundary →
+      ∀ a before after,
+        E.schedule w boundary =
+          before ++ Event.attestation a false :: after →
+        ¬ PermanentBlockExclusion cfg ext E v n r w boundary →
+        r ∈ (before.foldl
+          (fun store event => (apply_event cfg ext store event).getD store)
+          (on_tick cfg (E.store cfg ext w (boundary - 1))
+            (E.time_at boundary))).block_roots
 /-- Network synchrony — the FCR intro's assumption ("starting from the
 current slot, attestations created by honest validators in any slot are
 received by the end of that slot"), made operational, plus the block/message
@@ -98,6 +122,8 @@ structure Synchrony (E : Execution Root) : Prop where
   /-- Deadline-cutoff block relay with the exact finalized-guard exemption.
       This field is the migration target for `block_relay`. -/
   deadline_block_relay : DeadlineBlockRelay cfg ext E
+  /-- Ready cutoff-time blocks precede next-slot attestation handlers. -/
+  boundary_block_prefix : DeadlineBoundaryBlockPrefix cfg ext E
   /-- Equivocation evidence known to an honest node is known to every honest
       node from the next slot onward. Attester slashings gossip and may be
       carried in blocks through `on_attester_slashing`; the safety argument
@@ -185,6 +211,8 @@ structure NextSlotSynchronyPremises (E : Execution Root) : Prop where
       E.slot_at cfg n + 1 ≤ E.slot_at cfg (m + 1) →
       r ∈ (E.store cfg ext w m).block_roots
   deadline_block_relay : DeadlineBlockRelay cfg ext E
+  /-- Ready cutoff-time blocks precede next-slot attestation handlers. -/
+  boundary_block_prefix : DeadlineBoundaryBlockPrefix cfg ext E
   envelope_delivery : EnvelopeDelivery cfg ext E
   data_availability_relay : DataAvailabilityRelay cfg ext E
   attester_slashing_relay : ∀ v ∈ E.honest, ∀ n (i : ValidatorIndex),

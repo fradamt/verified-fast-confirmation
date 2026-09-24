@@ -26,6 +26,7 @@ theorem synchrony_and_delivery_iff_nextSlot
       attestation_delivery := hn.attestation_delivery
       block_relay := hn.block_relay
       deadline_block_relay := hn.deadline_block_relay
+      boundary_block_prefix := hn.boundary_block_prefix
       attester_slashing_relay := hn.attester_slashing_relay
     }, hn.envelope_delivery, hn.data_availability_relay⟩
 

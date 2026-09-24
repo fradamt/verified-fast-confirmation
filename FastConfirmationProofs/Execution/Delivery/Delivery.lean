@@ -70,6 +70,36 @@ theorem SameBlocks.blocksSlotLe {sl : Slot} {s t : Store Root} (h : SameBlocks s
 
 variable [LinearOrder Root] [Inhabited Root] (cfg : Config) (ext : Externals Root)
 
+/-- Only the roots on this vote head's target-epoch ancestor walk must avoid
+the receiver's permanent finalized-checkpoint exclusion. This is the exact
+path consumed by attestation validation. -/
+inductive VotePathAdmissible (E : Execution Root)
+    (v : ValidatorIndex) (n : ℕ) (w : ValidatorIndex)
+    (boundary : ℕ) (slot : Slot) : Root → Prop
+  | stop {r : Root} (hr : r ∈ (E.store cfg ext v n).block_roots)
+      (hnot : ¬ PermanentBlockExclusion cfg ext E v n r w boundary)
+      (hle : ((E.store cfg ext v n).blocks r).slot ≤ slot) :
+      VotePathAdmissible E v n w boundary slot r
+  | step {r : Root} (hr : r ∈ (E.store cfg ext v n).block_roots)
+      (hnot : ¬ PermanentBlockExclusion cfg ext E v n r w boundary)
+      (hgt : slot < ((E.store cfg ext v n).blocks r).slot)
+      (hp : VotePathAdmissible E v n w boundary slot
+        ((E.store cfg ext v n).blocks r).parent_root) :
+      VotePathAdmissible E v n w boundary slot r
+
+namespace VotePathAdmissible
+
+/-- The admissible path is also a known source path. -/
+theorem walkKnown {E : Execution Root} {v w : ValidatorIndex}
+    {n boundary : ℕ} {slot : Slot} {r : Root}
+    (h : VotePathAdmissible cfg ext E v n w boundary slot r) :
+    WalkKnown (E.store cfg ext v n) slot r := by
+  induction h with
+  | stop hr _ hle => exact WalkKnown.stop hr hle
+  | step hr _ hgt _ ih => exact WalkKnown.step hr hgt ih
+
+end VotePathAdmissible
+
 /-! ## Genesis current slot -/
 
 /-- The `get_forkchoice_store` seeds `time` to the exact start of the anchor's
@@ -904,25 +934,58 @@ theorem Execution.vote_lands {E : Execution Root}
       (compute_start_slot_at_epoch cfg a.data.target.epoch)
       a.data.beacon_block_root := by
     simpa only [ha] using hhead_walk
+  have hdeadline : n ≤ E.slot_start cfg (E.slot_at cfg n) +
+      get_attestation_due_ms cfg / 1000 := by
+    simpa only [hn] using (hhb.vote_deadline v hv s n a hvote).2
+  have hnBeforeDelivery : n < E.slot_start cfg (s + 1) := by
+    by_contra hnot
+    have hdeliveryLeN : E.slot_start cfg (s + 1) ≤ n :=
+      Nat.le_of_not_gt hnot
+    have hslotMono := E.slot_at_mono cfg hdeliveryLeN
+    rw [hslotN, hn] at hslotMono
+    exact (Nat.not_succ_le_self s) hslotMono
+  have hprefixRoot (root : Root)
+      (hr : root ∈ (E.store cfg ext v n).block_roots) :
+      root ∈ (pre.foldl
+        (fun store event => (apply_event cfg ext store event).getD store)
+        tb).block_roots := by
+    have hgate : E.slot_at cfg n + 1 ≤
+        E.slot_at cfg (E.slot_start cfg (s + 1) + 1) := by
+      rw [hn]
+      exact hslotN.symm.trans_le
+        (E.slot_at_mono cfg (Nat.le_succ _))
+    have hknownFinal : root ∈
+        (E.store cfg ext w (E.slot_start cfg (s + 1))).block_roots :=
+      hsyn.block_relay v hv n root hHn hr w hw _ hHdeliver hgate
+    have hnotExcluded : ¬ PermanentBlockExclusion cfg ext E v n root w
+        (E.slot_start cfg (s + 1)) := by
+      intro hexcluded
+      exact hexcluded.1 hknownFinal
+    have hprefix := hsyn.boundary_block_prefix v hv n root hHn hr
+      hdeadline w hw (by simpa only [hn] using hHdeliver)
+      (by simpa only [hn] using hnBeforeDelivery)
+      a pre suf (by simpa only [hn, hNeq] using hl)
+      (by simpa only [hn] using hnotExcluded)
+    simpa only [hn, hNeq, tb] using hprefix
   have hcovered : WalkCoveredBy (E.store cfg ext v n)
-      (pre.foldl (fun store event => (apply_event cfg ext store event).getD store) tb)
+      (pre.foldl
+        (fun store event => (apply_event cfg ext store event).getD store)
+        tb)
       (compute_start_slot_at_epoch cfg a.data.target.epoch)
       a.data.beacon_block_root := by
     have key : ∀ {root}, WalkKnown (E.store cfg ext v n)
         (compute_start_slot_at_epoch cfg a.data.target.epoch) root →
         WalkCoveredBy (E.store cfg ext v n)
-          (pre.foldl (fun store event => (apply_event cfg ext store event).getD store) tb)
+          (pre.foldl
+            (fun store event => (apply_event cfg ext store event).getD store)
+            tb)
           (compute_start_slot_at_epoch cfg a.data.target.epoch) root := by
       intro root hwalk
       induction hwalk with
       | @stop root hr hle =>
-          have hpred := hsyn.block_relay v hv n root hHn hr w hw Nm1 hHNm1 htiming
-          have hticked : root ∈ tb.block_roots := by rw [htb_br]; exact hpred
-          exact WalkCoveredBy.stop hr ((foldl_storeLE cfg ext pre tb).1 hticked) hle
+          exact WalkCoveredBy.stop hr (hprefixRoot root hr) hle
       | @step root hr hgt hp ih =>
-          have hpred := hsyn.block_relay v hv n root hHn hr w hw Nm1 hHNm1 htiming
-          have hticked : root ∈ tb.block_roots := by rw [htb_br]; exact hpred
-          exact WalkCoveredBy.step hr ((foldl_storeLE cfg ext pre tb).1 hticked) hgt ih
+          exact WalkCoveredBy.step hr (hprefixRoot root hr) hgt ih
     exact key hsourceWalk
   have hprov_tb : BlockProvenance E tb := by
     rw [htb]
