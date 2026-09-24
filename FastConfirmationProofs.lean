@@ -144,6 +144,7 @@ public import FastConfirmationProofs.FFG.SourceHistory.FFGJustifiedCheckpointCac
 public import FastConfirmationProofs.FFG.SourceHistory.FFGJustifiedMaximality
 public import FastConfirmationProofs.FFG.SourceHistory.TrustedFFGJustifiedMaximality
 public import FastConfirmationProofs.FFG.SourceHistory.FFGSourceCoherence
+public import FastConfirmationProofs.FFG.SourceHistory.TrustedFFGSourceCoherence
 public import FastConfirmationProofs.FFG.SourceHistory.LaterStoreSupport
 public import FastConfirmationProofs.FFG.SourceHistory.MarginInvariant
 public import FastConfirmationProofs.FFG.SourceHistory.RealizedJustifiedOrigin
