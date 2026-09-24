@@ -306,6 +306,10 @@ private theorem witnessHonestBehavior :
       set_option maxRecDepth 20000 in decide
     · refine ⟨3, 0, within_of_lt_four (by omega), slot_at_eq 3, ?_⟩
       set_option maxRecDepth 20000 in decide
+  · intro v hv s n a hvote
+    rw [vote_some_cases] at hvote
+    rcases hvote with h | h | h | h <;> rcases h with ⟨_, rfl, rfl, _⟩ <;>
+      rw [slot_start_eq] <;> simp
   · intro v hv s hvote
     simp [witnessExecution, witnessVote, witnessCommittee] at hvote ⊢
     aesop

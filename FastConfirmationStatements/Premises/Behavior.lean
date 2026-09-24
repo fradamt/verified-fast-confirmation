@@ -24,6 +24,16 @@ structure HonestBehavior (E : Execution Root) : Prop where
     ∃ n index, E.WithinHorizon cfg n ∧ E.slot_at cfg n = s ∧
       E.vote v s =
         some (n, honest_attestation cfg ext (E.store cfg ext v n) s index v)
+  /-- An honest slot-`s` vote is sent between the slot start and its attestation
+      due time. Phase0 `validator.md` (Attesting) sends on receipt of a valid
+      expected proposal or at `get_attestation_due_ms`, whichever is first;
+      Gloas `validator.md` sets that due time with `attestation_due_bps`.
+      Whole-second execution uses the Python millisecond due time rounded
+      down to seconds. -/
+  vote_deadline : ∀ v ∈ E.honest, ∀ s n (a : Attestation Root),
+    E.vote v s = some (n, a) →
+      E.slot_start cfg s ≤ n ∧
+      n ≤ E.slot_start cfg s + get_attestation_due_ms cfg / 1000
   /-- honest validators vote only for slots they are assigned to. -/
   votes_assigned : ∀ v ∈ E.honest, ∀ s : Slot,
     E.vote v s ≠ none → v ∈ E.committee s

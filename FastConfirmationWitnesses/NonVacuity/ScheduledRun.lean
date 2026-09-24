@@ -463,6 +463,10 @@ theorem witnessHonestBehavior :
     subst v
     exact ⟨s, 0, time_within_of_lt_sixteen hslt, slot_at_eq s,
       honest_vote_recorded hslt⟩
+  · intro v hv s n a hvote
+    obtain ⟨_, _, rfl, _⟩ := witness_vote_some_iff.mp hvote
+    rw [slot_start_eq]
+    simp
   · intro v hv s hvote
     rcases Option.ne_none_iff_exists'.mp hvote with ⟨na, hna⟩
     rcases na with ⟨n, a⟩
