@@ -67,6 +67,16 @@ theorem slot_at_mono {n m : ℕ} (hnm : n ≤ m) :
   exact Nat.div_le_div_right (Nat.mul_le_mul_right 1000
     (Nat.sub_le_sub_right (Nat.add_le_add_left hnm _) _))
 
+/-- Slot-start seconds are monotone in the slot, independently of whole-second
+divisibility. -/
+theorem slot_start_mono {a b : Slot} (hab : a ≤ b) :
+    E.slot_start cfg a ≤ E.slot_start cfg b := by
+  simp only [Execution.slot_start]
+  apply Nat.sub_le_sub_right
+  apply Nat.add_le_add_left
+  exact Nat.div_le_div_right
+    (Nat.mul_le_mul_right cfg.slot_duration_ms hab)
+
 /-- Absolute execution time is monotone in the relative second. -/
 theorem time_at_mono {n m : ℕ} (hnm : n ≤ m) :
     E.time_at n ≤ E.time_at m := by
