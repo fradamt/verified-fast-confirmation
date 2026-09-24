@@ -394,7 +394,7 @@ theorem ObservedResetCandidateInputAt.safeFrom_of_acceptedDynamics
       simpa only [get_checkpoint_for_block] using hr
     exact False.elim
       (E.checkpointCompatible_not_permanentlyExcluded cfg ext
-        B hA hanchor hboundary hHn1 hrealOrigin.root_known
+        B hT hanchor hboundary hHn1 hrealOrigin.root_known
         hFknown hFanchorEpochLe hsourceCheckpoint hexcluded)
   have hcKnown : ∀ w ∈ E.honest, ∀ m : ℕ, n + 1 ≤ m →
       E.WithinHorizon cfg m →

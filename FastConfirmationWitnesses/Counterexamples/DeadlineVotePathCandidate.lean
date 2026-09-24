@@ -227,8 +227,9 @@ theorem source_walk : WalkKnown (execution.store cfg ext 12 132) 8 Y := by
   apply WalkKnown.step (by decide) (by decide)
   exact WalkKnown.stop (by decide) (by decide)
 
-/-- The concrete conclusion requested by G4 fails on this execution.
-This theorem does not assert that the full public premise record is inhabited. -/
+/-- The old boundary-store version of G4 fails on this execution.
+The refined G4 uses second 143 and holds here, as proved below. This theorem
+does not assert that the full public premise record is inhabited. -/
 theorem vote_path_not_admissible :
     ¬ VotePathAdmissible cfg ext execution 12 132 0 144 8 Y := by
   intro h
@@ -245,6 +246,16 @@ theorem not_excluded_before_tick :
   · unfold Execution.WithinHorizon; decide
   · decide
   · decide
+
+set_option maxRecDepth 200000 in
+set_option maxHeartbeats 0 in
+/-- The candidate's path passes the refined G4 exclusion point. -/
+theorem vote_path_admissible_before_tick :
+    VotePathAdmissible cfg ext execution 12 132 0 143 8 Y := by
+  apply VotePathAdmissible.step (by decide) not_excluded_before_tick (by decide)
+  apply VotePathAdmissible.stop (by decide) ?_ (by decide)
+  intro hexcluded
+  exact hexcluded.1 (by decide)
 
 set_option maxRecDepth 200000 in
 set_option maxHeartbeats 0 in

@@ -146,6 +146,24 @@ theorem permanentBlockExclusion_mono_of_not_mem
   intro t hmt hHt
   exact hexcluded.2.2 t (hle.trans hmt) hHt
 
+/-- The integer-second arrival argument for the refined exemption. An
+accepted block remains known. An exclusion at an earlier arrival second
+also holds at the last source-slot second if the block is still absent. -/
+theorem deadline_block_relay_outcome_of_arrival
+    {v w : ValidatorIndex} {n a boundary m : ℕ} {r : Root}
+    (harrival : a < boundary) (hnext : boundary ≤ m)
+    (houtcome : r ∈ (E.store cfg ext w a).block_roots ∨
+      PermanentBlockExclusion cfg ext E v n r w a) :
+    r ∈ (E.store cfg ext w m).block_roots ∨
+      PermanentBlockExclusion cfg ext E v n r w (boundary - 1) := by
+  rcases houtcome with hknown | hexcluded
+  · exact Or.inl ((E.store_storeLE cfg ext w (harrival.le.trans hnext)).1 hknown)
+  · by_cases hknown : r ∈ (E.store cfg ext w (boundary - 1)).block_roots
+    · exact Or.inl ((E.store_storeLE cfg ext w
+        ((Nat.sub_le boundary 1).trans hnext)).1 hknown)
+    · exact Or.inr (E.permanentBlockExclusion_mono_of_not_mem cfg ext
+        (by omega) hknown hexcluded)
+
 /-- An honest voter's selected root reaches the next-slot receiver unless
 that receiver has permanently excluded the block under `on_block`'s finalized
 guard. The vote gives the source-time cutoff; the strict positive bound gives

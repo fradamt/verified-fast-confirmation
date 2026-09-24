@@ -18,7 +18,8 @@ variable {E : Execution Root}
 of deadline block delivery. All times remain inside the supplied horizon. -/
 theorem deadline_root_known_of_checkpointCompatible
     (B : CausalPrefixFFGInterpretation cfg ext E)
-    (hA : SelectedMarginAssumptions cfg ext E)
+    (hT : E.ScheduledPrefixPremises cfg ext)
+    (hrelay : DeadlineBlockRelay cfg ext E)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
       (E := E) (anchor := B.anchor))
@@ -38,7 +39,7 @@ theorem deadline_root_known_of_checkpointCompatible
       get_checkpoint_block cfg (E.store cfg ext v n) r
         (E.store cfg ext w m).finalized_checkpoint.epoch) :
     r ∈ (E.store cfg ext w m).block_roots := by
-  rcases hA.synchrony.deadline_block_relay v hv n r hHn hr hdue
+  rcases hrelay v hv n r hHn hr hdue
       w hw m hHm hnext hlt with hknown | hexcluded
   · exact hknown
   · by_cases hm : r ∈ (E.store cfg ext w m).block_roots
@@ -46,7 +47,7 @@ theorem deadline_root_known_of_checkpointCompatible
     have hexcluded := E.permanentBlockExclusion_mono_of_not_mem cfg ext
       ((Nat.sub_le _ 1).trans hnext) hm hexcluded
     exact False.elim (E.checkpointCompatible_not_permanentlyExcluded
-      cfg ext B hA hanchor hboundary hHm hr hFknown hanchorLe
+      cfg ext B hT hanchor hboundary hHm hr hFknown hanchorLe
       hcheckpoint hexcluded)
 
 end Execution

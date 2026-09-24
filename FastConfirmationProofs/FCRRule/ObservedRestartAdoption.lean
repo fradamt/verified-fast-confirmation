@@ -241,7 +241,7 @@ theorem ObservedResetCandidateInputAt.actualFCRGuardedObservedAdoption
           htip.known hFprefixC htipAU hFLeC htipWalk
       exact False.elim
         (E.checkpointCompatible_not_permanentlyExcluded cfg ext
-          B hA hanchor hboundary hHn1' htip.known hFknown
+          B hT hanchor hboundary hHn1' htip.known hFknown
           hFanchorEpochLe hsourceCheckpoint hexcluded)
     have htipBlockAgree :
         (E.store cfg ext v hi.originSecond).blocks tip =

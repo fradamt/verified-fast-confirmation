@@ -27,7 +27,7 @@ requires the carrier to be from an earlier epoch at the receiver. -/
 theorem deadline_justified_epoch_le_of_carrier
     (B : CausalPrefixFFGInterpretation cfg ext E)
     (hT : E.ScheduledPrefixPremises cfg ext)
-    (hA : SelectedMarginAssumptions cfg ext E)
+    (hrelay : DeadlineBlockRelay cfg ext E)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
       (E := E) (anchor := B.anchor))
@@ -81,15 +81,15 @@ theorem deadline_justified_epoch_le_of_carrier
     CertifiedJustified.anchor_epoch_le (cfg := cfg)
       (Classical.choice hFrealized.certified)
   have hparent : ParentSlotLt (E.store cfg ext v n) :=
-    E.store_parentSlotLt cfg ext hA.wellFormed hA.externals_coherence
-      hA.genesis hA.wellFormed.anchor_parent_unscheduled v n
-  have hwalk := E.trustedAnchor_boundaryWalkAtEpoch cfg ext hA
+    E.store_parentSlotLt cfg ext hT.wellFormed hT.externals_coherence
+      hT.genesis_structure hT.wellFormed.anchor_parent_unscheduled v n
+  have hwalk := E.trustedAnchor_boundaryWalkAtEpoch_of_trajectory cfg ext hT
     hanchor hboundary v n hanchorLe htip
   have hcheckpoint : F.root = get_checkpoint_block cfg
       (E.store cfg ext v n) tip F.epoch :=
     exactCheckpointPrefix_root_eq_at_sameTip cfg ext B.coherence
       (E.store_causal cfg ext v n) hparent htip hprefix hAU hFle hwalk
-  have hknown := E.deadline_root_known_of_checkpointCompatible cfg ext B hA
+  have hknown := E.deadline_root_known_of_checkpointCompatible cfg ext B hT hrelay
     hanchor hboundary hv hw hHn hHm htip hdue hnext hlt
     hFrealized.root_known hanchorLe hcheckpoint
   have hmax := (E.store_causal cfg ext w m).acceptedFFGJustifiedMaximality
@@ -102,7 +102,7 @@ theorem deadline_justified_epoch_le_of_carrier
     exact hmax.ledger.gj_epoch_le_justified tip hcarrier
   · rw [hgu]
     apply hmax.oldGU tip hcarrier
-    have hagree := hA.wellFormed.blocks_agree
+    have hagree := hT.wellFormed.blocks_agree
       (E.blockProvenance cfg ext v n) (E.blockProvenance cfg ext w m) htip hknown
     simpa only [get_block_epoch, ← hagree] using hold
 

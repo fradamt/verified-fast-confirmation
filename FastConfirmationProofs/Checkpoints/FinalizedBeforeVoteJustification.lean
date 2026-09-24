@@ -96,10 +96,11 @@ theorem initial_slot_le_anchor_boundary
 /-- An included finalization at the first delivery boundary has an earlier
 honest finalizing vote. Its source carrier reaches the voter by the current
 slot, unless the voter already has a sufficiently new finalized checkpoint. -/
-theorem next_boundary_finalized_epoch_le_voter_justified
+theorem finalized_epoch_le_voter_justified_of_receiver_slot_le
     (B : CausalPrefixFFGInterpretation cfg ext E)
     (hT : E.ScheduledPrefixPremises cfg ext)
-    (hA : SelectedMarginAssumptions cfg ext E)
+    (hrelay : DeadlineBlockRelay cfg ext E)
+    (hbyz : ByzantineWeightPremises cfg E)
     (hphase : Phase0SourceCoherence cfg ext)
     (hphaseBoundary : Phase0BoundarySourceCoherence cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
@@ -111,13 +112,14 @@ theorem next_boundary_finalized_epoch_le_voter_justified
     (V : B.state.ExactLinkValidity)
     (hacc : CheckpointCertificateAccountability cfg E B.anchor)
     {v w : ValidatorIndex} (hv : v ∈ E.honest)
-    {s n : ℕ}
+    {s n m : ℕ}
     (hs0 : E.slot_at cfg 0 ≤ s)
     (hn : E.slot_at cfg n = s)
-    (hHn : E.WithinHorizon cfg n) :
-    (E.store cfg ext w (E.slot_start cfg (s + 1))).finalized_checkpoint.epoch ≤
+    (hHn : E.WithinHorizon cfg n)
+    (hm : E.slot_at cfg m ≤ s + 1) :
+    (E.store cfg ext w m).finalized_checkpoint.epoch ≤
       (E.store cfg ext v n).justified_checkpoint.epoch := by
-  let N := E.slot_start cfg (s + 1)
+  let N := m
   let F := (E.store cfg ext w N).finalized_checkpoint
   obtain ⟨ast, ablk, hgen, hgenSlot, _⟩ := hT.genesis_structure
   have hgenShort : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
@@ -141,11 +143,11 @@ theorem next_boundary_finalized_epoch_le_voter_justified
     E.causalRealizedFinalizationLag_of_acceptedDelay cfg ext B hT hanchor hDelay
   have hlag := E.finalizedCheckpoint_twoEpochLag_of_causalLag cfg ext hLag
     (E.store_causal cfg ext w N) hFa
-  have hNslot : E.slot_at cfg N = s + 1 :=
-    E.slot_at_slot_start cfg hT.whole_seconds (hs0.trans (Nat.le_succ s)) hgenTime
   have hfinalizedEpoch : F.epoch + 2 ≤ (s + 1) / cfg.slots_per_epoch := by
-    simpa only [F, get_current_store_epoch, E.store_current_slot, hNslot,
-      compute_epoch_at_slot] using hlag
+    have hlag' : F.epoch + 2 ≤ E.slot_at cfg m / cfg.slots_per_epoch := by
+      simpa only [F, N, get_current_store_epoch, E.store_current_slot,
+        compute_epoch_at_slot] using hlag
+    exact hlag'.trans (Nat.div_le_div_right hm)
   have hanchorLeF : B.anchor.epoch ≤ F.epoch :=
     IncludedCertifiedJustified.anchor_epoch_le (cfg := cfg) hFcert.justified
   have hchildStart : E.slot_at cfg 0 ≤ hFcert.child.epoch * cfg.slots_per_epoch :=
@@ -154,8 +156,8 @@ theorem next_boundary_finalized_epoch_le_voter_justified
         (hanchorLeF.trans (by rw [hFcert.child_epoch]; exact Nat.le_succ _)))
   obtain ⟨i, t, k, index, hi, hHk, hk, htstart, htlast, hvote, hdue, hsource,
       _htarget⟩ := hFcert.finalizing_link.honest_vote_before_last_slot cfg
-        B.state.includedAttestations.relation hA.honest_behavior
-        hA.externals_coherence hA.byzantine_bound hspe hchildStart
+        B.state.includedAttestations.relation hT.honest_behavior
+        hT.externals_coherence hbyz hspe hchildStart
   have hlastLe : hFcert.child.epoch * cfg.slots_per_epoch +
       (cfg.slots_per_epoch - 1) ≤ s := by
     have hscaled := (Nat.le_div_iff_mul_le cfg.slots_per_epoch_pos).mp hfinalizedEpoch
@@ -176,13 +178,45 @@ theorem next_boundary_finalized_epoch_le_voter_justified
   have hselector := E.honest_attestation_source_selector cfg ext B hT
     hphase hphaseBoundary (index := index) hk hhead
   rw [hsource] at hselector
-  apply E.deadline_justified_epoch_le_of_carrier cfg ext B hT hA hanchor hboundary
+  apply E.deadline_justified_epoch_le_of_carrier cfg ext B hT hrelay hanchor hboundary
     P V hacc hi hv hHk hHn hhead (by simpa only [hk] using hdue) hnext hklt
   rcases hselector with hgj | ⟨hgu, hold⟩
   · exact Or.inl hgj
   · refine Or.inr ⟨hgu, ?_⟩
     simpa only [get_current_store_epoch, E.store_current_slot, hn] using
       hold.trans_le (ce_mono cfg hts.le)
+
+/-- The receiver checkpoint at the next slot start is no newer than the
+honest voter's justification. -/
+theorem next_boundary_finalized_epoch_le_voter_justified
+    (B : CausalPrefixFFGInterpretation cfg ext E)
+    (hT : E.ScheduledPrefixPremises cfg ext)
+    (hrelay : DeadlineBlockRelay cfg ext E)
+    (hbyz : ByzantineWeightPremises cfg E)
+    (hphase : Phase0SourceCoherence cfg ext)
+    (hphaseBoundary : Phase0BoundarySourceCoherence cfg ext)
+    (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
+    (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
+      (E := E) (anchor := B.anchor))
+    (hspe : 1 < cfg.slots_per_epoch)
+    (hDelay : E.RealizedFinalizationDelay cfg ext B)
+    (P : EpochCheckpointClosure B.anchor (E.AcceptedRoot cfg ext) B.state.C)
+    (V : B.state.ExactLinkValidity)
+    (hacc : CheckpointCertificateAccountability cfg E B.anchor)
+    {v w : ValidatorIndex} (hv : v ∈ E.honest)
+    {s n : ℕ}
+    (hs0 : E.slot_at cfg 0 ≤ s)
+    (hn : E.slot_at cfg n = s)
+    (hHn : E.WithinHorizon cfg n) :
+    (E.store cfg ext w (E.slot_start cfg (s + 1))).finalized_checkpoint.epoch ≤
+      (E.store cfg ext v n).justified_checkpoint.epoch := by
+  obtain ⟨ast, ablk, hgen, _, _⟩ := hT.genesis_structure
+  have hgenTime : E.genesis_store.genesis_time ≤ E.genesis_store.time := by
+    rw [hgen]; simp only [get_forkchoice_store]; omega
+  apply E.finalized_epoch_le_voter_justified_of_receiver_slot_le cfg ext B hT hrelay hbyz
+    hphase hphaseBoundary hanchor hboundary hspe hDelay P V hacc hv hs0 hn hHn
+  rw [E.slot_at_slot_start cfg hT.whole_seconds
+    (hs0.trans (Nat.le_succ s)) hgenTime]
 
 end Execution
 end FastConfirmation.Spec
