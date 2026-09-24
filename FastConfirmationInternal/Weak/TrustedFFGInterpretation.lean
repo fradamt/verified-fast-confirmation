@@ -96,6 +96,20 @@ abbrev GuardedExactLinkValidity {trusted : Store Root → Prop}
     S.C (E.AcceptedRoot cfg ext) Domain
 
 
+/-- Voting-source selector for the accepted trusted state. -/
+abbrev VSAt {trusted : Store Root → Prop}
+    (S : TrustedCausalCarrierFFGState cfg ext E anchor trusted)
+    (store : Store Root) (b : Root) (e : Epoch) : Checkpoint Root :=
+  if get_block_epoch cfg store b = e then S.GJ b else S.GU b
+
+/-- Exact paper link support on the trusted state's inclusion relation. -/
+abbrev PaperA32LinkSupportAt {trusted : Store Root → Prop}
+    (S : TrustedCausalCarrierFFGState cfg ext E anchor trusted)
+    (w : ValidatorIndex) (m : ℕ) (b' : Root)
+    (source target : Checkpoint Root) : Type :=
+  PaperA32LinkSupportAtCore cfg ext (S.paperA32Inputs cfg ext)
+    w m b' source target
+
 def AU {trusted : Store Root → Prop}
     (S : TrustedCausalCarrierFFGState cfg ext E anchor trusted)
     (tip : Root) (c : Checkpoint Root) : Prop :=
