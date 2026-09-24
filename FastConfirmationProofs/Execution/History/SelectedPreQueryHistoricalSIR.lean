@@ -438,6 +438,8 @@ theorem preQueryHonestTarget_sourceWitnessAtQuery
       E.WithinHorizon cfg k ∧
       E.slot_at cfg k = s ∧
       E.slot_at cfg k < E.slot_at cfg q ∧
+      k ≤ E.slot_start cfg (E.slot_at cfg k) +
+        get_attestation_due_ms cfg / 1000 ∧
       d ∈ (E.store cfg ext i k).block_roots ∧
       target.root ∈ (E.store cfg ext i k).block_roots ∧
       d ∈ (E.store cfg ext v q).block_roots ∧
@@ -521,6 +523,8 @@ theorem preQueryHonestTarget_sourceWitnessAtQuery
       (hwalkK target.root hTK _ hheadK) (by
         rwa [is_ancestor_node_root] at hheadT_K)
   exact ⟨k, d, hHk, hk, by simpa only [hk] using hsq,
+    by simpa only [hk] using
+      (hA.honest_behavior.vote_deadline i hi s k _ hvoteHead).2,
     hheadK, hTK, hsub hheadK, hsub hTK, hheadT_Q⟩
 
 /-- A query-store ancestry `target.root ⩾c b` can be transported to any
@@ -549,12 +553,13 @@ theorem preQueryTarget_descends_queryBlock_at_endpoint
     (htarget₀ : a₀.data.target = target) :
     is_ancestor (E.store cfg ext w m)
       (get_node_for_root target.root) (get_node_for_root b) = true := by
-  obtain ⟨k, d, hHk, _hk, hkq, hdK, _hTK, hdQ, _hTQ, hdTQ⟩ :=
+  obtain ⟨k, d, hHk, _hk, hkq, hdeadline, hdK, _hTK, hdQ,
+      _hTQ, hdTQ⟩ :=
     E.preQueryHonestTarget_sourceWitnessAtQuery cfg ext hA hwalkDomain
       hv hqH hi hs0 hsq hsH hvote₀ htarget₀
   exact (E.ancestry_of_known_honest_past_descendant_minimal cfg ext hA
     v hv q target.root b hqH hTQ hbQ hTbQ w hw m hslotQM hHm
-      i hi k hHk d hkq hdK hdQ hdTQ).2.2
+      i hi k hHk d hkq hdeadline hdK hdQ hdTQ).2.2
 
 /-- The complete **below-input** region is mechanical once the already-carried
 input safety and honest-target geometry are made visible.

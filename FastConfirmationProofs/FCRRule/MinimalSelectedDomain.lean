@@ -1,6 +1,7 @@
 module
 public import FastConfirmationProofs.Checkpoints.AnchorChainSafety
 public import FastConfirmationProofs.Execution.Delivery.MarginProducer
+public import FastConfirmationProofs.Execution.Delivery.VoteDeadlineOrigin
 public import FastConfirmationInternal.FCRRule.SelectedMargin
 
 @[expose] public section
@@ -402,6 +403,8 @@ theorem mem_of_known_honest_past_descendant_minimal
     (u : ValidatorIndex) (hu : u ∈ E.honest) (nu : ℕ)
     (hHnu : E.WithinHorizon cfg nu) (d : Root)
     (hslot : E.slot_at cfg nu < E.slot_at cfg n)
+    (hdeadline : nu ≤ E.slot_start cfg (E.slot_at cfg nu) +
+      get_attestation_due_ms cfg / 1000)
     (hd : d ∈ (E.store cfg ext u nu).block_roots)
     (hdv : d ∈ (E.store cfg ext v n).block_roots)
     (hanc : is_ancestor (E.store cfg ext v n)
@@ -454,7 +457,17 @@ theorem mem_of_known_honest_past_descendant_minimal
     exact hspec
   have hgateUW : E.slot_at cfg nu + 1 ≤ E.slot_at cfg (m + 1) :=
     hslot.trans_le (hnm.trans (E.slot_at_mono cfg (Nat.le_succ m)))
-  exact hA.synchrony.block_relay u hu nu b hHnu hbu w hw m hHm hgateUW
+  have hgenTime : E.genesis_store.genesis_time ≤
+      E.genesis_store.time := by
+    rw [hgeq]
+    exact (wellFormedStore_get_forkchoice_store cfg ast ablk
+      hstateSlot hroot).time_ge_genesis
+  obtain ⟨hstart, hbefore⟩ := E.past_slot_deadline_target_gate cfg
+    hA.whole_seconds hgenTime (hslot.trans_le hnm)
+  rcases hA.synchrony.deadline_block_relay u hu nu b hHnu hbu
+      hdeadline w hw m hHm hstart hbefore with hknown | _hexcluded
+  · exact hknown
+  · exact hA.synchrony.block_relay u hu nu b hHnu hbu w hw m hHm hgateUW
 
 theorem ancestry_of_known_honest_past_descendant_minimal
     (hA : SelectedMarginAssumptions cfg ext E)
@@ -470,6 +483,8 @@ theorem ancestry_of_known_honest_past_descendant_minimal
     (u : ValidatorIndex) (hu : u ∈ E.honest) (nu : ℕ)
     (hHnu : E.WithinHorizon cfg nu) (d : Root)
     (hslot : E.slot_at cfg nu < E.slot_at cfg n)
+    (hdeadline : nu ≤ E.slot_start cfg (E.slot_at cfg nu) +
+      get_attestation_due_ms cfg / 1000)
     (hd : d ∈ (E.store cfg ext u nu).block_roots)
     (hdv : d ∈ (E.store cfg ext v n).block_roots)
     (hdb : is_ancestor (E.store cfg ext v n)
@@ -549,10 +564,25 @@ theorem ancestry_of_known_honest_past_descendant_minimal
     exact hbge
   have hgateUW : E.slot_at cfg nu + 1 ≤ E.slot_at cfg (m + 1) :=
     hslot.trans_le (hnm.trans (E.slot_at_mono cfg (Nat.le_succ m)))
+  have hgenTime : E.genesis_store.genesis_time ≤
+      E.genesis_store.time := by
+    rw [hgeq]
+    exact (wellFormedStore_get_forkchoice_store cfg ast ablk
+      hstateSlot hroot).time_ge_genesis
+  obtain ⟨hstart, hbefore⟩ := E.past_slot_deadline_target_gate cfg
+    hA.whole_seconds hgenTime (hslot.trans_le hnm)
+  have relayNeeded (x : Root)
+      (hx : x ∈ (E.store cfg ext u nu).block_roots) :
+      x ∈ (E.store cfg ext w m).block_roots := by
+    rcases hA.synchrony.deadline_block_relay u hu nu x hHnu hx
+        hdeadline w hw m hHm hstart hbefore with hknown | _hexcluded
+    · exact hknown
+    · exact hA.synchrony.block_relay u hu nu x hHnu hx w hw m hHm
+        hgateUW
   have hr₀w : r₀ ∈ (E.store cfg ext w m).block_roots :=
-    hA.synchrony.block_relay u hu nu r₀ hHnu hr₀u w hw m hHm hgateUW
+    relayNeeded r₀ hr₀u
   have hbw : b ∈ (E.store cfg ext w m).block_roots :=
-    hA.synchrony.block_relay u hu nu b hHnu hbu w hw m hHm hgateUW
+    relayNeeded b hbu
   have hagreeUW : ∀ r, r ∈ (E.store cfg ext u nu).block_roots →
       r ∈ (E.store cfg ext w m).block_roots →
       (E.store cfg ext u nu).blocks r = (E.store cfg ext w m).blocks r :=
@@ -588,11 +618,12 @@ theorem confirmed_known_at_all_honest_endpoints_minimal
   obtain ⟨i, lm, hi, hlm, hsupp⟩ :=
     E.honestSupporter_of_confirmed_known_at_minimal cfg ext hA v hv n
       fcrStore hstore b hHn hb hparent hconf
-  obtain ⟨u, nu, d, hu, hHnu, hslot, _hdeadline, hd, hdQuery, hanc⟩ :=
+  obtain ⟨u, nu, d, hu, hHnu, hslot, hdeadline, hd, hdQuery, hanc⟩ :=
     E.past_descendant_of_honest_supporter_known_minimal cfg ext hA
       v hv n b hHn i hi lm hlm hsupp
   exact E.mem_of_known_honest_past_descendant_minimal cfg ext hA
-    v hv n b hHn hb w hw m hnm hHm u hu nu hHnu d hslot hd hdQuery hanc
+    v hv n b hHn hb w hw m hnm hHm u hu nu hHnu d hslot hdeadline
+      hd hdQuery hanc
 
 /-- The same arbitrary-time transport preserves a known selected/base
 ancestry pair, not merely selected-root membership. -/
@@ -620,12 +651,12 @@ theorem confirmed_ancestry_at_all_honest_endpoints_minimal
   obtain ⟨i, lm, hi, hlm, hsupp⟩ :=
     E.honestSupporter_of_confirmed_known_at_minimal cfg ext hA v hv n
       fcrStore hstore b hHn hb hparent hconf
-  obtain ⟨u, nu, d, hu, hHnu, hslot, _hdeadline, hd, hdQuery, hdb⟩ :=
+  obtain ⟨u, nu, d, hu, hHnu, hslot, hdeadline, hd, hdQuery, hdb⟩ :=
     E.past_descendant_of_honest_supporter_known_minimal cfg ext hA
       v hv n b hHn i hi lm hlm hsupp
   exact E.ancestry_of_known_honest_past_descendant_minimal cfg ext hA
     v hv n b r₀ hHn hb hr₀ hbge w hw m hnm hHm
-      u hu nu hHnu d hslot hd hdQuery hdb
+      u hu nu hHnu d hslot hdeadline hd hdQuery hdb
 
 theorem canonical_member_parent_known_minimal
     (hA : SelectedMarginAssumptions cfg ext E)

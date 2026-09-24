@@ -67,6 +67,27 @@ theorem scheduled_fcr_call_root_before_deadline
   rw [E.scheduled_fcr_call_at_slot_start cfg ext hdiv hgen hcall]
   omega
 
+/-- A later-slot receiver is after the first second of the source's next
+slot and strictly after the source observation. This is the clock gate for
+applying cutoff relay to an earlier honest vote or scheduled call origin. -/
+theorem past_slot_deadline_target_gate
+    (hdiv : 1000 ∣ cfg.slot_duration_ms)
+    (hgen : E.genesis_store.genesis_time ≤ E.genesis_store.time)
+    {source target : ℕ}
+    (hslot : E.slot_at cfg source < E.slot_at cfg target) :
+    E.slot_start cfg (E.slot_at cfg source + 1) ≤ target ∧
+      source < target := by
+  have hstart := E.slot_start_le_of_slot_at cfg hdiv hgen
+    (show E.slot_at cfg target = E.slot_at cfg target from rfl)
+  have hgate : E.slot_start cfg (E.slot_at cfg source + 1) ≤ target :=
+    (E.slot_start_mono cfg (Nat.succ_le_of_lt hslot)).trans hstart
+  have htime : source < target := by
+    by_contra hnot
+    have hback : target ≤ source := Nat.le_of_not_gt hnot
+    have hmono := E.slot_at_mono cfg hback
+    exact (Nat.not_le_of_gt hslot) hmono
+  exact ⟨hgate, htime⟩
+
 /-- Under the paper's strict millisecond bound, the last whole-second vote
 time is strictly before the next slot boundary. This holds for a positive
 subsecond delay and for one-second slots. -/
