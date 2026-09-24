@@ -7,8 +7,8 @@ public import FastConfirmationModel.Weak.Execution
 
 This design module does not change the existing weak headlines. Shared records
 read `withoutObserver`; local input contracts read the actual observer. The
-Internal companion proves schedule independence. The economic bound treats
-observer stake as unknown. No justification-interface laws are assumed.
+Internal companion proves schedule independence for a non-honest observer.
+No justification-interface laws are assumed.
 -/
 
 @[expose] public section
@@ -16,9 +16,8 @@ namespace FastConfirmation.Spec
 namespace Execution
 variable {Root : Type*} [LinearOrder Root] [Inhabited Root]
 
-/-- The shared execution view removes the observer from the honest set and
-removes its input schedule. Erasing honesty alone would leave all-receiver
-no-forgery and all-node FFG occurrence quantifiers dependent on that schedule.
+/-- The shared execution view erases the observer's input schedule. For the
+non-honest observer used below, erasing it from the honest set has no effect.
 Votes, committees, genesis, and the verification horizon are unchanged. -/
 def withoutObserver (E : Execution Root) (obs : ValidatorIndex) : Execution Root :=
   { E with honest := E.honest.erase obs
@@ -37,9 +36,9 @@ structure SameOutsideObserver (E E' : Execution Root) (obs : ValidatorIndex) : P
 variable (cfg : Config) (ext : Externals Root)
 
 /-- Shared weak contracts on the execution without the observer. This reuses
-main's records, including its horizon vote lookahead. The economic bound is
-on `honest.erase obs`, so the observer cannot be the sole honest certificate
-supporter. FFG semantics here cover the restricted accepted-root domain. -/
+main's records, including its horizon vote lookahead. For `obs ∉ E.honest`,
+the economic bound uses exactly `E.honest`. FFG semantics here cover the
+restricted accepted-root domain. -/
 structure WeakRestrictedNetworkPremises (E : Execution Root) where
   base : SelectedMarginAssumptions cfg ext E
   delivery_lookahead : HorizonVoteDeliveryLookahead cfg E
@@ -63,27 +62,6 @@ structure WeakRestrictedNetworkPremises (E : Execution Root) where
 /-- Shared records evaluated after observer erasure. -/
 abbrev WeakObserverRestrictedCore (E : Execution Root) (obs : ValidatorIndex) :=
   WeakRestrictedNetworkPremises cfg ext (E.withoutObserver obs)
-
-/-- An honest observer still signs votes. These clauses read its signed vote
-record, never its input schedule. Delivery receivers are in the erased set.
-Vote-head agreement belongs to the local input record below. -/
-structure ObserverHonestVoterFacts (E : Execution Root) (obs : ValidatorIndex) : Prop where
-  vote_deadline : obs ∈ E.honest → ∀ s n (a : Attestation Root),
-    E.vote obs s = some (n, a) →
-      E.slot_start cfg s ≤ n ∧
-      n ≤ E.slot_start cfg s + get_attestation_due_ms cfg / 1000
-  votes_assigned : obs ∈ E.honest → ∀ s,
-    E.vote obs s ≠ none → obs ∈ E.committee s
-  not_slashable : obs ∈ E.honest → ∀ s s' n n' (a a' : Attestation Root),
-    E.vote obs s = some (n, a) → E.vote obs s' = some (n', a') →
-      is_slashable_attestation_data a.data a'.data = false
-  unslashed : obs ∈ E.honest → (E.registry.getD obs default).slashed = false
-  delivery_to_others : obs ∈ E.honest → ∀ s n (a : Attestation Root),
-    E.SlotWithinHorizon cfg s → E.WithinHorizon cfg n →
-    E.vote obs s = some (n, a) →
-    n ≤ E.slot_start cfg s + get_attestation_due_ms cfg / 1000 →
-    ∀ w ∈ E.honest.erase obs,
-      Event.attestation a false ∈ E.schedule w (E.slot_start cfg (s + 1))
 
 /-- Input authenticity and coherence at the actual observer. No clause requires
 receipt of a message. Missing messages make the event clauses vacuous. The
@@ -127,14 +105,12 @@ structure ObserverLocalInputs (E : Execution Root) (obs : ValidatorIndex) : Prop
     extends E.ObserverInputAuthenticity cfg ext obs where
   ffg : Nonempty (E.ObserverLocalFFG cfg ext obs)
 
-/-- Proposed lower weak surface. The core FFG domain excludes observer-only
-accepted blocks. The local input record supplies a separate content certificate
-extension for them; this record is not claimed to imply the current
-headline bundle. In particular it does not hide that gap in a delivery or
-justification-interface premise. -/
+/-- Restricted surface for a non-honest observer. The caller supplies
+`obs ∉ E.honest` separately. The core FFG domain excludes observer-only
+accepted blocks, which the local input record covers through its content
+certificate extension. -/
 structure WeakObserverRestrictedPremises (E : Execution Root) (obs : ValidatorIndex) where
   core : E.WeakObserverRestrictedCore cfg ext obs
-  voter : E.ObserverHonestVoterFacts cfg obs
   local_inputs : E.ObserverLocalInputs cfg ext obs
 
 end Execution

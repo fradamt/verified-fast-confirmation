@@ -99,10 +99,10 @@ all-receiver no-forgery and all-node accepted-input quantifiers. Erasing only
 the honest set would not do this. The Internal module proves equality of the
 other nodes' stores and weak caches with the actual execution.
 
-The generic design also has `ObserverHonestVoterFacts`. For a non-honest
-observer all its fields are vacuous. An honest observer is covered by the
-existing weak headlines, with the usual delivery premises and endpoint scope.
-Its stake stays in the honest set.
+`WeakObserverRestrictedPremises` contains the restricted core and local inputs.
+The independence theorem also requires `obs ∉ E.honest`. An honest observer
+is covered by the existing weak headlines, with the usual delivery premises
+and endpoint scope. Its stake stays in the honest set.
 
 The actual observer has these `ObserverLocalInputs` fields:
 
@@ -116,11 +116,11 @@ The actual observer has these `ObserverLocalInputs` fields:
 - `anchor_parent`: an input cannot reuse the unresolved anchor-parent label.
 - `process_slots_validity`: preparation of its keyed validation state preserves
   the signature check.
-- `votes_head`: if honest, its fixed signed vote agrees with its own local
-  head when cast; this clause must be checked again after an input change.
+- `votes_head`: this generic authenticity field checks an honest observer's
+  signed head. It is vacuous when `obs ∉ E.honest`.
 
 The oracle fixes all votes and all non-observer schedules. It transfers the
-shared and honest-voter records, and takes the eight local fields for the new
+shared core, and takes the local fields for the new
 observer run. It does not assert that arbitrary new inputs satisfy them.
 `ObserverLocalInputs.wellFormed` reconstructs actual execution block-label
 coherence from the restricted record and these local clauses.

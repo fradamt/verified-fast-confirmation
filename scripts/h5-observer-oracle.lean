@@ -8,20 +8,21 @@ variable {Root : Type*} [LinearOrder Root] [Inhabited Root]
 variable (cfg : Config) (ext : Externals Root)
 variable {E E' : Execution Root} {obs : ValidatorIndex}
 
-example (h : E.SameOutsideObserver E' obs)
+example (hobs : obs ∉ E.honest) (h : E.SameOutsideObserver E' obs)
     (hP : E.WeakObserverRestrictedPremises cfg ext obs)
     (hlocal : E'.ObserverLocalInputs cfg ext obs) :
     Nonempty (E'.WeakObserverRestrictedPremises cfg ext obs) :=
-  weakObserverRestrictedPremises_observer_independent cfg ext h hP hlocal
+  (weakObserverRestrictedPremises_observer_independent cfg ext hobs h hP hlocal).2
 
 /-- Any replacement input schedule is in the oracle's change domain. -/
 example (replacement : ℕ → List (Event Root))
+    (hobs : obs ∉ E.honest)
     (hP : E.WeakObserverRestrictedPremises cfg ext obs)
     (hlocal : ({ E with schedule := fun w n =>
       if w = obs then replacement n else E.schedule w n } : Execution Root).ObserverLocalInputs cfg ext obs) :
     Nonempty (({ E with schedule := fun w n =>
       if w = obs then replacement n else E.schedule w n } : Execution Root).WeakObserverRestrictedPremises cfg ext obs) := by
-  apply weakObserverRestrictedPremises_observer_independent cfg ext _ hP hlocal
+  apply (weakObserverRestrictedPremises_observer_independent cfg ext hobs _ hP hlocal).2
   refine ⟨rfl, rfl, rfl, rfl, rfl, ?_⟩
   intro w hw
   funext n
@@ -44,7 +45,7 @@ end
 
 #print axioms FastConfirmation.Spec.Execution.SameOutsideObserver.withoutObserver_eq
 #print axioms FastConfirmation.Spec.Execution.WeakObserverRestrictedCore.transport
-#print axioms FastConfirmation.Spec.Execution.ObserverHonestVoterFacts.transport
+#print axioms FastConfirmation.Spec.Execution.withoutObserver_honest
 #print axioms FastConfirmation.Spec.Execution.WeakObserverRestrictedPremises.observer_independent
 #print axioms FastConfirmation.Spec.Execution.weakObserverRestrictedPremises_observer_independent
 #print axioms FastConfirmation.Spec.Execution.withoutObserver_store

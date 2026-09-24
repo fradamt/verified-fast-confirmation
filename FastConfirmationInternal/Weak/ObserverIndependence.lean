@@ -33,6 +33,17 @@ theorem SameOutsideObserver.withoutObserver_eq
 
 variable (cfg : Config) (ext : Externals Root)
 
+/-- A non-honest observer does not change the honest set in the restricted view. -/
+theorem withoutObserver_honest (hobs : obs ∉ E.honest) :
+    (E.withoutObserver obs).honest = E.honest := by
+  apply Finset.ext
+  intro v
+  simp only [withoutObserver, Finset.mem_erase]
+  constructor
+  · exact And.right
+  · intro hv
+    exact ⟨by intro heq; subst v; exact hobs hv, hv⟩
+
 /-- The shared premise record transfers without any observer input hypothesis. -/
 def WeakObserverRestrictedCore.transport
     (h : SameOutsideObserver E E' obs)
@@ -41,34 +52,6 @@ def WeakObserverRestrictedCore.transport
   change WeakRestrictedNetworkPremises cfg ext (E'.withoutObserver obs)
   rw [← h.withoutObserver_eq]
   exact c
-
-omit [Inhabited Root] in
-/-- Signed vote facts and delivery to other honest nodes are independent of
-observer input timing. Only vote-head agreement must be checked locally. -/
-theorem ObserverHonestVoterFacts.transport
-    (h : SameOutsideObserver E E' obs)
-    (voter : E.ObserverHonestVoterFacts cfg obs) :
-    E'.ObserverHonestVoterFacts cfg obs := by
-  rcases E with ⟨horizon, genesis, schedule, honest, committee, vote⟩
-  rcases E' with ⟨horizon', genesis', schedule', honest', committee', vote'⟩
-  rcases h with ⟨hh, hg, ho, hc, hv, hs⟩
-  dsimp at hh hg ho hc hv hs
-  cases hh
-  cases hg
-  cases ho
-  cases hc
-  cases hv
-  refine {
-    vote_deadline := voter.vote_deadline
-    votes_assigned := voter.votes_assigned
-    not_slashable := voter.not_slashable
-    unslashed := voter.unslashed
-    delivery_to_others := ?_ }
-  intro hobs s n a hsH hnH hva hcut w hw
-  have hwo : w ≠ obs := (Finset.mem_erase.mp hw).1
-  change Event.attestation a false ∈ schedule' w _
-  rw [← hs w hwo]
-  exact voter.delivery_to_others hobs s n a hsH hnH hva hcut w hw
 
 /-- Exact premise independence oracle. The replacement execution keeps the
 signed votes and every other node's schedule. Its listed local input fields
@@ -79,16 +62,17 @@ def WeakObserverRestrictedPremises.observer_independent
     (local' : E'.ObserverLocalInputs cfg ext obs) :
     E'.WeakObserverRestrictedPremises cfg ext obs where
   core := premises.core.transport cfg ext h
-  voter := premises.voter.transport cfg h
   local_inputs := local'
 
-/-- The oracle as a proposition, for use by audit scripts. -/
+/-- The non-honest observer and the restricted premises remain independent of
+changes to its input schedule. No timed receipt at the observer is assumed. -/
 theorem weakObserverRestrictedPremises_observer_independent
+    (hobs : obs ∉ E.honest)
     (h : SameOutsideObserver E E' obs)
     (premises : E.WeakObserverRestrictedPremises cfg ext obs)
     (local' : E'.ObserverLocalInputs cfg ext obs) :
-    Nonempty (E'.WeakObserverRestrictedPremises cfg ext obs) :=
-  ⟨premises.observer_independent cfg ext h local'⟩
+    obs ∉ E'.honest ∧ Nonempty (E'.WeakObserverRestrictedPremises cfg ext obs) :=
+  ⟨h.honest ▸ hobs, ⟨premises.observer_independent cfg ext h local'⟩⟩
 
 /-- Erasure preserves every other node's actual store, at every second. -/
 theorem withoutObserver_store (E : Execution Root) (obs w : ValidatorIndex)
