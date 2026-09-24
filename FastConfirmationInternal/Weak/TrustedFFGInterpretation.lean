@@ -79,6 +79,11 @@ def paperA32Inputs {trusted : Store Root → Prop}
   GU := S.GU
   checkpoint_epoch := S.checkpoint_epoch
 
+abbrev PaperA32SupportThroughoutEpoch {trusted : Store Root → Prop}
+    (S : TrustedCausalCarrierFFGState cfg ext E anchor trusted)
+    (b : Root) (e : Epoch) : Prop :=
+  PaperA32SupportThroughoutEpochCore cfg ext (S.paperA32Inputs cfg ext) b e
+
 abbrev PaperA32Inclusion {trusted : Store Root → Prop}
     (S : TrustedCausalCarrierFFGState cfg ext E anchor trusted) : Prop :=
   PaperA32InclusionCore cfg ext (S.paperA32Inputs cfg ext)
