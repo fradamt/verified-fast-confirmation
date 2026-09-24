@@ -34,6 +34,7 @@ public import FastConfirmationProofs.Weak.History.WeakEarlyPhaseSourceWiring
 public import FastConfirmationProofs.Weak.History.TrustedWeakEarlyPhaseSourceWiring
 public import FastConfirmationProofs.Weak.History.WeakHistoricalA32CallSupplier
 public import FastConfirmationProofs.Weak.History.WeakHistoricalA32Geometry
+public import FastConfirmationProofs.Weak.History.TrustedWeakHistoricalA32Geometry
 public import FastConfirmationProofs.Weak.History.WeakHistoricalA32Induction
 public import FastConfirmationProofs.Weak.History.WeakHistoricalA32LazyCrossing
 public import FastConfirmationProofs.Weak.History.WeakHistoricalA32OneStep
