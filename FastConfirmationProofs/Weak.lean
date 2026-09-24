@@ -29,6 +29,7 @@ public import FastConfirmationProofs.Weak.History.AcceptedHistoricalA32OriginCal
 public import FastConfirmationProofs.Weak.History.WeakCandidateHistoryRecurrence
 public import FastConfirmationProofs.Weak.History.WeakCandidateSourceHistory
 public import FastConfirmationProofs.Weak.History.WeakEarlyPhaseSourceWiring
+public import FastConfirmationProofs.Weak.History.TrustedWeakEarlyPhaseSourceWiring
 public import FastConfirmationProofs.Weak.History.WeakHistoricalA32CallSupplier
 public import FastConfirmationProofs.Weak.History.WeakHistoricalA32Geometry
 public import FastConfirmationProofs.Weak.History.WeakHistoricalA32Induction
