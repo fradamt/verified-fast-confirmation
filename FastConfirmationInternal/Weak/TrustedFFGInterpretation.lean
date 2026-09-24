@@ -1,5 +1,6 @@
 module
 public import FastConfirmationInternal.Weak.TrustedCarrierEvidence
+public import FastConfirmationStatements.Premises.CheckpointLinks
 
 /-! Accepted FFG interpretations with an explicit validation-store domain.
 The original FFG records remain available through lossless honest-store adapters. -/
@@ -62,6 +63,13 @@ structure TrustedCausalCarrierFFGState (E : Execution Root)
 namespace TrustedCausalCarrierFFGState
 
 variable {E : Execution Root} {anchor : Checkpoint Root}
+
+/-- Exact links on a stated carrier domain for the trusted-store state. -/
+abbrev GuardedExactLinkValidity {trusted : Store Root → Prop}
+    (S : TrustedCausalCarrierFFGState cfg ext E anchor trusted)
+    (Domain : Root → Prop) : Prop :=
+  ExactIncludedLinkValidity cfg E S.includedAttestations.Included anchor
+    S.C (E.AcceptedRoot cfg ext) Domain
 
 
 def AU {trusted : Store Root → Prop}
@@ -261,6 +269,21 @@ def TrustedCausalPrefixFFGInterpretation.toHonest
   anchor := B.anchor
   state := B.state.toHonest
   coherence := B.coherence.toHonest
+
+/-- The honest-store adapter is lossless in both directions. -/
+theorem CausalPrefixFFGInterpretation.toHonest_toTrusted
+    (B : CausalPrefixFFGInterpretation cfg ext E) :
+    B.toTrusted.toHonest = B := by
+  cases B
+  rfl
+
+/-- The trusted honest-store specialization also round-trips. -/
+theorem TrustedCausalPrefixFFGInterpretation.toTrusted_toHonest
+    (B : TrustedCausalPrefixFFGInterpretation cfg ext E
+      (E.HonestCausalStore cfg ext)) :
+    B.toHonest.toTrusted = B := by
+  cases B
+  rfl
 
 end FastConfirmation.Spec
 end

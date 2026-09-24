@@ -37,6 +37,11 @@ theorem observerCertificate_causal_registry
     exact on_tick_registryConstant cfg _ _
       (E.registryConstant cfg ext hec hgen p.node p.previousSecond)
 
+/-- Stores trusted by the actual non-honest observer run. -/
+def trustedObserverOrHonestStore (E : Execution Root) (obs : ValidatorIndex)
+    (store : Store Root) : Prop :=
+  E.HonestCausalStore cfg ext store ∨ E.ObserverCausalStore cfg ext obs store
+
 namespace ObserverLocalFFG
 
 /-- Local body evidence projects to ordinary inclusion evidence. This does
@@ -101,6 +106,36 @@ def trustedIncludedRelation (B : E.ObserverLocalFFG cfg ext obs)
     validation_store_trusted := (B.included_evidence ha).validation_local
     validation_target_known := (B.included_evidence ha).target_known
     validation_state_from_target := rfl }
+
+/-- Local inclusion evidence enters the actual run's explicit trusted domain. -/
+def trustedIncludedRelationActual (B : E.ObserverLocalFFG cfg ext obs)
+    (hobs : obs ∉ E.honest) (core : E.WeakObserverRestrictedCore cfg ext obs)
+    (localInputs : E.ObserverLocalInputs cfg ext obs) :
+    E.TrustedCarrierAttestationRelation cfg ext ext.is_valid_indexed_attestation
+      (E.trustedObserverOrHonestStore (cfg := cfg) (ext := ext) obs) where
+  Included := B.state.included
+  evidence := fun ha => by
+    let ev := (B.trustedIncludedRelation hobs core localInputs).evidence ha
+    exact {
+      toIncludedAttestationEvidence := ev.toIncludedAttestationEvidence
+      carrier_accepted := ev.carrier_accepted
+      validation_store := ev.validation_store
+      validation_store_trusted := Or.inr ev.validation_store_trusted
+      validation_target_known := ev.validation_target_known
+      validation_state_from_target := ev.validation_state_from_target }
+
+/-- Local exact links require acceptance only on the local content domain. -/
+def guardedExactLinkValidity (B : E.ObserverLocalFFG cfg ext obs) :
+    ExactIncludedLinkValidity cfg E B.state.included
+      E.genesis_store.justified_checkpoint B.state.C
+      (E.AcceptedRoot cfg ext) B.state.domain where
+  carrier_accepted := by
+    intro carrier source target L hcontributing hdomain
+    obtain ⟨store, hs, hr⟩ := (B.domain_local carrier).mp hdomain
+    exact ⟨store, hs.causal, hr⟩
+  endpoints_on_carrier := by
+    intro carrier source target L hcontributing hdomain
+    exact B.exact_link_endpoints hdomain L hcontributing
 
 /-- Every local AU entry has a scheduled certificate in the actual run.
 The observer itself witnesses local body handling. -/
