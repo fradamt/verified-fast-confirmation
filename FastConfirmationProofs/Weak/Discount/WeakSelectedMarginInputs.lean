@@ -338,7 +338,7 @@ trusted from `hin.regime`) into the two Stage-I endpoint-inequality
 assemblers, and closes with `crossing_ledger_descendStep`. -/
 theorem crossing_descendStep_of_selectedInputs_at_observer
     {E : Execution Root} {obs : ValidatorIndex}
-    (hW : E.WeakObserverMarginAssumptions cfg ext obs)
+    (hW : E.WeakObserverMarginPremises cfg ext obs)
     {glc a b : Root} {q : ℕ} (hqH : E.WithinHorizon cfg q)
     {w : ValidatorIndex} (hw : w ∈ E.honest) {m : ℕ} (hmH : E.WithinHorizon cfg m)
     {query : FastConfirmationStore Root} {es sigma querySlot : Slot}

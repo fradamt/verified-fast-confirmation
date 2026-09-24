@@ -24,23 +24,23 @@ variable (cfg : Config) (ext : Externals Root)
 trajectory safety witness, collected without adding a liveness field. -/
 def AcceptedWeakObserverLivePremises (E : Execution Root)
     (v : ValidatorIndex) : Prop :=
-  ∃ B : ExactPrefixAcceptedFFGSemantics cfg ext E,
+  ∃ B : CausalPrefixFFGInterpretation cfg ext E,
     JustificationInterface cfg ext E ∧
     B.anchor = E.genesis_store.justified_checkpoint ∧
     E.TrustedAnchorBoundaryAligned (cfg := cfg) (anchor := B.anchor) ∧
     E.RealizedFinalizationDelay cfg ext B ∧
     B.state.PaperA32Inclusion cfg ext ∧
-    (∃ P : AcceptedEpochCheckpointProjection B.anchor
+    (∃ P : EpochCheckpointClosure B.anchor
         (E.AcceptedRoot cfg ext) B.state.C,
       B.state.ExactLinkValidity ∧
-      E.WeakObserverAssumptions cfg ext v ∧
-      E.AcceptedHistoricalA32CompletedPrefixCallSupplement cfg ext ∧
+      E.WeakObserverPremises cfg ext v ∧
+      E.WeakCompletedFCRCallSupplement cfg ext ∧
       EpochEndsFitUint64 cfg)
 
 /-- The concrete weak accepted-observer specialization of the upstream
 statement. Its accepted premises match the weak full-rule safety witness. -/
-def AcceptedWeakSpec_Monotonicity_live : Prop :=
-  WeakSpec_Monotonicity_live cfg ext
+def WeakLiveStoredRootMonotonicity : Prop :=
+  WeakStoredRootMonotonicity cfg ext
     (AcceptedWeakObserverLivePremises cfg ext)
 
 /-- The weak safety floor contains the strong accepted trajectory fields.
@@ -55,7 +55,7 @@ theorem accepted_weak_observer_to_strong_bundle
   let hT : E.ScheduledPrefixPremises cfg ext :=
     Execution.ScheduledPrefixPremises.of_selectedMarginAssumptions
       cfg ext E hObs.base hObs.genesis
-  let hC := Execution.AcceptedHistoricalA32CompletedPrefixCallSupplement.toCompletedPrefixCallAssumptions
+  let hC := Execution.WeakCompletedFCRCallSupplement.toCompletedPrefixCallAssumptions
     cfg ext E hCbase hObs.base
   exact ⟨{
     semantics := B

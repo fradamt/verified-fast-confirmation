@@ -63,7 +63,7 @@ recorded here since it is easy to mistake for an ungated read.
 `SelectedMarginDomain.justified_root_known` (used once, to fall back to the
 justified root when `get_head` degenerates); the weak twin takes that single
 fact as an explicit hypothesis `hjrk` and drops `hv : v ∈ E.honest` — the weak
-selector's confirming node is the observer of `Weak.ObserverContext`, which is
+selector's confirming node is the observer of `Weak.HistoricalNonHonestObserverContext`, which is
 by construction *not* a member of `E.honest`. No other hypothesis of either
 `MinimalSelectedDomain` original is honesty-derived: every store-domain lemma
 they call (`store_parentSlotLt`, `store_walkKnownK`, `store_nonAnchorParentKnown`,
@@ -348,7 +348,7 @@ variable (E : Execution Root)
 
 Weak twin of `MinimalSelectedDomain.canonical_member_parent_known_minimal`.
 Drops `hv : v ∈ E.honest` (the weak selector's confirming node is the
-`Weak.ObserverContext` observer, which is by construction *not* honest) and
+`Weak.HistoricalNonHonestObserverContext` observer, which is by construction *not* honest) and
 takes the single honesty-derived fact the original consumes —
 `SelectedMarginDomain.justified_root_known v hv n hHn`, used only to fall back
 to the justified root when `get_head`'s totalized default fires — as an
@@ -416,14 +416,14 @@ theorem canonical_member_parent_known_minimal_weak
 /-- Guard evidence carried by a strict weak-selector advance (rule delta 4).
 The wrapper's previous-epoch guard requires
 `Weak.has_justification_witness_certificate`; its tentative-loop entry gate
-requires either the start of an epoch or `Weak.has_head_broadcast_certificate`
+requires either the start of an epoch or `Weak.has_carrier_broadcast_certificate`
 on the fork-choice head (`Spec/Model/WeakSynchrony.lean`, S3/S4). Every strict
 advance goes through one of the two gates, so one of these three always
 backs it. -/
 def WeakSelectorGuardEvidence (fcrStore : FastConfirmationStore Root) : Prop :=
   Weak.has_justification_witness_certificate cfg ext fcrStore = true ∨
   is_start_slot_at_epoch cfg (get_current_slot cfg fcrStore.store) = true ∨
-  Weak.has_head_broadcast_certificate cfg ext fcrStore.store
+  Weak.has_carrier_broadcast_certificate cfg ext fcrStore.store
     (get_current_balance_source fcrStore) = true
 
 /-! ## Section 5 — `find_latest_confirmed_descendant_selected_minimal_weak`
@@ -432,7 +432,7 @@ Weak twin of `MinimalSelectedDomain.find_latest_confirmed_descendant_selected_mi
 — the selector inversion proper.
 
 **Design of the guard evidence.** Both `Weak.has_justification_witness_certificate`
-and `Weak.has_head_broadcast_certificate cfg ext fcrStore.store
+and `Weak.has_carrier_broadcast_certificate cfg ext fcrStore.store
 (get_current_balance_source fcrStore)` are root-independent: each is either
 true or false for the whole call. Splitting on the witness certificate first
 (`by_cases hcertb`) makes the two cases easy:
@@ -445,7 +445,7 @@ true or false for the whole call. Splitting on the witness certificate first
   certificate as a conjunct), so any hypothetical `split_ifs` leaf that
   assumes it does is contradictory (dismissed by `absurd`). The only real
   leaves left are ones where the *tentative* loop's own entry gate fired,
-  which is itself `is_start_slot_at_epoch ∨ (… ∧ has_head_broadcast_certificate)`
+  which is itself `is_start_slot_at_epoch ∨ (… ∧ has_carrier_broadcast_certificate)`
   (`h2`): splitting the head certificate too (`by_cases hheadcertb`) lets the
   `hheadcertb`-true case reuse `Or.inr (Or.inr hheadcertb)` uniformly, while
   the `hheadcertb`-false case falls back to reading `h2` directly
@@ -571,7 +571,7 @@ theorem find_latest_confirmed_descendant_selected_minimal_weak
     -- the tentative loop's own entry gate, named `h1` in every leaf (it is
     -- the selector's outermost condition). Split further on the head
     -- broadcast certificate, the other source of guard evidence.
-    by_cases hheadcertb : Weak.has_head_broadcast_certificate cfg ext fcrStore.store
+    by_cases hheadcertb : Weak.has_carrier_broadcast_certificate cfg ext fcrStore.store
         (get_current_balance_source fcrStore) = true
     · generalize hout : Weak.find_latest_confirmed_descendant cfg ext fcrStore lcr = result
       rw [Weak.find_latest_confirmed_descendant] at hout

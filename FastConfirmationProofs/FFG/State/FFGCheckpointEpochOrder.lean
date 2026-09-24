@@ -373,8 +373,8 @@ order.  Both pair inequalities are semantic consequences at the transition's
 derived accepted root. -/
 theorem acceptedBlockTransition
     {E : Execution Root} {anchor : Checkpoint Root}
-    {S : AcceptedChainFFGState cfg ext E anchor}
-    (hcoh : AcceptedFFGSelectorCoherence cfg ext S)
+    {S : CausalCarrierFFGState cfg ext E anchor}
+    (hcoh : FFGSelectorsMatchBeaconStates cfg ext S)
     (t : E.AcceptedBlockTransition cfg ext)
     (h : CheckpointEpochOrder (t.atPrefix.store cfg ext)) :
     CheckpointEpochOrder t.postStore := by
@@ -454,8 +454,8 @@ variable (E : Execution Root)
 
 private theorem acceptedCheckpointEpochOrder_take
     {anchor : Checkpoint Root}
-    {S : AcceptedChainFFGState cfg ext E anchor}
-    (hcoh : AcceptedFFGSelectorCoherence cfg ext S)
+    {S : CausalCarrierFFGState cfg ext E anchor}
+    (hcoh : FFGSelectorsMatchBeaconStates cfg ext S)
     (w : ValidatorIndex) (n : ℕ)
     (hbase : CheckpointEpochOrder
       (on_tick cfg (E.store cfg ext w n) (E.time_at (n + 1)))) :
@@ -522,8 +522,8 @@ private theorem acceptedCheckpointEpochOrder_take
 from exact accepted block transitions. -/
 theorem acceptedCheckpointEpochOrder
     {anchor : Checkpoint Root}
-    {S : AcceptedChainFFGState cfg ext E anchor}
-    (hcoh : AcceptedFFGSelectorCoherence cfg ext S)
+    {S : CausalCarrierFFGState cfg ext E anchor}
+    (hcoh : FFGSelectorsMatchBeaconStates cfg ext S)
     (hgen : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
       E.genesis_store = get_forkchoice_store cfg ast ablk)
     (w : ValidatorIndex) (n : ℕ) :
@@ -547,9 +547,9 @@ theorem acceptedCheckpointEpochOrder
 /-- Checkpoint epoch order at every exact in-second schedule prefix. -/
 theorem ScheduledEventPrefix.acceptedCheckpointEpochOrder
     {anchor : Checkpoint Root}
-    {S : AcceptedChainFFGState cfg ext E anchor}
+    {S : CausalCarrierFFGState cfg ext E anchor}
     (p : E.ScheduledEventPrefix)
-    (hcoh : AcceptedFFGSelectorCoherence cfg ext S)
+    (hcoh : FFGSelectorsMatchBeaconStates cfg ext S)
     (hgen : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
       E.genesis_store = get_forkchoice_store cfg ast ablk) :
     CheckpointEpochOrder (p.store cfg ext) := by
@@ -563,9 +563,9 @@ theorem ScheduledEventPrefix.acceptedCheckpointEpochOrder
 /-- Checkpoint epoch order throughout the exact causal-store domain. -/
 theorem CausalStore.acceptedCheckpointEpochOrder
     {anchor : Checkpoint Root}
-    {S : AcceptedChainFFGState cfg ext E anchor}
+    {S : CausalCarrierFFGState cfg ext E anchor}
     {store : Store Root} (hstore : E.CausalStore cfg ext store)
-    (hcoh : AcceptedFFGSelectorCoherence cfg ext S)
+    (hcoh : FFGSelectorsMatchBeaconStates cfg ext S)
     (hgen : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
       E.genesis_store = get_forkchoice_store cfg ast ablk) :
     CheckpointEpochOrder store := by
@@ -580,18 +580,18 @@ end Execution
 checkpoint epoch order at one exact causal store. -/
 structure AcceptedFFGOrderedGlobalStoreProjection
     {E : Execution Root} {anchor : Checkpoint Root}
-    (S : AcceptedChainFFGState cfg ext E anchor)
+    (S : CausalCarrierFFGState cfg ext E anchor)
     (store : Store Root) : Prop where
   globalProjection : AcceptedFFGGlobalStoreProjection S store
   checkpointOrder : CheckpointEpochOrder store
 
-namespace ExactPrefixAcceptedFFGSemantics
+namespace CausalPrefixFFGInterpretation
 
 /-- One preselected accepted semantic state supplies block-local projection,
 named global carriers, and checkpoint epoch order at the same causal store. -/
 theorem causalStoreOrderedGlobalProjection
     {E : Execution Root}
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (hgen : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
       E.genesis_store = get_forkchoice_store cfg ast ablk ∧
       ast.slot = ablk.message.slot)
@@ -603,7 +603,7 @@ theorem causalStoreOrderedGlobalProjection
     ⟨B.causalStoreGlobalProjection ⟨ast, ablk, hgenEq, hslot⟩
         hanchor hstore,
       hstore.acceptedCheckpointEpochOrder cfg ext E
-        B.coherence.toAcceptedFFGSelectorCoherence
+        B.coherence.toFFGSelectorsMatchBeaconStates
         ⟨ast, ablk, hgenEq⟩⟩
 
 /-- Real accepted global consumer: finalized never exceeds justified at any
@@ -611,7 +611,7 @@ exact causal store, while the paired projection retains its named global
 carrier evidence for downstream use. -/
 theorem globalFinalizedEpoch_le_justified
     {E : Execution Root}
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (hgen : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
       E.genesis_store = get_forkchoice_store cfg ast ablk ∧
       ast.slot = ablk.message.slot)
@@ -624,7 +624,7 @@ theorem globalFinalizedEpoch_le_justified
     |>.finalized_le_justified
 
 
-end ExactPrefixAcceptedFFGSemantics
+end CausalPrefixFFGInterpretation
 
 end FastConfirmation.Spec
 

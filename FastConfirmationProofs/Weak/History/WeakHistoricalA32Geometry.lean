@@ -54,7 +54,7 @@ The honest-node binder `hv` is replaced by `E.ObserverCoherence cfg ext obs`,
 which is all the two substituted domain hubs need; the query is any store
 snapshot re-seated on the observer's own second-`(n + 1)` store. -/
 theorem historicalA32QueryGeometryAt_at_observer
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (hT : E.ScheduledPrefixPremises cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : Execution.TrustedAnchorBoundaryAligned (cfg := cfg)
@@ -148,7 +148,7 @@ theorem historicalA32QueryGeometryAt_at_observer
 
 /-- The weak evaluator's own instance of the geometry hub. -/
 theorem weakFcrStep_historicalA32QueryGeometryAt
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (hT : E.ScheduledPrefixPremises cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : Execution.TrustedAnchorBoundaryAligned (cfg := cfg)

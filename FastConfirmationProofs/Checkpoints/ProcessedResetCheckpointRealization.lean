@@ -12,7 +12,7 @@ This file realizes the finalized and observed-reset inputs in the
 accepted-prefix FFG semantics. The only reset-specific state is the exact
 ordered field rotation already proved for `update_fast_confirmation_variables`.
 Checkpoint origins, certificates, and causal-store reflection all come from
-one `ExactPrefixAcceptedFFGSemantics` selected before the execution store.
+one `CausalPrefixFFGInterpretation` selected before the execution store.
 
 No legacy `ChainFFGState`, `BlockStateTransitionHistory`, justification
 interface, confirmation conclusion, filter conclusion, or safety premise is
@@ -129,7 +129,7 @@ execution store.  The boundary walk identifies the root and its boundary-slot
 upper bound; accepted AU formation supplies the included certificate and the
 checkpoint epoch bound. -/
 theorem AcceptedSelectorAUCarrier.resetCheckpointRealizedAt
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (hT : E.ScheduledPrefixPremises cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
@@ -167,7 +167,7 @@ theorem AcceptedSelectorAUCarrier.resetCheckpointRealizedAt
   have hcertified : CertifiedJustified cfg E B.anchor c :=
     IncludedCertifiedJustified.toCertifiedJustified
       (cfg := cfg)
-      (Execution.AcceptedIncludedAttestationRelation.relation
+      (Execution.CausalCarrierAttestationRelation.relation
         cfg ext E B.state.includedAttestations) hincluded
   have hanchorEpochLe : B.anchor.epoch ≤ c.epoch :=
     CertifiedJustified.anchor_epoch_le (cfg := cfg) hcertified
@@ -222,7 +222,7 @@ theorem AcceptedSelectorAUCarrier.resetCheckpointRealizedAt
 /-- The exact accepted global finalized selector realizes the concrete store
 field without passing through the legacy global FFG trajectory. -/
 theorem finalizedCheckpoint_resetRealizedAt_of_acceptedGlobalTrajectory
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (hT : E.ScheduledPrefixPremises cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
@@ -250,7 +250,7 @@ theorem finalizedCheckpoint_resetRealizedAt_of_acceptedGlobalTrajectory
 /-- The exact accepted global unrealized-justified selector realizes the
 fresh checkpoint which the ordered FCR rotation may cache. -/
 theorem unrealizedJustifiedCheckpoint_resetRealizedAt_of_acceptedGlobalTrajectory
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (hT : E.ScheduledPrefixPremises cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
@@ -289,7 +289,7 @@ theorem unrealizedJustifiedCheckpoint_resetRealizedAt_of_acceptedGlobalTrajector
 /-- Both retained FCR reset fields stay realized under the accepted global
 trajectory.  The induction follows the executable write order exactly. -/
 theorem resetCheckpointHistoryAt_of_acceptedGlobalTrajectory
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (hT : E.ScheduledPrefixPremises cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
@@ -327,7 +327,7 @@ theorem resetCheckpointHistoryAt_of_acceptedGlobalTrajectory
 in that query's store, independently of whether the speculative query becomes
 a real slot call. -/
 theorem fcrStep_observed_resetRealizedAt_of_acceptedGlobalTrajectory
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (hT : E.ScheduledPrefixPremises cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)

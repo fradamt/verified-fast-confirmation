@@ -32,7 +32,7 @@ for a head that carries a broadcast certificate, so
   i.e. `Execution.certificate_dissemination` at the supplier.
 
 Everything downstream of those two — `AcceptedOldGURealized.oldGU` at the
-endpoint, via `ExactPrefixAcceptedFFGSemantics`'s justified maximality — already
+endpoint, via `CausalPrefixFFGInterpretation`'s justified maximality — already
 quantifies only over the *receiving* endpoint's causal store, which the weak
 model keeps.
 
@@ -44,7 +44,7 @@ the boundary" step is what has to be re-obtained across that gap.  It is
 supplied here by the certificate's own span, not by a new bridge:
 
 * `Weak.BankedJustificationCertificate.supplier_slot_lt` (new, this file) —
-  `has_head_broadcast_certificate` fixes the certificate's end slot at
+  `has_carrier_broadcast_certificate` fixes the certificate's end slot at
   `get_current_slot store - 1`, so `Weak.has_broadcast_certificate_span_nonempty`
   plus the structure's `second_pos` fill put the supplier's block *strictly*
   below the banking second's own slot.  This is the observation the
@@ -71,7 +71,7 @@ namespace Weak
 /-! ## The certified supplier is a pre-boundary block -/
 
 /-- **The banked justification's supplier is strictly older than its own
-banking second.** `has_head_broadcast_certificate` evaluates the certificate on
+banking second.** `has_carrier_broadcast_certificate` evaluates the certificate on
 the span `[get_block_slot store supplier, get_current_slot store - 1]`, and a
 true certificate has a non-empty span
 (`Weak.has_broadcast_certificate_span_nonempty`), so the supplier's block slot
@@ -123,7 +123,7 @@ it orders no checkpoint roots and does not itself imply any head or `SafeFrom`
 statement. -/
 theorem bankedCheckpoint_epoch_le_honestJustified
     {E : Execution Root} (hA : SelectedMarginAssumptions cfg ext E)
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (hT : E.ScheduledPrefixPremises cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : Execution.TrustedAnchorBoundaryAligned (cfg := cfg) (E := E)
@@ -153,7 +153,7 @@ theorem bankedCheckpoint_epoch_le_honestJustified
       B.state.GU h.supplier := by
     rw [h.banked_eq]
     exact E.accepted_unrealized_justification_eq
-      B.coherence.toAcceptedFFGSelectorCoherence obs h.second h.supplier_known
+      B.coherence.toFFGSelectorsMatchBeaconStates obs h.second h.supplier_known
   -- The supplier predates the boundary, at the endpoint's own store.
   have hblocksAgree : (E.store cfg ext obs h.second).blocks h.supplier =
       (E.store cfg ext w m).blocks h.supplier :=
@@ -218,7 +218,7 @@ gate off the certificate's `second_le` — the temporal carry from the
 installation second to the call second is exactly `Execution.slot_at_mono`. -/
 theorem ObservedResetCandidateInputAt.guardedObservedAdoption
     {E : Execution Root} (hA : SelectedMarginAssumptions cfg ext E)
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (hT : E.ScheduledPrefixPremises cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : Execution.TrustedAnchorBoundaryAligned (cfg := cfg) (E := E)

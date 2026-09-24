@@ -38,8 +38,8 @@ structure IncludedLinkEndpointsFormed
     formed carrier source ∧ formed carrier target
 
 variable {E : Execution Root}
-namespace AcceptedChainFFGState
-end AcceptedChainFFGState
+namespace CausalCarrierFFGState
+end CausalCarrierFFGState
 namespace ChainFFGState
 /-- Exact-link validity specialized to the scheduled-root state. -/
 abbrev ExactLinkValidity

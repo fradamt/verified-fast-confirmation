@@ -41,9 +41,9 @@ variable {Root : Type*} [LinearOrder Root] [Inhabited Root]
 variable (cfg : Config) (ext : Externals Root)
 namespace Execution
 variable (E : Execution Root)
-namespace AcceptedIncludedAttestationRelation
+namespace CausalCarrierAttestationRelation
 
-end AcceptedIncludedAttestationRelation
+end CausalCarrierAttestationRelation
 end Execution
 
 namespace IncludedSupermajorityLink
@@ -91,10 +91,10 @@ theorem gu_AU (S : ChainFFGState cfg E anchor) (r : Root)
 
 
 end ChainFFGState
-namespace AcceptedChainFFGState
+namespace CausalCarrierFFGState
 variable {E : Execution Root} {anchor : Checkpoint Root}
 theorem hasSlashablePairOnChain_in_registry
-    (S : AcceptedChainFFGState cfg ext E anchor)
+    (S : CausalCarrierFFGState cfg ext E anchor)
     {tip : Root} {i : ValidatorIndex}
     (h : S.HasSlashablePairOnChain cfg ext tip i) :
     i < E.registry.length := by
@@ -103,7 +103,7 @@ theorem hasSlashablePairOnChain_in_registry
   exact (S.includedAttestations.evidence hincluded).attesters_in_registry i hi₁
 
 @[simp] theorem mem_slashableOnChain
-    (S : AcceptedChainFFGState cfg ext E anchor)
+    (S : CausalCarrierFFGState cfg ext E anchor)
     (tip : Root) (i : ValidatorIndex) :
     i ∈ S.slashableOnChain cfg ext tip ↔
       S.HasSlashablePairOnChain cfg ext tip i := by
@@ -116,47 +116,47 @@ theorem hasSlashablePairOnChain_in_registry
       ⟨Finset.mem_range.mpr
           (S.hasSlashablePairOnChain_in_registry (cfg := cfg) (ext := ext) h), h⟩
 
-theorem AU.mono (S : AcceptedChainFFGState cfg ext E anchor)
+theorem AU.mono (S : CausalCarrierFFGState cfg ext E anchor)
     {old new : Root} {c : Checkpoint Root}
     (hdesc : E.RootDescends new old) (hAU : S.AU cfg ext old c) :
     S.AU cfg ext new c := by
   obtain ⟨carrier, holdCarrier, hformed⟩ := hAU
   exact ⟨carrier, Execution.RootDescends.trans E hdesc holdCarrier, hformed⟩
 
-theorem AU.evidence (S : AcceptedChainFFGState cfg ext E anchor)
+theorem AU.evidence (S : CausalCarrierFFGState cfg ext E anchor)
     {tip : Root} {c : Checkpoint Root} (hAU : S.AU cfg ext tip c) :
     ∃ carrier, E.RootDescends tip carrier ∧
-      AcceptedFormedCheckpointEvidence cfg ext E
+      IncludedVoteCheckpointCertificate cfg ext E
         S.includedAttestations.Included anchor carrier c := by
   obtain ⟨carrier, hdesc, hformed⟩ := hAU
   exact ⟨carrier, hdesc, S.formed_evidence hformed⟩
 
-theorem gj_AU (S : AcceptedChainFFGState cfg ext E anchor)
+theorem gj_AU (S : CausalCarrierFFGState cfg ext E anchor)
     {r : Root} (hr : E.AcceptedRoot cfg ext r) :
     S.AU cfg ext r (S.GJ r) :=
   S.gj_mem r hr
 
-theorem gu_AU (S : AcceptedChainFFGState cfg ext E anchor)
+theorem gu_AU (S : CausalCarrierFFGState cfg ext E anchor)
     {r : Root} (hr : E.AcceptedRoot cfg ext r) :
     S.AU cfg ext r (S.GU r) :=
   S.gu_mem r hr
 
-theorem gf_AU (S : AcceptedChainFFGState cfg ext E anchor)
+theorem gf_AU (S : CausalCarrierFFGState cfg ext E anchor)
     {r : Root} (hr : E.AcceptedRoot cfg ext r) :
     S.AU cfg ext r (S.GF r) :=
   S.gf_mem r hr
 
-theorem guf_AU (S : AcceptedChainFFGState cfg ext E anchor)
+theorem guf_AU (S : CausalCarrierFFGState cfg ext E anchor)
     {r : Root} (hr : E.AcceptedRoot cfg ext r) :
     S.AU cfg ext r (S.GUF r) :=
   S.guf_mem r hr
 
-theorem gj_epoch_le_gu (S : AcceptedChainFFGState cfg ext E anchor)
+theorem gj_epoch_le_gu (S : CausalCarrierFFGState cfg ext E anchor)
     {r : Root} (hr : E.AcceptedRoot cfg ext r) :
     (S.GJ r).epoch ≤ (S.GU r).epoch :=
   S.gu_max hr (S.gj_mem r hr)
 
-end AcceptedChainFFGState
+end CausalCarrierFFGState
 
 
 namespace PaperA32StateView
@@ -165,9 +165,9 @@ end PaperA32StateView
 namespace ChainFFGState
 variable {E : Execution Root} {anchor : Checkpoint Root}
 end ChainFFGState
-namespace AcceptedChainFFGState
+namespace CausalCarrierFFGState
 variable {E : Execution Root} {anchor : Checkpoint Root}
-end AcceptedChainFFGState
+end CausalCarrierFFGState
 end FastConfirmation.Spec
 
 end

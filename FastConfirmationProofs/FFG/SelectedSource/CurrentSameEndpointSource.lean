@@ -44,7 +44,7 @@ variable {E : Execution Root}
 store-global justified checkpoint before the endpoint containing its accepted
 formation carrier. -/
 structure AcceptedHonestJustifiedTargetAt
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (w : ValidatorIndex) (m : Nat) (justified : Checkpoint Root) where
   validator : ValidatorIndex
   vote_slot : Slot
@@ -74,7 +74,7 @@ causal formation vote.  This is the justified analogue of
 `globalFinalized_honestTarget`; it keeps the target head and boundary walk and
 does not conclude any selected-branch orientation. -/
 theorem globalJustified_honestTarget
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (hT : E.ScheduledPrefixPremises cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
@@ -125,7 +125,7 @@ theorem globalJustified_honestTarget
       CertifiedJustified.anchor_epoch_lt_of_ne (cfg := cfg)
         (IncludedCertifiedJustified.toCertifiedJustified
           (cfg := cfg)
-          (Execution.AcceptedIncludedAttestationRelation.relation
+          (Execution.CausalCarrierAttestationRelation.relation
             cfg ext E B.state.includedAttestations) hcertified) hne
     have htargetEpoch : (E.store cfg ext w m).justified_checkpoint.epoch =
         compute_epoch_at_slot cfg voteSlot := by
@@ -229,7 +229,7 @@ The clock premise is the ordinary query-to-endpoint ordering used by the
 selected-edge geometry.  Current-same equality is used only to preserve the
 numeric `+2` recency bound. -/
 theorem retainedAt_currentSameEndpoint
-    {B : ExactPrefixAcceptedFFGSemantics cfg ext E}
+    {B : CausalPrefixFFGInterpretation cfg ext E}
     (hT : E.ScheduledPrefixPremises cfg ext)
     (hsync : NextSlotSynchronyPremises cfg ext E)
     {v : ValidatorIndex} {q : Nat} {selected : Root}
@@ -304,8 +304,8 @@ end AcceptedRecentCandidateSourceCarrierAt
 
 /-- Every accepted store-global justified field has its carrier-local
 included certificate, including the trusted-anchor base case. -/
-theorem ExactPrefixAcceptedFFGSemantics.acceptedGlobalJustified_includedCertificate
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+theorem CausalPrefixFFGInterpretation.acceptedGlobalJustified_includedCertificate
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (hgen : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
       E.genesis_store = get_forkchoice_store cfg ast ablk ∧
         ast.slot = ablk.message.slot)
@@ -332,12 +332,12 @@ past justified root, while certificate exactness places that justified root
 at its declared epoch boundary.  The ordinary store checkpoint-epoch bound
 gives the reverse inequality. -/
 theorem justified_epoch_eq_queryCurrent
-    {B : ExactPrefixAcceptedFFGSemantics cfg ext E}
+    {B : CausalPrefixFFGInterpretation cfg ext E}
     (hT : E.ScheduledPrefixPremises cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
       (E := E) (anchor := B.anchor))
-    (P : AcceptedEpochCheckpointProjection B.anchor
+    (P : EpochCheckpointClosure B.anchor
       (E.AcceptedRoot cfg ext) B.state.C)
     (V : B.state.ExactLinkValidity)
     (hanchorExact : B.anchor =
@@ -384,14 +384,14 @@ theorem justified_epoch_eq_queryCurrent
   have hselectedPastEpoch : get_block_epoch cfg past selected = e := by
     simpa only [e, get_block_epoch, ← hselectedBlocks] using hcurrent
   obtain ⟨jCarrier, hjIncluded⟩ :=
-    ExactPrefixAcceptedFFGSemantics.acceptedGlobalJustified_includedCertificate
+    CausalPrefixFFGInterpretation.acceptedGlobalJustified_includedCertificate
       (E := E) cfg ext B hgenShort hanchor hpastCausal
   obtain ⟨hjIncluded⟩ := hjIncluded
   have hjCertified : CertifiedJustified cfg E B.anchor
       past.justified_checkpoint :=
     IncludedCertifiedJustified.toCertifiedJustified
       (cfg := cfg)
-      (Execution.AcceptedIncludedAttestationRelation.relation
+      (Execution.CausalCarrierAttestationRelation.relation
         cfg ext E B.state.includedAttestations) hjIncluded
   have hanchorLeJ : B.anchor.epoch ≤ past.justified_checkpoint.epoch :=
     CertifiedJustified.anchor_epoch_le (cfg := cfg) hjCertified
@@ -466,13 +466,13 @@ larger `GU`.  For a `GU` origin, the strengthened handler invariant records
 the old-block guard, so the executable selector is exactly `GU`.  The anchor
 arm uses positive AU/certificate evidence for the anchor-root source. -/
 theorem retainedAt_currentSameEndpoint
-    {B : ExactPrefixAcceptedFFGSemantics cfg ext E}
+    {B : CausalPrefixFFGInterpretation cfg ext E}
     (hT : E.ScheduledPrefixPremises cfg ext)
     (hsync : NextSlotSynchronyPremises cfg ext E)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
       (E := E) (anchor := B.anchor))
-    (P : AcceptedEpochCheckpointProjection B.anchor
+    (P : EpochCheckpointClosure B.anchor
       (E.AcceptedRoot cfg ext) B.state.C)
     (V : B.state.ExactLinkValidity)
     (hanchorExact : B.anchor =
@@ -550,7 +550,7 @@ theorem retainedAt_currentSameEndpoint
         CertifiedJustified.anchor_epoch_le (cfg := cfg)
           (IncludedCertifiedJustified.toCertifiedJustified
             (cfg := cfg)
-            (Execution.AcceptedIncludedAttestationRelation.relation
+            (Execution.CausalCarrierAttestationRelation.relation
               cfg ext E B.state.includedAttestations) hcertified)
       refine ⟨seed, hjKnown, hjSemantic, ?_⟩
       rw [← hjEpoch, hfieldAnchor]
@@ -655,13 +655,13 @@ the same retained endpoint carrier.  The former direct-justified arm is
 discharged by the executable-origin invariant rather than a cross-store
 checkpoint monotonicity premise. -/
 theorem retainedAt_currentSameEndpoint
-    {B : ExactPrefixAcceptedFFGSemantics cfg ext E}
+    {B : CausalPrefixFFGInterpretation cfg ext E}
     (hT : E.ScheduledPrefixPremises cfg ext)
     (hsync : NextSlotSynchronyPremises cfg ext E)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
       (E := E) (anchor := B.anchor))
-    (P : AcceptedEpochCheckpointProjection B.anchor
+    (P : EpochCheckpointClosure B.anchor
       (E.AcceptedRoot cfg ext) B.state.C)
     (V : B.state.ExactLinkValidity)
     (hanchorExact : B.anchor =

@@ -145,7 +145,7 @@ private theorem update_latest_messages_checkpointData
       split_ifs <;> rfl
 
 theorem on_attestation_LMP_of_observer {E : Execution Root} {obs : ValidatorIndex} {sl : Slot}
-    (hvalid : E.ObserverValidity cfg ext obs) {store store' : Store Root}
+    (hvalid : E.ObserverIndexedAttestationValidity cfg ext obs) {store store' : Store Root}
     {a : Attestation Root} {ifb : Bool} (hcur : get_current_slot cfg store ≤ sl)
     (h : LatestMessageProvenance E cfg sl store)
     (hh : on_attestation cfg ext store a ifb = some store')
@@ -189,7 +189,7 @@ theorem on_attestation_LMP_of_observer {E : Execution Root} {obs : ValidatorInde
 
 
 theorem apply_event_LMP_of_observer {E : Execution Root} {obs : ValidatorIndex} {sl : Slot} (hwf : WellFormedExecution E)
-    (hvalid : E.ObserverValidity cfg ext obs) {store store' : Store Root} {e : Event Root}
+    (hvalid : E.ObserverIndexedAttestationValidity cfg ext obs) {store store' : Store Root} {e : Event Root}
     (hsched : ∀ b, e = Event.block b → IsScheduledBlock E b)
     (hprov : BlockProvenance E store) (hcur : get_current_slot cfg store ≤ sl)
     (h : LatestMessageProvenance E cfg sl store)
@@ -218,7 +218,7 @@ theorem apply_event_LMP_of_observer {E : Execution Root} {obs : ValidatorIndex} 
 
 
 theorem LMP_foldl_of_observer {E : Execution Root} {obs : ValidatorIndex} {sl : Slot} (hwf : WellFormedExecution E)
-    (hvalid : E.ObserverValidity cfg ext obs) :
+    (hvalid : E.ObserverIndexedAttestationValidity cfg ext obs) :
     ∀ (l : List (Event Root)) (s : Store Root),
       (∀ b, Event.block b ∈ l → IsScheduledBlock E b) →
       BlockProvenance E s → get_current_slot cfg s ≤ sl →
@@ -263,7 +263,7 @@ theorem LMP_foldl_of_observer {E : Execution Root} {obs : ValidatorIndex} {sl : 
 
 theorem Execution.latestMessageProvenance_of_observer_validity {E : Execution Root}
     (hwf : WellFormedExecution E) (v : ValidatorIndex)
-    (hvalid : E.ObserverValidity cfg ext v)
+    (hvalid : E.ObserverIndexedAttestationValidity cfg ext v)
     (hgen : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
       E.genesis_store = get_forkchoice_store cfg ast ablk)
     (n : ℕ) :
@@ -307,7 +307,7 @@ variable {E : Execution Root}
 theorem ScheduledEventPrefix.latestMessageProvenance_of_observer_validity
     (hT : E.ScheduledPrefixPremises cfg ext)
     (p : E.ScheduledEventPrefix)
-    (hvalid : E.ObserverValidity cfg ext p.node)
+    (hvalid : E.ObserverIndexedAttestationValidity cfg ext p.node)
     (hn : E.WithinHorizon cfg (p.previousSecond + 1)) :
     LatestMessageProvenance E cfg (get_current_slot cfg (p.store cfg ext))
       (p.store cfg ext) := by

@@ -55,7 +55,7 @@ The `ObservedRestartCompatible` argument in the conclusion is intentionally
 unused: the stronger branch-indexed `ObservedResetCandidateInputAt` premise
 already contains the exact active restart facts. -/
 theorem ObservedResetCandidateInputAt.actualFCRGuardedObservedAdoption
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (hT : E.ScheduledPrefixPremises cfg ext)
     (hsync : NextSlotSynchronyPremises cfg ext E)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)

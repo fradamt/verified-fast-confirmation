@@ -39,7 +39,7 @@ def legacyPaperA32RootProjectionAt
     (hcoh : FFGTransitionCoherence cfg ext S)
     (w : ValidatorIndex) (m : ℕ)
     {r : Root} (hr : r ∈ (E.store cfg ext w m).block_roots) :
-    PaperA32RootProjectionAt cfg ext (S.paperA32View cfg)
+    PaperA32RootProjectionAt cfg ext (S.paperA32Inputs cfg)
       (E.store cfg ext w m) r where
   causal_store := E.store_causal cfg ext w m
   root_known := hr

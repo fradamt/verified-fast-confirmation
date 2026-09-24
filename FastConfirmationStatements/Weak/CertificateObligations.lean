@@ -29,7 +29,7 @@ Instance-specific premises: the balance source reads the ground registry
 (`registryConstant`/`checkpoint_states_total_active_balance` discharge these at
 the rule's actual balance sources, at every node), and the store-computed slot
 committees read back the ground-truth assignment
-(`Execution.PrefixCommitteeAgreement`; cf. `ObserverContext` — the honest-only
+(`Execution.PrefixCommitteeAgreement`; cf. `HistoricalNonHonestObserverContext` — the honest-only
 `BeaconExternalsPremises.committees_agree` is unusable at the observer). -/
 def CertificateHonestSupporter (E : Execution Root) : Prop :=
   ∀ (v : ValidatorIndex) (n : ℕ) (balance_source : BeaconState Root)
@@ -64,7 +64,7 @@ first slot (`votes_head`'s scope), and `block_root` is known to the observing
 store — carried instead of a genesis-start anchor hypothesis, which is strictly
 stronger and would not survive checkpoint sync (intended call sites discharge
 this knownness from `is_one_confirmed`, cf. `hbconf_of_genesisStart`). -/
-def CertificateDissemination (E : Execution Root) : Prop :=
+def CertificateDisseminationObligation (E : Execution Root) : Prop :=
   ∀ (v : ValidatorIndex) (n : ℕ) (balance_source : BeaconState Root)
     (block_root : Root) (start_slot end_slot : Slot),
     E.WithinHorizon cfg n →

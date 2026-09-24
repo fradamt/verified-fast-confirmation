@@ -15,7 +15,7 @@ public import FastConfirmationStatements.Premises.FCRCallPremises
 public import FastConfirmationStatements.Review
 public import FastConfirmationStatements.Traces
 public import FastConfirmationStatements.Weak.CertificateObligations
-public import FastConfirmationStatements.Weak.CompleteEvidence
+public import FastConfirmationStatements.Weak.CompletePriorSlotStoreEvidence
 public import FastConfirmationStatements.Weak.LiveMonotonicity
 public import FastConfirmationStatements.Premises.SelectedMargin
 public import FastConfirmationStatements.Weak.ObserverPremises

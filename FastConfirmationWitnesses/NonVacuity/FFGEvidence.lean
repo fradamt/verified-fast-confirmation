@@ -283,7 +283,7 @@ theorem includedVote_data {s : Slot} (hlo : 4 ≤ s) (hhi : s ≤ 6) :
   interval_cases s <;> rfl
 
 def acceptedIncludedEvidenceAt (s : Slot) (hlo : 4 ≤ s) (hhi : s ≤ 6) :
-    Execution.AcceptedIncludedAttestationEvidence witnessConfig
+    Execution.CausalCarrierAttestationEvidence witnessConfig
       witnessExternals witnessExecution
       witnessExternals.is_valid_indexed_attestation carrierRoot (vote s) where
   carrier_message := carrierSignedBlock.message
@@ -324,7 +324,7 @@ def acceptedIncludedEvidenceAt (s : Slot) (hlo : 4 ≤ s) (hhi : s ≤ 6) :
   carrier_accepted := carrier_acceptedBlockAt
 
 def witnessAcceptedIncludedAttestations :
-    Execution.AcceptedIncludedAttestationRelation witnessConfig
+    Execution.CausalCarrierAttestationRelation witnessConfig
       witnessExternals witnessExecution
       witnessExternals.is_valid_indexed_attestation where
   Included := witnessIncluded
@@ -471,7 +471,7 @@ theorem witnessFormed_carrier_child :
   exact Or.inr ⟨rfl, Or.inr rfl⟩
 
 theorem carrier_child_formation_causal :
-    AcceptedHonestTargetIncludedBeforeCarrier witnessConfig witnessExternals
+    HonestEarlierTargetVoteOnCarrierChain witnessConfig witnessExternals
       witnessExecution witnessIncluded carrierRoot childEpochOneCheckpoint := by
   refine ⟨carrierSignedBlock.message, carrier_acceptedBlockAt,
     0, ?_, 4, 4, vote4, ?_, ?_, ?_, ?_, ?_, ?_⟩
@@ -485,7 +485,7 @@ theorem carrier_child_formation_causal :
       ⟨rfl, Or.inl rfl⟩⟩
 
 def witnessAcceptedChainFFGState :
-    AcceptedChainFFGState witnessConfig witnessExternals witnessExecution
+    CausalCarrierFFGState witnessConfig witnessExternals witnessExecution
       anchorCheckpoint where
   attestationValidity := witnessExternals.is_valid_indexed_attestation
   includedAttestations := witnessAcceptedIncludedAttestations
@@ -777,7 +777,7 @@ theorem genesis_known_eq_anchor {r : WitnessRoot}
   simpa [witnessExecution, get_forkchoice_store, anchorSignedBlock] using hr
 
 def witnessAcceptedFFGTransitionCoherence :
-    AcceptedFFGTransitionCoherence witnessConfig witnessExternals
+    FFGSelectorsAndCheckpointReadsMatchBeaconStates witnessConfig witnessExternals
       witnessAcceptedChainFFGState where
   attestation_validity := rfl
   genesis_gj := by
@@ -865,7 +865,7 @@ def witnessAcceptedFFGTransitionCoherence :
     exact witnessAUCheckpointOfKnown hstore r hr c hAU
 
 def witnessAcceptedSemantics :
-    ExactPrefixAcceptedFFGSemantics witnessConfig witnessExternals
+    CausalPrefixFFGInterpretation witnessConfig witnessExternals
       witnessExecution where
   anchor := anchorCheckpoint
   state := witnessAcceptedChainFFGState
@@ -895,7 +895,7 @@ theorem witnessAU_carrier_child :
 /-! ## Accepted checkpoint projection -/
 
 def witnessAcceptedEpochCheckpointProjection :
-    AcceptedEpochCheckpointProjection anchorCheckpoint
+    EpochCheckpointClosure anchorCheckpoint
       (witnessExecution.AcceptedRoot witnessConfig witnessExternals) witnessC where
   checkpoint_root_accepted := by
     intro r e hr hanchor

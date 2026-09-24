@@ -27,7 +27,7 @@ namespace FastConfirmation.Spec
 variable {Root : Type*} [LinearOrder Root] [Inhabited Root]
 variable {cfg : Config} {ext : Externals Root}
 variable {E : Execution Root} {anchor : Checkpoint Root}
-variable {S : AcceptedChainFFGState cfg ext E anchor}
+variable {S : CausalCarrierFFGState cfg ext E anchor}
 
 namespace Execution
 
@@ -66,34 +66,34 @@ end Execution
 /-! ## Store-global accepted origin predicates -/
 
 def AcceptedGlobalJustifiedOrigin
-    (S : AcceptedChainFFGState cfg ext E anchor)
+    (S : CausalCarrierFFGState cfg ext E anchor)
     (store : Store Root) (c : Checkpoint Root) : Prop :=
   c = anchor ∨
     ∃ r, E.AcceptedCarrierIn (cfg := cfg) (ext := ext) store r ∧
       (c = S.GJ r ∨ c = S.GU r)
 
 def AcceptedGlobalUnrealizedJustifiedOrigin
-    (S : AcceptedChainFFGState cfg ext E anchor)
+    (S : CausalCarrierFFGState cfg ext E anchor)
     (store : Store Root) (c : Checkpoint Root) : Prop :=
   c = anchor ∨
     ∃ r, E.AcceptedCarrierIn (cfg := cfg) (ext := ext) store r ∧ c = S.GU r
 
 def AcceptedGlobalFinalizedOrigin
-    (S : AcceptedChainFFGState cfg ext E anchor)
+    (S : CausalCarrierFFGState cfg ext E anchor)
     (store : Store Root) (c : Checkpoint Root) : Prop :=
   c = anchor ∨
     ∃ r, E.AcceptedCarrierIn (cfg := cfg) (ext := ext) store r ∧
       (c = S.GF r ∨ c = S.GUF r)
 
 def AcceptedGlobalUnrealizedFinalizedOrigin
-    (S : AcceptedChainFFGState cfg ext E anchor)
+    (S : CausalCarrierFFGState cfg ext E anchor)
     (store : Store Root) (c : Checkpoint Root) : Prop :=
   c = anchor ∨
     ∃ r, E.AcceptedCarrierIn (cfg := cfg) (ext := ext) store r ∧ c = S.GUF r
 
 /-- Exact accepted provenance for the four store-global checkpoint fields. -/
 structure AcceptedFFGGlobalCheckpointOrigins
-    (S : AcceptedChainFFGState cfg ext E anchor)
+    (S : CausalCarrierFFGState cfg ext E anchor)
     (store : Store Root) : Prop where
   justified : AcceptedGlobalJustifiedOrigin S store
     store.justified_checkpoint
@@ -493,7 +493,7 @@ private theorem on_block_of_selectors
 
 /-- A concrete exact accepted block transition preserves global origins. -/
 theorem acceptedBlockTransition
-    (hcoh : AcceptedFFGSelectorCoherence cfg ext S)
+    (hcoh : FFGSelectorsMatchBeaconStates cfg ext S)
     (t : E.AcceptedBlockTransition cfg ext)
     (h : AcceptedFFGGlobalCheckpointOrigins S (t.atPrefix.store cfg ext)) :
     AcceptedFFGGlobalCheckpointOrigins S t.postStore := by
@@ -521,7 +521,7 @@ end AcceptedFFGGlobalCheckpointOrigins
 namespace Execution
 
 private theorem acceptedFFGGlobalCheckpointOrigins_take
-    (hcoh : AcceptedFFGSelectorCoherence cfg ext S)
+    (hcoh : FFGSelectorsMatchBeaconStates cfg ext S)
     (w : ValidatorIndex) (n : ℕ)
     (hbase : AcceptedFFGGlobalCheckpointOrigins S
       (on_tick cfg (E.store cfg ext w n) (E.time_at (n + 1)))) :
@@ -600,7 +600,7 @@ private theorem acceptedFFGGlobalCheckpointOrigins_take
 /-- Every ordinary execution boundary has accepted global checkpoint origins
 for the one semantic state selected before the boundary. -/
 theorem acceptedFFGGlobalCheckpointOrigins
-    (hcoh : AcceptedFFGSelectorCoherence cfg ext S)
+    (hcoh : FFGSelectorsMatchBeaconStates cfg ext S)
     (hgen : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
       E.genesis_store = get_forkchoice_store cfg ast ablk ∧
       ast.slot = ablk.message.slot)
@@ -628,7 +628,7 @@ theorem acceptedFFGGlobalCheckpointOrigins
 the semantic state fixed before the prefix. -/
 theorem ScheduledEventPrefix.acceptedFFGGlobalCheckpointOrigins
     (p : E.ScheduledEventPrefix)
-    (hcoh : AcceptedFFGSelectorCoherence cfg ext S)
+    (hcoh : FFGSelectorsMatchBeaconStates cfg ext S)
     (hgen : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
       E.genesis_store = get_forkchoice_store cfg ast ablk ∧
       ast.slot = ablk.message.slot)
@@ -644,7 +644,7 @@ theorem ScheduledEventPrefix.acceptedFFGGlobalCheckpointOrigins
 /-- Accepted global origins at every store in the exact causal domain. -/
 theorem CausalStore.acceptedFFGGlobalCheckpointOrigins
     {store : Store Root} (hstore : E.CausalStore cfg ext store)
-    (hcoh : AcceptedFFGSelectorCoherence cfg ext S)
+    (hcoh : FFGSelectorsMatchBeaconStates cfg ext S)
     (hgen : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
       E.genesis_store = get_forkchoice_store cfg ast ablk ∧
       ast.slot = ablk.message.slot)
@@ -665,7 +665,7 @@ formed carrier, its acceptance, and its full included/temporal evidence kept
 as named witnesses.  This is strictly more informative than a bare descent
 claim. -/
 structure AcceptedSelectorAUCarrier
-    (S : AcceptedChainFFGState cfg ext E anchor)
+    (S : CausalCarrierFFGState cfg ext E anchor)
     (store : Store Root) (c : Checkpoint Root) where
   tip : Root
   carrier : Root
@@ -674,12 +674,12 @@ structure AcceptedSelectorAUCarrier
   au : S.AU cfg ext tip c
   tip_descends_carrier : E.RootDescends tip carrier
   carrier_accepted : E.AcceptedRoot cfg ext carrier
-  formed_evidence : AcceptedFormedCheckpointEvidence cfg ext E
+  formed_evidence : IncludedVoteCheckpointCertificate cfg ext E
     S.includedAttestations.Included anchor carrier c
 
 /-- Proposition-level ownership of one named accepted selector carrier. -/
 def AcceptedSelectorAUEvidence
-    (S : AcceptedChainFFGState cfg ext E anchor)
+    (S : CausalCarrierFFGState cfg ext E anchor)
     (store : Store Root) (c : Checkpoint Root) : Prop :=
   Nonempty (AcceptedSelectorAUCarrier S store c)
 
@@ -703,7 +703,7 @@ that distinct executable claim follows exactly. -/
 theorem checkpointRoot_known
     {store : Store Root} {c : Checkpoint Root}
     (h : AcceptedSelectorAUCarrier S store c)
-    (hcoh : AcceptedFFGTransitionCoherence cfg ext S)
+    (hcoh : FFGSelectorsAndCheckpointReadsMatchBeaconStates cfg ext S)
     (hstore : E.CausalStore cfg ext store)
     (hparent : ParentSlotLt store)
     (hwalk : WalkKnown store
@@ -762,33 +762,33 @@ end AcceptedFFGGlobalCheckpointOrigins
 /-- The existing accepted block-local trajectory paired with the new accepted
 store-global origin trajectory at one exact store. -/
 structure AcceptedFFGGlobalStoreProjection
-    (S : AcceptedChainFFGState cfg ext E anchor)
+    (S : CausalCarrierFFGState cfg ext E anchor)
     (store : Store Root) : Prop where
   blockLocal : AcceptedFFGStoreProjection S store
   storeGlobal : AcceptedFFGGlobalCheckpointOrigins S store
 
-namespace ExactPrefixAcceptedFFGSemantics
+namespace CausalPrefixFFGInterpretation
 
 /-- One preselected production state projects both block-local selectors and
 store-global origins at every exact causal store. -/
 theorem causalStoreGlobalProjection
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (hgen : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
       E.genesis_store = get_forkchoice_store cfg ast ablk ∧
       ast.slot = ablk.message.slot)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     {store : Store Root} (hstore : E.CausalStore cfg ext store) :
     AcceptedFFGGlobalStoreProjection B.state store :=
-  ⟨Execution.ExactPrefixAcceptedFFGSemantics.causalStoreProjection B hstore,
+  ⟨Execution.CausalPrefixFFGInterpretation.causalStoreProjection B hstore,
     hstore.acceptedFFGGlobalCheckpointOrigins
-      B.coherence.toAcceptedFFGSelectorCoherence hgen hanchor⟩
+      B.coherence.toFFGSelectorsMatchBeaconStates hgen hanchor⟩
 
 
 /-- Production justified-selector consumer at an arbitrary exact causal store.
 The conclusion is AU carrier evidence, not a mislabeled checkpoint-knownness
 claim. -/
 theorem globalJustified_anchor_or_AUEvidence
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (hgen : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
       E.genesis_store = get_forkchoice_store cfg ast ablk ∧
       ast.slot = ablk.message.slot)
@@ -803,7 +803,7 @@ theorem globalJustified_anchor_or_AUEvidence
 /-- Production finalized-selector consumer with the same explicit accepted
 carrier and included/temporal formation evidence. -/
 theorem globalFinalized_anchor_or_AUEvidence
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (hgen : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
       E.genesis_store = get_forkchoice_store cfg ast ablk ∧
       ast.slot = ablk.message.slot)
@@ -817,7 +817,7 @@ theorem globalFinalized_anchor_or_AUEvidence
 
 
 
-end ExactPrefixAcceptedFFGSemantics
+end CausalPrefixFFGInterpretation
 
 end FastConfirmation.Spec
 

@@ -941,7 +941,7 @@ theorem NextSlotSafetyPremises.live_finalized_slot_le_current_start
       (E.store cfg ext w t).finalized_checkpoint.root ≤
         compute_start_slot_at_epoch cfg e := by
   let st := E.store cfg ext w t
-  have hboundary := Execution.ExactPrefixAcceptedFFGSemantics.finalizedBoundaryRealizationAt
+  have hboundary := Execution.CausalPrefixFFGInterpretation.finalizedBoundaryRealizationAt
     cfg ext h.semantics h.trajectory h.anchor_eq h.anchor_boundary w t
   have hslot : get_block_slot st st.finalized_checkpoint.root ≤
       compute_start_slot_at_epoch cfg st.finalized_checkpoint.epoch :=
@@ -984,7 +984,7 @@ theorem NextSlotSafetyPremises.live_finalized_slot_le_previous_start
       (E.store cfg ext w t).finalized_checkpoint.root ≤
         compute_start_slot_at_epoch cfg e := by
   let st := E.store cfg ext w t
-  have hboundary := Execution.ExactPrefixAcceptedFFGSemantics.finalizedBoundaryRealizationAt
+  have hboundary := Execution.CausalPrefixFFGInterpretation.finalizedBoundaryRealizationAt
     cfg ext h.semantics h.trajectory h.anchor_eq h.anchor_boundary w t
   have hslot : get_block_slot st st.finalized_checkpoint.root ≤
       compute_start_slot_at_epoch cfg st.finalized_checkpoint.epoch :=
@@ -1049,7 +1049,7 @@ theorem NextSlotSafetyPremises.live_finalized_below_or_eq_checkpoint
       have hsucc : (E.store cfg ext w t).finalized_checkpoint.epoch + 1 ≤ e :=
         Nat.le_of_succ_le_succ hdelay
       exact (Nat.lt_succ_self _).trans_le hsucc
-    have hboundary := Execution.ExactPrefixAcceptedFFGSemantics.finalizedBoundaryRealizationAt
+    have hboundary := Execution.CausalPrefixFFGInterpretation.finalizedBoundaryRealizationAt
       cfg ext h.semantics h.trajectory h.anchor_eq h.anchor_boundary w t
     have hstrict : get_block_slot st st.finalized_checkpoint.root <
         compute_start_slot_at_epoch cfg e :=

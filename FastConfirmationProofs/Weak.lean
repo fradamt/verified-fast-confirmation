@@ -20,7 +20,7 @@ public import FastConfirmationProofs.Weak.Discount.WeakEndpointClasses
 public import FastConfirmationProofs.Weak.Discount.WeakFreshSupport
 public import FastConfirmationProofs.Weak.Discount.WeakSelectedMarginInputs
 public import FastConfirmationProofs.Weak.Discount.WeakStatusMarginConstruction
-public import FastConfirmationProofs.Weak.Evidence.CompleteEvidence
+public import FastConfirmationProofs.Weak.Evidence.CompletePriorSlotStoreEvidence
 public import FastConfirmationProofs.Weak.History.AcceptedHistoricalA32LazyCrossing
 public import FastConfirmationProofs.Weak.History.AcceptedHistoricalA32OriginCall
 public import FastConfirmationProofs.Weak.History.WeakCandidateHistoryRecurrence

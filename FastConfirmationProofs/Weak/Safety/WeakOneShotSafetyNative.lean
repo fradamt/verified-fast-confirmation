@@ -20,7 +20,7 @@ Sections 4–6 (`coveredDescendStepChainSupply_of_selectedMarginsAt_weak`,
 producers instead of the strong/`_at_observer` ones.
 
 This content cannot live inside `WeakOneShotSafety.lean` itself: that file is
-imported (for `WeakObserverMarginAssumptions`/`ObserverCoherence`) by
+imported (for `WeakObserverMarginPremises`/`ObserverCoherence`) by
 `WeakSelectedEdgeGeometry.lean`, which `WeakCoveredMarginConstruction.lean`
 (the weak supplier, Stage J-e) imports in turn, and the headline theorem below
 needs that supplier — adding the reverse edge would make the import graph
@@ -39,7 +39,7 @@ Composed with `Weak.selectedCoveredMarginSupplyAt_of_filterSupply_at_observer`
 (Stage J-e), this discharges the `hmargin` premise entirely: the only
 premises left are `hwalkDomain` (endpoint-side only, `F4`), `hfilter` (the
 FFG-realization filter supply — S10, the next wave), and
-`ObserverCoherence`/`WeakObserverMarginAssumptions` (the observer's own store
+`ObserverCoherence`/`WeakObserverMarginPremises` (the observer's own store
 coherence, honesty-free).
 -/
 
@@ -63,7 +63,7 @@ branch (`F3`: three constructors, not four) routes through
 `Weak.crossing_descendStep_of_selectedInputs_at_observer`. -/
 
 theorem coveredDescendStepChainSupply_of_selectedMarginsAt_weak_native
-    {obs : ValidatorIndex} (hW : E.WeakObserverMarginAssumptions cfg ext obs)
+    {obs : ValidatorIndex} (hW : E.WeakObserverMarginPremises cfg ext obs)
     {glc r₀ : Root} {q : ℕ}
     (hqH : E.WithinHorizon cfg q) (query : FastConfirmationStore Root)
     (hstore : query.store = E.store cfg ext obs q)
@@ -115,7 +115,7 @@ mentions `SelectedCoveredMarginSupplyAt`, only the already-built
 `safeFrom_find_latest_confirmed_descendant_covered_at_slotStart_weak`. -/
 
 theorem safeFrom_find_latest_confirmed_descendant_covered_at_slotStart_weak_native
-    {obs : ValidatorIndex} (hW : E.WeakObserverMarginAssumptions cfg ext obs)
+    {obs : ValidatorIndex} (hW : E.WeakObserverMarginPremises cfg ext obs)
     (q : ℕ)
     (hqH : E.WithinHorizon cfg q)
     (query : FastConfirmationStore Root)
@@ -142,7 +142,7 @@ stated over `Weak.SelectedCoveredMarginSupplyAt` instead of the strong
 
 theorem weak_safeFrom_find_latest_confirmed_descendant_native
     {E : Execution Root} {obs : ValidatorIndex}
-    (hW : E.WeakObserverMarginAssumptions cfg ext obs)
+    (hW : E.WeakObserverMarginPremises cfg ext obs)
     (q : ℕ) (hqH : E.WithinHorizon cfg q)
     (fcr_store : FastConfirmationStore Root)
     (hstore : fcr_store.store = E.store cfg ext obs q)
@@ -201,7 +201,7 @@ S10's target. -/
 
 theorem weak_safeFrom_find_latest_confirmed_descendant_discharged
     {E : Execution Root} {obs : ValidatorIndex}
-    (hW : E.WeakObserverMarginAssumptions cfg ext obs)
+    (hW : E.WeakObserverMarginPremises cfg ext obs)
     (hwalkDomain : E.PostAnchorHonestVoteTargetWalkDomain cfg ext)
     (q : ℕ) (hqH : E.WithinHorizon cfg q)
     (fcr_store : FastConfirmationStore Root)
@@ -225,7 +225,7 @@ at every honest endpoint at or after the query second — with `hmargin`
 discharged into `hfilter`. -/
 theorem weak_confirmed_head_discharged
     {E : Execution Root} {obs : ValidatorIndex}
-    (hW : E.WeakObserverMarginAssumptions cfg ext obs)
+    (hW : E.WeakObserverMarginPremises cfg ext obs)
     (hwalkDomain : E.PostAnchorHonestVoteTargetWalkDomain cfg ext)
     (q : ℕ) (hqH : E.WithinHorizon cfg q)
     (fcr_store : FastConfirmationStore Root)
@@ -257,16 +257,16 @@ becomes `hfilter`. -/
 output, seeded at the observer's own finalized checkpoint, is `SafeFrom` at
 the actual query second, with `hmargin` discharged into `hfilter`.
 
-Observer-wise the premise surface is `hW : WeakObserverAssumptions` — the
+Observer-wise the premise surface is `hW : WeakObserverPremises` — the
 floor, `obs ∉ E.honest`, and committee readback at the observer's own store.
 Since `B`/`hanchor`/`hboundary` are carried here anyway (and `hT` is derived
 from `hW.base`), `ObserverCoherence.justified_root_known` is *derived* via
-`WeakObserverAssumptions.toMarginAssumptions`, not assumed. -/
+`WeakObserverPremises.toMarginAssumptions`, not assumed. -/
 theorem weak_safeFrom_find_latest_confirmed_descendant_discharged_from_finalized
     {E : Execution Root} {obs : ValidatorIndex}
-    (hW : E.WeakObserverAssumptions cfg ext obs)
+    (hW : E.WeakObserverPremises cfg ext obs)
     (hwalkDomain : E.PostAnchorHonestVoteTargetWalkDomain cfg ext)
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
       (E := E) (anchor := B.anchor))
@@ -310,9 +310,9 @@ theorem weak_safeFrom_find_latest_confirmed_descendant_discharged_from_finalized
 /-- Endpoint form of the discharged finalized-base corollary. -/
 theorem weak_confirmed_head_discharged_from_finalized
     {E : Execution Root} {obs : ValidatorIndex}
-    (hW : E.WeakObserverAssumptions cfg ext obs)
+    (hW : E.WeakObserverPremises cfg ext obs)
     (hwalkDomain : E.PostAnchorHonestVoteTargetWalkDomain cfg ext)
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
       (E := E) (anchor := B.anchor))

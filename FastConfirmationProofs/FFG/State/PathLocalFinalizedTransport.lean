@@ -158,8 +158,8 @@ so a single finalized-boundary walk reflects the anchor at the same tip.  No
 visibility, source/finalized dominance assumption, or safety premise is used. -/
 theorem finalizedRoot_eq_checkpointBlock_of_anchor
     {E : Execution Root}
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
-    (P : AcceptedEpochCheckpointProjection B.anchor
+    (B : CausalPrefixFFGInterpretation cfg ext E)
+    (P : EpochCheckpointClosure B.anchor
       (E.AcceptedRoot cfg ext) B.state.C)
     (V : B.state.ExactLinkValidity)
     (hanchorExact : B.anchor =

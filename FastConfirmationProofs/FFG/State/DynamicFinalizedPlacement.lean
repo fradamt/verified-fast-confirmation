@@ -42,7 +42,7 @@ namespace AcceptedFFGStoreProjection
 read is exactly the retained root's realized `GJ` or eager `GU` selector. -/
 theorem getVotingSource_eq_gj_or_gu
     {E : Execution Root} {anchor : Checkpoint Root}
-    {S : AcceptedChainFFGState cfg ext E anchor}
+    {S : CausalCarrierFFGState cfg ext E anchor}
     {store : Store Root}
     (h : AcceptedFFGStoreProjection S store)
     {tip : Root} (htip : tip ∈ store.block_roots) :
@@ -64,7 +64,7 @@ The global finalized field need not equal a block-local finalized selector at
 tip whose epoch dominates the field. -/
 structure AcceptedDynamicFinalizedPlacementAt
     {E : Execution Root} {anchor : Checkpoint Root}
-    (S : AcceptedChainFFGState cfg ext E anchor)
+    (S : CausalCarrierFFGState cfg ext E anchor)
     (store : Store Root) (tip : Root) : Prop where
   tip_known : tip ∈ store.block_roots
   tip_accepted : E.AcceptedRoot cfg ext tip
@@ -75,7 +75,7 @@ structure AcceptedDynamicFinalizedPlacementAt
         S.includedAttestations.Included anchor tip target) ∧
       store.finalized_checkpoint.epoch ≤ target.epoch
 
-namespace ExactPrefixAcceptedFFGSemantics
+namespace CausalPrefixFFGInterpretation
 
 /-- Visibility of the endpoint justified epoch at one retained tip produces
 the exact consumer-shaped finalized placement.  Global field order is
@@ -83,7 +83,7 @@ handler-derived, while the retained target and its certificate come from the
 same preselected accepted semantic state. -/
 theorem dynamicFinalizedPlacementAt_of_sourceVisible
     {E : Execution Root}
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (hgen : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
       E.genesis_store = get_forkchoice_store cfg ast ablk ∧
         ast.slot = ablk.message.slot)
@@ -138,7 +138,7 @@ theorem dynamicFinalizedPlacementAt_of_sourceVisible
     }
 
 
-end ExactPrefixAcceptedFFGSemantics
+end CausalPrefixFFGInterpretation
 
 namespace AcceptedDynamicFinalizedPlacementAt
 
@@ -150,12 +150,12 @@ target certificate is on `tip`; exact accountability is deliberately
 cross-carrier, so no equality between those two carriers is assumed. -/
 theorem finalizedRoot_eq_checkpointBlock_at_tip
     {E : Execution Root}
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (hgen : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
       E.genesis_store = get_forkchoice_store cfg ast ablk ∧
         ast.slot = ablk.message.slot)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
-    (P : AcceptedEpochCheckpointProjection B.anchor
+    (P : EpochCheckpointClosure B.anchor
       (E.AcceptedRoot cfg ext) B.state.C)
     (V : B.state.ExactLinkValidity)
     (hanchorExact : B.anchor =
@@ -197,12 +197,12 @@ owns the finalized-boundary walk; source visibility derives the retained
 accepted target, and accepted global provenance supplies finalization. -/
 theorem finalizedRoot_eq_checkpointBlock_of_acceptedVisible
     {E : Execution Root}
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (hgen : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
       E.genesis_store = get_forkchoice_store cfg ast ablk ∧
         ast.slot = ablk.message.slot)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
-    (P : AcceptedEpochCheckpointProjection B.anchor
+    (P : EpochCheckpointClosure B.anchor
       (E.AcceptedRoot cfg ext) B.state.C)
     (V : B.state.ExactLinkValidity)
     (hanchorExact : B.anchor =

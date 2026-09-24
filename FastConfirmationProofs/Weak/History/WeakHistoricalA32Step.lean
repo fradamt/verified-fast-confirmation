@@ -267,7 +267,7 @@ The epoch arithmetic, the accepted-segment constructor
 projection to `AcceptedProjectedSameEpochSegment` are selector-free and reused
 verbatim. -/
 theorem selectedCurrentNoCrossingAcceptedSegment
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (hwfE : WellFormedExecution E)
     (hcore : E.ExactCausalStoreWellFormedCore cfg ext)
     {query : FastConfirmationStore Root}
@@ -363,7 +363,7 @@ Substitutions are the same as for the segment lemma above.  The payload side
 `acceptedProjectedSameEpochSegment_rootDescends`) is honesty-free and
 selector-free and is reused verbatim. -/
 noncomputable def selectedCurrentNoCrossingLineage
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (hwfE : WellFormedExecution E)
     (hcore : E.ExactCausalStoreWellFormedCore cfg ext)
     {query : FastConfirmationStore Root}
@@ -580,7 +580,7 @@ theorem along `E.weakFcrStep_store` / `E.fcrStep_store`; nothing is cloned and
 the reset classifiers of `AcceptedResetCheckpointClassification.lean` are used
 only through the strong theorem. -/
 noncomputable def actualFinalizedResetCurrentAnchorLineage_core
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (hT : E.ScheduledPrefixPremises cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : Execution.TrustedAnchorBoundaryAligned (cfg := cfg)
@@ -605,7 +605,7 @@ noncomputable def actualFinalizedResetCurrentAnchorLineage_core
 
 /-- Eager instantiation, unchanged for every pre-existing weak caller. -/
 noncomputable def actualFinalizedResetCurrentAnchorLineage
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (hT : E.ScheduledPrefixPremises cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : Execution.TrustedAnchorBoundaryAligned (cfg := cfg)
@@ -650,7 +650,7 @@ the producer's own `intro`duced antecedent, never from the weak edge), so they
 are reused verbatim. -/
 noncomputable def
     acceptedFixedSourceProducerAt_of_selectedCurrentCrossing
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (hT : E.ScheduledPrefixPremises cfg ext)
     (hphase : Phase0SourceCoherence cfg ext)
     (hboundaryPhase : Phase0BoundarySourceCoherence cfg ext)
@@ -801,7 +801,7 @@ substitutions `E.fcrStoreAtCall` → `E.weakFcrStep` and `E.getLatestConfirmedTr
 bundle into `Weak.selectedCurrentNoCrossingLineage`. -/
 noncomputable def
     selectedCurrentNoCrossingLineageAt_at_observer
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (hT : E.ScheduledPrefixPremises cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : Execution.TrustedAnchorBoundaryAligned (cfg := cfg)

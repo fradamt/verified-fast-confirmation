@@ -126,14 +126,14 @@ side: the endpoint binder `SelectedCanonicalBeforeEndpointAt` is strict below
 
 /-- Lazy certification obligation at the observer, bounded by the write-back
 second `N`. -/
-def LazyCertAt (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+def LazyCertAt (B : CausalPrefixFFGInterpretation cfg ext E)
     (obs : ValidatorIndex) (N : ℕ) (c : Checkpoint Root) : Prop :=
   Weak.ObserverPriorCallWriteBackSafe cfg ext E obs N →
     Nonempty (CertifiedJustified cfg E B.anchor c)
 
 /-- Lazy support obligation at the observer, bounded by the write-back second
 `N`. -/
-def LazySupportAt (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+def LazySupportAt (B : CausalPrefixFFGInterpretation cfg ext E)
     (obs : ValidatorIndex) (N : ℕ) (origin : Root) (e : Epoch) : Prop :=
   ∀ w : ValidatorIndex, w ∈ E.honest → ∀ m : ℕ, E.WithinHorizon cfg m →
     e + 2 ≤ get_current_store_epoch cfg (E.store cfg ext w m) →
@@ -144,7 +144,7 @@ def LazySupportAt (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
 
 /-- Widening the second bound weakens the obligation. -/
 theorem LazyCertAt.mono {E : Execution Root}
-    {B : ExactPrefixAcceptedFFGSemantics cfg ext E} {obs : ValidatorIndex}
+    {B : CausalPrefixFFGInterpretation cfg ext E} {obs : ValidatorIndex}
     {N N' : ℕ} (hNN : N ≤ N') {c : Checkpoint Root}
     (h : Weak.LazyCertAt cfg ext E B obs N c) :
     Weak.LazyCertAt cfg ext E B obs N' c :=
@@ -152,7 +152,7 @@ theorem LazyCertAt.mono {E : Execution Root}
 
 /-- Widening the second bound weakens the support obligation. -/
 theorem LazySupportAt.mono {E : Execution Root}
-    {B : ExactPrefixAcceptedFFGSemantics cfg ext E} {obs : ValidatorIndex}
+    {B : CausalPrefixFFGInterpretation cfg ext E} {obs : ValidatorIndex}
     {N N' : ℕ} (hNN : N ≤ N') {origin : Root} {e : Epoch}
     (h : Weak.LazySupportAt cfg ext E B obs N origin e) :
     Weak.LazySupportAt cfg ext E B obs N' origin e :=
@@ -161,7 +161,7 @@ theorem LazySupportAt.mono {E : Execution Root}
 
 /-- Every eagerly certified payload is lazily certified. -/
 theorem lazyCertAt_of_eager {E : Execution Root}
-    {B : ExactPrefixAcceptedFFGSemantics cfg ext E} {obs : ValidatorIndex}
+    {B : CausalPrefixFFGInterpretation cfg ext E} {obs : ValidatorIndex}
     {N : ℕ} {c : Checkpoint Root}
     (h : Nonempty (CertifiedJustified cfg E B.anchor c)) :
     Weak.LazyCertAt cfg ext E B obs N c :=
@@ -169,7 +169,7 @@ theorem lazyCertAt_of_eager {E : Execution Root}
 
 /-- Every eagerly supported payload is lazily supported. -/
 theorem lazySupportAt_of_eager {E : Execution Root}
-    {B : ExactPrefixAcceptedFFGSemantics cfg ext E} {obs : ValidatorIndex}
+    {B : CausalPrefixFFGInterpretation cfg ext E} {obs : ValidatorIndex}
     {N : ℕ} {origin : Root} {e : Epoch}
     (h : E.AcceptedHistoricalA32DeferredSupportAt cfg ext B origin e) :
     Weak.LazySupportAt cfg ext E B obs N origin e :=
@@ -177,13 +177,13 @@ theorem lazySupportAt_of_eager {E : Execution Root}
 
 /-- The trusted-anchor payload discharges both lazy obligations outright. -/
 theorem lazyCertAt_anchor {E : Execution Root}
-    {B : ExactPrefixAcceptedFFGSemantics cfg ext E} {obs : ValidatorIndex}
+    {B : CausalPrefixFFGInterpretation cfg ext E} {obs : ValidatorIndex}
     {N : ℕ} : Weak.LazyCertAt cfg ext E B obs N B.anchor :=
   fun _ => ⟨CertifiedJustified.anchor⟩
 
 /-- The trusted-anchor support arm, recorded lazily. -/
 theorem lazySupportAt_anchor {E : Execution Root}
-    {B : ExactPrefixAcceptedFFGSemantics cfg ext E} {obs : ValidatorIndex}
+    {B : CausalPrefixFFGInterpretation cfg ext E} {obs : ValidatorIndex}
     {N : ℕ} {origin : Root} {e : Epoch}
     (h : B.state.C origin e = B.anchor) :
     Weak.LazySupportAt cfg ext E B obs N origin e :=
@@ -192,7 +192,7 @@ theorem lazySupportAt_anchor {E : Execution Root}
 /-- The lazy support closure transports along a same-epoch segment exactly as
 the eager one does. -/
 theorem lazySupportAt_transport {E : Execution Root}
-    {B : ExactPrefixAcceptedFFGSemantics cfg ext E} {obs : ValidatorIndex}
+    {B : CausalPrefixFFGInterpretation cfg ext E} {obs : ValidatorIndex}
     {N : ℕ} {origin tip : Root} {e : Epoch}
     (hcheckpoint : B.state.C tip e = B.state.C origin e)
     (hsource : B.state.GJ tip = B.state.GJ origin)
@@ -204,7 +204,7 @@ theorem lazySupportAt_transport {E : Execution Root}
 
 /-- Widen a lazily instantiated payload's second bound. -/
 noncomputable def observerHistoricalA32LazyPayload_mono {E : Execution Root}
-    {B : ExactPrefixAcceptedFFGSemantics cfg ext E} {obs : ValidatorIndex}
+    {B : CausalPrefixFFGInterpretation cfg ext E} {obs : ValidatorIndex}
     {N N' : ℕ} (hNN : N ≤ N') {origin : Root} {e : Epoch}
     (h : E.AcceptedHistoricalA32GatePayloadCoreAt cfg ext B origin e
       (Weak.LazyCertAt cfg ext E B obs N)
@@ -218,7 +218,7 @@ noncomputable def observerHistoricalA32LazyPayload_mono {E : Execution Root}
 /-- Widen a lazily instantiated lineage's second bound: the weak write-back
 induction's extension step. -/
 noncomputable def observerHistoricalA32LazyLineage_mono {E : Execution Root}
-    {B : ExactPrefixAcceptedFFGSemantics cfg ext E} {obs : ValidatorIndex}
+    {B : CausalPrefixFFGInterpretation cfg ext E} {obs : ValidatorIndex}
     {N N' : ℕ} (hNN : N ≤ N') {tip : Root} {e : Epoch}
     (h : E.AcceptedHistoricalA32LineageCoreAt cfg ext B tip e
       (Weak.LazyCertAt cfg ext E B obs N)
@@ -300,7 +300,7 @@ strong proof are replaced by:
 The voter-side families are untouched: they are already quantified over
 `E.honest`. -/
 theorem honestVotesSupportTarget_capped
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (hT : E.ScheduledPrefixPremises cfg ext)
     (hA : SelectedMarginAssumptions cfg ext E)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
@@ -448,7 +448,7 @@ theorem safeFrom_of_prior {obs : ValidatorIndex} {second : ℕ} {origin : Root}
 /-- **The fixed-source gate realization at the observer's crossing call**, run
 from the rebuilt proviso.  The producer is the unchanged strong one. -/
 theorem fixedSourceGateRealization_capped
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (hT : E.ScheduledPrefixPremises cfg ext)
     (hA : SelectedMarginAssumptions cfg ext E)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
@@ -475,7 +475,7 @@ theorem fixedSourceGateRealization_capped
 
 /-- The certificate half of the lazy payload at the observer. -/
 theorem certifiedFixedSource_capped
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (hT : E.ScheduledPrefixPremises cfg ext)
     (hA : SelectedMarginAssumptions cfg ext E)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
@@ -501,7 +501,7 @@ theorem certifiedFixedSource_capped
 
 /-- The support half of the lazy payload at the observer. -/
 theorem deferredSupport_capped
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (hT : E.ScheduledPrefixPremises cfg ext)
     (hA : SelectedMarginAssumptions cfg ext E)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
@@ -533,7 +533,7 @@ theorem deferredSupport_capped
 Discharged by `hprior` at the consuming call, which is legitimate exactly when
 the origin call sits strictly below the bound. -/
 theorem lazyCert
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (hT : E.ScheduledPrefixPremises cfg ext)
     (hA : SelectedMarginAssumptions cfg ext E)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
@@ -555,7 +555,7 @@ theorem lazyCert
 
 /-- **The lazy support closure at the observer's crossing call.** -/
 theorem lazySupport
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (hT : E.ScheduledPrefixPremises cfg ext)
     (hA : SelectedMarginAssumptions cfg ext E)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)

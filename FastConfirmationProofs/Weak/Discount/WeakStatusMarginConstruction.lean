@@ -37,7 +37,7 @@ in the classes of the honest endpoint:
   equivocation subtraction, so both crossing arms have one shape.
 
 The observer contributes only its own validated handler run
-(`ObserverValidity`), its committee readback, and its recorded cells. No
+(`ObserverIndexedAttestationValidity`), its committee readback, and its recorded cells. No
 delivery to the observer and no observer honesty is used.
 -/
 
@@ -422,7 +422,7 @@ supporters only; the rest of the endpoint ancestor class stays in the strip. -/
 theorem endpoint_status_strip_lo_at_observer {E : Execution Root}
     (hA : SelectedMarginAssumptions cfg ext E)
     {obs : ValidatorIndex} {q : ℕ} (hqH : E.WithinHorizon cfg q)
-    (hvalid : E.ObserverValidity cfg ext obs)
+    (hvalid : E.ObserverIndexedAttestationValidity cfg ext obs)
     (hcomm : E.PrefixCommitteeAgreement cfg ext (E.store cfg ext obs q))
     {query : FastConfirmationStore Root}
     (hstore : query.store = E.store cfg ext obs q)
@@ -663,7 +663,7 @@ is the committee-support growth of the root ledger. -/
 theorem statusMargin_loWindow_at_observer {E : Execution Root}
     (hA : SelectedMarginAssumptions cfg ext E)
     (hwalkDomain : E.PostAnchorHonestVoteTargetWalkDomain cfg ext)
-    {obs : ValidatorIndex} (hvalid : E.ObserverValidity cfg ext obs)
+    {obs : ValidatorIndex} (hvalid : E.ObserverIndexedAttestationValidity cfg ext obs)
     {q : ℕ} (hqH : E.WithinHorizon cfg q)
     (hcomm : E.PrefixCommitteeAgreement cfg ext (E.store cfg ext obs q))
     {query : FastConfirmationStore Root}
@@ -1293,7 +1293,7 @@ child slot. Both edge regimes use the non-subtractive weak certificate. -/
 theorem statusMargin_crossing_at_observer {E : Execution Root}
     (hA : SelectedMarginAssumptions cfg ext E)
     (hwalkDomain : E.PostAnchorHonestVoteTargetWalkDomain cfg ext)
-    {obs : ValidatorIndex} (hvalid : E.ObserverValidity cfg ext obs)
+    {obs : ValidatorIndex} (hvalid : E.ObserverIndexedAttestationValidity cfg ext obs)
     {q : ℕ} (hqH : E.WithinHorizon cfg q)
     (hcomm : E.PrefixCommitteeAgreement cfg ext (E.store cfg ext obs q))
     {query : FastConfirmationStore Root}

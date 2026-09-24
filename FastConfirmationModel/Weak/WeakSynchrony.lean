@@ -20,7 +20,7 @@ The `Synchrony`/`NextSlotSynchronyPremises` records in `Assumptions.lean` alread
 quantify senders/holders and receivers over `E.honest`, so they are reused
 verbatim. The current weak safety statements allow any observer index,
 including an honest one. Their premise bundle has no dedicated observer
-delivery or propagation field. The older `ObserverContext` record below is a
+delivery or propagation field. The older `HistoricalNonHonestObserverContext` record below is a
 historical helper that requires an observer outside `E.honest`; audited
 witnesses do not use it.
 Authenticity of its inbox still follows from the global records
@@ -91,7 +91,7 @@ variable (cfg : Config) (ext : Externals Root)
 
 /-- Historical helper for an observer outside `E.honest`. Audited weak safety
 witnesses use an arbitrary observer index and do not use this record. -/
-structure ObserverContext (E : Execution Root) where
+structure HistoricalNonHonestObserverContext (E : Execution Root) where
   obs : ValidatorIndex
   obs_not_honest : obs ∉ E.honest
 
@@ -371,7 +371,7 @@ def get_certified_head (store : Store Root) (balance_source : BeaconState Root) 
 
 /-- Certificate for the selected head-chain carrier, with completed-slot
 votes only. This does not assert that the actual fork-choice head is certified. -/
-def has_head_broadcast_certificate (store : Store Root)
+def has_carrier_broadcast_certificate (store : Store Root)
     (balance_source : BeaconState Root) : Bool :=
   let head := get_certified_head cfg ext store balance_source
   has_broadcast_certificate cfg ext store balance_source head
@@ -385,7 +385,7 @@ def will_no_conflicting_checkpoint_be_justified (store : Store Root)
   if get_current_target cfg store = store.unrealized_justified_checkpoint ∧
       get_current_target cfg store = store.unrealized_justifications
         (get_certified_head cfg ext store balance_source) ∧
-      has_head_broadcast_certificate cfg ext store balance_source then
+      has_carrier_broadcast_certificate cfg ext store balance_source then
     true
   else
     let state := get_pulled_up_head_state cfg ext store
@@ -450,7 +450,7 @@ def update_fast_confirmation_variables (fcr_store : FastConfirmationStore Root) 
       previous_epoch_observed_justified_checkpoint :=
         fcr_store.current_epoch_observed_justified_checkpoint
       current_epoch_observed_justified_checkpoint :=
-        if has_head_broadcast_certificate cfg ext store bs then
+        if has_carrier_broadcast_certificate cfg ext store bs then
           let certified_checkpoint :=
             store.unrealized_justifications (get_certified_head cfg ext store bs)
           if certified_checkpoint.epoch >
@@ -522,14 +522,14 @@ def find_latest_confirmed_descendant (fcr_store : FastConfirmationStore Root)
             ((store.unrealized_justifications fcr_store.previous_slot_head).epoch + 1 ≥
                 current_epoch ∨
               ((store.unrealized_justifications head).epoch + 1 ≥ current_epoch ∧
-                has_head_broadcast_certificate cfg ext store bs)))) then
+                has_carrier_broadcast_certificate cfg ext store bs)))) then
       let canonical_roots := get_ancestor_roots store head confirmed_root
       find_latest_confirmed_descendant_prev_epoch_loop cfg ext fcr_store current_epoch
         canonical_roots confirmed_root
     else confirmed_root
   if is_start_slot_at_epoch cfg (get_current_slot cfg store) ∨
       ((store.unrealized_justifications head).epoch + 1 ≥ current_epoch ∧
-        has_head_broadcast_certificate cfg ext store bs) then
+        has_carrier_broadcast_certificate cfg ext store bs) then
     let canonical_roots := get_ancestor_roots store head confirmed_root
     let tentative_confirmed_root :=
       find_latest_confirmed_descendant_tentative_loop cfg ext fcr_store
@@ -575,7 +575,7 @@ def get_latest_confirmed (fcr_store : FastConfirmationStore Root) : Root :=
     decide (fcr_store.current_epoch_observed_justified_checkpoint =
       store.unrealized_justifications
         (get_certified_head cfg ext store (get_current_balance_source fcr_store))) &&
-      has_head_broadcast_certificate cfg ext store (get_current_balance_source fcr_store)
+      has_carrier_broadcast_certificate cfg ext store (get_current_balance_source fcr_store)
   let is_confirmed_block_stale :=
     decide (get_block_slot store confirmed_root < observed_justified_block_slot)
   let confirmed_root :=

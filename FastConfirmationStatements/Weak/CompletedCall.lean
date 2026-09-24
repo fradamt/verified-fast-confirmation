@@ -26,7 +26,7 @@ The supplement used to have a fourth field, `delivery_lookahead`.  It is gone:
 the boundary delivery case is now part of the single `synchrony` assumption,
 which the headlines already carry inside `hW.base`, so dropping it weakened
 the premise surface without moving any assumption content. -/
-structure AcceptedHistoricalA32CompletedPrefixCallSupplement : Prop where
+structure WeakCompletedFCRCallSupplement : Prop where
   phase0_source : Phase0SourceCoherence cfg ext
   phase0_boundary_source : Phase0BoundarySourceCoherence cfg ext
   balance_floor : cfg.effective_balance_increment ≤

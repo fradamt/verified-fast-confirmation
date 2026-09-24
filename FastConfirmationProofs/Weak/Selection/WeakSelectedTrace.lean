@@ -25,7 +25,7 @@ epoch-start escape). The selector `Weak.find_latest_confirmed_descendant` is
 therefore **untouched** by delta 5: `Weak.WeakSelectorGuardEvidence`
 (`WeakSelectorInversion.lean`) stays a three-way disjunction, and
 `Weak.TentativeSelectedEntryWitness` below stays the disjunction
-`is_start_slot_at_epoch = true ∨ (… ∧ has_head_broadcast_certificate … =
+`is_start_slot_at_epoch = true ∨ (… ∧ has_carrier_broadcast_certificate … =
 true)` exactly as the committed rule's tentative-entry guard reads. Every
 `split_ifs` leaf count below is unchanged from the committed rule; this file
 must stay definitionally in lockstep with `Weak.find_latest_confirmed_descendant`
@@ -38,7 +38,7 @@ advancement guard is a 4-conjunct `A ∧ B ∧ jwc ∧ D`:
 * `B` — the previous-slot head's voting source is recent;
 * `jwc` — `Weak.has_justification_witness_certificate` (rule delta 2);
 * `D` — the epoch-start escape or the no-conflict/unrealized-justification
-  disjunction (rule delta 4's `has_head_broadcast_certificate` sits nested
+  disjunction (rule delta 4's `has_carrier_broadcast_certificate` sits nested
   inside `D`'s right disjunct).
 
 Unlike the strong `PreviousSelectedEntryWitness` (a bare nested `∧`,
@@ -241,7 +241,7 @@ theorem selected_previous_result_outer_gate
               ((fcrStore.store.unrealized_justifications
                     (Weak.get_certified_head cfg ext fcrStore.store (get_current_balance_source fcrStore))).epoch + 1 ≥
                   get_current_store_epoch cfg fcrStore.store ∧
-                Weak.has_head_broadcast_certificate cfg ext fcrStore.store
+                Weak.has_carrier_broadcast_certificate cfg ext fcrStore.store
                   (get_current_balance_source fcrStore) = true))))) →
         is_start_slot_at_epoch cfg (get_current_slot cfg fcrStore.store) = true ∨
           Weak.will_no_conflicting_checkpoint_be_justified cfg ext fcrStore.store
@@ -276,7 +276,7 @@ def findLatestSelectedTrace (fcrStore : FastConfirmationStore Root)
             ((store.unrealized_justifications fcrStore.previous_slot_head).epoch + 1 ≥
                 currentEpoch ∨
               ((store.unrealized_justifications head).epoch + 1 ≥ currentEpoch ∧
-                Weak.has_head_broadcast_certificate cfg ext store bs = true))))
+                Weak.has_carrier_broadcast_certificate cfg ext store bs = true))))
   let previousRoot :=
     if previousGuard then
       Weak.find_latest_confirmed_descendant_prev_epoch_loop cfg ext fcrStore currentEpoch
@@ -292,7 +292,7 @@ def findLatestSelectedTrace (fcrStore : FastConfirmationStore Root)
   let tentativeGuard :=
     is_start_slot_at_epoch cfg (get_current_slot cfg store) = true ∨
       ((store.unrealized_justifications head).epoch + 1 ≥ currentEpoch ∧
-        Weak.has_head_broadcast_certificate cfg ext store bs = true)
+        Weak.has_carrier_broadcast_certificate cfg ext store bs = true)
   let tentativeRoot :=
     if tentativeGuard then
       Weak.find_latest_confirmed_descendant_tentative_loop cfg ext fcrStore
@@ -380,7 +380,7 @@ structure PreviousSelectedEntryWitness (fcrStore : FastConfirmationStore Root)
         ((fcrStore.store.unrealized_justifications
               (Weak.get_certified_head cfg ext fcrStore.store (get_current_balance_source fcrStore))).epoch + 1 ≥
             get_current_store_epoch cfg fcrStore.store ∧
-          Weak.has_head_broadcast_certificate cfg ext fcrStore.store
+          Weak.has_carrier_broadcast_certificate cfg ext fcrStore.store
             (get_current_balance_source fcrStore) = true)))
 
 /-- The exact final acceptance witness for a weak tentative accumulator.
@@ -401,7 +401,7 @@ def TentativeSelectedResultWitness (fcrStore : FastConfirmationStore Root)
 /-- The exact outer guard which permits entry into the weak tentative loop.
 Per the delta-5 correction (`/tmp/delta5-proposal.md` §5): the selector is
 untouched, so this stays the disjunction `is_start_slot_at_epoch = true ∨
-(unrealized-justification-recency ∧ has_head_broadcast_certificate = true)`
+(unrealized-justification-recency ∧ has_carrier_broadcast_certificate = true)`
 exactly as the committed rule (rule delta 4) reads — not collapsed to a bare
 two-way disjunction. -/
 def TentativeSelectedEntryWitness (fcrStore : FastConfirmationStore Root) : Prop :=
@@ -410,7 +410,7 @@ def TentativeSelectedEntryWitness (fcrStore : FastConfirmationStore Root) : Prop
     ((fcrStore.store.unrealized_justifications
         (Weak.get_certified_head cfg ext fcrStore.store (get_current_balance_source fcrStore))).epoch + 1 ≥
       get_current_store_epoch cfg fcrStore.store ∧
-    Weak.has_head_broadcast_certificate cfg ext fcrStore.store
+    Weak.has_carrier_broadcast_certificate cfg ext fcrStore.store
       (get_current_balance_source fcrStore) = true)
 
 namespace PreviousEpochSelectedEdge
@@ -657,7 +657,7 @@ theorem findLatestSelectedTrace_parentTrace
           ((store.unrealized_justifications fcrStore.previous_slot_head).epoch + 1 ≥
               currentEpoch ∨
             ((store.unrealized_justifications head).epoch + 1 ≥ currentEpoch ∧
-              Weak.has_head_broadcast_certificate cfg ext store bs = true))))
+              Weak.has_carrier_broadcast_certificate cfg ext store bs = true))))
   let previousRoot := if pGuard then pExec else latestConfirmedRoot
   let previousEdges := if pGuard then pTrace.2 else []
   have hpRaw := prevEpochCanonicalTrace_parentTrace cfg ext fcrStore hwf
@@ -682,7 +682,7 @@ theorem findLatestSelectedTrace_parentTrace
       tentativeLoopTrace_fst] using htRaw
   let tGuard := is_start_slot_at_epoch cfg (get_current_slot cfg store) = true ∨
     ((store.unrealized_justifications head).epoch + 1 ≥ currentEpoch ∧
-      Weak.has_head_broadcast_certificate cfg ext store bs = true)
+      Weak.has_carrier_broadcast_certificate cfg ext store bs = true)
   let finalGuard :=
     get_block_epoch cfg store tExec = currentEpoch ∨
       ((get_voting_source cfg store tExec).epoch + 2 ≥ currentEpoch ∧
@@ -978,7 +978,7 @@ application of it once S2 exists"). Weak twin of
 theorem StrictSelectedResultMechanicalFacts.confirmedPastDescendantSlotWitness_at_observer
     (hA : SelectedMarginAssumptions cfg ext E)
     {obs : ValidatorIndex} {q : Nat}
-    (hvalid : E.ObserverValidity cfg ext obs)
+    (hvalid : E.ObserverIndexedAttestationValidity cfg ext obs)
     (hcomm : E.PrefixCommitteeAgreement cfg ext (E.store cfg ext obs q))
     (hqH : E.WithinHorizon cfg q)
     {query : FastConfirmationStore Root} {input result : Root}

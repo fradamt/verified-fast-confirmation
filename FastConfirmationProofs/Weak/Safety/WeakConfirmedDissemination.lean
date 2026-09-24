@@ -106,7 +106,7 @@ as `i`/`lm.root` throughout instead of re-existentializing them. -/
 private theorem past_descendant_known_at_observer
     (hA : SelectedMarginAssumptions cfg ext E)
     (v : ValidatorIndex) (n : ℕ) (b : Root)
-    (hvalid : E.ObserverValidity cfg ext v)
+    (hvalid : E.ObserverIndexedAttestationValidity cfg ext v)
     (hH : E.WithinHorizon cfg n)
     (i : ValidatorIndex) (hi : i ∈ E.honest) (lm : LatestMessage Root)
     (hlm : (E.store cfg ext v n).latest_messages i = some lm)
@@ -190,7 +190,7 @@ before the arbitrary selecting slot. Verbatim conclusion match for
 theorem confirmed_known_at_all_honest_endpoints_at_observer
     (hA : SelectedMarginAssumptions cfg ext E)
     (v : ValidatorIndex) (n : ℕ)
-    (hvalid : E.ObserverValidity cfg ext v)
+    (hvalid : E.ObserverIndexedAttestationValidity cfg ext v)
     (hcomm : E.PrefixCommitteeAgreement cfg ext (E.store cfg ext v n))
     (fcrStore : FastConfirmationStore Root)
     (hstore : fcrStore.store = E.store cfg ext v n) (b : Root)
@@ -237,7 +237,7 @@ supporter's store is required. -/
 theorem confirmed_ancestry_at_all_honest_endpoints_at_observer
     (hA : SelectedMarginAssumptions cfg ext E)
     (v : ValidatorIndex) (n : ℕ)
-    (hvalid : E.ObserverValidity cfg ext v)
+    (hvalid : E.ObserverIndexedAttestationValidity cfg ext v)
     (hcomm : E.PrefixCommitteeAgreement cfg ext (E.store cfg ext v n))
     (fcrStore : FastConfirmationStore Root)
     (hstore : fcrStore.store = E.store cfg ext v n) (b r₀ : Root)
@@ -288,7 +288,7 @@ discard. -/
 theorem confirmed_pastDescendant_at_observer
     (hA : SelectedMarginAssumptions cfg ext E)
     (obs : ValidatorIndex) (q : ℕ)
-    (hvalid : E.ObserverValidity cfg ext obs)
+    (hvalid : E.ObserverIndexedAttestationValidity cfg ext obs)
     (hcomm : E.PrefixCommitteeAgreement cfg ext (E.store cfg ext obs q))
     (query : FastConfirmationStore Root)
     (hstore : query.store = E.store cfg ext obs q) (b : Root)

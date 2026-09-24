@@ -41,7 +41,7 @@ private def isSourceDeclaration (env : Environment) (decl : Name) : Bool :=
 -- FFG state's specialization, so its theorem type needs that abbreviation.
 private def approved : List Name := [
   ``FastConfirmation.Spec.Synchrony,
-  ``FastConfirmation.Spec.AcceptedChainFFGState.PaperA32SupportThroughoutEpoch
+  ``FastConfirmation.Spec.CausalCarrierFFGState.PaperA32SupportThroughoutEpoch
 ]
 
 run_cmd do
@@ -53,14 +53,14 @@ run_cmd do
     ``FastConfirmation.Spec.ReviewClaims,
     ``FastConfirmation.Spec.findLatestSelectedTrace,
     ``FastConfirmation.Spec.FCRPredictionSupportAt,
-    ``FastConfirmation.Spec.CompleteEvidence,
+    ``FastConfirmation.Spec.CompletePriorSlotStoreEvidence,
     ``FastConfirmation.Spec.tentativeLoopTrace,
     ``FastConfirmation.Spec.Weak.CertificateHonestSupporter,
-    ``FastConfirmation.Spec.Weak.CertificateDissemination,
-    ``FastConfirmation.Spec.WeakSpec_Monotonicity_live,
-    ``FastConfirmation.Spec.Execution.WeakObserverMarginAssumptions,
-    ``FastConfirmation.Spec.Execution.WeakObserverAssumptions,
-    ``FastConfirmation.Spec.Execution.AcceptedHistoricalA32CompletedPrefixCallSupplement,
+    ``FastConfirmation.Spec.Weak.CertificateDisseminationObligation,
+    ``FastConfirmation.Spec.WeakStoredRootMonotonicity,
+    ``FastConfirmation.Spec.Execution.WeakObserverMarginPremises,
+    ``FastConfirmation.Spec.Execution.WeakObserverPremises,
+    ``FastConfirmation.Spec.Execution.WeakCompletedFCRCallSupplement,
     ``FastConfirmation.Spec.CurrentTargetSelectedEdge,
     ``FastConfirmation.Spec.prevEpochLoopTrace,
     ``FastConfirmation.Spec.PreviousEpochSelectedEdge,

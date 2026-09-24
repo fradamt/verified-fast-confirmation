@@ -68,7 +68,7 @@ theorem ScheduledEventPrefix.observerCausal_take {E : Execution Root}
 private theorem on_attester_slashing_honest_not_added_of_observer
     {E : Execution Root} {obs : ValidatorIndex}
     (hhb : HonestBehavior cfg ext E) (hec : BeaconExternalsPremises cfg ext E)
-    (hvalid : E.ObserverValidity cfg ext obs)
+    (hvalid : E.ObserverIndexedAttestationValidity cfg ext obs)
     {store store' : Store Root} {asl : AttesterSlashing Root}
     {v : ValidatorIndex} (hv : v ∈ E.honest)
     (hcausal : E.ObserverCausalStore cfg ext obs store)
@@ -106,7 +106,7 @@ private theorem on_attester_slashing_honest_not_added_of_observer
 private theorem apply_event_honest_not_equiv_of_observer
     {E : Execution Root} {obs : ValidatorIndex}
     (hhb : HonestBehavior cfg ext E) (hec : BeaconExternalsPremises cfg ext E)
-    (hvalid : E.ObserverValidity cfg ext obs)
+    (hvalid : E.ObserverIndexedAttestationValidity cfg ext obs)
     {v : ValidatorIndex} (hv : v ∈ E.honest)
     (store : Store Root) (e : Event Root) (hprev : v ∉ store.equivocating_indices)
     (hcausal : E.ObserverCausalStore cfg ext obs store)
@@ -153,7 +153,7 @@ private theorem apply_event_honest_not_equiv_of_observer
 theorem honest_not_equiv_foldl_of_observer
     {E : Execution Root} {obs : ValidatorIndex}
     (hhb : HonestBehavior cfg ext E) (hec : BeaconExternalsPremises cfg ext E)
-    (hvalid : E.ObserverValidity cfg ext obs)
+    (hvalid : E.ObserverIndexedAttestationValidity cfg ext obs)
     {v : ValidatorIndex} (hv : v ∈ E.honest) :
     ∀ (l : List (Event Root)) (s : Store Root), v ∉ s.equivocating_indices →
       UnknownBlockStatesDefault s →
@@ -179,7 +179,7 @@ theorem honest_not_equiv_foldl_of_observer
 theorem honest_not_equivocating_of_observer_validity
     {E : Execution Root} {obs : ValidatorIndex}
     (hhb : HonestBehavior cfg ext E) (hec : BeaconExternalsPremises cfg ext E)
-    (hvalid : E.ObserverValidity cfg ext obs)
+    (hvalid : E.ObserverIndexedAttestationValidity cfg ext obs)
     (hgen : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
       E.genesis_store = get_forkchoice_store cfg ast ablk)
     {v : ValidatorIndex} (hv : v ∈ E.honest) (n : ℕ) :
@@ -207,7 +207,7 @@ theorem honest_not_equivocating_of_observer_validity
 theorem ScheduledEventPrefix.honest_not_equivocating_of_observer_validity
     {E : Execution Root} (hT : E.ScheduledPrefixPremises cfg ext)
     (p : E.ScheduledEventPrefix)
-    (hvalid : E.ObserverValidity cfg ext p.node) :
+    (hvalid : E.ObserverIndexedAttestationValidity cfg ext p.node) :
     ∀ i ∈ E.honest, i ∉ (p.store cfg ext).equivocating_indices := by
   obtain ⟨anchorState, anchorBlock, hgen, _hslot, _hparent⟩ := hT.genesis_structure
   intro i hi

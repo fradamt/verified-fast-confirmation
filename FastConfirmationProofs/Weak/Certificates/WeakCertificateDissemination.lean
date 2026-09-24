@@ -8,7 +8,7 @@ public import FastConfirmationProofs.ForkChoice.Head.HeadStack
 /-!
 # Spec / Proof / WeakCertificateDissemination
 
-Discharges `Weak.CertificateDissemination` (`Spec/Model/WeakSynchrony.lean`,
+Discharges `Weak.CertificateDisseminationObligation` (`Spec/Model/WeakSynchrony.lean`,
 Obligation 2): a broadcast certificate for `block_root` observed at any store
 within the horizon implies every honest validator holds `block_root` from
 slot `end_slot + 1` onward.
@@ -49,7 +49,7 @@ theorem Execution.certificate_dissemination (E : Execution Root)
     (hgen : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
       E.genesis_store = get_forkchoice_store cfg ast ablk ∧
       ast.slot = ablk.message.slot ∧ ablk.message.parent_root ≠ ablk.root) :
-    Weak.CertificateDissemination cfg ext E := by
+    Weak.CertificateDisseminationObligation cfg ext E := by
   intro v n balance_source block_root start_slot end_slot hnH hstartH hendH hstart0
     hval htab hcomm hb_obs hcert w hw m hHm htiming_m
   obtain ⟨ast, ablk, hgeq, hslot, hparent⟩ := hgen

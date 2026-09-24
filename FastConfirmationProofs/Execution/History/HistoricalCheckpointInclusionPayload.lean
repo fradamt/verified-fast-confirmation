@@ -34,7 +34,7 @@ variable {E : Execution Root}
 /-- A dependent quorum package whose equalities expose the exact historical
 target and deadline without casting the vote object across indices. -/
 structure AcceptedHistoricalA32QuorumAt
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (origin : Root) (e : Epoch) where
   deadline : Slot
   target : Checkpoint Root
@@ -60,7 +60,7 @@ the guard.  `AcceptedHistoricalA32LineageAt.lateVisibleSeedAt`
 (`AcceptedSelectedStrictEdgeFilterSupply.lean`) is the sole consumer, and its
 `hlate`/`hmH`/`hw` hypotheses are exactly this antecedent. -/
 def AcceptedHistoricalA32DeferredSupportAt
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (origin : Root) (e : Epoch) : Prop :=
   ∀ w : ValidatorIndex, w ∈ E.honest → ∀ m : ℕ, E.WithinHorizon cfg m →
     e + 2 ≤ get_current_store_epoch cfg (E.store cfg ext w m) →
@@ -91,7 +91,7 @@ it with a single `rw`.  `Supp` is a predicate on `(origin, epoch)` because the
 retained quorum record is indexed by the origin root; transport therefore
 takes an explicit re-indexing hypothesis. -/
 structure AcceptedHistoricalA32GatePayloadCoreAt
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (origin : Root) (e : Epoch)
     (Cert : Checkpoint Root → Prop) (Supp : Root → Epoch → Prop) where
   origin_block : BeaconBlock Root
@@ -113,13 +113,13 @@ structure AcceptedHistoricalA32GatePayloadCoreAt
 /-- The eager certification obligation: an actual anchored FFG certificate on
 the retained checkpoint. -/
 abbrev AcceptedHistoricalA32EagerCert
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (c : Checkpoint Root) : Prop :=
   Nonempty (CertifiedJustified cfg E B.anchor c)
 
 /-- The eager support obligation: the guarded anchor-or-quorum disjunction. -/
 abbrev AcceptedHistoricalA32EagerSupp
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (origin : Root) (e : Epoch) : Prop :=
   E.AcceptedHistoricalA32DeferredSupportAt cfg ext B origin e
 
@@ -128,7 +128,7 @@ existing caller (strong and weak) already uses.  It is a reducible
 abbreviation, so dot notation, anonymous-constructor notation and the existing
 constructor names all resolve exactly as before. -/
 abbrev AcceptedHistoricalA32GatePayloadAt
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (origin : Root) (e : Epoch) :=
   E.AcceptedHistoricalA32GatePayloadCoreAt cfg ext B origin e
     (E.AcceptedHistoricalA32EagerCert cfg ext B)
@@ -138,7 +138,7 @@ namespace AcceptedHistoricalA32GatePayloadCoreAt
 
 /-- Re-instantiate the certification obligation pointwise. -/
 def mapCert
-    {B : ExactPrefixAcceptedFFGSemantics cfg ext E}
+    {B : CausalPrefixFFGInterpretation cfg ext E}
     {origin : Root} {e : Epoch}
     {Cert Cert' : Checkpoint Root → Prop} {Supp : Root → Epoch → Prop}
     (hmap : Cert (B.state.C origin e) → Cert' (B.state.C origin e))
@@ -153,7 +153,7 @@ def mapCert
 
 /-- Re-instantiate the support obligation pointwise. -/
 def mapSupp
-    {B : ExactPrefixAcceptedFFGSemantics cfg ext E}
+    {B : CausalPrefixFFGInterpretation cfg ext E}
     {origin : Root} {e : Epoch}
     {Cert : Checkpoint Root → Prop} {Supp Supp' : Root → Epoch → Prop}
     (hmap : Supp origin e → Supp' origin e)
@@ -169,7 +169,7 @@ def mapSupp
 /-- Generic anchor constructor.  Both obligations are discharged from the
 anchor equality alone, which every instantiation of interest satisfies. -/
 def of_anchor
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     {origin : Root} {originBlock : BeaconBlock Root}
     (horiginAt : E.AcceptedBlockAt cfg ext origin originBlock)
     {e : Epoch}
@@ -200,7 +200,7 @@ which is exactly what lets the lazy instantiation build a payload without ever
 constructing the positive certification content — at an actual call it is the
 ambient `trustedAnchor_epoch_le_currentEpoch` fact. -/
 def of_causalKnown
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     {store : Store Root} (hstore : E.CausalStore cfg ext store)
     {origin : Root} (horigin : origin ∈ store.block_roots)
     {e : Epoch} (horiginEpoch : get_block_epoch cfg store origin = e)
@@ -221,7 +221,7 @@ required — it is what bounds the anchor epoch — but the two payload
 obligations are supplied by the caller, which is what lets the strong trunk
 defer them. -/
 def of_fixedSourceCurrentTarget
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     {store : Store Root} (hstore : E.CausalStore cfg ext store)
     {origin : Root} (horigin : origin ∈ store.block_roots)
     {e : Epoch} (horiginEpoch : get_block_epoch cfg store origin = e)
@@ -250,7 +250,7 @@ def of_fixedSourceCurrentTarget
 its own lemma so that both the eager wrapper and any future instantiation can
 reuse the dependent rewriting verbatim. -/
 theorem eagerSupport_of_fixedSourceCurrentTarget
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     {store : Store Root}
     {origin : Root}
     {e : Epoch} (horiginEpoch : get_block_epoch cfg store origin = e)
@@ -268,7 +268,7 @@ theorem eagerSupport_of_fixedSourceCurrentTarget
             (B.state.C origin e).epoch := congrArg Checkpoint.epoch htarget
         _ = e := B.state.checkpoint_epoch origin e
     have hsource' : Q.source = B.state.GJ origin := by
-      simpa only [AcceptedChainFFGState.VSAt, PaperA32StateView.VSAt,
+      simpa only [CausalCarrierFFGState.VSAt, PaperA32StateView.VSAt,
         htargetEpoch, horiginEpoch, if_pos] using hsource
     exact ⟨
       { deadline := compute_start_slot_at_epoch cfg
@@ -284,7 +284,7 @@ theorem eagerSupport_of_fixedSourceCurrentTarget
 segment.  This is the transport step shared by the eager and the lazy support
 instantiations. -/
 theorem quorumDisjunction_transport
-    {B : ExactPrefixAcceptedFFGSemantics cfg ext E}
+    {B : CausalPrefixFFGInterpretation cfg ext E}
     {origin tip : Root} {e : Epoch}
     (hcheckpoint : B.state.C tip e = B.state.C origin e)
     (hsource : B.state.GJ tip = B.state.GJ origin)
@@ -312,7 +312,7 @@ separately from the exact accepted transition segment.  `Cert` moves by a
 single `rw`; `Supp` moves by the caller-supplied re-indexing, which is handed
 both derived equalities. -/
 def transport_sameEpoch
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (hphase : Phase0SourceCoherence cfg ext)
     {store : Store Root} (hstore : E.CausalStore cfg ext store)
     (hparent : ParentSlotLt store)
@@ -349,7 +349,7 @@ def transport_sameEpoch
         (B.coherence.checkpoint_of_known hstore origin horigin e).symm
   have hsource : B.state.GJ tip = B.state.GJ origin :=
     hsegment.gj_eq_first hphase
-      B.coherence.toAcceptedFFGSelectorCoherence
+      B.coherence.toFFGSelectorsMatchBeaconStates
   refine {
     origin_block := store.blocks tip
     origin_at := E.acceptedBlockAt_of_causal_known cfg ext hstore htip
@@ -374,7 +374,7 @@ reset branch.  It introduces no quorum: paper A3.2's anchor disjunct is
 recorded directly, while the accepted carrier and its epoch remain explicit.
 -/
 def of_anchor
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     {origin : Root} {originBlock : BeaconBlock Root}
     (horiginAt : E.AcceptedBlockAt cfg ext origin originBlock)
     {e : Epoch}
@@ -390,7 +390,7 @@ its original current-epoch carrier.  The theorem performs only dependent
 rewriting: all votes, the source agreement, and the certificate were already
 constructed by the gate realization. -/
 def of_fixedSourceCurrentTarget
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     {store : Store Root} (hstore : E.CausalStore cfg ext store)
     {origin : Root} (horigin : origin ∈ store.block_roots)
     {e : Epoch} (horiginEpoch : get_block_epoch cfg store origin = e)
@@ -412,7 +412,7 @@ ancestry and accepted checkpoint reflection.  Source constancy is derived
 separately from the exact accepted transition segment.  The concrete quorum
 itself is unchanged. -/
 def transport_sameEpoch
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (hphase : Phase0SourceCoherence cfg ext)
     {store : Store Root} (hstore : E.CausalStore cfg ext store)
     (hparent : ParentSlotLt store)
@@ -440,7 +440,7 @@ end AcceptedHistoricalA32GatePayloadAt
 /-- Concatenation of accepted same-epoch segments.  Every nontrivial edge in
 the result is still owned by the original exact accepted transition carrier. -/
 theorem acceptedProjectedSameEpochSegment_trans
-    {B : ExactPrefixAcceptedFFGSemantics cfg ext E}
+    {B : CausalPrefixFFGInterpretation cfg ext E}
     {a b c : Root}
     (hab : AcceptedProjectedSameEpochSegment cfg ext E B.state a b)
     (hbc : AcceptedProjectedSameEpochSegment cfg ext E B.state b c) :
@@ -454,7 +454,7 @@ the invocation which created it; later current-epoch candidates retain only
 semantic descent and an exact accepted same-epoch transition segment from
 that origin. -/
 structure AcceptedHistoricalA32LineageCoreAt
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (tip : Root) (e : Epoch)
     (Cert : Checkpoint Root → Prop) (Supp : Root → Epoch → Prop) where
   origin : Root
@@ -470,7 +470,7 @@ structure AcceptedHistoricalA32LineageCoreAt
 /-- The eager instantiation of the retained lineage — the record every
 existing caller already uses. -/
 abbrev AcceptedHistoricalA32LineageAt
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (tip : Root) (e : Epoch) :=
   E.AcceptedHistoricalA32LineageCoreAt cfg ext B tip e
     (E.AcceptedHistoricalA32EagerCert cfg ext B)
@@ -480,7 +480,7 @@ namespace AcceptedHistoricalA32LineageCoreAt
 
 /-- Initialize a historical lineage at the gate carrier itself. -/
 def refl
-    {B : ExactPrefixAcceptedFFGSemantics cfg ext E}
+    {B : CausalPrefixFFGInterpretation cfg ext E}
     {origin : Root} {e : Epoch}
     {Cert : Checkpoint Root → Prop} {Supp : Root → Epoch → Prop}
     (hpayload : E.AcceptedHistoricalA32GatePayloadCoreAt cfg ext B origin e
@@ -498,7 +498,7 @@ def refl
 actual accepted same-epoch segment.  This is the induction step used by a
 future concrete FCR-call trajectory; it has no endpoint-safety premise. -/
 def extend
-    {B : ExactPrefixAcceptedFFGSemantics cfg ext E}
+    {B : CausalPrefixFFGInterpretation cfg ext E}
     {middle tip : Root} {e : Epoch}
     {Cert : Checkpoint Root → Prop} {Supp : Root → Epoch → Prop}
     (hlineage : E.AcceptedHistoricalA32LineageCoreAt cfg ext B middle e
@@ -521,7 +521,7 @@ def extend
 
 /-- Re-instantiate the support obligation pointwise along a lineage. -/
 def mapSupp
-    {B : ExactPrefixAcceptedFFGSemantics cfg ext E}
+    {B : CausalPrefixFFGInterpretation cfg ext E}
     {tip : Root} {e : Epoch}
     {Cert : Checkpoint Root → Prop} {Supp Supp' : Root → Epoch → Prop}
     (hmap : ∀ o : Root, Supp o e → Supp' o e)
@@ -537,7 +537,7 @@ def mapSupp
 
 /-- Re-instantiate the certification obligation pointwise along a lineage. -/
 def mapCert
-    {B : ExactPrefixAcceptedFFGSemantics cfg ext E}
+    {B : CausalPrefixFFGInterpretation cfg ext E}
     {tip : Root} {e : Epoch}
     {Cert Cert' : Checkpoint Root → Prop} {Supp : Root → Epoch → Prop}
     (hmap : ∀ o : Root, Cert (B.state.C o e) → Cert' (B.state.C o e))
@@ -554,7 +554,7 @@ def mapCert
 /-- Materialize the retained origin payload at the current tip in one causal
 store, generically in the two payload obligations. -/
 def payloadAtTip
-    {B : ExactPrefixAcceptedFFGSemantics cfg ext E}
+    {B : CausalPrefixFFGInterpretation cfg ext E}
     (hphase : Phase0SourceCoherence cfg ext)
     {tip : Root} {e : Epoch}
     {Cert : Checkpoint Root → Prop} {Supp : Root → Epoch → Prop}
@@ -582,7 +582,7 @@ namespace AcceptedHistoricalA32LineageAt
 
 /-- Initialize a historical lineage at the gate carrier itself. -/
 def refl
-    {B : ExactPrefixAcceptedFFGSemantics cfg ext E}
+    {B : CausalPrefixFFGInterpretation cfg ext E}
     {origin : Root} {e : Epoch}
     (hpayload : E.AcceptedHistoricalA32GatePayloadAt cfg ext B origin e) :
     E.AcceptedHistoricalA32LineageAt cfg ext B origin e :=
@@ -592,7 +592,7 @@ def refl
 actual accepted same-epoch segment.  This is the induction step used by a
 future concrete FCR-call trajectory; it has no endpoint-safety premise. -/
 def extend
-    {B : ExactPrefixAcceptedFFGSemantics cfg ext E}
+    {B : CausalPrefixFFGInterpretation cfg ext E}
     {middle tip : Root} {e : Epoch}
     (hlineage : E.AcceptedHistoricalA32LineageAt cfg ext B middle e)
     (htipBlock : BeaconBlock Root)
@@ -609,7 +609,7 @@ def extend
 store.  This is the exact bridge needed before a historical A3.2 consumer can
 use the later candidate as its carrier. -/
 def payloadAtTip
-    {B : ExactPrefixAcceptedFFGSemantics cfg ext E}
+    {B : CausalPrefixFFGInterpretation cfg ext E}
     (hphase : Phase0SourceCoherence cfg ext)
     {tip : Root} {e : Epoch}
     (hlineage : E.AcceptedHistoricalA32LineageAt cfg ext B tip e)
@@ -633,7 +633,7 @@ end AcceptedHistoricalA32LineageAt
 stronger than the old certificate-only producer but has the same executable
 current/no-crossing call boundary. -/
 def AcceptedHistoricalA32PayloadProducerAt
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (query : FastConfirmationStore Root) (input result : Root) : Prop :=
   get_block_epoch cfg query.store result =
       get_current_store_epoch cfg query.store →
@@ -646,7 +646,7 @@ def AcceptedHistoricalA32PayloadProducerAt
 one-way: a certificate-only producer cannot reconstruct the erased quorum,
 source, or deadline. -/
 theorem acceptedHistoricalA32PayloadProducerAt_to_certificateProducer
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     {q : ℕ} {query : FastConfirmationStore Root} {input result : Root}
     (hproducer : E.AcceptedHistoricalA32PayloadProducerAt cfg ext B
       query input result) :

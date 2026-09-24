@@ -54,7 +54,7 @@ Pure re-spelling of `Weak.observerCall_currentTargetHistoricalCertificate`;
 both routes (eager and lazy) flow through it unchanged, the only difference
 being which `certElim` is supplied. -/
 theorem observerCall_historicalCertificateProducerAt
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (hT : E.ScheduledPrefixPremises cfg ext)
     (hphase : Phase0SourceCoherence cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)

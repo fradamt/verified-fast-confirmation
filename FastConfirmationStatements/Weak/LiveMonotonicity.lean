@@ -34,7 +34,7 @@ is instantiated downstream with the accepted FFG and weak observer premises
 used by the weak safety witnesses. The conclusion concerns the weak observer's
 stored output, and is the executable weak-synchrony version of the
 monotonicity half of paper Theorem 1. -/
-def WeakSpec_Monotonicity_live
+def WeakStoredRootMonotonicity
     (acceptedWeak : Execution Root → ValidatorIndex → Prop) : Prop :=
   ∀ E : Execution Root, ∀ v : ValidatorIndex, acceptedWeak E v →
     ∀ n m : ℕ, n ≤ m →

@@ -350,7 +350,7 @@ theorem witnessPaperA32Support_child_one :
   · simpa only [hlate.child_epoch] using (by decide : 0 ≤ 1)
   intro tip htip hdesc
   have hsource :
-      (witnessAcceptedChainFFGState.paperA32View witnessConfig
+      (witnessAcceptedChainFFGState.paperA32Inputs witnessConfig
         witnessExternals).VSAt witnessConfig
           (witnessExecution.store witnessConfig witnessExternals w m)
           childRoot 1 = anchorCheckpoint := by
@@ -382,9 +382,9 @@ theorem witnessPaperA32Support_anchor_one_false :
       (witnessExecution.store witnessConfig witnessExternals 0 8)
       (get_node_for_root carrierRoot)
       (get_node_for_root
-        ((witnessAcceptedChainFFGState.paperA32View witnessConfig
+        ((witnessAcceptedChainFFGState.paperA32Inputs witnessConfig
           witnessExternals).C anchorRoot 1).root) = true := by
-    simpa only [AcceptedChainFFGState.paperA32View, witnessC_anchor_one] using
+    simpa only [CausalCarrierFFGState.paperA32Inputs, witnessC_anchor_one] using
       hlate.carrier_descends_anchor
   obtain ⟨L⟩ := hall carrierRoot hlate.carrier_known hdesc
   have hsigners : L.signers.Nonempty := by
@@ -406,7 +406,7 @@ theorem witnessPaperA32Support_anchor_one_false :
   obtain ⟨s, hslt, rfl⟩ := groundVote_exists hground
   have htarget' : (vote s).data.target =
       ({ epoch := 1, root := anchorRoot } : Checkpoint WitnessRoot) := by
-    simpa only [AcceptedChainFFGState.paperA32View, witnessC_anchor_one] using
+    simpa only [CausalCarrierFFGState.paperA32Inputs, witnessC_anchor_one] using
       htarget
   interval_cases s <;>
     simp [vote, voteData, anchorCheckpoint, childEpochOneCheckpoint,
@@ -431,14 +431,14 @@ theorem witnessPaperA32Inclusion :
           hlate.carrier_descends_anchor, ?_, ?_⟩
         · rw [hlate.carrier_epoch]
           decide
-        · simpa only [AcceptedChainFFGState.paperA32View,
+        · simpa only [CausalCarrierFFGState.paperA32Inputs,
             witnessC_anchor_zero] using witnessAU_carrier_anchor
       · rcases h with ⟨rfl, rfl⟩
         refine ⟨carrierRoot, hlate.carrier_known, hlate.child_known,
           hlate.carrier_descends_child, ?_, ?_⟩
         · rw [hlate.carrier_epoch]
           decide
-        · simpa only [AcceptedChainFFGState.paperA32View,
+        · simpa only [CausalCarrierFFGState.paperA32Inputs,
             witnessC_child_zero] using witnessAU_carrier_anchor
       · rcases h with ⟨rfl, rfl⟩
         norm_num [carrierSignedBlock, witnessConfig,
@@ -463,7 +463,7 @@ theorem witnessPaperA32Inclusion :
               hlate.carrier_descends_child, ?_, ?_⟩
             · rw [hlate.carrier_epoch]
               decide
-            · simpa only [AcceptedChainFFGState.paperA32View,
+            · simpa only [CausalCarrierFFGState.paperA32Inputs,
                 witnessC_child_one] using witnessAU_carrier_child
           · rcases h with ⟨rfl, rfl⟩
             have h12slot : 12 ≤
@@ -478,7 +478,7 @@ theorem witnessPaperA32Inclusion :
               hlate.carrier_descends_self, ?_, ?_⟩
             · rw [hlate.carrier_epoch]
               decide
-            · simpa only [AcceptedChainFFGState.paperA32View,
+            · simpa only [CausalCarrierFFGState.paperA32Inputs,
                 witnessC_carrier_one] using witnessAU_carrier_child
       | succ e =>
           have hmlt := time_lt_sixteen hHm

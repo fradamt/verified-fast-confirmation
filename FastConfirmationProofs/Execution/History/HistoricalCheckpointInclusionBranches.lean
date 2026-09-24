@@ -38,7 +38,7 @@ weight bound, and certificate are unchanged.  Accepted phase-0 coherence
 makes `GJ` constant along the segment; the two exact block-epoch equations
 then reduce both paper `VSAt` selectors to those `GJ` values. -/
 def fixedSource_of_acceptedSameEpochSegment
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (hphase : Phase0SourceCoherence cfg ext)
     {store : Store Root} {b : Root}
     (htargetEpoch : get_block_epoch cfg store
@@ -59,17 +59,17 @@ def fixedSource_of_acceptedSameEpochSegment
     have hgj : B.state.GJ b =
         B.state.GJ (get_current_target cfg store).root :=
       hsegment.gj_eq_first hphase
-        B.coherence.toAcceptedFFGSelectorCoherence
+        B.coherence.toFFGSelectorsMatchBeaconStates
     calc
       Q.source = B.state.VSAt cfg ext store
           (get_current_target cfg store).root
           (get_current_target cfg store).epoch := hsource
       _ = B.state.GJ (get_current_target cfg store).root := by
-        simp only [AcceptedChainFFGState.VSAt, htargetEpoch, if_pos]
+        simp only [CausalCarrierFFGState.VSAt, htargetEpoch, if_pos]
       _ = B.state.GJ b := hgj.symm
       _ = B.state.VSAt cfg ext store b
           (get_current_target cfg store).epoch := by
-        simp only [AcceptedChainFFGState.VSAt, hbEpoch, if_pos]
+        simp only [CausalCarrierFFGState.VSAt, hbEpoch, if_pos]
 
 end AcceptedCurrentTargetA32GateRealization
 

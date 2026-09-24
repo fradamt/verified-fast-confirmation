@@ -189,7 +189,7 @@ contradicting the selector's literal recency premise.  The conclusion does not
 require the selector to advance strictly, so it also covers a selected helper
 call whose return is unchanged. -/
 theorem finalizedResetCandidateInput_safeFrom_anchor_of_recent
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (hT : E.ScheduledPrefixPremises cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
@@ -236,7 +236,7 @@ theorem finalizedResetCandidateInput_safeFrom_anchor_of_recent
 
 /-- Strict-selector convenience wrapper around the plain recency theorem. -/
 theorem strictFinalizedResetCandidateInput_safeFrom_anchor
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (hT : E.ScheduledPrefixPremises cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
@@ -287,7 +287,7 @@ Purely enabling: no signature below changes, and the historical single-second
 theorem is recovered by instantiating `k := n` and projecting
 `followingSlot`. -/
 theorem confirmed_safeFromFollowingSlot_of_acceptedActualFCRFold_all_le
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (hT : E.ScheduledPrefixPremises cfg ext)
     (hC : E.CompletedFCRCallPremises cfg ext)
     (hfit : EpochEndsFitUint64 cfg)
@@ -297,7 +297,7 @@ theorem confirmed_safeFromFollowingSlot_of_acceptedActualFCRFold_all_le
     (hDelay : E.RealizedFinalizationDelay cfg ext B)
     (hspe : 1 < cfg.slots_per_epoch)
     (hpaper : B.state.PaperA32Inclusion cfg ext)
-    (P : AcceptedEpochCheckpointProjection B.anchor
+    (P : EpochCheckpointClosure B.anchor
       (E.AcceptedRoot cfg ext) B.state.C)
     (V : B.state.ExactLinkValidity) :
     ∀ n : ℕ, ∀ k ≤ n, E.WithinHorizon cfg k → ∀ v ∈ E.honest,
@@ -466,7 +466,7 @@ invoked.  Active observed resets use the accepted dynamic checkpoint proof.
 
 Corollary of `…_all_le` at `k := n`; the statement is unchanged. -/
 theorem confirmed_safeFromFollowingSlot_of_acceptedActualFCRFold
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (hT : E.ScheduledPrefixPremises cfg ext)
     (hC : E.CompletedFCRCallPremises cfg ext)
     (hfit : EpochEndsFitUint64 cfg)
@@ -476,7 +476,7 @@ theorem confirmed_safeFromFollowingSlot_of_acceptedActualFCRFold
     (hDelay : E.RealizedFinalizationDelay cfg ext B)
     (hspe : 1 < cfg.slots_per_epoch)
     (hpaper : B.state.PaperA32Inclusion cfg ext)
-    (P : AcceptedEpochCheckpointProjection B.anchor
+    (P : EpochCheckpointClosure B.anchor
       (E.AcceptedRoot cfg ext) B.state.C)
     (V : B.state.ExactLinkValidity)
     {v : ValidatorIndex} (hv : v ∈ E.honest) :
@@ -495,7 +495,7 @@ fold.
 a new proof.  It is the object wave T3 threads down the strong dispatcher
 chain to the two `currentHistorical`/late-seed consumption sites. -/
 theorem priorStrictCallWriteBackSafe_of_acceptedActualFCRFold
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (hT : E.ScheduledPrefixPremises cfg ext)
     (hC : E.CompletedFCRCallPremises cfg ext)
     (hfit : EpochEndsFitUint64 cfg)
@@ -505,7 +505,7 @@ theorem priorStrictCallWriteBackSafe_of_acceptedActualFCRFold
     (hDelay : E.RealizedFinalizationDelay cfg ext B)
     (hspe : 1 < cfg.slots_per_epoch)
     (hpaper : B.state.PaperA32Inclusion cfg ext)
-    (P : AcceptedEpochCheckpointProjection B.anchor
+    (P : EpochCheckpointClosure B.anchor
       (E.AcceptedRoot cfg ext) B.state.C)
     (V : B.state.ExactLinkValidity)
     (n : ℕ) :
@@ -518,7 +518,7 @@ theorem priorStrictCallWriteBackSafe_of_acceptedActualFCRFold
 /-- Endpoint form matching the paper's timing: a cached output is canonical
 at every in-horizon honest endpoint in a strictly later slot. -/
 theorem confirmed_head_of_acceptedActualFCRFold_nextSlot
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (hT : E.ScheduledPrefixPremises cfg ext)
     (hC : E.CompletedFCRCallPremises cfg ext)
     (hfit : EpochEndsFitUint64 cfg)
@@ -528,7 +528,7 @@ theorem confirmed_head_of_acceptedActualFCRFold_nextSlot
     (hDelay : E.RealizedFinalizationDelay cfg ext B)
     (hspe : 1 < cfg.slots_per_epoch)
     (hpaper : B.state.PaperA32Inclusion cfg ext)
-    (P : AcceptedEpochCheckpointProjection B.anchor
+    (P : EpochCheckpointClosure B.anchor
       (E.AcceptedRoot cfg ext) B.state.C)
     (V : B.state.ExactLinkValidity)
     {v : ValidatorIndex} (hv : v ∈ E.honest) {n : ℕ}

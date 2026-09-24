@@ -135,7 +135,7 @@ def getLatestObservedRestartGuard
     (decide (query.current_epoch_observed_justified_checkpoint =
       query.store.unrealized_justifications
         (Weak.get_certified_head cfg ext query.store (get_current_balance_source query))) &&
-    Weak.has_head_broadcast_certificate cfg ext query.store (get_current_balance_source query)) &&
+    Weak.has_carrier_broadcast_certificate cfg ext query.store (get_current_balance_source query)) &&
     decide (get_block_slot query.store candidate <
       get_block_slot query.store
         query.current_epoch_observed_justified_checkpoint.root)
@@ -436,7 +436,7 @@ structure ObservedResetCandidateInputAt
     query.current_epoch_observed_justified_checkpoint =
       query.store.unrealized_justifications
         (Weak.get_certified_head cfg ext query.store (get_current_balance_source query))
-  carrier_certificate : Weak.has_head_broadcast_certificate cfg ext query.store
+  carrier_certificate : Weak.has_carrier_broadcast_certificate cfg ext query.store
     (get_current_balance_source query) = true
   afterFinalized_slot_lt_observed :
     get_block_slot query.store trace.afterFinalized <

@@ -175,7 +175,7 @@ theorem will_current_target_be_justified_of_weak (store : Store Root)
   exact le_trans h (Nat.mul_le_mul_left 3 hm)
 
 /-- B8, rule delta 4. The weak short-circuit additionally requires
-`Weak.has_head_broadcast_certificate`; the strong side does not. Casing on the
+`Weak.has_carrier_broadcast_certificate`; the strong side does not. Casing on the
 strong condition first (`heq`) handles this: when it holds the strong
 `if_pos` closes the goal outright (`hc.1` in the weak-true sub-case just
 witnesses the same fact), and when it fails, both sides fall through to their

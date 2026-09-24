@@ -16,7 +16,7 @@ the existing executable one: an honest target vote is delivered, validated,
 inserted into `checkpoint_state_keys`, and the key persists to the endpoint.
 
 The only replacement is the global provenance of the justified checkpoint.
-`ExactPrefixAcceptedFFGSemantics.globalJustified_anchor_or_AUEvidence` returns
+`CausalPrefixFFGInterpretation.globalJustified_anchor_or_AUEvidence` returns
 either the trusted anchor or an `AcceptedSelectorAUCarrier`.  In the latter
 case, `formed_evidence.causal` supplies the exact accepted formation block and
 an honest target vote strictly before it.  Accepted store reflection places
@@ -39,7 +39,7 @@ variable (E : Execution Root)
 /-- Every reachable honest store has cached its accepted-prefix realized
 justified checkpoint. -/
 theorem justifiedCheckpoint_cached_of_acceptedGlobalTrajectory
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (hT : E.ScheduledPrefixPremises cfg ext)
     (hsync : NextSlotSynchronyPremises cfg ext E)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
@@ -123,7 +123,7 @@ theorem justifiedCheckpoint_cached_of_acceptedGlobalTrajectory
         exact CertifiedJustified.anchor_epoch_lt_of_ne (cfg := cfg)
           (IncludedCertifiedJustified.toCertifiedJustified
             (cfg := cfg)
-            (Execution.AcceptedIncludedAttestationRelation.relation
+            (Execution.CausalCarrierAttestationRelation.relation
               cfg ext E B.state.includedAttestations)
             hincludedCertificate)
           hjustifiedAnchor
@@ -241,7 +241,7 @@ theorem justifiedCheckpoint_cached_of_acceptedGlobalTrajectory
 /-- Accepted root knownness plus accepted cache provenance construct the
 complete two-field domain consumed by strict selected-result geometry. -/
 theorem selectedMarginDomain_of_acceptedGlobalTrajectory
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (hT : E.ScheduledPrefixPremises cfg ext)
     (hsync : NextSlotSynchronyPremises cfg ext E)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)

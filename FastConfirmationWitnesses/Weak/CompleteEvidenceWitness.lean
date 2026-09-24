@@ -1,5 +1,5 @@
 module
-public import FastConfirmationProofs.Weak.Evidence.CompleteEvidence
+public import FastConfirmationProofs.Weak.Evidence.CompletePriorSlotStoreEvidence
 
 @[expose] public section
 
@@ -89,7 +89,7 @@ theorem before_head_confirms_nonanchor :
 theorem before_head_is_certified :
     (get_head cfg store).root = 1 ∧
     Weak.get_certified_head cfg ext store state = 1 ∧
-    Weak.has_head_broadcast_certificate cfg ext store state = true := by
+    Weak.has_carrier_broadcast_certificate cfg ext store state = true := by
   decide
 
 /-- The after-head query adds the slot-two proposal before its attestation.
@@ -132,7 +132,7 @@ theorem after_head_prior_slot_committees_present :
   decide
 
 /-- Nonempty evidence contract, with all prior-slot committee votes present. -/
-theorem complete_evidence : CompleteEvidence cfg ext fcr where
+theorem complete_evidence : CompletePriorSlotStoreEvidence cfg ext fcr where
   epoch_size := Or.inl rfl
   threshold := rfl
   after_genesis := by decide
@@ -182,7 +182,7 @@ theorem complete_evidence : CompleteEvidence cfg ext fcr where
     cases h
 
 /-- The evidence contract also admits the documented after-head call order. -/
-theorem after_head_complete_evidence : CompleteEvidence cfg ext afterHeadFcr where
+theorem after_head_complete_evidence : CompletePriorSlotStoreEvidence cfg ext afterHeadFcr where
   epoch_size := Or.inl rfl
   threshold := rfl
   after_genesis := by decide
@@ -227,7 +227,7 @@ theorem after_head_complete_evidence : CompleteEvidence cfg ext afterHeadFcr whe
 
 /-- An explicit non-anchor confirmation under the evidence contract. -/
 theorem nonvacuity : ∃ f : FastConfirmationStore Nat,
-    CompleteEvidence cfg ext f ∧
+    CompletePriorSlotStoreEvidence cfg ext f ∧
     Strong.get_latest_confirmed cfg ext f = 1 ∧
     Weak.get_latest_confirmed cfg ext f = 1 ∧
     (1 : Nat) ≠ f.store.finalized_checkpoint.root :=
@@ -235,7 +235,7 @@ theorem nonvacuity : ∃ f : FastConfirmationStore Nat,
 
 /-- STOP certificate for the unconditional carrier-equals-head proposal. -/
 theorem certified_head_equality_false :
-    ¬ (∀ f : FastConfirmationStore Nat, CompleteEvidence cfg ext f →
+    ¬ (∀ f : FastConfirmationStore Nat, CompletePriorSlotStoreEvidence cfg ext f →
       Weak.get_certified_head cfg ext f.store (get_current_balance_source f) =
         (get_head cfg f.store).root) := by
   intro h

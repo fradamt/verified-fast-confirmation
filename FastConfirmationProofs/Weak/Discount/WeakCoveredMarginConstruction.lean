@@ -87,7 +87,7 @@ endpoint, by `endpointLedgerFields_from_execution_minimal`). -/
 theorem selectedCoveredMarginSupplyAt_of_filterSupply_at_observer
     {E : Execution Root} (hA : SelectedMarginAssumptions cfg ext E)
     (hwalkDomain : E.PostAnchorHonestVoteTargetWalkDomain cfg ext)
-    {obs : ValidatorIndex} (hW : E.WeakObserverMarginAssumptions cfg ext obs)
+    {obs : ValidatorIndex} (hW : E.WeakObserverMarginPremises cfg ext obs)
     (q : ℕ) (hqH : E.WithinHorizon cfg q)
     (query : FastConfirmationStore Root)
     (hquery : query.store = E.store cfg ext obs q)

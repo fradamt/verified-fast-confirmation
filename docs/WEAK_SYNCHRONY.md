@@ -11,8 +11,8 @@ The conformance trace is
 ## Claims and premise surface
 
 The two full-rule safety headlines are
-`weakConfirmed_safeFromFollowingSlot_of_acceptedWeakFullRuleFold` and
-`weakConfirmed_head_of_acceptedWeakFullRuleFold_nextSlot` in
+`weak_confirmed_root_safe_from_next_slot` and
+`weak_confirmed_root_on_honest_heads_from_next_slot` in
 `FastConfirmationProofs/Weak/Safety/WeakObservedResetSeedSafety.lean`. They
 concern a weak observer's stored confirmed root at second n and each honest
 head in a strictly later slot within the verification horizon. The observer
@@ -57,7 +57,7 @@ ancestry. They do not establish safety from an arbitrary seed.
 
 ## Open live statement
 
-`WeakSpec_Monotonicity_live` in
+`WeakStoredRootMonotonicity` in
 `FastConfirmationStatements/Weak/LiveMonotonicity.lean` is an open proposition,
 not a public theorem. Its `WeakLiveMonotonicityPremises` record extends the
 common live record with the configured threshold margin needed by the weak

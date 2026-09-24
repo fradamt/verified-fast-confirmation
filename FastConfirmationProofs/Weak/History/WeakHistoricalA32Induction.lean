@@ -95,7 +95,7 @@ facts retained by the write-back induction at one execution second of the
 observer's weak trajectory.  Historical payload is required only in the
 current-epoch case, exactly as in the strong record. -/
 structure ObserverHistoricalA32CurrentLineageAt (E : Execution Root)
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (obs : ValidatorIndex) (n : ℕ)
     (Cert : ℕ → Checkpoint Root → Prop)
     (Supp : ℕ → Root → Epoch → Prop) : Prop where
@@ -117,7 +117,7 @@ bound, and the crossing builder is `Weak.selectedCurrentCrossingLazyLineage`,
 which consumes **no** normative proviso.  Only the unchanged
 6-field `E.CompletedFCRCallPremises` is required. -/
 theorem observerLineageRoute_lazy
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (hT : E.ScheduledPrefixPremises cfg ext)
     {obs : ValidatorIndex}
     (hCbase : E.CompletedFCRCallPremises cfg ext)
@@ -178,7 +178,7 @@ every second of the observer's weak trajectory; a selected result uses the
 weak known-descendant theorem.  No justification-interface or
 selected-margin premise appears. -/
 theorem getLatestConfirmedTraceAt_result_known
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (hT : E.ScheduledPrefixPremises cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : Execution.TrustedAnchorBoundaryAligned (cfg := cfg)
@@ -239,7 +239,7 @@ The only substitution is `E.confirmed_zero` → `E.weakConfirmed_zero`; the
 checkpoint identification is the reused, honesty-free
 `Execution.trustedAnchor_checkpointForBlock_of_trajectory`. -/
 noncomputable def observerHistoricalA32CurrentLineageAt_zero
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (hT : E.ScheduledPrefixPremises cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : Execution.TrustedAnchorBoundaryAligned (cfg := cfg)
@@ -301,7 +301,7 @@ unchanged slot transport the preceding lineage — that second half is entirely
 about `E.store`, which the two models share, so only the write-back equations
 change (`E.confirmed_succ_of_*` → `E.weakConfirmed_succ_of_*`). -/
 noncomputable def observerHistoricalA32CurrentLineageAt_all
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (hT : E.ScheduledPrefixPremises cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : Execution.TrustedAnchorBoundaryAligned (cfg := cfg)
@@ -414,7 +414,7 @@ No new assumption is taken beyond the route: `hroute` supplies the crossing
 builder and the two anchor discharges, and every top-level weak statement
 already carries `B`/`hT`/`hanchor`/`hboundary`. -/
 theorem observerHistoricalA32CurrentLineage_invariant
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (hT : E.ScheduledPrefixPremises cfg ext)
     {obs : ValidatorIndex}
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
@@ -445,7 +445,7 @@ the conclusion is therefore literally the residual field.
 builder and the completed-prefix gate producer are both contracted at actual
 weak FCR calls only. -/
 theorem observerCall_currentLineage
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (hT : E.ScheduledPrefixPremises cfg ext)
     {obs : ValidatorIndex}
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
@@ -494,7 +494,7 @@ strong `hdomain : SelectedMarginDomain` binder is gone, because
 `Weak.StrictSelectorAdvanceAt.extendHistoricalLineage_sameEpoch_actual`
 already replaced it by observer coherence. -/
 theorem observerCall_previousCarried_epochStartLineage
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (hT : E.ScheduledPrefixPremises cfg ext)
     {obs : ValidatorIndex}
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
@@ -647,7 +647,7 @@ uses no endpoint, no-crossing fact or safety conclusion, and it is quantified
 over an arbitrary node `v`, so no substitution at all is needed — only the
 `private` modifier on the strong copy forces the duplicate. -/
 private theorem AcceptedHistoricalA32LineageCoreAt.payloadAtObserverStore
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (hT : E.ScheduledPrefixPremises cfg ext)
     (hphase : Phase0SourceCoherence cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
@@ -722,7 +722,7 @@ invariant at second `n`, whose certification obligation `certElim` discharges
 is D1† of `docs/crossing-call-support-residue.md` §2.1, ported to the weak
 side (`docs/weak-final-wave.md` §4). -/
 theorem observerCall_currentTargetHistoricalCertificate
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (hT : E.ScheduledPrefixPremises cfg ext)
     (hphase : Phase0SourceCoherence cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)

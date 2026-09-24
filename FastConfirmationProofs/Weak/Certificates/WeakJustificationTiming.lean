@@ -19,10 +19,10 @@ non-anchor accepted `AU` checkpoint of a block known to a store cannot have its
 own epoch boundary at or after that store's current slot.
 
 The proof is the finalized one with the finalizing link replaced by the
-justifying link supplied by `AcceptedFormedCheckpointEvidence.certified`:
+justifying link supplied by `IncludedVoteCheckpointCertificate.certified`:
 
 1. `B.state.AU` unfolds to a carrier with
-   `AcceptedFormedCheckpointEvidence … carrier c`;
+   `IncludedVoteCheckpointCertificate … carrier c`;
 2. its `certified` component is an `IncludedCertifiedJustified` derivation —
    the `anchor` constructor is excluded by `c ≠ B.anchor`, so a
    supermajority `link` into `c` exists;
@@ -57,7 +57,7 @@ the single entry of `block_roots`.  Factored out of
 `Weak.StrictSelectorAdvanceAt.previousFinalizedReset_anchorLineage`, which
 derived it inline, so that the observed-reset arm can reuse it. -/
 theorem anchorRoot_mem_genesis
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (hT : E.ScheduledPrefixPremises cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint) :
     B.anchor.root ∈ E.genesis_store.block_roots := by
@@ -80,7 +80,7 @@ boundary against the call's own slot rather than against an epoch index.
 need not be, since the included attestation is transported onto the tip's own
 chain by `Execution.RootDescends.trans` before the slot bound is read. -/
 theorem auCheckpoint_startSlot_lt_currentSlot
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (hT : E.ScheduledPrefixPremises cfg ext)
     {obs : ValidatorIndex} {n : ℕ} {tip : Root} {c : Checkpoint Root}
     (htip : tip ∈ (E.store cfg ext obs n).block_roots)

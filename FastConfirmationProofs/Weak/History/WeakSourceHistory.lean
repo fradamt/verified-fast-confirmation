@@ -125,7 +125,7 @@ theorem pastHead_known_at_observer
     (hbyz : ByzantineWeightPremises cfg E)
     (hdomain : SelectedMarginDomain cfg ext E)
     (obs : ValidatorIndex) (q : Nat) (b : Root)
-    (hvalid : E.ObserverValidity cfg ext obs)
+    (hvalid : E.ObserverIndexedAttestationValidity cfg ext obs)
     (hH : E.WithinHorizon cfg q)
     (i : ValidatorIndex) (hi : i ∈ E.honest) (lm : LatestMessage Root)
     (hlm : (E.store cfg ext obs q).latest_messages i = some lm)
@@ -228,7 +228,7 @@ theorem confirmed_honestPastHeadBelow_at_observer
     (hbyz : ByzantineWeightPremises cfg E)
     (hdomain : SelectedMarginDomain cfg ext E)
     {obs : ValidatorIndex} {q : Nat}
-    (hvalid : E.ObserverValidity cfg ext obs)
+    (hvalid : E.ObserverIndexedAttestationValidity cfg ext obs)
     (hcomm : E.PrefixCommitteeAgreement cfg ext (E.store cfg ext obs q))
     (hqH : E.WithinHorizon cfg q)
     {query : FastConfirmationStore Root}
@@ -323,7 +323,7 @@ confirmation predicate meant here is the ordinary one. -/
 theorem confirmedPastDescendantSlotWitness_core
     (hA : SelectedMarginAssumptions cfg ext E)
     {obs : ValidatorIndex} {q : Nat}
-    (hvalid : E.ObserverValidity cfg ext obs)
+    (hvalid : E.ObserverIndexedAttestationValidity cfg ext obs)
     (hcomm : E.PrefixCommitteeAgreement cfg ext (E.store cfg ext obs q))
     (hqH : E.WithinHorizon cfg q)
     {query : FastConfirmationStore Root} {result : Root}

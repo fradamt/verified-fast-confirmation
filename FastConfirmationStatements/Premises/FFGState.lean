@@ -14,14 +14,14 @@ results outside the model boundary.
 
 There are four interfaces:
 
-* `AcceptedChainFFGState` is the block-local projection used by the accepted
+* `CausalCarrierFFGState` is the block-local projection used by the accepted
   theorem. It ranges over exact accepted event-prefix roots and records
   available/unrealized checkpoint evidence on exact accepted event-prefix
   roots;
 * `ChainFFGState` is a broader projection over every scheduled wire root,
   used by generic internal lemmas about checkpoint evidence and the `C`,
   `GJ`, `GU`, and `GF` selectors;
-* `AcceptedFFGTransitionCoherence` connects the accepted projection to actual
+* `FFGSelectorsAndCheckpointReadsMatchBeaconStates` connects the accepted projection to actual
   successful block-handler transitions; `FFGTransitionCoherence` is the
   corresponding scheduled-root interface; and
 * `PaperA32Inclusion` is the paper's separate liveness assumption.  Its
@@ -118,7 +118,7 @@ structure IncludedAttestationRelation
 /-- Positive inclusion evidence whose exact carrier block occurs in a causal
 execution prefix.  This strengthens the projected block-body evidence with
 `AcceptedBlockAt`, not merely same-root schedule membership. -/
-structure AcceptedIncludedAttestationEvidence
+structure CausalCarrierAttestationEvidence
     (validity : BeaconState Root → Attestation Root → Bool)
     (carrier : Root) (a : Attestation Root)
     extends IncludedAttestationEvidence cfg E validity carrier a where
@@ -130,27 +130,27 @@ The projected block has no ordinary FFG attestation body, so the evidence does
 not check whether the carrier contains the vote. The validation state needs
 only the execution registry and a true validity answer. It need not be a
 reachable or prepared handler state. -/
-structure AcceptedIncludedAttestationRelation
+structure CausalCarrierAttestationRelation
     (validity : BeaconState Root → Attestation Root → Bool) where
   /-- Supplied carrier-vote assignment. Evidence ties the vote to an accepted
       carrier and a block-origin receipt, but not to carrier body membership. -/
   Included : Root → Attestation Root → Prop
   evidence : ∀ {carrier : Root} {a : Attestation Root},
     Included carrier a →
-      AcceptedIncludedAttestationEvidence cfg ext E validity carrier a
+      CausalCarrierAttestationEvidence cfg ext E validity carrier a
 
-namespace AcceptedIncludedAttestationRelation
+namespace CausalCarrierAttestationRelation
 
 /-- Forget only the accepted-carrier strengthening.  This projects positive
 evidence to the broader scheduled-root relation. -/
 def relation
     {validity : BeaconState Root → Attestation Root → Bool}
-    (I : AcceptedIncludedAttestationRelation cfg ext E validity) :
+    (I : CausalCarrierAttestationRelation cfg ext E validity) :
     IncludedAttestationRelation cfg E validity where
   Included := I.Included
   evidence := fun h => (I.evidence h).toIncludedAttestationEvidence
 
-end AcceptedIncludedAttestationRelation
+end CausalCarrierAttestationRelation
 
 end Execution
 
@@ -224,7 +224,7 @@ end IncludedCertifiedFinalized
 /-- Accepted-prefix version of the causal honest formation witness.  The
 exact carrier message, rather than only some same-root scheduled message, is
 known in a causal store. -/
-def AcceptedHonestTargetIncludedBeforeCarrier (E : Execution Root)
+def HonestEarlierTargetVoteOnCarrierChain (E : Execution Root)
     (included : Root → Attestation Root → Prop)
     (carrier : Root) (c : Checkpoint Root) : Prop :=
   ∃ b : BeaconBlock Root, E.AcceptedBlockAt cfg ext carrier b ∧
@@ -239,7 +239,7 @@ def AcceptedHonestTargetIncludedBeforeCarrier (E : Execution Root)
 /-- Concrete evidence represented by one accepted block-local AU entry.
 Certification and inclusion remain positive, while the non-anchor temporal
 carrier is an exact accepted block. -/
-structure AcceptedFormedCheckpointEvidence (E : Execution Root)
+structure IncludedVoteCheckpointCertificate (E : Execution Root)
     (included : Root → Attestation Root → Prop)
     (anchor : Checkpoint Root) (carrier : Root)
     (c : Checkpoint Root) : Prop where
@@ -247,13 +247,13 @@ structure AcceptedFormedCheckpointEvidence (E : Execution Root)
     (IncludedCertifiedJustified cfg E included anchor carrier c)
   on_chain : E.RootDescends carrier c.root
   causal : c = anchor ∨
-    AcceptedHonestTargetIncludedBeforeCarrier cfg ext E included carrier c
+    HonestEarlierTargetVoteOnCarrierChain cfg ext E included carrier c
 
 /-! ## Scheduled-root checkpoint state
 
 The declarations through `FFGTransitionCoherence` below constrain every
 scheduled block root. The accepted theorem instead uses
-`AcceptedChainFFGState` and `AcceptedFFGTransitionCoherence`, which range only
+`CausalCarrierFFGState` and `FFGSelectorsAndCheckpointReadsMatchBeaconStates`, which range only
 over successful accepted prefixes. There is intentionally no conversion
 between the two domains.
 -/
@@ -271,11 +271,11 @@ end ChainFFGState
 for Lean convenience, but all semantic laws are restricted to causal-prefix
 accepted roots or exact accepted block carriers.  Every positive inclusion
 and formed carrier is accepted. -/
-structure AcceptedChainFFGState (E : Execution Root)
+structure CausalCarrierFFGState (E : Execution Root)
     (anchor : Checkpoint Root) where
   attestationValidity : BeaconState Root → Attestation Root → Bool
   includedAttestations :
-    Execution.AcceptedIncludedAttestationRelation cfg ext E
+    Execution.CausalCarrierAttestationRelation cfg ext E
       attestationValidity
   formed : Root → Checkpoint Root → Prop
   C : Root → Epoch → Checkpoint Root
@@ -287,7 +287,7 @@ structure AcceptedChainFFGState (E : Execution Root)
   formed_carrier_accepted : ∀ {r c}, formed r c →
     E.AcceptedRoot cfg ext r
   formed_evidence : ∀ {r : Root} {c : Checkpoint Root},
-    formed r c → AcceptedFormedCheckpointEvidence cfg ext E
+    formed r c → IncludedVoteCheckpointCertificate cfg ext E
       includedAttestations.Included anchor r c
   gj_mem : ∀ r, E.AcceptedRoot cfg ext r →
     ∃ carrier, E.RootDescends r carrier ∧ formed carrier (GJ r)
@@ -321,22 +321,22 @@ structure AcceptedChainFFGState (E : Execution Root)
   gf_epoch_le_guf : ∀ r, E.AcceptedRoot cfg ext r →
     (GF r).epoch ≤ (GUF r).epoch
 
-namespace AcceptedChainFFGState
+namespace CausalCarrierFFGState
 
 variable {E : Execution Root} {anchor : Checkpoint Root}
 
 
-def AU (S : AcceptedChainFFGState cfg ext E anchor)
+def AU (S : CausalCarrierFFGState cfg ext E anchor)
     (tip : Root) (c : Checkpoint Root) : Prop :=
   ∃ carrier, E.RootDescends tip carrier ∧ S.formed carrier c
 
-end AcceptedChainFFGState
+end CausalCarrierFFGState
 
 /-- Accepted-only selector coherence.  Its transition equations quantify
 only over actual successful `on_block` calls at exact causal prefixes. -/
-structure AcceptedFFGSelectorCoherence
+structure FFGSelectorsMatchBeaconStates
     {E : Execution Root} {anchor : Checkpoint Root}
-    (S : AcceptedChainFFGState cfg ext E anchor) : Prop where
+    (S : CausalCarrierFFGState cfg ext E anchor) : Prop where
   attestation_validity : S.attestationValidity =
     ext.is_valid_indexed_attestation
   genesis_gj : ∀ r ∈ E.genesis_store.block_roots,
@@ -389,10 +389,10 @@ structure AcceptedFFGSelectorCoherence
 
 /-- Accepted selector coherence plus checkpoint reflection at every exact
 causal prefix store. -/
-structure AcceptedFFGTransitionCoherence
+structure FFGSelectorsAndCheckpointReadsMatchBeaconStates
     {E : Execution Root} {anchor : Checkpoint Root}
-    (S : AcceptedChainFFGState cfg ext E anchor) : Prop
-    extends AcceptedFFGSelectorCoherence cfg ext S where
+    (S : CausalCarrierFFGState cfg ext E anchor) : Prop
+    extends FFGSelectorsMatchBeaconStates cfg ext S where
   checkpoint_of_known : ∀ {store : Store Root},
     E.CausalStore cfg ext store → ∀ r ∈ store.block_roots, ∀ e,
       S.C r e = get_checkpoint_for_block cfg store r e
@@ -409,10 +409,10 @@ execution registry and a true validity answer, not a reachable or prepared
 handler state. Safety claims hold for every relation that meets these fields;
 they do not alone certify votes in real block bodies. The bundle does not
 cover delayed queues or arbitrary global action traces. -/
-structure ExactPrefixAcceptedFFGSemantics (E : Execution Root) where
+structure CausalPrefixFFGInterpretation (E : Execution Root) where
   anchor : Checkpoint Root
-  state : AcceptedChainFFGState cfg ext E anchor
-  coherence : AcceptedFFGTransitionCoherence cfg ext state
+  state : CausalCarrierFFGState cfg ext E anchor
+  coherence : FFGSelectorsAndCheckpointReadsMatchBeaconStates cfg ext state
 
 /-- A wire attestation has reached validator `w`'s execution view by second
 `m`.  The schedule is the model's received-message history; validity and
@@ -483,9 +483,9 @@ end PaperA32StateView
 
 /-- Lossless positive A.3.2 projection of the accepted-prefix state.  The
 ordinary relation forgets only its extra accepted-carrier proof. -/
-def AcceptedChainFFGState.paperA32View
+def CausalCarrierFFGState.paperA32Inputs
     {E : Execution Root} {anchor : Checkpoint Root}
-    (S : AcceptedChainFFGState cfg ext E anchor) :
+    (S : CausalCarrierFFGState cfg ext E anchor) :
     PaperA32StateView cfg E where
   BlockAt := E.AcceptedBlockAt cfg ext
   attestationValidity := S.attestationValidity
@@ -590,22 +590,22 @@ variable {E : Execution Root} {anchor : Checkpoint Root}
 
 end ChainFFGState
 
-namespace AcceptedChainFFGState
+namespace CausalCarrierFFGState
 
 variable {E : Execution Root} {anchor : Checkpoint Root}
 
 /-- Accepted-state specialization of support throughout the next epoch. -/
 abbrev PaperA32SupportThroughoutEpoch
-    (S : AcceptedChainFFGState cfg ext E anchor)
+    (S : CausalCarrierFFGState cfg ext E anchor)
     (b : Root) (e : Epoch) : Prop :=
-  PaperA32SupportThroughoutEpochCore cfg ext (S.paperA32View cfg ext) b e
+  PaperA32SupportThroughoutEpochCore cfg ext (S.paperA32Inputs cfg ext) b e
 
 /-- Accepted-state specialization of paper Assumption 3.2. -/
 abbrev PaperA32Inclusion
-    (S : AcceptedChainFFGState cfg ext E anchor) : Prop :=
-  PaperA32InclusionCore cfg ext (S.paperA32View cfg ext)
+    (S : CausalCarrierFFGState cfg ext E anchor) : Prop :=
+  PaperA32InclusionCore cfg ext (S.paperA32Inputs cfg ext)
 
-end AcceptedChainFFGState
+end CausalCarrierFFGState
 
 /-! ## Scheduled-root specializations -/
 

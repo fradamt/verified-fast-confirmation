@@ -53,7 +53,7 @@ Every field of `Weak.ObserverStrictCallFilterInputsAt` is discharged from the
 S7 supplier's own premises plus the obligation route, the eliminations it
 carries, and the carried input safety `hbase`. -/
 theorem observerStrictCallFilterInputsAt_of_route
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (hT : E.ScheduledPrefixPremises cfg ext)
     {obs : ValidatorIndex}
     (hCbase : E.CompletedFCRCallPremises cfg ext)
@@ -134,7 +134,7 @@ output `hprior`, plus — at the late current-epoch cell only — the endpoint
 induction's own `hIH`, converted by
 `Execution.engineInv_of_selectedCanonical_lateEndpoint`. -/
 theorem observerStrictCallFilterInputsAt_of_observerCall_lazy
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (hT : E.ScheduledPrefixPremises cfg ext)
     {obs : ValidatorIndex}
     (hCbase : E.CompletedFCRCallPremises cfg ext)
@@ -201,7 +201,7 @@ weak safety fold's own strengthened induction hypothesis at strictly earlier
 seconds).  No normative observer proviso is consumed anywhere below this. -/
 noncomputable def
     StrictSelectorAdvanceAt.observerCall_selectedStrictEdgeFilterSupplyAt_lazy
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (hT : E.ScheduledPrefixPremises cfg ext)
     (hsync : NextSlotSynchronyPremises cfg ext E)
     (hstatic : StaticValidatorSet cfg E)
@@ -214,7 +214,7 @@ noncomputable def
     (hDelay : E.RealizedFinalizationDelay cfg ext B)
     (hphase0 : Phase0SourceCoherence cfg ext)
     (hpaper : B.state.PaperA32Inclusion cfg ext)
-    (P : AcceptedEpochCheckpointProjection B.anchor
+    (P : EpochCheckpointClosure B.anchor
       (E.AcceptedRoot cfg ext) B.state.C)
     (V : B.state.ExactLinkValidity)
     (hanchorExact : B.anchor = B.state.C B.anchor.root B.anchor.epoch)

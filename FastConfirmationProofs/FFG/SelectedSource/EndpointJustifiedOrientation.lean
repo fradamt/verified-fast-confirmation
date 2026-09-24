@@ -54,8 +54,8 @@ variable {E : Execution Root}
 /-- The accepted global unrealized-justified field has a concrete Casper
 certificate.  This is the accepted-state replacement for the legacy
 `ChainFFGState.gu_certified` equality branch. -/
-theorem ExactPrefixAcceptedFFGSemantics.unrealizedJustified_certificate
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+theorem CausalPrefixFFGInterpretation.unrealizedJustified_certificate
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (hgen : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
       E.genesis_store = get_forkchoice_store cfg ast ablk ∧
         ast.slot = ablk.message.slot)
@@ -77,13 +77,13 @@ theorem ExactPrefixAcceptedFFGSemantics.unrealizedJustified_certificate
       B.state.includedJustifiedAtTip_of_AU cfg ext hAU
     exact ⟨IncludedCertifiedJustified.toCertifiedJustified
       (cfg := cfg)
-      (Execution.AcceptedIncludedAttestationRelation.relation
+      (Execution.CausalCarrierAttestationRelation.relation
         cfg ext E B.state.includedAttestations) hincluded⟩
 
 /-- Accepted global checkpoint geometry supplies the sole store-domain field
 of the otherwise protocol-level no-conflict arithmetic bundle. -/
 def noConflictPinningAssumptions_of_acceptedGlobalTrajectory
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (hT : E.ScheduledPrefixPremises cfg ext)
     (hstatic : StaticValidatorSet cfg E)
     (hbyz : ByzantineWeightPremises cfg E)
@@ -183,7 +183,7 @@ without the proviso, as §5.2 items 1-2 record.  Mirrors
 `Execution.noConflict_endpointJustifiedQuorum_root_eq_currentTarget_at_observer`
 with the observer coherence binder replaced by the query node's honesty. -/
 theorem completedPrefix_noConflict_endpointJustifiedQuorum_root_eq_currentTarget
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (hT : E.ScheduledPrefixPremises cfg ext)
     (hC : E.CompletedFCRCallPremises cfg ext)
     (hfit : EpochEndsFitUint64 cfg)
@@ -236,7 +236,7 @@ theorem completedPrefix_noConflict_endpointJustifiedQuorum_root_eq_currentTarget
     at hepoch
   change (E.store cfg ext w m).justified_checkpoint.root = target.root
   obtain ⟨hc⟩ :=
-    ExactPrefixAcceptedFFGSemantics.endpointJustified_certificate
+    CausalPrefixFFGInterpretation.endpointJustified_certificate
       cfg ext B hgenShort hanchor (E.store_causal cfg ext w m)
   have hstate : state = get_pulled_up_head_state cfg ext store := rfl
   have hval : state.validators = E.registry := by
@@ -258,7 +258,7 @@ theorem completedPrefix_noConflict_endpointJustifiedQuorum_root_eq_currentTarget
   have hstoreCausal : E.CausalStore cfg ext store := by
     simpa only [store] using E.store_causal cfg ext v (n + 1)
   obtain ⟨hUJ⟩ :=
-    ExactPrefixAcceptedFFGSemantics.unrealizedJustified_certificate
+    CausalPrefixFFGInterpretation.unrealizedJustified_certificate
       cfg ext B hgenShort hanchor hstoreCausal
   by_cases heq : target = store.unrealized_justified_checkpoint
   · have hroot := hacc.justified_unique hc hUJ
@@ -482,7 +482,7 @@ case β is N3 above.  Nothing here mentions `HonestVotesSupportTarget`: the
 proviso's entire Trunk-B duty is discharged by the endpoint's own
 `IncludedCertifiedJustified` evidence (§4) plus the helper arithmetic. -/
 theorem completedPrefix_endpointOriginOrPinnedProducerAt
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (hT : E.ScheduledPrefixPremises cfg ext)
     (hC : E.CompletedFCRCallPremises cfg ext)
     (hfit : EpochEndsFitUint64 cfg)
@@ -509,7 +509,7 @@ theorem completedPrefix_endpointOriginOrPinnedProducerAt
   by_cases hne : (E.store cfg ext w m).justified_checkpoint = B.anchor
   · exact Or.inl hne
   · obtain ⟨Q⟩ :=
-      ExactPrefixAcceptedFFGSemantics.endpointJustified_quorumAt
+      CausalPrefixFFGInterpretation.endpointJustified_quorumAt
         cfg ext B hT hanchor hboundary hne
     by_cases hpost : Q.PostQueryHonestSigner cfg ext (n + 1)
     · exact Or.inr (Or.inl
@@ -537,7 +537,7 @@ private theorem AcceptedBlockAt.executionRoot_for_actualOrientation
 This is accepted-root reflection plus the trusted-anchor boundary walk; it
 does not use an endpoint, no-crossing fact, or safety conclusion. -/
 private theorem AcceptedHistoricalA32LineageCoreAt.payloadAtExecutionStore
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (hT : E.ScheduledPrefixPremises cfg ext)
     (hphase : Phase0SourceCoherence cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
@@ -609,7 +609,7 @@ form from the invariant at second `n`, whose certification closure is
 discharged by `hprior` — the strictly earlier fold output.  This is D1† of
 `docs/crossing-call-support-residue.md` §2.1, now recorded in the types. -/
 noncomputable def completedPrefix_acceptedHistoricalCertificateProducerAt
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (hT : E.ScheduledPrefixPremises cfg ext)
     (hC : E.CompletedFCRCallPremises cfg ext)
     (hfit : EpochEndsFitUint64 cfg)
@@ -742,7 +742,7 @@ carried input `SafeFrom`, selected-result relay/IH, the concrete child edge at
 the endpoint, and noncoverage.  No FFG pipeline, filter conclusion, or
 historical-certificate premise remains. -/
 theorem actualCall_strictSelected_result_and_child_ancestor_of_endpointJustified
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (hT : E.ScheduledPrefixPremises cfg ext)
     (hC : E.CompletedFCRCallPremises cfg ext)
     (hfit : EpochEndsFitUint64 cfg)

@@ -68,7 +68,7 @@ the eager observer proviso (`observer_helper_provisos`) instead.  Those four
 were subsumed by the fold headlines, had no consumers, and existed only as
 carriers of that proviso; they were retired together with the proviso
 machinery itself.  The audited statements are now the trajectory headlines
-(`Execution.weakConfirmed_safeFromFollowingSlot_of_acceptedWeakFullRuleFold`
+(`Execution.weak_confirmed_root_safe_from_next_slot`
 and friends).
 -/
 
@@ -102,15 +102,15 @@ induction hypothesis at seconds strictly below `n`; the crossing payload the
 supplier needs is manufactured lazily at the consuming call rather than
 assumed up front.
 
-Observer-wise the premise surface is `hW : WeakObserverAssumptions` — the
+Observer-wise the premise surface is `hW : WeakObserverPremises` — the
 floor and committee readback at the observer's own store; `obs` is arbitrary
 and may be honest.
 `ObserverCoherence.justified_root_known` is *derived* here from `B`/`hT`/
-`hanchor`/`hboundary` (`WeakObserverAssumptions.toMarginAssumptions`), so it
+`hanchor`/`hboundary` (`WeakObserverPremises.toMarginAssumptions`), so it
 never appears as a premise. -/
 theorem weak_safeFrom_observerCall_closed_lazy
     {E : Execution Root}
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (hT : E.ScheduledPrefixPremises cfg ext)
     (hji : JustificationInterface cfg ext E)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
@@ -119,12 +119,12 @@ theorem weak_safeFrom_observerCall_closed_lazy
     (hDelay : E.RealizedFinalizationDelay cfg ext B)
     (hphase0 : Phase0SourceCoherence cfg ext)
     (hpaper : B.state.PaperA32Inclusion cfg ext)
-    (P : AcceptedEpochCheckpointProjection B.anchor
+    (P : EpochCheckpointClosure B.anchor
       (E.AcceptedRoot cfg ext) B.state.C)
     (V : B.state.ExactLinkValidity)
     (hanchorExact : B.anchor = B.state.C B.anchor.root B.anchor.epoch)
     {obs : ValidatorIndex}
-    (hW : E.WeakObserverAssumptions cfg ext obs)
+    (hW : E.WeakObserverPremises cfg ext obs)
     (hwalkDomain : E.PostAnchorHonestVoteTargetWalkDomain cfg ext)
     (hCbase : E.CompletedFCRCallPremises cfg ext)
     (hfit : EpochEndsFitUint64 cfg)

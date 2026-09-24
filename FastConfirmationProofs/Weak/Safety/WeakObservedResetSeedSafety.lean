@@ -94,7 +94,7 @@ theorem observedResetSeedSafety_of_acceptedDynamics
       anchorState.slot = anchorBlock.message.slot ∧
       ext.AnchorCommitsToState anchorBlock.message anchorState ∧
       anchorBlock.message.parent_root ≠ anchorBlock.root)
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (hji : JustificationInterface cfg ext E)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : Execution.TrustedAnchorBoundaryAligned (cfg := cfg) (E := E)
@@ -167,9 +167,9 @@ observer-honesty binder `hv : v ∈ E.honest` does not appear.
 
 That list is, in full: `B` (accepted FFG semantics), `hji`, `hanchor`,
 `hboundary`, `hDelay`, `hpaper`, `P`, `V`, `hW`
-(`WeakObserverAssumptions` = the selected-margin floor plus committee readback
+(`WeakObserverPremises` = the selected-margin floor plus committee readback
 at the observer's own store), `hCbase`
-(`AcceptedHistoricalA32CompletedPrefixCallSupplement`: the two phase-0
+(`WeakCompletedFCRCallSupplement`: the two phase-0
 coherence contracts and the balance floor) and `hfit` — **eleven** premises.
 Five surface duplications are gone: `hT` is *derived* from `hW.base`
 (`Execution.ScheduledPrefixPremises.of_selectedMarginAssumptions`),
@@ -185,25 +185,25 @@ the standalone `hphase0`/`hboundaryPhase` are read off `hCbase`, and the
 `synchrony`/`static_validators`/`byzantine_bound` fields of the full 6-field
 call contract are read off `hW.base` when it is rebuilt internally.
 
-Observer-wise the premise surface is exactly `hW : WeakObserverAssumptions` —
+Observer-wise the premise surface is exactly `hW : WeakObserverPremises` —
 committee readback at the observer's own store, nothing else; `obs` is
 arbitrary and may be honest.  `ObserverCoherence.justified_root_known` is
 *derived* from `B`/`hT`/`hanchor`/`hboundary` inside the fold
-(`WeakObserverAssumptions.toMarginAssumptions`), never assumed. -/
-theorem weakConfirmed_safeFromFollowingSlot_of_acceptedWeakFullRuleFold
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+(`WeakObserverPremises.toMarginAssumptions`), never assumed. -/
+theorem weak_confirmed_root_safe_from_next_slot
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (hji : JustificationInterface cfg ext E)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
       (E := E) (anchor := B.anchor))
     (hDelay : E.RealizedFinalizationDelay cfg ext B)
     (hpaper : B.state.PaperA32Inclusion cfg ext)
-    (P : AcceptedEpochCheckpointProjection B.anchor
+    (P : EpochCheckpointClosure B.anchor
       (E.AcceptedRoot cfg ext) B.state.C)
     (V : B.state.ExactLinkValidity)
     {obs : ValidatorIndex}
-    (hW : E.WeakObserverAssumptions cfg ext obs)
-    (hCbase : E.AcceptedHistoricalA32CompletedPrefixCallSupplement cfg ext)
+    (hW : E.WeakObserverPremises cfg ext obs)
+    (hCbase : E.WeakCompletedFCRCallSupplement cfg ext)
     (hfit : EpochEndsFitUint64 cfg) :
     ∀ n : ℕ, E.WithinHorizon cfg n →
       E.WeakConfirmedSafeFromFollowingSlot cfg ext obs n :=
@@ -221,20 +221,20 @@ binder at `obs` and no residual reset-seed obligation. Its `hji` premise
 includes strong `E.fcr` observed justified checkpoint, previous greatest
 unrealized checkpoint, and observed checkpoint knownness laws. It does not
 state those laws for `E.weakFcr`, so this is not a weak-only guarantee. -/
-theorem weakConfirmed_head_of_acceptedWeakFullRuleFold_nextSlot
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+theorem weak_confirmed_root_on_honest_heads_from_next_slot
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (hji : JustificationInterface cfg ext E)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
       (E := E) (anchor := B.anchor))
     (hDelay : E.RealizedFinalizationDelay cfg ext B)
     (hpaper : B.state.PaperA32Inclusion cfg ext)
-    (P : AcceptedEpochCheckpointProjection B.anchor
+    (P : EpochCheckpointClosure B.anchor
       (E.AcceptedRoot cfg ext) B.state.C)
     (V : B.state.ExactLinkValidity)
     {obs : ValidatorIndex}
-    (hW : E.WeakObserverAssumptions cfg ext obs)
-    (hCbase : E.AcceptedHistoricalA32CompletedPrefixCallSupplement cfg ext)
+    (hW : E.WeakObserverPremises cfg ext obs)
+    (hCbase : E.WeakCompletedFCRCallSupplement cfg ext)
     (hfit : EpochEndsFitUint64 cfg)
     {n : ℕ} {w : ValidatorIndex} (hw : w ∈ E.honest) {m : ℕ}
     (hnm : n ≤ m)

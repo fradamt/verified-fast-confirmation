@@ -11,7 +11,7 @@ namespace Execution
 variable (E : Execution Root)
 
 /-- The three indexed-attestation laws on the observer's own keyed states. -/
-structure ObserverValidity (E : Execution Root) (obs : ValidatorIndex) : Prop where
+structure ObserverIndexedAttestationValidity (E : Execution Root) (obs : ValidatorIndex) : Prop where
   honest_attestation_valid : ∀ (state : BeaconState Root) (a : Attestation Root),
     E.ObserverValidationState cfg ext obs state →
     ∀ v ∈ E.honest, a.attesting_indices = [v] → v ∈ E.committee a.data.slot →
@@ -37,7 +37,7 @@ an implementation that always computes committees from its own head state and
 always keeps its own justified root in its block map satisfies them whether
 or not the observer is Byzantine. -/
 structure ObserverCoherence (obs : ValidatorIndex) : Prop where
-  validity : E.ObserverValidity cfg ext obs
+  validity : E.ObserverIndexedAttestationValidity cfg ext obs
   committees_agree : ∀ n : ℕ, E.WithinHorizon cfg n → ∀ s : Slot,
     E.SlotWithinHorizon cfg s →
     get_slot_committee cfg ext (E.store cfg ext obs n) s = E.committee s
@@ -53,18 +53,18 @@ field: carrying it would only narrow the statements.)
 
 This record is *not* the premise surface of the weak development's top-level
 statements: `coherence.justified_root_known` is a derived fact, never a
-caller-supplied one. Callers hand in `WeakObserverAssumptions` below, whose
+caller-supplied one. Callers hand in `WeakObserverPremises` below, whose
 observer-store fields are `validity` and `committees_agree`, and every statement carrying
 the accepted-FFG package (`B`, `hT`, `hanchor`, `hboundary`) — the folds, the
 closed call theorems, and the finalized-base corollaries — builds this bundle
-internally with `WeakObserverAssumptions.toMarginAssumptions`. Only the
+internally with `WeakObserverPremises.toMarginAssumptions`. Only the
 `hmargin`/`hfilter`-carrying one-shot floor forms
 (`weak_safeFrom_find_latest_confirmed_descendant`, `…_discharged` and their
 endpoint forms), which carry no `B` at all and so have nothing to derive
 `justified_root_known` from, still take this bundle directly. -/
-structure WeakObserverMarginAssumptions (obs : ValidatorIndex) : Prop where
+structure WeakObserverMarginPremises (obs : ValidatorIndex) : Prop where
   base : SelectedMarginAssumptions cfg ext E
-  validity : E.ObserverValidity cfg ext obs
+  validity : E.ObserverIndexedAttestationValidity cfg ext obs
   coherence : E.ObserverCoherence cfg ext obs
 
 /-- **The observer premise surface of the weak development.** Everything a
@@ -86,14 +86,14 @@ fact about any node's trajectory
 (`ObserverCoherence.justified_root_known_of_acceptedGlobalTrajectory`), and
 every top-level weak statement carries the accepted-FFG/trajectory premises
 that prove it, so it is derived rather than assumed. -/
-structure WeakObserverAssumptions (obs : ValidatorIndex) : Prop where
+structure WeakObserverPremises (obs : ValidatorIndex) : Prop where
   base : SelectedMarginAssumptions cfg ext E
   genesis : ∃ (anchorState : BeaconState Root) (anchorBlock : SignedBeaconBlock Root),
     E.genesis_store = get_forkchoice_store cfg anchorState anchorBlock ∧
     anchorState.slot = anchorBlock.message.slot ∧
     ext.AnchorCommitsToState anchorBlock.message anchorState ∧
     anchorBlock.message.parent_root ≠ anchorBlock.root
-  validity : E.ObserverValidity cfg ext obs
+  validity : E.ObserverIndexedAttestationValidity cfg ext obs
   committees_agree : ∀ n : ℕ, E.WithinHorizon cfg n → ∀ s : Slot,
     E.SlotWithinHorizon cfg s →
     get_slot_committee cfg ext (E.store cfg ext obs n) s = E.committee s

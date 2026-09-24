@@ -304,7 +304,7 @@ theorem byz_score_le_adversarial_weight_of_prefix {E : Execution Root}
     (hgen : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
       E.genesis_store = get_forkchoice_store cfg ast ablk)
     {v : ValidatorIndex} {n : ℕ}
-    (hvalid : E.ObserverValidity cfg ext v)
+    (hvalid : E.ObserverIndexedAttestationValidity cfg ext v)
     (hnH : E.WithinHorizon cfg n)
     (hcomm : E.PrefixCommitteeAgreement cfg ext (E.store cfg ext v n))
     (hwf : ∀ r ∈ (E.store cfg ext v n).block_roots,
@@ -377,7 +377,7 @@ theorem honest_support_majority_of_prefix {E : Execution Root}
     (hgen : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
       E.genesis_store = get_forkchoice_store cfg ast ablk)
     {v : ValidatorIndex} {n : ℕ}
-    (hvalid : E.ObserverValidity cfg ext v)
+    (hvalid : E.ObserverIndexedAttestationValidity cfg ext v)
     (hnH : E.WithinHorizon cfg n)
     (hcomm : E.PrefixCommitteeAgreement cfg ext (E.store cfg ext v n))
     (hwf : ∀ r ∈ (E.store cfg ext v n).block_roots,

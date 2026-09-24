@@ -23,7 +23,7 @@ There is deliberately no finalized-reset, observed-adoption, observed-lock,
 head-ancestry, filter-result, or safety field.  Finalized next-slot safety and
 active-observed restart safety are already derived by the fold. -/
 structure NextSlotSafetyPremises where
-  semantics : ExactPrefixAcceptedFFGSemantics cfg ext E
+  semantics : CausalPrefixFFGInterpretation cfg ext E
   trajectory : E.ScheduledPrefixPremises cfg ext
   completed_calls :
     E.CompletedFCRCallPremises cfg ext
@@ -35,7 +35,7 @@ structure NextSlotSafetyPremises where
     E.RealizedFinalizationDelay cfg ext semantics
   slots_per_epoch_gt_one : 1 < cfg.slots_per_epoch
   paper_a32 : semantics.state.PaperA32Inclusion cfg ext
-  checkpoint_projection : AcceptedEpochCheckpointProjection
+  checkpoint_projection : EpochCheckpointClosure
     semantics.anchor (E.AcceptedRoot cfg ext) semantics.state.C
   exact_link_validity : semantics.state.ExactLinkValidity
 

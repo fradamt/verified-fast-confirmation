@@ -7,7 +7,7 @@ public import FastConfirmationProofs.FFG.SelectedSource.SelectedJustifiedCompati
 /-!
 # Spec / Proof / EndpointQuorumCausality: the endpoint justification's quorum
 
-`Execution.ExactPrefixAcceptedFFGSemantics.endpointJustificationOriginAt`
+`Execution.CausalPrefixFFGInterpretation.endpointJustificationOriginAt`
 (`AcceptedSelectedJustifiedOrientation.lean:40`) extracts the *single* causal
 origin vote of an endpoint justification and bounds its slot below the
 endpoint slot.  This module runs the same argument for the **whole terminal
@@ -87,7 +87,7 @@ attestation is included in a block on the carrier's chain; that block is known
 in the endpoint store, so its slot — and hence, strictly, the attestation slot
 — is at most the endpoint's current slot. -/
 private theorem includedCertified_quorum_data
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (hT : E.ScheduledPrefixPremises cfg ext)
     {ast : BeaconState Root} {ablk : SignedBeaconBlock Root}
     (hgenEq : E.genesis_store = get_forkchoice_store cfg ast ablk)
@@ -164,8 +164,8 @@ carrier-local certificate, and the certificate's terminal link supplies the
 quorum.  Only the post-anchor bound `E.slot_at cfg 0 ≤ a.data.slot` is proved
 here rather than in the helper above; it needs `B.anchor.epoch < c.epoch`,
 exactly as at `AcceptedSelectedJustifiedOrientation.lean:97-116`. -/
-theorem ExactPrefixAcceptedFFGSemantics.endpointJustified_quorumAt
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+theorem CausalPrefixFFGInterpretation.endpointJustified_quorumAt
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (hT : E.ScheduledPrefixPremises cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
@@ -221,7 +221,7 @@ theorem ExactPrefixAcceptedFFGSemantics.endpointJustified_quorumAt
     CertifiedJustified.anchor_epoch_lt_of_ne (cfg := cfg)
       (IncludedCertifiedJustified.toCertifiedJustified
         (cfg := cfg)
-        (Execution.AcceptedIncludedAttestationRelation.relation
+        (Execution.CausalCarrierAttestationRelation.relation
           cfg ext E B.state.includedAttestations) hcertified) hne
   obtain ⟨S, hspan, hsuper, hsigners⟩ :=
     includedCertified_quorum_data cfg ext B hT hgenEq hslot hparent

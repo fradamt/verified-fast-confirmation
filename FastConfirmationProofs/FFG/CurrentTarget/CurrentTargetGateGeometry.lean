@@ -171,7 +171,7 @@ inequality back to the transition inputs.
 This is the accepted replacement for the legacy history-replay lemma: no
 `BlockStateTransitionHistory` appears. -/
 theorem acceptedCrossEpochParentGJEqGU_of_known_parent
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (hwf : WellFormedExecution E)
     (hcore : E.ExactCausalStoreWellFormedCore cfg ext)
     (hboundaryPhase : Phase0BoundarySourceCoherence cfg ext)
@@ -239,7 +239,7 @@ theorem acceptedCrossEpochParentGJEqGU_of_known_parent
       cfg ext writer.fresh t.accepted
   have hprojection : AcceptedFFGStoreProjection B.state
       (t.atPrefix.store cfg ext) :=
-    Execution.ExactPrefixAcceptedFFGSemantics.causalStoreProjection B
+    Execution.CausalPrefixFFGInterpretation.causalStoreProjection B
       (.scheduledPrefix t.atPrefix)
   calc
     B.state.GJ child = B.state.GJ t.signedBlock.root :=
@@ -263,7 +263,7 @@ Same-epoch suffix edges preserve `GJ`; if the boundary landing is older, the
 first edge above it is realized by an actual accepted cross-epoch transition
 and changes the source to `GU` of the landing block. -/
 theorem acceptedGJEqVSAt_of_target_walk_root
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (hwf : WellFormedExecution E)
     (hcore : E.ExactCausalStoreWellFormedCore cfg ext)
     (hphase : Phase0SourceCoherence cfg ext)
@@ -284,7 +284,7 @@ theorem acceptedGJEqVSAt_of_target_walk_root
       rw [get_ancestor_stop hle] at hlands
       have hre : r = targetRoot := hlands
       subst targetRoot
-      simp only [AcceptedChainFFGState.VSAt, hheadEpoch, if_pos]
+      simp only [CausalCarrierFFGState.VSAt, hheadEpoch, if_pos]
   | @step r hr hgt hp ih =>
       have hparentKnown := hp.root_mem
       have hparentSlotLt := hparentSlots r hr hparentKnown
@@ -308,7 +308,7 @@ theorem acceptedGJEqVSAt_of_target_walk_root
           (S := B.state) hwf hcore hstore hparentKnown hr
             (hcurrentNonGenesis r hr hheadEpoch) rfl hsame
         exact (hedge.gj_eq_parent hphase
-          B.coherence.toAcceptedFFGSelectorCoherence).trans
+          B.coherence.toFFGSelectorsMatchBeaconStates).trans
             (ih hlandsParent hparentCurrent)
       · have hparentOld :
             get_block_epoch cfg store (store.blocks r).parent_root < e :=
@@ -332,7 +332,7 @@ theorem acceptedGJEqVSAt_of_target_walk_root
           rw [← hparentEq]
           exact Nat.ne_of_lt hparentOld
         rw [hparentEq] at hedge
-        simp only [AcceptedChainFFGState.VSAt, if_neg htargetOld]
+        simp only [CausalCarrierFFGState.VSAt, if_neg htargetOld]
         exact hedge
 
 
@@ -351,7 +351,7 @@ unchanged.
 No source-visibility, filter, safety, or historical-induction premise is
 used. -/
 def fixedSource_of_acceptedTargetWalk_root
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (hwf : WellFormedExecution E)
     (hcore : E.ExactCausalStoreWellFormedCore cfg ext)
     (hphase : Phase0SourceCoherence cfg ext)
@@ -392,7 +392,7 @@ def fixedSource_of_acceptedTargetWalk_root
       _ = B.state.GJ carrier := hgj.symm
       _ = B.state.VSAt cfg ext store carrier
           (get_current_target cfg store).epoch := by
-        simp only [AcceptedChainFFGState.VSAt, hcarrierEpoch, if_pos]
+        simp only [CausalCarrierFFGState.VSAt, hcarrierEpoch, if_pos]
 
 
 end AcceptedCurrentTargetA32GateRealization
@@ -403,7 +403,7 @@ readback uses `GJ` plus the accepted walk theorem above.  If the head itself
 is older, `process_slots` crosses the empty boundary and reads the accepted
 `GU` value directly. -/
 theorem acceptedHonestAttestationDataSourceEqVSAtTarget
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (hwf : WellFormedExecution E)
     (hcore : E.ExactCausalStoreWellFormedCore cfg ext)
     (hphase : Phase0SourceCoherence cfg ext)
@@ -444,7 +444,7 @@ theorem acceptedHonestAttestationDataSourceEqVSAtTarget
       _ = target.epoch := by
         simpa only [compute_epoch_at_slot] using hslotEpoch
   have hprojection : AcceptedFFGStoreProjection B.state store :=
-    Execution.ExactPrefixAcceptedFFGSemantics.causalStoreProjection B hstore
+    Execution.CausalPrefixFFGInterpretation.causalStoreProjection B hstore
   by_cases hheadCurrent : get_block_epoch cfg store head = target.epoch
   · have hsame : compute_epoch_at_slot cfg
         (store.block_states head).slot = compute_epoch_at_slot cfg slot := by
@@ -503,14 +503,14 @@ theorem acceptedHonestAttestationDataSourceEqVSAtTarget
             get_block_epoch cfg store target.root ≠ target.epoch := by
           rw [← hheadEq]
           exact Nat.ne_of_lt hheadOld
-        simp only [AcceptedChainFFGState.VSAt, if_neg htargetOld, hheadEq]
+        simp only [CausalCarrierFFGState.VSAt, if_neg htargetOld, hheadEq]
 
 /-- Accepted/global carrier for one honest old-target vote.  Unlike
 `AcceptedHonestSourceCarrier`, this record is deliberately tied to the
 target block's eager `GU`: an old head may obtain its source through
 `process_slots`, so the source need not equal `GJ(head)`. -/
 structure AcceptedHonestOldTargetSourceCarrier
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (store : Store Root) (slot : Slot) (index : CommitteeIndex)
     (targetRoot : Root) where
   global_projection : AcceptedFFGGlobalStoreProjection B.state store
@@ -524,7 +524,7 @@ structure AcceptedHonestOldTargetSourceCarrier
     B.state.GU targetRoot
 
 def AcceptedHonestOldTargetSourceEvidence
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (store : Store Root) (slot : Slot) (index : CommitteeIndex)
     (targetRoot : Root) : Prop :=
   Nonempty (AcceptedHonestOldTargetSourceCarrier cfg ext E B store slot index
@@ -533,7 +533,7 @@ def AcceptedHonestOldTargetSourceEvidence
 namespace AcceptedHonestOldTargetSourceEvidence
 
 theorem source_eq
-    {B : ExactPrefixAcceptedFFGSemantics cfg ext E}
+    {B : CausalPrefixFFGInterpretation cfg ext E}
     {store : Store Root} {slot : Slot} {index : CommitteeIndex}
     {targetRoot : Root}
     (h : E.AcceptedHonestOldTargetSourceEvidence cfg ext B store slot index
@@ -551,7 +551,7 @@ the query prefix and the voter's causal store through `AcceptedBlockAt`
 uniqueness.  Head-current and head-old cases are both discharged by
 `acceptedHonestAttestationDataSourceEqVSAtTarget`. -/
 theorem concreteHonestTargetVote_acceptedOldTargetSourceEvidence
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (hT : E.ScheduledPrefixPremises cfg ext)
     (hwalkDomain : E.PostAnchorHonestVoteTargetWalkDomain cfg ext)
     (hphase : Phase0SourceCoherence cfg ext)
@@ -669,7 +669,7 @@ theorem concreteHonestTargetVote_acceptedOldTargetSourceEvidence
     hcurrentNonGenesis
   have hsource : (honest_attestation_data cfg ext voteStore
       vote.slot vote.index).source = B.state.GU target.root := by
-    simpa only [AcceptedChainFFGState.VSAt, if_neg
+    simpa only [CausalCarrierFFGState.VSAt, if_neg
       (Nat.ne_of_lt hvoteTargetOld)] using hsourceVSAt
   have hglobal : AcceptedFFGGlobalStoreProjection B.state voteStore :=
     B.causalStoreGlobalProjection hgenTrajectory hanchor hvoteCausal
@@ -771,7 +771,7 @@ uniqueness transports the query store's current-epoch fact to that landing,
 and the ordinary walk is then lifted using last-writer provenance.
 -/
 theorem concreteHonestTargetVote_knownCurrentEpochSegment
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (hT : E.ScheduledPrefixPremises cfg ext)
     (hwalkDomain : E.PostAnchorHonestVoteTargetWalkDomain cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
@@ -897,7 +897,7 @@ theorem concreteHonestTargetVote_knownCurrentEpochSegment
 /-- Last-writer lifting specialization of
 `concreteHonestTargetVote_knownCurrentEpochSegment`. -/
 theorem concreteHonestTargetVote_acceptedCurrentEpochSegment
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (hT : E.ScheduledPrefixPremises cfg ext)
     (hwalkDomain : E.PostAnchorHonestVoteTargetWalkDomain cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
@@ -934,7 +934,7 @@ to the target root by accepted same-epoch transitions.
 This remains an internal geometry edge.  It consumes only the scheduled-prefix
 trajectory, not the broader selected-margin bundle. -/
 theorem concreteHonestTargetVote_acceptedCurrentEpochSourceGeometry
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (hT : E.ScheduledPrefixPremises cfg ext)
     (hwalkDomain : E.PostAnchorHonestVoteTargetWalkDomain cfg ext)
     (hphase : Phase0SourceCoherence cfg ext)
@@ -1021,7 +1021,7 @@ at the vote's causal store.
 No arbitrary signer set, supplied quorum, source agreement, ancestry segment,
 transition history, target certificate, or safety conclusion is assumed. -/
 theorem scheduledEventPrefix_acceptedConcreteCurrentTargetQuorum_of_operationalEvidence
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (hT : E.ScheduledPrefixPremises cfg ext)
     (hsv : StaticValidatorSet cfg E)
     (hbb : ByzantineWeightPremises cfg E)
@@ -1159,7 +1159,7 @@ theorem scheduledEventPrefix_acceptedConcreteCurrentTargetQuorum_of_operationalE
     simpa only [honest_attestation_data_eq] using
       hsourceEvidence.source_eq.trans
         (hsegment.gj_eq_first hphase
-          B.coherence.toAcceptedFFGSelectorCoherence)
+          B.coherence.toFFGSelectorsMatchBeaconStates)
   let Q : ConcreteA32QuorumBefore cfg ext E deadline target :=
     { source := B.state.GJ target.root
       signers := signers
@@ -1176,7 +1176,7 @@ theorem scheduledEventPrefix_acceptedConcreteCurrentTargetQuorum_of_operationalE
 block is older than the checkpoint epoch.  Each vote retains a named accepted
 `GU(target.root)` carrier and exact source readback. -/
 def AcceptedConcreteA32QuorumOldSourceGeometry
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     {deadline : Slot} {target : Checkpoint Root}
     (Q : ConcreteA32QuorumBefore cfg ext E deadline target)
     (common : Root) : Prop :=
@@ -1186,7 +1186,7 @@ def AcceptedConcreteA32QuorumOldSourceGeometry
         (E.store cfg ext i vote.time) vote.slot vote.index common
 
 theorem scheduledEventPrefix_acceptedConcreteCurrentTargetQuorum
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (hT : E.ScheduledPrefixPremises cfg ext)
     (hsv : StaticValidatorSet cfg E)
     (hbb : ByzantineWeightPremises cfg E)
@@ -1235,7 +1235,7 @@ The executable signer union and weight arithmetic are unchanged; every
 concrete vote is instead tied to the accepted target block's eager `GU`.
 The quorum and its source are outputs. -/
 theorem scheduledEventPrefix_acceptedConcreteOldTargetQuorum_of_operationalEvidence
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (hT : E.ScheduledPrefixPremises cfg ext)
     (hsv : StaticValidatorSet cfg E)
     (hbb : ByzantineWeightPremises cfg E)
@@ -1379,7 +1379,7 @@ theorem scheduledEventPrefix_acceptedConcreteOldTargetQuorum_of_operationalEvide
   exact hgeometryVote i hi vote
 
 theorem scheduledEventPrefix_acceptedConcreteOldTargetQuorum
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (hT : E.ScheduledPrefixPremises cfg ext)
     (hsv : StaticValidatorSet cfg E)
     (hbb : ByzantineWeightPremises cfg E)
@@ -1429,7 +1429,7 @@ prefix.  The intermediate quorum and all of its accepted source geometry are
 constructed by `scheduledEventPrefix_acceptedConcreteCurrentTargetQuorum` and
 immediately consumed by the existing certificate constructor. -/
 theorem scheduledEventPrefix_acceptedCurrentTargetA32GateRealization_core_of_operationalEvidence
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (hT : E.ScheduledPrefixPremises cfg ext)
     (hsv : StaticValidatorSet cfg E)
     (hbb : ByzantineWeightPremises cfg E)
@@ -1518,7 +1518,7 @@ theorem scheduledEventPrefix_acceptedCurrentTargetA32GateRealization_core_of_ope
         hanchorBefore htargetSpan Q (hdelivery Q) hgeometry
 
 theorem scheduledEventPrefix_acceptedCurrentTargetA32GateRealization_core
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (hT : E.ScheduledPrefixPremises cfg ext)
     (hsv : StaticValidatorSet cfg E)
     (hbb : ByzantineWeightPremises cfg E)
@@ -1573,7 +1573,7 @@ and target-to-source descent; the concrete quorum supplies the new link.
 `Q` remains an intermediate object consumed by the prefix/action wrappers,
 never an input to the final actual-call interface. -/
 theorem acceptedCurrentTargetA32GateRealization_of_oldEpochConcreteQuorum_core
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     {store : Store Root} (hstore : E.CausalStore cfg ext store)
     (htargetKnown : (get_current_target cfg store).root ∈ store.block_roots)
     (htargetOld : get_block_epoch cfg store
@@ -1710,7 +1710,7 @@ theorem acceptedCurrentTargetA32GateRealization_of_oldEpochConcreteQuorum_core
     ⟨CertifiedJustified.link hsourceCertificate hlink⟩
   refine ⟨htargetCertificate, Or.inr ⟨htargetNotAnchor, Q, ?_⟩⟩
   change Q.source = B.state.VSAt cfg ext store target.root target.epoch
-  simpa only [AcceptedChainFFGState.VSAt, PaperA32StateView.VSAt,
+  simpa only [CausalCarrierFFGState.VSAt, PaperA32StateView.VSAt,
     if_neg (Nat.ne_of_lt htargetOld)] using hQSource
 
 
@@ -1720,7 +1720,7 @@ prefix.  The `GU` quorum and all accepted per-vote source carriers are
 constructed internally and immediately consumed by the old-epoch certificate
 constructor. -/
 theorem scheduledEventPrefix_acceptedOldTargetA32GateRealization_core_of_operationalEvidence
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (hT : E.ScheduledPrefixPremises cfg ext)
     (hsv : StaticValidatorSet cfg E)
     (hbb : ByzantineWeightPremises cfg E)
@@ -1809,7 +1809,7 @@ theorem scheduledEventPrefix_acceptedOldTargetA32GateRealization_core_of_operati
       (hdelivery Q) hgeometry
 
 theorem scheduledEventPrefix_acceptedOldTargetA32GateRealization_core
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (hT : E.ScheduledPrefixPremises cfg ext)
     (hsv : StaticValidatorSet cfg E)
     (hbb : ByzantineWeightPremises cfg E)
@@ -1869,7 +1869,7 @@ No selected-margin bundle, walk/domain premise, target-epoch premise, quorum,
 source, segment, certificate, transition history, or safety conclusion is an
 input. -/
 theorem scheduledEventPrefix_acceptedTargetA32GateRealization_core_of_operationalEvidence
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (hT : E.ScheduledPrefixPremises cfg ext)
     (hsv : StaticValidatorSet cfg E)
     (hbb : ByzantineWeightPremises cfg E)
@@ -1946,7 +1946,7 @@ theorem scheduledEventPrefix_acceptedTargetA32GateRealization_core_of_operationa
         hsupport htargetKnown htargetOld hanchorBefore
 
 theorem scheduledEventPrefix_acceptedTargetA32GateRealization_core
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (hT : E.ScheduledPrefixPremises cfg ext)
     (hsv : StaticValidatorSet cfg E)
     (hbb : ByzantineWeightPremises cfg E)
@@ -1990,7 +1990,7 @@ theorem scheduledEventPrefix_acceptedTargetA32GateRealization_core
 horizon; only their one-slot-later scheduled receipt may cross its exclusive
 endpoint. -/
 theorem scheduledEventPrefix_acceptedTargetA32GateRealization_withLookahead
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (hT : E.ScheduledPrefixPremises cfg ext)
     (hdelivery : NextSlotSynchronyPremises cfg ext E)
     (hsv : StaticValidatorSet cfg E)

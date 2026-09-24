@@ -95,7 +95,7 @@ unchanged. -/
 theorem honestSupporter_of_confirmed_known_at_observer
     (hA : SelectedMarginAssumptions cfg ext E)
     (v : ValidatorIndex) (n : ℕ)
-    (hvalid : E.ObserverValidity cfg ext v)
+    (hvalid : E.ObserverIndexedAttestationValidity cfg ext v)
     (hcomm : E.PrefixCommitteeAgreement cfg ext (E.store cfg ext v n))
     (fcrStore : FastConfirmationStore Root)
     (hstore : fcrStore.store = E.store cfg ext v n) (b : Root)

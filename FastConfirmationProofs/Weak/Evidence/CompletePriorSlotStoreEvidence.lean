@@ -1,5 +1,5 @@
 module
-public import FastConfirmationStatements.Weak.CompleteEvidence
+public import FastConfirmationStatements.Weak.CompletePriorSlotStoreEvidence
 
 @[expose] public section
 
@@ -8,7 +8,7 @@ public import FastConfirmationStatements.Weak.CompleteEvidence
 namespace FastConfirmation.Spec
 variable {Root : Type*} [LinearOrder Root] [Inhabited Root]
 
-namespace CompleteEvidence
+namespace CompletePriorSlotStoreEvidence
 
 variable (cfg : Config) (ext : Externals Root) {f : FastConfirmationStore Root}
 
@@ -18,7 +18,7 @@ theorem raw_score_eq (s : Store Root) (n : ForkChoiceNode Root) (bs : BeaconStat
     Strong.get_attestation_score cfg s n bs = get_attestation_score cfg s n bs := rfl
 
 /-- Full freshness removes precisely the extra weak filter. -/
-theorem attestation_score_eq (h : CompleteEvidence cfg ext f)
+theorem attestation_score_eq (h : CompletePriorSlotStoreEvidence cfg ext f)
     (n : ForkChoiceNode Root) (bs : BeaconState Root) :
     Strong.get_attestation_score cfg f.store n bs =
       Weak.get_duty_fresh_attestation_score cfg ext f.store n bs := by
@@ -31,7 +31,7 @@ theorem attestation_score_eq (h : CompleteEvidence cfg ext f)
   | none => rfl
   | some lm => simp [h.fresh i lm hlm]
 
-theorem block_support_eq (h : CompleteEvidence cfg ext f)
+theorem block_support_eq (h : CompletePriorSlotStoreEvidence cfg ext f)
     (bs : BeaconState Root) (b : Root) (a z : Slot) :
     Strong.get_block_support_between_slots cfg ext f.store bs b a z =
       Weak.get_duty_fresh_block_support_between_slots cfg ext f.store bs b a z := by
@@ -48,7 +48,7 @@ theorem block_support_eq (h : CompleteEvidence cfg ext f)
     Weak.get_duty_fresh_block_support_between_slots]
   simp_rw [congrFun hp]
 
-theorem parent_payload_support_eq (h : CompleteEvidence cfg ext f)
+theorem parent_payload_support_eq (h : CompletePriorSlotStoreEvidence cfg ext f)
     (bs : BeaconState Root) (b : Root) (status : PayloadStatus) (a z : Slot) :
     get_parent_payload_support_between_slots cfg ext f.store bs b status a z =
       Weak.get_duty_fresh_parent_payload_support_between_slots cfg ext f.store bs b status a z := by
@@ -69,7 +69,7 @@ theorem parent_payload_support_eq (h : CompleteEvidence cfg ext f)
     Weak.get_duty_fresh_parent_payload_support_between_slots]
   simp_rw [congrFun hp]
 
-theorem adversarial_weight_eq (h : CompleteEvidence cfg ext f)
+theorem adversarial_weight_eq (h : CompletePriorSlotStoreEvidence cfg ext f)
     (bs : BeaconState Root) (a z : Slot) :
     Strong.compute_adversarial_weight cfg ext f.store bs a z =
       Weak.compute_adversarial_weight cfg f.store bs a z := by
@@ -85,14 +85,14 @@ theorem adversarial_weight_eq (h : CompleteEvidence cfg ext f)
   · rw [if_neg hw]
     exact (Nat.eq_zero_of_not_pos hw).symm
 
-theorem block_adversarial_weight_eq (h : CompleteEvidence cfg ext f)
+theorem block_adversarial_weight_eq (h : CompletePriorSlotStoreEvidence cfg ext f)
     (bs : BeaconState Root) (b : Root) :
     Strong.get_adversarial_weight cfg ext f.store bs b =
       Weak.get_adversarial_weight cfg f.store bs b := by
   simp only [Strong.get_adversarial_weight, Weak.get_adversarial_weight,
     adversarial_weight_eq cfg ext h]
 
-theorem support_discount_eq (h : CompleteEvidence cfg ext f)
+theorem support_discount_eq (h : CompletePriorSlotStoreEvidence cfg ext f)
     (bs : BeaconState Root) (b : Root) :
     Strong.get_support_discount cfg ext f.store bs b =
       Weak.get_support_discount cfg ext f.store bs b := by
@@ -100,7 +100,7 @@ theorem support_discount_eq (h : CompleteEvidence cfg ext f)
     Strong.compute_empty_slot_support_discount, Weak.compute_empty_slot_support_discount,
     parent_payload_support_eq cfg ext h, adversarial_weight_eq cfg ext h]
 
-theorem safety_threshold_eq (h : CompleteEvidence cfg ext f)
+theorem safety_threshold_eq (h : CompletePriorSlotStoreEvidence cfg ext f)
     (bs : BeaconState Root) (b : Root) :
     Strong.compute_safety_threshold cfg ext f.store b bs =
       Weak.compute_safety_threshold cfg ext f.store b bs := by
@@ -108,7 +108,7 @@ theorem safety_threshold_eq (h : CompleteEvidence cfg ext f)
     support_discount_eq cfg ext h, block_adversarial_weight_eq cfg ext h]
   rfl
 
-theorem is_one_confirmed_eq (h : CompleteEvidence cfg ext f)
+theorem is_one_confirmed_eq (h : CompletePriorSlotStoreEvidence cfg ext f)
     (bs : BeaconState Root) (b : Root) :
     Strong.is_one_confirmed cfg ext f.store bs b =
       Weak.is_one_confirmed cfg ext f.store bs b := by
@@ -116,42 +116,42 @@ theorem is_one_confirmed_eq (h : CompleteEvidence cfg ext f)
     attestation_score_eq cfg ext h, safety_threshold_eq cfg ext h]
 
 /-- Complete evidence gives the same check on each root, using previous balances. -/
-theorem is_confirmed_chain_safe_eq (h : CompleteEvidence cfg ext f) :
+theorem is_confirmed_chain_safe_eq (h : CompletePriorSlotStoreEvidence cfg ext f) :
     Strong.is_confirmed_chain_safe cfg ext f =
       Weak.is_confirmed_chain_safe cfg ext f := by
   funext b
   simp only [Strong.is_confirmed_chain_safe, Weak.is_confirmed_chain_safe,
     is_one_confirmed_eq cfg ext h]
 
-theorem honest_ffg_support_eq (h : CompleteEvidence cfg ext f) :
+theorem honest_ffg_support_eq (h : CompletePriorSlotStoreEvidence cfg ext f) :
     Strong.compute_honest_ffg_support_for_current_target cfg ext f.store =
       Weak.compute_honest_ffg_support_for_current_target cfg ext f.store := by
   simp only [Strong.compute_honest_ffg_support_for_current_target,
     Weak.compute_honest_ffg_support_for_current_target, adversarial_weight_eq cfg ext h]
   rfl
 
-theorem current_target_eq (h : CompleteEvidence cfg ext f) :
+theorem current_target_eq (h : CompletePriorSlotStoreEvidence cfg ext f) :
     Strong.will_current_target_be_justified cfg ext f.store =
       Weak.will_current_target_be_justified cfg ext f.store := by
   simp only [Strong.will_current_target_be_justified,
     Weak.will_current_target_be_justified, honest_ffg_support_eq cfg ext h]
 
-theorem carrier_certificate (h : CompleteEvidence cfg ext f) :
-    Weak.has_head_broadcast_certificate cfg ext f.store (get_current_balance_source f) =
+theorem carrier_certificate (h : CompletePriorSlotStoreEvidence cfg ext f) :
+    Weak.has_carrier_broadcast_certificate cfg ext f.store (get_current_balance_source f) =
       true := by
   have h0 : get_current_slot cfg f.store ≠ 0 := Nat.pos_iff_ne_zero.mp h.after_genesis
-  simp only [Weak.has_head_broadcast_certificate, Weak.has_broadcast_certificate, h0,
+  simp only [Weak.has_carrier_broadcast_certificate, Weak.has_broadcast_certificate, h0,
     ↓reduceIte, decide_eq_true_eq]
   exact h.carrier_support
 
-theorem witness_certificate (h : CompleteEvidence cfg ext f) :
+theorem witness_certificate (h : CompletePriorSlotStoreEvidence cfg ext f) :
     Weak.has_justification_witness_certificate cfg ext f = true := by
   have h0 : get_current_slot cfg f.store ≠ 0 := Nat.pos_iff_ne_zero.mp h.after_genesis
   simp only [Weak.has_justification_witness_certificate, Weak.has_broadcast_certificate, h0,
     ↓reduceIte, decide_eq_true_eq]
   exact h.witness_support
 
-theorem no_conflict_eq (h : CompleteEvidence cfg ext f) :
+theorem no_conflict_eq (h : CompletePriorSlotStoreEvidence cfg ext f) :
     Strong.will_no_conflicting_checkpoint_be_justified cfg ext f.store =
       Weak.will_no_conflicting_checkpoint_be_justified cfg ext f.store
         (get_current_balance_source f) := by
@@ -162,7 +162,7 @@ theorem no_conflict_eq (h : CompleteEvidence cfg ext f) :
   · rw [if_pos ht, if_pos ⟨ht, h.realized_target_carrier ht⟩]
   · simp [ht]
 
-theorem prev_epoch_loop_eq (h : CompleteEvidence cfg ext f) (e : Epoch)
+theorem prev_epoch_loop_eq (h : CompletePriorSlotStoreEvidence cfg ext f) (e : Epoch)
     (roots : List Root) (b : Root) :
     Strong.find_latest_confirmed_descendant_prev_epoch_loop cfg ext f e roots b =
       Weak.find_latest_confirmed_descendant_prev_epoch_loop cfg ext f e roots b := by
@@ -172,7 +172,7 @@ theorem prev_epoch_loop_eq (h : CompleteEvidence cfg ext f) (e : Epoch)
     simp only [Strong.find_latest_confirmed_descendant_prev_epoch_loop,
       Weak.find_latest_confirmed_descendant_prev_epoch_loop, is_one_confirmed_eq cfg ext h, ih]
 
-theorem tentative_loop_eq (h : CompleteEvidence cfg ext f)
+theorem tentative_loop_eq (h : CompletePriorSlotStoreEvidence cfg ext f)
     (roots : List Root) (b : Root) :
     Strong.find_latest_confirmed_descendant_tentative_loop cfg ext f roots b =
       Weak.find_latest_confirmed_descendant_tentative_loop cfg ext f roots b := by
@@ -197,7 +197,7 @@ theorem certified_head_eq_of_certificate (s : Store Root) (bs : BeaconState Root
 
 /-- Equality on the aligned-head subcase. The unqualified grid theorem is not
 asserted: its after-head calls need a separate suffix rejection proof. -/
-theorem descendant_eq_of_head_eq (h : CompleteEvidence cfg ext f)
+theorem descendant_eq_of_head_eq (h : CompletePriorSlotStoreEvidence cfg ext f)
     (hh : Weak.get_certified_head cfg ext f.store (get_current_balance_source f) =
       (get_head cfg f.store).root) (b : Root) :
     Strong.find_latest_confirmed_descendant cfg ext f b =
@@ -210,7 +210,7 @@ theorem descendant_eq_of_head_eq (h : CompleteEvidence cfg ext f)
 /- Historical getter and handler equalities were removed: the greatest-
 unrealized reset can make their outputs differ. See docs/weak-synchrony.md. -/
 
-end CompleteEvidence
+end CompletePriorSlotStoreEvidence
 end FastConfirmation.Spec
 
 end

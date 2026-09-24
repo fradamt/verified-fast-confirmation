@@ -376,7 +376,7 @@ ground-vote replay premise.  The only observer-side inputs are the boolean
 theorem base_strip_of_confirmed_at_observer {E : Execution Root}
     (hA : SelectedMarginAssumptions cfg ext E)
     {obs : ValidatorIndex} {q : ℕ} (hqH : E.WithinHorizon cfg q)
-    (hvalid : E.ObserverValidity cfg ext obs)
+    (hvalid : E.ObserverIndexedAttestationValidity cfg ext obs)
     (hcomm : E.PrefixCommitteeAgreement cfg ext (E.store cfg ext obs q))
     {query : FastConfirmationStore Root}
     (hstore : query.store = E.store cfg ext obs q)

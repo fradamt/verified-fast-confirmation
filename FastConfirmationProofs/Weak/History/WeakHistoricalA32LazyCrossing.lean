@@ -46,7 +46,7 @@ Weak twin of `Execution.acceptedHistoricalA32OriginCallAt_of_crossing`; every
 field is discharged from the call's ordinary executable geometry, and no
 proviso, quorum, certificate or safety fact is used. -/
 theorem observerHistoricalA32OriginCallAt_of_crossing
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (hA : SelectedMarginAssumptions cfg ext E)
     {obs : ValidatorIndex} (hcoh : E.ObserverCoherence cfg ext obs) {n : ℕ}
     (hHn1 : E.WithinHorizon cfg (n + 1))
@@ -167,7 +167,7 @@ constructor, but the payload's two obligations are the closures
 certificate and quorum.  It consumes **no** normative proviso — it is the
 only weak crossing builder left. -/
 noncomputable def selectedCurrentCrossingLazyLineage
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (hT : E.ScheduledPrefixPremises cfg ext)
     (hA : SelectedMarginAssumptions cfg ext E)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)

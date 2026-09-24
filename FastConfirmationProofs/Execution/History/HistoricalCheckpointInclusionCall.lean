@@ -29,7 +29,7 @@ argument: previous-epoch confirmed candidates need no current-epoch payload.
 The only fresh payload branches are the trusted anchor and a concrete
 current-target crossing. -/
 noncomputable def getLatestConfirmedTraceAt_currentLineage_step_core
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (hT : E.ScheduledPrefixPremises cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
@@ -247,7 +247,7 @@ theorem** (the `FCRPredictionSupportAt` record it used to name no longer
 exists).  The gate producer stays: it is the action/schedule bridge, not a
 proviso, and the closures capture it. -/
 noncomputable def getLatestConfirmedTraceAt_currentLineage_step_lazy
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (hT : E.ScheduledPrefixPremises cfg ext)
     (hA : SelectedMarginAssumptions cfg ext E)
     (hphase : Phase0SourceCoherence cfg ext)
@@ -304,7 +304,7 @@ This is the route the `currentHistorical` consumer takes, and it is why that
 consumer only ever needs the threaded fold output strictly below its own call
 (`docs/crossing-call-support-residue.md` §2.1, D1†). -/
 noncomputable def getLatestConfirmedTraceAt_currentLineage_step_noCrossing
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (hT : E.ScheduledPrefixPremises cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)

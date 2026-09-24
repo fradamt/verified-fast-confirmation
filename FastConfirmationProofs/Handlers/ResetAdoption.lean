@@ -46,7 +46,7 @@ so the store's parent-slot order carries the inclusion-time bound
 `slot_before_carrier` up to the carrier.  Only knownness of the carrier is
 required, no certificate and no checkpoint. -/
 theorem includedAttestationSlot_lt_acceptedCarrierBlock
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (hT : E.ScheduledPrefixPremises cfg ext)
     {v : ValidatorIndex} {q : ℕ} {carrier : Root}
     (hcarrier : carrier ∈
@@ -99,7 +99,7 @@ which carries its certificate.
 This is the carrier-local form of the timing argument used by reset
 classification.  It does not mention the current epoch of any store. -/
 theorem includedCertifiedFinalized_epoch_lt_acceptedCarrierBlock
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (hT : E.ScheduledPrefixPremises cfg ext)
     {v : ValidatorIndex} {q : ℕ} {carrier : Root}
     (hcarrier : carrier ∈
@@ -143,7 +143,7 @@ theorem includedCertifiedFinalized_epoch_lt_acceptedCarrierBlock
 /-- Every accepted store-global justified field is no older than the trusted
 anchor. -/
 theorem anchor_epoch_le_acceptedGlobalJustified
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (hgen : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
       E.genesis_store = get_forkchoice_store cfg ast ablk ∧
         ast.slot = ablk.message.slot)
@@ -158,7 +158,7 @@ theorem anchor_epoch_le_acceptedGlobalJustified
     exact CertifiedJustified.anchor_epoch_le (cfg := cfg)
       (IncludedCertifiedJustified.toCertifiedJustified
         (cfg := cfg)
-        (Execution.AcceptedIncludedAttestationRelation.relation
+        (Execution.CausalCarrierAttestationRelation.relation
           cfg ext E B.state.includedAttestations) hcertificate)
 
 /-- Once the accepted carrier of a store-global finalized selector is known
@@ -169,7 +169,7 @@ This is the semantic "carrier processing" fact needed by finalized reset
 takeover.  The premise is only carrier membership, not same-root state
 adoption or a pre-assumed finalized/justified ordering. -/
 theorem finalized_epoch_le_justified_of_acceptedCarrierKnown
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (hT : E.ScheduledPrefixPremises cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     {v w : ValidatorIndex} {q m : ℕ}
@@ -239,7 +239,7 @@ theorem finalized_epoch_le_justified_of_acceptedCarrierKnown
 one-slot relay gate.  This is the endpoint adoption theorem needed by the
 corrected finalized-reset facade. -/
 theorem finalized_epoch_le_remoteJustified_of_synchrony
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (hT : E.ScheduledPrefixPremises cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hsync : NextSlotSynchronyPremises cfg ext E)
@@ -258,7 +258,7 @@ theorem finalized_epoch_le_remoteJustified_of_synchrony
 /-- Cleaner next-slot form.  Unlike the preceding end-of-slot relay boundary,
 this is directly shaped like `Spec_Safety_next_slot`. -/
 theorem finalized_epoch_le_remoteJustified_nextSlot
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (hT : E.ScheduledPrefixPremises cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hsync : NextSlotSynchronyPremises cfg ext E)
@@ -276,7 +276,7 @@ theorem finalized_epoch_le_remoteJustified_nextSlot
 /-- The actual finalized reset used by an FCR call inherits the same
 next-slot adoption theorem. -/
 theorem finalizedReset_epoch_le_remoteJustified_nextSlot
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (hT : E.ScheduledPrefixPremises cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hsync : NextSlotSynchronyPremises cfg ext E)

@@ -137,7 +137,7 @@ the reading store's current slot.
 Unlike the carrier-block form, this bound is stated against the store clock,
 which is what a relay gate consumes. -/
 theorem includedAttestationSlot_lt_causalStoreCurrentSlot
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (hT : E.ScheduledPrefixPremises cfg ext)
     {store : Store Root} (hstore : E.CausalStore cfg ext store)
     {carrier : Root} (hcarrier : carrier ∈ store.block_roots)
@@ -182,7 +182,7 @@ The record deliberately mentions the reading store only through its finalized
 field and its clock.  No membership, honesty, or delivery property of the
 reading node is asserted. -/
 structure FinalizedHonestVotingSourceOrigin
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (store : Store Root) where
   signer : ValidatorIndex
   signer_honest : signer ∈ E.honest
@@ -208,7 +208,7 @@ readback's non-genesis side condition is re-derived here from
 `B.anchor.epoch < child.epoch`, which the certificate supplies through
 `CertifiedJustified.anchor_epoch_le` and the link's `source_before_target`. -/
 theorem finalizedHonestVotingSourceOrigin_of_causalStore
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (hT : E.ScheduledPrefixPremises cfg ext)
     (hacc : FFGAccountabilityAssumptions cfg ext E)
     (hphase : Phase0SourceCoherence cfg ext)
@@ -233,7 +233,7 @@ theorem finalizedHonestVotingSourceOrigin_of_causalStore
   let child := F.child
   let globalLink : SupermajorityLink cfg E store.finalized_checkpoint child :=
     IncludedSupermajorityLink.toSupermajorityLink (cfg := cfg)
-      (Execution.AcceptedIncludedAttestationRelation.relation cfg ext E
+      (Execution.CausalCarrierAttestationRelation.relation cfg ext E
         B.state.includedAttestations) F.finalizing_link
   obtain ⟨i, hiGlobal, _hiGlobal', hiHonest⟩ :=
     E.links_intersect_honest cfg ext hacc globalLink globalLink
@@ -253,7 +253,7 @@ theorem finalizedHonestVotingSourceOrigin_of_causalStore
   have hsourceCertified : CertifiedJustified cfg E B.anchor
       store.finalized_checkpoint :=
     IncludedCertifiedJustified.toCertifiedJustified (cfg := cfg)
-      (Execution.AcceptedIncludedAttestationRelation.relation cfg ext E
+      (Execution.CausalCarrierAttestationRelation.relation cfg ext E
         B.state.includedAttestations) F.justified
   have hanchorLtTarget : B.anchor.epoch < child.epoch :=
     lt_of_le_of_lt
@@ -405,7 +405,7 @@ theorem finalizedHonestVotingSourceOrigin_of_causalStore
       store.finalized_checkpoint := by
     rw [hvoteCausal.getVotingSource_eq_acceptedSelector cfg ext B hseedSpec.1,
       ← hsourceData, hsourceVSAt]
-    simp only [AcceptedChainFFGState.VSAt, hcurrentEpoch]
+    simp only [CausalCarrierFFGState.VSAt, hcurrentEpoch]
     by_cases hseedCurrent :
         get_block_epoch cfg (E.store cfg ext i k) child.root = child.epoch
     · rw [if_pos hseedCurrent,
@@ -445,7 +445,7 @@ The reading second's horizon premise is kept for interface parity with the
 strong theorem and is deliberately unused: nothing is relayed *from* that
 store. -/
 theorem weak_finalized_epoch_le_remoteJustified
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (hT : E.ScheduledPrefixPremises cfg ext)
     (hacc : FFGAccountabilityAssumptions cfg ext E)
     (hphase : Phase0SourceCoherence cfg ext)
@@ -514,7 +514,7 @@ reading store from an honest `v` — is replaced by `weak_finalized_epoch_le_
 remoteJustified`, which relays only the finalizing certificate's own honest
 signer. Every other ingredient (`finalizedCheckpoint_resetRealizedAt_of_
 acceptedGlobalTrajectory`, `storeDomainK_of_acceptedGlobalTrajectory`,
-`ExactPrefixAcceptedFFGSemantics.endpointJustified_certificate`,
+`CausalPrefixFFGInterpretation.endpointJustified_certificate`,
 `acceptedGlobalFinalized_anchor_or_includedCertificate`,
 `certified_finalized_prefix`, `store_known_ancestor_of_rootDescends_for_
 storeReflection`) is already honesty-free and reused unchanged.
@@ -529,7 +529,7 @@ needed, only the endpoint's raw time being at or after
 query slot, the query's finalized checkpoint (read at `v`, honest or not) is
 known and lies on the endpoint's realized justified chain. -/
 theorem weak_finalizedReset_justifiedDom_of_synchrony
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (hT : E.ScheduledPrefixPremises cfg ext)
     (hacc : FFGAccountabilityAssumptions cfg ext E)
     (hphase : Phase0SourceCoherence cfg ext)
@@ -591,7 +591,7 @@ theorem weak_finalizedReset_justifiedDom_of_synchrony
       E.weak_finalized_epoch_le_remoteJustified cfg ext B hT hacc hphase
         hboundaryPhase hanchor hboundary hsync hw hHq hHm hslotQM
   obtain ⟨hjustified⟩ :=
-    ExactPrefixAcceptedFFGSemantics.endpointJustified_certificate
+    CausalPrefixFFGInterpretation.endpointJustified_certificate
       (E := E) cfg ext B hgenShort hanchor hendpointCausal
   have hsemantic : E.RootDescends
       (E.store cfg ext w m).justified_checkpoint.root finalized.root := by
@@ -610,7 +610,7 @@ theorem weak_finalizedReset_justifiedDom_of_synchrony
       have hfinalized : CertifiedFinalized cfg E B.anchor finalized :=
         IncludedCertifiedFinalized.toCertifiedFinalized
           (cfg := cfg)
-          (Execution.AcceptedIncludedAttestationRelation.relation
+          (Execution.CausalCarrierAttestationRelation.relation
             cfg ext E B.state.includedAttestations)
           hincludedFinalized
       exact E.certified_finalized_prefix cfg ext hacc
@@ -622,7 +622,7 @@ theorem weak_finalizedReset_justifiedDom_of_synchrony
 /-- A query's finalized checkpoint, read at a non-honest observer, is
 genuinely `SafeFrom` from the start of the query's own slot. -/
 theorem weak_finalizedReset_safeFrom_of_synchrony
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (hT : E.ScheduledPrefixPremises cfg ext)
     (hacc : FFGAccountabilityAssumptions cfg ext E)
     (hphase : Phase0SourceCoherence cfg ext)
@@ -667,15 +667,15 @@ output, seeded at the observer's own finalized checkpoint (read at `(obs,
 q)`, `obs` honest or not) rather than at a separately-supplied `SafeFrom`
 input, is `SafeFrom` at the actual query second.
 
-Observer-wise the premise surface is `hW : WeakObserverAssumptions` — the
+Observer-wise the premise surface is `hW : WeakObserverPremises` — the
 floor and committee readback at the observer's own store. The observer may be honest.
 `B`/`hanchor`/`hboundary` are carried here anyway and `hT` is derived from
 `hW.base`, so `ObserverCoherence.justified_root_known` is *derived* via
-`WeakObserverAssumptions.toMarginAssumptions`, not assumed. -/
+`WeakObserverPremises.toMarginAssumptions`, not assumed. -/
 theorem weak_safeFrom_find_latest_confirmed_descendant_from_finalized
     {E : Execution Root} {obs : ValidatorIndex}
-    (hW : E.WeakObserverAssumptions cfg ext obs)
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (hW : E.WeakObserverPremises cfg ext obs)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
       (E := E) (anchor := B.anchor))
@@ -721,8 +721,8 @@ seeded at the observer's own finalized checkpoint, is canonical at every
 honest endpoint at or after the query second. -/
 theorem weak_confirmed_head_from_finalized
     {E : Execution Root} {obs : ValidatorIndex}
-    (hW : E.WeakObserverAssumptions cfg ext obs)
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (hW : E.WeakObserverPremises cfg ext obs)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
       (E := E) (anchor := B.anchor))

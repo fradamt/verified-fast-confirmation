@@ -40,7 +40,7 @@ the statement only asks for the exact previous-result equality used by the
 phase dispatcher.  No lineage, canonicity, endpoint fact, filter fact, or
 safety conclusion is assumed. -/
 theorem StrictSelectorAdvanceAt.previousObservedReset_queryGUEpochSeed
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (hT : E.ScheduledPrefixPremises cfg ext)
     (hdomain : SelectedMarginDomain cfg ext E)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
@@ -93,7 +93,7 @@ theorem StrictSelectorAdvanceAt.previousObservedReset_queryGUEpochSeed
     simpa only [head, hselector.result_eq] using hbelow
   have hprojection : AcceptedFFGStoreProjection B.state query.store := by
     simpa only [query, E.fcrStep_store] using
-      (Execution.ExactPrefixAcceptedFFGSemantics.causalStoreProjection
+      (Execution.CausalPrefixFFGInterpretation.causalStoreProjection
         B (E.store_causal cfg ext v (n + 1)))
   have hguHead : query.store.unrealized_justifications head =
       B.state.GU head :=
@@ -149,7 +149,7 @@ genesis root is excluded from strict children by the concrete anchor-minimal
 slot theorem. -/
 noncomputable def
     StrictSelectorAdvanceAt.extendHistoricalLineage_sameEpoch_actual
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (hT : E.ScheduledPrefixPremises cfg ext)
     (hdomain : SelectedMarginDomain cfg ext E)
     {v : ValidatorIndex} (hv : v ∈ E.honest) {n : Nat}
@@ -280,7 +280,7 @@ The prior cached root is current in the preceding store by the actual
 boundary clock and selector recency.  Thus this theorem does not expose a
 lineage callback or a previous-result lineage premise. -/
 theorem StrictSelectorAdvanceAt.previousCarried_epochStartLineage
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (hT : E.ScheduledPrefixPremises cfg ext)
     (hC : E.CompletedFCRCallPremises cfg ext)
     (hfit : EpochEndsFitUint64 cfg)
@@ -398,7 +398,7 @@ that epoch with the anchor checkpoint epoch.  The lineage is therefore
 initialized by the anchor payload and extended through the accepted selector
 segment. -/
 theorem StrictSelectorAdvanceAt.previousFinalizedReset_anchorLineage
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (hT : E.ScheduledPrefixPremises cfg ext)
     (hdomain : SelectedMarginDomain cfg ext E)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)

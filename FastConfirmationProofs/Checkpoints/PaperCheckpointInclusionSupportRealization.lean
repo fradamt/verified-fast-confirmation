@@ -357,7 +357,7 @@ theorem accepted_paperA32SupportThroughoutEpoch_of_concreteQuorum
       ablk.message.parent_root ≠ ablk.root)
     (hwalkDomain : E.PostAnchorHonestVoteTargetWalkDomain cfg ext)
     {anchor : Checkpoint Root}
-    {S : AcceptedChainFFGState cfg ext E anchor}
+    {S : CausalCarrierFFGState cfg ext E anchor}
     {v : ValidatorIndex} (hv : v ∈ E.honest) {q : ℕ}
     (hqH : E.WithinHorizon cfg q)
     {b : Root} {e : Epoch}
@@ -389,8 +389,8 @@ theorem accepted_paperA32IncludedAtTip_of_concreteQuorum
       ablk.message.parent_root ≠ ablk.root)
     (hwalkDomain : E.PostAnchorHonestVoteTargetWalkDomain cfg ext)
     {anchor : Checkpoint Root}
-    {S : AcceptedChainFFGState cfg ext E anchor}
-    (hcoh : AcceptedFFGSelectorCoherence cfg ext S)
+    {S : CausalCarrierFFGState cfg ext E anchor}
+    (hcoh : FFGSelectorsMatchBeaconStates cfg ext S)
     (hpaper : S.PaperA32Inclusion cfg ext)
     {v : ValidatorIndex} (hv : v ∈ E.honest) {q : ℕ}
     (hqH : E.WithinHorizon cfg q)
@@ -407,7 +407,7 @@ theorem accepted_paperA32IncludedAtTip_of_concreteQuorum
     (hboundary : compute_start_slot_at_epoch cfg (e + 2) ≤
       E.slot_at cfg m) :
     ∃ seed : Root,
-      PaperA32IncludedAtTip cfg (S.paperA32View cfg ext)
+      PaperA32IncludedAtTip cfg (S.paperA32Inputs cfg ext)
         (E.store cfg ext w m) e b seed := by
   have hsupport :=
     E.accepted_paperA32SupportThroughoutEpoch_of_concreteQuorum cfg ext

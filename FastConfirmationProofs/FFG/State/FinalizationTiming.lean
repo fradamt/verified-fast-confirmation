@@ -109,7 +109,7 @@ The proof keeps the exact accepted carrier: one signer attests in epoch
 ancestor of the accepted tip, and ordinary-store reflection turns the
 semantic ancestry into the executable slot order. -/
 theorem acceptedPulledUpFinalized_succ_le_blockEpoch
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (hT : E.ScheduledPrefixPremises cfg ext)
     (t : E.AcceptedBlockTransition cfg ext) :
     let pulledFinalized :=
@@ -602,7 +602,7 @@ private theorem AcceptedFinalizationLagAt.on_block_of_delays
 
 /-- One accepted block preserves the paired lag invariant. -/
 theorem AcceptedFinalizationLagAt.acceptedBlockTransition
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (hT : E.ScheduledPrefixPremises cfg ext)
     (hDelay : E.RealizedFinalizationDelay cfg ext B)
     (t : E.AcceptedBlockTransition cfg ext)
@@ -867,7 +867,7 @@ handlers.  This is the exact consumer boundary for the candidate-history
 recurrence; it is displayed separately so the eventual handler induction is
 not confused with the primitive base-consensus law above. -/
 def CausalRealizedFinalizationLag
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E) : Prop :=
+    (B : CausalPrefixFFGInterpretation cfg ext E) : Prop :=
   ∀ {store : Store Root}, E.CausalStore cfg ext store →
     store.finalized_checkpoint = B.anchor ∨
       store.finalized_checkpoint.epoch + 2 ≤
@@ -876,7 +876,7 @@ def CausalRealizedFinalizationLag
 /-! ## Exact-prefix generation of the causal invariant -/
 
 private theorem genesisAcceptedFinalizationLagAt
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (hT : E.ScheduledPrefixPremises cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint) :
     AcceptedFinalizationLagAt cfg B.anchor E.genesis_store := by
@@ -886,7 +886,7 @@ private theorem genesisAcceptedFinalizationLagAt
     simpa only [get_forkchoice_store] using hanchor.symm
 
 private theorem acceptedFinalizationLagAt_take
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (hT : E.ScheduledPrefixPremises cfg ext)
     (hDelay : E.RealizedFinalizationDelay cfg ext B)
     (w : ValidatorIndex) (n : ℕ)
@@ -963,7 +963,7 @@ private theorem acceptedFinalizationLagAt_take
 /-- The paired finalization-lag invariant at every ordinary execution
 boundary. -/
 theorem acceptedFinalizationLagAt
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (hT : E.ScheduledPrefixPremises cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hDelay : E.RealizedFinalizationDelay cfg ext B)
@@ -992,7 +992,7 @@ theorem acceptedFinalizationLagAt
 /-- The same invariant at an arbitrary exact in-second scheduled prefix. -/
 theorem ScheduledEventPrefix.acceptedFinalizationLagAt
     (p : E.ScheduledEventPrefix)
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (hT : E.ScheduledPrefixPremises cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hDelay : E.RealizedFinalizationDelay cfg ext B) :
@@ -1013,7 +1013,7 @@ theorem ScheduledEventPrefix.acceptedFinalizationLagAt
 /-- Paired lag at every exact causal store. -/
 theorem CausalStore.acceptedFinalizationLagAt
     {store : Store Root} (hstore : E.CausalStore cfg ext store)
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (hT : E.ScheduledPrefixPremises cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hDelay : E.RealizedFinalizationDelay cfg ext B) :
@@ -1029,7 +1029,7 @@ theorem CausalStore.acceptedFinalizationLagAt
 two-epoch lag at every causal store.  The GUF half is derived from accepted
 certificate inclusion; no second finalization timing premise is exposed. -/
 theorem causalRealizedFinalizationLag_of_acceptedDelay
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (hT : E.ScheduledPrefixPremises cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hDelay : E.RealizedFinalizationDelay cfg ext B) :
@@ -1041,7 +1041,7 @@ theorem causalRealizedFinalizationLag_of_acceptedDelay
 /-- The store-level lag gives the exact checkpoint-age statement without
 truncated subtraction. -/
 theorem finalizedCheckpoint_twoEpochLag_of_causalLag
-    {B : ExactPrefixAcceptedFFGSemantics cfg ext E}
+    {B : CausalPrefixFFGInterpretation cfg ext E}
     (hLag : E.CausalRealizedFinalizationLag cfg ext B)
     {store : Store Root} (hstore : E.CausalStore cfg ext store)
     (hne : store.finalized_checkpoint ≠ B.anchor) :
@@ -1056,7 +1056,7 @@ finalized reset root fail the final selector's recency guard.  This is the
 precise fact needed to eliminate the finalized-reset arm in the paper-L22
 candidate-history step. -/
 theorem finalizedResetRoot_stale_of_causalLag
-    {B : ExactPrefixAcceptedFFGSemantics cfg ext E}
+    {B : CausalPrefixFFGInterpretation cfg ext E}
     (hLag : E.CausalRealizedFinalizationLag cfg ext B)
     {store : Store Root} (hstore : E.CausalStore cfg ext store)
     (hrealized : E.ResetCheckpointRealizedAt cfg B.anchor store

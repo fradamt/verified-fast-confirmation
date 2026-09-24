@@ -43,7 +43,7 @@ per `/tmp/delta5-proposal.md` §5.
   existential `AcceptedLemma13SourceSeedAt`, but site 6 needs the seed's
   *identity* (the query fork-choice head) intact so the certificate-based
   dissemination lemma can be applied to it, and per hfilter §(A) also needs the
-  `has_head_broadcast_certificate` flag the tentative-entry witness's surviving
+  `has_carrier_broadcast_certificate` flag the tentative-entry witness's surviving
   disjunct carries alongside the GU bound. Rather than returning an existential
   and a separate certificate lemma (which would force re-deriving the
   case split), this single lemma exposes both facts, head-indexed, from one
@@ -289,9 +289,9 @@ mechanically realizes the Lemma-13 GU seed *and* the certificate at the exact
 query head: the previous-loop origin is impossible (`hedge.gates`'s first
 conjunct contradicts `hcurrent`), and the tentative entry's surviving arm
 (`hnotStart` eliminates the epoch-start disjunct) is precisely the pair
-`⟨GU-recency, has_head_broadcast_certificate⟩` at the head. -/
+`⟨GU-recency, has_carrier_broadcast_certificate⟩` at the head. -/
 theorem StrictSelectedResultMechanicalFacts.currentHeadLemma13SourceSeedCertified_of_notStart
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     {query : FastConfirmationStore Root} {input result : Root}
     (hstore : E.CausalStore cfg ext query.store)
     (hparent : ParentSlotLt query.store)
@@ -311,7 +311,7 @@ theorem StrictSelectedResultMechanicalFacts.currentHeadLemma13SourceSeedCertifie
         (get_node_for_root result) = true ∧
       (B.state.GU (Weak.get_certified_head cfg ext query.store (get_current_balance_source query))).epoch + 1 ≥
         get_current_store_epoch cfg query.store ∧
-      Weak.has_head_broadcast_certificate cfg ext query.store
+      Weak.has_carrier_broadcast_certificate cfg ext query.store
         (get_current_balance_source query) = true := by
   rcases h.trace_origin with
     ⟨_a, hedge, _hentry, _hrecent, _hdesc⟩ |
@@ -329,7 +329,7 @@ theorem StrictSelectedResultMechanicalFacts.currentHeadLemma13SourceSeedCertifie
           strictSelectedResult_below_certified_head cfg ext hparent hwalk hhead
             hinput hstrict'
       have hprojection :=
-        Execution.ExactPrefixAcceptedFFGSemantics.causalStoreProjection
+        Execution.CausalPrefixFFGInterpretation.causalStoreProjection
           B hstore
       have hguEq : query.store.unrealized_justifications
           (Weak.get_certified_head cfg ext query.store (get_current_balance_source query)) =
@@ -350,7 +350,7 @@ theorem StrictSelectedResultMechanicalFacts.fcrStep_previous_endpointRecentSourc
     (hbyz : ByzantineWeightPremises cfg E)
     (hdomain : SelectedMarginDomain cfg ext E)
     (hji : JustificationInterface cfg ext E)
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     {obs : ValidatorIndex} (hcoh : E.ObserverCoherence cfg ext obs) {n : Nat}
     (hn1H : E.WithinHorizon cfg (n + 1))
     {input result : Root}
@@ -470,7 +470,7 @@ by a directly-supplied membership hypothesis, so callers never have to inhabit
 the ∀-shaped relay. See the module docstring for why this is the smaller and
 only sound option. -/
 theorem recentSourceSeedAt_endpointNext_of_lemma13
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (hwf : WellFormedExecution E)
     (hec : BeaconExternalsPremises cfg ext E)
     {ast : BeaconState Root} {ablk : SignedBeaconBlock Root}
@@ -540,7 +540,7 @@ theorem StrictSelectedResultMechanicalFacts.fcrStep_currentNext_endpointRecentSo
     (hbyz : ByzantineWeightPremises cfg E)
     (hdomain : SelectedMarginDomain cfg ext E)
     (hji : JustificationInterface cfg ext E)
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     {obs : ValidatorIndex} (hcoh : E.ObserverCoherence cfg ext obs) {n : Nat}
     (hn1H : E.WithinHorizon cfg (n + 1))
     {input result : Root}

@@ -426,60 +426,60 @@ abbrev CurrentTargetA32GateRealization
     (anchor : Checkpoint Root) (S : ChainFFGState cfg E anchor)
     (store : Store Root) : Prop :=
   CurrentTargetA32GateRealizationCore cfg ext E anchor
-    (S.paperA32View cfg) store
+    (S.paperA32Inputs cfg) store
 
 /-- Actual-call producer specialized to the scheduled-root state. -/
 abbrev CurrentTargetA32GateRealizationProducerAt
     (anchor : Checkpoint Root) (S : ChainFFGState cfg E anchor)
     (q : ℕ) (query : FastConfirmationStore Root) : Prop :=
   CurrentTargetA32GateRealizationProducerAtCore cfg ext E anchor
-    (S.paperA32View cfg) q query
+    (S.paperA32Inputs cfg) q query
 
 /-- Fixed-source realization specialized to the scheduled-root state. -/
 abbrev FixedSourceCurrentTargetA32GateRealization
     (anchor : Checkpoint Root) (S : ChainFFGState cfg E anchor)
     (store : Store Root) (b : Root) : Prop :=
   FixedSourceCurrentTargetA32GateRealizationCore cfg ext E anchor
-    (S.paperA32View cfg) store b
+    (S.paperA32Inputs cfg) store b
 
 /-- Fixed-source producer specialized to the scheduled-root state. -/
 abbrev FixedSourceCurrentTargetA32GateRealizationProducerAt
     (anchor : Checkpoint Root) (S : ChainFFGState cfg E anchor)
     (q : ℕ) (query : FastConfirmationStore Root) (b : Root) : Prop :=
   FixedSourceCurrentTargetA32GateRealizationProducerAtCore cfg ext E anchor
-    (S.paperA32View cfg) q query b
+    (S.paperA32Inputs cfg) q query b
 
 /-- Accepted-state gate realization. -/
 abbrev AcceptedCurrentTargetA32GateRealization
     (anchor : Checkpoint Root)
-    (S : AcceptedChainFFGState cfg ext E anchor)
+    (S : CausalCarrierFFGState cfg ext E anchor)
     (store : Store Root) : Prop :=
   CurrentTargetA32GateRealizationCore cfg ext E anchor
-    (S.paperA32View cfg ext) store
+    (S.paperA32Inputs cfg ext) store
 
 /-- Accepted-state actual-call producer. -/
 abbrev AcceptedCurrentTargetA32GateRealizationProducerAt
     (anchor : Checkpoint Root)
-    (S : AcceptedChainFFGState cfg ext E anchor)
+    (S : CausalCarrierFFGState cfg ext E anchor)
     (q : ℕ) (query : FastConfirmationStore Root) : Prop :=
   CurrentTargetA32GateRealizationProducerAtCore cfg ext E anchor
-    (S.paperA32View cfg ext) q query
+    (S.paperA32Inputs cfg ext) q query
 
 /-- Accepted-state fixed-source realization. -/
 abbrev AcceptedFixedSourceCurrentTargetA32GateRealization
     (anchor : Checkpoint Root)
-    (S : AcceptedChainFFGState cfg ext E anchor)
+    (S : CausalCarrierFFGState cfg ext E anchor)
     (store : Store Root) (b : Root) : Prop :=
   FixedSourceCurrentTargetA32GateRealizationCore cfg ext E anchor
-    (S.paperA32View cfg ext) store b
+    (S.paperA32Inputs cfg ext) store b
 
 /-- Accepted-state fixed-source producer. -/
 abbrev AcceptedFixedSourceCurrentTargetA32GateRealizationProducerAt
     (anchor : Checkpoint Root)
-    (S : AcceptedChainFFGState cfg ext E anchor)
+    (S : CausalCarrierFFGState cfg ext E anchor)
     (q : ℕ) (query : FastConfirmationStore Root) (b : Root) : Prop :=
   FixedSourceCurrentTargetA32GateRealizationProducerAtCore cfg ext E anchor
-    (S.paperA32View cfg ext) q query b
+    (S.paperA32Inputs cfg ext) q query b
 
 
 

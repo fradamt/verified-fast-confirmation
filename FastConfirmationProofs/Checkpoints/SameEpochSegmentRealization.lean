@@ -132,7 +132,7 @@ the transition prefix through message uniqueness and the prefix core before
 being supplied to the accepted edge constructor. -/
 theorem acceptedProjectedSameEpochTransition_of_known_parent
     {E : Execution Root} {anchor : Checkpoint Root}
-    {S : AcceptedChainFFGState cfg ext E anchor}
+    {S : CausalCarrierFFGState cfg ext E anchor}
     (hwf : WellFormedExecution E)
     (hcore : ExactCausalStoreWellFormedCore cfg ext E)
     {store : Store Root} (hstore : E.CausalStore cfg ext store)
@@ -209,7 +209,7 @@ base case; each nontrivial child is non-genesis by the source relation and is
 therefore realized through last-writer provenance. -/
 theorem knownSameEpochAncestrySegment_toAcceptedProjectedSameEpochSegment
     {E : Execution Root} {anchor : Checkpoint Root}
-    {S : AcceptedChainFFGState cfg ext E anchor}
+    {S : CausalCarrierFFGState cfg ext E anchor}
     (hwf : WellFormedExecution E)
     (hcore : ExactCausalStoreWellFormedCore cfg ext E)
     {store : Store Root} (hstore : E.CausalStore cfg ext store)
@@ -231,7 +231,7 @@ theorem knownSameEpochAncestrySegment_toAcceptedProjectedSameEpochSegment
 and a genesis core witness. -/
 theorem knownSameEpochAncestrySegment_toAcceptedProjectedSameEpochSegment_of_core
     {E : Execution Root} {anchor : Checkpoint Root}
-    {S : AcceptedChainFFGState cfg ext E anchor}
+    {S : CausalCarrierFFGState cfg ext E anchor}
     (hwf : WellFormedExecution E)
     (hst_slot : ∀ (st : BeaconState Root) (b : SignedBeaconBlock Root)
         (st' : BeaconState Root),

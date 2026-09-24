@@ -59,17 +59,17 @@ bundle and the two executions that refute strict-prefix safety variants.
   `AcceptedActualFCRJointNonVacuityBase.witnessHorizonVoteDeliveryLookahead`.
   The slot-fifteen vote reaches every honest node at second sixteen, outside
   the verification horizon.
-* `ExactPrefixAcceptedFFGSemantics`:
+* `CausalPrefixFFGInterpretation`:
   `AcceptedActualFCRJointNonVacuityFFG.witnessAcceptedSemantics`. The child
   and carrier in the same execution have an accepted FFG interpretation at
   every causal schedule prefix.
-* `AcceptedEpochCheckpointProjection`:
+* `EpochCheckpointClosure`:
   `AcceptedActualFCRJointNonVacuityFFG.witnessAcceptedEpochCheckpointProjection`.
   The anchor, child, and carrier give concrete epoch checkpoint roots.
-* `AcceptedChainFFGState.ExactLinkValidity`:
+* `CausalCarrierFFGState.ExactLinkValidity`:
   `AcceptedActualFCRJointNonVacuityFFG.witnessExactLinkValidity`. Included
   attestations on the carrier support its exact checkpoint link.
-* `AcceptedChainFFGState.PaperA32Inclusion`:
+* `CausalCarrierFFGState.PaperA32Inclusion`:
   `NextSlotPremiseWitness.witnessPaperA32Inclusion`. The slot-seven carrier
   includes the vote evidence for the slot-one child.
 * `Execution.RealizedFinalizationDelay`:

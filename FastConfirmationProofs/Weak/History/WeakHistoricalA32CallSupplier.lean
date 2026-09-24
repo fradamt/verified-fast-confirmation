@@ -115,7 +115,7 @@ variable {E : Execution Root}
 theorem ScheduledEventPrefix.operationalEvidence_of_observer_validity
     (hT : E.ScheduledPrefixPremises cfg ext)
     (p : E.ScheduledEventPrefix)
-    (hvalid : E.ObserverValidity cfg ext p.node)
+    (hvalid : E.ObserverIndexedAttestationValidity cfg ext p.node)
     (hn : E.WithinHorizon cfg (p.previousSecond + 1)) :
     E.ScheduledPrefixOperationalEvidence cfg ext (p.store cfg ext)
       (p.previousSecond + 1) :=
@@ -307,7 +307,7 @@ which does the real work, is honesty-free in the prefix node.
 Mirrors `Execution.completedPrefix_acceptedTargetGateProducerAt`, with
 substitutions (a) and (b) entering through the three lemmas above. -/
 noncomputable def observerCall_acceptedTargetGateProducerAt
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (hT : E.ScheduledPrefixPremises cfg ext)
     (hC : E.CompletedFCRCallPremises cfg ext)
     (hfit : EpochEndsFitUint64 cfg)
@@ -672,7 +672,7 @@ arithmetic-branch argument with one seat argument swapped:
 The honesty and epoch-span side conditions on the signer set are re-derived
 without the proviso, as §5.2 items 1-2 record. -/
 theorem noConflict_endpointJustifiedQuorum_root_eq_currentTarget_at_observer
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (hT : E.ScheduledPrefixPremises cfg ext)
     (hC : E.CompletedFCRCallPremises cfg ext)
     (hfit : EpochEndsFitUint64 cfg)
@@ -725,7 +725,7 @@ theorem noConflict_endpointJustifiedQuorum_root_eq_currentTarget_at_observer
     at hepoch
   change (E.store cfg ext w m).justified_checkpoint.root = target.root
   obtain ⟨hc⟩ :=
-    ExactPrefixAcceptedFFGSemantics.endpointJustified_certificate
+    CausalPrefixFFGInterpretation.endpointJustified_certificate
       cfg ext B hgenShort hanchor (E.store_causal cfg ext w m)
   have hstate : state = get_pulled_up_head_state cfg ext store := rfl
   have hval : state.validators = E.registry := by
@@ -747,7 +747,7 @@ theorem noConflict_endpointJustifiedQuorum_root_eq_currentTarget_at_observer
   have hstoreCausal : E.CausalStore cfg ext store := by
     simpa only [store] using E.store_causal cfg ext obs (n + 1)
   obtain ⟨hUJ⟩ :=
-    ExactPrefixAcceptedFFGSemantics.unrealizedJustified_certificate
+    CausalPrefixFFGInterpretation.unrealizedJustified_certificate
       cfg ext B hgenShort hanchor hstoreCausal
   by_cases heq : target = store.unrealized_justified_checkpoint
   · have hroot := hacc.justified_unique hc hUJ
@@ -972,7 +972,7 @@ mentions the observer's honesty, so this is the observer twin of
 `Execution.completedPrefix_endpointOriginOrPinnedProducerAt` with the honest
 binder replaced by `Execution.ObserverCoherence`. -/
 theorem observerCall_endpointOriginOrPinnedProducerAt
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (hT : E.ScheduledPrefixPremises cfg ext)
     (hC : E.CompletedFCRCallPremises cfg ext)
     (hfit : EpochEndsFitUint64 cfg)
@@ -999,7 +999,7 @@ theorem observerCall_endpointOriginOrPinnedProducerAt
   by_cases hne : (E.store cfg ext w m).justified_checkpoint = B.anchor
   · exact Or.inl hne
   · obtain ⟨Q⟩ :=
-      ExactPrefixAcceptedFFGSemantics.endpointJustified_quorumAt
+      CausalPrefixFFGInterpretation.endpointJustified_quorumAt
         cfg ext B hT hanchor hboundary hne
     by_cases hpost : Q.PostQueryHonestSigner cfg ext (n + 1)
     · exact Or.inr (Or.inl

@@ -47,7 +47,7 @@ crossing edge gives the executable gate boolean, and the current-epoch
 head-descent geometry gives `target_eq`.  No proviso, quorum, certificate or
 safety fact is used. -/
 theorem acceptedHistoricalA32OriginCallAt_of_crossing
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (hA : SelectedMarginAssumptions cfg ext E)
     {v : ValidatorIndex} (hv : v ∈ E.honest) {n : ℕ}
     (hHn1 : E.WithinHorizon cfg (n + 1))
@@ -163,7 +163,7 @@ certificate and quorum.
 
 Consequently it consumes **no** helper-support proviso. -/
 noncomputable def selectedCurrentCrossingLazyLineage
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (hA : SelectedMarginAssumptions cfg ext E)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)

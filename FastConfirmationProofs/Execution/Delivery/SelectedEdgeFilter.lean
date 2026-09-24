@@ -124,7 +124,7 @@ All accepted certificate producers are reconstructed from the completed
 prefix.  No checkpoint-epoch inequality or selected/checkpoint orientation is
 taken as a premise. -/
 theorem actualCall_strictSelected_endpointJustifiedEpoch_le_result
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (hT : E.ScheduledPrefixPremises cfg ext)
     (hC : E.CompletedFCRCallPremises cfg ext)
     (hfit : EpochEndsFitUint64 cfg)
@@ -284,7 +284,7 @@ theorem actualCall_strictSelected_endpointJustifiedEpoch_le_result
   rcases hbracketOrCausal with hvoteBracket | hcausal
   · have horigin : E.EndpointJustificationOriginAt
         cfg ext B.anchor w m :=
-      ExactPrefixAcceptedFFGSemantics.endpointJustificationOriginAt
+      CausalPrefixFFGInterpretation.endpointJustificationOriginAt
         cfg ext B hT hanchor hboundary
     rcases horigin with hanchorEndpoint |
         ⟨i, hi, s, k, a, hs0, hsm, hsH, hvote, htarget⟩
@@ -509,7 +509,7 @@ The previous-loop guard may name either `previous_slot_head` or the query
 head; the tentative-loop guard names the query head.  Both are kept as real
 roots with concrete query ancestry. -/
 theorem StrictSelectedResultMechanicalFacts.previousOffStart_queryGUEpochSeed
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (hT : E.ScheduledPrefixPremises cfg ext)
     (hdomain : SelectedMarginDomain cfg ext E)
     {v : ValidatorIndex} (hv : v ∈ E.honest) {n : Nat}
@@ -563,7 +563,7 @@ theorem StrictSelectedResultMechanicalFacts.previousOffStart_queryGUEpochSeed
       strictSelectedResult_below_head cfg ext hparentQ hwalkQ
         hheadKnown (by simpa only [query] using hinput) hstrict'
   have hprojection :=
-    Execution.ExactPrefixAcceptedFFGSemantics.causalStoreProjection
+    Execution.CausalPrefixFFGInterpretation.causalStoreProjection
       B hqueryCausal
   have lower_of_raw {seed : Root}
       (hseed : seed ∈ query.store.block_roots)
@@ -605,7 +605,7 @@ has no retained carrier from which to recover it.  The `retained` arm keeps
 the finalized equation indexed by the carrier's exact tip, preventing a
 certificate on some unrelated store root from being substituted. -/
 inductive AcceptedSelectedResultFilterOutcomeAt
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (endpoint : Store Root) (glc : Root) : Prop where
   | justifiedCovers
       (result_known : glc ∈ endpoint.block_roots)
@@ -666,7 +666,7 @@ private theorem AcceptedBlockAt.executionRoot_for_lateSelectedSupply
 the exact query store.  This is ordinary accepted-root reflection plus the
 trusted boundary walk; no endpoint or safety fact occurs here. -/
 theorem AcceptedHistoricalA32LineageCoreAt.payloadAtQuery_nonempty
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (hT : E.ScheduledPrefixPremises cfg ext)
     (hphase0 : Phase0SourceCoherence cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
@@ -732,7 +732,7 @@ theorem AcceptedHistoricalA32LineageCoreAt.payloadAtQuery_nonempty
 /-- Eager instantiation of the query-store materialization.  The support
 obligation transports by the same one-line re-indexing it always did. -/
 theorem AcceptedHistoricalA32LineageAt.payloadAtQuery_nonempty
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (hT : E.ScheduledPrefixPremises cfg ext)
     (hphase0 : Phase0SourceCoherence cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
@@ -761,7 +761,7 @@ disjunction at the *tip* as a plain hypothesis, so that the eager trunk can
 supply it from the payload field and the lazy trunk can manufacture it at the
 consuming call (`docs/crossing-call-support-residue.md` §4.3). -/
 theorem acceptedHistoricalA32LateVisibleSeed_of_support
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (hT : E.ScheduledPrefixPremises cfg ext)
     (hsync : NextSlotSynchronyPremises cfg ext E)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
@@ -814,7 +814,7 @@ theorem acceptedHistoricalA32LateVisibleSeed_of_support
     subst target
     have hsourceQuery : Q.source =
         B.state.VSAt cfg ext (E.store cfg ext v q) selected e := by
-      simpa only [AcceptedChainFFGState.VSAt, hselectedEpoch,
+      simpa only [CausalCarrierFFGState.VSAt, hselectedEpoch,
         if_pos] using hsource
     have hwalkDomain : E.PostAnchorHonestVoteTargetWalkDomain cfg ext :=
       E.postAnchorHonestVoteTargetWalkDomain_of_acceptedGlobalTrajectory
@@ -831,7 +831,7 @@ theorem acceptedHistoricalA32LateVisibleSeed_of_support
       E.accepted_paperA32IncludedAtTip_of_concreteQuorum cfg ext
         hT.wellFormed hT.honest_behavior hsync hT.externals_coherence
         hT.whole_seconds hT.genesis_structure hwalkDomain
-        B.coherence.toAcceptedFFGSelectorCoherence hpaper
+        B.coherence.toFFGSelectorsMatchBeaconStates hpaper
         hv hqH hselectedQ hselectedEpoch hcanonical Q hsourceQuery
         hw hmH hboundarySlot
     exact ⟨seed, hincluded.executable.seed_known,
@@ -841,7 +841,7 @@ theorem acceptedHistoricalA32LateVisibleSeed_of_support
 /-- Eager instantiation: the retained payload's own `support_branch` field
 supplies the disjunction the late seed construction needs. -/
 theorem AcceptedHistoricalA32LineageAt.lateVisibleSeedAt
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (hT : E.ScheduledPrefixPremises cfg ext)
     (hsync : NextSlotSynchronyPremises cfg ext E)
     (hphase0 : Phase0SourceCoherence cfg ext)
@@ -879,8 +879,8 @@ theorem AcceptedHistoricalA32LineageAt.lateVisibleSeedAt
 boundary at every concrete store.  This is the accepted-state counterpart of
 the older migration-state trajectory theorem and prevents the late branch
 from taking finalized geometry as a free premise. -/
-theorem ExactPrefixAcceptedFFGSemantics.finalizedBoundaryRealizationAt
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+theorem CausalPrefixFFGInterpretation.finalizedBoundaryRealizationAt
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (hT : E.ScheduledPrefixPremises cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
@@ -935,7 +935,7 @@ theorem ExactPrefixAcceptedFFGSemantics.finalizedBoundaryRealizationAt
         store.finalized_checkpoint :=
       IncludedCertifiedJustified.toCertifiedJustified
         (cfg := cfg)
-        (Execution.AcceptedIncludedAttestationRelation.relation
+        (Execution.CausalCarrierAttestationRelation.relation
           cfg ext E B.state.includedAttestations) hcertificate
     have hanchorLe : B.anchor.epoch ≤
         store.finalized_checkpoint.epoch :=
@@ -978,14 +978,14 @@ selector to read `GU(seed)`.  The local SIR orientation `J.epoch ≤ e` then
 turns the retained `e ≤ GU(seed).epoch` bound into source visibility. -/
 noncomputable def
     acceptedSelectedResultFilterOutcome_retainedVisible_of_queryGUEpochSeed
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (hT : E.ScheduledPrefixPremises cfg ext)
     (hsync : NextSlotSynchronyPremises cfg ext E)
     (hdomain : SelectedMarginDomain cfg ext E)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
       (E := E) (anchor := B.anchor))
-    (P : AcceptedEpochCheckpointProjection B.anchor
+    (P : EpochCheckpointClosure B.anchor
       (E.AcceptedRoot cfg ext) B.state.C)
     (V : B.state.ExactLinkValidity)
     (hanchorExact : B.anchor =
@@ -1157,7 +1157,7 @@ noncomputable def
       htipSelected (by simpa only [endpoint] using hselectedJustified)
   have hfinalized : FinalizedBoundaryRealization cfg endpoint := by
     simpa only [endpoint] using
-      Execution.ExactPrefixAcceptedFFGSemantics.finalizedBoundaryRealizationAt
+      Execution.CausalPrefixFFGInterpretation.finalizedBoundaryRealizationAt
         cfg ext B hT hanchor hboundary w m
   let hplace : RetainedFilterTipPlacement cfg endpoint selected :=
     { tip := tip
@@ -1183,14 +1183,14 @@ selected away from epoch start.  This path uses the executable GU seed above
 and never invokes paper A3.2 or full-epoch canonicity. -/
 noncomputable def
     StrictSelectedResultMechanicalFacts.fcrStep_previousOffStart_late_endpointFilterOutcome
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (hT : E.ScheduledPrefixPremises cfg ext)
     (hsync : NextSlotSynchronyPremises cfg ext E)
     (hdomain : SelectedMarginDomain cfg ext E)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
       (E := E) (anchor := B.anchor))
-    (P : AcceptedEpochCheckpointProjection B.anchor
+    (P : EpochCheckpointClosure B.anchor
       (E.AcceptedRoot cfg ext) B.state.C)
     (V : B.state.ExactLinkValidity)
     (hanchorExact : B.anchor =
@@ -1247,7 +1247,7 @@ eager trunk (which reads it off the payload) and the lazy trunk (which
 manufactures it from origin-call data at the consuming call) share this
 proof. -/
 noncomputable def acceptedSelectedResultFilterOutcome_retainedVisible_of_lateSupport
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (hT : E.ScheduledPrefixPremises cfg ext)
     (hsync : NextSlotSynchronyPremises cfg ext E)
     (hdomain : SelectedMarginDomain cfg ext E)
@@ -1255,7 +1255,7 @@ noncomputable def acceptedSelectedResultFilterOutcome_retainedVisible_of_lateSup
     (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
       (E := E) (anchor := B.anchor))
     (hpaper : B.state.PaperA32Inclusion cfg ext)
-    (P : AcceptedEpochCheckpointProjection B.anchor
+    (P : EpochCheckpointClosure B.anchor
       (E.AcceptedRoot cfg ext) B.state.C)
     (V : B.state.ExactLinkValidity)
     (hanchorExact : B.anchor =
@@ -1359,7 +1359,7 @@ noncomputable def acceptedSelectedResultFilterOutcome_retainedVisible_of_lateSup
       htipSelected (by simpa only [endpoint] using hselectedJustified)
   have hfinalized : FinalizedBoundaryRealization cfg endpoint := by
     simpa only [endpoint] using
-      Execution.ExactPrefixAcceptedFFGSemantics.finalizedBoundaryRealizationAt
+      Execution.CausalPrefixFFGInterpretation.finalizedBoundaryRealizationAt
         cfg ext B hT hanchor hboundary w m
   let hplace : RetainedFilterTipPlacement cfg endpoint selected :=
     { tip := tip
@@ -1386,7 +1386,7 @@ noncomputable def acceptedSelectedResultFilterOutcome_retainedVisible_of_lateSup
 payload supplies the anchor-or-quorum disjunction.  This is the form both
 trunks' dispatchers already call. -/
 noncomputable def acceptedSelectedResultFilterOutcome_retainedVisible_of_lateLineage
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (hT : E.ScheduledPrefixPremises cfg ext)
     (hsync : NextSlotSynchronyPremises cfg ext E)
     (hdomain : SelectedMarginDomain cfg ext E)
@@ -1395,7 +1395,7 @@ noncomputable def acceptedSelectedResultFilterOutcome_retainedVisible_of_lateLin
     (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
       (E := E) (anchor := B.anchor))
     (hpaper : B.state.PaperA32Inclusion cfg ext)
-    (P : AcceptedEpochCheckpointProjection B.anchor
+    (P : EpochCheckpointClosure B.anchor
       (E.AcceptedRoot cfg ext) B.state.C)
     (V : B.state.ExactLinkValidity)
     (hanchorExact : B.anchor =
@@ -1447,13 +1447,13 @@ it is not a public safety premise or a generic cross-store monotonicity law. -/
 No lineage, filter fact, margin, safety conclusion, source visibility, or free
 finalized placement occurs in the interface. -/
 noncomputable def acceptedSelectedResultFilterOutcome_retained_of_carrier
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (hT : E.ScheduledPrefixPremises cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
       (E := E) (anchor := B.anchor))
     (hDelay : E.RealizedFinalizationDelay cfg ext B)
-    (P : AcceptedEpochCheckpointProjection B.anchor
+    (P : EpochCheckpointClosure B.anchor
       (E.AcceptedRoot cfg ext) B.state.C)
     (V : B.state.ExactLinkValidity)
     (hanchorExact : B.anchor =
@@ -1484,7 +1484,7 @@ noncomputable def acceptedSelectedResultFilterOutcome_retained_of_carrier
       cfg ext B hT hanchor hDelay
   have hfinalizedBoundary : FinalizedBoundaryRealization cfg
       (E.store cfg ext w m) :=
-    Execution.ExactPrefixAcceptedFFGSemantics.finalizedBoundaryRealizationAt
+    Execution.CausalPrefixFFGInterpretation.finalizedBoundaryRealizationAt
       cfg ext B hT hanchor hboundary w m
   have hfinalized := carrier.finalizedRoot_eq_checkpointBlock_of_causalLag
     cfg ext hgenShort hanchor hLag P V hanchorExact hacc
@@ -1494,13 +1494,13 @@ noncomputable def acceptedSelectedResultFilterOutcome_retained_of_carrier
 /-- Turn an endpoint recent seed into the carrier consumed by the common
 retained tail above. -/
 noncomputable def acceptedSelectedResultFilterOutcome_retained_of_recentSeed
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (hT : E.ScheduledPrefixPremises cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
       (E := E) (anchor := B.anchor))
     (hDelay : E.RealizedFinalizationDelay cfg ext B)
-    (P : AcceptedEpochCheckpointProjection B.anchor
+    (P : EpochCheckpointClosure B.anchor
       (E.AcceptedRoot cfg ext) B.state.C)
     (V : B.state.ExactLinkValidity)
     (hanchorExact : B.anchor =
@@ -1548,12 +1548,12 @@ noncomputable def StrictSelectedResultMechanicalFacts.fcrStep_previous_endpointF
     (hstatic : StaticValidatorSet cfg E)
     (hbyz : ByzantineWeightPremises cfg E)
     (hdomain : SelectedMarginDomain cfg ext E)
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
       (E := E) (anchor := B.anchor))
     (hDelay : E.RealizedFinalizationDelay cfg ext B)
-    (P : AcceptedEpochCheckpointProjection B.anchor
+    (P : EpochCheckpointClosure B.anchor
       (E.AcceptedRoot cfg ext) B.state.C)
     (V : B.state.ExactLinkValidity)
     (hanchorExact : B.anchor =
@@ -1637,13 +1637,13 @@ noncomputable def
     (hstatic : StaticValidatorSet cfg E)
     (hbyz : ByzantineWeightPremises cfg E)
     (hdomain : SelectedMarginDomain cfg ext E)
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
       (E := E) (anchor := B.anchor))
     (hDelay : E.RealizedFinalizationDelay cfg ext B)
     (hspe : 1 < cfg.slots_per_epoch)
-    (P : AcceptedEpochCheckpointProjection B.anchor
+    (P : EpochCheckpointClosure B.anchor
       (E.AcceptedRoot cfg ext) B.state.C)
     (V : B.state.ExactLinkValidity)
     (hanchorExact : B.anchor =
@@ -1740,12 +1740,12 @@ noncomputable def StrictSelectedResultMechanicalFacts.fcrStep_currentNext_endpoi
     (hstatic : StaticValidatorSet cfg E)
     (hbyz : ByzantineWeightPremises cfg E)
     (hdomain : SelectedMarginDomain cfg ext E)
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
       (E := E) (anchor := B.anchor))
     (hDelay : E.RealizedFinalizationDelay cfg ext B)
-    (P : AcceptedEpochCheckpointProjection B.anchor
+    (P : EpochCheckpointClosure B.anchor
       (E.AcceptedRoot cfg ext) B.state.C)
     (V : B.state.ExactLinkValidity)
     (hanchorExact : B.anchor =
@@ -1825,7 +1825,7 @@ which knows its tip.  This is the small adapter needed when the completed
 prefix invariant existentially packages the lineage epoch. -/
 theorem AcceptedHistoricalA32LineageCoreAt.tip_epoch_eq_of_causal_known
     (hT : E.ScheduledPrefixPremises cfg ext)
-    {B : ExactPrefixAcceptedFFGSemantics cfg ext E}
+    {B : CausalPrefixFFGInterpretation cfg ext E}
     {store : Store Root} {selected : Root} {e : Epoch}
     {Cert : Checkpoint Root → Prop} {Supp : Root → Epoch → Prop}
     (h : E.AcceptedHistoricalA32LineageCoreAt cfg ext B selected e Cert Supp)
@@ -1850,7 +1850,7 @@ origin split is operational and exhaustive: carried, finalized-reset, and
 observed-reset inputs each use their dedicated accepted producer. -/
 noncomputable def
     StrictSelectedResultMechanicalFacts.fcrStep_endpointFilterOutcome
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (hT : E.ScheduledPrefixPremises cfg ext)
     (hC : E.CompletedFCRCallPremises cfg ext)
     (hfit : EpochEndsFitUint64 cfg)
@@ -1861,7 +1861,7 @@ noncomputable def
     (hDelay : E.RealizedFinalizationDelay cfg ext B)
     (hspe : 1 < cfg.slots_per_epoch)
     (hpaper : B.state.PaperA32Inclusion cfg ext)
-    (P : AcceptedEpochCheckpointProjection B.anchor
+    (P : EpochCheckpointClosure B.anchor
       (E.AcceptedRoot cfg ext) B.state.C)
     (V : B.state.ExactLinkValidity)
     (hanchorExact : B.anchor =
@@ -2198,7 +2198,7 @@ The returned statement is exactly the membership required by
 `SelectedStrictEdgeFilterSupplyAt`; no edge-specific source-history argument
 is repeated. -/
 theorem child_filtered
-    {B : ExactPrefixAcceptedFFGSemantics cfg ext E}
+    {B : CausalPrefixFFGInterpretation cfg ext E}
     {endpoint : Store Root} {glc parent child : Root}
     (h : E.AcceptedSelectedResultFilterOutcomeAt cfg ext B endpoint glc)
     (hfinalized : FinalizedBoundaryRealization cfg endpoint)
@@ -2304,7 +2304,7 @@ free filter-membership, source-visibility, finalized-placement, lineage,
 orientation, checkpoint-epoch, or canonicity premise. -/
 noncomputable def
     StrictSelectorAdvanceAt.actualCall_selectedStrictEdgeFilterSupplyAt
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (hT : E.ScheduledPrefixPremises cfg ext)
     (hC : E.CompletedFCRCallPremises cfg ext)
     (hfit : EpochEndsFitUint64 cfg)
@@ -2315,7 +2315,7 @@ noncomputable def
     (hDelay : E.RealizedFinalizationDelay cfg ext B)
     (hspe : 1 < cfg.slots_per_epoch)
     (hpaper : B.state.PaperA32Inclusion cfg ext)
-    (P : AcceptedEpochCheckpointProjection B.anchor
+    (P : EpochCheckpointClosure B.anchor
       (E.AcceptedRoot cfg ext) B.state.C)
     (V : B.state.ExactLinkValidity)
     (hanchorExact : B.anchor =
@@ -2351,7 +2351,7 @@ noncomputable def
       hselectedC hselectedKnown hIH hnotCovered
   have hfinalized : FinalizedBoundaryRealization cfg
       (E.store cfg ext w m) :=
-    Execution.ExactPrefixAcceptedFFGSemantics.finalizedBoundaryRealizationAt
+    Execution.CausalPrefixFFGInterpretation.finalizedBoundaryRealizationAt
       cfg ext B hT hanchor hboundary w m
   obtain ⟨hparent, hwalkK, hjustifiedKnown⟩ :=
     E.store_domainK_of_selectedMarginDomain cfg ext hT.wellFormed

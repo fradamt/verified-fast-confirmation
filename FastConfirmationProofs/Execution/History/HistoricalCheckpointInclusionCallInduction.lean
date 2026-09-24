@@ -35,7 +35,7 @@ variable {E : Execution Root}
 /-- The two facts retained by the write-back induction at one execution
 second.  Historical payload is required only in the current-epoch case. -/
 structure AcceptedHistoricalA32CurrentLineageAt
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (v : ValidatorIndex) (n : ℕ) : Prop where
   confirmed_known : E.confirmed cfg ext v n ∈
     (E.store cfg ext v n).block_roots
@@ -56,7 +56,7 @@ matching target-support proviso; concrete global/scheduled action evidence can
 therefore construct it without putting a quorum or A3.2 conclusion in this
 interface. -/
 structure AcceptedHistoricalA32CallInterfaceAt
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (v : ValidatorIndex) (n : ℕ) : Prop where
   target_gate_producer : E.AcceptedCurrentTargetA32GateRealizationProducerAt
     cfg ext B.anchor B.state (n + 1) (E.fcrStoreAtCall cfg ext v n)
@@ -65,7 +65,7 @@ structure AcceptedHistoricalA32CallInterfaceAt
 `IsScheduledFCRCallAt` argument ensures no interface is demanded between slot
 advances. -/
 def AcceptedHistoricalA32CallInterfaces
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E) : Prop :=
+    (B : CausalPrefixFFGInterpretation cfg ext E) : Prop :=
   ∀ v ∈ E.honest, ∀ n : ℕ,
     E.IsScheduledFCRCallAt cfg ext v n → E.WithinHorizon cfg (n + 1) →
       E.AcceptedHistoricalA32CallInterfaceAt cfg ext B v n
@@ -77,7 +77,7 @@ cached root is known.  Finalized and observed inputs use their accepted reset
 realizations; a selected result uses the ordinary known-descendant theorem.
 This proof has no justification-interface or selected-margin premise. -/
 theorem getLatestConfirmedTraceAt_result_known
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (hT : E.ScheduledPrefixPremises cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
@@ -159,7 +159,7 @@ theorem trustedAnchor_checkpointForBlock_of_trajectory
 /-- The genesis confirmed root initializes both knownness and the anchor
 lineage.  The anchor disjunct is recorded directly; no quorum is fabricated. -/
 noncomputable def acceptedHistoricalA32CurrentLineageAt_zero
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (hT : E.ScheduledPrefixPremises cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
@@ -218,7 +218,7 @@ noncomputable def acceptedHistoricalA32CurrentLineageAt_zero
 trace transformer is used; between calls, block agreement and the unchanged
 slot transport the preceding lineage. -/
 noncomputable def acceptedHistoricalA32CurrentLineageAt_all
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (hT : E.ScheduledPrefixPremises cfg ext)
     (hA : SelectedMarginAssumptions cfg ext E)
     (hphase : Phase0SourceCoherence cfg ext)
@@ -328,7 +328,7 @@ noncomputable def acceptedHistoricalA32CurrentLineageAt_all
 
 /-- Global bounded invariant for all honest validators. -/
 theorem acceptedHistoricalA32CurrentLineage_invariant
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (hT : E.ScheduledPrefixPremises cfg ext)
     (hA : SelectedMarginAssumptions cfg ext E)
     (hphase : Phase0SourceCoherence cfg ext)

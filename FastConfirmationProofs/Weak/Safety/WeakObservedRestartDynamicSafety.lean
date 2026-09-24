@@ -47,7 +47,7 @@ This file adds the arms that the split itself needs, in the order of
   honesty-free) identifies the two roots and
   `head_ge_of_justified_ge_K` puts the banked root below the endpoint's head.
   Both certificates are produced rather than assumed: the endpoint's by
-  `ExactPrefixAcceptedFFGSemantics.endpointJustified_certificate` at its own
+  `CausalPrefixFFGInterpretation.endpointJustified_certificate` at its own
   causal store, the banked checkpoint's by
   `Weak.certifiedJustified_of_acceptedAU` from the branch's own
   `observed_eq_head_unrealized` conjunct — the observer's head is a known block
@@ -104,7 +104,7 @@ maintenance lemma (`Weak.certifiedBankedJustification_update`) moves it onto
 observed-reset arms consume.  No honesty hypothesis at `obs`. -/
 theorem weakFcrStep_certifiedBankedJustification
     {E : Execution Root} (hA : SelectedMarginAssumptions cfg ext E)
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (hT : E.ScheduledPrefixPremises cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : Execution.TrustedAnchorBoundaryAligned (cfg := cfg) (E := E)
@@ -138,7 +138,7 @@ of the banked root — it carries no supplier, no certificate, and hence no epoc
 bound — so it cannot be routed through the adoption law of stage 2, and does
 not need to be. -/
 theorem genesisRoot_safeFrom_of_acceptedGlobalTrajectory
-    {E : Execution Root} (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    {E : Execution Root} (B : CausalPrefixFFGInterpretation cfg ext E)
     (hT : E.ScheduledPrefixPremises cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : Execution.TrustedAnchorBoundaryAligned (cfg := cfg) (E := E)
@@ -167,7 +167,7 @@ call second.
 No honesty binder at `obs`, no certificate, and no epoch premise — the arm is
 closed before the epoch split of the strong proof is reached. -/
 theorem ObservedResetCandidateInputAt.safeFrom_of_anchorArm
-    {E : Execution Root} (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    {E : Execution Root} (B : CausalPrefixFFGInterpretation cfg ext E)
     (hT : E.ScheduledPrefixPremises cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : Execution.TrustedAnchorBoundaryAligned (cfg := cfg) (E := E)
@@ -190,20 +190,20 @@ behind `B.state.AU` carries an included-attestation certificate, which the
 accepted included-attestation relation turns into a `CertifiedJustified` chain
 from the trusted anchor.
 
-Honesty-free and node-free: `AcceptedChainFFGState.formed_evidence` and
-`AcceptedIncludedAttestationRelation.relation` are facts about the semantic FFG
+Honesty-free and node-free: `CausalCarrierFFGState.formed_evidence` and
+`CausalCarrierAttestationRelation.relation` are facts about the semantic FFG
 state, not about any node's store.  The step is currently inlined inside
 `Weak.auTip_walkKnown`; it is named here because the same-epoch arm needs the
 certificate itself rather than the epoch bound it implies. -/
 theorem certifiedJustified_of_acceptedAU
-    {E : Execution Root} (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    {E : Execution Root} (B : CausalPrefixFFGInterpretation cfg ext E)
     {tip : Root} {c : Checkpoint Root} (hAU : B.state.AU cfg ext tip c) :
     CertifiedJustified cfg E B.anchor c := by
   obtain ⟨_carrier, _hdescends, hformed⟩ := hAU
   obtain ⟨hincluded⟩ := (B.state.formed_evidence hformed).certified
   exact IncludedCertifiedJustified.toCertifiedJustified
     (cfg := cfg)
-    (Execution.AcceptedIncludedAttestationRelation.relation cfg ext E
+    (Execution.CausalCarrierAttestationRelation.relation cfg ext E
       B.state.includedAttestations) hincluded
 
 /-- **The same-epoch arm of the endpoint head step.** A certified justified
@@ -217,10 +217,10 @@ resulting (reflexive) justified-root ancestry to the head.  Weak twin of the
 safeFrom_of_acceptedDynamics`'s internal split: the only honesty binder is on
 the endpoint `w`, which the weak model keeps, and the endpoint's own
 certificate is read off its causal store by
-`ExactPrefixAcceptedFFGSemantics.endpointJustified_certificate`. -/
+`CausalPrefixFFGInterpretation.endpointJustified_certificate`. -/
 theorem sameEpochCertified_head_at_endpoint
     {E : Execution Root} (hacc : FFGAccountabilityAssumptions cfg ext E)
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (hT : E.ScheduledPrefixPremises cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : Execution.TrustedAnchorBoundaryAligned (cfg := cfg) (E := E)
@@ -240,7 +240,7 @@ theorem sameEpochCertified_head_at_endpoint
     E.storeDomainK_of_acceptedGlobalTrajectory cfg ext B hT hanchor hboundary
       w hw m hHm
   obtain ⟨hJCertified⟩ :=
-    Execution.ExactPrefixAcceptedFFGSemantics.endpointJustified_certificate
+    Execution.CausalPrefixFFGInterpretation.endpointJustified_certificate
       cfg ext B hgenShort hanchor (E.store_causal cfg ext w m)
   have hrootEq : c.root = (E.store cfg ext w m).justified_checkpoint.root :=
     E.certified_justified_unique cfg ext hacc hcCertified hJCertified hepoch
@@ -261,7 +261,7 @@ Named because both the same-epoch arm (for the certificate the evidence
 carries) and the later-epoch arm (for the checkpoint's own chain geometry)
 start from it, and neither needs any honesty at `obs`. -/
 theorem ObservedResetCandidateInputAt.bankedAU
-    {E : Execution Root} (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    {E : Execution Root} (B : CausalPrefixFFGInterpretation cfg ext E)
     (hT : E.ScheduledPrefixPremises cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : Execution.TrustedAnchorBoundaryAligned (cfg := cfg) (E := E)
@@ -285,7 +285,7 @@ theorem ObservedResetCandidateInputAt.bankedAU
       (get_current_balance_source (E.weakFcrStep cfg ext obs n))) := by
     rw [hinput.observed_eq_head_unrealized, E.weakFcrStep_store]
     exact E.accepted_unrealized_justification_eq
-      B.coherence.toAcceptedFFGSelectorCoherence obs (n + 1) hheadKnown
+      B.coherence.toFFGSelectorsMatchBeaconStates obs (n + 1) hheadKnown
   rw [hGU]
   exact B.state.gu_AU cfg ext
     (E.acceptedRoot_of_causal_known cfg ext
@@ -299,7 +299,7 @@ This is the weak replacement for the strong proof's `hreal.certified`, which
 reads the certificate off an observed-reset *realization* record that is only
 available at an honest node. -/
 theorem ObservedResetCandidateInputAt.certifiedJustified
-    {E : Execution Root} (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    {E : Execution Root} (B : CausalPrefixFFGInterpretation cfg ext E)
     (hT : E.ScheduledPrefixPremises cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : Execution.TrustedAnchorBoundaryAligned (cfg := cfg) (E := E)
@@ -330,7 +330,7 @@ step itself by `Weak.sameEpochCertified_head_at_endpoint`.  No honesty binder
 at `obs`. -/
 theorem ObservedResetCandidateInputAt.head_of_sameEpoch
     {E : Execution Root} (hA : SelectedMarginAssumptions cfg ext E)
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (hT : E.ScheduledPrefixPremises cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : Execution.TrustedAnchorBoundaryAligned (cfg := cfg) (E := E)
@@ -382,7 +382,7 @@ the checkpoint's block below the endpoint's justified boundary — and the epoch
 form below covers both, because the later-epoch arm needs only the `≤` half of
 the previous-epoch equation. -/
 theorem ObservedResetCandidateInputAt.banked_blockEpoch_le
-    {E : Execution Root} (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    {E : Execution Root} (B : CausalPrefixFFGInterpretation cfg ext E)
     (hT : E.ScheduledPrefixPremises cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : Execution.TrustedAnchorBoundaryAligned (cfg := cfg) (E := E)
@@ -415,7 +415,7 @@ half that reads the cache installation's provenance
 querying node to be honest.  The later-epoch arm consumes only the upper bound,
 so the honest-only half is never required. -/
 theorem ObservedResetCandidateInputAt.currentEpoch_le_banked_succ
-    {E : Execution Root} (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    {E : Execution Root} (B : CausalPrefixFFGInterpretation cfg ext E)
     (hT : E.ScheduledPrefixPremises cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : Execution.TrustedAnchorBoundaryAligned (cfg := cfg) (E := E)
@@ -474,7 +474,7 @@ epoch bound that feeds the split rather than this arm; it is stage 2's
 `Weak.bankedCheckpoint_epoch_le_honestJustified`. -/
 theorem ObservedResetCandidateInputAt.head_of_laterEpoch
     {E : Execution Root} (hA : SelectedMarginAssumptions cfg ext E)
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (hT : E.ScheduledPrefixPremises cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : Execution.TrustedAnchorBoundaryAligned (cfg := cfg) (E := E)

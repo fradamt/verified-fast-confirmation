@@ -33,7 +33,7 @@ whole proviso at the crossing call.  Everything downstream — the existing
 `certifiedCurrentTarget_of_gate_and_stateSemantics` pipeline — is then run
 unchanged, just later.
 
-Nothing here mentions `ExactPrefixAcceptedFFGSemantics`: the record is indexed
+Nothing here mentions `CausalPrefixFFGInterpretation`: the record is indexed
 by a bare `Checkpoint Root`, so that the payload can index it by the
 *checkpoint* `B.state.C · e` and transport it by the same one-line `rw` that
 `transport_sameEpoch` already uses (`docs/trunkA-final-discharge.md` §2.1).
@@ -406,7 +406,7 @@ theorem gateRealization_capped
     (hanchor : anchor = E.genesis_store.justified_checkpoint)
     (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
       (E := E) (anchor := anchor))
-    {S : AcceptedChainFFGState cfg ext E anchor}
+    {S : CausalCarrierFFGState cfg ext E anchor}
     {node : ValidatorIndex} {second : ℕ} {origin : Root}
     {target : Checkpoint Root}
     (h : E.AcceptedHistoricalA32OriginCallAt cfg ext node second origin target)
@@ -431,7 +431,7 @@ theorem gateRealization
     (hanchor : anchor = E.genesis_store.justified_checkpoint)
     (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
       (E := E) (anchor := anchor))
-    {S : AcceptedChainFFGState cfg ext E anchor}
+    {S : CausalCarrierFFGState cfg ext E anchor}
     {node : ValidatorIndex} {second : ℕ} {origin : Root}
     {target : Checkpoint Root}
     (h : E.AcceptedHistoricalA32OriginCallAt cfg ext node second origin target)
@@ -453,7 +453,7 @@ theorem fixedSourceGateRealization_capped
     (hanchor : anchor = E.genesis_store.justified_checkpoint)
     (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
       (E := E) (anchor := anchor))
-    {S : AcceptedChainFFGState cfg ext E anchor}
+    {S : CausalCarrierFFGState cfg ext E anchor}
     {node : ValidatorIndex} {second : ℕ} {origin : Root}
     {target : Checkpoint Root}
     (h : E.AcceptedHistoricalA32OriginCallAt cfg ext node second origin target)
@@ -485,7 +485,7 @@ theorem certified
     (hanchor : anchor = E.genesis_store.justified_checkpoint)
     (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
       (E := E) (anchor := anchor))
-    {S : AcceptedChainFFGState cfg ext E anchor}
+    {S : CausalCarrierFFGState cfg ext E anchor}
     {node : ValidatorIndex} {second : ℕ} {origin : Root}
     {target : Checkpoint Root}
     (h : E.AcceptedHistoricalA32OriginCallAt cfg ext node second origin target)
@@ -506,7 +506,7 @@ theorem certifiedFixedSource_capped
     (hanchor : anchor = E.genesis_store.justified_checkpoint)
     (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
       (E := E) (anchor := anchor))
-    {S : AcceptedChainFFGState cfg ext E anchor}
+    {S : CausalCarrierFFGState cfg ext E anchor}
     {node : ValidatorIndex} {second : ℕ} {origin : Root}
     {target : Checkpoint Root}
     (h : E.AcceptedHistoricalA32OriginCallAt cfg ext node second origin target)
@@ -533,7 +533,7 @@ This is what the lazy `Supp` closure evaluates to once its antecedent is
 discharged at the consuming call. -/
 theorem deferredSupport_capped
     (hA : SelectedMarginAssumptions cfg ext E)
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
       (E := E) (anchor := B.anchor))
@@ -576,7 +576,7 @@ certificate at an endpoint with no epoch guard.  That consumer is reached only
 through the **no-crossing** branch of the one-call transformer, so the lineage
 it holds is the one indexed at the *previous* second and `N` stays strictly
 below the consuming call. -/
-def LazyCertAt (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+def LazyCertAt (B : CausalPrefixFFGInterpretation cfg ext E)
     (N : ℕ) (c : Checkpoint Root) : Prop :=
   E.PriorStrictCallWriteBackSafe cfg ext N →
     Nonempty (CertifiedJustified cfg E B.anchor c)
@@ -596,7 +596,7 @@ strictly below that boundary.  The single `support_branch` consumer (A1,
 (The cap is `start(e + 1)` and **not** `slot_at m`: the endpoint binder is
 strict below `slot_at m`, so `slot_at m` itself is not available.  §2.3's own
 arithmetic already uses the boundary form.) -/
-def LazySupportAt (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+def LazySupportAt (B : CausalPrefixFFGInterpretation cfg ext E)
     (v : ValidatorIndex) (N : ℕ) (origin : Root) (e : Epoch) : Prop :=
   ∀ w : ValidatorIndex, w ∈ E.honest → ∀ m : ℕ, E.WithinHorizon cfg m →
     e + 2 ≤ get_current_store_epoch cfg (E.store cfg ext w m) →
@@ -608,13 +608,13 @@ def LazySupportAt (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
 /-- Widening the second bound weakens the obligation, because both antecedents
 are anti-monotone in it.  This is what the write-back induction's extension
 step uses. -/
-theorem LazyCertAt.mono {B : ExactPrefixAcceptedFFGSemantics cfg ext E}
+theorem LazyCertAt.mono {B : CausalPrefixFFGInterpretation cfg ext E}
     {N N' : ℕ} (hNN : N ≤ N') {c : Checkpoint Root}
     (h : E.LazyCertAt cfg ext B N c) : E.LazyCertAt cfg ext B N' c :=
   fun hprior => h (hprior.mono cfg ext E hNN)
 
 /-- Widening the second bound weakens the support obligation. -/
-theorem LazySupportAt.mono {B : ExactPrefixAcceptedFFGSemantics cfg ext E}
+theorem LazySupportAt.mono {B : CausalPrefixFFGInterpretation cfg ext E}
     {v : ValidatorIndex} {N N' : ℕ} (hNN : N ≤ N') {origin : Root} {e : Epoch}
     (h : E.LazySupportAt cfg ext B v N origin e) :
     E.LazySupportAt cfg ext B v N' origin e :=
@@ -622,26 +622,26 @@ theorem LazySupportAt.mono {B : ExactPrefixAcceptedFFGSemantics cfg ext E}
     h w hw m hmH hlate (hsupply.mono_second cfg ext E hNN)
 
 /-- Every eagerly certified payload is lazily certified. -/
-theorem lazyCertAt_of_eager {B : ExactPrefixAcceptedFFGSemantics cfg ext E}
+theorem lazyCertAt_of_eager {B : CausalPrefixFFGInterpretation cfg ext E}
     {N : ℕ} {c : Checkpoint Root}
     (h : Nonempty (CertifiedJustified cfg E B.anchor c)) :
     E.LazyCertAt cfg ext B N c :=
   fun _ => h
 
 /-- Every eagerly supported payload is lazily supported. -/
-theorem lazySupportAt_of_eager {B : ExactPrefixAcceptedFFGSemantics cfg ext E}
+theorem lazySupportAt_of_eager {B : CausalPrefixFFGInterpretation cfg ext E}
     {v : ValidatorIndex} {N : ℕ} {origin : Root} {e : Epoch}
     (h : E.AcceptedHistoricalA32DeferredSupportAt cfg ext B origin e) :
     E.LazySupportAt cfg ext B v N origin e :=
   fun w hw m hmH hlate _ => h w hw m hmH hlate
 
 /-- The trusted-anchor payload discharges both lazy obligations outright. -/
-theorem lazyCertAt_anchor {B : ExactPrefixAcceptedFFGSemantics cfg ext E}
+theorem lazyCertAt_anchor {B : CausalPrefixFFGInterpretation cfg ext E}
     {N : ℕ} : E.LazyCertAt cfg ext B N B.anchor :=
   fun _ => ⟨CertifiedJustified.anchor⟩
 
 /-- The trusted-anchor support arm, recorded lazily. -/
-theorem lazySupportAt_anchor {B : ExactPrefixAcceptedFFGSemantics cfg ext E}
+theorem lazySupportAt_anchor {B : CausalPrefixFFGInterpretation cfg ext E}
     {v : ValidatorIndex} {N : ℕ} {origin : Root} {e : Epoch}
     (h : B.state.C origin e = B.anchor) :
     E.LazySupportAt cfg ext B v N origin e :=
@@ -651,7 +651,7 @@ theorem lazySupportAt_anchor {B : ExactPrefixAcceptedFFGSemantics cfg ext E}
 the eager one does: only the anchor-or-quorum disjunction moves, and the
 antecedent does not mention the origin root. -/
 theorem lazySupportAt_transport
-    {B : ExactPrefixAcceptedFFGSemantics cfg ext E}
+    {B : CausalPrefixFFGInterpretation cfg ext E}
     {v : ValidatorIndex} {N : ℕ} {origin tip : Root} {e : Epoch}
     (hcheckpoint : B.state.C tip e = B.state.C origin e)
     (hsource : B.state.GJ tip = B.state.GJ origin)
@@ -663,7 +663,7 @@ theorem lazySupportAt_transport
 
 /-- Widen a lazily instantiated payload's second bound. -/
 noncomputable def acceptedHistoricalA32LazyPayload_mono
-    {B : ExactPrefixAcceptedFFGSemantics cfg ext E}
+    {B : CausalPrefixFFGInterpretation cfg ext E}
     {v : ValidatorIndex} {N N' : ℕ} (hNN : N ≤ N')
     {origin : Root} {e : Epoch}
     (h : E.AcceptedHistoricalA32GatePayloadCoreAt cfg ext B origin e
@@ -677,7 +677,7 @@ noncomputable def acceptedHistoricalA32LazyPayload_mono
 induction's extension step: moving from `N = n` to `N = n + 1` is *weakening*,
 because both closures' antecedents are anti-monotone in the bound. -/
 noncomputable def acceptedHistoricalA32LazyLineage_mono
-    {B : ExactPrefixAcceptedFFGSemantics cfg ext E}
+    {B : CausalPrefixFFGInterpretation cfg ext E}
     {v : ValidatorIndex} {N N' : ℕ} (hNN : N ≤ N')
     {tip : Root} {e : Epoch}
     (h : E.AcceptedHistoricalA32LineageCoreAt cfg ext B tip e
@@ -694,7 +694,7 @@ namespace AcceptedHistoricalA32OriginCallAt
 call sits strictly below the bound. -/
 theorem lazyCert
     (hA : SelectedMarginAssumptions cfg ext E)
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
       (E := E) (anchor := B.anchor))
@@ -720,7 +720,7 @@ bound `second + 1 ≤ N` permits; `origin_writeback` turns the fold output into
 epoch-`e` vote span. -/
 theorem lazySupport
     (hA : SelectedMarginAssumptions cfg ext E)
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
       (E := E) (anchor := B.anchor))

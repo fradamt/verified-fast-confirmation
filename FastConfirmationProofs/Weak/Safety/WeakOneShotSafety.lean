@@ -25,7 +25,7 @@ This is a line-for-line clone of the strong arbitrary-query bridge
 `safeFrom_find_latest_confirmed_descendant_covered_at_slotStart_minimal`
 (`:333`), over `Weak.find_latest_confirmed_descendant` instead of the strong
 selector, with the observer `(v, hv : v ∈ E.honest)` replaced everywhere by
-`(obs, hW : E.WeakObserverMarginAssumptions cfg ext obs)`.
+`(obs, hW : E.WeakObserverMarginPremises cfg ext obs)`.
 
 Two families of ingredient substitution are needed, matching the two ways the
 strong proof used `v`'s honesty:
@@ -81,7 +81,7 @@ variable (E : Execution Root)
 
 /-- **`ObserverCoherence.justified_root_known` is derivable, not an extra
 assumption**, given accepted global justified-root origins
-(`ExactPrefixAcceptedFFGSemantics`) and the ordinary execution trajectory
+(`CausalPrefixFFGInterpretation`) and the ordinary execution trajectory
 (`ScheduledPrefixPremises`). This is exactly
 `AcceptedCurrentTargetLowerContracts.justifiedRootKnown_of_acceptedGlobalTrajectory`
 restated at an arbitrary `obs` — that theorem's honesty premise `_hw : w ∈
@@ -96,13 +96,13 @@ binder dropped, rather than routed through the original via `apply`.
 This is the *supplier* of `ObserverCoherence.justified_root_known` everywhere
 in the weak development: no statement that carries the accepted-FFG package
 takes that fact as a premise. The caller-facing bundle
-`WeakObserverAssumptions` carries only `committees_agree`, and the top-level
+`WeakObserverPremises` carries only `committees_agree`, and the top-level
 theorems — which all already carry `B`, `hT`, `hanchor`, `hboundary` —
-promote it to the internal `WeakObserverMarginAssumptions` with
-`WeakObserverAssumptions.toMarginAssumptions`, discharging
+promote it to the internal `WeakObserverMarginPremises` with
+`WeakObserverPremises.toMarginAssumptions`, discharging
 `justified_root_known` here. -/
 theorem ObserverCoherence.justified_root_known_of_acceptedGlobalTrajectory
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (hT : E.ScheduledPrefixPremises cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg) (E := E)
@@ -152,7 +152,7 @@ theorem ObserverCoherence.justified_root_known_of_acceptedGlobalTrajectory
         (E.store cfg ext obs n).justified_checkpoint :=
       IncludedCertifiedJustified.toCertifiedJustified
         (cfg := cfg)
-        (Execution.AcceptedIncludedAttestationRelation.relation cfg ext E
+        (Execution.CausalCarrierAttestationRelation.relation cfg ext E
           B.state.includedAttestations) hincluded
     have hanchorEpochLe : B.anchor.epoch ≤
         (E.store cfg ext obs n).justified_checkpoint.epoch :=
@@ -180,13 +180,13 @@ theorem ObserverCoherence.justified_root_known_of_acceptedGlobalTrajectory
 (`justified_root_known_of_acceptedGlobalTrajectory` above), so it is not an
 independent premise on top of the accepted FFG semantics bundle. -/
 def ObserverCoherence.of_acceptedTrajectory
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (hT : E.ScheduledPrefixPremises cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg) (E := E)
       (anchor := B.anchor))
     (obs : ValidatorIndex)
-    (hvalid : E.ObserverValidity cfg ext obs)
+    (hvalid : E.ObserverIndexedAttestationValidity cfg ext obs)
     (hcomm : ∀ n : ℕ, E.WithinHorizon cfg n → ∀ s : Slot,
       E.SlotWithinHorizon cfg s →
       get_slot_committee cfg ext (E.store cfg ext obs n) s = E.committee s) :
@@ -203,14 +203,14 @@ accepted global justified-root origin and the ordinary execution trajectory
 via `ObserverCoherence.of_acceptedTrajectory`. Every top-level weak theorem
 already carries `B`, `hT`, `hanchor`, `hboundary`, so this promotion is always
 available there and `justified_root_known` never reaches a premise list. -/
-def WeakObserverAssumptions.toMarginAssumptions {obs : ValidatorIndex}
-    (hW : E.WeakObserverAssumptions cfg ext obs)
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+def WeakObserverPremises.toMarginAssumptions {obs : ValidatorIndex}
+    (hW : E.WeakObserverPremises cfg ext obs)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (hT : E.ScheduledPrefixPremises cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg) (E := E)
       (anchor := B.anchor)) :
-    E.WeakObserverMarginAssumptions cfg ext obs where
+    E.WeakObserverMarginPremises cfg ext obs where
   base := hW.base
   validity := hW.validity
   coherence :=
@@ -348,7 +348,7 @@ theorem intraEpochFuture_endpoint_inequality_of_confirmed_window_of_prefix
     (hgen : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
       E.genesis_store = get_forkchoice_store cfg ast ablk)
     {v : ValidatorIndex} {n : ℕ}
-    (hvalid : E.ObserverValidity cfg ext v)
+    (hvalid : E.ObserverIndexedAttestationValidity cfg ext v)
     (hnH : E.WithinHorizon cfg n)
     (hcomm : E.PrefixCommitteeAgreement cfg ext (E.store cfg ext v n))
     (hwf : ∀ r ∈ (E.store cfg ext v n).block_roots,
@@ -505,7 +505,7 @@ theorem crossingEdgeFuture_endpoint_inequality_of_confirmed_window_of_prefix
     (hgen : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
       E.genesis_store = get_forkchoice_store cfg ast ablk)
     {v : ValidatorIndex} {n : ℕ}
-    (hvalid : E.ObserverValidity cfg ext v)
+    (hvalid : E.ObserverIndexedAttestationValidity cfg ext v)
     (hnH : E.WithinHorizon cfg n)
     (hcomm : E.PrefixCommitteeAgreement cfg ext (E.store cfg ext v n))
     (hwf : ParentSlotLt (E.store cfg ext v n))
@@ -664,7 +664,7 @@ theorem crossingEdgeFuture_endpoint_inequality_of_confirmed_window_of_prefix
 Verbatim clones of `MinimalSelectedDomain.futureCrossing_descendStep_of_
 selectedInputs_minimal` (`:1074`) and `crossingEdge_descendStep_of_
 selectedInputs_minimal` (`:1171`), with `(v, hv : v ∈ E.honest)` replaced by
-`(obs, hW : E.WeakObserverMarginAssumptions cfg ext obs)` and the single
+`(obs, hW : E.WeakObserverMarginPremises cfg ext obs)` and the single
 internal call to the (honesty-dependent) endpoint-inequality assembler
 replaced by its Section 2 `_of_prefix` twin, `hcomm` supplied by
 `hW.coherence`. Every other line — including `E.registryConstant`,
@@ -680,7 +680,7 @@ unchanged. -/
 
 /-- `_at_observer` clone of `futureCrossing_descendStep_of_selectedInputs_minimal`. -/
 theorem futureCrossing_descendStep_of_selectedInputs_at_observer
-    {obs : ValidatorIndex} (hW : E.WeakObserverMarginAssumptions cfg ext obs)
+    {obs : ValidatorIndex} (hW : E.WeakObserverMarginPremises cfg ext obs)
     {glc a b : Root} {q : ℕ}
     (hqH : E.WithinHorizon cfg q)
     {w : ValidatorIndex} (hw : w ∈ E.honest) {m : ℕ}
@@ -779,7 +779,7 @@ theorem futureCrossing_descendStep_of_selectedInputs_at_observer
 
 /-- `_at_observer` clone of `crossingEdge_descendStep_of_selectedInputs_minimal`. -/
 theorem crossingEdge_descendStep_of_selectedInputs_at_observer
-    {obs : ValidatorIndex} (hW : E.WeakObserverMarginAssumptions cfg ext obs)
+    {obs : ValidatorIndex} (hW : E.WeakObserverMarginPremises cfg ext obs)
     {glc a b : Root} {q : ℕ}
     (hqH : E.WithinHorizon cfg q)
     {w : ValidatorIndex} (hw : w ∈ E.honest) {m : ℕ}
@@ -889,7 +889,7 @@ known_at_all_honest_endpoints_minimal` becomes `_at_observer` (`hcomm` from
 already honesty-free and are reused verbatim with `v := obs`. -/
 
 theorem coveredDescendStepChainSupply_of_selectedMarginsAt_weak
-    {obs : ValidatorIndex} (hW : E.WeakObserverMarginAssumptions cfg ext obs)
+    {obs : ValidatorIndex} (hW : E.WeakObserverMarginPremises cfg ext obs)
     {glc r₀ : Root} {q : ℕ}
     (hqH : E.WithinHorizon cfg q) (query : FastConfirmationStore Root)
     (hstore : query.store = E.store cfg ext obs q)
@@ -959,7 +959,7 @@ ancestry_at_all_honest_endpoints_at_observer` (`hcomm` from `hW.coherence`).
 is reused unchanged. -/
 
 theorem safeFrom_find_latest_confirmed_descendant_covered_at_slotStart_weak
-    {obs : ValidatorIndex} (hW : E.WeakObserverMarginAssumptions cfg ext obs)
+    {obs : ValidatorIndex} (hW : E.WeakObserverMarginPremises cfg ext obs)
     (q : ℕ)
     (hqH : E.WithinHorizon cfg q)
     (query : FastConfirmationStore Root)
@@ -1065,7 +1065,7 @@ an arbitrary (not necessarily honest) observer's own store, is `SafeFrom` at
 the actual query second — the strong original's hypothesis list (`SafeFrom`
 base at the slot boundary, `SelectedCoveredMarginSupplyAt` margin supply) with
 `(v, hv : v ∈ E.honest)` replaced everywhere by
-`(obs, hW : E.WeakObserverMarginAssumptions cfg ext obs)`.
+`(obs, hW : E.WeakObserverMarginPremises cfg ext obs)`.
 
 That substitution is not premise-neutral, and the exchange is the point of the
 weak layer: the honesty binder is dropped, and in its place the record carries
@@ -1081,7 +1081,7 @@ from — takes them. Everything else (`hA`-side floor, base, margin supply) is
 unchanged from `:408`. -/
 theorem weak_safeFrom_find_latest_confirmed_descendant
     {E : Execution Root} {obs : ValidatorIndex}
-    (hW : E.WeakObserverMarginAssumptions cfg ext obs)
+    (hW : E.WeakObserverMarginPremises cfg ext obs)
     (q : ℕ) (hqH : E.WithinHorizon cfg q)
     (fcr_store : FastConfirmationStore Root)
     (hstore : fcr_store.store = E.store cfg ext obs q)
@@ -1140,7 +1140,7 @@ output, read at an arbitrary (not necessarily honest) observer's store, is
 canonical at every honest endpoint at or after the query second. -/
 theorem weak_confirmed_head
     {E : Execution Root} {obs : ValidatorIndex}
-    (hW : E.WeakObserverMarginAssumptions cfg ext obs)
+    (hW : E.WeakObserverMarginPremises cfg ext obs)
     (q : ℕ) (hqH : E.WithinHorizon cfg q)
     (fcr_store : FastConfirmationStore Root)
     (hstore : fcr_store.store = E.store cfg ext obs q)

@@ -99,13 +99,13 @@ end IncludedCertifiedFinalized
 
 /-! ## Same-tip accepted certificate packages -/
 
-namespace AcceptedChainFFGState
+namespace CausalCarrierFFGState
 
 /-- Any AU checkpoint has an included justification certificate reindexed to
 the AU tip itself. -/
 theorem includedJustifiedAtTip_of_AU
     {E : Execution Root} {anchor : Checkpoint Root}
-    (S : AcceptedChainFFGState cfg ext E anchor)
+    (S : CausalCarrierFFGState cfg ext E anchor)
     {tip : Root} {c : Checkpoint Root}
     (hAU : S.AU cfg ext tip c) :
     Nonempty (IncludedCertifiedJustified cfg E
@@ -114,13 +114,13 @@ theorem includedJustifiedAtTip_of_AU
   obtain ⟨hcertificate⟩ := (S.formed_evidence hformed).certified
   exact ⟨hcertificate.transport_descendant cfg htip⟩
 
-end AcceptedChainFFGState
+end CausalCarrierFFGState
 
 /-- Realized finalized and justified selectors, with both certificates owned
 by one accepted tip.  The finalized anchor exception is retained explicitly. -/
 structure AcceptedRealizedFinalitySameTipAt
     {E : Execution Root} {anchor : Checkpoint Root}
-    (S : AcceptedChainFFGState cfg ext E anchor) (tip : Root) : Prop where
+    (S : CausalCarrierFFGState cfg ext E anchor) (tip : Root) : Prop where
   tip_accepted : E.AcceptedRoot cfg ext tip
   justified : Nonempty (IncludedCertifiedJustified cfg E
     S.includedAttestations.Included anchor tip (S.GJ tip))
@@ -133,7 +133,7 @@ structure AcceptedRealizedFinalitySameTipAt
 tip. -/
 structure AcceptedUnrealizedFinalitySameTipAt
     {E : Execution Root} {anchor : Checkpoint Root}
-    (S : AcceptedChainFFGState cfg ext E anchor) (tip : Root) : Prop where
+    (S : CausalCarrierFFGState cfg ext E anchor) (tip : Root) : Prop where
   tip_accepted : E.AcceptedRoot cfg ext tip
   justified : Nonempty (IncludedCertifiedJustified cfg E
     S.includedAttestations.Included anchor tip (S.GU tip))
@@ -142,11 +142,11 @@ structure AcceptedUnrealizedFinalitySameTipAt
   anchor_epoch_le_finalized : anchor.epoch ≤ (S.GUF tip).epoch
   finalized_epoch_le_justified : (S.GUF tip).epoch ≤ (S.GU tip).epoch
 
-namespace AcceptedChainFFGState
+namespace CausalCarrierFFGState
 
 
 
-end AcceptedChainFFGState
+end CausalCarrierFFGState
 
 namespace AcceptedRealizedFinalitySameTipAt
 
@@ -168,8 +168,8 @@ the target boundary to establish target-root knownness; checkpoint composition
 then returns to the source boundary. -/
 theorem exactCheckpointPrefix_root_eq_at_sameTip
     {E : Execution Root} {anchor : Checkpoint Root}
-    {S : AcceptedChainFFGState cfg ext E anchor}
-    (hcoh : AcceptedFFGTransitionCoherence cfg ext S)
+    {S : CausalCarrierFFGState cfg ext E anchor}
+    (hcoh : FFGSelectorsAndCheckpointReadsMatchBeaconStates cfg ext S)
     {store : Store Root} (hstore : E.CausalStore cfg ext store)
     (hparent : ParentSlotLt store)
     {tip : Root} (htip : tip ∈ store.block_roots)

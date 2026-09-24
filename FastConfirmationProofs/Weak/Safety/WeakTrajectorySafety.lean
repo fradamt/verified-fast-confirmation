@@ -79,7 +79,7 @@ Five of those six cells are discharged here. The sixth is proved in
 import order; here it is therefore consumed as a named `Prop`,
 `Weak.ObservedResetSeedSafety`, in the style `Spec/Model/WeakSynchrony.lean`
 already uses for `Weak.CertificateHonestSupporter` /
-`Weak.CertificateDissemination`: the migration target is stated, so the fold
+`Weak.CertificateDisseminationObligation`: the migration target is stated, so the fold
 below is a complete theorem rather than a placeholder, and the obligation is
 visible in the premise list of everything downstream of it.
 
@@ -146,7 +146,7 @@ arm-by-arm discharge of `WeakObservedRestartAdoption.lean` /
 `Weak.observedResetSeedSafety_of_acceptedDynamics`
 (`WeakObservedResetSeedSafety.lean`, stage 6) proves it from the floor alone,
 and the fold's unconditional corollary
-`Execution.weakConfirmed_safeFromFollowingSlot_of_acceptedWeakFullRuleFold`
+`Execution.weak_confirmed_root_safe_from_next_slot`
 lives there too.  The `Prop` is kept as the conditional fold's premise so the
 one-call-at-a-time reading remains available. -/
 def ObservedResetSeedSafety (E : Execution Root) (obs : ValidatorIndex) : Prop :=
@@ -188,8 +188,8 @@ variable (E : Execution Root)
 /-- The 3-field supplement together with the selected-margin floor rebuilds the
 full 6-field completed-prefix call contract: the three shared fields are read
 off `hA`, so no caller has to supply them twice. -/
-def AcceptedHistoricalA32CompletedPrefixCallSupplement.toCompletedPrefixCallAssumptions
-    (hC : E.AcceptedHistoricalA32CompletedPrefixCallSupplement cfg ext)
+def WeakCompletedFCRCallSupplement.toCompletedPrefixCallAssumptions
+    (hC : E.WeakCompletedFCRCallSupplement cfg ext)
     (hA : SelectedMarginAssumptions cfg ext E) :
     E.CompletedFCRCallPremises cfg ext where
   synchrony := hA.synchrony
@@ -268,7 +268,7 @@ the trusted anchor and is safe from second `0` — checkpoint-sync safe in
 exactly the sense `Weak.acceptedConfirmedSourceHistoryAt_zero` is: the anchor
 is the store's own initial finalized checkpoint, not a genesis literal. -/
 theorem weakConfirmedSafeFromFollowingSlot_zero
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (hT : E.ScheduledPrefixPremises cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
@@ -313,7 +313,7 @@ landed weak knownness fact for its own source. This is the named extraction of
 a derivation the weak stack currently repeats inline; it is the weak twin of
 `Execution.getLatestConfirmedTraceAt_input_known`. -/
 theorem weakGetLatestConfirmedTraceAt_input_known
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (hT : E.ScheduledPrefixPremises cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
@@ -345,7 +345,7 @@ open obligation `Weak.ObservedResetSeedSafety`.
 The conclusion is stated at `E.slot_start cfg (E.slot_at cfg (n + 1))` — the
 exact shape `weak_safeFrom_observerCall_closed_lazy` consumes as `hbase`. -/
 theorem weakGetLatestConfirmedTraceAt_input_safeFrom
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (hT : E.ScheduledPrefixPremises cfg ext)
     (hA : SelectedMarginAssumptions cfg ext E)
     (hphase0 : Phase0SourceCoherence cfg ext)
@@ -401,7 +401,7 @@ verbatim; `followingSlot` is that witness relaxed to the following-slot
 deadline.  Before `docs/weak-final-wave.md` §3.2 the unweakened form was
 computed here and immediately discarded. -/
 theorem weakConfirmedSafeFromFollowingSlot_succ_of_call
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (hT : E.ScheduledPrefixPremises cfg ext)
     (hji : JustificationInterface cfg ext E)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
@@ -411,12 +411,12 @@ theorem weakConfirmedSafeFromFollowingSlot_succ_of_call
     (hphase0 : Phase0SourceCoherence cfg ext)
     (hboundaryPhase : Phase0BoundarySourceCoherence cfg ext)
     (hpaper : B.state.PaperA32Inclusion cfg ext)
-    (P : AcceptedEpochCheckpointProjection B.anchor
+    (P : EpochCheckpointClosure B.anchor
       (E.AcceptedRoot cfg ext) B.state.C)
     (V : B.state.ExactLinkValidity)
     (hanchorExact : B.anchor = B.state.C B.anchor.root B.anchor.epoch)
     {obs : ValidatorIndex}
-    (hW : E.WeakObserverAssumptions cfg ext obs)
+    (hW : E.WeakObserverPremises cfg ext obs)
     (hwalkDomain : E.PostAnchorHonestVoteTargetWalkDomain cfg ext)
     (hCbase : E.CompletedFCRCallPremises cfg ext)
     (hfit : EpochEndsFitUint64 cfg)
@@ -483,7 +483,7 @@ exactly the witness the step already computes.
 Purely enabling: no public witness signature changes, and the single-second
 theorem is recovered by `.followingSlot` at `k := n`. -/
 theorem weakConfirmedSafeFromFollowingSlot_of_weakFullRuleFold_all_le
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (hT : E.ScheduledPrefixPremises cfg ext)
     (hji : JustificationInterface cfg ext E)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
@@ -493,12 +493,12 @@ theorem weakConfirmedSafeFromFollowingSlot_of_weakFullRuleFold_all_le
     (hphase0 : Phase0SourceCoherence cfg ext)
     (hboundaryPhase : Phase0BoundarySourceCoherence cfg ext)
     (hpaper : B.state.PaperA32Inclusion cfg ext)
-    (P : AcceptedEpochCheckpointProjection B.anchor
+    (P : EpochCheckpointClosure B.anchor
       (E.AcceptedRoot cfg ext) B.state.C)
     (V : B.state.ExactLinkValidity)
     (hanchorExact : B.anchor = B.state.C B.anchor.root B.anchor.epoch)
     {obs : ValidatorIndex}
-    (hW : E.WeakObserverAssumptions cfg ext obs)
+    (hW : E.WeakObserverPremises cfg ext obs)
     (hwalkDomain : E.PostAnchorHonestVoteTargetWalkDomain cfg ext)
     (hCbase : E.CompletedFCRCallPremises cfg ext)
     (hfit : EpochEndsFitUint64 cfg)
@@ -568,7 +568,7 @@ hypothesis), `hanchorExact` is derived from `B`/`hT`/`hanchor`/`hboundary` by
 `Execution.acceptedAnchorExact_of_trajectory` (it restates `hboundary` through
 the checkpoint walk), the
 phase-0 coherence contracts come from `hCbase` alone, and the call contract is
-the 3-field `AcceptedHistoricalA32CompletedPrefixCallSupplement`, whose
+the 3-field `WeakCompletedFCRCallSupplement`, whose
 `synchrony`/`static_validators`/`byzantine_bound` counterparts in the full
 6-field record are read off `hW.base`
 (`…CallSupplement.toCompletedPrefixCallAssumptions`).
@@ -581,29 +581,29 @@ headlines (`scripts/Audit.lean`).  This pair is kept as an internal theorem —
 the unconditional pair's proof chain runs through it — and so that the
 one-call-at-a-time reading of `hOR` remains available.
 
-Observer-wise the premise surface is `hW : WeakObserverAssumptions`: committee
+Observer-wise the premise surface is `hW : WeakObserverPremises`: committee
 readback at the observer's own store, nothing else — `obs` is arbitrary and
 may be honest.
 `ObserverCoherence.justified_root_known` is *derived* inside the induction
 from `B`/`hT`/`hanchor`/`hboundary`
-(`WeakObserverAssumptions.toMarginAssumptions`), never assumed.
+(`WeakObserverPremises.toMarginAssumptions`), never assumed.
 
 Corollary of `…_of_weakFullRuleFold_all_le` at `k := n`; the statement is
 unchanged. -/
 theorem weakConfirmed_safeFromFollowingSlot_of_weakFullRuleFold
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (hji : JustificationInterface cfg ext E)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
       (E := E) (anchor := B.anchor))
     (hDelay : E.RealizedFinalizationDelay cfg ext B)
     (hpaper : B.state.PaperA32Inclusion cfg ext)
-    (P : AcceptedEpochCheckpointProjection B.anchor
+    (P : EpochCheckpointClosure B.anchor
       (E.AcceptedRoot cfg ext) B.state.C)
     (V : B.state.ExactLinkValidity)
     {obs : ValidatorIndex}
-    (hW : E.WeakObserverAssumptions cfg ext obs)
-    (hCbase : E.AcceptedHistoricalA32CompletedPrefixCallSupplement cfg ext)
+    (hW : E.WeakObserverPremises cfg ext obs)
+    (hCbase : E.WeakCompletedFCRCallSupplement cfg ext)
     (hfit : EpochEndsFitUint64 cfg)
     (hOR : Weak.ObservedResetSeedSafety cfg ext E obs) :
     ∀ n : ℕ, E.WithinHorizon cfg n →
@@ -619,7 +619,7 @@ theorem weakConfirmed_safeFromFollowingSlot_of_weakFullRuleFold
       (E.acceptedAnchorExact_of_trajectory cfg ext B hT hanchor hboundary) hW
       (E.postAnchorHonestVoteTargetWalkDomain_of_selectedMarginAssumptions cfg ext
         hW.base hT.genesis hanchor hboundary)
-      (AcceptedHistoricalA32CompletedPrefixCallSupplement.toCompletedPrefixCallAssumptions
+      (WeakCompletedFCRCallSupplement.toCompletedPrefixCallAssumptions
         cfg ext E hCbase hW.base)
       hfit hOR n n (Nat.le_refl n) hHn).followingSlot
 
@@ -631,7 +631,7 @@ component of `Weak.ObserverFoldSafetyAt` at the seconds `k + 1 ≤ n`, so this i
 a projection, not a new proof.  Weak twin of
 `Execution.priorStrictCallWriteBackSafe_of_acceptedActualFCRFold`. -/
 theorem observerPriorCallWriteBackSafe_of_weakFullRuleFold
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (hT : E.ScheduledPrefixPremises cfg ext)
     (hji : JustificationInterface cfg ext E)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
@@ -641,12 +641,12 @@ theorem observerPriorCallWriteBackSafe_of_weakFullRuleFold
     (hphase0 : Phase0SourceCoherence cfg ext)
     (hboundaryPhase : Phase0BoundarySourceCoherence cfg ext)
     (hpaper : B.state.PaperA32Inclusion cfg ext)
-    (P : AcceptedEpochCheckpointProjection B.anchor
+    (P : EpochCheckpointClosure B.anchor
       (E.AcceptedRoot cfg ext) B.state.C)
     (V : B.state.ExactLinkValidity)
     (hanchorExact : B.anchor = B.state.C B.anchor.root B.anchor.epoch)
     {obs : ValidatorIndex}
-    (hW : E.WeakObserverAssumptions cfg ext obs)
+    (hW : E.WeakObserverPremises cfg ext obs)
     (hwalkDomain : E.PostAnchorHonestVoteTargetWalkDomain cfg ext)
     (hCbase : E.CompletedFCRCallPremises cfg ext)
     (hfit : EpochEndsFitUint64 cfg)
@@ -664,19 +664,19 @@ the observer's weak confirmed root at second `n` is canonical at every
 in-horizon honest endpoint in a strictly later slot. Weak twin of
 `Execution.confirmed_head_of_acceptedActualFCRFold_nextSlot`. -/
 theorem weakConfirmed_head_of_weakFullRuleFold_nextSlot
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (hji : JustificationInterface cfg ext E)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
       (E := E) (anchor := B.anchor))
     (hDelay : E.RealizedFinalizationDelay cfg ext B)
     (hpaper : B.state.PaperA32Inclusion cfg ext)
-    (P : AcceptedEpochCheckpointProjection B.anchor
+    (P : EpochCheckpointClosure B.anchor
       (E.AcceptedRoot cfg ext) B.state.C)
     (V : B.state.ExactLinkValidity)
     {obs : ValidatorIndex}
-    (hW : E.WeakObserverAssumptions cfg ext obs)
-    (hCbase : E.AcceptedHistoricalA32CompletedPrefixCallSupplement cfg ext)
+    (hW : E.WeakObserverPremises cfg ext obs)
+    (hCbase : E.WeakCompletedFCRCallSupplement cfg ext)
     (hfit : EpochEndsFitUint64 cfg)
     (hOR : Weak.ObservedResetSeedSafety cfg ext E obs)
     {n : ℕ} {w : ValidatorIndex} (hw : w ∈ E.honest) {m : ℕ}

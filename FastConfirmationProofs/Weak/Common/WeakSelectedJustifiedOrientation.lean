@@ -124,12 +124,12 @@ one-directional weak ⇒ strong, which is exactly the direction needed here.
 And the historical arm consumes the weak producer interface above instead of
 the strong one.  The accountability step
 (`CertificateAccountability.justified_unique`), the endpoint certificate
-(`ExactPrefixAcceptedFFGSemantics.endpointJustified_certificate`) and the
+(`CausalPrefixFFGInterpretation.endpointJustified_certificate`) and the
 gate-driven endpoint disjunction
 (`Execution.EndpointOriginOrPinnedProducerAt`) are read at the honest
 endpoint's store and are reused verbatim. -/
 theorem epochStart_or_endpointOriginOrPinned_of_observerCallSite
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (hgen : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
       E.genesis_store = get_forkchoice_store cfg ast ablk ∧
         ast.slot = ablk.message.slot)
@@ -154,7 +154,7 @@ theorem epochStart_or_endpointOriginOrPinned_of_observerCallSite
       refine Or.inr (Or.inr (Or.inr ?_))
       intro hepoch
       obtain ⟨hJ⟩ :=
-        Execution.ExactPrefixAcceptedFFGSemantics.endpointJustified_certificate
+        Execution.CausalPrefixFFGInterpretation.endpointJustified_certificate
           cfg ext B hgen hanchor (E.store_causal cfg ext w m)
       obtain ⟨hT⟩ := hhistorical hresultCurrent hnone
       exact hacc.justified_unique hJ hT hepoch
@@ -178,7 +178,7 @@ endpoint-side arms of the disjunction are honesty-free and reused verbatim. -/
 theorem preQueryVoteSelectedSIRBracket_or_causalHonestTarget_of_observerProducers
     (hA : SelectedMarginAssumptions cfg ext E)
     (hwalkDomain : E.PostAnchorHonestVoteTargetWalkDomain cfg ext)
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (hgen : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
       E.genesis_store = get_forkchoice_store cfg ast ablk ∧
         ast.slot = ablk.message.slot)
@@ -234,7 +234,7 @@ The endpoint tail
 reused verbatim: every one of its relays leaves from the *honest endpoint*. -/
 theorem strictSelected_result_and_child_ancestor_of_endpointJustified_at_observer
     (hA : SelectedMarginAssumptions cfg ext E)
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (hT : E.ScheduledPrefixPremises cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : Execution.TrustedAnchorBoundaryAligned (cfg := cfg)
@@ -310,7 +310,7 @@ theorem strictSelected_result_and_child_ancestor_of_endpointJustified_at_observe
         cfg ext hA hanchor hcoh hqH query hquery input hinput hstrict
           hw hslotQM hHm hvoteBracket
     have horigin : E.EndpointJustificationOriginAt cfg ext B.anchor w m :=
-      Execution.ExactPrefixAcceptedFFGSemantics.endpointJustificationOriginAt
+      Execution.CausalPrefixFFGInterpretation.endpointJustificationOriginAt
         cfg ext B hT hanchor hboundary
     exact E.selected_result_and_child_ancestor_of_endpoint_justified_causal_minimal
       cfg ext hA hwalkDomain hw hHm hslotQM hcM hselectedC
@@ -338,7 +338,7 @@ neither an observer-side normative proviso nor the accepted live
 current-target gate producer: both gate arms of the call site are served by
 `Execution.EndpointOriginOrPinnedProducerAt`. -/
 private theorem observerCall_orientation_inputs
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (hT : E.ScheduledPrefixPremises cfg ext)
     {obs : ValidatorIndex}
     (hCbase : E.CompletedFCRCallPremises cfg ext)
@@ -410,7 +410,7 @@ the strong theorem; `hhistorical` is the weak historical current-target
 *certificate* producer, built by the observer-side write-back induction through
 its no-crossing route. -/
 theorem observerCall_strictSelected_result_and_child_ancestor_of_endpointJustified
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (hT : E.ScheduledPrefixPremises cfg ext)
     {obs : ValidatorIndex}
     (hCbase : E.CompletedFCRCallPremises cfg ext)
@@ -536,7 +536,7 @@ bracket's `above_selected` region at a pre-query vote slot — because each is
 read at the honest endpoint `(w, m)`.  Only the pre-query bracket is the
 observer twin. -/
 theorem observerCall_strictSelected_endpointJustifiedEpoch_le_result
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (hT : E.ScheduledPrefixPremises cfg ext)
     {obs : ValidatorIndex}
     (hCbase : E.CompletedFCRCallPremises cfg ext)
@@ -672,7 +672,7 @@ theorem observerCall_strictSelected_endpointJustifiedEpoch_le_result
       (by simpa only [hquery] using hresultQ) hresultM
   rcases hbracketOrCausal with hvoteBracket | hcausal
   · have horigin : E.EndpointJustificationOriginAt cfg ext B.anchor w m :=
-      Execution.ExactPrefixAcceptedFFGSemantics.endpointJustificationOriginAt
+      Execution.CausalPrefixFFGInterpretation.endpointJustificationOriginAt
         cfg ext B hT hanchor hboundary
     rcases horigin with hanchorEndpoint |
         ⟨i, hi, s, k, a, hs0, hsm, hsH, hvote, htarget⟩

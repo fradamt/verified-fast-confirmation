@@ -79,7 +79,7 @@ The proof dispatches the ordered weak evaluator trace, not a root-only
 disjunction, so the finalized and observed reset tags stay distinguishable
 even when their roots coincide with another candidate. -/
 noncomputable def getLatestConfirmedTraceAt_currentLineage_step_core
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (hT : E.ScheduledPrefixPremises cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : Execution.TrustedAnchorBoundaryAligned (cfg := cfg)
@@ -293,7 +293,7 @@ The crossing branch records origin-call data and the two closures of
 quorum, so **no normative proviso is consumed anywhere in this theorem**.  The gate producer stays: it is the action/schedule bridge, not a
 proviso, and the closures capture it. -/
 noncomputable def getLatestConfirmedTraceAt_currentLineage_step_lazy
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (hT : E.ScheduledPrefixPremises cfg ext)
     (hA : SelectedMarginAssumptions cfg ext E)
     (hphase : Phase0SourceCoherence cfg ext)
@@ -345,7 +345,7 @@ creates no payload at all: it transports the input's.  This is the route the
 `currentHistorical` certificate consumer takes, and it is why that consumer
 only ever needs the threaded fold output strictly below its own call (D1†). -/
 noncomputable def getLatestConfirmedTraceAt_currentLineage_step_noCrossing
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (hT : E.ScheduledPrefixPremises cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : Execution.TrustedAnchorBoundaryAligned (cfg := cfg)
@@ -396,7 +396,7 @@ weakening (`Weak.observerHistoricalA32LazyLineage_mono`). -/
 family: the two anchor discharges, the extension-step widening, the same-epoch
 support transport, and the crossing builder at each of the observer's calls. -/
 structure ObserverLineageRouteAt (E : Execution Root)
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E) (obs : ValidatorIndex)
+    (B : CausalPrefixFFGInterpretation cfg ext E) (obs : ValidatorIndex)
     (Cert : ℕ → Checkpoint Root → Prop)
     (Supp : ℕ → Root → Epoch → Prop) : Prop where
   anchor_cert : ∀ N : ℕ, Cert N B.anchor
@@ -430,13 +430,13 @@ structure ObserverLineageRouteAt (E : Execution Root)
 
 /-- The lazy certification family at the observer. -/
 abbrev LazyCertFamily (E : Execution Root)
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E) (obs : ValidatorIndex) :
+    (B : CausalPrefixFFGInterpretation cfg ext E) (obs : ValidatorIndex) :
     ℕ → Checkpoint Root → Prop :=
   fun N => Weak.LazyCertAt cfg ext E B obs N
 
 /-- The lazy support family at the observer. -/
 abbrev LazySuppFamily (E : Execution Root)
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E) (obs : ValidatorIndex) :
+    (B : CausalPrefixFFGInterpretation cfg ext E) (obs : ValidatorIndex) :
     ℕ → Root → Epoch → Prop :=
   fun N => Weak.LazySupportAt cfg ext E B obs N
 

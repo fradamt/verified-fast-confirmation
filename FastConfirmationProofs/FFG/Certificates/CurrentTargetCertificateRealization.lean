@@ -1165,7 +1165,7 @@ and its head is connected to the target root only through accepted
 same-epoch transitions.  This is an intermediate proof object, not an input to
 the final actual-call producer. -/
 def AcceptedConcreteA32QuorumSourceGeometry
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     {deadline : Slot} {target : Checkpoint Root}
     (Q : ConcreteA32QuorumBefore cfg ext E deadline target)
     (common : Root) : Prop :=
@@ -1192,7 +1192,7 @@ transition provenance is the remaining prerequisite for constructing them
 from `hgate` and `HonestVotesSupportTarget`; they are not advertised as final
 actual-call inputs. -/
 theorem acceptedCurrentTargetA32GateRealization_of_currentEpochConcreteQuorum_core
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (hphase : Phase0SourceCoherence cfg ext)
     {store : Store Root} (hstore : E.CausalStore cfg ext store)
     (htargetKnown : (get_current_target cfg store).root ∈ store.block_roots)
@@ -1264,7 +1264,7 @@ theorem acceptedCurrentTargetA32GateRealization_of_currentEpochConcreteQuorum_co
     exact hvoteSource.symm.trans
       (hsourceEvidence.source_eq.trans
         (hsegment.gj_eq_first hphase
-          B.coherence.toAcceptedFFGSelectorCoherence))
+          B.coherence.toFFGSelectorsMatchBeaconStates))
   have hsourceCertifiedGJ : Nonempty
       (CertifiedJustified cfg E B.anchor (B.state.GJ target.root)) := by
     obtain ⟨hincluded⟩ := hsourceCarrier.formed_evidence.certified
@@ -1340,7 +1340,7 @@ theorem acceptedCurrentTargetA32GateRealization_of_currentEpochConcreteQuorum_co
     ⟨CertifiedJustified.link hsourceCertificate hlink⟩
   refine ⟨htargetCertificate, Or.inr ⟨htargetNotAnchor, Q, ?_⟩⟩
   change Q.source = B.state.VSAt cfg ext store target.root target.epoch
-  simpa only [AcceptedChainFFGState.VSAt, PaperA32StateView.VSAt,
+  simpa only [CausalCarrierFFGState.VSAt, PaperA32StateView.VSAt,
     htargetEpoch, if_pos] using hQSource
 
 
@@ -1349,7 +1349,7 @@ theorem acceptedCurrentTargetA32GateRealization_of_currentEpochConcreteQuorum_co
 obligation supplies an accepted gate producer, the existing crossing pipeline
 receives exactly the target certificate and no migration state. -/
 theorem acceptedCurrentTargetCertificateProducerAt_of_gateProducer
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     {q : ℕ} {query : FastConfirmationStore Root}
     (hproducer : E.AcceptedCurrentTargetA32GateRealizationProducerAt
       cfg ext B.anchor B.state q query) :

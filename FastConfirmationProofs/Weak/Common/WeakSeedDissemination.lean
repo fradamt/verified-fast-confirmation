@@ -12,7 +12,7 @@ Stage S3 of the `hfilter`-discharge wave (`/tmp/hfilter-wave-design.md`, §(A)):
 the two raw broadcast-certificate seeds the weak selector's entry/tentative
 guards carry — `fcr_store.previous_slot_head`
 (`Weak.has_justification_witness_certificate`) and the fork-choice head
-(`Weak.has_head_broadcast_certificate`) — disseminate to every honest endpoint
+(`Weak.has_carrier_broadcast_certificate`) — disseminate to every honest endpoint
 past the certificate's span, at a possibly-Byzantine observer.
 
 ## Relationship to `WeakBankedJustification.lean`
@@ -61,7 +61,7 @@ code beyond the pattern (`checkpoint_state_key_of_broadcast_certificate` +
   chain version: any observer-known ancestor of `previous_slot_head`
   disseminates too (`Weak.certificate_chain_dissemination`).
 * `Weak.headSeed_known_at_all_honest_endpoints_at_observer` — a true
-  `Weak.has_head_broadcast_certificate` disseminates the fork-choice head.
+  `Weak.has_carrier_broadcast_certificate` disseminates the fork-choice head.
 * `Weak.headSeed_ancestor_known_at_all_honest_endpoints_at_observer` — its
   chain version: any observer-known ancestor of the head disseminates too.
 
@@ -87,7 +87,7 @@ namespace Weak
 
 /-- **The shared `certificate_dissemination` side-condition bundle.** Both
 `Weak.has_justification_witness_certificate` and
-`Weak.has_head_broadcast_certificate` are `Weak.has_broadcast_certificate`
+`Weak.has_carrier_broadcast_certificate` are `Weak.has_broadcast_certificate`
 applied at the same span shape
 `[get_block_slot store b, get_current_slot store - 1]` against
 `get_current_balance_source fcrStore`; a true certificate at that shape is
@@ -277,7 +277,7 @@ theorem witnessSeed_ancestor_known_at_all_honest_endpoints_at_observer
 /-! ## Head-certificate dissemination (fork-choice head) -/
 
 /-- **A true head broadcast certificate disseminates the fork-choice head.**
-`Weak.has_head_broadcast_certificate` unfolds to exactly
+`Weak.has_carrier_broadcast_certificate` unfolds to exactly
 `Weak.has_broadcast_certificate` at `(get_head store).root` over
 `[get_block_slot store head, current_slot - 1]` — the same span shape as the
 witness certificate — so the same side-condition bundle applies; the head's
@@ -294,7 +294,7 @@ theorem headSeed_known_at_all_honest_endpoints_at_observer
     (hcoh : E.ObserverCoherence cfg ext obs)
     {fcrStore : FastConfirmationStore Root}
     (hstore : fcrStore.store = E.store cfg ext obs q)
-    (hhead : Weak.has_head_broadcast_certificate cfg ext fcrStore.store
+    (hhead : Weak.has_carrier_broadcast_certificate cfg ext fcrStore.store
       (get_current_balance_source fcrStore) = true)
     {w : ValidatorIndex} (hw : w ∈ E.honest) {m : ℕ} (hmH : E.WithinHorizon cfg m)
     (hgate : (get_current_slot cfg fcrStore.store - 1) + 1 ≤ E.slot_at cfg m) :
@@ -308,7 +308,7 @@ theorem headSeed_known_at_all_honest_endpoints_at_observer
       (get_current_balance_source fcrStore) (Weak.get_certified_head cfg ext fcrStore.store (get_current_balance_source fcrStore))
       (get_block_slot fcrStore.store (Weak.get_certified_head cfg ext fcrStore.store (get_current_balance_source fcrStore)))
       (get_current_slot cfg fcrStore.store - 1) = true := by
-    simpa only [Weak.has_head_broadcast_certificate] using hhead
+    simpa only [Weak.has_carrier_broadcast_certificate] using hhead
   obtain ⟨hval, htab, hstart0, hstartH, hendH⟩ :=
     certificateSideConditions_at_observer cfg ext hA hqH hstore hheadKnown hcert
   have hcertQ : Weak.has_broadcast_certificate cfg ext (E.store cfg ext obs q)
@@ -340,7 +340,7 @@ theorem headSeed_ancestor_known_at_all_honest_endpoints_at_observer
     (hcoh : E.ObserverCoherence cfg ext obs)
     {fcrStore : FastConfirmationStore Root}
     (hstore : fcrStore.store = E.store cfg ext obs q)
-    (hhead : Weak.has_head_broadcast_certificate cfg ext fcrStore.store
+    (hhead : Weak.has_carrier_broadcast_certificate cfg ext fcrStore.store
       (get_current_balance_source fcrStore) = true)
     {anc : Root} (hanc_obs : anc ∈ (E.store cfg ext obs q).block_roots)
     (hwb : WalkKnown (E.store cfg ext obs q)
@@ -363,7 +363,7 @@ theorem headSeed_ancestor_known_at_all_honest_endpoints_at_observer
       (get_current_balance_source fcrStore) (Weak.get_certified_head cfg ext fcrStore.store (get_current_balance_source fcrStore))
       (get_block_slot fcrStore.store (Weak.get_certified_head cfg ext fcrStore.store (get_current_balance_source fcrStore)))
       (get_current_slot cfg fcrStore.store - 1) = true := by
-    simpa only [Weak.has_head_broadcast_certificate] using hhead
+    simpa only [Weak.has_carrier_broadcast_certificate] using hhead
   obtain ⟨hval, htab, hstart0, hstartH, hendH⟩ :=
     certificateSideConditions_at_observer cfg ext hA hqH hstore hheadKnown hcert
   have hcertQ : Weak.has_broadcast_certificate cfg ext (E.store cfg ext obs q)

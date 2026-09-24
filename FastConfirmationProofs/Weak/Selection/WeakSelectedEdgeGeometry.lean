@@ -148,14 +148,14 @@ endpoint-side block data the weak margin classes need.
 Weak twin of
 `Execution.strictSelectedEdgeGeometry_of_query_minimal`, with
 `(v, hv : v ∈ E.honest)` replaced by
-`(obs, hW : E.WeakObserverMarginAssumptions cfg ext obs)` and the strong
+`(obs, hW : E.WeakObserverMarginPremises cfg ext obs)` and the strong
 selector/confirmation predicates replaced by their weak counterparts. The
 hypothesis list is otherwise the strong one verbatim; the only edge premise
 not implied by ancestry is again `c ≠ r0`, the strict scope used by the chain
 walker. -/
 theorem strictSelectedEdgeGeometry_at_observer {E : Execution Root}
     (hA : SelectedMarginAssumptions cfg ext E)
-    {obs : ValidatorIndex} (hW : E.WeakObserverMarginAssumptions cfg ext obs)
+    {obs : ValidatorIndex} (hW : E.WeakObserverMarginPremises cfg ext obs)
     (q : Nat) (hqH : E.WithinHorizon cfg q)
     (query : FastConfirmationStore Root)
     (hquery : query.store = E.store cfg ext obs q)

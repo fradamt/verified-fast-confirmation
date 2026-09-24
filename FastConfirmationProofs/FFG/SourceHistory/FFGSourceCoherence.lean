@@ -389,7 +389,7 @@ actual scheduled-prefix transition, exact parent and child accepted block
 witnesses, and a named formed carrier for the child's `GJ`. -/
 structure AcceptedProjectedSameEpochTransitionCarrier
     (cfg : Config) (ext : Externals Root)
-    (E : Execution Root) (S : AcceptedChainFFGState cfg ext E anchor)
+    (E : Execution Root) (S : CausalCarrierFFGState cfg ext E anchor)
     (parent child : Root) where
   transition : E.AcceptedBlockTransition cfg ext
   parent_eq : transition.signedBlock.message.parent_root = parent
@@ -417,7 +417,7 @@ structure AcceptedProjectedSameEpochTransitionCarrier
 /-- Proposition-level ownership of the full named accepted edge carrier. -/
 def AcceptedProjectedSameEpochTransition
     (cfg : Config) (ext : Externals Root)
-    (E : Execution Root) (S : AcceptedChainFFGState cfg ext E anchor)
+    (E : Execution Root) (S : CausalCarrierFFGState cfg ext E anchor)
     (parent child : Root) : Prop :=
   Nonempty
     (AcceptedProjectedSameEpochTransitionCarrier cfg ext E S parent child)
@@ -428,7 +428,7 @@ namespace AcceptedProjectedSameEpochTransition
 transition at the exact next scheduled-prefix position.  Replay history is
 not an input and cannot establish this edge. -/
 theorem of_transition
-    {S : AcceptedChainFFGState cfg ext E anchor}
+    {S : CausalCarrierFFGState cfg ext E anchor}
     (t : E.AcceptedBlockTransition cfg ext)
     (hfresh : t.signedBlock.root ∉
       (t.atPrefix.store cfg ext).block_roots)
@@ -484,9 +484,9 @@ theorem of_transition
 justified selector.  The parent projection is taken at the transition's exact
 pre-prefix, and the child selector equation is the accepted-transition law. -/
 theorem gj_eq_parent
-    {S : AcceptedChainFFGState cfg ext E anchor}
+    {S : CausalCarrierFFGState cfg ext E anchor}
     (hphase : Phase0SourceCoherence cfg ext)
-    (hcoh : AcceptedFFGSelectorCoherence cfg ext S)
+    (hcoh : FFGSelectorsMatchBeaconStates cfg ext S)
     {parent child : Root}
     (h : AcceptedProjectedSameEpochTransition cfg ext E S parent child) :
     S.GJ child = S.GJ parent := by
@@ -519,7 +519,7 @@ retains an exact accepted block witness; every nontrivial edge owns an actual
 `AcceptedBlockTransition` through its carrier evidence. -/
 inductive AcceptedProjectedSameEpochSegment
     (cfg : Config) (ext : Externals Root)
-    (E : Execution Root) (S : AcceptedChainFFGState cfg ext E anchor) :
+    (E : Execution Root) (S : CausalCarrierFFGState cfg ext E anchor) :
     Root → Root → Prop
   | refl (r : Root) (b : BeaconBlock Root)
       (block_at : E.AcceptedBlockAt cfg ext r b) :
@@ -532,9 +532,9 @@ inductive AcceptedProjectedSameEpochSegment
 namespace AcceptedProjectedSameEpochSegment
 
 theorem gj_eq_first
-    {S : AcceptedChainFFGState cfg ext E anchor}
+    {S : CausalCarrierFFGState cfg ext E anchor}
     (hphase : Phase0SourceCoherence cfg ext)
-    (hcoh : AcceptedFFGSelectorCoherence cfg ext S)
+    (hcoh : FFGSelectorsMatchBeaconStates cfg ext S)
     {first last : Root}
     (h : AcceptedProjectedSameEpochSegment cfg ext E S first last) :
     S.GJ last = S.GJ first := by
@@ -550,7 +550,7 @@ end AcceptedProjectedSameEpochSegment
 It retains the exact accepted head block and the formed carrier witnessing AU
 for the selected block-local `GJ`. -/
 structure AcceptedHonestSourceCarrier
-    (S : AcceptedChainFFGState cfg ext E anchor)
+    (S : CausalCarrierFFGState cfg ext E anchor)
     (store : Store Root) (slot : Slot) (index : CommitteeIndex) where
   global_projection : AcceptedFFGGlobalStoreProjection S store
   head_block : BeaconBlock Root
@@ -563,14 +563,14 @@ structure AcceptedHonestSourceCarrier
     S.GJ (get_head cfg store).root
 
 def AcceptedHonestSourceEvidence
-    (S : AcceptedChainFFGState cfg ext E anchor)
+    (S : CausalCarrierFFGState cfg ext E anchor)
     (store : Store Root) (slot : Slot) (index : CommitteeIndex) : Prop :=
   Nonempty (AcceptedHonestSourceCarrier S store slot index)
 
 namespace AcceptedHonestSourceEvidence
 
 theorem source_eq
-    {S : AcceptedChainFFGState cfg ext E anchor}
+    {S : CausalCarrierFFGState cfg ext E anchor}
     {store : Store Root} {slot : Slot} {index : CommitteeIndex}
     (h : AcceptedHonestSourceEvidence S store slot index) :
     (honest_attestation_data cfg ext store slot index).source =
@@ -580,14 +580,14 @@ theorem source_eq
 
 end AcceptedHonestSourceEvidence
 
-namespace ExactPrefixAcceptedFFGSemantics
+namespace CausalPrefixFFGInterpretation
 
 /-- Small causal/global source consumer for the production accepted bundle.
 The semantic state is selected before the store; local projection, global
 origins, the exact accepted head block, AU, and formed evidence are retained. -/
 theorem causalStoreHonestSourceEvidence
     {E : Execution Root}
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (hphase : Phase0SourceCoherence cfg ext)
     (hgen : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
       E.genesis_store = get_forkchoice_store cfg ast ablk ∧
@@ -633,7 +633,7 @@ theorem causalStoreHonestSourceEvidence
 
 
 
-end ExactPrefixAcceptedFFGSemantics
+end CausalPrefixFFGInterpretation
 
 /-! ## Contract non-vacuity -/
 

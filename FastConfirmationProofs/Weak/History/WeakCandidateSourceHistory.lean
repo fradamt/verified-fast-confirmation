@@ -51,7 +51,7 @@ discharged, never assumed:
 
 * strict-advance origins: the Lemma-13 seed *is* the query fork-choice head
   (`Weak.…currentHeadLemma13SourceSeedCertified_of_notStart`, stage S5),
-  which carries `has_head_broadcast_certificate` in the same case split, so
+  which carries `has_carrier_broadcast_certificate` in the same case split, so
   `Weak.headSeed_known_at_all_honest_endpoints_at_observer` (stage S3)
   disseminates it;
 * the trusted-anchor origin: the anchor root is in `E.genesis_store
@@ -187,7 +187,7 @@ is stated in the "same-slot-capable" form the landed certificate
 dissemination lemmas produce: knownness at every honest endpoint whose slot
 is at or past the origin second's slot. -/
 structure AcceptedCurrentCandidateSourceOriginAt (E : Execution Root)
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (v : ValidatorIndex) (upper : Nat) (candidate : Root) where
   originSecond : Nat
   origin_le : originSecond ≤ upper
@@ -212,7 +212,7 @@ structure AcceptedCurrentCandidateSourceOriginAt (E : Execution Root)
 
 /-- Forget only the upper time bound. -/
 def AcceptedCurrentCandidateSourceOriginAt.mono_upper
-    {E : Execution Root} {B : ExactPrefixAcceptedFFGSemantics cfg ext E}
+    {E : Execution Root} {B : CausalPrefixFFGInterpretation cfg ext E}
     {v : ValidatorIndex} {n m : Nat} {candidate : Root}
     (h : Weak.AcceptedCurrentCandidateSourceOriginAt cfg ext E B v n candidate)
     (hnm : n ≤ m) :
@@ -230,7 +230,7 @@ Two fields of the strong record are gone — `validator_honest` and
 any consumer uses and which the epoch-start banked arm needs (its certificate
 may be minted at the boundary second itself). -/
 structure AcceptedLemma22EpochStartCandidateSourceAt (E : Execution Root)
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (e : Epoch) (candidate : Root) where
   validator : ValidatorIndex
   second : Nat
@@ -270,7 +270,7 @@ the **strong** `Execution.AcceptedLemma24EpochStartSourceAt`, which mentions
 only the receiving honest endpoint's own store and therefore needs no weak
 twin. -/
 theorem AcceptedLemma22EpochStartCandidateSourceAt.lemma24
-    {E : Execution Root} (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    {E : Execution Root} (B : CausalPrefixFFGInterpretation cfg ext E)
     (hT : E.ScheduledPrefixPremises cfg ext)
     {e : Epoch} {candidate : Root}
     (h : Weak.AcceptedLemma22EpochStartCandidateSourceAt cfg ext E B e candidate)
@@ -307,7 +307,7 @@ Every ingredient of the strong proof is honesty-free; the only addition is
 `seed_disseminated`, which for the anchor root is `Execution.store_storeLE`
 from `E.genesis_store`. -/
 theorem acceptedCurrentCandidateSourceOriginAt_anchor
-    {E : Execution Root} (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    {E : Execution Root} (B : CausalPrefixFFGInterpretation cfg ext E)
     (hT : E.ScheduledPrefixPremises cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : Execution.TrustedAnchorBoundaryAligned (cfg := cfg)
@@ -334,7 +334,7 @@ theorem acceptedCurrentCandidateSourceOriginAt_anchor
           hreal.root_slot_le_boundary
     exact Nat.le_of_mul_le_mul_right hscaled cfg.slots_per_epoch_pos
   have hanchorLeGU :=
-    Execution.ExactPrefixAcceptedFFGSemantics.anchor_epoch_le_gu
+    Execution.CausalPrefixFFGInterpretation.anchor_epoch_le_gu
       (E := E) cfg ext B haccepted
   have hanchorRoot : B.anchor.root = ablk.root := by
     rw [hanchor, hgen]; rfl
@@ -371,7 +371,7 @@ produced from the origin's own time-indexed dissemination at the boundary
 second, whose gate `E.slot_at cfg originSecond ≤ E.slot_at cfg (n + 1)` is
 monotonicity of the clock along `originSecond ≤ n`. -/
 theorem AcceptedCurrentCandidateSourceOriginAt.toLemma22AtNextBoundary
-    {E : Execution Root} (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    {E : Execution Root} (B : CausalPrefixFFGInterpretation cfg ext E)
     (hT : E.ScheduledPrefixPremises cfg ext)
     {v : ValidatorIndex} {n : Nat}
     (hHn1 : E.WithinHorizon cfg (n + 1))
@@ -579,7 +579,7 @@ This is where the design's proposed `seed_certified` plumbing and the
 delta-5 proposal's `staleBanked_fails_observedRestartGuard` would have gone;
 neither is needed (module docstring, divergences 1--3). -/
 theorem bankedEpochStartCandidateSource_of_certifiedBank
-    {E : Execution Root} (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    {E : Execution Root} (B : CausalPrefixFFGInterpretation cfg ext E)
     (hT : E.ScheduledPrefixPremises cfg ext)
     (hsync : NextSlotSynchronyPremises cfg ext E)
     (hstatic : StaticValidatorSet cfg E)
@@ -688,7 +688,7 @@ theorem bankedEpochStartCandidateSource_of_certifiedBank
             hreal.root_slot_le_boundary
       exact Nat.le_of_mul_le_mul_right hscaled cfg.slots_per_epoch_pos
     have hanchorLeGU :=
-      Execution.ExactPrefixAcceptedFFGSemantics.anchor_epoch_le_gu
+      Execution.CausalPrefixFFGInterpretation.anchor_epoch_le_gu
         (E := E) cfg ext B haccepted
     have hsourceEq : get_voting_source cfg (E.store cfg ext obs (n + 1))
         query.current_epoch_observed_justified_checkpoint.root =
@@ -779,7 +779,7 @@ theorem bankedEpochStartCandidateSource_of_certifiedBank
     have hguEq : (E.store cfg ext obs hcert.second).unrealized_justifications
         hcert.supplier = B.state.GU hcert.supplier :=
       E.accepted_unrealized_justification_eq
-        B.coherence.toAcceptedFFGSelectorCoherence obs hcert.second
+        B.coherence.toFFGSelectorsMatchBeaconStates obs hcert.second
         hcert.supplier_known
     have hcGU : query.current_epoch_observed_justified_checkpoint =
         B.state.GU hcert.supplier := hcert.banked_eq.trans hguEq
@@ -876,7 +876,7 @@ trajectory by `Weak.weakFcr_certifiedBankedJustification`, and across this
 call by one `Weak.certifiedBankedJustification_update`. Weak twin of
 `Execution.ObservedResetCandidateInputAt.acceptedLemma22EpochStartCandidateSource`. -/
 theorem ObservedResetCandidateInputAt.acceptedLemma22EpochStartCandidateSource
-    {E : Execution Root} (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    {E : Execution Root} (B : CausalPrefixFFGInterpretation cfg ext E)
     (hT : E.ScheduledPrefixPremises cfg ext)
     (hsync : NextSlotSynchronyPremises cfg ext E)
     (hstatic : StaticValidatorSet cfg E)
@@ -971,7 +971,7 @@ currentCandidateSourceOrigin`: a strict current-epoch weak selector advance
 installs a fresh candidate-specific history origin at the observer.
 
 The Lemma-13 seed is the query fork-choice head, and stage S5's combined
-lemma hands back the `has_head_broadcast_certificate` flag alongside the `GU`
+lemma hands back the `has_carrier_broadcast_certificate` flag alongside the `GU`
 bound, so the record's `seed_disseminated` field is
 `Weak.headSeed_known_at_all_honest_endpoints_at_observer` applied to that
 flag. `hslotPos` is the only genuinely new premise (the certificate's span
@@ -980,7 +980,7 @@ ends at `get_current_slot - 1`, so translating its gate into the record's
 slot 0); at every actual call it is immediate from `E.IsScheduledFCRCallAt`. -/
 theorem StrictSelectedResultMechanicalFacts.currentCandidateSourceOrigin
     {E : Execution Root} (hA : SelectedMarginAssumptions cfg ext E)
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (hsync : NextSlotSynchronyPremises cfg ext E)
     (hji : JustificationInterface cfg ext E)
     {obs : ValidatorIndex} (hcoh : E.ObserverCoherence cfg ext obs) {q : Nat}
@@ -1107,7 +1107,7 @@ theorem previousConfirmed_current_of_boundary_recent
 receiving honest endpoint's store, so it is honesty-free as stated); only the
 retained `current_origin` payload is the weak record. -/
 structure AcceptedConfirmedSourceHistoryAt (E : Execution Root)
-    (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
     (v : ValidatorIndex) (n : Nat) : Prop where
   confirmed_known : E.weakConfirmed cfg ext v n ∈
     (E.store cfg ext v n).block_roots
@@ -1128,7 +1128,7 @@ structure AcceptedConfirmedSourceHistoryAt (E : Execution Root)
 /-- Initialization, checkpoint-sync safe exactly as in the strong
 development: the weak trajectory's seed is the same genesis initializer. -/
 theorem acceptedConfirmedSourceHistoryAt_zero
-    {E : Execution Root} (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    {E : Execution Root} (B : CausalPrefixFFGInterpretation cfg ext E)
     (hT : E.ScheduledPrefixPremises cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : Execution.TrustedAnchorBoundaryAligned (cfg := cfg)
@@ -1175,7 +1175,7 @@ theorem acceptedConfirmedSourceHistoryAt_zero
 /-- Weak twin of `AcceptedConfirmedSourceHistoryAt.succ_of_noCall`: between
 weak FCR calls everything is carried definitionally. -/
 theorem AcceptedConfirmedSourceHistoryAt.succ_of_noCall
-    {E : Execution Root} {B : ExactPrefixAcceptedFFGSemantics cfg ext E}
+    {E : Execution Root} {B : CausalPrefixFFGInterpretation cfg ext E}
     (hT : E.ScheduledPrefixPremises cfg ext)
     {v : ValidatorIndex} {n : Nat}
     (hnoCall : ¬ E.IsScheduledFCRCallAt cfg ext v n)
@@ -1246,7 +1246,7 @@ knownness is the landed `Weak.weakFcrStep_observed_known` (rule delta 5's
 `banked_known`, discharged for the whole weak trajectory) in place of
 `Execution.actualObservedRestartInputAt`. -/
 theorem AcceptedConfirmedSourceHistoryAt.confirmedKnown_succ_of_call
-    {E : Execution Root} (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    {E : Execution Root} (B : CausalPrefixFFGInterpretation cfg ext E)
     (hT : E.ScheduledPrefixPremises cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : Execution.TrustedAnchorBoundaryAligned (cfg := cfg)
@@ -1322,7 +1322,7 @@ reduce to the trusted anchor through the causal lag law, observed resets are
 previous-epoch (impossible while current), and a strict current result
 installs a fresh Lemma-13 origin via the weak mechanical-facts bracket. -/
 theorem AcceptedConfirmedSourceHistoryAt.currentOrigin_succ_of_call
-    {E : Execution Root} (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    {E : Execution Root} (B : CausalPrefixFFGInterpretation cfg ext E)
     (hT : E.ScheduledPrefixPremises cfg ext)
     (hsync : NextSlotSynchronyPremises cfg ext E)
     (hstatic : StaticValidatorSet cfg E)
@@ -1537,7 +1537,7 @@ acceptedLemma22EpochStartCandidateSource`, this file's site-8 step) in place
 of the strong accepted installation witness, and finalized resets stay
 confined to the trusted-anchor base region by the causal lag law. -/
 theorem AcceptedConfirmedSourceHistoryAt.recentSource_succ_of_call
-    {E : Execution Root} (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    {E : Execution Root} (B : CausalPrefixFFGInterpretation cfg ext E)
     (hT : E.ScheduledPrefixPremises cfg ext)
     (hsync : NextSlotSynchronyPremises cfg ext E)
     (hstatic : StaticValidatorSet cfg E)
@@ -1731,7 +1731,7 @@ theorem AcceptedConfirmedSourceHistoryAt.recentSource_succ_of_call
 /-- The complete one-call transformer for the weak candidate-indexed source
 history invariant. -/
 theorem AcceptedConfirmedSourceHistoryAt.succ_of_call
-    {E : Execution Root} (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    {E : Execution Root} (B : CausalPrefixFFGInterpretation cfg ext E)
     (hT : E.ScheduledPrefixPremises cfg ext)
     (hsync : NextSlotSynchronyPremises cfg ext E)
     (hstatic : StaticValidatorSet cfg E)
@@ -1769,7 +1769,7 @@ needed only by the strong observed-reset arm's accepted *installation*
 witness (`AcceptedUJCacheInstallationAt`), which rule delta 5's head-indexed
 banking replaces with the banked certificate. -/
 theorem acceptedConfirmedSourceHistoryAt
-    {E : Execution Root} (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    {E : Execution Root} (B : CausalPrefixFFGInterpretation cfg ext E)
     (hT : E.ScheduledPrefixPremises cfg ext)
     (hsync : NextSlotSynchronyPremises cfg ext E)
     (hstatic : StaticValidatorSet cfg E)
@@ -1807,7 +1807,7 @@ call.** Weak twin of
 `Execution.getLatestConfirmedTraceAt_current_epochStartSource`: the S7
 dispatcher's entry point into this stage. -/
 theorem getLatestConfirmedTraceAt_current_epochStartSource
-    {E : Execution Root} (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    {E : Execution Root} (B : CausalPrefixFFGInterpretation cfg ext E)
     (hT : E.ScheduledPrefixPremises cfg ext)
     (hsync : NextSlotSynchronyPremises cfg ext E)
     (hstatic : StaticValidatorSet cfg E)
@@ -1857,7 +1857,7 @@ is `confirmed_honestPastHeadBelow`, replaced by stage S4's landed
 `directJustified_or_pathLocal` and the carrier constructor `of_pathLocal` are
 already stated at the honest supporter and need no twin. -/
 theorem StrictSelectedResultMechanicalFacts.currentSame_sourceHistoryOutcome_of_epochStartSource
-    {E : Execution Root} (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    {E : Execution Root} (B : CausalPrefixFFGInterpretation cfg ext E)
     (hT : E.ScheduledPrefixPremises cfg ext)
     (hsync : NextSlotSynchronyPremises cfg ext E)
     (hstatic : StaticValidatorSet cfg E)
@@ -1865,7 +1865,7 @@ theorem StrictSelectedResultMechanicalFacts.currentSame_sourceHistoryOutcome_of_
     (hdomain : SelectedMarginDomain cfg ext E)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     {obs : ValidatorIndex} {q : Nat}
-    (hvalid : E.ObserverValidity cfg ext obs)
+    (hvalid : E.ObserverIndexedAttestationValidity cfg ext obs)
     (hcomm : E.PrefixCommitteeAgreement cfg ext (E.store cfg ext obs q))
     (hqH : E.WithinHorizon cfg q)
     {query : FastConfirmationStore Root} {input result : Root}
@@ -1936,7 +1936,7 @@ premise is the accepted realized-finalization delay, exactly as in the strong
 development; `hspe : 1 < cfg.slots_per_epoch` is not needed (see
 `Weak.acceptedConfirmedSourceHistoryAt`). -/
 theorem StrictSelectedResultMechanicalFacts.actualCurrentSame_sourceHistoryOutcome
-    {E : Execution Root} (B : ExactPrefixAcceptedFFGSemantics cfg ext E)
+    {E : Execution Root} (B : CausalPrefixFFGInterpretation cfg ext E)
     (hT : E.ScheduledPrefixPremises cfg ext)
     (hsync : NextSlotSynchronyPremises cfg ext E)
     (hstatic : StaticValidatorSet cfg E)

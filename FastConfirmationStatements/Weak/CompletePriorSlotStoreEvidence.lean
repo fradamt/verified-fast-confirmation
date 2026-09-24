@@ -32,7 +32,7 @@ BLS authentication, the Altair transition, or standard inclusion policy.
 The empty equivocation set excludes recorded slashings; absence of conflicting
 historical votes needs an execution contract. The latest-message projection
 cannot retain each earlier attestation after an overwrite. -/
-structure CompleteEvidence (cfg : Config) (ext : Externals Root)
+structure CompletePriorSlotStoreEvidence (cfg : Config) (ext : Externals Root)
     (f : FastConfirmationStore Root) : Prop where
   epoch_size : cfg.slots_per_epoch = 8 ∨ cfg.slots_per_epoch = 32
   threshold : cfg.confirmation_byzantine_threshold = 25
