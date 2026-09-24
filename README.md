@@ -67,7 +67,7 @@ Use the pinned Lean toolchain and a local checkout of the Python fork. The full 
 scripts/validate.sh --consensus-repo /path/to/fradamt-consensus-specs
 ```
 
-`--fast` runs source, document-name, boundary, and hygiene checks. The full check covers 56 audit entries in `scripts/Audit.lean`: 14 main-side, 41 weak-side, and `review_claims`.
+`--fast` runs source, document-name, boundary, and hygiene checks. The full check covers 57 audit entries in `scripts/Audit.lean`: 14 main-side, 42 weak-side, and `review_claims`.
 
 ## Where to read
 
@@ -76,13 +76,21 @@ Read [architecture](docs/ARCHITECTURE.md), [source map](docs/SPEC_MAP.md), [pape
 ## Weak synchrony rule
 
 The weak branch models the duty-fresh weak synchrony rule and the Gloas PENDING
-payload discount against the pinned weak consensus source. Its 41 additional
+payload discount against the pinned weak consensus source. Its 42 additional
 public witnesses include the full-rule safety statement for an arbitrary
-observer, replay equations, containment counterexamples, and finite
+observer, non-honest observer premise independence, replay equations,
+containment counterexamples, and finite
 complete-evidence facts. The open weak live monotonicity claim has a separate
 premise record and is not registered as a theorem. See
 [docs/WEAK_SYNCHRONY.md](docs/WEAK_SYNCHRONY.md) for the exact premise surface,
 source boundary, validation command, and remaining proof obstacle.
+
+For `obs ∉ E.honest`, the restricted core erases only the observer's schedule.
+The same honest set, including every possible endpoint, remains subject to
+the ordinary delivery rules. Observer inputs have local authenticity and FFG
+contracts with no timed receipt clause. The restricted-premise independence
+theorem is proved. A safety headline from only these restricted premises is
+still open.
 
 The two weak safety headlines use `SelectedMarginDomain.justified_root_known`
 to prove the required honest head knownness. They do not bind

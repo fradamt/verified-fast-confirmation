@@ -61,6 +61,8 @@ run_cmd do
     ``FastConfirmation.Spec.Execution.WeakObserverMarginPremises,
     ``FastConfirmation.Spec.Execution.WeakObserverPremises,
     ``FastConfirmation.Spec.Execution.WeakCompletedFCRCallSupplement,
+    ``FastConfirmation.Spec.Execution.WeakObserverRestrictedPremises,
+    ``FastConfirmation.Spec.Execution.SameOutsideObserver,
     ``FastConfirmation.Spec.CurrentTargetSelectedEdge,
     ``FastConfirmation.Spec.prevEpochLoopTrace,
     ``FastConfirmation.Spec.PreviousEpochSelectedEdge,

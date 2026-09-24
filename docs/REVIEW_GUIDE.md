@@ -1,6 +1,6 @@
 # Review guide
 
-This page records known limits and their current status. The exact main public propositions are in `FastConfirmationStatements/Review.lean`. `review_claims` in `FastConfirmationProofs/ReviewTheorem.lean` proves all three fields. `scripts/Audit.lean` checks 56 entries: 14 main-side, 41 weak-side, and `review_claims`.
+This page records known limits and their current status. The exact main public propositions are in `FastConfirmationStatements/Review.lean`. `review_claims` in `FastConfirmationProofs/ReviewTheorem.lean` proves all three fields. `scripts/Audit.lean` checks 57 entries: 14 main-side, 42 weak-side, and `review_claims`.
 
 ```text
 ┌───────────────────────────────────┬─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
@@ -25,9 +25,10 @@ This page records known limits and their current status. The exact main public p
 │                                   │ does not establish it. This matches CommitteeHonestMajority in the repository's formal paper Assumption 2.         │
 │ Weak full-bundle witness          │ Open, user decision (W3). No accepted run witnesses all weak headline premises with a non-anchor stored output.      │
 │ Weak branch witnesses             │ Open, user decision (W11). The store fixture omits rollover and empty-slot PENDING discount; bank tests are vacuous. │
-│ Weak strong-cache interface       │ Confirmed, open (W1). The weak headlines assume strong E.fcr laws for observed justified checkpoints, the previous │
-│                                   │ greatest unrealized checkpoint, and observed checkpoint knownness. These are not E.weakFcr laws. The guarantee     │
-│                                   │ does not follow from weak-only premises.                                                                          │
+│ Weak strong-cache interface       │ Closed (i3b). The weak headlines have no JustificationInterface binder and use the weak cache. Honest head-root    │
+│                                   │ knownness follows from SelectedMarginDomain.justified_root_known.                                                  │
+│ Non-honest observer inputs        │ The restricted premise independence theorem is proved for obs outside E.honest. Local authenticity and FFG          │
+│                                   │ contracts have no timed observer receipt. The corresponding safety headline remains open.                           │
 │ Opaque execution validation       │ Explicit abstraction. BeaconExternalsPremises and verified envelope events supply the engine verdict and            │
 │                                   │ deterministic behavior.                                                                                             │
 │ Static registry                   │ Explicit model idealisation. StaticValidatorSet covers the finite horizon; validator churn is outside the claim.    │
@@ -90,7 +91,7 @@ The source of record is fork `fradamt/consensus-specs`, tag `fcr-gloas-fix` (`13
 
 ## Weak branch status
 
-The `fcr-weak-synchrony` branch and tag `fcr-weak-synchrony-v1` have 56 trust-audit entries: 14 main-side, 41 weak-side, and `review_claims`. The two full weak safety headlines take the common top-level inputs B, hji, hanchor, hboundary, hDelay, hpaper, P, V, hW, hCbase, and hfit. The endpoint also takes hw, hnm, hnext, and hHm. The exact anchor and known-walk facts are derived inside the proof; they are not headline binders. The weak live monotonicity proposition remains open. Its equivocation-budget and duty-freshness obligations remain unresolved at epoch boundaries.
+The weak tree has 57 trust-audit entries: 14 main-side, 42 weak-side, and `review_claims`. The two existing full weak safety headlines take B, hanchor, hboundary, hDelay, hpaper, P, V, hW, hCbase, and hfit. The endpoint also takes hw, hnm, hnext, and hHm. Their types are unchanged by the observer-local work. For a non-honest observer, `WeakObserverRestrictedPremises` contains the shared core over `E.withoutObserver obs` and `ObserverLocalInputs`. The compiled independence theorem transfers those premises across changes to the observer schedule when the new local inputs satisfy their contracts. The safety headline from only that restricted surface remains open. The weak live monotonicity proposition remains open.
 
 ## Mechanical checks
 

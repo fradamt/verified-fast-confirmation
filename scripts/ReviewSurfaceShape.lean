@@ -41,6 +41,22 @@ run_cmd do
      "process_slots_attestation_valid", "verify_envelope_deterministic"]
   checkFields `FastConfirmation.Spec.ByzantineWeightPremises
     ["effective_balance_quantized", "estimate_sound", "span_fraction"]
+  checkFields `FastConfirmation.Spec.Execution.WeakObserverRestrictedPremises
+    ["core", "local_inputs"]
+  checkFields `FastConfirmation.Spec.Execution.WeakRestrictedNetworkPremises
+    ["base", "delivery_lookahead", "semantics", "anchor_eq",
+     "anchor_boundary", "finalization_delay", "paper_a32",
+     "checkpoint_projection", "exact_link_validity", "completed_calls",
+     "epoch_ends_fit", "genesis"]
+  checkFields `FastConfirmation.Spec.Execution.ObserverInputAuthenticity
+    ["validity", "committees_agree", "no_forgery", "block_labels",
+     "genesis_blocks", "anchor_parent", "process_slots_validity", "votes_head"]
+  checkFields `FastConfirmation.Spec.Execution.ObserverLocalInputs
+    ["toObserverInputAuthenticity", "ffg"]
+  checkFields `FastConfirmation.Spec.Execution.ObserverLocalFFG
+    ["state", "domain_local", "block_read", "included_evidence",
+     "selectors", "checkpoint_of_known", "au_checkpoint_of_known",
+     "finalization_delay", "checkpoint_projection", "exact_link_endpoints"]
   IO.println "review surface shape passed"
 
 -- These names must remain in the reviewed Statements surface.

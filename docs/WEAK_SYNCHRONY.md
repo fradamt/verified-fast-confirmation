@@ -32,13 +32,14 @@ its local state; it does not deliver messages.
 The only weak-path use of `JustificationInterface` was honest head-root
 knownness. The proof now derives it from
 `SelectedMarginDomain.justified_root_known`. The legacy interface remains for
-other proof modules. The observer restriction on the global synchrony
-premises is pending.
+other proof modules. The restricted-premise safety headline for a non-honest
+observer is pending.
 
-The trust audit registers 56 entries: 14 main-side, 41 weak-side, and
-`review_claims`. The 41 weak-side
+The trust audit registers 57 entries: 14 main-side, 42 weak-side, and
+`review_claims`. The 42 weak-side
 entries comprise eight weak safety, four replay, two negative containment,
-17 complete-evidence helper, and ten complete-evidence witness results.
+17 complete-evidence helper, ten complete-evidence witness results, and the
+non-honest observer premise-independence theorem.
 The complete-evidence witness is a store-contract witness. There is no
 accepted positive in-horizon execution that jointly supplies the full weak
 safety bundle and a non-anchor weak output.
@@ -84,8 +85,8 @@ Older design and proof notes are preserved under `docs/history/`.
 
 ## Restricted observer premises
 
-`WeakObserverRestrictedPremises` is a compiled design surface. It does not
-replace the headline premises above. Its independence oracle is
+`WeakObserverRestrictedPremises` is a compiled restricted surface. It does not
+replace the headline premises above. Its independence theorem is
 `Execution.weakObserverRestrictedPremises_observer_independent`, in
 `FastConfirmationInternal/Weak/ObserverIndependence.lean`.
 
