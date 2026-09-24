@@ -467,7 +467,7 @@ theorem mem_or_excluded_of_known_honest_past_descendant_minimal
       hstateSlot hroot).time_ge_genesis
   obtain ⟨hstart, hbefore⟩ := E.past_slot_deadline_target_gate cfg
     hA.whole_seconds hgenTime (hslot.trans_le hnm)
-  exact ⟨hbu, hA.synchrony.deadline_block_relay u hu nu b hHnu hbu
+  exact ⟨hbu, E.deadline_block_relay_at_endpoint cfg ext hA.synchrony.deadline_block_relay u hu nu b hHnu hbu
     hdeadline w hw m hHm hstart hbefore⟩
 
 theorem mem_of_known_honest_past_descendant_minimal

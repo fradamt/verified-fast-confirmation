@@ -444,8 +444,9 @@ theorem StrictSelectedResultMechanicalFacts.fcrStep_previous_endpointRecentSourc
         (E.fcrStoreAtCall cfg ext v n).previous_slot_head ∈
           (E.store cfg ext w m).block_roots ∨
         PermanentBlockExclusion cfg ext E v origin
-          (E.fcrStoreAtCall cfg ext v n).previous_slot_head w m :=
-      hsync.deadline_block_relay v hv origin _ horiginH
+          (E.fcrStoreAtCall cfg ext v n).previous_slot_head w
+            m :=
+      E.deadline_block_relay_at_endpoint cfg ext hsync.deadline_block_relay v hv origin _ horiginH
         hseedOrigin' horiginDeadline w hw m hmH hstartTarget
         (lt_of_le_of_lt horiginLe (Nat.lt_succ_self n) |>.trans_le hnm)
     let target := get_voting_source cfg

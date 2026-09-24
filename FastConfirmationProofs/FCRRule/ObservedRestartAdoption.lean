@@ -158,6 +158,10 @@ theorem ObservedResetCandidateInputAt.actualFCRGuardedObservedAdoption
         w hw (n + 1) hHn1' horiginNextLe horiginLtBoundary
       rcases hrelayOutcome with hknown | hexcluded
       · exact hknown
+      by_cases hknown : tip ∈ (E.store cfg ext w (n + 1)).block_roots
+      · exact hknown
+      have hexcluded := E.permanentBlockExclusion_mono_of_not_mem cfg ext
+        ((Nat.sub_le _ 1).trans horiginNextLe) hknown hexcluded
       let c := (E.fcrStoreAtCall cfg ext v n
         ).current_epoch_observed_justified_checkpoint
       let F := (E.store cfg ext w (n + 1)).finalized_checkpoint
@@ -237,7 +241,7 @@ theorem ObservedResetCandidateInputAt.actualFCRGuardedObservedAdoption
           htip.known hFprefixC htipAU hFLeC htipWalk
       exact False.elim
         (E.checkpointCompatible_not_permanentlyExcluded cfg ext
-          B hA hanchor hboundary hHn1' htip.known hFknown
+          B hT hanchor hboundary hHn1' htip.known hFknown
           hFanchorEpochLe hsourceCheckpoint hexcluded)
     have htipBlockAgree :
         (E.store cfg ext v hi.originSecond).blocks tip =

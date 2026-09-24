@@ -949,18 +949,20 @@ theorem Execution.vote_lands {E : Execution Root}
       root ∈ (pre.foldl
         (fun store event => (apply_event cfg ext store event).getD store)
         tb).block_roots := by
+    have hpredH := E.withinHorizon_mono cfg (Nat.sub_le
+      (E.slot_start cfg (s + 1)) 1) hHdeliver
+    have hpos : 0 < E.slot_start cfg (s + 1) := by omega
     have hgate : E.slot_at cfg n + 1 ≤
-        E.slot_at cfg (E.slot_start cfg (s + 1) + 1) := by
-      rw [hn]
-      exact hslotN.symm.trans_le
-        (E.slot_at_mono cfg (Nat.le_succ _))
-    have hknownFinal : root ∈
-        (E.store cfg ext w (E.slot_start cfg (s + 1))).block_roots :=
-      hsyn.block_relay v hv n root hHn hr w hw _ hHdeliver hgate
+        E.slot_at cfg (E.slot_start cfg (s + 1) - 1 + 1) := by
+      rw [Nat.sub_add_cancel (by omega : 1 ≤ E.slot_start cfg (s + 1)), hn,
+        hslotN]
+    have hknownPred : root ∈
+        (E.store cfg ext w (E.slot_start cfg (s + 1) - 1)).block_roots :=
+      hsyn.block_relay v hv n root hHn hr w hw _ hpredH hgate
     have hnotExcluded : ¬ PermanentBlockExclusion cfg ext E v n root w
-        (E.slot_start cfg (s + 1)) := by
+        (E.slot_start cfg (s + 1) - 1) := by
       intro hexcluded
-      exact hexcluded.1 hknownFinal
+      exact hexcluded.1 hknownPred
     have hprefix := hsyn.boundary_block_prefix v hv n root hHn hr
       hdeadline w hw (by simpa only [hn] using hHdeliver)
       (by simpa only [hn] using hnBeforeDelivery)

@@ -281,7 +281,7 @@ theorem retainedAt_currentSameEndpoint
   have hrelayOutcome : h.tip ∈
         (E.store cfg ext w m).block_roots ∨
       PermanentBlockExclusion cfg ext E h.validator h.second h.tip w m :=
-    hsync.deadline_block_relay h.validator h.validator_honest
+    E.deadline_block_relay_at_endpoint cfg ext hsync.deadline_block_relay h.validator h.validator_honest
       h.second h.tip h.second_within h.tip_known h.second_deadline
       w hw m hmH hstart hbefore
   have hreal := E.finalizedCheckpoint_resetRealizedAt_of_acceptedGlobalTrajectory
@@ -693,7 +693,7 @@ theorem retainedAt_currentSameEndpoint
       PermanentBlockExclusion cfg ext E h.past.validator
         h.past.second seed w m := by
     simpa only [endpoint] using
-      hsync.deadline_block_relay h.past.validator
+      E.deadline_block_relay_at_endpoint cfg ext hsync.deadline_block_relay h.past.validator
         h.past.validator_honest h.past.second seed
         h.past.second_within hseedPast h.past.second_deadline
         w hw m hmH hstart hbefore

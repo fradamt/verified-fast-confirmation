@@ -121,6 +121,71 @@ theorem deadline_before_next_slot
     omega
   omega
 
+/-- The source cutoff is no later than the last second before the next tick. -/
+theorem deadline_le_next_slot_pred
+    (hdiv : 1000 ∣ cfg.slot_duration_ms)
+    {s n delta_ms : ℕ}
+    (hboundary : E.genesis_store.time ≤ E.genesis_store.genesis_time +
+      s * (cfg.slot_duration_ms / 1000))
+    (hdeadline : n ≤ E.slot_start cfg s + get_attestation_due_ms cfg / 1000)
+    (hpositive : 0 < delta_ms)
+    (hfit : get_attestation_due_ms cfg + delta_ms < cfg.slot_duration_ms) :
+    n ≤ E.slot_start cfg (s + 1) - 1 := by
+  have hlt := E.deadline_before_next_slot cfg hdiv hboundary hdeadline hpositive hfit
+  omega
+
+/-- If an excluded block stays absent, its exclusion holds at every later
+second. Parent knownness follows from store monotonicity. -/
+theorem permanentBlockExclusion_mono_of_not_mem
+    {v w : ValidatorIndex} {n k m : ℕ} {r : Root}
+    (hle : k ≤ m)
+    (habsent : r ∉ (E.store cfg ext w m).block_roots)
+    (hexcluded : PermanentBlockExclusion cfg ext E v n r w k) :
+    PermanentBlockExclusion cfg ext E v n r w m := by
+  refine ⟨habsent, (E.store_storeLE cfg ext w hle).1 hexcluded.2.1, ?_⟩
+  intro t hmt hHt
+  exact hexcluded.2.2 t (hle.trans hmt) hHt
+
+/-- A refined cutoff relay also gives a later endpoint alternative. If the
+root remains absent, the pre-tick exclusion persists to that endpoint. -/
+theorem deadline_block_relay_at_endpoint
+    (hrelay : DeadlineBlockRelay cfg ext E)
+    (v : ValidatorIndex) (hv : v ∈ E.honest) (n : ℕ) (r : Root)
+    (hHn : E.WithinHorizon cfg n)
+    (hr : r ∈ (E.store cfg ext v n).block_roots)
+    (hdue : n ≤ E.slot_start cfg (E.slot_at cfg n) +
+      get_attestation_due_ms cfg / 1000)
+    (w : ValidatorIndex) (hw : w ∈ E.honest) (m : ℕ)
+    (hHm : E.WithinHorizon cfg m)
+    (hnext : E.slot_start cfg (E.slot_at cfg n + 1) ≤ m)
+    (hlt : n < m) :
+    r ∈ (E.store cfg ext w m).block_roots ∨
+      PermanentBlockExclusion cfg ext E v n r w m := by
+  rcases hrelay v hv n r hHn hr hdue w hw m hHm hnext hlt with hk | he
+  · exact Or.inl hk
+  · by_cases hk : r ∈ (E.store cfg ext w m).block_roots
+    · exact Or.inl hk
+    · exact Or.inr (E.permanentBlockExclusion_mono_of_not_mem cfg ext
+        ((Nat.sub_le _ 1).trans hnext) hk he)
+
+/-- The integer-second arrival argument for the refined exemption. An
+accepted block remains known. An exclusion at an earlier arrival second
+also holds at the last source-slot second if the block is still absent. -/
+theorem deadline_block_relay_outcome_of_arrival
+    {v w : ValidatorIndex} {n a boundary m : ℕ} {r : Root}
+    (harrival : a < boundary) (hnext : boundary ≤ m)
+    (houtcome : r ∈ (E.store cfg ext w a).block_roots ∨
+      PermanentBlockExclusion cfg ext E v n r w a) :
+    r ∈ (E.store cfg ext w m).block_roots ∨
+      PermanentBlockExclusion cfg ext E v n r w (boundary - 1) := by
+  rcases houtcome with hknown | hexcluded
+  · exact Or.inl ((E.store_storeLE cfg ext w (harrival.le.trans hnext)).1 hknown)
+  · by_cases hknown : r ∈ (E.store cfg ext w (boundary - 1)).block_roots
+    · exact Or.inl ((E.store_storeLE cfg ext w
+        ((Nat.sub_le boundary 1).trans hnext)).1 hknown)
+    · exact Or.inr (E.permanentBlockExclusion_mono_of_not_mem cfg ext
+        (by omega) hknown hexcluded)
+
 /-- An honest voter's selected root reaches the next-slot receiver unless
 that receiver has permanently excluded the block under `on_block`'s finalized
 guard. The vote gives the source-time cutoff; the strict positive bound gives
@@ -140,7 +205,8 @@ theorem honest_vote_root_relay_or_excluded
     (hroot : r ∈ (E.store cfg ext v n).block_roots)
     (hnext : E.slot_start cfg (s + 1) ≤ m) :
     r ∈ (E.store cfg ext w m).block_roots ∨
-      PermanentBlockExclusion cfg ext E v n r w m := by
+      PermanentBlockExclusion cfg ext E v n r w
+        (E.slot_start cfg (E.slot_at cfg n + 1) - 1) := by
   have hdue := (hhb.vote_deadline v hv s n a hvote).2
   have hlt : n < m :=
     (E.deadline_before_next_slot cfg hdiv hboundary hdue

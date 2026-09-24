@@ -23,13 +23,43 @@ namespace Execution
 
 variable {E : Execution Root}
 
+/-- Trusted-anchor walks use only the lower trajectory record. In particular,
+no vote-target cache or selected-margin domain is required. -/
+theorem trustedAnchor_boundaryWalkAtEpoch_of_trajectory
+    (hT : E.ScheduledPrefixPremises cfg ext)
+    {anchor : Checkpoint Root}
+    (hanchor : anchor = E.genesis_store.justified_checkpoint)
+    (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
+      (E := E) (anchor := anchor))
+    (v : ValidatorIndex) (n : ℕ) {e : Epoch}
+    (hae : anchor.epoch ≤ e)
+    {r : Root} (hr : r ∈ (E.store cfg ext v n).block_roots) :
+    WalkKnown (E.store cfg ext v n) (compute_start_slot_at_epoch cfg e) r := by
+  obtain ⟨ast, ablk, hgen, hslot, _hcommit, hparent⟩ := hT.genesis
+  have hroot : anchor.root = ablk.root := by rw [hanchor, hgen]; rfl
+  have hanchor0 : anchor.root ∈ E.genesis_store.block_roots := by
+    rw [hgen, hroot]
+    simp only [get_forkchoice_store, List.mem_singleton]
+  have hanchorN := (E.store_storeLE cfg ext v (Nat.zero_le n)).1 hanchor0
+  have hwalk := E.store_walkKnownK cfg ext hT.wellFormed hT.externals_coherence
+    ⟨ast, ablk, hgen, hslot, hparent⟩ v n anchor.root hanchorN r hr
+  have hblock : (E.store cfg ext v n).blocks anchor.root = ablk.message := by
+    rw [hroot]
+    exact E.store_anchor_block cfg ext hT.wellFormed hgen v n (hroot ▸ hanchorN)
+  have hbound : ablk.message.slot ≤ compute_start_slot_at_epoch cfg anchor.epoch := by
+    simpa only [TrustedAnchorBoundaryAligned, hgen, hroot,
+      get_forkchoice_store, Function.update_self] using hboundary
+  apply hwalk.mono
+  rw [hblock]
+  exact hbound.trans (Nat.mul_le_mul_right cfg.slots_per_epoch hae)
+
 /-- A source block whose checkpoint at the receiver's finalized epoch is the
 receiver's finalized root cannot be permanently excluded. The at-boundary
 case is already stored as the finalized root; after the boundary, the known
 parent has the same exact checkpoint in both causal stores. -/
 theorem checkpointCompatible_not_permanentlyExcluded
     (B : CausalPrefixFFGInterpretation cfg ext E)
-    (hA : SelectedMarginAssumptions cfg ext E)
+    (hT : E.ScheduledPrefixPremises cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
       (E := E) (anchor := B.anchor))
@@ -57,7 +87,7 @@ theorem checkpointCompatible_not_permanentlyExcluded
     exact hexcluded.1 (by rw [← hroot]; exact hfinalizedKnown)
   have hafter : compute_start_slot_at_epoch cfg F.epoch <
       (source.blocks r).slot := Nat.lt_of_not_ge hbefore
-  obtain ⟨ast, ablk, hgen, hgenSlot, hgenParent⟩ := hA.genesis
+  obtain ⟨ast, ablk, hgen, hgenSlot, _hcommit, hgenParent⟩ := hT.genesis
   have hsourceParent : parent ∈ source.block_roots := by
     have hnonAnchor := E.store_nonAnchorParentKnown cfg ext hgen v n r
       hsourceKnown
@@ -75,12 +105,12 @@ theorem checkpointCompatible_not_permanentlyExcluded
     · exact hparentKnown
   have hreceiverParent : parent ∈ receiver.block_roots := hexcluded.2.1
   have hparentSlotSource : ParentSlotLt source :=
-    E.store_parentSlotLt cfg ext hA.wellFormed hA.externals_coherence
+    E.store_parentSlotLt cfg ext hT.wellFormed hT.externals_coherence
       ⟨ast, ablk, hgen, hgenSlot, hgenParent⟩
-      hA.wellFormed.anchor_parent_unscheduled v n
+      hT.wellFormed.anchor_parent_unscheduled v n
   have hparentWalk : WalkKnown source
       (compute_start_slot_at_epoch cfg F.epoch) parent :=
-    E.trustedAnchor_boundaryWalkAtEpoch cfg ext hA hanchor hboundary
+    E.trustedAnchor_boundaryWalkAtEpoch_of_trajectory cfg ext hT hanchor hboundary
       v n hanchorLe hsourceParent
   have hparentCheckpoint : F.root =
       get_checkpoint_block cfg receiver parent F.epoch := by
@@ -105,6 +135,7 @@ pass the receiver's finalized guard. This packages the checkpoint equation
 from an AU witness and a boundary walk for use after cutoff relay. -/
 theorem acceptedSourceTip_not_permanentlyExcluded_of_prefix
     (B : CausalPrefixFFGInterpretation cfg ext E)
+    (hT : E.ScheduledPrefixPremises cfg ext)
     (hA : SelectedMarginAssumptions cfg ext E)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
@@ -137,7 +168,7 @@ theorem acceptedSourceTip_not_permanentlyExcluded_of_prefix
     exactCheckpointPrefix_root_eq_at_sameTip cfg ext B.coherence
       (E.store_causal cfg ext v n) hparent htip hprefix hAU hepoch hwalk
   intro hexcluded
-  exact E.checkpointCompatible_not_permanentlyExcluded cfg ext B hA
+  exact E.checkpointCompatible_not_permanentlyExcluded cfg ext B hT
     hanchor hboundary hHm htip hfinalizedKnown hanchorLe
     hcheckpoint hexcluded
 
@@ -213,7 +244,7 @@ theorem acceptedSourceTip_not_permanentlyExcluded_of_AU
       (compute_start_slot_at_epoch cfg
         (E.store cfg ext w m).finalized_checkpoint.epoch) tip) :
     ¬ PermanentBlockExclusion cfg ext E v n tip w m :=
-  E.acceptedSourceTip_not_permanentlyExcluded_of_prefix cfg ext B hA
+  E.acceptedSourceTip_not_permanentlyExcluded_of_prefix cfg ext B hT hA
     hanchor hboundary hHm htip hfinalizedKnown hanchorLe
     (E.acceptedFinalized_prefix_of_sourceAU cfg ext B hT hanchor
       P V hanchorExact hacc hAU hepoch)
