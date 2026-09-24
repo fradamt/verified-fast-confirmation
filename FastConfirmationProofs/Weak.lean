@@ -51,6 +51,7 @@ public import FastConfirmationProofs.Weak.Safety.WeakObserverReplay
 public import FastConfirmationProofs.Weak.Safety.WeakObserverStrictCallFilterInputs
 public import FastConfirmationProofs.Weak.Safety.WeakObserverValidity
 public import FastConfirmationProofs.Weak.Safety.WeakOneShotSafety
+public import FastConfirmationProofs.Weak.Safety.TrustedWeakObserverCoherence
 public import FastConfirmationProofs.Weak.Safety.WeakOneShotSafetyClosed
 public import FastConfirmationProofs.Weak.Safety.WeakOneShotSafetyNative
 public import FastConfirmationProofs.Weak.Safety.WeakTrajectorySafety
