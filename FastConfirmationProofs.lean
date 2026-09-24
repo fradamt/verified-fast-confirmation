@@ -137,6 +137,7 @@ public import FastConfirmationProofs.FFG.SourceHistory.TrustedCandidateHistoryRe
 public import FastConfirmationProofs.FFG.SourceHistory.CheckpointSafetyInputs
 public import FastConfirmationProofs.FFG.SourceHistory.ConfirmationMarginInputs
 public import FastConfirmationProofs.FFG.SourceHistory.CurrentSameSourceHistory
+public import FastConfirmationProofs.FFG.SourceHistory.TrustedCurrentSameSourceHistory
 public import FastConfirmationProofs.FFG.SourceHistory.EdgeSupportInputs
 public import FastConfirmationProofs.FFG.SourceHistory.FFGJustifiedCheckpointCache
 public import FastConfirmationProofs.FFG.SourceHistory.FFGJustifiedMaximality
