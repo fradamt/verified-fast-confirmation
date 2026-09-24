@@ -149,6 +149,7 @@ public import FastConfirmationProofs.FFG.State.FFGCheckpointEpochOrder
 public import FastConfirmationProofs.FFG.State.FinalizationTiming
 public import FastConfirmationProofs.FFG.State.TrustedFinalizationTiming
 public import FastConfirmationProofs.FFG.State.FinalizedSameTip
+public import FastConfirmationProofs.FFG.State.TrustedFinalizedSameTip
 public import FastConfirmationProofs.FFG.State.ObservedCheckpointAncestry
 public import FastConfirmationProofs.FFG.State.PathLocalFinalizedTransport
 public import FastConfirmationProofs.FFG.State.PayloadAwareHead
