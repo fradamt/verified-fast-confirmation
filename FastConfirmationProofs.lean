@@ -186,6 +186,7 @@ public import FastConfirmationProofs.LMD.SameSlotLMD
 public import FastConfirmationProofs.ModelFacts
 public import FastConfirmationProofs.ModelFacts.ExecutionWeights
 public import FastConfirmationProofs.ModelFacts.FFGState
+public import FastConfirmationProofs.ModelFacts.TrustedFFGState
 public import FastConfirmationProofs.ModelFacts.PayloadFrame
 public import FastConfirmationProofs.ModelFacts.ScheduledPrefixes
 public import FastConfirmationProofs.Monotonicity.FilterFuelMonotonicity
