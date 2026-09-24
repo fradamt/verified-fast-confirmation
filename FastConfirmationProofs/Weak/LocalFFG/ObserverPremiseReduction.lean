@@ -375,6 +375,85 @@ theorem nonhonest_reachableValidationState
   obtain ⟨store, hs, hk⟩ := h
   exact ⟨store, nonhonest_honestCausalStore hobs hs, hk⟩
 
+/-- External validation laws on honest keyed states transfer to the actual
+execution. The observer's own keyed states remain in local input contracts. -/
+def nonhonest_externals
+    (hobs : obs ∉ E.honest)
+    (core : E.WeakObserverRestrictedCore cfg ext obs) :
+    BeaconExternalsPremises cfg ext E := by
+  let R := E.withoutObserver obs
+  have hh : R.honest = E.honest := withoutObserver_honest hobs
+  let hB := core.base.externals_coherence
+  refine {
+    process_slots_slot := hB.process_slots_slot
+    process_slots_registry := hB.process_slots_registry
+    state_transition_slot := hB.state_transition_slot
+    state_transition_registry := hB.state_transition_registry
+    state_transition_pre_slot_lt := hB.state_transition_pre_slot_lt
+    state_transition_checkpoint_epoch := hB.state_transition_checkpoint_epoch
+    pjf_checkpoint_epoch := hB.pjf_checkpoint_epoch
+    committees_agree := ?_
+    honest_attestation_valid := ?_
+    valid_attestation_honest := ?_
+    valid_attestation_committee := ?_
+    committee_assignment_unique := hB.committee_assignment_unique
+    committee_coverage := hB.committee_coverage
+    committee_members_active := hB.committee_members_active
+    valid_attestation_default := hB.valid_attestation_default
+    process_slots_attestation_valid := ?_
+    verify_envelope_deterministic := hB.verify_envelope_deterministic }
+  · intro v hv n s hn hs
+    have hvR : v ∈ R.honest := hh.symm ▸ hv
+    have hne : v ≠ obs := by
+      intro heq
+      subst v
+      exact hobs hv
+    have hc := hB.committees_agree v hvR n s hn hs
+    simpa only [R, withoutObserver_store cfg ext E obs v hne n] using hc
+  · intro state a hs v hv ha hvcom hvote
+    exact hB.honest_attestation_valid state a
+      (nonhonest_reachableValidationState hobs hs)
+      v (hh.symm ▸ hv) ha hvcom hvote
+  · intro state a hs hvalid v hv hia
+    exact hB.valid_attestation_honest state a
+      (nonhonest_reachableValidationState hobs hs)
+      hvalid v (hh.symm ▸ hv) hia
+  · intro state a hs hvalid i hi
+    exact hB.valid_attestation_committee state a
+      (nonhonest_reachableValidationState hobs hs) hvalid i hi
+  · intro state slot a hs hslot
+    exact hB.process_slots_attestation_valid state slot a
+      (nonhonest_reachableValidationState hobs hs) hslot
+
+/-- Registry and horizon data are fixed by observer erasure. -/
+def nonhonest_staticValidators
+    (core : E.WeakObserverRestrictedCore cfg ext obs) :
+    StaticValidatorSet cfg E where
+  genesis_within_horizon := core.base.static_validators.genesis_within_horizon
+  activity_constant := core.base.static_validators.activity_constant
+
+/-- A non-honest observer contributes to the same unknown stake on both
+views. Committee spans and balances are unchanged. -/
+def nonhonest_byzantineBound
+    (hobs : obs ∉ E.honest)
+    (core : E.WeakObserverRestrictedCore cfg ext obs) :
+    ByzantineWeightPremises cfg E := by
+  let R := E.withoutObserver obs
+  have hh : R.honest = E.honest := withoutObserver_honest hobs
+  refine {
+    effective_balance_quantized := core.base.byzantine_bound.effective_balance_quantized
+    estimate_sound := core.base.byzantine_bound.estimate_sound
+    span_fraction := ?_ }
+  intro a b ha hb
+  have h := core.base.byzantine_bound.span_fraction a b ha hb
+  have hspan : R.span_committee a b = E.span_committee a b := rfl
+  have hweight : ∀ S, R.weight S = E.weight S := by intro S; rfl
+  change 100 * R.weight ((R.span_committee a b).filter
+      (fun i => i ∉ R.honest)) ≤
+    cfg.confirmation_byzantine_threshold * R.weight (R.span_committee a b) at h
+  rw [hh, hspan, hweight, hweight] at h
+  exact h
+
 end
 end Execution
 end FastConfirmation.Spec
