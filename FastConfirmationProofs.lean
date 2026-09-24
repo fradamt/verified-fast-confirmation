@@ -42,6 +42,7 @@ public import FastConfirmationProofs.Execution.Calls.CurrentTargetPrefixVoteReal
 public import FastConfirmationProofs.Execution.Calls.ScheduledPrefixGeometry
 public import FastConfirmationProofs.Execution.Delivery.Delivery
 public import FastConfirmationProofs.Execution.Delivery.EarlyPhaseSourceDelivery
+public import FastConfirmationProofs.Execution.Delivery.TrustedEarlyPhaseSourceDelivery
 public import FastConfirmationProofs.Execution.Delivery.MarginProducer
 public import FastConfirmationProofs.Execution.Delivery.ObservedAncestryTransport
 public import FastConfirmationProofs.Execution.Delivery.PreviousEpochStartResult
