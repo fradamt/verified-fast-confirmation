@@ -77,7 +77,7 @@ theorem CausalPrefixFFGInterpretation.unrealizedJustified_certificate
       B.state.includedJustifiedAtTip_of_AU cfg ext hAU
     exact ⟨IncludedCertifiedJustified.toCertifiedJustified
       (cfg := cfg)
-      (Execution.CausalCarrierAttestationRelation.relation
+      (Execution.TrustedCarrierAttestationRelation.relation
         cfg ext E B.state.includedAttestations) hincluded⟩
 
 /-- Accepted global checkpoint geometry supplies the sole store-domain field

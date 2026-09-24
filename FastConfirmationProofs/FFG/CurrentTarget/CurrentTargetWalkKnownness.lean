@@ -87,7 +87,7 @@ theorem justifiedRootKnown_of_acceptedGlobalTrajectory
         (E.store cfg ext w m).justified_checkpoint :=
       IncludedCertifiedJustified.toCertifiedJustified
         (cfg := cfg)
-        (Execution.CausalCarrierAttestationRelation.relation cfg ext E
+        (Execution.TrustedCarrierAttestationRelation.relation cfg ext E
           B.state.includedAttestations) hincluded
     have hanchorEpochLe : B.anchor.epoch ≤
         (E.store cfg ext w m).justified_checkpoint.epoch :=

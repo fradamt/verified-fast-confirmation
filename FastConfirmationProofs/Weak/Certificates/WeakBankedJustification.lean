@@ -288,7 +288,7 @@ private theorem auTip_walkKnown
   have hcertified : CertifiedJustified cfg E B.anchor c :=
     IncludedCertifiedJustified.toCertifiedJustified
       (cfg := cfg)
-      (Execution.CausalCarrierAttestationRelation.relation cfg ext E
+      (Execution.TrustedCarrierAttestationRelation.relation cfg ext E
         B.state.includedAttestations) hincluded
   have hanchorEpochLe : B.anchor.epoch ≤ c.epoch :=
     CertifiedJustified.anchor_epoch_le (cfg := cfg) hcertified

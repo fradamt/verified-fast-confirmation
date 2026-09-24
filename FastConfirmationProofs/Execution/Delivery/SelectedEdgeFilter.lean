@@ -939,7 +939,7 @@ theorem CausalPrefixFFGInterpretation.finalizedBoundaryRealizationAt
         store.finalized_checkpoint :=
       IncludedCertifiedJustified.toCertifiedJustified
         (cfg := cfg)
-        (Execution.CausalCarrierAttestationRelation.relation
+        (Execution.TrustedCarrierAttestationRelation.relation
           cfg ext E B.state.includedAttestations) hcertificate
     have hanchorLe : B.anchor.epoch ≤
         store.finalized_checkpoint.epoch :=

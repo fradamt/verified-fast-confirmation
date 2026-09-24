@@ -221,7 +221,7 @@ theorem CausalPrefixFFGInterpretation.endpointJustified_quorumAt
     CertifiedJustified.anchor_epoch_lt_of_ne (cfg := cfg)
       (IncludedCertifiedJustified.toCertifiedJustified
         (cfg := cfg)
-        (Execution.CausalCarrierAttestationRelation.relation
+        (Execution.TrustedCarrierAttestationRelation.relation
           cfg ext E B.state.includedAttestations) hcertified) hne
   obtain ⟨S, hspan, hsuper, hsigners⟩ :=
     includedCertified_quorum_data cfg ext B hT hgenEq hslot hparent

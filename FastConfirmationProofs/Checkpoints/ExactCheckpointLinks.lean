@@ -390,7 +390,7 @@ theorem exactFinalizedPrefix_of_accountable
       S.includedAttestations.Included anchor justifiedCarrier justified)
     (hepoch : finalized.epoch ≤ justified.epoch) :
     ExactCheckpointPrefix S.C finalized justified := by
-  let I := Execution.CausalCarrierAttestationRelation.relation
+  let I := Execution.TrustedCarrierAttestationRelation.relation
     (cfg := cfg) (ext := ext) (E := E) S.includedAttestations
   exact IncludedCertifiedFinalized.exact_prefix_of_accountable
     (cfg := cfg) I P V hanchorExact hacc hfinalized hjustified hepoch

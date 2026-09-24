@@ -158,7 +158,7 @@ theorem anchor_epoch_le_acceptedGlobalJustified
     exact CertifiedJustified.anchor_epoch_le (cfg := cfg)
       (IncludedCertifiedJustified.toCertifiedJustified
         (cfg := cfg)
-        (Execution.CausalCarrierAttestationRelation.relation
+        (Execution.TrustedCarrierAttestationRelation.relation
           cfg ext E B.state.includedAttestations) hcertificate)
 
 /-- Once the accepted carrier of a store-global finalized selector is known

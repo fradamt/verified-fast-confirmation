@@ -93,7 +93,7 @@ theorem CausalPrefixFFGInterpretation.endpointJustificationOriginAt
         CertifiedJustified.anchor_epoch_lt_of_ne (cfg := cfg)
           (IncludedCertifiedJustified.toCertifiedJustified
             (cfg := cfg)
-            (Execution.CausalCarrierAttestationRelation.relation
+            (Execution.TrustedCarrierAttestationRelation.relation
               cfg ext E B.state.includedAttestations) hcertified) hne
       have htargetEpoch : (E.store cfg ext w m).justified_checkpoint.epoch =
           compute_epoch_at_slot cfg voteSlot := by
@@ -173,7 +173,7 @@ theorem CausalPrefixFFGInterpretation.endpointJustified_certificate
     obtain ⟨hincluded⟩ := hcarrier.formed_evidence.certified
     exact ⟨IncludedCertifiedJustified.toCertifiedJustified
       (cfg := cfg)
-      (Execution.CausalCarrierAttestationRelation.relation
+      (Execution.TrustedCarrierAttestationRelation.relation
         cfg ext E B.state.includedAttestations) hincluded⟩
 
 /-! ## Accepted endpoint origin/pinning at the exact selector call site -/
