@@ -64,6 +64,29 @@ namespace TrustedCausalCarrierFFGState
 
 variable {E : Execution Root} {anchor : Checkpoint Root}
 
+/-- The paper A3.2 view retains the included relation and forgets only its
+validation-store predicate. -/
+def paperA32Inputs {trusted : Store Root → Prop}
+    (S : TrustedCausalCarrierFFGState cfg ext E anchor trusted) :
+    PaperA32StateView cfg E where
+  BlockAt := E.AcceptedBlockAt cfg ext
+  attestationValidity := S.attestationValidity
+  includedAttestations := S.includedAttestations.relation
+  formed := S.formed
+  C := S.C
+  GJ := S.GJ
+  GU := S.GU
+  checkpoint_epoch := S.checkpoint_epoch
+
+abbrev PaperA32Inclusion {trusted : Store Root → Prop}
+    (S : TrustedCausalCarrierFFGState cfg ext E anchor trusted) : Prop :=
+  PaperA32InclusionCore cfg ext (S.paperA32Inputs cfg ext)
+
+abbrev ExactLinkValidity {trusted : Store Root → Prop}
+    (S : TrustedCausalCarrierFFGState cfg ext E anchor trusted) : Prop :=
+  ExactIncludedLinkValidity cfg E S.includedAttestations.Included anchor
+    S.C (E.AcceptedRoot cfg ext)
+
 /-- Exact links on a stated carrier domain for the trusted-store state. -/
 abbrev GuardedExactLinkValidity {trusted : Store Root → Prop}
     (S : TrustedCausalCarrierFFGState cfg ext E anchor trusted)
