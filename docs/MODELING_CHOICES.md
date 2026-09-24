@@ -22,9 +22,8 @@ Each row states a choice in the executable or paper model, why it is used, and t
 │                                        │ VALID.                                                         │                                                                          │
 │ Accepted event prefix semantics        │ Tracks a handler result at every scheduled prefix.             │ Schedules and successful handler assumptions need a concrete network     │
 │                                        │                                                                │ argument.                                                                │
-│ Supplied FFG carrier-vote relation     │ Adds causal evidence for an accepted carrier and received vote. │ The projected block has no ordinary FFG attestation body. The relation   │
-│                                        │                                                                │ is not checked against carrier body membership.                           │
-│ Supplied FFG validation state          │ Gives the execution registry and a true validity answer.       │ The state need not be reachable or prepared by a handler.                │
+│ Supplied FFG carrier-vote relation     │ Checks ordered FFG body membership and accepted carrier origin.  │ A caller must supply the causal inclusion evidence for its execution.   │
+│ Supplied FFG validation state          │ Prepares the keyed target block state from an honest store.     │ The prepared state may be unkeyed; the base state is reachable.          │
 │ Static validator registry              │ Matches the paper balance setting over the horizon.            │ The safety theorem does not cover validator churn.                       │
 │ Finite horizon                         │ Makes endpoints and next-slot receipt precise.                 │ Conclusions do not extend beyond the checked horizon.                    │
 │ Global FFG and finalization laws       │ Connects opaque beacon transitions to exact checkpoint state.  │ The premises range over handler-successful prefixes beyond a conclusion endpoint.  │
