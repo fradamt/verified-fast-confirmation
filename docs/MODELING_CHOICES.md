@@ -46,4 +46,11 @@ committee span, including one slot. A global fault share does not establish
 this bound. It matches `CommitteeHonestMajority` in the repository's formal
 paper Assumption 2.
 
+`HonestBehavior.vote_deadline` bounds each honest vote between its slot start
+and the Python attestation due time, rounded down to whole seconds. The Phase0
+validator document calls for a vote after the expected valid block or at the due
+time, whichever comes first. Gloas sets that time with
+`attestation_due_bps`. This timing field alone does not delay block relay or
+order events at the next slot boundary.
+
 The source fork is `fradamt/consensus-specs` at tag `fcr-gloas-fix` (`13f391516`). The independent weak rule is on branch `fcr-weak-synchrony` and tag `fcr-weak-synchrony-v1`; its live monotonicity proposition remains open. See [source map](SPEC_MAP.md), [paper map](PAPER_MAP.md), and [review guide](REVIEW_GUIDE.md).

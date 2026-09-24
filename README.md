@@ -22,7 +22,7 @@ The records in this table are in `FastConfirmationStatements/Premises/`. The pap
 │                     │                                     │ completed FCR calls; epoch arithmetic; anchor alignment; finalization  │ extension; model idealisation │
 │                     │                                     │ delay; more than one slot per epoch; checkpoint and link evidence.     │                               │
 │ Both safety fields  │ Execution.ScheduledPrefixPremises   │ Whole seconds, well formed stores, coherent external calls, honest     │ Model idealisation            │
-│                     │                                     │ behavior, and a valid genesis store.                                   │                               │
+│                     │                                     │ behavior with an attestation deadline, and a valid genesis store.      │ Phase0/Gloas; model premise   │
 │ Both safety fields  │ Execution.CompletedFCRCallPremises  │ Five delivery laws; fixed active validators; committee and Byzantine   │ Paper Assumptions 1 and 2;    │
 │                     │                                     │ weight bounds; Phase0 source coherence; a nonzero balance floor;       │ Gloas extension; model        │
 │                     │                                     │ next-slot vote receipt; guarded prediction support.                    │ idealisation                  │

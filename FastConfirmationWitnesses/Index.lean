@@ -26,7 +26,8 @@ bundle and the two executions that refute strict-prefix safety variants.
   honest nodes start from one valid anchor store and process finite schedules.
 * `HonestBehavior`:
   `AcceptedActualFCRJointNonVacuityBase.witnessHonestBehavior`. Every scheduled
-  honest vote belongs to its assigned slot committee in that execution.
+  honest vote belongs to its assigned slot committee and meets the
+  attestation due time in that execution.
 * `Execution.CompletedFCRCallPremises`:
   `NextSlotPremiseWitness.witnessCompletedPrefixCallAssumptions`. The same
   execution has synchronized votes and blocks, stable validators and weights,
