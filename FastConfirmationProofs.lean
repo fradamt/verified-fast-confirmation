@@ -168,6 +168,7 @@ public import FastConfirmationProofs.FFG.State.FinalizedSameTip
 public import FastConfirmationProofs.FFG.State.TrustedFinalizedSameTip
 public import FastConfirmationProofs.FFG.State.ObservedCheckpointAncestry
 public import FastConfirmationProofs.FFG.State.PathLocalFinalizedTransport
+public import FastConfirmationProofs.FFG.State.TrustedPathLocalFinalizedTransport
 public import FastConfirmationProofs.FFG.State.PayloadAwareHead
 public import FastConfirmationProofs.FFG.State.ProcessedFFGGlobalCheckpointTrajectory
 public import FastConfirmationProofs.FFG.State.TrustedProcessedFFGGlobalCheckpointTrajectory
