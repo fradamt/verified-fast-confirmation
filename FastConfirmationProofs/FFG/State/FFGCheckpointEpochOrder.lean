@@ -294,7 +294,7 @@ theorem on_attester_slashing {store store' : Store Root}
 /-- Handler-mechanical block preservation once the concrete transition's
 realized and eager checkpoint pairs are known to be epoch-ordered.  This core
 mentions no FFG semantic state or execution-root domain. -/
-private theorem on_block_of_ordered_transition
+theorem on_block_of_ordered_transition
     {store store' : Store Root} {sb : SignedBeaconBlock Root}
     {post : BeaconState Root}
     (hst : ext.state_transition (store.block_states sb.message.parent_root) sb =
