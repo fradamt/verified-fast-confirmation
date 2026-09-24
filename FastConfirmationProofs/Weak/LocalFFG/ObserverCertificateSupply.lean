@@ -108,6 +108,115 @@ theorem finalized_certified (B : E.ObserverLocalFFG cfg ext obs)
   · exact Or.inr ⟨IncludedCertifiedFinalized.toCertifiedFinalized (cfg := cfg)
       (B.includedRelation hobs core localInputs) hc⟩
 
+set_option maxRecDepth 4096 in
+/-- A local finalized certificate is no newer than an honest node's
+justification in the same or a later slot. Its signer supplies the relay
+source; no message is required at the observer. -/
+theorem finalized_epoch_le_honest_justified
+    (B : E.ObserverLocalFFG cfg ext obs)
+    (hobs : obs ∉ E.honest) (core : E.WeakObserverRestrictedCore cfg ext obs)
+    (localInputs : E.ObserverLocalInputs cfg ext obs)
+    {v : ValidatorIndex} (hv : v ∈ E.honest) {m n : ℕ}
+    (hn : E.WithinHorizon cfg n)
+    (hmn : E.slot_at cfg m ≤ E.slot_at cfg n) :
+    (E.store cfg ext obs m).finalized_checkpoint.epoch ≤
+      (E.store cfg ext v n).justified_checkpoint.epoch := by
+  let R := E.withoutObserver obs
+  let S := core.semantics
+  let hT := ScheduledPrefixPremises.of_selectedMarginAssumptions
+    cfg ext R core.base core.genesis
+  have hh : R.honest = E.honest := withoutObserver_honest hobs
+  have hvR : v ∈ R.honest := hh.symm ▸ hv
+  have hvne : v ≠ obs := by intro heq; subst v; exact hobs hv
+  have hstoreV := withoutObserver_store cfg ext E obs v hvne n
+  rw [← hstoreV]
+  have hanchorEq : S.anchor = E.genesis_store.justified_checkpoint := core.anchor_eq
+  have hgenShort : ∃ (st : BeaconState Root) (b : SignedBeaconBlock Root),
+      R.genesis_store = get_forkchoice_store cfg st b ∧ st.slot = b.message.slot := by
+    obtain ⟨st, b, hg, hs, _⟩ := core.genesis
+    exact ⟨st, b, hg, hs⟩
+  have hanchorLe : E.genesis_store.justified_checkpoint.epoch ≤
+      (R.store cfg ext v n).justified_checkpoint.epoch := by
+    obtain ⟨cert⟩ := CausalPrefixFFGInterpretation.endpointJustified_certificate
+      cfg ext S hgenShort core.anchor_eq (R.store_causal cfg ext v n)
+    rw [← hanchorEq]
+    exact CertifiedJustified.anchor_epoch_le (cfg := cfg) cert
+  rcases B.finalized_certificate core (store_observerCausal m) with
+      ha | ⟨carrier, hcarrier, ⟨cert⟩⟩
+  · rw [ha]; exact hanchorLe
+  obtain ⟨i, hi, containing, a, k, own, hdesc, hin, hia, hsource, htarget,
+      hvote, hdata, _hdue⟩ :=
+    B.link_signed_origin core localInputs.toObserverInputAuthenticity cert.finalizing_link
+  have hslotBefore := B.included_slot_before_tip core localInputs m hcarrier
+    (show AttestationIncludedOnChain E B.state.included carrier a from
+      ⟨containing, hdesc, hin⟩)
+  rw [B.block_read (store_observerCausal m) carrier hcarrier] at hslotBefore
+  obtain ⟨ast, ablk, hgen, hgenSlot, hcommit, hparent⟩ := core.genesis
+  have hblockLe := E.store_blocks_slot_le_current cfg ext core.base.whole_seconds
+    ⟨ast, ablk, hgen, hgenSlot⟩ obs m carrier hcarrier
+  rw [E.store_current_slot] at hblockLe
+  have hslotLt : a.data.slot < R.slot_at cfg n :=
+    hslotBefore.trans_le (hblockLe.trans hmn)
+  have hcommittee := core.base.honest_behavior.votes_assigned i hi a.data.slot
+    (by rw [hvote]; exact Option.some_ne_none _)
+  have hanchorTarget : E.genesis_store.justified_checkpoint.epoch ≤ a.data.target.epoch := by
+    rw [htarget, cert.child_epoch]
+    exact (IncludedCertifiedJustified.anchor_epoch_le (cfg := cfg) cert.justified).trans
+      (Nat.le_succ _)
+  have hs0 : R.slot_at cfg 0 ≤ a.data.slot := by
+    have hstart := R.initial_slot_le_anchor_boundary cfg ext hT
+      core.anchor_eq core.anchor_boundary
+    apply hstart.trans
+    rw [hanchorEq]
+    apply (Nat.mul_le_mul_right cfg.slots_per_epoch hanchorTarget).trans
+    rw [(B.included_evidence hin).target_epoch]
+    exact Nat.div_mul_le_self _ _
+  obtain ⟨time, index, htimeH, htimeSlot, hown⟩ :=
+    core.base.honest_behavior.votes_head i hi a.data.slot hcommittee
+      (B.included_evidence hin).slot_within_horizon hs0
+  have heq := hvote
+  rw [hown] at heq
+  have hownData : a.data = (honest_attestation cfg ext
+      (R.store cfg ext i time) a.data.slot index i).data := by
+    rw [(Prod.mk.inj (Option.some.inj heq)).2]
+    exact hdata
+  have hhead := R.headRootKnown_of_acceptedGlobalTrajectory cfg ext S hT
+    core.anchor_eq core.anchor_boundary hi time htimeH
+  have hselector := R.honest_attestation_source_selector cfg ext S hT
+    core.completed_calls.phase0_source core.completed_calls.phase0_boundary_source
+    (index := index) htimeSlot hhead
+  have hsourceOwn : (honest_attestation cfg ext
+      (R.store cfg ext i time) a.data.slot index i).data.source =
+      (E.store cfg ext obs m).finalized_checkpoint := by
+    rw [← hownData]; exact hsource
+  rw [hsourceOwn] at hselector
+  have hgenTime : R.genesis_store.genesis_time ≤ R.genesis_store.time := by
+    change E.genesis_store.genesis_time ≤ E.genesis_store.time
+    have hg : E.genesis_store = get_forkchoice_store cfg ast ablk := hgen
+    rw [hg]; simp only [get_forkchoice_store]; omega
+  have hnext : R.slot_start cfg (R.slot_at cfg time + 1) ≤ n := by
+    rw [htimeSlot]
+    exact (R.slot_start_mono cfg (Nat.succ_le_of_lt hslotLt)).trans
+      (R.slot_start_le_of_slot_at cfg core.base.whole_seconds hgenTime rfl)
+  have htimeLt : time < n := by
+    have hlt : time < R.slot_start cfg (R.slot_at cfg n) :=
+      (R.slot_at_lt_iff cfg core.base.whole_seconds hgenTime).mp
+        (htimeSlot ▸ hslotLt)
+    exact hlt.trans_le (R.slot_start_le_of_slot_at cfg core.base.whole_seconds hgenTime rfl)
+  have hacc := CheckpointCertificateAccountability.of_assumptions cfg (anchor := S.anchor)
+    (SelectedMarginAssumptions.toFFGAccountabilityAssumptions cfg ext R core.base)
+  apply R.deadline_justified_epoch_le_of_carrier cfg ext S hT
+    core.base.synchrony.deadline_block_relay core.anchor_eq core.anchor_boundary
+    core.checkpoint_projection core.exact_link_validity hacc hi hvR htimeH hn hhead
+    (by
+      rw [show R.slot_at cfg time = a.data.slot from htimeSlot]
+      exact (core.base.honest_behavior.vote_deadline i hi _ _ _ hown).2) hnext htimeLt
+  rcases hselector with hgj | ⟨hgu, hold⟩
+  · exact Or.inl hgj
+  · exact Or.inr ⟨hgu, by
+      simpa only [get_current_store_epoch, R.store_current_slot] using
+        hold.trans_le (ce_mono cfg hslotLt.le)⟩
+
 end ObserverLocalFFG
 end Execution
 end FastConfirmation.Spec

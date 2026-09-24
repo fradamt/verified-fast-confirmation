@@ -244,6 +244,20 @@ G4 paths when the receiver is honest. Local FFG proves observer head knownness
 and AU checkpoint ancestry. These are compiled facts, with no observer
 receipt deadline.
 
+The local finalized-reset branch now has a direct proof.
+`ObserverLocalFFG.finalized_epoch_le_honest_justified` extracts a genuine
+honest signer from the local finalizing link. Body inclusion places its vote
+before the carrier slot. The shared relay therefore supplies an honest
+endpoint in the same or a later query slot. `finalized_on_honest_justified`
+uses certificate accountability, and `finalized_safeFrom` derives safety from
+the query slot's start. Neither theorem assumes the old global FFG bundle
+for the actual run or a head-path contract at the observer.
+
+`nonhonest_vote_ubiquity`, `nonhonest_vote_target_received`, and
+`nonhonest_head_ancestor_known` supply the remaining honest-receiver delivery
+operations from the restricted core. These are local proof suppliers; the
+full weak-confirmation fold has not yet been ported to them.
+
 A direct reduction to the old headline bundle stops at two fields. First,
 the old accepted-carrier inclusion evidence needs a separate block-derived
 attestation event and an honest validation store. The local content contract
