@@ -338,13 +338,12 @@ theorem recentSourceSeedAt_endpoint_of_explicitSeed_sameEpoch
 
 /-- Actual-call previous cell. In the previous-loop arm the exact cached
 seed is known at a slot-start origin. In the tentative arm the selected root
-itself is the seed and its endpoint knownness follows the generic selected
-confirmation path.
+itself is the seed and its earlier origin is the honest supporter's vote.
 
 The cached head's slot-start origin supplies the cutoff relay. Accepted AU
 certificate accountability and finalization lag rule out permanent exclusion
-at the endpoint. The selected ancestor is then recovered from that known
-head's common accepted parent chain.
+at the endpoint in both arms. The previous-loop selected ancestor is
+recovered from that known head's common accepted parent chain.
 
 The public signature lists the independent lower contracts; it does not
 export `SelectedMarginAssumptions` as a completion premise. -/
@@ -508,13 +507,68 @@ theorem StrictSelectedResultMechanicalFacts.fcrStep_previous_endpointRecentSourc
           get_block_epoch cfg (E.fcrStoreAtCall cfg ext v n).store result :=
         hprevious.trans hcurrent.symm
       exact False.elim ((Nat.ne_of_gt (Nat.lt_succ_self _)) hbad)
-    · have hselectedM : result ∈ (E.store cfg ext w m).block_roots :=
-        E.confirmed_known_at_all_honest_endpoints_minimal cfg ext hA
+    · have hselectedQ : result ∈
+          (E.store cfg ext v (n + 1)).block_roots := by
+        simpa only [E.fcrStep_store] using h.result_known
+      have hparentQ : ((E.store cfg ext v (n + 1)).blocks result).parent_root ∈
+          (E.store cfg ext v (n + 1)).block_roots := by
+        simpa only [E.fcrStep_store] using h.parent_known
+      obtain ⟨i, lm, hi, hlm, hsupp⟩ :=
+        E.honestSupporter_of_confirmed_known_at_minimal cfg ext hA
           v hv (n + 1) (E.fcrStoreAtCall cfg ext v n)
           (E.fcrStep_store cfg ext v n) result hn1H
-          (by simpa only [E.fcrStep_store] using h.result_known)
-          (by simpa only [E.fcrStep_store] using h.parent_known)
-          h.confirmed w hw m hslotForward hmH
+          hselectedQ hparentQ h.confirmed
+      obtain ⟨u, nu, d, hu, hHnu, hslot, hdeadline,
+          hd, hdQuery, hanc⟩ :=
+        E.past_descendant_of_honest_supporter_known_minimal cfg ext hA
+          v hv (n + 1) result hn1H i hi lm hlm hsupp
+      obtain ⟨hselectedOrigin, hrelayOutcome⟩ :=
+        E.mem_or_excluded_of_known_honest_past_descendant_minimal
+          cfg ext hA v hv (n + 1) result hn1H hselectedQ
+          w hw m hslotForward hmH u hu nu hHnu d hslot hdeadline
+          hd hdQuery hanc
+      let target := get_voting_source cfg
+        (E.fcrStoreAtCall cfg ext v n).store result
+      have hsourceAU : B.state.AU cfg ext result target :=
+        hqueryCausal.getVotingSource_AU cfg ext B h.result_known
+      have hreal := E.finalizedCheckpoint_resetRealizedAt_of_acceptedGlobalTrajectory
+        cfg ext B hT hanchor hboundary (w := w) m
+      have hfinalizedKnown : (E.store cfg ext w m).finalized_checkpoint.root ∈
+          (E.store cfg ext w m).block_roots := hreal.root_known
+      have hanchorLe : B.anchor.epoch ≤
+          (E.store cfg ext w m).finalized_checkpoint.epoch :=
+        CertifiedJustified.anchor_epoch_le (cfg := cfg)
+          (Classical.choice hreal.certified)
+      have hLag : E.CausalRealizedFinalizationLag cfg ext B :=
+        E.causalRealizedFinalizationLag_of_acceptedDelay
+          cfg ext B hT hanchor hDelay
+      have htargetEpoch : (E.store cfg ext w m).finalized_checkpoint.epoch ≤
+          target.epoch := by
+        rcases hLag hendpointCausal with hFanchor | hFdelay
+        · obtain ⟨_carrier, _hdesc, hformed⟩ := hsourceAU
+          obtain ⟨hincluded⟩ := (B.state.formed_evidence hformed).certified
+          have hcert : CertifiedJustified cfg E B.anchor target :=
+            IncludedCertifiedJustified.toCertifiedJustified (cfg := cfg)
+              B.state.includedAttestations.relation hincluded
+          rw [hFanchor]
+          exact CertifiedJustified.anchor_epoch_le (cfg := cfg) hcert
+        · change target.epoch + 2 ≥ get_current_store_epoch cfg
+            (E.fcrStoreAtCall cfg ext v n).store at hrecent
+          rw [hsameEpoch] at hFdelay
+          exact (Nat.add_le_add_iff_right).mp (hFdelay.trans hrecent)
+      have hselectedWalk : WalkKnown (E.store cfg ext u nu)
+          (compute_start_slot_at_epoch cfg
+            (E.store cfg ext w m).finalized_checkpoint.epoch) result :=
+        E.trustedAnchor_boundaryWalkAtEpoch cfg ext hA hanchor hboundary
+          u nu hanchorLe hselectedOrigin
+      have hnotExcluded : ¬ PermanentBlockExclusion cfg ext E u nu result w m :=
+        E.acceptedSourceTip_not_permanentlyExcluded_of_AU cfg ext B hT hA
+          hanchor hboundary P V hanchorExact hacc hmH hselectedOrigin
+          hfinalizedKnown hanchorLe hsourceAU htargetEpoch hselectedWalk
+      have hselectedM : result ∈ (E.store cfg ext w m).block_roots := by
+        rcases hrelayOutcome with hknown | hexcluded
+        · exact hknown
+        · exact False.elim (hnotExcluded hexcluded)
       exact E.recentSourceSeedAt_endpoint_of_explicitSeed_sameEpoch
         cfg ext B hT.wellFormed hT.externals_coherence
         hgen hgenSlot hgenParent hqueryCausal hendpointCausal

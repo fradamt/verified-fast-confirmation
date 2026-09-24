@@ -392,7 +392,10 @@ theorem past_descendant_of_honest_supporter_known_minimal
       (hA.honest_behavior.vote_deadline i hi s nu _ hvoteHead).2
   · simpa only [get_node_for_root, is_ancestor_supported_pending] using hsupp
 
-theorem mem_of_known_honest_past_descendant_minimal
+/-- Recover the selected ancestor in the honest supporter's vote-time store,
+then relay only that root after its attestation deadline. The handler's
+finalized guard is the sole remaining endpoint alternative. -/
+theorem mem_or_excluded_of_known_honest_past_descendant_minimal
     (hA : SelectedMarginAssumptions cfg ext E)
     (v : ValidatorIndex) (hv : v ∈ E.honest) (n : ℕ) (b : Root)
     (hHn : E.WithinHorizon cfg n)
@@ -409,7 +412,9 @@ theorem mem_of_known_honest_past_descendant_minimal
     (hdv : d ∈ (E.store cfg ext v n).block_roots)
     (hanc : is_ancestor (E.store cfg ext v n)
       (get_node_for_root d) (get_node_for_root b) = true) :
-    b ∈ (E.store cfg ext w m).block_roots := by
+    b ∈ (E.store cfg ext u nu).block_roots ∧
+      (b ∈ (E.store cfg ext w m).block_roots ∨
+        PermanentBlockExclusion cfg ext E u nu b w m) := by
   obtain ⟨ast, ablk, hgeq, hstateSlot, hroot⟩ := hA.genesis
   have hgen' : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
       E.genesis_store = get_forkchoice_store cfg ast ablk ∧
@@ -455,8 +460,6 @@ theorem mem_of_known_honest_past_descendant_minimal
     have hspec := (get_ancestor_spec hpsl hwalk).1
     rw [hulands] at hspec
     exact hspec
-  have hgateUW : E.slot_at cfg nu + 1 ≤ E.slot_at cfg (m + 1) :=
-    hslot.trans_le (hnm.trans (E.slot_at_mono cfg (Nat.le_succ m)))
   have hgenTime : E.genesis_store.genesis_time ≤
       E.genesis_store.time := by
     rw [hgeq]
@@ -464,10 +467,36 @@ theorem mem_of_known_honest_past_descendant_minimal
       hstateSlot hroot).time_ge_genesis
   obtain ⟨hstart, hbefore⟩ := E.past_slot_deadline_target_gate cfg
     hA.whole_seconds hgenTime (hslot.trans_le hnm)
-  rcases hA.synchrony.deadline_block_relay u hu nu b hHnu hbu
-      hdeadline w hw m hHm hstart hbefore with hknown | _hexcluded
+  exact ⟨hbu, hA.synchrony.deadline_block_relay u hu nu b hHnu hbu
+    hdeadline w hw m hHm hstart hbefore⟩
+
+theorem mem_of_known_honest_past_descendant_minimal
+    (hA : SelectedMarginAssumptions cfg ext E)
+    (v : ValidatorIndex) (hv : v ∈ E.honest) (n : ℕ) (b : Root)
+    (hHn : E.WithinHorizon cfg n)
+    (hb : b ∈ (E.store cfg ext v n).block_roots)
+    (w : ValidatorIndex) (hw : w ∈ E.honest) (m : ℕ)
+    (hnm : E.slot_at cfg n ≤ E.slot_at cfg m)
+    (hHm : E.WithinHorizon cfg m)
+    (u : ValidatorIndex) (hu : u ∈ E.honest) (nu : ℕ)
+    (hHnu : E.WithinHorizon cfg nu) (d : Root)
+    (hslot : E.slot_at cfg nu < E.slot_at cfg n)
+    (hdeadline : nu ≤ E.slot_start cfg (E.slot_at cfg nu) +
+      get_attestation_due_ms cfg / 1000)
+    (hd : d ∈ (E.store cfg ext u nu).block_roots)
+    (hdv : d ∈ (E.store cfg ext v n).block_roots)
+    (hanc : is_ancestor (E.store cfg ext v n)
+      (get_node_for_root d) (get_node_for_root b) = true) :
+    b ∈ (E.store cfg ext w m).block_roots := by
+  obtain ⟨hbu, hrelayOutcome⟩ :=
+    E.mem_or_excluded_of_known_honest_past_descendant_minimal cfg ext hA
+      v hv n b hHn hb w hw m hnm hHm u hu nu hHnu d hslot hdeadline
+      hd hdv hanc
+  rcases hrelayOutcome with hknown | _hexcluded
   · exact hknown
-  · exact hA.synchrony.block_relay u hu nu b hHnu hbu w hw m hHm hgateUW
+  · have hgateUW : E.slot_at cfg nu + 1 ≤ E.slot_at cfg (m + 1) :=
+      hslot.trans_le (hnm.trans (E.slot_at_mono cfg (Nat.le_succ m)))
+    exact hA.synchrony.block_relay u hu nu b hHnu hbu w hw m hHm hgateUW
 
 theorem ancestry_of_known_honest_past_descendant_minimal
     (hA : SelectedMarginAssumptions cfg ext E)
