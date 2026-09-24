@@ -4,6 +4,7 @@ public import FastConfirmationProofs.Execution.Trajectory.WFTrajectory
 public import FastConfirmationProofs.Discount.HonestWeight
 public import FastConfirmationProofs.Execution.Trajectory.PayloadPersistence
 public import FastConfirmationProofs.Execution.StoreInvariants.BlockStateAgreement
+public import FastConfirmationProofs.Safety.BlockAgreement
 
 public import FastConfirmationProofs.ModelFacts
 @[expose] public section
@@ -895,17 +896,33 @@ theorem Execution.vote_lands {E : Execution Root}
   -- the prefix store extends and agrees with the ticked base
   have htb_br : tb.block_roots = (E.store cfg ext w Nm1).block_roots := by
     rw [htb]; exact ((on_tick_sameBlocks cfg (E.store cfg ext w Nm1) (E.time_at (Nm1 + 1))).1).symm
-  have hsub : (E.store cfg ext v n).block_roots ⊆
-      (pre.foldl (fun store event => (apply_event cfg ext store event).getD store)
-        tb).block_roots := by
-    intro r hr
-    have hHNm1p : E.WithinHorizon cfg (Nm1 + 1) := by rwa [← hNeq]
-    have hHNm1 : E.WithinHorizon cfg Nm1 :=
-      E.withinHorizon_mono cfg (Nat.le_succ Nm1) hHNm1p
-    have h1 : r ∈ (E.store cfg ext w Nm1).block_roots :=
-      hsyn.block_relay v hv n r hHn hr w hw Nm1 hHNm1 htiming
-    have h2 : r ∈ tb.block_roots := by rw [htb_br]; exact h1
-    exact (foldl_storeLE cfg ext pre tb).1 h2
+  have hHNm1p : E.WithinHorizon cfg (Nm1 + 1) := by rwa [← hNeq]
+  have hHNm1 : E.WithinHorizon cfg Nm1 :=
+    E.withinHorizon_mono cfg (Nat.le_succ Nm1) hHNm1p
+  have hsourceWalk : WalkKnown (E.store cfg ext v n)
+      (compute_start_slot_at_epoch cfg a.data.target.epoch)
+      a.data.beacon_block_root := by
+    simpa only [ha] using hhead_walk
+  have hcovered : WalkCoveredBy (E.store cfg ext v n)
+      (pre.foldl (fun store event => (apply_event cfg ext store event).getD store) tb)
+      (compute_start_slot_at_epoch cfg a.data.target.epoch)
+      a.data.beacon_block_root := by
+    have key : ∀ {root}, WalkKnown (E.store cfg ext v n)
+        (compute_start_slot_at_epoch cfg a.data.target.epoch) root →
+        WalkCoveredBy (E.store cfg ext v n)
+          (pre.foldl (fun store event => (apply_event cfg ext store event).getD store) tb)
+          (compute_start_slot_at_epoch cfg a.data.target.epoch) root := by
+      intro root hwalk
+      induction hwalk with
+      | @stop root hr hle =>
+          have hpred := hsyn.block_relay v hv n root hHn hr w hw Nm1 hHNm1 htiming
+          have hticked : root ∈ tb.block_roots := by rw [htb_br]; exact hpred
+          exact WalkCoveredBy.stop hr ((foldl_storeLE cfg ext pre tb).1 hticked) hle
+      | @step root hr hgt hp ih =>
+          have hpred := hsyn.block_relay v hv n root hHn hr w hw Nm1 hHNm1 htiming
+          have hticked : root ∈ tb.block_roots := by rw [htb_br]; exact hpred
+          exact WalkCoveredBy.step hr ((foldl_storeLE cfg ext pre tb).1 hticked) hgt ih
+    exact key hsourceWalk
   have hprov_tb : BlockProvenance E tb := by
     rw [htb]
     exact on_tick_blockProvenance cfg (E.store cfg ext w Nm1) (E.time_at (Nm1 + 1))
@@ -915,10 +932,21 @@ theorem Execution.vote_lands {E : Execution Root}
   have hprov_P : BlockProvenance E
       (pre.foldl (fun store event => (apply_event cfg ext store event).getD store) tb) :=
     blockProvenance_foldl cfg ext pre tb hpre_sched hprov_tb
-  have hagree : ∀ x ∈ (E.store cfg ext v n).block_roots,
+  have hagree : ∀ x, x ∈ (E.store cfg ext v n).block_roots →
+      x ∈ (pre.foldl (fun store event => (apply_event cfg ext store event).getD store)
+        tb).block_roots →
       (E.store cfg ext v n).blocks x =
         (pre.foldl (fun store event => (apply_event cfg ext store event).getD store) tb).blocks x :=
-    fun x hx => hwf.blocks_agree (E.blockProvenance cfg ext v n) hprov_P hx (hsub hx)
+    fun x hx hreceiver =>
+      hwf.blocks_agree (E.blockProvenance cfg ext v n) hprov_P hx hreceiver
+  have hheadPrefix : a.data.beacon_block_root ∈
+      (pre.foldl (fun store event => (apply_event cfg ext store event).getD store)
+        tb).block_roots := hcovered.receiver_walk hagree |>.root_mem
+  have htargetPrefix : a.data.target.root ∈
+      (pre.foldl (fun store event => (apply_event cfg ext store event).getD store)
+        tb).block_roots := by
+    rw [hckpt]
+    exact hcovered.checkpoint_root_mem cfg rfl
   have hcur_P : get_current_slot cfg
       (pre.foldl (fun store event => (apply_event cfg ext store event).getD store) tb) =
         a.data.slot + 1 := by
@@ -947,9 +975,8 @@ theorem Execution.vote_lands {E : Execution Root}
         true :=
     validate_at_extension cfg (E.store cfg ext v n)
       (pre.foldl (fun store event => (apply_event cfg ext store event).getD store) tb) a
-      (hsub hhead_known) (hsub htroot) (hagree _ hhead_known)
-      (by simp only [get_checkpoint_block]
-          rw [get_ancestor_congr hagree hhead_known hhead_walk])
+      hheadPrefix htargetPrefix (hagree _ hhead_known hheadPrefix)
+      (hcovered.checkpoint_agreement cfg hagree rfl)
       hcur_P hepoch hbslot hckpt
       hindex hsame hpayload_P
   have hvalid : ext.is_valid_indexed_attestation
@@ -960,7 +987,7 @@ theorem Execution.vote_lands {E : Execution Root}
       (E.honestCausalStore_prefix cfg ext w hw Nm1
         (by simpa only [← hNeq] using hHdeliver)
         pre (Event.attestation a false :: suf) hl)
-      a (hsub htroot) v hv hsingle hcomm_slot hvote_ex
+      a htargetPrefix v hv hsingle hcomm_slot hvote_ex
   have hne_full : v ∉ (E.store cfg ext w (Nm1 + 1)).equivocating_indices :=
     Execution.honest_not_equivocating cfg ext hhb hec ⟨ast, ablk, hgeq⟩ hv w (Nm1 + 1) hw (by simpa only [← hNeq] using hHdeliver)
   have hle_pf : StoreLE
