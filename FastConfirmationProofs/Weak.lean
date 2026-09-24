@@ -1,4 +1,5 @@
 module
+public import FastConfirmationProofs.Weak.LocalFFG
 public import FastConfirmationProofs.Weak.Certificates.EndpointQuorumCausality
 public import FastConfirmationProofs.Weak.Certificates.WeakBankedJustification
 public import FastConfirmationProofs.Weak.Certificates.WeakCertificateDissemination
@@ -62,5 +63,3 @@ public import FastConfirmationProofs.Weak.Selection.WeakSelectorInversion
 public import FastConfirmationProofs.Weak.Selection.WeakSiblingScore
 
 /-! Weak proof contents. -/
-
-public import FastConfirmationProofs.Weak.LocalFFG
