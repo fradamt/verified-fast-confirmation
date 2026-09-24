@@ -3,6 +3,7 @@ public import FastConfirmationProofs.FFG.SelectedSource.PhaseSourceCarriers
 public import FastConfirmationProofs.Handlers.ResetAdoption
 public import FastConfirmationProofs.Safety.FinalizedCheckpointNextSlotSafety
 public import FastConfirmationProofs.Weak.Safety.WeakOneShotSafety
+public import FastConfirmationProofs.Weak.Selection.WeakAncestryEndpoint
 
 @[expose] public section
 
@@ -191,6 +192,14 @@ structure FinalizedHonestVotingSourceOrigin
   slot_before : E.slot_at cfg time < get_current_slot cfg store
   seed : Root
   seed_known : seed ∈ (E.store cfg ext signer time).block_roots
+  time_due : time ≤ E.slot_start cfg (E.slot_at cfg time) +
+    get_attestation_due_ms cfg / 1000
+  seed_walk_slot : Slot
+  seed_head_walk : WalkKnown (E.store cfg ext signer time) seed_walk_slot
+    (get_head cfg (E.store cfg ext signer time)).root
+  seed_lands : (get_ancestor (E.store cfg ext signer time)
+    (get_node_for_root (get_head cfg (E.store cfg ext signer time)).root)
+    seed_walk_slot).root = seed
   seed_epoch : get_current_store_epoch cfg (E.store cfg ext signer time) =
     store.finalized_checkpoint.epoch + 1
   voting_source_eq :
@@ -244,7 +253,7 @@ theorem finalizedHonestVotingSourceOrigin_of_causalStore
   have hevidence := B.state.includedAttestations.evidence hincluded
   -- Genuineness: the included attestation is the signer's own honest vote.
   obtain ⟨sender, sentAt, hscheduled⟩ := hevidence.received_from_block
-  obtain ⟨_groundTime, groundVote, hvoteGround, hdataGround⟩ :=
+  obtain ⟨_groundTime, groundVote, _hcausal, hvoteGround, hdataGround⟩ :=
     hacc.honest_behavior.no_forgery sender sentAt a true hscheduled
       i hiHonest hiAttests
   have hcommittee : i ∈ E.committee a.data.slot :=
@@ -423,6 +432,12 @@ theorem finalizedHonestVotingSourceOrigin_of_causalStore
           hstore htip.known ⟨_containing, _hcarrierContaining, hincluded⟩
       seed := child.root
       seed_known := hseedSpec.1
+      time_due := by
+        rw [hkSlot]
+        exact (hacc.honest_behavior.vote_deadline i hiHonest a.data.slot k _ hvoteHead).2
+      seed_walk_slot := compute_start_slot_at_epoch cfg child.epoch
+      seed_head_walk := hwalk
+      seed_lands := hlands
       seed_epoch := by
         rw [hcurrentEpoch]
         exact F.child_epoch
@@ -454,13 +469,14 @@ theorem weak_finalized_epoch_le_remoteJustified
     (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
       (E := E) (anchor := B.anchor))
     (hsync : NextSlotSynchronyPremises cfg ext E)
+    (hpaths : HonestHeadPathAdmissibility cfg ext E)
     {v w : ValidatorIndex} (hw : w ∈ E.honest) {q m : ℕ}
     (_hHq : E.WithinHorizon cfg q)
     (hHm : E.WithinHorizon cfg m)
     (hrelay : E.slot_at cfg q ≤ E.slot_at cfg m) :
     (E.store cfg ext v q).finalized_checkpoint.epoch ≤
       (E.store cfg ext w m).justified_checkpoint.epoch := by
-  obtain ⟨ast, ablk, hgenEq, hslot, _hparent⟩ := hT.genesis_structure
+  obtain ⟨ast, ablk, hgenEq, hslot, hparent⟩ := hT.genesis_structure
   have hgenShort : ∃ (ast : BeaconState Root)
       (ablk : SignedBeaconBlock Root),
       E.genesis_store = get_forkchoice_store cfg ast ablk ∧
@@ -479,12 +495,26 @@ theorem weak_finalized_epoch_le_remoteJustified
     -- relayed to the endpoint even in that same slot.
     have hvoteSlot : E.slot_at cfg O.time < E.slot_at cfg q := by
       simpa only [E.store_current_slot cfg ext v q] using O.slot_before
-    have hgate : E.slot_at cfg O.time + 1 ≤ E.slot_at cfg (m + 1) :=
-      ((Nat.succ_le_of_lt hvoteSlot).trans hrelay).trans
-        (E.slot_at_mono cfg (Nat.le_succ m))
+    have hslotM : E.slot_at cfg O.time < E.slot_at cfg m :=
+      hvoteSlot.trans_le hrelay
+    have hgenTime : E.genesis_store.genesis_time ≤ E.genesis_store.time := by
+      rw [hgenEq]; simp only [get_forkchoice_store]; omega
+    obtain ⟨hnext, hlt⟩ := E.past_slot_deadline_target_gate cfg
+      hT.whole_seconds hgenTime hslotM
+    have hHnext : E.WithinHorizon cfg
+        (E.slot_start cfg (E.slot_at cfg O.time + 1)) :=
+      E.withinHorizon_mono cfg hnext hHm
+    have hpath := hpaths O.signer O.signer_honest O.time O.time_within w
+      O.seed_walk_slot hHnext O.seed_head_walk
+    have hparentSource : ParentSlotLt (E.store cfg ext O.signer O.time) :=
+      E.store_parentSlotLt cfg ext hT.wellFormed hT.externals_coherence
+        ⟨ast, ablk, hgenEq, hslot, hparent⟩
+        hT.wellFormed.anchor_parent_unscheduled O.signer O.time
+    have hnot := VotePathAdmissible.ancestor_not_excluded cfg ext E
+      hparentSource hpath O.seed_lands
     have hseedEndpoint : O.seed ∈ (E.store cfg ext w m).block_roots :=
-      hsync.block_relay O.signer O.signer_honest O.time O.seed O.time_within
-        O.seed_known w hw m hHm hgate
+      (hsync.deadline_block_relay O.signer O.signer_honest O.time O.seed
+        O.time_within O.seed_known O.time_due w hw m hHm hnext hlt).resolve_right hnot
     have hblockAgree :
         (E.store cfg ext O.signer O.time).blocks O.seed =
           (E.store cfg ext w m).blocks O.seed :=
@@ -538,6 +568,7 @@ theorem weak_finalizedReset_justifiedDom_of_synchrony
     (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
       (E := E) (anchor := B.anchor))
     (hsync : NextSlotSynchronyPremises cfg ext E)
+    (hpaths : HonestHeadPathAdmissibility cfg ext E)
     {v : ValidatorIndex} {q : ℕ}
     (hHq : E.WithinHorizon cfg q) :
     ∀ w ∈ E.honest, ∀ m : ℕ, E.slot_start cfg (E.slot_at cfg q) ≤ m →
@@ -589,7 +620,7 @@ theorem weak_finalizedReset_justifiedDom_of_synchrony
       (E.store cfg ext w m).justified_checkpoint.epoch := by
     simpa only [finalized] using
       E.weak_finalized_epoch_le_remoteJustified cfg ext B hT hacc hphase
-        hboundaryPhase hanchor hboundary hsync hw hHq hHm hslotQM
+        hboundaryPhase hanchor hboundary hsync hpaths hw hHq hHm hslotQM
   obtain ⟨hjustified⟩ :=
     CausalPrefixFFGInterpretation.endpointJustified_certificate
       (E := E) cfg ext B hgenShort hanchor hendpointCausal
@@ -631,6 +662,7 @@ theorem weak_finalizedReset_safeFrom_of_synchrony
     (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
       (E := E) (anchor := B.anchor))
     (hsync : NextSlotSynchronyPremises cfg ext E)
+    (hpaths : HonestHeadPathAdmissibility cfg ext E)
     {v : ValidatorIndex} {q : ℕ}
     (hHq : E.WithinHorizon cfg q) :
     E.SafeFrom cfg ext (E.store cfg ext v q).finalized_checkpoint.root
@@ -640,7 +672,7 @@ theorem weak_finalizedReset_safeFrom_of_synchrony
   apply E.safeFrom_of_justified_dom_K cfg ext hdomainK
   intro w hw m hqm hHm
   exact E.weak_finalizedReset_justifiedDom_of_synchrony
-    cfg ext B hT hacc hphase hboundaryPhase hanchor hboundary hsync hHq
+    cfg ext B hT hacc hphase hboundaryPhase hanchor hboundary hsync hpaths hHq
       w hw m hqm hHm
 
 /-! ## Self-contained one-shot weak safety from the finalized checkpoint
@@ -708,7 +740,8 @@ theorem weak_safeFrom_find_latest_confirmed_descendant_from_finalized
       (E.slot_start cfg (E.slot_at cfg q)) := by
     rw [hstore]
     exact E.weak_finalizedReset_safeFrom_of_synchrony cfg ext B hT hacc hphase
-      hboundaryPhase hanchor hboundary hW.base.synchrony hqH
+      hboundaryPhase hanchor hboundary hW.base.synchrony
+      hW.base.domain.honest_head_paths hqH
   -- the observer's `justified_root_known` is derived from `B`/`hT`/`hanchor`/
   -- `hboundary`, all already carried here, rather than assumed
   have hWM := hW.toMarginAssumptions cfg ext E B hT hanchor hboundary

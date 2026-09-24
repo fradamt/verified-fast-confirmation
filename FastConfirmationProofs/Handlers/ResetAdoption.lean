@@ -175,6 +175,8 @@ theorem finalized_epoch_le_justified_of_acceptedCarrierKnown
     {v w : ValidatorIndex} {q m : ℕ}
     (hcarriers : ∀ r,
       r ∈ (E.store cfg ext v q).block_roots →
+      ((E.store cfg ext v q).finalized_checkpoint = B.state.GF r ∨
+        (E.store cfg ext v q).finalized_checkpoint = B.state.GUF r) →
         r ∈ (E.store cfg ext w m).block_roots) :
     (E.store cfg ext v q).finalized_checkpoint.epoch ≤
       (E.store cfg ext w m).justified_checkpoint.epoch := by
@@ -198,7 +200,7 @@ theorem finalized_epoch_le_justified_of_acceptedCarrierKnown
       hgenShort hanchor hendpoint
   · have htipEndpointKnown : tip ∈
         (E.store cfg ext w m).block_roots :=
-      hcarriers tip htipSource.known
+      hcarriers tip htipSource.known (Or.inl hfieldGF)
     have htipEndpoint : E.AcceptedCarrierIn
         (cfg := cfg) (ext := ext) (E.store cfg ext w m) tip :=
       Execution.AcceptedCarrierIn.of_causal_known hendpoint
@@ -208,7 +210,7 @@ theorem finalized_epoch_le_justified_of_acceptedCarrierKnown
       (hmax.ledger.gj_epoch_le_justified tip htipEndpoint)
   · have htipEndpointKnown : tip ∈
         (E.store cfg ext w m).block_roots :=
-      hcarriers tip htipSource.known
+      hcarriers tip htipSource.known (Or.inr hfieldGUF)
     have htipEndpoint : E.AcceptedCarrierIn
         (cfg := cfg) (ext := ext) (E.store cfg ext w m) tip :=
       Execution.AcceptedCarrierIn.of_causal_known hendpoint
@@ -234,62 +236,6 @@ theorem finalized_epoch_le_justified_of_acceptedCarrierKnown
       rw [hfieldGUF]
       exact hgufLeGJ.trans
         (hmax.ledger.gj_epoch_le_justified tip htipEndpoint)
-
-/-- Synchrony discharges the carrier-membership premise after the ordinary
-one-slot relay gate.  This is the endpoint adoption theorem needed by the
-corrected finalized-reset facade. -/
-theorem finalized_epoch_le_remoteJustified_of_synchrony
-    (B : CausalPrefixFFGInterpretation cfg ext E)
-    (hT : E.ScheduledPrefixPremises cfg ext)
-    (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
-    (hsync : NextSlotSynchronyPremises cfg ext E)
-    {v w : ValidatorIndex} (hv : v ∈ E.honest)
-    (hw : w ∈ E.honest) {q m : ℕ}
-    (hHq : E.WithinHorizon cfg q)
-    (hHm : E.WithinHorizon cfg m)
-    (hrelay : E.slot_at cfg q + 1 ≤ E.slot_at cfg (m + 1)) :
-    (E.store cfg ext v q).finalized_checkpoint.epoch ≤
-      (E.store cfg ext w m).justified_checkpoint.epoch := by
-  apply E.finalized_epoch_le_justified_of_acceptedCarrierKnown
-    cfg ext B hT hanchor
-  intro r hr
-  exact hsync.block_relay v hv q r hHq hr w hw m hHm hrelay
-
-/-- Cleaner next-slot form.  Unlike the preceding end-of-slot relay boundary,
-this is directly shaped like `Spec_Safety_next_slot`. -/
-theorem finalized_epoch_le_remoteJustified_nextSlot
-    (B : CausalPrefixFFGInterpretation cfg ext E)
-    (hT : E.ScheduledPrefixPremises cfg ext)
-    (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
-    (hsync : NextSlotSynchronyPremises cfg ext E)
-    {v w : ValidatorIndex} (hv : v ∈ E.honest)
-    (hw : w ∈ E.honest) {q m : ℕ}
-    (hHq : E.WithinHorizon cfg q)
-    (hHm : E.WithinHorizon cfg m)
-    (hnext : E.slot_at cfg q + 1 ≤ E.slot_at cfg m) :
-    (E.store cfg ext v q).finalized_checkpoint.epoch ≤
-      (E.store cfg ext w m).justified_checkpoint.epoch := by
-  exact E.finalized_epoch_le_remoteJustified_of_synchrony cfg ext B hT
-    hanchor hsync hv hw hHq hHm
-      (hnext.trans (E.slot_at_mono cfg (Nat.le_succ m)))
-
-/-- The actual finalized reset used by an FCR call inherits the same
-next-slot adoption theorem. -/
-theorem finalizedReset_epoch_le_remoteJustified_nextSlot
-    (B : CausalPrefixFFGInterpretation cfg ext E)
-    (hT : E.ScheduledPrefixPremises cfg ext)
-    (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
-    (hsync : NextSlotSynchronyPremises cfg ext E)
-    {v w : ValidatorIndex} (hv : v ∈ E.honest)
-    (hw : w ∈ E.honest) {n m : ℕ}
-    (hHn1 : E.WithinHorizon cfg (n + 1))
-    (hHm : E.WithinHorizon cfg m)
-    (hnext : E.slot_at cfg (n + 1) + 1 ≤ E.slot_at cfg m) :
-    (E.fcrStoreAtCall cfg ext v n).store.finalized_checkpoint.epoch ≤
-      (E.store cfg ext w m).justified_checkpoint.epoch := by
-  rw [E.fcrStep_store]
-  exact E.finalized_epoch_le_remoteJustified_nextSlot cfg ext B hT
-    hanchor hsync hv hw hHn1 hHm hnext
 
 /-! ## The observed seam is a narrow source-lock law -/
 

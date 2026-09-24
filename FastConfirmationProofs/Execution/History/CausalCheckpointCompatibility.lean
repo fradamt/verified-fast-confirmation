@@ -11,8 +11,9 @@ This file isolates the branch-compatibility step used by the coupled safety
 induction.  Suppose an honest validator casts a vote after the selected query
 slot has begun and before an endpoint.  If that vote targets the endpoint's
 realized justified checkpoint, then the ordinary vote-your-head rule, the
-earlier-slot head-safety induction, and block relay put both the selected child
-and the justified root below the same honest source head at the endpoint.
+earlier-slot head-safety induction, and block relay put the honest source head
+at the endpoint. The selected child and justified root are already known there
+from the induction and local store domain, respectively.
 Comparability therefore forces the justified root to lie on the selected
 child's chain whenever the opposite (already-covered) orientation is excluded.
 
@@ -137,43 +138,73 @@ theorem endpoint_justified_ancestor_of_causal_honest_target_minimal
     hIH i hi k hkLower hkSlotLt hHk
   have hglcK : glc ∈ (E.store cfg ext i k).block_roots :=
     hglcKnown i hi k hkLower hHk
-  have hgate : E.slot_at cfg k + 1 ≤ E.slot_at cfg (m + 1) := by
-    calc
-      E.slot_at cfg k + 1 = s + 1 := by rw [hk]
-      _ ≤ E.slot_at cfg m := Nat.succ_le_of_lt hsm
-      _ ≤ E.slot_at cfg (m + 1) := E.slot_at_mono cfg (Nat.le_succ m)
-  have hsub : (E.store cfg ext i k).block_roots ⊆
-      (E.store cfg ext w m).block_roots :=
-    E.blockRoots_subset_of_relay cfg ext hA.synchrony hi hw hHk hHm hgate
-  have hheadM : (get_head cfg (E.store cfg ext i k)).root ∈
-      (E.store cfg ext w m).block_roots := hsub hheadK
-  have hglcM : glc ∈ (E.store cfg ext w m).block_roots := hsub hglcK
-  have hJM : J.root ∈ (E.store cfg ext w m).block_roots := hsub hJK
-  have hheadGlc_M : is_ancestor (E.store cfg ext w m)
+  have hheadGlcRoot_K : is_ancestor (E.store cfg ext i k)
       (get_node_for_root (get_head cfg (E.store cfg ext i k)).root)
       (get_node_for_root glc) = true :=
-    is_ancestor_transport cfg ext hA.wellFormed hsub hheadK hglcK
-      (hwalkK glc hglcK _ hheadK) ((is_ancestor_node_root _ _ _).symm.trans hheadGlc_K)
-  have hheadJ_M : is_ancestor (E.store cfg ext w m)
+    (is_ancestor_node_root _ _ _).symm.trans hheadGlc_K
+  have hheadJRoot_K : is_ancestor (E.store cfg ext i k)
       (get_node_for_root (get_head cfg (E.store cfg ext i k)).root)
       (get_node_for_root J.root) = true :=
-    is_ancestor_transport cfg ext hA.wellFormed hsub hheadK hJK
-      (hwalkK J.root hJK _ hheadK) ((is_ancestor_node_root _ _ _).symm.trans hheadJ_K)
-  obtain ⟨hwfM, hwalkM, _hjustM⟩ :=
+    (is_ancestor_node_root _ _ _).symm.trans hheadJ_K
+  have hsourceCompare :
+      is_ancestor (E.store cfg ext i k)
+        (get_node_for_root glc) (get_node_for_root J.root) = true ∨
+      is_ancestor (E.store cfg ext i k)
+        (get_node_for_root J.root) (get_node_for_root glc) = true :=
+    is_ancestor_comparable hwfK
+      (hwalkK J.root hJK _ hheadK)
+      (hwalkK glc hglcK _ hheadK)
+      hheadJRoot_K hheadGlcRoot_K
+  have hkLtM : k < m := by
+    by_contra h
+    have hmk : m ≤ k := Nat.le_of_not_gt h
+    have hslotMono : E.slot_at cfg m ≤ s := by
+      simpa only [hk] using E.slot_at_mono cfg hmk
+    exact (Nat.not_lt_of_ge hslotMono) hsm
+  have hglcM : glc ∈ (E.store cfg ext w m).block_roots :=
+    hglcKnown w hw m (hkLower.trans hkLtM.le) hHm
+  obtain ⟨hwfM, hwalkM, hjustM⟩ :=
     E.store_domainK_of_selectedMarginDomain cfg ext hA.wellFormed
       hA.externals_coherence hA.genesis hA.domain w hw m hHm
-  have hheadC_M : is_ancestor (E.store cfg ext w m)
-      (get_node_for_root (get_head cfg (E.store cfg ext i k)).root)
-      (get_node_for_root c) = true :=
-    is_ancestor_trans (a := get_node_for_root _) (b := get_node_for_root glc)
-        (c := get_node_for_root c) hwfM
-      (hwalkM c hcM _ hheadM) (hwalkM c hcM glc hglcM)
-      hheadGlc_M hglcC_M
-  rcases is_ancestor_comparable hwfM
-      (hwalkM J.root hJM _ hheadM) (hwalkM c hcM _ hheadM)
-      hheadJ_M hheadC_M with hchildJ | hJchild
-  · exact hchildJ
-  · exact False.elim (hnotCovered (by simpa only [J] using hJchild))
+  have hJM : J.root ∈ (E.store cfg ext w m).block_roots :=
+    hjustM
+  have hagree : ∀ r, r ∈ (E.store cfg ext i k).block_roots →
+      r ∈ (E.store cfg ext w m).block_roots →
+      (E.store cfg ext i k).blocks r = (E.store cfg ext w m).blocks r :=
+    fun r hr hs => hA.wellFormed.blocks_agree
+      (E.blockProvenance cfg ext i k) (E.blockProvenance cfg ext w m) hr hs
+  rcases hsourceCompare with hglcJ_K | hJglc_K
+  · have hwalkJM : WalkKnown (E.store cfg ext w m)
+        ((E.store cfg ext i k).blocks J.root).slot glc := by
+      rw [hagree J.root hJK hJM]
+      exact hwalkM J.root hJM glc hglcM
+    have hglcJ_M : is_ancestor (E.store cfg ext w m)
+        (get_node_for_root glc) (get_node_for_root J.root) = true := by
+      rw [← is_ancestor_congr_common_walk hagree hJK hJM
+        (hwalkK J.root hJK glc hglcK) hwalkJM]
+      exact hglcJ_K
+    rcases is_ancestor_comparable hwfM
+        (hwalkM J.root hJM glc hglcM)
+        (hwalkM c hcM glc hglcM)
+        hglcJ_M hglcC_M with hcJ | hJc
+    · exact hcJ
+    · exact False.elim (hnotCovered (by simpa only [J] using hJc))
+  · have hwalkGlcM : WalkKnown (E.store cfg ext w m)
+        ((E.store cfg ext i k).blocks glc).slot J.root := by
+      rw [hagree glc hglcK hglcM]
+      exact hwalkM glc hglcM J.root hJM
+    have hJglc_M : is_ancestor (E.store cfg ext w m)
+        (get_node_for_root J.root) (get_node_for_root glc) = true := by
+      rw [← is_ancestor_congr_common_walk hagree hglcK hglcM
+        (hwalkK glc hglcK J.root hJK) hwalkGlcM]
+      exact hJglc_K
+    have hJc : is_ancestor (E.store cfg ext w m)
+        (get_node_for_root J.root) (get_node_for_root c) = true :=
+      is_ancestor_trans (a := get_node_for_root J.root)
+        (b := get_node_for_root glc) (c := get_node_for_root c) hwfM
+        (hwalkM c hcM J.root hJM) (hwalkM c hcM glc hglcM)
+        hJglc_M hglcC_M
+    exact False.elim (hnotCovered (by simpa only [J] using hJc))
 
 end Execution
 

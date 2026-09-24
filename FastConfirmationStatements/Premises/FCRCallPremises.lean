@@ -74,12 +74,8 @@ The first five fields are direct protocol/model contracts.  `balance_floor`
 excludes the executable helper's artificial empty-active-set minimum-balance
 branch.
 
-**There is no `delivery_lookahead` field either.**  The paper-synchrony
-boundary closure for honest votes created inside the prefix used to be a
-separate assumption record here; it is now the boundary case of the single
-`synchrony` field above, read off by
-`NextSlotSynchronyPremises.toDeliveryLookahead`.  The record is a premise weaker
-than before in surface and exactly equal in content.
+`delivery_lookahead` supplies the boundary vote receipt when the mandated
+next-slot second is just beyond the exclusive verification horizon.
 
 **There is no `helper_provisos` field.**  It used to carry the literal
 normative proviso of the FCR specification, required at a crossing call to
@@ -104,6 +100,7 @@ structure CompletedFCRCallPremises : Prop where
   phase0_boundary_source : Phase0BoundarySourceCoherence cfg ext
   balance_floor : cfg.effective_balance_increment ≤
     E.weight (E.currentTargetAnchorActive cfg)
+  delivery_lookahead : HorizonVoteDeliveryLookahead cfg E
 
 end Execution
 end FastConfirmation.Spec

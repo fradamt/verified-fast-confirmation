@@ -221,7 +221,7 @@ theorem witnessSeed_known_at_all_honest_endpoints_at_observer
       (get_block_slot fcrStore.store fcrStore.previous_slot_head)
       (get_current_slot cfg fcrStore.store - 1) = true := by rw [← hstore]; exact hcert
   exact E.certificate_dissemination cfg ext hA.wellFormed hA.honest_behavior hsync
-    hA.externals_coherence hA.byzantine_bound hji hA.genesis obs q
+    hA.externals_coherence hA.byzantine_bound hA hA.genesis obs q
     (get_current_balance_source fcrStore) fcrStore.previous_slot_head
     (get_block_slot fcrStore.store fcrStore.previous_slot_head)
     (get_current_slot cfg fcrStore.store - 1) hqH hstartH hendH hstart0 hval htab
@@ -268,7 +268,7 @@ theorem witnessSeed_ancestor_known_at_all_honest_endpoints_at_observer
       (get_block_slot fcrStore.store fcrStore.previous_slot_head)
       (get_current_slot cfg fcrStore.store - 1) = true := by rw [← hstore]; exact hcert
   exact Weak.certificate_chain_dissemination cfg ext E hA.wellFormed hA.honest_behavior hsync
-    hA.externals_coherence hA.byzantine_bound hji hA.genesis obs q
+    hA.externals_coherence hA.byzantine_bound hA hA.genesis obs q
     (get_current_balance_source fcrStore) fcrStore.previous_slot_head anc
     (get_block_slot fcrStore.store fcrStore.previous_slot_head)
     (get_current_slot cfg fcrStore.store - 1) hqH hstartH hendH hstart0 hval htab hcomm
@@ -316,7 +316,7 @@ theorem headSeed_known_at_all_honest_endpoints_at_observer
       (get_block_slot fcrStore.store (Weak.get_certified_head cfg ext fcrStore.store (get_current_balance_source fcrStore)))
       (get_current_slot cfg fcrStore.store - 1) = true := by rw [← hstore]; exact hcert
   exact E.certificate_dissemination cfg ext hA.wellFormed hA.honest_behavior hsync
-    hA.externals_coherence hA.byzantine_bound hji hA.genesis obs q
+    hA.externals_coherence hA.byzantine_bound hA hA.genesis obs q
     (get_current_balance_source fcrStore) (Weak.get_certified_head cfg ext fcrStore.store (get_current_balance_source fcrStore))
     (get_block_slot fcrStore.store (Weak.get_certified_head cfg ext fcrStore.store (get_current_balance_source fcrStore)))
     (get_current_slot cfg fcrStore.store - 1) hqH hstartH hendH hstart0 hval htab
@@ -371,7 +371,7 @@ theorem headSeed_ancestor_known_at_all_honest_endpoints_at_observer
       (get_block_slot fcrStore.store (Weak.get_certified_head cfg ext fcrStore.store (get_current_balance_source fcrStore)))
       (get_current_slot cfg fcrStore.store - 1) = true := by rw [← hstore]; exact hcert
   exact Weak.certificate_chain_dissemination cfg ext E hA.wellFormed hA.honest_behavior hsync
-    hA.externals_coherence hA.byzantine_bound hji hA.genesis obs q
+    hA.externals_coherence hA.byzantine_bound hA hA.genesis obs q
     (get_current_balance_source fcrStore) (Weak.get_certified_head cfg ext fcrStore.store (get_current_balance_source fcrStore)) anc
     (get_block_slot fcrStore.store (Weak.get_certified_head cfg ext fcrStore.store (get_current_balance_source fcrStore)))
     (get_current_slot cfg fcrStore.store - 1) hqH hstartH hendH hstart0 hval htab

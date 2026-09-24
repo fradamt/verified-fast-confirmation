@@ -22,8 +22,14 @@ run_cmd do
      "exact_link_validity"]
   checkFields `FastConfirmation.Spec.LiveMonotonicityPremises
     ["honest_block_each_slot", "ffg_timely_justification"]
+  checkFields `FastConfirmation.Spec.Synchrony
+    ["delta", "delta_pos", "deadline_fits", "attestation_delivery",
+     "deadline_block_relay", "boundary_block_prefix",
+     "attester_slashing_relay"]
   checkFields `FastConfirmation.Spec.NextSlotSynchronyPremises
-    ["attestation_delivery", "block_relay", "envelope_delivery",
+    ["delta", "delta_pos", "deadline_fits", "attestation_delivery",
+     "deadline_block_relay", "boundary_block_prefix",
+     "envelope_delivery",
      "data_availability_relay", "attester_slashing_relay"]
   checkFields `FastConfirmation.Spec.BeaconExternalsPremises
     ["process_slots_slot", "process_slots_registry", "state_transition_slot",
@@ -36,6 +42,13 @@ run_cmd do
   checkFields `FastConfirmation.Spec.ByzantineWeightPremises
     ["effective_balance_quantized", "estimate_sound", "span_fraction"]
   IO.println "review surface shape passed"
+
+-- These names must remain in the reviewed Statements surface.
+#check FastConfirmation.Spec.DeadlineBlockRelay
+#check FastConfirmation.Spec.DeadlineBoundaryBlockPrefix
+#check FastConfirmation.Spec.DeadlineEnvelopeDelivery
+#check FastConfirmation.Spec.DeadlineDataAvailabilityRelay
+#check FastConfirmation.Spec.DeadlineAttesterSlashingRelay
 
 example {Root : Type*} [LinearOrder Root] [Inhabited Root]
     (cfg : FastConfirmation.Spec.Config)

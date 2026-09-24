@@ -1,4 +1,6 @@
 module
+public import FastConfirmationProofs.Checkpoints.DeadlineCarrierAdoption
+public import FastConfirmationProofs.Execution.Delivery.VoteDeadlineOrigin
 public import Mathlib.Tactic
 public import FastConfirmationProofs.FFG.SelectedSource.EarlyPhaseSource
 public import FastConfirmationProofs.FFG.State.PathLocalFinalizedTransport
@@ -81,6 +83,8 @@ structure AcceptedHonestPastHeadBelowAt
   validator_honest : validator ∈ E.honest
   second_within : E.WithinHorizon cfg second
   strictly_past : E.slot_at cfg second < E.slot_at cfg q
+  second_deadline : second ≤ E.slot_start cfg (E.slot_at cfg second) +
+    get_attestation_due_ms cfg / 1000
   candidate_known : candidate ∈
     (E.store cfg ext validator second).block_roots
   head_known : (get_head cfg
@@ -110,8 +114,11 @@ theorem pastHead_of_honestSupporter_known
     ∃ nu : Nat,
       E.WithinHorizon cfg nu ∧
       E.slot_at cfg nu < E.slot_at cfg n ∧
+      nu ≤ E.slot_start cfg (E.slot_at cfg nu) +
+        get_attestation_due_ms cfg / 1000 ∧
       (get_head cfg (E.store cfg ext i nu)).root ∈
         (E.store cfg ext i nu).block_roots ∧
+      (get_head cfg (E.store cfg ext i nu)).root = lm.root ∧
       is_ancestor (E.store cfg ext v n)
         (get_head cfg (E.store cfg ext i nu))
         (get_node_for_root b) = true := by
@@ -128,7 +135,7 @@ theorem pastHead_of_honestSupporter_known
     rw [← ht, hslot]
   obtain ⟨a', sender, sentAt, ifb, hsched, hiatt, hbbr, hslotep⟩ :=
     E.schedLMProv cfg ext hgen0 v n i lm hlm
-  obtain ⟨_voteAt, own, hvote, hdata⟩ :=
+  obtain ⟨_voteAt, own, _hcausal, hvote, hdata⟩ :=
     hT.honest_behavior.no_forgery sender sentAt a' ifb hsched i hi hiatt
   set s := a'.data.slot
   have hcomm : i ∈ E.committee s :=
@@ -173,9 +180,11 @@ theorem pastHead_of_honestSupporter_known
     · exact hmem
     · rw [heq]
       exact hdomain.justified_root_known i hi nu hHnu
-  refine ⟨nu, hHnu, ?_, hheadKnown, ?_⟩
+  refine ⟨nu, hHnu, ?_, ?_, hheadKnown, hhead, ?_⟩
   · rw [hnu]
     exact hslt
+  · simpa only [hnu] using
+      (hT.honest_behavior.vote_deadline i hi s nu _ hvoteHead).2
   · rw [is_ancestor_node_root]
     rw [hhead]
     simpa only [get_node_for_root, is_ancestor_supported_pending] using hsupp
@@ -207,15 +216,23 @@ theorem confirmed_honestPastHeadBelow
       query hquery candidate hqH
       (by simpa only [hquery] using hcandidate)
       (by simpa only [hquery] using hparentCandidate) hconfirmed
-  obtain ⟨nu, hnuH, hnuq, hheadPast, hheadCandidateQ⟩ :=
+  obtain ⟨nu, hnuH, hnuq, hnuDeadline, hheadPast, hheadEq,
+      hheadCandidateQ⟩ :=
     E.pastHead_of_honestSupporter_known cfg ext hT hsync hstatic hbyz
       hdomain v hv q candidate hqH i hi lm hlm hsupp
-  have hrelayGate : E.slot_at cfg nu + 1 ≤ E.slot_at cfg (q + 1) :=
-    (Nat.succ_le_iff.mpr hnuq).trans
-      (E.slot_at_mono cfg (Nat.le_succ q))
+  obtain ⟨ast, ablk, hgen, hslot, hanchorParent⟩ := hT.genesis_structure
+  have hgenShort : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
+      E.genesis_store = get_forkchoice_store cfg ast ablk :=
+    ⟨ast, ablk, hgen⟩
+  have hlmKnown : lm.root ∈ (E.store cfg ext v q).block_roots := by
+    obtain ⟨_, _, _, _, _, _, _, hknown, _, _⟩ :=
+      (E.latestMessageProvenance cfg ext hT.wellFormed
+        hT.externals_coherence hgenShort v q hv hqH) i lm hlm
+    exact hknown
   have hheadQueryE : (get_head cfg (E.store cfg ext i nu)).root ∈
-      (E.store cfg ext v q).block_roots :=
-    hsync.block_relay i hi nu _ hnuH hheadPast v hv q hqH hrelayGate
+      (E.store cfg ext v q).block_roots := by
+    rw [hheadEq]
+    exact hlmKnown
   have hheadQuery : (get_head cfg (E.store cfg ext i nu)).root ∈
       query.store.block_roots := by
     simpa only [hquery] using hheadQueryE
@@ -234,7 +251,6 @@ theorem confirmed_honestPastHeadBelow
       (by
         rw [is_ancestor_node_root] at hheadCandidateQ
         simpa only [hquery] using hheadCandidateQ)
-  obtain ⟨ast, ablk, hgen, hslot, hanchorParent⟩ := hT.genesis_structure
   have hcandidateRoot : E.ExecutionRoot candidate :=
     ⟨query.store.blocks candidate,
       by
@@ -251,6 +267,7 @@ theorem confirmed_honestPastHeadBelow
     validator_honest := hi
     second_within := hnuH
     strictly_past := hnuq
+    second_deadline := hnuDeadline
     candidate_known := hcandidatePast
     head_known := hheadPast
     head_descends_candidate := by
@@ -343,6 +360,8 @@ structure AcceptedLemma22EpochStartCandidateSourceAt
   candidate_known : candidate ∈
     (E.store cfg ext validator second).block_roots
   seed : Root
+  relay_origin : second ≤ E.slot_start cfg (E.slot_at cfg second) +
+    get_attestation_due_ms cfg / 1000 ∨ seed = B.anchor.root
   seed_known_past : seed ∈
     (E.store cfg ext validator second).block_roots
   seed_descends_candidate : is_ancestor
@@ -381,6 +400,8 @@ structure AcceptedCurrentCandidateSourceOriginAt
       (E.store cfg ext v originSecond) candidate =
     get_current_store_epoch cfg (E.store cfg ext v originSecond)
   seed : Root
+  relay_origin : originSecond ≤ E.slot_start cfg (E.slot_at cfg originSecond) +
+    get_attestation_due_ms cfg / 1000 ∨ seed = B.anchor.root
   seed_known : seed ∈ (E.store cfg ext v originSecond).block_roots
   seed_descends_candidate : is_ancestor
     (E.store cfg ext v originSecond)
@@ -407,6 +428,8 @@ theorem StrictSelectedResultMechanicalFacts.currentCandidateSourceOrigin
     (B : CausalPrefixFFGInterpretation cfg ext E)
     {v : ValidatorIndex} {q : Nat}
     (hqH : E.WithinHorizon cfg q)
+    (hdeadline : q ≤ E.slot_start cfg (E.slot_at cfg q) +
+      get_attestation_due_ms cfg / 1000)
     {query : FastConfirmationStore Root} {input result : Root}
     (hquery : query.store = E.store cfg ext v q)
     (hparent : ParentSlotLt query.store)
@@ -435,6 +458,7 @@ theorem StrictSelectedResultMechanicalFacts.currentCandidateSourceOrigin
     candidate_known := by simpa only [hquery] using h.result_known
     candidate_current := by simpa only [hquery] using hcurrent
     seed := seed
+    relay_origin := Or.inl hdeadline
     seed_known := by simpa only [hquery] using hseed
     seed_descends_candidate := by simpa only [hquery] using hdesc
     gu_recent := by simpa only [hquery] using hrecent
@@ -493,6 +517,7 @@ theorem acceptedCurrentCandidateSourceOriginAt_anchor
     candidate_known := hreal.root_known
     candidate_current := hcurrent
     seed := B.anchor.root
+    relay_origin := Or.inr rfl
     seed_known := hreal.root_known
     seed_descends_candidate := is_ancestor_refl _ _
     gu_recent := by
@@ -617,6 +642,7 @@ theorem AcceptedCurrentCandidateSourceOriginAt.toLemma22AtNextBoundary
     relay_gate := hrelayGate
     candidate_known := h.candidate_known
     seed := h.seed
+    relay_origin := h.relay_origin
     seed_known_past := h.seed_known
     seed_descends_candidate := h.seed_descends_candidate
     seed_known_boundary := by
@@ -644,16 +670,41 @@ theorem AcceptedLemma22EpochStartCandidateSourceAt.lemma24
     (B : CausalPrefixFFGInterpretation cfg ext E)
     (hT : E.ScheduledPrefixPremises cfg ext)
     (hsync : NextSlotSynchronyPremises cfg ext E)
+    (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
+    (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
+      (E := E) (anchor := B.anchor))
+    (hLag : E.CausalRealizedFinalizationLag cfg ext B)
+    (P : EpochCheckpointClosure B.anchor (E.AcceptedRoot cfg ext) B.state.C)
+    (V : B.state.ExactLinkValidity)
+    (hacc : CheckpointCertificateAccountability cfg E B.anchor)
     {e : Epoch} {candidate : Root}
     (h : E.AcceptedLemma22EpochStartCandidateSourceAt
       cfg ext B e candidate)
     (w : ValidatorIndex) (hw : w ∈ E.honest) :
     Nonempty (E.AcceptedLemma24EpochStartSourceAt cfg ext B e w) := by
   let boundary := E.slot_start cfg (compute_start_slot_at_epoch cfg e)
-  have hseedW : h.seed ∈ (E.store cfg ext w boundary).block_roots :=
-    hsync.block_relay h.validator h.validator_honest h.second h.seed
-      h.second_within h.seed_known_past w hw boundary h.boundary_within
-        (by simpa only [boundary] using h.relay_gate)
+  have hseedW : h.seed ∈ (E.store cfg ext w boundary).block_roots := by
+    rcases h.relay_origin with hdue | hseedAnchor
+    · obtain ⟨ast, ablk, hgen, _, _⟩ := hT.genesis_structure
+      have hgenTime : E.genesis_store.genesis_time ≤ E.genesis_store.time := by
+        rw [hgen]; simp only [get_forkchoice_store]; omega
+      have hbeforeSlot : E.slot_at cfg h.second < compute_start_slot_at_epoch cfg e :=
+        (E.slot_at_lt_iff cfg hT.whole_seconds hgenTime).mpr h.strictly_before_boundary
+      have hnext : E.slot_start cfg (E.slot_at cfg h.second + 1) ≤ boundary :=
+        E.slot_start_mono cfg (Nat.succ_le_of_lt hbeforeSlot)
+      have hAU := (E.store_causal cfg ext h.validator boundary).getVotingSource_AU
+        cfg ext B h.seed_known_boundary
+      apply E.deadline_carrier_known_of_recent_au cfg ext B hT hsync.deadline_block_relay
+        hanchor hboundary hLag P V hacc h.validator_honest hw h.second_within
+        h.boundary_within h.seed_known_past hdue hnext h.strictly_before_boundary hAU
+      have hepoch : get_current_store_epoch cfg (E.store cfg ext w boundary) = e := by
+        simpa only [get_current_store_epoch, E.store_current_slot, boundary]
+          using h.boundary_epoch
+      rw [hepoch]
+      exact h.source_recent
+    · rw [hseedAnchor]
+      exact (E.resetCheckpointRealizedAt_anchor_of_acceptedTrajectory
+        cfg ext hT hanchor hboundary w boundary).root_known
   have hwEpoch : get_current_store_epoch cfg
       (E.store cfg ext w boundary) = e := by
     simpa only [get_current_store_epoch, E.store_current_slot, boundary]
@@ -856,6 +907,8 @@ theorem ObservedResetCandidateInputAt.acceptedLemma22EpochStartCandidateSource
       strictly_before_boundary := hstrictlyBefore
       relay_gate := hrelayGate
       candidate_known := hrealOrigin.root_known
+      relay_origin := Or.inl (hi.origin_before_deadline cfg ext E hT.whole_seconds (by
+        rw [hgen]; simp only [get_forkchoice_store]; omega))
       seed := c.root
       seed_known_past := hrealOrigin.root_known
       seed_descends_candidate := is_ancestor_refl _ _
@@ -962,6 +1015,8 @@ theorem ObservedResetCandidateInputAt.acceptedLemma22EpochStartCandidateSource
       strictly_before_boundary := hstrictlyBefore
       relay_gate := hrelayGate
       candidate_known := hrealOrigin.root_known
+      relay_origin := Or.inl (hi.origin_before_deadline cfg ext E hT.whole_seconds (by
+        rw [hgen]; simp only [get_forkchoice_store]; omega))
       seed := tip
       seed_known_past := htip.known
       seed_descends_candidate := htipCandidate
@@ -1731,6 +1786,7 @@ theorem AcceptedConfirmedSourceHistoryAt.currentOrigin_succ_of_call
           (by simpa only [query] using E.fcrStep_store cfg ext v n)
           htraceCurrent
       have hnew := hfacts.currentCandidateSourceOrigin cfg ext B hHn1
+        (E.scheduled_fcr_call_before_deadline cfg ext hT hcall)
         (by simpa only [query] using E.fcrStep_store cfg ext v n)
         hparent hwalk hhead hinputKnown hselector.result_eq.symm
           hselector.result_ne_input htraceCurrent hnotStart
@@ -1757,6 +1813,9 @@ theorem AcceptedConfirmedSourceHistoryAt.recentSource_succ_of_call
       (E := E) (anchor := B.anchor))
     (hLag : E.CausalRealizedFinalizationLag cfg ext B)
     (hspe : 1 < cfg.slots_per_epoch)
+    (P : EpochCheckpointClosure B.anchor (E.AcceptedRoot cfg ext) B.state.C)
+    (V : B.state.ExactLinkValidity)
+    (hacc : CheckpointCertificateAccountability cfg E B.anchor)
     {v : ValidatorIndex} (hv : v ∈ E.honest) {n : Nat}
     (hHn1 : E.WithinHorizon cfg (n + 1))
     (hcall : E.IsScheduledFCRCallAt cfg ext v n)
@@ -1821,7 +1880,7 @@ theorem AcceptedConfirmedSourceHistoryAt.recentSource_succ_of_call
             hepochSucc
       obtain ⟨hlemma22⟩ := horigin.toLemma22AtNextBoundary cfg ext B hT hv
         hHn1 hcall hboundarySecond rfl hknownN1 hprevious
-      exact hlemma22.lemma24 cfg ext B hT hsync w hw
+      exact hlemma22.lemma24 cfg ext B hT hsync hanchor hboundary hLag P V hacc w hw
     have finalizedBoundarySource
         (hrecentFinalized : get_block_epoch cfg query.store
               query.store.finalized_checkpoint.root + 1 ≥
@@ -1851,7 +1910,7 @@ theorem AcceptedConfirmedSourceHistoryAt.recentSource_succ_of_call
           FastConfirmation.Spec.Execution.ObservedResetCandidateInputAt.acceptedLemma22EpochStartCandidateSource
             (E := E) cfg ext B hT hsync hstatic hbyz hdomain hanchor
               hboundary hspe hv hHn1 hcall hinput
-        exact hlemma22.lemma24 cfg ext B hT hsync w hw
+        exact hlemma22.lemma24 cfg ext B hT hsync hanchor hboundary hLag P V hacc w hw
     | strictSelected horigin hselector =>
         cases horigin with
         | carried hinput =>
@@ -1866,7 +1925,7 @@ theorem AcceptedConfirmedSourceHistoryAt.recentSource_succ_of_call
               FastConfirmation.Spec.Execution.ObservedResetCandidateInputAt.acceptedLemma22EpochStartCandidateSource
                 (E := E) cfg ext B hT hsync hstatic hbyz hdomain hanchor
                   hboundary hspe hv hHn1 hcall hinput
-            exact hlemma22.lemma24 cfg ext B hT hsync w hw
+            exact hlemma22.lemma24 cfg ext B hT hsync hanchor hboundary hLag P V hacc w hw
   · have hepochEq := E.actualCall_currentEpoch_eq_of_notStart
       cfg ext hT hcall hstart
     have previousMidSource
@@ -2020,6 +2079,9 @@ theorem AcceptedConfirmedSourceHistoryAt.succ_of_call
       (E := E) (anchor := B.anchor))
     (hLag : E.CausalRealizedFinalizationLag cfg ext B)
     (hspe : 1 < cfg.slots_per_epoch)
+    (P : EpochCheckpointClosure B.anchor (E.AcceptedRoot cfg ext) B.state.C)
+    (V : B.state.ExactLinkValidity)
+    (hacc : CheckpointCertificateAccountability cfg E B.anchor)
     {v : ValidatorIndex} (hv : v ∈ E.honest) {n : Nat}
     (hHn1 : E.WithinHorizon cfg (n + 1))
     (hcall : E.IsScheduledFCRCallAt cfg ext v n)
@@ -2029,7 +2091,7 @@ theorem AcceptedConfirmedSourceHistoryAt.succ_of_call
     hanchor hboundary hv hHn1 hcall
   recent_epochStartSource := fun hrecent w hw =>
     h.recentSource_succ_of_call cfg ext B hT hsync hstatic hbyz hdomain
-      hanchor hboundary hLag hspe hv hHn1 hcall hrecent w hw
+      hanchor hboundary hLag hspe P V hacc hv hHn1 hcall hrecent w hw
   current_origin := fun hcurrent =>
     h.currentOrigin_succ_of_call cfg ext B hT hsync hstatic hbyz hdomain
       hanchor hboundary hLag hv hHn1 hcall hcurrent
@@ -2050,6 +2112,9 @@ theorem acceptedConfirmedSourceHistoryAt
       (E := E) (anchor := B.anchor))
     (hDelay : E.RealizedFinalizationDelay cfg ext B)
     (hspe : 1 < cfg.slots_per_epoch)
+    (P : EpochCheckpointClosure B.anchor (E.AcceptedRoot cfg ext) B.state.C)
+    (V : B.state.ExactLinkValidity)
+    (hacc : CheckpointCertificateAccountability cfg E B.anchor)
     {v : ValidatorIndex} (hv : v ∈ E.honest) :
     ∀ n : Nat, E.WithinHorizon cfg n →
       E.AcceptedConfirmedSourceHistoryAt cfg ext B v n := by
@@ -2069,7 +2134,7 @@ theorem acceptedConfirmedSourceHistoryAt
       have hn := ih hHn
       by_cases hcall : E.IsScheduledFCRCallAt cfg ext v n
       · exact hn.succ_of_call cfg ext B hT hsync hstatic hbyz hdomain
-          hanchor hboundary hLag hspe hv hHn1 hcall
+          hanchor hboundary hLag hspe P V hacc hv hHn1 hcall
       · exact hn.succ_of_noCall cfg ext hT hcall
 
 /-- Callback-free paper-Lemma-24 export for the current result of one actual
@@ -2087,6 +2152,9 @@ theorem getLatestConfirmedTraceAt_current_epochStartSource
       (E := E) (anchor := B.anchor))
     (hDelay : E.RealizedFinalizationDelay cfg ext B)
     (hspe : 1 < cfg.slots_per_epoch)
+    (P : EpochCheckpointClosure B.anchor (E.AcceptedRoot cfg ext) B.state.C)
+    (V : B.state.ExactLinkValidity)
+    (hacc : CheckpointCertificateAccountability cfg E B.anchor)
     {v : ValidatorIndex} (hv : v ∈ E.honest) {n : Nat}
     (hHn1 : E.WithinHorizon cfg (n + 1))
     (hcall : E.IsScheduledFCRCallAt cfg ext v n)
@@ -2097,7 +2165,7 @@ theorem getLatestConfirmedTraceAt_current_epochStartSource
     Nonempty (E.AcceptedLemma24EpochStartSourceAt cfg ext B
       (get_current_store_epoch cfg (E.fcrStoreAtCall cfg ext v n).store) w) := by
   have hhistory := E.acceptedConfirmedSourceHistoryAt cfg ext B hT hsync
-    hstatic hbyz hdomain hanchor hboundary hDelay hspe hv (n + 1) hHn1
+    hstatic hbyz hdomain hanchor hboundary hDelay hspe P V hacc hv (n + 1) hHn1
   have hrec := E.actualCandidateHistoryRecurrence cfg ext hcall
   have hstoredCurrent : get_block_epoch cfg (E.store cfg ext v (n + 1))
           (E.confirmed cfg ext v (n + 1)) =
@@ -2192,6 +2260,8 @@ structure AcceptedRecentCandidateSourceCarrierAt
   validator_honest : validator ∈ E.honest
   second_within : E.WithinHorizon cfg second
   strictly_past : E.slot_at cfg second < E.slot_at cfg q
+  second_deadline : second ≤ E.slot_start cfg (E.slot_at cfg second) +
+    get_attestation_due_ms cfg / 1000
   candidate_known : candidate ∈
     (E.store cfg ext validator second).block_roots
   tip : Root
@@ -2265,6 +2335,7 @@ theorem AcceptedRecentCandidateSourceCarrierAt.of_pathLocal
     validator_honest := hpast.validator_honest
     second_within := hpast.second_within
     strictly_past := hpast.strictly_past
+    second_deadline := hpast.second_deadline
     candidate_known := hpast.candidate_known
     tip := tip
     tip_known := htip
@@ -2396,6 +2467,9 @@ theorem StrictSelectedResultMechanicalFacts.actualCurrentSame_sourceHistoryOutco
       (E := E) (anchor := B.anchor))
     (hDelay : E.RealizedFinalizationDelay cfg ext B)
     (hspe : 1 < cfg.slots_per_epoch)
+    (P : EpochCheckpointClosure B.anchor (E.AcceptedRoot cfg ext) B.state.C)
+    (V : B.state.ExactLinkValidity)
+    (hacc : CheckpointCertificateAccountability cfg E B.anchor)
     {v : ValidatorIndex} (hv : v ∈ E.honest) {n : Nat}
     (hHn1 : E.WithinHorizon cfg (n + 1))
     (hcall : E.IsScheduledFCRCallAt cfg ext v n)
@@ -2413,7 +2487,7 @@ theorem StrictSelectedResultMechanicalFacts.actualCurrentSame_sourceHistoryOutco
       (E.fcrStep_store cfg ext v n) hcurrent
   intro w hw
   exact E.getLatestConfirmedTraceAt_current_epochStartSource cfg ext B hT
-    hsync hstatic hbyz hdomain hanchor hboundary hDelay hspe hv hHn1 hcall
+    hsync hstatic hbyz hdomain hanchor hboundary hDelay hspe P V hacc hv hHn1 hcall
       hcurrent w hw
 
 

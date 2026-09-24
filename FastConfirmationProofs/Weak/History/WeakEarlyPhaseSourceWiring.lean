@@ -447,7 +447,7 @@ theorem StrictSelectedResultMechanicalFacts.fcrStep_previous_endpointRecentSourc
       hgen hgenSlot hgenParent hqueryCausal hendpointCausal
       hqueryParent hqueryProvenance
       (hqueryWalk result h.result_known _ hseedQ)
-      hselectedM hseedQ hseedM hdesc hclock hsameEpoch hrecent
+      h.result_known hseedQ hseedM hdesc hclock hsameEpoch hrecent
   · unfold TentativeSelectedResultWitness at hfinal
     rcases hfinal with hcurrentEq | ⟨hrecent, _houter⟩
     · have hbad : get_block_epoch cfg (E.weakFcrStep cfg ext obs n).store result + 1 =
@@ -459,7 +459,7 @@ theorem StrictSelectedResultMechanicalFacts.fcrStep_previous_endpointRecentSourc
         hgen hgenSlot hgenParent hqueryCausal hendpointCausal
         hqueryParent hqueryProvenance
         (hqueryWalk result h.result_known result h.result_known)
-        hselectedM h.result_known hselectedM
+        h.result_known h.result_known hselectedM
         (is_ancestor_refl _ _) hclock hsameEpoch hrecent
 
 /-! ## Site 6 — actual `weakFcrStep` current/next cell, no observer relay -/

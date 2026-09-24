@@ -205,7 +205,7 @@ theorem Execution.honest_latest_message_vote {E : Execution Root}
       a.data.slot = s ∧ a.data.beacon_block_root = lm.root := by
   obtain ⟨a1, u, t, ifb, hsched, hvin, hbbr, hslotep⟩ :=
     E.schedLMProv cfg ext hgen v n i lm hlm
-  obtain ⟨k, a2, hvote2, hdata2⟩ := hhb.no_forgery u t a1 ifb hsched i hi hvin
+  obtain ⟨k, a2, _hcausal, hvote2, hdata2⟩ := hhb.no_forgery u t a1 ifb hsched i hi hvin
   have hcs1 : i ∈ E.committee a1.data.slot :=
     hhb.votes_assigned i hi a1.data.slot (by rw [hvote2]; exact Option.some_ne_none _)
   have hslot_eq : a1.data.slot = s :=

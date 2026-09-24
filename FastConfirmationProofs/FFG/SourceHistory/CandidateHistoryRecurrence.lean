@@ -396,9 +396,53 @@ structure AcceptedUJCacheInstallationAt
     originSecond = 0 ∨
       is_start_slot_at_epoch cfg
         (get_current_slot cfg (E.store cfg ext v originSecond) + 1) = true
+  /-- Every noninitial origin is the first second after a scheduled slot
+      advance. This retains the source time needed by deadline-cutoff relay. -/
+  origin_call : originSecond = 0 ∨
+    ∃ pred, originSecond = pred + 1 ∧
+      E.IsScheduledFCRCallAt cfg ext v pred
   accepted_origin : AcceptedGlobalUnrealizedJustifiedOrigin B.state
     (E.store cfg ext v originSecond)
     (E.store cfg ext v originSecond).unrealized_justified_checkpoint
+
+/-- A cached UJ installation is observed at or before the attestation
+deadline of its source slot. Initialization uses second zero; every later
+installation follows an exact scheduled slot advance. -/
+theorem AcceptedUJCacheInstallationAt.origin_before_deadline
+    {B : CausalPrefixFFGInterpretation cfg ext E}
+    {v : ValidatorIndex} {upper : ℕ} {field : Checkpoint Root}
+    (h : E.AcceptedUJCacheInstallationAt cfg ext B v upper field)
+    (hdiv : 1000 ∣ cfg.slot_duration_ms)
+    (hgenTime : E.genesis_store.genesis_time ≤ E.genesis_store.time) :
+    h.originSecond ≤
+      E.slot_start cfg (E.slot_at cfg h.originSecond) +
+        get_attestation_due_ms cfg / 1000 := by
+  rcases h.origin_call with hzero | ⟨pred, heq, hcall⟩
+  · rw [hzero]
+    exact Nat.zero_le _
+  · rw [heq]
+    have hstartLe :
+        E.slot_start cfg (E.slot_at cfg (pred + 1)) ≤ pred + 1 :=
+      E.slot_start_le_of_slot_at cfg hdiv hgenTime rfl
+    have hslotStart :
+        E.slot_at cfg (E.slot_start cfg (E.slot_at cfg (pred + 1))) =
+          E.slot_at cfg (pred + 1) :=
+      E.slot_at_slot_start cfg hdiv
+        (E.slot_at_mono cfg (Nat.zero_le (pred + 1))) hgenTime
+    have hadvance : E.slot_at cfg pred < E.slot_at cfg (pred + 1) := by
+      unfold Execution.IsScheduledFCRCallAt at hcall
+      rw [E.store_current_slot cfg ext v (pred + 1),
+        E.store_current_slot cfg ext v pred] at hcall
+      exact hcall
+    have hstartGe : pred + 1 ≤
+        E.slot_start cfg (E.slot_at cfg (pred + 1)) := by
+      by_contra hnot
+      have hstartPred : E.slot_start cfg (E.slot_at cfg (pred + 1)) ≤ pred := by
+        omega
+      have hmono := E.slot_at_mono cfg hstartPred
+      rw [hslotStart] at hmono
+      exact (Nat.not_lt_of_ge hmono) hadvance
+    omega
 
 /-- Exact previous-greatest field recurrence, stated independently of any
 checkpoint realization or history bundle. -/
@@ -443,6 +487,7 @@ theorem previousGreatest_acceptedInstallation
         origin_le := Nat.le_refl 0
         field_eq := ?_
         initialization_or_rotation := Or.inl rfl
+        origin_call := Or.inl rfl
         accepted_origin := horigin
       }⟩
       obtain ⟨ast, ablk, hgenEq, _hslot⟩ := hgen
@@ -462,6 +507,7 @@ theorem previousGreatest_acceptedInstallation
             origin_le := Nat.le_refl _
             field_eq := rfl
             initialization_or_rotation := Or.inr hrotate
+            origin_call := Or.inr ⟨n, rfl, hcall⟩
             accepted_origin :=
               (B.causalStoreGlobalProjection hgen hanchor
                 (E.store_causal cfg ext v (n + 1))).storeGlobal
@@ -473,6 +519,7 @@ theorem previousGreatest_acceptedInstallation
             origin_le := ih.origin_le.trans (Nat.le_succ n)
             field_eq := ih.field_eq
             initialization_or_rotation := ih.initialization_or_rotation
+            origin_call := ih.origin_call
             accepted_origin := ih.accepted_origin
           }⟩
       · have hfield :
@@ -489,6 +536,7 @@ theorem previousGreatest_acceptedInstallation
           origin_le := ih.origin_le.trans (Nat.le_succ n)
           field_eq := hfield.trans ih.field_eq
           initialization_or_rotation := ih.initialization_or_rotation
+          origin_call := ih.origin_call
           accepted_origin := ih.accepted_origin
         }⟩
 
@@ -564,6 +612,7 @@ theorem ObservedResetCandidateInputAt.acceptedInstallation
     origin_le := hhistory.origin_le
     field_eq := hfield.trans hhistory.field_eq
     initialization_or_rotation := hhistory.initialization_or_rotation
+    origin_call := hhistory.origin_call
     accepted_origin := hhistory.accepted_origin
   }⟩
 

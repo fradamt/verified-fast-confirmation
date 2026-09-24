@@ -4,4 +4,5 @@ public import FastConfirmationProofs.ModelFacts.FFGState
 public import FastConfirmationProofs.ModelFacts.Config
 public import FastConfirmationProofs.ModelFacts.ExecutionWeights
 public import FastConfirmationProofs.ModelFacts.ScheduledPrefixes
+public import FastConfirmationProofs.ModelFacts.SynchronyRelation
 public import FastConfirmationProofs.ModelFacts.FFGState

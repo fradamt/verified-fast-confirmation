@@ -423,6 +423,179 @@ theorem get_ancestor_congr_status {s t : Store Root}
     exact get_ancestor_aux_congr_status hagree hw status _
 
 omit [Inhabited Root] in
+/-- A particular parent walk whose roots are known at both stores. It leaves
+all other source-store branches unrestricted. -/
+inductive WalkCoveredBy (s t : Store Root) (slot : Slot) : Root → Prop
+  | stop {r : Root} (hrs : r ∈ s.block_roots)
+      (hrt : r ∈ t.block_roots)
+      (hle : (s.blocks r).slot ≤ slot) : WalkCoveredBy s t slot r
+  | step {r : Root} (hrs : r ∈ s.block_roots)
+      (hrt : r ∈ t.block_roots)
+      (hgt : slot < (s.blocks r).slot)
+      (hp : WalkCoveredBy s t slot (s.blocks r).parent_root) :
+      WalkCoveredBy s t slot r
+
+omit [Inhabited Root] in
+/-- A covered source walk is also a receiver walk when common block records
+agree. This does not transport any root outside the named source walk. -/
+theorem WalkCoveredBy.receiver_walk {s t : Store Root}
+    (hagree : ∀ x, x ∈ s.block_roots → x ∈ t.block_roots →
+      s.blocks x = t.blocks x)
+    {slot : Slot} {r : Root} (hcover : WalkCoveredBy s t slot r) :
+    WalkKnown t slot r := by
+  induction hcover with
+  | @stop r hrs hrt hle =>
+      have heq := hagree r hrs hrt
+      exact WalkKnown.stop hrt (by rw [← heq]; exact hle)
+  | @step r hrs hrt hgt hp ih =>
+      have heq := hagree r hrs hrt
+      have hpT := ih
+      exact WalkKnown.step hrt (by rw [← heq]; exact hgt)
+        (by rw [← heq]; exact hpT)
+
+omit [Inhabited Root] in
+/-- Forget the receiver coverage while retaining the source walk. -/
+theorem WalkCoveredBy.source_walk {s t : Store Root}
+    {slot : Slot} {r : Root} (hcover : WalkCoveredBy s t slot r) :
+    WalkKnown s slot r := by
+  induction hcover with
+  | @stop r hrs _ hle =>
+      exact WalkKnown.stop hrs hle
+  | @step r hrs _ hgt _ ih =>
+      exact WalkKnown.step hrs hgt ih
+
+omit [Inhabited Root] in
+/-- An ancestor calculation from a covered source walk returns a root covered
+at the receiver, without requiring the receiver's unrelated block roots. -/
+theorem WalkCoveredBy.ancestor_root_mem {s t : Store Root}
+    {slot : Slot} {r : Root} (hcover : WalkCoveredBy s t slot r) :
+    ∀ fuel status,
+      (get_ancestor_aux s slot fuel (ForkChoiceNode.mk r status)).root ∈
+        t.block_roots := by
+  induction hcover with
+  | @stop r _ hrt hle =>
+      intro fuel status
+      cases fuel with
+      | zero => simpa only [get_ancestor_aux] using hrt
+      | succ fuel =>
+          simp only [get_ancestor_aux, if_neg (Nat.not_lt.mpr hle)]
+          exact hrt
+  | @step r _ hrt hgt hp ih =>
+      intro fuel status
+      cases fuel with
+      | zero => simpa only [get_ancestor_aux] using hrt
+      | succ fuel =>
+          simp only [get_ancestor_aux, if_pos hgt]
+          exact ih fuel _
+
+omit [Inhabited Root] in
+/-- The target checkpoint read along a covered source walk is known to the
+receiver. -/
+theorem WalkCoveredBy.checkpoint_root_mem {s t : Store Root}
+    {slot : Slot} {r : Root} (hcover : WalkCoveredBy s t slot r)
+    {epoch : Epoch} (hslot : slot = compute_start_slot_at_epoch cfg epoch) :
+    get_checkpoint_block cfg s r epoch ∈ t.block_roots := by
+  subst slot
+  simpa only [get_checkpoint_block, get_ancestor] using
+    hcover.ancestor_root_mem ((s.blocks r).slot + 1) .pending
+
+omit [Inhabited Root] in
+/-- An ancestor walk needs agreement only on its own roots. A receiver that
+knows the head has its parent walk locally; other source-store forks need not
+be present at the receiver. -/
+theorem get_ancestor_aux_congr_common_walk {s t : Store Root}
+    (hagree : ∀ x, x ∈ s.block_roots → x ∈ t.block_roots →
+      s.blocks x = t.blocks x)
+    {slot : Slot} {r : Root}
+    (hs : WalkKnown s slot r) (ht : WalkKnown t slot r) :
+    ∀ (status : PayloadStatus) (fuel : ℕ),
+      get_ancestor_aux s slot fuel (ForkChoiceNode.mk r status) =
+        get_ancestor_aux t slot fuel (ForkChoiceNode.mk r status) := by
+  induction hs generalizing t with
+  | @stop r hr hle =>
+    intro status fuel
+    have hblock := hagree r hr ht.root_mem
+    cases fuel with
+    | zero => rfl
+    | succ f =>
+      simp only [get_ancestor_aux]
+      rw [if_neg (by simpa using hle), if_neg (by rw [← hblock]; simpa using hle)]
+  | @step r hr hgt hp ih =>
+    intro status fuel
+    have hblock := hagree r hr ht.root_mem
+    cases ht with
+    | stop hrt hle =>
+      rw [← hblock] at hle
+      exact False.elim ((Nat.not_lt_of_ge hle) hgt)
+    | step hrt hgtT hpT =>
+      cases fuel with
+      | zero => rfl
+      | succ f =>
+        simp only [get_ancestor_aux]
+        rw [if_pos (by simpa using hgt),
+          if_pos (by rw [← hblock]; simpa using hgt), ← hblock]
+        have hparentBlock :
+            s.blocks (s.blocks r).parent_root =
+              t.blocks (s.blocks r).parent_root := by
+          apply hagree _ hp.root_mem
+          rw [hblock]
+          exact hpT.root_mem
+        have hstatus : get_parent_payload_status s (s.blocks r) =
+            get_parent_payload_status t (s.blocks r) := by
+          simp only [get_parent_payload_status, hparentBlock]
+        rw [← hstatus]
+        have hpT' : WalkKnown t slot (s.blocks r).parent_root := by
+          rw [hblock]
+          exact hpT
+        exact ih hagree hpT' _ f
+
+omit [Inhabited Root] in
+/-- Complete ancestor transport along a head known in both stores. -/
+theorem get_ancestor_congr_common_walk {s t : Store Root}
+    (hagree : ∀ x, x ∈ s.block_roots → x ∈ t.block_roots →
+      s.blocks x = t.blocks x)
+    {slot : Slot} {r : Root}
+    (hs : WalkKnown s slot r) (ht : WalkKnown t slot r) :
+    get_ancestor s (ForkChoiceNode.mk r .pending) slot =
+      get_ancestor t (ForkChoiceNode.mk r .pending) slot := by
+  simp only [get_ancestor]
+  rw [hagree r hs.root_mem ht.root_mem]
+  exact get_ancestor_aux_congr_common_walk hagree hs ht .pending _
+
+omit [Inhabited Root] in
+/-- A covered head path gives both checkpoint knowledge and the exact
+checkpoint readback at the receiver. -/
+theorem WalkCoveredBy.checkpoint_agreement {s t : Store Root}
+    (hagree : ∀ x, x ∈ s.block_roots → x ∈ t.block_roots →
+      s.blocks x = t.blocks x)
+    {slot : Slot} {r : Root} (hcover : WalkCoveredBy s t slot r)
+    {epoch : Epoch} (hslot : slot = compute_start_slot_at_epoch cfg epoch) :
+    get_checkpoint_block cfg s r epoch =
+      get_checkpoint_block cfg t r epoch := by
+  subst slot
+  simp only [get_checkpoint_block]
+  exact congrArg ForkChoiceNode.root
+    (get_ancestor_congr_common_walk hagree
+      hcover.source_walk (hcover.receiver_walk hagree))
+
+omit [Inhabited Root] in
+/-- Pending-root ancestry transports when only the compared walk is common
+to the two stores. -/
+theorem is_ancestor_congr_common_walk {s t : Store Root}
+    (hagree : ∀ x, x ∈ s.block_roots → x ∈ t.block_roots →
+      s.blocks x = t.blocks x)
+    {node ancestor : Root}
+    (hancS : ancestor ∈ s.block_roots)
+    (hancT : ancestor ∈ t.block_roots)
+    (hs : WalkKnown s (s.blocks ancestor).slot node)
+    (ht : WalkKnown t (s.blocks ancestor).slot node) :
+    is_ancestor s (get_node_for_root node) (get_node_for_root ancestor) =
+      is_ancestor t (get_node_for_root node) (get_node_for_root ancestor) := by
+  simp only [get_node_for_root, is_ancestor_pending]
+  rw [← hagree ancestor hancS hancT]
+  rw [get_ancestor_congr_common_walk hagree hs ht]
+
+omit [Inhabited Root] in
 /-- Pending-node wrapper for stores that agree on every known block. -/
 theorem get_ancestor_congr {s t : Store Root}
     (hagree : ∀ x ∈ s.block_roots, s.blocks x = t.blocks x)

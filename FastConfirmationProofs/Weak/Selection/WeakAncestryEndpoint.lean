@@ -1,5 +1,7 @@
 module
 public import FastConfirmationProofs.Weak.Selection.WeakAncestryTransport
+public import FastConfirmationProofs.Execution.Delivery.VoteDeadlineOrigin
+public import FastConfirmationStatements.Premises.SelectedMargin
 
 @[expose] public section
 
@@ -94,6 +96,71 @@ theorem Execution.is_ancestor_replay_closed (hwf : WellFormedExecution E)
   simp only [is_ancestor_get_node_for_root, decide_eq_true_eq]
   rw [← hbb]
   exact hlands_w
+
+
+/-- A root reached by an admissible known walk is not permanently excluded. -/
+theorem VotePathAdmissible.ancestor_not_excluded
+    {v w : ValidatorIndex} {n boundary : ℕ} {slot : Slot} {d b : Root}
+    (hparent : ParentSlotLt (E.store cfg ext v n))
+    (hpath : VotePathAdmissible cfg ext E v n w boundary slot d)
+    (hlands : (get_ancestor (E.store cfg ext v n)
+      (ForkChoiceNode.mk d .pending) slot).root = b) :
+    ¬ PermanentBlockExclusion cfg ext E v n b w boundary := by
+  induction hpath with
+  | @stop r hr hnot hle =>
+    rw [get_ancestor_stop hle] at hlands
+    simpa only using hlands ▸ hnot
+  | @step r hr hnot hgt hp ih =>
+    rw [get_ancestor_step hparent hr hgt hp.walkKnown] at hlands
+    exact ih hlands
+
+/-- Relay one known ancestor of an honest signed head from its vote deadline. -/
+theorem Execution.honest_head_ancestor_known_at_endpoint_weak
+    (hA : SelectedMarginAssumptions cfg ext E)
+    {u w : ValidatorIndex} {n m : ℕ} {b : Root}
+    (hu : u ∈ E.honest) (hw : w ∈ E.honest)
+    (hHn : E.WithinHorizon cfg n) (hHm : E.WithinHorizon cfg m)
+    (hdue : n ≤ E.slot_start cfg (E.slot_at cfg n) +
+      get_attestation_due_ms cfg / 1000)
+    (hb : b ∈ (E.store cfg ext u n).block_roots)
+    (hanc : is_ancestor (E.store cfg ext u n)
+      (get_node_for_root (get_head cfg (E.store cfg ext u n)).root)
+      (get_node_for_root b) = true)
+    (hslot : E.slot_at cfg n < E.slot_at cfg m) :
+    b ∈ (E.store cfg ext w m).block_roots := by
+  obtain ⟨ast, ablk, hgen, hgenSlot, hgenParent⟩ := hA.genesis
+  have hgenTime : E.genesis_store.genesis_time ≤ E.genesis_store.time := by
+    rw [hgen]; simp only [get_forkchoice_store]; omega
+  obtain ⟨hnext, hlt⟩ := E.past_slot_deadline_target_gate cfg
+    hA.whole_seconds hgenTime hslot
+  have hhead : (get_head cfg (E.store cfg ext u n)).root ∈
+      (E.store cfg ext u n).block_roots := by
+    rcases get_head_root_mem_or cfg (E.store cfg ext u n) with h | h
+    · exact h
+    · rw [h]
+      exact hA.domain.justified_root_known u hu n hHn
+  have hwalk : WalkKnown (E.store cfg ext u n)
+      ((E.store cfg ext u n).blocks b).slot
+      (get_head cfg (E.store cfg ext u n)).root :=
+    E.store_walkKnownK cfg ext hA.wellFormed hA.externals_coherence
+      ⟨ast, ablk, hgen, hgenSlot, hgenParent⟩ u n b hb _ hhead
+  have hHnext : E.WithinHorizon cfg
+      (E.slot_start cfg (E.slot_at cfg n + 1)) :=
+    E.withinHorizon_mono cfg hnext hHm
+  have hpath := hA.domain.honest_head_paths u hu n hHn w
+    ((E.store cfg ext u n).blocks b).slot hHnext hwalk
+  have hparent : ParentSlotLt (E.store cfg ext u n) :=
+    E.store_parentSlotLt cfg ext hA.wellFormed hA.externals_coherence
+      ⟨ast, ablk, hgen, hgenSlot, hgenParent⟩
+      hA.wellFormed.anchor_parent_unscheduled u n
+  have hlands : (get_ancestor (E.store cfg ext u n)
+      (ForkChoiceNode.mk (get_head cfg (E.store cfg ext u n)).root .pending)
+      ((E.store cfg ext u n).blocks b).slot).root = b := by
+    simpa only [is_ancestor_get_node_for_root, decide_eq_true_eq] using hanc
+  have hnot := VotePathAdmissible.ancestor_not_excluded cfg ext E
+    hparent hpath hlands
+  exact (hA.synchrony.deadline_block_relay u hu n b hHn hb hdue
+    w hw m hHm hnext hlt).resolve_right hnot
 
 end FastConfirmation.Spec
 

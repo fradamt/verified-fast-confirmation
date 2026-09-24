@@ -1,6 +1,10 @@
 module
+public import FastConfirmationProofs.Checkpoints.DeadlineCarrierAdoption
 public import Mathlib.Tactic
 public import FastConfirmationProofs.Execution.Delivery.EarlyPhaseSourceDelivery
+public import FastConfirmationProofs.Execution.Delivery.VoteDeadlineOrigin
+public import FastConfirmationProofs.Checkpoints.DeadlineBlockAdmissibility
+public import FastConfirmationProofs.FFG.State.FinalizationTiming
 public import FastConfirmationProofs.ForkChoice.Filter.QueryFilterViability
 public import FastConfirmationProofs.ModelFacts
 
@@ -92,6 +96,56 @@ theorem fcr_currentSlotHead_known
           (E.store_storeLE cfg ext v (Nat.le_succ n)).1 hknownN
         simpa only [Execution.fcr, hcall, if_false] using hcarry
 
+/-- The current-slot head cache was read from an honest store in its current
+slot by the attestation deadline. A call refreshes it at the new slot's first
+second; between calls the cached root and its earlier origin persist. -/
+theorem fcr_currentSlotHead_deadline_origin
+    (hdiv : 1000 ∣ cfg.slot_duration_ms)
+    (hgenTime : E.genesis_store.genesis_time ≤ E.genesis_store.time)
+    (hgen : ∃ (anchor_state : BeaconState Root)
+      (anchor_block : SignedBeaconBlock Root),
+      E.genesis_store = get_forkchoice_store cfg anchor_state anchor_block ∧
+        anchor_state.slot = anchor_block.message.slot ∧
+        anchor_block.message.parent_root ≠ anchor_block.root)
+    (hdom : SelectedMarginDomain cfg ext E)
+    (v : ValidatorIndex) (hv : v ∈ E.honest) (n : Nat)
+    (hH : E.WithinHorizon cfg n) :
+    ∃ origin : ℕ,
+      origin ≤ n ∧ E.slot_at cfg origin = E.slot_at cfg n ∧
+      origin ≤ E.slot_start cfg (E.slot_at cfg origin) +
+        get_attestation_due_ms cfg / 1000 ∧
+      (E.fcr cfg ext v n).current_slot_head ∈
+        (E.store cfg ext v origin).block_roots := by
+  induction n with
+  | zero =>
+      refine ⟨0, Nat.le_refl 0, rfl, Nat.zero_le _, ?_⟩
+      exact E.fcr_currentSlotHead_known cfg ext hgen hdom v hv 0 hH
+  | succ n ih =>
+      have hnH : E.WithinHorizon cfg n :=
+        E.withinHorizon_mono cfg (Nat.le_succ n) hH
+      by_cases hcall : get_current_slot cfg (E.store cfg ext v (n + 1)) >
+          get_current_slot cfg (E.store cfg ext v n)
+      · have hcallAt : E.IsScheduledFCRCallAt cfg ext v n := hcall
+        have hstart := E.scheduled_fcr_call_at_slot_start cfg ext
+          hdiv hgenTime hcallAt
+        have hhead := E.head_root_known_of_selectedMarginDomain cfg ext
+          hdom hv (n + 1) hH
+        refine ⟨n + 1, Nat.le_refl _, rfl, ?_, ?_⟩
+        · rw [hstart]
+          omega
+        · simp only [Execution.fcr, hcall, if_true,
+            on_fast_confirmation, update_fast_confirmation_variables]
+          split_ifs <;> exact hhead
+      · obtain ⟨origin, horigin, hslot, hdeadline, hroot⟩ := ih hnH
+        have hslotEq : E.slot_at cfg (n + 1) = E.slot_at cfg n := by
+          have hnot : E.slot_at cfg (n + 1) ≤ E.slot_at cfg n := by
+            simpa only [E.store_current_slot cfg ext v] using
+              Nat.le_of_not_gt hcall
+          exact Nat.le_antisymm hnot (E.slot_at_mono cfg (Nat.le_succ n))
+        refine ⟨origin, horigin.trans (Nat.le_succ n),
+          hslot.trans hslotEq.symm, hdeadline, ?_⟩
+        simpa only [Execution.fcr, hcall, if_false] using hroot
+
 /-- Immediately before an executable `fcrStoreAtCall`, its previous-slot-head cache
 is the preceding recurrence's known current-slot head, hence is known in the
 step store as well. -/
@@ -156,14 +210,9 @@ theorem StrictSelectedResultMechanicalFacts.confirmedPastDescendantSlotWitness
       (by simpa only [hquery] using h.result_known)
       (by simpa only [hquery] using h.parent_known)
       h.confirmed
-  obtain ⟨u, nu, d, hu, hnuH, hnuq, hdPast, hdResult⟩ :=
+  obtain ⟨u, nu, d, hu, hnuH, hnuq, _hdeadline, _hhead, hdPast, hdQueryE, hdResult⟩ :=
     E.past_descendant_of_honest_supporter_known_minimal cfg ext hA
       v hv q result hqH i hi lm hlm hsupp
-  have hrelayGate : E.slot_at cfg nu + 1 ≤ E.slot_at cfg (q + 1) := by
-    exact (Nat.succ_le_iff.mpr hnuq).trans
-      (E.slot_at_mono cfg (Nat.le_succ q))
-  have hdQueryE : d ∈ (E.store cfg ext v q).block_roots :=
-    hA.synchrony.block_relay u hu nu d hnuH hdPast v hv q hqH hrelayGate
   have hdQuery : d ∈ query.store.block_roots := by
     simpa only [hquery] using hdQueryE
   have hdAgree : (E.store cfg ext u nu).blocks d = query.store.blocks d := by
@@ -258,7 +307,7 @@ theorem recentSourceSeedAt_endpoint_of_explicitSeed_sameEpoch
     (hqueryParent : ParentSlotLt query)
     (hqueryProvenance : BlockProvenance E query)
     (hqueryWalk : WalkKnown query (query.blocks selected).slot seed)
-    (hselectedM : selected ∈ (E.store cfg ext w m).block_roots)
+    (hselectedQ : selected ∈ query.block_roots)
     (hseedQ : seed ∈ query.block_roots)
     (hseedM : seed ∈ (E.store cfg ext w m).block_roots)
     (hseedSelectedQ : is_ancestor query (get_node_for_root seed)
@@ -273,21 +322,29 @@ theorem recentSourceSeedAt_endpoint_of_explicitSeed_sameEpoch
   have hsemantic : E.RootDescends seed selected :=
     E.rootDescends_of_store_ancestor hqueryProvenance hqueryParent
       hqueryWalk hseedSelectedQ
-  have hseedSelectedM : is_ancestor (E.store cfg ext w m)
-      (get_node_for_root seed) (get_node_for_root selected) = true :=
-    E.store_ancestor_of_rootDescends_for_storeReflection cfg ext hwf hec
-      hgen hgenSlot hgenParent hseedM hselectedM hsemantic
+  have hselectedRoot : E.ExecutionRoot selected := by
+    refine ⟨query.blocks selected, ?_⟩
+    rcases hqueryProvenance selected hselectedQ with hgenesis | hsched
+    · exact Or.inl ⟨hgenesis.1, hgenesis.2⟩
+    · obtain ⟨sb, ⟨u, k, hscheduled⟩, hroot, hmessage⟩ := hsched
+      exact Or.inr ⟨u, k, sb, hscheduled, hroot, hmessage.symm⟩
+  obtain ⟨_hselectedM, hseedSelectedM⟩ :=
+    E.store_known_ancestor_of_rootDescends_for_storeReflection cfg ext
+      hwf hec hgen hgenSlot hgenParent hseedM hselectedRoot hsemantic
   have hsourceMono := E.acceptedVotingSource_epoch_le_of_currentEpoch_le
     cfg ext B hwf hquery hendpoint hseedQ hseedM hclock
   refine ⟨seed, hseedM, hseedSelectedM, ?_⟩
   rw [hsameEpoch]
   exact hrecentQ.trans (Nat.add_le_add_right hsourceMono 2)
 
-/-- Actual-call previous cell.  The selected root is relayed through its
-honest confirmation supporter.  In the previous-loop arm, the exact cached
-seed is known before the call and the slot advance makes `Synchrony.block_relay`
-applicable even at another honest node's same-slot endpoint.  In the tentative
-arm the selected root itself is the seed.
+/-- Actual-call previous cell. In the previous-loop arm the exact cached
+seed is known at a slot-start origin. In the tentative arm the selected root
+itself is the seed and its earlier origin is the honest supporter's vote.
+
+The cached head's slot-start origin supplies the cutoff relay. Accepted AU
+certificate accountability and finalization lag rule out permanent exclusion
+at the endpoint in both arms. The previous-loop selected ancestor is
+recovered from that known head's common accepted parent chain.
 
 The public signature lists the independent lower contracts; it does not
 export `SelectedMarginAssumptions` as a completion premise. -/
@@ -298,6 +355,16 @@ theorem StrictSelectedResultMechanicalFacts.fcrStep_previous_endpointRecentSourc
     (hbyz : ByzantineWeightPremises cfg E)
     (hdomain : SelectedMarginDomain cfg ext E)
     (B : CausalPrefixFFGInterpretation cfg ext E)
+    (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
+    (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
+      (E := E) (anchor := B.anchor))
+    (hDelay : E.RealizedFinalizationDelay cfg ext B)
+    (P : EpochCheckpointClosure B.anchor
+      (E.AcceptedRoot cfg ext) B.state.C)
+    (V : B.state.ExactLinkValidity)
+    (hanchorExact : B.anchor =
+      B.state.C B.anchor.root B.anchor.epoch)
+    (hacc : CheckpointCertificateAccountability cfg E B.anchor)
     {v : ValidatorIndex} (hv : v ∈ E.honest) {n : Nat}
     (hn1H : E.WithinHorizon cfg (n + 1))
     (hcall : E.IsScheduledFCRCallAt cfg ext v n)
@@ -319,13 +386,6 @@ theorem StrictSelectedResultMechanicalFacts.fcrStep_previous_endpointRecentSourc
     E.withinHorizon_mono cfg (Nat.le_succ n) hn1H
   have hslotForward : E.slot_at cfg (n + 1) ≤ E.slot_at cfg m :=
     E.slot_at_mono cfg hnm
-  have hselectedM : result ∈ (E.store cfg ext w m).block_roots :=
-    E.confirmed_known_at_all_honest_endpoints_minimal cfg ext hA
-      v hv (n + 1) (E.fcrStoreAtCall cfg ext v n)
-      (E.fcrStep_store cfg ext v n) result hn1H
-      (by simpa only [E.fcrStep_store] using h.result_known)
-      (by simpa only [E.fcrStep_store] using h.parent_known)
-      h.confirmed w hw m hslotForward hmH
   have hqueryCausal : E.CausalStore cfg ext
       (E.fcrStoreAtCall cfg ext v n).store := by
     rw [E.fcrStep_store]
@@ -352,46 +412,177 @@ theorem StrictSelectedResultMechanicalFacts.fcrStep_previous_endpointRecentSourc
       ⟨_a, _hedge, _hentry, hfinal⟩
   · have hseedQ := E.fcrStep_previousSlotHead_known cfg ext
       hT.genesis_structure hdomain v hv n hn1H
-    have hseedN : (E.fcrStoreAtCall cfg ext v n).previous_slot_head ∈
-        (E.store cfg ext v n).block_roots := by
-      rw [E.fcrStep_previousSlotHead_eq_currentSlotHead]
-      exact E.fcr_currentSlotHead_known cfg ext hT.genesis_structure hdomain
-        v hv n hnH
     have hslotAdvance : E.slot_at cfg n < E.slot_at cfg (n + 1) := by
       unfold IsScheduledFCRCallAt at hcall
       simpa only [E.store_current_slot cfg ext v (n + 1),
         E.store_current_slot cfg ext v n] using hcall
-    have hrelayGate : E.slot_at cfg n + 1 ≤ E.slot_at cfg (m + 1) :=
-      (Nat.succ_le_iff.mpr hslotAdvance).trans
-        (E.slot_at_mono cfg
-          (hnm.trans (Nat.le_succ m)))
+    have hgenTime : E.genesis_store.genesis_time ≤
+        E.genesis_store.time := by
+      rw [hgen]
+      exact (wellFormedStore_get_forkchoice_store cfg ast ablk
+        hgenSlot hgenParent).time_ge_genesis
+    obtain ⟨origin, horiginLe, horiginSlot, horiginDeadline,
+        hseedOrigin⟩ :=
+      E.fcr_currentSlotHead_deadline_origin cfg ext hT.whole_seconds
+        hgenTime hT.genesis_structure hdomain v hv n hnH
+    have horiginH : E.WithinHorizon cfg origin :=
+      E.withinHorizon_mono cfg (horiginLe.trans (Nat.le_succ n)) hn1H
+    have hseedOrigin' : (E.fcrStoreAtCall cfg ext v n).previous_slot_head ∈
+        (E.store cfg ext v origin).block_roots := by
+      rw [E.fcrStep_previousSlotHead_eq_currentSlotHead]
+      exact hseedOrigin
+    have hstartCall : E.slot_start cfg (E.slot_at cfg (n + 1)) =
+        n + 1 :=
+      E.scheduled_fcr_call_at_slot_start cfg ext hT.whole_seconds
+        hgenTime hcall
+    have hstartTarget : E.slot_start cfg (E.slot_at cfg origin + 1) ≤ m := by
+      have hslot : E.slot_at cfg origin + 1 ≤ E.slot_at cfg (n + 1) := by
+        rw [horiginSlot]
+        exact Nat.succ_le_of_lt hslotAdvance
+      exact (E.slot_start_mono cfg hslot).trans
+        (hstartCall.le.trans hnm)
+    have hrelayOutcome :
+        (E.fcrStoreAtCall cfg ext v n).previous_slot_head ∈
+          (E.store cfg ext w m).block_roots ∨
+        PermanentBlockExclusion cfg ext E v origin
+          (E.fcrStoreAtCall cfg ext v n).previous_slot_head w
+            m :=
+      E.deadline_block_relay_at_endpoint cfg ext hsync.deadline_block_relay v hv origin _ horiginH
+        hseedOrigin' horiginDeadline w hw m hmH hstartTarget
+        (lt_of_le_of_lt horiginLe (Nat.lt_succ_self n) |>.trans_le hnm)
+    let target := get_voting_source cfg
+      (E.fcrStoreAtCall cfg ext v n).store
+      (E.fcrStoreAtCall cfg ext v n).previous_slot_head
+    have hsourceAU : B.state.AU cfg ext
+        (E.fcrStoreAtCall cfg ext v n).previous_slot_head target := by
+      exact hqueryCausal.getVotingSource_AU cfg ext B hseedQ
+    have hreal := E.finalizedCheckpoint_resetRealizedAt_of_acceptedGlobalTrajectory
+      cfg ext B hT hanchor hboundary (w := w) m
+    have hfinalizedKnown : (E.store cfg ext w m).finalized_checkpoint.root ∈
+        (E.store cfg ext w m).block_roots := hreal.root_known
+    have hanchorLe : B.anchor.epoch ≤
+        (E.store cfg ext w m).finalized_checkpoint.epoch :=
+      CertifiedJustified.anchor_epoch_le (cfg := cfg)
+        (Classical.choice hreal.certified)
+    have hLag : E.CausalRealizedFinalizationLag cfg ext B :=
+      E.causalRealizedFinalizationLag_of_acceptedDelay
+        cfg ext B hT hanchor hDelay
+    have htargetEpoch : (E.store cfg ext w m).finalized_checkpoint.epoch ≤
+        target.epoch := by
+      rcases hLag hendpointCausal with hFanchor | hFdelay
+      · obtain ⟨_carrier, _hdesc, hformed⟩ := hsourceAU
+        obtain ⟨hincluded⟩ := (B.state.formed_evidence hformed).certified
+        have hcert : CertifiedJustified cfg E B.anchor target :=
+          IncludedCertifiedJustified.toCertifiedJustified (cfg := cfg)
+            B.state.includedAttestations.relation hincluded
+        rw [hFanchor]
+        exact CertifiedJustified.anchor_epoch_le (cfg := cfg) hcert
+      · change target.epoch + 2 ≥ get_current_store_epoch cfg
+          (E.fcrStoreAtCall cfg ext v n).store at hrecent
+        rw [hsameEpoch] at hFdelay
+        exact (Nat.add_le_add_iff_right).mp (hFdelay.trans hrecent)
+    have hseedWalk : WalkKnown (E.store cfg ext v origin)
+        (compute_start_slot_at_epoch cfg
+          (E.store cfg ext w m).finalized_checkpoint.epoch)
+        (E.fcrStoreAtCall cfg ext v n).previous_slot_head :=
+      E.trustedAnchor_boundaryWalkAtEpoch cfg ext hA hanchor hboundary
+        v origin hanchorLe hseedOrigin'
+    have hnotExcluded : ¬ PermanentBlockExclusion cfg ext E v origin
+        (E.fcrStoreAtCall cfg ext v n).previous_slot_head w m :=
+      E.acceptedSourceTip_not_permanentlyExcluded_of_AU cfg ext B hT hA
+        hanchor hboundary P V hanchorExact hacc hmH hseedOrigin'
+        hfinalizedKnown hanchorLe hsourceAU htargetEpoch hseedWalk
     have hseedM : (E.fcrStoreAtCall cfg ext v n).previous_slot_head ∈
-        (E.store cfg ext w m).block_roots :=
-      hsync.block_relay v hv n _ hnH hseedN w hw m hmH hrelayGate
+        (E.store cfg ext w m).block_roots := by
+      rcases hrelayOutcome with hknown | hexcluded
+      · exact hknown
+      · exact False.elim (hnotExcluded hexcluded)
     exact E.recentSourceSeedAt_endpoint_of_explicitSeed_sameEpoch
       cfg ext B hT.wellFormed hT.externals_coherence
       hgen hgenSlot hgenParent hqueryCausal hendpointCausal
       hqueryParent hqueryProvenance
       (hqueryWalk result h.result_known _ hseedQ)
-      hselectedM hseedQ hseedM hdesc hclock hsameEpoch hrecent
+      h.result_known hseedQ hseedM hdesc hclock hsameEpoch hrecent
   · unfold TentativeSelectedResultWitness at hfinal
     rcases hfinal with hcurrent | ⟨hrecent, _houter⟩
     · have hbad : get_block_epoch cfg (E.fcrStoreAtCall cfg ext v n).store result + 1 =
           get_block_epoch cfg (E.fcrStoreAtCall cfg ext v n).store result :=
         hprevious.trans hcurrent.symm
       exact False.elim ((Nat.ne_of_gt (Nat.lt_succ_self _)) hbad)
-    · exact E.recentSourceSeedAt_endpoint_of_explicitSeed_sameEpoch
+    · have hselectedQ : result ∈
+          (E.store cfg ext v (n + 1)).block_roots := by
+        simpa only [E.fcrStep_store] using h.result_known
+      have hparentQ : ((E.store cfg ext v (n + 1)).blocks result).parent_root ∈
+          (E.store cfg ext v (n + 1)).block_roots := by
+        simpa only [E.fcrStep_store] using h.parent_known
+      obtain ⟨i, lm, hi, hlm, hsupp⟩ :=
+        E.honestSupporter_of_confirmed_known_at_minimal cfg ext hA
+          v hv (n + 1) (E.fcrStoreAtCall cfg ext v n)
+          (E.fcrStep_store cfg ext v n) result hn1H
+          hselectedQ hparentQ h.confirmed
+      obtain ⟨u, nu, d, hu, hHnu, hslot, hdeadline, _hhead,
+          hd, hdQuery, hanc⟩ :=
+        E.past_descendant_of_honest_supporter_known_minimal cfg ext hA
+          v hv (n + 1) result hn1H i hi lm hlm hsupp
+      obtain ⟨hselectedOrigin, hrelayOutcome⟩ :=
+        E.mem_or_excluded_of_known_honest_past_descendant_minimal
+          cfg ext hA v hv (n + 1) result hn1H hselectedQ
+          w hw m hslotForward hmH u hu nu hHnu d hslot hdeadline
+          hd hdQuery hanc
+      let target := get_voting_source cfg
+        (E.fcrStoreAtCall cfg ext v n).store result
+      have hsourceAU : B.state.AU cfg ext result target :=
+        hqueryCausal.getVotingSource_AU cfg ext B h.result_known
+      have hreal := E.finalizedCheckpoint_resetRealizedAt_of_acceptedGlobalTrajectory
+        cfg ext B hT hanchor hboundary (w := w) m
+      have hfinalizedKnown : (E.store cfg ext w m).finalized_checkpoint.root ∈
+          (E.store cfg ext w m).block_roots := hreal.root_known
+      have hanchorLe : B.anchor.epoch ≤
+          (E.store cfg ext w m).finalized_checkpoint.epoch :=
+        CertifiedJustified.anchor_epoch_le (cfg := cfg)
+          (Classical.choice hreal.certified)
+      have hLag : E.CausalRealizedFinalizationLag cfg ext B :=
+        E.causalRealizedFinalizationLag_of_acceptedDelay
+          cfg ext B hT hanchor hDelay
+      have htargetEpoch : (E.store cfg ext w m).finalized_checkpoint.epoch ≤
+          target.epoch := by
+        rcases hLag hendpointCausal with hFanchor | hFdelay
+        · obtain ⟨_carrier, _hdesc, hformed⟩ := hsourceAU
+          obtain ⟨hincluded⟩ := (B.state.formed_evidence hformed).certified
+          have hcert : CertifiedJustified cfg E B.anchor target :=
+            IncludedCertifiedJustified.toCertifiedJustified (cfg := cfg)
+              B.state.includedAttestations.relation hincluded
+          rw [hFanchor]
+          exact CertifiedJustified.anchor_epoch_le (cfg := cfg) hcert
+        · change target.epoch + 2 ≥ get_current_store_epoch cfg
+            (E.fcrStoreAtCall cfg ext v n).store at hrecent
+          rw [hsameEpoch] at hFdelay
+          exact (Nat.add_le_add_iff_right).mp (hFdelay.trans hrecent)
+      have hselectedWalk : WalkKnown (E.store cfg ext u nu)
+          (compute_start_slot_at_epoch cfg
+            (E.store cfg ext w m).finalized_checkpoint.epoch) result :=
+        E.trustedAnchor_boundaryWalkAtEpoch cfg ext hA hanchor hboundary
+          u nu hanchorLe hselectedOrigin
+      have hnotExcluded : ¬ PermanentBlockExclusion cfg ext E u nu result w m :=
+        E.acceptedSourceTip_not_permanentlyExcluded_of_AU cfg ext B hT hA
+          hanchor hboundary P V hanchorExact hacc hmH hselectedOrigin
+          hfinalizedKnown hanchorLe hsourceAU htargetEpoch hselectedWalk
+      have hselectedM : result ∈ (E.store cfg ext w m).block_roots := by
+        rcases hrelayOutcome with hknown | hexcluded
+        · exact hknown
+        · exact False.elim (hnotExcluded hexcluded)
+      exact E.recentSourceSeedAt_endpoint_of_explicitSeed_sameEpoch
         cfg ext B hT.wellFormed hT.externals_coherence
         hgen hgenSlot hgenParent hqueryCausal hendpointCausal
         hqueryParent hqueryProvenance
         (hqueryWalk result h.result_known result h.result_known)
-        hselectedM h.result_known hselectedM
+        h.result_known h.result_known hselectedM
         (is_ancestor_refl _ _) hclock hsameEpoch hrecent
 
-/-- Actual `fcrStoreAtCall` current/next cell.  Epoch-start exclusion is derived from
-the narrow honest past-descendant witness.  The strict epoch gap itself gives
-the `Synchrony.block_relay` clock gate for every query seed, so neither
-selected-root nor seed endpoint knownness is a premise. -/
+/-- Actual `fcrStoreAtCall` current/next cell. Epoch-start exclusion is derived
+from the narrow honest past-descendant witness. The one Lemma-13 seed is
+transported to the endpoint; its selected ancestor follows from the accepted
+parent chain there. -/
 theorem StrictSelectedResultMechanicalFacts.fcrStep_currentNext_endpointRecentSourceSeed
     (hT : E.ScheduledPrefixPremises cfg ext)
     (hsync : NextSlotSynchronyPremises cfg ext E)
@@ -399,8 +590,16 @@ theorem StrictSelectedResultMechanicalFacts.fcrStep_currentNext_endpointRecentSo
     (hbyz : ByzantineWeightPremises cfg E)
     (hdomain : SelectedMarginDomain cfg ext E)
     (B : CausalPrefixFFGInterpretation cfg ext E)
+    (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
+    (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
+      (E := E) (anchor := B.anchor))
+    (hDelay : E.RealizedFinalizationDelay cfg ext B)
+    (P : EpochCheckpointClosure B.anchor (E.AcceptedRoot cfg ext) B.state.C)
+    (V : B.state.ExactLinkValidity)
+    (hacc : CheckpointCertificateAccountability cfg E B.anchor)
     {v : ValidatorIndex} (hv : v ∈ E.honest) {n : Nat}
     (hn1H : E.WithinHorizon cfg (n + 1))
+    (hcall : E.IsScheduledFCRCallAt cfg ext v n)
     {input result : Root}
     (hinput : input ∈ (E.fcrStoreAtCall cfg ext v n).store.block_roots)
     (hout : find_latest_confirmed_descendant cfg ext
@@ -463,12 +662,31 @@ theorem StrictSelectedResultMechanicalFacts.fcrStep_currentNext_endpointRecentSo
       E.slot_at cfg (m + 1) :=
     (Nat.succ_le_iff.mpr hslotLt).trans
       (E.slot_at_mono cfg (Nat.le_succ m))
-  have hseedM : ∀ seed,
-      seed ∈ (E.fcrStoreAtCall cfg ext v n).store.block_roots →
-      seed ∈ (E.store cfg ext w m).block_roots := by
-    intro seed hseed
-    apply hsync.block_relay v hv (n + 1) seed hn1H
-      (by simpa only [E.fcrStep_store] using hseed) w hw m hmH hrelayGate
+  obtain ⟨seed, hseedQ, hseedSelectedQ, hguRecent⟩ := hlemma
+  have hgenTime : E.genesis_store.genesis_time ≤ E.genesis_store.time := by
+    rw [hgen]
+    exact (wellFormedStore_get_forkchoice_store cfg ast ablk
+      hgenSlot hgenParent).time_ge_genesis
+  obtain ⟨origin, horiginEq, hcutoff, horiginKnown⟩ :=
+    E.scheduled_fcr_call_root_before_deadline cfg ext hT.whole_seconds
+      hgenTime hcall (by simpa only [E.fcrStep_store] using hseedQ)
+  have hAU : B.state.AU cfg ext seed (B.state.GU seed) :=
+    B.state.gu_AU cfg ext (E.acceptedRoot_of_causal_known cfg ext
+      hqueryCausal hseedQ)
+  obtain ⟨hstart, hbefore⟩ := E.past_slot_deadline_target_gate cfg
+    hT.whole_seconds hgenTime (source := origin) (target := m)
+      (by simpa only [horiginEq] using hslotLt)
+  have hrecent : get_current_store_epoch cfg (E.store cfg ext w m) ≤
+      (B.state.GU seed).epoch + 2 := by
+    rw [hnextEpoch]
+    simpa only [Nat.add_assoc, Nat.reduceAdd] using Nat.add_le_add_right hguRecent 1
+  have hseedM : seed ∈ (E.store cfg ext w m).block_roots :=
+    E.deadline_carrier_known_of_recent_au cfg ext B hT hsync.deadline_block_relay
+      hanchor hboundary
+      (E.causalRealizedFinalizationLag_of_acceptedDelay cfg ext B hT hanchor hDelay)
+      P V hacc (n := origin) (m := m) (tip := seed) (c := B.state.GU seed)
+      hv hw (by simpa only [horiginEq] using hn1H) hmH
+      horiginKnown hcutoff hstart hbefore hAU hrecent
   have hqueryNonfuture : BlocksSlotLe
       (get_current_slot cfg (E.fcrStoreAtCall cfg ext v n).store)
       (E.fcrStoreAtCall cfg ext v n).store := by
@@ -480,8 +698,8 @@ theorem StrictSelectedResultMechanicalFacts.fcrStep_currentNext_endpointRecentSo
     hqueryCausal hendpointCausal hqueryParent
     (by simpa only [E.fcrStep_store] using
       E.blockProvenance cfg ext v (n + 1))
-    hqueryWalk hqueryNonfuture h.result_known (hseedM result h.result_known)
-    hseedM hnextEpoch hlemma
+    hqueryWalk hqueryNonfuture h.result_known hnextEpoch
+    ⟨seed, hseedQ, hseedSelectedQ, hguRecent, hseedM⟩
 
 /-- Convenience adapter for the existing minimal assumption package.  Public
 accepted wiring should prefer `not_epochStart_of_current` with the narrow

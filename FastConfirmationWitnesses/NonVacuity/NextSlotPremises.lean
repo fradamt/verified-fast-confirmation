@@ -526,6 +526,7 @@ def witnessCompletedPrefixCallAssumptions :
   phase0_source := witnessPhase0SourceCoherence
   phase0_boundary_source := witnessPhase0BoundarySourceCoherence
   balance_floor := witnessBalanceFloor
+  delivery_lookahead := witnessHorizonVoteDeliveryLookahead
 
 def witnessAcceptedActualFCRNextSlotSafetyAssumptions :
     witnessExecution.NextSlotSafetyPremises witnessConfig

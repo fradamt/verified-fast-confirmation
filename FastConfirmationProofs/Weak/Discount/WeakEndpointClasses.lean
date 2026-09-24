@@ -148,15 +148,21 @@ theorem freshSupporter_mem_endpoint_Sclass {E : Execution Root}
   -- (iii) the ground newest vote is the supporter's own head vote in its own store
   have hesH : E.SlotWithinHorizon cfg es :=
     E.slotWithinHorizon_of_le cfg (le_of_lt hesq) hqH
-  obtain ⟨nu, _index, hnuH, hnuSlot, _hatt, hrootNu⟩ :=
+  obtain ⟨nu, index, hnuH, hnuSlot, hdue, hatt, hrootNu⟩ :=
     E.honest_newest_vote_source_minimal cfg ext hA hlo0 hesH hi hiSpan htle hvote hnew
-  -- (iv) honest → honest relay from the voter's store to the endpoint
-  have hgate : E.slot_at cfg nu + 1 ≤ E.slot_at cfg (m + 1) := by
+  -- (iv) the signed head reaches the later honest endpoint.
+  have hslot_lt : E.slot_at cfg nu < E.slot_at cfg m := by
     rw [hnuSlot]
-    exact (Nat.succ_le_of_lt (lt_of_le_of_lt htle hesq)).trans
-      (hslotQM.trans (E.slot_at_mono cfg (Nat.le_succ m)))
-  have hrootM : att.data.beacon_block_root ∈ (E.store cfg ext w m).block_roots :=
-    hA.synchrony.block_relay i hi nu att.data.beacon_block_root hnuH hrootNu w hw m hmH hgate
+    exact (lt_of_le_of_lt htle hesq).trans_le hslotQM
+  have hheadM := E.honest_head_known_at_later_slot_minimal cfg ext hA
+    hi hw hnuH hmH hdue hslot_lt
+  have hrootEq : att.data.beacon_block_root =
+      (get_head cfg (E.store cfg ext i nu)).root := by
+    rw [hatt, honest_attestation_data_eq,
+      honest_attestation_data_beacon_block_root]
+  have hrootM : att.data.beacon_block_root ∈ (E.store cfg ext w m).block_roots := by
+    rw [hrootEq]
+    exact hheadM
   -- (v) the same root is known at the observer, by latest-message provenance
   obtain ⟨_, _, _, _, _, _, _, hlmKnown, _⟩ := hprov i lm hlm
   have hrootQ : att.data.beacon_block_root ∈ (E.store cfg ext obs q).block_roots := by

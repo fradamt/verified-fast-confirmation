@@ -236,18 +236,13 @@ theorem strictSelectedEdgeGeometry_at_observer {E : Execution Root}
   obtain ⟨u, nu, d, hu, hnuH, hnuq, hdU, hdQ, hdGlc_Q⟩ :=
     E.confirmed_pastDescendant_at_observer cfg ext hA obs q hW.validity hcomm query hquery
       glc hqH hglcQ hglcParentQ hglcConf
-  -- the endpoint leg is unchanged: `u` and `w` are both honest
-  have hgateUM : E.slot_at cfg nu + 1 ≤ E.slot_at cfg (m + 1) :=
-    (Nat.succ_le_of_lt hnuq).trans
-      (hslotQM.trans (E.slot_at_mono cfg (Nat.le_succ m)))
-  have hsubUM : (E.store cfg ext u nu).block_roots ⊆
-      (E.store cfg ext w m).block_roots := fun r hr =>
-    hA.synchrony.block_relay u hu nu r hnuH hr w hw m hmH hgateUM
-  have hagreeUM : ∀ r ∈ (E.store cfg ext u nu).block_roots,
+  -- Block content agrees when the two stores both know a root.
+  have hagreeUM : ∀ r, r ∈ (E.store cfg ext u nu).block_roots →
+      r ∈ (E.store cfg ext w m).block_roots →
       (E.store cfg ext u nu).blocks r = (E.store cfg ext w m).blocks r :=
-    fun r hr => hA.wellFormed.blocks_agree
+    fun r hrU hrM => hA.wellFormed.blocks_agree
       (E.blockProvenance cfg ext u nu) (E.blockProvenance cfg ext w m)
-      hr (hsubUM hr)
+      hrU hrM
   -- containment-free stand-in for the strong `hagreeUQ`: block agreement at
   -- roots known to *both* stores needs no relay in either direction
   have hagreeUQ : ∀ r, r ∈ (E.store cfg ext u nu).block_roots →
@@ -290,10 +285,13 @@ theorem strictSelectedEdgeGeometry_at_observer {E : Execution Root}
       ((E.store cfg ext w m).blocks c).slot :=
     E.store_anchor_min_slot cfg ext hA.wellFormed hA.externals_coherence
       hgenEq hanchorSlot hanchorRoot w m c hcM
-  obtain ⟨hcU, hglcC_U⟩ := E.chain_descent_restrict hA.wellFormed
-    (E.blockProvenance cfg ext u nu) (E.blockProvenance cfg ext w m)
-    hwfU hwalkFromAnchorU hanchorLeCM hsubUM hglcU hglcU
-      (is_ancestor_refl _ _) hglcC_M
+  have hcU : c ∈ (E.store cfg ext u nu).block_roots :=
+    E.is_ancestor_transport_closed cfg ext hA.wellFormed hA.externals_coherence
+      hgenEq hanchorSlot hanchorRoot hanchorLeCM hglcM hglcU hcM hglcC_M
+  have hglcC_U : is_ancestor (E.store cfg ext u nu)
+      (get_node_for_root glc) (get_node_for_root c) = true :=
+    E.is_ancestor_replay_closed cfg ext hA.wellFormed hA.externals_coherence
+      hgenEq hanchorSlot hanchorRoot hanchorLeCM hglcM hglcU hcM hglcC_M
   obtain ⟨hwfM, hwalkM, _hjustM⟩ :=
     E.store_domainK_of_selectedMarginDomain cfg ext hA.wellFormed
       hA.externals_coherence hgen hA.domain w hw m hmH
@@ -309,18 +307,24 @@ theorem strictSelectedEdgeGeometry_at_observer {E : Execution Root}
       ((E.store cfg ext w m).blocks a).slot :=
     E.store_anchor_min_slot cfg ext hA.wellFormed hA.externals_coherence
       hgenEq hanchorSlot hanchorRoot w m a haM
-  obtain ⟨haU, hglcA_U⟩ := E.chain_descent_restrict hA.wellFormed
-    (E.blockProvenance cfg ext u nu) (E.blockProvenance cfg ext w m)
-    hwfU hwalkFromAnchorU hanchorLeAM hsubUM hglcU hglcU
-      (is_ancestor_refl _ _) hglcA_M
+  have haU : a ∈ (E.store cfg ext u nu).block_roots :=
+    E.is_ancestor_transport_closed cfg ext hA.wellFormed hA.externals_coherence
+      hgenEq hanchorSlot hanchorRoot hanchorLeAM hglcM hglcU haM hglcA_M
+  have hglcA_U : is_ancestor (E.store cfg ext u nu)
+      (get_node_for_root glc) (get_node_for_root a) = true :=
+    E.is_ancestor_replay_closed cfg ext hA.wellFormed hA.externals_coherence
+      hgenEq hanchorSlot hanchorRoot hanchorLeAM hglcM hglcU haM hglcA_M
   have hanchorLeR0M : ablk.message.slot ≤
       ((E.store cfg ext w m).blocks r0).slot :=
     E.store_anchor_min_slot cfg ext hA.wellFormed hA.externals_coherence
       hgenEq hanchorSlot hanchorRoot w m r0 hr0M
-  obtain ⟨hr0U, hcR0_U⟩ := E.chain_descent_restrict hA.wellFormed
-    (E.blockProvenance cfg ext u nu) (E.blockProvenance cfg ext w m)
-    hwfU hwalkFromAnchorU hanchorLeR0M hsubUM hcU hcU
-      (is_ancestor_refl _ _) hcR0_M
+  have hr0U : r0 ∈ (E.store cfg ext u nu).block_roots :=
+    E.is_ancestor_transport_closed cfg ext hA.wellFormed hA.externals_coherence
+      hgenEq hanchorSlot hanchorRoot hanchorLeR0M hcM hcU hr0M hcR0_M
+  have hcR0_U : is_ancestor (E.store cfg ext u nu)
+      (get_node_for_root c) (get_node_for_root r0) = true :=
+    E.is_ancestor_replay_closed cfg ext hA.wellFormed hA.externals_coherence
+      hgenEq hanchorSlot hanchorRoot hanchorLeR0M hcM hcU hr0M hcR0_M
   -- back into the observer's store, again by transport/replay at `d` and `glc`
   have hanchorLeCU : ablk.message.slot ≤
       ((E.store cfg ext u nu).blocks c).slot :=
@@ -360,7 +364,7 @@ theorem strictSelectedEdgeGeometry_at_observer {E : Execution Root}
       hgenEq hanchorSlot hanchorRoot hanchorLeR0U hcU hcQ hr0U hcR0_U
   have hparentQ : ((E.store cfg ext obs q).blocks c).parent_root = a := by
     have hcUQ := hagreeUQ c hcU hcQ
-    have hcUM := hagreeUM c hcU
+    have hcUM := hagreeUM c hcU hcM
     rw [← hcUQ, hcUM]
     exact hparentM
   have hparentKnownQ : ((E.store cfg ext obs q).blocks c).parent_root ∈

@@ -1,6 +1,7 @@
 module
 public import FastConfirmationProofs.Checkpoints.AnchorChainSafety
 public import FastConfirmationProofs.Execution.Delivery.MarginProducer
+public import FastConfirmationProofs.Execution.Delivery.VoteDeadlineOrigin
 public import FastConfirmationInternal.FCRRule.SelectedMargin
 
 @[expose] public section
@@ -35,18 +36,6 @@ theorem SelectedMarginAssumptions.genesis_store
       E.genesis_store = get_forkchoice_store cfg anchor_state anchor_block := by
   obtain ⟨anchor_state, anchor_block, hstore, _, _⟩ := hA.genesis
   exact ⟨anchor_state, anchor_block, hstore⟩
-
-/-- Compatibility projection: the old broad bundle implies the strict local
-bundle, but none of the reverse (and in particular none of the circular
-ancestry/head fields) is required. -/
-theorem SpecAssumptions.toSelectedMarginAssumptions {E : Execution Root}
-    (hSA : SpecAssumptions cfg ext E) (hpayload : PayloadEnvelopeRelay cfg ext E) :
-    SelectedMarginAssumptions cfg ext E := by
-  obtain ⟨hgen, hwf, hdiv, hhb, hsync, hec, hsv, hbb, hji⟩ := hSA
-  exact ⟨hgen, hwf, hdiv, hhb,
-    hsync.toPaperSafetySynchrony cfg ext hpayload.1 hpayload.2, hec, hsv, hbb,
-    ⟨fun w hw m hH => (hji.checkpoint_known w hw m hH).1,
-      hji.justified_cached⟩⟩
 
 private theorem exists_mem_of_map_sum_pos_minimal {Alpha : Type*}
     (l : List Alpha) (f : Alpha → ℕ) (h : 0 < (l.map f).sum) :
@@ -142,6 +131,82 @@ theorem head_root_known_of_selectedMarginDomain
   · exact h
   · rw [h]
     exact hdom.justified_root_known w hw m hH
+
+/-- G4 and the cutoff relay deliver an honest head at each later-slot store.
+Only the head path is used; unrelated roots need not be delivered. -/
+theorem honest_head_known_at_later_slot_minimal
+    (hA : SelectedMarginAssumptions cfg ext E)
+    {u w : ValidatorIndex} {n m : ℕ}
+    (hu : u ∈ E.honest) (hw : w ∈ E.honest)
+    (hHn : E.WithinHorizon cfg n) (hHm : E.WithinHorizon cfg m)
+    (hdue : n ≤ E.slot_start cfg (E.slot_at cfg n) +
+      get_attestation_due_ms cfg / 1000)
+    (hslot : E.slot_at cfg n < E.slot_at cfg m) :
+    (get_head cfg (E.store cfg ext u n)).root ∈
+      (E.store cfg ext w m).block_roots := by
+  obtain ⟨ast, ablk, hgen, _, _⟩ := hA.genesis
+  have hgenTime : E.genesis_store.genesis_time ≤ E.genesis_store.time := by
+    rw [hgen]; simp only [get_forkchoice_store]; omega
+  obtain ⟨hnext, hlt⟩ := E.past_slot_deadline_target_gate cfg
+    hA.whole_seconds hgenTime hslot
+  have hr := E.head_root_known_of_selectedMarginDomain cfg ext hA.domain hu n hHn
+  have hpath := hA.domain.honest_head_paths u hu n hHn w
+    ((E.store cfg ext u n).blocks (get_head cfg (E.store cfg ext u n)).root).slot
+    (E.withinHorizon_mono cfg hnext hHm) (WalkKnown.stop hr (Nat.le_refl _))
+  exact hpath.root_known_of_deadline_relay cfg ext hA.synchrony.deadline_block_relay
+    hu hw hHn hHm hdue hnext hlt
+
+/-- Two stores that know a descendant agree on its required ancestor walk.
+This transfers the ancestor without a whole-store containment premise. -/
+theorem ancestor_at_common_descendant_minimal
+    (hA : SelectedMarginAssumptions cfg ext E)
+    {u w : ValidatorIndex} {n m : ℕ} {d b : Root}
+    (hd : d ∈ (E.store cfg ext u n).block_roots)
+    (hdw : d ∈ (E.store cfg ext w m).block_roots)
+    (hb : b ∈ (E.store cfg ext u n).block_roots)
+    (hdb : is_ancestor (E.store cfg ext u n)
+      (get_node_for_root d) (get_node_for_root b) = true) :
+    b ∈ (E.store cfg ext w m).block_roots ∧
+      is_ancestor (E.store cfg ext w m)
+        (get_node_for_root d) (get_node_for_root b) = true := by
+  obtain ⟨ast, ablk, hgen, hslot, hparent⟩ := hA.genesis
+  have hg : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
+      E.genesis_store = get_forkchoice_store cfg ast ablk ∧
+      ast.slot = ablk.message.slot ∧ ablk.message.parent_root ≠ ablk.root :=
+    ⟨ast, ablk, hgen, hslot, hparent⟩
+  have hagree : ∀ r, r ∈ (E.store cfg ext u n).block_roots →
+      r ∈ (E.store cfg ext w m).block_roots →
+      (E.store cfg ext u n).blocks r = (E.store cfg ext w m).blocks r :=
+    fun r hr hs => hA.wellFormed.blocks_agree
+      (E.blockProvenance cfg ext u n) (E.blockProvenance cfg ext w m) hr hs
+  have hanchor0 : ablk.root ∈ (E.store cfg ext w 0).block_roots := by
+    change ablk.root ∈ E.genesis_store.block_roots
+    rw [hgen]; simp [get_forkchoice_store]
+  have hanchor := (E.store_storeLE cfg ext w (Nat.zero_le m)).1 hanchor0
+  have hanchorSlot : ((E.store cfg ext w m).blocks ablk.root).slot =
+      ablk.message.slot := by
+    rw [E.store_anchor_block cfg ext hA.wellFormed hgen w m hanchor]
+  have hwalkW := E.store_walkKnownK cfg ext hA.wellFormed
+    hA.externals_coherence hg w m ablk.root hanchor d hdw
+  rw [hanchorSlot] at hwalkW
+  have hbound := E.store_anchor_min_slot cfg ext hA.wellFormed hA.externals_coherence
+    hgen hslot hparent u n b hb
+  have hwalk := E.store_walkKnownK cfg ext hA.wellFormed
+    hA.externals_coherence hg u n b hb d hd
+  have hlands : (get_ancestor (E.store cfg ext w m) (ForkChoiceNode.mk d .pending)
+      ((E.store cfg ext u n).blocks b).slot).root = b := by
+    rw [← get_ancestor_congr_common_walk hagree hwalk (hwalkW.mono hbound)]
+    simpa only [get_node_for_root, is_ancestor_pending, decide_eq_true_eq] using hdb
+  have hparentW := E.store_parentSlotLt cfg ext hA.wellFormed hA.externals_coherence
+    hg hA.wellFormed.anchor_parent_unscheduled w m
+  have hbw : b ∈ (E.store cfg ext w m).block_roots := by
+    have hmem := (get_ancestor_spec hparentW (hwalkW.mono hbound)).1
+    rw [hlands] at hmem
+    exact hmem
+  refine ⟨hbw, ?_⟩
+  simp only [get_node_for_root, is_ancestor_pending, decide_eq_true_eq]
+  rw [← hagree b hb hbw]
+  exact hlands
 
 /-- Endpoint registry identity from the local justified-cache fact. -/
 theorem hval_of_selectedMarginDomain
@@ -331,7 +396,11 @@ theorem past_descendant_of_honest_supporter_known_minimal
     ∃ (u : ValidatorIndex) (nu : ℕ) (d : Root),
       u ∈ E.honest ∧ E.WithinHorizon cfg nu ∧
       E.slot_at cfg nu < E.slot_at cfg n ∧
+      nu ≤ E.slot_start cfg (E.slot_at cfg nu) +
+        get_attestation_due_ms cfg / 1000 ∧
+      d = (get_head cfg (E.store cfg ext u nu)).root ∧
       d ∈ (E.store cfg ext u nu).block_roots ∧
+      d ∈ (E.store cfg ext v n).block_roots ∧
       is_ancestor (E.store cfg ext v n)
         (get_node_for_root d) (get_node_for_root b) = true := by
   obtain ⟨ast, ablk, hgeq, hslot, hroot⟩ := hA.genesis
@@ -344,7 +413,7 @@ theorem past_descendant_of_honest_supporter_known_minimal
     rw [← ht, hslot]
   obtain ⟨a', sender, sentAt, ifb, hsched, hiatt, hbbr, hslotep⟩ :=
     E.schedLMProv cfg ext hgen0 v n i lm hlm
-  obtain ⟨voteAt, own, hvote, hdata⟩ :=
+  obtain ⟨voteAt, own, _hcausal, hvote, hdata⟩ :=
     hA.honest_behavior.no_forgery sender sentAt a' ifb hsched i hi hiatt
   set s := a'.data.slot
   have hcomm : i ∈ E.committee s :=
@@ -389,12 +458,17 @@ theorem past_descendant_of_honest_supporter_known_minimal
       exact hmem
     · rw [← hhead, heq]
       exact hA.domain.justified_root_known i hi nu hHnu
-  refine ⟨i, nu, lm.root, hi, hHnu, ?_, hd, ?_⟩
+  refine ⟨i, nu, lm.root, hi, hHnu, ?_, ?_, hhead.symm, hd, hlmKnown, ?_⟩
   · rw [hnu]
     exact hslt
+  · simpa only [hnu] using
+      (hA.honest_behavior.vote_deadline i hi s nu _ hvoteHead).2
   · simpa only [get_node_for_root, is_ancestor_supported_pending] using hsupp
 
-theorem mem_of_known_honest_past_descendant_minimal
+/-- Recover the selected ancestor in the honest supporter's vote-time store,
+then relay only that root after its attestation deadline. The handler's
+finalized guard is the sole remaining endpoint alternative. -/
+theorem mem_or_excluded_of_known_honest_past_descendant_minimal
     (hA : SelectedMarginAssumptions cfg ext E)
     (v : ValidatorIndex) (hv : v ∈ E.honest) (n : ℕ) (b : Root)
     (hHn : E.WithinHorizon cfg n)
@@ -405,25 +479,26 @@ theorem mem_of_known_honest_past_descendant_minimal
     (u : ValidatorIndex) (hu : u ∈ E.honest) (nu : ℕ)
     (hHnu : E.WithinHorizon cfg nu) (d : Root)
     (hslot : E.slot_at cfg nu < E.slot_at cfg n)
+    (hdeadline : nu ≤ E.slot_start cfg (E.slot_at cfg nu) +
+      get_attestation_due_ms cfg / 1000)
     (hd : d ∈ (E.store cfg ext u nu).block_roots)
+    (hdv : d ∈ (E.store cfg ext v n).block_roots)
     (hanc : is_ancestor (E.store cfg ext v n)
       (get_node_for_root d) (get_node_for_root b) = true) :
-    b ∈ (E.store cfg ext w m).block_roots := by
+    b ∈ (E.store cfg ext u nu).block_roots ∧
+      (b ∈ (E.store cfg ext w m).block_roots ∨
+        PermanentBlockExclusion cfg ext E u nu b w m) := by
   obtain ⟨ast, ablk, hgeq, hstateSlot, hroot⟩ := hA.genesis
   have hgen' : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
       E.genesis_store = get_forkchoice_store cfg ast ablk ∧
       ast.slot = ablk.message.slot ∧ ablk.message.parent_root ≠ ablk.root :=
     ⟨ast, ablk, hgeq, hstateSlot, hroot⟩
   set rb := ((E.store cfg ext v n).blocks b).slot
-  have hgateUV : E.slot_at cfg nu + 1 ≤ E.slot_at cfg (n + 1) :=
-    hslot.trans_le (E.slot_at_mono cfg (Nat.le_succ n))
-  have hsub : (E.store cfg ext u nu).block_roots ⊆
-      (E.store cfg ext v n).block_roots := fun r hr =>
-    hA.synchrony.block_relay u hu nu r hHnu hr v hv n hHn hgateUV
-  have hagree : ∀ r ∈ (E.store cfg ext u nu).block_roots,
+  have hagree : ∀ r, r ∈ (E.store cfg ext u nu).block_roots →
+      r ∈ (E.store cfg ext v n).block_roots →
       (E.store cfg ext u nu).blocks r = (E.store cfg ext v n).blocks r :=
-    fun r hr => hA.wellFormed.blocks_agree (E.blockProvenance cfg ext u nu)
-      (E.blockProvenance cfg ext v n) hr (hsub hr)
+    fun r hr hs => hA.wellFormed.blocks_agree
+      (E.blockProvenance cfg ext u nu) (E.blockProvenance cfg ext v n) hr hs
   have hanchor0 : ablk.root ∈ (E.store cfg ext u 0).block_roots := by
     change ablk.root ∈ E.genesis_store.block_roots
     rw [hgeq]
@@ -444,20 +519,54 @@ theorem mem_of_known_honest_past_descendant_minimal
     E.store_anchor_min_slot cfg ext hA.wellFormed hA.externals_coherence
       hgeq hstateSlot hroot v n b hb
   have hwalk : WalkKnown (E.store cfg ext u nu) rb d := hwalk0.mono hbound
+  have hwalkv : WalkKnown (E.store cfg ext v n) rb d :=
+    E.store_walkKnownK cfg ext hA.wellFormed hA.externals_coherence
+      hgen' v n b hb d hdv
   have hvlands : (get_ancestor (E.store cfg ext v n) (ForkChoiceNode.mk d .pending) rb).root =
       b := by
     simpa only [get_node_for_root, is_ancestor_pending, decide_eq_true_eq] using hanc
   have hulands : (get_ancestor (E.store cfg ext u nu) (ForkChoiceNode.mk d .pending) rb).root =
       b := by
-    rw [get_ancestor_congr hagree hd hwalk]
+    rw [get_ancestor_congr_common_walk hagree hwalk hwalkv]
     exact hvlands
   have hbu : b ∈ (E.store cfg ext u nu).block_roots := by
     have hspec := (get_ancestor_spec hpsl hwalk).1
     rw [hulands] at hspec
     exact hspec
-  have hgateUW : E.slot_at cfg nu + 1 ≤ E.slot_at cfg (m + 1) :=
-    hslot.trans_le (hnm.trans (E.slot_at_mono cfg (Nat.le_succ m)))
-  exact hA.synchrony.block_relay u hu nu b hHnu hbu w hw m hHm hgateUW
+  have hgenTime : E.genesis_store.genesis_time ≤
+      E.genesis_store.time := by
+    rw [hgeq]
+    exact (wellFormedStore_get_forkchoice_store cfg ast ablk
+      hstateSlot hroot).time_ge_genesis
+  obtain ⟨hstart, hbefore⟩ := E.past_slot_deadline_target_gate cfg
+    hA.whole_seconds hgenTime (hslot.trans_le hnm)
+  exact ⟨hbu, E.deadline_block_relay_at_endpoint cfg ext hA.synchrony.deadline_block_relay u hu nu b hHnu hbu
+    hdeadline w hw m hHm hstart hbefore⟩
+
+theorem mem_of_known_honest_past_descendant_minimal
+    (hA : SelectedMarginAssumptions cfg ext E)
+    (v : ValidatorIndex) (hv : v ∈ E.honest) (n : ℕ) (b : Root)
+    (hHn : E.WithinHorizon cfg n)
+    (hb : b ∈ (E.store cfg ext v n).block_roots)
+    (w : ValidatorIndex) (hw : w ∈ E.honest) (m : ℕ)
+    (hnm : E.slot_at cfg n ≤ E.slot_at cfg m)
+    (hHm : E.WithinHorizon cfg m)
+    (u : ValidatorIndex) (hu : u ∈ E.honest) (nu : ℕ)
+    (hHnu : E.WithinHorizon cfg nu) (d : Root)
+    (hslot : E.slot_at cfg nu < E.slot_at cfg n)
+    (hdeadline : nu ≤ E.slot_start cfg (E.slot_at cfg nu) +
+      get_attestation_due_ms cfg / 1000)
+    (hhead : d = (get_head cfg (E.store cfg ext u nu)).root)
+    (hd : d ∈ (E.store cfg ext u nu).block_roots)
+    (hdv : d ∈ (E.store cfg ext v n).block_roots)
+    (hanc : is_ancestor (E.store cfg ext v n)
+      (get_node_for_root d) (get_node_for_root b) = true) :
+    b ∈ (E.store cfg ext w m).block_roots := by
+  have hdw : d ∈ (E.store cfg ext w m).block_roots := by
+    rw [hhead]
+    exact E.honest_head_known_at_later_slot_minimal cfg ext hA hu hw
+      hHnu hHm hdeadline (hslot.trans_le hnm)
+  exact (E.ancestor_at_common_descendant_minimal cfg ext hA hdv hdw hb hanc).1
 
 theorem ancestry_of_known_honest_past_descendant_minimal
     (hA : SelectedMarginAssumptions cfg ext E)
@@ -473,94 +582,24 @@ theorem ancestry_of_known_honest_past_descendant_minimal
     (u : ValidatorIndex) (hu : u ∈ E.honest) (nu : ℕ)
     (hHnu : E.WithinHorizon cfg nu) (d : Root)
     (hslot : E.slot_at cfg nu < E.slot_at cfg n)
+    (hdeadline : nu ≤ E.slot_start cfg (E.slot_at cfg nu) +
+      get_attestation_due_ms cfg / 1000)
+    (hhead : d = (get_head cfg (E.store cfg ext u nu)).root)
     (hd : d ∈ (E.store cfg ext u nu).block_roots)
+    (hdv : d ∈ (E.store cfg ext v n).block_roots)
     (hdb : is_ancestor (E.store cfg ext v n)
       (get_node_for_root d) (get_node_for_root b) = true) :
     r₀ ∈ (E.store cfg ext w m).block_roots ∧
       b ∈ (E.store cfg ext w m).block_roots ∧
       is_ancestor (E.store cfg ext w m)
         (get_node_for_root b) (get_node_for_root r₀) = true := by
-  obtain ⟨ast, ablk, hgeq, hstateSlot, hroot⟩ := hA.genesis
-  have hgen' : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
-      E.genesis_store = get_forkchoice_store cfg ast ablk ∧
-      ast.slot = ablk.message.slot ∧ ablk.message.parent_root ≠ ablk.root :=
-    ⟨ast, ablk, hgeq, hstateSlot, hroot⟩
-  have hgateUV : E.slot_at cfg nu + 1 ≤ E.slot_at cfg (n + 1) :=
-    hslot.trans_le (E.slot_at_mono cfg (Nat.le_succ n))
-  have hsubUV : (E.store cfg ext u nu).block_roots ⊆
-      (E.store cfg ext v n).block_roots := fun r hr =>
-    hA.synchrony.block_relay u hu nu r hHnu hr v hv n hHn hgateUV
-  have hagreeUV : ∀ r ∈ (E.store cfg ext u nu).block_roots,
-      (E.store cfg ext u nu).blocks r = (E.store cfg ext v n).blocks r :=
-    fun r hr => hA.wellFormed.blocks_agree (E.blockProvenance cfg ext u nu)
-      (E.blockProvenance cfg ext v n) hr (hsubUV hr)
-  have hdv : d ∈ (E.store cfg ext v n).block_roots := hsubUV hd
-  have hwfv : ParentSlotLt (E.store cfg ext v n) :=
-    E.store_parentSlotLt cfg ext hA.wellFormed hA.externals_coherence hgen'
-      hA.wellFormed.anchor_parent_unscheduled v n
-  have hwalkv := E.store_walkKnownK cfg ext hA.wellFormed
-    hA.externals_coherence hgen' v n
-  have hdr₀ : is_ancestor (E.store cfg ext v n)
-      (get_node_for_root d) (get_node_for_root r₀) = true :=
-    is_ancestor_trans (a := get_node_for_root d) (b := get_node_for_root b)
-        (c := get_node_for_root r₀) hwfv (hwalkv r₀ hr₀ d hdv) (hwalkv r₀ hr₀ b hb) hdb hbge
-  have hanchor0 : ablk.root ∈ (E.store cfg ext u 0).block_roots := by
-    change ablk.root ∈ E.genesis_store.block_roots
-    rw [hgeq]
-    simp [get_forkchoice_store]
-  have hanchor : ablk.root ∈ (E.store cfg ext u nu).block_roots :=
-    (E.store_storeLE cfg ext u (Nat.zero_le nu)).1 hanchor0
-  have hwfu : ParentSlotLt (E.store cfg ext u nu) :=
-    E.store_parentSlotLt cfg ext hA.wellFormed hA.externals_coherence hgen'
-      hA.wellFormed.anchor_parent_unscheduled u nu
-  have hwalku := E.store_walkKnownK cfg ext hA.wellFormed
-    hA.externals_coherence hgen' u nu
-  have hanchorSlot : ((E.store cfg ext u nu).blocks ablk.root).slot =
-      ablk.message.slot := by
-    rw [E.store_anchor_block cfg ext hA.wellFormed hgeq u nu hanchor]
-  have hwalk0 : WalkKnown (E.store cfg ext u nu) ablk.message.slot d := by
-    have ht := hwalku ablk.root hanchor d hd
-    rwa [hanchorSlot] at ht
-  have recover (x : Root) (hx : x ∈ (E.store cfg ext v n).block_roots)
-      (hdx : is_ancestor (E.store cfg ext v n)
-        (get_node_for_root d) (get_node_for_root x) = true) :
-      x ∈ (E.store cfg ext u nu).block_roots := by
-    set sx := ((E.store cfg ext v n).blocks x).slot
-    have hbound : ablk.message.slot ≤ sx :=
-      E.store_anchor_min_slot cfg ext hA.wellFormed hA.externals_coherence
-        hgeq hstateSlot hroot v n x hx
-    have hwalkx : WalkKnown (E.store cfg ext u nu) sx d := hwalk0.mono hbound
-    have hvlands : (get_ancestor (E.store cfg ext v n) (ForkChoiceNode.mk d .pending) sx).root =
-        x := by
-      simpa only [get_node_for_root, is_ancestor_pending, decide_eq_true_eq, sx] using hdx
-    have hulands : (get_ancestor (E.store cfg ext u nu) (ForkChoiceNode.mk d .pending) sx).root =
-        x := by
-      rw [get_ancestor_congr hagreeUV hd hwalkx]
-      exact hvlands
-    have hspec := (get_ancestor_spec hwfu hwalkx).1
-    rw [hulands] at hspec
-    exact hspec
-  have hbu : b ∈ (E.store cfg ext u nu).block_roots := recover b hb hdb
-  have hr₀u : r₀ ∈ (E.store cfg ext u nu).block_roots := recover r₀ hr₀ hdr₀
-  have hwalkbr : WalkKnown (E.store cfg ext u nu)
-      ((E.store cfg ext u nu).blocks r₀).slot b := hwalku r₀ hr₀u b hbu
-  have hbgeu : is_ancestor (E.store cfg ext u nu)
-      (get_node_for_root b) (get_node_for_root r₀) = true := by
-    simp only [get_node_for_root]
-    rw [is_ancestor_congr hagreeUV hbu hr₀u hwalkbr]
-    simpa only [get_node_for_root] using hbge
-  have hgateUW : E.slot_at cfg nu + 1 ≤ E.slot_at cfg (m + 1) :=
-    hslot.trans_le (hnm.trans (E.slot_at_mono cfg (Nat.le_succ m)))
-  have hsubUW : (E.store cfg ext u nu).block_roots ⊆
-      (E.store cfg ext w m).block_roots := fun r hr =>
-    hA.synchrony.block_relay u hu nu r hHnu hr w hw m hHm hgateUW
-  have hagreeUW : ∀ r ∈ (E.store cfg ext u nu).block_roots,
-      (E.store cfg ext u nu).blocks r = (E.store cfg ext w m).blocks r :=
-    fun r hr => hA.wellFormed.blocks_agree (E.blockProvenance cfg ext u nu)
-      (E.blockProvenance cfg ext w m) hr (hsubUW hr)
-  refine ⟨hsubUW hr₀u, hsubUW hbu, ?_⟩
-  simp only [get_node_for_root] at hbgeu ⊢
-  rwa [← is_ancestor_congr hagreeUW hbu hr₀u hwalkbr]
+  have hdw : d ∈ (E.store cfg ext w m).block_roots := by
+    rw [hhead]
+    exact E.honest_head_known_at_later_slot_minimal cfg ext hA hu hw
+      hHnu hHm hdeadline (hslot.trans_le hnm)
+  have hbw := (E.ancestor_at_common_descendant_minimal cfg ext hA hdv hdw hb hdb).1
+  have hr := E.ancestor_at_common_descendant_minimal cfg ext hA hb hbw hr₀ hbge
+  exact ⟨hr.1, hbw, hr.2⟩
 
 /-- A concretely confirmed candidate is known at every honest endpoint whose
 slot is not before the arbitrary selecting slot.  This includes the selecting
@@ -583,11 +622,12 @@ theorem confirmed_known_at_all_honest_endpoints_minimal
   obtain ⟨i, lm, hi, hlm, hsupp⟩ :=
     E.honestSupporter_of_confirmed_known_at_minimal cfg ext hA v hv n
       fcrStore hstore b hHn hb hparent hconf
-  obtain ⟨u, nu, d, hu, hHnu, hslot, hd, hanc⟩ :=
+  obtain ⟨u, nu, d, hu, hHnu, hslot, hdeadline, hhead, hd, hdQuery, hanc⟩ :=
     E.past_descendant_of_honest_supporter_known_minimal cfg ext hA
       v hv n b hHn i hi lm hlm hsupp
   exact E.mem_of_known_honest_past_descendant_minimal cfg ext hA
-    v hv n b hHn hb w hw m hnm hHm u hu nu hHnu d hslot hd hanc
+    v hv n b hHn hb w hw m hnm hHm u hu nu hHnu d hslot hdeadline hhead
+      hd hdQuery hanc
 
 /-- The same arbitrary-time transport preserves a known selected/base
 ancestry pair, not merely selected-root membership. -/
@@ -615,12 +655,12 @@ theorem confirmed_ancestry_at_all_honest_endpoints_minimal
   obtain ⟨i, lm, hi, hlm, hsupp⟩ :=
     E.honestSupporter_of_confirmed_known_at_minimal cfg ext hA v hv n
       fcrStore hstore b hHn hb hparent hconf
-  obtain ⟨u, nu, d, hu, hHnu, hslot, hd, hdb⟩ :=
+  obtain ⟨u, nu, d, hu, hHnu, hslot, hdeadline, hhead, hd, hdQuery, hdb⟩ :=
     E.past_descendant_of_honest_supporter_known_minimal cfg ext hA
       v hv n b hHn i hi lm hlm hsupp
   exact E.ancestry_of_known_honest_past_descendant_minimal cfg ext hA
     v hv n b r₀ hHn hb hr₀ hbge w hw m hnm hHm
-      u hu nu hHnu d hslot hd hdb
+      u hu nu hHnu d hslot hdeadline hhead hd hdQuery hdb
 
 theorem canonical_member_parent_known_minimal
     (hA : SelectedMarginAssumptions cfg ext E)

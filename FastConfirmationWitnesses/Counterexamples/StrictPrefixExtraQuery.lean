@@ -306,6 +306,10 @@ private theorem witnessHonestBehavior :
       set_option maxRecDepth 20000 in decide
     · refine ⟨3, 0, within_of_lt_four (by omega), slot_at_eq 3, ?_⟩
       set_option maxRecDepth 20000 in decide
+  · intro v hv s n a hvote
+    rw [vote_some_cases] at hvote
+    rcases hvote with h | h | h | h <;> rcases h with ⟨_, rfl, rfl, _⟩ <;>
+      rw [slot_start_eq] <;> simp
   · intro v hv s hvote
     simp [witnessExecution, witnessVote, witnessCommittee] at hvote ⊢
     aesop
@@ -313,10 +317,10 @@ private theorem witnessHonestBehavior :
     simp only [witnessExecution, witnessSchedule] at hschedule
     split_ifs at hschedule with hn1 hn2 hn3 hn4 <;>
       simp_all [vote0, vote1, vote2, vote3]
-    · exact ⟨0, vote0, by decide, rfl⟩
-    · exact ⟨1, vote1, by decide, rfl⟩
-    · exact ⟨2, vote2, by decide, rfl⟩
-    · exact ⟨3, vote3, by decide, rfl⟩
+    · exact ⟨0, by omega, vote0, by decide, rfl⟩
+    · exact ⟨1, by omega, vote1, by decide, rfl⟩
+    · exact ⟨2, by omega, vote2, by decide, rfl⟩
+    · exact ⟨3, by omega, vote3, by decide, rfl⟩
   · intro v hv s s' n n' a a' hvote hvote'
     rw [vote_some_cases] at hvote hvote'
     rcases hvote with h0 | h1 | h2 | h3 <;>
@@ -418,8 +422,14 @@ private lemma equivocating_indices_at_three :
 
 private theorem witnessSynchrony :
     Synchrony witnessConfig witnessExternals witnessExecution := by
-  constructor
-  · intro v hv s n a hs hn hvote w hw
+  refine {
+    delta := ⟨500, by decide, by decide⟩
+    attestation_delivery := ?_
+    deadline_block_relay := ?_
+    boundary_block_prefix := ?_
+    attester_slashing_relay := ?_
+  }
+  · intro v hv s n a hs hn hvote _hdeadline hdelivery w hw
     rw [vote_some_cases] at hvote
     rcases hvote with h0 | h1 | h2 | h3
     · rcases h0 with ⟨rfl, rfl, rfl, rfl⟩
@@ -434,7 +444,8 @@ private theorem witnessSynchrony :
     · rcases h3 with ⟨rfl, rfl, rfl, rfl⟩
       rw [slot_start_eq]
       simp [witnessExecution, witnessSchedule]
-  · intro v hv n r hn hr w hw m hm hslot
+  · intro v hv n r hn hr _hdeadline w hw m hm _hnext hlt
+    left
     have hnlt : n < 4 := within_implies_lt_four hn
     have hmlt : m < 4 := within_implies_lt_four hm
     rw [store_node_independent v 0 n] at hr
@@ -442,22 +453,47 @@ private theorem witnessSynchrony :
     interval_cases n <;> interval_cases m <;>
       simp_all [slot_at_eq, block_roots_at_zero, block_roots_at_one,
         block_roots_at_two, block_roots_at_three] <;> aesop
-  · intro v hv n i msg hn hmsg w hw m hm hslot
-    have hnlt : n < 4 := within_implies_lt_four hn
-    have hmlt : m < 4 := within_implies_lt_four hm
-    rw [store_node_independent v 0 n] at hmsg
-    rw [store_node_independent w 0 m]
-    interval_cases n <;> interval_cases m <;>
-      simp_all [slot_at_eq, latest_message_at_zero,
-        latest_message_at_one, latest_message_at_two,
-        latest_message_at_three]
-    all_goals aesop
-  · intro v hv n i hn hi w hw m hm hslot
+  · intro v hv n r hn hr _hdeadline w hw boundary hHboundary hlt
+      a before after _hschedule _hnotExcluded
+    have hnpred : n ≤ boundary - 1 := by omega
+    have hrootPred : r ∈
+        (witnessExecution.store witnessConfig witnessExternals w
+          (boundary - 1)).block_roots := by
+      rw [← store_node_independent v w (boundary - 1)]
+      exact (witnessExecution.store_storeLE witnessConfig witnessExternals
+        v hnpred).1 hr
+    have hrootTick : r ∈
+        (on_tick witnessConfig
+          (witnessExecution.store witnessConfig witnessExternals w
+            (boundary - 1))
+          (witnessExecution.time_at boundary)).block_roots :=
+      (on_tick_storeLE witnessConfig _ _).1 hrootPred
+    exact (foldl_storeLE witnessConfig witnessExternals before _).1 hrootTick
+  · intro v hv n i hn hi _hdue w hw m hm _hnext hlt
     have hnlt : n < 4 := within_implies_lt_four hn
     rw [store_node_independent v 0 n] at hi
     interval_cases n <;>
       simp_all [equivocating_indices_at_zero, equivocating_indices_at_one,
         equivocating_indices_at_two, equivocating_indices_at_three]
+
+private theorem witnessHorizonVoteDeliveryLookahead :
+    HorizonVoteDeliveryLookahead witnessConfig witnessExecution := by
+  constructor
+  intro v hv s n a hs hn hvote _hdeadline w hw
+  rw [vote_some_cases] at hvote
+  rcases hvote with h0 | h1 | h2 | h3
+  · rcases h0 with ⟨rfl, rfl, rfl, rfl⟩
+    rw [slot_start_eq]
+    simp [witnessExecution, witnessSchedule]
+  · rcases h1 with ⟨rfl, rfl, rfl, rfl⟩
+    rw [slot_start_eq]
+    simp [witnessExecution, witnessSchedule]
+  · rcases h2 with ⟨rfl, rfl, rfl, rfl⟩
+    rw [slot_start_eq]
+    simp [witnessExecution, witnessSchedule]
+  · rcases h3 with ⟨rfl, rfl, rfl, rfl⟩
+    rw [slot_start_eq]
+    simp [witnessExecution, witnessSchedule]
 
 private lemma witness_valid_iff (state : BeaconState WitnessRoot)
     (a : Attestation WitnessRoot) (hstate : state.validators ≠ []) :

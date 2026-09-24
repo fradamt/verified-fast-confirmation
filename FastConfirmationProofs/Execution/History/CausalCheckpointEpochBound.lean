@@ -161,21 +161,16 @@ theorem endpoint_justified_epoch_le_of_causal_honest_target_minimal
     hIH i hi k hkLower hkSlotLt hHk
   have hglcK : glc ∈ (E.store cfg ext i k).block_roots :=
     hglcKnown i hi k hkLower hHk
-  have hgate : E.slot_at cfg k + 1 ≤ E.slot_at cfg (m + 1) := by
-    calc
-      E.slot_at cfg k + 1 = s + 1 := by rw [hk]
-      _ ≤ E.slot_at cfg m := Nat.succ_le_of_lt hsm
-      _ ≤ E.slot_at cfg (m + 1) := E.slot_at_mono cfg (Nat.le_succ m)
-  have hsub : (E.store cfg ext i k).block_roots ⊆
-      (E.store cfg ext w m).block_roots :=
-    E.blockRoots_subset_of_relay cfg ext hA.synchrony hi hw hHk hHm hgate
+  have hJM : J.root ∈ (E.store cfg ext w m).block_roots :=
+    hA.domain.justified_root_known w hw m hHm
+  have hglcM := hglcKnown w hw m
+    (E.query_slot_start_le_of_slot_ge_minimal cfg ext hA (hqs.trans hsm.le)) hHm
   have hnotJGlcK : is_ancestor (E.store cfg ext i k)
       (get_node_for_root J.root) (get_node_for_root glc) ≠ true := by
     intro hJGlcK
     have hJGlcM : is_ancestor (E.store cfg ext w m)
         (get_node_for_root J.root) (get_node_for_root glc) = true :=
-      is_ancestor_transport cfg ext hA.wellFormed hsub hJK hglcK
-        (hwalkK glc hglcK J.root hJK) hJGlcK
+      (E.ancestor_at_common_descendant_minimal cfg ext hA hJK hJM hglcK hJGlcK).2
     exact hnotJGlc (by simpa only [J] using hJGlcM)
   have hboundK : J.epoch ≤
       get_block_epoch cfg (E.store cfg ext i k) glc :=
@@ -186,7 +181,7 @@ theorem endpoint_justified_epoch_le_of_causal_honest_target_minimal
       (E.store cfg ext w m).blocks glc :=
     hA.wellFormed.blocks_agree
       (E.blockProvenance cfg ext i k) (E.blockProvenance cfg ext w m)
-      hglcK (hsub hglcK)
+      hglcK hglcM
   simpa only [J, get_block_epoch, hglcAgree] using hboundK
 
 /-! ## Query-store projection -/

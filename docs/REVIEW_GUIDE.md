@@ -51,9 +51,38 @@ Paper Assumption 3.2 can allow a two-epoch FFG inclusion delay. The executable s
 
 `Execution.NextSlotSafetyPremises` contains exact handler-successful prefix FFG semantics, a scheduled trajectory, completed-call premises, epoch arithmetic, anchor and checkpoint alignment, finalization delay, Assumption 3.2 support, and exact-link validity. The nested `Execution.CompletedFCRCallPremises` adds a fixed validator set, an economic span bound, Phase0 source coherence, a balance floor, a vote-delivery lookahead, and guarded FCR prediction support. None of its fields directly states the stored-root safety conclusion.
 
-`NextSlotSynchronyPremises` has five fields: `attestation_delivery`, `block_relay`, `envelope_delivery`, `data_availability_relay`, and `attester_slashing_relay`. `Synchrony` has a separate `latest_message_relay` field. `synchrony_and_delivery_iff_nextSlot_and_latestMessageRelay` proves the relation. The global FFG and finalization premises quantify over handler-successful prefixes beyond a chosen safety endpoint when their declarations do. A finite endpoint restricts the conclusion, not those premise quantifiers.
+The instantaneous-synchrony finding is fixed for the execution safety path.
+`NextSlotSynchronyPremises` records positive Δ with strict `A + Δ < S`.
+The block, envelope, data, and evidence relays all require a source observation
+at or before its slot deadline and a distinct receiver time at or after the
+next boundary. Honest vote delivery uses the vote deadline. The unused
+latest-message field and the old block-relay field have been removed;
+`synchrony_and_delivery_iff_nextSlot` relates the two current bundles.
+The public next-slot claims and their premise-field sets are unchanged.
 
-`EnvelopeDelivery` requires a receiver envelope at a schedule position where the block is already known. `DataAvailabilityRelay` requires receiver data at that observation. `BeaconExternalsPremises.verify_envelope_deterministic` makes envelope validation independent of observation for equal signed envelope and state. The model does not retry a rejected envelope. The external validation includes the execution engine's `VALID` outcome. These premises need an implementation or network argument.
+Block and envelope exclusion is tested before the next-slot tick and only
+permits a permanent finalized-guard conflict with a known parent. G4 derives
+honest head-path admissibility. AU accountability handles other required
+carriers. Ready blocks and envelopes precede the boundary vote handler;
+data service and deterministic envelope validation justify payload acceptance.
+The finite witness still does not exercise envelope delivery.
+
+Evidence has no exclusion branch. The field models evidence retention and
+application with known signer pubkeys, using a pubkey cache. Literal Python
+uses the receiver's justified block state; an older state can lack a signer
+whose deposit is newer and drop the slashing. The model instead uses immutable
+pubkeys and a common domain in its single fork, with signer keys supplied by
+the source justification that reaches the receiver. This deviation is explicit
+in the field docstring and [modeling choices](MODELING_CHOICES.md). Late evidence
+has a fresh cutoff observation when the scheduled FCR call reads it at slot
+start. No validity-agreement field was added to the public external contract.
+
+The global FFG and finalization premises still quantify over successful handler
+prefixes beyond a safety endpoint when their declarations do. A finite endpoint
+restricts the conclusion, not those premise quantifiers.
+`scripts/check_synchrony_corners.py` checks the cutoff shapes and rejects old
+relay fields, missing cutoffs, same-second receiver states, and tick-time
+exemptions. Full validation also checks all 15 public witnesses.
 
 ## Python source and conformance
 

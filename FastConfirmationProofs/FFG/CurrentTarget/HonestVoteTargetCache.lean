@@ -1,5 +1,7 @@
 module
 public import FastConfirmationProofs.Execution.Delivery.Delivery
+public import FastConfirmationProofs.Safety.BlockAgreement
+
 public import FastConfirmationProofs.ModelFacts
 
 @[expose] public section
@@ -274,9 +276,10 @@ the exact target of the delivered honest vote.  This is the target-key
 postcondition hidden inside `vote_lands`: validation succeeds, then
 `store_target_checkpoint_state` inserts the target before latest messages are
 updated, and the remaining events preserve the key. -/
-theorem honestVoteTarget_cached_at_delivery
+theorem honestVoteTarget_received_at_delivery
     (hwf : WellFormedExecution E) (hhb : HonestBehavior cfg ext E)
-    (hsyn : NextSlotSynchronyPremises cfg ext E) (hec : BeaconExternalsPremises cfg ext E)
+    (hsyn : NextSlotSynchronyPremises cfg ext E)
+    (hpaths : HonestHeadPathAdmissibility cfg ext E) (hec : BeaconExternalsPremises cfg ext E)
     (hdiv : 1000 ∣ cfg.slot_duration_ms)
     (hgen : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
       E.genesis_store = get_forkchoice_store cfg ast ablk ∧
@@ -298,6 +301,10 @@ theorem honestVoteTarget_cached_at_delivery
           (E.store cfg ext v n) s index v).data.target.epoch)
       (honest_attestation cfg ext
         (E.store cfg ext v n) s index v).data.beacon_block_root) :
+    (honest_attestation cfg ext
+      (E.store cfg ext v n) s index v).data.target.root ∈
+        (E.store cfg ext w
+          (E.slot_start cfg (s + 1))).block_roots ∧
     (honest_attestation cfg ext
       (E.store cfg ext v n) s index v).data.target ∈
         (E.store cfg ext w
@@ -402,31 +409,45 @@ theorem honestVoteTarget_cached_at_delivery
     rw [← hdeliveryEq]
     exact hsyn.attestation_delivery v hv s n a
       (E.slotWithinHorizon_of_le cfg (by rw [hn]) hHn)
-      hHn hvote w hw
+      hHn hvote (hhb.vote_deadline v hv s n a hvote).2 hHdeliver w hw
   obtain ⟨pre, suf, hscheduleEq⟩ := List.append_of_mem hscheduled
   have htickedRoots :
       ticked.block_roots = (E.store cfg ext w deliveryPred).block_roots := by
     rw [hticked]
     exact ((on_tick_sameBlocks cfg (E.store cfg ext w deliveryPred)
       (E.time_at (deliveryPred + 1))).1).symm
-  have hroots :
-      (E.store cfg ext v n).block_roots ⊆
-        (pre.foldl
-          (fun store event => (apply_event cfg ext store event).getD store)
-          ticked).block_roots := by
-    intro root hroot
-    have hHdelivery : E.WithinHorizon cfg (deliveryPred + 1) := by
-      rwa [← hdeliveryEq]
-    have hHpred : E.WithinHorizon cfg deliveryPred :=
-      E.withinHorizon_mono cfg (Nat.le_succ deliveryPred) hHdelivery
-    have hrootPred : root ∈
-        (E.store cfg ext w deliveryPred).block_roots :=
-      hsyn.block_relay v hv n root hHn hroot w hw deliveryPred hHpred
-        hrelayTiming
-    have hrootTicked : root ∈ ticked.block_roots := by
-      rw [htickedRoots]
-      exact hrootPred
-    exact (foldl_storeLE cfg ext pre ticked).1 hrootTicked
+  have hHdeliveryPred : E.WithinHorizon cfg (deliveryPred + 1) := by
+    rwa [← hdeliveryEq]
+  have hHpred : E.WithinHorizon cfg deliveryPred :=
+    E.withinHorizon_mono cfg (Nat.le_succ deliveryPred) hHdeliveryPred
+  have hsourceWalk : WalkKnown (E.store cfg ext v n)
+      (compute_start_slot_at_epoch cfg a.data.target.epoch)
+      a.data.beacon_block_root := by
+    simpa only [ha] using hheadWalk
+  have hdeadline : n ≤ E.slot_start cfg (E.slot_at cfg n) +
+      get_attestation_due_ms cfg / 1000 := by
+    simpa only [hn] using (hhb.vote_deadline v hv s n a hvote).2
+  have hnBeforeDelivery : n < E.slot_start cfg (s + 1) := by
+    by_contra hnot
+    have hdeliveryLeN : E.slot_start cfg (s + 1) ≤ n :=
+      Nat.le_of_not_gt hnot
+    have hslotMono := E.slot_at_mono cfg hdeliveryLeN
+    rw [hdeliverySlot, hn] at hslotMono
+    exact (Nat.not_succ_le_self s) hslotMono
+  have hpath := hpaths v hv n hHn w
+    (compute_start_slot_at_epoch cfg a.data.target.epoch)
+    (by simpa only [hn] using hHdeliver) hsourceWalk
+  have hcovered : WalkCoveredBy (E.store cfg ext v n)
+      (pre.foldl
+        (fun store event => (apply_event cfg ext store event).getD store)
+        ticked)
+      (compute_start_slot_at_epoch cfg a.data.target.epoch)
+      a.data.beacon_block_root := by
+    have h := hpath.covered_at_boundary cfg ext hsyn.boundary_block_prefix
+      hv hw hHn hdeadline (by simpa only [hn] using hHdeliver)
+      (by simpa only [hn] using hnBeforeDelivery)
+      (by simpa only [hn, hdeliveryEq] using hscheduleEq)
+    simpa only [hn, hdeliveryEq, ticked] using h
   have htickedProvenance : BlockProvenance E ticked := by
     rw [hticked]
     exact on_tick_blockProvenance cfg
@@ -444,14 +465,27 @@ theorem honestVoteTarget_cached_at_delivery
     blockProvenance_foldl cfg ext pre ticked
       hprefixBlocks htickedProvenance
   have hagree :
-      ∀ root ∈ (E.store cfg ext v n).block_roots,
+      ∀ root, root ∈ (E.store cfg ext v n).block_roots →
+        root ∈ (pre.foldl
+          (fun store event => (apply_event cfg ext store event).getD store)
+          ticked).block_roots →
         (E.store cfg ext v n).blocks root =
           (pre.foldl
             (fun store event => (apply_event cfg ext store event).getD store)
             ticked).blocks root :=
-    fun root hroot => hwf.blocks_agree
+    fun root hroot hreceiver => hwf.blocks_agree
       (E.blockProvenance cfg ext v n) hprefixProvenance
-      hroot (hroots hroot)
+      hroot hreceiver
+  have hheadPrefix : a.data.beacon_block_root ∈
+      (pre.foldl
+        (fun store event => (apply_event cfg ext store event).getD store)
+        ticked).block_roots := hcovered.receiver_walk hagree |>.root_mem
+  have htargetPrefix : a.data.target.root ∈
+      (pre.foldl
+        (fun store event => (apply_event cfg ext store event).getD store)
+        ticked).block_roots := by
+    rw [htargetCheckpoint]
+    exact hcovered.checkpoint_root_mem cfg rfl
   have hprefixSlot : get_current_slot cfg
       (pre.foldl
         (fun store event => (apply_event cfg ext store event).getD store)
@@ -470,11 +504,17 @@ theorem honestVoteTarget_cached_at_delivery
       (pre.foldl (fun store event => (apply_event cfg ext store event).getD store)
         ticked) a.data.beacon_block_root = true := by
     intro hi
-    rw [ha, hticked]
-    exact E.honest_payload_verified_at_delivery_prefix cfg ext hwf hsyn hec hv hw hHn
-      (E.withinHorizon_mono cfg (Nat.le_succ deliveryPred)
-        (by simpa only [Nat.succ_eq_add_one, ← hdeliveryEq] using hHdeliver))
-      hrelayTiming pre s index hi
+    have hsource : is_payload_verified (E.store cfg ext v n)
+        a.data.beacon_block_root = true := by
+      rw [ha] at hi ⊢
+      exact honest_attestation_index_one_payload_verified cfg ext
+        (E.store cfg ext v n) s index v hi
+    have hp := E.payload_verified_at_cutoff_delivery_prefix cfg ext hwf hsyn hec
+      hv hw hHn (by simpa only [hn] using hHdeliver) hdeadline
+      (by simpa only [hn] using hnBeforeDelivery)
+      hsourceWalk.root_mem hsource (hpath.not_excluded cfg ext)
+      (by simpa only [hn, hdeliveryEq] using hscheduleEq)
+    simpa only [hn, hdeliveryEq, ticked, Nat.add_sub_cancel] using hp
   have hvalidates : validate_on_attestation cfg
       (pre.foldl
         (fun store event => (apply_event cfg ext store event).getD store)
@@ -482,8 +522,10 @@ theorem honestVoteTarget_cached_at_delivery
     validate_at_extension cfg (E.store cfg ext v n)
       (pre.foldl
         (fun store event => (apply_event cfg ext store event).getD store)
-        ticked) a hagree hroots hprefixSlot htargetEpoch hheadKnown
-      htargetRoot hbeaconSlot htargetCheckpoint hheadWalk hindex hsame hpayload
+        ticked) a hheadPrefix htargetPrefix
+      (hagree _ hheadKnown hheadPrefix)
+      (hcovered.checkpoint_agreement cfg hagree rfl)
+      hprefixSlot htargetEpoch hbeaconSlot htargetCheckpoint hindex hsame hpayload
   have hindexedValid : ext.is_valid_indexed_attestation
       ((store_target_checkpoint_state cfg ext
         (pre.foldl
@@ -493,7 +535,7 @@ theorem honestVoteTarget_cached_at_delivery
       (E.honestCausalStore_prefix cfg ext w hw deliveryPred
         (by simpa only [← hdeliveryEq] using hHdeliver)
         pre (Event.attestation a false :: suf) hscheduleEq)
-      a (hroots htargetRoot) v hv hsingle hcommitteeAtVote hvoteExists
+      a htargetPrefix v hv hsingle hcommitteeAtVote hvoteExists
   let applied := update_latest_messages
     (store_target_checkpoint_state cfg ext
       (pre.foldl
@@ -513,19 +555,65 @@ theorem honestVoteTarget_cached_at_delivery
         (fun store event => (apply_event cfg ext store event).getD store)
         applied).checkpoint_state_keys :=
     (foldl_checkpointKeysLE cfg ext suf applied) htargetApplied
+  have htargetAppliedRoot : a.data.target.root ∈ applied.block_roots := by
+    rw [← (on_attestation_sameBlocks cfg ext happlied).1]
+    exact htargetPrefix
+  have htargetEndRoot : a.data.target.root ∈
+      (suf.foldl
+        (fun store event => (apply_event cfg ext store event).getD store)
+        applied).block_roots :=
+    (foldl_storeLE cfg ext suf applied).1 htargetAppliedRoot
   rw [show E.slot_start cfg (s + 1) = deliveryPred + 1 from hdeliveryEq]
-  change a.data.target ∈
-    ((E.schedule w (deliveryPred + 1)).foldl
-      (fun store event => (apply_event cfg ext store event).getD store)
-      ticked).checkpoint_state_keys
+  change a.data.target.root ∈
+      ((E.schedule w (deliveryPred + 1)).foldl
+        (fun store event => (apply_event cfg ext store event).getD store)
+        ticked).block_roots ∧
+    a.data.target ∈
+      ((E.schedule w (deliveryPred + 1)).foldl
+        (fun store event => (apply_event cfg ext store event).getD store)
+        ticked).checkpoint_state_keys
   rw [hscheduleEq, List.foldl_append,
     foldl_cons_attestation cfg ext _ a suf happlied]
-  exact htargetEnd
+  exact ⟨htargetEndRoot, htargetEnd⟩
+
+/-- The accepted honest vote caches its target at the delivery second. -/
+theorem honestVoteTarget_cached_at_delivery
+    (hwf : WellFormedExecution E) (hhb : HonestBehavior cfg ext E)
+    (hsyn : NextSlotSynchronyPremises cfg ext E)
+    (hpaths : HonestHeadPathAdmissibility cfg ext E) (hec : BeaconExternalsPremises cfg ext E)
+    (hdiv : 1000 ∣ cfg.slot_duration_ms)
+    (hgen : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
+      E.genesis_store = get_forkchoice_store cfg ast ablk ∧
+        ast.slot = ablk.message.slot ∧ ablk.message.parent_root ≠ ablk.root)
+    {v w : ValidatorIndex} (hv : v ∈ E.honest) (hw : w ∈ E.honest)
+    {s : Slot} {n : Nat} {index : CommitteeIndex}
+    (hn : E.slot_at cfg n = s)
+    (hHn : E.WithinHorizon cfg n)
+    (hHdeliver : E.WithinHorizon cfg (E.slot_start cfg (s + 1)))
+    (hvote : E.vote v s = some
+      (n, honest_attestation cfg ext (E.store cfg ext v n) s index v))
+    (hheadKnown :
+      (honest_attestation cfg ext
+        (E.store cfg ext v n) s index v).data.beacon_block_root ∈
+          (E.store cfg ext v n).block_roots)
+    (hheadWalk : WalkKnown (E.store cfg ext v n)
+      (compute_start_slot_at_epoch cfg
+        (honest_attestation cfg ext
+          (E.store cfg ext v n) s index v).data.target.epoch)
+      (honest_attestation cfg ext
+        (E.store cfg ext v n) s index v).data.beacon_block_root) :
+    (honest_attestation cfg ext
+      (E.store cfg ext v n) s index v).data.target ∈
+        (E.store cfg ext w
+          (E.slot_start cfg (s + 1))).checkpoint_state_keys := by
+  exact (E.honestVoteTarget_received_at_delivery cfg ext hwf hhb hsyn hpaths hec
+    hdiv hgen hv hw hn hHn hHdeliver hvote hheadKnown hheadWalk).2
 
 /-- The exact target key persists at every later endpoint. -/
 theorem honestVoteTarget_cached
     (hwf : WellFormedExecution E) (hhb : HonestBehavior cfg ext E)
-    (hsyn : NextSlotSynchronyPremises cfg ext E) (hec : BeaconExternalsPremises cfg ext E)
+    (hsyn : NextSlotSynchronyPremises cfg ext E)
+    (hpaths : HonestHeadPathAdmissibility cfg ext E) (hec : BeaconExternalsPremises cfg ext E)
     (hdiv : 1000 ∣ cfg.slot_duration_ms)
     (hgen : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
       E.genesis_store = get_forkchoice_store cfg ast ablk ∧
@@ -552,10 +640,46 @@ theorem honestVoteTarget_cached
       (E.store cfg ext v n) s index v).data.target ∈
         (E.store cfg ext w m).checkpoint_state_keys := by
   have hcached := E.honestVoteTarget_cached_at_delivery cfg ext
-    hwf hhb hsyn hec hdiv hgen hv hw hn hHn
+    hwf hhb hsyn hpaths hec hdiv hgen hv hw hn hHn
     (E.withinHorizon_mono cfg hdeliveryLe hHm)
     hvote hheadKnown hheadWalk
   exact (E.store_checkpointKeysLE cfg ext w hdeliveryLe) hcached
+
+/-- The accepted target root stays known at every later receiver endpoint. -/
+theorem honestVoteTarget_known
+    (hwf : WellFormedExecution E) (hhb : HonestBehavior cfg ext E)
+    (hsyn : NextSlotSynchronyPremises cfg ext E)
+    (hpaths : HonestHeadPathAdmissibility cfg ext E) (hec : BeaconExternalsPremises cfg ext E)
+    (hdiv : 1000 ∣ cfg.slot_duration_ms)
+    (hgen : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
+      E.genesis_store = get_forkchoice_store cfg ast ablk ∧
+        ast.slot = ablk.message.slot ∧ ablk.message.parent_root ≠ ablk.root)
+    {v w : ValidatorIndex} (hv : v ∈ E.honest) (hw : w ∈ E.honest)
+    {s : Slot} {n : Nat} {index : CommitteeIndex}
+    (hn : E.slot_at cfg n = s)
+    (hHn : E.WithinHorizon cfg n)
+    (hvote : E.vote v s = some
+      (n, honest_attestation cfg ext (E.store cfg ext v n) s index v))
+    (hheadKnown :
+      (honest_attestation cfg ext
+        (E.store cfg ext v n) s index v).data.beacon_block_root ∈
+          (E.store cfg ext v n).block_roots)
+    (hheadWalk : WalkKnown (E.store cfg ext v n)
+      (compute_start_slot_at_epoch cfg
+        (honest_attestation cfg ext
+          (E.store cfg ext v n) s index v).data.target.epoch)
+      (honest_attestation cfg ext
+        (E.store cfg ext v n) s index v).data.beacon_block_root)
+    {m : Nat} (hdeliveryLe : E.slot_start cfg (s + 1) ≤ m)
+    (hHm : E.WithinHorizon cfg m) :
+    (honest_attestation cfg ext
+      (E.store cfg ext v n) s index v).data.target.root ∈
+        (E.store cfg ext w m).block_roots := by
+  have hreceived := E.honestVoteTarget_received_at_delivery cfg ext
+    hwf hhb hsyn hpaths hec hdiv hgen hv hw hn hHn
+    (E.withinHorizon_mono cfg hdeliveryLe hHm)
+    hvote hheadKnown hheadWalk
+  exact (E.store_storeLE cfg ext w hdeliveryLe).1 hreceived.1
 
 end Execution
 

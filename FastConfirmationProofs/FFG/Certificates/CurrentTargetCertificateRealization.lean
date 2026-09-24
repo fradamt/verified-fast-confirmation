@@ -346,16 +346,6 @@ theorem honest_attestation_data_source_eq_vSAt_target
           exact Nat.ne_of_lt hheadOld
         simp only [ChainFFGState.VSAt, if_neg htargetOld, hheadEq]
 
-omit [LinearOrder Root] [Inhabited Root] in
-/-- `slot_start` is monotone.  This is used only to inherit the horizon of the
-next-epoch delivery boundary for earlier votes in the target epoch. -/
-private theorem slot_start_mono {a b : Slot} (hab : a ≤ b) :
-    E.slot_start cfg a ≤ E.slot_start cfg b := by
-  simp only [Execution.slot_start]
-  apply Nat.sub_le_sub_right
-  apply Nat.add_le_add_left
-  exact Nat.div_le_div_right (Nat.mul_le_mul_right cfg.slot_duration_ms hab)
-
 /-- A trusted-boundary execution has a known walk from any known carrier down
 to every epoch boundary at or after the trusted anchor epoch. -/
 theorem walkKnown_epochBoundary_of_anchor_le
@@ -939,9 +929,9 @@ theorem certifiedCurrentTarget_of_gate_and_stateSemantics
             (E.slot_start cfg (vj.slot + 1)) :=
           E.withinHorizon_mono cfg hdeliveryLe hnextH
         refine ⟨j, E.slot_start cfg (vj.slot + 1), a, false, ?_, ?_, ?_, ?_⟩
-        · exact hsync.toHorizonScopedDelivery cfg ext j vj.honest vj.slot vj.time a
+        · exact hsync.attestation_delivery j vj.honest vj.slot vj.time a
             vj.slot_within_horizon vj.time_within_horizon
-            (by simpa only [a] using vj.vote) hdeliveryH j vj.honest
+            (by simpa only [a] using vj.vote) vj.vote_due hdeliveryH j vj.honest
         · simp only [a, honest_attestation_attesting_indices,
             List.mem_singleton]
         · simpa only [a] using hsourceAgreement j hj vj

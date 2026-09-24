@@ -77,57 +77,23 @@ theorem committeeSupportsAt_of_slotStart_IH_minimal
     hIH i hi nᵢ hnᵢLower hnᵢSlotLt hHnᵢ
   have hglcᵢ : glc ∈ (E.store cfg ext i nᵢ).block_roots :=
     hglcKnown i hi nᵢ hnᵢLower hHnᵢ
-  have hgate : E.slot_at cfg nᵢ + 1 ≤ E.slot_at cfg (m + 1) := by
-    calc
-      E.slot_at cfg nᵢ + 1 = t + 1 := by rw [hnᵢSlot]
-      _ ≤ E.slot_at cfg m := Nat.succ_le_of_lt htm
-      _ ≤ E.slot_at cfg (m + 1) := E.slot_at_mono cfg (Nat.le_succ m)
-  have hsub : (E.store cfg ext i nᵢ).block_roots ⊆
-      (E.store cfg ext w m).block_roots :=
-    E.blockRoots_subset_of_relay cfg ext hA.synchrony
-      hi hw hHnᵢ hHm hgate
-  obtain ⟨ast, ablk, hgeq, hslot, hparent⟩ := hA.genesis
-  have hgen : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
-      E.genesis_store = get_forkchoice_store cfg ast ablk ∧
-      ast.slot = ablk.message.slot ∧ ablk.message.parent_root ≠ ablk.root :=
-    ⟨ast, ablk, hgeq, hslot, hparent⟩
-  obtain ⟨hparentᵢ, hwalkK, _hjust⟩ :=
-    E.store_domainK_of_selectedMarginDomain cfg ext hA.wellFormed
-      hA.externals_coherence hgen hA.domain i hi nᵢ hHnᵢ
-  have hhead : (get_head cfg (E.store cfg ext i nᵢ)).root ∈
-      (E.store cfg ext i nᵢ).block_roots :=
-    E.head_root_known_of_selectedMarginDomain cfg ext hA.domain hi nᵢ hHnᵢ
-  have hanchor0 : ablk.root ∈ E.genesis_store.block_roots := by
-    rw [hgeq]
-    simp [get_forkchoice_store]
-  have hanchor : ablk.root ∈ (E.store cfg ext i nᵢ).block_roots :=
-    (E.store_storeLE cfg ext i (Nat.zero_le nᵢ)).1 hanchor0
-  have hanchorSlot : ((E.store cfg ext i nᵢ).blocks ablk.root).slot =
-      ablk.message.slot := by
-    rw [E.store_anchor_block cfg ext hA.wellFormed hgeq i nᵢ hanchor]
-  have hwalkA : ∀ r ∈ (E.store cfg ext i nᵢ).block_roots,
-      WalkKnown (E.store cfg ext i nᵢ) ablk.message.slot r := by
-    intro r hr
-    have hwalk := hwalkK ablk.root hanchor r hr
-    rwa [hanchorSlot] at hwalk
-  have hanchorLeC : ablk.message.slot ≤
-      ((E.store cfg ext w m).blocks c).slot :=
-    E.store_anchor_min_slot cfg ext hA.wellFormed hA.externals_coherence
-      hgeq hslot hparent w m c hc
-  have hheadGlc' : is_ancestor (E.store cfg ext i nᵢ)
-      (get_node_for_root (get_head cfg (E.store cfg ext i nᵢ)).root)
-      (get_node_for_root glc) = true :=
-    (congrArg (· = true) (is_ancestor_pending_root_eq (E.store cfg ext i nᵢ)
-      (get_head cfg (E.store cfg ext i nᵢ)).root glc .pending
-      (get_head cfg (E.store cfg ext i nᵢ)).payload_status)).mpr hheadGlc
-  obtain ⟨hcᵢ, hheadC⟩ := E.chain_descent_restrict hA.wellFormed
-    (E.blockProvenance cfg ext i nᵢ) (E.blockProvenance cfg ext w m)
-    hparentᵢ hwalkA hanchorLeC hsub hhead hglcᵢ hheadGlc' hchain
+  have hdue : nᵢ ≤ E.slot_start cfg (E.slot_at cfg nᵢ) +
+      get_attestation_due_ms cfg / 1000 := by
+    simpa only [hnᵢSlot] using
+      (hA.honest_behavior.vote_deadline i hi t nᵢ _ hvote).2
+  have hheadM := E.honest_head_known_at_later_slot_minimal cfg ext hA
+    hi hw hHnᵢ hHm hdue hnᵢSlotLt
+  have hhead := E.head_root_known_of_selectedMarginDomain cfg ext hA.domain
+    hi nᵢ hHnᵢ
+  obtain ⟨hglcM, hheadGlcM⟩ := E.ancestor_at_common_descendant_minimal cfg ext hA
+    hhead hheadM hglcᵢ (by rwa [is_ancestor_node_root] at hheadGlc)
+  obtain ⟨hparentM, hwalkM, _⟩ := E.store_domainK_of_selectedMarginDomain cfg ext
+    hA.wellFormed hA.externals_coherence hA.genesis hA.domain w hw m hHm
   have hheadCEnd : is_ancestor (E.store cfg ext w m)
       (get_node_for_root (get_head cfg (E.store cfg ext i nᵢ)).root)
       (get_node_for_root c) = true :=
-    is_ancestor_transport cfg ext hA.wellFormed hsub hhead hcᵢ
-      (hwalkK c hcᵢ _ hhead) hheadC
+    is_ancestor_trans (b := get_node_for_root glc) hparentM (hwalkM c hc _ hheadM)
+      (hwalkM c hc glc hglcM) hheadGlcM hchain
   refine ⟨t, nᵢ,
     honest_attestation cfg ext (E.store cfg ext i nᵢ) t index i,
     le_refl _, hvote, ?_, ?_⟩

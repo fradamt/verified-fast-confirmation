@@ -299,7 +299,8 @@ theorem weak_safeFrom_find_latest_confirmed_descendant_discharged_from_finalized
       (E.slot_start cfg (E.slot_at cfg q)) := by
     rw [hstore]
     exact E.weak_finalizedReset_safeFrom_of_synchrony cfg ext B hT hacc hphase
-      hboundaryPhase hanchor hboundary hW.base.synchrony hqH
+      hboundaryPhase hanchor hboundary hW.base.synchrony
+      hW.base.domain.honest_head_paths hqH
   -- the observer's `justified_root_known` is derived from `B`/`hT`/`hanchor`/
   -- `hboundary`, all already carried here, rather than assumed
   have hWM := hW.toMarginAssumptions cfg ext E B hT hanchor hboundary

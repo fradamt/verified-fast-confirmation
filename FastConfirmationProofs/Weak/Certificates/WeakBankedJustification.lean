@@ -716,7 +716,7 @@ theorem bankedSupplier_known_at_all_honest_endpoints_at_observer
     rw [hend1, ← hslotEq]; exact hgate
   have hsupplier : h.supplier ∈ (E.store cfg ext w m).block_roots :=
     E.certificate_dissemination cfg ext hA.wellFormed hA.honest_behavior hsync
-      hA.externals_coherence hA.byzantine_bound hji ⟨ast, ablk, hgeq, hslot, hparent⟩
+      hA.externals_coherence hA.byzantine_bound hA ⟨ast, ablk, hgeq, hslot, hparent⟩
       obs h.second h.balance_source h.supplier
       (get_block_slot (E.store cfg ext obs h.second) h.supplier)
       (get_current_slot cfg (E.store cfg ext obs h.second) - 1)

@@ -78,7 +78,7 @@ two stores compute the same ancestor once they agree on `(v₀, n₀)`'s blocks
 (`BlockAgreement.is_ancestor_congr`). Provenance pins the recorded block at every
 commonly-known root (`WellFormedExecution.blocks_agree`), so the agreement follows
 from `(v₀, n₀)`'s roots being known at `(w, m)` — the cross-node block-relay
-containment `hsub`, taken as a hypothesis (`Synchrony.block_relay`'s output, the
+containment `hsub`, taken as a hypothesis (an explicit local transport input, the
 usual domain-condition shape). This carries the package's `⪰ b` fact to `(w, m)`. -/
 
 /-- **Cross-store `is_ancestor` transport.** An `is_ancestor r ⪰ b` fact on a walk
@@ -264,7 +264,7 @@ theorem recorded_supports_c_of_IH {E : Execution Root}
   · -- displacement case: a later `[s, k)`-vote installed `lm`; the IH covers it
     obtain ⟨a', u, tt, ifb, hsched, hvin, hbbr', hep'⟩ :=
       E.schedLMProv cfg ext hgen w m i lm hlm
-    obtain ⟨m1, av, hvote_sl, hdata'⟩ := hhb.no_forgery u tt a' ifb hsched i hi hvin
+    obtain ⟨m1, av, _hcausal, hvote_sl, hdata'⟩ := hhb.no_forgery u tt a' ifb hsched i hi hvin
     have hcomm_sl : i ∈ E.committee a'.data.slot :=
       hhb.votes_assigned i hi a'.data.slot (by rw [hvote_sl]; exact Option.some_ne_none _)
     obtain ⟨a2, -, -, -, hep2, hbound2, hcomm2, -, -⟩ :=

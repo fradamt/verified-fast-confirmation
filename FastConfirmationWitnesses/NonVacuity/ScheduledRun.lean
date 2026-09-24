@@ -394,6 +394,36 @@ theorem vote_data_slot (s : Slot) : (vote s).data.slot = s := by
   simp only [vote, voteData]
   split_ifs <;> simp_all
 
+/-- Every scheduled copy of a ground vote is received after that vote's
+recorded send second. -/
+theorem scheduled_vote_sent_before {w n s ifb}
+    (h : Event.attestation (vote s) ifb ∈ witnessExecution.schedule w n) :
+    s ≤ n := by
+  have vote_slot_eq {t : Slot} (heq : vote s = vote t) : s = t := by
+    have hslot := congrArg (fun a : Attestation WitnessRoot => a.data.slot) heq
+    simpa only [vote_data_slot] using hslot
+  change Event.attestation (vote s) ifb ∈ witnessSchedule w n at h
+  by_cases h1 : n = 1
+  · subst n
+    simp [witnessSchedule] at h
+    have hs := vote_slot_eq h.1
+    rw [hs]
+    decide
+  · by_cases h7 : n = 7
+    · subst n
+      simp [witnessSchedule, h1] at h
+      rcases h with h | h | h | h
+      all_goals
+        have hs := vote_slot_eq h.1
+        rw [hs]
+        decide
+    · by_cases hb : 2 ≤ n ∧ n ≤ 16
+      · simp [witnessSchedule, h1, h7, hb] at h
+        have hs := vote_slot_eq h.1
+        rw [hs]
+        exact Nat.sub_le n 1
+      · simp [witnessSchedule, h1, h7, hb] at h
+
 theorem recorded_vote_of_attester {s : Slot} (hs : s < 16)
     {v : ValidatorIndex} (hvin : v ∈ (vote s).attesting_indices) :
     ∃ m a', witnessExecution.vote v (vote s).data.slot = some (m, a') ∧
@@ -463,6 +493,10 @@ theorem witnessHonestBehavior :
     subst v
     exact ⟨s, 0, time_within_of_lt_sixteen hslt, slot_at_eq s,
       honest_vote_recorded hslt⟩
+  · intro v hv s n a hvote
+    obtain ⟨_, _, rfl, _⟩ := witness_vote_some_iff.mp hvote
+    rw [slot_start_eq]
+    simp
   · intro v hv s hvote
     rcases Option.ne_none_iff_exists'.mp hvote with ⟨na, hna⟩
     rcases na with ⟨n, a⟩
@@ -471,7 +505,10 @@ theorem witnessHonestBehavior :
   · intro w n a ifb hschedule v hv hvin
     obtain ⟨s, hs, rfl⟩ :=
       groundVote_exists (attestation_mem_schedule_ground hschedule)
-    exact recorded_vote_of_attester hs hvin
+    have hv : v = s % 4 := by simpa [vote] using hvin
+    refine ⟨s, vote s, scheduled_vote_sent_before hschedule, ?_, rfl⟩
+    rw [vote_data_slot]
+    simp [witnessExecution, witnessVote, hs, hv]
   · intro v hv s s' n n' a a' hvote hvote'
     obtain ⟨hs, hvmod, hn, ha⟩ := witness_vote_some_iff.mp hvote
     obtain ⟨hs', hvmod', hn', ha'⟩ := witness_vote_some_iff.mp hvote'
@@ -825,36 +862,41 @@ theorem witness_slot15_delivery_at_second16 (w : ValidatorIndex) :
 
 theorem witnessSynchrony :
     Synchrony witnessConfig witnessExternals witnessExecution := by
-  constructor
-  · intro v hv s n a hs hn hvote w hw
+  refine {
+    delta := ⟨500, by decide, by decide⟩
+    attestation_delivery := ?_
+    deadline_block_relay := ?_
+    boundary_block_prefix := ?_
+    attester_slashing_relay := ?_
+  }
+  · intro v hv s n a hs hn hvote _hdeadline hdelivery w hw
     obtain ⟨hslt, hvmod, hn', ha⟩ := witness_vote_some_iff.mp hvote
     subst n
     subst a
     exact witness_vote_false_delivery hslt w
-  · intro v hv n r hn hr w hw m hm hslot
-    have hnm : n ≤ m := by
-      have hs : n + 1 ≤ m + 1 := by
-        simpa only [slot_at_eq] using hslot
-      exact Nat.le_of_succ_le_succ hs
+  · intro v hv n r hn hr _hdeadline w hw m hm _hnext hlt
+    left
     rw [← witness_store_symmetric v w m]
     exact
-      (witnessExecution.store_storeLE witnessConfig witnessExternals v hnm).1 hr
-  · intro v hv n i msg hn hmsg w hw m hm hslot
-    have hnm : n ≤ m := by
-      have hs : n + 1 ≤ m := by
-        simpa only [slot_at_eq] using hslot
-      exact (Nat.le_succ n).trans hs
-    obtain ⟨msg', hmsg', hepoch⟩ :=
-      (witnessExecution.store_storeLE witnessConfig witnessExternals v hnm).latest_message_epoch_mono
-        witnessConfig i msg hmsg
-    refine ⟨msg', ?_, hepoch⟩
-    rw [← witness_store_symmetric v w m]
-    exact hmsg'
-  · intro v hv n i hn hi w hw m hm hslot
-    have hnm : n ≤ m := by
-      have hs : n + 1 ≤ m := by
-        simpa only [slot_at_eq] using hslot
-      exact (Nat.le_succ n).trans hs
+      (witnessExecution.store_storeLE witnessConfig witnessExternals v hlt.le).1 hr
+  · intro v hv n r hn hr _hdeadline w hw boundary hHboundary hlt
+      a before after _hschedule _hnotExcluded
+    have hnpred : n ≤ boundary - 1 := by omega
+    have hrootPred : r ∈
+        (witnessExecution.store witnessConfig witnessExternals w
+          (boundary - 1)).block_roots := by
+      rw [← witness_store_symmetric v w (boundary - 1)]
+      exact (witnessExecution.store_storeLE witnessConfig witnessExternals
+        v hnpred).1 hr
+    have hrootTick : r ∈
+        (on_tick witnessConfig
+          (witnessExecution.store witnessConfig witnessExternals w
+            (boundary - 1))
+          (witnessExecution.time_at boundary)).block_roots :=
+      (on_tick_storeLE witnessConfig _ _).1 hrootPred
+    exact (foldl_storeLE witnessConfig witnessExternals before _).1 hrootTick
+  · intro v hv n i hn hi _hdue w hw m hm _hnext hlt
+    have hnm : n ≤ m := hlt.le
     rw [← witness_store_symmetric v w m]
     exact
       (witnessExecution.store_storeLE witnessConfig witnessExternals v hnm).2.2.1 hi
@@ -953,6 +995,14 @@ theorem witnessPaperSafetySynchrony :
     have hno := witnessSchedule_no_envelope v k _ hevent signed sourceObservation
     exact (hno rfl).elim
 
+theorem witnessHorizonVoteDeliveryLookahead :
+    HorizonVoteDeliveryLookahead witnessConfig witnessExecution := by
+  constructor
+  intro v hv s n a hs hn hvote _hdeadline w hw
+  obtain ⟨hslt, hvmod, hn', ha⟩ := witness_vote_some_iff.mp hvote
+  subst n
+  subst a
+  exact witness_vote_false_delivery hslt w
 
 theorem witnessScheduledPrefixTrajectoryAssumptions :
     witnessExecution.ScheduledPrefixPremises

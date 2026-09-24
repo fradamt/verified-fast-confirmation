@@ -36,7 +36,7 @@ theorem latest_message_has_honest_vote
         (decide (a.data.index = 1)) := by
   obtain ⟨a, u, q, fromBlock, hsched, hvin, hmsgEq⟩ :=
     E.schedLMProvExact cfg ext hgen w t v msg hmsg
-  obtain ⟨k, a', hvote, hdata⟩ :=
+  obtain ⟨k, a', _hcausal, hvote, hdata⟩ :=
     hhb.no_forgery u q a fromBlock hsched v hv hvin
   exact ⟨a.data.slot, k, a', hvote, by simpa only [hdata] using hmsgEq⟩
 
@@ -95,7 +95,7 @@ theorem honest_latest_message_slot_ge_vote
 
 
 /-- The time recorded by an honest vote in the live interval is in that
-vote's slot. This also supplies the horizon fact used by block relay. -/
+vote's slot and lies in the public verification horizon. -/
 theorem honest_vote_time_in_slot
     (hhb : HonestBehavior cfg ext E)
     {i : ValidatorIndex} (hi : i ∈ E.honest)
@@ -116,59 +116,41 @@ theorem honest_vote_time_in_slot
   rw [← hk] at hHk' hslot
   exact ⟨hHk', hslot⟩
 
-/-- The accepted block-relay law carries every block known to the voter by
-its vote time into an honest endpoint after the vote's slot. -/
-theorem honest_vote_store_blocks_relay
-    (hhb : HonestBehavior cfg ext E)
-    (hsyn : NextSlotSynchronyPremises cfg ext E)
-    {i w : ValidatorIndex} (hi : i ∈ E.honest) (hw : w ∈ E.honest)
-    {s : Slot} {k : ℕ} {a : Attestation Root}
-    (hs0 : E.slot_at cfg 0 ≤ s)
-    {m : ℕ} (hsm : s < E.slot_at cfg m)
-    (hHm : E.WithinHorizon cfg m)
-    (hvote : E.vote i s = some (k, a)) :
-    (E.store cfg ext i k).block_roots ⊆
-      (E.store cfg ext w m).block_roots := by
-  obtain ⟨hHk, hslot⟩ := E.honest_vote_time_in_slot cfg ext
-    hhb hi hs0 hsm hHm hvote
-  have hrelayTime : E.slot_at cfg k + 1 ≤ E.slot_at cfg (m + 1) := by
-    rw [hslot]
-    exact (Nat.succ_le_of_lt hsm).trans
-      (E.slot_at_mono cfg (Nat.le_succ m))
-  intro r hr
-  exact hsyn.block_relay i hi k r hHk hr w hw m hHm hrelayTime
-
-/-- Transport a supported live block from its voter's store to an honest
-endpoint. The known vote root is supplied separately, since the live field
-only gives knownness of the produced block. -/
-theorem live_vote_support_transport
-    (hwf : WellFormedExecution E) (hhb : HonestBehavior cfg ext E)
-    (hsyn : NextSlotSynchronyPremises cfg ext E)
+/-- Transport one supported live block after its two endpoint roots are known.
+The accepted parent chain supplies the intermediate roots; no source-store
+containment or network relay is needed for this ancestry comparison. -/
+theorem live_vote_support_transport_of_known
+    (hwf : WellFormedExecution E)
     (hec : BeaconExternalsPremises cfg ext E)
     (hgen : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
       E.genesis_store = get_forkchoice_store cfg ast ablk ∧
       ast.slot = ablk.message.slot ∧ ablk.message.parent_root ≠ ablk.root)
-    {i w : ValidatorIndex} (hi : i ∈ E.honest) (hw : w ∈ E.honest)
-    {s : Slot} {k : ℕ} {a : Attestation Root}
-    (hs0 : E.slot_at cfg 0 ≤ s)
-    {m : ℕ} (hsm : s < E.slot_at cfg m)
-    (hHm : E.WithinHorizon cfg m)
-    (hvote : E.vote i s = some (k, a))
-    {r : Root}
-    (hr : r ∈ (E.store cfg ext i k).block_roots)
-    (hvoteRoot : a.data.beacon_block_root ∈
-      (E.store cfg ext i k).block_roots)
+    {i w : ValidatorIndex} {k m : ℕ} {head r : Root}
+    (hheadSource : head ∈ (E.store cfg ext i k).block_roots)
+    (hrSource : r ∈ (E.store cfg ext i k).block_roots)
+    (hheadEndpoint : head ∈ (E.store cfg ext w m).block_roots)
     (hanc : is_ancestor (E.store cfg ext i k)
-      (get_node_for_root a.data.beacon_block_root)
-      (get_node_for_root r) = true) :
+      (get_node_for_root head) (get_node_for_root r) = true) :
     is_ancestor (E.store cfg ext w m)
-      (get_node_for_root a.data.beacon_block_root)
-      (get_node_for_root r) = true := by
-  have hsub := E.honest_vote_store_blocks_relay cfg ext
-    hhb hsyn hi hw hs0 hsm hHm hvote
-  have hwalk := E.store_walkKnownK cfg ext hwf hec hgen i k
-    r hr a.data.beacon_block_root hvoteRoot
-  exact is_ancestor_transport cfg ext hwf hsub hvoteRoot hr hwalk hanc
+      (get_node_for_root head) (get_node_for_root r) = true := by
+  obtain ⟨ast, ablk, hgenEq, hgenSlot, hgenParent⟩ := hgen
+  have hparent : ParentSlotLt (E.store cfg ext i k) :=
+    E.store_parentSlotLt cfg ext hwf hec
+      ⟨ast, ablk, hgenEq, hgenSlot, hgenParent⟩
+      hwf.anchor_parent_unscheduled i k
+  have hwalk : WalkKnown (E.store cfg ext i k)
+      ((E.store cfg ext i k).blocks r).slot head :=
+    E.store_walkKnownK cfg ext hwf hec
+      ⟨ast, ablk, hgenEq, hgenSlot, hgenParent⟩ i k r hrSource head hheadSource
+  have hsemantic : E.RootDescends head r :=
+    E.rootDescends_of_store_ancestor
+      (E.blockProvenance cfg ext i k) hparent hwalk hanc
+  have hrRoot : E.ExecutionRoot r :=
+    ⟨(E.store cfg ext i k).blocks r,
+      E.blockAt_of_store_known cfg ext hrSource⟩
+  exact (E.store_known_ancestor_of_rootDescends_for_storeReflection
+    cfg ext hwf hec hgenEq hgenSlot hgenParent
+    hheadEndpoint hrRoot hsemantic).2
 
 /-- An accepted honest vote names the known fork-choice head at its voting
 store. This discharges the remaining known-root input of support transport. -/
@@ -255,6 +237,7 @@ theorem NextSlotSafetyPremises.recorded_fixed_live_block_support
     {k : ℕ} {a : Attestation Root}
     (hvote : E.vote i t = some (k, a))
     {w : ValidatorIndex} (hw : w ∈ E.honest)
+    (hrEndpoint : r ∈ (E.store cfg ext w m).block_roots)
     {msg : LatestMessage Root}
     (hmsg : (E.store cfg ext w m).latest_messages i = some msg)
     (hepoch : compute_epoch_at_slot cfg t ≤ get_latest_message_epoch cfg msg) :
@@ -283,17 +266,20 @@ theorem NextSlotSafetyPremises.recorded_fixed_live_block_support
     h.honest_vote_root_known cfg ext E hi hs0'
       (by simpa only [hslotEq] using hslotEnd) hHm
       (by simpa only [hslotEq] using hvote')
-  have htransport := E.live_vote_support_transport cfg ext
-    h.trajectory.wellFormed h.trajectory.honest_behavior
-    h.completed_calls.synchrony h.trajectory.externals_coherence
-    h.trajectory.genesis_structure hi hw hs0'
-    (by simpa only [hslotEq] using hslotEnd) hHm
-    (by simpa only [hslotEq] using hvote') hrKnown hrootKnown hanc
-  have hsub := E.honest_vote_store_blocks_relay cfg ext
-    h.trajectory.honest_behavior h.completed_calls.synchrony
-    hi hw hs0' (by simpa only [hslotEq] using hslotEnd) hHm
-    (by simpa only [hslotEq] using hvote')
-  refine ⟨hsub hrKnown, ?_⟩
+  have hmsgRootKnown : msg.root ∈ (E.store cfg ext w m).block_roots := by
+    obtain ⟨_, _, _, _, _, _, _, hknown, _, _⟩ :=
+      (E.latestMessageProvenance cfg ext h.trajectory.wellFormed
+        h.trajectory.externals_coherence hgen w m hw hHm) i msg hmsg
+    exact hknown
+  have hheadEndpoint : a'.data.beacon_block_root ∈
+      (E.store cfg ext w m).block_roots := by
+    rw [hmsgEq] at hmsgRootKnown
+    exact hmsgRootKnown
+  have htransport := E.live_vote_support_transport_of_known cfg ext
+    h.trajectory.wellFormed h.trajectory.externals_coherence
+    h.trajectory.genesis_structure hrootKnown hrKnown hheadEndpoint
+    hanc
+  refine ⟨hrEndpoint, ?_⟩
   simpa only [hmsgEq] using htransport
 
 
@@ -330,8 +316,12 @@ theorem NextSlotSafetyPremises.vote_ubiquity
     simpa only [honest_attestation_data_eq,
       honest_attestation_data_beacon_block_root] using hwalk
   exact E.vote_ubiquity cfg ext h.trajectory.wellFormed h.trajectory.honest_behavior
-    h.completed_calls.synchrony h.trajectory.externals_coherence
-    h.trajectory.whole_seconds h.trajectory.genesis_structure
+    h.completed_calls.synchrony
+    (E.honestHeadPathAdmissibility_of_accepted cfg ext
+      h.semantics h.trajectory h.completed_calls h.anchor_eq h.anchor_boundary
+      h.slots_per_epoch_gt_one h.finalization_delay
+      h.checkpoint_projection h.exact_link_validity)
+    h.trajectory.externals_coherence h.trajectory.whole_seconds h.trajectory.genesis_structure
     hv hw hn hHn hvote hheadVote hwalkVote hm hHm
 
 
@@ -351,6 +341,7 @@ theorem NextSlotSafetyPremises.fixed_live_block_support_of_assignment
     {t : Slot} (hst : s ≤ t) (htm : t < E.slot_at cfg m)
     {i w : ValidatorIndex} (hi : i ∈ E.honest) (hcommittee : i ∈ E.committee t)
     (hw : w ∈ E.honest)
+    (hrEndpoint : r ∈ (E.store cfg ext w m).block_roots)
     (hdelivery : E.slot_start cfg (t + 1) ≤ m) :
     ∃ msg, (E.store cfg ext w m).latest_messages i = some msg ∧
       is_ancestor (E.store cfg ext w m)
@@ -368,7 +359,7 @@ theorem NextSlotSafetyPremises.fixed_live_block_support_of_assignment
     rw [← htarget]
     exact hEpoch
   have hrecorded := h.recorded_fixed_live_block_support cfg ext E
-    hi hHm hs0 hsupport hst hvote hw hmsg hEpoch'
+    hi hHm hs0 hsupport hst hvote hw hrEndpoint hmsg hEpoch'
   exact ⟨msg, hmsg, hrecorded.2⟩
 
 

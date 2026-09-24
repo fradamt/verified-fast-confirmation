@@ -385,6 +385,7 @@ theorem LatestConfirmedCallTrace.result_safeFrom_of_actualCall_strictSupplier
     rw [hresult] at hsupply
     exact E.selectedCoveredMarginSupplyAt_of_filterSupply_minimal
       cfg ext hA hwalkDomain v hv (n + 1) hHn1
+        (by rw [hstartEq]; exact Nat.le_add_right _ _)
         (E.fcrStoreAtCall cfg ext v n) hquery trace.afterObserved hinputKnown
         (find_latest_confirmed_descendant cfg ext
           (E.fcrStoreAtCall cfg ext v n) trace.afterObserved)

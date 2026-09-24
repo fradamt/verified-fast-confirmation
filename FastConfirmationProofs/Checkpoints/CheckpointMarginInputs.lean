@@ -66,13 +66,9 @@ theorem mem_committee_of_fresh {i : ValidatorIndex} {lo σ' : Slot}
     exact hni ⟨s, ⟨hslo, hsle⟩, hcomm⟩
   exact hseq ▸ hcomm
 
-/-- **`hfresh` — the last dynamics fact.** A fresh honest window member `i` of slot
-`σ'+1` supports `desc(b')` at the anchor store `(v₀, n₀)`. `votes_head` supplies `i`'s own
-head vote at a second `nᵢ` in slot `σ'+1`; the head-safety induction hypothesis `hIH`
-(in `HeadSafetyEngine.LedgerChainInput`'s exact `is_ancestor (store i nᵢ) head b'` shape)
-gives head descent at the voting store; `is_ancestor_transport` carries it to `(v₀, n₀)`
-on the block-relay domain conditions `hsub`/`hbknown`/`hwalk` (`Synchrony.block_relay`
-outputs). The endpoint kills the newest-vote clause. -/
+/-- A fresh honest member supports the selected descendant at the endpoint.
+The caller transports the actual recorded vote head with its deadline.
+No unrelated source roots need to occur at the receiver. -/
 theorem supportsDesc_fresh (hhb : HonestBehavior cfg ext E) (hwf : WellFormedExecution E)
     {v₀ : ValidatorIndex} {n₀ : ℕ} {b' : Root} {lo σ' : Slot}
     (hσ1H : E.SlotWithinHorizon cfg (σ' + 1))
@@ -80,16 +76,12 @@ theorem supportsDesc_fresh (hhb : HonestBehavior cfg ext E) (hwf : WellFormedExe
     {i : ValidatorIndex}
     (hi : i ∈ (E.span_committee lo (σ' + 1) \ E.span_committee lo σ').filter
       (fun i => i ∈ E.honest))
-    (hIH : ∀ nᵢ : ℕ, E.slot_at cfg nᵢ = σ' + 1 →
-      is_ancestor (E.store cfg ext i nᵢ) (get_head cfg (E.store cfg ext i nᵢ))
-        (get_node_for_root b') = true)
-    (hsub : ∀ nᵢ : ℕ, E.slot_at cfg nᵢ = σ' + 1 →
-      (E.store cfg ext i nᵢ).block_roots ⊆ (E.store cfg ext v₀ n₀).block_roots)
-    (hbknown : ∀ nᵢ : ℕ, E.slot_at cfg nᵢ = σ' + 1 →
-      b' ∈ (E.store cfg ext i nᵢ).block_roots)
-    (hwalk : ∀ nᵢ : ℕ, E.slot_at cfg nᵢ = σ' + 1 →
-      WalkKnown (E.store cfg ext i nᵢ) ((E.store cfg ext i nᵢ).blocks b').slot
-        (get_head cfg (E.store cfg ext i nᵢ)).root) :
+    (htransport : ∀ nᵢ idx, E.slot_at cfg nᵢ = σ' + 1 →
+      E.vote i (σ' + 1) = some (nᵢ,
+        honest_attestation cfg ext (E.store cfg ext i nᵢ) (σ' + 1) idx i) →
+      is_ancestor (E.store cfg ext v₀ n₀)
+        (get_node_for_root (get_head cfg (E.store cfg ext i nᵢ)).root)
+        (get_node_for_root b') = true) :
     E.SupportsDesc cfg ext v₀ n₀ b' (σ' + 1) i := by
   rw [Finset.mem_filter, Finset.mem_sdiff] at hi
   obtain ⟨⟨hmem1, hnmem0⟩, hih⟩ := hi
@@ -99,41 +91,20 @@ theorem supportsDesc_fresh (hhb : HonestBehavior cfg ext E) (hwf : WellFormedExe
   refine ⟨σ' + 1, nᵢ, honest_attestation cfg ext (E.store cfg ext i nᵢ) (σ' + 1) idx i,
     le_refl _, hvote, ?_, ?_⟩
   · intro t' ht' ht'le; exact absurd (lt_of_lt_of_le ht' ht'le) (lt_irrefl _)
-  · -- the vote block is `(get_head (store i nᵢ)).root`; transport head-descent to `(v₀, n₀)`.
-    have hr : (get_head cfg (E.store cfg ext i nᵢ)).root ∈ (E.store cfg ext i nᵢ).block_roots :=
-      (hwalk nᵢ hslot).root_mem
-    have hpend : is_ancestor (E.store cfg ext i nᵢ)
-        (ForkChoiceNode.mk (get_head cfg (E.store cfg ext i nᵢ)).root .pending)
-        (get_node_for_root b') = true := by
-      rw [is_ancestor_pending_root_eq (E.store cfg ext i nᵢ) _ b' .pending
-        (get_head cfg (E.store cfg ext i nᵢ)).payload_status]
-      exact hIH nᵢ hslot
-    exact is_ancestor_transport cfg ext hwf (hsub nᵢ hslot) hr (hbknown nᵢ hslot)
-      (hwalk nᵢ hslot) hpend
+  · exact htransport nᵢ idx hslot hvote
 
-/-! ## Section 1b — the migration monotonicities from the engine inputs
+/-! ## Migration monotonicity from the actual fresh vote -/
 
-`supportsDesc_fresh` produces the per-member `hfresh` that
-`EconomicCore.hSmono_of_fresh` / `hXmono_of_fresh` consume. Quantifying its
-engine inputs over the fresh growth set closes the two pre-`T1` migration
-monotonicities `hSmono` / `hXmono` all the way down to the head-safety induction
-hypothesis (`hIH`) and the `Synchrony.block_relay` domain conditions
-(`hsub`/`hbknown`/`hwalk`) — the exact facts the shell threads. `hXmono`'s
-`Xclass`-exit leg (a fresh `σ'+1` voter cannot be sibling-stuck) is discharged
-inside `hXmono_of_fresh` via the same `hfresh`. -/
-
-/-- The per-member engine inputs of `supportsDesc_fresh`, quantified over the fresh
-honest window growth of slot `σ'+1`. This is the head-safety IH plus the block-relay
-domain conditions, in the shape the shell supplies them. -/
+/-- Endpoint ancestry for each actual recorded fresh vote. The producer uses
+its vote deadline, G4, and the earlier-slot head-safety induction. -/
 def FreshEngineInputs (v₀ : ValidatorIndex) (n₀ : ℕ) (b' : Root) (lo σ' : Slot) : Prop :=
   ∀ i ∈ (E.span_committee lo (σ' + 1) \ E.span_committee lo σ').filter (fun i => i ∈ E.honest),
-    ∀ nᵢ : ℕ, E.slot_at cfg nᵢ = σ' + 1 →
-      is_ancestor (E.store cfg ext i nᵢ) (get_head cfg (E.store cfg ext i nᵢ))
-          (get_node_for_root b') = true ∧
-      (E.store cfg ext i nᵢ).block_roots ⊆ (E.store cfg ext v₀ n₀).block_roots ∧
-      b' ∈ (E.store cfg ext i nᵢ).block_roots ∧
-      WalkKnown (E.store cfg ext i nᵢ) ((E.store cfg ext i nᵢ).blocks b').slot
-        (get_head cfg (E.store cfg ext i nᵢ)).root
+    ∀ nᵢ idx, E.slot_at cfg nᵢ = σ' + 1 →
+      E.vote i (σ' + 1) = some (nᵢ,
+        honest_attestation cfg ext (E.store cfg ext i nᵢ) (σ' + 1) idx i) →
+      is_ancestor (E.store cfg ext v₀ n₀)
+        (get_node_for_root (get_head cfg (E.store cfg ext i nᵢ)).root)
+        (get_node_for_root b') = true
 
 /-- **`hfresh` over the whole fresh growth set** from the engine inputs. -/
 theorem hfresh_of_engine (hhb : HonestBehavior cfg ext E) (hwf : WellFormedExecution E)
@@ -144,9 +115,7 @@ theorem hfresh_of_engine (hhb : HonestBehavior cfg ext E) (hwf : WellFormedExecu
     ∀ i ∈ (E.span_committee lo (σ' + 1) \ E.span_committee lo σ').filter
         (fun i => i ∈ E.honest),
       E.SupportsDesc cfg ext v₀ n₀ b' (σ' + 1) i :=
-  fun i hi => E.supportsDesc_fresh cfg ext hhb hwf hσ1H hs0 hi
-    (fun nᵢ h => (hin i hi nᵢ h).1) (fun nᵢ h => (hin i hi nᵢ h).2.1)
-    (fun nᵢ h => (hin i hi nᵢ h).2.2.1) (fun nᵢ h => (hin i hi nᵢ h).2.2.2)
+  fun i hi => E.supportsDesc_fresh cfg ext hhb hwf hσ1H hs0 hi (hin i hi)
 
 /-- **`hSmono` from the engine inputs** — `EconomicCore.hSmono_of_fresh` composed with
 `hfresh_of_engine`. Closes the pre-`T1` honest-support growth to the head-safety IH and

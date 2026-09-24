@@ -375,7 +375,7 @@ noncomputable def observerCall_acceptedTargetGateProducerAt
       hC.byzantine_bound
       hC.phase0_source hC.phase0_boundary_source hanchor hboundary p hHn1
       hevidence hstate hval htab hendHP
-      (fun Q => Q.scheduledDelivery_of_lookahead cfg ext E hC.synchrony)
+      (fun Q => Q.scheduledDelivery_of_lookahead cfg ext E hC.delivery_lookahead)
       hanchorH hC.balance_floor
       hgateP hsupportP
   rw [hpstore] at hrealized
@@ -909,8 +909,7 @@ theorem noConflict_endpointJustifiedQuorum_root_eq_currentTarget_at_observer
       Finset.mem_union] at hiSigner
     rcases hiSigner with hiObserved | hiFuture
     · obtain ⟨vote⟩ := hobservedVote i hiObserved
-      obtain ⟨kCompeting, aCompeting, hvoteCompeting,
-          hdataCompeting⟩ := hT.honest_behavior.no_forgery
+      obtain ⟨kCompeting, aCompeting, _hcausal, hvoteCompeting, hdataCompeting⟩ := hT.honest_behavior.no_forgery
             u n' a fb hsched i hiHonest hia
       let aTarget := honest_attestation cfg ext
         (E.store cfg ext i vote.time) vote.slot vote.index i

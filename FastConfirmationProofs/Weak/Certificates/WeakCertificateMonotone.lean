@@ -132,7 +132,7 @@ hypotheses (see the module docstring for why). -/
 theorem Weak.certificate_chain_dissemination (E : Execution Root)
     (hwf : WellFormedExecution E) (hhb : HonestBehavior cfg ext E)
     (hsyn : NextSlotSynchronyPremises cfg ext E) (hec : BeaconExternalsPremises cfg ext E)
-    (hbb : ByzantineWeightPremises cfg E) (hji : JustificationInterface cfg ext E)
+    (hbb : ByzantineWeightPremises cfg E) (hA : SelectedMarginAssumptions cfg ext E)
     (hgen : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
       E.genesis_store = get_forkchoice_store cfg ast ablk ∧
       ast.slot = ablk.message.slot ∧ ablk.message.parent_root ≠ ablk.root)
@@ -165,7 +165,7 @@ theorem Weak.certificate_chain_dissemination (E : Execution Root)
     E.store_parentSlotLt cfg ext hwf hec hgen hwf.anchor_parent_unscheduled v n
   have hcert_anc :=
     Weak.has_broadcast_certificate_ancestor cfg ext hpsl hwb hwalk hanc hcert
-  exact E.certificate_dissemination cfg ext hwf hhb hsyn hec hbb hji hgen
+  exact E.certificate_dissemination cfg ext hwf hhb hsyn hec hbb hA hgen
     v n balance_source anc start_slot end_slot hnH hstartH hendH hstart0 hval htab hcomm
     hanc_obs hcert_anc w hw m hHm htiming_m
 

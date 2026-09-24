@@ -302,9 +302,11 @@ theorem confirmed_safeFromFollowingSlot_of_acceptedActualFCRFold_all_le
     (V : B.state.ExactLinkValidity) :
     ∀ n : ℕ, ∀ k ≤ n, E.WithinHorizon cfg k → ∀ v ∈ E.honest,
       E.AcceptedFoldSafetyAt cfg ext v k := by
+  have hpaths := E.honestHeadPathAdmissibility_of_accepted cfg ext B hT hC
+    hanchor hboundary hspe hDelay P V
   have hdomain : SelectedMarginDomain cfg ext E :=
     E.selectedMarginDomain_of_acceptedGlobalTrajectory
-      cfg ext B hT hC.synchrony hanchor hboundary
+      cfg ext B hT hC.synchrony hpaths hanchor hboundary
   have hanchorExact : B.anchor =
       B.state.C B.anchor.root B.anchor.epoch :=
     acceptedAnchorExact_of_trajectory cfg ext E B hT hanchor hboundary
@@ -399,13 +401,14 @@ theorem confirmed_safeFromFollowingSlot_of_acceptedActualFCRFold_all_le
               refine ⟨?_, fun hne => absurd heq hne⟩
               rw [heq]
               exact E.finalizedResetCandidateInput_safeFrom_of_nextSlotSynchrony
-                cfg ext B hT hacc hanchor hboundary hC.synchrony hv hHn1
+                cfg ext B hT hacc hanchor hboundary hC hspe hDelay P V hv hHn1
                   hinput hdeadlineSlot
           | observedResetUnchanged hinput hselector =>
               have hinputSafe :=
                 Execution.ObservedResetCandidateInputAt.safeFrom_of_acceptedDynamics
-                  (E := E) cfg ext B hT hC.synchrony hC.static_validators
-                    hC.byzantine_bound hanchor hboundary hspe hv hHn1 hcall hinput
+                  (E := E) cfg ext B hT hC.synchrony hpaths hC.static_validators
+                    hC.byzantine_bound hanchor hboundary hspe hDelay P V
+                      hv hHn1 hcall hinput
               have heq : trace.result = trace.afterObserved :=
                 hselector.result_eq_input cfg ext
               refine ⟨?_, fun hne => absurd heq hne⟩
@@ -424,8 +427,9 @@ theorem confirmed_safeFromFollowingSlot_of_acceptedActualFCRFold_all_le
                 | observedReset hinput =>
                     exact
                       Execution.ObservedResetCandidateInputAt.safeFrom_of_acceptedDynamics
-                        (E := E) cfg ext B hT hC.synchrony hC.static_validators
-                          hC.byzantine_bound hanchor hboundary hspe hv hHn1
+                        (E := E) cfg ext B hT hC.synchrony hpaths hC.static_validators
+                          hC.byzantine_bound hanchor hboundary hspe hDelay P V
+                            hv hHn1
                             hcall hinput
               have hstrictSafe : E.SafeFrom cfg ext trace.result (n + 1) := by
                 simpa only [trace] using

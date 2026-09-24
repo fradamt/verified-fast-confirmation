@@ -1,4 +1,5 @@
 module
+public import FastConfirmationProofs.Checkpoints.FinalizedBeforeVoteJustification
 public import FastConfirmationProofs.FCRRule.FCRCallInvariants
 public import FastConfirmationProofs.FFG.SelectedSource.SelectedJustifiedOrientation
 public import FastConfirmationProofs.FFG.CurrentTarget.CurrentTargetWalkKnownness
@@ -43,7 +44,11 @@ theorem finalizedReset_justifiedDom_of_nextSlotSynchrony
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
       (E := E) (anchor := B.anchor))
-    (hsync : NextSlotSynchronyPremises cfg ext E)
+    (hC : E.CompletedFCRCallPremises cfg ext)
+    (hspe : 1 < cfg.slots_per_epoch)
+    (hDelay : E.RealizedFinalizationDelay cfg ext B)
+    (P : EpochCheckpointClosure B.anchor (E.AcceptedRoot cfg ext) B.state.C)
+    (V : B.state.ExactLinkValidity)
     {v : ValidatorIndex} (hv : v ∈ E.honest) {n q : ℕ}
     (hHn1 : E.WithinHorizon cfg (n + 1))
     (hnextQ : E.slot_at cfg (n + 1) + 1 ≤ E.slot_at cfg q) :
@@ -88,9 +93,14 @@ theorem finalizedReset_justifiedDom_of_nextSlotSynchrony
       (E.store cfg ext w m).justified_checkpoint.epoch := by
     have hnextM : E.slot_at cfg (n + 1) + 1 ≤ E.slot_at cfg m :=
       hnextQ.trans (E.slot_at_mono cfg hqm)
-    simpa only [finalized] using
-      E.finalizedReset_epoch_le_remoteJustified_nextSlot
-        cfg ext B hT hanchor hsync hv hw hHn1 hHm hnextM
+    have h := E.finalized_epoch_le_voter_justified_of_receiver_slot_le
+      cfg ext B hT hC.synchrony.deadline_block_relay hC.byzantine_bound
+      hC.phase0_source hC.phase0_boundary_source hanchor hboundary hspe hDelay P V
+      (CheckpointCertificateAccountability.of_assumptions cfg hacc)
+      (w := v) (n := m) (m := n + 1)
+      hw (E.slot_at_mono cfg (Nat.zero_le m)) rfl hHm
+      ((Nat.le_of_succ_le hnextM).trans (Nat.le_succ _))
+    simpa only [finalized, E.fcrStep_store] using h
   obtain ⟨hjustified⟩ :=
     CausalPrefixFFGInterpretation.endpointJustified_certificate
       (E := E) cfg ext B hgenShort hanchor hendpointCausal
@@ -130,7 +140,11 @@ theorem finalizedReset_safeFrom_of_nextSlotSynchrony
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
       (E := E) (anchor := B.anchor))
-    (hsync : NextSlotSynchronyPremises cfg ext E)
+    (hC : E.CompletedFCRCallPremises cfg ext)
+    (hspe : 1 < cfg.slots_per_epoch)
+    (hDelay : E.RealizedFinalizationDelay cfg ext B)
+    (P : EpochCheckpointClosure B.anchor (E.AcceptedRoot cfg ext) B.state.C)
+    (V : B.state.ExactLinkValidity)
     {v : ValidatorIndex} (hv : v ∈ E.honest) {n q : ℕ}
     (hHn1 : E.WithinHorizon cfg (n + 1))
     (hnextQ : E.slot_at cfg (n + 1) + 1 ≤ E.slot_at cfg q) :
@@ -141,7 +155,7 @@ theorem finalizedReset_safeFrom_of_nextSlotSynchrony
   apply E.safeFrom_of_justified_dom_K cfg ext hdomainK
   intro w hw m hqm hHm
   exact E.finalizedReset_justifiedDom_of_nextSlotSynchrony
-    cfg ext B hT hacc hanchor hboundary hsync hv hHn1 hnextQ
+    cfg ext B hT hacc hanchor hboundary hC hspe hDelay P V hv hHn1 hnextQ
       w hw m hqm hHm
 
 /-- Exact active-branch presentation: when `get_latest_confirmed` selected
@@ -154,7 +168,11 @@ theorem finalizedResetCandidateInput_safeFrom_of_nextSlotSynchrony
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
       (E := E) (anchor := B.anchor))
-    (hsync : NextSlotSynchronyPremises cfg ext E)
+    (hC : E.CompletedFCRCallPremises cfg ext)
+    (hspe : 1 < cfg.slots_per_epoch)
+    (hDelay : E.RealizedFinalizationDelay cfg ext B)
+    (P : EpochCheckpointClosure B.anchor (E.AcceptedRoot cfg ext) B.state.C)
+    (V : B.state.ExactLinkValidity)
     {v : ValidatorIndex} (hv : v ∈ E.honest) {n q : ℕ}
     (hHn1 : E.WithinHorizon cfg (n + 1))
     {trace : LatestConfirmedCallTrace cfg ext (E.fcrStoreAtCall cfg ext v n)}
@@ -164,7 +182,7 @@ theorem finalizedResetCandidateInput_safeFrom_of_nextSlotSynchrony
     E.SafeFrom cfg ext trace.afterObserved q := by
   rw [hinput.input_eq]
   exact E.finalizedReset_safeFrom_of_nextSlotSynchrony
-    cfg ext B hT hacc hanchor hboundary hsync hv hHn1 hnextQ
+    cfg ext B hT hacc hanchor hboundary hC hspe hDelay P V hv hHn1 hnextQ
 
 end Execution
 

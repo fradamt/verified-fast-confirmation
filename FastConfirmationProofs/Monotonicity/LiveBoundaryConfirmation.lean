@@ -605,6 +605,10 @@ private def NextSlotSafetyPremises.live_selected_margin
     byzantine_bound := h.completed_calls.byzantine_bound
     domain := E.selectedMarginDomain_of_acceptedGlobalTrajectory
       cfg ext h.semantics h.trajectory h.completed_calls.synchrony
+        (E.honestHeadPathAdmissibility_of_accepted cfg ext
+          h.semantics h.trajectory h.completed_calls h.anchor_eq h.anchor_boundary
+          h.slots_per_epoch_gt_one h.finalization_delay
+          h.checkpoint_projection h.exact_link_validity)
         h.anchor_eq h.anchor_boundary }
 
 
@@ -636,14 +640,15 @@ theorem NextSlotSafetyPremises.live_one_confirmed_supports_live_votes
           (get_node_for_root b) = true := by
   let st := E.store cfg ext w (q + 1)
   let s := get_block_slot st b
-  obtain ⟨r, br, hbr, hrs, hrHonest, _, hsupport⟩ :=
+  obtain ⟨r, br, hbr, hrs, hrHonest, hrBoundary, hsupport⟩ :=
     live.honest_block_each_slot s hs0 hsm
   let hA := h.live_selected_margin cfg ext E
   obtain ⟨i, lm, hi, hlm, hancB⟩ :=
     E.honestSupporter_of_confirmed_known_at_minimal cfg ext hA
       w hw (q + 1) (E.fcrStoreAtCall cfg ext w q)
       (E.fcrStep_store cfg ext w q) b hHq1 hb hp hconf
-  obtain ⟨ast, ablk, hgenEq, _, _⟩ := h.trajectory.genesis_structure
+  obtain ⟨ast, ablk, hgenEq, hgenSlot, hgenParent⟩ :=
+    h.trajectory.genesis_structure
   have hgen : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
       E.genesis_store = get_forkchoice_store cfg ast ablk :=
     ⟨ast, ablk, hgenEq⟩
@@ -698,8 +703,18 @@ theorem NextSlotSafetyPremises.live_one_confirmed_supports_live_votes
       (htm.trans_le (E.slot_at_mono cfg hqm)) hvt
   have hsupportAt : r ∈ st.block_roots ∧
       is_ancestor st (get_node_for_root lm.root) (get_node_for_root r) = true := by
+    have hgenTime : E.genesis_store.genesis_time ≤ E.genesis_store.time := by
+      rw [hgenEq]
+      exact (wellFormedStore_get_forkchoice_store cfg ast ablk
+        hgenSlot hgenParent).time_ge_genesis
+    have hboundaryLe : E.slot_start cfg (s + 1) ≤ q + 1 :=
+      (E.slot_start_mono cfg (Nat.succ_le_of_lt (hsu.trans_lt huEnd))).trans
+        (E.slot_start_le_of_slot_at cfg h.trajectory.whole_seconds
+          hgenTime rfl)
+    have hrEndpoint : r ∈ st.block_roots := by
+      exact (E.store_storeLE cfg ext w hboundaryLe).1 (hrBoundary w hw)
     exact h.recorded_fixed_live_block_support cfg ext E hi hHq1 hs0
-      hsupport' hsu hvote hw hlm (by
+      hsupport' hsu hvote hw hrEndpoint hlm (by
         have huEq : lm.slot = u := by simpa only [hlmSlot]
         simp only [get_latest_message_epoch, huEq]
         exact le_rfl)
@@ -743,18 +758,19 @@ theorem NextSlotSafetyPremises.live_one_confirmed_parent
   let sp := s - 1
   have hsp0 : E.slot_at cfg 0 ≤ sp := Nat.le_sub_one_of_lt hs0
   have hspm : sp < E.slot_at cfg m := (Nat.sub_le s 1).trans_lt hsm
-  obtain ⟨r, br, hbr, hrs, hrHonest, _, hsupport⟩ :=
+  obtain ⟨r, br, hbr, hrs, hrHonest, hrBoundary, hsupport⟩ :=
     live.honest_block_each_slot sp hsp0 hspm
   let hA := h.live_selected_margin cfg ext E
   obtain ⟨i, lm, hi, hlm, hancB⟩ :=
     E.honestSupporter_of_confirmed_known_at_minimal cfg ext hA
       w hw (q + 1) (E.fcrStoreAtCall cfg ext w q)
       (E.fcrStep_store cfg ext w q) b hHq1 hb hp hconf
-  obtain ⟨ast, ablk, hgenEq, _, _⟩ := h.trajectory.genesis_structure
+  obtain ⟨ast, ablk, hgenEq, hgenSlot, hgenParent⟩ :=
+    h.trajectory.genesis_structure
   have hgen : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
       E.genesis_store = get_forkchoice_store cfg ast ablk :=
     ⟨ast, ablk, hgenEq⟩
-  obtain ⟨u, k, a, hvote, hlmSlot, _huEnd⟩ :=
+  obtain ⟨u, k, a, hvote, hlmSlot, huEnd⟩ :=
     E.latest_message_has_honest_vote_before_endpoint cfg ext
       h.trajectory.wellFormed h.trajectory.honest_behavior
       h.trajectory.externals_coherence hgen hi hw hHq1 hlm
@@ -805,8 +821,19 @@ theorem NextSlotSafetyPremises.live_one_confirmed_parent
       (htm.trans_le (E.slot_at_mono cfg hqm)) hvt
   have hsupportAt : r ∈ st.block_roots ∧
       is_ancestor st (get_node_for_root lm.root) (get_node_for_root r) = true := by
+    have hgenTime : E.genesis_store.genesis_time ≤ E.genesis_store.time := by
+      rw [hgenEq]
+      exact (wellFormedStore_get_forkchoice_store cfg ast ablk
+        hgenSlot hgenParent).time_ge_genesis
+    have hboundaryLe : E.slot_start cfg (sp + 1) ≤ q + 1 :=
+      (E.slot_start_mono cfg
+        (Nat.succ_le_of_lt (((Nat.sub_le s 1).trans hsu).trans_lt huEnd))).trans
+        (E.slot_start_le_of_slot_at cfg h.trajectory.whole_seconds
+          hgenTime rfl)
+    have hrEndpoint : r ∈ st.block_roots := by
+      exact (E.store_storeLE cfg ext w hboundaryLe).1 (hrBoundary w hw)
     exact h.recorded_fixed_live_block_support cfg ext E hi hHq1 hsp0
-      hsupport' ((Nat.sub_le s 1).trans hsu) hvote hw hlm (by
+      hsupport' ((Nat.sub_le s 1).trans hsu) hvote hw hrEndpoint hlm (by
         have huEq : lm.slot = u := by simpa only [hlmSlot]
         simp only [get_latest_message_epoch, huEq]
         exact le_rfl)
@@ -1575,6 +1602,7 @@ theorem NextSlotSafetyPremises.fixed_live_block_new_supporters
           (get_node_for_root a.data.beacon_block_root)
           (get_node_for_root r) = true)
     {w : ValidatorIndex} (hw : w ∈ E.honest)
+    (hrEndpoint : r ∈ (E.store cfg ext w m).block_roots)
     (balanceSource : BeaconState Root)
     (hval : balanceSource.validators = E.registry)
     (hbsH : get_current_epoch cfg balanceSource < E.verification_horizon)
@@ -1592,7 +1620,7 @@ theorem NextSlotSafetyPremises.fixed_live_block_new_supporters
   intro i hiHS
   obtain ⟨hi, t, htH, hst, htm, hcommittee, hdelivery⟩ := hHS i hiHS
   obtain ⟨msg, hmsg, hanc⟩ := h.fixed_live_block_support_of_assignment
-    cfg ext E hs0 hHm hsupport hst htm hi hcommittee hw hdelivery
+    cfg ext E hs0 hHm hsupport hst htm hi hcommittee hw hrEndpoint hdelivery
   apply List.mem_toFinset.mpr
   apply mem_AttSupporters_of_honest_committee cfg ext
     h.trajectory.honest_behavior h.trajectory.externals_coherence
@@ -1663,6 +1691,7 @@ theorem NextSlotSafetyPremises.live_boundary_score_growth
     {w : ValidatorIndex} (hw : w ∈ E.honest)
     {n m : ℕ} (hHn : E.WithinHorizon cfg n)
     (hHm : E.WithinHorizon cfg m)
+    (hnm : n ≤ m)
     {e : Epoch}
     (holdCurrent : get_current_store_epoch cfg (E.store cfg ext w n) = e)
     {b : Root} (hb : b ∈ (E.store cfg ext w n).block_roots)
@@ -1694,7 +1723,8 @@ theorem NextSlotSafetyPremises.live_boundary_score_growth
           (AttSupporters cfg (E.store cfg ext w m)
             (get_node_for_root b) newSource).toFinset) := by
   have hnew := h.fixed_live_block_new_supporters cfg ext E hs0 hHm
-    hsupport hw newSource hvalNew hNewH HS
+    hsupport hw ((E.store_storeLE cfg ext w hnm).1 hb)
+      newSource hvalNew hNewH HS
     (fun i hi => by
       obtain ⟨hiHonest, t, htH, hst, _, htm, _, hcommittee, hdelivery⟩ :=
         hHS i hi
@@ -1808,7 +1838,7 @@ theorem NextSlotSafetyPremises.live_boundary_reconfirm_of_window
     (get_node_for_root b) oldSource).toFinset \
     (AttSupporters cfg (E.store cfg ext w m)
       (get_node_for_root b) newSource).toFinset)
-  have hscore := h.live_boundary_score_growth cfg ext E hw hHn hHm
+  have hscore := h.live_boundary_score_growth cfg ext E hw hHn hHm hnm
     holdCurrent hb hbEpoch hs0 hsupport oldSource newSource
     hvalOld hvalNew hNewH HS hHS
   have hspan := h.live_old_supporters_in_later_span cfg ext E

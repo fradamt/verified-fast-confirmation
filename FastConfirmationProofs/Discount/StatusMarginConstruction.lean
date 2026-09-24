@@ -469,7 +469,7 @@ theorem endpoint_opposite_honest_classification
     have hdstSlot : dst.slot ≤ es := by
       obtain ⟨att, u, t, ifb, hsched, hia, hmsg⟩ :=
         E.schedLMProvExact cfg ext hgen w m i dst hdst
-      obtain ⟨k, att', hvote, _⟩ :=
+      obtain ⟨k, att', _hcausal, hvote, _⟩ :=
         hA.honest_behavior.no_forgery u t att ifb hsched i hi hia
       obtain ⟨_, _, _, _, _, hgate, _, _, _, hslotEq⟩ := hprovW i dst hdst
       have hdstσ : dst.slot ≤ σ := by
@@ -1594,6 +1594,8 @@ theorem statusMargin_crossing_minimal
     (hwalkDomain : E.PostAnchorHonestVoteTargetWalkDomain cfg ext)
     {v : ValidatorIndex} (hv : v ∈ E.honest) {q : ℕ}
     (hqH : E.WithinHorizon cfg q)
+    (hqDeadline : q ≤ E.slot_start cfg (E.slot_at cfg q) +
+      get_attestation_due_ms cfg / 1000)
     {query : FastConfirmationStore Root}
     (hquery : query.store = E.store cfg ext v q)
     {w : ValidatorIndex} (hw : w ∈ E.honest) {m : ℕ}
@@ -1857,7 +1859,11 @@ theorem statusMargin_crossing_minimal
         simp only [crossingEquivPre, EquivActive, Finset.mem_sdiff,
           Finset.mem_filter, Finset.mem_inter] at hi
         exact hi.1.1.2
-      exact E.equiv_subset_of_relay cfg ext hA.synchrony hv hw hqH hmH hrelay hiQ
+      exact E.equiv_subset_of_relay cfg ext hA.synchrony hA.whole_seconds
+        (by
+          obtain ⟨ast, ablk, hge⟩ := hA.genesis_store
+          rw [hge]; simp only [get_forkchoice_store]; omega)
+        hv hw hqH hmH hqDeadline hrelay hiQ
     have hopp := E.endpoint_opposite_score_le_crossing cfg ext hA
       (blocks := get_filtered_block_tree cfg (E.store cfg ext w m)) (bsQ := bs)
       hv hqH hw hmH hes hσ hesσ hmidEs hloW hloQ haQ hcQ haM hcM

@@ -352,7 +352,7 @@ noncomputable def completedPrefix_acceptedTargetGateProducerAt
     exact hsupportBoundary
   have hrealized :=
     E.scheduledEventPrefix_acceptedTargetA32GateRealization_withLookahead
-    cfg ext B hT hC.synchrony hC.static_validators
+    cfg ext B hT hC.delivery_lookahead hC.static_validators
       hC.byzantine_bound
       hC.phase0_source hC.phase0_boundary_source hanchor hboundary p hv hHn1
       hevidence hstate hval htab hendHP hanchorH hC.balance_floor
@@ -366,6 +366,7 @@ theorem selectedMarginAssumptions_of_completedPrefixes
     (B : CausalPrefixFFGInterpretation cfg ext E)
     (hT : E.ScheduledPrefixPremises cfg ext)
     (hC : E.CompletedFCRCallPremises cfg ext)
+    (hdomain : SelectedMarginDomain cfg ext E)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
       (E := E) (anchor := B.anchor)) :
@@ -378,8 +379,7 @@ theorem selectedMarginAssumptions_of_completedPrefixes
     externals_coherence := hT.externals_coherence
     static_validators := hC.static_validators
     byzantine_bound := hC.byzantine_bound
-    domain := E.selectedMarginDomain_of_acceptedGlobalTrajectory
-      cfg ext B hT hC.synchrony hanchor hboundary }
+    domain := hdomain }
 
 /-- The completed-prefix primitive bundle discharges the complete call
 interface required by the historical write-back induction. -/
@@ -407,13 +407,14 @@ theorem acceptedHistoricalA32CurrentLineage_invariant_of_completedPrefixes
     (hT : E.ScheduledPrefixPremises cfg ext)
     (hC : E.CompletedFCRCallPremises cfg ext)
     (hfit : EpochEndsFitUint64 cfg)
+    (hdomain : SelectedMarginDomain cfg ext E)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
       (E := E) (anchor := B.anchor)) :
     ∀ v ∈ E.honest, ∀ n : ℕ, E.WithinHorizon cfg n →
       E.AcceptedHistoricalA32CurrentLineageAt cfg ext B v n := by
   exact E.acceptedHistoricalA32CurrentLineage_invariant cfg ext B hT
-    (E.selectedMarginAssumptions_of_completedPrefixes cfg ext B hT hC
+    (E.selectedMarginAssumptions_of_completedPrefixes cfg ext B hT hC hdomain
       hanchor hboundary)
     hC.phase0_source hC.phase0_boundary_source hanchor hboundary
       (E.acceptedHistoricalA32CallInterfaces_of_completedPrefixes
@@ -425,6 +426,7 @@ theorem acceptedHistoricalA32CurrentLineage_of_completedPrefixes
     (hT : E.ScheduledPrefixPremises cfg ext)
     (hC : E.CompletedFCRCallPremises cfg ext)
     (hfit : EpochEndsFitUint64 cfg)
+    (hdomain : SelectedMarginDomain cfg ext E)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
       (E := E) (anchor := B.anchor))
@@ -437,7 +439,7 @@ theorem acceptedHistoricalA32CurrentLineage_of_completedPrefixes
       cfg ext B (E.confirmed cfg ext v n) e
       (E.LazyCertAt cfg ext B n) (E.LazySupportAt cfg ext B v n)) :=
   (E.acceptedHistoricalA32CurrentLineage_invariant_of_completedPrefixes
-    cfg ext B hT hC hfit hanchor hboundary v hv n hHn).current_lineage hcurrent
+    cfg ext B hT hC hfit hdomain hanchor hboundary v hv n hHn).current_lineage hcurrent
 
 end Execution
 

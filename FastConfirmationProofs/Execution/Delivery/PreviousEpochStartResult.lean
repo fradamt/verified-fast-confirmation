@@ -308,7 +308,7 @@ theorem StrictSelectorAdvanceAt.previousCarried_epochStartLineage
     E.withinHorizon_mono cfg (Nat.le_succ n) hHn1
   have hinvariant :=
     E.acceptedHistoricalA32CurrentLineage_invariant_of_completedPrefixes
-      cfg ext B hT hC hfit hanchor hboundary v hv n hHn
+      cfg ext B hT hC hfit hdomain hanchor hboundary v hv n hHn
   have hrecentConfirmed : get_block_epoch cfg
         (E.fcrStoreAtCall cfg ext v n).store (E.confirmed cfg ext v n) + 1 ≥
       get_current_store_epoch cfg (E.fcrStoreAtCall cfg ext v n).store := by

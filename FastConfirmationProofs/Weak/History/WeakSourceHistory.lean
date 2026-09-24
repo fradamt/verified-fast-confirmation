@@ -135,6 +135,8 @@ theorem pastHead_known_at_observer
     ∃ nu : Nat,
       E.WithinHorizon cfg nu ∧
       E.slot_at cfg nu < E.slot_at cfg q ∧
+      nu ≤ E.slot_start cfg (E.slot_at cfg nu) +
+        get_attestation_due_ms cfg / 1000 ∧
       (get_head cfg (E.store cfg ext i nu)).root ∈
         (E.store cfg ext i nu).block_roots ∧
       is_ancestor (E.store cfg ext obs q)
@@ -153,7 +155,7 @@ theorem pastHead_known_at_observer
     rw [← ht, hslot]
   obtain ⟨a', sender, sentAt, ifb, hsched, hiatt, hbbr, hslotep⟩ :=
     E.schedLMProv cfg ext hgen0 obs q i lm hlm
-  obtain ⟨_voteAt, own, hvote, hdata⟩ :=
+  obtain ⟨_voteAt, own, _hcausal, hvote, hdata⟩ :=
     hT.honest_behavior.no_forgery sender sentAt a' ifb hsched i hi hiatt
   set s := a'.data.slot
   have hcomm : i ∈ E.committee s :=
@@ -198,9 +200,11 @@ theorem pastHead_known_at_observer
     · exact hmem
     · rw [heq]
       exact hdomain.justified_root_known i hi nu hHnu
-  refine ⟨nu, hHnu, ?_, hheadKnown, ?_, ?_⟩
+  refine ⟨nu, hHnu, ?_, ?_, hheadKnown, ?_, ?_⟩
   · rw [hnu]
     exact hslt
+  · rw [hnu]
+    exact (hT.honest_behavior.vote_deadline i hi s nu _ hvoteHead).2
   · rw [is_ancestor_node_root]
     rw [hhead]
     rw [is_ancestor_node_root] at hsupp
@@ -247,7 +251,7 @@ theorem confirmed_honestPastHeadBelow_at_observer
       query hquery candidate hqH
       (by simpa only [hquery] using hcandidate)
       (by simpa only [hquery] using hparentCandidate) hconfirmed
-  obtain ⟨nu, hnuH, hnuq, hheadPast, hheadCandidateQ, hheadQueryE⟩ :=
+  obtain ⟨nu, hnuH, hnuq, hdue, hheadPast, hheadCandidateQ, hheadQueryE⟩ :=
     E.pastHead_known_at_observer cfg ext hT hsync hstatic hbyz
       hdomain obs q candidate hvalid hqH i hi lm hlm hsupp
   obtain ⟨hparentQ, hwalkQ⟩ :=
@@ -282,6 +286,7 @@ theorem confirmed_honestPastHeadBelow_at_observer
     validator_honest := hi
     second_within := hnuH
     strictly_past := hnuq
+    second_deadline := hdue
     candidate_known := hcandidatePast
     head_known := hheadPast
     head_descends_candidate := by

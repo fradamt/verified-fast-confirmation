@@ -1,6 +1,6 @@
 module
 public import FastConfirmationProofs.Weak.Certificates.WeakCertificateSupporter
-public import FastConfirmationProofs.Weak.Selection.WeakAncestryTransport
+public import FastConfirmationProofs.Weak.Selection.WeakAncestryEndpoint
 public import FastConfirmationProofs.ForkChoice.Head.HeadStack
 
 @[expose] public section
@@ -45,7 +45,7 @@ numbered step below matches the docstring's bullets. -/
 theorem Execution.certificate_dissemination (E : Execution Root)
     (hwf : WellFormedExecution E) (hhb : HonestBehavior cfg ext E)
     (hsyn : NextSlotSynchronyPremises cfg ext E) (hec : BeaconExternalsPremises cfg ext E)
-    (hbb : ByzantineWeightPremises cfg E) (hji : JustificationInterface cfg ext E)
+    (hbb : ByzantineWeightPremises cfg E) (hA : SelectedMarginAssumptions cfg ext E)
     (hgen : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
       E.genesis_store = get_forkchoice_store cfg ast ablk ∧
       ast.slot = ablk.message.slot ∧ ablk.message.parent_root ≠ ablk.root) :
@@ -79,7 +79,11 @@ theorem Execution.certificate_dissemination (E : Execution Root)
     rw [ha_eq, honest_attestation_data_eq, honest_attestation_data_beacon_block_root]
   rw [← hnu_eq] at ha_data
   have hd_known : (get_head cfg (E.store cfg ext u nu)).root ∈
-      (E.store cfg ext u nu).block_roots := E.head_root_known cfg ext hji hu nu hHnu
+      (E.store cfg ext u nu).block_roots := by
+    rcases get_head_root_mem_or cfg (E.store cfg ext u nu) with h | h
+    · exact h
+    · rw [h]
+      exact hA.domain.justified_root_known u hu nu hHnu
   have hd_u : a.data.beacon_block_root ∈ (E.store cfg ext u nu).block_roots := by
     rw [ha_data]; exact hd_known
   -- Step 5: transport the observer's `is_ancestor` fact into `u`'s store.
@@ -89,12 +93,22 @@ theorem Execution.certificate_dissemination (E : Execution Root)
     E.is_ancestor_transport_closed cfg ext hwf hec hgeq hslot hparent
       (v := v) (w := u) (n := n) (k := nu) (d := a.data.beacon_block_root) (b := block_root)
       hanchor hd_v hd_u hb_obs hanc
-  -- Step 6: `u` is honest and holds `block_root` at `nu`, so it disseminates.
-  have hmono : E.slot_at cfg m ≤ E.slot_at cfg (m + 1) := E.slot_at_mono cfg (Nat.le_succ m)
-  have htiming : E.slot_at cfg nu + 1 ≤ E.slot_at cfg (m + 1) := by
+  -- Step 6: the certified root is on the supporter's signed head path.
+  have hanc_u : is_ancestor (E.store cfg ext u nu)
+      (get_node_for_root a.data.beacon_block_root)
+      (get_node_for_root block_root) = true :=
+    E.is_ancestor_replay_closed cfg ext hwf hec hgeq hslot hparent
+      hanchor hd_v hd_u hb_obs hanc
+  rw [ha_data] at hanc_u
+  have hdue : nu ≤ E.slot_start cfg (E.slot_at cfg nu) +
+      get_attestation_due_ms cfg / 1000 := by
     rw [hslot_nu]
-    exact le_trans (Nat.add_le_add_right hs_hi 1) (le_trans htiming_m hmono)
-  exact hsyn.block_relay u hu nu block_root hHnu htrans w hw m hHm htiming
+    exact (hhb.vote_deadline u hu s nu a hvote).2
+  have hslot_lt : E.slot_at cfg nu < E.slot_at cfg m := by
+    rw [hslot_nu]
+    exact (Nat.lt_succ_of_le hs_hi).trans_le htiming_m
+  exact E.honest_head_ancestor_known_at_endpoint_weak cfg ext hA hu hw
+    hHnu hHm hdue htrans hanc_u hslot_lt
 
 end FastConfirmation.Spec
 

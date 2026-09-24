@@ -428,9 +428,8 @@ noncomputable def
       get_current_store_epoch cfg (E.store cfg ext obs (n + 1)) := by
     simpa only [hqCurrent] using hsameEpoch
   obtain ⟨carrier⟩ := hhistory.retainedAt_currentSameEndpoint cfg ext
-    hT hsync hanchor hboundary P V hanchorExact hdomain
+    hT hsync hstatic hbyz hDelay hanchor hboundary P V hanchorExact hacc hdomain
       hselectedQuery hcurrentStore hw hmH hslotQM hsameStore
-      hselectedEndpoint
   obtain ⟨hparent, hwalkK, _hjustifiedKnown⟩ :=
     E.store_domainK_of_selectedMarginDomain cfg ext hT.wellFormed
       hT.externals_coherence hT.genesis_structure hdomain w hw m hmH
@@ -2302,7 +2301,7 @@ noncomputable def
             (fun hcheckpoint hsource hsupp =>
               hinputs.supp_transport hcheckpoint hsource hsupp)
         exact E.acceptedSelectedResultFilterOutcome_retainedVisible_of_lateSupport
-          cfg ext B hT hsync hdomain hanchor hboundary hpaper P V
+          cfg ext B hT hsync hdomain hphase0 hanchor hboundary hpaper P V
             hanchorExact hacc hw hmH
             (hinputs.supp_elim_current hpayloadTip.support_branch w hw m hmH
               hlateE hIH hcall)
@@ -2380,7 +2379,7 @@ noncomputable def
               (fun hcheckpoint hsource hsupp =>
                 hinputs.supp_transport hcheckpoint hsource hsupp)
           exact E.acceptedSelectedResultFilterOutcome_retainedVisible_of_lateSupport
-            cfg ext B hT hsync hdomain hanchor hboundary hpaper P V
+            cfg ext B hT hsync hdomain hphase0 hanchor hboundary hpaper P V
               hanchorExact hacc hw hmH
               (hinputs.supp_elim_prior hpayloadTip.support_branch w hw m hmH
                 hlateE)

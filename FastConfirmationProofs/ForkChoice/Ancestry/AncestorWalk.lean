@@ -1,4 +1,5 @@
 module
+public import FastConfirmationInternal.Network.VotePathAdmissibility
 public import FastConfirmationProofs.Execution.Trajectory.ExecutionClock
 
 @[expose] public section
@@ -66,18 +67,6 @@ slot computes the same value), unlocking the python-shaped unfold equations
 namespace FastConfirmation.Spec
 
 variable {Root : Type*}
-
-/-- The parent-walk from `r` down to `slot` stays inside the store's known
-blocks — the domain on which python's `get_ancestor` recursion is defined.
-Uses the store's own `parent_slot_lt` discipline implicitly: derivations are
-finite by construction. -/
-inductive WalkKnown (store : Store Root) (slot : Slot) : Root → Prop
-  | stop {r : Root} (hr : r ∈ store.block_roots)
-      (hle : (store.blocks r).slot ≤ slot) : WalkKnown store slot r
-  | step {r : Root} (hr : r ∈ store.block_roots)
-      (hgt : slot < (store.blocks r).slot)
-      (hp : WalkKnown store slot (store.blocks r).parent_root) :
-      WalkKnown store slot r
 
 namespace WalkKnown
 

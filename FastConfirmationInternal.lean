@@ -13,5 +13,6 @@ public import FastConfirmationInternal.FFG.Certificates
 public import FastConfirmationInternal.FFG.CheckpointLinks
 public import FastConfirmationInternal.FFG.ScheduledState
 public import FastConfirmationInternal.Network.SynchronyConversion
+public import FastConfirmationInternal.Network.VotePathAdmissibility
 
 /-! Contents of the Internal library. -/

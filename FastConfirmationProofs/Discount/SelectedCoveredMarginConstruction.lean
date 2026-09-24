@@ -93,6 +93,8 @@ theorem selectedCoveredMarginSupplyAt_of_filterSupply_minimal
     (hwalkDomain : E.PostAnchorHonestVoteTargetWalkDomain cfg ext)
     (v : ValidatorIndex) (hv : v ∈ E.honest) (q : ℕ)
     (hqH : E.WithinHorizon cfg q)
+    (hqDeadline : q ≤ E.slot_start cfg (E.slot_at cfg q) +
+      get_attestation_due_ms cfg / 1000)
     (query : FastConfirmationStore Root)
     (hquery : query.store = E.store cfg ext v q)
     (r₀ : Root) (hr₀ : r₀ ∈ query.store.block_roots)
@@ -203,7 +205,7 @@ theorem selectedCoveredMarginSupplyAt_of_filterSupply_minimal
     E.confirmed_honest_class_transports_of_cutoff_minimal cfg ext hA
       v hv q query hquery c hqH hgeom.block_known hgeom.parent_known
       hgeom.confirmation w hw m hmH
-      (hslotQM.trans (E.slot_at_mono cfg (Nat.le_succ m)))
+      hslotQM
       lo es hlo₀ hgeom.cutoff_eq
   have hledger : E.EndpointLedgerFields cfg ext w m a c lo sigma :=
     E.endpointLedgerFields_from_execution_minimal cfg ext hA hwalkDomain
@@ -257,7 +259,7 @@ theorem selectedCoveredMarginSupplyAt_of_filterSupply_minimal
     E.confirmed_honest_class_transports_of_cutoff_minimal cfg ext hA
       v hv q query hquery c hqH hgeom.block_known hgeom.parent_known
       hgeom.confirmation w hw m hmH
-      (hslotQM.trans (E.slot_at_mono cfg (Nat.le_succ m)))
+      hslotQM
       ((E.store cfg ext v q).blocks c).slot es hmid₀ hgeom.cutoff_eq
   have hparentSub : E.weight (E.crossingParentSub cfg
       (E.store cfg ext v q) (get_current_balance_source query) c
@@ -305,7 +307,7 @@ theorem selectedCoveredMarginSupplyAt_of_filterSupply_minimal
         honest_sibling_confinement := hledger.honest_sibling_confinement
         byzantine_sibling_confinement := hledger.byzantine_sibling_confinement }
   · have hstatus := E.statusMargin_crossing_minimal cfg ext hA hwalkDomain
-      hv hqH hquery hw hmH haQ hgeom.block_known
+      hv hqH hqDeadline hquery hw hmH haQ hgeom.block_known
       (hgeom.parent_eq) haM hcM hparentM hgeom.confirmation hgeom.lo_eq hloEnd
       hlo₀ hcutoffQ hsigmaEnd hsigmaLt hgeom.cutoff_le_sigma hgeom.sigma_horizon
       hslotQM' hgeom.child_slot_le_cutoff hmaxQuery hSt hAt hmaxMid hStMid hAtMid
@@ -314,7 +316,7 @@ theorem selectedCoveredMarginSupplyAt_of_filterSupply_minimal
     have hsibling :=
       E.crossingEdge_sibling_score_of_endpointLedger_minimal cfg ext hA
         (bs := get_current_balance_source query)
-        hv hqH hw hmH hrelaySlot hgeom.block_known hgeom.parent_known
+        hv hqH hqDeadline hw hmH hrelaySlot hgeom.block_known hgeom.parent_known
         hgeom.lo_eq hcutoffQ hgeom.child_slot_le_cutoff
         hgeom.cutoff_le_sigma hcross hmaxQuery hSt hAt hcommittee hledger
     exact SelectedEdgeMarginInputsAt.crossing es sigma querySlot
@@ -338,7 +340,7 @@ theorem selectedCoveredMarginSupplyAt_of_filterSupply_minimal
         sibling_score := by
           simpa only [hgeom.lo_eq] using hsibling }
   · have hstatus := E.statusMargin_crossing_minimal cfg ext hA hwalkDomain
-      hv hqH hquery hw hmH haQ hgeom.block_known
+      hv hqH hqDeadline hquery hw hmH haQ hgeom.block_known
       (hgeom.parent_eq) haM hcM hparentM hgeom.confirmation hgeom.lo_eq hloEnd
       hlo₀ hcutoffQ hsigmaEnd hsigmaLt hgeom.cutoff_le_sigma hgeom.sigma_horizon
       hslotQM' hgeom.child_slot_le_cutoff hmaxQuery hSt hAt hmaxMid hStMid hAtMid

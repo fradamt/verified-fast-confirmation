@@ -1,7 +1,9 @@
 module
+public import FastConfirmationWitnesses.Counterexamples.DeadlineVotePathCandidate
 public import FastConfirmationWitnesses.Counterexamples.PinnedEconomicsExtraQuery
 public import FastConfirmationWitnesses.Counterexamples.StrictPrefixExtraQuery
 public import FastConfirmationWitnesses.NonVacuity.NextSlotPremises
+public import FastConfirmationWitnesses.NonVacuity.TwelveSecondSynchrony
 
 /-!
 # Witness index
@@ -17,6 +19,22 @@ bundle and the two executions that refute strict-prefix safety variants.
   honest validators, four slots per epoch, an anchor, a slot-one child, and a
   slot-seven FFG carrier. Its scheduled FCR call changes the confirmed root.
   The final in-horizon vote is delivered one second beyond the horizon.
+* Twelve-second synchrony and behavior:
+  `TwelveSecondSynchronyWitness.joint_witness` proves `WellFormedExecution`,
+  `HonestBehavior`, `Synchrony`, and `NextSlotSynchronyPremises` for a second
+  finite run. Its four honest validators share an anchor and accept a slot-one
+  child. The slot is 12 seconds, the vote deadline is 3 seconds, and the
+  positive delay is 2 seconds. Node 1 receives the child block at second 14
+  while node 0 receives it at second 12; it receives the slot-zero vote at
+  second 6 while node 0 receives it at second 4. The early vote copies are
+  received inside the slot and are scheduled again for handler service at the
+  next slot boundary. `delayed_block_in_stores` checks the real block-store
+  difference. This run has no envelope or equivocation evidence, so those
+  synchrony fields hold vacuously.
+  The same run proves `HorizonVoteDeliveryLookahead`, `StaticValidatorSet`,
+  `ByzantineWeightPremises`, `Phase0SourceCoherence`,
+  `Phase0BoundarySourceCoherence`, the balance floor, `EpochEndsFitUint64`,
+  and `TrustedAnchorBoundaryAligned` for its concrete anchor.
 * `Execution.ScheduledPrefixPremises`:
   `AcceptedActualFCRJointNonVacuityBase.witnessScheduledPrefixTrajectoryAssumptions`.
   The same execution has whole-second scheduling, honest votes, a valid genesis
@@ -26,7 +44,8 @@ bundle and the two executions that refute strict-prefix safety variants.
   honest nodes start from one valid anchor store and process finite schedules.
 * `HonestBehavior`:
   `AcceptedActualFCRJointNonVacuityBase.witnessHonestBehavior`. Every scheduled
-  honest vote belongs to its assigned slot committee in that execution.
+  honest vote belongs to its assigned slot committee and meets the
+  attestation due time in that execution.
 * `Execution.CompletedFCRCallPremises`:
   `NextSlotPremiseWitness.witnessCompletedPrefixCallAssumptions`. The same
   execution has synchronized votes and blocks, stable validators and weights,
@@ -95,7 +114,22 @@ bundle and the two executions that refute strict-prefix safety variants.
 
 * No witness shows that `LiveMonotonicityPremises` can hold together with
   `Execution.NextSlotSafetyPremises` (audit a5 A5-2).
+* The 12-second run does not establish `Execution.NextSlotSafetyPremises`.
+  It has no FFG carrier. Its `CausalPrefixFFGInterpretation`,
+  `ScheduledPrefixPremises` (in particular `BeaconExternalsPremises`), and
+  `CompletedFCRCallPremises` (in particular `helper_provisos`) are not proved.
+  The bundle's semantic anchor equality, `RealizedFinalizationDelay`,
+  `PaperA32Inclusion`, `EpochCheckpointClosure`, and `ExactLinkValidity`
+  are also not re-established for this run. The slot count bound and the
+  concrete anchor boundary alignment are proved separately.
 * Envelope premises are exercised only through the next-slot bundle witness.
   Its execution contains no payload envelope, so envelope delivery and data
   relay hold vacuously.
+
+Synchrony migration: the full-bundle execution uses a positive 500 ms delay
+with strict deadline fit. The second execution above uses 12-second slots and
+real block and vote receipt delays. Blocks and evidence use source cutoffs;
+envelope/data service is vacuous in both runs. The exclusion point is checked
+by `DeadlineVotePathCandidate`: its skipped-boundary schedule fails the refined
+pre-tick relay. The audited public witness set remains 15 entries.
 -/

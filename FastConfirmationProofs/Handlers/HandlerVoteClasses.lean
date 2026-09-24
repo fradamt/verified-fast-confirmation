@@ -54,7 +54,7 @@ theorem recorded_lm_is_newest_at
       a.data.beacon_block_root = lm.root := by
   obtain ⟨a', u, tsc, ifb, hsched, hvin, hbbr, hslotep⟩ :=
     E.schedLMProv cfg ext hgen w m i lm hlm
-  obtain ⟨m1, a'', hvote', hdata'⟩ := hhb.no_forgery u tsc a' ifb hsched i hi hvin
+  obtain ⟨m1, a'', _hcausal, hvote', hdata'⟩ := hhb.no_forgery u tsc a' ifb hsched i hi hvin
   have hcomm0 : i ∈ E.committee a'.data.slot :=
     hhb.votes_assigned i hi a'.data.slot (by rw [hvote']; exact Option.some_ne_none _)
   obtain ⟨ap, _, _, _, h4, h5, h6, _, _, _⟩ := hprov i lm hlm

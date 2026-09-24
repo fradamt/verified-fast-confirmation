@@ -238,6 +238,9 @@ theorem completedPrefix_noConflict_endpointJustifiedQuorum_root_eq_currentTarget
   obtain ⟨hc⟩ :=
     CausalPrefixFFGInterpretation.endpointJustified_certificate
       cfg ext B hgenShort hanchor (E.store_causal cfg ext w m)
+  generalize hj : (E.store cfg ext w m).justified_checkpoint = c at hc hepoch ⊢
+  have hJepoch : (E.store cfg ext w m).justified_checkpoint.epoch = target.epoch :=
+    (congrArg Checkpoint.epoch hj).trans hepoch
   have hstate : state = get_pulled_up_head_state cfg ext store := rfl
   have hval : state.validators = E.registry := by
     simpa only [state, store] using
@@ -410,19 +413,20 @@ theorem completedPrefix_noConflict_endpointJustifiedQuorum_root_eq_currentTarget
     have hTU : Q.signers ⊆ U := by
       intro i hi
       have hiEpoch := Q.signers_in_epoch hi
-      simpa only [U, hepoch] using hiEpoch
+      simpa only [U, hJepoch] using hiEpoch
     obtain ⟨i, hiSigner, hiQ, hiHonest⟩ :=
       one_third_honest_intersects_two_thirds E
         hsignersEpoch hTU hsignersHonest hU honeThird Q.supermajority
-    obtain ⟨u, n', a, fb, hsched, hia, haTarget, haH, ha0, haEpoch,
-      haCommittee, haBound⟩ := Q.signer_attestation i hiQ
+    obtain ⟨w', t, a, fromBlock, haSchedule, hiA, haTarget,
+      haSlotH, haSlot0, haEpoch, haCommittee, haBound⟩ :=
+      Q.signer_attestation i hiQ
     simp only [signers, Execution.currentTargetA32Signers,
       Finset.mem_union] at hiSigner
     rcases hiSigner with hiObserved | hiFuture
     · obtain ⟨vote⟩ := hobservedVote i hiObserved
-      obtain ⟨kCompeting, aCompeting, hvoteCompeting,
+      obtain ⟨kCompeting, aCompeting, _hcausal, hvoteCompeting,
           hdataCompeting⟩ := hT.honest_behavior.no_forgery
-            u n' a fb hsched i hiHonest hia
+            w' t a fromBlock haSchedule i hiHonest hiA
       let aTarget := honest_attestation cfg ext
         (E.store cfg ext i vote.time) vote.slot vote.index i
       have hvoteTarget : E.vote i vote.slot =
@@ -430,10 +434,9 @@ theorem completedPrefix_noConflict_endpointJustifiedQuorum_root_eq_currentTarget
         simpa only [aTarget] using vote.vote
       have haTargetExact : aTarget.data.target = target := by
         simpa only [aTarget] using vote.target_eq
-      have haCompetingExact : aCompeting.data.target =
-          (E.store cfg ext w m).justified_checkpoint := by
+      have haCompetingExact : aCompeting.data.target = c := by
         rw [← hdataCompeting]
-        exact haTarget
+        exact haTarget.trans hj
       by_contra hroot
       have hdataNe : aTarget.data ≠ aCompeting.data := by
         intro hdataEq
@@ -455,19 +458,19 @@ theorem completedPrefix_noConflict_endpointJustifiedQuorum_root_eq_currentTarget
         hvoteTarget hvoteCompeting
       rw [hslash] at hnot
       contradiction
-    · exfalso
-      obtain ⟨_hi, s, hsQuery, hiCommittee, hsEpoch⟩ :=
+    · obtain ⟨_hi, s, hsQuery, hiCommittee, hsEpoch⟩ :=
         hfutureSeat i hiFuture
-      have haSlotEpoch : compute_epoch_at_slot cfg a.data.slot =
-          compute_epoch_at_slot cfg s := by
-        rw [hsEpoch, haEpoch]
-        exact hepoch
-      have haSlotEq : a.data.slot = s :=
-        hT.externals_coherence.committee_assignment_unique i a.data.slot s
-          haCommittee hiCommittee haSlotEpoch
-      apply hnoPostQuery
-      exact ⟨i, hiQ, hiHonest, u, n', a, fb, hsched, hia, haTarget, haH,
-        ha0, haBound, by rw [haSlotEq]; exact hsQuery⟩
+      have hsEq : s = a.data.slot :=
+        hT.externals_coherence.committee_assignment_unique i
+          s a.data.slot hiCommittee haCommittee
+          (hsEpoch.trans (haEpoch.trans hJepoch).symm)
+      have hpost : Q.PostQueryHonestSigner cfg ext (n + 1) := by
+        refine ⟨i, hiQ, hiHonest, w', t, a, fromBlock,
+          haSchedule, hiA, ?_, haSlotH, haSlot0, haBound, ?_⟩
+        · exact haTarget
+        · rw [← hsEq]
+          exact hsQuery
+      exact False.elim (hnoPostQuery hpost)
 
 set_option maxRecDepth 10000 in
 /-- **N6** of `docs/trunkB-two-case-discharge.md` §7 in the strong
@@ -613,6 +616,7 @@ noncomputable def completedPrefix_acceptedHistoricalCertificateProducerAt
     (hT : E.ScheduledPrefixPremises cfg ext)
     (hC : E.CompletedFCRCallPremises cfg ext)
     (hfit : EpochEndsFitUint64 cfg)
+    (hdomain : SelectedMarginDomain cfg ext E)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
       (E := E) (anchor := B.anchor))
@@ -638,7 +642,7 @@ noncomputable def completedPrefix_acceptedHistoricalCertificateProducerAt
     E.withinHorizon_mono cfg (Nat.le_succ n) hHn1
   have hinvariantN :=
     E.acceptedHistoricalA32CurrentLineage_invariant_of_completedPrefixes
-      cfg ext B hT hC hfit hanchor hboundary v hv n hHn
+      cfg ext B hT hC hfit hdomain hanchor hboundary v hv n hHn
   obtain ⟨e, ⟨hlineage⟩⟩ :=
     E.getLatestConfirmedTraceAt_currentLineage_step_noCrossing cfg ext B hT
       hanchor hboundary hv hHn1 hinvariantN.confirmed_known hcurrent
@@ -846,7 +850,7 @@ theorem actualCall_strictSelected_result_and_child_ancestor_of_endpointJustified
       B.anchor (n + 1) query trace.afterObserved trace.result := by
     simpa only [query, trace] using
       E.completedPrefix_acceptedHistoricalCertificateProducerAt
-        cfg ext B hT hC hfit hanchor hboundary hv hcall hHn1 hprior hinput
+        cfg ext B hT hC hfit hdomain hanchor hboundary hv hcall hHn1 hprior hinput
           hselector
   have hhistorical' : E.HistoricalCurrentTargetCertificateProducerAt cfg ext
       B.anchor (n + 1) query trace.afterObserved

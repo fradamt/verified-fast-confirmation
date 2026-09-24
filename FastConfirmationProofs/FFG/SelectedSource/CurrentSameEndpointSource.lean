@@ -7,6 +7,8 @@ public import FastConfirmationProofs.Checkpoints.ExactCheckpointLinks
 public import FastConfirmationProofs.Execution.History.HistoricalFinalizedPlacement
 public import FastConfirmationProofs.FFG.SourceHistory.RealizedJustifiedOrigin
 public import FastConfirmationProofs.FFG.SelectedSource.SelectedTraceFFGRealization
+public import FastConfirmationProofs.Checkpoints.DeadlineBlockAdmissibility
+public import FastConfirmationProofs.FFG.State.FinalizationTiming
 public import FastConfirmationProofs.ModelFacts
 
 @[expose] public section
@@ -17,9 +19,9 @@ public import FastConfirmationProofs.ModelFacts
 
 This module transports the two outcomes of the strict current-same source
 history argument to a concrete honest endpoint.  The positive recent-carrier
-arm is entirely mechanical: relay the retained historical tip, reflect its
-accepted semantic ancestry, transport its fixed-root source epoch, and extend
-to an endpoint leaf.
+arm relays the historical tip from its honest vote-time origin. Certified AU
+accountability and finalization lag rule out the handler's permanent
+exclusion. The known tip then gives its selected ancestor at the endpoint.
 
 The apparent justified fallback is eliminated locally.  The past covering
 justified checkpoint is forced to the selected/current epoch, and the exact
@@ -232,15 +234,26 @@ theorem retainedAt_currentSameEndpoint
     {B : CausalPrefixFFGInterpretation cfg ext E}
     (hT : E.ScheduledPrefixPremises cfg ext)
     (hsync : NextSlotSynchronyPremises cfg ext E)
+    (hstatic : StaticValidatorSet cfg E)
+    (hbyz : ByzantineWeightPremises cfg E)
+    (hdomain : SelectedMarginDomain cfg ext E)
+    (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
+    (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
+      (E := E) (anchor := B.anchor))
+    (hDelay : E.RealizedFinalizationDelay cfg ext B)
+    (P : EpochCheckpointClosure B.anchor
+      (E.AcceptedRoot cfg ext) B.state.C)
+    (V : B.state.ExactLinkValidity)
+    (hanchorExact : B.anchor =
+      B.state.C B.anchor.root B.anchor.epoch)
+    (hacc : CheckpointCertificateAccountability cfg E B.anchor)
     {v : ValidatorIndex} {q : Nat} {selected : Root}
     (h : E.AcceptedRecentCandidateSourceCarrierAt cfg ext B v q selected)
     {w : ValidatorIndex} (hw : w ∈ E.honest) {m : Nat}
     (hmH : E.WithinHorizon cfg m)
     (hqueryEndpoint : E.slot_at cfg q ≤ E.slot_at cfg m)
     (hcurrentSame : get_current_store_epoch cfg (E.store cfg ext w m) =
-      get_current_store_epoch cfg (E.store cfg ext v q))
-    (hselectedEndpoint : selected ∈
-      (E.store cfg ext w m).block_roots) :
+      get_current_store_epoch cfg (E.store cfg ext v q)) :
     Nonempty (E.AcceptedRetainedPhaseSourceCarrierAt
       cfg ext B (E.store cfg ext w m) selected) := by
   obtain ⟨ast, ablk, hgen, hgenSlot, hgenParent⟩ := hT.genesis_structure
@@ -249,20 +262,79 @@ theorem retainedAt_currentSameEndpoint
       E.genesis_store = get_forkchoice_store cfg ast ablk ∧
         ast.slot = ablk.message.slot :=
     ⟨ast, ablk, hgen, hgenSlot⟩
-  have hrelayGate : E.slot_at cfg h.second + 1 ≤
-      E.slot_at cfg (m + 1) :=
-    (Nat.succ_le_of_lt h.strictly_past).trans
-      (hqueryEndpoint.trans
-        (E.slot_at_mono cfg (Nat.le_succ m)))
+  let hA : SelectedMarginAssumptions cfg ext E :=
+    { genesis := hT.genesis_structure
+      wellFormed := hT.wellFormed
+      whole_seconds := hT.whole_seconds
+      honest_behavior := hT.honest_behavior
+      synchrony := hsync
+      externals_coherence := hT.externals_coherence
+      static_validators := hstatic
+      byzantine_bound := hbyz
+      domain := hdomain }
+  have hgenTime : E.genesis_store.genesis_time ≤
+      E.genesis_store.time := by
+    rw [hgen]
+    exact (wellFormedStore_get_forkchoice_store cfg ast ablk
+      hgenSlot hgenParent).time_ge_genesis
+  obtain ⟨hstart, hbefore⟩ := E.past_slot_deadline_target_gate cfg
+    hT.whole_seconds hgenTime (h.strictly_past.trans_le hqueryEndpoint)
+  have hrelayOutcome : h.tip ∈
+        (E.store cfg ext w m).block_roots ∨
+      PermanentBlockExclusion cfg ext E h.validator h.second h.tip w m :=
+    E.deadline_block_relay_at_endpoint cfg ext hsync.deadline_block_relay h.validator h.validator_honest
+      h.second h.tip h.second_within h.tip_known h.second_deadline
+      w hw m hmH hstart hbefore
+  have hreal := E.finalizedCheckpoint_resetRealizedAt_of_acceptedGlobalTrajectory
+    cfg ext B hT hanchor hboundary (w := w) m
+  have hfinalizedKnown : (E.store cfg ext w m).finalized_checkpoint.root ∈
+      (E.store cfg ext w m).block_roots := hreal.root_known
+  have hanchorLe : B.anchor.epoch ≤
+      (E.store cfg ext w m).finalized_checkpoint.epoch :=
+    CertifiedJustified.anchor_epoch_le (cfg := cfg)
+      (Classical.choice hreal.certified)
+  have hLag : E.CausalRealizedFinalizationLag cfg ext B :=
+    E.causalRealizedFinalizationLag_of_acceptedDelay
+      cfg ext B hT hanchor hDelay
+  have htargetEpoch : (E.store cfg ext w m).finalized_checkpoint.epoch ≤
+      (get_voting_source cfg
+        (E.store cfg ext h.validator h.second) h.tip).epoch := by
+    rcases hLag (E.store_causal cfg ext w m) with hFanchor | hFdelay
+    · obtain ⟨_carrier, _hdesc, hformed⟩ := h.source_au
+      obtain ⟨hincluded⟩ := (B.state.formed_evidence hformed).certified
+      have hcert : CertifiedJustified cfg E B.anchor
+          (get_voting_source cfg
+            (E.store cfg ext h.validator h.second) h.tip) :=
+        IncludedCertifiedJustified.toCertifiedJustified (cfg := cfg)
+          B.state.includedAttestations.relation hincluded
+      rw [hFanchor]
+      exact CertifiedJustified.anchor_epoch_le (cfg := cfg) hcert
+    · rw [hcurrentSame] at hFdelay
+      exact (Nat.add_le_add_iff_right).mp
+        (hFdelay.trans h.source_recent)
+  have htipWalk : WalkKnown
+      (E.store cfg ext h.validator h.second)
+      (compute_start_slot_at_epoch cfg
+        (E.store cfg ext w m).finalized_checkpoint.epoch) h.tip :=
+    E.trustedAnchor_boundaryWalkAtEpoch cfg ext hA hanchor hboundary
+      h.validator h.second hanchorLe h.tip_known
+  have hnotExcluded : ¬ PermanentBlockExclusion cfg ext E
+      h.validator h.second h.tip w m :=
+    E.acceptedSourceTip_not_permanentlyExcluded_of_AU cfg ext B hT hA
+      hanchor hboundary P V hanchorExact hacc hmH h.tip_known
+      hfinalizedKnown hanchorLe h.source_au htargetEpoch htipWalk
   have htipEndpoint : h.tip ∈
-      (E.store cfg ext w m).block_roots :=
-    hsync.block_relay h.validator h.validator_honest h.second h.tip
-      h.second_within h.tip_known w hw m hmH hrelayGate
-  have htipSelectedEndpoint : is_ancestor (E.store cfg ext w m)
-      (get_node_for_root h.tip) (get_node_for_root selected) = true :=
-    E.store_ancestor_of_rootDescends_for_storeReflection cfg ext
+      (E.store cfg ext w m).block_roots := by
+    rcases hrelayOutcome with hknown | hexcluded
+    · exact hknown
+    · exact False.elim (hnotExcluded hexcluded)
+  have hselectedRoot : E.ExecutionRoot selected :=
+    ⟨(E.store cfg ext h.validator h.second).blocks selected,
+      E.blockAt_of_store_known cfg ext h.candidate_known⟩
+  obtain ⟨hselectedEndpoint, htipSelectedEndpoint⟩ :=
+    E.store_known_ancestor_of_rootDescends_for_storeReflection cfg ext
       hT.wellFormed hT.externals_coherence hgen hgenSlot hgenParent
-      htipEndpoint hselectedEndpoint h.tip_semantic_descends_candidate
+      htipEndpoint hselectedRoot h.tip_semantic_descends_candidate
   have hpastEndpointClock : get_current_store_epoch cfg
       (E.store cfg ext h.validator h.second) ≤
         get_current_store_epoch cfg (E.store cfg ext w m) := by
@@ -469,6 +541,9 @@ theorem retainedAt_currentSameEndpoint
     {B : CausalPrefixFFGInterpretation cfg ext E}
     (hT : E.ScheduledPrefixPremises cfg ext)
     (hsync : NextSlotSynchronyPremises cfg ext E)
+    (hstatic : StaticValidatorSet cfg E)
+    (hbyz : ByzantineWeightPremises cfg E)
+    (hDelay : E.RealizedFinalizationDelay cfg ext B)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
       (E := E) (anchor := B.anchor))
@@ -477,6 +552,7 @@ theorem retainedAt_currentSameEndpoint
     (V : B.state.ExactLinkValidity)
     (hanchorExact : B.anchor =
       B.state.C B.anchor.root B.anchor.epoch)
+    (hacc : CheckpointCertificateAccountability cfg E B.anchor)
     (hdomain : SelectedMarginDomain cfg ext E)
     {v : ValidatorIndex} {q : Nat} {selected : Root}
     (h : E.AcceptedPastJustifiedFallbackAt cfg ext v q selected)
@@ -488,9 +564,7 @@ theorem retainedAt_currentSameEndpoint
     (hmH : E.WithinHorizon cfg m)
     (hqueryEndpoint : E.slot_at cfg q ≤ E.slot_at cfg m)
     (hcurrentSame : get_current_store_epoch cfg (E.store cfg ext w m) =
-      get_current_store_epoch cfg (E.store cfg ext v q))
-    (hselectedEndpoint : selected ∈
-      (E.store cfg ext w m).block_roots) :
+      get_current_store_epoch cfg (E.store cfg ext v q)) :
     Nonempty (E.AcceptedRetainedPhaseSourceCarrierAt
       cfg ext B (E.store cfg ext w m) selected) := by
   let past := E.store cfg ext h.past.validator h.past.second
@@ -598,21 +672,80 @@ theorem retainedAt_currentSameEndpoint
       rw [← hjEpoch, hgu, hsourceEq]
       exact Nat.le_add_right _ _
   obtain ⟨seed, hseedPast, hseedSemantic, hrecentPast⟩ := hseed
-  have hrelayGate : E.slot_at cfg h.past.second + 1 ≤
-      E.slot_at cfg (m + 1) :=
-    (Nat.succ_le_of_lt h.past.strictly_past).trans
-      (hqueryEndpoint.trans (E.slot_at_mono cfg (Nat.le_succ m)))
+  let hA : SelectedMarginAssumptions cfg ext E :=
+    { genesis := hT.genesis_structure
+      wellFormed := hT.wellFormed
+      whole_seconds := hT.whole_seconds
+      honest_behavior := hT.honest_behavior
+      synchrony := hsync
+      externals_coherence := hT.externals_coherence
+      static_validators := hstatic
+      byzantine_bound := hbyz
+      domain := hdomain }
+  have hgenTime : E.genesis_store.genesis_time ≤
+      E.genesis_store.time := by
+    rw [hgen]
+    exact (wellFormedStore_get_forkchoice_store cfg ast ablk
+      hgenSlot hgenParent).time_ge_genesis
+  obtain ⟨hstart, hbefore⟩ := E.past_slot_deadline_target_gate cfg
+    hT.whole_seconds hgenTime
+      (h.past.strictly_past.trans_le hqueryEndpoint)
+  have hrelayOutcome : seed ∈ endpoint.block_roots ∨
+      PermanentBlockExclusion cfg ext E h.past.validator
+        h.past.second seed w m := by
+    simpa only [endpoint] using
+      E.deadline_block_relay_at_endpoint cfg ext hsync.deadline_block_relay h.past.validator
+        h.past.validator_honest h.past.second seed
+        h.past.second_within hseedPast h.past.second_deadline
+        w hw m hmH hstart hbefore
+  have hsourceAU : B.state.AU cfg ext seed
+      (get_voting_source cfg past seed) :=
+    hpastCausal.getVotingSource_AU cfg ext B hseedPast
+  have hreal := E.finalizedCheckpoint_resetRealizedAt_of_acceptedGlobalTrajectory
+    cfg ext B hT hanchor hboundary (w := w) m
+  have hfinalizedKnown : endpoint.finalized_checkpoint.root ∈
+      endpoint.block_roots := hreal.root_known
+  have hanchorLe : B.anchor.epoch ≤ endpoint.finalized_checkpoint.epoch :=
+    CertifiedJustified.anchor_epoch_le (cfg := cfg)
+      (Classical.choice hreal.certified)
+  have hLag : E.CausalRealizedFinalizationLag cfg ext B :=
+    E.causalRealizedFinalizationLag_of_acceptedDelay
+      cfg ext B hT hanchor hDelay
+  have htargetEpoch : endpoint.finalized_checkpoint.epoch ≤
+      (get_voting_source cfg past seed).epoch := by
+    rcases hLag (E.store_causal cfg ext w m) with hFanchor | hFdelay
+    · obtain ⟨_carrier, _hdesc, hformed⟩ := hsourceAU
+      obtain ⟨hincluded⟩ := (B.state.formed_evidence hformed).certified
+      have hcert : CertifiedJustified cfg E B.anchor
+          (get_voting_source cfg past seed) :=
+        IncludedCertifiedJustified.toCertifiedJustified (cfg := cfg)
+          B.state.includedAttestations.relation hincluded
+      rw [hFanchor]
+      exact CertifiedJustified.anchor_epoch_le (cfg := cfg) hcert
+    · rw [hcurrentSame] at hFdelay
+      exact (Nat.add_le_add_iff_right).mp
+        (hFdelay.trans hrecentPast)
+  have hseedWalk : WalkKnown past
+      (compute_start_slot_at_epoch cfg
+        endpoint.finalized_checkpoint.epoch) seed :=
+    E.trustedAnchor_boundaryWalkAtEpoch cfg ext hA hanchor hboundary
+      h.past.validator h.past.second hanchorLe hseedPast
+  have hnotExcluded : ¬ PermanentBlockExclusion cfg ext E
+      h.past.validator h.past.second seed w m :=
+    E.acceptedSourceTip_not_permanentlyExcluded_of_AU cfg ext B hT hA
+      hanchor hboundary P V hanchorExact hacc hmH hseedPast
+      hfinalizedKnown hanchorLe hsourceAU htargetEpoch hseedWalk
   have hseedEndpoint : seed ∈ endpoint.block_roots := by
-    simpa only [endpoint] using
-      hsync.block_relay h.past.validator h.past.validator_honest
-        h.past.second seed h.past.second_within hseedPast w hw m hmH
-          hrelayGate
-  have hseedSelectedEndpoint : is_ancestor endpoint
-      (get_node_for_root seed) (get_node_for_root selected) = true := by
-    simpa only [endpoint] using
-      E.store_ancestor_of_rootDescends_for_storeReflection cfg ext
-        hT.wellFormed hT.externals_coherence hgen hgenSlot hgenParent
-        hseedEndpoint hselectedEndpoint hseedSemantic
+    rcases hrelayOutcome with hknown | hexcluded
+    · exact hknown
+    · exact False.elim (hnotExcluded hexcluded)
+  have hselectedRoot : E.ExecutionRoot selected :=
+    ⟨past.blocks selected,
+      E.blockAt_of_store_known cfg ext h.past.candidate_known⟩
+  obtain ⟨hselectedEndpoint, hseedSelectedEndpoint⟩ :=
+    E.store_known_ancestor_of_rootDescends_for_storeReflection cfg ext
+      hT.wellFormed hT.externals_coherence hgen hgenSlot hgenParent
+      hseedEndpoint hselectedRoot hseedSemantic
   have hpastEndpointClock : get_current_store_epoch cfg past ≤
       get_current_store_epoch cfg endpoint := by
     simp only [past, endpoint, get_current_store_epoch,
@@ -658,6 +791,9 @@ theorem retainedAt_currentSameEndpoint
     {B : CausalPrefixFFGInterpretation cfg ext E}
     (hT : E.ScheduledPrefixPremises cfg ext)
     (hsync : NextSlotSynchronyPremises cfg ext E)
+    (hstatic : StaticValidatorSet cfg E)
+    (hbyz : ByzantineWeightPremises cfg E)
+    (hDelay : E.RealizedFinalizationDelay cfg ext B)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
       (E := E) (anchor := B.anchor))
@@ -666,6 +802,7 @@ theorem retainedAt_currentSameEndpoint
     (V : B.state.ExactLinkValidity)
     (hanchorExact : B.anchor =
       B.state.C B.anchor.root B.anchor.epoch)
+    (hacc : CheckpointCertificateAccountability cfg E B.anchor)
     (hdomain : SelectedMarginDomain cfg ext E)
     {v : ValidatorIndex} {q : Nat} {selected : Root}
     (h : E.AcceptedCurrentSameSourceHistoryOutcome cfg ext B v q selected)
@@ -677,19 +814,19 @@ theorem retainedAt_currentSameEndpoint
     (hmH : E.WithinHorizon cfg m)
     (hqueryEndpoint : E.slot_at cfg q ≤ E.slot_at cfg m)
     (hcurrentSame : get_current_store_epoch cfg (E.store cfg ext w m) =
-      get_current_store_epoch cfg (E.store cfg ext v q))
-    (hselectedEndpoint : selected ∈
-      (E.store cfg ext w m).block_roots) :
+      get_current_store_epoch cfg (E.store cfg ext v q)) :
     Nonempty (E.AcceptedRetainedPhaseSourceCarrierAt
       cfg ext B (E.store cfg ext w m) selected) := by
   rcases h with hjustified | hrecent
   · obtain ⟨hjustified⟩ := hjustified
     exact hjustified.retainedAt_currentSameEndpoint cfg ext hT hsync
-      hanchor hboundary P V hanchorExact hdomain hselectedQuery hcurrent
-        hw hmH hqueryEndpoint hcurrentSame hselectedEndpoint
+      hstatic hbyz hDelay hanchor hboundary P V hanchorExact hacc
+      hdomain hselectedQuery hcurrent
+        hw hmH hqueryEndpoint hcurrentSame
   · obtain ⟨hrecent⟩ := hrecent
-    exact hrecent.retainedAt_currentSameEndpoint cfg ext hT hsync hw hmH
-      hqueryEndpoint hcurrentSame hselectedEndpoint
+    exact hrecent.retainedAt_currentSameEndpoint cfg ext hT hsync
+      hstatic hbyz hdomain hanchor hboundary hDelay P V hanchorExact hacc
+      hw hmH hqueryEndpoint hcurrentSame
 
 end AcceptedCurrentSameSourceHistoryOutcome
 

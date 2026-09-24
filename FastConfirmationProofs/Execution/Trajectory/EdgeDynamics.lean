@@ -1,4 +1,5 @@
 module
+public import FastConfirmationProofs.Execution.Delivery.VoteDeadlineOrigin
 public import FastConfirmationProofs.Handlers.HandlerStepFacts
 public import FastConfirmationProofs.Execution.Trajectory.StoreDynamicsInputs
 
@@ -12,52 +13,7 @@ public import FastConfirmationProofs.Execution.Trajectory.StoreDynamicsInputs
 `DynamicsResidual`. This module derives its relay, ancestry-transport, and boost
 fields, and packages the other fields in `EdgeInputResidual`.
 
-## Relay and transport fields
-
-* **`hequiv`** — `equivocating@(vc,nc) ⊆ equivocating@(w,m)` from
-  `Synchrony.attester_slashing_relay` under the one-slot ordering
-  `slot_at nc + 1 ≤ slot_at m` (`equiv_subset_of_relay`).
-* **`hsub`** — `block_roots@(vc,nc) ⊆ block_roots@(w,m)` from `Synchrony.block_relay`
-  under `slot_at nc + 1 ≤ slot_at (m+1)` (`blockRoots_subset_of_relay`);
-  it feeds the two transports so they no longer carry a raw containment premise.
-* **`htS`/`htA`** — the forward and reverse `is_ancestor` transports `(vc,nc) → (w,m)`,
-  via `EngineTransport.is_ancestor_transport` (forward) and `BlockAgreement.is_ancestor_congr`
-  (reverse). Reduced to the block relay (above) + per-root `WalkKnown` domain conditions —
-  the standard Layer-0 shapes (`SupportsDesc_transport` / `AncestorOrVoteless_transport`).
-* **`hboost`** — `boost = get_proposer_score cfg (store w m)`: definitional once `boost` is
-  taken as that value.
-
-## IH-dependent and accounting inputs
-
-`EdgeInputResidual` bundles the fields supplied by the head-safety induction or
-by accounting lemmas:
-
-* **`hbase`** — `INV2(es)` at the confirming anchor: `DynamicsClosure.INV2_base_of_confirmed`
-  reduces it to `Arms.arms_of_confirmed`'s accessor bridges (`Bridge.weak_base_discharged`
-  + `Discount` + `HonestWeight` + the class-decomposition identities), whose accounting is
-  the accounting inputs stated in `Arms.lean`.
-* **`hdeltas`** — the per-slot pre-`T1` class-migration deltas `hs'`/`hx'`/`hρ`
-  (`votes_head` + engine IH + `Delivery` + the `ρ = 0` same-epoch assignment bookkeeping,
-  `StepDischargeII`).
-* **`hmaj`** — the post-`T1` saturated honest majority (`committee_coverage` + `votes_head`
-  + engine IH).
-* **`hrec`** — per-`Sclass`-member recorded `c`-support at `(w,m)`
-  (`Delivery.vote_ubiquity` + `Bridge.recorded_lm_is_newest` + the epoch-cased root
-  identification, `EngineTransport.recorded_supports_c_of_IH`).
-* **`hHon`/`hByz`** — the sibling confinements (provenance slot-confinement +
-  `Forks.siblings_incompatible` + the `BbadSet`/`SpentSet` dichotomy).
-* **`hval`** — the registry-constant justified source (`Registry.registryConstant` modulo
-  `justified_checkpoint ∈ checkpoint_state_keys`).
-* **`hchild`** — the fork-choice child membership `c ∈ get_node_children … h`
-  (`FilterViability.chain_mem_get_filtered_block_tree`).
-
-`forkEdgeInput_of_residual` assembles these fields into a `ForkEdgeInput`.
-
-
-**P-6 note.** Some names used in this header no longer exist. The legacy `SpecAssumptions`
-observed-anchor cone was retired and swept for orphans, which removed this module's own `EdgeInputResidual` and `forkEdgeInput_of_residual`.
-The descriptions above are kept because they still identify the *shapes* the surviving
-declarations produce and consume. See `docs/p6-justified-descends-derivation.md` §8.
+This module contains `equiv_subset_of_relay`, `EdgeInputResidual` and related declarations.
 -/
 
 namespace FastConfirmation.Spec
@@ -71,32 +27,25 @@ variable (E : Execution Root)
 
 /-! ## Section 1 — relay containments (`hsub`, `hequiv`) -/
 
-/-- **`hsub` — block-root containment from `block_relay`.** Every root known at the
-confirming anchor `(vc, nc)` is known at the endpoint `(w, m)`, provided the endpoint is at
-least one slot past the anchor (`slot_at nc + 1 ≤ slot_at (m + 1)`). This is the block
-propagation deadline `Synchrony.block_relay` for each root, packaged as a set containment;
-it feeds both `is_ancestor` transports so they carry no raw containment premise. -/
-theorem blockRoots_subset_of_relay (hsync : NextSlotSynchronyPremises cfg ext E)
-    {vc w : ValidatorIndex} {nc m : ℕ}
-    (hvc : vc ∈ E.honest) (hw : w ∈ E.honest)
-    (hHnc : E.WithinHorizon cfg nc) (hHm : E.WithinHorizon cfg m)
-    (hslot : E.slot_at cfg nc + 1 ≤ E.slot_at cfg (m + 1)) :
-    (E.store cfg ext vc nc).block_roots ⊆ (E.store cfg ext w m).block_roots :=
-  fun r hr => hsync.block_relay vc hvc nc r hHnc hr w hw m hHm hslot
-
-
 /-- **`hequiv` — equivocator containment from `attester_slashing_relay`.** Every equivocator
 known at the confirming anchor `(vc, nc)` is known at the endpoint `(w, m)`, under the
 one-slot ordering `slot_at nc + 1 ≤ slot_at m`. This supplies
 `ForkEdgeInput`'s `hequiv` field. -/
 theorem equiv_subset_of_relay (hsync : NextSlotSynchronyPremises cfg ext E)
+    (hdiv : 1000 ∣ cfg.slot_duration_ms)
+    (hgenTime : E.genesis_store.genesis_time ≤ E.genesis_store.time)
     {vc w : ValidatorIndex} {nc m : ℕ}
     (hvc : vc ∈ E.honest) (hw : w ∈ E.honest)
     (hHnc : E.WithinHorizon cfg nc) (hHm : E.WithinHorizon cfg m)
+    (hdue : nc ≤ E.slot_start cfg (E.slot_at cfg nc) +
+      get_attestation_due_ms cfg / 1000)
     (hslot : E.slot_at cfg nc + 1 ≤ E.slot_at cfg m) :
     (E.store cfg ext vc nc).equivocating_indices ⊆
-      (E.store cfg ext w m).equivocating_indices :=
-  fun i hi => hsync.attester_slashing_relay vc hvc nc i hHnc hi w hw m hHm hslot
+      (E.store cfg ext w m).equivocating_indices := by
+  obtain ⟨hnext, hlt⟩ := E.past_slot_deadline_target_gate cfg hdiv hgenTime
+    (Nat.lt_of_succ_le hslot)
+  exact fun i hi => hsync.attester_slashing_relay vc hvc nc i hHnc hi hdue
+    w hw m hHm hnext hlt
 
 /-! ## Section 2 — the `is_ancestor` transports (`htS`, `htA`)
 

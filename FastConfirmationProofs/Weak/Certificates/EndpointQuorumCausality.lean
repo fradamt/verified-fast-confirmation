@@ -307,7 +307,7 @@ theorem honestTargetVote_of_scheduledAttestation
       E.SlotWithinHorizon cfg s ∧
       E.vote i s = some (k, a') ∧
       a'.data.target = (E.store cfg ext w m).justified_checkpoint := by
-  obtain ⟨k, a', hvote, hdata⟩ :=
+  obtain ⟨k, a', _hcausal, hvote, hdata⟩ :=
     hhb.no_forgery u n' a fb hsched i hi hia
   refine ⟨a.data.slot, k, a', hs0, hqs, hslotBound, hsH, hvote, ?_⟩
   rw [← hdata]

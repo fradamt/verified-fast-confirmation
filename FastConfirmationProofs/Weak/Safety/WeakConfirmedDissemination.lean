@@ -118,7 +118,10 @@ private theorem past_descendant_known_at_observer
       lm.root ∈ (E.store cfg ext i nu).block_roots ∧
       lm.root ∈ (E.store cfg ext v n).block_roots ∧
       is_ancestor (E.store cfg ext v n)
-        (get_node_for_root lm.root) (get_node_for_root b) = true := by
+        (get_node_for_root lm.root) (get_node_for_root b) = true ∧
+      nu ≤ E.slot_start cfg (E.slot_at cfg nu) +
+        get_attestation_due_ms cfg / 1000 ∧
+      (get_head cfg (E.store cfg ext i nu)).root = lm.root := by
   obtain ⟨ast, ablk, hgeq, hslot, hroot⟩ := hA.genesis
   have hgen0 : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
       E.genesis_store = get_forkchoice_store cfg ast ablk := ⟨ast, ablk, hgeq⟩
@@ -129,7 +132,7 @@ private theorem past_descendant_known_at_observer
     rw [← ht, hslot]
   obtain ⟨a', sender, sentAt, ifb, hsched, hiatt, hbbr, hslotep⟩ :=
     E.schedLMProv cfg ext hgen0 v n i lm hlm
-  obtain ⟨voteAt, own, hvote, hdata⟩ :=
+  obtain ⟨voteAt, own, _hcausal, hvote, hdata⟩ :=
     hA.honest_behavior.no_forgery sender sentAt a' ifb hsched i hi hiatt
   set s := a'.data.slot
   have hcomm : i ∈ E.committee s :=
@@ -174,10 +177,12 @@ private theorem past_descendant_known_at_observer
       exact hmem
     · rw [← hhead, heq]
       exact hA.domain.justified_root_known i hi nu hHnu
-  refine ⟨nu, hHnu, ?_, hd, hlmKnown, ?_⟩
+  refine ⟨nu, hHnu, ?_, hd, hlmKnown, ?_, ?_, hhead⟩
   · rw [hnu]
     exact hslt
   · simpa only [is_ancestor_supported_pending, get_node_for_root] using hsupp
+  · rw [hnu]
+    exact (hA.honest_behavior.vote_deadline i hi s nu _ hvoteHead).2
 
 /-! ## Deliverable 1 — confirmed knownness at all honest endpoints -/
 
@@ -208,7 +213,7 @@ theorem confirmed_known_at_all_honest_endpoints_at_observer
   obtain ⟨i, lm, hi, hlm, hsupp⟩ :=
     E.honestSupporter_of_confirmed_known_at_observer cfg ext hA v n hvalid hcomm
       fcrStore hstore b hHn hb hparent hconf
-  obtain ⟨nu, hHnu, hslt, hd_i, hd_v, hanc⟩ :=
+  obtain ⟨nu, hHnu, hslt, hd_i, hd_v, hanc, hdue, hhead⟩ :=
     E.past_descendant_known_at_observer cfg ext hA v n b hvalid hHn i hi lm hlm hsupp
   have hanchor : ablk.message.slot ≤ ((E.store cfg ext v n).blocks b).slot :=
     E.store_anchor_min_slot cfg ext hA.wellFormed hA.externals_coherence
@@ -216,9 +221,15 @@ theorem confirmed_known_at_all_honest_endpoints_at_observer
   have hbi : b ∈ (E.store cfg ext i nu).block_roots :=
     E.is_ancestor_transport_closed cfg ext hA.wellFormed hA.externals_coherence
       hgeq hslot hparentne hanchor hd_v hd_i hb hanc
-  have hgate : E.slot_at cfg nu + 1 ≤ E.slot_at cfg (m + 1) :=
-    hslt.trans_le (hnm.trans (E.slot_at_mono cfg (Nat.le_succ m)))
-  exact hA.synchrony.block_relay i hi nu b hHnu hbi w hw m hHm hgate
+  have hanc_i : is_ancestor (E.store cfg ext i nu)
+      (get_node_for_root lm.root) (get_node_for_root b) = true :=
+    E.is_ancestor_replay_closed cfg ext hA.wellFormed hA.externals_coherence
+      hgeq hslot hparentne hanchor hd_v hd_i hb hanc
+  rw [← hhead] at hanc_i
+  have hslot_lt : E.slot_at cfg nu < E.slot_at cfg m :=
+    hslt.trans_le hnm
+  exact E.honest_head_ancestor_known_at_endpoint_weak cfg ext hA hi hw
+    hHnu hHm hdue hbi hanc_i hslot_lt
 
 /-! ## Deliverable 2 — confirmed ancestry at all honest endpoints -/
 
@@ -306,7 +317,7 @@ theorem confirmed_pastDescendant_at_observer
   obtain ⟨i, lm, hi, hlm, hsupp⟩ :=
     E.honestSupporter_of_confirmed_known_at_observer cfg ext hA obs q hvalid hcomm
       query hstore b hqH hb hparent hconf
-  obtain ⟨nu, hHnu, hslt, hd_i, hd_v, hanc⟩ :=
+  obtain ⟨nu, hHnu, hslt, hd_i, hd_v, hanc, _, _⟩ :=
     E.past_descendant_known_at_observer cfg ext hA obs q b hvalid hqH i hi lm hlm hsupp
   exact ⟨i, nu, lm.root, hi, hHnu, hslt, hd_i, hd_v, hanc⟩
 

@@ -230,7 +230,7 @@ theorem currentTargetObservedHonestSupporter_vote_of_prefix_of_provenance
       haRoot, haSlotEpoch⟩ :=
     p.currentTargetScheduledLatestMessageProvenance cfg ext E
       hV.trajectory i lm hlm
-  obtain ⟨kGround, aGround, hvoteGround, hdataGround⟩ :=
+  obtain ⟨kGround, aGround, _hcausal, hvoteGround, hdataGround⟩ :=
     hhb.no_forgery u t a ifb hsched i hi hiAttests
   have hiCommittee : i ∈ E.committee a.data.slot :=
     hhb.votes_assigned i hi a.data.slot
@@ -379,7 +379,8 @@ theorem currentTargetObservedHonestSupporter_vote_of_prefix_of_provenance
     subst_vars
     rfl
   refine ⟨⟨a.data.slot, k, index, hi, hkH, hkSlot, haSlotH,
-    hiCommittee, hvote, haSlotEpoch.trans htargetEpoch.symm, ?_,
+    hiCommittee, hvote, (hhb.vote_deadline i hi a.data.slot k _ hvote).2,
+    haSlotEpoch.trans htargetEpoch.symm, ?_,
     htargetExact⟩⟩
   exact slot_lt_prefix_next_epoch_start cfg
     (haSlotEpoch.trans htargetEpoch.symm)

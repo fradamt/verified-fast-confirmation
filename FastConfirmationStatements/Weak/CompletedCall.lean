@@ -22,15 +22,14 @@ double-count the premise *surface*, so the headlines take this 3-field
 supplement and rebuild the full contract internally with
 `toCompletedPrefixCallAssumptions` below.
 
-The supplement used to have a fourth field, `delivery_lookahead`.  It is gone:
-the boundary delivery case is now part of the single `synchrony` assumption,
-which the headlines already carry inside `hW.base`, so dropping it weakened
-the premise surface without moving any assumption content. -/
+The fourth field restores the vote receipt at the last horizon boundary.
+It is the `delivery_lookahead` field of the completed-call package. -/
 structure WeakCompletedFCRCallSupplement : Prop where
   phase0_source : Phase0SourceCoherence cfg ext
   phase0_boundary_source : Phase0BoundarySourceCoherence cfg ext
   balance_floor : cfg.effective_balance_increment ≤
     E.weight (E.currentTargetAnchorActive cfg)
+  delivery_lookahead : HorizonVoteDeliveryLookahead cfg E
 
 end Execution
 end FastConfirmation.Spec

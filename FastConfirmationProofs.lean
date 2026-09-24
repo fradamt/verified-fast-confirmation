@@ -1,5 +1,5 @@
 module
-public import FastConfirmationProofs.ModelFacts.SynchronyRelation
+public import FastConfirmationProofs.Checkpoints.HonestVotePathAdmissibility
 public import FastConfirmationProofs.Checkpoints.AnchorChainSafety
 public import FastConfirmationProofs.Checkpoints.AnchorParentKnownness
 public import FastConfirmationProofs.Checkpoints.Anchoring
@@ -49,6 +49,7 @@ public import FastConfirmationProofs.Execution.Delivery.RecordedEpoch
 public import FastConfirmationProofs.Execution.Delivery.Registry
 public import FastConfirmationProofs.Execution.Delivery.SelectedEdgeFilter
 public import FastConfirmationProofs.Execution.Delivery.VoteDeliveryMargin
+public import FastConfirmationProofs.Execution.Delivery.VoteDeadlineOrigin
 public import FastConfirmationProofs.Execution.History.CausalCheckpointCompatibility
 public import FastConfirmationProofs.Execution.History.CausalCheckpointEpochBound
 public import FastConfirmationProofs.Execution.History.CausalQueryTraceAdapter

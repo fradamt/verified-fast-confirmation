@@ -758,6 +758,7 @@ theorem currentTargetFutureHonestSeat_vote_of_currentSlot
     hsupport.2 i hi s hsH hsTargetEpoch hquerySlot k
       (honest_attestation cfg ext (E.store cfg ext i k) s index i) hvote
   refine ⟨⟨s, k, index, hi, hkH, hkSlot, hsH, hiCommittee, hvote,
+    (hhb.vote_deadline i hi s k _ hvote).2,
     hsTargetEpoch, ?_, htarget⟩⟩
   exact slot_lt_next_epoch_start_of_epoch cfg hsTargetEpoch
 
@@ -1992,7 +1993,7 @@ endpoint. -/
 theorem scheduledEventPrefix_acceptedTargetA32GateRealization_withLookahead
     (B : CausalPrefixFFGInterpretation cfg ext E)
     (hT : E.ScheduledPrefixPremises cfg ext)
-    (hdelivery : NextSlotSynchronyPremises cfg ext E)
+    (hdelivery : HorizonVoteDeliveryLookahead cfg E)
     (hsv : StaticValidatorSet cfg E)
     (hbb : ByzantineWeightPremises cfg E)
     (hphase : Phase0SourceCoherence cfg ext)

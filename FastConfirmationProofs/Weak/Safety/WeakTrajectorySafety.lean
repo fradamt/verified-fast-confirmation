@@ -198,6 +198,7 @@ def WeakCompletedFCRCallSupplement.toCompletedPrefixCallAssumptions
   phase0_source := hC.phase0_source
   phase0_boundary_source := hC.phase0_boundary_source
   balance_floor := hC.balance_floor
+  delivery_lookahead := hC.delivery_lookahead
 
 /-- Local restatement of the Fold file's (private) genesis clock bound. -/
 private theorem weakFold_genesisTime_le
@@ -383,7 +384,7 @@ theorem weakGetLatestConfirmedTraceAt_input_safeFrom
       rw [hinput.input_eq, hstore]
       have hfin := E.weak_finalizedReset_safeFrom_of_synchrony cfg ext B hT hacc
         hphase0 hboundaryPhase hanchor hboundary hA.synchrony
-        (v := obs) (q := n + 1) hHn1
+        hA.domain.honest_head_paths (v := obs) (q := n + 1) hHn1
       rwa [hstartEq] at hfin
   | observedReset hinput =>
       exact hOR n hHn1 hcall _ hinput

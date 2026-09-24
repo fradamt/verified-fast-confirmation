@@ -4,6 +4,8 @@ public import FastConfirmationProofs.FFG.Certificates.CurrentTargetCertificateRe
 public import FastConfirmationProofs.Checkpoints.PaperCheckpointInclusionSupportRealization
 public import FastConfirmationProofs.Checkpoints.GlobalResetCheckpointRealization
 public import FastConfirmationProofs.Execution.History.HistoricalCurrentTargetTrajectory
+public import FastConfirmationProofs.Execution.Delivery.VoteDeadlineOrigin
+
 public import FastConfirmationProofs.ModelFacts
 
 @[expose] public section
@@ -90,8 +92,13 @@ theorem canonicalThroughoutNextEpoch_of_selectedCanonical_currentEpoch
     (hA : SelectedMarginAssumptions cfg ext E)
     {v : ValidatorIndex} (hv : v ∈ E.honest) {q : ℕ}
     (hqH : E.WithinHorizon cfg q)
+    (hcallAt : ∃ n : ℕ, q = n + 1 ∧
+      E.IsScheduledFCRCallAt cfg ext v n)
     {selected : Root} {e : Epoch}
     (hselected : selected ∈ (E.store cfg ext v q).block_roots)
+    (hknownLater : ∀ w' ∈ E.honest, ∀ m',
+      E.slot_start cfg (E.slot_at cfg q) ≤ m' → E.WithinHorizon cfg m' →
+      selected ∈ (E.store cfg ext w' m').block_roots)
     (heCurrent :
       e = get_current_store_epoch cfg (E.store cfg ext v q))
     {w : ValidatorIndex} {m : ℕ}
@@ -133,12 +140,7 @@ theorem canonicalThroughoutNextEpoch_of_selectedCanonical_currentEpoch
       simpa only [Nat.succ_eq_add_one, Nat.add_assoc, Nat.reduceAdd] using
         hlate.trans hepochLe
     exact (Nat.not_succ_le_self (e + 1)) hbad
-  have hrelayGate : E.slot_at cfg q + 1 ≤ E.slot_at cfg (m' + 1) :=
-    (Nat.succ_le_of_lt hslotLower).trans
-      (E.slot_at_mono cfg (Nat.le_succ m'))
-  have hknown : selected ∈ (E.store cfg ext w' m').block_roots :=
-    hA.synchrony.block_relay v hv q selected hqH hselected
-      w' hw' m' hm'H hrelayGate
+  have hknown := hknownLater w' hw' m' hindexLower hm'H
   exact ⟨hknown, hcanonical w' hw' m' hindexLower hslotUpper hm'H⟩
 
 /-- **The epoch-`e` sibling of the lemma above, in `EngineInv` form.**
@@ -263,8 +265,13 @@ theorem selectedA32Semantic_of_fixedSourceGate_currentEpoch
     (hanchor : anchor = E.genesis_store.justified_checkpoint)
     {v : ValidatorIndex} (hv : v ∈ E.honest) {q : ℕ}
     (hqH : E.WithinHorizon cfg q)
+    (hcallAt : ∃ n : ℕ, q = n + 1 ∧
+      E.IsScheduledFCRCallAt cfg ext v n)
     {selected : Root} {e : Epoch}
     (hselected : selected ∈ (E.store cfg ext v q).block_roots)
+    (hknownLater : ∀ w' ∈ E.honest, ∀ m',
+      E.slot_start cfg (E.slot_at cfg q) ≤ m' → E.WithinHorizon cfg m' →
+      selected ∈ (E.store cfg ext w' m').block_roots)
     (hheadSelected : is_ancestor (E.store cfg ext v q)
       (get_head cfg (E.store cfg ext v q))
       (get_node_for_root selected) = true)
@@ -297,10 +304,10 @@ theorem selectedA32Semantic_of_fixedSourceGate_currentEpoch
         hselectedEpoch heCurrent htargetAnchor)
   · have hcanonicalFull :=
       E.canonicalThroughoutNextEpoch_of_selectedCanonical_currentEpoch
-        cfg ext hA hv hqH hselected heCurrent hlate hcanonical
+        cfg ext hA hv hqH hcallAt hselected hknownLater heCurrent hlate hcanonical
     have hsupport := E.paperA32SupportThroughoutEpoch_of_concreteQuorum
       cfg ext hA.wellFormed hA.honest_behavior hA.synchrony
-      hA.externals_coherence hA.whole_seconds hA.genesis hwalkDomain
+      hA.domain.honest_head_paths hA.externals_coherence hA.whole_seconds hA.genesis hwalkDomain
       hv hqH hselected hselectedEpoch hcanonicalFull Q hsource
     exact Or.inr ⟨hcanonicalFull, hsupport⟩
 

@@ -50,8 +50,8 @@ theorem old_window_latest_messages_agree
     E.schedLMProvExact cfg ext hgen v n i src hsrc
   obtain ⟨aD, uD, tD, ifbD, hschedD, hiD, hdstEq⟩ :=
     E.schedLMProvExact cfg ext hgen w m i dst hdst
-  obtain ⟨kS, aS', hvS, _⟩ := hhb.no_forgery uS tS aS ifbS hschedS i hi hiS
-  obtain ⟨kD, aD', hvD, _⟩ := hhb.no_forgery uD tD aD ifbD hschedD i hi hiD
+  obtain ⟨kS, aS', _hcausalS, hvS, _⟩ := hhb.no_forgery uS tS aS ifbS hschedS i hi hiS
+  obtain ⟨kD, aD', _hcausalD, hvD, _⟩ := hhb.no_forgery uD tD aD ifbD hschedD i hi hiD
   have hsSlot : aS.data.slot ≤ es := by simpa only [hsrcEq] using hsrcSlot
   have hdSlot : aD.data.slot ≤ es := by simpa only [hdstEq] using hdstSlot
   have hleSD : get_latest_message_epoch cfg src ≤
@@ -173,7 +173,8 @@ theorem recorded_lm_is_newest
   -- existence of a setting vote with block `lm.root`
   obtain ⟨a', u, tsc, ifb, hsched, hvin, hbbr, hslotep⟩ :=
     E.schedLMProv cfg ext hgen v₀ n₀ i lm hlm
-  obtain ⟨m1, a'', hvote', hdata'⟩ := hhb.no_forgery u tsc a' ifb hsched i hi hvin
+  obtain ⟨m1, a'', _hcausal, hvote', hdata'⟩ :=
+    hhb.no_forgery u tsc a' ifb hsched i hi hvin
   -- `a'.data.slot` is `i`'s vote slot; identify it with the provenance slot `≤ es`
   have hcomm0 : i ∈ E.committee a'.data.slot :=
     hhb.votes_assigned i hi a'.data.slot (by rw [hvote']; exact Option.some_ne_none _)

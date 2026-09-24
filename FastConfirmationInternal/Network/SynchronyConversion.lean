@@ -15,11 +15,13 @@ end Execution
 Gloas also needs envelope delivery and data-availability relay. -/
 def Synchrony.toPaperSafetySynchrony
     (h : Synchrony cfg ext E)
-    (henvelope : EnvelopeDelivery cfg ext E)
-    (hdata : DataAvailabilityRelay cfg ext E) :
+    (henvelope : DeadlineEnvelopeDelivery cfg ext E)
+    (hdata : DeadlineDataAvailabilityRelay cfg ext E) :
     NextSlotSynchronyPremises cfg ext E where
+  delta := h.delta
   attestation_delivery := h.attestation_delivery
-  block_relay := h.block_relay
+  deadline_block_relay := h.deadline_block_relay
+  boundary_block_prefix := h.boundary_block_prefix
   envelope_delivery := henvelope
   data_availability_relay := hdata
   attester_slashing_relay := h.attester_slashing_relay
