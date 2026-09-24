@@ -203,4 +203,6 @@ public import FastConfirmationProofs.Safety.ObservedResetSafety
 public import FastConfirmationProofs.Safety.ObservedRestartSafety
 public import FastConfirmationProofs.Weak
 
+public import FastConfirmationProofs.Weak.LocalFFG.ActualRunExactInterpretation
+
 /-! Contents of the Proofs library. -/
