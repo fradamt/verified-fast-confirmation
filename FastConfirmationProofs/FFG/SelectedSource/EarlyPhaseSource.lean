@@ -93,6 +93,56 @@ theorem fcr_currentSlotHead_known
           (E.store_storeLE cfg ext v (Nat.le_succ n)).1 hknownN
         simpa only [Execution.fcr, hcall, if_false] using hcarry
 
+/-- The current-slot head cache was read from an honest store in its current
+slot by the attestation deadline. A call refreshes it at the new slot's first
+second; between calls the cached root and its earlier origin persist. -/
+theorem fcr_currentSlotHead_deadline_origin
+    (hdiv : 1000 ∣ cfg.slot_duration_ms)
+    (hgenTime : E.genesis_store.genesis_time ≤ E.genesis_store.time)
+    (hgen : ∃ (anchor_state : BeaconState Root)
+      (anchor_block : SignedBeaconBlock Root),
+      E.genesis_store = get_forkchoice_store cfg anchor_state anchor_block ∧
+        anchor_state.slot = anchor_block.message.slot ∧
+        anchor_block.message.parent_root ≠ anchor_block.root)
+    (hdom : SelectedMarginDomain cfg ext E)
+    (v : ValidatorIndex) (hv : v ∈ E.honest) (n : Nat)
+    (hH : E.WithinHorizon cfg n) :
+    ∃ origin : ℕ,
+      origin ≤ n ∧ E.slot_at cfg origin = E.slot_at cfg n ∧
+      origin ≤ E.slot_start cfg (E.slot_at cfg origin) +
+        get_attestation_due_ms cfg / 1000 ∧
+      (E.fcr cfg ext v n).current_slot_head ∈
+        (E.store cfg ext v origin).block_roots := by
+  induction n with
+  | zero =>
+      refine ⟨0, Nat.le_refl 0, rfl, Nat.zero_le _, ?_⟩
+      exact E.fcr_currentSlotHead_known cfg ext hgen hdom v hv 0 hH
+  | succ n ih =>
+      have hnH : E.WithinHorizon cfg n :=
+        E.withinHorizon_mono cfg (Nat.le_succ n) hH
+      by_cases hcall : get_current_slot cfg (E.store cfg ext v (n + 1)) >
+          get_current_slot cfg (E.store cfg ext v n)
+      · have hcallAt : E.IsScheduledFCRCallAt cfg ext v n := hcall
+        have hstart := E.scheduled_fcr_call_at_slot_start cfg ext
+          hdiv hgenTime hcallAt
+        have hhead := E.head_root_known_of_selectedMarginDomain cfg ext
+          hdom hv (n + 1) hH
+        refine ⟨n + 1, Nat.le_refl _, rfl, ?_, ?_⟩
+        · rw [hstart]
+          omega
+        · simp only [Execution.fcr, hcall, if_true,
+            on_fast_confirmation, update_fast_confirmation_variables]
+          split_ifs <;> exact hhead
+      · obtain ⟨origin, horigin, hslot, hdeadline, hroot⟩ := ih hnH
+        have hslotEq : E.slot_at cfg (n + 1) = E.slot_at cfg n := by
+          have hnot : E.slot_at cfg (n + 1) ≤ E.slot_at cfg n := by
+            simpa only [E.store_current_slot cfg ext v] using
+              Nat.le_of_not_gt hcall
+          exact Nat.le_antisymm hnot (E.slot_at_mono cfg (Nat.le_succ n))
+        refine ⟨origin, horigin.trans (Nat.le_succ n),
+          hslot.trans hslotEq.symm, hdeadline, ?_⟩
+        simpa only [Execution.fcr, hcall, if_false] using hroot
+
 /-- Immediately before an executable `fcrStoreAtCall`, its previous-slot-head cache
 is the preceding recurrence's known current-slot head, hence is known in the
 step store as well. -/
@@ -357,13 +407,49 @@ theorem StrictSelectedResultMechanicalFacts.fcrStep_previous_endpointRecentSourc
       unfold IsScheduledFCRCallAt at hcall
       simpa only [E.store_current_slot cfg ext v (n + 1),
         E.store_current_slot cfg ext v n] using hcall
+    have hgenTime : E.genesis_store.genesis_time ≤
+        E.genesis_store.time := by
+      rw [hgen]
+      exact (wellFormedStore_get_forkchoice_store cfg ast ablk
+        hgenSlot hgenParent).time_ge_genesis
+    obtain ⟨origin, horiginLe, horiginSlot, horiginDeadline,
+        hseedOrigin⟩ :=
+      E.fcr_currentSlotHead_deadline_origin cfg ext hT.whole_seconds
+        hgenTime hT.genesis_structure hdomain v hv n hnH
+    have horiginH : E.WithinHorizon cfg origin :=
+      E.withinHorizon_mono cfg (horiginLe.trans (Nat.le_succ n)) hn1H
+    have hseedOrigin' : (E.fcrStoreAtCall cfg ext v n).previous_slot_head ∈
+        (E.store cfg ext v origin).block_roots := by
+      rw [E.fcrStep_previousSlotHead_eq_currentSlotHead]
+      exact hseedOrigin
+    have hstartCall : E.slot_start cfg (E.slot_at cfg (n + 1)) =
+        n + 1 :=
+      E.scheduled_fcr_call_at_slot_start cfg ext hT.whole_seconds
+        hgenTime hcall
+    have hstartTarget : E.slot_start cfg (E.slot_at cfg origin + 1) ≤ m := by
+      have hslot : E.slot_at cfg origin + 1 ≤ E.slot_at cfg (n + 1) := by
+        rw [horiginSlot]
+        exact Nat.succ_le_of_lt hslotAdvance
+      exact (E.slot_start_mono cfg hslot).trans
+        (hstartCall.le.trans hnm)
+    have hrelayOutcome :
+        (E.fcrStoreAtCall cfg ext v n).previous_slot_head ∈
+          (E.store cfg ext w m).block_roots ∨
+        PermanentBlockExclusion cfg ext E v origin
+          (E.fcrStoreAtCall cfg ext v n).previous_slot_head w m :=
+      hsync.deadline_block_relay v hv origin _ horiginH
+        hseedOrigin' horiginDeadline w hw m hmH hstartTarget
+        (lt_of_le_of_lt horiginLe (Nat.lt_succ_self n) |>.trans_le hnm)
     have hrelayGate : E.slot_at cfg n + 1 ≤ E.slot_at cfg (m + 1) :=
       (Nat.succ_le_iff.mpr hslotAdvance).trans
         (E.slot_at_mono cfg
           (hnm.trans (Nat.le_succ m)))
     have hseedM : (E.fcrStoreAtCall cfg ext v n).previous_slot_head ∈
-        (E.store cfg ext w m).block_roots :=
-      hsync.block_relay v hv n _ hnH hseedN w hw m hmH hrelayGate
+        (E.store cfg ext w m).block_roots := by
+      rcases hrelayOutcome with hknown | _hexcluded
+      · exact hknown
+      · exact hsync.block_relay v hv n _ hnH hseedN w hw m hmH
+          hrelayGate
     exact E.recentSourceSeedAt_endpoint_of_explicitSeed_sameEpoch
       cfg ext B hT.wellFormed hT.externals_coherence
       hgen hgenSlot hgenParent hqueryCausal hendpointCausal
