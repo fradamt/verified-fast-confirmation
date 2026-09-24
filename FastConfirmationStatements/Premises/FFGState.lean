@@ -7,8 +7,8 @@ public import FastConfirmationModel.Execution.ScheduledPrefixes
 /-!
 # Spec / Model / FFGStateSemantics
 
-The executable transcription deliberately omits beacon-block bodies and most
-of the beacon-state FFG machinery.  This file supplies the corresponding
+The executable transcription retains the ordered FFG attestations in block
+bodies but abstracts most of the beacon-state FFG machinery. This file supplies the corresponding
 semantic objects while keeping fork-choice safety, filtering, and selected FCR
 results outside the model boundary.
 
@@ -64,23 +64,16 @@ def CanonicalThroughoutEpoch (b : Root) (e : Epoch) : Prop :=
         (get_head cfg (E.store cfg ext w m))
         (get_node_for_root b) = true
 
-/-- Evidence for one attestation assigned to a carrier block.
-
-The projected `BeaconBlock` has no ordinary FFG attestation body. The supplied
-inclusion relation assigns the attestation to a carrier; this evidence does
-not check body membership. It identifies a carrier in the execution, a block
-origin for the wire attestation, a same-registry state with a true validity
-answer, committee membership, and the required chain relations. The
-validation state need not be a reachable or prepared handler state. -/
+/-- Evidence for one attestation in a carrier block body. Accepted-carrier
+evidence below also fixes the handler-path validation state. -/
 structure IncludedAttestationEvidence
     (validity : BeaconState Root → Attestation Root → Bool)
     (carrier : Root) (a : Attestation Root) where
   carrier_message : BeaconBlock Root
   carrier_at : E.BlockAt carrier carrier_message
+  in_carrier_body : a ∈ carrier_message.attestations
   received_from_block : ∃ (w : ValidatorIndex) (n : ℕ),
     Event.attestation a true ∈ E.schedule w n
-  /-- A state with the execution registry and a true validity answer.
-      It need not be reached by the execution or prepared by a handler. -/
   validation_state : BeaconState Root
   validation_registry : validation_state.validators = E.registry
   valid : validity validation_state a = true
@@ -101,10 +94,8 @@ structure IncludedAttestationEvidence
   attesters_in_registry : ∀ i ∈ a.attesting_indices,
     i < E.registry.length
 
-/-- A supplied inclusion relation for ordinary FFG attestations.
-The projected `BeaconBlock` has no ordinary FFG attestation body. The evidence
-requires a carrier and a received vote, but does not check body membership or
-the origin of the validation state. -/
+/-- A supplied inclusion relation for ordinary FFG attestations, checked
+against carrier body membership. -/
 structure IncludedAttestationRelation
     (validity : BeaconState Root → Attestation Root → Bool) where
   /-- Supplied assignment of an attestation to a carrier block. -/
@@ -124,16 +115,23 @@ structure CausalCarrierAttestationEvidence
     extends IncludedAttestationEvidence cfg E validity carrier a where
   carrier_accepted :
     E.AcceptedBlockAt cfg ext carrier carrier_message
+  /-- An honest in-horizon store with the target block state keyed. -/
+  validation_store : Store Root
+  validation_store_honest : E.HonestCausalStore cfg ext validation_store
+  validation_target_known : a.data.target.root ∈ validation_store.block_roots
+  /-- The state read by `on_attestation` after target checkpoint preparation.
+  The prepared state need not itself be keyed. -/
+  validation_state_from_target :
+    validation_state =
+      let base := validation_store.block_states a.data.target.root
+      let start := compute_start_slot_at_epoch cfg a.data.target.epoch
+      if base.slot < start then ext.process_slots base start else base
 
-/-- A supplied positive inclusion relation with accepted carrier evidence.
-The projected block has no ordinary FFG attestation body, so the evidence does
-not check whether the carrier contains the vote. The validation state needs
-only the execution registry and a true validity answer. It need not be a
-reachable or prepared handler state. -/
+/-- A supplied positive inclusion relation with an accepted carrier, actual
+body membership, and a handler-path validation state. -/
 structure CausalCarrierAttestationRelation
     (validity : BeaconState Root → Attestation Root → Bool) where
-  /-- Supplied carrier-vote assignment. Evidence ties the vote to an accepted
-      carrier and a block-origin receipt, but not to carrier body membership. -/
+  /-- Carrier-vote assignment with checked body and validation origin. -/
   Included : Root → Attestation Root → Prop
   evidence : ∀ {carrier : Root} {a : Attestation Root},
     Included carrier a →
@@ -381,12 +379,9 @@ structure FFGSelectorsAndCheckpointReadsMatchBeaconStates
       c = get_checkpoint_for_block cfg store r c.epoch
 
 /-- The exact-prefix bundle with causal-store checkpoint reflection.
-Its accepted inclusion relation is supplied with causal carrier evidence.
-The projected block has no ordinary FFG attestations, so this bundle does not
-check votes against carrier block bodies. Its validating state needs only the
-execution registry and a true validity answer, not a reachable or prepared
-handler state. Safety claims hold for every relation that meets these fields;
-they do not alone certify votes in real block bodies. The bundle does not
+Its accepted inclusion relation checks carrier body membership and validates
+on a target block state prepared along the handler path from an honest,
+in-horizon store. The prepared state need not be keyed. The bundle does not
 cover delayed queues or arbitrary global action traces. -/
 structure CausalPrefixFFGInterpretation (E : Execution Root) where
   anchor : Checkpoint Root

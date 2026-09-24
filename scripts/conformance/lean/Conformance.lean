@@ -174,6 +174,9 @@ def parseBlock (j : J) : Except String (Nat × BeaconBlock Nat) := do
     proposer_index := ← natField j "proposer_index"
     parent_block_hash := ← rootField j "parent_block_hash"
     block_hash := ← rootField j "block_hash"
+    -- Historical FCR traces omit ordinary body attestations. FCR does not
+    -- read them, so replay uses the empty projection for this field.
+    attestations := []
     payload_attestations := attestations.toList
   })
 

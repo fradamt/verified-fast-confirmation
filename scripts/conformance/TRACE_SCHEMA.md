@@ -116,6 +116,10 @@ The store has these fields:
 Each block entry has `root`, `slot`, `parent_root`, `proposer_index`,
 `parent_block_hash`, `block_hash`, and `payload_attestations`. The two block
 hash fields come from `body.signed_execution_payload_bid.message`.
+The trace omits ordinary `body.attestations`; the Lean runner sets the new
+`BeaconBlock.attestations` field to `[]` when replaying these records. FCR
+outputs do not read that field. This default applies to FCR trace comparison,
+not to accepted FFG inclusion evidence.
 Each payload attestation contains `attesting_indices`, `data`, and
 `signature`. The exporter calls the source `get_indexed_payload_attestation`
 with the stored post-state to obtain the indices. Data contains `slot`,

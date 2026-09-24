@@ -115,8 +115,7 @@ unrealized evidence for `c`.  AU at a tip is defined below by inheriting such
 evidence from a carrier on the tip's chain. -/
 structure ChainFFGState (E : Execution Root)
     (anchor : Checkpoint Root) where
-  /-- Indexed-attestation validity oracle used by the omitted block-body
-  projection.  `FFGTransitionCoherence` identifies it with the execution's
+  /-- Indexed-attestation validity oracle. `FFGTransitionCoherence` identifies it with the execution's
   actual `Externals.is_valid_indexed_attestation`. -/
   attestationValidity : BeaconState Root → Attestation Root → Bool
 

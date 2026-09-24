@@ -288,12 +288,14 @@ def acceptedIncludedEvidenceAt (s : Slot) (hlo : 4 ≤ s) (hhi : s ≤ 6) :
       witnessExternals.is_valid_indexed_attestation carrierRoot (vote s) where
   carrier_message := carrierSignedBlock.message
   carrier_at := carrier_blockAt
+  in_carrier_body := by
+    interval_cases s <;> simp [carrierSignedBlock, vote4, vote5, vote6]
   received_from_block := ⟨0, 7, includedVote_true_scheduled hlo hhi⟩
-  validation_state := anchorState
+  validation_state := witnessExternals.process_slots childState 4
   validation_registry := by
-    rfl
+    simpa [witnessExternals] using witnessProcessSlots_registry childState 4
   valid := by
-    apply (witness_valid_iff anchorState (vote s)).2
+    apply (witness_valid_iff (witnessExternals.process_slots childState 4) (vote s)).2
     exact ⟨by decide, vote_mem_ground (hhi.trans_lt (by decide : 6 < 16))⟩
   slot_within_horizon := by
     rw [vote_data_slot]
@@ -322,6 +324,17 @@ def acceptedIncludedEvidenceAt (s : Slot) (hlo : 4 ≤ s) (hhi : s ≤ 6) :
     subst i
     exact Nat.mod_lt s (by decide)
   carrier_accepted := carrier_acceptedBlockAt
+  validation_store := childPostPrefix.store witnessConfig witnessExternals
+  validation_store_honest := by
+    apply Execution.HonestCausalStore.scheduledPrefix childPostPrefix
+    · decide
+    · simpa [childPostPrefix, childPrefix] using
+        (time_within_of_lt_sixteen (show 1 < 16 by decide))
+  validation_target_known := by
+    rw [includedVote_data hlo hhi]
+    simpa [childSignedBlock] using childTransition.root_known
+  validation_state_from_target := by
+    interval_cases s <;> rfl
 
 def witnessAcceptedIncludedAttestations :
     Execution.CausalCarrierAttestationRelation witnessConfig
@@ -331,47 +344,29 @@ def witnessAcceptedIncludedAttestations :
   evidence := by
     intro carrier a h
     rw [h.1]
-    refine
-      { carrier_message := carrierSignedBlock.message
-        carrier_at := carrier_blockAt
-        received_from_block := by
-          rcases h.2 with rfl | rfl | rfl
-          · exact ⟨0, 7, includedVote_true_scheduled (by decide) (by decide)⟩
-          · exact ⟨0, 7, includedVote_true_scheduled (by decide) (by decide)⟩
-          · exact ⟨0, 7, includedVote_true_scheduled (by decide) (by decide)⟩
-        validation_state := anchorState
-        validation_registry := by rfl
-        valid := by
-          rcases h.2 with rfl | rfl | rfl <;>
-            apply (witness_valid_iff anchorState _).2 <;>
-            exact ⟨by decide, vote_mem_ground (by decide)⟩
-        slot_within_horizon := by
-          rcases h.2 with rfl | rfl | rfl <;>
-            exact slot_within_of_lt_sixteen (by decide)
-        slot_before_carrier := by
-          rcases h.2 with rfl | rfl | rfl <;> decide
-        target_epoch := by
-          rcases h.2 with rfl | rfl | rfl <;> decide
-        head_descends_target := by
-          rcases h.2 with rfl | rfl | rfl <;>
-            exact .refl childRoot
-        target_on_chain := by
-          rcases h.2 with rfl | rfl | rfl <;>
-            exact carrier_descends_child
-        target_descends_source := by
-          rcases h.2 with rfl | rfl | rfl <;>
-            exact child_descends_anchor
-        attesters_in_committee := by
-          intro i hi
-          rcases h.2 with rfl | rfl | rfl <;>
-            simpa [vote4, vote5, vote6, vote, witnessExecution,
-              witnessCommittee] using hi
-        attesters_in_registry := by
-          intro i hi
-          rcases h.2 with rfl | rfl | rfl <;>
-            simp [vote4, vote5, vote6, vote] at hi <;>
-            subst i <;> decide
-        carrier_accepted := carrier_acceptedBlockAt }
+    by_cases h4 : a = vote4
+    · subst a
+      exact acceptedIncludedEvidenceAt 4 (by decide) (by decide)
+    by_cases h5 : a = vote5
+    · subst a
+      exact acceptedIncludedEvidenceAt 5 (by decide) (by decide)
+    have h6 : a = vote6 := by
+      rcases h.2 with h4' | h5' | h6'
+      · exact False.elim (h4 h4')
+      · exact False.elim (h5 h5')
+      · exact h6'
+    subst a
+    exact acceptedIncludedEvidenceAt 6 (by decide) (by decide)
+
+/-- Every accepted included vote occurs in its carrier's actual FFG body. -/
+theorem no_included_vote_missing_from_body
+    {carrier : WitnessRoot} {a : Attestation WitnessRoot}
+    (h : witnessAcceptedIncludedAttestations.Included carrier a) :
+    ∃ b : BeaconBlock WitnessRoot,
+      witnessExecution.AcceptedBlockAt witnessConfig witnessExternals carrier b ∧
+        a ∈ b.attestations := by
+  let ev := witnessAcceptedIncludedAttestations.evidence h
+  exact ⟨ev.carrier_message, ev.carrier_accepted, ev.in_carrier_body⟩
 
 def witnessIncludedAnchorChildLink :
     IncludedSupermajorityLink witnessConfig witnessExecution witnessIncluded
