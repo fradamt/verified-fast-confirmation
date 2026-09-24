@@ -15,8 +15,8 @@ end Execution
 Gloas also needs envelope delivery and data-availability relay. -/
 def Synchrony.toPaperSafetySynchrony
     (h : Synchrony cfg ext E)
-    (henvelope : EnvelopeDelivery cfg ext E)
-    (hdata : DataAvailabilityRelay cfg ext E) :
+    (henvelope : DeadlineEnvelopeDelivery cfg ext E)
+    (hdata : DeadlineDataAvailabilityRelay cfg ext E) :
     NextSlotSynchronyPremises cfg ext E where
   delta := h.delta
   attestation_delivery := h.attestation_delivery

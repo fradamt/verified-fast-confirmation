@@ -130,25 +130,31 @@ structure Synchrony (E : Execution Root) : Prop where
     E.slot_at cfg n + 1 ≤ E.slot_at cfg m →
     i ∈ (E.store cfg ext w m).equivocating_indices
 
-/-- A verified envelope received by an honest node is scheduled at every
-honest receiver by the block-relay deadline. The receiver processes preceding
-events first: its block must be known at the envelope's position, since the
-handler rejects an envelope for an unknown block. -/
-def EnvelopeDelivery (E : Execution Root) : Prop :=
+/-- Verified envelopes are gossiped within positive Δ. The source cutoff and
+strict `A + Δ < S` put them before the next slot. Honest clients delay a
+handler until its block is known and process the ready envelope before a
+boundary vote. The exact finalized-guard exemption is evaluated before the
+tick, as in `DeadlineBlockRelay`; late and parent-missing blocks are not exempt.
+The service occurrence and the vote prefix refer to the same envelope event. -/
+def DeadlineEnvelopeDelivery (E : Execution Root) : Prop :=
   ∀ v ∈ E.honest, ∀ n r,
     E.WithinHorizon cfg n →
     is_payload_verified (E.store cfg ext v n) r = true →
+    r ∈ (E.store cfg ext v n).block_roots →
+    n ≤ E.slot_start cfg (E.slot_at cfg n) +
+      get_attestation_due_ms cfg / 1000 →
     ∀ w ∈ E.honest, ∀ m,
       E.WithinHorizon cfg m →
-      E.slot_at cfg n + 1 ≤ E.slot_at cfg (m + 1) →
+      E.slot_start cfg (E.slot_at cfg n + 1) ≤ m → n < m →
+      PermanentBlockExclusion cfg ext E v n r w
+        (E.slot_start cfg (E.slot_at cfg n + 1) - 1) ∨
       ∃ (d k : ℕ) (signed : SignedExecutionPayloadEnvelope Root)
         (sourceObservation receiverObservation : EnvelopeObservation Root)
         (before after : List (Event Root)),
-        0 < d ∧ d ≤ m ∧
-        E.slot_at cfg n + 1 ≤ E.slot_at cfg (d + 1) ∧ k ≤ n ∧
+        n < d ∧ d ≤ m ∧
+        E.slot_start cfg (E.slot_at cfg n + 1) ≤ d ∧ k ≤ n ∧
         Event.execution_payload_envelope signed sourceObservation ∈ E.schedule v k ∧
         signed.message.beacon_block_root = r ∧
-        r ∈ (E.store cfg ext v n).block_roots ∧
         ext.is_data_available r sourceObservation = true ∧
         ext.verify_execution_payload_envelope
           ((E.store cfg ext v n).block_states r) signed sourceObservation = true ∧
@@ -156,19 +162,31 @@ def EnvelopeDelivery (E : Execution Root) : Prop :=
           Event.execution_payload_envelope signed receiverObservation :: after ∧
         r ∈ (before.foldl
           (fun store event => (apply_event cfg ext store event).getD store)
-          (on_tick cfg (E.store cfg ext w (d - 1)) (E.time_at d))).block_roots
+          (on_tick cfg (E.store cfg ext w (d - 1))
+            (E.time_at d))).block_roots ∧
+        (d = E.slot_start cfg (E.slot_at cfg n + 1) →
+          ∀ (a : Attestation Root) (pre suf : List (Event Root)),
+            E.schedule w d = pre ++ Event.attestation a false :: suf →
+            ∃ middle : List (Event Root),
+              pre = before ++
+                Event.execution_payload_envelope signed receiverObservation :: middle)
 
-/-- Data available at an honest node's envelope observation is available at
-every honest receiver's corresponding observation by the relay deadline. -/
-def DataAvailabilityRelay (E : Execution Root) : Prop :=
+/-- Available envelope data follows the same positive-Δ gossip bound and
+source deadline. Honest data service makes it available at the receiver's
+corresponding envelope observation after the next slot start. This remains
+an explicit data-service contract; block receipt alone does not prove data
+availability. Both observations are at distinct execution seconds. -/
+def DeadlineDataAvailabilityRelay (E : Execution Root) : Prop :=
   ∀ v ∈ E.honest, ∀ k n (signed : SignedExecutionPayloadEnvelope Root)
       (sourceObservation : EnvelopeObservation Root),
     k ≤ n → E.WithinHorizon cfg n →
     Event.execution_payload_envelope signed sourceObservation ∈ E.schedule v k →
     ext.is_data_available signed.message.beacon_block_root sourceObservation = true →
+    n ≤ E.slot_start cfg (E.slot_at cfg n) +
+      get_attestation_due_ms cfg / 1000 →
     ∀ w ∈ E.honest, ∀ m,
       E.WithinHorizon cfg m →
-      E.slot_at cfg n + 1 ≤ E.slot_at cfg (m + 1) →
+      E.slot_start cfg (E.slot_at cfg n + 1) ≤ m → n < m →
       ∀ receiverSigned receiverObservation,
         receiverSigned.message.beacon_block_root = signed.message.beacon_block_root →
         Event.execution_payload_envelope receiverSigned receiverObservation ∈ E.schedule w m →
@@ -201,8 +219,8 @@ structure NextSlotSynchronyPremises (E : Execution Root) : Prop where
   deadline_block_relay : DeadlineBlockRelay cfg ext E
   /-- Ready cutoff-time blocks precede next-slot attestation handlers. -/
   boundary_block_prefix : DeadlineBoundaryBlockPrefix cfg ext E
-  envelope_delivery : EnvelopeDelivery cfg ext E
-  data_availability_relay : DataAvailabilityRelay cfg ext E
+  envelope_delivery : DeadlineEnvelopeDelivery cfg ext E
+  data_availability_relay : DeadlineDataAvailabilityRelay cfg ext E
   attester_slashing_relay : ∀ v ∈ E.honest, ∀ n (i : ValidatorIndex),
     E.WithinHorizon cfg n →
     i ∈ (E.store cfg ext v n).equivocating_indices →

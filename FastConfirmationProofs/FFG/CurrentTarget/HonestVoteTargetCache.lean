@@ -503,11 +503,17 @@ theorem honestVoteTarget_received_at_delivery
       (pre.foldl (fun store event => (apply_event cfg ext store event).getD store)
         ticked) a.data.beacon_block_root = true := by
     intro hi
-    rw [ha, hticked]
-    exact E.honest_payload_verified_at_delivery_prefix cfg ext hwf hsyn hec hv hw hHn
-      (E.withinHorizon_mono cfg (Nat.le_succ deliveryPred)
-        (by simpa only [Nat.succ_eq_add_one, ← hdeliveryEq] using hHdeliver))
-      hrelayTiming pre s index hi
+    have hsource : is_payload_verified (E.store cfg ext v n)
+        a.data.beacon_block_root = true := by
+      rw [ha] at hi ⊢
+      exact honest_attestation_index_one_payload_verified cfg ext
+        (E.store cfg ext v n) s index v hi
+    have hp := E.payload_verified_at_cutoff_delivery_prefix cfg ext hwf hsyn hec
+      hv hw hHn (by simpa only [hn] using hHdeliver) hdeadline
+      (by simpa only [hn] using hnBeforeDelivery)
+      hsourceWalk.root_mem hsource (hpath.not_excluded cfg ext)
+      (by simpa only [hn, hdeliveryEq] using hscheduleEq)
+    simpa only [hn, hdeliveryEq, ticked, Nat.add_sub_cancel] using hp
   have hvalidates : validate_on_attestation cfg
       (pre.foldl
         (fun store event => (apply_event cfg ext store event).getD store)

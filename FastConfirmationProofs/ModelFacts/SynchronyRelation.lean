@@ -14,8 +14,8 @@ variable (cfg : Config) (ext : Externals Root)
 synchrony bundle. -/
 theorem synchrony_and_delivery_iff_nextSlot
     (E : Execution Root) :
-    (Synchrony cfg ext E ∧ EnvelopeDelivery cfg ext E ∧
-      DataAvailabilityRelay cfg ext E) ↔
+    (Synchrony cfg ext E ∧ DeadlineEnvelopeDelivery cfg ext E ∧
+      DeadlineDataAvailabilityRelay cfg ext E) ↔
     NextSlotSynchronyPremises cfg ext E := by
   constructor
   · rintro ⟨hs, he, hd⟩

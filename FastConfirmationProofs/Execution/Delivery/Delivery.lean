@@ -85,6 +85,15 @@ end VotePathAdmissible
 
 namespace VotePathAdmissible
 
+/-- The first root of an admissible path is not excluded before the tick. -/
+theorem not_excluded {E : Execution Root} {v w : ValidatorIndex}
+    {n boundary : ℕ} {slot : Slot} {r : Root}
+    (h : VotePathAdmissible cfg ext E v n w boundary slot r) :
+    ¬ PermanentBlockExclusion cfg ext E v n r w boundary := by
+  cases h with
+  | stop _ hnot _ => exact hnot
+  | step _ hnot _ _ => exact hnot
+
 /-- The refined relay delivers the root of an admissible path at every
 receiver second at or after the next slot start. -/
 theorem root_known_of_deadline_relay
@@ -438,106 +447,90 @@ private theorem foldl_payloadLE (pre : List (Event Root)) (store : Store Root) :
   | cons event pre ih =>
       exact (apply_event_getD_payloadLE cfg ext store event).trans (ih _)
 
-/-- Operational envelope delivery, availability relay, and observation
-determinism imply the former verified-payload relay outcome. State agreement
-is derived from deterministic block transitions in `BlockStateAgreement`. -/
-theorem Execution.payload_envelope_relay_of_parts {E : Execution Root}
+/-- Cutoff envelope service verifies the payload before the boundary vote.
+Block-state agreement and deterministic verification justify acceptance;
+the service prefix clause orders that accepted event before this vote. -/
+theorem Execution.payload_verified_at_cutoff_delivery_prefix {E : Execution Root}
     (hwf : WellFormedExecution E)
     (hsyn : NextSlotSynchronyPremises cfg ext E)
     (hec : BeaconExternalsPremises cfg ext E)
     {v w : ValidatorIndex} (hv : v ∈ E.honest) (hw : w ∈ E.honest)
-    {n m : ℕ} (hHn : E.WithinHorizon cfg n) (hHm : E.WithinHorizon cfg m)
-    (htiming : E.slot_at cfg n + 1 ≤ E.slot_at cfg (m + 1))
-    {r : Root} (hverified : is_payload_verified (E.store cfg ext v n) r = true) :
-    is_payload_verified (E.store cfg ext w m) r = true := by
-  obtain ⟨d, k, signed, sourceObservation, receiverObservation, before, after,
-      hpositive, hdm, htimingD, hkn, hsourceEvent, hroot, hsourceKnown, hsourceData,
-      hsourceVerify, hschedule, hreceiverKnown⟩ :=
-    hsyn.envelope_delivery v hv n r hHn hverified w hw m hHm htiming
-  have hHd : E.WithinHorizon cfg d := E.withinHorizon_mono cfg hdm hHm
-  have hAtD : is_payload_verified (E.store cfg ext w d) r = true := by
-    cases d with
-    | zero => omega
-    | succ pred =>
-      have hreceiverEvent :
-          Event.execution_payload_envelope signed receiverObservation ∈
-            E.schedule w (pred + 1) := by
-        rw [hschedule]
-        exact List.mem_append_right _ (List.mem_cons_self ..)
-      have hreceiverData :
-          ext.is_data_available signed.message.beacon_block_root receiverObservation = true :=
-        hsyn.data_availability_relay v hv k n signed sourceObservation
-          hkn hHn hsourceEvent (hroot ▸ hsourceData)
-          w hw (pred + 1) hHd htimingD signed receiverObservation rfl hreceiverEvent
-      let ticked := on_tick cfg (E.store cfg ext w pred) (E.time_at (pred + 1))
-      let receiverPrefix := before.foldl
-        (fun store event => (apply_event cfg ext store event).getD store) ticked
-      have hprefixCausal : E.CausalStore cfg ext receiverPrefix := by
-        apply Execution.HonestCausalStore.causal
-        exact E.honestCausalStore_prefix cfg ext w hw pred hHd before
-          (Event.execution_payload_envelope signed receiverObservation :: after)
-          hschedule
-      have hstates :
-          (E.store cfg ext v n).block_states r = receiverPrefix.block_states r :=
-        E.causal_block_states_agree cfg ext hwf hec
-          (E.store_causal cfg ext v n) hprefixCausal hsourceKnown hreceiverKnown
-      have hverifyReceiver :
-          ext.verify_execution_payload_envelope (receiverPrefix.block_states r)
-            signed receiverObservation = true := by
-        rw [← hstates, ← hec.verify_envelope_deterministic
-          ((E.store cfg ext v n).block_states r) signed sourceObservation receiverObservation]
-        exact hsourceVerify
-      let acceptedStore : Store Root :=
-        { receiverPrefix with
-          payloads := Function.update receiverPrefix.payloads r (some signed.message) }
-      have hknownR : r ∈ receiverPrefix.block_roots := by
-        simpa only [receiverPrefix, ticked, Nat.add_sub_cancel_left] using hreceiverKnown
-      have hdataR : ext.is_data_available r receiverObservation = true := by
-        rw [← hroot]
-        exact hreceiverData
-      have haccepted :
-          on_execution_payload_envelope ext receiverPrefix signed receiverObservation =
-            some acceptedStore := by
-        simp [on_execution_payload_envelope, hroot, hknownR,
-          hdataR, hverifyReceiver, acceptedStore]
-      have hafterEvent : is_payload_verified
-          ((apply_event cfg ext receiverPrefix
-            (Event.execution_payload_envelope signed receiverObservation)).getD receiverPrefix)
-          r = true := by
-        simp [apply_event, haccepted, is_payload_verified, acceptedStore]
-      change is_payload_verified
-        ((E.schedule w (pred + 1)).foldl
-          (fun store event => (apply_event cfg ext store event).getD store) ticked) r = true
-      rw [hschedule, List.foldl_append]
-      change is_payload_verified
-        (after.foldl
-          (fun store event => (apply_event cfg ext store event).getD store)
-          ((apply_event cfg ext receiverPrefix
-            (Event.execution_payload_envelope signed receiverObservation)).getD receiverPrefix)) r = true
-      exact (foldl_payloadLE cfg ext after _) r hafterEvent
-  exact E.is_payload_verified_mono cfg ext w hdm hAtD
-
-/-- Envelope relay reaches the receiver before its next-slot event fold. Ticking
-and every fold prefix preserve verification, including before an index-one vote. -/
-theorem Execution.honest_payload_verified_at_delivery_prefix {E : Execution Root}
-    (hwf : WellFormedExecution E)
-    (hsyn : NextSlotSynchronyPremises cfg ext E)
-    (hec : BeaconExternalsPremises cfg ext E)
-    {v w : ValidatorIndex} (hv : v ∈ E.honest) (hw : w ∈ E.honest)
-    {n m : ℕ} (hHn : E.WithinHorizon cfg n) (hHm : E.WithinHorizon cfg m)
-    (htiming : E.slot_at cfg n + 1 ≤ E.slot_at cfg (m + 1))
-    (pre : List (Event Root)) (s : Slot) (index : CommitteeIndex)
-    (hindex : (honest_attestation cfg ext (E.store cfg ext v n) s index v).data.index = 1) :
+    {n : ℕ} (hHn : E.WithinHorizon cfg n)
+    (hHN : E.WithinHorizon cfg (E.slot_start cfg (E.slot_at cfg n + 1)))
+    (hdue : n ≤ E.slot_start cfg (E.slot_at cfg n) + get_attestation_due_ms cfg / 1000)
+    (hlt : n < E.slot_start cfg (E.slot_at cfg n + 1))
+    {r : Root} (hsourceKnown : r ∈ (E.store cfg ext v n).block_roots)
+    (hverified : is_payload_verified (E.store cfg ext v n) r = true)
+    (hnot : ¬ PermanentBlockExclusion cfg ext E v n r w
+      (E.slot_start cfg (E.slot_at cfg n + 1) - 1))
+    {a : Attestation Root} {pre suf : List (Event Root)}
+    (hscheduleVote : E.schedule w (E.slot_start cfg (E.slot_at cfg n + 1)) =
+      pre ++ Event.attestation a false :: suf) :
     is_payload_verified
       (pre.foldl (fun store event => (apply_event cfg ext store event).getD store)
-        (on_tick cfg (E.store cfg ext w m) (E.time_at (m + 1))))
-      (honest_attestation cfg ext (E.store cfg ext v n) s index v).data.beacon_block_root = true := by
-  have hsource := honest_attestation_index_one_payload_verified cfg ext
-    (E.store cfg ext v n) s index v hindex
-  have hrelay := E.payload_envelope_relay_of_parts cfg ext hwf hsyn hec
-    hv hw hHn hHm htiming hsource
-  exact (foldl_payloadLE cfg ext pre _)
-    _ ((PayloadLE.of_payloads_eq (on_tick_payloads cfg _ _)) _ hrelay)
+        (on_tick cfg (E.store cfg ext w (E.slot_start cfg (E.slot_at cfg n + 1) - 1))
+          (E.time_at (E.slot_start cfg (E.slot_at cfg n + 1))))) r = true := by
+  obtain ⟨d, k, signed, sourceObservation, receiverObservation, before, after,
+      hnd, hdm, hNd, hkn, hsourceEvent, hroot, hsourceData,
+      hsourceVerify, hschedule, hreceiverKnown, hprefix⟩ :=
+    (hsyn.envelope_delivery v hv n r hHn hverified hsourceKnown hdue w hw
+      _ hHN (Nat.le_refl _) hlt).resolve_left hnot
+  have hdN : d = E.slot_start cfg (E.slot_at cfg n + 1) := Nat.le_antisymm hdm hNd
+  have hHd : E.WithinHorizon cfg d := by simpa only [hdN] using hHN
+  have hschedVote : E.schedule w d = pre ++ Event.attestation a false :: suf := by
+    simpa only [hdN] using hscheduleVote
+  obtain ⟨middle, hpre⟩ := hprefix hdN a pre suf hschedVote
+  have hpositive : 0 < d := lt_of_le_of_lt (Nat.zero_le n) hnd
+  obtain ⟨pred, hpred⟩ : ∃ pred, d = pred + 1 := ⟨d - 1, by omega⟩
+  have hreceiverEvent : Event.execution_payload_envelope signed receiverObservation ∈
+      E.schedule w d := by
+    rw [hschedule]
+    exact List.mem_append_right _ (List.mem_cons_self ..)
+  have hreceiverData :
+      ext.is_data_available signed.message.beacon_block_root receiverObservation = true :=
+    hsyn.data_availability_relay v hv k n signed sourceObservation
+      hkn hHn hsourceEvent (hroot ▸ hsourceData) hdue
+      w hw d hHd hNd hnd signed receiverObservation rfl hreceiverEvent
+  let ticked := on_tick cfg (E.store cfg ext w (d - 1)) (E.time_at d)
+  let receiverPrefix := before.foldl
+    (fun store event => (apply_event cfg ext store event).getD store) ticked
+  have hprefixCausal : E.CausalStore cfg ext receiverPrefix := by
+    apply Execution.HonestCausalStore.causal
+    have h := E.honestCausalStore_prefix cfg ext w hw pred
+      (by simpa only [hpred] using hHd) before
+      (Event.execution_payload_envelope signed receiverObservation :: after)
+      (by simpa only [hpred] using hschedule)
+    simpa only [receiverPrefix, ticked, hpred, Nat.add_sub_cancel] using h
+  have hstates :
+      (E.store cfg ext v n).block_states r = receiverPrefix.block_states r :=
+    E.causal_block_states_agree cfg ext hwf hec
+      (E.store_causal cfg ext v n) hprefixCausal hsourceKnown hreceiverKnown
+  have hverifyReceiver :
+      ext.verify_execution_payload_envelope (receiverPrefix.block_states r)
+        signed receiverObservation = true := by
+    rw [← hstates, ← hec.verify_envelope_deterministic
+      ((E.store cfg ext v n).block_states r) signed sourceObservation receiverObservation]
+    exact hsourceVerify
+  let acceptedStore : Store Root :=
+    { receiverPrefix with
+      payloads := Function.update receiverPrefix.payloads r (some signed.message) }
+  have hknownR : r ∈ receiverPrefix.block_roots := hreceiverKnown
+  have hdataR : ext.is_data_available r receiverObservation = true := by
+    rw [← hroot]
+    exact hreceiverData
+  have haccepted :
+      on_execution_payload_envelope ext receiverPrefix signed receiverObservation =
+        some acceptedStore := by
+    simp [on_execution_payload_envelope, hroot, hknownR,
+      hdataR, hverifyReceiver, acceptedStore]
+  have hafterEvent : is_payload_verified
+      ((apply_event cfg ext receiverPrefix
+        (Event.execution_payload_envelope signed receiverObservation)).getD receiverPrefix)
+      r = true := by
+    simp [apply_event, haccepted, is_payload_verified, acceptedStore]
+  rw [← hdN, hpre, List.foldl_append]
+  exact (foldl_payloadLE cfg ext middle _) r hafterEvent
+
 
 /-! ## `validate_on_attestation` at the receiving node
 
@@ -1034,10 +1027,14 @@ theorem Execution.vote_lands {E : Execution Root}
         (pre.foldl (fun store event => (apply_event cfg ext store event).getD store) tb)
         a.data.beacon_block_root = true := by
     intro hi
-    rw [htb]
-    exact E.honest_payload_verified_at_delivery_prefix cfg ext hwf hsyn hec hv hw hHn
-      (E.withinHorizon_mono cfg (by omega : Nm1 ≤ E.slot_start cfg (s + 1)) hHdeliver)
-      htiming pre s index hi
+    have hsource := honest_attestation_index_one_payload_verified cfg ext
+      (E.store cfg ext v n) s index v hi
+    have hp := E.payload_verified_at_cutoff_delivery_prefix cfg ext hwf hsyn hec
+      hv hw hHn (by simpa only [hn] using hHdeliver) hdeadline
+      (by simpa only [hn] using hnBeforeDelivery)
+      hsourceWalk.root_mem hsource (hpath.not_excluded cfg ext)
+      (by simpa only [hn, hNeq] using hl)
+    simpa only [hn, hNeq, tb, Nat.add_sub_cancel] using hp
   -- validate + indexed validity + non-equivocation at the prefix store
   have hval : validate_on_attestation cfg
       (pre.foldl (fun store event => (apply_event cfg ext store event).getD store) tb) a false =
