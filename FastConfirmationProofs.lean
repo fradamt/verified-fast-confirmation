@@ -121,6 +121,7 @@ public import FastConfirmationProofs.FFG.CurrentTarget.CurrentTargetWalkKnownnes
 public import FastConfirmationProofs.FFG.CurrentTarget.HonestVoteTargetCache
 public import FastConfirmationProofs.FFG.SelectedSource.CurrentSameEndpointSource
 public import FastConfirmationProofs.FFG.SelectedSource.EarlyPhaseSource
+public import FastConfirmationProofs.FFG.SelectedSource.TrustedEarlyPhaseSource
 public import FastConfirmationProofs.FFG.SelectedSource.EndpointJustifiedOrientation
 public import FastConfirmationProofs.FFG.SelectedSource.EndpointMargin
 public import FastConfirmationProofs.FFG.SelectedSource.FFGEndpointRealization
