@@ -258,13 +258,28 @@ for the actual run or a head-path contract at the observer.
 operations from the restricted core. These are local proof suppliers; the
 full weak-confirmation fold has not yet been ported to them.
 
-A direct reduction to the old headline bundle stops at two fields. First,
-the old accepted-carrier inclusion evidence needs a separate block-derived
-attestation event and an honest validation store. The local content contract
-now supplies the event at the observer itself, with no remote occurrence.
-Its validation state remains local. Second, the old head-path domain ranges
-over every receiver, including the actual observer; the restricted core
-constrains only the observer's empty-schedule view. The honest-receiver case
-has been proved separately. The remaining weak trajectory proof must use
-these local interfaces before a restricted-premise safety headline can be
-claimed. The existing weak headline types are unchanged.
+The head-path blocker is closed. `ObserverLocalFFG.finalized_prefix_shared`
+compares the local finalized certificate with a shared included certificate,
+using their separate inclusion relations and common checkpoint reads.
+`ObserverLocalFFG.honest_head_path` proves G4 at the actual observer.
+`nonhonest_headPaths` supplies every receiver, and `nonhonest_selectedMargin`
+constructs the complete old selected-margin record for the actual run.
+`nonhonest_weakObserverPremises` then constructs the old observer record.
+These are derived results; no observer receipt deadline was added.
+
+`TrustedCarrierAttestationEvidence` and `TrustedCarrierAttestationRelation`
+make the validation-store predicate explicit. The old carrier evidence maps
+to and from their honest-store instance without changing its type.
+`ObserverLocalFFG.trustedIncludedRelation` supplies the observer-causal-store
+instance, with the accepted carrier, body membership and exact prepared-state
+equation retained. This generalizes the evidence interface; the old global
+FFG interpretation has not yet been ported to it.
+
+The restricted-premise full safety headlines remain open. The remaining
+formation witness requires an individual signed payload in a carrier body,
+where local authenticity gives equal signed data for a body aggregate.
+In addition, a global interpretation must handle the old unguarded exact-link
+accepted-carrier law when an observer schedules a block that is rejected.
+The new local finalized proof keeps certificates separate and does not need
+either reduction. The other weak fold branches still need that explicit
+FFG port. The existing weak headline types are unchanged.

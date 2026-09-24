@@ -1,4 +1,5 @@
 module
+public import FastConfirmationInternal.Weak.TrustedCarrierEvidence
 public import FastConfirmationProofs.Weak.LocalFFG.ObserverSafetySupply
 public import FastConfirmationProofs.Weak.LocalFFG.ObserverFFGFinalization
 public import FastConfirmationProofs.FFG.Certificates.EarlyFinalizingSigner
@@ -82,6 +83,24 @@ def includedRelation (B : E.ObserverLocalFFG cfg ext obs)
         Option.getD_none] at hactive
       simp only [is_active_validator, decide_eq_true_eq] at hactive
       exact Nat.not_lt_zero _ hactive.2
+
+/-- Local causal validation states supply accepted evidence in the explicit
+observer validation domain. No honest-store occurrence is inferred. -/
+def trustedIncludedRelation (B : E.ObserverLocalFFG cfg ext obs)
+    (hobs : obs ∉ E.honest) (core : E.WeakObserverRestrictedCore cfg ext obs)
+    (localInputs : E.ObserverLocalInputs cfg ext obs) :
+    E.TrustedCarrierAttestationRelation cfg ext ext.is_valid_indexed_attestation
+      (E.ObserverCausalStore cfg ext obs) where
+  Included := B.state.included
+  evidence := fun ha => {
+    toIncludedAttestationEvidence := (B.includedRelation hobs core localInputs).evidence ha
+    carrier_accepted := ⟨(B.included_evidence ha).carrier_store,
+      (B.included_evidence ha).carrier_local.causal,
+      (B.included_evidence ha).carrier_known, (B.included_evidence ha).carrier_body⟩
+    validation_store := (B.included_evidence ha).validation_store
+    validation_store_trusted := (B.included_evidence ha).validation_local
+    validation_target_known := (B.included_evidence ha).target_known
+    validation_state_from_target := rfl }
 
 /-- Every local AU entry has a scheduled certificate in the actual run.
 The observer itself witnesses local body handling. -/
