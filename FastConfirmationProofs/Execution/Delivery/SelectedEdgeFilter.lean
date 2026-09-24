@@ -1911,7 +1911,7 @@ noncomputable def
         have hcanonical : E.CanonicalThroughoutEpoch cfg ext
             trace.result (e + 1) :=
           E.canonicalThroughoutNextEpoch_of_selectedCanonical_currentEpoch
-            cfg ext hMargin hv hn1H hselectedQ heCurrent
+            cfg ext hMargin hv hn1H ⟨n, rfl, hcall⟩ hselectedQ heCurrent
               (by simpa only [trace, E.fcrStep_store, hselectedEpoch]
                 using hlate) hIH
         exact E.acceptedSelectedResultFilterOutcome_retainedVisible_of_lateLineage
