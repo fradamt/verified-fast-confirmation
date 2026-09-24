@@ -354,6 +354,88 @@ theorem Execution.store_parentSlotLt (E : Execution Root)
       _ _ (fun b hb => ⟨v, k + 1, hb⟩) ?_
     exact on_tick_WFPlus cfg ablk.message.parent_root _ _ ih
 
+/-- The combined parent and provenance invariant at any completed store,
+retaining the concrete genesis parent needed to replay a schedule prefix. -/
+theorem Execution.store_WFPlus_from_genesis (E : Execution Root)
+    (hwf : WellFormedExecution E) (hec : BeaconExternalsPremises cfg ext E)
+    (ast : BeaconState Root) (ablk : SignedBeaconBlock Root)
+    (hgeq : E.genesis_store = get_forkchoice_store cfg ast ablk)
+    (hslot : ast.slot = ablk.message.slot)
+    (hparent : ablk.message.parent_root ≠ ablk.root)
+    (hanchor : ∀ r ∈ E.genesis_store.block_roots, ∀ w n (b : SignedBeaconBlock Root),
+      Event.block b ∈ E.schedule w n →
+        b.root ≠ (E.genesis_store.blocks r).parent_root)
+    (v : ValidatorIndex) (n : ℕ) :
+    WFPlus ablk.message.parent_root E (E.store cfg ext v n) := by
+  have hgws : WellFormedStore E.genesis_store := by
+    rw [hgeq]
+    exact wellFormedStore_get_forkchoice_store cfg ast ablk hslot hparent
+  have hanchorP : ∀ w m (b : SignedBeaconBlock Root),
+      Event.block b ∈ E.schedule w m → b.root ≠ ablk.message.parent_root := by
+    intro w m b hb
+    have hmem : ablk.root ∈ E.genesis_store.block_roots := by
+      rw [hgeq]; simp [get_forkchoice_store]
+    have hpeq : (E.genesis_store.blocks ablk.root).parent_root =
+        ablk.message.parent_root := by
+      rw [hgeq]; simp [get_forkchoice_store]
+    rw [← hpeq]
+    exact hanchor ablk.root hmem w m b hb
+  induction n with
+  | zero =>
+      refine ⟨hgws.core, hgws.parentSlotLt, ?_, E.blockProvenance cfg ext v 0⟩
+      change ParentInRootsOr ablk.message.parent_root E.genesis_store
+      rw [hgeq]
+      intro r hr
+      simp only [get_forkchoice_store, List.mem_singleton] at hr
+      subst hr
+      right
+      simp [get_forkchoice_store]
+  | succ k ih =>
+      change WFPlus ablk.message.parent_root E
+        ((E.schedule v (k + 1)).foldl
+          (fun store event => (apply_event cfg ext store event).getD store)
+          (on_tick cfg (E.store cfg ext v k) (E.time_at (k + 1))))
+      refine WFPlus_foldl cfg ext ablk.message.parent_root hwf
+        hec.state_transition_slot hec.state_transition_pre_slot_lt hanchorP
+        _ _ (fun b hb => ⟨v, k + 1, hb⟩) ?_
+      exact on_tick_WFPlus cfg ablk.message.parent_root _ _ ih
+
+/-- The receiver's prefix before a selected event keeps parent-slot order.
+This supplies a local head walk after a delayed block has been accepted. -/
+theorem Execution.prefix_parentSlotLt (E : Execution Root)
+    (hwf : WellFormedExecution E) (hec : BeaconExternalsPremises cfg ext E)
+    (ast : BeaconState Root) (ablk : SignedBeaconBlock Root)
+    (hgeq : E.genesis_store = get_forkchoice_store cfg ast ablk)
+    (hslot : ast.slot = ablk.message.slot)
+    (hparent : ablk.message.parent_root ≠ ablk.root)
+    (hanchor : ∀ r ∈ E.genesis_store.block_roots, ∀ w n (b : SignedBeaconBlock Root),
+      Event.block b ∈ E.schedule w n →
+        b.root ≠ (E.genesis_store.blocks r).parent_root)
+    (w : ValidatorIndex) (n : ℕ) (pre rest : List (Event Root))
+    (hsched : E.schedule w (n + 1) = pre ++ rest) :
+    ParentSlotLt
+      (pre.foldl (fun store event => (apply_event cfg ext store event).getD store)
+        (on_tick cfg (E.store cfg ext w n) (E.time_at (n + 1)))) := by
+  have hanchorP : ∀ u m (b : SignedBeaconBlock Root),
+      Event.block b ∈ E.schedule u m → b.root ≠ ablk.message.parent_root := by
+    intro u m b hb
+    have hmem : ablk.root ∈ E.genesis_store.block_roots := by
+      rw [hgeq]; simp [get_forkchoice_store]
+    have hpeq : (E.genesis_store.blocks ablk.root).parent_root =
+        ablk.message.parent_root := by
+      rw [hgeq]; simp [get_forkchoice_store]
+    rw [← hpeq]
+    exact hanchor ablk.root hmem u m b hb
+  have hbase := E.store_WFPlus_from_genesis cfg ext hwf hec ast ablk
+    hgeq hslot hparent hanchor w n
+  have hticked := on_tick_WFPlus cfg ablk.message.parent_root
+    (E.store cfg ext w n) (E.time_at (n + 1)) hbase
+  have hpre := WFPlus_foldl cfg ext ablk.message.parent_root hwf
+    hec.state_transition_slot hec.state_transition_pre_slot_lt hanchorP
+    pre _ (fun b hb => ⟨w, n + 1, by rw [hsched]; exact List.mem_append_left _ hb⟩)
+    hticked
+  exact hpre.2.1
+
 
 end FastConfirmation.Spec
 
