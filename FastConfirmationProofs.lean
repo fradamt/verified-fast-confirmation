@@ -146,6 +146,7 @@ public import FastConfirmationProofs.FFG.State.PathLocalFinalizedTransport
 public import FastConfirmationProofs.FFG.State.PayloadAwareHead
 public import FastConfirmationProofs.FFG.State.ProcessedFFGGlobalCheckpointTrajectory
 public import FastConfirmationProofs.FFG.State.ProcessedFFGStateTrajectory
+public import FastConfirmationProofs.FFG.State.TrustedProcessedFFGStateTrajectory
 public import FastConfirmationProofs.FFG.State.RecentCarrierFinalizedPlacement
 public import FastConfirmationProofs.FFG.State.ScheduledFFGGlobalCheckpointTrajectory
 public import FastConfirmationProofs.FFG.State.ScheduledFFGStateTrajectory
