@@ -23,6 +23,32 @@ variable (ext : Externals Root)
 
 namespace SupermajorityLink
 
+/-- An honest certificate signer has a genuine vote before the scheduled
+evidence event and no later than that vote's attestation deadline. This is the
+time origin used when relaying the signer's source and target chain. -/
+theorem honest_signer_vote_timed
+    {E : Execution Root} (hhb : HonestBehavior cfg (ext := ext) E)
+    {source target : Checkpoint Root}
+    (L : SupermajorityLink cfg E source target)
+    {i : ValidatorIndex} (hi : i ∈ L.signers) (hhi : i ∈ E.honest) :
+    ∃ (w : ValidatorIndex) (n : ℕ) (a : Attestation Root)
+      (fromBlock : Bool) (k : ℕ) (own : Attestation Root),
+      Event.attestation a fromBlock ∈ E.schedule w n ∧
+      k ≤ n ∧
+      E.vote i a.data.slot = some (k, own) ∧
+      a.data = own.data ∧
+      E.slot_start cfg a.data.slot ≤ k ∧
+      k ≤ E.slot_start cfg a.data.slot +
+        get_attestation_due_ms cfg / 1000 ∧
+      a.data.source = source ∧ a.data.target = target := by
+  obtain ⟨w, n, a, fromBlock, hsched, hia, hsource, htarget⟩ :=
+    L.signer_attestation i hi
+  obtain ⟨k, own, hcausal, hvote, hdata⟩ :=
+    hhb.no_forgery w n a fromBlock hsched i hhi hia
+  obtain ⟨hstart, hdeadline⟩ := hhb.vote_deadline i hhi a.data.slot k own hvote
+  exact ⟨w, n, a, fromBlock, k, own, hsched, hcausal, hvote,
+    hdata, hstart, hdeadline, hsource, htarget⟩
+
 /-- Two concrete links sharing an honest signer cannot form a Casper surround
 vote. -/
 theorem not_surround_of_honest_intersection
