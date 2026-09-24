@@ -3,6 +3,7 @@ public import FastConfirmationProofs.Weak.LocalFFG
 public import FastConfirmationProofs.Weak.Certificates.EndpointQuorumCausality
 public import FastConfirmationProofs.Weak.Certificates.TrustedEndpointQuorumCausality
 public import FastConfirmationProofs.Weak.Certificates.WeakBankedJustification
+public import FastConfirmationProofs.Weak.Certificates.TrustedWeakBankedJustification
 public import FastConfirmationProofs.Weak.Certificates.WeakCertificateDissemination
 public import FastConfirmationProofs.Weak.Certificates.WeakCertificateMonotone
 public import FastConfirmationProofs.Weak.Certificates.WeakCertificateSupporter
