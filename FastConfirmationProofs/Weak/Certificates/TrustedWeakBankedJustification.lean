@@ -499,6 +499,309 @@ theorem trusted_weakFcrStep_observed_known {E : Execution Root}
       (Weak.trusted_weakFcr_observed_known cfg ext B hT hanchor hboundary obs n)
 
 
+noncomputable def trusted_bankedJustificationCertificate_of_gate
+    {E : Execution Root} (hA : SelectedMarginAssumptions cfg ext E)
+    (B : TrustedCausalPrefixFFGInterpretation cfg ext E trusted)
+    (hT : E.ScheduledPrefixPremises cfg ext)
+    (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
+    (hboundary : Execution.TrustedAnchorBoundaryAligned (cfg := cfg) (E := E)
+      (anchor := B.anchor))
+    {obs : ValidatorIndex} {n : ℕ}
+    (hH : E.WithinHorizon cfg (n + 1))
+    (hcall : E.IsScheduledFCRCallAt cfg ext obs n)
+    {fcr_store : FastConfirmationStore Root}
+    (hstore : fcr_store.store = E.store cfg ext obs (n + 1))
+    (hgate : is_start_slot_at_epoch cfg (get_current_slot cfg fcr_store.store) ∧
+      Weak.has_carrier_broadcast_certificate cfg ext fcr_store.store
+        (get_current_balance_source fcr_store) = true) :
+    Weak.BankedJustificationCertificate cfg ext E obs (n + 1)
+      { Weak.update_fast_confirmation_variables cfg ext fcr_store with
+        current_epoch_observed_justified_checkpoint :=
+          fcr_store.store.unrealized_justifications
+            (Weak.get_certified_head cfg ext fcr_store.store
+              (get_current_balance_source fcr_store)) } := by
+  -- `hA.genesis` is an `Exists`, so it may only be destructed *inside* the
+  -- `Prop`-valued fields: a `Classical.choice` at the head of this
+  -- `Type`-valued definition would block the two `rfl` projections below.
+  have hgen0 : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
+      E.genesis_store = get_forkchoice_store cfg ast ablk := by
+    obtain ⟨ast, ablk, hgeq, _, _⟩ := hA.genesis
+    exact ⟨ast, ablk, hgeq⟩
+  have hbanked :
+      ({ Weak.update_fast_confirmation_variables cfg ext fcr_store with
+        current_epoch_observed_justified_checkpoint :=
+          fcr_store.store.unrealized_justifications
+            (Weak.get_certified_head cfg ext fcr_store.store
+              (get_current_balance_source fcr_store)) } :
+        FastConfirmationStore Root).current_epoch_observed_justified_checkpoint =
+      (E.store cfg ext obs (n + 1)).unrealized_justifications
+        (Weak.get_certified_head cfg ext (E.store cfg ext obs (n + 1)) (get_current_balance_source fcr_store)) := by
+    change fcr_store.store.unrealized_justifications _ = _
+    rw [hstore]
+  have hheadKnown : (Weak.get_certified_head cfg ext (E.store cfg ext obs (n + 1)) (get_current_balance_source fcr_store)) ∈
+      (E.store cfg ext obs (n + 1)).block_roots :=
+    Weak.get_certified_head_known cfg ext _ _
+      (Weak.trusted_head_known_at_observer cfg ext B hT hanchor hboundary obs (n + 1))
+  have hcertStore : Weak.has_carrier_broadcast_certificate cfg ext
+      (E.store cfg ext obs (n + 1)) (get_current_balance_source fcr_store) = true := by
+    rw [← hstore]; exact hgate.2
+  have hcertPlain : Weak.has_broadcast_certificate cfg ext
+      (E.store cfg ext obs (n + 1)) (get_current_balance_source fcr_store)
+      (Weak.get_certified_head cfg ext (E.store cfg ext obs (n + 1)) (get_current_balance_source fcr_store))
+      (get_block_slot (E.store cfg ext obs (n + 1))
+        (Weak.get_certified_head cfg ext (E.store cfg ext obs (n + 1)) (get_current_balance_source fcr_store)))
+      (get_current_slot cfg (E.store cfg ext obs (n + 1)) - 1) = true := by
+    simpa only [Weak.has_carrier_broadcast_certificate] using hcertStore
+  have hbseq : get_current_balance_source fcr_store =
+      (E.store cfg ext obs (n + 1)).checkpoint_states
+        fcr_store.current_epoch_observed_justified_checkpoint := by
+    simp only [get_current_balance_source]
+    rw [hstore]
+  have hkey : fcr_store.current_epoch_observed_justified_checkpoint ∈
+      (E.store cfg ext obs (n + 1)).checkpoint_state_keys := by
+    refine Weak.checkpoint_state_key_of_broadcast_certificate cfg ext E hgen0 obs (n + 1)
+      _ (Weak.get_certified_head cfg ext (E.store cfg ext obs (n + 1)) (get_current_balance_source fcr_store))
+      (get_block_slot (E.store cfg ext obs (n + 1))
+        (Weak.get_certified_head cfg ext (E.store cfg ext obs (n + 1)) (get_current_balance_source fcr_store)))
+      (get_current_slot cfg (E.store cfg ext obs (n + 1)) - 1) ?_
+    rw [← hbseq]
+    exact hcertPlain
+  -- Slot arithmetic for the span side conditions.
+  have hpos : 1 ≤ get_current_slot cfg (E.store cfg ext obs (n + 1)) :=
+    Nat.lt_of_le_of_lt (Nat.zero_le _) hcall
+  have hslotNow : get_current_slot cfg (E.store cfg ext obs (n + 1)) =
+      E.slot_at cfg (n + 1) := E.store_current_slot cfg ext obs (n + 1)
+  have hspan : get_block_slot (E.store cfg ext obs (n + 1))
+      (Weak.get_certified_head cfg ext (E.store cfg ext obs (n + 1)) (get_current_balance_source fcr_store)) ≤
+      get_current_slot cfg (E.store cfg ext obs (n + 1)) - 1 :=
+    Weak.has_broadcast_certificate_span_nonempty cfg ext hcertPlain
+  have hendLe : get_current_slot cfg (E.store cfg ext obs (n + 1)) - 1 ≤
+      E.slot_at cfg (n + 1) := by
+    rw [← hslotNow]; exact Nat.sub_le _ _
+  have hstartAnchor : E.slot_at cfg 0 ≤
+      get_block_slot (E.store cfg ext obs (n + 1))
+        (Weak.get_certified_head cfg ext (E.store cfg ext obs (n + 1)) (get_current_balance_source fcr_store)) := by
+    obtain ⟨ast, ablk, hgeq, hslotEq, hparentNe⟩ := hA.genesis
+    have hanchorHead : ablk.message.slot ≤
+        ((E.store cfg ext obs (n + 1)).blocks
+          (Weak.get_certified_head cfg ext (E.store cfg ext obs (n + 1)) (get_current_balance_source fcr_store))).slot :=
+      E.store_anchor_min_slot cfg ext hA.wellFormed hA.externals_coherence hgeq hslotEq
+        hparentNe obs (n + 1) _ hheadKnown
+    have hslot0 : E.slot_at cfg 0 = ablk.message.slot := by
+      have ht := E.store_current_slot cfg ext obs 0
+      rw [show E.store cfg ext obs 0 = E.genesis_store from rfl, hgeq,
+        get_current_slot_get_forkchoice_store cfg hA.whole_seconds ast ablk] at ht
+      rw [← ht, hslotEq]
+    rw [hslot0]
+    exact hanchorHead
+  exact
+    { second := n + 1
+      second_le := Nat.le_refl _
+      second_within := hH
+      second_pos := hpos
+      second_epoch_start := by rw [← hstore]; exact hgate.1
+      supplier := (Weak.get_certified_head cfg ext (E.store cfg ext obs (n + 1)) (get_current_balance_source fcr_store))
+      supplier_known := hheadKnown
+      banked_known := by
+        rw [hbanked]
+        exact (Weak.trusted_blockUnrealizedJustification_known_and_below cfg ext B hT
+          hanchor hboundary obs (n + 1) _
+            (Weak.get_certified_head_known cfg ext _ _
+              (Weak.trusted_head_known_at_observer cfg ext B hT hanchor hboundary obs (n + 1)))).1
+      banked_eq := hbanked
+      balance_source := get_current_balance_source fcr_store
+      balance_registry := by
+        rw [hbseq]
+        exact (E.registryConstant cfg ext hA.externals_coherence hgen0
+          obs (n + 1)).2 _ hkey
+      balance_total := by
+        rw [hbseq]
+        exact E.checkpoint_states_total_active_balance cfg ext hA.static_validators
+          hA.externals_coherence (hdiv := hA.whole_seconds) (hgen := hgen0)
+          obs (n + 1) _ hkey hH
+      certificate := hcertPlain
+      start_anchor := hstartAnchor
+      start_within :=
+        E.slotWithinHorizon_of_le cfg (hspan.trans hendLe) hH
+      end_within := E.slotWithinHorizon_of_le cfg hendLe hH }
+
+/-- The gate certificate's second is the call's own boundary second. -/
+theorem trusted_bankedJustificationCertificate_of_gate_second
+    {E : Execution Root} (hA : SelectedMarginAssumptions cfg ext E)
+    (B : TrustedCausalPrefixFFGInterpretation cfg ext E trusted)
+    (hT : E.ScheduledPrefixPremises cfg ext)
+    (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
+    (hboundary : Execution.TrustedAnchorBoundaryAligned (cfg := cfg) (E := E)
+      (anchor := B.anchor))
+    {obs : ValidatorIndex} {n : ℕ}
+    (hH : E.WithinHorizon cfg (n + 1))
+    (hcall : E.IsScheduledFCRCallAt cfg ext obs n)
+    {fcr_store : FastConfirmationStore Root}
+    (hstore : fcr_store.store = E.store cfg ext obs (n + 1))
+    (hgate : is_start_slot_at_epoch cfg (get_current_slot cfg fcr_store.store) ∧
+      Weak.has_carrier_broadcast_certificate cfg ext fcr_store.store
+        (get_current_balance_source fcr_store) = true) :
+    (Weak.trusted_bankedJustificationCertificate_of_gate cfg ext hA B hT hanchor
+      hboundary hH hcall hstore hgate).second = n + 1 := rfl
+
+/-- The gate certificate's supplier is that second's selected certified carrier. -/
+theorem trusted_bankedJustificationCertificate_of_gate_supplier
+    {E : Execution Root} (hA : SelectedMarginAssumptions cfg ext E)
+    (B : TrustedCausalPrefixFFGInterpretation cfg ext E trusted)
+    (hT : E.ScheduledPrefixPremises cfg ext)
+    (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
+    (hboundary : Execution.TrustedAnchorBoundaryAligned (cfg := cfg) (E := E)
+      (anchor := B.anchor))
+    {obs : ValidatorIndex} {n : ℕ}
+    (hH : E.WithinHorizon cfg (n + 1))
+    (hcall : E.IsScheduledFCRCallAt cfg ext obs n)
+    {fcr_store : FastConfirmationStore Root}
+    (hstore : fcr_store.store = E.store cfg ext obs (n + 1))
+    (hgate : is_start_slot_at_epoch cfg (get_current_slot cfg fcr_store.store) ∧
+      Weak.has_carrier_broadcast_certificate cfg ext fcr_store.store
+        (get_current_balance_source fcr_store) = true) :
+    (Weak.trusted_bankedJustificationCertificate_of_gate cfg ext hA B hT hanchor
+        hboundary hH hcall hstore hgate).supplier =
+      (Weak.get_certified_head cfg ext (E.store cfg ext obs (n + 1)) (get_current_balance_source fcr_store)) := rfl
+
+/-- **The certified carrier of a gate-passing epoch-start call is disseminated.**
+
+The banked twin of `Execution.confirmed_known_at_all_honest_endpoints_at_observer`
+applied to the *supplier* half of
+`bankedSupplier_known_at_all_honest_endpoints_at_observer`, using this call's
+supplier certificate. The strict-newer guard need not permit a checkpoint
+write for this certificate to establish dissemination. This is the epoch-start
+replacement for stage S3's
+`Weak.headSeed_known_at_all_honest_endpoints_at_observer`: at an epoch start
+the tentative-entry gate takes the uncertified escape, so no *entry* head
+certificate is available, but rule delta 5's own banking gate carries one
+whenever it fires. -/
+theorem trusted_gatedHead_known_at_all_honest_endpoints_at_observer
+    {E : Execution Root} (hA : SelectedMarginAssumptions cfg ext E)
+    (B : TrustedCausalPrefixFFGInterpretation cfg ext E trusted)
+    (hT : E.ScheduledPrefixPremises cfg ext)
+    (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
+    (hboundary : Execution.TrustedAnchorBoundaryAligned (cfg := cfg) (E := E)
+      (anchor := B.anchor))
+    (hsync : NextSlotSynchronyPremises cfg ext E)
+    {obs : ValidatorIndex}
+    (hcomm : ∀ k : ℕ, E.WithinHorizon cfg k → ∀ s : Slot, E.SlotWithinHorizon cfg s →
+      get_slot_committee cfg ext (E.store cfg ext obs k) s = E.committee s)
+    {n : ℕ}
+    (hH : E.WithinHorizon cfg (n + 1))
+    (hcall : E.IsScheduledFCRCallAt cfg ext obs n)
+    {fcr_store : FastConfirmationStore Root}
+    (hstore : fcr_store.store = E.store cfg ext obs (n + 1))
+    (hgate : is_start_slot_at_epoch cfg (get_current_slot cfg fcr_store.store) ∧
+      Weak.has_carrier_broadcast_certificate cfg ext fcr_store.store
+        (get_current_balance_source fcr_store) = true)
+    {w : ValidatorIndex} (hw : w ∈ E.honest) {m : ℕ} (hmH : E.WithinHorizon cfg m)
+    (hslot : E.slot_at cfg (n + 1) ≤ E.slot_at cfg m) :
+    (Weak.get_certified_head cfg ext (E.store cfg ext obs (n + 1)) (get_current_balance_source fcr_store)) ∈
+      (E.store cfg ext w m).block_roots := by
+  have hknown :=
+    (Weak.trusted_bankedSupplier_known_at_all_honest_endpoints_at_observer cfg ext hA B hT
+      hanchor hboundary hsync  hA.genesis hcomm
+      (Weak.trusted_bankedJustificationCertificate_of_gate cfg ext hA B hT hanchor
+        hboundary hH hcall hstore hgate)
+      hw hmH (by
+        rw [Weak.trusted_bankedJustificationCertificate_of_gate_second]
+        exact hslot)).1
+  rwa [Weak.trusted_bankedJustificationCertificate_of_gate_supplier] at hknown
+
+/-- **Rule delta 5 preserves its own input invariant.** At an epoch start,
+a passing certificate gate and a strictly newer checkpoint install the
+supplier's checkpoint. The exact write equation transports the supplier
+certificate to the actual output. In every other case the banked field is
+unchanged and the incoming witness re-indexes through
+`BankedJustificationCertificate.transport`.
+
+No ancestry obligation arises here: under the revised rule it is a theorem
+about the banked value (`trusted_blockUnrealizedJustification_known_and_below`),
+deferred to consumption. -/
+theorem trusted_certifiedBankedJustification_update
+    {E : Execution Root} (hA : SelectedMarginAssumptions cfg ext E)
+    (B : TrustedCausalPrefixFFGInterpretation cfg ext E trusted)
+    (hT : E.ScheduledPrefixPremises cfg ext)
+    (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
+    (hboundary : Execution.TrustedAnchorBoundaryAligned (cfg := cfg) (E := E)
+      (anchor := B.anchor))
+    {obs : ValidatorIndex} {n : ℕ}
+    (hH : E.WithinHorizon cfg (n + 1))
+    (hcall : E.IsScheduledFCRCallAt cfg ext obs n)
+    {fcr_store : FastConfirmationStore Root}
+    (hstore : fcr_store.store = E.store cfg ext obs (n + 1))
+    (hinv : Weak.CertifiedBankedJustification cfg ext E obs n fcr_store) :
+    Weak.CertifiedBankedJustification cfg ext E obs (n + 1)
+      (Weak.update_fast_confirmation_variables cfg ext fcr_store) := by
+  by_cases hgate :
+      (is_start_slot_at_epoch cfg (get_current_slot cfg fcr_store.store) ∧
+        Weak.has_carrier_broadcast_certificate cfg ext fcr_store.store
+          (get_current_balance_source fcr_store) = true) ∧
+        (fcr_store.store.unrealized_justifications
+          (Weak.get_certified_head cfg ext fcr_store.store
+            (get_current_balance_source fcr_store))).epoch >
+          fcr_store.current_epoch_observed_justified_checkpoint.epoch
+  · -- The supplier checkpoint passes both the certificate and epoch guards.
+    refine Or.inr ⟨(Weak.trusted_bankedJustificationCertificate_of_gate cfg ext hA B hT
+      hanchor hboundary hH hcall hstore hgate.1).transport cfg ext
+        (Nat.le_refl _) ?_⟩
+    change (Weak.update_fast_confirmation_variables cfg ext
+      fcr_store).current_epoch_observed_justified_checkpoint =
+        fcr_store.store.unrealized_justifications
+          (Weak.get_certified_head cfg ext fcr_store.store
+            (get_current_balance_source fcr_store))
+    rw [Weak.update_fcv_observed_exact, if_pos hgate]
+  · -- No write: retain the previous checkpoint and its certificate.
+    have heq : (Weak.update_fast_confirmation_variables cfg ext
+        fcr_store).current_epoch_observed_justified_checkpoint =
+        fcr_store.current_epoch_observed_justified_checkpoint := by
+      rw [Weak.update_fcv_observed_exact, if_neg hgate]
+    exact hinv.transport cfg ext (Nat.le_succ n) heq
+
+/-- **The invariant holds along the whole actual weak trajectory.** Induction
+on the second: the seed is the genesis initializer, which banks the anchor
+store's `finalized_checkpoint` — in `E.genesis_store.block_roots`, hence the
+anchor arm; the step is `trusted_certifiedBankedJustification_update` at a real slot
+advance, and a pure re-index otherwise. No honesty hypothesis and no call
+predicate beyond the slot advance `E.weakFcr` itself branches on. -/
+theorem trusted_weakFcr_certifiedBankedJustification
+    {E : Execution Root} (hA : SelectedMarginAssumptions cfg ext E)
+    (B : TrustedCausalPrefixFFGInterpretation cfg ext E trusted)
+    (hT : E.ScheduledPrefixPremises cfg ext)
+    (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
+    (hboundary : Execution.TrustedAnchorBoundaryAligned (cfg := cfg) (E := E)
+      (anchor := B.anchor))
+    (obs : ValidatorIndex) :
+    ∀ n : ℕ, E.WithinHorizon cfg n →
+      Weak.CertifiedBankedJustification cfg ext E obs n (E.weakFcr cfg ext obs n) := by
+  obtain ⟨ast, ablk, hgeq, _hslotEq, _hparentNe⟩ := hA.genesis
+  intro n
+  induction n with
+  | zero =>
+      intro _
+      left
+      change E.genesis_store.finalized_checkpoint.root ∈ E.genesis_store.block_roots
+      rw [hgeq]
+      simp only [get_forkchoice_store, List.mem_singleton]
+  | succ n ih =>
+      intro hH
+      have hHn : E.WithinHorizon cfg n := E.withinHorizon_mono cfg (Nat.le_succ n) hH
+      by_cases hadv : get_current_slot cfg (E.store cfg ext obs (n + 1)) >
+          get_current_slot cfg (E.store cfg ext obs n)
+      · have hseat : Weak.CertifiedBankedJustification cfg ext E obs n
+            { E.weakFcr cfg ext obs n with store := E.store cfg ext obs (n + 1) } :=
+          (ih hHn).transport cfg ext (Nat.le_refl n) rfl
+        have hupd := Weak.trusted_certifiedBankedJustification_update cfg ext hA B hT hanchor
+          hboundary (obs := obs) (n := n) hH hadv (fcr_store :=
+            { E.weakFcr cfg ext obs n with store := E.store cfg ext obs (n + 1) })
+          rfl hseat
+        refine hupd.transport cfg ext (Nat.le_refl (n + 1)) ?_
+        simp only [Execution.weakFcr, if_pos hadv, Weak.on_fast_confirmation]
+      · refine (ih hHn).transport cfg ext (Nat.le_succ n) ?_
+        simp only [Execution.weakFcr, if_neg hadv]
+
+
 end Weak
 end FastConfirmation.Spec
 end
