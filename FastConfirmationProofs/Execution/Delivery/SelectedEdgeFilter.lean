@@ -1502,7 +1502,8 @@ noncomputable def StrictSelectedResultMechanicalFacts.fcrStep_previous_endpointF
   have hrecent : RecentSourceSeedAt cfg
       (E.store cfg ext w m) result :=
     h.fcrStep_previous_endpointRecentSourceSeed cfg ext hT hsync hstatic
-      hbyz hdomain B hv hn1H hcall hprevious hw hmH hnm hsameEpoch
+      hbyz hdomain B hanchor hboundary hDelay P V hanchorExact hacc
+        hv hn1H hcall hprevious hw hmH hnm hsameEpoch
   exact E.acceptedSelectedResultFilterOutcome_retained_of_recentSeed
     cfg ext B hT hanchor hboundary hDelay P V hanchorExact hacc
       hselectedEndpoint hparent hwalkK hnonfuture hrecent
