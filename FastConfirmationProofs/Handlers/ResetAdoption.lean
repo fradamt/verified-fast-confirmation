@@ -153,6 +153,8 @@ theorem finalized_epoch_le_justified_of_acceptedCarrierKnown
     {v w : ValidatorIndex} {q m : ℕ}
     (hcarriers : ∀ r,
       r ∈ (E.store cfg ext v q).block_roots →
+      ((E.store cfg ext v q).finalized_checkpoint = B.state.GF r ∨
+        (E.store cfg ext v q).finalized_checkpoint = B.state.GUF r) →
         r ∈ (E.store cfg ext w m).block_roots) :
     (E.store cfg ext v q).finalized_checkpoint.epoch ≤
       (E.store cfg ext w m).justified_checkpoint.epoch := by
@@ -176,7 +178,7 @@ theorem finalized_epoch_le_justified_of_acceptedCarrierKnown
       hgenShort hanchor hendpoint
   · have htipEndpointKnown : tip ∈
         (E.store cfg ext w m).block_roots :=
-      hcarriers tip htipSource.known
+      hcarriers tip htipSource.known (Or.inl hfieldGF)
     have htipEndpoint : E.AcceptedCarrierIn
         (cfg := cfg) (ext := ext) (E.store cfg ext w m) tip :=
       Execution.AcceptedCarrierIn.of_causal_known hendpoint
@@ -186,7 +188,7 @@ theorem finalized_epoch_le_justified_of_acceptedCarrierKnown
       (hmax.ledger.gj_epoch_le_justified tip htipEndpoint)
   · have htipEndpointKnown : tip ∈
         (E.store cfg ext w m).block_roots :=
-      hcarriers tip htipSource.known
+      hcarriers tip htipSource.known (Or.inr hfieldGUF)
     have htipEndpoint : E.AcceptedCarrierIn
         (cfg := cfg) (ext := ext) (E.store cfg ext w m) tip :=
       Execution.AcceptedCarrierIn.of_causal_known hendpoint
@@ -230,7 +232,7 @@ theorem finalized_epoch_le_remoteJustified_of_synchrony
       (E.store cfg ext w m).justified_checkpoint.epoch := by
   apply E.finalized_epoch_le_justified_of_acceptedCarrierKnown
     cfg ext B hT hanchor
-  intro r hr
+  intro r hr _hselected
   exact hsync.block_relay v hv q r hHq hr w hw m hHm hrelay
 
 /-- Cleaner next-slot form.  Unlike the preceding end-of-slot relay boundary,

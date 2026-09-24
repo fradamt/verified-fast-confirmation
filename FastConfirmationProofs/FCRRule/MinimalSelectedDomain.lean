@@ -409,13 +409,13 @@ theorem mem_of_known_honest_past_descendant_minimal
   set rb := ((E.store cfg ext v n).blocks b).slot
   have hgateUV : E.slot_at cfg nu + 1 ≤ E.slot_at cfg (n + 1) :=
     hslot.trans_le (E.slot_at_mono cfg (Nat.le_succ n))
-  have hsub : (E.store cfg ext u nu).block_roots ⊆
-      (E.store cfg ext v n).block_roots := fun r hr =>
-    hA.synchrony.block_relay u hu nu r hHnu hr v hv n hHn hgateUV
-  have hagree : ∀ r ∈ (E.store cfg ext u nu).block_roots,
+  have hdv : d ∈ (E.store cfg ext v n).block_roots :=
+    hA.synchrony.block_relay u hu nu d hHnu hd v hv n hHn hgateUV
+  have hagree : ∀ r, r ∈ (E.store cfg ext u nu).block_roots →
+      r ∈ (E.store cfg ext v n).block_roots →
       (E.store cfg ext u nu).blocks r = (E.store cfg ext v n).blocks r :=
-    fun r hr => hA.wellFormed.blocks_agree (E.blockProvenance cfg ext u nu)
-      (E.blockProvenance cfg ext v n) hr (hsub hr)
+    fun r hr hs => hA.wellFormed.blocks_agree
+      (E.blockProvenance cfg ext u nu) (E.blockProvenance cfg ext v n) hr hs
   have hanchor0 : ablk.root ∈ (E.store cfg ext u 0).block_roots := by
     change ablk.root ∈ E.genesis_store.block_roots
     rw [hgeq]
@@ -436,12 +436,15 @@ theorem mem_of_known_honest_past_descendant_minimal
     E.store_anchor_min_slot cfg ext hA.wellFormed hA.externals_coherence
       hgeq hstateSlot hroot v n b hb
   have hwalk : WalkKnown (E.store cfg ext u nu) rb d := hwalk0.mono hbound
+  have hwalkv : WalkKnown (E.store cfg ext v n) rb d :=
+    E.store_walkKnownK cfg ext hA.wellFormed hA.externals_coherence
+      hgen' v n b hb d hdv
   have hvlands : (get_ancestor (E.store cfg ext v n) (ForkChoiceNode.mk d .pending) rb).root =
       b := by
     simpa only [get_node_for_root, is_ancestor_pending, decide_eq_true_eq] using hanc
   have hulands : (get_ancestor (E.store cfg ext u nu) (ForkChoiceNode.mk d .pending) rb).root =
       b := by
-    rw [get_ancestor_congr hagree hd hwalk]
+    rw [get_ancestor_congr_common_walk hagree hwalk hwalkv]
     exact hvlands
   have hbu : b ∈ (E.store cfg ext u nu).block_roots := by
     have hspec := (get_ancestor_spec hpsl hwalk).1
@@ -479,14 +482,13 @@ theorem ancestry_of_known_honest_past_descendant_minimal
     ⟨ast, ablk, hgeq, hstateSlot, hroot⟩
   have hgateUV : E.slot_at cfg nu + 1 ≤ E.slot_at cfg (n + 1) :=
     hslot.trans_le (E.slot_at_mono cfg (Nat.le_succ n))
-  have hsubUV : (E.store cfg ext u nu).block_roots ⊆
-      (E.store cfg ext v n).block_roots := fun r hr =>
-    hA.synchrony.block_relay u hu nu r hHnu hr v hv n hHn hgateUV
-  have hagreeUV : ∀ r ∈ (E.store cfg ext u nu).block_roots,
+  have hdv : d ∈ (E.store cfg ext v n).block_roots :=
+    hA.synchrony.block_relay u hu nu d hHnu hd v hv n hHn hgateUV
+  have hagreeUV : ∀ r, r ∈ (E.store cfg ext u nu).block_roots →
+      r ∈ (E.store cfg ext v n).block_roots →
       (E.store cfg ext u nu).blocks r = (E.store cfg ext v n).blocks r :=
-    fun r hr => hA.wellFormed.blocks_agree (E.blockProvenance cfg ext u nu)
-      (E.blockProvenance cfg ext v n) hr (hsubUV hr)
-  have hdv : d ∈ (E.store cfg ext v n).block_roots := hsubUV hd
+    fun r hr hs => hA.wellFormed.blocks_agree
+      (E.blockProvenance cfg ext u nu) (E.blockProvenance cfg ext v n) hr hs
   have hwfv : ParentSlotLt (E.store cfg ext v n) :=
     E.store_parentSlotLt cfg ext hA.wellFormed hA.externals_coherence hgen'
       hA.wellFormed.anchor_parent_unscheduled v n
@@ -527,7 +529,9 @@ theorem ancestry_of_known_honest_past_descendant_minimal
       simpa only [get_node_for_root, is_ancestor_pending, decide_eq_true_eq, sx] using hdx
     have hulands : (get_ancestor (E.store cfg ext u nu) (ForkChoiceNode.mk d .pending) sx).root =
         x := by
-      rw [get_ancestor_congr hagreeUV hd hwalkx]
+      have hwalkvx : WalkKnown (E.store cfg ext v n) sx d :=
+        hwalkv x hx d hdv
+      rw [get_ancestor_congr_common_walk hagreeUV hwalkx hwalkvx]
       exact hvlands
     have hspec := (get_ancestor_spec hwfu hwalkx).1
     rw [hulands] at hspec
@@ -536,23 +540,33 @@ theorem ancestry_of_known_honest_past_descendant_minimal
   have hr₀u : r₀ ∈ (E.store cfg ext u nu).block_roots := recover r₀ hr₀ hdr₀
   have hwalkbr : WalkKnown (E.store cfg ext u nu)
       ((E.store cfg ext u nu).blocks r₀).slot b := hwalku r₀ hr₀u b hbu
+  have hwalkbrv : WalkKnown (E.store cfg ext v n)
+      ((E.store cfg ext u nu).blocks r₀).slot b := by
+    rw [hagreeUV r₀ hr₀u hr₀]
+    exact hwalkv r₀ hr₀ b hb
   have hbgeu : is_ancestor (E.store cfg ext u nu)
       (get_node_for_root b) (get_node_for_root r₀) = true := by
-    simp only [get_node_for_root]
-    rw [is_ancestor_congr hagreeUV hbu hr₀u hwalkbr]
-    simpa only [get_node_for_root] using hbge
+    rw [is_ancestor_congr_common_walk hagreeUV hr₀u hr₀ hwalkbr hwalkbrv]
+    exact hbge
   have hgateUW : E.slot_at cfg nu + 1 ≤ E.slot_at cfg (m + 1) :=
     hslot.trans_le (hnm.trans (E.slot_at_mono cfg (Nat.le_succ m)))
-  have hsubUW : (E.store cfg ext u nu).block_roots ⊆
-      (E.store cfg ext w m).block_roots := fun r hr =>
-    hA.synchrony.block_relay u hu nu r hHnu hr w hw m hHm hgateUW
-  have hagreeUW : ∀ r ∈ (E.store cfg ext u nu).block_roots,
+  have hr₀w : r₀ ∈ (E.store cfg ext w m).block_roots :=
+    hA.synchrony.block_relay u hu nu r₀ hHnu hr₀u w hw m hHm hgateUW
+  have hbw : b ∈ (E.store cfg ext w m).block_roots :=
+    hA.synchrony.block_relay u hu nu b hHnu hbu w hw m hHm hgateUW
+  have hagreeUW : ∀ r, r ∈ (E.store cfg ext u nu).block_roots →
+      r ∈ (E.store cfg ext w m).block_roots →
       (E.store cfg ext u nu).blocks r = (E.store cfg ext w m).blocks r :=
-    fun r hr => hA.wellFormed.blocks_agree (E.blockProvenance cfg ext u nu)
-      (E.blockProvenance cfg ext w m) hr (hsubUW hr)
-  refine ⟨hsubUW hr₀u, hsubUW hbu, ?_⟩
-  simp only [get_node_for_root] at hbgeu ⊢
-  rwa [← is_ancestor_congr hagreeUW hbu hr₀u hwalkbr]
+    fun r hr hs => hA.wellFormed.blocks_agree
+      (E.blockProvenance cfg ext u nu) (E.blockProvenance cfg ext w m) hr hs
+  have hwalkbrw : WalkKnown (E.store cfg ext w m)
+      ((E.store cfg ext u nu).blocks r₀).slot b := by
+    rw [hagreeUW r₀ hr₀u hr₀w]
+    exact E.store_walkKnownK cfg ext hA.wellFormed hA.externals_coherence
+      hgen' w m r₀ hr₀w b hbw
+  refine ⟨hr₀w, hbw, ?_⟩
+  rw [← is_ancestor_congr_common_walk hagreeUW hr₀u hr₀w hwalkbr hwalkbrw]
+  exact hbgeu
 
 /-- A concretely confirmed candidate is known at every honest endpoint whose
 slot is not before the arbitrary selecting slot.  This includes the selecting

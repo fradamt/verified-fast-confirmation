@@ -486,6 +486,23 @@ theorem get_ancestor_congr_common_walk {s t : Store Root}
   exact get_ancestor_aux_congr_common_walk hagree hs ht .pending _
 
 omit [Inhabited Root] in
+/-- Pending-root ancestry transports when only the compared walk is common
+to the two stores. -/
+theorem is_ancestor_congr_common_walk {s t : Store Root}
+    (hagree : ∀ x, x ∈ s.block_roots → x ∈ t.block_roots →
+      s.blocks x = t.blocks x)
+    {node ancestor : Root}
+    (hancS : ancestor ∈ s.block_roots)
+    (hancT : ancestor ∈ t.block_roots)
+    (hs : WalkKnown s (s.blocks ancestor).slot node)
+    (ht : WalkKnown t (s.blocks ancestor).slot node) :
+    is_ancestor s (get_node_for_root node) (get_node_for_root ancestor) =
+      is_ancestor t (get_node_for_root node) (get_node_for_root ancestor) := by
+  simp only [get_node_for_root, is_ancestor_pending]
+  rw [← hagree ancestor hancS hancT]
+  rw [get_ancestor_congr_common_walk hagree hs ht]
+
+omit [Inhabited Root] in
 /-- Pending-node wrapper for stores that agree on every known block. -/
 theorem get_ancestor_congr {s t : Store Root}
     (hagree : ∀ x ∈ s.block_roots, s.blocks x = t.blocks x)

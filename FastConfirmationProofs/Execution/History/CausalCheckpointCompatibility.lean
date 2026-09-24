@@ -142,26 +142,43 @@ theorem endpoint_justified_ancestor_of_causal_honest_target_minimal
       E.slot_at cfg k + 1 = s + 1 := by rw [hk]
       _ ≤ E.slot_at cfg m := Nat.succ_le_of_lt hsm
       _ ≤ E.slot_at cfg (m + 1) := E.slot_at_mono cfg (Nat.le_succ m)
-  have hsub : (E.store cfg ext i k).block_roots ⊆
-      (E.store cfg ext w m).block_roots :=
-    E.blockRoots_subset_of_relay cfg ext hA.synchrony hi hw hHk hHm hgate
   have hheadM : (get_head cfg (E.store cfg ext i k)).root ∈
-      (E.store cfg ext w m).block_roots := hsub hheadK
-  have hglcM : glc ∈ (E.store cfg ext w m).block_roots := hsub hglcK
-  have hJM : J.root ∈ (E.store cfg ext w m).block_roots := hsub hJK
-  have hheadGlc_M : is_ancestor (E.store cfg ext w m)
-      (get_node_for_root (get_head cfg (E.store cfg ext i k)).root)
-      (get_node_for_root glc) = true :=
-    is_ancestor_transport cfg ext hA.wellFormed hsub hheadK hglcK
-      (hwalkK glc hglcK _ hheadK) ((is_ancestor_node_root _ _ _).symm.trans hheadGlc_K)
-  have hheadJ_M : is_ancestor (E.store cfg ext w m)
-      (get_node_for_root (get_head cfg (E.store cfg ext i k)).root)
-      (get_node_for_root J.root) = true :=
-    is_ancestor_transport cfg ext hA.wellFormed hsub hheadK hJK
-      (hwalkK J.root hJK _ hheadK) ((is_ancestor_node_root _ _ _).symm.trans hheadJ_K)
+      (E.store cfg ext w m).block_roots :=
+    hA.synchrony.block_relay i hi k _ hHk hheadK w hw m hHm hgate
+  have hglcM : glc ∈ (E.store cfg ext w m).block_roots :=
+    hA.synchrony.block_relay i hi k glc hHk hglcK w hw m hHm hgate
+  have hJM : J.root ∈ (E.store cfg ext w m).block_roots :=
+    hA.synchrony.block_relay i hi k J.root hHk hJK w hw m hHm hgate
   obtain ⟨hwfM, hwalkM, _hjustM⟩ :=
     E.store_domainK_of_selectedMarginDomain cfg ext hA.wellFormed
       hA.externals_coherence hA.genesis hA.domain w hw m hHm
+  have hagree : ∀ r, r ∈ (E.store cfg ext i k).block_roots →
+      r ∈ (E.store cfg ext w m).block_roots →
+      (E.store cfg ext i k).blocks r = (E.store cfg ext w m).blocks r :=
+    fun r hr hs => hA.wellFormed.blocks_agree
+      (E.blockProvenance cfg ext i k) (E.blockProvenance cfg ext w m) hr hs
+  have hwalkGlcM : WalkKnown (E.store cfg ext w m)
+      ((E.store cfg ext i k).blocks glc).slot
+      (get_head cfg (E.store cfg ext i k)).root := by
+    rw [hagree glc hglcK hglcM]
+    exact hwalkM glc hglcM _ hheadM
+  have hheadGlc_M : is_ancestor (E.store cfg ext w m)
+      (get_node_for_root (get_head cfg (E.store cfg ext i k)).root)
+      (get_node_for_root glc) = true := by
+    rw [← is_ancestor_congr_common_walk hagree hglcK hglcM
+      (hwalkK glc hglcK _ hheadK) hwalkGlcM]
+    exact (is_ancestor_node_root _ _ _).symm.trans hheadGlc_K
+  have hwalkJM : WalkKnown (E.store cfg ext w m)
+      ((E.store cfg ext i k).blocks J.root).slot
+      (get_head cfg (E.store cfg ext i k)).root := by
+    rw [hagree J.root hJK hJM]
+    exact hwalkM J.root hJM _ hheadM
+  have hheadJ_M : is_ancestor (E.store cfg ext w m)
+      (get_node_for_root (get_head cfg (E.store cfg ext i k)).root)
+      (get_node_for_root J.root) = true := by
+    rw [← is_ancestor_congr_common_walk hagree hJK hJM
+      (hwalkK J.root hJK _ hheadK) hwalkJM]
+    exact (is_ancestor_node_root _ _ _).symm.trans hheadJ_K
   have hheadC_M : is_ancestor (E.store cfg ext w m)
       (get_node_for_root (get_head cfg (E.store cfg ext i k)).root)
       (get_node_for_root c) = true :=
