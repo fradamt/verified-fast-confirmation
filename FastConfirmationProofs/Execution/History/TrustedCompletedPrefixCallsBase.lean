@@ -2,6 +2,8 @@ module
 public import FastConfirmationProofs.Execution.History.CompletedPrefixCalls
 public import FastConfirmationProofs.FFG.State.TrustedProcessedFFGGlobalCheckpointTrajectory
 public import FastConfirmationProofs.FFG.CurrentTarget.TrustedCurrentTargetWalkKnownness
+public import FastConfirmationProofs.Execution.History.TrustedHistoricalCheckpointInclusionCallInduction
+public import FastConfirmationProofs.FFG.CurrentTarget.TrustedCurrentTargetGateGeometry
 
 @[expose] public section
 namespace FastConfirmation.Spec
@@ -153,6 +155,159 @@ theorem trusted_completedPrefix_pulledUpHead_totalActive
         (get_current_epoch cfg E.anchor_state) hstateEpoch hanchorEpoch
 
 /-! ## Horizon reduction -/
+
+noncomputable def trusted_completedPrefix_acceptedTargetGateProducerAt
+    (B : TrustedCausalPrefixFFGInterpretation cfg ext E trusted)
+    (hT : E.ScheduledPrefixPremises cfg ext)
+    (hC : E.CompletedFCRCallPremises cfg ext)
+    (hfit : EpochEndsFitUint64 cfg)
+    (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
+    (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
+      (E := E) (anchor := B.anchor))
+    {v : ValidatorIndex} (hv : v ∈ E.honest)
+    {n : ℕ} (_hcall : E.IsScheduledFCRCallAt cfg ext v n)
+    (hHn1 : E.WithinHorizon cfg (n + 1)) :
+    E.TrustedAcceptedCurrentTargetA32GateRealizationProducerAt cfg ext
+      B.anchor B.state (n + 1) (E.fcrStoreAtCall cfg ext v n) := by
+  intro hgate hsupport
+  let p := E.completedScheduledEventPrefix v n
+  have hpstore : p.store cfg ext = E.store cfg ext v (n + 1) := by
+    simpa only [p] using E.completedScheduledEventPrefix_store cfg ext v n
+  have hevidenceBoundary :=
+    E.completedScheduledEventPrefix_accountingEvidence cfg ext hT
+      v hv n hHn1
+  have hevidence : E.CurrentTargetPrefixAccountingEvidence cfg ext
+      (p.store cfg ext) (p.previousSecond + 1) := by
+    rw [hpstore]
+    change E.CurrentTargetPrefixAccountingEvidence cfg ext
+      (E.store cfg ext v (n + 1)) (n + 1)
+    exact hevidenceBoundary
+  let state := get_pulled_up_head_state cfg ext
+    (E.store cfg ext v (n + 1))
+  have hstate : state = get_pulled_up_head_state cfg ext
+      (p.store cfg ext) := by
+    rw [hpstore]
+  have hval : state.validators = E.registry := by
+    simpa only [state] using
+      E.trusted_completedPrefix_pulledUpHead_validators cfg ext B hT
+        hanchor hboundary hv hHn1
+  have htab : get_total_active_balance cfg state = E.total_active cfg := by
+    simpa only [state] using
+      E.trusted_completedPrefix_pulledUpHead_totalActive cfg ext B hT
+        hC.static_validators hanchor hboundary hv hHn1
+  have hgateBoundary : will_current_target_be_justified cfg ext
+      (E.store cfg ext v (n + 1)) = true := by
+    simpa only [E.fcrStep_store] using hgate
+  have hsupportBoundary : HonestVotesSupportTarget cfg E
+      (get_current_target cfg (E.store cfg ext v (n + 1))) (n + 1) := by
+    simpa only [E.fcrStep_store] using hsupport
+  have hendH := E.currentTargetEpochEnd_within_of_epochEndsFitUint64
+    cfg ext hfit (v := v) (q := n + 1) hHn1
+  have hanchorH := E.completedPrefix_anchor_epoch_within cfg ext hT
+    hC.static_validators
+  have hendHP : E.SlotWithinHorizon cfg
+      (currentTargetEpochEnd cfg (p.store cfg ext)) := by
+    rw [hpstore]
+    exact hendH
+  have hgateP : will_current_target_be_justified cfg ext
+      (p.store cfg ext) = true := by
+    rw [hpstore]
+    exact hgateBoundary
+  have hsupportP : HonestVotesSupportTarget cfg E
+      (get_current_target cfg (p.store cfg ext))
+      (p.previousSecond + 1) := by
+    rw [hpstore]
+    change HonestVotesSupportTarget cfg E
+      (get_current_target cfg (E.store cfg ext v (n + 1))) (n + 1)
+    exact hsupportBoundary
+  have hrealized :=
+    E.trusted_scheduledEventPrefix_acceptedTargetA32GateRealization_withLookahead
+    cfg ext B hT hC.delivery_lookahead hC.static_validators
+      hC.byzantine_bound
+      hC.phase0_source hC.phase0_boundary_source hanchor hboundary p hv hHn1
+      hevidence hstate hval htab hendHP hanchorH hC.balance_floor
+      hgateP hsupportP
+  rw [hpstore] at hrealized
+  simpa only [E.fcrStep_store] using hrealized
+
+theorem trusted_selectedMarginAssumptions_of_completedPrefixes
+    (B : TrustedCausalPrefixFFGInterpretation cfg ext E trusted)
+    (hT : E.ScheduledPrefixPremises cfg ext)
+    (hC : E.CompletedFCRCallPremises cfg ext)
+    (hdomain : SelectedMarginDomain cfg ext E)
+    (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
+    (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
+      (E := E) (anchor := B.anchor)) :
+    SelectedMarginAssumptions cfg ext E :=
+  { genesis := hT.genesis_structure
+    wellFormed := hT.wellFormed
+    whole_seconds := hT.whole_seconds
+    honest_behavior := hT.honest_behavior
+    synchrony := hC.synchrony
+    externals_coherence := hT.externals_coherence
+    static_validators := hC.static_validators
+    byzantine_bound := hC.byzantine_bound
+    domain := hdomain }
+
+/-- The completed-prefix primitive bundle discharges the complete call
+interface required by the historical write-back induction. -/
+noncomputable def
+    trusted_acceptedHistoricalA32CallInterfaces_of_completedPrefixes
+    (B : TrustedCausalPrefixFFGInterpretation cfg ext E trusted)
+    (hT : E.ScheduledPrefixPremises cfg ext)
+    (hC : E.CompletedFCRCallPremises cfg ext)
+    (hfit : EpochEndsFitUint64 cfg)
+    (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
+    (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
+      (E := E) (anchor := B.anchor)) :
+    E.TrustedAcceptedHistoricalA32CallInterfaces cfg ext B := by
+  intro v hv n hcall hHn1
+  exact {
+    target_gate_producer :=
+      E.trusted_completedPrefix_acceptedTargetGateProducerAt cfg ext B hT hC hfit
+        hanchor hboundary hv hcall hHn1
+  }
+
+/-- End-to-end historical current-lineage invariant after replacing the
+abstract call interface by completed-prefix protocol assumptions. -/
+theorem trusted_acceptedHistoricalA32CurrentLineage_invariant_of_completedPrefixes
+    (B : TrustedCausalPrefixFFGInterpretation cfg ext E trusted)
+    (hT : E.ScheduledPrefixPremises cfg ext)
+    (hC : E.CompletedFCRCallPremises cfg ext)
+    (hfit : EpochEndsFitUint64 cfg)
+    (hdomain : SelectedMarginDomain cfg ext E)
+    (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
+    (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
+      (E := E) (anchor := B.anchor)) :
+    ∀ v ∈ E.honest, ∀ n : ℕ, E.WithinHorizon cfg n →
+      E.TrustedAcceptedHistoricalA32CurrentLineageAt cfg ext B v n := by
+  exact E.trusted_acceptedHistoricalA32CurrentLineage_invariant cfg ext B hT
+    (E.trusted_selectedMarginAssumptions_of_completedPrefixes cfg ext B hT hC hdomain
+      hanchor hboundary)
+    hC.phase0_source hC.phase0_boundary_source hanchor hboundary
+      (E.trusted_acceptedHistoricalA32CallInterfaces_of_completedPrefixes
+        cfg ext B hT hC hfit hanchor hboundary)
+
+/-- Headline current-epoch lineage using the completed-prefix supplier. -/
+theorem trusted_acceptedHistoricalA32CurrentLineage_of_completedPrefixes
+    (B : TrustedCausalPrefixFFGInterpretation cfg ext E trusted)
+    (hT : E.ScheduledPrefixPremises cfg ext)
+    (hC : E.CompletedFCRCallPremises cfg ext)
+    (hfit : EpochEndsFitUint64 cfg)
+    (hdomain : SelectedMarginDomain cfg ext E)
+    (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
+    (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
+      (E := E) (anchor := B.anchor))
+    {v : ValidatorIndex} (hv : v ∈ E.honest)
+    {n : ℕ} (hHn : E.WithinHorizon cfg n)
+    (hcurrent : get_block_epoch cfg (E.store cfg ext v n)
+        (E.confirmed cfg ext v n) =
+      get_current_store_epoch cfg (E.store cfg ext v n)) :
+    ∃ e : Epoch, Nonempty (E.TrustedAcceptedHistoricalA32LineageCoreAt
+      cfg ext B (E.confirmed cfg ext v n) e
+      (E.TrustedLazyCertAt cfg ext B n) (E.TrustedLazySupportAt cfg ext B v n)) :=
+  (E.trusted_acceptedHistoricalA32CurrentLineage_invariant_of_completedPrefixes
+    cfg ext B hT hC hfit hdomain hanchor hboundary v hv n hHn).current_lineage hcurrent
 
 end Execution
 end FastConfirmation.Spec
