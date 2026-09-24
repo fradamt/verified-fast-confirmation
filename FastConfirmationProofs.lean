@@ -175,6 +175,7 @@ public import FastConfirmationProofs.FFG.State.TrustedProcessedFFGGlobalCheckpoi
 public import FastConfirmationProofs.FFG.State.ProcessedFFGStateTrajectory
 public import FastConfirmationProofs.FFG.State.TrustedProcessedFFGStateTrajectory
 public import FastConfirmationProofs.FFG.State.RecentCarrierFinalizedPlacement
+public import FastConfirmationProofs.FFG.State.TrustedRecentCarrierFinalizedPlacement
 public import FastConfirmationProofs.FFG.State.ScheduledFFGGlobalCheckpointTrajectory
 public import FastConfirmationProofs.FFG.State.ScheduledFFGStateTrajectory
 public import FastConfirmationProofs.ForkChoice.Ancestry.AncestorWalk
