@@ -85,10 +85,6 @@ def childSignedBlock : SignedBeaconBlock WitnessRoot :=
   { message := { slot := 1, parent_root := anchorRoot }
     root := childRoot }
 
-def carrierSignedBlock : SignedBeaconBlock WitnessRoot :=
-  { message := { slot := 7, parent_root := childRoot }
-    root := carrierRoot }
-
 /-! ## Ground honest votes -/
 
 def voteData (slot : Slot) : AttestationData WitnessRoot :=
@@ -121,6 +117,11 @@ def vote3 := vote 3
 def vote4 := vote 4
 def vote5 := vote 5
 def vote6 := vote 6
+
+/-- The carrier contains the three ordered Phase0 FFG votes. -/
+def carrierSignedBlock : SignedBeaconBlock WitnessRoot :=
+  { message := { slot := 7, parent_root := childRoot, attestations := [vote4, vote5, vote6] }
+    root := carrierRoot }
 def vote7 := vote 7
 def vote8 := vote 8
 def vote9 := vote 9

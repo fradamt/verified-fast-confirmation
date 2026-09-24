@@ -141,6 +141,8 @@ def parseBlock (j : J) : Except String (Nat × BeaconBlock Nat) := do
   return (← rootField j "root", {
     slot := ← natField j "slot"
     parent_root := ← rootField j "parent_root"
+    -- Historical FCR traces omit FFG body attestations; FCR does not read them.
+    attestations := []
   })
 
 def parseBlockState (j : J) : Except String (Nat × BeaconState Nat) := do

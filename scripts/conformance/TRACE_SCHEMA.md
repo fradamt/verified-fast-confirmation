@@ -60,6 +60,10 @@ The Python `store` is snapshotted immediately before the call. The FCR call does
 not mutate the fork-choice store; if it does in some fork, the exporter must
 abort with an error naming the field.
 
+Historical traces omit ordinary `body.attestations`. The Lean runner sets
+`BeaconBlock.attestations` to `[]` for replay because FCR outputs do not read
+that field. Accepted FFG inclusion evidence still checks actual block bodies.
+
 ## Externals
 During the Python call the exporter wraps exactly these spec functions and
 records every invocation:

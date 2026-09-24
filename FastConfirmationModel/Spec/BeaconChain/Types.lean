@@ -98,14 +98,37 @@ structure EnvelopeObservation (Root : Type*) where
   identity : Root
   deriving DecidableEq, Inhabited
 
-/-- Gloas block read projection (`specs/gloas/beacon-chain.md:749`, :829).
-Payload attestations carry the source indexed projection, including order. -/
+/-- Phase0 `AttestationData` container (`specs/phase0/beacon-chain.md`,
+`AttestationData`). -/
+structure AttestationData (Root : Type*) where
+  slot : Slot
+  index : CommitteeIndex
+  beacon_block_root : Root
+  source : Checkpoint Root
+  target : Checkpoint Root
+deriving DecidableEq, Inhabited
+
+/-- Phase0 indexed attestation projection (`specs/phase0/beacon-chain.md`,
+`IndexedAttestation`). Signature validation is external. -/
+structure IndexedAttestation (Root : Type*) where
+  attesting_indices : List ValidatorIndex
+  data : AttestationData Root
+deriving DecidableEq, Inhabited
+
+/-- Wire attestation represented by its indexed projection. -/
+abbrev Attestation (Root : Type*) := IndexedAttestation Root
+
+/-- Gloas block read projection (`specs/gloas/beacon-chain.md`,
+`BeaconBlockBody` and `BeaconBlock`; `specs/phase0/beacon-chain.md`,
+`BeaconBlockBody`). Ordinary FFG `attestations` and payload attestations
+retain their source order. -/
 structure BeaconBlock (Root : Type*) where
   slot : Slot
   parent_root : Root
   proposer_index : ValidatorIndex := 0
   parent_block_hash : Root := parent_root
   block_hash : Root := parent_root
+  attestations : List (Attestation Root) := []
   payload_attestations : List (IndexedPayloadAttestation Root) := []
   deriving DecidableEq, Inhabited
 
@@ -166,38 +189,6 @@ structure SignedBeaconBlock (Root : Type*) where
   message : BeaconBlock Root
   root : Root
 deriving DecidableEq, Inhabited
-
-/-- Phase0 `AttestationData` container (transcribed in full):
-```python
-class AttestationData(Container):
-    slot: Slot
-    index: CommitteeIndex
-    beacon_block_root: Root
-    source: Checkpoint
-    target: Checkpoint
-``` -/
-structure AttestationData (Root : Type*) where
-  slot : Slot
-  index : CommitteeIndex
-  beacon_block_root : Root
-  source : Checkpoint Root
-  target : Checkpoint Root
-deriving DecidableEq, Inhabited
-
-/-- Phase0 `IndexedAttestation`, projected: `attesting_indices` + `data`
-(the BLS `signature` is absorbed into
-`Externals.is_valid_indexed_attestation`). -/
-structure IndexedAttestation (Root : Type*) where
-  attesting_indices : List ValidatorIndex
-  data : AttestationData Root
-deriving DecidableEq, Inhabited
-
-/-- The wire `Attestation`, modelled as its indexed projection: the
-aggregation-bits → indices extraction (`get_indexed_attestation`) is absorbed
-into the wire object, and its validity into
-`Externals.is_valid_indexed_attestation` — no transcribed logic reads bits or
-signatures (design decision 12). -/
-abbrev Attestation (Root : Type*) := IndexedAttestation Root
 
 /-- Phase0 `AttesterSlashing` container:
 ```python
