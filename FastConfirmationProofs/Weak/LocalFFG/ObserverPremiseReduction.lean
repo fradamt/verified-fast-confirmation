@@ -56,6 +56,39 @@ theorem nonhonest_honestBehavior
   · intro v hv
     exact hB.honest_unslashed v (hh.symm ▸ hv)
 
+/-- Vote receipt at the horizon boundary transfers because both the sender
+and receiver are honest, hence distinct from the observer. -/
+theorem nonhonest_deliveryLookahead
+    (hobs : obs ∉ E.honest)
+    (core : E.WeakObserverRestrictedCore cfg ext obs) :
+    HorizonVoteDeliveryLookahead cfg E := by
+  let R := E.withoutObserver obs
+  have hh : R.honest = E.honest := withoutObserver_honest hobs
+  refine ⟨?_⟩
+  intro v hv s n a hs hn hvote hcut w hw
+  have hvR : v ∈ R.honest := hh.symm ▸ hv
+  have hwR : w ∈ R.honest := hh.symm ▸ hw
+  have hwr : w ≠ obs := by
+    intro heq
+    subst w
+    exact hobs hw
+  have hr := core.delivery_lookahead.attestation_delivery v hvR s n a hs hn
+    hvote hcut w hwR
+  simpa only [R, withoutObserver, if_neg hwr] using hr
+
+/-- The completed-call supplement uses the same anchor balances and the
+transported honest-vote lookahead. -/
+def nonhonest_completedCalls
+    (hobs : obs ∉ E.honest)
+    (core : E.WeakObserverRestrictedCore cfg ext obs) :
+    E.WeakCompletedFCRCallSupplement cfg ext where
+  phase0_source := core.completed_calls.phase0_source
+  phase0_boundary_source := core.completed_calls.phase0_boundary_source
+  balance_floor := by
+    simpa only [withoutObserver, Execution.weight,
+      Execution.currentTargetAnchorActive] using core.completed_calls.balance_floor
+  delivery_lookahead := nonhonest_deliveryLookahead hobs core
+
 end
 end Execution
 end FastConfirmation.Spec
