@@ -74,16 +74,18 @@ structure ExactIncludedLinkValidity
     (included : Root → Attestation Root → Prop)
     (anchor : Checkpoint Root)
     (C : Root → Epoch → Checkpoint Root)
-    (Accepted : Root → Prop) : Prop where
+    (Accepted : Root → Prop)
+    (Domain : Root → Prop := fun _ => True) : Prop where
   carrier_accepted : ∀ {carrier source target},
     (L : IncludedSupermajorityLink cfg E included
       carrier source target) →
     IncludedSupermajorityLink.Contributing cfg anchor L →
-    Accepted carrier
+    Domain carrier → Accepted carrier
   endpoints_on_carrier : ∀ {carrier source target},
     (L : IncludedSupermajorityLink cfg E included
       carrier source target) →
     IncludedSupermajorityLink.Contributing cfg anchor L →
+    Domain carrier →
     source = C carrier source.epoch ∧
       target = C carrier target.epoch
 
@@ -92,6 +94,14 @@ structure ExactIncludedLinkValidity
 variable {E : Execution Root}
 
 namespace CausalCarrierFFGState
+
+/-- Accepted-state exactness on a stated carrier domain. -/
+abbrev GuardedExactLinkValidity
+    {ext : Externals Root}
+    (S : CausalCarrierFFGState cfg ext E anchor)
+    (Domain : Root → Prop) : Prop :=
+  ExactIncludedLinkValidity cfg E S.includedAttestations.Included anchor
+    S.C (E.AcceptedRoot cfg ext) Domain
 
 /-- Production accepted-state instance of the generic exact-link law. -/
 abbrev ExactLinkValidity

@@ -116,7 +116,7 @@ theorem finalized_prefix_shared
         · have hr := hacc.justified_unique htargetGlobal hchildGlobal htargetChild
           have he : target = hf.child := checkpoint_eq_of_epoch_root_eq htargetChild hr
           have htargetKnown : target.root ∈ (R.store cfg ext w n).block_roots := by
-            have ht := (V.endpoints_on_carrier link hsource).2
+            have ht := (V.endpoints_on_carrier link hsource trivial).2
             rw [S.coherence.checkpoint_of_known (R.store_causal cfg ext w n)
               jcarrier hjknown target.epoch] at ht
             have hwalk := R.trustedAnchor_boundaryWalkAtEpoch_of_trajectory cfg ext hTR

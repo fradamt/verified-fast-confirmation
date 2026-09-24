@@ -977,13 +977,13 @@ theorem witnessIncludedLink_cases
 def witnessExactLinkValidity :
     witnessAcceptedChainFFGState.ExactLinkValidity where
   carrier_accepted := by
-    intro carrier source target L hcontributing
+    intro carrier source target L hcontributing _hdomain
     change IncludedSupermajorityLink witnessConfig witnessExecution
       witnessIncluded carrier source target at L
     rcases witnessIncludedLink_cases L with ⟨rfl, hsource, htarget⟩
     exact carrier_accepted
   endpoints_on_carrier := by
-    intro carrier source target L hcontributing
+    intro carrier source target L hcontributing _hdomain
     change IncludedSupermajorityLink witnessConfig witnessExecution
       witnessIncluded carrier source target at L
     obtain ⟨rfl, rfl, rfl⟩ := witnessIncludedLink_cases L

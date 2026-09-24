@@ -99,11 +99,11 @@ theorem target_accepted
     (hcontributing : IncludedSupermajorityLink.Contributing cfg anchor L)
     (hanchorSource : anchor.epoch ≤ source.epoch) :
     Accepted target.root := by
-  have hcarrier := V.carrier_accepted L hcontributing
+  have hcarrier := V.carrier_accepted L hcontributing trivial
   have htargetEpoch : anchor.epoch ≤ target.epoch :=
     hanchorSource.trans (Nat.le_of_lt L.source_before_target)
   have hprojected := P.checkpoint_root_accepted hcarrier htargetEpoch
-  have htarget := (V.endpoints_on_carrier L hcontributing).2
+  have htarget := (V.endpoints_on_carrier L hcontributing trivial).2
   have htargetRoot : target.root = (C carrier target.epoch).root :=
     congrArg Checkpoint.root htarget
   rw [htargetRoot]
@@ -124,10 +124,10 @@ theorem source_prefix_target
     (hanchorSource : anchor.epoch ≤ source.epoch) :
     ExactCheckpointPrefix C source target := by
   obtain ⟨hsource, htarget⟩ :=
-    V.endpoints_on_carrier L hcontributing
+    V.endpoints_on_carrier L hcontributing trivial
   have htargetRoot : target.root = (C carrier target.epoch).root :=
     congrArg Checkpoint.root htarget
-  have hcomp := P.checkpoint_comp (V.carrier_accepted L hcontributing)
+  have hcomp := P.checkpoint_comp (V.carrier_accepted L hcontributing trivial)
     hanchorSource (Nat.le_of_lt L.source_before_target)
   unfold ExactCheckpointPrefix
   calc
@@ -148,10 +148,10 @@ theorem target_self
     (hcontributing : IncludedSupermajorityLink.Contributing cfg anchor L)
     (hanchorTarget : anchor.epoch ≤ target.epoch) :
     target = C target.root target.epoch := by
-  have htarget := (V.endpoints_on_carrier L hcontributing).2
+  have htarget := (V.endpoints_on_carrier L hcontributing trivial).2
   have htargetRoot : target.root = (C carrier target.epoch).root :=
     congrArg Checkpoint.root htarget
-  have hcomp := P.checkpoint_comp (V.carrier_accepted L hcontributing)
+  have hcomp := P.checkpoint_comp (V.carrier_accepted L hcontributing trivial)
     hanchorTarget (Nat.le_refl target.epoch)
   calc
     target = C carrier target.epoch := htarget

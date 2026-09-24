@@ -62,6 +62,11 @@ run_cmd do
     ``FastConfirmation.Spec.Execution.WeakObserverPremises,
     ``FastConfirmation.Spec.Execution.WeakCompletedFCRCallSupplement,
     ``FastConfirmation.Spec.Execution.WeakObserverRestrictedPremises,
+    -- Keep the honest-store adapter and the guarded accepted-link surface visible.
+    ``FastConfirmation.Spec.Execution.CausalCarrierAttestationEvidence,
+    ``FastConfirmation.Spec.Execution.CausalCarrierAttestationRelation,
+    ``FastConfirmation.Spec.Execution.CausalCarrierAttestationRelation.relation,
+    ``FastConfirmation.Spec.CausalCarrierFFGState.GuardedExactLinkValidity,
     ``FastConfirmation.Spec.Execution.SameOutsideObserver,
     ``FastConfirmation.Spec.CurrentTargetSelectedEdge,
     ``FastConfirmation.Spec.prevEpochLoopTrace,
