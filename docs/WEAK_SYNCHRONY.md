@@ -143,8 +143,10 @@ The theorem does not require another node to receive an observer block.
 `ObserverFFGContent` has a separate content domain. `domain_local` identifies
 that domain with roots in the observer's own causal stores. Its inclusion
 relation checks the actual carrier body and a target state prepared from the
-observer's own keyed state. It does not require a separately scheduled
-attestation or a validation store at an honest node. The shared record remains
+observer's own keyed state. The local `received_from_block` clause records
+an included body attestation as a from-block event in the observer's own
+schedule. This is client input handling, with no deadline or remote receiver.
+It does not require a validation store at an honest node. The shared record remains
 indexed by `E.withoutObserver obs`.
 
 The additional local assumptions are the following. Each applies to the
@@ -167,6 +169,9 @@ observer's own content or successful calls, with no receipt deadline:
 - `included_evidence`: each included attestation is in that exact carrier
   body, validates on an observer-prepared target state, has an in-horizon
   slot before the carrier, and has the stated target epoch and chain paths.
+  Its `received_from_block` field requires the observer's local body-handling
+  event. The executable block handler does not create this schedule event;
+  the local contract states the client bookkeeping explicitly.
 - `selectors.genesis_gj`, `genesis_gf`, `genesis_gu`, `genesis_guf`,
   `genesis_unrealized_justification`: the trusted local initial state matches
   the content selectors; these retain the existing trusted-anchor contract.
@@ -211,8 +216,11 @@ from the complete core is claimed.
 A body aggregate and a signer's individual vote can be different payloads.
 `link_signed_origin` retains both objects, their data equality, and the
 aggregate's body membership. It does not claim that the individual signed
-payload itself appears in the body. Old consumers of `received_from_block`
-and of the stronger exact-payload temporal witness need this explicit port.
+payload itself appears in the body. `includedRelation` supplies ordinary
+inclusion evidence using the local body-handling event and local validation.
+`au_certified` and `finalized_certified` project local content certificates to
+the scheduled certificate API. The stronger exact-payload temporal witness
+still needs a separate port.
 
 The local FFG modules build independently of the old weak
 headlines. `scripts/h6-observer-ffg-oracle.lean` checks arbitrary schedule
@@ -239,8 +247,8 @@ receipt deadline.
 A direct reduction to the old headline bundle stops at two fields. First,
 the old accepted-carrier inclusion evidence needs a separate block-derived
 attestation event and an honest validation store. The local content contract
-has the carrier body and an observer-prepared validation state. It does not
-require those remote occurrences. Second, the old head-path domain ranges
+now supplies the event at the observer itself, with no remote occurrence.
+Its validation state remains local. Second, the old head-path domain ranges
 over every receiver, including the actual observer; the restricted core
 constrains only the observer's empty-schedule view. The honest-receiver case
 has been proved separately. The remaining weak trajectory proof must use

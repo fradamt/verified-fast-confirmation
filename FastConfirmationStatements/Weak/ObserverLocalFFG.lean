@@ -67,7 +67,8 @@ def AU {E : Execution Root} {anchor : Checkpoint Root}
 end ObserverFFGContent
 
 /-- Positive body evidence with a prepared validation state from this observer.
-There is no separately scheduled attestation and no honest-store witness. -/
+The local from-block event records the client's handling of a body attestation.
+It has no receipt deadline and does not require a remote receiver. -/
 structure ObserverIncludedEvidence (E : Execution Root) (obs : ValidatorIndex)
     (carrier : Root) (body : BeaconBlock Root) (a : Attestation Root) where
   carrier_store : Store Root
@@ -75,6 +76,7 @@ structure ObserverIncludedEvidence (E : Execution Root) (obs : ValidatorIndex)
   carrier_known : carrier ∈ carrier_store.block_roots
   carrier_body : carrier_store.blocks carrier = body
   body_member : a ∈ body.attestations
+  received_from_block : ∃ n, Event.attestation a true ∈ E.schedule obs n
   validation_store : Store Root
   validation_local : E.ObserverCausalStore cfg ext obs validation_store
   target_known : a.data.target.root ∈ validation_store.block_roots
