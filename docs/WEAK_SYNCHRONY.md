@@ -81,3 +81,52 @@ zero for the previous slot. The Python unsigned `Slot` subtraction underflows
 there. The duty-fresh comparison covers positive current slots.
 
 Older design and proof notes are preserved under `docs/history/`.
+
+## Restricted observer premises
+
+`WeakObserverRestrictedPremises` is a compiled design surface. It does not
+replace the headline premises above. Its independence oracle is
+`Execution.weakObserverRestrictedPremises_observer_independent`, in
+`FastConfirmationInternal/Weak/ObserverIndependence.lean`.
+
+For `obs ∉ E.honest`, `E.withoutObserver obs` retains the honest set, votes,
+committees, horizon and genesis, and sets only its schedule to the empty list.
+All other schedules stay unchanged. `WeakRestrictedNetworkPremises` reuses
+the main records on this view. Thus every relay source and receiver is in
+`H = E.honest`. `HorizonVoteDeliveryLookahead` supplies the last
+horizon vote case. Emptying the schedule also removes the observer from the
+all-receiver no-forgery and all-node accepted-input quantifiers. Erasing only
+the honest set would not do this. The Internal module proves equality of the
+other nodes' stores and weak caches with the actual execution.
+
+The generic design also has `ObserverHonestVoterFacts`. For a non-honest
+observer all its fields are vacuous. An honest observer is covered by the
+existing weak headlines, with the usual delivery premises and endpoint scope.
+Its stake stays in the honest set.
+
+The actual observer has these `ObserverLocalInputs` fields:
+
+- `validity`: the three indexed-attestation laws on its own keyed states.
+- `committees_agree`: committee readback from its own store.
+- `no_forgery`: a received signed vote must have an authentic, causal origin;
+  it requires no receipt.
+- `block_labels`: its input block labels agree with other input labels,
+  including its own; this is content identity, with no receipt deadline.
+- `genesis_blocks`: an input that uses a genesis root has the genesis content.
+- `anchor_parent`: an input cannot reuse the unresolved anchor-parent label.
+- `process_slots_validity`: preparation of its keyed validation state preserves
+  the signature check.
+- `votes_head`: if honest, its fixed signed vote agrees with its own local
+  head when cast; this clause must be checked again after an input change.
+
+The oracle fixes all votes and all non-observer schedules. It transfers the
+shared and honest-voter records, and takes the eight local fields for the new
+observer run. It does not assert that arbitrary new inputs satisfy them.
+`ObserverLocalInputs.wellFormed` reconstructs actual execution block-label
+coherence from the restricted record and these local clauses.
+
+One limit remains before the headlines can use this design. The
+restricted accepted-root domain omits blocks accepted only by the observer.
+The existing FFG package cannot simply be reused for those blocks. The
+observer-local content package supplies separate equations for successful
+transitions and checkpoint reads. It does not require receipt at another node.

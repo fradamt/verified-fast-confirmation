@@ -1,4 +1,5 @@
 module
+public import FastConfirmationStatements.Weak.RestrictedObserver
 public import FastConfirmationStatements.Claims
 public import FastConfirmationStatements.Premises.Behavior
 public import FastConfirmationStatements.Premises.CheckpointLinks
