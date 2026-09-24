@@ -219,8 +219,8 @@ aggregate's body membership. It does not claim that the individual signed
 payload itself appears in the body. `includedRelation` supplies ordinary
 inclusion evidence using the local body-handling event and local validation.
 `au_certified` and `finalized_certified` project local content certificates to
-the scheduled certificate API. The stronger exact-payload temporal witness
-still needs a separate port.
+the scheduled certificate API. The temporal formation witness now keeps the signed vote and the body
+aggregate separate. It uses equal attestation data and body membership.
 
 The local FFG modules build independently of the old weak
 headlines. `scripts/h6-observer-ffg-oracle.lean` checks arbitrary schedule
@@ -272,14 +272,21 @@ make the validation-store predicate explicit. The old carrier evidence maps
 to and from their honest-store instance without changing its type.
 `ObserverLocalFFG.trustedIncludedRelation` supplies the observer-causal-store
 instance, with the accepted carrier, body membership and exact prepared-state
-equation retained. This generalizes the evidence interface; the old global
-FFG interpretation has not yet been ported to it.
+equation retained. `TrustedCausalCarrierFFGState` and `TrustedCausalPrefixFFGInterpretation`
+now carry that predicate. Two-way adapters show that their honest-store
+instance has the content of the old records. The old record identifiers and
+all existing weak headline types stay unchanged. The formation witness uses
+equal attestation data instead of exact signed-payload body membership.
+`ExactIncludedLinkValidity` now checks carrier acceptance and endpoints only
+inside its stated domain. The existing instance uses the full domain, while
+`ObserverLocalFFG.guardedExactLinkValidity` uses the local content domain.
+The local relation also lifts to the actual run's “honest causal store or
+observer causal store” predicate.
 
-The restricted-premise full safety headlines remain open. The remaining
-formation witness requires an individual signed payload in a carrier body,
-where local authenticity gives equal signed data for a body aggregate.
-In addition, a global interpretation must handle the old unguarded exact-link
-accepted-carrier law when an observer schedules a block that is rejected.
-The new local finalized proof keeps certificates separate and does not need
-either reduction. The other weak fold branches still need that explicit
-FFG port. The existing weak headline types are unchanged.
+The restricted-premise full safety headlines remain open. The shared core and
+local FFG state still have separate inclusion and formed relations. A combined
+actual-run interpretation must preserve both certificates and the exact-link
+law, including links that mix attestations from the two relations. The current
+local contract gives exactness for its own relation; the shared core gives
+exactness for its own relation. Neither law directly covers a mixed link.
+The other weak fold branches still use the old global interpretation.
