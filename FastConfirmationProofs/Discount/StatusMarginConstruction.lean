@@ -469,7 +469,7 @@ theorem endpoint_opposite_honest_classification
     have hdstSlot : dst.slot ≤ es := by
       obtain ⟨att, u, t, ifb, hsched, hia, hmsg⟩ :=
         E.schedLMProvExact cfg ext hgen w m i dst hdst
-      obtain ⟨k, att', hvote, _⟩ :=
+      obtain ⟨k, att', _hcausal, hvote, _⟩ :=
         hA.honest_behavior.no_forgery u t att ifb hsched i hi hia
       obtain ⟨_, _, _, _, _, hgate, _, _, _, hslotEq⟩ := hprovW i dst hdst
       have hdstσ : dst.slot ≤ σ := by

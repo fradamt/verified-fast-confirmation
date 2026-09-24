@@ -128,7 +128,7 @@ theorem pastHead_of_honestSupporter_known
     rw [← ht, hslot]
   obtain ⟨a', sender, sentAt, ifb, hsched, hiatt, hbbr, hslotep⟩ :=
     E.schedLMProv cfg ext hgen0 v n i lm hlm
-  obtain ⟨_voteAt, own, hvote, hdata⟩ :=
+  obtain ⟨_voteAt, own, _hcausal, hvote, hdata⟩ :=
     hT.honest_behavior.no_forgery sender sentAt a' ifb hsched i hi hiatt
   set s := a'.data.slot
   have hcomm : i ∈ E.committee s :=

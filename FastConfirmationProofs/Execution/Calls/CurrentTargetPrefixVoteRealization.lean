@@ -229,7 +229,7 @@ theorem currentTargetObservedHonestSupporter_vote_of_prefix
       haRoot, haSlotEpoch⟩ :=
     p.currentTargetScheduledLatestMessageProvenance cfg ext E
       hV.trajectory i lm hlm
-  obtain ⟨kGround, aGround, hvoteGround, hdataGround⟩ :=
+  obtain ⟨kGround, aGround, _hcausal, hvoteGround, hdataGround⟩ :=
     hhb.no_forgery u t a ifb hsched i hi hiAttests
   have hiCommittee : i ∈ E.committee a.data.slot :=
     hhb.votes_assigned i hi a.data.slot

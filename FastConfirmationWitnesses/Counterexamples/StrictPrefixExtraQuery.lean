@@ -317,10 +317,10 @@ private theorem witnessHonestBehavior :
     simp only [witnessExecution, witnessSchedule] at hschedule
     split_ifs at hschedule with hn1 hn2 hn3 hn4 <;>
       simp_all [vote0, vote1, vote2, vote3]
-    · exact ⟨0, vote0, by decide, rfl⟩
-    · exact ⟨1, vote1, by decide, rfl⟩
-    · exact ⟨2, vote2, by decide, rfl⟩
-    · exact ⟨3, vote3, by decide, rfl⟩
+    · exact ⟨0, by omega, vote0, by decide, rfl⟩
+    · exact ⟨1, by omega, vote1, by decide, rfl⟩
+    · exact ⟨2, by omega, vote2, by decide, rfl⟩
+    · exact ⟨3, by omega, vote3, by decide, rfl⟩
   · intro v hv s s' n n' a a' hvote hvote'
     rw [vote_some_cases] at hvote hvote'
     rcases hvote with h0 | h1 | h2 | h3 <;>

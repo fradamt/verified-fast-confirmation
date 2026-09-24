@@ -39,9 +39,9 @@ theorem not_surround_of_honest_intersection
     L.signer_attestation i hiL
   obtain ⟨w', n', a', fromBlock', haSchedule', hiA', haSource', haTarget'⟩ :=
     L'.signer_attestation i hiL'
-  obtain ⟨k, vote, hvote, hdata⟩ :=
+  obtain ⟨k, vote, _hcausal, hvote, hdata⟩ :=
     hhb.no_forgery w n a fromBlock haSchedule i hiHonest hiA
-  obtain ⟨k', vote', hvote', hdata'⟩ :=
+  obtain ⟨k', vote', _hcausal', hvote', hdata'⟩ :=
     hhb.no_forgery w' n' a' fromBlock' haSchedule' i hiHonest hiA'
   have hvoteSource : vote.data.source = s := by rw [← hdata]; exact haSource
   have hvoteTarget : vote.data.target = t := by rw [← hdata]; exact haTarget
@@ -93,9 +93,9 @@ theorem root_eq_of_same_epoch
     C.signer_attestation i hiC
   obtain ⟨w', n', a', fromBlock', haSchedule', hiA', _haSource', haTarget'⟩ :=
     C'.signer_attestation i hiC'
-  obtain ⟨k, vote, hvote, hdata⟩ :=
+  obtain ⟨k, vote, _hcausal, hvote, hdata⟩ :=
     hhb.no_forgery w n a fromBlock haSchedule i hiHonest hiA
-  obtain ⟨k', vote', hvote', hdata'⟩ :=
+  obtain ⟨k', vote', _hcausal', hvote', hdata'⟩ :=
     hhb.no_forgery w' n' a' fromBlock' haSchedule' i hiHonest hiA'
   have hvoteTarget : vote.data.target = c := by
     rw [← hdata]

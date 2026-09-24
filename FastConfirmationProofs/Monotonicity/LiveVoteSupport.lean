@@ -36,7 +36,7 @@ theorem latest_message_has_honest_vote
         (decide (a.data.index = 1)) := by
   obtain ⟨a, u, q, fromBlock, hsched, hvin, hmsgEq⟩ :=
     E.schedLMProvExact cfg ext hgen w t v msg hmsg
-  obtain ⟨k, a', hvote, hdata⟩ :=
+  obtain ⟨k, a', _hcausal, hvote, hdata⟩ :=
     hhb.no_forgery u q a fromBlock hsched v hv hvin
   exact ⟨a.data.slot, k, a', hvote, by simpa only [hdata] using hmsgEq⟩
 

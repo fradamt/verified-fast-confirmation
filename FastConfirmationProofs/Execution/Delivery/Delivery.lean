@@ -1296,7 +1296,7 @@ theorem Execution.latest_message_eq_honest_vote {E : Execution Root}
       (decide (a.data.index = 1)) := by
   obtain ⟨a', u, t, ifb, hsched, hvin, hmsgEq⟩ :=
     E.schedLMProvExact cfg ext hgen w m v msg hmsg
-  obtain ⟨k', a'', hvote', hdata'⟩ :=
+  obtain ⟨k', a'', _hcausal, hvote', hdata'⟩ :=
     hhb.no_forgery u t a' ifb hsched v hv hvin
   have hcs : v ∈ E.committee a'.data.slot :=
     hhb.votes_assigned v hv a'.data.slot
@@ -1336,7 +1336,7 @@ theorem Execution.latest_message_eq_of_same_epoch {E : Execution Root}
     src = dst := by
   obtain ⟨a, u, t, ifb, hsched, hia, hsrcEq⟩ :=
     E.schedLMProvExact cfg ext hgen v n i src hsrc
-  obtain ⟨k, a', hvote, _⟩ := hhb.no_forgery u t a ifb hsched i hi hia
+  obtain ⟨k, a', _hcausal, hvote, _⟩ := hhb.no_forgery u t a ifb hsched i hi hia
   have hslotep : compute_epoch_at_slot cfg a.data.slot =
       get_latest_message_epoch cfg src := by
     rw [hsrcEq]

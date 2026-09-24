@@ -85,9 +85,9 @@ theorem honest_not_mem_paperA32SlashableOnChain
     (V.includedAttestations.evidence hincluded₁).received_from_block
   obtain ⟨w₂, n₂, hsched₂⟩ :=
     (V.includedAttestations.evidence hincluded₂).received_from_block
-  obtain ⟨k₁, vote₁, hvote₁, hdata₁⟩ :=
+  obtain ⟨k₁, vote₁, _hcausal₁, hvote₁, hdata₁⟩ :=
     hhb.no_forgery w₁ n₁ a₁ true hsched₁ i hi hi₁
-  obtain ⟨k₂, vote₂, hvote₂, hdata₂⟩ :=
+  obtain ⟨k₂, vote₂, _hcausal₂, hvote₂, hdata₂⟩ :=
     hhb.no_forgery w₂ n₂ a₂ true hsched₂ i hi hi₂
   have hslashGround :
       is_slashable_attestation_data vote₁.data vote₂.data = true := by

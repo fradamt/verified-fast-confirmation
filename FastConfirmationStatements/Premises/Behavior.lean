@@ -39,13 +39,14 @@ structure HonestBehavior (E : Execution Root) : Prop where
     E.vote v s ≠ none → v ∈ E.committee s
   /-- no forgery / no equivocation: every attestation naming an honest
       validator, anywhere in any node's schedule, carries the data of that
-      validator's own recorded vote for that slot (BLS unforgeability + the
-      attester-slashing discipline). -/
+      validator's own recorded vote for that slot, sent no later than the
+      receiving schedule event (BLS unforgeability and send causality). -/
   no_forgery : ∀ w : ValidatorIndex, ∀ n : ℕ, ∀ (a : Attestation Root)
       (is_from_block : Bool),
     Event.attestation a is_from_block ∈ E.schedule w n →
     ∀ v ∈ E.honest, v ∈ a.attesting_indices →
-      ∃ m a', E.vote v a.data.slot = some (m, a') ∧ a.data = a'.data
+      ∃ m a', m ≤ n ∧
+        E.vote v a.data.slot = some (m, a') ∧ a.data = a'.data
   /-- honest votes are pairwise non-slashable ("How to avoid slashing",
       validator.md — honest source epochs are monotone in target epochs, so
       no double or surround vote): without this a surround pair of genuine

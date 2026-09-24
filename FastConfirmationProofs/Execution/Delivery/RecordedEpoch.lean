@@ -76,7 +76,7 @@ theorem recorded_lm_is_newest_in_store
       a.data.beacon_block_root = lm.root := by
   obtain ⟨a', u, tsc, ifb, hschedule, hvin, hbbr, hslotep⟩ :=
     hsched i lm hlm
-  obtain ⟨m1, a'', hvote', hdata'⟩ :=
+  obtain ⟨m1, a'', _hcausal, hvote', hdata'⟩ :=
     hhb.no_forgery u tsc a' ifb hschedule i hi hvin
   have hcomm0 : i ∈ E.committee a'.data.slot :=
     hhb.votes_assigned i hi a'.data.slot

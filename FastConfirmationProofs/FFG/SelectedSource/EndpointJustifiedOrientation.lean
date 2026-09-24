@@ -325,7 +325,7 @@ theorem completedPrefix_noConflict_certifiedJustified_root_eq_currentTarget
         obtain ⟨vote⟩ := hvotes i hiSigner
         obtain ⟨w, t, a, fromBlock, haSchedule, hiA,
             _haSource, haTarget⟩ := link.signer_attestation i hiLink
-        obtain ⟨kCompeting, aCompeting, hvoteCompeting,
+        obtain ⟨kCompeting, aCompeting, _hcausal, hvoteCompeting,
             hdataCompeting⟩ := hT.honest_behavior.no_forgery
               w t a fromBlock haSchedule i hiHonest hiA
         let aTarget := honest_attestation cfg ext

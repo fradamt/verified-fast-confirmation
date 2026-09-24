@@ -336,7 +336,7 @@ theorem past_descendant_of_honest_supporter_known_minimal
     rw [← ht, hslot]
   obtain ⟨a', sender, sentAt, ifb, hsched, hiatt, hbbr, hslotep⟩ :=
     E.schedLMProv cfg ext hgen0 v n i lm hlm
-  obtain ⟨voteAt, own, hvote, hdata⟩ :=
+  obtain ⟨voteAt, own, _hcausal, hvote, hdata⟩ :=
     hA.honest_behavior.no_forgery sender sentAt a' ifb hsched i hi hiatt
   set s := a'.data.slot
   have hcomm : i ∈ E.committee s :=
