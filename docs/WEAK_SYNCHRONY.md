@@ -17,8 +17,7 @@ The two full-rule safety headlines are
 concern a weak observer's stored confirmed root at second n and each honest
 head in a strictly later slot within the verification horizon. The observer
 can be honest or non-honest. The theorem parameters are the accepted exact
-prefix FFG semantics B, justification interface hji, trusted anchor
-agreement hanchor, trusted boundary alignment hboundary, realized
+prefix FFG semantics B, trusted anchor agreement hanchor, trusted boundary alignment hboundary, realized
 finalization delay hDelay, paper A3.2 inclusion hpaper, checkpoint
 projection P, exact link validity V, weak observer assumptions hW, the
 completed-prefix supplement hCbase, and epoch-fit arithmetic hfit.
@@ -27,17 +26,14 @@ later-slot inequality, and the horizon bound. Anchor exactness and the
 walk domain are derived within the proof; they are not headline binders.
 
 If the observer is honest, `hW.base.synchrony` delivers honest votes and
-relay messages to it. `JustificationInterface` also supplies same-slot
-cross-view checkpoint conditions on honest nodes. There is no direct receipt
-field for a non-honest observer. The observer's committee readback checks
+relay messages to it. There is no direct receipt field for a non-honest
+observer. The observer's committee readback checks
 its local state; it does not deliver messages.
-The observed justified checkpoint, previous greatest unrealized checkpoint,
-and observed checkpoint knownness fields of `JustificationInterface` read the
-strong `E.fcr` cache. They do not state laws of the weak `E.weakFcr` cache.
-Both weak headlines assume these strong-cache laws. Their safety guarantee
-therefore does not follow from weak-only premises. The strong cache is a
-computed shadow of the same schedule; the headlines give no equality between
-the strong and weak caches.
+The only weak-path use of `JustificationInterface` was honest head-root
+knownness. The proof now derives it from
+`SelectedMarginDomain.justified_root_known`. The legacy interface remains for
+other proof modules. The observer restriction on the global synchrony
+premises is pending.
 
 The trust audit registers 56 entries: 14 main-side, 41 weak-side, and
 `review_claims`. The 41 weak-side

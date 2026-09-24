@@ -84,9 +84,6 @@ premise record and is not registered as a theorem. See
 [docs/WEAK_SYNCHRONY.md](docs/WEAK_SYNCHRONY.md) for the exact premise surface,
 source boundary, validation command, and remaining proof obstacle.
 
-The two weak safety headlines take `JustificationInterface` as a premise.
-Its observed justified checkpoint, previous greatest unrealized checkpoint,
-and observed checkpoint knownness laws read the strong `E.fcr` cache. They do
-not state laws of the weak `E.weakFcr` cache. The headlines therefore also
-require strong-cache facts; they do not give a guarantee under weak-only
-premises.
+The two weak safety headlines use `SelectedMarginDomain.justified_root_known`
+to prove the required honest head knownness. They do not bind
+`JustificationInterface` or require laws about the strong `E.fcr` cache.
