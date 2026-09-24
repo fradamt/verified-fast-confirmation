@@ -55,6 +55,7 @@ public import FastConfirmationProofs.Execution.Delivery.TrustedEarlyPhaseSourceD
 public import FastConfirmationProofs.Execution.Delivery.MarginProducer
 public import FastConfirmationProofs.Execution.Delivery.ObservedAncestryTransport
 public import FastConfirmationProofs.Execution.Delivery.PreviousEpochStartResult
+public import FastConfirmationProofs.Execution.Delivery.TrustedPreviousEpochStartResult
 public import FastConfirmationProofs.Execution.Delivery.RecordedEpoch
 public import FastConfirmationProofs.Execution.Delivery.Registry
 public import FastConfirmationProofs.Execution.Delivery.SelectedEdgeFilter
