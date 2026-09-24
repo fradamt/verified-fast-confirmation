@@ -36,7 +36,17 @@ def PermanentBlockExclusion (E : Execution Root)
 attestation deadline. The paper's positive `Δ` and strict `A + Δ < S`, plus
 immediate honest gossip, put the raw block before the next slot. Python's
 delay consideration permits a finalized-conflicting block to remain absent;
-the exemption above is limited to exactly that `on_block` guard. -/
+the exemption above is limited to exactly that `on_block` guard.
+
+Set `boundary = slot_start (slot_at n + 1)`. The exemption starts at
+`boundary - 1`, before the next-slot tick. A block arrives at an integer
+second `a ≤ n + Δ < boundary`. If `on_block` accepts it, the receiver keeps
+it. If the finalized guard rejects it, advancing finality along its checkpoint
+chain preserves that rejection. Thus rejection holds from `a` on, and from
+`boundary - 1` on. The cutoff gives `n ≤ deadline < boundary`, hence
+`n ≤ boundary - 1`. Finality installed at the next tick cannot excuse a
+block that should have arrived earlier. As in `PermanentBlockExclusion`,
+the parent must already be known at the exclusion point. -/
 def DeadlineBlockRelay (E : Execution Root) : Prop :=
   ∀ v ∈ E.honest, ∀ n r,
     E.WithinHorizon cfg n →
@@ -48,13 +58,15 @@ def DeadlineBlockRelay (E : Execution Root) : Prop :=
       E.slot_start cfg (E.slot_at cfg n + 1) ≤ m →
       n < m →
       r ∈ (E.store cfg ext w m).block_roots ∨
-        PermanentBlockExclusion cfg ext E v n r w m
+        PermanentBlockExclusion cfg ext E v n r w
+          (E.slot_start cfg (E.slot_at cfg n + 1) - 1)
 
 /-- The paper's strict `A + Δ < S` places a cutoff-time block at the receiver
 before the next slot's vote handler. Immediate gossip and Python's delay
 consideration require the honest client to order a ready block before an
 attestation at that boundary. A permanently finalized-conflicting block is
-the only exemption. Both source and receiver seconds are explicit and
+the only exemption, evaluated at `boundary - 1` as in `DeadlineBlockRelay`.
+Both source and receiver seconds are explicit and
 distinct; this does not assert same-second inter-node state equality. -/
 def DeadlineBoundaryBlockPrefix (E : Execution Root) : Prop :=
   ∀ v ∈ E.honest, ∀ n r,
@@ -68,7 +80,7 @@ def DeadlineBoundaryBlockPrefix (E : Execution Root) : Prop :=
       ∀ a before after,
         E.schedule w boundary =
           before ++ Event.attestation a false :: after →
-        ¬ PermanentBlockExclusion cfg ext E v n r w boundary →
+        ¬ PermanentBlockExclusion cfg ext E v n r w (boundary - 1) →
         r ∈ (before.foldl
           (fun store event => (apply_event cfg ext store event).getD store)
           (on_tick cfg (E.store cfg ext w (boundary - 1))

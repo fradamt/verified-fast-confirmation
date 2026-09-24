@@ -4,7 +4,10 @@ public import FastConfirmationProofs.Checkpoints.VotePathCheckpointCompatibility
 @[expose] public section
 
 /-! A finite execution tests vote-path delivery at a skipped checkpoint boundary.
-The full public premise bundle is not certified in this module. -/
+This execution violates the refined deadline relay: Y is absent at 144,
+but the finalized guard accepts its parent checkpoint at 143. It is therefore
+not a counterexample under that relay. The full public premise bundle is not
+certified in this module. -/
 
 open FastConfirmation.Spec
 
@@ -232,6 +235,28 @@ theorem vote_path_not_admissible :
   cases h with
   | stop _ hnot _ => exact hnot permanently_excluded
   | step _ hnot _ _ => exact hnot permanently_excluded
+
+set_option maxRecDepth 200000 in
+set_option maxHeartbeats 0 in
+/-- The finalized guard still permits Y at the last second of its source slot. -/
+theorem not_excluded_before_tick :
+    ¬ PermanentBlockExclusion cfg ext execution 12 132 Y 0 143 := by
+  apply execution.permanentBlockExclusion_false_of_finalized_guards cfg ext
+  · unfold Execution.WithinHorizon; decide
+  · decide
+  · decide
+
+set_option maxRecDepth 200000 in
+set_option maxHeartbeats 0 in
+/-- The refined block relay rules out the skipped-boundary execution. -/
+theorem violates_refined_deadline_block_relay :
+    ¬ DeadlineBlockRelay cfg ext execution := by
+  intro h
+  have outcome := h 12 (by decide) 132 Y (by unfold Execution.WithinHorizon; decide) (by decide)
+    (by decide) 0 (by decide) 144 (by unfold Execution.WithinHorizon; decide) (by decide) (by decide)
+  rcases outcome with hknown | hexcluded
+  · exact (by decide : Y ∉ (execution.store cfg ext 0 144).block_roots) hknown
+  · exact not_excluded_before_tick hexcluded
 
 end FastConfirmation.Spec.DeadlineVotePathCandidate
 

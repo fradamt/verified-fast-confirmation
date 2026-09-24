@@ -329,6 +329,10 @@ theorem ObservedResetCandidateInputAt.safeFrom_of_acceptedDynamics
       horiginDeadline w hw (n + 1) hHn1 horiginNextLe horiginLtM
     rcases hrelayOutcome with hknown | hexcluded
     · exact hknown
+    by_cases hknown : c.root ∈ (E.store cfg ext w (n + 1)).block_roots
+    · exact hknown
+    have hexcluded := E.permanentBlockExclusion_mono_of_not_mem cfg ext
+      ((Nat.sub_le _ 1).trans horiginNextLe) hknown hexcluded
     have hLag : E.CausalRealizedFinalizationLag cfg ext B :=
       E.causalRealizedFinalizationLag_of_acceptedDelay
         cfg ext B hT hanchor hDelay

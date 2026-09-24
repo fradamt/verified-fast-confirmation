@@ -436,7 +436,8 @@ theorem StrictSelectedResultMechanicalFacts.fcrStep_previous_endpointRecentSourc
         (E.fcrStoreAtCall cfg ext v n).previous_slot_head ∈
           (E.store cfg ext w m).block_roots ∨
         PermanentBlockExclusion cfg ext E v origin
-          (E.fcrStoreAtCall cfg ext v n).previous_slot_head w m :=
+          (E.fcrStoreAtCall cfg ext v n).previous_slot_head w
+            (E.slot_start cfg (E.slot_at cfg origin + 1) - 1) :=
       hsync.deadline_block_relay v hv origin _ horiginH
         hseedOrigin' horiginDeadline w hw m hmH hstartTarget
         (lt_of_le_of_lt horiginLe (Nat.lt_succ_self n) |>.trans_le hnm)

@@ -41,7 +41,11 @@ theorem deadline_root_known_of_checkpointCompatible
   rcases hA.synchrony.deadline_block_relay v hv n r hHn hr hdue
       w hw m hHm hnext hlt with hknown | hexcluded
   · exact hknown
-  · exact False.elim (E.checkpointCompatible_not_permanentlyExcluded
+  · by_cases hm : r ∈ (E.store cfg ext w m).block_roots
+    · exact hm
+    have hexcluded := E.permanentBlockExclusion_mono_of_not_mem cfg ext
+      ((Nat.sub_le _ 1).trans hnext) hm hexcluded
+    exact False.elim (E.checkpointCompatible_not_permanentlyExcluded
       cfg ext B hA hanchor hboundary hHm hr hFknown hanchorLe
       hcheckpoint hexcluded)
 
