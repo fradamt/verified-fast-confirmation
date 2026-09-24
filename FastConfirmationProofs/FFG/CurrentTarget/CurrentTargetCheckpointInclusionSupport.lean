@@ -336,10 +336,8 @@ def ConcreteA32QuorumScheduledDelivery
             vote.slot vote.index i) false ∈
         E.schedule i (E.slot_start cfg (vote.slot + 1))
 
-/-- The boundary case of the single synchrony premise supplies the scheduled
-copy for every quorum vote, including a last-slot vote whose receipt is just
-beyond the public cutoff.  `toDeliveryLookahead` is the derived form of what
-used to be the separate `HorizonVoteDeliveryLookahead` assumption. -/
+/-- The lookahead premise supplies the scheduled copy for every quorum vote,
+including a last-slot vote whose receipt is beyond the public cutoff. -/
 theorem ConcreteA32QuorumBefore.scheduledDelivery_of_lookahead
     {deadline : Slot} {target : Checkpoint Root}
     (Q : ConcreteA32QuorumBefore cfg ext E deadline target)

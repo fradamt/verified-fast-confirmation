@@ -40,7 +40,7 @@ adoption law is already stated at `n + 1`, which is exactly the second
 
 `Weak.observedResetSeedSafety_of_acceptedDynamics` takes only floor data: the
 selected-margin assumptions `hA`, the accepted FFG semantic bundle `B` and its
-anchor alignment (`hanchor`, `hboundary`), the justification interface `hji`,
+anchor alignment (`hanchor`, `hboundary`),
 and the observer's own committee agreement
 (`Execution.ObserverCoherence.committees_agree`).  That is the whole signature:
 the scheduled-prefix trajectory assumptions it runs on are *derived* from `hA`
@@ -95,7 +95,7 @@ theorem observedResetSeedSafety_of_acceptedDynamics
       ext.AnchorCommitsToState anchorBlock.message anchorState ∧
       anchorBlock.message.parent_root ≠ anchorBlock.root)
     (B : CausalPrefixFFGInterpretation cfg ext E)
-    (hji : JustificationInterface cfg ext E)
+
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : Execution.TrustedAnchorBoundaryAligned (cfg := cfg) (E := E)
       (anchor := B.anchor))
@@ -114,7 +114,7 @@ theorem observedResetSeedSafety_of_acceptedDynamics
   · obtain ⟨hcert⟩ := hcertified
     have hadoption :=
       Weak.ObservedResetCandidateInputAt.guardedObservedAdoption cfg ext hA B hT
-        hanchor hboundary hA.synchrony hji hcomm hinput hcert
+        hanchor hboundary hA.synchrony  hcomm hinput hcert
     rw [hinput.input_eq]
     apply E.safeFrom_of_headStep_at cfg ext
     intro w hw m hnm hHm hIH
@@ -124,10 +124,10 @@ theorem observedResetSeedSafety_of_acceptedDynamics
       (hadoption w hw hHn1).trans (E.store_justified_epoch_mono cfg ext w hnm)
     rcases Nat.eq_or_lt_of_le hcJ with heq | hlt
     · exact Weak.ObservedResetCandidateInputAt.head_of_sameEpoch cfg ext hA B hT
-        hanchor hboundary hA.synchrony hji hcomm hinput (Or.inr ⟨hcert⟩) hw hnm
+        hanchor hboundary hA.synchrony  hcomm hinput (Or.inr ⟨hcert⟩) hw hnm
         hHm heq
     · exact Weak.ObservedResetCandidateInputAt.head_of_laterEpoch cfg ext hA B hT
-        hanchor hboundary hA.synchrony hji hcomm hHn1 hcall hinput
+        hanchor hboundary hA.synchrony  hcomm hHn1 hcall hinput
         (Or.inr ⟨hcert⟩) hw hnm hHm hIH hlt
 
 end Weak
@@ -146,11 +146,9 @@ the following slot onward — at an observer that is granted nothing (no honesty
 no guaranteed delivery), and whose every use of synchrony is licensed by a
 broadcast certificate.
 
-The `hji` premise includes laws of the strong shadow cache `E.fcr`:
-observed justified checkpoints, the previous greatest unrealized checkpoint,
-and observed checkpoint knownness. These are not laws of `E.weakFcr`. Thus
-this guarantee is conditional on strong-cache facts as well as weak execution
-facts; it is not a guarantee under weak-only premises.
+The honest head-root knownness needed by certificate dissemination follows
+from `SelectedMarginDomain.justified_root_known`. No strong `E.fcr` cache
+interface is required by this theorem.
 
 `Execution.weakConfirmed_safeFromFollowingSlot_of_weakFullRuleFold` with its
 last premise discharged by `Weak.observedResetSeedSafety_of_acceptedDynamics`.
@@ -161,16 +159,16 @@ proviso machinery has since been deleted outright.
 
 The premise list is exactly the conditional fold's minus
 `hOR : Weak.ObservedResetSeedSafety`; the obligation's own inputs (`hW.base`,
-`B`, `hji`, `hanchor`, `hboundary`, and the observer's committee agreement
+`B`, `hanchor`, `hboundary`, and the observer's committee agreement
 `hW.committees_agree`) were already carried.  The strong fold's
 observer-honesty binder `hv : v ∈ E.honest` does not appear.
 
-That list is, in full: `B` (accepted FFG semantics), `hji`, `hanchor`,
+That list is, in full: `B` (accepted FFG semantics), `hanchor`,
 `hboundary`, `hDelay`, `hpaper`, `P`, `V`, `hW`
 (`WeakObserverPremises` = the selected-margin floor plus committee readback
 at the observer's own store), `hCbase`
 (`WeakCompletedFCRCallSupplement`: the two phase-0
-coherence contracts and the balance floor) and `hfit` — **eleven** premises.
+coherence contracts, the balance floor, and vote-delivery lookahead) and `hfit` — **ten** premises.
 Five surface duplications are gone: `hT` is *derived* from `hW.base`
 (`Execution.ScheduledPrefixPremises.of_selectedMarginAssumptions`),
 `hwalkDomain : PostAnchorHonestVoteTargetWalkDomain` is *derived* from
@@ -182,7 +180,7 @@ from `B`/`hT`/`hanchor`/`hboundary`
 the trusted anchor, so it restates `hboundary` through the checkpoint walk and
 is not an independent premise; `docs/plumbing-spec-citations.md` P-10),
 the standalone `hphase0`/`hboundaryPhase` are read off `hCbase`, and the
-`synchrony`/`static_validators`/`byzantine_bound` fields of the full 6-field
+`synchrony`/`static_validators`/`byzantine_bound` fields of the full 7-field
 call contract are read off `hW.base` when it is rebuilt internally.
 
 Observer-wise the premise surface is exactly `hW : WeakObserverPremises` —
@@ -192,7 +190,7 @@ arbitrary and may be honest.  `ObserverCoherence.justified_root_known` is
 (`WeakObserverPremises.toMarginAssumptions`), never assumed. -/
 theorem weak_confirmed_root_safe_from_next_slot
     (B : CausalPrefixFFGInterpretation cfg ext E)
-    (hji : JustificationInterface cfg ext E)
+
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
       (E := E) (anchor := B.anchor))
@@ -207,23 +205,21 @@ theorem weak_confirmed_root_safe_from_next_slot
     (hfit : EpochEndsFitUint64 cfg) :
     ∀ n : ℕ, E.WithinHorizon cfg n →
       E.WeakConfirmedSafeFromFollowingSlot cfg ext obs n :=
-  E.weakConfirmed_safeFromFollowingSlot_of_weakFullRuleFold cfg ext B hji
+  E.weakConfirmed_safeFromFollowingSlot_of_weakFullRuleFold cfg ext B
     hanchor hboundary hDelay hpaper P V hW
     hCbase hfit
-    (Weak.observedResetSeedSafety_of_acceptedDynamics cfg ext hW.base hW.genesis B hji
+    (Weak.observedResetSeedSafety_of_acceptedDynamics cfg ext hW.base hW.genesis B
       hanchor hboundary hW.committees_agree)
 
 /-- Endpoint form of the weak full-rule theorem, matching the
 paper's timing: the observer's weak confirmed root at second `n` is canonical
 at every in-horizon honest endpoint in a strictly later slot.  Weak twin of
 `Execution.confirmed_head_of_acceptedActualFCRFold_nextSlot`, with no honesty
-binder at `obs` and no residual reset-seed obligation. Its `hji` premise
-includes strong `E.fcr` observed justified checkpoint, previous greatest
-unrealized checkpoint, and observed checkpoint knownness laws. It does not
-state those laws for `E.weakFcr`, so this is not a weak-only guarantee. -/
+binder at `obs` and no residual reset-seed obligation. Honest head-root
+knownness follows from the selected-margin domain. -/
 theorem weak_confirmed_root_on_honest_heads_from_next_slot
     (B : CausalPrefixFFGInterpretation cfg ext E)
-    (hji : JustificationInterface cfg ext E)
+
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
       (E := E) (anchor := B.anchor))
@@ -243,10 +239,10 @@ theorem weak_confirmed_root_on_honest_heads_from_next_slot
     is_ancestor (E.store cfg ext w m)
       (get_head cfg (E.store cfg ext w m))
       (get_node_for_root (E.weakConfirmed cfg ext obs n)) = true :=
-  E.weakConfirmed_head_of_weakFullRuleFold_nextSlot cfg ext B hji hanchor
+  E.weakConfirmed_head_of_weakFullRuleFold_nextSlot cfg ext B  hanchor
     hboundary hDelay hpaper P V hW
     hCbase hfit
-    (Weak.observedResetSeedSafety_of_acceptedDynamics cfg ext hW.base hW.genesis B hji
+    (Weak.observedResetSeedSafety_of_acceptedDynamics cfg ext hW.base hW.genesis B
       hanchor hboundary hW.committees_agree)
     hw hnm hnext hHm
 

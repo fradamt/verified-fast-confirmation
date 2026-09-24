@@ -335,7 +335,7 @@ theorem ObservedResetCandidateInputAt.head_of_sameEpoch
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : Execution.TrustedAnchorBoundaryAligned (cfg := cfg) (E := E)
       (anchor := B.anchor))
-    (hsync : NextSlotSynchronyPremises cfg ext E) (hji : JustificationInterface cfg ext E)
+    (hsync : NextSlotSynchronyPremises cfg ext E)
     {obs : ValidatorIndex}
     (hcomm : ∀ k : ℕ, E.WithinHorizon cfg k → ∀ s : Slot, E.SlotWithinHorizon cfg s →
       get_slot_committee cfg ext (E.store cfg ext obs k) s = E.committee s)
@@ -356,7 +356,7 @@ theorem ObservedResetCandidateInputAt.head_of_sameEpoch
   have hacc : FFGAccountabilityAssumptions cfg ext E :=
     Execution.SelectedMarginAssumptions.toFFGAccountabilityAssumptions cfg ext E hA
   have hcKnown := Weak.bankedRoot_known_at_all_honest_endpoints_at_observer
-    cfg ext hA B hT hanchor hboundary hsync hji hA.genesis hcomm hinv hw hHm
+    cfg ext hA B hT hanchor hboundary hsync  hA.genesis hcomm hinv hw hHm
     (fun h => (E.slot_at_mono cfg h.second_le).trans (E.slot_at_mono cfg hnm))
   exact Weak.sameEpochCertified_head_at_endpoint cfg ext hacc B hT hanchor
     hboundary
@@ -479,7 +479,7 @@ theorem ObservedResetCandidateInputAt.head_of_laterEpoch
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : Execution.TrustedAnchorBoundaryAligned (cfg := cfg) (E := E)
       (anchor := B.anchor))
-    (hsync : NextSlotSynchronyPremises cfg ext E) (hji : JustificationInterface cfg ext E)
+    (hsync : NextSlotSynchronyPremises cfg ext E)
     {obs : ValidatorIndex}
     (hcomm : ∀ k : ℕ, E.WithinHorizon cfg k → ∀ s : Slot, E.SlotWithinHorizon cfg s →
       get_slot_committee cfg ext (E.store cfg ext obs k) s = E.committee s)
@@ -544,7 +544,7 @@ theorem ObservedResetCandidateInputAt.head_of_laterEpoch
       E.WithinHorizon cfg j → c.root ∈ (E.store cfg ext k j).block_roots :=
     fun k hk j hj hHj =>
       Weak.bankedRoot_known_at_all_honest_endpoints_at_observer cfg ext hA B hT
-        hanchor hboundary hsync hji hA.genesis hcomm hinv hk hHj
+        hanchor hboundary hsync  hA.genesis hcomm hinv hk hHj
         (fun h => (E.slot_at_mono cfg h.second_le).trans (E.slot_at_mono cfg hj))
   -- The endpoint's own domain data.
   have hdomainK := E.storeDomainK_of_acceptedGlobalTrajectory cfg ext B hT

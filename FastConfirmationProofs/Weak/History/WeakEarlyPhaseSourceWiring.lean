@@ -349,7 +349,7 @@ theorem StrictSelectedResultMechanicalFacts.fcrStep_previous_endpointRecentSourc
     (hstatic : StaticValidatorSet cfg E)
     (hbyz : ByzantineWeightPremises cfg E)
     (hdomain : SelectedMarginDomain cfg ext E)
-    (hji : JustificationInterface cfg ext E)
+
     (B : CausalPrefixFFGInterpretation cfg ext E)
     {obs : ValidatorIndex} (hcoh : E.ObserverCoherence cfg ext obs) {n : Nat}
     (hn1H : E.WithinHorizon cfg (n + 1))
@@ -440,7 +440,7 @@ theorem StrictSelectedResultMechanicalFacts.fcrStep_previous_endpointRecentSourc
     have hseedM : (E.weakFcrStep cfg ext obs n).previous_slot_head ∈
         (E.store cfg ext w m).block_roots :=
       Weak.witnessSeed_known_at_all_honest_endpoints_at_observer cfg ext hA
-        hsync hji hn1H hcommN1 hqCurrent hentry.witness_certificate
+        hsync  hn1H hcommN1 hqCurrent hentry.witness_certificate
         hwitness_known hw hmH hgate
     exact E.recentSourceSeedAt_endpoint_of_explicitSeed_sameEpoch
       cfg ext B hT.wellFormed hT.externals_coherence
@@ -539,7 +539,7 @@ theorem StrictSelectedResultMechanicalFacts.fcrStep_currentNext_endpointRecentSo
     (hstatic : StaticValidatorSet cfg E)
     (hbyz : ByzantineWeightPremises cfg E)
     (hdomain : SelectedMarginDomain cfg ext E)
-    (hji : JustificationInterface cfg ext E)
+
     (B : CausalPrefixFFGInterpretation cfg ext E)
     {obs : ValidatorIndex} (hcoh : E.ObserverCoherence cfg ext obs) {n : Nat}
     (hn1H : E.WithinHorizon cfg (n + 1))
@@ -642,7 +642,7 @@ theorem StrictSelectedResultMechanicalFacts.fcrStep_currentNext_endpointRecentSo
         (get_current_balance_source (E.weakFcrStep cfg ext obs n))) ∈
       (E.store cfg ext w m).block_roots :=
     Weak.headSeed_known_at_all_honest_endpoints_at_observer cfg ext hA
-      hsync hji hn1H hcoh hqCurrent hheadCert hw hmH hheadGate
+      hsync  hn1H hcoh hqCurrent hheadCert hw hmH hheadGate
   have hqueryNonfuture : BlocksSlotLe
       (get_current_slot cfg (E.weakFcrStep cfg ext obs n).store)
       (E.weakFcrStep cfg ext obs n).store := by

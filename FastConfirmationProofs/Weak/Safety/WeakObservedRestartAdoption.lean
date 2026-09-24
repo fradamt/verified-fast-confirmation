@@ -128,7 +128,7 @@ theorem bankedCheckpoint_epoch_le_honestJustified
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : Execution.TrustedAnchorBoundaryAligned (cfg := cfg) (E := E)
       (anchor := B.anchor))
-    (hsync : NextSlotSynchronyPremises cfg ext E) (hji : JustificationInterface cfg ext E)
+    (hsync : NextSlotSynchronyPremises cfg ext E)
     {obs : ValidatorIndex}
     (hcomm : ∀ k : ℕ, E.WithinHorizon cfg k → ∀ s : Slot, E.SlotWithinHorizon cfg s →
       get_slot_committee cfg ext (E.store cfg ext obs k) s = E.committee s)
@@ -147,7 +147,7 @@ theorem bankedCheckpoint_epoch_le_honestJustified
   -- The certified supplier reaches the endpoint by certificate dissemination.
   have hsupplierW : h.supplier ∈ (E.store cfg ext w m).block_roots :=
     (Weak.bankedSupplier_known_at_all_honest_endpoints_at_observer cfg ext hA B hT
-      hanchor hboundary hsync hji hA.genesis hcomm h hw hmH hgate).1
+      hanchor hboundary hsync  hA.genesis hcomm h hw hmH hgate).1
   -- The banked checkpoint *is* that supplier's own `GU`.
   have hGU : fcr_store.current_epoch_observed_justified_checkpoint =
       B.state.GU h.supplier := by
@@ -223,7 +223,7 @@ theorem ObservedResetCandidateInputAt.guardedObservedAdoption
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : Execution.TrustedAnchorBoundaryAligned (cfg := cfg) (E := E)
       (anchor := B.anchor))
-    (hsync : NextSlotSynchronyPremises cfg ext E) (hji : JustificationInterface cfg ext E)
+    (hsync : NextSlotSynchronyPremises cfg ext E)
     {obs : ValidatorIndex}
     (hcomm : ∀ k : ℕ, E.WithinHorizon cfg k → ∀ s : Slot, E.SlotWithinHorizon cfg s →
       get_slot_committee cfg ext (E.store cfg ext obs k) s = E.committee s)
@@ -238,7 +238,7 @@ theorem ObservedResetCandidateInputAt.guardedObservedAdoption
   have hstart : is_start_slot_at_epoch cfg (E.slot_at cfg (n + 1)) = true := by
     simpa only [E.weakFcrStep_store, E.store_current_slot] using hinput.epoch_start
   exact Weak.bankedCheckpoint_epoch_le_honestJustified cfg ext hA B hT hanchor
-    hboundary hsync hji hcomm hcert hw hHn1
+    hboundary hsync  hcomm hcert hw hHn1
     (E.slot_at_mono cfg hcert.second_le) hstart
 
 end Weak

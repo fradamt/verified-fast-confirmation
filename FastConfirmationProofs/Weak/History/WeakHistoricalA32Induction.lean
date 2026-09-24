@@ -53,7 +53,7 @@ evaluator-free and is reused verbatim.
   `Execution.AcceptedHistoricalA32CallInterfaces` is replaced by the
   obligation route `Weak.ObserverLineageRouteAt`
   (`WeakHistoricalA32OneStep.lean`), whose only instantiation is the lazy one
-  below: it needs no normative proviso at all, and the unchanged 6-field
+  below: it needs no normative proviso at all, and the unchanged 7-field
   `E.CompletedFCRCallPremises` drives
   `Execution.observerCall_acceptedTargetGateProducerAt`
   (`WeakHistoricalA32CallSupplier.lean`) for the gate producer.  The
@@ -115,7 +115,7 @@ variable {E : Execution Root}
 `Cert`/`Supp` are `Weak.LazyCertAt`/`Weak.LazySupportAt` at the write-back
 bound, and the crossing builder is `Weak.selectedCurrentCrossingLazyLineage`,
 which consumes **no** normative proviso.  Only the unchanged
-6-field `E.CompletedFCRCallPremises` is required. -/
+7-field `E.CompletedFCRCallPremises` is required. -/
 theorem observerLineageRoute_lazy
     (B : CausalPrefixFFGInterpretation cfg ext E)
     (hT : E.ScheduledPrefixPremises cfg ext)

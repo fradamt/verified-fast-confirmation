@@ -25,7 +25,6 @@ trajectory safety witness, collected without adding a liveness field. -/
 def AcceptedWeakObserverLivePremises (E : Execution Root)
     (v : ValidatorIndex) : Prop :=
   ∃ B : CausalPrefixFFGInterpretation cfg ext E,
-    JustificationInterface cfg ext E ∧
     B.anchor = E.genesis_store.justified_checkpoint ∧
     E.TrustedAnchorBoundaryAligned (cfg := cfg) (anchor := B.anchor) ∧
     E.RealizedFinalizationDelay cfg ext B ∧
@@ -50,7 +49,7 @@ theorem accepted_weak_observer_to_strong_bundle
     (hW : AcceptedWeakObserverLivePremises cfg ext E v)
     (hslots : 1 < cfg.slots_per_epoch) :
     Nonempty (E.NextSlotSafetyPremises cfg ext) := by
-  rcases hW with ⟨B, _hji, hanchor, hboundary, hDelay, hpaper,
+  rcases hW with ⟨B, hanchor, hboundary, hDelay, hpaper,
     P, V, hObs, hCbase, hfit⟩
   let hT : E.ScheduledPrefixPremises cfg ext :=
     Execution.ScheduledPrefixPremises.of_selectedMarginAssumptions

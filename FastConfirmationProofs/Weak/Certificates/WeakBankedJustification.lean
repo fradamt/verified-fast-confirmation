@@ -681,7 +681,7 @@ theorem bankedSupplier_known_at_all_honest_endpoints_at_observer
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : Execution.TrustedAnchorBoundaryAligned (cfg := cfg) (E := E)
       (anchor := B.anchor))
-    (hsync : NextSlotSynchronyPremises cfg ext E) (hji : JustificationInterface cfg ext E)
+    (hsync : NextSlotSynchronyPremises cfg ext E)
     (hgen : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
       E.genesis_store = get_forkchoice_store cfg ast ablk ∧
       ast.slot = ablk.message.slot ∧ ablk.message.parent_root ≠ ablk.root)
@@ -756,7 +756,7 @@ theorem bankedRoot_known_at_all_honest_endpoints_at_observer
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : Execution.TrustedAnchorBoundaryAligned (cfg := cfg) (E := E)
       (anchor := B.anchor))
-    (hsync : NextSlotSynchronyPremises cfg ext E) (hji : JustificationInterface cfg ext E)
+    (hsync : NextSlotSynchronyPremises cfg ext E)
     (hgen : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
       E.genesis_store = get_forkchoice_store cfg ast ablk ∧
       ast.slot = ablk.message.slot ∧ ablk.message.parent_root ≠ ablk.root)
@@ -774,7 +774,7 @@ theorem bankedRoot_known_at_all_honest_endpoints_at_observer
   · exact (E.store_storeLE cfg ext w (Nat.zero_le m)).1 hanchorArm
   · obtain ⟨h⟩ := hne
     exact (Weak.bankedSupplier_known_at_all_honest_endpoints_at_observer cfg ext hA B hT
-      hanchor hboundary hsync hji hgen hcomm h hw hmH (hgate h)).2
+      hanchor hboundary hsync  hgen hcomm h hw hmH (hgate h)).2
 
 /-! ## Exact rotation of the two weak FCR checkpoint fields -/
 
@@ -1157,7 +1157,7 @@ theorem gatedHead_known_at_all_honest_endpoints_at_observer
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : Execution.TrustedAnchorBoundaryAligned (cfg := cfg) (E := E)
       (anchor := B.anchor))
-    (hsync : NextSlotSynchronyPremises cfg ext E) (hji : JustificationInterface cfg ext E)
+    (hsync : NextSlotSynchronyPremises cfg ext E)
     {obs : ValidatorIndex}
     (hcomm : ∀ k : ℕ, E.WithinHorizon cfg k → ∀ s : Slot, E.SlotWithinHorizon cfg s →
       get_slot_committee cfg ext (E.store cfg ext obs k) s = E.committee s)
@@ -1175,7 +1175,7 @@ theorem gatedHead_known_at_all_honest_endpoints_at_observer
       (E.store cfg ext w m).block_roots := by
   have hknown :=
     (Weak.bankedSupplier_known_at_all_honest_endpoints_at_observer cfg ext hA B hT
-      hanchor hboundary hsync hji hA.genesis hcomm
+      hanchor hboundary hsync  hA.genesis hcomm
       (Weak.bankedJustificationCertificate_of_gate cfg ext hA B hT hanchor
         hboundary hH hcall hstore hgate)
       hw hmH (by

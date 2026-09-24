@@ -384,7 +384,7 @@ The wave carried two instantiations; only the **lazy** one survives: `Cert N`/
 `Supp N` are `Weak.LazyCertAt`/`Weak.LazySupportAt` at bound `N` and the
 crossing builder is `Weak.selectedCurrentCrossingLazyLineage`, which consumes
 no proviso.  That is what lets the trajectory fold carry only the unchanged
-6-field completed-prefix contract.  The **eager** instantiation — constant
+7-field completed-prefix contract.  The **eager** instantiation — constant
 obligations and a proviso-driven crossing builder — existed solely to keep the
 four closed one-shot witnesses' statements frozen, and went with them.
 

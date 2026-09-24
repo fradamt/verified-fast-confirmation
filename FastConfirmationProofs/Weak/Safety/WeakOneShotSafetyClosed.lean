@@ -94,7 +94,7 @@ supply premise: the entire margin/filter chain (Stages G–S7) is discharged
 internally, uniformly over which of the four candidate-history branches the
 call actually took.
 
-The historical A3.2 call contract is the unchanged 6-field
+The historical A3.2 call contract is the unchanged 7-field
 `E.CompletedFCRCallPremises` together with
 `hprior : Weak.ObserverPriorCallWriteBackSafe cfg ext E obs n` — a *derived*
 trajectory fact, discharged by the weak safety fold's own strengthened
@@ -112,7 +112,7 @@ theorem weak_safeFrom_observerCall_closed_lazy
     {E : Execution Root}
     (B : CausalPrefixFFGInterpretation cfg ext E)
     (hT : E.ScheduledPrefixPremises cfg ext)
-    (hji : JustificationInterface cfg ext E)
+
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : Execution.TrustedAnchorBoundaryAligned (cfg := cfg)
       (E := E) (anchor := B.anchor))
@@ -168,7 +168,7 @@ theorem weak_safeFrom_observerCall_closed_lazy
           exact
             Weak.StrictSelectorAdvanceAt.observerCall_selectedStrictEdgeFilterSupplyAt_lazy
               cfg ext B hT hA.synchrony hA.static_validators
-              hA.byzantine_bound hA.domain hji hanchor hboundary hDelay
+              hA.byzantine_bound hA.domain  hanchor hboundary hDelay
               hphase0 hpaper P V hanchorExact hCbase hfit hWM.coherence hprior
               hn1H hcall hinput hbase horigin hselector)
 

@@ -403,7 +403,7 @@ stated exactly as
 `Weak.ObserverStrictCallFilterInputsAt.result_descends_endpoint_justified`
 (second component).
 
-`hCbase` is the unchanged 6-field completed-prefix call contract -- no
+`hCbase` is the unchanged 7-field completed-prefix call contract -- no
 observer proviso: since `docs/weak-final-wave.md` W5 this module reads only
 `hC.base`.  `hbase` is the outer safety induction's carried input safety, as in
 the strong theorem; `hhistorical` is the weak historical current-target

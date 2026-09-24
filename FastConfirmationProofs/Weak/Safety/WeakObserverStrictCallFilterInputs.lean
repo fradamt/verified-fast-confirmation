@@ -31,7 +31,7 @@ safety `hbase` — the same premise the strong actual-call theorem takes.
 
 The producer has exactly one instantiation,
 `observerStrictCallFilterInputsAt_of_observerCall_lazy`: it takes only the
-6-field `E.CompletedFCRCallPremises` plus the
+7-field `E.CompletedFCRCallPremises` plus the
 threaded fold output `Weak.ObserverPriorCallWriteBackSafe obs n`, and the
 trajectory fold takes it.  The **eager** instantiation, driven by the
 observer-side proviso record, was deleted together with the four closed
@@ -127,7 +127,7 @@ theorem observerStrictCallFilterInputsAt_of_route
 
 /-- **The lazy instantiation.**
 
-No proviso anywhere: the call contract is the unchanged 6-field
+No proviso anywhere: the call contract is the unchanged 7-field
 `E.CompletedFCRCallPremises`, and the two payload
 obligations are discharged from the trajectory fold's own strictly earlier
 output `hprior`, plus — at the late current-epoch cell only — the endpoint
@@ -195,7 +195,7 @@ theorem observerStrictCallFilterInputsAt_of_observerCall_lazy
 
 `Weak.StrictSelectorAdvanceAt.observerCall_selectedStrictEdgeFilterSupplyAt`
 with its `hinputs` binder discharged by the producer above.  The historical
-A3.2 call contract is the unchanged 6-field completed-prefix contract
+A3.2 call contract is the unchanged 7-field completed-prefix contract
 `hCbase` together with `hprior` (a *derived* trajectory fact, supplied by the
 weak safety fold's own strengthened induction hypothesis at strictly earlier
 seconds).  No normative observer proviso is consumed anywhere below this. -/
@@ -207,7 +207,7 @@ noncomputable def
     (hstatic : StaticValidatorSet cfg E)
     (hbyz : ByzantineWeightPremises cfg E)
     (hdomain : SelectedMarginDomain cfg ext E)
-    (hji : JustificationInterface cfg ext E)
+
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : Execution.TrustedAnchorBoundaryAligned (cfg := cfg)
       (E := E) (anchor := B.anchor))
@@ -241,7 +241,7 @@ noncomputable def
       (E.weakGetLatestConfirmedTraceAt cfg ext obs n).afterObserved
       obs (n + 1) (E.weakFcrStep cfg ext obs n) :=
   Weak.StrictSelectorAdvanceAt.observerCall_selectedStrictEdgeFilterSupplyAt
-    cfg ext B hT hsync hstatic hbyz hdomain hji hanchor hboundary hDelay
+    cfg ext B hT hsync hstatic hbyz hdomain  hanchor hboundary hDelay
     hphase0 hpaper P V hanchorExact hcoh hn1H hcall hinput horigin hselector
     (Weak.observerStrictCallFilterInputsAt_of_observerCall_lazy cfg ext B hT
       hCbase hfit hdomain hanchor hboundary hcoh hprior hcall hn1H hinput

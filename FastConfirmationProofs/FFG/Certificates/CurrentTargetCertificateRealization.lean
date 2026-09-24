@@ -33,7 +33,7 @@ slot of epoch `e` is first processable at the start of `e+1`.  Therefore the
 core constructor accepts the needed local delivery law.  The legacy synchrony
 adapter keeps that exact delivery second within the verified horizon, while
 the accepted finite-horizon path uses the boundary case of the single
-synchrony premise (`NextSlotSynchronyPremises.toDeliveryLookahead`, formerly the
+synchrony premise (`HorizonVoteDeliveryLookahead.attestation_delivery`, formerly the
 separate `HorizonVoteDeliveryLookahead` assumption): vote creation remains
 inside the public horizon, and receipt may occur at the first second beyond
 its exclusive cutoff.

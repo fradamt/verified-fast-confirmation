@@ -585,7 +585,7 @@ theorem bankedEpochStartCandidateSource_of_certifiedBank
     (hstatic : StaticValidatorSet cfg E)
     (hbyz : ByzantineWeightPremises cfg E)
     (hdomain : SelectedMarginDomain cfg ext E)
-    (hji : JustificationInterface cfg ext E)
+
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : Execution.TrustedAnchorBoundaryAligned (cfg := cfg)
       (E := E) (anchor := B.anchor))
@@ -844,7 +844,7 @@ theorem bankedEpochStartCandidateSource_of_certifiedBank
         hcert.supplier ∈ (E.store cfg ext w (n + 1)).block_roots := by
       intro w hw
       exact (Weak.bankedSupplier_known_at_all_honest_endpoints_at_observer
-        cfg ext hA B hT hanchor hboundary hsync hji hA.genesis
+        cfg ext hA B hT hanchor hboundary hsync  hA.genesis
         hcoh.committees_agree hcert hw hHn1
         (E.slot_at_mono cfg hsLe)).1
     exact ⟨{
@@ -882,7 +882,7 @@ theorem ObservedResetCandidateInputAt.acceptedLemma22EpochStartCandidateSource
     (hstatic : StaticValidatorSet cfg E)
     (hbyz : ByzantineWeightPremises cfg E)
     (hdomain : SelectedMarginDomain cfg ext E)
-    (hji : JustificationInterface cfg ext E)
+
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : Execution.TrustedAnchorBoundaryAligned (cfg := cfg)
       (E := E) (anchor := B.anchor))
@@ -912,7 +912,7 @@ theorem ObservedResetCandidateInputAt.acceptedLemma22EpochStartCandidateSource
         { E.weakFcr cfg ext obs n with store := E.store cfg ext obs (n + 1) })
       rfl hseat
   exact Weak.bankedEpochStartCandidateSource_of_certifiedBank cfg ext B hT hsync
-    hstatic hbyz hdomain hji hanchor hboundary hcoh hHn1 hcall
+    hstatic hbyz hdomain  hanchor hboundary hcoh hHn1 hcall
     (E.weakFcrStep_store cfg ext obs n) hbank h.epoch_start
     h.observed_previous_epoch
 
@@ -982,7 +982,7 @@ theorem StrictSelectedResultMechanicalFacts.currentCandidateSourceOrigin
     {E : Execution Root} (hA : SelectedMarginAssumptions cfg ext E)
     (B : CausalPrefixFFGInterpretation cfg ext E)
     (hsync : NextSlotSynchronyPremises cfg ext E)
-    (hji : JustificationInterface cfg ext E)
+
     {obs : ValidatorIndex} (hcoh : E.ObserverCoherence cfg ext obs) {q : Nat}
     (hqH : E.WithinHorizon cfg q)
     (hslotPos : 1 ≤ E.slot_at cfg q)
@@ -1028,7 +1028,7 @@ theorem StrictSelectedResultMechanicalFacts.currentCandidateSourceOrigin
         rw [hclock, Nat.sub_add_cancel hslotPos]
         exact hgate
       have hknown := Weak.headSeed_known_at_all_honest_endpoints_at_observer
-        cfg ext hA hsync hji hqH hcoh hquery hcert hw hmH hgate'
+        cfg ext hA hsync  hqH hcoh hquery hcert hw hmH hgate'
       simpa only [hquery] using hknown
   }⟩
 
@@ -1328,7 +1328,7 @@ theorem AcceptedConfirmedSourceHistoryAt.currentOrigin_succ_of_call
     (hstatic : StaticValidatorSet cfg E)
     (hbyz : ByzantineWeightPremises cfg E)
     (hdomain : SelectedMarginDomain cfg ext E)
-    (hji : JustificationInterface cfg ext E)
+
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : Execution.TrustedAnchorBoundaryAligned (cfg := cfg)
       (E := E) (anchor := B.anchor))
@@ -1515,7 +1515,7 @@ theorem AcceptedConfirmedSourceHistoryAt.currentOrigin_succ_of_call
           cfg ext hclock hparent hwalk hfacts hpast htraceCurrent
       have hnew :=
         Weak.StrictSelectedResultMechanicalFacts.currentCandidateSourceOrigin
-          cfg ext hA B hsync hji hcoh hHn1 hslotPos hqstore hparent hwalk hhead
+          cfg ext hA B hsync  hcoh hHn1 hslotPos hqstore hparent hwalk hhead
           hinputKnown hselector.result_eq.symm hselector.result_ne_input hfacts
           htraceCurrent hnotStart
       simpa only [hconfirmedOut] using hnew
@@ -1543,7 +1543,7 @@ theorem AcceptedConfirmedSourceHistoryAt.recentSource_succ_of_call
     (hstatic : StaticValidatorSet cfg E)
     (hbyz : ByzantineWeightPremises cfg E)
     (hdomain : SelectedMarginDomain cfg ext E)
-    (hji : JustificationInterface cfg ext E)
+
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : Execution.TrustedAnchorBoundaryAligned (cfg := cfg)
       (E := E) (anchor := B.anchor))
@@ -1640,7 +1640,7 @@ theorem AcceptedConfirmedSourceHistoryAt.recentSource_succ_of_call
     | observedResetUnchanged hinput _hselector =>
         obtain ⟨hlemma22⟩ :=
           Weak.ObservedResetCandidateInputAt.acceptedLemma22EpochStartCandidateSource
-            cfg ext B hT hsync hstatic hbyz hdomain hji hanchor hboundary hcoh
+            cfg ext B hT hsync hstatic hbyz hdomain  hanchor hboundary hcoh
               hHn1 hcall hinput
         exact hlemma22.lemma24 cfg ext B hT w hw
     | strictSelected horigin hselector =>
@@ -1655,7 +1655,7 @@ theorem AcceptedConfirmedSourceHistoryAt.recentSource_succ_of_call
         | observedReset hinput =>
             obtain ⟨hlemma22⟩ :=
               Weak.ObservedResetCandidateInputAt.acceptedLemma22EpochStartCandidateSource
-                cfg ext B hT hsync hstatic hbyz hdomain hji hanchor hboundary
+                cfg ext B hT hsync hstatic hbyz hdomain  hanchor hboundary
                   hcoh hHn1 hcall hinput
             exact hlemma22.lemma24 cfg ext B hT w hw
   · have hepochEq := E.actualCall_currentEpoch_eq_of_notStart
@@ -1737,7 +1737,7 @@ theorem AcceptedConfirmedSourceHistoryAt.succ_of_call
     (hstatic : StaticValidatorSet cfg E)
     (hbyz : ByzantineWeightPremises cfg E)
     (hdomain : SelectedMarginDomain cfg ext E)
-    (hji : JustificationInterface cfg ext E)
+
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : Execution.TrustedAnchorBoundaryAligned (cfg := cfg)
       (E := E) (anchor := B.anchor))
@@ -1750,10 +1750,10 @@ theorem AcceptedConfirmedSourceHistoryAt.succ_of_call
   confirmed_known := h.confirmedKnown_succ_of_call cfg ext B hT hanchor
     hboundary hcoh hHn1 hcall
   recent_epochStartSource := fun hrecent w hw =>
-    h.recentSource_succ_of_call cfg ext B hT hsync hstatic hbyz hdomain hji
+    h.recentSource_succ_of_call cfg ext B hT hsync hstatic hbyz hdomain
       hanchor hboundary hLag hcoh hHn1 hcall hrecent w hw
   current_origin := fun hcurrent =>
-    h.currentOrigin_succ_of_call cfg ext B hT hsync hstatic hbyz hdomain hji
+    h.currentOrigin_succ_of_call cfg ext B hT hsync hstatic hbyz hdomain
       hanchor hboundary hLag hcoh hHn1 hcall hcurrent
 }
 
@@ -1775,7 +1775,7 @@ theorem acceptedConfirmedSourceHistoryAt
     (hstatic : StaticValidatorSet cfg E)
     (hbyz : ByzantineWeightPremises cfg E)
     (hdomain : SelectedMarginDomain cfg ext E)
-    (hji : JustificationInterface cfg ext E)
+
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : Execution.TrustedAnchorBoundaryAligned (cfg := cfg)
       (E := E) (anchor := B.anchor))
@@ -1798,7 +1798,7 @@ theorem acceptedConfirmedSourceHistoryAt
         E.withinHorizon_mono cfg (Nat.le_succ n) hHn1
       have hn := ih hHn
       by_cases hcall : E.IsScheduledFCRCallAt cfg ext obs n
-      · exact hn.succ_of_call cfg ext B hT hsync hstatic hbyz hdomain hji
+      · exact hn.succ_of_call cfg ext B hT hsync hstatic hbyz hdomain
           hanchor hboundary hLag hcoh hHn1 hcall
       · exact hn.succ_of_noCall cfg ext hT hcall
 
@@ -1813,7 +1813,7 @@ theorem getLatestConfirmedTraceAt_current_epochStartSource
     (hstatic : StaticValidatorSet cfg E)
     (hbyz : ByzantineWeightPremises cfg E)
     (hdomain : SelectedMarginDomain cfg ext E)
-    (hji : JustificationInterface cfg ext E)
+
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : Execution.TrustedAnchorBoundaryAligned (cfg := cfg)
       (E := E) (anchor := B.anchor))
@@ -1828,7 +1828,7 @@ theorem getLatestConfirmedTraceAt_current_epochStartSource
     Nonempty (E.AcceptedLemma24EpochStartSourceAt cfg ext B
       (get_current_store_epoch cfg (E.weakFcrStep cfg ext obs n).store) w) := by
   have hhistory := Weak.acceptedConfirmedSourceHistoryAt cfg ext B hT hsync
-    hstatic hbyz hdomain hji hanchor hboundary hDelay hcoh (n + 1) hHn1
+    hstatic hbyz hdomain  hanchor hboundary hDelay hcoh (n + 1) hHn1
   have hrec := E.weakActualCandidateHistoryRecurrence cfg ext hcall
   have hstoredCurrent : get_block_epoch cfg (E.store cfg ext obs (n + 1))
           (E.weakConfirmed cfg ext obs (n + 1)) =
@@ -1942,7 +1942,7 @@ theorem StrictSelectedResultMechanicalFacts.actualCurrentSame_sourceHistoryOutco
     (hstatic : StaticValidatorSet cfg E)
     (hbyz : ByzantineWeightPremises cfg E)
     (hdomain : SelectedMarginDomain cfg ext E)
-    (hji : JustificationInterface cfg ext E)
+
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : Execution.TrustedAnchorBoundaryAligned (cfg := cfg)
       (E := E) (anchor := B.anchor))
@@ -1965,7 +1965,7 @@ theorem StrictSelectedResultMechanicalFacts.actualCurrentSame_sourceHistoryOutco
     hHn1 (E.weakFcrStep_store cfg ext obs n) hcurrent
   intro w hw
   exact Weak.getLatestConfirmedTraceAt_current_epochStartSource cfg ext B hT
-    hsync hstatic hbyz hdomain hji hanchor hboundary hDelay hcoh hHn1 hcall
+    hsync hstatic hbyz hdomain  hanchor hboundary hDelay hcoh hHn1 hcall
     hcurrent w hw
 
 end Weak

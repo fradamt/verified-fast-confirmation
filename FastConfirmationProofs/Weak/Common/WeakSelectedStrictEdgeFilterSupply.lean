@@ -98,7 +98,7 @@ assumption**, and it is deliberately as small as the stage could make it.
 (`WeakObserverStrictCallFilterInputs.lean`) builds every field from this
 module's own premise set, an obligation route and the outer safety fold's
 carried input safety `hbase`; its single (lazy) instantiation
-`…_of_observerCall_lazy` takes only the 6-field completed-prefix contract plus
+`…_of_observerCall_lazy` takes only the 7-field completed-prefix contract plus
 `Weak.ObserverPriorCallWriteBackSafe`.  It leaves no `hinputs` binder.  The
 four original fields, and where each is now proved:
 
@@ -196,7 +196,7 @@ The weak trajectory statements — the fold
 `Execution.weakConfirmed_safeFromFollowingSlot_of_weakFullRuleFold`, its
 unconditional corollary `…_of_acceptedWeakFullRuleFold`, and the two endpoint
 forms, i.e. the four audited weak statements — carry only the unchanged
-6-field `E.CompletedFCRCallPremises`.  The
+7-field `E.CompletedFCRCallPremises`.  The
 historical A3.2 crossing payload they need is manufactured *lazily* at the
 consuming call, from the fold's own output at strictly earlier seconds
 (`Weak.LazyCertAt` / `Weak.LazySupportAt`,
@@ -258,7 +258,7 @@ noncomputable def StrictSelectedResultMechanicalFacts.fcrStep_previous_endpointF
     (hstatic : StaticValidatorSet cfg E)
     (hbyz : ByzantineWeightPremises cfg E)
     (hdomain : SelectedMarginDomain cfg ext E)
-    (hji : JustificationInterface cfg ext E)
+
     (B : CausalPrefixFFGInterpretation cfg ext E)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : Execution.TrustedAnchorBoundaryAligned (cfg := cfg)
@@ -330,7 +330,7 @@ noncomputable def StrictSelectedResultMechanicalFacts.fcrStep_previous_endpointF
   have hrecent : Execution.RecentSourceSeedAt cfg
       (E.store cfg ext w m) result :=
     h.fcrStep_previous_endpointRecentSourceSeed cfg ext hT hsync hstatic
-      hbyz hdomain hji B hcoh hn1H hprevious hw hmH hnm hsameEpoch
+      hbyz hdomain  B hcoh hn1H hprevious hw hmH hnm hsameEpoch
   exact E.acceptedSelectedResultFilterOutcome_retained_of_recentSeed
     cfg ext B hT hanchor hboundary hDelay P V hanchorExact hacc
       hselectedEndpoint hparent hwalkK hnonfuture hrecent
@@ -346,7 +346,7 @@ noncomputable def
     (hstatic : StaticValidatorSet cfg E)
     (hbyz : ByzantineWeightPremises cfg E)
     (hdomain : SelectedMarginDomain cfg ext E)
-    (hji : JustificationInterface cfg ext E)
+
     (B : CausalPrefixFFGInterpretation cfg ext E)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : Execution.TrustedAnchorBoundaryAligned (cfg := cfg)
@@ -412,7 +412,7 @@ noncomputable def
       (by simpa only [hqCurrent] using h.parent_known)
       h.confirmed w hw m hslotQM hmH
   have hhistory := h.actualCurrentSame_sourceHistoryOutcome cfg ext B hT
-    hsync hstatic hbyz hdomain hji hanchor hboundary hDelay hcoh hn1H hcall
+    hsync hstatic hbyz hdomain  hanchor hboundary hDelay hcoh hn1H hcall
       hcurrent
   have hselectedQuery :
       (E.weakGetLatestConfirmedTraceAt cfg ext obs n).result ∈
@@ -445,7 +445,7 @@ noncomputable def StrictSelectedResultMechanicalFacts.fcrStep_currentNext_endpoi
     (hstatic : StaticValidatorSet cfg E)
     (hbyz : ByzantineWeightPremises cfg E)
     (hdomain : SelectedMarginDomain cfg ext E)
-    (hji : JustificationInterface cfg ext E)
+
     (B : CausalPrefixFFGInterpretation cfg ext E)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : Execution.TrustedAnchorBoundaryAligned (cfg := cfg)
@@ -518,7 +518,7 @@ noncomputable def StrictSelectedResultMechanicalFacts.fcrStep_currentNext_endpoi
   have hrecent : Execution.RecentSourceSeedAt cfg
       (E.store cfg ext w m) result :=
     h.fcrStep_currentNext_endpointRecentSourceSeed cfg ext hT hsync
-      hstatic hbyz hdomain hji B hcoh hn1H hinput hout hstrict hcurrent
+      hstatic hbyz hdomain  B hcoh hn1H hinput hout hstrict hcurrent
         hw hmH hnextEpoch
   exact E.acceptedSelectedResultFilterOutcome_retained_of_recentSeed
     cfg ext B hT hanchor hboundary hDelay P V hanchorExact hacc
@@ -753,7 +753,7 @@ theorem StrictSelectedResultMechanicalFacts.previousOffStart_queryGUEpochSeed
     (hstatic : StaticValidatorSet cfg E)
     (hbyz : ByzantineWeightPremises cfg E)
     (hdomain : SelectedMarginDomain cfg ext E)
-    (hji : JustificationInterface cfg ext E)
+
     {obs : ValidatorIndex} (hcoh : E.ObserverCoherence cfg ext obs) {n : Nat}
     (hn1H : E.WithinHorizon cfg (n + 1))
     {input selected : Root}
@@ -862,7 +862,7 @@ theorem StrictSelectedResultMechanicalFacts.previousOffStart_queryGUEpochSeed
         (Weak.get_certified_head cfg ext query.store (get_current_balance_source query)) ∈ (E.store cfg ext w m).block_roots := by
     intro w hw m hmH hslot
     exact Weak.headSeed_known_at_all_honest_endpoints_at_observer cfg ext hA
-      hsync hji hn1H hcoh (by simpa only [query] using hqCurrent) hcert
+      hsync  hn1H hcoh (by simpa only [query] using hqCurrent) hcert
       hw hmH (gate_of hslot)
   have witnessDissem (hcert : Weak.has_justification_witness_certificate
       cfg ext query = true) :
@@ -871,7 +871,7 @@ theorem StrictSelectedResultMechanicalFacts.previousOffStart_queryGUEpochSeed
         query.previous_slot_head ∈ (E.store cfg ext w m).block_roots := by
     intro w hw m hmH hslot
     exact Weak.witnessSeed_known_at_all_honest_endpoints_at_observer cfg ext
-      hA hsync hji hn1H (hcoh.committees_agree (n + 1) hn1H)
+      hA hsync  hn1H (hcoh.committees_agree (n + 1) hn1H)
       (by simpa only [query] using hqCurrent) hcert
       (by simpa only [hqCurrent] using hpreviousHeadKnown)
       hw hmH (gate_of hslot)
@@ -904,7 +904,7 @@ noncomputable def
     (hstatic : StaticValidatorSet cfg E)
     (hbyz : ByzantineWeightPremises cfg E)
     (hdomain : SelectedMarginDomain cfg ext E)
-    (hji : JustificationInterface cfg ext E)
+
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : Execution.TrustedAnchorBoundaryAligned (cfg := cfg)
       (E := E) (anchor := B.anchor))
@@ -943,7 +943,7 @@ noncomputable def
       (E.store cfg ext w m) selected := by
   obtain ⟨seed, hseedQ, hseedSelected, hguLower, hseedDissem⟩ :=
     h.previousOffStart_queryGUEpochSeed cfg ext B hT hsync hstatic hbyz
-      hdomain hji hcoh hn1H hinput hout hstrict hprevious hnotStart
+      hdomain  hcoh hn1H hinput hout hstrict hprevious hnotStart
   exact Weak.acceptedSelectedResultFilterOutcome_retainedVisible_of_queryGUEpochSeed
     cfg ext B hT hanchor hboundary P V hanchorExact hacc hdomain hcoh hn1H
       (by simpa only [E.weakFcrStep_store] using h.result_known)
@@ -1530,7 +1530,7 @@ theorem StrictSelectorAdvanceAt.previousObservedReset_gatedHeadDisseminated
     (B : CausalPrefixFFGInterpretation cfg ext E)
     (hT : E.ScheduledPrefixPremises cfg ext)
     (hsync : NextSlotSynchronyPremises cfg ext E)
-    (hji : JustificationInterface cfg ext E)
+
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : Execution.TrustedAnchorBoundaryAligned (cfg := cfg)
       (E := E) (anchor := B.anchor))
@@ -1554,7 +1554,7 @@ theorem StrictSelectorAdvanceAt.previousObservedReset_gatedHeadDisseminated
     rw [← E.store_current_slot cfg ext obs (n + 1)]
     exact Nat.lt_of_le_of_lt (Nat.zero_le _) hcall
   apply Weak.headSeed_known_at_all_honest_endpoints_at_observer cfg ext hA
-    hsync hji hHn1 hcoh hqCurrent hgate hw hmH
+    hsync  hHn1 hcoh hqCurrent hgate hw hmH
   rw [hqCurrent, E.store_current_slot cfg ext obs (n + 1), Nat.sub_add_cancel hpos]
   exact hslot
 
@@ -1623,13 +1623,13 @@ already available observer-side: the finalized root by
 `Execution.finalizedCheckpoint_resetRealizedAt_of_acceptedGlobalTrajectory`,
 the carried confirmed root by stage S6's
 `Weak.AcceptedConfirmedSourceHistoryAt.confirmed_known` transported one second
-forward.  (The latter is why this lemma takes `hji` and `hDelay`; both are
+forward.  The finalized-delay premise is retained because it is
 already on the dispatcher's binder list.) -/
 theorem observedReset_afterFinalized_known
     (hA : SelectedMarginAssumptions cfg ext E)
     (B : CausalPrefixFFGInterpretation cfg ext E)
     (hT : E.ScheduledPrefixPremises cfg ext)
-    (hji : JustificationInterface cfg ext E)
+
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : Execution.TrustedAnchorBoundaryAligned (cfg := cfg)
       (E := E) (anchor := B.anchor))
@@ -1648,7 +1648,7 @@ theorem observedReset_afterFinalized_known
   · rw [heq, hqCurrent, E.weakFcrStep_confirmed_root]
     refine (E.store_storeLE cfg ext obs (Nat.le_succ n)).1 ?_
     exact (Weak.acceptedConfirmedSourceHistoryAt cfg ext B hT hA.synchrony
-      hA.static_validators hA.byzantine_bound hA.domain hji hanchor hboundary
+      hA.static_validators hA.byzantine_bound hA.domain  hanchor hboundary
       hDelay hcoh n
       (E.withinHorizon_mono cfg (Nat.le_succ n) hHn1)).confirmed_known
   · rw [heq, hqCurrent]
@@ -1681,7 +1681,7 @@ theorem observedReset_ungated_absurd
     (hA : SelectedMarginAssumptions cfg ext E)
     (B : CausalPrefixFFGInterpretation cfg ext E)
     (hT : E.ScheduledPrefixPremises cfg ext)
-    (hji : JustificationInterface cfg ext E)
+
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : Execution.TrustedAnchorBoundaryAligned (cfg := cfg)
       (E := E) (anchor := B.anchor))
@@ -1752,7 +1752,7 @@ theorem observedReset_ungated_absurd
   -- the genesis/anchor value is excluded outright
   have hafterKnown : trace.afterFinalized ∈
       (E.weakFcrStep cfg ext obs n).store.block_roots :=
-    Weak.observedReset_afterFinalized_known cfg ext hA B hT hji hanchor
+    Weak.observedReset_afterFinalized_known cfg ext hA B hT  hanchor
       hboundary hDelay hcoh hHn1 horigin
   have hgenesisAbsurd : cobs.root ∈ E.genesis_store.block_roots → False := by
     intro hg
@@ -2137,7 +2137,7 @@ noncomputable def
     (hstatic : StaticValidatorSet cfg E)
     (hbyz : ByzantineWeightPremises cfg E)
     (hdomain : SelectedMarginDomain cfg ext E)
-    (hji : JustificationInterface cfg ext E)
+
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : Execution.TrustedAnchorBoundaryAligned (cfg := cfg)
       (E := E) (anchor := B.anchor))
@@ -2236,13 +2236,13 @@ noncomputable def
   · by_cases hsame : get_current_store_epoch cfg (E.store cfg ext w m) =
         get_current_store_epoch cfg (E.weakFcrStep cfg ext obs n).store
     · exact h.fcrStep_currentSame_endpointFilterOutcome cfg ext hT hsync
-        hstatic hbyz hdomain hji B hanchor hboundary hDelay P V
+        hstatic hbyz hdomain  B hanchor hboundary hDelay P V
         hanchorExact hacc hcoh hn1H hcall hcurrent hw hmH hsame hgeom
         hresultJustified
     · by_cases hnext : get_current_store_epoch cfg (E.store cfg ext w m) =
           get_current_store_epoch cfg (E.weakFcrStep cfg ext obs n).store + 1
       · exact h.fcrStep_currentNext_endpointFilterOutcome cfg ext hT hsync
-          hstatic hbyz hdomain hji B hanchor hboundary hDelay P V
+          hstatic hbyz hdomain  B hanchor hboundary hDelay P V
           hanchorExact hacc hcoh hn1H hinput hselector.result_eq.symm
           hselector.result_ne_input hcurrent hw hmH hnext hgeom
           hresultJustified
@@ -2311,7 +2311,7 @@ noncomputable def
   · by_cases hsame : get_current_store_epoch cfg (E.store cfg ext w m) =
         get_current_store_epoch cfg (E.weakFcrStep cfg ext obs n).store
     · exact h.fcrStep_previous_endpointFilterOutcome cfg ext hT hsync
-        hstatic hbyz hdomain hji B hanchor hboundary hDelay P V
+        hstatic hbyz hdomain  B hanchor hboundary hDelay P V
         hanchorExact hacc hcoh hn1H hcall hprevious hw hmH hsame hgeom
         hresultJustified
     · have hlate : get_block_epoch cfg
@@ -2416,13 +2416,13 @@ noncomputable def
                 (by
                   simpa only [hqCurrent] using
                     Weak.StrictSelectorAdvanceAt.previousObservedReset_gatedHeadDisseminated
-                      cfg ext hMargin B hT hsync hji hanchor hboundary hcoh
+                      cfg ext hMargin B hT hsync  hanchor hboundary hcoh
                       hn1H hcall
                       (by simpa only [hqCurrent] using hobserved.epoch_start)
                       hobserved.carrier_certificate hw hmH hslotQM)
                 hlate hjustifiedEpoch hresultJustified
       · exact h.fcrStep_previousOffStart_late_endpointFilterOutcome
-          cfg ext B hT hsync hstatic hbyz hdomain hji hanchor hboundary P V
+          cfg ext B hT hsync hstatic hbyz hdomain  hanchor hboundary P V
             hanchorExact hacc hcoh hn1H hinput hselector.result_eq.symm
             hselector.result_ne_input hprevious hstart hw hmH hslotQM hlate
             hjustifiedEpoch hresultJustified
@@ -2446,7 +2446,7 @@ noncomputable def
     (hstatic : StaticValidatorSet cfg E)
     (hbyz : ByzantineWeightPremises cfg E)
     (hdomain : SelectedMarginDomain cfg ext E)
-    (hji : JustificationInterface cfg ext E)
+
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : Execution.TrustedAnchorBoundaryAligned (cfg := cfg)
       (E := E) (anchor := B.anchor))
@@ -2489,7 +2489,7 @@ noncomputable def
   intro a c w m lo es sigma querySlot hw hmH hgeom _hcne hcM
     hparentEdge hselectedC hselectedKnown hIH hnotCovered
   have houtcome := hmechanical.fcrStep_endpointFilterOutcome cfg ext B hT
-    hsync hstatic hbyz hdomain hji hanchor hboundary hDelay hphase0 hpaper
+    hsync hstatic hbyz hdomain  hanchor hboundary hDelay hphase0 hpaper
       P V hanchorExact hcoh hn1H hcall hinput horigin hselector hinputs hw hmH
       hgeom hcM hselectedC hselectedKnown hIH hnotCovered
   have hfinalized : FinalizedBoundaryRealization cfg

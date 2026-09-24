@@ -12,13 +12,14 @@ variable (E : Execution Root)
 
 /-- The part of `E.CompletedFCRCallPremises` that is
 **not** already contained in `SelectedMarginAssumptions`: the two phase-0
-source-coherence contracts and the anchor-active balance floor.
+source-coherence contracts, the anchor-active balance floor, and the vote
+lookahead at the horizon boundary.
 
-The full 6-field call contract additionally carries `synchrony`,
+The full 7-field call contract additionally carries `synchrony`,
 `static_validators` and `byzantine_bound`, which are literally three fields of
 `SelectedMarginAssumptions` — a record every weak trajectory headline already
 carries inside `hW.base`.  Taking those three a second time would only
-double-count the premise *surface*, so the headlines take this 3-field
+double-count the premise *surface*, so the headlines take this 4-field
 supplement and rebuild the full contract internally with
 `toCompletedPrefixCallAssumptions` below.
 

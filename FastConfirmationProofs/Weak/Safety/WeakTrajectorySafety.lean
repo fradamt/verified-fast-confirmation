@@ -185,8 +185,8 @@ variable (E : Execution Root)
 
 /-! ## The non-duplicated part of the completed-prefix call contract -/
 
-/-- The 3-field supplement together with the selected-margin floor rebuilds the
-full 6-field completed-prefix call contract: the three shared fields are read
+/-- The 4-field supplement together with the selected-margin floor rebuilds the
+full 7-field completed-prefix call contract: the three shared fields are read
 off `hA`, so no caller has to supply them twice. -/
 def WeakCompletedFCRCallSupplement.toCompletedPrefixCallAssumptions
     (hC : E.WeakCompletedFCRCallSupplement cfg ext)
@@ -404,7 +404,7 @@ computed here and immediately discarded. -/
 theorem weakConfirmedSafeFromFollowingSlot_succ_of_call
     (B : CausalPrefixFFGInterpretation cfg ext E)
     (hT : E.ScheduledPrefixPremises cfg ext)
-    (hji : JustificationInterface cfg ext E)
+
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
       (E := E) (anchor := B.anchor))
@@ -434,7 +434,7 @@ theorem weakConfirmedSafeFromFollowingSlot_succ_of_call
     hanchor hboundary (obs := obs) (n := n) hknownN
   have hbase := E.weakGetLatestConfirmedTraceAt_input_safeFrom cfg ext B hT
     hW.base hphase0 hboundaryPhase hanchor hboundary hOR hHn1 hcall hprev
-  have hresult := E.weak_safeFrom_observerCall_closed_lazy cfg ext B hT hji
+  have hresult := E.weak_safeFrom_observerCall_closed_lazy cfg ext B hT
     hanchor hboundary hDelay hphase0 hpaper P V hanchorExact hW hwalkDomain
     hCbase hfit hprior hHn1 hcall hinput hbase
   have hwrite : E.weakConfirmed cfg ext obs (n + 1) =
@@ -486,7 +486,7 @@ theorem is recovered by `.followingSlot` at `k := n`. -/
 theorem weakConfirmedSafeFromFollowingSlot_of_weakFullRuleFold_all_le
     (B : CausalPrefixFFGInterpretation cfg ext E)
     (hT : E.ScheduledPrefixPremises cfg ext)
-    (hji : JustificationInterface cfg ext E)
+
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
       (E := E) (anchor := B.anchor))
@@ -511,7 +511,7 @@ theorem weakConfirmedSafeFromFollowingSlot_of_weakFullRuleFold_all_le
   have hWM := hW.toMarginAssumptions cfg ext E B hT hanchor hboundary
   have hknown := Weak.acceptedConfirmedSourceHistoryAt cfg ext B hT
     hW.base.synchrony hW.base.static_validators hW.base.byzantine_bound
-    hW.base.domain hji hanchor hboundary hDelay hWM.coherence
+    hW.base.domain  hanchor hboundary hDelay hWM.coherence
   intro n
   induction n with
   | zero =>
@@ -534,7 +534,7 @@ theorem weakConfirmedSafeFromFollowingSlot_of_weakFullRuleFold_all_le
             (ih (k + 1) hk hHk1).callSecond k rfl hcallK
         by_cases hcall : E.IsScheduledFCRCallAt cfg ext obs n
         · exact E.weakConfirmedSafeFromFollowingSlot_succ_of_call cfg ext B hT
-            hji hanchor hboundary hDelay hphase0 hboundaryPhase hpaper P V
+             hanchor hboundary hDelay hphase0 hboundaryPhase hpaper P V
             hanchorExact hW hwalkDomain hCbase hfit hOR hprior hHk hcall
             (hknown n hHn).confirmed_known hprev
         · exact E.weakConfirmedSafeFromFollowingSlot_succ_of_noCall cfg ext hcall
@@ -569,9 +569,9 @@ hypothesis), `hanchorExact` is derived from `B`/`hT`/`hanchor`/`hboundary` by
 `Execution.acceptedAnchorExact_of_trajectory` (it restates `hboundary` through
 the checkpoint walk), the
 phase-0 coherence contracts come from `hCbase` alone, and the call contract is
-the 3-field `WeakCompletedFCRCallSupplement`, whose
+the 4-field `WeakCompletedFCRCallSupplement`, whose
 `synchrony`/`static_validators`/`byzantine_bound` counterparts in the full
-6-field record are read off `hW.base`
+7-field record are read off `hW.base`
 (`…CallSupplement.toCompletedPrefixCallAssumptions`).
 
 This theorem and its endpoint form `…_head_of_weakFullRuleFold_nextSlot` are
@@ -593,7 +593,7 @@ Corollary of `…_of_weakFullRuleFold_all_le` at `k := n`; the statement is
 unchanged. -/
 theorem weakConfirmed_safeFromFollowingSlot_of_weakFullRuleFold
     (B : CausalPrefixFFGInterpretation cfg ext E)
-    (hji : JustificationInterface cfg ext E)
+
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
       (E := E) (anchor := B.anchor))
@@ -615,7 +615,7 @@ theorem weakConfirmed_safeFromFollowingSlot_of_weakFullRuleFold
   exact fun n hHn =>
     (E.weakConfirmedSafeFromFollowingSlot_of_weakFullRuleFold_all_le cfg ext B
       hT
-      hji hanchor hboundary hDelay hCbase.phase0_source
+       hanchor hboundary hDelay hCbase.phase0_source
       hCbase.phase0_boundary_source hpaper P V
       (E.acceptedAnchorExact_of_trajectory cfg ext B hT hanchor hboundary) hW
       (E.postAnchorHonestVoteTargetWalkDomain_of_selectedMarginAssumptions cfg ext
@@ -634,7 +634,7 @@ a projection, not a new proof.  Weak twin of
 theorem observerPriorCallWriteBackSafe_of_weakFullRuleFold
     (B : CausalPrefixFFGInterpretation cfg ext E)
     (hT : E.ScheduledPrefixPremises cfg ext)
-    (hji : JustificationInterface cfg ext E)
+
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
       (E := E) (anchor := B.anchor))
@@ -656,7 +656,7 @@ theorem observerPriorCallWriteBackSafe_of_weakFullRuleFold
     Weak.ObserverPriorCallWriteBackSafe cfg ext E obs n :=
   fun k hk hHk1 hcallK =>
     (E.weakConfirmedSafeFromFollowingSlot_of_weakFullRuleFold_all_le cfg ext B
-      hT hji hanchor hboundary hDelay hphase0 hboundaryPhase hpaper P V
+      hT  hanchor hboundary hDelay hphase0 hboundaryPhase hpaper P V
       hanchorExact hW hwalkDomain hCbase hfit hOR n (k + 1) hk
         hHk1).callSecond k rfl hcallK
 
@@ -666,7 +666,7 @@ in-horizon honest endpoint in a strictly later slot. Weak twin of
 `Execution.confirmed_head_of_acceptedActualFCRFold_nextSlot`. -/
 theorem weakConfirmed_head_of_weakFullRuleFold_nextSlot
     (B : CausalPrefixFFGInterpretation cfg ext E)
-    (hji : JustificationInterface cfg ext E)
+
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
       (E := E) (anchor := B.anchor))
@@ -692,7 +692,7 @@ theorem weakConfirmed_head_of_weakFullRuleFold_nextSlot
       hW.base hW.genesis
   have hHn : E.WithinHorizon cfg n := E.withinHorizon_mono cfg hnm hHm
   have hsafe := E.weakConfirmed_safeFromFollowingSlot_of_weakFullRuleFold cfg ext
-    B hji hanchor hboundary hDelay hpaper P V
+    B  hanchor hboundary hDelay hpaper P V
     hW hCbase hfit hOR n hHn
   have hdeadlineLe : E.followingSlotStart cfg n ≤ m := by
     by_contra hnot
