@@ -42,6 +42,7 @@ public import FastConfirmationProofs.Weak.History.WeakHistoricalA32OriginCall
 public import FastConfirmationProofs.Weak.History.TrustedWeakHistoricalA32OriginCall
 public import FastConfirmationProofs.Weak.History.WeakHistoricalA32PayloadProducer
 public import FastConfirmationProofs.Weak.History.WeakHistoricalA32Step
+public import FastConfirmationProofs.Weak.History.TrustedWeakHistoricalA32Step
 public import FastConfirmationProofs.Weak.History.WeakPreQuerySIR
 public import FastConfirmationProofs.Weak.History.WeakSourceHistory
 public import FastConfirmationProofs.Weak.Monotonicity.WeakMonotonicityLive
