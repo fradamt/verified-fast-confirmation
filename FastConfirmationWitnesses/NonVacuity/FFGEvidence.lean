@@ -5,7 +5,6 @@ public import FastConfirmationProofs.Handlers.BlockTransitionProvenance
 public import FastConfirmationProofs.Execution.Calls.ScheduledPrefixGeometry
 public import FastConfirmationProofs.Checkpoints.ExactCheckpointLinks
 public import FastConfirmationProofs.ModelFacts
-public import FastConfirmationInternal.Weak.TrustedCarrierEvidence
 
 @[expose] public section
 
@@ -484,10 +483,7 @@ def witnessAcceptedChainFFGState :
     CausalCarrierFFGState witnessConfig witnessExternals witnessExecution
       anchorCheckpoint where
   attestationValidity := witnessExternals.is_valid_indexed_attestation
-  includedAttestations := {
-    Included := witnessAcceptedIncludedAttestations.Included
-    evidence := fun h =>
-      (witnessAcceptedIncludedAttestations.evidence h).toTrusted }
+  includedAttestations := witnessAcceptedIncludedAttestations
   formed := witnessFormed
   C := witnessC
   GJ := fun _ => anchorCheckpoint

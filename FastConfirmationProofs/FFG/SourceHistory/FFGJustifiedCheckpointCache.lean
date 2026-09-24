@@ -126,7 +126,7 @@ theorem justifiedCheckpoint_cached_of_acceptedGlobalTrajectory
         exact CertifiedJustified.anchor_epoch_lt_of_ne (cfg := cfg)
           (IncludedCertifiedJustified.toCertifiedJustified
             (cfg := cfg)
-            (Execution.TrustedCarrierAttestationRelation.relation
+            (Execution.CausalCarrierAttestationRelation.relation
               cfg ext E B.state.includedAttestations)
             hincludedCertificate)
           hjustifiedAnchor

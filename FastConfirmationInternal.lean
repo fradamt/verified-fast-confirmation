@@ -1,5 +1,6 @@
 module
 public import FastConfirmationInternal.Weak.TrustedCarrierEvidence
+public import FastConfirmationInternal.Weak.TrustedFFGInterpretation
 public import FastConfirmationInternal.Weak.ObserverIndependence
 public import FastConfirmationInternal.Execution.LatestTraceResult
 public import FastConfirmationInternal.Legacy.Vocabulary

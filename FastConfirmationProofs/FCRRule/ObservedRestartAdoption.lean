@@ -175,7 +175,7 @@ theorem ObservedResetCandidateInputAt.actualFCRGuardedObservedAdoption
         exact Classical.choice (B.state.formed_evidence hformed).certified
       have hcCertified : CertifiedJustified cfg E B.anchor c :=
         IncludedCertifiedJustified.toCertifiedJustified (cfg := cfg)
-          (Execution.TrustedCarrierAttestationRelation.relation
+          (Execution.CausalCarrierAttestationRelation.relation
             cfg ext E B.state.includedAttestations) hCcert
       have hLag : E.CausalRealizedFinalizationLag cfg ext B :=
         E.causalRealizedFinalizationLag_of_acceptedDelay

@@ -475,7 +475,7 @@ theorem CausalPrefixFFGInterpretation.anchor_epoch_le_gu
   exact CertifiedJustified.anchor_epoch_le (cfg := cfg)
     (IncludedCertifiedJustified.toCertifiedJustified
       (cfg := cfg)
-      (Execution.TrustedCarrierAttestationRelation.relation
+      (Execution.CausalCarrierAttestationRelation.relation
         cfg ext E B.state.includedAttestations) hincluded)
 
 /-- The trusted anchor itself is a valid current-candidate origin whenever
@@ -885,7 +885,7 @@ theorem ObservedResetCandidateInputAt.acceptedLemma22EpochStartCandidateSource
         (B.state.GU c.root) :=
       IncludedCertifiedJustified.toCertifiedJustified
         (cfg := cfg)
-        (Execution.TrustedCarrierAttestationRelation.relation
+        (Execution.CausalCarrierAttestationRelation.relation
           cfg ext E B.state.includedAttestations) hincluded
     have hanchorEpochLeGU : B.anchor.epoch ≤
         (B.state.GU c.root).epoch :=

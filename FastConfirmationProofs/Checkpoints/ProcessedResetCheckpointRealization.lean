@@ -167,7 +167,7 @@ theorem AcceptedSelectorAUCarrier.resetCheckpointRealizedAt
   have hcertified : CertifiedJustified cfg E B.anchor c :=
     IncludedCertifiedJustified.toCertifiedJustified
       (cfg := cfg)
-      (Execution.TrustedCarrierAttestationRelation.relation
+      (Execution.CausalCarrierAttestationRelation.relation
         cfg ext E B.state.includedAttestations) hincluded
   have hanchorEpochLe : B.anchor.epoch ≤ c.epoch :=
     CertifiedJustified.anchor_epoch_le (cfg := cfg) hcertified

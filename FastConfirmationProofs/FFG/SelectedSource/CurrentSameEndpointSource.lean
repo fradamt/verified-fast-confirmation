@@ -128,7 +128,7 @@ theorem globalJustified_honestTarget
       CertifiedJustified.anchor_epoch_lt_of_ne (cfg := cfg)
         (IncludedCertifiedJustified.toCertifiedJustified
           (cfg := cfg)
-          (Execution.TrustedCarrierAttestationRelation.relation
+          (Execution.CausalCarrierAttestationRelation.relation
             cfg ext E B.state.includedAttestations) hcertified) hne
     have htargetEpoch : (E.store cfg ext w m).justified_checkpoint.epoch =
         compute_epoch_at_slot cfg voteSlot := by
@@ -464,7 +464,7 @@ theorem justified_epoch_eq_queryCurrent
       past.justified_checkpoint :=
     IncludedCertifiedJustified.toCertifiedJustified
       (cfg := cfg)
-      (Execution.TrustedCarrierAttestationRelation.relation
+      (Execution.CausalCarrierAttestationRelation.relation
         cfg ext E B.state.includedAttestations) hjIncluded
   have hanchorLeJ : B.anchor.epoch ≤ past.justified_checkpoint.epoch :=
     CertifiedJustified.anchor_epoch_le (cfg := cfg) hjCertified
@@ -625,7 +625,7 @@ theorem retainedAt_currentSameEndpoint
         CertifiedJustified.anchor_epoch_le (cfg := cfg)
           (IncludedCertifiedJustified.toCertifiedJustified
             (cfg := cfg)
-            (Execution.TrustedCarrierAttestationRelation.relation
+            (Execution.CausalCarrierAttestationRelation.relation
               cfg ext E B.state.includedAttestations) hcertified)
       refine ⟨seed, hjKnown, hjSemantic, ?_⟩
       rw [← hjEpoch, hfieldAnchor]

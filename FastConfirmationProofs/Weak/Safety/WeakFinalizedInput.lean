@@ -242,7 +242,7 @@ theorem finalizedHonestVotingSourceOrigin_of_causalStore
   let child := F.child
   let globalLink : SupermajorityLink cfg E store.finalized_checkpoint child :=
     IncludedSupermajorityLink.toSupermajorityLink (cfg := cfg)
-      (Execution.TrustedCarrierAttestationRelation.relation cfg ext E
+      (Execution.CausalCarrierAttestationRelation.relation cfg ext E
         B.state.includedAttestations) F.finalizing_link
   obtain ⟨i, hiGlobal, _hiGlobal', hiHonest⟩ :=
     E.links_intersect_honest cfg ext hacc globalLink globalLink
@@ -262,7 +262,7 @@ theorem finalizedHonestVotingSourceOrigin_of_causalStore
   have hsourceCertified : CertifiedJustified cfg E B.anchor
       store.finalized_checkpoint :=
     IncludedCertifiedJustified.toCertifiedJustified (cfg := cfg)
-      (Execution.TrustedCarrierAttestationRelation.relation cfg ext E
+      (Execution.CausalCarrierAttestationRelation.relation cfg ext E
         B.state.includedAttestations) F.justified
   have hanchorLtTarget : B.anchor.epoch < child.epoch :=
     lt_of_le_of_lt
@@ -641,7 +641,7 @@ theorem weak_finalizedReset_justifiedDom_of_synchrony
       have hfinalized : CertifiedFinalized cfg E B.anchor finalized :=
         IncludedCertifiedFinalized.toCertifiedFinalized
           (cfg := cfg)
-          (Execution.TrustedCarrierAttestationRelation.relation
+          (Execution.CausalCarrierAttestationRelation.relation
             cfg ext E B.state.includedAttestations)
           hincludedFinalized
       exact E.certified_finalized_prefix cfg ext hacc

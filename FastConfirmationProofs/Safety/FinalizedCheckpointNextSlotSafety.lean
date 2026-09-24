@@ -121,7 +121,7 @@ theorem finalizedReset_justifiedDom_of_nextSlotSynchrony
       have hfinalized : CertifiedFinalized cfg E B.anchor finalized :=
         IncludedCertifiedFinalized.toCertifiedFinalized
           (cfg := cfg)
-          (Execution.TrustedCarrierAttestationRelation.relation
+          (Execution.CausalCarrierAttestationRelation.relation
             cfg ext E B.state.includedAttestations)
           hincludedFinalized
       exact E.certified_finalized_prefix cfg ext hacc

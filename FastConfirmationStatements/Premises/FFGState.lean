@@ -150,38 +150,6 @@ def relation
 
 end CausalCarrierAttestationRelation
 
-/-- The validation store is checked by an explicit predicate. Body membership,
-accepted occurrence, and the exact prepared-state equation are retained. -/
-structure TrustedCarrierAttestationEvidence
-    (validity : BeaconState Root → Attestation Root → Bool)
-    (trusted : Store Root → Prop) (carrier : Root) (a : Attestation Root)
-    extends IncludedAttestationEvidence cfg E validity carrier a where
-  carrier_accepted : E.AcceptedBlockAt cfg ext carrier carrier_message
-  validation_store : Store Root
-  validation_store_trusted : trusted validation_store
-  validation_target_known : a.data.target.root ∈ validation_store.block_roots
-  validation_state_from_target : validation_state =
-    let base := validation_store.block_states a.data.target.root
-    let start := compute_start_slot_at_epoch cfg a.data.target.epoch
-    if base.slot < start then ext.process_slots base start else base
-
-/-- Positive inclusion with the same explicit validation domain. -/
-structure TrustedCarrierAttestationRelation
-    (validity : BeaconState Root → Attestation Root → Bool)
-    (trusted : Store Root → Prop) where
-  Included : Root → Attestation Root → Prop
-  evidence : ∀ {carrier a}, Included carrier a →
-    TrustedCarrierAttestationEvidence cfg ext E validity trusted carrier a
-
-
-/-- Ordinary certificate consumers do not read the validation domain. -/
-def TrustedCarrierAttestationRelation.relation {validity trusted}
-    (I : TrustedCarrierAttestationRelation cfg ext E validity trusted) :
-    IncludedAttestationRelation cfg E validity where
-  Included := I.Included
-  evidence := fun h => (I.evidence h).toIncludedAttestationEvidence
-
-
 end Execution
 
 /-- An attestation occurs in a block on `tip`'s concrete execution chain. -/
@@ -304,12 +272,11 @@ for Lean convenience, but all semantic laws are restricted to causal-prefix
 accepted roots or exact accepted block carriers.  Every positive inclusion
 and formed carrier is accepted. -/
 structure CausalCarrierFFGState (E : Execution Root)
-    (anchor : Checkpoint Root)
-    (trusted : Store Root → Prop := E.HonestCausalStore cfg ext) where
+    (anchor : Checkpoint Root) where
   attestationValidity : BeaconState Root → Attestation Root → Bool
   includedAttestations :
-    Execution.TrustedCarrierAttestationRelation cfg ext E
-      attestationValidity trusted
+    Execution.CausalCarrierAttestationRelation cfg ext E
+      attestationValidity
   formed : Root → Checkpoint Root → Prop
   C : Root → Epoch → Checkpoint Root
   GJ : Root → Checkpoint Root
@@ -359,8 +326,7 @@ namespace CausalCarrierFFGState
 variable {E : Execution Root} {anchor : Checkpoint Root}
 
 
-def AU {trusted : Store Root → Prop}
-    (S : CausalCarrierFFGState cfg ext E anchor trusted)
+def AU (S : CausalCarrierFFGState cfg ext E anchor)
     (tip : Root) (c : Checkpoint Root) : Prop :=
   ∃ carrier, E.RootDescends tip carrier ∧ S.formed carrier c
 
@@ -370,8 +336,7 @@ end CausalCarrierFFGState
 only over actual successful `on_block` calls at exact causal prefixes. -/
 structure FFGSelectorsMatchBeaconStates
     {E : Execution Root} {anchor : Checkpoint Root}
-    {trusted : Store Root → Prop}
-    (S : CausalCarrierFFGState cfg ext E anchor trusted) : Prop where
+    (S : CausalCarrierFFGState cfg ext E anchor) : Prop where
   attestation_validity : S.attestationValidity =
     ext.is_valid_indexed_attestation
   genesis_gj : ∀ r ∈ E.genesis_store.block_roots,
@@ -426,8 +391,7 @@ structure FFGSelectorsMatchBeaconStates
 causal prefix store. -/
 structure FFGSelectorsAndCheckpointReadsMatchBeaconStates
     {E : Execution Root} {anchor : Checkpoint Root}
-    {trusted : Store Root → Prop}
-    (S : CausalCarrierFFGState cfg ext E anchor trusted) : Prop
+    (S : CausalCarrierFFGState cfg ext E anchor) : Prop
     extends FFGSelectorsMatchBeaconStates cfg ext S where
   checkpoint_of_known : ∀ {store : Store Root},
     E.CausalStore cfg ext store → ∀ r ∈ store.block_roots, ∀ e,
@@ -442,10 +406,9 @@ Its accepted inclusion relation checks carrier body membership and validates
 on a target block state prepared along the handler path from an honest,
 in-horizon store. The prepared state need not be keyed. The bundle does not
 cover delayed queues or arbitrary global action traces. -/
-structure CausalPrefixFFGInterpretation (E : Execution Root)
-    (trusted : Store Root → Prop := E.HonestCausalStore cfg ext) where
+structure CausalPrefixFFGInterpretation (E : Execution Root) where
   anchor : Checkpoint Root
-  state : CausalCarrierFFGState cfg ext E anchor trusted
+  state : CausalCarrierFFGState cfg ext E anchor
   coherence : FFGSelectorsAndCheckpointReadsMatchBeaconStates cfg ext state
 
 /-- A wire attestation has reached validator `w`'s execution view by second

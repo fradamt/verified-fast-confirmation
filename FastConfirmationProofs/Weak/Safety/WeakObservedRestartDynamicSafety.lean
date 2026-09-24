@@ -191,7 +191,7 @@ accepted included-attestation relation turns into a `CertifiedJustified` chain
 from the trusted anchor.
 
 Honesty-free and node-free: `CausalCarrierFFGState.formed_evidence` and
-`TrustedCarrierAttestationRelation.relation` are facts about the semantic FFG
+`CausalCarrierAttestationRelation.relation` are facts about the semantic FFG
 state, not about any node's store.  The step is currently inlined inside
 `Weak.auTip_walkKnown`; it is named here because the same-epoch arm needs the
 certificate itself rather than the epoch bound it implies. -/
@@ -203,7 +203,7 @@ theorem certifiedJustified_of_acceptedAU
   obtain ⟨hincluded⟩ := (B.state.formed_evidence hformed).certified
   exact IncludedCertifiedJustified.toCertifiedJustified
     (cfg := cfg)
-    (Execution.TrustedCarrierAttestationRelation.relation cfg ext E
+    (Execution.CausalCarrierAttestationRelation.relation cfg ext E
       B.state.includedAttestations) hincluded
 
 /-- **The same-epoch arm of the endpoint head step.** A certified justified
