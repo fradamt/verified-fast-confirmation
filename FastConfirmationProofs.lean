@@ -120,6 +120,7 @@ public import FastConfirmationProofs.FFG.SelectedSource.EndpointMargin
 public import FastConfirmationProofs.FFG.SelectedSource.FFGEndpointRealization
 public import FastConfirmationProofs.FFG.SelectedSource.FFGSelectedDomainRealization
 public import FastConfirmationProofs.FFG.SelectedSource.PhaseSourceCarriers
+public import FastConfirmationProofs.FFG.SelectedSource.TrustedPhaseSourceCarriers
 public import FastConfirmationProofs.FFG.SelectedSource.RetainedSourceRetarget
 public import FastConfirmationProofs.FFG.SelectedSource.SelectedFFGRealization
 public import FastConfirmationProofs.FFG.SelectedSource.SelectedJustifiedCompatibility
