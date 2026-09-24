@@ -492,7 +492,7 @@ private theorem witnessSynchrony :
           (witnessExecution.time_at boundary)).block_roots :=
       (on_tick_storeLE witnessConfig _ _).1 hrootPred
     exact (foldl_storeLE witnessConfig witnessExternals before _).1 hrootTick
-  · intro v hv n i hn hi w hw m hm hslot
+  · intro v hv n i hn hi _hdue w hw m hm _hnext hlt
     have hnlt : n < 4 := within_implies_lt_four hn
     rw [store_node_independent v 0 n] at hi
     interval_cases n <;>

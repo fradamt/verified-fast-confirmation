@@ -43,6 +43,13 @@ run_cmd do
     ["effective_balance_quantized", "estimate_sound", "span_fraction"]
   IO.println "review surface shape passed"
 
+-- These names must remain in the reviewed Statements surface.
+#check FastConfirmation.Spec.DeadlineBlockRelay
+#check FastConfirmation.Spec.DeadlineBoundaryBlockPrefix
+#check FastConfirmation.Spec.DeadlineEnvelopeDelivery
+#check FastConfirmation.Spec.DeadlineDataAvailabilityRelay
+#check FastConfirmation.Spec.DeadlineAttesterSlashingRelay
+
 example {Root : Type*} [LinearOrder Root] [Inhabited Root]
     (cfg : FastConfirmation.Spec.Config)
     (ext : FastConfirmation.Spec.Externals Root) :

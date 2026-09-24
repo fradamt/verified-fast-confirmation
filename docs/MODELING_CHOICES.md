@@ -3,40 +3,40 @@
 Each row states a choice in the executable or paper model, why it is used, and the property it does not establish. The model definitions are the source of truth; this page is a guide to their boundaries.
 
 ```text
-┌────────────────────────────────────────┬────────────────────────────────────────────────────────────────┬──────────────────────────────────────────────────────────────────────────┐
-│ Choice                                 │ Reason                                                         │ Cost                                                                     │
-├────────────────────────────────────────┼────────────────────────────────────────────────────────────────┼──────────────────────────────────────────────────────────────────────────┤
-│ Natural numbers for slots and time     │ Makes finite arithmetic and schedule folds explicit.           │ No uint64 wraparound inside the model; EpochEndsFitUint64 limits the     │
-│                                        │                                                                │ checked range.                                                           │
-│ Totalized finite maps                  │ Lean functions must return on missing keys.                    │ Proofs need domain laws for reachable keys; arbitrary missing-key reads  │
-│                                        │                                                                │ have defaults.                                                           │
-│ Injective block-root labels            │ WellFormedExecution.blocks_root_injective identifies blocks     │ It gives no hash_tree_root equation or cryptographic commitment.         │
-│                                        │ with equal roots.                                               │                                                                          │
-│ Atomic handler rejection               │ An invalid attestation returns none and leaves the run store   │ Python can keep a checkpoint-state cache write before a failed assert.   │
-│                                        │ unchanged.                                                     │ Accepted runs exclude that failed call's resulting store.               │
-│ Explicit loop fuel                     │ Makes recursive Python walks total.                            │ Equivalence needs a bound on reachable parent walks.                     │
-│ Projected BeaconState and Store        │ Keeps only fields used by the rule and checks.                 │ Unused source-state behavior is outside the model.                       │
-│ Opaque Externals                       │ Separates consensus logic from execution engine and            │ BeaconExternalsPremises must be justified by an implementation.          │
-│                                        │ cryptography.                                                  │                                                                          │
-│ Non-optimistic payload import          │ Every stored payload passed envelope validation, including     │ Optimistic fork-choice behavior is outside the theorem.                  │
-│                                        │ VALID.                                                         │                                                                          │
-│ Accepted event prefix semantics        │ Tracks a handler result at every scheduled prefix.             │ Schedules and successful handler assumptions need a concrete network     │
-│                                        │                                                                │ argument.                                                                │
-│ Supplied FFG carrier-vote relation     │ Checks ordered FFG body membership and accepted carrier origin.  │ A caller must supply the causal inclusion evidence for its execution.   │
-│ Supplied FFG validation state          │ Prepares the keyed target block state from an honest store.     │ The prepared state may be unkeyed; the base state is reachable.          │
-│ Static validator registry              │ Matches the paper balance setting over the horizon.            │ The safety theorem does not cover validator churn.                       │
-│ Finite horizon                         │ Makes endpoints and next-slot receipt precise.                 │ Conclusions do not extend beyond the checked horizon.                    │
-│ Global FFG and finalization laws       │ Connects opaque beacon transitions to exact checkpoint state.  │ The premises range over handler-successful prefixes beyond a conclusion endpoint.  │
-│ Guarded FCR prediction support         │ Uses the spec proviso only when the selector guard is true.    │ Real voting agreement must supply that premise.                          │
-│ Gloas payload-aware discount           │ Counts matching or PENDING parent votes in an empty slot.      │ Diverges from upstream rule; public fix at fcr-gloas-fix.                │
-│ Envelope and data relay                │ Carries verified payload state to honest receivers.            │ The finite next-slot witness has no envelope event.                      │
-│ Live block production                  │ Prevents stale cache reversal and supplies descendant votes.   │ Requires an honest-proposer block every slot from execution start.       │
-│ Timely live FFG justification          │ Opens the rule restart gates at epoch boundaries.              │ Stronger than paper Assumption 6 and lacks a joint finite witness.       │
-│ Paper exact rational balances          │ Keeps the paper threshold algebra direct.                      │ Does not by itself model executable integer rounding.                    │
-│ Paper eligibility filter               │ Reuses the LMD head agreement result in HFC.                   │ The proof needs a separate never-filter premise and bridge.              │
-│ Paper AU from block-contained votes    │ Ties justification to concrete ancestry evidence.                │ OnChainAnchorInterface still supplies visibility and formation laws.     │
-│ Algorithm 1 future confirmation input  │ Discharges the later monotonicity gate.                        │ SafeConfirmedAlg1Inputs is stronger than Assumption 6.                   │
-└────────────────────────────────────────┴────────────────────────────────────────────────────────────────┴──────────────────────────────────────────────────────────────────────────┘
+┌───────────────────────────────────────┬─────────────────────────────────────────────────────────────────┬───────────────────────────────────────────────────────────────────────────────────┐
+│ Choice                                │ Reason                                                          │ Cost                                                                              │
+├───────────────────────────────────────┼─────────────────────────────────────────────────────────────────┼───────────────────────────────────────────────────────────────────────────────────┤
+│ Natural numbers for slots and time    │ Makes finite arithmetic and schedule folds explicit.            │ No uint64 wraparound inside the model; EpochEndsFitUint64 limits the              │
+│                                       │                                                                 │ checked range.                                                                    │
+│ Totalized finite maps                 │ Lean functions must return on missing keys.                     │ Proofs need domain laws for reachable keys; arbitrary missing-key reads           │
+│                                       │                                                                 │ have defaults.                                                                    │
+│ Injective block-root labels           │ WellFormedExecution.blocks_root_injective identifies blocks     │ It gives no hash_tree_root equation or cryptographic commitment.                  │
+│                                       │ with equal roots.                                               │                                                                                   │
+│ Atomic handler rejection              │ An invalid attestation returns none and leaves the run store    │ Python can keep a checkpoint-state cache write before a failed assert.            │
+│                                       │ unchanged.                                                      │ Accepted runs exclude that failed call's resulting store.                         │
+│ Explicit loop fuel                    │ Makes recursive Python walks total.                             │ Equivalence needs a bound on reachable parent walks.                              │
+│ Projected BeaconState and Store       │ Keeps only fields used by the rule and checks.                  │ Unused source-state behavior is outside the model.                                │
+│ Opaque Externals                      │ Separates consensus logic from execution engine and             │ BeaconExternalsPremises must be justified by an implementation.                   │
+│                                       │ cryptography.                                                   │                                                                                   │
+│ Non-optimistic payload import         │ Every stored payload passed envelope validation, including      │ Optimistic fork-choice behavior is outside the theorem.                           │
+│                                       │ VALID.                                                          │                                                                                   │
+│ Accepted event prefix semantics       │ Tracks a handler result at every scheduled prefix.              │ Schedules and successful handler assumptions need a concrete network              │
+│                                       │                                                                 │ argument.                                                                         │
+│ Supplied FFG carrier-vote relation    │ Checks ordered FFG body membership and accepted carrier origin. │ A caller must supply the causal inclusion evidence for its execution.             │
+│ Supplied FFG validation state         │ Prepares the keyed target block state from an honest store.     │ The prepared state may be unkeyed; the base state is reachable.                   │
+│ Static validator registry             │ Matches the paper balance setting over the horizon.             │ The safety theorem does not cover validator churn.                                │
+│ Finite horizon                        │ Makes endpoints and next-slot receipt precise.                  │ Conclusions do not extend beyond the checked horizon.                             │
+│ Global FFG and finalization laws      │ Connects opaque beacon transitions to exact checkpoint state.   │ The premises range over handler-successful prefixes beyond a conclusion endpoint. │
+│ Guarded FCR prediction support        │ Uses the spec proviso only when the selector guard is true.     │ Real voting agreement must supply that premise.                                   │
+│ Gloas payload-aware discount          │ Counts matching or PENDING parent votes in an empty slot.       │ Diverges from upstream rule; public fix at fcr-gloas-fix.                         │
+│ Envelope and data relay               │ Carries verified payload state to honest receivers.             │ The finite next-slot witness has no envelope event.                               │
+│ Live block production                 │ Prevents stale cache reversal and supplies descendant votes.    │ Requires an honest-proposer block every slot from execution start.                │
+│ Timely live FFG justification         │ Opens the rule restart gates at epoch boundaries.               │ Stronger than paper Assumption 6 and lacks a joint finite witness.                │
+│ Paper exact rational balances         │ Keeps the paper threshold algebra direct.                       │ Does not by itself model executable integer rounding.                             │
+│ Paper eligibility filter              │ Reuses the LMD head agreement result in HFC.                    │ The proof needs a separate never-filter premise and bridge.                       │
+│ Paper AU from block-contained votes   │ Ties justification to concrete ancestry evidence.               │ OnChainAnchorInterface still supplies visibility and formation laws.              │
+│ Algorithm 1 future confirmation input │ Discharges the later monotonicity gate.                         │ SafeConfirmedAlg1Inputs is stronger than Assumption 6.                            │
+└───────────────────────────────────────┴─────────────────────────────────────────────────────────────────┴───────────────────────────────────────────────────────────────────────────────────┘
 ```
 
 The safety claims hold for every carrier-vote relation that meets the stated
@@ -46,11 +46,71 @@ committee span, including one slot. A global fault share does not establish
 this bound. It matches `CommitteeHonestMajority` in the repository's formal
 paper Assumption 2.
 
-`HonestBehavior.vote_deadline` bounds each honest vote between its slot start
-and the Python attestation due time, rounded down to whole seconds. The Phase0
-validator document calls for a vote after the expected valid block or at the due
-time, whichever comes first. Gloas sets that time with
-`attestation_due_bps`. This timing field alone does not delay block relay or
-order events at the next slot boundary.
+The execution records use a positive delay in milliseconds. Their strict bound
+is `get_attestation_due_ms cfg + delay_ms < cfg.slot_duration_ms`. Let S be the
+slot duration and A the attestation deadline offset. This is the paper's
+`A + Δ < S`: immediate honest gossip delivers a message held by A strictly
+before the next slot. `HonestBehavior.vote_deadline` bounds each honest vote
+between its slot start and the Python due time, rounded down to whole seconds.
+Phase0 calls for a vote after the expected valid block or at the due time,
+whichever comes first. Gloas sets the offset with `attestation_due_bps`.
+`HonestBehavior.no_forgery` also retains the causal send-time order.
+
+`DeadlineBlockRelay` transports only roots held by an honest node at or before
+the deadline of the source observation's slot. The receiver query is at or
+after the next slot start and strictly after the source observation. The sole
+exemption is `PermanentBlockExclusion`, evaluated at the second before the
+next-slot tick. It requires a known parent and permanent failure of an exact
+finalized-checkpoint guard in `on_block`. It cannot excuse a late block or a
+missing parent. A block that arrives before the next boundary is either
+accepted and retained, or its finalized-guard rejection persists through
+that boundary's predecessor. Finality first installed by the next tick cannot
+excuse an earlier absent block. The arrival-transfer lemmas check this time
+step; the model has no network queue.
+
+G4 derives admissibility of each honest head's known ancestor path from the
+accepted FFG, economic, and finalization-delay premises. AU certificate
+accountability handles the other required carriers. The proofs transport
+these roots and paths, then use local store monotonicity at later times.
+They do not require all roots of one honest store to reach every other store.
+Scheduled FCR calls read at slot start. Stored heads and source-history records
+retain their earlier deadline observations. These facts preserve the public
+next-slot endpoints without a new public premise field.
+
+`DeadlineBoundaryBlockPrefix` puts needed blocks before the next-slot
+attestation handler. `DeadlineEnvelopeDelivery` uses the same cutoff and
+pre-tick exemption and puts the accepted envelope occurrence before that vote
+handler. `DeadlineDataAvailabilityRelay` provides data at the matching receiver
+observation. These contracts include honest client service of ready messages,
+as required by Python's delay consideration. Raw receipt alone does not prove
+handler acceptance or data availability. The finite next-slot witness has
+one-second slots, A = 0, and a 500 ms delay witness; it has no envelope event.
+The separate 12-second witness work remains outside this lane.
+
+`DeadlineAttesterSlashingRelay` has the same source cutoff and later-slot
+receiver gate, with no exclusion branch. Slashing delivery takes at most Δ,
+so `A + Δ < S` puts it before the next slot. Acceptance needs the slashable-data
+check and two indexed-attestation checks. They read the attestations, signer
+pubkeys, and target-epoch domains. Pubkeys are immutable. The genesis validators
+root is common, and the model has one fork, so the domains are common.
+
+The evidence relay models clients that keep and apply evidence when the signer
+pubkeys are known, with a pubkey cache. This is a deviation from literal Python:
+`on_attester_slashing` validates against
+`store.block_states[store.justified_checkpoint.root]`. A justified state older
+than a signer's deposit can lack that signer and reject the evidence. In the
+modeled client, the source's justification reaches the receiver by the next
+boundary through block relay and supplies those keys. This is a stated client
+behavior choice, not a theorem about that literal Python state lookup.
+Evidence accepted late in a slot is included: the relay's source time is when
+the confirmer holds the index at its scheduled slot-start FCR call. The two
+margin consumers use that call's cutoff observation.
+
+These execution premises implement the paper's positive-delay timing at slot
+boundaries in the synchronous segment. They do not add a GST transition. The
+paper's independent view model is not a refinement proof for Python handlers.
+The live block-production premise remains separate. Deriving delivery of an
+honest proposal to same-slot voters would also require `P + Δ ≤ A`, where P
+is its proposal offset; safety's strict bound alone does not supply that fact.
 
 The source fork is `fradamt/consensus-specs` at tag `fcr-gloas-fix` (`13f391516`). The independent weak rule is on branch `fcr-weak-synchrony` and tag `fcr-weak-synchrony-v1`; its live monotonicity proposition remains open. See [source map](SPEC_MAP.md), [paper map](PAPER_MAP.md), and [review guide](REVIEW_GUIDE.md).

@@ -287,6 +287,8 @@ theorem crossingEdge_sibling_score_of_endpointLedger_minimal
     {v : ValidatorIndex} {q : ℕ} {w : ValidatorIndex} {m : ℕ}
     {bs : BeaconState Root} {a b : Root} {lo mid es sigma : Slot}
     (hv : v ∈ E.honest) (hqH : E.WithinHorizon cfg q)
+    (hqDeadline : q ≤ E.slot_start cfg (E.slot_at cfg q) +
+      get_attestation_due_ms cfg / 1000)
     (hw : w ∈ E.honest) (hmH : E.WithinHorizon cfg m)
     (hrelaySlot : E.slot_at cfg q + 1 ≤ E.slot_at cfg m)
     (hbQuery : b ∈ (E.store cfg ext v q).block_roots)
@@ -392,7 +394,11 @@ theorem crossingEdge_sibling_score_of_endpointLedger_minimal
       Finset.mem_filter, Finset.mem_inter] at hi
     exact hi.1.1.2
   have hEqRelay : EqPre ⊆ (E.store cfg ext w m).equivocating_indices :=
-    fun i hi => E.equiv_subset_of_relay cfg ext hA.synchrony hv hw hqH hmH
+    fun i hi => E.equiv_subset_of_relay cfg ext hA.synchrony hA.whole_seconds
+      (by
+        obtain ⟨ast, ablk, hge⟩ := hA.genesis_store
+        rw [hge]; simp only [get_forkchoice_store]; omega)
+      hv hw hqH hmH hqDeadline
       hrelaySlot (hEqQuery hi)
   have hvalEnd : ((E.store cfg ext w m).checkpoint_states
       (E.store cfg ext w m).justified_checkpoint).validators = E.registry :=

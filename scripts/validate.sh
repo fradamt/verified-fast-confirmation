@@ -83,6 +83,7 @@ elif ((whitespace_status != 1)); then
   exit "$whitespace_status"
 fi
 
+python3 scripts/check_synchrony_corners.py --self-test
 python3 scripts/check_doc_names.py
 python3 scripts/check_review_boundary.py
 python3 scripts/check_review_boundary.py --self-test

@@ -15,30 +15,30 @@ This Lean 4 repository verifies three properties of the executable Fast Confirma
 The records in this table are in `FastConfirmationStatements/Premises/`. The paper is [arXiv:2405.00549](https://arxiv.org/abs/2405.00549). The source of each condition is shown in the last column.
 
 ```text
-┌─────────────────────┬─────────────────────────────────────┬────────────────────────────────────────────────────────────────────────┬───────────────────────────────┐
-│ Claim               │ Premise record                      │ Fields in plain words                                                  │ Source                        │
-├─────────────────────┼─────────────────────────────────────┼────────────────────────────────────────────────────────────────────────┼───────────────────────────────┤
-│ Both safety fields  │ Execution.NextSlotSafetyPremises    │ Exact FFG state at every handler-successful prefix; a well formed scheduled run; │ Paper Assumption 3.2; Gloas   │
-│                     │                                     │ completed FCR calls; epoch arithmetic; anchor alignment; finalization  │ extension; model idealisation │
-│                     │                                     │ delay; more than one slot per epoch; checkpoint and link evidence.     │                               │
-│ Both safety fields  │ Execution.ScheduledPrefixPremises   │ Whole seconds, well formed stores, coherent external calls, honest     │ Model idealisation            │
-│                     │                                     │ behavior with an attestation deadline, and a valid genesis store.      │ Phase0/Gloas; model premise   │
-│ Both safety fields  │ Execution.CompletedFCRCallPremises  │ Five delivery laws; fixed active validators; committee and Byzantine   │ Paper Assumptions 1 and 2;    │
-│                     │                                     │ weight bounds; Phase0 source coherence; a nonzero balance floor;       │ Gloas extension; model        │
-│                     │                                     │ next-slot vote receipt; guarded prediction support.                    │ idealisation                  │
-│ Both safety fields  │ NextSlotSynchronyPremises           │ Honest vote delivery, block relay, verified envelope delivery, data    │ Paper synchrony; Gloas        │
-│                     │                                     │ availability relay, and equivocation evidence relay.                   │ extension                     │
-│ Both safety fields  │ BeaconExternalsPremises             │ Slot and state transition coherence, committee and attestation         │ Model idealisation            │
-│                     │                                     │ validity, and deterministic envelope verification.                     │                               │
-│ Both safety fields  │ ByzantineWeightPremises             │ Quantized balances, sound committee estimates, and a non-honest weight │ Paper Assumption 2;           │
-│                     │                                     │ fraction bound for every span, including one slot. A global fault     │ executable estimate           │
-│                     │                                     │ share does not establish this span bound.                              │                               │
-│ Both safety fields  │ CausalPrefixFFGInterpretation;    │ Exact handler-successful prefix FFG state, causal links, and projected           │ Paper Assumption 3.2; model   │
-│                     │ EpochCheckpointClosure   │ checkpoint roots.                                                      │ idealisation                  │
-│ Live field          │ LiveMonotonicityPremises            │ An honest block in each slot from execution start, known by the next   │ Paper Theorem 1 monotonicity  │
-│                     │                                     │ slot and supported by honest votes; timely observed FFG justification  │ and Assumption 6,             │
-│                     │                                     │ at epoch boundaries.                                                   │ strengthened                  │
-└─────────────────────┴─────────────────────────────────────┴────────────────────────────────────────────────────────────────────────┴───────────────────────────────┘
+┌────────────────────┬────────────────────────────────────┬──────────────────────────────────────────────────────────────────────────────────┬───────────────────────────────┐
+│ Claim              │ Premise record                     │ Fields in plain words                                                            │ Source                        │
+├────────────────────┼────────────────────────────────────┼──────────────────────────────────────────────────────────────────────────────────┼───────────────────────────────┤
+│ Both safety fields │ Execution.NextSlotSafetyPremises   │ Exact FFG state at every handler-successful prefix; a well formed scheduled run; │ Paper Assumption 3.2; Gloas   │
+│                    │                                    │ completed FCR calls; epoch arithmetic; anchor alignment; finalization            │ extension; model idealisation │
+│                    │                                    │ delay; more than one slot per epoch; checkpoint and link evidence.               │                               │
+│ Both safety fields │ Execution.ScheduledPrefixPremises  │ Whole seconds, well formed stores, coherent external calls, honest               │ Model idealisation            │
+│                    │                                    │ behavior with an attestation deadline, and a valid genesis store.                │ Phase0/Gloas; model premise   │
+│ Both safety fields │ Execution.CompletedFCRCallPremises │ Five delivery laws; fixed active validators; committee and Byzantine             │ Paper Assumptions 1 and 2;    │
+│                    │                                    │ weight bounds; Phase0 source coherence; a nonzero balance floor;                 │ Gloas extension; model        │
+│                    │                                    │ next-slot vote receipt; guarded prediction support.                              │ idealisation                  │
+│ Both safety fields │ NextSlotSynchronyPremises          │ Positive delay; deadline cutoff for block, envelope, data and evidence           │ Paper synchrony; Gloas        │
+│                    │                                    │ relay; pre-tick exclusion; payload service before boundary votes.                │ extension                     │
+│ Both safety fields │ BeaconExternalsPremises            │ Slot and state transition coherence, committee and attestation                   │ Model idealisation            │
+│                    │                                    │ validity, and deterministic envelope verification.                               │                               │
+│ Both safety fields │ ByzantineWeightPremises            │ Quantized balances, sound committee estimates, and a non-honest weight           │ Paper Assumption 2;           │
+│                    │                                    │ fraction bound for every span, including one slot. A global fault                │ executable estimate           │
+│                    │                                    │ share does not establish this span bound.                                        │                               │
+│ Both safety fields │ CausalPrefixFFGInterpretation;     │ Exact handler-successful prefix FFG state, causal links, and projected           │ Paper Assumption 3.2; model   │
+│                    │ EpochCheckpointClosure             │ checkpoint roots.                                                                │ idealisation                  │
+│ Live field         │ LiveMonotonicityPremises           │ An honest block in each slot from execution start, known by the next             │ Paper Theorem 1 monotonicity  │
+│                    │                                    │ slot and supported by honest votes; timely observed FFG justification            │ and Assumption 6,             │
+│                    │                                    │ at epoch boundaries.                                                             │ strengthened                  │
+└────────────────────┴────────────────────────────────────┴──────────────────────────────────────────────────────────────────────────────────┴───────────────────────────────┘
 ```
 
 `Execution.NextSlotSafetyPremises` supplies the common safety premise to the first and third fields. `LiveConfirmedRootMonotonicity` adds `LiveMonotonicityPremises` to that same execution premise. The FFG and finalization laws quantify over handler-successful prefixes beyond the safety endpoint where their declarations require it; the finite conclusion does not reduce their premise range.
@@ -72,3 +72,12 @@ scripts/validate.sh --consensus-repo /path/to/fradamt-consensus-specs
 ## Where to read
 
 Read [architecture](docs/ARCHITECTURE.md), [source map](docs/SPEC_MAP.md), [paper map](docs/PAPER_MAP.md), [modeling choices](docs/MODELING_CHOICES.md), [review guide](docs/REVIEW_GUIDE.md), and [audit brief](docs/AI_AUDIT.md). The [conformance guide](docs/conformance.md) covers trace comparison. Source declarations are in `FastConfirmationStatements/Review.lean`, `FastConfirmationProofs/ReviewTheorem.lean`, and `FastConfirmationWitnesses/Index.lean`.
+
+The execution synchrony fields use a positive millisecond delay and strict
+`A + Δ < S`. G4 and exact AU accountability justify transport of the required
+roots. The public next-slot endpoints are unchanged. Evidence relay includes
+the documented pubkey-cache client behavior; literal Python can reject evidence
+when its older justified state lacks a signer. See
+[modeling choices](docs/MODELING_CHOICES.md) and the
+[review guide](docs/REVIEW_GUIDE.md). `scripts/check_synchrony_corners.py` runs
+with validation and rejects the old relay shapes.

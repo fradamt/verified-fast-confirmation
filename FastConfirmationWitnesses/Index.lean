@@ -100,4 +100,11 @@ bundle and the two executions that refute strict-prefix safety variants.
 * Envelope premises are exercised only through the next-slot bundle witness.
   Its execution contains no payload envelope, so envelope delivery and data
   relay hold vacuously.
+
+Synchrony migration: the finite execution uses a positive 500 ms delay with
+strict deadline fit. Blocks and evidence use source cutoffs; envelope/data
+service is vacuous because this run has no envelope. The exclusion point is checked by
+`DeadlineVotePathCandidate`: its skipped-boundary schedule fails the refined
+pre-tick relay. The public witness set remains 15 entries. A nonvacuous
+12-second delayed-message run is not claimed here.
 -/

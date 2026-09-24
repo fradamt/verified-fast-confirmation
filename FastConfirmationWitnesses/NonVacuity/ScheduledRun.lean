@@ -895,11 +895,8 @@ theorem witnessSynchrony :
           (witnessExecution.time_at boundary)).block_roots :=
       (on_tick_storeLE witnessConfig _ _).1 hrootPred
     exact (foldl_storeLE witnessConfig witnessExternals before _).1 hrootTick
-  · intro v hv n i hn hi w hw m hm hslot
-    have hnm : n ≤ m := by
-      have hs : n + 1 ≤ m := by
-        simpa only [slot_at_eq] using hslot
-      exact (Nat.le_succ n).trans hs
+  · intro v hv n i hn hi _hdue w hw m hm _hnext hlt
+    have hnm : n ≤ m := hlt.le
     rw [← witness_store_symmetric v w m]
     exact
       (witnessExecution.store_storeLE witnessConfig witnessExternals v hnm).2.2.1 hi

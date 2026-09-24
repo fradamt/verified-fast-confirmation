@@ -85,6 +85,37 @@ def DeadlineBoundaryBlockPrefix (E : Execution Root) : Prop :=
           (fun store event => (apply_event cfg ext store event).getD store)
           (on_tick cfg (E.store cfg ext w (boundary - 1))
             (E.time_at boundary))).block_roots
+/-- Evidence held by an honest node at or before the slot deadline reaches
+every honest node by the next boundary. Slashing gossip takes at most positive
+Δ, and strict `A + Δ < S` puts delivery before that boundary. Acceptance reads
+only the slashable-data check and two indexed-attestation checks. These checks
+read the attestations, signer pubkeys, and target-epoch domains. Pubkeys never
+change. The genesis validators root is common, and this model has one fork,
+so the domains are common.
+
+This models clients that keep and apply evidence when they know its signer
+pubkeys, using a pubkey cache. Literal Python instead checks against
+`store.block_states[store.justified_checkpoint.root]`; a justified state older
+than a signer's deposit can lack that key and reject the evidence. The
+justification used by the source reaches the receiver by the next boundary
+through block relay and supplies the signer keys. The pubkey-cache behavior
+is an explicit modeling deviation from that literal state lookup.
+
+The source time is when the node holds the index, not the evidence's arrival
+time. An FCR call reads at a slot start, before its deadline; thus evidence
+accepted late in a prior slot also has a valid cutoff observation. There is
+no exclusion alternative and no same-second cross-node conclusion. -/
+def DeadlineAttesterSlashingRelay (E : Execution Root) : Prop :=
+  ∀ v ∈ E.honest, ∀ n (i : ValidatorIndex),
+    E.WithinHorizon cfg n →
+    i ∈ (E.store cfg ext v n).equivocating_indices →
+    n ≤ E.slot_start cfg (E.slot_at cfg n) +
+      get_attestation_due_ms cfg / 1000 →
+    ∀ w ∈ E.honest, ∀ m,
+      E.WithinHorizon cfg m →
+      E.slot_start cfg (E.slot_at cfg n + 1) ≤ m → n < m →
+      i ∈ (E.store cfg ext w m).equivocating_indices
+
 /-- Network synchrony — the FCR intro's assumption ("starting from the
 current slot, attestations created by honest validators in any slot are
 received by the end of that slot"), made operational, plus the block/message
@@ -105,8 +136,9 @@ structure Synchrony (E : Execution Root) : Prop where
   /-- The vote deadline plus `Δ` precedes the next slot start. -/
   deadline_fits : get_attestation_due_ms cfg + Classical.choose delta <
       cfg.slot_duration_ms := (Classical.choose_spec delta).2
-  /-- honest attestations of slot `s` are processed by every honest node at
-      the first second of slot `s+1`. -/
+  /-- The honest vote deadline and positive Δ with strict `A + Δ < S`
+      give receipt before the next slot. Honest clients retain early votes
+      and process them at the first applicable slot start. -/
   attestation_delivery : ∀ v ∈ E.honest, ∀ s n (a : Attestation Root),
     E.SlotWithinHorizon cfg s →
     E.WithinHorizon cfg n →
@@ -117,18 +149,14 @@ structure Synchrony (E : Execution Root) : Prop where
       Event.attestation a false ∈ E.schedule w (E.slot_start cfg (s + 1))
   /-- Deadline gossip with the pre-tick finalized-guard exemption. -/
   deadline_block_relay : DeadlineBlockRelay cfg ext E
-  /-- Ready cutoff-time blocks precede next-slot attestation handlers. -/
+  /-- Strict `A + Δ < S` and honest ready-message service put cutoff blocks
+      before the next-slot vote handler; exclusion is tested before the tick. -/
   boundary_block_prefix : DeadlineBoundaryBlockPrefix cfg ext E
-  /-- Equivocation evidence known to an honest node is known to every honest
-      node from the next slot onward. Attester slashings gossip and may be
-      carried in blocks through `on_attester_slashing`; the safety argument
-      requires all honest nodes to exclude the same detected equivocators. -/
-  attester_slashing_relay : ∀ v ∈ E.honest, ∀ n (i : ValidatorIndex),
-    E.WithinHorizon cfg n →
-    i ∈ (E.store cfg ext v n).equivocating_indices →
-    ∀ w ∈ E.honest, ∀ m, E.WithinHorizon cfg m →
-    E.slot_at cfg n + 1 ≤ E.slot_at cfg m →
-    i ∈ (E.store cfg ext w m).equivocating_indices
+  /-- Positive-Δ gossip and strict deadline fit give evidence by the next
+      boundary from a cutoff holding time, with no exclusion. The named
+      contract documents immutable keys, the common domain, and the client's
+      pubkey-cache deviation from the literal Python justified-state lookup. -/
+  attester_slashing_relay : DeadlineAttesterSlashingRelay cfg ext E
 
 /-- Verified envelopes are gossiped within positive Δ. The source cutoff and
 strict `A + Δ < S` put them before the next slot. Honest clients delay a
@@ -208,6 +236,8 @@ structure NextSlotSynchronyPremises (E : Execution Root) : Prop where
   /-- The honest vote deadline plus `Δ` precedes the next slot start. -/
   deadline_fits : get_attestation_due_ms cfg + Classical.choose delta <
       cfg.slot_duration_ms := (Classical.choose_spec delta).2
+  /-- Honest votes are sent by A. Positive-Δ gossip and strict fit give
+      receipt before the next slot; the client then runs the vote handler. -/
   attestation_delivery : ∀ v ∈ E.honest, ∀ s n (a : Attestation Root),
     E.SlotWithinHorizon cfg s →
     E.WithinHorizon cfg n →
@@ -216,17 +246,21 @@ structure NextSlotSynchronyPremises (E : Execution Root) : Prop where
     E.WithinHorizon cfg (E.slot_start cfg (s + 1)) →
     ∀ w ∈ E.honest,
       Event.attestation a false ∈ E.schedule w (E.slot_start cfg (s + 1))
+  /-- Positive-Δ gossip from a cutoff observation, with strict fit and
+      honest delay consideration. Only the pre-tick finalized guard exempts. -/
   deadline_block_relay : DeadlineBlockRelay cfg ext E
-  /-- Ready cutoff-time blocks precede next-slot attestation handlers. -/
+  /-- Strict `A + Δ < S` and honest ready-message service put cutoff blocks
+      before the next-slot vote handler; exclusion is tested before the tick. -/
   boundary_block_prefix : DeadlineBoundaryBlockPrefix cfg ext E
+  /-- Positive-Δ envelope gossip and strict fit give ready service before
+      the boundary vote. The named contract has the pre-tick block exemption. -/
   envelope_delivery : DeadlineEnvelopeDelivery cfg ext E
+  /-- Honest data service follows the same cutoff and positive-Δ bound;
+      the receiver observation is at or after the next slot boundary. -/
   data_availability_relay : DeadlineDataAvailabilityRelay cfg ext E
-  attester_slashing_relay : ∀ v ∈ E.honest, ∀ n (i : ValidatorIndex),
-    E.WithinHorizon cfg n →
-    i ∈ (E.store cfg ext v n).equivocating_indices →
-    ∀ w ∈ E.honest, ∀ m, E.WithinHorizon cfg m →
-    E.slot_at cfg n + 1 ≤ E.slot_at cfg m →
-    i ∈ (E.store cfg ext w m).equivocating_indices
+  /-- Cutoff evidence gossip under positive Δ and strict fit, without an
+      exclusion branch. The named contract states the pubkey-cache choice. -/
+  attester_slashing_relay : DeadlineAttesterSlashingRelay cfg ext E
 
 /-- One-slot operational closure for honest votes created inside the public
 verification horizon.
