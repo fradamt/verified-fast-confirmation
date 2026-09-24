@@ -1,4 +1,5 @@
 module
+public import FastConfirmationWitnesses.Counterexamples.DeadlineVotePathCandidate
 public import FastConfirmationWitnesses.Counterexamples.PinnedEconomicsExtraQuery
 public import FastConfirmationWitnesses.Counterexamples.StrictPrefixExtraQuery
 public import FastConfirmationWitnesses.NonVacuity.NextSlotPremises

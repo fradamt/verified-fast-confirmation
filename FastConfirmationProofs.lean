@@ -1,4 +1,5 @@
 module
+public import FastConfirmationProofs.Checkpoints.HonestVotePathAdmissibility
 public import FastConfirmationProofs.Checkpoints.AnchorChainSafety
 public import FastConfirmationProofs.Checkpoints.AnchorParentKnownness
 public import FastConfirmationProofs.Checkpoints.Anchoring
