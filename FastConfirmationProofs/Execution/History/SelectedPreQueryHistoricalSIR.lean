@@ -549,12 +549,12 @@ theorem preQueryTarget_descends_queryBlock_at_endpoint
     (htarget₀ : a₀.data.target = target) :
     is_ancestor (E.store cfg ext w m)
       (get_node_for_root target.root) (get_node_for_root b) = true := by
-  obtain ⟨k, d, hHk, _hk, hkq, hdK, _hTK, _hdQ, _hTQ, hdTQ⟩ :=
+  obtain ⟨k, d, hHk, _hk, hkq, hdK, _hTK, hdQ, _hTQ, hdTQ⟩ :=
     E.preQueryHonestTarget_sourceWitnessAtQuery cfg ext hA hwalkDomain
       hv hqH hi hs0 hsq hsH hvote₀ htarget₀
   exact (E.ancestry_of_known_honest_past_descendant_minimal cfg ext hA
     v hv q target.root b hqH hTQ hbQ hTbQ w hw m hslotQM hHm
-      i hi k hHk d hkq hdK hdTQ).2.2
+      i hi k hHk d hkq hdK hdQ hdTQ).2.2
 
 /-- The complete **below-input** region is mechanical once the already-carried
 input safety and honest-target geometry are made visible.

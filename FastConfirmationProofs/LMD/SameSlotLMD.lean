@@ -281,8 +281,10 @@ theorem confirmed_pastDescendant_minimal
   obtain ⟨i, lm, hi, hlm, hsupp⟩ :=
     E.honestSupporter_of_confirmed_known_at_minimal cfg ext hA v hv q query
       hquery b hqH hb hparent hconf
-  exact E.past_descendant_of_honest_supporter_known_minimal cfg ext hA
-    v hv q b hqH i hi lm hlm hsupp
+  obtain ⟨u, nu, d, hu, hHnu, hslot, _hdeadline, hd, _hdQuery, hdesc⟩ :=
+    E.past_descendant_of_honest_supporter_known_minimal cfg ext hA
+      v hv q b hqH i hi lm hlm hsupp
+  exact ⟨u, nu, d, hu, hHnu, hslot, hd, hdesc⟩
 
 /-- A successful selected confirmation cannot occur in the truncated
 `current_slot = 0` cutoff corner: its honest recorded supporter comes from a

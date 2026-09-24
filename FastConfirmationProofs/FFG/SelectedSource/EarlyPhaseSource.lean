@@ -157,14 +157,9 @@ theorem StrictSelectedResultMechanicalFacts.confirmedPastDescendantSlotWitness
       (by simpa only [hquery] using h.result_known)
       (by simpa only [hquery] using h.parent_known)
       h.confirmed
-  obtain ⟨u, nu, d, hu, hnuH, hnuq, hdPast, hdResult⟩ :=
+  obtain ⟨u, nu, d, hu, hnuH, hnuq, _hdeadline, hdPast, hdQueryE, hdResult⟩ :=
     E.past_descendant_of_honest_supporter_known_minimal cfg ext hA
       v hv q result hqH i hi lm hlm hsupp
-  have hrelayGate : E.slot_at cfg nu + 1 ≤ E.slot_at cfg (q + 1) := by
-    exact (Nat.succ_le_iff.mpr hnuq).trans
-      (E.slot_at_mono cfg (Nat.le_succ q))
-  have hdQueryE : d ∈ (E.store cfg ext v q).block_roots :=
-    hA.synchrony.block_relay u hu nu d hnuH hdPast v hv q hqH hrelayGate
   have hdQuery : d ∈ query.store.block_roots := by
     simpa only [hquery] using hdQueryE
   have hdAgree : (E.store cfg ext u nu).blocks d = query.store.blocks d := by

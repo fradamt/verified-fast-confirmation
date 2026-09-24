@@ -323,7 +323,10 @@ theorem past_descendant_of_honest_supporter_known_minimal
     ∃ (u : ValidatorIndex) (nu : ℕ) (d : Root),
       u ∈ E.honest ∧ E.WithinHorizon cfg nu ∧
       E.slot_at cfg nu < E.slot_at cfg n ∧
+      nu ≤ E.slot_start cfg (E.slot_at cfg nu) +
+        get_attestation_due_ms cfg / 1000 ∧
       d ∈ (E.store cfg ext u nu).block_roots ∧
+      d ∈ (E.store cfg ext v n).block_roots ∧
       is_ancestor (E.store cfg ext v n)
         (get_node_for_root d) (get_node_for_root b) = true := by
   obtain ⟨ast, ablk, hgeq, hslot, hroot⟩ := hA.genesis
@@ -381,9 +384,11 @@ theorem past_descendant_of_honest_supporter_known_minimal
       exact hmem
     · rw [← hhead, heq]
       exact hA.domain.justified_root_known i hi nu hHnu
-  refine ⟨i, nu, lm.root, hi, hHnu, ?_, hd, ?_⟩
+  refine ⟨i, nu, lm.root, hi, hHnu, ?_, ?_, hd, hlmKnown, ?_⟩
   · rw [hnu]
     exact hslt
+  · simpa only [hnu] using
+      (hA.honest_behavior.vote_deadline i hi s nu _ hvoteHead).2
   · simpa only [get_node_for_root, is_ancestor_supported_pending] using hsupp
 
 theorem mem_of_known_honest_past_descendant_minimal
@@ -398,6 +403,7 @@ theorem mem_of_known_honest_past_descendant_minimal
     (hHnu : E.WithinHorizon cfg nu) (d : Root)
     (hslot : E.slot_at cfg nu < E.slot_at cfg n)
     (hd : d ∈ (E.store cfg ext u nu).block_roots)
+    (hdv : d ∈ (E.store cfg ext v n).block_roots)
     (hanc : is_ancestor (E.store cfg ext v n)
       (get_node_for_root d) (get_node_for_root b) = true) :
     b ∈ (E.store cfg ext w m).block_roots := by
@@ -407,10 +413,6 @@ theorem mem_of_known_honest_past_descendant_minimal
       ast.slot = ablk.message.slot ∧ ablk.message.parent_root ≠ ablk.root :=
     ⟨ast, ablk, hgeq, hstateSlot, hroot⟩
   set rb := ((E.store cfg ext v n).blocks b).slot
-  have hgateUV : E.slot_at cfg nu + 1 ≤ E.slot_at cfg (n + 1) :=
-    hslot.trans_le (E.slot_at_mono cfg (Nat.le_succ n))
-  have hdv : d ∈ (E.store cfg ext v n).block_roots :=
-    hA.synchrony.block_relay u hu nu d hHnu hd v hv n hHn hgateUV
   have hagree : ∀ r, r ∈ (E.store cfg ext u nu).block_roots →
       r ∈ (E.store cfg ext v n).block_roots →
       (E.store cfg ext u nu).blocks r = (E.store cfg ext v n).blocks r :=
@@ -469,6 +471,7 @@ theorem ancestry_of_known_honest_past_descendant_minimal
     (hHnu : E.WithinHorizon cfg nu) (d : Root)
     (hslot : E.slot_at cfg nu < E.slot_at cfg n)
     (hd : d ∈ (E.store cfg ext u nu).block_roots)
+    (hdv : d ∈ (E.store cfg ext v n).block_roots)
     (hdb : is_ancestor (E.store cfg ext v n)
       (get_node_for_root d) (get_node_for_root b) = true) :
     r₀ ∈ (E.store cfg ext w m).block_roots ∧
@@ -480,10 +483,6 @@ theorem ancestry_of_known_honest_past_descendant_minimal
       E.genesis_store = get_forkchoice_store cfg ast ablk ∧
       ast.slot = ablk.message.slot ∧ ablk.message.parent_root ≠ ablk.root :=
     ⟨ast, ablk, hgeq, hstateSlot, hroot⟩
-  have hgateUV : E.slot_at cfg nu + 1 ≤ E.slot_at cfg (n + 1) :=
-    hslot.trans_le (E.slot_at_mono cfg (Nat.le_succ n))
-  have hdv : d ∈ (E.store cfg ext v n).block_roots :=
-    hA.synchrony.block_relay u hu nu d hHnu hd v hv n hHn hgateUV
   have hagreeUV : ∀ r, r ∈ (E.store cfg ext u nu).block_roots →
       r ∈ (E.store cfg ext v n).block_roots →
       (E.store cfg ext u nu).blocks r = (E.store cfg ext v n).blocks r :=
@@ -589,11 +588,11 @@ theorem confirmed_known_at_all_honest_endpoints_minimal
   obtain ⟨i, lm, hi, hlm, hsupp⟩ :=
     E.honestSupporter_of_confirmed_known_at_minimal cfg ext hA v hv n
       fcrStore hstore b hHn hb hparent hconf
-  obtain ⟨u, nu, d, hu, hHnu, hslot, hd, hanc⟩ :=
+  obtain ⟨u, nu, d, hu, hHnu, hslot, _hdeadline, hd, hdQuery, hanc⟩ :=
     E.past_descendant_of_honest_supporter_known_minimal cfg ext hA
       v hv n b hHn i hi lm hlm hsupp
   exact E.mem_of_known_honest_past_descendant_minimal cfg ext hA
-    v hv n b hHn hb w hw m hnm hHm u hu nu hHnu d hslot hd hanc
+    v hv n b hHn hb w hw m hnm hHm u hu nu hHnu d hslot hd hdQuery hanc
 
 /-- The same arbitrary-time transport preserves a known selected/base
 ancestry pair, not merely selected-root membership. -/
@@ -621,12 +620,12 @@ theorem confirmed_ancestry_at_all_honest_endpoints_minimal
   obtain ⟨i, lm, hi, hlm, hsupp⟩ :=
     E.honestSupporter_of_confirmed_known_at_minimal cfg ext hA v hv n
       fcrStore hstore b hHn hb hparent hconf
-  obtain ⟨u, nu, d, hu, hHnu, hslot, hd, hdb⟩ :=
+  obtain ⟨u, nu, d, hu, hHnu, hslot, _hdeadline, hd, hdQuery, hdb⟩ :=
     E.past_descendant_of_honest_supporter_known_minimal cfg ext hA
       v hv n b hHn i hi lm hlm hsupp
   exact E.ancestry_of_known_honest_past_descendant_minimal cfg ext hA
     v hv n b r₀ hHn hb hr₀ hbge w hw m hnm hHm
-      u hu nu hHnu d hslot hd hdb
+      u hu nu hHnu d hslot hd hdQuery hdb
 
 theorem canonical_member_parent_known_minimal
     (hA : SelectedMarginAssumptions cfg ext E)
