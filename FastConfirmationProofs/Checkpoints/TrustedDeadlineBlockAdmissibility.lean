@@ -2,6 +2,9 @@ module
 public import FastConfirmationProofs.Checkpoints.DeadlineCheckpointRelay
 public import FastConfirmationProofs.Checkpoints.DeadlineBlockAdmissibility
 public import FastConfirmationInternal.Weak.TrustedFFGInterpretation
+public import FastConfirmationProofs.FFG.State.TrustedFinalizedSameTip
+public import FastConfirmationProofs.Checkpoints.TrustedExactCheckpointLinks
+public import FastConfirmationProofs.Checkpoints.TrustedResetCheckpointClassification
 
 @[expose] public section
 namespace FastConfirmation.Spec
@@ -116,6 +119,123 @@ theorem trusted_deadline_root_known_of_checkpointCompatible
     exact False.elim (E.trusted_checkpointCompatible_not_permanentlyExcluded
       cfg ext B hT hanchor hboundary hHm hr hFknown hanchorLe
       hcheckpoint hexcluded)
+
+theorem trusted_acceptedSourceTip_not_permanentlyExcluded_of_prefix
+    (B : TrustedCausalPrefixFFGInterpretation cfg ext E trusted)
+    (hT : E.ScheduledPrefixPremises cfg ext)
+    (hA : SelectedMarginAssumptions cfg ext E)
+    (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
+    (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
+      (E := E) (anchor := B.anchor))
+    {v w : ValidatorIndex} {n m : ℕ} {tip : Root}
+    {target : Checkpoint Root}
+    (hHm : E.WithinHorizon cfg m)
+    (htip : tip ∈ (E.store cfg ext v n).block_roots)
+    (hfinalizedKnown : (E.store cfg ext w m).finalized_checkpoint.root ∈
+      (E.store cfg ext w m).block_roots)
+    (hanchorLe : B.anchor.epoch ≤
+      (E.store cfg ext w m).finalized_checkpoint.epoch)
+    (hprefix : ExactCheckpointPrefix B.state.C
+      (E.store cfg ext w m).finalized_checkpoint target)
+    (hAU : B.state.AU cfg ext tip target)
+    (hepoch : (E.store cfg ext w m).finalized_checkpoint.epoch ≤
+      target.epoch)
+    (hwalk : WalkKnown (E.store cfg ext v n)
+      (compute_start_slot_at_epoch cfg
+        (E.store cfg ext w m).finalized_checkpoint.epoch) tip) :
+    ¬ PermanentBlockExclusion cfg ext E v n tip w m := by
+  have hparent : ParentSlotLt (E.store cfg ext v n) :=
+    E.store_parentSlotLt cfg ext hA.wellFormed
+      hA.externals_coherence hA.genesis
+      hA.wellFormed.anchor_parent_unscheduled v n
+  have hcheckpoint :
+      (E.store cfg ext w m).finalized_checkpoint.root =
+        get_checkpoint_block cfg (E.store cfg ext v n) tip
+          (E.store cfg ext w m).finalized_checkpoint.epoch :=
+    trusted_exactCheckpointPrefix_root_eq_at_sameTip cfg ext B.coherence
+      (E.store_causal cfg ext v n) hparent htip hprefix hAU hepoch hwalk
+  intro hexcluded
+  exact E.trusted_checkpointCompatible_not_permanentlyExcluded cfg ext B hT
+    hanchor hboundary hHm htip hfinalizedKnown hanchorLe
+    hcheckpoint hexcluded
+
+/-- An accepted AU checkpoint with epoch at least the receiver's finalized
+epoch has that finalized checkpoint as an exact certified prefix. The
+certificate comes from the AU carrier and the receiver's actual finalized
+checkpoint, with accountability supplying the cross-carrier orientation. -/
+theorem trusted_acceptedFinalized_prefix_of_sourceAU
+    (B : TrustedCausalPrefixFFGInterpretation cfg ext E trusted)
+    (hT : E.ScheduledPrefixPremises cfg ext)
+    (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
+    (P : EpochCheckpointClosure B.anchor
+      (E.AcceptedRoot cfg ext) B.state.C)
+    (V : B.state.ExactLinkValidity)
+    (hanchorExact : B.anchor =
+      B.state.C B.anchor.root B.anchor.epoch)
+    (hacc : CheckpointCertificateAccountability cfg E B.anchor)
+    {w : ValidatorIndex} {m : ℕ} {tip : Root}
+    {target : Checkpoint Root}
+    (hAU : B.state.AU cfg ext tip target)
+    (hepoch : (E.store cfg ext w m).finalized_checkpoint.epoch ≤
+      target.epoch) :
+    ExactCheckpointPrefix B.state.C
+      (E.store cfg ext w m).finalized_checkpoint target := by
+  obtain ⟨ast, ablk, hgen, hgenSlot, _hgenParent⟩ :=
+    hT.genesis_structure
+  have hgenShort : ∃ (ast : BeaconState Root)
+      (ablk : SignedBeaconBlock Root),
+      E.genesis_store = get_forkchoice_store cfg ast ablk ∧
+        ast.slot = ablk.message.slot :=
+    ⟨ast, ablk, hgen, hgenSlot⟩
+  obtain ⟨_carrier, _hdesc, hformed⟩ := hAU
+  obtain ⟨hCcert⟩ := (B.state.formed_evidence hformed).certified
+  rcases E.trusted_acceptedGlobalFinalized_anchor_or_includedCertificate
+      cfg ext B hgenShort hanchor
+      (E.store_causal cfg ext w m) with
+    hFanchor | ⟨_carrierF, _hcarrierF, hFcert⟩
+  · rw [hFanchor]
+    exact IncludedCertifiedJustified.anchor_prefix (cfg := cfg)
+      P V hanchorExact hCcert
+  · obtain ⟨hFcert⟩ := hFcert
+    exact B.state.exactFinalizedPrefix_of_accountable P V
+      hanchorExact hacc hFcert hCcert hepoch
+
+/-- A source tip carrying an accepted AU checkpoint at least as new as the
+receiver's finalized checkpoint is never permanently excluded, provided the
+tip's boundary walk is known at the source observation. -/
+theorem trusted_acceptedSourceTip_not_permanentlyExcluded_of_AU
+    (B : TrustedCausalPrefixFFGInterpretation cfg ext E trusted)
+    (hT : E.ScheduledPrefixPremises cfg ext)
+    (hA : SelectedMarginAssumptions cfg ext E)
+    (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
+    (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
+      (E := E) (anchor := B.anchor))
+    (P : EpochCheckpointClosure B.anchor
+      (E.AcceptedRoot cfg ext) B.state.C)
+    (V : B.state.ExactLinkValidity)
+    (hanchorExact : B.anchor =
+      B.state.C B.anchor.root B.anchor.epoch)
+    (hacc : CheckpointCertificateAccountability cfg E B.anchor)
+    {v w : ValidatorIndex} {n m : ℕ} {tip : Root}
+    {target : Checkpoint Root}
+    (hHm : E.WithinHorizon cfg m)
+    (htip : tip ∈ (E.store cfg ext v n).block_roots)
+    (hfinalizedKnown : (E.store cfg ext w m).finalized_checkpoint.root ∈
+      (E.store cfg ext w m).block_roots)
+    (hanchorLe : B.anchor.epoch ≤
+      (E.store cfg ext w m).finalized_checkpoint.epoch)
+    (hAU : B.state.AU cfg ext tip target)
+    (hepoch : (E.store cfg ext w m).finalized_checkpoint.epoch ≤
+      target.epoch)
+    (hwalk : WalkKnown (E.store cfg ext v n)
+      (compute_start_slot_at_epoch cfg
+        (E.store cfg ext w m).finalized_checkpoint.epoch) tip) :
+    ¬ PermanentBlockExclusion cfg ext E v n tip w m :=
+  E.trusted_acceptedSourceTip_not_permanentlyExcluded_of_prefix cfg ext B hT hA
+    hanchor hboundary hHm htip hfinalizedKnown hanchorLe
+    (E.trusted_acceptedFinalized_prefix_of_sourceAU cfg ext B hT hanchor
+      P V hanchorExact hacc hAU hepoch)
+    hAU hepoch hwalk
 
 end Execution
 end FastConfirmation.Spec
