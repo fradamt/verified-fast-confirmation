@@ -168,6 +168,174 @@ theorem nonhonest_headPaths_honestEndpoints
   rw [withoutObserver_store cfg ext E obs v hne n] at hR
   exact nonhonest_votePathAdmissible hobs hv hw hR
 
+/-- Cutoff block relay keeps both endpoints in the unchanged honest set. -/
+theorem nonhonest_deadlineBlockRelay
+    (hobs : obs ∉ E.honest)
+    (core : E.WeakObserverRestrictedCore cfg ext obs) :
+    DeadlineBlockRelay cfg ext E := by
+  let R := E.withoutObserver obs
+  have hh : R.honest = E.honest := withoutObserver_honest hobs
+  intro v hv n r hn hr hcut w hw m hm hboundary hnm
+  have hvR : v ∈ R.honest := hh.symm ▸ hv
+  have hwR : w ∈ R.honest := hh.symm ▸ hw
+  have hne : v ≠ obs := by
+    intro heq
+    subst v
+    exact hobs hv
+  have hwne : w ≠ obs := by
+    intro heq
+    subst w
+    exact hobs hw
+  have hrR : r ∈ (R.store cfg ext v n).block_roots := by
+    simpa only [R, withoutObserver_store cfg ext E obs v hne n] using hr
+  have hrelay := core.base.synchrony.deadline_block_relay
+    v hvR n r hn hrR hcut w hwR m hm hboundary hnm
+  rcases hrelay with hk | hex
+  · left
+    simpa only [R, withoutObserver_store cfg ext E obs w hwne m] using hk
+  · right
+    exact (nonhonest_permanentBlockExclusion_iff hobs hv hw n
+      (E.slot_start cfg (E.slot_at cfg n + 1) - 1) r).1 hex
+
+/-- Ready cutoff blocks precede the honest receiver's boundary vote in the
+actual run because that receiver has the same schedule and stores. -/
+theorem nonhonest_deadlineBoundaryBlockPrefix
+    (hobs : obs ∉ E.honest)
+    (core : E.WeakObserverRestrictedCore cfg ext obs) :
+    DeadlineBoundaryBlockPrefix cfg ext E := by
+  let R := E.withoutObserver obs
+  have hh : R.honest = E.honest := withoutObserver_honest hobs
+  intro v hv n r hn hr hcut w hw boundary hb hnb a before after hsched hnot
+  have hvR : v ∈ R.honest := hh.symm ▸ hv
+  have hwR : w ∈ R.honest := hh.symm ▸ hw
+  have hne : v ≠ obs := by
+    intro heq
+    subst v
+    exact hobs hv
+  have hwne : w ≠ obs := by
+    intro heq
+    subst w
+    exact hobs hw
+  have hrR : r ∈ (R.store cfg ext v n).block_roots := by
+    simpa only [R, withoutObserver_store cfg ext E obs v hne n] using hr
+  have hschedR : R.schedule w (E.slot_start cfg (E.slot_at cfg n + 1)) =
+      before ++ Event.attestation a false :: after := by
+    simpa only [R, withoutObserver, if_neg hwne] using hsched
+  have hnotR : ¬ PermanentBlockExclusion cfg ext R v n r w
+      (E.slot_start cfg (E.slot_at cfg n + 1) - 1) :=
+    (nonhonest_permanentBlockExclusion_iff hobs hv hw n
+      (E.slot_start cfg (E.slot_at cfg n + 1) - 1) r).not.mpr hnot
+  have hp := core.base.synchrony.boundary_block_prefix
+    v hvR n r hn hrR hcut w hwR hb hnb a before after hschedR hnotR
+  simpa only [R, withoutObserver_store cfg ext E obs w hwne] using hp
+
+/-- Verified envelope delivery transfers across the two unchanged honest
+event schedules and stores. -/
+theorem nonhonest_deadlineEnvelopeDelivery
+    (hobs : obs ∉ E.honest)
+    (core : E.WeakObserverRestrictedCore cfg ext obs) :
+    DeadlineEnvelopeDelivery cfg ext E := by
+  let R := E.withoutObserver obs
+  have hh : R.honest = E.honest := withoutObserver_honest hobs
+  intro v hv n r hn hp hr hcut w hw m hm hb hnm
+  have hvR : v ∈ R.honest := hh.symm ▸ hv
+  have hwR : w ∈ R.honest := hh.symm ▸ hw
+  have hne : v ≠ obs := by
+    intro heq
+    subst v
+    exact hobs hv
+  have hwne : w ≠ obs := by
+    intro heq
+    subst w
+    exact hobs hw
+  have hpR : is_payload_verified (R.store cfg ext v n) r = true := by
+    simpa only [R, withoutObserver_store cfg ext E obs v hne n] using hp
+  have hrR : r ∈ (R.store cfg ext v n).block_roots := by
+    simpa only [R, withoutObserver_store cfg ext E obs v hne n] using hr
+  have hdelivery := core.base.synchrony.envelope_delivery
+    v hvR n r hn hpR hrR hcut w hwR m hm hb hnm
+  rcases hdelivery with hex | ⟨d, k, signed, source, receiver,
+      before, after, hdata⟩
+  · left
+    exact (nonhonest_permanentBlockExclusion_iff hobs hv hw n
+      (E.slot_start cfg (E.slot_at cfg n + 1) - 1) r).1 hex
+  · right
+    refine ⟨d, k, signed, source, receiver, before, after, ?_⟩
+    simp only [withoutObserver_store cfg ext E obs v hne,
+      withoutObserver_store cfg ext E obs w hwne] at hdata
+    simp only [withoutObserver, if_neg hne, if_neg hwne] at hdata
+    exact hdata
+
+/-- Honest data-service observations use the same scheduled envelopes. -/
+theorem nonhonest_dataAvailabilityRelay
+    (hobs : obs ∉ E.honest)
+    (core : E.WeakObserverRestrictedCore cfg ext obs) :
+    DeadlineDataAvailabilityRelay cfg ext E := by
+  let R := E.withoutObserver obs
+  have hh : R.honest = E.honest := withoutObserver_honest hobs
+  intro v hv k n signed source hk hn hs hda hcut w hw m hm hb hnm
+    received observation hroot hreceived
+  have hvR : v ∈ R.honest := hh.symm ▸ hv
+  have hwR : w ∈ R.honest := hh.symm ▸ hw
+  have hne : v ≠ obs := by
+    intro heq
+    subst v
+    exact hobs hv
+  have hwne : w ≠ obs := by
+    intro heq
+    subst w
+    exact hobs hw
+  have hsR : Event.execution_payload_envelope signed source ∈ R.schedule v k := by
+    simpa only [R, withoutObserver, if_neg hne] using hs
+  have hreceivedR : Event.execution_payload_envelope received observation ∈
+      R.schedule w m := by
+    simpa only [R, withoutObserver, if_neg hwne] using hreceived
+  exact core.base.synchrony.data_availability_relay v hvR k n signed source
+    hk hn hsR hda hcut w hwR m hm hb hnm received observation hroot hreceivedR
+
+/-- Cutoff evidence relay also has only honest endpoints. -/
+theorem nonhonest_attesterSlashingRelay
+    (hobs : obs ∉ E.honest)
+    (core : E.WeakObserverRestrictedCore cfg ext obs) :
+    DeadlineAttesterSlashingRelay cfg ext E := by
+  let R := E.withoutObserver obs
+  have hh : R.honest = E.honest := withoutObserver_honest hobs
+  intro v hv n i hn hi hcut w hw m hm hb hnm
+  have hvR : v ∈ R.honest := hh.symm ▸ hv
+  have hwR : w ∈ R.honest := hh.symm ▸ hw
+  have hne : v ≠ obs := by
+    intro heq
+    subst v
+    exact hobs hv
+  have hwne : w ≠ obs := by
+    intro heq
+    subst w
+    exact hobs hw
+  have hiR : i ∈ (R.store cfg ext v n).equivocating_indices := by
+    simpa only [R, withoutObserver_store cfg ext E obs v hne n] using hi
+  have hR := core.base.synchrony.attester_slashing_relay
+    v hvR n i hn hiR hcut w hwR m hm hb hnm
+  simpa only [R, withoutObserver_store cfg ext E obs w hwne m] using hR
+
+/-- The complete timed network contract for honest nodes follows from the
+restricted core. Every source and receiver remains in `E.honest`. -/
+def nonhonest_synchrony
+    (hobs : obs ∉ E.honest)
+    (core : E.WeakObserverRestrictedCore cfg ext obs) :
+    NextSlotSynchronyPremises cfg ext E where
+  delta := core.base.synchrony.delta
+  delta_pos := core.base.synchrony.delta_pos
+  deadline_fits := core.base.synchrony.deadline_fits
+  attestation_delivery := by
+    intro v hv s n a hs hn hva hcut _ w hw
+    exact (nonhonest_deliveryLookahead hobs core).attestation_delivery
+      v hv s n a hs hn hva hcut w hw
+  deadline_block_relay := nonhonest_deadlineBlockRelay hobs core
+  boundary_block_prefix := nonhonest_deadlineBoundaryBlockPrefix hobs core
+  envelope_delivery := nonhonest_deadlineEnvelopeDelivery hobs core
+  data_availability_relay := nonhonest_dataAvailabilityRelay hobs core
+  attester_slashing_relay := nonhonest_attesterSlashingRelay hobs core
+
 end
 end Execution
 end FastConfirmation.Spec
