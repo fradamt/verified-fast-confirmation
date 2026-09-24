@@ -288,15 +288,6 @@ theorem paperA32SupportThroughoutEpochCore_of_concreteQuorum
       (Nat.le_div_iff_mul_le cfg.slots_per_epoch_pos).mp hepochLe
   have hvoteSlotDelivery : vote.slot + 1 ≤ E.slot_at cfg m :=
     (Nat.succ_le_of_lt vote.before_deadline).trans hdeadline
-  have hrelayGate : E.slot_at cfg vote.time + 1 ≤
-      E.slot_at cfg (m + 1) := by
-    rw [vote.slot_at_time]
-    exact hvoteSlotDelivery.trans
-      (E.slot_at_mono cfg (Nat.le_succ m))
-  have htargetKnown : (V.C b e).root ∈
-      (E.store cfg ext w m).block_roots :=
-    hsync.block_relay i vote.honest vote.time (V.C b e).root
-      vote.time_within_horizon hvoteTargetKnown w hw m hHm hrelayGate
   have hdeliveryLe : E.slot_start cfg (vote.slot + 1) ≤ m := by
     exact (slot_start_mono_for_paperA32 cfg E hvoteSlotDelivery).trans
       (E.slot_start_le_of_slot_at cfg hdiv hgenTime rfl)
@@ -307,6 +298,13 @@ theorem paperA32SupportThroughoutEpochCore_of_concreteQuorum
       vote.honest hw vote.slot_at_time vote.time_within_horizon vote.vote
       hvoteHeadKnown hvoteWalk hdeliveryLe hHm
     simpa only [a, voteStore, vote.target_eq] using hcached
+  have htargetKnown : (V.C b e).root ∈
+      (E.store cfg ext w m).block_roots := by
+    have hreceived := E.honestVoteTarget_known cfg ext hwf hhb hsync hec
+      hdiv ⟨ast, ablk, hgenEq, hgenSlot, hanchorParent⟩
+      vote.honest hw vote.slot_at_time vote.time_within_horizon vote.vote
+      hvoteHeadKnown hvoteWalk hdeliveryLe hHm
+    simpa only [a, voteStore, vote.target_eq] using hreceived
   have hsourceView : Q.source =
       V.VSAt cfg (E.store cfg ext w m) b e := by
     apply hsourceQuery.trans
