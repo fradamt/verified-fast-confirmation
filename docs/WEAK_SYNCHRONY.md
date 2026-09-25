@@ -255,8 +255,7 @@ for the actual run or a head-path contract at the observer.
 
 `nonhonest_vote_ubiquity`, `nonhonest_vote_target_received`, and
 `nonhonest_head_ancestor_known` supply the remaining honest-receiver delivery
-operations from the restricted core. These are local proof suppliers; the
-full weak-confirmation fold has not yet been ported to them.
+operations from the restricted core. These are local proof suppliers.
 
 The head-path blocker is closed. `ObserverLocalFFG.finalized_prefix_shared`
 compares the local finalized certificate with a shared included certificate,
@@ -283,10 +282,33 @@ inside its stated domain. The existing instance uses the full domain, while
 The local relation also lifts to the actual run's “honest causal store or
 observer causal store” predicate.
 
-The restricted-premise full safety headlines remain open. The shared core and
-local FFG state still have separate inclusion and formed relations. A combined
-actual-run interpretation must preserve both certificates and the exact-link
-law, including links that mix attestations from the two relations. The current
-local contract gives exactness for its own relation; the shared core gives
-exactness for its own relation. Neither law directly covers a mixed link.
-The other weak fold branches still use the old global interpretation.
+The weak safety fold now accepts `TrustedCausalPrefixFFGInterpretation` for
+any trusted validation-store predicate. The closed one-shot selector supply,
+accepted global FFG projections, finalized reset, observed reset, and
+historical A3.2 chain have trusted forms. The old fold keeps its exact theorem
+type as an honest-store instance through `CausalPrefixFFGInterpretation.toTrusted`. The proof chain reads no
+`validation_store_honest` field.
+
+The remaining construction is the actual-run FFG package owned by lane h8.
+The shared core and local FFG state have separate inclusion and formed
+relations. Their union must preserve certificates and the exact-link law for
+links that mix attestations from both relations. The package must also prove
+anchor agreement, realized finalization delay, paper A3.2 inclusion,
+checkpoint closure, and exact-link validity for its selected state. These
+laws are separate from the `TrustedCausalPrefixFFGInterpretation` record.
+Neither input's exact-link law alone covers a mixed link.
+
+### Internal review note: conditional non-honest headlines
+
+`ObserverConditionalHeadlines.lean` proves
+`nonhonest_weak_confirmed_root_safe_from_next_slot_of_trustedInterpretation`
+and
+`nonhonest_weak_confirmed_root_on_honest_heads_from_next_slot_of_trustedInterpretation`.
+They take `WeakObserverRestrictedPremises`, `obs ∉ E.honest`, and a trusted
+interpretation for `trustedObserverOrHonestStore`. They also take the actual-run
+anchor, delay, paper A3.2, checkpoint closure, and exact-link witnesses listed
+above. The restricted premises derive boundary alignment, the actual selected
+margin and observer records, completed calls, and epoch fit. The endpoint
+binder remains `w ∈ E.honest`. These conditional theorems are not in the
+public headline list. The unconditional restricted-premise headlines remain
+open until the actual-run FFG package is constructed.
