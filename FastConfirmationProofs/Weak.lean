@@ -63,6 +63,7 @@ public import FastConfirmationProofs.Weak.Safety.WeakConfirmedSupporter
 public import FastConfirmationProofs.Weak.Safety.WeakFinalizedInput
 public import FastConfirmationProofs.Weak.Safety.TrustedWeakFinalizedInput
 public import FastConfirmationProofs.Weak.Safety.WeakObservedResetSeedSafety
+public import FastConfirmationProofs.Weak.Safety.TrustedWeakObservedResetSeedSafety
 public import FastConfirmationProofs.Weak.Safety.WeakObservedRestartAdoption
 public import FastConfirmationProofs.Weak.Safety.TrustedWeakObservedRestartAdoption
 public import FastConfirmationProofs.Weak.Safety.WeakObservedRestartDynamicSafety
