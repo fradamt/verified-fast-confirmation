@@ -17,6 +17,10 @@ structure TrustedCausalCarrierFFGState (E : Execution Root)
   includedAttestations :
     Execution.TrustedCarrierAttestationRelation cfg ext E
       attestationValidity trusted
+  /-- Body evidence for the paper's slashing set. Certificate normalization
+  can restrict `includedAttestations` while this relation retains the body. -/
+  paperIncludedAttestations : Execution.IncludedAttestationRelation cfg E
+      attestationValidity := includedAttestations.relation
   formed : Root → Checkpoint Root → Prop
   C : Root → Epoch → Checkpoint Root
   GJ : Root → Checkpoint Root
@@ -65,14 +69,14 @@ namespace TrustedCausalCarrierFFGState
 
 variable {E : Execution Root} {anchor : Checkpoint Root}
 
-/-- The paper A3.2 view retains the included relation and forgets only its
-validation-store predicate. -/
+/-- The paper A3.2 view uses body evidence before certificate normalization.
+Its formed entries and selectors are those of the same semantic state. -/
 def paperA32Inputs {trusted : Store Root → Prop}
     (S : TrustedCausalCarrierFFGState cfg ext E anchor trusted) :
     PaperA32StateView cfg E where
   BlockAt := E.AcceptedBlockAt cfg ext
   attestationValidity := S.attestationValidity
-  includedAttestations := S.includedAttestations.relation
+  includedAttestations := S.paperIncludedAttestations
   formed := S.formed
   C := S.C
   GJ := S.GJ
@@ -330,19 +334,23 @@ theorem CausalPrefixFFGInterpretation.realizedDelay_toTrusted
     E.TrustedRealizedFinalizationDelay cfg ext B.toTrusted ↔
       E.RealizedFinalizationDelay cfg ext B := Iff.rfl
 
-/-- The honest-store adapter is lossless in both directions. -/
+/-- The original honest-store record is recovered without change. -/
 theorem CausalPrefixFFGInterpretation.toHonest_toTrusted
     (B : CausalPrefixFFGInterpretation cfg ext E) :
     B.toTrusted.toHonest = B := by
   cases B
   rfl
 
-/-- The trusted honest-store specialization also round-trips. -/
+/-- A trusted record with the original paper relation also round-trips. -/
 theorem TrustedCausalPrefixFFGInterpretation.toTrusted_toHonest
     (B : TrustedCausalPrefixFFGInterpretation cfg ext E
-      (E.HonestCausalStore cfg ext)) :
+      (E.HonestCausalStore cfg ext))
+    (hpaper : B.state.paperIncludedAttestations = B.state.includedAttestations.relation) :
     B.toHonest.toTrusted = B := by
-  cases B
+  rcases B with ⟨anchor, state, coherence⟩
+  cases state
+  dsimp at hpaper
+  subst hpaper
   rfl
 
 end FastConfirmation.Spec
