@@ -4,6 +4,7 @@ public import FastConfirmationWitnesses.Counterexamples.PinnedEconomicsExtraQuer
 public import FastConfirmationWitnesses.Counterexamples.StrictPrefixExtraQuery
 public import FastConfirmationWitnesses.NonVacuity.NextSlotPremises
 public import FastConfirmationWitnesses.NonVacuity.TwelveSecondSynchrony
+public import FastConfirmationWitnesses.NonVacuity.FullTwelve
 
 /-!
 # Witness index
@@ -35,6 +36,12 @@ bundle and the two executions that refute strict-prefix safety variants.
   `ByzantineWeightPremises`, `Phase0SourceCoherence`,
   `Phase0BoundarySourceCoherence`, the balance floor, `EpochEndsFitUint64`,
   and `TrustedAnchorBoundaryAligned` for its concrete anchor.
+* Extended twelve-second trace:
+  `FullTwelveWitness.delayed_receipts_are_first` and
+  `FullTwelveWitness.changed_confirmed_root` give a four-epoch trace with
+  delayed first receipts, an accepted slot-seven carrier, and a scheduled FCR
+  call that changes the confirmed root. The full safety premise bundle remains
+  unproved for this trace.
 * `Execution.ScheduledPrefixPremises`:
   `AcceptedActualFCRJointNonVacuityBase.witnessScheduledPrefixTrajectoryAssumptions`.
   The same execution has whole-second scheduling, honest votes, a valid genesis
