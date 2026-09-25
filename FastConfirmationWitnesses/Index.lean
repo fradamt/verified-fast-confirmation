@@ -5,6 +5,7 @@ public import FastConfirmationWitnesses.Counterexamples.StrictPrefixExtraQuery
 public import FastConfirmationWitnesses.NonVacuity.NextSlotPremises
 public import FastConfirmationWitnesses.NonVacuity.TwelveSecondSynchrony
 public import FastConfirmationWitnesses.NonVacuity.FullTwelve
+public import FastConfirmationWitnesses.NonVacuity.FullTwelveOperational
 
 /-!
 # Witness index
