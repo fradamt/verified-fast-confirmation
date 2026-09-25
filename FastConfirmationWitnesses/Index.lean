@@ -10,6 +10,7 @@ public import FastConfirmationWitnesses.NonVacuity.FullTwelveOperational
 public import FastConfirmationWitnesses.NonVacuity.FullTwelveFFG
 public import FastConfirmationWitnesses.NonVacuity.FullTwelvePremises
 public import FastConfirmationWitnesses.NonVacuity.TargetEdgePremises
+public import FastConfirmationWitnesses.NonVacuity.ByzantinePremises
 
 /-!
 # Witness index
@@ -41,6 +42,16 @@ two counterexamples to strict-prefix safety variants.
   from second six to seven. `target_edge_call_snapshot` checks positive vote
   weight and a remaining honest target vote. `target_edge_safe_from_next_slot`
   applies the public safety theorem from second eight onward.
+* Byzantine weight and slashing relay:
+  `ByzantinePremiseWitness.full_bundle_witness` supplies the full next-slot
+  bundle for a one-second run with non-honest validator 4 of weight 200 out of
+  4000. `byzantine_weight_exercised` proves positive non-honest weight in an
+  in-horizon span. Validator 4 signs two slot-four votes with the same target
+  epoch. `slashing_relay_exercised` proves the relay antecedent for the
+  slashing that every node applies at second five. `equivocation_read_at_call`
+  shows that the call from second six to seven reads the evidence and confirms
+  the child. `previous_result_proviso_exercised` proves the antecedent of the
+  selected previous-result proviso at the call from second eight to nine.
 * Twelve-second synchrony and behavior:
   `TwelveSecondSynchronyWitness.joint_witness` proves `WellFormedExecution`,
   `HonestBehavior`, `Synchrony`, and `NextSlotSynchronyPremises` for a second
