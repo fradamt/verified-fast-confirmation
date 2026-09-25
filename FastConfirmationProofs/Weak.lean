@@ -77,6 +77,7 @@ public import FastConfirmationProofs.Weak.Safety.WeakOneShotSafetyClosed
 public import FastConfirmationProofs.Weak.Safety.TrustedWeakOneShotSafetyClosed
 public import FastConfirmationProofs.Weak.Safety.WeakOneShotSafetyNative
 public import FastConfirmationProofs.Weak.Safety.WeakTrajectorySafety
+public import FastConfirmationProofs.Weak.Safety.TrustedWeakTrajectorySafety
 public import FastConfirmationProofs.Weak.Selection.WeakAncestryEndpoint
 public import FastConfirmationProofs.Weak.Selection.WeakAncestryTransport
 public import FastConfirmationProofs.Weak.Selection.WeakSelectedEdgeGeometry
