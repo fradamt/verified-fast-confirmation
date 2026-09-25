@@ -225,6 +225,7 @@ public import FastConfirmationProofs.Handlers.Dominance
 public import FastConfirmationProofs.Handlers.HandlerStepFacts
 public import FastConfirmationProofs.Handlers.HandlerVoteClasses
 public import FastConfirmationProofs.Handlers.ResetAdoption
+public import FastConfirmationProofs.Handlers.TrustedResetAdoptionIncludedSlot
 public import FastConfirmationProofs.Handlers.SupportClasses
 public import FastConfirmationProofs.LMD.SameSlotLMD
 public import FastConfirmationProofs.ModelFacts
