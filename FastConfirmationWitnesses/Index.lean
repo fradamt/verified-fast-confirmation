@@ -9,6 +9,7 @@ public import FastConfirmationWitnesses.NonVacuity.FullTwelve
 public import FastConfirmationWitnesses.NonVacuity.FullTwelveOperational
 public import FastConfirmationWitnesses.NonVacuity.FullTwelveFFG
 public import FastConfirmationWitnesses.NonVacuity.FullTwelvePremises
+public import FastConfirmationWitnesses.NonVacuity.FullTwelveEnvelopePremises
 
 /-!
 # Witness index
@@ -58,6 +59,14 @@ bundle and the two executions that refute strict-prefix safety variants.
   `confirmed_root_safe_from_next_slot` to this output. The accepted slot-seven
   carrier supports the FFG interpretation and Paper A3.2. Envelope service
   remains vacuous; the selector has no current-target accepted edge.
+* Twelve-second envelope bundle:
+  `FullTwelveEnvelopeWitness.full_bundle_witness` proves the full safety
+  premises in a run with an accepted child payload envelope. Node 1 first
+  receives it two seconds after node 0. The envelope and data relay
+  antecedents hold at second 168, with boundary service at second 180.
+  `FullTwelveEnvelopeWitness.changed_root_safe_from_next_slot` applies the
+  public safety theorem. `payload_status_branches` checks the FULL choice
+  and its Gloas weight beside the EMPTY choice.
 * `Execution.ScheduledPrefixPremises`:
   `AcceptedActualFCRJointNonVacuityBase.witnessScheduledPrefixTrajectoryAssumptions`.
   The same execution has whole-second scheduling, honest votes, a valid genesis
