@@ -18,4 +18,6 @@ public import FastConfirmationInternal.FFG.ScheduledState
 public import FastConfirmationInternal.Network.SynchronyConversion
 public import FastConfirmationInternal.Network.VotePathAdmissibility
 
+public import FastConfirmationInternal.Weak.FFGContentUnion
+
 /-! Contents of the Internal library. -/
