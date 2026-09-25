@@ -169,7 +169,7 @@ theorem trusted_acceptedFinalized_prefix_of_sourceAU
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (P : EpochCheckpointClosure B.anchor
       (E.AcceptedRoot cfg ext) B.state.C)
-    (V : B.state.ExactLinkValidity)
+    (V : B.state.AcceptedExactLinkValidity)
     (hanchorExact : B.anchor =
       B.state.C B.anchor.root B.anchor.epoch)
     (hacc : CheckpointCertificateAccountability cfg E B.anchor)
@@ -194,11 +194,11 @@ theorem trusted_acceptedFinalized_prefix_of_sourceAU
       (E.store_causal cfg ext w m) with
     hFanchor | ⟨_carrierF, _hcarrierF, hFcert⟩
   · rw [hFanchor]
-    exact IncludedCertifiedJustified.anchor_prefix (cfg := cfg)
-      P V hanchorExact hCcert
+    exact IncludedCertifiedJustified.guarded_anchor_prefix (cfg := cfg)
+      P V hanchorExact (B.state.formed_carrier_accepted hformed) hCcert
   · obtain ⟨hFcert⟩ := hFcert
     exact B.state.exactFinalizedPrefix_of_accountable P V
-      hanchorExact hacc hFcert hCcert hepoch
+      hanchorExact hacc _hcarrierF.acceptedRoot (B.state.formed_carrier_accepted hformed) hFcert hCcert hepoch
 
 /-- A source tip carrying an accepted AU checkpoint at least as new as the
 receiver's finalized checkpoint is never permanently excluded, provided the
@@ -212,7 +212,7 @@ theorem trusted_acceptedSourceTip_not_permanentlyExcluded_of_AU
       (E := E) (anchor := B.anchor))
     (P : EpochCheckpointClosure B.anchor
       (E.AcceptedRoot cfg ext) B.state.C)
-    (V : B.state.ExactLinkValidity)
+    (V : B.state.AcceptedExactLinkValidity)
     (hanchorExact : B.anchor =
       B.state.C B.anchor.root B.anchor.epoch)
     (hacc : CheckpointCertificateAccountability cfg E B.anchor)

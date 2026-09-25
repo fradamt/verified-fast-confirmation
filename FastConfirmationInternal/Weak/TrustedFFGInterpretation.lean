@@ -104,6 +104,11 @@ abbrev GuardedExactLinkValidity {trusted : Store Root → Prop}
   ExactIncludedLinkValidity cfg E S.includedAttestations.Included anchor
     S.C (E.AcceptedRoot cfg ext) Domain
 
+/-- The fold uses contributing links at accepted certificate carriers. -/
+abbrev AcceptedExactLinkValidity {trusted : Store Root → Prop}
+    (S : TrustedCausalCarrierFFGState cfg ext E anchor trusted) : Prop :=
+  S.GuardedExactLinkValidity cfg ext (E.AcceptedRoot cfg ext)
+
 
 /-- Voting-source selector for the accepted trusted state. -/
 abbrev VSAt {trusted : Store Root → Prop}

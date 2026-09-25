@@ -414,7 +414,7 @@ theorem trusted_weakConfirmedSafeFromFollowingSlot_succ_of_call
     (hpaper : B.state.PaperA32Inclusion cfg ext)
     (P : EpochCheckpointClosure B.anchor
       (E.AcceptedRoot cfg ext) B.state.C)
-    (V : B.state.ExactLinkValidity)
+    (V : B.state.AcceptedExactLinkValidity)
     (hanchorExact : B.anchor = B.state.C B.anchor.root B.anchor.epoch)
     {obs : ValidatorIndex}
     (hW : E.WeakObserverPremises cfg ext obs)
@@ -496,7 +496,7 @@ theorem trusted_weakConfirmedSafeFromFollowingSlot_of_weakFullRuleFold_all_le
     (hpaper : B.state.PaperA32Inclusion cfg ext)
     (P : EpochCheckpointClosure B.anchor
       (E.AcceptedRoot cfg ext) B.state.C)
-    (V : B.state.ExactLinkValidity)
+    (V : B.state.AcceptedExactLinkValidity)
     (hanchorExact : B.anchor = B.state.C B.anchor.root B.anchor.epoch)
     {obs : ValidatorIndex}
     (hW : E.WeakObserverPremises cfg ext obs)
@@ -601,7 +601,7 @@ theorem trusted_weakConfirmed_safeFromFollowingSlot_of_weakFullRuleFold
     (hpaper : B.state.PaperA32Inclusion cfg ext)
     (P : EpochCheckpointClosure B.anchor
       (E.AcceptedRoot cfg ext) B.state.C)
-    (V : B.state.ExactLinkValidity)
+    (V : B.state.AcceptedExactLinkValidity)
     {obs : ValidatorIndex}
     (hW : E.WeakObserverPremises cfg ext obs)
     (hCbase : E.WeakCompletedFCRCallSupplement cfg ext)
@@ -644,7 +644,7 @@ theorem trusted_observerPriorCallWriteBackSafe_of_weakFullRuleFold
     (hpaper : B.state.PaperA32Inclusion cfg ext)
     (P : EpochCheckpointClosure B.anchor
       (E.AcceptedRoot cfg ext) B.state.C)
-    (V : B.state.ExactLinkValidity)
+    (V : B.state.AcceptedExactLinkValidity)
     (hanchorExact : B.anchor = B.state.C B.anchor.root B.anchor.epoch)
     {obs : ValidatorIndex}
     (hW : E.WeakObserverPremises cfg ext obs)
@@ -674,7 +674,7 @@ theorem trusted_weakConfirmed_head_of_weakFullRuleFold_nextSlot
     (hpaper : B.state.PaperA32Inclusion cfg ext)
     (P : EpochCheckpointClosure B.anchor
       (E.AcceptedRoot cfg ext) B.state.C)
-    (V : B.state.ExactLinkValidity)
+    (V : B.state.AcceptedExactLinkValidity)
     {obs : ValidatorIndex}
     (hW : E.WeakObserverPremises cfg ext obs)
     (hCbase : E.WeakCompletedFCRCallSupplement cfg ext)
@@ -815,7 +815,7 @@ theorem weakConfirmedSafeFromFollowingSlot_succ_of_call
     Weak.ObserverFoldSafetyAt cfg ext E obs (n + 1) := by
   exact E.trusted_weakConfirmedSafeFromFollowingSlot_succ_of_call cfg ext
     B.toTrusted hT hanchor hboundary ((B.realizedDelay_toTrusted).2 hDelay)
-    hphase0 hboundaryPhase hpaper P V hanchorExact hW hwalkDomain hCbase
+    hphase0 hboundaryPhase hpaper P (V.onDomain cfg) hanchorExact hW hwalkDomain hCbase
     hfit hOR hprior hHn1 hcall hknownN hprev
 
 /-! ## Stage E — the headline fold -/
@@ -876,7 +876,7 @@ theorem weakConfirmedSafeFromFollowingSlot_of_weakFullRuleFold_all_le
       Weak.ObserverFoldSafetyAt cfg ext E obs k := by
   exact E.trusted_weakConfirmedSafeFromFollowingSlot_of_weakFullRuleFold_all_le
     cfg ext B.toTrusted hT hanchor hboundary
-    ((B.realizedDelay_toTrusted).2 hDelay) hphase0 hboundaryPhase hpaper P V
+    ((B.realizedDelay_toTrusted).2 hDelay) hphase0 hboundaryPhase hpaper P (V.onDomain cfg)
     hanchorExact hW hwalkDomain hCbase hfit hOR
 
 /-- **The weak full-rule safety theorem.**
@@ -949,7 +949,7 @@ theorem weakConfirmed_safeFromFollowingSlot_of_weakFullRuleFold
       E.WeakConfirmedSafeFromFollowingSlot cfg ext obs n := by
   exact E.trusted_weakConfirmed_safeFromFollowingSlot_of_weakFullRuleFold
     cfg ext B.toTrusted hanchor hboundary
-    ((B.realizedDelay_toTrusted).2 hDelay) hpaper P V hW hCbase hfit hOR
+    ((B.realizedDelay_toTrusted).2 hDelay) hpaper P (V.onDomain cfg) hW hCbase hfit hOR
 
 /-- The lazy weak A3.2 transport's threaded input, straight off the
 strengthened fold.
@@ -983,7 +983,7 @@ theorem observerPriorCallWriteBackSafe_of_weakFullRuleFold
     Weak.ObserverPriorCallWriteBackSafe cfg ext E obs n := by
   exact E.trusted_observerPriorCallWriteBackSafe_of_weakFullRuleFold
     cfg ext B.toTrusted hT hanchor hboundary
-    ((B.realizedDelay_toTrusted).2 hDelay) hphase0 hboundaryPhase hpaper P V
+    ((B.realizedDelay_toTrusted).2 hDelay) hphase0 hboundaryPhase hpaper P (V.onDomain cfg)
     hanchorExact hW hwalkDomain hCbase hfit hOR n
 
 /-- Endpoint form of the weak full-rule theorem, matching the paper's timing:
@@ -1015,7 +1015,7 @@ theorem weakConfirmed_head_of_weakFullRuleFold_nextSlot
       (get_node_for_root (E.weakConfirmed cfg ext obs n)) = true := by
   exact E.trusted_weakConfirmed_head_of_weakFullRuleFold_nextSlot
     cfg ext B.toTrusted hanchor hboundary
-    ((B.realizedDelay_toTrusted).2 hDelay) hpaper P V hW hCbase hfit hOR
+    ((B.realizedDelay_toTrusted).2 hDelay) hpaper P (V.onDomain cfg) hW hCbase hfit hOR
     hw hnm hnext hHm
 
 end Execution

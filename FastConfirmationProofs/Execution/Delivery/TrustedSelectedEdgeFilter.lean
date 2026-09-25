@@ -891,7 +891,7 @@ noncomputable def
       (E := E) (anchor := B.anchor))
     (P : EpochCheckpointClosure B.anchor
       (E.AcceptedRoot cfg ext) B.state.C)
-    (V : B.state.ExactLinkValidity)
+    (V : B.state.AcceptedExactLinkValidity)
     (hanchorExact : B.anchor =
       B.state.C B.anchor.root B.anchor.epoch)
     (hacc : CheckpointCertificateAccountability cfg E B.anchor)
@@ -1103,7 +1103,7 @@ noncomputable def
       (E := E) (anchor := B.anchor))
     (P : EpochCheckpointClosure B.anchor
       (E.AcceptedRoot cfg ext) B.state.C)
-    (V : B.state.ExactLinkValidity)
+    (V : B.state.AcceptedExactLinkValidity)
     (hanchorExact : B.anchor =
       B.state.C B.anchor.root B.anchor.epoch)
     (hacc : CheckpointCertificateAccountability cfg E B.anchor)
@@ -1170,7 +1170,7 @@ noncomputable def trusted_acceptedSelectedResultFilterOutcome_retainedVisible_of
     (hpaper : B.state.PaperA32Inclusion cfg ext)
     (P : EpochCheckpointClosure B.anchor
       (E.AcceptedRoot cfg ext) B.state.C)
-    (V : B.state.ExactLinkValidity)
+    (V : B.state.AcceptedExactLinkValidity)
     (hanchorExact : B.anchor =
       B.state.C B.anchor.root B.anchor.epoch)
     (hacc : CheckpointCertificateAccountability cfg E B.anchor)
@@ -1311,7 +1311,7 @@ noncomputable def trusted_acceptedSelectedResultFilterOutcome_retainedVisible_of
     (hpaper : B.state.PaperA32Inclusion cfg ext)
     (P : EpochCheckpointClosure B.anchor
       (E.AcceptedRoot cfg ext) B.state.C)
-    (V : B.state.ExactLinkValidity)
+    (V : B.state.AcceptedExactLinkValidity)
     (hanchorExact : B.anchor =
       B.state.C B.anchor.root B.anchor.epoch)
     (hacc : CheckpointCertificateAccountability cfg E B.anchor)
@@ -1369,7 +1369,7 @@ noncomputable def trusted_acceptedSelectedResultFilterOutcome_retained_of_carrie
     (hDelay : E.TrustedRealizedFinalizationDelay cfg ext B)
     (P : EpochCheckpointClosure B.anchor
       (E.AcceptedRoot cfg ext) B.state.C)
-    (V : B.state.ExactLinkValidity)
+    (V : B.state.AcceptedExactLinkValidity)
     (hanchorExact : B.anchor =
       B.state.C B.anchor.root B.anchor.epoch)
     (hacc : CheckpointCertificateAccountability cfg E B.anchor)
@@ -1416,7 +1416,7 @@ noncomputable def trusted_acceptedSelectedResultFilterOutcome_retained_of_recent
     (hDelay : E.TrustedRealizedFinalizationDelay cfg ext B)
     (P : EpochCheckpointClosure B.anchor
       (E.AcceptedRoot cfg ext) B.state.C)
-    (V : B.state.ExactLinkValidity)
+    (V : B.state.AcceptedExactLinkValidity)
     (hanchorExact : B.anchor =
       B.state.C B.anchor.root B.anchor.epoch)
     (hacc : CheckpointCertificateAccountability cfg E B.anchor)
@@ -1469,7 +1469,7 @@ noncomputable def StrictSelectedResultMechanicalFacts.trusted_fcrStep_previous_e
     (hDelay : E.TrustedRealizedFinalizationDelay cfg ext B)
     (P : EpochCheckpointClosure B.anchor
       (E.AcceptedRoot cfg ext) B.state.C)
-    (V : B.state.ExactLinkValidity)
+    (V : B.state.AcceptedExactLinkValidity)
     (hanchorExact : B.anchor =
       B.state.C B.anchor.root B.anchor.epoch)
     (hacc : CheckpointCertificateAccountability cfg E B.anchor)
@@ -1560,7 +1560,7 @@ noncomputable def
     (hspe : 1 < cfg.slots_per_epoch)
     (P : EpochCheckpointClosure B.anchor
       (E.AcceptedRoot cfg ext) B.state.C)
-    (V : B.state.ExactLinkValidity)
+    (V : B.state.AcceptedExactLinkValidity)
     (hanchorExact : B.anchor =
       B.state.C B.anchor.root B.anchor.epoch)
     (hacc : CheckpointCertificateAccountability cfg E B.anchor)
@@ -1642,7 +1642,7 @@ noncomputable def StrictSelectedResultMechanicalFacts.trusted_fcrStep_currentNex
     (hDelay : E.TrustedRealizedFinalizationDelay cfg ext B)
     (P : EpochCheckpointClosure B.anchor
       (E.AcceptedRoot cfg ext) B.state.C)
-    (V : B.state.ExactLinkValidity)
+    (V : B.state.AcceptedExactLinkValidity)
     (hanchorExact : B.anchor =
       B.state.C B.anchor.root B.anchor.epoch)
     (hacc : CheckpointCertificateAccountability cfg E B.anchor)
@@ -1760,7 +1760,7 @@ noncomputable def
     (hpaper : B.state.PaperA32Inclusion cfg ext)
     (P : EpochCheckpointClosure B.anchor
       (E.AcceptedRoot cfg ext) B.state.C)
-    (V : B.state.ExactLinkValidity)
+    (V : B.state.AcceptedExactLinkValidity)
     (hanchorExact : B.anchor =
       B.state.C B.anchor.root B.anchor.epoch)
     {v : ValidatorIndex} (hv : v ∈ E.honest) {n : Nat}
@@ -2212,7 +2212,7 @@ noncomputable def
     (hpaper : B.state.PaperA32Inclusion cfg ext)
     (P : EpochCheckpointClosure B.anchor
       (E.AcceptedRoot cfg ext) B.state.C)
-    (V : B.state.ExactLinkValidity)
+    (V : B.state.AcceptedExactLinkValidity)
     (hanchorExact : B.anchor =
       B.state.C B.anchor.root B.anchor.epoch)
     {v : ValidatorIndex} (hv : v ∈ E.honest) {n : Nat}

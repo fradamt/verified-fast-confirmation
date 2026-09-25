@@ -1,4 +1,5 @@
 module
+public import FastConfirmationProofs.Checkpoints.GuardedExactCheckpointLinks
 public import FastConfirmationProofs.FFG.State.PathLocalFinalizedTransport
 public import FastConfirmationProofs.FFG.SelectedSource.TrustedPhaseSourceCarriers
 public import FastConfirmationProofs.FFG.State.TrustedFinalizedSameTip
@@ -16,7 +17,7 @@ theorem finalizedRoot_eq_checkpointBlock_of_anchor
     (B : TrustedCausalPrefixFFGInterpretation cfg ext E trusted)
     (P : EpochCheckpointClosure B.anchor
       (E.AcceptedRoot cfg ext) B.state.C)
-    (V : B.state.ExactLinkValidity)
+    (V : B.state.AcceptedExactLinkValidity)
     (hanchorExact : B.anchor =
       B.state.C B.anchor.root B.anchor.epoch)
     {store : Store Root} (hparent : ParentSlotLt store)
@@ -33,8 +34,8 @@ theorem finalizedRoot_eq_checkpointBlock_of_anchor
     B.state.includedJustifiedAtTip_of_AU cfg ext h.source_au
   have hprefix : ExactCheckpointPrefix B.state.C B.anchor
       (get_voting_source cfg store h.tip) :=
-    IncludedCertifiedJustified.anchor_prefix
-      (cfg := cfg) P V hanchorExact hsourceJustified
+    IncludedCertifiedJustified.guarded_anchor_prefix
+      (cfg := cfg) P V hanchorExact ⟨store, h.store_causal, h.tip_known⟩ hsourceJustified
   have hepoch : B.anchor.epoch ≤
       (get_voting_source cfg store h.tip).epoch :=
     IncludedCertifiedJustified.anchor_epoch_le

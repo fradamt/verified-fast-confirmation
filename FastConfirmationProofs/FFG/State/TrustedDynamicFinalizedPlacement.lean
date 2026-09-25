@@ -165,7 +165,7 @@ theorem finalizedRoot_eq_checkpointBlock_at_tip
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (P : EpochCheckpointClosure B.anchor
       (E.AcceptedRoot cfg ext) B.state.C)
-    (V : B.state.ExactLinkValidity)
+    (V : B.state.AcceptedExactLinkValidity)
     (hanchorExact : B.anchor =
       B.state.C B.anchor.root B.anchor.epoch)
     (hacc : CheckpointCertificateAccountability cfg E B.anchor)
@@ -187,11 +187,11 @@ theorem finalizedRoot_eq_checkpointBlock_at_tip
         cfg ext B hgen hanchor hstore with hfinalizedAnchor |
         ⟨_carrier, _hcarrier, hfinalized⟩
     · rw [hfinalizedAnchor]
-      exact IncludedCertifiedJustified.anchor_prefix
-        (cfg := cfg) P V hanchorExact hjustified
+      exact IncludedCertifiedJustified.guarded_anchor_prefix
+        (cfg := cfg) P V hanchorExact ⟨store, hstore, h.tip_known⟩ hjustified
     · obtain ⟨hfinalized⟩ := hfinalized
       exact B.state.exactFinalizedPrefix_of_accountable P V
-        hanchorExact hacc hfinalized hjustified
+        hanchorExact hacc _hcarrier.acceptedRoot ⟨store, hstore, h.tip_known⟩ hfinalized hjustified
           hfinalizedLeTarget
   exact trusted_exactCheckpointPrefix_root_eq_at_sameTip cfg ext B.coherence hstore
     hparent h.tip_known hprefix htargetAU hfinalizedLeTarget hwalk
@@ -212,7 +212,7 @@ theorem trusted_finalizedRoot_eq_checkpointBlock_of_acceptedVisible
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (P : EpochCheckpointClosure B.anchor
       (E.AcceptedRoot cfg ext) B.state.C)
-    (V : B.state.ExactLinkValidity)
+    (V : B.state.AcceptedExactLinkValidity)
     (hanchorExact : B.anchor =
       B.state.C B.anchor.root B.anchor.epoch)
     (hacc : CheckpointCertificateAccountability cfg E B.anchor)

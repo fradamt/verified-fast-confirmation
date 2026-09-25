@@ -21,7 +21,7 @@ theorem nonhonest_weak_confirmed_root_safe_from_next_slot_of_trustedInterpretati
     (hDelay : E.TrustedRealizedFinalizationDelay cfg ext B)
     (hpaper : B.state.PaperA32Inclusion cfg ext)
     (P : EpochCheckpointClosure B.anchor (E.AcceptedRoot cfg ext) B.state.C)
-    (V : B.state.ExactLinkValidity) :
+    (V : B.state.AcceptedExactLinkValidity) :
     ∀ n : ℕ, E.WithinHorizon cfg n →
       E.WeakConfirmedSafeFromFollowingSlot cfg ext obs n := by
   have hcoreAnchor : premises.core.semantics.anchor = B.anchor := by
@@ -53,7 +53,7 @@ theorem nonhonest_weak_confirmed_root_on_honest_heads_from_next_slot_of_trustedI
     (hDelay : E.TrustedRealizedFinalizationDelay cfg ext B)
     (hpaper : B.state.PaperA32Inclusion cfg ext)
     (P : EpochCheckpointClosure B.anchor (E.AcceptedRoot cfg ext) B.state.C)
-    (V : B.state.ExactLinkValidity)
+    (V : B.state.AcceptedExactLinkValidity)
     {n : ℕ} {w : ValidatorIndex} (hw : w ∈ E.honest) {m : ℕ}
     (hnm : n ≤ m)
     (hnext : E.slot_at cfg n + 1 ≤ E.slot_at cfg m)

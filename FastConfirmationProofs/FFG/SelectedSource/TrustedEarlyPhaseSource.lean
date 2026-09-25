@@ -88,7 +88,7 @@ theorem StrictSelectedResultMechanicalFacts.trusted_fcrStep_previous_endpointRec
     (hDelay : E.TrustedRealizedFinalizationDelay cfg ext B)
     (P : EpochCheckpointClosure B.anchor
       (E.AcceptedRoot cfg ext) B.state.C)
-    (V : B.state.ExactLinkValidity)
+    (V : B.state.AcceptedExactLinkValidity)
     (hanchorExact : B.anchor =
       B.state.C B.anchor.root B.anchor.epoch)
     (hacc : CheckpointCertificateAccountability cfg E B.anchor)
@@ -322,7 +322,7 @@ theorem StrictSelectedResultMechanicalFacts.trusted_fcrStep_currentNext_endpoint
       (E := E) (anchor := B.anchor))
     (hDelay : E.TrustedRealizedFinalizationDelay cfg ext B)
     (P : EpochCheckpointClosure B.anchor (E.AcceptedRoot cfg ext) B.state.C)
-    (V : B.state.ExactLinkValidity)
+    (V : B.state.AcceptedExactLinkValidity)
     (hacc : CheckpointCertificateAccountability cfg E B.anchor)
     {v : ValidatorIndex} (hv : v ∈ E.honest) {n : Nat}
     (hn1H : E.WithinHorizon cfg (n + 1))

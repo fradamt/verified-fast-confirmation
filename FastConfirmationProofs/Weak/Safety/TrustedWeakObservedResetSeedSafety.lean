@@ -121,7 +121,7 @@ theorem trusted_weak_confirmed_root_safe_from_next_slot
     (hpaper : B.state.PaperA32Inclusion cfg ext)
     (P : EpochCheckpointClosure B.anchor
       (E.AcceptedRoot cfg ext) B.state.C)
-    (V : B.state.ExactLinkValidity)
+    (V : B.state.AcceptedExactLinkValidity)
     {obs : ValidatorIndex}
     (hW : E.WeakObserverPremises cfg ext obs)
     (hCbase : E.WeakCompletedFCRCallSupplement cfg ext)
@@ -150,7 +150,7 @@ theorem trusted_weak_confirmed_root_on_honest_heads_from_next_slot
     (hpaper : B.state.PaperA32Inclusion cfg ext)
     (P : EpochCheckpointClosure B.anchor
       (E.AcceptedRoot cfg ext) B.state.C)
-    (V : B.state.ExactLinkValidity)
+    (V : B.state.AcceptedExactLinkValidity)
     {obs : ValidatorIndex}
     (hW : E.WeakObserverPremises cfg ext obs)
     (hCbase : E.WeakCompletedFCRCallSupplement cfg ext)

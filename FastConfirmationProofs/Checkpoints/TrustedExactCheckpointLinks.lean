@@ -1,5 +1,5 @@
 module
-public import FastConfirmationProofs.Checkpoints.ExactCheckpointLinks
+public import FastConfirmationProofs.Checkpoints.GuardedExactCheckpointLinks
 public import FastConfirmationInternal.Weak.TrustedFFGInterpretation
 
 @[expose] public section
@@ -14,11 +14,13 @@ theorem exactFinalizedPrefix_of_accountable
     {S : TrustedCausalCarrierFFGState cfg ext E anchor trusted}
     (P : EpochCheckpointClosure anchor
       (E.AcceptedRoot cfg ext) S.C)
-    (V : S.ExactLinkValidity)
+    (V : S.AcceptedExactLinkValidity)
     (hanchorExact : anchor = S.C anchor.root anchor.epoch)
     (hacc : CheckpointCertificateAccountability cfg E anchor)
     {finalizedCarrier justifiedCarrier : Root}
     {finalized justified : Checkpoint Root}
+    (hfcarrier : E.AcceptedRoot cfg ext finalizedCarrier)
+    (hjcarrier : E.AcceptedRoot cfg ext justifiedCarrier)
     (hfinalized : IncludedCertifiedFinalized cfg E
       S.includedAttestations.Included anchor finalizedCarrier finalized)
     (hjustified : IncludedCertifiedJustified cfg E
@@ -26,8 +28,8 @@ theorem exactFinalizedPrefix_of_accountable
     (hepoch : finalized.epoch ≤ justified.epoch) :
     ExactCheckpointPrefix S.C finalized justified := by
   let I := S.includedAttestations.relation
-  exact IncludedCertifiedFinalized.exact_prefix_of_accountable
-    (cfg := cfg) I P V hanchorExact hacc hfinalized hjustified hepoch
+  exact IncludedCertifiedFinalized.guarded_exact_prefix_of_accountable
+    (cfg := cfg) I P V hanchorExact hacc hfcarrier hjcarrier hfinalized hjustified hepoch
 
 end TrustedCausalCarrierFFGState
 end FastConfirmation.Spec

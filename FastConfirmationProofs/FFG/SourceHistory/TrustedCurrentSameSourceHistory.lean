@@ -684,7 +684,7 @@ theorem TrustedAcceptedLemma22EpochStartCandidateSourceAt.lemma24
       (E := E) (anchor := B.anchor))
     (hLag : E.TrustedCausalRealizedFinalizationLag cfg ext B)
     (P : EpochCheckpointClosure B.anchor (E.AcceptedRoot cfg ext) B.state.C)
-    (V : B.state.ExactLinkValidity)
+    (V : B.state.AcceptedExactLinkValidity)
     (hacc : CheckpointCertificateAccountability cfg E B.anchor)
     {e : Epoch} {candidate : Root}
     (h : E.TrustedAcceptedLemma22EpochStartCandidateSourceAt
@@ -1822,7 +1822,7 @@ theorem TrustedAcceptedConfirmedSourceHistoryAt.recentSource_succ_of_call
     (hLag : E.TrustedCausalRealizedFinalizationLag cfg ext B)
     (hspe : 1 < cfg.slots_per_epoch)
     (P : EpochCheckpointClosure B.anchor (E.AcceptedRoot cfg ext) B.state.C)
-    (V : B.state.ExactLinkValidity)
+    (V : B.state.AcceptedExactLinkValidity)
     (hacc : CheckpointCertificateAccountability cfg E B.anchor)
     {v : ValidatorIndex} (hv : v ∈ E.honest) {n : Nat}
     (hHn1 : E.WithinHorizon cfg (n + 1))
@@ -2088,7 +2088,7 @@ theorem TrustedAcceptedConfirmedSourceHistoryAt.succ_of_call
     (hLag : E.TrustedCausalRealizedFinalizationLag cfg ext B)
     (hspe : 1 < cfg.slots_per_epoch)
     (P : EpochCheckpointClosure B.anchor (E.AcceptedRoot cfg ext) B.state.C)
-    (V : B.state.ExactLinkValidity)
+    (V : B.state.AcceptedExactLinkValidity)
     (hacc : CheckpointCertificateAccountability cfg E B.anchor)
     {v : ValidatorIndex} (hv : v ∈ E.honest) {n : Nat}
     (hHn1 : E.WithinHorizon cfg (n + 1))
@@ -2121,7 +2121,7 @@ theorem trusted_acceptedConfirmedSourceHistoryAt
     (hDelay : E.TrustedRealizedFinalizationDelay cfg ext B)
     (hspe : 1 < cfg.slots_per_epoch)
     (P : EpochCheckpointClosure B.anchor (E.AcceptedRoot cfg ext) B.state.C)
-    (V : B.state.ExactLinkValidity)
+    (V : B.state.AcceptedExactLinkValidity)
     (hacc : CheckpointCertificateAccountability cfg E B.anchor)
     {v : ValidatorIndex} (hv : v ∈ E.honest) :
     ∀ n : Nat, E.WithinHorizon cfg n →
@@ -2161,7 +2161,7 @@ theorem trusted_getLatestConfirmedTraceAt_current_epochStartSource
     (hDelay : E.TrustedRealizedFinalizationDelay cfg ext B)
     (hspe : 1 < cfg.slots_per_epoch)
     (P : EpochCheckpointClosure B.anchor (E.AcceptedRoot cfg ext) B.state.C)
-    (V : B.state.ExactLinkValidity)
+    (V : B.state.AcceptedExactLinkValidity)
     (hacc : CheckpointCertificateAccountability cfg E B.anchor)
     {v : ValidatorIndex} (hv : v ∈ E.honest) {n : Nat}
     (hHn1 : E.WithinHorizon cfg (n + 1))
@@ -2476,7 +2476,7 @@ theorem StrictSelectedResultMechanicalFacts.trusted_actualCurrentSame_sourceHist
     (hDelay : E.TrustedRealizedFinalizationDelay cfg ext B)
     (hspe : 1 < cfg.slots_per_epoch)
     (P : EpochCheckpointClosure B.anchor (E.AcceptedRoot cfg ext) B.state.C)
-    (V : B.state.ExactLinkValidity)
+    (V : B.state.AcceptedExactLinkValidity)
     (hacc : CheckpointCertificateAccountability cfg E B.anchor)
     {v : ValidatorIndex} (hv : v ∈ E.honest) {n : Nat}
     (hHn1 : E.WithinHorizon cfg (n + 1))

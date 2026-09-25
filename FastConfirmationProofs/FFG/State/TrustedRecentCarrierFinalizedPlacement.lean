@@ -21,7 +21,7 @@ theorem finalizedRoot_eq_checkpointBlock_of_causalLag
     (hLag : E.TrustedCausalRealizedFinalizationLag cfg ext B)
     (P : EpochCheckpointClosure B.anchor
       (E.AcceptedRoot cfg ext) B.state.C)
-    (V : B.state.ExactLinkValidity)
+    (V : B.state.AcceptedExactLinkValidity)
     (hanchorExact : B.anchor =
       B.state.C B.anchor.root B.anchor.epoch)
     (hacc : CheckpointCertificateAccountability cfg E B.anchor)

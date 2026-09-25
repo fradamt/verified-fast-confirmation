@@ -23,7 +23,7 @@ theorem trusted_weak_safeFrom_observerCall_closed_lazy
     (hpaper : B.state.PaperA32Inclusion cfg ext)
     (P : EpochCheckpointClosure B.anchor
       (E.AcceptedRoot cfg ext) B.state.C)
-    (V : B.state.ExactLinkValidity)
+    (V : B.state.AcceptedExactLinkValidity)
     (hanchorExact : B.anchor = B.state.C B.anchor.root B.anchor.epoch)
     {obs : ValidatorIndex}
     (hW : E.WeakObserverPremises cfg ext obs)

@@ -41,7 +41,7 @@ theorem trusted_deadline_carrier_known_of_au
     (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
       (E := E) (anchor := B.anchor))
     (P : EpochCheckpointClosure B.anchor (E.AcceptedRoot cfg ext) B.state.C)
-    (V : B.state.ExactLinkValidity)
+    (V : B.state.AcceptedExactLinkValidity)
     (hacc : CheckpointCertificateAccountability cfg E B.anchor)
     {v w : ValidatorIndex} {n m : ℕ} {tip : Root} {c : Checkpoint Root}
     (hv : v ∈ E.honest) (hw : w ∈ E.honest)
@@ -69,10 +69,11 @@ theorem trusted_deadline_carrier_known_of_au
     · change ExactCheckpointPrefix B.state.C
         (E.store cfg ext w m).finalized_checkpoint c
       rw [hFanchor]
-      exact IncludedCertifiedJustified.anchor_prefix
-        (cfg := cfg) P V hanchorExact hcertificate
+      exact IncludedCertifiedJustified.guarded_anchor_prefix
+        (cfg := cfg) P V hanchorExact ⟨_, E.store_causal cfg ext v n, htip⟩ hcertificate
     · exact B.state.exactFinalizedPrefix_of_accountable P V
-        hanchorExact hacc hFcertificate hcertificate hFle
+        hanchorExact hacc _hcarrier.acceptedRoot ⟨_, E.store_causal cfg ext v n, htip⟩
+        hFcertificate hcertificate hFle
   have hFrealized := E.trusted_finalizedCheckpoint_resetRealizedAt_of_acceptedGlobalTrajectory
     cfg ext B hT hanchor hboundary (w := w) m
   have hanchorLe : B.anchor.epoch ≤ F.epoch :=
@@ -103,7 +104,7 @@ theorem trusted_deadline_carrier_known_of_recent_au
       (E := E) (anchor := B.anchor))
     (hLag : E.TrustedCausalRealizedFinalizationLag cfg ext B)
     (P : EpochCheckpointClosure B.anchor (E.AcceptedRoot cfg ext) B.state.C)
-    (V : B.state.ExactLinkValidity)
+    (V : B.state.AcceptedExactLinkValidity)
     (hacc : CheckpointCertificateAccountability cfg E B.anchor)
     {v w : ValidatorIndex} {n m : ℕ} {tip : Root} {c : Checkpoint Root}
     (hv : v ∈ E.honest) (hw : w ∈ E.honest)
@@ -137,7 +138,7 @@ theorem trusted_deadline_justified_epoch_le_of_carrier
     (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
       (E := E) (anchor := B.anchor))
     (P : EpochCheckpointClosure B.anchor (E.AcceptedRoot cfg ext) B.state.C)
-    (V : B.state.ExactLinkValidity)
+    (V : B.state.AcceptedExactLinkValidity)
     (hacc : CheckpointCertificateAccountability cfg E B.anchor)
     {v w : ValidatorIndex} {n m : ℕ} {tip : Root} {c : Checkpoint Root}
     (hv : v ∈ E.honest) (hw : w ∈ E.honest)
@@ -176,10 +177,11 @@ theorem trusted_deadline_justified_epoch_le_of_carrier
     · change ExactCheckpointPrefix B.state.C
         (E.store cfg ext w m).finalized_checkpoint c
       rw [hFanchor]
-      exact IncludedCertifiedJustified.anchor_prefix
-        (cfg := cfg) P V hanchorExact hcertificate
+      exact IncludedCertifiedJustified.guarded_anchor_prefix
+        (cfg := cfg) P V hanchorExact ⟨_, E.store_causal cfg ext v n, htip⟩ hcertificate
     · exact B.state.exactFinalizedPrefix_of_accountable P V
-        hanchorExact hacc hFcertificate hcertificate hFle
+        hanchorExact hacc _hcarrier.acceptedRoot ⟨_, E.store_causal cfg ext v n, htip⟩
+        hFcertificate hcertificate hFle
   have hFrealized := E.trusted_finalizedCheckpoint_resetRealizedAt_of_acceptedGlobalTrajectory
     cfg ext B hT hanchor hboundary (w := w) m
   have hanchorLe : B.anchor.epoch ≤ F.epoch :=

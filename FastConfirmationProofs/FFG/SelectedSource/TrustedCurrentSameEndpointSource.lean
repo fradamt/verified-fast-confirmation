@@ -254,7 +254,7 @@ theorem retainedAt_currentSameEndpoint
     (hDelay : E.TrustedRealizedFinalizationDelay cfg ext B)
     (P : EpochCheckpointClosure B.anchor
       (E.AcceptedRoot cfg ext) B.state.C)
-    (V : B.state.ExactLinkValidity)
+    (V : B.state.AcceptedExactLinkValidity)
     (hanchorExact : B.anchor =
       B.state.C B.anchor.root B.anchor.epoch)
     (hacc : CheckpointCertificateAccountability cfg E B.anchor)
@@ -422,7 +422,7 @@ theorem trusted_justified_epoch_eq_queryCurrent
       (E := E) (anchor := B.anchor))
     (P : EpochCheckpointClosure B.anchor
       (E.AcceptedRoot cfg ext) B.state.C)
-    (V : B.state.ExactLinkValidity)
+    (V : B.state.AcceptedExactLinkValidity)
     (hanchorExact : B.anchor =
       B.state.C B.anchor.root B.anchor.epoch)
     (hdomain : SelectedMarginDomain cfg ext E)
@@ -490,9 +490,14 @@ theorem trusted_justified_epoch_eq_queryCurrent
           hanchorLeJ (by simpa only [past] using hjKnown)
   have hjSelf : past.justified_checkpoint =
       B.state.C past.justified_checkpoint.root
-        past.justified_checkpoint.epoch :=
-    IncludedCertifiedJustified.exact_self (cfg := cfg) P V
-      hanchorExact hjIncluded
+        past.justified_checkpoint.epoch := by
+    rcases B.globalJustified_anchor_or_AUEvidence hgenShort hanchor hpastCausal with
+      ha | hevidence
+    · rw [ha]
+      exact hanchorExact
+    · obtain ⟨hc⟩ := hevidence
+      exact IncludedCertifiedJustified.guarded_exact_self (cfg := cfg) P V
+        hanchorExact hc.carrier_accepted (Classical.choice hc.formed_evidence.certified)
   have hjReflect := B.coherence.checkpoint_of_known hpastCausal
     past.justified_checkpoint.root hjKnown
       past.justified_checkpoint.epoch
@@ -559,7 +564,7 @@ theorem retainedAt_currentSameEndpoint
       (E := E) (anchor := B.anchor))
     (P : EpochCheckpointClosure B.anchor
       (E.AcceptedRoot cfg ext) B.state.C)
-    (V : B.state.ExactLinkValidity)
+    (V : B.state.AcceptedExactLinkValidity)
     (hanchorExact : B.anchor =
       B.state.C B.anchor.root B.anchor.epoch)
     (hacc : CheckpointCertificateAccountability cfg E B.anchor)
@@ -808,7 +813,7 @@ theorem retainedAt_currentSameEndpoint
       (E := E) (anchor := B.anchor))
     (P : EpochCheckpointClosure B.anchor
       (E.AcceptedRoot cfg ext) B.state.C)
-    (V : B.state.ExactLinkValidity)
+    (V : B.state.AcceptedExactLinkValidity)
     (hanchorExact : B.anchor =
       B.state.C B.anchor.root B.anchor.epoch)
     (hacc : CheckpointCertificateAccountability cfg E B.anchor)
