@@ -79,7 +79,7 @@ The candidate fixture `scripts/GloasPayloadDeliveryObstacle.lean` proves that th
 The pinned-source experiment can be run from the active tree:
 
 ```sh
-PYTHONDONTWRITEBYTECODE=1 python3 scripts/conformance/python/gloas_payload_delivery_obstacle.py --consensus-repo /home/fradamt/lean/consensus-specs
+PYTHONDONTWRITEBYTECODE=1 python3 scripts/conformance/python/gloas_payload_delivery_obstacle.py --consensus-repo <consensus-specs checkout>
 ```
 
 It reports this obstruction and exits 0 because the expected checks pass:
@@ -141,8 +141,8 @@ This is a kernel-checked local fork-choice counterexample. It does not refute th
 After reconstructing the candidate as stated in the archived README (`archive/gloas-port/README.md` at commit `28faf6d`), run:
 
 ```sh
-flock /home/fradamt/lean/orch/g2-lean-slot.lock lake env lean scripts/GloasPayloadDeliveryObstacle.lean
-flock /home/fradamt/lean/orch/g2-lean-slot.lock lake env lean scripts/GloasPayloadBranchObstacle.lean
+lake env lean scripts/GloasPayloadDeliveryObstacle.lean
+lake env lean scripts/GloasPayloadBranchObstacle.lean
 ```
 
 Both commands passed in lane g2b. Their listed axioms are subsets of `propext`, `Classical.choice`, and `Quot.sound`. They import the executable model, so they do not use stale proof-module artifacts.
@@ -155,7 +155,7 @@ The final candidate check reaches G2-004 at `Endpoint.ledger_descendStep`.
 Command:
 
 ```sh
-flock /home/fradamt/lean/orch/g2-lean-slot.lock scripts/validate.sh --consensus-repo /home/fradamt/lean/consensus-specs
+scripts/validate.sh --consensus-repo <consensus-specs checkout>
 ```
 
 Full check 07 exits 1 with this first error:

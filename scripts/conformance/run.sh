@@ -75,7 +75,10 @@ fi
 
 runner_start=$SECONDS
 set +e
-(cd "$repo_root" && flock /home/fradamt/lean/orch/lean-slot-main.lock lake env lean --run scripts/conformance/lean/Conformance.lean "$out") \
+# Optional lock for machines that share one Lean build slot: FCR_LEAN_LOCK=<lock file>.
+lock=()
+if [[ -n "${FCR_LEAN_LOCK:-}" ]]; then lock=(flock "$FCR_LEAN_LOCK"); fi
+(cd "$repo_root" && ${lock[@]+"${lock[@]}"} lake env lean --run scripts/conformance/lean/Conformance.lean "$out") \
   >"$runner_log" 2>&1
 runner_status=$?
 set -e

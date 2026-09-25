@@ -14,7 +14,7 @@ establish Gloas safety, and full validation fails at `Endpoint.ledger_descendSte
 ## Reproduce
 
 ```sh
-PYTHONDONTWRITEBYTECODE=1 python3 scripts/conformance/python/gloas_accepted_payload_branch_obstacle.py --consensus-repo /home/fradamt/lean/consensus-specs
+PYTHONDONTWRITEBYTECODE=1 python3 scripts/conformance/python/gloas_accepted_payload_branch_obstacle.py --consensus-repo <consensus-specs checkout>
 ```
 
 The command executes unchanged fork-choice, handler, and FCR function bodies

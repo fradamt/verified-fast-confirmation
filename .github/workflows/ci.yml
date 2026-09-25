@@ -25,13 +25,15 @@ jobs:
         with:
           persist-credentials: false
 
+      # The model follows the fork tag fcr-gloas-fix (13f391516): upstream
+      # 6b9bd532 plus the Gloas discount fix. The source audit reads both.
       - name: Check out pinned consensus-specs source
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          repository: ethereum/consensus-specs
-          ref: 30aa65fc21cf7f7c7dd1f7d6b686d0250462d04f
+          repository: fradamt/consensus-specs
+          ref: fcr-gloas-fix
           path: .source/consensus-specs
-          fetch-depth: 1
+          fetch-depth: 0
           persist-credentials: false
 
       - name: Set up Python
