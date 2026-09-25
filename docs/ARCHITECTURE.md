@@ -8,7 +8,7 @@ Six Lean libraries separate the trusted definitions from proof terms. An arrow m
 ├────────────────────────────────────┼──────────────────────────────────────────────────────────────────────────────────────────────┤
 │ FastConfirmationModel              │ Python function translation in Spec/; scheduled runs, stake reads, external calls, and state │
 │                                    │ folds in Execution/.                                                                         │
-│ FastConfirmationStatements         │ Premise records in Premises/; propositions in Claims.lean and the three-field Review.lean    │
+│ FastConfirmationStatements         │ Premise records in Premises/; propositions in Claims.lean and the two-field Review.lean    │
 │                                    │ bundle.                                                                                      │
 │ FastConfirmationInternal           │ Proof vocabulary and compatibility records. Subject folders hold FFG and synchrony facts;    │
 │                                    │ Legacy/ holds compatibility records.                                                         │
@@ -25,17 +25,17 @@ Six Lean libraries separate the trusted definitions from proof terms. An arrow m
 
 ```text
 ┌───────────────────────────────┬───────────────────────────────────────────────────────────────────────────────────────────────────┐
-│ Check                         │ What it enforces                                                                                  │
+│Check                          │What it enforces                                                                                   │
 ├───────────────────────────────┼───────────────────────────────────────────────────────────────────────────────────────────────────┤
-│ check_consensus_source.py     │ The Python tag and the pinned source objects match the recorded hashes.                           │
-│ check_review_boundary.py      │ Lean parser import closure of Statements contains only Model and Statements modules; every        │
-│                               │ Statements source is included.                                                                    │
-│ StatementReachability.lean    │ Every authored Statements declaration is reachable from ReviewClaims, except three documented       │
-│                               │ public witness dependencies.                                                                      │
-│ ReviewSurfaceShape.lean       │ The two review fields and selected premise record shapes remain exact.                          │
-│ check_imports.py              │ The six-library import direction and Paper separation hold.                                       │
-│ check_doc_names.py            │ Backticked Lean names in current documents resolve to declarations or files.                      │
-│ Audit.lean                    │ The public witness set has only standard axiom dependencies and no forbidden declarations.        │
-│ validate.sh                   │ Fast checks above; full mode also builds every library and runs Lean checks.                      │
+│check_consensus_source.py      │The Python tag and the pinned source objects match the recorded hashes.                            │
+│check_review_boundary.py       │Lean parser import closure of Statements contains only Model and Statements modules; every         │
+│                               │Statements source is included.                                                                     │
+│StatementReachability.lean     │Every authored Statements declaration is reachable from ReviewClaims, except two documented      │
+│                               │public witness dependencies.                                                                       │
+│ReviewSurfaceShape.lean        │The two review fields and selected premise record shapes remain exact.                             │
+│check_imports.py               │The six-library import direction and Paper separation hold.                                        │
+│check_doc_names.py             │Backticked Lean names in current documents resolve to declarations or files.                       │
+│Audit.lean                     │The public witness set has only standard axiom dependencies and no forbidden declarations.         │
+│validate.sh                    │Fast checks above; full mode also builds every library and runs Lean checks.                       │
 └───────────────────────────────┴───────────────────────────────────────────────────────────────────────────────────────────────────┘
 ```

@@ -39,12 +39,9 @@ private def isSourceDeclaration (env : Environment) (decl : Name) : Bool :=
 -- `Synchrony` field, so its theorem type needs this older premise bundle.
 -- The finite next-slot witness states paper support through the accepted
 -- FFG state's specialization, so its theorem type needs that abbreviation.
--- The retained scheduled selected-result spec-correspondence lemma is outside
--- ReviewClaims, and its conclusion uses this safety predicate.
 private def approved : List Name := [
   ``FastConfirmation.Spec.Synchrony,
-  ``FastConfirmation.Spec.CausalCarrierFFGState.PaperA32SupportThroughoutEpoch,
-  ``FastConfirmation.Spec.Execution.SafeFrom
+  ``FastConfirmation.Spec.CausalCarrierFFGState.PaperA32SupportThroughoutEpoch
 ]
 
 run_cmd do

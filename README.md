@@ -74,9 +74,13 @@ Read [architecture](docs/ARCHITECTURE.md), [source map](docs/SPEC_MAP.md), [pape
 
 The execution synchrony fields use a positive millisecond delay and strict
 `A + Δ < S`. G4 and exact AU accountability justify transport of the required
-roots. The public next-slot endpoints are unchanged. Evidence relay includes
-the documented pubkey-cache client behavior; literal Python can reject evidence
-when its older justified state lacks a signer. See
-[modeling choices](docs/MODELING_CHOICES.md) and the
+roots. The public next-slot endpoints are unchanged. The model accepts evidence
+only when each signer is a validator in the node's current (head) state.
+Lighthouse, Prysm, Teku, Lodestar, and Nimbus validate network evidence against
+head state; Lighthouse advances it to the wall-clock slot. They apply valid
+gossip evidence to fork choice before block inclusion. Grandine follows the
+specification and validates against justified state. No client accepts a signer
+absent from its validation state, and no client prunes the equivocation set at
+finalization. See [modeling choices](docs/MODELING_CHOICES.md) and the
 [review guide](docs/REVIEW_GUIDE.md). `scripts/check_synchrony_corners.py` runs
 with validation and rejects the old relay shapes.

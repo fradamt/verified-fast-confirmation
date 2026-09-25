@@ -13,5 +13,6 @@ public import FastConfirmationInternal.FFG.CheckpointLinks
 public import FastConfirmationInternal.FFG.ScheduledState
 public import FastConfirmationInternal.Network.SynchronyConversion
 public import FastConfirmationInternal.Execution.LatestTraceResult
+public import FastConfirmationInternal.Execution.SafeFrom
 
 /-! Imports the legacy predicates and reusable proof vocabulary below the public claim surface. -/

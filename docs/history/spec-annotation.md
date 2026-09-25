@@ -323,28 +323,28 @@ definition cites its pinned Gloas source line. See
 
 ```text
 ┌─────────────────────────────────────────┬────────────────────────────────────┬──────────────────────────────────────────────────────────────────────────────────────────────┐
-│ Spec origin                             │ Lean                               │ Notes                                                                                        │
+│Spec origin                              │Lean                                │Notes                                                                                         │
 ├─────────────────────────────────────────┼────────────────────────────────────┼──────────────────────────────────────────────────────────────────────────────────────────────┤
-│ — (ground truth)                        │ anchor_state, registry, weight_of, │ derived quantities over an Execution (anchor state = the genesis store's                     │
-│                                         │ weight, total_active,              │ justified-checkpoint state)                                                                  │
-│                                         │ span_committee                     │                                                                                              │
-│ validator.md "Attesting" + slashing     │ HonestBehavior                     │ votes_head (the recorded vote is honest_attestation from the node's own store at a second of │
-│ discipline                              │                                    │ the assigned slot), votes_assigned, no_forgery (BLS unforgeability + equivocation slashing)  │
-│ FCR intro synchrony sentence            │ NextSlotSynchronyPremises               │ The primary theorem uses attestation_delivery (slot-s honest attestations scheduled at the   │
-│                                         │                                    │ first second of slot s+1; Gloas acceptance also needs the payload for index 1), block_relay  │
-│                                         │                                    │ (known blocks propagate by the following slot), and attester_slashing_relay (known           │
-│                                         │                                    │ equivocation evidence propagates by the following slot). The fields hold throughout the      │
-│                                         │                                    │ checked execution, so this is the GST-0 specialization of the paper's post-GST timing model. │
-│ behavior of the abstracted beacon-chain │ BeaconExternalsPremises                 │ slot/registry behavior of                                                                    │
-│ functions                               │                                    │ process_slots/state_transition/process_justification_and_finalization; committees_agree (the │
-│                                         │                                    │ spec's committee-consistency window, idealized to the whole execution);                      │
-│                                         │                                    │ honest_attestation_valid; committee_assignment_unique (one assigned slot per epoch)          │
-│ balance-source design note (static set) │ StaticValidatorSet                 │ the trusted anchor lies inside the verification horizon and validator activity is constant   │
-│                                         │                                    │ below that horizon (paper Assumption 1); genesis registry constancy is derived from the      │
-│                                         │                                    │ already-required get_forkchoice_store initialization                                         │
-│ CONFIRMATION_BYZANTINE_THRESHOLD + the  │ ByzantineWeightPremises                     │ balance quantization, estimate_sound (the estimate upper-bounds actual span-committee        │
-│ 5‰ estimation note                      │                                    │ weight), and span_fraction (the non-honest span weight is at most the configured percentage, │
-│                                         │                                    │ cross-multiplied)                                                                            │
+│— (ground truth)                         │anchor_state, registry, weight_of,  │derived quantities over an Execution (anchor state = the genesis store's                      │
+│                                         │weight, total_active,               │justified-checkpoint state)                                                                   │
+│                                         │span_committee                      │                                                                                              │
+│validator.md "Attesting" + slashing      │HonestBehavior                      │votes_head (the recorded vote is honest_attestation from the node's own store at a second of  │
+│discipline                               │                                    │the assigned slot), votes_assigned, no_forgery (BLS unforgeability + equivocation slashing)   │
+│FCR intro synchrony sentence             │NextSlotSynchronyPremises           │The primary theorem uses attestation_delivery (slot-s honest attestations scheduled at the    │
+│                                         │                                    │first second of slot s+1; Gloas acceptance also needs the payload for index 1), block_relay   │
+│                                         │                                    │(known blocks propagate by the following slot), and attester_slashing_relay (known            │
+│                                         │                                    │equivocation evidence propagates by the following slot). The fields hold throughout the       │
+│                                         │                                    │checked execution, so this is the GST-0 specialization of the paper's post-GST timing model.  │
+│behavior of the abstracted beacon-chain  │BeaconExternalsPremises             │slot/registry behavior of                                                                     │
+│functions                                │                                    │process_slots/state_transition/process_justification_and_finalization; committees_agree (the  │
+│                                         │                                    │spec's committee-consistency window, idealized to the whole execution);                       │
+│                                         │                                    │honest_attestation_valid; committee_assignment_unique (one assigned slot per epoch)           │
+│balance-source design note (static set)  │StaticValidatorSet                  │the trusted anchor lies inside the verification horizon and validator activity is constant    │
+│                                         │                                    │below that horizon (paper Assumption 1); genesis registry constancy is derived from the       │
+│                                         │                                    │already-required get_forkchoice_store initialization                                          │
+│CONFIRMATION_BYZANTINE_THRESHOLD + the   │ByzantineWeightPremises             │balance quantization, estimate_sound (the estimate upper-bounds actual span-committee         │
+│5‰ estimation note                       │                                    │weight), and span_fraction (the non-honest span weight is at most the configured percentage,  │
+│                                         │                                    │cross-multiplied)                                                                             │
 └─────────────────────────────────────────┴────────────────────────────────────┴──────────────────────────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -352,25 +352,25 @@ definition cites its pinned Gloas source line. See
 
 ```text
 ┌─────────────────────────────────────────┬─────────────────────────────────────────────────────────────────────────────────────────────────┬──────────────────────────────────────────────────────────────────────────────────────────────┐
-│ Spec claim                              │ Lean                                                                                            │ Notes                                                                                        │
+│Spec claim                               │Lean                                                                                             │Notes                                                                                         │
 ├─────────────────────────────────────────┼─────────────────────────────────────────────────────────────────────────────────────────────────┼──────────────────────────────────────────────────────────────────────────────────────────────┤
-│ "will remain canonical in the view of   │ NextSlotSafetyPremises.selected_result_safe_from_next_slot_of_scheduled_call │ Spec-correspondence lemma for the exact mandatory boundary-call helper result under the      │
-│ all honest validators starting from the │                                                                                                 │ primary reset-free accepted bundle and literal selector guard. It maps the                  │
-│ current moment in time"                 │                                                                                                 │ `find_latest_confirmed_descendant` note; it is not a review claim. Carried input safety       │
-│ (find_latest_confirmed_descendant note) │                                                                                                 │ comes from the preceding following-slot invariant; causal finalization lag forces a          │
-│                                         │                                                                                                 │ selector-eligible finalized reset to the anchor; observed input safety is derived dynamically.│
-│ get_latest_confirmed may be called at   │ extra_query_changes_head_counterexample,                                                       │ universal action-prefix safety is false: at one global query position the actor has          │
-│ any point in a slot + the helper's      │ extra_query_changes_head_counterexample                                       │ processed the synchronized vote and returns the candidate while another honest endpoint has  │
-│ all-honest current-moment note          │                                                                                                 │ processed only the preceding sibling block. The first theorem proves the full non-FFG        │
-│                                         │                                                                                                 │ environment and also shows actor-side ground replay coexists with failed endpoint ancestry;  │
-│                                         │                                                                                                 │ the second uses pinned economic values 40/25 and threshold 95, but is not a complete         │
-│                                         │                                                                                                 │ mainnet_config instantiation                                                                 │
-│ Primary accepted stored-cache safety    │ NextSlotSafetyPremises,                                                     │ every stored honest output is on every in-horizon honest head from the following slot.       │
-│                                         │ ConfirmedRootSafeFromNextSlot,                                                                  │ Finalized and active-observed resets are derived from accepted execution/FFG dynamics; the   │
-│                                         │ confirmed_root_safe_from_next_slot                                                                   │ bundle has no reset-specific law. This is a separate accepted premise surface, not a bridge  │
-│                                         │                                                                                                 │ from SpecAssumptions, and it makes no optional in-slot action-prefix claim                   │
-│ Finalized fallback timing used by the   │ finalizedReset_safeFrom_of_nextSlotSynchrony                                                    │ safety from the following slot, derived from accepted certificates and ordinary synchrony    │
-│ primary theorem                         │                                                                                                 │ without a same-moment adoption law                                                           │
+│"will remain canonical in the view of    │NextSlotSafetyPremises.selected_result_safe_from_next_slot_of_scheduled_call                     │Spec-correspondence lemma for the exact mandatory boundary-call helper result under the       │
+│all honest validators starting from the  │                                                                                                 │primary reset-free accepted bundle and literal selector guard. It maps the                    │
+│current moment in time"                  │                                                                                                 │`find_latest_confirmed_descendant` note; it is not a review claim. Carried input safety       │
+│(find_latest_confirmed_descendant note)  │                                                                                                 │comes from the preceding following-slot invariant; causal finalization lag forces a           │
+│                                         │                                                                                                 │selector-eligible finalized reset to the anchor; observed input safety is derived dynamically.│
+│get_latest_confirmed may be called at    │extra_query_changes_head_counterexample,                                                         │universal action-prefix safety is false: at one global query position the actor has           │
+│any point in a slot + the helper's       │extra_query_changes_head_counterexample                                                          │processed the synchronized vote and returns the candidate while another honest endpoint has   │
+│all-honest current-moment note           │                                                                                                 │processed only the preceding sibling block. The first theorem proves the full non-FFG         │
+│                                         │                                                                                                 │environment and also shows actor-side ground replay coexists with failed endpoint ancestry;   │
+│                                         │                                                                                                 │the second uses pinned economic values 40/25 and threshold 95, but is not a complete          │
+│                                         │                                                                                                 │mainnet_config instantiation                                                                  │
+│Primary accepted stored-cache safety     │NextSlotSafetyPremises,                                                                          │every stored honest output is on every in-horizon honest head from the following slot.        │
+│                                         │ConfirmedRootSafeFromNextSlot,                                                                   │Finalized and active-observed resets are derived from accepted execution/FFG dynamics; the    │
+│                                         │confirmed_root_safe_from_next_slot                                                               │bundle has no reset-specific law. This is a separate accepted premise surface, not a bridge   │
+│                                         │                                                                                                 │from SpecAssumptions, and it makes no optional in-slot action-prefix claim                    │
+│Finalized fallback timing used by the    │finalizedReset_safeFrom_of_nextSlotSynchrony                                                     │safety from the following slot, derived from accepted certificates and ordinary synchrony     │
+│primary theorem                          │                                                                                                 │without a same-moment adoption law                                                            │
 └─────────────────────────────────────────┴─────────────────────────────────────────────────────────────────────────────────────────────────┴──────────────────────────────────────────────────────────────────────────────────────────────┘
 ```
 

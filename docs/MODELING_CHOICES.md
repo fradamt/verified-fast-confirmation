@@ -94,14 +94,16 @@ check and two indexed-attestation checks. They read the attestations, signer
 pubkeys, and target-epoch domains. Pubkeys are immutable. The genesis validators
 root is common, and the model has one fork, so the domains are common.
 
-The evidence relay models clients that keep and apply evidence when the signer
-pubkeys are known, with a pubkey cache. This is a deviation from literal Python:
-`on_attester_slashing` validates against
-`store.block_states[store.justified_checkpoint.root]`. A justified state older
-than a signer's deposit can lack that signer and reject the evidence. In the
-modeled client, the source's justification reaches the receiver by the next
-boundary through block relay and supplies those keys. This is a stated client
-behavior choice, not a theorem about that literal Python state lookup.
+The model accepts evidence only when each signer is a validator in the node's
+current (head) state. Lighthouse, Prysm, Teku, Lodestar, and Nimbus validate
+network attester slashings against the head state. Lighthouse advances that
+state to the wall-clock slot. These five clients apply valid gossip evidence
+to fork choice before block inclusion. Grandine follows the specification and
+validates against the justified state. No client accepts a signer absent from
+its validation state. No client prunes the equivocation set at finalization.
+
+Client commits checked on 2026-09-25: Lighthouse e423a66763bb1bd780492d635123f208d80c3538; Prysm 5407381fc51c9604c7f95b8d87dbb8f4786a83fd; Teku 3d26533fb84a7d12da04e5ab59e1ab7399db5fc5; Lodestar c535e94f25e209f6b137be3d29a87562088035d; Nimbus 404a0001561d1d83c5b5bf35dcbedbcb5fb86572; Grandine 66b3d385c3dc69d89e05b80bbb6baf7442a12966.
+
 Evidence accepted late in a slot is included: the relay's source time is when
 the confirmer holds the index at its scheduled slot-start FCR call. The two
 margin consumers use that call's cutoff observation.

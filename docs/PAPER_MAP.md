@@ -38,6 +38,7 @@ delay and immediate honest gossip. It restricts arbitrary observations to the
 attestation deadline. It also states Python client service, finalized-guard
 exclusion before the tick, and envelope order. These are distinct from the
 independent Paper library's slot views. Evidence discount is an executable
-addition: its relay uses the pubkey-cache behavior disclosed in
-[modeling choices](MODELING_CHOICES.md). A same-slot live proposal delivery
+addition: its relay accepts signers in the node's current (head) state. Five
+clients use head state for network evidence; Grandine uses justified state.
+See [modeling choices](MODELING_CHOICES.md) for the client evidence. A same-slot live proposal delivery
 argument requires the separate bound `P + Δ ≤ A`.
