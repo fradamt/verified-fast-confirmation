@@ -93,13 +93,16 @@ read the attestations, signer pubkeys, and target-epoch domains. Pubkeys never
 change. The genesis validators root is common, and this model has one fork,
 so the domains are common.
 
-The model accepts evidence only when each signer is a validator in the node's
-current (head) state. Lighthouse, Prysm, Teku, Lodestar, and Nimbus validate
-network attester slashings against the head state; Lighthouse advances that
-state to the wall-clock slot. These clients apply valid gossip evidence to
-fork choice before block inclusion. Grandine follows the specification and
-validates against the justified state. No client accepts a signer absent from
-its validation state, and no client prunes the equivocation set at finalization.
+The handler `on_attester_slashing` follows the Python and validates against
+`store.block_states[store.justified_checkpoint.root]`. The relay field is a
+premise, not a handler check: it states that every honest node holds the
+indices by the next boundary. Literal Python can reject evidence at a node
+whose justified state does not contain a signer. The premise matches clients
+that validate network evidence against a newer state. Lighthouse, Prysm, Teku,
+Lodestar, and Nimbus use the head state; Lighthouse advances it to the
+wall-clock slot. Grandine follows the specification and uses the justified
+state. All six clients apply valid gossip evidence to fork choice before block
+inclusion, and none prunes the equivocation set at finalization.
 
 The source time is when the node holds the index, not the evidence's arrival
 time. An FCR call reads at a slot start, before its deadline; thus evidence
@@ -153,10 +156,9 @@ structure Synchrony (E : Execution Root) : Prop where
       before the next-slot vote handler; exclusion is tested before the tick. -/
   boundary_block_prefix : DeadlineBoundaryBlockPrefix cfg ext E
   /-- Positive-Δ gossip and strict deadline fit give evidence by the next
-      boundary from a cutoff holding time, with no exclusion. The model requires
-      each signer in the node's current head state. Five clients validate
-      network evidence against head state; Grandine uses justified state. All
-      six apply valid gossip evidence to fork choice before block inclusion. -/
+      boundary from a cutoff holding time, with no exclusion. This is a premise:
+      the literal justified-state check in `on_attester_slashing` can reject
+      a signer that head-state clients accept (module note above). -/
   attester_slashing_relay : DeadlineAttesterSlashingRelay cfg ext E
 
 /-- Verified envelopes are gossiped within positive Δ. The source cutoff and
@@ -260,7 +262,8 @@ structure NextSlotSynchronyPremises (E : Execution Root) : Prop where
       the receiver observation is at or after the next slot boundary. -/
   data_availability_relay : DeadlineDataAvailabilityRelay cfg ext E
   /-- Cutoff evidence gossip under positive Δ and strict fit, without an
-      exclusion branch. Signers must exist in the node's current head state. -/
+      exclusion branch. A premise over the literal justified-state handler;
+      see the module note on client evidence validation. -/
   attester_slashing_relay : DeadlineAttesterSlashingRelay cfg ext E
 
 /-- One-slot operational closure for honest votes created inside the public

@@ -4,37 +4,37 @@ This page records known limits and their current status. The exact public propos
 
 ```text
 ┌────────────────────────────────┬──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
-│Finding                         │Status and evidence                                                                                                   │
+│ Finding                        │ Status and evidence                                                                                                  │
 ├────────────────────────────────┼──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
-│Stored next-slot safety         │Proved by confirmed_root_safe_from_next_slot under Execution.NextSlotSafetyPremises. It covers honest stored          │
-│                                │boundary outputs within a finite horizon.                                                                             │
-│Scheduled selected result       │The premise theorem is a spec-correspondence lemma for the `find_latest_confirmed_descendant` note. It is not a       │
-│                                │review claim.                                                                                                         │
-│Live monotonicity               │Proved by live_confirmed_root_monotonicity under two fields of LiveMonotonicityPremises and the safety execution      │
-│                                │bundle.                                                                                                               │
-│Optional in-slot queries        │No general safety claim. StrictPrefixExtraQuery.extra_query_changes_head_counterexample and                           │
-│                                │PinnedEconomicsExtraQuery.extra_query_changes_head_counterexample refute exact-current variants.                      │
-│Live joint satisfiability       │Open, user decision (S9-3). No finite run witnesses both live fields with Execution.NextSlotSafetyPremises.           │
-│Payload envelope exercise       │Open, user decision (S9-6). The finite next-slot run has no envelope, so its envelope and data relay conditions       │
-│                                │hold vacuously.                                                                                                       │
-│Guarded target-edge exercise    │Open, user decision (S9-5). The next-slot witness selector guard excludes selected current-target accepted edges.     │
-│Included-vote carrier relation  │Fixed (S9-1; W5) in 7dde0ef. Accepted inclusion requires membership in the carrier block's ordered FFG body.          │
-│Included-vote validation state  │Fixed (S9-2; W6) in 7dde0ef. The state follows target checkpoint preparation from a reachable keyed target block      │
-│                                │state in an honest in-horizon store. The prepared state need not itself be keyed.                                     │
-│Committee-union economics       │Confirmed, open (W4). The fraction bound applies to every in-horizon span, including one slot. A global fault share   │
-│                                │does not establish it. This matches CommitteeHonestMajority in the repository's formal paper Assumption 2.            │
-│Weak full-bundle witness        │Open, user decision (W3). No accepted run witnesses all weak headline premises with a non-anchor stored output.       │
-│Weak branch witnesses           │Open, user decision (W11). The store fixture omits rollover and empty-slot PENDING discount; bank tests are vacuous.  │
-│Opaque execution validation     │Explicit abstraction. BeaconExternalsPremises and verified envelope events supply the engine verdict and              │
-│                                │deterministic behavior.                                                                                               │
-│Static registry                 │Explicit model idealisation. StaticValidatorSet covers the finite horizon; validator churn is outside the claim.      │
-│Paper Algorithm 1 monotonicity  │Proved conditionally. SafeConfirmedAlg1Inputs assumes future rule confirmation for each honest-view-safe block,       │
-│                                │stronger than paper Assumption 6.                                                                                     │
-│Weak live monotonicity          │Open on the fcr-weak-synchrony branch. The weak threshold does not subtract equivocation, so a historical supporter   │
-│                                │can disappear without a matching reduction at an epoch boundary. Duty freshness can also remove votes. No             │
-│                                │full-premise execution counterexample is known.                                                                       │
-│Gloas discount                  │The public fcr-gloas-fix tag uses parent votes with matching payload status or PENDING status. The upstream           │
-│                                │discount can count opposite resolved status and is unsafe in the recorded source example.                             │
+│ Stored next-slot safety        │ Proved by confirmed_root_safe_from_next_slot under Execution.NextSlotSafetyPremises. It covers honest stored         │
+│                                │ boundary outputs within a finite horizon.                                                                            │
+│ Scheduled selected result      │ The premise theorem is a spec-correspondence lemma for the `find_latest_confirmed_descendant` note. It is not a      │
+│                                │ review claim.                                                                                                        │
+│ Live monotonicity              │ Proved by live_confirmed_root_monotonicity under two fields of LiveMonotonicityPremises and the safety execution     │
+│                                │ bundle.                                                                                                              │
+│ Optional in-slot queries       │ No general safety claim. StrictPrefixExtraQuery.extra_query_changes_head_counterexample and                          │
+│                                │ PinnedEconomicsExtraQuery.extra_query_changes_head_counterexample refute exact-current variants.                     │
+│ Live joint satisfiability      │ Open, user decision (S9-3). No finite run witnesses both live fields with Execution.NextSlotSafetyPremises.          │
+│ Payload envelope exercise      │ Open, user decision (S9-6). The finite next-slot run has no envelope, so its envelope and data relay conditions      │
+│                                │ hold vacuously.                                                                                                      │
+│ Guarded target-edge exercise   │ Open, user decision (S9-5). The next-slot witness selector guard excludes selected current-target accepted edges.    │
+│ Included-vote carrier relation │ Fixed (S9-1; W5) in 7dde0ef. Accepted inclusion requires membership in the carrier block's ordered FFG body.         │
+│ Included-vote validation state │ Fixed (S9-2; W6) in 7dde0ef. The state follows target checkpoint preparation from a reachable keyed target block     │
+│                                │ state in an honest in-horizon store. The prepared state need not itself be keyed.                                    │
+│ Committee-union economics      │ Confirmed, open (W4). The fraction bound applies to every in-horizon span, including one slot. A global fault share  │
+│                                │ does not establish it. This matches CommitteeHonestMajority in the repository's formal paper Assumption 2.           │
+│ Weak full-bundle witness       │ Open, user decision (W3). No accepted run witnesses all weak headline premises with a non-anchor stored output.      │
+│ Weak branch witnesses          │ Open, user decision (W11). The store fixture omits rollover and empty-slot PENDING discount; bank tests are vacuous. │
+│ Opaque execution validation    │ Explicit abstraction. BeaconExternalsPremises and verified envelope events supply the engine verdict and             │
+│                                │ deterministic behavior.                                                                                              │
+│ Static registry                │ Explicit model idealisation. StaticValidatorSet covers the finite horizon; validator churn is outside the claim.     │
+│ Paper Algorithm 1 monotonicity │ Proved conditionally. SafeConfirmedAlg1Inputs assumes future rule confirmation for each honest-view-safe block,      │
+│                                │ stronger than paper Assumption 6.                                                                                    │
+│ Weak live monotonicity         │ Open on the fcr-weak-synchrony branch. The weak threshold does not subtract equivocation, so a historical supporter  │
+│                                │ can disappear without a matching reduction at an epoch boundary. Duty freshness can also remove votes. No            │
+│                                │ full-premise execution counterexample is known.                                                                      │
+│ Gloas discount                 │ The public fcr-gloas-fix tag uses parent votes with matching payload status or PENDING status. The upstream          │
+│                                │ discount can count opposite resolved status and is unsafe in the recorded source example.                            │
 └────────────────────────────────┴──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -64,14 +64,16 @@ carriers. Ready blocks and envelopes precede the boundary vote handler;
 data service and deterministic envelope validation justify payload acceptance.
 The finite witness still does not exercise envelope delivery.
 
-Evidence has no exclusion branch. The model accepts it only when each signer
-is a validator in the node's current (head) state. Lighthouse, Prysm, Teku,
-Lodestar, and Nimbus validate network attester slashings against head state;
-Lighthouse advances that state to the wall-clock slot. They apply valid gossip
-evidence to fork choice before block inclusion. Grandine follows the
-specification and validates against justified state. No client accepts a signer
-absent from its validation state, and no client prunes the equivocation set at
-finalization. See [modeling choices](MODELING_CHOICES.md) for commit evidence.
+Evidence has no exclusion branch. The handler `on_attester_slashing` follows the Python and validates against
+`store.block_states[store.justified_checkpoint.root]`. The relay field is a
+premise, not a handler check: it states that every honest node holds the
+indices by the next boundary. Literal Python can reject evidence at a node
+whose justified state does not contain a signer. The premise matches clients
+that validate network evidence against a newer state. Lighthouse, Prysm, Teku,
+Lodestar, and Nimbus use the head state; Lighthouse advances it to the
+wall-clock slot. Grandine follows the specification and uses the justified
+state. All six clients apply valid gossip evidence to fork choice before block
+inclusion, and none prunes the equivocation set at finalization. See [modeling choices](MODELING_CHOICES.md) for commit evidence.
 Late evidence has a fresh cutoff observation when the scheduled FCR call reads
 it at slot start. No validity-agreement field was added to the public external
 contract.
