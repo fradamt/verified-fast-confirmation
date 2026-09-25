@@ -5,6 +5,10 @@ public import FastConfirmationWitnesses.Counterexamples.StrictPrefixExtraQuery
 public import FastConfirmationWitnesses.NonVacuity.NextSlotPremises
 public import FastConfirmationWitnesses.NonVacuity.LiveMonotonicity
 public import FastConfirmationWitnesses.NonVacuity.TwelveSecondSynchrony
+public import FastConfirmationWitnesses.NonVacuity.FullTwelve
+public import FastConfirmationWitnesses.NonVacuity.FullTwelveOperational
+public import FastConfirmationWitnesses.NonVacuity.FullTwelveFFG
+public import FastConfirmationWitnesses.NonVacuity.FullTwelvePremises
 
 /-!
 # Witness index
@@ -44,6 +48,16 @@ bundle and the two executions that refute strict-prefix safety variants.
   `ByzantineWeightPremises`, `Phase0SourceCoherence`,
   `Phase0BoundarySourceCoherence`, the balance floor, `EpochEndsFitUint64`,
   and `TrustedAnchorBoundaryAligned` for its concrete anchor.
+* Twelve-second full bundle:
+  `FullTwelveWitness.full_bundle_witness` proves the full
+  `Execution.NextSlotSafetyPremises` for the four-epoch trace, with
+  12,000 ms slots, a 3,000 ms vote deadline, and a positive 2,000 ms delay.
+  `FullTwelveWitness.delayed_receipts_are_first` proves the real block and
+  vote receipt delays. The scheduled call at second 24 changes the anchor
+  to the child. `FullTwelveWitness.changed_root_safe_from_next_slot` applies
+  `confirmed_root_safe_from_next_slot` to this output. The accepted slot-seven
+  carrier supports the FFG interpretation and Paper A3.2. Envelope service
+  remains vacuous; the selector has no current-target accepted edge.
 * `Execution.ScheduledPrefixPremises`:
   `AcceptedActualFCRJointNonVacuityBase.witnessScheduledPrefixTrajectoryAssumptions`.
   The same execution has whole-second scheduling, honest votes, a valid genesis
@@ -121,7 +135,8 @@ bundle and the two executions that refute strict-prefix safety variants.
 
 ## Known gaps
 
-* The 12-second run does not establish `Execution.NextSlotSafetyPremises`.
+* The shorter `TwelveSecondSynchronyWitness` run does not establish
+  `Execution.NextSlotSafetyPremises`.
   It has no FFG carrier. Its `CausalPrefixFFGInterpretation`,
   `ScheduledPrefixPremises` (in particular `BeaconExternalsPremises`), and
   `CompletedFCRCallPremises` (in particular `helper_provisos`) are not proved.
@@ -138,5 +153,6 @@ with strict deadline fit. The second execution above uses 12-second slots and
 real block and vote receipt delays. Blocks and evidence use source cutoffs;
 envelope/data service is vacuous in both runs. The exclusion point is checked
 by `DeadlineVotePathCandidate`: its skipped-boundary schedule fails the refined
-pre-tick relay. The audited public witness set contains 16 entries.
+pre-tick relay. The audited public witness set has 19 entries, including three checks for
+the twelve-second full-bundle trace.
 -/
