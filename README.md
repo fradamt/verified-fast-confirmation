@@ -62,7 +62,7 @@ scripts/validate.sh --consensus-repo /path/to/fradamt-consensus-specs
 A warm `lake build` took 24.19 seconds on a 12-core desktop. A fresh build can take longer.
 `scripts/validate.sh --fast --consensus-repo /path/to/fradamt-consensus-specs` checks source
 pinning, document names, boundaries, and hygiene. Full validation also builds the libraries
-and audits 19 public theorem witnesses: 12 executable-side and seven paper-side. The Python
+and audits 22 public theorem witnesses: 15 executable-side and seven paper-side. The Python
 path must name the pinned local checkout.
 
 ## Premise ledger
@@ -107,7 +107,7 @@ The records in this table are in `FastConfirmationStatements/Premises/`. The las
 - Included votes validate on the target checkpoint state prepared from a keyed target block state in an honest in-horizon store. The preparation advances the base state to the target epoch start only when needed. The prepared state need not itself be keyed.
 - `ByzantineWeightPremises.span_fraction` must hold for every in-horizon slot span, including one slot. A global fault share does not establish this bound. The bound matches `CommitteeHonestMajority` in the repository's formal paper Assumption 2.
 - `LiveMonotonicityPremises.honest_block_each_slot` requires a block with an honest proposer index in every slot from execution start. Its vote-support law and `ffg_timely_justification` require timely descendant votes and exact FFG state outputs at epoch boundaries. These conditions are stronger than paper Assumption 6. Proposer-index membership is not an authentication theorem.
-- `LiveMonotonicityWitness.joint_witness` satisfies both live fields and the safety premise in one short run with a strict root advance. Its FFG timing field holds at epoch 0 through the genesis anchor; no vote-driven justification occurs. `FullTwelveWitness.full_bundle_witness` satisfies the full safety premise at 12-second slots with a 2-second delay and real delayed block and vote receipts. Neither next-slot witness has a payload envelope, so envelope relay conditions hold vacuously in both. The selector guard excludes selected current-target accepted edges, so it does not exercise their support premise. See `FastConfirmationWitnesses/Index.lean`.
+- `LiveMonotonicityWitness.joint_witness` satisfies both live fields and the safety premise in one short run with a strict root advance. Its FFG timing field holds at epoch 0 through the genesis anchor; no vote-driven justification occurs. `FullTwelveWitness.full_bundle_witness` satisfies the full safety premise at 12-second slots with a 2-second delay and real delayed block and vote receipts. No safety witness has a payload envelope, so envelope relay conditions hold vacuously. `TargetEdgePremiseWitness.target_edge_support_exercised` exercises the guarded current-target support premise under the full safety bundle. See `FastConfirmationWitnesses/Index.lean`.
 - The result covers stored boundary outputs. `StrictPrefixExtraQuery.extra_query_changes_head_counterexample` and `PinnedEconomicsExtraQuery.extra_query_changes_head_counterexample` show why an arbitrary in-slot query needs a different statement.
 
 ## Paper library

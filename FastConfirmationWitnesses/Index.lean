@@ -9,6 +9,7 @@ public import FastConfirmationWitnesses.NonVacuity.FullTwelve
 public import FastConfirmationWitnesses.NonVacuity.FullTwelveOperational
 public import FastConfirmationWitnesses.NonVacuity.FullTwelveFFG
 public import FastConfirmationWitnesses.NonVacuity.FullTwelvePremises
+public import FastConfirmationWitnesses.NonVacuity.TargetEdgePremises
 
 /-!
 # Witness index
@@ -33,6 +34,13 @@ two counterexamples to strict-prefix safety variants.
   honest validators, four slots per epoch, an anchor, a slot-one child, and a
   slot-seven FFG carrier. Its scheduled FCR call changes the confirmed root.
   The final in-horizon vote is delivered one second beyond the horizon.
+* Guarded current-target edge:
+  `TargetEdgePremiseWitness.full_bundle_witness` supplies the full next-slot
+  bundle for a one-second run. `target_edge_support_exercised` proves the
+  selector guard and the accepted anchor-to-child epoch crossing at the call
+  from second six to seven. `target_edge_call_snapshot` checks positive vote
+  weight and a remaining honest target vote. `target_edge_safe_from_next_slot`
+  applies the public safety theorem from second eight onward.
 * Twelve-second synchrony and behavior:
   `TwelveSecondSynchronyWitness.joint_witness` proves `WellFormedExecution`,
   `HonestBehavior`, `Synchrony`, and `NextSlotSynchronyPremises` for a second
@@ -151,9 +159,9 @@ two counterexamples to strict-prefix safety variants.
 
 The short joint live run has a strict root advance. Its FFG timing uses only
 the genesis anchor. The 500 ms safety run changes a stored root. The 12-second
-full-bundle run adds real delayed block and vote receipts. Neither safety
-run has an envelope event. The shorter synchrony-only run does not prove the
-full safety bundle. `DeadlineVotePathCandidate` checks that a skipped-boundary
-schedule fails the pre-tick relay. The audited public witness set has 19
-entries, including three checks for the 12-second full-bundle trace.
+full-bundle run adds real delayed block and vote receipts. The target-edge run
+exercises the guarded current-target support premise. No safety run has an
+envelope event. The shorter synchrony-only run does not prove the full safety
+bundle. `DeadlineVotePathCandidate` checks that a skipped-boundary schedule
+fails the pre-tick relay. The audited public witness set has 22 entries.
 -/

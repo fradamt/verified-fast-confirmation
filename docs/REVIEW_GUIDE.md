@@ -1,6 +1,6 @@
 # Review guide
 
-`ReviewClaims` has two fields. `review_claims` proves both. The trust audit checks 19 public theorem witnesses: 12 executable-side and seven paper-side.
+`ReviewClaims` has two fields. `review_claims` proves both. The trust audit checks 22 public theorem witnesses: 15 executable-side and seven paper-side.
 
 ## Short glossary
 
@@ -26,8 +26,7 @@
 │ Joint live witness          │ LiveMonotonicityWitness.joint_witness satisfies the safety bundle and both live fields in one short run. Its  │
 │                             │ confirmed root advances. Its FFG timing uses the genesis anchor at epoch 0.                                   │
 │ Payload envelope            │ The finite next-slot runs have no envelope. Envelope and data relay hold vacuously.                           │
-│ Guarded target edge         │ The next-slot witness selector excludes a selected current-target accepted edge. This support premise is not  │
-│                             │ exercised.                                                                                                    │
+│ Guarded target edge         │ Exercised by TargetEdgePremiseWitness.target_edge_support_exercised under the full safety bundle.             │
 │ Included carrier votes      │ Accepted inclusion requires membership in the carrier block’s ordered FFG attestation body.                   │
 │ Included vote state         │ Validation uses a prepared target checkpoint state from a reachable keyed target block state. The prepared    │
 │                             │ state need not be keyed.                                                                                      │
@@ -79,4 +78,4 @@ Block and envelope exclusion is checked before the next-slot tick. It permits on
 
 The source of record is fork `fradamt/consensus-specs`, tag `fcr-gloas-fix` (`13f391516`). The [source map](SPEC_MAP.md) records the exact difference from upstream. The [conformance harness](conformance.md) compares projected Python and Lean observations. A matching trace does not prove all external contracts or all reachable executions. The weak-synchrony branch is separate from this main review.
 
-`scripts/validate.sh --fast` checks the source pin, document names, import boundary, and hygiene. Full validation builds the libraries and checks imports, reachability, surface shape, and the 19 public witnesses. `scripts/Audit.lean` allows only `propext`, `Classical.choice`, and `Quot.sound`.
+`scripts/validate.sh --fast` checks the source pin, document names, import boundary, and hygiene. Full validation builds the libraries and checks imports, reachability, surface shape, and the 22 public witnesses. `scripts/Audit.lean` allows only `propext`, `Classical.choice`, and `Quot.sound`.
