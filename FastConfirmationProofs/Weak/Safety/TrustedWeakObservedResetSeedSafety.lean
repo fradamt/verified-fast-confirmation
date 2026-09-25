@@ -57,7 +57,7 @@ end Weak
 
 namespace Execution
 
-variable (E : Execution Root)
+variable (E : Execution Root) {trusted : Store Root → Prop}
 
 /-! ## The weak full-rule fold with a derived reset seed -/
 
