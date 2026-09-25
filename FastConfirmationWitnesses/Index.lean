@@ -131,5 +131,5 @@ with strict deadline fit. The second execution above uses 12-second slots and
 real block and vote receipt delays. Blocks and evidence use source cutoffs;
 envelope/data service is vacuous in both runs. The exclusion point is checked
 by `DeadlineVotePathCandidate`: its skipped-boundary schedule fails the refined
-pre-tick relay. The audited public witness set remains 15 entries.
+pre-tick relay. The audited public witness set contains 14 entries.
 -/

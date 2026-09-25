@@ -1,14 +1,13 @@
 # Verified Fast Confirmation
 
-This Lean 4 repository verifies three properties of the executable Fast Confirmation Rule (FCR) under explicit execution, network, economic, and Casper FFG premises. The primary model follows the Python specification in the fork `fradamt/consensus-specs`, tag `fcr-gloas-fix` (`13f391516`). That tag includes the public Gloas empty-slot discount fix. The paper library is independent of the executable model. The proofs are kernel checked; the stated premises and the model boundary need separate review.
+This Lean 4 repository verifies two properties of the executable Fast Confirmation Rule (FCR) under explicit execution, network, economic, and Casper FFG premises. The primary model follows the Python specification in the fork `fradamt/consensus-specs`, tag `fcr-gloas-fix` (`13f391516`). That tag includes the public Gloas empty-slot discount fix. The paper library is independent of the executable model. The proofs are kernel checked; the stated premises and the model boundary need separate review.
 
 ## Review theorem
 
-`review_claims` in `FastConfirmationProofs/ReviewTheorem.lean` proves all three fields of `ReviewClaims` in `FastConfirmationStatements/Review.lean`:
+`review_claims` in `FastConfirmationProofs/ReviewTheorem.lean` proves both fields of `ReviewClaims` in `FastConfirmationStatements/Review.lean`:
 
 - `confirmed_root_safe_from_next_slot`: an honest node's stored confirmed root is on every honest head from the following slot, within the verification horizon.
 - `live_confirmed_root_monotonicity`: an honest node's later stored confirmed root descends from its earlier one when honest blocks and timely FFG justification meet the live premises.
-- `selected_result_safe_from_next_slot_of_scheduled_call`: the selected helper result at a scheduled boundary call is safe from the following slot when its selector guard holds. This covers an unchanged helper result.
 
 ## Premise ledger
 
@@ -18,22 +17,22 @@ The records in this table are in `FastConfirmationStatements/Premises/`. The pap
 ┌────────────────────┬────────────────────────────────────┬──────────────────────────────────────────────────────────────────────────────────┬───────────────────────────────┐
 │ Claim              │ Premise record                     │ Fields in plain words                                                            │ Source                        │
 ├────────────────────┼────────────────────────────────────┼──────────────────────────────────────────────────────────────────────────────────┼───────────────────────────────┤
-│ Both safety fields │ Execution.NextSlotSafetyPremises   │ Exact FFG state at every handler-successful prefix; a well formed scheduled run; │ Paper Assumption 3.2; Gloas   │
+│ Safety field       │ Execution.NextSlotSafetyPremises   │ Exact FFG state at every handler-successful prefix; a well formed scheduled run; │ Paper Assumption 3.2; Gloas   │
 │                    │                                    │ completed FCR calls; epoch arithmetic; anchor alignment; finalization            │ extension; model idealisation │
 │                    │                                    │ delay; more than one slot per epoch; checkpoint and link evidence.               │                               │
-│ Both safety fields │ Execution.ScheduledPrefixPremises  │ Whole seconds, well formed stores, coherent external calls, honest               │ Model idealisation            │
+│ Safety field       │ Execution.ScheduledPrefixPremises  │ Whole seconds, well formed stores, coherent external calls, honest               │ Model idealisation            │
 │                    │                                    │ behavior with an attestation deadline, and a valid genesis store.                │ Phase0/Gloas; model premise   │
-│ Both safety fields │ Execution.CompletedFCRCallPremises │ Five delivery laws; fixed active validators; committee and Byzantine             │ Paper Assumptions 1 and 2;    │
+│ Safety field       │ Execution.CompletedFCRCallPremises │ Five delivery laws; fixed active validators; committee and Byzantine             │ Paper Assumptions 1 and 2;    │
 │                    │                                    │ weight bounds; Phase0 source coherence; a nonzero balance floor;                 │ Gloas extension; model        │
 │                    │                                    │ next-slot vote receipt; guarded prediction support.                              │ idealisation                  │
-│ Both safety fields │ NextSlotSynchronyPremises          │ Positive delay; deadline cutoff for block, envelope, data and evidence           │ Paper synchrony; Gloas        │
+│ Safety field       │ NextSlotSynchronyPremises          │ Positive delay; deadline cutoff for block, envelope, data and evidence           │ Paper synchrony; Gloas        │
 │                    │                                    │ relay; pre-tick exclusion; payload service before boundary votes.                │ extension                     │
-│ Both safety fields │ BeaconExternalsPremises            │ Slot and state transition coherence, committee and attestation                   │ Model idealisation            │
+│ Safety field       │ BeaconExternalsPremises            │ Slot and state transition coherence, committee and attestation                   │ Model idealisation            │
 │                    │                                    │ validity, and deterministic envelope verification.                               │                               │
-│ Both safety fields │ ByzantineWeightPremises            │ Quantized balances, sound committee estimates, and a non-honest weight           │ Paper Assumption 2;           │
+│ Safety field       │ ByzantineWeightPremises            │ Quantized balances, sound committee estimates, and a non-honest weight           │ Paper Assumption 2;           │
 │                    │                                    │ fraction bound for every span, including one slot. A global fault                │ executable estimate           │
 │                    │                                    │ share does not establish this span bound.                                        │                               │
-│ Both safety fields │ CausalPrefixFFGInterpretation;     │ Exact handler-successful prefix FFG state, causal links, and projected           │ Paper Assumption 3.2; model   │
+│ Safety field       │ CausalPrefixFFGInterpretation;     │ Exact handler-successful prefix FFG state, causal links, and projected           │ Paper Assumption 3.2; model   │
 │                    │ EpochCheckpointClosure             │ checkpoint roots.                                                                │ idealisation                  │
 │ Live field         │ LiveMonotonicityPremises           │ An honest block in each slot from execution start, known by the next             │ Paper Theorem 1 monotonicity  │
 │                    │                                    │ slot and supported by honest votes; timely observed FFG justification            │ and Assumption 6,             │
@@ -41,7 +40,7 @@ The records in this table are in `FastConfirmationStatements/Premises/`. The pap
 └────────────────────┴────────────────────────────────────┴──────────────────────────────────────────────────────────────────────────────────┴───────────────────────────────┘
 ```
 
-`Execution.NextSlotSafetyPremises` supplies the common safety premise to the first and third fields. `LiveConfirmedRootMonotonicity` adds `LiveMonotonicityPremises` to that same execution premise. The FFG and finalization laws quantify over handler-successful prefixes beyond the safety endpoint where their declarations require it; the finite conclusion does not reduce their premise range.
+`Execution.NextSlotSafetyPremises` supplies the common safety premise to the safety field. `LiveConfirmedRootMonotonicity` adds `LiveMonotonicityPremises` to that same execution premise. The FFG and finalization laws quantify over handler-successful prefixes beyond the safety endpoint where their declarations require it; the finite conclusion does not reduce their premise range.
 
 ## Scope limits
 
@@ -67,7 +66,7 @@ Use the pinned Lean toolchain and a local checkout of the Python fork. The full 
 scripts/validate.sh --consensus-repo /path/to/fradamt-consensus-specs
 ```
 
-`--fast` runs source, document-name, boundary, and hygiene checks. The full check covers 15 public witnesses in `scripts/Audit.lean`.
+`--fast` runs source, document-name, boundary, and hygiene checks. The full check covers 14 public witnesses in `scripts/Audit.lean`.
 
 ## Where to read
 

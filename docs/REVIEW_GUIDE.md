@@ -1,6 +1,6 @@
 # Review guide
 
-This page records known limits and their current status. The exact public propositions are in `FastConfirmationStatements/Review.lean`. `review_claims` in `FastConfirmationProofs/ReviewTheorem.lean` proves all three fields. `scripts/Audit.lean` checks 15 public witnesses: eight executable-side results and seven paper results.
+This page records known limits and their current status. The exact public propositions are in `FastConfirmationStatements/Review.lean`. `review_claims` in `FastConfirmationProofs/ReviewTheorem.lean` proves both fields. `scripts/Audit.lean` checks 14 public witnesses: seven executable-side results and seven paper results.
 
 ```text
 ┌────────────────────────────────┬──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
@@ -8,8 +8,8 @@ This page records known limits and their current status. The exact public propos
 ├────────────────────────────────┼──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
 │ Stored next-slot safety        │ Proved by confirmed_root_safe_from_next_slot under Execution.NextSlotSafetyPremises. It covers honest stored         │
 │                                │ boundary outputs within a finite horizon.                                                                            │
-│ Scheduled selected result      │ Proved by selected_result_safe_from_next_slot_of_scheduled_call. The selector guard is a hypothesis; an unchanged    │
-│                                │ result is included.                                                                                                  │
+│ Scheduled selected result      │ The premise theorem is a spec-correspondence lemma for the `find_latest_confirmed_descendant` note. It is not a    │
+│                                │ review claim.                                                                                                      │
 │ Live monotonicity              │ Proved by live_confirmed_root_monotonicity under two fields of LiveMonotonicityPremises and the safety execution     │
 │                                │ bundle.                                                                                                              │
 │ Optional in-slot queries       │ No general safety claim. StrictPrefixExtraQuery.extra_query_changes_head_counterexample and                          │
@@ -79,7 +79,7 @@ prefixes beyond a safety endpoint when their declarations do. A finite endpoint
 restricts the conclusion, not those premise quantifiers.
 `scripts/check_synchrony_corners.py` checks the cutoff shapes and rejects old
 relay fields, missing cutoffs, same-second receiver states, and tick-time
-exemptions. Full validation also checks all 15 public witnesses.
+exemptions. Full validation also checks all 14 public witnesses.
 
 ## Python source and conformance
 

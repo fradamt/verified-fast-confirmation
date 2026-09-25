@@ -13,8 +13,7 @@ run_cmd do
     if actual != expected then
       throwError "unexpected fields for {name}: {actual}; expected {expected}"
   checkFields `FastConfirmation.Spec.ReviewClaims
-    ["confirmed_root_safe_from_next_slot", "live_confirmed_root_monotonicity",
-     "selected_result_safe_from_next_slot_of_scheduled_call"]
+    ["confirmed_root_safe_from_next_slot", "live_confirmed_root_monotonicity"]
   checkFields `FastConfirmation.Spec.Execution.NextSlotSafetyPremises
     ["semantics", "trajectory", "completed_calls", "epoch_ends_fit",
      "anchor_eq", "anchor_boundary", "finalization_delay",
