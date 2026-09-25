@@ -9,6 +9,7 @@ public import FastConfirmationWitnesses.NonVacuity.FullTwelve
 public import FastConfirmationWitnesses.NonVacuity.FullTwelveOperational
 public import FastConfirmationWitnesses.NonVacuity.FullTwelveFFG
 public import FastConfirmationWitnesses.NonVacuity.FullTwelvePremises
+public import FastConfirmationWitnesses.NonVacuity.TargetEdgePremises
 
 /-!
 # Witness index
@@ -32,6 +33,13 @@ bundle and the two executions that refute strict-prefix safety variants.
   honest validators, four slots per epoch, an anchor, a slot-one child, and a
   slot-seven FFG carrier. Its scheduled FCR call changes the confirmed root.
   The final in-horizon vote is delivered one second beyond the horizon.
+* Guarded current-target edge:
+  `TargetEdgePremiseWitness.full_bundle_witness` supplies the full next-slot
+  bundle for a one-second run. `target_edge_support_exercised` proves the
+  selector guard and the accepted anchor-to-child epoch crossing at the call
+  from second six to seven. `target_edge_call_snapshot` checks positive vote
+  weight and a remaining honest target vote. `target_edge_safe_from_next_slot`
+  applies the public safety theorem from second eight onward.
 * Twelve-second synchrony and behavior:
   `TwelveSecondSynchronyWitness.joint_witness` proves `WellFormedExecution`,
   `HonestBehavior`, `Synchrony`, and `NextSlotSynchronyPremises` for a second
@@ -153,6 +161,6 @@ with strict deadline fit. The second execution above uses 12-second slots and
 real block and vote receipt delays. Blocks and evidence use source cutoffs;
 envelope/data service is vacuous in both runs. The exclusion point is checked
 by `DeadlineVotePathCandidate`: its skipped-boundary schedule fails the refined
-pre-tick relay. The audited public witness set has 19 entries, including three checks for
+pre-tick relay. The audited public witness set has 22 entries, including three checks for
 the twelve-second full-bundle trace.
 -/

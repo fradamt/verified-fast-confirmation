@@ -35,7 +35,7 @@ def childPostPrefix : witnessExecution.ScheduledEventPrefix :=
   childPrefix.successor (by decide)
 
 set_option maxRecDepth 50000 in
-theorem child_on_block_accepted :
+private theorem child_on_block_accepted :
     on_block witnessConfig witnessExternals
         (childPrefix.store witnessConfig witnessExternals) childSignedBlock =
       some (childPostPrefix.store witnessConfig witnessExternals) := by
@@ -47,7 +47,7 @@ def childTransition :
   signedBlock := childSignedBlock
   event_at := by rfl
   postStore := childPostPrefix.store witnessConfig witnessExternals
-  accepted := child_on_block_accepted
+  accepted := by exact child_on_block_accepted
 
 /-- At second seven the first event is the ordinary slot-six receipt; the
 carrier block is the exact next event. -/
@@ -61,7 +61,7 @@ def carrierPostPrefix : witnessExecution.ScheduledEventPrefix :=
   carrierPrefix.successor (by decide)
 
 set_option maxRecDepth 50000 in
-theorem carrier_on_block_accepted :
+private theorem carrier_on_block_accepted :
     on_block witnessConfig witnessExternals
         (carrierPrefix.store witnessConfig witnessExternals)
         carrierSignedBlock =
@@ -74,23 +74,23 @@ def carrierTransition :
   signedBlock := carrierSignedBlock
   event_at := by rfl
   postStore := carrierPostPrefix.store witnessConfig witnessExternals
-  accepted := carrier_on_block_accepted
+  accepted := by exact carrier_on_block_accepted
 
-theorem anchor_accepted :
+private theorem anchor_accepted :
     witnessExecution.AcceptedRoot witnessConfig witnessExternals anchorRoot := by
   refine ⟨witnessExecution.genesis_store, .genesis, ?_⟩
   simp [witnessExecution, get_forkchoice_store, anchorSignedBlock]
 
-theorem child_accepted :
+private theorem child_accepted :
     witnessExecution.AcceptedRoot witnessConfig witnessExternals childRoot := by
   simpa [childSignedBlock] using childTransition.root_accepted
 
-theorem carrier_accepted :
+private theorem carrier_accepted :
     witnessExecution.AcceptedRoot witnessConfig witnessExternals carrierRoot := by
   simpa [carrierSignedBlock] using carrierTransition.root_accepted
 
 set_option maxRecDepth 50000 in
-theorem carrier_acceptedBlockAt :
+private theorem carrier_acceptedBlockAt :
     witnessExecution.AcceptedBlockAt witnessConfig witnessExternals carrierRoot
       carrierSignedBlock.message := by
   refine ⟨carrierTransition.postStore, carrierTransition.post_causal, ?_, ?_⟩
@@ -101,7 +101,7 @@ theorem carrier_acceptedBlockAt :
 
 /-! ## Finite block projection of every causal prefix -/
 
-theorem scheduledBlock_cases {b : SignedBeaconBlock WitnessRoot}
+private theorem scheduledBlock_cases {b : SignedBeaconBlock WitnessRoot}
     (h : IsScheduledBlock witnessExecution b) :
     b = childSignedBlock ∨ b = carrierSignedBlock := by
   obtain ⟨w, n, hmem⟩ := h
@@ -111,7 +111,7 @@ theorem scheduledBlock_cases {b : SignedBeaconBlock WitnessRoot}
 
 /-- Although causal stores range over arbitrary nodes, seconds, and exact
 prefix lengths, their known block projection has only these three rows. -/
-theorem causal_known_table {store : Store WitnessRoot}
+private theorem causal_known_table {store : Store WitnessRoot}
     (hstore : witnessExecution.CausalStore witnessConfig witnessExternals store)
     {r : WitnessRoot} (hr : r ∈ store.block_roots) :
     (r = anchorRoot ∧ store.blocks r = anchorSignedBlock.message) ∨
@@ -133,7 +133,7 @@ theorem causal_known_table {store : Store WitnessRoot}
     · right; right
       exact ⟨hroot.symm, hmessage⟩
 
-theorem causal_anchor_known {store : Store WitnessRoot}
+private theorem causal_anchor_known {store : Store WitnessRoot}
     (hstore : witnessExecution.CausalStore witnessConfig witnessExternals store) :
     anchorRoot ∈ store.block_roots := by
   cases hstore with
@@ -143,7 +143,7 @@ theorem causal_anchor_known {store : Store WitnessRoot}
       apply (p.genesisStoreLE witnessConfig witnessExternals).1
       simp [witnessExecution, get_forkchoice_store, anchorSignedBlock]
 
-theorem causal_nonAnchor_parent_known {store : Store WitnessRoot}
+private theorem causal_nonAnchor_parent_known {store : Store WitnessRoot}
     (hstore : witnessExecution.CausalStore witnessConfig witnessExternals store)
     {r : WitnessRoot} (hr : r ∈ store.block_roots) (hne : r ≠ anchorRoot) :
     (store.blocks r).parent_root ∈ store.block_roots := by
@@ -158,7 +158,7 @@ theorem causal_nonAnchor_parent_known {store : Store WitnessRoot}
             get_forkchoice_store witnessConfig anchorState anchorSignedBlock by
           rfl) r hr).resolve_left hne
 
-theorem causal_child_known_of_carrier_known {store : Store WitnessRoot}
+private theorem causal_child_known_of_carrier_known {store : Store WitnessRoot}
     (hstore : witnessExecution.CausalStore witnessConfig witnessExternals store)
     (hcarrier : carrierRoot ∈ store.block_roots) :
     childRoot ∈ store.block_roots := by
@@ -170,7 +170,7 @@ theorem causal_child_known_of_carrier_known {store : Store WitnessRoot}
   · rw [h.2] at hparent
     simpa [carrierSignedBlock] using hparent
 
-theorem acceptedRoot_cases {r : WitnessRoot}
+private theorem acceptedRoot_cases {r : WitnessRoot}
     (hr : witnessExecution.AcceptedRoot witnessConfig witnessExternals r) :
     r = anchorRoot ∨ r = childRoot ∨ r = carrierRoot := by
   obtain ⟨store, hstore, hknown⟩ := hr
@@ -192,17 +192,17 @@ theorem acceptedBlockAt_cases {r : WitnessRoot} {b : BeaconBlock WitnessRoot}
 
 /-! ## Concrete execution descent -/
 
-theorem child_parentEdge :
+private theorem child_parentEdge :
     witnessExecution.ParentEdge childRoot anchorRoot := by
   exact Or.inr ⟨0, 4, childSignedBlock,
     block_mem_schedule_iff.mpr (Or.inl ⟨rfl, rfl⟩), rfl, rfl⟩
 
-theorem carrier_parentEdge :
+private theorem carrier_parentEdge :
     witnessExecution.ParentEdge carrierRoot childRoot := by
   exact Or.inr ⟨0, 7, carrierSignedBlock,
     block_mem_schedule_iff.mpr (Or.inr ⟨rfl, rfl⟩), rfl, rfl⟩
 
-theorem child_descends_anchor :
+private theorem child_descends_anchor :
     witnessExecution.RootDescends childRoot anchorRoot :=
   .step child_parentEdge (.refl anchorRoot)
 
@@ -215,7 +215,7 @@ theorem carrier_descends_anchor :
   Execution.RootDescends.trans witnessExecution carrier_descends_child
     child_descends_anchor
 
-theorem parentEdge_val_lt {child parent : WitnessRoot}
+private theorem parentEdge_val_lt {child parent : WitnessRoot}
     (h : witnessExecution.ParentEdge child parent) : parent.val < child.val := by
   rcases h with hgen | hsched
   · obtain ⟨r, hr, rfl, rfl⟩ := hgen
@@ -230,7 +230,7 @@ theorem parentEdge_val_lt {child parent : WitnessRoot}
     · rw [hchild, hparent]
       decide
 
-theorem rootDescends_val_le {source target : WitnessRoot}
+private theorem rootDescends_val_le {source target : WitnessRoot}
     (h : witnessExecution.RootDescends source target) :
     target.val ≤ source.val := by
   induction h with
@@ -238,7 +238,7 @@ theorem rootDescends_val_le {source target : WitnessRoot}
   | step hedge _ ih =>
       exact ih.trans (Nat.le_of_lt (parentEdge_val_lt hedge))
 
-theorem rootDescends_carrier_iff {r : WitnessRoot} :
+private theorem rootDescends_carrier_iff {r : WitnessRoot} :
     witnessExecution.RootDescends r carrierRoot ↔ r = carrierRoot := by
   constructor
   · intro hdesc
@@ -251,7 +251,7 @@ theorem rootDescends_carrier_iff {r : WitnessRoot} :
   · rintro rfl
     exact .refl carrierRoot
 
-theorem acceptedRoot_descends_anchor {r : WitnessRoot}
+private theorem acceptedRoot_descends_anchor {r : WitnessRoot}
     (hr : witnessExecution.AcceptedRoot witnessConfig witnessExternals r) :
     witnessExecution.RootDescends r anchorRoot := by
   rcases acceptedRoot_cases hr with rfl | rfl | rfl
@@ -266,17 +266,17 @@ def witnessIncluded (carrier : WitnessRoot)
   carrier = carrierRoot ∧ (a = vote4 ∨ a = vote5 ∨ a = vote6)
 
 
-theorem carrier_blockAt :
+private theorem carrier_blockAt :
     witnessExecution.BlockAt carrierRoot carrierSignedBlock.message := by
   exact Or.inr ⟨0, 7, carrierSignedBlock,
     block_mem_schedule_iff.mpr (Or.inr ⟨rfl, rfl⟩), rfl, rfl⟩
 
-theorem includedVote_true_scheduled {s : Slot} (hlo : 4 ≤ s) (hhi : s ≤ 6) :
+private theorem includedVote_true_scheduled {s : Slot} (hlo : 4 ≤ s) (hhi : s ≤ 6) :
     Event.attestation (vote s) true ∈ witnessExecution.schedule 0 7 := by
   interval_cases s <;> simp [witnessExecution, witnessSchedule,
     vote4, vote5, vote6]
 
-theorem includedVote_data {s : Slot} (hlo : 4 ≤ s) (hhi : s ≤ 6) :
+private theorem includedVote_data {s : Slot} (hlo : 4 ≤ s) (hhi : s ≤ 6) :
     (vote s).data =
       { slot := s, index := 0, beacon_block_root := childRoot
         source := anchorCheckpoint, target := childEpochOneCheckpoint } := by
@@ -288,10 +288,10 @@ def acceptedIncludedEvidenceAt (s : Slot) (hlo : 4 ≤ s) (hhi : s ≤ 6) :
       witnessExternals witnessExecution
       witnessExternals.is_valid_indexed_attestation carrierRoot (vote s) where
   carrier_message := carrierSignedBlock.message
-  carrier_at := carrier_blockAt
+  carrier_at := by exact carrier_blockAt
   in_carrier_body := by
     interval_cases s <;> simp [carrierSignedBlock, vote4, vote5, vote6]
-  received_from_block := ⟨0, 7, includedVote_true_scheduled hlo hhi⟩
+  received_from_block := by exact ⟨0, 7, includedVote_true_scheduled hlo hhi⟩
   validation_state := witnessExternals.process_slots childState 4
   validation_registry := by
     simpa [witnessExternals] using witnessProcessSlots_registry childState 4
@@ -324,7 +324,7 @@ def acceptedIncludedEvidenceAt (s : Slot) (hlo : 4 ≤ s) (hhi : s ≤ 6) :
     have hi' : i = committeeIndex s := by simpa [vote] using hi
     subst i
     exact committeeIndex_lt_four s
-  carrier_accepted := carrier_acceptedBlockAt
+  carrier_accepted := by exact carrier_acceptedBlockAt
   validation_store := childPostPrefix.store witnessConfig witnessExternals
   validation_store_honest := by
     apply Execution.HonestCausalStore.scheduledPrefix childPostPrefix
@@ -360,7 +360,7 @@ def witnessAcceptedIncludedAttestations :
     exact acceptedIncludedEvidenceAt 6 (by decide) (by decide)
 
 /-- Every accepted included vote occurs in its carrier's actual FFG body. -/
-theorem no_included_vote_missing_from_body
+private theorem no_included_vote_missing_from_body
     {carrier : WitnessRoot} {a : Attestation WitnessRoot}
     (h : witnessAcceptedIncludedAttestations.Included carrier a) :
     ∃ b : BeaconBlock WitnessRoot,
@@ -374,7 +374,7 @@ def witnessIncludedAnchorChildLink :
       carrierRoot anchorCheckpoint childEpochOneCheckpoint where
   signers := {3, 2, 1}
   source_before_target := by decide
-  target_descends_source := child_descends_anchor
+  target_descends_source := by exact child_descends_anchor
   target_epoch_within := by decide
   target_span_within := by
     constructor <;> exact slot_within_of_lt_sixteen (by decide)
@@ -417,16 +417,16 @@ def witnessC (r : WitnessRoot) (e : Epoch) : Checkpoint WitnessRoot :=
         else if e = 1 then childRoot else carrierRoot
       else anchorRoot }
 
-@[simp] theorem witnessC_anchor (e : Epoch) :
+@[simp] private theorem witnessC_anchor (e : Epoch) :
     witnessC anchorRoot e = { epoch := e, root := anchorRoot } := by
   simp [witnessC]
 
-@[simp] theorem witnessC_child_zero :
+@[simp] private theorem witnessC_child_zero :
     witnessC childRoot 0 = anchorCheckpoint := by
   rfl
 
 
-@[simp] theorem witnessC_carrier_zero :
+@[simp] private theorem witnessC_carrier_zero :
     witnessC carrierRoot 0 = anchorCheckpoint := by
   rfl
 
@@ -455,18 +455,18 @@ def witnessFormed (r : WitnessRoot) (c : Checkpoint WitnessRoot) : Prop :=
 def witnessGU (r : WitnessRoot) : Checkpoint WitnessRoot :=
   if r = carrierRoot then childEpochOneCheckpoint else anchorCheckpoint
 
-theorem witnessFormed_anchor : witnessFormed anchorRoot anchorCheckpoint := by
+private theorem witnessFormed_anchor : witnessFormed anchorRoot anchorCheckpoint := by
   exact Or.inl ⟨rfl, rfl⟩
 
-theorem witnessFormed_carrier_anchor :
+private theorem witnessFormed_carrier_anchor :
     witnessFormed carrierRoot anchorCheckpoint := by
   exact Or.inr ⟨rfl, Or.inl rfl⟩
 
-theorem witnessFormed_carrier_child :
+private theorem witnessFormed_carrier_child :
     witnessFormed carrierRoot childEpochOneCheckpoint := by
   exact Or.inr ⟨rfl, Or.inr rfl⟩
 
-theorem carrier_child_formation_causal :
+private theorem carrier_child_formation_causal :
     HonestEarlierTargetVoteOnCarrierChain witnessConfig witnessExternals
       witnessExecution witnessIncluded carrierRoot childEpochOneCheckpoint := by
   refine ⟨carrierSignedBlock.message, carrier_acceptedBlockAt,
@@ -592,7 +592,7 @@ def witnessAcceptedChainFFGState :
 
 /-! ## Checkpoint reflection at every exact causal prefix -/
 
-theorem causal_anchor_message {store : Store WitnessRoot}
+private theorem causal_anchor_message {store : Store WitnessRoot}
     (hstore : witnessExecution.CausalStore witnessConfig witnessExternals store) :
     store.blocks anchorRoot = anchorSignedBlock.message := by
   have hknown := causal_anchor_known hstore
@@ -601,7 +601,7 @@ theorem causal_anchor_message {store : Store WitnessRoot}
   · exact False.elim ((by decide : anchorRoot ≠ childRoot) h.1)
   · exact False.elim ((by decide : anchorRoot ≠ carrierRoot) h.1)
 
-theorem causal_child_message {store : Store WitnessRoot}
+private theorem causal_child_message {store : Store WitnessRoot}
     (hstore : witnessExecution.CausalStore witnessConfig witnessExternals store)
     (hknown : childRoot ∈ store.block_roots) :
     store.blocks childRoot = childSignedBlock.message := by
@@ -611,7 +611,7 @@ theorem causal_child_message {store : Store WitnessRoot}
   · exact False.elim ((by decide : childRoot ≠ carrierRoot) h.1)
 
 
-theorem witnessCheckpointOfKnown {store : Store WitnessRoot}
+private theorem witnessCheckpointOfKnown {store : Store WitnessRoot}
     (hstore : witnessExecution.CausalStore witnessConfig witnessExternals store)
     (r : WitnessRoot) (hr : r ∈ store.block_roots) (e : Epoch) :
     witnessC r e = get_checkpoint_for_block witnessConfig store r e := by
@@ -667,7 +667,7 @@ theorem witnessCheckpointOfKnown {store : Store WitnessRoot}
               carrierSignedBlock, hcarrier, hstop] <;>
               simp [anchorRoot, childRoot, carrierRoot]
 
-theorem witnessAU_cases {r : WitnessRoot} {c : Checkpoint WitnessRoot}
+private theorem witnessAU_cases {r : WitnessRoot} {c : Checkpoint WitnessRoot}
     (hAU : witnessAcceptedChainFFGState.AU witnessConfig witnessExternals r c) :
     c = anchorCheckpoint ∨
       (r = carrierRoot ∧ c = childEpochOneCheckpoint) := by
@@ -678,7 +678,7 @@ theorem witnessAU_cases {r : WitnessRoot} {c : Checkpoint WitnessRoot}
   · exact Or.inl rfl
   · exact Or.inr ⟨rootDescends_carrier_iff.mp hdesc, rfl⟩
 
-theorem witnessAUCheckpointOfKnown {store : Store WitnessRoot}
+private theorem witnessAUCheckpointOfKnown {store : Store WitnessRoot}
     (hstore : witnessExecution.CausalStore witnessConfig witnessExternals store)
     (r : WitnessRoot) (hr : r ∈ store.block_roots)
     (c : Checkpoint WitnessRoot)
@@ -768,7 +768,7 @@ theorem acceptedTransition_cases
     rw [hpostStore]
     set_option maxRecDepth 50000 in rfl
 
-theorem genesis_known_eq_anchor {r : WitnessRoot}
+private theorem genesis_known_eq_anchor {r : WitnessRoot}
     (hr : r ∈ witnessExecution.genesis_store.block_roots) :
     r = anchorRoot := by
   simpa [witnessExecution, get_forkchoice_store, anchorSignedBlock] using hr
@@ -941,7 +941,7 @@ def witnessAcceptedEpochCheckpointProjection :
 
 /-! ## Exact classification of every included link -/
 
-theorem witnessIncludedLink_cases
+private theorem witnessIncludedLink_cases
     {carrier : WitnessRoot} {source target : Checkpoint WitnessRoot}
     (L : IncludedSupermajorityLink witnessConfig witnessExecution
       witnessIncluded carrier source target) :
@@ -989,7 +989,7 @@ def witnessExactLinkValidity :
 
 /-! ## Included votes are pairwise non-slashable -/
 
-theorem witness_hasSlashablePairOnChain_false (tip : WitnessRoot)
+private theorem witness_hasSlashablePairOnChain_false (tip : WitnessRoot)
     (i : ValidatorIndex) :
     ¬ witnessAcceptedChainFFGState.HasSlashablePairOnChain
       witnessConfig witnessExternals tip i := by

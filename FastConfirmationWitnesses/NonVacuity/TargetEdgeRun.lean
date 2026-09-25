@@ -183,7 +183,7 @@ instance (a b : BeaconState WitnessRoot) : Decidable (SameProjectedState a b) :=
     unfold SameProjectedState
     infer_instance
 
-theorem sameProjectedState_iff_eq {a b : BeaconState WitnessRoot} :
+private theorem sameProjectedState_iff_eq {a b : BeaconState WitnessRoot} :
     SameProjectedState a b ↔ a = b := by
   constructor
   · rintro ⟨hgen, hslot, hvalidators, hj, hf, hcommittees, hcounts, hidentity⟩
@@ -248,7 +248,7 @@ def confirmingFcr : FastConfirmationStore WitnessRoot :=
 
 /-! ## Basic clock and finite classifiers -/
 
-theorem time_at_eq (n : ℕ) : witnessExecution.time_at n = n := by
+private theorem time_at_eq (n : ℕ) : witnessExecution.time_at n = n := by
   norm_num [Execution.time_at, witnessExecution, anchorState, stateAt,
     anchorSignedBlock, witnessConfig, get_forkchoice_store]
 
@@ -258,12 +258,12 @@ theorem slot_at_eq (n : ℕ) :
     stateAt, anchorSignedBlock, witnessConfig, get_forkchoice_store,
     GENESIS_SLOT]
 
-theorem slot_start_eq (s : Slot) :
+private theorem slot_start_eq (s : Slot) :
     witnessExecution.slot_start witnessConfig s = s := by
   norm_num [Execution.slot_start, witnessExecution, anchorState, stateAt,
     anchorSignedBlock, witnessConfig, get_forkchoice_store]
 
-theorem slot_lt_sixteen {s : Slot}
+private theorem slot_lt_sixteen {s : Slot}
     (hs : witnessExecution.SlotWithinHorizon witnessConfig s) : s < 16 := by
   have hepoch := hs.2
   change s / 4 < 4 at hepoch
@@ -332,7 +332,7 @@ theorem witness_valid_iff (state : BeaconState WitnessRoot)
 
 
 
-theorem find_latest_confirmed_descendant_strict_advance :
+private theorem find_latest_confirmed_descendant_strict_advance :
     find_latest_confirmed_descendant witnessConfig witnessExternals confirmingFcr
       anchorRoot = childRoot := by
   set_option maxRecDepth 50000 in decide
@@ -400,7 +400,7 @@ theorem vote_data_slot (s : Slot) : (vote s).data.slot = s := by
 
 /-- Every scheduled copy of a ground vote is received after that vote's
 recorded send second. -/
-theorem scheduled_vote_sent_before {w n s ifb}
+private theorem scheduled_vote_sent_before {w n s ifb}
     (h : Event.attestation (vote s) ifb ∈ witnessExecution.schedule w n) :
     s ≤ n := by
   have vote_slot_eq {t : Slot} (heq : vote s = vote t) : s = t := by
@@ -428,7 +428,7 @@ theorem scheduled_vote_sent_before {w n s ifb}
         exact Nat.sub_le n 1
       · simp [witnessSchedule, h1, h7, hb] at h
 
-theorem recorded_vote_of_attester {s : Slot} (hs : s < 16)
+private theorem recorded_vote_of_attester {s : Slot} (hs : s < 16)
     {v : ValidatorIndex} (hvin : v ∈ (vote s).attesting_indices) :
     ∃ m a', witnessExecution.vote v (vote s).data.slot = some (m, a') ∧
       (vote s).data = a'.data := by
@@ -447,7 +447,7 @@ theorem witness_store_symmetric (v w : ValidatorIndex) (n : ℕ) :
       rw [ih]
       rfl
 
-theorem witnessWellFormedExecution :
+private theorem witnessWellFormedExecution :
     WellFormedExecution witnessExecution := by
   constructor
   · intro w n b hb w' n' b' hb' hroot
@@ -479,7 +479,7 @@ theorem witnessWellFormedExecution :
     rcases block_mem_schedule_iff.mp hb with ⟨rfl, rfl⟩ | ⟨rfl, rfl⟩ <;>
       decide
 
-theorem honest_vote_recorded {s : Slot} (hs : s < 16) :
+private theorem honest_vote_recorded {s : Slot} (hs : s < 16) :
     witnessExecution.vote (committeeIndex s) s =
       some (s, honest_attestation witnessConfig witnessExternals
         (witnessExecution.store witnessConfig witnessExternals (committeeIndex s) s)
@@ -492,7 +492,7 @@ private theorem ground_votes_not_slashable :
       is_slashable_attestation_data (vote s.val).data (vote t.val).data = false := by
   decide
 
-theorem witnessHonestBehavior :
+private theorem witnessHonestBehavior :
     HonestBehavior witnessConfig witnessExternals witnessExecution := by
   constructor
   · intro v hv s hcommittee hs _hs0
@@ -530,7 +530,7 @@ theorem witnessHonestBehavior :
     rcases honest_eq_zero_or_one_or_two_or_three hv with
       rfl | rfl | rfl | rfl <;> decide
 
-theorem witnessPJF_current_epoch_le (st : BeaconState WitnessRoot) :
+private theorem witnessPJF_current_epoch_le (st : BeaconState WitnessRoot) :
     (witnessPJF st).current_justified_checkpoint.epoch ≤
       compute_epoch_at_slot witnessConfig st.slot := by
   by_cases h : st.slot = 7
@@ -538,7 +538,7 @@ theorem witnessPJF_current_epoch_le (st : BeaconState WitnessRoot) :
       compute_epoch_at_slot]
   · simp [witnessPJF, h, anchorCheckpoint]
 
-theorem active_index_lt_four {i : ValidatorIndex} {e : Epoch}
+private theorem active_index_lt_four {i : ValidatorIndex} {e : Epoch}
     (hactive : is_active_validator
       (witnessExecution.registry.getD i default) e = true) : i < 4 := by
   cases i with
@@ -561,7 +561,7 @@ theorem active_index_lt_four {i : ValidatorIndex} {e : Epoch}
                   rw [hexit] at hactive
                   exact (Nat.not_lt_zero e hactive.2).elim
 
-theorem witness_committee_coverage_at {i : ValidatorIndex} {e : Epoch}
+private theorem witness_committee_coverage_at {i : ValidatorIndex} {e : Epoch}
     (hi : i < 4) (he : e < 4) :
     ∃ s : Slot, witnessExecution.SlotWithinHorizon witnessConfig s ∧
       compute_epoch_at_slot witnessConfig s = e ∧
@@ -580,7 +580,7 @@ theorem witnessProcessSlots_registry (st : BeaconState WitnessRoot) (s : Slot) :
     split <;> rfl
   · rfl
 
-theorem witnessTransition_registry (st : BeaconState WitnessRoot)
+private theorem witnessTransition_registry (st : BeaconState WitnessRoot)
     (b : SignedBeaconBlock WitnessRoot) (st' : BeaconState WitnessRoot)
     (h : witnessExternals.state_transition st b = some st') :
     st'.validators = st.validators := by
@@ -622,7 +622,7 @@ theorem witnessStore_registryConstant (v : ValidatorIndex) (n : ℕ) :
           witnessProcessSlots_registry store event hstore) _ _ ?_
       exact on_tick_registryConstant witnessConfig _ _ ih
 
-theorem witnessCausalStore_registryConstant {store : Store WitnessRoot}
+private theorem witnessCausalStore_registryConstant {store : Store WitnessRoot}
     (hstore : witnessExecution.CausalStore witnessConfig witnessExternals store) :
     RegistryConstant witnessExecution.registry store := by
   cases hstore with
@@ -638,7 +638,7 @@ theorem witnessCausalStore_registryConstant {store : Store WitnessRoot}
       exact on_tick_registryConstant witnessConfig _ _
         (witnessStore_registryConstant p.node p.previousSecond)
 
-theorem witnessReachableValidationState_nonempty {state : BeaconState WitnessRoot}
+private theorem witnessReachableValidationState_nonempty {state : BeaconState WitnessRoot}
     (hstate : witnessExecution.ReachableValidationState
       witnessConfig witnessExternals state) : state.validators ≠ [] := by
   obtain ⟨store, hstore, hstate⟩ := hstate
@@ -651,7 +651,7 @@ theorem witnessReachableValidationState_nonempty {state : BeaconState WitnessRoo
   rw [heq]
   decide
 
-theorem witnessExternalsCoherence :
+private theorem witnessExternalsCoherence :
     BeaconExternalsPremises witnessConfig witnessExternals witnessExecution := by
   constructor
   · intro st s hlt
@@ -847,7 +847,7 @@ theorem witnessByzantineBound :
     interval_cases a <;> interval_cases b <;>
       set_option maxRecDepth 50000 in decide
 
-theorem witness_vote_false_delivery {s : Slot} (hs : s < 16)
+private theorem witness_vote_false_delivery {s : Slot} (hs : s < 16)
     (w : ValidatorIndex) :
     Event.attestation (vote s) false ∈
       witnessExecution.schedule w (witnessExecution.slot_start witnessConfig (s + 1)) := by
@@ -855,11 +855,11 @@ theorem witness_vote_false_delivery {s : Slot} (hs : s < 16)
   interval_cases s <;>
     simp [witnessExecution, witnessSchedule, vote3, vote4, vote5, vote6]
 
-theorem witness_slot15_delivery_at_second16 (w : ValidatorIndex) :
+private theorem witness_slot15_delivery_at_second16 (w : ValidatorIndex) :
     Event.attestation vote15 false ∈ witnessExecution.schedule w 16 := by
   simp [witnessExecution, witnessSchedule, vote15]
 
-theorem witnessSynchrony :
+private theorem witnessSynchrony :
     Synchrony witnessConfig witnessExternals witnessExecution := by
   refine {
     delta := ⟨500, by decide, by decide⟩
