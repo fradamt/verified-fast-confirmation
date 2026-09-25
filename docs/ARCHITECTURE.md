@@ -30,9 +30,9 @@ Six Lean libraries separate the trusted definitions from proof terms. An arrow m
 │ check_consensus_source.py     │ The Python tag and the pinned source objects match the recorded hashes.                           │
 │ check_review_boundary.py      │ Lean parser import closure of Statements contains only Model and Statements modules; every        │
 │                               │ Statements source is included.                                                                    │
-│ StatementReachability.lean    │ Every authored Statements declaration is reachable from ReviewClaims, except two documented       │
+│ StatementReachability.lean    │ Every authored Statements declaration is reachable from ReviewClaims, except three documented       │
 │                               │ public witness dependencies.                                                                      │
-│ ReviewSurfaceShape.lean       │ The three review fields and selected premise record shapes remain exact.                          │
+│ ReviewSurfaceShape.lean       │ The two review fields and selected premise record shapes remain exact.                          │
 │ check_imports.py              │ The six-library import direction and Paper separation hold.                                       │
 │ check_doc_names.py            │ Backticked Lean names in current documents resolve to declarations or files.                      │
 │ Audit.lean                    │ The public witness set has only standard axiom dependencies and no forbidden declarations.        │
