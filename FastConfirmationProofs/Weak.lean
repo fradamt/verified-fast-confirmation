@@ -68,6 +68,7 @@ public import FastConfirmationProofs.Weak.Safety.WeakObserverDomain
 public import FastConfirmationProofs.Weak.Safety.WeakObserverProvenance
 public import FastConfirmationProofs.Weak.Safety.WeakObserverReplay
 public import FastConfirmationProofs.Weak.Safety.WeakObserverStrictCallFilterInputs
+public import FastConfirmationProofs.Weak.Safety.TrustedWeakObserverStrictCallFilterInputs
 public import FastConfirmationProofs.Weak.Safety.WeakObserverValidity
 public import FastConfirmationProofs.Weak.Safety.WeakOneShotSafety
 public import FastConfirmationProofs.Weak.Safety.TrustedWeakObserverCoherence
