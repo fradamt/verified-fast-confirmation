@@ -21,8 +21,10 @@ namespace FastConfirmation.Spec
 variable {Root : Type*} [LinearOrder Root] [Inhabited Root]
 variable (cfg : Config) (ext : Externals Root)
 /-- Normative support provisos for prediction helpers actually used by one
-selector call.  Epoch-start short-circuit paths carry no no-conflict proviso,
-because that helper need not be evaluated there. -/
+selector call. `current_target` covers the tentative edges that cross to a
+later epoch. `selected_previous_result_no_conflict` covers the final
+no-conflict guard in a non-start slot. The proof does not need a proviso for
+retained previous-loop edges. -/
 structure FCRPredictionSupportAt (E : Execution Root)
     (v : ValidatorIndex) (q : ℕ)
     (fcrStore : FastConfirmationStore Root)
@@ -31,17 +33,9 @@ structure FCRPredictionSupportAt (E : Execution Root)
     CurrentTargetSelectedEdge cfg ext fcrStore latestConfirmedRoot a c →
     HonestVotesSupportTarget cfg E
       (get_current_target cfg fcrStore.store) q
-  no_conflict : ∀ a c : Root,
-    PreviousEpochSelectedEdge cfg ext fcrStore latestConfirmedRoot a c →
-    is_start_slot_at_epoch cfg
-      (get_current_slot cfg fcrStore.store) ≠ true →
-    HonestVotesSupportTarget cfg E
-      (get_current_target cfg fcrStore.store) q
-  /-- The final tentative stage can return a previous-epoch result even when
-  that result is not a retained previous-loop edge.  In a non-start slot the
-  wrapper's final guard still used the same no-conflict helper, so its
-  normative support proviso must be indexed by the selected result as well as
-  by previous-loop edges. -/
+  /-- The final tentative stage can return a previous-epoch result. In a
+  non-start slot the wrapper's final guard uses the no-conflict helper, so
+  its normative support proviso is indexed by the selected result. -/
   selected_previous_result_no_conflict : ∀ result : Root,
     find_latest_confirmed_descendant cfg ext fcrStore latestConfirmedRoot = result →
     result ≠ latestConfirmedRoot →

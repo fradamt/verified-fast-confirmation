@@ -73,7 +73,7 @@ private theorem witnessSelectedHelperProvisos
       (witnessExecution.getLatestConfirmedTraceAt witnessConfig
         witnessExternals v n).afterObserved := by
   have h := target_votes_support hv hH
-  exact ⟨fun _ _ _ => h, fun _ _ _ _ => h, fun _ _ _ _ _ => h⟩
+  exact ⟨fun _ _ _ => h, fun _ _ _ _ _ => h⟩
 
 /-! ## Four-epoch support and accepted FFG closure -/
 

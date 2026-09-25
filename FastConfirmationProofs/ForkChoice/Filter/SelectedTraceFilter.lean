@@ -4,6 +4,7 @@ public import FastConfirmationProofs.FCRRule.SelectedEdgeGeometry
 public import FastConfirmationProofs.ForkChoice.Filter.SelectedFilterChainGeometry
 
 public import FastConfirmationStatements.Premises.FCRCallPremises
+public import FastConfirmationInternal.FCRRule.SelectedTraceEdges
 @[expose] public section
 
 /-!

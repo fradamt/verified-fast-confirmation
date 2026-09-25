@@ -2,6 +2,7 @@ module
 public import FastConfirmationProofs.Execution.History.SelectedPreQueryHistoricalSIR
 public import FastConfirmationProofs.FCRRule.FCRCallContracts
 public import FastConfirmationProofs.Checkpoints.TrustedAnchorGeometry
+public import FastConfirmationInternal.FCRRule.SelectedTraceEdges
 
 @[expose] public section
 

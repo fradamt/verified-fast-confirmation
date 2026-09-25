@@ -1,6 +1,7 @@
 module
 public import FastConfirmationProofs.FCRRule.SelectedInitialRecency
 public import FastConfirmationProofs.FFG.SelectedSource.SelectedJustifiedCompatibility
+public import FastConfirmationInternal.FCRRule.SelectedTraceEdges
 
 @[expose] public section
 

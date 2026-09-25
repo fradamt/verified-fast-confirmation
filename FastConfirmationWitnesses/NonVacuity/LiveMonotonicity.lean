@@ -1252,17 +1252,6 @@ private theorem bounded_no_currentTargetAcceptedEdge_under_selector :
   simp only [getLatestSelectorGuard]
   set_option maxRecDepth 50000 in decide
 
-private theorem bounded_no_previousAcceptedEdge_away_from_epoch_start :
-    ∀ (v : Fin 2) (n : Fin 3) (a c : Root),
-      (a, c) ∈
-        (findLatestSelectedTrace cfg ext
-          (E.fcrStoreAtCall cfg ext v.val n.val)
-          (E.getLatestConfirmedTraceAt cfg ext v.val n.val).afterObserved).2.1 →
-      is_start_slot_at_epoch cfg
-        (get_current_slot cfg (E.fcrStoreAtCall cfg ext v.val n.val).store)
-          ≠ true → False := by
-  set_option maxRecDepth 50000 in decide
-
 private theorem bounded_no_selectedPreviousResult_under_selector :
     ∀ (v : Fin 2) (n : Fin 3) (result : Root),
       getLatestSelectorGuard cfg
@@ -1302,19 +1291,11 @@ theorem selectedHelperProvisos
   let nf : Fin 3 := ⟨n, hnlt'⟩
   refine
     { current_target := ?_
-      no_conflict := ?_
       selected_previous_result_no_conflict := ?_ }
   · intro a c hedge
     rcases hedge with ⟨hmem, hlt⟩
     exact False.elim (bounded_no_currentTargetAcceptedEdge_under_selector
       vf nf a c hselector hmem hlt)
-  · intro a c hedge hnotStart
-    change (a, c) ∈
-      (findLatestSelectedTrace cfg ext (E.fcrStoreAtCall cfg ext v n)
-        (E.getLatestConfirmedTraceAt cfg ext v n).afterObserved).2.1 at hedge
-    exact False.elim
-      (bounded_no_previousAcceptedEdge_away_from_epoch_start
-        vf nf a c hedge hnotStart)
   · intro result hout hstrict hprevious hnotStart
     exact False.elim
       (bounded_no_selectedPreviousResult_under_selector

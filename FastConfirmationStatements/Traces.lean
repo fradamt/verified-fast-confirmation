@@ -326,11 +326,6 @@ def findLatestSelectedTrace (fcrStore : FastConfirmationStore Root)
   (find_latest_confirmed_descendant cfg ext fcrStore latestConfirmedRoot,
     (previousEdges, tentativeEdges))
 
-/-- A previous-loop edge retained by the complete wrapper trace. -/
-def PreviousEpochSelectedEdge (fcrStore : FastConfirmationStore Root)
-    (latestConfirmedRoot a c : Root) : Prop :=
-  (a, c) ∈ (findLatestSelectedTrace cfg ext fcrStore latestConfirmedRoot).2.1
-
 /-- A selected-path tentative edge which actually crossed to a later block
 epoch.  Unlike bare loop instrumentation, this predicate is indexed by the
 wrapper input and excludes tentative edges discarded by the final acceptance

@@ -1,5 +1,6 @@
 module
 public import FastConfirmationProofs.FCRRule.SelectedTraceCoverage
+public import FastConfirmationInternal.FCRRule.SelectedTraceEdges
 
 @[expose] public section
 

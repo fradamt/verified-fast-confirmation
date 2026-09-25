@@ -51,20 +51,6 @@ private theorem bounded_no_currentTargetAcceptedEdge_under_selector :
   simp only [getLatestSelectorGuard]
   set_option maxRecDepth 50000 in decide
 
-private theorem bounded_no_previousAcceptedEdge_away_from_epoch_start :
-    ∀ (v : Fin 4) (n : Fin 15) (a c : WitnessRoot),
-      (a, c) ∈
-          (findLatestSelectedTrace cfg ext
-            (run.fcrStoreAtCall cfg ext
-              v.val (callSecond n))
-            (run.getLatestConfirmedTraceAt cfg
-              ext v.val (callSecond n)).afterObserved).2.1 →
-        is_start_slot_at_epoch cfg
-          (get_current_slot cfg
-            (run.fcrStoreAtCall cfg ext
-              v.val (callSecond n)).store) ≠ true → False := by
-  set_option maxRecDepth 50000 in decide
-
 private theorem bounded_no_selectedPreviousResult_under_selector :
     ∀ (v : Fin 4) (n : Fin 15) (result : WitnessRoot),
       getLatestSelectorGuard cfg
@@ -119,29 +105,6 @@ theorem no_currentTargetAcceptedEdge_under_selector
   exact bounded_no_currentTargetAcceptedEdge_under_selector
     vf nf a c hselector hmem hlt
 
-/-- A previous-loop edge can occur only through the epoch-start escape in
-this witness, so the no-conflict proviso's non-start branch is empty. -/
-theorem no_previousAcceptedEdge_away_from_epoch_start
-    {v : ValidatorIndex} (hv : v ∈ run.honest) {n : ℕ}
-    (hcall : run.IsScheduledFCRCallAt cfg ext v n)
-    (hHn1 : run.WithinHorizon cfg (n + 1))
-    (a c : WitnessRoot)
-    (hedge : PreviousEpochSelectedEdge cfg ext
-      (run.fcrStoreAtCall cfg ext v n)
-      (run.getLatestConfirmedTraceAt cfg
-        ext v n).afterObserved a c)
-    (hnotStart : is_start_slot_at_epoch cfg
-      (get_current_slot cfg
-        (run.fcrStoreAtCall cfg ext v n).store)
-        ≠ true) : False := by
-  obtain ⟨nf, rfl⟩ := call_index hcall hHn1
-  have hvlt : v < 4 := by
-    rcases honest_eq_zero_or_one_or_two_or_three hv with
-      rfl | rfl | rfl | rfl <;> decide
-  let vf : Fin 4 := ⟨v, hvlt⟩
-  exact bounded_no_previousAcceptedEdge_away_from_epoch_start
-    vf nf a c hedge hnotStart
-
 /-- At an actual selector invocation, the strict selected-result antecedent
 from a previous block epoch is empty in this finite prefix. -/
 theorem no_selectedPreviousResult_under_selector
@@ -191,16 +154,11 @@ theorem witnessSelectedHelperProvisos
         ext v n).afterObserved := by
   refine
     { current_target := ?_
-      no_conflict := ?_
       selected_previous_result_no_conflict := ?_ }
   · intro a c hedge
     exact False.elim
       (no_currentTargetAcceptedEdge_under_selector
         hv hcall hHn1 hselector a c hedge)
-  · intro a c hedge hnotStart
-    exact False.elim
-      (no_previousAcceptedEdge_away_from_epoch_start
-        hv hcall hHn1 a c hedge hnotStart)
   · intro result hout hstrict hprevious hnotStart
     exact False.elim
       (no_selectedPreviousResult_under_selector hv hcall hHn1 hselector
