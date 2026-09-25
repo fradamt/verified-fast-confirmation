@@ -1,15 +1,13 @@
-# G3 negative result: payload branch selection
+# Upstream Gloas payload-branch counterexample
 
-> **History.** This record applies to the upstream discount rule before the
-> payload-aware change in [the spec deviation](../gloas-spec-deviation.md).
-> The current Gloas proof constructs the pending-parent status margin in
-> `FastConfirmationProofs/Discount/StatusMarginConstruction.lean`. The G2b port
-> archive was removed after commit `28faf6d`.
+> Historical document. This record tests the upstream rule before the
+> [payload-aware discount change](gloas-spec-deviation.md). It records a
+> source-level counterexample, not a witness for the current rule.
 
-G2-004 is false on the exact-source execution below. Payload-envelope relay
-closes G2-003, but it does not make the root ledger control payload branches.
-The G3 lane stops without adding a branch-weight premise. The port does not
-establish Gloas safety, and full validation fails at `Endpoint.ledger_descendStep`.
+The upstream empty-slot discount can count parent votes for the opposite
+resolved payload status. Payload-envelope relay alone does not make a
+root-only support ledger control payload branches. The current rule uses
+a status-aware discount.
 
 ## Reproduce
 
@@ -24,7 +22,7 @@ boundary as the Lean model. It is not a generated full-state pyspec trace or
 a kernel construction of every accepted-theorem assumption record.
 
 `scripts/GloasPayloadBranchObstacle.lean` remains a separate local,
-non-accepted counterexample. It is not the evidence for this STOP.
+non-accepted counterexample. It is separate from the source-level counterexample.
 
 ## Execution
 
@@ -85,7 +83,7 @@ weights are `525U < 575U`.
 The empty-slot discount counts support for the ancestor root without its
 payload status. Here it discounts `450U` while only `150U` of honest ancestor
 support is compatible with the child's FULL branch. This is the missing
-payload-status accounting in G2-004.
+payload-status accounting in the upstream discount.
 
 ## Accepted-premise boundary
 
@@ -117,7 +115,7 @@ case. Checkpoint projection sends either root at epoch 0 to the anchor and
 the child at a positive epoch to itself. This is a source-level premise
 audit, not a Lean kernel witness for the complete accepted bundle.
 
-## Missing premise, not added
+## Missing status condition in the historical rule
 
 The exact local condition needed by `descendStep_of_dom` is that the pending
 parent's lexicographic argmax selects the payload branch used by the child:
@@ -137,4 +135,4 @@ include ancestor-root votes and all descendants, even those outside the
 filtered beacon sibling list. This is the smallest local branch-choice
 condition absent from the existing ledger interface. It has not been added
 to any assumption record. A repair to the FCR rule could instead make the
-ancestor-support discount depend on payload status; that is outside this lane.
+ancestor-support discount depend on payload status; The current rule makes that repair.

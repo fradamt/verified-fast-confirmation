@@ -18,7 +18,7 @@ per-node store trajectory is *defined* by folding the fork-choice handlers
 unchanged), and the FCR trajectory applies `on_fast_confirmation` at the first
 second of each slot — inside the handler's mandated once-per-slot window,
 after that second's (past-slot, under synchrony) attestations. See
-`docs/spec-model-design.md`, decision 16.
+`docs/MODELING_CHOICES.md`.
 -/
 
 namespace FastConfirmation.Spec

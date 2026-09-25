@@ -1,4 +1,6 @@
-> Historical document. Replaced by [docs/SPEC_MAP.md](../SPEC_MAP.md).
+> Historical document. This record gives the exact Python patch and proof
+> evidence for the pinned `fcr-gloas-fix` tag. Read the current
+> [source map](../SPEC_MAP.md) for the maintained model boundary.
 
 # Gloas payload-aware empty-slot discount
 
@@ -107,11 +109,11 @@ index cf1259fd9..2db7b981f 100644
 
 ## Evidence and proof status
 
-The g4 test `c93e16fba` uses real signed minimal-preset objects. With the
+The pinned minimal-preset test `c93e16fba` uses real signed minimal-preset objects. With the
 upstream rule, it confirms `c` at slot 6 and another honest store follows `P`
 EMPTY. With this rule, support is 16 units and threshold is 19.6 units at
 slot 6. The source does not confirm `c`. The receiver still follows `P` EMPTY.
-The g3 projected-source replay gives discount 150 units, threshold 545 units,
+The projected-source replay gives discount 150 units, threshold 545 units,
 and support 400 units at slot 11; it also does not confirm `c`.
 
 The original upstream epoch-boundary test with validator 35 in the parent slot
@@ -128,7 +130,7 @@ fixed Oanc debt when the aggregate growth facts hold. `LedgerV2.lean`
 defines the status enemy. It includes old Byzantine votes on the ancestor
 line and fits inside the existing complete-window Byzantine budget.
 
-## Proof of the pending-parent status margin (G2-004)
+## Proof of the pending-parent status margin
 
 Full validation passes. The accepted public theorem
 `confirmed_root_safe_from_next_slot` depends on the constructions below; the
@@ -174,4 +176,4 @@ The argument has three parts.
    subtract relayed query equivocators on a crossing edge.
 
 The earlier confirmed counterexample applies to the upstream rule; see
-[the historical negative result](history/gloas-negative-result.md).
+[the historical negative result](gloas-negative-result.md).

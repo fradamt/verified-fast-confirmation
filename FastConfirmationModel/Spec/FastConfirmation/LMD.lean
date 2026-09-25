@@ -307,7 +307,7 @@ def compute_safety_threshold (store : Store Root) (block_root : Root)
 /-- `is_one_confirmed`: Return ``True`` if and only if the block is LMD-GHOST
 safe (support outweighs the safety threshold). Phase0 note: the spec's
 optimistic-sync "MUST return False if not VALID" clause is a post-Bellatrix
-concern with no phase0 counterpart — see `docs/spec-model-design.md`.
+concern with no phase0 counterpart — see `docs/MODELING_CHOICES.md`.
 ```python
 support = get_attestation_score(store, get_node_for_root(block_root), balance_source)
 safety_threshold = compute_safety_threshold(store, block_root, balance_source)

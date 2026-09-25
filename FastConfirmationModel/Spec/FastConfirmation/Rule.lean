@@ -13,7 +13,7 @@ mutation of `fcr_store` becomes state-passing
 (`FastConfirmationStore → FastConfirmationStore`); the two `for … break`
 loops become structural recursions over `canonical_roots` carrying the
 loop-mutable accumulator (`break` = return the accumulator; loop fall-through
-= recurse on the tail) — see `docs/spec-model-design.md`, decision 6.
+= recurse on the tail) — see `docs/MODELING_CHOICES.md`.
 -/
 
 namespace FastConfirmation.Spec

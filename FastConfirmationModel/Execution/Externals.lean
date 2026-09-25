@@ -13,8 +13,7 @@ namespace FastConfirmation.Spec
 /-- The abstract beacon-chain primitives the transcription bottoms out in:
 committee shuffling, the state transition, signature/index validity, local data
 availability, execution-envelope verification, and the abstract anchor commitment.
-Their read-projection contract is in `docs/gloas-model-design.md`. The inherited contract is in
-`docs/spec-model-design.md`, "Faithfulness contract" and decisions 12–13. -/
+Their read-projection contract is in `docs/MODELING_CHOICES.md`. -/
 structure Externals (Root : Type*) where
   /-- beacon-chain `get_beacon_committee(state, slot, index)`. -/
   get_beacon_committee : BeaconState Root → Slot → CommitteeIndex → List ValidatorIndex

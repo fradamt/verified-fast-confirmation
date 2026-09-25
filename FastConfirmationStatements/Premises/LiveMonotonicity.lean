@@ -8,12 +8,12 @@ public import FastConfirmationModel.Execution.Stake
 /-!
 # Premises/LiveMonotonicity
 
-Vote support and live monotonicity premises. Reads the Spec Model. Read Claims next.
+Vote support and live monotonicity premises. States vote support and timely FFG conditions for live monotonicity.
 -/
 
 section
 
-/-! ## From TheoremStatements -/
+/-! ## Live premise support -/
 
 namespace FastConfirmation.Spec
 variable {Root : Type*} [LinearOrder Root] [Inhabited Root]

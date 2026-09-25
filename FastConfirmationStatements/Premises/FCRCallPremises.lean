@@ -10,12 +10,12 @@ public import FastConfirmationStatements.Premises.ScheduledExecutionConditions
 /-!
 # Premises/FCRCallPremises
 
-Completed call and selected helper premises. Reads the Spec Model and earlier Statements modules. Read Claims next.
+Completed call and selected helper premises. States conditions on completed FCR calls and selected helper results.
 -/
 
 section
 
-/-! ## From SelectedTraceFilterPipeline -/
+/-! ## Selected call support -/
 
 namespace FastConfirmation.Spec
 variable {Root : Type*} [LinearOrder Root] [Inhabited Root]

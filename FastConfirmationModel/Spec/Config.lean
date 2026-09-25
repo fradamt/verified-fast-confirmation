@@ -12,8 +12,8 @@ Fast Confirmation Rule. The rule inherits the constants and configuration in
 `specs/phase0/fast-confirmation.md`. Gloas adds payload deadlines and PTC size
 and changes the attestation deadline (`specs/gloas/validator.md:43`).
 
-Python `uint64` values are modelled as `ℕ` (see `docs/spec-model-design.md`,
-decision 1). `GENESIS_SLOT = GENESIS_EPOCH = 0` are hardcoded below as in the
+Python `uint64` values are modelled as `ℕ`. See
+`docs/MODELING_CHOICES.md` for the integer limit. `GENESIS_SLOT = GENESIS_EPOCH = 0` are hardcoded below as in the
 phase0 spec.
 -/
 

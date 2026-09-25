@@ -15,8 +15,8 @@ inherited phase0 definition.
 Python dicts become total functions plus, where iterated, an explicit domain
 list or set. Python's unbounded recursion/loops (`get_ancestor`,
 `filter_block_tree`, `get_head`) become fuel-bounded workers whose wrappers
-supply fuel sufficient on well-formed stores — see `docs/spec-model-design.md`,
-decisions 3, 4, 7, 8.
+supply fuel sufficient on well-formed stores. See
+`docs/MODELING_CHOICES.md` for the finite-map and fuel limits.
 -/
 
 namespace FastConfirmation.Spec

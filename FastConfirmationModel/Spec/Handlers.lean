@@ -18,7 +18,7 @@ handlers → `Option (Store Root)` (`none` = the message is not applied — the
 spec's "delay consideration" / drop); helpers whose python body is only
 asserts return `Bool`. Dict writes preserve python dict semantics
 (`Function.update` + key-list append only if absent). See
-`docs/spec-model-design.md`, decisions 11–14.
+`docs/MODELING_CHOICES.md`.
 -/
 
 namespace FastConfirmation.Spec

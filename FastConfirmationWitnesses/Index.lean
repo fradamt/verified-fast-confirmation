@@ -13,8 +13,9 @@ public import FastConfirmationWitnesses.NonVacuity.FullTwelvePremises
 /-!
 # Witness index
 
-This page names the finite execution that satisfies the next-slot premise
-bundle and the two executions that refute strict-prefix safety variants.
+This page names three distinct finite runs: a short joint live run, a
+500 ms next-slot safety run, and a 12-second full-bundle run. It also names
+two counterexamples to strict-prefix safety variants.
 
 ## Premise bundles
 
@@ -148,11 +149,11 @@ bundle and the two executions that refute strict-prefix safety variants.
   Its execution contains no payload envelope, so envelope delivery and data
   relay hold vacuously.
 
-Synchrony migration: the full-bundle execution uses a positive 500 ms delay
-with strict deadline fit. The second execution above uses 12-second slots and
-real block and vote receipt delays. Blocks and evidence use source cutoffs;
-envelope/data service is vacuous in both runs. The exclusion point is checked
-by `DeadlineVotePathCandidate`: its skipped-boundary schedule fails the refined
-pre-tick relay. The audited public witness set has 19 entries, including three checks for
-the twelve-second full-bundle trace.
+The short joint live run has a strict root advance. Its FFG timing uses only
+the genesis anchor. The 500 ms safety run changes a stored root. The 12-second
+full-bundle run adds real delayed block and vote receipts. Neither safety
+run has an envelope event. The shorter synchrony-only run does not prove the
+full safety bundle. `DeadlineVotePathCandidate` checks that a skipped-boundary
+schedule fails the pre-tick relay. The audited public witness set has 19
+entries, including three checks for the 12-second full-bundle trace.
 -/
