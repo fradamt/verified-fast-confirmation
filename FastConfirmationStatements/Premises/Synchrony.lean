@@ -128,17 +128,12 @@ second of slot `s+1` the earliest applicable processing time for a slot-`s`
       attestation. The exact relation to `NextSlotSynchronyPremises` is proved by
 `synchrony_and_delivery_iff_nextSlot`. -/
 structure Synchrony (E : Execution Root) : Prop where
-  /-- Positive gossip delay in milliseconds, using the Python due-time unit.
-      The paper assumes gossip within `Δ` and `A + Δ < S`; a witness stores
-      both the delay and that strict bound. -/
+  /-- The paper's timing parameter: a positive gossip delay `Δ` in
+      milliseconds that fits after the attestation deadline, `A + Δ < S`.
+      The delivery fields below state the network content at slot level. -/
   delta : ∃ delay_ms : ℕ,
     0 < delay_ms ∧
       get_attestation_due_ms cfg + delay_ms < cfg.slot_duration_ms
-  /-- `Δ` is strictly positive. -/
-  delta_pos : 0 < Classical.choose delta := (Classical.choose_spec delta).1
-  /-- The vote deadline plus `Δ` precedes the next slot start. -/
-  deadline_fits : get_attestation_due_ms cfg + Classical.choose delta <
-      cfg.slot_duration_ms := (Classical.choose_spec delta).2
   /-- The honest vote deadline and positive Δ with strict `A + Δ < S`
       give receipt before the next slot. Honest clients retain early votes
       and process them at the first applicable slot start. -/
@@ -225,20 +220,18 @@ def DeadlineDataAvailabilityRelay (E : Execution Root) : Prop :=
 
 /-- The synchrony fragment used by the accepted spec next-slot proof.
 
-The accepted next-slot argument needs honest-attestation delivery, block relay,
-envelope delivery, data-availability relay, and equivocation-evidence relay.
-The exact relation is proved by `synchrony_and_delivery_iff_nextSlot`. -/
+The network content is in the delivery laws: honest-attestation delivery,
+block relay, envelope delivery, data-availability relay, and
+equivocation-evidence relay. `delta` records the paper's timing parameter: a
+positive delay fits after the attestation deadline (`A + Δ < S`). The proofs
+use the slot-level delivery laws, not the numeric delay. The exact relation to
+`Synchrony` is proved by `synchrony_and_delivery_iff_nextSlot`. -/
 structure NextSlotSynchronyPremises (E : Execution Root) : Prop where
-  /-- Positive millisecond gossip delay with the paper's strict
-      vote-to-next-slot bound `A + Δ < S`. -/
+  /-- The paper's timing parameter: a positive millisecond gossip delay
+      `Δ` with the strict vote-to-next-slot bound `A + Δ < S`. -/
   delta : ∃ delay_ms : ℕ,
     0 < delay_ms ∧
       get_attestation_due_ms cfg + delay_ms < cfg.slot_duration_ms
-  /-- `Δ` is strictly positive. -/
-  delta_pos : 0 < Classical.choose delta := (Classical.choose_spec delta).1
-  /-- The honest vote deadline plus `Δ` precedes the next slot start. -/
-  deadline_fits : get_attestation_due_ms cfg + Classical.choose delta <
-      cfg.slot_duration_ms := (Classical.choose_spec delta).2
   /-- Honest votes are sent by A. Positive-Δ gossip and strict fit give
       receipt before the next slot; the client then runs the vote handler. -/
   attestation_delivery : ∀ v ∈ E.honest, ∀ s n (a : Attestation Root),

@@ -22,11 +22,11 @@ run_cmd do
   checkFields `FastConfirmation.Spec.LiveMonotonicityPremises
     ["honest_block_each_slot", "ffg_timely_justification"]
   checkFields `FastConfirmation.Spec.Synchrony
-    ["delta", "delta_pos", "deadline_fits", "attestation_delivery",
+    ["delta", "attestation_delivery",
      "deadline_block_relay", "boundary_block_prefix",
      "attester_slashing_relay"]
   checkFields `FastConfirmation.Spec.NextSlotSynchronyPremises
-    ["delta", "delta_pos", "deadline_fits", "attestation_delivery",
+    ["delta", "attestation_delivery",
      "deadline_block_relay", "boundary_block_prefix",
      "envelope_delivery",
      "data_availability_relay", "attester_slashing_relay"]
