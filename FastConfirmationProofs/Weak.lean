@@ -73,6 +73,7 @@ public import FastConfirmationProofs.Weak.Safety.WeakObserverValidity
 public import FastConfirmationProofs.Weak.Safety.WeakOneShotSafety
 public import FastConfirmationProofs.Weak.Safety.TrustedWeakObserverCoherence
 public import FastConfirmationProofs.Weak.Safety.WeakOneShotSafetyClosed
+public import FastConfirmationProofs.Weak.Safety.TrustedWeakOneShotSafetyClosed
 public import FastConfirmationProofs.Weak.Safety.WeakOneShotSafetyNative
 public import FastConfirmationProofs.Weak.Safety.WeakTrajectorySafety
 public import FastConfirmationProofs.Weak.Selection.WeakAncestryEndpoint
