@@ -27,6 +27,9 @@ private def publicWitnesses : Array Name :=
     ``FastConfirmation.Spec.Execution.NextSlotSafetyPremises.selected_result_safe_from_next_slot_of_scheduled_call,
     ``FastConfirmation.Spec.NextSlotPremiseWitness.finite_execution_satisfies_premises,
     ``FastConfirmation.Spec.NextSlotPremiseWitness.next_slot_premises_nonempty,
+    ``FastConfirmation.Spec.FullTwelveWitness.full_bundle_witness,
+    ``FastConfirmation.Spec.FullTwelveWitness.changed_root_safe_from_next_slot,
+    ``FastConfirmation.Spec.FullTwelveWitness.delayed_receipts_are_first,
     ``FastConfirmation.Spec.StrictPrefixExtraQuery.extra_query_changes_head_counterexample,
     ``FastConfirmation.Spec.PinnedEconomicsExtraQuery.extra_query_changes_head_counterexample,
     ``FastConfirmation.LMDGhost.head_agreement_after_confirmation,
@@ -71,8 +74,8 @@ private def isGeneratedSafePartial (env : Environment) (name : Name)
 
 elab "audit_project_trust" : command => do
   let env ← getEnv
-  unless publicWitnesses.size == 15 do
-    throwError "public theorem witness set must contain exactly 15 declarations"
+  unless publicWitnesses.size == 18 do
+    throwError "public theorem witness set must contain exactly 18 declarations"
   unless publicWitnesses.toList.eraseDups.length == publicWitnesses.size do
     throwError "public theorem witness set contains duplicate declarations"
 
