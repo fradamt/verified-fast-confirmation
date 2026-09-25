@@ -66,6 +66,7 @@ public import FastConfirmationProofs.Weak.Safety.WeakObservedResetSeedSafety
 public import FastConfirmationProofs.Weak.Safety.WeakObservedRestartAdoption
 public import FastConfirmationProofs.Weak.Safety.TrustedWeakObservedRestartAdoption
 public import FastConfirmationProofs.Weak.Safety.WeakObservedRestartDynamicSafety
+public import FastConfirmationProofs.Weak.Safety.TrustedWeakObservedRestartDynamicSafety
 public import FastConfirmationProofs.Weak.Safety.WeakObserverDomain
 public import FastConfirmationProofs.Weak.Safety.WeakObserverProvenance
 public import FastConfirmationProofs.Weak.Safety.WeakObserverReplay
