@@ -287,7 +287,6 @@ def acceptedIncludedEvidenceAt (s : Slot) (hlo : 4 ≤ s) (hhi : s ≤ 6) :
       witnessExternals witnessExecution
       witnessExternals.is_valid_indexed_attestation carrierRoot (vote s) where
   carrier_message := carrierSignedBlock.message
-  carrier_at := carrier_blockAt
   in_carrier_body := by
     interval_cases s <;> simp [carrierSignedBlock, vote4, vote5, vote6]
   received_from_block := ⟨0, 7, includedVote_true_scheduled hlo hhi⟩

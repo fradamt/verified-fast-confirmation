@@ -304,6 +304,27 @@ theorem store_ancestor_of_rootDescends_for_storeReflection
 
 end Execution
 
+section CarrierProvenance
+variable {cfg : Config} {ext : Externals Root} {E : Execution Root}
+
+/-- Accepted-carrier inclusion evidence gives a concrete carrier message:
+either a genesis-store block or a scheduled block event. -/
+theorem Execution.CausalCarrierAttestationEvidence.carrier_at
+    {validity : BeaconState Root → Attestation Root → Bool}
+    {carrier : Root} {a : Attestation Root}
+    (h : Execution.CausalCarrierAttestationEvidence cfg ext E validity carrier a) :
+    E.BlockAt carrier h.carrier_message := by
+  obtain ⟨store, hstore, hr, hmessage⟩ := h.carrier_accepted
+  rcases Execution.CausalStore.blockProvenance cfg ext E hstore carrier hr with
+    hgen | hsched
+  · rw [← hmessage]
+    exact Or.inl ⟨hgen.1, hgen.2⟩
+  · obtain ⟨sb, ⟨u, k, hscheduled⟩, hroot, hsbMessage⟩ := hsched
+    rw [← hmessage]
+    exact Or.inr ⟨u, k, sb, hscheduled, hroot, hsbMessage.symm⟩
+
+end CarrierProvenance
+
 end FastConfirmation.Spec
 
 end

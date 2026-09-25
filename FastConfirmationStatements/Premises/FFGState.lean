@@ -64,13 +64,12 @@ def CanonicalThroughoutEpoch (b : Root) (e : Epoch) : Prop :=
         (get_head cfg (E.store cfg ext w m))
         (get_node_for_root b) = true
 
-/-- Evidence for one attestation in a carrier block body. Accepted-carrier
-evidence below also fixes the handler-path validation state. -/
+/-- Evidence for one attestation assigned to a carrier block. The
+accepted-carrier extension below ties `carrier_message` to the carrier root. -/
 structure IncludedAttestationEvidence
     (validity : BeaconState Root → Attestation Root → Bool)
     (carrier : Root) (a : Attestation Root) where
   carrier_message : BeaconBlock Root
-  carrier_at : E.BlockAt carrier carrier_message
   in_carrier_body : a ∈ carrier_message.attestations
   received_from_block : ∃ (w : ValidatorIndex) (n : ℕ),
     Event.attestation a true ∈ E.schedule w n
