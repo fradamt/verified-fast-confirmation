@@ -9,6 +9,7 @@ public import FastConfirmationProofs.Weak.Certificates.WeakCertificateMonotone
 public import FastConfirmationProofs.Weak.Certificates.WeakCertificateSupporter
 public import FastConfirmationProofs.Weak.Certificates.WeakCertifiedHead
 public import FastConfirmationProofs.Weak.Certificates.WeakJustificationTiming
+public import FastConfirmationProofs.Weak.Certificates.TrustedWeakJustificationTiming
 public import FastConfirmationProofs.Weak.Certificates.WeakQuorumAccounting
 public import FastConfirmationProofs.Weak.Common.HonestTargetAgreement
 public import FastConfirmationProofs.Weak.Common.WeakFCRCallContracts
