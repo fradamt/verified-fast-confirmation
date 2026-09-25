@@ -17,6 +17,7 @@ public import FastConfirmationProofs.Weak.Common.WeakSeedDissemination
 public import FastConfirmationProofs.Weak.Common.WeakSelectedJustifiedOrientation
 public import FastConfirmationProofs.Weak.Common.WeakSelectedStrictEdgeFilterSupply
 public import FastConfirmationProofs.Weak.Common.TrustedWeakSelectedStrictEdgeLineage
+public import FastConfirmationProofs.Weak.Common.TrustedWeakSelectedStrictEdgeFilterSupply
 public import FastConfirmationProofs.Weak.Discount.WeakCoveredMarginConstruction
 public import FastConfirmationProofs.Weak.Discount.WeakCrossingSets
 public import FastConfirmationProofs.Weak.Discount.WeakDutyFreshness
