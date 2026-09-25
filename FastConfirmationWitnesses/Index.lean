@@ -3,6 +3,7 @@ public import FastConfirmationWitnesses.Counterexamples.DeadlineVotePathCandidat
 public import FastConfirmationWitnesses.Counterexamples.PinnedEconomicsExtraQuery
 public import FastConfirmationWitnesses.Counterexamples.StrictPrefixExtraQuery
 public import FastConfirmationWitnesses.NonVacuity.NextSlotPremises
+public import FastConfirmationWitnesses.NonVacuity.LiveMonotonicity
 public import FastConfirmationWitnesses.NonVacuity.TwelveSecondSynchrony
 
 /-!
@@ -12,6 +13,14 @@ This page names the finite execution that satisfies the next-slot premise
 bundle and the two executions that refute strict-prefix safety variants.
 
 ## Premise bundles
+
+* `LiveMonotonicityWitness.joint_witness`: one accepted two-slot-epoch run
+  satisfies the full next-slot safety bundle and both live fields with two
+  honest validators. The interval from second one to second two crosses the
+  completed first epoch. Its stored confirmed root advances strictly from
+  the anchor to the child. `joint_monotonicity` applies the public live theorem
+  to that same strict interval. The FFG timing field holds at epoch 0
+  through the genesis anchor; no vote-driven justification occurs.
 
 * `Execution.NextSlotSafetyPremises`:
   `NextSlotPremiseWitness.finite_execution_satisfies_premises` and
@@ -112,8 +121,6 @@ bundle and the two executions that refute strict-prefix safety variants.
 
 ## Known gaps
 
-* No witness shows that `LiveMonotonicityPremises` can hold together with
-  `Execution.NextSlotSafetyPremises` (audit a5 A5-2).
 * The 12-second run does not establish `Execution.NextSlotSafetyPremises`.
   It has no FFG carrier. Its `CausalPrefixFFGInterpretation`,
   `ScheduledPrefixPremises` (in particular `BeaconExternalsPremises`), and
@@ -131,5 +138,5 @@ with strict deadline fit. The second execution above uses 12-second slots and
 real block and vote receipt delays. Blocks and evidence use source cutoffs;
 envelope/data service is vacuous in both runs. The exclusion point is checked
 by `DeadlineVotePathCandidate`: its skipped-boundary schedule fails the refined
-pre-tick relay. The audited public witness set contains 14 entries.
+pre-tick relay. The audited public witness set contains 16 entries.
 -/

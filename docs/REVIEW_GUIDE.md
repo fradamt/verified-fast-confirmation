@@ -14,7 +14,8 @@ This page records known limits and their current status. The exact public propos
 │                                │ bundle.                                                                                                              │
 │ Optional in-slot queries       │ No general safety claim. StrictPrefixExtraQuery.extra_query_changes_head_counterexample and                          │
 │                                │ PinnedEconomicsExtraQuery.extra_query_changes_head_counterexample refute exact-current variants.                     │
-│ Live joint satisfiability      │ Open, user decision (S9-3). No finite run witnesses both live fields with Execution.NextSlotSafetyPremises.          │
+│ Live joint satisfiability      │ Closed by LiveMonotonicityWitness.joint_witness: one short run satisfies both live fields and the safety bundle,     │
+│                                │ with a strict root advance. Its FFG timing field uses the genesis anchor at epoch 0.                                 │
 │ Payload envelope exercise      │ Open, user decision (S9-6). The finite next-slot run has no envelope, so its envelope and data relay conditions      │
 │                                │ hold vacuously.                                                                                                      │
 │ Guarded target-edge exercise   │ Open, user decision (S9-5). The next-slot witness selector guard excludes selected current-target accepted edges.    │

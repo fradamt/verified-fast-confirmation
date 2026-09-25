@@ -31,7 +31,7 @@ Each row states a choice in the executable or paper model, why it is used, and t
 │ Gloas payload-aware discount          │ Counts matching or PENDING parent votes in an empty slot.       │ Diverges from upstream rule; public fix at fcr-gloas-fix.                         │
 │ Envelope and data relay               │ Carries verified payload state to honest receivers.             │ The finite next-slot witness has no envelope event.                               │
 │ Live block production                 │ Prevents stale cache reversal and supplies descendant votes.    │ Requires an honest-proposer block every slot from execution start.                │
-│ Timely live FFG justification         │ Opens the rule restart gates at epoch boundaries.               │ Stronger than paper Assumption 6 and lacks a joint finite witness.                │
+│ Timely live FFG justification         │ Opens the rule restart gates at epoch boundaries.               │ Stronger than paper Assumption 6. Joint witness only at the genesis checkpoint.   │
 │ Paper exact rational balances         │ Keeps the paper threshold algebra direct.                       │ Does not by itself model executable integer rounding.                             │
 │ Paper eligibility filter              │ Reuses the LMD head agreement result in HFC.                    │ The proof needs a separate never-filter premise and bridge.                       │
 │ Paper AU from block-contained votes   │ Ties justification to concrete ancestry evidence.               │ OnChainAnchorInterface still supplies visibility and formation laws.              │
