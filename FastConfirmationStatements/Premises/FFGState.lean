@@ -65,36 +65,26 @@ def CanonicalThroughoutEpoch (b : Root) (e : Epoch) : Prop :=
         (get_node_for_root b) = true
 
 /-- Evidence for one attestation assigned to a carrier block. The
-accepted-carrier extension below ties `carrier_message` to the carrier root. -/
+accepted-carrier extension below ties `carrier_message` to the carrier root.
+
+These are the inclusion facts that the safety proof uses. Body membership,
+validity, and the validation-state origin are in
+`Execution.IncludedAttestationFidelity`, outside the safety premise. The
+`validity` parameter is the oracle that the fidelity record constrains. -/
 structure IncludedAttestationEvidence
     (validity : BeaconState Root → Attestation Root → Bool)
     (carrier : Root) (a : Attestation Root) where
   carrier_message : BeaconBlock Root
-  in_carrier_body : a ∈ carrier_message.attestations
   received_from_block : ∃ (w : ValidatorIndex) (n : ℕ),
     Event.attestation a true ∈ E.schedule w n
-  validation_state : BeaconState Root
-  validation_registry : validation_state.validators = E.registry
-  valid : validity validation_state a = true
   slot_within_horizon : E.SlotWithinHorizon cfg a.data.slot
   slot_before_carrier : a.data.slot < carrier_message.slot
   target_epoch : a.data.target.epoch =
     compute_epoch_at_slot cfg a.data.slot
-  /-- The attested LMD head may fork from the including block after the target
-  boundary; validity requires the head to descend the target, not to descend
-  the carrier. -/
-  head_descends_target :
-    E.RootDescends a.data.beacon_block_root a.data.target.root
-  target_on_chain : E.RootDescends carrier a.data.target.root
-  target_descends_source :
-    E.RootDescends a.data.target.root a.data.source.root
   attesters_in_committee : ∀ i ∈ a.attesting_indices,
     i ∈ E.committee a.data.slot
-  attesters_in_registry : ∀ i ∈ a.attesting_indices,
-    i < E.registry.length
 
-/-- A supplied inclusion relation for ordinary FFG attestations, checked
-against carrier body membership. -/
+/-- A supplied inclusion relation for ordinary FFG attestations. -/
 structure IncludedAttestationRelation
     (validity : BeaconState Root → Attestation Root → Bool) where
   /-- Supplied assignment of an attestation to a carrier block. -/
@@ -106,7 +96,7 @@ structure IncludedAttestationRelation
 /-! ### Accepted positive inclusion carriers -/
 
 /-- Positive inclusion evidence whose exact carrier block occurs in a causal
-execution prefix.  This strengthens the projected block-body evidence with
+execution prefix.  This strengthens the projected evidence with
 `AcceptedBlockAt`, not merely same-root schedule membership. -/
 structure CausalCarrierAttestationEvidence
     (validity : BeaconState Root → Attestation Root → Bool)
@@ -114,23 +104,11 @@ structure CausalCarrierAttestationEvidence
     extends IncludedAttestationEvidence cfg E validity carrier a where
   carrier_accepted :
     E.AcceptedBlockAt cfg ext carrier carrier_message
-  /-- An honest in-horizon store with the target block state keyed. -/
-  validation_store : Store Root
-  validation_store_honest : E.HonestCausalStore cfg ext validation_store
-  validation_target_known : a.data.target.root ∈ validation_store.block_roots
-  /-- The state read by `on_attestation` after target checkpoint preparation.
-  The prepared state need not itself be keyed. -/
-  validation_state_from_target :
-    validation_state =
-      let base := validation_store.block_states a.data.target.root
-      let start := compute_start_slot_at_epoch cfg a.data.target.epoch
-      if base.slot < start then ext.process_slots base start else base
 
-/-- A supplied positive inclusion relation with an accepted carrier, actual
-body membership, and a handler-path validation state. -/
+/-- A supplied positive inclusion relation with an accepted carrier. -/
 structure CausalCarrierAttestationRelation
     (validity : BeaconState Root → Attestation Root → Bool) where
-  /-- Carrier-vote assignment with checked body and validation origin. -/
+  /-- Carrier-vote assignment with accepted-carrier evidence. -/
   Included : Root → Attestation Root → Prop
   evidence : ∀ {carrier : Root} {a : Attestation Root},
     Included carrier a →
@@ -315,8 +293,6 @@ structure CausalCarrierFFGState (E : Execution Root)
     (GF r).epoch ≤ (GJ r).epoch
   guf_epoch_le_gu : ∀ r, E.AcceptedRoot cfg ext r →
     (GUF r).epoch ≤ (GU r).epoch
-  gf_epoch_le_guf : ∀ r, E.AcceptedRoot cfg ext r →
-    (GF r).epoch ≤ (GUF r).epoch
 
 namespace CausalCarrierFFGState
 
@@ -334,8 +310,6 @@ only over actual successful `on_block` calls at exact causal prefixes. -/
 structure FFGSelectorsMatchBeaconStates
     {E : Execution Root} {anchor : Checkpoint Root}
     (S : CausalCarrierFFGState cfg ext E anchor) : Prop where
-  attestation_validity : S.attestationValidity =
-    ext.is_valid_indexed_attestation
   genesis_gj : ∀ r ∈ E.genesis_store.block_roots,
     (E.genesis_store.block_states r).current_justified_checkpoint = S.GJ r
   genesis_gf : ∀ r ∈ E.genesis_store.block_roots,
@@ -378,10 +352,10 @@ structure FFGSelectorsAndCheckpointReadsMatchBeaconStates
       c = get_checkpoint_for_block cfg store r c.epoch
 
 /-- The exact-prefix bundle with causal-store checkpoint reflection.
-Its accepted inclusion relation checks carrier body membership and validates
-on a target block state prepared along the handler path from an honest,
-in-horizon store. The prepared state need not be keyed. The bundle does not
-cover delayed queues or arbitrary global action traces. -/
+Its accepted inclusion relation has an accepted carrier block. Body
+membership and validation origin are in `FFGInterpretationFidelity`, which
+is not a safety premise. The bundle does not cover delayed queues or
+arbitrary global action traces. -/
 structure CausalPrefixFFGInterpretation (E : Execution Root) where
   anchor : Checkpoint Root
   state : CausalCarrierFFGState cfg ext E anchor

@@ -76,28 +76,18 @@ theorem AU.evidence (S : ChainFFGState cfg E anchor)
 end ChainFFGState
 namespace CausalCarrierFFGState
 variable {E : Execution Root} {anchor : Checkpoint Root}
-theorem hasSlashablePairOnChain_in_registry
-    (S : CausalCarrierFFGState cfg ext E anchor)
-    {tip : Root} {i : ValidatorIndex}
-    (h : S.HasSlashablePairOnChain cfg ext tip i) :
-    i < E.registry.length := by
-  obtain ⟨a₁, _a₂, hinc₁, _hinc₂, hi₁, _hi₂, _hslash⟩ := h
-  obtain ⟨carrier, _hdesc, hincluded⟩ := hinc₁
-  exact (S.includedAttestations.evidence hincluded).attesters_in_registry i hi₁
-
 @[simp] theorem mem_slashableOnChain
     (S : CausalCarrierFFGState cfg ext E anchor)
     (tip : Root) (i : ValidatorIndex) :
     i ∈ S.slashableOnChain cfg ext tip ↔
-      S.HasSlashablePairOnChain cfg ext tip i := by
+      i < E.registry.length ∧ S.HasSlashablePairOnChain cfg ext tip i := by
   classical
   constructor
   · intro hi
-    exact (Finset.mem_filter.mp hi).2
-  · intro h
-    exact Finset.mem_filter.mpr
-      ⟨Finset.mem_range.mpr
-          (S.hasSlashablePairOnChain_in_registry (cfg := cfg) (ext := ext) h), h⟩
+    obtain ⟨hrange, hpair⟩ := Finset.mem_filter.mp hi
+    exact ⟨Finset.mem_range.mp hrange, hpair⟩
+  · rintro ⟨hlt, h⟩
+    exact Finset.mem_filter.mpr ⟨Finset.mem_range.mpr hlt, h⟩
 
 theorem AU.mono (S : CausalCarrierFFGState cfg ext E anchor)
     {old new : Root} {c : Checkpoint Root}

@@ -1,6 +1,6 @@
 # Review guide
 
-`ReviewClaims` has two fields. `review_claims` proves both. The trust audit checks 22 public theorem witnesses: 15 executable-side and seven paper-side.
+`ReviewClaims` has two fields. `review_claims` proves both. The trust audit checks 26 public theorem witnesses: 19 executable-side and seven paper-side.
 
 ## Short glossary
 
@@ -27,9 +27,10 @@
 │                             │ confirmed root advances. Its FFG timing uses the genesis anchor at epoch 0.                                   │
 │ Payload envelope            │ The finite next-slot runs have no envelope. Envelope and data relay hold vacuously.                           │
 │ Guarded target edge         │ Exercised by TargetEdgePremiseWitness.target_edge_support_exercised under the full safety bundle.             │
-│ Included carrier votes      │ Accepted inclusion requires membership in the carrier block’s ordered FFG attestation body.                   │
-│ Included vote state         │ Validation uses a prepared target checkpoint state from a reachable keyed target block state. The prepared    │
-│                             │ state need not be keyed.                                                                                      │
+│ Included carrier votes      │ The safety premise needs an accepted carrier and a received block copy of each included vote. Body           │
+│                             │ membership and validity are in FFGInterpretationFidelity, outside the premise.                                │
+│ Interpretation fidelity     │ Each full-bundle witness proves FFGInterpretationFidelity for its interpretation. Validation uses a prepared  │
+│                             │ target checkpoint state from a reachable keyed target block state.                                            │
 │ Committee span bound        │ The fault fraction applies to every in-horizon span, including one slot. A global fault share does not        │
 │                             │ establish it.                                                                                                 │
 │ Opaque validation           │ BeaconExternalsPremises and verified envelope events supply the engine verdict and deterministic behavior.    │
@@ -46,7 +47,7 @@
 1. Read `FastConfirmationModel/` and `FastConfirmationStatements/`. Check each definition, premise field, and quantifier. Confirm that the claims concern stored boundary outputs.
 2. Compare `FastConfirmationModel/Spec/` with the pinned Python fork. Check changed branches, totalized maps, loop fuel, integer arithmetic, and the Gloas discount. Review schedules, accepted handler returns, static stake, and payload import in `FastConfirmationModel/Execution/`.
 3. Check external contracts and supplied FFG evidence. The handler uses the Python justified-state lookup. The evidence relay field is a separate premise that matches head-state clients.
-4. Read proof terms in `FastConfirmationProofs/`. Then read `FastConfirmationWitnesses/Index.lean`. Check each finite run and each vacuous field. Check the 19 names in `scripts/Audit.lean`.
+4. Read proof terms in `FastConfirmationProofs/`. Then read `FastConfirmationWitnesses/Index.lean`. Check each finite run and each vacuous field. Check the 26 names in `scripts/Audit.lean`.
 5. Read `FastConfirmationPaper/` independently. Compare the paper claims and assumptions with [the paper map](PAPER_MAP.md). The paper library has no refinement theorem to the executable model.
 
 ## Review dimensions
@@ -78,4 +79,4 @@ Block and envelope exclusion is checked before the next-slot tick. It permits on
 
 The source of record is fork `fradamt/consensus-specs`, tag `fcr-gloas-fix` (`13f391516`). The [source map](SPEC_MAP.md) records the exact difference from upstream. The [conformance harness](conformance.md) compares projected Python and Lean observations. A matching trace does not prove all external contracts or all reachable executions. The weak-synchrony branch is separate from this main review.
 
-`scripts/validate.sh --fast` checks the source pin, document names, import boundary, and hygiene. Full validation builds the libraries and checks imports, reachability, surface shape, and the 22 public witnesses. `scripts/Audit.lean` allows only `propext`, `Classical.choice`, and `Quot.sound`.
+`scripts/validate.sh --fast` checks the source pin, document names, import boundary, and hygiene. Full validation builds the libraries and checks imports, reachability, surface shape, and the 26 public witnesses. `scripts/Audit.lean` allows only `propext`, `Classical.choice`, and `Quot.sound`.

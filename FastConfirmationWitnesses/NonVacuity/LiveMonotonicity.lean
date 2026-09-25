@@ -2,6 +2,7 @@ module
 public import Mathlib.Tactic
 public import FastConfirmationWitnesses.NonVacuity.NextSlotPremises
 public import FastConfirmationProofs.Monotonicity.LiveConfirmation
+public import FastConfirmationStatements.Premises.InterpretationFidelity
 @[expose] public section
 
 namespace FastConfirmation.Spec
@@ -999,7 +1000,6 @@ def ffgState : CausalCarrierFFGState cfg ext E anchorCheckpoint where
   guf_evidence := by intro r hr; exact Or.inl rfl
   gf_epoch_le_gj := by intro r hr; rfl
   guf_epoch_le_gu := by intro r hr; rfl
-  gf_epoch_le_guf := by intro r hr; rfl
 
 
 theorem checkpointOfKnown {store : Store Root}
@@ -1088,7 +1088,6 @@ theorem genesis_known_eq_anchor {r : Root}
 
 def ffgCoherence : FFGSelectorsAndCheckpointReadsMatchBeaconStates
     cfg ext ffgState where
-  attestation_validity := rfl
   genesis_gj := by
     intro r hr
     have hr' := genesis_known_eq_anchor hr
@@ -1328,6 +1327,18 @@ def acceptedBundle : E.NextSlotSafetyPremises cfg ext where
   checkpoint_projection := checkpointProjection
   exact_link_validity := exactLinkValidity
 
+
+/-- The same FFG interpretation satisfies the interpretation-fidelity record.
+The run includes no vote, so body membership and validity hold vacuously. -/
+theorem ffg_interpretation_fidelity :
+    FFGInterpretationFidelity cfg ext E acceptedBundle.semantics where
+  included_fidelity := by
+    intro carrier a h
+    exact False.elim h
+  attestation_validity := rfl
+  gf_epoch_le_guf := by
+    intro r hr
+    rfl
 
 /-- One accepted finite run with a completed epoch, every live field, and an
 actual strict change in the stored confirmed root. -/

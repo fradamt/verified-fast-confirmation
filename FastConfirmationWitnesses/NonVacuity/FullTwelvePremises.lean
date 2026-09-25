@@ -549,6 +549,20 @@ def safety_premises : run.NextSlotSafetyPremises cfg ext where
   checkpoint_projection := witnessAcceptedEpochCheckpointProjection
   exact_link_validity := witnessExactLinkValidity
 
+/-- The same FFG interpretation used by the premise bundle satisfies the
+interpretation-fidelity record: each included vote is a valid body member of
+its accepted carrier, validated on the prepared target state. -/
+theorem ffg_interpretation_fidelity :
+    FFGInterpretationFidelity cfg ext run
+      safety_premises.semantics where
+  included_fidelity := by
+    intro carrier a h
+    exact witnessIncludedFidelity h
+  attestation_validity := rfl
+  gf_epoch_le_guf := by
+    intro r hr
+    rfl
+
 /-- Full premises and a scheduled call that changes the confirmed root. -/
 theorem full_bundle_witness :
     Nonempty (run.NextSlotSafetyPremises cfg ext) ∧

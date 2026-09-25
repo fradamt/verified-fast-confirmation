@@ -114,6 +114,14 @@ two counterexamples to strict-prefix safety variants.
   `AcceptedActualFCRJointNonVacuityFFG.witnessAcceptedSemantics`. The child
   and carrier in the same execution have an accepted FFG interpretation at
   every causal schedule prefix.
+* `FFGInterpretationFidelity` (outside the safety premise):
+  `NextSlotPremiseWitness.ffg_interpretation_fidelity`,
+  `FullTwelveWitness.ffg_interpretation_fidelity`,
+  `TargetEdgePremiseWitness.ffg_interpretation_fidelity`, and
+  `LiveMonotonicityWitness.ffg_interpretation_fidelity`. Each proves the
+  fidelity record for the interpretation of its premise bundle. In the three
+  runs with a carrier, the included votes are valid members of the accepted
+  carrier body. The live run includes no vote.
 * `EpochCheckpointClosure`:
   `AcceptedActualFCRJointNonVacuityFFG.witnessAcceptedEpochCheckpointProjection`.
   The anchor, child, and carrier give concrete epoch checkpoint roots.
@@ -163,5 +171,5 @@ full-bundle run adds real delayed block and vote receipts. The target-edge run
 exercises the guarded current-target support premise. No safety run has an
 envelope event. The shorter synchrony-only run does not prove the full safety
 bundle. `DeadlineVotePathCandidate` checks that a skipped-boundary schedule
-fails the pre-tick relay. The audited public witness set has 22 entries.
+fails the pre-tick relay. The audited public witness set has 26 entries.
 -/

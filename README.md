@@ -62,7 +62,7 @@ scripts/validate.sh --consensus-repo /path/to/fradamt-consensus-specs
 A warm `lake build` took 24.19 seconds on a 12-core desktop. A fresh build can take longer.
 `scripts/validate.sh --fast --consensus-repo /path/to/fradamt-consensus-specs` checks source
 pinning, document names, boundaries, and hygiene. Full validation also builds the libraries
-and audits 22 public theorem witnesses: 15 executable-side and seven paper-side. The Python
+and audits 26 public theorem witnesses: 19 executable-side and seven paper-side. The Python
 path must name the pinned local checkout.
 
 ## Premise ledger
@@ -103,8 +103,8 @@ The records in this table are in `FastConfirmationStatements/Premises/`. The las
 - Validator activity is fixed inside the checked horizon by `StaticValidatorSet`. The proof does not cover registry churn.
 - The model imports only validated payloads. An imported payload enters the store only after `verify_execution_payload_envelope` returns true. This external includes the execution engine's `VALID` decision. Execution validation itself is opaque.
 - `BeaconExternalsPremises` supplies contracts for external state transitions and validation. The Lean proof does not implement an execution engine.
-- `CausalCarrierAttestationRelation.Included` is a supplied carrier-vote relation whose evidence checks membership in the accepted carrier block's ordered FFG attestation body.
-- Included votes validate on the target checkpoint state prepared from a keyed target block state in an honest in-horizon store. The preparation advances the base state to the target epoch start only when needed. The prepared state need not itself be keyed.
+- `CausalCarrierAttestationRelation.Included` is a supplied carrier-vote relation. Its safety evidence gives an accepted carrier block, a received block copy of the vote, slot and target-epoch facts, and committee membership.
+- `FFGInterpretationFidelity` states the intended interpretation of the included votes: membership in the accepted carrier block's ordered FFG attestation body, validity on the target checkpoint state prepared from a keyed target block state in an honest in-horizon store, and the external validity check. The safety theorem does not assume it. Each full-bundle witness proves it for its interpretation.
 - `ByzantineWeightPremises.span_fraction` must hold for every in-horizon slot span, including one slot. A global fault share does not establish this bound. The bound matches `CommitteeHonestMajority` in the repository's formal paper Assumption 2.
 - `LiveMonotonicityPremises.honest_block_each_slot` requires a block with an honest proposer index in every slot from execution start. Its vote-support law and `ffg_timely_justification` require timely descendant votes and exact FFG state outputs at epoch boundaries. These conditions are stronger than paper Assumption 6. Proposer-index membership is not an authentication theorem.
 - `LiveMonotonicityWitness.joint_witness` satisfies both live fields and the safety premise in one short run with a strict root advance. Its FFG timing field holds at epoch 0 through the genesis anchor; no vote-driven justification occurs. `FullTwelveWitness.full_bundle_witness` satisfies the full safety premise at 12-second slots with a 2-second delay and real delayed block and vote receipts. No safety witness has a payload envelope, so envelope relay conditions hold vacuously. `TargetEdgePremiseWitness.target_edge_support_exercised` exercises the guarded current-target support premise under the full safety bundle. See `FastConfirmationWitnesses/Index.lean`.

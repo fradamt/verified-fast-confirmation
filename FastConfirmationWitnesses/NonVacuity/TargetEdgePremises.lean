@@ -456,6 +456,20 @@ def witnessAcceptedActualFCRNextSlotSafetyAssumptions :
   checkpoint_projection := witnessAcceptedEpochCheckpointProjection
   exact_link_validity := witnessExactLinkValidity
 
+/-- The same FFG interpretation used by the premise bundle satisfies the
+interpretation-fidelity record: each included vote is a valid body member of
+its accepted carrier, validated on the prepared target state. -/
+theorem ffg_interpretation_fidelity :
+    FFGInterpretationFidelity witnessConfig witnessExternals witnessExecution
+      witnessAcceptedActualFCRNextSlotSafetyAssumptions.semantics where
+  included_fidelity := by
+    intro carrier a h
+    exact witnessIncludedFidelity h
+  attestation_validity := rfl
+  gf_epoch_le_guf := by
+    intro r hr
+    rfl
+
 theorem witnessPaperA32_child_one_conclusion :
     ∀ w ∈ witnessExecution.honest, ∀ m : ℕ,
       witnessExecution.WithinHorizon witnessConfig m →

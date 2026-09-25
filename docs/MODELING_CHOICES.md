@@ -22,8 +22,8 @@ Each row states a choice in the executable or paper model, why it is used, and t
 │                                       │ VALID.                                                          │                                                                                   │
 │ Accepted event prefix semantics       │ Tracks a handler result at every scheduled prefix.              │ Schedules and successful handler assumptions need a concrete network              │
 │                                       │                                                                 │ argument.                                                                         │
-│ Supplied FFG carrier-vote relation    │ Checks ordered FFG body membership and accepted carrier origin. │ A caller must supply the causal inclusion evidence for its execution.             │
-│ Supplied FFG validation state         │ Prepares the keyed target block state from an honest store.     │ The prepared state may be unkeyed; the base state is reachable.                   │
+│ Supplied FFG carrier-vote relation    │ Checks accepted carrier origin and a received block vote copy.  │ A caller must supply the causal inclusion evidence for its execution.             │
+│ Supplied FFG validation state         │ Prepares the keyed target block state from an honest store.     │ Stated in FFGInterpretationFidelity only; the prepared state may be unkeyed.      │
 │ Static validator registry             │ Matches the paper balance setting over the horizon.             │ The safety theorem does not cover validator churn.                                │
 │ Finite horizon                        │ Makes endpoints and next-slot receipt precise.                  │ Conclusions do not extend beyond the checked horizon.                             │
 │ Global FFG and finalization laws      │ Connects opaque beacon transitions to exact checkpoint state.   │ The premises range over handler-successful prefixes beyond a conclusion endpoint. │
@@ -121,6 +121,25 @@ honest proposal to same-slot voters would also require `P + Δ ≤ A`, where P
 is its proposal offset; safety's strict bound alone does not supply that fact.
 
 The source fork is `fradamt/consensus-specs` at tag `fcr-gloas-fix` (`13f391516`). See [source map](SPEC_MAP.md), [paper map](PAPER_MAP.md), and [review guide](REVIEW_GUIDE.md).
+
+## Interpretation fidelity
+
+The safety premise contains only the FFG inclusion facts that the proof uses.
+`Execution.IncludedAttestationEvidence` gives the carrier message, a received
+block copy of the vote, slot and target-epoch facts, and committee membership.
+The accepted extension ties the message to the carrier root. The proof gets
+honest-vote facts from the received copy and `HonestBehavior.no_forgery`.
+
+`FFGInterpretationFidelity` in
+`FastConfirmationStatements/Premises/InterpretationFidelity.lean` states the
+intended interpretation: included votes are real, valid body members of
+accepted blocks, and they validate on the target state that `on_attestation`
+prepares. It also identifies the validity oracle with the external check and
+orders realized and unrealized finality. The safety proof does not need these
+facts, so they are not a hypothesis of `confirmed_root_safe_from_next_slot`.
+Each full-bundle witness proves the record for the same interpretation that
+satisfies its premises, so the witnesses still show that a faithful relation
+satisfies the premises.
 
 ## Gloas and Phase0 heads
 

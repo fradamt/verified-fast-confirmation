@@ -39,9 +39,13 @@ private def isSourceDeclaration (env : Environment) (decl : Name) : Bool :=
 -- `Synchrony` field, so its theorem type needs this older premise bundle.
 -- The finite next-slot witness states paper support through the accepted
 -- FFG state's specialization, so its theorem type needs that abbreviation.
+-- The interpretation-fidelity records are deliberately outside the safety
+-- premise; the full-bundle witnesses prove them for their interpretations.
 private def approved : List Name := [
   ``FastConfirmation.Spec.Synchrony,
-  ``FastConfirmation.Spec.CausalCarrierFFGState.PaperA32SupportThroughoutEpoch
+  ``FastConfirmation.Spec.CausalCarrierFFGState.PaperA32SupportThroughoutEpoch,
+  ``FastConfirmation.Spec.Execution.IncludedAttestationFidelity,
+  ``FastConfirmation.Spec.FFGInterpretationFidelity
 ]
 
 run_cmd do

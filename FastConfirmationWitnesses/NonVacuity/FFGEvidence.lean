@@ -6,6 +6,7 @@ public import FastConfirmationProofs.Execution.Calls.ScheduledPrefixGeometry
 public import FastConfirmationProofs.Checkpoints.ExactCheckpointLinks
 
 public import FastConfirmationProofs.ModelFacts
+public import FastConfirmationStatements.Premises.InterpretationFidelity
 @[expose] public section
 
 /-!
@@ -287,15 +288,7 @@ def acceptedIncludedEvidenceAt (s : Slot) (hlo : 4 ≤ s) (hhi : s ≤ 6) :
       witnessExternals witnessExecution
       witnessExternals.is_valid_indexed_attestation carrierRoot (vote s) where
   carrier_message := carrierSignedBlock.message
-  in_carrier_body := by
-    interval_cases s <;> simp [carrierSignedBlock, vote4, vote5, vote6]
   received_from_block := ⟨0, 7, includedVote_true_scheduled hlo hhi⟩
-  validation_state := witnessExternals.process_slots childState 4
-  validation_registry := by
-    simpa [witnessExternals] using witnessProcessSlots_registry childState 4
-  valid := by
-    apply (witness_valid_iff (witnessExternals.process_slots childState 4) (vote s)).2
-    exact ⟨by decide, vote_mem_ground (hhi.trans_lt (by decide : 6 < 16))⟩
   slot_within_horizon := by
     rw [vote_data_slot]
     exact slot_within_of_lt_sixteen (hhi.trans_lt (by decide : 6 < 16))
@@ -304,6 +297,22 @@ def acceptedIncludedEvidenceAt (s : Slot) (hlo : 4 ≤ s) (hhi : s ≤ 6) :
     simpa [carrierSignedBlock] using hhi.trans_lt (by decide : 6 < 7)
   target_epoch := by
     interval_cases s <;> decide
+  attesters_in_committee := by
+    intro i hi
+    rw [vote_data_slot]
+    simpa [vote, witnessExecution, witnessCommittee] using hi
+  carrier_accepted := carrier_acceptedBlockAt
+
+/-- Interpretation fidelity of each included vote: it is a valid body member
+of the accepted carrier, validated on the prepared target state. -/
+def acceptedIncludedFidelityAt (s : Slot) (hlo : 4 ≤ s) (hhi : s ≤ 6) :
+    Execution.IncludedAttestationFidelity witnessConfig
+      witnessExternals witnessExecution
+      witnessExternals.is_valid_indexed_attestation carrierRoot (vote s) where
+  carrier_message := carrierSignedBlock.message
+  carrier_accepted := carrier_acceptedBlockAt
+  in_carrier_body := by
+    interval_cases s <;> simp [carrierSignedBlock, vote4, vote5, vote6]
   head_descends_target := by
     rw [includedVote_data hlo hhi]
     exact .refl childRoot
@@ -313,16 +322,17 @@ def acceptedIncludedEvidenceAt (s : Slot) (hlo : 4 ≤ s) (hhi : s ≤ 6) :
   target_descends_source := by
     rw [includedVote_data hlo hhi]
     exact child_descends_anchor
-  attesters_in_committee := by
-    intro i hi
-    rw [vote_data_slot]
-    simpa [vote, witnessExecution, witnessCommittee] using hi
   attesters_in_registry := by
     intro i hi
     have hi' : i = s % 4 := by simpa [vote] using hi
     subst i
     exact Nat.mod_lt s (by decide)
-  carrier_accepted := carrier_acceptedBlockAt
+  validation_state := witnessExternals.process_slots childState 4
+  validation_registry := by
+    simpa [witnessExternals] using witnessProcessSlots_registry childState 4
+  valid := by
+    apply (witness_valid_iff (witnessExternals.process_slots childState 4) (vote s)).2
+    exact ⟨by decide, vote_mem_ground (hhi.trans_lt (by decide : 6 < 16))⟩
   validation_store := childPostPrefix.store witnessConfig witnessExternals
   validation_store_honest := by
     apply Execution.HonestCausalStore.scheduledPrefix childPostPrefix
@@ -357,6 +367,20 @@ def witnessAcceptedIncludedAttestations :
     subst a
     exact acceptedIncludedEvidenceAt 6 (by decide) (by decide)
 
+/-- Every included vote has interpretation fidelity evidence. -/
+theorem witnessIncludedFidelity
+    {carrier : WitnessRoot} {a : Attestation WitnessRoot}
+    (h : witnessIncluded carrier a) :
+    Nonempty (Execution.IncludedAttestationFidelity witnessConfig
+      witnessExternals witnessExecution
+      witnessExternals.is_valid_indexed_attestation
+      carrier a) := by
+  obtain ⟨rfl, ha⟩ := h
+  rcases ha with rfl | rfl | rfl
+  · exact ⟨acceptedIncludedFidelityAt 4 (by decide) (by decide)⟩
+  · exact ⟨acceptedIncludedFidelityAt 5 (by decide) (by decide)⟩
+  · exact ⟨acceptedIncludedFidelityAt 6 (by decide) (by decide)⟩
+
 /-- Every accepted included vote occurs in its carrier's actual FFG body. -/
 theorem no_included_vote_missing_from_body
     {carrier : WitnessRoot} {a : Attestation WitnessRoot}
@@ -364,8 +388,8 @@ theorem no_included_vote_missing_from_body
     ∃ b : BeaconBlock WitnessRoot,
       witnessExecution.AcceptedBlockAt witnessConfig witnessExternals carrier b ∧
         a ∈ b.attestations := by
-  let ev := witnessAcceptedIncludedAttestations.evidence h
-  exact ⟨ev.carrier_message, ev.carrier_accepted, ev.in_carrier_body⟩
+  obtain ⟨F⟩ := witnessIncludedFidelity h
+  exact ⟨F.carrier_message, F.carrier_accepted, F.in_carrier_body⟩
 
 def witnessIncludedAnchorChildLink :
     IncludedSupermajorityLink witnessConfig witnessExecution witnessIncluded
@@ -584,9 +608,6 @@ def witnessAcceptedChainFFGState :
   guf_epoch_le_gu := by
     intro r hr
     simp [witnessGU, anchorCheckpoint, childEpochOneCheckpoint]
-  gf_epoch_le_guf := by
-    intro r hr
-    rfl
 
 /-! ## Checkpoint reflection at every exact causal prefix -/
 
@@ -773,7 +794,6 @@ theorem genesis_known_eq_anchor {r : WitnessRoot}
 def witnessAcceptedFFGTransitionCoherence :
     FFGSelectorsAndCheckpointReadsMatchBeaconStates witnessConfig witnessExternals
       witnessAcceptedChainFFGState where
-  attestation_validity := rfl
   genesis_gj := by
     intro r hr
     have hr' := genesis_known_eq_anchor hr
@@ -1006,7 +1026,7 @@ theorem witness_slashableOnChain_eq_empty (tip : WitnessRoot) :
   intro i hi
   exact witness_hasSlashablePairOnChain_false tip i
     ((witnessAcceptedChainFFGState.mem_slashableOnChain
-      witnessConfig witnessExternals tip i).mp hi)
+      witnessConfig witnessExternals tip i).mp hi).2
 
 end AcceptedActualFCRJointNonVacuityFFG
 end FastConfirmation.Spec
