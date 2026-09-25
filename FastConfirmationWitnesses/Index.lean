@@ -10,6 +10,7 @@ public import FastConfirmationWitnesses.NonVacuity.FullTwelveOperational
 public import FastConfirmationWitnesses.NonVacuity.FullTwelveFFG
 public import FastConfirmationWitnesses.NonVacuity.FullTwelvePremises
 public import FastConfirmationWitnesses.NonVacuity.FullTwelveEnvelopePremises
+public import FastConfirmationWitnesses.NonVacuity.FullTwelveEnvelopeBranches
 
 /-!
 # Witness index
@@ -66,7 +67,9 @@ bundle and the two executions that refute strict-prefix safety variants.
   antecedents hold at second 168, with boundary service at second 180.
   `FullTwelveEnvelopeWitness.changed_root_safe_from_next_slot` applies the
   public safety theorem. `payload_status_branches` checks the FULL choice
-  and its Gloas weight beside the EMPTY choice.
+  and its Gloas weight beside the EMPTY choice. `gloas_discount_sample`
+  computes zero carrier discount after verification. `fcr_branch_samples`
+  checks selection, finalized reset, and late selector bypass.
 * `Execution.ScheduledPrefixPremises`:
   `AcceptedActualFCRJointNonVacuityBase.witnessScheduledPrefixTrajectoryAssumptions`.
   The same execution has whole-second scheduling, honest votes, a valid genesis
