@@ -5,6 +5,7 @@ public import FastConfirmationProofs.Weak.LocalFFG.ObserverCertificateSupply
 public import FastConfirmationProofs.Weak.LocalFFG.ObserverFinalizedSafety
 public import FastConfirmationProofs.Weak.LocalFFG.ObserverHonestDelivery
 public import FastConfirmationProofs.Weak.LocalFFG.ObserverSelectedMargin
+public import FastConfirmationProofs.Weak.LocalFFG.ObserverConditionalHeadlines
 public import FastConfirmationProofs.Weak.LocalFFG.ObserverFFGFinalization
 public import FastConfirmationProofs.Weak.LocalFFG.ObserverFFGCounterexample
 
