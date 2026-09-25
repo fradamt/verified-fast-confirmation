@@ -40,6 +40,20 @@ run_cmd do
      "process_slots_attestation_valid", "verify_envelope_deterministic"]
   checkFields `FastConfirmation.Spec.ByzantineWeightPremises
     ["effective_balance_quantized", "estimate_sound", "span_fraction"]
+  checkFields `FastConfirmation.Spec.FCRPredictionSupportAt
+    ["current_target", "selected_previous_result_no_conflict"]
+  checkFields `FastConfirmation.Spec.Execution.IncludedAttestationEvidence
+    ["carrier_message", "received_from_block", "slot_within_horizon",
+     "slot_before_carrier", "target_epoch", "attesters_in_committee"]
+  -- Interpretation fidelity is outside the safety premise.
+  checkFields `FastConfirmation.Spec.FFGInterpretationFidelity
+    ["included_fidelity", "attestation_validity", "gf_epoch_le_guf"]
+  checkFields `FastConfirmation.Spec.Execution.IncludedAttestationFidelity
+    ["carrier_message", "carrier_accepted", "in_carrier_body",
+     "head_descends_target", "target_on_chain", "target_descends_source",
+     "attesters_in_registry", "validation_state", "validation_registry", "valid",
+     "validation_store", "validation_store_honest", "validation_target_known",
+     "validation_state_from_target"]
   IO.println "review surface shape passed"
 
 -- These names must remain in the reviewed Statements surface.

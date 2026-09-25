@@ -13,7 +13,7 @@ Phase0 source coherence premises. Reads the Spec Model. Read Premises/FCRCallPre
 
 section
 
-/-! ## From CurrentTargetCertificateRealization -/
+/-! ## Epoch-boundary source coherence -/
 
 namespace FastConfirmation.Spec
 variable {Root : Type*} [LinearOrder Root] [Inhabited Root]
@@ -51,18 +51,13 @@ structure Phase0BoundarySourceCoherence
       post.current_justified_checkpoint =
         (ext.process_justification_and_finalization pre).current_justified_checkpoint
 
-namespace Execution
-variable (E : Execution Root)
-end Execution
-namespace CurrentTargetCertificateRealizationNonvacuity
-end CurrentTargetCertificateRealizationNonvacuity
 end FastConfirmation.Spec
 
 end
 
 section
 
-/-! ## From FFGSourceCoherence -/
+/-! ## Same-epoch source coherence -/
 
 namespace FastConfirmation.Spec
 variable {Root : Type*} [LinearOrder Root] [Inhabited Root]
@@ -94,23 +89,6 @@ structure Phase0SourceCoherence (cfg : Config) (ext : Externals Root) : Prop whe
       post.current_justified_checkpoint =
         pre.current_justified_checkpoint
 
-variable {E : Execution Root} {anchor : Checkpoint Root}
-namespace ProjectedSameEpochTransition
-end ProjectedSameEpochTransition
-namespace ProjectedSameEpochSegment
-end ProjectedSameEpochSegment
-namespace KnownSameEpochAncestrySegment
-end KnownSameEpochAncestrySegment
-namespace AcceptedProjectedSameEpochTransition
-end AcceptedProjectedSameEpochTransition
-namespace AcceptedProjectedSameEpochSegment
-end AcceptedProjectedSameEpochSegment
-namespace AcceptedHonestSourceEvidence
-end AcceptedHonestSourceEvidence
-namespace CausalPrefixFFGInterpretation
-end CausalPrefixFFGInterpretation
-namespace SourceCoherenceNonVacuity
-end SourceCoherenceNonVacuity
 end FastConfirmation.Spec
 
 end

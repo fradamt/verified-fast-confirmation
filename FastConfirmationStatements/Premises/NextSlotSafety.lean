@@ -39,8 +39,6 @@ structure NextSlotSafetyPremises where
     semantics.anchor (E.AcceptedRoot cfg ext) semantics.state.C
   exact_link_validity : semantics.state.ExactLinkValidity
 
-namespace NextSlotSafetyPremises
-end NextSlotSafetyPremises
 end Execution
 end FastConfirmation.Spec
 end

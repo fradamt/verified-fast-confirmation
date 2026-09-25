@@ -9,9 +9,6 @@ public import FastConfirmationStatements.Premises.Synchrony
 namespace FastConfirmation.Spec
 variable {Root : Type*} [LinearOrder Root] [Inhabited Root]
 variable (cfg : Config) (ext : Externals Root)
-namespace Execution
-variable (E : Execution Root)
-end Execution
 /-- Contracts for the abstract `Externals` under the static-registry model.
 The three indexed-attestation laws apply only to keyed states in honest,
 in-horizon causal stores. Default-state rejection and validity preservation

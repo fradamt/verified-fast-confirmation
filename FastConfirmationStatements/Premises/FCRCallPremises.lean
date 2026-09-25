@@ -46,16 +46,13 @@ structure FCRPredictionSupportAt (E : Execution Root)
     HonestVotesSupportTarget cfg E
       (get_current_target cfg fcrStore.store) q
 
-namespace Execution
-variable (E : Execution Root)
-end Execution
 end FastConfirmation.Spec
 
 end
 
 section
 
-/-! ## From AcceptedHistoricalA32CallSupplier -/
+/-! ## Completed call premises -/
 
 namespace FastConfirmation.Spec
 variable {Root : Type*} [LinearOrder Root] [Inhabited Root]

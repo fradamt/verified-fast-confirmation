@@ -9,9 +9,6 @@ public import FastConfirmationStatements.Premises.Behavior
 namespace FastConfirmation.Spec
 variable {Root : Type*} [LinearOrder Root] [Inhabited Root]
 variable (cfg : Config) (ext : Externals Root)
-namespace Execution
-variable (E : Execution Root)
-end Execution
 
 /-- The only permanent block-delivery exemption is the finalized-checkpoint
 guard in `on_block`. The parent is already known at the receiver, so a late
@@ -125,7 +122,7 @@ received by the end of that slot"), made operational, plus the block/message
 propagation the spec leaves implicit (explicit in the paper's `Synchrony`
 bundle). The fork choice's own `current_slot ≥ slot + 1` gate makes the first
 second of slot `s+1` the earliest applicable processing time for a slot-`s`
-      attestation. The exact relation to `NextSlotSynchronyPremises` is proved by
+attestation. The exact relation to `NextSlotSynchronyPremises` is proved by
 `synchrony_and_delivery_iff_nextSlot`. -/
 structure Synchrony (E : Execution Root) : Prop where
   /-- The paper's timing parameter: a positive gossip delay `Δ` in

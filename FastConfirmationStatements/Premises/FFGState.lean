@@ -5,30 +5,35 @@ public import FastConfirmationModel.Execution.ScheduledPrefixes
 @[expose] public section
 
 /-!
-# Spec / Model / FFGStateSemantics
+# Premises/FFGState
 
 The executable transcription retains the ordered FFG attestations in block
 bodies but abstracts most of the beacon-state FFG machinery. This file supplies the corresponding
 semantic objects while keeping fork-choice safety, filtering, and selected FCR
 results outside the model boundary.
 
-There are four interfaces:
+AU ("available or unrealized") names the checkpoints with justification
+evidence at a tip: a checkpoint is in AU at a tip when a carrier block on the
+tip's chain has formed evidence for it.
+
+There are three interfaces:
 
 * `CausalCarrierFFGState` is the block-local projection used by the accepted
   theorem. It ranges over exact accepted event-prefix roots and records
-  available/unrealized checkpoint evidence on exact accepted event-prefix
-  roots;
-* `ChainFFGState` is a broader projection over every scheduled wire root,
-  used by generic internal lemmas about checkpoint evidence and the `C`,
-  `GJ`, `GU`, and `GF` selectors;
-* `FFGSelectorsAndCheckpointReadsMatchBeaconStates` connects the accepted projection to actual
-  successful block-handler transitions; `FFGTransitionCoherence` is the
-  corresponding scheduled-root interface; and
+  AU checkpoint evidence on exact accepted event-prefix roots. `C` is the
+  epoch checkpoint selector; `GJ`, `GU`, `GF`, and `GUF` are the realized
+  justified, unrealized justified, realized finalized, and unrealized
+  finalized checkpoints of a block;
+* `FFGSelectorsAndCheckpointReadsMatchBeaconStates` connects the accepted
+  projection to actual successful block-handler transitions; and
 * `PaperA32Inclusion` is the paper's separate liveness assumption.  Its
   antecedent is the paper's link-specific support condition in every honest
   view throughout epoch `e+1`; its conclusion is exact AU inclusion in a
   concrete descendant, not the weaker epoch-only consequence read by
   `get_voting_source`.
+
+`Premises/InterpretationFidelity` states the intended interpretation of the
+included votes. It is not part of the safety premise.
 
 None of these declarations assumes that a block is canonical, safe, retained
 by the filter, or selected by the FCR.  Canonicality appears only as an
@@ -184,18 +189,6 @@ structure IncludedCertifiedFinalized (E : Execution Root)
   finalizing_link :
     IncludedSupermajorityLink cfg E included carrier c child
 
-namespace IncludedSupermajorityLink
-
-end IncludedSupermajorityLink
-
-namespace IncludedCertifiedJustified
-
-end IncludedCertifiedJustified
-
-namespace IncludedCertifiedFinalized
-
-end IncludedCertifiedFinalized
-
 /-- Accepted-prefix version of the causal honest formation witness.  The
 exact carrier message, rather than only some same-root scheduled message, is
 known in a causal store. -/
@@ -223,22 +216,6 @@ structure IncludedVoteCheckpointCertificate (E : Execution Root)
   on_chain : E.RootDescends carrier c.root
   causal : c = anchor ∨
     HonestEarlierTargetVoteOnCarrierChain cfg ext E included carrier c
-
-/-! ## Scheduled-root checkpoint state
-
-The declarations through `FFGTransitionCoherence` below constrain every
-scheduled block root. The accepted theorem instead uses
-`CausalCarrierFFGState` and `FFGSelectorsAndCheckpointReadsMatchBeaconStates`, which range only
-over successful accepted prefixes. There is intentionally no conversion
-between the two domains.
--/
-
-namespace ChainFFGState
-
-variable {E : Execution Root} {anchor : Checkpoint Root}
-
-
-end ChainFFGState
 
 /-! ## Accepted event-prefix FFG semantics -/
 
@@ -298,7 +275,8 @@ namespace CausalCarrierFFGState
 
 variable {E : Execution Root} {anchor : Checkpoint Root}
 
-
+/-- AU ("available or unrealized") membership: a carrier block on the tip's
+chain has formed evidence for the checkpoint. -/
 def AU (S : CausalCarrierFFGState cfg ext E anchor)
     (tip : Root) (c : Checkpoint Root) : Prop :=
   ∃ carrier, E.RootDescends tip carrier ∧ S.formed carrier c
@@ -392,8 +370,8 @@ namespace PaperA32StateView
 
 variable {E : Execution Root}
 
-/-- Available/unrealized evidence inherited from a formed carrier on the
-tip's chain. -/
+/-- AU ("available or unrealized") membership inherited from a formed carrier
+on the tip's chain. -/
 def AU (V : PaperA32StateView cfg E)
     (tip : Root) (c : Checkpoint Root) : Prop :=
   ∃ carrier : Root, E.RootDescends tip carrier ∧ V.formed carrier c
@@ -531,12 +509,6 @@ structure PaperA32InclusionCore
         get_block_epoch cfg (E.store cfg ext w m) b' < e + 2 ∧
         V.AU cfg b' (V.C b e)
 
-namespace ChainFFGState
-
-variable {E : Execution Root} {anchor : Checkpoint Root}
-
-end ChainFFGState
-
 namespace CausalCarrierFFGState
 
 variable {E : Execution Root} {anchor : Checkpoint Root}
@@ -553,9 +525,6 @@ abbrev PaperA32Inclusion
   PaperA32InclusionCore cfg ext (S.paperA32Inputs cfg ext)
 
 end CausalCarrierFFGState
-
-/-! ## Scheduled-root specializations -/
-
 
 end FastConfirmation.Spec
 

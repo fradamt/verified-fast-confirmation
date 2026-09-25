@@ -11,7 +11,7 @@ Executable call, loop, and selected result traces. Reads the Spec Model. Read Pr
 
 section
 
-/-! ## From FCRCallContracts -/
+/-! ## Scheduled FCR calls -/
 
 namespace FastConfirmation.Spec
 variable {Root : Type*} [LinearOrder Root] [Inhabited Root]
@@ -37,7 +37,7 @@ end
 
 section
 
-/-! ## From LatestConfirmedCallTrace -/
+/-! ## Latest-confirmed evaluator phases -/
 
 namespace FastConfirmation.Spec
 variable {Root : Type*} [LinearOrder Root] [Inhabited Root]
@@ -130,12 +130,6 @@ inductive GetLatestSelectorPhase
       GetLatestSelectorPhase query input
         (find_latest_confirmed_descendant cfg ext query input)
 
-namespace GetLatestFinalizedPhase
-end GetLatestFinalizedPhase
-namespace GetLatestObservedPhase
-end GetLatestObservedPhase
-namespace GetLatestSelectorPhase
-end GetLatestSelectorPhase
 /-- Complete ordered evaluator trace.  Intermediate roots are data, while
 each phase proof fixes their operational provenance independently of any root
 equalities. -/
@@ -204,8 +198,6 @@ def getLatestConfirmedTrace
       exact .unchanged hnamed
   · rfl
 
-namespace LatestConfirmedCallTrace
-end LatestConfirmedCallTrace
 namespace Execution
 variable (E : Execution Root)
 /-- The same arbitrary-store evaluator trace specialized to the exact
@@ -221,7 +213,7 @@ end
 
 section
 
-/-! ## From SelectedFilter -/
+/-! ## Selector loop traces -/
 
 namespace FastConfirmation.Spec
 variable {Root : Type*} [LinearOrder Root] [Inhabited Root]
@@ -267,7 +259,7 @@ end
 
 section
 
-/-! ## From SelectedFilterBridge -/
+/-! ## Selected wrapper trace -/
 
 namespace FastConfirmation.Spec
 variable {Root : Type*} [LinearOrder Root] [Inhabited Root]
@@ -335,8 +327,6 @@ def CurrentTargetSelectedEdge (fcrStore : FastConfirmationStore Root)
   (a, c) ∈ (findLatestSelectedTrace cfg ext fcrStore latestConfirmedRoot).2.2 ∧
     get_block_epoch cfg fcrStore.store a < get_block_epoch cfg fcrStore.store c
 
-namespace ChainDown
-end ChainDown
 end FastConfirmation.Spec
 
 end

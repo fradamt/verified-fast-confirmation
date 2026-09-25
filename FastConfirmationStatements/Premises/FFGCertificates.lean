@@ -4,12 +4,12 @@ public import FastConfirmationModel.Execution.Stake
 @[expose] public section
 
 /-!
-# Spec / Model / FFGCertificates
+# Premises/FFGCertificates
 
 Semantic certificate objects at the boundary between the transcribed fork-choice
 state and Casper FFG.  They contain concrete scheduled attestation evidence;
-accountable-safety consequences are proved from these objects and the ordinary
-cryptographic/economic assumptions in `Proof/FFGCertificates.lean`.
+accountable-safety consequences are proved from these objects in
+`FastConfirmationProofs/FFG/Certificates/FFGCertificates.lean`.
 -/
 
 namespace FastConfirmation.Spec

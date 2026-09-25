@@ -30,7 +30,7 @@ support for *`v`'s* target `T` only under **cross-validator head/boundary
 agreement** (every honest head's epoch-boundary block is `T.root`), which is
 exactly what the FCR's preceding checks are mid-way through establishing
 when the gates are consulted. The property is an explicit, call-scoped
-hypothesis. The older `SpecAssumptions` record does not contain it. The
+hypothesis. The
 accepted theorem requires it through `completed_calls.helper_provisos` at each
 actual guarded FCR call whose next second is in the verification horizon.
 Without the gating the fields would be inconsistent:

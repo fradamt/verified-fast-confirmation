@@ -4,17 +4,16 @@ public import FastConfirmationStatements.Premises.FFGState
 @[expose] public section
 
 /-!
-# Spec / Model / ExactCheckpointLinks
+# Premises/CheckpointLinks
 
 The reduced beacon-state projection does not retain enough block-history data
 to turn arbitrary root descent into epoch-indexed checkpoint descent.  This
 module records the narrow, certificate-scoped semantic interface.
 
-The core declarations are independent of either the production
-`CausalCarrierFFGState` or the migration-only `ChainFFGState`: callers supply
+The core declarations do not depend on `CausalCarrierFFGState`: callers supply
 the positive inclusion relation, formed predicate, checkpoint projection, and
-accepted carrier domain.  This lets the same certificate proof consume the
-accepted-prefix state without projecting through the broader scheduled-root state.
+accepted carrier domain.  `CausalCarrierFFGState.ExactLinkValidity` is the
+accepted-state instance.
 
 Only an included supermajority link whose source already has a carrier-local
 included justification certificate is constrained.  Links with uncertified
@@ -45,7 +44,6 @@ variable {anchor : Checkpoint Root}
 
 /-! ## Generic certificate-scoped exact-link validity -/
 
-
 namespace IncludedSupermajorityLink
 
 /-- A carrier-local included link contributes to a justification certificate
@@ -61,8 +59,6 @@ def Contributing
   IncludedCertifiedJustified cfg E included anchor carrier source
 
 end IncludedSupermajorityLink
-
-
 
 /-- Exact carrier law for the included links which actually extend a
 carrier-local justification certificate.
@@ -100,13 +96,7 @@ abbrev ExactLinkValidity
   ExactIncludedLinkValidity cfg E S.includedAttestations.Included anchor
     S.C (E.AcceptedRoot cfg ext)
 
-
-
 end CausalCarrierFFGState
-
-namespace ChainFFGState
-
-end ChainFFGState
 
 end FastConfirmation.Spec
 

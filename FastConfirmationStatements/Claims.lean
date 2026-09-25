@@ -15,13 +15,9 @@ section
 namespace FastConfirmation.Spec
 variable {Root : Type*} [LinearOrder Root] [Inhabited Root]
 variable (cfg : Config) (ext : Externals Root)
-namespace Execution
-variable (E : Execution Root)
-namespace NextSlotSafetyPremises
-end NextSlotSafetyPremises
-end Execution
-/-- Accepted whole-output safety with the same endpoint quantifiers and timing
-as `Spec_Safety_next_slot`, under the accepted executable-semantics bundle.
+/-- Accepted whole-output safety: every stored FCR output of an honest node is
+an ancestor of every honest head from the next slot on, within the
+verification horizon, under the accepted executable-semantics bundle.
 
 The global `NextSlotSynchronyPremises` inside `completed_calls` makes this the
 current model's GST-0 specialization. Its delivery contracts cover honest votes,

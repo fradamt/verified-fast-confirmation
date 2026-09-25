@@ -11,9 +11,6 @@ public import FastConfirmationStatements.Premises.FFGState
 namespace FastConfirmation.Spec
 variable {Root : Type*} [LinearOrder Root] [Inhabited Root]
 variable (cfg : Config) (ext : Externals Root)
-namespace Execution
-variable (E : Execution Root)
-end Execution
 /-- Execution-level well-formedness: wire block roots are injective labels.
 Equal labels identify equal block messages across scheduled block events and
 the genesis store. This record does not assert a `hash_tree_root` equation. -/
@@ -44,7 +41,7 @@ Execution, timing, and boundary premises. Reads the Spec Model. Read Claims next
 
 section
 
-/-! ## From CausalQueryTraceAdapter -/
+/-! ## Scheduled prefix premises -/
 
 namespace FastConfirmation.Spec
 variable {Root : Type*} [LinearOrder Root] [Inhabited Root]
@@ -52,9 +49,10 @@ variable (cfg : Config) (ext : Externals Root)
 namespace Execution
 variable (E : Execution Root)
 /-- The exact trajectory assumptions used to replay store-local invariants to
-an in-second prefix. These are the operational fields of
-`SelectedMarginAssumptions`, with an explicit anchor commitment. No Byzantine
-estimate, selected-margin domain, or head conclusion is included. -/
+an in-second prefix: whole-second slots, well-formed roots, external-function
+contracts, honest behavior, and an anchor store with an explicit anchor
+commitment. No Byzantine estimate, selected-margin domain, or head conclusion
+is included. -/
 structure ScheduledPrefixPremises : Prop where
   whole_seconds : 1000 ∣ cfg.slot_duration_ms
   wellFormed : WellFormedExecution E
@@ -68,22 +66,13 @@ structure ScheduledPrefixPremises : Prop where
       anchorBlock.message.parent_root ≠ anchorBlock.root
 
 end Execution
-namespace AllowedFCRCalls
-open Execution
-end AllowedFCRCalls
-namespace Execution
-variable (E : Execution Root)
-end Execution
-namespace AllowedFCRCalls
-open Execution
-end AllowedFCRCalls
 end FastConfirmation.Spec
 
 end
 
 section
 
-/-! ## From CurrentTargetFutureSupport -/
+/-! ## Anchor active set -/
 
 namespace FastConfirmation.Spec
 variable {Root : Type*} [LinearOrder Root] [Inhabited Root]
@@ -103,7 +92,7 @@ end
 
 section
 
-/-! ## From AcceptedFinalizationTiming -/
+/-! ## Realized finalization lag -/
 
 namespace FastConfirmation.Spec
 variable {Root : Type*} [LinearOrder Root] [Inhabited Root]
@@ -126,27 +115,19 @@ def RealizedFinalizationDelay
       finalized.epoch + 2 ≤
         compute_epoch_at_slot cfg t.signedBlock.message.slot
 
-namespace AcceptedFinalizationLagAt
-end AcceptedFinalizationLagAt
 end Execution
-namespace AcceptedFinalizationLagCounterpattern
-end AcceptedFinalizationLagCounterpattern
 end FastConfirmation.Spec
 
 end
 
 section
 
-/-! ## From FFGGlobalCheckpointTrajectory -/
+/-! ## Checkpoint-sync anchor boundary -/
 
 namespace FastConfirmation.Spec
 variable {Root : Type*} [LinearOrder Root] [Inhabited Root]
 variable (cfg : Config) (ext : Externals Root)
 variable {E : Execution Root} {anchor : Checkpoint Root}
-namespace FFGGlobalCheckpointOrigins
-variable {cfg : Config} {ext : Externals Root}
-variable {E : Execution Root} {anchor : Checkpoint Root}
-end FFGGlobalCheckpointOrigins
 namespace Execution
 variable (E : Execution Root)
 /-- Minimal checkpoint-sync boundary premise.  It asks only that the trusted
@@ -158,24 +139,6 @@ def TrustedAnchorBoundaryAligned : Prop :=
     compute_start_slot_at_epoch cfg anchor.epoch
 
 end Execution
-namespace FFGGlobalCheckpointLedger
-variable {cfg : Config} {ext : Externals Root}
-variable {E : Execution Root} {anchor : Checkpoint Root}
-end FFGGlobalCheckpointLedger
-namespace Execution
-variable (E : Execution Root)
-end Execution
-end FastConfirmation.Spec
-
-end
-
-section
-
-/-! ## From L4Fold -/
-
-namespace FastConfirmation.Spec
-variable {Root : Type*} [LinearOrder Root] [Inhabited Root]
-variable (cfg : Config) (ext : Externals Root)
 end FastConfirmation.Spec
 
 end

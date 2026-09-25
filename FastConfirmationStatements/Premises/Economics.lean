@@ -9,9 +9,6 @@ public import FastConfirmationStatements.Premises.Externals
 namespace FastConfirmation.Spec
 variable {Root : Type*} [LinearOrder Root] [Inhabited Root]
 variable (cfg : Config) (ext : Externals Root)
-namespace Execution
-variable (E : Execution Root)
-end Execution
 /-- The static-validator-set idealization over the verified execution segment.
 The trusted genesis initialization itself seeds registry constancy
 mechanically; this record carries only the horizon and activity facts that are
@@ -44,7 +41,7 @@ structure ByzantineWeightPremises (E : Execution Root) : Prop where
       weight does not exceed `estimate_committee_weight_between_slots`.
       The stronger post-`//100` inequality used by the arithmetic is derived
       from this field and effective-balance quantization in
-      `Proof/EconomicRounding.lean`. -/
+      `FastConfirmationProofs/Discount/EconomicRounding.lean`. -/
   estimate_sound : ∀ a b : Slot,
     E.SlotWithinHorizon cfg a → E.SlotWithinHorizon cfg b →
     E.weight (E.span_committee a b) ≤
