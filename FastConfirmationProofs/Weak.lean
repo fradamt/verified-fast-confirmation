@@ -49,6 +49,7 @@ public import FastConfirmationProofs.Weak.History.TrustedWeakHistoricalA32OneSte
 public import FastConfirmationProofs.Weak.History.WeakHistoricalA32OriginCall
 public import FastConfirmationProofs.Weak.History.TrustedWeakHistoricalA32OriginCall
 public import FastConfirmationProofs.Weak.History.WeakHistoricalA32PayloadProducer
+public import FastConfirmationProofs.Weak.History.TrustedWeakHistoricalA32PayloadProducer
 public import FastConfirmationProofs.Weak.History.WeakHistoricalA32Step
 public import FastConfirmationProofs.Weak.History.TrustedWeakHistoricalA32Step
 public import FastConfirmationProofs.Weak.History.WeakPreQuerySIR
