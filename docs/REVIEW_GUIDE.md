@@ -1,6 +1,6 @@
 # Review guide
 
-This page records known limits and their current status. The exact main public propositions are in `FastConfirmationStatements/Review.lean`. `review_claims` in `FastConfirmationProofs/ReviewTheorem.lean` proves all three fields. `scripts/Audit.lean` checks 57 entries: 14 main-side, 42 weak-side, and `review_claims`.
+This page records known limits and their current status. The exact main public propositions are in `FastConfirmationStatements/Review.lean`. `review_claims` in `FastConfirmationProofs/ReviewTheorem.lean` proves all three fields. `scripts/Audit.lean` checks 60 entries: 14 main-side, 45 weak-side, and `review_claims`.
 
 ```text
 ┌───────────────────────────────────┬─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
@@ -28,7 +28,7 @@ This page records known limits and their current status. The exact main public p
 │ Weak strong-cache interface       │ Closed (i3b). The weak headlines have no JustificationInterface binder and use the weak cache. Honest head-root    │
 │                                   │ knownness follows from SelectedMarginDomain.justified_root_known.                                                  │
 │ Non-honest observer inputs        │ The restricted premise independence theorem is proved for obs outside E.honest. Local authenticity and FFG          │
-│                                   │ contracts have no timed observer receipt. The corresponding safety headline remains open.                           │
+│                                   │ contracts have no timed observer receipt. Both restricted-premise safety headlines are proved (h9).                 │
 │ Opaque execution validation       │ Explicit abstraction. BeaconExternalsPremises and verified envelope events supply the engine verdict and            │
 │                                   │ deterministic behavior.                                                                                             │
 │ Static registry                   │ Explicit model idealisation. StaticValidatorSet covers the finite horizon; validator churn is outside the claim.    │
@@ -91,9 +91,9 @@ The source of record is fork `fradamt/consensus-specs`, tag `fcr-gloas-fix` (`13
 
 ## Weak branch status
 
-The weak tree has 57 trust-audit entries: 14 main-side, 42 weak-side, and `review_claims`. The two existing full weak safety headlines take B, hanchor, hboundary, hDelay, hpaper, P, V, hW, hCbase, and hfit. The endpoint also takes hw, hnm, hnext, and hHm. Their types are unchanged by the observer-local work. For a non-honest observer, `WeakObserverRestrictedPremises` contains the shared core over `E.withoutObserver obs` and `ObserverLocalInputs`. The compiled independence theorem transfers those premises across changes to the observer schedule when the new local inputs satisfy their contracts. The safety headline from only that restricted surface remains open. The weak live monotonicity proposition remains open.
+The weak tree has 60 trust-audit entries: 14 main-side, 45 weak-side, and `review_claims`. The two existing full weak safety headlines take B, hanchor, hboundary, hDelay, hpaper, P, V, hW, hCbase, and hfit. The endpoint also takes hw, hnm, hnext, and hHm. Their types are unchanged by the observer-local work. For a non-honest observer, `WeakObserverRestrictedPremises` contains the shared core over `E.withoutObserver obs` and `ObserverLocalInputs`. The compiled independence theorem transfers those premises across changes to the observer schedule when the new local inputs satisfy their contracts. The two headlines `nonhonest_weak_confirmed_root_safe_from_next_slot` and `nonhonest_weak_confirmed_root_on_honest_heads_from_next_slot` are proved from that restricted surface and `obs ∉ E.honest`. The endpoint remains `w ∈ E.honest`. Both headlines and `ActualRunFFG.actualRun_exactInterpretation_observer_independent` are in the weak review list, trust audit, shape check, and statement reachability check. The weak live monotonicity proposition remains open.
 
-The old global FFG inclusion evidence requires a block-derived attestation event and an honest validation store. The observer-local FFG contract uses the received block body and an observer-prepared state; it has no remote receipt premise. The old G4 domain also ranges over the observer as a receiver. The restricted core has that field only for the empty-schedule view. The actual-run proof has recovered G4 for honest receivers and the shared honest network and validation fields. The weak trajectory and selection proof still needs the local FFG interface.
+The old global FFG inclusion evidence requires a block-derived attestation event and an honest validation store. The observer-local FFG contract uses the received block body and an observer-prepared state; it has no remote receipt premise. The old G4 domain also ranges over the observer as a receiver. The restricted core has that field only for the empty-schedule view. The actual-run proof has recovered G4 for honest receivers and the shared honest network and validation fields. The weak trajectory and selection proof now uses one trusted interpretation of the actual run. A3.2 reads the raw body relation; certificates use the exactness filter. Shared slashing witnesses survive in the raw union, so `core.paper_a32` transfers by monotonicity. The fold uses exact-link laws only at accepted carriers. All required acceptance facts come from store knownness or formation evidence. No actual-run A3.2 premise or new local contract was added. The complete local-contract list and its reasons are in [WEAK_SYNCHRONY.md](WEAK_SYNCHRONY.md).
 
 ## Mechanical checks
 

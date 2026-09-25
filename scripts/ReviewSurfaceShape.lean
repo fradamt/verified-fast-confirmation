@@ -1,4 +1,5 @@
 import FastConfirmationStatements
+import FastConfirmationProofs.Weak.LocalFFG.ObserverHeadlines
 import FastConfirmationProofs.ReviewTheorem
 import Lean
 
@@ -71,3 +72,27 @@ example {Root : Type*} [LinearOrder Root] [Inhabited Root]
     (ext : FastConfirmation.Spec.Externals Root) :
     FastConfirmation.Spec.ReviewClaims cfg ext :=
   FastConfirmation.Spec.review_claims cfg ext
+
+-- The restricted headlines must require no actual-run semantic witness.
+open FastConfirmation.Spec FastConfirmation.Spec.Execution in
+example {Root : Type*} [LinearOrder Root] [Inhabited Root]
+    (cfg : Config) (ext : Externals Root) (E : Execution Root)
+    {obs : ValidatorIndex} (hobs : obs ∉ E.honest)
+    (premises : E.WeakObserverRestrictedPremises cfg ext obs) :
+    ∀ n, E.WithinHorizon cfg n → E.WeakConfirmedSafeFromFollowingSlot cfg ext obs n :=
+  E.nonhonest_weak_confirmed_root_safe_from_next_slot cfg ext hobs premises
+
+open FastConfirmation.Spec FastConfirmation.Spec.Execution in
+example {Root : Type*} [LinearOrder Root] [Inhabited Root]
+    (cfg : Config) (ext : Externals Root) (E : Execution Root)
+    {obs : ValidatorIndex} (hobs : obs ∉ E.honest)
+    (premises : E.WeakObserverRestrictedPremises cfg ext obs)
+    {n : ℕ} {w : ValidatorIndex} (hw : w ∈ E.honest) {m : ℕ}
+    (hnm : n ≤ m) (hnext : E.slot_at cfg n + 1 ≤ E.slot_at cfg m)
+    (hHm : E.WithinHorizon cfg m) :
+    is_ancestor (E.store cfg ext w m) (get_head cfg (E.store cfg ext w m))
+      (get_node_for_root (E.weakConfirmed cfg ext obs n)) = true :=
+  E.nonhonest_weak_confirmed_root_on_honest_heads_from_next_slot
+    cfg ext hobs premises hw hnm hnext hHm
+
+#check FastConfirmation.Spec.Execution.ActualRunFFG.actualRun_exactInterpretation_observer_independent

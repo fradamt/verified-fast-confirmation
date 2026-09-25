@@ -255,7 +255,7 @@ public import FastConfirmationProofs.Weak
 
 public import FastConfirmationProofs.Weak.LocalFFG.ActualRunExactInterpretation
 
-/-! Contents of the Proofs library. -/
-
 public import FastConfirmationProofs.Weak.LocalFFG.ActualRunPaperA32
 public import FastConfirmationProofs.Weak.LocalFFG.ObserverHeadlines
+
+/-! Contents of the Proofs library. -/

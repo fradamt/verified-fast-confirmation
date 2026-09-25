@@ -1,4 +1,5 @@
 import FastConfirmationStatements
+import FastConfirmationProofs.Weak.LocalFFG.ObserverHeadlines
 import Lean.Util.FoldConsts
 
 /-! Check that every authored Statements declaration is reachable from the review claims. -/
@@ -20,7 +21,11 @@ private partial def reachableFrom (env : Environment) (pending : List Name)
         match env.find? decl with
         | none => reachableFrom env rest seen
         | some info =>
-            reachableFrom env (info.getUsedConstantsAsSet.toList ++ rest) seen
+            -- Proof bodies do not make a declaration part of a theorem's statement.
+            let deps := match info with
+              | .thmInfo _ => info.type.getUsedConstantsAsSet
+              | _ => info.getUsedConstantsAsSet
+            reachableFrom env (deps.toList ++ rest) seen
 
 private def isSourceDeclaration (env : Environment) (decl : Name) : Bool :=
   if decl.isInternalDetail || (env.getProjectionFnInfo? decl).isSome then false
@@ -51,6 +56,9 @@ run_cmd do
   -- remain explicit roots until they are assembled into a weak review bundle.
   let roots : List Name := [
     ``FastConfirmation.Spec.ReviewClaims,
+    ``FastConfirmation.Spec.Execution.nonhonest_weak_confirmed_root_safe_from_next_slot,
+    ``FastConfirmation.Spec.Execution.nonhonest_weak_confirmed_root_on_honest_heads_from_next_slot,
+    ``FastConfirmation.Spec.Execution.ActualRunFFG.actualRun_exactInterpretation_observer_independent,
     ``FastConfirmation.Spec.findLatestSelectedTrace,
     ``FastConfirmation.Spec.FCRPredictionSupportAt,
     ``FastConfirmation.Spec.CompletePriorSlotStoreEvidence,

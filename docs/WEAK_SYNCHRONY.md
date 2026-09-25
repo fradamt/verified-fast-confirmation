@@ -10,7 +10,7 @@ The conformance trace is
 
 ## Claims and premise surface
 
-The two full-rule safety headlines are
+The two existing full-rule safety headlines are
 `weak_confirmed_root_safe_from_next_slot` and
 `weak_confirmed_root_on_honest_heads_from_next_slot` in
 `FastConfirmationProofs/Weak/Safety/WeakObservedResetSeedSafety.lean`. They
@@ -32,14 +32,28 @@ its local state; it does not deliver messages.
 The only weak-path use of `JustificationInterface` was honest head-root
 knownness. The proof now derives it from
 `SelectedMarginDomain.justified_root_known`. The legacy interface remains for
-other proof modules. The restricted-premise safety headline for a non-honest
-observer is pending.
+other proof modules.
 
-The trust audit registers 57 entries: 14 main-side, 42 weak-side, and
-`review_claims`. The 42 weak-side
-entries comprise eight weak safety, four replay, two negative containment,
-17 complete-evidence helper, ten complete-evidence witness results, and the
-non-honest observer premise-independence theorem.
+For `obs ∉ E.honest`, the additional headlines are
+`nonhonest_weak_confirmed_root_safe_from_next_slot` and
+`nonhonest_weak_confirmed_root_on_honest_heads_from_next_slot`, in
+`FastConfirmationProofs/Weak/LocalFFG/ObserverHeadlines.lean`. They take only
+`WeakObserverRestrictedPremises` and the non-honest condition, with the usual
+honest endpoint, time, and horizon conditions. The actual-run interpretation,
+anchor agreement, finalization delay, A3.2 inclusion, checkpoint closure, and
+accepted-carrier exact-link law are derived. No actual-run A3.2 premise or new
+local contract is added. The existing headline types remain unchanged.
+
+The trust audit registers 60 entries: 14 main-side, 45 weak-side, and
+`review_claims`. The 45 weak-side
+entries comprise ten weak safety, four replay, two negative containment,
+17 complete-evidence helper, ten complete-evidence witness results, and two
+observer-independence theorems. The weak review list adds both non-honest
+headlines and
+`ActualRunFFG.actualRun_exactInterpretation_observer_independent`.
+The latter builds the actual-run interpretation after any change to the
+non-honest observer's schedule when its listed local input contracts hold
+again. `weakObserverRestrictedPremises_observer_independent` remains proved.
 The complete-evidence witness is a store-contract witness. There is no
 accepted positive in-horizon execution that jointly supplies the full weak
 safety bundle and a non-anchor weak output.
@@ -85,8 +99,8 @@ Older design and proof notes are preserved under `docs/history/`.
 
 ## Restricted observer premises
 
-`WeakObserverRestrictedPremises` is a compiled restricted surface. It does not
-replace the headline premises above. Its independence theorem is
+`WeakObserverRestrictedPremises` is the premise surface of the new non-honest
+headlines. The existing headlines retain their original premises. Its independence theorem is
 `Execution.weakObserverRestrictedPremises_observer_independent`, in
 `FastConfirmationInternal/Weak/ObserverIndependence.lean`.
 
@@ -107,14 +121,18 @@ and endpoint scope. Its stake stays in the honest set.
 
 The actual observer has these `ObserverLocalInputs` fields:
 
-- `validity`: the three indexed-attestation laws on its own keyed states.
-- `committees_agree`: committee readback from its own store.
+- `validity`: the three indexed-attestation laws on its own keyed states;
+  these connect the opaque signature check to genuine votes and committees.
+- `committees_agree`: committee readback from its own store; this connects
+  the local committee calculation to the fixed execution schedule.
 - `no_forgery`: a received signed vote must have an authentic, causal origin;
   it requires no receipt.
 - `block_labels`: its input block labels agree with other input labels,
   including its own; this is content identity, with no receipt deadline.
-- `genesis_blocks`: an input that uses a genesis root has the genesis content.
-- `anchor_parent`: an input cannot reuse the unresolved anchor-parent label.
+- `genesis_blocks`: an input that uses a genesis root has the genesis content;
+  this preserves trusted input identity.
+- `anchor_parent`: an input cannot reuse the unresolved anchor-parent label;
+  this keeps the trusted ancestry walk at its initial boundary.
 - `process_slots_validity`: preparation of its keyed validation state preserves
   the signature check.
 - `votes_head`: this generic authenticity field checks an honest observer's
@@ -126,8 +144,8 @@ observer run. It does not assert that arbitrary new inputs satisfy them.
 `ObserverLocalInputs.wellFormed` reconstructs actual execution block-label
 coherence from the restricted record and these local clauses.
 
-One limit remains before the headlines can use this design. The
-restricted accepted-root domain omits blocks accepted only by the observer.
+The restricted accepted-root domain omits blocks accepted only by the observer.
+The derived actual-run interpretation also covers these blocks.
 The observer-local content package supplies separate equations for successful
 transitions and checkpoint reads. It does not require receipt at another node.
 
@@ -152,20 +170,26 @@ indexed by `E.withoutObserver obs`.
 The additional local assumptions are the following. Each applies to the
 observer's own content or successful calls, with no receipt deadline:
 
-- `state.checkpoint_epoch`: the content checkpoint uses the requested epoch.
+- `state.checkpoint_epoch`: the content checkpoint uses the requested epoch;
+  this is the epoch-indexed checkpoint definition.
 - `state.formed_domain`, `formed_certificate`, `formed_on_chain`: a positive
   formed entry belongs to the local content domain and has an included
   certificate on its chain; this is the opaque FFG refinement contract.
 - `state.gj_mem`, `gu_mem`, `gf_mem`, `guf_mem`: each local selector selects
-  an available content certificate on that block's chain.
+  an available content certificate on that block's chain; this is the
+  positive evidence required by the selector definitions.
 - `state.gj_anchor_or_before`, `gj_max`, `gu_max`, `au_epoch_le_block`: the
-  content selectors obey their epoch bounds and maximum definitions.
+  content selectors obey their epoch bounds and maximum definitions; these
+  define the local FFG choices used by the opaque transition.
 - `state.gf_evidence`, `guf_evidence`: finalized content has a justified
-  checkpoint and an included link to the next epoch.
+  checkpoint and an included link to the next epoch; this is the finalization
+  certificate required by the FFG rule.
 - `state.gf_epoch_le_gj`, `guf_epoch_le_gu`, `gf_epoch_le_guf`: the four
-  content selectors have the required epoch order.
+  content selectors have the required epoch order; these are the local FFG
+  selector invariants of the opaque transition.
 - `domain_local`, `block_read`: content membership and identity match the
-  observer's actual accepted inputs, including repeated roots.
+  observer's actual accepted inputs, including repeated roots; this connects
+  content reasoning to the exact input objects.
 - `included_evidence`: each included attestation is in that exact carrier
   body, validates on an observer-prepared target state, has an in-horizon
   slot before the carrier, and has the stated target epoch and chain paths.
@@ -177,15 +201,19 @@ observer's own content or successful calls, with no receipt deadline:
   the content selectors; these retain the existing trusted-anchor contract.
 - `selectors.transition_gj`, `transition_gf`, `transition_gu`,
   `transition_guf`: each successful local `on_block` post-state matches the
-  content selectors, including the result of the opaque PJF function.
+  content selectors, including the result of the opaque PJF function; this
+  is the local state-transition refinement.
 - `checkpoint_of_known`, `au_checkpoint_of_known`: checkpoint reads at local
-  causal stores reflect the content checkpoint and AU relations.
+  causal stores reflect the content checkpoint and AU relations; this ties
+  the abstract FFG entries to the local ancestry walk.
 - `finalization_delay`: a successful local block has anchor GF or GF at least
   two epochs before its block epoch; the abstract transition omits this rule.
 - `checkpoint_projection`: local checkpoint projection is closed and
-  compositional from the trusted anchor epoch onward.
+  compositional from the trusted anchor epoch onward; the content reads must
+  describe the same local ancestry walk.
 - `exact_link_endpoints`: a contributing link on a **locally covered** carrier
-  has the exact content endpoints. This clause has a domain guard. It does
+  has the exact content endpoints; this connects the local certificate to
+  the local checkpoint reads. This clause has a domain guard. It does
   not require an arbitrary outside descendant to enter the observer's store.
 
 The new proofs derive keyed-state validity from prepared-state validity,
@@ -222,12 +250,12 @@ inclusion evidence using the local body-handling event and local validation.
 the scheduled certificate API. The temporal formation witness now keeps the signed vote and the body
 aggregate separate. It uses equal attestation data and body membership.
 
-The local FFG modules build independently of the old weak
-headlines. `scripts/h6-observer-ffg-oracle.lean` checks arbitrary schedule
+The local FFG modules provide the actual-run interpretation used by the new
+non-honest headlines. `scripts/h6-observer-ffg-oracle.lean` checks arbitrary schedule
 replacement and the axioms of its consumers. The h6 use ledger covers 22 direct
 FFG/coherence entries and seven authenticity entries in h5's inventory. These
 are supplied interfaces, not 29 migrated proof bodies. The old headlines
-remain outside this local-FFG work.
+keep their types; their trusted fold now uses accepted-carrier exactness.
 
 ## Non-honest observer integration status
 
@@ -272,8 +300,10 @@ to and from their honest-store instance without changing its type.
 `ObserverLocalFFG.trustedIncludedRelation` supplies the observer-causal-store
 instance, with the accepted carrier, body membership and exact prepared-state
 equation retained. `TrustedCausalCarrierFFGState` and `TrustedCausalPrefixFFGInterpretation`
-now carry that predicate. Two-way adapters show that their honest-store
-instance has the content of the old records. The old record identifiers and
+now carry that predicate. The old honest-store record maps to the trusted
+record and back without change. A trusted record also maps back without change
+when its paper relation is the certificate relation. A separate paper relation
+must be retained when certificates have been normalized. The old record identifiers and
 all existing weak headline types stay unchanged. The formation witness uses
 equal attestation data instead of exact signed-payload body membership.
 `ExactIncludedLinkValidity` now checks carrier acceptance and endpoints only
@@ -289,26 +319,43 @@ historical A3.2 chain have trusted forms. The old fold keeps its exact theorem
 type as an honest-store instance through `CausalPrefixFFGInterpretation.toTrusted`. The proof chain reads no
 `validation_store_honest` field.
 
-The remaining construction is the actual-run FFG package owned by lane h8.
-The shared core and local FFG state have separate inclusion and formed
-relations. Their union must preserve certificates and the exact-link law for
-links that mix attestations from both relations. The package must also prove
-anchor agreement, realized finalization delay, paper A3.2 inclusion,
-checkpoint closure, and exact-link validity for its selected state. These
-laws are separate from the `TrustedCausalPrefixFFGInterpretation` record.
-Neither input's exact-link law alone covers a mixed link.
+## Actual-run A3.2 and exact links
 
-### Internal review note: conditional non-honest headlines
+The actual-run interpretation combines the shared and observer-local formed
+relations and selector reads. Certificate inclusion uses the exactness filter
+from `ActualRunExactLinks.lean`. Each contributing shared or local certificate
+survives with its signer set, and each retained mixed link has exact endpoints
+at an accepted carrier. The fold uses `AcceptedExactLinkValidity`: it supplies
+carrier acceptance from known roots or formed-entry evidence. It does not infer
+acceptance of an arbitrary descendant from an accepted ancestor.
 
-`ObserverConditionalHeadlines.lean` proves
-`nonhonest_weak_confirmed_root_safe_from_next_slot_of_trustedInterpretation`
-and
-`nonhonest_weak_confirmed_root_on_honest_heads_from_next_slot_of_trustedInterpretation`.
-They take `WeakObserverRestrictedPremises`, `obs ∉ E.honest`, and a trusted
-interpretation for `trustedObserverOrHonestStore`. They also take the actual-run
-anchor, delay, paper A3.2, checkpoint closure, and exact-link witnesses listed
-above. The restricted premises derive boundary alignment, the actual selected
-margin and observer records, completed calls, and epoch fit. The endpoint
-binder remains `w ∈ E.honest`. These conditional theorems are not in the
-public headline list. The unconditional restricted-premise headlines remain
-open until the actual-run FFG package is constructed.
+A3.2 uses `paperIncludedAttestations`, the raw union of shared and local body
+relations. It has the same formed relation, AU, and selectors as the filtered
+state. `shared_slashable_subset` proves that each shared slashing pair remains
+in this raw view. Thus actual-run support implies shared support. Equality of
+the two inclusion relations on shared blocks is unnecessary: the input
+contracts do not require either relation to include every body attestation.
+A larger slashing set only strengthens the support antecedent.
+
+`exactState_paperA32` uses an honest view during epoch `e+1` to show that the
+canonical base block belongs to the shared accepted domain. The shared A3.2
+law then supplies its descendant and AU witness. Honest stores do not change
+when the observer schedule is erased, shared formed evidence embeds in the
+union, and shared checkpoint reads agree. `exactInterpretation_paperA32`
+therefore follows from `core.paper_a32`. Filtering certificates does not remove
+slashing evidence from the paper view.
+
+`exactInterpretation_finalizationDelay` applies the local delay contract to
+observer transitions and the core delay law to all other transitions. The
+anchor and checkpoint closure laws come from the same interpretation. These
+facts close the two non-honest headlines through the trusted fold. The
+conditional forms in `ObserverConditionalHeadlines.lean` remain internal proof steps.
+
+The guarantee uses one honest set for both behavior and delivery. For
+`obs ∉ E.honest`, no timed delivery or relay premise names the observer; all
+honest endpoints remain in `E.honest`. Schedule replacement fixes votes,
+committees, genesis, horizon, the honest set, and all other schedules. It only
+requires the listed observer-local input contracts again. Neither independence
+theorem claims that an arbitrary replacement input satisfies those contracts.
+There is still no full positive weak execution witness or weak live
+monotonicity theorem.
