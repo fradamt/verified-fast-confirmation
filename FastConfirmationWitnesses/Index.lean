@@ -10,13 +10,16 @@ public import FastConfirmationWitnesses.NonVacuity.FullTwelveOperational
 public import FastConfirmationWitnesses.NonVacuity.FullTwelveFFG
 public import FastConfirmationWitnesses.NonVacuity.FullTwelvePremises
 public import FastConfirmationWitnesses.NonVacuity.TargetEdgePremises
+public import FastConfirmationWitnesses.NonVacuity.FullTwelveEnvelopePremises
+public import FastConfirmationWitnesses.NonVacuity.FullTwelveEnvelopeBranches
 
 /-!
 # Witness index
 
-This page names three distinct finite runs: a short joint live run, a
-500 ms next-slot safety run, and a 12-second full-bundle run. It also names
-two counterexamples to strict-prefix safety variants.
+This page names the finite runs that satisfy the premise bundles: a short
+joint live run, a 500 ms next-slot safety run, a one-second target-edge run,
+a 12-second full-bundle run, and a 12-second run with an accepted payload
+envelope. It also names two counterexamples to strict-prefix safety variants.
 
 ## Premise bundles
 
@@ -67,6 +70,16 @@ two counterexamples to strict-prefix safety variants.
   `confirmed_root_safe_from_next_slot` to this output. The accepted slot-seven
   carrier supports the FFG interpretation and Paper A3.2. Envelope service
   remains vacuous; the selector has no current-target accepted edge.
+* Twelve-second envelope bundle:
+  `FullTwelveEnvelopeWitness.full_bundle_witness` proves the full safety
+  premises in a run with an accepted child payload envelope. Node 1 first
+  receives it two seconds after node 0. The envelope and data relay
+  antecedents hold at second 168, with boundary service at second 180.
+  `FullTwelveEnvelopeWitness.changed_root_safe_from_next_slot` applies the
+  public safety theorem. `payload_status_branches` checks the FULL choice
+  and its Gloas weight beside the EMPTY choice. `gloas_discount_sample`
+  computes zero carrier discount after verification. `fcr_branch_samples`
+  checks selection, finalized reset, and late selector bypass.
 * `Execution.ScheduledPrefixPremises`:
   `AcceptedActualFCRJointNonVacuityBase.witnessScheduledPrefixTrajectoryAssumptions`.
   The same execution has whole-second scheduling, honest votes, a valid genesis
@@ -117,10 +130,11 @@ two counterexamples to strict-prefix safety variants.
 * `FFGInterpretationFidelity` (outside the safety premise):
   `NextSlotPremiseWitness.ffg_interpretation_fidelity`,
   `FullTwelveWitness.ffg_interpretation_fidelity`,
-  `TargetEdgePremiseWitness.ffg_interpretation_fidelity`, and
+  `TargetEdgePremiseWitness.ffg_interpretation_fidelity`,
+  `FullTwelveEnvelopeWitness.ffg_interpretation_fidelity`, and
   `LiveMonotonicityWitness.ffg_interpretation_fidelity`. Each proves the
-  fidelity record for the interpretation of its premise bundle. In the three
-  runs with a carrier, the included votes are valid members of the accepted
+  fidelity record for the interpretation of its premise bundle. In the runs
+  with a carrier, the included votes are valid members of the accepted
   carrier body. The live run includes no vote.
 * `EpochCheckpointClosure`:
   `AcceptedActualFCRJointNonVacuityFFG.witnessAcceptedEpochCheckpointProjection`.
@@ -161,15 +175,15 @@ two counterexamples to strict-prefix safety variants.
   `PaperA32Inclusion`, `EpochCheckpointClosure`, and `ExactLinkValidity`
   are also not re-established for this run. The slot count bound and the
   concrete anchor boundary alignment are proved separately.
-* Envelope premises are exercised only through the next-slot bundle witness.
-  Its execution contains no payload envelope, so envelope delivery and data
-  relay hold vacuously.
 
 The short joint live run has a strict root advance. Its FFG timing uses only
 the genesis anchor. The 500 ms safety run changes a stored root. The 12-second
 full-bundle run adds real delayed block and vote receipts. The target-edge run
-exercises the guarded current-target support premise. No safety run has an
-envelope event. The shorter synchrony-only run does not prove the full safety
-bundle. `DeadlineVotePathCandidate` checks that a skipped-boundary schedule
-fails the pre-tick relay. The audited public witness set has 26 entries.
+exercises the guarded current-target support premise. The envelope run
+exercises envelope delivery and data relay through
+`FullTwelveEnvelopeWitness.envelope_relay_exercised` and
+`FullTwelveEnvelopeWitness.data_relay_exercised`. The shorter synchrony-only
+run does not prove the full safety bundle. `DeadlineVotePathCandidate` checks
+that a skipped-boundary schedule fails the pre-tick relay. The audited public
+witness set has 36 entries.
 -/

@@ -1,6 +1,6 @@
 # Review guide
 
-`ReviewClaims` has two fields. `review_claims` proves both. The trust audit checks 26 public theorem witnesses: 19 executable-side and seven paper-side.
+`ReviewClaims` has two fields. `review_claims` proves both. The trust audit checks 36 public theorem witnesses: 29 executable-side and seven paper-side.
 
 ## Short glossary
 
@@ -25,9 +25,10 @@
 │ Optional in-slot query      │ No general safety claim. StrictPrefixExtraQuery and PinnedEconomicsExtraQuery give counterexamples.           │
 │ Joint live witness          │ LiveMonotonicityWitness.joint_witness satisfies the safety bundle and both live fields in one short run. Its  │
 │                             │ confirmed root advances. Its FFG timing uses the genesis anchor at epoch 0.                                   │
-│ Payload envelope            │ The finite next-slot runs have no envelope. Envelope and data relay hold vacuously.                           │
+│ Payload envelope            │ Exercised by FullTwelveEnvelopeWitness.envelope_relay_exercised and data_relay_exercised under the full       │
+│                             │ safety bundle, with an accepted envelope that one node receives two seconds late.                             │
 │ Guarded target edge         │ Exercised by TargetEdgePremiseWitness.target_edge_support_exercised under the full safety bundle.             │
-│ Included carrier votes      │ The safety premise needs an accepted carrier and a received block copy of each included vote. Body           │
+│ Included carrier votes      │ The safety premise needs an accepted carrier and a received block copy of each included vote. Body            │
 │                             │ membership and validity are in FFGInterpretationFidelity, outside the premise.                                │
 │ Interpretation fidelity     │ Each full-bundle witness proves FFGInterpretationFidelity for its interpretation. Validation uses a prepared  │
 │                             │ target checkpoint state from a reachable keyed target block state.                                            │
@@ -47,7 +48,7 @@
 1. Read `FastConfirmationModel/` and `FastConfirmationStatements/`. Check each definition, premise field, and quantifier. Confirm that the claims concern stored boundary outputs.
 2. Compare `FastConfirmationModel/Spec/` with the pinned Python fork. Check changed branches, totalized maps, loop fuel, integer arithmetic, and the Gloas discount. Review schedules, accepted handler returns, static stake, and payload import in `FastConfirmationModel/Execution/`.
 3. Check external contracts and supplied FFG evidence. The handler uses the Python justified-state lookup. The evidence relay field is a separate premise that matches head-state clients.
-4. Read proof terms in `FastConfirmationProofs/`. Then read `FastConfirmationWitnesses/Index.lean`. Check each finite run and each vacuous field. Check the 26 names in `scripts/Audit.lean`.
+4. Read proof terms in `FastConfirmationProofs/`. Then read `FastConfirmationWitnesses/Index.lean`. Check each finite run and each vacuous field. Check the 36 names in `scripts/Audit.lean`.
 5. Read `FastConfirmationPaper/` independently. Compare the paper claims and assumptions with [the paper map](PAPER_MAP.md). The paper library has no refinement theorem to the executable model.
 
 ## Review dimensions
@@ -56,7 +57,7 @@
 - **Execution:** Check event order, successful handler returns, state at boundary seconds, payload validation, static stake, and external contracts.
 - **Statements:** Expand the two fields of `ReviewClaims`. Check observer, time, and horizon quantifiers.
 - **Premises:** Expand every nested record. Check that each premise is needed and jointly satisfiable. Check FFG and finalization ranges beyond the endpoint.
-- **Non-vacuity:** Locate concrete runs for the audited theorem witnesses. Check the joint live witness and each vacuous envelope field.
+- **Non-vacuity:** Locate concrete runs for the audited theorem witnesses. Check the joint live witness and each field that a run exercises only vacuously.
 - **Paper:** Read the independent Section 3.1 and Section 4 theorems. Check where Algorithm 1 uses a stronger premise than paper Assumption 6.
 
 ## Premise strength and range
@@ -71,7 +72,7 @@ Paper Assumption 3.2 can allow a two-epoch FFG inclusion delay. The executable s
 
 `NextSlotSynchronyPremises` requires positive Δ and strict `A + Δ < S`. A source observation must occur by its slot deadline. A receiver observation occurs at or after the next boundary. A receiver is later than the source. Honest votes use the vote deadline. `synchrony_and_delivery_iff_nextSlot` relates the current bundles.
 
-Block and envelope exclusion is checked before the next-slot tick. It permits only a permanent finalized-guard conflict with a known parent. The FFG, economic, and finalization-delay premises establish that each honest head's known ancestor path is admissible. Carrier-certificate accountability covers other required roots. Ready blocks and envelopes precede the boundary vote handler. Data service and deterministic envelope validation justify payload acceptance. The finite runs have no envelope event.
+Block and envelope exclusion is checked before the next-slot tick. It permits only a permanent finalized-guard conflict with a known parent. The FFG, economic, and finalization-delay premises establish that each honest head's known ancestor path is admissible. Carrier-certificate accountability covers other required roots. Ready blocks and envelopes precede the boundary vote handler. Data service and deterministic envelope validation justify payload acceptance. `FullTwelveEnvelopeWitness.full_bundle_witness` has an accepted envelope event.
 
 `on_attester_slashing` follows Python. It validates against `store.block_states[store.justified_checkpoint.root]`. Evidence relay is a premise that gives every honest node the indices by the next boundary. Literal Python can reject evidence if this state lacks a signer. The premise matches clients that validate against a newer head state. The [modeling choices](MODELING_CHOICES.md) page records the pinned client commits. A late accepted item uses a fresh cutoff observation at the next scheduled FCR call. No validity-agreement field was added to the external contract.
 
@@ -79,4 +80,4 @@ Block and envelope exclusion is checked before the next-slot tick. It permits on
 
 The source of record is fork `fradamt/consensus-specs`, tag `fcr-gloas-fix` (`13f391516`). The [source map](SPEC_MAP.md) records the exact difference from upstream. The [conformance harness](conformance.md) compares projected Python and Lean observations. A matching trace does not prove all external contracts or all reachable executions. The weak-synchrony branch is separate from this main review.
 
-`scripts/validate.sh --fast` checks the source pin, document names, import boundary, and hygiene. Full validation builds the libraries and checks imports, reachability, surface shape, and the 26 public witnesses. `scripts/Audit.lean` allows only `propext`, `Classical.choice`, and `Quot.sound`.
+`scripts/validate.sh --fast` checks the source pin, document names, import boundary, and hygiene. Full validation builds the libraries and checks imports, reachability, surface shape, and the 36 public witnesses. `scripts/Audit.lean` allows only `propext`, `Classical.choice`, and `Quot.sound`.
