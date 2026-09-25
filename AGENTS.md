@@ -42,10 +42,9 @@
 - `README.md` states the two public claims and the premise ledger.
 - `docs/ARCHITECTURE.md` gives the six-library layout and checks.
 - `docs/CONVENTIONS.md` gives naming, module, and import rules.
-- `docs/AI_AUDIT.md` gives the cold review reading order.
 - `docs/SPEC_MAP.md` maps Python sections and functions to Model.
 - `docs/PAPER_MAP.md` maps the paper to the independent Paper library.
 - `docs/MODELING_CHOICES.md` records choices and limits.
-- `docs/REVIEW_GUIDE.md` records current findings and proof status.
+- `docs/REVIEW_GUIDE.md` gives the cold review reading order, audit dimensions, and current limits.
 - `docs/conformance.md` describes the trace comparison.
 - Earlier notes are in `docs/history/`.

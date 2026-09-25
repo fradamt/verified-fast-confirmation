@@ -68,9 +68,9 @@ that boundary's predecessor. Finality first installed by the next tick cannot
 excuse an earlier absent block. The arrival-transfer lemmas check this time
 step; the model has no network queue.
 
-G4 derives admissibility of each honest head's known ancestor path from the
-accepted FFG, economic, and finalization-delay premises. AU certificate
-accountability handles the other required carriers. The proofs transport
+The accepted FFG, economic, and finalization-delay premises establish
+admissibility of each honest head's known ancestor path. Accountability for
+available and unrealized FFG certificates handles other required carriers. The proofs transport
 these roots and paths, then use local store monotonicity at later times.
 They do not require all roots of one honest store to reach every other store.
 Scheduled FCR calls read at slot start. Stored heads and source-history records
@@ -107,7 +107,7 @@ wall-clock slot. Grandine follows the specification and uses the justified
 state. All six clients apply valid gossip evidence to fork choice before block
 inclusion, and none prunes the equivocation set at finalization.
 
-Client commits checked on 2026-09-25: Lighthouse e423a66763bb1bd780492d635123f208d80c3538; Prysm 5407381fc51c9604c7f95b8d87dbb8f4786a83fd; Teku 3d26533fb84a7d12da04e5ab59e1ab7399db5fc5; Lodestar c535e94f25e209f6b137be3d29a87562088035d; Nimbus 404a0001561d1d83c5b5bf35dcbedbcb5fb86572; Grandine 66b3d385c3dc69d89e05b80bbb6baf7442a12966.
+Client provenance for this comparison (commits checked on 2026-09-25): Lighthouse e423a66763bb1bd780492d635123f208d80c3538; Prysm 5407381fc51c9604c7f95b8d87dbb8f4786a83fd; Teku 3d26533fb84a7d12da04e5ab59e1ab7399db5fc5; Lodestar c535e94f25e209f6b137be3d29a87562088035d; Nimbus 404a0001561d1d83c5b5bf35dcbedbcb5fb86572; Grandine 66b3d385c3dc69d89e05b80bbb6baf7442a12966.
 
 Evidence accepted late in a slot is included: the relay's source time is when
 the confirmer holds the index at its scheduled slot-start FCR call. The two
@@ -120,4 +120,14 @@ The live block-production premise remains separate. Deriving delivery of an
 honest proposal to same-slot voters would also require `P + Δ ≤ A`, where P
 is its proposal offset; safety's strict bound alone does not supply that fact.
 
-The source fork is `fradamt/consensus-specs` at tag `fcr-gloas-fix` (`13f391516`). The independent weak rule is on branch `fcr-weak-synchrony` and tag `fcr-weak-synchrony-v1`; its live monotonicity proposition remains open. See [source map](SPEC_MAP.md), [paper map](PAPER_MAP.md), and [review guide](REVIEW_GUIDE.md).
+The source fork is `fradamt/consensus-specs` at tag `fcr-gloas-fix` (`13f391516`). See [source map](SPEC_MAP.md), [paper map](PAPER_MAP.md), and [review guide](REVIEW_GUIDE.md).
+
+## Paper vote payload limit
+
+The paper model computes on-chain available and unrealized justification from
+FFG votes carried in block ancestry. These votes keep their vote slot. They do
+not count as LMD-GHOST votes. The model has no block-size cap or execution
+participation flags. It ignores a validator for an epoch if that validator
+equivocates on the chain. `OnChainAnchorInterface` supplies chain payload
+formation and availability laws. `OnChainAnchorInterfacesForRule` limits that
+bridge to selected blocks and previous-slot witness blocks.

@@ -1,17 +1,59 @@
 # Verified Fast Confirmation
 
-This Lean 4 repository verifies two properties of the executable Fast Confirmation Rule (FCR) under explicit execution, network, economic, and Casper FFG premises. The primary model follows the Python specification in the fork `fradamt/consensus-specs`, tag `fcr-gloas-fix` (`13f391516`). That tag includes the public Gloas empty-slot discount fix. The paper library is independent of the executable model. The proofs are kernel checked; the stated premises and the model boundary need separate review.
+The Fast Confirmation Rule (FCR) selects a block root that a node can treat as confirmed from its fork-choice state.
 
-## Review theorem
+## Proved claims
 
-`review_claims` in `FastConfirmationProofs/ReviewTheorem.lean` proves both fields of `ReviewClaims` in `FastConfirmationStatements/Review.lean`:
+`review_claims` proves two conditional claims under the records in `FastConfirmationStatements/Review.lean`:
 
-- `confirmed_root_safe_from_next_slot`: an honest node's stored confirmed root is on every honest head from the following slot, within the verification horizon.
-- `live_confirmed_root_monotonicity`: an honest node's later stored confirmed root descends from its earlier one when honest blocks and timely FFG justification meet the live premises.
+- **Next-slot safety.** An honest node's stored confirmed root stays on every honest head from the following slot through the finite verification horizon.
+- **Live monotonicity.** A later stored confirmed root descends from an earlier one when the safety bundle and both live fields hold. The live fields require honest block production, vote support, and timely Casper Friendly Finality Gadget (FFG) justification.
+
+The result concerns stored boundary outputs. It does not cover an arbitrary query within a slot.
+
+## Assumptions at a glance
+
+```text
+┌────────────────────────┬─────────────────────────────────────────────────────────────────────────────────────────────┐
+│ Assumption             │ Plain meaning and premise record                                                            │
+├────────────────────────┼─────────────────────────────────────────────────────────────────────────────────────────────┤
+│ Honest operation       │ Honest nodes process scheduled events and vote by the due time. See                         │
+│                        │ Execution.ScheduledPrefixPremises and HonestBehavior.                                       │
+│ Timely delivery        │ Needed votes, blocks, payload data, and evidence reach honest nodes before the next         │
+│                        │ boundary under positive delay. See NextSlotSynchronyPremises.                               │
+│ Stake and committees   │ Validators stay active. Committee estimates and the fault bound hold for every checked slot │
+│                        │ span. See StaticValidatorSet and ByzantineWeightPremises.                                   │
+│ Beacon and FFG state   │ External transitions and supplied checkpoint links match accepted block and vote evidence.  │
+│                        │ See BeaconExternalsPremises and CausalPrefixFFGInterpretation.                              │
+│ Payload validity       │ Imported payloads pass opaque execution validation. See BeaconExternalsPremises and the     │
+│                        │ execution external contract.                                                                │
+│ Live claim only        │ Each slot has an honest block with vote support. FFG justification is visible at the        │
+│                        │ required epoch boundary. See LiveMonotonicityPremises.                                      │
+└────────────────────────┴─────────────────────────────────────────────────────────────────────────────────────────────┘
+```
+
+The [premise ledger](#premise-ledger) gives the exact records and sources. Evidence relay is supplied as a premise. The fault bound applies to each checked span. The live fields are stronger than paper Assumption 6.
+
+## Trust and source
+
+The executable model follows the `fradamt/consensus-specs` fork at tag `fcr-gloas-fix` (`13f391516`). Gloas is the fork that separates beacon blocks from execution payloads. The fork's empty-slot discount counts parent votes with a matching payload status or PENDING status. Unmodified upstream can also count votes for the opposite resolved status. See the [source map](docs/SPEC_MAP.md) and [counterexample](docs/history/gloas-negative-result.md). Cryptography, beacon transitions, committee reads, and execution validation are opaque external calls with stated contracts. The Lean kernel checks the proofs. The trust audit allows only `propext`, `Classical.choice`, and `Quot.sound`. The [paper library](#paper-library) models the [paper](https://arxiv.org/abs/2405.00549) separately. There is no refinement theorem from the paper model to the executable model.
+
+## Verify
+
+Install Python 3 and Elan. Use the pinned Lean toolchain from `lean-toolchain`. Check out the Python fork at tag `fcr-gloas-fix` locally. On a fresh checkout, `lake exe cache get` downloads Mathlib artifacts. Then run:
+
+```sh
+export PATH="$HOME/.elan/bin:$PATH"
+lake exe cache get
+lake build
+scripts/validate.sh --consensus-repo /path/to/fradamt-consensus-specs
+```
+
+A warm `lake build` took 24.19 seconds on a 12-core desktop. A fresh build can take longer. `scripts/validate.sh --fast --consensus-repo /path/to/fradamt-consensus-specs` checks source pinning, document names, boundaries, and hygiene. Full validation also builds the libraries and audits 19 public theorem witnesses: 12 executable-side and seven paper-side. The Python path must name the pinned local checkout.
 
 ## Premise ledger
 
-The records in this table are in `FastConfirmationStatements/Premises/`. The paper is [arXiv:2405.00549](https://arxiv.org/abs/2405.00549). The source of each condition is shown in the last column.
+The records in this table are in `FastConfirmationStatements/Premises/`. The last column gives the source of each condition.
 
 ```text
 ┌────────────────────┬────────────────────────────────────┬──────────────────────────────────────────────────────────────────────────────────┬───────────────────────────────┐
@@ -40,12 +82,12 @@ The records in this table are in `FastConfirmationStatements/Premises/`. The pap
 └────────────────────┴────────────────────────────────────┴──────────────────────────────────────────────────────────────────────────────────┴───────────────────────────────┘
 ```
 
-`Execution.NextSlotSafetyPremises` supplies the common safety premise to the safety field. `LiveConfirmedRootMonotonicity` adds `LiveMonotonicityPremises` to that same execution premise. The FFG and finalization laws quantify over handler-successful prefixes beyond the safety endpoint where their declarations require it; the finite conclusion does not reduce their premise range.
+`Execution.NextSlotSafetyPremises` supplies the common safety premise to the safety field. `LiveConfirmedRootMonotonicity` adds `LiveMonotonicityPremises` to that same execution premise. The FFG and finalization laws can quantify over successful handler prefixes beyond the safety endpoint. The finite conclusion does not shorten those premise ranges.
 
 ## Scope limits
 
 - Validator activity is fixed inside the checked horizon by `StaticValidatorSet`. The proof does not cover registry churn.
-- The model is non-optimistic. An imported payload enters the store only after `verify_execution_payload_envelope` returns true. This external includes the execution engine's `VALID` decision. Execution validation itself is opaque.
+- The model imports only validated payloads. An imported payload enters the store only after `verify_execution_payload_envelope` returns true. This external includes the execution engine's `VALID` decision. Execution validation itself is opaque.
 - `BeaconExternalsPremises` supplies contracts for external state transitions and validation. The Lean proof does not implement an execution engine.
 - `CausalCarrierAttestationRelation.Included` is a supplied carrier-vote relation whose evidence checks membership in the accepted carrier block's ordered FFG attestation body.
 - Included votes validate on the target checkpoint state prepared from a keyed target block state in an honest in-horizon store. The preparation advances the base state to the target epoch start only when needed. The prepared state need not itself be keyed.
@@ -56,27 +98,10 @@ The records in this table are in `FastConfirmationStatements/Premises/`. The pap
 
 ## Paper library
 
-`FastConfirmationPaper/Core/` defines the abstract objects. `FastConfirmationPaper/LMDGhost/` proves the Section 3.1 Theorem 1 safety and monotonicity claims through `confirmed_block_safety` and `confirmed_block_monotonicity`. `FastConfirmationPaper/HFC/` proves the Section 4 Algorithm 1 safety and monotonicity claims through `rule_confirmed_block_safety` and `rule_confirmed_block_monotonicity`. `head_agreement_after_confirmation` is the reusable Lemma 6 style result. `SafeConfirmedAlg1Inputs` requires later rule confirmation for each honest-view-safe block. That input is stronger than paper Assumption 6. There is no refinement theorem between the paper and executable models.
-
-## How to verify
-
-Use the pinned Lean toolchain and a local checkout of the Python fork. The full check builds the six libraries, checks their imports and review surface, and audits the public witnesses for non-standard axioms:
-
-```sh
-scripts/validate.sh --consensus-repo /path/to/fradamt-consensus-specs
-```
-
-`--fast` runs source, document-name, boundary, and hygiene checks. The full check covers 14 public witnesses in `scripts/Audit.lean`.
+`FastConfirmationPaper/Core/` defines the abstract objects. `FastConfirmationPaper/LMDGhost/` proves the Section 3.1 Theorem 1 safety and monotonicity claims through `confirmed_block_safety` and `confirmed_block_monotonicity`. `FastConfirmationPaper/HFC/` proves the Section 4 Algorithm 1 safety and monotonicity claims through `rule_confirmed_block_safety` and `rule_confirmed_block_monotonicity`. `head_agreement_after_confirmation` is the reusable Lemma 6 style result. `SafeConfirmedAlg1Inputs` requires later rule confirmation for each honest-view-safe block. That input is stronger than paper Assumption 6. No refinement theorem connects the paper and executable models.
 
 ## Where to read
 
-Read [architecture](docs/ARCHITECTURE.md), [source map](docs/SPEC_MAP.md), [paper map](docs/PAPER_MAP.md), [modeling choices](docs/MODELING_CHOICES.md), [review guide](docs/REVIEW_GUIDE.md), and [audit brief](docs/AI_AUDIT.md). The [conformance guide](docs/conformance.md) covers trace comparison. Source declarations are in `FastConfirmationStatements/Review.lean`, `FastConfirmationProofs/ReviewTheorem.lean`, and `FastConfirmationWitnesses/Index.lean`.
+Start with the [review guide](docs/REVIEW_GUIDE.md), [architecture](docs/ARCHITECTURE.md), [modeling choices](docs/MODELING_CHOICES.md), [source map](docs/SPEC_MAP.md), and [paper map](docs/PAPER_MAP.md). The [conformance guide](docs/conformance.md) covers trace comparison. The claim and proof sources are `FastConfirmationStatements/Review.lean` and `FastConfirmationProofs/ReviewTheorem.lean`. The [witness index](FastConfirmationWitnesses/Index.lean) states each finite run's limit. The repository uses the MIT [license](LICENSE).
 
-The execution synchrony fields use a positive millisecond delay and strict
-`A + Δ < S`. G4 and exact AU accountability justify transport of the required
-roots. The public next-slot endpoints are unchanged. Evidence relay
-is a premise. Literal Python validates evidence against the justified state and
-can reject a signer that this state lacks. Five of six checked clients (all but
-Grandine) validate against the head state, which matches the premise. See [modeling choices](docs/MODELING_CHOICES.md) and the
-[review guide](docs/REVIEW_GUIDE.md). `scripts/check_synchrony_corners.py` runs
-with validation and rejects the old relay shapes.
+The execution synchrony fields require a positive millisecond delay Δ. The attestation deadline offset A and slot duration S obey `A + Δ < S`. The FFG and carrier-evidence premises make required ancestor blocks available to honest heads. Evidence relay is a premise. The handler follows Python and looks up the justified state. Literal Python can reject evidence when that state lacks a signer. The premise matches head-state clients. See [modeling choices](docs/MODELING_CHOICES.md) for the pinned client commits. `scripts/check_synchrony_corners.py` checks the relay boundary.
