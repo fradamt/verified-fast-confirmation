@@ -4,18 +4,18 @@ Six Lean libraries separate the trusted definitions from proof terms. An arrow m
 
 ```text
 ┌────────────────────────────────────┬──────────────────────────────────────────────────────────────────────────────────────────────┐
-│ Library                            │ Contents                                                                                     │
+│Library                             │Contents                                                                                      │
 ├────────────────────────────────────┼──────────────────────────────────────────────────────────────────────────────────────────────┤
-│ FastConfirmationModel              │ Python function translation in Spec/; scheduled runs, stake reads, external calls, and state │
-│                                    │ folds in Execution/.                                                                         │
-│ FastConfirmationStatements         │ Premise records in Premises/; propositions in Claims.lean and the two-field Review.lean    │
-│                                    │ bundle.                                                                                      │
-│ FastConfirmationInternal           │ Proof vocabulary and compatibility records. Subject folders hold FFG and synchrony facts;    │
-│                                    │ Legacy/ holds compatibility records.                                                         │
-│ FastConfirmationProofs             │ Kernel checked proofs grouped by subject; ReviewTheorem.lean proves review_claims.           │
-│ FastConfirmationWitnesses          │ Finite runs in NonVacuity/, negative results in Counterexamples/, and an inventory in        │
-│                                    │ Index.lean.                                                                                  │
-│ FastConfirmationPaper              │ Independent paper definitions, claims, proofs, and witnesses in Core/, LMDGhost/, and HFC/.  │
+│FastConfirmationModel               │Python function translation in Spec/; scheduled runs, stake reads, external calls, and state  │
+│                                    │folds in Execution/.                                                                          │
+│FastConfirmationStatements          │Premise records in Premises/; propositions in Claims.lean and the two-field Review.lean       │
+│                                    │bundle.                                                                                       │
+│FastConfirmationInternal            │Proof vocabulary and compatibility records. Subject folders hold FFG and synchrony facts;     │
+│                                    │Legacy/ holds compatibility records.                                                          │
+│FastConfirmationProofs              │Kernel checked proofs grouped by subject; ReviewTheorem.lean proves review_claims.            │
+│FastConfirmationWitnesses           │Finite runs in NonVacuity/, negative results in Counterexamples/, and an inventory in         │
+│                                    │Index.lean.                                                                                   │
+│FastConfirmationPaper               │Independent paper definitions, claims, proofs, and witnesses in Core/, LMDGhost/, and HFC/.   │
 └────────────────────────────────────┴──────────────────────────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -30,7 +30,7 @@ Six Lean libraries separate the trusted definitions from proof terms. An arrow m
 │check_consensus_source.py      │The Python tag and the pinned source objects match the recorded hashes.                            │
 │check_review_boundary.py       │Lean parser import closure of Statements contains only Model and Statements modules; every         │
 │                               │Statements source is included.                                                                     │
-│StatementReachability.lean     │Every authored Statements declaration is reachable from ReviewClaims, except two documented      │
+│StatementReachability.lean     │Every authored Statements declaration is reachable from ReviewClaims, except two documented        │
 │                               │public witness dependencies.                                                                       │
 │ReviewSurfaceShape.lean        │The two review fields and selected premise record shapes remain exact.                             │
 │check_imports.py               │The six-library import direction and Paper separation hold.                                        │
