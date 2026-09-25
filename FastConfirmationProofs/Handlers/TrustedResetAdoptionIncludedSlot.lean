@@ -1,6 +1,7 @@
 module
 public import FastConfirmationProofs.Handlers.ResetAdoption
 public import FastConfirmationInternal.Weak.TrustedFFGInterpretation
+public import FastConfirmationProofs.FFG.State.TrustedProcessedFFGGlobalCheckpointTrajectory
 
 @[expose] public section
 namespace FastConfirmation.Spec
@@ -56,6 +57,24 @@ theorem trusted_includedAttestationSlot_lt_acceptedCarrierBlock
     _ = ((E.store cfg ext v q).blocks containing).slot :=
       (congrArg BeaconBlock.slot hcontainingBlock).symm
     _ ≤ ((E.store cfg ext v q).blocks carrier).slot := hslotLe
+
+theorem trusted_anchor_epoch_le_acceptedGlobalJustified
+    (B : TrustedCausalPrefixFFGInterpretation cfg ext E trusted)
+    (hgen : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
+      E.genesis_store = get_forkchoice_store cfg ast ablk ∧
+        ast.slot = ablk.message.slot)
+    (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
+    {store : Store Root} (hstore : E.CausalStore cfg ext store) :
+    B.anchor.epoch ≤ store.justified_checkpoint.epoch := by
+  rcases B.globalJustified_anchor_or_AUEvidence hgen hanchor hstore with
+    hfieldAnchor | hevidence
+  · rw [hfieldAnchor]
+  · obtain ⟨carrier⟩ := hevidence
+    obtain ⟨hcertificate⟩ := carrier.formed_evidence.certified
+    exact CertifiedJustified.anchor_epoch_le (cfg := cfg)
+      (IncludedCertifiedJustified.toCertifiedJustified
+        (cfg := cfg)
+        B.state.includedAttestations.relation hcertificate)
 
 end Execution
 end FastConfirmation.Spec
