@@ -33,13 +33,12 @@ This map condenses the definitions, assumptions, and theorems of [arXiv:2405.005
 
 Read `FastConfirmationPaper/LMDGhost/Claims.lean` with `FastConfirmationPaper/LMDGhost/ReviewTheorem.lean` for Theorem 1. Read `FastConfirmationPaper/HFC/Claims.lean` with `FastConfirmationPaper/HFC/ReviewTheorem.lean` for Algorithm 1. `SafeConfirmedAlg1Inputs` gives future rule confirmation as an input, so its theorem has a stronger premise than paper Assumption 6. The source and paper models have no formal refinement theorem.
 
-The execution timing row concerns the Spec-side bridge to the paper's message
-delay and immediate honest gossip. It restricts arbitrary observations to the
-attestation deadline. It also states Python client service, finalized-guard
-exclusion before the tick, and envelope order. These are distinct from the
-independent Paper library's slot views. Evidence discount is an executable
-addition. Its relay is a premise that matches clients that validate evidence
-against the head state (five of six checked); literal Python and Grandine use
-the justified state.
-See [modeling choices](MODELING_CHOICES.md) for the client evidence. A same-slot live proposal delivery
-argument requires the separate bound `P + Δ ≤ A`.
+The execution timing row connects the Spec-side model to the paper's message delay and
+immediate honest gossip. It uses the attestation deadline as the source cutoff. It requires
+Python client service of ready messages. It tests finalized-guard exclusion before the tick.
+It orders envelopes before boundary votes. The independent Paper library uses slot views.
+Evidence discount is an executable addition. Evidence relay is a premise. Five of six
+checked clients validate evidence against the head state. Literal Python and Grandine use
+the justified state. See [modeling choices](MODELING_CHOICES.md) for pinned client commits.
+A same-slot live proposal delivery argument needs the separate bound `P + Δ ≤ A`. Here P is
+the proposal offset.

@@ -122,6 +122,14 @@ is its proposal offset; safety's strict bound alone does not supply that fact.
 
 The source fork is `fradamt/consensus-specs` at tag `fcr-gloas-fix` (`13f391516`). See [source map](SPEC_MAP.md), [paper map](PAPER_MAP.md), and [review guide](REVIEW_GUIDE.md).
 
+## Gloas and Phase0 heads
+
+FULL payloads and available data do not make Gloas fork choice equal to
+Phase0 fork choice. Gloas can suppress proposer boost for a weak previous-slot
+parent after an early same-proposer equivocation. Gloas can also replace a
+latest message with a later vote in the same epoch. The conformance harness
+therefore compares Gloas observations with the pinned Gloas source.
+
 ## Paper vote payload limit
 
 The paper model computes on-chain available and unrealized justification from

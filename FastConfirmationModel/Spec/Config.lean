@@ -13,8 +13,8 @@ Fast Confirmation Rule. The rule inherits the constants and configuration in
 and changes the attestation deadline (`specs/gloas/validator.md:43`).
 
 Python `uint64` values are modelled as `ℕ`. See
-`docs/MODELING_CHOICES.md` for the integer limit. `GENESIS_SLOT = GENESIS_EPOCH = 0` are hardcoded below as in the
-phase0 spec.
+`docs/MODELING_CHOICES.md` for the integer limit.
+`GENESIS_SLOT = GENESIS_EPOCH = 0` are hardcoded below as in the Phase0 spec.
 -/
 
 namespace FastConfirmation.Spec

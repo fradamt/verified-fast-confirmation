@@ -17,17 +17,18 @@ The result concerns stored boundary outputs. It does not cover an arbitrary quer
 ┌────────────────────────┬─────────────────────────────────────────────────────────────────────────────────────────────┐
 │ Assumption             │ Plain meaning and premise record                                                            │
 ├────────────────────────┼─────────────────────────────────────────────────────────────────────────────────────────────┤
-│ Honest operation       │ Honest nodes process scheduled events and vote by the due time. See                         │
+│ Honest operation       │ Honest nodes process scheduled events. They vote by the due time. See                       │
 │                        │ Execution.ScheduledPrefixPremises and HonestBehavior.                                       │
 │ Timely delivery        │ Needed votes, blocks, payload data, and evidence reach honest nodes before the next         │
 │                        │ boundary under positive delay. See NextSlotSynchronyPremises.                               │
-│ Stake and committees   │ Validators stay active. Committee estimates and the fault bound hold for every checked slot │
-│                        │ span. See StaticValidatorSet and ByzantineWeightPremises.                                   │
-│ Beacon and FFG state   │ External transitions and supplied checkpoint links match accepted block and vote evidence.  │
-│                        │ See BeaconExternalsPremises and CausalPrefixFFGInterpretation.                              │
+│ Stake and committees   │ Validators stay active. Committee estimates hold for every checked slot span. The fault     │
+│                        │ bound holds for every checked slot span. See StaticValidatorSet and                         │
+│                        │ ByzantineWeightPremises.                                                                    │
+│ Beacon and FFG state   │ External transitions match accepted evidence. Supplied checkpoint links match accepted      │
+│                        │ evidence. See BeaconExternalsPremises and CausalPrefixFFGInterpretation.                    │
 │ Payload validity       │ Imported payloads pass opaque execution validation. See BeaconExternalsPremises and the     │
 │                        │ execution external contract.                                                                │
-│ Live claim only        │ Each slot has an honest block with vote support. FFG justification is visible at the        │
+│ Live claim only        │ Each slot has an honest block. Honest votes support it. FFG justification is visible at the │
 │                        │ required epoch boundary. See LiveMonotonicityPremises.                                      │
 └────────────────────────┴─────────────────────────────────────────────────────────────────────────────────────────────┘
 ```
@@ -36,7 +37,16 @@ The [premise ledger](#premise-ledger) gives the exact records and sources. Evide
 
 ## Trust and source
 
-The executable model follows the `fradamt/consensus-specs` fork at tag `fcr-gloas-fix` (`13f391516`). Gloas is the fork that separates beacon blocks from execution payloads. The fork's empty-slot discount counts parent votes with a matching payload status or PENDING status. Unmodified upstream can also count votes for the opposite resolved status. See the [source map](docs/SPEC_MAP.md) and [counterexample](docs/history/gloas-negative-result.md). Cryptography, beacon transitions, committee reads, and execution validation are opaque external calls with stated contracts. The Lean kernel checks the proofs. The trust audit allows only `propext`, `Classical.choice`, and `Quot.sound`. The [paper library](#paper-library) models the [paper](https://arxiv.org/abs/2405.00549) separately. There is no refinement theorem from the paper model to the executable model.
+The executable model follows the `fradamt/consensus-specs` fork at tag `fcr-gloas-fix`
+(`13f391516`). Gloas is the fork that separates beacon blocks from execution payloads. The
+fork's empty-slot discount counts parent votes with a matching payload status or PENDING
+status. Unmodified upstream can also count votes for the opposite resolved status. See the
+[source map](docs/SPEC_MAP.md) and [counterexample](docs/history/gloas-negative-result.md).
+Cryptography, beacon transitions, committee reads, and execution validation are opaque
+external calls with stated contracts. The Lean kernel checks the proofs. The trust audit
+allows only `propext`, `Classical.choice`, and `Quot.sound`. The [paper
+library](#paper-library) models the [paper](https://arxiv.org/abs/2405.00549) separately.
+There is no refinement theorem from the paper model to the executable model.
 
 ## Verify
 
@@ -49,7 +59,11 @@ lake build
 scripts/validate.sh --consensus-repo /path/to/fradamt-consensus-specs
 ```
 
-A warm `lake build` took 24.19 seconds on a 12-core desktop. A fresh build can take longer. `scripts/validate.sh --fast --consensus-repo /path/to/fradamt-consensus-specs` checks source pinning, document names, boundaries, and hygiene. Full validation also builds the libraries and audits 19 public theorem witnesses: 12 executable-side and seven paper-side. The Python path must name the pinned local checkout.
+A warm `lake build` took 24.19 seconds on a 12-core desktop. A fresh build can take longer.
+`scripts/validate.sh --fast --consensus-repo /path/to/fradamt-consensus-specs` checks source
+pinning, document names, boundaries, and hygiene. Full validation also builds the libraries
+and audits 19 public theorem witnesses: 12 executable-side and seven paper-side. The Python
+path must name the pinned local checkout.
 
 ## Premise ledger
 
@@ -102,6 +116,18 @@ The records in this table are in `FastConfirmationStatements/Premises/`. The las
 
 ## Where to read
 
-Start with the [review guide](docs/REVIEW_GUIDE.md), [architecture](docs/ARCHITECTURE.md), [modeling choices](docs/MODELING_CHOICES.md), [source map](docs/SPEC_MAP.md), and [paper map](docs/PAPER_MAP.md). The [conformance guide](docs/conformance.md) covers trace comparison. The claim and proof sources are `FastConfirmationStatements/Review.lean` and `FastConfirmationProofs/ReviewTheorem.lean`. The [witness index](FastConfirmationWitnesses/Index.lean) states each finite run's limit. The repository uses the MIT [license](LICENSE).
+Start with the [review guide](docs/REVIEW_GUIDE.md), [architecture](docs/ARCHITECTURE.md),
+[modeling choices](docs/MODELING_CHOICES.md), [source map](docs/SPEC_MAP.md), and [paper
+map](docs/PAPER_MAP.md). The [conformance guide](docs/conformance.md) covers trace
+comparison. The claim and proof sources are `FastConfirmationStatements/Review.lean` and
+`FastConfirmationProofs/ReviewTheorem.lean`. The [witness
+index](FastConfirmationWitnesses/Index.lean) states each finite run's limit. The repository
+uses the MIT [license](LICENSE).
 
-The execution synchrony fields require a positive millisecond delay Δ. The attestation deadline offset A and slot duration S obey `A + Δ < S`. The FFG and carrier-evidence premises make required ancestor blocks available to honest heads. Evidence relay is a premise. The handler follows Python and looks up the justified state. Literal Python can reject evidence when that state lacks a signer. The premise matches head-state clients. See [modeling choices](docs/MODELING_CHOICES.md) for the pinned client commits. `scripts/check_synchrony_corners.py` checks the relay boundary.
+The execution synchrony fields require a positive millisecond delay Δ. The attestation
+deadline offset A and slot duration S obey `A + Δ < S`. The FFG and carrier-evidence
+premises make required ancestor blocks available to honest heads. Evidence relay is a
+premise. The handler follows Python and looks up the justified state. Literal Python can
+reject evidence when that state lacks a signer. The premise matches head-state clients. See
+[modeling choices](docs/MODELING_CHOICES.md) for the pinned client commits.
+`scripts/check_synchrony_corners.py` checks the relay boundary.

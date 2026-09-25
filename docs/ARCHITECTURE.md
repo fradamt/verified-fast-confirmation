@@ -1,6 +1,9 @@
 # Architecture
 
-Six Lean libraries separate the trusted definitions from proof terms. An arrow means that the library on the right may import the one on the left: Model → Statements → Internal → Proofs → Witnesses. Paper is independent and has no imports in either direction with the executable side. `FastConfirmation.lean` imports all six.
+Six Lean libraries separate definitions from proof terms. An arrow means that the library on
+the right may import the one on the left: Model → Statements → Internal → Proofs →
+Witnesses. Paper is independent of the executable side. `FastConfirmation.lean` imports all
+six.
 
 ```text
 ┌────────────────────────────┬──────────────────────────────────────────────────────────────────────────────────────────────┐

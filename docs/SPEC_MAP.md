@@ -1,6 +1,13 @@
 # Python specification map
 
-The Python source is the fork `fradamt/consensus-specs`, tag `fcr-gloas-fix` (`13f391516`). The branch `fcr-gloas-discount-fix` contains upstream master `63a81afa6` and the fix alone. This table names each Python function represented by an authored Lean definition in the FCR, Gloas fork-choice, beacon-chain, and validator source sections. Gloas overrides take precedence over inherited phase0 functions. A missing Python function has no authored Lean definition in these Model modules. The final rows identify data projections and the execution model. “Faithful” means branch decisions follow Python on the modeled domain; opaque externals still need their stated contracts.
+The Python source is fork `fradamt/consensus-specs` at tag `fcr-gloas-fix` (`13f391516`).
+Branch `fcr-gloas-discount-fix` contains upstream master `63a81afa6` and the fix alone. The
+table maps each Python function that has an authored Lean definition in the FCR, Gloas
+fork-choice, beacon-chain, and validator sections. Gloas overrides take precedence over
+inherited Phase0 functions. A missing Python function has no authored Lean definition in
+these Model modules. The final rows identify data projections and the execution model.
+“Faithful” means branch decisions follow Python on the modeled domain. Opaque externals need
+their stated contracts.
 
 ```text
 ┌───────────────────────────────────────────────────┬──────────────────────────────────────────────────────────────────────────┬───────────────────────────────────────────────────────────────────────────────┐
@@ -166,6 +173,11 @@ The Python source is the fork `fradamt/consensus-specs`, tag `fcr-gloas-fix` (`1
 
 For `on_attestation`, the Lean handler returns no store after failed indexed validation. The scheduled run keeps the pre-call store. Python can write `checkpoint_states` before the failing assert. Accepted evidence uses handler-successful transitions, so a rejected call supplies no accepted state or cache write in Lean. The effect of Python's surviving cache write on later valid calls is not established.
 
-The public Gloas difference is in `compute_empty_slot_support_discount`. The helper `get_parent_payload_support_between_slots` counts only matching-status or PENDING parent votes. A vote on the opposite resolved payload branch stays in the competing weight. Other global translations use natural-number arithmetic, totalized map reads, `List` iteration, and explicit loop fuel; see [modeling choices](MODELING_CHOICES.md). The conformance runner compares projected source states but does not prove every external contract.
+The public Gloas difference is in `compute_empty_slot_support_discount`. The helper
+`get_parent_payload_support_between_slots` counts only matching-status or PENDING parent
+votes. A vote on the opposite resolved payload branch stays in the competing weight. Other
+translations use natural-number arithmetic, totalized map reads, `List` iteration, and
+explicit loop fuel. See [modeling choices](MODELING_CHOICES.md). The conformance runner
+compares projected source states. It does not prove every external contract.
 
 The `BeaconBlock.attestations` list projects `BeaconBlockBody.attestations` from both the Phase0 and Gloas beacon-chain sections. Its order is the source order. `CausalCarrierAttestationEvidence.in_carrier_body` checks membership in the accepted carrier message. The validation origin follows `store_target_checkpoint_state` in Phase0 fork choice: a keyed target block state in an honest in-horizon store is advanced with `process_slots` only if its slot precedes the target epoch start. The prepared state is not required to be keyed.
