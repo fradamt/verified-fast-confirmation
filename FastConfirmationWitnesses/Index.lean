@@ -69,12 +69,21 @@ off-committee validators.
 
 ## Premise bundles
 
-* `Execution.NextSlotSafetyPremises`:
+* `ConcreteBridge.SafetyPremises`, the public premise:
   `NextSlotPremiseWitness.finite_execution_satisfies_premises` and
-  `NextSlotPremiseWitness.next_slot_premises_nonempty`. The execution has four
-  honest validators, four slots per epoch, an anchor, a slot-one child, and a
-  slot-eight FFG carrier. Its scheduled FCR call changes the confirmed root.
-  The final in-horizon vote is delivered one second beyond the horizon.
+  `NextSlotPremiseWitness.next_slot_premises_nonempty`. The run uses the
+  concrete bridge `NextSlotBridgeRun.witnessBridge`: one concrete setup, a
+  finite state table, and a finite block table. Its FFG content is the
+  canonical content of the bridge, not a hand-made interpretation. The run has
+  four honest validators, four slots per epoch, an anchor, a slot-one child,
+  and a slot-eight carrier whose body has the votes of slots four to six. Its
+  scheduled FCR call changes the confirmed root, and
+  `finite_execution_satisfies_premises` applies
+  `confirmed_root_safe_from_next_slot` to the changed root. The final
+  in-horizon vote is delivered one second beyond the horizon.
+  The setup takes `zeroRoot := anchorRoot`. Python cannot make this choice,
+  because `ZERO_HASH` is not the genesis root. With it, the genesis stub reads
+  as the anchor checkpoint in the honest votes.
 * Real Phase0 genesis anchor:
   `GenesisStubPremiseWitness.genesis_stub_full_bundle_witness` is the same
   one-second run with a real genesis anchor state. Its current justified and
@@ -148,12 +157,11 @@ off-committee validators.
   `AcceptedActualFCRJointNonVacuityBase.witnessHonestBehavior`. Every scheduled
   honest vote belongs to its assigned slot committee and meets the
   attestation due time in that execution.
-* `Execution.ScheduledFCRCallPremises`:
-  `NextSlotPremiseWitness.witnessCompletedPrefixCallAssumptions`. The same
-  execution has synchronized votes and blocks, stable validators and weights,
-  and a scheduled descendant-helper call.
-  Its selector guard excludes selected current-target accepted edges, so this
-  witness does not exercise these support branches.
+* `Execution.ScheduledFCRCallPremises` and the other internal records of
+  `Execution.NextSlotSafetyPremises` follow from the public premise by
+  `ConcreteBridge.SafetyPremises.nextSlotSafetyPremises`. The source laws, the
+  balance floor, the anchor fields, and the FFG interpretation are proved for
+  every bridge.
 * `NextSlotSynchronyPremises`:
   `AcceptedActualFCRJointNonVacuityBase.witnessPaperSafetySynchrony`.
   The same execution satisfies the delivery and relay laws. It contains no
@@ -203,13 +211,10 @@ off-committee validators.
 * `AcceptedBlockFFGState.LinkCheckpointAgreement`:
   `AcceptedActualFCRJointNonVacuityFFG.witnessExactLinkValidity`. Included
   attestations on the carrier support its exact checkpoint link.
-* `AcceptedBlockFFGState.EventualCheckpointInclusion`:
+* `EventualCheckpointInclusion` over the view of the bridge:
   `NextSlotPremiseWitness.witnessPaperA32Inclusion`. The slot-eight carrier
-  includes the vote evidence for the slot-one child. It is in epoch 2, because
-  Python justification returns early in epochs 0 and 1.
-* `Execution.ImportedBlockFinalizationLag`:
-  `NextSlotPremiseWitness.witnessAcceptedRealizedFinalizationDelay`. The
-  finite FFG state meets the delay bound over the horizon.
+  carries the unrealized justification of the slot-one child in epoch 1. It is
+  in epoch 2, because Python justification returns early in epochs 0 and 1.
 * `EpochEndsFitUint64`:
   `AcceptedActualFCRJointNonVacuityBase.witnessEpochEndsFitUint64`. The
   four-slot epochs fit the execution's integer bounds.
