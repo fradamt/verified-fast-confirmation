@@ -257,7 +257,30 @@ def make_runs(env, full):
     state, anchor = start()
     _, blocks, state = next_slots(spec, state, 24, True, False)
     runs.append(Run('later-anchor-out-of-scope', spec, state, blocks[-1].message, [], later=True))
-    full_run, review, delayed, skipped, forks, later_run = runs
+    # Epoch-2 votes are included at slot 24 and epoch-3 votes at slot 32, so
+    # epoch 2 is finalized through the 2-epoch link 2 -> 4.
+    from eth_consensus_specs.test.helpers.attestations import get_valid_attestation_at_slot
+    state, anchor = start()
+    pool, two_step = {}, []
+    for slot in range(1, 45):
+        if slot == 24:
+            votes = range(16, 24)
+        elif slot == 32:
+            votes = range(24, 32)
+        elif slot >= 2 and (slot - 1) // 8 not in (2, 3):
+            votes = [slot - 1]
+        else:
+            votes = []
+        block = build(spec, state, slot=slot)
+        for vote_slot in votes:
+            block.body.attestations.append(pool[vote_slot])
+        two_step.append(sign(spec, state, block))
+        pool[slot] = get_valid_attestation_at_slot(state.copy(), spec, slot,
+                                                   beacon_block_root=spec.hash_tree_root(block))
+    runs.append(Run('two-step-finality', spec, genesis(spec, [32 * 10**9] * 64, 32 * 10**9), anchor, two_step))
+    full_run, review, delayed, skipped, forks, later_run, two_step_run = runs
+    if not (two_step_run.selector(two_step_run.roots[-1], 'realized_finalized')[0] >= 2):
+        raise AssertionError('two-step finality fixture did not finalize epoch 2')
     if not (int(full_run.blocks[full_run.roots[-1]].slot)//8 >= 6 and
             full_run.selector(full_run.roots[-1], 'realized_justified')[0] > 0 and
             full_run.selector(full_run.roots[-1], 'realized_finalized')[0] > 0):
