@@ -40,17 +40,12 @@ structure BeaconExternalsPremises (E : Execution Root) : Prop where
   /-- A valid state transition lands on the block's slot. -/
   state_transition_slot : ∀ st (b : SignedBeaconBlock Root) st',
     ext.state_transition st b = some st' → st'.slot = b.message.slot
-  /-- a valid state transition requires the pre-state to precede the block's
-      slot (the real `process_slots` assert inside `state_transition`) —
-      gives base proof layer the parent-slot ordering `WellFormedStore` preservation
-      needs. -/
+  /-- A valid state transition requires the pre-state slot to precede the
+      block slot, as `process_slots` asserts in `state_transition`. -/
   state_transition_pre_slot_lt : ∀ st (b : SignedBeaconBlock Root) st',
     ext.state_transition st b = some st' → st.slot < b.message.slot
-  /-- checkpoint-chain coherence of the abstract state transition: the
-      checkpoints a post-state carries have epochs at most the block's
-      epoch (the real epoch processing justifies only past-epoch targets;
-      full chain-position coherence — roots on the block's ancestor chain —
-      is added when the proof consumes it). -/
+  /-- A post-state checkpoint has an epoch at most the block epoch.
+      This field does not constrain the checkpoint root. -/
   state_transition_checkpoint_epoch : ∀ st (b : SignedBeaconBlock Root) st',
     ext.state_transition st b = some st' →
       st'.current_justified_checkpoint.epoch ≤

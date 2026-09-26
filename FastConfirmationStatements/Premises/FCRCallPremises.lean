@@ -21,7 +21,8 @@ namespace Execution
 variable {E : Execution Root}
 /-- Primitive bundle left after replaying the completed scheduled prefix.
 
-The first five fields are direct protocol/model contracts.  `balance_floor`
+The six fields state delivery, fixed validators, stake bounds, source laws,
+and the balance floor. `balance_floor`
 asks for an anchor active-set weight of at least two
 `EFFECTIVE_BALANCE_INCREMENT`s. It excludes the executable helper's
 artificial empty-active-set minimum-balance branch and the degenerate registry
@@ -39,10 +40,10 @@ structure ScheduledFCRCallPremises : Prop where
   synchrony : NextSlotSynchronyPremises cfg ext E
   static_validators : StaticValidatorSet cfg E
   byzantine_bound : ByzantineWeightPremises cfg E
-  phase0_source : Phase0SourceCoherence cfg ext
-  phase0_boundary_source : Phase0BoundarySourceCoherence cfg ext
+  source_coherence : Phase0SourceCoherence cfg ext
+  boundary_source_coherence : Phase0BoundarySourceCoherence cfg ext
   balance_floor : 2 * cfg.effective_balance_increment ≤
-    E.weight (E.currentTargetAnchorActive cfg)
+    E.weight (E.anchorActiveValidators cfg)
 
 end Execution
 end FastConfirmation.Spec

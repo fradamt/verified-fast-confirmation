@@ -28,7 +28,7 @@ theorem head_path_admissible_before_next_tick
     (hphaseBoundary : Phase0BoundarySourceCoherence cfg ext)
     (hsv : StaticValidatorSet cfg E)
     (hfloor : 2 * cfg.effective_balance_increment ≤
-      E.weight (E.currentTargetAnchorActive cfg))
+      E.weight (E.anchorActiveValidators cfg))
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : InitialAnchorAtEpochBoundary (cfg := cfg)
       (E := E) (anchor := B.anchor))
@@ -172,7 +172,7 @@ theorem honest_vote_path_admissible
     (hphaseBoundary : Phase0BoundarySourceCoherence cfg ext)
     (hsv : StaticValidatorSet cfg E)
     (hfloor : 2 * cfg.effective_balance_increment ≤
-      E.weight (E.currentTargetAnchorActive cfg))
+      E.weight (E.anchorActiveValidators cfg))
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : InitialAnchorAtEpochBoundary (cfg := cfg)
       (E := E) (anchor := B.anchor))
@@ -230,7 +230,7 @@ theorem honestHeadPathAdmissibility_of_accepted
   intro v hv n hHn w slot hHN hwalk
   exact E.head_path_admissible_before_next_tick cfg ext B hT
     hC.synchrony.deadline_block_relay hC.byzantine_bound
-    hC.phase0_source hC.phase0_boundary_source hC.static_validators
+    hC.source_coherence hC.boundary_source_coherence hC.static_validators
     hC.balance_floor hanchor hboundary hspe hDelay P V
     (CheckpointCertificateAccountability.of_assumptions cfg hacc)
     hv (E.slot_at_mono cfg (Nat.zero_le n)) rfl hHn hHN hwalk

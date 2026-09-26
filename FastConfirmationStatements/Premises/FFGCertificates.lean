@@ -22,7 +22,7 @@ the first justification name it as their source (`phase0/validator.md`,
 `get_attestation_data`). `get_forkchoice_store` instead records
 `Checkpoint(GENESIS_EPOCH, anchor_root)` (`phase0/fork-choice.md:217-244`).
 The FFG interpretation identifies all `GENESIS_EPOCH` checkpoints. Every other
-raw checkpoint reads only as itself. Executable handlers and wire attestations
+raw checkpoint reads only as itself. This wider genesis-epoch identification is safe for slashability because slashability compares checkpoint epochs, while raw roots remain unchanged in handlers. Executable handlers and wire attestations
 keep the raw value; only the semantic reads use this relation. -/
 def CheckpointReadsAs {Root : Type*} (raw c : Checkpoint Root) : Prop :=
   raw = c ∨ (raw.epoch = GENESIS_EPOCH ∧ c.epoch = GENESIS_EPOCH)

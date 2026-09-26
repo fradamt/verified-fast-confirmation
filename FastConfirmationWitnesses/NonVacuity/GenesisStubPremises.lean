@@ -12,7 +12,7 @@ public import FastConfirmationProofs.ModelFacts
 
 This file is the next-slot bundle of `NextSlotPremises` for the genesis-stub
 variant of the horizon-four run.  The anchor state carries the Phase0 genesis
-stub `(GENESIS_EPOCH, junkRoot)` as its current justified and finalized
+stub `(GENESIS_EPOCH, zeroRoot)` as its current justified and finalized
 checkpoints, while the trusted store anchor is `(0, anchorRoot)`.  The bundle
 reads the stub as the anchor (`CheckpointReadsAs`), and
 `genesis_stub_full_bundle_witness` shows that the bundle holds, the FCR still
@@ -47,11 +47,6 @@ theorem confirmed_at_one {v : ValidatorIndex}
   rcases honest_eq_zero_or_one_or_two_or_three hv with
     rfl | rfl | rfl | rfl <;>
     set_option maxRecDepth 50000 in decide
-
-
-
-/-! ## Positive next-slot finalized-reset regression -/
-
 
 
 
@@ -551,16 +546,16 @@ def witnessCompletedPrefixCallAssumptions :
   synchrony := witnessPaperSafetySynchrony
   static_validators := witnessStaticValidatorSet
   byzantine_bound := witnessByzantineBound
-  phase0_source := witnessPhase0SourceCoherence
-  phase0_boundary_source := witnessPhase0BoundarySourceCoherence
+  source_coherence := witnessPhase0SourceCoherence
+  boundary_source_coherence := witnessPhase0BoundarySourceCoherence
   balance_floor := witnessBalanceFloor
 
 def witnessAcceptedActualFCRNextSlotSafetyAssumptions :
     witnessExecution.NextSlotSafetyPremises witnessConfig
       witnessExternals where
   ffg_interpretation := witnessAcceptedSemantics
-  trajectory := witnessScheduledPrefixTrajectoryAssumptions
-  completed_calls := witnessCompletedPrefixCallAssumptions
+  scheduled_execution := witnessScheduledPrefixTrajectoryAssumptions
+  call_conditions := witnessCompletedPrefixCallAssumptions
   epoch_ends_fit := witnessEpochEndsFitUint64
   anchor_eq := by
     simpa only [witnessAcceptedSemantics] using witnessAnchorEquality.symm
@@ -568,11 +563,11 @@ def witnessAcceptedActualFCRNextSlotSafetyAssumptions :
   anchor_boundary := by
     simpa only [witnessAcceptedSemantics] using
       witnessTrustedAnchorBoundaryAligned
-  finalization_delay := witnessAcceptedRealizedFinalizationDelay
+  imported_block_finalization_lag := witnessAcceptedRealizedFinalizationDelay
   slots_per_epoch_gt_one := by decide
   checkpoint_inclusion := witnessPaperA32Inclusion
   checkpoint_projection := witnessAcceptedEpochCheckpointProjection
-  exact_link_validity := witnessExactLinkValidity
+  link_checkpoint_agreement := witnessExactLinkValidity
 
 /-- The same FFG interpretation used by the premise bundle satisfies the
 interpretation-fidelity record: each included vote is a valid body member of
@@ -699,7 +694,7 @@ theorem next_slot_premises_nonempty :
 
 /-- Genesis-stub full-bundle witness.  The anchor state is a real Phase0
 genesis state: its current justified and finalized checkpoints are the stub
-`(GENESIS_EPOCH, junkRoot)`, and the stub root is not the anchor root.  The
+`(GENESIS_EPOCH, zeroRoot)`, and the stub root is not the anchor root.  The
 complete next-slot premise bundle holds, the actual FCR call confirms the
 child root, and next-slot safety holds at the end of the horizon.  The bundle
 therefore does not force the anchor state's current justified checkpoint to

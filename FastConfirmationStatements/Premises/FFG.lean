@@ -28,8 +28,7 @@ Python sources: `specs/phase0/beacon-chain.md:1769-1782` (`state_transition`),
 * `process_slots_one_boundary`: when the target is in the next epoch, one
   epoch processing runs, at the last slot of the start epoch. Its PJF reads
   the same attestations, participation, registry, and justification bits as
-  eager PJF on the start state. Thus the two results agree. This is the old
-  equation, restricted to one boundary.
+  eager PJF on the start state. On inputs where eager PJF returns, the two checkpoint results agree.
 * `process_slots_same_target_epoch`: epoch processing runs only at epoch
   ends. Two targets in the same epoch cross the same epoch ends, so they
   produce the same checkpoint.

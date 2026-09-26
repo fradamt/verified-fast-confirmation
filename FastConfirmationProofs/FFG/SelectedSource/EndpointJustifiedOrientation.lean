@@ -75,7 +75,7 @@ theorem preQueryVoteSelectedSIRBracketAt_of_earlierVotes
     (hA : SelectedMarginAssumptions cfg ext E)
     (B : ScheduledFFGInterpretation cfg ext E)
     (hT : E.ScheduledExecutionPremises cfg ext)
-    (hfloor : cfg.effective_balance_increment ≤ E.weight (E.currentTargetAnchorActive cfg))
+    (hfloor : cfg.effective_balance_increment ≤ E.weight (E.anchorActiveValidators cfg))
     (hfit : EpochEndsFitUint64 cfg)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : InitialAnchorAtEpochBoundary (cfg := cfg) (E := E) (anchor := B.anchor))

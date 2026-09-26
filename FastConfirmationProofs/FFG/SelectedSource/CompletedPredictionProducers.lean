@@ -299,7 +299,7 @@ theorem completedPrefix_noConflict_certifiedJustified_root_eq_currentTarget
     let U := E.span_committee (target.epoch * cfg.slots_per_epoch)
       (target.epoch * cfg.slots_per_epoch +
         (cfg.slots_per_epoch - 1))
-    have hspanEq : U = E.currentTargetAnchorActive cfg := by
+    have hspanEq : U = E.anchorActiveValidators cfg := by
       simpa only [U, target, store, get_current_target,
         get_checkpoint_for_block, currentTargetEpochStart,
         currentTargetEpochEnd, compute_start_slot_at_epoch] using
@@ -562,7 +562,7 @@ theorem completedPrefix_noConflict_certifiedJustified_descends_result
     let U := E.span_committee (target.epoch * cfg.slots_per_epoch)
       (target.epoch * cfg.slots_per_epoch +
         (cfg.slots_per_epoch - 1))
-    have hspanEq : U = E.currentTargetAnchorActive cfg := by
+    have hspanEq : U = E.anchorActiveValidators cfg := by
       simpa only [U, target, store, get_current_target,
         get_checkpoint_for_block, currentTargetEpochStart,
         currentTargetEpochEnd, compute_start_slot_at_epoch] using
@@ -759,7 +759,7 @@ noncomputable def completedPrefix_acceptedHistoricalA32PayloadProducerAt
       have heq : result = trace.result := hresult.symm.trans hselector.result_eq.symm
       exact False.elim (hnotCurrent (by simpa only [heq] using hcurrent))
   obtain ⟨e, ⟨hlineage⟩⟩ := E.getLatestConfirmedTraceAt_currentLineage_step
-    cfg ext B hT hC.phase0_source hC.phase0_boundary_source hanchor hboundary hv hHn1
+    cfg ext B hT hC.source_coherence hC.boundary_source_coherence hanchor hboundary hv hHn1
     hinvariant.confirmed_known hcurrent hprovisos
     (E.completedPrefix_acceptedTargetGateProducerAt cfg ext B hT hC hfit
       hanchor hboundary hv hcall hHn1) hinvariant.current_lineage
@@ -779,7 +779,7 @@ noncomputable def completedPrefix_acceptedHistoricalA32PayloadProducerAt
     simpa only [get_block_epoch, ← htipBlock] using hlineage.tip_epoch
   have hpayload : Nonempty
       (E.AcceptedHistoricalA32GatePayloadAt cfg ext B trace.result e) := by
-    apply hlineage.payloadAtExecutionStore cfg ext B hT hC.phase0_source
+    apply hlineage.payloadAtExecutionStore cfg ext B hT hC.source_coherence
       hanchor hboundary
     · simpa only [hqueryStore] using hresultKnown
     · simpa only [hqueryStore] using hresultEpoch

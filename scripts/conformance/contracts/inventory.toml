@@ -140,7 +140,7 @@ reason = "committees are one fixed ground-truth assignment; real RANDAO-seeded, 
 path = "BeaconExternalsPremises.honest_attestation_valid"
 file = "Externals.lean"
 class = "I"
-reason = "BLS signature validity is disabled in the helper run."
+reason = "The relation between an honest signer, its indexed attestation, and BLS verification is an external authenticity contract."
 
 [[field]]
 path = "BeaconExternalsPremises.valid_attestation_honest"
@@ -209,13 +209,13 @@ class = "E"
 reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
 
 [[field]]
-path = "ScheduledFCRCallPremises.phase0_source"
+path = "ScheduledFCRCallPremises.source_coherence"
 file = "FCRCallPremises.lean"
 class = "E"
 reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
 
 [[field]]
-path = "ScheduledFCRCallPremises.phase0_boundary_source"
+path = "ScheduledFCRCallPremises.boundary_source_coherence"
 file = "FCRCallPremises.lean"
 class = "E"
 reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
@@ -271,8 +271,8 @@ reason = "A supplied execution, schedule, certificate, or FFG interpretation is 
 [[field]]
 path = "IncludedAttestationEvidence.attesters_in_committee"
 file = "FFGState.lean"
-class = "E"
-reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
+class = "I"
+reason = "One fixed committee map is assumed across forks and states; real committees can depend on RANDAO."
 
 [[field]]
 path = "BlockAttestationInclusion.Included"
@@ -781,13 +781,13 @@ class = "E"
 reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
 
 [[field]]
-path = "NextSlotSafetyPremises.trajectory"
+path = "NextSlotSafetyPremises.scheduled_execution"
 file = "NextSlotSafety.lean"
 class = "E"
 reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
 
 [[field]]
-path = "NextSlotSafetyPremises.completed_calls"
+path = "NextSlotSafetyPremises.call_conditions"
 file = "NextSlotSafety.lean"
 class = "E"
 reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
@@ -820,10 +820,10 @@ legacy_probe = "NextSlotSafetyPremises.anchor_boundary"
 reason = "This field depends on an accepted execution or a supplied FFG selector. The former generated-state probe did not test that interpretation. The projection harness checks it on accepted runs."
 
 [[field]]
-path = "NextSlotSafetyPremises.finalization_delay"
+path = "NextSlotSafetyPremises.imported_block_finalization_lag"
 file = "NextSlotSafety.lean"
 class = "T"
-test = "NextSlotSafetyPremises.finalization_delay"
+test = "NextSlotSafetyPremises.imported_block_finalization_lag"
 
 [[field]]
 path = "NextSlotSafetyPremises.slots_per_epoch_gt_one"
@@ -844,7 +844,7 @@ class = "E"
 reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
 
 [[field]]
-path = "NextSlotSafetyPremises.exact_link_validity"
+path = "NextSlotSafetyPremises.link_checkpoint_agreement"
 file = "NextSlotSafety.lean"
 class = "E"
 reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
@@ -898,36 +898,6 @@ class = "I"
 reason = "Hash commitment to the anchor state and trusted initialization are idealized."
 
 [[field]]
-path = "Synchrony.delta"
-file = "Synchrony.lean"
-class = "E"
-reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
-
-[[field]]
-path = "Synchrony.attestation_delivery"
-file = "Synchrony.lean"
-class = "E"
-reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
-
-[[field]]
-path = "Synchrony.deadline_block_relay"
-file = "Synchrony.lean"
-class = "E"
-reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
-
-[[field]]
-path = "Synchrony.boundary_block_prefix"
-file = "Synchrony.lean"
-class = "E"
-reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
-
-[[field]]
-path = "Synchrony.attester_slashing_relay"
-file = "Synchrony.lean"
-class = "I"
-reason = "BLS validity and network delivery are idealized."
-
-[[field]]
 path = "HorizonVoteDeliveryLookahead.attestation_delivery"
 file = "Synchrony.lean"
 class = "E"
@@ -943,7 +913,6 @@ reason = "A supplied execution, schedule, certificate, or FFG interpretation is 
 path = "NextSlotSynchronyPremises.delivery_lookahead"
 file = "Synchrony.lean"
 class = "E"
-optional = true
 reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
 
 [[field]]
@@ -1005,10 +974,3 @@ path = "Phase0BoundarySourceCoherence.process_slots_two_boundaries"
 file = "FFG.lean"
 class = "T"
 test = "Phase0BoundarySourceCoherence.process_slots_two_boundaries"
-
-[[field]]
-path = "ScheduledFCRCallPremises.delivery_lookahead"
-file = "FCRCallPremises.lean"
-class = "E"
-optional = true
-reason = "One-slot delivery beyond the public horizon is a network execution assumption."

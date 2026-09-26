@@ -212,7 +212,7 @@ theorem will_current_target_be_justified_honest_quorum_of_prefix
     (hendH : E.SlotWithinHorizon cfg (currentTargetEpochEnd cfg store))
     (hanchorH : get_current_epoch cfg E.anchor_state < E.verification_horizon)
     (hfloor : cfg.effective_balance_increment ≤
-      E.weight (E.currentTargetAnchorActive cfg))
+      E.weight (E.anchorActiveValidators cfg))
     (hgate : will_current_target_be_justified cfg ext store = true) :
     2 * E.total_active cfg ≤
       3 * E.weight (E.currentTargetA32Signers cfg store state) := by

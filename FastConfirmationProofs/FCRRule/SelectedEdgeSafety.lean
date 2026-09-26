@@ -221,7 +221,7 @@ theorem currentLineage_of_strictResultSafety
       have heq : r = trace.result := hr.symm.trans hresult.symm
       exact False.elim (hnotCurrent (by simpa only [heq] using hcurrent))
   exact E.getLatestConfirmedTraceAt_currentLineage_step cfg ext B hT
-    hC.phase0_source hC.phase0_boundary_source hanchor hboundary hv hH
+    hC.source_coherence hC.boundary_source_coherence hanchor hboundary hv hH
     hinvariant.confirmed_known hcurrent hprovisos
     (E.completedPrefix_acceptedTargetGateProducerAt cfg ext B hT hC hfit
       hanchor hboundary hv hcall hH) hinvariant.current_lineage

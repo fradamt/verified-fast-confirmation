@@ -210,14 +210,14 @@ theorem child_descends_anchor :
 /-- The anchor block's parent edge reaches the dangling parent root, which is
 also the genesis stub's root (Phase0: `ZERO_HASH`). -/
 theorem anchor_parentEdge :
-    witnessExecution.ParentEdge anchorRoot junkRoot := by
+    witnessExecution.ParentEdge anchorRoot zeroRoot := by
   refine Or.inl ⟨anchorRoot, ?_, rfl, ?_⟩
   · simp [witnessExecution, get_forkchoice_store, anchorSignedBlock]
   · simp [witnessExecution, get_forkchoice_store, anchorSignedBlock]
 
 theorem child_descends_stub :
     witnessExecution.RootDescends childRoot stubCheckpoint.root :=
-  .step child_parentEdge (.step anchor_parentEdge (.refl junkRoot))
+  .step child_parentEdge (.step anchor_parentEdge (.refl zeroRoot))
 
 theorem carrier_descends_child :
     witnessExecution.RootDescends carrierRoot childRoot :=

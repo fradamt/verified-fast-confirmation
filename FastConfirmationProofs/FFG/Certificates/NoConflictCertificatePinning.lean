@@ -73,7 +73,7 @@ theorem noConflict_arithmeticBranch_oneThird
       (currentTargetEpochEnd cfg (E.store cfg ext v n)))
     (hanchorH : get_current_epoch cfg E.anchor_state < E.verification_horizon)
     (hfloor : cfg.effective_balance_increment ≤
-      E.weight (E.currentTargetAnchorActive cfg))
+      E.weight (E.anchorActiveValidators cfg))
     (hne : get_current_target cfg (E.store cfg ext v n) ≠
       (E.store cfg ext v n).unrealized_justified_checkpoint)
     (hgate : will_no_conflicting_checkpoint_be_justified cfg ext

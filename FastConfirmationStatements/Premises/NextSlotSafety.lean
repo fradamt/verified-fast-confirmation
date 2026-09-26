@@ -33,21 +33,21 @@ head-ancestry, filter-result, or safety field.  Finalized next-slot safety and
 active-observed restart safety are already derived by the fold. -/
 structure NextSlotSafetyPremises where
   ffg_interpretation : ScheduledFFGInterpretation cfg ext E
-  trajectory : E.ScheduledExecutionPremises cfg ext
-  completed_calls :
+  scheduled_execution : E.ScheduledExecutionPremises cfg ext
+  call_conditions :
     E.ScheduledFCRCallPremises cfg ext
   epoch_ends_fit : EpochEndsFitUint64 cfg
   anchor_eq : ffg_interpretation.anchor = E.genesis_store.justified_checkpoint
   anchor_state_checkpoints : E.GenesisOrNormalizedAnchor ffg_interpretation.anchor
   anchor_boundary : InitialAnchorAtEpochBoundary (cfg := cfg)
     (E := E) (anchor := ffg_interpretation.anchor)
-  finalization_delay :
+  imported_block_finalization_lag :
     E.ImportedBlockFinalizationLag cfg ext ffg_interpretation
   slots_per_epoch_gt_one : 1 < cfg.slots_per_epoch
   checkpoint_inclusion : ffg_interpretation.state.EventualCheckpointInclusion cfg ext
   checkpoint_projection : EpochCheckpointProjectionLaws
     ffg_interpretation.anchor (E.RootKnownInScheduledPrefix cfg ext) ffg_interpretation.state.checkpoint_at_epoch
-  exact_link_validity : ffg_interpretation.state.LinkCheckpointAgreement
+  link_checkpoint_agreement : ffg_interpretation.state.LinkCheckpointAgreement
 
 end Execution
 end FastConfirmation.Spec

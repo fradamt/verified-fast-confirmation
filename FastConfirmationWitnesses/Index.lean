@@ -19,7 +19,10 @@ public import FastConfirmationWitnesses.NonVacuity.ByzantinePremises
 # Witness index
 
 `ReviewClaims` contains only the safety theorem. Its result gives observer-store
-membership and executable ancestry from the next slot.
+membership and executable ancestry from the next slot. These finite witnesses
+show that the full premise bundle is consistent. They do not establish Python
+faithfulness; the contract suite, projection harness, and concrete differential
+check test that behavior. Their PJF returns early in epochs 0 and 1, as Python does.
 
 This page names the finite runs that satisfy the premise bundles: a short
 next-slot safety run with one-second slots and a 500 ms delay,
@@ -27,7 +30,7 @@ a one-second target-edge run,
 a one-second run with Byzantine weight and a slashing, a 12-second
 full-bundle run, and a 12-second run with an accepted payload envelope. It
 also names two counterexamples to same-second head agreement at mid-second
-prefixes under the older synchrony record, and a raw checkpoint-sync filter
+prefixes under the counterexample synchrony record, and a raw checkpoint-sync filter
 regression. The latter confirms a child at slot 14 and loses it at slot 20.
 See `CheckpointSyncFilterWitness.checkpoint_sync_filter_counterexample`. It has no
 attestation inclusion for two epochs. The regression does not assert the full safety
@@ -75,7 +78,7 @@ off-committee validators.
 * Real Phase0 genesis anchor:
   `GenesisStubPremiseWitness.genesis_stub_full_bundle_witness` is the same
   one-second run with a real genesis anchor state. Its current justified and
-  finalized checkpoints are the stub `(GENESIS_EPOCH, junkRoot)`, and the stub
+  finalized checkpoints are the stub `(GENESIS_EPOCH, zeroRoot)`, and the stub
   root is not the anchor root. Honest votes before slot eight carry the stub as
   their source. The full next-slot bundle holds, the FCR call confirms the
   child, and the anchor state's justified checkpoint differs from the genesis
@@ -174,7 +177,7 @@ off-committee validators.
   processing preserves the chosen source within an epoch.
 * `Phase0BoundarySourceCoherence`:
   `AcceptedActualFCRJointNonVacuityBase.witnessPhase0BoundarySourceCoherence`.
-  The same finite state transition satisfies the older eager equations, and
+  The same finite state transition satisfies the source coherence laws, and
   `Phase0BoundarySourceCoherence.of_eager` derives the boundary laws.
 * `HorizonVoteDeliveryLookahead`:
   `AcceptedActualFCRJointNonVacuityBase.witnessHorizonVoteDeliveryLookahead`.
@@ -221,7 +224,7 @@ off-committee validators.
   record. The querying actor confirms a candidate while another honest node's
   head is its sibling.
 * `PinnedEconomicsExtraQuery.extra_query_changes_head_counterexample` refutes
-  the same same-second claim under the older synchrony record. It uses proposer
+  the same same-second claim under the counterexample synchrony record. It uses proposer
   boost 40 and Byzantine allowance 25. Its computed safety threshold is 95.
   These counterexamples do not refute next-slot safety of an in-slot query.
   That question remains open.
@@ -254,6 +257,8 @@ contain support fields. The witness support lemmas remain facts about the runs.
 The historical certificate and quorum are produced from earlier votes when
 needed. No external law was added. The shorter
 synchrony-only run does not prove the full safety bundle.
+No full-bundle run exercises non-anchor finality, the previous-result proviso,
+positive Gloas discount, a PTC event, or positive proposer boost.
 Every positive run has proposer boost zero. The proposer-score term and
 should_apply_proposer_boost are not exercised positively. The one-second
 runs set `attestation_due_bps` to zero. The main safety runs have four or five

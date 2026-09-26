@@ -516,27 +516,27 @@ theorem witnessAcceptedRealizedFinalizationDelay :
 
 
 
-def completed_calls : run.ScheduledFCRCallPremises cfg ext where
+def call_conditions : run.ScheduledFCRCallPremises cfg ext where
   synchrony := next_slot_synchrony
   static_validators := static_validators
   byzantine_bound := byzantine_bound
-  phase0_source := phase0_source
-  phase0_boundary_source := phase0_boundary_source
+  source_coherence := phase0_source
+  boundary_source_coherence := phase0_boundary_source
   balance_floor := balance_floor
 
 def safety_premises : run.NextSlotSafetyPremises cfg ext where
   ffg_interpretation := witnessAcceptedSemantics
-  trajectory := scheduled_prefix_premises
-  completed_calls := completed_calls
+  scheduled_execution := scheduled_prefix_premises
+  call_conditions := call_conditions
   epoch_ends_fit := epoch_ends_fit
   anchor_eq := rfl
   anchor_state_checkpoints := Or.inl rfl
   anchor_boundary := anchor_boundary
-  finalization_delay := witnessAcceptedRealizedFinalizationDelay
+  imported_block_finalization_lag := witnessAcceptedRealizedFinalizationDelay
   slots_per_epoch_gt_one := by decide
   checkpoint_inclusion := witnessPaperA32Inclusion
   checkpoint_projection := witnessAcceptedEpochCheckpointProjection
-  exact_link_validity := witnessExactLinkValidity
+  link_checkpoint_agreement := witnessExactLinkValidity
 
 /-- The same FFG interpretation used by the premise bundle satisfies the
 interpretation-fidelity record: each included vote is a valid body member of

@@ -70,7 +70,7 @@ theorem honest_attestation_source_selector
     (hphaseBoundary : Phase0BoundarySourceCoherence cfg ext)
     (hsv : StaticValidatorSet cfg E)
     (hfloor : 2 * cfg.effective_balance_increment ≤
-      E.weight (E.currentTargetAnchorActive cfg))
+      E.weight (E.anchorActiveValidators cfg))
     {v : ValidatorIndex} {n s : ℕ} {index : CommitteeIndex}
     (hv : v ∈ E.honest) (hHn : E.WithinHorizon cfg n)
     (hn : E.slot_at cfg n = s)
@@ -160,7 +160,7 @@ theorem honest_attestation_source_stale_reads_gu
     (hphaseBoundary : Phase0BoundarySourceCoherence cfg ext)
     (hsv : StaticValidatorSet cfg E)
     (hfloor : 2 * cfg.effective_balance_increment ≤
-      E.weight (E.currentTargetAnchorActive cfg))
+      E.weight (E.anchorActiveValidators cfg))
     {v : ValidatorIndex} {n s : ℕ} {index : CommitteeIndex}
     (hv : v ∈ E.honest) (hHn : E.WithinHorizon cfg n)
     (hn : E.slot_at cfg n = s)
@@ -276,7 +276,7 @@ theorem finalized_epoch_le_voter_justified_of_receiver_slot_le
     (hphaseBoundary : Phase0BoundarySourceCoherence cfg ext)
     (hsv : StaticValidatorSet cfg E)
     (hfloor : 2 * cfg.effective_balance_increment ≤
-      E.weight (E.currentTargetAnchorActive cfg))
+      E.weight (E.anchorActiveValidators cfg))
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : InitialAnchorAtEpochBoundary (cfg := cfg)
       (E := E) (anchor := B.anchor))
@@ -410,7 +410,7 @@ theorem next_boundary_finalized_epoch_le_voter_justified
     (hphaseBoundary : Phase0BoundarySourceCoherence cfg ext)
     (hsv : StaticValidatorSet cfg E)
     (hfloor : 2 * cfg.effective_balance_increment ≤
-      E.weight (E.currentTargetAnchorActive cfg))
+      E.weight (E.anchorActiveValidators cfg))
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : InitialAnchorAtEpochBoundary (cfg := cfg)
       (E := E) (anchor := B.anchor))

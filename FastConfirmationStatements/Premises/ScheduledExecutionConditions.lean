@@ -81,7 +81,7 @@ namespace Execution
 variable (E : Execution Root)
 /-- Active validator set whose sum appears under the minimum-balance floor in
 `E.total_active`. -/
-def currentTargetAnchorActive : Finset ValidatorIndex :=
+def anchorActiveValidators : Finset ValidatorIndex :=
   (get_active_validator_indices E.anchor_state
     (get_current_epoch cfg E.anchor_state)).toFinset
 

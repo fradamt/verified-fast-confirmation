@@ -19,10 +19,10 @@ run_cmd do
   checkFields `FastConfirmation.Spec.ReviewClaims
     ["confirmed_root_safe_from_next_slot"]
   checkFields `FastConfirmation.Spec.Execution.NextSlotSafetyPremises
-    ["ffg_interpretation", "trajectory", "completed_calls", "epoch_ends_fit",
-     "anchor_eq", "anchor_state_checkpoints", "anchor_boundary", "finalization_delay",
+    ["ffg_interpretation", "scheduled_execution", "call_conditions", "epoch_ends_fit",
+     "anchor_eq", "anchor_state_checkpoints", "anchor_boundary", "imported_block_finalization_lag",
      "slots_per_epoch_gt_one", "checkpoint_inclusion", "checkpoint_projection",
-     "exact_link_validity"]
+     "link_checkpoint_agreement"]
   checkFields `FastConfirmation.Spec.Synchrony
     ["delta", "attestation_delivery",
      "deadline_block_relay", "boundary_block_prefix",
@@ -43,8 +43,8 @@ run_cmd do
   checkFields `FastConfirmation.Spec.ByzantineWeightPremises
     ["effective_balance_quantized", "estimate_sound", "span_fraction"]
   checkFields `FastConfirmation.Spec.Execution.ScheduledFCRCallPremises
-    ["synchrony", "static_validators", "byzantine_bound", "phase0_source",
-     "phase0_boundary_source", "balance_floor"]
+    ["synchrony", "static_validators", "byzantine_bound", "source_coherence",
+     "boundary_source_coherence", "balance_floor"]
   checkFields `FastConfirmation.Spec.Execution.IncludedAttestationEvidence
     ["carrier_message", "received_from_block", "slot_within_horizon",
      "slot_before_carrier", "target_epoch", "attesters_in_committee"]
@@ -97,3 +97,68 @@ example {Root : Type*} [LinearOrder Root] [Inhabited Root]
 
 #check FastConfirmation.Spec.Execution.completedPrefix_currentTarget_endpoint_root_eq_before
 #check FastConfirmation.Spec.Execution.completedPrefix_noConflict_endpoint_descends_before
+
+-- These checks elaborate the statement types, not only their field names.
+open FastConfirmation.Spec
+
+example {Root : Type*} [LinearOrder Root] [Inhabited Root]
+    (cfg : Config) (ext : BeaconFunctionInterface Root) :
+    ConfirmedRootSafeFromNextSlot cfg ext =
+      (∀ E : Execution Root,
+        E.NextSlotSafetyPremises cfg ext →
+          ∀ v ∈ E.honest, ∀ n : ℕ,
+            ∀ w ∈ E.honest, ∀ m : ℕ, n ≤ m →
+              E.slot_at cfg n + 1 ≤ E.slot_at cfg m →
+              E.WithinHorizon cfg m →
+                E.confirmed cfg ext v n ∈ (E.store cfg ext w m).block_roots ∧
+                  is_ancestor (E.store cfg ext w m)
+                    (get_head cfg (E.store cfg ext w m))
+                    (get_node_for_root (E.confirmed cfg ext v n)) = true) := rfl
+
+example {Root : Type*} [LinearOrder Root] [Inhabited Root]
+    (cfg : Config) (ext : BeaconFunctionInterface Root)
+    (E : Execution Root) (h : E.NextSlotSafetyPremises cfg ext) :
+    ScheduledFFGInterpretation cfg ext E := h.ffg_interpretation
+
+example {Root : Type*} [LinearOrder Root] [Inhabited Root]
+    (cfg : Config) (ext : BeaconFunctionInterface Root)
+    (E : Execution Root) (h : E.NextSlotSafetyPremises cfg ext) :
+    E.ScheduledExecutionPremises cfg ext := h.scheduled_execution
+
+example {Root : Type*} [LinearOrder Root] [Inhabited Root]
+    (cfg : Config) (ext : BeaconFunctionInterface Root)
+    (E : Execution Root) (h : E.NextSlotSafetyPremises cfg ext) :
+    E.ScheduledFCRCallPremises cfg ext := h.call_conditions
+
+example {Root : Type*} [LinearOrder Root] [Inhabited Root]
+    (cfg : Config) (ext : BeaconFunctionInterface Root)
+    (E : Execution Root) (h : E.NextSlotSafetyPremises cfg ext) :
+    E.ImportedBlockFinalizationLag cfg ext h.ffg_interpretation :=
+  h.imported_block_finalization_lag
+
+example {Root : Type*} [LinearOrder Root] [Inhabited Root]
+    (cfg : Config) (ext : BeaconFunctionInterface Root)
+    (E : Execution Root) (h : E.NextSlotSafetyPremises cfg ext) :
+    h.ffg_interpretation.state.EventualCheckpointInclusion cfg ext :=
+  h.checkpoint_inclusion
+
+example {Root : Type*} [LinearOrder Root] [Inhabited Root]
+    (cfg : Config) (ext : BeaconFunctionInterface Root)
+    (E : Execution Root) (h : E.NextSlotSafetyPremises cfg ext) :
+    h.ffg_interpretation.state.LinkCheckpointAgreement :=
+  h.link_checkpoint_agreement
+
+example {Root : Type*} [LinearOrder Root] [Inhabited Root]
+    (cfg : Config) (ext : BeaconFunctionInterface Root)
+    (E : Execution Root) (h : E.ScheduledFCRCallPremises cfg ext) :
+    NextSlotSynchronyPremises cfg ext E := h.synchrony
+
+example {Root : Type*} [LinearOrder Root] [Inhabited Root]
+    (cfg : Config) (ext : BeaconFunctionInterface Root)
+    (E : Execution Root) (h : E.ScheduledFCRCallPremises cfg ext) :
+    Phase0SourceCoherence cfg ext := h.source_coherence
+
+example {Root : Type*} [LinearOrder Root] [Inhabited Root]
+    (cfg : Config) (ext : BeaconFunctionInterface Root)
+    (E : Execution Root) (h : E.ScheduledFCRCallPremises cfg ext) :
+    Phase0BoundarySourceCoherence cfg ext := h.boundary_source_coherence

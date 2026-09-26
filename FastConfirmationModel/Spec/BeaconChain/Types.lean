@@ -121,7 +121,9 @@ abbrev Attestation (Root : Type*) := IndexedAttestation Root
 /-- Gloas block read projection (`specs/gloas/beacon-chain.md`,
 `BeaconBlockBody` and `BeaconBlock`; `specs/phase0/beacon-chain.md`,
 `BeaconBlockBody`). Ordinary FFG `attestations` and payload attestations
-retain their source order. -/
+retain their source order. The `parent_root` defaults for execution hashes
+make incomplete fixture blocks total; conformance calls must supply the
+actual hash fields. -/
 structure BeaconBlock (Root : Type*) where
   slot : Slot
   parent_root : Root

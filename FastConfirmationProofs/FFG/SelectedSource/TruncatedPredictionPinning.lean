@@ -76,7 +76,7 @@ theorem completedPrefix_noConflict_includedJustified_property_before
     (hT : E.ScheduledExecutionPremises cfg ext)
     (hstatic : StaticValidatorSet cfg E)
     (hbyz : ByzantineWeightPremises cfg E)
-    (hfloor : cfg.effective_balance_increment ≤ E.weight (E.currentTargetAnchorActive cfg))
+    (hfloor : cfg.effective_balance_increment ≤ E.weight (E.anchorActiveValidators cfg))
     (hfit : EpochEndsFitUint64 cfg)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : InitialAnchorAtEpochBoundary (cfg := cfg)
@@ -283,7 +283,7 @@ theorem completedPrefix_noConflict_includedJustified_property_before
     let U := E.span_committee (target.epoch * cfg.slots_per_epoch)
       (target.epoch * cfg.slots_per_epoch +
         (cfg.slots_per_epoch - 1))
-    have hspanEq : U = E.currentTargetAnchorActive cfg := by
+    have hspanEq : U = E.anchorActiveValidators cfg := by
       simpa only [U, target, store, get_current_target,
         get_checkpoint_for_block, currentTargetEpochStart,
         currentTargetEpochEnd, compute_start_slot_at_epoch] using
@@ -404,7 +404,7 @@ theorem completedPrefix_currentTarget_endpoint_root_eq_before
     (hT : E.ScheduledExecutionPremises cfg ext)
     (hstatic : StaticValidatorSet cfg E)
     (hbyz : ByzantineWeightPremises cfg E)
-    (hfloor : cfg.effective_balance_increment ≤ E.weight (E.currentTargetAnchorActive cfg))
+    (hfloor : cfg.effective_balance_increment ≤ E.weight (E.anchorActiveValidators cfg))
     (hfit : EpochEndsFitUint64 cfg)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : InitialAnchorAtEpochBoundary (cfg := cfg) (E := E) (anchor := B.anchor))
@@ -437,7 +437,7 @@ theorem completedPrefix_noConflict_endpoint_descends_before
     (hT : E.ScheduledExecutionPremises cfg ext)
     (hstatic : StaticValidatorSet cfg E)
     (hbyz : ByzantineWeightPremises cfg E)
-    (hfloor : cfg.effective_balance_increment ≤ E.weight (E.currentTargetAnchorActive cfg))
+    (hfloor : cfg.effective_balance_increment ≤ E.weight (E.anchorActiveValidators cfg))
     (hfit : EpochEndsFitUint64 cfg)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : InitialAnchorAtEpochBoundary (cfg := cfg) (E := E) (anchor := B.anchor))

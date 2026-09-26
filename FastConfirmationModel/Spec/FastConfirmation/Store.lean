@@ -42,7 +42,7 @@ def get_fast_confirmation_store (store : Store Root) : FastConfirmationStore Roo
   previous_slot_head := store.finalized_checkpoint.root
   current_slot_head := store.finalized_checkpoint.root
 
-/-- `get_node_for_root` (`specs/gloas/fast-confirmation.md:26`).
+/-- `get_node_for_root` (`specs/gloas/fast-confirmation.md:28` at fork commit `13f391516`).
 Fast Confirmation confirms a beacon root through its pending node. -/
 def get_node_for_root (block_root : Root) : ForkChoiceNode Root :=
   ForkChoiceNode.mk block_root .pending

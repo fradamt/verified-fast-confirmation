@@ -48,15 +48,6 @@ namespace Execution
 
 variable (E : Execution Root)
 
-/-- A concrete block message at an execution root.  The block comes either
-from the trusted initial store or from an actual scheduled block event. -/
-def BlockAt (r : Root) (b : BeaconBlock Root) : Prop :=
-  (r ∈ E.genesis_store.block_roots ∧
-      b = E.genesis_store.blocks r) ∨
-    ∃ (w : ValidatorIndex) (n : ℕ) (sb : SignedBeaconBlock Root),
-      Event.block sb ∈ E.schedule w n ∧
-      sb.root = r ∧ sb.message = b
-
 /-- Canonicity throughout one execution epoch.  This is used only as an
 antecedent of the paper's Assumption 3.2. -/
 def CanonicalThroughoutEpoch (b : Root) (e : Epoch) : Prop :=

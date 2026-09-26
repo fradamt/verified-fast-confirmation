@@ -459,16 +459,16 @@ def witnessCompletedPrefixCallAssumptions :
   synchrony := witnessPaperSafetySynchrony
   static_validators := witnessStaticValidatorSet
   byzantine_bound := witnessByzantineBound
-  phase0_source := witnessPhase0SourceCoherence
-  phase0_boundary_source := witnessPhase0BoundarySourceCoherence
+  source_coherence := witnessPhase0SourceCoherence
+  boundary_source_coherence := witnessPhase0BoundarySourceCoherence
   balance_floor := witnessBalanceFloor
 
 def witnessAcceptedActualFCRNextSlotSafetyAssumptions :
     witnessExecution.NextSlotSafetyPremises witnessConfig
       witnessExternals where
   ffg_interpretation := witnessAcceptedSemantics
-  trajectory := witnessScheduledPrefixTrajectoryAssumptions
-  completed_calls := witnessCompletedPrefixCallAssumptions
+  scheduled_execution := witnessScheduledPrefixTrajectoryAssumptions
+  call_conditions := witnessCompletedPrefixCallAssumptions
   epoch_ends_fit := witnessEpochEndsFitUint64
   anchor_eq := by
     simpa only [witnessAcceptedSemantics] using witnessAnchorEquality.symm
@@ -476,11 +476,11 @@ def witnessAcceptedActualFCRNextSlotSafetyAssumptions :
   anchor_boundary := by
     simpa only [witnessAcceptedSemantics] using
       witnessTrustedAnchorBoundaryAligned
-  finalization_delay := by exact witnessAcceptedRealizedFinalizationDelay
+  imported_block_finalization_lag := by exact witnessAcceptedRealizedFinalizationDelay
   slots_per_epoch_gt_one := by decide
   checkpoint_inclusion := by exact witnessPaperA32Inclusion
   checkpoint_projection := witnessAcceptedEpochCheckpointProjection
-  exact_link_validity := witnessExactLinkValidity
+  link_checkpoint_agreement := witnessExactLinkValidity
 
 /-- The same FFG interpretation used by the premise bundle satisfies the
 interpretation-fidelity record: each included vote is a valid body member of

@@ -47,9 +47,8 @@ namespace Phase0BoundarySourceCoherence
 
 variable {cfg ext}
 
-/-- The old unconditional eager equations imply the Phase0 boundary laws.
-Finite witness externals that satisfy the stronger equations use this
-constructor. -/
+/-- These eager equations imply the Phase0 boundary laws for an external
+function that satisfies them. Finite witness externals use this constructor. -/
 theorem of_eager
     (hslots : ∀ (st : BeaconState Root) (target : Slot),
       st.slot < target →

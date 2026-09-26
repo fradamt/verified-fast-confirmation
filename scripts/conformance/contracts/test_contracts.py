@@ -9,6 +9,7 @@ Known false laws remain executable findings and do not stop other probes.
 from __future__ import annotations
 
 import argparse
+import copy
 import json
 import random
 import re
@@ -401,7 +402,7 @@ def run(repo: Path):
           "ext.state_transition pre sb = some post -> earlier epoch -> post.current_justified_checkpoint = (ext.process_slots pre sb.message.slot).current_justified_checkpoint",
           [(l,d) for l,d in transition_cases if int(d[1].slot)//8<int(d[2].message.slot)//8],
           lambda d:(cp(d[3].current_justified_checkpoint)==cp(slotted((d[0],d[1],int(d[2].message.slot))).current_justified_checkpoint),{"pre":projection(d[1]),"post":projection(d[3]),"slots":projection(slotted((d[0],d[1],int(d[2].message.slot))))}))
-    check("NextSlotSafetyPremises.finalization_delay",
+    check("NextSlotSafetyPremises.imported_block_finalization_lag",
           "finalized = anchor or finalized.epoch + 2 <= block epoch for accepted blocks",
           transition_cases,lambda d:(int(d[3].finalized_checkpoint.epoch)==0 or int(d[3].finalized_checkpoint.epoch)+2<=int(d[2].message.slot)//8,{"pre":projection(d[1]),"post":projection(d[3])}))
     # Registry and committee properties use the exact spec assignment on a
@@ -568,7 +569,8 @@ def run(repo: Path):
     # Accept a valid child through the Gloas handler, then read the actual
     # per-root unrealized checkpoint written by compute_pulled_up_tip.
     accepted=[]
-    st,anchor,store,root=anchor_cases[0][1]
+    st,anchor,anchor_store,root=anchor_cases[0][1]
+    store=copy.deepcopy(anchor_store)
     child=build_block(spec,st,slot=1)
     post=st.copy()
     signed=sign_transition(spec,post,child)

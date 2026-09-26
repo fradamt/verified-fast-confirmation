@@ -1041,7 +1041,7 @@ theorem scheduledEventPrefix_acceptedConcreteCurrentTargetQuorum
     (hanchorH : get_current_epoch cfg E.anchor_state <
       E.verification_horizon)
     (hfloor : cfg.effective_balance_increment ≤
-      E.weight (E.currentTargetAnchorActive cfg))
+      E.weight (E.anchorActiveValidators cfg))
     (hgate : will_current_target_be_justified cfg ext
       (p.store cfg ext) = true)
     (hsupport : HonestVotesSupportTarget cfg E
@@ -1213,7 +1213,7 @@ theorem scheduledEventPrefix_acceptedConcreteOldTargetQuorum
     (hanchorH : get_current_epoch cfg E.anchor_state <
       E.verification_horizon)
     (hfloor : cfg.effective_balance_increment ≤
-      E.weight (E.currentTargetAnchorActive cfg))
+      E.weight (E.anchorActiveValidators cfg))
     (hgate : will_current_target_be_justified cfg ext
       (p.store cfg ext) = true)
     (hsupport : HonestVotesSupportTarget cfg E
@@ -1381,7 +1381,7 @@ theorem scheduledEventPrefix_acceptedCurrentTargetA32GateRealization_core
     (hanchorH : get_current_epoch cfg E.anchor_state <
       E.verification_horizon)
     (hfloor : cfg.effective_balance_increment ≤
-      E.weight (E.currentTargetAnchorActive cfg))
+      E.weight (E.anchorActiveValidators cfg))
     (hgate : will_current_target_be_justified cfg ext
       (p.store cfg ext) = true)
     (hsupport : HonestVotesSupportTarget cfg E
@@ -1793,7 +1793,7 @@ theorem scheduledEventPrefix_acceptedOldTargetA32GateRealization_core
     (hanchorH : get_current_epoch cfg E.anchor_state <
       E.verification_horizon)
     (hfloor : cfg.effective_balance_increment ≤
-      E.weight (E.currentTargetAnchorActive cfg))
+      E.weight (E.anchorActiveValidators cfg))
     (hgate : will_current_target_be_justified cfg ext
       (p.store cfg ext) = true)
     (hsupport : HonestVotesSupportTarget cfg E
@@ -1904,7 +1904,7 @@ theorem scheduledEventPrefix_acceptedTargetA32GateRealization_core
     (hanchorH : get_current_epoch cfg E.anchor_state <
       E.verification_horizon)
     (hfloor : cfg.effective_balance_increment ≤
-      E.weight (E.currentTargetAnchorActive cfg))
+      E.weight (E.anchorActiveValidators cfg))
     (hgate : will_current_target_be_justified cfg ext
       (p.store cfg ext) = true)
     (hsupport : HonestVotesSupportTarget cfg E
@@ -1983,7 +1983,7 @@ theorem scheduledEventPrefix_acceptedTargetA32GateRealization_withLookahead
     (hanchorH : get_current_epoch cfg E.anchor_state <
       E.verification_horizon)
     (hfloor : cfg.effective_balance_increment ≤
-      E.weight (E.currentTargetAnchorActive cfg))
+      E.weight (E.anchorActiveValidators cfg))
     (hgate : will_current_target_be_justified cfg ext
       (p.store cfg ext) = true)
     (hsupport : HonestVotesSupportTarget cfg E

@@ -366,7 +366,7 @@ noncomputable def completedPrefix_acceptedTargetGateProducerAt
     E.scheduledEventPrefix_acceptedTargetA32GateRealization_withLookahead
     cfg ext B hT hC.synchrony.delivery_lookahead hC.static_validators
       hC.byzantine_bound
-      hC.phase0_source hC.phase0_boundary_source hanchor hboundary p hv hHn1
+      hC.source_coherence hC.boundary_source_coherence hanchor hboundary p hv hHn1
       hevidence hstate hval htab hendHP hanchorH (by have := hC.balance_floor; omega)
       hgateP hsupportP
       (by rw [hpstore]; simpa only [E.fcrStep_store] using hguard)

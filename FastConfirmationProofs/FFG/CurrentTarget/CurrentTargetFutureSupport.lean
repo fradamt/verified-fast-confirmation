@@ -104,9 +104,9 @@ omit [LinearOrder Root] [Inhabited Root] in
 actual anchor active-set weight. -/
 theorem total_active_eq_anchorActive_weight
     (hfloor : cfg.effective_balance_increment <=
-      E.weight (E.currentTargetAnchorActive cfg)) :
-    E.total_active cfg = E.weight (E.currentTargetAnchorActive cfg) := by
-  simp only [Execution.total_active, Execution.currentTargetAnchorActive,
+      E.weight (E.anchorActiveValidators cfg)) :
+    E.total_active cfg = E.weight (E.anchorActiveValidators cfg) := by
+  simp only [Execution.total_active, Execution.anchorActiveValidators,
     get_total_active_balance, get_total_balance, Execution.weight,
     Execution.weight_of, Execution.registry]
   exact Nat.max_eq_right hfloor
@@ -123,7 +123,7 @@ theorem current_epoch_span_eq_anchorActive
     (hanchorH : get_current_epoch cfg E.anchor_state < E.verification_horizon) :
     E.span_committee (currentTargetEpochStart cfg store)
         (currentTargetEpochEnd cfg store) =
-      E.currentTargetAnchorActive cfg := by
+      E.anchorActiveValidators cfg := by
   let e := get_current_store_epoch cfg store
   have heH : e < E.verification_horizon := by
     simpa only [e, get_current_store_epoch] using hcurrentH.2
@@ -151,10 +151,10 @@ theorem current_epoch_span_eq_anchorActive
         (get_current_epoch cfg E.anchor_state) heH hanchorH
       rw [this] at hactiveGround
       simpa only [Execution.registry] using hactiveGround
-    rw [Execution.currentTargetAnchorActive, List.mem_toFinset]
+    rw [Execution.anchorActiveValidators, List.mem_toFinset]
     exact mem_active_of_active hactiveAnchor
   . intro i hi
-    rw [Execution.currentTargetAnchorActive, List.mem_toFinset] at hi
+    rw [Execution.anchorActiveValidators, List.mem_toFinset] at hi
     have hactiveAnchor : is_active_validator
         (E.registry.getD i default) (get_current_epoch cfg E.anchor_state) = true := by
       simpa only [Execution.registry] using (List.mem_filter.mp hi).2
@@ -241,7 +241,7 @@ theorem currentTarget_remaining_honest_le_future_weight
     (hendH : E.SlotWithinHorizon cfg (currentTargetEpochEnd cfg store))
     (hanchorH : get_current_epoch cfg E.anchor_state < E.verification_horizon)
     (hfloor : cfg.effective_balance_increment <=
-      E.weight (E.currentTargetAnchorActive cfg)) :
+      E.weight (E.anchorActiveValidators cfg)) :
     (E.total_active cfg -
           estimate_committee_weight_between_slots cfg (E.total_active cfg)
             (currentTargetEpochStart cfg store)

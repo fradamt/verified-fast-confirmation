@@ -6,6 +6,7 @@ import re
 
 ROOT = Path(__file__).resolve().parents[1]
 SYNC = ROOT / "FastConfirmationStatements/Premises/Synchrony.lean"
+LEGACY_SYNC = ROOT / "FastConfirmationInternal/Network/SynchronyConversion.lean"
 
 
 def lean_code(text):
@@ -47,7 +48,7 @@ def lean_code(text):
 
 def contracts(text):
     code = lean_code(text)
-    matches = list(re.finditer(r"(?m)^(?:def|structure)\s+(\w+)", code))
+    matches = list(re.finditer(r"(?m)^(?:def|structure)\s+(\w+)(?=[\s(:])", code))
     return {m[1]: re.sub(r"\s+", "", code[m.start():matches[i + 1].start()
             if i + 1 < len(matches) else len(code)]) for i, m in enumerate(matches)}
 
@@ -119,7 +120,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--self-test", action="store_true")
     args = parser.parse_args()
-    text = SYNC.read_text()
+    text = SYNC.read_text() + "\n" + LEGACY_SYNC.read_text()
     failures = check(text)
     for library in ("FastConfirmationInternal", "FastConfirmationProofs",
                     "FastConfirmationWitnesses"):

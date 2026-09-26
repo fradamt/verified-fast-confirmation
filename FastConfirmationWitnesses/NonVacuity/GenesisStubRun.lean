@@ -11,7 +11,7 @@ public import FastConfirmationProofs.ModelFacts
 
 This file is the horizon-four execution of `ScheduledRun` with one change: the
 anchor state is a real Phase0 genesis state.  Its current justified and
-finalized checkpoints are the stub `stubCheckpoint = (GENESIS_EPOCH, junkRoot)`,
+finalized checkpoints are the stub `stubCheckpoint = (GENESIS_EPOCH, zeroRoot)`,
 whose root is not the anchor root.  Descendant states and eager processing
 before the first justification keep the stub, and honest votes before slot
 eight carry it as their source.  The trusted store anchor is still
@@ -34,7 +34,7 @@ namespace GenesisStubBase
 
 abbrev WitnessRoot := Fin 4
 
-def junkRoot : WitnessRoot := 0
+def zeroRoot : WitnessRoot := 0
 def anchorRoot : WitnessRoot := 1
 def childRoot : WitnessRoot := 2
 def carrierRoot : WitnessRoot := 3
@@ -60,7 +60,7 @@ def anchorCheckpoint : Checkpoint WitnessRoot :=
 /-- The Phase0 genesis stub: `Checkpoint(GENESIS_EPOCH, ZERO_HASH)` in the
 genesis state.  Its root is the anchor block's dangling parent root. -/
 def stubCheckpoint : Checkpoint WitnessRoot :=
-  { epoch := 0, root := junkRoot }
+  { epoch := 0, root := zeroRoot }
 
 def childEpochOneCheckpoint : Checkpoint WitnessRoot :=
   { epoch := 1, root := childRoot }
@@ -91,7 +91,7 @@ def childState : BeaconState WitnessRoot := stateAt 1 stubCheckpoint
 def carrierState : BeaconState WitnessRoot := stateAt 8 stubCheckpoint
 
 def anchorSignedBlock : SignedBeaconBlock WitnessRoot :=
-  { message := { slot := 0, parent_root := junkRoot }
+  { message := { slot := 0, parent_root := zeroRoot }
     root := anchorRoot }
 
 def childSignedBlock : SignedBeaconBlock WitnessRoot :=
@@ -1079,7 +1079,7 @@ theorem witnessPhase0BoundarySourceCoherence :
 theorem witnessBalanceFloor :
     2 * witnessConfig.effective_balance_increment ≤
       witnessExecution.weight
-        (witnessExecution.currentTargetAnchorActive witnessConfig) := by
+        (witnessExecution.anchorActiveValidators witnessConfig) := by
   decide
 
 theorem witnessEpochEndsFitUint64 : EpochEndsFitUint64 witnessConfig := by

@@ -1066,7 +1066,7 @@ theorem witnessPhase0BoundarySourceCoherence :
 theorem witnessBalanceFloor :
     2 * witnessConfig.effective_balance_increment ≤
       witnessExecution.weight
-        (witnessExecution.currentTargetAnchorActive witnessConfig) := by
+        (witnessExecution.anchorActiveValidators witnessConfig) := by
   decide
 
 theorem witnessEpochEndsFitUint64 : EpochEndsFitUint64 witnessConfig := by

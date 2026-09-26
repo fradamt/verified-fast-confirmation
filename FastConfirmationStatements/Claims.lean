@@ -17,7 +17,7 @@ variable (cfg : Config) (ext : BeaconFunctionInterface Root)
 in the observer's block store and is an ancestor of its head from the next
 slot on, within the verification horizon, under the accepted executable-semantics bundle.
 
-The global `NextSlotSynchronyPremises` inside `completed_calls` makes this the
+The global `NextSlotSynchronyPremises` inside `call_conditions` makes this the
 current model's GST-0 specialization. Its delivery contracts cover honest votes,
 cutoff block paths, ordered payload envelopes, data availability, and cutoff
 equivocation evidence under a positive delay and strict deadline fit. -/

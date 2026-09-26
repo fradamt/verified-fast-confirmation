@@ -541,7 +541,7 @@ theorem phase0_boundary_source : Phase0BoundarySourceCoherence cfg ext := by
 
 theorem balance_floor :
     2 * cfg.effective_balance_increment ≤
-      run.weight (run.currentTargetAnchorActive cfg) := by decide
+      run.weight (run.anchorActiveValidators cfg) := by decide
 
 theorem epoch_ends_fit : EpochEndsFitUint64 cfg := by
   refine ⟨2 ^ 62, ?_⟩

@@ -1900,7 +1900,7 @@ noncomputable def
             have heq : r = trace.result := hr.symm.trans hselector.result_eq.symm
             exact False.elim (hne (by simpa only [heq] using hcurrent))
         obtain ⟨e, ⟨hlineage⟩⟩ := E.getLatestConfirmedTraceAt_currentLineage_step
-          cfg ext B hT hC.phase0_source hC.phase0_boundary_source hanchor hboundary
+          cfg ext B hT hC.source_coherence hC.boundary_source_coherence hanchor hboundary
           hv hn1H hinvariant.confirmed_known hcurrent hprovisos
           (E.completedPrefix_acceptedTargetGateProducerAt cfg ext B hT hC hfit
             hanchor hboundary hv hcall hn1H) hinvariant.current_lineage
@@ -1922,7 +1922,7 @@ noncomputable def
               (by simpa only [trace, E.fcrStep_store, hselectedEpoch]
                 using hlate) hIH
         exact E.acceptedSelectedResultFilterOutcome_retainedVisible_of_lateLineage
-          cfg ext B hT hC.synchrony hdomain hC.phase0_source hanchor
+          cfg ext B hT hC.synchrony hdomain hC.source_coherence hanchor
             hboundary hpaper P V hanchorExact hacc hv hn1H hlineage
             hselectedQ hselectedEpoch hcanonical hw hmH
             (by simpa only [trace] using hselectedM)
@@ -1994,7 +1994,7 @@ noncomputable def
             hlineage.tip_epoch_eq_of_causal_known cfg ext hT
               (E.store_causal cfg ext v (n + 1)) hselectedQ
           exact E.acceptedSelectedResultFilterOutcome_retainedVisible_of_lateLineage
-            cfg ext B hT hC.synchrony hdomain hC.phase0_source hanchor
+            cfg ext B hT hC.synchrony hdomain hC.source_coherence hanchor
               hboundary hpaper P V hanchorExact hacc hv hn1H hlineage
               hselectedQ hselectedEpoch (hcanonicalFor hlineage) hw hmH
               (by simpa only [trace] using hselectedM)

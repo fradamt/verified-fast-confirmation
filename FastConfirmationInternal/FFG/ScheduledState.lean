@@ -11,6 +11,15 @@ variable {Root : Type*} [LinearOrder Root] [Inhabited Root]
 variable (cfg : Config) (ext : BeaconFunctionInterface Root)
 namespace Execution
 variable (E : Execution Root)
+/-- A concrete block message at an execution root.  The block comes either
+from the trusted initial store or from an actual scheduled block event. -/
+def BlockAt (r : Root) (b : BeaconBlock Root) : Prop :=
+  (r ∈ E.genesis_store.block_roots ∧
+      b = E.genesis_store.blocks r) ∨
+    ∃ (w : ValidatorIndex) (n : ℕ) (sb : SignedBeaconBlock Root),
+      Event.block sb ∈ E.schedule w n ∧
+      sb.root = r ∧ sb.message = b
+
 /-- Membership in the execution's concrete block universe. -/
 def ExecutionRoot (r : Root) : Prop :=
   ∃ b : BeaconBlock Root, E.BlockAt r b
