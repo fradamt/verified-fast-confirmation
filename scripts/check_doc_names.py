@@ -15,6 +15,16 @@ DECL = re.compile(r'^\s*(?:(?:private|protected|noncomputable|partial|unsafe|pub
                   r'axiom|constant)\s+([\w.₀-₉]+)', re.M)
 CODE = re.compile(r'(?<!`)`([^`\n]+)`(?!`)')
 IDENT = re.compile(r'[A-Za-z_][\w.₀-₉]*\Z')
+for doc in DOCS:
+    fence_open = False
+    for line_number, line in enumerate(doc.read_text().splitlines(), 1):
+        if "```" in line and not line.startswith("```"):
+            raise SystemExit(f"{doc.relative_to(ROOT)}:{line_number}: fence must have its own line")
+        if line.startswith("```"):
+            fence_open = not fence_open
+    if fence_open:
+        raise SystemExit(f"{doc.relative_to(ROOT)}: unclosed fence")
+
 known = set()
 for file in LEAN:
     known.update(DECL.findall(file.read_text()))

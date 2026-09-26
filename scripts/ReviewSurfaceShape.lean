@@ -162,3 +162,44 @@ example {Root : Type*} [LinearOrder Root] [Inhabited Root]
     (cfg : Config) (ext : BeaconFunctionInterface Root)
     (E : Execution Root) (h : E.ScheduledFCRCallPremises cfg ext) :
     Phase0BoundarySourceCoherence cfg ext := h.boundary_source_coherence
+
+-- Include every field type in the record fingerprint. The claim value is included
+-- because its declaration type alone is `Prop`.
+run_cmd do
+  let env ← getEnv
+  let records : List Name := [
+    `FastConfirmation.Spec.ReviewClaims,
+    `FastConfirmation.Spec.Execution.NextSlotSafetyPremises,
+    `FastConfirmation.Spec.Execution.ScheduledExecutionPremises,
+    `FastConfirmation.Spec.Execution.ScheduledFCRCallPremises,
+    `FastConfirmation.Spec.NextSlotSynchronyPremises,
+    `FastConfirmation.Spec.BeaconExternalsPremises,
+    `FastConfirmation.Spec.ByzantineWeightPremises,
+    `FastConfirmation.Spec.HonestBehavior,
+    `FastConfirmation.Spec.ScheduledFFGInterpretation,
+    `FastConfirmation.Spec.AcceptedBlockFFGState,
+    `FastConfirmation.Spec.FFGStateReadAgreement,
+    `FastConfirmation.Spec.FFGStateAndCheckpointReadAgreement,
+    `FastConfirmation.Spec.EventualCheckpointInclusion,
+    `FastConfirmation.Spec.Execution.IncludedAttestationEvidence,
+    `FastConfirmation.Spec.Execution.IncludedAttestationFidelity,
+    `FastConfirmation.Spec.FFGInterpretationFidelity,
+    `FastConfirmation.Spec.EpochCheckpointProjectionLaws,
+    `FastConfirmation.Spec.IncludedSupermajorityLink]
+  let mut fingerprint : UInt64 := 0
+  for record in records do
+    let some info := env.find? record
+      | throwError "missing review record {record}"
+    fingerprint := hash (fingerprint, record, info.type)
+    for field in getStructureFields env record do
+      let fieldName := record.str field.getString!
+      let some fieldInfo := env.find? fieldName
+        | throwError "missing review field {fieldName}"
+      fingerprint := hash (fingerprint, fieldName, fieldInfo.type)
+  match env.find? `FastConfirmation.Spec.ConfirmedRootSafeFromNextSlot with
+  | some (.defnInfo info) =>
+      fingerprint := hash (fingerprint, info.value)
+  | _ => throwError "missing claim definition"
+  unless fingerprint == (14368330899410285068 : UInt64) do
+    throwError "review surface statement type changed: {fingerprint}"
+  IO.println s!"review surface types passed ({fingerprint})"

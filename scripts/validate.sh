@@ -87,7 +87,14 @@ python3 scripts/check_synchrony_corners.py --self-test
 python3 scripts/check_doc_names.py
 python3 scripts/check_review_boundary.py
 python3 scripts/check_review_boundary.py --self-test
-python3 scripts/conformance/contracts/check_inventory.py --repo "$consensus_repo"
+if [[ -x "$consensus_repo/.venv/bin/python" ]]; then
+  python3 scripts/conformance/contracts/check_inventory.py --repo "$consensus_repo"
+elif [[ "${REQUIRE_PYSPEC:-0}" == "1" ]]; then
+  echo "pyspec interpreter is required at $consensus_repo/.venv/bin/python" >&2
+  exit 1
+else
+  python3 scripts/conformance/contracts/check_inventory.py --inventory-only
+fi
 python3 scripts/conformance/concrete/check_source_inventory.py --repo "$consensus_repo"
 if [[ -x "$consensus_repo/.venv/bin/python" ]]; then
   "$consensus_repo/.venv/bin/python" scripts/conformance/contracts/test_realized_gap.py --repo "$consensus_repo"
@@ -102,7 +109,11 @@ fi
 if [[ "$mode" == "full" ]]; then
   scripts/check_build.sh
   python3 scripts/check_imports.py
-  lake env lean scripts/StatementReachability.lean
+  reachability_output="$(mktemp)"
+  lake env lean scripts/StatementReachability.lean > "$reachability_output"
+  cat "$reachability_output"
+  python3 scripts/conformance/contracts/check_inventory.py --inventory-only --reachable-file "$reachability_output"
+  rm "$reachability_output"
   lake env lean scripts/ReviewSurfaceShape.lean
   lake env lean scripts/Audit.lean
   git diff --exit-code -- lake-manifest.json

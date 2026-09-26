@@ -30,7 +30,8 @@ This map condenses the definitions, assumptions, and theorems of [arXiv:2405.005
 │ Section 4 gate monotonicity               │ GateConfirmedBlockMonotonicity; gate_confirmed_block_monotonicity │ Semantic-gate monotonicity theorem.                                           │
 │ Algorithm 1 monotonicity                  │ SafeConfirmedAlg1Inputs; RuleConfirmedBlockMonotonicity;          │ Later rule confirmation is assumed for every honest-view-safe block; stronger │
 │                                           │ rule_confirmed_block_monotonicity                                 │ than Assumption 6.                                                            │
-└───────────────────────────────────────────┴───────────────────────────────────────────────────────────────────┴───────────────────────────────────────────────────────────────────────────────┘```
+└───────────────────────────────────────────┴───────────────────────────────────────────────────────────────────┴───────────────────────────────────────────────────────────────────────────────┘
+```
 
 Read `FastConfirmationPaper/LMDGhost/Claims.lean` with `FastConfirmationPaper/LMDGhost/ReviewTheorem.lean` for Theorem 1. Read `FastConfirmationPaper/HFC/Claims.lean` with `FastConfirmationPaper/HFC/ReviewTheorem.lean` for Algorithm 1. `SafeConfirmedAlg1Inputs` gives future rule confirmation as an input, so its theorem has a stronger premise than paper Assumption 6. The source and paper models have no formal refinement theorem.
 

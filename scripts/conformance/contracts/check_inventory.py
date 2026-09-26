@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Check premise-field coverage and run the pinned contract probes."""
+"""Check claim-reachable premise fields and run pinned contract probes."""
 from __future__ import annotations
 
 import argparse
@@ -15,7 +15,7 @@ HERE = Path(__file__).resolve().parent
 PREMISES = ROOT / "FastConfirmationStatements" / "Premises"
 
 
-def source_fields() -> dict[str, str]:
+def source_fields(reachable: set[str] | None = None) -> dict[str, str]:
     fields = {}
     for path in sorted(PREMISES.glob("*.lean")):
         source = path.read_text()
@@ -24,6 +24,8 @@ def source_fields() -> dict[str, str]:
             r"([\s\S]*?)(?=\n(?:end|namespace|structure|/-!|section|def |abbrev |variable )|\Z)",
             source,
         ):
+            if reachable is not None and name not in reachable:
+                continue
             for field in re.findall(r"(?m)^  ([A-Za-z_][\w]*)\s*:", body):
                 key = f"{name}.{field}"
                 if key in fields:
@@ -32,7 +34,7 @@ def source_fields() -> dict[str, str]:
     return fields
 
 
-def check_inventory() -> dict[str, dict]:
+def check_inventory(reachable_file: Path | None = None) -> dict[str, dict]:
     data = tomllib.loads((HERE / "inventory.toml").read_text())
     if data.get("version") != 1:
         raise ValueError("unknown inventory version")
@@ -49,9 +51,16 @@ def check_inventory() -> dict[str, dict]:
         if row["class"] != "T" and not row.get("reason"):
             raise ValueError(f"missing reason: {key}")
         inventory[key] = row
-    source = source_fields()
+    reachable = None
+    if reachable_file is not None:
+        audit = reachable_file.read_text()
+        reachable = {line.split("\t")[-1].rsplit(".", 1)[-1]
+                     for line in audit.splitlines() if line.startswith("SR\t")}
+        if not reachable or "NextSlotSafetyPremises" not in reachable:
+            raise ValueError("reachability audit has no safety premise root")
+    source = source_fields(reachable)
     missing = set(source) - set(inventory)
-    stale = {k for k in set(inventory) - set(source) if not inventory[k].get("optional", False)}
+    stale = set(inventory) - set(source)
     misplaced = [k for k in source.keys() & inventory.keys() if source[k] != inventory[k]["file"]]
     if missing or stale or misplaced:
         raise ValueError(f"missing={sorted(missing)}, stale={sorted(stale)}, wrong file={sorted(misplaced)}")
@@ -66,18 +75,18 @@ def main() -> int:
     ap.add_argument("--repo", type=Path, help="Pinned consensus-specs checkout")
     ap.add_argument("--python", type=Path, help="Pinned checkout interpreter")
     ap.add_argument("--inventory-only", action="store_true")
+    ap.add_argument("--reachable-file", type=Path, help="Lean claim-type reachability audit output")
     ap.add_argument("--full", action="store_true", help="Run all projection scenarios")
     ap.add_argument("--output", type=Path, help="Test JSON result path")
     args = ap.parse_args()
-    inventory = check_inventory()
+    inventory = check_inventory(args.reachable_file)
     if args.inventory_only:
         return 0
     if args.repo is None:
         raise ValueError("--repo is required for property tests")
     python = args.python or args.repo / ".venv/bin/python"
     if not python.is_file():
-        print(f"contract tests skipped: pyspec interpreter absent at {python}")
-        return 0
+        raise ValueError(f"pyspec interpreter absent at {python}")
     result_path = args.output or ROOT / "scripts/conformance/contracts/.last-results.json"
     temporary = args.output is None
     try:

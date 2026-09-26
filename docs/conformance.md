@@ -1,8 +1,8 @@
 # Gloas FCR conformance
 
 The conformance target is `gloas-minimal` with schema v2. The Python source is fork
-`fradamt/consensus-specs` at tag `fcr-gloas-fix` (`13f391516`). Branch
-`fcr-gloas-discount-fix` adds the public fix to upstream master `63a81afa6`. The harness
+`fradamt/consensus-specs` at tag `fcr-gloas-fix` (`13f391516`). The audited upstream base is `6b9bd532cca16555e2f3282d757622ebff29743e`.
+The fork commit is `13f391516352f61b3ac5dcaae5be1884d104f86a`. The harness
 rebuilds the projected Lean store. It compares the Gloas head and payload status. It also
 compares the six FCR store fields. A trace can include the safe execution block hash for
 comparison.
@@ -30,7 +30,7 @@ The [contract inventory](../scripts/conformance/contracts/inventory.toml) lists 
 direct field in the premise structures. T means a generated-state property
 of the pinned Python functions. E means an execution, network, or supplied
 FFG interpretation assumption. I means a cryptographic or engine
-idealization, including fixed committees. The inventory has 165 active fields: T 19, E 133,
+idealization, including fixed committees. The inventory has 160 claim-reachable active fields: T 19, E 128,
 and I 13. Thirteen selector, checkpoint, and anchor fields were moved from T to E
 because their old probes did not test the supplied execution interpretation. The
 inventory checker fails when a Lean field has no entry.
@@ -53,17 +53,18 @@ python3 scripts/conformance/contracts/check_inventory.py \
 ```
 
 `scripts/validate.sh --consensus-repo /path/to/consensus-specs-pending-discount`
-runs the same check. If the checkout interpreter is absent, it checks the inventory
-and prints a test-skip message. CI checks the inventory through fast
-validation. CI does not install the pyspec runtime.
+runs the same check. The contract runner fails if the checkout interpreter is absent. Fast validation
+can check the inventory alone when no interpreter is installed. CI installs the
+pinned fork in a separate job and runs the contract suite, fast projection,
+realized-gap regression, and concrete differential.
 
 
 ### Accepted FFG projection
 
 `scripts/conformance/contracts/projection/run.py` imports real blocks through
 `on_tick` and `on_block`, and delivers their body attestations through
-`on_attestation`. It sets `includedAttestations.Included` from those block
-bodies. It forms a checkpoint only when the carrier chain has a two-thirds
+`on_attestation`. It selects included body attestations whose target matches the checkpoint.
+Python `process_attestation` does not check the target root. It forms a checkpoint only when the carrier chain has a two-thirds
 source-to-target link from an already certified source, with exact target
 ancestry and an earlier included target vote. It reads realized checkpoints
 from imported block states, unrealized checkpoints from eager PJF, and epoch
@@ -86,3 +87,23 @@ construction; the exact Assumption 3.2 antecedent needs all honest views and
 slashing state, so its result is marked as not established. Findings remain in
 the JSON and do not make validation stop. The report for this lane is
 /home/fradamt/lean/orch/reports/p1-projection-tests.md on the NUC.
+
+## Scope of the checks
+
+The FFG interpretation remains a premise of the safety theorem. The projection
+harness tests every law of that interpretation on real pyspec runs. The concrete
+FFG state and 34 Gloas functions in `FastConfirmationModel` passed 59 differential
+cases, but the theorem does not yet use that state. Full-bundle witnesses show
+that the premises are consistent. Python faithfulness comes from the contract
+suite, projection harness, and concrete differential. The witnesses' PJF returns
+early in epochs 0 and 1 as Python does.
+
+The active field inventory is checked with the type-based Statements reachability
+audit. `IncludedAttestationEvidence.attesters_in_committee` is class I because
+it uses one fixed committee map across forks. A3.2 requires epoch-1 evidence in
+an epoch-2-or-later block; the regression in
+`scripts/conformance/contracts/test_realized_gap.py` records a confirmed block
+lost when that evidence is seeded too early. Finality has a two-epoch lag, the
+boundary source law covers two or more epoch crossings, and the `F = 1` scope
+excludes a two-step finalization of epoch 1. The real anchor witness is genesis.
+Checkpoint sync with older raw state checkpoints remains outside the result.

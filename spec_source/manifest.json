@@ -2,6 +2,7 @@
   "schema": 1,
   "repository": "https://github.com/ethereum/consensus-specs.git",
   "commit": "6b9bd532cca16555e2f3282d757622ebff29743e",
+  "fork_commit": "13f391516352f61b3ac5dcaae5be1884d104f86a",
   "license": "CC0-1.0",
   "files": [
     {
@@ -58,7 +59,10 @@
       "role": "Gloas Fast Confirmation Rule overlay",
       "git_blob": "cf1259fd948a392595616df0ba034c024116fead",
       "bytes": 1248,
-      "sha256": "44ea3dcd269a681709ec8b0f2604fc966c2295abfae4ce1faccc54aaada88213"
+      "sha256": "44ea3dcd269a681709ec8b0f2604fc966c2295abfae4ce1faccc54aaada88213",
+      "fork_git_blob": "2db7b981f291d6162a56e11e9c8e2f23be574cab",
+      "fork_bytes": 3843,
+      "fork_sha256": "e62ba45c9024b6621493b9b2ac7a21913bd6426a61b3e02827e164ac4968742b"
     },
     {
       "path": "specs/gloas/beacon-chain.md",

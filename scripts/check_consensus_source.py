@@ -15,7 +15,7 @@ from typing import Any
 
 ROOT = Path(__file__).resolve().parents[1]
 MANIFEST_PATH = ROOT / "spec_source" / "manifest.json"
-EXPECTED_TOP_LEVEL_KEYS = {"schema", "repository", "commit", "license", "files"}
+EXPECTED_TOP_LEVEL_KEYS = {"schema", "repository", "commit", "fork_commit", "license", "files"}
 EXPECTED_FILE_KEYS = {"path", "role", "git_blob", "bytes", "sha256"}
 EXPECTED_REPOSITORY = "https://github.com/ethereum/consensus-specs.git"
 EXPECTED_COMMIT = "6b9bd532cca16555e2f3282d757622ebff29743e"
@@ -84,6 +84,8 @@ def validate_manifest(value: dict[str, Any]) -> list[dict[str, Any]]:
         raise ManifestError("unexpected consensus-specs repository URL")
     if value["commit"] != EXPECTED_COMMIT or not HEX40.fullmatch(value["commit"]):
         raise ManifestError("manifest must use the canonical public 40-hex commit")
+    if value["fork_commit"] != EXPECTED_FORK_COMMIT:
+        raise ManifestError("manifest must pin the fork commit")
     if value["license"] != EXPECTED_LICENSE:
         raise ManifestError("unexpected source SPDX license")
 
@@ -96,7 +98,8 @@ def validate_manifest(value: dict[str, Any]) -> list[dict[str, Any]]:
     for index, entry in enumerate(files):
         if not isinstance(entry, dict):
             raise ManifestError(f"files[{index}] must be an object")
-        require_exact_keys(entry, EXPECTED_FILE_KEYS, f"files[{index}]")
+        extra = {"fork_git_blob", "fork_bytes", "fork_sha256"} if entry.get("path") == "specs/gloas/fast-confirmation.md" else set()
+        require_exact_keys(entry, EXPECTED_FILE_KEYS | extra, f"files[{index}]")
         source_path = entry["path"]
         if not isinstance(source_path, str) or source_path not in EXPECTED_ROLES:
             raise ManifestError(f"unexpected source path: {source_path!r}")
@@ -212,7 +215,12 @@ def verify_objects(repo: Path, entries: list[dict[str, Any]]) -> None:
         if local_content != fork_content:
             raise ManifestError(f"working file differs from pinned fork: {source_path}")
         if source_path == "specs/gloas/fast-confirmation.md":
+            if (fork_blob != entry["fork_git_blob"] or
+                    len(fork_content) != entry["fork_bytes"]):
+                raise ManifestError("fork Gloas overlay identity differs from manifest")
             fork_hash = hashlib.sha256(fork_content).hexdigest()
+            if fork_hash != entry["fork_sha256"]:
+                raise ManifestError("fork Gloas overlay hash differs from manifest")
             if fork_hash != EXPECTED_GLOAS_DISCOUNT_SHA256:
                 raise ManifestError(
                     "Gloas discount overlay differs from documented deviation: "

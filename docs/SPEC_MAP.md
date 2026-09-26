@@ -4,7 +4,7 @@ The Python source is fork `fradamt/consensus-specs` at tag `fcr-gloas-fix` (`13f
 The executable definitions use `BeaconFunctionInterface` for opaque beacon and
 payload calls. `BeaconExternalsPremises` states their used contracts. The
 [review guide](REVIEW_GUIDE.md) maps each interface field to its premise.
-Branch `fcr-gloas-discount-fix` contains upstream master `63a81afa6` and the fix alone. The
+The audited upstream base is `6b9bd532cca16555e2f3282d757622ebff29743e`. The fork commit is `13f391516352f61b3ac5dcaae5be1884d104f86a`. The
 table maps each Python function that has an authored Lean definition in the FCR, Gloas
 fork-choice, beacon-chain, and validator sections. Gloas overrides take precedence over
 inherited Phase0 functions. A missing Python function has no authored Lean definition in
@@ -52,7 +52,7 @@ their stated contracts.
 │ gloas/fork-choice.md /                            │ get_payload_attestation_due_ms —                                         │ Faithful control flow with Lean data types.                                   │
 │ get_payload_attestation_due_ms                    │ FastConfirmationModel/Spec/ForkChoice.lean                               │                                                                               │
 │ gloas/fork-choice.md / is_head_late               │ is_head_late — FastConfirmationModel/Spec/ForkChoice.lean                │ Faithful control flow with Lean data types.                                   │
-│ gloas/fork-choice.md / is_head_weak               │ is_head_weak — FastConfirmationModel/Spec/ForkChoice.lean                │ Faithful control flow with Lean data types.                                   │
+│ gloas/fork-choice.md / is_head_weak               │ is_head_weak — FastConfirmationModel/Spec/ForkChoice.lean                │ Uses state committee tables under the fixed-committee idealization.           │
 │ gloas/fork-choice.md / validate_on_attestation    │ validate_on_attestation — FastConfirmationModel/Spec/Handlers.lean       │ Faithful control flow with Lean data types.                                   │
 │ gloas/fork-choice.md / update_latest_messages     │ update_latest_messages — FastConfirmationModel/Spec/Handlers.lean        │ Faithful control flow with Lean data types.                                   │
 │ gloas/fork-choice.md / record_block_timeliness    │ record_block_timeliness — FastConfirmationModel/Spec/Handlers.lean       │ Faithful control flow with Lean data types.                                   │

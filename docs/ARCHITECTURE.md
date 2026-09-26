@@ -19,7 +19,8 @@ six.
 │ FastConfirmationWitnesses  │ Finite runs in NonVacuity/, negative results in Counterexamples/, and an inventory in        │
 │                            │ Index.lean.                                                                                  │
 │ FastConfirmationPaper      │ Independent paper definitions, claims, and proofs in Core/, LMDGhost/, and HFC/.             │
-└────────────────────────────┴──────────────────────────────────────────────────────────────────────────────────────────────┘```
+└────────────────────────────┴──────────────────────────────────────────────────────────────────────────────────────────────┘
+```
 
 `FastConfirmationModel` and `FastConfirmationStatements` are the trusted review surface. They contain definitions and premise propositions. Model also proves `SuccessfulScheduledBlockImport.processedCount_lt` for its successor-prefix definition. The Lean kernel checks the proof bodies in Internal, Proofs, Witnesses, and Paper. The audit in `scripts/Audit.lean` checks public theorem dependencies and permits only Lean's standard `propext`, `Classical.choice`, and `Quot.sound` axioms.
 
@@ -60,17 +61,34 @@ membership and executable ancestry.
 
 ```text
 ┌────────────────────────────┬─────────────────────────────────────────────────────────────────────────────────────────────┐
-│ Check                      │ What it enforces                                                                            │
+│Check                       │What it enforces                                                                             │
 ├────────────────────────────┼─────────────────────────────────────────────────────────────────────────────────────────────┤
-│ check_consensus_source.py  │ The Python tag and the pinned source objects match the recorded hashes.                     │
-│ check_review_boundary.py   │ Lean parser import closure of Statements contains only Model and Statements modules; every  │
-│                            │ Statements source is included.                                                              │
-│ StatementReachability.lean │ 61 source declarations are claim-reachable. Synchrony is the one approved public exception.  │
-│                            │ No other unreachable source declaration is allowed.                                         │
-│ ReviewSurfaceShape.lean    │ The safety review field and selected premise record shapes remain exact.                    │
-│ check_imports.py           │ The six-library import direction and Paper separation hold.                                 │
-│ check_doc_names.py         │ Backticked Lean names in current documents resolve to declarations or files.                │
-│ Audit.lean                 │ The 43 audited public theorems have only standard axiom dependencies.                       │
-│                            │ No forbidden declaration is allowed.                                                        │
-│ validate.sh                │ Fast checks above; full mode also builds every library and runs Lean checks.                │
-└────────────────────────────┴─────────────────────────────────────────────────────────────────────────────────────────────┘```
+│check_consensus_source.py   │The Python tag and the pinned source objects match the recorded hashes.                      │
+│check_review_boundary.py    │Lean parser import closure of Statements contains only Model and Statements modules; every   │
+│                            │Statements source is included.                                                               │
+│StatementReachability.lean  │60 source declarations are claim-reachable from the claim type; no exception remains. No     │
+│                            │other unreachable source declaration is allowed.                                             │
+│ReviewSurfaceShape.lean     │Field names and types of 18 records and the claim body remain exact.                         │
+│check_imports.py            │The six-library import direction and Paper separation hold.                                  │
+│check_doc_names.py          │Backticked Lean names in current documents resolve to declarations or files.                 │
+│Audit.lean                  │The 43 audited public theorems have only standard axiom dependencies. No forbidden           │
+│                            │declaration is allowed.                                                                      │
+│validate.sh                 │Fast checks above; full mode also builds every library and runs Lean checks.                 │
+└────────────────────────────┴─────────────────────────────────────────────────────────────────────────────────────────────┘
+```
+
+## FFG boundary and checks
+
+`FastConfirmationStatements` holds the safety premise and the supplied FFG
+interpretation. The intended inclusion relation uses body attestations whose
+target matches the checkpoint. Python `process_attestation` does not check that
+target root. `FastConfirmationModel` also contains a concrete FFG state and 34
+Gloas functions. A 59-case differential compares them with pinned Python. The
+public safety theorem still consumes the supplied interpretation. The projection
+harness checks each interpretation law on real pyspec runs. Full-bundle witnesses
+show consistency, while the contract and differential checks test Python behavior.
+
+The active inventory has 160 claim-reachable premise fields: T 19, E 128, I 13.
+The field list is checked against the claim-type reachability audit. CI runs the
+Python contract, projection, realized-gap, and concrete differential checks in
+a separate pinned-pyspec job.

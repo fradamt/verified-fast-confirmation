@@ -220,7 +220,7 @@ off-committee validators.
 ## Counterexamples
 
 * `StrictPrefixExtraQuery.extra_query_changes_head_counterexample` refutes
-  same-second head agreement at a mid-second prefix under the older synchrony
+  same-second head agreement at a mid-second prefix under the counterexample synchrony
   record. The querying actor confirms a candidate while another honest node's
   head is its sibling.
 * `PinnedEconomicsExtraQuery.extra_query_changes_head_counterexample` refutes

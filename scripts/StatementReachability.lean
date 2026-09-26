@@ -1,8 +1,8 @@
 import FastConfirmationStatements
 import Lean.Util.FoldConsts
 
-/-! Check that every authored Statements declaration is reachable from the proved
-safety claim type, except the counterexample synchrony record. -/
+/-! Check that every authored Statements declaration is reachable from the
+safety claim type. -/
 
 open Lean Elab Command
 
@@ -36,12 +36,6 @@ private def isSourceDeclaration (env : Environment) (decl : Name) : Bool :=
           !final.startsWith "_sizeOf" && !decl.toString.contains ".mk."
     | none => false
 
--- The strict-prefix counterexample theorem type still uses the older
--- `Synchrony` record. All other source declarations belong to a root below.
-private def approved : List Name := [
-  ``FastConfirmation.Spec.Synchrony
-]
-
 run_cmd do
   let env ← getEnv
   let reachable := reachableFrom env
@@ -52,15 +46,14 @@ run_cmd do
         m.toString.startsWith "FastConfirmationStatements."
   let sources := statementDecls.filter (isSourceDeclaration env)
   let unreachable := sources.filter fun decl =>
-    !reachable.contains decl && !approved.contains decl
+    !reachable.contains decl
   IO.println s!"STATEMENT_DECL_COUNT {statementDecls.length}"
   IO.println s!"STATEMENT_SOURCE_COUNT {sources.length}"
   IO.println s!"STATEMENT_REACHABLE_COUNT {(sources.filter reachable.contains).length}"
-  IO.println s!"STATEMENT_APPROVED_COUNT {(sources.filter approved.contains).length}"
+  IO.println "STATEMENT_APPROVED_COUNT 0"
   IO.println s!"STATEMENT_UNREACHABLE_COUNT {unreachable.length}"
   for decl in sources.mergeSort (Name.quickCmp · · |>.isLE) do
-    let status := if reachable.contains decl then "SR"
-      else if approved.contains decl then "SH" else "SU"
+    let status := if reachable.contains decl then "SR" else "SU"
     IO.println s!"{status}\t{(moduleOf? env decl).getD `unknown}\t{decl}"
   unless unreachable.isEmpty do
     throwError "statement source contains {unreachable.length} unapproved declarations"
