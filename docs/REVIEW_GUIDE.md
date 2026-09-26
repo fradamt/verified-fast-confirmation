@@ -1,6 +1,6 @@
 # Review guide
 
-`ReviewClaims` has one safety field. `review_claims` proves it. The public live theorem is a separate conditional result. The trust audit checks 43 public theorem witnesses: 36 executable-side and seven paper-side.
+`ReviewClaims` has one safety field. `review_claims` proves it. The field states observer-store membership and executable ancestry from the next slot. The public live theorem is a separate conditional result. The trust audit checks 43 audited public theorems: 36 executable-side and seven paper-side.
 
 The safety proof takes a supplied FFG interpretation as a premise. Its
 accepted-block FFG state includes an inclusion relation and checkpoint
@@ -39,7 +39,7 @@ FFG behavior supplies the interpretation before the theorem applies to it.
 │ Stored next-slot safety │ The root is in each honest observer's block store and on its head from the next slot, within the horizon.    │
 │ Live monotonicity       │ Conditional theorem under the safety bundle and both fields of LiveMonotonicityPremises.                     │
 │ Selected result         │ A spec-correspondence lemma covers the find_latest_confirmed_descendant note. It is not a review claim.      │
-│ Optional in-slot query  │ No general safety claim. StrictPrefixExtraQuery and PinnedEconomicsExtraQuery give counterexamples.          │
+│ Optional in-slot query  │ Next-slot safety remains open. The counterexamples refute same-second head agreement under older synchrony.  │
 │ Joint live witness      │ LiveMonotonicityWitness.joint_witness satisfies the safety bundle and both live fields in one short run. Its │
 │                         │ confirmed root advances. Its FFG timing uses the genesis anchor at epoch 0.                                  │
 │ Payload envelope        │ Exercised by FullTwelveEnvelopeWitness.envelope_relay_exercised and data_relay_exercised under the full      │
@@ -57,21 +57,21 @@ FFG behavior supplies the interpretation before the theorem applies to it.
 │ Committee span bound    │ The fault fraction applies to every in-horizon span, including one slot. A global fault share does not       │
 │                         │ establish it.                                                                                                │
 │ Opaque validation       │ BeaconExternalsPremises and verified envelope events supply the engine verdict and deterministic behavior.   │
-│ Static registry         │ StaticValidatorSet covers the finite horizon. Validator churn is outside the claim.                          │
+│ Static registry         │ The registry, including balances and slashed flags, is fixed in the horizon. Included slashing does not      │
+│                         │ mark a validator slashed in state.                                                                           │
 │ Paper Algorithm 1       │ SafeConfirmedAlg1Inputs requires future rule confirmation for each honest-view-safe block. This is stronger  │
 │                         │ than paper Assumption 6.                                                                                     │
 │ Gloas discount          │ The pinned fork counts matching-status or PENDING parent votes. Upstream can count opposite resolved-status  │
 │                         │ votes.                                                                                                       │
-└─────────────────────────┴──────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
-```
+└─────────────────────────┴──────────────────────────────────────────────────────────────────────────────────────────────────────────────┘```
 
 ## Audit path
 
 1. **Model:** Read `FastConfirmationModel/`. Compare `Spec/` with the pinned Python fork. Check the Gloas discount, finite maps, loop fuel, and arithmetic. Check schedules and accepted handler results in `Execution/`.
-2. **Statements premises:** Read both fields of `ReviewClaims`. Expand each record in `FastConfirmationStatements/Premises/`. Check the observer, time, horizon, and successful-prefix ranges.
+2. **Statements premises:** Read the safety field of `ReviewClaims`. Expand each record in `FastConfirmationStatements/Premises/`. Check the observer, time, horizon, and successful-prefix ranges.
 3. **Externals:** Check the table below against `BeaconFunctionInterface` and `BeaconExternalsPremises`. Check the supplied FFG inclusion and certificate evidence. The slashing relay is a separate premise over the literal Python handler.
 4. **Claims:** Read the proof terms in `FastConfirmationProofs/`. Check `confirmed_root_safe_from_next_slot`, `live_confirmed_root_monotonicity`, and `review_claims`. Read the independent Paper library with [the paper map](PAPER_MAP.md).
-5. **Witnesses:** Read `FastConfirmationWitnesses/Index.lean`. Check each run's true guards and vacuous branches. Check the 43 registered theorems in `scripts/Audit.lean`.
+5. **Witnesses:** Read `FastConfirmationWitnesses/Index.lean`. Check each run's true guards and vacuous branches. Check the 43 audited public theorems in `scripts/Audit.lean`.
 
 ## Trusted boundary
 
@@ -106,8 +106,7 @@ contracts and the intended behavior of any unconstrained function it uses.
 │                                        │ The handler checks the local Boolean result. No KZG soundness theorem is proved.                       │
 │ verify_execution_payload_envelope      │ BeaconExternalsPremises.verify_envelope_deterministic and envelope_delivery constrain verified         │
 │                                        │ observations. No execution-engine or signature refinement theorem is proved.                           │
-└────────────────────────────────────────┴────────────────────────────────────────────────────────────────────────────────────────────────────────┘
-```
+└────────────────────────────────────────┴────────────────────────────────────────────────────────────────────────────────────────────────────────┘```
 
 `Execution.schedule` is supplied. `WellFormedExecution`, `HonestBehavior`, and
 the delivery laws constrain it. The accepted FFG relation and checkpoint
@@ -183,7 +182,7 @@ Block and envelope exclusion is checked before the next-slot tick. It permits on
 
 ## Source and checks
 
-The source of record is fork `fradamt/consensus-specs`, tag `fcr-gloas-fix` (`13f391516`). The [source map](SPEC_MAP.md) records the exact difference from upstream. The [conformance harness](conformance.md) compares projected Python and Lean observations. A matching trace does not prove all external contracts or all reachable executions. The weak-synchrony branch is separate from this main review.
+The source of record is fork `fradamt/consensus-specs`, tag `fcr-gloas-fix` (`13f391516`). The [source map](SPEC_MAP.md) records the exact difference from upstream. The [conformance harness](conformance.md) compares projected Python and Lean observations. A matching trace does not prove all external contracts or all reachable executions. The `weak-synchrony` branch contains work in progress on weaker timing premises and is outside this review.
 
 `scripts/validate.sh --fast` checks the source pin, document names, import boundary, and hygiene. Full validation builds the libraries and checks imports, reachability, surface shape, and the 43 public witnesses. `scripts/Audit.lean` allows only `propext`, `Classical.choice`, and `Quot.sound`.
 
@@ -193,7 +192,10 @@ The conclusion covers stored boundary outputs in a finite horizon. It does
 not cover an arbitrary in-slot query. The confirmed root is in each honest
 observer's block store from the next slot. The active validator set is fixed.
 No witness has non-anchor finalization, positive Gloas discount, or a PTC
-event. The live witness uses the genesis anchor for FFG timing. The theorem
+event. Every positive run uses zero proposer boost. The one-second runs use
+`attestation_due_bps = 0`. The main safety runs have four or five validators
+and one validator per slot committee. The joint live run has two validators.
+The live witness uses the genesis anchor for FFG timing. The theorem
 does not prove that the Python handlers or a client satisfy each external
 contract. The independent Paper library has no refinement theorem to the
 executable model.
