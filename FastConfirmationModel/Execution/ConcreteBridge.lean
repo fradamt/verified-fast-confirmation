@@ -329,6 +329,26 @@ def BodyAttestationsDelivered (E : Execution Root) : Prop :=
   ∀ r b, E.BlockKnownInScheduledPrefix B.setup.cfg B.interface r b →
     ∀ a ∈ b.attestations, ∃ w n, Event.attestation a true ∈ E.schedule w n
 
+/-- **Scope condition, not a protocol law.** No committed state of an
+accepted block, and no single eager PJF pass on a copy of one, finalizes
+epoch `GENESIS_EPOCH + 1` only through the two-epoch link
+`GENESIS_EPOCH + 1 -> GENESIS_EPOCH + 3`: a finalized checkpoint of epoch
+`GENESIS_EPOCH + 1` has a finalization link to epoch `GENESIS_EPOCH + 2` in the
+run of the state. Python can finalize epoch `GENESIS_EPOCH + 1` through the
+two-epoch link alone (rules 1 and 3 of `weigh_justification_and_finalization`);
+such runs are outside the verified scope. -/
+def EpochOneFinalizationScope (E : Execution Root) : Prop :=
+  ∀ r cs, E.RootKnownInScheduledPrefix B.setup.cfg B.interface r →
+    B.committedState r = some cs → ∀ bl vo, Reachable B.setup bl vo cs →
+      (cs.finalized_checkpoint.epoch = GENESIS_EPOCH + 1 →
+        ∃ target, FinalizationLink B.setup bl vo cs.finalized_checkpoint target ∧
+          target.epoch = GENESIS_EPOCH + 2) ∧
+      ∀ eager, process_justification_and_finalization B.setup.cfg B.setup.preset cs =
+          .ok eager →
+        eager.finalized_checkpoint.epoch = GENESIS_EPOCH + 1 →
+        ∃ target, FinalizationLink B.setup bl vo eager.finalized_checkpoint target ∧
+          target.epoch = GENESIS_EPOCH + 2
+
 end ConcreteBridge
 
 end Selectors

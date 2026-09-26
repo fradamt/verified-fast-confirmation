@@ -1040,14 +1040,8 @@ theorem witnessIncludedLink_cases
 
 def witnessExactLinkValidity :
     witnessAcceptedChainFFGState.LinkCheckpointAgreement where
-  carrier_accepted := by
-    intro carrier source target L hcontributing
-    change IncludedSupermajorityLink witnessConfig witnessExecution
-      witnessIncluded carrier source target at L
-    rcases witnessIncludedLink_cases L with ⟨rfl, hsource, htarget⟩
-    exact carrier_accepted
   endpoints_on_carrier := by
-    intro carrier source target L hcontributing
+    intro carrier source target _ L hcontributing
     change IncludedSupermajorityLink witnessConfig witnessExecution
       witnessIncluded carrier source target at L
     obtain ⟨rfl, hsource, rfl⟩ := witnessIncludedLink_cases L

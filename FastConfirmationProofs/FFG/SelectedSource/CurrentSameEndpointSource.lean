@@ -385,16 +385,17 @@ theorem ScheduledFFGInterpretation.acceptedGlobalJustified_includedCertificate
         ast.slot = ablk.message.slot)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     {store : Store Root} (hstore : E.ScheduledPrefixStore cfg ext store) :
-    ∃ carrier : Root, Nonempty (IncludedCertifiedJustified cfg E
-      B.state.includedAttestations.Included B.anchor carrier
-        store.justified_checkpoint) := by
+    ∃ carrier : Root, E.RootKnownInScheduledPrefix cfg ext carrier ∧
+      Nonempty (IncludedCertifiedJustified cfg E
+        B.state.includedAttestations.Included B.anchor carrier
+          store.justified_checkpoint) := by
   rcases B.globalJustified_anchor_or_AUEvidence hgen hanchor hstore with
       hfieldAnchor | hevidence
-  · refine ⟨B.anchor.root, ?_⟩
+  · refine ⟨B.anchor.root, Execution.anchorRoot_accepted cfg ext hgen hanchor, ?_⟩
     rw [hfieldAnchor]
     exact ⟨IncludedCertifiedJustified.anchor⟩
   · obtain ⟨hcarrier⟩ := hevidence
-    exact ⟨hcarrier.carrier, hcarrier.formed_evidence.certified⟩
+    exact ⟨hcarrier.carrier, hcarrier.carrier_accepted, hcarrier.formed_evidence.certified⟩
 
 namespace AcceptedPastJustifiedFallbackAt
 
@@ -457,7 +458,7 @@ theorem justified_epoch_eq_queryCurrent
       hselectedQuery h.past.candidate_known
   have hselectedPastEpoch : get_block_epoch cfg past selected = e := by
     simpa only [e, get_block_epoch, ← hselectedBlocks] using hcurrent
-  obtain ⟨jCarrier, hjIncluded⟩ :=
+  obtain ⟨jCarrier, hjCarrier, hjIncluded⟩ :=
     ScheduledFFGInterpretation.acceptedGlobalJustified_includedCertificate
       (E := E) cfg ext B hgenShort hanchor hpastCausal
   obtain ⟨hjIncluded⟩ := hjIncluded
@@ -484,7 +485,7 @@ theorem justified_epoch_eq_queryCurrent
       B.state.checkpoint_at_epoch past.justified_checkpoint.root
         past.justified_checkpoint.epoch :=
     IncludedCertifiedJustified.exact_self (cfg := cfg) P V
-      hanchorExact hjIncluded
+      hanchorExact hjCarrier hjIncluded
   have hjReflect := B.coherence.checkpoint_of_known hpastCausal
     past.justified_checkpoint.root hjKnown
       past.justified_checkpoint.epoch

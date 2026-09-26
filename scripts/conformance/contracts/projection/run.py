@@ -486,7 +486,7 @@ def check_run(run, statements):
                         {**run.state_detail(root), 'raw_finalized': raw}))
     each('ImportedBlockFinalizationLag', samples)
     # Projection laws and exact links use accepted roots in the final prefix.
-    accept_samples, comp_samples, carrier_samples, endpoint_samples = [], [], [], []
+    accept_samples, comp_samples, endpoint_samples = [], [], []
     for root in all_roots:
         epoch = int(run.blocks[root].slot)//8
         for e in range(run.anchor[0], epoch + 3):
@@ -504,12 +504,10 @@ def check_run(run, statements):
                 continue
             detail = {**run.state_detail(root), 'source': source, 'target': target,
                       'signers': sorted(signers)}
-            carrier_samples.append((root in root_set, detail))
             endpoint_samples.append((source == run.checkpoint(root, source[0]) and
                                      target == run.checkpoint(root, target[0]), detail))
     each('EpochCheckpointProjectionLaws.checkpoint_root_accepted', accept_samples)
     each('EpochCheckpointProjectionLaws.checkpoint_comp', comp_samples)
-    each('IncludedLinkCheckpointAgreement.carrier_accepted', carrier_samples)
     each('IncludedLinkCheckpointAgreement.endpoints_on_carrier', endpoint_samples)
     reflection = []
     available_reflection = []

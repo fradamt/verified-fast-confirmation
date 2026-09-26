@@ -99,6 +99,19 @@ end IncludedCertifiedFinalized
 
 /-! ## Same-tip accepted certificate packages -/
 
+/-- The root of a genesis anchor is accepted: it is known in the genesis
+store. -/
+theorem Execution.anchorRoot_accepted (cfg : Config) (ext : BeaconFunctionInterface Root)
+    {E : Execution Root} {anchor : Checkpoint Root}
+    (hgen : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
+      E.genesis_store = get_forkchoice_store cfg ast ablk ∧ ast.slot = ablk.message.slot)
+    (hanchor : anchor = E.genesis_store.justified_checkpoint) :
+    E.RootKnownInScheduledPrefix cfg ext anchor.root := by
+  obtain ⟨ast, ablk, hgenEq, -⟩ := hgen
+  refine ⟨E.genesis_store, .genesis, ?_⟩
+  rw [hanchor, hgenEq]
+  simp [get_forkchoice_store]
+
 namespace AcceptedBlockFFGState
 
 /-- Any AU checkpoint has an included justification certificate reindexed to
@@ -113,6 +126,19 @@ theorem includedJustifiedAtTip_of_AU
   obtain ⟨carrier, htip, hformed⟩ := hAU
   obtain ⟨hcertificate⟩ := (S.formed_evidence hformed).certified
   exact ⟨hcertificate.transport_descendant cfg htip⟩
+
+/-- An available checkpoint has an included certificate on an accepted
+carrier: the formed carrier of its evidence. -/
+theorem includedJustifiedAccepted_of_AU
+    {E : Execution Root} {anchor : Checkpoint Root}
+    (S : AcceptedBlockFFGState cfg ext E anchor)
+    {tip : Root} {c : Checkpoint Root}
+    (hAU : S.AvailableCheckpoint cfg ext tip c) :
+    ∃ carrier, E.RootKnownInScheduledPrefix cfg ext carrier ∧
+      Nonempty (IncludedCertifiedJustified cfg E
+        S.includedAttestations.Included anchor carrier c) := by
+  obtain ⟨carrier, -, hformed⟩ := hAU
+  exact ⟨carrier, S.formed_carrier_accepted hformed, (S.formed_evidence hformed).certified⟩
 
 end AcceptedBlockFFGState
 

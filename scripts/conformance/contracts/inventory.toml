@@ -54,16 +54,10 @@ legacy_probe = "EpochCheckpointProjectionLaws.checkpoint_comp"
 reason = "Checkpoint projection must agree with the accepted chain at the queried epoch."
 
 [[field]]
-path = "IncludedLinkCheckpointAgreement.carrier_accepted"
-file = "CheckpointLinks.lean"
-class = "E-interpretation"
-reason = "A link carrier must be an accepted block in the supplied execution."
-
-[[field]]
 path = "IncludedLinkCheckpointAgreement.endpoints_on_carrier"
 file = "CheckpointLinks.lean"
 class = "E-interpretation"
-reason = "A certified link must connect checkpoints on its accepted carrier chain."
+reason = "A certified link on an accepted carrier must connect checkpoints on the carrier chain."
 
 [[field]]
 path = "StaticValidatorSet.genesis_within_horizon"

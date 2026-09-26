@@ -60,22 +60,21 @@ def Contributing
 end IncludedSupermajorityLink
 
 /-- Exact carrier law for the included links which actually extend a
-carrier-local justification certificate.
+carrier-local justification certificate on an accepted carrier.
 
-This does not constrain arbitrary included attestations or links with an
-uncertified source. -/
+This does not constrain arbitrary included attestations, links with an
+uncertified source, or links on a carrier outside the accepted domain.
+Inclusion on a chain is closed under descent, so a rejected descendant of an
+accepted block carries the links of that block; its checkpoint projection is
+not constrained. -/
 structure IncludedLinkCheckpointAgreement
     (E : Execution Root)
     (included : Root → Attestation Root → Prop)
     (anchor : Checkpoint Root)
     (C : Root → Epoch → Checkpoint Root)
     (Accepted : Root → Prop) : Prop where
-  carrier_accepted : ∀ {carrier source target},
-    (L : IncludedSupermajorityLink cfg E included
-      carrier source target) →
-    IncludedSupermajorityLink.Contributing cfg anchor L →
-    Accepted carrier
   endpoints_on_carrier : ∀ {carrier source target},
+    Accepted carrier →
     (L : IncludedSupermajorityLink cfg E included
       carrier source target) →
     IncludedSupermajorityLink.Contributing cfg anchor L →

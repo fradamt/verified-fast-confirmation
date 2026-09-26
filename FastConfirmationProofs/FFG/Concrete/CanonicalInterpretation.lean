@@ -7,15 +7,13 @@ public import FastConfirmationStatements.Premises.NextSlotSafety
 /-! Builds the canonical `ScheduledFFGInterpretation` of an execution run with
 the concrete bridge. The anchor is the genesis anchor. The selectors are
 the four realized and unrealized selectors and `checkpointAt`; the formed
-evidence is `CarriedOrRealizable`. The inclusion relation is an input.
+evidence is `CarriedOrRealizable`. The inclusion relation is a parameter.
 
 `CanonicalOpenFields` holds exactly the fields that this file does not prove:
 the certificate evidence of formed checkpoints, the two finalization
 certificates, and the scope restriction `epoch_one_finalization_one_step`.
-Their certificates need `IncludedSupermajorityLink`, whose horizon fields
-have no bound on accepted roots, and inclusion evidence, whose
-`received_from_block` field has no source in an accepted block body. The
-causal field needs honest behavior. The file also proves the anchor,
+`CanonicalEvidence.lean` proves them for the canonical inclusion relation
+`TargetIncludedAt` (`canonicalOpenFields`). The file also proves the anchor,
 lag, and checkpoint projection fields of `NextSlotSafetyPremises` for this
 interpretation. -/
 

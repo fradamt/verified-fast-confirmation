@@ -205,13 +205,14 @@ theorem acceptedFinalized_prefix_of_sourceAU
   rcases E.acceptedGlobalFinalized_anchor_or_includedCertificate
       cfg ext B hgenShort hanchor
       (E.store_causal cfg ext w m) with
-    hFanchor | ⟨_carrierF, _hcarrierF, hFcert⟩
+    hFanchor | ⟨_carrierF, hcarrierF, hFcert⟩
   · rw [hFanchor]
     exact IncludedCertifiedJustified.anchor_prefix (cfg := cfg)
-      P V hanchorExact hCcert
+      P V hanchorExact (B.state.formed_carrier_accepted hformed) hCcert
   · obtain ⟨hFcert⟩ := hFcert
     exact B.state.exactFinalizedPrefix_of_accountable cfg P V
-      hanchorExact hacc hFcert hCcert hepoch
+      hanchorExact hacc hcarrierF.acceptedRoot (B.state.formed_carrier_accepted hformed)
+      hFcert hCcert hepoch
 
 /-- A source tip carrying an accepted AU checkpoint at least as new as the
 receiver's finalized checkpoint is never permanently excluded, provided the
