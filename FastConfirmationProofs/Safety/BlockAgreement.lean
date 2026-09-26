@@ -1,6 +1,6 @@
 module
 public import FastConfirmationProofs.ForkChoice.Ancestry.AncestryRoots
-public import FastConfirmationStatements.Premises.ScheduledExecutionConditions
+public import FastConfirmationInternal.Premises.ScheduledExecution
 public import FastConfirmationModel.Execution.PayloadFrame
 
 public import FastConfirmationProofs.ModelFacts

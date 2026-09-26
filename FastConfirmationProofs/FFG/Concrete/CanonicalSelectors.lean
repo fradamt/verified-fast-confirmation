@@ -2,8 +2,8 @@ module
 public import FastConfirmationProofs.FFG.Concrete.BridgeStore
 public import FastConfirmationProofs.ForkChoice.Ancestry.AncestryRoots
 public import FastConfirmationProofs.Checkpoints.ExecutionRootReflection
-public import FastConfirmationStatements.Premises.CheckpointLinks
-public import FastConfirmationStatements.Premises.ScheduledExecutionConditions
+public import FastConfirmationInternal.Premises.CheckpointLinks
+public import FastConfirmationInternal.Premises.ScheduledExecution
 
 @[expose] public section
 

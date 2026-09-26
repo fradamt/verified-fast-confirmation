@@ -1,6 +1,6 @@
 module
 public import FastConfirmationStatements.Premises.FFGCertificates
-public import FastConfirmationStatements.Premises.FFGState
+public import FastConfirmationInternal.Premises.AcceptedFFGState
 public import FastConfirmationInternal.FFG.Certificates
 public import FastConfirmationInternal.FFG.AnchorNormalization
 public import FastConfirmationInternal.FFG.ScheduledState

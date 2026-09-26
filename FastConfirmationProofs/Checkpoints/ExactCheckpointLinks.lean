@@ -1,5 +1,5 @@
 module
-public import FastConfirmationStatements.Premises.CheckpointLinks
+public import FastConfirmationInternal.Premises.CheckpointLinks
 public import FastConfirmationProofs.ForkChoice.Ancestry.AncestryRoots
 public import FastConfirmationProofs.Checkpoints.CheckpointGeometry
 public import FastConfirmationProofs.FFG.Certificates.FFGAccountability

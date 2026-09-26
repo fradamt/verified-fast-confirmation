@@ -1,7 +1,7 @@
 module
 public import FastConfirmationProofs.Checkpoints.AnchorParentKnownness
 public import FastConfirmationProofs.Safety.BlockAgreement
-public import FastConfirmationStatements.Premises.FFGState
+public import FastConfirmationInternal.Premises.AcceptedFFGState
 
 @[expose] public section
 

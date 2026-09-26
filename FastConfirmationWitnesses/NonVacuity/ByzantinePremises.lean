@@ -683,7 +683,7 @@ theorem changed_root_safe_from_next_slot (w m : ℕ)
       (get_node_for_root childRoot) = true := by
   have hnext : witnessExecution.slot_at witnessConfig 7 + 1 ≤
       witnessExecution.slot_at witnessConfig m := by simpa only [slot_at_eq] using hm
-  have h := confirmed_root_safe_from_next_slot witnessConfig witnessExternals
+  have h := accepted_confirmed_root_safe_from_next_slot witnessConfig witnessExternals
     witnessExecution witnessAcceptedActualFCRNextSlotSafetyAssumptions
     0 (by decide) 7 w hw m (by omega) hnext hH
   simpa only [actual_fcr_transition_strict_advance] using h.2
@@ -700,7 +700,7 @@ theorem carrier_safe_from_next_slot (w m : ℕ)
   have hcarrier :
       witnessExecution.confirmed witnessConfig witnessExternals 0 10 = carrierRoot :=
     full_bundle_witness.2.2.2.2.2.2.2.2
-  have h := confirmed_root_safe_from_next_slot witnessConfig witnessExternals
+  have h := accepted_confirmed_root_safe_from_next_slot witnessConfig witnessExternals
     witnessExecution witnessAcceptedActualFCRNextSlotSafetyAssumptions
     0 (by decide) 10 w hw m (by omega) hnext hH
   simpa only [hcarrier] using h.2

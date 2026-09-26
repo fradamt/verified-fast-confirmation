@@ -1,5 +1,5 @@
 module
-public import FastConfirmationStatements.Premises.FFG
+public import FastConfirmationInternal.Premises.FFG
 
 @[expose] public section
 

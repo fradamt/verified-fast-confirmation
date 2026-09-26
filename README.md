@@ -16,7 +16,7 @@ The Fast Confirmation Rule (FCR) selects a block root from fork-choice state. Un
 - **Joint witness:** A proof of several records for one run.
 - **One-boundary law:** A law that crosses one epoch end.
 
-Read the claim in `FastConfirmationStatements/Review.lean` and its premise bundle in `FastConfirmationStatements/Premises/NextSlotSafety.lean`.
+Read the claim in `FastConfirmationStatements/Review.lean` and its premise record in `FastConfirmationStatements/Premises/ConcreteSafety.lean`.
 Read `docs/REVIEW_GUIDE.md` for the audit path and `docs/MODELING_CHOICES.md` for the scope.
 Run `scripts/validate.sh` with the pinned Python checkout, then inspect `FastConfirmationWitnesses/Index.lean` for finite examples.
 

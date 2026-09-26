@@ -1,6 +1,6 @@
 module
-public import FastConfirmationStatements.Premises.ScheduledExecutionConditions
-public import FastConfirmationStatements.Premises.FFGState
+public import FastConfirmationInternal.Premises.ScheduledExecution
+public import FastConfirmationInternal.Premises.AcceptedFFGState
 public import FastConfirmationInternal.FCRRule.VoteSupport
 
 @[expose] public section

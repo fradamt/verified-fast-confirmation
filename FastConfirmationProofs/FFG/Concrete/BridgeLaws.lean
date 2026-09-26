@@ -1,7 +1,7 @@
 module
 public import FastConfirmationProofs.FFG.Concrete.SlotRuns
 public import FastConfirmationModel.Execution.ConcreteBridge
-public import FastConfirmationStatements.Premises.FFG
+public import FastConfirmationInternal.Premises.FFG
 
 @[expose] public section
 

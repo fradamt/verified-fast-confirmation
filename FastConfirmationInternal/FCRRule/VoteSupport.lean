@@ -1,5 +1,5 @@
 module
-public import FastConfirmationStatements.Premises.FCRCallPremises
+public import FastConfirmationInternal.Premises.FCRCallPremises
 
 @[expose] public section
 

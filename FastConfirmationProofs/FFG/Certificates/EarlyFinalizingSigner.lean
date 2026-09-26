@@ -1,7 +1,7 @@
 module
 public import FastConfirmationProofs.FFG.Certificates.FFGCertificates
 public import FastConfirmationProofs.Discount.CommitteeWindowWeight
-public import FastConfirmationStatements.Premises.FFGState
+public import FastConfirmationInternal.Premises.AcceptedFFGState
 
 @[expose] public section
 

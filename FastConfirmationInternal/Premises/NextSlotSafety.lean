@@ -1,9 +1,9 @@
 module
 public import FastConfirmationModel
-public import FastConfirmationStatements.Premises.CheckpointLinks
-public import FastConfirmationStatements.Premises.FFG
-public import FastConfirmationStatements.Premises.ScheduledExecutionConditions
-public import FastConfirmationStatements.Premises.FCRCallPremises
+public import FastConfirmationInternal.Premises.CheckpointLinks
+public import FastConfirmationInternal.Premises.FFG
+public import FastConfirmationInternal.Premises.ScheduledExecution
+public import FastConfirmationInternal.Premises.FCRCallPremises
 
 @[expose] public section
 
@@ -50,6 +50,21 @@ structure NextSlotSafetyPremises where
   link_checkpoint_agreement : ffg_interpretation.state.LinkCheckpointAgreement
 
 end Execution
+
+/-- Whole-output safety under the internal premise record, for fixed state
+functions `ext`. The public claim `ConfirmedRootSafeFromNextSlot` reduces to
+it through `ConcreteBridge.SafetyPremises.nextSlotSafetyPremises`. -/
+def AcceptedConfirmedRootSafeFromNextSlot : Prop :=
+  ∀ E : Execution Root,
+    E.NextSlotSafetyPremises cfg ext →
+      ∀ v ∈ E.honest, ∀ n : ℕ,
+        ∀ w ∈ E.honest, ∀ m : ℕ, n ≤ m →
+          E.slot_at cfg n + 1 ≤ E.slot_at cfg m →
+          E.WithinHorizon cfg m →
+            E.confirmed cfg ext v n ∈ (E.store cfg ext w m).block_roots ∧
+              is_ancestor (E.store cfg ext w m)
+                (get_head cfg (E.store cfg ext w m))
+                (get_node_for_root (E.confirmed cfg ext v n)) = true
 end FastConfirmation.Spec
 end
 

@@ -1,6 +1,6 @@
 module
 public import FastConfirmationModel
-public import FastConfirmationStatements.Premises.FFGState
+public import FastConfirmationInternal.Premises.AcceptedFFGState
 public import Mathlib.Tactic
 
 @[expose] public section

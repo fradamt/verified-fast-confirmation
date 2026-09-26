@@ -3,7 +3,7 @@ public import FastConfirmationProofs.FFG.Concrete.CanonicalEvidence
 public import FastConfirmationProofs.FFG.Concrete.BridgeLaws
 public import FastConfirmationProofs.FFG.Certificates.PaperCheckpointInclusionProjectionCore
 public import FastConfirmationStatements.Premises.ConcreteSafety
-public import FastConfirmationStatements.Premises.NextSlotSafety
+public import FastConfirmationInternal.Premises.NextSlotSafety
 
 @[expose] public section
 

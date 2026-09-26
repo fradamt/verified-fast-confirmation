@@ -12,6 +12,13 @@ public import FastConfirmationInternal.FCRRule.SelectedMargin
 public import FastConfirmationInternal.FCRRule.SelectedParentTrace
 public import FastConfirmationInternal.FCRRule.SelectedTraceEdges
 
+public import FastConfirmationInternal.Premises.AcceptedFFGState
+public import FastConfirmationInternal.Premises.CheckpointLinks
+public import FastConfirmationInternal.Premises.FFG
+public import FastConfirmationInternal.Premises.FCRCallPremises
+public import FastConfirmationInternal.Premises.NextSlotSafety
+public import FastConfirmationInternal.Premises.ScheduledExecution
+
 public import FastConfirmationInternal.FFG.AnchorNormalization
 public import FastConfirmationInternal.FFG.Certificates
 public import FastConfirmationInternal.FFG.InterpretationFidelity

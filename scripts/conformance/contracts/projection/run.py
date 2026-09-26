@@ -12,14 +12,13 @@ import re
 import subprocess
 import sys
 import time
-import tomllib
 from collections import defaultdict
 from pathlib import Path
 
 PIN = '13f391516352f61b3ac5dcaae5be1884d104f86a'
 ROOT = Path(__file__).resolve().parents[4]
 PREMISES = ROOT / 'FastConfirmationStatements/Premises'
-INVENTORY = ROOT / 'scripts/conformance/contracts/inventory.toml'
+INTERNAL_PREMISES = ROOT / 'FastConfirmationInternal/Premises'
 NAMES = ('AcceptedBlockFFGState', 'FFGStateReadAgreement',
          'ScheduledFFGInterpretation', 'EventualCheckpointInclusion',
          'FFGStateAndCheckpointReadAgreement', 'EpochCheckpointProjectionLaws', 'IncludedLinkCheckpointAgreement')
@@ -34,27 +33,23 @@ def reads_as(raw, semantic):
 
 
 def source_statements():
-    rows = tomllib.loads(INVENTORY.read_text())['field']
+    """Field statements of the probed records, read from the Lean sources.
+    `EventualCheckpointInclusion` is public; the other records are the internal
+    FFG interpretation of the concrete bridge."""
     result = {}
-    for row in rows:
-        name = row['path']
-        if not name.startswith(NAMES):
-            continue
-        source = (PREMISES / row['file']).read_text()
-        structure, field = name.split('.', 1)
-        body = re.search(r'(?m)^structure ' + structure + r'\b[\s\S]*?\bwhere\n([\s\S]*?)(?=\n(?:end|namespace|structure|/-!|section|def |abbrev |variable )|\Z)', source)
-        if body is None:
-            raise ValueError(name)
-        match = re.search(r'(?m)^  ' + field + r'\s*:', body.group(1))
-        if match is None:
-            raise ValueError(name)
-        tail = body.group(1)[match.start():]
-        stop = re.search(r'(?m)^  (?:[A-Za-z_][\w]*\s*:|/--)', tail[len(match.group(0)):])
-        result[name] = (tail if stop is None else tail[:len(match.group(0)) + stop.start()]).strip()
+    for path in [*sorted(PREMISES.glob('*.lean')), *sorted(INTERNAL_PREMISES.glob('*.lean'))]:
+        source = path.read_text()
+        for structure, body in re.findall(r'(?:^|\n)structure\s+([A-Za-z_][\w]*)[\s\S]*?\bwhere\n([\s\S]*?)(?=\n(?:end|namespace|structure|/-!|section|def |abbrev |variable )|\Z)', source):
+            if structure not in NAMES:
+                continue
+            for match in re.finditer(r'(?m)^  ([A-Za-z_][\w]*)\s*:', body):
+                tail = body[match.start():]
+                stop = re.search(r'(?m)^  (?:[A-Za-z_][\w]*\s*:|/--)', tail[len(match.group(0)):])
+                result[f'{structure}.{match.group(1)}'] = (tail if stop is None else tail[:len(match.group(0)) + stop.start()]).strip()
     for name, file, start, end in (
-        ('ImportedBlockFinalizationLag', 'ScheduledExecutionConditions.lean', 'def ImportedBlockFinalizationLag', '\n\nend Execution'),
+        ('ImportedBlockFinalizationLag', 'ScheduledExecution.lean', 'def ImportedBlockFinalizationLag', '\n\nend Execution'),
         ('GenesisOrNormalizedAnchor', 'NextSlotSafety.lean', 'def GenesisOrNormalizedAnchor', '\n\n/-- Assumptions')):
-        source = (PREMISES / file).read_text()
+        source = (INTERNAL_PREMISES / file).read_text()
         result[name] = source[source.index(start):source.index(end, source.index(start))].strip()
     return result
 

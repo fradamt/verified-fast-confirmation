@@ -573,7 +573,7 @@ theorem changed_root_safe_from_next_slot (w m : ℕ)
     rw [slot_at_eq, slot_at_eq]
     simp only [Slot]
     omega
-  have h := confirmed_root_safe_from_next_slot cfg ext run safety_premises
+  have h := accepted_confirmed_root_safe_from_next_slot cfg ext run safety_premises
     0 (by decide) 24 w hw m (by omega) hnext hH
   simpa only [changed_confirmed_root.2.1] using h.2
 end FastConfirmation.Spec.FullTwelveWitness
