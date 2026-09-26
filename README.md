@@ -31,9 +31,32 @@ witness proves fidelity. This development does not derive the FFG layer from the
 beacon state transition. To apply the theorem to a client or the Python rule,
 one must show that its FFG behavior supplies this interpretation.
 
-`NextSlotSafetyPremises.anchor_state_checkpoints` covers a genesis anchor whose state has the zero-root stub. It also covers a normalized anchor state whose current justified and finalized checkpoints equal the anchor. At the FFG interpretation boundary, `CheckpointReadsAs` reads a raw genesis stub as the genesis anchor because both checkpoints have `GENESIS_EPOCH`. Executable handlers and wire attestations keep the raw checkpoint. Checkpoint-sync anchors with older state checkpoints are outside this condition. The raw source age and the filter's `+2` rule need an inclusion argument. That argument is not formalized. `CheckpointSyncFilterWitness.checkpoint_sync_filter_counterexample` has no attestation inclusion for two epochs, so it is outside `EventualCheckpointInclusion`. It shows why that premise matters; it is not an FCR safety failure.
+`NextSlotSafetyPremises.anchor_state_checkpoints` covers a genesis anchor whose state
+has the zero-root stub. It also covers a normalized anchor state whose current justified
+and finalized checkpoints equal the anchor. At the FFG interpretation boundary,
+`CheckpointReadsAs` reads a raw genesis stub as the genesis anchor because both
+checkpoints have `GENESIS_EPOCH`. Executable handlers and wire attestations keep the raw
+checkpoint. Checkpoint-sync anchors with older state checkpoints are outside this
+condition. The raw source age and the filter's `+2` rule need an inclusion argument.
+That argument is not formalized.
+`CheckpointSyncFilterWitness.checkpoint_sync_filter_counterexample` has no attestation
+inclusion for two epochs, so it is outside `EventualCheckpointInclusion`. It shows why
+that premise matters; it is not an FCR safety failure.
 
-`Phase0BoundarySourceCoherence` has four fields. `process_slots_one_boundary` equates one boundary with eager PJF. `process_slots_same_target_epoch` equates target slots in one epoch. `state_transition_process_slots` equates a crossing block transition with slot processing. `process_slots_checkpoint_epoch` bounds the output checkpoint if every intermediate slot-processed state satisfies `3 * effective_balance_increment < 2 * get_total_active_balance`. This guard is exact because an empty vote set can pass the two-thirds test at a total balance of at most one and a half increments. `ScheduledFCRCallPremises.balance_floor` requires two increments of anchor active weight. With `registry_static_in_horizon`, this floor supplies the guard on in-horizon reads. The static-registry condition excludes included slashings, deposits, activations, exits, and effective-balance changes that alter validator records in the horizon. `on_attestation_committee` confines successful delivered attestations in honest in-horizon prefixes to their slot committee. Attester-slashing evidence can name off-committee validators.
+`Phase0BoundarySourceCoherence` has four fields. `process_slots_one_boundary` equates
+one boundary with eager PJF. `process_slots_same_target_epoch` equates target slots in
+one epoch. `state_transition_process_slots` equates a crossing block transition with
+slot processing. `process_slots_checkpoint_epoch` bounds the output checkpoint if every
+intermediate slot-processed state satisfies `3 * effective_balance_increment < 2 *
+get_total_active_balance`. This guard is exact because an empty vote set can pass the
+two-thirds test at a total balance of at most one and a half increments.
+`ScheduledFCRCallPremises.balance_floor` requires two increments of anchor active
+weight. With `registry_static_in_horizon`, this floor supplies the guard on in-horizon
+reads. The static-registry condition excludes included slashings, deposits, activations,
+exits, and effective-balance changes that alter validator records in the horizon.
+`on_attestation_committee` confines successful delivered attestations in honest
+in-horizon prefixes to their slot committee. Attester-slashing evidence can name
+off-committee validators.
 
 `GenesisStubPremiseWitness.genesis_stub_full_bundle_witness` satisfies the full safety bundle with a real genesis stub. See [anchor and boundary limits](docs/MODELING_CHOICES.md#anchor-and-boundary-limits).
 
@@ -109,7 +132,14 @@ external calls with stated contracts. The Lean kernel checks the proofs. The tru
 allows only `propext`, `Classical.choice`, and `Quot.sound`. The [paper
 library](#paper-library) models the [paper](https://arxiv.org/abs/2405.00549) separately.
 There is no refinement theorem from the paper model to the executable model.
-The [contract conformance checks](docs/conformance.md#contract-conformance) cover 158 premise fields: 31 tested state-function properties (T), 116 execution or interpretation assumptions (E), and 11 cryptographic or engine idealizations (I). Run `python3 scripts/conformance/contracts/check_inventory.py --repo /path/to/consensus-specs-pending-discount --output /tmp/contract-results.json` with the pinned checkout's interpreter. Two labelled expected failures record why the balance guard is necessary and why an older raw checkpoint-sync state is outside `anchor_state_checkpoints`. These findings do not stop validation.
+The [contract conformance checks](docs/conformance.md#contract-conformance) cover 158
+premise fields: 31 tested state-function properties (T), 116 execution or interpretation
+assumptions (E), and 11 cryptographic or engine idealizations (I). Run `python3
+scripts/conformance/contracts/check_inventory.py --repo
+/path/to/consensus-specs-pending-discount --output /tmp/contract-results.json` with the
+pinned checkout's interpreter. Two labelled expected failures record why the balance
+guard is necessary and why an older raw checkpoint-sync state is outside
+`anchor_state_checkpoints`. These findings do not stop validation.
 
 ## Verify
 

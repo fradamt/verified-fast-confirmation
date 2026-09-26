@@ -283,7 +283,7 @@ the stub has the anchor's epoch.
 with an epoch-3 anchor and raw justification at epoch 2. The unchanged FCR
 confirms its slot-13 child at slot 14. At slot 20, raw source epoch 2 fails
 the filter's `source.epoch + 2 >= current_epoch` test. The head returns to the
-anchor. The fixture includes no attestation for two epochs. It is outside `EventualCheckpointInclusion`. The raw source can therefore lose a confirmed child, while the normalized source keeps it. This shows why the inclusion premise matters; it is not an FCR safety failure. With enough valid epoch-3
+anchor. The fixture includes no attestation for two epochs. It does not assert the full safety bundle or its `EventualCheckpointInclusion` premise. The raw source can therefore lose a confirmed child, while the normalized source keeps it. This shows why the inclusion premise matters; it is not an FCR safety failure. With enough valid epoch-3
 votes included on the canonical chain in epoch 4, PJF can instead advance
 the raw source to epoch 3 before the filter's epoch-5 deadline. The raw source age and the filter's `+2` rule need an inclusion argument. That argument is not formalized.
 

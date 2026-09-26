@@ -2,9 +2,32 @@
 
 `ReviewClaims` has one safety field. `review_claims` proves it. The field states observer-store membership and executable ancestry from the next slot. The public live theorem is a separate conditional result. The trust audit checks 49 audited public theorems: 42 executable-side and seven paper-side.
 
-`NextSlotSafetyPremises.anchor_state_checkpoints` covers a genesis anchor whose state has the zero-root stub. It also covers a normalized anchor state whose current justified and finalized checkpoints equal the anchor. At the FFG interpretation boundary, `CheckpointReadsAs` reads a raw genesis stub as the genesis anchor because both checkpoints have `GENESIS_EPOCH`. Executable handlers and wire attestations keep the raw checkpoint. Checkpoint-sync anchors with older state checkpoints are outside this condition. The raw source age and the filter's `+2` rule need an inclusion argument. That argument is not formalized. `CheckpointSyncFilterWitness.checkpoint_sync_filter_counterexample` has no attestation inclusion for two epochs, so it is outside `EventualCheckpointInclusion`. It shows why that premise matters; it is not an FCR safety failure.
+`NextSlotSafetyPremises.anchor_state_checkpoints` covers a genesis anchor whose state
+has the zero-root stub. It also covers a normalized anchor state whose current justified
+and finalized checkpoints equal the anchor. At the FFG interpretation boundary,
+`CheckpointReadsAs` reads a raw genesis stub as the genesis anchor because both
+checkpoints have `GENESIS_EPOCH`. Executable handlers and wire attestations keep the raw
+checkpoint. Checkpoint-sync anchors with older state checkpoints are outside this
+condition. The raw source age and the filter's `+2` rule need an inclusion argument.
+That argument is not formalized.
+`CheckpointSyncFilterWitness.checkpoint_sync_filter_counterexample` has no attestation
+inclusion for two epochs, so it is outside `EventualCheckpointInclusion`. It shows why
+that premise matters; it is not an FCR safety failure.
 
-`Phase0BoundarySourceCoherence` has four fields. `process_slots_one_boundary` equates one boundary with eager PJF. `process_slots_same_target_epoch` equates target slots in one epoch. `state_transition_process_slots` equates a crossing block transition with slot processing. `process_slots_checkpoint_epoch` bounds the output checkpoint if every intermediate slot-processed state satisfies `3 * effective_balance_increment < 2 * get_total_active_balance`. This guard is exact because an empty vote set can pass the two-thirds test at a total balance of at most one and a half increments. `ScheduledFCRCallPremises.balance_floor` requires two increments of anchor active weight. With `registry_static_in_horizon`, this floor supplies the guard on in-horizon reads. The static-registry condition excludes included slashings, deposits, activations, exits, and effective-balance changes that alter validator records in the horizon. `on_attestation_committee` confines successful delivered attestations in honest in-horizon prefixes to their slot committee. Attester-slashing evidence can name off-committee validators.
+`Phase0BoundarySourceCoherence` has four fields. `process_slots_one_boundary` equates
+one boundary with eager PJF. `process_slots_same_target_epoch` equates target slots in
+one epoch. `state_transition_process_slots` equates a crossing block transition with
+slot processing. `process_slots_checkpoint_epoch` bounds the output checkpoint if every
+intermediate slot-processed state satisfies `3 * effective_balance_increment < 2 *
+get_total_active_balance`. This guard is exact because an empty vote set can pass the
+two-thirds test at a total balance of at most one and a half increments.
+`ScheduledFCRCallPremises.balance_floor` requires two increments of anchor active
+weight. With `registry_static_in_horizon`, this floor supplies the guard on in-horizon
+reads. The static-registry condition excludes included slashings, deposits, activations,
+exits, and effective-balance changes that alter validator records in the horizon.
+`on_attestation_committee` confines successful delivered attestations in honest
+in-horizon prefixes to their slot committee. Attester-slashing evidence can name
+off-committee validators.
 
 The safety proof takes a supplied FFG interpretation as a premise. Its
 accepted-block FFG state includes an inclusion relation and checkpoint
