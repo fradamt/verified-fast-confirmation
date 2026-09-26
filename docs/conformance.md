@@ -30,7 +30,7 @@ The [contract inventory](../scripts/conformance/contracts/inventory.toml) lists 
 direct field in the premise structures. T means a generated-state property
 of the pinned Python functions. E means an execution, network, or supplied
 FFG interpretation assumption. I means a cryptographic or engine
-idealization. The inventory has 158 active fields: T 31, E 116, and I 11. The inventory checker fails when a Lean field has no entry.
+idealization. The inventory has 158 active fields: T 18, E 129, and I 11. Thirteen selector, checkpoint, and anchor fields were moved from T to E because their old probes did not test the supplied execution interpretation. The inventory checker fails when a Lean field has no entry.
 
 The deterministic tests use the Gloas minimal preset and Phase0 for the
 Phase0 source laws. They cover slots and epoch boundaries, included votes,
@@ -53,3 +53,28 @@ python3 scripts/conformance/contracts/check_inventory.py \
 runs the same check. If the checkout interpreter is absent, it checks the inventory
 and prints a test-skip message. CI checks the inventory through fast
 validation. CI does not install the pyspec runtime.
+
+
+### Accepted FFG projection
+
+`scripts/conformance/contracts/projection/run.py` imports real blocks through
+`on_tick` and `on_block`, and delivers their body attestations through
+`on_attestation`. It sets `includedAttestations.Included` from those block
+bodies. It forms a checkpoint only when the carrier chain has a two-thirds
+source-to-target link from an already certified source, with exact target
+ancestry and an earlier included target vote. It reads realized checkpoints
+from imported block states, unrealized checkpoints from eager PJF, and epoch
+checkpoints from the fork-choice chain. At genesis, `CheckpointReadsAs`
+maps the raw zero-root stub to the anchor checkpoint. BLS is disabled through
+the pyspec test-helper switch.
+
+The default contract checker runs a fast genesis prefix and the review's
+slot-16 prefix. `check_inventory.py --full` runs all six cases: through epoch
+6, slot 16, delayed two-thirds inclusion, a skipped epoch, two forks, and a
+later raw anchor. The later anchor is labelled out of scope because it fails
+`GenesisOrNormalizedAnchor`. The JSON output quotes each Lean field and gives
+a status and a state witness for each case. Structural mappings are marked
+construction; the exact Assumption 3.2 antecedent needs all honest views and
+slashing state, so its result is marked as not established. Findings remain in
+the JSON and do not make validation stop. The report for this lane is
+/home/fradamt/lean/orch/reports/p1-projection-tests.md on the NUC.
