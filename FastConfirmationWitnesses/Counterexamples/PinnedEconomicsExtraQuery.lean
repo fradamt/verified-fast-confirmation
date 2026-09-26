@@ -587,15 +587,22 @@ private theorem witnessReachableValidationState_nonempty {state : BeaconState Wi
 
 private theorem witnessExternalsCoherence :
     BeaconExternalsPremises witnessConfig witnessExternals witnessExecution := by
+  have hregistry : ∀ state, witnessExecution.ReachableValidationState witnessConfig witnessExternals state →
+      state.validators = witnessExecution.registry := by
+    intro state hstate
+    obtain ⟨store, hstore, hstate⟩ := hstate
+    have hreg := witnessCausalStore_registryConstant (hstore.causal witnessConfig witnessExternals)
+    rcases hstate with ⟨root, hroot, rfl⟩ | ⟨checkpoint, hcheckpoint, rfl⟩
+    · exact hreg.1 root hroot
+    · exact hreg.2 checkpoint hcheckpoint
   constructor
   · intro st s hlt
     rfl
-  · intro st s
-    rfl
-  · intro st b st' h
-    simp [witnessExternals] at h
-    rcases h with ⟨_hguard, rfl⟩
-    rfl
+  · intro state hscope
+    rcases hscope with hreachable | ⟨base, slot, hreachable, _hslot, rfl⟩
+    · exact hregistry state hreachable
+    · rw [witnessProcessSlots_registry]
+      exact hregistry base hreachable
   · intro st b st' h
     simp [witnessExternals] at h
     rcases h with ⟨_hguard, rfl⟩
@@ -660,8 +667,17 @@ private theorem witnessExternalsCoherence :
     · have : v = 3 := by simpa [vote3] using hvin
       subst v
       exact ⟨3, vote3, by decide, rfl⟩
-  · intro state a hreachable hvalid i hi
-    have hstate := witnessReachableValidationState_nonempty hreachable
+  · intro store store' a ifb _hpost hh i hi
+    simp only [on_attestation] at hh
+    split_ifs at hh with hv hvi
+    cases hh
+    let state := (store_target_checkpoint_state witnessConfig witnessExternals store a.data.target).checkpoint_states a.data.target
+    have hvalid : witnessExternals.is_valid_indexed_attestation state a = true := hvi
+    have hstate : state.validators ≠ [] := by
+      have hpair : state.validators ≠ [] ∧
+          (a = vote0 ∨ a = vote1 ∨ a = vote2 ∨ a = vote3) := by
+        simpa [state, witnessExternals] using hvalid
+      exact hpair.1
     rcases (witness_valid_iff state a hstate).1 hvalid with rfl | rfl | rfl | rfl
     · have : i = 0 := by simpa [vote0] using hi
       subst i

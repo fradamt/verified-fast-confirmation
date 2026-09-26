@@ -99,22 +99,16 @@ class = "T"
 test = "BeaconExternalsPremises.process_slots_slot"
 
 [[field]]
-path = "BeaconExternalsPremises.process_slots_registry"
+path = "BeaconExternalsPremises.registry_static_in_horizon"
 file = "Externals.lean"
-class = "T"
-test = "BeaconExternalsPremises.process_slots_registry"
+class = "E"
+reason = "This condition is about states in honest causal stores and their slot-processed reads; Python state functions alone do not fix an execution or its horizon."
 
 [[field]]
 path = "BeaconExternalsPremises.state_transition_slot"
 file = "Externals.lean"
 class = "T"
 test = "BeaconExternalsPremises.state_transition_slot"
-
-[[field]]
-path = "BeaconExternalsPremises.state_transition_registry"
-file = "Externals.lean"
-class = "T"
-test = "BeaconExternalsPremises.state_transition_registry"
 
 [[field]]
 path = "BeaconExternalsPremises.state_transition_pre_slot_lt"
@@ -153,10 +147,10 @@ class = "I"
 reason = "BLS unforgeability and honest signing history are idealized."
 
 [[field]]
-path = "BeaconExternalsPremises.valid_attestation_committee"
+path = "BeaconExternalsPremises.on_attestation_committee"
 file = "Externals.lean"
-class = "T"
-test = "BeaconExternalsPremises.valid_attestation_committee"
+class = "E"
+reason = "The indexed Lean wire object omits Python get_indexed_attestation; only successful delivered on_attestation calls in honest in-horizon prefixes are constrained."
 
 [[field]]
 path = "BeaconExternalsPremises.committee_assignment_unique"
