@@ -17,21 +17,19 @@ section
 namespace FastConfirmation.Spec
 variable {Root : Type*} [LinearOrder Root] [Inhabited Root]
 variable (cfg : Config) (ext : BeaconFunctionInterface Root)
-/-- The remaining phase0 fact hidden by the reduced model's opaque state
-functions.
+/-- An unconditional cross-boundary equality used by the current proof.
 
-After at least one epoch boundary, empty-slot processing exposes exactly the
-eager `process_justification_and_finalization` value of the starting state.
-The same value is installed by a block transition whose block crosses an
-epoch boundary from its pre-state.  Additional empty epochs cannot create a
-new justified checkpoint: without a new block there are no newly included
-attestations.
+This contract is stronger than the real Phase0 state functions. In
+`specs/phase0/beacon-chain.md:1893-1898` and
+`specs/altair/beacon-chain.md:728-733`, PJF returns early in epochs 0 and 1.
+Starting in epoch 1, slot processing across two boundaries can justify epoch
+1 from votes already included in the state, while eager PJF is a no-op.
+The equality below therefore does not cover that real execution.
 
-This is deliberately a state-function contract only.  It mentions no
-execution, fork-choice target, certificate, ancestry, or safety conclusion.
-Together with `Phase0SourceCoherence`, it is the exact phase0 distinction in
-paper Definition 7: a head in the voting epoch reads `GJ`, while a head from
-an earlier epoch reads the eager `GU` value. -/
+A repair needs a guarded equality and a separate initial-epoch case in its
+consumers. The contract is retained here until that proof repair is complete;
+it must not be read as an exact Phase0 law. It mentions only state functions,
+not execution ancestry or a safety conclusion. -/
 structure Phase0BoundarySourceCoherence
     (cfg : Config) (ext : BeaconFunctionInterface Root) : Prop where
   process_slots_current_justified :

@@ -238,3 +238,32 @@ participation flags. It ignores a validator for an epoch if that validator
 equivocates on the chain. `OnChainAnchorInterface` supplies chain payload
 formation and availability laws. `OnChainAnchorInterfacesForRule` limits that
 bridge to selected blocks and previous-slot witness blocks.
+
+## Anchor and boundary limits
+
+The current `FFGStateReadAgreement` requires exact state reads at the anchor.
+A real genesis state has a zero-root stub. A checkpoint-sync state can have
+justified and finalized epochs below the anchor epoch. The current safety
+bundle does not cover those raw states.
+
+`CheckpointSyncFilterWitness.checkpoint_sync_filter_counterexample` starts
+with an epoch-3 anchor and raw justification at epoch 2. The unchanged FCR
+confirms its slot-13 child at slot 14. At slot 20, raw source epoch 2 fails
+the filter's `source.epoch + 2 >= current_epoch` test. The head returns to the
+anchor. Normalizing the source to epoch 3 would conceal this failed test.
+This is a handler regression; it does not assert the full safety bundle or
+eventual inclusion.
+
+`Phase0BoundarySourceCoherence` also remains too strong. Phase0 and Altair
+PJF return early in epochs 0 and 1. An epoch-1 state with enough included
+votes can keep the stub under eager PJF but justify epoch 1 when slot
+processing reaches epoch 3. The three proof consumers of the unconditional
+boundary equality need a separate case for this behavior.
+
+`scripts/anchor_semantics_probe.py` reproduces both behaviors with the pinned
+Python functions. Run it with that checkout's existing Python environment
+and pass the checkout path. It uses the minimal preset and skips BLS checks
+through the test helper. The Gloas probe supplies old headers and timeliness
+entries because the proposer-boost helper otherwise cannot find an old header
+when it walks before a checkpoint-sync anchor. The Lean regression starts from
+the literal one-block initial store. Neither test is a new full-bundle witness.

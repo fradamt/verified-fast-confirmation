@@ -1,4 +1,5 @@
 module
+public import FastConfirmationWitnesses.Counterexamples.CheckpointSyncFilter
 public import FastConfirmationWitnesses.Counterexamples.DeadlineVotePathCandidate
 public import FastConfirmationWitnesses.Counterexamples.PinnedEconomicsExtraQuery
 public import FastConfirmationWitnesses.Counterexamples.StrictPrefixExtraQuery
@@ -22,7 +23,11 @@ joint live run, a next-slot safety run with one-second slots and a 500 ms delay,
 a one-second target-edge run,
 a one-second run with Byzantine weight and a slashing, a 12-second
 full-bundle run, and a 12-second run with an accepted payload envelope. It
-also names two counterexamples to strict-prefix safety variants.
+also names two counterexamples to strict-prefix safety variants and a raw
+checkpoint-sync filter regression. The latter confirms a child at slot 14
+and loses it at slot 20. See
+`CheckpointSyncFilterWitness.checkpoint_sync_filter_counterexample`. It does
+not assert the full safety bundle or eventual inclusion.
 
 ## Premise bundles
 

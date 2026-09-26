@@ -1,4 +1,5 @@
 module
+public import FastConfirmationWitnesses.Counterexamples.CheckpointSyncFilter
 public import FastConfirmationWitnesses.Counterexamples.PinnedEconomicsExtraQuery
 public import FastConfirmationWitnesses.Counterexamples.StrictPrefixExtraQuery
 public import FastConfirmationWitnesses.NonVacuity.FFGEvidence
