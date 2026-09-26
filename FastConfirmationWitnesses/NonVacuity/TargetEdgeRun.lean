@@ -701,7 +701,7 @@ private theorem witnessExternalsCoherence :
           rw [hguard.2]
           decide
       · contradiction
-  · intro st b st' h
+  · intro st b st' _ _ h
     simp only [witnessExternals, witnessTransition] at h
     split at h
     · next hguard =>
@@ -716,8 +716,9 @@ private theorem witnessExternalsCoherence :
           rw [hguard.2]
           decide
       · contradiction
-  · intro st
+  · intro st _
     exact witnessPJF_current_epoch_le st
+  · refine ⟨?_, ?_⟩ <;> decide
   · intro v hv n s hn hs
     simp [get_slot_committee, witnessExternals, witnessExecution,
       witnessCommittee]
@@ -1036,7 +1037,7 @@ theorem witnessPhase0SourceCoherence :
 
 theorem witnessPhase0BoundarySourceCoherence :
     Phase0BoundarySourceCoherence witnessConfig witnessExternals := by
-  refine Phase0BoundarySourceCoherence.of_eager ?_ ?_ witnessExternalsCoherence.pjf_checkpoint_epoch
+  refine Phase0BoundarySourceCoherence.of_eager ?_ ?_ witnessPJF_current_epoch_le
   · intro st target hlt hcross
     simp only [witnessExternals, witnessProcessSlots]
     rw [if_pos hcross]

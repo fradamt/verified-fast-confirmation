@@ -44,20 +44,46 @@ structure BeaconExternalsPremises (E : Execution Root) : Prop where
       block slot, as `process_slots` asserts in `state_transition`. -/
   state_transition_pre_slot_lt : ∀ st (b : SignedBeaconBlock Root) st',
     ext.state_transition st b = some st' → st.slot < b.message.slot
-  /-- A post-state checkpoint has an epoch at most the block epoch.
-      This field does not constrain the checkpoint root. -/
+  /-- A post-state checkpoint has an epoch at most the block epoch, if the
+      pre-state's checkpoints are not in a future epoch of the pre-state.
+      Epoch processing in `process_slots` sets the justified checkpoint only
+      to the previous or current epoch, and finalizes only a checkpoint whose
+      epoch the weighing rules fix below the current epoch
+      (`weigh_justification_and_finalization`); `process_block` does not
+      write either checkpoint. Every keyed state of a store satisfies the
+      antecedent (`anchor_state_checkpoint_epoch` and this law). Without the
+      antecedent the law is false: a state at slot 0 with justified epoch 5
+      keeps it through a block at slot 1. This field does not constrain the
+      checkpoint root. -/
   state_transition_checkpoint_epoch : ∀ st (b : SignedBeaconBlock Root) st',
+    st.current_justified_checkpoint.epoch ≤ compute_epoch_at_slot cfg st.slot →
+    st.finalized_checkpoint.epoch ≤ compute_epoch_at_slot cfg st.slot →
     ext.state_transition st b = some st' →
       st'.current_justified_checkpoint.epoch ≤
         compute_epoch_at_slot cfg b.message.slot ∧
       st'.finalized_checkpoint.epoch ≤ compute_epoch_at_slot cfg b.message.slot
-  /-- Epoch processing adopts no future checkpoint: the new justified
-      checkpoint's epoch is at most the state's epoch. This is the pull-up
-      counterpart of `state_transition_checkpoint_epoch`; the concrete epoch
-      processing considers only current- and previous-epoch targets. -/
+  /-- Epoch processing adopts no future checkpoint, if the state's justified
+      checkpoint is not in a future epoch: the new justified checkpoint's
+      epoch is at most the state's epoch. This is the pull-up counterpart of
+      `state_transition_checkpoint_epoch`. `process_justification_and_finalization`
+      returns early at epochs up to `GENESIS_EPOCH + 1` and otherwise
+      justifies only the previous or current epoch. Without the antecedent the
+      law is false: the early return keeps a justified epoch 5 at slot 0. -/
   pjf_checkpoint_epoch : ∀ st : BeaconState Root,
+    st.current_justified_checkpoint.epoch ≤ compute_epoch_at_slot cfg st.slot →
     (ext.process_justification_and_finalization st).current_justified_checkpoint.epoch ≤
       compute_epoch_at_slot cfg st.slot
+  /-- The anchor state's checkpoints are not in a future epoch of the anchor
+      state. A genesis state (both checkpoints at `GENESIS_EPOCH`) and every
+      state that the beacon chain reaches satisfy it. It is the base case of
+      the store invariant that gives the antecedents of
+      `state_transition_checkpoint_epoch` and `pjf_checkpoint_epoch` for
+      every keyed state. -/
+  anchor_state_checkpoint_epoch :
+    E.anchor_state.current_justified_checkpoint.epoch ≤
+        compute_epoch_at_slot cfg E.anchor_state.slot ∧
+      E.anchor_state.finalized_checkpoint.epoch ≤
+        compute_epoch_at_slot cfg E.anchor_state.slot
   /-- the store-computed slot committees agree with the ground-truth
       assignment on every honest store (the spec's committee-consistency
       window, idealized to the verified execution prefix). This is an

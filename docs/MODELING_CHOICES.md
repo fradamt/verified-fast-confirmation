@@ -279,6 +279,17 @@ anchor. The fixture includes no attestation for two epochs. It does not assert t
 votes included on the canonical chain in epoch 4, PJF can instead advance
 the raw source to epoch 3 before the filter's epoch-5 deadline. The raw source age and the filter's `+2` rule need an inclusion argument. That argument is not formalized.
 
+`BeaconExternalsPremises.pjf_checkpoint_epoch` and
+`state_transition_checkpoint_epoch` apply only to a state whose checkpoints
+are not in a future epoch of the state. Python does not satisfy them on every
+well-typed state: at slot 0 with justified epoch 5, the PJF early return keeps
+epoch 5 (the labelled contract regression pjf_checkpoint_epoch_out_of_domain). With the antecedent,
+both laws hold for every state. The proof carries the antecedent as a store
+invariant: every keyed block state is sane. `anchor_state_checkpoint_epoch`
+(class E-scope) gives the base case, and the transition law gives the step.
+The `Phase0SourceCoherence` and `Phase0BoundarySourceCoherence` laws have no
+such antecedent; the contract suite also checks them on unreachable states.
+
 `Phase0BoundarySourceCoherence` has five laws. Slot processing across one
 boundary gives the eager PJF checkpoint. Targets in the same epoch give the
 same checkpoint. A block transition gives the checkpoint of slot processing

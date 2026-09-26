@@ -132,6 +132,13 @@ class = "T"
 test = "BeaconExternalsPremises.pjf_checkpoint_epoch"
 
 [[field]]
+path = "BeaconExternalsPremises.anchor_state_checkpoint_epoch"
+file = "Externals.lean"
+class = "E-scope"
+legacy_probe = "BeaconExternalsPremises.anchor_state_checkpoint_epoch"
+reason = "The anchor state's justified and finalized checkpoints must not be in a future epoch of the anchor state. Genesis states and every state that the beacon chain reaches satisfy it; an arbitrary well-typed state need not."
+
+[[field]]
 path = "BeaconExternalsPremises.committees_agree"
 file = "Externals.lean"
 class = "I"

@@ -150,16 +150,67 @@ whose epoch requires a separate bound. `PjfCheckpointEpoch` is the
 companion of `state_transition_checkpoint_epoch`: epoch processing justifies no
 future epoch (the real `process_justification_and_finalization` only ever
 justifies the current or previous epoch of the state it runs on). It is supplied
-by `BeaconExternalsPremises.pjf_checkpoint_epoch`, definitionally the same `Prop`. -/
+by `BeaconExternalsPremises.pjf_checkpoint_epoch`, definitionally the same `Prop`.
+Both laws hold only for a state whose checkpoints are not in a future epoch
+(`CheckpointEpochsSane`). The store invariant `KeyedStatesSane` gives this
+antecedent for every keyed block state; the anchor state is its base case. -/
 
-/-- Epoch processing justifies no future epoch: `pjf`'s current-justified
-checkpoint has epoch at most the state's own epoch. The companion of
-`BeaconExternalsPremises.state_transition_checkpoint_epoch`; supplied by the frozen
+/-- Epoch processing justifies no future epoch: for a state whose justified
+checkpoint is not in a future epoch, `pjf`'s current-justified checkpoint has
+epoch at most the state's own epoch. The companion of
+`BeaconExternalsPremises.state_transition_checkpoint_epoch`; supplied by the
 field `BeaconExternalsPremises.pjf_checkpoint_epoch` (definitionally identical). -/
 def PjfCheckpointEpoch (cfg : Config) (ext : BeaconFunctionInterface Root) : Prop :=
   ∀ st : BeaconState Root,
+    st.current_justified_checkpoint.epoch ≤ compute_epoch_at_slot cfg st.slot →
     (ext.process_justification_and_finalization st).current_justified_checkpoint.epoch ≤
       compute_epoch_at_slot cfg st.slot
+
+/-- A successful state transition from a state whose checkpoints are not in a
+future epoch keeps both checkpoints at most the block epoch. Supplied by the
+field `BeaconExternalsPremises.state_transition_checkpoint_epoch`
+(definitionally identical). -/
+def StateTransitionCheckpointEpoch (cfg : Config) (ext : BeaconFunctionInterface Root) :
+    Prop :=
+  ∀ (st : BeaconState Root) (b : SignedBeaconBlock Root) (st' : BeaconState Root),
+    st.current_justified_checkpoint.epoch ≤ compute_epoch_at_slot cfg st.slot →
+    st.finalized_checkpoint.epoch ≤ compute_epoch_at_slot cfg st.slot →
+    ext.state_transition st b = some st' →
+      st'.current_justified_checkpoint.epoch ≤ compute_epoch_at_slot cfg b.message.slot ∧
+      st'.finalized_checkpoint.epoch ≤ compute_epoch_at_slot cfg b.message.slot
+
+/-- A state's justified and finalized checkpoints are not in a future epoch of
+the state. -/
+def CheckpointEpochsSane (cfg : Config) (st : BeaconState Root) : Prop :=
+  st.current_justified_checkpoint.epoch ≤ compute_epoch_at_slot cfg st.slot ∧
+  st.finalized_checkpoint.epoch ≤ compute_epoch_at_slot cfg st.slot
+
+/-- Every keyed block state of the store satisfies `CheckpointEpochsSane`. -/
+def KeyedStatesSane (cfg : Config) (store : Store Root) : Prop :=
+  ∀ r ∈ store.block_roots, CheckpointEpochsSane cfg (store.block_states r)
+
+omit [LinearOrder Root] [Inhabited Root] in
+/-- `KeyedStatesSane` reads only the block-identity fields. -/
+theorem KeyedStatesSane.of_sameBlocks {cfg : Config} {s t : Store Root}
+    (h : SameBlocks s t) (hs : KeyedStatesSane cfg s) : KeyedStatesSane cfg t := by
+  intro r hr
+  rw [← h.2.2]
+  exact hs r (by rw [h.1]; exact hr)
+
+omit [Inhabited Root] in
+/-- A successful transition from a sane pre-state gives a sane post-state. -/
+theorem CheckpointEpochsSane.of_state_transition {cfg : Config}
+    {ext : BeaconFunctionInterface Root}
+    (hst_ckpt : StateTransitionCheckpointEpoch cfg ext)
+    (hst_slot : ∀ (st : BeaconState Root) (b : SignedBeaconBlock Root) (st' : BeaconState Root),
+      ext.state_transition st b = some st' → st'.slot = b.message.slot)
+    {st st' : BeaconState Root} {b : SignedBeaconBlock Root}
+    (hpre : CheckpointEpochsSane cfg st) (h : ext.state_transition st b = some st') :
+    CheckpointEpochsSane cfg st' := by
+  have hpost := hst_ckpt st b st' hpre.1 hpre.2 h
+  unfold CheckpointEpochsSane
+  rw [hst_slot st b st' h]
+  exact hpost
 
 /-! ### `compute_pulled_up_tip` preserves the store-epoch bound -/
 
@@ -230,19 +281,19 @@ theorem on_execution_payload_envelope_CkptEpochLe (cfg : Config) (ext : BeaconFu
     CkptEpochLe cfg SL store' :=
   CkptEpochLe.of_sameCkpt (on_execution_payload_envelope_frame ext hh).sameCkpt h
 
-/-- `on_block` preserves the store-epoch bound. The block's own justified
-checkpoint (from `state_transition`) is bounded by the block epoch, which is at
-most `SL` by the not-future gate; the pulled-up tip's justified checkpoint is
-bounded by `PjfCheckpointEpoch` at the block's post-state slot. -/
+/-- `on_block` preserves the store-epoch bound. The parent state is keyed, so
+it is sane (`KeyedStatesSane`). The block's own justified checkpoint (from
+`state_transition`) is bounded by the block epoch, which is at most `SL` by the
+not-future gate; the pulled-up tip's justified checkpoint is bounded by
+`PjfCheckpointEpoch` at the block's post-state slot. -/
 theorem on_block_CkptEpochLe (cfg : Config) (ext : BeaconFunctionInterface Root) (SL : Slot)
-    (hst_ckpt : ∀ (st : BeaconState Root) (b : SignedBeaconBlock Root) (st' : BeaconState Root),
-      ext.state_transition st b = some st' →
-        st'.current_justified_checkpoint.epoch ≤ compute_epoch_at_slot cfg b.message.slot)
+    (hst_ckpt : StateTransitionCheckpointEpoch cfg ext)
     (hst_slot : ∀ (st : BeaconState Root) (b : SignedBeaconBlock Root) (st' : BeaconState Root),
       ext.state_transition st b = some st' → st'.slot = b.message.slot)
     (hpjf : PjfCheckpointEpoch cfg ext)
     {store store' : Store Root} {sb : SignedBeaconBlock Root}
     (hcur : get_current_slot cfg store ≤ SL) (h : CkptEpochLe cfg SL store)
+    (hsane : KeyedStatesSane cfg store)
     (hh : on_block cfg ext store sb = some store') :
     CkptEpochLe cfg SL store' := by
   by_cases hknown : sb.root ∈ store.block_roots
@@ -252,6 +303,9 @@ theorem on_block_CkptEpochLe (cfg : Config) (ext : BeaconFunctionInterface Root)
   · have hge : sb.message.slot ≤ get_current_slot cfg store := by
       by_contra hfuture
       simp [on_block, hknown, hfuture] at hh
+    have hparent : sb.message.parent_root ∈ store.block_roots := by
+      by_contra hp
+      simp [on_block, hknown, hp] at hh
     simp only [on_block, if_neg hknown] at hh
     split_ifs at hh
     all_goals try contradiction
@@ -267,15 +321,17 @@ theorem on_block_CkptEpochLe (cfg : Config) (ext : BeaconFunctionInterface Root)
         have hframe := notify_ptc_messages_frame cfg ext hptc
         have hblkSL : compute_epoch_at_slot cfg sb.message.slot ≤ compute_epoch_at_slot cfg SL :=
           Nat.div_le_div_right (le_trans hge hcur)
+        have hpost := CheckpointEpochsSane.of_state_transition hst_ckpt hst_slot
+          (hsane _ hparent) hst
         have hcjc : state.current_justified_checkpoint.epoch ≤ compute_epoch_at_slot cfg SL :=
-          le_trans (hst_ckpt _ _ _ hst) hblkSL
+          le_trans ((hst_ckpt _ _ _ (hsane _ hparent).1 (hsane _ hparent).2 hst).1) hblkSL
         refine compute_pulled_up_tip_CkptEpochLe cfg ext SL _ sb.root ?_ ?_
         · rw [← (update_checkpoints_sameBlocks _ _ _).2.2,
               ← (update_proposer_boost_root_sameBlocks cfg _ _ _).2.2,
               ← (record_block_timeliness_sameBlocks cfg _ _).2.2,
               hframe.block_states]
           simp only [Function.update_self]
-          refine le_trans (hpjf state) ?_
+          refine le_trans (hpjf state hpost.1) ?_
           rw [hst_slot _ _ _ hst]; exact hblkSL
         · refine update_checkpoints_CkptEpochLe cfg SL _ _ _ hcjc ?_
           refine CkptEpochLe.of_sameCkpt (update_proposer_boost_root_sameCkpt cfg _ _ _) ?_
@@ -283,23 +339,91 @@ theorem on_block_CkptEpochLe (cfg : Config) (ext : BeaconFunctionInterface Root)
           refine CkptEpochLe.of_sameCkpt hframe.sameCkpt ?_
           exact CkptEpochLe.of_sameCkpt ⟨rfl, rfl⟩ h
 
+/-- `on_block` keeps every keyed state sane: the new key holds the transition
+result from the keyed parent state. -/
+theorem on_block_keyedStatesSane (cfg : Config) (ext : BeaconFunctionInterface Root)
+    (hst_ckpt : StateTransitionCheckpointEpoch cfg ext)
+    (hst_slot : ∀ (st : BeaconState Root) (b : SignedBeaconBlock Root) (st' : BeaconState Root),
+      ext.state_transition st b = some st' → st'.slot = b.message.slot)
+    {store store' : Store Root} {sb : SignedBeaconBlock Root}
+    (hsane : KeyedStatesSane cfg store)
+    (hh : on_block cfg ext store sb = some store') :
+    KeyedStatesSane cfg store' := by
+  by_cases hknown : sb.root ∈ store.block_roots
+  · simp [on_block, hknown] at hh
+    cases hh
+    exact hsane
+  · have hparent : sb.message.parent_root ∈ store.block_roots := by
+      by_contra hp
+      simp [on_block, hknown, hp] at hh
+    simp only [on_block, if_neg hknown] at hh
+    split_ifs at hh
+    all_goals try contradiction
+    cases hst : ext.state_transition (store.block_states sb.message.parent_root) sb with
+    | none => rw [hst] at hh; cases hh
+    | some state =>
+      rw [hst] at hh
+      dsimp only at hh
+      split at hh
+      · cases hh
+      · rename_i after_ptc hptc
+        cases hh
+        have hpost := CheckpointEpochsSane.of_state_transition hst_ckpt hst_slot
+          (hsane _ hparent) hst
+        refine KeyedStatesSane.of_sameBlocks ((notify_ptc_messages_sameBlocks cfg ext hptc).trans
+          ((record_block_timeliness_sameBlocks cfg _ _).trans
+            ((update_proposer_boost_root_sameBlocks cfg _ _ _).trans
+              ((update_checkpoints_sameBlocks _ _ _).trans
+                (compute_pulled_up_tip_sameBlocks cfg ext _ _))))) ?_
+        intro r hr
+        simp only [Function.update_apply]
+        split_ifs with hrb
+        · exact hpost
+        · apply hsane
+          simp only [List.mem_append, List.mem_singleton] at hr
+          exact hr.resolve_right hrb
+
+/-- One dispatched event keeps every keyed state sane. -/
+theorem apply_event_keyedStatesSane (cfg : Config) (ext : BeaconFunctionInterface Root)
+    (hst_ckpt : StateTransitionCheckpointEpoch cfg ext)
+    (hst_slot : ∀ (st : BeaconState Root) (b : SignedBeaconBlock Root) (st' : BeaconState Root),
+      ext.state_transition st b = some st' → st'.slot = b.message.slot)
+    {store store' : Store Root} {e : Event Root}
+    (hsane : KeyedStatesSane cfg store)
+    (he : apply_event cfg ext store e = some store') :
+    KeyedStatesSane cfg store' := by
+  cases e with
+  | block b =>
+    simp only [apply_event] at he
+    exact on_block_keyedStatesSane cfg ext hst_ckpt hst_slot hsane he
+  | attestation a ifb =>
+    simp only [apply_event] at he
+    exact KeyedStatesSane.of_sameBlocks (on_attestation_sameBlocks cfg ext he) hsane
+  | attester_slashing asl =>
+    simp only [apply_event] at he
+    exact KeyedStatesSane.of_sameBlocks (on_attester_slashing_sameBlocks ext he) hsane
+  | execution_payload_envelope envelope observation =>
+    exact KeyedStatesSane.of_sameBlocks (on_execution_payload_envelope_sameBlocks ext he) hsane
+  | payload_attestation_message message is_from_block =>
+    exact KeyedStatesSane.of_sameBlocks (on_payload_attestation_message_sameBlocks cfg ext he)
+      hsane
+
 /-- One dispatched event preserves the bound (needs the current-slot bound for
 the `on_block` case, re-established across the fold). -/
 theorem apply_event_CkptEpochLe (cfg : Config) (ext : BeaconFunctionInterface Root) (SL : Slot)
-    (hst_ckpt : ∀ (st : BeaconState Root) (b : SignedBeaconBlock Root) (st' : BeaconState Root),
-      ext.state_transition st b = some st' →
-        st'.current_justified_checkpoint.epoch ≤ compute_epoch_at_slot cfg b.message.slot)
+    (hst_ckpt : StateTransitionCheckpointEpoch cfg ext)
     (hst_slot : ∀ (st : BeaconState Root) (b : SignedBeaconBlock Root) (st' : BeaconState Root),
       ext.state_transition st b = some st' → st'.slot = b.message.slot)
     (hpjf : PjfCheckpointEpoch cfg ext)
     {store store' : Store Root} {e : Event Root}
     (hcur : get_current_slot cfg store ≤ SL) (h : CkptEpochLe cfg SL store)
+    (hsane : KeyedStatesSane cfg store)
     (he : apply_event cfg ext store e = some store') :
     CkptEpochLe cfg SL store' := by
   cases e with
   | block b =>
     simp only [apply_event] at he
-    exact on_block_CkptEpochLe cfg ext SL hst_ckpt hst_slot hpjf hcur h he
+    exact on_block_CkptEpochLe cfg ext SL hst_ckpt hst_slot hpjf hcur h hsane he
   | attestation a ifb =>
     simp only [apply_event] at he
     exact on_attestation_CkptEpochLe cfg ext SL h he
@@ -355,41 +479,47 @@ theorem on_tick_CkptEpochLe (cfg : Config) (SL : Slot) (store : Store Root) (tim
 the store's current slot fixed (`apply_event_current_slot`), so the
 current-slot bound is re-established at each step. -/
 theorem CkptEpochLe_foldl (cfg : Config) (ext : BeaconFunctionInterface Root) (SL : Slot)
-    (hst_ckpt : ∀ (st : BeaconState Root) (b : SignedBeaconBlock Root) (st' : BeaconState Root),
-      ext.state_transition st b = some st' →
-        st'.current_justified_checkpoint.epoch ≤ compute_epoch_at_slot cfg b.message.slot)
+    (hst_ckpt : StateTransitionCheckpointEpoch cfg ext)
     (hst_slot : ∀ (st : BeaconState Root) (b : SignedBeaconBlock Root) (st' : BeaconState Root),
       ext.state_transition st b = some st' → st'.slot = b.message.slot)
     (hpjf : PjfCheckpointEpoch cfg ext) :
     ∀ (l : List (Event Root)) (s : Store Root),
-      get_current_slot cfg s ≤ SL → CkptEpochLe cfg SL s →
+      get_current_slot cfg s ≤ SL → CkptEpochLe cfg SL s → KeyedStatesSane cfg s →
       CkptEpochLe cfg SL
-        (l.foldl (fun store event => (apply_event cfg ext store event).getD store) s) := by
+          (l.foldl (fun store event => (apply_event cfg ext store event).getD store) s) ∧
+        KeyedStatesSane cfg
+          (l.foldl (fun store event => (apply_event cfg ext store event).getD store) s) := by
   intro l
   induction l with
-  | nil => intro s _ h; exact h
+  | nil => intro s _ h hsane; exact ⟨h, hsane⟩
   | cons e l ih =>
-    intro s hcur h
+    intro s hcur h hsane
     rw [List.foldl_cons]
     cases he : apply_event cfg ext s e with
-    | none => simp only [Option.getD_none]; exact ih s hcur h
+    | none => simp only [Option.getD_none]; exact ih s hcur h hsane
     | some s' =>
       simp only [Option.getD_some]
-      refine ih s' ?_ (apply_event_CkptEpochLe cfg ext SL hst_ckpt hst_slot hpjf hcur h he)
+      refine ih s' ?_
+        (apply_event_CkptEpochLe cfg ext SL hst_ckpt hst_slot hpjf hcur h hsane he)
+        (apply_event_keyedStatesSane cfg ext hst_ckpt hst_slot hsane he)
       rw [apply_event_current_slot cfg ext he]; exact hcur
 
 /-- **The store-epoch invariant.** At every node and second of a trajectory whose
 genesis store is a `get_forkchoice_store`, both tracked checkpoint epochs are at
-most `compute_epoch_at_slot (slot_at n)`. Mirrors `Delivery.store_blocksSlotLe`'s
-induction exactly (genesis anchor slot from `get_current_slot_get_forkchoice_store`;
-step weakens the bound by `slot_at_mono`, rides `on_tick`, folds the events). -/
-theorem Execution.store_CkptEpochLe (E : Execution Root) (cfg : Config) (ext : BeaconFunctionInterface Root)
+most `compute_epoch_at_slot (slot_at n)`, and every keyed block state is sane.
+Mirrors `Delivery.store_blocksSlotLe`'s induction exactly (genesis anchor slot
+from `get_current_slot_get_forkchoice_store`; step weakens the bound by
+`slot_at_mono`, rides `on_tick`, folds the events). The anchor state is sane by
+`BeaconExternalsPremises.anchor_state_checkpoint_epoch`. -/
+theorem Execution.store_CkptEpochLe_keyedStatesSane (E : Execution Root) (cfg : Config)
+    (ext : BeaconFunctionInterface Root)
     (hec : BeaconExternalsPremises cfg ext E)
     (hdiv : 1000 ∣ cfg.slot_duration_ms)
     (hgen : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
       E.genesis_store = get_forkchoice_store cfg ast ablk ∧ ast.slot = ablk.message.slot)
     (v : ValidatorIndex) (n : ℕ) :
-    CkptEpochLe cfg (E.slot_at cfg n) (E.store cfg ext v n) := by
+    CkptEpochLe cfg (E.slot_at cfg n) (E.store cfg ext v n) ∧
+      KeyedStatesSane cfg (E.store cfg ext v n) := by
   induction n with
   | zero =>
     obtain ⟨ast, ablk, hg, _⟩ := hgen
@@ -398,20 +528,34 @@ theorem Execution.store_CkptEpochLe (E : Execution Root) (cfg : Config) (ext : B
       rw [show E.store cfg ext v 0 = E.genesis_store from rfl, hg,
         get_current_slot_get_forkchoice_store cfg hdiv ast ablk] at h1
       exact h1.symm
+    have hanchor := hec.anchor_state_checkpoint_epoch
+    simp only [Execution.anchor_state, hg, get_forkchoice_store, Function.update_self]
+      at hanchor
     rw [show E.store cfg ext v 0 = E.genesis_store from rfl, hg]
-    constructor
+    refine ⟨⟨?_, ?_⟩, ?_⟩
     · rw [hcur0]; exact le_of_eq (by simp only [get_forkchoice_store, get_current_epoch])
     · rw [hcur0]; exact le_of_eq (by simp only [get_forkchoice_store, get_current_epoch])
+    · intro r hr
+      simp only [get_forkchoice_store, List.mem_singleton] at hr
+      subst r
+      simpa only [get_forkchoice_store, Function.update_self] using hanchor
   | succ n ih =>
     change CkptEpochLe cfg (E.slot_at cfg (n + 1))
-      ((E.schedule v (n + 1)).foldl
-        (fun store event => (apply_event cfg ext store event).getD store)
-        (on_tick cfg (E.store cfg ext v n) (E.time_at (n + 1))))
+        ((E.schedule v (n + 1)).foldl
+          (fun store event => (apply_event cfg ext store event).getD store)
+          (on_tick cfg (E.store cfg ext v n) (E.time_at (n + 1)))) ∧
+      KeyedStatesSane cfg
+        ((E.schedule v (n + 1)).foldl
+          (fun store event => (apply_event cfg ext store event).getD store)
+          (on_tick cfg (E.store cfg ext v n) (E.time_at (n + 1))))
     have ih' : CkptEpochLe cfg (E.slot_at cfg (n + 1)) (E.store cfg ext v n) :=
-      ih.mono (E.slot_at_mono cfg (Nat.le_succ n))
+      ih.1.mono (E.slot_at_mono cfg (Nat.le_succ n))
     have hontick : CkptEpochLe cfg (E.slot_at cfg (n + 1))
         (on_tick cfg (E.store cfg ext v n) (E.time_at (n + 1))) :=
       on_tick_CkptEpochLe cfg (E.slot_at cfg (n + 1)) _ _ ih'
+    have hticksane : KeyedStatesSane cfg
+        (on_tick cfg (E.store cfg ext v n) (E.time_at (n + 1))) :=
+      KeyedStatesSane.of_sameBlocks (on_tick_sameBlocks cfg _ _) ih.2
     have hontickgen :
         (on_tick cfg (E.store cfg ext v n) (E.time_at (n + 1))).genesis_time =
           E.genesis_store.genesis_time := by
@@ -422,8 +566,20 @@ theorem Execution.store_CkptEpochLe (E : Execution Root) (cfg : Config) (ext : B
           E.slot_at cfg (n + 1) := by
       rw [get_current_slot, get_slots_since_genesis, on_tick_time, hontickgen, Execution.slot_at]
     exact CkptEpochLe_foldl cfg ext (E.slot_at cfg (n + 1))
-      (fun st b st' hh => (hec.state_transition_checkpoint_epoch st b st' hh).1)
-      hec.state_transition_slot hec.pjf_checkpoint_epoch _ _ (le_of_eq honticksl) hontick
+      hec.state_transition_checkpoint_epoch hec.state_transition_slot
+      hec.pjf_checkpoint_epoch _ _ (le_of_eq honticksl) hontick hticksane
+
+/-- **The store-epoch invariant.** At every node and second of a trajectory whose
+genesis store is a `get_forkchoice_store`, both tracked checkpoint epochs are at
+most `compute_epoch_at_slot (slot_at n)`. -/
+theorem Execution.store_CkptEpochLe (E : Execution Root) (cfg : Config) (ext : BeaconFunctionInterface Root)
+    (hec : BeaconExternalsPremises cfg ext E)
+    (hdiv : 1000 ∣ cfg.slot_duration_ms)
+    (hgen : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
+      E.genesis_store = get_forkchoice_store cfg ast ablk ∧ ast.slot = ablk.message.slot)
+    (v : ValidatorIndex) (n : ℕ) :
+    CkptEpochLe cfg (E.slot_at cfg n) (E.store cfg ext v n) :=
+  (E.store_CkptEpochLe_keyedStatesSane cfg ext hec hdiv hgen v n).1
 
 /-- **The store-epoch bound** (Remainder item-2 residual, closed outright from the
 frozen field `BeaconExternalsPremises.pjf_checkpoint_epoch` via `PjfCheckpointEpoch`): a

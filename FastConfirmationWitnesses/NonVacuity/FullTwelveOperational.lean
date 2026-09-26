@@ -538,6 +538,7 @@ theorem extCoherence :
   · exact witnessExternalsCoherence.state_transition_pre_slot_lt
   · exact witnessExternalsCoherence.state_transition_checkpoint_epoch
   · exact witnessExternalsCoherence.pjf_checkpoint_epoch
+  · exact witnessExternalsCoherence.anchor_state_checkpoint_epoch
   · intro v hv n s hn hs
     simp [get_slot_committee, ext, TwelveSecondSynchronyWitness.ext, witnessExternals, run,
       witnessCommittee]
