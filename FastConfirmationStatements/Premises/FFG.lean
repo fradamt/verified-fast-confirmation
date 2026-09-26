@@ -46,9 +46,13 @@ Python sources: `specs/phase0/beacon-chain.md:1769-1782` (`state_transition`),
   the balance antecedent makes the two-thirds test fail. Thus later epoch
   processing can justify only the start epoch again. Each epoch processing
   runs on the state at the last slot of its epoch, which is one of the states
-  in the antecedent. Without the antecedent the law is false: when the total
-  active balance is at most one increment, an epoch with no attestations
-  passes the test.
+  in the antecedent. The antecedent reads each intermediate state, so it also
+  covers balance changes from rewards, penalties, or registry updates across
+  skipped epochs. The bound `3 * increment < 2 * total` is exact: a total
+  above one increment but at most one and a half increments still lets an
+  empty set pass. Without the antecedent the law is false: when the total
+  active balance is at most one and a half increments, an epoch with no
+  attestations passes the test.
 
 There is no equation for two or more boundaries. PJF returns early in epochs
 0 and 1, so an epoch-1 start can keep the old checkpoint under eager PJF and

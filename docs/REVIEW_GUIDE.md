@@ -96,7 +96,7 @@ contracts and the intended behavior of any unconstrained function it uses.
 │                                        │ constrain imports. Both Phase0 source records, FFG state transitions, and                              │
 │                                        │ ImportedBlockFinalizationLag constrain used state outputs.                                             │
 │ process_justification_and_finalization │ BeaconExternalsPremises.pjf_checkpoint_epoch and FFG state genesis/transition laws constrain           │
-│                                        │ checkpoint outputs. Both Phase0 boundary-source equations constrain justification.                     │
+│                                        │ checkpoint outputs. The four Phase0BoundarySourceCoherence laws constrain justification.               │
 │ is_valid_indexed_attestation           │ honest_attestation_valid, valid_attestation_honest, valid_attestation_committee,                       │
 │                                        │ valid_attestation_default, and process_slots_attestation_valid constrain accepted checks.              │
 │ AnchorCommitsToState                   │ ScheduledExecutionPremises.genesis supplies the initial anchor relation. No hash theorem is proved.    │
