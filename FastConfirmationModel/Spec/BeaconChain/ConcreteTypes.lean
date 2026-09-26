@@ -9,7 +9,9 @@ Python: `specs/gloas/beacon-chain.md`, Containers; `specs/phase0/beacon-chain.md
 namespace FastConfirmation.Spec
 
 /-- Fixed preset values used by the concrete projection. Python:
-`presets/minimal/phase0.yaml:6,10,32,42`; `presets/minimal/electra.yaml:31`. -/
+`presets/minimal/phase0.yaml:6,10,32,42,75,83`;
+`presets/minimal/electra.yaml:29,31`;
+`presets/minimal/capella.yaml:6`; `presets/minimal/gloas.yaml:11`. -/
 structure FFGPreset where
   slots_per_historical_root : ℕ
   max_committees_per_slot : ℕ
@@ -37,14 +39,20 @@ structure FixedFFGScope where
     is_active_validator (validators[i]) e =
       is_active_validator (validators[i]) first_epoch
 
+/-- Active weight at the first epoch. Fixed activity keeps this weight stable
+throughout the scope. -/
+def FixedFFGScope.activeBalance (scope : FixedFFGScope) : Gwei :=
+  (((List.range scope.validators.length).filter fun i =>
+    is_active_validator (scope.validators.getD i default) scope.first_epoch).map fun i =>
+      (scope.validators.getD i default).effective_balance).sum
+
 /-- The finite Python `uint64` domain for weighted FFG arithmetic. The
 threefold bound also covers the twofold threshold product and the balance
 floor. Python: `specs/phase0/beacon-chain.md`, `uint64` arithmetic. -/
 def FixedFFGScope.NumericBounds (scope : FixedFFGScope) (cfg : Config) : Prop :=
   scope.last_epoch * cfg.slots_per_epoch ≤ UINT64_MAX ∧
   3 * (scope.validators.map Validator.effective_balance).sum ≤ UINT64_MAX ∧
-  2 * cfg.effective_balance_increment ≤
-    (scope.validators.map Validator.effective_balance).sum
+  2 * cfg.effective_balance_increment ≤ scope.activeBalance
 
 /-- One ordered, branch-independent committee schedule. Rows must cover all
 in-horizon queries. The predicate below checks the finite assignment data.
@@ -68,6 +76,8 @@ with no duplicate positions or out-of-range indices. This is an explicit
 idealization of committee selection, not a RANDAO derivation. -/
 def FixedCommitteeSchedule.WellFormed (schedule : FixedCommitteeSchedule)
     (cfg : Config) (preset : FFGPreset) (scope : FixedFFGScope) : Prop :=
+  (schedule.committees.map fun row => (row.1, row.2.1)).Nodup ∧
+  (schedule.counts.map Prod.fst).Nodup ∧
   (∀ epoch, scope.first_epoch ≤ epoch → epoch ≤ scope.last_epoch →
     ∃ n, schedule.count epoch = some n ∧ 0 < n ∧ n ≤ preset.max_committees_per_slot) ∧
   (∀ slot index committee, schedule.committee slot index = some committee →

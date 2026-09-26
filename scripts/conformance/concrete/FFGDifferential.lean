@@ -46,8 +46,8 @@ def parseState (j : J) : Except String (FFGBeaconState Nat) := do
     latest_block_header := ⟨← natField j "header_slot", 0, 0,
       ← natField j "header_root"⟩
     execution_payload_availability := ← list boolean (← field j "availability")
-    latest_block_hash := 0
-    latest_bid_block_hash := 0
+    latest_block_hash := ← natField j "latest_block_hash"
+    latest_bid_block_hash := ← natField j "latest_bid_block_hash"
   }
 
 def cfg : Config := {
@@ -95,7 +95,9 @@ def stateJson (state : FFGBeaconState Nat) : J := Json.mkObj [
   ("previous_participation", toJson state.previous_epoch_participation),
   ("current_participation", toJson state.current_epoch_participation),
   ("block_roots", toJson state.block_roots),
-  ("availability", toJson state.execution_payload_availability)
+  ("availability", toJson state.execution_payload_availability),
+  ("latest_block_hash", toJson state.latest_block_hash),
+  ("latest_bid_block_hash", toJson state.latest_bid_block_hash)
 ]
 
 def parseAttestationData (j : J) : Except String (AttestationData Nat) := do
@@ -113,6 +115,20 @@ def parseVote (j : J) : Except String (FFGWireAttestation Nat) := do
     committee_bits := ← list boolean (← field j "committee_bits")
     data := ← parseAttestationData (← field j "data")
     signature := 0
+  }
+
+def parseBlock (j : J) : Except String (FFGWireBlock Nat) := do
+  return {
+    slot := ← natField j "slot"
+    parent_root := ← natField j "parent_root"
+    proposer_index := ← natField j "proposer_index"
+    root := ← natField j "root"
+    parent_block_hash := ← natField j "parent_block_hash"
+    block_hash := ← natField j "block_hash"
+    parent_requests_empty := ← boolean (← field j "parent_requests_empty")
+    parent_requests_match := ← boolean (← field j "parent_requests_match")
+    deposit_count := ← natField j "deposit_count"
+    attestations := ← list parseVote (← field j "attestations")
   }
 
 def errorClass : Error → String
@@ -142,9 +158,29 @@ def runCase (j : J) : Except String J := do
     }
     let parentSlot ← natField j "parent_slot"
     pure ((process_attestation cfg preset schedule state vote parentSlot).map stateJson)
+  else if action == "attestations" then
+    let votes ← list parseVote (← field j "votes")
+    let schedule : FixedCommitteeSchedule := {
+      committees := votes.flatMap fun vote =>
+        [(vote.data.slot, 0, [0, 1]), (vote.data.slot, 1, [2, 3])]
+      counts := votes.map fun vote => (vote.data.target.epoch, 2)
+    }
+    let parentSlot ← natField j "parent_slot"
+    pure ((votes.foldlM (init := state) fun current vote =>
+      process_attestation cfg preset schedule current vote parentSlot).map stateJson)
   else if action == "slots" then
     let target ← natField j "target_slot"
     pure ((process_slots cfg preset state target).map stateJson)
+  else if action == "transition" then
+    let block ← parseBlock (← field j "block")
+    let schedule : FixedCommitteeSchedule := {
+      committees := block.attestations.flatMap fun vote =>
+        [(vote.data.slot, 0, [0, 1]), (vote.data.slot, 1, [2, 3])]
+      counts := block.attestations.map fun vote => (vote.data.target.epoch, 2)
+    }
+    let accepts ← boolean (← field j "oracle_accept")
+    let oracle : BlockValidityOracle Nat := ⟨fun _ _ _ => accepts⟩
+    pure ((state_transition cfg preset schedule oracle state block).map stateJson)
   else
     throw s!"unknown action {action}"
   return match result with

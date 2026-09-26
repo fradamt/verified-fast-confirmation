@@ -26,10 +26,20 @@ one, two and many skipped boundaries, root-ring wraparound, current and
 previous target votes, repeated and overlapping participation, wrong target
 with accepted source, invalid source, committee bits, wire payload status,
 same-slot and skipped-slot payload checks, and the inclusion edge. The
-structural checks in `state_transition` reject malformed array lengths before
-processing. A malformed Python SSZ container is outside the differential
-input domain because its constructor rejects that container.
+runner also compares a fabricated current-epoch vote at an epoch start. Both
+implementations reject its unavailable root.
 
-This runner tests the FFG projection. It does not test the a1 checkpoint-sync
-negative trace, network delivery, BLS authenticity, or the full Gloas block
-oracle. Those checks remain separate from this transcription comparison.
+The fixture also tests a concrete state transition with accepted and rejected
+blocks, including the block header, deposits, a slashed proposer, the genesis
+stub, a skipped slot, and the opaque oracle result. The block test keeps the
+Python header, attestation, and operation order. It replaces cryptography and
+the other block operations with the same documented oracle mode.
+
+One separate Lean check rejects a state whose participation array is shorter
+than its validator registry. Python can construct such a state, but it is
+outside the well-formed fixed-scope domain. The Python/Lean differential count
+excludes that structural check.
+
+The pinned `anchor_semantics_probe.py` separately tests the a1
+checkpoint-sync negative trace. The differential runner does not test network
+delivery, BLS authenticity, or SSZ hashing outside the stated oracle mode.

@@ -36,6 +36,8 @@ def base(slot: int, count: int = 2, balance: int = 32_000_000_000) -> dict:
         "current_participation": [0] * count,
         "block_roots": list(range(64)),
         "availability": [False] * 64,
+        "latest_block_hash": 0,
+        "latest_bid_block_hash": 0,
     }
 
 
@@ -56,6 +58,8 @@ def cases() -> list[dict]:
     add("epoch1_end_stub", 15, previous_participation=[2, 2])
     add("slot16_previous_support", 16, previous_participation=[2, 2])
     add("slot16_current_empty", 16, current_participation=[0, 0])
+    add("epoch_start_fabricated_current_rejected", 16,
+        current_participation=[2, 2])
     add("current_support", 23, current_participation=[2, 2])
     add("previous_and_current", 23, previous_participation=[2, 2],
         current_participation=[2, 2])
@@ -146,6 +150,60 @@ def cases() -> list[dict]:
                 block_roots=skipped_roots, availability=full)
     attestation("skipped_slot_wrong_payload", 17, index=0, parent_slot=15,
                 block_roots=skipped_roots, availability=full)
+
+    def sequence_vote(bits: list[bool]) -> dict:
+        return {"aggregation_bits": bits,
+                "committee_bits": [True, False, False, False],
+                "data": {"slot": 16, "index": 0, "beacon_block_root": 16,
+                         "source": [0, 0], "target": [2, 16]}}
+
+    rows.append({"name": "duplicate_aggregates", "action": "attestations",
+                 "state": base(17, 4), "parent_slot": 16,
+                 "votes": [sequence_vote([True, True]), sequence_vote([True, True])]})
+    rows.append({"name": "overlapping_aggregates", "action": "attestations",
+                 "state": base(17, 4), "parent_slot": 16,
+                 "votes": [sequence_vote([True, False]), sequence_vote([True, True])]})
+
+    def transition(name: str, *, start: int = 16, block_slot: int = 17,
+                   parent_root: int = 100, oracle_accept: bool = True,
+                   parent_block_hash: int = 1, parent_requests_match: bool = False,
+                   deposit_count: int = 0, vote_changes: dict | None = None,
+                   state_changes: dict | None = None) -> None:
+        state = base(start, 4)
+        state.update(state_changes or {})
+        data = {"slot": 16, "index": 0, "beacon_block_root": 100,
+                "source": [0, 0], "target": [2, 100]}
+        if vote_changes:
+            data.update(vote_changes)
+        vote = {"aggregation_bits": [True, True],
+                "committee_bits": [True, False, False, False], "data": data}
+        rows.append({
+            "name": name, "action": "transition", "state": state,
+            "oracle_accept": oracle_accept,
+            "block": {"slot": block_slot, "parent_root": parent_root,
+                      "proposer_index": 0, "root": (100 + block_slot) % 256,
+                      "parent_block_hash": parent_block_hash, "block_hash": 2,
+                      "parent_requests_empty": True,
+                      "parent_requests_match": parent_requests_match,
+                      "deposit_count": deposit_count,
+                      "attestations": [vote]},
+        })
+
+    transition("transition_accept")
+    transition("transition_parent_full", parent_block_hash=0,
+               parent_requests_match=True)
+    transition("transition_oracle_reject", oracle_accept=False)
+    transition("transition_bad_slot", block_slot=16)
+    transition("transition_bad_parent", parent_root=99)
+    transition("transition_bad_source", vote_changes={"source": [1, 9]})
+    transition("transition_bad_index", vote_changes={"index": 2})
+    transition("transition_deposits", deposit_count=1)
+    slashed = base(16, 4)["validators"]
+    slashed[0]["slashed"] = True
+    transition("transition_slashed_proposer", state_changes={"validators": slashed})
+    transition("transition_skipped_slot", block_slot=18)
+    transition("transition_genesis_stub", start=0, block_slot=1,
+               vote_changes={"slot": 0, "target": [0, 100]})
     return rows
 
 
@@ -189,6 +247,9 @@ def pyspec_result(spec, row: dict) -> dict:
     state.execution_payload_availability = spec.ExecutionPayloadAvailability(data=[
         spec.Boolean(v) for v in source["availability"]
     ])
+    state.latest_block_hash = spec.Hash32(bytes([source["latest_block_hash"]]) * 32)
+    state.latest_execution_payload_bid.block_hash = spec.Hash32(
+        bytes([source["latest_bid_block_hash"]]) * 32)
     try:
         if row["action"] == "root":
             root = spec.get_block_root_at_slot(state, spec.Slot(row["query_slot"]))
@@ -210,12 +271,64 @@ def pyspec_result(spec, row: dict) -> dict:
                 ),
             )
             spec.process_attestation(state, vote, spec.Slot(row["parent_slot"]))
+        elif row["action"] == "attestations":
+            for item in row["votes"]:
+                data = item["data"]
+                vote = spec.Attestation(
+                    aggregation_bits=spec.AggregationBits(data=item["aggregation_bits"]),
+                    committee_bits=spec.CommitteeBits(data=item["committee_bits"]),
+                    data=spec.AttestationData(
+                        slot=spec.Slot(data["slot"]),
+                        index=spec.CommitteeIndex(data["index"]),
+                        beacon_block_root=repeated_root(spec, data["beacon_block_root"]),
+                        source=spec.Checkpoint(epoch=spec.Epoch(data["source"][0]),
+                                               root=repeated_root(spec, data["source"][1])),
+                        target=spec.Checkpoint(epoch=spec.Epoch(data["target"][0]),
+                                               root=repeated_root(spec, data["target"][1])),
+                    ),
+                )
+                spec.process_attestation(state, vote, spec.Slot(row["parent_slot"]))
+        elif row["action"] == "transition":
+            block_input = row["block"]
+            votes = []
+            for item in block_input["attestations"]:
+                data = item["data"]
+                votes.append(spec.Attestation(
+                    aggregation_bits=spec.AggregationBits(data=item["aggregation_bits"]),
+                    committee_bits=spec.CommitteeBits(data=item["committee_bits"]),
+                    data=spec.AttestationData(
+                        slot=spec.Slot(data["slot"]),
+                        index=spec.CommitteeIndex(data["index"]),
+                        beacon_block_root=repeated_root(spec, data["beacon_block_root"]),
+                        source=spec.Checkpoint(epoch=spec.Epoch(data["source"][0]),
+                                               root=repeated_root(spec, data["source"][1])),
+                        target=spec.Checkpoint(epoch=spec.Epoch(data["target"][0]),
+                                               root=repeated_root(spec, data["target"][1])),
+                    ),
+                ))
+            block = spec.BeaconBlock(
+                slot=spec.Slot(block_input["slot"]),
+                proposer_index=spec.ValidatorIndex(block_input["proposer_index"]),
+                parent_root=repeated_root(spec, block_input["parent_root"]),
+                state_root=repeated_root(spec, (200 + block_input["slot"]) % 256),
+            )
+            block.body.attestations = spec.Attestations(data=votes)
+            block.body.deposits = spec.Deposits(data=[spec.Deposit()]
+                                               * block_input["deposit_count"])
+            block.body.signed_execution_payload_bid.message.parent_block_hash = (
+                spec.Hash32(bytes([block_input["parent_block_hash"]]) * 32))
+            block.body.signed_execution_payload_bid.message.block_hash = (
+                spec.Hash32(bytes([block_input["block_hash"]]) * 32))
+            spec.verify_block_signature = lambda _state, _block: row["oracle_accept"]
+            spec.state_transition(state, spec.SignedBeaconBlock(message=block))
         elif row["action"] == "slots":
             spec.process_slots(state, spec.Slot(row["target_slot"]))
         else:
             spec.process_justification_and_finalization(state)
     except (AssertionError, IndexError) as exc:
-        if row["action"] == "slots":
+        if row["action"] == "transition":
+            failure = transition_error_class(exc)
+        elif row["action"] == "slots":
             failure = "slot"
         elif row["action"] == "root" or row["action"] == "pjf":
             failure = "root"
@@ -229,7 +342,7 @@ def pyspec_result(spec, row: dict) -> dict:
     return {"ok": True, "value": {
         "slot": int(state.slot),
         "header_slot": int(state.latest_block_header.slot),
-        "header_root": source["header_root"],
+        "header_root": spec.hash_tree_root(state.latest_block_header)[0],
         "bits": [bool(x) for x in state.justification_bits],
         "previous_justified": cp(state.previous_justified_checkpoint),
         "current_justified": cp(state.current_justified_checkpoint),
@@ -238,7 +351,29 @@ def pyspec_result(spec, row: dict) -> dict:
         "current_participation": [int(x) for x in state.current_epoch_participation],
         "block_roots": [x[0] for x in state.block_roots],
         "availability": [bool(x) for x in state.execution_payload_availability],
+        "latest_block_hash": state.latest_block_hash[0],
+        "latest_bid_block_hash": state.latest_execution_payload_bid.block_hash[0],
     }}
+
+
+def transition_error_class(exc: BaseException) -> str:
+    frames = traceback.extract_tb(exc.__traceback__)
+    for frame in reversed(frames):
+        if frame.name in {"process_attestation",
+                          "get_attestation_participation_flag_indices",
+                          "get_block_root_at_slot", "is_attestation_same_slot"}:
+            return attestation_error_class(exc)
+        if frame.name == "process_block_header":
+            return "header"
+        if frame.name == "process_operations":
+            return "operations"
+        if frame.name == "process_parent_execution_payload":
+            return "parentPayload"
+        if frame.name == "process_slots":
+            return "slot"
+        if frame.name == "state_transition":
+            return "oracle"
+    raise RuntimeError(f"unclassified pyspec transition error: {frames[-1]}")
 
 
 def attestation_error_class(exc: BaseException) -> str:
@@ -299,6 +434,12 @@ def main() -> int:
     spec.get_base_reward = lambda state, index: 0
     spec.get_beacon_proposer_index = lambda state: spec.ValidatorIndex(0)
     spec.increase_balance = lambda state, index, amount: None
+    spec.process_withdrawals = lambda state: None
+    spec.process_randao = lambda state, body: None
+    spec.process_eth1_data = lambda state, body: None
+    spec.process_sync_aggregate = lambda state, aggregate: None
+    spec.process_execution_payload_bid = lambda state, signed_bid: setattr(
+        state, "latest_execution_payload_bid", signed_bid.message)
     spec.hash_tree_root = lambda value: repeated_root(spec, (
         100 + int(value.slot) if isinstance(value, spec.BeaconBlockHeader)
         else 200 + int(value.slot) if isinstance(value, spec.BeaconState) else 0
@@ -316,9 +457,14 @@ def main() -> int:
 
     rows = cases()
     expected = [pyspec_result(spec, row) for row in rows]
+    bad_initial = json.loads(json.dumps(next(
+        row for row in rows if row["name"] == "transition_accept")))
+    bad_initial["name"] = "bad_initial_state"
+    bad_initial["state"]["current_participation"].pop()
+    lean_rows = [*rows, bad_initial]
     with tempfile.TemporaryDirectory(prefix="ffg-diff-") as temp:
         input_path = Path(temp) / "cases.json"
-        input_path.write_text(json.dumps(rows), encoding="utf-8")
+        input_path.write_text(json.dumps(lean_rows), encoding="utf-8")
         result = subprocess.run(
             ["lake", "env", "lean", "--run",
              "scripts/conformance/concrete/FFGDifferential.lean", str(input_path)],
@@ -329,16 +475,19 @@ def main() -> int:
         print(result.stderr or result.stdout, file=sys.stderr)
         return result.returncode
     actual = [json.loads(line) for line in result.stdout.splitlines() if line.strip()]
-    if len(actual) != len(rows):
-        print(f"differential count differs: {len(actual)} != {len(rows)}", file=sys.stderr)
+    if len(actual) != len(lean_rows):
+        print(f"Lean evaluation count differs: {len(actual)} != {len(lean_rows)}", file=sys.stderr)
         return 1
     differences = 0
-    for row, want, got in zip(rows, expected, actual, strict=True):
+    for row, want, got in zip(rows, expected, actual[:-1], strict=True):
         if want != got:
             differences += 1
             print(f"MISMATCH {row['name']}: pyspec={want} lean={got}", file=sys.stderr)
+    if actual[-1] != {"ok": False, "error": "state"}:
+        differences += 1
+        print(f"MISMATCH bad_initial_state: lean={actual[-1]}", file=sys.stderr)
     print(f"concrete differential: cases={len(rows)} agree={len(rows)-differences} "
-          f"differences={differences}")
+          f"differences={differences}; structural_bad_state=1")
     return 1 if differences else 0
 
 
