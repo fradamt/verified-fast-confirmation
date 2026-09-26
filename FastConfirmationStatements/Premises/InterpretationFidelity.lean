@@ -15,7 +15,7 @@ them. Each full-bundle witness proves them for its interpretation.
 
 namespace FastConfirmation.Spec
 variable {Root : Type*} [LinearOrder Root] [Inhabited Root]
-variable (cfg : Config) (ext : Externals Root)
+variable (cfg : Config) (ext : BeaconFunctionInterface Root)
 
 namespace Execution
 variable (E : Execution Root)
@@ -29,10 +29,9 @@ instead.
 Block roots are injective labels (`WellFormedExecution`), so
 `carrier_message` is the same message as in the inclusion evidence. -/
 structure IncludedAttestationFidelity
-    (validity : BeaconState Root → Attestation Root → Bool)
     (carrier : Root) (a : Attestation Root) where
   carrier_message : BeaconBlock Root
-  carrier_accepted : E.AcceptedBlockAt cfg ext carrier carrier_message
+  carrier_accepted : E.BlockKnownInScheduledPrefix cfg ext carrier carrier_message
   in_carrier_body : a ∈ carrier_message.attestations
   /-- The attested LMD head may fork from the including block after the target
   boundary; validity requires the head to descend the target, not to descend
@@ -46,10 +45,10 @@ structure IncludedAttestationFidelity
     i < E.registry.length
   validation_state : BeaconState Root
   validation_registry : validation_state.validators = E.registry
-  valid : validity validation_state a = true
+  valid : ext.is_valid_indexed_attestation validation_state a = true
   /-- An honest in-horizon store with the target block state keyed. -/
   validation_store : Store Root
-  validation_store_honest : E.HonestCausalStore cfg ext validation_store
+  validation_store_honest : E.HonestPrefixStoreWithinHorizon cfg ext validation_store
   validation_target_known : a.data.target.root ∈ validation_store.block_roots
   /-- The state read by `on_attestation` after target checkpoint preparation.
   The prepared state need not itself be keyed. -/
@@ -63,19 +62,17 @@ end Execution
 
 /-- The intended interpretation of an accepted-prefix FFG interpretation:
 included votes are real, valid body members of accepted blocks; the validity
-oracle is the external indexed-attestation check; and realized finality does
+check is the external indexed-attestation function; and realized finality does
 not pass unrealized finality. This record is not needed by the safety proof
 and is not a hypothesis of `confirmed_root_safe_from_next_slot`. -/
 structure FFGInterpretationFidelity (E : Execution Root)
-    (I : CausalPrefixFFGInterpretation cfg ext E) : Prop where
+    (I : ScheduledFFGInterpretation cfg ext E) : Prop where
   included_fidelity : ∀ {carrier : Root} {a : Attestation Root},
     I.state.includedAttestations.Included carrier a →
       Nonempty (E.IncludedAttestationFidelity cfg ext
-        I.state.attestationValidity carrier a)
-  attestation_validity : I.state.attestationValidity =
-    ext.is_valid_indexed_attestation
-  gf_epoch_le_guf : ∀ r, E.AcceptedRoot cfg ext r →
-    (I.state.GF r).epoch ≤ (I.state.GUF r).epoch
+        carrier a)
+  realized_finalized_epoch_le_unrealized_finalized : ∀ r, E.RootKnownInScheduledPrefix cfg ext r →
+    (I.state.realized_finalized r).epoch ≤ (I.state.unrealized_finalized r).epoch
 
 end FastConfirmation.Spec
 

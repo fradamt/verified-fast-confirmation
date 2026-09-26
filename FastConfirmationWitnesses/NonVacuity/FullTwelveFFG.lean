@@ -13,13 +13,13 @@ open AcceptedActualFCRJointNonVacuityBase
 set_option maxRecDepth 50000
 
 theorem anchor_accepted :
-    run.AcceptedRoot cfg ext anchorRoot := by
+    run.RootKnownInScheduledPrefix cfg ext anchorRoot := by
   refine ⟨run.genesis_store, .genesis, ?_⟩
   simp [run, get_forkchoice_store, anchorSignedBlock]
 
 set_option maxRecDepth 50000 in
 theorem carrier_acceptedBlockAt :
-    run.AcceptedBlockAt cfg ext carrierRoot
+    run.BlockKnownInScheduledPrefix cfg ext carrierRoot
       carrierSignedBlock.message := by
   refine ⟨carrierTransition.postStore, carrierTransition.post_causal, ?_, ?_⟩
   · simpa [carrierSignedBlock] using carrierTransition.root_known
@@ -32,7 +32,7 @@ theorem carrier_acceptedBlockAt :
 /-- Although causal stores range over arbitrary nodes, seconds, and exact
 prefix lengths, their known block projection has only these three rows. -/
 theorem causal_known_table {store : Store WitnessRoot}
-    (hstore : run.CausalStore cfg ext store)
+    (hstore : run.ScheduledPrefixStore cfg ext store)
     {r : WitnessRoot} (hr : r ∈ store.block_roots) :
     (r = anchorRoot ∧ store.blocks r = anchorSignedBlock.message) ∨
       (r = childRoot ∧ store.blocks r = childSignedBlock.message) ∨
@@ -54,7 +54,7 @@ theorem causal_known_table {store : Store WitnessRoot}
       exact ⟨hroot.symm, hmessage⟩
 
 theorem causal_anchor_known {store : Store WitnessRoot}
-    (hstore : run.CausalStore cfg ext store) :
+    (hstore : run.ScheduledPrefixStore cfg ext store) :
     anchorRoot ∈ store.block_roots := by
   cases hstore with
   | genesis =>
@@ -64,7 +64,7 @@ theorem causal_anchor_known {store : Store WitnessRoot}
       simp [run, get_forkchoice_store, anchorSignedBlock]
 
 theorem causal_nonAnchor_parent_known {store : Store WitnessRoot}
-    (hstore : run.CausalStore cfg ext store)
+    (hstore : run.ScheduledPrefixStore cfg ext store)
     {r : WitnessRoot} (hr : r ∈ store.block_roots) (hne : r ≠ anchorRoot) :
     (store.blocks r).parent_root ∈ store.block_roots := by
   cases hstore with
@@ -79,7 +79,7 @@ theorem causal_nonAnchor_parent_known {store : Store WitnessRoot}
           rfl) r hr).resolve_left hne
 
 theorem causal_child_known_of_carrier_known {store : Store WitnessRoot}
-    (hstore : run.CausalStore cfg ext store)
+    (hstore : run.ScheduledPrefixStore cfg ext store)
     (hcarrier : carrierRoot ∈ store.block_roots) :
     childRoot ∈ store.block_roots := by
   have hparent := causal_nonAnchor_parent_known hstore hcarrier
@@ -91,7 +91,7 @@ theorem causal_child_known_of_carrier_known {store : Store WitnessRoot}
     simpa [carrierSignedBlock] using hparent
 
 theorem acceptedRoot_cases {r : WitnessRoot}
-    (hr : run.AcceptedRoot cfg ext r) :
+    (hr : run.RootKnownInScheduledPrefix cfg ext r) :
     r = anchorRoot ∨ r = childRoot ∨ r = carrierRoot := by
   obtain ⟨store, hstore, hknown⟩ := hr
   rcases causal_known_table hstore hknown with h | h | h
@@ -100,7 +100,7 @@ theorem acceptedRoot_cases {r : WitnessRoot}
   · exact Or.inr (Or.inr h.1)
 
 theorem acceptedBlockAt_cases {r : WitnessRoot} {b : BeaconBlock WitnessRoot}
-    (h : run.AcceptedBlockAt cfg ext r b) :
+    (h : run.BlockKnownInScheduledPrefix cfg ext r b) :
     (r = anchorRoot ∧ b = anchorSignedBlock.message) ∨
       (r = childRoot ∧ b = childSignedBlock.message) ∨
       (r = carrierRoot ∧ b = carrierSignedBlock.message) := by
@@ -170,7 +170,7 @@ theorem rootDescends_carrier_iff {r : WitnessRoot} :
     exact .refl carrierRoot
 
 theorem acceptedRoot_descends_anchor {r : WitnessRoot}
-    (hr : run.AcceptedRoot cfg ext r) :
+    (hr : run.RootKnownInScheduledPrefix cfg ext r) :
     run.RootDescends r anchorRoot := by
   rcases acceptedRoot_cases hr with rfl | rfl | rfl
   · exact .refl anchorRoot
@@ -200,9 +200,9 @@ theorem includedVote_data {s : Slot} (hlo : 4 ≤ s) (hhi : s ≤ 6) :
   interval_cases s <;> rfl
 
 def acceptedIncludedEvidenceAt (s : Slot) (hlo : 4 ≤ s) (hhi : s ≤ 6) :
-    Execution.CausalCarrierAttestationEvidence cfg
+    Execution.AcceptedBlockAttestationEvidence cfg
       ext run
-      ext.is_valid_indexed_attestation carrierRoot (vote s) where
+      carrierRoot (vote s) where
   carrier_message := carrierSignedBlock.message
   received_from_block := ⟨0, 84, includedVote_true_scheduled hlo hhi⟩
   slot_within_horizon := by
@@ -224,7 +224,7 @@ of the accepted carrier, validated on the prepared target state. -/
 def acceptedIncludedFidelityAt (s : Slot) (hlo : 4 ≤ s) (hhi : s ≤ 6) :
     Execution.IncludedAttestationFidelity cfg
       ext run
-      ext.is_valid_indexed_attestation carrierRoot (vote s) where
+      carrierRoot (vote s) where
   carrier_message := carrierSignedBlock.message
   carrier_accepted := carrier_acceptedBlockAt
   in_carrier_body := by
@@ -251,7 +251,7 @@ def acceptedIncludedFidelityAt (s : Slot) (hlo : 4 ≤ s) (hhi : s ≤ 6) :
     exact ⟨by decide, vote_mem_ground (hhi.trans_lt (by decide : 6 < 16))⟩
   validation_store := childPostPrefix.store cfg ext
   validation_store_honest := by
-    apply Execution.HonestCausalStore.scheduledPrefix childPostPrefix
+    apply Execution.HonestPrefixStoreWithinHorizon.scheduledPrefix childPostPrefix
     · decide
     · simpa [childPostPrefix, childPrefix] using
         (time_within (show 12 < 192 by decide))
@@ -262,9 +262,9 @@ def acceptedIncludedFidelityAt (s : Slot) (hlo : 4 ≤ s) (hhi : s ≤ 6) :
     interval_cases s <;> rfl
 
 def witnessAcceptedIncludedAttestations :
-    Execution.CausalCarrierAttestationRelation cfg
+    Execution.AcceptedBlockAttestationInclusion cfg
       ext run
-      ext.is_valid_indexed_attestation where
+      where
   Included := witnessIncluded
   evidence := by
     intro carrier a h
@@ -289,7 +289,6 @@ theorem witnessIncludedFidelity
     (h : witnessIncluded carrier a) :
     Nonempty (Execution.IncludedAttestationFidelity cfg
       ext run
-      ext.is_valid_indexed_attestation
       carrier a) := by
   obtain ⟨rfl, ha⟩ := h
   rcases ha with rfl | rfl | rfl
@@ -302,7 +301,7 @@ theorem no_included_vote_missing_from_body
     {carrier : WitnessRoot} {a : Attestation WitnessRoot}
     (h : witnessAcceptedIncludedAttestations.Included carrier a) :
     ∃ b : BeaconBlock WitnessRoot,
-      run.AcceptedBlockAt cfg ext carrier b ∧
+      run.BlockKnownInScheduledPrefix cfg ext carrier b ∧
         a ∈ b.attestations := by
   obtain ⟨F⟩ := witnessIncludedFidelity h
   exact ⟨F.carrier_message, F.carrier_accepted, F.in_carrier_body⟩
@@ -419,16 +418,15 @@ theorem carrier_child_formation_causal :
       ⟨rfl, Or.inl rfl⟩⟩
 
 def witnessAcceptedChainFFGState :
-    CausalCarrierFFGState cfg ext run
+    AcceptedBlockFFGState cfg ext run
       anchorCheckpoint where
-  attestationValidity := ext.is_valid_indexed_attestation
   includedAttestations := witnessAcceptedIncludedAttestations
-  formed := witnessFormed
-  C := witnessC
-  GJ := fun _ => anchorCheckpoint
-  GU := witnessGU
-  GF := fun _ => anchorCheckpoint
-  GUF := fun _ => anchorCheckpoint
+  checkpoint_evidence_in_block := witnessFormed
+  checkpoint_at_epoch := witnessC
+  realized_justified := fun _ => anchorCheckpoint
+  unrealized_justified := witnessGU
+  realized_finalized := fun _ => anchorCheckpoint
+  unrealized_finalized := fun _ => anchorCheckpoint
   checkpoint_epoch := by
     intro r e
     rfl
@@ -454,11 +452,11 @@ def witnessAcceptedChainFFGState :
               IncludedCertifiedJustified.anchor witnessIncludedAnchorChildLink⟩
           on_chain := carrier_descends_child
           causal := Or.inr carrier_child_formation_causal }
-  gj_mem := by
+  realized_justified_mem := by
     intro r hr
     exact ⟨anchorRoot, acceptedRoot_descends_anchor hr,
       witnessFormed_anchor⟩
-  gu_mem := by
+  unrealized_justified_mem := by
     intro r hr
     by_cases hcarrier : r = carrierRoot
     · subst r
@@ -467,18 +465,18 @@ def witnessAcceptedChainFFGState :
     · have hdesc := acceptedRoot_descends_anchor hr
       exact ⟨anchorRoot, hdesc, by
         simpa [witnessGU, hcarrier] using witnessFormed_anchor⟩
-  gf_mem := by
+  realized_finalized_mem := by
     intro r hr
     exact ⟨anchorRoot, acceptedRoot_descends_anchor hr,
       witnessFormed_anchor⟩
-  guf_mem := by
+  unrealized_finalized_mem := by
     intro r hr
     exact ⟨anchorRoot, acceptedRoot_descends_anchor hr,
       witnessFormed_anchor⟩
-  gj_anchor_or_before := by
+  realized_justified_anchor_or_before := by
     intro r b haccepted
     exact Or.inl rfl
-  gj_max := by
+  realized_justified_max := by
     intro r b c haccepted hformed hepoch
     obtain ⟨carrier, hdesc, hformed⟩ := hformed
     rcases hformed with ⟨rfl, rfl⟩ | ⟨rfl, rfl | rfl⟩
@@ -491,7 +489,7 @@ def witnessAcceptedChainFFGState :
           childSignedBlock, carrierSignedBlock, anchorRoot, childRoot,
           carrierRoot, anchorCheckpoint,
           childEpochOneCheckpoint]
-  gu_max := by
+  unrealized_justified_max := by
     intro r c hr hformed
     obtain ⟨carrier, hdesc, hformed⟩ := hformed
     rcases hformed with ⟨rfl, rfl⟩ | ⟨rfl, rfl | rfl⟩
@@ -500,7 +498,7 @@ def witnessAcceptedChainFFGState :
     · have hrCarrier : r = carrierRoot := rootDescends_carrier_iff.mp hdesc
       subst r
       simp [witnessGU, childEpochOneCheckpoint]
-  au_epoch_le_block := by
+  available_checkpoint_epoch_le_block := by
     intro r b c haccepted hformed
     obtain ⟨carrier, hdesc, hformed⟩ := hformed
     rcases hformed with ⟨rfl, rfl⟩ | ⟨rfl, rfl | rfl⟩
@@ -512,23 +510,23 @@ def witnessAcceptedChainFFGState :
         simp_all [cfg, TwelveSecondSynchronyWitness.cfg, witnessConfig, compute_epoch_at_slot, anchorSignedBlock,
           childSignedBlock, carrierSignedBlock, anchorRoot, childRoot,
           carrierRoot, childEpochOneCheckpoint]
-  gf_evidence := by
+  realized_finalized_evidence := by
     intro r hr
     exact Or.inl rfl
-  guf_evidence := by
+  unrealized_finalized_evidence := by
     intro r hr
     exact Or.inl rfl
-  gf_epoch_le_gj := by
+  realized_finalized_epoch_le_realized_justified := by
     intro r hr
     rfl
-  guf_epoch_le_gu := by
+  unrealized_finalized_epoch_le_unrealized_justified := by
     intro r hr
     simp [witnessGU, anchorCheckpoint, childEpochOneCheckpoint]
 
 /-! ## Checkpoint reflection at every exact causal prefix -/
 
 theorem causal_anchor_message {store : Store WitnessRoot}
-    (hstore : run.CausalStore cfg ext store) :
+    (hstore : run.ScheduledPrefixStore cfg ext store) :
     store.blocks anchorRoot = anchorSignedBlock.message := by
   have hknown := causal_anchor_known hstore
   rcases causal_known_table hstore hknown with h | h | h
@@ -537,7 +535,7 @@ theorem causal_anchor_message {store : Store WitnessRoot}
   · exact False.elim ((by decide : anchorRoot ≠ carrierRoot) h.1)
 
 theorem causal_child_message {store : Store WitnessRoot}
-    (hstore : run.CausalStore cfg ext store)
+    (hstore : run.ScheduledPrefixStore cfg ext store)
     (hknown : childRoot ∈ store.block_roots) :
     store.blocks childRoot = childSignedBlock.message := by
   rcases causal_known_table hstore hknown with h | h | h
@@ -547,7 +545,7 @@ theorem causal_child_message {store : Store WitnessRoot}
 
 
 theorem witnessCheckpointOfKnown {store : Store WitnessRoot}
-    (hstore : run.CausalStore cfg ext store)
+    (hstore : run.ScheduledPrefixStore cfg ext store)
     (r : WitnessRoot) (hr : r ∈ store.block_roots) (e : Epoch) :
     witnessC r e = get_checkpoint_for_block cfg store r e := by
   have hanchor := causal_anchor_message hstore
@@ -603,7 +601,7 @@ theorem witnessCheckpointOfKnown {store : Store WitnessRoot}
               simp [anchorRoot, childRoot, carrierRoot]
 
 theorem witnessAU_cases {r : WitnessRoot} {c : Checkpoint WitnessRoot}
-    (hAU : witnessAcceptedChainFFGState.AU cfg ext r c) :
+    (hAU : witnessAcceptedChainFFGState.AvailableCheckpoint cfg ext r c) :
     c = anchorCheckpoint ∨
       (r = carrierRoot ∧ c = childEpochOneCheckpoint) := by
   obtain ⟨carrier, hdesc, hformed⟩ := hAU
@@ -614,10 +612,10 @@ theorem witnessAU_cases {r : WitnessRoot} {c : Checkpoint WitnessRoot}
   · exact Or.inr ⟨rootDescends_carrier_iff.mp hdesc, rfl⟩
 
 theorem witnessAUCheckpointOfKnown {store : Store WitnessRoot}
-    (hstore : run.CausalStore cfg ext store)
+    (hstore : run.ScheduledPrefixStore cfg ext store)
     (r : WitnessRoot) (hr : r ∈ store.block_roots)
     (c : Checkpoint WitnessRoot)
-    (hAU : witnessAcceptedChainFFGState.AU cfg ext r c) :
+    (hAU : witnessAcceptedChainFFGState.AvailableCheckpoint cfg ext r c) :
     c = get_checkpoint_for_block cfg store r c.epoch := by
   rcases witnessAU_cases hAU with rfl | ⟨rfl, rfl⟩
   · rcases causal_known_table hstore hr with h | h | h
@@ -687,7 +685,7 @@ private theorem transition_table : ∀ (w row : Fin 3),
   set_option maxRecDepth 50000 in decide
 
 theorem acceptedTransition_cases
-    (t : run.AcceptedBlockTransition cfg ext) :
+    (t : run.SuccessfulScheduledBlockImport cfg ext) :
     (t.signedBlock = childSignedBlock ∧
       t.postStore.block_states childRoot = childState) ∨
     (t.signedBlock = carrierSignedBlock ∧
@@ -732,7 +730,7 @@ theorem genesis_known_eq_anchor {r : WitnessRoot}
   simpa [run, get_forkchoice_store, anchorSignedBlock] using hr
 
 def witnessAcceptedFFGTransitionCoherence :
-    FFGSelectorsAndCheckpointReadsMatchBeaconStates cfg ext
+    FFGStateAndCheckpointReadAgreement cfg ext
       witnessAcceptedChainFFGState where
   genesis_gj := by
     intro r hr
@@ -814,12 +812,12 @@ def witnessAcceptedFFGTransitionCoherence :
   checkpoint_of_known := by
     intro store hstore r hr e
     exact witnessCheckpointOfKnown hstore r hr e
-  au_checkpoint_of_known := by
+  available_checkpoint_checkpoint_of_known := by
     intro store hstore r hr c hAU
     exact witnessAUCheckpointOfKnown hstore r hr c hAU
 
 def witnessAcceptedSemantics :
-    CausalPrefixFFGInterpretation cfg ext
+    ScheduledFFGInterpretation cfg ext
       run where
   anchor := anchorCheckpoint
   state := witnessAcceptedChainFFGState
@@ -837,20 +835,20 @@ def witnessAcceptedSemantics :
 
 
 theorem witnessAU_carrier_anchor :
-    witnessAcceptedChainFFGState.AU cfg ext
+    witnessAcceptedChainFFGState.AvailableCheckpoint cfg ext
       carrierRoot anchorCheckpoint :=
   ⟨carrierRoot, .refl carrierRoot, witnessFormed_carrier_anchor⟩
 
 theorem witnessAU_carrier_child :
-    witnessAcceptedChainFFGState.AU cfg ext
+    witnessAcceptedChainFFGState.AvailableCheckpoint cfg ext
       carrierRoot childEpochOneCheckpoint :=
   ⟨carrierRoot, .refl carrierRoot, witnessFormed_carrier_child⟩
 
 /-! ## Accepted checkpoint projection -/
 
 def witnessAcceptedEpochCheckpointProjection :
-    EpochCheckpointClosure anchorCheckpoint
-      (run.AcceptedRoot cfg ext) witnessC where
+    EpochCheckpointProjectionLaws anchorCheckpoint
+      (run.RootKnownInScheduledPrefix cfg ext) witnessC where
   checkpoint_root_accepted := by
     intro r e hr hanchor
     rcases acceptedRoot_cases hr with rfl | rfl | rfl
@@ -930,7 +928,7 @@ theorem witnessIncludedLink_cases
     · simpa [vote6, vote, voteData] using htarget.symm
 
 def witnessExactLinkValidity :
-    witnessAcceptedChainFFGState.ExactLinkValidity where
+    witnessAcceptedChainFFGState.LinkCheckpointAgreement where
   carrier_accepted := by
     intro carrier source target L hcontributing
     change IncludedSupermajorityLink cfg run

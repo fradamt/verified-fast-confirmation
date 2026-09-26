@@ -26,7 +26,7 @@ endpoint tail and does not require a fabricated A3.2 lineage.
 namespace FastConfirmation.Spec
 
 variable {Root : Type*} [LinearOrder Root] [Inhabited Root]
-variable (cfg : Config) (ext : Externals Root)
+variable (cfg : Config) (ext : BeaconFunctionInterface Root)
 
 namespace Execution
 
@@ -40,11 +40,11 @@ the statement only asks for the exact previous-result equality used by the
 phase dispatcher.  No lineage, canonicity, endpoint fact, filter fact, or
 safety conclusion is assumed. -/
 theorem StrictSelectorAdvanceAt.previousObservedReset_queryGUEpochSeed
-    (B : CausalPrefixFFGInterpretation cfg ext E)
-    (hT : E.ScheduledPrefixPremises cfg ext)
+    (B : ScheduledFFGInterpretation cfg ext E)
+    (hT : E.ScheduledExecutionPremises cfg ext)
     (hdomain : SelectedMarginDomain cfg ext E)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
-    (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
+    (hboundary : InitialAnchorAtEpochBoundary (cfg := cfg)
       (E := E) (anchor := B.anchor))
     {v : ValidatorIndex} (hv : v ∈ E.honest) {n : Nat}
     (hHn1 : E.WithinHorizon cfg (n + 1))
@@ -61,7 +61,7 @@ theorem StrictSelectorAdvanceAt.previousObservedReset_queryGUEpochSeed
         is_ancestor (E.fcrStoreAtCall cfg ext v n).store
           (get_node_for_root seed) (get_node_for_root trace.result) = true ∧
         get_block_epoch cfg (E.fcrStoreAtCall cfg ext v n).store trace.result ≤
-          (B.state.GU seed).epoch := by
+          (B.state.unrealized_justified seed).epoch := by
   let query := E.fcrStoreAtCall cfg ext v n
   let head := (get_head cfg query.store).root
   have htag := E.actualObservedRestartInputAt cfg ext B hT hanchor
@@ -93,14 +93,14 @@ theorem StrictSelectorAdvanceAt.previousObservedReset_queryGUEpochSeed
     simpa only [head, hselector.result_eq] using hbelow
   have hprojection : AcceptedFFGStoreProjection B.state query.store := by
     simpa only [query, E.fcrStep_store] using
-      (Execution.CausalPrefixFFGInterpretation.causalStoreProjection
+      (Execution.ScheduledFFGInterpretation.causalStoreProjection
         B (E.store_causal cfg ext v (n + 1)))
   have hguHead : query.store.unrealized_justifications head =
-      B.state.GU head :=
+      B.state.unrealized_justified head :=
     hprojection.unrealized_justification head hheadKnown
   have hobservedGU :
       query.current_epoch_observed_justified_checkpoint =
-        B.state.GU head := by
+        B.state.unrealized_justified head := by
     exact horigin.observed_eq_head_unrealized.trans hguHead
   have hobservedBlockLe : get_block_epoch cfg query.store
         query.current_epoch_observed_justified_checkpoint.root ≤
@@ -126,7 +126,7 @@ theorem StrictSelectorAdvanceAt.previousObservedReset_queryGUEpochSeed
     exact Nat.add_right_cancel
       (hresultPrevious.trans hobservedPrevious.symm)
   have hguLower : get_block_epoch cfg query.store trace.result ≤
-      (B.state.GU head).epoch := by
+      (B.state.unrealized_justified head).epoch := by
     calc
       get_block_epoch cfg query.store trace.result =
           get_block_epoch cfg query.store
@@ -134,7 +134,7 @@ theorem StrictSelectorAdvanceAt.previousObservedReset_queryGUEpochSeed
         hresultEpochEq
       _ ≤ query.current_epoch_observed_justified_checkpoint.epoch :=
         hobservedBlockLe
-      _ = (B.state.GU head).epoch :=
+      _ = (B.state.unrealized_justified head).epoch :=
         congrArg Checkpoint.epoch hobservedGU
   exact ⟨head, hheadKnown, hheadResult, hguLower⟩
 
@@ -149,8 +149,8 @@ genesis root is excluded from strict children by the concrete anchor-minimal
 slot theorem. -/
 noncomputable def
     StrictSelectorAdvanceAt.extendHistoricalLineage_sameEpoch_actual
-    (B : CausalPrefixFFGInterpretation cfg ext E)
-    (hT : E.ScheduledPrefixPremises cfg ext)
+    (B : ScheduledFFGInterpretation cfg ext E)
+    (hT : E.ScheduledExecutionPremises cfg ext)
     (hdomain : SelectedMarginDomain cfg ext E)
     {v : ValidatorIndex} (hv : v ∈ E.honest) {n : Nat}
     (hHn1 : E.WithinHorizon cfg (n + 1))
@@ -185,7 +185,7 @@ noncomputable def
   have hcore : E.ExactCausalStoreWellFormedCore cfg ext :=
     E.exactCausalStoreWellFormedCore
       hT.externals_coherence.state_transition_slot hgenCore
-  have hstore : E.CausalStore cfg ext query.store := by
+  have hstore : E.ScheduledPrefixStore cfg ext query.store := by
     simpa only [query, E.fcrStep_store] using
       E.store_causal cfg ext v (n + 1)
   obtain ⟨hparentN1, hwalkN1, _hjustifiedN1⟩ :=
@@ -261,7 +261,7 @@ noncomputable def
       trace.afterObserved trace.result :=
     E.knownSameEpochAncestrySegment_toAcceptedProjectedSameEpochSegment
       hT.wellFormed hcore hstore hknownSegment
-  have hresultAt : E.AcceptedBlockAt cfg ext trace.result
+  have hresultAt : E.BlockKnownInScheduledPrefix cfg ext trace.result
       (query.store.blocks trace.result) :=
     E.acceptedBlockAt_of_causal_known cfg ext hstore
       hgeometry.result_known
@@ -278,13 +278,13 @@ The prior cached root is current in the preceding store by the actual
 boundary clock and selector recency.  Thus this theorem does not expose a
 lineage callback or a previous-result lineage premise. -/
 theorem StrictSelectorAdvanceAt.previousCarried_epochStartLineage
-    (B : CausalPrefixFFGInterpretation cfg ext E)
-    (hT : E.ScheduledPrefixPremises cfg ext)
-    (hC : E.CompletedFCRCallPremises cfg ext)
+    (B : ScheduledFFGInterpretation cfg ext E)
+    (hT : E.ScheduledExecutionPremises cfg ext)
+    (hC : E.ScheduledFCRCallPremises cfg ext)
     (hfit : EpochEndsFitUint64 cfg)
     (hdomain : SelectedMarginDomain cfg ext E)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
-    (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
+    (hboundary : InitialAnchorAtEpochBoundary (cfg := cfg)
       (E := E) (anchor := B.anchor))
     {v : ValidatorIndex} (hv : v ∈ E.honest) {n : Nat}
     (hHn1 : E.WithinHorizon cfg (n + 1))
@@ -321,7 +321,7 @@ theorem StrictSelectorAdvanceAt.previousCarried_epochStartLineage
       (E.fcrStoreAtCall cfg ext v n).store.block_roots := by
     rw [horigin.input_eq, E.fcrStep_confirmed_root, E.fcrStep_store]
     exact hknownN1
-  have hqueryCausal : E.CausalStore cfg ext
+  have hqueryCausal : E.ScheduledPrefixStore cfg ext
       (E.fcrStoreAtCall cfg ext v n).store := by
     rw [E.fcrStep_store]
     exact E.store_causal cfg ext v (n + 1)
@@ -330,7 +330,7 @@ theorem StrictSelectorAdvanceAt.previousCarried_epochStartLineage
     simpa only [horigin.input_eq, E.fcrStep_confirmed_root] using hlineageN
   have hinputBlockEq : (E.fcrStoreAtCall cfg ext v n).store.blocks
         trace.afterObserved = hlineageQ.tip_block :=
-    (Execution.CausalStore.acceptedBlockAt_iff_eq cfg ext E
+    (Execution.ScheduledPrefixStore.acceptedBlockAt_iff_eq cfg ext E
       hT.wellFormed hqueryCausal hinputKnown).mp hlineageQ.tip_at
   have hinputEpochE : get_block_epoch cfg
       (E.fcrStoreAtCall cfg ext v n).store trace.afterObserved = e := by
@@ -391,15 +391,15 @@ that epoch with the anchor checkpoint epoch.  The lineage is therefore
 initialized by the anchor payload and extended through the accepted selector
 segment. -/
 theorem StrictSelectorAdvanceAt.previousFinalizedReset_anchorLineage
-    (B : CausalPrefixFFGInterpretation cfg ext E)
-    (hT : E.ScheduledPrefixPremises cfg ext)
+    (B : ScheduledFFGInterpretation cfg ext E)
+    (hT : E.ScheduledExecutionPremises cfg ext)
     (hdomain : SelectedMarginDomain cfg ext E)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
-    (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
+    (hboundary : InitialAnchorAtEpochBoundary (cfg := cfg)
       (E := E) (anchor := B.anchor))
     (hLag : E.CausalRealizedFinalizationLag cfg ext B)
     (hanchorExact : B.anchor =
-      B.state.C B.anchor.root B.anchor.epoch)
+      B.state.checkpoint_at_epoch B.anchor.root B.anchor.epoch)
     {v : ValidatorIndex} (hv : v ∈ E.honest) {n : Nat}
     (hHn1 : E.WithinHorizon cfg (n + 1))
     {trace : LatestConfirmedCallTrace cfg ext (E.fcrStoreAtCall cfg ext v n)}
@@ -417,7 +417,7 @@ theorem StrictSelectorAdvanceAt.previousFinalizedReset_anchorLineage
   have hrealized :=
     E.finalizedCheckpoint_resetRealizedAt_of_acceptedGlobalTrajectory
       cfg ext B hT hanchor hboundary (w := v) (n + 1)
-  have hstore : E.CausalStore cfg ext query.store := by
+  have hstore : E.ScheduledPrefixStore cfg ext query.store := by
     simpa only [query, E.fcrStep_store] using
       E.store_causal cfg ext v (n + 1)
   have hfinalizedKnown : query.store.finalized_checkpoint.root ∈
@@ -501,7 +501,7 @@ theorem StrictSelectorAdvanceAt.previousFinalizedReset_anchorLineage
     simpa only [hinputRoot] using hanchorEpoch
   have hresultEpoch : get_block_epoch cfg query.store trace.result =
       B.anchor.epoch := hinputResultEpoch.symm.trans hinputEpoch
-  have hanchorAt : E.AcceptedBlockAt cfg ext B.anchor.root
+  have hanchorAt : E.BlockKnownInScheduledPrefix cfg ext B.anchor.root
       (query.store.blocks B.anchor.root) :=
     E.acceptedBlockAt_of_causal_known cfg ext hstore hanchorKnown
   have hpayload : E.AcceptedHistoricalA32GatePayloadAt cfg ext B

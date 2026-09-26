@@ -10,9 +10,9 @@ The reduced beacon-state projection does not retain enough block-history data
 to turn arbitrary root descent into epoch-indexed checkpoint descent.  This
 module records the narrow, certificate-scoped semantic interface.
 
-The core declarations do not depend on `CausalCarrierFFGState`: callers supply
+The core declarations do not depend on `AcceptedBlockFFGState`: callers supply
 the positive inclusion relation, formed predicate, checkpoint projection, and
-accepted carrier domain.  `CausalCarrierFFGState.ExactLinkValidity` is the
+accepted carrier domain.  `AcceptedBlockFFGState.LinkCheckpointAgreement` is the
 accepted-state instance.
 
 Only an included supermajority link whose source already has a carrier-local
@@ -30,7 +30,7 @@ variable (cfg : Config)
 /-- A checkpoint projection on an accepted execution domain.  Composition is
 only required from the trusted anchor epoch onward; values below a
 checkpoint-sync anchor remain outside the law. -/
-structure EpochCheckpointClosure
+structure EpochCheckpointProjectionLaws
     (anchor : Checkpoint Root)
     (Accepted : Root → Prop)
     (C : Root → Epoch → Checkpoint Root) : Prop where
@@ -65,7 +65,7 @@ carrier-local justification certificate.
 
 This does not constrain arbitrary included attestations or links with an
 uncertified source. -/
-structure ExactIncludedLinkValidity
+structure IncludedLinkCheckpointAgreement
     (E : Execution Root)
     (included : Root → Attestation Root → Prop)
     (anchor : Checkpoint Root)
@@ -87,16 +87,16 @@ structure ExactIncludedLinkValidity
 
 variable {E : Execution Root}
 
-namespace CausalCarrierFFGState
+namespace AcceptedBlockFFGState
 
 /-- Production accepted-state instance of the generic exact-link law. -/
-abbrev ExactLinkValidity
-    {ext : Externals Root}
-    (S : CausalCarrierFFGState cfg ext E anchor) : Prop :=
-  ExactIncludedLinkValidity cfg E S.includedAttestations.Included anchor
-    S.C (E.AcceptedRoot cfg ext)
+abbrev LinkCheckpointAgreement
+    {ext : BeaconFunctionInterface Root}
+    (S : AcceptedBlockFFGState cfg ext E anchor) : Prop :=
+  IncludedLinkCheckpointAgreement cfg E S.includedAttestations.Included anchor
+    S.checkpoint_at_epoch (E.RootKnownInScheduledPrefix cfg ext)
 
-end CausalCarrierFFGState
+end AcceptedBlockFFGState
 
 end FastConfirmation.Spec
 

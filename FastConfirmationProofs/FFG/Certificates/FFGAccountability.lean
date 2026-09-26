@@ -20,7 +20,7 @@ as arbitrary store-level ancestry laws.
 namespace FastConfirmation.Spec
 
 variable {Root : Type*} [LinearOrder Root] [Inhabited Root]
-variable (cfg : Config) (ext : Externals Root)
+variable (cfg : Config) (ext : BeaconFunctionInterface Root)
 
 /-- The exact execution assumptions used by concrete Casper accountability.
 In particular this bundle contains no `JustificationInterface` field and no

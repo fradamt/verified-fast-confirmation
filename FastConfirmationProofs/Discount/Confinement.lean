@@ -16,7 +16,7 @@ This module contains `le_guarded_sub_add`, `le_compute_adversarial_weight_add_eq
 namespace FastConfirmation.Spec
 
 variable {Root : Type*} [LinearOrder Root] [Inhabited Root]
-variable (cfg : Config) (ext : Externals Root)
+variable (cfg : Config) (ext : BeaconFunctionInterface Root)
 
 /-! ## Part 1 — the adversarial-weight bridges (`hAhi`/`hAlo`) -/
 

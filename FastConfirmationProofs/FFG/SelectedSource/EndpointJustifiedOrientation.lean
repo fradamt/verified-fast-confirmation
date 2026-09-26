@@ -11,7 +11,7 @@ history induction, with support only before the consuming endpoint.
 
 namespace FastConfirmation.Spec
 variable {Root : Type*} [LinearOrder Root] [Inhabited Root]
-variable (cfg : Config) (ext : Externals Root)
+variable (cfg : Config) (ext : BeaconFunctionInterface Root)
 namespace Execution
 variable {E : Execution Root}
 
@@ -19,10 +19,10 @@ variable {E : Execution Root}
 This uses the strict endpoint-slot induction, not the full safety theorem. -/
 theorem currentResult_supportBefore_of_endpoint_induction
     (hA : SelectedMarginAssumptions cfg ext E)
-    (B : CausalPrefixFFGInterpretation cfg ext E)
-    (hT : E.ScheduledPrefixPremises cfg ext)
+    (B : ScheduledFFGInterpretation cfg ext E)
+    (hT : E.ScheduledExecutionPremises cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
-    (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg) (E := E) (anchor := B.anchor))
+    (hboundary : InitialAnchorAtEpochBoundary (cfg := cfg) (E := E) (anchor := B.anchor))
     {v : ValidatorIndex} (hv : v ∈ E.honest) {q : ℕ}
     (hqH : E.WithinHorizon cfg q)
     (query : FastConfirmationStore Root)
@@ -73,12 +73,12 @@ only earlier votes. The historical branch has a separate producer; the
 current crossing and previous-result branches do not read helper provisos. -/
 theorem preQueryVoteSelectedSIRBracketAt_of_earlierVotes
     (hA : SelectedMarginAssumptions cfg ext E)
-    (B : CausalPrefixFFGInterpretation cfg ext E)
-    (hT : E.ScheduledPrefixPremises cfg ext)
+    (B : ScheduledFFGInterpretation cfg ext E)
+    (hT : E.ScheduledExecutionPremises cfg ext)
     (hfloor : cfg.effective_balance_increment ≤ E.weight (E.currentTargetAnchorActive cfg))
     (hfit : EpochEndsFitUint64 cfg)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
-    (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg) (E := E) (anchor := B.anchor))
+    (hboundary : InitialAnchorAtEpochBoundary (cfg := cfg) (E := E) (anchor := B.anchor))
     {v : ValidatorIndex} (hv : v ∈ E.honest) {n : ℕ}
     (hqH : E.WithinHorizon cfg (n + 1))
     (query : FastConfirmationStore Root)
@@ -162,7 +162,7 @@ theorem preQueryVoteSelectedSIRBracketAt_of_earlierVotes
           hsupport (by simpa only [hquery] using hepoch)
       · obtain ⟨e, htarget, ⟨hpayload⟩⟩ := hhistorical hcurrent hcross
         obtain ⟨ast, ablk, hgen, hslot, _⟩ := hT.genesis_structure
-        obtain ⟨hJ⟩ := CausalPrefixFFGInterpretation.endpointJustified_certificate
+        obtain ⟨hJ⟩ := ScheduledFFGInterpretation.endpointJustified_certificate
           cfg ext B ⟨ast, ablk, hgen, hslot⟩ hanchor (E.store_causal cfg ext w m)
         cases hcall : hpayload.original_call with
         | none =>
@@ -226,13 +226,13 @@ carried input `SafeFrom`, selected-result relay/IH, the concrete child edge at
 the endpoint, and noncoverage.  No FFG pipeline, filter conclusion, or
 historical-certificate premise remains. -/
 theorem actualCall_strictSelected_result_and_child_ancestor_of_endpointJustified
-    (B : CausalPrefixFFGInterpretation cfg ext E)
-    (hT : E.ScheduledPrefixPremises cfg ext)
-    (hC : E.CompletedFCRCallPremises cfg ext)
+    (B : ScheduledFFGInterpretation cfg ext E)
+    (hT : E.ScheduledExecutionPremises cfg ext)
+    (hC : E.ScheduledFCRCallPremises cfg ext)
     (hfit : EpochEndsFitUint64 cfg)
     (hdomain : SelectedMarginDomain cfg ext E)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
-    (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
+    (hboundary : InitialAnchorAtEpochBoundary (cfg := cfg)
       (E := E) (anchor := B.anchor))
     {v : ValidatorIndex} (hv : v ∈ E.honest) {n : Nat}
     (hcall : E.IsScheduledFCRCallAt cfg ext v n)
@@ -379,7 +379,7 @@ theorem actualCall_strictSelected_result_and_child_ancestor_of_endpointJustified
     (E.postAnchorHonestVoteTargetWalkDomain_of_acceptedGlobalTrajectory
       cfg ext B hT hanchor hboundary) hw hHm hslotQM hcM hselectedC'
     hselectedKnown' hIH' hpre
-    (CausalPrefixFFGInterpretation.endpointJustificationOriginAt
+    (ScheduledFFGInterpretation.endpointJustificationOriginAt
       cfg ext B hT hanchor hboundary) hnotCovered
   refine ⟨hout.1, ?_⟩
   have hsecond := hout.2

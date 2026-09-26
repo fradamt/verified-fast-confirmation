@@ -8,7 +8,7 @@ public import FastConfirmationProofs.Checkpoints.DeadlineBlockAdmissibility
 namespace FastConfirmation.Spec
 
 variable {Root : Type*} [LinearOrder Root] [Inhabited Root]
-variable (cfg : Config) (ext : Externals Root)
+variable (cfg : Config) (ext : BeaconFunctionInterface Root)
 
 namespace Execution
 
@@ -17,11 +17,11 @@ variable {E : Execution Root}
 /-- Exact checkpoint compatibility discharges the permanent exclusion branch
 of deadline block delivery. All times remain inside the supplied horizon. -/
 theorem deadline_root_known_of_checkpointCompatible
-    (B : CausalPrefixFFGInterpretation cfg ext E)
-    (hT : E.ScheduledPrefixPremises cfg ext)
+    (B : ScheduledFFGInterpretation cfg ext E)
+    (hT : E.ScheduledExecutionPremises cfg ext)
     (hrelay : DeadlineBlockRelay cfg ext E)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
-    (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
+    (hboundary : InitialAnchorAtEpochBoundary (cfg := cfg)
       (E := E) (anchor := B.anchor))
     {v w : ValidatorIndex} {n m : ℕ} {r : Root}
     (hv : v ∈ E.honest) (hw : w ∈ E.honest)

@@ -11,7 +11,7 @@ public import FastConfirmationProofs.Checkpoints.FinalizedBeforeVoteJustificatio
 namespace FastConfirmation.Spec
 
 variable {Root : Type*} [LinearOrder Root] [Inhabited Root]
-variable (cfg : Config) (ext : Externals Root)
+variable (cfg : Config) (ext : BeaconFunctionInterface Root)
 
 namespace Execution
 
@@ -21,7 +21,7 @@ variable {E : Execution Root}
 also known there. The proof follows concrete parent edges, including paths
 below the receiver's finalized checkpoint. -/
 theorem votePathAdmissible_of_receiver_known
-    (hT : E.ScheduledPrefixPremises cfg ext)
+    (hT : E.ScheduledExecutionPremises cfg ext)
     {v w : ValidatorIndex} {n m : ℕ} {slot : Slot} {r : Root}
     (hwalk : WalkKnown (E.store cfg ext v n) slot r)
     (hknown : r ∈ (E.store cfg ext w m).block_roots) :
@@ -47,10 +47,10 @@ theorem votePathAdmissible_of_receiver_known
 walk reaches the receiver's finalized root. Its remaining ancestors are
 already known at the receiver. This includes walks below the finalized epoch. -/
 theorem votePathAdmissible_of_checkpointCompatible
-    (B : CausalPrefixFFGInterpretation cfg ext E)
-    (hT : E.ScheduledPrefixPremises cfg ext)
+    (B : ScheduledFFGInterpretation cfg ext E)
+    (hT : E.ScheduledExecutionPremises cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
-    (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
+    (hboundary : InitialAnchorAtEpochBoundary (cfg := cfg)
       (E := E) (anchor := B.anchor))
     {v w : ValidatorIndex} {n m : ℕ} {slot : Slot} {r : Root}
     (hHm : E.WithinHorizon cfg m)
@@ -97,10 +97,10 @@ theorem votePathAdmissible_of_checkpointCompatible
 older than the checkpoint boundary, it is an ancestor of the finalized root
 and is already known at the receiver. This covers reused checkpoint roots. -/
 theorem votePathAdmissible_of_checkpointCompatible_descendant
-    (B : CausalPrefixFFGInterpretation cfg ext E)
-    (hT : E.ScheduledPrefixPremises cfg ext)
+    (B : ScheduledFFGInterpretation cfg ext E)
+    (hT : E.ScheduledExecutionPremises cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
-    (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
+    (hboundary : InitialAnchorAtEpochBoundary (cfg := cfg)
       (E := E) (anchor := B.anchor))
     {v w : ValidatorIndex} {n m : ℕ} {slot : Slot} {r tip : Root}
     (hHm : E.WithinHorizon cfg m)

@@ -30,7 +30,7 @@ No theorem in this file assumes a confirmation, filter, head, ancestry, or
 namespace FastConfirmation.Spec
 
 variable {Root : Type*} [LinearOrder Root] [Inhabited Root]
-variable (cfg : Config) (ext : Externals Root)
+variable (cfg : Config) (ext : BeaconFunctionInterface Root)
 
 namespace Execution
 
@@ -44,8 +44,8 @@ which carries its certificate.
 This is the carrier-local form of the timing argument used by reset
 classification.  It does not mention the current epoch of any store. -/
 theorem includedCertifiedFinalized_epoch_lt_acceptedCarrierBlock
-    (B : CausalPrefixFFGInterpretation cfg ext E)
-    (hT : E.ScheduledPrefixPremises cfg ext)
+    (B : ScheduledFFGInterpretation cfg ext E)
+    (hT : E.ScheduledExecutionPremises cfg ext)
     {v : ValidatorIndex} {q : ℕ} {carrier : Root}
     (hcarrier : carrier ∈
       (E.store cfg ext v q).block_roots)
@@ -94,7 +94,7 @@ theorem includedCertifiedFinalized_epoch_lt_acceptedCarrierBlock
       (hwalkK containing hcontainingKnown carrier hcarrier) hancestor
   have hcontainingBlock : (E.store cfg ext v q).blocks containing =
       hevidence.carrier_message :=
-    (Execution.CausalStore.acceptedBlockAt_iff_eq cfg ext E
+    (Execution.ScheduledPrefixStore.acceptedBlockAt_iff_eq cfg ext E
       hT.wellFormed (E.store_causal cfg ext v q) hcontainingKnown).mp
         hevidence.carrier_accepted
   have hattestationBeforeCarrier : a.data.slot <
@@ -121,12 +121,12 @@ theorem includedCertifiedFinalized_epoch_lt_acceptedCarrierBlock
 /-- Every accepted store-global justified field is no older than the trusted
 anchor. -/
 theorem anchor_epoch_le_acceptedGlobalJustified
-    (B : CausalPrefixFFGInterpretation cfg ext E)
+    (B : ScheduledFFGInterpretation cfg ext E)
     (hgen : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
       E.genesis_store = get_forkchoice_store cfg ast ablk ∧
         ast.slot = ablk.message.slot)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
-    {store : Store Root} (hstore : E.CausalStore cfg ext store) :
+    {store : Store Root} (hstore : E.ScheduledPrefixStore cfg ext store) :
     B.anchor.epoch ≤ store.justified_checkpoint.epoch := by
   rcases B.globalJustified_anchor_or_AUEvidence hgen hanchor hstore with
     hfieldAnchor | hevidence
@@ -136,7 +136,7 @@ theorem anchor_epoch_le_acceptedGlobalJustified
     exact CertifiedJustified.anchor_epoch_le (cfg := cfg)
       (IncludedCertifiedJustified.toCertifiedJustified
         (cfg := cfg)
-        (Execution.CausalCarrierAttestationRelation.relation
+        (Execution.AcceptedBlockAttestationInclusion.relation
           cfg ext E B.state.includedAttestations) hcertificate)
 
 /-- Once the accepted carrier of a store-global finalized selector is known
@@ -147,14 +147,14 @@ This is the semantic "carrier processing" fact needed by finalized reset
 takeover.  The premise is only carrier membership, not same-root state
 adoption or a pre-assumed finalized/justified ordering. -/
 theorem finalized_epoch_le_justified_of_acceptedCarrierKnown
-    (B : CausalPrefixFFGInterpretation cfg ext E)
-    (hT : E.ScheduledPrefixPremises cfg ext)
+    (B : ScheduledFFGInterpretation cfg ext E)
+    (hT : E.ScheduledExecutionPremises cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     {v w : ValidatorIndex} {q m : ℕ}
     (hcarriers : ∀ r,
       r ∈ (E.store cfg ext v q).block_roots →
-      ((E.store cfg ext v q).finalized_checkpoint = B.state.GF r ∨
-        (E.store cfg ext v q).finalized_checkpoint = B.state.GUF r) →
+      ((E.store cfg ext v q).finalized_checkpoint = B.state.realized_finalized r ∨
+        (E.store cfg ext v q).finalized_checkpoint = B.state.unrealized_finalized r) →
         r ∈ (E.store cfg ext w m).block_roots) :
     (E.store cfg ext v q).finalized_checkpoint.epoch ≤
       (E.store cfg ext w m).justified_checkpoint.epoch := by
@@ -164,9 +164,9 @@ theorem finalized_epoch_le_justified_of_acceptedCarrierKnown
       E.genesis_store = get_forkchoice_store cfg ast ablk ∧
         ast.slot = ablk.message.slot :=
     ⟨ast, ablk, hgenEq, hslot⟩
-  have hsource : E.CausalStore cfg ext (E.store cfg ext v q) :=
+  have hsource : E.ScheduledPrefixStore cfg ext (E.store cfg ext v q) :=
     E.store_causal cfg ext v q
-  have hendpoint : E.CausalStore cfg ext (E.store cfg ext w m) :=
+  have hendpoint : E.ScheduledPrefixStore cfg ext (E.store cfg ext w m) :=
     E.store_causal cfg ext w m
   have hmax := hendpoint.acceptedFFGJustifiedMaximality
     B hT.whole_seconds hgenShort hanchor
@@ -184,7 +184,7 @@ theorem finalized_epoch_le_justified_of_acceptedCarrierKnown
       Execution.AcceptedCarrierIn.of_causal_known hendpoint
         htipEndpointKnown
     rw [hfieldGF]
-    exact (B.state.gf_epoch_le_gj tip htipSource.acceptedRoot).trans
+    exact (B.state.realized_finalized_epoch_le_realized_justified tip htipSource.acceptedRoot).trans
       (hmax.ledger.gj_epoch_le_justified tip htipEndpoint)
   · have htipEndpointKnown : tip ∈
         (E.store cfg ext w m).block_roots :=
@@ -193,24 +193,24 @@ theorem finalized_epoch_le_justified_of_acceptedCarrierKnown
         (cfg := cfg) (ext := ext) (E.store cfg ext w m) tip :=
       Execution.AcceptedCarrierIn.of_causal_known hendpoint
         htipEndpointKnown
-    rcases B.state.guf_evidence tip htipSource.acceptedRoot with
+    rcases B.state.unrealized_finalized_evidence tip htipSource.acceptedRoot with
       hgufAnchor | hcertificate
     · rw [hfieldGUF, hgufAnchor]
       exact E.anchor_epoch_le_acceptedGlobalJustified cfg ext B
         hgenShort hanchor hendpoint
     · obtain ⟨hcertificate⟩ := hcertificate
-      have hgufLt : (B.state.GUF tip).epoch <
+      have hgufLt : (B.state.unrealized_finalized tip).epoch <
           compute_epoch_at_slot cfg
             ((E.store cfg ext v q).blocks tip).slot :=
         E.includedCertifiedFinalized_epoch_lt_acceptedCarrierBlock
           cfg ext B hT htipSource.known hcertificate
-      have htipAt : E.AcceptedBlockAt cfg ext tip
+      have htipAt : E.BlockKnownInScheduledPrefix cfg ext tip
           ((E.store cfg ext v q).blocks tip) :=
         E.acceptedBlockAt_of_causal_known cfg ext hsource htipSource.known
-      have hgufLeGJ : (B.state.GUF tip).epoch ≤
-          (B.state.GJ tip).epoch :=
-        B.state.gj_max htipAt
-          (B.state.guf_mem tip htipSource.acceptedRoot) hgufLt
+      have hgufLeGJ : (B.state.unrealized_finalized tip).epoch ≤
+          (B.state.realized_justified tip).epoch :=
+        B.state.realized_justified_max htipAt
+          (B.state.unrealized_finalized_mem tip htipSource.acceptedRoot) hgufLt
       rw [hfieldGUF]
       exact hgufLeGJ.trans
         (hmax.ledger.gj_epoch_le_justified tip htipEndpoint)

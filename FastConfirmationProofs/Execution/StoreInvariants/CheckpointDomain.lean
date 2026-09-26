@@ -45,7 +45,7 @@ theorem of_eq {store store' : Store Root} (h : CheckpointStatesExact store)
 end CheckpointStatesExact
 
 variable [LinearOrder Root]
-variable (cfg : Config) (ext : Externals Root)
+variable (cfg : Config) (ext : BeaconFunctionInterface Root)
 
 /-- Caching a checkpoint preserves exactness: the map update and key insertion
 have the same target. -/

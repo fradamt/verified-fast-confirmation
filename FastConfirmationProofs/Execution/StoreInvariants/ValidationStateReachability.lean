@@ -14,7 +14,7 @@ block-state read into a keyed, reachable validation state.
 namespace FastConfirmation.Spec
 
 variable {Root : Type*} [LinearOrder Root] [Inhabited Root]
-variable (cfg : Config) (ext : Externals Root)
+variable (cfg : Config) (ext : BeaconFunctionInterface Root)
 
 def UnknownBlockStatesDefault (store : Store Root) : Prop :=
   ∀ root, root ∉ store.block_roots → store.block_states root = default

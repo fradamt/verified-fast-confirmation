@@ -26,7 +26,7 @@ check.
 namespace FastConfirmation.Spec
 
 variable {Root : Type*} [LinearOrder Root] [Inhabited Root]
-variable (cfg : Config) (ext : Externals Root)
+variable (cfg : Config) (ext : BeaconFunctionInterface Root)
 
 namespace Execution
 
@@ -43,17 +43,17 @@ positive AU evidence then supplies the included upper checkpoint required by
 cross-certificate accountability.  No lineage, source visibility, filter
 membership, selected safety, or finalized-placement premise occurs. -/
 theorem finalizedRoot_eq_checkpointBlock_of_causalLag
-    {B : CausalPrefixFFGInterpretation cfg ext E}
+    {B : ScheduledFFGInterpretation cfg ext E}
     (hgen : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
       E.genesis_store = get_forkchoice_store cfg ast ablk ∧
         ast.slot = ablk.message.slot)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hLag : E.CausalRealizedFinalizationLag cfg ext B)
-    (P : EpochCheckpointClosure B.anchor
-      (E.AcceptedRoot cfg ext) B.state.C)
-    (V : B.state.ExactLinkValidity)
+    (P : EpochCheckpointProjectionLaws B.anchor
+      (E.RootKnownInScheduledPrefix cfg ext) B.state.checkpoint_at_epoch)
+    (V : B.state.LinkCheckpointAgreement)
     (hanchorExact : B.anchor =
-      B.state.C B.anchor.root B.anchor.epoch)
+      B.state.checkpoint_at_epoch B.anchor.root B.anchor.epoch)
     (hacc : CheckpointCertificateAccountability cfg E B.anchor)
     {store : Store Root} {selected : Root}
     (h : E.AcceptedRetainedPhaseSourceCarrierAt
@@ -80,12 +80,12 @@ theorem finalizedRoot_eq_checkpointBlock_of_causalLag
         (get_voting_source cfg store h.tip).epoch := by
       exact Nat.le_of_add_le_add_right
         (hfinalizedLag.trans h.source_recent)
-    have htipAccepted : E.AcceptedRoot cfg ext h.tip :=
+    have htipAccepted : E.RootKnownInScheduledPrefix cfg ext h.tip :=
       E.acceptedRoot_of_causal_known cfg ext h.store_causal h.tip_known
     have hprojection :=
       (B.causalStoreGlobalProjection hgen hanchor h.store_causal).blockLocal
-    have hselector : get_voting_source cfg store h.tip = B.state.GJ h.tip ∨
-        get_voting_source cfg store h.tip = B.state.GU h.tip :=
+    have hselector : get_voting_source cfg store h.tip = B.state.realized_justified h.tip ∨
+        get_voting_source cfg store h.tip = B.state.unrealized_justified h.tip :=
       hprojection.getVotingSource_eq_gj_or_gu cfg ext h.tip_known
     let hdynamic : AcceptedDynamicFinalizedPlacementAt
         cfg ext B.state store h.tip :=

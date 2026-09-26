@@ -30,7 +30,7 @@ outside their finite domains.
 namespace FastConfirmation.Spec
 
 variable {Root : Type*} [LinearOrder Root] [Inhabited Root]
-variable (cfg : Config) (ext : Externals Root)
+variable (cfg : Config) (ext : BeaconFunctionInterface Root)
 
 namespace Execution
 
@@ -71,7 +71,7 @@ block-local slashing set.  The proof uses the retained inclusion evidence;
 it does not assume a broad block-body completeness principle. -/
 theorem honest_not_mem_paperA32SlashableOnChain
     (hhb : HonestBehavior cfg ext E)
-    (V : PaperA32StateView cfg E)
+    (V : CheckpointInclusionView cfg E)
     {tip : Root} {i : ValidatorIndex} (hi : i ∈ E.honest) :
     i ∉ V.slashableOnChain cfg tip := by
   classical
@@ -113,14 +113,14 @@ theorem paperA32LinkSupportAtCore_of_concreteHonestTargetVotes
     (hgenTime : E.genesis_store.genesis_time ≤ E.genesis_store.time)
     {deadline : Slot} {target : Checkpoint Root}
     (Q : ConcreteA32QuorumBefore cfg ext E deadline target)
-    {V : PaperA32StateView cfg E}
+    {V : CheckpointInclusionView cfg E}
     {w : ValidatorIndex} (hw : w ∈ E.honest) {m : ℕ}
     (hHm : E.WithinHorizon cfg m)
     (hdeadline : deadline ≤ E.slot_at cfg m)
     {b' : Root}
     (hknown : target.root ∈ (E.store cfg ext w m).block_roots)
     (hkeyed : target ∈ (E.store cfg ext w m).checkpoint_state_keys) :
-    Nonempty (PaperA32LinkSupportAtCore cfg ext V
+    Nonempty (SourceTargetLinkSupportAt cfg ext V
       w m b' Q.source target) := by
   refine ⟨{
     view_within_horizon := hHm
@@ -188,7 +188,7 @@ theorem paperA32SupportThroughoutEpochCore_of_concreteQuorum
       ast.slot = ablk.message.slot ∧
       ablk.message.parent_root ≠ ablk.root)
     (hwalkDomain : E.PostAnchorHonestVoteTargetWalkDomain cfg ext)
-    {V : PaperA32StateView cfg E}
+    {V : CheckpointInclusionView cfg E}
     {v : ValidatorIndex} (hv : v ∈ E.honest) {q : ℕ}
     (hqH : E.WithinHorizon cfg q)
     {b : Root} {e : Epoch}
@@ -198,8 +198,8 @@ theorem paperA32SupportThroughoutEpochCore_of_concreteQuorum
     (Q : ConcreteA32QuorumBefore cfg ext E
       (compute_start_slot_at_epoch cfg (e + 1)) (V.C b e))
     (hsourceQuery : Q.source =
-      V.VSAt cfg (E.store cfg ext v q) b e) :
-    PaperA32SupportThroughoutEpochCore cfg ext V b e := by
+      V.voting_source_at cfg (E.store cfg ext v q) b e) :
+    SourceTargetSupportThroughoutEpoch cfg ext V b e := by
   classical
   obtain ⟨ast, ablk, hgenEq, hgenSlot, hanchorParent⟩ := hgen
   have hgws : WellFormedStore E.genesis_store := by
@@ -308,9 +308,9 @@ theorem paperA32SupportThroughoutEpochCore_of_concreteQuorum
       hvoteHeadKnown hvoteWalk hdeliveryLe hHm
     simpa only [a, voteStore, vote.target_eq] using hreceived
   have hsourceView : Q.source =
-      V.VSAt cfg (E.store cfg ext w m) b e := by
+      V.voting_source_at cfg (E.store cfg ext w m) b e := by
     apply hsourceQuery.trans
-    simp only [PaperA32StateView.VSAt]
+    simp only [CheckpointInclusionView.voting_source_at]
     rw [hbEpochQuery, hbEpochView]
   have hsupport := E.paperA32LinkSupportAtCore_of_concreteHonestTargetVotes
     cfg ext hhb hsync hpaths hec hdiv hgenTime Q (V := V)
@@ -335,7 +335,7 @@ theorem accepted_paperA32SupportThroughoutEpoch_of_concreteQuorum
       ablk.message.parent_root ≠ ablk.root)
     (hwalkDomain : E.PostAnchorHonestVoteTargetWalkDomain cfg ext)
     {anchor : Checkpoint Root}
-    {S : CausalCarrierFFGState cfg ext E anchor}
+    {S : AcceptedBlockFFGState cfg ext E anchor}
     {v : ValidatorIndex} (hv : v ∈ E.honest) {q : ℕ}
     (hqH : E.WithinHorizon cfg q)
     {b : Root} {e : Epoch}
@@ -343,10 +343,10 @@ theorem accepted_paperA32SupportThroughoutEpoch_of_concreteQuorum
     (hbEpochQuery : get_block_epoch cfg (E.store cfg ext v q) b = e)
     (hcanonical : E.CanonicalThroughoutEpoch cfg ext b (e + 1))
     (Q : ConcreteA32QuorumBefore cfg ext E
-      (compute_start_slot_at_epoch cfg (e + 1)) (S.C b e))
+      (compute_start_slot_at_epoch cfg (e + 1)) (S.checkpoint_at_epoch b e))
     (hsourceQuery : Q.source =
-      S.VSAt cfg ext (E.store cfg ext v q) b e) :
-    S.PaperA32SupportThroughoutEpoch cfg ext b e :=
+      S.voting_source_at cfg ext (E.store cfg ext v q) b e) :
+    S.SourceTargetSupportThroughoutEpoch cfg ext b e :=
   E.paperA32SupportThroughoutEpochCore_of_concreteQuorum cfg ext
     hwf hhb hsync hpaths hec hdiv hgen hwalkDomain hv hqH hbQuery
     hbEpochQuery hcanonical Q hsourceQuery
@@ -368,9 +368,9 @@ theorem accepted_paperA32IncludedAtTip_of_concreteQuorum
       ablk.message.parent_root ≠ ablk.root)
     (hwalkDomain : E.PostAnchorHonestVoteTargetWalkDomain cfg ext)
     {anchor : Checkpoint Root}
-    {S : CausalCarrierFFGState cfg ext E anchor}
-    (hcoh : FFGSelectorsMatchBeaconStates cfg ext S)
-    (hpaper : S.PaperA32Inclusion cfg ext)
+    {S : AcceptedBlockFFGState cfg ext E anchor}
+    (hcoh : FFGStateReadAgreement cfg ext S)
+    (hpaper : S.EventualCheckpointInclusion cfg ext)
     {v : ValidatorIndex} (hv : v ∈ E.honest) {q : ℕ}
     (hqH : E.WithinHorizon cfg q)
     {b : Root} {e : Epoch}
@@ -378,15 +378,15 @@ theorem accepted_paperA32IncludedAtTip_of_concreteQuorum
     (hbEpochQuery : get_block_epoch cfg (E.store cfg ext v q) b = e)
     (hcanonical : E.CanonicalThroughoutEpoch cfg ext b (e + 1))
     (Q : ConcreteA32QuorumBefore cfg ext E
-      (compute_start_slot_at_epoch cfg (e + 1)) (S.C b e))
+      (compute_start_slot_at_epoch cfg (e + 1)) (S.checkpoint_at_epoch b e))
     (hsourceQuery : Q.source =
-      S.VSAt cfg ext (E.store cfg ext v q) b e)
+      S.voting_source_at cfg ext (E.store cfg ext v q) b e)
     {w : ValidatorIndex} (hw : w ∈ E.honest) {m : ℕ}
     (hHm : E.WithinHorizon cfg m)
     (hboundary : compute_start_slot_at_epoch cfg (e + 2) ≤
       E.slot_at cfg m) :
     ∃ seed : Root,
-      PaperA32IncludedAtTip cfg (S.paperA32Inputs cfg ext)
+      PaperA32IncludedAtTip cfg (S.checkpoint_inclusion_view cfg ext)
         (E.store cfg ext w m) e b seed := by
   have hsupport :=
     E.accepted_paperA32SupportThroughoutEpoch_of_concreteQuorum cfg ext

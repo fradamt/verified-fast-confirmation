@@ -54,7 +54,7 @@ the `harm`/`hdelta`/`hbside`/`hsib` legs at any
 namespace FastConfirmation.Spec
 
 variable {Root : Type*} [LinearOrder Root] [Inhabited Root]
-variable (cfg : Config) (ext : Externals Root)
+variable (cfg : Config) (ext : BeaconFunctionInterface Root)
 
 /-! ## Section 1 — the pure-ℕ dominance cores
 

@@ -8,7 +8,7 @@ public import FastConfirmationModel.Execution.Stake
 
 namespace FastConfirmation.Spec
 variable {Root : Type*} [LinearOrder Root] [Inhabited Root]
-variable (cfg : Config) (ext : Externals Root)
+variable (cfg : Config) (ext : BeaconFunctionInterface Root)
 /-- Honest validator behavior (validator.md "Attesting", plus the
 no-equivocation/no-forgery discipline the slashing rules enforce). -/
 structure HonestBehavior (E : Execution Root) : Prop where

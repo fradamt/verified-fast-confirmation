@@ -16,7 +16,7 @@ Each row states a choice in the executable or paper model, why it is used, and t
 │                                       │ unchanged.                                                       │ Accepted runs exclude that failed call's resulting store.                         │
 │ Explicit loop fuel                    │ Makes recursive Python walks total.                              │ Equivalence needs a bound on reachable parent walks.                              │
 │ Projected BeaconState and Store       │ Keeps only fields used by the rule and checks.                   │ Unused source-state behavior is outside the model.                                │
-│ Opaque Externals                      │ Separates consensus logic from execution engine and              │ BeaconExternalsPremises must be justified by an implementation.                   │
+│ Opaque BeaconFunctionInterface                      │ Separates consensus logic from execution engine and              │ BeaconExternalsPremises must be justified by an implementation.                   │
 │                                       │ cryptography.                                                    │                                                                                   │
 │ Non-optimistic payload import         │ Every stored payload passed envelope validation, including       │ Optimistic fork-choice behavior is outside the theorem.                           │
 │                                       │ VALID.                                                           │                                                                                   │
@@ -124,8 +124,8 @@ The source fork is `fradamt/consensus-specs` at tag `fcr-gloas-fix` (`13f391516`
 
 ## Derived prediction support
 
-`CompletedFCRCallPremises` has no prediction-support field.
-`FCRPredictionSupportAt` remains internal proof vocabulary. For a current-epoch
+`ScheduledFCRCallPremises` has no prediction-support field.
+`SelectedPredictionVoteSupport` remains internal proof vocabulary. For a current-epoch
 crossing it states exact target agreement. For a previous-epoch result it states
 that each later honest target descends from the result in the execution parent
 graph. It permits different target checkpoints.

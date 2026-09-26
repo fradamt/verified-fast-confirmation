@@ -109,7 +109,7 @@ private theorem payloadLE_foldl {α : Type*} {f : Store Root → α → Store Ro
   rcases hmi : s.latest_messages i with _ | message <;> split_ifs <;> rfl
 
 variable [LinearOrder Root] [Inhabited Root]
-variable (cfg : Config) (ext : Externals Root)
+variable (cfg : Config) (ext : BeaconFunctionInterface Root)
 
 @[simp] theorem record_block_timeliness_payloads (store : Store Root) (root : Root) :
     (record_block_timeliness cfg store root).payloads = store.payloads := rfl

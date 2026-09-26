@@ -173,7 +173,7 @@ theorem get_current_slot_congr (cfg : Config) {s t : Store Root}
 Every handler except `on_attestation` leaves `latest_messages` untouched — the
 reverse-implication input to `LatestMessageProvenance.of_transfer`. -/
 
-variable [LinearOrder Root] [Inhabited Root] (cfg : Config) (ext : Externals Root)
+variable [LinearOrder Root] [Inhabited Root] (cfg : Config) (ext : BeaconFunctionInterface Root)
 
 omit [Inhabited Root] in
 theorem record_block_timeliness_latest (store : Store Root) (root : Root) :
@@ -301,7 +301,7 @@ theorem on_attestation_LMP {E : Execution Root} {sl : Slot}
     {a : Attestation Root} {ifb : Bool} (hcur : get_current_slot cfg store ≤ sl)
     (h : LatestMessageProvenance E cfg sl store)
     (hh : on_attestation cfg ext store a ifb = some store')
-    (hpost : E.HonestCausalStore cfg ext store') :
+    (hpost : E.HonestPrefixStoreWithinHorizon cfg ext store') :
     LatestMessageProvenance E cfg sl store' := by
   have hsb := on_attestation_sameBlocks cfg ext hh
   simp only [on_attestation] at hh
@@ -351,7 +351,7 @@ theorem apply_event_LMP {E : Execution Root} {sl : Slot} (hwf : WellFormedExecut
     (hprov : BlockProvenance E store) (hcur : get_current_slot cfg store ≤ sl)
     (h : LatestMessageProvenance E cfg sl store)
     (he : apply_event cfg ext store e = some store')
-    (hpost : E.HonestCausalStore cfg ext store') :
+    (hpost : E.HonestPrefixStoreWithinHorizon cfg ext store') :
     LatestMessageProvenance E cfg sl store' := by
   cases e with
   | block b =>
@@ -383,7 +383,7 @@ theorem LMP_foldl {E : Execution Root} {sl : Slot} (hwf : WellFormedExecution E)
       (∀ b, Event.block b ∈ l → IsScheduledBlock E b) →
       BlockProvenance E s → get_current_slot cfg s ≤ sl →
       LatestMessageProvenance E cfg sl s →
-      (∀ k, k ≤ l.length → E.HonestCausalStore cfg ext
+      (∀ k, k ≤ l.length → E.HonestPrefixStoreWithinHorizon cfg ext
         ((l.take k).foldl
           (fun store event => (apply_event cfg ext store event).getD store) s)) →
       LatestMessageProvenance E cfg sl
@@ -393,14 +393,14 @@ theorem LMP_foldl {E : Execution Root} {sl : Slot} (hwf : WellFormedExecution E)
   | nil => intro s _ _ _ h _; exact h
   | cons e l ih =>
     intro s hl hprov hcur h hcausal
-    have htail : ∀ k, k ≤ l.length → E.HonestCausalStore cfg ext
+    have htail : ∀ k, k ≤ l.length → E.HonestPrefixStoreWithinHorizon cfg ext
         ((l.take k).foldl
           (fun store event => (apply_event cfg ext store event).getD store)
           ((apply_event cfg ext s e).getD s)) := by
       intro k hk
       simpa only [List.take_succ_cons, List.foldl_cons] using
         hcausal (k + 1) (by simpa using Nat.succ_le_succ hk)
-    have hstep : E.HonestCausalStore cfg ext
+    have hstep : E.HonestPrefixStoreWithinHorizon cfg ext
         ((apply_event cfg ext s e).getD s) := by
       simpa using htail 0 (Nat.zero_le _)
     rw [List.foldl_cons]

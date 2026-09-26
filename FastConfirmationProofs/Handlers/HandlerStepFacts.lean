@@ -39,7 +39,7 @@ theorem walkClosure_of_min {store : Store Root} {P : Root} {sl : Slot}
   · exact absurd hlt (Nat.not_lt.mpr (hguard r hr hP))
 
 variable [LinearOrder Root] [Inhabited Root]
-variable (cfg : Config) (ext : Externals Root)
+variable (cfg : Config) (ext : BeaconFunctionInterface Root)
 
 /-! ## Section 2 — confirming-store descent from the loop inversions
 

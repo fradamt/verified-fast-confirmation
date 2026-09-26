@@ -22,7 +22,7 @@ verified slot is scheduled just after the exclusive public cutoff.
 namespace FastConfirmation.Spec
 
 variable {Root : Type*} [LinearOrder Root] [Inhabited Root]
-variable (cfg : Config) (ext : Externals Root)
+variable (cfg : Config) (ext : BeaconFunctionInterface Root)
 
 namespace Execution
 
@@ -52,7 +52,7 @@ theorem completedScheduledEventPrefix_store
 operational facts come from exact replay, while committee readback follows
 from external coherence for the completed execution store. -/
 theorem completedScheduledEventPrefix_accountingEvidence
-    (hT : E.ScheduledPrefixPremises cfg ext)
+    (hT : E.ScheduledExecutionPremises cfg ext)
     (v : ValidatorIndex) (hv : v ∈ E.honest)
     (n : ℕ) (hHn1 : E.WithinHorizon cfg (n + 1)) :
     E.CurrentTargetPrefixAccountingEvidence cfg ext
@@ -75,10 +75,10 @@ theorem completedScheduledEventPrefix_accountingEvidence
 
 /-- The pulled-up head state reads the static execution registry. -/
 theorem completedPrefix_pulledUpHead_validators
-    (B : CausalPrefixFFGInterpretation cfg ext E)
-    (hT : E.ScheduledPrefixPremises cfg ext)
+    (B : ScheduledFFGInterpretation cfg ext E)
+    (hT : E.ScheduledExecutionPremises cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
-    (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
+    (hboundary : InitialAnchorAtEpochBoundary (cfg := cfg)
       (E := E) (anchor := B.anchor))
     {v : ValidatorIndex} (hv : v ∈ E.honest)
     {n : ℕ} (hHn : E.WithinHorizon cfg n) :
@@ -103,10 +103,10 @@ theorem completedPrefix_pulledUpHead_validators
 current epoch.  In the no-pull branch this follows from the head-state slot
 bound and the negated pull guard. -/
 theorem completedPrefix_pulledUpHead_epoch
-    (B : CausalPrefixFFGInterpretation cfg ext E)
-    (hT : E.ScheduledPrefixPremises cfg ext)
+    (B : ScheduledFFGInterpretation cfg ext E)
+    (hT : E.ScheduledExecutionPremises cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
-    (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
+    (hboundary : InitialAnchorAtEpochBoundary (cfg := cfg)
       (E := E) (anchor := B.anchor))
     {v : ValidatorIndex} (hv : v ∈ E.honest)
     {n : ℕ} (hHn : E.WithinHorizon cfg n) :
@@ -170,7 +170,7 @@ theorem completedPrefix_pulledUpHead_epoch
 
 /-- The trusted anchor state's epoch belongs to the verified segment. -/
 theorem completedPrefix_anchor_epoch_within
-    (hT : E.ScheduledPrefixPremises cfg ext)
+    (hT : E.ScheduledExecutionPremises cfg ext)
     (hsv : StaticValidatorSet cfg E) :
     get_current_epoch cfg E.anchor_state < E.verification_horizon := by
   obtain ⟨ast, ablk, hgen, _hslot, _hparent⟩ := hT.genesis_structure
@@ -185,11 +185,11 @@ theorem completedPrefix_anchor_epoch_within
 balance.  Registry equality and the two in-horizon state epochs are enough;
 no selected-domain or justification interface is involved. -/
 theorem completedPrefix_pulledUpHead_totalActive
-    (B : CausalPrefixFFGInterpretation cfg ext E)
-    (hT : E.ScheduledPrefixPremises cfg ext)
+    (B : ScheduledFFGInterpretation cfg ext E)
+    (hT : E.ScheduledExecutionPremises cfg ext)
     (hsv : StaticValidatorSet cfg E)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
-    (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
+    (hboundary : InitialAnchorAtEpochBoundary (cfg := cfg)
       (E := E) (anchor := B.anchor))
     {v : ValidatorIndex} (hv : v ∈ E.honest)
     {n : ℕ} (hHn : E.WithinHorizon cfg n) :
@@ -282,12 +282,12 @@ accepted current-target gate producer.  The producer remains conditional on
 the executable Boolean and its matching whole-slot target-support proviso;
 neither is assumed by this theorem. -/
 noncomputable def completedPrefix_acceptedTargetGateProducerAt
-    (B : CausalPrefixFFGInterpretation cfg ext E)
-    (hT : E.ScheduledPrefixPremises cfg ext)
-    (hC : E.CompletedFCRCallPremises cfg ext)
+    (B : ScheduledFFGInterpretation cfg ext E)
+    (hT : E.ScheduledExecutionPremises cfg ext)
+    (hC : E.ScheduledFCRCallPremises cfg ext)
     (hfit : EpochEndsFitUint64 cfg)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
-    (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
+    (hboundary : InitialAnchorAtEpochBoundary (cfg := cfg)
       (E := E) (anchor := B.anchor))
     {v : ValidatorIndex} (hv : v ∈ E.honest)
     {n : ℕ} (_hcall : E.IsScheduledFCRCallAt cfg ext v n)
@@ -359,12 +359,12 @@ noncomputable def completedPrefix_acceptedTargetGateProducerAt
 interface required by the historical write-back induction. -/
 noncomputable def
     acceptedHistoricalA32CallInterfaces_of_completedPrefixes
-    (B : CausalPrefixFFGInterpretation cfg ext E)
-    (hT : E.ScheduledPrefixPremises cfg ext)
-    (hC : E.CompletedFCRCallPremises cfg ext)
+    (B : ScheduledFFGInterpretation cfg ext E)
+    (hT : E.ScheduledExecutionPremises cfg ext)
+    (hC : E.ScheduledFCRCallPremises cfg ext)
     (hfit : EpochEndsFitUint64 cfg)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
-    (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
+    (hboundary : InitialAnchorAtEpochBoundary (cfg := cfg)
       (E := E) (anchor := B.anchor)) :
     E.AcceptedHistoricalA32CallInterfaces cfg ext B := by
   intro v hv n hcall hHn1

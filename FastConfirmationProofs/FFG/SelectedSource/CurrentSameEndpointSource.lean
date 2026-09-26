@@ -33,7 +33,7 @@ cross-store justified monotonicity, takeover, or safety premise is used.
 namespace FastConfirmation.Spec
 
 variable {Root : Type*} [LinearOrder Root] [Inhabited Root]
-variable (cfg : Config) (ext : Externals Root)
+variable (cfg : Config) (ext : BeaconFunctionInterface Root)
 
 namespace Execution
 
@@ -45,7 +45,7 @@ variable {E : Execution Root}
 store-global justified checkpoint before the endpoint containing its accepted
 formation carrier. -/
 structure AcceptedHonestJustifiedTargetAt
-    (B : CausalPrefixFFGInterpretation cfg ext E)
+    (B : ScheduledFFGInterpretation cfg ext E)
     (w : ValidatorIndex) (m : Nat) (justified : Checkpoint Root) where
   validator : ValidatorIndex
   vote_slot : Slot
@@ -75,10 +75,10 @@ causal formation vote.  This is the justified analogue of
 `globalFinalized_honestTarget`; it keeps the target head and boundary walk and
 does not conclude any selected-branch orientation. -/
 theorem globalJustified_honestTarget
-    (B : CausalPrefixFFGInterpretation cfg ext E)
-    (hT : E.ScheduledPrefixPremises cfg ext)
+    (B : ScheduledFFGInterpretation cfg ext E)
+    (hT : E.ScheduledExecutionPremises cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
-    (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
+    (hboundary : InitialAnchorAtEpochBoundary (cfg := cfg)
       (E := E) (anchor := B.anchor))
     {w : ValidatorIndex} {m : Nat}
     (hne : (E.store cfg ext w m).justified_checkpoint ≠ B.anchor) :
@@ -105,9 +105,9 @@ theorem globalJustified_honestTarget
     simpa only [get_forkchoice_store] using hr
   have hboundary' : ablk.message.slot ≤
       compute_start_slot_at_epoch cfg B.anchor.epoch := by
-    simpa only [TrustedAnchorBoundaryAligned, hgenEq, hanchorRoot,
+    simpa only [InitialAnchorAtEpochBoundary, hgenEq, hanchorRoot,
       get_forkchoice_store, Function.update_self] using hboundary
-  have hstore : E.CausalStore cfg ext (E.store cfg ext w m) :=
+  have hstore : E.ScheduledPrefixStore cfg ext (E.store cfg ext w m) :=
     E.store_causal cfg ext w m
   rcases B.globalJustified_anchor_or_AUEvidence hgenShort hanchor hstore with
     hfieldAnchor | hevidence
@@ -126,7 +126,7 @@ theorem globalJustified_honestTarget
       CertifiedJustified.anchor_epoch_lt_of_ne (cfg := cfg)
         (IncludedCertifiedJustified.toCertifiedJustified
           (cfg := cfg)
-          (Execution.CausalCarrierAttestationRelation.relation
+          (Execution.AcceptedBlockAttestationInclusion.relation
             cfg ext E B.state.includedAttestations) hcertified) hne
     have htargetEpoch : (E.store cfg ext w m).justified_checkpoint.epoch =
         compute_epoch_at_slot cfg voteSlot := by
@@ -230,21 +230,21 @@ The clock premise is the ordinary query-to-endpoint ordering used by the
 selected-edge geometry.  Current-same equality is used only to preserve the
 numeric `+2` recency bound. -/
 theorem retainedAt_currentSameEndpoint
-    {B : CausalPrefixFFGInterpretation cfg ext E}
-    (hT : E.ScheduledPrefixPremises cfg ext)
+    {B : ScheduledFFGInterpretation cfg ext E}
+    (hT : E.ScheduledExecutionPremises cfg ext)
     (hsync : NextSlotSynchronyPremises cfg ext E)
     (hstatic : StaticValidatorSet cfg E)
     (hbyz : ByzantineWeightPremises cfg E)
     (hdomain : SelectedMarginDomain cfg ext E)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
-    (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
+    (hboundary : InitialAnchorAtEpochBoundary (cfg := cfg)
       (E := E) (anchor := B.anchor))
-    (hDelay : E.RealizedFinalizationDelay cfg ext B)
-    (P : EpochCheckpointClosure B.anchor
-      (E.AcceptedRoot cfg ext) B.state.C)
-    (V : B.state.ExactLinkValidity)
+    (hDelay : E.ImportedBlockFinalizationLag cfg ext B)
+    (P : EpochCheckpointProjectionLaws B.anchor
+      (E.RootKnownInScheduledPrefix cfg ext) B.state.checkpoint_at_epoch)
+    (V : B.state.LinkCheckpointAgreement)
     (hanchorExact : B.anchor =
-      B.state.C B.anchor.root B.anchor.epoch)
+      B.state.checkpoint_at_epoch B.anchor.root B.anchor.epoch)
     (hacc : CheckpointCertificateAccountability cfg E B.anchor)
     {v : ValidatorIndex} {q : Nat} {selected : Root}
     (h : E.AcceptedRecentCandidateSourceCarrierAt cfg ext B v q selected)
@@ -345,7 +345,7 @@ theorem retainedAt_currentSameEndpoint
           (E.store cfg ext h.validator h.second) h.tip).epoch + 2 := by
     rw [hcurrentSame]
     exact h.source_recent
-  have hendpointCausal : E.CausalStore cfg ext (E.store cfg ext w m) :=
+  have hendpointCausal : E.ScheduledPrefixStore cfg ext (E.store cfg ext w m) :=
     E.store_causal cfg ext w m
   have hendpointParent : ParentSlotLt (E.store cfg ext w m) :=
     E.store_parentSlotLt cfg ext hT.wellFormed hT.externals_coherence
@@ -375,13 +375,13 @@ end AcceptedRecentCandidateSourceCarrierAt
 
 /-- Every accepted store-global justified field has its carrier-local
 included certificate, including the trusted-anchor base case. -/
-theorem CausalPrefixFFGInterpretation.acceptedGlobalJustified_includedCertificate
-    (B : CausalPrefixFFGInterpretation cfg ext E)
+theorem ScheduledFFGInterpretation.acceptedGlobalJustified_includedCertificate
+    (B : ScheduledFFGInterpretation cfg ext E)
     (hgen : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
       E.genesis_store = get_forkchoice_store cfg ast ablk ∧
         ast.slot = ablk.message.slot)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
-    {store : Store Root} (hstore : E.CausalStore cfg ext store) :
+    {store : Store Root} (hstore : E.ScheduledPrefixStore cfg ext store) :
     ∃ carrier : Root, Nonempty (IncludedCertifiedJustified cfg E
       B.state.includedAttestations.Included B.anchor carrier
         store.justified_checkpoint) := by
@@ -403,16 +403,16 @@ past justified root, while certificate exactness places that justified root
 at its declared epoch boundary.  The ordinary store checkpoint-epoch bound
 gives the reverse inequality. -/
 theorem justified_epoch_eq_queryCurrent
-    {B : CausalPrefixFFGInterpretation cfg ext E}
-    (hT : E.ScheduledPrefixPremises cfg ext)
+    {B : ScheduledFFGInterpretation cfg ext E}
+    (hT : E.ScheduledExecutionPremises cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
-    (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
+    (hboundary : InitialAnchorAtEpochBoundary (cfg := cfg)
       (E := E) (anchor := B.anchor))
-    (P : EpochCheckpointClosure B.anchor
-      (E.AcceptedRoot cfg ext) B.state.C)
-    (V : B.state.ExactLinkValidity)
+    (P : EpochCheckpointProjectionLaws B.anchor
+      (E.RootKnownInScheduledPrefix cfg ext) B.state.checkpoint_at_epoch)
+    (V : B.state.LinkCheckpointAgreement)
     (hanchorExact : B.anchor =
-      B.state.C B.anchor.root B.anchor.epoch)
+      B.state.checkpoint_at_epoch B.anchor.root B.anchor.epoch)
     (hdomain : SelectedMarginDomain cfg ext E)
     {v : ValidatorIndex} {q : Nat} {selected : Root}
     (h : E.AcceptedPastJustifiedFallbackAt cfg ext v q selected)
@@ -431,7 +431,7 @@ theorem justified_epoch_eq_queryCurrent
       E.genesis_store = get_forkchoice_store cfg ast ablk ∧
         ast.slot = ablk.message.slot :=
     ⟨ast, ablk, hgen, hgenSlot⟩
-  have hpastCausal : E.CausalStore cfg ext past := by
+  have hpastCausal : E.ScheduledPrefixStore cfg ext past := by
     simpa only [past] using
       E.store_causal cfg ext h.past.validator h.past.second
   have hpastParent : ParentSlotLt past := by
@@ -455,14 +455,14 @@ theorem justified_epoch_eq_queryCurrent
   have hselectedPastEpoch : get_block_epoch cfg past selected = e := by
     simpa only [e, get_block_epoch, ← hselectedBlocks] using hcurrent
   obtain ⟨jCarrier, hjIncluded⟩ :=
-    CausalPrefixFFGInterpretation.acceptedGlobalJustified_includedCertificate
+    ScheduledFFGInterpretation.acceptedGlobalJustified_includedCertificate
       (E := E) cfg ext B hgenShort hanchor hpastCausal
   obtain ⟨hjIncluded⟩ := hjIncluded
   have hjCertified : CertifiedJustified cfg E B.anchor
       past.justified_checkpoint :=
     IncludedCertifiedJustified.toCertifiedJustified
       (cfg := cfg)
-      (Execution.CausalCarrierAttestationRelation.relation
+      (Execution.AcceptedBlockAttestationInclusion.relation
         cfg ext E B.state.includedAttestations) hjIncluded
   have hanchorLeJ : B.anchor.epoch ≤ past.justified_checkpoint.epoch :=
     CertifiedJustified.anchor_epoch_le (cfg := cfg) hjCertified
@@ -478,7 +478,7 @@ theorem justified_epoch_eq_queryCurrent
         hanchor hboundary h.past.validator h.past.second
           hanchorLeJ (by simpa only [past] using hjKnown)
   have hjSelf : past.justified_checkpoint =
-      B.state.C past.justified_checkpoint.root
+      B.state.checkpoint_at_epoch past.justified_checkpoint.root
         past.justified_checkpoint.epoch :=
     IncludedCertifiedJustified.exact_self (cfg := cfg) P V
       hanchorExact hjIncluded
@@ -537,20 +537,20 @@ larger `GU`.  For a `GU` origin, the strengthened handler invariant records
 the old-block guard, so the executable selector is exactly `GU`.  The anchor
 arm uses positive AU/certificate evidence for the anchor-root source. -/
 theorem retainedAt_currentSameEndpoint
-    {B : CausalPrefixFFGInterpretation cfg ext E}
-    (hT : E.ScheduledPrefixPremises cfg ext)
+    {B : ScheduledFFGInterpretation cfg ext E}
+    (hT : E.ScheduledExecutionPremises cfg ext)
     (hsync : NextSlotSynchronyPremises cfg ext E)
     (hstatic : StaticValidatorSet cfg E)
     (hbyz : ByzantineWeightPremises cfg E)
-    (hDelay : E.RealizedFinalizationDelay cfg ext B)
+    (hDelay : E.ImportedBlockFinalizationLag cfg ext B)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
-    (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
+    (hboundary : InitialAnchorAtEpochBoundary (cfg := cfg)
       (E := E) (anchor := B.anchor))
-    (P : EpochCheckpointClosure B.anchor
-      (E.AcceptedRoot cfg ext) B.state.C)
-    (V : B.state.ExactLinkValidity)
+    (P : EpochCheckpointProjectionLaws B.anchor
+      (E.RootKnownInScheduledPrefix cfg ext) B.state.checkpoint_at_epoch)
+    (V : B.state.LinkCheckpointAgreement)
     (hanchorExact : B.anchor =
-      B.state.C B.anchor.root B.anchor.epoch)
+      B.state.checkpoint_at_epoch B.anchor.root B.anchor.epoch)
     (hacc : CheckpointCertificateAccountability cfg E B.anchor)
     (hdomain : SelectedMarginDomain cfg ext E)
     {v : ValidatorIndex} {q : Nat} {selected : Root}
@@ -574,7 +574,7 @@ theorem retainedAt_currentSameEndpoint
       E.genesis_store = get_forkchoice_store cfg ast ablk ∧
         ast.slot = ablk.message.slot :=
     ⟨ast, ablk, hgen, hgenSlot⟩
-  have hpastCausal : E.CausalStore cfg ext past := by
+  have hpastCausal : E.ScheduledPrefixStore cfg ext past := by
     simpa only [past] using
       E.store_causal cfg ext h.past.validator h.past.second
   have hpastParent : ParentSlotLt past := by
@@ -623,7 +623,7 @@ theorem retainedAt_currentSameEndpoint
         CertifiedJustified.anchor_epoch_le (cfg := cfg)
           (IncludedCertifiedJustified.toCertifiedJustified
             (cfg := cfg)
-            (Execution.CausalCarrierAttestationRelation.relation
+            (Execution.AcceptedBlockAttestationInclusion.relation
               cfg ext E B.state.includedAttestations) hcertified)
       refine ⟨seed, hjKnown, hjSemantic, ?_⟩
       rw [← hjEpoch, hfieldAnchor]
@@ -662,7 +662,7 @@ theorem retainedAt_currentSameEndpoint
             (B.state.formed_evidence hformed).on_chain
         exact Execution.RootDescends.trans E hseedCarrierDesc
           honChain
-      have hsourceEq : get_voting_source cfg past seed = B.state.GU seed := by
+      have hsourceEq : get_voting_source cfg past seed = B.state.unrealized_justified seed := by
         rw [hpastCausal.getVotingSource_eq_acceptedSelector cfg ext B
           hseedKnown]
         exact if_pos hseedOld
@@ -697,7 +697,7 @@ theorem retainedAt_currentSameEndpoint
         h.past.validator_honest h.past.second seed
         h.past.second_within hseedPast h.past.second_deadline
         w hw m hmH hstart hbefore
-  have hsourceAU : B.state.AU cfg ext seed
+  have hsourceAU : B.state.AvailableCheckpoint cfg ext seed
       (get_voting_source cfg past seed) :=
     hpastCausal.getVotingSource_AU cfg ext B hseedPast
   have hreal := E.finalizedCheckpoint_resetRealizedAt_of_acceptedGlobalTrajectory
@@ -754,7 +754,7 @@ theorem retainedAt_currentSameEndpoint
       (get_voting_source cfg past seed).epoch + 2 := by
     rw [hcurrentSame]
     exact hrecentPast
-  have hendpointCausal : E.CausalStore cfg ext endpoint := by
+  have hendpointCausal : E.ScheduledPrefixStore cfg ext endpoint := by
     simpa only [endpoint] using E.store_causal cfg ext w m
   have hendpointParent : ParentSlotLt endpoint := by
     simpa only [endpoint] using
@@ -787,20 +787,20 @@ the same retained endpoint carrier.  The former direct-justified arm is
 discharged by the executable-origin invariant rather than a cross-store
 checkpoint monotonicity premise. -/
 theorem retainedAt_currentSameEndpoint
-    {B : CausalPrefixFFGInterpretation cfg ext E}
-    (hT : E.ScheduledPrefixPremises cfg ext)
+    {B : ScheduledFFGInterpretation cfg ext E}
+    (hT : E.ScheduledExecutionPremises cfg ext)
     (hsync : NextSlotSynchronyPremises cfg ext E)
     (hstatic : StaticValidatorSet cfg E)
     (hbyz : ByzantineWeightPremises cfg E)
-    (hDelay : E.RealizedFinalizationDelay cfg ext B)
+    (hDelay : E.ImportedBlockFinalizationLag cfg ext B)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
-    (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
+    (hboundary : InitialAnchorAtEpochBoundary (cfg := cfg)
       (E := E) (anchor := B.anchor))
-    (P : EpochCheckpointClosure B.anchor
-      (E.AcceptedRoot cfg ext) B.state.C)
-    (V : B.state.ExactLinkValidity)
+    (P : EpochCheckpointProjectionLaws B.anchor
+      (E.RootKnownInScheduledPrefix cfg ext) B.state.checkpoint_at_epoch)
+    (V : B.state.LinkCheckpointAgreement)
     (hanchorExact : B.anchor =
-      B.state.C B.anchor.root B.anchor.epoch)
+      B.state.checkpoint_at_epoch B.anchor.root B.anchor.epoch)
     (hacc : CheckpointCertificateAccountability cfg E B.anchor)
     (hdomain : SelectedMarginDomain cfg ext E)
     {v : ValidatorIndex} {q : Nat} {selected : Root}

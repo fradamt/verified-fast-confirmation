@@ -32,7 +32,7 @@ epoch dominance.
 namespace FastConfirmation.Spec
 
 variable {Root : Type*} [LinearOrder Root] [Inhabited Root]
-variable (cfg : Config) (ext : Externals Root)
+variable (cfg : Config) (ext : BeaconFunctionInterface Root)
 
 /-! ## Exact voting-source projection -/
 
@@ -42,12 +42,12 @@ namespace AcceptedFFGStoreProjection
 read is exactly the retained root's realized `GJ` or eager `GU` selector. -/
 theorem getVotingSource_eq_gj_or_gu
     {E : Execution Root} {anchor : Checkpoint Root}
-    {S : CausalCarrierFFGState cfg ext E anchor}
+    {S : AcceptedBlockFFGState cfg ext E anchor}
     {store : Store Root}
     (h : AcceptedFFGStoreProjection S store)
     {tip : Root} (htip : tip ∈ store.block_roots) :
-    get_voting_source cfg store tip = S.GJ tip ∨
-      get_voting_source cfg store tip = S.GU tip := by
+    get_voting_source cfg store tip = S.realized_justified tip ∨
+      get_voting_source cfg store tip = S.unrealized_justified tip := by
   simp only [get_voting_source]
   split_ifs
   · exact Or.inr (h.unrealized_justification tip htip)
@@ -64,18 +64,18 @@ The global finalized field need not equal a block-local finalized selector at
 tip whose epoch dominates the field. -/
 structure AcceptedDynamicFinalizedPlacementAt
     {E : Execution Root} {anchor : Checkpoint Root}
-    (S : CausalCarrierFFGState cfg ext E anchor)
+    (S : AcceptedBlockFFGState cfg ext E anchor)
     (store : Store Root) (tip : Root) : Prop where
   tip_known : tip ∈ store.block_roots
-  tip_accepted : E.AcceptedRoot cfg ext tip
+  tip_accepted : E.RootKnownInScheduledPrefix cfg ext tip
   target : ∃ target : Checkpoint Root,
-    (target = S.GJ tip ∨ target = S.GU tip) ∧
-      S.AU cfg ext tip target ∧
+    (target = S.realized_justified tip ∨ target = S.unrealized_justified tip) ∧
+      S.AvailableCheckpoint cfg ext tip target ∧
       Nonempty (IncludedCertifiedJustified cfg E
         S.includedAttestations.Included anchor tip target) ∧
       store.finalized_checkpoint.epoch ≤ target.epoch
 
-namespace CausalPrefixFFGInterpretation
+namespace ScheduledFFGInterpretation
 
 /-- Visibility of the endpoint justified epoch at one retained tip produces
 the exact consumer-shaped finalized placement.  Global field order is
@@ -83,16 +83,16 @@ handler-derived, while the retained target and its certificate come from the
 same preselected accepted semantic state. -/
 theorem dynamicFinalizedPlacementAt_of_sourceVisible
     {E : Execution Root}
-    (B : CausalPrefixFFGInterpretation cfg ext E)
+    (B : ScheduledFFGInterpretation cfg ext E)
     (hgen : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
       E.genesis_store = get_forkchoice_store cfg ast ablk ∧
         ast.slot = ablk.message.slot)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
-    {store : Store Root} (hstore : E.CausalStore cfg ext store)
+    {store : Store Root} (hstore : E.ScheduledPrefixStore cfg ext store)
     {tip : Root} (htip : tip ∈ store.block_roots)
     (hvisible : SourceVisibleAtTip cfg store tip) :
     AcceptedDynamicFinalizedPlacementAt cfg ext B.state store tip := by
-  have htipAccepted : E.AcceptedRoot cfg ext tip :=
+  have htipAccepted : E.RootKnownInScheduledPrefix cfg ext tip :=
     E.acceptedRoot_of_causal_known cfg ext hstore htip
   have hfinalizedLeJustified :
       store.finalized_checkpoint.epoch ≤
@@ -103,42 +103,42 @@ theorem dynamicFinalizedPlacementAt_of_sourceVisible
   rcases hprojection.getVotingSource_eq_gj_or_gu cfg ext htip with
     hsourceGJ | hsourceGU
   · have hfinalizedLeGJ : store.finalized_checkpoint.epoch ≤
-        (B.state.GJ tip).epoch := by
+        (B.state.realized_justified tip).epoch := by
       apply hfinalizedLeJustified.trans
       calc
         store.justified_checkpoint.epoch ≤
             (get_voting_source cfg store tip).epoch :=
           hvisible.justified_epoch_le_source
-        _ = (B.state.GJ tip).epoch :=
+        _ = (B.state.realized_justified tip).epoch :=
           congrArg Checkpoint.epoch hsourceGJ
     have hAU := B.state.gj_AU cfg ext htipAccepted
     exact {
       tip_known := htip
       tip_accepted := htipAccepted
-      target := ⟨B.state.GJ tip, Or.inl rfl, hAU,
+      target := ⟨B.state.realized_justified tip, Or.inl rfl, hAU,
         B.state.includedJustifiedAtTip_of_AU cfg ext hAU,
         hfinalizedLeGJ⟩
     }
   · have hfinalizedLeGU : store.finalized_checkpoint.epoch ≤
-        (B.state.GU tip).epoch := by
+        (B.state.unrealized_justified tip).epoch := by
       apply hfinalizedLeJustified.trans
       calc
         store.justified_checkpoint.epoch ≤
             (get_voting_source cfg store tip).epoch :=
           hvisible.justified_epoch_le_source
-        _ = (B.state.GU tip).epoch :=
+        _ = (B.state.unrealized_justified tip).epoch :=
           congrArg Checkpoint.epoch hsourceGU
     have hAU := B.state.gu_AU cfg ext htipAccepted
     exact {
       tip_known := htip
       tip_accepted := htipAccepted
-      target := ⟨B.state.GU tip, Or.inr rfl, hAU,
+      target := ⟨B.state.unrealized_justified tip, Or.inr rfl, hAU,
         B.state.includedJustifiedAtTip_of_AU cfg ext hAU,
         hfinalizedLeGU⟩
     }
 
 
-end CausalPrefixFFGInterpretation
+end ScheduledFFGInterpretation
 
 namespace AcceptedDynamicFinalizedPlacementAt
 
@@ -150,18 +150,18 @@ target certificate is on `tip`; exact accountability is deliberately
 cross-carrier, so no equality between those two carriers is assumed. -/
 theorem finalizedRoot_eq_checkpointBlock_at_tip
     {E : Execution Root}
-    (B : CausalPrefixFFGInterpretation cfg ext E)
+    (B : ScheduledFFGInterpretation cfg ext E)
     (hgen : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
       E.genesis_store = get_forkchoice_store cfg ast ablk ∧
         ast.slot = ablk.message.slot)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
-    (P : EpochCheckpointClosure B.anchor
-      (E.AcceptedRoot cfg ext) B.state.C)
-    (V : B.state.ExactLinkValidity)
+    (P : EpochCheckpointProjectionLaws B.anchor
+      (E.RootKnownInScheduledPrefix cfg ext) B.state.checkpoint_at_epoch)
+    (V : B.state.LinkCheckpointAgreement)
     (hanchorExact : B.anchor =
-      B.state.C B.anchor.root B.anchor.epoch)
+      B.state.checkpoint_at_epoch B.anchor.root B.anchor.epoch)
     (hacc : CheckpointCertificateAccountability cfg E B.anchor)
-    {store : Store Root} (hstore : E.CausalStore cfg ext store)
+    {store : Store Root} (hstore : E.ScheduledPrefixStore cfg ext store)
     (hparent : ParentSlotLt store)
     {tip : Root}
     (h : AcceptedDynamicFinalizedPlacementAt cfg ext B.state store tip)
@@ -173,7 +173,7 @@ theorem finalizedRoot_eq_checkpointBlock_at_tip
         store.finalized_checkpoint.epoch := by
   obtain ⟨target, _htargetSelector, htargetAU,
       ⟨hjustified⟩, hfinalizedLeTarget⟩ := h.target
-  have hprefix : ExactCheckpointPrefix B.state.C
+  have hprefix : ExactCheckpointPrefix B.state.checkpoint_at_epoch
       store.finalized_checkpoint target := by
     rcases E.acceptedGlobalFinalized_anchor_or_includedCertificate
         cfg ext B hgen hanchor hstore with hfinalizedAnchor |
@@ -197,18 +197,18 @@ owns the finalized-boundary walk; source visibility derives the retained
 accepted target, and accepted global provenance supplies finalization. -/
 theorem finalizedRoot_eq_checkpointBlock_of_acceptedVisible
     {E : Execution Root}
-    (B : CausalPrefixFFGInterpretation cfg ext E)
+    (B : ScheduledFFGInterpretation cfg ext E)
     (hgen : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
       E.genesis_store = get_forkchoice_store cfg ast ablk ∧
         ast.slot = ablk.message.slot)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
-    (P : EpochCheckpointClosure B.anchor
-      (E.AcceptedRoot cfg ext) B.state.C)
-    (V : B.state.ExactLinkValidity)
+    (P : EpochCheckpointProjectionLaws B.anchor
+      (E.RootKnownInScheduledPrefix cfg ext) B.state.checkpoint_at_epoch)
+    (V : B.state.LinkCheckpointAgreement)
     (hanchorExact : B.anchor =
-      B.state.C B.anchor.root B.anchor.epoch)
+      B.state.checkpoint_at_epoch B.anchor.root B.anchor.epoch)
     (hacc : CheckpointCertificateAccountability cfg E B.anchor)
-    {store : Store Root} (hstore : E.CausalStore cfg ext store)
+    {store : Store Root} (hstore : E.ScheduledPrefixStore cfg ext store)
     (hparent : ParentSlotLt store)
     {child : Root} (hplace : RetainedFilterTipPlacement cfg store child)
     (hvisible : SourceVisibleAtTip cfg store hplace.tip) :

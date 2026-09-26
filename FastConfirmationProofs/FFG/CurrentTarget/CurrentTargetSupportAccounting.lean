@@ -19,7 +19,7 @@ adding the remaining honest epoch seats are separate temporal obligations.
 namespace FastConfirmation.Spec
 
 variable {Root : Type*} [LinearOrder Root] [Inhabited Root]
-variable (cfg : Config) (ext : Externals Root)
+variable (cfg : Config) (ext : BeaconFunctionInterface Root)
 
 /-- The validator list summed by `get_current_target_score`, before mapping
 indices to balances. -/

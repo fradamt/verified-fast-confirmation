@@ -38,7 +38,7 @@ sites.  Consequently this module does not manufacture that missing bridge.
 namespace FastConfirmation.Spec
 
 variable {Root : Type*} [LinearOrder Root] [Inhabited Root]
-variable (cfg : Config) (ext : Externals Root)
+variable (cfg : Config) (ext : BeaconFunctionInterface Root)
 
 /-! ## Exact ghost traces of the two executable loops -/
 

@@ -10,7 +10,7 @@ open AcceptedActualFCRJointNonVacuityBase
 abbrev R := WitnessRoot
 
 def cfg : Config := TwelveSecondSynchronyWitness.cfg
-def ext : Externals WitnessRoot := TwelveSecondSynchronyWitness.ext
+def ext : BeaconFunctionInterface WitnessRoot := TwelveSecondSynchronyWitness.ext
 
 def schedule (w n : ℕ) : List (Event WitnessRoot) :=
   if n = 4 ∧ w = 0 then [.attestation vote0 false]
@@ -84,24 +84,24 @@ theorem carrier_on_block_accepted :
     on_block cfg ext (carrierPrefix.store cfg ext) carrierSignedBlock =
       some (carrierPostPrefix.store cfg ext) := by rfl
 
-def childTransition : run.AcceptedBlockTransition cfg ext where
+def childTransition : run.SuccessfulScheduledBlockImport cfg ext where
   atPrefix := childPrefix
   signedBlock := childSignedBlock
   event_at := by rfl
   postStore := childPostPrefix.store cfg ext
   accepted := child_on_block_accepted
 
-def carrierTransition : run.AcceptedBlockTransition cfg ext where
+def carrierTransition : run.SuccessfulScheduledBlockImport cfg ext where
   atPrefix := carrierPrefix
   signedBlock := carrierSignedBlock
   event_at := by rfl
   postStore := carrierPostPrefix.store cfg ext
   accepted := carrier_on_block_accepted
 
-theorem child_accepted : run.AcceptedRoot cfg ext childRoot := by
+theorem child_accepted : run.RootKnownInScheduledPrefix cfg ext childRoot := by
   simpa [childSignedBlock] using childTransition.root_accepted
 
-theorem carrier_accepted : run.AcceptedRoot cfg ext carrierRoot := by
+theorem carrier_accepted : run.RootKnownInScheduledPrefix cfg ext carrierRoot := by
   simpa [carrierSignedBlock] using carrierTransition.root_accepted
 
 theorem delayed_receipts_are_first :

@@ -490,7 +490,7 @@ unsafe def missingValue (misses : IO.Ref (List String)) (message : String)
   | .error _ => fallback
 
 unsafe def makeExternals (answers : Answers) (misses : IO.Ref (List String)) :
-    Externals Nat := {
+    BeaconFunctionInterface Nat := {
   get_beacon_committee := fun state slot index =>
     match findCommittee answers.committees state slot index with
     | some result => result

@@ -22,7 +22,7 @@ on every attestation the fork choice accepts (design decision 15).
 namespace FastConfirmation.Spec
 
 variable {Root : Type*} [LinearOrder Root] [Inhabited Root]
-variable (cfg : Config) (ext : Externals Root)
+variable (cfg : Config) (ext : BeaconFunctionInterface Root)
 
 /-- Sources: `specs/phase0/validator.md:620` and `specs/gloas/validator.md:97`.
 "Attestation data": the `AttestationData` an honest validator

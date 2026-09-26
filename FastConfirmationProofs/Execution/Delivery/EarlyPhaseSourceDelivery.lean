@@ -28,7 +28,7 @@ interface, or a safety conclusion.
 namespace FastConfirmation.Spec
 
 variable {Root : Type*} [LinearOrder Root] [Inhabited Root]
-variable (cfg : Config) (ext : Externals Root)
+variable (cfg : Config) (ext : BeaconFunctionInterface Root)
 
 namespace Execution
 
@@ -50,13 +50,13 @@ about semantic GU, rather than the query's executable voting-source selector:
 a current-epoch seed reads GJ at the query but reads GU at the next-epoch
 endpoint. -/
 def AcceptedLemma13SourceSeedAt
-    (B : CausalPrefixFFGInterpretation cfg ext E)
+    (B : ScheduledFFGInterpretation cfg ext E)
     (store : Store Root) (selected : Root) : Prop :=
   ∃ seed : Root,
     seed ∈ store.block_roots ∧
       is_ancestor store (get_node_for_root seed)
         (get_node_for_root selected) = true ∧
-      (B.state.GU seed).epoch + 1 ≥
+      (B.state.unrealized_justified seed).epoch + 1 ≥
         get_current_store_epoch cfg store
 
 /-! ## Query-local executable producers -/
@@ -71,9 +71,9 @@ head's cached unrealized-justification bound, and the accepted causal
 projection identifies that cache entry with GU(head).
 -/
 theorem StrictSelectedResultMechanicalFacts.current_lemma13SourceSeed_of_notStart
-    (B : CausalPrefixFFGInterpretation cfg ext E)
+    (B : ScheduledFFGInterpretation cfg ext E)
     {query : FastConfirmationStore Root} {input result : Root}
-    (hstore : E.CausalStore cfg ext query.store)
+    (hstore : E.ScheduledPrefixStore cfg ext query.store)
     (hparent : ParentSlotLt query.store)
     (hwalk : ∀ t ∈ query.store.block_roots,
       ∀ r ∈ query.store.block_roots,
@@ -107,10 +107,10 @@ theorem StrictSelectedResultMechanicalFacts.current_lemma13SourceSeed_of_notStar
           (get_head cfg query.store).root result .pending
           (get_head cfg query.store).payload_status)).mpr hb
       have hprojection :=
-        Execution.CausalPrefixFFGInterpretation.causalStoreProjection
+        Execution.ScheduledFFGInterpretation.causalStoreProjection
           B hstore
       have hguEq : query.store.unrealized_justifications head =
-          B.state.GU head := hprojection.unrealized_justification head hhead
+          B.state.unrealized_justified head := hprojection.unrealized_justification head hhead
       refine ⟨head, hhead, hbelow, ?_⟩
       simpa only [head, hguEq] using hgu
 
@@ -123,7 +123,7 @@ its old-block GU branch; this is why Lemma 13, rather than Lemma 26, is the
 right input for this cell.
 -/
 theorem recentSourceSeedAt_endpointNext_of_lemma13
-    (B : CausalPrefixFFGInterpretation cfg ext E)
+    (B : ScheduledFFGInterpretation cfg ext E)
     (hwf : WellFormedExecution E)
     (hec : BeaconExternalsPremises cfg ext E)
     {ast : BeaconState Root} {ablk : SignedBeaconBlock Root}
@@ -131,8 +131,8 @@ theorem recentSourceSeedAt_endpointNext_of_lemma13
     (hgenSlot : ast.slot = ablk.message.slot)
     (hgenParent : ablk.message.parent_root ≠ ablk.root)
     {query : Store Root} {w : ValidatorIndex} {m : Nat} {selected : Root}
-    (hquery : E.CausalStore cfg ext query)
-    (hendpoint : E.CausalStore cfg ext (E.store cfg ext w m))
+    (hquery : E.ScheduledPrefixStore cfg ext query)
+    (hendpoint : E.ScheduledPrefixStore cfg ext (E.store cfg ext w m))
     (hqueryParent : ParentSlotLt query)
     (hqueryProvenance : BlockProvenance E query)
     (hqueryWalk : ∀ t ∈ query.block_roots,
@@ -146,7 +146,7 @@ theorem recentSourceSeedAt_endpointNext_of_lemma13
       seed ∈ query.block_roots ∧
       is_ancestor query (get_node_for_root seed)
         (get_node_for_root selected) = true ∧
-      (B.state.GU seed).epoch + 1 ≥ get_current_store_epoch cfg query ∧
+      (B.state.unrealized_justified seed).epoch + 1 ≥ get_current_store_epoch cfg query ∧
       seed ∈ (E.store cfg ext w m).block_roots) :
     RecentSourceSeedAt cfg (E.store cfg ext w m) selected := by
   obtain ⟨seed, hseedQ, hseedSelectedQ, hguRecent, hseedEndpoint⟩ := hseed
@@ -166,9 +166,9 @@ theorem recentSourceSeedAt_endpointNext_of_lemma13
   have hseedEpochLe : get_block_epoch cfg query seed ≤
       get_current_store_epoch cfg query := by
     exact ce_mono cfg (hqueryNonfuture seed hseedQ)
-  have hqueryAt : E.AcceptedBlockAt cfg ext seed (query.blocks seed) :=
+  have hqueryAt : E.BlockKnownInScheduledPrefix cfg ext seed (query.blocks seed) :=
     E.acceptedBlockAt_of_causal_known cfg ext hquery hseedQ
-  have hendpointAt : E.AcceptedBlockAt cfg ext seed
+  have hendpointAt : E.BlockKnownInScheduledPrefix cfg ext seed
       ((E.store cfg ext w m).blocks seed) :=
     E.acceptedBlockAt_of_causal_known cfg ext hendpoint hseedEndpoint
   have hblock : query.blocks seed = (E.store cfg ext w m).blocks seed :=
@@ -179,7 +179,7 @@ theorem recentSourceSeedAt_endpointNext_of_lemma13
     simp only [get_block_epoch, ← hblock]
     exact Nat.lt_succ_of_le hseedEpochLe
   have hsourceEq : get_voting_source cfg (E.store cfg ext w m) seed =
-      B.state.GU seed := by
+      B.state.unrealized_justified seed := by
     rw [hendpoint.getVotingSource_eq_acceptedSelector cfg ext B hseedEndpoint]
     exact if_pos hseedOld
   refine ⟨seed, hseedEndpoint, hseedSelectedM, ?_⟩

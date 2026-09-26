@@ -17,7 +17,7 @@ section
 
 namespace FastConfirmation.Spec
 variable {Root : Type*} [LinearOrder Root] [Inhabited Root]
-variable (cfg : Config) (ext : Externals Root)
+variable (cfg : Config) (ext : BeaconFunctionInterface Root)
 /-- The remaining phase0 fact hidden by the reduced model's opaque state
 functions.
 
@@ -34,7 +34,7 @@ Together with `Phase0SourceCoherence`, it is the exact phase0 distinction in
 paper Definition 7: a head in the voting epoch reads `GJ`, while a head from
 an earlier epoch reads the eager `GU` value. -/
 structure Phase0BoundarySourceCoherence
-    (cfg : Config) (ext : Externals Root) : Prop where
+    (cfg : Config) (ext : BeaconFunctionInterface Root) : Prop where
   process_slots_current_justified :
     ∀ (st : BeaconState Root) (target : Slot),
       st.slot < target →
@@ -61,7 +61,7 @@ section
 
 namespace FastConfirmation.Spec
 variable {Root : Type*} [LinearOrder Root] [Inhabited Root]
-variable {cfg : Config} {ext : Externals Root}
+variable {cfg : Config} {ext : BeaconFunctionInterface Root}
 /-- The narrow phase0 fact hidden by the two opaque state functions.
 
 `process_slots` invokes epoch processing only when it crosses an epoch
@@ -73,7 +73,7 @@ the same epoch.
 
 This record is intentionally independent of an `Execution` and of all FCR
 selection/safety statements. -/
-structure Phase0SourceCoherence (cfg : Config) (ext : Externals Root) : Prop where
+structure Phase0SourceCoherence (cfg : Config) (ext : BeaconFunctionInterface Root) : Prop where
   process_slots_current_justified :
     ∀ (st : BeaconState Root) (target : Slot),
       st.slot < target →

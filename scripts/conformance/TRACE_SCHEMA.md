@@ -147,7 +147,7 @@ previous_slot_head
 current_slot_head
 ```
 
-## Externals
+## BeaconFunctionInterface
 
 The exporter wraps these source functions while it obtains `head_before`
 and runs FCR:

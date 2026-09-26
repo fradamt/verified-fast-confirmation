@@ -16,7 +16,7 @@ honest-head conclusion.
 namespace FastConfirmation.Spec
 
 variable {Root : Type*} [LinearOrder Root] [Inhabited Root]
-variable (cfg : Config) (ext : Externals Root)
+variable (cfg : Config) (ext : BeaconFunctionInterface Root)
 
 namespace Execution
 
@@ -29,7 +29,7 @@ theorem trustedAnchor_slot_eq_start
     (hA : SelectedMarginAssumptions cfg ext E)
     {anchor : Checkpoint Root}
     (hanchor : anchor = E.genesis_store.justified_checkpoint)
-    (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
+    (hboundary : InitialAnchorAtEpochBoundary (cfg := cfg)
       (E := E) (anchor := anchor)) :
     (E.genesis_store.blocks anchor.root).slot =
       compute_start_slot_at_epoch cfg anchor.epoch := by
@@ -55,7 +55,7 @@ theorem trustedAnchor_boundaryWalkAtEpoch
     (hA : SelectedMarginAssumptions cfg ext E)
     {anchor : Checkpoint Root}
     (hanchor : anchor = E.genesis_store.justified_checkpoint)
-    (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
+    (hboundary : InitialAnchorAtEpochBoundary (cfg := cfg)
       (E := E) (anchor := anchor))
     (v : ValidatorIndex) (n : ℕ) {e : Epoch}
     (hae : anchor.epoch ≤ e)
@@ -100,7 +100,7 @@ theorem trustedAnchor_epoch_le_currentEpoch
     (hA : SelectedMarginAssumptions cfg ext E)
     {anchor : Checkpoint Root}
     (hanchor : anchor = E.genesis_store.justified_checkpoint)
-    (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
+    (hboundary : InitialAnchorAtEpochBoundary (cfg := cfg)
       (E := E) (anchor := anchor))
     (v : ValidatorIndex) (n : ℕ) :
     anchor.epoch ≤ get_current_store_epoch cfg (E.store cfg ext v n) := by

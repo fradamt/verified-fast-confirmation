@@ -18,7 +18,7 @@ disjoint validator sets.
 namespace FastConfirmation.Spec
 
 variable {Root : Type*} [LinearOrder Root] [Inhabited Root]
-variable (cfg : Config) (ext : Externals Root)
+variable (cfg : Config) (ext : BeaconFunctionInterface Root)
 
 private theorem crossing_hbase_arith {H B d rhs S : ℕ}
     (h : 2 * (H + B) + d ≥ rhs) (hHS : H ≤ S) :

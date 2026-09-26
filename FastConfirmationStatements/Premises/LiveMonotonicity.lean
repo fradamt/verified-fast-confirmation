@@ -17,7 +17,7 @@ section
 
 namespace FastConfirmation.Spec
 variable {Root : Type*} [LinearOrder Root] [Inhabited Root]
-variable (cfg : Config) (ext : Externals Root)
+variable (cfg : Config) (ext : BeaconFunctionInterface Root)
 /-- Exact target support from the spec note on both `will_*` predictions
 ("This function assumes that all honest validators will be voting in support of the current epoch
 target"): from second `n` on, every honest vote of a slot in the target's
@@ -28,12 +28,9 @@ Honest validators vote the target derived from their own head
 support for *`v`'s* target `T` only under **cross-validator head/boundary
 agreement** (every honest head's epoch-boundary block is `T.root`), which is
 exactly what the FCR's preceding checks are mid-way through establishing
-when the gates are consulted. The property is an explicit, call-scoped
-hypothesis. The
-accepted theorem requires it for current-epoch crossings through
-`completed_calls.helper_provisos` at guarded in-horizon FCR calls. For a
-previous-epoch result, that record needs only descendant target support.
-Without the gating the fields would be inconsistent:
+when the gates are consulted. The joint safety proof derives current-epoch target support at guarded
+in-horizon FCR calls. For a previous-epoch result, it derives descendant
+target support. The guards matter:
 the `will_*` booleans are arithmetically true early in every epoch (the
 elapsed-committee estimate is still small) even while honest heads — and
 hence honest targets — are split across an adversarial boundary proposal. -/

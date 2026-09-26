@@ -15,7 +15,7 @@ distinguishable even when their roots coincide with another candidate.
 namespace FastConfirmation.Spec
 
 variable {Root : Type*} [LinearOrder Root] [Inhabited Root]
-variable (cfg : Config) (ext : Externals Root)
+variable (cfg : Config) (ext : BeaconFunctionInterface Root)
 
 namespace Execution
 
@@ -29,12 +29,12 @@ argument: previous-epoch confirmed candidates need no current-epoch payload.
 The only fresh payload branches are the trusted anchor and a concrete
 current-target crossing. -/
 noncomputable def getLatestConfirmedTraceAt_currentLineage_step
-    (B : CausalPrefixFFGInterpretation cfg ext E)
-    (hT : E.ScheduledPrefixPremises cfg ext)
+    (B : ScheduledFFGInterpretation cfg ext E)
+    (hT : E.ScheduledExecutionPremises cfg ext)
     (hphase : Phase0SourceCoherence cfg ext)
     (hboundaryPhase : Phase0BoundarySourceCoherence cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
-    (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
+    (hboundary : InitialAnchorAtEpochBoundary (cfg := cfg)
       (E := E) (anchor := B.anchor))
     {v : ValidatorIndex} (hv : v ∈ E.honest)
     {n : ℕ} (hHn1 : E.WithinHorizon cfg (n + 1))
@@ -46,7 +46,7 @@ noncomputable def getLatestConfirmedTraceAt_currentLineage_step
     (hprovisos :
       getLatestSelectorGuard cfg (E.fcrStoreAtCall cfg ext v n)
           (E.getLatestConfirmedTraceAt cfg ext v n).afterObserved →
-        FCRPredictionSupportAt cfg ext E v (n + 1)
+        SelectedPredictionVoteSupport cfg ext E v (n + 1)
           (E.fcrStoreAtCall cfg ext v n)
           (E.getLatestConfirmedTraceAt cfg ext v n).afterObserved)
     (htargetProducer : E.AcceptedCurrentTargetA32GateRealizationProducerAt
@@ -63,7 +63,7 @@ noncomputable def getLatestConfirmedTraceAt_currentLineage_step
   change get_block_epoch cfg query.store trace.result =
     get_current_store_epoch cfg query.store at hresultCurrent
   change getLatestSelectorGuard cfg query trace.afterObserved →
-    FCRPredictionSupportAt cfg ext E v (n + 1) query
+    SelectedPredictionVoteSupport cfg ext E v (n + 1) query
       trace.afterObserved at hprovisos
   change E.AcceptedCurrentTargetA32GateRealizationProducerAt cfg ext B.anchor
     B.state (n + 1) query at htargetProducer

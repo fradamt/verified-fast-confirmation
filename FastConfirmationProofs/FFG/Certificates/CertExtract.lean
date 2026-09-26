@@ -89,7 +89,7 @@ theorem between_parent_child {store : Store Root}
 
 /-! ## Section 1 — the strengthened loop invariant (task 1) -/
 
-variable (cfg : Config) (ext : Externals Root)
+variable (cfg : Config) (ext : BeaconFunctionInterface Root)
 
 /-- **The strengthened per-block confirmation predicate** relative to a reset anchor `lcr`. A
 loop accumulator `r` is `Pstr` when `r` descends from `lcr`, is known, and **every** block `c`

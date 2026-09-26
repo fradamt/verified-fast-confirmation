@@ -11,7 +11,7 @@ public import FastConfirmationProofs.FFG.SourceHistory.FFGSourceCoherence
 namespace FastConfirmation.Spec
 
 variable {Root : Type*} [LinearOrder Root] [Inhabited Root]
-variable (cfg : Config) (ext : Externals Root)
+variable (cfg : Config) (ext : BeaconFunctionInterface Root)
 
 namespace Execution
 
@@ -25,8 +25,8 @@ private theorem finalization_last_slot_le {f S s : ℕ}
 
 /-- The honest source is the head's `GJ`, or its `GU` when the head is old. -/
 theorem honest_attestation_source_selector
-    (B : CausalPrefixFFGInterpretation cfg ext E)
-    (hT : E.ScheduledPrefixPremises cfg ext)
+    (B : ScheduledFFGInterpretation cfg ext E)
+    (hT : E.ScheduledExecutionPremises cfg ext)
     (hphase : Phase0SourceCoherence cfg ext)
     (hphaseBoundary : Phase0BoundarySourceCoherence cfg ext)
     {v : ValidatorIndex} {n s : ℕ} {index : CommitteeIndex}
@@ -34,15 +34,15 @@ theorem honest_attestation_source_selector
     (hhead : (get_head cfg (E.store cfg ext v n)).root ∈
       (E.store cfg ext v n).block_roots) :
     (honest_attestation cfg ext (E.store cfg ext v n) s index v).data.source =
-        B.state.GJ (get_head cfg (E.store cfg ext v n)).root ∨
+        B.state.realized_justified (get_head cfg (E.store cfg ext v n)).root ∨
       (honest_attestation cfg ext (E.store cfg ext v n) s index v).data.source =
-        B.state.GU (get_head cfg (E.store cfg ext v n)).root ∧
+        B.state.unrealized_justified (get_head cfg (E.store cfg ext v n)).root ∧
       get_block_epoch cfg (E.store cfg ext v n)
         (get_head cfg (E.store cfg ext v n)).root < compute_epoch_at_slot cfg s := by
   let store := E.store cfg ext v n
   let head := (get_head cfg store).root
   have hcausal := E.store_causal cfg ext v n
-  have hprojection := CausalPrefixFFGInterpretation.causalStoreProjection B hcausal
+  have hprojection := ScheduledFFGInterpretation.causalStoreProjection B hcausal
   have hcore := E.exactCausalStoreWellFormedCore_of_trajectory cfg ext hT hcausal
   have hstateSlot : (store.block_states head).slot = (store.blocks head).slot :=
     hcore.2 head hhead
@@ -53,7 +53,7 @@ theorem honest_attestation_source_selector
     simpa only [store, E.store_current_slot, hn] using h
   by_cases hsame : get_block_epoch cfg store head = compute_epoch_at_slot cfg s
   · left
-    change (honest_attestation_data cfg ext store s index).source = B.state.GJ head
+    change (honest_attestation_data cfg ext store s index).source = B.state.realized_justified head
     rw [honest_attestation_data_source_eq_head_state hphase store s index
       (by rw [hstateSlot]; exact hsame)]
     exact hprojection.block_state_gj head hhead
@@ -68,23 +68,23 @@ theorem honest_attestation_source_selector
         (Nat.div_le_div_right (Nat.le_of_not_gt hnot))
     change (if (store.block_states head).slot < s then
       ext.process_slots (store.block_states head) s else store.block_states head
-      ).current_justified_checkpoint = B.state.GU head
+      ).current_justified_checkpoint = B.state.unrealized_justified head
     rw [if_pos hstateLt, hphaseBoundary.process_slots_current_justified
       _ _ hstateLt hstateEpoch]
     exact hprojection.pulled_up_gu head hhead
 
 /-- Boundary alignment puts the initial slot at or before the anchor epoch. -/
 theorem initial_slot_le_anchor_boundary
-    (hT : E.ScheduledPrefixPremises cfg ext)
+    (hT : E.ScheduledExecutionPremises cfg ext)
     {anchor : Checkpoint Root}
     (hanchor : anchor = E.genesis_store.justified_checkpoint)
-    (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
+    (hboundary : InitialAnchorAtEpochBoundary (cfg := cfg)
       (E := E) (anchor := anchor)) :
     E.slot_at cfg 0 ≤ anchor.epoch * cfg.slots_per_epoch := by
   obtain ⟨ast, ablk, hgen, hslot, _⟩ := hT.genesis_structure
   have hroot : anchor.root = ablk.root := by rw [hanchor, hgen]; rfl
   have hbound : ablk.message.slot ≤ anchor.epoch * cfg.slots_per_epoch := by
-    simpa only [TrustedAnchorBoundaryAligned, hgen, hroot,
+    simpa only [InitialAnchorAtEpochBoundary, hgen, hroot,
       get_forkchoice_store, Function.update_self, compute_start_slot_at_epoch]
       using hboundary
   have hclock := E.store_current_slot cfg ext 0 0
@@ -97,19 +97,19 @@ theorem initial_slot_le_anchor_boundary
 honest finalizing vote. Its source carrier reaches the voter by the current
 slot, unless the voter already has a sufficiently new finalized checkpoint. -/
 theorem finalized_epoch_le_voter_justified_of_receiver_slot_le
-    (B : CausalPrefixFFGInterpretation cfg ext E)
-    (hT : E.ScheduledPrefixPremises cfg ext)
+    (B : ScheduledFFGInterpretation cfg ext E)
+    (hT : E.ScheduledExecutionPremises cfg ext)
     (hrelay : DeadlineBlockRelay cfg ext E)
     (hbyz : ByzantineWeightPremises cfg E)
     (hphase : Phase0SourceCoherence cfg ext)
     (hphaseBoundary : Phase0BoundarySourceCoherence cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
-    (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
+    (hboundary : InitialAnchorAtEpochBoundary (cfg := cfg)
       (E := E) (anchor := B.anchor))
     (hspe : 1 < cfg.slots_per_epoch)
-    (hDelay : E.RealizedFinalizationDelay cfg ext B)
-    (P : EpochCheckpointClosure B.anchor (E.AcceptedRoot cfg ext) B.state.C)
-    (V : B.state.ExactLinkValidity)
+    (hDelay : E.ImportedBlockFinalizationLag cfg ext B)
+    (P : EpochCheckpointProjectionLaws B.anchor (E.RootKnownInScheduledPrefix cfg ext) B.state.checkpoint_at_epoch)
+    (V : B.state.LinkCheckpointAgreement)
     (hacc : CheckpointCertificateAccountability cfg E B.anchor)
     {v w : ValidatorIndex} (hv : v ∈ E.honest)
     {s n m : ℕ}
@@ -129,7 +129,7 @@ theorem finalized_epoch_le_voter_justified_of_receiver_slot_le
     rw [hgen]; simp only [get_forkchoice_store]; omega
   have hanchorLeJ : B.anchor.epoch ≤
       (E.store cfg ext v n).justified_checkpoint.epoch := by
-    obtain ⟨hcert⟩ := CausalPrefixFFGInterpretation.endpointJustified_certificate
+    obtain ⟨hcert⟩ := ScheduledFFGInterpretation.endpointJustified_certificate
       cfg ext B hgenShort hanchor (E.store_causal cfg ext v n)
     exact CertifiedJustified.anchor_epoch_le (cfg := cfg) hcert
   rcases E.acceptedGlobalFinalized_anchor_or_includedCertificate cfg ext B
@@ -189,19 +189,19 @@ theorem finalized_epoch_le_voter_justified_of_receiver_slot_le
 /-- The receiver checkpoint at the next slot start is no newer than the
 honest voter's justification. -/
 theorem next_boundary_finalized_epoch_le_voter_justified
-    (B : CausalPrefixFFGInterpretation cfg ext E)
-    (hT : E.ScheduledPrefixPremises cfg ext)
+    (B : ScheduledFFGInterpretation cfg ext E)
+    (hT : E.ScheduledExecutionPremises cfg ext)
     (hrelay : DeadlineBlockRelay cfg ext E)
     (hbyz : ByzantineWeightPremises cfg E)
     (hphase : Phase0SourceCoherence cfg ext)
     (hphaseBoundary : Phase0BoundarySourceCoherence cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
-    (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
+    (hboundary : InitialAnchorAtEpochBoundary (cfg := cfg)
       (E := E) (anchor := B.anchor))
     (hspe : 1 < cfg.slots_per_epoch)
-    (hDelay : E.RealizedFinalizationDelay cfg ext B)
-    (P : EpochCheckpointClosure B.anchor (E.AcceptedRoot cfg ext) B.state.C)
-    (V : B.state.ExactLinkValidity)
+    (hDelay : E.ImportedBlockFinalizationLag cfg ext B)
+    (P : EpochCheckpointProjectionLaws B.anchor (E.RootKnownInScheduledPrefix cfg ext) B.state.checkpoint_at_epoch)
+    (V : B.state.LinkCheckpointAgreement)
     (hacc : CheckpointCertificateAccountability cfg E B.anchor)
     {v w : ValidatorIndex} (hv : v ∈ E.honest)
     {s n : ℕ}

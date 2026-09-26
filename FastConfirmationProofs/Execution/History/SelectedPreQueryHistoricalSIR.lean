@@ -24,7 +24,7 @@ There are three materially different layers.
   boundary in every store which knows it.
 * The selector's exact call-site split is executable.  A previous-epoch result
   is either at epoch start or carries the actual no-conflict gate and its
-  `FCRPredictionSupportAt` support premise.  A current-epoch result either
+  `SelectedPredictionVoteSupport` support premise.  A current-epoch result either
   has a retained crossing edge, which carries the actual current-target gate,
   or needs the historical gate propagation of paper Lemma 27.
 * Turning those gates into historical checkpoint ordering is the paper SIR
@@ -45,7 +45,7 @@ pre-anchor totalized vote from masquerading as historical FFG evidence.
 namespace FastConfirmation.Spec
 
 variable {Root : Type*} [LinearOrder Root] [Inhabited Root]
-variable (cfg : Config) (ext : Externals Root)
+variable (cfg : Config) (ext : BeaconFunctionInterface Root)
 
 namespace Execution
 
@@ -97,7 +97,7 @@ inductive StrictSelectedHistoricalSIRCallSite
 /-- The exact selector and proviso facts classify a strict result into the
 paper's historical-current, epoch-boundary, and mid-epoch no-conflict cases.
 
-The support premise is stored by `FCRPredictionSupportAt` at execution index
+The support premise is stored by `SelectedPredictionVoteSupport` at execution index
 `q`, whereas the executable query store's current slot is `E.slot_at cfg q`.
 The equality premise below performs only that clock rewrite. -/
 theorem strictSelectedHistoricalSIRCallSite
@@ -113,7 +113,7 @@ theorem strictSelectedHistoricalSIRCallSite
         get_block_epoch cfg query.store input + 1 =
           get_current_store_epoch cfg query.store)
     (hstrict : find_latest_confirmed_descendant cfg ext query input ≠ input)
-    (hprovisos : FCRPredictionSupportAt cfg ext E v q query input) :
+    (hprovisos : SelectedPredictionVoteSupport cfg ext E v q query input) :
     StrictSelectedHistoricalSIRCallSite cfg ext E q query input
       (find_latest_confirmed_descendant cfg ext query input) := by
   let result := find_latest_confirmed_descendant cfg ext query input

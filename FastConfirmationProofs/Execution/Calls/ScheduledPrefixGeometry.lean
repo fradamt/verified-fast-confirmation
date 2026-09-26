@@ -18,7 +18,7 @@ or target-epoch premise is used.
 namespace FastConfirmation.Spec
 
 variable {Root : Type*} [LinearOrder Root] [Inhabited Root]
-variable (cfg : Config) (ext : Externals Root)
+variable (cfg : Config) (ext : BeaconFunctionInterface Root)
 
 namespace Execution
 
@@ -131,7 +131,7 @@ theorem ScheduledEventPrefix.anchorGuard
 /-- The anchor slot is a lower bound on every block known at an exact prefix. -/
 theorem ScheduledEventPrefix.anchorMinSlot
     (p : E.ScheduledEventPrefix)
-    (hT : E.ScheduledPrefixPremises cfg ext)
+    (hT : E.ScheduledExecutionPremises cfg ext)
     {ast : BeaconState Root} {ablk : SignedBeaconBlock Root}
     (hgen : E.genesis_store = get_forkchoice_store cfg ast ablk) :
     ∀ r ∈ (p.store cfg ext).block_roots,
@@ -162,7 +162,7 @@ theorem ScheduledEventPrefix.anchorMinSlot
 /-- Target-known walk geometry at an exact scheduled prefix. -/
 theorem ScheduledEventPrefix.walkKnownK
     (p : E.ScheduledEventPrefix)
-    (hT : E.ScheduledPrefixPremises cfg ext) :
+    (hT : E.ScheduledExecutionPremises cfg ext) :
     ∀ t ∈ (p.store cfg ext).block_roots,
       ∀ r ∈ (p.store cfg ext).block_roots,
         WalkKnown (p.store cfg ext) ((p.store cfg ext).blocks t).slot r := by
@@ -186,10 +186,10 @@ theorem ScheduledEventPrefix.walkKnownK
 scheduled prefix, including in the middle of its event fold. -/
 theorem ScheduledEventPrefix.justifiedRootKnown_of_acceptedGlobalTrajectory
     (p : E.ScheduledEventPrefix)
-    (B : CausalPrefixFFGInterpretation cfg ext E)
-    (hT : E.ScheduledPrefixPremises cfg ext)
+    (B : ScheduledFFGInterpretation cfg ext E)
+    (hT : E.ScheduledExecutionPremises cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
-    (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg) (E := E)
+    (hboundary : InitialAnchorAtEpochBoundary (cfg := cfg) (E := E)
       (anchor := B.anchor)) :
     (p.store cfg ext).justified_checkpoint.root ∈
       (p.store cfg ext).block_roots := by
@@ -213,9 +213,9 @@ theorem ScheduledEventPrefix.justifiedRootKnown_of_acceptedGlobalTrajectory
       (hanchorRoot ▸ hanchorKnown)
   have hboundary' : ablk.message.slot ≤
       compute_start_slot_at_epoch cfg B.anchor.epoch := by
-    simpa only [TrustedAnchorBoundaryAligned, hgen, hanchorRoot,
+    simpa only [InitialAnchorAtEpochBoundary, hgen, hanchorRoot,
       get_forkchoice_store, Function.update_self] using hboundary
-  have hstore : E.CausalStore cfg ext (p.store cfg ext) := .scheduledPrefix p
+  have hstore : E.ScheduledPrefixStore cfg ext (p.store cfg ext) := .scheduledPrefix p
   have hparentSlots : ParentSlotLt (p.store cfg ext) :=
     p.parentSlotLt cfg ext E hT
   rcases B.globalJustified_anchor_or_AUEvidence hgenShort hanchor hstore with
@@ -228,7 +228,7 @@ theorem ScheduledEventPrefix.justifiedRootKnown_of_acceptedGlobalTrajectory
         (p.store cfg ext).justified_checkpoint :=
       IncludedCertifiedJustified.toCertifiedJustified
         (cfg := cfg)
-        (Execution.CausalCarrierAttestationRelation.relation
+        (Execution.AcceptedBlockAttestationInclusion.relation
           cfg ext E B.state.includedAttestations) hincluded
     have hanchorEpochLe : B.anchor.epoch ≤
         (p.store cfg ext).justified_checkpoint.epoch :=
@@ -253,10 +253,10 @@ theorem ScheduledEventPrefix.justifiedRootKnown_of_acceptedGlobalTrajectory
 prefix under accepted global semantics. -/
 theorem ScheduledEventPrefix.headRootKnown_of_acceptedGlobalTrajectory
     (p : E.ScheduledEventPrefix)
-    (B : CausalPrefixFFGInterpretation cfg ext E)
-    (hT : E.ScheduledPrefixPremises cfg ext)
+    (B : ScheduledFFGInterpretation cfg ext E)
+    (hT : E.ScheduledExecutionPremises cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
-    (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg) (E := E)
+    (hboundary : InitialAnchorAtEpochBoundary (cfg := cfg) (E := E)
       (anchor := B.anchor)) :
     (get_head cfg (p.store cfg ext)).root ∈
       (p.store cfg ext).block_roots := by
@@ -272,10 +272,10 @@ the target epoch or strictly older; this is the exhaustive split used by the
 accepted GJ/GU gate facade. -/
 theorem ScheduledEventPrefix.currentTargetKnown_and_blockEpoch_le
     (p : E.ScheduledEventPrefix)
-    (B : CausalPrefixFFGInterpretation cfg ext E)
-    (hT : E.ScheduledPrefixPremises cfg ext)
+    (B : ScheduledFFGInterpretation cfg ext E)
+    (hT : E.ScheduledExecutionPremises cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
-    (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg) (E := E)
+    (hboundary : InitialAnchorAtEpochBoundary (cfg := cfg) (E := E)
       (anchor := B.anchor)) :
     let target := get_current_target cfg (p.store cfg ext)
     target.root ∈ (p.store cfg ext).block_roots ∧
@@ -318,7 +318,7 @@ theorem ScheduledEventPrefix.currentTargetKnown_and_blockEpoch_le
     p.walkKnownK cfg ext hT B.anchor.root hanchorKnown head hheadKnown
   have hboundary' : ablk.message.slot ≤
       compute_start_slot_at_epoch cfg B.anchor.epoch := by
-    simpa only [TrustedAnchorBoundaryAligned, hgen, hanchorRoot,
+    simpa only [InitialAnchorAtEpochBoundary, hgen, hanchorRoot,
       get_forkchoice_store, Function.update_self] using hboundary
   have hwalk : WalkKnown store
       (compute_start_slot_at_epoch cfg (get_current_store_epoch cfg store))
@@ -346,10 +346,10 @@ theorem ScheduledEventPrefix.currentTargetKnown_and_blockEpoch_le
 This is clock/retention geometry, not an FFG-safety assumption. -/
 theorem ScheduledEventPrefix.currentTarget_anchor_epoch_le
     (p : E.ScheduledEventPrefix)
-    (B : CausalPrefixFFGInterpretation cfg ext E)
-    (hT : E.ScheduledPrefixPremises cfg ext)
+    (B : ScheduledFFGInterpretation cfg ext E)
+    (hT : E.ScheduledExecutionPremises cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
-    (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg) (E := E)
+    (hboundary : InitialAnchorAtEpochBoundary (cfg := cfg) (E := E)
       (anchor := B.anchor)) :
     B.anchor.epoch ≤
       (get_current_target cfg (p.store cfg ext)).epoch := by
@@ -389,10 +389,10 @@ anchor epoch is the anchor itself.  Therefore every distinct current target
 has a strictly later epoch. -/
 theorem ScheduledEventPrefix.currentTarget_anchor_epoch_lt_of_ne
     (p : E.ScheduledEventPrefix)
-    (B : CausalPrefixFFGInterpretation cfg ext E)
-    (hT : E.ScheduledPrefixPremises cfg ext)
+    (B : ScheduledFFGInterpretation cfg ext E)
+    (hT : E.ScheduledExecutionPremises cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
-    (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg) (E := E)
+    (hboundary : InitialAnchorAtEpochBoundary (cfg := cfg) (E := E)
       (anchor := B.anchor))
     (hne : get_current_target cfg (p.store cfg ext) ≠ B.anchor) :
     B.anchor.epoch <
@@ -425,7 +425,7 @@ theorem ScheduledEventPrefix.currentTarget_anchor_epoch_lt_of_ne
       simpa only [get_forkchoice_store, get_current_epoch, hslot] using he
     have hboundary' : ablk.message.slot ≤
         compute_start_slot_at_epoch cfg B.anchor.epoch := by
-      simpa only [TrustedAnchorBoundaryAligned, hgen, hanchorRoot,
+      simpa only [InitialAnchorAtEpochBoundary, hgen, hanchorRoot,
         get_forkchoice_store, Function.update_self] using hboundary
     have hstartLe : compute_start_slot_at_epoch cfg B.anchor.epoch ≤
         ablk.message.slot := by

@@ -44,7 +44,7 @@ theorem of_eq {old new : Store Root}
 end CheckpointKeysLE
 
 variable [LinearOrder Root] [Inhabited Root]
-variable (cfg : Config) (ext : Externals Root)
+variable (cfg : Config) (ext : BeaconFunctionInterface Root)
 
 omit [LinearOrder Root] [Inhabited Root] in
 @[simp] theorem update_latest_messages_checkpoint_state_keys

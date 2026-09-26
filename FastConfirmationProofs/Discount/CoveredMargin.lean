@@ -14,7 +14,7 @@ This module contains `covered_roots_isSome_of_ancestor`, `covered_hcase_of_ances
 namespace FastConfirmation.Spec
 
 variable {Root : Type*} [LinearOrder Root] [Inhabited Root]
-variable (cfg : Config) (ext : Externals Root)
+variable (cfg : Config) (ext : BeaconFunctionInterface Root)
 
 omit [Inhabited Root] in
 private theorem covered_roots_isSome_of_ancestor {store : Store Root}

@@ -39,7 +39,7 @@ The four pieces mirror `HonestWeight`'s `byz_score_eq_weight` /
 namespace FastConfirmation.Spec
 
 variable {Root : Type*} [LinearOrder Root] [Inhabited Root]
-variable (cfg : Config) (ext : Externals Root)
+variable (cfg : Config) (ext : BeaconFunctionInterface Root)
 
 /-! ## The parent-stuck sets
 

@@ -18,14 +18,14 @@ The result concerns stored boundary outputs. It does not cover an arbitrary quer
 │ Assumption             │ Plain meaning and premise record                                                            │
 ├────────────────────────┼─────────────────────────────────────────────────────────────────────────────────────────────┤
 │ Honest operation       │ Honest nodes process scheduled events. They vote by the due time. See                       │
-│                        │ Execution.ScheduledPrefixPremises and HonestBehavior.                                       │
+│                        │ Execution.ScheduledExecutionPremises and HonestBehavior.                                       │
 │ Timely delivery        │ Needed votes, blocks, payload data, and evidence reach honest nodes before the next         │
 │                        │ boundary under positive delay. See NextSlotSynchronyPremises.                               │
 │ Stake and committees   │ Validators stay active. Committee estimates hold for every checked slot span. The fault     │
 │                        │ bound holds for every checked slot span. See StaticValidatorSet and                         │
 │                        │ ByzantineWeightPremises.                                                                    │
 │ Beacon and FFG state   │ External transitions match accepted evidence. Supplied checkpoint links match accepted      │
-│                        │ evidence. See BeaconExternalsPremises and CausalPrefixFFGInterpretation.                    │
+│                        │ evidence. See BeaconExternalsPremises and ScheduledFFGInterpretation.                    │
 │ Payload validity       │ Imported payloads pass opaque execution validation. See BeaconExternalsPremises and the     │
 │                        │ execution external contract.                                                                │
 │ Live claim only        │ Each slot has an honest block. Honest votes support it. FFG justification is visible at the │
@@ -83,9 +83,9 @@ The records in this table are in `FastConfirmationStatements/Premises/`. The las
 │ Safety field       │ Execution.NextSlotSafetyPremises   │ Exact FFG state at every handler-successful prefix; a well formed scheduled run; │ Paper Assumption 3.2; Gloas   │
 │                    │                                    │ completed FCR calls; epoch arithmetic; anchor alignment; finalization            │ extension; model idealisation │
 │                    │                                    │ delay; more than one slot per epoch; checkpoint and link evidence.               │                               │
-│ Safety field       │ Execution.ScheduledPrefixPremises  │ Whole seconds, well formed stores, coherent external calls, honest               │ Model idealisation            │
+│ Safety field       │ Execution.ScheduledExecutionPremises  │ Whole seconds, well formed stores, coherent external calls, honest               │ Model idealisation            │
 │                    │                                    │ behavior with an attestation deadline, and a valid genesis store.                │ Phase0/Gloas; model premise   │
-│ Safety field       │ Execution.CompletedFCRCallPremises │ Five delivery laws; fixed active validators; committee and Byzantine             │ Paper Assumptions 1 and 2;    │
+│ Safety field       │ Execution.ScheduledFCRCallPremises │ Five delivery laws; fixed active validators; committee and Byzantine             │ Paper Assumptions 1 and 2;    │
 │                    │                                    │ weight bounds; Phase0 source coherence; a nonzero balance floor;                 │ Gloas extension; model        │
 │                    │                                    │ next-slot vote receipt.                                                          │ idealisation                  │
 │ Safety field       │ NextSlotSynchronyPremises          │ Positive delay; deadline cutoff for block, envelope, data and evidence           │ Paper synchrony; Gloas        │
@@ -95,8 +95,8 @@ The records in this table are in `FastConfirmationStatements/Premises/`. The las
 │ Safety field       │ ByzantineWeightPremises            │ Quantized balances, sound committee estimates, and a non-honest weight           │ Paper Assumption 2;           │
 │                    │                                    │ fraction bound for every span, including one slot. A global fault                │ executable estimate           │
 │                    │                                    │ share does not establish this span bound.                                        │                               │
-│ Safety field       │ CausalPrefixFFGInterpretation;     │ Exact handler-successful prefix FFG state, causal links, and projected           │ Paper Assumption 3.2; model   │
-│                    │ EpochCheckpointClosure             │ checkpoint roots.                                                                │ idealisation                  │
+│ Safety field       │ ScheduledFFGInterpretation;     │ Exact handler-successful prefix FFG state, causal links, and projected           │ Paper Assumption 3.2; model   │
+│                    │ EpochCheckpointProjectionLaws             │ checkpoint roots.                                                                │ idealisation                  │
 │ Live field         │ LiveMonotonicityPremises           │ An honest block in each slot from execution start, known by the next             │ Paper Theorem 1 monotonicity  │
 │                    │                                    │ slot and supported by honest votes; timely observed FFG justification            │ and Assumption 6,             │
 │                    │                                    │ at epoch boundaries.                                                             │ strengthened                  │
@@ -110,7 +110,7 @@ The records in this table are in `FastConfirmationStatements/Premises/`. The las
 - Validator activity is fixed inside the checked horizon by `StaticValidatorSet`. The proof does not cover registry churn.
 - The model imports only validated payloads. An imported payload enters the store only after `verify_execution_payload_envelope` returns true. This external includes the execution engine's `VALID` decision. Execution validation itself is opaque.
 - `BeaconExternalsPremises` supplies contracts for external state transitions and validation. The Lean proof does not implement an execution engine.
-- `CausalCarrierAttestationRelation.Included` is a supplied carrier-vote relation. Its safety evidence gives an accepted carrier block, a received block copy of the vote, slot and target-epoch facts, and committee membership.
+- `AcceptedBlockAttestationInclusion.Included` is a supplied carrier-vote relation. Its safety evidence gives an accepted carrier block, a received block copy of the vote, slot and target-epoch facts, and committee membership.
 - `FFGInterpretationFidelity` states the intended interpretation of the included votes: membership in the accepted carrier block's ordered FFG attestation body, validity on the target checkpoint state prepared from a keyed target block state in an honest in-horizon store, and the external validity check. The safety theorem does not assume it. Each full-bundle witness proves it for its interpretation.
 - `ByzantineWeightPremises.span_fraction` must hold for every in-horizon slot span, including one slot. A global fault share does not establish this bound. The bound matches `CommitteeHonestMajority` in the repository's formal paper Assumption 2.
 - `LiveMonotonicityPremises.honest_block_each_slot` requires a block with an honest proposer index in every slot from execution start. Its vote-support law and `ffg_timely_justification` require timely descendant votes and exact FFG state outputs at epoch boundaries. These conditions are stronger than paper Assumption 6. Proposer-index membership is not an authentication theorem.

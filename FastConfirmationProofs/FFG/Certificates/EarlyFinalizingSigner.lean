@@ -171,9 +171,8 @@ namespace IncludedSupermajorityLink
 fixes its epoch, committee uniqueness fixes its slot, and vote-head behavior
 fixes the attestation and its in-horizon creation second. -/
 theorem honest_vote_before_last_slot
-    {ext : Externals Root} {E : Execution Root}
-    {validity : BeaconState Root → Attestation Root → Bool}
-    (I : Execution.IncludedAttestationRelation cfg E validity)
+    {ext : BeaconFunctionInterface Root} {E : Execution Root}
+    (I : Execution.BlockAttestationInclusion cfg E)
     (hhb : HonestBehavior cfg ext E)
     (hec : BeaconExternalsPremises cfg ext E)
     (hbyz : ByzantineWeightPremises cfg E)

@@ -8,8 +8,8 @@ public import FastConfirmationStatements.Premises.Synchrony
 
 namespace FastConfirmation.Spec
 variable {Root : Type*} [LinearOrder Root] [Inhabited Root]
-variable (cfg : Config) (ext : Externals Root)
-/-- Contracts for the abstract `Externals` under the static-registry model.
+variable (cfg : Config) (ext : BeaconFunctionInterface Root)
+/-- Contracts for the abstract `BeaconFunctionInterface` under the static-registry model.
 The three indexed-attestation laws apply only to keyed states in honest,
 in-horizon causal stores. Default-state rejection and validity preservation
 under Phase0 slot processing are separate contracts. The other fields state

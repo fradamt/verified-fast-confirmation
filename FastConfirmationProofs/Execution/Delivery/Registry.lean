@@ -121,7 +121,7 @@ theorem update_checkpoints_registryConstant {reg : List Validator} (store : Stor
   h.of_eq (by simp) (by simp) (by simp) (by simp)
 
 
-variable [LinearOrder Root] [Inhabited Root] (cfg : Config) (ext : Externals Root)
+variable [LinearOrder Root] [Inhabited Root] (cfg : Config) (ext : BeaconFunctionInterface Root)
 
 omit [Inhabited Root] in
 theorem record_block_timeliness_registryConstant {reg : List Validator}

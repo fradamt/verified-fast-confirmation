@@ -8,7 +8,7 @@ public import FastConfirmationInternal.FFG.Certificates
 
 namespace FastConfirmation.Spec
 variable {Root : Type*} [LinearOrder Root] [Inhabited Root]
-variable (cfg : Config) (ext : Externals Root)
+variable (cfg : Config) (ext : BeaconFunctionInterface Root)
 namespace Execution
 variable (E : Execution Root)
 /-- Membership in the execution's concrete block universe. -/
@@ -16,8 +16,8 @@ def ExecutionRoot (r : Root) : Prop :=
   ∃ b : BeaconBlock Root, E.BlockAt r b
 
 
-namespace CausalCarrierAttestationRelation
-end CausalCarrierAttestationRelation
+namespace AcceptedBlockAttestationInclusion
+end AcceptedBlockAttestationInclusion
 end Execution
 /-- The causal honest witness for a non-anchor formed checkpoint is itself an
 attestation included on the carrier chain, not an unrelated ground vote. -/
@@ -39,8 +39,7 @@ This is the sound direction from the stronger block-body certificate to the
 older global certificate API. -/
 def toSupermajorityLink
     {E : Execution Root}
-    {validity : BeaconState Root → Attestation Root → Bool}
-    (I : Execution.IncludedAttestationRelation cfg E validity)
+    (I : Execution.BlockAttestationInclusion cfg E)
     {carrier : Root} {source target : Checkpoint Root}
     (L : IncludedSupermajorityLink cfg E I.Included carrier source target) :
     SupermajorityLink cfg E source target where
@@ -64,8 +63,7 @@ namespace IncludedCertifiedJustified
 global scheduled-attestation certificate. -/
 def toCertifiedJustified
     {E : Execution Root}
-    {validity : BeaconState Root → Attestation Root → Bool}
-    (I : Execution.IncludedAttestationRelation cfg E validity)
+    (I : Execution.BlockAttestationInclusion cfg E)
     {anchor : Checkpoint Root} {carrier : Root} {c : Checkpoint Root} :
     IncludedCertifiedJustified cfg E I.Included anchor carrier c →
       CertifiedJustified cfg E anchor c
@@ -80,8 +78,7 @@ namespace IncludedCertifiedFinalized
 API without inventing any new vote witness. -/
 def toCertifiedFinalized
     {E : Execution Root}
-    {validity : BeaconState Root → Attestation Root → Bool}
-    (I : Execution.IncludedAttestationRelation cfg E validity)
+    (I : Execution.BlockAttestationInclusion cfg E)
     {anchor : Checkpoint Root} {carrier : Root} {c : Checkpoint Root}
     (F : IncludedCertifiedFinalized cfg E I.Included anchor carrier c) :
     CertifiedFinalized cfg E anchor c where
@@ -116,13 +113,13 @@ evidence from a carrier on the tip's chain. -/
 structure ChainFFGState (E : Execution Root)
     (anchor : Checkpoint Root) where
   /-- Indexed-attestation validity oracle. `FFGTransitionCoherence` identifies it with the execution's
-  actual `Externals.is_valid_indexed_attestation`. -/
+  actual `BeaconFunctionInterface.is_valid_indexed_attestation`. -/
   attestationValidity : BeaconState Root → Attestation Root → Bool
 
   /-- Actual block-body inclusion, with carrier, validity, committee, horizon,
   and chain-position evidence. -/
   includedAttestations :
-    Execution.IncludedAttestationRelation cfg E attestationValidity
+    Execution.BlockAttestationInclusion cfg E
 
   formed : Root → Checkpoint Root → Prop
 
@@ -312,14 +309,14 @@ structure FFGTransitionCoherence
         c = get_checkpoint_for_block cfg
           (E.store cfg ext w m) r c.epoch
 
-namespace CausalCarrierFFGState
+namespace AcceptedBlockFFGState
 variable {E : Execution Root} {anchor : Checkpoint Root}
-def IncludedOnChain (S : CausalCarrierFFGState cfg ext E anchor)
+def IncludedOnChain (S : AcceptedBlockFFGState cfg ext E anchor)
     (tip : Root) (a : Attestation Root) : Prop :=
   AttestationIncludedOnChain E S.includedAttestations.Included tip a
 
 def HasSlashablePairOnChain
-    (S : CausalCarrierFFGState cfg ext E anchor)
+    (S : AcceptedBlockFFGState cfg ext E anchor)
     (tip : Root) (i : ValidatorIndex) : Prop :=
   ∃ a₁ a₂ : Attestation Root,
     S.IncludedOnChain cfg ext tip a₁ ∧
@@ -329,20 +326,20 @@ def HasSlashablePairOnChain
     is_slashable_attestation_data a₁.data a₂.data = true
 
 noncomputable def slashableOnChain
-    (S : CausalCarrierFFGState cfg ext E anchor)
+    (S : AcceptedBlockFFGState cfg ext E anchor)
     (tip : Root) : Finset ValidatorIndex := by
   classical
   exact (Finset.range E.registry.length).filter
     (S.HasSlashablePairOnChain cfg ext tip)
 
-end CausalCarrierFFGState
+end AcceptedBlockFFGState
 /-- One accepted semantic state and selector interpretation, chosen before
 any compatible-prefix variables.  This smaller bundle is the Gate-A
 feasibility surface. -/
 structure ExactPrefixAcceptedFFGSelectors (E : Execution Root) where
   anchor : Checkpoint Root
-  state : CausalCarrierFFGState cfg ext E anchor
-  coherence : FFGSelectorsMatchBeaconStates cfg ext state
+  state : AcceptedBlockFFGState cfg ext E anchor
+  coherence : FFGStateReadAgreement cfg ext state
 
 /-- A concrete, time-bounded *candidate producer* for the paper's support
 antecedent.  Restricting signers to honest validators is stronger than the
@@ -365,30 +362,30 @@ structure HonestTargetQuorumBefore (E : Execution Root)
       a.data.target = target
   supermajority : 2 * E.total_active cfg ≤ 3 * E.weight signers
 
-namespace PaperA32StateView
+namespace CheckpointInclusionView
 variable {E : Execution Root}
-end PaperA32StateView
+end CheckpointInclusionView
 
 namespace ChainFFGState
 variable {E : Execution Root} {anchor : Checkpoint Root}
 
 end ChainFFGState
-namespace CausalCarrierFFGState
+namespace AcceptedBlockFFGState
 variable {E : Execution Root} {anchor : Checkpoint Root}
 /-- Accepted-state paper voting-source selector. -/
-abbrev VSAt (S : CausalCarrierFFGState cfg ext E anchor)
+abbrev voting_source_at (S : AcceptedBlockFFGState cfg ext E anchor)
     (store : Store Root) (b : Root) (e : Epoch) : Checkpoint Root :=
-  if get_block_epoch cfg store b = e then S.GJ b else S.GU b
+  if get_block_epoch cfg store b = e then S.realized_justified b else S.unrealized_justified b
 
 /-- Accepted-state specialization of exact link support. -/
 abbrev PaperA32LinkSupportAt
-    (S : CausalCarrierFFGState cfg ext E anchor)
+    (S : AcceptedBlockFFGState cfg ext E anchor)
     (w : ValidatorIndex) (m : ℕ) (b' : Root)
     (source target : Checkpoint Root) : Type :=
-  PaperA32LinkSupportAtCore cfg ext (S.paperA32Inputs cfg ext)
+  SourceTargetLinkSupportAt cfg ext (S.checkpoint_inclusion_view cfg ext)
     w m b' source target
 
-end CausalCarrierFFGState
+end AcceptedBlockFFGState
 
 
 end FastConfirmation.Spec

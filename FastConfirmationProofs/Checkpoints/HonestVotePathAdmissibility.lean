@@ -11,7 +11,7 @@ same slot epoch. Exact checkpoint accountability then handles reused roots. -/
 
 namespace FastConfirmation.Spec
 variable {Root : Type*} [LinearOrder Root] [Inhabited Root]
-variable (cfg : Config) (ext : Externals Root)
+variable (cfg : Config) (ext : BeaconFunctionInterface Root)
 namespace Execution
 variable {E : Execution Root}
 
@@ -20,19 +20,19 @@ second of its slot. The proof uses only lower trajectory, certificate,
 economic, honest-behavior, anchor, finalization-delay, and cutoff-relay facts.
 It does not use vote landing, the vote-target cache, or the old block relay. -/
 theorem head_path_admissible_before_next_tick
-    (B : CausalPrefixFFGInterpretation cfg ext E)
-    (hT : E.ScheduledPrefixPremises cfg ext)
+    (B : ScheduledFFGInterpretation cfg ext E)
+    (hT : E.ScheduledExecutionPremises cfg ext)
     (hrelay : DeadlineBlockRelay cfg ext E)
     (hbyz : ByzantineWeightPremises cfg E)
     (hphase : Phase0SourceCoherence cfg ext)
     (hphaseBoundary : Phase0BoundarySourceCoherence cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
-    (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
+    (hboundary : InitialAnchorAtEpochBoundary (cfg := cfg)
       (E := E) (anchor := B.anchor))
     (hspe : 1 < cfg.slots_per_epoch)
-    (hDelay : E.RealizedFinalizationDelay cfg ext B)
-    (P : EpochCheckpointClosure B.anchor (E.AcceptedRoot cfg ext) B.state.C)
-    (V : B.state.ExactLinkValidity)
+    (hDelay : E.ImportedBlockFinalizationLag cfg ext B)
+    (P : EpochCheckpointProjectionLaws B.anchor (E.RootKnownInScheduledPrefix cfg ext) B.state.checkpoint_at_epoch)
+    (V : B.state.LinkCheckpointAgreement)
     (hacc : CheckpointCertificateAccountability cfg E B.anchor)
     {v w : ValidatorIndex} (hv : v ∈ E.honest)
     {s n : ℕ} {walkSlot : Slot}
@@ -79,12 +79,12 @@ theorem head_path_admissible_before_next_tick
   have prefixOf {c : Checkpoint Root}
       (hc : ∃ tip, Nonempty (IncludedCertifiedJustified cfg E
         B.state.includedAttestations.Included B.anchor tip c))
-      (hle : F.epoch ≤ c.epoch) : ExactCheckpointPrefix B.state.C F c := by
+      (hle : F.epoch ≤ c.epoch) : ExactCheckpointPrefix B.state.checkpoint_at_epoch F c := by
     obtain ⟨tip, ⟨cert⟩⟩ := hc
     rcases E.acceptedGlobalFinalized_anchor_or_includedCertificate cfg ext B
         hgenShort hanchor (E.store_causal cfg ext w m) with
       hFa | ⟨ftip, _, ⟨fcert⟩⟩
-    · change ExactCheckpointPrefix B.state.C
+    · change ExactCheckpointPrefix B.state.checkpoint_at_epoch
         (E.store cfg ext w m).finalized_checkpoint c
       rw [hFa]
       exact IncludedCertifiedJustified.anchor_prefix (cfg := cfg) P V hanchorExact cert
@@ -157,19 +157,19 @@ theorem head_path_admissible_before_next_tick
 /-- G4: every known ancestor walk of a recorded honest vote avoids exclusion
 at `boundary - 1`. No restriction to roots above finality is required. -/
 theorem honest_vote_path_admissible
-    (B : CausalPrefixFFGInterpretation cfg ext E)
-    (hT : E.ScheduledPrefixPremises cfg ext)
+    (B : ScheduledFFGInterpretation cfg ext E)
+    (hT : E.ScheduledExecutionPremises cfg ext)
     (hrelay : DeadlineBlockRelay cfg ext E)
     (hbyz : ByzantineWeightPremises cfg E)
     (hphase : Phase0SourceCoherence cfg ext)
     (hphaseBoundary : Phase0BoundarySourceCoherence cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
-    (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
+    (hboundary : InitialAnchorAtEpochBoundary (cfg := cfg)
       (E := E) (anchor := B.anchor))
     (hspe : 1 < cfg.slots_per_epoch)
-    (hDelay : E.RealizedFinalizationDelay cfg ext B)
-    (P : EpochCheckpointClosure B.anchor (E.AcceptedRoot cfg ext) B.state.C)
-    (V : B.state.ExactLinkValidity)
+    (hDelay : E.ImportedBlockFinalizationLag cfg ext B)
+    (P : EpochCheckpointProjectionLaws B.anchor (E.RootKnownInScheduledPrefix cfg ext) B.state.checkpoint_at_epoch)
+    (V : B.state.LinkCheckpointAgreement)
     (hacc : CheckpointCertificateAccountability cfg E B.anchor)
     {v w : ValidatorIndex} (hv : v ∈ E.honest)
     {s n : ℕ} {a : Attestation Root} {walkSlot : Slot}
@@ -197,16 +197,16 @@ theorem honest_vote_path_admissible
 /-- The public lower execution contracts derive the internal head-path
 property. The cache and selected-margin domain are not inputs. -/
 theorem honestHeadPathAdmissibility_of_accepted
-    (B : CausalPrefixFFGInterpretation cfg ext E)
-    (hT : E.ScheduledPrefixPremises cfg ext)
-    (hC : E.CompletedFCRCallPremises cfg ext)
+    (B : ScheduledFFGInterpretation cfg ext E)
+    (hT : E.ScheduledExecutionPremises cfg ext)
+    (hC : E.ScheduledFCRCallPremises cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
-    (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
+    (hboundary : InitialAnchorAtEpochBoundary (cfg := cfg)
       (E := E) (anchor := B.anchor))
     (hspe : 1 < cfg.slots_per_epoch)
-    (hDelay : E.RealizedFinalizationDelay cfg ext B)
-    (P : EpochCheckpointClosure B.anchor (E.AcceptedRoot cfg ext) B.state.C)
-    (V : B.state.ExactLinkValidity) :
+    (hDelay : E.ImportedBlockFinalizationLag cfg ext B)
+    (P : EpochCheckpointProjectionLaws B.anchor (E.RootKnownInScheduledPrefix cfg ext) B.state.checkpoint_at_epoch)
+    (V : B.state.LinkCheckpointAgreement) :
     HonestHeadPathAdmissibility cfg ext E := by
   have hacc : FFGAccountabilityAssumptions cfg ext E :=
     { genesis_store := by

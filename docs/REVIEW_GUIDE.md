@@ -8,9 +8,11 @@
 - **FFG:** Casper Friendly Finality Gadget. It supplies checkpoint justification and finalization state.
 - **LMD-GHOST:** Latest Message Driven Greedy Heaviest Observed SubTree. It selects a fork-choice head from latest votes.
 - **Gloas:** The consensus fork that separates beacon blocks from execution payloads.
-- **AU:** Available and unrealized justification from FFG votes in a block's ancestry in the paper model.
+- **Available checkpoint:** `AcceptedBlockFFGState.AvailableCheckpoint` holds when an accepted block on the tip's chain has checkpoint evidence. `CheckpointInclusionView.AvailableCheckpoint` is the paper view.
 - **PTC:** Payload Timeliness Committee. It supplies payload timeliness votes in Gloas.
 - **GST:** Global stabilization time. The paper's synchrony assumptions apply after this point.
+- **Scheduled prefix:** `Execution.ScheduledPrefixStore` is a store from the exact event fold. `Execution.RootKnownInScheduledPrefix` also covers the initial store.
+- **FFG interpretation:** `ScheduledFFGInterpretation` holds the accepted block state and its checkpoint read agreement. `FFGInterpretationFidelity` checks real included votes and the external validity function.
 - **A, Δ, S:** A is the attestation deadline offset. Δ is the positive message delay. S is the slot duration. The execution premise requires `A + Δ < S`.
 
 ## Review status
@@ -53,7 +55,7 @@
 1. Read `FastConfirmationModel/` and `FastConfirmationStatements/`. Check each definition, premise field, and quantifier. Confirm that the claims concern stored boundary outputs.
 2. Compare `FastConfirmationModel/Spec/` with the pinned Python fork. Check changed branches, totalized maps, loop fuel, integer arithmetic, and the Gloas discount. Review schedules, accepted handler returns, static stake, and payload import in `FastConfirmationModel/Execution/`.
 3. Check external contracts and supplied FFG evidence. The handler uses the Python justified-state lookup. The evidence relay field is a separate premise that matches head-state clients.
-4. Read proof terms in `FastConfirmationProofs/`. Then read `FastConfirmationWitnesses/Index.lean`. Check each finite run and each vacuous field. Check the 42 names in `scripts/Audit.lean`.
+4. Read proof terms in `FastConfirmationProofs/`. Then read `FastConfirmationWitnesses/Index.lean`. Check each finite run and each vacuous field. Check the 43 names in `scripts/Audit.lean`.
 5. Read `FastConfirmationPaper/` independently. Compare the paper claims and assumptions with [the paper map](PAPER_MAP.md). The paper library has no refinement theorem to the executable model.
 
 ## Review dimensions
@@ -71,11 +73,10 @@
 
 Paper Assumption 3.2 can allow a two-epoch FFG inclusion delay. The executable selector can close its gates before inclusion. `get_latest_confirmed_eq_finalized_of_stale` and `Execution.confirmed_succ_eq_finalized_of_stale_call` show the stale fallback. The live claim uses timely closure. The joint finite witness meets both live fields, but its FFG timing holds through the genesis anchor. No vote-driven justification occurs in that run. Paper Theorem 1 has no block-in-every-slot premise.
 
-`Execution.NextSlotSafetyPremises` includes exact FFG state at each successful handler prefix. It also includes scheduled execution, completed FCR calls, epoch arithmetic, anchor alignment, checkpoint evidence, and finalization delay. `Execution.CompletedFCRCallPremises` adds static validators, a fault bound for each committee span, Phase0 source coherence, a balance floor and next-slot vote receipt. No field directly states the stored-root safety conclusion. Global FFG and finalization premises can range beyond a conclusion endpoint.
+`Execution.NextSlotSafetyPremises` includes exact FFG state at each successful handler prefix. It also includes scheduled execution, completed FCR calls, epoch arithmetic, anchor alignment, checkpoint evidence, and finalization delay. `Execution.ScheduledFCRCallPremises` adds static validators, a fault bound for each committee span, Phase0 source coherence, a balance floor and next-slot vote receipt. No field directly states the stored-root safety conclusion. Global FFG and finalization premises can range beyond a conclusion endpoint.
 
-Prediction support is derived. `CompletedFCRCallPremises` has no
-helper_provisos field. `FCRPredictionSupportAt` is internal proof vocabulary,
-not a safety premise. Its previous-result conclusion permits different targets
+Prediction support is derived. `SelectedPredictionVoteSupport` is internal proof vocabulary,
+outside the safety premise. Its previous-result conclusion permits different targets
 that all descend from the selected result. The live premise and claim are unchanged.
 
 The key theorem is
@@ -91,10 +92,9 @@ and `start(e+1)` deadline. Both its certificate and its quorum are functions of 
 cutoff after the target epoch. An earlier endpoint uses the original gate and
 votes before that endpoint. No strict justified-epoch external law was added.
 
-The reachability audit explicitly retains 17 existing call/trace declarations
-and two support predicates for public proof and witness interfaces. They became
-unreachable from the claim when the support field was removed. Their types are
-unchanged. The audit still rejects other unexpected declarations.
+The reachability audit keeps the Statements library focused on declarations
+used by the review claims. The Internal library holds the call and trace
+vocabulary used by proofs and witnesses.
 
 The existing target-edge and previous-result witness theorems remain facts about
 the runs. Their full-bundle constructors no longer prove support fields.

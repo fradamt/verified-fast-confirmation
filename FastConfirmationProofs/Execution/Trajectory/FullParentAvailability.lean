@@ -56,7 +56,7 @@ theorem of_sameBlocks {G s t : Store Root} (h : FullParentVerified G s)
 
 end FullParentVerified
 
-variable (cfg : Config) (ext : Externals Root)
+variable (cfg : Config) (ext : BeaconFunctionInterface Root)
 
 /-- Shape of a fresh successful block insertion: the parent was known, the
 FULL parent was verified, and the tail handlers keep the inserted block

@@ -16,7 +16,7 @@ The "LMD-GHOST helpers" section of `specs/phase0/fast-confirmation.md`
 namespace FastConfirmation.Spec
 
 variable {Root : Type*} [LinearOrder Root] [Inhabited Root]
-variable (cfg : Config) (ext : Externals Root)
+variable (cfg : Config) (ext : BeaconFunctionInterface Root)
 
 /-- `get_block_support_between_slots`: Return support of the block by
 validators assigned to slots between ``start_slot`` and ``end_slot``

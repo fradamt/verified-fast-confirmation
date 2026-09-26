@@ -41,7 +41,7 @@ theorem SameBlocks.nonAnchorParentKnown {s t : Store Root} (h : SameBlocks s t)
   simp only [NonAnchorParentKnown, ← hbr, ← hb]
   exact hs
 
-variable [LinearOrder Root] [Inhabited Root] (cfg : Config) (ext : Externals Root)
+variable [LinearOrder Root] [Inhabited Root] (cfg : Config) (ext : BeaconFunctionInterface Root)
 
 omit [Inhabited Root] in
 /-- Block insertion preserves `NonAnchorParentKnown`. The new block's parent was

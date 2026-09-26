@@ -32,7 +32,7 @@ result-only lookalike.
 namespace FastConfirmation.Spec
 
 variable {Root : Type*} [LinearOrder Root] [Inhabited Root]
-variable (cfg : Config) (ext : Externals Root)
+variable (cfg : Config) (ext : BeaconFunctionInterface Root)
 
 namespace SelectedParentTrace
 
@@ -337,7 +337,7 @@ theorem currentConfirmedCheckpointCertified_of_carriedTrajectory
     (hpayload : PayloadEnvelopeRelay cfg ext E)
     {anchor : Checkpoint Root}
     (hanchor : anchor = E.genesis_store.justified_checkpoint)
-    (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
+    (hboundary : InitialAnchorAtEpochBoundary (cfg := cfg)
       (E := E) (anchor := anchor))
     {v : ValidatorIndex} (hv : v ∈ E.honest)
     (htrajectory : E.CurrentCarriedSelectorTrajectory cfg ext v)

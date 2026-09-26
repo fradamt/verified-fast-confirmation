@@ -15,7 +15,7 @@ This module contains `base_strip_of_confirmed_at_minimal` and related declaratio
 namespace FastConfirmation.Spec
 
 variable {Root : Type*} [LinearOrder Root] [Inhabited Root]
-variable (cfg : Config) (ext : Externals Root)
+variable (cfg : Config) (ext : BeaconFunctionInterface Root)
 
 
 namespace Execution

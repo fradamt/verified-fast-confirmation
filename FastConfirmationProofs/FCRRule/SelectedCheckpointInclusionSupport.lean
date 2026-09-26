@@ -31,7 +31,7 @@ counts target support without grouping it by source.
 namespace FastConfirmation.Spec
 
 variable {Root : Type*} [LinearOrder Root] [Inhabited Root]
-variable (cfg : Config) (ext : Externals Root)
+variable (cfg : Config) (ext : BeaconFunctionInterface Root)
 
 namespace Execution
 
@@ -42,14 +42,14 @@ and the normative target-support proviso attached to that gate. -/
 theorem currentTargetAcceptedEdge_gate_and_support
     {v : ValidatorIndex} {q : ℕ}
     {query : FastConfirmationStore Root} {latestConfirmedRoot a c : Root}
-    (hprovisos : FCRPredictionSupportAt cfg ext E v q query
+    (hprovisos : SelectedPredictionVoteSupport cfg ext E v q query
       latestConfirmedRoot)
     (hedge : CurrentTargetSelectedEdge cfg ext query latestConfirmedRoot a c) :
     will_current_target_be_justified cfg ext query.store = true ∧
       HonestVotesSupportTarget cfg E
         (get_current_target cfg query.store) q := by
   exact ⟨hedge.current_target_gate cfg ext,
-    hprovisos.current_target a c hedge⟩
+    hprovisos.current_edge_vote_support a c hedge⟩
 
 /-- A strict selected previous-epoch result away from epoch start exposes both
 the wrapper's actual no-conflict boolean and the matching call-site support
@@ -58,7 +58,7 @@ themselves `PreviousEpochSelectedEdge`s. -/
 theorem selectedPreviousResult_noConflict_gate_and_support
     {v : ValidatorIndex} {q : ℕ}
     {query : FastConfirmationStore Root} {latestConfirmedRoot result : Root}
-    (hprovisos : FCRPredictionSupportAt cfg ext E v q query
+    (hprovisos : SelectedPredictionVoteSupport cfg ext E v q query
       latestConfirmedRoot)
     (hout : find_latest_confirmed_descendant cfg ext query
       latestConfirmedRoot = result)
@@ -72,7 +72,7 @@ theorem selectedPreviousResult_noConflict_gate_and_support
         (get_current_store_epoch cfg query.store) q := by
   exact ⟨selected_previous_result_no_conflict_gate cfg ext query
       latestConfirmedRoot result hout hstrict hprevious hnotStart,
-    hprovisos.selected_previous_result_no_conflict result hout hstrict
+    hprovisos.previous_result_vote_support result hout hstrict
       hprevious hnotStart⟩
 
 /-- Once a concrete child is known to be on the query head's chain and to

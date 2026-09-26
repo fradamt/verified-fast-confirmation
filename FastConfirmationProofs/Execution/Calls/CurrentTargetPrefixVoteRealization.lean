@@ -18,7 +18,7 @@ needed by the accepted gate path:
   the next epoch boundary.
 
 The target root is compared between the voter's boundary store and the query
-prefix through one preselected `CausalPrefixFFGInterpretation`.  No block-set
+prefix through one preselected `ScheduledFFGInterpretation`.  No block-set
 inclusion between those stores, target agreement across validators, quorum,
 source agreement, ancestry segment, or safety conclusion is assumed.
 -/
@@ -26,7 +26,7 @@ source agreement, ancestry segment, or safety conclusion is assumed.
 namespace FastConfirmation.Spec
 
 variable {Root : Type*} [LinearOrder Root] [Inhabited Root]
-variable (cfg : Config) (ext : Externals Root)
+variable (cfg : Config) (ext : BeaconFunctionInterface Root)
 
 /-! ## Strengthened latest-message provenance at exact prefixes -/
 
@@ -134,7 +134,7 @@ totalized `get_head` justified-root fallback in the voter's own boundary
 store.  There is no synchrony, economic bound, selected-margin domain,
 target agreement, or safety field. -/
 structure CurrentTargetPrefixVoteAssumptions : Prop where
-  trajectory : E.ScheduledPrefixPremises cfg ext
+  trajectory : E.ScheduledExecutionPremises cfg ext
   justified_root_known : ∀ w ∈ E.honest, ∀ m : ℕ,
     E.WithinHorizon cfg m →
       (E.store cfg ext w m).justified_checkpoint.root ∈
@@ -154,14 +154,14 @@ def CurrentTargetPrefixVoteAssumptions.of_selectedMarginAssumptions
       anchorBlock.message.parent_root ≠ anchorBlock.root) :
     E.CurrentTargetPrefixVoteAssumptions cfg ext where
   trajectory :=
-    ScheduledPrefixPremises.of_selectedMarginAssumptions
+    ScheduledExecutionPremises.of_selectedMarginAssumptions
       cfg ext E hA hgen
   justified_root_known := hA.domain.justified_root_known
 
 /-- Every exact scheduled-event prefix retains the target epoch of the actual
 scheduled attestation which installed each current latest message. -/
 theorem ScheduledEventPrefix.currentTargetScheduledLatestMessageProvenance
-    (hT : E.ScheduledPrefixPremises cfg ext)
+    (hT : E.ScheduledExecutionPremises cfg ext)
     (p : E.ScheduledEventPrefix) :
     CurrentTargetScheduledLatestMessageProvenance cfg E
       (p.store cfg ext) := by
@@ -197,9 +197,9 @@ second, while `B.coherence.checkpoint_of_known` identifies the checkpoint
 projection of the same accepted LMD/head root in the voter's causal boundary
 store and the query prefix. -/
 theorem currentTargetObservedHonestSupporter_vote_of_prefix
-    (B : CausalPrefixFFGInterpretation cfg ext E)
+    (B : ScheduledFFGInterpretation cfg ext E)
     (hV : E.CurrentTargetPrefixVoteAssumptions cfg ext)
-    (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg) (E := E)
+    (hboundary : InitialAnchorAtEpochBoundary (cfg := cfg) (E := E)
       (anchor := E.genesis_store.justified_checkpoint))
     (p : E.ScheduledEventPrefix)
     (hp : p.node ∈ E.honest)
@@ -255,7 +255,7 @@ theorem currentTargetObservedHonestSupporter_vote_of_prefix
     exact hcur.symm
   have hboundary' : ablk.message.slot ≤
       compute_start_slot_at_epoch cfg (get_current_epoch cfg ast) := by
-    simpa only [TrustedAnchorBoundaryAligned, hgeq,
+    simpa only [InitialAnchorAtEpochBoundary, hgeq,
       get_forkchoice_store, Function.update_self] using hboundary
   have hqueryEpoch : compute_epoch_at_slot cfg
       (E.slot_at cfg (p.previousSecond + 1)) = (get_latest_message_epoch cfg lm) := by
@@ -335,7 +335,7 @@ theorem currentTargetObservedHonestSupporter_vote_of_prefix
     (honest_attestation cfg ext (E.store cfg ext i k)
       a.data.slot index i).data.target.epoch
   have hqueryProjection := B.coherence.checkpoint_of_known
-    (Execution.CausalStore.scheduledPrefix p) lm.root hlmKnown (get_latest_message_epoch cfg lm)
+    (Execution.ScheduledPrefixStore.scheduledPrefix p) lm.root hlmKnown (get_latest_message_epoch cfg lm)
   have hcanonicalRoot :
       (honest_attestation cfg ext (E.store cfg ext i k)
         a.data.slot index i).data.target.root =
@@ -353,11 +353,11 @@ theorem currentTargetObservedHonestSupporter_vote_of_prefix
             (get_head cfg (E.store cfg ext i k)).root
             (honest_attestation cfg ext (E.store cfg ext i k)
               a.data.slot index i).data.target.epoch).root := rfl
-      _ = (B.state.C (get_head cfg (E.store cfg ext i k)).root
+      _ = (B.state.checkpoint_at_epoch (get_head cfg (E.store cfg ext i k)).root
             (honest_attestation cfg ext (E.store cfg ext i k)
               a.data.slot index i).data.target.epoch).root :=
         (congrArg Checkpoint.root hgroundProjection).symm
-      _ = (B.state.C lm.root (get_latest_message_epoch cfg lm)).root := by
+      _ = (B.state.checkpoint_at_epoch lm.root (get_latest_message_epoch cfg lm)).root := by
         rw [hheadRoot, hcanonicalEpoch]
       _ = (get_checkpoint_for_block cfg (p.store cfg ext)
             lm.root (get_latest_message_epoch cfg lm)).root :=

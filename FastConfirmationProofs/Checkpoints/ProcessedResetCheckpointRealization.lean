@@ -12,7 +12,7 @@ This file realizes the finalized and observed-reset inputs in the
 accepted-prefix FFG semantics. The only reset-specific state is the exact
 ordered field rotation already proved for `update_fast_confirmation_variables`.
 Checkpoint origins, certificates, and causal-store reflection all come from
-one `CausalPrefixFFGInterpretation` selected before the execution store.
+one `ScheduledFFGInterpretation` selected before the execution store.
 
 No legacy `ChainFFGState`, `BlockStateTransitionHistory`, justification
 interface, confirmation conclusion, filter conclusion, or safety premise is
@@ -22,7 +22,7 @@ used by the declarations below.
 namespace FastConfirmation.Spec
 
 variable {Root : Type*} [LinearOrder Root] [Inhabited Root]
-variable (cfg : Config) (ext : Externals Root)
+variable (cfg : Config) (ext : BeaconFunctionInterface Root)
 
 namespace Execution
 
@@ -34,7 +34,7 @@ variable (E : Execution Root)
 The proof needs only root-list monotonicity, accepted block-message uniqueness,
 and clock monotonicity; it does not use any FFG or safety interface. -/
 theorem ResetCheckpointRealizedAt.mono_of_trajectory
-    (hT : E.ScheduledPrefixPremises cfg ext)
+    (hT : E.ScheduledExecutionPremises cfg ext)
     {anchor c : Checkpoint Root} {v : ValidatorIndex} {n m : ℕ}
     (hnm : n ≤ m)
     (h : E.ResetCheckpointRealizedAt cfg anchor
@@ -70,10 +70,10 @@ theorem ResetCheckpointRealizedAt.mono_of_trajectory
 /-- The boundary-aligned trusted anchor is a realized reset checkpoint in
 every execution store under the safety-free trajectory assumptions. -/
 theorem resetCheckpointRealizedAt_anchor_of_acceptedTrajectory
-    (hT : E.ScheduledPrefixPremises cfg ext)
+    (hT : E.ScheduledExecutionPremises cfg ext)
     {anchor : Checkpoint Root}
     (hanchor : anchor = E.genesis_store.justified_checkpoint)
-    (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
+    (hboundary : InitialAnchorAtEpochBoundary (cfg := cfg)
       (E := E) (anchor := anchor))
     (v : ValidatorIndex) (n : ℕ) :
     E.ResetCheckpointRealizedAt cfg anchor (E.store cfg ext v n) anchor := by
@@ -94,7 +94,7 @@ theorem resetCheckpointRealizedAt_anchor_of_acceptedTrajectory
       (hanchorRoot ▸ hknownN)
   have hslotUpper : ablk.message.slot ≤
       compute_start_slot_at_epoch cfg anchor.epoch := by
-    simpa only [TrustedAnchorBoundaryAligned, hgenEq, hanchorRoot,
+    simpa only [InitialAnchorAtEpochBoundary, hgenEq, hanchorRoot,
       get_forkchoice_store, Function.update_self] using hboundary
   have hslot0 : get_current_slot cfg E.genesis_store = ast.slot := by
     rw [hgenEq]
@@ -129,10 +129,10 @@ execution store.  The boundary walk identifies the root and its boundary-slot
 upper bound; accepted AU formation supplies the included certificate and the
 checkpoint epoch bound. -/
 theorem AcceptedSelectorAUCarrier.resetCheckpointRealizedAt
-    (B : CausalPrefixFFGInterpretation cfg ext E)
-    (hT : E.ScheduledPrefixPremises cfg ext)
+    (B : ScheduledFFGInterpretation cfg ext E)
+    (hT : E.ScheduledExecutionPremises cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
-    (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
+    (hboundary : InitialAnchorAtEpochBoundary (cfg := cfg)
       (E := E) (anchor := B.anchor))
     {w : ValidatorIndex} {m : ℕ} {c : Checkpoint Root}
     (h : AcceptedSelectorAUCarrier B.state (E.store cfg ext w m) c) :
@@ -161,13 +161,13 @@ theorem AcceptedSelectorAUCarrier.resetCheckpointRealizedAt
       (hanchorRoot ▸ hanchorKnown)
   have hanchorBoundary : ablk.message.slot ≤
       compute_start_slot_at_epoch cfg B.anchor.epoch := by
-    simpa only [TrustedAnchorBoundaryAligned, hgenEq, hanchorRoot,
+    simpa only [InitialAnchorAtEpochBoundary, hgenEq, hanchorRoot,
       get_forkchoice_store, Function.update_self] using hboundary
   obtain ⟨hincluded⟩ := h.formed_evidence.certified
   have hcertified : CertifiedJustified cfg E B.anchor c :=
     IncludedCertifiedJustified.toCertifiedJustified
       (cfg := cfg)
-      (Execution.CausalCarrierAttestationRelation.relation
+      (Execution.AcceptedBlockAttestationInclusion.relation
         cfg ext E B.state.includedAttestations) hincluded
   have hanchorEpochLe : B.anchor.epoch ≤ c.epoch :=
     CertifiedJustified.anchor_epoch_le (cfg := cfg) hcertified
@@ -188,23 +188,23 @@ theorem AcceptedSelectorAUCarrier.resetCheckpointRealizedAt
     E.store_parentSlotLt cfg ext hT.wellFormed hT.externals_coherence
       ⟨ast, ablk, hgenEq, hslot, hparent⟩
       hT.wellFormed.anchor_parent_unscheduled w m
-  have hstore : E.CausalStore cfg ext (E.store cfg ext w m) :=
+  have hstore : E.ScheduledPrefixStore cfg ext (E.store cfg ext w m) :=
     E.store_causal cfg ext w m
   have hcheckpoint : c = get_checkpoint_for_block cfg
       (E.store cfg ext w m) h.tip c.epoch :=
-    B.coherence.au_checkpoint_of_known hstore h.tip
+    B.coherence.available_checkpoint_checkpoint_of_known hstore h.tip
       h.tip_carrier.known c h.au
   have hroot : c.root = get_checkpoint_block cfg
       (E.store cfg ext w m) h.tip c.epoch := by
     have hr := congrArg Checkpoint.root hcheckpoint
     simpa only [get_checkpoint_for_block] using hr
   have hspec := get_ancestor_spec hparentSlots hwalk
-  have htipAt : E.AcceptedBlockAt cfg ext h.tip
+  have htipAt : E.BlockKnownInScheduledPrefix cfg ext h.tip
       ((E.store cfg ext w m).blocks h.tip) :=
     E.acceptedBlockAt_of_causal_known cfg ext hstore h.tip_carrier.known
   have hcEpochLeTip : c.epoch ≤ compute_epoch_at_slot cfg
       ((E.store cfg ext w m).blocks h.tip).slot :=
-    B.state.au_epoch_le_block htipAt h.au
+    B.state.available_checkpoint_epoch_le_block htipAt h.au
   have htipSlotUpper : ((E.store cfg ext w m).blocks h.tip).slot ≤
       get_current_slot cfg (E.store cfg ext w m) :=
     E.store_blocks_slot_le_current cfg ext hT.whole_seconds hgenShort
@@ -222,10 +222,10 @@ theorem AcceptedSelectorAUCarrier.resetCheckpointRealizedAt
 /-- The exact accepted global finalized selector realizes the concrete store
 field without passing through the legacy global FFG trajectory. -/
 theorem finalizedCheckpoint_resetRealizedAt_of_acceptedGlobalTrajectory
-    (B : CausalPrefixFFGInterpretation cfg ext E)
-    (hT : E.ScheduledPrefixPremises cfg ext)
+    (B : ScheduledFFGInterpretation cfg ext E)
+    (hT : E.ScheduledExecutionPremises cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
-    (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
+    (hboundary : InitialAnchorAtEpochBoundary (cfg := cfg)
       (E := E) (anchor := B.anchor))
     {w : ValidatorIndex} (m : ℕ) :
     E.ResetCheckpointRealizedAt cfg B.anchor (E.store cfg ext w m)
@@ -236,7 +236,7 @@ theorem finalizedCheckpoint_resetRealizedAt_of_acceptedGlobalTrajectory
       E.genesis_store = get_forkchoice_store cfg ast ablk ∧
         ast.slot = ablk.message.slot :=
     ⟨ast, ablk, hgenEq, hslot⟩
-  have hstore : E.CausalStore cfg ext (E.store cfg ext w m) :=
+  have hstore : E.ScheduledPrefixStore cfg ext (E.store cfg ext w m) :=
     E.store_causal cfg ext w m
   rcases B.globalFinalized_anchor_or_AUEvidence hgenShort hanchor hstore with
     hanchorField | hevidence
@@ -250,10 +250,10 @@ theorem finalizedCheckpoint_resetRealizedAt_of_acceptedGlobalTrajectory
 /-- The exact accepted global unrealized-justified selector realizes the
 fresh checkpoint which the ordered FCR rotation may cache. -/
 theorem unrealizedJustifiedCheckpoint_resetRealizedAt_of_acceptedGlobalTrajectory
-    (B : CausalPrefixFFGInterpretation cfg ext E)
-    (hT : E.ScheduledPrefixPremises cfg ext)
+    (B : ScheduledFFGInterpretation cfg ext E)
+    (hT : E.ScheduledExecutionPremises cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
-    (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
+    (hboundary : InitialAnchorAtEpochBoundary (cfg := cfg)
       (E := E) (anchor := B.anchor))
     {w : ValidatorIndex} (m : ℕ) :
     E.ResetCheckpointRealizedAt cfg B.anchor (E.store cfg ext w m)
@@ -264,7 +264,7 @@ theorem unrealizedJustifiedCheckpoint_resetRealizedAt_of_acceptedGlobalTrajector
       E.genesis_store = get_forkchoice_store cfg ast ablk ∧
         ast.slot = ablk.message.slot :=
     ⟨ast, ablk, hgenEq, hslot⟩
-  have hstore : E.CausalStore cfg ext (E.store cfg ext w m) :=
+  have hstore : E.ScheduledPrefixStore cfg ext (E.store cfg ext w m) :=
     E.store_causal cfg ext w m
   have horigins :=
     (B.causalStoreGlobalProjection hgenShort hanchor hstore).storeGlobal
@@ -273,7 +273,7 @@ theorem unrealizedJustifiedCheckpoint_resetRealizedAt_of_acceptedGlobalTrajector
   · rw [hanchorField]
     exact E.resetCheckpointRealizedAt_anchor_of_acceptedTrajectory
       cfg ext hT hanchor hboundary w m
-  · have hAU : B.state.AU cfg ext tip
+  · have hAU : B.state.AvailableCheckpoint cfg ext tip
         (E.store cfg ext w m).unrealized_justified_checkpoint := by
       rw [hfield]
       exact B.state.gu_AU cfg ext htip.acceptedRoot
@@ -289,10 +289,10 @@ theorem unrealizedJustifiedCheckpoint_resetRealizedAt_of_acceptedGlobalTrajector
 /-- Both retained FCR reset fields stay realized under the accepted global
 trajectory.  The induction follows the executable write order exactly. -/
 theorem resetCheckpointHistoryAt_of_acceptedGlobalTrajectory
-    (B : CausalPrefixFFGInterpretation cfg ext E)
-    (hT : E.ScheduledPrefixPremises cfg ext)
+    (B : ScheduledFFGInterpretation cfg ext E)
+    (hT : E.ScheduledExecutionPremises cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
-    (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
+    (hboundary : InitialAnchorAtEpochBoundary (cfg := cfg)
       (E := E) (anchor := B.anchor))
     (v : ValidatorIndex) :
     ∀ n : ℕ, E.ResetCheckpointHistoryAt cfg ext B.anchor v n := by
@@ -327,10 +327,10 @@ theorem resetCheckpointHistoryAt_of_acceptedGlobalTrajectory
 in that query's store, independently of whether the speculative query becomes
 a real slot call. -/
 theorem fcrStep_observed_resetRealizedAt_of_acceptedGlobalTrajectory
-    (B : CausalPrefixFFGInterpretation cfg ext E)
-    (hT : E.ScheduledPrefixPremises cfg ext)
+    (B : ScheduledFFGInterpretation cfg ext E)
+    (hT : E.ScheduledExecutionPremises cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
-    (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
+    (hboundary : InitialAnchorAtEpochBoundary (cfg := cfg)
       (E := E) (anchor := B.anchor))
     (v : ValidatorIndex) (n : ℕ) :
     E.ResetCheckpointRealizedAt cfg B.anchor (E.store cfg ext v (n + 1))

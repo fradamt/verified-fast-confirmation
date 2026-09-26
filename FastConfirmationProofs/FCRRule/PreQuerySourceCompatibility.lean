@@ -31,7 +31,7 @@ not turn an opaque FFG state or a helper prediction into any one of them.
 namespace FastConfirmation.Spec
 
 variable {Root : Type*} [LinearOrder Root] [Inhabited Root]
-variable (cfg : Config) (ext : Externals Root)
+variable (cfg : Config) (ext : BeaconFunctionInterface Root)
 
 /-! ## The three-region semantic boundary -/
 

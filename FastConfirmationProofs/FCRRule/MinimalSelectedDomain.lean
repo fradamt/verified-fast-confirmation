@@ -29,7 +29,7 @@ assumptions.  The legacy `SpecAssumptions` theorems remain unchanged.
 namespace FastConfirmation.Spec
 
 variable {Root : Type*} [LinearOrder Root] [Inhabited Root]
-variable (cfg : Config) (ext : Externals Root)
+variable (cfg : Config) (ext : BeaconFunctionInterface Root)
 
 /-- The registry seed only needs the store-equality component of the trusted
 genesis initialization. -/

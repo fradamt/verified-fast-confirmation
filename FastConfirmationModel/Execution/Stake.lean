@@ -7,7 +7,7 @@ public import FastConfirmationModel.Execution.ScheduledPrefixes
 
 namespace FastConfirmation.Spec
 variable {Root : Type*} [LinearOrder Root] [Inhabited Root]
-variable (cfg : Config) (ext : Externals Root)
+variable (cfg : Config) (ext : BeaconFunctionInterface Root)
 namespace Execution
 variable (E : Execution Root)
 /-- The trusted anchor state (of the genesis store's justified checkpoint —

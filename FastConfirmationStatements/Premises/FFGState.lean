@@ -18,15 +18,15 @@ tip's chain has formed evidence for it.
 
 There are three interfaces:
 
-* `CausalCarrierFFGState` is the block-local projection used by the accepted
+* `AcceptedBlockFFGState` is the block-local projection used by the accepted
   theorem. It ranges over exact accepted event-prefix roots and records
   AU checkpoint evidence on exact accepted event-prefix roots. `C` is the
   epoch checkpoint selector; `GJ`, `GU`, `GF`, and `GUF` are the realized
   justified, unrealized justified, realized finalized, and unrealized
   finalized checkpoints of a block;
-* `FFGSelectorsAndCheckpointReadsMatchBeaconStates` connects the accepted
+* `FFGStateAndCheckpointReadAgreement` connects the accepted
   projection to actual successful block-handler transitions; and
-* `PaperA32Inclusion` is the paper's separate liveness assumption.  Its
+* `EventualCheckpointInclusion` is the paper's separate liveness assumption.  Its
   antecedent is the paper's link-specific support condition in every honest
   view throughout epoch `e+1`; its conclusion is exact AU inclusion in a
   concrete descendant, not the weaker epoch-only consequence read by
@@ -43,7 +43,7 @@ antecedent of Assumption 3.2.
 namespace FastConfirmation.Spec
 
 variable {Root : Type*} [LinearOrder Root] [Inhabited Root]
-variable (cfg : Config) (ext : Externals Root)
+variable (cfg : Config) (ext : BeaconFunctionInterface Root)
 
 namespace Execution
 
@@ -75,9 +75,8 @@ accepted-carrier extension below ties `carrier_message` to the carrier root.
 These are the inclusion facts that the safety proof uses. Body membership,
 validity, and the validation-state origin are in
 `Execution.IncludedAttestationFidelity`, outside the safety premise. The
-`validity` parameter is the oracle that the fidelity record constrains. -/
+fidelity record constrains the external indexed-attestation check. -/
 structure IncludedAttestationEvidence
-    (validity : BeaconState Root → Attestation Root → Bool)
     (carrier : Root) (a : Attestation Root) where
   carrier_message : BeaconBlock Root
   received_from_block : ∃ (w : ValidatorIndex) (n : ℕ),
@@ -90,47 +89,43 @@ structure IncludedAttestationEvidence
     i ∈ E.committee a.data.slot
 
 /-- A supplied inclusion relation for ordinary FFG attestations. -/
-structure IncludedAttestationRelation
-    (validity : BeaconState Root → Attestation Root → Bool) where
+structure BlockAttestationInclusion where
   /-- Supplied assignment of an attestation to a carrier block. -/
   Included : Root → Attestation Root → Prop
   evidence : ∀ {carrier : Root} {a : Attestation Root},
     Included carrier a →
-      IncludedAttestationEvidence cfg E validity carrier a
+      IncludedAttestationEvidence cfg E carrier a
 
 /-! ### Accepted positive inclusion carriers -/
 
 /-- Positive inclusion evidence whose exact carrier block occurs in a causal
 execution prefix.  This strengthens the projected evidence with
-`AcceptedBlockAt`, not merely same-root schedule membership. -/
-structure CausalCarrierAttestationEvidence
-    (validity : BeaconState Root → Attestation Root → Bool)
+`BlockKnownInScheduledPrefix`, not merely same-root schedule membership. -/
+structure AcceptedBlockAttestationEvidence
     (carrier : Root) (a : Attestation Root)
-    extends IncludedAttestationEvidence cfg E validity carrier a where
+    extends IncludedAttestationEvidence cfg E carrier a where
   carrier_accepted :
-    E.AcceptedBlockAt cfg ext carrier carrier_message
+    E.BlockKnownInScheduledPrefix cfg ext carrier carrier_message
 
 /-- A supplied positive inclusion relation with an accepted carrier. -/
-structure CausalCarrierAttestationRelation
-    (validity : BeaconState Root → Attestation Root → Bool) where
+structure AcceptedBlockAttestationInclusion where
   /-- Carrier-vote assignment with accepted-carrier evidence. -/
   Included : Root → Attestation Root → Prop
   evidence : ∀ {carrier : Root} {a : Attestation Root},
     Included carrier a →
-      CausalCarrierAttestationEvidence cfg ext E validity carrier a
+      AcceptedBlockAttestationEvidence cfg ext E carrier a
 
-namespace CausalCarrierAttestationRelation
+namespace AcceptedBlockAttestationInclusion
 
 /-- Forget only the accepted-carrier strengthening.  This projects positive
 evidence to the broader scheduled-root relation. -/
 def relation
-    {validity : BeaconState Root → Attestation Root → Bool}
-    (I : CausalCarrierAttestationRelation cfg ext E validity) :
-    IncludedAttestationRelation cfg E validity where
+    (I : AcceptedBlockAttestationInclusion cfg ext E) :
+    BlockAttestationInclusion cfg E where
   Included := I.Included
   evidence := fun h => (I.evidence h).toIncludedAttestationEvidence
 
-end CausalCarrierAttestationRelation
+end AcceptedBlockAttestationInclusion
 
 end Execution
 
@@ -195,7 +190,7 @@ known in a causal store. -/
 def HonestEarlierTargetVoteOnCarrierChain (E : Execution Root)
     (included : Root → Attestation Root → Prop)
     (carrier : Root) (c : Checkpoint Root) : Prop :=
-  ∃ b : BeaconBlock Root, E.AcceptedBlockAt cfg ext carrier b ∧
+  ∃ b : BeaconBlock Root, E.BlockKnownInScheduledPrefix cfg ext carrier b ∧
     ∃ i ∈ E.honest, ∃ (s : Slot) (k : ℕ) (a : Attestation Root),
       s < b.slot ∧
       E.SlotWithinHorizon cfg s ∧
@@ -207,7 +202,7 @@ def HonestEarlierTargetVoteOnCarrierChain (E : Execution Root)
 /-- Concrete evidence represented by one accepted block-local AU entry.
 Certification and inclusion remain positive, while the non-anchor temporal
 carrier is an exact accepted block. -/
-structure IncludedVoteCheckpointCertificate (E : Execution Root)
+structure IncludedCheckpointEvidence (E : Execution Root)
     (included : Root → Attestation Root → Prop)
     (anchor : Checkpoint Root) (carrier : Root)
     (c : Checkpoint Root) : Prop where
@@ -223,110 +218,108 @@ structure IncludedVoteCheckpointCertificate (E : Execution Root)
 for Lean convenience, but all semantic laws are restricted to causal-prefix
 accepted roots or exact accepted block carriers.  Every positive inclusion
 and formed carrier is accepted. -/
-structure CausalCarrierFFGState (E : Execution Root)
+structure AcceptedBlockFFGState (E : Execution Root)
     (anchor : Checkpoint Root) where
-  attestationValidity : BeaconState Root → Attestation Root → Bool
   includedAttestations :
-    Execution.CausalCarrierAttestationRelation cfg ext E
-      attestationValidity
-  formed : Root → Checkpoint Root → Prop
-  C : Root → Epoch → Checkpoint Root
-  GJ : Root → Checkpoint Root
-  GU : Root → Checkpoint Root
-  GF : Root → Checkpoint Root
-  GUF : Root → Checkpoint Root
-  checkpoint_epoch : ∀ r e, (C r e).epoch = e
-  formed_carrier_accepted : ∀ {r c}, formed r c →
-    E.AcceptedRoot cfg ext r
+    Execution.AcceptedBlockAttestationInclusion cfg ext E
+  checkpoint_evidence_in_block : Root → Checkpoint Root → Prop
+  checkpoint_at_epoch : Root → Epoch → Checkpoint Root
+  realized_justified : Root → Checkpoint Root
+  unrealized_justified : Root → Checkpoint Root
+  realized_finalized : Root → Checkpoint Root
+  unrealized_finalized : Root → Checkpoint Root
+  checkpoint_epoch : ∀ r e, (checkpoint_at_epoch r e).epoch = e
+  formed_carrier_accepted : ∀ {r c}, checkpoint_evidence_in_block r c →
+    E.RootKnownInScheduledPrefix cfg ext r
   formed_evidence : ∀ {r : Root} {c : Checkpoint Root},
-    formed r c → IncludedVoteCheckpointCertificate cfg ext E
+    checkpoint_evidence_in_block r c → IncludedCheckpointEvidence cfg ext E
       includedAttestations.Included anchor r c
-  gj_mem : ∀ r, E.AcceptedRoot cfg ext r →
-    ∃ carrier, E.RootDescends r carrier ∧ formed carrier (GJ r)
-  gu_mem : ∀ r, E.AcceptedRoot cfg ext r →
-    ∃ carrier, E.RootDescends r carrier ∧ formed carrier (GU r)
-  gf_mem : ∀ r, E.AcceptedRoot cfg ext r →
-    ∃ carrier, E.RootDescends r carrier ∧ formed carrier (GF r)
-  guf_mem : ∀ r, E.AcceptedRoot cfg ext r →
-    ∃ carrier, E.RootDescends r carrier ∧ formed carrier (GUF r)
-  gj_anchor_or_before : ∀ {r b}, E.AcceptedBlockAt cfg ext r b →
-    GJ r = anchor ∨ (GJ r).epoch < compute_epoch_at_slot cfg b.slot
-  gj_max : ∀ {r b c}, E.AcceptedBlockAt cfg ext r b →
-    (∃ carrier, E.RootDescends r carrier ∧ formed carrier c) →
-    c.epoch < compute_epoch_at_slot cfg b.slot → c.epoch ≤ (GJ r).epoch
-  gu_max : ∀ {r c}, E.AcceptedRoot cfg ext r →
-    (∃ carrier, E.RootDescends r carrier ∧ formed carrier c) →
-    c.epoch ≤ (GU r).epoch
-  au_epoch_le_block : ∀ {r b c}, E.AcceptedBlockAt cfg ext r b →
-    (∃ carrier, E.RootDescends r carrier ∧ formed carrier c) →
+  realized_justified_mem : ∀ r, E.RootKnownInScheduledPrefix cfg ext r →
+    ∃ carrier, E.RootDescends r carrier ∧ checkpoint_evidence_in_block carrier (realized_justified r)
+  unrealized_justified_mem : ∀ r, E.RootKnownInScheduledPrefix cfg ext r →
+    ∃ carrier, E.RootDescends r carrier ∧ checkpoint_evidence_in_block carrier (unrealized_justified r)
+  realized_finalized_mem : ∀ r, E.RootKnownInScheduledPrefix cfg ext r →
+    ∃ carrier, E.RootDescends r carrier ∧ checkpoint_evidence_in_block carrier (realized_finalized r)
+  unrealized_finalized_mem : ∀ r, E.RootKnownInScheduledPrefix cfg ext r →
+    ∃ carrier, E.RootDescends r carrier ∧ checkpoint_evidence_in_block carrier (unrealized_finalized r)
+  realized_justified_anchor_or_before : ∀ {r b}, E.BlockKnownInScheduledPrefix cfg ext r b →
+    realized_justified r = anchor ∨ (realized_justified r).epoch < compute_epoch_at_slot cfg b.slot
+  realized_justified_max : ∀ {r b c}, E.BlockKnownInScheduledPrefix cfg ext r b →
+    (∃ carrier, E.RootDescends r carrier ∧ checkpoint_evidence_in_block carrier c) →
+    c.epoch < compute_epoch_at_slot cfg b.slot → c.epoch ≤ (realized_justified r).epoch
+  unrealized_justified_max : ∀ {r c}, E.RootKnownInScheduledPrefix cfg ext r →
+    (∃ carrier, E.RootDescends r carrier ∧ checkpoint_evidence_in_block carrier c) →
+    c.epoch ≤ (unrealized_justified r).epoch
+  available_checkpoint_epoch_le_block : ∀ {r b c}, E.BlockKnownInScheduledPrefix cfg ext r b →
+    (∃ carrier, E.RootDescends r carrier ∧ checkpoint_evidence_in_block carrier c) →
     c.epoch ≤ compute_epoch_at_slot cfg b.slot
-  gf_evidence : ∀ r, E.AcceptedRoot cfg ext r →
-    GF r = anchor ∨ Nonempty (IncludedCertifiedFinalized cfg E
-      includedAttestations.Included anchor r (GF r))
-  guf_evidence : ∀ r, E.AcceptedRoot cfg ext r →
-    GUF r = anchor ∨ Nonempty (IncludedCertifiedFinalized cfg E
-      includedAttestations.Included anchor r (GUF r))
-  gf_epoch_le_gj : ∀ r, E.AcceptedRoot cfg ext r →
-    (GF r).epoch ≤ (GJ r).epoch
-  guf_epoch_le_gu : ∀ r, E.AcceptedRoot cfg ext r →
-    (GUF r).epoch ≤ (GU r).epoch
+  realized_finalized_evidence : ∀ r, E.RootKnownInScheduledPrefix cfg ext r →
+    realized_finalized r = anchor ∨ Nonempty (IncludedCertifiedFinalized cfg E
+      includedAttestations.Included anchor r (realized_finalized r))
+  unrealized_finalized_evidence : ∀ r, E.RootKnownInScheduledPrefix cfg ext r →
+    unrealized_finalized r = anchor ∨ Nonempty (IncludedCertifiedFinalized cfg E
+      includedAttestations.Included anchor r (unrealized_finalized r))
+  realized_finalized_epoch_le_realized_justified : ∀ r, E.RootKnownInScheduledPrefix cfg ext r →
+    (realized_finalized r).epoch ≤ (realized_justified r).epoch
+  unrealized_finalized_epoch_le_unrealized_justified : ∀ r, E.RootKnownInScheduledPrefix cfg ext r →
+    (unrealized_finalized r).epoch ≤ (unrealized_justified r).epoch
 
-namespace CausalCarrierFFGState
+namespace AcceptedBlockFFGState
 
 variable {E : Execution Root} {anchor : Checkpoint Root}
 
 /-- AU ("available or unrealized") membership: a carrier block on the tip's
-chain has formed evidence for the checkpoint. -/
-def AU (S : CausalCarrierFFGState cfg ext E anchor)
+chain has checkpoint_evidence_in_block evidence for the checkpoint. -/
+def AvailableCheckpoint (S : AcceptedBlockFFGState cfg ext E anchor)
     (tip : Root) (c : Checkpoint Root) : Prop :=
-  ∃ carrier, E.RootDescends tip carrier ∧ S.formed carrier c
+  ∃ carrier, E.RootDescends tip carrier ∧ S.checkpoint_evidence_in_block carrier c
 
-end CausalCarrierFFGState
+end AcceptedBlockFFGState
 
 /-- Accepted-only selector coherence.  Its transition equations quantify
 only over actual successful `on_block` calls at exact causal prefixes. -/
-structure FFGSelectorsMatchBeaconStates
+structure FFGStateReadAgreement
     {E : Execution Root} {anchor : Checkpoint Root}
-    (S : CausalCarrierFFGState cfg ext E anchor) : Prop where
+    (S : AcceptedBlockFFGState cfg ext E anchor) : Prop where
   genesis_gj : ∀ r ∈ E.genesis_store.block_roots,
-    (E.genesis_store.block_states r).current_justified_checkpoint = S.GJ r
+    (E.genesis_store.block_states r).current_justified_checkpoint = S.realized_justified r
   genesis_gf : ∀ r ∈ E.genesis_store.block_roots,
-    (E.genesis_store.block_states r).finalized_checkpoint = S.GF r
+    (E.genesis_store.block_states r).finalized_checkpoint = S.realized_finalized r
   genesis_gu : ∀ r ∈ E.genesis_store.block_roots,
     (ext.process_justification_and_finalization
-      (E.genesis_store.block_states r)).current_justified_checkpoint = S.GU r
+      (E.genesis_store.block_states r)).current_justified_checkpoint = S.unrealized_justified r
   genesis_guf : ∀ r ∈ E.genesis_store.block_roots,
     (ext.process_justification_and_finalization
-      (E.genesis_store.block_states r)).finalized_checkpoint = S.GUF r
+      (E.genesis_store.block_states r)).finalized_checkpoint = S.unrealized_finalized r
   genesis_unrealized_justification : ∀ r ∈ E.genesis_store.block_roots,
-    E.genesis_store.unrealized_justifications r = S.GU r
-  transition_gj : ∀ t : E.AcceptedBlockTransition cfg ext,
+    E.genesis_store.unrealized_justifications r = S.unrealized_justified r
+  transition_gj : ∀ t : E.SuccessfulScheduledBlockImport cfg ext,
     (t.postStore.block_states t.signedBlock.root).current_justified_checkpoint =
-      S.GJ t.signedBlock.root
-  transition_gf : ∀ t : E.AcceptedBlockTransition cfg ext,
+      S.realized_justified t.signedBlock.root
+  transition_gf : ∀ t : E.SuccessfulScheduledBlockImport cfg ext,
     (t.postStore.block_states t.signedBlock.root).finalized_checkpoint =
-      S.GF t.signedBlock.root
-  transition_gu : ∀ t : E.AcceptedBlockTransition cfg ext,
+      S.realized_finalized t.signedBlock.root
+  transition_gu : ∀ t : E.SuccessfulScheduledBlockImport cfg ext,
     (ext.process_justification_and_finalization
       (t.postStore.block_states t.signedBlock.root)
-    ).current_justified_checkpoint = S.GU t.signedBlock.root
-  transition_guf : ∀ t : E.AcceptedBlockTransition cfg ext,
+    ).current_justified_checkpoint = S.unrealized_justified t.signedBlock.root
+  transition_guf : ∀ t : E.SuccessfulScheduledBlockImport cfg ext,
     (ext.process_justification_and_finalization
       (t.postStore.block_states t.signedBlock.root)
-    ).finalized_checkpoint = S.GUF t.signedBlock.root
+    ).finalized_checkpoint = S.unrealized_finalized t.signedBlock.root
 
 /-- Accepted selector coherence plus checkpoint reflection at every exact
 causal prefix store. -/
-structure FFGSelectorsAndCheckpointReadsMatchBeaconStates
+structure FFGStateAndCheckpointReadAgreement
     {E : Execution Root} {anchor : Checkpoint Root}
-    (S : CausalCarrierFFGState cfg ext E anchor) : Prop
-    extends FFGSelectorsMatchBeaconStates cfg ext S where
+    (S : AcceptedBlockFFGState cfg ext E anchor) : Prop
+    extends FFGStateReadAgreement cfg ext S where
   checkpoint_of_known : ∀ {store : Store Root},
-    E.CausalStore cfg ext store → ∀ r ∈ store.block_roots, ∀ e,
-      S.C r e = get_checkpoint_for_block cfg store r e
-  au_checkpoint_of_known : ∀ {store : Store Root},
-    E.CausalStore cfg ext store → ∀ r ∈ store.block_roots, ∀ c,
-      S.AU cfg ext r c →
+    E.ScheduledPrefixStore cfg ext store → ∀ r ∈ store.block_roots, ∀ e,
+      S.checkpoint_at_epoch r e = get_checkpoint_for_block cfg store r e
+  available_checkpoint_checkpoint_of_known : ∀ {store : Store Root},
+    E.ScheduledPrefixStore cfg ext store → ∀ r ∈ store.block_roots, ∀ c,
+      S.AvailableCheckpoint cfg ext r c →
       c = get_checkpoint_for_block cfg store r c.epoch
 
 /-- The exact-prefix bundle with causal-store checkpoint reflection.
@@ -334,10 +327,10 @@ Its accepted inclusion relation has an accepted carrier block. Body
 membership and validation origin are in `FFGInterpretationFidelity`, which
 is not a safety premise. The bundle does not cover delayed queues or
 arbitrary global action traces. -/
-structure CausalPrefixFFGInterpretation (E : Execution Root) where
+structure ScheduledFFGInterpretation (E : Execution Root) where
   anchor : Checkpoint Root
-  state : CausalCarrierFFGState cfg ext E anchor
-  coherence : FFGSelectorsAndCheckpointReadsMatchBeaconStates cfg ext state
+  state : AcceptedBlockFFGState cfg ext E anchor
+  coherence : FFGStateAndCheckpointReadAgreement cfg ext state
 
 /-- A wire attestation has reached validator `w`'s execution view by second
 `m`.  The schedule is the model's received-message history; validity and
@@ -353,31 +346,30 @@ def Execution.AttestationReceivedBy
 This is a projection of one already-selected semantic state, not a fresh
 state existentially chosen per call.  Included-attestation evidence is kept
 losslessly so `D_b` remains the concrete block-local slashing set, and AU is
-derived below from the same formed-carrier relation as the source state. -/
-structure PaperA32StateView (E : Execution Root) where
+derived below from the same checkpoint_evidence_in_block-carrier relation as the source state. -/
+structure CheckpointInclusionView (E : Execution Root) where
   /-- Carrier domain for the block whose canonicality triggers A.3.2. -/
   BlockAt : Root → BeaconBlock Root → Prop
-  attestationValidity : BeaconState Root → Attestation Root → Bool
   includedAttestations :
-    Execution.IncludedAttestationRelation cfg E attestationValidity
+    Execution.BlockAttestationInclusion cfg E
   formed : Root → Checkpoint Root → Prop
   C : Root → Epoch → Checkpoint Root
   GJ : Root → Checkpoint Root
   GU : Root → Checkpoint Root
   checkpoint_epoch : ∀ r e, (C r e).epoch = e
 
-namespace PaperA32StateView
+namespace CheckpointInclusionView
 
 variable {E : Execution Root}
 
 /-- AU ("available or unrealized") membership inherited from a formed carrier
 on the tip's chain. -/
-def AU (V : PaperA32StateView cfg E)
+def AvailableCheckpoint (V : CheckpointInclusionView cfg E)
     (tip : Root) (c : Checkpoint Root) : Prop :=
   ∃ carrier : Root, E.RootDescends tip carrier ∧ V.formed carrier c
 
 /-- The concrete block-body equivocation predicate underlying `D_b`. -/
-def HasSlashablePairOnChain (V : PaperA32StateView cfg E)
+def HasSlashablePairOnChain (V : CheckpointInclusionView cfg E)
     (tip : Root) (i : ValidatorIndex) : Prop :=
   ∃ a₁ a₂ : Attestation Root,
     AttestationIncludedOnChain E V.includedAttestations.Included tip a₁ ∧
@@ -387,7 +379,7 @@ def HasSlashablePairOnChain (V : PaperA32StateView cfg E)
     is_slashable_attestation_data a₁.data a₂.data = true
 
 /-- `D_b`, computed from actual included attestation payloads. -/
-noncomputable def slashableOnChain (V : PaperA32StateView cfg E)
+noncomputable def slashableOnChain (V : CheckpointInclusionView cfg E)
     (tip : Root) : Finset ValidatorIndex := by
   classical
   exact (Finset.range E.registry.length).filter
@@ -400,25 +392,24 @@ Definition 7 only defines this selector when the block epoch is at most `e`.
 Callers representing paper statements therefore carry that domain fact
 explicitly; this executable helper remains total for internal phase0 lemmas
 which already establish the same/current-or-earlier dichotomy. -/
-def VSAt (V : PaperA32StateView cfg E) (store : Store Root)
+def voting_source_at (V : CheckpointInclusionView cfg E) (store : Store Root)
     (b : Root) (e : Epoch) : Checkpoint Root :=
   if get_block_epoch cfg store b = e then V.GJ b else V.GU b
 
-end PaperA32StateView
+end CheckpointInclusionView
 
 /-- Lossless positive A.3.2 projection of the accepted-prefix state.  The
 ordinary relation forgets only its extra accepted-carrier proof. -/
-def CausalCarrierFFGState.paperA32Inputs
+def AcceptedBlockFFGState.checkpoint_inclusion_view
     {E : Execution Root} {anchor : Checkpoint Root}
-    (S : CausalCarrierFFGState cfg ext E anchor) :
-    PaperA32StateView cfg E where
-  BlockAt := E.AcceptedBlockAt cfg ext
-  attestationValidity := S.attestationValidity
+    (S : AcceptedBlockFFGState cfg ext E anchor) :
+    CheckpointInclusionView cfg E where
+  BlockAt := E.BlockKnownInScheduledPrefix cfg ext
   includedAttestations := S.includedAttestations.relation
-  formed := S.formed
-  C := S.C
-  GJ := S.GJ
-  GU := S.GU
+  formed := S.checkpoint_evidence_in_block
+  C := S.checkpoint_at_epoch
+  GJ := S.realized_justified
+  GU := S.unrealized_justified
   checkpoint_epoch := S.checkpoint_epoch
 
 /-- The exact link-specific support term in Assumption 3.2 at one honest
@@ -429,8 +420,8 @@ view/time/descendant.
 The static-validator-set premise used by the public theorem identifies the
 paper's `W_t^{b'}` with `E.total_active`; this record deliberately does not
 replace a source-specific link by target-only LMD support. -/
-structure PaperA32LinkSupportAtCore
-    {E : Execution Root} (V : PaperA32StateView cfg E)
+structure SourceTargetLinkSupportAt
+    {E : Execution Root} (V : CheckpointInclusionView cfg E)
     (w : ValidatorIndex) (m : ℕ) (b' : Root)
     (source target : Checkpoint Root) : Type where
   view_within_horizon : E.WithinHorizon cfg m
@@ -471,8 +462,8 @@ branch.
 The paper also asks `st(e+1) ≥ GST`.  The spec execution begins inside the
 globally synchronous segment, so that temporal guard is represented by the
 ambient `Synchrony`/horizon premises rather than a second clock constant. -/
-def PaperA32SupportThroughoutEpochCore
-    {E : Execution Root} (V : PaperA32StateView cfg E)
+def SourceTargetSupportThroughoutEpoch
+    {E : Execution Root} (V : CheckpointInclusionView cfg E)
     (b : Root) (e : Epoch) : Prop :=
   ∀ w ∈ E.honest, ∀ m : ℕ,
     E.WithinHorizon cfg m →
@@ -482,8 +473,8 @@ def PaperA32SupportThroughoutEpochCore
       ∀ b' ∈ (E.store cfg ext w m).block_roots,
         is_ancestor (E.store cfg ext w m)
           (get_node_for_root b') (get_node_for_root (V.C b e).root) = true →
-        Nonempty (PaperA32LinkSupportAtCore cfg ext V w m b'
-          (V.VSAt cfg (E.store cfg ext w m) b e) (V.C b e))
+        Nonempty (SourceTargetLinkSupportAt cfg ext V w m b'
+          (V.voting_source_at cfg (E.store cfg ext w m) b e) (V.C b e))
 
 /-- Paper Assumption 3.2, separated from state-transition coherence.
 
@@ -492,13 +483,13 @@ This is the paper's quantifier shape: if `b` is canonical and the exact fixed
 epoch `e+1`, then by `st(e+2)` each honest view contains a pre-boundary
 descendant carrying `C(b,e)` in AU.  Target-only support or a free
 `A32IncludedAtTip` consequence is intentionally insufficient. -/
-structure PaperA32InclusionCore
-    {E : Execution Root} (V : PaperA32StateView cfg E) : Prop where
+structure EventualCheckpointInclusion
+    {E : Execution Root} (V : CheckpointInclusionView cfg E) : Prop where
   included : ∀ {b : Root} {bb : BeaconBlock Root} {e : Epoch},
     V.BlockAt b bb →
     compute_epoch_at_slot cfg bb.slot ≤ e →
     E.CanonicalThroughoutEpoch cfg ext b (e + 1) →
-    PaperA32SupportThroughoutEpochCore cfg ext V b e →
+    SourceTargetSupportThroughoutEpoch cfg ext V b e →
     ∀ w ∈ E.honest, ∀ m : ℕ,
       E.WithinHorizon cfg m →
       compute_start_slot_at_epoch cfg (e + 2) ≤ E.slot_at cfg m →
@@ -507,24 +498,26 @@ structure PaperA32InclusionCore
         is_ancestor (E.store cfg ext w m)
           (get_node_for_root b') (get_node_for_root b) = true ∧
         get_block_epoch cfg (E.store cfg ext w m) b' < e + 2 ∧
-        V.AU cfg b' (V.C b e)
+        V.AvailableCheckpoint cfg b' (V.C b e)
 
-namespace CausalCarrierFFGState
+namespace AcceptedBlockFFGState
 
 variable {E : Execution Root} {anchor : Checkpoint Root}
 
 /-- Accepted-state specialization of support throughout the next epoch. -/
-abbrev PaperA32SupportThroughoutEpoch
-    (S : CausalCarrierFFGState cfg ext E anchor)
+abbrev SourceTargetSupportThroughoutEpoch
+    (S : AcceptedBlockFFGState cfg ext E anchor)
     (b : Root) (e : Epoch) : Prop :=
-  PaperA32SupportThroughoutEpochCore cfg ext (S.paperA32Inputs cfg ext) b e
+  FastConfirmation.Spec.SourceTargetSupportThroughoutEpoch cfg ext
+    (S.checkpoint_inclusion_view cfg ext) b e
 
 /-- Accepted-state specialization of paper Assumption 3.2. -/
-abbrev PaperA32Inclusion
-    (S : CausalCarrierFFGState cfg ext E anchor) : Prop :=
-  PaperA32InclusionCore cfg ext (S.paperA32Inputs cfg ext)
+abbrev EventualCheckpointInclusion
+    (S : AcceptedBlockFFGState cfg ext E anchor) : Prop :=
+  FastConfirmation.Spec.EventualCheckpointInclusion cfg ext
+    (S.checkpoint_inclusion_view cfg ext)
 
-end CausalCarrierFFGState
+end AcceptedBlockFFGState
 
 end FastConfirmation.Spec
 

@@ -28,7 +28,7 @@ region needs the endpoint's current head to descend the carried input.
 namespace FastConfirmation.Spec
 
 variable {Root : Type*} [LinearOrder Root] [Inhabited Root]
-variable (cfg : Config) (ext : Externals Root)
+variable (cfg : Config) (ext : BeaconFunctionInterface Root)
 
 namespace Execution
 
@@ -42,11 +42,11 @@ endpoint-origin interface.
 The non-anchor arm retains the actual ground vote from the accepted formation
 carrier.  Thus downstream SIR code may use the old vote-shaped eliminator,
 but callers no longer assume a raw vote/store relation. -/
-theorem CausalPrefixFFGInterpretation.endpointJustificationOriginAt
-    (B : CausalPrefixFFGInterpretation cfg ext E)
-    (hT : E.ScheduledPrefixPremises cfg ext)
+theorem ScheduledFFGInterpretation.endpointJustificationOriginAt
+    (B : ScheduledFFGInterpretation cfg ext E)
+    (hT : E.ScheduledExecutionPremises cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
-    (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
+    (hboundary : InitialAnchorAtEpochBoundary (cfg := cfg)
       (E := E) (anchor := B.anchor))
     {w : ValidatorIndex} {m : Nat} :
     E.EndpointJustificationOriginAt cfg ext B.anchor w m := by
@@ -68,9 +68,9 @@ theorem CausalPrefixFFGInterpretation.endpointJustificationOriginAt
     simpa only [get_forkchoice_store] using hr
   have hboundary' : ablk.message.slot ≤
       compute_start_slot_at_epoch cfg B.anchor.epoch := by
-    simpa only [TrustedAnchorBoundaryAligned, hgenEq, hanchorRoot,
+    simpa only [InitialAnchorAtEpochBoundary, hgenEq, hanchorRoot,
       get_forkchoice_store, Function.update_self] using hboundary
-  have hstore : E.CausalStore cfg ext (E.store cfg ext w m) :=
+  have hstore : E.ScheduledPrefixStore cfg ext (E.store cfg ext w m) :=
     E.store_causal cfg ext w m
   rcases B.globalJustified_anchor_or_AUEvidence hgenShort hanchor hstore with
       hfieldAnchor | hevidence
@@ -93,7 +93,7 @@ theorem CausalPrefixFFGInterpretation.endpointJustificationOriginAt
         CertifiedJustified.anchor_epoch_lt_of_ne (cfg := cfg)
           (IncludedCertifiedJustified.toCertifiedJustified
             (cfg := cfg)
-            (Execution.CausalCarrierAttestationRelation.relation
+            (Execution.AcceptedBlockAttestationInclusion.relation
               cfg ext E B.state.includedAttestations) hcertified) hne
       have htargetEpoch : (E.store cfg ext w m).justified_checkpoint.epoch =
           compute_epoch_at_slot cfg voteSlot := by
@@ -156,13 +156,13 @@ theorem CausalPrefixFFGInterpretation.endpointJustificationOriginAt
 
 Only the certificate field of the old endpoint pipeline is needed for SIR
 pinning, so the broader endpoint geometry record is not reconstructed. -/
-theorem CausalPrefixFFGInterpretation.endpointJustified_certificate
-    (B : CausalPrefixFFGInterpretation cfg ext E)
+theorem ScheduledFFGInterpretation.endpointJustified_certificate
+    (B : ScheduledFFGInterpretation cfg ext E)
     (hgen : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
       E.genesis_store = get_forkchoice_store cfg ast ablk ∧
         ast.slot = ablk.message.slot)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
-    {store : Store Root} (hstore : E.CausalStore cfg ext store) :
+    {store : Store Root} (hstore : E.ScheduledPrefixStore cfg ext store) :
     Nonempty (CertifiedJustified cfg E B.anchor
       store.justified_checkpoint) := by
   rcases B.globalJustified_anchor_or_AUEvidence hgen hanchor hstore with
@@ -173,7 +173,7 @@ theorem CausalPrefixFFGInterpretation.endpointJustified_certificate
     obtain ⟨hincluded⟩ := hcarrier.formed_evidence.certified
     exact ⟨IncludedCertifiedJustified.toCertifiedJustified
       (cfg := cfg)
-      (Execution.CausalCarrierAttestationRelation.relation
+      (Execution.AcceptedBlockAttestationInclusion.relation
         cfg ext E B.state.includedAttestations) hincluded⟩
 
 /-! ## Accepted certificate pinning at the exact selector call site -/
@@ -185,14 +185,14 @@ It consumes only the accepted endpoint certificate, the accepted live-gate
 producer, the retained historical payload producer, and concrete no-conflict
 pinning.  In particular it has no `EndpointFFGPipeline` premise. -/
 theorem epochStart_or_endpointCurrentTargetPinned_of_acceptedCallSite
-    (B : CausalPrefixFFGInterpretation cfg ext E)
+    (B : ScheduledFFGInterpretation cfg ext E)
     (hgen : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
       E.genesis_store = get_forkchoice_store cfg ast ablk ∧
         ast.slot = ablk.message.slot)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     {q : Nat} {query : FastConfirmationStore Root}
     {input result : Root} {store : Store Root}
-    (hstore : E.CausalStore cfg ext store)
+    (hstore : E.ScheduledPrefixStore cfg ext store)
     (hcall : StrictSelectedHistoricalSIRCallSite
       cfg ext E q query input result)
     (hacc : CertificateAccountability cfg E B.anchor)
@@ -226,7 +226,7 @@ theorem epochStart_or_endpointCurrentTargetPinned_of_acceptedCallSite
     E.acceptedHistoricalA32PayloadProducerAt_to_certificateProducer
       cfg ext B hhistorical
   obtain ⟨hJ⟩ :=
-    CausalPrefixFFGInterpretation.endpointJustified_certificate
+    ScheduledFFGInterpretation.endpointJustified_certificate
       cfg ext B hgen hanchor hstore
   cases hcall with
   | currentCrossing resultCurrent _a _c _edge hgate hsupport =>
@@ -270,7 +270,7 @@ facts. -/
 theorem preQueryVoteSelectedSIRBracketAt_of_acceptedProducers
     (hA : SelectedMarginAssumptions cfg ext E)
     (hwalkDomain : E.PostAnchorHonestVoteTargetWalkDomain cfg ext)
-    (B : CausalPrefixFFGInterpretation cfg ext E)
+    (B : ScheduledFFGInterpretation cfg ext E)
     (hgen : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
       E.genesis_store = get_forkchoice_store cfg ast ablk ∧
         ast.slot = ablk.message.slot)
@@ -288,7 +288,7 @@ theorem preQueryVoteSelectedSIRBracketAt_of_acceptedProducers
     (hbase : E.SafeFrom cfg ext input
       (E.slot_start cfg (E.slot_at cfg q)))
     (hstrict : find_latest_confirmed_descendant cfg ext query input ≠ input)
-    (hprovisos : FCRPredictionSupportAt cfg ext E v q query input)
+    (hprovisos : SelectedPredictionVoteSupport cfg ext E v q query input)
     (hcurrent : E.AcceptedCurrentTargetA32GateRealizationProducerAt
       cfg ext B.anchor B.state q query)
     (hhistorical : E.AcceptedHistoricalA32PayloadProducerAt cfg ext B
@@ -352,7 +352,7 @@ non-anchor arm uses the accepted producer above. -/
 theorem preQuerySelectedJustifiedCompatibilityAt_of_acceptedProducers
     (hA : SelectedMarginAssumptions cfg ext E)
     (hwalkDomain : E.PostAnchorHonestVoteTargetWalkDomain cfg ext)
-    (B : CausalPrefixFFGInterpretation cfg ext E)
+    (B : ScheduledFFGInterpretation cfg ext E)
     (hgen : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
       E.genesis_store = get_forkchoice_store cfg ast ablk ∧
         ast.slot = ablk.message.slot)
@@ -370,7 +370,7 @@ theorem preQuerySelectedJustifiedCompatibilityAt_of_acceptedProducers
     (hbase : E.SafeFrom cfg ext input
       (E.slot_start cfg (E.slot_at cfg q)))
     (hstrict : find_latest_confirmed_descendant cfg ext query input ≠ input)
-    (hprovisos : FCRPredictionSupportAt cfg ext E v q query input)
+    (hprovisos : SelectedPredictionVoteSupport cfg ext E v q query input)
     (hcurrent : E.AcceptedCurrentTargetA32GateRealizationProducerAt
       cfg ext B.anchor B.state q query)
     (hhistorical : E.AcceptedHistoricalA32PayloadProducerAt cfg ext B
@@ -401,10 +401,10 @@ The result is the exact pair consumed by retained endpoint-filter producers:
 both the child and the selected result descend the endpoint justified root. -/
 theorem strictSelected_result_and_child_ancestor_of_endpointJustified_accepted
     (hA : SelectedMarginAssumptions cfg ext E)
-    (B : CausalPrefixFFGInterpretation cfg ext E)
-    (hT : E.ScheduledPrefixPremises cfg ext)
+    (B : ScheduledFFGInterpretation cfg ext E)
+    (hT : E.ScheduledExecutionPremises cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
-    (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
+    (hboundary : InitialAnchorAtEpochBoundary (cfg := cfg)
       (E := E) (anchor := B.anchor))
     {v : ValidatorIndex} (hv : v ∈ E.honest) {q : Nat}
     (hqH : E.WithinHorizon cfg q)
@@ -419,7 +419,7 @@ theorem strictSelected_result_and_child_ancestor_of_endpointJustified_accepted
     (hbase : E.SafeFrom cfg ext input
       (E.slot_start cfg (E.slot_at cfg q)))
     (hstrict : find_latest_confirmed_descendant cfg ext query input ≠ input)
-    (hprovisos : FCRPredictionSupportAt cfg ext E v q query input)
+    (hprovisos : SelectedPredictionVoteSupport cfg ext E v q query input)
     (hcurrent : E.AcceptedCurrentTargetA32GateRealizationProducerAt
       cfg ext B.anchor B.state q query)
     (hhistorical : E.AcceptedHistoricalA32PayloadProducerAt cfg ext B
@@ -476,7 +476,7 @@ theorem strictSelected_result_and_child_ancestor_of_endpointJustified_accepted
       hhistorical hnoConflict hw hslotQM hHm
   have horigin : E.EndpointJustificationOriginAt
       cfg ext B.anchor w m :=
-    CausalPrefixFFGInterpretation.endpointJustificationOriginAt
+    ScheduledFFGInterpretation.endpointJustificationOriginAt
       cfg ext B hT hanchor hboundary
   exact E.selected_result_and_child_ancestor_of_endpoint_justified_causal_minimal
     cfg ext hA hwalkDomain hw hHm hslotQM hcM hselectedC

@@ -18,7 +18,7 @@ This module contains `AttSupporters`, `get_attestation_score_eq_sum`, `AttSuppor
 namespace FastConfirmation.Spec
 
 variable {Root : Type*} [LinearOrder Root] [Inhabited Root]
-variable (cfg : Config) (ext : Externals Root)
+variable (cfg : Config) (ext : BeaconFunctionInterface Root)
 
 /-! ## Step 1 — the supporter list and the honest / Byzantine split -/
 

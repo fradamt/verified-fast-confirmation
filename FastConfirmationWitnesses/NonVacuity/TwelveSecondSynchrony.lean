@@ -16,7 +16,7 @@ def cfg : Config :=
     slot_duration_ms_pos := by decide
     attestation_due_bps := 2500 }
 
-def ext : Externals R :=
+def ext : BeaconFunctionInterface R :=
   { witnessExternals with
     process_slots := fun st s =>
       if compute_epoch_at_slot cfg st.slot < compute_epoch_at_slot cfg s then
@@ -547,9 +547,9 @@ theorem epoch_ends_fit : EpochEndsFitUint64 cfg := by
   norm_num [EpochEndsFitUint64, UINT64_MAX, cfg, witnessConfig]
 
 theorem anchor_boundary :
-    Execution.TrustedAnchorBoundaryAligned (cfg := cfg)
+    Execution.InitialAnchorAtEpochBoundary (cfg := cfg)
       (E := run) (anchor := anchorCheckpoint) := by
-  unfold Execution.TrustedAnchorBoundaryAligned
+  unfold Execution.InitialAnchorAtEpochBoundary
   decide
 
 end FastConfirmation.Spec.TwelveSecondSynchronyWitness

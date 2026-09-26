@@ -17,7 +17,7 @@ This module contains `is_active_validator_default_false`, `mem_active_of_active`
 namespace FastConfirmation.Spec
 
 variable {Root : Type*} [LinearOrder Root] [Inhabited Root]
-variable (cfg : Config) (ext : Externals Root)
+variable (cfg : Config) (ext : BeaconFunctionInterface Root)
 
 /-! ## The `Inhabited` validator is inactive, and active-list membership -/
 

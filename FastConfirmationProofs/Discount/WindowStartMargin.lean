@@ -84,7 +84,7 @@ example :
 namespace Execution
 
 variable {Root : Type*} [LinearOrder Root] [Inhabited Root]
-variable (cfg : Config) (ext : Externals Root)
+variable (cfg : Config) (ext : BeaconFunctionInterface Root)
 variable (E : Execution Root)
 
 /-! ## Section 2 — `U(es) = s₀`

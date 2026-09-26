@@ -70,7 +70,7 @@ theorem equal_slot {a b : Store Root}
 end LatestMessageStrictLE
 
 variable [LinearOrder Root] [Inhabited Root]
-variable (cfg : Config) (ext : Externals Root)
+variable (cfg : Config) (ext : BeaconFunctionInterface Root)
 
 private theorem latest_strict_foldl
     {α : Type*} {f : Store Root → α → Store Root}

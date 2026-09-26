@@ -37,7 +37,7 @@ conclusion is hidden in it.
 namespace FastConfirmation.Spec
 
 variable {Root : Type*} [LinearOrder Root] [Inhabited Root]
-variable (cfg : Config) (ext : Externals Root)
+variable (cfg : Config) (ext : BeaconFunctionInterface Root)
 
 /-! ## Handler-inductive schedule provenance with the signed target epoch -/
 
@@ -371,7 +371,7 @@ Definition 7's selector in the *actual query store*.  Thus votes and source
 agreement are outputs of the gate realization, never free inputs to a
 paper-A3.2 producer. -/
 structure CurrentTargetA32GateRealizationCore
-    (anchor : Checkpoint Root) (V : PaperA32StateView cfg E)
+    (anchor : Checkpoint Root) (V : CheckpointInclusionView cfg E)
     (store : Store Root) : Prop where
   certified : Nonempty (CertifiedJustified cfg E anchor
     (get_current_target cfg store))
@@ -382,7 +382,7 @@ structure CurrentTargetA32GateRealizationCore
             (compute_start_slot_at_epoch cfg
               ((get_current_target cfg store).epoch + 1))
             (get_current_target cfg store),
-          Q.source = V.VSAt cfg store
+          Q.source = V.voting_source_at cfg store
             (get_current_target cfg store).root
             (get_current_target cfg store).epoch)
 
@@ -391,7 +391,7 @@ inputs are the executable boolean and the matching normative target-support
 proviso.  In particular it takes no signer set, votes, common source, source
 agreement, AU fact, or A3.2 conclusion. -/
 def CurrentTargetA32GateRealizationProducerAtCore
-    (anchor : Checkpoint Root) (V : PaperA32StateView cfg E)
+    (anchor : Checkpoint Root) (V : CheckpointInclusionView cfg E)
     (q : ℕ) (query : FastConfirmationStore Root) : Prop :=
   will_current_target_be_justified cfg ext query.store = true →
   HonestVotesSupportTarget cfg E (get_current_target cfg query.store) q →
@@ -401,7 +401,7 @@ def CurrentTargetA32GateRealizationProducerAtCore
 current-epoch carrier `b`, as required by the fixed-source reading of paper
 Assumption 3.2. -/
 structure FixedSourceCurrentTargetA32GateRealizationCore
-    (anchor : Checkpoint Root) (V : PaperA32StateView cfg E)
+    (anchor : Checkpoint Root) (V : CheckpointInclusionView cfg E)
     (store : Store Root) (b : Root) : Prop where
   certified : Nonempty (CertifiedJustified cfg E anchor
     (get_current_target cfg store))
@@ -412,13 +412,13 @@ structure FixedSourceCurrentTargetA32GateRealizationCore
             (compute_start_slot_at_epoch cfg
               ((get_current_target cfg store).epoch + 1))
             (get_current_target cfg store),
-          Q.source = V.VSAt cfg store b
+          Q.source = V.voting_source_at cfg store b
             (get_current_target cfg store).epoch)
 
 /-- Actual-call producer for the fixed source belonging to the original
 selected carrier.  The producer still receives no helper witness. -/
 def FixedSourceCurrentTargetA32GateRealizationProducerAtCore
-    (anchor : Checkpoint Root) (V : PaperA32StateView cfg E)
+    (anchor : Checkpoint Root) (V : CheckpointInclusionView cfg E)
     (q : ℕ) (query : FastConfirmationStore Root) (b : Root) : Prop :=
   will_current_target_be_justified cfg ext query.store = true →
   HonestVotesSupportTarget cfg E (get_current_target cfg query.store) q →
@@ -434,34 +434,34 @@ def FixedSourceCurrentTargetA32GateRealizationProducerAtCore
 /-- Accepted-state gate realization. -/
 abbrev AcceptedCurrentTargetA32GateRealization
     (anchor : Checkpoint Root)
-    (S : CausalCarrierFFGState cfg ext E anchor)
+    (S : AcceptedBlockFFGState cfg ext E anchor)
     (store : Store Root) : Prop :=
   CurrentTargetA32GateRealizationCore cfg ext E anchor
-    (S.paperA32Inputs cfg ext) store
+    (S.checkpoint_inclusion_view cfg ext) store
 
 /-- Accepted-state actual-call producer. -/
 abbrev AcceptedCurrentTargetA32GateRealizationProducerAt
     (anchor : Checkpoint Root)
-    (S : CausalCarrierFFGState cfg ext E anchor)
+    (S : AcceptedBlockFFGState cfg ext E anchor)
     (q : ℕ) (query : FastConfirmationStore Root) : Prop :=
   CurrentTargetA32GateRealizationProducerAtCore cfg ext E anchor
-    (S.paperA32Inputs cfg ext) q query
+    (S.checkpoint_inclusion_view cfg ext) q query
 
 /-- Accepted-state fixed-source realization. -/
 abbrev AcceptedFixedSourceCurrentTargetA32GateRealization
     (anchor : Checkpoint Root)
-    (S : CausalCarrierFFGState cfg ext E anchor)
+    (S : AcceptedBlockFFGState cfg ext E anchor)
     (store : Store Root) (b : Root) : Prop :=
   FixedSourceCurrentTargetA32GateRealizationCore cfg ext E anchor
-    (S.paperA32Inputs cfg ext) store b
+    (S.checkpoint_inclusion_view cfg ext) store b
 
 /-- Accepted-state fixed-source producer. -/
 abbrev AcceptedFixedSourceCurrentTargetA32GateRealizationProducerAt
     (anchor : Checkpoint Root)
-    (S : CausalCarrierFFGState cfg ext E anchor)
+    (S : AcceptedBlockFFGState cfg ext E anchor)
     (q : ℕ) (query : FastConfirmationStore Root) (b : Root) : Prop :=
   FixedSourceCurrentTargetA32GateRealizationProducerAtCore cfg ext E anchor
-    (S.paperA32Inputs cfg ext) q query b
+    (S.checkpoint_inclusion_view cfg ext) q query b
 
 
 

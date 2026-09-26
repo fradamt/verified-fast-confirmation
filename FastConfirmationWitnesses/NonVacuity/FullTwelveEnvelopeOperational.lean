@@ -563,9 +563,9 @@ theorem balance_floor : cfg.effective_balance_increment ≤
 
 theorem epoch_ends_fit : EpochEndsFitUint64 cfg := TwelveSecondSynchronyWitness.epoch_ends_fit
 
-theorem anchor_boundary : Execution.TrustedAnchorBoundaryAligned
+theorem anchor_boundary : Execution.InitialAnchorAtEpochBoundary
     (cfg := cfg) (E := run) (anchor := anchorCheckpoint) := by
-  unfold Execution.TrustedAnchorBoundaryAligned
+  unfold Execution.InitialAnchorAtEpochBoundary
   decide
 
 theorem delivery_lookahead : HorizonVoteDeliveryLookahead cfg run := by
@@ -595,7 +595,7 @@ theorem witnessStore_registryConstant (v : ValidatorIndex) (n : ℕ) :
       exact on_tick_registryConstant cfg _ _ ih
 
 theorem witnessCausalStore_registryConstant {store : Store WitnessRoot}
-    (hstore : run.CausalStore cfg ext store) :
+    (hstore : run.ScheduledPrefixStore cfg ext store) :
     RegistryConstant run.registry store := by
   cases hstore with
   | genesis =>
@@ -677,7 +677,7 @@ theorem extCoherence :
   · intro state signed o o'
     rfl
 
-theorem scheduled_prefix_premises : run.ScheduledPrefixPremises cfg ext := by
+theorem scheduled_prefix_premises : run.ScheduledExecutionPremises cfg ext := by
   exact
     { whole_seconds := by decide
       wellFormed := well_formed

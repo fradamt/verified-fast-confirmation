@@ -31,7 +31,7 @@ never substituted for it.
 namespace FastConfirmation.Spec
 
 variable {Root : Type*} [LinearOrder Root] [Inhabited Root]
-variable {cfg : Config} {ext : Externals Root}
+variable {cfg : Config} {ext : BeaconFunctionInterface Root}
 
 /-! ## Well-formed core at exact prefixes -/
 
@@ -39,8 +39,8 @@ namespace Execution
 
 /-- The handler-local core at every store in the exact causal domain. -/
 def ExactCausalStoreWellFormedCore
-    (cfg : Config) (ext : Externals Root) (E : Execution Root) : Prop :=
-  ∀ {store : Store Root}, E.CausalStore cfg ext store →
+    (cfg : Config) (ext : BeaconFunctionInterface Root) (E : Execution Root) : Prop :=
+  ∀ {store : Store Root}, E.ScheduledPrefixStore cfg ext store →
     WellFormedStoreCore store
 
 /-- A rejected event leaves the store unchanged; a successful event preserves
@@ -108,13 +108,13 @@ theorem exactCausalStoreWellFormedCore
 
 /-! ## One last-writer edge -/
 
-namespace AcceptedBlockTransition
+namespace SuccessfulScheduledBlockImport
 
 variable {E : Execution Root}
 
 /-- A fresh successful handler's parent guard exposes parent knownness at the
 transition's exact pre-prefix. -/
-theorem parent_known (t : E.AcceptedBlockTransition cfg ext)
+theorem parent_known (t : E.SuccessfulScheduledBlockImport cfg ext)
     (hfresh : t.signedBlock.root ∉
       (t.atPrefix.store cfg ext).block_roots) :
     t.signedBlock.message.parent_root ∈
@@ -124,7 +124,7 @@ theorem parent_known (t : E.AcceptedBlockTransition cfg ext)
   split_ifs at haccepted with hparent <;> try cases haccepted
   all_goals simpa only [not_not] using hparent
 
-end AcceptedBlockTransition
+end SuccessfulScheduledBlockImport
 
 /-- A known non-genesis parent-child edge in a later causal store is realized
 by the child's actual last accepted writer.  `hsame` is transported back to
@@ -132,10 +132,10 @@ the transition prefix through message uniqueness and the prefix core before
 being supplied to the accepted edge constructor. -/
 theorem acceptedProjectedSameEpochTransition_of_known_parent
     {E : Execution Root} {anchor : Checkpoint Root}
-    {S : CausalCarrierFFGState cfg ext E anchor}
+    {S : AcceptedBlockFFGState cfg ext E anchor}
     (hwf : WellFormedExecution E)
     (hcore : ExactCausalStoreWellFormedCore cfg ext E)
-    {store : Store Root} (hstore : E.CausalStore cfg ext store)
+    {store : Store Root} (hstore : E.ScheduledPrefixStore cfg ext store)
     {parent child : Root}
     (hparentKnown : parent ∈ store.block_roots)
     (hchildKnown : child ∈ store.block_roots)
@@ -160,11 +160,11 @@ theorem acceptedProjectedSameEpochTransition_of_known_parent
       (t.atPrefix.store cfg ext).block_roots := by
     rw [← htParent]
     exact htParentKnown
-  have hprefixParentAt : E.AcceptedBlockAt cfg ext parent
+  have hprefixParentAt : E.BlockKnownInScheduledPrefix cfg ext parent
       ((t.atPrefix.store cfg ext).blocks parent) :=
     E.acceptedBlockAt_of_causal_known cfg ext
       (.scheduledPrefix t.atPrefix) hprefixParentKnown
-  have hstoreParentAt : E.AcceptedBlockAt cfg ext parent
+  have hstoreParentAt : E.BlockKnownInScheduledPrefix cfg ext parent
       (store.blocks parent) :=
     E.acceptedBlockAt_of_causal_known cfg ext hstore hparentKnown
   have hparentMessage :
@@ -209,10 +209,10 @@ base case; each nontrivial child is non-genesis by the source relation and is
 therefore realized through last-writer provenance. -/
 theorem knownSameEpochAncestrySegment_toAcceptedProjectedSameEpochSegment
     {E : Execution Root} {anchor : Checkpoint Root}
-    {S : CausalCarrierFFGState cfg ext E anchor}
+    {S : AcceptedBlockFFGState cfg ext E anchor}
     (hwf : WellFormedExecution E)
     (hcore : ExactCausalStoreWellFormedCore cfg ext E)
-    {store : Store Root} (hstore : E.CausalStore cfg ext store)
+    {store : Store Root} (hstore : E.ScheduledPrefixStore cfg ext store)
     {first last : Root}
     (hsegment : KnownSameEpochAncestrySegment cfg
       E.genesis_store.block_roots store first last) :
@@ -231,13 +231,13 @@ theorem knownSameEpochAncestrySegment_toAcceptedProjectedSameEpochSegment
 and a genesis core witness. -/
 theorem knownSameEpochAncestrySegment_toAcceptedProjectedSameEpochSegment_of_core
     {E : Execution Root} {anchor : Checkpoint Root}
-    {S : CausalCarrierFFGState cfg ext E anchor}
+    {S : AcceptedBlockFFGState cfg ext E anchor}
     (hwf : WellFormedExecution E)
     (hst_slot : ∀ (st : BeaconState Root) (b : SignedBeaconBlock Root)
         (st' : BeaconState Root),
       ext.state_transition st b = some st' → st'.slot = b.message.slot)
     (hbase : WellFormedStoreCore E.genesis_store)
-    {store : Store Root} (hstore : E.CausalStore cfg ext store)
+    {store : Store Root} (hstore : E.ScheduledPrefixStore cfg ext store)
     {first last : Root}
     (hsegment : KnownSameEpochAncestrySegment cfg
       E.genesis_store.block_roots store first last) :

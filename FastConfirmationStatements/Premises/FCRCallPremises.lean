@@ -19,7 +19,7 @@ section
 
 namespace FastConfirmation.Spec
 variable {Root : Type*} [LinearOrder Root] [Inhabited Root]
-variable (cfg : Config) (ext : Externals Root)
+variable (cfg : Config) (ext : BeaconFunctionInterface Root)
 /-- From the call slot on, each honest vote of epoch `e` targets a root
 that descends from `result` in the execution's parent graph. This is the
 support needed by paper Lemma 42 for a previous-epoch selected result. It
@@ -43,7 +43,7 @@ section
 
 namespace FastConfirmation.Spec
 variable {Root : Type*} [LinearOrder Root] [Inhabited Root]
-variable (cfg : Config) (ext : Externals Root)
+variable (cfg : Config) (ext : BeaconFunctionInterface Root)
 namespace Execution
 variable {E : Execution Root}
 /-- Primitive bundle left after replaying the completed scheduled prefix.
@@ -58,7 +58,7 @@ Everything else needed by the accepted target gate--causal replay, current
 slot, latest-message provenance, non-equivocation, committee accounting,
 pulled-up registry and total balance, target geometry, anchor horizon, and
 current-epoch-end horizon--is derived in this module or upstream. -/
-structure CompletedFCRCallPremises : Prop where
+structure ScheduledFCRCallPremises : Prop where
   synchrony : NextSlotSynchronyPremises cfg ext E
   static_validators : StaticValidatorSet cfg E
   byzantine_bound : ByzantineWeightPremises cfg E

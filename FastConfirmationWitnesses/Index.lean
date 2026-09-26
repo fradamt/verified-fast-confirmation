@@ -73,7 +73,7 @@ also names two counterexamples to strict-prefix safety variants.
   The same run proves `HorizonVoteDeliveryLookahead`, `StaticValidatorSet`,
   `ByzantineWeightPremises`, `Phase0SourceCoherence`,
   `Phase0BoundarySourceCoherence`, the balance floor, `EpochEndsFitUint64`,
-  and `TrustedAnchorBoundaryAligned` for its concrete anchor.
+  and `InitialAnchorAtEpochBoundary` for its concrete anchor.
 * Twelve-second full bundle:
   `FullTwelveWitness.full_bundle_witness` proves the full
   `Execution.NextSlotSafetyPremises` for the four-epoch trace, with
@@ -94,7 +94,7 @@ also names two counterexamples to strict-prefix safety variants.
   and its Gloas weight beside the EMPTY choice. `gloas_discount_sample`
   computes zero carrier discount after verification. `fcr_branch_samples`
   checks selection, finalized reset, and late selector bypass.
-* `Execution.ScheduledPrefixPremises`:
+* `Execution.ScheduledExecutionPremises`:
   `AcceptedActualFCRJointNonVacuityBase.witnessScheduledPrefixTrajectoryAssumptions`.
   The same execution has whole-second scheduling, honest votes, a valid genesis
   store, and well-formed external functions.
@@ -105,7 +105,7 @@ also names two counterexamples to strict-prefix safety variants.
   `AcceptedActualFCRJointNonVacuityBase.witnessHonestBehavior`. Every scheduled
   honest vote belongs to its assigned slot committee and meets the
   attestation due time in that execution.
-* `Execution.CompletedFCRCallPremises`:
+* `Execution.ScheduledFCRCallPremises`:
   `NextSlotPremiseWitness.witnessCompletedPrefixCallAssumptions`. The same
   execution has synchronized votes and blocks, stable validators and weights,
   and a scheduled descendant-helper call.
@@ -139,7 +139,7 @@ also names two counterexamples to strict-prefix safety variants.
   `AcceptedActualFCRJointNonVacuityBase.witnessHorizonVoteDeliveryLookahead`.
   The slot-fifteen vote reaches every honest node at second sixteen, outside
   the verification horizon.
-* `CausalPrefixFFGInterpretation`:
+* `ScheduledFFGInterpretation`:
   `AcceptedActualFCRJointNonVacuityFFG.witnessAcceptedSemantics`. The child
   and carrier in the same execution have an accepted FFG interpretation at
   every causal schedule prefix.
@@ -153,22 +153,22 @@ also names two counterexamples to strict-prefix safety variants.
   fidelity record for the interpretation of its premise bundle. In the runs
   with a carrier, the included votes are valid members of the accepted
   carrier body. The live run includes no vote.
-* `EpochCheckpointClosure`:
+* `EpochCheckpointProjectionLaws`:
   `AcceptedActualFCRJointNonVacuityFFG.witnessAcceptedEpochCheckpointProjection`.
   The anchor, child, and carrier give concrete epoch checkpoint roots.
-* `CausalCarrierFFGState.ExactLinkValidity`:
+* `AcceptedBlockFFGState.LinkCheckpointAgreement`:
   `AcceptedActualFCRJointNonVacuityFFG.witnessExactLinkValidity`. Included
   attestations on the carrier support its exact checkpoint link.
-* `CausalCarrierFFGState.PaperA32Inclusion`:
+* `AcceptedBlockFFGState.EventualCheckpointInclusion`:
   `NextSlotPremiseWitness.witnessPaperA32Inclusion`. The slot-seven carrier
   includes the vote evidence for the slot-one child.
-* `Execution.RealizedFinalizationDelay`:
+* `Execution.ImportedBlockFinalizationLag`:
   `NextSlotPremiseWitness.witnessAcceptedRealizedFinalizationDelay`. The
   finite FFG state meets the delay bound over the horizon.
 * `EpochEndsFitUint64`:
   `AcceptedActualFCRJointNonVacuityBase.witnessEpochEndsFitUint64`. The
   four-slot epochs fit the execution's integer bounds.
-* `TrustedAnchorBoundaryAligned`:
+* `InitialAnchorAtEpochBoundary`:
   `AcceptedActualFCRJointNonVacuityBase.witnessTrustedAnchorBoundaryAligned`.
   The trusted anchor lies at its declared epoch boundary.
 
@@ -185,11 +185,11 @@ also names two counterexamples to strict-prefix safety variants.
 
 * The shorter `TwelveSecondSynchronyWitness` run does not establish
   `Execution.NextSlotSafetyPremises`.
-  It has no FFG carrier. Its `CausalPrefixFFGInterpretation`,
-  `ScheduledPrefixPremises` (in particular `BeaconExternalsPremises`), and
-  `CompletedFCRCallPremises` are not proved.
-  The bundle's semantic anchor equality, `RealizedFinalizationDelay`,
-  `PaperA32Inclusion`, `EpochCheckpointClosure`, and `ExactLinkValidity`
+  It has no FFG carrier. Its `ScheduledFFGInterpretation`,
+  `ScheduledExecutionPremises` (in particular `BeaconExternalsPremises`), and
+  `ScheduledFCRCallPremises` are not proved.
+  The bundle's semantic anchor equality, `ImportedBlockFinalizationLag`,
+  `EventualCheckpointInclusion`, `EpochCheckpointProjectionLaws`, and `LinkCheckpointAgreement`
   are also not re-established for this run. The slot count bound and the
   concrete anchor boundary alignment are proved separately.
 

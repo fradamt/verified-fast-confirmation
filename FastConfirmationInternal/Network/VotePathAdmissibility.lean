@@ -20,7 +20,7 @@ inductive WalkKnown (store : Store Root) (slot : Slot) : Root → Prop
       (hp : WalkKnown store slot (store.blocks r).parent_root) :
       WalkKnown store slot r
 
-variable [LinearOrder Root] [Inhabited Root] (cfg : Config) (ext : Externals Root)
+variable [LinearOrder Root] [Inhabited Root] (cfg : Config) (ext : BeaconFunctionInterface Root)
 
 /-- Only the roots on this vote head's target-epoch ancestor walk must avoid
 the receiver's permanent finalized-checkpoint exclusion. This is the exact

@@ -25,7 +25,7 @@ and `finalizedReset_epoch_le_remoteJustified_nextSlot` to prove genuine
 namespace FastConfirmation.Spec
 
 variable {Root : Type*} [LinearOrder Root] [Inhabited Root]
-variable (cfg : Config) (ext : Externals Root)
+variable (cfg : Config) (ext : BeaconFunctionInterface Root)
 
 namespace Execution
 
@@ -38,17 +38,17 @@ chain.
 Synchrony supplies the endpoint justified-epoch bound; accepted certificate
 semantics and execution reflection supply the chain relation and knownness. -/
 theorem finalizedReset_justifiedDom_of_nextSlotSynchrony
-    (B : CausalPrefixFFGInterpretation cfg ext E)
-    (hT : E.ScheduledPrefixPremises cfg ext)
+    (B : ScheduledFFGInterpretation cfg ext E)
+    (hT : E.ScheduledExecutionPremises cfg ext)
     (hacc : FFGAccountabilityAssumptions cfg ext E)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
-    (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
+    (hboundary : InitialAnchorAtEpochBoundary (cfg := cfg)
       (E := E) (anchor := B.anchor))
-    (hC : E.CompletedFCRCallPremises cfg ext)
+    (hC : E.ScheduledFCRCallPremises cfg ext)
     (hspe : 1 < cfg.slots_per_epoch)
-    (hDelay : E.RealizedFinalizationDelay cfg ext B)
-    (P : EpochCheckpointClosure B.anchor (E.AcceptedRoot cfg ext) B.state.C)
-    (V : B.state.ExactLinkValidity)
+    (hDelay : E.ImportedBlockFinalizationLag cfg ext B)
+    (P : EpochCheckpointProjectionLaws B.anchor (E.RootKnownInScheduledPrefix cfg ext) B.state.checkpoint_at_epoch)
+    (V : B.state.LinkCheckpointAgreement)
     {v : ValidatorIndex} (hv : v ∈ E.honest) {n q : ℕ}
     (hHn1 : E.WithinHorizon cfg (n + 1))
     (hnextQ : E.slot_at cfg (n + 1) + 1 ≤ E.slot_at cfg q) :
@@ -70,10 +70,10 @@ theorem finalizedReset_justifiedDom_of_nextSlotSynchrony
       E.genesis_store = get_forkchoice_store cfg ast ablk ∧
         ast.slot = ablk.message.slot :=
     ⟨ast, ablk, hgen, hslot⟩
-  have hqueryCausal : E.CausalStore cfg ext
+  have hqueryCausal : E.ScheduledPrefixStore cfg ext
       (E.store cfg ext v (n + 1)) :=
     E.store_causal cfg ext v (n + 1)
-  have hendpointCausal : E.CausalStore cfg ext
+  have hendpointCausal : E.ScheduledPrefixStore cfg ext
       (E.store cfg ext w m) :=
     E.store_causal cfg ext w m
   have hrealized :=
@@ -102,7 +102,7 @@ theorem finalizedReset_justifiedDom_of_nextSlotSynchrony
       ((Nat.le_of_succ_le hnextM).trans (Nat.le_succ _))
     simpa only [finalized, E.fcrStep_store] using h
   obtain ⟨hjustified⟩ :=
-    CausalPrefixFFGInterpretation.endpointJustified_certificate
+    ScheduledFFGInterpretation.endpointJustified_certificate
       (E := E) cfg ext B hgenShort hanchor hendpointCausal
   have hsemantic : E.RootDescends
       (E.store cfg ext w m).justified_checkpoint.root finalized.root := by
@@ -121,7 +121,7 @@ theorem finalizedReset_justifiedDom_of_nextSlotSynchrony
       have hfinalized : CertifiedFinalized cfg E B.anchor finalized :=
         IncludedCertifiedFinalized.toCertifiedFinalized
           (cfg := cfg)
-          (Execution.CausalCarrierAttestationRelation.relation
+          (Execution.AcceptedBlockAttestationInclusion.relation
             cfg ext E B.state.includedAttestations)
           hincludedFinalized
       exact E.certified_finalized_prefix cfg ext hacc
@@ -134,17 +134,17 @@ theorem finalizedReset_justifiedDom_of_nextSlotSynchrony
 slot is strictly later than the query slot.  No same-moment finalized-adoption
 law is used. -/
 theorem finalizedReset_safeFrom_of_nextSlotSynchrony
-    (B : CausalPrefixFFGInterpretation cfg ext E)
-    (hT : E.ScheduledPrefixPremises cfg ext)
+    (B : ScheduledFFGInterpretation cfg ext E)
+    (hT : E.ScheduledExecutionPremises cfg ext)
     (hacc : FFGAccountabilityAssumptions cfg ext E)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
-    (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
+    (hboundary : InitialAnchorAtEpochBoundary (cfg := cfg)
       (E := E) (anchor := B.anchor))
-    (hC : E.CompletedFCRCallPremises cfg ext)
+    (hC : E.ScheduledFCRCallPremises cfg ext)
     (hspe : 1 < cfg.slots_per_epoch)
-    (hDelay : E.RealizedFinalizationDelay cfg ext B)
-    (P : EpochCheckpointClosure B.anchor (E.AcceptedRoot cfg ext) B.state.C)
-    (V : B.state.ExactLinkValidity)
+    (hDelay : E.ImportedBlockFinalizationLag cfg ext B)
+    (P : EpochCheckpointProjectionLaws B.anchor (E.RootKnownInScheduledPrefix cfg ext) B.state.checkpoint_at_epoch)
+    (V : B.state.LinkCheckpointAgreement)
     {v : ValidatorIndex} (hv : v ∈ E.honest) {n q : ℕ}
     (hHn1 : E.WithinHorizon cfg (n + 1))
     (hnextQ : E.slot_at cfg (n + 1) + 1 ≤ E.slot_at cfg q) :
@@ -162,17 +162,17 @@ theorem finalizedReset_safeFrom_of_nextSlotSynchrony
 the finalized reset input, that input is safe from any chosen next-slot time.
 -/
 theorem finalizedResetCandidateInput_safeFrom_of_nextSlotSynchrony
-    (B : CausalPrefixFFGInterpretation cfg ext E)
-    (hT : E.ScheduledPrefixPremises cfg ext)
+    (B : ScheduledFFGInterpretation cfg ext E)
+    (hT : E.ScheduledExecutionPremises cfg ext)
     (hacc : FFGAccountabilityAssumptions cfg ext E)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
-    (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
+    (hboundary : InitialAnchorAtEpochBoundary (cfg := cfg)
       (E := E) (anchor := B.anchor))
-    (hC : E.CompletedFCRCallPremises cfg ext)
+    (hC : E.ScheduledFCRCallPremises cfg ext)
     (hspe : 1 < cfg.slots_per_epoch)
-    (hDelay : E.RealizedFinalizationDelay cfg ext B)
-    (P : EpochCheckpointClosure B.anchor (E.AcceptedRoot cfg ext) B.state.C)
-    (V : B.state.ExactLinkValidity)
+    (hDelay : E.ImportedBlockFinalizationLag cfg ext B)
+    (P : EpochCheckpointProjectionLaws B.anchor (E.RootKnownInScheduledPrefix cfg ext) B.state.checkpoint_at_epoch)
+    (V : B.state.LinkCheckpointAgreement)
     {v : ValidatorIndex} (hv : v ∈ E.honest) {n q : ℕ}
     (hHn1 : E.WithinHorizon cfg (n + 1))
     {trace : LatestConfirmedCallTrace cfg ext (E.fcrStoreAtCall cfg ext v n)}

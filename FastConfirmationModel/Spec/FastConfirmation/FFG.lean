@@ -14,7 +14,7 @@ The "FFG helpers" section of `specs/phase0/fast-confirmation.md`
 namespace FastConfirmation.Spec
 
 variable {Root : Type*} [LinearOrder Root] [Inhabited Root]
-variable (cfg : Config) (ext : Externals Root)
+variable (cfg : Config) (ext : BeaconFunctionInterface Root)
 
 /-- `get_current_target_score`: Return the estimate of FFG support of the
 current epoch target by using LMD-GHOST votes (MUST be used no later than the

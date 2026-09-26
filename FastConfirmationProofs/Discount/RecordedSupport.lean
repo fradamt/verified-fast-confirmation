@@ -17,7 +17,7 @@ This module contains `mem_AttSupporters_of`, `supports_of_ge_b`, `mem_AttSupport
 namespace FastConfirmation.Spec
 
 variable {Root : Type*} [LinearOrder Root] [Inhabited Root]
-variable (cfg : Config) (ext : Externals Root)
+variable (cfg : Config) (ext : BeaconFunctionInterface Root)
 
 /-! ## The supporter-list membership constructor -/
 

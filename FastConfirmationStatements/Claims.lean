@@ -14,7 +14,7 @@ public import FastConfirmationStatements.Premises.FCRCallPremises
 section
 namespace FastConfirmation.Spec
 variable {Root : Type*} [LinearOrder Root] [Inhabited Root]
-variable (cfg : Config) (ext : Externals Root)
+variable (cfg : Config) (ext : BeaconFunctionInterface Root)
 /-- Accepted whole-output safety: every stored FCR output of an honest node is
 an ancestor of every honest head from the next slot on, within the
 verification horizon, under the accepted executable-semantics bundle.

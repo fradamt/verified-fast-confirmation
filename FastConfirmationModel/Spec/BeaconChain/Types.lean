@@ -184,7 +184,7 @@ def BeaconState.committee_count_per_slot {Root : Type*} (state : BeaconState Roo
 its `root` — `hash_tree_root(block.message)` is absorbed into the wire object
 (roots are unique commitments to blocks; distinctness of roots across distinct
 wire blocks is a well-formedness invariant of executions). Signatures are
-absorbed into `Externals.state_transition` validity. -/
+absorbed into `BeaconFunctionInterface.state_transition` validity. -/
 structure SignedBeaconBlock (Root : Type*) where
   message : BeaconBlock Root
   root : Root

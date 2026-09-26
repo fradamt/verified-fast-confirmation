@@ -135,7 +135,7 @@ theorem update_unrealized_checkpoints_storeLE (store : Store Root)
   storeLE_untouched (by simp) (by simp) (by simp) (by simp)
 
 variable [LinearOrder Root] [Inhabited Root]
-variable (cfg : Config) (ext : Externals Root)
+variable (cfg : Config) (ext : BeaconFunctionInterface Root)
 
 omit [Inhabited Root] in
 theorem compute_pulled_up_tip_storeLE (store : Store Root) (block_root : Root) :

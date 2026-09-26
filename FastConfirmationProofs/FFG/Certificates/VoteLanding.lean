@@ -15,7 +15,7 @@ This module contains `honest_committee_vote` and related declarations.
 namespace FastConfirmation.Spec
 
 variable {Root : Type*} [LinearOrder Root] [Inhabited Root]
-variable (cfg : Config) (ext : Externals Root)
+variable (cfg : Config) (ext : BeaconFunctionInterface Root)
 
 /-! ## Section 1 — `hdil`: the boost dilution from the saturated `Jspec` lower bound -/
 

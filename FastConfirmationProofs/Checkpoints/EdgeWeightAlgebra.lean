@@ -17,7 +17,7 @@ This module contains `weight_add_sdiff`, `weight_add_le`, `hR4b_of_confinement` 
 namespace FastConfirmation.Spec
 
 variable {Root : Type*} [LinearOrder Root] [Inhabited Root]
-variable (cfg : Config) (ext : Externals Root)
+variable (cfg : Config) (ext : BeaconFunctionInterface Root)
 
 namespace Execution
 

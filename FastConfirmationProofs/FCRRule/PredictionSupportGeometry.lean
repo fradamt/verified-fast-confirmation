@@ -14,7 +14,7 @@ No future vote support or head-safety conclusion is an input.
 namespace FastConfirmation.Spec
 
 variable {Root : Type*} [LinearOrder Root] [Inhabited Root]
-variable (cfg : Config) (ext : Externals Root)
+variable (cfg : Config) (ext : BeaconFunctionInterface Root)
 
 private theorem selectedParentTrace_descendsStart
     {store : Store Root} (hwf : ParentSlotLt store)
@@ -135,11 +135,11 @@ variable (E : Execution Root)
 /-- The crossing geometry at a guarded execution call. The only inputs are
 the accepted trajectory and its store domain; no helper proviso is used. -/
 theorem currentTargetSelectedEdge_geometry_of_accepted
-    (B : CausalPrefixFFGInterpretation cfg ext E)
-    (hT : E.ScheduledPrefixPremises cfg ext)
+    (B : ScheduledFFGInterpretation cfg ext E)
+    (hT : E.ScheduledExecutionPremises cfg ext)
     (hdomain : SelectedMarginDomain cfg ext E)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
-    (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg) (E := E) (anchor := B.anchor))
+    (hboundary : InitialAnchorAtEpochBoundary (cfg := cfg) (E := E) (anchor := B.anchor))
     {v : ValidatorIndex} (hv : v ∈ E.honest) {n : ℕ}
     (hH : E.WithinHorizon cfg (n + 1))
     (hguard : getLatestSelectorGuard cfg (E.fcrStoreAtCall cfg ext v n)

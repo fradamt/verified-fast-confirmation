@@ -16,7 +16,7 @@ This module contains `DynamicsChainSupply`, `MechanicalResiduals` and related de
 namespace FastConfirmation.Spec
 
 variable {Root : Type*} [LinearOrder Root] [Inhabited Root]
-variable (cfg : Config) (ext : Externals Root)
+variable (cfg : Config) (ext : BeaconFunctionInterface Root)
 
 namespace Execution
 
@@ -148,7 +148,7 @@ theorem parentLinkChain_nodup {store : Store Root}
   exact hpair.imp (fun {a b} h (heq : a = b) => absurd (heq ▸ h) (lt_irrefl _))
 
 variable [LinearOrder Root] [Inhabited Root]
-variable (cfg : Config) (ext : Externals Root)
+variable (cfg : Config) (ext : BeaconFunctionInterface Root)
 
 
 

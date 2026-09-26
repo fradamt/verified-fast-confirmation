@@ -16,7 +16,7 @@ The interval and balance-source equalities remain to be established at calls.
 namespace FastConfirmation.Spec
 
 variable {Root : Type*} [LinearOrder Root] [Inhabited Root]
-variable (cfg : Config) (ext : Externals Root)
+variable (cfg : Config) (ext : BeaconFunctionInterface Root)
 
 
 
@@ -604,9 +604,9 @@ private def NextSlotSafetyPremises.live_selected_margin
     static_validators := h.completed_calls.static_validators
     byzantine_bound := h.completed_calls.byzantine_bound
     domain := E.selectedMarginDomain_of_acceptedGlobalTrajectory
-      cfg ext h.semantics h.trajectory h.completed_calls.synchrony
+      cfg ext h.ffg_interpretation h.trajectory h.completed_calls.synchrony
         (E.honestHeadPathAdmissibility_of_accepted cfg ext
-          h.semantics h.trajectory h.completed_calls h.anchor_eq h.anchor_boundary
+          h.ffg_interpretation h.trajectory h.completed_calls h.anchor_eq h.anchor_boundary
           h.slots_per_epoch_gt_one h.finalization_delay
           h.checkpoint_projection h.exact_link_validity)
         h.anchor_eq h.anchor_boundary }

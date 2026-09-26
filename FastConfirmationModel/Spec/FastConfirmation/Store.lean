@@ -7,7 +7,7 @@ public import FastConfirmationModel.Spec.ForkChoice
 
 namespace FastConfirmation.Spec
 variable {Root : Type*} [LinearOrder Root] [Inhabited Root]
-variable (cfg : Config) (ext : Externals Root)
+variable (cfg : Config) (ext : BeaconFunctionInterface Root)
 /-- `FastConfirmationStore`: tracks the information required by the fast
 confirmation rule (see the spec's field descriptions). `store` is the
 read-only fork-choice `Store` instance, "added for convenience". -/

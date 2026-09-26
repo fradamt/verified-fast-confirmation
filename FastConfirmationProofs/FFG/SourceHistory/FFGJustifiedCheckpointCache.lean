@@ -21,7 +21,7 @@ the existing executable one: an honest target vote is delivered, validated,
 inserted into `checkpoint_state_keys`, and the key persists to the endpoint.
 
 The only replacement is the global provenance of the justified checkpoint.
-`CausalPrefixFFGInterpretation.globalJustified_anchor_or_AUEvidence` returns
+`ScheduledFFGInterpretation.globalJustified_anchor_or_AUEvidence` returns
 either the trusted anchor or an `AcceptedSelectorAUCarrier`.  In the latter
 case, `formed_evidence.causal` supplies the exact accepted formation block and
 an honest target vote strictly before it.  Accepted store reflection places
@@ -35,7 +35,7 @@ selected-margin bundle, filter fact, or safety conclusion is a premise.
 namespace FastConfirmation.Spec
 
 variable {Root : Type*} [LinearOrder Root] [Inhabited Root]
-variable (cfg : Config) (ext : Externals Root)
+variable (cfg : Config) (ext : BeaconFunctionInterface Root)
 
 namespace Execution
 
@@ -44,12 +44,12 @@ variable (E : Execution Root)
 /-- Every reachable honest store has cached its accepted-prefix realized
 justified checkpoint. -/
 theorem justifiedCheckpoint_cached_of_acceptedGlobalTrajectory
-    (B : CausalPrefixFFGInterpretation cfg ext E)
-    (hT : E.ScheduledPrefixPremises cfg ext)
+    (B : ScheduledFFGInterpretation cfg ext E)
+    (hT : E.ScheduledExecutionPremises cfg ext)
     (hsync : NextSlotSynchronyPremises cfg ext E)
     (hpaths : HonestHeadPathAdmissibility cfg ext E)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
-    (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
+    (hboundary : InitialAnchorAtEpochBoundary (cfg := cfg)
       (E := E) (anchor := B.anchor))
     {w : ValidatorIndex} (hw : w ∈ E.honest) (m : Nat)
     (hHm : E.WithinHorizon cfg m) :
@@ -94,14 +94,14 @@ theorem justifiedCheckpoint_cached_of_acceptedGlobalTrajectory
     simpa only [get_forkchoice_store] using hroot
   have hboundary' : ablk.message.slot ≤
       compute_start_slot_at_epoch cfg B.anchor.epoch := by
-    simpa only [TrustedAnchorBoundaryAligned, hgenEq, hanchorRoot,
+    simpa only [InitialAnchorAtEpochBoundary, hgenEq, hanchorRoot,
       get_forkchoice_store, Function.update_self] using hboundary
   have hwalkDomain : E.PostAnchorHonestVoteTargetWalkDomain cfg ext :=
     E.postAnchorHonestVoteTargetWalkDomain_of_acceptedGlobalTrajectory
       cfg ext B hT hanchor hboundary
   let justified := (E.store cfg ext w m).justified_checkpoint
   change justified ∈ (E.store cfg ext w m).checkpoint_state_keys
-  have hstore : E.CausalStore cfg ext (E.store cfg ext w m) :=
+  have hstore : E.ScheduledPrefixStore cfg ext (E.store cfg ext w m) :=
     E.store_causal cfg ext w m
   rcases B.globalJustified_anchor_or_AUEvidence hgenShort hanchor hstore with
     hjustifiedAnchor | hevidence
@@ -129,7 +129,7 @@ theorem justifiedCheckpoint_cached_of_acceptedGlobalTrajectory
         exact CertifiedJustified.anchor_epoch_lt_of_ne (cfg := cfg)
           (IncludedCertifiedJustified.toCertifiedJustified
             (cfg := cfg)
-            (Execution.CausalCarrierAttestationRelation.relation
+            (Execution.AcceptedBlockAttestationInclusion.relation
               cfg ext E B.state.includedAttestations)
             hincludedCertificate)
           hjustifiedAnchor
@@ -247,12 +247,12 @@ theorem justifiedCheckpoint_cached_of_acceptedGlobalTrajectory
 /-- Accepted root knownness plus accepted cache provenance construct the
 complete two-field domain consumed by strict selected-result geometry. -/
 theorem selectedMarginDomain_of_acceptedGlobalTrajectory
-    (B : CausalPrefixFFGInterpretation cfg ext E)
-    (hT : E.ScheduledPrefixPremises cfg ext)
+    (B : ScheduledFFGInterpretation cfg ext E)
+    (hT : E.ScheduledExecutionPremises cfg ext)
     (hsync : NextSlotSynchronyPremises cfg ext E)
     (hpaths : HonestHeadPathAdmissibility cfg ext E)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
-    (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
+    (hboundary : InitialAnchorAtEpochBoundary (cfg := cfg)
       (E := E) (anchor := B.anchor)) :
     SelectedMarginDomain cfg ext E := by
   refine ⟨hpaths, ?_, ?_⟩

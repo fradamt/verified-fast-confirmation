@@ -27,7 +27,7 @@ executable path actually relies on.
 namespace FastConfirmation.Spec
 
 variable {Root : Type*} [LinearOrder Root] [Inhabited Root]
-variable (cfg : Config) (ext : Externals Root)
+variable (cfg : Config) (ext : BeaconFunctionInterface Root)
 
 
 /-- Exact opaque-state-transition boundary for all retained selector edges.
@@ -58,7 +58,7 @@ structure SelectedTraceFFGPipeline (E : Execution Root)
       (PreviousEpochSelectedEdge cfg ext fcrStore latestConfirmedRoot a c ∨
         (a, c) ∈
           (findLatestSelectedTrace cfg ext fcrStore latestConfirmedRoot).2.2) →
-      FCRPredictionSupportAt cfg ext E v q fcrStore latestConfirmedRoot →
+      SelectedPredictionVoteSupport cfg ext E v q fcrStore latestConfirmedRoot →
       ∀ w ∈ E.honest, ∀ m : ℕ,
       E.slot_at cfg q ≤ E.slot_at cfg m →
       E.WithinHorizon cfg m →

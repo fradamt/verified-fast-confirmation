@@ -23,7 +23,7 @@ no knownness, certificate, payload, ancestry, canonicity, or safety result.
 namespace FastConfirmation.Spec
 
 variable {Root : Type*} [LinearOrder Root] [Inhabited Root]
-variable (cfg : Config) (ext : Externals Root)
+variable (cfg : Config) (ext : BeaconFunctionInterface Root)
 
 /-! ## The three exact executable guards -/
 

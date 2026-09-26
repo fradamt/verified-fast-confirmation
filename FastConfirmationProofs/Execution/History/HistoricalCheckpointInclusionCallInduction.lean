@@ -15,7 +15,7 @@ It derives support after strict-result safety, without a helper-support field.
 namespace FastConfirmation.Spec
 
 variable {Root : Type*} [LinearOrder Root] [Inhabited Root]
-variable (cfg : Config) (ext : Externals Root)
+variable (cfg : Config) (ext : BeaconFunctionInterface Root)
 
 namespace Execution
 
@@ -24,7 +24,7 @@ variable {E : Execution Root}
 /-- The two facts retained by the write-back induction at one execution
 second.  Historical payload is required only in the current-epoch case. -/
 structure AcceptedHistoricalA32CurrentLineageAt
-    (B : CausalPrefixFFGInterpretation cfg ext E)
+    (B : ScheduledFFGInterpretation cfg ext E)
     (v : ValidatorIndex) (n : ℕ) : Prop where
   confirmed_known : E.confirmed cfg ext v n ∈
     (E.store cfg ext v n).block_roots
@@ -41,7 +41,7 @@ stores neither an unconditional quorum nor prediction support. The joint
 induction supplies the latter only after it proves the strict result safe.
 -/
 structure AcceptedHistoricalA32CallInterfaceAt
-    (B : CausalPrefixFFGInterpretation cfg ext E)
+    (B : ScheduledFFGInterpretation cfg ext E)
     (v : ValidatorIndex) (n : ℕ) : Prop where
   target_gate_producer : E.AcceptedCurrentTargetA32GateRealizationProducerAt
     cfg ext B.anchor B.state (n + 1) (E.fcrStoreAtCall cfg ext v n)
@@ -50,7 +50,7 @@ structure AcceptedHistoricalA32CallInterfaceAt
 `IsScheduledFCRCallAt` argument ensures no interface is demanded between slot
 advances. -/
 def AcceptedHistoricalA32CallInterfaces
-    (B : CausalPrefixFFGInterpretation cfg ext E) : Prop :=
+    (B : ScheduledFFGInterpretation cfg ext E) : Prop :=
   ∀ v ∈ E.honest, ∀ n : ℕ,
     E.IsScheduledFCRCallAt cfg ext v n → E.WithinHorizon cfg (n + 1) →
       E.AcceptedHistoricalA32CallInterfaceAt cfg ext B v n
@@ -62,10 +62,10 @@ cached root is known.  Finalized and observed inputs use their accepted reset
 realizations; a selected result uses the ordinary known-descendant theorem.
 This proof has no justification-interface or selected-margin premise. -/
 theorem getLatestConfirmedTraceAt_result_known
-    (B : CausalPrefixFFGInterpretation cfg ext E)
-    (hT : E.ScheduledPrefixPremises cfg ext)
+    (B : ScheduledFFGInterpretation cfg ext E)
+    (hT : E.ScheduledExecutionPremises cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
-    (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
+    (hboundary : InitialAnchorAtEpochBoundary (cfg := cfg)
       (E := E) (anchor := B.anchor))
     {v : ValidatorIndex} (hv : v ∈ E.honest)
     {n : ℕ} (hHn1 : E.WithinHorizon cfg (n + 1))
@@ -114,10 +114,10 @@ theorem getLatestConfirmedTraceAt_result_known
 /-- Boundary alignment makes the accepted trusted anchor its own block
 checkpoint, using only the scheduled trajectory's genesis facts. -/
 theorem trustedAnchor_checkpointForBlock_of_trajectory
-    (hT : E.ScheduledPrefixPremises cfg ext)
+    (hT : E.ScheduledExecutionPremises cfg ext)
     {anchor : Checkpoint Root}
     (hanchor : anchor = E.genesis_store.justified_checkpoint)
-    (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
+    (hboundary : InitialAnchorAtEpochBoundary (cfg := cfg)
       (E := E) (anchor := anchor)) :
     get_checkpoint_for_block cfg E.genesis_store anchor.root
         (get_block_epoch cfg E.genesis_store anchor.root) = anchor := by
@@ -144,10 +144,10 @@ theorem trustedAnchor_checkpointForBlock_of_trajectory
 /-- The genesis confirmed root initializes both knownness and the anchor
 lineage.  The anchor disjunct is recorded directly; no quorum is fabricated. -/
 noncomputable def acceptedHistoricalA32CurrentLineageAt_zero
-    (B : CausalPrefixFFGInterpretation cfg ext E)
-    (hT : E.ScheduledPrefixPremises cfg ext)
+    (B : ScheduledFFGInterpretation cfg ext E)
+    (hT : E.ScheduledExecutionPremises cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
-    (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
+    (hboundary : InitialAnchorAtEpochBoundary (cfg := cfg)
       (E := E) (anchor := B.anchor))
     (v : ValidatorIndex) :
     E.AcceptedHistoricalA32CurrentLineageAt cfg ext B v 0 := by
@@ -172,13 +172,13 @@ noncomputable def acceptedHistoricalA32CurrentLineageAt_zero
     simpa only [hconfirmedAnchor] using hknown
   · intro _hcurrent
     let e := get_block_epoch cfg E.genesis_store B.anchor.root
-    have hat : E.AcceptedBlockAt cfg ext B.anchor.root
+    have hat : E.BlockKnownInScheduledPrefix cfg ext B.anchor.root
         (E.genesis_store.blocks B.anchor.root) :=
       E.acceptedBlockAt_of_causal_known cfg ext (.genesis) hknown
     have horiginEpoch : compute_epoch_at_slot cfg
         (E.genesis_store.blocks B.anchor.root).slot = e := by
       rfl
-    have hcheckpointStore : B.state.C B.anchor.root e =
+    have hcheckpointStore : B.state.checkpoint_at_epoch B.anchor.root e =
         get_checkpoint_for_block cfg E.genesis_store B.anchor.root e :=
       B.coherence.checkpoint_of_known (.genesis) B.anchor.root hknown e
     have hcheckpointAnchor : get_checkpoint_for_block cfg E.genesis_store

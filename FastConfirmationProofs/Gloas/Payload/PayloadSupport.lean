@@ -253,7 +253,7 @@ theorem confirmed_child_parent_not_previous_slot (store : Store Root) (b : Root)
 old for Gloas's previous-slot payload tie breaker.  The source cutoff comes
 from actual confirmation; block provenance identifies the child's slot in
 both stores. -/
-theorem confirmed_parent_not_previous_at_later_store (ext : Externals Root)
+theorem confirmed_parent_not_previous_at_later_store (ext : BeaconFunctionInterface Root)
     {E : Execution Root}
     (hwf : WellFormedExecution E)
     (v w : ValidatorIndex) (n m : ℕ) {b : Root}

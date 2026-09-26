@@ -12,7 +12,7 @@ Proofs about Model/AcceptedExecution. Read the corresponding Model file first.
 
 namespace FastConfirmation.Spec
 variable {Root : Type*} [LinearOrder Root] [Inhabited Root]
-variable (cfg : Config) (ext : Externals Root)
+variable (cfg : Config) (ext : BeaconFunctionInterface Root)
 namespace Execution
 namespace ScheduledEventPrefix
 variable {E : Execution Root}
@@ -36,27 +36,27 @@ theorem successor_store (p : ScheduledEventPrefix E)
   rfl
 
 end ScheduledEventPrefix
-theorem HonestCausalStore.causal {E : Execution Root} {store : Store Root}
-    (h : HonestCausalStore cfg ext E store) : CausalStore cfg ext E store := by
+theorem HonestPrefixStoreWithinHorizon.causal {E : Execution Root} {store : Store Root}
+    (h : HonestPrefixStoreWithinHorizon cfg ext E store) : ScheduledPrefixStore cfg ext E store := by
   cases h with
   | genesis _ _ => exact .genesis
   | scheduledPrefix p _ _ => exact .scheduledPrefix p
 
-theorem HonestCausalStore.blockState {E : Execution Root} {store : Store Root}
-    (h : HonestCausalStore cfg ext E store) {root : Root}
+theorem HonestPrefixStoreWithinHorizon.blockState {E : Execution Root} {store : Store Root}
+    (h : HonestPrefixStoreWithinHorizon cfg ext E store) {root : Root}
     (hroot : root ∈ store.block_roots) :
     ReachableValidationState cfg ext E (store.block_states root) :=
   ⟨store, h, Or.inl ⟨root, hroot, rfl⟩⟩
 
-theorem HonestCausalStore.checkpointState {E : Execution Root} {store : Store Root}
-    (h : HonestCausalStore cfg ext E store) {checkpoint : Checkpoint Root}
+theorem HonestPrefixStoreWithinHorizon.checkpointState {E : Execution Root} {store : Store Root}
+    (h : HonestPrefixStoreWithinHorizon cfg ext E store) {checkpoint : Checkpoint Root}
     (hcheckpoint : checkpoint ∈ store.checkpoint_state_keys) :
     ReachableValidationState cfg ext E (store.checkpoint_states checkpoint) :=
   ⟨store, h, Or.inr ⟨checkpoint, hcheckpoint, rfl⟩⟩
 
 theorem honestCausalStore_store (E : Execution Root) (v : ValidatorIndex) (n : ℕ)
     (hv : v ∈ E.honest) (hn : E.WithinHorizon cfg n) :
-    HonestCausalStore cfg ext E (E.store cfg ext v n) := by
+    HonestPrefixStoreWithinHorizon cfg ext E (E.store cfg ext v n) := by
   cases n with
   | zero => exact .genesis ⟨v, hv⟩ hn
   | succ n =>
@@ -75,7 +75,7 @@ validation domain, including the empty prefix after the tick. -/
 theorem honestCausalStore_prefix (E : Execution Root) (v : ValidatorIndex)
     (hv : v ∈ E.honest) (n : ℕ) (hn : E.WithinHorizon cfg (n + 1))
     (pre rest : List (Event Root)) (hl : E.schedule v (n + 1) = pre ++ rest) :
-    HonestCausalStore cfg ext E
+    HonestPrefixStoreWithinHorizon cfg ext E
       (pre.foldl (fun store event => (apply_event cfg ext store event).getD store)
         (on_tick cfg (E.store cfg ext v n) (E.time_at (n + 1)))) := by
   let p : ScheduledEventPrefix E :=
@@ -93,7 +93,7 @@ theorem honestCausalStore_prefix (E : Execution Root) (v : ValidatorIndex)
 /-- Every ordinary execution boundary is represented by the exact-prefix
 causal domain. -/
 theorem store_causal (E : Execution Root) (v : ValidatorIndex) (n : ℕ) :
-    CausalStore cfg ext E (E.store cfg ext v n) := by
+    ScheduledPrefixStore cfg ext E (E.store cfg ext v n) := by
   cases n with
   | zero => exact .genesis
   | succ n =>
@@ -108,25 +108,25 @@ theorem store_causal (E : Execution Root) (v : ValidatorIndex) (n : ℕ) :
       exact .scheduledPrefix p
 
 theorem acceptedRoot_of_causal_known {E : Execution Root}
-    {store : Store Root} (hstore : CausalStore cfg ext E store)
+    {store : Store Root} (hstore : ScheduledPrefixStore cfg ext E store)
     {r : Root} (hr : r ∈ store.block_roots) :
-    AcceptedRoot cfg ext E r :=
+    RootKnownInScheduledPrefix cfg ext E r :=
   ⟨store, hstore, hr⟩
 
 theorem acceptedBlockAt_of_causal_known {E : Execution Root}
-    {store : Store Root} (hstore : CausalStore cfg ext E store)
+    {store : Store Root} (hstore : ScheduledPrefixStore cfg ext E store)
     {r : Root} (hr : r ∈ store.block_roots) :
-    AcceptedBlockAt cfg ext E r (store.blocks r) :=
+    BlockKnownInScheduledPrefix cfg ext E r (store.blocks r) :=
   ⟨store, hstore, hr, rfl⟩
 
 
 theorem acceptedBlockAt_of_store_known (E : Execution Root)
     (v : ValidatorIndex) (n : ℕ) {r : Root}
     (hr : r ∈ (E.store cfg ext v n).block_roots) :
-    AcceptedBlockAt cfg ext E r ((E.store cfg ext v n).blocks r) :=
+    BlockKnownInScheduledPrefix cfg ext E r ((E.store cfg ext v n).blocks r) :=
   acceptedBlockAt_of_causal_known cfg ext (E.store_causal cfg ext v n) hr
 
-namespace AcceptedBlockTransition
+namespace SuccessfulScheduledBlockImport
 variable {E : Execution Root}
 /-- The block domain and state map needed by accepted-transition inversion. -/
 private def retainedBlockFields (store : Store Root) :=
@@ -134,7 +134,7 @@ private def retainedBlockFields (store : Store Root) :=
 
 /-- The successful handler result is definitionally the successor-prefix
 fold result. -/
-theorem successorPrefix_store (t : AcceptedBlockTransition cfg ext E) :
+theorem successorPrefix_store (t : SuccessfulScheduledBlockImport cfg ext E) :
     t.successorPrefix.store cfg ext = t.postStore := by
   rw [successorPrefix, ScheduledEventPrefix.successor_store]
   have hevent :
@@ -290,23 +290,23 @@ theorem on_block_inserted_state
   · exact Or.inr (on_block_inserted_state_fresh cfg ext hknown hh)
 
 /-- The accepted result is a causal exact successor prefix. -/
-theorem post_causal (t : AcceptedBlockTransition cfg ext E) :
-    CausalStore cfg ext E t.postStore := by
+theorem post_causal (t : SuccessfulScheduledBlockImport cfg ext E) :
+    ScheduledPrefixStore cfg ext E t.postStore := by
   rw [← t.successorPrefix_store]
   exact .scheduledPrefix t.successorPrefix
 
 /-- Root knownness is derived from the successful handler, not supplied by
 the accepted-transition constructor. -/
-theorem root_known (t : AcceptedBlockTransition cfg ext E) :
+theorem root_known (t : SuccessfulScheduledBlockImport cfg ext E) :
     t.signedBlock.root ∈ t.postStore.block_roots :=
   on_block_root_known cfg ext t.accepted
 
 /-- Every accepted block transition contributes an accepted root. -/
-theorem root_accepted (t : AcceptedBlockTransition cfg ext E) :
-    AcceptedRoot cfg ext E t.signedBlock.root :=
+theorem root_accepted (t : SuccessfulScheduledBlockImport cfg ext E) :
+    RootKnownInScheduledPrefix cfg ext E t.signedBlock.root :=
   ⟨t.postStore, t.post_causal, t.root_known⟩
 
-end AcceptedBlockTransition
+end SuccessfulScheduledBlockImport
 end Execution
 end FastConfirmation.Spec
 

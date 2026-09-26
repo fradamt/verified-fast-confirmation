@@ -16,7 +16,7 @@ namespace FastConfirmation.Spec
 open Execution
 
 variable {Root : Type*} [LinearOrder Root] [Inhabited Root]
-variable (cfg : Config) (ext : Externals Root)
+variable (cfg : Config) (ext : BeaconFunctionInterface Root)
 
 /-- A store extension preserves the state of every old known block. -/
 private def BlockStateLE (old new : Store Root) : Prop :=
@@ -96,7 +96,7 @@ private theorem Execution.store_blockStateLE (E : Execution Root)
   | succ m _ ih => exact ih.trans (E.store_blockStateLE_succ cfg ext v m)
 
 private theorem Execution.causal_genesis_state (E : Execution Root)
-    {store : Store Root} (hstore : E.CausalStore cfg ext store)
+    {store : Store Root} (hstore : E.ScheduledPrefixStore cfg ext store)
     {r : Root} (hr : r ∈ E.genesis_store.block_roots) :
     store.block_states r = E.genesis_store.block_states r := by
   cases hstore with
@@ -115,9 +115,9 @@ private theorem Execution.causal_genesis_state (E : Execution Root)
           (E.time_at (p.previousSecond + 1)))
       exact ((hzero.trans htick).trans hfold r hr).2
 
-private theorem Execution.CausalStore.blockProvenance_for_states
+private theorem Execution.ScheduledPrefixStore.blockProvenance_for_states
     {E : Execution Root} {store : Store Root}
-    (hstore : E.CausalStore cfg ext store) : BlockProvenance E store := by
+    (hstore : E.ScheduledPrefixStore cfg ext store) : BlockProvenance E store := by
   cases hstore with
   | genesis => exact E.blockProvenance cfg ext 0 0
   | scheduledPrefix p =>
@@ -139,7 +139,7 @@ private theorem Execution.AcceptedBlockLastWriterCarrier.transition_output
         writer.transition.signedBlock = some post ∧
       store.block_states r = post := by
   obtain ⟨post, htransition, hpost⟩ :=
-    Execution.AcceptedBlockTransition.on_block_inserted_state_fresh
+    Execution.SuccessfulScheduledBlockImport.on_block_inserted_state_fresh
       cfg ext writer.fresh writer.transition.accepted
   refine ⟨post, htransition, ?_⟩
   calc
@@ -167,12 +167,12 @@ uses the parent's earlier slot; each accepted child state is a deterministic
 `state_transition` result on that parent and the root-committed block. -/
 theorem Execution.causal_block_states_agree (E : Execution Root)
     (hwf : WellFormedExecution E) (hec : BeaconExternalsPremises cfg ext E)
-    {s t : Store Root} (hs : E.CausalStore cfg ext s)
-    (ht : E.CausalStore cfg ext t) {r : Root}
+    {s t : Store Root} (hs : E.ScheduledPrefixStore cfg ext s)
+    (ht : E.ScheduledPrefixStore cfg ext t) {r : Root}
     (hrs : r ∈ s.block_roots) (hrt : r ∈ t.block_roots) :
     s.block_states r = t.block_states r := by
   suffices h : ∀ k : ℕ, ∀ (s t : Store Root),
-      E.CausalStore cfg ext s → E.CausalStore cfg ext t →
+      E.ScheduledPrefixStore cfg ext s → E.ScheduledPrefixStore cfg ext t →
       ∀ r, r ∈ s.block_roots → r ∈ t.block_roots →
       (s.block_states r).slot ≤ k →
       s.block_states r = t.block_states r from

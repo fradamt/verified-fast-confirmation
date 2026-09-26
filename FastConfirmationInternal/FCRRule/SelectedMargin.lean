@@ -9,7 +9,7 @@ public import FastConfirmationInternal.Legacy.Vocabulary
 namespace FastConfirmation.Spec
 
 variable {Root : Type*} [LinearOrder Root] [Inhabited Root]
-variable (cfg : Config) (ext : Externals Root)
+variable (cfg : Config) (ext : BeaconFunctionInterface Root)
 
 /-- Local cache facts and the derived G4 paths used by the selected-result proof. -/
 structure SelectedMarginDomain (E : Execution Root) : Prop where

@@ -35,16 +35,16 @@ selected-margin bundle, or safety conclusion.
 namespace FastConfirmation.Spec
 
 variable {Root : Type*} [LinearOrder Root] [Inhabited Root]
-variable (cfg : Config) (ext : Externals Root)
+variable (cfg : Config) (ext : BeaconFunctionInterface Root)
 
 namespace Execution
 
 variable {E : Execution Root}
 
-namespace CausalPrefixFFGInterpretation
+namespace ScheduledFFGInterpretation
 
 
-end CausalPrefixFFGInterpretation
+end ScheduledFFGInterpretation
 
 /-! ## Honest target carried by an accepted finalization -/
 
@@ -55,7 +55,7 @@ This is the useful inner result of the older reset-root-delivery argument.
 It retains the voter's actual executable head and target-boundary walk rather
 than concluding only that the finalized root was relayed somewhere. -/
 structure AcceptedHonestFinalizedTargetAt
-    (B : CausalPrefixFFGInterpretation cfg ext E)
+    (B : ScheduledFFGInterpretation cfg ext E)
     (w : ValidatorIndex) (m : Nat) (finalized : Checkpoint Root) where
   validator : ValidatorIndex
   vote_slot : Slot

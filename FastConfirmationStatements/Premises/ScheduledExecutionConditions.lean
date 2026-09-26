@@ -10,7 +10,7 @@ public import FastConfirmationStatements.Premises.FFGState
 
 namespace FastConfirmation.Spec
 variable {Root : Type*} [LinearOrder Root] [Inhabited Root]
-variable (cfg : Config) (ext : Externals Root)
+variable (cfg : Config) (ext : BeaconFunctionInterface Root)
 /-- Execution-level well-formedness: wire block roots are injective labels.
 Equal labels identify equal block messages across scheduled block events and
 the genesis store. This record does not assert a `hash_tree_root` equation. -/
@@ -45,7 +45,7 @@ section
 
 namespace FastConfirmation.Spec
 variable {Root : Type*} [LinearOrder Root] [Inhabited Root]
-variable (cfg : Config) (ext : Externals Root)
+variable (cfg : Config) (ext : BeaconFunctionInterface Root)
 namespace Execution
 variable (E : Execution Root)
 /-- The exact trajectory assumptions used to replay store-local invariants to
@@ -53,7 +53,7 @@ an in-second prefix: whole-second slots, well-formed roots, external-function
 contracts, honest behavior, and an anchor store with an explicit anchor
 commitment. No Byzantine estimate, selected-margin domain, or head conclusion
 is included. -/
-structure ScheduledPrefixPremises : Prop where
+structure ScheduledExecutionPremises : Prop where
   whole_seconds : 1000 ∣ cfg.slot_duration_ms
   wellFormed : WellFormedExecution E
   externals_coherence : BeaconExternalsPremises cfg ext E
@@ -76,7 +76,7 @@ section
 
 namespace FastConfirmation.Spec
 variable {Root : Type*} [LinearOrder Root] [Inhabited Root]
-variable (cfg : Config) (ext : Externals Root)
+variable (cfg : Config) (ext : BeaconFunctionInterface Root)
 namespace Execution
 variable (E : Execution Root)
 /-- Active validator set whose sum appears under the minimum-balance floor in
@@ -96,7 +96,7 @@ section
 
 namespace FastConfirmation.Spec
 variable {Root : Type*} [LinearOrder Root] [Inhabited Root]
-variable (cfg : Config) (ext : Externals Root)
+variable (cfg : Config) (ext : BeaconFunctionInterface Root)
 namespace Execution
 variable (E : Execution Root)
 /-- Faithful primitive at the opaque beacon-state transition boundary.
@@ -106,9 +106,9 @@ either the checkpoint-sync anchor or at least two epochs behind the block.
 This is exactly the reachable-post-state consequence of Phase0's
 process-epoch-before-slot-increment order which is erased by the abstract
 `state_transition` field. -/
-def RealizedFinalizationDelay
-    (B : CausalPrefixFFGInterpretation cfg ext E) : Prop :=
-  ∀ t : E.AcceptedBlockTransition cfg ext,
+def ImportedBlockFinalizationLag
+    (B : ScheduledFFGInterpretation cfg ext E) : Prop :=
+  ∀ t : E.SuccessfulScheduledBlockImport cfg ext,
     let finalized :=
       (t.postStore.block_states t.signedBlock.root).finalized_checkpoint
     finalized = B.anchor ∨
@@ -126,7 +126,7 @@ section
 
 namespace FastConfirmation.Spec
 variable {Root : Type*} [LinearOrder Root] [Inhabited Root]
-variable (cfg : Config) (ext : Externals Root)
+variable (cfg : Config) (ext : BeaconFunctionInterface Root)
 variable {E : Execution Root} {anchor : Checkpoint Root}
 namespace Execution
 variable (E : Execution Root)
@@ -134,7 +134,7 @@ variable (E : Execution Root)
 anchor block represent a block at or before its declared epoch boundary; it
 does not require the anchor epoch or slot to be genesis.  Together with the
 ordinary slot/epoch relation this is exactly boundary alignment. -/
-def TrustedAnchorBoundaryAligned : Prop :=
+def InitialAnchorAtEpochBoundary : Prop :=
   (E.genesis_store.blocks anchor.root).slot ≤
     compute_start_slot_at_epoch cfg anchor.epoch
 

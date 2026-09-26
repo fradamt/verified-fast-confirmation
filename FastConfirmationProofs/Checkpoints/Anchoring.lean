@@ -81,7 +81,7 @@ theorem get_ancestor_roots_descends {store : Store Root}
     (fun y hy => get_ancestor_roots_mem hwf hw hy) ht
     (fun y hy => get_ancestor_roots_head? hwf hw hy) x hx
 
-variable (cfg : Config) (ext : Externals Root)
+variable (cfg : Config) (ext : BeaconFunctionInterface Root)
 
 /-- **The additive anchoring lemma.** At the querying store, the block
 `find_latest_confirmed_descendant` returns descends from the input `lcr`

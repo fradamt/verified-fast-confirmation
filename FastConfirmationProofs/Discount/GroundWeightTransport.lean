@@ -15,7 +15,7 @@ This module contains `strip_transport_arith`, `bval_strip_transport` and related
 namespace FastConfirmation.Spec
 
 variable {Root : Type*} [LinearOrder Root] [Inhabited Root]
-variable (cfg : Config) (ext : Externals Root)
+variable (cfg : Config) (ext : BeaconFunctionInterface Root)
 
 /-! ## Section 1 — the pure-ℕ arithmetic core
 

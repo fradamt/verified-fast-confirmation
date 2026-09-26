@@ -24,72 +24,72 @@ finite retained-tip selection without strengthening that historical input.
 namespace FastConfirmation.Spec
 
 variable {Root : Type*} [LinearOrder Root] [Inhabited Root]
-variable (cfg : Config) (ext : Externals Root)
+variable (cfg : Config) (ext : BeaconFunctionInterface Root)
 
 /-! ## Accepted selector monotonicity -/
 
-namespace CausalCarrierFFGState
+namespace AcceptedBlockFFGState
 
 variable {E : Execution Root} {anchor : Checkpoint Root}
 
 /-- Every accepted `GJ` value has its concrete included certificate. -/
 theorem gj_certified
-    (S : CausalCarrierFFGState cfg ext E anchor)
-    {tip : Root} (htip : E.AcceptedRoot cfg ext tip) :
-    Nonempty (CertifiedJustified cfg E anchor (S.GJ tip)) := by
-  obtain ⟨carrier, _hdesc, hformed⟩ := S.gj_mem tip htip
+    (S : AcceptedBlockFFGState cfg ext E anchor)
+    {tip : Root} (htip : E.RootKnownInScheduledPrefix cfg ext tip) :
+    Nonempty (CertifiedJustified cfg E anchor (S.realized_justified tip)) := by
+  obtain ⟨carrier, _hdesc, hformed⟩ := S.realized_justified_mem tip htip
   obtain ⟨hincluded⟩ := (S.formed_evidence hformed).certified
   exact ⟨IncludedCertifiedJustified.toCertifiedJustified
     (cfg := cfg) S.includedAttestations.relation hincluded⟩
 
 /-- Accepted `GU` epochs are monotone along semantic block descent. -/
 theorem gu_epoch_le_of_descends
-    (S : CausalCarrierFFGState cfg ext E anchor)
+    (S : AcceptedBlockFFGState cfg ext E anchor)
     {seed tip : Root}
-    (hseed : E.AcceptedRoot cfg ext seed)
-    (htip : E.AcceptedRoot cfg ext tip)
+    (hseed : E.RootKnownInScheduledPrefix cfg ext seed)
+    (htip : E.RootKnownInScheduledPrefix cfg ext tip)
     (hdesc : E.RootDescends tip seed) :
-    (S.GU seed).epoch ≤ (S.GU tip).epoch := by
-  apply S.gu_max htip
-  exact CausalCarrierFFGState.AU.mono (cfg := cfg) (ext := ext) S hdesc
+    (S.unrealized_justified seed).epoch ≤ (S.unrealized_justified tip).epoch := by
+  apply S.unrealized_justified_max htip
+  exact AcceptedBlockFFGState.AvailableCheckpoint.mono (cfg := cfg) (ext := ext) S hdesc
     (S.gu_AU cfg ext hseed)
 
 /-- Accepted `GJ` epochs are monotone along a nondecreasing-epoch semantic
 descent. -/
 theorem gj_epoch_le_of_descends
-    (S : CausalCarrierFFGState cfg ext E anchor)
+    (S : AcceptedBlockFFGState cfg ext E anchor)
     {seed tip : Root} {seedBlock tipBlock : BeaconBlock Root}
-    (hseed : E.AcceptedBlockAt cfg ext seed seedBlock)
-    (htip : E.AcceptedBlockAt cfg ext tip tipBlock)
+    (hseed : E.BlockKnownInScheduledPrefix cfg ext seed seedBlock)
+    (htip : E.BlockKnownInScheduledPrefix cfg ext tip tipBlock)
     (hdesc : E.RootDescends tip seed)
     (hepoch : compute_epoch_at_slot cfg seedBlock.slot ≤
       compute_epoch_at_slot cfg tipBlock.slot) :
-    (S.GJ seed).epoch ≤ (S.GJ tip).epoch := by
-  rcases S.gj_anchor_or_before hseed with hanchor | hbefore
+    (S.realized_justified seed).epoch ≤ (S.realized_justified tip).epoch := by
+  rcases S.realized_justified_anchor_or_before hseed with hanchor | hbefore
   · rw [hanchor]
     obtain ⟨htipCertified⟩ := S.gj_certified cfg ext htip.acceptedRoot
     exact CertifiedJustified.anchor_epoch_le (cfg := cfg) htipCertified
-  · apply S.gj_max htip
-      (CausalCarrierFFGState.AU.mono (cfg := cfg) (ext := ext) S hdesc
+  · apply S.realized_justified_max htip
+      (AcceptedBlockFFGState.AvailableCheckpoint.mono (cfg := cfg) (ext := ext) S hdesc
         (S.gj_AU cfg ext hseed.acceptedRoot))
     exact hbefore.trans_le hepoch
 
 /-- An old accepted `GU` source is below the realized `GJ` of a strictly
 later-epoch descendant. -/
 theorem gu_epoch_le_gj_of_descends
-    (S : CausalCarrierFFGState cfg ext E anchor)
+    (S : AcceptedBlockFFGState cfg ext E anchor)
     {seed tip : Root} {tipBlock : BeaconBlock Root}
-    (hseed : E.AcceptedRoot cfg ext seed)
-    (htip : E.AcceptedBlockAt cfg ext tip tipBlock)
+    (hseed : E.RootKnownInScheduledPrefix cfg ext seed)
+    (htip : E.BlockKnownInScheduledPrefix cfg ext tip tipBlock)
     (hdesc : E.RootDescends tip seed)
-    (hbefore : (S.GU seed).epoch <
+    (hbefore : (S.unrealized_justified seed).epoch <
       compute_epoch_at_slot cfg tipBlock.slot) :
-    (S.GU seed).epoch ≤ (S.GJ tip).epoch := by
-  exact S.gj_max htip
-    (CausalCarrierFFGState.AU.mono (cfg := cfg) (ext := ext) S hdesc
+    (S.unrealized_justified seed).epoch ≤ (S.realized_justified tip).epoch := by
+  exact S.realized_justified_max htip
+    (AcceptedBlockFFGState.AvailableCheckpoint.mono (cfg := cfg) (ext := ext) S hdesc
       (S.gu_AU cfg ext hseed)) hbefore
 
-end CausalCarrierFFGState
+end AcceptedBlockFFGState
 
 namespace Execution
 
@@ -97,16 +97,16 @@ variable {E : Execution Root}
 
 /-- Read the executable voting source at any exact causal store through the
 one accepted semantic state selected outside the store. -/
-theorem CausalStore.getVotingSource_eq_acceptedSelector
-    {store : Store Root} (hstore : E.CausalStore cfg ext store)
-    (B : CausalPrefixFFGInterpretation cfg ext E)
+theorem ScheduledPrefixStore.getVotingSource_eq_acceptedSelector
+    {store : Store Root} (hstore : E.ScheduledPrefixStore cfg ext store)
+    (B : ScheduledFFGInterpretation cfg ext E)
     {r : Root} (hr : r ∈ store.block_roots) :
     get_voting_source cfg store r =
       if get_current_store_epoch cfg store > get_block_epoch cfg store r then
-        B.state.GU r
-      else B.state.GJ r := by
+        B.state.unrealized_justified r
+      else B.state.realized_justified r := by
   have hprojection :=
-    Execution.CausalPrefixFFGInterpretation.causalStoreProjection B hstore
+    Execution.ScheduledFFGInterpretation.causalStoreProjection B hstore
   simp only [get_voting_source, get_block_epoch]
   split_ifs
   · exact hprojection.unrealized_justification r hr
@@ -114,11 +114,11 @@ theorem CausalStore.getVotingSource_eq_acceptedSelector
 
 /-- The executable voting source of a known root owns positive accepted AU
 evidence at that same root. -/
-theorem CausalStore.getVotingSource_AU
-    {store : Store Root} (hstore : E.CausalStore cfg ext store)
-    (B : CausalPrefixFFGInterpretation cfg ext E)
+theorem ScheduledPrefixStore.getVotingSource_AU
+    {store : Store Root} (hstore : E.ScheduledPrefixStore cfg ext store)
+    (B : ScheduledFFGInterpretation cfg ext E)
     {r : Root} (hr : r ∈ store.block_roots) :
-    B.state.AU cfg ext r (get_voting_source cfg store r) := by
+    B.state.AvailableCheckpoint cfg ext r (get_voting_source cfg store r) := by
   have haccepted := E.acceptedRoot_of_causal_known cfg ext hstore hr
   rw [hstore.getVotingSource_eq_acceptedSelector cfg ext B hr]
   split_ifs
@@ -129,20 +129,20 @@ theorem CausalStore.getVotingSource_AU
 clocks are epoch-ordered.  Accepted block uniqueness identifies the root's
 block epoch; the only selector change is `GJ → GU`. -/
 theorem acceptedVotingSource_epoch_le_of_currentEpoch_le
-    (B : CausalPrefixFFGInterpretation cfg ext E)
+    (B : ScheduledFFGInterpretation cfg ext E)
     (hwf : WellFormedExecution E)
     {query endpoint : Store Root}
-    (hquery : E.CausalStore cfg ext query)
-    (hendpoint : E.CausalStore cfg ext endpoint)
+    (hquery : E.ScheduledPrefixStore cfg ext query)
+    (hendpoint : E.ScheduledPrefixStore cfg ext endpoint)
     {r : Root} (hrQ : r ∈ query.block_roots)
     (hrM : r ∈ endpoint.block_roots)
     (hclock : get_current_store_epoch cfg query ≤
       get_current_store_epoch cfg endpoint) :
     (get_voting_source cfg query r).epoch ≤
       (get_voting_source cfg endpoint r).epoch := by
-  have hqueryAt : E.AcceptedBlockAt cfg ext r (query.blocks r) :=
+  have hqueryAt : E.BlockKnownInScheduledPrefix cfg ext r (query.blocks r) :=
     E.acceptedBlockAt_of_causal_known cfg ext hquery hrQ
-  have hendpointAt : E.AcceptedBlockAt cfg ext r (endpoint.blocks r) :=
+  have hendpointAt : E.BlockKnownInScheduledPrefix cfg ext r (endpoint.blocks r) :=
     E.acceptedBlockAt_of_causal_known cfg ext hendpoint hrM
   have hblock : query.blocks r = endpoint.blocks r :=
     hqueryAt.unique cfg ext E hwf hendpointAt
@@ -169,8 +169,8 @@ theorem acceptedVotingSource_epoch_le_of_currentEpoch_le
 All required path/domain facts are explicit operational geometry; there is no
 source-visibility or filter premise. -/
 theorem acceptedVotingSourceEpochChainPersistence
-    (B : CausalPrefixFFGInterpretation cfg ext E)
-    {store : Store Root} (hstore : E.CausalStore cfg ext store)
+    (B : ScheduledFFGInterpretation cfg ext E)
+    {store : Store Root} (hstore : E.ScheduledPrefixStore cfg ext store)
     (hparent : ParentSlotLt store)
     (hprovenance : BlockProvenance E store)
     (hwalkK : ∀ t ∈ store.block_roots, ∀ r ∈ store.block_roots,
@@ -194,9 +194,9 @@ theorem acceptedVotingSourceEpochChainPersistence
     exact ce_mono cfg (hnonfuture tip htip)
   have hsemantic : E.RootDescends tip seed :=
     E.rootDescends_of_store_ancestor hprovenance hparent hwalk htipSeed
-  have hseedAt : E.AcceptedBlockAt cfg ext seed (store.blocks seed) :=
+  have hseedAt : E.BlockKnownInScheduledPrefix cfg ext seed (store.blocks seed) :=
     E.acceptedBlockAt_of_causal_known cfg ext hstore hseed
-  have htipAt : E.AcceptedBlockAt cfg ext tip (store.blocks tip) :=
+  have htipAt : E.BlockKnownInScheduledPrefix cfg ext tip (store.blocks tip) :=
     E.acceptedBlockAt_of_causal_known cfg ext hstore htip
   rw [hstore.getVotingSource_eq_acceptedSelector cfg ext B hseed,
     hstore.getVotingSource_eq_acceptedSelector cfg ext B htip]
@@ -212,11 +212,11 @@ theorem acceptedVotingSourceEpochChainPersistence
       have htipCurrent : get_block_epoch cfg store tip =
           get_current_store_epoch cfg store :=
         Nat.le_antisymm htipEpochCurrent (Nat.le_of_not_gt htipOld)
-      have hguSeedBlock : (B.state.GU seed).epoch ≤
+      have hguSeedBlock : (B.state.unrealized_justified seed).epoch ≤
           get_block_epoch cfg store seed := by
-        exact B.state.au_epoch_le_block hseedAt
+        exact B.state.available_checkpoint_epoch_le_block hseedAt
           (B.state.gu_AU cfg ext hseedAt.acceptedRoot)
-      have hguBeforeTip : (B.state.GU seed).epoch <
+      have hguBeforeTip : (B.state.unrealized_justified seed).epoch <
           get_block_epoch cfg store tip := by
         rw [htipCurrent]
         exact hguSeedBlock.trans_lt hseedOld
@@ -242,9 +242,9 @@ concrete childless descendant of the selected block in the endpoint store.
 This is the S1 carrier consumed before source/finality merging.  It contains
 no finalized compatibility or filter conclusion. -/
 structure AcceptedRetainedPhaseSourceCarrierAt
-    (B : CausalPrefixFFGInterpretation cfg ext E)
+    (B : ScheduledFFGInterpretation cfg ext E)
     (store : Store Root) (selected : Root) where
-  store_causal : E.CausalStore cfg ext store
+  store_causal : E.ScheduledPrefixStore cfg ext store
   tip : Root
   selected_known : selected ∈ store.block_roots
   tip_known : tip ∈ store.block_roots
@@ -252,7 +252,7 @@ structure AcceptedRetainedPhaseSourceCarrierAt
     (get_node_for_root selected) = true
   tip_is_leaf : store.block_roots.filter
     (fun r => (store.blocks r).parent_root = tip) = []
-  source_au : B.state.AU cfg ext tip (get_voting_source cfg store tip)
+  source_au : B.state.AvailableCheckpoint cfg ext tip (get_voting_source cfg store tip)
   source_recent : (get_voting_source cfg store tip).epoch + 2 ≥
     get_current_store_epoch cfg store
 
@@ -266,8 +266,8 @@ end AcceptedRetainedPhaseSourceCarrierAt
 childless tip.  Accepted selector semantics supplies positive AU at the new
 tip and source-epoch persistence transports recency. -/
 theorem acceptedRetainedPhaseSourceCarrier_of_recentSeed_nonempty
-    (B : CausalPrefixFFGInterpretation cfg ext E)
-    {store : Store Root} (hstore : E.CausalStore cfg ext store)
+    (B : ScheduledFFGInterpretation cfg ext E)
+    {store : Store Root} (hstore : E.ScheduledPrefixStore cfg ext store)
     (hparent : ParentSlotLt store)
     (hprovenance : BlockProvenance E store)
     (hwalkK : ∀ t ∈ store.block_roots, ∀ r ∈ store.block_roots,
@@ -311,8 +311,8 @@ theorem acceptedRetainedPhaseSourceCarrier_of_recentSeed_nonempty
 `acceptedRetainedPhaseSourceCarrier_of_recentSeed_nonempty`.  The only
 noncomputability is finite retained-leaf selection. -/
 noncomputable def acceptedRetainedPhaseSourceCarrier_of_recentSeed
-    (B : CausalPrefixFFGInterpretation cfg ext E)
-    {store : Store Root} (hstore : E.CausalStore cfg ext store)
+    (B : ScheduledFFGInterpretation cfg ext E)
+    {store : Store Root} (hstore : E.ScheduledPrefixStore cfg ext store)
     (hparent : ParentSlotLt store)
     (hprovenance : BlockProvenance E store)
     (hwalkK : ∀ t ∈ store.block_roots, ∀ r ∈ store.block_roots,
@@ -336,11 +336,11 @@ endpoint and then extends to a retained endpoint tip.  The seed's endpoint
 knownness/descent are ordinary relay/path facts, not source or safety
 premises. -/
 noncomputable def acceptedRetainedPhaseSourceCarrier_of_queryRecentSeed
-    (B : CausalPrefixFFGInterpretation cfg ext E)
+    (B : ScheduledFFGInterpretation cfg ext E)
     (hwf : WellFormedExecution E)
     {query endpoint : Store Root}
-    (hquery : E.CausalStore cfg ext query)
-    (hendpoint : E.CausalStore cfg ext endpoint)
+    (hquery : E.ScheduledPrefixStore cfg ext query)
+    (hendpoint : E.ScheduledPrefixStore cfg ext endpoint)
     (hparent : ParentSlotLt endpoint)
     (hprovenance : BlockProvenance E endpoint)
     (hwalkK : ∀ t ∈ endpoint.block_roots,

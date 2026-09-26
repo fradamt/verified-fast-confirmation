@@ -22,7 +22,7 @@ Finalized and observed-reset branches remain separate.
 namespace FastConfirmation.Spec
 
 variable {Root : Type*} [LinearOrder Root] [Inhabited Root]
-variable (cfg : Config) (ext : Externals Root)
+variable (cfg : Config) (ext : BeaconFunctionInterface Root)
 
 namespace Execution
 
@@ -38,7 +38,7 @@ weight bound, and certificate are unchanged.  Accepted phase-0 coherence
 makes `GJ` constant along the segment; the two exact block-epoch equations
 then reduce both paper `VSAt` selectors to those `GJ` values. -/
 def fixedSource_of_acceptedSameEpochSegment
-    (B : CausalPrefixFFGInterpretation cfg ext E)
+    (B : ScheduledFFGInterpretation cfg ext E)
     (hphase : Phase0SourceCoherence cfg ext)
     {store : Store Root} {b : Root}
     (htargetEpoch : get_block_epoch cfg store
@@ -56,20 +56,20 @@ def fixedSource_of_acceptedSameEpochSegment
   rcases hgate.support_branch with hanchor | ⟨hne, Q, hsource⟩
   · exact Or.inl hanchor
   · refine Or.inr ⟨hne, Q, ?_⟩
-    have hgj : B.state.GJ b =
-        B.state.GJ (get_current_target cfg store).root :=
+    have hgj : B.state.realized_justified b =
+        B.state.realized_justified (get_current_target cfg store).root :=
       hsegment.gj_eq_first hphase
-        B.coherence.toFFGSelectorsMatchBeaconStates
+        B.coherence.toFFGStateReadAgreement
     calc
-      Q.source = B.state.VSAt cfg ext store
+      Q.source = B.state.voting_source_at cfg ext store
           (get_current_target cfg store).root
           (get_current_target cfg store).epoch := hsource
-      _ = B.state.GJ (get_current_target cfg store).root := by
-        simp only [CausalCarrierFFGState.VSAt, htargetEpoch, if_pos]
-      _ = B.state.GJ b := hgj.symm
-      _ = B.state.VSAt cfg ext store b
+      _ = B.state.realized_justified (get_current_target cfg store).root := by
+        simp only [AcceptedBlockFFGState.voting_source_at, htargetEpoch, if_pos]
+      _ = B.state.realized_justified b := hgj.symm
+      _ = B.state.voting_source_at cfg ext store b
           (get_current_target cfg store).epoch := by
-        simp only [CausalCarrierFFGState.VSAt, hbEpoch, if_pos]
+        simp only [AcceptedBlockFFGState.voting_source_at, hbEpoch, if_pos]
 
 end AcceptedCurrentTargetA32GateRealization
 
@@ -100,7 +100,7 @@ interface is reconstructed.
 namespace FastConfirmation.Spec
 
 variable {Root : Type*} [LinearOrder Root] [Inhabited Root]
-variable (cfg : Config) (ext : Externals Root)
+variable (cfg : Config) (ext : BeaconFunctionInterface Root)
 
 namespace Execution
 
@@ -111,10 +111,10 @@ variable {E : Execution Root}
 /-- Boundary alignment identifies the trusted anchor block slot using only
 the scheduled trajectory's genesis facts. -/
 theorem trustedAnchor_slot_eq_start_of_trajectory
-    (hT : E.ScheduledPrefixPremises cfg ext)
+    (hT : E.ScheduledExecutionPremises cfg ext)
     {anchor : Checkpoint Root}
     (hanchor : anchor = E.genesis_store.justified_checkpoint)
-    (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
+    (hboundary : InitialAnchorAtEpochBoundary (cfg := cfg)
       (E := E) (anchor := anchor)) :
     (E.genesis_store.blocks anchor.root).slot =
       compute_start_slot_at_epoch cfg anchor.epoch := by
@@ -137,10 +137,10 @@ theorem trustedAnchor_slot_eq_start_of_trajectory
 /-- The trusted anchor epoch is no later than a concrete execution store's
 clock epoch, using only trajectory timing and accepted-message provenance. -/
 theorem trustedAnchor_epoch_le_currentEpoch_of_trajectory
-    (hT : E.ScheduledPrefixPremises cfg ext)
+    (hT : E.ScheduledExecutionPremises cfg ext)
     {anchor : Checkpoint Root}
     (hanchor : anchor = E.genesis_store.justified_checkpoint)
-    (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
+    (hboundary : InitialAnchorAtEpochBoundary (cfg := cfg)
       (E := E) (anchor := anchor))
     (v : ValidatorIndex) (n : ℕ) :
     anchor.epoch ≤ get_current_store_epoch cfg (E.store cfg ext v n) := by
@@ -179,10 +179,10 @@ theorem trustedAnchor_epoch_le_currentEpoch_of_trajectory
 /-- The trusted anchor supplies a walk to every later epoch boundary under
 the narrow scheduled trajectory assumptions. -/
 theorem trustedAnchor_boundaryWalkAtEpoch_of_trajectory
-    (hT : E.ScheduledPrefixPremises cfg ext)
+    (hT : E.ScheduledExecutionPremises cfg ext)
     {anchor : Checkpoint Root}
     (hanchor : anchor = E.genesis_store.justified_checkpoint)
-    (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
+    (hboundary : InitialAnchorAtEpochBoundary (cfg := cfg)
       (E := E) (anchor := anchor))
     (v : ValidatorIndex) (n : ℕ) {e : Epoch}
     (hae : anchor.epoch ≤ e)

@@ -34,7 +34,7 @@ filter, safety, justification interface, or selected-margin premise appears.
 namespace FastConfirmation.Spec
 
 variable {Root : Type*} [LinearOrder Root] [Inhabited Root]
-variable (cfg : Config) (ext : Externals Root)
+variable (cfg : Config) (ext : BeaconFunctionInterface Root)
 
 /-! ## Exact ordered input origins -/
 
@@ -386,7 +386,7 @@ an FCR cache field.  `originSecond = 0` is the initialization case; every
 other installation retains the executable "next slot starts an epoch" guard
 which copied that second's store-global UJ field. -/
 structure AcceptedUJCacheInstallationAt
-    (B : CausalPrefixFFGInterpretation cfg ext E)
+    (B : ScheduledFFGInterpretation cfg ext E)
     (v : ValidatorIndex) (upper : ℕ) (field : Checkpoint Root) where
   originSecond : ℕ
   origin_le : originSecond ≤ upper
@@ -409,7 +409,7 @@ structure AcceptedUJCacheInstallationAt
 deadline of its source slot. Initialization uses second zero; every later
 installation follows an exact scheduled slot advance. -/
 theorem AcceptedUJCacheInstallationAt.origin_before_deadline
-    {B : CausalPrefixFFGInterpretation cfg ext E}
+    {B : ScheduledFFGInterpretation cfg ext E}
     {v : ValidatorIndex} {upper : ℕ} {field : Checkpoint Root}
     (h : E.AcceptedUJCacheInstallationAt cfg ext B v upper field)
     (hdiv : 1000 ∣ cfg.slot_duration_ms)
@@ -468,7 +468,7 @@ private theorem fcr_previousGreatest_succ_exact
 /-- The previous-greatest cache always names an exact earlier UJ field and
 retains the accepted global origin at the installation store. -/
 theorem previousGreatest_acceptedInstallation
-    (B : CausalPrefixFFGInterpretation cfg ext E)
+    (B : ScheduledFFGInterpretation cfg ext E)
     (hgen : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
       E.genesis_store = get_forkchoice_store cfg ast ablk ∧
       ast.slot = ablk.message.slot)
@@ -587,7 +587,7 @@ checkpoint is exactly `(store v k).unrealized_justified_checkpoint`, the
 initialization/rotation tag is retained, and that UJ field has the accepted
 global origin `anchor` or `GU(tip)` at the same store. -/
 theorem ObservedResetCandidateInputAt.acceptedInstallation
-    (B : CausalPrefixFFGInterpretation cfg ext E)
+    (B : ScheduledFFGInterpretation cfg ext E)
     (hgen : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
       E.genesis_store = get_forkchoice_store cfg ast ablk ∧
       ast.slot = ablk.message.slot)

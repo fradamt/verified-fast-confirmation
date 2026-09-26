@@ -15,7 +15,7 @@ This module contains `Jspec_add_Bval_eq_weight_span`, `weight_span_le_estimate`,
 namespace FastConfirmation.Spec
 
 variable {Root : Type*} [LinearOrder Root] [Inhabited Root]
-variable (cfg : Config) (ext : Externals Root)
+variable (cfg : Config) (ext : BeaconFunctionInterface Root)
 
 namespace Execution
 

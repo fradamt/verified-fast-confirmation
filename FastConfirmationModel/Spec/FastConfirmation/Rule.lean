@@ -19,7 +19,7 @@ loop-mutable accumulator (`break` = return the accumulator; loop fall-through
 namespace FastConfirmation.Spec
 
 variable {Root : Type*} [LinearOrder Root] [Inhabited Root]
-variable (cfg : Config) (ext : Externals Root)
+variable (cfg : Config) (ext : BeaconFunctionInterface Root)
 
 /-- `update_fast_confirmation_variables`: updates the FCR variables. Python
 mutates the three field groups **in order**; the chained record updates below

@@ -24,7 +24,7 @@ asserts return `Bool`. Dict writes preserve python dict semantics
 namespace FastConfirmation.Spec
 
 variable {Root : Type*} [LinearOrder Root] [Inhabited Root]
-variable (cfg : Config) (ext : Externals Root)
+variable (cfg : Config) (ext : BeaconFunctionInterface Root)
 
 /-- Source: `specs/phase0/fork-choice.md:494`.
 `update_checkpoints`: Update checkpoints in store if necessary.
@@ -637,8 +637,8 @@ def on_attester_slashing (store : Store Root)
 `get_forkchoice_store`: the trusted-anchor initialization. The python
 `assert anchor_block.state_root == hash_tree_root(anchor_state)` is omitted
 from this executable function: the projected block carries no `state_root`.
-`ScheduledPrefixPremises.genesis` requires the abstract
-`Externals.AnchorCommitsToState` contract from the external interpretation,
+`ScheduledExecutionPremises.genesis` requires the abstract
+`BeaconFunctionInterface.AnchorCommitsToState` contract from the external interpretation,
 along with separate slot agreement and parent/root inequality premises
 (design §11a). This is not a concrete hashing proof. Dict fields outside their
 singleton domains are junk-totalized.

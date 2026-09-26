@@ -31,7 +31,7 @@ votes.  Source-head knownness is *not* assumed: it follows from
 namespace FastConfirmation.Spec
 
 variable {Root : Type*} [LinearOrder Root] [Inhabited Root]
-variable (cfg : Config) (ext : Externals Root)
+variable (cfg : Config) (ext : BeaconFunctionInterface Root)
 
 /-! ## Store-explicit recorded evidence
 

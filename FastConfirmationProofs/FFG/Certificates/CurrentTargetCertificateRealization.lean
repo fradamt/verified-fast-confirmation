@@ -40,7 +40,7 @@ second beyond its exclusive cutoff.
 namespace FastConfirmation.Spec
 
 variable {Root : Type*} [LinearOrder Root] [Inhabited Root]
-variable (cfg : Config) (ext : Externals Root)
+variable (cfg : Config) (ext : BeaconFunctionInterface Root)
 
 /-! ## The epoch-boundary source law -/
 
@@ -72,7 +72,7 @@ and its head is connected to the target root only through accepted
 same-epoch transitions.  This is an intermediate proof object, not an input to
 the final actual-call producer. -/
 def AcceptedConcreteA32QuorumSourceGeometry
-    (B : CausalPrefixFFGInterpretation cfg ext E)
+    (B : ScheduledFFGInterpretation cfg ext E)
     {deadline : Slot} {target : Checkpoint Root}
     (Q : ConcreteA32QuorumBefore cfg ext E deadline target)
     (common : Root) : Prop :=
@@ -99,9 +99,9 @@ transition provenance is the remaining prerequisite for constructing them
 from `hgate` and `HonestVotesSupportTarget`; they are not advertised as final
 actual-call inputs. -/
 theorem acceptedCurrentTargetA32GateRealization_of_currentEpochConcreteQuorum_core
-    (B : CausalPrefixFFGInterpretation cfg ext E)
+    (B : ScheduledFFGInterpretation cfg ext E)
     (hphase : Phase0SourceCoherence cfg ext)
-    {store : Store Root} (hstore : E.CausalStore cfg ext store)
+    {store : Store Root} (hstore : E.ScheduledPrefixStore cfg ext store)
     (htargetKnown : (get_current_target cfg store).root ∈ store.block_roots)
     (htargetEpoch : get_block_epoch cfg store
       (get_current_target cfg store).root =
@@ -133,16 +133,16 @@ theorem acceptedCurrentTargetA32GateRealization_of_currentEpochConcreteQuorum_co
   change ConcreteA32QuorumScheduledDelivery cfg ext E Q at hdelivery
   change AcceptedConcreteA32QuorumSourceGeometry cfg ext E B Q target.root
     at hgeometry
-  have htargetAt : E.AcceptedBlockAt cfg ext target.root
+  have htargetAt : E.BlockKnownInScheduledPrefix cfg ext target.root
       (store.blocks target.root) :=
     E.acceptedBlockAt_of_causal_known cfg ext hstore htargetKnown
   have htargetCarrier : E.AcceptedCarrierIn
       (cfg := cfg) (ext := ext) store target.root :=
     Execution.AcceptedCarrierIn.of_causal_known hstore htargetKnown
   obtain ⟨formedCarrier, htargetDescendsCarrier, hformed⟩ :=
-    B.state.gj_mem target.root htargetCarrier.acceptedRoot
+    B.state.realized_justified_mem target.root htargetCarrier.acceptedRoot
   let hsourceCarrier : AcceptedSelectorAUCarrier B.state store
-      (B.state.GJ target.root) :=
+      (B.state.realized_justified target.root) :=
     { tip := target.root
       carrier := formedCarrier
       tip_carrier := htargetCarrier
@@ -167,13 +167,13 @@ theorem acceptedCurrentTargetA32GateRealization_of_currentEpochConcreteQuorum_co
         vote.slot vote.index).source = Q.source := by
     simpa only [honest_attestation_data_eq] using
       Q.source_agreement i hi vote
-  have hQSource : Q.source = B.state.GJ target.root := by
+  have hQSource : Q.source = B.state.realized_justified target.root := by
     exact hvoteSource.symm.trans
       (hsourceEvidence.source_eq.trans
         (hsegment.gj_eq_first hphase
-          B.coherence.toFFGSelectorsMatchBeaconStates))
+          B.coherence.toFFGStateReadAgreement))
   have hsourceCertifiedGJ : Nonempty
-      (CertifiedJustified cfg E B.anchor (B.state.GJ target.root)) := by
+      (CertifiedJustified cfg E B.anchor (B.state.realized_justified target.root)) := by
     obtain ⟨hincluded⟩ := hsourceCarrier.formed_evidence.certified
     exact ⟨IncludedCertifiedJustified.toCertifiedJustified
       (cfg := cfg) B.state.includedAttestations.relation hincluded⟩
@@ -189,8 +189,8 @@ theorem acceptedCurrentTargetA32GateRealization_of_currentEpochConcreteQuorum_co
       (store.blocks target.root).slot = target.epoch := by
     simpa only [get_block_epoch] using htargetEpoch
   have hsourceBeforeGJ :
-      (B.state.GJ target.root).epoch < target.epoch := by
-    rcases B.state.gj_anchor_or_before htargetAt with hsourceAnchor | hbefore
+      (B.state.realized_justified target.root).epoch < target.epoch := by
+    rcases B.state.realized_justified_anchor_or_before htargetAt with hsourceAnchor | hbefore
     · rw [hsourceAnchor]
       exact hanchorBefore
     · exact hbefore.trans_eq htargetBlockEpoch
@@ -246,8 +246,8 @@ theorem acceptedCurrentTargetA32GateRealization_of_currentEpochConcreteQuorum_co
       (CertifiedJustified cfg E B.anchor target) :=
     ⟨CertifiedJustified.link hsourceCertificate hlink⟩
   refine ⟨htargetCertificate, Or.inr ⟨htargetNotAnchor, Q, ?_⟩⟩
-  change Q.source = B.state.VSAt cfg ext store target.root target.epoch
-  simpa only [CausalCarrierFFGState.VSAt, PaperA32StateView.VSAt,
+  change Q.source = B.state.voting_source_at cfg ext store target.root target.epoch
+  simpa only [AcceptedBlockFFGState.voting_source_at, CheckpointInclusionView.voting_source_at,
     htargetEpoch, if_pos] using hQSource
 
 
@@ -256,7 +256,7 @@ theorem acceptedCurrentTargetA32GateRealization_of_currentEpochConcreteQuorum_co
 obligation supplies an accepted gate producer, the existing crossing pipeline
 receives exactly the target certificate and no migration state. -/
 theorem acceptedCurrentTargetCertificateProducerAt_of_gateProducer
-    (B : CausalPrefixFFGInterpretation cfg ext E)
+    (B : ScheduledFFGInterpretation cfg ext E)
     {q : ℕ} {query : FastConfirmationStore Root}
     (hproducer : E.AcceptedCurrentTargetA32GateRealizationProducerAt
       cfg ext B.anchor B.state q query) :

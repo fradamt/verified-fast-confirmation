@@ -14,7 +14,7 @@ This module contains `sub_mul_le_of_span`, `telescope_S`, `hgrowX_aux` and relat
 namespace FastConfirmation.Spec
 
 variable {Root : Type*} [LinearOrder Root] [Inhabited Root]
-variable (cfg : Config) (ext : Externals Root)
+variable (cfg : Config) (ext : BeaconFunctionInterface Root)
 
 /-! ## Section 0 — the pure-ℕ budget reduction -/
 

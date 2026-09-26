@@ -15,7 +15,7 @@ and live monotonicity theorems.
 namespace FastConfirmation.Spec
 
 variable {Root : Type*} [LinearOrder Root] [Inhabited Root]
-variable (cfg : Config) (ext : Externals Root)
+variable (cfg : Config) (ext : BeaconFunctionInterface Root)
 
 /-- The public safety and live monotonicity guarantees. -/
 theorem review_claims : ReviewClaims cfg ext := by

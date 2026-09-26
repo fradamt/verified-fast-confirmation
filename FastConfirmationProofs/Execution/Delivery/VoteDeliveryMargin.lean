@@ -17,7 +17,7 @@ This module contains `old_window_latest_messages_agree`, `PostAnchorHonestVoteTa
 namespace FastConfirmation.Spec
 
 variable {Root : Type*} [LinearOrder Root] [Inhabited Root]
-variable (cfg : Config) (ext : Externals Root)
+variable (cfg : Config) (ext : BeaconFunctionInterface Root)
 
 namespace Execution
 

@@ -14,7 +14,7 @@ public import FastConfirmationStatements.Premises.FCRCallPremises
 section
 namespace FastConfirmation.Spec
 variable {Root : Type*} [LinearOrder Root] [Inhabited Root]
-variable (cfg : Config) (ext : Externals Root)
+variable (cfg : Config) (ext : BeaconFunctionInterface Root)
 namespace Execution
 variable (E : Execution Root)
 /-- Assumptions for the stored-output following-slot theorem.
@@ -23,21 +23,21 @@ There is deliberately no finalized-reset, observed-adoption, observed-lock,
 head-ancestry, filter-result, or safety field.  Finalized next-slot safety and
 active-observed restart safety are already derived by the fold. -/
 structure NextSlotSafetyPremises where
-  semantics : CausalPrefixFFGInterpretation cfg ext E
-  trajectory : E.ScheduledPrefixPremises cfg ext
+  ffg_interpretation : ScheduledFFGInterpretation cfg ext E
+  trajectory : E.ScheduledExecutionPremises cfg ext
   completed_calls :
-    E.CompletedFCRCallPremises cfg ext
+    E.ScheduledFCRCallPremises cfg ext
   epoch_ends_fit : EpochEndsFitUint64 cfg
-  anchor_eq : semantics.anchor = E.genesis_store.justified_checkpoint
-  anchor_boundary : TrustedAnchorBoundaryAligned (cfg := cfg)
-    (E := E) (anchor := semantics.anchor)
+  anchor_eq : ffg_interpretation.anchor = E.genesis_store.justified_checkpoint
+  anchor_boundary : InitialAnchorAtEpochBoundary (cfg := cfg)
+    (E := E) (anchor := ffg_interpretation.anchor)
   finalization_delay :
-    E.RealizedFinalizationDelay cfg ext semantics
+    E.ImportedBlockFinalizationLag cfg ext ffg_interpretation
   slots_per_epoch_gt_one : 1 < cfg.slots_per_epoch
-  paper_a32 : semantics.state.PaperA32Inclusion cfg ext
-  checkpoint_projection : EpochCheckpointClosure
-    semantics.anchor (E.AcceptedRoot cfg ext) semantics.state.C
-  exact_link_validity : semantics.state.ExactLinkValidity
+  checkpoint_inclusion : ffg_interpretation.state.EventualCheckpointInclusion cfg ext
+  checkpoint_projection : EpochCheckpointProjectionLaws
+    ffg_interpretation.anchor (E.RootKnownInScheduledPrefix cfg ext) ffg_interpretation.state.checkpoint_at_epoch
+  exact_link_validity : ffg_interpretation.state.LinkCheckpointAgreement
 
 end Execution
 end FastConfirmation.Spec

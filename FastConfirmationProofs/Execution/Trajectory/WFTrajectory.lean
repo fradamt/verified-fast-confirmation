@@ -77,7 +77,7 @@ already known carries exactly the store's recorded block — genesis roots via
 no-op witness for the already-present branch of the `on_block` step. -/
 
 
-variable [LinearOrder Root] [Inhabited Root] (cfg : Config) (ext : Externals Root)
+variable [LinearOrder Root] [Inhabited Root] (cfg : Config) (ext : BeaconFunctionInterface Root)
 
 omit [Inhabited Root] in
 /-- Block insertion preserves the parent-known invariant. The new block's parent

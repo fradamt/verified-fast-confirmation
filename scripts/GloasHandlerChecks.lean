@@ -76,7 +76,7 @@ def envelopeB : SignedExecutionPayloadEnvelope Nat :=
 def available : EnvelopeObservation Nat := ⟨1⟩
 def unavailable : EnvelopeObservation Nat := ⟨0⟩
 
-def externals : Externals Nat :=
+def externals : BeaconFunctionInterface Nat :=
   { get_beacon_committee := fun state slot index => state.beacon_committees slot index
     get_committee_count_per_slot := fun state epoch => state.committee_count_per_slot epoch
     process_slots := fun state slot => { state with slot := slot }

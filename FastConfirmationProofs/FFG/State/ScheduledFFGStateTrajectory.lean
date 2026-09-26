@@ -18,7 +18,7 @@ projected post-state and eager-pull-up values, including the value written to
 namespace FastConfirmation.Spec
 
 variable {Root : Type*} [LinearOrder Root] [Inhabited Root]
-variable (cfg : Config) (ext : Externals Root)
+variable (cfg : Config) (ext : BeaconFunctionInterface Root)
 variable {E : Execution Root} {anchor : Checkpoint Root}
 
 
@@ -41,7 +41,7 @@ structure FFGStoreProjection (S : ChainFFGState cfg E anchor)
 
 namespace FFGStoreProjection
 
-variable {cfg : Config} {ext : Externals Root}
+variable {cfg : Config} {ext : BeaconFunctionInterface Root}
 variable {E : Execution Root} {anchor : Checkpoint Root}
 variable {S : ChainFFGState cfg E anchor}
 
@@ -51,14 +51,14 @@ end FFGStoreProjection
 
 namespace FFGBlockStateProjection
 
-variable {cfg : Config} {ext : Externals Root}
+variable {cfg : Config} {ext : BeaconFunctionInterface Root}
 variable {E : Execution Root} {anchor : Checkpoint Root}
 variable {S : ChainFFGState cfg E anchor}
 
 
 end FFGBlockStateProjection
 
-variable {cfg : Config} {ext : Externals Root}
+variable {cfg : Config} {ext : BeaconFunctionInterface Root}
 variable {E : Execution Root} {anchor : Checkpoint Root}
 variable {S : ChainFFGState cfg E anchor}
 

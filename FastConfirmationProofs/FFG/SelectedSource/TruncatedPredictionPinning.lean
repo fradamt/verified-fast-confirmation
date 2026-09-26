@@ -17,7 +17,7 @@ No strict justified-epoch external law is used.
 namespace FastConfirmation.Spec
 
 variable {Root : Type*} [LinearOrder Root] [Inhabited Root]
-variable (cfg : Config) (ext : Externals Root)
+variable (cfg : Config) (ext : BeaconFunctionInterface Root)
 
 /-- The current-target threshold implies the no-conflict threshold because
 Python's minimum total active balance is positive. -/
@@ -72,14 +72,14 @@ private theorem mem_acceptedNoConflict_epoch_span_of_committee
 a same-epoch included certificate. Future support is used only at slots
 strictly before the endpoint. -/
 theorem completedPrefix_noConflict_includedJustified_property_before
-    (B : CausalPrefixFFGInterpretation cfg ext E)
-    (hT : E.ScheduledPrefixPremises cfg ext)
+    (B : ScheduledFFGInterpretation cfg ext E)
+    (hT : E.ScheduledExecutionPremises cfg ext)
     (hstatic : StaticValidatorSet cfg E)
     (hbyz : ByzantineWeightPremises cfg E)
     (hfloor : cfg.effective_balance_increment ≤ E.weight (E.currentTargetAnchorActive cfg))
     (hfit : EpochEndsFitUint64 cfg)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
-    (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
+    (hboundary : InitialAnchorAtEpochBoundary (cfg := cfg)
       (E := E) (anchor := B.anchor))
     {v : ValidatorIndex} (hv : v ∈ E.honest) {n : Nat}
     (hHn1 : E.WithinHorizon cfg (n + 1))
@@ -147,13 +147,13 @@ theorem completedPrefix_noConflict_includedJustified_property_before
   have hanchorH : get_current_epoch cfg E.anchor_state <
       E.verification_horizon :=
     E.completedPrefix_anchor_epoch_within cfg ext hT hstatic
-  have hstoreCausal : E.CausalStore cfg ext store := by
+  have hstoreCausal : E.ScheduledPrefixStore cfg ext store := by
     simpa only [store] using E.store_causal cfg ext v (n + 1)
   obtain ⟨hUJ⟩ :=
-    CausalPrefixFFGInterpretation.unrealizedJustified_certificate
+    ScheduledFFGInterpretation.unrealizedJustified_certificate
       cfg ext B hgenShort hanchor hstoreCausal
   have hcGlobal := IncludedCertifiedJustified.toCertifiedJustified
-    (cfg := cfg) (CausalCarrierAttestationRelation.relation cfg ext E
+    (cfg := cfg) (AcceptedBlockAttestationInclusion.relation cfg ext E
       B.state.includedAttestations) hc
   by_cases heq : target = store.unrealized_justified_checkpoint
   · have hroot := hacc.justified_unique hcGlobal hUJ
@@ -219,7 +219,7 @@ theorem completedPrefix_noConflict_includedJustified_property_before
       rcases hiSigner with hiObserved | hiFuture
       · let hV := CurrentTargetPrefixVoteAssumptions.of_acceptedGlobalTrajectory
           cfg ext E B hT hanchor hboundary
-        have hboundaryZero : TrustedAnchorBoundaryAligned
+        have hboundaryZero : InitialAnchorAtEpochBoundary
             (cfg := cfg) (E := E)
             (anchor := E.genesis_store.justified_checkpoint) := by
           simpa only [← hanchor] using hboundary
@@ -366,9 +366,9 @@ theorem completedPrefix_noConflict_includedJustified_property_before
 /-- Every endpoint justified checkpoint has an included certificate at a
 root known in that endpoint store. This retains the timing data erased by
 the global scheduled-certificate projection. -/
-theorem CausalPrefixFFGInterpretation.endpointJustified_includedCertificate
-    (B : CausalPrefixFFGInterpretation cfg ext E)
-    (hT : E.ScheduledPrefixPremises cfg ext)
+theorem ScheduledFFGInterpretation.endpointJustified_includedCertificate
+    (B : ScheduledFFGInterpretation cfg ext E)
+    (hT : E.ScheduledExecutionPremises cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     {w : ValidatorIndex} {m : ℕ} :
     ∃ tip, tip ∈ (E.store cfg ext w m).block_roots ∧
@@ -400,14 +400,14 @@ theorem CausalPrefixFFGInterpretation.endpointJustified_includedCertificate
 /-- Current-target pinning at a real endpoint needs only earlier honest
 votes. It does not need a strict bound on the endpoint's justified epoch. -/
 theorem completedPrefix_currentTarget_endpoint_root_eq_before
-    (B : CausalPrefixFFGInterpretation cfg ext E)
-    (hT : E.ScheduledPrefixPremises cfg ext)
+    (B : ScheduledFFGInterpretation cfg ext E)
+    (hT : E.ScheduledExecutionPremises cfg ext)
     (hstatic : StaticValidatorSet cfg E)
     (hbyz : ByzantineWeightPremises cfg E)
     (hfloor : cfg.effective_balance_increment ≤ E.weight (E.currentTargetAnchorActive cfg))
     (hfit : EpochEndsFitUint64 cfg)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
-    (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg) (E := E) (anchor := B.anchor))
+    (hboundary : InitialAnchorAtEpochBoundary (cfg := cfg) (E := E) (anchor := B.anchor))
     {v : ValidatorIndex} (hv : v ∈ E.honest) {n : ℕ}
     (hH : E.WithinHorizon cfg (n + 1))
     (hgate : will_current_target_be_justified cfg ext (E.store cfg ext v (n + 1)) = true)
@@ -418,7 +418,7 @@ theorem completedPrefix_currentTarget_endpoint_root_eq_before
       (get_current_target cfg (E.store cfg ext v (n + 1))).epoch) :
     (E.store cfg ext w m).justified_checkpoint.root =
       (get_current_target cfg (E.store cfg ext v (n + 1))).root := by
-  obtain ⟨tip, htip, hcert⟩ := CausalPrefixFFGInterpretation.endpointJustified_includedCertificate
+  obtain ⟨tip, htip, hcert⟩ := ScheduledFFGInterpretation.endpointJustified_includedCertificate
     cfg ext B hT hanchor
     (w := w) (m := m)
   refine completedPrefix_noConflict_includedJustified_property_before
@@ -433,14 +433,14 @@ theorem completedPrefix_currentTarget_endpoint_root_eq_before
 /-- Previous-result pinning at a real endpoint also needs only earlier
 honest votes. Distinct target roots are permitted. -/
 theorem completedPrefix_noConflict_endpoint_descends_before
-    (B : CausalPrefixFFGInterpretation cfg ext E)
-    (hT : E.ScheduledPrefixPremises cfg ext)
+    (B : ScheduledFFGInterpretation cfg ext E)
+    (hT : E.ScheduledExecutionPremises cfg ext)
     (hstatic : StaticValidatorSet cfg E)
     (hbyz : ByzantineWeightPremises cfg E)
     (hfloor : cfg.effective_balance_increment ≤ E.weight (E.currentTargetAnchorActive cfg))
     (hfit : EpochEndsFitUint64 cfg)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
-    (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg) (E := E) (anchor := B.anchor))
+    (hboundary : InitialAnchorAtEpochBoundary (cfg := cfg) (E := E) (anchor := B.anchor))
     {v : ValidatorIndex} (hv : v ∈ E.honest) {n : ℕ}
     (hH : E.WithinHorizon cfg (n + 1))
     (hgate : will_no_conflicting_checkpoint_be_justified cfg ext
@@ -453,7 +453,7 @@ theorem completedPrefix_noConflict_endpoint_descends_before
     (hepoch : (E.store cfg ext w m).justified_checkpoint.epoch =
       (get_current_target cfg (E.store cfg ext v (n + 1))).epoch) :
     E.RootDescends (E.store cfg ext w m).justified_checkpoint.root result := by
-  obtain ⟨tip, htip, hcert⟩ := CausalPrefixFFGInterpretation.endpointJustified_includedCertificate
+  obtain ⟨tip, htip, hcert⟩ := ScheduledFFGInterpretation.endpointJustified_includedCertificate
     cfg ext B hT hanchor
     (w := w) (m := m)
   exact completedPrefix_noConflict_includedJustified_property_before

@@ -45,7 +45,7 @@ No new behavioral assumptions enter beyond the existing records
 namespace FastConfirmation.Spec
 
 variable {Root : Type*} [LinearOrder Root] [Inhabited Root]
-variable (cfg : Config) (ext : Externals Root)
+variable (cfg : Config) (ext : BeaconFunctionInterface Root)
 
 /-! ## Step 1 — no honest validator equivocates
 
@@ -166,7 +166,7 @@ theorem on_attester_slashing_honest_not_added {E : Execution Root}
     (hhb : HonestBehavior cfg ext E) (hec : BeaconExternalsPremises cfg ext E)
     {store store' : Store Root} {asl : AttesterSlashing Root}
     {v : ValidatorIndex} (hv : v ∈ E.honest)
-    (hcausal : E.HonestCausalStore cfg ext store)
+    (hcausal : E.HonestPrefixStoreWithinHorizon cfg ext store)
     (hunknown : UnknownBlockStatesDefault store)
     (hh : on_attester_slashing ext store asl = some store')
     (hprev : v ∉ store.equivocating_indices) :
@@ -205,7 +205,7 @@ theorem apply_event_honest_not_equiv {E : Execution Root}
     (hhb : HonestBehavior cfg ext E) (hec : BeaconExternalsPremises cfg ext E)
     {v : ValidatorIndex} (hv : v ∈ E.honest)
     (store : Store Root) (e : Event Root) (hprev : v ∉ store.equivocating_indices)
-    (hcausal : E.HonestCausalStore cfg ext store)
+    (hcausal : E.HonestPrefixStoreWithinHorizon cfg ext store)
     (hunknown : UnknownBlockStatesDefault store) :
     v ∉ ((apply_event cfg ext store e).getD store).equivocating_indices := by
   cases e with
@@ -253,7 +253,7 @@ theorem honest_not_equiv_foldl {E : Execution Root}
     {v : ValidatorIndex} (hv : v ∈ E.honest) :
     ∀ (l : List (Event Root)) (s : Store Root), v ∉ s.equivocating_indices →
       UnknownBlockStatesDefault s →
-      (∀ k, k ≤ l.length → E.HonestCausalStore cfg ext
+      (∀ k, k ≤ l.length → E.HonestPrefixStoreWithinHorizon cfg ext
         ((l.take k).foldl
           (fun store event => (apply_event cfg ext store event).getD store) s)) →
       v ∉ (l.foldl (fun store e => (apply_event cfg ext store e).getD store)

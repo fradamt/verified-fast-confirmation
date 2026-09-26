@@ -22,7 +22,7 @@ filter, recording, sibling-score, or cross-epoch accounting fields.
 namespace FastConfirmation.Spec
 
 variable {Root : Type*} [LinearOrder Root] [Inhabited Root]
-variable (cfg : Config) (ext : Externals Root)
+variable (cfg : Config) (ext : BeaconFunctionInterface Root)
 
 namespace Execution
 
@@ -49,7 +49,7 @@ inductive StrictSelectedEdgeRegime (cfg : Config)
 /-- Query-local, canonical coordinates and geometry for one strict edge of an
 actual `find_latest_confirmed_descendant` result. -/
 structure StrictSelectedEdgeGeometry
-    (cfg : Config) (ext : Externals Root) (E : Execution Root)
+    (cfg : Config) (ext : BeaconFunctionInterface Root) (E : Execution Root)
     (glc r0 a c : Root) (v : ValidatorIndex) (q : Nat)
     (query : FastConfirmationStore Root)
     (w : ValidatorIndex) (m : Nat)

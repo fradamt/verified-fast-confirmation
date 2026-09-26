@@ -20,7 +20,7 @@ This module contains `currentTarget_eq_selectedCheckpoint_of_currentEpochAncesto
 namespace FastConfirmation.Spec
 
 variable {Root : Type*} [LinearOrder Root] [Inhabited Root]
-variable (cfg : Config) (ext : Externals Root)
+variable (cfg : Config) (ext : BeaconFunctionInterface Root)
 
 namespace Execution
 

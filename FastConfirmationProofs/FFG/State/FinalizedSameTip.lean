@@ -28,7 +28,7 @@ justification interface, filter conclusion, or safety premise in this file.
 namespace FastConfirmation.Spec
 
 variable {Root : Type*} [LinearOrder Root] [Inhabited Root]
-variable (cfg : Config) (ext : Externals Root)
+variable (cfg : Config) (ext : BeaconFunctionInterface Root)
 
 /-! ## Carrier transport for included certificates -/
 
@@ -99,54 +99,54 @@ end IncludedCertifiedFinalized
 
 /-! ## Same-tip accepted certificate packages -/
 
-namespace CausalCarrierFFGState
+namespace AcceptedBlockFFGState
 
 /-- Any AU checkpoint has an included justification certificate reindexed to
 the AU tip itself. -/
 theorem includedJustifiedAtTip_of_AU
     {E : Execution Root} {anchor : Checkpoint Root}
-    (S : CausalCarrierFFGState cfg ext E anchor)
+    (S : AcceptedBlockFFGState cfg ext E anchor)
     {tip : Root} {c : Checkpoint Root}
-    (hAU : S.AU cfg ext tip c) :
+    (hAU : S.AvailableCheckpoint cfg ext tip c) :
     Nonempty (IncludedCertifiedJustified cfg E
       S.includedAttestations.Included anchor tip c) := by
   obtain ⟨carrier, htip, hformed⟩ := hAU
   obtain ⟨hcertificate⟩ := (S.formed_evidence hformed).certified
   exact ⟨hcertificate.transport_descendant cfg htip⟩
 
-end CausalCarrierFFGState
+end AcceptedBlockFFGState
 
 /-- Realized finalized and justified selectors, with both certificates owned
 by one accepted tip.  The finalized anchor exception is retained explicitly. -/
 structure AcceptedRealizedFinalitySameTipAt
     {E : Execution Root} {anchor : Checkpoint Root}
-    (S : CausalCarrierFFGState cfg ext E anchor) (tip : Root) : Prop where
-  tip_accepted : E.AcceptedRoot cfg ext tip
+    (S : AcceptedBlockFFGState cfg ext E anchor) (tip : Root) : Prop where
+  tip_accepted : E.RootKnownInScheduledPrefix cfg ext tip
   justified : Nonempty (IncludedCertifiedJustified cfg E
-    S.includedAttestations.Included anchor tip (S.GJ tip))
-  finalized : S.GF tip = anchor ∨ Nonempty (IncludedCertifiedFinalized cfg E
-    S.includedAttestations.Included anchor tip (S.GF tip))
-  anchor_epoch_le_finalized : anchor.epoch ≤ (S.GF tip).epoch
-  finalized_epoch_le_justified : (S.GF tip).epoch ≤ (S.GJ tip).epoch
+    S.includedAttestations.Included anchor tip (S.realized_justified tip))
+  finalized : S.realized_finalized tip = anchor ∨ Nonempty (IncludedCertifiedFinalized cfg E
+    S.includedAttestations.Included anchor tip (S.realized_finalized tip))
+  anchor_epoch_le_finalized : anchor.epoch ≤ (S.realized_finalized tip).epoch
+  finalized_epoch_le_justified : (S.realized_finalized tip).epoch ≤ (S.realized_justified tip).epoch
 
 /-- Pulled-up finalized and unrealized-justified selectors on one accepted
 tip. -/
 structure AcceptedUnrealizedFinalitySameTipAt
     {E : Execution Root} {anchor : Checkpoint Root}
-    (S : CausalCarrierFFGState cfg ext E anchor) (tip : Root) : Prop where
-  tip_accepted : E.AcceptedRoot cfg ext tip
+    (S : AcceptedBlockFFGState cfg ext E anchor) (tip : Root) : Prop where
+  tip_accepted : E.RootKnownInScheduledPrefix cfg ext tip
   justified : Nonempty (IncludedCertifiedJustified cfg E
-    S.includedAttestations.Included anchor tip (S.GU tip))
-  finalized : S.GUF tip = anchor ∨ Nonempty (IncludedCertifiedFinalized cfg E
-    S.includedAttestations.Included anchor tip (S.GUF tip))
-  anchor_epoch_le_finalized : anchor.epoch ≤ (S.GUF tip).epoch
-  finalized_epoch_le_justified : (S.GUF tip).epoch ≤ (S.GU tip).epoch
+    S.includedAttestations.Included anchor tip (S.unrealized_justified tip))
+  finalized : S.unrealized_finalized tip = anchor ∨ Nonempty (IncludedCertifiedFinalized cfg E
+    S.includedAttestations.Included anchor tip (S.unrealized_finalized tip))
+  anchor_epoch_le_finalized : anchor.epoch ≤ (S.unrealized_finalized tip).epoch
+  finalized_epoch_le_justified : (S.unrealized_finalized tip).epoch ≤ (S.unrealized_justified tip).epoch
 
-namespace CausalCarrierFFGState
+namespace AcceptedBlockFFGState
 
 
 
-end CausalCarrierFFGState
+end AcceptedBlockFFGState
 
 namespace AcceptedRealizedFinalitySameTipAt
 
@@ -168,21 +168,21 @@ the target boundary to establish target-root knownness; checkpoint composition
 then returns to the source boundary. -/
 theorem exactCheckpointPrefix_root_eq_at_sameTip
     {E : Execution Root} {anchor : Checkpoint Root}
-    {S : CausalCarrierFFGState cfg ext E anchor}
-    (hcoh : FFGSelectorsAndCheckpointReadsMatchBeaconStates cfg ext S)
-    {store : Store Root} (hstore : E.CausalStore cfg ext store)
+    {S : AcceptedBlockFFGState cfg ext E anchor}
+    (hcoh : FFGStateAndCheckpointReadAgreement cfg ext S)
+    {store : Store Root} (hstore : E.ScheduledPrefixStore cfg ext store)
     (hparent : ParentSlotLt store)
     {tip : Root} (htip : tip ∈ store.block_roots)
     {source target : Checkpoint Root}
-    (hprefix : ExactCheckpointPrefix S.C source target)
-    (hAU : S.AU cfg ext tip target)
+    (hprefix : ExactCheckpointPrefix S.checkpoint_at_epoch source target)
+    (hAU : S.AvailableCheckpoint cfg ext tip target)
     (hepoch : source.epoch ≤ target.epoch)
     (hwalk : WalkKnown store
       (compute_start_slot_at_epoch cfg source.epoch) tip) :
     source.root = get_checkpoint_block cfg store tip source.epoch := by
   have htargetCheckpoint : target =
       get_checkpoint_for_block cfg store tip target.epoch :=
-    hcoh.au_checkpoint_of_known hstore tip htip target hAU
+    hcoh.available_checkpoint_checkpoint_of_known hstore tip htip target hAU
   have hsourceBoundaryLeTarget : compute_start_slot_at_epoch cfg source.epoch ≤
       compute_start_slot_at_epoch cfg target.epoch :=
     Nat.mul_le_mul_right cfg.slots_per_epoch hepoch
@@ -199,7 +199,7 @@ theorem exactCheckpointPrefix_root_eq_at_sameTip
   have hsourceCheckpoint : source =
       get_checkpoint_for_block cfg store target.root source.epoch := by
     calc
-      source = S.C target.root source.epoch := hprefix
+      source = S.checkpoint_at_epoch target.root source.epoch := hprefix
       _ = get_checkpoint_for_block cfg store target.root source.epoch :=
         hcoh.checkpoint_of_known hstore target.root htargetKnown source.epoch
   have hcomp := get_checkpoint_for_block_comp cfg hparent hepoch hwalk

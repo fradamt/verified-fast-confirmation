@@ -8,7 +8,7 @@ public import FastConfirmationModel.Spec.ForkChoice
 namespace FastConfirmation.Spec
 
 variable {Root : Type*} [LinearOrder Root] [Inhabited Root]
-variable (cfg : Config) (ext : Externals Root)
+variable (cfg : Config) (ext : BeaconFunctionInterface Root)
 
 /-- A list of direct parent transitions from `start` to `result`.  Knownness is
 stored at every node so completeness uses only ordinary well-formed tree

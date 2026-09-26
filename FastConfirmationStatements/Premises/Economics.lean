@@ -8,7 +8,7 @@ public import FastConfirmationStatements.Premises.Externals
 
 namespace FastConfirmation.Spec
 variable {Root : Type*} [LinearOrder Root] [Inhabited Root]
-variable (cfg : Config) (ext : Externals Root)
+variable (cfg : Config) (ext : BeaconFunctionInterface Root)
 /-- The static-validator-set idealization over the verified execution segment.
 The trusted genesis initialization itself seeds registry constancy
 mechanically; this record carries only the horizon and activity facts that are

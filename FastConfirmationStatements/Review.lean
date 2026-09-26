@@ -15,7 +15,7 @@ that live confirmed roots remain monotone. The safety field uses
 namespace FastConfirmation.Spec
 
 variable {Root : Type*} [LinearOrder Root] [Inhabited Root]
-variable (cfg : Config) (ext : Externals Root)
+variable (cfg : Config) (ext : BeaconFunctionInterface Root)
 
 /-- The two public executable FCR claims reviewed together. -/
 structure ReviewClaims : Prop where

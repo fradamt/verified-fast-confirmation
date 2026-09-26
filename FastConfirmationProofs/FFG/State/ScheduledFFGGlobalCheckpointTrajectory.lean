@@ -23,7 +23,7 @@ origin.  This is necessary: the anchor is installed by
 namespace FastConfirmation.Spec
 
 variable {Root : Type*} [LinearOrder Root] [Inhabited Root]
-variable (cfg : Config) (ext : Externals Root)
+variable (cfg : Config) (ext : BeaconFunctionInterface Root)
 variable {E : Execution Root} {anchor : Checkpoint Root}
 
 /-! ## Store-global origin predicates -/
@@ -102,7 +102,7 @@ def FFGGlobalCheckpointLedger.origins
 
 namespace FFGGlobalCheckpointOrigins
 
-variable {cfg : Config} {ext : Externals Root}
+variable {cfg : Config} {ext : BeaconFunctionInterface Root}
 variable {E : Execution Root} {anchor : Checkpoint Root}
 variable {S : ChainFFGState cfg E anchor}
 
@@ -421,7 +421,7 @@ end Execution
 
 namespace FFGGlobalCheckpointLedger
 
-variable {cfg : Config} {ext : Externals Root}
+variable {cfg : Config} {ext : BeaconFunctionInterface Root}
 variable {E : Execution Root} {anchor : Checkpoint Root}
 variable {S : ChainFFGState cfg E anchor}
 

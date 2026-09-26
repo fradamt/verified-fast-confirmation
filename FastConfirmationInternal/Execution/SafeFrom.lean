@@ -7,7 +7,7 @@ public import FastConfirmationModel
 
 namespace FastConfirmation.Spec
 variable {Root : Type*} [LinearOrder Root] [Inhabited Root]
-variable (cfg : Config) (ext : Externals Root)
+variable (cfg : Config) (ext : BeaconFunctionInterface Root)
 namespace Execution
 variable (E : Execution Root)
 /-- **The trajectory predicate.** From second `n` on, the safe block `b` is an

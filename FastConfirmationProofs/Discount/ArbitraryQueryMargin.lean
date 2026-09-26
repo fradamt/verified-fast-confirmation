@@ -14,7 +14,7 @@ This module contains `query_slot_start_le_of_slot_ge_minimal`, `freshEngineInput
 namespace FastConfirmation.Spec
 
 variable {Root : Type*} [LinearOrder Root] [Inhabited Root]
-variable (cfg : Config) (ext : Externals Root)
+variable (cfg : Config) (ext : BeaconFunctionInterface Root)
 
 namespace Execution
 
@@ -389,7 +389,7 @@ theorem directWindow_descendStep_of_selectedInputsAt_minimal
     hstrip hin.sibling_score
 
 inductive SelectedEdgeMarginInputsAt
-    (cfg : Config) (ext : Externals Root) (E : Execution Root)
+    (cfg : Config) (ext : BeaconFunctionInterface Root) (E : Execution Root)
     (glc a c : Root) (v : ValidatorIndex) (q : ℕ)
     (query : FastConfirmationStore Root)
     (w : ValidatorIndex) (m : ℕ) : Prop where

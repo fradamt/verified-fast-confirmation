@@ -8,7 +8,7 @@ public import FastConfirmationInternal.Network.SynchronyConversion
 namespace FastConfirmation.Spec
 
 variable {Root : Type*} [LinearOrder Root] [Inhabited Root]
-variable (cfg : Config) (ext : Externals Root)
+variable (cfg : Config) (ext : BeaconFunctionInterface Root)
 
 /-- Full synchrony plus payload delivery is exactly the accepted next-slot
 synchrony bundle. -/

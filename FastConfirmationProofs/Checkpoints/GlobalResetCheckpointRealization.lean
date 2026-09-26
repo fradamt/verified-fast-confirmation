@@ -21,7 +21,7 @@ checkpoint are exported.  No FCR ancestry, safety, historical conclusion, or
 namespace FastConfirmation.Spec
 
 variable {Root : Type*} [LinearOrder Root] [Inhabited Root]
-variable (cfg : Config) (ext : Externals Root)
+variable (cfg : Config) (ext : BeaconFunctionInterface Root)
 
 /-! ## Exact FCR field rotation -/
 

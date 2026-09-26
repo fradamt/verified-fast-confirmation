@@ -38,12 +38,12 @@ Proofs about Model/FFGStateSemantics. Read the corresponding Model file first.
 
 namespace FastConfirmation.Spec
 variable {Root : Type*} [LinearOrder Root] [Inhabited Root]
-variable (cfg : Config) (ext : Externals Root)
+variable (cfg : Config) (ext : BeaconFunctionInterface Root)
 namespace Execution
 variable (E : Execution Root)
-namespace CausalCarrierAttestationRelation
+namespace AcceptedBlockAttestationInclusion
 
-end CausalCarrierAttestationRelation
+end AcceptedBlockAttestationInclusion
 end Execution
 
 namespace IncludedSupermajorityLink
@@ -74,10 +74,10 @@ theorem AU.evidence (S : ChainFFGState cfg E anchor)
 
 
 end ChainFFGState
-namespace CausalCarrierFFGState
+namespace AcceptedBlockFFGState
 variable {E : Execution Root} {anchor : Checkpoint Root}
 @[simp] theorem mem_slashableOnChain
-    (S : CausalCarrierFFGState cfg ext E anchor)
+    (S : AcceptedBlockFFGState cfg ext E anchor)
     (tip : Root) (i : ValidatorIndex) :
     i ∈ S.slashableOnChain cfg ext tip ↔
       i < E.registry.length ∧ S.HasSlashablePairOnChain cfg ext tip i := by
@@ -89,58 +89,58 @@ variable {E : Execution Root} {anchor : Checkpoint Root}
   · rintro ⟨hlt, h⟩
     exact Finset.mem_filter.mpr ⟨Finset.mem_range.mpr hlt, h⟩
 
-theorem AU.mono (S : CausalCarrierFFGState cfg ext E anchor)
+theorem AvailableCheckpoint.mono (S : AcceptedBlockFFGState cfg ext E anchor)
     {old new : Root} {c : Checkpoint Root}
-    (hdesc : E.RootDescends new old) (hAU : S.AU cfg ext old c) :
-    S.AU cfg ext new c := by
+    (hdesc : E.RootDescends new old) (hAU : S.AvailableCheckpoint cfg ext old c) :
+    S.AvailableCheckpoint cfg ext new c := by
   obtain ⟨carrier, holdCarrier, hformed⟩ := hAU
   exact ⟨carrier, Execution.RootDescends.trans E hdesc holdCarrier, hformed⟩
 
-theorem AU.evidence (S : CausalCarrierFFGState cfg ext E anchor)
-    {tip : Root} {c : Checkpoint Root} (hAU : S.AU cfg ext tip c) :
+theorem AvailableCheckpoint.evidence (S : AcceptedBlockFFGState cfg ext E anchor)
+    {tip : Root} {c : Checkpoint Root} (hAU : S.AvailableCheckpoint cfg ext tip c) :
     ∃ carrier, E.RootDescends tip carrier ∧
-      IncludedVoteCheckpointCertificate cfg ext E
+      IncludedCheckpointEvidence cfg ext E
         S.includedAttestations.Included anchor carrier c := by
   obtain ⟨carrier, hdesc, hformed⟩ := hAU
   exact ⟨carrier, hdesc, S.formed_evidence hformed⟩
 
-theorem gj_AU (S : CausalCarrierFFGState cfg ext E anchor)
-    {r : Root} (hr : E.AcceptedRoot cfg ext r) :
-    S.AU cfg ext r (S.GJ r) :=
-  S.gj_mem r hr
+theorem gj_AU (S : AcceptedBlockFFGState cfg ext E anchor)
+    {r : Root} (hr : E.RootKnownInScheduledPrefix cfg ext r) :
+    S.AvailableCheckpoint cfg ext r (S.realized_justified r) :=
+  S.realized_justified_mem r hr
 
-theorem gu_AU (S : CausalCarrierFFGState cfg ext E anchor)
-    {r : Root} (hr : E.AcceptedRoot cfg ext r) :
-    S.AU cfg ext r (S.GU r) :=
-  S.gu_mem r hr
+theorem gu_AU (S : AcceptedBlockFFGState cfg ext E anchor)
+    {r : Root} (hr : E.RootKnownInScheduledPrefix cfg ext r) :
+    S.AvailableCheckpoint cfg ext r (S.unrealized_justified r) :=
+  S.unrealized_justified_mem r hr
 
-theorem gf_AU (S : CausalCarrierFFGState cfg ext E anchor)
-    {r : Root} (hr : E.AcceptedRoot cfg ext r) :
-    S.AU cfg ext r (S.GF r) :=
-  S.gf_mem r hr
+theorem gf_AU (S : AcceptedBlockFFGState cfg ext E anchor)
+    {r : Root} (hr : E.RootKnownInScheduledPrefix cfg ext r) :
+    S.AvailableCheckpoint cfg ext r (S.realized_finalized r) :=
+  S.realized_finalized_mem r hr
 
-theorem guf_AU (S : CausalCarrierFFGState cfg ext E anchor)
-    {r : Root} (hr : E.AcceptedRoot cfg ext r) :
-    S.AU cfg ext r (S.GUF r) :=
-  S.guf_mem r hr
+theorem guf_AU (S : AcceptedBlockFFGState cfg ext E anchor)
+    {r : Root} (hr : E.RootKnownInScheduledPrefix cfg ext r) :
+    S.AvailableCheckpoint cfg ext r (S.unrealized_finalized r) :=
+  S.unrealized_finalized_mem r hr
 
-theorem gj_epoch_le_gu (S : CausalCarrierFFGState cfg ext E anchor)
-    {r : Root} (hr : E.AcceptedRoot cfg ext r) :
-    (S.GJ r).epoch ≤ (S.GU r).epoch :=
-  S.gu_max hr (S.gj_mem r hr)
+theorem gj_epoch_le_gu (S : AcceptedBlockFFGState cfg ext E anchor)
+    {r : Root} (hr : E.RootKnownInScheduledPrefix cfg ext r) :
+    (S.realized_justified r).epoch ≤ (S.unrealized_justified r).epoch :=
+  S.unrealized_justified_max hr (S.realized_justified_mem r hr)
 
-end CausalCarrierFFGState
+end AcceptedBlockFFGState
 
 
-namespace PaperA32StateView
+namespace CheckpointInclusionView
 variable {E : Execution Root}
-end PaperA32StateView
+end CheckpointInclusionView
 namespace ChainFFGState
 variable {E : Execution Root} {anchor : Checkpoint Root}
 end ChainFFGState
-namespace CausalCarrierFFGState
+namespace AcceptedBlockFFGState
 variable {E : Execution Root} {anchor : Checkpoint Root}
-end CausalCarrierFFGState
+end AcceptedBlockFFGState
 end FastConfirmation.Spec
 
 end

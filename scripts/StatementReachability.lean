@@ -47,7 +47,7 @@ private def isSourceDeclaration (env : Environment) (decl : Name) : Bool :=
 -- exact completed-call field list is checked by ReviewSurfaceShape.lean.
 private def approved : List Name := [
   ``FastConfirmation.Spec.Synchrony,
-  ``FastConfirmation.Spec.CausalCarrierFFGState.PaperA32SupportThroughoutEpoch,
+  ``FastConfirmation.Spec.AcceptedBlockFFGState.SourceTargetSupportThroughoutEpoch,
   ``FastConfirmation.Spec.Execution.IncludedAttestationFidelity,
   ``FastConfirmation.Spec.FFGInterpretationFidelity,
   -- Existing public support facts used by witness theorem types.

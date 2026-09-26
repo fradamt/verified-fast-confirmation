@@ -15,7 +15,7 @@ section
 
 namespace FastConfirmation.Spec
 variable {Root : Type*} [LinearOrder Root] [Inhabited Root]
-variable (cfg : Config) (ext : Externals Root)
+variable (cfg : Config) (ext : BeaconFunctionInterface Root)
 namespace Execution
 variable (E : Execution Root)
 /-- The variable-updated FCR store at a slot boundary: `E.fcr v n` re-seated
@@ -41,7 +41,7 @@ section
 
 namespace FastConfirmation.Spec
 variable {Root : Type*} [LinearOrder Root] [Inhabited Root]
-variable (cfg : Config) (ext : Externals Root)
+variable (cfg : Config) (ext : BeaconFunctionInterface Root)
 /-- The first guard, before any finalized reset has occurred. -/
 def getLatestFinalizedRevertGuard
     (query : FastConfirmationStore Root) : Prop :=
@@ -217,7 +217,7 @@ section
 
 namespace FastConfirmation.Spec
 variable {Root : Type*} [LinearOrder Root] [Inhabited Root]
-variable (cfg : Config) (ext : Externals Root)
+variable (cfg : Config) (ext : BeaconFunctionInterface Root)
 /-- Ghost-instrumented previous-epoch loop.  The edge list is oldest to newest
 and contains exactly the accumulator transitions that the executable loop
 took. -/
@@ -263,7 +263,7 @@ section
 
 namespace FastConfirmation.Spec
 variable {Root : Type*} [LinearOrder Root] [Inhabited Root]
-variable (cfg : Config) (ext : Externals Root)
+variable (cfg : Config) (ext : BeaconFunctionInterface Root)
 /-- Ghost trace of the complete executable wrapper.  The first edge list is
 the selected previous-epoch trace.  The second is the tentative trace only
 when the wrapper's final acceptance guard keeps its result; if that guard

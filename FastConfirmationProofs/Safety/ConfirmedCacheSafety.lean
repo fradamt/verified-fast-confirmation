@@ -29,7 +29,7 @@ Thus this fold has no separate reset-safety or source-lock premise.
 namespace FastConfirmation.Spec
 
 variable {Root : Type*} [LinearOrder Root] [Inhabited Root]
-variable (cfg : Config) (ext : Externals Root)
+variable (cfg : Config) (ext : BeaconFunctionInterface Root)
 
 namespace Execution
 
@@ -44,7 +44,7 @@ def ConfirmedSafeFromFollowingSlot (v : ValidatorIndex) (n : ℕ) : Prop :=
   E.SafeFrom cfg ext (E.confirmed cfg ext v n) (E.followingSlotStart cfg n)
 
 private theorem nextSlotFold_genesisTime_le
-    (hT : E.ScheduledPrefixPremises cfg ext) :
+    (hT : E.ScheduledExecutionPremises cfg ext) :
     E.genesis_store.genesis_time ≤ E.genesis_store.time := by
   obtain ⟨ast, ablk, hgen, _hslot, _hparent⟩ := hT.genesis_structure
   rw [hgen]
@@ -86,7 +86,7 @@ private theorem nextSlotFold_slot_at_succ_le
 
 /-- The following-slot boundary really lies in the following slot. -/
 theorem slot_at_followingSlotStart
-    (hT : E.ScheduledPrefixPremises cfg ext)
+    (hT : E.ScheduledExecutionPremises cfg ext)
     (n : ℕ) :
     E.slot_at cfg (E.followingSlotStart cfg n) = E.slot_at cfg n + 1 := by
   have hgenTime : E.genesis_store.genesis_time ≤
@@ -99,7 +99,7 @@ theorem slot_at_followingSlotStart
 
 /-- Every second precedes the boundary of its following slot. -/
 theorem lt_followingSlotStart
-    (hT : E.ScheduledPrefixPremises cfg ext)
+    (hT : E.ScheduledExecutionPremises cfg ext)
     (n : ℕ) :
     n < E.followingSlotStart cfg n := by
   have hgenTime : E.genesis_store.genesis_time ≤
@@ -113,7 +113,7 @@ deadline is exactly the call second.  The second equality is the accepted
 minimal call-boundary theorem; the one-second clock bound identifies the new
 slot with the successor of the old slot. -/
 theorem followingSlotStart_eq_succ_of_call
-    (hT : E.ScheduledPrefixPremises cfg ext)
+    (hT : E.ScheduledExecutionPremises cfg ext)
     (hA : SelectedMarginAssumptions cfg ext E)
     {v : ValidatorIndex} {n : ℕ}
     (hHn1 : E.WithinHorizon cfg (n + 1))
@@ -159,12 +159,12 @@ contradicting the selector's literal recency premise.  The conclusion does not
 require the selector to advance strictly, so it also covers a selected helper
 call whose return is unchanged. -/
 theorem finalizedResetCandidateInput_safeFrom_anchor_of_recent
-    (B : CausalPrefixFFGInterpretation cfg ext E)
-    (hT : E.ScheduledPrefixPremises cfg ext)
+    (B : ScheduledFFGInterpretation cfg ext E)
+    (hT : E.ScheduledExecutionPremises cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
-    (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
+    (hboundary : InitialAnchorAtEpochBoundary (cfg := cfg)
       (E := E) (anchor := B.anchor))
-    (hDelay : E.RealizedFinalizationDelay cfg ext B)
+    (hDelay : E.ImportedBlockFinalizationLag cfg ext B)
     {v : ValidatorIndex} {n : ℕ}
     {trace : LatestConfirmedCallTrace cfg ext (E.fcrStoreAtCall cfg ext v n)}
     (hinput : FinalizedResetCandidateInputAt cfg ext
@@ -180,7 +180,7 @@ theorem finalizedResetCandidateInput_safeFrom_anchor_of_recent
   have hrealized :=
     E.finalizedCheckpoint_resetRealizedAt_of_acceptedGlobalTrajectory
       cfg ext B hT hanchor hboundary (w := v) (n + 1)
-  have hstore : E.CausalStore cfg ext query.store := by
+  have hstore : E.ScheduledPrefixStore cfg ext query.store := by
     simpa only [query, E.fcrStep_store] using
       E.store_causal cfg ext v (n + 1)
   have hrealizedQuery : E.ResetCheckpointRealizedAt cfg B.anchor
@@ -206,12 +206,12 @@ theorem finalizedResetCandidateInput_safeFrom_anchor_of_recent
 
 /-- Strict-selector convenience wrapper around the plain recency theorem. -/
 theorem strictFinalizedResetCandidateInput_safeFrom_anchor
-    (B : CausalPrefixFFGInterpretation cfg ext E)
-    (hT : E.ScheduledPrefixPremises cfg ext)
+    (B : ScheduledFFGInterpretation cfg ext E)
+    (hT : E.ScheduledExecutionPremises cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
-    (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
+    (hboundary : InitialAnchorAtEpochBoundary (cfg := cfg)
       (E := E) (anchor := B.anchor))
-    (hDelay : E.RealizedFinalizationDelay cfg ext B)
+    (hDelay : E.ImportedBlockFinalizationLag cfg ext B)
     {v : ValidatorIndex} {n : ℕ}
     {trace : LatestConfirmedCallTrace cfg ext (E.fcrStoreAtCall cfg ext v n)}
     (hinput : FinalizedResetCandidateInputAt cfg ext
@@ -232,19 +232,19 @@ Finalized unchanged resets use synchrony at that deadline.  Strict finalized
 resets reduce to the trusted anchor before the strict-helper dispatcher is
 invoked.  Active observed resets use the accepted dynamic checkpoint proof. -/
 theorem confirmed_safety_and_lineage_of_acceptedActualFCRFold
-    (B : CausalPrefixFFGInterpretation cfg ext E)
-    (hT : E.ScheduledPrefixPremises cfg ext)
-    (hC : E.CompletedFCRCallPremises cfg ext)
+    (B : ScheduledFFGInterpretation cfg ext E)
+    (hT : E.ScheduledExecutionPremises cfg ext)
+    (hC : E.ScheduledFCRCallPremises cfg ext)
     (hfit : EpochEndsFitUint64 cfg)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
-    (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
+    (hboundary : InitialAnchorAtEpochBoundary (cfg := cfg)
       (E := E) (anchor := B.anchor))
-    (hDelay : E.RealizedFinalizationDelay cfg ext B)
+    (hDelay : E.ImportedBlockFinalizationLag cfg ext B)
     (hspe : 1 < cfg.slots_per_epoch)
-    (hpaper : B.state.PaperA32Inclusion cfg ext)
-    (P : EpochCheckpointClosure B.anchor
-      (E.AcceptedRoot cfg ext) B.state.C)
-    (V : B.state.ExactLinkValidity)
+    (hpaper : B.state.EventualCheckpointInclusion cfg ext)
+    (P : EpochCheckpointProjectionLaws B.anchor
+      (E.RootKnownInScheduledPrefix cfg ext) B.state.checkpoint_at_epoch)
+    (V : B.state.LinkCheckpointAgreement)
     {v : ValidatorIndex} (hv : v ∈ E.honest) :
     ∀ n : ℕ, E.WithinHorizon cfg n →
       E.ConfirmedSafeFromFollowingSlot cfg ext v n ∧
@@ -255,7 +255,7 @@ theorem confirmed_safety_and_lineage_of_acceptedActualFCRFold
     E.selectedMarginDomain_of_acceptedGlobalTrajectory
       cfg ext B hT hC.synchrony hpaths hanchor hboundary
   have hanchorExact : B.anchor =
-      B.state.C B.anchor.root B.anchor.epoch :=
+      B.state.checkpoint_at_epoch B.anchor.root B.anchor.epoch :=
     acceptedAnchorExact_of_trajectory cfg ext E B hT hanchor hboundary
   let hMargin : SelectedMarginAssumptions cfg ext E :=
     { genesis := hT.genesis_structure
@@ -402,19 +402,19 @@ theorem confirmed_safety_and_lineage_of_acceptedActualFCRFold
 
 /-- The safety projection of the joint call/history induction. -/
 theorem confirmed_safeFromFollowingSlot_of_acceptedActualFCRFold
-    (B : CausalPrefixFFGInterpretation cfg ext E)
-    (hT : E.ScheduledPrefixPremises cfg ext)
-    (hC : E.CompletedFCRCallPremises cfg ext)
+    (B : ScheduledFFGInterpretation cfg ext E)
+    (hT : E.ScheduledExecutionPremises cfg ext)
+    (hC : E.ScheduledFCRCallPremises cfg ext)
     (hfit : EpochEndsFitUint64 cfg)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
-    (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
+    (hboundary : InitialAnchorAtEpochBoundary (cfg := cfg)
       (E := E) (anchor := B.anchor))
-    (hDelay : E.RealizedFinalizationDelay cfg ext B)
+    (hDelay : E.ImportedBlockFinalizationLag cfg ext B)
     (hspe : 1 < cfg.slots_per_epoch)
-    (hpaper : B.state.PaperA32Inclusion cfg ext)
-    (P : EpochCheckpointClosure B.anchor
-      (E.AcceptedRoot cfg ext) B.state.C)
-    (V : B.state.ExactLinkValidity)
+    (hpaper : B.state.EventualCheckpointInclusion cfg ext)
+    (P : EpochCheckpointProjectionLaws B.anchor
+      (E.RootKnownInScheduledPrefix cfg ext) B.state.checkpoint_at_epoch)
+    (V : B.state.LinkCheckpointAgreement)
     {v : ValidatorIndex} (hv : v ∈ E.honest) :
     ∀ n : ℕ, E.WithinHorizon cfg n →
       E.ConfirmedSafeFromFollowingSlot cfg ext v n := by
@@ -424,19 +424,19 @@ theorem confirmed_safeFromFollowingSlot_of_acceptedActualFCRFold
 
 /-- The lineage projection of the joint call and endpoint-slot induction. -/
 theorem acceptedHistoricalA32CurrentLineageAt_all
-    (B : CausalPrefixFFGInterpretation cfg ext E)
-    (hT : E.ScheduledPrefixPremises cfg ext)
-    (hC : E.CompletedFCRCallPremises cfg ext)
+    (B : ScheduledFFGInterpretation cfg ext E)
+    (hT : E.ScheduledExecutionPremises cfg ext)
+    (hC : E.ScheduledFCRCallPremises cfg ext)
     (hfit : EpochEndsFitUint64 cfg)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
-    (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
+    (hboundary : InitialAnchorAtEpochBoundary (cfg := cfg)
       (E := E) (anchor := B.anchor))
-    (hDelay : E.RealizedFinalizationDelay cfg ext B)
+    (hDelay : E.ImportedBlockFinalizationLag cfg ext B)
     (hspe : 1 < cfg.slots_per_epoch)
-    (hpaper : B.state.PaperA32Inclusion cfg ext)
-    (P : EpochCheckpointClosure B.anchor
-      (E.AcceptedRoot cfg ext) B.state.C)
-    (V : B.state.ExactLinkValidity)
+    (hpaper : B.state.EventualCheckpointInclusion cfg ext)
+    (P : EpochCheckpointProjectionLaws B.anchor
+      (E.RootKnownInScheduledPrefix cfg ext) B.state.checkpoint_at_epoch)
+    (V : B.state.LinkCheckpointAgreement)
  :
     ∀ v ∈ E.honest, ∀ n : ℕ, E.WithinHorizon cfg n →
       E.AcceptedHistoricalA32CurrentLineageAt cfg ext B v n := by
@@ -446,19 +446,19 @@ theorem acceptedHistoricalA32CurrentLineageAt_all
 
 /-- The lineage projection of the joint call and endpoint-slot induction. -/
 theorem acceptedHistoricalA32CurrentLineage_invariant
-    (B : CausalPrefixFFGInterpretation cfg ext E)
-    (hT : E.ScheduledPrefixPremises cfg ext)
-    (hC : E.CompletedFCRCallPremises cfg ext)
+    (B : ScheduledFFGInterpretation cfg ext E)
+    (hT : E.ScheduledExecutionPremises cfg ext)
+    (hC : E.ScheduledFCRCallPremises cfg ext)
     (hfit : EpochEndsFitUint64 cfg)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
-    (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
+    (hboundary : InitialAnchorAtEpochBoundary (cfg := cfg)
       (E := E) (anchor := B.anchor))
-    (hDelay : E.RealizedFinalizationDelay cfg ext B)
+    (hDelay : E.ImportedBlockFinalizationLag cfg ext B)
     (hspe : 1 < cfg.slots_per_epoch)
-    (hpaper : B.state.PaperA32Inclusion cfg ext)
-    (P : EpochCheckpointClosure B.anchor
-      (E.AcceptedRoot cfg ext) B.state.C)
-    (V : B.state.ExactLinkValidity)
+    (hpaper : B.state.EventualCheckpointInclusion cfg ext)
+    (P : EpochCheckpointProjectionLaws B.anchor
+      (E.RootKnownInScheduledPrefix cfg ext) B.state.checkpoint_at_epoch)
+    (V : B.state.LinkCheckpointAgreement)
  :
     ∀ v ∈ E.honest, ∀ n : ℕ, E.WithinHorizon cfg n →
       E.AcceptedHistoricalA32CurrentLineageAt cfg ext B v n := by
@@ -468,19 +468,19 @@ theorem acceptedHistoricalA32CurrentLineage_invariant
 
 /-- The lineage projection of the joint call and endpoint-slot induction. -/
 theorem acceptedHistoricalA32CurrentLineage_invariant_of_completedPrefixes
-    (B : CausalPrefixFFGInterpretation cfg ext E)
-    (hT : E.ScheduledPrefixPremises cfg ext)
-    (hC : E.CompletedFCRCallPremises cfg ext)
+    (B : ScheduledFFGInterpretation cfg ext E)
+    (hT : E.ScheduledExecutionPremises cfg ext)
+    (hC : E.ScheduledFCRCallPremises cfg ext)
     (hfit : EpochEndsFitUint64 cfg)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
-    (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
+    (hboundary : InitialAnchorAtEpochBoundary (cfg := cfg)
       (E := E) (anchor := B.anchor))
-    (hDelay : E.RealizedFinalizationDelay cfg ext B)
+    (hDelay : E.ImportedBlockFinalizationLag cfg ext B)
     (hspe : 1 < cfg.slots_per_epoch)
-    (hpaper : B.state.PaperA32Inclusion cfg ext)
-    (P : EpochCheckpointClosure B.anchor
-      (E.AcceptedRoot cfg ext) B.state.C)
-    (V : B.state.ExactLinkValidity)
+    (hpaper : B.state.EventualCheckpointInclusion cfg ext)
+    (P : EpochCheckpointProjectionLaws B.anchor
+      (E.RootKnownInScheduledPrefix cfg ext) B.state.checkpoint_at_epoch)
+    (V : B.state.LinkCheckpointAgreement)
  :
     ∀ v ∈ E.honest, ∀ n : ℕ, E.WithinHorizon cfg n →
       E.AcceptedHistoricalA32CurrentLineageAt cfg ext B v n := by
@@ -490,19 +490,19 @@ theorem acceptedHistoricalA32CurrentLineage_invariant_of_completedPrefixes
 
 /-- A current confirmed root inherits the jointly proved lineage. -/
 theorem acceptedHistoricalA32CurrentLineage_of_completedPrefixes
-    (B : CausalPrefixFFGInterpretation cfg ext E)
-    (hT : E.ScheduledPrefixPremises cfg ext)
-    (hC : E.CompletedFCRCallPremises cfg ext)
+    (B : ScheduledFFGInterpretation cfg ext E)
+    (hT : E.ScheduledExecutionPremises cfg ext)
+    (hC : E.ScheduledFCRCallPremises cfg ext)
     (hfit : EpochEndsFitUint64 cfg)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
-    (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
+    (hboundary : InitialAnchorAtEpochBoundary (cfg := cfg)
       (E := E) (anchor := B.anchor))
-    (hDelay : E.RealizedFinalizationDelay cfg ext B)
+    (hDelay : E.ImportedBlockFinalizationLag cfg ext B)
     (hspe : 1 < cfg.slots_per_epoch)
-    (hpaper : B.state.PaperA32Inclusion cfg ext)
-    (P : EpochCheckpointClosure B.anchor
-      (E.AcceptedRoot cfg ext) B.state.C)
-    (V : B.state.ExactLinkValidity)
+    (hpaper : B.state.EventualCheckpointInclusion cfg ext)
+    (P : EpochCheckpointProjectionLaws B.anchor
+      (E.RootKnownInScheduledPrefix cfg ext) B.state.checkpoint_at_epoch)
+    (V : B.state.LinkCheckpointAgreement)
     {v : ValidatorIndex} (hv : v ∈ E.honest)
     {n : ℕ} (hH : E.WithinHorizon cfg n)
     (hcurrent : get_block_epoch cfg (E.store cfg ext v n) (E.confirmed cfg ext v n) =
@@ -515,19 +515,19 @@ theorem acceptedHistoricalA32CurrentLineage_of_completedPrefixes
 /-- Endpoint form matching the paper's timing: a cached output is canonical
 at every in-horizon honest endpoint in a strictly later slot. -/
 theorem confirmed_head_of_acceptedActualFCRFold_nextSlot
-    (B : CausalPrefixFFGInterpretation cfg ext E)
-    (hT : E.ScheduledPrefixPremises cfg ext)
-    (hC : E.CompletedFCRCallPremises cfg ext)
+    (B : ScheduledFFGInterpretation cfg ext E)
+    (hT : E.ScheduledExecutionPremises cfg ext)
+    (hC : E.ScheduledFCRCallPremises cfg ext)
     (hfit : EpochEndsFitUint64 cfg)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
-    (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
+    (hboundary : InitialAnchorAtEpochBoundary (cfg := cfg)
       (E := E) (anchor := B.anchor))
-    (hDelay : E.RealizedFinalizationDelay cfg ext B)
+    (hDelay : E.ImportedBlockFinalizationLag cfg ext B)
     (hspe : 1 < cfg.slots_per_epoch)
-    (hpaper : B.state.PaperA32Inclusion cfg ext)
-    (P : EpochCheckpointClosure B.anchor
-      (E.AcceptedRoot cfg ext) B.state.C)
-    (V : B.state.ExactLinkValidity)
+    (hpaper : B.state.EventualCheckpointInclusion cfg ext)
+    (P : EpochCheckpointProjectionLaws B.anchor
+      (E.RootKnownInScheduledPrefix cfg ext) B.state.checkpoint_at_epoch)
+    (V : B.state.LinkCheckpointAgreement)
     {v : ValidatorIndex} (hv : v ∈ E.honest) {n : ℕ}
     {w : ValidatorIndex} (hw : w ∈ E.honest) {m : ℕ}
     (hnm : n ≤ m)

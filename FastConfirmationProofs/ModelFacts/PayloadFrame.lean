@@ -131,7 +131,7 @@ theorem payloadFrame_foldl {α : Type*} {f : Store Root → α → Option (Store
         simpa only [List.foldl_cons, Option.bind_some, hstep] using h
       exact (hf store a next hstep).trans (ih (store := next) htail)
 
-variable [LinearOrder Root] (cfg : Config) (ext : Externals Root)
+variable [LinearOrder Root] (cfg : Config) (ext : BeaconFunctionInterface Root)
 /-- PTC messages change only the two vote maps. -/
 theorem on_payload_attestation_message_frame {store store' : Store Root}
     {message : PayloadAttestationMessage Root} {is_from_block : Bool}

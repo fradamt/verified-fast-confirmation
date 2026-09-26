@@ -24,7 +24,7 @@ after that second's (past-slot, under synchrony) attestations. See
 namespace FastConfirmation.Spec
 
 variable {Root : Type*} [LinearOrder Root] [Inhabited Root]
-variable (cfg : Config) (ext : Externals Root)
+variable (cfg : Config) (ext : BeaconFunctionInterface Root)
 
 /-- Sources: `specs/gloas/fork-choice.md:1020`, `:1089`, and `:1115`;
 `specs/phase0/fork-choice.md:1000` and `:1027`.

@@ -24,7 +24,7 @@ not cover optional calls at arbitrary in-slot action prefixes.
 namespace FastConfirmation.Spec
 
 variable {Root : Type*} [LinearOrder Root] [Inhabited Root]
-variable (cfg : Config) (ext : Externals Root)
+variable (cfg : Config) (ext : BeaconFunctionInterface Root)
 
 namespace Execution
 
@@ -39,9 +39,9 @@ theorem confirmed_safeFromFollowingSlot
     {n : ℕ} (hHn : E.WithinHorizon cfg n) :
     E.ConfirmedSafeFromFollowingSlot cfg ext v n := by
   exact E.confirmed_safeFromFollowingSlot_of_acceptedActualFCRFold
-    cfg ext h.semantics h.trajectory h.completed_calls h.epoch_ends_fit
+    cfg ext h.ffg_interpretation h.trajectory h.completed_calls h.epoch_ends_fit
       h.anchor_eq h.anchor_boundary h.finalization_delay
-      h.slots_per_epoch_gt_one h.paper_a32 h.checkpoint_projection
+      h.slots_per_epoch_gt_one h.checkpoint_inclusion h.checkpoint_projection
       h.exact_link_validity hv n hHn
 
 set_option maxRecDepth 5000 in
@@ -73,15 +73,15 @@ theorem selected_result_safe_from_next_slot_of_scheduled_call
   have hHn : E.WithinHorizon cfg n :=
     E.withinHorizon_mono cfg (Nat.le_succ n) hHn1
   have hpaths := E.honestHeadPathAdmissibility_of_accepted cfg ext
-    h.semantics h.trajectory h.completed_calls h.anchor_eq h.anchor_boundary
+    h.ffg_interpretation h.trajectory h.completed_calls h.anchor_eq h.anchor_boundary
     h.slots_per_epoch_gt_one h.finalization_delay h.checkpoint_projection h.exact_link_validity
   have hdomain : SelectedMarginDomain cfg ext E :=
     E.selectedMarginDomain_of_acceptedGlobalTrajectory
-      cfg ext h.semantics h.trajectory h.completed_calls.synchrony hpaths
+      cfg ext h.ffg_interpretation h.trajectory h.completed_calls.synchrony hpaths
         h.anchor_eq h.anchor_boundary
-  have hanchorExact : h.semantics.anchor =
-      h.semantics.state.C h.semantics.anchor.root h.semantics.anchor.epoch :=
-    acceptedAnchorExact_of_trajectory cfg ext E h.semantics h.trajectory
+  have hanchorExact : h.ffg_interpretation.anchor =
+      h.ffg_interpretation.state.checkpoint_at_epoch h.ffg_interpretation.anchor.root h.ffg_interpretation.anchor.epoch :=
+    acceptedAnchorExact_of_trajectory cfg ext E h.ffg_interpretation h.trajectory
       h.anchor_eq h.anchor_boundary
   let hMargin : SelectedMarginAssumptions cfg ext E :=
     { genesis := h.trajectory.genesis_structure
@@ -106,12 +106,12 @@ theorem selected_result_safe_from_next_slot_of_scheduled_call
   have hknownN : E.confirmed cfg ext v n ∈
       (E.store cfg ext v n).block_roots :=
     E.confirmed_known_of_acceptedGlobalTrajectory
-      cfg ext h.semantics h.trajectory h.anchor_eq h.anchor_boundary hv n hHn
+      cfg ext h.ffg_interpretation h.trajectory h.anchor_eq h.anchor_boundary hv n hHn
   have hinputKnown : trace.afterObserved ∈
       (E.fcrStoreAtCall cfg ext v n).store.block_roots := by
     simpa only [trace] using
       E.getLatestConfirmedTraceAt_input_known
-        cfg ext h.semantics h.trajectory h.anchor_eq h.anchor_boundary hknownN
+        cfg ext h.ffg_interpretation h.trajectory h.anchor_eq h.anchor_boundary hknownN
   have hbranch : CandidateHistoryCallBranch cfg ext
       (E.fcrStoreAtCall cfg ext v n) trace := by
     simpa only [trace] using hrec.branch
@@ -122,12 +122,12 @@ theorem selected_result_safe_from_next_slot_of_scheduled_call
         exact hsafePreviousAtCall
     | finalizedResetUnchanged hinput _ =>
         exact E.finalizedResetCandidateInput_safeFrom_anchor_of_recent
-          cfg ext h.semantics h.trajectory h.anchor_eq h.anchor_boundary
+          cfg ext h.ffg_interpretation h.trajectory h.anchor_eq h.anchor_boundary
             h.finalization_delay hinput hselectorTrace
     | observedResetUnchanged hinput _ =>
         exact
           Execution.ObservedResetCandidateInputAt.safeFrom_of_acceptedDynamics
-            (E := E) cfg ext h.semantics h.trajectory
+            (E := E) cfg ext h.ffg_interpretation h.trajectory
               h.completed_calls.synchrony hpaths h.completed_calls.static_validators
                 h.completed_calls.byzantine_bound h.anchor_eq h.anchor_boundary
                   h.slots_per_epoch_gt_one h.finalization_delay
@@ -139,12 +139,12 @@ theorem selected_result_safe_from_next_slot_of_scheduled_call
             exact hsafePreviousAtCall
         | finalizedReset hinput =>
             exact E.finalizedResetCandidateInput_safeFrom_anchor_of_recent
-              cfg ext h.semantics h.trajectory h.anchor_eq h.anchor_boundary
+              cfg ext h.ffg_interpretation h.trajectory h.anchor_eq h.anchor_boundary
                 h.finalization_delay hinput hselectorTrace
         | observedReset hinput =>
             exact
               Execution.ObservedResetCandidateInputAt.safeFrom_of_acceptedDynamics
-                (E := E) cfg ext h.semantics h.trajectory
+                (E := E) cfg ext h.ffg_interpretation h.trajectory
                   h.completed_calls.synchrony hpaths
                     h.completed_calls.static_validators
                       h.completed_calls.byzantine_bound h.anchor_eq
@@ -155,14 +155,14 @@ theorem selected_result_safe_from_next_slot_of_scheduled_call
   have hresultSafe : E.SafeFrom cfg ext trace.result (n + 1) := by
     simpa only [trace] using
       E.getLatestConfirmedTraceAt_result_safeFrom_of_acceptedDispatcher
-        cfg ext h.semantics h.trajectory h.completed_calls h.epoch_ends_fit
+        cfg ext h.ffg_interpretation h.trajectory h.completed_calls h.epoch_ends_fit
           hdomain h.anchor_eq h.anchor_boundary h.finalization_delay
-            h.slots_per_epoch_gt_one h.paper_a32 h.checkpoint_projection
+            h.slots_per_epoch_gt_one h.checkpoint_inclusion h.checkpoint_projection
               h.exact_link_validity hanchorExact hv hHn1 hcall
               ((E.confirmed_safety_and_lineage_of_acceptedActualFCRFold
-                cfg ext h.semantics h.trajectory h.completed_calls h.epoch_ends_fit
+                cfg ext h.ffg_interpretation h.trajectory h.completed_calls h.epoch_ends_fit
                 h.anchor_eq h.anchor_boundary h.finalization_delay h.slots_per_epoch_gt_one
-                h.paper_a32 h.checkpoint_projection h.exact_link_validity hv n hHn).2)
+                h.checkpoint_inclusion h.checkpoint_projection h.exact_link_validity hv n hHn).2)
               hinputKnown hinputSafe
   have hselected : trace.result =
       find_latest_confirmed_descendant cfg ext (E.fcrStoreAtCall cfg ext v n)
@@ -183,9 +183,9 @@ theorem confirmed_head_nextSlot
       (get_head cfg (E.store cfg ext w m))
       (get_node_for_root (E.confirmed cfg ext v n)) = true := by
   exact E.confirmed_head_of_acceptedActualFCRFold_nextSlot
-    cfg ext h.semantics h.trajectory h.completed_calls h.epoch_ends_fit
+    cfg ext h.ffg_interpretation h.trajectory h.completed_calls h.epoch_ends_fit
       h.anchor_eq h.anchor_boundary h.finalization_delay
-      h.slots_per_epoch_gt_one h.paper_a32 h.checkpoint_projection
+      h.slots_per_epoch_gt_one h.checkpoint_inclusion h.checkpoint_projection
       h.exact_link_validity hv hw hnm hnext hHm
 
 end NextSlotSafetyPremises

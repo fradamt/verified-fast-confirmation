@@ -10,7 +10,7 @@ public import FastConfirmationProofs.ModelFacts
 
 This module discharges the two concrete walk/knownness contracts used below
 the accepted current-target gate.  Store-global justified origins come from one
-preselected `CausalPrefixFFGInterpretation`; the only additional geometry is
+preselected `ScheduledFFGInterpretation`; the only additional geometry is
 the retained trusted-anchor walk in each concrete store.
 
 No legacy `ChainFFGState`, `JustificationInterface`, quorum, target-agreement,
@@ -20,7 +20,7 @@ source-coherence, or safety premise is used.
 namespace FastConfirmation.Spec
 
 variable {Root : Type*} [LinearOrder Root] [Inhabited Root]
-variable (cfg : Config) (ext : Externals Root)
+variable (cfg : Config) (ext : BeaconFunctionInterface Root)
 
 namespace Execution
 
@@ -38,10 +38,10 @@ root.
 `hboundary` is the genuine checkpoint-sync condition: an anchor block after
 the start of its declared epoch cannot support this downward walk. -/
 theorem justifiedRootKnown_of_acceptedGlobalTrajectory
-    (B : CausalPrefixFFGInterpretation cfg ext E)
-    (hT : E.ScheduledPrefixPremises cfg ext)
+    (B : ScheduledFFGInterpretation cfg ext E)
+    (hT : E.ScheduledExecutionPremises cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
-    (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg) (E := E)
+    (hboundary : InitialAnchorAtEpochBoundary (cfg := cfg) (E := E)
       (anchor := B.anchor))
     {w : ValidatorIndex} (_hw : w ∈ E.honest) (m : ℕ)
     (_hHm : E.WithinHorizon cfg m) :
@@ -69,9 +69,9 @@ theorem justifiedRootKnown_of_acceptedGlobalTrajectory
       (hanchorRoot ▸ hanchorMem)
   have hboundary' : ablk.message.slot ≤
       compute_start_slot_at_epoch cfg B.anchor.epoch := by
-    simpa only [TrustedAnchorBoundaryAligned, hgenEq, hanchorRoot,
+    simpa only [InitialAnchorAtEpochBoundary, hgenEq, hanchorRoot,
       get_forkchoice_store, Function.update_self] using hboundary
-  have hstore : E.CausalStore cfg ext (E.store cfg ext w m) :=
+  have hstore : E.ScheduledPrefixStore cfg ext (E.store cfg ext w m) :=
     E.store_causal cfg ext w m
   have hparentSlots : ParentSlotLt (E.store cfg ext w m) :=
     E.store_parentSlotLt cfg ext hT.wellFormed hT.externals_coherence
@@ -87,7 +87,7 @@ theorem justifiedRootKnown_of_acceptedGlobalTrajectory
         (E.store cfg ext w m).justified_checkpoint :=
       IncludedCertifiedJustified.toCertifiedJustified
         (cfg := cfg)
-        (Execution.CausalCarrierAttestationRelation.relation cfg ext E
+        (Execution.AcceptedBlockAttestationInclusion.relation cfg ext E
           B.state.includedAttestations) hincluded
     have hanchorEpochLe : B.anchor.epoch ≤
         (E.store cfg ext w m).justified_checkpoint.epoch :=
@@ -117,10 +117,10 @@ strictness and retained-anchor walks are mechanical; the final component is
 This is the accepted replacement for routing action-facing proofs through
 `SelectedMarginDomain` merely to obtain store geometry. -/
 theorem storeDomainK_of_acceptedGlobalTrajectory
-    (B : CausalPrefixFFGInterpretation cfg ext E)
-    (hT : E.ScheduledPrefixPremises cfg ext)
+    (B : ScheduledFFGInterpretation cfg ext E)
+    (hT : E.ScheduledExecutionPremises cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
-    (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg) (E := E)
+    (hboundary : InitialAnchorAtEpochBoundary (cfg := cfg) (E := E)
       (anchor := B.anchor)) :
     E.StoreDomainK cfg ext := by
   intro w hw m hHm
@@ -137,10 +137,10 @@ The executable fallback is the store's justified root, whose knownness is
 now derived from accepted global semantics rather than a selected-margin or
 legacy justification premise. -/
 theorem headRootKnown_of_acceptedGlobalTrajectory
-    (B : CausalPrefixFFGInterpretation cfg ext E)
-    (hT : E.ScheduledPrefixPremises cfg ext)
+    (B : ScheduledFFGInterpretation cfg ext E)
+    (hT : E.ScheduledExecutionPremises cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
-    (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg) (E := E)
+    (hboundary : InitialAnchorAtEpochBoundary (cfg := cfg) (E := E)
       (anchor := B.anchor))
     {w : ValidatorIndex} (hw : w ∈ E.honest) (m : ℕ)
     (hHm : E.WithinHorizon cfg m) :
@@ -155,7 +155,7 @@ theorem headRootKnown_of_acceptedGlobalTrajectory
 /-- The handler-local well-formed core over every exact causal prefix is a
 pure consequence of scheduled-prefix trajectory data. -/
 theorem exactCausalStoreWellFormedCore_of_trajectory
-    (hT : E.ScheduledPrefixPremises cfg ext) :
+    (hT : E.ScheduledExecutionPremises cfg ext) :
     E.ExactCausalStoreWellFormedCore cfg ext := by
   obtain ⟨ast, ablk, hgen, hslot, hparent⟩ := hT.genesis_structure
   have hbase : WellFormedStoreCore E.genesis_store := by
@@ -168,10 +168,10 @@ theorem exactCausalStoreWellFormedCore_of_trajectory
 /-- Build the exact narrow assumption record consumed by prefix vote
 realization from accepted global semantics and lower trajectory geometry. -/
 def CurrentTargetPrefixVoteAssumptions.of_acceptedGlobalTrajectory
-    (B : CausalPrefixFFGInterpretation cfg ext E)
-    (hT : E.ScheduledPrefixPremises cfg ext)
+    (B : ScheduledFFGInterpretation cfg ext E)
+    (hT : E.ScheduledExecutionPremises cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
-    (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg) (E := E)
+    (hboundary : InitialAnchorAtEpochBoundary (cfg := cfg) (E := E)
       (anchor := B.anchor)) :
     E.CurrentTargetPrefixVoteAssumptions cfg ext where
   trajectory := hT
@@ -190,7 +190,7 @@ theorem postAnchorHonestVoteTargetWalkDomain_of_prefixVoteAssumptions
     (hV : E.CurrentTargetPrefixVoteAssumptions cfg ext)
     {anchor : Checkpoint Root}
     (hanchor : anchor = E.genesis_store.justified_checkpoint)
-    (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg) (E := E)
+    (hboundary : InitialAnchorAtEpochBoundary (cfg := cfg) (E := E)
       (anchor := anchor)) :
     E.PostAnchorHonestVoteTargetWalkDomain cfg ext := by
   obtain ⟨hdiv, hwf, hec, _hhb, hgen⟩ := hV.trajectory
@@ -215,7 +215,7 @@ theorem postAnchorHonestVoteTargetWalkDomain_of_prefixVoteAssumptions
     simp only [get_forkchoice_store, List.mem_singleton]
   have hboundary' : ablk.message.slot ≤
       compute_start_slot_at_epoch cfg anchor.epoch := by
-    simpa only [TrustedAnchorBoundaryAligned, hgenEq, hanchorRoot,
+    simpa only [InitialAnchorAtEpochBoundary, hgenEq, hanchorRoot,
       get_forkchoice_store, Function.update_self] using hboundary
   intro i hi s n index hs0 hnH hnSlot _hvote
   have hanchorMem : anchor.root ∈
@@ -280,10 +280,10 @@ theorem postAnchorHonestVoteTargetWalkDomain_of_prefixVoteAssumptions
 /-- Accepted-semantics producer for the full post-anchor honest vote-target
 walk domain used by the current-target gate. -/
 theorem postAnchorHonestVoteTargetWalkDomain_of_acceptedGlobalTrajectory
-    (B : CausalPrefixFFGInterpretation cfg ext E)
-    (hT : E.ScheduledPrefixPremises cfg ext)
+    (B : ScheduledFFGInterpretation cfg ext E)
+    (hT : E.ScheduledExecutionPremises cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
-    (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg) (E := E)
+    (hboundary : InitialAnchorAtEpochBoundary (cfg := cfg) (E := E)
       (anchor := B.anchor)) :
     E.PostAnchorHonestVoteTargetWalkDomain cfg ext := by
   let hV := CurrentTargetPrefixVoteAssumptions.of_acceptedGlobalTrajectory

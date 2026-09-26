@@ -8,7 +8,7 @@ public import FastConfirmationModel.Spec.FastConfirmation.Store
 
 namespace FastConfirmation.Spec
 variable {Root : Type*} [LinearOrder Root] [Inhabited Root]
-variable (cfg : Config) (ext : Externals Root)
+variable (cfg : Config) (ext : BeaconFunctionInterface Root)
 /-- `get_safe_execution_block_hash`
 (`specs/gloas/fast-confirmation.md:38`). Only the parent payload of the
 confirmed beacon block is safe. -/

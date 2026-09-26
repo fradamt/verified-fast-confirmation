@@ -11,7 +11,7 @@ public import FastConfirmationProofs.Checkpoints.SlotClock
 namespace FastConfirmation.Spec
 
 variable {Root : Type*} [LinearOrder Root] [Inhabited Root]
-variable (cfg : Config) (ext : Externals Root)
+variable (cfg : Config) (ext : BeaconFunctionInterface Root)
 
 namespace Execution
 
@@ -53,7 +53,7 @@ theorem scheduled_fcr_call_at_slot_start
 
 /-- Scheduled FCR calls read the new-slot store before its deadline. -/
 theorem scheduled_fcr_call_before_deadline
-    (hT : E.ScheduledPrefixPremises cfg ext)
+    (hT : E.ScheduledExecutionPremises cfg ext)
     {v : ValidatorIndex} {n : ℕ}
     (hcall : E.IsScheduledFCRCallAt cfg ext v n) :
     n + 1 ≤ E.slot_start cfg (E.slot_at cfg (n + 1)) +

@@ -20,7 +20,7 @@ This module contains `safeFrom_of_engineInv`, `prev_epoch_loop_cons_eq`, `prev_e
 namespace FastConfirmation.Spec
 
 variable {Root : Type*} [LinearOrder Root] [Inhabited Root]
-variable (cfg : Config) (ext : Externals Root)
+variable (cfg : Config) (ext : BeaconFunctionInterface Root)
 
 namespace Execution
 

@@ -36,7 +36,7 @@ This module contains `parentChain_at`, `parentChain_edge_child_slot_gt_head`, `s
 namespace FastConfirmation.Spec
 
 variable {Root : Type*} [LinearOrder Root] [Inhabited Root]
-variable (cfg : Config) (ext : Externals Root)
+variable (cfg : Config) (ext : BeaconFunctionInterface Root)
 
 /-! The selected closing uses the ancestor-roots case split directly.  Keep its
 small walk argument here instead of importing the arbitrary-root engine

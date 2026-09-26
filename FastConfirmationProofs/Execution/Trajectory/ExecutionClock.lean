@@ -23,13 +23,13 @@ variable {Root : Type*}
 section TimeLemmas
 
 @[simp] theorem compute_pulled_up_tip_time [LinearOrder Root] [Inhabited Root]
-    (cfg : Config) (ext : Externals Root) (store : Store Root) (block_root : Root) :
+    (cfg : Config) (ext : BeaconFunctionInterface Root) (store : Store Root) (block_root : Root) :
     (compute_pulled_up_tip cfg ext store block_root).time = store.time := by
   simp only [compute_pulled_up_tip]
   split_ifs <;> simp
 
 @[simp] theorem store_target_checkpoint_state_time [LinearOrder Root]
-    (cfg : Config) (ext : Externals Root) (store : Store Root)
+    (cfg : Config) (ext : BeaconFunctionInterface Root) (store : Store Root)
     (target : Checkpoint Root) :
     (store_target_checkpoint_state cfg ext store target).time = store.time := by
   simp only [store_target_checkpoint_state]
@@ -59,7 +59,7 @@ private theorem foldl_time {α : Type*} {f : Store Root → α → Store Root}
   simp only [update_proposer_boost_root]
   split_ifs <;> rfl
 
-variable [LinearOrder Root] [Inhabited Root] (cfg : Config) (ext : Externals Root)
+variable [LinearOrder Root] [Inhabited Root] (cfg : Config) (ext : BeaconFunctionInterface Root)
 
 theorem on_block_time {store store' : Store Root} {b : SignedBeaconBlock Root}
     (h : on_block cfg ext store b = some store') : store'.time = store.time := by

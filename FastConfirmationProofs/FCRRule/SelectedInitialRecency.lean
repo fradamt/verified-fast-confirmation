@@ -30,7 +30,7 @@ state-transition/trajectory obligation.
 namespace FastConfirmation.Spec
 
 variable {Root : Type*} [LinearOrder Root] [Inhabited Root]
-variable (cfg : Config) (ext : Externals Root)
+variable (cfg : Config) (ext : BeaconFunctionInterface Root)
 
 /-- The exact outer guard which permits entry into the previous-epoch loop.
 Naming it exposes the strongest query-local witness carried by any retained

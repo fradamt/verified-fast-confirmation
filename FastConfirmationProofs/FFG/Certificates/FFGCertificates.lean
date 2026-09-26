@@ -19,7 +19,7 @@ namespace FastConfirmation.Spec
 
 variable {Root : Type*} [LinearOrder Root] [Inhabited Root]
 variable (cfg : Config)
-variable (ext : Externals Root)
+variable (ext : BeaconFunctionInterface Root)
 
 namespace SupermajorityLink
 

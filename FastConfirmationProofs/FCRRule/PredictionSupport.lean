@@ -19,7 +19,7 @@ that slot is after the end of the target epoch.
 namespace FastConfirmation.Spec
 
 variable {Root : Type*} [LinearOrder Root] [Inhabited Root]
-variable (cfg : Config) (ext : Externals Root)
+variable (cfg : Config) (ext : BeaconFunctionInterface Root)
 
 /-- Two stores whose heads both descend from a common block `c` of epoch at
 least `e` compute the same epoch-`e` checkpoint block for their heads. -/
@@ -203,7 +203,7 @@ end FastConfirmation.Spec
 namespace FastConfirmation.Spec
 
 variable {Root : Type*} [LinearOrder Root] [Inhabited Root]
-variable (cfg : Config) (ext : Externals Root)
+variable (cfg : Config) (ext : BeaconFunctionInterface Root)
 
 /-- A head descending from `r` has an epoch-`e` checkpoint block that also
 descends from `r`, when `r` is at or before the epoch-`e` boundary. -/
@@ -339,7 +339,7 @@ end FastConfirmation.Spec
 namespace FastConfirmation.Spec
 
 variable {Root : Type*} [LinearOrder Root] [Inhabited Root]
-variable (cfg : Config) (ext : Externals Root)
+variable (cfg : Config) (ext : BeaconFunctionInterface Root)
 
 namespace Execution
 

@@ -22,7 +22,7 @@ It is not a quorum premise.
 namespace FastConfirmation.Spec
 
 variable {Root : Type*} [LinearOrder Root] [Inhabited Root]
-variable (cfg : Config) (ext : Externals Root)
+variable (cfg : Config) (ext : BeaconFunctionInterface Root)
 
 /-- First slot of the store's current epoch. -/
 def currentTargetEpochStart (store : Store Root) : Slot :=

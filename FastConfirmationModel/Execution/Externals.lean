@@ -14,7 +14,7 @@ namespace FastConfirmation.Spec
 committee shuffling, the state transition, signature/index validity, local data
 availability, execution-envelope verification, and the abstract anchor commitment.
 Their read-projection contract is in `docs/MODELING_CHOICES.md`. -/
-structure Externals (Root : Type*) where
+structure BeaconFunctionInterface (Root : Type*) where
   /-- beacon-chain `get_beacon_committee(state, slot, index)`. -/
   get_beacon_committee : BeaconState Root → Slot → CommitteeIndex → List ValidatorIndex
   /-- beacon-chain `get_committee_count_per_slot(state, epoch)`. -/

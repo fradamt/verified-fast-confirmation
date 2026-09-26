@@ -27,7 +27,7 @@ checkpoint monotonicity.
 namespace FastConfirmation.Spec
 
 variable {Root : Type*} [LinearOrder Root] [Inhabited Root]
-variable (cfg : Config) (ext : Externals Root)
+variable (cfg : Config) (ext : BeaconFunctionInterface Root)
 
 namespace Execution
 
@@ -35,19 +35,19 @@ variable {E : Execution Root} {anchor : Checkpoint Root}
 
 /-- Exact executable origin of one realized justified checkpoint. -/
 def AcceptedRealizedJustifiedOrigin
-    (S : CausalCarrierFFGState cfg ext E anchor)
+    (S : AcceptedBlockFFGState cfg ext E anchor)
     (store : Store Root) (c : Checkpoint Root) : Prop :=
   c = anchor ∨
     ∃ r, E.AcceptedCarrierIn (cfg := cfg) (ext := ext) store r ∧
-      (c = S.GJ r ∨
-        (c = S.GU r ∧
+      (c = S.realized_justified r ∨
+        (c = S.unrealized_justified r ∧
           get_block_epoch cfg store r <
             get_current_store_epoch cfg store))
 
 /-- The realized origin is paired with the ordinary unrealized origin because
 an epoch-boundary tick copies the latter into the former. -/
 structure AcceptedRealizedJustifiedOrigins
-    (S : CausalCarrierFFGState cfg ext E anchor)
+    (S : AcceptedBlockFFGState cfg ext E anchor)
     (store : Store Root) : Prop where
   realized : AcceptedRealizedJustifiedOrigin cfg ext S store
     store.justified_checkpoint
@@ -59,7 +59,7 @@ namespace AcceptedRealizedJustifiedOrigin
 /-- Transport an origin across identical block identity and clock, while
 allowing the named checkpoint itself to be rewritten. -/
 theorem of_sameBlocks_currentEpoch
-    {S : CausalCarrierFFGState cfg ext E anchor}
+    {S : AcceptedBlockFFGState cfg ext E anchor}
     {store store' : Store Root} {c c' : Checkpoint Root}
     (h : AcceptedRealizedJustifiedOrigin cfg ext S store c)
     (hsame : SameBlocks store store')
@@ -83,7 +83,7 @@ theorem of_sameBlocks_currentEpoch
 
 /-- Forward clock transport: an already-old `GU` carrier remains old. -/
 theorem of_sameBlocks_currentEpoch_mono
-    {S : CausalCarrierFFGState cfg ext E anchor}
+    {S : AcceptedBlockFFGState cfg ext E anchor}
     {store store' : Store Root} {c c' : Checkpoint Root}
     (h : AcceptedRealizedJustifiedOrigin cfg ext S store c)
     (hsame : SameBlocks store store')
@@ -112,7 +112,7 @@ namespace AcceptedRealizedJustifiedOrigins
 /-- Transport the paired invariant across a checkpoint-identical helper with
 the same block identity and current epoch. -/
 theorem of_sameBlocks_currentEpoch
-    {S : CausalCarrierFFGState cfg ext E anchor}
+    {S : AcceptedBlockFFGState cfg ext E anchor}
     {store store' : Store Root}
     (h : AcceptedRealizedJustifiedOrigins cfg ext S store)
     (hsame : SameBlocks store store')
@@ -132,7 +132,7 @@ theorem of_sameBlocks_currentEpoch
 /-- Convenient transport when the concrete time/genesis fields and both
 justified fields are unchanged. -/
 theorem of_eq
-    {S : CausalCarrierFFGState cfg ext E anchor}
+    {S : AcceptedBlockFFGState cfg ext E anchor}
     {store store' : Store Root}
     (h : AcceptedRealizedJustifiedOrigins cfg ext S store)
     (hsame : SameBlocks store store')
@@ -151,7 +151,7 @@ theorem of_eq
 
 /-- Payload writes preserve every field used by the paired origin invariant. -/
 theorem of_payloadFrame
-    {S : CausalCarrierFFGState cfg ext E anchor}
+    {S : AcceptedBlockFFGState cfg ext E anchor}
     {store store' : Store Root}
     (h : AcceptedRealizedJustifiedOrigins cfg ext S store)
     (hf : PayloadFrame store store') :
@@ -161,7 +161,7 @@ theorem of_payloadFrame
 
 /-- Pair-level forward clock transport. -/
 theorem of_sameBlocks_currentEpoch_mono
-    {S : CausalCarrierFFGState cfg ext E anchor}
+    {S : AcceptedBlockFFGState cfg ext E anchor}
     {store store' : Store Root}
     (h : AcceptedRealizedJustifiedOrigins cfg ext S store)
     (hsame : SameBlocks store store')
@@ -182,7 +182,7 @@ theorem of_sameBlocks_currentEpoch_mono
 /-- A realized checkpoint update chooses between two already-classified
 realized origins; the unrealized field is untouched. -/
 theorem update_checkpoints
-    {S : CausalCarrierFFGState cfg ext E anchor}
+    {S : AcceptedBlockFFGState cfg ext E anchor}
     (store : Store Root) (jc fc : Checkpoint Root)
     (h : AcceptedRealizedJustifiedOrigins cfg ext S store)
     (hjc : AcceptedRealizedJustifiedOrigin cfg ext S store jc) :
@@ -223,7 +223,7 @@ theorem update_checkpoints
 /-- An unrealized checkpoint update chooses between ordinary `GU` origins;
 the refined realized field is untouched. -/
 theorem update_unrealized_checkpoints
-    {S : CausalCarrierFFGState cfg ext E anchor}
+    {S : AcceptedBlockFFGState cfg ext E anchor}
     (store : Store Root) (ujc ufc : Checkpoint Root)
     (h : AcceptedRealizedJustifiedOrigins cfg ext S store)
     (hujc : AcceptedGlobalUnrealizedJustifiedOrigin S store ujc) :
@@ -265,7 +265,7 @@ theorem update_unrealized_checkpoints
           hgu⟩
 
 theorem record_block_timeliness
-    {S : CausalCarrierFFGState cfg ext E anchor}
+    {S : AcceptedBlockFFGState cfg ext E anchor}
     (store : Store Root) (r : Root)
     (h : AcceptedRealizedJustifiedOrigins cfg ext S store) :
     AcceptedRealizedJustifiedOrigins cfg ext S
@@ -275,7 +275,7 @@ theorem record_block_timeliness
   all_goals rfl
 
 theorem update_proposer_boost_root
-    {S : CausalCarrierFFGState cfg ext E anchor}
+    {S : AcceptedBlockFFGState cfg ext E anchor}
     (store : Store Root) (head r : Root)
     (h : AcceptedRealizedJustifiedOrigins cfg ext S store) :
     AcceptedRealizedJustifiedOrigins cfg ext S
@@ -284,7 +284,7 @@ theorem update_proposer_boost_root
   split_ifs <;> apply h.of_eq cfg ext <;> first | exact ⟨rfl, rfl, rfl⟩ | rfl
 
 theorem store_target_checkpoint_state
-    {S : CausalCarrierFFGState cfg ext E anchor}
+    {S : AcceptedBlockFFGState cfg ext E anchor}
     (store : Store Root) (target : Checkpoint Root)
     (h : AcceptedRealizedJustifiedOrigins cfg ext S store) :
     AcceptedRealizedJustifiedOrigins cfg ext S
@@ -293,7 +293,7 @@ theorem store_target_checkpoint_state
   split_ifs <;> apply h.of_eq cfg ext <;> first | exact ⟨rfl, rfl, rfl⟩ | rfl
 
 theorem update_latest_messages
-    {S : CausalCarrierFFGState cfg ext E anchor}
+    {S : AcceptedBlockFFGState cfg ext E anchor}
     (store : Store Root) (indices : List ValidatorIndex)
     (a : Attestation Root)
     (h : AcceptedRealizedJustifiedOrigins cfg ext S store) :
@@ -310,7 +310,7 @@ theorem update_latest_messages
         first | exact ⟨rfl, rfl, rfl⟩ | rfl
 
 theorem on_attestation
-    {S : CausalCarrierFFGState cfg ext E anchor}
+    {S : AcceptedBlockFFGState cfg ext E anchor}
     {store store' : Store Root} {a : Attestation Root}
     {is_from_block : Bool}
     (h : AcceptedRealizedJustifiedOrigins cfg ext S store)
@@ -324,7 +324,7 @@ theorem on_attestation
     (store_target_checkpoint_state cfg ext _ _ h)
 
 theorem on_attester_slashing
-    {S : CausalCarrierFFGState cfg ext E anchor}
+    {S : AcceptedBlockFFGState cfg ext E anchor}
     {store store' : Store Root} {sl : AttesterSlashing Root}
     (h : AcceptedRealizedJustifiedOrigins cfg ext S store)
     (hh : FastConfirmation.Spec.on_attester_slashing ext store sl =
@@ -362,7 +362,7 @@ private theorem epoch_lt_of_slots_since_succ_eq_zero (s : Slot)
   exact (Nat.not_succ_le_self s) himpossible
 
 theorem after_on_tick_per_slot_same
-    {S : CausalCarrierFFGState cfg ext E anchor}
+    {S : AcceptedBlockFFGState cfg ext E anchor}
     (store : Store Root) (time : ℕ)
     (hcurrent : get_current_slot cfg { store with time := time } =
       get_current_slot cfg store)
@@ -382,7 +382,7 @@ theorem after_on_tick_per_slot_same
 the unrealized `GU` origin becomes a realized origin and nonfuturity makes its
 carrier strictly old in the new epoch. -/
 theorem after_on_tick_per_slot_next
-    {S : CausalCarrierFFGState cfg ext E anchor}
+    {S : AcceptedBlockFFGState cfg ext E anchor}
     (store : Store Root) (time : ℕ)
     (hcurrent : get_current_slot cfg { store with time := time } =
       get_current_slot cfg store + 1)
@@ -464,12 +464,12 @@ theorem after_on_tick_per_slot_next
 that value into the realized field only under the literal old-block guard,
 which is exactly the refined origin's age witness. -/
 theorem compute_pulled_up_tip
-    {S : CausalCarrierFFGState cfg ext E anchor}
+    {S : AcceptedBlockFFGState cfg ext E anchor}
     (store : Store Root) (r : Root)
     (h : AcceptedRealizedJustifiedOrigins cfg ext S store)
     (hr : E.AcceptedCarrierIn (cfg := cfg) (ext := ext) store r)
     (hgu : (ext.process_justification_and_finalization
-      (store.block_states r)).current_justified_checkpoint = S.GU r) :
+      (store.block_states r)).current_justified_checkpoint = S.unrealized_justified r) :
     AcceptedRealizedJustifiedOrigins cfg ext S
       (FastConfirmation.Spec.compute_pulled_up_tip cfg ext store r) := by
   let state := ext.process_justification_and_finalization
@@ -519,17 +519,17 @@ theorem compute_pulled_up_tip
 /-! ## Successful accepted block steps -/
 
 private theorem on_block_of_selectors
-    {S : CausalCarrierFFGState cfg ext E anchor}
+    {S : AcceptedBlockFFGState cfg ext E anchor}
     (hwf : WellFormedExecution E)
     {store store' : Store Root} {sb : SignedBeaconBlock Root}
     {post : BeaconState Root}
-    (hstore : E.CausalStore cfg ext store)
-    (hnewAt : E.AcceptedBlockAt cfg ext sb.root sb.message)
+    (hstore : E.ScheduledPrefixStore cfg ext store)
+    (hnewAt : E.BlockKnownInScheduledPrefix cfg ext sb.root sb.message)
     (hst : ext.state_transition (store.block_states sb.message.parent_root) sb =
       some post)
-    (hgj : post.current_justified_checkpoint = S.GJ sb.root)
+    (hgj : post.current_justified_checkpoint = S.realized_justified sb.root)
     (hgu : (ext.process_justification_and_finalization
-      post).current_justified_checkpoint = S.GU sb.root)
+      post).current_justified_checkpoint = S.unrealized_justified sb.root)
     (h : AcceptedRealizedJustifiedOrigins cfg ext S store)
     (hh : FastConfirmation.Spec.on_block cfg ext store sb = some store') :
     AcceptedRealizedJustifiedOrigins cfg ext S store' := by
@@ -580,7 +580,7 @@ private theorem on_block_of_selectors
         intro r hr
         by_cases hre : r = sb.root
         · subst r
-          have holdAt : E.AcceptedBlockAt cfg ext sb.root
+          have holdAt : E.BlockKnownInScheduledPrefix cfg ext sb.root
               (store.blocks sb.root) :=
             E.acceptedBlockAt_of_causal_known cfg ext hstore hr
           have heq : store.blocks sb.root = sb.message :=
@@ -646,22 +646,22 @@ private theorem on_block_of_selectors
 
 /-- One exact accepted block transition preserves the refined origin. -/
 theorem acceptedBlockTransition
-    {S : CausalCarrierFFGState cfg ext E anchor}
-    (hcoh : FFGSelectorsMatchBeaconStates cfg ext S)
+    {S : AcceptedBlockFFGState cfg ext E anchor}
+    (hcoh : FFGStateReadAgreement cfg ext S)
     (hwf : WellFormedExecution E)
-    (t : E.AcceptedBlockTransition cfg ext)
+    (t : E.SuccessfulScheduledBlockImport cfg ext)
     (h : AcceptedRealizedJustifiedOrigins cfg ext S
       (t.atPrefix.store cfg ext)) :
     AcceptedRealizedJustifiedOrigins cfg ext S t.postStore := by
   by_cases hfresh : t.signedBlock.root ∉
       (t.atPrefix.store cfg ext).block_roots
   · obtain ⟨post, hst, hinserted⟩ :=
-      Execution.AcceptedBlockTransition.on_block_inserted_state_fresh
+      Execution.SuccessfulScheduledBlockImport.on_block_inserted_state_fresh
         cfg ext hfresh t.accepted
-    have hnewAt : E.AcceptedBlockAt cfg ext t.signedBlock.root
+    have hnewAt : E.BlockKnownInScheduledPrefix cfg ext t.signedBlock.root
         t.signedBlock.message :=
       ⟨t.postStore, t.post_causal, t.root_known,
-        Execution.AcceptedBlockTransition.inserted_message_fresh t hfresh⟩
+        Execution.SuccessfulScheduledBlockImport.inserted_message_fresh t hfresh⟩
     apply on_block_of_selectors cfg ext hwf (.scheduledPrefix t.atPrefix)
       hnewAt hst
     · rw [← hinserted]
@@ -714,8 +714,8 @@ private theorem realizedJustifiedOrigin_slot_at_succ_le
 
 private theorem realizedJustifiedOrigins_after_execution_tick
     {anchor : Checkpoint Root}
-    (S : CausalCarrierFFGState cfg ext E anchor)
-    (hT : E.ScheduledPrefixPremises cfg ext)
+    (S : AcceptedBlockFFGState cfg ext E anchor)
+    (hT : E.ScheduledExecutionPremises cfg ext)
     (w : ValidatorIndex) (n : ℕ)
     (h : AcceptedRealizedJustifiedOrigins cfg ext S
       (E.store cfg ext w n)) :
@@ -810,8 +810,8 @@ private theorem realizedJustifiedOrigins_after_execution_tick
       cfg ext stepped (E.time_at (n + 1)) hfinalCurrent hstepped
 
 private theorem genesisAcceptedRealizedJustifiedOrigins
-    (B : CausalPrefixFFGInterpretation cfg ext E)
-    (hT : E.ScheduledPrefixPremises cfg ext)
+    (B : ScheduledFFGInterpretation cfg ext E)
+    (hT : E.ScheduledExecutionPremises cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint) :
     AcceptedRealizedJustifiedOrigins cfg ext B.state E.genesis_store := by
   obtain ⟨ast, ablk, hgen, _hslot, _hparent⟩ := hT.genesis_structure
@@ -820,8 +820,8 @@ private theorem genesisAcceptedRealizedJustifiedOrigins
     simpa only [get_forkchoice_store] using hanchor.symm
 
 private theorem acceptedRealizedJustifiedOrigins_take
-    (B : CausalPrefixFFGInterpretation cfg ext E)
-    (hT : E.ScheduledPrefixPremises cfg ext)
+    (B : ScheduledFFGInterpretation cfg ext E)
+    (hT : E.ScheduledExecutionPremises cfg ext)
     (w : ValidatorIndex) (n : ℕ)
     (hbase : AcceptedRealizedJustifiedOrigins cfg ext B.state
       (on_tick cfg (E.store cfg ext w n) (E.time_at (n + 1)))) :
@@ -861,7 +861,7 @@ private theorem acceptedRealizedJustifiedOrigins_take
         simp only [Option.getD_some]
         cases hevent : nextEvent with
         | block sb =>
-            let t : E.AcceptedBlockTransition cfg ext :=
+            let t : E.SuccessfulScheduledBlockImport cfg ext :=
               { atPrefix := p
                 signedBlock := sb
                 event_at := by
@@ -873,7 +873,7 @@ private theorem acceptedRealizedJustifiedOrigins_take
                 accepted := by
                   simpa [apply_event, hevent] using heq }
             exact AcceptedRealizedJustifiedOrigins.acceptedBlockTransition
-              cfg ext B.coherence.toFFGSelectorsMatchBeaconStates
+              cfg ext B.coherence.toFFGStateReadAgreement
                 hT.wellFormed t hp
         | attestation a fromBlock =>
             exact AcceptedRealizedJustifiedOrigins.on_attestation
@@ -891,8 +891,8 @@ private theorem acceptedRealizedJustifiedOrigins_take
 /-- Every ordinary execution boundary retains the executable `GJ`/old-`GU`
 origin of its realized justified checkpoint. -/
 theorem acceptedRealizedJustifiedOrigins
-    (B : CausalPrefixFFGInterpretation cfg ext E)
-    (hT : E.ScheduledPrefixPremises cfg ext)
+    (B : ScheduledFFGInterpretation cfg ext E)
+    (hT : E.ScheduledExecutionPremises cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (w : ValidatorIndex) (n : ℕ) :
     AcceptedRealizedJustifiedOrigins cfg ext B.state

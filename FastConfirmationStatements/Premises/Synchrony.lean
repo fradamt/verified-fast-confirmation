@@ -8,7 +8,7 @@ public import FastConfirmationStatements.Premises.Behavior
 
 namespace FastConfirmation.Spec
 variable {Root : Type*} [LinearOrder Root] [Inhabited Root]
-variable (cfg : Config) (ext : Externals Root)
+variable (cfg : Config) (ext : BeaconFunctionInterface Root)
 
 /-- The only permanent block-delivery exemption is the finalized-checkpoint
 guard in `on_block`. The parent is already known at the receiver, so a late

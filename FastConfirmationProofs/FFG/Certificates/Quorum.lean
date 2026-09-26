@@ -31,7 +31,7 @@ private theorem threshold_arith {s d X : ℕ}
 
 
 variable {Root : Type*} [LinearOrder Root] [Inhabited Root]
-variable (cfg : Config) (ext : Externals Root)
+variable (cfg : Config) (ext : BeaconFunctionInterface Root)
 
 /-- `is_one_confirmed`, resolved to a branch-free inequality: twice the
 support plus the discount strictly exceeds the maximum-support + boost +

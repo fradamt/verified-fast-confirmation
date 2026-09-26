@@ -26,7 +26,7 @@ argument.
 namespace FastConfirmation.Spec
 
 variable {Root : Type*} [LinearOrder Root] [Inhabited Root]
-variable (cfg : Config) (ext : Externals Root)
+variable (cfg : Config) (ext : BeaconFunctionInterface Root)
 
 namespace Execution
 
@@ -36,7 +36,7 @@ variable {E : Execution Root}
 proofs.  Public early-phase constructors expose independent trajectory,
 synchrony, static-registry, economic, and local-domain inputs. -/
 private def selectedMarginAssumptions_of_earlyPhaseInputs
-    (hT : E.ScheduledPrefixPremises cfg ext)
+    (hT : E.ScheduledExecutionPremises cfg ext)
     (hsync : NextSlotSynchronyPremises cfg ext E)
     (hstatic : StaticValidatorSet cfg E)
     (hbyz : ByzantineWeightPremises cfg E)
@@ -293,7 +293,7 @@ convenient bulk adapter, this theorem asks only for the chosen seed's endpoint
 knownness; call-facing constructors below derive that knownness from
 `Synchrony` rather than postulating a whole-store inclusion. -/
 theorem recentSourceSeedAt_endpoint_of_explicitSeed_sameEpoch
-    (B : CausalPrefixFFGInterpretation cfg ext E)
+    (B : ScheduledFFGInterpretation cfg ext E)
     (hwf : WellFormedExecution E)
     (hec : BeaconExternalsPremises cfg ext E)
     {ast : BeaconState Root} {ablk : SignedBeaconBlock Root}
@@ -302,8 +302,8 @@ theorem recentSourceSeedAt_endpoint_of_explicitSeed_sameEpoch
     (hgenParent : ablk.message.parent_root ≠ ablk.root)
     {query : Store Root} {w : ValidatorIndex} {m : Nat}
     {selected seed : Root}
-    (hquery : E.CausalStore cfg ext query)
-    (hendpoint : E.CausalStore cfg ext (E.store cfg ext w m))
+    (hquery : E.ScheduledPrefixStore cfg ext query)
+    (hendpoint : E.ScheduledPrefixStore cfg ext (E.store cfg ext w m))
     (hqueryParent : ParentSlotLt query)
     (hqueryProvenance : BlockProvenance E query)
     (hqueryWalk : WalkKnown query (query.blocks selected).slot seed)
@@ -349,21 +349,21 @@ recovered from that known head's common accepted parent chain.
 The public signature lists the independent lower contracts; it does not
 export `SelectedMarginAssumptions` as a completion premise. -/
 theorem StrictSelectedResultMechanicalFacts.fcrStep_previous_endpointRecentSourceSeed
-    (hT : E.ScheduledPrefixPremises cfg ext)
+    (hT : E.ScheduledExecutionPremises cfg ext)
     (hsync : NextSlotSynchronyPremises cfg ext E)
     (hstatic : StaticValidatorSet cfg E)
     (hbyz : ByzantineWeightPremises cfg E)
     (hdomain : SelectedMarginDomain cfg ext E)
-    (B : CausalPrefixFFGInterpretation cfg ext E)
+    (B : ScheduledFFGInterpretation cfg ext E)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
-    (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
+    (hboundary : InitialAnchorAtEpochBoundary (cfg := cfg)
       (E := E) (anchor := B.anchor))
-    (hDelay : E.RealizedFinalizationDelay cfg ext B)
-    (P : EpochCheckpointClosure B.anchor
-      (E.AcceptedRoot cfg ext) B.state.C)
-    (V : B.state.ExactLinkValidity)
+    (hDelay : E.ImportedBlockFinalizationLag cfg ext B)
+    (P : EpochCheckpointProjectionLaws B.anchor
+      (E.RootKnownInScheduledPrefix cfg ext) B.state.checkpoint_at_epoch)
+    (V : B.state.LinkCheckpointAgreement)
     (hanchorExact : B.anchor =
-      B.state.C B.anchor.root B.anchor.epoch)
+      B.state.checkpoint_at_epoch B.anchor.root B.anchor.epoch)
     (hacc : CheckpointCertificateAccountability cfg E B.anchor)
     {v : ValidatorIndex} (hv : v ∈ E.honest) {n : Nat}
     (hn1H : E.WithinHorizon cfg (n + 1))
@@ -386,7 +386,7 @@ theorem StrictSelectedResultMechanicalFacts.fcrStep_previous_endpointRecentSourc
     E.withinHorizon_mono cfg (Nat.le_succ n) hn1H
   have hslotForward : E.slot_at cfg (n + 1) ≤ E.slot_at cfg m :=
     E.slot_at_mono cfg hnm
-  have hqueryCausal : E.CausalStore cfg ext
+  have hqueryCausal : E.ScheduledPrefixStore cfg ext
       (E.fcrStoreAtCall cfg ext v n).store := by
     rw [E.fcrStep_store]
     exact E.store_causal cfg ext v (n + 1)
@@ -453,7 +453,7 @@ theorem StrictSelectedResultMechanicalFacts.fcrStep_previous_endpointRecentSourc
     let target := get_voting_source cfg
       (E.fcrStoreAtCall cfg ext v n).store
       (E.fcrStoreAtCall cfg ext v n).previous_slot_head
-    have hsourceAU : B.state.AU cfg ext
+    have hsourceAU : B.state.AvailableCheckpoint cfg ext
         (E.fcrStoreAtCall cfg ext v n).previous_slot_head target := by
       exact hqueryCausal.getVotingSource_AU cfg ext B hseedQ
     have hreal := E.finalizedCheckpoint_resetRealizedAt_of_acceptedGlobalTrajectory
@@ -531,7 +531,7 @@ theorem StrictSelectedResultMechanicalFacts.fcrStep_previous_endpointRecentSourc
           hd hdQuery hanc
       let target := get_voting_source cfg
         (E.fcrStoreAtCall cfg ext v n).store result
-      have hsourceAU : B.state.AU cfg ext result target :=
+      have hsourceAU : B.state.AvailableCheckpoint cfg ext result target :=
         hqueryCausal.getVotingSource_AU cfg ext B h.result_known
       have hreal := E.finalizedCheckpoint_resetRealizedAt_of_acceptedGlobalTrajectory
         cfg ext B hT hanchor hboundary (w := w) m
@@ -584,18 +584,18 @@ from the narrow honest past-descendant witness. The one Lemma-13 seed is
 transported to the endpoint; its selected ancestor follows from the accepted
 parent chain there. -/
 theorem StrictSelectedResultMechanicalFacts.fcrStep_currentNext_endpointRecentSourceSeed
-    (hT : E.ScheduledPrefixPremises cfg ext)
+    (hT : E.ScheduledExecutionPremises cfg ext)
     (hsync : NextSlotSynchronyPremises cfg ext E)
     (hstatic : StaticValidatorSet cfg E)
     (hbyz : ByzantineWeightPremises cfg E)
     (hdomain : SelectedMarginDomain cfg ext E)
-    (B : CausalPrefixFFGInterpretation cfg ext E)
+    (B : ScheduledFFGInterpretation cfg ext E)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
-    (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
+    (hboundary : InitialAnchorAtEpochBoundary (cfg := cfg)
       (E := E) (anchor := B.anchor))
-    (hDelay : E.RealizedFinalizationDelay cfg ext B)
-    (P : EpochCheckpointClosure B.anchor (E.AcceptedRoot cfg ext) B.state.C)
-    (V : B.state.ExactLinkValidity)
+    (hDelay : E.ImportedBlockFinalizationLag cfg ext B)
+    (P : EpochCheckpointProjectionLaws B.anchor (E.RootKnownInScheduledPrefix cfg ext) B.state.checkpoint_at_epoch)
+    (V : B.state.LinkCheckpointAgreement)
     (hacc : CheckpointCertificateAccountability cfg E B.anchor)
     {v : ValidatorIndex} (hv : v ∈ E.honest) {n : Nat}
     (hn1H : E.WithinHorizon cfg (n + 1))
@@ -617,7 +617,7 @@ theorem StrictSelectedResultMechanicalFacts.fcrStep_currentNext_endpointRecentSo
   let hA := E.selectedMarginAssumptions_of_earlyPhaseInputs cfg ext
     hT hsync hstatic hbyz hdomain
   obtain ⟨ast, ablk, hgen, hgenSlot, hgenParent⟩ := hT.genesis_structure
-  have hqueryCausal : E.CausalStore cfg ext
+  have hqueryCausal : E.ScheduledPrefixStore cfg ext
       (E.fcrStoreAtCall cfg ext v n).store := by
     rw [E.fcrStep_store]
     exact E.store_causal cfg ext v (n + 1)
@@ -670,21 +670,21 @@ theorem StrictSelectedResultMechanicalFacts.fcrStep_currentNext_endpointRecentSo
   obtain ⟨origin, horiginEq, hcutoff, horiginKnown⟩ :=
     E.scheduled_fcr_call_root_before_deadline cfg ext hT.whole_seconds
       hgenTime hcall (by simpa only [E.fcrStep_store] using hseedQ)
-  have hAU : B.state.AU cfg ext seed (B.state.GU seed) :=
+  have hAU : B.state.AvailableCheckpoint cfg ext seed (B.state.unrealized_justified seed) :=
     B.state.gu_AU cfg ext (E.acceptedRoot_of_causal_known cfg ext
       hqueryCausal hseedQ)
   obtain ⟨hstart, hbefore⟩ := E.past_slot_deadline_target_gate cfg
     hT.whole_seconds hgenTime (source := origin) (target := m)
       (by simpa only [horiginEq] using hslotLt)
   have hrecent : get_current_store_epoch cfg (E.store cfg ext w m) ≤
-      (B.state.GU seed).epoch + 2 := by
+      (B.state.unrealized_justified seed).epoch + 2 := by
     rw [hnextEpoch]
     simpa only [Nat.add_assoc, Nat.reduceAdd] using Nat.add_le_add_right hguRecent 1
   have hseedM : seed ∈ (E.store cfg ext w m).block_roots :=
     E.deadline_carrier_known_of_recent_au cfg ext B hT hsync.deadline_block_relay
       hanchor hboundary
       (E.causalRealizedFinalizationLag_of_acceptedDelay cfg ext B hT hanchor hDelay)
-      P V hacc (n := origin) (m := m) (tip := seed) (c := B.state.GU seed)
+      P V hacc (n := origin) (m := m) (tip := seed) (c := B.state.unrealized_justified seed)
       hv hw (by simpa only [horiginEq] using hn1H) hmH
       horiginKnown hcutoff hstart hbefore hAU hrecent
   have hqueryNonfuture : BlocksSlotLe

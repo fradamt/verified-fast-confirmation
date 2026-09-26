@@ -7,7 +7,7 @@ public import FastConfirmationStatements.Premises.Synchrony
 
 namespace FastConfirmation.Spec
 variable {Root : Type*} [LinearOrder Root] [Inhabited Root]
-variable (cfg : Config) (ext : Externals Root)
+variable (cfg : Config) (ext : BeaconFunctionInterface Root)
 namespace Execution
 variable (E : Execution Root)
 end Execution
@@ -27,7 +27,7 @@ def Synchrony.toPaperSafetySynchrony
   attester_slashing_relay := h.attester_slashing_relay
 
 section DelayFacts
-variable {cfg : Config} {ext : Externals Root} {E : Execution Root}
+variable {cfg : Config} {ext : BeaconFunctionInterface Root} {E : Execution Root}
 
 /-- The delay chosen from `Synchrony.delta` is strictly positive. -/
 theorem Synchrony.delta_pos (h : Synchrony cfg ext E) :

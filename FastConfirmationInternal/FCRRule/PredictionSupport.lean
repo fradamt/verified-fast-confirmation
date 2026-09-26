@@ -10,18 +10,18 @@ fields of the safety premise.
 @[expose] public section
 namespace FastConfirmation.Spec
 variable {Root : Type*} [LinearOrder Root] [Inhabited Root]
-variable (cfg : Config) (ext : Externals Root)
+variable (cfg : Config) (ext : BeaconFunctionInterface Root)
 
 /-- Derived support for prediction helpers used by one
-selector call. `current_target` covers the tentative edges that cross to a
-later epoch. `selected_previous_result_no_conflict` covers the final
+selector call. `current_edge_vote_support` covers the tentative edges that cross to a
+later epoch. `previous_result_vote_support` covers the final
 no-conflict guard in a non-start slot with descendant support. The safety premise does not contain this record. Generic proof adapters and
 concrete run facts retain it without changing their declaration names. -/
-structure FCRPredictionSupportAt (E : Execution Root)
+structure SelectedPredictionVoteSupport (E : Execution Root)
     (v : ValidatorIndex) (q : ℕ)
     (fcrStore : FastConfirmationStore Root)
     (latestConfirmedRoot : Root) : Prop where
-  current_target : ∀ a c : Root,
+  current_edge_vote_support : ∀ a c : Root,
     CurrentTargetSelectedEdge cfg ext fcrStore latestConfirmedRoot a c →
     HonestVotesSupportTarget cfg E
       (get_current_target cfg fcrStore.store) q
@@ -29,7 +29,7 @@ structure FCRPredictionSupportAt (E : Execution Root)
   non-start slot the wrapper's final guard uses the no-conflict helper, so
   every later honest target must descend from the selected result. The
   target need not equal the caller's current target. -/
-  selected_previous_result_no_conflict : ∀ result : Root,
+  previous_result_vote_support : ∀ result : Root,
     find_latest_confirmed_descendant cfg ext fcrStore latestConfirmedRoot = result →
     result ≠ latestConfirmedRoot →
     get_block_epoch cfg fcrStore.store result ≠

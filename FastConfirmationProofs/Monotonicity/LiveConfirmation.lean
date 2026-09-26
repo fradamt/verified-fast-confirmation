@@ -16,7 +16,7 @@ boundary checks.
 namespace FastConfirmation.Spec
 
 variable {Root : Type*} [LinearOrder Root] [Inhabited Root]
-variable (cfg : Config) (ext : Externals Root)
+variable (cfg : Config) (ext : BeaconFunctionInterface Root)
 
 omit [LinearOrder Root] [Inhabited Root] in
 /-- A consecutive parent in the same epoch makes the confirmation window
@@ -1528,7 +1528,7 @@ theorem NextSlotSafetyPremises.live_boundary_checkpoint_geometry
   have hheadKnown : (get_head cfg (E.store cfg ext w B)).root ∈
       (E.store cfg ext w B).block_roots :=
     E.headRootKnown_of_acceptedGlobalTrajectory cfg ext
-      h.semantics h.trajectory h.anchor_eq h.anchor_boundary hw B hHB
+      h.ffg_interpretation h.trajectory h.anchor_eq h.anchor_boundary hw B hHB
   have hwalk : WalkKnown (E.store cfg ext w B)
       (compute_start_slot_at_epoch cfg e)
       (get_head cfg (E.store cfg ext w B)).root :=
@@ -1645,12 +1645,12 @@ theorem NextSlotSafetyPremises.live_actual_boundary_chain_safe
   have htip : E.confirmed cfg ext w T ∈
       (E.store cfg ext w T).block_roots :=
     E.confirmed_known_of_acceptedGlobalTrajectory cfg ext
-      h.semantics h.trajectory h.anchor_eq h.anchor_boundary hw T
+      h.ffg_interpretation h.trajectory h.anchor_eq h.anchor_boundary hw T
       (E.withinHorizon_mono cfg (Nat.sub_le B 1) hHB)
   have hheadKnown : (get_head cfg (E.store cfg ext w B)).root ∈
       (E.store cfg ext w B).block_roots :=
     E.headRootKnown_of_acceptedGlobalTrajectory cfg ext
-      h.semantics h.trajectory h.anchor_eq h.anchor_boundary hw B hHB
+      h.ffg_interpretation h.trajectory h.anchor_eq h.anchor_boundary hw B hHB
   have hwf : ParentSlotLt (E.store cfg ext w B) :=
     E.store_parentSlotLt cfg ext h.trajectory.wellFormed
       h.trajectory.externals_coherence h.trajectory.genesis_structure
@@ -1761,13 +1761,13 @@ theorem NextSlotSafetyPremises.live_boundary_call_ancestor
       he0 heDone hlastAfterZero hHm hw
   have htip : tip ∈ (E.store cfg ext w T).block_roots :=
     E.confirmed_known_of_acceptedGlobalTrajectory cfg ext
-      h.semantics h.trajectory h.anchor_eq h.anchor_boundary hw T
+      h.ffg_interpretation h.trajectory h.anchor_eq h.anchor_boundary hw T
       (E.withinHorizon_mono cfg (Nat.sub_le B 1) hHB)
   have htipLater : tip ∈ later.block_roots :=
     (E.store_storeLE cfg ext w (by rw [← hTsucc]; exact Nat.le_succ T)).1 htip
   have hheadKnown : (get_head cfg later).root ∈ later.block_roots :=
     E.headRootKnown_of_acceptedGlobalTrajectory cfg ext
-      h.semantics h.trajectory h.anchor_eq h.anchor_boundary hw B hHB
+      h.ffg_interpretation h.trajectory h.anchor_eq h.anchor_boundary hw B hHB
   have hwf : ParentSlotLt later :=
     E.store_parentSlotLt cfg ext h.trajectory.wellFormed
       h.trajectory.externals_coherence h.trajectory.genesis_structure
@@ -1794,7 +1794,7 @@ theorem NextSlotSafetyPremises.live_boundary_call_ancestor
     simpa only [query, Execution.getLatestConfirmedTraceAt,
       getLatestConfirmedTrace, getLatestAfterObserved] using
       E.getLatestConfirmedTraceAt_input_known cfg ext
-        h.semantics h.trajectory h.anchor_eq h.anchor_boundary htip
+        h.ffg_interpretation h.trajectory h.anchor_eq h.anchor_boundary htip
   have hheadObs : cp = later.unrealized_justifications
       (get_head cfg later).root := by
     have hgate := (h.live_ffg_actual_boundary_inputs cfg ext E live
@@ -1911,7 +1911,7 @@ theorem NextSlotSafetyPremises.live_nonstart_call_ancestor
   have htip : E.confirmed cfg ext w k ∈
       (E.store cfg ext w k).block_roots :=
     E.confirmed_known_of_acceptedGlobalTrajectory cfg ext
-      h.semantics h.trajectory h.anchor_eq h.anchor_boundary hw k
+      h.ffg_interpretation h.trajectory h.anchor_eq h.anchor_boundary hw k
       (E.withinHorizon_mono cfg (Nat.le_succ k) hHk1)
   have htipLater : E.confirmed cfg ext w k ∈
       (E.store cfg ext w (k + 1)).block_roots :=
@@ -1921,11 +1921,11 @@ theorem NextSlotSafetyPremises.live_nonstart_call_ancestor
     simpa only [query, Execution.getLatestConfirmedTraceAt,
       getLatestConfirmedTrace, getLatestAfterObserved] using
       E.getLatestConfirmedTraceAt_input_known cfg ext
-        h.semantics h.trajectory h.anchor_eq h.anchor_boundary htip
+        h.ffg_interpretation h.trajectory h.anchor_eq h.anchor_boundary htip
   have hheadKnown : (get_head cfg (E.store cfg ext w (k + 1))).root ∈
       (E.store cfg ext w (k + 1)).block_roots :=
     E.headRootKnown_of_acceptedGlobalTrajectory cfg ext
-      h.semantics h.trajectory h.anchor_eq h.anchor_boundary hw (k + 1) hHk1
+      h.ffg_interpretation h.trajectory h.anchor_eq h.anchor_boundary hw (k + 1) hHk1
   have hwf : ParentSlotLt (E.store cfg ext w (k + 1)) :=
     E.store_parentSlotLt cfg ext h.trajectory.wellFormed
       h.trajectory.externals_coherence h.trajectory.genesis_structure
@@ -2015,13 +2015,13 @@ theorem NextSlotSafetyPremises.live_boundary_call_recent
   have htip : E.confirmed cfg ext w T ∈
       (E.store cfg ext w T).block_roots :=
     E.confirmed_known_of_acceptedGlobalTrajectory cfg ext
-      h.semantics h.trajectory h.anchor_eq h.anchor_boundary hw T
+      h.ffg_interpretation h.trajectory h.anchor_eq h.anchor_boundary hw T
       (E.withinHorizon_mono cfg (Nat.sub_le B 1) hHB)
   have htipLater : E.confirmed cfg ext w T ∈ later.block_roots :=
     (E.store_storeLE cfg ext w (by rw [← hTsucc]; exact Nat.le_succ T)).1 htip
   have hheadKnown : (get_head cfg later).root ∈ later.block_roots :=
     E.headRootKnown_of_acceptedGlobalTrajectory cfg ext
-      h.semantics h.trajectory h.anchor_eq h.anchor_boundary hw B hHB
+      h.ffg_interpretation h.trajectory h.anchor_eq h.anchor_boundary hw B hHB
   have hwf : ParentSlotLt later :=
     E.store_parentSlotLt cfg ext h.trajectory.wellFormed
       h.trajectory.externals_coherence h.trajectory.genesis_structure
@@ -2033,7 +2033,7 @@ theorem NextSlotSafetyPremises.live_boundary_call_recent
     simpa only [query, Execution.getLatestConfirmedTraceAt,
       getLatestConfirmedTrace, getLatestAfterObserved] using
       E.getLatestConfirmedTraceAt_input_known cfg ext
-        h.semantics h.trajectory h.anchor_eq h.anchor_boundary htip
+        h.ffg_interpretation h.trajectory h.anchor_eq h.anchor_boundary htip
   have hheadObs : cp = later.unrealized_justifications
       (get_head cfg later).root := by
     have hgate := (h.live_ffg_actual_boundary_inputs cfg ext E live
@@ -2173,7 +2173,7 @@ theorem NextSlotSafetyPremises.live_second_invariants
           have htip : E.confirmed cfg ext w k ∈
               (E.store cfg ext w k).block_roots :=
             E.confirmed_known_of_acceptedGlobalTrajectory cfg ext
-              h.semantics h.trajectory h.anchor_eq h.anchor_boundary hw k
+              h.ffg_interpretation h.trajectory h.anchor_eq h.anchor_boundary hw k
               (E.withinHorizon_mono cfg (Nat.le_succ k) hHk1)
           have hstable := h.live_known_epoch_stable cfg ext E
             (Nat.le_succ k) htip
@@ -2187,7 +2187,7 @@ theorem NextSlotSafetyPremises.live_second_invariants
           have hresultKnown : E.confirmed cfg ext w (k + 1) ∈
               (E.store cfg ext w (k + 1)).block_roots :=
             E.confirmed_known_of_acceptedGlobalTrajectory cfg ext
-              h.semantics h.trajectory h.anchor_eq h.anchor_boundary hw
+              h.ffg_interpretation h.trajectory h.anchor_eq h.anchor_boundary hw
               (k + 1) hHk1
           have htipLater := (E.store_storeLE cfg ext w (Nat.le_succ k)).1 htip
           have hwf : ParentSlotLt (E.store cfg ext w (k + 1)) :=
@@ -2220,7 +2220,7 @@ theorem NextSlotSafetyPremises.live_second_invariants
         have htip : E.confirmed cfg ext w k ∈
             (E.store cfg ext w k).block_roots :=
           E.confirmed_known_of_acceptedGlobalTrajectory cfg ext
-            h.semantics h.trajectory h.anchor_eq h.anchor_boundary hw k
+            h.ffg_interpretation h.trajectory h.anchor_eq h.anchor_boundary hw k
             (E.withinHorizon_mono cfg (Nat.le_succ k) hHk1)
         have hstable := h.live_known_epoch_stable cfg ext E
           (Nat.le_succ k) htip
@@ -2270,11 +2270,11 @@ theorem NextSlotSafetyPremises.live_confirmed_ancestor_interval
       have htopK : E.confirmed cfg ext w k ∈
           (E.store cfg ext w k).block_roots :=
         E.confirmed_known_of_acceptedGlobalTrajectory cfg ext
-          h.semantics h.trajectory h.anchor_eq h.anchor_boundary hw k hHk
+          h.ffg_interpretation h.trajectory h.anchor_eq h.anchor_boundary hw k hHk
       have hbaseJ : E.confirmed cfg ext w j ∈
           (E.store cfg ext w j).block_roots :=
         E.confirmed_known_of_acceptedGlobalTrajectory cfg ext
-          h.semantics h.trajectory h.anchor_eq h.anchor_boundary hw j hHj
+          h.ffg_interpretation h.trajectory h.anchor_eq h.anchor_boundary hw j hHj
       have hbaseK : E.confirmed cfg ext w j ∈
           (E.store cfg ext w k).block_roots :=
         (E.store_storeLE cfg ext w hjk).1 hbaseJ
@@ -2286,7 +2286,7 @@ theorem NextSlotSafetyPremises.live_confirmed_ancestor_interval
       have htopLater : E.confirmed cfg ext w (k + 1) ∈
           (E.store cfg ext w (k + 1)).block_roots :=
         E.confirmed_known_of_acceptedGlobalTrajectory cfg ext
-          h.semantics h.trajectory h.anchor_eq h.anchor_boundary hw
+          h.ffg_interpretation h.trajectory h.anchor_eq h.anchor_boundary hw
           (k + 1) hHk1
       have hbaseLater : E.confirmed cfg ext w j ∈
           (E.store cfg ext w (k + 1)).block_roots :=

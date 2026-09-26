@@ -16,7 +16,7 @@ support estimate remain separate obligations.
 namespace FastConfirmation.Spec
 
 variable {Root : Type*} [LinearOrder Root] [Inhabited Root]
-variable (cfg : Config) (ext : Externals Root)
+variable (cfg : Config) (ext : BeaconFunctionInterface Root)
 
 namespace Execution
 
@@ -175,7 +175,7 @@ theorem NextSlotSafetyPremises.honest_vote_root_known
   rcases hvote' with ⟨hk, ha⟩
   rw [← hk] at ha
   have hhead := E.headRootKnown_of_acceptedGlobalTrajectory cfg ext
-    h.semantics h.trajectory h.anchor_eq h.anchor_boundary hi k hHk
+    h.ffg_interpretation h.trajectory h.anchor_eq h.anchor_boundary hi k hHk
   have hroot : a.data.beacon_block_root =
       (get_head cfg (E.store cfg ext i k)).root := by
     rw [ha]
@@ -203,7 +203,7 @@ theorem NextSlotSafetyPremises.honest_vote_target_epoch
     rw [hgenEq]
     exact wellFormedStore_get_forkchoice_store cfg ast ablk hgenSlot hparent
   have hhead := E.headRootKnown_of_acceptedGlobalTrajectory cfg ext
-    h.semantics h.trajectory h.anchor_eq h.anchor_boundary hi k hHk
+    h.ffg_interpretation h.trajectory h.anchor_eq h.anchor_boundary hi k hHk
   have hcore := E.store_wellFormedStoreCore cfg ext
     h.trajectory.externals_coherence.state_transition_slot hgws.core i k
   have hstateSlot : ((E.store cfg ext i k).block_states
@@ -300,9 +300,9 @@ theorem NextSlotSafetyPremises.vote_ubiquity
       (honest_attestation cfg ext (E.store cfg ext v n) s index v).data.target.epoch ≤
         get_latest_message_epoch cfg msg := by
   have hhead := E.headRootKnown_of_acceptedGlobalTrajectory cfg ext
-    h.semantics h.trajectory h.anchor_eq h.anchor_boundary hv n hHn
+    h.ffg_interpretation h.trajectory h.anchor_eq h.anchor_boundary hv n hHn
   have hwalkDomain := E.postAnchorHonestVoteTargetWalkDomain_of_acceptedGlobalTrajectory
-    cfg ext h.semantics h.trajectory h.anchor_eq h.anchor_boundary
+    cfg ext h.ffg_interpretation h.trajectory h.anchor_eq h.anchor_boundary
   have hwalk := hwalkDomain v hv s n index hs0 hHn hn hvote
   have hheadVote :
       (honest_attestation cfg ext (E.store cfg ext v n) s index v).data.beacon_block_root ∈
@@ -318,7 +318,7 @@ theorem NextSlotSafetyPremises.vote_ubiquity
   exact E.vote_ubiquity cfg ext h.trajectory.wellFormed h.trajectory.honest_behavior
     h.completed_calls.synchrony
     (E.honestHeadPathAdmissibility_of_accepted cfg ext
-      h.semantics h.trajectory h.completed_calls h.anchor_eq h.anchor_boundary
+      h.ffg_interpretation h.trajectory h.completed_calls h.anchor_eq h.anchor_boundary
       h.slots_per_epoch_gt_one h.finalization_delay
       h.checkpoint_projection h.exact_link_validity)
     h.trajectory.externals_coherence h.trajectory.whole_seconds h.trajectory.genesis_structure

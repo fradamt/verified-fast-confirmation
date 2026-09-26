@@ -22,7 +22,7 @@ six.
 └────────────────────────────┴──────────────────────────────────────────────────────────────────────────────────────────────┘
 ```
 
-`FastConfirmationModel` and `FastConfirmationStatements` are the trusted review surface. They contain definitions and premise propositions, with only proof terms needed by `AcceptedBlockTransition.successorPrefix` and `getLatestConfirmedTrace`. The Lean kernel checks the proof bodies in Internal, Proofs, Witnesses, and Paper. The audit in `scripts/Audit.lean` checks public theorem dependencies and permits only Lean's standard `propext`, `Classical.choice`, and `Quot.sound` axioms.
+`FastConfirmationModel` and `FastConfirmationStatements` are the trusted review surface. They contain definitions and premise propositions, with only proof terms needed by `SuccessfulScheduledBlockImport.successorPrefix` and `getLatestConfirmedTrace`. The Lean kernel checks the proof bodies in Internal, Proofs, Witnesses, and Paper. The audit in `scripts/Audit.lean` checks public theorem dependencies and permits only Lean's standard `propext`, `Classical.choice`, and `Quot.sound` axioms.
 
 ## Review checks
 

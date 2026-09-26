@@ -17,7 +17,7 @@ This module contains `ConfirmTaxArm`, `ConfirmMemberArm`, `ConfirmedArmSupply` a
 namespace FastConfirmation.Spec
 
 variable {Root : Type*} [LinearOrder Root] [Inhabited Root]
-variable (cfg : Config) (ext : Externals Root)
+variable (cfg : Config) (ext : BeaconFunctionInterface Root)
 
 /-! ## 1. Exhaustive edge/window geometry -/
 

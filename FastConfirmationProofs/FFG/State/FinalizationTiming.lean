@@ -47,7 +47,7 @@ missing law.
 namespace FastConfirmation.Spec
 
 variable {Root : Type*} [LinearOrder Root] [Inhabited Root]
-variable (cfg : Config) (ext : Externals Root)
+variable (cfg : Config) (ext : BeaconFunctionInterface Root)
 
 namespace Execution
 
@@ -59,8 +59,8 @@ variable (E : Execution Root)
 same scheduled second.  This lets certificate evidence attached to the
 newly accepted root use the ordinary-store semantic-ancestry reflection
 lemmas, without postulating a second pulled-up-finalization delay law. -/
-private theorem AcceptedBlockTransition.root_known_at_second_end
-    (t : E.AcceptedBlockTransition cfg ext) :
+private theorem SuccessfulScheduledBlockImport.root_known_at_second_end
+    (t : E.SuccessfulScheduledBlockImport cfg ext) :
     t.signedBlock.root ∈
       (E.store cfg ext t.atPrefix.node
         (t.atPrefix.previousSecond + 1)).block_roots := by
@@ -109,9 +109,9 @@ The proof keeps the exact accepted carrier: one signer attests in epoch
 ancestor of the accepted tip, and ordinary-store reflection turns the
 semantic ancestry into the executable slot order. -/
 theorem acceptedPulledUpFinalized_succ_le_blockEpoch
-    (B : CausalPrefixFFGInterpretation cfg ext E)
-    (hT : E.ScheduledPrefixPremises cfg ext)
-    (t : E.AcceptedBlockTransition cfg ext) :
+    (B : ScheduledFFGInterpretation cfg ext E)
+    (hT : E.ScheduledExecutionPremises cfg ext)
+    (t : E.SuccessfulScheduledBlockImport cfg ext) :
     let pulledFinalized :=
       (ext.process_justification_and_finalization
         (t.postStore.block_states t.signedBlock.root)).finalized_checkpoint
@@ -120,7 +120,7 @@ theorem acceptedPulledUpFinalized_succ_le_blockEpoch
         compute_epoch_at_slot cfg t.signedBlock.message.slot := by
   have hguf := B.coherence.transition_guf t
   rw [hguf]
-  rcases B.state.guf_evidence t.signedBlock.root t.root_accepted with
+  rcases B.state.unrealized_finalized_evidence t.signedBlock.root t.root_accepted with
     hanchor | hcertificate
   · exact Or.inl hanchor
   · right
@@ -170,15 +170,15 @@ theorem acceptedPulledUpFinalized_succ_le_blockEpoch
       ancestor_slot_le hparentSlots
         (hwalkK containing hcontainingKnown
           t.signedBlock.root htipKnown) hancestor
-    have hstoreCausal : E.CausalStore cfg ext store :=
+    have hstoreCausal : E.ScheduledPrefixStore cfg ext store :=
       E.store_causal cfg ext t.atPrefix.node
         (t.atPrefix.previousSecond + 1)
     have hcontainingBlock : store.blocks containing =
         hevidence.carrier_message :=
-      (Execution.CausalStore.acceptedBlockAt_iff_eq cfg ext E
+      (Execution.ScheduledPrefixStore.acceptedBlockAt_iff_eq cfg ext E
         hT.wellFormed hstoreCausal hcontainingKnown).mp
           hevidence.carrier_accepted
-    have htipAt : E.AcceptedBlockAt cfg ext t.signedBlock.root
+    have htipAt : E.BlockKnownInScheduledPrefix cfg ext t.signedBlock.root
         t.signedBlock.message := by
       refine ⟨t.postStore, t.post_causal, t.root_known, ?_⟩
       by_cases hfresh : t.signedBlock.root ∉
@@ -187,7 +187,7 @@ theorem acceptedPulledUpFinalized_succ_le_blockEpoch
       · have hknown : t.signedBlock.root ∈
             (t.atPrefix.store cfg ext).block_roots :=
           Classical.byContradiction hfresh
-        have hpreStore : E.CausalStore cfg ext
+        have hpreStore : E.ScheduledPrefixStore cfg ext
             (t.atPrefix.store cfg ext) := .scheduledPrefix t.atPrefix
         have hprov := hpreStore.blockProvenance
           cfg ext E t.signedBlock.root hknown
@@ -214,7 +214,7 @@ theorem acceptedPulledUpFinalized_succ_le_blockEpoch
         exact hmessage
     have htipBlock : store.blocks t.signedBlock.root =
         t.signedBlock.message :=
-      (Execution.CausalStore.acceptedBlockAt_iff_eq cfg ext E
+      (Execution.ScheduledPrefixStore.acceptedBlockAt_iff_eq cfg ext E
         hT.wellFormed hstoreCausal htipKnown).mp htipAt
     have hattestationBeforeTip : a.data.slot <
         t.signedBlock.message.slot := by
@@ -226,10 +226,10 @@ theorem acceptedPulledUpFinalized_succ_le_blockEpoch
         _ ≤ (store.blocks t.signedBlock.root).slot := hslotLe
         _ = t.signedBlock.message.slot :=
           congrArg BeaconBlock.slot htipBlock
-    have hchildEpoch : (B.state.GUF t.signedBlock.root).epoch + 1 =
+    have hchildEpoch : (B.state.unrealized_finalized t.signedBlock.root).epoch + 1 =
         compute_epoch_at_slot cfg a.data.slot := by
       calc
-        (B.state.GUF t.signedBlock.root).epoch + 1 = F.child.epoch :=
+        (B.state.unrealized_finalized t.signedBlock.root).epoch + 1 = F.child.epoch :=
           F.child_epoch.symm
         _ = a.data.target.epoch :=
           congrArg Checkpoint.epoch haTarget.symm
@@ -468,8 +468,8 @@ theorem compute_pulled_up_tip (store : Store Root) (r : Root)
 end AcceptedFinalizationLagAt
 
 /-- Successful `on_block` exposes the handler's not-in-the-future gate. -/
-private theorem AcceptedBlockTransition.blockEpoch_le_current
-    (t : E.AcceptedBlockTransition cfg ext)
+private theorem SuccessfulScheduledBlockImport.blockEpoch_le_current
+    (t : E.SuccessfulScheduledBlockImport cfg ext)
     (hfresh : t.signedBlock.root ∉
       (t.atPrefix.store cfg ext).block_roots) :
     compute_epoch_at_slot cfg t.signedBlock.message.slot ≤
@@ -602,24 +602,24 @@ private theorem AcceptedFinalizationLagAt.on_block_of_delays
 
 /-- One accepted block preserves the paired lag invariant. -/
 theorem AcceptedFinalizationLagAt.acceptedBlockTransition
-    (B : CausalPrefixFFGInterpretation cfg ext E)
-    (hT : E.ScheduledPrefixPremises cfg ext)
-    (hDelay : E.RealizedFinalizationDelay cfg ext B)
-    (t : E.AcceptedBlockTransition cfg ext)
+    (B : ScheduledFFGInterpretation cfg ext E)
+    (hT : E.ScheduledExecutionPremises cfg ext)
+    (hDelay : E.ImportedBlockFinalizationLag cfg ext B)
+    (t : E.SuccessfulScheduledBlockImport cfg ext)
     (h : AcceptedFinalizationLagAt cfg B.anchor
       (t.atPrefix.store cfg ext)) :
     AcceptedFinalizationLagAt cfg B.anchor t.postStore := by
   by_cases hfresh : t.signedBlock.root ∉
       (t.atPrefix.store cfg ext).block_roots
   · obtain ⟨post, hst, hinserted⟩ :=
-      Execution.AcceptedBlockTransition.on_block_inserted_state_fresh
+      Execution.SuccessfulScheduledBlockImport.on_block_inserted_state_fresh
         cfg ext hfresh t.accepted
     apply AcceptedFinalizationLagAt.on_block_of_delays
       (cfg := cfg) (ext := ext) hst
     · simpa only [hinserted] using hDelay t
     · simpa only [hinserted] using
         E.acceptedPulledUpFinalized_succ_le_blockEpoch cfg ext B hT t
-    · exact AcceptedBlockTransition.blockEpoch_le_current
+    · exact SuccessfulScheduledBlockImport.blockEpoch_le_current
         cfg ext E t hfresh
     · exact h
     · exact t.accepted
@@ -867,8 +867,8 @@ handlers.  This is the exact consumer boundary for the candidate-history
 recurrence; it is displayed separately so the eventual handler induction is
 not confused with the primitive base-consensus law above. -/
 def CausalRealizedFinalizationLag
-    (B : CausalPrefixFFGInterpretation cfg ext E) : Prop :=
-  ∀ {store : Store Root}, E.CausalStore cfg ext store →
+    (B : ScheduledFFGInterpretation cfg ext E) : Prop :=
+  ∀ {store : Store Root}, E.ScheduledPrefixStore cfg ext store →
     store.finalized_checkpoint = B.anchor ∨
       store.finalized_checkpoint.epoch + 2 ≤
         get_current_store_epoch cfg store
@@ -876,8 +876,8 @@ def CausalRealizedFinalizationLag
 /-! ## Exact-prefix generation of the causal invariant -/
 
 private theorem genesisAcceptedFinalizationLagAt
-    (B : CausalPrefixFFGInterpretation cfg ext E)
-    (hT : E.ScheduledPrefixPremises cfg ext)
+    (B : ScheduledFFGInterpretation cfg ext E)
+    (hT : E.ScheduledExecutionPremises cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint) :
     AcceptedFinalizationLagAt cfg B.anchor E.genesis_store := by
   obtain ⟨ast, ablk, hgenEq, _hslot, _hparent⟩ := hT.genesis_structure
@@ -886,9 +886,9 @@ private theorem genesisAcceptedFinalizationLagAt
     simpa only [get_forkchoice_store] using hanchor.symm
 
 private theorem acceptedFinalizationLagAt_take
-    (B : CausalPrefixFFGInterpretation cfg ext E)
-    (hT : E.ScheduledPrefixPremises cfg ext)
-    (hDelay : E.RealizedFinalizationDelay cfg ext B)
+    (B : ScheduledFFGInterpretation cfg ext E)
+    (hT : E.ScheduledExecutionPremises cfg ext)
+    (hDelay : E.ImportedBlockFinalizationLag cfg ext B)
     (w : ValidatorIndex) (n : ℕ)
     (hbase : AcceptedFinalizationLagAt cfg B.anchor
       (on_tick cfg (E.store cfg ext w n) (E.time_at (n + 1)))) :
@@ -928,7 +928,7 @@ private theorem acceptedFinalizationLagAt_take
         simp only [Option.getD_some]
         cases hevent : nextEvent with
         | block sb =>
-            let t : E.AcceptedBlockTransition cfg ext :=
+            let t : E.SuccessfulScheduledBlockImport cfg ext :=
               { atPrefix := p
                 signedBlock := sb
                 event_at := by
@@ -963,10 +963,10 @@ private theorem acceptedFinalizationLagAt_take
 /-- The paired finalization-lag invariant at every ordinary execution
 boundary. -/
 theorem acceptedFinalizationLagAt
-    (B : CausalPrefixFFGInterpretation cfg ext E)
-    (hT : E.ScheduledPrefixPremises cfg ext)
+    (B : ScheduledFFGInterpretation cfg ext E)
+    (hT : E.ScheduledExecutionPremises cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
-    (hDelay : E.RealizedFinalizationDelay cfg ext B)
+    (hDelay : E.ImportedBlockFinalizationLag cfg ext B)
     (w : ValidatorIndex) (n : ℕ) :
     AcceptedFinalizationLagAt cfg B.anchor (E.store cfg ext w n) := by
   have hgenTime : E.genesis_store.genesis_time ≤ E.genesis_store.time := by
@@ -992,10 +992,10 @@ theorem acceptedFinalizationLagAt
 /-- The same invariant at an arbitrary exact in-second scheduled prefix. -/
 theorem ScheduledEventPrefix.acceptedFinalizationLagAt
     (p : E.ScheduledEventPrefix)
-    (B : CausalPrefixFFGInterpretation cfg ext E)
-    (hT : E.ScheduledPrefixPremises cfg ext)
+    (B : ScheduledFFGInterpretation cfg ext E)
+    (hT : E.ScheduledExecutionPremises cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
-    (hDelay : E.RealizedFinalizationDelay cfg ext B) :
+    (hDelay : E.ImportedBlockFinalizationLag cfg ext B) :
     AcceptedFinalizationLagAt cfg B.anchor (p.store cfg ext) := by
   have hgenTime : E.genesis_store.genesis_time ≤ E.genesis_store.time := by
     obtain ⟨ast, ablk, hgenEq, _hslot, _hparent⟩ := hT.genesis_structure
@@ -1011,12 +1011,12 @@ theorem ScheduledEventPrefix.acceptedFinalizationLagAt
   · exact p.count_le
 
 /-- Paired lag at every exact causal store. -/
-theorem CausalStore.acceptedFinalizationLagAt
-    {store : Store Root} (hstore : E.CausalStore cfg ext store)
-    (B : CausalPrefixFFGInterpretation cfg ext E)
-    (hT : E.ScheduledPrefixPremises cfg ext)
+theorem ScheduledPrefixStore.acceptedFinalizationLagAt
+    {store : Store Root} (hstore : E.ScheduledPrefixStore cfg ext store)
+    (B : ScheduledFFGInterpretation cfg ext E)
+    (hT : E.ScheduledExecutionPremises cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
-    (hDelay : E.RealizedFinalizationDelay cfg ext B) :
+    (hDelay : E.ImportedBlockFinalizationLag cfg ext B) :
     AcceptedFinalizationLagAt cfg B.anchor store := by
   cases hstore with
   | genesis =>
@@ -1029,10 +1029,10 @@ theorem CausalStore.acceptedFinalizationLagAt
 two-epoch lag at every causal store.  The GUF half is derived from accepted
 certificate inclusion; no second finalization timing premise is exposed. -/
 theorem causalRealizedFinalizationLag_of_acceptedDelay
-    (B : CausalPrefixFFGInterpretation cfg ext E)
-    (hT : E.ScheduledPrefixPremises cfg ext)
+    (B : ScheduledFFGInterpretation cfg ext E)
+    (hT : E.ScheduledExecutionPremises cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
-    (hDelay : E.RealizedFinalizationDelay cfg ext B) :
+    (hDelay : E.ImportedBlockFinalizationLag cfg ext B) :
     E.CausalRealizedFinalizationLag cfg ext B := by
   intro store hstore
   exact (hstore.acceptedFinalizationLagAt
@@ -1041,9 +1041,9 @@ theorem causalRealizedFinalizationLag_of_acceptedDelay
 /-- The store-level lag gives the exact checkpoint-age statement without
 truncated subtraction. -/
 theorem finalizedCheckpoint_twoEpochLag_of_causalLag
-    {B : CausalPrefixFFGInterpretation cfg ext E}
+    {B : ScheduledFFGInterpretation cfg ext E}
     (hLag : E.CausalRealizedFinalizationLag cfg ext B)
-    {store : Store Root} (hstore : E.CausalStore cfg ext store)
+    {store : Store Root} (hstore : E.ScheduledPrefixStore cfg ext store)
     (hne : store.finalized_checkpoint ≠ B.anchor) :
     store.finalized_checkpoint.epoch + 2 ≤
       get_current_store_epoch cfg store := by
@@ -1056,9 +1056,9 @@ finalized reset root fail the final selector's recency guard.  This is the
 precise fact needed to eliminate the finalized-reset arm in the paper-L22
 candidate-history step. -/
 theorem finalizedResetRoot_stale_of_causalLag
-    {B : CausalPrefixFFGInterpretation cfg ext E}
+    {B : ScheduledFFGInterpretation cfg ext E}
     (hLag : E.CausalRealizedFinalizationLag cfg ext B)
-    {store : Store Root} (hstore : E.CausalStore cfg ext store)
+    {store : Store Root} (hstore : E.ScheduledPrefixStore cfg ext store)
     (hrealized : E.ResetCheckpointRealizedAt cfg B.anchor store
       store.finalized_checkpoint)
     (hne : store.finalized_checkpoint ≠ B.anchor) :

@@ -43,7 +43,7 @@ run_cmd do
      "process_slots_attestation_valid", "verify_envelope_deterministic"]
   checkFields `FastConfirmation.Spec.ByzantineWeightPremises
     ["effective_balance_quantized", "estimate_sound", "span_fraction"]
-  checkFields `FastConfirmation.Spec.Execution.CompletedFCRCallPremises
+  checkFields `FastConfirmation.Spec.Execution.ScheduledFCRCallPremises
     ["synchrony", "static_validators", "byzantine_bound", "phase0_source",
      "phase0_boundary_source", "balance_floor", "delivery_lookahead"]
   checkFields `FastConfirmation.Spec.Execution.IncludedAttestationEvidence
@@ -69,16 +69,16 @@ run_cmd do
 
 example {Root : Type*} [LinearOrder Root] [Inhabited Root]
     (cfg : FastConfirmation.Spec.Config)
-    (ext : FastConfirmation.Spec.Externals Root) :
+    (ext : FastConfirmation.Spec.BeaconFunctionInterface Root) :
     FastConfirmation.Spec.ReviewClaims cfg ext :=
   FastConfirmation.Spec.review_claims cfg ext
 
 -- The internal support record permits descendant targets for a previous result.
 example {Root : Type*} [LinearOrder Root] [Inhabited Root]
-    (cfg : FastConfirmation.Spec.Config) (ext : FastConfirmation.Spec.Externals Root)
+    (cfg : FastConfirmation.Spec.Config) (ext : FastConfirmation.Spec.BeaconFunctionInterface Root)
     (E : FastConfirmation.Spec.Execution Root) (v : Nat) (q : Nat)
     (query : FastConfirmation.Spec.FastConfirmationStore Root) (input result : Root)
-    (h : FastConfirmation.Spec.FCRPredictionSupportAt cfg ext E v q query input)
+    (h : FastConfirmation.Spec.SelectedPredictionVoteSupport cfg ext E v q query input)
     (hout : FastConfirmation.Spec.find_latest_confirmed_descendant cfg ext query input = result)
     (hstrict : result ≠ input)
     (hprevious : FastConfirmation.Spec.get_block_epoch cfg query.store result ≠
@@ -87,7 +87,7 @@ example {Root : Type*} [LinearOrder Root] [Inhabited Root]
       (FastConfirmation.Spec.get_current_slot cfg query.store) ≠ true) :
     FastConfirmation.Spec.HonestVotesTargetDescendFrom cfg E result
       (FastConfirmation.Spec.get_current_store_epoch cfg query.store) q :=
-  h.selected_previous_result_no_conflict result hout hstrict hprevious hnotStart
+  h.previous_result_vote_support result hout hstrict hprevious hnotStart
 
 -- The joint induction derives support; it is absent from the safety premise.
 #check FastConfirmation.Spec.Execution.confirmed_safety_and_lineage_of_acceptedActualFCRFold

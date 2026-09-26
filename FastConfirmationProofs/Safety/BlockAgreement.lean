@@ -113,7 +113,7 @@ theorem update_latest_messages_blockProvenance {E : Execution Root} (store : Sto
     rcases hmi : s.latest_messages i with _ | lm <;> split_ifs <;> rfl
 
 variable [LinearOrder Root] [Inhabited Root]
-variable (cfg : Config) (ext : Externals Root)
+variable (cfg : Config) (ext : BeaconFunctionInterface Root)
 
 omit [Inhabited Root] in
 theorem record_block_timeliness_blockProvenance {E : Execution Root} (store : Store Root)

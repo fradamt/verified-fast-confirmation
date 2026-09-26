@@ -68,7 +68,7 @@ theorem SameBlocks.blocksSlotLe {sl : Slot} {s t : Store Root} (h : SameBlocks s
   simp only [BlocksSlotLe, ← hbr, ← hb]
   exact hs
 
-variable [LinearOrder Root] [Inhabited Root] (cfg : Config) (ext : Externals Root)
+variable [LinearOrder Root] [Inhabited Root] (cfg : Config) (ext : BeaconFunctionInterface Root)
 
 namespace VotePathAdmissible
 
@@ -494,8 +494,8 @@ theorem Execution.payload_verified_at_cutoff_delivery_prefix {E : Execution Root
   let ticked := on_tick cfg (E.store cfg ext w (d - 1)) (E.time_at d)
   let receiverPrefix := before.foldl
     (fun store event => (apply_event cfg ext store event).getD store) ticked
-  have hprefixCausal : E.CausalStore cfg ext receiverPrefix := by
-    apply Execution.HonestCausalStore.causal
+  have hprefixCausal : E.ScheduledPrefixStore cfg ext receiverPrefix := by
+    apply Execution.HonestPrefixStoreWithinHorizon.causal
     have h := E.honestCausalStore_prefix cfg ext w hw pred
       (by simpa only [hpred] using hHd) before
       (Event.execution_payload_envelope signed receiverObservation :: after)
@@ -826,7 +826,7 @@ base. Slot processing preserves the indexed check; the cache need not already
 contain the prepared state. -/
 theorem honest_attestation_valid_prepared {E : Execution Root}
     (hec : BeaconExternalsPremises cfg ext E) {store : Store Root}
-    (hstore : E.HonestCausalStore cfg ext store) (a : Attestation Root)
+    (hstore : E.HonestPrefixStoreWithinHorizon cfg ext store) (a : Attestation Root)
     (hroot : a.data.target.root ∈ store.block_roots)
     (v : ValidatorIndex) (hv : v ∈ E.honest)
     (hsingle : a.attesting_indices = [v])

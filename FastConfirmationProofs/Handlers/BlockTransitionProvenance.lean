@@ -10,7 +10,7 @@ public import FastConfirmationProofs.ModelFacts
 # Last accepted-writer provenance at exact execution prefixes
 
 For every non-genesis root known in an exact execution prefix, this file
-retains the actual successful scheduled `AcceptedBlockTransition` that most
+retains the actual successful scheduled `SuccessfulScheduledBlockImport` that most
 recently wrote that root.  Duplicate deliveries are no-ops under the pinned
 handler, so they carry the prior writer forward; only fresh deliveries install
 the current block's identity fields.
@@ -24,7 +24,7 @@ Every other successful or rejected event carries the old witness forward.
 namespace FastConfirmation.Spec
 
 variable {Root : Type*} [LinearOrder Root] [Inhabited Root]
-variable {cfg : Config} {ext : Externals Root}
+variable {cfg : Config} {ext : BeaconFunctionInterface Root}
 
 /-! ## Handler-local block-identity facts -/
 
@@ -164,12 +164,12 @@ theorem on_block_other_root_known
 
 namespace Execution
 
-namespace AcceptedBlockTransition
+namespace SuccessfulScheduledBlockImport
 
 variable {E : Execution Root}
 
 /-- A fresh accepted writer installs its exact signed message. -/
-theorem inserted_message_fresh (t : E.AcceptedBlockTransition cfg ext)
+theorem inserted_message_fresh (t : E.SuccessfulScheduledBlockImport cfg ext)
     (hfresh : t.signedBlock.root ∉
       (t.atPrefix.store cfg ext).block_roots) :
     t.postStore.blocks t.signedBlock.root = t.signedBlock.message := by
@@ -198,7 +198,7 @@ theorem inserted_message_fresh (t : E.AcceptedBlockTransition cfg ext)
         exact Function.update_self _ _ _
   · exact (hfresh hknown).elim
 
-end AcceptedBlockTransition
+end SuccessfulScheduledBlockImport
 
 /-! ## Prefix chronology -/
 
@@ -243,9 +243,9 @@ end ScheduledEventPrefix
 /-- The actual accepted transition most recently responsible for one current
 non-genesis block identity.  Both totalized block maps are retained. -/
 structure AcceptedBlockLastWriterCarrier
-    (cfg : Config) (ext : Externals Root)
+    (cfg : Config) (ext : BeaconFunctionInterface Root)
     (E : Execution Root) (store : Store Root) (r : Root) where
-  transition : E.AcceptedBlockTransition cfg ext
+  transition : E.SuccessfulScheduledBlockImport cfg ext
   root_eq : transition.signedBlock.root = r
   fresh : transition.signedBlock.root ∉
     (transition.atPrefix.store cfg ext).block_roots
@@ -273,7 +273,7 @@ end AcceptedBlockLastWriterCarrier
 /-- Store-level last-writer provenance.  Trusted genesis roots are the only
 explicit base case and therefore intentionally excluded. -/
 def AcceptedBlockLastWriterProvenance
-    (cfg : Config) (ext : Externals Root)
+    (cfg : Config) (ext : BeaconFunctionInterface Root)
     (E : Execution Root) (store : Store Root) : Prop :=
   ∀ r ∈ store.block_roots, r ∉ E.genesis_store.block_roots →
     Nonempty (AcceptedBlockLastWriterCarrier cfg ext E store r)
@@ -281,14 +281,14 @@ def AcceptedBlockLastWriterProvenance
 /-- Prefix-indexed witness, strengthened with chronology to its target
 prefix. -/
 structure AcceptedBlockLastWriterAtPrefixCarrier
-    (cfg : Config) (ext : Externals Root)
+    (cfg : Config) (ext : BeaconFunctionInterface Root)
     (E : Execution Root) (p : ScheduledEventPrefix E) (r : Root) where
   writer : AcceptedBlockLastWriterCarrier cfg ext E (p.store cfg ext) r
   earlier : writer.transition.atPrefix.EarlierThan p
 
 /-- Exact-prefix last-writer provenance with target-prefix chronology. -/
 def AcceptedBlockLastWriterPrefixProvenance
-    (cfg : Config) (ext : Externals Root)
+    (cfg : Config) (ext : BeaconFunctionInterface Root)
     (E : Execution Root) (p : ScheduledEventPrefix E) : Prop :=
   ∀ r ∈ (p.store cfg ext).block_roots,
     r ∉ E.genesis_store.block_roots →
@@ -322,7 +322,7 @@ theorem successor_of_sameBlocks
 current transition, including on duplicate-root overwrites.  Every other root
 carries its prior writer forward. -/
 theorem acceptedBlockTransition
-    (t : E.AcceptedBlockTransition cfg ext)
+    (t : E.SuccessfulScheduledBlockImport cfg ext)
     (h : AcceptedBlockLastWriterPrefixProvenance cfg ext E t.atPrefix) :
     AcceptedBlockLastWriterPrefixProvenance cfg ext E
       t.successorPrefix := by
@@ -334,7 +334,7 @@ theorem acceptedBlockTransition
     by_cases hfresh : t.signedBlock.root ∉
         (t.atPrefix.store cfg ext).block_roots
     · have hmessage :=
-        Execution.AcceptedBlockTransition.inserted_message_fresh t hfresh
+        Execution.SuccessfulScheduledBlockImport.inserted_message_fresh t hfresh
       exact ⟨
         { writer :=
             { transition := t
@@ -384,7 +384,7 @@ end AcceptedBlockLastWriterPrefixProvenance
 
 /-- Boundary strengthening used to enter the next scheduled second. -/
 private structure AcceptedBlockLastWriterBeforeBoundaryCarrier
-    (cfg : Config) (ext : Externals Root)
+    (cfg : Config) (ext : BeaconFunctionInterface Root)
     (E : Execution Root) (w : ValidatorIndex) (n : ℕ) (r : Root) where
   writer : AcceptedBlockLastWriterCarrier cfg ext E
     (E.store cfg ext w n) r
@@ -392,7 +392,7 @@ private structure AcceptedBlockLastWriterBeforeBoundaryCarrier
   previousSecond_lt : writer.transition.atPrefix.previousSecond < n
 
 private def AcceptedBlockLastWriterBoundaryProvenance
-    (cfg : Config) (ext : Externals Root)
+    (cfg : Config) (ext : BeaconFunctionInterface Root)
     (E : Execution Root) (w : ValidatorIndex) (n : ℕ) : Prop :=
   ∀ r ∈ (E.store cfg ext w n).block_roots,
     r ∉ E.genesis_store.block_roots →
@@ -462,7 +462,7 @@ private theorem acceptedBlockLastWriterPrefix_take
             rw [hsuccessor, heq, Option.getD_some]
           cases hevent : nextEvent with
           | block sb =>
-              let t : E.AcceptedBlockTransition cfg ext :=
+              let t : E.SuccessfulScheduledBlockImport cfg ext :=
                 { atPrefix := p
                   signedBlock := sb
                   event_at := by
@@ -560,9 +560,9 @@ theorem ScheduledEventPrefix.acceptedBlockLastWriterProvenance
 
 /-- Last accepted-writer provenance at every store in the exact causal
 domain. -/
-theorem CausalStore.acceptedBlockLastWriterProvenance
+theorem ScheduledPrefixStore.acceptedBlockLastWriterProvenance
     {E : Execution Root} {store : Store Root}
-    (hstore : E.CausalStore cfg ext store) :
+    (hstore : E.ScheduledPrefixStore cfg ext store) :
     AcceptedBlockLastWriterProvenance cfg ext E store := by
   cases hstore with
   | genesis =>

@@ -21,7 +21,7 @@ anchor's dangling parent, which cannot be a concrete execution root.
 namespace FastConfirmation.Spec
 
 variable {Root : Type*} [LinearOrder Root] [Inhabited Root]
-variable (cfg : Config) (ext : Externals Root)
+variable (cfg : Config) (ext : BeaconFunctionInterface Root)
 
 namespace Execution
 
@@ -31,8 +31,8 @@ variable (E : Execution Root)
 
 /-- Block provenance holds at every exact causal prefix, not only at the
 ordinary per-second boundary stores. -/
-theorem CausalStore.blockProvenance
-    {store : Store Root} (hstore : E.CausalStore cfg ext store) :
+theorem ScheduledPrefixStore.blockProvenance
+    {store : Store Root} (hstore : E.ScheduledPrefixStore cfg ext store) :
     BlockProvenance E store := by
   cases hstore with
   | genesis =>
@@ -46,27 +46,27 @@ theorem CausalStore.blockProvenance
           (E.blockProvenance cfg ext p.node p.previousSecond)
 
 /-- An exact accepted block carrier always exposes its accepted root. -/
-theorem AcceptedBlockAt.acceptedRoot
+theorem BlockKnownInScheduledPrefix.acceptedRoot
     {r : Root} {b : BeaconBlock Root}
-    (h : E.AcceptedBlockAt cfg ext r b) :
-    E.AcceptedRoot cfg ext r := by
+    (h : E.BlockKnownInScheduledPrefix cfg ext r b) :
+    E.RootKnownInScheduledPrefix cfg ext r := by
   obtain ⟨store, hstore, hr, _⟩ := h
   exact ⟨store, hstore, hr⟩
 
 /-- Every accepted root has an exact accepted block carrier. -/
-theorem AcceptedRoot.exists_blockAt
-    {r : Root} (h : E.AcceptedRoot cfg ext r) :
-    ∃ b : BeaconBlock Root, E.AcceptedBlockAt cfg ext r b := by
+theorem RootKnownInScheduledPrefix.exists_blockAt
+    {r : Root} (h : E.RootKnownInScheduledPrefix cfg ext r) :
+    ∃ b : BeaconBlock Root, E.BlockKnownInScheduledPrefix cfg ext r b := by
   obtain ⟨store, hstore, hr⟩ := h
   exact ⟨store.blocks r, store, hstore, hr, rfl⟩
 
 /-- Well-formed executions give a unique concrete message to each accepted
 root, even when its two witnesses come from different exact prefixes. -/
-theorem AcceptedBlockAt.unique
+theorem BlockKnownInScheduledPrefix.unique
     (hwf : WellFormedExecution E)
     {r : Root} {b b' : BeaconBlock Root}
-    (hb : E.AcceptedBlockAt cfg ext r b)
-    (hb' : E.AcceptedBlockAt cfg ext r b') :
+    (hb : E.BlockKnownInScheduledPrefix cfg ext r b)
+    (hb' : E.BlockKnownInScheduledPrefix cfg ext r b') :
     b = b' := by
   obtain ⟨store, hstore, hr, hblock⟩ := hb
   obtain ⟨store', hstore', hr', hblock'⟩ := hb'
@@ -78,12 +78,12 @@ theorem AcceptedBlockAt.unique
 
 /-- At a known root of one exact causal store, accepted block-carrier evidence
 is equivalent to carrying that store's concrete message. -/
-theorem CausalStore.acceptedBlockAt_iff_eq
+theorem ScheduledPrefixStore.acceptedBlockAt_iff_eq
     (hwf : WellFormedExecution E)
-    {store : Store Root} (hstore : E.CausalStore cfg ext store)
+    {store : Store Root} (hstore : E.ScheduledPrefixStore cfg ext store)
     {r : Root} (hr : r ∈ store.block_roots)
     {b : BeaconBlock Root} :
-    E.AcceptedBlockAt cfg ext r b ↔ store.blocks r = b := by
+    E.BlockKnownInScheduledPrefix cfg ext r b ↔ store.blocks r = b := by
   constructor
   · intro hb
     obtain ⟨carrierStore, hcarrierStore, hr', hblock⟩ := hb
@@ -305,17 +305,16 @@ theorem store_ancestor_of_rootDescends_for_storeReflection
 end Execution
 
 section CarrierProvenance
-variable {cfg : Config} {ext : Externals Root} {E : Execution Root}
+variable {cfg : Config} {ext : BeaconFunctionInterface Root} {E : Execution Root}
 
 /-- Accepted-carrier inclusion evidence gives a concrete carrier message:
 either a genesis-store block or a scheduled block event. -/
-theorem Execution.CausalCarrierAttestationEvidence.carrier_at
-    {validity : BeaconState Root → Attestation Root → Bool}
+theorem Execution.AcceptedBlockAttestationEvidence.carrier_at
     {carrier : Root} {a : Attestation Root}
-    (h : Execution.CausalCarrierAttestationEvidence cfg ext E validity carrier a) :
+    (h : Execution.AcceptedBlockAttestationEvidence cfg ext E carrier a) :
     E.BlockAt carrier h.carrier_message := by
   obtain ⟨store, hstore, hr, hmessage⟩ := h.carrier_accepted
-  rcases Execution.CausalStore.blockProvenance cfg ext E hstore carrier hr with
+  rcases Execution.ScheduledPrefixStore.blockProvenance cfg ext E hstore carrier hr with
     hgen | hsched
   · rw [← hmessage]
     exact Or.inl ⟨hgen.1, hgen.2⟩

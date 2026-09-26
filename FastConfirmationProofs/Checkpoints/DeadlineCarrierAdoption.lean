@@ -15,7 +15,7 @@ public import FastConfirmationProofs.FCRRule.ConfirmedCacheInvariant
 namespace FastConfirmation.Spec
 
 variable {Root : Type*} [LinearOrder Root] [Inhabited Root]
-variable (cfg : Config) (ext : Externals Root)
+variable (cfg : Config) (ext : BeaconFunctionInterface Root)
 
 namespace Execution
 
@@ -24,14 +24,14 @@ variable {E : Execution Root}
 /-- An AU carrier whose checkpoint is at least as recent as receiver finality
 passes the exact finalized guard. Its deadline origin then delivers the root. -/
 theorem deadline_carrier_known_of_au
-    (B : CausalPrefixFFGInterpretation cfg ext E)
-    (hT : E.ScheduledPrefixPremises cfg ext)
+    (B : ScheduledFFGInterpretation cfg ext E)
+    (hT : E.ScheduledExecutionPremises cfg ext)
     (hrelay : DeadlineBlockRelay cfg ext E)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
-    (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
+    (hboundary : InitialAnchorAtEpochBoundary (cfg := cfg)
       (E := E) (anchor := B.anchor))
-    (P : EpochCheckpointClosure B.anchor (E.AcceptedRoot cfg ext) B.state.C)
-    (V : B.state.ExactLinkValidity)
+    (P : EpochCheckpointProjectionLaws B.anchor (E.RootKnownInScheduledPrefix cfg ext) B.state.checkpoint_at_epoch)
+    (V : B.state.LinkCheckpointAgreement)
     (hacc : CheckpointCertificateAccountability cfg E B.anchor)
     {v w : ValidatorIndex} {n m : ℕ} {tip : Root} {c : Checkpoint Root}
     (hv : v ∈ E.honest) (hw : w ∈ E.honest)
@@ -41,7 +41,7 @@ theorem deadline_carrier_known_of_au
       get_attestation_due_ms cfg / 1000)
     (hnext : E.slot_start cfg (E.slot_at cfg n + 1) ≤ m)
     (hlt : n < m)
-    (hAU : B.state.AU cfg ext tip c)
+    (hAU : B.state.AvailableCheckpoint cfg ext tip c)
     (hFle : (E.store cfg ext w m).finalized_checkpoint.epoch ≤ c.epoch) :
     tip ∈ (E.store cfg ext w m).block_roots := by
   obtain ⟨ast, ablk, hgen, hgenSlot, _hgenParent⟩ := hT.genesis_structure
@@ -52,11 +52,11 @@ theorem deadline_carrier_known_of_au
   obtain ⟨hcertificate⟩ := B.state.includedJustifiedAtTip_of_AU cfg ext hAU
   have hanchorExact := acceptedAnchorExact_of_trajectory cfg ext E B hT
     hanchor hboundary
-  have hprefix : ExactCheckpointPrefix B.state.C F c := by
+  have hprefix : ExactCheckpointPrefix B.state.checkpoint_at_epoch F c := by
     rcases E.acceptedGlobalFinalized_anchor_or_includedCertificate cfg ext B
         hgenShort hanchor (E.store_causal cfg ext w m) with
       hFanchor | ⟨_carrier, _hcarrier, ⟨hFcertificate⟩⟩
-    · change ExactCheckpointPrefix B.state.C
+    · change ExactCheckpointPrefix B.state.checkpoint_at_epoch
         (E.store cfg ext w m).finalized_checkpoint c
       rw [hFanchor]
       exact IncludedCertifiedJustified.anchor_prefix
@@ -85,15 +85,15 @@ theorem deadline_carrier_known_of_au
 /-- Finalization lag makes a recent AU carrier compatible with the receiver.
 The relay still requires the carrier's own deadline origin. -/
 theorem deadline_carrier_known_of_recent_au
-    (B : CausalPrefixFFGInterpretation cfg ext E)
-    (hT : E.ScheduledPrefixPremises cfg ext)
+    (B : ScheduledFFGInterpretation cfg ext E)
+    (hT : E.ScheduledExecutionPremises cfg ext)
     (hrelay : DeadlineBlockRelay cfg ext E)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
-    (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
+    (hboundary : InitialAnchorAtEpochBoundary (cfg := cfg)
       (E := E) (anchor := B.anchor))
     (hLag : E.CausalRealizedFinalizationLag cfg ext B)
-    (P : EpochCheckpointClosure B.anchor (E.AcceptedRoot cfg ext) B.state.C)
-    (V : B.state.ExactLinkValidity)
+    (P : EpochCheckpointProjectionLaws B.anchor (E.RootKnownInScheduledPrefix cfg ext) B.state.checkpoint_at_epoch)
+    (V : B.state.LinkCheckpointAgreement)
     (hacc : CheckpointCertificateAccountability cfg E B.anchor)
     {v w : ValidatorIndex} {n m : ℕ} {tip : Root} {c : Checkpoint Root}
     (hv : v ∈ E.honest) (hw : w ∈ E.honest)
@@ -103,7 +103,7 @@ theorem deadline_carrier_known_of_recent_au
       get_attestation_due_ms cfg / 1000)
     (hnext : E.slot_start cfg (E.slot_at cfg n + 1) ≤ m)
     (hlt : n < m)
-    (hAU : B.state.AU cfg ext tip c)
+    (hAU : B.state.AvailableCheckpoint cfg ext tip c)
     (hrecent : get_current_store_epoch cfg (E.store cfg ext w m) ≤ c.epoch + 2) :
     tip ∈ (E.store cfg ext w m).block_roots := by
   apply E.deadline_carrier_known_of_au cfg ext B hT hrelay hanchor hboundary
@@ -120,14 +120,14 @@ finalized epoch at least as new as the carrier's justification. In either
 case its justified epoch reaches that justification. The `GU` alternative
 requires the carrier to be from an earlier epoch at the receiver. -/
 theorem deadline_justified_epoch_le_of_carrier
-    (B : CausalPrefixFFGInterpretation cfg ext E)
-    (hT : E.ScheduledPrefixPremises cfg ext)
+    (B : ScheduledFFGInterpretation cfg ext E)
+    (hT : E.ScheduledExecutionPremises cfg ext)
     (hrelay : DeadlineBlockRelay cfg ext E)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
-    (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
+    (hboundary : InitialAnchorAtEpochBoundary (cfg := cfg)
       (E := E) (anchor := B.anchor))
-    (P : EpochCheckpointClosure B.anchor (E.AcceptedRoot cfg ext) B.state.C)
-    (V : B.state.ExactLinkValidity)
+    (P : EpochCheckpointProjectionLaws B.anchor (E.RootKnownInScheduledPrefix cfg ext) B.state.checkpoint_at_epoch)
+    (V : B.state.LinkCheckpointAgreement)
     (hacc : CheckpointCertificateAccountability cfg E B.anchor)
     {v w : ValidatorIndex} {n m : ℕ} {tip : Root} {c : Checkpoint Root}
     (hv : v ∈ E.honest) (hw : w ∈ E.honest)
@@ -137,7 +137,7 @@ theorem deadline_justified_epoch_le_of_carrier
       get_attestation_due_ms cfg / 1000)
     (hnext : E.slot_start cfg (E.slot_at cfg n + 1) ≤ m)
     (hlt : n < m)
-    (hselector : c = B.state.GJ tip ∨ c = B.state.GU tip ∧
+    (hselector : c = B.state.realized_justified tip ∨ c = B.state.unrealized_justified tip ∧
       get_block_epoch cfg (E.store cfg ext v n) tip <
         get_current_store_epoch cfg (E.store cfg ext w m)) :
     c.epoch ≤ (E.store cfg ext w m).justified_checkpoint.epoch := by
@@ -152,18 +152,18 @@ theorem deadline_justified_epoch_le_of_carrier
   have hFle : F.epoch ≤ c.epoch := Nat.le_of_lt (Nat.lt_of_not_ge hcle)
   have haccepted := E.acceptedRoot_of_causal_known cfg ext
     (E.store_causal cfg ext v n) htip
-  have hAU : B.state.AU cfg ext tip c := by
+  have hAU : B.state.AvailableCheckpoint cfg ext tip c := by
     rcases hselector with hgj | ⟨hgu, _⟩
     · rw [hgj]; exact B.state.gj_AU cfg ext haccepted
     · rw [hgu]; exact B.state.gu_AU cfg ext haccepted
   obtain ⟨hcertificate⟩ := B.state.includedJustifiedAtTip_of_AU cfg ext hAU
   have hanchorExact := acceptedAnchorExact_of_trajectory cfg ext E B hT
     hanchor hboundary
-  have hprefix : ExactCheckpointPrefix B.state.C F c := by
+  have hprefix : ExactCheckpointPrefix B.state.checkpoint_at_epoch F c := by
     rcases E.acceptedGlobalFinalized_anchor_or_includedCertificate cfg ext B
         hgenShort hanchor (E.store_causal cfg ext w m) with
       hFanchor | ⟨_carrier, _hcarrier, ⟨hFcertificate⟩⟩
-    · change ExactCheckpointPrefix B.state.C
+    · change ExactCheckpointPrefix B.state.checkpoint_at_epoch
         (E.store cfg ext w m).finalized_checkpoint c
       rw [hFanchor]
       exact IncludedCertifiedJustified.anchor_prefix

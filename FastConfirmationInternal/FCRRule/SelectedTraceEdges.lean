@@ -7,7 +7,7 @@ public import FastConfirmationStatements.Traces
 
 namespace FastConfirmation.Spec
 variable {Root : Type*} [LinearOrder Root] [Inhabited Root]
-variable (cfg : Config) (ext : Externals Root)
+variable (cfg : Config) (ext : BeaconFunctionInterface Root)
 
 /-- A previous-loop edge retained by the complete wrapper trace. -/
 def PreviousEpochSelectedEdge (fcrStore : FastConfirmationStore Root)

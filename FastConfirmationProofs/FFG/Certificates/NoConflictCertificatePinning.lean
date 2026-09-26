@@ -26,7 +26,7 @@ provenance, or quorum is assumed.
 namespace FastConfirmation.Spec
 
 variable {Root : Type*} [LinearOrder Root] [Inhabited Root]
-variable (cfg : Config) (ext : Externals Root)
+variable (cfg : Config) (ext : BeaconFunctionInterface Root)
 
 /-- Exact lower protocol bundle used by certificate pinning.  In particular it
 contains neither `JustificationInterface` nor synchrony.  The sole endpoint

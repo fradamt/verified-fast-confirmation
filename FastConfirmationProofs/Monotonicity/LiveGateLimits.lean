@@ -27,7 +27,7 @@ leave a boosted sibling as the head.
 namespace FastConfirmation.Spec
 
 variable {Root : Type*} [LinearOrder Root] [Inhabited Root]
-variable (cfg : Config) (ext : Externals Root)
+variable (cfg : Config) (ext : BeaconFunctionInterface Root)
 
 
 /-- A stale cached root reverts to the finalized root when neither the

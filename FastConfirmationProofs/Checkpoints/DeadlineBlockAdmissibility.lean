@@ -17,7 +17,7 @@ causal checkpoint reflection compares the parent in both stores.
 namespace FastConfirmation.Spec
 
 variable {Root : Type*} [LinearOrder Root] [Inhabited Root]
-variable (cfg : Config) (ext : Externals Root)
+variable (cfg : Config) (ext : BeaconFunctionInterface Root)
 
 namespace Execution
 
@@ -26,10 +26,10 @@ variable {E : Execution Root}
 /-- Trusted-anchor walks use only the lower trajectory record. In particular,
 no vote-target cache or selected-margin domain is required. -/
 theorem trustedAnchor_boundaryWalkAtEpoch_of_trajectory
-    (hT : E.ScheduledPrefixPremises cfg ext)
+    (hT : E.ScheduledExecutionPremises cfg ext)
     {anchor : Checkpoint Root}
     (hanchor : anchor = E.genesis_store.justified_checkpoint)
-    (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
+    (hboundary : InitialAnchorAtEpochBoundary (cfg := cfg)
       (E := E) (anchor := anchor))
     (v : ValidatorIndex) (n : ℕ) {e : Epoch}
     (hae : anchor.epoch ≤ e)
@@ -47,7 +47,7 @@ theorem trustedAnchor_boundaryWalkAtEpoch_of_trajectory
     rw [hroot]
     exact E.store_anchor_block cfg ext hT.wellFormed hgen v n (hroot ▸ hanchorN)
   have hbound : ablk.message.slot ≤ compute_start_slot_at_epoch cfg anchor.epoch := by
-    simpa only [TrustedAnchorBoundaryAligned, hgen, hroot,
+    simpa only [InitialAnchorAtEpochBoundary, hgen, hroot,
       get_forkchoice_store, Function.update_self] using hboundary
   apply hwalk.mono
   rw [hblock]
@@ -58,10 +58,10 @@ receiver's finalized root cannot be permanently excluded. The at-boundary
 case is already stored as the finalized root; after the boundary, the known
 parent has the same exact checkpoint in both causal stores. -/
 theorem checkpointCompatible_not_permanentlyExcluded
-    (B : CausalPrefixFFGInterpretation cfg ext E)
-    (hT : E.ScheduledPrefixPremises cfg ext)
+    (B : ScheduledFFGInterpretation cfg ext E)
+    (hT : E.ScheduledExecutionPremises cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
-    (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
+    (hboundary : InitialAnchorAtEpochBoundary (cfg := cfg)
       (E := E) (anchor := B.anchor))
     {v w : ValidatorIndex} {n m : ℕ} {r : Root}
     (hHm : E.WithinHorizon cfg m)
@@ -119,7 +119,7 @@ theorem checkpointCompatible_not_permanentlyExcluded
       _ = get_checkpoint_block cfg source parent F.epoch := by
         simpa only [source, parent, get_checkpoint_block] using
           get_ancestor_step hparentSlotSource hsourceKnown hafter hparentWalk
-      _ = (B.state.C parent F.epoch).root := by
+      _ = (B.state.checkpoint_at_epoch parent F.epoch).root := by
         rw [B.coherence.checkpoint_of_known
           (E.store_causal cfg ext v n) parent hsourceParent F.epoch]
         rfl
@@ -134,11 +134,11 @@ theorem checkpointCompatible_not_permanentlyExcluded
 pass the receiver's finalized guard. This packages the checkpoint equation
 from an AU witness and a boundary walk for use after cutoff relay. -/
 theorem acceptedSourceTip_not_permanentlyExcluded_of_prefix
-    (B : CausalPrefixFFGInterpretation cfg ext E)
-    (hT : E.ScheduledPrefixPremises cfg ext)
+    (B : ScheduledFFGInterpretation cfg ext E)
+    (hT : E.ScheduledExecutionPremises cfg ext)
     (hA : SelectedMarginAssumptions cfg ext E)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
-    (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
+    (hboundary : InitialAnchorAtEpochBoundary (cfg := cfg)
       (E := E) (anchor := B.anchor))
     {v w : ValidatorIndex} {n m : ℕ} {tip : Root}
     {target : Checkpoint Root}
@@ -148,9 +148,9 @@ theorem acceptedSourceTip_not_permanentlyExcluded_of_prefix
       (E.store cfg ext w m).block_roots)
     (hanchorLe : B.anchor.epoch ≤
       (E.store cfg ext w m).finalized_checkpoint.epoch)
-    (hprefix : ExactCheckpointPrefix B.state.C
+    (hprefix : ExactCheckpointPrefix B.state.checkpoint_at_epoch
       (E.store cfg ext w m).finalized_checkpoint target)
-    (hAU : B.state.AU cfg ext tip target)
+    (hAU : B.state.AvailableCheckpoint cfg ext tip target)
     (hepoch : (E.store cfg ext w m).finalized_checkpoint.epoch ≤
       target.epoch)
     (hwalk : WalkKnown (E.store cfg ext v n)
@@ -177,21 +177,21 @@ epoch has that finalized checkpoint as an exact certified prefix. The
 certificate comes from the AU carrier and the receiver's actual finalized
 checkpoint, with accountability supplying the cross-carrier orientation. -/
 theorem acceptedFinalized_prefix_of_sourceAU
-    (B : CausalPrefixFFGInterpretation cfg ext E)
-    (hT : E.ScheduledPrefixPremises cfg ext)
+    (B : ScheduledFFGInterpretation cfg ext E)
+    (hT : E.ScheduledExecutionPremises cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
-    (P : EpochCheckpointClosure B.anchor
-      (E.AcceptedRoot cfg ext) B.state.C)
-    (V : B.state.ExactLinkValidity)
+    (P : EpochCheckpointProjectionLaws B.anchor
+      (E.RootKnownInScheduledPrefix cfg ext) B.state.checkpoint_at_epoch)
+    (V : B.state.LinkCheckpointAgreement)
     (hanchorExact : B.anchor =
-      B.state.C B.anchor.root B.anchor.epoch)
+      B.state.checkpoint_at_epoch B.anchor.root B.anchor.epoch)
     (hacc : CheckpointCertificateAccountability cfg E B.anchor)
     {w : ValidatorIndex} {m : ℕ} {tip : Root}
     {target : Checkpoint Root}
-    (hAU : B.state.AU cfg ext tip target)
+    (hAU : B.state.AvailableCheckpoint cfg ext tip target)
     (hepoch : (E.store cfg ext w m).finalized_checkpoint.epoch ≤
       target.epoch) :
-    ExactCheckpointPrefix B.state.C
+    ExactCheckpointPrefix B.state.checkpoint_at_epoch
       (E.store cfg ext w m).finalized_checkpoint target := by
   obtain ⟨ast, ablk, hgen, hgenSlot, _hgenParent⟩ :=
     hT.genesis_structure
@@ -217,17 +217,17 @@ theorem acceptedFinalized_prefix_of_sourceAU
 receiver's finalized checkpoint is never permanently excluded, provided the
 tip's boundary walk is known at the source observation. -/
 theorem acceptedSourceTip_not_permanentlyExcluded_of_AU
-    (B : CausalPrefixFFGInterpretation cfg ext E)
-    (hT : E.ScheduledPrefixPremises cfg ext)
+    (B : ScheduledFFGInterpretation cfg ext E)
+    (hT : E.ScheduledExecutionPremises cfg ext)
     (hA : SelectedMarginAssumptions cfg ext E)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
-    (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
+    (hboundary : InitialAnchorAtEpochBoundary (cfg := cfg)
       (E := E) (anchor := B.anchor))
-    (P : EpochCheckpointClosure B.anchor
-      (E.AcceptedRoot cfg ext) B.state.C)
-    (V : B.state.ExactLinkValidity)
+    (P : EpochCheckpointProjectionLaws B.anchor
+      (E.RootKnownInScheduledPrefix cfg ext) B.state.checkpoint_at_epoch)
+    (V : B.state.LinkCheckpointAgreement)
     (hanchorExact : B.anchor =
-      B.state.C B.anchor.root B.anchor.epoch)
+      B.state.checkpoint_at_epoch B.anchor.root B.anchor.epoch)
     (hacc : CheckpointCertificateAccountability cfg E B.anchor)
     {v w : ValidatorIndex} {n m : ℕ} {tip : Root}
     {target : Checkpoint Root}
@@ -237,7 +237,7 @@ theorem acceptedSourceTip_not_permanentlyExcluded_of_AU
       (E.store cfg ext w m).block_roots)
     (hanchorLe : B.anchor.epoch ≤
       (E.store cfg ext w m).finalized_checkpoint.epoch)
-    (hAU : B.state.AU cfg ext tip target)
+    (hAU : B.state.AvailableCheckpoint cfg ext tip target)
     (hepoch : (E.store cfg ext w m).finalized_checkpoint.epoch ≤
       target.epoch)
     (hwalk : WalkKnown (E.store cfg ext v n)

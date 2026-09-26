@@ -30,7 +30,7 @@ exactly a previous-epoch checkpoint.
 namespace FastConfirmation.Spec
 
 variable {Root : Type*} [LinearOrder Root] [Inhabited Root]
-variable (cfg : Config) (ext : Externals Root)
+variable (cfg : Config) (ext : BeaconFunctionInterface Root)
 
 namespace Execution
 
@@ -39,10 +39,10 @@ variable {E : Execution Root}
 /-- An actual active-observed restart carries a checkpoint whose declared
 epoch, not only whose root block epoch, is exactly the previous epoch. -/
 theorem ObservedResetCandidateInputAt.observed_checkpoint_previous_epoch
-    (B : CausalPrefixFFGInterpretation cfg ext E)
-    (hT : E.ScheduledPrefixPremises cfg ext)
+    (B : ScheduledFFGInterpretation cfg ext E)
+    (hT : E.ScheduledExecutionPremises cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
-    (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
+    (hboundary : InitialAnchorAtEpochBoundary (cfg := cfg)
       (E := E) (anchor := B.anchor))
     (hspe : 1 < cfg.slots_per_epoch)
     {v : ValidatorIndex} {n : ℕ}
@@ -133,17 +133,17 @@ theorem ObservedResetCandidateInputAt.observed_checkpoint_previous_epoch
       rw [hcAnchor] at hrootPrevious ⊢
       rw [hanchorEpochN] at hrootPrevious
       exact Nat.lt_of_succ_le hrootPrevious.le
-    · have hcGU : c = B.state.GU tip := hi.field_eq.trans hguField
-      have htipAt : E.AcceptedBlockAt cfg ext tip
+    · have hcGU : c = B.state.unrealized_justified tip := hi.field_eq.trans hguField
+      have htipAt : E.BlockKnownInScheduledPrefix cfg ext tip
           ((E.store cfg ext v hi.originSecond).blocks tip) :=
         E.acceptedBlockAt_of_causal_known cfg ext
           (E.store_causal cfg ext v hi.originSecond) htip.known
-      have hAU : B.state.AU cfg ext tip c := by
+      have hAU : B.state.AvailableCheckpoint cfg ext tip c := by
         rw [hcGU]
         exact B.state.gu_AU cfg ext htip.acceptedRoot
       have hcEpochLeTip : c.epoch ≤ compute_epoch_at_slot cfg
           ((E.store cfg ext v hi.originSecond).blocks tip).slot :=
-        B.state.au_epoch_le_block htipAt hAU
+        B.state.available_checkpoint_epoch_le_block htipAt hAU
       have htipSlotUpper :
           ((E.store cfg ext v hi.originSecond).blocks tip).slot ≤
             E.slot_at cfg hi.originSecond := by
@@ -179,20 +179,20 @@ checkpoint has an honest causal formation vote in the current or a later
 epoch; the induction hypothesis puts the observed root on that voter's head,
 and checkpoint-boundary walk composition puts it below the vote target. -/
 theorem ObservedResetCandidateInputAt.safeFrom_of_acceptedDynamics
-    (B : CausalPrefixFFGInterpretation cfg ext E)
-    (hT : E.ScheduledPrefixPremises cfg ext)
+    (B : ScheduledFFGInterpretation cfg ext E)
+    (hT : E.ScheduledExecutionPremises cfg ext)
     (hsync : NextSlotSynchronyPremises cfg ext E)
     (hpaths : HonestHeadPathAdmissibility cfg ext E)
     (hstatic : StaticValidatorSet cfg E)
     (hbyz : ByzantineWeightPremises cfg E)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
-    (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
+    (hboundary : InitialAnchorAtEpochBoundary (cfg := cfg)
       (E := E) (anchor := B.anchor))
     (hspe : 1 < cfg.slots_per_epoch)
-    (hDelay : E.RealizedFinalizationDelay cfg ext B)
-    (P : EpochCheckpointClosure B.anchor
-      (E.AcceptedRoot cfg ext) B.state.C)
-    (V : B.state.ExactLinkValidity)
+    (hDelay : E.ImportedBlockFinalizationLag cfg ext B)
+    (P : EpochCheckpointProjectionLaws B.anchor
+      (E.RootKnownInScheduledPrefix cfg ext) B.state.checkpoint_at_epoch)
+    (V : B.state.LinkCheckpointAgreement)
     {v : ValidatorIndex} (hv : v ∈ E.honest) {n : ℕ}
     (hHn1 : E.WithinHorizon cfg (n + 1))
     (hcall : E.IsScheduledFCRCallAt cfg ext v n)
@@ -301,7 +301,7 @@ theorem ObservedResetCandidateInputAt.safeFrom_of_acceptedDynamics
       rw [hanchorC]
       exact ⟨IncludedCertifiedJustified.anchor⟩
     · obtain ⟨carrier, _hdesc, hformed⟩ :=
-        B.state.gu_mem tip htip.acceptedRoot
+        B.state.unrealized_justified_mem tip htip.acceptedRoot
       refine ⟨carrier, ?_⟩
       rw [hcEq]
       exact (B.state.formed_evidence hformed).certified
@@ -355,12 +355,12 @@ theorem ObservedResetCandidateInputAt.safeFrom_of_acceptedDynamics
         exact (Nat.le_succ _).trans (Nat.le_of_succ_le_succ hlag)
     let F := (E.store cfg ext w (n + 1)).finalized_checkpoint
     have hanchorExact : B.anchor =
-        B.state.C B.anchor.root B.anchor.epoch :=
+        B.state.checkpoint_at_epoch B.anchor.root B.anchor.epoch :=
       acceptedAnchorExact_of_trajectory cfg ext E B hT hanchor hboundary
     have haccExact : CheckpointCertificateAccountability cfg E B.anchor :=
       CheckpointCertificateAccountability.of_assumptions cfg hacc
     have hFprefixC (hepoch : F.epoch ≤ c.epoch) :
-        ExactCheckpointPrefix B.state.C F c := by
+        ExactCheckpointPrefix B.state.checkpoint_at_epoch F c := by
       rcases E.acceptedGlobalFinalized_anchor_or_includedCertificate
           cfg ext B hgenShort hanchor (E.store_causal cfg ext w (n + 1)) with
         hFanchor | ⟨carrier, _hcarrier, hFcert⟩
@@ -415,7 +415,7 @@ theorem ObservedResetCandidateInputAt.safeFrom_of_acceptedDynamics
     exact hboundaryAdoption.trans
       (E.store_justified_epoch_mono cfg ext w hnm)
   obtain ⟨hJCertified⟩ :=
-    CausalPrefixFFGInterpretation.endpointJustified_certificate
+    ScheduledFFGInterpretation.endpointJustified_certificate
       cfg ext B hgenShort hanchor (E.store_causal cfg ext w m)
   have hJc : is_ancestor (E.store cfg ext w m)
       (get_node_for_root J.root) (get_node_for_root c.root) = true := by

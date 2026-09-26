@@ -20,8 +20,8 @@ namespace IncludedSupermajorityLink
 end IncludedSupermajorityLink
 
 variable {E : Execution Root}
-namespace CausalCarrierFFGState
-end CausalCarrierFFGState
+namespace AcceptedBlockFFGState
+end AcceptedBlockFFGState
 namespace ChainFFGState
 
 end ChainFFGState

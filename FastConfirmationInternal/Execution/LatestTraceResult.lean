@@ -7,7 +7,7 @@ public import FastConfirmationStatements.Traces
 
 namespace FastConfirmation.Spec
 variable {Root : Type*} [LinearOrder Root] [Inhabited Root]
-variable (cfg : Config) (ext : Externals Root)
+variable (cfg : Config) (ext : BeaconFunctionInterface Root)
 /-- The phased evaluator reconstructed from the three named guards. -/
 def getLatestTraceResult
     (query : FastConfirmationStore Root) : Root :=

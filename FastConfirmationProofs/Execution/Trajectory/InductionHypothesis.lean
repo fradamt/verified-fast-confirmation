@@ -20,7 +20,7 @@ This module contains `filtered_subset_block_roots` and related declarations.
 namespace FastConfirmation.Spec
 
 variable {Root : Type*} [LinearOrder Root] [Inhabited Root]
-variable (cfg : Config) (ext : Externals Root)
+variable (cfg : Config) (ext : BeaconFunctionInterface Root)
 
 /-! ## Section 1 — `dynamics_struct` from `hb` + `hcase`
 

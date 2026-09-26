@@ -20,7 +20,7 @@ the transcribed model permits, without using the generally false
 
 There are two genuine model boundaries:
 
-* `Externals.process_justification_and_finalization` and `state_transition` are
+* `BeaconFunctionInterface.process_justification_and_finalization` and `state_transition` are
   opaque.  Their present coherence record constrains slots, registries, and
   checkpoint epochs, but does not say that a checkpoint written into an honest
   `Store` is backed by scheduled supermajority-link attestations.
@@ -48,7 +48,7 @@ to future `get_voting_source` reads.
 namespace FastConfirmation.Spec
 
 variable {Root : Type*} [LinearOrder Root] [Inhabited Root]
-variable (cfg : Config) (ext : Externals Root)
+variable (cfg : Config) (ext : BeaconFunctionInterface Root)
 
 /-! ## Executable accepted-edge facts and checkpoint-map provenance -/
 

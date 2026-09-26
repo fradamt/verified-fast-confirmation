@@ -135,7 +135,7 @@ theorem update_proposer_boost_root_sameCkpt (cfg : Config) (store : Store Root)
   simp only [update_proposer_boost_root]; split_ifs <;> exact ⟨rfl, rfl⟩
 
 omit [Inhabited Root] in
-theorem store_target_checkpoint_state_sameCkpt (cfg : Config) (ext : Externals Root)
+theorem store_target_checkpoint_state_sameCkpt (cfg : Config) (ext : BeaconFunctionInterface Root)
     (store : Store Root) (target : Checkpoint Root) :
     SameCkpt store (store_target_checkpoint_state cfg ext store target) := by
   simp only [store_target_checkpoint_state]; split_ifs <;> exact ⟨rfl, rfl⟩
@@ -156,7 +156,7 @@ by `BeaconExternalsPremises.pjf_checkpoint_epoch`, definitionally the same `Prop
 checkpoint has epoch at most the state's own epoch. The companion of
 `BeaconExternalsPremises.state_transition_checkpoint_epoch`; supplied by the frozen
 field `BeaconExternalsPremises.pjf_checkpoint_epoch` (definitionally identical). -/
-def PjfCheckpointEpoch (cfg : Config) (ext : Externals Root) : Prop :=
+def PjfCheckpointEpoch (cfg : Config) (ext : BeaconFunctionInterface Root) : Prop :=
   ∀ st : BeaconState Root,
     (ext.process_justification_and_finalization st).current_justified_checkpoint.epoch ≤
       compute_epoch_at_slot cfg st.slot
@@ -170,7 +170,7 @@ state's justified checkpoint is within the bound (`hpjf_bound`, supplied by
 unrealized-justifications write is `SameCkpt`; the `update_unrealized_checkpoints`
 and guarded `update_checkpoints` both adopt the pulled-up state's justified
 checkpoint, bounded by `hpjf_bound`. -/
-theorem compute_pulled_up_tip_CkptEpochLe (cfg : Config) (ext : Externals Root) (SL : Slot)
+theorem compute_pulled_up_tip_CkptEpochLe (cfg : Config) (ext : BeaconFunctionInterface Root) (SL : Slot)
     (store : Store Root) (block_root : Root)
     (hpjf_bound :
       (ext.process_justification_and_finalization
@@ -191,7 +191,7 @@ theorem compute_pulled_up_tip_CkptEpochLe (cfg : Config) (ext : Externals Root) 
 omit [Inhabited Root] in
 /-- `on_attestation` preserves the bound: it only writes `checkpoint_states` /
 `latest_messages`, both `SameCkpt`. -/
-theorem on_attestation_CkptEpochLe (cfg : Config) (ext : Externals Root) (SL : Slot)
+theorem on_attestation_CkptEpochLe (cfg : Config) (ext : BeaconFunctionInterface Root) (SL : Slot)
     {store store' : Store Root} {a : Attestation Root} {ifb : Bool}
     (h : CkptEpochLe cfg SL store) (hh : on_attestation cfg ext store a ifb = some store') :
     CkptEpochLe cfg SL store' := by
@@ -204,7 +204,7 @@ theorem on_attestation_CkptEpochLe (cfg : Config) (ext : Externals Root) (SL : S
 omit [Inhabited Root] in
 /-- `on_attester_slashing` preserves the bound: it only grows
 `equivocating_indices`, `SameCkpt`. -/
-theorem on_attester_slashing_CkptEpochLe (cfg : Config) (ext : Externals Root) (SL : Slot)
+theorem on_attester_slashing_CkptEpochLe (cfg : Config) (ext : BeaconFunctionInterface Root) (SL : Slot)
     {store store' : Store Root} {asl : AttesterSlashing Root}
     (h : CkptEpochLe cfg SL store)
     (hh : on_attester_slashing ext store asl = some store') :
@@ -215,7 +215,7 @@ theorem on_attester_slashing_CkptEpochLe (cfg : Config) (ext : Externals Root) (
   exact CkptEpochLe.of_sameCkpt ⟨rfl, rfl⟩ h
 
 omit [Inhabited Root] in
-theorem on_payload_attestation_message_CkptEpochLe (cfg : Config) (ext : Externals Root)
+theorem on_payload_attestation_message_CkptEpochLe (cfg : Config) (ext : BeaconFunctionInterface Root)
     (SL : Slot) {store store' : Store Root} {message : PayloadAttestationMessage Root}
     {is_from_block : Bool} (h : CkptEpochLe cfg SL store)
     (hh : on_payload_attestation_message cfg ext store message is_from_block = some store') :
@@ -223,7 +223,7 @@ theorem on_payload_attestation_message_CkptEpochLe (cfg : Config) (ext : Externa
   CkptEpochLe.of_sameCkpt (on_payload_attestation_message_frame cfg ext hh).sameCkpt h
 
 omit [Inhabited Root] in
-theorem on_execution_payload_envelope_CkptEpochLe (cfg : Config) (ext : Externals Root)
+theorem on_execution_payload_envelope_CkptEpochLe (cfg : Config) (ext : BeaconFunctionInterface Root)
     (SL : Slot) {store store' : Store Root} {envelope : SignedExecutionPayloadEnvelope Root}
     {observation : EnvelopeObservation Root} (h : CkptEpochLe cfg SL store)
     (hh : on_execution_payload_envelope ext store envelope observation = some store') :
@@ -234,7 +234,7 @@ theorem on_execution_payload_envelope_CkptEpochLe (cfg : Config) (ext : External
 checkpoint (from `state_transition`) is bounded by the block epoch, which is at
 most `SL` by the not-future gate; the pulled-up tip's justified checkpoint is
 bounded by `PjfCheckpointEpoch` at the block's post-state slot. -/
-theorem on_block_CkptEpochLe (cfg : Config) (ext : Externals Root) (SL : Slot)
+theorem on_block_CkptEpochLe (cfg : Config) (ext : BeaconFunctionInterface Root) (SL : Slot)
     (hst_ckpt : ∀ (st : BeaconState Root) (b : SignedBeaconBlock Root) (st' : BeaconState Root),
       ext.state_transition st b = some st' →
         st'.current_justified_checkpoint.epoch ≤ compute_epoch_at_slot cfg b.message.slot)
@@ -285,7 +285,7 @@ theorem on_block_CkptEpochLe (cfg : Config) (ext : Externals Root) (SL : Slot)
 
 /-- One dispatched event preserves the bound (needs the current-slot bound for
 the `on_block` case, re-established across the fold). -/
-theorem apply_event_CkptEpochLe (cfg : Config) (ext : Externals Root) (SL : Slot)
+theorem apply_event_CkptEpochLe (cfg : Config) (ext : BeaconFunctionInterface Root) (SL : Slot)
     (hst_ckpt : ∀ (st : BeaconState Root) (b : SignedBeaconBlock Root) (st' : BeaconState Root),
       ext.state_transition st b = some st' →
         st'.current_justified_checkpoint.epoch ≤ compute_epoch_at_slot cfg b.message.slot)
@@ -354,7 +354,7 @@ theorem on_tick_CkptEpochLe (cfg : Config) (SL : Slot) (store : Store Root) (tim
 /-- Folding a second's scheduled events preserves the bound: every event keeps
 the store's current slot fixed (`apply_event_current_slot`), so the
 current-slot bound is re-established at each step. -/
-theorem CkptEpochLe_foldl (cfg : Config) (ext : Externals Root) (SL : Slot)
+theorem CkptEpochLe_foldl (cfg : Config) (ext : BeaconFunctionInterface Root) (SL : Slot)
     (hst_ckpt : ∀ (st : BeaconState Root) (b : SignedBeaconBlock Root) (st' : BeaconState Root),
       ext.state_transition st b = some st' →
         st'.current_justified_checkpoint.epoch ≤ compute_epoch_at_slot cfg b.message.slot)
@@ -383,7 +383,7 @@ genesis store is a `get_forkchoice_store`, both tracked checkpoint epochs are at
 most `compute_epoch_at_slot (slot_at n)`. Mirrors `Delivery.store_blocksSlotLe`'s
 induction exactly (genesis anchor slot from `get_current_slot_get_forkchoice_store`;
 step weakens the bound by `slot_at_mono`, rides `on_tick`, folds the events). -/
-theorem Execution.store_CkptEpochLe (E : Execution Root) (cfg : Config) (ext : Externals Root)
+theorem Execution.store_CkptEpochLe (E : Execution Root) (cfg : Config) (ext : BeaconFunctionInterface Root)
     (hec : BeaconExternalsPremises cfg ext E)
     (hdiv : 1000 ∣ cfg.slot_duration_ms)
     (hgen : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
@@ -429,7 +429,7 @@ theorem Execution.store_CkptEpochLe (E : Execution Root) (cfg : Config) (ext : E
 frozen field `BeaconExternalsPremises.pjf_checkpoint_epoch` via `PjfCheckpointEpoch`): a
 store's justified checkpoint never sits in a future epoch. -/
 theorem Execution.store_justified_epoch_le (E : Execution Root) (cfg : Config)
-    (ext : Externals Root) (hec : BeaconExternalsPremises cfg ext E)
+    (ext : BeaconFunctionInterface Root) (hec : BeaconExternalsPremises cfg ext E)
     (hdiv : 1000 ∣ cfg.slot_duration_ms)
     (hgen : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
       E.genesis_store = get_forkchoice_store cfg ast ablk ∧ ast.slot = ablk.message.slot)
@@ -468,7 +468,7 @@ variable (E : Execution Root)
 
 
 
-variable (cfg : Config) (ext : Externals Root)
+variable (cfg : Config) (ext : BeaconFunctionInterface Root)
 
 
 

@@ -34,7 +34,7 @@ pipeline is an input.
 namespace FastConfirmation.Spec
 
 variable {Root : Type*} [LinearOrder Root] [Inhabited Root]
-variable (cfg : Config) (ext : Externals Root)
+variable (cfg : Config) (ext : BeaconFunctionInterface Root)
 
 namespace Execution
 
@@ -45,13 +45,13 @@ variable {E : Execution Root}
 /-- The accepted global unrealized-justified field has a concrete Casper
 certificate.  This is the accepted-state replacement for the legacy
 `ChainFFGState.gu_certified` equality branch. -/
-theorem CausalPrefixFFGInterpretation.unrealizedJustified_certificate
-    (B : CausalPrefixFFGInterpretation cfg ext E)
+theorem ScheduledFFGInterpretation.unrealizedJustified_certificate
+    (B : ScheduledFFGInterpretation cfg ext E)
     (hgen : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
       E.genesis_store = get_forkchoice_store cfg ast ablk ∧
         ast.slot = ablk.message.slot)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
-    {store : Store Root} (hstore : E.CausalStore cfg ext store) :
+    {store : Store Root} (hstore : E.ScheduledPrefixStore cfg ext store) :
     Nonempty (CertifiedJustified cfg E B.anchor
       store.unrealized_justified_checkpoint) := by
   have horigins :=
@@ -60,7 +60,7 @@ theorem CausalPrefixFFGInterpretation.unrealizedJustified_certificate
       hfieldAnchor | ⟨tip, htip, hfield⟩
   · rw [hfieldAnchor]
     exact ⟨CertifiedJustified.anchor⟩
-  · have hAU : B.state.AU cfg ext tip
+  · have hAU : B.state.AvailableCheckpoint cfg ext tip
         store.unrealized_justified_checkpoint := by
       rw [hfield]
       exact B.state.gu_AU cfg ext htip.acceptedRoot
@@ -68,18 +68,18 @@ theorem CausalPrefixFFGInterpretation.unrealizedJustified_certificate
       B.state.includedJustifiedAtTip_of_AU cfg ext hAU
     exact ⟨IncludedCertifiedJustified.toCertifiedJustified
       (cfg := cfg)
-      (Execution.CausalCarrierAttestationRelation.relation
+      (Execution.AcceptedBlockAttestationInclusion.relation
         cfg ext E B.state.includedAttestations) hincluded⟩
 
 /-- Accepted global checkpoint geometry supplies the sole store-domain field
 of the otherwise protocol-level no-conflict arithmetic bundle. -/
 def noConflictPinningAssumptions_of_acceptedGlobalTrajectory
-    (B : CausalPrefixFFGInterpretation cfg ext E)
-    (hT : E.ScheduledPrefixPremises cfg ext)
+    (B : ScheduledFFGInterpretation cfg ext E)
+    (hT : E.ScheduledExecutionPremises cfg ext)
     (hstatic : StaticValidatorSet cfg E)
     (hbyz : ByzantineWeightPremises cfg E)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
-    (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
+    (hboundary : InitialAnchorAtEpochBoundary (cfg := cfg)
       (E := E) (anchor := B.anchor)) :
     NoConflictPinningAssumptions cfg ext E where
   genesis := hT.genesis_structure
@@ -130,12 +130,12 @@ arithmetic branch reuses the executable helper accounting, but reconstructs
 the observed signer votes through the exact accepted prefix rather than the
 deprecated scheduled-root FFG state. -/
 theorem completedPrefix_noConflict_certifiedJustified_root_eq_currentTarget
-    (B : CausalPrefixFFGInterpretation cfg ext E)
-    (hT : E.ScheduledPrefixPremises cfg ext)
-    (hC : E.CompletedFCRCallPremises cfg ext)
+    (B : ScheduledFFGInterpretation cfg ext E)
+    (hT : E.ScheduledExecutionPremises cfg ext)
+    (hC : E.ScheduledFCRCallPremises cfg ext)
     (hfit : EpochEndsFitUint64 cfg)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
-    (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
+    (hboundary : InitialAnchorAtEpochBoundary (cfg := cfg)
       (E := E) (anchor := B.anchor))
     {v : ValidatorIndex} (hv : v ∈ E.honest) {n : Nat}
     (hHn1 : E.WithinHorizon cfg (n + 1))
@@ -195,10 +195,10 @@ theorem completedPrefix_noConflict_certifiedJustified_root_eq_currentTarget
   have hanchorH : get_current_epoch cfg E.anchor_state <
       E.verification_horizon :=
     E.completedPrefix_anchor_epoch_within cfg ext hT hC.static_validators
-  have hstoreCausal : E.CausalStore cfg ext store := by
+  have hstoreCausal : E.ScheduledPrefixStore cfg ext store := by
     simpa only [store] using E.store_causal cfg ext v (n + 1)
   obtain ⟨hUJ⟩ :=
-    CausalPrefixFFGInterpretation.unrealizedJustified_certificate
+    ScheduledFFGInterpretation.unrealizedJustified_certificate
       cfg ext B hgenShort hanchor hstoreCausal
   by_cases heq : target = store.unrealized_justified_checkpoint
   · have hroot := hacc.justified_unique hc hUJ
@@ -260,7 +260,7 @@ theorem completedPrefix_noConflict_certifiedJustified_root_eq_currentTarget
       rcases hiSigner with hiObserved | hiFuture
       · let hV := CurrentTargetPrefixVoteAssumptions.of_acceptedGlobalTrajectory
           cfg ext E B hT hanchor hboundary
-        have hboundaryZero : TrustedAnchorBoundaryAligned
+        have hboundaryZero : InitialAnchorAtEpochBoundary
             (cfg := cfg) (E := E)
             (anchor := E.genesis_store.justified_checkpoint) := by
           simpa only [← hanchor] using hboundary
@@ -364,12 +364,12 @@ theorem completedPrefix_noConflict_certifiedJustified_root_eq_currentTarget
 from the selected result. The future honest voters can use different targets.
 The declaration above keeps the stronger exact-target theorem available. -/
 theorem completedPrefix_noConflict_certifiedJustified_descends_result
-    (B : CausalPrefixFFGInterpretation cfg ext E)
-    (hT : E.ScheduledPrefixPremises cfg ext)
-    (hC : E.CompletedFCRCallPremises cfg ext)
+    (B : ScheduledFFGInterpretation cfg ext E)
+    (hT : E.ScheduledExecutionPremises cfg ext)
+    (hC : E.ScheduledFCRCallPremises cfg ext)
     (hfit : EpochEndsFitUint64 cfg)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
-    (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
+    (hboundary : InitialAnchorAtEpochBoundary (cfg := cfg)
       (E := E) (anchor := B.anchor))
     {v : ValidatorIndex} (hv : v ∈ E.honest) {n : Nat}
     (hHn1 : E.WithinHorizon cfg (n + 1))
@@ -430,10 +430,10 @@ theorem completedPrefix_noConflict_certifiedJustified_descends_result
   have hanchorH : get_current_epoch cfg E.anchor_state <
       E.verification_horizon :=
     E.completedPrefix_anchor_epoch_within cfg ext hT hC.static_validators
-  have hstoreCausal : E.CausalStore cfg ext store := by
+  have hstoreCausal : E.ScheduledPrefixStore cfg ext store := by
     simpa only [store] using E.store_causal cfg ext v (n + 1)
   obtain ⟨hUJ⟩ :=
-    CausalPrefixFFGInterpretation.unrealizedJustified_certificate
+    ScheduledFFGInterpretation.unrealizedJustified_certificate
       cfg ext B hgenShort hanchor hstoreCausal
   by_cases heq : target = store.unrealized_justified_checkpoint
   · have hroot := hacc.justified_unique hc hUJ
@@ -498,7 +498,7 @@ theorem completedPrefix_noConflict_certifiedJustified_descends_result
       rcases hiSigner with hiObserved | hiFuture
       · let hV := CurrentTargetPrefixVoteAssumptions.of_acceptedGlobalTrajectory
           cfg ext E B hT hanchor hboundary
-        have hboundaryZero : TrustedAnchorBoundaryAligned
+        have hboundaryZero : InitialAnchorAtEpochBoundary
             (cfg := cfg) (E := E)
             (anchor := E.genesis_store.justified_checkpoint) := by
           simpa only [← hanchor] using hboundary
@@ -618,12 +618,12 @@ theorem completedPrefix_noConflict_certifiedJustified_descends_result
 set_option maxRecDepth 10000 in
 /-- Producer form used by the exact selector call-site dispatcher. -/
 noncomputable def completedPrefix_noConflictCertificatePinningProducerAt
-    (B : CausalPrefixFFGInterpretation cfg ext E)
-    (hT : E.ScheduledPrefixPremises cfg ext)
-    (hC : E.CompletedFCRCallPremises cfg ext)
+    (B : ScheduledFFGInterpretation cfg ext E)
+    (hT : E.ScheduledExecutionPremises cfg ext)
+    (hC : E.ScheduledFCRCallPremises cfg ext)
     (hfit : EpochEndsFitUint64 cfg)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
-    (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
+    (hboundary : InitialAnchorAtEpochBoundary (cfg := cfg)
       (E := E) (anchor := B.anchor))
     {v : ValidatorIndex} (hv : v ∈ E.honest) {n : Nat}
     (hHn1 : E.WithinHorizon cfg (n + 1)) :
@@ -645,9 +645,9 @@ noncomputable def completedPrefix_noConflictCertificatePinningProducerAt
 
 /-! ## Actual-call historical payload -/
 
-private theorem AcceptedBlockAt.executionRoot_for_actualOrientation
+private theorem BlockKnownInScheduledPrefix.executionRoot_for_actualOrientation
     {r : Root} {b : BeaconBlock Root}
-    (h : E.AcceptedBlockAt cfg ext r b) : E.ExecutionRoot r := by
+    (h : E.BlockKnownInScheduledPrefix cfg ext r b) : E.ExecutionRoot r := by
   obtain ⟨store, hstore, hr, _hblock⟩ := h
   rcases hstore.blockProvenance cfg ext E r hr with hgen | hsched
   · exact ⟨store.blocks r, Or.inl ⟨hgen.1, hgen.2⟩⟩
@@ -659,11 +659,11 @@ private theorem AcceptedBlockAt.executionRoot_for_actualOrientation
 This is accepted-root reflection plus the trusted-anchor boundary walk; it
 does not use an endpoint, no-crossing fact, or safety conclusion. -/
 private theorem AcceptedHistoricalA32LineageAt.payloadAtExecutionStore
-    (B : CausalPrefixFFGInterpretation cfg ext E)
-    (hT : E.ScheduledPrefixPremises cfg ext)
+    (B : ScheduledFFGInterpretation cfg ext E)
+    (hT : E.ScheduledExecutionPremises cfg ext)
     (hphase : Phase0SourceCoherence cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
-    (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
+    (hboundary : InitialAnchorAtEpochBoundary (cfg := cfg)
       (E := E) (anchor := B.anchor))
     {v : ValidatorIndex} {q : Nat} {tip : Root} {e : Epoch}
     (hlineage : E.AcceptedHistoricalA32LineageAt cfg ext B tip e)
@@ -672,7 +672,7 @@ private theorem AcceptedHistoricalA32LineageAt.payloadAtExecutionStore
     Nonempty (E.AcceptedHistoricalA32GatePayloadAt cfg ext B tip e) := by
   obtain ⟨ast, ablk, hgen, hgenSlot, hgenParent⟩ := hT.genesis_structure
   let store := E.store cfg ext v q
-  have hstoreCausal : E.CausalStore cfg ext store := by
+  have hstoreCausal : E.ScheduledPrefixStore cfg ext store := by
     simpa only [store] using E.store_causal cfg ext v q
   have hstoreParent : ParentSlotLt store := by
     simpa only [store] using E.store_parentSlotLt cfg ext hT.wellFormed
@@ -692,7 +692,7 @@ private theorem AcceptedHistoricalA32LineageAt.payloadAtExecutionStore
   have htipOrigin : is_ancestor store (get_node_for_root tip)
       (get_node_for_root hlineage.origin) = true := by
     simpa only [store] using horiginReflection.2
-  have horiginAt : E.AcceptedBlockAt cfg ext hlineage.origin
+  have horiginAt : E.BlockKnownInScheduledPrefix cfg ext hlineage.origin
       (store.blocks hlineage.origin) :=
     E.acceptedBlockAt_of_causal_known cfg ext hstoreCausal horigin
   have horiginBlock : hlineage.payload.origin_block =
@@ -716,12 +716,12 @@ private theorem AcceptedHistoricalA32LineageAt.payloadAtExecutionStore
 uses the no-crossing antecedent to exclude a fresh gate. It retains the
 original call instead of requesting global helper support. -/
 noncomputable def completedPrefix_acceptedHistoricalA32PayloadProducerAt
-    (B : CausalPrefixFFGInterpretation cfg ext E)
-    (hT : E.ScheduledPrefixPremises cfg ext)
-    (hC : E.CompletedFCRCallPremises cfg ext)
+    (B : ScheduledFFGInterpretation cfg ext E)
+    (hT : E.ScheduledExecutionPremises cfg ext)
+    (hC : E.ScheduledFCRCallPremises cfg ext)
     (hfit : EpochEndsFitUint64 cfg)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
-    (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
+    (hboundary : InitialAnchorAtEpochBoundary (cfg := cfg)
       (E := E) (anchor := B.anchor))
     {v : ValidatorIndex} (hv : v ∈ E.honest) {n : Nat}
     (hcall : E.IsScheduledFCRCallAt cfg ext v n)
@@ -750,7 +750,7 @@ noncomputable def completedPrefix_acceptedHistoricalA32PayloadProducerAt
     rw [hwrite]
     simpa only [query, trace, hqueryStore] using hcurrent
   have hprovisos : getLatestSelectorGuard cfg query trace.afterObserved →
-      FCRPredictionSupportAt cfg ext E v (n + 1) query trace.afterObserved := by
+      SelectedPredictionVoteSupport cfg ext E v (n + 1) query trace.afterObserved := by
     intro _
     constructor
     · intro a c hedge
@@ -766,10 +766,10 @@ noncomputable def completedPrefix_acceptedHistoricalA32PayloadProducerAt
   have hresultKnown : trace.result ∈ query.store.block_roots :=
     E.getLatestConfirmedTraceAt_result_known cfg ext B hT hanchor hboundary
       hv hHn1 hinvariant.confirmed_known
-  have hqueryCausal : E.CausalStore cfg ext query.store := by
+  have hqueryCausal : E.ScheduledPrefixStore cfg ext query.store := by
     rw [hqueryStore]
     exact E.store_causal cfg ext v (n + 1)
-  have hresultAt : E.AcceptedBlockAt cfg ext trace.result
+  have hresultAt : E.BlockKnownInScheduledPrefix cfg ext trace.result
       (query.store.blocks trace.result) :=
     E.acceptedBlockAt_of_causal_known cfg ext hqueryCausal hresultKnown
   have htipBlock : hlineage.tip_block =
@@ -838,7 +838,7 @@ noncomputable def completedPrefix_acceptedHistoricalA32PayloadProducerAt
           (get_head cfg query.store).root e := by rw [heCurrent]
     _ = get_checkpoint_for_block cfg query.store trace.result e := by
       exact congrArg (Checkpoint.mk e) hcheckpoint
-    _ = B.state.C trace.result e :=
+    _ = B.state.checkpoint_at_epoch trace.result e :=
       (B.coherence.checkpoint_of_known hqueryCausal trace.result
         hresultKnown e).symm
 

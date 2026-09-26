@@ -17,7 +17,7 @@ This module contains `recorded_bside_ge`, `recorded_sibling_le`, `ghost_arith` a
 namespace FastConfirmation.Spec
 
 variable {Root : Type*} [LinearOrder Root] [Inhabited Root]
-variable (cfg : Config) (ext : Externals Root)
+variable (cfg : Config) (ext : BeaconFunctionInterface Root)
 
 /-! ## The `b′`-side child's recorded score dominates `Sval`
 

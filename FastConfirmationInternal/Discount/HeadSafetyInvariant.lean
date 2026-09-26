@@ -8,7 +8,7 @@ public import FastConfirmationStatements.Premises.NextSlotSafety
 namespace FastConfirmation.Spec
 
 variable {Root : Type*} [LinearOrder Root] [Inhabited Root]
-variable (cfg : Config) (ext : Externals Root)
+variable (cfg : Config) (ext : BeaconFunctionInterface Root)
 
 /-- The confirmation-time support package for `b` at confirming slot `s`:
 the honest supporters `HS₀`, each with a **newest pre-`s` vote** whose block

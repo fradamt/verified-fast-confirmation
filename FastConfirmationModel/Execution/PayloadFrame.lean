@@ -32,7 +32,7 @@ namespace PayloadFrame
 
 end PayloadFrame
 
-variable [LinearOrder Root] (cfg : Config) (ext : Externals Root)
+variable [LinearOrder Root] (cfg : Config) (ext : BeaconFunctionInterface Root)
 
 end FastConfirmation.Spec
 

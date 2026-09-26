@@ -235,7 +235,7 @@ def witnessTransition (st : BeaconState WitnessRoot)
     some carrierState
   else none
 
-def witnessExternals : Externals WitnessRoot where
+def witnessExternals : BeaconFunctionInterface WitnessRoot where
   AnchorCommitsToState := fun block state =>
     block = anchorSignedBlock.message ∧ state = anchorState
   get_beacon_committee := fun _ slot _ =>
@@ -725,7 +725,7 @@ theorem witnessStore_registryConstant (v : ValidatorIndex) (n : ℕ) :
       exact on_tick_registryConstant witnessConfig _ _ ih
 
 private theorem witnessCausalStore_registryConstant {store : Store WitnessRoot}
-    (hstore : witnessExecution.CausalStore witnessConfig witnessExternals store) :
+    (hstore : witnessExecution.ScheduledPrefixStore witnessConfig witnessExternals store) :
     RegistryConstant witnessExecution.registry store := by
   cases hstore with
   | genesis =>
@@ -1127,7 +1127,7 @@ theorem witnessHorizonVoteDeliveryLookahead :
   exact witness_vote_false_delivery hslt w
 
 theorem witnessScheduledPrefixTrajectoryAssumptions :
-    witnessExecution.ScheduledPrefixPremises
+    witnessExecution.ScheduledExecutionPremises
       witnessConfig witnessExternals := by
   exact
     { whole_seconds := by decide
@@ -1205,9 +1205,9 @@ theorem witnessAnchorEquality :
   decide
 
 theorem witnessTrustedAnchorBoundaryAligned :
-    Execution.TrustedAnchorBoundaryAligned (cfg := witnessConfig)
+    Execution.InitialAnchorAtEpochBoundary (cfg := witnessConfig)
       (E := witnessExecution) (anchor := anchorCheckpoint) := by
-  unfold Execution.TrustedAnchorBoundaryAligned
+  unfold Execution.InitialAnchorAtEpochBoundary
   decide
 
 end ByzantineWitness

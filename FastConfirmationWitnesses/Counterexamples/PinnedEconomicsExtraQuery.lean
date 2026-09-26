@@ -145,7 +145,7 @@ def vote3 : Attestation WitnessRoot :=
 /-! The abstract state functions preserve realized checkpoints everywhere.
 This makes both phase0 source-coherence laws true, not merely true on the
 reachable states used below. -/
-def witnessExternals : Externals WitnessRoot where
+def witnessExternals : BeaconFunctionInterface WitnessRoot where
   get_beacon_committee := fun _ slot _ => [slot % 4]
   get_committee_count_per_slot := fun _ _ => 1
   process_slots := fun st slot => { st with slot := slot }
@@ -557,7 +557,7 @@ private theorem witnessStore_registryConstant (v : ValidatorIndex) (n : ℕ) :
       exact on_tick_registryConstant witnessConfig _ _ ih
 
 private theorem witnessCausalStore_registryConstant {store : Store WitnessRoot}
-    (hstore : witnessExecution.CausalStore witnessConfig witnessExternals store) :
+    (hstore : witnessExecution.ScheduledPrefixStore witnessConfig witnessExternals store) :
     RegistryConstant witnessExecution.registry store := by
   cases hstore with
   | genesis =>

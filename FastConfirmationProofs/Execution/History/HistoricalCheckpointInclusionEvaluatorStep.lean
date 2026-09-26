@@ -20,7 +20,7 @@ treated as a generic certificate or payload producer.
 namespace FastConfirmation.Spec
 
 variable {Root : Type*} [LinearOrder Root] [Inhabited Root]
-variable (cfg : Config) (ext : Externals Root)
+variable (cfg : Config) (ext : BeaconFunctionInterface Root)
 
 namespace Execution
 
@@ -31,11 +31,11 @@ variable {E : Execution Root}
 /-- The no-crossing accepted segment for the exact final selector phase,
 independent of which ordered reset phase supplied its input. -/
 theorem selectedCurrentNoCrossingAcceptedSegment
-    (B : CausalPrefixFFGInterpretation cfg ext E)
+    (B : ScheduledFFGInterpretation cfg ext E)
     (hwfE : WellFormedExecution E)
     (hcore : E.ExactCausalStoreWellFormedCore cfg ext)
     {query : FastConfirmationStore Root}
-    (hstore : E.CausalStore cfg ext query.store)
+    (hstore : E.ScheduledPrefixStore cfg ext query.store)
     (hparent : ParentSlotLt query.store)
     (hwalk : ∀ t ∈ query.store.block_roots,
       ∀ r ∈ query.store.block_roots,
@@ -117,11 +117,11 @@ theorem selectedCurrentNoCrossingAcceptedSegment
 /-- Preserve a historical lineage through a no-crossing selector phase,
 regardless of whether the input was carried or supplied by a reset. -/
 noncomputable def selectedCurrentNoCrossingLineage
-    (B : CausalPrefixFFGInterpretation cfg ext E)
+    (B : ScheduledFFGInterpretation cfg ext E)
     (hwfE : WellFormedExecution E)
     (hcore : E.ExactCausalStoreWellFormedCore cfg ext)
     {query : FastConfirmationStore Root}
-    (hstore : E.CausalStore cfg ext query.store)
+    (hstore : E.ScheduledPrefixStore cfg ext query.store)
     (hparent : ParentSlotLt query.store)
     (hwalk : ∀ t ∈ query.store.block_roots,
       ∀ r ∈ query.store.block_roots,
@@ -152,12 +152,12 @@ noncomputable def selectedCurrentNoCrossingLineage
     rw [hresult]
     exact (find_latest_confirmed_descendant_ge cfg ext query hparent hwalk
       hhead trace.afterObserved hinputKnown).2
-  have hresultAt : E.AcceptedBlockAt cfg ext trace.result
+  have hresultAt : E.BlockKnownInScheduledPrefix cfg ext trace.result
       (query.store.blocks trace.result) :=
     E.acceptedBlockAt_of_causal_known cfg ext hstore hresultKnown
   have hinputBlockEq : query.store.blocks trace.afterObserved =
       hprevious.tip_block :=
-    (Execution.CausalStore.acceptedBlockAt_iff_eq cfg ext E hwfE hstore
+    (Execution.ScheduledPrefixStore.acceptedBlockAt_iff_eq cfg ext E hwfE hstore
       hinputKnown).mp hprevious.tip_at
   have hinputEpochE : get_block_epoch cfg query.store
       trace.afterObserved = e := by
@@ -198,11 +198,11 @@ noncomputable def selectedCurrentNoCrossingLineage
 /-- Reconstruct the accepted same-epoch segment from the current target to a
 current result selected from any exact ordered evaluator input. -/
 theorem selectedCurrentCrossingAcceptedTargetSegment
-    (B : CausalPrefixFFGInterpretation cfg ext E)
+    (B : ScheduledFFGInterpretation cfg ext E)
     (hwfE : WellFormedExecution E)
     (hcore : E.ExactCausalStoreWellFormedCore cfg ext)
     {query : FastConfirmationStore Root}
-    (hstore : E.CausalStore cfg ext query.store)
+    (hstore : E.ScheduledPrefixStore cfg ext query.store)
     (hparent : ParentSlotLt query.store)
     (hwalk : ∀ t ∈ query.store.block_roots,
       ∀ r ∈ query.store.block_roots,
@@ -276,7 +276,7 @@ theorem selectedCurrentCrossingAcceptedTargetSegment
 /-- A current crossing from any exact evaluator input creates a fresh
 historical payload at the concrete selected result. -/
 noncomputable def selectedCurrentCrossingLineage
-    (B : CausalPrefixFFGInterpretation cfg ext E)
+    (B : ScheduledFFGInterpretation cfg ext E)
     (hwfE : WellFormedExecution E)
     (hcore : E.ExactCausalStoreWellFormedCore cfg ext)
     (hphase : Phase0SourceCoherence cfg ext)
@@ -284,7 +284,7 @@ noncomputable def selectedCurrentCrossingLineage
     {query : FastConfirmationStore Root}
     (hactual : query.store = E.store cfg ext v (n + 1))
     (hanchorLe : B.anchor.epoch ≤ get_current_store_epoch cfg query.store)
-    (hstore : E.CausalStore cfg ext query.store)
+    (hstore : E.ScheduledPrefixStore cfg ext query.store)
     (hparent : ParentSlotLt query.store)
     (hwalk : ∀ t ∈ query.store.block_roots,
       ∀ r ∈ query.store.block_roots,
@@ -302,7 +302,7 @@ noncomputable def selectedCurrentCrossingLineage
     (htargetEpoch : get_block_epoch cfg query.store
       (get_current_target cfg query.store).root =
         (get_current_target cfg query.store).epoch)
-    (hprovisos : FCRPredictionSupportAt cfg ext E v (n + 1) query
+    (hprovisos : SelectedPredictionVoteSupport cfg ext E v (n + 1) query
       trace.afterObserved)
     {a c : Root}
     (hedge : CurrentTargetSelectedEdge cfg ext query
@@ -339,7 +339,7 @@ noncomputable def selectedCurrentCrossingLineage
     current_target_eq_checkpoint_of_current_epoch_ancestor cfg hparent
       hbelowResult hresultCurrent hcurrentWalk
   have htarget : get_current_target cfg query.store =
-      B.state.C trace.result (get_current_store_epoch cfg query.store) := by
+      B.state.checkpoint_at_epoch trace.result (get_current_store_epoch cfg query.store) := by
     calc
       get_current_target cfg query.store =
           get_checkpoint_for_block cfg query.store trace.result
@@ -348,7 +348,7 @@ noncomputable def selectedCurrentCrossingLineage
       _ = get_checkpoint_for_block cfg query.store trace.result
             (get_current_store_epoch cfg query.store) := by
         rw [hresultCurrent]
-      _ = B.state.C trace.result
+      _ = B.state.checkpoint_at_epoch trace.result
             (get_current_store_epoch cfg query.store) :=
         (B.coherence.checkpoint_of_known hstore trace.result hresultKnown
           (get_current_store_epoch cfg query.store)).symm
@@ -381,12 +381,12 @@ whether the epoch-boundary checkpoint block is current or old.  The separate
 target-local wrapper above is only one way to construct this producer in the
 non-skipped-boundary case. -/
 noncomputable def selectedCurrentCrossingLineage_of_fixedSourceProducer
-    (B : CausalPrefixFFGInterpretation cfg ext E)
+    (B : ScheduledFFGInterpretation cfg ext E)
     {v : ValidatorIndex} (hv : v ∈ E.honest) {n : ℕ}
     {query : FastConfirmationStore Root}
     (hactual : query.store = E.store cfg ext v (n + 1))
     (hanchorLe : B.anchor.epoch ≤ get_current_store_epoch cfg query.store)
-    (hstore : E.CausalStore cfg ext query.store)
+    (hstore : E.ScheduledPrefixStore cfg ext query.store)
     (hparent : ParentSlotLt query.store)
     (hwalk : ∀ t ∈ query.store.block_roots,
       ∀ r ∈ query.store.block_roots,
@@ -401,7 +401,7 @@ noncomputable def selectedCurrentCrossingLineage_of_fixedSourceProducer
     (hselector : getLatestSelectorGuard cfg query trace.afterObserved)
     (hresultCurrent : get_block_epoch cfg query.store trace.result =
       get_current_store_epoch cfg query.store)
-    (hprovisos : FCRPredictionSupportAt cfg ext E v (n + 1) query
+    (hprovisos : SelectedPredictionVoteSupport cfg ext E v (n + 1) query
       trace.afterObserved)
     {a c : Root}
     (hedge : CurrentTargetSelectedEdge cfg ext query
@@ -435,7 +435,7 @@ noncomputable def selectedCurrentCrossingLineage_of_fixedSourceProducer
     current_target_eq_checkpoint_of_current_epoch_ancestor cfg hparent
       hbelowResult hresultCurrent hcurrentWalk
   have htarget : get_current_target cfg query.store =
-      B.state.C trace.result (get_current_store_epoch cfg query.store) := by
+      B.state.checkpoint_at_epoch trace.result (get_current_store_epoch cfg query.store) := by
     calc
       get_current_target cfg query.store =
           get_checkpoint_for_block cfg query.store trace.result
@@ -444,7 +444,7 @@ noncomputable def selectedCurrentCrossingLineage_of_fixedSourceProducer
       _ = get_checkpoint_for_block cfg query.store trace.result
             (get_current_store_epoch cfg query.store) := by
         rw [hresultCurrent]
-      _ = B.state.C trace.result
+      _ = B.state.checkpoint_at_epoch trace.result
             (get_current_store_epoch cfg query.store) :=
         (B.coherence.checkpoint_of_known hstore trace.result hresultKnown
           (get_current_store_epoch cfg query.store)).symm
@@ -464,7 +464,7 @@ The bundle contains no reset classification and no historical payload. -/
 structure HistoricalA32QueryGeometryAt
     (query : FastConfirmationStore Root) : Prop where
   exact_core : E.ExactCausalStoreWellFormedCore cfg ext
-  causal : E.CausalStore cfg ext query.store
+  causal : E.ScheduledPrefixStore cfg ext query.store
   parent : ParentSlotLt query.store
   walk : ∀ t ∈ query.store.block_roots,
     ∀ r ∈ query.store.block_roots,
@@ -529,7 +529,7 @@ store back to the preceding execution store.  Store growth preserves its
 block, while the preceding clock bound forces equality of the two current
 epochs in precisely this case. -/
 theorem confirmed_current_at_previousStore_of_query
-    (hT : E.ScheduledPrefixPremises cfg ext)
+    (hT : E.ScheduledExecutionPremises cfg ext)
     {v : ValidatorIndex} {n : ℕ}
     (hknownN : E.confirmed cfg ext v n ∈
       (E.store cfg ext v n).block_roots)
@@ -588,10 +588,10 @@ theorem confirmed_current_at_previousStore_of_query
 /-- The only current-epoch finalized reset payload is the trusted-anchor
 payload.  No quorum is synthesized in this branch. -/
 noncomputable def actualFinalizedResetCurrentAnchorLineage
-    (B : CausalPrefixFFGInterpretation cfg ext E)
-    (hT : E.ScheduledPrefixPremises cfg ext)
+    (B : ScheduledFFGInterpretation cfg ext E)
+    (hT : E.ScheduledExecutionPremises cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
-    (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
+    (hboundary : InitialAnchorAtEpochBoundary (cfg := cfg)
       (E := E) (anchor := B.anchor))
     (v : ValidatorIndex) (n : ℕ)
     (hcurrent : get_block_epoch cfg (E.fcrStoreAtCall cfg ext v n).store
@@ -606,14 +606,14 @@ noncomputable def actualFinalizedResetCurrentAnchorLineage
   have hknown : (E.fcrStoreAtCall cfg ext v n).store.finalized_checkpoint.root ∈
       (E.fcrStoreAtCall cfg ext v n).store.block_roots := by
     simpa only [E.fcrStep_store] using hrealized.root_known
-  have hstore : E.CausalStore cfg ext (E.fcrStoreAtCall cfg ext v n).store := by
+  have hstore : E.ScheduledPrefixStore cfg ext (E.fcrStoreAtCall cfg ext v n).store := by
     rw [E.fcrStep_store]
     exact E.store_causal cfg ext v (n + 1)
   let root := (E.fcrStoreAtCall cfg ext v n).store.finalized_checkpoint.root
-  have hat : E.AcceptedBlockAt cfg ext root
+  have hat : E.BlockKnownInScheduledPrefix cfg ext root
       ((E.fcrStoreAtCall cfg ext v n).store.blocks root) :=
     E.acceptedBlockAt_of_causal_known cfg ext hstore hknown
-  have hcheckpointStore : B.state.C root
+  have hcheckpointStore : B.state.checkpoint_at_epoch root
         (get_current_store_epoch cfg (E.fcrStoreAtCall cfg ext v n).store) =
       get_checkpoint_for_block cfg (E.fcrStoreAtCall cfg ext v n).store root
         (get_current_store_epoch cfg (E.fcrStoreAtCall cfg ext v n).store) :=
@@ -629,10 +629,10 @@ noncomputable def actualFinalizedResetCurrentAnchorLineage
 /-- Produce the common query geometry once from the accepted global
 trajectory, rather than rebuilding it separately in every reset case. -/
 theorem historicalA32QueryGeometryAt_of_acceptedGlobalTrajectory
-    (B : CausalPrefixFFGInterpretation cfg ext E)
-    (hT : E.ScheduledPrefixPremises cfg ext)
+    (B : ScheduledFFGInterpretation cfg ext E)
+    (hT : E.ScheduledExecutionPremises cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
-    (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
+    (hboundary : InitialAnchorAtEpochBoundary (cfg := cfg)
       (E := E) (anchor := B.anchor))
     {v : ValidatorIndex} (hv : v ∈ E.honest)
     {n : ℕ} (hHn1 : E.WithinHorizon cfg (n + 1)) :
@@ -649,7 +649,7 @@ theorem historicalA32QueryGeometryAt_of_acceptedGlobalTrajectory
     hgenFacts.2.2
   have hcore : E.ExactCausalStoreWellFormedCore cfg ext :=
     E.exactCausalStoreWellFormedCore_of_trajectory cfg ext hT
-  have hcausal : E.CausalStore cfg ext (E.fcrStoreAtCall cfg ext v n).store := by
+  have hcausal : E.ScheduledPrefixStore cfg ext (E.fcrStoreAtCall cfg ext v n).store := by
     rw [E.fcrStep_store]
     exact E.store_causal cfg ext v (n + 1)
   have hdomain := E.storeDomainK_of_acceptedGlobalTrajectory cfg ext B hT
@@ -732,12 +732,12 @@ including the skipped-boundary old-target case, and eta-expand it to the
 fixed-source producer consumed by the historical dispatcher. -/
 noncomputable def
     acceptedFixedSourceProducerAt_of_selectedCurrentCrossing
-    (B : CausalPrefixFFGInterpretation cfg ext E)
-    (hT : E.ScheduledPrefixPremises cfg ext)
+    (B : ScheduledFFGInterpretation cfg ext E)
+    (hT : E.ScheduledExecutionPremises cfg ext)
     (hphase : Phase0SourceCoherence cfg ext)
     (hboundaryPhase : Phase0BoundarySourceCoherence cfg ext)
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
-    (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
+    (hboundary : InitialAnchorAtEpochBoundary (cfg := cfg)
       (E := E) (anchor := B.anchor))
     {v : ValidatorIndex} (hv : v ∈ E.honest)
     {n : ℕ} (hHn1 : E.WithinHorizon cfg (n + 1))

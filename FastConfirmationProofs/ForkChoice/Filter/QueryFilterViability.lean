@@ -55,7 +55,7 @@ def FilterViableLeafBelow (store : Store Root) (r : Root) : Prop :=
 
 namespace Execution
 
-variable (ext : Externals Root)
+variable (ext : BeaconFunctionInterface Root)
 
 
 end Execution

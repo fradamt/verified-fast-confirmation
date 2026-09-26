@@ -93,7 +93,7 @@ theorem update_latest_messages_sameBlocks (store : Store Root)
   dsimp only
   rcases hmi : s.latest_messages i with _ | lm <;> split_ifs <;> exact ⟨rfl, rfl, rfl⟩
 
-variable [LinearOrder Root] [Inhabited Root] (cfg : Config) (ext : Externals Root)
+variable [LinearOrder Root] [Inhabited Root] (cfg : Config) (ext : BeaconFunctionInterface Root)
 
 omit [Inhabited Root] in
 theorem store_target_checkpoint_state_sameBlocks (store : Store Root)

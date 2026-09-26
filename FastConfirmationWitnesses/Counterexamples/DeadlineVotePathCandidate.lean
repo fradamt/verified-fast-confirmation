@@ -114,7 +114,7 @@ def votes (s : ℕ) : List (Attestation R) :=
       else signed s i D g1 c2)
   else (committee s).map (fun i => signed s i D c2 (checkpoint (s / 4) D))
 
-def ext : Externals R :=
+def ext : BeaconFunctionInterface R :=
   { get_beacon_committee := fun _ s index => if index = 0 then committee s else []
     get_committee_count_per_slot := fun _ _ => 1
     process_slots := process

@@ -28,7 +28,7 @@ postulated by the retained-source results below.
 namespace FastConfirmation.Spec
 
 variable {Root : Type*} [LinearOrder Root] [Inhabited Root]
-variable (cfg : Config) (ext : Externals Root)
+variable (cfg : Config) (ext : BeaconFunctionInterface Root)
 
 /-! ## Paired-walk block transport -/
 
@@ -158,12 +158,12 @@ so a single finalized-boundary walk reflects the anchor at the same tip.  No
 visibility, source/finalized dominance assumption, or safety premise is used. -/
 theorem finalizedRoot_eq_checkpointBlock_of_anchor
     {E : Execution Root}
-    (B : CausalPrefixFFGInterpretation cfg ext E)
-    (P : EpochCheckpointClosure B.anchor
-      (E.AcceptedRoot cfg ext) B.state.C)
-    (V : B.state.ExactLinkValidity)
+    (B : ScheduledFFGInterpretation cfg ext E)
+    (P : EpochCheckpointProjectionLaws B.anchor
+      (E.RootKnownInScheduledPrefix cfg ext) B.state.checkpoint_at_epoch)
+    (V : B.state.LinkCheckpointAgreement)
     (hanchorExact : B.anchor =
-      B.state.C B.anchor.root B.anchor.epoch)
+      B.state.checkpoint_at_epoch B.anchor.root B.anchor.epoch)
     {store : Store Root} (hparent : ParentSlotLt store)
     {selected : Root}
     (h : E.AcceptedRetainedPhaseSourceCarrierAt cfg ext B store selected)
@@ -176,7 +176,7 @@ theorem finalizedRoot_eq_checkpointBlock_of_anchor
         store.finalized_checkpoint.epoch := by
   obtain ⟨hsourceJustified⟩ :=
     B.state.includedJustifiedAtTip_of_AU cfg ext h.source_au
-  have hprefix : ExactCheckpointPrefix B.state.C B.anchor
+  have hprefix : ExactCheckpointPrefix B.state.checkpoint_at_epoch B.anchor
       (get_voting_source cfg store h.tip) :=
     IncludedCertifiedJustified.anchor_prefix
       (cfg := cfg) P V hanchorExact hsourceJustified
