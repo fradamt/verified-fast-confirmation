@@ -12,14 +12,16 @@ public import FastConfirmationWitnesses.NonVacuity.FullTwelvePremises
 public import FastConfirmationWitnesses.NonVacuity.TargetEdgePremises
 public import FastConfirmationWitnesses.NonVacuity.FullTwelveEnvelopePremises
 public import FastConfirmationWitnesses.NonVacuity.FullTwelveEnvelopeBranches
+public import FastConfirmationWitnesses.NonVacuity.ByzantinePremises
 
 /-!
 # Witness index
 
 This page names the finite runs that satisfy the premise bundles: a short
 joint live run, a 500 ms next-slot safety run, a one-second target-edge run,
-a 12-second full-bundle run, and a 12-second run with an accepted payload
-envelope. It also names two counterexamples to strict-prefix safety variants.
+a one-second run with Byzantine weight and a slashing, a 12-second
+full-bundle run, and a 12-second run with an accepted payload envelope. It
+also names two counterexamples to strict-prefix safety variants.
 
 ## Premise bundles
 
@@ -44,6 +46,16 @@ envelope. It also names two counterexamples to strict-prefix safety variants.
   from second six to seven. `target_edge_call_snapshot` checks positive vote
   weight and a remaining honest target vote. `target_edge_safe_from_next_slot`
   applies the public safety theorem from second eight onward.
+* Byzantine weight and slashing relay:
+  `ByzantinePremiseWitness.full_bundle_witness` supplies the full next-slot
+  bundle for a one-second run with non-honest validator 4 of weight 200 out of
+  4000. `byzantine_weight_exercised` proves positive non-honest weight in an
+  in-horizon span. Validator 4 signs two slot-four votes with the same target
+  epoch. `slashing_relay_exercised` proves the relay antecedent for the
+  slashing that every node applies at second five. `equivocation_read_at_call`
+  shows that the call from second six to seven reads the evidence and confirms
+  the child. `previous_result_proviso_exercised` proves the antecedent of the
+  selected previous-result proviso at the call from second eight to nine.
 * Twelve-second synchrony and behavior:
   `TwelveSecondSynchronyWitness.joint_witness` proves `WellFormedExecution`,
   `HonestBehavior`, `Synchrony`, and `NextSlotSynchronyPremises` for a second
@@ -110,6 +122,8 @@ envelope. It also names two counterexamples to strict-prefix safety variants.
 * `ByzantineWeightPremises`:
   `AcceptedActualFCRJointNonVacuityBase.witnessByzantineBound`. The same
   execution has four equal-weight honest validators and no Byzantine weight.
+  `ByzantinePremiseWitness.byzantine_weight_exercised` has positive
+  non-honest weight under the full safety bundle.
 * `StaticValidatorSet`:
   `AcceptedActualFCRJointNonVacuityBase.witnessStaticValidatorSet`. All four
   validators remain active throughout the finite horizon.
@@ -131,7 +145,8 @@ envelope. It also names two counterexamples to strict-prefix safety variants.
   `NextSlotPremiseWitness.ffg_interpretation_fidelity`,
   `FullTwelveWitness.ffg_interpretation_fidelity`,
   `TargetEdgePremiseWitness.ffg_interpretation_fidelity`,
-  `FullTwelveEnvelopeWitness.ffg_interpretation_fidelity`, and
+  `FullTwelveEnvelopeWitness.ffg_interpretation_fidelity`,
+  `ByzantinePremiseWitness.ffg_interpretation_fidelity`, and
   `LiveMonotonicityWitness.ffg_interpretation_fidelity`. Each proves the
   fidelity record for the interpretation of its premise bundle. In the runs
   with a carrier, the included votes are valid members of the accepted
@@ -182,8 +197,13 @@ full-bundle run adds real delayed block and vote receipts. The target-edge run
 exercises the guarded current-target support premise. The envelope run
 exercises envelope delivery and data relay through
 `FullTwelveEnvelopeWitness.envelope_relay_exercised` and
-`FullTwelveEnvelopeWitness.data_relay_exercised`. The shorter synchrony-only
-run does not prove the full safety bundle. `DeadlineVotePathCandidate` checks
-that a skipped-boundary schedule fails the pre-tick relay. The audited public
-witness set has 36 entries.
+`FullTwelveEnvelopeWitness.data_relay_exercised`. The Byzantine run exercises
+positive non-honest weight, the slashing relay, and the selected
+previous-result proviso through
+`ByzantinePremiseWitness.byzantine_weight_exercised`,
+`ByzantinePremiseWitness.slashing_relay_exercised`, and
+`ByzantinePremiseWitness.previous_result_proviso_exercised`. The shorter
+synchrony-only run does not prove the full safety bundle.
+`DeadlineVotePathCandidate` checks that a skipped-boundary schedule fails the
+pre-tick relay. The audited public witness set has 42 entries.
 -/
