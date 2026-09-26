@@ -581,7 +581,7 @@ theorem changed_root_safe_from_next_slot (w m : ℕ)
     omega
   have h := confirmed_root_safe_from_next_slot cfg ext run safety_premises
     0 (by decide) 24 w hw m (by omega) hnext hH
-  simpa only [changed_confirmed_root.2.1] using h
+  simpa only [changed_confirmed_root.2.1] using h.2
 
 /-- Node one receives the child envelope two seconds after node zero, and
 both handlers retain it. The later boundary service reaches every honest node. -/
