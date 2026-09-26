@@ -531,7 +531,6 @@ def completed_calls : run.ScheduledFCRCallPremises cfg ext where
   phase0_source := phase0_source
   phase0_boundary_source := phase0_boundary_source
   balance_floor := balance_floor
-  delivery_lookahead := delivery_lookahead
 
 def safety_premises : run.NextSlotSafetyPremises cfg ext where
   ffg_interpretation := witnessAcceptedSemantics

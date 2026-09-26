@@ -24,7 +24,7 @@ variable {E : Execution Root}
 
 The first five fields are direct protocol/model contracts.  `balance_floor`
 excludes the executable helper's artificial empty-active-set minimum-balance
-branch. `delivery_lookahead` is the paper-synchrony boundary closure for
+branch. `synchrony.delivery_lookahead` is the paper-synchrony boundary closure for
 honest votes created inside the prefix. Prediction support is derived by
 joint induction over calls and endpoint slots.
 
@@ -40,7 +40,6 @@ structure ScheduledFCRCallPremises : Prop where
   phase0_boundary_source : Phase0BoundarySourceCoherence cfg ext
   balance_floor : cfg.effective_balance_increment ≤
     E.weight (E.currentTargetAnchorActive cfg)
-  delivery_lookahead : HorizonVoteDeliveryLookahead cfg E
 
 end Execution
 end FastConfirmation.Spec

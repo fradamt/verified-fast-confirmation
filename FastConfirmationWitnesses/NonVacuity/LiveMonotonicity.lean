@@ -732,8 +732,17 @@ private theorem payloads_empty (v n : ℕ) :
           (on_tick cfg (E.store cfg ext v n) (E.time_at (n + 1)))).trans
           ((on_tick_payloads cfg _ _).trans ih)
 
+theorem voteDeliveryLookahead : HorizonVoteDeliveryLookahead cfg E := by
+  constructor
+  intro v hv s n a hs hn hvote _hdeadline w hw
+  obtain ⟨hvmod, hslt, hn', ha⟩ := vote_some_iff.mp hvote
+  subst n
+  subst a
+  exact vote_false_delivery hslt w
+
 theorem paperSafetySynchrony : NextSlotSynchronyPremises cfg ext E := by
   apply synchrony.toPaperSafetySynchrony cfg ext
+    voteDeliveryLookahead
   · intro v hv n r hn hr
     have hempty := payloads_empty v n
     have hnone : E.genesis_store.payloads r = none := rfl
@@ -744,14 +753,6 @@ theorem paperSafetySynchrony : NextSlotSynchronyPremises cfg ext E := by
   · intro v hv k n signed sourceObservation hk hn hevent havailable
     have hno := schedule_no_envelope v k _ hevent signed sourceObservation
     exact (hno rfl).elim
-
-theorem voteDeliveryLookahead : HorizonVoteDeliveryLookahead cfg E := by
-  constructor
-  intro v hv s n a hs hn hvote _hdeadline w hw
-  obtain ⟨hvmod, hslt, hn', ha⟩ := vote_some_iff.mp hvote
-  subst n
-  subst a
-  exact vote_false_delivery hslt w
 
 theorem trajectory : E.ScheduledExecutionPremises cfg ext := by
   exact
@@ -1306,7 +1307,6 @@ def completedCalls : E.ScheduledFCRCallPremises cfg ext where
   phase0_source := phase0SourceCoherence
   phase0_boundary_source := phase0BoundarySourceCoherence
   balance_floor := balanceFloor
-  delivery_lookahead := voteDeliveryLookahead
 
 def acceptedBundle : E.NextSlotSafetyPremises cfg ext where
   ffg_interpretation := semantics

@@ -6,10 +6,11 @@ The Fast Confirmation Rule (FCR) selects a block root that a node can treat as c
 
 ## Proved claims
 
-`review_claims` proves two conditional claims under the records in `FastConfirmationStatements/Review.lean`:
+`review_claims` proves the next-slot safety claim under the records in `FastConfirmationStatements/Review.lean`:
 
-- **Next-slot safety.** An honest node's stored confirmed root stays on every honest head from the following slot through the finite verification horizon.
-- **Live monotonicity.** A later stored confirmed root descends from an earlier one when the safety bundle and both fields of `LiveMonotonicityPremises` hold. `honest_block_each_slot` requires an honest block in every slot from execution start, known by the next slot, with descendant honest votes. `ffg_timely_justification` requires exact timely FFG state at the last-slot call and next epoch start. The joint witness meets this field through the genesis anchor and has no included vote.
+- **Next-slot safety.** An honest node's stored confirmed root stays on every honest head from the following slot through the finite verification horizon. The statement uses the executable ancestor walk; it does not state observer-store membership for the root.
+
+The separate public theorem `live_confirmed_root_monotonicity` is conditional on the safety bundle and both fields of `LiveMonotonicityPremises`. `honest_block_each_slot` requires an honest block in every slot from execution start, known by the next slot, with descendant honest votes and no reorg of those blocks. `ffg_timely_justification` requires exact timely FFG store outputs at the last-slot call and next epoch start. These outputs close the FCR guards. The joint witness meets the timing field through the genesis anchor and has no included vote.
 
 The result concerns stored boundary outputs. It does not cover an arbitrary query within a slot.
 
@@ -121,13 +122,13 @@ The records in this table are in `FastConfirmationStatements/Premises/`. The las
 │              │                                      │ share does not establish this span bound.                                        │                               │
 │ Safety field │ ScheduledFFGInterpretation;          │ Exact handler-successful prefix FFG state, causal links, and projected           │ Paper Assumption 3.2; model   │
 │              │ EpochCheckpointProjectionLaws        │ checkpoint roots.                                                                │ idealisation                  │
-│ Live field   │ LiveMonotonicityPremises             │ An honest block in each slot from execution start, known by the next             │ Paper Theorem 1 monotonicity  │
+│ Live result  │ LiveMonotonicityPremises             │ An honest block in each slot from execution start, known by the next             │ Paper Theorem 1 monotonicity  │
 │              │                                      │ slot and supported by honest votes; timely observed FFG justification            │ and Assumption 6,             │
 │              │                                      │ at epoch boundaries.                                                             │ strengthened                  │
 └──────────────┴──────────────────────────────────────┴──────────────────────────────────────────────────────────────────────────────────┴───────────────────────────────┘
 ```
 
-`Execution.NextSlotSafetyPremises` supplies the common safety premise to the safety field. `LiveConfirmedRootMonotonicity` adds `LiveMonotonicityPremises` to that same execution premise. The FFG and finalization laws can quantify over successful handler prefixes beyond the safety endpoint. The finite conclusion does not shorten those premise ranges.
+`Execution.NextSlotSafetyPremises` supplies the safety premise to the review claim. `LiveConfirmedRootMonotonicity` adds `LiveMonotonicityPremises` to that same execution premise for the separate conditional result. The FFG and finalization laws can quantify over successful handler prefixes beyond the safety endpoint. The finite conclusion does not shorten those premise ranges.
 
 ## Witnesses
 

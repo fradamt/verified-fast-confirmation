@@ -1,7 +1,8 @@
 import FastConfirmationStatements
 import Lean.Util.FoldConsts
 
-/-! Check that every authored Statements declaration is reachable from the review claims. -/
+/-! Check that every authored Statements declaration is reachable from the safety
+review claim or the separate, conditional live statement. -/
 
 open Lean Elab Command
 
@@ -36,14 +37,15 @@ private def isSourceDeclaration (env : Environment) (decl : Name) : Bool :=
     | none => false
 
 -- The strict-prefix counterexample theorem type still uses the older
--- `Synchrony` record. All other source declarations belong to the claim.
+-- `Synchrony` record. All other source declarations belong to a root below.
 private def approved : List Name := [
   ``FastConfirmation.Spec.Synchrony
 ]
 
 run_cmd do
   let env ← getEnv
-  let reachable := reachableFrom env [``FastConfirmation.Spec.ReviewClaims]
+  let reachable := reachableFrom env [``FastConfirmation.Spec.ReviewClaims,
+    ``FastConfirmation.Spec.LiveConfirmedRootMonotonicity]
   let statementDecls := env.const2ModIdx.keysArray.toList.filter fun decl =>
     (moduleOf? env decl).any fun m =>
       m.toString == "FastConfirmationStatements" ||

@@ -8,8 +8,7 @@ public import FastConfirmationProofs.Monotonicity.LiveConfirmation
 /-!
 # Single review entry point
 
-This theorem proves the two fields of `ReviewClaims` from the public safety
-and live monotonicity theorems.
+This theorem proves the safety field of `ReviewClaims`.
 -/
 
 namespace FastConfirmation.Spec
@@ -17,10 +16,9 @@ namespace FastConfirmation.Spec
 variable {Root : Type*} [LinearOrder Root] [Inhabited Root]
 variable (cfg : Config) (ext : BeaconFunctionInterface Root)
 
-/-- The public safety and live monotonicity guarantees. -/
+/-- The public safety guarantee. -/
 theorem review_claims : ReviewClaims cfg ext := by
-  exact ⟨confirmed_root_safe_from_next_slot cfg ext,
-    live_confirmed_root_monotonicity cfg ext⟩
+  exact ⟨confirmed_root_safe_from_next_slot cfg ext⟩
 
 end FastConfirmation.Spec
 

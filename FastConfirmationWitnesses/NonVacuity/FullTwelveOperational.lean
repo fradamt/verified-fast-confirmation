@@ -414,8 +414,14 @@ theorem synchrony : Synchrony cfg ext run := by
   intro v hv s n a hs hn hvote _hdeadline _hdelivery w hw
   exact vote_at_boundary hvote w
 
+theorem delivery_lookahead : HorizonVoteDeliveryLookahead cfg run := by
+  constructor
+  intro v hv s n a hs hn hvote _hdeadline w hw
+  exact vote_at_boundary hvote w
+
 theorem next_slot_synchrony : NextSlotSynchronyPremises cfg ext run := by
   apply synchrony.toPaperSafetySynchrony cfg ext
+    delivery_lookahead
   · intro v hv n r hn hr
     rw [no_verified_payload] at hr
     cases hr
@@ -457,11 +463,6 @@ theorem anchor_boundary : Execution.InitialAnchorAtEpochBoundary
     (cfg := cfg) (E := run) (anchor := anchorCheckpoint) := by
   unfold Execution.InitialAnchorAtEpochBoundary
   decide
-
-theorem delivery_lookahead : HorizonVoteDeliveryLookahead cfg run := by
-  constructor
-  intro v hv s n a hs hn hvote _hdeadline w hw
-  exact vote_at_boundary hvote w
 
 theorem witnessStore_registryConstant (v : ValidatorIndex) (n : ℕ) :
     RegistryConstant run.registry

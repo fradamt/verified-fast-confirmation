@@ -17,7 +17,7 @@ run_cmd do
     if actual != expected then
       throwError "unexpected fields for {name}: {actual}; expected {expected}"
   checkFields `FastConfirmation.Spec.ReviewClaims
-    ["confirmed_root_safe_from_next_slot", "live_confirmed_root_monotonicity"]
+    ["confirmed_root_safe_from_next_slot"]
   checkFields `FastConfirmation.Spec.Execution.NextSlotSafetyPremises
     ["ffg_interpretation", "trajectory", "completed_calls", "epoch_ends_fit",
      "anchor_eq", "anchor_boundary", "finalization_delay",
@@ -30,7 +30,7 @@ run_cmd do
      "deadline_block_relay", "boundary_block_prefix",
      "attester_slashing_relay"]
   checkFields `FastConfirmation.Spec.NextSlotSynchronyPremises
-    ["delta", "attestation_delivery",
+    ["delta", "delivery_lookahead",
      "deadline_block_relay", "boundary_block_prefix",
      "envelope_delivery",
      "data_availability_relay", "attester_slashing_relay"]
@@ -46,7 +46,7 @@ run_cmd do
     ["effective_balance_quantized", "estimate_sound", "span_fraction"]
   checkFields `FastConfirmation.Spec.Execution.ScheduledFCRCallPremises
     ["synchrony", "static_validators", "byzantine_bound", "phase0_source",
-     "phase0_boundary_source", "balance_floor", "delivery_lookahead"]
+     "phase0_boundary_source", "balance_floor"]
   checkFields `FastConfirmation.Spec.Execution.IncludedAttestationEvidence
     ["carrier_message", "received_from_block", "slot_within_horizon",
      "slot_before_carrier", "target_epoch", "attesters_in_committee"]

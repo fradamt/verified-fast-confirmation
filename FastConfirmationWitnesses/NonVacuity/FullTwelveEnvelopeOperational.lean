@@ -529,9 +529,14 @@ theorem data_availability_relay : DeadlineDataAvailabilityRelay cfg ext run := b
   obtain ⟨rfl, _, _⟩ := scheduled_envelope_cases hevent
   simp [ext, childEnvelope]
 
+theorem delivery_lookahead : HorizonVoteDeliveryLookahead cfg run := by
+  constructor
+  intro v hv s n a hs hn hvote _hdeadline w hw
+  exact vote_at_boundary hvote w
+
 theorem next_slot_synchrony : NextSlotSynchronyPremises cfg ext run := by
   exact synchrony.toPaperSafetySynchrony cfg ext
-    envelope_delivery data_availability_relay
+    delivery_lookahead envelope_delivery data_availability_relay
 
 theorem static_validators : StaticValidatorSet cfg run :=
   ⟨time_within (by decide), witnessStaticValidatorSet.activity_constant⟩
@@ -567,11 +572,6 @@ theorem anchor_boundary : Execution.InitialAnchorAtEpochBoundary
     (cfg := cfg) (E := run) (anchor := anchorCheckpoint) := by
   unfold Execution.InitialAnchorAtEpochBoundary
   decide
-
-theorem delivery_lookahead : HorizonVoteDeliveryLookahead cfg run := by
-  constructor
-  intro v hv s n a hs hn hvote _hdeadline w hw
-  exact vote_at_boundary hvote w
 
 theorem witnessStore_registryConstant (v : ValidatorIndex) (n : ℕ) :
     RegistryConstant run.registry

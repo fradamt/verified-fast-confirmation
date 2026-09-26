@@ -111,5 +111,11 @@ jobs:
       - name: Audit project declarations and public theorem axioms
         run: lake env lean scripts/Audit.lean
 
+      - name: Audit Statements reachability
+        run: lake env lean scripts/StatementReachability.lean
+
+      - name: Audit review surface shape
+        run: lake env lean scripts/ReviewSurfaceShape.lean
+
       - name: Require a stable dependency manifest
         run: git diff --exit-code -- lake-manifest.json

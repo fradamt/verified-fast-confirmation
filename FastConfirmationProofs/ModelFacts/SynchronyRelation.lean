@@ -14,12 +14,12 @@ variable (cfg : Config) (ext : BeaconFunctionInterface Root)
 synchrony bundle. -/
 theorem synchrony_and_delivery_iff_nextSlot
     (E : Execution Root) :
-    (Synchrony cfg ext E ∧ DeadlineEnvelopeDelivery cfg ext E ∧
-      DeadlineDataAvailabilityRelay cfg ext E) ↔
+    (Synchrony cfg ext E ∧ HorizonVoteDeliveryLookahead cfg E ∧
+      DeadlineEnvelopeDelivery cfg ext E ∧ DeadlineDataAvailabilityRelay cfg ext E) ↔
     NextSlotSynchronyPremises cfg ext E := by
   constructor
-  · rintro ⟨hs, he, hd⟩
-    exact Synchrony.toPaperSafetySynchrony cfg ext hs he hd
+  · rintro ⟨hs, hl, he, hd⟩
+    exact Synchrony.toPaperSafetySynchrony cfg ext hs hl he hd
   · intro hn
     exact ⟨{
       delta := hn.delta
@@ -27,7 +27,7 @@ theorem synchrony_and_delivery_iff_nextSlot
       deadline_block_relay := hn.deadline_block_relay
       boundary_block_prefix := hn.boundary_block_prefix
       attester_slashing_relay := hn.attester_slashing_relay
-    }, hn.envelope_delivery, hn.data_availability_relay⟩
+    }, hn.delivery_lookahead, hn.envelope_delivery, hn.data_availability_relay⟩
 
 end FastConfirmation.Spec
 

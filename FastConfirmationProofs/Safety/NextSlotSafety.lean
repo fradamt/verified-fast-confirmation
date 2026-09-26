@@ -192,7 +192,8 @@ end NextSlotSafetyPremises
 
 end Execution
 
-/-- Stored-output safety theorem at the following-slot deadline. -/
+/-- Stored-output safety theorem at the following-slot deadline. The conclusion
+uses the executable ancestor walk; root membership is a separate question. -/
 theorem confirmed_root_safe_from_next_slot :
     ConfirmedRootSafeFromNextSlot cfg ext := by
   intro E h v hv n w hw m hnm hnext hHm

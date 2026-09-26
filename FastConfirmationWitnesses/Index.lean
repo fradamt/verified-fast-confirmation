@@ -17,6 +17,10 @@ public import FastConfirmationWitnesses.NonVacuity.ByzantinePremises
 /-!
 # Witness index
 
+`ReviewClaims` contains the safety theorem. The public
+`live_confirmed_root_monotonicity` theorem is a separate conditional result
+under `LiveMonotonicityPremises`.
+
 This page names the finite runs that satisfy the premise bundles: a short
 joint live run, a next-slot safety run with one-second slots and a 500 ms delay,
 a one-second target-edge run,
@@ -139,7 +143,8 @@ also names two counterexamples to strict-prefix safety variants.
 * `HorizonVoteDeliveryLookahead`:
   `AcceptedActualFCRJointNonVacuityBase.witnessHorizonVoteDeliveryLookahead`.
   The slot-fifteen vote reaches every honest node at second sixteen, outside
-  the verification horizon.
+  the verification horizon. This stronger law is the `delivery_lookahead`
+  field of `NextSlotSynchronyPremises`; it supplies in-horizon vote delivery.
 * `ScheduledFFGInterpretation`:
   `AcceptedActualFCRJointNonVacuityFFG.witnessAcceptedSemantics`. The child
   and carrier in the same execution have an accepted FFG interpretation at
@@ -195,7 +200,7 @@ also names two counterexamples to strict-prefix safety variants.
   concrete anchor boundary alignment are proved separately.
 
 The short joint live run has a strict root advance. Its FFG timing uses only
-the genesis anchor. The 500 ms safety run changes a stored root. The 12-second
+the genesis anchor. The 1 s safety run (delay 500 ms) changes a stored root. The 12-second
 full-bundle run adds real delayed block and vote receipts. The target-edge run
 checks current-target support as a fact about the run. The envelope run
 exercises envelope delivery and data relay through
