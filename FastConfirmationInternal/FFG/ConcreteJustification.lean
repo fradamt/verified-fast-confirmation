@@ -40,7 +40,8 @@ structure FFGSetup.Admissible (S : FFGSetup Root) : Prop where
   balance_floor : 2 * S.cfg.effective_balance_increment ≤ S.scope.activeBalance
 
 /-- Weight of a signer set in the fixed registry. -/
-def _root_.FastConfirmation.Spec.FixedFFGScope.weight (scope : FixedFFGScope) (signers : Finset ValidatorIndex) : Gwei :=
+def _root_.FastConfirmation.Spec.FixedFFGScope.weight (scope : FixedFFGScope)
+    (signers : Finset ValidatorIndex) : Gwei :=
   ∑ i ∈ signers, (scope.validators.getD i default).effective_balance
 
 /-- One successful `process_attestation` call of an accepted block body. The

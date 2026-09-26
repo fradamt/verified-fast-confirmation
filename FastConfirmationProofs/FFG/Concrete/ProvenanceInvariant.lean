@@ -49,6 +49,7 @@ theorem targetIncluded_append_singleton {S : FFGSetup Root} {votes : List (Inclu
     · exact ⟨Or.inl hr, hf⟩
     · exact ⟨Or.inr rfl, hf⟩
 
+omit [DecidableEq Root] in
 theorem checkpoint_eq_of {a b : Checkpoint Root} (h1 : a.epoch = b.epoch)
     (h2 : a.root = b.root) : a = b := by
   cases a; cases b; simp_all
@@ -169,10 +170,10 @@ theorem provenanceInvariant_attestation {S : FFGSetup Root}
     rcases List.mem_append.mp hr' with hr' | hr'
     · exact hinv.target_epoch_le r' hr'
     · rw [List.mem_singleton.mp hr']
-      show vote.data.target.epoch ≤ compute_epoch_at_slot S.cfg state.slot
+      change vote.data.target.epoch ≤ compute_epoch_at_slot S.cfg state.slot
       rcases htarget with h | h <;> beacon_omega
   · intro i
-    show _ ↔ ∃ r', TargetIncluded S (votes ++ [r]) r' ∧ i ∈ r'.attesters S ∧
+    change _ ↔ ∃ r', TargetIncluded S (votes ++ [r]) r' ∧ i ∈ r'.attesters S ∧
       r'.vote.data.target.epoch = compute_epoch_at_slot S.cfg state.slot
     rw [hcur i, hinv.current_flags i]
     constructor
@@ -184,14 +185,14 @@ theorem provenanceInvariant_attestation {S : FFGSetup Root}
       · exact Or.inl ⟨r', h4, h2, h3⟩
       · exact Or.inr ⟨h3, h2, h5⟩
   · intro i
-    show _ ↔ ∃ r', TargetIncluded S (votes ++ [r]) r' ∧ i ∈ r'.attesters S ∧
+    change _ ↔ ∃ r', TargetIncluded S (votes ++ [r]) r' ∧ i ∈ r'.attesters S ∧
       r'.vote.data.target.epoch + 1 = compute_epoch_at_slot S.cfg state.slot
     rw [hprev i, hinv.previous_flags i]
     constructor
     · rintro (⟨r', h1, h2, h3⟩ | ⟨h1, h2, h3⟩)
       · exact ⟨r', (hTI r').mpr (Or.inl h1), h2, h3⟩
       · refine ⟨r, (hTI r).mpr (Or.inr ⟨rfl, h3⟩), h2, ?_⟩
-        show vote.data.target.epoch + 1 = compute_epoch_at_slot S.cfg state.slot
+        change vote.data.target.epoch + 1 = compute_epoch_at_slot S.cfg state.slot
         rcases htarget with h | h <;> beacon_omega
     · rintro ⟨r', h1, h2, h3⟩
       rcases (hTI r').mp h1 with h4 | ⟨rfl, h5⟩
@@ -203,13 +204,13 @@ theorem provenanceInvariant_attestation {S : FFGSetup Root}
     rcases (hTI r').mp h1 with h4 | ⟨rfl, -⟩
     · exact hinv.current_sources r' h4 h2
     · change vote.data.target.epoch = compute_epoch_at_slot S.cfg state.slot at h2
-      show vote.data.source = state.current_justified_checkpoint
+      change vote.data.source = state.current_justified_checkpoint
       rw [hsrc, if_pos h2]
   · intro r' h1 h2
     rcases (hTI r').mp h1 with h4 | ⟨rfl, -⟩
     · exact hinv.previous_sources r' h4 h2
     · change vote.data.target.epoch + 1 = compute_epoch_at_slot S.cfg state.slot at h2
-      show vote.data.source = state.previous_justified_checkpoint
+      change vote.data.source = state.previous_justified_checkpoint
       rw [hsrc, if_neg (by beacon_omega)]
   · intro r' h1
     rcases (hTI r').mp h1 with h4 | ⟨rfl, h5⟩
@@ -224,7 +225,7 @@ theorem provenanceInvariant_attestation {S : FFGSetup Root}
     rcases List.mem_append.mp hr' with hr' | hr'
     · exact (hinv.source_justified r' hr').mono hmem
     · rw [List.mem_singleton.mp hr']
-      show Justified S (votes ++ [r]) vote.data.source
+      change Justified S (votes ++ [r]) vote.data.source
       rw [hsrc]
       split_ifs
       · exact hinv.current_justified.mono hmem
@@ -255,7 +256,8 @@ theorem provenanceInvariant_attestations {S : FFGSetup Root}
     have hinv' := provenanceInvariant_attestation (block := block) hinv hmid
     obtain ⟨hnext, hslot⟩ := ih _ mid next hinv' hrest
     have hvotes : attestationVotes S block parentSlot state (vote :: attestations) =
-        ⟨block, vote, state, parentSlot⟩ :: attestationVotes S block parentSlot mid attestations := by
+        ⟨block, vote, state, parentSlot⟩ ::
+          attestationVotes S block parentSlot mid attestations := by
       simp [attestationVotes, hmid]
     refine ⟨?_, ?_⟩
     · rw [hvotes]
@@ -321,6 +323,7 @@ theorem provenanceInvariant_header {S : FFGSetup Root}
 
 /-! ### Epoch processing facts -/
 
+omit [DecidableEq Root] in
 theorem get_unslashed_participating_indices_mem {cfg : Config} {state : FFGBeaconState Root}
     {flag : ℕ} {epoch : Epoch} {set : Finset ValidatorIndex}
     (h : get_unslashed_participating_indices cfg state flag epoch = .ok set) (i : ℕ) :
@@ -337,6 +340,7 @@ theorem get_unslashed_participating_indices_mem {cfg : Config} {state : FFGBeaco
     List.mem_range, Bool.and_eq_true, Bool.not_eq_true', beq_iff_eq]
   tauto
 
+omit [DecidableEq Root] in
 /-- The outcome of PJF: before epoch 2 it returns the state; afterwards the
 previous justified checkpoint takes the old current one, and the new current
 and finalized checkpoints are as in `weigh_justification_and_finalization`. -/
@@ -376,6 +380,7 @@ theorem process_justification_and_finalization_outcome {cfg : Config} {preset : 
     · exact Or.inr (Or.inl ⟨previous, hp, h1, h2, h3⟩)
     · exact Or.inr (Or.inr ⟨current, hc, h1, h2, h3⟩)
 
+omit [DecidableEq Root] in
 theorem slotStep_eq_ok {cfg : Config} {preset : FFGPreset} {state next : FFGBeaconState Root}
     (h : slotStep cfg preset state = .ok next) :
     ∃ s1, process_slot preset state = .ok s1 ∧
@@ -436,6 +441,7 @@ theorem compute_epoch_at_slot_mono {cfg : Config} {x y : Slot} (h : x ≤ y) :
 
 /-! ### Fixed weights -/
 
+omit [DecidableEq Root] in
 theorem total_active_balance_eq {S : FFGSetup Root} (hS : S.Admissible)
     {state : FFGBeaconState Root} (hval : state.validators = S.scope.validators)
     (hH : compute_epoch_at_slot S.cfg state.slot ≤ S.scope.last_epoch) :
@@ -456,6 +462,7 @@ theorem total_active_balance_eq {S : FFGSetup Root} (hS : S.Admissible)
   rw [hS.scope_from_genesis] at this ⊢
   exact this
 
+omit [DecidableEq Root] in
 theorem total_balance_eq {S : FFGSetup Root} {state : FFGBeaconState Root}
     (hval : state.validators = S.scope.validators) (set : Finset ValidatorIndex) :
     ConcreteFFG.get_total_balance S.cfg state set =
@@ -540,10 +547,10 @@ theorem justified_of_epoch_test {S : FFGSetup Root} (hS : S.Admissible)
     have h2 := hinv.previous_epoch_le
     by_cases h : epoch = E
     · simp only [source, if_pos h]
-      show state.current_justified_checkpoint.epoch < epoch
+      change state.current_justified_checkpoint.epoch < epoch
       beacon_omega
     · simp only [source, if_neg h]
-      show state.previous_justified_checkpoint.epoch < epoch
+      change state.previous_justified_checkpoint.epoch < epoch
       rcases hepoch with h' | h'
       · exact absurd h' h
       · beacon_omega
@@ -693,11 +700,11 @@ theorem provenanceInvariant_slotStep {S : FFGSetup Root} (hS : S.Admissible)
         previous_justified := ?_
         finalized_justified := ?_ }
     · intro r hr
-      show _ ≤ compute_epoch_at_slot S.cfg (state.slot + 1)
+      change _ ≤ compute_epoch_at_slot S.cfg (state.slot + 1)
       rw [hE1]
       exact Nat.le_succ_of_le (hle r hr)
     · intro i
-      show has_flag ((List.replicate _ 0).getD i 0) 1 = true ↔ _
+      change has_flag ((List.replicate _ 0).getD i 0) 1 = true ↔ _
       rw [has_flag_replicate_zero]
       simp only [Bool.false_eq_true, false_iff, not_exists, not_and]
       intro r hr _ he
@@ -706,7 +713,7 @@ theorem provenanceInvariant_slotStep {S : FFGSetup Root} (hS : S.Admissible)
       rw [hE1] at he
       beacon_omega
     · intro i
-      show has_flag (state.current_epoch_participation.getD i 0) 1 = true ↔ ∃ r,
+      change has_flag (state.current_epoch_participation.getD i 0) 1 = true ↔ ∃ r,
         TargetIncluded S votes r ∧ i ∈ r.attesters S ∧
           r.vote.data.target.epoch + 1 = compute_epoch_at_slot S.cfg (state.slot + 1)
       rw [hE1, hinv.current_flags i]
@@ -720,7 +727,7 @@ theorem provenanceInvariant_slotStep {S : FFGSetup Root} (hS : S.Admissible)
       change r.vote.data.target.epoch + 1 = compute_epoch_at_slot S.cfg (state.slot + 1) at he
       rw [hE1, Nat.add_right_cancel_iff] at he
       rw [hinv.current_sources r hr he]
-      show state.current_justified_checkpoint = pj
+      change state.current_justified_checkpoint = pj
       rcases hout with ⟨hE, rfl, -, -⟩ | ⟨-, rfl, -, -⟩
       · exact (hinv.early_sources (by beacon_omega)).symm
       · rfl
@@ -730,7 +737,7 @@ theorem provenanceInvariant_slotStep {S : FFGSetup Root} (hS : S.Admissible)
       rcases hout with ⟨-, rfl, rfl, -⟩ | ⟨hE, -⟩
       · exact hinv.early_sources (by beacon_omega)
       · exact absurd hE (by beacon_omega)
-    · show j.epoch ≤ compute_epoch_at_slot S.cfg (state.slot + 1) - 1
+    · change j.epoch ≤ compute_epoch_at_slot S.cfg (state.slot + 1) - 1
       rw [hE1]
       have := hinv.current_epoch_le
       rcases hout with ⟨-, -, rfl, -⟩ | ⟨-, -, hj | ⟨_, -, -, hje, -⟩ | ⟨_, -, -, hje, -⟩, -⟩
@@ -738,14 +745,14 @@ theorem provenanceInvariant_slotStep {S : FFGSetup Root} (hS : S.Admissible)
       · rw [hj]; beacon_omega
       · beacon_omega
       · beacon_omega
-    · show pj.epoch ≤ compute_epoch_at_slot S.cfg (state.slot + 1) - 2
+    · change pj.epoch ≤ compute_epoch_at_slot S.cfg (state.slot + 1) - 2
       rw [hE1]
       have := hinv.current_epoch_le
       have := hinv.previous_epoch_le
       rcases hout with ⟨-, rfl, -, -⟩ | ⟨-, rfl, -⟩
       · beacon_omega
       · beacon_omega
-    · show Justified S votes j
+    · change Justified S votes j
       rcases hout with ⟨-, -, rfl, -⟩ |
         ⟨hE, -, hj | ⟨set, hset, hth, hje, hroot⟩ | ⟨set, hset, hth, hje, hroot⟩, -⟩
       · exact hinv.current_justified
@@ -756,22 +763,24 @@ theorem provenanceInvariant_slotStep {S : FFGSetup Root} (hS : S.Admissible)
       · have := justified_of_epoch_test hS hinv hH hE hb hs1 (Or.inl hje)
           (hje ▸ hset) (hth) (hroot)
         exact this
-    · show Justified S votes pj
+    · change Justified S votes pj
       rcases hout with ⟨-, rfl, -, -⟩ | ⟨-, rfl, -⟩
       · exact hinv.previous_justified
       · exact hinv.current_justified
-    · show Justified S votes f
+    · change Justified S votes f
       rcases hout with ⟨-, -, -, rfl⟩ | ⟨-, -, -, rfl | rfl | rfl⟩
       · exact hinv.finalized_justified
       · exact hinv.finalized_justified
       · exact hinv.previous_justified
       · exact hinv.current_justified
 
+omit [DecidableEq Root] in
 theorem slotStep_slot {cfg : Config} {preset : FFGPreset} {state next : FFGBeaconState Root}
     (h : slotStep cfg preset state = .ok next) : next.slot = state.slot + 1 := by
   obtain ⟨s1, -, hcase⟩ := slotStep_eq_ok h
   rcases hcase with ⟨-, rfl⟩ | ⟨-, _, _, rfl⟩ <;> rfl
 
+omit [DecidableEq Root] in
 theorem slotFold_slot {cfg : Config} {preset : FFGPreset} :
     ∀ (steps : List ℕ) (state next : FFGBeaconState Root),
       steps.foldlM (fun s _ => slotStep cfg preset s) state = .ok next →
@@ -790,6 +799,7 @@ theorem slotFold_slot {cfg : Config} {preset : FFGPreset} :
     rw [ih mid next hrest, slotStep_slot hmid, List.length_cons]
     beacon_omega
 
+omit [DecidableEq Root] in
 theorem process_slots_slot {cfg : Config} {preset : FFGPreset}
     {state next : FFGBeaconState Root} {target : Slot}
     (h : process_slots cfg preset state target = .ok next) :
@@ -849,12 +859,12 @@ theorem provenanceInvariant_genesis (S : FFGSetup Root) :
   target_epoch_le := by simp
   current_flags := by
     intro i
-    show has_flag ((List.replicate _ 0).getD i 0) 1 = true ↔ _
+    change has_flag ((List.replicate _ 0).getD i 0) 1 = true ↔ _
     rw [has_flag_replicate_zero]
     simp [TargetIncluded]
   previous_flags := by
     intro i
-    show has_flag ((List.replicate _ 0).getD i 0) 1 = true ↔ _
+    change has_flag ((List.replicate _ 0).getD i 0) 1 = true ↔ _
     rw [has_flag_replicate_zero]
     simp [TargetIncluded]
   current_sources := by simp [TargetIncluded]

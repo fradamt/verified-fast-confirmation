@@ -44,7 +44,7 @@ theorem get_block_root_at_slot_eq_ok {preset : FFGPreset} {state : FFGBeaconStat
     refine ⟨h1, h2, h3, h4, ?_⟩
     revert h5
     cases state.block_roots[slot % preset.slots_per_historical_root]? <;>
-      simp [pure, Except.pure, throw, throwThe, MonadExceptOf.throw, Except.error]
+      simp [pure, Except.pure, throw, throwThe, MonadExceptOf.throw]
   · rintro ⟨h1, h2, h3, h4, h5⟩
     refine ⟨⟨⟩, h1, ⟨⟩, ⟨h2, h3⟩, ⟨⟩, h4, ?_⟩
     rw [h5]

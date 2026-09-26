@@ -95,7 +95,8 @@ theorem targetIncluded_iff {S : FFGSetup Root} {blocks : List (FFGWireBlock Root
     {votes : List (IncludedVote Root)} {state : FFGBeaconState Root}
     (h : Reachable S blocks votes state) {r : IncludedVote Root} (hr : r ∈ votes) :
     TargetIncluded S votes r ↔
-      get_block_root S.cfg S.preset r.pre r.vote.data.target.epoch = .ok r.vote.data.target.root := by
+      get_block_root S.cfg S.preset r.pre r.vote.data.target.epoch =
+        .ok r.vote.data.target.root := by
   obtain ⟨-, -, -, next, hnext⟩ := includedVote_provenance h r hr
   obtain ⟨flags, hflags, -⟩ := process_attestation_eq_ok hnext
   have hiff := (get_attestation_participation_flag_indices_eq_ok hflags).2.2
@@ -250,6 +251,7 @@ theorem justified_checkpoint_on_chain {S : FFGSetup Root} (hS : S.Admissible)
     obtain ⟨r, -, -, -, hr, -, -, rfl⟩ := hvote i hi
     exact Or.inr (targetIncluded_target_on_chain hS h hH hr)
 
+omit [DecidableEq Root] in
 /-- The genesis stub reads as the genesis anchor at the FFG interpretation
 boundary. -/
 theorem stub_reads_as_anchor (S : FFGSetup Root) :
