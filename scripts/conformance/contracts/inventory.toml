@@ -155,8 +155,8 @@ reason = "BLS unforgeability and honest signing history are idealized."
 [[field]]
 path = "BeaconExternalsPremises.valid_attestation_committee"
 file = "Externals.lean"
-class = "I"
-reason = "BLS validity and the wire conversion from aggregate bits to indexed indices are idealized."
+class = "T"
+test = "BeaconExternalsPremises.valid_attestation_committee"
 
 [[field]]
 path = "BeaconExternalsPremises.committee_assignment_unique"
@@ -457,8 +457,8 @@ reason = "A supplied execution, schedule, certificate, or FFG interpretation is 
 [[field]]
 path = "AcceptedBlockFFGState.checkpoint_epoch"
 file = "FFGState.lean"
-class = "E"
-reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
+class = "T"
+test = "AcceptedBlockFFGState.checkpoint_epoch"
 
 [[field]]
 path = "AcceptedBlockFFGState.formed_carrier_accepted"
@@ -499,8 +499,8 @@ reason = "A supplied execution, schedule, certificate, or FFG interpretation is 
 [[field]]
 path = "AcceptedBlockFFGState.realized_justified_anchor_or_before"
 file = "FFGState.lean"
-class = "E"
-reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
+class = "T"
+test = "AcceptedBlockFFGState.realized_justified_anchor_or_before"
 
 [[field]]
 path = "AcceptedBlockFFGState.realized_justified_max"
@@ -535,14 +535,14 @@ reason = "A supplied execution, schedule, certificate, or FFG interpretation is 
 [[field]]
 path = "AcceptedBlockFFGState.realized_finalized_epoch_le_realized_justified"
 file = "FFGState.lean"
-class = "E"
-reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
+class = "T"
+test = "AcceptedBlockFFGState.realized_finalized_epoch_le_realized_justified"
 
 [[field]]
 path = "AcceptedBlockFFGState.unrealized_finalized_epoch_le_unrealized_justified"
 file = "FFGState.lean"
-class = "E"
-reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
+class = "T"
+test = "AcceptedBlockFFGState.unrealized_finalized_epoch_le_unrealized_justified"
 
 [[field]]
 path = "FFGStateReadAgreement.genesis_gj"
@@ -577,14 +577,14 @@ test = "FFGStateReadAgreement.genesis_unrealized_justification"
 [[field]]
 path = "FFGStateReadAgreement.transition_gj"
 file = "FFGState.lean"
-class = "E"
-reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
+class = "T"
+test = "FFGStateReadAgreement.transition_gj"
 
 [[field]]
 path = "FFGStateReadAgreement.transition_gf"
 file = "FFGState.lean"
-class = "E"
-reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
+class = "T"
+test = "FFGStateReadAgreement.transition_gf"
 
 [[field]]
 path = "FFGStateReadAgreement.transition_gu"

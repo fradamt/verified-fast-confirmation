@@ -63,6 +63,11 @@ def lean_statement(name: str) -> str | None:
     here = Path(__file__).resolve().parent
     if name.startswith("m2."):
         preview = tomllib.loads((here / "m2_statements.toml").read_text())["statement"]
+        field = name.removeprefix("m2.")
+        if field != "process_slots_checkpoint_epoch_guarded":
+            source = (here.parents[2] / "FastConfirmationStatements/Premises/FFG.lean").read_text()
+            if re.search(r"(?m)^  " + re.escape(field) + r"\s*:", source):
+                return lean_statement("Phase0BoundarySourceCoherence." + field)
         return preview.get(name, {}).get("lean")
     root = here.parents[2]
     inventory = tomllib.loads((here / "inventory.toml").read_text())
@@ -321,6 +326,22 @@ def run(repo: Path):
           "ext.is_valid_indexed_attestation (default : BeaconState Root) a = false for every a",
           [("gloas-default-canonical-index",(default,indexed))],
           lambda d:(spec.is_valid_indexed_attestation(d[0],d[1]) is False,{"indices":[int(i) for i in d[1].attesting_indices]}),known=True)
+    # The Python indexed check does not query the slot committee. With BLS
+    # switched off, an off-committee canonical index passes its Boolean check.
+    off_state=states[0][1]
+    committee=set()
+    for committee_index in range(int(spec.get_committee_count_per_slot(off_state,spec.Epoch(0)))):
+        committee.update(int(i) for i in spec.get_beacon_committee(off_state,spec.Slot(0),spec.CommitteeIndex(committee_index)))
+    outsider=next(i for i in range(len(off_state.validators)) if i not in committee)
+    attestation=get_attestation(spec,off_state,slot=0)
+    off_attestation=spec.IndexedAttestation(
+        attesting_indices=spec.AttestingIndices(data=[outsider]),data=attestation.data)
+    check("BeaconExternalsPremises.valid_attestation_committee",
+          "ext.is_valid_indexed_attestation state a = true -> every i in a.attesting_indices is in E.committee a.data.slot",
+          [("gloas:genesis:offcommittee-index",(off_state,off_attestation,committee,outsider))],
+          lambda d:(not spec.is_valid_indexed_attestation(d[0],d[1]) or d[3] in d[2],
+                    {"slot":int(d[1].data.slot),"indices":[int(i) for i in d[1].attesting_indices],
+                     "committee":sorted(d[2]),"valid":spec.is_valid_indexed_attestation(d[0],d[1])}),known=True)
     # The indexed-attestation Boolean is checked before and after an actual
     # empty-slot transition. BLS is disabled by the test helper switch.
     canonical=spec.IndexedAttestation(attesting_indices=spec.AttestingIndices(data=[0]))
@@ -382,6 +403,35 @@ def run(repo: Path):
           "(ext.process_justification_and_finalization (t.postStore.block_states t.signedBlock.root)).current_justified_checkpoint = S.unrealized_justified t.signedBlock.root",
           accepted,lambda d:(cp(d[0].unrealized_justifications[d[1]])==cp(eager((spec,d[0].block_states[d[1]],int(d[2].slot))).current_justified_checkpoint),
                              {"post":projection(d[0].block_states[d[1]]),"store_unrealized":cp(d[0].unrealized_justifications[d[1]])}))
+    check("FFGStateReadAgreement.transition_gj",
+          "(t.postStore.block_states t.signedBlock.root).current_justified_checkpoint = S.realized_justified t.signedBlock.root",
+          accepted,lambda d:(cp(d[0].block_states[d[1]].current_justified_checkpoint)==cp(d[2].current_justified_checkpoint),
+                             {"store":projection(d[0].block_states[d[1]]),"transition":projection(d[2])}))
+    check("FFGStateReadAgreement.transition_gf",
+          "(t.postStore.block_states t.signedBlock.root).finalized_checkpoint = S.realized_finalized t.signedBlock.root",
+          accepted,lambda d:(cp(d[0].block_states[d[1]].finalized_checkpoint)==cp(d[2].finalized_checkpoint),
+                             {"store":projection(d[0].block_states[d[1]]),"transition":projection(d[2])}))
+    def anchor_or_before(d):
+        store,root,post=d
+        j=store.block_states[root].current_justified_checkpoint
+        anchor=store.justified_checkpoint
+        epoch=int(store.blocks[root].slot)//8
+        return cp(j)==cp(anchor) or int(j.epoch)<epoch,{
+            "block_slot":int(store.blocks[root].slot),"block_epoch":epoch,
+            "justified":cp(j),"anchor":cp(anchor)}
+    check("AcceptedBlockFFGState.realized_justified_anchor_or_before",
+          "realized_justified r = anchor or (realized_justified r).epoch < compute_epoch_at_slot cfg b.slot",
+          accepted,anchor_or_before,known=True)
+    check("AcceptedBlockFFGState.realized_finalized_epoch_le_realized_justified",
+          "(realized_finalized r).epoch <= (realized_justified r).epoch",
+          accepted,lambda d:(int(d[0].block_states[d[1]].finalized_checkpoint.epoch)<=int(d[0].block_states[d[1]].current_justified_checkpoint.epoch),
+                             {"post":projection(d[0].block_states[d[1]])}))
+    def unrealized_epochs(d):
+        out=eager((spec,d[0].block_states[d[1]],int(d[2].slot)))
+        return int(out.finalized_checkpoint.epoch)<=int(out.current_justified_checkpoint.epoch),{"eager":projection(out)}
+    check("AcceptedBlockFFGState.unrealized_finalized_epoch_le_unrealized_justified",
+          "(unrealized_finalized r).epoch <= (unrealized_justified r).epoch",
+          accepted,unrealized_epochs)
     checkpoint_cases=[]
     for label,(state,anchor,store,root) in anchor_cases:
         for block_root in list(store.blocks):
@@ -392,6 +442,10 @@ def run(repo: Path):
                                              (store,block_root,source_epoch,target_epoch)))
     def C(store,root,epoch):
         return spec.get_checkpoint_for_block(store,root,spec.Epoch(epoch))
+    check("AcceptedBlockFFGState.checkpoint_epoch",
+          "(checkpoint_at_epoch r e).epoch = e",
+          checkpoint_cases,lambda d:(int(C(d[0],d[1],d[2]).epoch)==d[2],
+                                     {"source_epoch":d[2],"checkpoint":cp(C(d[0],d[1],d[2]))}))
     check("EpochCheckpointProjectionLaws.checkpoint_root_accepted",
           "Accepted r -> anchor.epoch <= e -> Accepted (C r e).root",
           checkpoint_cases,lambda d:(C(d[0],d[1],d[2]).root in d[0].blocks,
