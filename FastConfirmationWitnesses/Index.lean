@@ -18,7 +18,8 @@ public import FastConfirmationWitnesses.NonVacuity.ByzantinePremises
 # Witness index
 
 This page names the finite runs that satisfy the premise bundles: a short
-joint live run, a 500 ms next-slot safety run, a one-second target-edge run,
+joint live run, a next-slot safety run with one-second slots and a 500 ms delay,
+a one-second target-edge run,
 a one-second run with Byzantine weight and a slashing, a 12-second
 full-bundle run, and a 12-second run with an accepted payload envelope. It
 also names two counterexamples to strict-prefix safety variants.

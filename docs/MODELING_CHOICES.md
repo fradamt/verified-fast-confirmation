@@ -43,8 +43,15 @@ The safety claims hold for every carrier-vote relation that meets the stated
 fields. They do not alone certify the votes in real block bodies. The
 `ByzantineWeightPremises.span_fraction` bound applies to every in-horizon
 committee span, including one slot. A global fault share does not establish
-this bound. It matches `CommitteeHonestMajority` in the repository's formal
-paper Assumption 2.
+this bound. `span_fraction` and `estimate_sound` are deterministic events
+assumed on every checked span, including one slot. Their probability under
+committee sampling is outside this development. The fault bound matches
+`CommitteeHonestMajority` in the repository's formal paper Assumption 2.
+
+The PTC assignment function, PTC signature check, ordered committee tables,
+and committee counts are unconstrained. The theorem holds for every choice of
+each of these functions or tables. Other external contracts are premises; see
+the [trusted boundary](REVIEW_GUIDE.md#trusted-boundary).
 
 The execution records use a positive delay in milliseconds. Their strict bound
 is `get_attestation_due_ms cfg + delay_ms < cfg.slot_duration_ms`. Let S be the
@@ -98,6 +105,10 @@ so `A + Δ < S` puts it before the next slot. Acceptance needs the slashable-dat
 check and two indexed-attestation checks. They read the attestations, signer
 pubkeys, and target-epoch domains. Pubkeys are immutable. The genesis validators
 root is common, and the model has one fork, so the domains are common.
+
+The relay is an implementation assumption. Five of six checked clients
+validate evidence against the head state. The literal Python handler uses
+the justified state and can violate the relay when that state lacks a signer.
 
 The handler `on_attester_slashing` follows the Python and validates against
 `store.block_states[store.justified_checkpoint.root]`. The relay field is a

@@ -2,6 +2,19 @@
 
 `ReviewClaims` has two fields. `review_claims` proves both. The trust audit checks 43 public theorem witnesses: 36 executable-side and seven paper-side.
 
+The safety proof takes a supplied FFG interpretation as a premise. Its
+accepted-block FFG state includes an inclusion relation and checkpoint
+selectors. `FFGStateAndCheckpointReadAgreement` requires agreement with every
+checkpoint read of successful handlers. The interpretation also requires
+eventual checkpoint inclusion (paper Assumption 3.2 style), link and checkpoint
+agreement, checkpoint projection laws, and finalization lag. The inclusion
+relation need not equal block-body membership. The theorem holds for every
+relation that satisfies these laws. `FFGInterpretationFidelity` states the
+intended body-membership and valid-vote interpretation, and every full-bundle
+witness proves it. This development does not derive the FFG layer from the
+beacon state transition. A client or the Python rule needs a proof that its
+FFG behavior supplies the interpretation before the theorem applies to it.
+
 ## Short glossary
 
 - **FCR:** Fast Confirmation Rule. It selects a confirmed root from fork-choice state.
@@ -63,40 +76,48 @@
 ## Trusted boundary
 
 `BeaconFunctionInterface` has 11 supplied functions or relations. The table
-names the premise that constrains each one. The stated limits remain inputs
-to a source or client interpretation.
+distinguishes constrained externals, whose contracts are premises, from
+unconstrained externals. The theorem holds for every choice of an unconstrained
+function. A source or client interpretation must justify the constrained
+contracts and the intended behavior of any unconstrained function it uses.
 
 ```text
-┌────────────────────────────────────────┬──────────────────────────────────────────────────────────────────────────────────────────────────────┐
-│ External field                         │ Constraining premise and limit                                                                       │
-├────────────────────────────────────────┼──────────────────────────────────────────────────────────────────────────────────────────────────────┤
-│ get_beacon_committee                   │ BeaconExternalsPremises.committees_agree, committee_assignment_unique, committee_coverage, and       │
-│                                        │ committee_members_active constrain the union read. Ordered source queries have no separate contract. │
-│ get_committee_count_per_slot           │ committees_agree constrains the derived slot union. No independent count contract is stated.         │
-│ process_slots                          │ BeaconExternalsPremises.process_slots_slot, process_slots_registry, and                              │
-│                                        │ process_slots_attestation_valid constrain used outputs. Both Phase0 source-coherence records         │
-│                                        │ constrain justification. FFGInterpretationFidelity constrains target-state origin outside safety.    │
-│ state_transition                       │ BeaconExternalsPremises.state_transition_slot, registry, pre_slot_lt, and checkpoint_epoch           │
-│                                        │ constrain imports. Both Phase0 source records, FFG state transitions, and                            │
-│                                        │ ImportedBlockFinalizationLag constrain used state outputs.                                           │
-│ process_justification_and_finalization │ BeaconExternalsPremises.pjf_checkpoint_epoch and FFG state genesis/transition laws constrain         │
-│                                        │ checkpoint outputs. Both Phase0 boundary-source equations constrain justification.                   │
-│ is_valid_indexed_attestation           │ honest_attestation_valid, valid_attestation_honest, valid_attestation_committee,                     │
-│                                        │ valid_attestation_default, and process_slots_attestation_valid constrain accepted checks.            │
-│ AnchorCommitsToState                   │ ScheduledExecutionPremises.genesis supplies the initial anchor relation. No hash theorem is proved.  │
-│ get_ptc                                │ No dedicated premise. The handler uses the supplied ordered PTC.                                     │
-│ is_valid_indexed_payload_attestation   │ No signature-soundness premise. The handler checks the supplied Boolean result.                      │
-│ is_data_available                      │ NextSlotSynchronyPremises.data_availability_relay and envelope_delivery transport true data reads.   │
-│                                        │ The handler checks the local Boolean result. No KZG soundness theorem is proved.                     │
-│ verify_execution_payload_envelope      │ BeaconExternalsPremises.verify_envelope_deterministic and envelope_delivery constrain verified       │
-│                                        │ observations. No execution-engine or signature refinement theorem is proved.                         │
-└────────────────────────────────────────┴──────────────────────────────────────────────────────────────────────────────────────────────────────┘
+┌────────────────────────────────────────┬────────────────────────────────────────────────────────────────────────────────────────────────────────┐
+│ External field                         │ Constraining premise and limit                                                                         │
+├────────────────────────────────────────┼────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+│ get_beacon_committee                   │ Constrained: BeaconExternalsPremises.committees_agree, committee_assignment_unique,                    │
+│                                        │ committee_coverage, and committee_members_active constrain the union read. Ordered committee tables    │
+│                                        │ are unconstrained: the theorem holds for every choice of these tables.                                 │
+│ get_committee_count_per_slot           │ Unconstrained: the theorem holds for every choice of this function. No count contract is a premise.    │
+│ process_slots                          │ BeaconExternalsPremises.process_slots_slot, process_slots_registry, and                                │
+│                                        │ process_slots_attestation_valid constrain used outputs. Both Phase0 source-coherence records           │
+│                                        │ constrain justification. FFGInterpretationFidelity constrains target-state origin outside safety.      │
+│ state_transition                       │ BeaconExternalsPremises.state_transition_slot, registry, pre_slot_lt, and checkpoint_epoch             │
+│                                        │ constrain imports. Both Phase0 source records, FFG state transitions, and                              │
+│                                        │ ImportedBlockFinalizationLag constrain used state outputs.                                             │
+│ process_justification_and_finalization │ BeaconExternalsPremises.pjf_checkpoint_epoch and FFG state genesis/transition laws constrain           │
+│                                        │ checkpoint outputs. Both Phase0 boundary-source equations constrain justification.                     │
+│ is_valid_indexed_attestation           │ honest_attestation_valid, valid_attestation_honest, valid_attestation_committee,                       │
+│                                        │ valid_attestation_default, and process_slots_attestation_valid constrain accepted checks.              │
+│ AnchorCommitsToState                   │ ScheduledExecutionPremises.genesis supplies the initial anchor relation. No hash theorem is proved.    │
+│ get_ptc                                │ Unconstrained: the theorem holds for every choice of this function. The handler reads the ordered PTC. │
+│ is_valid_indexed_payload_attestation   │ Unconstrained: the theorem holds for every choice of this function. No PTC signature contract exists.  │
+│ is_data_available                      │ NextSlotSynchronyPremises.data_availability_relay and envelope_delivery transport true data reads.     │
+│                                        │ The handler checks the local Boolean result. No KZG soundness theorem is proved.                       │
+│ verify_execution_payload_envelope      │ BeaconExternalsPremises.verify_envelope_deterministic and envelope_delivery constrain verified         │
+│                                        │ observations. No execution-engine or signature refinement theorem is proved.                           │
+└────────────────────────────────────────┴────────────────────────────────────────────────────────────────────────────────────────────────────────┘
 ```
 
 `Execution.schedule` is supplied. `WellFormedExecution`, `HonestBehavior`, and
 the delivery laws constrain it. The accepted FFG relation and checkpoint
 reads are also supplied under their evidence and read-agreement premises.
 `Execution.store` is the handler fold.
+
+The ordered `BeaconState.beacon_committee_reads` and
+`BeaconState.committee_count_reads` tables are unconstrained. The theorem holds
+for every choice of these tables. A client interpretation must relate them to
+its committee queries.
 
 ## Review dimensions
 
@@ -114,6 +135,11 @@ reads are also supplied under their evidence and read-agreement premises.
 Paper Assumption 3.2 can allow a two-epoch FFG inclusion delay. The executable selector can close its gates before inclusion. `get_latest_confirmed_eq_finalized_of_stale` and `Execution.confirmed_succ_eq_finalized_of_stale_call` show the stale fallback. The live claim uses timely closure. The joint finite witness meets both live fields, but its FFG timing holds through the genesis anchor. No vote-driven justification occurs in that run. Paper Theorem 1 has no block-in-every-slot premise.
 
 `Execution.NextSlotSafetyPremises` includes exact FFG state at each successful handler prefix. It also includes scheduled execution, completed FCR calls, epoch arithmetic, anchor alignment, checkpoint evidence, and finalization delay. `Execution.ScheduledFCRCallPremises` adds static validators, a fault bound for each committee span, Phase0 source coherence, a balance floor and next-slot vote receipt. No field directly states the stored-root safety conclusion. Global FFG and finalization premises can range beyond a conclusion endpoint.
+
+`ByzantineWeightPremises.span_fraction` and `estimate_sound` are deterministic
+events assumed on every checked span, including one slot. A global fault share
+does not imply these events. Their probability under committee sampling is
+outside this development.
 
 Prediction support is derived. `SelectedPredictionVoteSupport` is internal proof vocabulary,
 outside the safety premise. Its previous-result conclusion permits different targets
@@ -148,7 +174,7 @@ counterexample to exact target agreement for a previous-epoch result.
 
 Block and envelope exclusion is checked before the next-slot tick. It permits only a permanent finalized-guard conflict with a known parent. The FFG, economic, and finalization-delay premises establish that each honest head's known ancestor path is admissible. Carrier-certificate accountability covers other required roots. Ready blocks and envelopes precede the boundary vote handler. Data service and deterministic envelope validation justify payload acceptance. `FullTwelveEnvelopeWitness.full_bundle_witness` has an accepted envelope event.
 
-`on_attester_slashing` follows Python. It validates against `store.block_states[store.justified_checkpoint.root]`. Evidence relay is a premise that gives every honest node the indices by the next boundary. Literal Python can reject evidence if this state lacks a signer. The premise matches clients that validate against a newer head state. The [modeling choices](MODELING_CHOICES.md) page records the pinned client commits. A late accepted item uses a fresh cutoff observation at the next scheduled FCR call. No validity-agreement field was added to the external contract.
+`on_attester_slashing` follows Python. It validates against `store.block_states[store.justified_checkpoint.root]`. Evidence relay is an implementation assumption that gives every honest node the indices by the next boundary. Literal Python can reject evidence if this state lacks a signer and can violate the relay. The premise matches five of six checked clients that validate against a newer head state. The [modeling choices](MODELING_CHOICES.md) page records the pinned client commits. A late accepted item uses a fresh cutoff observation at the next scheduled FCR call. No validity-agreement field was added to the external contract.
 
 ## Source and checks
 

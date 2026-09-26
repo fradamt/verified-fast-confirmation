@@ -2,16 +2,28 @@
 
 [![CI](https://github.com/fradamt/verified-fast-confirmation/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/fradamt/verified-fast-confirmation/actions/workflows/ci.yml)
 
-The Fast Confirmation Rule (FCR) selects a block root that a node can treat as confirmed from its fork-choice state.
+The Fast Confirmation Rule (FCR) selects a block root that a node can treat as confirmed from its fork-choice state, under explicit network, stake, and supplied FFG-interpretation premises.
 
 ## Proved claims
 
 `review_claims` proves two conditional claims under the records in `FastConfirmationStatements/Review.lean`:
 
 - **Next-slot safety.** An honest node's stored confirmed root stays on every honest head from the following slot through the finite verification horizon.
-- **Live monotonicity.** A later stored confirmed root descends from an earlier one when the safety bundle and both live fields hold. The live fields require honest block production, vote support, and timely Casper Friendly Finality Gadget (FFG) justification.
+- **Live monotonicity.** A later stored confirmed root descends from an earlier one when the safety bundle and both fields of `LiveMonotonicityPremises` hold. `honest_block_each_slot` requires an honest block in every slot from execution start, known by the next slot, with descendant honest votes. `ffg_timely_justification` requires exact timely FFG state at the last-slot call and next epoch start. The joint witness meets this field through the genesis anchor and has no included vote.
 
 The result concerns stored boundary outputs. It does not cover an arbitrary query within a slot.
+
+The proof takes an FFG interpretation as a premise: `AcceptedBlockFFGState`
+with an inclusion relation and checkpoint selectors. It must agree with every
+checkpoint read of successful handlers through `FFGStateAndCheckpointReadAgreement`
+and satisfy eventual checkpoint inclusion (paper Assumption 3.2 style), link and
+checkpoint agreement, checkpoint projection laws, and finalization lag. The
+inclusion relation need not equal block-body membership. The theorem holds for
+every relation with these laws. The intended relation uses body membership and
+valid votes; `FFGInterpretationFidelity` states these facts, and every full-bundle
+witness proves fidelity. This development does not derive the FFG layer from the
+beacon state transition. To apply the theorem to a client or the Python rule,
+one must show that its FFG behavior supplies this interpretation.
 
 ## Assumptions at a glance
 
@@ -42,6 +54,13 @@ and quorums are produced on demand after the target epoch, with the original cal
 target, source, and deadline. See `Execution.confirmed_safety_and_lineage_of_acceptedActualFCRFold`.
 The [premise ledger](#premise-ledger) gives the remaining records and sources.
 Evidence relay is a premise. The fault bound applies to each checked span.
+The slashing relay is an implementation assumption. It matches clients that
+validate evidence against the head state (five of six checked). The literal
+Python justified-state handler can reject evidence and violate this relay.
+The per-span fault bound and estimate soundness are deterministic events assumed
+on every checked span, including one slot. A global fault share does not imply
+them. This development does not calculate their probability under committee
+sampling.
 The live fields are stronger than paper Assumption 6.
 The positive `delta` value is a timing parameter. The delivery laws in
 `NextSlotSynchronyPremises` supply the network assumption. The proof does not
@@ -90,7 +109,7 @@ The records in this table are in `FastConfirmationStatements/Premises/`. The las
 │              │                                      │ delay; more than one slot per epoch; checkpoint and link evidence.               │                               │
 │ Safety field │ Execution.ScheduledExecutionPremises │ Whole seconds, well formed stores, coherent external calls, honest               │ Model idealisation            │
 │              │                                      │ behavior with an attestation deadline, and a valid genesis store.                │ Phase0/Gloas; model premise   │
-│ Safety field │ Execution.ScheduledFCRCallPremises   │ Five delivery laws; fixed active validators; committee and Byzantine             │ Paper Assumptions 1 and 2;    │
+│ Safety field │ Execution.ScheduledFCRCallPremises   │ Six delivery laws; fixed active validators; committee and Byzantine              │ Paper Assumptions 1 and 2;    │
 │              │                                      │ weight bounds; Phase0 source coherence; a nonzero balance floor;                 │ Gloas extension; model        │
 │              │                                      │ next-slot vote receipt.                                                          │ idealisation                  │
 │ Safety field │ NextSlotSynchronyPremises            │ Positive delay parameter; delivery and handler-service laws for blocks,          │ Paper synchrony; Gloas        │
@@ -124,8 +143,9 @@ the full bundle does not imply that every branch occurs.
 - **Counterexamples:** `StrictPrefixExtraQuery.extra_query_changes_head_counterexample` and `PinnedEconomicsExtraQuery.extra_query_changes_head_counterexample` show that an extra in-slot query needs a different safety claim.
 - **Interpretation fidelity:** Full-bundle runs prove `FFGInterpretationFidelity` for their supplied included-vote relation. This record is outside the safety premise.
 
-The table names fields with a concrete instance or true antecedent. A dash
-means that the row is a counterexample and does not assert the safety bundle.
+The table names fields with a concrete instance or true antecedent and labels
+the gaps that no named full-bundle run exercises. A dash means that the row is
+a counterexample and does not assert the safety bundle.
 
 ```text
 ┌─────────────────────┬───────────────────────────────────────────────────────────────────────────────────────────────────┐
@@ -140,6 +160,9 @@ means that the row is a counterexample and does not assert the safety bundle.
 │ Joint live run      │ LiveMonotonicityPremises.honest_block_each_slot and ffg_timely_justification; full safety bundle. │
 │ Counterexamples     │ —                                                                                                 │
 │ Fidelity records    │ FFGInterpretationFidelity body membership, validation state, and external validity check.         │
+│ Non-anchor finality │ not exercised by a named full-bundle run.                                                         │
+│ Positive discount   │ not exercised: the Gloas empty-slot discount is zero in the envelope run.                         │
+│ PTC events          │ not exercised by a named full-bundle run.                                                         │
 └─────────────────────┴───────────────────────────────────────────────────────────────────────────────────────────────────┘
 ```
 
