@@ -155,6 +155,15 @@ noncomputable def ext [BEq Root] : BeaconFunctionInterface Root :=
     state_transition := B.transition
     process_justification_and_finalization := B.pjf }
 
+/-- The committed concrete state of a block root: the genesis state at the
+genesis root, and otherwise the state that the committed state root opens
+to. -/
+def stateOf [DecidableEq Root] (r : Root) : Option (FFGBeaconState Root) :=
+  if r = B.setup.genesisRoot then some B.setup.genesis
+  else match B.blocks.open_ r with
+    | some (_, stateRoot) => B.states.open_ stateRoot
+    | none => none
+
 /-- The setup conditions of the bridge laws: the admissible setup, and a
 `uint64` bound that covers every root read of the fixed scope. -/
 structure Admissible (B : ConcreteBridge Root) : Prop where
@@ -164,11 +173,14 @@ structure Admissible (B : ConcreteBridge Root) : Prop where
 
 /-- An execution starts from the Python genesis store of the setup: the
 anchor state is the projected genesis state and the anchor block is the
-genesis block. -/
+genesis block. Its parent root (Python `ZERO_HASH`) is not the genesis root
+and opens to no block. -/
 def ConcreteGenesis (B : ConcreteBridge Root) [LinearOrder Root] [Inhabited Root]
     (E : Execution Root) : Prop :=
   ∃ anchorBlock : SignedBeaconBlock Root,
     anchorBlock.root = B.setup.genesisRoot ∧ anchorBlock.message.slot = 0 ∧
+      anchorBlock.message.parent_root ≠ B.setup.genesisRoot ∧
+      B.blocks.open_ anchorBlock.message.parent_root = none ∧
       E.genesis_store = get_forkchoice_store B.setup.cfg (B.project B.setup.genesis) anchorBlock
 
 end ConcreteBridge
