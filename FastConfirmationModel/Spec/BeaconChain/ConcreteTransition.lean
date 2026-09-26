@@ -4,13 +4,14 @@ public import FastConfirmationModel.Spec.BeaconChain.ConcreteTypes
 @[expose] public section
 
 /-! Defines the checked FFG projection of the pinned Gloas beacon transition.
-Python: `specs/phase0/beacon-chain.md`, State transition; `specs/gloas/beacon-chain.md`, Beacon state transition. -/
+Python: `specs/phase0/beacon-chain.md`, State transition;
+`specs/gloas/beacon-chain.md`, Beacon state transition. -/
 
 namespace FastConfirmation.Spec.ConcreteFFG
 open FastConfirmation.Spec
 
 inductive Error where
-  | state | slot | root | header | parentPayload | committee
+  | state | slot | root | header | parentPayload | operations | committee
   | bitfield | target | inclusion | payloadIndex | source | indexed | oracle
   deriving DecidableEq, Repr
 
@@ -26,6 +27,7 @@ def get_previous_epoch (cfg : Config) {Root : Type} (state : FFGBeaconState Root
 /-- `get_block_root_at_slot`. Python: `specs/phase0/beacon-chain.md:1409-1414`. -/
 def get_block_root_at_slot (preset : FFGPreset) {Root : Type}
     (state : FFGBeaconState Root) (slot : Slot) : Checked Root := do
+  guard (slot + preset.slots_per_historical_root ≤ UINT64_MAX) .root
   guard (slot < state.slot && state.slot ≤ slot + preset.slots_per_historical_root) .root
   guard (state.block_roots.length == preset.slots_per_historical_root) .state
   match state.block_roots[slot % preset.slots_per_historical_root]? with
@@ -34,7 +36,8 @@ def get_block_root_at_slot (preset : FFGPreset) {Root : Type}
 
 /-- `get_block_root`. Python: `specs/phase0/beacon-chain.md:1399-1403`. -/
 def get_block_root (cfg : Config) (preset : FFGPreset) {Root : Type}
-    (state : FFGBeaconState Root) (epoch : Epoch) : Checked Root :=
+    (state : FFGBeaconState Root) (epoch : Epoch) : Checked Root := do
+  guard (epoch * cfg.slots_per_epoch ≤ UINT64_MAX) .root
   get_block_root_at_slot preset state (compute_start_slot_at_epoch cfg epoch)
 
 /-- `add_flag`. Python: `specs/altair/beacon-chain.md:279-284`. -/
@@ -46,7 +49,7 @@ def has_flag (flags flag_index : ℕ) : Bool :=
   flags / 2 ^ flag_index % 2 == 1
 
 /-- `get_active_validator_indices`. Python: `specs/phase0/beacon-chain.md:1430-1436`. -/
-def get_active_validator_indices (cfg : Config) {Root : Type}
+def get_active_validator_indices {Root : Type}
     (state : FFGBeaconState Root) (epoch : Epoch) : List ValidatorIndex :=
   (List.range state.validators.length).filter fun i =>
     is_active_validator (state.validators.getD i default) epoch
@@ -62,7 +65,7 @@ def get_total_balance (cfg : Config) {Root : Type} (state : FFGBeaconState Root)
 def get_total_active_balance (cfg : Config) {Root : Type}
     (state : FFGBeaconState Root) : Gwei :=
   get_total_balance cfg state
-    ((get_active_validator_indices cfg state (compute_epoch_at_slot cfg state.slot)).toFinset)
+    ((get_active_validator_indices state (compute_epoch_at_slot cfg state.slot)).toFinset)
 
 /-- `get_unslashed_participating_indices`. Python:
 `specs/altair/beacon-chain.md:397-412`. -/
@@ -74,7 +77,7 @@ def get_unslashed_participating_indices (cfg : Config) {Root : Type}
   let participation := if epoch == current then state.current_epoch_participation
     else state.previous_epoch_participation
   guard (participation.length == state.validators.length) .state
-  return ((get_active_validator_indices cfg state epoch).filter fun i =>
+  return ((get_active_validator_indices state epoch).filter fun i =>
     has_flag (participation.getD i 0) flag_index &&
     !(state.validators.getD i default).slashed).toFinset
 
@@ -222,6 +225,7 @@ def process_slot (preset : FFGPreset) {Root : Type} (state : FFGBeaconState Root
 Python: `specs/phase0/beacon-chain.md:1795-1803`. -/
 def process_slots (cfg : Config) (preset : FFGPreset) {Root : Type}
     (state : FFGBeaconState Root) (target : Slot) : Checked (FFGBeaconState Root) := do
+  guard (target ≤ UINT64_MAX) .slot
   guard (state.slot < target) .slot
   (List.range (target - state.slot)).foldlM (init := state) fun state _ => do
     let state ← process_slot preset state
@@ -396,7 +400,13 @@ def process_operations (cfg : Config) (preset : FFGPreset)
     (schedule : FixedCommitteeSchedule) {Root : Type} [BEq Root]
     (state : FFGBeaconState Root) (block : FFGWireBlock Root)
     (parentSlot : Slot) : Checked (FFGBeaconState Root) := do
-  guard (block.attestations.length ≤ preset.max_attestations) .bitfield
+  guard (block.deposit_count == 0) .operations
+  guard (block.proposer_slashing_count ≤ preset.max_proposer_slashings &&
+    block.attester_slashing_count ≤ preset.max_attester_slashings &&
+    block.attestations.length ≤ preset.max_attestations &&
+    block.voluntary_exit_count ≤ preset.max_voluntary_exits &&
+    block.bls_to_execution_change_count ≤ preset.max_bls_to_execution_changes &&
+    block.payload_attestation_count ≤ preset.max_payload_attestations) .operations
   block.attestations.foldlM (init := state) fun state vote =>
     process_attestation cfg preset schedule state vote parentSlot
 
@@ -424,6 +434,7 @@ def state_transition (cfg : Config) (preset : FFGPreset)
     (schedule : FixedCommitteeSchedule) {Root : Type} (oracle : BlockValidityOracle Root)
     [BEq Root] (state : FFGBeaconState Root) (block : FFGWireBlock Root) :
     Checked (FFGBeaconState Root) := do
+  guard (state.slot ≤ UINT64_MAX && block.slot ≤ UINT64_MAX) .slot
   guard (state.justification_bits.length == 4 &&
     state.previous_epoch_participation.length == state.validators.length &&
     state.current_epoch_participation.length == state.validators.length &&

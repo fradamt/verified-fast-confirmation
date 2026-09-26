@@ -15,6 +15,11 @@ structure FFGPreset where
   max_committees_per_slot : ℕ
   max_validators_per_committee : ℕ
   max_attestations : ℕ
+  max_proposer_slashings : ℕ
+  max_attester_slashings : ℕ
+  max_voluntary_exits : ℕ
+  max_bls_to_execution_changes : ℕ
+  max_payload_attestations : ℕ
   min_attestation_inclusion_delay : ℕ
   ring_pos : 0 < slots_per_historical_root
   min_delay_pos : 0 < min_attestation_inclusion_delay
@@ -32,9 +37,19 @@ structure FixedFFGScope where
     is_active_validator (validators[i]) e =
       is_active_validator (validators[i]) first_epoch
 
+/-- The finite Python `uint64` domain for weighted FFG arithmetic. The
+threefold bound also covers the twofold threshold product and the balance
+floor. Python: `specs/phase0/beacon-chain.md`, `uint64` arithmetic. -/
+def FixedFFGScope.NumericBounds (scope : FixedFFGScope) (cfg : Config) : Prop :=
+  scope.last_epoch * cfg.slots_per_epoch ≤ UINT64_MAX ∧
+  3 * (scope.validators.map Validator.effective_balance).sum ≤ UINT64_MAX ∧
+  2 * cfg.effective_balance_increment ≤
+    (scope.validators.map Validator.effective_balance).sum
+
 /-- One ordered, branch-independent committee schedule. Rows must cover all
 in-horizon queries. The predicate below checks the finite assignment data.
-Python: `specs/phase0/beacon-chain.md`, `get_beacon_committee`; `specs/electra/beacon-chain.md:736-737`. -/
+Python: `specs/phase0/beacon-chain.md`, `get_beacon_committee`;
+`specs/electra/beacon-chain.md:736-737`. -/
 structure FixedCommitteeSchedule where
   committees : List (Slot × CommitteeIndex × List ValidatorIndex)
   counts : List (Epoch × ℕ)
@@ -110,6 +125,12 @@ structure FFGWireBlock (Root : Type*) where
   block_hash : Root
   parent_requests_empty : Bool
   parent_requests_match : Bool
+  deposit_count : ℕ := 0
+  proposer_slashing_count : ℕ := 0
+  attester_slashing_count : ℕ := 0
+  voluntary_exit_count : ℕ := 0
+  bls_to_execution_change_count : ℕ := 0
+  payload_attestation_count : ℕ := 0
   attestations : List (FFGWireAttestation Root)
   deriving Inhabited
 
