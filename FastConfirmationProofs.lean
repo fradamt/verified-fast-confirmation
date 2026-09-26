@@ -3,6 +3,7 @@ public import FastConfirmationProofs.FFG.SelectedSource.TruncatedPredictionPinni
 public import FastConfirmationProofs.FFG.State.Phase0BoundarySource
 public import FastConfirmationProofs.FFG.Concrete.PointwiseAttestation
 public import FastConfirmationProofs.FFG.Concrete.FinalizedPrefix
+public import FastConfirmationProofs.FFG.Concrete.BridgeLaws
 public import FastConfirmationProofs.FCRRule.PredictionSupport
 public import FastConfirmationProofs.FCRRule.PredictionSupportGeometry
 public import FastConfirmationProofs.Checkpoints.HonestVotePathAdmissibility
