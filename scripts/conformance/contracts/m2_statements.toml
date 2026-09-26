@@ -1,0 +1,48 @@
+# Exact m2 preview field statements from a1-real-anchor (52c66b4).
+[statement."m2.process_slots_one_boundary"]
+lean = '''
+process_slots_one_boundary :
+    ∀ (st : BeaconState Root) (target : Slot),
+      st.slot < target →
+      compute_epoch_at_slot cfg target =
+        compute_epoch_at_slot cfg st.slot + 1 →
+      (ext.process_slots st target).current_justified_checkpoint =
+        (ext.process_justification_and_finalization st).current_justified_checkpoint
+'''
+
+[statement."m2.process_slots_same_target_epoch"]
+lean = '''
+process_slots_same_target_epoch :
+    ∀ (st : BeaconState Root) (target target' : Slot),
+      compute_epoch_at_slot cfg st.slot <
+        compute_epoch_at_slot cfg target →
+      compute_epoch_at_slot cfg target =
+        compute_epoch_at_slot cfg target' →
+      (ext.process_slots st target).current_justified_checkpoint =
+        (ext.process_slots st target').current_justified_checkpoint
+'''
+
+[statement."m2.state_transition_process_slots"]
+lean = '''
+state_transition_process_slots :
+    ∀ (pre : BeaconState Root) (sb : SignedBeaconBlock Root)
+      (post : BeaconState Root),
+      ext.state_transition pre sb = some post →
+      compute_epoch_at_slot cfg pre.slot <
+        compute_epoch_at_slot cfg sb.message.slot →
+      post.current_justified_checkpoint =
+        (ext.process_slots pre sb.message.slot).current_justified_checkpoint
+'''
+
+[statement."m2.process_slots_checkpoint_epoch"]
+lean = '''
+process_slots_checkpoint_epoch :
+    ∀ (st : BeaconState Root) (target : Slot),
+      compute_epoch_at_slot cfg st.slot <
+        compute_epoch_at_slot cfg target →
+      (ext.process_slots st target).current_justified_checkpoint =
+          st.current_justified_checkpoint ∨
+        (ext.process_slots st target).current_justified_checkpoint.epoch ≤
+          compute_epoch_at_slot cfg st.slot
+'''
+

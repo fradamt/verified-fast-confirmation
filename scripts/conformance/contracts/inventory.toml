@@ -1,0 +1,978 @@
+# Direct fields of structures in FastConfirmationStatements/Premises.
+# T: direct generated-state property; E: execution or supplied interpretation; I: idealization.
+version = 1
+
+[[field]]
+path = "HonestBehavior.votes_head"
+file = "Behavior.lean"
+class = "E"
+reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
+
+[[field]]
+path = "HonestBehavior.vote_deadline"
+file = "Behavior.lean"
+class = "E"
+reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
+
+[[field]]
+path = "HonestBehavior.votes_assigned"
+file = "Behavior.lean"
+class = "E"
+reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
+
+[[field]]
+path = "HonestBehavior.no_forgery"
+file = "Behavior.lean"
+class = "I"
+reason = "BLS unforgeability and honest signing history are idealized."
+
+[[field]]
+path = "HonestBehavior.not_slashable"
+file = "Behavior.lean"
+class = "E"
+reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
+
+[[field]]
+path = "HonestBehavior.honest_unslashed"
+file = "Behavior.lean"
+class = "E"
+reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
+
+[[field]]
+path = "EpochCheckpointProjectionLaws.checkpoint_root_accepted"
+file = "CheckpointLinks.lean"
+class = "T"
+test = "EpochCheckpointProjectionLaws.checkpoint_root_accepted"
+
+[[field]]
+path = "EpochCheckpointProjectionLaws.checkpoint_comp"
+file = "CheckpointLinks.lean"
+class = "T"
+test = "EpochCheckpointProjectionLaws.checkpoint_comp"
+
+[[field]]
+path = "IncludedLinkCheckpointAgreement.carrier_accepted"
+file = "CheckpointLinks.lean"
+class = "E"
+reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
+
+[[field]]
+path = "IncludedLinkCheckpointAgreement.endpoints_on_carrier"
+file = "CheckpointLinks.lean"
+class = "E"
+reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
+
+[[field]]
+path = "StaticValidatorSet.genesis_within_horizon"
+file = "Economics.lean"
+class = "E"
+reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
+
+[[field]]
+path = "StaticValidatorSet.activity_constant"
+file = "Economics.lean"
+class = "E"
+reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
+
+[[field]]
+path = "ByzantineWeightPremises.effective_balance_quantized"
+file = "Economics.lean"
+class = "T"
+test = "ByzantineWeightPremises.effective_balance_quantized"
+
+[[field]]
+path = "ByzantineWeightPremises.estimate_sound"
+file = "Economics.lean"
+class = "E"
+reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
+
+[[field]]
+path = "ByzantineWeightPremises.span_fraction"
+file = "Economics.lean"
+class = "E"
+reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
+
+[[field]]
+path = "BeaconExternalsPremises.process_slots_slot"
+file = "Externals.lean"
+class = "T"
+test = "BeaconExternalsPremises.process_slots_slot"
+
+[[field]]
+path = "BeaconExternalsPremises.process_slots_registry"
+file = "Externals.lean"
+class = "T"
+test = "BeaconExternalsPremises.process_slots_registry"
+
+[[field]]
+path = "BeaconExternalsPremises.state_transition_slot"
+file = "Externals.lean"
+class = "T"
+test = "BeaconExternalsPremises.state_transition_slot"
+
+[[field]]
+path = "BeaconExternalsPremises.state_transition_registry"
+file = "Externals.lean"
+class = "T"
+test = "BeaconExternalsPremises.state_transition_registry"
+
+[[field]]
+path = "BeaconExternalsPremises.state_transition_pre_slot_lt"
+file = "Externals.lean"
+class = "T"
+test = "BeaconExternalsPremises.state_transition_pre_slot_lt"
+
+[[field]]
+path = "BeaconExternalsPremises.state_transition_checkpoint_epoch"
+file = "Externals.lean"
+class = "T"
+test = "BeaconExternalsPremises.state_transition_checkpoint_epoch"
+
+[[field]]
+path = "BeaconExternalsPremises.pjf_checkpoint_epoch"
+file = "Externals.lean"
+class = "T"
+test = "BeaconExternalsPremises.pjf_checkpoint_epoch"
+
+[[field]]
+path = "BeaconExternalsPremises.committees_agree"
+file = "Externals.lean"
+class = "E"
+reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
+
+[[field]]
+path = "BeaconExternalsPremises.honest_attestation_valid"
+file = "Externals.lean"
+class = "I"
+reason = "BLS signature validity is disabled in the helper run."
+
+[[field]]
+path = "BeaconExternalsPremises.valid_attestation_honest"
+file = "Externals.lean"
+class = "I"
+reason = "BLS unforgeability and honest signing history are idealized."
+
+[[field]]
+path = "BeaconExternalsPremises.valid_attestation_committee"
+file = "Externals.lean"
+class = "I"
+reason = "BLS validity and the wire conversion from aggregate bits to indexed indices are idealized."
+
+[[field]]
+path = "BeaconExternalsPremises.committee_assignment_unique"
+file = "Externals.lean"
+class = "T"
+test = "BeaconExternalsPremises.committee_assignment_unique"
+
+[[field]]
+path = "BeaconExternalsPremises.committee_coverage"
+file = "Externals.lean"
+class = "T"
+test = "BeaconExternalsPremises.committee_coverage"
+
+[[field]]
+path = "BeaconExternalsPremises.committee_members_active"
+file = "Externals.lean"
+class = "T"
+test = "BeaconExternalsPremises.committee_members_active"
+
+[[field]]
+path = "BeaconExternalsPremises.valid_attestation_default"
+file = "Externals.lean"
+class = "T"
+test = "BeaconExternalsPremises.valid_attestation_default"
+
+[[field]]
+path = "BeaconExternalsPremises.process_slots_attestation_valid"
+file = "Externals.lean"
+class = "T"
+test = "BeaconExternalsPremises.process_slots_attestation_valid"
+
+[[field]]
+path = "BeaconExternalsPremises.verify_envelope_deterministic"
+file = "Externals.lean"
+class = "I"
+reason = "Execution-engine validity and observation-local data availability are idealized."
+
+[[field]]
+path = "ScheduledFCRCallPremises.synchrony"
+file = "FCRCallPremises.lean"
+class = "E"
+reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
+
+[[field]]
+path = "ScheduledFCRCallPremises.static_validators"
+file = "FCRCallPremises.lean"
+class = "E"
+reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
+
+[[field]]
+path = "ScheduledFCRCallPremises.byzantine_bound"
+file = "FCRCallPremises.lean"
+class = "E"
+reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
+
+[[field]]
+path = "ScheduledFCRCallPremises.phase0_source"
+file = "FCRCallPremises.lean"
+class = "E"
+reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
+
+[[field]]
+path = "ScheduledFCRCallPremises.phase0_boundary_source"
+file = "FCRCallPremises.lean"
+class = "E"
+reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
+
+[[field]]
+path = "ScheduledFCRCallPremises.balance_floor"
+file = "FCRCallPremises.lean"
+class = "E"
+reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
+
+[[field]]
+path = "Phase0BoundarySourceCoherence.process_slots_current_justified"
+file = "FFG.lean"
+class = "T"
+optional = true
+test = "Phase0BoundarySourceCoherence.process_slots_current_justified"
+
+[[field]]
+path = "Phase0BoundarySourceCoherence.state_transition_current_justified"
+file = "FFG.lean"
+class = "T"
+optional = true
+test = "Phase0BoundarySourceCoherence.state_transition_current_justified"
+
+[[field]]
+path = "Phase0SourceCoherence.process_slots_current_justified"
+file = "FFG.lean"
+class = "T"
+test = "Phase0SourceCoherence.process_slots_current_justified"
+
+[[field]]
+path = "Phase0SourceCoherence.state_transition_current_justified"
+file = "FFG.lean"
+class = "T"
+test = "Phase0SourceCoherence.state_transition_current_justified"
+
+[[field]]
+path = "IncludedAttestationEvidence.carrier_message"
+file = "FFGState.lean"
+class = "E"
+reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
+
+[[field]]
+path = "IncludedAttestationEvidence.received_from_block"
+file = "FFGState.lean"
+class = "E"
+reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
+
+[[field]]
+path = "IncludedAttestationEvidence.slot_within_horizon"
+file = "FFGState.lean"
+class = "E"
+reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
+
+[[field]]
+path = "IncludedAttestationEvidence.slot_before_carrier"
+file = "FFGState.lean"
+class = "E"
+reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
+
+[[field]]
+path = "IncludedAttestationEvidence.target_epoch"
+file = "FFGState.lean"
+class = "E"
+reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
+
+[[field]]
+path = "IncludedAttestationEvidence.attesters_in_committee"
+file = "FFGState.lean"
+class = "E"
+reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
+
+[[field]]
+path = "BlockAttestationInclusion.Included"
+file = "FFGState.lean"
+class = "E"
+reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
+
+[[field]]
+path = "BlockAttestationInclusion.evidence"
+file = "FFGState.lean"
+class = "E"
+reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
+
+[[field]]
+path = "AcceptedBlockAttestationEvidence.carrier_accepted"
+file = "FFGState.lean"
+class = "E"
+reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
+
+[[field]]
+path = "AcceptedBlockAttestationInclusion.Included"
+file = "FFGState.lean"
+class = "E"
+reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
+
+[[field]]
+path = "AcceptedBlockAttestationInclusion.evidence"
+file = "FFGState.lean"
+class = "E"
+reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
+
+[[field]]
+path = "IncludedSupermajorityLink.signers"
+file = "FFGState.lean"
+class = "E"
+reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
+
+[[field]]
+path = "IncludedSupermajorityLink.source_before_target"
+file = "FFGState.lean"
+class = "E"
+reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
+
+[[field]]
+path = "IncludedSupermajorityLink.target_descends_source"
+file = "FFGState.lean"
+class = "E"
+reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
+
+[[field]]
+path = "IncludedSupermajorityLink.target_epoch_within"
+file = "FFGState.lean"
+class = "E"
+reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
+
+[[field]]
+path = "IncludedSupermajorityLink.target_span_within"
+file = "FFGState.lean"
+class = "E"
+reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
+
+[[field]]
+path = "IncludedSupermajorityLink.signers_in_epoch"
+file = "FFGState.lean"
+class = "E"
+reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
+
+[[field]]
+path = "IncludedSupermajorityLink.signer_attestation"
+file = "FFGState.lean"
+class = "E"
+reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
+
+[[field]]
+path = "IncludedSupermajorityLink.supermajority"
+file = "FFGState.lean"
+class = "E"
+reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
+
+[[field]]
+path = "IncludedCertifiedFinalized.justified"
+file = "FFGState.lean"
+class = "E"
+reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
+
+[[field]]
+path = "IncludedCertifiedFinalized.child"
+file = "FFGState.lean"
+class = "E"
+reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
+
+[[field]]
+path = "IncludedCertifiedFinalized.child_epoch"
+file = "FFGState.lean"
+class = "E"
+reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
+
+[[field]]
+path = "IncludedCertifiedFinalized.finalizing_link"
+file = "FFGState.lean"
+class = "E"
+reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
+
+[[field]]
+path = "IncludedCheckpointEvidence.certified"
+file = "FFGState.lean"
+class = "E"
+reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
+
+[[field]]
+path = "IncludedCheckpointEvidence.on_chain"
+file = "FFGState.lean"
+class = "E"
+reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
+
+[[field]]
+path = "IncludedCheckpointEvidence.causal"
+file = "FFGState.lean"
+class = "E"
+reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
+
+[[field]]
+path = "AcceptedBlockFFGState.includedAttestations"
+file = "FFGState.lean"
+class = "E"
+reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
+
+[[field]]
+path = "AcceptedBlockFFGState.checkpoint_evidence_in_block"
+file = "FFGState.lean"
+class = "E"
+reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
+
+[[field]]
+path = "AcceptedBlockFFGState.checkpoint_at_epoch"
+file = "FFGState.lean"
+class = "E"
+reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
+
+[[field]]
+path = "AcceptedBlockFFGState.realized_justified"
+file = "FFGState.lean"
+class = "E"
+reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
+
+[[field]]
+path = "AcceptedBlockFFGState.unrealized_justified"
+file = "FFGState.lean"
+class = "E"
+reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
+
+[[field]]
+path = "AcceptedBlockFFGState.realized_finalized"
+file = "FFGState.lean"
+class = "E"
+reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
+
+[[field]]
+path = "AcceptedBlockFFGState.unrealized_finalized"
+file = "FFGState.lean"
+class = "E"
+reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
+
+[[field]]
+path = "AcceptedBlockFFGState.checkpoint_epoch"
+file = "FFGState.lean"
+class = "E"
+reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
+
+[[field]]
+path = "AcceptedBlockFFGState.formed_carrier_accepted"
+file = "FFGState.lean"
+class = "E"
+reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
+
+[[field]]
+path = "AcceptedBlockFFGState.formed_evidence"
+file = "FFGState.lean"
+class = "E"
+reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
+
+[[field]]
+path = "AcceptedBlockFFGState.realized_justified_mem"
+file = "FFGState.lean"
+class = "E"
+reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
+
+[[field]]
+path = "AcceptedBlockFFGState.unrealized_justified_mem"
+file = "FFGState.lean"
+class = "E"
+reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
+
+[[field]]
+path = "AcceptedBlockFFGState.realized_finalized_mem"
+file = "FFGState.lean"
+class = "E"
+reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
+
+[[field]]
+path = "AcceptedBlockFFGState.unrealized_finalized_mem"
+file = "FFGState.lean"
+class = "E"
+reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
+
+[[field]]
+path = "AcceptedBlockFFGState.realized_justified_anchor_or_before"
+file = "FFGState.lean"
+class = "E"
+reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
+
+[[field]]
+path = "AcceptedBlockFFGState.realized_justified_max"
+file = "FFGState.lean"
+class = "E"
+reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
+
+[[field]]
+path = "AcceptedBlockFFGState.unrealized_justified_max"
+file = "FFGState.lean"
+class = "E"
+reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
+
+[[field]]
+path = "AcceptedBlockFFGState.available_checkpoint_epoch_le_block"
+file = "FFGState.lean"
+class = "E"
+reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
+
+[[field]]
+path = "AcceptedBlockFFGState.realized_finalized_evidence"
+file = "FFGState.lean"
+class = "E"
+reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
+
+[[field]]
+path = "AcceptedBlockFFGState.unrealized_finalized_evidence"
+file = "FFGState.lean"
+class = "E"
+reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
+
+[[field]]
+path = "AcceptedBlockFFGState.realized_finalized_epoch_le_realized_justified"
+file = "FFGState.lean"
+class = "E"
+reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
+
+[[field]]
+path = "AcceptedBlockFFGState.unrealized_finalized_epoch_le_unrealized_justified"
+file = "FFGState.lean"
+class = "E"
+reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
+
+[[field]]
+path = "FFGStateReadAgreement.genesis_gj"
+file = "FFGState.lean"
+class = "E"
+reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
+
+[[field]]
+path = "FFGStateReadAgreement.genesis_gf"
+file = "FFGState.lean"
+class = "E"
+reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
+
+[[field]]
+path = "FFGStateReadAgreement.genesis_gu"
+file = "FFGState.lean"
+class = "E"
+reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
+
+[[field]]
+path = "FFGStateReadAgreement.genesis_guf"
+file = "FFGState.lean"
+class = "E"
+reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
+
+[[field]]
+path = "FFGStateReadAgreement.genesis_unrealized_justification"
+file = "FFGState.lean"
+class = "T"
+test = "FFGStateReadAgreement.genesis_unrealized_justification"
+
+[[field]]
+path = "FFGStateReadAgreement.transition_gj"
+file = "FFGState.lean"
+class = "E"
+reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
+
+[[field]]
+path = "FFGStateReadAgreement.transition_gf"
+file = "FFGState.lean"
+class = "E"
+reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
+
+[[field]]
+path = "FFGStateReadAgreement.transition_gu"
+file = "FFGState.lean"
+class = "T"
+test = "FFGStateReadAgreement.transition_gu"
+
+[[field]]
+path = "FFGStateReadAgreement.transition_guf"
+file = "FFGState.lean"
+class = "E"
+reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
+
+[[field]]
+path = "FFGStateAndCheckpointReadAgreement.checkpoint_of_known"
+file = "FFGState.lean"
+class = "E"
+reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
+
+[[field]]
+path = "FFGStateAndCheckpointReadAgreement.available_checkpoint_checkpoint_of_known"
+file = "FFGState.lean"
+class = "E"
+reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
+
+[[field]]
+path = "ScheduledFFGInterpretation.anchor"
+file = "FFGState.lean"
+class = "E"
+reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
+
+[[field]]
+path = "ScheduledFFGInterpretation.state"
+file = "FFGState.lean"
+class = "E"
+reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
+
+[[field]]
+path = "ScheduledFFGInterpretation.coherence"
+file = "FFGState.lean"
+class = "E"
+reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
+
+[[field]]
+path = "CheckpointInclusionView.BlockAt"
+file = "FFGState.lean"
+class = "E"
+reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
+
+[[field]]
+path = "CheckpointInclusionView.includedAttestations"
+file = "FFGState.lean"
+class = "E"
+reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
+
+[[field]]
+path = "CheckpointInclusionView.formed"
+file = "FFGState.lean"
+class = "E"
+reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
+
+[[field]]
+path = "CheckpointInclusionView.C"
+file = "FFGState.lean"
+class = "E"
+reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
+
+[[field]]
+path = "CheckpointInclusionView.GJ"
+file = "FFGState.lean"
+class = "E"
+reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
+
+[[field]]
+path = "CheckpointInclusionView.GU"
+file = "FFGState.lean"
+class = "E"
+reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
+
+[[field]]
+path = "CheckpointInclusionView.checkpoint_epoch"
+file = "FFGState.lean"
+class = "E"
+reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
+
+[[field]]
+path = "SourceTargetLinkSupportAt.view_within_horizon"
+file = "FFGState.lean"
+class = "E"
+reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
+
+[[field]]
+path = "SourceTargetLinkSupportAt.source_before_target"
+file = "FFGState.lean"
+class = "E"
+reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
+
+[[field]]
+path = "SourceTargetLinkSupportAt.target_epoch_within"
+file = "FFGState.lean"
+class = "E"
+reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
+
+[[field]]
+path = "SourceTargetLinkSupportAt.target_known"
+file = "FFGState.lean"
+class = "E"
+reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
+
+[[field]]
+path = "SourceTargetLinkSupportAt.target_state_keyed"
+file = "FFGState.lean"
+class = "E"
+reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
+
+[[field]]
+path = "SourceTargetLinkSupportAt.signers"
+file = "FFGState.lean"
+class = "E"
+reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
+
+[[field]]
+path = "SourceTargetLinkSupportAt.signers_not_slashable"
+file = "FFGState.lean"
+class = "E"
+reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
+
+[[field]]
+path = "SourceTargetLinkSupportAt.signers_in_registry"
+file = "FFGState.lean"
+class = "E"
+reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
+
+[[field]]
+path = "SourceTargetLinkSupportAt.signer_attestation"
+file = "FFGState.lean"
+class = "E"
+reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
+
+[[field]]
+path = "SourceTargetLinkSupportAt.supermajority"
+file = "FFGState.lean"
+class = "E"
+reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
+
+[[field]]
+path = "EventualCheckpointInclusion.included"
+file = "FFGState.lean"
+class = "E"
+reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
+
+[[field]]
+path = "LiveMonotonicityPremises.honest_block_each_slot"
+file = "LiveMonotonicity.lean"
+class = "E"
+reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
+
+[[field]]
+path = "LiveMonotonicityPremises.ffg_timely_justification"
+file = "LiveMonotonicity.lean"
+class = "E"
+reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
+
+[[field]]
+path = "NextSlotSafetyPremises.ffg_interpretation"
+file = "NextSlotSafety.lean"
+class = "E"
+reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
+
+[[field]]
+path = "NextSlotSafetyPremises.trajectory"
+file = "NextSlotSafety.lean"
+class = "E"
+reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
+
+[[field]]
+path = "NextSlotSafetyPremises.completed_calls"
+file = "NextSlotSafety.lean"
+class = "E"
+reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
+
+[[field]]
+path = "NextSlotSafetyPremises.epoch_ends_fit"
+file = "NextSlotSafety.lean"
+class = "E"
+reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
+
+[[field]]
+path = "NextSlotSafetyPremises.anchor_eq"
+file = "NextSlotSafety.lean"
+class = "T"
+test = "NextSlotSafetyPremises.anchor_eq"
+
+[[field]]
+path = "NextSlotSafetyPremises.anchor_boundary"
+file = "NextSlotSafety.lean"
+class = "T"
+test = "NextSlotSafetyPremises.anchor_boundary"
+
+[[field]]
+path = "NextSlotSafetyPremises.finalization_delay"
+file = "NextSlotSafety.lean"
+class = "T"
+test = "NextSlotSafetyPremises.finalization_delay"
+
+[[field]]
+path = "NextSlotSafetyPremises.slots_per_epoch_gt_one"
+file = "NextSlotSafety.lean"
+class = "E"
+reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
+
+[[field]]
+path = "NextSlotSafetyPremises.checkpoint_inclusion"
+file = "NextSlotSafety.lean"
+class = "E"
+reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
+
+[[field]]
+path = "NextSlotSafetyPremises.checkpoint_projection"
+file = "NextSlotSafety.lean"
+class = "E"
+reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
+
+[[field]]
+path = "NextSlotSafetyPremises.exact_link_validity"
+file = "NextSlotSafety.lean"
+class = "E"
+reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
+
+[[field]]
+path = "WellFormedExecution.blocks_root_injective"
+file = "ScheduledExecutionConditions.lean"
+class = "I"
+reason = "Hash collision resistance is idealized."
+
+[[field]]
+path = "WellFormedExecution.genesis_blocks_agree"
+file = "ScheduledExecutionConditions.lean"
+class = "I"
+reason = "Hash collision resistance and anchor provenance are idealized."
+
+[[field]]
+path = "WellFormedExecution.anchor_parent_unscheduled"
+file = "ScheduledExecutionConditions.lean"
+class = "I"
+reason = "Hash collision resistance and accepted-block validation are idealized."
+
+[[field]]
+path = "ScheduledExecutionPremises.whole_seconds"
+file = "ScheduledExecutionConditions.lean"
+class = "E"
+reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
+
+[[field]]
+path = "ScheduledExecutionPremises.wellFormed"
+file = "ScheduledExecutionConditions.lean"
+class = "E"
+reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
+
+[[field]]
+path = "ScheduledExecutionPremises.externals_coherence"
+file = "ScheduledExecutionConditions.lean"
+class = "E"
+reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
+
+[[field]]
+path = "ScheduledExecutionPremises.honest_behavior"
+file = "ScheduledExecutionConditions.lean"
+class = "E"
+reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
+
+[[field]]
+path = "ScheduledExecutionPremises.genesis"
+file = "ScheduledExecutionConditions.lean"
+class = "I"
+reason = "Hash commitment to the anchor state and trusted initialization are idealized."
+
+[[field]]
+path = "Synchrony.delta"
+file = "Synchrony.lean"
+class = "E"
+reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
+
+[[field]]
+path = "Synchrony.attestation_delivery"
+file = "Synchrony.lean"
+class = "E"
+reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
+
+[[field]]
+path = "Synchrony.deadline_block_relay"
+file = "Synchrony.lean"
+class = "E"
+reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
+
+[[field]]
+path = "Synchrony.boundary_block_prefix"
+file = "Synchrony.lean"
+class = "E"
+reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
+
+[[field]]
+path = "Synchrony.attester_slashing_relay"
+file = "Synchrony.lean"
+class = "I"
+reason = "BLS validity and network delivery are idealized."
+
+[[field]]
+path = "HorizonVoteDeliveryLookahead.attestation_delivery"
+file = "Synchrony.lean"
+class = "E"
+reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
+
+[[field]]
+path = "NextSlotSynchronyPremises.delta"
+file = "Synchrony.lean"
+class = "E"
+reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
+
+[[field]]
+path = "NextSlotSynchronyPremises.delivery_lookahead"
+file = "Synchrony.lean"
+class = "E"
+optional = true
+reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
+
+[[field]]
+path = "NextSlotSynchronyPremises.deadline_block_relay"
+file = "Synchrony.lean"
+class = "E"
+reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
+
+[[field]]
+path = "NextSlotSynchronyPremises.boundary_block_prefix"
+file = "Synchrony.lean"
+class = "E"
+reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
+
+[[field]]
+path = "NextSlotSynchronyPremises.envelope_delivery"
+file = "Synchrony.lean"
+class = "I"
+reason = "Execution-engine and BLS envelope validity are idealized."
+
+[[field]]
+path = "NextSlotSynchronyPremises.data_availability_relay"
+file = "Synchrony.lean"
+class = "I"
+reason = "KZG, sidecar availability, and local retrieval are idealized."
+
+[[field]]
+path = "NextSlotSynchronyPremises.attester_slashing_relay"
+file = "Synchrony.lean"
+class = "E"
+reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
+
+[[field]]
+path = "Phase0BoundarySourceCoherence.process_slots_one_boundary"
+file = "FFG.lean"
+class = "T"
+optional = true
+test = "m2.process_slots_one_boundary"
+
+[[field]]
+path = "Phase0BoundarySourceCoherence.process_slots_same_target_epoch"
+file = "FFG.lean"
+class = "T"
+optional = true
+test = "m2.process_slots_same_target_epoch"
+
+[[field]]
+path = "Phase0BoundarySourceCoherence.state_transition_process_slots"
+file = "FFG.lean"
+class = "T"
+optional = true
+test = "m2.state_transition_process_slots"
+
+[[field]]
+path = "Phase0BoundarySourceCoherence.process_slots_checkpoint_epoch"
+file = "FFG.lean"
+class = "T"
+optional = true
+test = "m2.process_slots_checkpoint_epoch"
+
+[[field]]
+path = "ScheduledFCRCallPremises.delivery_lookahead"
+file = "FCRCallPremises.lean"
+class = "E"
+optional = true
+reason = "One-slot delivery beyond the public horizon is a network execution assumption."
+
