@@ -727,18 +727,6 @@ class = "E"
 reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
 
 [[field]]
-path = "LiveMonotonicityPremises.honest_block_each_slot"
-file = "LiveMonotonicity.lean"
-class = "E"
-reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
-
-[[field]]
-path = "LiveMonotonicityPremises.ffg_timely_justification"
-file = "LiveMonotonicity.lean"
-class = "E"
-reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
-
-[[field]]
 path = "NextSlotSafetyPremises.ffg_interpretation"
 file = "NextSlotSafety.lean"
 class = "E"

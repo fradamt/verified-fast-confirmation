@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Check the parsed import closure of the Statements review library."""
+"""Check the parsed import closure of the safety Statements review library."""
 
 from __future__ import annotations
 

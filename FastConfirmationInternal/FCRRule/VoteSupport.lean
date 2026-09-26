@@ -1,6 +1,5 @@
 module
 public import FastConfirmationStatements.Premises.FCRCallPremises
-public import FastConfirmationStatements.Premises.LiveMonotonicity
 
 @[expose] public section
 

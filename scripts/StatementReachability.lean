@@ -2,7 +2,7 @@ import FastConfirmationStatements
 import Lean.Util.FoldConsts
 
 /-! Check that every authored Statements declaration is reachable from the safety
-review claim or the separate, conditional live statement. -/
+review claim. -/
 
 open Lean Elab Command
 
@@ -44,8 +44,7 @@ private def approved : List Name := [
 
 run_cmd do
   let env ← getEnv
-  let reachable := reachableFrom env [``FastConfirmation.Spec.ReviewClaims,
-    ``FastConfirmation.Spec.LiveConfirmedRootMonotonicity]
+  let reachable := reachableFrom env [``FastConfirmation.Spec.ReviewClaims]
   let statementDecls := env.const2ModIdx.keysArray.toList.filter fun decl =>
     (moduleOf? env decl).any fun m =>
       m.toString == "FastConfirmationStatements" ||

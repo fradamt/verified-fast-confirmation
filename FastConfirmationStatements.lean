@@ -9,7 +9,6 @@ public import FastConfirmationStatements.Premises.Externals
 public import FastConfirmationStatements.Premises.FFG
 public import FastConfirmationStatements.Premises.FFGCertificates
 public import FastConfirmationStatements.Premises.FFGState
-public import FastConfirmationStatements.Premises.LiveMonotonicity
 public import FastConfirmationStatements.Premises.Synchrony
 public import FastConfirmationStatements.Premises.FCRCallPremises
 public import FastConfirmationStatements.Review
