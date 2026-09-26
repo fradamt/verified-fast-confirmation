@@ -11,6 +11,9 @@ public import FastConfirmationModel.Spec.Validator.Attesting
 public import FastConfirmationModel.Execution.Run
 public import FastConfirmationModel.Execution.ScheduledPrefixes
 public import FastConfirmationModel.Spec.BeaconChain.Helpers
+public import FastConfirmationModel.Spec.BeaconChain.ConcreteTypes
+public import FastConfirmationModel.Spec.BeaconChain.ConcreteTransition
+public import FastConfirmationModel.Execution.ConcreteFFGAdapter
 public import FastConfirmationModel.Execution.Externals
 public import FastConfirmationModel.Execution.Stake
 public import FastConfirmationModel.Spec.FastConfirmation.SafeExecutionBlock

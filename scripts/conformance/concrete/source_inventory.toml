@@ -1,0 +1,281 @@
+# Python source: fcr-gloas-fix -> 13f391516352f61b3ac5dcaae5be1884d104f86a.
+# A line is the first `def` line of the effective inherited function.
+
+[[function]]
+name = "state_transition"
+lean = "FastConfirmationModel/Spec/BeaconChain/ConcreteTransition.lean"
+python = "specs/phase0/beacon-chain.md"
+line = 1769
+
+[[function]]
+name = "process_slots"
+lean = "FastConfirmationModel/Spec/BeaconChain/ConcreteTransition.lean"
+python = "specs/phase0/beacon-chain.md"
+line = 1795
+
+[[function]]
+name = "process_slot"
+lean = "FastConfirmationModel/Spec/BeaconChain/ConcreteTransition.lean"
+python = "specs/gloas/beacon-chain.md"
+line = 1569
+
+[[function]]
+name = "process_epoch"
+lean = "FastConfirmationModel/Spec/BeaconChain/ConcreteTransition.lean"
+python = "specs/gloas/beacon-chain.md"
+line = 1594
+
+[[function]]
+name = "process_justification_and_finalization"
+lean = "FastConfirmationModel/Spec/BeaconChain/ConcreteTransition.lean"
+python = "specs/altair/beacon-chain.md"
+line = 728
+
+[[function]]
+name = "weigh_justification_and_finalization"
+lean = "FastConfirmationModel/Spec/BeaconChain/ConcreteTransition.lean"
+python = "specs/phase0/beacon-chain.md"
+line = 1909
+
+[[function]]
+name = "process_participation_flag_updates"
+lean = "FastConfirmationModel/Spec/BeaconChain/ConcreteTransition.lean"
+python = "specs/altair/beacon-chain.md"
+line = 824
+
+[[function]]
+name = "process_block"
+lean = "FastConfirmationModel/Spec/BeaconChain/ConcreteTransition.lean"
+python = "specs/gloas/beacon-chain.md"
+line = 1715
+
+[[function]]
+name = "process_block_header"
+lean = "FastConfirmationModel/Spec/BeaconChain/ConcreteTransition.lean"
+python = "specs/phase0/beacon-chain.md"
+line = 2288
+
+[[function]]
+name = "process_operations"
+lean = "FastConfirmationModel/Spec/BeaconChain/ConcreteTransition.lean"
+python = "specs/gloas/beacon-chain.md"
+line = 2170
+
+[[function]]
+name = "process_attestation"
+lean = "FastConfirmationModel/Spec/BeaconChain/ConcreteTransition.lean"
+python = "specs/gloas/beacon-chain.md"
+line = 2336
+
+[[function]]
+name = "get_attestation_participation_flag_indices"
+lean = "FastConfirmationModel/Spec/BeaconChain/ConcreteTransition.lean"
+python = "specs/gloas/beacon-chain.md"
+line = 1339
+
+[[function]]
+name = "is_attestation_same_slot"
+lean = "FastConfirmationModel/Spec/BeaconChain/ConcreteTransition.lean"
+python = "specs/gloas/beacon-chain.md"
+line = 1077
+
+[[function]]
+name = "get_committee_indices"
+lean = "FastConfirmationModel/Spec/BeaconChain/ConcreteTransition.lean"
+python = "specs/electra/beacon-chain.md"
+line = 736
+
+[[function]]
+name = "get_attesting_indices"
+lean = "FastConfirmationModel/Spec/BeaconChain/ConcreteTransition.lean"
+python = "specs/electra/beacon-chain.md"
+line = 801
+
+[[function]]
+name = "get_indexed_attestation"
+lean = "FastConfirmationModel/Spec/BeaconChain/ConcreteTransition.lean"
+python = "specs/phase0/beacon-chain.md"
+line = 1564
+
+[[function]]
+name = "get_unslashed_participating_indices"
+lean = "FastConfirmationModel/Spec/BeaconChain/ConcreteTransition.lean"
+python = "specs/altair/beacon-chain.md"
+line = 397
+
+[[function]]
+name = "get_total_balance"
+lean = "FastConfirmationModel/Spec/BeaconChain/ConcreteTransition.lean"
+python = "specs/phase0/beacon-chain.md"
+line = 1518
+
+[[function]]
+name = "get_total_active_balance"
+lean = "FastConfirmationModel/Spec/BeaconChain/ConcreteTransition.lean"
+python = "specs/phase0/beacon-chain.md"
+line = 1535
+
+[[function]]
+name = "get_active_validator_indices"
+lean = "FastConfirmationModel/Spec/BeaconChain/ConcreteTransition.lean"
+python = "specs/phase0/beacon-chain.md"
+line = 1430
+
+[[function]]
+name = "is_active_validator"
+lean = "FastConfirmationModel/Spec/BeaconChain/Helpers.lean"
+python = "specs/phase0/beacon-chain.md"
+line = 1088
+
+[[function]]
+name = "get_current_epoch"
+lean = "FastConfirmationModel/Spec/BeaconChain/Helpers.lean"
+python = "specs/phase0/beacon-chain.md"
+line = 1379
+
+[[function]]
+name = "get_previous_epoch"
+lean = "FastConfirmationModel/Spec/BeaconChain/ConcreteTransition.lean"
+python = "specs/phase0/beacon-chain.md"
+line = 1389
+
+[[function]]
+name = "compute_epoch_at_slot"
+lean = "FastConfirmationModel/Spec/BeaconChain/Helpers.lean"
+python = "specs/phase0/beacon-chain.md"
+line = 1297
+
+[[function]]
+name = "compute_start_slot_at_epoch"
+lean = "FastConfirmationModel/Spec/BeaconChain/Helpers.lean"
+python = "specs/phase0/beacon-chain.md"
+line = 1307
+
+[[function]]
+name = "get_block_root"
+lean = "FastConfirmationModel/Spec/BeaconChain/ConcreteTransition.lean"
+python = "specs/phase0/beacon-chain.md"
+line = 1399
+
+[[function]]
+name = "get_block_root_at_slot"
+lean = "FastConfirmationModel/Spec/BeaconChain/ConcreteTransition.lean"
+python = "specs/phase0/beacon-chain.md"
+line = 1409
+
+[[function]]
+name = "add_flag"
+lean = "FastConfirmationModel/Spec/BeaconChain/ConcreteTransition.lean"
+python = "specs/altair/beacon-chain.md"
+line = 279
+
+[[function]]
+name = "has_flag"
+lean = "FastConfirmationModel/Spec/BeaconChain/ConcreteTransition.lean"
+python = "specs/altair/beacon-chain.md"
+line = 290
+
+[[function]]
+name = "integer_squareroot"
+lean = "FastConfirmationModel/Spec/BeaconChain/ConcreteTransition.lean"
+python = "specs/phase0/beacon-chain.md"
+line = 986
+
+[[function]]
+name = "is_valid_indexed_attestation"
+lean = "FastConfirmationModel/Spec/BeaconChain/ConcreteTransition.lean"
+python = "specs/gloas/beacon-chain.md"
+line = 1022
+
+[[function]]
+name = "process_parent_execution_payload"
+lean = "FastConfirmationModel/Spec/BeaconChain/ConcreteTransition.lean"
+python = "specs/gloas/beacon-chain.md"
+line = 1801
+
+[[function]]
+name = "apply_parent_execution_payload"
+lean = "FastConfirmationModel/Spec/BeaconChain/ConcreteTransition.lean"
+python = "specs/gloas/beacon-chain.md"
+line = 1745
+
+[[function]]
+name = "process_execution_payload_bid"
+lean = "FastConfirmationModel/Spec/BeaconChain/ConcreteTransition.lean"
+python = "specs/gloas/beacon-chain.md"
+line = 2104
+
+[[frame]]
+name = "process_inactivity_updates"
+python = "specs/altair/beacon-chain.md"
+line = 752
+
+[[frame]]
+name = "process_rewards_and_penalties"
+python = "specs/altair/beacon-chain.md"
+line = 778
+
+[[frame]]
+name = "process_registry_updates"
+python = "specs/electra/beacon-chain.md"
+line = 1057
+
+[[frame]]
+name = "process_slashings"
+python = "specs/electra/beacon-chain.md"
+line = 1082
+
+[[frame]]
+name = "process_eth1_data_reset"
+python = "specs/phase0/beacon-chain.md"
+line = 2206
+
+[[frame]]
+name = "process_pending_deposits"
+python = "specs/gloas/beacon-chain.md"
+line = 1620
+
+[[frame]]
+name = "process_pending_consolidations"
+python = "specs/electra/beacon-chain.md"
+line = 1208
+
+[[frame]]
+name = "process_builder_pending_payments"
+python = "specs/gloas/beacon-chain.md"
+line = 1680
+
+[[frame]]
+name = "process_effective_balance_updates"
+python = "specs/electra/beacon-chain.md"
+line = 1238
+
+[[frame]]
+name = "process_slashings_reset"
+python = "specs/phase0/beacon-chain.md"
+line = 2235
+
+[[frame]]
+name = "process_randao_mixes_reset"
+python = "specs/phase0/beacon-chain.md"
+line = 2244
+
+[[frame]]
+name = "process_historical_summaries_update"
+python = "specs/capella/beacon-chain.md"
+line = 379
+
+[[frame]]
+name = "process_sync_committee_updates"
+python = "specs/altair/beacon-chain.md"
+line = 836
+
+[[frame]]
+name = "process_proposer_lookahead"
+python = "specs/fulu/beacon-chain.md"
+line = 481
+
+[[frame]]
+name = "process_ptc_window"
+python = "specs/gloas/beacon-chain.md"
+line = 1698

@@ -88,6 +88,7 @@ python3 scripts/check_doc_names.py
 python3 scripts/check_review_boundary.py
 python3 scripts/check_review_boundary.py --self-test
 python3 scripts/conformance/contracts/check_inventory.py --repo "$consensus_repo"
+python3 scripts/conformance/concrete/check_source_inventory.py --repo "$consensus_repo"
 
 if [[ "$mode" == "full" ]]; then
   scripts/check_build.sh
