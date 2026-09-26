@@ -15,6 +15,58 @@ variable (cfg : Config) (ext : Externals Root)
 namespace Execution
 variable {E : Execution Root}
 
+/-- A current-epoch strict result fixes the targets at earlier honest votes.
+This uses the strict endpoint-slot induction, not the full safety theorem. -/
+theorem currentResult_supportBefore_of_endpoint_induction
+    (hA : SelectedMarginAssumptions cfg ext E)
+    (B : CausalPrefixFFGInterpretation cfg ext E)
+    (hT : E.ScheduledPrefixPremises cfg ext)
+    (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
+    (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg) (E := E) (anchor := B.anchor))
+    {v : ValidatorIndex} (hv : v ∈ E.honest) {q : ℕ}
+    (hqH : E.WithinHorizon cfg q)
+    (query : FastConfirmationStore Root)
+    (hquery : query.store = E.store cfg ext v q)
+    (input : Root) (hinput : input ∈ query.store.block_roots)
+    (hstrict : find_latest_confirmed_descendant cfg ext query input ≠ input)
+    (hcurrent : get_block_epoch cfg query.store
+        (find_latest_confirmed_descendant cfg ext query input) =
+      get_current_store_epoch cfg query.store)
+    {cutoff : Slot}
+    (hknown : ∀ w ∈ E.honest, ∀ k : ℕ,
+      E.slot_start cfg (E.slot_at cfg q) ≤ k → E.WithinHorizon cfg k →
+      find_latest_confirmed_descendant cfg ext query input ∈ (E.store cfg ext w k).block_roots)
+    (hIH : ∀ w ∈ E.honest, ∀ k : ℕ,
+      E.slot_start cfg (E.slot_at cfg q) ≤ k → E.slot_at cfg k < cutoff →
+      E.WithinHorizon cfg k →
+      is_ancestor (E.store cfg ext w k) (get_head cfg (E.store cfg ext w k))
+        (get_node_for_root (find_latest_confirmed_descendant cfg ext query input)) = true) :
+    E.HonestVotesSupportTargetBefore cfg (get_current_target cfg query.store) q cutoff := by
+  obtain ⟨hparent, hwalk, _⟩ := E.store_domainK_of_selectedMarginDomain cfg ext
+    hA.wellFormed hA.externals_coherence hA.genesis hA.domain v hv q hqH
+  rw [← hquery] at hparent hwalk
+  have hhead : (get_head cfg query.store).root ∈ query.store.block_roots := by
+    rw [hquery]
+    exact E.head_root_known_of_selectedMarginDomain cfg ext hA.domain hv q hqH
+  have hresult := (find_latest_confirmed_descendant_ge cfg ext query
+    hparent hwalk hhead input hinput).2
+  have hheadResult := strictSelectedResult_below_head cfg ext hparent hwalk
+    hhead hinput hstrict
+  have hcanon := E.canonicalAtHonestVotesBefore_of_endpoint_induction
+    cfg ext hA (e := get_current_store_epoch cfg query.store) hknown hIH
+  have hresultE := hresult
+  rw [hquery] at hresultE
+  have hanchorLe : B.anchor.epoch ≤ get_current_store_epoch cfg query.store := by
+    have hbound := (E.known_descends_trustedAnchor cfg ext hA hanchor v q hresultE).2
+    rwa [← hquery, hcurrent] at hbound
+  rw [hquery]
+  exact E.currentTarget_supportBefore_of_canonical cfg ext hA hv hqH hresultE
+    (by simpa only [hquery] using hcurrent)
+    (by simpa only [hquery] using hheadResult)
+    (fun w _ k _ r hr => E.trustedAnchor_boundaryWalkAtEpoch_of_trajectory
+      cfg ext hT hanchor hboundary w k (by simpa only [hquery] using hanchorLe) hr)
+    (by simpa only [hquery] using hcanon)
+
 set_option maxRecDepth 5000 in
 /-- The strict endpoint-slot induction pins the endpoint checkpoint using
 only earlier votes. The historical branch has a separate producer; the
@@ -171,6 +223,7 @@ theorem actualCall_strictSelected_result_and_child_ancestor_of_endpointJustified
       (E := E) (anchor := B.anchor))
     {v : ValidatorIndex} (hv : v ∈ E.honest) {n : Nat}
     (hcall : E.IsScheduledFCRCallAt cfg ext v n)
+    (hinvariant : E.AcceptedHistoricalA32CurrentLineageAt cfg ext B v n)
     (hHn1 : E.WithinHorizon cfg (n + 1))
     (hinput : (E.getLatestConfirmedTraceAt cfg ext v n).afterObserved ∈
       (E.fcrStoreAtCall cfg ext v n).store.block_roots)
@@ -264,7 +317,7 @@ theorem actualCall_strictSelected_result_and_child_ancestor_of_endpointJustified
       query trace.afterObserved trace.result := by
     simpa only [query, trace] using
       E.completedPrefix_acceptedHistoricalA32PayloadProducerAt
-        cfg ext B hT hC hfit hanchor hboundary hv hcall hHn1 hinput hselector
+        cfg ext B hT hC hfit hanchor hboundary hv hcall hHn1 hinput hinvariant hselector
   have hhistorical' : E.AcceptedHistoricalA32PayloadProducerAt cfg ext B
       query trace.afterObserved
         (find_latest_confirmed_descendant cfg ext query

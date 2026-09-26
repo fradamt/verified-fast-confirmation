@@ -370,50 +370,12 @@ noncomputable def
     E.AcceptedHistoricalA32CallInterfaces cfg ext B := by
   intro v hv n hcall hHn1
   exact {
-    helper_provisos := hC.helper_provisos v hv n hcall hHn1
     target_gate_producer :=
       E.completedPrefix_acceptedTargetGateProducerAt cfg ext B hT hC hfit
         hanchor hboundary hv hcall hHn1
   }
 
-/-- End-to-end historical current-lineage invariant after replacing the
-abstract call interface by completed-prefix protocol assumptions. -/
-theorem acceptedHistoricalA32CurrentLineage_invariant_of_completedPrefixes
-    (B : CausalPrefixFFGInterpretation cfg ext E)
-    (hT : E.ScheduledPrefixPremises cfg ext)
-    (hC : E.CompletedFCRCallPremises cfg ext)
-    (hfit : EpochEndsFitUint64 cfg)
-    (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
-    (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
-      (E := E) (anchor := B.anchor)) :
-    ∀ v ∈ E.honest, ∀ n : ℕ, E.WithinHorizon cfg n →
-      E.AcceptedHistoricalA32CurrentLineageAt cfg ext B v n := by
-  exact E.acceptedHistoricalA32CurrentLineage_invariant cfg ext B hT
-    hC.phase0_source hC.phase0_boundary_source hanchor hboundary
-      (E.acceptedHistoricalA32CallInterfaces_of_completedPrefixes
-        cfg ext B hT hC hfit hanchor hboundary)
-
-/-- Headline current-epoch lineage using the completed-prefix supplier. -/
-theorem acceptedHistoricalA32CurrentLineage_of_completedPrefixes
-    (B : CausalPrefixFFGInterpretation cfg ext E)
-    (hT : E.ScheduledPrefixPremises cfg ext)
-    (hC : E.CompletedFCRCallPremises cfg ext)
-    (hfit : EpochEndsFitUint64 cfg)
-    (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
-    (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
-      (E := E) (anchor := B.anchor))
-    {v : ValidatorIndex} (hv : v ∈ E.honest)
-    {n : ℕ} (hHn : E.WithinHorizon cfg n)
-    (hcurrent : get_block_epoch cfg (E.store cfg ext v n)
-        (E.confirmed cfg ext v n) =
-      get_current_store_epoch cfg (E.store cfg ext v n)) :
-    ∃ e : Epoch, Nonempty (E.AcceptedHistoricalA32LineageAt
-      cfg ext B (E.confirmed cfg ext v n) e) :=
-  (E.acceptedHistoricalA32CurrentLineage_invariant_of_completedPrefixes
-    cfg ext B hT hC hfit hanchor hboundary v hv n hHn).current_lineage hcurrent
-
 end Execution
-
 
 end FastConfirmation.Spec
 

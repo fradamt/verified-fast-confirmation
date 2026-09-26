@@ -532,9 +532,6 @@ def completed_calls : run.CompletedFCRCallPremises cfg ext where
   phase0_boundary_source := phase0_boundary_source
   balance_floor := balance_floor
   delivery_lookahead := delivery_lookahead
-  helper_provisos := by
-    intro v hv n hcall hHn1 hselector
-    exact witnessSelectedHelperProvisos hv hcall hHn1 hselector
 
 def safety_premises : run.NextSlotSafetyPremises cfg ext where
   semantics := witnessAcceptedSemantics

@@ -56,6 +56,7 @@ noncomputable def
     {v : ValidatorIndex} (hv : v ∈ E.honest) {n : ℕ}
     (hHn1 : E.WithinHorizon cfg (n + 1))
     (hcall : E.IsScheduledFCRCallAt cfg ext v n)
+    (hinvariant : E.AcceptedHistoricalA32CurrentLineageAt cfg ext B v n)
     (hinput : (E.getLatestConfirmedTraceAt cfg ext v n).afterObserved ∈
       (E.fcrStoreAtCall cfg ext v n).store.block_roots)
     (hbase : E.SafeFrom cfg ext
@@ -86,7 +87,7 @@ noncomputable def
       exact
         (Execution.StrictSelectorAdvanceAt.actualCall_selectedStrictEdgeFilterSupplyAt
           cfg ext B hT hC hfit hdomain hanchor hboundary hDelay hspe
-            hpaper P V hanchorExact hv hHn1 hcall hinput hbase
+            hpaper P V hanchorExact hv hHn1 hcall hinvariant hinput hbase
               horigin hselector) hw hmH hgeom hcne hcM hparentEdge
                 hselectedC hselectedKnown hIH hnotCovered
 
@@ -115,6 +116,7 @@ theorem getLatestConfirmedTraceAt_result_safeFrom_of_acceptedDispatcher
     {v : ValidatorIndex} (hv : v ∈ E.honest) {n : ℕ}
     (hHn1 : E.WithinHorizon cfg (n + 1))
     (hcall : E.IsScheduledFCRCallAt cfg ext v n)
+    (hinvariant : E.AcceptedHistoricalA32CurrentLineageAt cfg ext B v n)
     (hinput : (E.getLatestConfirmedTraceAt cfg ext v n).afterObserved ∈
       (E.fcrStoreAtCall cfg ext v n).store.block_roots)
     (hinputSafe : E.SafeFrom cfg ext
@@ -146,7 +148,83 @@ theorem getLatestConfirmedTraceAt_result_safeFrom_of_acceptedDispatcher
         (E.getLatestConfirmedTraceAt cfg ext v n) hinput hinputSafe
           (E.getLatestConfirmedTraceAt_actualFCRStrictSelectedFilterSupplierAt
             cfg ext B hT hC hfit hdomain hanchor hboundary hDelay hspe
-              hpaper P V hanchorExact hv hHn1 hcall hinput hbase)
+              hpaper P V hanchorExact hv hHn1 hcall hinvariant hinput hbase)
+
+/-- The call fold derives current-target support after proving the strict
+result safe. This supplies the next call's lineage without a global proviso. -/
+theorem currentLineage_of_strictResultSafety
+    (B : CausalPrefixFFGInterpretation cfg ext E)
+    (hT : E.ScheduledPrefixPremises cfg ext)
+    (hC : E.CompletedFCRCallPremises cfg ext)
+    (hfit : EpochEndsFitUint64 cfg)
+    (hA : SelectedMarginAssumptions cfg ext E)
+    (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
+    (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg) (E := E) (anchor := B.anchor))
+    {v : ValidatorIndex} (hv : v ∈ E.honest) {n : ℕ}
+    (hH : E.WithinHorizon cfg (n + 1))
+    (hcall : E.IsScheduledFCRCallAt cfg ext v n)
+    (hinvariant : E.AcceptedHistoricalA32CurrentLineageAt cfg ext B v n)
+    (hstrictSafe : (E.getLatestConfirmedTraceAt cfg ext v n).result ≠
+        (E.getLatestConfirmedTraceAt cfg ext v n).afterObserved →
+      E.SafeFrom cfg ext (E.getLatestConfirmedTraceAt cfg ext v n).result (n + 1))
+    (hcurrent : get_block_epoch cfg (E.fcrStoreAtCall cfg ext v n).store
+        (E.getLatestConfirmedTraceAt cfg ext v n).result =
+      get_current_store_epoch cfg (E.fcrStoreAtCall cfg ext v n).store) :
+    ∃ e, Nonempty (E.AcceptedHistoricalA32LineageAt cfg ext B
+      (E.getLatestConfirmedTraceAt cfg ext v n).result e) := by
+  let query := E.fcrStoreAtCall cfg ext v n
+  let trace := E.getLatestConfirmedTraceAt cfg ext v n
+  have hquery : query.store = E.store cfg ext v (n + 1) := E.fcrStep_store cfg ext v n
+  have hinput : trace.afterObserved ∈ query.store.block_roots :=
+    E.getLatestConfirmedTraceAt_input_known cfg ext B hT hanchor hboundary
+      hinvariant.confirmed_known
+  have hG := E.historicalA32QueryGeometryAt_of_acceptedGlobalTrajectory
+    cfg ext B hT hanchor hboundary hv hH
+  have hprovisos : getLatestSelectorGuard cfg query trace.afterObserved →
+      FCRPredictionSupportAt cfg ext E v (n + 1) query trace.afterObserved := by
+    intro hguard
+    have hresult : trace.result = find_latest_confirmed_descendant cfg ext query
+        trace.afterObserved := trace.selected_facts cfg ext hguard
+    constructor
+    · intro a c hedge
+      have hstrict := CurrentTargetSelectedEdge.result_ne_input cfg ext
+        hG.parent hG.walk hG.head_known hinput hedge
+      have hne : trace.result ≠ trace.afterObserved := by rwa [hresult]
+      have hsafe := hstrictSafe hne
+      have hselector : StrictSelectorAdvanceAt cfg ext query trace :=
+        ⟨hresult, hguard, hguard, hne⟩
+      have hfacts := E.actualCall_strictSelectedResultMechanicalFacts cfg ext hT
+        hC.synchrony hC.static_validators hC.byzantine_bound hA.domain
+        hv hH hinput hselector
+      have hstart : E.slot_start cfg (E.slot_at cfg (n + 1)) = n + 1 :=
+        E.slot_start_eq_succ_of_advance_minimal cfg ext hA n hH hcall
+      let cutoff := compute_start_slot_at_epoch cfg ((get_current_target cfg query.store).epoch + 1)
+      have hbefore := E.currentResult_supportBefore_of_endpoint_induction cfg ext hA B hT
+        hanchor hboundary hv hH query hquery trace.afterObserved hinput hstrict
+        (by simpa only [query, trace, ← hresult] using hcurrent)
+        (cutoff := cutoff)
+        (by
+          intro w hw k hstartK hkH
+          rw [← hresult]
+          have hqk : n + 1 ≤ k := by simpa only [hstart] using hstartK
+          exact E.confirmed_known_at_all_honest_endpoints_minimal cfg ext hA
+            v hv (n + 1) query hquery trace.result hH
+            (by simpa only [query, E.fcrStep_store] using hfacts.result_known)
+            (by simpa only [query, E.fcrStep_store] using hfacts.parent_known)
+            hfacts.confirmed w hw k (E.slot_at_mono cfg hqk) hkH)
+        (by
+          intro w hw k hstartK _ hkH
+          rw [← hresult]
+          exact hsafe w hw k (by simpa only [hstart] using hstartK) hkH)
+      exact E.support_of_before_epoch_end cfg (Nat.le_refl _) hbefore
+    · intro r hr _ hnotCurrent _
+      have heq : r = trace.result := hr.symm.trans hresult.symm
+      exact False.elim (hnotCurrent (by simpa only [heq] using hcurrent))
+  exact E.getLatestConfirmedTraceAt_currentLineage_step cfg ext B hT
+    hC.phase0_source hC.phase0_boundary_source hanchor hboundary hv hH
+    hinvariant.confirmed_known hcurrent hprovisos
+    (E.completedPrefix_acceptedTargetGateProducerAt cfg ext B hT hC hfit
+      hanchor hboundary hv hcall hH) hinvariant.current_lineage
 
 end Execution
 

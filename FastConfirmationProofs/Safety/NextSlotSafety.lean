@@ -158,8 +158,12 @@ theorem selected_result_safe_from_next_slot_of_scheduled_call
         cfg ext h.semantics h.trajectory h.completed_calls h.epoch_ends_fit
           hdomain h.anchor_eq h.anchor_boundary h.finalization_delay
             h.slots_per_epoch_gt_one h.paper_a32 h.checkpoint_projection
-              h.exact_link_validity hanchorExact hv hHn1 hcall hinputKnown
-                hinputSafe
+              h.exact_link_validity hanchorExact hv hHn1 hcall
+              ((E.confirmed_safety_and_lineage_of_acceptedActualFCRFold
+                cfg ext h.semantics h.trajectory h.completed_calls h.epoch_ends_fit
+                h.anchor_eq h.anchor_boundary h.finalization_delay h.slots_per_epoch_gt_one
+                h.paper_a32 h.checkpoint_projection h.exact_link_validity hv n hHn).2)
+              hinputKnown hinputSafe
   have hselected : trace.result =
       find_latest_confirmed_descendant cfg ext (E.fcrStoreAtCall cfg ext v n)
         trace.afterObserved :=

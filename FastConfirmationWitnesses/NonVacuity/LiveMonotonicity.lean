@@ -1308,9 +1308,6 @@ def completedCalls : E.CompletedFCRCallPremises cfg ext where
   phase0_boundary_source := phase0BoundarySourceCoherence
   balance_floor := balanceFloor
   delivery_lookahead := voteDeliveryLookahead
-  helper_provisos := by
-    intro v hv n _hcall hHn1 hselector
-    exact selectedHelperProvisos hv hHn1 hselector
 
 def acceptedBundle : E.NextSlotSafetyPremises cfg ext where
   semantics := semantics

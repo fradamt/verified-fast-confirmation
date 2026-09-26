@@ -231,7 +231,7 @@ start of the following slot.
 Finalized unchanged resets use synchrony at that deadline.  Strict finalized
 resets reduce to the trusted anchor before the strict-helper dispatcher is
 invoked.  Active observed resets use the accepted dynamic checkpoint proof. -/
-theorem confirmed_safeFromFollowingSlot_of_acceptedActualFCRFold
+theorem confirmed_safety_and_lineage_of_acceptedActualFCRFold
     (B : CausalPrefixFFGInterpretation cfg ext E)
     (hT : E.ScheduledPrefixPremises cfg ext)
     (hC : E.CompletedFCRCallPremises cfg ext)
@@ -247,7 +247,8 @@ theorem confirmed_safeFromFollowingSlot_of_acceptedActualFCRFold
     (V : B.state.ExactLinkValidity)
     {v : ValidatorIndex} (hv : v ∈ E.honest) :
     ∀ n : ℕ, E.WithinHorizon cfg n →
-      E.ConfirmedSafeFromFollowingSlot cfg ext v n := by
+      E.ConfirmedSafeFromFollowingSlot cfg ext v n ∧
+        E.AcceptedHistoricalA32CurrentLineageAt cfg ext B v n := by
   have hpaths := E.honestHeadPathAdmissibility_of_accepted cfg ext B hT hC
     hanchor hboundary hspe hDelay P V
   have hdomain : SelectedMarginDomain cfg ext E :=
@@ -273,6 +274,8 @@ theorem confirmed_safeFromFollowingSlot_of_acceptedActualFCRFold
   induction n with
   | zero =>
       intro _hH0
+      refine ⟨?_, E.acceptedHistoricalA32CurrentLineageAt_zero
+        cfg ext B hT hanchor hboundary v⟩
       unfold ConfirmedSafeFromFollowingSlot
       exact (E.confirmed_zero_safeFrom_of_acceptedGlobalTrajectory
         cfg ext B hT hanchor hboundary v).mono cfg ext E (Nat.zero_le _)
@@ -280,7 +283,8 @@ theorem confirmed_safeFromFollowingSlot_of_acceptedActualFCRFold
       intro hHn1
       have hHn : E.WithinHorizon cfg n :=
         E.withinHorizon_mono cfg (Nat.le_succ n) hHn1
-      have hsafeN := ih hHn
+      have hsafeN := (ih hHn).1
+      have hinvariant := (ih hHn).2
       by_cases hcall : E.IsScheduledFCRCallAt cfg ext v n
       · let trace := E.getLatestConfirmedTraceAt cfg ext v n
         have hrec := E.actualCandidateHistoryRecurrence cfg ext hcall
@@ -309,6 +313,33 @@ theorem confirmed_safeFromFollowingSlot_of_acceptedActualFCRFold
         have hbranch : CandidateHistoryCallBranch cfg ext
             (E.fcrStoreAtCall cfg ext v n) trace := by
           simpa only [trace] using hrec.branch
+        have hstrictResultSafe (hne : trace.result ≠ trace.afterObserved) :
+            E.SafeFrom cfg ext trace.result (n + 1) := by
+          cases hbranch with
+          | carriedUnchanged _ hselector => exact False.elim (hne (hselector.result_eq_input cfg ext))
+          | finalizedResetUnchanged _ hselector => exact False.elim (hne (hselector.result_eq_input cfg ext))
+          | observedResetUnchanged _ hselector => exact False.elim (hne (hselector.result_eq_input cfg ext))
+          | strictSelected horigin hselector =>
+            have hinputSafe : E.SafeFrom cfg ext trace.afterObserved
+                (n + 1) := by
+              cases horigin with
+              | carried hinput =>
+                  rw [hinput.input_eq, E.fcrStep_confirmed_root]
+                  exact hsafePreviousAtCall
+              | finalizedReset hinput =>
+                  exact E.strictFinalizedResetCandidateInput_safeFrom_anchor
+                    cfg ext B hT hanchor hboundary hDelay hinput hselector
+              | observedReset hinput =>
+                  exact
+                    Execution.ObservedResetCandidateInputAt.safeFrom_of_acceptedDynamics
+                      (E := E) cfg ext B hT hC.synchrony hpaths hC.static_validators
+                        hC.byzantine_bound hanchor hboundary hspe hDelay P V
+                          hv hHn1
+                          hcall hinput
+            exact E.getLatestConfirmedTraceAt_result_safeFrom_of_acceptedDispatcher
+              cfg ext B hT hC hfit hdomain hanchor hboundary hDelay
+              hspe hpaper P V hanchorExact hv hHn1 hcall hinvariant
+              hinputKnown hinputSafe
         have hresultSafe : E.SafeFrom cfg ext trace.result
             (E.followingSlotStart cfg (n + 1)) := by
           cases hbranch with
@@ -332,42 +363,154 @@ theorem confirmed_safeFromFollowingSlot_of_acceptedActualFCRFold
                       hv hHn1 hcall hinput
               rw [hselector.result_eq_input cfg ext]
               exact hinputSafe.mono cfg ext E hcallToDeadline
-          | strictSelected horigin hselector =>
-              have hinputSafe : E.SafeFrom cfg ext trace.afterObserved
-                  (n + 1) := by
-                cases horigin with
-                | carried hinput =>
-                    rw [hinput.input_eq, E.fcrStep_confirmed_root]
-                    exact hsafePreviousAtCall
-                | finalizedReset hinput =>
-                    exact E.strictFinalizedResetCandidateInput_safeFrom_anchor
-                      cfg ext B hT hanchor hboundary hDelay hinput hselector
-                | observedReset hinput =>
-                    exact
-                      Execution.ObservedResetCandidateInputAt.safeFrom_of_acceptedDynamics
-                        (E := E) cfg ext B hT hC.synchrony hpaths hC.static_validators
-                          hC.byzantine_bound hanchor hboundary hspe hDelay P V
-                            hv hHn1
-                            hcall hinput
-              have hstrictSafe : E.SafeFrom cfg ext trace.result (n + 1) := by
-                simpa only [trace] using
-                  E.getLatestConfirmedTraceAt_result_safeFrom_of_acceptedDispatcher
-                    cfg ext B hT hC hfit hdomain hanchor hboundary hDelay
-                      hspe hpaper P V hanchorExact hv hHn1 hcall
-                        hinputKnown hinputSafe
-              exact hstrictSafe.mono cfg ext E hcallToDeadline
+          | strictSelected _ hselector =>
+              exact (hstrictResultSafe hselector.result_ne_input).mono cfg ext E hcallToDeadline
         have hwrite : E.confirmed cfg ext v (n + 1) = trace.result := by
           simpa only [trace] using hrec.result_writeback
-        unfold ConfirmedSafeFromFollowingSlot
-        rw [hwrite]
-        exact hresultSafe
+        constructor
+        · unfold ConfirmedSafeFromFollowingSlot
+          rw [hwrite]
+          exact hresultSafe
+        · refine ⟨?_, ?_⟩
+          · rw [hwrite]
+            simpa only [trace, E.fcrStep_store] using
+              E.getLatestConfirmedTraceAt_result_known cfg ext B hT hanchor hboundary
+                hv hHn1 hinvariant.confirmed_known
+          · intro hcurrent
+            rw [hwrite] at hcurrent
+            obtain ⟨e, hlineage⟩ := E.currentLineage_of_strictResultSafety
+              cfg ext B hT hC hfit hMargin hanchor hboundary hv hHn1 hcall
+              hinvariant hstrictResultSafe (by simpa only [trace, E.fcrStep_store] using hcurrent)
+            exact ⟨e, by simpa only [hwrite, trace] using hlineage⟩
       · have hdeadlineEq : E.followingSlotStart cfg (n + 1) =
             E.followingSlotStart cfg n :=
           E.followingSlotStart_succ_eq_of_noCall cfg ext hcall
-        unfold ConfirmedSafeFromFollowingSlot at hsafeN ⊢
-        rw [E.confirmed_succ_of_no_advance cfg ext v n hcall,
-          hdeadlineEq]
-        exact hsafeN
+        have hwrite := E.confirmed_succ_of_no_advance cfg ext v n hcall
+        constructor
+        · unfold ConfirmedSafeFromFollowingSlot at hsafeN ⊢
+          rw [hwrite, hdeadlineEq]
+          exact hsafeN
+        · refine ⟨?_, ?_⟩
+          · rw [hwrite]
+            exact (E.store_storeLE cfg ext v (Nat.le_succ n)).1 hinvariant.confirmed_known
+          · intro hcurrent
+            have hcurrentN := E.confirmed_current_at_previousStore_of_query cfg ext hT
+              hinvariant.confirmed_known
+              (by simpa only [E.fcrStep_store, E.fcrStep_confirmed_root, hwrite] using hcurrent)
+            obtain ⟨e, hlineage⟩ := hinvariant.current_lineage hcurrentN
+            exact ⟨e, by simpa only [hwrite] using hlineage⟩
+
+/-- The safety projection of the joint call/history induction. -/
+theorem confirmed_safeFromFollowingSlot_of_acceptedActualFCRFold
+    (B : CausalPrefixFFGInterpretation cfg ext E)
+    (hT : E.ScheduledPrefixPremises cfg ext)
+    (hC : E.CompletedFCRCallPremises cfg ext)
+    (hfit : EpochEndsFitUint64 cfg)
+    (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
+    (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
+      (E := E) (anchor := B.anchor))
+    (hDelay : E.RealizedFinalizationDelay cfg ext B)
+    (hspe : 1 < cfg.slots_per_epoch)
+    (hpaper : B.state.PaperA32Inclusion cfg ext)
+    (P : EpochCheckpointClosure B.anchor
+      (E.AcceptedRoot cfg ext) B.state.C)
+    (V : B.state.ExactLinkValidity)
+    {v : ValidatorIndex} (hv : v ∈ E.honest) :
+    ∀ n : ℕ, E.WithinHorizon cfg n →
+      E.ConfirmedSafeFromFollowingSlot cfg ext v n := by
+  intro n hH
+  exact (E.confirmed_safety_and_lineage_of_acceptedActualFCRFold
+    cfg ext B hT hC hfit hanchor hboundary hDelay hspe hpaper P V hv n hH).1
+
+/-- The lineage projection of the joint call and endpoint-slot induction. -/
+theorem acceptedHistoricalA32CurrentLineageAt_all
+    (B : CausalPrefixFFGInterpretation cfg ext E)
+    (hT : E.ScheduledPrefixPremises cfg ext)
+    (hC : E.CompletedFCRCallPremises cfg ext)
+    (hfit : EpochEndsFitUint64 cfg)
+    (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
+    (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
+      (E := E) (anchor := B.anchor))
+    (hDelay : E.RealizedFinalizationDelay cfg ext B)
+    (hspe : 1 < cfg.slots_per_epoch)
+    (hpaper : B.state.PaperA32Inclusion cfg ext)
+    (P : EpochCheckpointClosure B.anchor
+      (E.AcceptedRoot cfg ext) B.state.C)
+    (V : B.state.ExactLinkValidity)
+ :
+    ∀ v ∈ E.honest, ∀ n : ℕ, E.WithinHorizon cfg n →
+      E.AcceptedHistoricalA32CurrentLineageAt cfg ext B v n := by
+  intro v hv n hH
+  exact (E.confirmed_safety_and_lineage_of_acceptedActualFCRFold
+    cfg ext B hT hC hfit hanchor hboundary hDelay hspe hpaper P V hv n hH).2
+
+/-- The lineage projection of the joint call and endpoint-slot induction. -/
+theorem acceptedHistoricalA32CurrentLineage_invariant
+    (B : CausalPrefixFFGInterpretation cfg ext E)
+    (hT : E.ScheduledPrefixPremises cfg ext)
+    (hC : E.CompletedFCRCallPremises cfg ext)
+    (hfit : EpochEndsFitUint64 cfg)
+    (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
+    (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
+      (E := E) (anchor := B.anchor))
+    (hDelay : E.RealizedFinalizationDelay cfg ext B)
+    (hspe : 1 < cfg.slots_per_epoch)
+    (hpaper : B.state.PaperA32Inclusion cfg ext)
+    (P : EpochCheckpointClosure B.anchor
+      (E.AcceptedRoot cfg ext) B.state.C)
+    (V : B.state.ExactLinkValidity)
+ :
+    ∀ v ∈ E.honest, ∀ n : ℕ, E.WithinHorizon cfg n →
+      E.AcceptedHistoricalA32CurrentLineageAt cfg ext B v n := by
+  intro v hv n hH
+  exact (E.confirmed_safety_and_lineage_of_acceptedActualFCRFold
+    cfg ext B hT hC hfit hanchor hboundary hDelay hspe hpaper P V hv n hH).2
+
+/-- The lineage projection of the joint call and endpoint-slot induction. -/
+theorem acceptedHistoricalA32CurrentLineage_invariant_of_completedPrefixes
+    (B : CausalPrefixFFGInterpretation cfg ext E)
+    (hT : E.ScheduledPrefixPremises cfg ext)
+    (hC : E.CompletedFCRCallPremises cfg ext)
+    (hfit : EpochEndsFitUint64 cfg)
+    (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
+    (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
+      (E := E) (anchor := B.anchor))
+    (hDelay : E.RealizedFinalizationDelay cfg ext B)
+    (hspe : 1 < cfg.slots_per_epoch)
+    (hpaper : B.state.PaperA32Inclusion cfg ext)
+    (P : EpochCheckpointClosure B.anchor
+      (E.AcceptedRoot cfg ext) B.state.C)
+    (V : B.state.ExactLinkValidity)
+ :
+    ∀ v ∈ E.honest, ∀ n : ℕ, E.WithinHorizon cfg n →
+      E.AcceptedHistoricalA32CurrentLineageAt cfg ext B v n := by
+  intro v hv n hH
+  exact (E.confirmed_safety_and_lineage_of_acceptedActualFCRFold
+    cfg ext B hT hC hfit hanchor hboundary hDelay hspe hpaper P V hv n hH).2
+
+/-- A current confirmed root inherits the jointly proved lineage. -/
+theorem acceptedHistoricalA32CurrentLineage_of_completedPrefixes
+    (B : CausalPrefixFFGInterpretation cfg ext E)
+    (hT : E.ScheduledPrefixPremises cfg ext)
+    (hC : E.CompletedFCRCallPremises cfg ext)
+    (hfit : EpochEndsFitUint64 cfg)
+    (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
+    (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
+      (E := E) (anchor := B.anchor))
+    (hDelay : E.RealizedFinalizationDelay cfg ext B)
+    (hspe : 1 < cfg.slots_per_epoch)
+    (hpaper : B.state.PaperA32Inclusion cfg ext)
+    (P : EpochCheckpointClosure B.anchor
+      (E.AcceptedRoot cfg ext) B.state.C)
+    (V : B.state.ExactLinkValidity)
+    {v : ValidatorIndex} (hv : v ∈ E.honest)
+    {n : ℕ} (hH : E.WithinHorizon cfg n)
+    (hcurrent : get_block_epoch cfg (E.store cfg ext v n) (E.confirmed cfg ext v n) =
+      get_current_store_epoch cfg (E.store cfg ext v n)) :
+    ∃ e, Nonempty (E.AcceptedHistoricalA32LineageAt cfg ext B
+      (E.confirmed cfg ext v n) e) := by
+  exact (E.confirmed_safety_and_lineage_of_acceptedActualFCRFold
+    cfg ext B hT hC hfit hanchor hboundary hDelay hspe hpaper P V hv n hH).2.current_lineage hcurrent
 
 /-- Endpoint form matching the paper's timing: a cached output is canonical
 at every in-horizon honest endpoint in a strictly later slot. -/

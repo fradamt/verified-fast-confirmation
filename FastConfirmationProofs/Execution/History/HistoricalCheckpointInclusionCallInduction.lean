@@ -54,12 +54,6 @@ interface. -/
 structure AcceptedHistoricalA32CallInterfaceAt
     (B : CausalPrefixFFGInterpretation cfg ext E)
     (v : ValidatorIndex) (n : ℕ) : Prop where
-  helper_provisos :
-    getLatestSelectorGuard cfg (E.fcrStoreAtCall cfg ext v n)
-        (E.getLatestConfirmedTraceAt cfg ext v n).afterObserved →
-      FCRPredictionSupportAt cfg ext E v (n + 1)
-        (E.fcrStoreAtCall cfg ext v n)
-        (E.getLatestConfirmedTraceAt cfg ext v n).afterObserved
   target_gate_producer : E.AcceptedCurrentTargetA32GateRealizationProducerAt
     cfg ext B.anchor B.state (n + 1) (E.fcrStoreAtCall cfg ext v n)
 
@@ -210,134 +204,7 @@ noncomputable def acceptedHistoricalA32CurrentLineageAt_zero
     simpa only [hconfirmedAnchor] using
       (AcceptedHistoricalA32LineageAt.refl cfg ext hpayload)
 
-/-! ## Write-back induction -/
-
-/-- One validator's complete bounded trajectory.  At actual calls the exact
-trace transformer is used; between calls, block agreement and the unchanged
-slot transport the preceding lineage. -/
-noncomputable def acceptedHistoricalA32CurrentLineageAt_all
-    (B : CausalPrefixFFGInterpretation cfg ext E)
-    (hT : E.ScheduledPrefixPremises cfg ext)
-    (hphase : Phase0SourceCoherence cfg ext)
-    (hboundaryPhase : Phase0BoundarySourceCoherence cfg ext)
-    (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
-    (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
-      (E := E) (anchor := B.anchor))
-    {v : ValidatorIndex} (hv : v ∈ E.honest)
-    (hcalls : ∀ n : ℕ, E.IsScheduledFCRCallAt cfg ext v n →
-      E.WithinHorizon cfg (n + 1) →
-        E.AcceptedHistoricalA32CallInterfaceAt cfg ext B v n) :
-    ∀ n : ℕ, E.WithinHorizon cfg n →
-      E.AcceptedHistoricalA32CurrentLineageAt cfg ext B v n := by
-  intro n
-  induction n with
-  | zero =>
-      intro _hH0
-      exact E.acceptedHistoricalA32CurrentLineageAt_zero
-        cfg ext B hT hanchor hboundary v
-  | succ n ih =>
-      intro hHn1
-      have hHn : E.WithinHorizon cfg n :=
-        E.withinHorizon_mono cfg (Nat.le_succ n) hHn1
-      have hprevious := ih hHn
-      have hknownN1Prev : E.confirmed cfg ext v n ∈
-          (E.store cfg ext v (n + 1)).block_roots :=
-        (E.store_storeLE cfg ext v (Nat.le_succ n)).1
-          hprevious.confirmed_known
-      by_cases hadv : E.IsScheduledFCRCallAt cfg ext v n
-      · let trace := E.getLatestConfirmedTraceAt cfg ext v n
-        have hcall := hcalls n hadv hHn1
-        have htraceKnown := E.getLatestConfirmedTraceAt_result_known
-          cfg ext B hT hanchor hboundary hv hHn1
-            hprevious.confirmed_known
-        have hconfirmedOut : E.confirmed cfg ext v (n + 1) =
-            trace.result := by
-          exact (E.confirmed_succ_of_advance cfg ext v n hadv).trans
-            trace.result_eq.symm
-        refine {
-          confirmed_known := ?_
-          current_lineage := ?_
-        }
-        · rw [hconfirmedOut]
-          simpa only [trace, E.fcrStep_store] using htraceKnown
-        · intro hcurrentN1
-          have htraceCurrent : get_block_epoch cfg
-                (E.fcrStoreAtCall cfg ext v n).store trace.result =
-              get_current_store_epoch cfg
-                (E.fcrStoreAtCall cfg ext v n).store := by
-            rw [hconfirmedOut] at hcurrentN1
-            simpa only [trace, E.fcrStep_store] using hcurrentN1
-          obtain ⟨e, hlineage⟩ :=
-            E.getLatestConfirmedTraceAt_currentLineage_step cfg ext B hT
-              hphase hboundaryPhase hanchor hboundary hv hHn1
-              hprevious.confirmed_known htraceCurrent
-              hcall.helper_provisos hcall.target_gate_producer
-              hprevious.current_lineage
-          refine ⟨e, ?_⟩
-          simpa only [trace, hconfirmedOut] using hlineage
-      · have hconfirmedOut : E.confirmed cfg ext v (n + 1) =
-            E.confirmed cfg ext v n :=
-          E.confirmed_succ_of_no_advance cfg ext v n hadv
-        have hblockAgree :
-            (E.store cfg ext v n).blocks (E.confirmed cfg ext v n) =
-              (E.store cfg ext v (n + 1)).blocks
-                (E.confirmed cfg ext v n) :=
-          hT.wellFormed.blocks_agree
-            (E.blockProvenance cfg ext v n)
-            (E.blockProvenance cfg ext v (n + 1))
-            hprevious.confirmed_known hknownN1Prev
-        have hslotMono : get_current_slot cfg (E.store cfg ext v n) ≤
-            get_current_slot cfg (E.store cfg ext v (n + 1)) := by
-          simpa only [E.store_current_slot] using
-            E.slot_at_mono cfg (Nat.le_succ n)
-        have hslotEq : get_current_slot cfg (E.store cfg ext v n) =
-            get_current_slot cfg (E.store cfg ext v (n + 1)) :=
-          Nat.le_antisymm hslotMono (Nat.le_of_not_gt hadv)
-        have hblockEpochAgree : get_block_epoch cfg (E.store cfg ext v n)
-              (E.confirmed cfg ext v n) =
-            get_block_epoch cfg (E.store cfg ext v (n + 1))
-              (E.confirmed cfg ext v n) := by
-          simp only [get_block_epoch, hblockAgree]
-        have hcurrentEpochEq :
-            get_current_store_epoch cfg (E.store cfg ext v n) =
-              get_current_store_epoch cfg (E.store cfg ext v (n + 1)) := by
-          simp only [get_current_store_epoch, hslotEq]
-        refine {
-          confirmed_known := ?_
-          current_lineage := ?_
-        }
-        · rw [hconfirmedOut]
-          exact hknownN1Prev
-        · intro hcurrentN1
-          have hcurrentN : get_block_epoch cfg (E.store cfg ext v n)
-                (E.confirmed cfg ext v n) =
-              get_current_store_epoch cfg (E.store cfg ext v n) := by
-            rw [hblockEpochAgree, hcurrentEpochEq, ← hconfirmedOut]
-            exact hcurrentN1
-          obtain ⟨e, hlineage⟩ := hprevious.current_lineage hcurrentN
-          refine ⟨e, ?_⟩
-          simpa only [hconfirmedOut] using hlineage
-
-/-- Global bounded invariant for all honest validators. -/
-theorem acceptedHistoricalA32CurrentLineage_invariant
-    (B : CausalPrefixFFGInterpretation cfg ext E)
-    (hT : E.ScheduledPrefixPremises cfg ext)
-    (hphase : Phase0SourceCoherence cfg ext)
-    (hboundaryPhase : Phase0BoundarySourceCoherence cfg ext)
-    (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
-    (hboundary : TrustedAnchorBoundaryAligned (cfg := cfg)
-      (E := E) (anchor := B.anchor))
-    (hcalls : E.AcceptedHistoricalA32CallInterfaces cfg ext B) :
-    ∀ v ∈ E.honest, ∀ n : ℕ, E.WithinHorizon cfg n →
-      E.AcceptedHistoricalA32CurrentLineageAt cfg ext B v n := by
-  intro v hv n hHn
-  exact E.acceptedHistoricalA32CurrentLineageAt_all cfg ext B hT hphase
-    hboundaryPhase hanchor hboundary hv
-      (fun k hk hkH => hcalls v hv k hk hkH) n hHn
-
-
 end Execution
-
 
 end FastConfirmation.Spec
 

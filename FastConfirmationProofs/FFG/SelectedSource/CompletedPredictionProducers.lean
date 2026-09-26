@@ -735,6 +735,7 @@ noncomputable def completedPrefix_acceptedHistoricalA32PayloadProducerAt
     (hHn1 : E.WithinHorizon cfg (n + 1))
     (hinput : (E.getLatestConfirmedTraceAt cfg ext v n).afterObserved ∈
       (E.fcrStoreAtCall cfg ext v n).store.block_roots)
+    (hinvariant : E.AcceptedHistoricalA32CurrentLineageAt cfg ext B v n)
     (hselector : StrictSelectorAdvanceAt cfg ext
       (E.fcrStoreAtCall cfg ext v n)
       (E.getLatestConfirmedTraceAt cfg ext v n)) :
@@ -742,7 +743,7 @@ noncomputable def completedPrefix_acceptedHistoricalA32PayloadProducerAt
       (E.fcrStoreAtCall cfg ext v n)
       (E.getLatestConfirmedTraceAt cfg ext v n).afterObserved
       (E.getLatestConfirmedTraceAt cfg ext v n).result := by
-  intro hcurrent _hnoCrossing
+  intro hcurrent hnoCrossing
   let query := E.fcrStoreAtCall cfg ext v n
   let trace := E.getLatestConfirmedTraceAt cfg ext v n
   have hqueryStore : query.store = E.store cfg ext v (n + 1) := by
@@ -755,18 +756,23 @@ noncomputable def completedPrefix_acceptedHistoricalA32PayloadProducerAt
       get_current_store_epoch cfg (E.store cfg ext v (n + 1)) := by
     rw [hwrite]
     simpa only [query, trace, hqueryStore] using hcurrent
-  have hinvariant :=
-    E.acceptedHistoricalA32CurrentLineage_invariant_of_completedPrefixes
-      cfg ext B hT hC hfit hanchor hboundary v hv (n + 1) hHn1
-  obtain ⟨e, ⟨hlineageConfirmed⟩⟩ :=
-    hinvariant.current_lineage hcurrentConfirmed
-  have hlineage : E.AcceptedHistoricalA32LineageAt cfg ext B
-      trace.result e := by
-    simpa only [hwrite] using hlineageConfirmed
-  have hresultKnown : trace.result ∈ query.store.block_roots := by
-    have hknown := hinvariant.confirmed_known
-    rw [hwrite] at hknown
-    simpa only [hqueryStore] using hknown
+  have hprovisos : getLatestSelectorGuard cfg query trace.afterObserved →
+      FCRPredictionSupportAt cfg ext E v (n + 1) query trace.afterObserved := by
+    intro _
+    constructor
+    · intro a c hedge
+      exact False.elim (hnoCrossing ⟨a, c, hedge⟩)
+    · intro result hresult _ hnotCurrent _
+      have heq : result = trace.result := hresult.symm.trans hselector.result_eq.symm
+      exact False.elim (hnotCurrent (by simpa only [heq] using hcurrent))
+  obtain ⟨e, ⟨hlineage⟩⟩ := E.getLatestConfirmedTraceAt_currentLineage_step
+    cfg ext B hT hC.phase0_source hC.phase0_boundary_source hanchor hboundary hv hHn1
+    hinvariant.confirmed_known hcurrent hprovisos
+    (E.completedPrefix_acceptedTargetGateProducerAt cfg ext B hT hC hfit
+      hanchor hboundary hv hcall hHn1) hinvariant.current_lineage
+  have hresultKnown : trace.result ∈ query.store.block_roots :=
+    E.getLatestConfirmedTraceAt_result_known cfg ext B hT hanchor hboundary
+      hv hHn1 hinvariant.confirmed_known
   have hqueryCausal : E.CausalStore cfg ext query.store := by
     rw [hqueryStore]
     exact E.store_causal cfg ext v (n + 1)

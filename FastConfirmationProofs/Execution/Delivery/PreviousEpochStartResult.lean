@@ -289,6 +289,7 @@ theorem StrictSelectorAdvanceAt.previousCarried_epochStartLineage
     {v : ValidatorIndex} (hv : v ∈ E.honest) {n : Nat}
     (hHn1 : E.WithinHorizon cfg (n + 1))
     (hcall : E.IsScheduledFCRCallAt cfg ext v n)
+    (hinvariant : E.AcceptedHistoricalA32CurrentLineageAt cfg ext B v n)
     (hstart : is_start_slot_at_epoch cfg
       (get_current_slot cfg (E.store cfg ext v (n + 1))) = true)
     {trace : LatestConfirmedCallTrace cfg ext (E.fcrStoreAtCall cfg ext v n)}
@@ -304,9 +305,6 @@ theorem StrictSelectorAdvanceAt.previousCarried_epochStartLineage
         trace.result)) := by
   have hHn : E.WithinHorizon cfg n :=
     E.withinHorizon_mono cfg (Nat.le_succ n) hHn1
-  have hinvariant :=
-    E.acceptedHistoricalA32CurrentLineage_invariant_of_completedPrefixes
-      cfg ext B hT hC hfit hanchor hboundary v hv n hHn
   have hrecentConfirmed : get_block_epoch cfg
         (E.fcrStoreAtCall cfg ext v n).store (E.confirmed cfg ext v n) + 1 ≥
       get_current_store_epoch cfg (E.fcrStoreAtCall cfg ext v n).store := by

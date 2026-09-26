@@ -77,9 +77,8 @@ variable {E : Execution Root}
 The first five fields are direct protocol/model contracts.  `balance_floor`
 excludes the executable helper's artificial empty-active-set minimum-balance
 branch. `delivery_lookahead` is the paper-synchrony boundary closure for
-honest votes created inside the prefix. `helper_provisos` states exact
-current-target support and previous-result descendant support. It applies
-only when the outer evaluator's descendant-selector guard is true.
+honest votes created inside the prefix. Prediction support is derived by
+joint induction over calls and endpoint slots.
 
 Everything else needed by the accepted target gate--causal replay, current
 slot, latest-message provenance, non-equivocation, committee accounting,
@@ -94,13 +93,6 @@ structure CompletedFCRCallPremises : Prop where
   balance_floor : cfg.effective_balance_increment ≤
     E.weight (E.currentTargetAnchorActive cfg)
   delivery_lookahead : HorizonVoteDeliveryLookahead cfg E
-  helper_provisos : ∀ v ∈ E.honest, ∀ n : ℕ,
-    E.IsScheduledFCRCallAt cfg ext v n → E.WithinHorizon cfg (n + 1) →
-      getLatestSelectorGuard cfg (E.fcrStoreAtCall cfg ext v n)
-          (E.getLatestConfirmedTraceAt cfg ext v n).afterObserved →
-        FCRPredictionSupportAt cfg ext E v (n + 1)
-          (E.fcrStoreAtCall cfg ext v n)
-          (E.getLatestConfirmedTraceAt cfg ext v n).afterObserved
 
 end Execution
 end FastConfirmation.Spec
