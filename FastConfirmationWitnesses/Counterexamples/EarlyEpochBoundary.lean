@@ -11,9 +11,9 @@ The Python control in `scripts/anchor_semantics_probe.py` checks the same
 corner with the pinned state functions. Phase0 beacon-chain.md:1893-1898
 and Altair beacon-chain.md:728-733 return before FFG processing in epochs
 0 and 1; epoch processing at the end of epoch 2 can justify epoch 1.
-The reduced functions break the old unconditional boundary equation, and
+The reduced functions show why the eager PJF equation covers one boundary.
 `epoch_one_fixture_satisfies_boundary_laws` shows that they satisfy the
-replacement `Phase0BoundarySourceCoherence` laws.
+`Phase0BoundarySourceCoherence` laws.
 -/
 
 namespace FastConfirmation.Spec.EarlyEpochBoundaryWitness
