@@ -290,7 +290,7 @@ def check_run(run, statements):
                         'state': detail, 'statement': statements[name]})
     def each(name, evaluations):
         fails = [detail for ok, detail in evaluations if not ok]
-        record(name, not fails, fails[0] if fails else {'case': run.name, 'checked': len(evaluations)},
+        record(name, not fails, fails[0] if fails else ({**evaluations[0][1], 'checked': len(evaluations)} if evaluations else {**run.state_detail(run.anchor_root), 'checked': 0}),
                scope='checked' if evaluations else 'no instances')
     root_set = set(run.roots)
     all_roots = run.roots
@@ -305,7 +305,8 @@ def check_run(run, statements):
                   'realized_justified', 'unrealized_justified', 'realized_finalized', 'unrealized_finalized'):
         record('AcceptedBlockFFGState.' + field, True,
                {'case': run.name, 'mapping': field, 'accepted_roots': len(all_roots),
-                'body_votes': sum(map(len, run.votes.values()))}, scope='construction')
+                'body_votes': sum(map(len, run.votes.values())),
+                'anchor_root': run.anchor_root, 'first_imported': imported[0] if imported else None}, scope='construction')
     for field in ('checkpoint_epoch', 'formed_carrier_accepted', 'formed_evidence',
                   'realized_justified_mem', 'unrealized_justified_mem', 'realized_finalized_mem',
                   'unrealized_finalized_mem', 'realized_justified_anchor_or_before',
@@ -423,11 +424,11 @@ def check_run(run, statements):
     each('FFGStateAndCheckpointReadAgreement.available_checkpoint_checkpoint_of_known', available_reflection)
     state_failures = [r for r in results if r['field'].startswith('AcceptedBlockFFGState.') and r['status'] in ('FAIL','OUT_OF_SCOPE')]
     record('ScheduledFFGInterpretation.state', not state_failures,
-           state_failures[0]['state'] if state_failures else {'case': run.name, 'state_laws': 22})
+           state_failures[0]['state'] if state_failures else {'case': run.name, 'state_laws': 22, 'anchor_root': run.anchor_root})
     coherence_failures = [r for r in results if r['field'].startswith(('FFGStateReadAgreement.',
                           'FFGStateAndCheckpointReadAgreement.')) and r['status'] in ('FAIL','OUT_OF_SCOPE')]
     record('ScheduledFFGInterpretation.coherence', not coherence_failures,
-           coherence_failures[0]['state'] if coherence_failures else {'case': run.name, 'read_agreements': 11})
+           coherence_failures[0]['state'] if coherence_failures else {'case': run.name, 'read_agreements': 11, 'anchor_root': run.anchor_root})
     consequence = []
     for base in all_roots:
         for e in range(int(run.blocks[base].slot)//8, min(6, max(int(run.blocks[r].slot) for r in all_roots)//8 - 1)):
