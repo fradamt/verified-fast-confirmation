@@ -1,12 +1,12 @@
 module
 public import FastConfirmationProofs.FFG.Concrete.SlotRuns
-public import FastConfirmationInternal.FFG.ConcreteBridge
+public import FastConfirmationModel.Execution.ConcreteBridge
 public import FastConfirmationStatements.Premises.FFG
 
 @[expose] public section
 
 /-! Proves the Phase0 source laws `Phase0BoundarySourceCoherence` and
-`Phase0SourceCoherence` for the concrete bridge interface `ConcreteBridge.ext`.
+`Phase0SourceCoherence` for the concrete bridge interface `ConcreteBridge.interface`.
 On decoded states the laws are the concrete slot-run results of `SlotRuns`:
 one boundary gives the eager PJF checkpoint, two or more boundaries from an
 epoch of at least two give it again, and same-epoch slot or block processing
@@ -40,7 +40,7 @@ omit [DecidableEq Root] in
 /-- A reduced state decodes exactly to the admitted concrete state that it
 projects. -/
 theorem decode_eq_some {st : BeaconState Root} {cs : FFGBeaconState Root} :
-    B.decode st = some cs ↔ st = B.project cs ∧ B.Admits cs := by
+    B.decode st = some cs ↔ st = B.project cs ∧ B.InDomain cs := by
   constructor
   · intro h
     unfold decode at h
@@ -56,7 +56,7 @@ theorem decode_eq_some {st : BeaconState Root} {cs : FFGBeaconState Root} :
     simp only [project, B.states.open_root]
     rw [if_pos ⟨rfl, hadm⟩]
 
-theorem decode_project {cs : FFGBeaconState Root} (h : B.Admits cs) :
+theorem decode_project {cs : FFGBeaconState Root} (h : B.InDomain cs) :
     B.decode (B.project cs) = some cs :=
   (B.decode_eq_some).mpr ⟨rfl, h⟩
 
@@ -173,7 +173,7 @@ theorem transition_slots {st post : BeaconState Root} {sb : SignedBeaconBlock Ro
 
 /-- **Phase0 boundary laws of the concrete bridge.** -/
 theorem phase0BoundarySourceCoherence (hB : B.Admissible) :
-    Phase0BoundarySourceCoherence B.setup.cfg B.ext where
+    Phase0BoundarySourceCoherence B.setup.cfg B.interface where
   process_slots_one_boundary := by
     intro st target hlt he
     change (B.slots st target).current_justified_checkpoint =
@@ -265,7 +265,7 @@ theorem phase0BoundarySourceCoherence (hB : B.Admissible) :
 
 /-- **Phase0 same-epoch laws of the concrete bridge.** -/
 theorem phase0SourceCoherence (hB : B.Admissible) :
-    Phase0SourceCoherence B.setup.cfg B.ext where
+    Phase0SourceCoherence B.setup.cfg B.interface where
   process_slots_current_justified := by
     intro st target hlt he
     change (B.slots st target).current_justified_checkpoint = st.current_justified_checkpoint
