@@ -42,7 +42,7 @@ def boundary_probe():
     assert one_boundary.current_justified_checkpoint == eager.current_justified_checkpoint
     advanced = state.copy()
     spec.process_slots(advanced, 3 * spec.SLOTS_PER_EPOCH)
-    print("M2", "start_slot", int(state.slot), "eager_epoch",
+    print("epoch-one boundary", "start_slot", int(state.slot), "eager_epoch",
           int(eager.current_justified_checkpoint.epoch), "advanced_epoch",
           int(advanced.current_justified_checkpoint.epoch), flush=True)
     assert eager.current_justified_checkpoint == state.current_justified_checkpoint
@@ -52,7 +52,7 @@ def boundary_probe():
     block = build_empty_block(spec, transitioned, slot=3 * spec.SLOTS_PER_EPOCH)
     state_transition_and_sign_block(spec, transitioned, block)
     assert transitioned.current_justified_checkpoint == advanced.current_justified_checkpoint
-    print("M2 transition", "target_slot", int(transitioned.slot),
+    print("epoch-one boundary transition", "target_slot", int(transitioned.slot),
           "justified_epoch", int(transitioned.current_justified_checkpoint.epoch), flush=True)
     guarded_cases = 0
     for start in (state, one_boundary, advanced):
@@ -71,7 +71,7 @@ def boundary_probe():
             state_transition_and_sign_block(spec, transitioned, block)
             assert transitioned.current_justified_checkpoint == pulled.current_justified_checkpoint
             guarded_cases += 2
-    print("M2 guarded slot/transition cases", guarded_cases, flush=True)
+    print("guarded boundary slot/transition cases", guarded_cases, flush=True)
 
 
 def checkpoint_sync_probe(include_epoch_f_votes=False):
