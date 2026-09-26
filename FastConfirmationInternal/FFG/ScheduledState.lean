@@ -86,6 +86,11 @@ def toCertifiedFinalized
     (cfg := cfg) I F.justified
   child := F.child
   child_epoch := F.child_epoch
+  middle_justified := by
+    intro hchild
+    obtain ⟨middle, hepoch, hdesc, ⟨hmiddle⟩⟩ := F.middle_justified hchild
+    exact ⟨middle, hepoch, hdesc,
+      IncludedCertifiedJustified.toCertifiedJustified (cfg := cfg) I hmiddle⟩
   finalizing_link := IncludedSupermajorityLink.toSupermajorityLink
     (cfg := cfg) I F.finalizing_link
 

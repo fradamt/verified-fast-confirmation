@@ -73,7 +73,7 @@ theorem of_eager
     intro st target h
     by_contra hnot
     exact (Nat.not_le_of_gt h) (Nat.div_le_div_right (Nat.le_of_not_gt hnot))
-  refine ⟨?_, ?_, ?_, ?_⟩
+  refine ⟨?_, ?_, ?_, ?_, ?_⟩
   · intro st target hslot hnext
     exact hslots st target hslot (by rw [hnext]; exact Nat.lt_succ_self _)
   · intro st target target' hcross hsame
@@ -84,6 +84,10 @@ theorem of_eager
   · intro st target hcross _
     rw [hslots st target (hlt hcross) hcross]
     exact Or.inr (hpjf st)
+  · intro st target _ htwo _
+    have hcross : compute_epoch_at_slot cfg st.slot < compute_epoch_at_slot cfg target :=
+      Nat.lt_of_lt_of_le (Nat.lt_add_of_pos_right (by decide)) htwo
+    exact hslots st target (hlt hcross) hcross
 
 /-- Slot processing into a later epoch reads the boundary source of that
 epoch. -/

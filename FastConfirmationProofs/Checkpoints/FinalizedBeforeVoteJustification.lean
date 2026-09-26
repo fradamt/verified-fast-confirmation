@@ -17,10 +17,10 @@ namespace Execution
 
 variable {E : Execution Root}
 
-private theorem finalization_last_slot_le {f S s : ℕ}
-    (hS : 1 < S) (hbound : (f + 2) * S ≤ s + 1) :
-    (f + 1) * S + (S - 1) ≤ s := by
-  simp only [Nat.add_mul, one_mul] at hbound ⊢
+private theorem finalization_child_last_slot_le {c S s : ℕ}
+    (hS : 0 < S) (hbound : (c + 1) * S ≤ s + 1) :
+    c * S + (S - 1) ≤ s := by
+  simp only [Nat.add_mul, one_mul] at hbound
   omega
 
 /-- Slot processing from a known block state of an honest store, to a slot
@@ -149,6 +149,101 @@ theorem honest_attestation_source_selector
             Nat.succ_le_of_lt hold
           exact Nat.lt_of_le_of_ne h1 (Ne.symm hone)
 
+/-- An honest source from a head of an earlier epoch reads as the head's `GU`
+when the head epoch is at least `GENESIS_EPOCH + 2`.  For one boundary this
+is `process_slots_one_boundary`.  For more boundaries the registry is static
+in the horizon and the balance floor holds, so `process_slots_two_boundaries`
+applies. -/
+theorem honest_attestation_source_stale_reads_gu
+    (B : ScheduledFFGInterpretation cfg ext E)
+    (hT : E.ScheduledExecutionPremises cfg ext)
+    (hphaseBoundary : Phase0BoundarySourceCoherence cfg ext)
+    (hsv : StaticValidatorSet cfg E)
+    (hfloor : 2 * cfg.effective_balance_increment ≤
+      E.weight (E.currentTargetAnchorActive cfg))
+    {v : ValidatorIndex} {n s : ℕ} {index : CommitteeIndex}
+    (hv : v ∈ E.honest) (hHn : E.WithinHorizon cfg n)
+    (hn : E.slot_at cfg n = s)
+    (hhead : (get_head cfg (E.store cfg ext v n)).root ∈
+      (E.store cfg ext v n).block_roots)
+    (hstart : GENESIS_EPOCH + 2 ≤ get_block_epoch cfg (E.store cfg ext v n)
+      (get_head cfg (E.store cfg ext v n)).root)
+    (hold : get_block_epoch cfg (E.store cfg ext v n)
+      (get_head cfg (E.store cfg ext v n)).root < compute_epoch_at_slot cfg s) :
+    CheckpointReadsAs (honest_attestation cfg ext (E.store cfg ext v n) s index v).data.source
+      (B.state.unrealized_justified (get_head cfg (E.store cfg ext v n)).root) := by
+  let store := E.store cfg ext v n
+  let head := (get_head cfg store).root
+  have hcausal := E.store_causal cfg ext v n
+  have hprojection := ScheduledFFGInterpretation.causalStoreProjection B hcausal
+  have hcore := E.exactCausalStoreWellFormedCore_of_trajectory cfg ext hT hcausal
+  have hstateSlot : (store.block_states head).slot = (store.blocks head).slot :=
+    hcore.2 head hhead
+  have hstateEpoch : compute_epoch_at_slot cfg (store.block_states head).slot <
+      compute_epoch_at_slot cfg s := by rw [hstateSlot]; exact hold
+  have hstateLt : (store.block_states head).slot < s := by
+    by_contra hnot
+    exact (Nat.not_le_of_gt hstateEpoch)
+      (Nat.div_le_div_right (Nat.le_of_not_gt hnot))
+  have hsourceEq : (honest_attestation cfg ext store s index v).data.source =
+      (ext.process_slots (store.block_states head) s).current_justified_checkpoint := by
+    change (if (store.block_states head).slot < s then
+      ext.process_slots (store.block_states head) s else store.block_states head
+      ).current_justified_checkpoint = _
+    rw [if_pos hstateLt]
+  change CheckpointReadsAs (honest_attestation cfg ext store s index v).data.source
+    (B.state.unrealized_justified head)
+  rw [hsourceEq]
+  by_cases hone : compute_epoch_at_slot cfg s = get_block_epoch cfg store head + 1
+  · rw [hphaseBoundary.process_slots_one_boundary _ _ hstateLt
+      (by rw [hstateSlot]; exact hone)]
+    exact hprojection.pulled_up_gu head hhead
+  · obtain ⟨ast, ablk, hgen, _, _⟩ := hT.genesis_structure
+    have hrc := (E.registryConstant cfg ext hT.externals_coherence ⟨ast, ablk, hgen⟩
+      v hv n hHn).1 head hhead
+    have hslotLe := (E.stateSlotsLE cfg ext hT.whole_seconds hT.externals_coherence
+      ⟨ast, ablk, hgen⟩ v n).1 head hhead
+    have hanchorN : E.anchor_state.slot ≤ E.slot_at cfg n :=
+      le_trans (E.anchor_state_slot_le cfg hT.whole_seconds ⟨ast, ablk, hgen⟩)
+        (E.slot_at_mono cfg (Nat.zero_le n))
+    have hstTotal : get_total_active_balance cfg (store.block_states head) =
+        E.total_active cfg := by
+      change _ = get_total_active_balance cfg E.anchor_state
+      apply get_total_active_balance_congr cfg
+      · rw [hrc]
+        rfl
+      · intro i
+        rw [hrc]
+        simpa only [get_current_epoch] using
+          hsv.activity_constant_of_slot_le (cfg := cfg) hslotLe hanchorN hHn.2.2 hHn.2.2
+    have hguard : ∀ s' : Slot, (store.block_states head).slot < s' → s' ≤ s →
+        (ext.process_slots (store.block_states head) s').validators =
+            (store.block_states head).validators ∧
+          get_total_active_balance cfg (ext.process_slots (store.block_states head) s') =
+            get_total_active_balance cfg (store.block_states head) ∧
+          3 * cfg.effective_balance_increment < 2 *
+            get_total_active_balance cfg (ext.process_slots (store.block_states head) s') := by
+      intro s' hlt' hle'
+      have htot := E.process_slots_block_state_total_active cfg ext hT hsv hv hHn hhead
+        hlt' (hle'.trans_eq hn.symm)
+      refine ⟨?_, htot.trans hstTotal.symm, ?_⟩
+      · rw [hrc]
+        exact hT.externals_coherence.registry_static_in_horizon _
+          (Or.inr ⟨_, _,
+            ⟨_, E.honest_store_prefix cfg ext v hv n hHn,
+              Or.inl ⟨head, hhead, rfl⟩⟩,
+            E.slotWithinHorizon_of_le cfg (hle'.trans_eq hn.symm) hHn, rfl⟩)
+      · rw [htot, E.total_active_eq_anchorActive_weight cfg (by omega)]
+        have hinc := cfg.effective_balance_increment_pos
+        omega
+    have htwo : compute_epoch_at_slot cfg (store.block_states head).slot + 2 ≤
+        compute_epoch_at_slot cfg s := by
+      rw [hstateSlot]
+      exact Nat.succ_le_of_lt (Nat.lt_of_le_of_ne (Nat.succ_le_of_lt hold) (Ne.symm hone))
+    rw [hphaseBoundary.process_slots_two_boundaries _ _
+      (by rw [hstateSlot]; exact hstart) htwo hguard]
+    exact hprojection.pulled_up_gu head hhead
+
 /-- Boundary alignment puts the initial slot at or before the anchor epoch. -/
 theorem initial_slot_le_anchor_boundary
     (hT : E.ScheduledExecutionPremises cfg ext)
@@ -211,38 +306,33 @@ theorem finalized_epoch_le_voter_justified_of_receiver_slot_le
     obtain ⟨hcert⟩ := ScheduledFFGInterpretation.endpointJustified_certificate
       cfg ext B hgenShort hanchor (E.store_causal cfg ext v n)
     exact CertifiedJustified.anchor_epoch_le (cfg := cfg) hcert
-  rcases E.acceptedGlobalFinalized_anchor_or_includedCertificate cfg ext B
-      hgenShort hanchor (E.store_causal cfg ext w N) with
-    hFanchor | ⟨carrier, _hcarrier, ⟨hFcert⟩⟩
+  rcases E.acceptedGlobalFinalized_anchor_or_timedCertificate cfg ext B
+      hT hanchor (E.store_causal cfg ext w N) with
+    hFanchor | ⟨carrier, _hcarrier, hFcert, hchildLt, hFone⟩
   · rw [hFanchor]; exact hanchorLeJ
   by_cases hFa : F = B.anchor
   · change F.epoch ≤ _
     rw [hFa]; exact hanchorLeJ
-  have hLag : E.CausalRealizedFinalizationLag cfg ext B :=
-    E.causalRealizedFinalizationLag_of_acceptedDelay cfg ext B hT hanchor hDelay
-  have hlag := E.finalizedCheckpoint_twoEpochLag_of_causalLag cfg ext hLag
-    (E.store_causal cfg ext w N) hFa
-  have hfinalizedEpoch : F.epoch + 2 ≤ (s + 1) / cfg.slots_per_epoch := by
-    have hlag' : F.epoch + 2 ≤ E.slot_at cfg m / cfg.slots_per_epoch := by
+  -- The finalizing link ends before the receiver's epoch.
+  have hchildEpoch : hFcert.child.epoch + 1 ≤ (s + 1) / cfg.slots_per_epoch := by
+    have hchild' : hFcert.child.epoch < E.slot_at cfg m / cfg.slots_per_epoch := by
       simpa only [F, N, get_current_store_epoch, E.store_current_slot,
-        compute_epoch_at_slot] using hlag
-    exact hlag'.trans (Nat.div_le_div_right hm)
+        compute_epoch_at_slot] using hchildLt
+    exact hchild'.trans_le (Nat.div_le_div_right hm)
   have hanchorLeF : B.anchor.epoch ≤ F.epoch :=
     IncludedCertifiedJustified.anchor_epoch_le (cfg := cfg) hFcert.justified
   have hchildStart : E.slot_at cfg 0 ≤ hFcert.child.epoch * cfg.slots_per_epoch :=
     (E.initial_slot_le_anchor_boundary cfg ext hT hanchor hboundary).trans
       (Nat.mul_le_mul_right cfg.slots_per_epoch
-        (hanchorLeF.trans (by rw [hFcert.child_epoch]; exact Nat.le_succ _)))
+        (hanchorLeF.trans ((Nat.le_succ _).trans (hFcert.epoch_succ_le_child cfg))))
   obtain ⟨i, t, k, index, hi, hHk, hk, htstart, htlast, hvote, hdue, hsource,
       _htarget⟩ := hFcert.finalizing_link.honest_vote_before_last_slot cfg
         B.state.includedAttestations.relation hT.honest_behavior
         hT.externals_coherence hbyz hspe hchildStart
   have hlastLe : hFcert.child.epoch * cfg.slots_per_epoch +
       (cfg.slots_per_epoch - 1) ≤ s := by
-    have hscaled := (Nat.le_div_iff_mul_le cfg.slots_per_epoch_pos).mp hfinalizedEpoch
-    rw [hFcert.child_epoch]
-    change (F.epoch + 1) * cfg.slots_per_epoch + (cfg.slots_per_epoch - 1) ≤ s
-    exact finalization_last_slot_le hspe hscaled
+    exact finalization_child_last_slot_le cfg.slots_per_epoch_pos
+      ((Nat.le_div_iff_mul_le cfg.slots_per_epoch_pos).mp hchildEpoch)
   have hts : t < s := htlast.trans_le hlastLe
   have hnext : E.slot_start cfg (E.slot_at cfg k + 1) ≤ n := by
     rw [hk]
@@ -271,17 +361,43 @@ theorem finalized_epoch_le_voter_justified_of_receiver_slot_le
   · refine Or.inr ⟨hgu.eq_of_epoch_gt hFpos, ?_⟩
     simpa only [get_current_store_epoch, E.store_current_slot, hn] using
       hold.trans_le (ce_mono cfg hts.le)
-  · -- The finalizing link's target epoch is `F.epoch + 1`, so a head two or
-    -- more epochs older than the vote has a source older than `F`.
-    exfalso
-    have htEpoch : compute_epoch_at_slot cfg t = F.epoch + 1 := by
-      rw [← hFcert.child_epoch]
+  · have htEpoch : compute_epoch_at_slot cfg t = hFcert.child.epoch := by
       apply Nat.div_eq_of_lt_le htstart
       have hlt := htlast.trans_le (Nat.add_le_add_left
         (Nat.sub_le cfg.slots_per_epoch 1) _)
       simpa only [Nat.add_mul, one_mul] using hlt
-    rw [htEpoch] at hlate
-    exact (Nat.not_le_of_gt (Nat.lt_of_add_lt_add_right hlate)) hle
+    rcases hFcert.child_epoch with hone | htwo
+    · -- A one-epoch finalizing link has target epoch `F.epoch + 1`, so a head
+      -- two or more epochs older than the vote has a source older than `F`.
+      exfalso
+      rw [htEpoch, hone] at hlate
+      exact (Nat.not_le_of_gt (Nat.lt_of_add_lt_add_right hlate)) hle
+    · -- A two-epoch finalizing link admits a head of epoch `F.epoch`.  The
+      -- scope condition excludes `F.epoch = GENESIS_EPOCH + 1`.  From a later
+      -- head epoch the stale source reads as the head's `GU`.
+      have hFge : GENESIS_EPOCH + 2 ≤ F.epoch := by
+        have hne : F.epoch ≠ GENESIS_EPOCH + 1 := by
+          intro hF1
+          have hc := hFone hF1
+          rw [htwo] at hc
+          have key : ∀ x : ℕ, x = GENESIS_EPOCH + 1 → x + 2 ≠ GENESIS_EPOCH + 2 := by
+            intro x hx
+            omega
+          exact key _ hF1 hc
+        have key : ∀ x : ℕ, 0 < x → x ≠ GENESIS_EPOCH + 1 → GENESIS_EPOCH + 2 ≤ x := by
+          intro x hx hx1
+          simp only [GENESIS_EPOCH] at hx1 ⊢
+          omega
+        exact key _ hFpos hne
+      have hold : get_block_epoch cfg (E.store cfg ext i k)
+          (get_head cfg (E.store cfg ext i k)).root < compute_epoch_at_slot cfg t :=
+        Nat.lt_of_succ_lt hlate
+      have hgu := E.honest_attestation_source_stale_reads_gu cfg ext B hT hphaseBoundary
+        hsv hfloor (index := index) hi hHk hk hhead (hFge.trans hle) hold
+      rw [hsource.eq_of_epoch_pos hFpos] at hgu
+      refine Or.inr ⟨hgu.eq_of_epoch_gt hFpos, ?_⟩
+      simpa only [get_current_store_epoch, E.store_current_slot, hn] using
+        hold.trans_le (ce_mono cfg hts.le)
 
 /-- The receiver checkpoint at the next slot start is no newer than the
 honest voter's justification. -/

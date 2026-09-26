@@ -1,6 +1,6 @@
 # Review guide
 
-`ReviewClaims` has one safety field. `review_claims` proves it. The field states observer-store membership and executable ancestry from the next slot. The trust audit checks 45 public theorems: 38 executable-side and seven paper-side. The [history note](history/live-monotonicity-removed.md) records the removed live theorem.
+`ReviewClaims` has one safety field. `review_claims` proves it. The field states observer-store membership and executable ancestry from the next slot. The trust audit checks 43 public theorems: 36 executable-side and seven paper-side. The [history note](history/live-monotonicity-removed.md) records the removed live theorem.
 
 `NextSlotSafetyPremises.anchor_state_checkpoints` covers a genesis anchor whose state
 has the zero-root stub. It also covers a normalized anchor state whose current justified
@@ -14,13 +14,16 @@ That argument is not formalized.
 inclusion for two epochs, so it is outside `EventualCheckpointInclusion`. It shows why
 that premise matters; it is not an FCR safety failure.
 
-`Phase0BoundarySourceCoherence` has four fields. `process_slots_one_boundary` equates
+`Phase0BoundarySourceCoherence` has five fields. `process_slots_one_boundary` equates
 one boundary with eager PJF. `process_slots_same_target_epoch` equates target slots in
 one epoch. `state_transition_process_slots` equates a crossing block transition with
 slot processing. `process_slots_checkpoint_epoch` bounds the output checkpoint if every
 intermediate slot-processed state satisfies `3 * effective_balance_increment < 2 *
 get_total_active_balance`. This guard is exact because an empty vote set can pass the
 two-thirds test at a total balance of at most one and a half increments.
+`process_slots_two_boundaries` equates two or more boundaries from a start epoch of at
+least `GENESIS_EPOCH + 2` with eager PJF, if the registry and the total active balance
+are unchanged and the same guard holds at every intermediate state.
 `ScheduledFCRCallPremises.balance_floor` requires two increments of anchor active
 weight. With `registry_static_in_horizon`, this floor supplies the guard on in-horizon
 reads. The static-registry condition excludes included slashings, deposits, activations,
@@ -72,8 +75,7 @@ FFG behavior supplies the interpretation before the theorem applies to it.
 │ Byzantine weight        │ Exercised by ByzantinePremiseWitness.byzantine_weight_exercised: non-honest weight 200 of 4000 under the     │
 │                         │ full safety bundle.                                                                                          │
 │ Slashing relay          │ Exercised by ByzantinePremiseWitness.slashing_relay_exercised; the call at second six reads the evidence.    │
-│ Previous-result guard   │ Exercised by ByzantinePremiseWitness.previous_result_proviso_exercised at the call from second eight to      │
-│                         │ nine.                                                                                                        │
+│ Previous-result guard   │ Not exercised. The previous-result proviso branch is not exercised by a full-bundle witness.                 │
 │ Included carrier votes  │ The safety premise needs an accepted carrier and a received block copy of each included vote. Body           │
 │                         │ membership and validity are in FFGInterpretationFidelity, outside the premise.                               │
 │ Interpretation fidelity │ Each full-bundle witness proves FFGInterpretationFidelity for its interpretation. Validation uses a prepared │
@@ -95,7 +97,7 @@ FFG behavior supplies the interpretation before the theorem applies to it.
 2. **Statements premises:** Read the safety field of `ReviewClaims`. Expand each record in `FastConfirmationStatements/Premises/`. Check the observer, time, horizon, and successful-prefix ranges.
 3. **Externals:** Check the table below against `BeaconFunctionInterface` and `BeaconExternalsPremises`. Check the supplied FFG inclusion and certificate evidence. The slashing relay is a separate premise over the literal Python handler.
 4. **Claims:** Read the proof terms in `FastConfirmationProofs/`. Check `confirmed_root_safe_from_next_slot` and `review_claims`. Read the independent Paper library with [the paper map](PAPER_MAP.md).
-5. **Witnesses:** Read `FastConfirmationWitnesses/Index.lean`. Check each run's true guards and vacuous branches. Check the 45 audited public theorems in `scripts/Audit.lean`.
+5. **Witnesses:** Read `FastConfirmationWitnesses/Index.lean`. Check each run's true guards and vacuous branches. Check the 43 audited public theorems in `scripts/Audit.lean`.
 
 ## Trusted boundary
 
@@ -184,8 +186,7 @@ used by the safety review claim. The Internal library holds call and trace
 vocabulary, vote-support predicates, and interpretation fidelity used by
 proofs and witnesses.
 
-The existing target-edge and previous-result witness theorems remain facts about
-the runs. Their full-bundle constructors no longer prove support fields.
+The existing target-edge witness theorems remain facts about the runs. Their full-bundle constructors no longer prove support fields.
 See [modeling choices](MODELING_CHOICES.md) for the Python note and the
 counterexample to exact target agreement for a previous-epoch result.
 
@@ -206,7 +207,7 @@ Block and envelope exclusion is checked before the next-slot tick. It permits on
 
 The source of record is fork `fradamt/consensus-specs`, tag `fcr-gloas-fix` (`13f391516`). The [source map](SPEC_MAP.md) records the exact difference from upstream. The [conformance harness](conformance.md) compares projected Python and Lean observations. A matching trace does not prove all external contracts or all reachable executions. The `weak-synchrony` branch contains work in progress on weaker timing premises and is outside this review.
 
-`scripts/validate.sh --fast` checks the source pin, document names, import boundary, and hygiene. Full validation builds the libraries and checks imports, reachability, surface shape, and the 45 public witnesses. `scripts/Audit.lean` allows only `propext`, `Classical.choice`, and `Quot.sound`.
+`scripts/validate.sh --fast` checks the source pin, document names, import boundary, and hygiene. Full validation builds the libraries and checks imports, reachability, surface shape, and the 43 public witnesses. `scripts/Audit.lean` allows only `propext`, `Classical.choice`, and `Quot.sound`.
 
 ## Known limits
 

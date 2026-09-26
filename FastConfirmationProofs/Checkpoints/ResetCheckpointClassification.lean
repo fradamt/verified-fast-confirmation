@@ -101,18 +101,22 @@ theorem acceptedGlobalFinalized_anchor_or_includedCertificate
   rcases horigins.finalized with
     hanchorField | ⟨tip, htip, hgf | hguf⟩
   · exact Or.inl hanchorField
-  · rcases B.state.realized_finalized_evidence tip htip.acceptedRoot with
-      hlocalAnchor | hcertificate
+  · obtain ⟨_, hblock⟩ := htip.2
+    rcases B.state.realized_finalized_evidence hblock with
+      hlocalAnchor | ⟨F, _⟩
     · exact Or.inl (hgf.trans hlocalAnchor)
     · right
       refine ⟨tip, htip, ?_⟩
-      rwa [hgf]
-  · rcases B.state.unrealized_finalized_evidence tip htip.acceptedRoot with
-      hlocalAnchor | hcertificate
+      rw [hgf]
+      exact ⟨F⟩
+  · obtain ⟨_, hblock⟩ := htip.2
+    rcases B.state.unrealized_finalized_evidence hblock with
+      hlocalAnchor | ⟨F, _⟩
     · exact Or.inl (hguf.trans hlocalAnchor)
     · right
       refine ⟨tip, htip, ?_⟩
-      rwa [hguf]
+      rw [hguf]
+      exact ⟨F⟩
 
 /-- A non-anchor included finalization carried in a reachable store is
 strictly older than that store's current epoch.
@@ -175,17 +179,16 @@ theorem includedCertifiedFinalized_epoch_lt_current_of_acceptedCarrier
       _ ≤ get_current_slot cfg (E.store cfg ext w m) :=
         E.store_blocks_slot_le_current cfg ext hT.whole_seconds hgenShort
           w m containing hcontainingKnown
-  have hchildEpoch : c.epoch + 1 =
+  have hchildEpoch : c.epoch + 1 ≤
       compute_epoch_at_slot cfg a.data.slot := by
     calc
-      c.epoch + 1 = F.child.epoch := F.child_epoch.symm
+      c.epoch + 1 ≤ F.child.epoch := F.epoch_succ_le_child cfg
       _ = a.data.target.epoch :=
         congrArg Checkpoint.epoch haTarget.symm
       _ = compute_epoch_at_slot cfg a.data.slot := hevidence.target_epoch
   have hnextLeCurrent : c.epoch + 1 ≤
       get_current_store_epoch cfg (E.store cfg ext w m) := by
-    rw [hchildEpoch]
-    exact ce_mono cfg (Nat.le_of_lt hattestationBeforeCurrent)
+    exact hchildEpoch.trans (ce_mono cfg (Nat.le_of_lt hattestationBeforeCurrent))
   exact Nat.lt_of_succ_le hnextLeCurrent
 
 /-- Therefore a store-global finalized checkpoint at the store's current

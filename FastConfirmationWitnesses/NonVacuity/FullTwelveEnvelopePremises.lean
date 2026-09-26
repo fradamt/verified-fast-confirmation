@@ -183,7 +183,7 @@ structure LateStoreFacts (w : ValidatorIndex) (m : ℕ) : Prop where
       childRoot = 0
   carrier_epoch : get_block_epoch cfg
     (run.store cfg ext w m)
-      carrierRoot = 1
+      carrierRoot = 2
   carrier_descends_anchor : is_ancestor
     (run.store cfg ext w m)
       (get_node_for_root carrierRoot) (get_node_for_root anchorRoot) = true
@@ -432,19 +432,19 @@ theorem witnessPaperA32Inclusion :
       have hlate := lateStoreFacts w m hHm h8slot
       rcases acceptedBlockAt_cases hb with h | h | h
       · rcases h with ⟨rfl, rfl⟩
-        refine ⟨carrierRoot, hlate.carrier_known, hlate.anchor_known,
-          hlate.carrier_descends_anchor, ?_, ?_⟩
-        · rw [hlate.carrier_epoch]
+        refine ⟨anchorRoot, hlate.anchor_known, hlate.anchor_known,
+          is_ancestor_refl _ _, ?_, Or.inl (Nat.zero_le _), ?_⟩
+        · rw [hlate.anchor_epoch]
           decide
         · simpa only [AcceptedBlockFFGState.checkpoint_inclusion_view,
-            witnessC_anchor_zero] using witnessAU_carrier_anchor
+            witnessC_anchor_zero] using witnessAU_anchor_anchor
       · rcases h with ⟨rfl, rfl⟩
-        refine ⟨carrierRoot, hlate.carrier_known, hlate.child_known,
-          hlate.carrier_descends_child, ?_, ?_⟩
-        · rw [hlate.carrier_epoch]
+        refine ⟨childRoot, hlate.child_known, hlate.child_known,
+          is_ancestor_refl _ _, ?_, Or.inl (Nat.zero_le _), ?_⟩
+        · rw [hlate.child_epoch]
           decide
         · simpa only [AcceptedBlockFFGState.checkpoint_inclusion_view,
-            witnessC_child_zero] using witnessAU_carrier_anchor
+            witnessC_child_zero] using witnessAU_child_anchor
       · rcases h with ⟨rfl, rfl⟩
         norm_num [carrierSignedBlock, cfg, TwelveSecondSynchronyWitness.cfg, witnessConfig,
           compute_epoch_at_slot] at hbe
@@ -465,26 +465,16 @@ theorem witnessPaperA32Inclusion :
               (by decide : 8 ≤ 12).trans h12slot
             have hlate := lateStoreFacts w m hHm h8slot
             refine ⟨carrierRoot, hlate.carrier_known, hlate.child_known,
-              hlate.carrier_descends_child, ?_, ?_⟩
+              hlate.carrier_descends_child, ?_, Or.inr ?_, ?_⟩
+            · rw [hlate.carrier_epoch]
+              decide
             · rw [hlate.carrier_epoch]
               decide
             · simpa only [AcceptedBlockFFGState.checkpoint_inclusion_view,
                 witnessC_child_one] using witnessAU_carrier_child
           · rcases h with ⟨rfl, rfl⟩
-            have h12slot : 12 ≤
-                run.slot_at cfg m := by
-              simpa [compute_start_slot_at_epoch, cfg, TwelveSecondSynchronyWitness.cfg, witnessConfig] using
-                hboundary
-            have h8slot : 8 ≤
-                run.slot_at cfg m :=
-              (by decide : 8 ≤ 12).trans h12slot
-            have hlate := lateStoreFacts w m hHm h8slot
-            refine ⟨carrierRoot, hlate.carrier_known, hlate.carrier_known,
-              hlate.carrier_descends_self, ?_, ?_⟩
-            · rw [hlate.carrier_epoch]
-              decide
-            · simpa only [AcceptedBlockFFGState.checkpoint_inclusion_view,
-                witnessC_carrier_one] using witnessAU_carrier_child
+            norm_num [carrierSignedBlock, cfg, TwelveSecondSynchronyWitness.cfg, witnessConfig,
+              compute_epoch_at_slot] at hbe
       | succ e =>
           have hmlt := horizon_time hHm
           rw [slot_at_eq] at hboundary

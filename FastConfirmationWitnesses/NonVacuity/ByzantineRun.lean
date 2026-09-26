@@ -86,7 +86,7 @@ def stateAt (slot : Slot) (justified : Checkpoint WitnessRoot) :
 
 def anchorState : BeaconState WitnessRoot := stateAt 0 anchorCheckpoint
 def childState : BeaconState WitnessRoot := stateAt 4 anchorCheckpoint
-def carrierState : BeaconState WitnessRoot := stateAt 7 anchorCheckpoint
+def carrierState : BeaconState WitnessRoot := stateAt 8 anchorCheckpoint
 
 def anchorSignedBlock : SignedBeaconBlock WitnessRoot :=
   { message := { slot := 0, parent_root := junkRoot }
@@ -105,15 +105,12 @@ def voteData (slot : Slot) : AttestationData WitnessRoot :=
   else if slot < 4 then
     { slot := slot, index := 0, beacon_block_root := anchorRoot
       source := anchorCheckpoint, target := anchorCheckpoint }
-  else if slot < 7 then
+  else if slot < 8 then
     { slot := slot, index := 0, beacon_block_root := childRoot
-      source := anchorCheckpoint, target := childEpochOneCheckpoint }
-  else if slot = 7 then
-    { slot := slot, index := 0, beacon_block_root := carrierRoot
       source := anchorCheckpoint, target := childEpochOneCheckpoint }
   else if slot < 12 then
     { slot := slot, index := 0, beacon_block_root := carrierRoot
-      source := childEpochOneCheckpoint, target := carrierEpochTwoCheckpoint }
+      source := anchorCheckpoint, target := carrierEpochTwoCheckpoint }
   else
     { slot := slot, index := 0, beacon_block_root := carrierRoot
       source := childEpochOneCheckpoint, target := carrierEpochThreeCheckpoint }
@@ -144,7 +141,7 @@ def vote6 := vote 6
 
 /-- The carrier contains the three ordered Phase0 FFG votes. -/
 def carrierSignedBlock : SignedBeaconBlock WitnessRoot :=
-  { message := { slot := 7, parent_root := childRoot, attestations := [vote4, vote5, vote6] }
+  { message := { slot := 8, parent_root := childRoot, attestations := [vote4, vote5, vote6] }
     root := carrierRoot }
 def vote7 := vote 7
 def vote8 := vote 8
@@ -186,7 +183,7 @@ def byzantineSlashing : AttesterSlashing WitnessRoot :=
 checkpoint.  Every other abstract input clamps to the trusted anchor; this
 keeps the external total while making the two phase0 laws transparent. -/
 def witnessPJF (st : BeaconState WitnessRoot) : BeaconState WitnessRoot :=
-  if st.slot = 7 then
+  if st.slot = 8 then
     { st with current_justified_checkpoint := childEpochOneCheckpoint }
   else { st with current_justified_checkpoint := anchorCheckpoint }
 
@@ -250,7 +247,7 @@ def witnessExternals : BeaconFunctionInterface WitnessRoot where
 /-! ## Schedule and execution -/
 
 /-- Symmetric schedule.  False copies implement ordinary gossip.  At second
-five the slashing follows the slot-four receipt.  At second seven the slot-six
+five the slashing follows the slot-four receipt.  At second eight the slot-seven
 receipt precedes the carrier; the true copies after it are the three
 attestations projected as carried by that block. -/
 def witnessSchedule (_w : ValidatorIndex) (n : ℕ) :
@@ -258,8 +255,8 @@ def witnessSchedule (_w : ValidatorIndex) (n : ℕ) :
   if n = 4 then [Event.block childSignedBlock, Event.attestation vote3 false]
   else if n = 5 then
     [Event.attestation vote4 false, Event.attester_slashing byzantineSlashing]
-  else if n = 7 then
-    [Event.attestation vote6 false, Event.block carrierSignedBlock,
+  else if n = 8 then
+    [Event.attestation vote7 false, Event.block carrierSignedBlock,
       Event.attestation vote4 true, Event.attestation vote5 true,
       Event.attestation vote6 true]
   else if 1 ≤ n ∧ n ≤ 16 then
@@ -419,7 +416,7 @@ theorem block_mem_schedule_iff {w n}
     {b : SignedBeaconBlock WitnessRoot} :
     Event.block b ∈ witnessExecution.schedule w n ↔
       (n = 4 ∧ b = childSignedBlock) ∨
-      (n = 7 ∧ b = carrierSignedBlock) := by
+      (n = 8 ∧ b = carrierSignedBlock) := by
   change Event.block b ∈ witnessSchedule w n ↔ _
   by_cases h1 : n = 4
   · subst n
@@ -427,7 +424,7 @@ theorem block_mem_schedule_iff {w n}
   · by_cases h5 : n = 5
     · subst n
       simp [witnessSchedule]
-    · by_cases h7 : n = 7
+    · by_cases h7 : n = 8
       · subst n
         simp [witnessSchedule]
       · simp [witnessSchedule, h1, h5, h7]
@@ -452,7 +449,7 @@ theorem attestation_mem_schedule_ground {w n a ifb}
       simp [witnessSchedule] at h
       rcases h with ⟨rfl, rfl⟩
       exact vote_mem_ground (s := 4) (by decide)
-    · by_cases h7 : n = 7
+    · by_cases h7 : n = 8
       · subst n
         simp [witnessSchedule] at h
         rcases h with h | h | h | h <;> rcases h with ⟨rfl, rfl⟩ <;>
@@ -499,7 +496,7 @@ private theorem scheduled_vote_sent_before {w n s ifb}
       have hs := vote_slot_eq h.1
       rw [hs]
       decide
-    · by_cases h7 : n = 7
+    · by_cases h7 : n = 8
       · subst n
         simp [witnessSchedule, h1] at h
         rcases h with h | h | h | h
@@ -625,7 +622,7 @@ private theorem witnessHonestBehavior :
 private theorem witnessPJF_current_epoch_le (st : BeaconState WitnessRoot) :
     (witnessPJF st).current_justified_checkpoint.epoch ≤
       compute_epoch_at_slot witnessConfig st.slot := by
-  by_cases h : st.slot = 7
+  by_cases h : st.slot = 8
   · simp [witnessPJF, h, childEpochOneCheckpoint, witnessConfig,
       compute_epoch_at_slot]
   · simp [witnessPJF, h, anchorCheckpoint]
@@ -969,7 +966,7 @@ private theorem witness_vote_false_delivery {s : Slot} (hs : s < 16)
       witnessExecution.schedule w (witnessExecution.slot_start witnessConfig (s + 1)) := by
   rw [slot_start_eq]
   interval_cases s <;>
-    simp [witnessExecution, witnessSchedule, vote3, vote4, vote5, vote6]
+    simp [witnessExecution, witnessSchedule, vote3, vote4, vote5, vote6, vote7]
 
 private theorem witness_slot15_delivery_at_second16 (w : ValidatorIndex) :
     Event.attestation vote15 false ∈ witnessExecution.schedule w 16 := by

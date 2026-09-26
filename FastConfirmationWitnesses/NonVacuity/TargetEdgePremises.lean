@@ -15,7 +15,7 @@ previous-epoch anchor. Its selector guard is true, the retained tentative
 trace contains that edge, and an honest vote at slot seven still supports the
 same target. `target_votes_support` proves the exact normative support
 consequent for every in-horizon call. The accepted FFG interpretation and
-positive Paper A3.2 support use the three votes in the slot-seven carrier.
+positive Paper A3.2 support use the three votes in the slot-eight carrier.
 
 The public non-vacuity, full-bundle, and safety theorems are at the end.
 -/
@@ -132,7 +132,7 @@ structure LateStoreFacts (w : ValidatorIndex) (m : ℕ) : Prop where
       childRoot = 1
   carrier_epoch : get_block_epoch witnessConfig
     (witnessExecution.store witnessConfig witnessExternals w m)
-      carrierRoot = 1
+      carrierRoot = 2
   carrier_descends_anchor : is_ancestor
     (witnessExecution.store witnessConfig witnessExternals w m)
       (get_node_for_root carrierRoot) (get_node_for_root anchorRoot) = true
@@ -376,12 +376,12 @@ private theorem witnessPaperA32Inclusion :
       have hlate := lateStoreFacts w m hHm h8slot
       rcases acceptedBlockAt_cases hb with h | h | h
       · rcases h with ⟨rfl, rfl⟩
-        refine ⟨carrierRoot, hlate.carrier_known, hlate.anchor_known,
-          hlate.carrier_descends_anchor, ?_, ?_⟩
-        · rw [hlate.carrier_epoch]
+        refine ⟨anchorRoot, hlate.anchor_known, hlate.anchor_known,
+          is_ancestor_refl _ _, ?_, Or.inl (Nat.zero_le _), ?_⟩
+        · rw [hlate.anchor_epoch]
           decide
         · simpa only [AcceptedBlockFFGState.checkpoint_inclusion_view,
-            witnessC_anchor_zero] using witnessAU_carrier_anchor
+            witnessC_anchor_zero] using witnessAU_anchor_anchor
       · rcases h with ⟨rfl, rfl⟩
         norm_num [childSignedBlock, witnessConfig, compute_epoch_at_slot] at hbe
       · rcases h with ⟨rfl, rfl⟩
@@ -404,26 +404,16 @@ private theorem witnessPaperA32Inclusion :
               (by decide : 8 ≤ 12).trans h12slot
             have hlate := lateStoreFacts w m hHm h8slot
             refine ⟨carrierRoot, hlate.carrier_known, hlate.child_known,
-              hlate.carrier_descends_child, ?_, ?_⟩
+              hlate.carrier_descends_child, ?_, Or.inr ?_, ?_⟩
+            · rw [hlate.carrier_epoch]
+              decide
             · rw [hlate.carrier_epoch]
               decide
             · simpa only [AcceptedBlockFFGState.checkpoint_inclusion_view,
                 witnessC_child_one] using witnessAU_carrier_child
           · rcases h with ⟨rfl, rfl⟩
-            have h12slot : 12 ≤
-                witnessExecution.slot_at witnessConfig m := by
-              simpa [compute_start_slot_at_epoch, witnessConfig] using
-                hboundary
-            have h8slot : 8 ≤
-                witnessExecution.slot_at witnessConfig m :=
-              (by decide : 8 ≤ 12).trans h12slot
-            have hlate := lateStoreFacts w m hHm h8slot
-            refine ⟨carrierRoot, hlate.carrier_known, hlate.carrier_known,
-              hlate.carrier_descends_self, ?_, ?_⟩
-            · rw [hlate.carrier_epoch]
-              decide
-            · simpa only [AcceptedBlockFFGState.checkpoint_inclusion_view,
-                witnessC_carrier_one] using witnessAU_carrier_child
+            norm_num [carrierSignedBlock, witnessConfig,
+              compute_epoch_at_slot] at hbe
       | succ e =>
           have hmlt := time_lt_sixteen hHm
           rw [slot_at_eq] at hboundary
@@ -522,6 +512,8 @@ theorem witnessPaperA32_child_one_conclusion :
           get_block_epoch witnessConfig
               (witnessExecution.store witnessConfig witnessExternals w m) b' <
             3 ∧
+          (1 ≤ GENESIS_EPOCH ∨ GENESIS_EPOCH + 1 < get_block_epoch witnessConfig
+              (witnessExecution.store witnessConfig witnessExternals w m) b') ∧
           witnessAcceptedChainFFGState.AvailableCheckpoint witnessConfig witnessExternals b'
             (witnessAcceptedChainFFGState.checkpoint_at_epoch childRoot 1) := by
   exact witnessPaperA32Inclusion.included child_acceptedBlockAt

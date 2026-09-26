@@ -171,15 +171,26 @@ inductive IncludedCertifiedJustified (E : Execution Root)
       IncludedSupermajorityLink cfg E included carrier source target →
       IncludedCertifiedJustified E included anchor carrier target
 
-/-- Carrier-local Casper finalization: both justification and the immediately
-following finalizing link are backed by attestations included on this chain. -/
+/-- Carrier-local finalization in the Gasper `k = 2` form: `c` is justified,
+and a finalizing link from `c` reaches epoch `c.epoch + 1`, or it reaches
+`c.epoch + 2` while a checkpoint of epoch `c.epoch + 1` that descends from
+`c` is justified.  All votes are included on this chain.
+
+Python `weigh_justification_and_finalization` uses both forms: rules 2 and 4
+use a link to the next epoch, and rules 1 and 3 use a link over one justified
+epoch.  The second form occurs when the middle epoch is justified by votes
+with an older source, so no link from `c` to the middle epoch exists. -/
 structure IncludedCertifiedFinalized (E : Execution Root)
     (included : Root → Attestation Root → Prop)
     (anchor : Checkpoint Root) (carrier : Root)
     (c : Checkpoint Root) where
   justified : IncludedCertifiedJustified cfg E included anchor carrier c
   child : Checkpoint Root
-  child_epoch : child.epoch = c.epoch + 1
+  child_epoch : child.epoch = c.epoch + 1 ∨ child.epoch = c.epoch + 2
+  middle_justified : child.epoch = c.epoch + 2 →
+    ∃ middle : Checkpoint Root, middle.epoch = c.epoch + 1 ∧
+      E.RootDescends middle.root c.root ∧
+      Nonempty (IncludedCertifiedJustified cfg E included anchor carrier middle)
   finalizing_link :
     IncludedSupermajorityLink cfg E included carrier c child
 
@@ -216,7 +227,15 @@ structure IncludedCheckpointEvidence (E : Execution Root)
 /-- The production block-local FFG state.  Selector functions remain total
 for Lean convenience, but all semantic laws are restricted to causal-prefix
 accepted roots or exact accepted block carriers.  Every positive inclusion
-and formed carrier is accepted. -/
+and formed carrier is accepted.
+
+The maximality laws follow the Python timing.  `realized_justified` of a block
+in epoch `E` is the result of the epoch-boundary justification runs before
+`E`, so it reflects only evidence in blocks of earlier epochs.
+`unrealized_justified` runs the same function on the block state at epoch
+`E`.  Both runs return early at epochs up to `GENESIS_EPOCH + 1`, hence the
+epoch bounds in `realized_justified_max` and `unrealized_justified_max`, and
+`unrealized_justified_early`: at those epochs the two selectors are equal. -/
 structure AcceptedBlockFFGState (E : Execution Root)
     (anchor : Checkpoint Root) where
   includedAttestations :
@@ -243,25 +262,88 @@ structure AcceptedBlockFFGState (E : Execution Root)
     ∃ carrier, E.RootDescends r carrier ∧ checkpoint_evidence_in_block carrier (unrealized_finalized r)
   realized_justified_anchor_or_before : ∀ {r b}, E.BlockKnownInScheduledPrefix cfg ext r b →
     realized_justified r = anchor ∨ (realized_justified r).epoch < compute_epoch_at_slot cfg b.slot
-  realized_justified_max : ∀ {r b c}, E.BlockKnownInScheduledPrefix cfg ext r b →
-    (∃ carrier, E.RootDescends r carrier ∧ checkpoint_evidence_in_block carrier c) →
-    c.epoch < compute_epoch_at_slot cfg b.slot → c.epoch ≤ (realized_justified r).epoch
-  unrealized_justified_max : ∀ {r c}, E.RootKnownInScheduledPrefix cfg ext r →
+  realized_justified_max : ∀ {r b seed sb c}, E.BlockKnownInScheduledPrefix cfg ext r b →
+    E.BlockKnownInScheduledPrefix cfg ext seed sb → E.RootDescends r seed →
+    compute_epoch_at_slot cfg sb.slot < compute_epoch_at_slot cfg b.slot →
+    GENESIS_EPOCH + 2 < compute_epoch_at_slot cfg b.slot →
+    (∃ carrier, E.RootDescends seed carrier ∧ checkpoint_evidence_in_block carrier c) →
+    c.epoch ≤ (realized_justified r).epoch
+  realized_justified_realized : ∀ {r b}, E.BlockKnownInScheduledPrefix cfg ext r b →
+    realized_justified r = anchor ∨
+      GENESIS_EPOCH + 2 < compute_epoch_at_slot cfg b.slot ∧
+      ∃ seed sb, E.BlockKnownInScheduledPrefix cfg ext seed sb ∧ E.RootDescends r seed ∧
+        compute_epoch_at_slot cfg sb.slot < compute_epoch_at_slot cfg b.slot ∧
+        ∃ carrier, E.RootDescends seed carrier ∧
+          checkpoint_evidence_in_block carrier (realized_justified r)
+  unrealized_justified_max : ∀ {r b c}, E.BlockKnownInScheduledPrefix cfg ext r b →
+    GENESIS_EPOCH + 1 < compute_epoch_at_slot cfg b.slot →
     (∃ carrier, E.RootDescends r carrier ∧ checkpoint_evidence_in_block carrier c) →
     c.epoch ≤ (unrealized_justified r).epoch
+  unrealized_justified_early : ∀ {r b}, E.BlockKnownInScheduledPrefix cfg ext r b →
+    compute_epoch_at_slot cfg b.slot ≤ GENESIS_EPOCH + 1 →
+    unrealized_justified r = realized_justified r
+  realized_justified_epoch_le_unrealized : ∀ r, E.RootKnownInScheduledPrefix cfg ext r →
+    (realized_justified r).epoch ≤ (unrealized_justified r).epoch
+  unrealized_justified_mono : ∀ {seed tip}, E.RootKnownInScheduledPrefix cfg ext seed →
+    E.RootKnownInScheduledPrefix cfg ext tip → E.RootDescends tip seed →
+    (unrealized_justified seed).epoch ≤ (unrealized_justified tip).epoch
+  unrealized_justified_epoch_le_later_realized : ∀ {seed sb tip tb},
+    E.BlockKnownInScheduledPrefix cfg ext seed sb →
+    E.BlockKnownInScheduledPrefix cfg ext tip tb → E.RootDescends tip seed →
+    compute_epoch_at_slot cfg sb.slot < compute_epoch_at_slot cfg tb.slot →
+    (unrealized_justified seed).epoch ≤ (realized_justified tip).epoch
   available_checkpoint_epoch_le_block : ∀ {r b c}, E.BlockKnownInScheduledPrefix cfg ext r b →
     (∃ carrier, E.RootDescends r carrier ∧ checkpoint_evidence_in_block carrier c) →
     c.epoch ≤ compute_epoch_at_slot cfg b.slot
-  realized_finalized_evidence : ∀ r, E.RootKnownInScheduledPrefix cfg ext r →
-    realized_finalized r = anchor ∨ Nonempty (IncludedCertifiedFinalized cfg E
-      includedAttestations.Included anchor r (realized_finalized r))
-  unrealized_finalized_evidence : ∀ r, E.RootKnownInScheduledPrefix cfg ext r →
-    unrealized_finalized r = anchor ∨ Nonempty (IncludedCertifiedFinalized cfg E
-      includedAttestations.Included anchor r (unrealized_finalized r))
+  /-- Python law.  Realized finalization at a block of epoch `E` has a
+  certificate (a link of one or two epochs) whose finalizing link ends before
+  `E`.  Python realizes finalization in the
+  epoch-boundary run at the end of an epoch `k < E`, whose newest link ends at
+  `k`: rules 3 and 4 end at `k`, and rules 1 and 2 end at `k - 1`.  Thus a
+  2-step link `F -> F + 2` (rule 3) is realized only at a block of epoch
+  `F + 3` or later, and rule 1 needs a block of epoch `F + 4` or later. -/
+  realized_finalized_evidence : ∀ {r b}, E.BlockKnownInScheduledPrefix cfg ext r b →
+    realized_finalized r = anchor ∨
+      ∃ F : IncludedCertifiedFinalized cfg E includedAttestations.Included anchor r
+        (realized_finalized r), F.child.epoch < compute_epoch_at_slot cfg b.slot
+  /-- Python law.  Unrealized finalization at a block of epoch `E` has a
+  certificate whose finalizing link ends no later than `E`: Python runs the same function with
+  current epoch `E`.  The store adopts it only when the current epoch is after
+  `E`: in the pull-up of a block from a past epoch, or at the next epoch
+  start. -/
+  unrealized_finalized_evidence : ∀ {r b}, E.BlockKnownInScheduledPrefix cfg ext r b →
+    unrealized_finalized r = anchor ∨
+      ∃ F : IncludedCertifiedFinalized cfg E includedAttestations.Included anchor r
+        (unrealized_finalized r), F.child.epoch ≤ compute_epoch_at_slot cfg b.slot
+  /-- Scope restriction, not a Python law.  A finalization of epoch
+  `GENESIS_EPOCH + 1` in the horizon has a link to the next epoch.  Python can
+  also finalize epoch `GENESIS_EPOCH + 1` through the two-epoch link
+  `GENESIS_EPOCH + 1 -> GENESIS_EPOCH + 3` alone (rules 1 and 3 of
+  `weigh_justification_and_finalization`).  With honest votes this is the
+  only way to finalize that epoch, because honest votes of epoch
+  `GENESIS_EPOCH + 2` have source `GENESIS_EPOCH`.  The proof cannot use such
+  a finalization for two reasons.  First,
+  `process_justification_and_finalization` returns early at epochs up to
+  `GENESIS_EPOCH + 1`, so an honest vote of epoch
+  `GENESIS_EPOCH + 2` whose head is in epoch `GENESIS_EPOCH + 1` can have a
+  source older than the finalized epoch.  Second, A3.2 does not make the
+  finalized checkpoint of epoch `GENESIS_EPOCH + 1` canonical during epoch
+  `GENESIS_EPOCH + 2`.  The pyspec run `voter` in
+  `scripts/conformance/contracts/test_realized_gap.py` shows such a run.
+  Finalizations of later epochs through two-epoch links are in scope. -/
+  epoch_one_finalization_one_step : ∀ r, E.RootKnownInScheduledPrefix cfg ext r →
+    ((realized_finalized r).epoch = GENESIS_EPOCH + 1 → realized_finalized r = anchor ∨
+      ∃ F : IncludedCertifiedFinalized cfg E includedAttestations.Included anchor r
+        (realized_finalized r), F.child.epoch = GENESIS_EPOCH + 2) ∧
+    ((unrealized_finalized r).epoch = GENESIS_EPOCH + 1 → unrealized_finalized r = anchor ∨
+      ∃ F : IncludedCertifiedFinalized cfg E includedAttestations.Included anchor r
+        (unrealized_finalized r), F.child.epoch = GENESIS_EPOCH + 2)
   realized_finalized_epoch_le_realized_justified : ∀ r, E.RootKnownInScheduledPrefix cfg ext r →
     (realized_finalized r).epoch ≤ (realized_justified r).epoch
   unrealized_finalized_epoch_le_unrealized_justified : ∀ r, E.RootKnownInScheduledPrefix cfg ext r →
     (unrealized_finalized r).epoch ≤ (unrealized_justified r).epoch
+  unrealized_finalized_epoch_le_realized_justified : ∀ r, E.RootKnownInScheduledPrefix cfg ext r →
+    (unrealized_finalized r).epoch ≤ (realized_justified r).epoch
 
 namespace AcceptedBlockFFGState
 
@@ -493,7 +575,16 @@ This is the paper's quantifier shape: if `b` is canonical and the exact fixed
 `vs(b,e)`-to-`C(b,e)` support condition holds in every honest view throughout
 epoch `e+1`, then by `st(e+2)` each honest view contains a pre-boundary
 descendant carrying `C(b,e)` in AU.  Target-only support or a free
-`A32IncludedAtTip` consequence is intentionally insufficient. -/
+`A32IncludedAtTip` consequence is intentionally insufficient.
+
+The descendant must be in an epoch above `GENESIS_EPOCH + 1` unless
+`e = GENESIS_EPOCH`.  Python `process_justification_and_finalization`
+returns early at epochs up to `GENESIS_EPOCH + 1`, so it never computes the
+unrealized justification of epoch 1 in a block of epoch 1: the epoch-1 votes
+must be included in a block of epoch 2 or later.  Without this bound the
+premise admits a run in which the Python FCR confirms a block and then loses
+it (`regression.fcr_confirmed_block_reorged_epoch_one` in
+`scripts/conformance/contracts/test_realized_gap.py`). -/
 structure EventualCheckpointInclusion
     {E : Execution Root} (V : CheckpointInclusionView cfg E) : Prop where
   included : ∀ {b : Root} {bb : BeaconBlock Root} {e : Epoch},
@@ -509,6 +600,7 @@ structure EventualCheckpointInclusion
         is_ancestor (E.store cfg ext w m)
           (get_node_for_root b') (get_node_for_root b) = true ∧
         get_block_epoch cfg (E.store cfg ext w m) b' < e + 2 ∧
+        (e ≤ GENESIS_EPOCH ∨ GENESIS_EPOCH + 1 < get_block_epoch cfg (E.store cfg ext w m) b') ∧
         V.AvailableCheckpoint cfg b' (V.C b e)
 
 namespace AcceptedBlockFFGState

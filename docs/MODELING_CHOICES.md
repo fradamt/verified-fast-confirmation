@@ -138,7 +138,7 @@ The source fork is `fradamt/consensus-specs` at tag `fcr-gloas-fix` (`13f391516`
 
 ## Strong conditions
 
-These thirteen fields are stronger than a direct claim about all real clients.
+These fourteen fields are stronger than a direct claim about all real clients.
 Each item states why the proof uses the field and what a weaker model would
 need.
 
@@ -155,6 +155,7 @@ need.
 11. `NextSlotSynchronyPremises.attester_slashing_relay` gives each honest store the equivocation indices by the next boundary. Literal Python can reject evidence when its justified state lacks a signer.
 12. `NextSlotSafetyPremises.anchor_state_checkpoints` admits the genesis anchor with a raw stub or a state with both checkpoints equal to the anchor. Older raw checkpoints in a checkpoint-sync state are outside its scope.
 13. `ScheduledFCRCallPremises.balance_floor` requires two increments of anchor active weight. With the static registry, this supplies the exact intermediate-state guard for `Phase0BoundarySourceCoherence.process_slots_checkpoint_epoch`.
+14. `AcceptedBlockFFGState.epoch_one_finalization_one_step` restricts the scope: a finalization of epoch `GENESIS_EPOCH + 1` in the horizon has a link to the next epoch. Python can also finalize epoch `GENESIS_EPOCH + 1` through the link 1 -> 3 alone. With honest votes this is the only way to finalize epoch 1: PJF returns early in epoch 1, so honest epoch-2 votes have source 0. The proof does not cover this case for two reasons. First, an honest vote of epoch 2 with a head in epoch 1 can have a source older than the finalized epoch. Second, Assumption 3.2 does not make a finalized epoch-1 checkpoint canonical during epoch 2. `test_realized_gap.py` has a run in which one store finalizes epoch 1 through the link 1 -> 3 while an honest store still has justified epoch 0 (`regression.finalized_epoch_one_two_step_above_voter_justified`). Finalizations of later epochs through two-epoch links are in scope: `realized_finalized_evidence` and `unrealized_finalized_evidence` state the `k = 2` Python law, and `Phase0BoundarySourceCoherence.process_slots_two_boundaries` gives the honest source of a stale head.
 
 ## Derived prediction support
 
@@ -203,8 +204,8 @@ branch from r before X1 arrives. Their epoch-e target is r, while the
 caller's target is X1. The selected root r stays safe and the relay
 deadlines permit this schedule. Thus safety and descendant support can hold
 without exact target agreement. This is a protocol description, not a Lean
-counterexample witness. The finite Byzantine witness separately proves a
-true previous-result guard and the new descendant conclusion.
+counterexample witness. The previous-result proviso branch is not exercised
+by a full-bundle witness.
 
 ## Interpretation fidelity
 
@@ -281,16 +282,20 @@ anchor. The fixture includes no attestation for two epochs. It does not assert t
 votes included on the canonical chain in epoch 4, PJF can instead advance
 the raw source to epoch 3 before the filter's epoch-5 deadline. The raw source age and the filter's `+2` rule need an inclusion argument. That argument is not formalized.
 
-`Phase0BoundarySourceCoherence` has four laws. Slot processing across one
+`Phase0BoundarySourceCoherence` has five laws. Slot processing across one
 boundary gives the eager PJF checkpoint. Targets in the same epoch give the
 same checkpoint. A block transition gives the checkpoint of slot processing
 to the block slot. The fourth law has a balance antecedent: each state that
 slot processing passes through has total active balance such that `3 * effective_balance_increment < 2 * get_total_active_balance`. Under this antecedent, slot processing keeps the checkpoint or
-gives one no newer than the start epoch. There is no equation for two or more
-boundaries. Phase0 and Altair PJF return early in epochs 0 and 1, so an
-epoch-1 state can keep the old checkpoint under eager PJF and justify epoch 1
-when slot processing reaches epoch 3. From a later start, the second PJF
-weighs the start-epoch votes again with the next epoch's balances. The
+gives one no newer than the start epoch. The fifth law covers two or more
+boundaries from a start epoch of at least `GENESIS_EPOCH + 2`: if the
+registry and the total active balance do not change and the same balance
+antecedent holds at every intermediate state, slot processing gives the eager
+PJF checkpoint. The second PJF weighs the same start-epoch participants with
+the same effective balances, and later PJF runs see no votes. Phase0 and
+Altair PJF return early in epochs 0 and 1, so an epoch-1 state can keep the
+old checkpoint under eager PJF and justify epoch 1 when slot processing
+reaches epoch 3; the fifth law excludes these starts. The balance
 antecedent is necessary: `get_total_balance` returns at least one increment,
 so with a total active balance of at most one and a half increments an epoch with no
 attestations passes the two-thirds test. `ScheduledFCRCallPremises.balance_floor`
@@ -302,12 +307,16 @@ The proof reads the honest source of an old target as this boundary source.
 After two or more boundaries, a known current-epoch block below the head
 carries the same checkpoint as its `GJ`, and its formed evidence certifies
 it. The gate producers ask for such a block. Every current-crossing call
-supplies it. The finalization argument excludes the late case: the vote's
-target epoch is one more than its source epoch.
+supplies it. For a finalizing link to the next epoch, the finalization
+argument excludes the late case: the vote's target epoch is one more than its
+source epoch. For a link of two epochs, the head can be one epoch older than
+the vote's source requires; `process_slots_two_boundaries` then reads the
+source as the head's `GU` when the head epoch is at least `GENESIS_EPOCH + 2`,
+and `epoch_one_finalization_one_step` excludes the epoch-1 case.
 `EarlyEpochBoundaryWitness.epoch_one_boundary_regression` records both boundary
 outcomes and the included certificate for the newer source.
 `EarlyEpochBoundaryWitness.epoch_one_fixture_satisfies_boundary_laws` shows
-that the same reduced functions satisfy the four laws.
+that the same reduced functions satisfy the five laws.
 
 `normalizeAnchorCheckpoint` provides internal lemmas for anchor normalization. `CheckpointReadsAs` supplies the genesis-epoch read relation in the safety bundle. The genesis-stub witness proves that the full bundle can hold for raw genesis state checkpoints. The executable handlers and wire attestations keep their raw values.
 
@@ -328,3 +337,38 @@ when it walks before a checkpoint-sync anchor. The Lean regression starts from
 the literal one-block initial store. The positive Python control includes epoch-F votes in an epoch-F+1 carrier
 and checks that the raw source is F at F+2. None of these tests is a new
 full-bundle witness.
+
+## Epoch-one inclusion
+
+Phase0 and Altair `process_justification_and_finalization` return early when
+the current epoch is `GENESIS_EPOCH + 1` or less. Thus a block of epoch 1 has
+anchor unrealized justification, even when its chain includes a supermajority
+of epoch-1 votes. Only a block of epoch 2 or later can justify epoch 1 through
+unrealized justification.
+
+`EventualCheckpointInclusion.included` therefore asks for an inclusion block
+of epoch `GENESIS_EPOCH + 2` or later when the target epoch is above
+`GENESIS_EPOCH`. `AcceptedBlockFFGState.unrealized_justified_max` has the same
+epoch guard, and `AcceptedBlockFFGState.unrealized_justified_early` makes the
+realized and unrealized selectors equal at those epochs.
+`AcceptedBlockFFGState.realized_justified_max` asks for a seed
+block of an earlier epoch and a block epoch above `GENESIS_EPOCH + 2`, because
+realized justification at a block of epoch E shows only the boundaries before
+E.
+
+`regression.fcr_confirmed_block_reorged_epoch_one` in
+`scripts/conformance/contracts/test_realized_gap.py` shows why the inclusion
+guard is necessary. In the `fork` run, blocks at slots 1 to 15 include the
+epoch-1 votes, and no block on that chain has epoch 2. A block at slot 16 on
+the slot-8 block includes the same votes. The pinned Python FCR confirms the
+slot-15 block at slots 16 to 23. In epoch 3 the slot-16 block has epoch-1
+unrealized justification and the slot-15 block does not. The head moves to
+the slot-16 block, and the slot-15 block is no longer on the canonical chain.
+The old inclusion premise holds in this run, because the slot-15 chain
+includes the epoch-1 votes in epoch 1. The new premise does not hold, because
+no epoch-2 block on that chain includes them. The run is thus outside the
+theorem. The test fails if the Python run stops showing the reorg.
+
+Each non-vacuity witness has its carrier block in epoch 2 for this reason.
+In epochs 0 and 1 the witness PJF keeps the anchor, as the Python early
+return does.

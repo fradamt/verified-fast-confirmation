@@ -253,6 +253,49 @@ def run(repo: Path):
     check("regression.process_slots_checkpoint_epoch_without_balance_guard",
           "EXPECTED FAILURE (not a Lean law): process_slots_checkpoint_epoch without its balance guard fails at one active increment",
           degenerate_cases, unguarded_law, known=True)
+    # Two or more boundaries from a start epoch of GENESIS_EPOCH + 2 or later.
+    registry_cache = {}
+    def registry_guard(d):
+        """Lean antecedent: for every slot s with st.slot < s <= target, the
+        validators and the total active balance of process_slots st s equal
+        those of st, and 3 * EFFECTIVE_BALANCE_INCREMENT < 2 * total."""
+        sp, st, target = d
+        key = (id(st), int(target))
+        if key not in registry_cache:
+            out = st.copy()
+            base = projection(st)["validators"]
+            total = int(sp.get_total_active_balance(st))
+            ok = True
+            for slot in range(int(st.slot) + 1, int(target) + 1):
+                sp.process_slots(out, slot)
+                now = int(sp.get_total_active_balance(out))
+                if (projection(out)["validators"] != base or now != total
+                        or not 3 * int(sp.EFFECTIVE_BALANCE_INCREMENT) < 2 * now):
+                    ok = False
+                    break
+            registry_cache[key] = ok
+        return registry_cache[key]
+    def two_boundary_conclusion(d):
+        return cp(slotted(d).current_justified_checkpoint) == cp(eager(d).current_justified_checkpoint)
+    def two_boundary_law(d):
+        guard = registry_guard(d)
+        return ((not guard) or two_boundary_conclusion(d),
+                {"pre": projection(d[1]), "target": d[2], "post": projection(slotted(d)),
+                 "eager": projection(eager(d)), "guard": guard})
+    two_boundary = [(l, d) for l, d in slot_cases if int(d[1].slot)//8 + 2 <= d[2]//8]
+    check("Phase0BoundarySourceCoherence.process_slots_two_boundaries",
+          "GENESIS_EPOCH + 2 <= start epoch -> start epoch + 2 <= target epoch -> (every s with st.slot < s <= target: "
+          "same validators, same total active balance, 3*INC < 2*total) -> post checkpoint = eager PJF checkpoint",
+          [(l, d) for l, d in two_boundary if int(d[1].slot)//8 >= 2], two_boundary_law)
+    active_two = sum(1 for l, d in two_boundary if int(d[1].slot)//8 >= 2 and registry_guard(d))
+    print(f"NOTE process_slots_two_boundaries: guard true in {active_two} cases", flush=True)
+    # Expected failure: an epoch-1 start. PJF returns early at the end of
+    # epoch 1, so eager PJF keeps the old checkpoint, while the end of epoch 2
+    # justifies epoch 1.
+    check("regression.process_slots_two_boundaries_from_epoch_one",
+          "EXPECTED FAILURE (not a Lean law): the two-boundary equation from a start epoch of GENESIS_EPOCH + 1",
+          [(l, d) for l, d in two_boundary if int(d[1].slot)//8 == 1 and l.startswith(("voted", "phase0"))],
+          two_boundary_law, known=True)
     same_target=[]
     for l,d in slot_cases:
         sp,st,target=d

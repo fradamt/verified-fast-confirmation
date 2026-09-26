@@ -223,19 +223,22 @@ theorem prefix_of_accountable
           · have hroot := hunique (.link hsource link) hchildJustified htarget_child
             rw [hroot]
             exact hfinalized.finalizing_link.target_descends_source
-          · have hchild_lt : hfinalized.child.epoch < target.epoch := by
-              have hsucc_le : finalized.epoch + 1 ≤ target.epoch :=
-                Nat.succ_le_iff.mpr hfinalized_lt
-              have htarget_ne_succ : target.epoch ≠ finalized.epoch + 1 := by
-                intro heq
-                apply htarget_child
-                rw [hfinalized.child_epoch]
-                exact heq
-              have hsucc_lt : finalized.epoch + 1 < target.epoch :=
-                lt_of_le_of_ne hsucc_le htarget_ne_succ.symm
-              simpa [hfinalized.child_epoch] using hsucc_lt
-            exact False.elim
-              ((hnosurround link hfinalized.finalizing_link) ⟨hsource_lt, hchild_lt⟩)
+          · by_cases hmiddle : hfinalized.child.epoch = finalized.epoch + 2 ∧
+                target.epoch = finalized.epoch + 1
+            · -- The skipped epoch of a 2-epoch finalizing link is justified
+              -- on the finalized chain, so the target is that checkpoint.
+              obtain ⟨middle, hmiddleEpoch, hmiddleDesc, hmiddleJustified⟩ :=
+                hfinalized.middle_justified hmiddle.1
+              have hroot := hunique (.link hsource link) hmiddleJustified
+                (hmiddle.2.trans hmiddleEpoch.symm)
+              rw [hroot]
+              exact hmiddleDesc
+            · have hchild_lt : hfinalized.child.epoch < target.epoch := by
+                have key : ∀ f t d : ℕ, f < t → ¬ t = d → ¬ (d = f + 2 ∧ t = f + 1) →
+                    (d = f + 1 ∨ d = f + 2) → d < t := by omega
+                exact key _ _ _ hfinalized_lt htarget_child hmiddle hfinalized.child_epoch
+              exact False.elim
+                ((hnosurround link hfinalized.finalizing_link) ⟨hsource_lt, hchild_lt⟩)
 
 end CertifiedFinalized
 

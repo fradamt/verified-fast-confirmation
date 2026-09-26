@@ -20,9 +20,11 @@ namespace FastConfirmation.Spec.EarlyEpochBoundaryWitness
 
 open AcceptedActualFCRJointNonVacuityBase AcceptedActualFCRJointNonVacuityFFG
 
-/-- The identity names the carrier with the three included epoch-1 votes. -/
+/-- The identity names the carrier with the three included epoch-1 votes.
+The state is at slot 7, in epoch 1, as if those votes were included in an
+epoch-1 block. -/
 def earlyState : BeaconState WitnessRoot :=
-  { carrierState with source_identity := some carrierRoot }
+  { carrierState with slot := 7, source_identity := some carrierRoot }
 
 /-- A reduced PJF interpretation with the Phase0 early return. -/
 def pjf (st : BeaconState WitnessRoot) : BeaconState WitnessRoot :=
@@ -44,10 +46,11 @@ def processSlots (st : BeaconState WitnessRoot) (target : Slot) : BeaconState Wi
 
 /-- The guarded boundary equality holds for this fixture's state functions.
 It includes every start at epoch 2 or later and every single-boundary advance.
-The replacement laws keep only the single-boundary part: for the real
-functions, a later start can also change the source after two boundaries,
-because the second PJF weighs the start-epoch votes with the next epoch's
-active set and balances. -/
+The replacement laws keep the single-boundary part, and the part for two or
+more boundaries only under a static registry and total active balance: for
+the real functions, a later start can also change the source after two
+boundaries when the second PJF weighs the start-epoch votes with other
+effective balances. -/
 theorem guarded_boundary_equality (st : BeaconState WitnessRoot) (target : Slot)
     (hcross : compute_epoch_at_slot witnessConfig st.slot <
       compute_epoch_at_slot witnessConfig target)
@@ -94,7 +97,7 @@ the eager value, targets in one epoch agree, and the epoch-1 source selected
 after two boundaries is not newer than the start epoch. -/
 theorem epoch_one_fixture_satisfies_boundary_laws :
     Phase0BoundarySourceCoherence witnessConfig fixtureExternals := by
-  refine ⟨?_, ?_, ?_, ?_⟩
+  refine ⟨?_, ?_, ?_, ?_, ?_⟩
   · intro st target _ hnext
     simp only [fixtureExternals, processSlots, hnext]
     split_ifs with h1 h2
@@ -124,6 +127,9 @@ theorem epoch_one_fixture_satisfies_boundary_laws :
           (Nat.lt_of_not_le h3).le
       · left
         rfl
+  · intro st target hstart htwo _
+    exact guarded_boundary_equality st target
+      (Nat.lt_of_lt_of_le (Nat.lt_add_of_pos_right (by decide)) htwo) (Or.inl hstart)
 
 end FastConfirmation.Spec.EarlyEpochBoundaryWitness
 

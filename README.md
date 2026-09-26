@@ -43,13 +43,16 @@ That argument is not formalized.
 inclusion for two epochs, so it is outside `EventualCheckpointInclusion`. It shows why
 that premise matters; it is not an FCR safety failure.
 
-`Phase0BoundarySourceCoherence` has four fields. `process_slots_one_boundary` equates
+`Phase0BoundarySourceCoherence` has five fields. `process_slots_one_boundary` equates
 one boundary with eager PJF. `process_slots_same_target_epoch` equates target slots in
 one epoch. `state_transition_process_slots` equates a crossing block transition with
 slot processing. `process_slots_checkpoint_epoch` bounds the output checkpoint if every
 intermediate slot-processed state satisfies `3 * effective_balance_increment < 2 *
 get_total_active_balance`. This guard is exact because an empty vote set can pass the
 two-thirds test at a total balance of at most one and a half increments.
+`process_slots_two_boundaries` equates two or more boundaries from a start epoch of at
+least `GENESIS_EPOCH + 2` with eager PJF, if the registry and the total active balance
+are unchanged and the same guard holds at every intermediate state.
 `ScheduledFCRCallPremises.balance_floor` requires two increments of anchor active
 weight. With `registry_static_in_horizon`, this floor supplies the guard on in-horizon
 reads. The static-registry condition excludes included slashings, deposits, activations,
@@ -86,6 +89,9 @@ off-committee validators.
 │ FFG inclusion        │ `EventualCheckpointInclusion` supplies the checkpoint inclusion premise.                         │
 ├──────────────────────┼──────────────────────────────────────────────────────────────────────────────────────────────────┤
 │ FFG state            │ `ScheduledFFGInterpretation` supplies accepted-block state, links, and checkpoint reads.         │
+├──────────────────────┼──────────────────────────────────────────────────────────────────────────────────────────────────┤
+│ Epoch-1 finality     │ `epoch_one_finalization_one_step`: a finalization of epoch 1 has a link to epoch 2. Runs that    │
+│                      │ finalize epoch 1 through 1 -> 3 are outside the scope. Later 2-epoch links are in scope.         │
 ├──────────────────────┼──────────────────────────────────────────────────────────────────────────────────────────────────┤
 │ Phase0 source        │ `Phase0SourceCoherence` and `Phase0BoundarySourceCoherence` constrain source reads.              │
 ├──────────────────────┼──────────────────────────────────────────────────────────────────────────────────────────────────┤
@@ -130,8 +136,8 @@ external calls with stated contracts. The Lean kernel checks the proofs. The tru
 allows only `propext`, `Classical.choice`, and `Quot.sound`. The [paper
 library](#paper-library) models the [paper](https://arxiv.org/abs/2405.00549) separately.
 There is no refinement theorem from the paper model to the executable model.
-The [contract conformance checks](docs/conformance.md#contract-conformance) cover 156
-premise fields: 31 tested state-function properties (T), 114 execution or interpretation
+The [contract conformance checks](docs/conformance.md#contract-conformance) cover 163
+premise fields: 18 tested state-function properties (T), 134 execution or interpretation
 assumptions (E), and 11 cryptographic or engine idealizations (I). Run `python3
 scripts/conformance/contracts/check_inventory.py --repo
 /path/to/consensus-specs-pending-discount --output /tmp/contract-results.json` with the
@@ -153,7 +159,7 @@ scripts/validate.sh --consensus-repo /path/to/fradamt-consensus-specs
 A warm `lake build` took 24.19 seconds on a 12-core desktop. A fresh build can take longer.
 `scripts/validate.sh --fast --consensus-repo /path/to/fradamt-consensus-specs` checks source
 pinning, document names, boundaries, and hygiene. Full validation also builds the libraries
-and audits 45 public theorems: 38 executable-side and seven paper-side. The Python
+and audits 43 public theorems: 36 executable-side and seven paper-side. The Python
 path must name the pinned local checkout.
 
 ## Premise ledger
@@ -210,11 +216,12 @@ a counterexample and does not assert the safety bundle.
 │ 12 s full safety    │ NextSlotSynchronyPremises.attestation_delivery and deadline_block_relay; delayed receipts.        │
 │ 12 s envelope       │ NextSlotSynchronyPremises.envelope_delivery and data_availability_relay; accepted payload.        │
 │ Byzantine run       │ ByzantineWeightPremises.span_fraction with positive fault weight;                                 │
-│                     │ NextSlotSynchronyPremises.attester_slashing_relay; previous-result guard.                         │
+│                     │ NextSlotSynchronyPremises.attester_slashing_relay.                                                │
 │ Current-target edge │ Selected current-target crossing guard and exact later target vote are derived facts.             │
 │ Counterexamples     │ —                                                                                                 │
 │ Fidelity records    │ FFGInterpretationFidelity body membership, validation state, and external validity check.         │
 │ Non-anchor finality │ not exercised by a named full-bundle run.                                                         │
+│ Previous result     │ not exercised: the previous-result proviso branch is not exercised by a full-bundle witness.      │
 │ Positive discount   │ not exercised: the Gloas empty-slot discount is zero in the envelope run.                         │
 │ PTC events          │ not exercised by a named full-bundle run.                                                         │
 └─────────────────────┴───────────────────────────────────────────────────────────────────────────────────────────────────┘```

@@ -19,8 +19,8 @@ def schedule (w n : ℕ) : List (Event WitnessRoot) :=
     if w = 1 then [.attestation vote0 false]
     else [.block childSignedBlock, .attestation vote0 false]
   else if n = 14 ∧ w = 1 then [.block childSignedBlock]
-  else if n = 84 then
-    [.attestation vote6 false, .block carrierSignedBlock,
+  else if n = 96 then
+    [.attestation vote7 false, .block carrierSignedBlock,
       .attestation vote4 true, .attestation vote5 true,
       .attestation vote6 true]
   else if n = 24 then [.attestation vote1 false]
@@ -28,7 +28,7 @@ def schedule (w n : ℕ) : List (Event WitnessRoot) :=
   else if n = 48 then [.attestation vote3 false]
   else if n = 60 then [.attestation vote4 false]
   else if n = 72 then [.attestation vote5 false]
-  else if n = 96 then [.attestation vote7 false]
+  else if n = 84 then [.attestation vote6 false]
   else if n = 108 then [.attestation vote8 false]
   else if n = 120 then [.attestation vote9 false]
   else if n = 132 then [.attestation vote10 false]
@@ -72,7 +72,7 @@ theorem child_on_block_accepted :
 
 def carrierPrefix : run.ScheduledEventPrefix where
   node := 0
-  previousSecond := 83
+  previousSecond := 95
   processedCount := 1
   count_le := by decide
 

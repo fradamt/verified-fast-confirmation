@@ -90,12 +90,13 @@ python3 scripts/check_review_boundary.py --self-test
 python3 scripts/conformance/contracts/check_inventory.py --repo "$consensus_repo"
 python3 scripts/conformance/concrete/check_source_inventory.py --repo "$consensus_repo"
 if [[ -x "$consensus_repo/.venv/bin/python" ]]; then
+  "$consensus_repo/.venv/bin/python" scripts/conformance/contracts/test_realized_gap.py --repo "$consensus_repo"
   # The differential runner imports the concrete transition module.
   lake build FastConfirmationModel.Spec.BeaconChain.ConcreteTransition
   PYTHONDONTWRITEBYTECODE=1 "$consensus_repo/.venv/bin/python" \
     scripts/conformance/concrete/run_differential.py --consensus-repo "$consensus_repo"
 else
-  echo "concrete differential skipped: pinned pyspec interpreter is absent"
+  echo "realized-gap regression and concrete differential skipped: pinned pyspec interpreter is absent"
 fi
 
 if [[ "$mode" == "full" ]]; then

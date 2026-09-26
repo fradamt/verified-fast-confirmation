@@ -20,12 +20,11 @@ evidence.
 
 The call from second six to seven reads the equivocation. It lowers the
 child's safety threshold from 2760 to 2560 and confirms the child. The call
-from second eight to nine is in a non-start slot of epoch two. It selects the
-epoch-one carrier from the child, so the selected previous-result proviso has
-a true antecedent. `target_votes_support` proves exact target support in
-this run; the bundle now uses only descendant support for a previous result.
-The accepted FFG interpretation and
-positive Paper A3.2 support use the three votes in the slot-seven carrier.
+from second nine to ten confirms the epoch-two carrier in its own epoch. No
+call selects a block of an earlier epoch, so the selected previous-result
+proviso branch is not exercised by this run. `target_votes_support` proves
+exact target support in this run. The accepted FFG interpretation and
+positive Paper A3.2 support use the three votes in the slot-eight carrier.
 
 The public non-vacuity, full-bundle, and safety theorems are at the end.
 -/
@@ -143,7 +142,7 @@ structure LateStoreFacts (w : ValidatorIndex) (m : ℕ) : Prop where
       childRoot = 1
   carrier_epoch : get_block_epoch witnessConfig
     (witnessExecution.store witnessConfig witnessExternals w m)
-      carrierRoot = 1
+      carrierRoot = 2
   carrier_descends_anchor : is_ancestor
     (witnessExecution.store witnessConfig witnessExternals w m)
       (get_node_for_root carrierRoot) (get_node_for_root anchorRoot) = true
@@ -387,12 +386,12 @@ private theorem witnessPaperA32Inclusion :
       have hlate := lateStoreFacts w m hHm h8slot
       rcases acceptedBlockAt_cases hb with h | h | h
       · rcases h with ⟨rfl, rfl⟩
-        refine ⟨carrierRoot, hlate.carrier_known, hlate.anchor_known,
-          hlate.carrier_descends_anchor, ?_, ?_⟩
-        · rw [hlate.carrier_epoch]
+        refine ⟨anchorRoot, hlate.anchor_known, hlate.anchor_known,
+          is_ancestor_refl _ _, ?_, Or.inl (Nat.zero_le _), ?_⟩
+        · rw [hlate.anchor_epoch]
           decide
         · simpa only [AcceptedBlockFFGState.checkpoint_inclusion_view,
-            witnessC_anchor_zero] using witnessAU_carrier_anchor
+            witnessC_anchor_zero] using witnessAU_anchor_anchor
       · rcases h with ⟨rfl, rfl⟩
         norm_num [childSignedBlock, witnessConfig, compute_epoch_at_slot] at hbe
       · rcases h with ⟨rfl, rfl⟩
@@ -415,26 +414,16 @@ private theorem witnessPaperA32Inclusion :
               (by decide : 8 ≤ 12).trans h12slot
             have hlate := lateStoreFacts w m hHm h8slot
             refine ⟨carrierRoot, hlate.carrier_known, hlate.child_known,
-              hlate.carrier_descends_child, ?_, ?_⟩
+              hlate.carrier_descends_child, ?_, Or.inr ?_, ?_⟩
+            · rw [hlate.carrier_epoch]
+              decide
             · rw [hlate.carrier_epoch]
               decide
             · simpa only [AcceptedBlockFFGState.checkpoint_inclusion_view,
                 witnessC_child_one] using witnessAU_carrier_child
           · rcases h with ⟨rfl, rfl⟩
-            have h12slot : 12 ≤
-                witnessExecution.slot_at witnessConfig m := by
-              simpa [compute_start_slot_at_epoch, witnessConfig] using
-                hboundary
-            have h8slot : 8 ≤
-                witnessExecution.slot_at witnessConfig m :=
-              (by decide : 8 ≤ 12).trans h12slot
-            have hlate := lateStoreFacts w m hHm h8slot
-            refine ⟨carrierRoot, hlate.carrier_known, hlate.carrier_known,
-              hlate.carrier_descends_self, ?_, ?_⟩
-            · rw [hlate.carrier_epoch]
-              decide
-            · simpa only [AcceptedBlockFFGState.checkpoint_inclusion_view,
-                witnessC_carrier_one] using witnessAU_carrier_child
+            norm_num [carrierSignedBlock, witnessConfig,
+              compute_epoch_at_slot] at hbe
       | succ e =>
           have hmlt := time_lt_sixteen hHm
           rw [slot_at_eq] at hboundary
@@ -533,6 +522,8 @@ theorem witnessPaperA32_child_one_conclusion :
           get_block_epoch witnessConfig
               (witnessExecution.store witnessConfig witnessExternals w m) b' <
             3 ∧
+          (1 ≤ GENESIS_EPOCH ∨ GENESIS_EPOCH + 1 < get_block_epoch witnessConfig
+              (witnessExecution.store witnessConfig witnessExternals w m) b') ∧
           witnessAcceptedChainFFGState.AvailableCheckpoint witnessConfig witnessExternals b'
             (witnessAcceptedChainFFGState.checkpoint_at_epoch childRoot 1) := by
   exact witnessPaperA32Inclusion.included child_acceptedBlockAt
@@ -663,47 +654,6 @@ theorem equivocation_read_at_call :
     decide
   · decide
 
-/-! ## Selected previous-result proviso -/
-
-/-- The variable-updated FCR store of the call from second eight to nine. -/
-def previousResultFcr : FastConfirmationStore WitnessRoot :=
-  witnessExecution.fcrStoreAtCall witnessConfig witnessExternals 0 8
-
-/-- In the non-start slot nine of epoch two, the call selects the epoch-one
-carrier from the epoch-one child. This is the antecedent of
-`SelectedPredictionVoteSupport.previous_result_vote_support`, and its
-consequent also holds. The call reads the equivocation of validator 4. -/
-theorem previous_result_proviso_exercised :
-    witnessExecution.IsScheduledFCRCallAt witnessConfig witnessExternals 0 8 ∧
-    witnessExecution.WithinHorizon witnessConfig 9 ∧
-    0 ∈ witnessExecution.honest ∧
-    getLatestSelectorGuard witnessConfig previousResultFcr
-      (witnessExecution.getLatestConfirmedTraceAt witnessConfig
-        witnessExternals 0 8).afterObserved ∧
-    (witnessExecution.getLatestConfirmedTraceAt witnessConfig
-        witnessExternals 0 8).afterObserved = childRoot ∧
-    find_latest_confirmed_descendant witnessConfig witnessExternals previousResultFcr
-      childRoot = carrierRoot ∧
-    carrierRoot ≠ childRoot ∧
-    get_block_epoch witnessConfig previousResultFcr.store carrierRoot ≠
-      get_current_store_epoch witnessConfig previousResultFcr.store ∧
-    is_start_slot_at_epoch witnessConfig
-      (get_current_slot witnessConfig previousResultFcr.store) ≠ true ∧
-    byzantineIndex ∈ previousResultFcr.store.equivocating_indices ∧
-    HonestVotesSupportTarget witnessConfig witnessExecution
-      (get_current_target witnessConfig previousResultFcr.store) 9 := by
-  refine ⟨?_, time_within_of_lt_sixteen (by decide), by decide, ?_, ?_, ?_,
-    by decide, ?_, ?_, ?_,
-    target_votes_support (by decide) (time_within_of_lt_sixteen (by decide))⟩
-  · change get_current_slot witnessConfig
-        (witnessExecution.store witnessConfig witnessExternals 0 9) >
-      get_current_slot witnessConfig
-        (witnessExecution.store witnessConfig witnessExternals 0 8)
-    decide
-  · unfold getLatestSelectorGuard
-    decide
-  all_goals decide
-
 /-! ## Full bundle and safety -/
 
 /-- Full next-slot safety premises with Byzantine weight and a relayed
@@ -716,8 +666,8 @@ theorem full_bundle_witness :
     witnessExecution.confirmed witnessConfig witnessExternals 0 6 = anchorRoot ∧
     witnessExecution.confirmed witnessConfig witnessExternals 0 7 = childRoot ∧
     childRoot ≠ anchorRoot ∧
-    witnessExecution.confirmed witnessConfig witnessExternals 0 8 = childRoot ∧
-    witnessExecution.confirmed witnessConfig witnessExternals 0 9 = carrierRoot := by
+    witnessExecution.confirmed witnessConfig witnessExternals 0 9 = childRoot ∧
+    witnessExecution.confirmed witnessConfig witnessExternals 0 10 = carrierRoot := by
   refine ⟨⟨witnessAcceptedActualFCRNextSlotSafetyAssumptions⟩, rfl,
     byzantine_not_honest, by decide, ?_,
     actual_fcr_transition_strict_advance, by decide, ?_, ?_⟩
@@ -737,33 +687,22 @@ theorem changed_root_safe_from_next_slot (w m : ℕ)
     0 (by decide) 7 w hw m (by omega) hnext hH
   simpa only [actual_fcr_transition_strict_advance] using h.2
 
-/-- Apply the public safety theorem to the carrier output at second nine. -/
+/-- Apply the public safety theorem to the carrier output at second ten. -/
 theorem carrier_safe_from_next_slot (w m : ℕ)
-    (hw : w ∈ witnessExecution.honest) (hm : 10 ≤ m)
+    (hw : w ∈ witnessExecution.honest) (hm : 11 ≤ m)
     (hH : witnessExecution.WithinHorizon witnessConfig m) :
     is_ancestor (witnessExecution.store witnessConfig witnessExternals w m)
       (get_head witnessConfig (witnessExecution.store witnessConfig witnessExternals w m))
       (get_node_for_root carrierRoot) = true := by
-  have hnext : witnessExecution.slot_at witnessConfig 9 + 1 ≤
+  have hnext : witnessExecution.slot_at witnessConfig 10 + 1 ≤
       witnessExecution.slot_at witnessConfig m := by simpa only [slot_at_eq] using hm
   have hcarrier :
-      witnessExecution.confirmed witnessConfig witnessExternals 0 9 = carrierRoot :=
+      witnessExecution.confirmed witnessConfig witnessExternals 0 10 = carrierRoot :=
     full_bundle_witness.2.2.2.2.2.2.2.2
   have h := confirmed_root_safe_from_next_slot witnessConfig witnessExternals
     witnessExecution witnessAcceptedActualFCRNextSlotSafetyAssumptions
-    0 (by decide) 9 w hw m (by omega) hnext hH
+    0 (by decide) 10 w hw m (by omega) hnext hH
   simpa only [hcarrier] using h.2
-
-/-- The exercised previous-result call has descendant support for every
-later honest epoch-two vote. The exact target witness remains available. -/
-theorem previous_result_descendant_support_exercised :
-    HonestVotesTargetDescendFrom witnessConfig witnessExecution carrierRoot
-      (get_current_store_epoch witnessConfig previousResultFcr.store) 9 := by
-  have hp := witnessSelectedHelperProvisos (v := 0) (n := 8)
-    (by decide) (time_within_of_lt_sixteen (by decide))
-    (by unfold getLatestSelectorGuard; decide)
-  exact hp.previous_result_vote_support carrierRoot
-    (by decide) (by decide) (by decide) (by decide)
 
 end ByzantinePremiseWitness
 end FastConfirmation.Spec
