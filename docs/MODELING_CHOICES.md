@@ -157,10 +157,10 @@ The current-target condition is derived here, not assumed. As in paper Lemmas
 descendant targets for a previous-epoch result; its exact-target reading is too
 strong, as the execution below shows.
 
-`Execution.confirmed_safety_and_lineage_of_acceptedActualFCRFold` proves safety
-and history together. Each call uses the preceding lineage. Within the strict
-result proof, the endpoint-slot induction supplies canonicity at all earlier
-honest votes. `Execution.currentResult_supportBefore_of_endpoint_induction`
+The joint call induction in `Execution.confirmed_safety_and_lineage_of_acceptedActualFCRFold`
+proves safety and history together from the preceding call's lineage. Within
+each strict-result proof, the endpoint-slot induction supplies canonicity at
+all earlier honest votes. `Execution.currentResult_supportBefore_of_endpoint_induction`
 and `Execution.previousResult_descendSupportBefore_of_canonical` give the
 required support. The two endpoint pinning lemmas use included certificates
 and committee assignment uniqueness to select a vote before the endpoint.
