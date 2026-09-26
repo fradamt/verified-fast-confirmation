@@ -98,6 +98,10 @@ off-committee validators.
 │ Committee            │ `on_attestation_committee` covers successful delivered attestations. Slashing evidence can be    │
 │                      │ off-committee.                                                                                   │
 ├──────────────────────┼──────────────────────────────────────────────────────────────────────────────────────────────────┤
+│ Committee model      │ Idealization. `committees_agree` and `on_attestation_committee` use one fixed ground-truth       │
+│                      │ assignment `E.committee`. RANDAO-seeded, fork-dependent committees of the real protocol are not  │
+│                      │ modeled.                                                                                         │
+├──────────────────────┼──────────────────────────────────────────────────────────────────────────────────────────────────┤
 │ Payload validity     │ `BeaconExternalsPremises` and the external contract govern imported payloads.                    │
 ├──────────────────────┼──────────────────────────────────────────────────────────────────────────────────────────────────┤
 └──────────────────────┴──────────────────────────────────────────────────────────────────────────────────────────────────┘
@@ -136,14 +140,15 @@ external calls with stated contracts. The Lean kernel checks the proofs. The tru
 allows only `propext`, `Classical.choice`, and `Quot.sound`. The [paper
 library](#paper-library) models the [paper](https://arxiv.org/abs/2405.00549) separately.
 There is no refinement theorem from the paper model to the executable model.
-The [contract conformance checks](docs/conformance.md#contract-conformance) cover 163
-premise fields: 18 tested state-function properties (T), 134 execution or interpretation
-assumptions (E), and 11 cryptographic or engine idealizations (I). Run `python3
+The [contract conformance checks](docs/conformance.md#contract-conformance) cover 165
+premise fields: 19 tested state-function properties (T), 133 execution or interpretation
+assumptions (E), and 13 cryptographic, engine, or committee idealizations (I). Run `python3
 scripts/conformance/contracts/check_inventory.py --repo
 /path/to/consensus-specs-pending-discount --output /tmp/contract-results.json` with the
-pinned checkout's interpreter. Two labelled expected failures record why the balance
-guard is necessary and why an older raw checkpoint-sync state is outside
-`anchor_state_checkpoints`. These findings do not stop validation.
+pinned checkout's interpreter. Three labelled expected failures show why the balance
+guard is necessary, why the two-boundary law starts in epoch 2, and why an older
+raw checkpoint-sync state is outside `anchor_state_checkpoints`. These findings
+do not stop validation.
 
 ## Verify
 
@@ -239,7 +244,7 @@ coverage limits, not claims about unreachable protocol states.
 
 ## Scope limits
 
-- `BeaconExternalsPremises.registry_static_in_horizon` fixes keyed states in honest in-horizon stores and their slot-processed reads to the anchor registry. Runs with included slashings, deposits, activations, exits, or effective-balance changes in the horizon are outside this condition.
+- `BeaconExternalsPremises.registry_static_in_horizon` fixes keyed states in honest in-horizon stores and their slot-processed reads to the anchor registry. Runs with included slashings, deposits, activations, exits, or effective-balance changes in the horizon are outside this condition. The pending-deposit case is a contract probe: epoch processing appends a validator and changes indexed validity.
 - The model imports only validated payloads. An imported payload enters the store only after `verify_execution_payload_envelope` returns true. This external includes the execution engine's `VALID` decision. Execution validation itself is opaque.
 - `BeaconExternalsPremises` supplies contracts for external state transitions and validation. `on_attestation_committee` constrains successful delivered attestations. Indexed attester-slashing evidence can have off-committee signers; its handler only updates the equivocating set. The Lean proof does not implement an execution engine.
 - `AcceptedBlockAttestationInclusion.Included` is a supplied carrier-vote relation. Its safety evidence gives an accepted carrier block, a received block copy of the vote, slot and target-epoch facts, and committee membership.

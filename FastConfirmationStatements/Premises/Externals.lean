@@ -23,7 +23,7 @@ def RegistryStateInHorizon (E : Execution Root) (state : BeaconState Root) : Pro
 /-- Contracts for the abstract `BeaconFunctionInterface` and the execution.
 The three indexed-attestation laws apply only to keyed states in honest,
 in-horizon causal stores. Default-state rejection and validity preservation
-under Phase0 slot processing are separate contracts. The other fields state
+under slot processing are separate contracts. The other fields state
 slot behavior and committee agreement; this record is not a proof
 that the external interpretation refines the full beacon-chain functions. -/
 structure BeaconExternalsPremises (E : Execution Root) : Prop where
@@ -65,7 +65,10 @@ structure BeaconExternalsPremises (E : Execution Root) : Prop where
       compute_epoch_at_slot cfg st.slot
   /-- the store-computed slot committees agree with the ground-truth
       assignment on every honest store (the spec's committee-consistency
-      window, idealized to the verified execution prefix). -/
+      window, idealized to the verified execution prefix). This is an
+      idealization: committees are modeled as one fixed ground-truth
+      assignment, and the RANDAO-seeded, fork-dependent committees of the
+      real protocol are not modeled. -/
   committees_agree : ∀ v ∈ E.honest, ∀ n (s : Slot),
     E.WithinHorizon cfg n → E.SlotWithinHorizon cfg s →
     get_slot_committee cfg ext (E.store cfg ext v n) s = E.committee s
@@ -91,9 +94,11 @@ structure BeaconExternalsPremises (E : Execution Root) : Prop where
   /-- Committee confinement only for a successful `on_attestation` delivery
       in an honest in-horizon causal prefix. Python obtains these indices from
       committee bits before this handler. The Lean wire object is already
-      indexed, so this is an execution premise. Attester-slashing evidence is
-      checked by the same indexed Boolean but does not enter this handler and
-      need not have committee indices. -/
+      indexed, so this premise supplies the committee. It uses the fixed
+      ground-truth assignment `E.committee`; the RANDAO-seeded,
+      fork-dependent committees of the real protocol are not modeled.
+      Attester-slashing evidence is checked by the same indexed Boolean but
+      does not enter this handler and need not have committee indices. -/
   on_attestation_committee : ∀ (store store' : Store Root) (a : Attestation Root)
       (is_from_block : Bool),
     E.HonestPrefixStoreWithinHorizon cfg ext store' →
@@ -129,15 +134,22 @@ structure BeaconExternalsPremises (E : Execution Root) : Prop where
       outside a state map's keyed domain. -/
   valid_attestation_default : ∀ a : Attestation Root,
     ext.is_valid_indexed_attestation (default : BeaconState Root) a = false
-  /-- Successful Phase0 empty-slot processing preserves validator public keys
-      and the fork/genesis inputs of the signing domain. The attestation fixes
-      the target epoch. On a reachable base state the abstract primitive must
-      preserve indexed validity; this contract covers the prepared checkpoint
-      state before a handler commits it. It is an explicit contract of the
-      total abstraction, not a theorem about Python exceptions. -/
+  /-- Successful empty-slot processing to an in-horizon slot preserves
+      indexed validity when it keeps the validator registry. Slot processing
+      does not change validator public keys or the fork and genesis inputs of
+      the signing domain, and the attestation fixes the target epoch. The
+      registry hypothesis is where `registry_static_in_horizon` enters: the
+      reachable base state and its in-horizon slot-processed state are both
+      `RegistryStateInHorizon` states. Epoch processing that applies a pending
+      deposit appends a validator and can make an invalid attestation valid;
+      such a run is outside `registry_static_in_horizon`. This contract covers
+      the prepared checkpoint state before a handler commits it. It is an
+      explicit contract of the total abstraction, not a theorem about Python
+      exceptions. -/
   process_slots_attestation_valid : ∀ (state : BeaconState Root) (slot : Slot)
       (a : Attestation Root), E.ReachableValidationState cfg ext state →
-    state.slot < slot →
+    state.slot < slot → E.SlotWithinHorizon cfg slot →
+    (ext.process_slots state slot).validators = state.validators →
     ext.is_valid_indexed_attestation (ext.process_slots state slot) a =
       ext.is_valid_indexed_attestation state a
   /-- Execution-envelope validation depends on the state and signed envelope,

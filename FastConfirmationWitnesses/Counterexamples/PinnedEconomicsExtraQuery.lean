@@ -727,7 +727,7 @@ private theorem witnessExternalsCoherence :
   · intro a
     have hdefault : (default : BeaconState WitnessRoot).validators = [] := rfl
     simp [witnessExternals, hdefault]
-  · intro state slot a _hreachable _hlt
+  · intro state slot a _hreachable _hlt _hslotH _hreg
     rfl
   · intro state signed o o'
     rfl

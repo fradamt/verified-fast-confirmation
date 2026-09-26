@@ -30,7 +30,10 @@ The [contract inventory](../scripts/conformance/contracts/inventory.toml) lists 
 direct field in the premise structures. T means a generated-state property
 of the pinned Python functions. E means an execution, network, or supplied
 FFG interpretation assumption. I means a cryptographic or engine
-idealization. The inventory has 165 active fields: T 19, E 135, and I 11. Thirteen selector, checkpoint, and anchor fields were moved from T to E because their old probes did not test the supplied execution interpretation. The inventory checker fails when a Lean field has no entry.
+idealization, including fixed committees. The inventory has 165 active fields: T 19, E 133,
+and I 13. Thirteen selector, checkpoint, and anchor fields were moved from T to E
+because their old probes did not test the supplied execution interpretation. The
+inventory checker fails when a Lean field has no entry.
 
 The deterministic tests use the Gloas minimal preset and Phase0 for the
 Phase0 source laws. They cover slots and epoch boundaries, included votes,
@@ -39,7 +42,7 @@ proposer slashings. The test helpers disable BLS checks. The tests do not
 establish BLS unforgeability, hash collision resistance, execution-engine
 validity, KZG availability, network delivery, or a refinement theorem. A
 Python exception is recorded as a failed total Boolean law. Known false laws
-remain in the result JSON with a counterexample. New failures stop validation. regression.process_slots_checkpoint_epoch_without_balance_guard shows that one active increment can make an empty vote set pass the two-thirds test. regression.anchor_state_checkpoints_raw_checkpoint_sync shows that a later raw anchor with older state checkpoints fails the named anchor condition. Both are labelled expected failures. The tests record them as known findings.
+remain in the result JSON with a counterexample. New failures stop validation. regression.process_slots_checkpoint_epoch_without_balance_guard shows that one active increment can make an empty vote set pass the two-thirds test. regression.process_slots_two_boundaries_from_epoch_one shows why the two-boundary law starts in epoch 2. regression.anchor_state_checkpoints_raw_checkpoint_sync shows that a later raw anchor with older state checkpoints fails the named anchor condition. All three are labelled expected failures. The tests record them as known findings.
 
 Run the checker with an existing interpreter in the pinned checkout:
 

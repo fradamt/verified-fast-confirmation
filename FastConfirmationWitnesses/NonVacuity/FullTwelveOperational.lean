@@ -578,7 +578,7 @@ theorem extCoherence :
   · exact witnessExternalsCoherence.committee_members_active
 
   · exact witnessExternalsCoherence.valid_attestation_default
-  · intro state slot a _hreachable _hlt
+  · intro state slot a _hreachable _hlt _hslotH _hreg
     change decide ((witnessExternals.process_slots state slot).validators ≠ [] ∧
       a ∈ groundVotes) = decide (state.validators ≠ [] ∧ a ∈ groundVotes)
     rw [witnessProcessSlots_registry]
