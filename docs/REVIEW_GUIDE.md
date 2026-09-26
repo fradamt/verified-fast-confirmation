@@ -73,11 +73,14 @@ to a source or client interpretation.
 │ get_beacon_committee                   │ BeaconExternalsPremises.committees_agree, committee_assignment_unique, committee_coverage, and       │
 │                                        │ committee_members_active constrain the union read. Ordered source queries have no separate contract. │
 │ get_committee_count_per_slot           │ committees_agree constrains the derived slot union. No independent count contract is stated.         │
-│ process_slots                          │ process_slots_slot, process_slots_registry, and process_slots_attestation_valid; Phase0 source       │
-│                                        │ coherence and inclusion validation-state origin constrain its checkpoint reads.                      │
-│ state_transition                       │ state_transition_slot, registry, pre_slot_lt, and checkpoint_epoch; Phase0 source coherence, FFG     │
-│                                        │ transition laws, and ImportedBlockFinalizationLag constrain used state outputs.                      │
-│ process_justification_and_finalization │ pjf_checkpoint_epoch and FFG genesis/transition laws constrain used checkpoint outputs.              │
+│ process_slots                          │ BeaconExternalsPremises.process_slots_slot, process_slots_registry, and                              │
+│                                        │ process_slots_attestation_valid constrain used outputs. Both Phase0 source-coherence records         │
+│                                        │ constrain justification. FFGInterpretationFidelity constrains target-state origin outside safety.    │
+│ state_transition                       │ BeaconExternalsPremises.state_transition_slot, registry, pre_slot_lt, and checkpoint_epoch           │
+│                                        │ constrain imports. Both Phase0 source records, FFG state transitions, and                            │
+│                                        │ ImportedBlockFinalizationLag constrain used state outputs.                                           │
+│ process_justification_and_finalization │ BeaconExternalsPremises.pjf_checkpoint_epoch and FFG state genesis/transition laws constrain         │
+│                                        │ checkpoint outputs. Both Phase0 boundary-source equations constrain justification.                   │
 │ is_valid_indexed_attestation           │ honest_attestation_valid, valid_attestation_honest, valid_attestation_committee,                     │
 │                                        │ valid_attestation_default, and process_slots_attestation_valid constrain accepted checks.            │
 │ AnchorCommitsToState                   │ ScheduledExecutionPremises.genesis supplies the initial anchor relation. No hash theorem is proved.  │
