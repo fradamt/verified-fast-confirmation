@@ -196,6 +196,83 @@ theorem justification_soundness {S : FFGSetup Root} (hS : S.Admissible)
   let hinv := provenanceInvariant_of_reachable hS h hH
   ⟨hinv.current_justified, hinv.previous_justified, hinv.finalized_justified⟩
 
+/-- **Eager justification soundness.** The single eager PJF call that fork
+choice applies to a copy of an in-horizon reachable state returns justified
+and finalized checkpoints that are justified from the genesis stub by
+supermajority links of included, target-matching body votes. -/
+theorem eager_justification_soundness {S : FFGSetup Root} (hS : S.Admissible)
+    {blocks : List (FFGWireBlock Root)} {votes : List (IncludedVote Root)}
+    {state eager : FFGBeaconState Root} (h : Reachable S blocks votes state)
+    (hH : compute_epoch_at_slot S.cfg state.slot ≤ S.scope.last_epoch)
+    (hpjf : process_justification_and_finalization S.cfg S.preset state = .ok eager) :
+    Justified S votes eager.current_justified_checkpoint ∧
+    Justified S votes eager.previous_justified_checkpoint ∧
+    Justified S votes eager.finalized_checkpoint := by
+  have hinv := provenanceInvariant_of_reachable hS h hH
+  obtain ⟨bits, pj, j, f, rfl, hout⟩ := process_justification_and_finalization_outcome hpjf
+  have hread : ∀ epoch root, get_block_root S.cfg S.preset state epoch = .ok root →
+      root = chainRootAt S.genesisRoot blocks (compute_start_slot_at_epoch S.cfg epoch) :=
+    (reachable_history hS h hH).2.2.2
+  rcases hout with ⟨-, rfl, rfl, rfl⟩ | ⟨hE, rfl, hj, hf⟩
+  · exact ⟨hinv.current_justified, hinv.previous_justified, hinv.finalized_justified⟩
+  · refine ⟨?_, hinv.current_justified, ?_⟩
+    · change Justified S votes j
+      rcases hj with rfl | ⟨set, hset, hth, hje, hroot⟩ | ⟨set, hset, hth, hje, hroot⟩
+      · exact hinv.current_justified
+      · exact justified_of_participation_test (epoch := j.epoch) (root := j.root) hS hinv hH hE
+          rfl rfl rfl rfl (Or.inr (by beacon_omega)) (by rw [hje]; exact hset) hth
+          (hread _ _ hroot)
+      · exact justified_of_participation_test (epoch := j.epoch) (root := j.root) hS hinv hH hE
+          rfl rfl rfl rfl (Or.inl hje) (by rw [hje]; exact hset) hth (hread _ _ hroot)
+    · change Justified S votes f
+      rcases hf with rfl | rfl | rfl
+      · exact hinv.finalized_justified
+      · exact hinv.previous_justified
+      · exact hinv.current_justified
+
+/-! ### All body votes -/
+
+theorem attestationVotes_map_vote {S : FFGSetup Root} {block : FFGWireBlock Root}
+    {parentSlot : Slot} :
+    ∀ (attestations : List (FFGWireAttestation Root)) (state next : FFGBeaconState Root),
+      attestations.foldlM (fun s vote =>
+        process_attestation S.cfg S.preset S.schedule s vote parentSlot) state = .ok next →
+      (attestationVotes S block parentSlot state attestations).map IncludedVote.vote =
+        attestations
+  | [], _, _, _ => rfl
+  | vote :: attestations, state, next, h => by
+    simp only [List.foldlM_cons, except_bind_eq_ok] at h
+    obtain ⟨mid, hmid, hrest⟩ := h
+    simp only [attestationVotes, hmid, List.map_cons]
+    rw [attestationVotes_map_vote attestations mid next hrest]
+
+/-- **All-body relation.** Every attestation in the body of an accepted block
+of the run is recorded as an included body vote, whether or not it counts for
+justification. This is the block-local relation that slashing-evidence views
+need; `TargetIncluded` is its certificate filter. -/
+theorem body_votes_complete {S : FFGSetup Root} {blocks : List (FFGWireBlock Root)}
+    {votes : List (IncludedVote Root)} {state : FFGBeaconState Root}
+    (h : Reachable S blocks votes state) :
+    ∀ b ∈ blocks, ∀ vote ∈ b.attestations, ∃ r ∈ votes, r.block = b ∧ r.vote = vote := by
+  induction h with
+  | genesis => simp
+  | slots _ _ ih => exact ih
+  | block blk hreach htrans ih =>
+    intro b hb vote hvote
+    rcases List.mem_append.mp hb with hb | hb
+    · obtain ⟨r, hr, h1, h2⟩ := ih b hb vote hvote
+      exact ⟨r, List.mem_append_left _ hr, h1, h2⟩
+    · rw [List.mem_singleton.mp hb] at hvote ⊢
+      obtain ⟨atSlot, hslots, hblock, -⟩ := state_transition_eq_ok htrans
+      obtain ⟨paid, headed, hpaid, hheaded, hfold⟩ := process_block_eq_ok hblock
+      have hmap := attestationVotes_map_vote (block := blk) _ _ _ hfold
+      rw [← hmap] at hvote
+      obtain ⟨r, hr, rfl⟩ := List.mem_map.mp hvote
+      refine ⟨r, List.mem_append_right _ ?_, ?_, rfl⟩
+      · rw [blockVotes_eq hslots hpaid hheaded]
+        exact hr
+      · exact (mem_attestationVotes _ _ r hr).1
+
 /-- The signer weight of a link is positive, so its signer set is nonempty. -/
 theorem SupermajorityLink.signers_nonempty {S : FFGSetup Root} (hS : S.Admissible)
     {votes : List (IncludedVote Root)} {source target : Checkpoint Root}

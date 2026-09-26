@@ -483,6 +483,84 @@ theorem supermajority_of_threshold {inc total weight : ℕ} (hinc : 0 < inc)
 
 /-! ### Justification by one PJF pass -/
 
+/-- A passing PJF two-thirds test on a state `t` with the participation,
+registry and slot of an invariant state justifies the checkpoint that PJF
+reads, by a supermajority link from the invariant state's justified checkpoint
+of the tested epoch. -/
+theorem justified_of_participation_test {S : FFGSetup Root} (hS : S.Admissible)
+    {blocks : List (FFGWireBlock Root)} {votes : List (IncludedVote Root)}
+    {state t : FFGBeaconState Root} (hinv : ProvenanceInvariant S blocks votes state)
+    (hH : compute_epoch_at_slot S.cfg state.slot ≤ S.scope.last_epoch)
+    (hE2 : 2 ≤ compute_epoch_at_slot S.cfg state.slot)
+    (hslot : t.slot = state.slot) (hval : t.validators = state.validators)
+    (hcur : t.current_epoch_participation = state.current_epoch_participation)
+    (hprev : t.previous_epoch_participation = state.previous_epoch_participation)
+    {epoch : Epoch} {set : Finset ValidatorIndex} {root : Root}
+    (hepoch : epoch = compute_epoch_at_slot S.cfg state.slot ∨
+      epoch + 1 = compute_epoch_at_slot S.cfg state.slot)
+    (hset : get_unslashed_participating_indices S.cfg t 1 epoch = .ok set)
+    (hth : ConcreteFFG.get_total_active_balance S.cfg t * 2 ≤
+      ConcreteFFG.get_total_balance S.cfg t set * 3)
+    (hchain : root = chainRootAt S.genesisRoot blocks (compute_start_slot_at_epoch S.cfg epoch)) :
+    Justified S votes ⟨epoch, root⟩ := by
+  set E := compute_epoch_at_slot S.cfg state.slot with hEdef
+  have hscope : t.validators = S.scope.validators := hval.trans hinv.validators_eq
+  have hmem : ∀ i, i ∈ set → i < S.scope.validators.length ∧
+      is_active_validator (S.scope.validators.getD i default) epoch = true ∧
+      has_flag ((if epoch = E then state.current_epoch_participation
+        else state.previous_epoch_participation).getD i 0) 1 = true ∧
+      (S.scope.validators.getD i default).slashed = false := by
+    intro i hi
+    have := (get_unslashed_participating_indices_mem hset i).mp hi
+    rw [hslot, hcur, hprev, hscope] at this
+    exact this
+  -- The source checkpoint of the tested epoch.
+  let source := if epoch = E then state.current_justified_checkpoint
+    else state.previous_justified_checkpoint
+  have hsource : Justified S votes source := by
+    by_cases h : epoch = E
+    · simp only [source, if_pos h]; exact hinv.current_justified
+    · simp only [source, if_neg h]; exact hinv.previous_justified
+  refine .link hsource
+    { signers := set
+      source_before_target := ?_
+      signer_vote := ?_
+      signer_active := fun i hi => ⟨(hmem i hi).1, (hmem i hi).2.1⟩
+      signer_unslashed := fun i hi => (hmem i hi).2.2.2
+      supermajority := ?_ }
+  · have h1 := hinv.current_epoch_le
+    have h2 := hinv.previous_epoch_le
+    by_cases h : epoch = E
+    · simp only [source, if_pos h]
+      change state.current_justified_checkpoint.epoch < epoch
+      beacon_omega
+    · simp only [source, if_neg h]
+      change state.previous_justified_checkpoint.epoch < epoch
+      rcases hepoch with h' | h'
+      · exact absurd h' h
+      · beacon_omega
+  · intro i hi
+    have hflag := (hmem i hi).2.2.1
+    by_cases h : epoch = E
+    · rw [if_pos h] at hflag
+      obtain ⟨r, hr, hri, hre⟩ := (hinv.current_flags i).mp hflag
+      have hre' : r.vote.data.target.epoch = epoch := by rw [hre]; exact h.symm
+      refine ⟨r, hr, hri, ?_, checkpoint_eq_of hre' ?_⟩
+      · simp only [source, if_pos h]; exact hinv.current_sources r hr hre
+      · exact ((hinv.target_on_chain r hr).2.trans (by rw [hre'])).trans hchain.symm
+    · rw [if_neg h] at hflag
+      obtain ⟨r, hr, hri, hre⟩ := (hinv.previous_flags i).mp hflag
+      have hre' : r.vote.data.target.epoch = epoch := by
+        rcases hepoch with h' | h'
+        · exact absurd h' h
+        · beacon_omega
+      refine ⟨r, hr, hri, ?_, checkpoint_eq_of hre' ?_⟩
+      · simp only [source, if_neg h]; exact hinv.previous_sources r hr hre
+      · exact ((hinv.target_on_chain r hr).2.trans (by rw [hre'])).trans hchain.symm
+  · rw [total_active_balance_eq hS hscope (by rw [hslot]; exact hH),
+      total_balance_eq hscope set] at hth
+    exact supermajority_of_threshold S.cfg.effective_balance_increment_pos hS.balance_floor hth
+
 /-- A PJF two-thirds test at the end of an epoch justifies the checkpoint that
 PJF reads, by a supermajority link from the state's justified checkpoint of
 the target epoch. -/
@@ -502,6 +580,7 @@ theorem justified_of_epoch_test {S : FFGSetup Root} (hS : S.Admissible)
     (hroot : get_block_root S.cfg S.preset s1 epoch = .ok root) :
     Justified S votes ⟨epoch, root⟩ := by
   obtain ⟨hlen, -, rfl⟩ := process_slot_eq_ok.mp hs1
+  refine justified_of_participation_test hS hinv hH hE2 rfl rfl rfl rfl hepoch hset hth ?_
   set E := compute_epoch_at_slot S.cfg state.slot with hEdef
   set x := state.slot with hxdef
   set N := S.preset.slots_per_historical_root with hNdef
@@ -512,87 +591,22 @@ theorem justified_of_epoch_test {S : FFGSetup Root} (hS : S.Admissible)
   have hstart : compute_start_slot_at_epoch S.cfg epoch = epoch * spe := rfl
   have hEspe : (E + 1) * spe = E * spe + spe := Nat.succ_mul E spe
   -- The PJF read is the chain root of the epoch start.
-  have hchain : root = chainRootAt S.genesisRoot blocks (epoch * spe) := by
-    obtain ⟨-, hread⟩ := get_block_root_eq_ok.mp hroot
-    obtain ⟨-, hlt, hle, -, hcell⟩ := get_block_root_at_slot_eq_ok.mp hread
-    rw [hstart] at hlt hle hcell
-    change epoch * spe < x at hlt
-    have hlt' : x < epoch * spe + N := by
-      rcases hepoch with h | h
-      · rw [h]; beacon_omega
-      · rw [← h] at hx
-        have : (epoch + 1 + 1) * spe = epoch * spe + 2 * spe := by ring
-        beacon_omega
-    change (state.block_roots.set (x % N) state.latest_block_header.root)[epoch * spe % N]? =
-      some root at hcell
-    rw [List.getElem?_set_ne (mod_ne_of_lt_of_lt_add hlt hlt')] at hcell
-    rw [hinv.ring _ hlt (by beacon_omega)] at hcell
-    exact (Option.some.inj hcell).symm
-  have hval : S.scope.validators = state.validators := hinv.validators_eq.symm
-  -- The source checkpoint of the tested epoch.
-  let source := if epoch = E then state.current_justified_checkpoint
-    else state.previous_justified_checkpoint
-  have hsource : Justified S votes source := by
-    by_cases h : epoch = E
-    · simp only [source, if_pos h]; exact hinv.current_justified
-    · simp only [source, if_neg h]; exact hinv.previous_justified
-  refine .link hsource
-    { signers := set
-      source_before_target := ?_
-      signer_vote := ?_
-      signer_active := ?_
-      signer_unslashed := ?_
-      supermajority := ?_ }
-  · have h1 := hinv.current_epoch_le
-    have h2 := hinv.previous_epoch_le
-    by_cases h : epoch = E
-    · simp only [source, if_pos h]
-      change state.current_justified_checkpoint.epoch < epoch
+  rw [hstart]
+  obtain ⟨-, hread⟩ := get_block_root_eq_ok.mp hroot
+  obtain ⟨-, hlt, hle, -, hcell⟩ := get_block_root_at_slot_eq_ok.mp hread
+  rw [hstart] at hlt hle hcell
+  change epoch * spe < x at hlt
+  have hlt' : x < epoch * spe + N := by
+    rcases hepoch with h | h
+    · rw [h]; beacon_omega
+    · rw [← h] at hx
+      have : (epoch + 1 + 1) * spe = epoch * spe + 2 * spe := by ring
       beacon_omega
-    · simp only [source, if_neg h]
-      change state.previous_justified_checkpoint.epoch < epoch
-      rcases hepoch with h' | h'
-      · exact absurd h' h
-      · beacon_omega
-  · intro i hi
-    obtain ⟨-, -, hflag, -⟩ := (get_unslashed_participating_indices_mem hset i).mp hi
-    by_cases h : epoch = E
-    · rw [if_pos h] at hflag
-      obtain ⟨r, hr, hri, hre⟩ := (hinv.current_flags i).mp hflag
-      refine ⟨r, hr, hri, ?_, ?_⟩
-      · simp only [source, if_pos h]; exact hinv.current_sources r hr hre
-      · have hre' : r.vote.data.target.epoch = epoch := by rw [hre]; exact h.symm
-        refine checkpoint_eq_of hre' ?_
-        rw [(hinv.target_on_chain r hr).2, hchain, hre']
-        rfl
-    · rw [if_neg h] at hflag
-      have he : epoch + 1 = E := by
-        rcases hepoch with h' | h'
-        · exact absurd h' h
-        · exact h'
-      obtain ⟨r, hr, hri, hre⟩ := (hinv.previous_flags i).mp hflag
-      have hre' : r.vote.data.target.epoch = epoch := by beacon_omega
-      refine ⟨r, hr, hri, ?_, ?_⟩
-      · simp only [source, if_neg h]; exact hinv.previous_sources r hr hre
-      · refine checkpoint_eq_of hre' ?_
-        rw [(hinv.target_on_chain r hr).2, hchain, hre']
-        rfl
-  · intro i hi
-    obtain ⟨hlt, hact, -, -⟩ := (get_unslashed_participating_indices_mem hset i).mp hi
-    change i < state.validators.length at hlt
-    change is_active_validator (state.validators.getD i default) epoch = true at hact
-    rw [← hval] at hlt hact
-    exact ⟨hlt, hact⟩
-  · intro i hi
-    obtain ⟨-, -, -, hsl⟩ := (get_unslashed_participating_indices_mem hset i).mp hi
-    change (state.validators.getD i default).slashed = false at hsl
-    rw [← hval] at hsl
-    exact hsl
-  · change ConcreteFFG.get_total_active_balance S.cfg state * 2 ≤
-      ConcreteFFG.get_total_balance S.cfg state set * 3 at hth
-    rw [total_active_balance_eq hS (hinv.validators_eq) hH,
-      total_balance_eq (hinv.validators_eq) set] at hth
-    exact supermajority_of_threshold S.cfg.effective_balance_increment_pos hS.balance_floor hth
+  change (state.block_roots.set (x % N) state.latest_block_header.root)[epoch * spe % N]? =
+    some root at hcell
+  rw [List.getElem?_set_ne (mod_ne_of_lt_of_lt_add hlt hlt')] at hcell
+  rw [hinv.ring _ hlt (by beacon_omega)] at hcell
+  exact (Option.some.inj hcell).symm
 
 /-! ### Slot step -/
 
