@@ -240,12 +240,18 @@ def run(repo: Path):
             pre.balances[0]=spec.Gwei(16 * 10**9)
         else:
             pre.balances[0]=spec.Gwei(30 * 10**9)
-        registry_changes.append((f"gloas:{mode}:7->8",(spec,pre,8)))
+        registry_changes.append((f"gloas:{mode}:7->8",(spec,pre,8,mode)))
+    def epoch_registry_change(d):
+        post=slotted(d[:3])
+        field={"activation":"activation_epoch", "exit":"exit_epoch",
+               "hysteresis":"effective_balance"}[d[3]]
+        before=int(getattr(d[1].validators[0],field))
+        after=int(getattr(post.validators[0],field))
+        return before!=after,{"field":field,"before":before,"after":after,
+                              "pre":projection(d[1]),"target":d[2],"post":projection(post)}
     check("RegistryScope.excludes_epoch_registry_changes",
           "Epoch processing can set activation and exit epochs or update effective balance; such runs do not meet the static execution scope",
-          registry_changes,
-          lambda d:(projection(slotted(d))["validators"]!=projection(d[1])["validators"],
-                    {"pre":projection(d[1]),"target":d[2],"post":projection(slotted(d))}))
+          registry_changes,epoch_registry_change)
     check("BeaconExternalsPremises.pjf_checkpoint_epoch",
           "(ext.process_justification_and_finalization st).current_justified_checkpoint.epoch <= compute_epoch_at_slot cfg st.slot",
           st_samples, lambda st:(int((lambda x:(spec if st.__class__ is states[0][1].__class__ else phase0).process_justification_and_finalization(x) or x)(st.copy()).current_justified_checkpoint.epoch)<=int(st.slot)//8,{"pre":projection(st)}))
