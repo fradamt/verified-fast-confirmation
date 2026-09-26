@@ -593,11 +593,7 @@ private theorem witnessExternalsCoherence :
     simp [anchorCheckpoint]
   · intro st
     simp [witnessExternals, witnessConfig, compute_epoch_at_slot]
-  · intro v hv w hw n m s _hn _hm _hsn _hsm
-    simp [get_slot_committee, witnessExternals, witnessExecution,
-      witnessCommittee]
   · intro v hv n s hn hs
-    refine ⟨v, hv, n, hn, hs, ?_⟩
     simp [get_slot_committee, witnessExternals, witnessExecution,
       witnessCommittee]
   · intro state a hreachable v hv hsingle hcommittee hvote
@@ -708,7 +704,7 @@ private theorem witnessExternalsCoherence :
   · intro a
     have hdefault : (default : BeaconState WitnessRoot).validators = [] := rfl
     simp [witnessExternals, hdefault]
-  · intro state slot a _hreachable _hlt _hslotH _hreg
+  · intro state slot a _hreachable _hlt
     rfl
   · intro state signed o o'
     rfl

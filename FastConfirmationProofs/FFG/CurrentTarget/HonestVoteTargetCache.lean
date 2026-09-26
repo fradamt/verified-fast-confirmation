@@ -534,13 +534,7 @@ theorem honestVoteTarget_received_at_delivery
       (E.honestCausalStore_prefix cfg ext w hw deliveryPred
         (by simpa only [← hdeliveryEq] using hHdeliver)
         pre (Event.attestation a false :: suf) hscheduleEq)
-      a htargetPrefix
-      (E.slotWithinHorizon_of_le cfg
-        (by
-          rw [htargetEpoch, haSlot, ← hn]
-          simp only [compute_start_slot_at_epoch, compute_epoch_at_slot]
-          exact Nat.div_mul_le_self _ _) hHn)
-      v hv hsingle hcommitteeAtVote hvoteExists
+      a htargetPrefix v hv hsingle hcommitteeAtVote hvoteExists
   let applied := update_latest_messages
     (store_target_checkpoint_state cfg ext
       (pre.foldl

@@ -1,7 +1,6 @@
 module
 public import FastConfirmationProofs.FFG.Certificates.QuorumAccounting
 public import FastConfirmationProofs.Execution.Delivery.Registry
-public import FastConfirmationProofs.Execution.Delivery.CommitteeReads
 public import FastConfirmationProofs.Execution.StoreInvariants.StoreInvariants
 public import FastConfirmationProofs.Execution.StoreInvariants.ValidationStateReachability
 
@@ -27,7 +26,7 @@ This module proves that bound and derives
   never among the added intersection.
 * **Step 2** (`get_equivocation_score_eq_weight`): the equivocation score over an
   honest store's balance source equals the ground-truth `E.weight` of the
-  active equivocating span members (registry constancy + `committee_read_eq`).
+  active equivocating span members (registry constancy + `committees_agree`).
 * **Step 3** (`byz_plus_equiv_le`): the Byzantine supporters and the equivocating
   span members are *disjoint* subsets of the non-honest span committee (Step 1
   places equivocators outside the honest set; supporters are non-equivocating by
@@ -307,8 +306,8 @@ theorem Execution.honest_not_equivocating {E : Execution Root}
 
 /-! ## Step 2 — the equivocation score is ground-truth span weight
 
-At an honest node the store-computed slot committees in the read window agree
-with the ground-truth assignment (`committee_read_eq`), so `get_equivocation_score`'s participant set is
+At an honest node the store-computed slot committees agree with the ground-truth
+assignment (`committees_agree`), so `get_equivocation_score`'s participant set is
 `E.span_committee`; and registry constancy (`hval`) turns the balance-source
 effective balances into `E.weight_of`. Hence the score equals the ground-truth
 weight of the **active equivocating span members**. -/
@@ -321,16 +320,24 @@ def EquivActive (E : Execution Root) (store : Store Root) (bs : BeaconState Root
     is_active_validator (bs.validators.getD i default) (get_current_epoch cfg bs))
 
 /-- Step 2: at an honest node `(v, n)` on a registry-constant balance source, the
-equivocation score of the span `[sa, es]` in the committee read window equals
-the ground-truth weight of the active equivocating span members. -/
+equivocation score of the span `[sa, es]` equals the ground-truth weight of the
+active equivocating span members. -/
 theorem get_equivocation_score_eq_weight {E : Execution Root}
     (hec : BeaconExternalsPremises cfg ext E) {v : ValidatorIndex} (hv : v ∈ E.honest) (n : ℕ)
     (hnH : E.WithinHorizon cfg n)
     {bs : BeaconState Root} (hval : bs.validators = E.registry) (sa es : Slot)
-    (hsaA : E.anchorEpochStart cfg ≤ sa) (hesN : es ≤ E.slot_at cfg n) :
+    (hesH : E.SlotWithinHorizon cfg es) :
     get_equivocation_score cfg ext (E.store cfg ext v n) bs sa es =
       E.weight (EquivActive cfg E (E.store cfg ext v n) bs sa es) := by
-  have hce := hec.committee_reads_Icc cfg ext hv hnH hsaA hesN
+  have hce : (Finset.Icc sa es).biUnion
+        (fun slot => get_slot_committee cfg ext (E.store cfg ext v n) slot) =
+      (Finset.Icc sa es).biUnion E.committee := by
+    apply Finset.biUnion_congr rfl
+    intro slot hslot
+    exact hec.committees_agree v hv n slot hnH
+      ⟨(le_trans (Finset.mem_Icc.mp hslot).2 hesH.1),
+        lt_of_le_of_lt
+          (Nat.div_le_div_right (Finset.mem_Icc.mp hslot).2) hesH.2⟩
   simp only [get_equivocation_score, EquivActive, Execution.weight, Execution.weight_of,
     Execution.span_committee, hce]
   exact Finset.sum_congr rfl (fun i _ => by rw [hval])
@@ -385,7 +392,6 @@ theorem byz_plus_equiv_le {E : Execution Root} (hec : BeaconExternalsPremises cf
     (hne : ∀ i ∈ (E.store cfg ext v n).equivocating_indices, i ∉ E.honest)
     {sa es : Slot}
     (hsaH : E.SlotWithinHorizon cfg sa) (hesH : E.SlotWithinHorizon cfg es)
-    (hsaA : E.anchorEpochStart cfg ≤ sa) (hesN : es ≤ E.slot_at cfg n)
     (hspan : ∀ i ∈ AttSupporters cfg (E.store cfg ext v n) (get_node_for_root b) bs,
       i ∉ E.honest → i ∈ E.span_committee sa es) :
     (((AttSupporters cfg (E.store cfg ext v n) (get_node_for_root b) bs).filter
@@ -395,7 +401,7 @@ theorem byz_plus_equiv_le {E : Execution Root} (hec : BeaconExternalsPremises cf
       ≤ estimate_committee_weight_between_slots cfg (get_total_active_balance cfg bs) sa es
           / 100 * cfg.confirmation_byzantine_threshold := by
   rw [byz_score_eq_weight cfg hval,
-    get_equivocation_score_eq_weight cfg ext hec hv n hnH hval sa es hsaA hesN, htab]
+    get_equivocation_score_eq_weight cfg ext hec hv n hnH hval sa es hesH, htab]
   set BS := ((AttSupporters cfg (E.store cfg ext v n) (get_node_for_root b) bs).filter
     (fun i => i ∉ E.honest)).toFinset with hBS
   set EA := EquivActive cfg E (E.store cfg ext v n) bs sa es with hEA
@@ -453,7 +459,6 @@ theorem byz_score_le_adversarial_weight {E : Execution Root}
           ((E.store cfg ext v n).blocks r).slot)
     {bs : BeaconState Root} {b : Root}
     (hbH : E.SlotWithinHorizon cfg ((E.store cfg ext v n).blocks b).slot)
-    (hbA : E.anchor_state.slot ≤ ((E.store cfg ext v n).blocks b).slot)
     (hval : bs.validators = E.registry)
     (htab : get_total_active_balance cfg bs = E.total_active cfg)
     (hprov : LatestMessageProvenance E cfg (get_current_slot cfg (E.store cfg ext v n))
@@ -501,21 +506,9 @@ theorem byz_score_le_adversarial_weight {E : Execution Root}
       (get_current_slot cfg (E.store cfg ext v n) - 1) :=
     ⟨(Nat.sub_le _ _).trans hcurH.1,
       lt_of_le_of_lt (Nat.div_le_div_right (Nat.sub_le _ _)) hcurH.2⟩
-  have hstartA : E.anchorEpochStart cfg ≤
-      (if get_block_epoch cfg (E.store cfg ext v n) b >
-          get_block_epoch cfg (E.store cfg ext v n)
-            ((E.store cfg ext v n).blocks b).parent_root then
-          compute_start_slot_at_epoch cfg (get_block_epoch cfg (E.store cfg ext v n) b)
-        else ((E.store cfg ext v n).blocks b).slot) := by
-    split_ifs
-    · exact E.anchorEpochStart_le_epochStart cfg hbA
-    · exact E.anchorEpochStart_le_of_anchor_le cfg hbA
-  have hendN : get_current_slot cfg (E.store cfg ext v n) - 1 ≤ E.slot_at cfg n := by
-    rw [E.store_current_slot cfg ext v n]
-    exact Nat.sub_le _ _
   rw [get_adversarial_weight_eq]
   exact byz_le_adv_arith
-    (byz_plus_equiv_le cfg ext hec hbb hv hnH hval htab hne hstartH hendH hstartA hendN hspan)
+    (byz_plus_equiv_le cfg ext hec hbb hv hnH hval htab hne hstartH hendH hspan)
 
 /-- **Step 4 (headline).** The unconditional spec-side Lemma 3∘4: at an honest
 node `(v, n)` with a confirmed block `b` (`is_one_confirmed = true`), twice the
@@ -536,7 +529,6 @@ theorem honest_support_majority {E : Execution Root}
           ((E.store cfg ext v n).blocks r).slot)
     {bs : BeaconState Root} {b : Root}
     (hbH : E.SlotWithinHorizon cfg ((E.store cfg ext v n).blocks b).slot)
-    (hbA : E.anchor_state.slot ≤ ((E.store cfg ext v n).blocks b).slot)
     (hval : bs.validators = E.registry)
     (htab : get_total_active_balance cfg bs = E.total_active cfg)
     (hprov : LatestMessageProvenance E cfg (get_current_slot cfg (E.store cfg ext v n))
@@ -554,7 +546,7 @@ theorem honest_support_majority {E : Execution Root}
           (get_current_slot cfg (E.store cfg ext v n) - 1)
         + compute_proposer_score cfg bs + 1 :=
   honest_support_majority_of_byz_le cfg ext hconf
-    (byz_score_le_adversarial_weight cfg ext hhb hec hbb hgen hv hnH hwf hbH hbA
+    (byz_score_le_adversarial_weight cfg ext hhb hec hbb hgen hv hnH hwf hbH
       hval htab hprov hwalk)
 
 end FastConfirmation.Spec

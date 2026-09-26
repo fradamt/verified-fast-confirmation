@@ -11,8 +11,7 @@ The existing current-target gate accounting theorem is stated at a completed
 `Execution.store`.  An allowed FCR query may instead read an exact strict
 `ScheduledEventPrefix`.  This file isolates the one additional safety-free
 adapter fact needed to replay the same arithmetic there: committees computed
-from the prefix head state in the committee read window agree with the
-ground-truth execution committees.
+from the prefix head state agree with the ground-truth execution committees.
 
 All other store facts used below (causality, exact current slot, ordinary
 latest-message provenance, and exclusion of honest equivocators) are fields
@@ -30,26 +29,24 @@ namespace Execution
 
 variable (E : Execution Root)
 
-/-- Committee readback at an exact query store, for slots in the committee
-read window: from the start of the anchor epoch through the store's current
-slot.  `BeaconExternalsPremises` exposes this equality only for completed
-`Execution.store` boundaries; strict scheduled prefixes need the same
-implementation-coherence fact explicitly.
+/-- Committee readback at an exact query store.  `BeaconExternalsPremises` exposes
+this equality only for completed `Execution.store` boundaries; strict
+scheduled prefixes need the same implementation-coherence fact explicitly.
 -/
 def PrefixCommitteeAgreement (store : Store Root) : Prop :=
-  ∀ slot : Slot, E.anchorEpochStart cfg ≤ slot → slot ≤ get_current_slot cfg store →
+  ∀ slot : Slot, E.SlotWithinHorizon cfg slot →
     get_slot_committee cfg ext store slot = E.committee slot
+
+
 
 /-- The safety-free accounting projection of one exact scheduled-prefix
 query.  The first field is produced by `ScheduledEventPrefix`; the second is
-the required strict-prefix specialization of committee coherence; the third
-puts the query slot at or after the anchor slot.
+the required strict-prefix specialization of committee coherence.
 -/
 structure CurrentTargetPrefixAccountingEvidence
     (store : Store Root) (querySecond : ℕ) : Prop where
   operational : E.ScheduledPrefixOperationalEvidence cfg ext store querySecond
   committees : E.PrefixCommitteeAgreement cfg ext store
-  anchor_le_current : E.anchor_state.slot ≤ get_current_slot cfg store
 
 omit [LinearOrder Root] [Inhabited Root] in
 private theorem prefix_byz_le_net_of_add
@@ -65,8 +62,7 @@ theorem get_equivocation_score_eq_weight_of_prefix
     {store : Store Root}
     (hcommittees : E.PrefixCommitteeAgreement cfg ext store)
     {bs : BeaconState Root} (hval : bs.validators = E.registry)
-    (sa es : Slot) (hsaA : E.anchorEpochStart cfg ≤ sa)
-    (hesC : es ≤ get_current_slot cfg store) :
+    (sa es : Slot) (hesH : E.SlotWithinHorizon cfg es) :
     get_equivocation_score cfg ext store bs sa es =
       E.weight (EquivActive cfg E store bs sa es) := by
   have hce : (Finset.Icc sa es).biUnion
@@ -74,8 +70,10 @@ theorem get_equivocation_score_eq_weight_of_prefix
       (Finset.Icc sa es).biUnion E.committee := by
     apply Finset.biUnion_congr rfl
     intro slot hslot
-    exact hcommittees slot (hsaA.trans (Finset.mem_Icc.mp hslot).1)
-      ((Finset.mem_Icc.mp hslot).2.trans hesC)
+    exact hcommittees slot
+      ⟨(Finset.mem_Icc.mp hslot).2.trans hesH.1,
+        lt_of_le_of_lt
+          (Nat.div_le_div_right (Finset.mem_Icc.mp hslot).2) hesH.2⟩
   simp only [get_equivocation_score, EquivActive, Execution.weight,
     Execution.weight_of, Execution.span_committee, hce]
   exact Finset.sum_congr rfl (fun i _ => by rw [hval])
@@ -131,9 +129,7 @@ theorem currentTarget_nonhonest_add_equiv_le_budget_of_prefix
     ⟨(Nat.sub_le _ _).trans hcurrentH.1,
       lt_of_le_of_lt (Nat.div_le_div_right (Nat.sub_le _ _)) hcurrentH.2⟩
   rw [E.get_equivocation_score_eq_weight_of_prefix cfg ext
-    hevidence.committees hval start finish
-    (E.anchorEpochStart_le_epochStart cfg hevidence.anchor_le_current)
-    (Nat.sub_le _ _), htab]
+    hevidence.committees hval start finish hfinishH, htab]
   let BS := ((CurrentTargetSupporters cfg store state).filter
     (fun i => i ∉ E.honest)).toFinset
   let EA := EquivActive cfg E store state start finish

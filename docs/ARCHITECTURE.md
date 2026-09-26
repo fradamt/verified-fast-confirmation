@@ -66,7 +66,7 @@ recency guard.
 │ check_consensus_source.py  │ The Python tag and the pinned source objects match the recorded hashes.                     │
 │ check_review_boundary.py   │ Lean parser import closure of Statements contains only Model and Statements modules; every  │
 │                            │ Statements source is included.                                                              │
-│ StatementReachability.lean │ 65 source declarations are claim-reachable. Synchrony is the one approved public exception.  │
+│ StatementReachability.lean │ 64 source declarations are claim-reachable. Synchrony is the one approved public exception.  │
 │                            │ No other unreachable source declaration is allowed.                                         │
 │ ReviewSurfaceShape.lean    │ The safety review field and selected premise record shapes remain exact.                    │
 │ check_imports.py           │ The six-library import direction and Paper separation hold.                                 │

@@ -649,11 +649,7 @@ theorem extCoherence :
   · exact witnessExternalsCoherence.state_transition_pre_slot_lt
   · exact witnessExternalsCoherence.state_transition_checkpoint_epoch
   · exact witnessExternalsCoherence.pjf_checkpoint_epoch
-  · intro v hv w hw n m s _hn _hm _hsn _hsm
-    simp [get_slot_committee, ext, TwelveSecondSynchronyWitness.ext, witnessExternals, run,
-      witnessCommittee]
   · intro v hv n s hn hs
-    refine ⟨v, hv, n, hn, hs, ?_⟩
     simp [get_slot_committee, ext, TwelveSecondSynchronyWitness.ext, witnessExternals, run,
       witnessCommittee]
   · intro state a hreachable v hv hsingle hcommittee hvote
@@ -693,7 +689,7 @@ theorem extCoherence :
   · exact witnessExternalsCoherence.committee_members_active
 
   · exact witnessExternalsCoherence.valid_attestation_default
-  · intro state slot a _hreachable _hlt _hslotH _hreg
+  · intro state slot a _hreachable _hlt
     change decide ((witnessExternals.process_slots state slot).validators ≠ [] ∧
       a ∈ groundVotes) = decide (state.validators ≠ [] ∧ a ∈ groundVotes)
     rw [witnessProcessSlots_registry]

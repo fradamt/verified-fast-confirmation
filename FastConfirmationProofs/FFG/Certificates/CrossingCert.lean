@@ -251,13 +251,12 @@ theorem crossing_equivocation_score_split
     (hnH : E.WithinHorizon cfg n)
     {bs : BeaconState Root} (hval : bs.validators = E.registry)
     {sa mid es : Slot} (hsa : sa ≤ mid)
-    (hsaA : E.anchorEpochStart cfg ≤ sa) (hesN : es ≤ E.slot_at cfg n) :
+    (hesH : E.SlotWithinHorizon cfg es) :
     get_equivocation_score cfg ext (E.store cfg ext v n) bs mid es
         + E.weight (E.crossingEquivPre cfg (E.store cfg ext v n) bs sa mid es)
       = get_equivocation_score cfg ext (E.store cfg ext v n) bs sa es := by
-  rw [get_equivocation_score_eq_weight cfg ext hec hv n hnH hval mid es
-      (hsaA.trans hsa) hesN,
-    get_equivocation_score_eq_weight cfg ext hec hv n hnH hval sa es hsaA hesN]
+  rw [get_equivocation_score_eq_weight cfg ext hec hv n hnH hval mid es hesH,
+    get_equivocation_score_eq_weight cfg ext hec hv n hnH hval sa es hesH]
   have hsub : EquivActive cfg E (E.store cfg ext v n) bs mid es ⊆
       EquivActive cfg E (E.store cfg ext v n) bs sa es := by
     intro i hi
@@ -430,9 +429,6 @@ theorem crossing_hd_of_preRegion
       (((E.store cfg ext v n).blocks
         ((E.store cfg ext v n).blocks b).parent_root).slot + 1))
     (hbH : E.SlotWithinHorizon cfg ((E.store cfg ext v n).blocks b).slot)
-    (hpA : E.anchor_state.slot ≤
-      ((E.store cfg ext v n).blocks ((E.store cfg ext v n).blocks b).parent_root).slot)
-    (hbN : ((E.store cfg ext v n).blocks b).slot ≤ E.slot_at cfg n)
     (htab : get_total_active_balance cfg bs = E.total_active cfg)
     (hne : ∀ i ∈ (E.store cfg ext v n).equivocating_indices, i ∉ E.honest)
     (mid es : Slot) :
@@ -440,7 +436,7 @@ theorem crossing_hd_of_preRegion
       ≤ E.weight (E.crossingParentPre cfg (E.store cfg ext v n) bs b mid es)
         + E.weight (E.crossingParentSub cfg (E.store cfg ext v n) bs b mid es) := by
   have hd := support_discount_le_parent_stuck (b := b) cfg ext hec hbb hv hnH hval
-    hstartH hbH hpA hbN htab hne
+    hstartH hbH htab hne
   have hdiff :
       ParentStuck cfg E (E.store cfg ext v n) bs b \
           (ParentStuck cfg E (E.store cfg ext v n) bs b ∩ E.span_committee mid es)

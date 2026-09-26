@@ -132,11 +132,9 @@ theorem base_strip_of_confirmed_at_minimal
   have hbanc : is_ancestor (E.store cfg ext v q) (get_node_for_root b)
       (get_node_for_root ((E.store cfg ext v q).blocks b).parent_root) = true :=
     is_ancestor_of_parent hwf hb hp rfl
-  have hpA := E.anchor_state_slot_le_store_block cfg ext hA.wellFormed
-    hA.externals_coherence hgeq hslot hparent v q _ hp
   have hstrip := E.weak_base_discharged_window cfg ext hA.honest_behavior
     hA.externals_coherence hA.byzantine_bound hgen hv hqH hwf hbH hval htab
-    hprov hconf' hwalk lo es hlo hes hloH hesH hslotlt hbcur hpA hbanc hdom
+    hprov hconf' hwalk lo es hlo hes hloH hesH hslotlt hbcur hbanc hdom
   have hvalEnd := E.hval_of_selectedMarginDomain cfg ext
     hA.externals_coherence hA.genesis_store hA.domain w hw m hmH
   have hkeyEnd := hA.domain.justified_checkpoint_cached w hw m hmH

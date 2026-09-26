@@ -539,10 +539,7 @@ theorem externalsCoherence : BeaconExternalsPremises cfg ext E := by
     · contradiction
   · intro st
     exact pjf_current_epoch_le st
-  · intro v hv w hw n m s _hn _hm _hsn _hsm
-    simp [get_slot_committee, ext, E]
   · intro v hv n s hn hs
-    refine ⟨v, hv, n, hn, hs, ?_⟩
     simp [get_slot_committee, ext, E]
   · intro st a hreachable v hv hsingle hcommittee hvote
     rcases hvote with ⟨m, a', hvote, hdata⟩
@@ -595,7 +592,7 @@ theorem externalsCoherence : BeaconExternalsPremises cfg ext E := by
   · intro a
     have hdefault : (default : BeaconState Root).validators = [] := rfl
     simp [ext, hdefault]
-  · intro st slot a _hreachable _hlt _hslotH _hreg
+  · intro st slot a _hreachable _hlt
     change decide ((ext.process_slots st slot).validators ≠ [] ∧
       a ∈ groundVotes) = decide (st.validators ≠ [] ∧ a ∈ groundVotes)
     rw [processSlots_registry]

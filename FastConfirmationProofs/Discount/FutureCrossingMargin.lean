@@ -255,8 +255,6 @@ theorem intraEpochFuture_endpoint_inequality_of_confirmed_window
     (hslotlt : ((E.store cfg ext v n).blocks
         ((E.store cfg ext v n).blocks b).parent_root).slot <
       ((E.store cfg ext v n).blocks b).slot)
-    (hpA : E.anchor_state.slot ≤ ((E.store cfg ext v n).blocks
-      ((E.store cfg ext v n).blocks b).parent_root).slot)
     (hbcur : ((E.store cfg ext v n).blocks b).slot <=
       get_current_slot cfg (E.store cfg ext v n))
     (hdom : E.WindowRecordedEpochMax cfg ext v n
@@ -306,14 +304,6 @@ theorem intraEpochFuture_endpoint_inequality_of_confirmed_window
     E.slotWithinHorizon_mono cfg hlo hmidH
   have hne : ∀ i ∈ (E.store cfg ext v n).equivocating_indices, i ∉ E.honest :=
     fun i hi hih => (Execution.honest_not_equivocating cfg ext hhb hec hgen hih v n (by assumption) (by assumption)) hi
-  have hbN : ((E.store cfg ext v n).blocks b).slot ≤ E.slot_at cfg n := by
-    rw [← E.store_current_slot cfg ext v n]
-    exact hbcur
-  have hesN : es ≤ E.slot_at cfg n := by
-    rw [hes, ← E.store_current_slot cfg ext v n]
-    exact Nat.sub_le _ _
-  have hmidA : E.anchorEpochStart cfg ≤ ((E.store cfg ext v n).blocks b).slot :=
-    E.anchorEpochStart_le_of_anchor_le cfg (hpA.trans hslotlt.le)
   have hbaseQ := E.crossing_hbase_of_confirmed_window cfg ext hhb hec hgen hwf hval hprov
     hconf hwalk es hes hdom
   rw [hboost] at hbaseQ
@@ -340,14 +330,14 @@ theorem intraEpochFuture_endpoint_inequality_of_confirmed_window
     rw [← hpart]
     exact hMUQ
   have hd := E.crossing_hd_of_preRegion (b := b) cfg ext hec hbb hv hnH hval
-    hloH hmidH hpA hbN htab hne mid es
+    hloH hmidH htab hne mid es
   have hguard := E.intraEpoch_adversarial_guard cfg ext hbb htab hintra hes hmidH hesH
   have hspan : ∀ i ∈ AttSupporters cfg (E.store cfg ext v n)
       (get_node_for_root b) bs, i ∉ E.honest → i ∈ E.span_committee mid es := by
     intro i hi _
     rw [hes]
     exact supporter_mem_span_committee cfg hwf hprov hi (hwalk i hi) (le_refl _)
-  have hbyzsub := E.hR4b_of_confinement cfg ext hec hv hnH hval hne hmidA hesN hspan
+  have hbyzsub := E.hR4b_of_confinement cfg ext hec hv hnH hval hne hesH hspan
   have hbyzfull : E.Bval mid es <=
       estimate_committee_weight_between_slots cfg
           (get_total_active_balance cfg bs) mid es / 100
@@ -417,8 +407,6 @@ theorem crossingEdgeFuture_endpoint_inequality_of_confirmed_window
     (hslotlt : ((E.store cfg ext v n).blocks
         ((E.store cfg ext v n).blocks b).parent_root).slot <
       ((E.store cfg ext v n).blocks b).slot)
-    (hpA : E.anchor_state.slot ≤ ((E.store cfg ext v n).blocks
-      ((E.store cfg ext v n).blocks b).parent_root).slot)
     (hbcur : ((E.store cfg ext v n).blocks b).slot ≤
       get_current_slot cfg (E.store cfg ext v n))
     (hdom : E.WindowRecordedEpochMax cfg ext v n
@@ -476,14 +464,6 @@ theorem crossingEdgeFuture_endpoint_inequality_of_confirmed_window
     E.slotWithinHorizon_mono cfg hlo hsaH
   have hne : ∀ i ∈ (E.store cfg ext v n).equivocating_indices, i ∉ E.honest :=
     fun i hi hih => (Execution.honest_not_equivocating cfg ext hhb hec hgen hih v n (by assumption) (by assumption)) hi
-  have hbN : ((E.store cfg ext v n).blocks b).slot ≤ E.slot_at cfg n := by
-    rw [← E.store_current_slot cfg ext v n]
-    exact hbcur
-  have hesN : es ≤ E.slot_at cfg n := by
-    rw [hes, ← E.store_current_slot cfg ext v n]
-    exact Nat.sub_le _ _
-  have hmidA : E.anchorEpochStart cfg ≤ ((E.store cfg ext v n).blocks b).slot :=
-    E.anchorEpochStart_le_of_anchor_le cfg (hpA.trans hslotlt.le)
   have hbaseQ := E.crossing_hbase_of_confirmed_window cfg ext hhb hec hgen hwf hval hprov
     hconf hwalk es hes hdom
   rw [hboost, ← hes] at hbaseQ
@@ -509,7 +489,7 @@ theorem crossingEdgeFuture_endpoint_inequality_of_confirmed_window
     rw [← hpart]
     exact hMUQ
   have hd := E.crossing_hd_of_preRegion (b := b) cfg ext hec hbb hv hnH hval
-    hloH hmidH hpA hbN htab hne mid es
+    hloH hmidH htab hne mid es
   have hguard := E.crossing_fullSpan_adversarial_guard cfg ext hbb htab hcross hes
     hsaH hesH
   have hBextra : E.weight (E.crossingByzPre sa mid es) ≤
@@ -524,7 +504,7 @@ theorem crossingEdgeFuture_endpoint_inequality_of_confirmed_window
     intro i hi _
     rw [hes]
     exact supporter_mem_span_committee cfg hwf hprov hi (hwalk i hi) (le_refl _)
-  have hbyzsub := E.hR4b_of_confinement cfg ext hec hv hnH hval hne hmidA hesN hspan
+  have hbyzsub := E.hR4b_of_confinement cfg ext hec hv hnH hval hne hesH hspan
   have hbyzfull : E.Bval mid es + E.weight (E.crossingByzPre sa mid es) ≤
       estimate_committee_weight_between_slots cfg
           (get_total_active_balance cfg bs) sa es / 100
@@ -532,8 +512,7 @@ theorem crossingEdgeFuture_endpoint_inequality_of_confirmed_window
     rw [E.crossing_fullSpan_Bval_split hsa, htab]
     exact hbb.span_bound sa es hsaH hesH
   have heqsplit := E.crossing_equivocation_score_split (n := n) (es := es)
-    cfg ext hec hv hnH hval hsa
-    (E.anchorEpochStart_le_epochStart cfg (hpA.trans hslotlt.le)) hesN
+    cfg ext hec hv hnH hval hsa hesH
   have hAguard : estimate_committee_weight_between_slots cfg
           (get_total_active_balance cfg bs) sa es / 100
           * cfg.confirmation_byzantine_threshold

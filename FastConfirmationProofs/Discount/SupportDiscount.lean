@@ -27,7 +27,7 @@ The four pieces mirror `HonestWeight`'s `byz_score_eq_weight` /
 * `ParentStuck` / `ParentStuckByz` — the honest / Byzantine slices of the
   pre-region parent supporters (ground-truth committees via `E.span_committee`).
 * `get_block_support_eq_parent_split` — at an honest node the pre-region support
-  is `E.weight (ParentStuck …) + E.weight (ParentStuckByz …)` (committee reads,
+  is `E.weight (ParentStuck …) + E.weight (ParentStuckByz …)` (committees agree,
   registry constancy).
 * `parentstuck_byz_plus_equiv_le` — `Bpar + equivocation_score ≤ budget`
   (parent-stuck Byzantine and active equivocators are disjoint non-honest span
@@ -125,14 +125,12 @@ theorem mem_ParentSupport {E : Execution Root} {store : Store Root} {bs : Beacon
 
 /-- **Piece 2.** At an honest node `(v, n)` on a registry-constant balance
 source, the pre-region parent support splits into the honest parent-stuck weight
-plus the Byzantine parent-stuck weight (committee reads in the window, `hval`). -/
+plus the Byzantine parent-stuck weight (committees agree, `hval`). -/
 theorem get_block_support_eq_parent_split {E : Execution Root}
     (hec : BeaconExternalsPremises cfg ext E) {v : ValidatorIndex} (hv : v ∈ E.honest) (n : ℕ)
     (hnH : E.WithinHorizon cfg n)
     {bs : BeaconState Root} {b : Root} (hval : bs.validators = E.registry)
-    (hpA : E.anchor_state.slot ≤
-      ((E.store cfg ext v n).blocks ((E.store cfg ext v n).blocks b).parent_root).slot)
-    (hbN : ((E.store cfg ext v n).blocks b).slot ≤ E.slot_at cfg n) :
+    (hbH : E.SlotWithinHorizon cfg ((E.store cfg ext v n).blocks b).slot) :
     get_block_support_between_slots cfg ext (E.store cfg ext v n) bs
         ((E.store cfg ext v n).blocks b).parent_root
         (((E.store cfg ext v n).blocks
@@ -140,12 +138,25 @@ theorem get_block_support_eq_parent_split {E : Execution Root}
         (((E.store cfg ext v n).blocks b).slot - 1)
       = E.weight (ParentStuck cfg E (E.store cfg ext v n) bs b)
         + E.weight (ParentStuckByz cfg E (E.store cfg ext v n) bs b) := by
-  have hce := hec.committee_reads_Icc cfg ext hv hnH
-    (sa := ((E.store cfg ext v n).blocks
-      ((E.store cfg ext v n).blocks b).parent_root).slot + 1)
-    (es := ((E.store cfg ext v n).blocks b).slot - 1)
-    (E.anchorEpochStart_le_of_anchor_le cfg (Nat.le_succ_of_le hpA))
-    ((Nat.sub_le _ _).trans hbN)
+  have hendH : E.SlotWithinHorizon cfg
+      (((E.store cfg ext v n).blocks b).slot - 1) :=
+    ⟨(Nat.sub_le _ _).trans hbH.1,
+      lt_of_le_of_lt (Nat.div_le_div_right (Nat.sub_le _ _)) hbH.2⟩
+  have hce : (Finset.Icc
+        (((E.store cfg ext v n).blocks
+          ((E.store cfg ext v n).blocks b).parent_root).slot + 1)
+        (((E.store cfg ext v n).blocks b).slot - 1)).biUnion
+          (fun s => get_slot_committee cfg ext (E.store cfg ext v n) s) =
+      (Finset.Icc
+        (((E.store cfg ext v n).blocks
+          ((E.store cfg ext v n).blocks b).parent_root).slot + 1)
+        (((E.store cfg ext v n).blocks b).slot - 1)).biUnion E.committee := by
+    apply Finset.biUnion_congr rfl
+    intro s hs
+    exact hec.committees_agree v hv n s hnH
+      ⟨(le_trans (Finset.mem_Icc.mp hs).2 hendH.1),
+        lt_of_le_of_lt
+          (Nat.div_le_div_right (Finset.mem_Icc.mp hs).2) hendH.2⟩
   have hA : get_block_support_between_slots cfg ext (E.store cfg ext v n) bs
         ((E.store cfg ext v n).blocks b).parent_root
         (((E.store cfg ext v n).blocks
@@ -167,9 +178,7 @@ theorem get_parent_payload_support_eq_split {E : Execution Root}
     (hec : BeaconExternalsPremises cfg ext E) {v : ValidatorIndex} (hv : v ∈ E.honest)
     (n : ℕ) (hnH : E.WithinHorizon cfg n)
     {bs : BeaconState Root} {b : Root} (hval : bs.validators = E.registry)
-    (hpA : E.anchor_state.slot ≤
-      ((E.store cfg ext v n).blocks ((E.store cfg ext v n).blocks b).parent_root).slot)
-    (hbN : ((E.store cfg ext v n).blocks b).slot ≤ E.slot_at cfg n) :
+    (hbH : E.SlotWithinHorizon cfg ((E.store cfg ext v n).blocks b).slot) :
     get_parent_payload_support_between_slots cfg ext (E.store cfg ext v n) bs
         ((E.store cfg ext v n).blocks b).parent_root
         (get_parent_payload_status (E.store cfg ext v n)
@@ -179,12 +188,25 @@ theorem get_parent_payload_support_eq_split {E : Execution Root}
         (((E.store cfg ext v n).blocks b).slot - 1)
       = E.weight (ParentPayloadStuck cfg E (E.store cfg ext v n) bs b)
         + E.weight (ParentPayloadStuckByz cfg E (E.store cfg ext v n) bs b) := by
-  have hce := hec.committee_reads_Icc cfg ext hv hnH
-    (sa := ((E.store cfg ext v n).blocks
-      ((E.store cfg ext v n).blocks b).parent_root).slot + 1)
-    (es := ((E.store cfg ext v n).blocks b).slot - 1)
-    (E.anchorEpochStart_le_of_anchor_le cfg (Nat.le_succ_of_le hpA))
-    ((Nat.sub_le _ _).trans hbN)
+  have hendH : E.SlotWithinHorizon cfg
+      (((E.store cfg ext v n).blocks b).slot - 1) :=
+    ⟨(Nat.sub_le _ _).trans hbH.1,
+      lt_of_le_of_lt (Nat.div_le_div_right (Nat.sub_le _ _)) hbH.2⟩
+  have hce : (Finset.Icc
+        (((E.store cfg ext v n).blocks
+          ((E.store cfg ext v n).blocks b).parent_root).slot + 1)
+        (((E.store cfg ext v n).blocks b).slot - 1)).biUnion
+          (fun s => get_slot_committee cfg ext (E.store cfg ext v n) s) =
+      (Finset.Icc
+        (((E.store cfg ext v n).blocks
+          ((E.store cfg ext v n).blocks b).parent_root).slot + 1)
+        (((E.store cfg ext v n).blocks b).slot - 1)).biUnion E.committee := by
+    apply Finset.biUnion_congr rfl
+    intro s hs
+    exact hec.committees_agree v hv n s hnH
+      ⟨(le_trans (Finset.mem_Icc.mp hs).2 hendH.1),
+        lt_of_le_of_lt
+          (Nat.div_le_div_right (Finset.mem_Icc.mp hs).2) hendH.2⟩
   have hA : get_parent_payload_support_between_slots cfg ext (E.store cfg ext v n) bs
         ((E.store cfg ext v n).blocks b).parent_root
         (get_parent_payload_status (E.store cfg ext v n)
@@ -243,9 +265,6 @@ theorem parentstuck_byz_plus_equiv_le {E : Execution Root}
       (((E.store cfg ext v n).blocks
         ((E.store cfg ext v n).blocks b).parent_root).slot + 1))
     (hbH : E.SlotWithinHorizon cfg ((E.store cfg ext v n).blocks b).slot)
-    (hpA : E.anchor_state.slot ≤
-      ((E.store cfg ext v n).blocks ((E.store cfg ext v n).blocks b).parent_root).slot)
-    (hbN : ((E.store cfg ext v n).blocks b).slot ≤ E.slot_at cfg n)
     (htab : get_total_active_balance cfg bs = E.total_active cfg)
     (hne : ∀ i ∈ (E.store cfg ext v n).equivocating_indices, i ∉ E.honest) :
     E.weight (ParentStuckByz cfg E (E.store cfg ext v n) bs b)
@@ -264,9 +283,7 @@ theorem parentstuck_byz_plus_equiv_le {E : Execution Root}
       lt_of_le_of_lt (Nat.div_le_div_right (Nat.sub_le _ _)) hbH.2⟩
   rw [get_equivocation_score_eq_weight cfg ext hec hv n hnH hval
       (((E.store cfg ext v n).blocks ((E.store cfg ext v n).blocks b).parent_root).slot + 1)
-      (((E.store cfg ext v n).blocks b).slot - 1)
-      (E.anchorEpochStart_le_of_anchor_le cfg (Nat.le_succ_of_le hpA))
-      ((Nat.sub_le _ _).trans hbN), htab]
+      (((E.store cfg ext v n).blocks b).slot - 1) hendH, htab]
   refine weight_add_le ?_ ?_ ?_ |>.trans (hbb.span_bound _ _ hstartH hendH)
   · rw [Finset.disjoint_left]
     intro i hiBz hiEA
@@ -339,9 +356,6 @@ theorem support_discount_le_parent_stuck {E : Execution Root}
       (((E.store cfg ext v n).blocks
         ((E.store cfg ext v n).blocks b).parent_root).slot + 1))
     (hbH : E.SlotWithinHorizon cfg ((E.store cfg ext v n).blocks b).slot)
-    (hpA : E.anchor_state.slot ≤
-      ((E.store cfg ext v n).blocks ((E.store cfg ext v n).blocks b).parent_root).slot)
-    (hbN : ((E.store cfg ext v n).blocks b).slot ≤ E.slot_at cfg n)
     (htab : get_total_active_balance cfg bs = E.total_active cfg)
     (hne : ∀ i ∈ (E.store cfg ext v n).equivocating_indices, i ∉ E.honest) :
     get_support_discount cfg ext (E.store cfg ext v n) bs b
@@ -350,9 +364,8 @@ theorem support_discount_le_parent_stuck {E : Execution Root}
     compute_adversarial_weight]
   exact (discount_guard_mono
     (parent_payload_support_le_block_support cfg ext _ _ _ _ _ _)).trans
-    (discount_guard (get_block_support_eq_parent_split cfg ext hec hv n hnH hval hpA hbN)
-      (parentstuck_byz_plus_equiv_le cfg ext hec hbb hv hnH hval hstartH hbH hpA hbN
-        htab hne))
+    (discount_guard (get_block_support_eq_parent_split cfg ext hec hv n hnH hval hbH)
+      (parentstuck_byz_plus_equiv_le cfg ext hec hbb hv hnH hval hstartH hbH htab hne))
 
 /-- The repaired discount is charged only to honest parent votes for the
 child's required payload status. Opposite-status parent votes are not spent by
@@ -366,9 +379,6 @@ theorem support_discount_le_matching_parent_stuck {E : Execution Root}
       (((E.store cfg ext v n).blocks
         ((E.store cfg ext v n).blocks b).parent_root).slot + 1))
     (hbH : E.SlotWithinHorizon cfg ((E.store cfg ext v n).blocks b).slot)
-    (hpA : E.anchor_state.slot ≤
-      ((E.store cfg ext v n).blocks ((E.store cfg ext v n).blocks b).parent_root).slot)
-    (hbN : ((E.store cfg ext v n).blocks b).slot ≤ E.slot_at cfg n)
     (htab : get_total_active_balance cfg bs = E.total_active cfg)
     (hne : ∀ i ∈ (E.store cfg ext v n).equivocating_indices, i ∉ E.honest) :
     get_support_discount cfg ext (E.store cfg ext v n) bs b
@@ -385,12 +395,12 @@ theorem support_discount_le_matching_parent_stuck {E : Execution Root}
     · intro i _ _
       exact Nat.zero_le _
   have hbudget := parentstuck_byz_plus_equiv_le cfg ext hec hbb hv hnH
-    hval hstartH hbH hpA hbN htab hne
+    hval hstartH hbH htab hne
   have hbudget' := (Nat.add_le_add_right hbyz _).trans hbudget
   simp only [get_support_discount, compute_empty_slot_support_discount,
     compute_adversarial_weight]
   exact discount_guard
-    (get_parent_payload_support_eq_split cfg ext hec hv n hnH hval hpA hbN)
+    (get_parent_payload_support_eq_split cfg ext hec hv n hnH hval hbH)
     hbudget'
 
 end FastConfirmation.Spec

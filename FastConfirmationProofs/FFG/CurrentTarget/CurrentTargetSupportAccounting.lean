@@ -194,7 +194,6 @@ theorem currentTarget_nonhonest_add_equiv_le_budget
     (hbb : ByzantineWeightPremises cfg E)
     {v : ValidatorIndex} (hv : v ∈ E.honest) {n : ℕ}
     (hnH : E.WithinHorizon cfg n)
-    (hanchorN : E.anchor_state.slot ≤ E.slot_at cfg n)
     {state : BeaconState Root}
     (hval : state.validators = E.registry)
     (htab : get_total_active_balance cfg state = E.total_active cfg)
@@ -244,15 +243,8 @@ theorem currentTarget_nonhonest_add_equiv_le_budget
   have hfinishH : E.SlotWithinHorizon cfg finish :=
     ⟨(Nat.sub_le _ _).trans hcurrentH.1,
       lt_of_le_of_lt (Nat.div_le_div_right (Nat.sub_le _ _)) hcurrentH.2⟩
-  have hstartA : E.anchorEpochStart cfg ≤ start := by
-    have h := E.anchorEpochStart_le_epochStart cfg hanchorN
-    rw [← E.store_current_slot cfg ext v n] at h
-    exact h
-  have hfinishN : finish ≤ E.slot_at cfg n := by
-    rw [← E.store_current_slot cfg ext v n]
-    exact Nat.sub_le _ _
   rw [get_equivocation_score_eq_weight cfg ext hec hv n hnH hval
-    start finish hstartA hfinishN, htab]
+    start finish hfinishH, htab]
   let BS := ((CurrentTargetSupporters cfg store state).filter
     (fun i => i ∉ E.honest)).toFinset
   let EA := EquivActive cfg E store state start finish
@@ -285,7 +277,6 @@ theorem currentTarget_nonhonest_weight_le_adversarial
       E.genesis_store = get_forkchoice_store cfg ast ablk)
     {v : ValidatorIndex} (hv : v ∈ E.honest) {n : ℕ}
     (hnH : E.WithinHorizon cfg n)
-    (hanchorN : E.anchor_state.slot ≤ E.slot_at cfg n)
     {state : BeaconState Root}
     (hval : state.validators = E.registry)
     (htab : get_total_active_balance cfg state = E.total_active cfg)
@@ -304,7 +295,7 @@ theorem currentTarget_nonhonest_weight_le_adversarial
     exact Execution.honest_not_equivocating cfg ext hhb hec hgen
       hih v n (by assumption) (by assumption) hi
   have hbudget := E.currentTarget_nonhonest_add_equiv_le_budget cfg ext
-    hec hbb hv hnH hanchorN hval htab hne hprov
+    hec hbb hv hnH hval htab hne hprov
   let byz := E.weight
     (((CurrentTargetSupporters cfg (E.store cfg ext v n) state).filter
       (fun i => i ∉ E.honest)).toFinset)

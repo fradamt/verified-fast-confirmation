@@ -822,15 +822,12 @@ are the `get_head`/`get_checkpoint_block` well-formedness inputs used by this
 lemma. -/
 
 /-- A fresh checkpoint state is validated through its reachable block-state
-base. Slot processing to the in-horizon target epoch start preserves the
-indexed check, because `registry_static_in_horizon` keeps the registry of both
-states; the cache need not already contain the prepared state. -/
+base. Slot processing preserves the indexed check; the cache need not already
+contain the prepared state. -/
 theorem honest_attestation_valid_prepared {E : Execution Root}
     (hec : BeaconExternalsPremises cfg ext E) {store : Store Root}
     (hstore : E.HonestPrefixStoreWithinHorizon cfg ext store) (a : Attestation Root)
     (hroot : a.data.target.root ∈ store.block_roots)
-    (htargetH : E.SlotWithinHorizon cfg
-      (compute_start_slot_at_epoch cfg a.data.target.epoch))
     (v : ValidatorIndex) (hv : v ∈ E.honest)
     (hsingle : a.attesting_indices = [v])
     (hcommittee : v ∈ E.committee a.data.slot)
@@ -846,12 +843,8 @@ theorem honest_attestation_valid_prepared {E : Execution Root}
       (hstore.blockState cfg ext hroot) v hv hsingle hcommittee hvote
     simp only [store_target_checkpoint_state, if_pos hkey, Function.update_self]
     split_ifs with hslot
-    · have hbaseReach := hstore.blockState cfg ext hroot
-      have hpost := hec.registry_static_in_horizon _
-        (Or.inr ⟨_, _, hbaseReach, htargetH, rfl⟩)
-      have hpre := hec.registry_static_in_horizon _ (Or.inl hbaseReach)
-      rw [hec.process_slots_attestation_valid _ _ _ hbaseReach hslot htargetH
-        (hpost.trans hpre.symm)]
+    · rw [hec.process_slots_attestation_valid _ _ _
+        (hstore.blockState cfg ext hroot) hslot]
       exact hbase
     · exact hbase
 
@@ -1060,13 +1053,7 @@ theorem Execution.vote_lands {E : Execution Root}
       (E.honestCausalStore_prefix cfg ext w hw Nm1
         (by simpa only [← hNeq] using hHdeliver)
         pre (Event.attestation a false :: suf) hl)
-      a htargetPrefix
-      (E.slotWithinHorizon_of_le cfg
-        (by
-          rw [hepoch, hslot_a, ← hn]
-          simp only [compute_start_slot_at_epoch, compute_epoch_at_slot]
-          exact Nat.div_mul_le_self _ _) hHn)
-      v hv hsingle hcomm_slot hvote_ex
+      a htargetPrefix v hv hsingle hcomm_slot hvote_ex
   have hne_full : v ∉ (E.store cfg ext w (Nm1 + 1)).equivocating_indices :=
     Execution.honest_not_equivocating cfg ext hhb hec ⟨ast, ablk, hgeq⟩ hv w (Nm1 + 1) hw (by simpa only [← hNeq] using hHdeliver)
   have hle_pf : StoreLE

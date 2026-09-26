@@ -734,11 +734,7 @@ theorem witnessExternalsCoherence :
       · contradiction
   · intro st
     exact witnessPJF_current_epoch_le st
-  · intro v hv w hw n m s _hn _hm _hsn _hsm
-    simp [get_slot_committee, witnessExternals, witnessExecution,
-      witnessCommittee]
   · intro v hv n s hn hs
-    refine ⟨v, hv, n, hn, hs, ?_⟩
     simp [get_slot_committee, witnessExternals, witnessExecution,
       witnessCommittee]
   · intro state a hreachable v hv hsingle hcommittee hvote
@@ -796,7 +792,7 @@ theorem witnessExternalsCoherence :
   · intro a
     have hdefault : (default : BeaconState WitnessRoot).validators = [] := rfl
     simp [witnessExternals, hdefault]
-  · intro state slot a _hreachable _hlt _hslotH _hreg
+  · intro state slot a _hreachable _hlt
     change decide ((witnessExternals.process_slots state slot).validators ≠ [] ∧
       a ∈ groundVotes) = decide (state.validators ≠ [] ∧ a ∈ groundVotes)
     rw [witnessProcessSlots_registry]

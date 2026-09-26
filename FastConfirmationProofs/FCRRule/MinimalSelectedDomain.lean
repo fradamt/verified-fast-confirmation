@@ -339,20 +339,15 @@ theorem honestSupporter_of_confirmed_known_at_minimal
         ((E.store cfg ext v n).blocks b).parent_root).slot + 1) :=
     ⟨hstart.trans hbH.1,
       lt_of_le_of_lt (Nat.div_le_div_right hstart) hbH.2⟩
-  have hpA := E.anchor_state_slot_le_store_block cfg ext hA.wellFormed
-    hA.externals_coherence hgeq hslot hroot v n _ hparent
-  have hbN : ((E.store cfg ext v n).blocks b).slot ≤ E.slot_at cfg n := by
-    rw [← E.store_current_slot cfg ext v n]
-    exact hbslot
   have hsm := honest_support_majority cfg ext hA.honest_behavior
     hA.externals_coherence hA.byzantine_bound hgen0 hv
-    (n := n) hH hwf hbH (hpA.trans (hwf b hb hparent).le) hval htab hprov hconf' hwalk
+    (n := n) hH hwf hbH hval htab hprov hconf' hwalk
   have hne : ∀ i ∈ (E.store cfg ext v n).equivocating_indices,
       i ∉ E.honest := fun i hi hih =>
     E.honest_not_equivocating cfg ext hA.honest_behavior
       hA.externals_coherence hgen0 hih v n (by assumption) (by assumption) hi
   have hdisc := support_discount_le_parent_stuck cfg ext hA.externals_coherence
-    hA.byzantine_bound hv hH hval hstartH hbH hpA hbN htab hne
+    hA.byzantine_bound hv hH hval hstartH hbH htab hne
   have hsub : ParentStuck cfg E (E.store cfg ext v n) bs b ⊆
       E.span_committee
         (((E.store cfg ext v n).blocks
@@ -911,10 +906,7 @@ theorem futureCrossing_descendStep_of_selectedInputs_minimal
     ((E.store cfg ext v q).blocks b).slot hin.es_le_sigma hin.committee_support
   have hend := E.intraEpochFuture_endpoint_inequality_of_confirmed_window cfg ext
     hA.honest_behavior hA.externals_coherence hA.byzantine_bound hgen hv hqH
-    hwf hval htab hprov hconf hwalk hin.cutoff_eq hslotlt
-    (E.anchor_state_slot_le_store_block cfg ext hA.wellFormed
-      hA.externals_coherence hgeq hslot hparent v q _ hin.parent_known)
-    hbcur
+    hwf hval htab hprov hconf hwalk hin.cutoff_eq hslotlt hbcur
     hin.recorded_epoch_max hin.edge_same_epoch hin.es_le_sigma hin.sigma_horizon
     hboost hSbase (by simpa only [bs] using hin.parent_sub_endpoint) hAX hxS
   have hbside := recorded_bside_ge cfg ext hvalEnd hin.selected_recording
@@ -1012,10 +1004,7 @@ theorem crossingEdge_descendStep_of_selectedInputs_minimal
     ((E.store cfg ext v q).blocks b).slot hin.es_le_sigma hin.committee_support
   have hend := E.crossingEdgeFuture_endpoint_inequality_of_confirmed_window cfg ext
     hA.honest_behavior hA.externals_coherence hA.byzantine_bound hgen hv hqH
-    hwf hval htab hprov hconf hwalk hin.cutoff_eq hslotlt
-    (E.anchor_state_slot_le_store_block cfg ext hA.wellFormed
-      hA.externals_coherence hgeq hslot hparent v q _ hin.parent_known)
-    hbcur
+    hwf hval htab hprov hconf hwalk hin.cutoff_eq hslotlt hbcur
     hin.recorded_epoch_max hin.edge_crosses hin.es_le_sigma hin.sigma_horizon
     hboost hSbase (by simpa only [bs] using hin.parent_sub_endpoint) hAX hxS
   have hbside := recorded_bside_ge cfg ext hvalEnd hin.selected_recording
