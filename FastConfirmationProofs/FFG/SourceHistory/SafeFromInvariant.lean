@@ -3,7 +3,7 @@ public import FastConfirmationProofs.Execution.Trajectory.StoreDynamicsInputs
 public import FastConfirmationProofs.FFG.State.PayloadAwareHead
 public import FastConfirmationProofs.ForkChoice.Filter.FilterViability
 public import FastConfirmationProofs.FCRRule.FCRCallContracts
-public import FastConfirmationInternal.Legacy.Vocabulary
+public import FastConfirmationInternal.ProofVocabulary.Vocabulary
 public import FastConfirmationInternal.Execution.SafeFrom
 
 public import FastConfirmationStatements.Premises.ScheduledExecutionConditions

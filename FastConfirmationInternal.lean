@@ -1,5 +1,5 @@
 module
-public import FastConfirmationInternal.Legacy.Vocabulary
+public import FastConfirmationInternal.ProofVocabulary.Vocabulary
 
 public import FastConfirmationInternal.Discount.ByzantineBudget
 public import FastConfirmationInternal.Discount.CommitteeWeight
@@ -21,4 +21,4 @@ public import FastConfirmationInternal.Network.SynchronyConversion
 public import FastConfirmationInternal.Execution.LatestTraceResult
 public import FastConfirmationInternal.Execution.SafeFrom
 
-/-! Imports the legacy predicates and reusable proof vocabulary below the public claim surface. -/
+/-! Imports shared predicates and reusable proof vocabulary below the public claim surface. -/

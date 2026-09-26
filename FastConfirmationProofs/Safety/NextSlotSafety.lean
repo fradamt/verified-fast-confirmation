@@ -1,7 +1,7 @@
 module
 public import FastConfirmationProofs.Safety.ConfirmedCacheSafety
 public import FastConfirmationProofs.Checkpoints.ExecutionRootReflection
-public import FastConfirmationInternal.Legacy.Vocabulary
+public import FastConfirmationInternal.ProofVocabulary.Vocabulary
 
 public import FastConfirmationStatements.Claims
 @[expose] public section

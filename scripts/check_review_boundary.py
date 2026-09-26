@@ -18,7 +18,7 @@ def allowed(name: str) -> bool:
 
 
 def self_test() -> None:
-    for name in ("FastConfirmationInternal.Legacy.Vocabulary",
+    for name in ("FastConfirmationInternal.ProofVocabulary.Vocabulary",
                  "FastConfirmationProofs.ReviewTheorem",
                  "FastConfirmationWitnesses.Index", "FastConfirmationPaper.Core"):
         assert not allowed(name), name

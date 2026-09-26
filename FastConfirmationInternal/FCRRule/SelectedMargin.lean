@@ -1,6 +1,6 @@
 module
 public import FastConfirmationInternal.Network.VotePathAdmissibility
-public import FastConfirmationInternal.Legacy.Vocabulary
+public import FastConfirmationInternal.ProofVocabulary.Vocabulary
 
 @[expose] public section
 
