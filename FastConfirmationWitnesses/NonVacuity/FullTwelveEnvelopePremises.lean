@@ -531,7 +531,6 @@ def completed_calls : run.ScheduledFCRCallPremises cfg ext where
   phase0_source := phase0_source
   phase0_boundary_source := phase0_boundary_source
   balance_floor := balance_floor
-  delivery_lookahead := delivery_lookahead
 
 def safety_premises : run.NextSlotSafetyPremises cfg ext where
   ffg_interpretation := witnessAcceptedSemantics
@@ -582,7 +581,7 @@ theorem changed_root_safe_from_next_slot (w m : ℕ)
     omega
   have h := confirmed_root_safe_from_next_slot cfg ext run safety_premises
     0 (by decide) 24 w hw m (by omega) hnext hH
-  simpa only [changed_confirmed_root.2.1] using h
+  simpa only [changed_confirmed_root.2.1] using h.2
 
 /-- Node one receives the child envelope two seconds after node zero, and
 both handlers retain it. The later boundary service reaches every honest node. -/

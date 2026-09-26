@@ -28,9 +28,9 @@ asks for an anchor active-set weight of at least two
 artificial empty-active-set minimum-balance branch and the degenerate registry
 in which an epoch with no attestations passes the two-thirds test. The
 registry is static in the horizon, so this is one constant fact; every real
-network satisfies it. `delivery_lookahead` is the paper-synchrony boundary closure for
-honest votes created inside the prefix. Prediction support is derived by
-joint induction over calls and endpoint slots.
+network satisfies it. `synchrony.delivery_lookahead` is the paper-synchrony
+boundary closure for honest votes created inside the prefix. Prediction
+support is derived by joint induction over calls and endpoint slots.
 
 Everything else needed by the accepted target gate--causal replay, current
 slot, latest-message provenance, non-equivocation, committee accounting,
@@ -44,7 +44,6 @@ structure ScheduledFCRCallPremises : Prop where
   phase0_boundary_source : Phase0BoundarySourceCoherence cfg ext
   balance_floor : 2 * cfg.effective_balance_increment ≤
     E.weight (E.currentTargetAnchorActive cfg)
-  delivery_lookahead : HorizonVoteDeliveryLookahead cfg E
 
 end Execution
 end FastConfirmation.Spec

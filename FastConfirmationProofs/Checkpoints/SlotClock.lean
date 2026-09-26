@@ -6,7 +6,7 @@ public import FastConfirmationProofs.Execution.Trajectory.ExecutionClock
 /-!
 # Spec / Proof / Clock
 
-Layer 0, slot arithmetic: the `slot_start`/`slot_at` algebra the confirmation
+base proof layer, slot arithmetic: the `slot_start`/`slot_at` algebra the confirmation
 layers reason with, made exact under whole-second slots
 (`1000 ∣ cfg.slot_duration_ms`, mainnet `12000` ms).
 

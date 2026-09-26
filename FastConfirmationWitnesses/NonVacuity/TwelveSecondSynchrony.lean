@@ -419,8 +419,14 @@ theorem synchrony : Synchrony cfg ext run := by
   intro v hv s n a hs hn hvote _hdeadline _hdelivery w hw
   exact vote_at_boundary hvote w
 
+theorem delivery_lookahead : HorizonVoteDeliveryLookahead cfg run := by
+  constructor
+  intro v hv s n a hs hn hvote _hdeadline w hw
+  exact vote_at_boundary hvote w
+
 theorem next_slot_synchrony : NextSlotSynchronyPremises cfg ext run := by
   apply synchrony.toPaperSafetySynchrony cfg ext
+    delivery_lookahead
   · intro v hv n r hn hr
     rw [no_verified_payload] at hr
     cases hr
@@ -437,11 +443,6 @@ theorem joint_witness :
     WellFormedExecution run ∧ HonestBehavior cfg ext run ∧
       Synchrony cfg ext run ∧ NextSlotSynchronyPremises cfg ext run :=
   ⟨well_formed, honest_behavior, synchrony, next_slot_synchrony⟩
-
-theorem delivery_lookahead : HorizonVoteDeliveryLookahead cfg run := by
-  constructor
-  intro v hv s n a hs hn hvote _hdeadline w hw
-  exact vote_at_boundary hvote w
 
 theorem static_validators : StaticValidatorSet cfg run := by
   constructor

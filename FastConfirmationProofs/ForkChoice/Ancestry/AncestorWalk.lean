@@ -56,7 +56,7 @@ end FastConfirmation.Spec
 /-!
 # Spec / Proof / Ancestry
 
-Layer 0, the ancestry toolkit: fuel elimination for `get_ancestor`. The
+base proof layer, the ancestry toolkit: fuel elimination for `get_ancestor`. The
 python recursion is defined exactly on walks that stay inside the store's
 known blocks; `WalkKnown` captures that domain, and on it the fuel-bounded
 `get_ancestor_aux` is fuel-independent (any fuel above the walked block's

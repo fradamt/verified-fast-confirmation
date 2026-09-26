@@ -96,12 +96,15 @@ def check(text):
                 f"{name}: wrong evidence relay type")
         require("boundary_block_prefix:DeadlineBoundaryBlockPrefixcfgextE" in d,
                 f"{name}: wrong block-prefix type")
-        require("n≤E.slot_startcfgs+get_attestation_due_mscfg/1000→" in d,
-                f"{name}: missing vote cutoff")
+        if name == "Synchrony":
+            require("n≤E.slot_startcfgs+get_attestation_due_mscfg/1000→" in d,
+                    f"{name}: missing vote cutoff")
         require("0<delay_ms∧" in d, f"{name}: missing positive delay")
         require("get_attestation_due_mscfg+delay_ms<cfg.slot_duration_ms" in d,
                 f"{name}: missing strict delay bound")
     next_slot = ds.get("NextSlotSynchronyPremises", "")
+    require("delivery_lookahead:HorizonVoteDeliveryLookaheadcfgE" in next_slot,
+            "NextSlotSynchronyPremises: missing horizon vote delivery")
     require("envelope_delivery:DeadlineEnvelopeDeliverycfgextE" in next_slot,
             "NextSlotSynchronyPremises: wrong envelope relay type")
     require("data_availability_relay:DeadlineDataAvailabilityRelaycfgextE" in next_slot,

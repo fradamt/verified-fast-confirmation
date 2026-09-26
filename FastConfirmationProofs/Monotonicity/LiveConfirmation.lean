@@ -2308,7 +2308,15 @@ theorem NextSlotSafetyPremises.live_confirmed_ancestor_interval
 
 end Execution
 
-/-- Accepted live monotonicity for the stored executable FCR output. -/
+/-- Conditional live monotonicity for the stored executable FCR output.
+The `LiveMonotonicityPremises` witness supplies store outcomes in addition to
+the safety premise. Its `ffg_timely_justification` field closes
+`previous_epoch_greatest_unrealized_checkpoint`,
+`is_head_unrealized_justified_ok`, and the previous-slot-head voting-source
+recency guard of `find_latest_confirmed_descendant`. Its
+`honest_block_each_slot` field supplies honest blocks from execution start
+without reorg of those blocks. These fields are store outcomes, not network
+or behavior assumptions. -/
 theorem live_confirmed_root_monotonicity :
     LiveConfirmedRootMonotonicity cfg ext := by
   intro E haccepted v hv n m hnm hHm live

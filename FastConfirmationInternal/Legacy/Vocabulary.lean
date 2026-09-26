@@ -13,7 +13,7 @@ Defines legacy predicates that still serve as proof vocabulary below the public 
 This module contains supporting predicates and old candidate statements used
 by internal proofs. They are proof vocabulary, not the accepted claims.
 It reads the Spec Model and the live premise definitions. Read
-`Spec/Statements/Claims.lean` for the accepted claims next.
+`FastConfirmationStatements/Claims.lean` for the accepted claims next.
 -/
 
 namespace FastConfirmation.Spec

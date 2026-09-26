@@ -11,7 +11,7 @@ does not provide: the epoch-boundary block of a chain (`boundaryBlock`) and the 
 checkpoint `C(b, e)` (`checkpointOf`) — the epoch-`e` boundary block of `chain(b)`,
 tagged with `e`. These feed the honest FFG-voting discipline (`HonestFFGNoEquivocation`)
 and the cross-epoch never-filter argument
-(`FastConfirmation/Paper/HFC/Proof/CrossEpoch.lean`).
+(`FastConfirmationPaper/HFC/Proof/CrossEpoch.lean`).
 -/
 
 namespace FastConfirmation.HFC

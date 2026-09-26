@@ -24,7 +24,7 @@ Each row states a choice in the executable or paper model, why it is used, and t
 │                                       │                                                                  │ argument.                                                                         │
 │ Supplied FFG carrier-vote relation    │ Checks accepted carrier origin and a received block vote copy.   │ A caller must supply the causal inclusion evidence for its execution.             │
 │ Supplied FFG validation state         │ Prepares the keyed target block state from an honest store.      │ Stated in FFGInterpretationFidelity only; the prepared state may be unkeyed.      │
-│ Static validator registry             │ Matches the paper balance setting over the horizon.              │ The safety theorem does not cover validator churn.                                │
+│ Static validator registry             │ Fixes balances and slashed flags in the horizon.                 │ Included slashing never marks a validator slashed in state.                       │
 │ Finite horizon                        │ Makes endpoints and next-slot receipt precise.                   │ Conclusions do not extend beyond the checked horizon.                             │
 │ Global FFG and finalization laws      │ Connects opaque beacon transitions to exact checkpoint state.    │ The premises range over handler-successful prefixes beyond a conclusion endpoint. │
 │ Derived FCR prediction support        │ Exact targets for current results; descent for previous results. │ Both forms follow from the joint call and endpoint-slot induction.                │
@@ -35,13 +35,19 @@ Each row states a choice in the executable or paper model, why it is used, and t
 │ Paper exact rational balances         │ Keeps the paper threshold algebra direct.                        │ Does not by itself model executable integer rounding.                             │
 │ Paper eligibility filter              │ Reuses the LMD head agreement result in HFC.                     │ The proof needs a separate never-filter premise and bridge.                       │
 │ Paper AU from block-contained votes   │ Ties justification to concrete ancestry evidence.                │ OnChainAnchorInterface still supplies visibility and formation laws.              │
-│ Algorithm 1 future confirmation input │ Discharges the later monotonicity gate.                          │ SafeConfirmedAlg1Inputs is stronger than Assumption 6.                            │
-└───────────────────────────────────────┴──────────────────────────────────────────────────────────────────┴───────────────────────────────────────────────────────────────────────────────────┘
-```
+│ Algorithm 1 future confirmation input │ Discharges the later monotonicity gate.                          │ SafeConfirmedAlg1Inputs already confirms each honest-view-safe block.             │
+└───────────────────────────────────────┴──────────────────────────────────────────────────────────────────┴───────────────────────────────────────────────────────────────────────────────────┘```
 
-The safety claims hold for every carrier-vote relation that meets the stated
-fields. They do not alone certify the votes in real block bodies. The
-`ByzantineWeightPremises.span_fraction` bound applies to every in-horizon
+The safety claim holds for every carrier-vote relation that meets the stated
+fields. It does not alone certify the votes in real block bodies.
+`review_claims` has one safety field. It gives observer-store membership and
+executable ancestry. `live_confirmed_root_monotonicity` is a separate
+conditional theorem. Its timely FFG premise supplies store outcomes for the
+named FCR guards: previous_epoch_greatest_unrealized_checkpoint,
+is_head_unrealized_justified_ok, and the previous-slot-head voting-source
+recency guard.
+
+The `ByzantineWeightPremises.span_fraction` bound applies to every in-horizon
 committee span, including one slot. A global fault share does not establish
 this bound. `span_fraction` and `estimate_sound` are deterministic events
 assumed on every checked span, including one slot. Their probability under
@@ -121,7 +127,7 @@ wall-clock slot. Grandine follows the specification and uses the justified
 state. All six clients apply valid gossip evidence to fork choice before block
 inclusion, and none prunes the equivocation set at finalization.
 
-Client revisions for this comparison: Lighthouse e423a66763bb1bd780492d635123f208d80c3538; Prysm 5407381fc51c9604c7f95b8d87dbb8f4786a83fd; Teku 3d26533fb84a7d12da04e5ab59e1ab7399db5fc5; Lodestar c535e94f25e209f6b137be3d29a87562088035d; Nimbus 404a0001561d1d83c5b5bf35dcbedbcb5fb86572; Grandine 66b3d385c3dc69d89e05b80bbb6baf7442a12966.
+Client revisions for this comparison: Lighthouse e423a66763bb1bd780492d635123f208d80c3538; Prysm 5407381fc51c9604c7f95b8d87dbb8f4786a83fd; Teku 3d26533fb84a7d12da04e5ab59e1ab7399db5fc5; Lodestar c535e94f25e209f6b137be3d29a87562088035d3; Nimbus 404a0001561d1d83c5b5bf35dcbedbcb5fb86572; Grandine 66b3d385c3dc69d89e05b80bbb6baf7442a12966.
 
 Evidence accepted late in a slot is included: the relay's source time is when
 the confirmer holds the index at its scheduled slot-start FCR call. The two
@@ -138,19 +144,21 @@ The source fork is `fradamt/consensus-specs` at tag `fcr-gloas-fix` (`13f391516`
 
 ## Strong conditions
 
-These nine fields are stronger than a direct claim about all real clients.
+These eleven fields are stronger than a direct claim about all real clients.
 Each item states why the proof uses the field and what a weaker model would
 need.
 
-1. `HonestBehavior.no_forgery` covers every scheduled attestation that names an honest validator, even before validation. It lets the proof identify honest vote data in received copies. A weaker rule would constrain only validated messages and would need a proof that every used copy passed validation.
-2. `BeaconExternalsPremises.process_slots_registry` preserves every validator record when slots advance. It keeps the registry used by committee and weight arguments fixed. A weaker rule would track only the active status, balances, and slashed flags that those arguments read.
-3. `BeaconExternalsPremises.state_transition_registry` preserves every validator record after a successful block import. It gives the same fixed registry across accepted blocks. A weaker rule would model balance and slashing updates and prove the required weight bounds after each update.
-4. `StaticValidatorSet.activity_constant` fixes active status across the horizon. It lets committee and stake facts use one active set. A weaker rule would account for validator activation and exit in every checked span.
-5. `BeaconExternalsPremises.committees_agree` covers every honest store query for every in-horizon slot. It connects the external committee read to the execution assignment. A weaker rule would restrict queries to those reached by accepted calls and prove that no other query affects the claim.
-6. `BeaconExternalsPremises.verify_envelope_deterministic` ignores observation context for a fixed state and signed envelope. It supports transport of a verified result to a later observation. A weaker rule would model local execution-engine readiness and prove agreement only for the contexts used by the handler.
-7. `ByzantineWeightPremises.estimate_sound` makes every in-horizon committee estimate an upper bound. It lets the proof use the executable estimate without a failure case. A weaker rule would carry an explicit estimate-failure probability or prove soundness from a concrete shuffling model.
-8. `ByzantineWeightPremises.span_fraction` bounds non-honest weight in every checked slot span, including one slot. It matches the formal paper's committee-majority assumption. A global stake fraction alone cannot supply this field. A weaker rule would derive span bounds from a shuffling argument and state its failure probability.
-9. `NextSlotSynchronyPremises.attester_slashing_relay` gives each honest store the equivocation indices by the next boundary. It lets the fault discount use evidence across honest nodes. A weaker rule would model each validation state and prove successful evidence transfer for the indices that the proof uses. Literal Python can reject evidence when its justified state lacks a signer.
+1. `HonestBehavior.votes_head` requires every honest committee member to vote for its fork-choice head. It excludes abstention and other vote choices. The proof uses this vote support.
+2. `HonestBehavior.not_slashable` requires all scheduled honest votes to be pairwise non-slashable. With `votes_head`, it constrains honest head votes across slots. The proof uses it to exclude honest equivocation.
+3. `HonestBehavior.no_forgery` covers every scheduled attestation that names an honest validator, even before validation. It lets the proof identify honest vote data in received copies. A weaker rule would constrain only validated messages and would need a proof that every used copy passed validation.
+4. `BeaconExternalsPremises.process_slots_registry` preserves every validator record when slots advance. It keeps the registry used by committee and weight arguments fixed. A weaker rule would track only the active status, balances, and slashed flags that those arguments read.
+5. `BeaconExternalsPremises.state_transition_registry` preserves every validator record after a successful block import. It gives the same fixed registry across accepted blocks. A weaker rule would model balance and slashing updates and prove the required weight bounds after each update.
+6. `StaticValidatorSet.activity_constant` fixes active status across the horizon. It lets committee and stake facts use one active set. A weaker rule would account for validator activation and exit in every checked span.
+7. `BeaconExternalsPremises.committees_agree` covers every honest store query for every in-horizon slot. It connects the external committee read to the execution assignment. A weaker rule would restrict queries to those reached by accepted calls and prove that no other query affects the claim.
+8. `BeaconExternalsPremises.verify_envelope_deterministic` ignores observation context for a fixed state and signed envelope. It supports transport of a verified result to a later observation. A weaker rule would model local execution-engine readiness and prove agreement only for the contexts used by the handler.
+9. `ByzantineWeightPremises.estimate_sound` makes every in-horizon committee estimate an upper bound. It lets the proof use the executable estimate without a failure case. A weaker rule would carry an explicit estimate-failure probability or prove soundness from a concrete shuffling model.
+10. `ByzantineWeightPremises.span_fraction` bounds non-honest weight in every checked slot span, including one slot. It matches the formal paper's committee-majority assumption. A global stake fraction alone cannot supply this field. A weaker rule would derive span bounds from a shuffling argument and state its failure probability.
+11. `NextSlotSynchronyPremises.attester_slashing_relay` gives each honest store the equivocation indices by the next boundary. It lets the fault discount use evidence across honest nodes. A weaker rule would model each validation state and prove successful evidence transfer for the indices that the proof uses. Literal Python can reject evidence when its justified state lacks a signer.
 
 ## Derived prediction support
 
@@ -192,11 +200,11 @@ The live fields and claim are unchanged; no live-only support premise is needed.
 
 Exact target agreement is too strong for a previous-epoch result. Let r be
 the result in epoch e-1. A Byzantine proposer withholds a first-slot block
-B1 of epoch e, which descends from r, then gives it only to the caller
-after the vote deadline. The caller uses B1 as its current target at the
+X1 of epoch e, which descends from r, then gives it only to the caller
+after the vote deadline. The caller uses X1 as its current target at the
 next slot's guarded call. Other honest validators propose and vote on a
-branch from r before B1 arrives. Their epoch-e target is r, while the
-caller's target is B1. The selected root r stays safe and the relay
+branch from r before X1 arrives. Their epoch-e target is r, while the
+caller's target is X1. The selected root r stays safe and the relay
 deadlines permit this schedule. Thus safety and descendant support can hold
 without exact target agreement. This is a protocol description, not a Lean
 counterexample witness. The finite Byzantine witness separately proves a

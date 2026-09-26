@@ -59,7 +59,7 @@ def apply_event (store : Store Root) : Event Root → Option (Store Root)
 /-- An execution of the protocol: the shared trusted starting store, the
 per-node message schedule, the honest-node set, the ground-truth committee
 assignment (state-independent within the spec's own `MAX_SEED_LOOKAHEAD`
-consistency window — see `Assumptions.lean`), and the record of the
+consistency window), and the record of the
 attestation each validator casts for its per-slot assignment (`vote v s =
 some (n, a)`: validator `v` cast `a` at second `n` for slot `s`; what honest
 validators' votes look like is `HonestBehavior`'s business, when they arrive

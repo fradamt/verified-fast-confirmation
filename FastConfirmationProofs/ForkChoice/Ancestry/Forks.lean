@@ -6,14 +6,14 @@ public import FastConfirmationProofs.ForkChoice.Ancestry.AncestryRoots
 /-!
 # Spec / Proof / Forks
 
-Layer 0, the fork toolkit built on the `Proof/AncestryRoots.lean` ancestry
+base proof layer, the fork toolkit built on the `FastConfirmationProofs/ForkChoice/Ancestry/AncestryRoots.lean` ancestry
 order facts. The headline fact is `siblings_incompatible`: two *distinct*
 children of one parent have no common descendant. It is the disjointness input
 the head-safety engine's sibling bound (design plan L3, step E3) needs — a
 supporter of one sibling can never also support another.
 
 Everything reuses `WalkKnown`, `get_ancestor_comp`, `get_ancestor_step` /
-`get_ancestor_stop` from `Proof/Ancestry.lean` / `Proof/AncestryRoots.lean`; the
+`get_ancestor_stop` from `FastConfirmationProofs/ForkChoice/Ancestry/AncestorWalk.lean` / `FastConfirmationProofs/ForkChoice/Ancestry/AncestryRoots.lean`; the
 only behavioral premise is the `parent_slot_lt`-shaped `hwf`, exactly the
 `WellFormedStore.parent_slot_lt` field, plus a `WalkKnown` witness for the
 common-descendant walk (without it `is_ancestor` could be a fuel-exhaustion

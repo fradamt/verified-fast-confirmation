@@ -11,18 +11,24 @@ six.
 ├────────────────────────────┼──────────────────────────────────────────────────────────────────────────────────────────────┤
 │ FastConfirmationModel      │ Python function translation in Spec/; scheduled runs, stake reads, external calls, and state │
 │                            │ folds in Execution/.                                                                         │
-│ FastConfirmationStatements │ Premise records in Premises/; propositions in Claims.lean and the two-field Review.lean      │
+│ FastConfirmationStatements │ Premise records in Premises/; propositions in Claims.lean and the safety-only Review.lean    │
 │                            │ bundle.                                                                                      │
 │ FastConfirmationInternal   │ Proof vocabulary and compatibility records. Subject folders hold FFG and synchrony facts;    │
 │                            │ Legacy/ holds compatibility records.                                                         │
 │ FastConfirmationProofs     │ Kernel checked proofs grouped by subject; ReviewTheorem.lean proves review_claims.           │
 │ FastConfirmationWitnesses  │ Finite runs in NonVacuity/, negative results in Counterexamples/, and an inventory in        │
 │                            │ Index.lean.                                                                                  │
-│ FastConfirmationPaper      │ Independent paper definitions, claims, proofs, and witnesses in Core/, LMDGhost/, and HFC/.  │
-└────────────────────────────┴──────────────────────────────────────────────────────────────────────────────────────────────┘
-```
+│ FastConfirmationPaper      │ Independent paper definitions, claims, and proofs in Core/, LMDGhost/, and HFC/.             │
+└────────────────────────────┴──────────────────────────────────────────────────────────────────────────────────────────────┘```
 
 `FastConfirmationModel` and `FastConfirmationStatements` are the trusted review surface. They contain definitions and premise propositions. Model also proves `SuccessfulScheduledBlockImport.processedCount_lt` for its successor-prefix definition. The Lean kernel checks the proof bodies in Internal, Proofs, Witnesses, and Paper. The audit in `scripts/Audit.lean` checks public theorem dependencies and permits only Lean's standard `propext`, `Classical.choice`, and `Quot.sound` axioms.
+
+`ReviewClaims` contains only next-slot safety. Its conclusion gives observer-store
+membership and executable ancestry. `live_confirmed_root_monotonicity` is a
+separate conditional theorem. Its timely FFG premise supplies store outcomes
+for previous_epoch_greatest_unrealized_checkpoint,
+is_head_unrealized_justified_ok, and the previous-slot-head voting-source
+recency guard.
 
 ## Review checks
 
@@ -35,11 +41,10 @@ six.
 │                            │ Statements source is included.                                                              │
 │ StatementReachability.lean │ 61 source declarations are claim-reachable. Synchrony is the one approved public exception. │
 │                            │ No other unreachable source declaration is allowed.                                         │
-│ ReviewSurfaceShape.lean    │ The two review fields and selected premise record shapes remain exact.                      │
+│ ReviewSurfaceShape.lean    │ The safety review field and selected premise record shapes remain exact.                    │
 │ check_imports.py           │ The six-library import direction and Paper separation hold.                                 │
 │ check_doc_names.py         │ Backticked Lean names in current documents resolve to declarations or files.                │
-│ Audit.lean                 │ The 43 public theorem witnesses have only standard axiom dependencies.                      │
+│ Audit.lean                 │ The 43 audited public theorems have only standard axiom dependencies.                       │
 │                            │ No forbidden declaration is allowed.                                                        │
 │ validate.sh                │ Fast checks above; full mode also builds every library and runs Lean checks.                │
-└────────────────────────────┴─────────────────────────────────────────────────────────────────────────────────────────────┘
-```
+└────────────────────────────┴─────────────────────────────────────────────────────────────────────────────────────────────┘```

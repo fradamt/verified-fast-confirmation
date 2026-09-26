@@ -11,15 +11,31 @@ variable (cfg : Config) (ext : BeaconFunctionInterface Root)
 namespace Execution
 variable (E : Execution Root)
 end Execution
+/-- The lookahead vote law supplies next-slot delivery within the horizon. -/
+theorem NextSlotSynchronyPremises.attestation_delivery
+    {cfg : Config} {ext : BeaconFunctionInterface Root}
+    {E : Execution Root} (h : NextSlotSynchronyPremises cfg ext E)
+    (v : ValidatorIndex) (hv : v ∈ E.honest)
+    (s n : ℕ) (a : Attestation Root)
+    (hs : E.SlotWithinHorizon cfg s)
+    (hn : E.WithinHorizon cfg n)
+    (hvote : E.vote v s = some (n, a))
+    (hdeadline : n ≤ E.slot_start cfg s + get_attestation_due_ms cfg / 1000)
+    (_hdelivery : E.WithinHorizon cfg (E.slot_start cfg (s + 1)))
+    (w : ValidatorIndex) (hw : w ∈ E.honest) :
+    Event.attestation a false ∈ E.schedule w (E.slot_start cfg (s + 1)) :=
+  h.delivery_lookahead.attestation_delivery v hv s n a hs hn hvote hdeadline w hw
+
 /-- The legacy synchrony bundle supplies the beacon and attestation fields.
 Gloas also needs envelope delivery and data-availability relay. -/
 def Synchrony.toPaperSafetySynchrony
     (h : Synchrony cfg ext E)
+    (hlookahead : HorizonVoteDeliveryLookahead cfg E)
     (henvelope : DeadlineEnvelopeDelivery cfg ext E)
     (hdata : DeadlineDataAvailabilityRelay cfg ext E) :
     NextSlotSynchronyPremises cfg ext E where
   delta := h.delta
-  attestation_delivery := h.attestation_delivery
+  delivery_lookahead := hlookahead
   deadline_block_relay := h.deadline_block_relay
   boundary_block_prefix := h.boundary_block_prefix
   envelope_delivery := henvelope

@@ -23,6 +23,7 @@ private def publicWitnesses : Array Name :=
   #[
     ``FastConfirmation.Spec.review_claims,
     ``FastConfirmation.Spec.confirmed_root_safe_from_next_slot,
+    -- The live theorem is public but is a conditional result outside ReviewClaims.
     ``FastConfirmation.Spec.live_confirmed_root_monotonicity,
     ``FastConfirmation.Spec.NextSlotPremiseWitness.finite_execution_satisfies_premises,
     ``FastConfirmation.Spec.NextSlotPremiseWitness.next_slot_premises_nonempty,

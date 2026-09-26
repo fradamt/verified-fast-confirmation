@@ -978,10 +978,20 @@ private theorem witness_payloads_empty (v n : ℕ) :
             (witnessExecution.time_at (n + 1)))).trans
           ((on_tick_payloads witnessConfig _ _).trans ih)
 
+theorem witnessHorizonVoteDeliveryLookahead :
+    HorizonVoteDeliveryLookahead witnessConfig witnessExecution := by
+  constructor
+  intro v hv s n a hs hn hvote _hdeadline w hw
+  obtain ⟨hslt, hvmod, hn', ha⟩ := witness_vote_some_iff.mp hvote
+  subst n
+  subst a
+  exact witness_vote_false_delivery hslt w
+
 /-- The Gloas envelope and data premises hold for this finite witness. -/
 theorem witnessPaperSafetySynchrony :
     NextSlotSynchronyPremises witnessConfig witnessExternals witnessExecution := by
   apply witnessSynchrony.toPaperSafetySynchrony witnessConfig witnessExternals
+    witnessHorizonVoteDeliveryLookahead
   · intro v hv n r hn hr
     have hempty := witness_payloads_empty v n
     have hnone : witnessExecution.genesis_store.payloads r = none := rfl
@@ -993,15 +1003,6 @@ theorem witnessPaperSafetySynchrony :
   · intro v hv k n signed sourceObservation hk hn hevent havailable
     have hno := witnessSchedule_no_envelope v k _ hevent signed sourceObservation
     exact (hno rfl).elim
-
-theorem witnessHorizonVoteDeliveryLookahead :
-    HorizonVoteDeliveryLookahead witnessConfig witnessExecution := by
-  constructor
-  intro v hv s n a hs hn hvote _hdeadline w hw
-  obtain ⟨hslt, hvmod, hn', ha⟩ := witness_vote_some_iff.mp hvote
-  subst n
-  subst a
-  exact witness_vote_false_delivery hslt w
 
 theorem witnessScheduledPrefixTrajectoryAssumptions :
     witnessExecution.ScheduledExecutionPremises

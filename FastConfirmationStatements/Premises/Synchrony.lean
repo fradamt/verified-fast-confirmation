@@ -215,47 +215,6 @@ def DeadlineDataAvailabilityRelay (E : Execution Root) : Prop :=
         Event.execution_payload_envelope receiverSigned receiverObservation ∈ E.schedule w m →
         ext.is_data_available signed.message.beacon_block_root receiverObservation = true
 
-/-- The synchrony fragment used by the accepted spec next-slot proof.
-
-The network content is in the delivery laws: honest-attestation delivery,
-block relay, envelope delivery, data-availability relay, and
-equivocation-evidence relay. `delta` records the paper's timing parameter: a
-positive delay fits after the attestation deadline (`A + Δ < S`). The proofs
-use the slot-level delivery laws, not the numeric delay. The exact relation to
-`Synchrony` is proved by `synchrony_and_delivery_iff_nextSlot`. -/
-structure NextSlotSynchronyPremises (E : Execution Root) : Prop where
-  /-- The paper's timing parameter: a positive millisecond gossip delay
-      `Δ` with the strict vote-to-next-slot bound `A + Δ < S`. -/
-  delta : ∃ delay_ms : ℕ,
-    0 < delay_ms ∧
-      get_attestation_due_ms cfg + delay_ms < cfg.slot_duration_ms
-  /-- Honest votes are sent by A. Positive-Δ gossip and strict fit give
-      receipt before the next slot; the client then runs the vote handler. -/
-  attestation_delivery : ∀ v ∈ E.honest, ∀ s n (a : Attestation Root),
-    E.SlotWithinHorizon cfg s →
-    E.WithinHorizon cfg n →
-    E.vote v s = some (n, a) →
-    n ≤ E.slot_start cfg s + get_attestation_due_ms cfg / 1000 →
-    E.WithinHorizon cfg (E.slot_start cfg (s + 1)) →
-    ∀ w ∈ E.honest,
-      Event.attestation a false ∈ E.schedule w (E.slot_start cfg (s + 1))
-  /-- Positive-Δ gossip from a cutoff observation, with strict fit and
-      honest delay consideration. Only the pre-tick finalized guard exempts. -/
-  deadline_block_relay : DeadlineBlockRelay cfg ext E
-  /-- Strict `A + Δ < S` and honest ready-message service put cutoff blocks
-      before the next-slot vote handler; exclusion is tested before the tick. -/
-  boundary_block_prefix : DeadlineBoundaryBlockPrefix cfg ext E
-  /-- Positive-Δ envelope gossip and strict fit give ready service before
-      the boundary vote. The named contract has the pre-tick block exemption. -/
-  envelope_delivery : DeadlineEnvelopeDelivery cfg ext E
-  /-- Honest data service follows the same cutoff and positive-Δ bound;
-      the receiver observation is at or after the next slot boundary. -/
-  data_availability_relay : DeadlineDataAvailabilityRelay cfg ext E
-  /-- Cutoff evidence gossip under positive Δ and strict fit, without an
-      exclusion branch. A premise over the literal justified-state handler;
-      see the module note on client evidence validation. -/
-  attester_slashing_relay : DeadlineAttesterSlashingRelay cfg ext E
-
 /-- One-slot operational closure for honest votes created inside the public
 verification horizon.
 
@@ -273,6 +232,40 @@ structure HorizonVoteDeliveryLookahead (E : Execution Root) : Prop where
     n ≤ E.slot_start cfg s + get_attestation_due_ms cfg / 1000 →
     ∀ w ∈ E.honest,
       Event.attestation a false ∈ E.schedule w (E.slot_start cfg (s + 1))
+
+/-- The synchrony fragment used by the accepted spec next-slot proof.
+
+The network content is in the delivery laws: honest-attestation delivery,
+block relay, envelope delivery, data-availability relay, and
+equivocation-evidence relay. `delta` records the paper's timing parameter: a
+positive delay fits after the attestation deadline (`A + Δ < S`). The proofs
+use the slot-level delivery laws, not the numeric delay. The exact relation to
+`Synchrony` is proved by `synchrony_and_delivery_iff_nextSlot`. -/
+structure NextSlotSynchronyPremises (E : Execution Root) : Prop where
+  /-- The paper's timing parameter: a positive millisecond gossip delay
+      `Δ` with the strict vote-to-next-slot bound `A + Δ < S`. -/
+  delta : ∃ delay_ms : ℕ,
+    0 < delay_ms ∧
+      get_attestation_due_ms cfg + delay_ms < cfg.slot_duration_ms
+  /-- Vote delivery includes the boundary just beyond the public horizon. -/
+  delivery_lookahead : HorizonVoteDeliveryLookahead cfg E
+  /-- Positive-Δ gossip from a cutoff observation, with strict fit and
+      honest delay consideration. Only the pre-tick finalized guard exempts. -/
+  deadline_block_relay : DeadlineBlockRelay cfg ext E
+  /-- Strict `A + Δ < S` and honest ready-message service put cutoff blocks
+      before the next-slot vote handler; exclusion is tested before the tick. -/
+  boundary_block_prefix : DeadlineBoundaryBlockPrefix cfg ext E
+  /-- Positive-Δ envelope gossip and strict fit give ready service before
+      the boundary vote. The named contract has the pre-tick block exemption. -/
+  envelope_delivery : DeadlineEnvelopeDelivery cfg ext E
+  /-- Honest data service follows the same cutoff and positive-Δ bound;
+      the receiver observation is at or after the next slot boundary. -/
+  data_availability_relay : DeadlineDataAvailabilityRelay cfg ext E
+  /-- Cutoff evidence gossip under positive Δ and strict fit, without an
+      exclusion branch. A premise over the literal justified-state handler;
+      see the module note on client evidence validation. -/
+  attester_slashing_relay : DeadlineAttesterSlashingRelay cfg ext E
+
 
 end FastConfirmation.Spec
 

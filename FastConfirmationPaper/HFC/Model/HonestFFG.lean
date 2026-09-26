@@ -9,7 +9,7 @@ public import FastConfirmationPaper.HFC.Model.ConfirmationRule
 
 The honest-validator **FFG non-equivocation** discipline — the §4 mirror of the §3.1
 `HonestBehavior.noEquivocation`
-(`FastConfirmation/Paper/Core/Model/Honest.lean`). It is *definitional* (what it
+(`FastConfirmationPaper/Core/Model/HonestVoting.lean`). It is *definitional* (what it
 means to be an honest validator running FFG-Casper), **not** an environmental assumption:
 an honest committee member casts at most one FFG link vote per slot — its prescribed
 head-vote — whose **source** is the AU-based voting source of its own head and whose **target** is
@@ -28,7 +28,7 @@ variable {n : ℕ}
 
 /-- **Honest FFG non-equivocation** (definitional; the FFG mirror of
     `HonestBehavior.noEquivocation`,
-    `FastConfirmation/Paper/Core/Model/Honest.lean`). An honest validator
+    `FastConfirmationPaper/Core/Model/HonestVoting.lean`). An honest validator
     casts **at most one FFG vote per slot** — namely its prescribed head-vote — so any
     FFG message attributed to an honest `i` that appears in *any* honest view (and is a
     `HonestCast`, i.e. genuinely `i`'s own vote at the slot it acts) **is** that prescribed

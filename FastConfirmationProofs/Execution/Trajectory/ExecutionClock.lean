@@ -7,7 +7,7 @@ public import FastConfirmationProofs.ModelFacts
 /-!
 # Spec / Proof / Trajectory
 
-Layer 0, clock coherence: along every execution trajectory the store clock
+base proof layer, clock coherence: along every execution trajectory the store clock
 tracks `time_at` (`on_tick` writes its argument; no event handler touches
 `time`), `genesis_time` is constant, and therefore
 `get_current_slot (E.store v n) = E.slot_at n` — the store's notion of the

@@ -11,7 +11,7 @@ The public, proof-free §4 surface — the claims checked against arXiv:2405.005
 and the explainer (Kalinin/Saltini/Zanolini). Every result structurally mirrors a
 §3.1 statement at `P := FFGVote n`, `flt := ffgFilter C τ`, reusing the
 filter-generic engine `HeadAgreementAfterConfirmation`
-(`FastConfirmation/Paper/LMDGhost/TheoremStatements.lean`). The proved module
+(`FastConfirmationPaper/LMDGhost/Claims.lean`). The proved module
 facade is `FastConfirmation.Paper.HFC.ProvenTheorems`.
 
 Results:
@@ -69,10 +69,10 @@ variable {n : ℕ}
     This does not establish that any block contains the vote.
 
     **Scope:** this is not a premise of the public §4 theorems. The
-    `willChkpBeJustified` certificate route (`Certificate.lean`) discharges justification from a
+    `willChkpBeJustified` certificate route (`FastConfirmationPaper/HFC/Proof/CheckpointCertificate.lean`) discharges justification from a
     validator's *local* observed link weight, which needs no FFG-inclusion assumption; this
     assumption is used by the alternative theorem `checkpoint_justified_of_canonical`
-    (`Formation.lean`). -/
+    (`FastConfirmationPaper/HFC/Proof/CertificateFormation.lean`). -/
 def Assumption3 (τ : Timing) (fm : FaultModel n) (𝒱 : ViewFamily n (FFGVote n)) : Prop :=
   ∀ ⦃w : Validator n⦄, w ∈ fm.honest →
     ∀ ⦃m : Message n (FFGVote n)⦄ ⦃s' : Slot⦄,

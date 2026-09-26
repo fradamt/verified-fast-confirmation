@@ -26,12 +26,25 @@ This map condenses the definitions, assumptions, and theorems of [arXiv:2405.005
 │ Algorithm 1 FFG gate                      │ WillNoConflictingChkpBeJustified                                  │ Predicted target support.                                                     │
 │ Algorithm 1 confirmation                  │ isConfirmedNoCaching; isHFCConfirmed                              │ Rule predicate and selected result.                                           │
 │ Algorithm 1 safety                        │ RuleConfirmedBlockSafety; rule_confirmed_block_safety             │ Section 4 safety theorem.                                                     │
+│ Section 4 gate safety                     │ GateConfirmedBlockSafety; gate_confirmed_block_safety             │ Semantic-gate safety theorem.                                                 │
+│ Section 4 gate monotonicity               │ GateConfirmedBlockMonotonicity; gate_confirmed_block_monotonicity │ Semantic-gate monotonicity theorem.                                           │
 │ Algorithm 1 monotonicity                  │ SafeConfirmedAlg1Inputs; RuleConfirmedBlockMonotonicity;          │ Later rule confirmation is assumed for every honest-view-safe block; stronger │
 │                                           │ rule_confirmed_block_monotonicity                                 │ than Assumption 6.                                                            │
-└───────────────────────────────────────────┴───────────────────────────────────────────────────────────────────┴───────────────────────────────────────────────────────────────────────────────┘
-```
+└───────────────────────────────────────────┴───────────────────────────────────────────────────────────────────┴───────────────────────────────────────────────────────────────────────────────┘```
 
 Read `FastConfirmationPaper/LMDGhost/Claims.lean` with `FastConfirmationPaper/LMDGhost/ReviewTheorem.lean` for Theorem 1. Read `FastConfirmationPaper/HFC/Claims.lean` with `FastConfirmationPaper/HFC/ReviewTheorem.lean` for Algorithm 1. `SafeConfirmedAlg1Inputs` gives future rule confirmation as an input, so its theorem has a stronger premise than paper Assumption 6. The source and paper models have no formal refinement theorem.
+
+The seven audited public theorems are `head_agreement_after_confirmation`,
+`confirmed_block_safety`, `confirmed_block_monotonicity`,
+`gate_confirmed_block_safety`, `gate_confirmed_block_monotonicity`,
+`rule_confirmed_block_safety`, and `rule_confirmed_block_monotonicity`.
+This set is separate from non-vacuity witnesses. The paper library has no
+non-vacuity witness.
+
+Section 4 assumes `FFG_AccountableSafety`. The Algorithm 1 safety theorem
+requires a per-call `Alg1SelectorSafetyInterface`. The Algorithm 1 monotonicity
+theorem requires `SafeConfirmedAlg1Inputs`. That record requires every
+honest-view-safe block to be already rule-confirmed at its safe time.
 
 The execution timing row connects the Spec-side model to the paper's message delay and
 immediate honest gossip. It uses the attestation deadline as the source cutoff. It requires

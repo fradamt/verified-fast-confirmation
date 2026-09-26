@@ -14,7 +14,7 @@ public import FastConfirmationPaper.HFC.Proof.Safety
 * the **`isConfirmed`-half** — `b ≼ highestConfirmedSinceEpoch … t → b ≼ … t'` — a
   re-run of `proof_Theorem1_Monotonicity` (Rule.lean) at `flt := ffgFilter bal₀ τ`,
   `gj := gjFFG bal₀`, `C := bal₀`, using the `flt`-generic canonical lemmas
-  (`CanonicalReuse.lean`) and feeding `NeverFiltered` from `confirmedNotFFGFiltered_proved`;
+  (`FastConfirmationPaper/HFC/Proof/Canonicality.lean`) and feeding `NeverFiltered` from `confirmedNotFFGFiltered_proved`;
 * the **gate-half** — `WillNoConflictingChkpBeJustified … t → … t'` — free, by
   quantifier-domain weakening (`willNoConflicting_persists`, III.5), since the semantic
   gate is already `∀ t'' ≥ st(slotOf t)`-quantified.

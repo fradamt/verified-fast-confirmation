@@ -168,7 +168,7 @@ theorem nonAnchorParentKnown_foldl (aRoot : Root) :
       simp only [Option.getD_some]
       exact apply_event_nonAnchorParentKnown cfg ext aRoot h he
 
-/-- **`NonAnchorParentKnown` at every node and second (Layer 0).** From the
+/-- **`NonAnchorParentKnown` at every node and second (base proof layer).** From the
 `get_forkchoice_store` genesis base (`block_roots = [anchor_root]`, the anchor is
 `aRoot`) via the standalone fold. -/
 theorem Execution.store_nonAnchorParentKnown (E : Execution Root)
@@ -328,7 +328,7 @@ The stronger trajectory property
 `Registry.registryConstant`'s `checkpoint_states` clause apply to the justified
 source, yielding `(checkpoint_states justified).validators = E.registry`. It is
 not preserved by this model: `update_checkpoints`
-(`Model/Handlers.lean`) bumps `justified_checkpoint` to `state.current_justified_checkpoint`
+(`FastConfirmationModel/Spec/Handlers.lean`) bumps `justified_checkpoint` to `state.current_justified_checkpoint`
 (a block **post-state** checkpoint) whenever its epoch is higher, and does **not**
 insert that checkpoint into `checkpoint_state_keys`; only `store_target_checkpoint_state`
 (reached from `on_attestation`) ever keys a checkpoint. So `on_block`

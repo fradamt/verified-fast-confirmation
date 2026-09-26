@@ -481,7 +481,6 @@ def witnessCompletedPrefixCallAssumptions :
   phase0_source := witnessPhase0SourceCoherence
   phase0_boundary_source := witnessPhase0BoundarySourceCoherence
   balance_floor := witnessBalanceFloor
-  delivery_lookahead := witnessHorizonVoteDeliveryLookahead
 
 def witnessAcceptedActualFCRNextSlotSafetyAssumptions :
     witnessExecution.NextSlotSafetyPremises witnessConfig
@@ -733,7 +732,7 @@ theorem changed_root_safe_from_next_slot (w m : ℕ)
   have h := confirmed_root_safe_from_next_slot witnessConfig witnessExternals
     witnessExecution witnessAcceptedActualFCRNextSlotSafetyAssumptions
     0 (by decide) 7 w hw m (by omega) hnext hH
-  simpa only [actual_fcr_transition_strict_advance] using h
+  simpa only [actual_fcr_transition_strict_advance] using h.2
 
 /-- Apply the public safety theorem to the carrier output at second nine. -/
 theorem carrier_safe_from_next_slot (w m : ℕ)
@@ -750,7 +749,7 @@ theorem carrier_safe_from_next_slot (w m : ℕ)
   have h := confirmed_root_safe_from_next_slot witnessConfig witnessExternals
     witnessExecution witnessAcceptedActualFCRNextSlotSafetyAssumptions
     0 (by decide) 9 w hw m (by omega) hnext hH
-  simpa only [hcarrier] using h
+  simpa only [hcarrier] using h.2
 
 /-- The exercised previous-result call has descendant support for every
 later honest epoch-two vote. The exact target witness remains available. -/
