@@ -89,8 +89,15 @@ off-committee validators.
 ├──────────────────────┼──────────────────────────────────────────────────────────────────────────────────────────────────┤
 │ Phase0 source        │ `Phase0SourceCoherence` and `Phase0BoundarySourceCoherence` constrain source reads.              │
 ├──────────────────────┼──────────────────────────────────────────────────────────────────────────────────────────────────┤
+│ Committee reads      │ `committees_agree` makes the execution committee an honest committee read. The read window       │
+│                      │ runs from the anchor epoch start to the current slot.                                            │
+├──────────────────────┼──────────────────────────────────────────────────────────────────────────────────────────────────┤
+│ Committee seeds      │ Idealization. `committee_seed_agreement` requires honest reads in the window to agree. It holds  │
+│                      │ on one chain whose honest heads are at most one epoch behind. Honest heads on branches with      │
+│                      │ different RANDAO mixes for epoch e − 2, or a head two epochs behind, are outside it.             │
+├──────────────────────┼──────────────────────────────────────────────────────────────────────────────────────────────────┤
 │ Committee            │ `on_attestation_committee` covers successful delivered attestations. Slashing evidence can be    │
-│                      │ off-committee.                                                                                   │
+│                      │ off-committee. A target on a branch with a different seed is outside the committee-seed scope.   │
 ├──────────────────────┼──────────────────────────────────────────────────────────────────────────────────────────────────┤
 │ Payload validity     │ `BeaconExternalsPremises` and the external contract govern imported payloads.                    │
 ├──────────────────────┼──────────────────────────────────────────────────────────────────────────────────────────────────┤
@@ -239,7 +246,8 @@ coverage limits, not claims about unreachable protocol states.
 
 ## Scope limits
 
-- `BeaconExternalsPremises.registry_static_in_horizon` fixes keyed states in honest in-horizon stores and their slot-processed reads to the anchor registry. Runs with included slashings, deposits, activations, exits, or effective-balance changes in the horizon are outside this condition.
+- `BeaconExternalsPremises.registry_static_in_horizon` fixes keyed states in honest in-horizon stores and their slot-processed reads to the anchor registry. Runs with included slashings, deposits, activations, exits, or effective-balance changes in the horizon are outside this condition. The pending-deposit case is a contract probe: epoch processing appends a validator and changes indexed validity.
+- `BeaconExternalsPremises.committee_seed_agreement` is the committee-seed scope condition. The committees of epoch e use the RANDAO mix of epoch e − 2, and Python `get_slot_committee` reads the head state without slot processing. The condition requires honest committee reads from the anchor epoch start to the current slot to agree across honest nodes and seconds. It holds on one chain when each honest head is at most one epoch older than the current epoch and the horizon ends within EPOCHS_PER_HISTORICAL_VECTOR − 2 epochs of the anchor epoch. Runs with honest heads on branches that differ in the RANDAO mix of epoch e − 2 are outside it. A weaker model needs per-branch committees in the execution and a proof that each honest weight bound uses the committees of the reading branch.
 - The model imports only validated payloads. An imported payload enters the store only after `verify_execution_payload_envelope` returns true. This external includes the execution engine's `VALID` decision. Execution validation itself is opaque.
 - `BeaconExternalsPremises` supplies contracts for external state transitions and validation. `on_attestation_committee` constrains successful delivered attestations. Indexed attester-slashing evidence can have off-committee signers; its handler only updates the equivocating set. The Lean proof does not implement an execution engine.
 - `AcceptedBlockAttestationInclusion.Included` is a supplied carrier-vote relation. Its safety evidence gives an accepted carrier block, a received block copy of the vote, slot and target-epoch facts, and committee membership.

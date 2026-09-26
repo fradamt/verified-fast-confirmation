@@ -49,6 +49,6 @@
 - `docs/conformance.md` describes the trace comparison.
 - Earlier notes are in `docs/history/`.
 
-The reachability check has 61 claim-reachable source declarations and one
-approved public exception, `Synchrony`. The trust audit checks 43 public
+The reachability check has 65 claim-reachable source declarations and one
+approved public exception, `Synchrony`. The trust audit checks 49 public
 theorem witnesses. Check these counts against the scripts when they change.
