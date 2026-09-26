@@ -343,8 +343,6 @@ theorem chain_runs (hB : B.Admissible) {E : Execution Root} (hg : B.ConcreteGene
     obtain ⟨hxk, csx, csp, hcsx, hcsp, hle, hruns⟩ := ih hpk hx
     rw [hcp] at hcsp
     cases hcsp
-    obtain ⟨-, -, -, -, -, -, hrestp⟩ := hs.known parent hpk
-    obtain ⟨-, -, -, ⟨-, hHp⟩, -⟩ := hs.known parent hpk
     refine ⟨hxk, csx, cs, hcsx, hcs, ?_, ?_⟩
     · exact hle.trans (Nat.le_of_lt (state_transition_slot htrans).2 |>.trans
         (state_transition_slot htrans).1.symm.le)
