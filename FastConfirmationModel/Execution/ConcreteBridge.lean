@@ -15,7 +15,9 @@ concrete wire block and to the committed post-state root, as
 The state-valued interface methods decode the input state, run the concrete
 function, and project the result. The decode domain is the reachable
 concrete states of the setup within the fixed scope. Outside that domain the
-methods return a fixed junk value; `state_transition` rejects. Python:
+methods return fallback values that satisfy the universal interface laws by
+construction; they depend on the input state. `state_transition` rejects
+outside the domain. Python:
 `specs/phase0/beacon-chain.md`, `state_transition` with
 `validate_result=True`; `specs/phase0/fork-choice.md`, `on_block`. -/
 
@@ -24,12 +26,16 @@ open FastConfirmation.Spec
 
 variable {Root : Type}
 
-/-- A collision-free commitment to concrete states: `open_` recovers every
-committed state. -/
+/-- A commitment to concrete states, as `hash_tree_root(state)` in Python.
+`open_` is a partial inverse: a root opens only to a state with that root.
+The commitment is not required to be injective on all states. Collision
+resistance is required only on the states of one run
+(`ConcreteBridge.StateRootsCommit`), so a finite root type, such as real
+32-byte roots, can instantiate it. -/
 structure StateCommitment (Root : Type) where
   root : FFGBeaconState Root → Root
   open_ : Root → Option (FFGBeaconState Root)
-  open_root : ∀ state, open_ (root state) = some state
+  open_sound : ∀ id state, open_ id = some state → root state = id
 
 /-- The opening of a block root: the concrete wire block and the committed
 post-state root (`block.state_root`). -/
@@ -128,8 +134,10 @@ noncomputable def slots [BEq Root] (st : BeaconState Root) (target : Slot) : Bea
 open Classical in
 /-- `state_transition(state, signed_block, validate_result=True)`: the block
 root opens to a wire block with this root and a matching message, the
-concrete transition succeeds within the fixed scope, and the post-state
-commitment equals the committed state root. -/
+concrete transition succeeds within the fixed scope, and the committed state
+root opens to the post-state. By `StateCommitment.open_sound` the post-state
+root then equals the committed state root, which is the Python check
+`block.state_root == hash_tree_root(state)`. -/
 noncomputable def transition [BEq Root] (st : BeaconState Root) (sb : SignedBeaconBlock Root) :
     Option (BeaconState Root) :=
   match B.decode st, B.blocks.open_ sb.root with
@@ -138,7 +146,7 @@ noncomputable def transition [BEq Root] (st : BeaconState Root) (sb : SignedBeac
       match state_transition B.setup.cfg B.setup.preset B.setup.schedule B.setup.oracle
           state wire with
       | .ok post =>
-        if B.states.root post = stateRoot ∧
+        if B.states.open_ stateRoot = some post ∧
             compute_epoch_at_slot B.setup.cfg post.slot ≤ B.setup.scope.last_epoch then
           some (B.project post)
         else none
@@ -148,12 +156,16 @@ noncomputable def transition [BEq Root] (st : BeaconState Root) (sb : SignedBeac
 
 /-- The concrete `BeaconFunctionInterface`. Committee reads and the indexed
 structural check come from the fixed schedule; the three state-valued methods
-run the concrete FFG transition. -/
+run the concrete FFG transition. The anchor commitment is fixed by the bridge:
+the anchor block is at slot 0 and the anchor state is the projected setup
+genesis state. It does not come from `base`. -/
 noncomputable def interface [BEq Root] : BeaconFunctionInterface Root :=
   { fixed_schedule_compatibility_bundle B.setup.preset B.setup.schedule B.base with
     process_slots := B.slots
     state_transition := B.transition
-    process_justification_and_finalization := B.pjf }
+    process_justification_and_finalization := B.pjf
+    AnchorCommitsToState := fun block state =>
+      block.slot = 0 ∧ state = B.project B.setup.genesis }
 
 /-- The committed concrete state of a block root: the genesis state at the
 genesis root, and otherwise the state that the committed state root opens
@@ -174,14 +186,30 @@ structure Admissible (B : ConcreteBridge Root) : Prop where
 /-- An execution starts from the Python genesis store of the setup: the
 anchor state is the projected genesis state and the anchor block is the
 genesis block. Its parent root (Python `ZERO_HASH`) is not the genesis root
-and opens to no block. -/
+and opens to no block. The state commitment opens the genesis state root to
+the genesis state. -/
 def ConcreteGenesis (B : ConcreteBridge Root) [LinearOrder Root] [Inhabited Root]
     (E : Execution Root) : Prop :=
   ∃ anchorBlock : SignedBeaconBlock Root,
     anchorBlock.root = B.setup.genesisRoot ∧ anchorBlock.message.slot = 0 ∧
       anchorBlock.message.parent_root ≠ B.setup.genesisRoot ∧
       B.blocks.open_ anchorBlock.message.parent_root = none ∧
+      B.states.open_ (B.states.root B.setup.genesis) = some B.setup.genesis ∧
       E.genesis_store = get_forkchoice_store B.setup.cfg (B.project B.setup.genesis) anchorBlock
+
+/-- Collision resistance of `hash_tree_root` on the states of one run (class
+I). If the concrete transition of a scheduled block from the committed state of
+its parent computes a post-state whose root is the committed state root of the
+block, then that root opens to the post-state. Under this condition the bridge
+accepts every in-scope scheduled block that Python accepts
+(`transition_of_stateRootsCommit`). The safety theorem does not need it. -/
+def StateRootsCommit (B : ConcreteBridge Root) [DecidableEq Root] (E : Execution Root) : Prop :=
+  ∀ w n (sb : SignedBeaconBlock Root), Event.block sb ∈ E.schedule w n →
+    ∀ wire stateRoot cp post, B.blocks.open_ sb.root = some (wire, stateRoot) →
+      B.committedState wire.parent_root = some cp →
+      state_transition B.setup.cfg B.setup.preset B.setup.schedule B.setup.oracle cp wire =
+        .ok post →
+      B.states.root post = stateRoot → B.states.open_ stateRoot = some post
 
 end ConcreteBridge
 

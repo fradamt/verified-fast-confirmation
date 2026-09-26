@@ -150,7 +150,7 @@ theorem genesis_unrealized_justification_reads {E : Execution Root}
       CheckpointReadsAs (E.genesis_store.unrealized_justifications r)
         (B.unrealizedJustified r) := by
   intro r hr
-  obtain ⟨anchor, hroot, hslot, -, -, hstore⟩ := hg
+  obtain ⟨anchor, hroot, hslot, -, -, -, hstore⟩ := hg
   rw [hstore] at hr ⊢
   simp only [get_forkchoice_store, List.mem_singleton] at hr
   subst hr
@@ -236,7 +236,7 @@ theorem importedBlockFinalizationLag (hB : B.Admissible) {E : Execution Root}
 /-- The genesis store justified checkpoint is the genesis anchor. -/
 theorem genesis_justified (hg : B.ConcreteGenesis E) :
     E.genesis_store.justified_checkpoint = B.anchorCheckpoint := by
-  obtain ⟨anchor, hroot, -, -, -, hstore⟩ := hg
+  obtain ⟨anchor, hroot, -, -, -, -, hstore⟩ := hg
   rw [hstore]
   simp only [get_forkchoice_store, anchorCheckpoint, hroot]
   congr 1

@@ -291,7 +291,7 @@ theorem genesis_parent_not_descends (hB : B.Admissible) {E : Execution Root}
     rw [hun] at ho
     cases ho
   | step hedge _ =>
-    obtain ⟨anchor, hroot, -, -, -, hgs⟩ := hg
+    obtain ⟨anchor, hroot, -, -, -, -, hgs⟩ := hg
     have hgmem : B.setup.genesisRoot ∈ E.genesis_store.block_roots := by
       rw [hgs, ← hroot]; simp [get_forkchoice_store]
     have hagree : store.blocks B.setup.genesisRoot = E.genesis_store.blocks B.setup.genesisRoot :=

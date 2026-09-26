@@ -38,27 +38,55 @@ omit [DecidableEq Root] in
     (B.project cs).validators = cs.validators := rfl
 
 /-- A reduced state decodes exactly to the admitted concrete state that it
-projects. -/
+projects, if that state opens from its own root. -/
 theorem decode_eq_some {st : BeaconState Root} {cs : FFGBeaconState Root} :
-    B.decode st = some cs ↔ st = B.project cs ∧ B.InDomain cs := by
+    B.decode st = some cs ↔
+      st = B.project cs ∧ B.InDomain cs ∧ B.states.open_ (B.states.root cs) = some cs := by
   constructor
   · intro h
     unfold decode at h
-    split at h
-    · cases h
-    · split at h
-      · cases h
-      · split_ifs at h with hc
+    cases hid : st.source_identity with
+    | none => simp [hid] at h
+    | some id =>
+      cases hop : B.states.open_ id with
+      | none => simp [hid, hop] at h
+      | some state =>
+        simp only [hid, hop] at h
+        split_ifs at h with hc
         cases h
-        exact ⟨hc.1.symm, hc.2⟩
-  · rintro ⟨rfl, hadm⟩
+        refine ⟨hc.1.symm, hc.2, ?_⟩
+        rw [B.states.open_sound id _ hop]
+        exact hop
+  · rintro ⟨rfl, hadm, hopen⟩
     unfold decode
-    simp only [project, B.states.open_root]
+    simp only [project, hopen]
     rw [if_pos ⟨rfl, hadm⟩]
 
-theorem decode_project {cs : FFGBeaconState Root} (h : B.InDomain cs) :
+/-- The forward direction of `decode_eq_some`. -/
+theorem decode_some {st : BeaconState Root} {cs : FFGBeaconState Root}
+    (h : B.decode st = some cs) : st = B.project cs ∧ B.InDomain cs :=
+  ⟨((B.decode_eq_some).mp h).1, ((B.decode_eq_some).mp h).2.1⟩
+
+theorem decode_project {cs : FFGBeaconState Root} (h : B.InDomain cs)
+    (hopen : B.states.open_ (B.states.root cs) = some cs) :
     B.decode (B.project cs) = some cs :=
-  (B.decode_eq_some).mpr ⟨rfl, h⟩
+  (B.decode_eq_some).mpr ⟨rfl, h, hopen⟩
+
+/-- A committed state opens from its own root: the genesis state by the
+genesis commitment, and a block state by `StateCommitment.open_sound`. -/
+theorem open_root_of_committedState
+    (hgen : B.states.open_ (B.states.root B.setup.genesis) = some B.setup.genesis)
+    {r : Root} {cs : FFGBeaconState Root} (h : B.committedState r = some cs) :
+    B.states.open_ (B.states.root cs) = some cs := by
+  unfold committedState at h
+  split_ifs at h
+  · cases h
+    exact hgen
+  · split at h
+    · rename_i wire stateRoot _
+      rw [B.states.open_sound stateRoot cs h]
+      exact h
+    · cases h
 
 omit [DecidableEq Root] in
 theorem epoch_lt_slot_lt {cfg : Config} {x y : Slot}
@@ -77,7 +105,7 @@ theorem pjf_decoded (hB : B.Admissible) {st : BeaconState Root} {cs : FFGBeaconS
       Y.current_justified_checkpoint =
         cjFormula B.setup blocks votes (compute_epoch_at_slot B.setup.cfg cs.slot)
           cs.current_justified_checkpoint := by
-  have hH := ((B.decode_eq_some).mp hd).2.2
+  have hH := (B.decode_some hd).2.2
   obtain ⟨Y, hY, hcj⟩ := eager_pjf hB.setup hB.numeric
     (provenanceInvariant_of_reachable hB.setup hreach hH) (lengthsOK_of_reachable hreach) hH
   refine ⟨Y, hY, ?_, hcj⟩
@@ -102,7 +130,7 @@ theorem slots_decoded (hB : B.Admissible) {st : BeaconState Root} {cs : FFGBeaco
         cjRun B.setup blocks votes (compute_epoch_at_slot B.setup.cfg cs.slot)
           (compute_epoch_at_slot B.setup.cfg target -
             compute_epoch_at_slot B.setup.cfg cs.slot) cs.current_justified_checkpoint := by
-  have hH := ((B.decode_eq_some).mp hd).2.2
+  have hH := (B.decode_some hd).2.2
   obtain ⟨next, hnext, -, -, hcj⟩ := process_slots_ok hB.setup hB.numeric
     (provenanceInvariant_of_reachable hB.setup hreach hH) (lengthsOK_of_reachable hreach)
     hlt hin
@@ -135,7 +163,7 @@ theorem transition_eq_some {st post : BeaconState Root} {sb : SignedBeaconBlock 
       B.MessageMatches sb.message wire ∧
       state_transition B.setup.cfg B.setup.preset B.setup.schedule B.setup.oracle cs wire =
         .ok cpost ∧
-      B.states.root cpost = stateRoot ∧
+      B.states.open_ stateRoot = some cpost ∧
       compute_epoch_at_slot B.setup.cfg cpost.slot ≤ B.setup.scope.last_epoch ∧
       post = B.project cpost := by
   unfold transition at h
@@ -149,6 +177,32 @@ theorem transition_eq_some {st post : BeaconState Root} {sb : SignedBeaconBlock 
       exact ⟨cs, wire, stateRoot, cpost, hd, ho, hc.1, hc.2, hst, hc2.1, hc2.2, rfl⟩
     · cases h
   · cases h
+
+/-- **Faithful acceptance.** Under collision resistance on the states of the
+run (`StateRootsCommit`), the bridge accepts a scheduled block when the
+concrete transition from the committed parent state succeeds in scope and the
+post-state root is the committed state root, as Python `state_transition`
+with `validate_result=True` does. -/
+theorem transition_of_stateRootsCommit [LinearOrder Root] [Inhabited Root]
+    {E : Execution Root} (hc : B.StateRootsCommit E) {w : ValidatorIndex} {n : ℕ}
+    {sb : SignedBeaconBlock Root} (hsched : Event.block sb ∈ E.schedule w n)
+    {st : BeaconState Root} {cp post : FFGBeaconState Root} {wire : FFGWireBlock Root}
+    {stateRoot : Root} (hd : B.decode st = some cp)
+    (hcp : B.committedState wire.parent_root = some cp)
+    (ho : B.blocks.open_ sb.root = some (wire, stateRoot)) (hw : wire.root = sb.root)
+    (hm : B.MessageMatches sb.message wire)
+    (hst : state_transition B.setup.cfg B.setup.preset B.setup.schedule B.setup.oracle cp wire =
+      .ok post)
+    (hroot : B.states.root post = stateRoot)
+    (hin : compute_epoch_at_slot B.setup.cfg post.slot ≤ B.setup.scope.last_epoch) :
+    B.transition st sb = some (B.project post) := by
+  have hopen := hc w n sb hsched wire stateRoot cp post ho hcp hst hroot
+  unfold transition
+  rw [hd, ho]
+  dsimp only
+  rw [if_pos ⟨hw, hm⟩, hst]
+  dsimp only
+  rw [if_pos ⟨hopen, hin⟩]
 
 /-- The slots result that a successful bridge transition runs. -/
 theorem transition_slots {st post : BeaconState Root} {sb : SignedBeaconBlock Root}
@@ -183,7 +237,7 @@ theorem phase0BoundarySourceCoherence (hB : B.Admissible) :
     cases hd : B.decode st with
     | none => rw [B.slots_none hd]; simp [fallbackSlots, hcross]
     | some cs =>
-      obtain ⟨rfl, ⟨blocks, votes, hreach⟩, hH⟩ := (B.decode_eq_some).mp hd
+      obtain ⟨rfl, ⟨blocks, votes, hreach⟩, hH⟩ := B.decode_some hd
       simp only [project_slot] at hcross hlt he
       by_cases hin : compute_epoch_at_slot B.setup.cfg target ≤ B.setup.scope.last_epoch
       · obtain ⟨next, -, hs, hcj⟩ := B.slots_decoded hB hd hreach hlt hin
@@ -202,7 +256,7 @@ theorem phase0BoundarySourceCoherence (hB : B.Admissible) :
     cases hd : B.decode st with
     | none => rw [B.slots_none hd, B.slots_none hd]; simp [fallbackSlots, hlt, hlt']
     | some cs =>
-      obtain ⟨rfl, ⟨blocks, votes, hreach⟩, hH⟩ := (B.decode_eq_some).mp hd
+      obtain ⟨rfl, ⟨blocks, votes, hreach⟩, hH⟩ := B.decode_some hd
       simp only [project_slot] at hlt hlt'
       by_cases hin : compute_epoch_at_slot B.setup.cfg target ≤ B.setup.scope.last_epoch
       · obtain ⟨next, -, hs, hcj⟩ :=
@@ -231,7 +285,7 @@ theorem phase0BoundarySourceCoherence (hB : B.Admissible) :
       · exact Or.inl rfl
       · exact Or.inr (by simp [GENESIS_EPOCH])
     | some cs =>
-      obtain ⟨rfl, ⟨blocks, votes, hreach⟩, hH⟩ := (B.decode_eq_some).mp hd
+      obtain ⟨rfl, ⟨blocks, votes, hreach⟩, hH⟩ := B.decode_some hd
       have hinv := provenanceInvariant_of_reachable hB.setup hreach hH
       simp only [project_slot, project_current_justified] at hlt ⊢
       by_cases hin : compute_epoch_at_slot B.setup.cfg target ≤ B.setup.scope.last_epoch
@@ -252,7 +306,7 @@ theorem phase0BoundarySourceCoherence (hB : B.Admissible) :
     cases hd : B.decode st with
     | none => rw [B.slots_none hd]; simp [fallbackSlots, hcross]
     | some cs =>
-      obtain ⟨rfl, ⟨blocks, votes, hreach⟩, hH⟩ := (B.decode_eq_some).mp hd
+      obtain ⟨rfl, ⟨blocks, votes, hreach⟩, hH⟩ := B.decode_some hd
       have hinv := provenanceInvariant_of_reachable hB.setup hreach hH
       simp only [project_slot, GENESIS_EPOCH] at hcross hE hge
       by_cases hin : compute_epoch_at_slot B.setup.cfg target ≤ B.setup.scope.last_epoch
@@ -272,7 +326,7 @@ theorem phase0SourceCoherence (hB : B.Admissible) :
     cases hd : B.decode st with
     | none => rw [B.slots_none hd]; simp [fallbackSlots, he]
     | some cs =>
-      obtain ⟨rfl, ⟨blocks, votes, hreach⟩, hH⟩ := (B.decode_eq_some).mp hd
+      obtain ⟨rfl, ⟨blocks, votes, hreach⟩, hH⟩ := B.decode_some hd
       simp only [project_slot, project_current_justified] at hlt he ⊢
       obtain ⟨next, -, hs, hcj⟩ := B.slots_decoded hB hd hreach hlt (he ▸ hH)
       rw [hs, project_current_justified, hcj, he, Nat.sub_self]
@@ -280,7 +334,7 @@ theorem phase0SourceCoherence (hB : B.Admissible) :
   state_transition_current_justified := by
     intro pre sb post h he
     obtain ⟨cs, atSlot, hd, hslots, -, hcj, -⟩ := B.transition_slots h
-    obtain ⟨rfl, ⟨blocks, votes, hreach⟩, hH⟩ := (B.decode_eq_some).mp hd
+    obtain ⟨rfl, ⟨blocks, votes, hreach⟩, hH⟩ := B.decode_some hd
     simp only [project_slot] at he
     obtain ⟨hatslot, hlt⟩ := process_slots_slot hslots
     obtain ⟨next, hnext, -, -, hcj'⟩ := process_slots_ok hB.setup hB.numeric

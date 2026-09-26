@@ -160,7 +160,7 @@ theorem canonical_anchor_boundary :
   unfold Execution.InitialAnchorAtEpochBoundary
   change (E.genesis_store.blocks B.setup.genesisRoot).slot ≤
     compute_start_slot_at_epoch B.setup.cfg 0
-  obtain ⟨anchor, hroot, hslot, -, -, hgs⟩ := hg
+  obtain ⟨anchor, hroot, hslot, -, -, -, hgs⟩ := hg
   rw [hgs, ← hroot]
   simp [get_forkchoice_store, hslot]
 

@@ -36,13 +36,14 @@ structure BridgedStore (store : Store Root) : Prop where
       ∃ cp, B.committedState (store.blocks r).parent_root = some cp ∧
         state_transition B.setup.cfg B.setup.preset B.setup.schedule B.setup.oracle cp wire =
           .ok cs)
+  genesis_committed : B.states.open_ (B.states.root B.setup.genesis) = some B.setup.genesis
 
 omit [Inhabited Root] in
 theorem BridgedStore.of_sameBlocks {B : ConcreteBridge Root} {s t : Store Root}
     (h : SameBlocks s t) (hs : B.BridgedStore s) : B.BridgedStore t := by
   obtain ⟨hroots, hblocks, hstates⟩ := h
   refine ⟨hroots ▸ hs.genesis_known, hblocks ▸ hs.genesis_parent_ne,
-    hblocks ▸ hs.genesis_parent_unopened, ?_⟩
+    hblocks ▸ hs.genesis_parent_unopened, ?_, hs.genesis_committed⟩
   rw [← hroots, ← hblocks, ← hstates]
   exact hs.known
 
@@ -51,10 +52,12 @@ theorem committedState_genesis : B.committedState B.setup.genesisRoot = some B.s
   simp [committedState]
 
 omit [Inhabited Root] in
-theorem committedState_of_open {r : Root} (hr : r ≠ B.setup.genesisRoot) {wire : FFGWireBlock Root}
-    {cs : FFGBeaconState Root} (h : B.blocks.open_ r = some (wire, B.states.root cs)) :
+theorem committedState_of_open {r : Root} (hr : r ≠ B.setup.genesisRoot)
+    {wire : FFGWireBlock Root} {cs : FFGBeaconState Root}
+    (h : B.blocks.open_ r = some (wire, B.states.root cs))
+    (hopen : B.states.open_ (B.states.root cs) = some cs) :
     B.committedState r = some cs := by
-  simp [committedState, hr, h, B.states.open_root]
+  simp [committedState, hr, h, hopen]
 
 omit [Inhabited Root] in
 theorem inDomain_genesis : B.InDomain B.setup.genesis := by
@@ -96,18 +99,19 @@ theorem BridgedStore.on_block {B : ConcreteBridge Root} (hB : B.Admissible)
   have hgb : store'.blocks B.setup.genesisRoot = store.blocks B.setup.genesisRoot :=
     on_block_other_root_blocks hh (Ne.symm hne)
   refine ⟨hle.1 hs.genesis_known, hgb ▸ hs.genesis_parent_ne,
-    hgb ▸ hs.genesis_parent_unopened, ?_⟩
+    hgb ▸ hs.genesis_parent_unopened, ?_, hs.genesis_committed⟩
   intro r hr
   by_cases hrs : r = sb.root
   · subst hrs
     obtain ⟨cs0, wire, stateRoot, cpost, hd, ho, hwroot, hm, hst, hsr, hH, rfl⟩ :=
       B.transition_eq_some hpost
     obtain ⟨cp, hcp, hpstate, hcpadm, -⟩ := hs.known _ hparent
-    rw [hpstate, B.decode_project hcpadm] at hd
+    rw [hpstate, B.decode_project hcpadm
+      (B.open_root_of_committedState hs.genesis_committed hcp)] at hd
     cases hd
     obtain ⟨hadm, hhead⟩ := B.header_root_of_transition hB hcpadm hst hH
-    subst hsr
-    refine ⟨cpost, B.committedState_of_open hne ho, hstate, hadm, hhead.trans hwroot, ?_, ?_⟩
+    obtain rfl := B.states.open_sound stateRoot cpost hsr
+    refine ⟨cpost, B.committedState_of_open hne ho hsr, hstate, hadm, hhead.trans hwroot, ?_, ?_⟩
     · rw [hmsg, hm.1]; exact (state_transition_slot hst).1
     · intro _
       refine ⟨wire, ho, hwroot, hmsg ▸ hm, hmsg ▸ hle.1 hparent, _, ?_, hst⟩
@@ -150,13 +154,13 @@ theorem BridgedStore.fold {B : ConcreteBridge Root} (hB : B.Admissible)
 
 theorem bridgedStore_genesis {E : Execution Root}
     (hg : B.ConcreteGenesis E) : B.BridgedStore E.genesis_store := by
-  obtain ⟨anchor, hroot, hslot, hpne, hpopen, hstore⟩ := hg
+  obtain ⟨anchor, hroot, hslot, hpne, hpopen, hgenopen, hstore⟩ := hg
   rw [hstore]
   have hgb : (get_forkchoice_store B.setup.cfg (B.project B.setup.genesis) anchor).blocks
       B.setup.genesisRoot = anchor.message := by
     simp [get_forkchoice_store, hroot]
   refine ⟨by simp [get_forkchoice_store, hroot], by rw [hgb]; exact hpne,
-    by rw [hgb]; exact hpopen, ?_⟩
+    by rw [hgb]; exact hpopen, ?_, hgenopen⟩
   intro r hr
   simp only [get_forkchoice_store, List.mem_singleton] at hr
   subst hr
@@ -207,7 +211,9 @@ theorem known_reads (hB : B.Admissible) {store : Store Root} (hs : B.BridgedStor
   obtain ⟨cs, hcs, hstate, hadm, -⟩ := hs.known r hr
   obtain ⟨⟨blocks, votes, hreach⟩, hH⟩ := hadm
   have hd : B.decode (store.block_states r) = some cs := by
-    rw [hstate]; exact B.decode_project ⟨⟨blocks, votes, hreach⟩, hH⟩
+    rw [hstate]
+    exact B.decode_project ⟨⟨blocks, votes, hreach⟩, hH⟩
+      (B.open_root_of_committedState hs.genesis_committed hcs)
   refine ⟨cs, blocks, votes, hcs, hstate, hreach, hH, ?_, ?_⟩
   · obtain ⟨Y, hY, hp, -⟩ := B.pjf_decoded hB hd hreach
     exact ⟨Y, hY, hp⟩
