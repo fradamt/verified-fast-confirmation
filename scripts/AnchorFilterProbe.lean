@@ -1,4 +1,6 @@
 import FastConfirmationWitnesses.Counterexamples.CheckpointSyncFilter
+import FastConfirmationWitnesses.Counterexamples.EarlyEpochBoundary
+import FastConfirmationInternal.FFG.AnchorNormalization
 
 /-! Kernel audit for the raw checkpoint-sync filter regression. -/
 
@@ -9,3 +11,11 @@ open FastConfirmation.Spec.CheckpointSyncFilterWitness
 #print axioms checkpoint_sync_filter_counterexample
 #print axioms raw_source_filter_boundary
 #print axioms normalized_source_changes_head
+
+#print axioms normalized_anchor_run_keeps_child
+#print axioms anchor_only_view_satisfies_inclusion
+#print axioms FastConfirmation.Spec.EarlyEpochBoundaryWitness.epoch_one_boundary_regression
+#print axioms FastConfirmation.Spec.EarlyEpochBoundaryWitness.guarded_boundary_equality
+#print axioms FastConfirmation.Spec.normalizeAnchorCheckpoint.strict_update
+#print axioms FastConfirmation.Spec.normalizeAnchorCheckpoint.genesis_justified_filter
+#print axioms FastConfirmation.Spec.normalizeAnchorCheckpoint.genesis_finalized_filter

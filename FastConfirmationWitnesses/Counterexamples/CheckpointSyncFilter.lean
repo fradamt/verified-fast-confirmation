@@ -1,11 +1,12 @@
 module
 public import FastConfirmationModel
+public import FastConfirmationStatements.Premises.FFGState
 public import Mathlib.Tactic
 
 @[expose] public section
 
 /-!
-Checkpoint-sync anchors can lose a confirmed descendant at the raw source-age filter.
+Without eventual inclusion, a checkpoint-sync anchor can lose a confirmed descendant.
 The anchor is at the start of epoch 3. Its state still has justification at
 epoch 2 and finalization at epoch 0. A child at slot 13 receives all scheduled
 votes. The unchanged FCR confirms it at slot 14. At slot 20 the source epoch
@@ -16,7 +17,9 @@ zero proposer boost, and no included attestations after the anchor. It does
 not assert the complete safety premise bundle or eventual inclusion. The
 opaque state functions preserve the old checkpoints along this short trace.
 The companion Python probe checks reachable states and the pinned functions.
-Normalizing the source to epoch 3 would hide the failed filter comparison.
+The raw source fails the filter's `+2` rule. The corresponding normalized
+source keeps the child. This run does not show failure under the safety bundle;
+the checkpoint-inclusion premise must be checked separately.
 -/
 
 namespace FastConfirmation.Spec.CheckpointSyncFilterWitness
@@ -134,8 +137,9 @@ theorem raw_source_filter_boundary :
     anchorCheckpoint.epoch + 2 ≥ get_current_store_epoch cfg (run.store cfg ext 0 8) := by
   decide
 
-/-- Raising the old source to the anchor epoch changes the actual head.
-This transformation is not applied to the run or to any executable function. -/
+/-- A normalized source keeps the child in this comparison. The raw run
+has no eventual-inclusion proof. This transformation does not change any
+executable function. -/
 theorem normalized_source_changes_head :
     (get_head cfg
       { run.store cfg ext 0 8 with
@@ -143,6 +147,91 @@ theorem normalized_source_changes_head :
           let c := (run.store cfg ext 0 8).unrealized_justifications r
           if c.epoch ≤ anchorCheckpoint.epoch then anchorCheckpoint else c }).root = childRoot := by
   decide
+
+/-- The corresponding run starts with normalized anchor-state checkpoints.
+Its wire votes use that state's source; all times and block messages agree
+with the raw run. -/
+def normalizedRun : Execution R :=
+  { run with
+    genesis_store := get_forkchoice_store cfg
+      { anchorState with
+        current_justified_checkpoint := anchorCheckpoint
+        finalized_checkpoint := anchorCheckpoint } anchorBlock
+    schedule := fun w n => (run.schedule w n).map fun event =>
+      match event with
+      | .attestation a fromBlock =>
+        .attestation { a with data := { a.data with source := anchorCheckpoint } } fromBlock
+      | other => other
+    vote := fun v slot => (run.vote v slot).map fun (n, a) =>
+      (n, { a with data := { a.data with source := anchorCheckpoint } }) }
+
+/-- Normalizing the anchor state and its honest sources keeps the child
+through the same raw-filter deadline, without changing the handlers. -/
+theorem normalized_anchor_run_keeps_child :
+    normalizedRun.confirmed cfg ext 0 2 = childRoot ∧
+    (get_head cfg (normalizedRun.store cfg ext 0 8)).root = childRoot ∧
+    is_ancestor (normalizedRun.store cfg ext 0 8)
+      (get_head cfg (normalizedRun.store cfg ext 0 8))
+      (get_node_for_root (normalizedRun.confirmed cfg ext 0 2)) = true := by
+  decide
+
+/-- A normalized anchor-only semantic view for testing the inclusion
+antecedent. This view is not a complete FFG interpretation. -/
+def anchorOnlyView : CheckpointInclusionView cfg run where
+  BlockAt := fun r b => (r = anchorRoot ∧ b = anchorBlock.message) ∨
+    (r = childRoot ∧ b = childBlock.message)
+  includedAttestations := { Included := fun _ _ => False, evidence := fun h => False.elim h }
+  formed := fun r c => r = anchorRoot ∧ c = anchorCheckpoint
+  C := fun r e => ⟨e, if r = childRoot ∧ 4 ≤ e then childRoot else anchorRoot⟩
+  GJ := fun _ => anchorCheckpoint
+  GU := fun _ => anchorCheckpoint
+  checkpoint_epoch := by intros; rfl
+
+private theorem slot_at_eq (n : ℕ) : run.slot_at cfg n = 12 + n := by
+  norm_num [Execution.slot_at, Execution.time_at, run, cfg,
+    get_forkchoice_store, anchorState, anchorBlock, GENESIS_SLOT]
+
+/-- Normalizing the source makes the epoch-F support antecedent a strict
+self-link. Thus the existing A.3.2 premise can hold without any included
+vote in this finite view. This is not a full-bundle counterexample. -/
+theorem anchor_only_view_satisfies_inclusion :
+    EventualCheckpointInclusion cfg ext anchorOnlyView := by
+  constructor
+  intro b bb e hb hbe hcanonical hsupport w hw m hHm hboundary
+  have he : 3 ≤ e := by
+    rcases hb with ⟨rfl, rfl⟩ | ⟨rfl, rfl⟩ <;>
+      simpa [compute_epoch_at_slot, cfg, anchorBlock, childBlock] using hbe
+  have hm : 12 + m < 24 := by
+    have hh := hHm.2.2
+    rw [slot_at_eq] at hh
+    change ((12 + m) / 4) < 6 at hh
+    omega
+  rw [slot_at_eq] at hboundary
+  have hbound : (e + 2) * 4 ≤ 12 + m := hboundary
+  have heq : e = 3 := by
+    have hupper : e < 4 := by
+      have hh : (e + 2) * 4 < 6 * 4 := lt_of_le_of_lt hbound hm
+      have hsmall : e + 2 < 6 := (Nat.mul_lt_mul_right (by decide : 0 < 4)).mp hh
+      exact Nat.lt_of_add_lt_add_right hsmall
+    exact Nat.le_antisymm (Nat.le_of_lt_succ hupper) he
+  subst e
+  have hzero : 0 ∈ run.honest := by decide
+  have hfour : run.WithinHorizon cfg 4 := by
+    unfold Execution.WithinHorizon
+    decide
+  have hepoch : compute_epoch_at_slot cfg (run.slot_at cfg 4) = 3 + 1 := by decide
+  have hs := hsupport 0 hzero 4 hfour hepoch
+  have hanchorKnown : anchorRoot ∈ (run.store cfg ext 0 4).block_roots := by decide
+  have htarget : (anchorOnlyView.C b 3).root = anchorRoot := by simp [anchorOnlyView]
+  have hdesc : is_ancestor (run.store cfg ext 0 4)
+      (get_node_for_root anchorRoot)
+      (get_node_for_root (anchorOnlyView.C b 3).root) = true := by
+    rw [htarget]
+    decide
+  obtain ⟨L⟩ := hs.2.2 anchorRoot hanchorKnown hdesc
+  have hlt := L.source_before_target
+  simp [CheckpointInclusionView.voting_source_at, anchorOnlyView,
+    anchorCheckpoint] at hlt
 
 end FastConfirmation.Spec.CheckpointSyncFilterWitness
 

@@ -219,5 +219,10 @@ The historical certificate and quorum are produced from earlier votes when
 needed. No external law or live-only premise was added. The shorter
 synchrony-only run does not prove the full safety bundle.
 `DeadlineVotePathCandidate` checks that a skipped-boundary schedule fails the
-pre-tick relay. The audited public witness set has 43 entries.
+pre-tick relay. The audited public witness set has 47 entries. Three new regression checks are:
+`CheckpointSyncFilterWitness.normalized_anchor_run_keeps_child`,
+`CheckpointSyncFilterWitness.anchor_only_view_satisfies_inclusion`, and
+`EarlyEpochBoundaryWitness.epoch_one_boundary_regression`. They check the
+normalized-state control, the strict-link inclusion antecedent, and the
+certified epoch-1 source after two boundaries. They are not full-bundle runs.
 -/

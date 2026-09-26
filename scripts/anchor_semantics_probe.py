@@ -3,6 +3,8 @@
 Run with the checkout's existing .venv/bin/python and pass its path.
 BLS checks use the test helper switch. The Gloas filter experiment supplies
 pre-anchor headers and timeliness entries for the proposer-boost lookup.
+The inclusion control puts epoch-F votes in a canonical epoch-F+1 block.
+It checks the raw source at F+2 and ancestry of the previously confirmed child.
 This script does not assert a complete safety premise bundle.
 """
 from pathlib import Path
@@ -15,7 +17,7 @@ from eth_consensus_specs.test.helpers.genesis import create_genesis_state
 from eth_consensus_specs.test.helpers.attestations import (
     next_slots_with_attestations, get_valid_attestation_at_slot,
 )
-from eth_consensus_specs.test.helpers.block import build_empty_block_for_next_slot
+from eth_consensus_specs.test.helpers.block import build_empty_block, build_empty_block_for_next_slot
 from eth_consensus_specs.test.helpers.state import state_transition_and_sign_block
 
 bls.bls_active = False
@@ -46,9 +48,33 @@ def boundary_probe():
     assert eager.current_justified_checkpoint == state.current_justified_checkpoint
     assert advanced.current_justified_checkpoint.epoch == 1
     assert advanced.current_justified_checkpoint != eager.current_justified_checkpoint
+    transitioned = state.copy()
+    block = build_empty_block(spec, transitioned, slot=3 * spec.SLOTS_PER_EPOCH)
+    state_transition_and_sign_block(spec, transitioned, block)
+    assert transitioned.current_justified_checkpoint == advanced.current_justified_checkpoint
+    print("M2 transition", "target_slot", int(transitioned.slot),
+          "justified_epoch", int(transitioned.current_justified_checkpoint.epoch), flush=True)
+    guarded_cases = 0
+    for start in (state, one_boundary, advanced):
+        start_epoch = int(spec.get_current_epoch(start))
+        pulled = start.copy()
+        spec.process_justification_and_finalization(pulled)
+        for jump in (1, 2, 3):
+            if start_epoch < 2 and jump > 1:
+                continue
+            target = (start_epoch + jump) * spec.SLOTS_PER_EPOCH
+            slotted = start.copy()
+            spec.process_slots(slotted, target)
+            assert slotted.current_justified_checkpoint == pulled.current_justified_checkpoint
+            transitioned = start.copy()
+            block = build_empty_block(spec, transitioned, slot=target)
+            state_transition_and_sign_block(spec, transitioned, block)
+            assert transitioned.current_justified_checkpoint == pulled.current_justified_checkpoint
+            guarded_cases += 2
+    print("M2 guarded slot/transition cases", guarded_cases, flush=True)
 
 
-def checkpoint_sync_probe():
+def checkpoint_sync_probe(include_epoch_f_votes=False):
     from eth_consensus_specs.gloas import minimal as spec
     state = state_for(spec)
     _, blocks, state = next_slots_with_attestations(
@@ -77,6 +103,9 @@ def checkpoint_sync_probe():
     spec.on_block(store, signed_child)
     spec.on_fast_confirmation(fcr)
     confirmed_slot = None
+    epoch_f_votes = []
+    carrier_root = None
+    inclusion_slot = 4 * spec.SLOTS_PER_EPOCH
     for slot in range(int(state.slot), 5 * spec.SLOTS_PER_EPOCH):
         voter = store.block_states[spec.get_head(store).root].copy()
         if voter.slot < slot:
@@ -84,15 +113,41 @@ def checkpoint_sync_probe():
         attestation = get_valid_attestation_at_slot(voter, spec, slot)
         spec.on_tick(store, int(state.genesis_time + (slot + 1) * spec.config.SLOT_DURATION_MS // 1000))
         spec.on_attestation(store, attestation)
+        if slot < inclusion_slot:
+            epoch_f_votes.append(attestation)
+        if include_epoch_f_votes and slot + 1 == inclusion_slot:
+            carrier_state = store.block_states[child_root].copy()
+            carrier = build_empty_block(spec, carrier_state, slot=inclusion_slot)
+            for epoch_f_vote in epoch_f_votes:
+                carrier.body.attestations.append(epoch_f_vote)
+            signed_carrier = state_transition_and_sign_block(spec, carrier_state, carrier)
+            spec.on_block(store, signed_carrier)
+            carrier_root = spec.hash_tree_root(signed_carrier.message)
+            assert store.unrealized_justifications[carrier_root].epoch == 3
+            print("included", len(epoch_f_votes), "epoch-F votes at", inclusion_slot,
+                  "carrier raw GU", int(store.unrealized_justifications[carrier_root].epoch), flush=True)
         spec.on_fast_confirmation(fcr)
         head = spec.get_head(store).root
         if fcr.confirmed_root == child_root and confirmed_slot is None:
             confirmed_slot = slot + 1
-        print("sync slot", slot + 1, "head", "child" if head == child_root else "anchor",
-              "confirmed", "child" if fcr.confirmed_root == child_root else "anchor",
-              "raw_source", int(spec.get_voting_source(store, child_root).epoch), flush=True)
+        def root_name(root):
+            if root == child_root:
+                return "child"
+            if root == anchor_root:
+                return "anchor"
+            assert root == carrier_root
+            return "carrier"
+        print("sync slot", slot + 1, "head", root_name(head),
+              "confirmed", root_name(fcr.confirmed_root),
+              "child_source", int(spec.get_voting_source(store, child_root).epoch),
+              "head_source", int(spec.get_voting_source(store, head).epoch), flush=True)
     assert confirmed_slot is not None
     assert spec.get_current_slot(store) == 5 * spec.SLOTS_PER_EPOCH
+    if include_epoch_f_votes:
+        assert spec.get_voting_source(store, carrier_root).epoch == 3
+        assert spec.is_ancestor(store, spec.get_head(store), spec.get_node_for_root(child_root))
+        print("inclusion control keeps the confirmed child at", int(spec.get_current_slot(store)), flush=True)
+        return
     assert spec.get_head(store).root == anchor_root
     assert not spec.is_ancestor(store, spec.get_node_for_root(anchor_root), spec.get_node_for_root(child_root))
     print("sync failure", "confirmed_at", confirmed_slot, "lost_at", int(spec.get_current_slot(store)), flush=True)
@@ -108,3 +163,4 @@ def checkpoint_sync_probe():
 
 boundary_probe()
 checkpoint_sync_probe()
+checkpoint_sync_probe(include_epoch_f_votes=True)

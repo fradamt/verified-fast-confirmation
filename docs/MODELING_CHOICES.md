@@ -250,15 +250,36 @@ bundle does not cover those raw states.
 with an epoch-3 anchor and raw justification at epoch 2. The unchanged FCR
 confirms its slot-13 child at slot 14. At slot 20, raw source epoch 2 fails
 the filter's `source.epoch + 2 >= current_epoch` test. The head returns to the
-anchor. Normalizing the source to epoch 3 would conceal this failed test.
-This is a handler regression; it does not assert the full safety bundle or
-eventual inclusion.
+anchor. Without eventual inclusion, the raw source can therefore lose a
+confirmed block; the normalized source keeps it. This is a handler regression,
+not a counterexample to the full safety bundle. With enough valid epoch-3
+votes included on the canonical chain in epoch 4, PJF can instead advance
+the raw source to epoch 3 before the filter's epoch-5 deadline. The proof must
+connect this inclusion to the exact antecedent of `EventualCheckpointInclusion`.
 
 `Phase0BoundarySourceCoherence` also remains too strong. Phase0 and Altair
 PJF return early in epochs 0 and 1. An epoch-1 state with enough included
 votes can keep the stub under eager PJF but justify epoch 1 when slot
 processing reaches epoch 3. The three proof consumers of the unconditional
 boundary equality need a separate case for this behavior.
+`EarlyEpochBoundaryWitness.epoch_one_boundary_regression` records both boundary
+outcomes and the included certificate for the newer source. Its reduced state
+functions satisfy the guarded equality for starts at epoch 2 or later and for
+single-boundary advances. It does not replace the public boundary premise.
+
+`normalizeAnchorCheckpoint` implements the proposed semantic operation in
+Internal. Its lemmas prove genesis epoch preservation, the raw filter tests,
+and strict global checkpoint update compatibility. It is not yet connected to
+`FFGStateReadAgreement` or to the link source equations. The public theorem
+therefore still excludes raw genesis stubs.
+
+`CheckpointSyncFilterWitness.anchor_only_view_satisfies_inclusion` checks an
+additional obligation for checkpoint sync. In a normalized anchor-only view,
+the epoch-F source and target are both the anchor. The strict-link support
+antecedent then requires `F < F`. The current inclusion premise holds for this
+finite view without an included vote. This is not a complete FFG interpretation
+or a full-bundle counterexample; it identifies an antecedent that a repair must
+address.
 
 `scripts/anchor_semantics_probe.py` reproduces both behaviors with the pinned
 Python functions. Run it with that checkout's existing Python environment
@@ -266,4 +287,6 @@ and pass the checkout path. It uses the minimal preset and skips BLS checks
 through the test helper. The Gloas probe supplies old headers and timeliness
 entries because the proposer-boost helper otherwise cannot find an old header
 when it walks before a checkpoint-sync anchor. The Lean regression starts from
-the literal one-block initial store. Neither test is a new full-bundle witness.
+the literal one-block initial store. The positive Python control includes epoch-F votes in an epoch-F+1 carrier
+and checks that the raw source is F at F+2. None of these tests is a new
+full-bundle witness.
