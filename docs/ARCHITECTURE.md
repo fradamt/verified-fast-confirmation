@@ -88,7 +88,7 @@ public safety theorem still consumes the supplied interpretation. The projection
 harness checks each interpretation law on real pyspec runs. Full-bundle witnesses
 show consistency, while the contract and differential checks test Python behavior.
 
-The active inventory has 160 claim-reachable premise fields: T 19, E 128, I 13.
+The active inventory has 160 claim-reachable premise fields. Its labels separate tested state laws, execution scope, network and behavior, supplied interpretation, and idealizations. Two relay fields have both network and idealization labels.
 The field list is checked against the claim-type reachability audit. CI runs the
 Python contract, projection, realized-gap, and concrete differential checks in
 a separate pinned-pyspec job.

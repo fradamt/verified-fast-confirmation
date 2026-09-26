@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/fradamt/verified-fast-confirmation/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/fradamt/verified-fast-confirmation/actions/workflows/ci.yml)
 
-The Fast Confirmation Rule (FCR) selects a block root from fork-choice state. Under the stated premises, the Lean theorem proves that every honest observer stores that root and keeps it on its head from the next slot until the finite horizon. The horizon is an absolute epoch limit (`Execution.verification_horizon`), not an interval measured from the anchor. The proof uses a supplied FFG interpretation. State-function contracts, projection runs, and a concrete FFG differential test run against the pinned Python fork.
+The Fast Confirmation Rule (FCR) selects a block root from fork-choice state. Under the stated premises, the Lean theorem proves that every honest observer stores that root and keeps it on its head from the next slot until the finite horizon. The fixed-committee premises force every slot committee to weigh exactly total_active / SLOTS_PER_EPOCH; ordinary 100-validator genesis and mainnet-like registries do not meet this condition. The theorem covers genesis-anchored runs in which epoch 1 is not finalized. In Python, honest votes finalize epoch 1 only through a 1 -> 3 link; this occurs when epoch-2 justification needs votes included in epoch 3. The horizon is an absolute epoch limit (`Execution.verification_horizon`). The proof uses a supplied FFG interpretation; the Python checks do not establish the full premise bundle.
 
 - **Stored boundary output:** The confirmed root saved after a scheduled slot-boundary call.
 - **Handler-successful prefix:** The state after a scheduled event whose handler returns successfully.
@@ -11,7 +11,10 @@ The Fast Confirmation Rule (FCR) selects a block root from fork-choice state. Un
 - **PJF:** `process_justification_and_finalization`. An eager PJF call reads a copy of a state before normal epoch processing. A slot-processed read runs `process_slots` first.
 - **Keyed state:** The beacon state stored under a block root. An honest in-horizon prefix is the result of accepted scheduled events at an honest node before the absolute epoch limit.
 - **Full bundle:** One witness of every field of `NextSlotSafetyPremises`. An exercised field has a true guard or a nonzero event in that run.
-- **GST-0:** The delivery laws hold from the start of this execution. A checked span is any in-horizon slot interval used by the stake bound. A joint witness proves several records for one run. A one-boundary law crosses one epoch end.
+- **GST-0:** The delivery laws hold from the start of this execution.
+- **Checked span:** An in-horizon slot interval used by the stake bound.
+- **Joint witness:** A proof of several records for one run.
+- **One-boundary law:** A law that crosses one epoch end.
 
 Read the claim in `FastConfirmationStatements/Review.lean` and its premise bundle in `FastConfirmationStatements/Premises/NextSlotSafety.lean`.
 Read `docs/REVIEW_GUIDE.md` for the audit path and `docs/MODELING_CHOICES.md` for the scope.
@@ -36,8 +39,7 @@ inclusion relation need not equal block-body membership. The theorem holds for
 every relation with these laws. The intended relation selects included attestations whose target matches the
 checkpoint. Python `process_attestation` does not check the target root.
 `FFGInterpretationFidelity` states body membership and valid-vote facts, and
-every full-bundle witness proves them for its supplied relation. The projection
-harness tests every interpretation law on real pyspec runs. A concrete FFG state
+every full-bundle witness proves them for its supplied relation. The projection harness checks sampled interpretation fields on pinned pyspec runs. It marks `EventualCheckpointInclusion.included` (A3.2) as NOT_ESTABLISHED: its every-view antecedent and full implication are not tested. A concrete FFG state
 and 34 Gloas functions exist in `FastConfirmationModel`; 59 differential cases
 agreed with Python. The theorem does not yet use this concrete model. A client
 still must supply the interpretation and show its laws.
@@ -49,37 +51,7 @@ epochs. Finality evidence has a two-epoch lag (`k = 2`). The source law covers
 two or more epoch boundaries, and `epoch_one_finalization_one_step` is the
 `F = 1` scope field.
 
-`NextSlotSafetyPremises.anchor_state_checkpoints` covers a genesis anchor whose state
-has the zero-root stub. It also covers a normalized anchor state whose current justified
-and finalized checkpoints equal the anchor. At the FFG interpretation boundary,
-`CheckpointReadsAs` reads a raw genesis stub as the genesis anchor because both
-checkpoints have `GENESIS_EPOCH`. Executable handlers and wire attestations keep the raw
-checkpoint. Checkpoint-sync anchors with older state checkpoints are outside this
-condition. The raw source age and the filter's `+2` rule need an inclusion argument.
-That argument is not formalized. Only genesis has a full-bundle anchor witness. The normalized-state branch is a stated condition, not a checkpoint-sync proof.
-`CheckpointSyncFilterWitness.checkpoint_sync_filter_counterexample` has no attestation
-inclusion for two epochs, so it is outside `EventualCheckpointInclusion`. It shows why
-that premise matters; it is not an FCR safety failure.
-
-`Phase0BoundarySourceCoherence` has five fields. `process_slots_one_boundary` equates
-one boundary with eager PJF. `process_slots_same_target_epoch` equates target slots in
-one epoch. `state_transition_process_slots` equates a crossing block transition with
-slot processing. `process_slots_checkpoint_epoch` bounds the output checkpoint if every
-intermediate slot-processed state satisfies `3 * effective_balance_increment < 2 *
-get_total_active_balance`. This guard is exact because an empty vote set can pass the
-two-thirds test at a total balance of at most one and a half increments.
-`process_slots_two_boundaries` equates two or more boundaries from a start epoch of at
-least `GENESIS_EPOCH + 2` with eager PJF, if the registry and the total active balance
-are unchanged and the same guard holds at every intermediate state.
-`ScheduledFCRCallPremises.balance_floor` requires two increments of anchor active
-weight. With `registry_static_in_horizon`, this floor supplies the guard on in-horizon
-reads. The static-registry condition excludes included slashings, deposits, activations,
-exits, and effective-balance changes that alter validator records in the horizon.
-`on_attestation_committee` confines successful delivered attestations in honest
-in-horizon prefixes to their slot committee. `process_slots_attestation_valid`
-constrains successful slot processing only when the target slot is inside the
-verification horizon. Attester-slashing evidence can name off-committee
-validators.
+The [review guide](docs/REVIEW_GUIDE.md) explains anchor states, checkpoint reads, and the five boundary-source laws. It also lists the guards that the pinned Python probes check.
 
 `GenesisStubPremiseWitness.genesis_stub_full_bundle_witness` satisfies the full safety bundle with a real genesis stub. It shows consistency of the bundle; it is not a Python-faithful execution. The contract suite, projection harness, and differential test check Python behavior. Witness PJF returns early in epochs 0 and 1, as Python does. See [anchor and boundary limits](docs/MODELING_CHOICES.md#anchor-and-boundary-limits).
 
@@ -110,8 +82,8 @@ validators.
 ├──────────────────────┼──────────────────────────────────────────────────────────────────────────────────────────────────┤
 │ FFG state            │ `ScheduledFFGInterpretation` supplies accepted-block state, links, and checkpoint reads.         │
 ├──────────────────────┼──────────────────────────────────────────────────────────────────────────────────────────────────┤
-│ Epoch-1 finality     │ `epoch_one_finalization_one_step`: a finalization of epoch 1 has a link to epoch 2. Runs that    │
-│                      │ finalize epoch 1 through 1 -> 3 are outside the scope. Later 2-epoch links are in scope.         │
+│ Epoch-1 finality     │ `epoch_one_finalization_one_step` excludes genesis runs that finalize epoch 1 through 1 -> 3.  │
+│                      │ Python takes that path when epoch-2 justification needs votes included in epoch 3.             │
 ├──────────────────────┼──────────────────────────────────────────────────────────────────────────────────────────────────┤
 │ Phase0 source        │ `Phase0SourceCoherence` and `Phase0BoundarySourceCoherence` constrain source reads.              │
 ├──────────────────────┼──────────────────────────────────────────────────────────────────────────────────────────────────┤
@@ -122,8 +94,10 @@ validators.
 │                      │ assignment `E.committee`. RANDAO-seeded, fork-dependent committees of the real protocol are not  │
 │                      │ modeled.                                                                                         │
 ├──────────────────────┼──────────────────────────────────────────────────────────────────────────────────────────────────┤
-│ Payload validity     │ `BeaconExternalsPremises` and the external contract govern imported payloads.                    │
+│ Equal slot weight    │ `estimate_sound` plus coverage forces each slot committee to weigh exactly `total_active / S`.   │
+│                      │ Ordinary 100-validator genesis and mainnet-like balances do not satisfy this idealization.       │
 ├──────────────────────┼──────────────────────────────────────────────────────────────────────────────────────────────────┤
+│ Payload validity     │ `BeaconExternalsPremises` and the external contract govern imported payloads.                    │
 └──────────────────────┴──────────────────────────────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -134,11 +108,8 @@ and quorums are produced on demand after the target epoch, with the original cal
 target, source, and deadline. See `Execution.confirmed_safety_and_lineage_of_acceptedActualFCRFold`.
 The [premise ledger](#premise-ledger) gives the remaining records and sources.
 Evidence relay is a premise. The fault bound applies to each checked span.
-The slashing relay is an implementation assumption. It matches clients that
-validate evidence against the head state (five of six checked). The literal
-Python justified-state handler can reject evidence and violate this relay.
-The per-span fault bound and estimate soundness are deterministic events assumed
-on every checked span, including one slot. A global fault share does not imply
+The slashing relay is an operational premise. With the static registry and one fork, the claimed missing-signer rejection cannot occur in scope; the registry and domain are common. Handler service is still an assumption.
+The per-span fault bound and estimate soundness are deterministic conditions on every checked span, including one slot. Their combination with coverage forces equal slot weights. Block-store membership depends closely on `DeadlineBlockRelay` store retention; the proof rules out its permanent-exclusion branch and establishes head ancestry. A global fault share does not imply
 them. This development does not calculate their probability under committee
 sampling.
 The positive `delta` value is a timing parameter. The delivery laws in
@@ -160,9 +131,10 @@ external calls with stated contracts. The Lean kernel checks the proofs. The tru
 allows only `propext`, `Classical.choice`, and `Quot.sound`. The [paper
 library](#paper-library) models the [paper](https://arxiv.org/abs/2405.00549) separately.
 There is no refinement theorem from the paper model to the executable model.
+A pinned Python run with 100 validators, mixed balances, normal participation, and 48 imported blocks checks 71 finite premise fields. `ByzantineWeightPremises.estimate_sound` fails on 211 spans; A3.2 remains NOT_ESTABLISHED. The run has one view and no Byzantine validators, so it does not establish network delivery or a nonvacuous fault bound.
+
 The [contract conformance checks](docs/conformance.md#contract-conformance) cover 160
-claim-reachable premise fields: 19 tested state-function properties (T), 128 execution or interpretation
-assumptions (E), and 13 cryptographic, engine, or committee idealizations (I). Run `python3
+claim-reachable premise fields, split into tested state laws (T), execution scope (E-scope), network and behavior (E-network/behavior), supplied FFG interpretation (E-interpretation), and idealizations (I). Run `python3
 scripts/conformance/contracts/check_inventory.py --repo
 /path/to/consensus-specs-pending-discount --output /tmp/contract-results.json` with the
 pinned checkout's interpreter. Three labelled expected failures show why the balance
@@ -267,11 +239,13 @@ coverage limits, not claims about unreachable protocol states.
 
 ## Scope limits
 
-- `BeaconExternalsPremises.registry_static_in_horizon` fixes keyed states in honest in-horizon stores and their slot-processed reads to the anchor registry. Runs with included slashings, deposits, activations, exits, or effective-balance changes in the horizon are outside this condition. The pending-deposit case is a contract probe: epoch processing appends a validator and changes indexed validity.
+- `BeaconExternalsPremises.registry_static_in_horizon` fixes keyed states and slot-processed reads to the anchor registry. Included slashings, deposits, activations, exits, or effective-balance changes can break it. On mainnet this can limit a horizon to about one epoch. The pending-deposit probe shows an excluded registry change.
 - The model imports only validated payloads. An imported payload enters the store only after `verify_execution_payload_envelope` returns true. This external includes the execution engine's `VALID` decision. Execution validation itself is opaque.
 - `BeaconExternalsPremises` supplies contracts for external state transitions and validation. `on_attestation_committee` constrains successful delivered attestations. Indexed attester-slashing evidence can have off-committee signers; its handler only updates the equivocating set. The Lean proof does not implement an execution engine.
 - `AcceptedBlockAttestationInclusion.Included` is a supplied carrier-vote relation. Its safety evidence gives an accepted carrier block, a received block copy of the vote, slot and target-epoch facts, and committee membership.
 - `FFGInterpretationFidelity` states the intended interpretation of the included votes: membership in the accepted carrier block's ordered FFG attestation body, validity on the target checkpoint state prepared from a keyed target block state in an honest in-horizon store, and the external validity check. The safety theorem does not assume it. Each full-bundle witness proves it for its interpretation.
+- `EstimateForcesBalance.slot_committee_weight_forced` proves that exact `estimate_sound` plus committee coverage forces equal per-slot weight in each full in-horizon epoch. Whether Python FCR thresholds tolerate committee-weight rounding remains open.
+- `AcceptedBlockFFGState.epoch_one_finalization_one_step` excludes honest genesis runs with epoch-1 finality through 1 -> 3. Extending the proof to that path remains open.
 - `ByzantineWeightPremises.span_fraction` must hold for every in-horizon slot span, including one slot. A global fault share does not establish this bound. The bound matches `CommitteeHonestMajority` in the repository's formal paper Assumption 2.
 - The result covers stored boundary outputs. The two extra-query counterexamples refute same-second head agreement at a mid-second prefix under the counterexample synchrony record. Next-slot safety of an in-slot query is open.
 

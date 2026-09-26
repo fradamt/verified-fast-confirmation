@@ -27,11 +27,7 @@ Schema v1 phase0 traces remain historical and both readers reject them. Gloas FU
 ## Contract conformance
 
 The [contract inventory](../scripts/conformance/contracts/inventory.toml) lists every
-direct field in the premise structures. T means a generated-state property
-of the pinned Python functions. E means an execution, network, or supplied
-FFG interpretation assumption. I means a cryptographic or engine
-idealization, including fixed committees. The inventory has 160 claim-reachable active fields: T 19, E 128,
-and I 13. Thirteen selector, checkpoint, and anchor fields were moved from T to E
+direct field in the premise structures. T means a generated reachable-state property of the pinned Python functions. E-scope labels execution limits. E-network/behavior labels delivery, scheduling, and honest or adversarial behavior. E-interpretation labels supplied FFG obligations. I labels cryptographic, engine, or fixed-committee idealizations. Some mixed relay fields carry both E-network/behavior and I. The inventory covers 160 claim-reachable active structure fields and records two outside Prop boundaries: EpochEndsFitUint64 and BeaconFunctionInterface.AnchorCommitsToState. The checker verifies their source declarations. Thirteen selector, checkpoint, and anchor fields were moved from T to E
 because their old probes did not test the supplied execution interpretation. The
 inventory checker fails when a Lean field has no entry.
 
@@ -54,9 +50,7 @@ python3 scripts/conformance/contracts/check_inventory.py \
 
 `scripts/validate.sh --consensus-repo /path/to/consensus-specs-pending-discount`
 runs the same check. The contract runner fails if the checkout interpreter is absent. Fast validation
-can check the inventory alone when no interpreter is installed. CI installs the
-pinned fork in a separate job and runs the contract suite, fast projection,
-realized-gap regression, and concrete differential.
+can check the inventory alone when no interpreter is installed. CI installs the pinned fork in a separate job and runs the contract suite, full projection, realized-gap regression, and concrete differential.
 
 
 ### Accepted FFG projection
@@ -84,14 +78,15 @@ never includes epoch-1 votes; it finalizes epoch 2 only through the link
 `GenesisOrNormalizedAnchor`. The JSON output quotes each Lean field and gives
 a status and a state witness for each case. Structural mappings are marked
 construction; the exact Assumption 3.2 antecedent needs all honest views and
-slashing state, so its result is marked as not established. Findings remain in
-the JSON and do not make validation stop. The report for this lane is
-/home/fradamt/lean/orch/reports/p1-projection-tests.md on the NUC.
+slashing state, so its result is marked as not established. Unexcluded FAIL results make validation fail. Expected scope failures remain OUT_OF_SCOPE. `EventualCheckpointInclusion.included` is NOT_ESTABLISHED in each full run: the sampled consequence does not test the A3.2 implication.
+
+### Whole-bundle sample
+
+`scripts/conformance/contracts/check_real_bundle.py` imports 48 normally participating blocks from a 100-validator Gloas genesis with 32, 33, 34, and 35 ETH effective balances. On this one accepted run it evaluates 71 finite fields: 50 FFG projection checks, 16 registry, committee, economic, anchor, and configuration checks, and five state-law samples on accepted keyed states. `ByzantineWeightPremises.estimate_sound` fails on 211 checked spans. The other checked fields pass, except `EventualCheckpointInclusion.included`, which is NOT_ESTABLISHED. This run has one view and no Byzantine validators; it cannot test network relay, all honest views, BLS, KZG, engine validity, or a nonvacuous span fault bound. CI runs this sample and fails if an unlabelled field fails.
 
 ## Scope of the checks
 
-The FFG interpretation remains a premise of the safety theorem. The projection
-harness tests every law of that interpretation on real pyspec runs. The concrete
+The FFG interpretation remains a premise of the safety theorem. The projection harness checks sampled fields of that interpretation on real pyspec runs. It does not establish A3.2 as an implication. The concrete
 FFG state and 34 Gloas functions in `FastConfirmationModel` passed 59 differential
 cases, but the theorem does not yet use that state. Full-bundle witnesses show
 that the premises are consistent. Python faithfulness comes from the contract

@@ -89,6 +89,8 @@ python3 scripts/check_review_boundary.py
 python3 scripts/check_review_boundary.py --self-test
 if [[ -x "$consensus_repo/.venv/bin/python" ]]; then
   python3 scripts/conformance/contracts/check_inventory.py --repo "$consensus_repo"
+  "$consensus_repo/.venv/bin/python" scripts/conformance/contracts/check_real_bundle.py \
+    --repo "$consensus_repo" --output "${TMPDIR:-/tmp}/fcr-real-bundle-$$.json"
 elif [[ "${REQUIRE_PYSPEC:-0}" == "1" ]]; then
   echo "pyspec interpreter is required at $consensus_repo/.venv/bin/python" >&2
   exit 1

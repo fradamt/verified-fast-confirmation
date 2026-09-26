@@ -12,8 +12,8 @@ Each row states a choice in the executable or paper model, why it is used, and t
 │                                       │                                                                  │ have defaults.                                                                    │
 │ Injective block-root labels           │ WellFormedExecution.blocks_root_injective identifies blocks      │ It gives no hash_tree_root equation or cryptographic commitment.                  │
 │                                       │ with equal roots.                                                │                                                                                   │
-│ Atomic handler rejection              │ An invalid attestation returns none and leaves the run store     │ Python can keep a checkpoint-state cache write before a failed assert.            │
-│                                       │ unchanged.                                                       │ Accepted runs exclude that failed call's resulting store.                         │
+│ Atomic handler rejection              │ An invalid attestation returns none and leaves the run store     │ Python can retain a target checkpoint-state cache write before indexed            │
+│                                       │ unchanged.                                                       │ validation fails. See the cache-write note below.                                 │
 │ Explicit loop fuel                    │ Makes recursive Python walks total.                              │ Equivalence needs a bound on reachable parent walks.                              │
 │ Projected BeaconState and Store       │ Keeps only fields used by the rule and checks.                   │ Unused source-state behavior is outside the model.                                │
 │ Opaque BeaconFunctionInterface        │ Separates consensus logic from execution engine and              │ BeaconExternalsPremises must be justified by an implementation.                   │
@@ -37,10 +37,11 @@ Each row states a choice in the executable or paper model, why it is used, and t
 └───────────────────────────────────────┴──────────────────────────────────────────────────────────────────┴───────────────────────────────────────────────────────────────────────────────────┘
 ```
 
+On a failed indexed attestation, Python may retain the target checkpoint-state cache write. Lean returns none, and the scheduled fold keeps the prior store. The cache value comes from the target block state and deterministic `process_slots` when the target entry is absent. A later successful call computes the same value if the keyed block state is unchanged. This is an argument for later successful attestation validation, not a refinement proof for all later reads. A direct `checkpoint_states` read can observe the Python write before any successful call; the Lean model omits that effect.
+
 The safety claim holds for every carrier-vote relation that meets the stated
 fields. It does not alone certify the votes in real block bodies.
-`review_claims` has one safety field. It gives observer-store membership and
-executable ancestry.
+`review_claims` has one safety field. `DeadlineBlockRelay` supplies operational store retention close to membership; the proof removes permanent exclusion and proves executable ancestry.
 
 The `ByzantineWeightPremises.span_fraction` bound applies to every in-horizon
 committee span, including one slot. A global fault share does not establish
@@ -53,6 +54,8 @@ The PTC assignment function, PTC signature check, ordered committee tables,
 and committee counts are unconstrained. The theorem holds for every choice of
 each of these functions or tables. Other external contracts are premises; see
 the [trusted boundary](REVIEW_GUIDE.md#trusted-boundary).
+
+`DeadlineBlockRelay` is an operational store-retention condition close to the membership result. Network delivery must bring cutoff blocks and parents before the next boundary. Clients must service ready blocks, retain accepted blocks, and apply only the stated permanent finalized-guard exemption. The proof rules out that exemption for the confirmed root and establishes head ancestry.
 
 The execution records use a positive delay in milliseconds. Their strict bound
 is `get_attestation_due_ms cfg + delay_ms < cfg.slot_duration_ms`. Let S be the
@@ -107,15 +110,12 @@ check and two indexed-attestation checks. They read the attestations, signer
 pubkeys, and target-epoch domains. Pubkeys are immutable. The genesis validators
 root is common, and the model has one fork, so the domains are common.
 
-The relay is an implementation assumption. Five of six checked clients
-validate evidence against the head state. The literal Python handler uses
-the justified state and can violate the relay when that state lacks a signer.
+The relay is an operational assumption. Five of six checked clients validate evidence against the head state. The literal Python handler uses the justified state. With the static registry and one fork, the missing-signer case is outside this theorem scope.
 
 The handler `on_attester_slashing` follows the Python and validates against
 `store.block_states[store.justified_checkpoint.root]`. The relay field is a
 premise, not a handler check: it states that every honest node holds the
-indices by the next boundary. Literal Python can reject evidence at a node
-whose justified state does not contain a signer. The premise matches clients
+indices by the next boundary. A missing signer at the justified state requires a registry change, which is outside the static-registry scope. The premise matches clients
 that validate network evidence against a newer state. Lighthouse, Prysm, Teku,
 Lodestar, and Nimbus use the head state; Lighthouse advances it to the
 wall-clock slot. Grandine follows the specification and uses the justified
@@ -148,7 +148,7 @@ need.
 6. `BeaconExternalsPremises.committees_agree` and `on_attestation_committee` model committees as one fixed ground-truth assignment `E.committee`. `committees_agree` makes every honest store query for every in-horizon slot return this assignment. In the real protocol, the committees of epoch e depend on the RANDAO mix of epoch e − 2 and on the branch of the reading state, so two honest nodes can read different committees. These RANDAO-seeded, fork-dependent committees are not modeled. A weaker model needs per-branch committees in the execution, with each weight bound stated for the committees of the reading branch.
 7. `BeaconExternalsPremises.on_attestation_committee` confines successful delivered attestations to their slot committee. The Lean handler receives an indexed wire object. This premise stands for Python's committee-derived `get_indexed_attestation` path, with the fixed assignment of item 6 in place of the committee of the target checkpoint state. It does not constrain attester-slashing evidence; off-committee evidence can validate and only adds indices to the equivocating set.
 8. `BeaconExternalsPremises.verify_envelope_deterministic` ignores observation context for a fixed state and signed envelope. It supports transport of a verified result to a later observation.
-9. `ByzantineWeightPremises.estimate_sound` makes every in-horizon committee estimate an upper bound. It lets the proof use the executable estimate without a failure case.
+9. `ByzantineWeightPremises.estimate_sound` makes every in-horizon estimate an upper bound. `EstimateForcesBalance.slot_committee_weight_forced` proves that it and committee coverage force each slot committee in a full in-horizon epoch to weigh exactly total_active / SLOTS_PER_EPOCH. Real registries, including a 100-validator minimal genesis and mainnet-like balances, usually fail this exact condition. This is a fixed-committee idealization. It remains open whether Python FCR thresholds tolerate committee-weight rounding.
 10. `ByzantineWeightPremises.span_fraction` bounds non-honest weight in every checked slot span, including one slot. A global stake fraction alone cannot supply this field.
 11. `NextSlotSynchronyPremises.attester_slashing_relay` gives each honest store the equivocation indices by the next boundary. Literal Python can reject evidence when its justified state lacks a signer.
 12. `NextSlotSafetyPremises.anchor_state_checkpoints` admits the genesis anchor with a raw stub or a state with both checkpoints equal to the anchor. Older raw checkpoints in a checkpoint-sync state are outside its scope.

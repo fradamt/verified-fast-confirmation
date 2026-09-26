@@ -1,80 +1,81 @@
 # Direct fields of structures in FastConfirmationStatements/Premises.
-# T: direct generated-state property; E: execution or supplied interpretation; I: idealization.
+# T: reachable generated-state law; E-scope: execution limit; E-network/behavior: delivery or actor condition.
+# E-interpretation: supplied FFG or external-state obligation; I: idealization. A + joins mixed labels.
 version = 1
 
 [[field]]
 path = "HonestBehavior.votes_head"
 file = "Behavior.lean"
-class = "E"
-reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
+class = "E-network/behavior"
+reason = "Honest committee voters must use their local fork-choice head."
 
 [[field]]
 path = "HonestBehavior.vote_deadline"
 file = "Behavior.lean"
-class = "E"
-reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
+class = "E-network/behavior"
+reason = "Honest votes must be sent by the attestation deadline."
 
 [[field]]
 path = "HonestBehavior.votes_assigned"
 file = "Behavior.lean"
-class = "E"
-reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
+class = "E-network/behavior"
+reason = "Only validators assigned to the slot may cast the modeled honest vote."
 
 [[field]]
 path = "HonestBehavior.no_forgery"
 file = "Behavior.lean"
 class = "I"
-reason = "BLS unforgeability and honest signing history are idealized."
+reason = "The model assumes honest signing history cannot be forged by another actor."
 
 [[field]]
 path = "HonestBehavior.not_slashable"
 file = "Behavior.lean"
-class = "E"
-reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
+class = "E-network/behavior"
+reason = "Scheduled honest votes must remain pairwise non-slashable."
 
 [[field]]
 path = "HonestBehavior.honest_unslashed"
 file = "Behavior.lean"
-class = "E"
-reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
+class = "E-network/behavior"
+reason = "Honest validators must remain unslashed in the fixed registry."
 
 [[field]]
 path = "EpochCheckpointProjectionLaws.checkpoint_root_accepted"
 file = "CheckpointLinks.lean"
-class = "E"
+class = "E-interpretation"
 legacy_probe = "EpochCheckpointProjectionLaws.checkpoint_root_accepted"
-reason = "This field depends on an accepted execution or a supplied FFG selector. The former generated-state probe did not test that interpretation. The projection harness checks it on accepted runs."
+reason = "Each projected checkpoint root must name an accepted block."
 
 [[field]]
 path = "EpochCheckpointProjectionLaws.checkpoint_comp"
 file = "CheckpointLinks.lean"
-class = "E"
+class = "E-interpretation"
 legacy_probe = "EpochCheckpointProjectionLaws.checkpoint_comp"
-reason = "This field depends on an accepted execution or a supplied FFG selector. The former generated-state probe did not test that interpretation. The projection harness checks it on accepted runs."
+reason = "Checkpoint projection must agree with the accepted chain at the queried epoch."
 
 [[field]]
 path = "IncludedLinkCheckpointAgreement.carrier_accepted"
 file = "CheckpointLinks.lean"
-class = "E"
-reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
+class = "E-interpretation"
+reason = "A link carrier must be an accepted block in the supplied execution."
 
 [[field]]
 path = "IncludedLinkCheckpointAgreement.endpoints_on_carrier"
 file = "CheckpointLinks.lean"
-class = "E"
-reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
+class = "E-interpretation"
+reason = "A certified link must connect checkpoints on its accepted carrier chain."
 
 [[field]]
 path = "StaticValidatorSet.genesis_within_horizon"
 file = "Economics.lean"
-class = "E"
-reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
+class = "E-scope"
+reason = "The anchor second must lie before the absolute horizon."
 
 [[field]]
 path = "StaticValidatorSet.activity_constant"
 file = "Economics.lean"
-class = "E"
-reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
+class = "E-scope"
+reason = "Active status must stay fixed through every in-horizon epoch."
 
 [[field]]
 path = "ByzantineWeightPremises.effective_balance_quantized"
@@ -85,14 +86,14 @@ test = "ByzantineWeightPremises.effective_balance_quantized"
 [[field]]
 path = "ByzantineWeightPremises.estimate_sound"
 file = "Economics.lean"
-class = "E"
-reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
+class = "I"
+reason = "With fixed committees and coverage, the exact one-slot estimate forces every full-epoch slot committee to weigh total_active / SLOTS_PER_EPOCH."
 
 [[field]]
 path = "ByzantineWeightPremises.span_fraction"
 file = "Economics.lean"
-class = "E"
-reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
+class = "E-network/behavior"
+reason = "Non-honest stake must stay under the bound for each in-horizon slot span."
 
 [[field]]
 path = "BeaconExternalsPremises.process_slots_slot"
@@ -103,8 +104,8 @@ test = "BeaconExternalsPremises.process_slots_slot"
 [[field]]
 path = "BeaconExternalsPremises.registry_static_in_horizon"
 file = "Externals.lean"
-class = "E"
-reason = "This condition is about states in honest causal stores and their slot-processed reads; Python state functions alone do not fix an execution or its horizon."
+class = "E-scope"
+reason = "Keyed and slot-processed in-horizon states must retain the anchor validator registry."
 
 [[field]]
 path = "BeaconExternalsPremises.state_transition_slot"
@@ -134,25 +135,25 @@ test = "BeaconExternalsPremises.pjf_checkpoint_epoch"
 path = "BeaconExternalsPremises.committees_agree"
 file = "Externals.lean"
 class = "I"
-reason = "committees are one fixed ground-truth assignment; real RANDAO-seeded, fork-dependent committees are not modeled."
+reason = "One fixed committee map stands for branch-dependent RANDAO committee reads."
 
 [[field]]
 path = "BeaconExternalsPremises.honest_attestation_valid"
 file = "Externals.lean"
 class = "I"
-reason = "The relation between an honest signer, its indexed attestation, and BLS verification is an external authenticity contract."
+reason = "The opaque BLS and index check must accept each honestly signed singleton vote."
 
 [[field]]
 path = "BeaconExternalsPremises.valid_attestation_honest"
 file = "Externals.lean"
 class = "I"
-reason = "BLS unforgeability and honest signing history are idealized."
+reason = "The opaque BLS check must reject forged data naming an honest signer."
 
 [[field]]
 path = "BeaconExternalsPremises.on_attestation_committee"
 file = "Externals.lean"
 class = "I"
-reason = "committees are one fixed ground-truth assignment; real RANDAO-seeded, fork-dependent committees are not modeled. The indexed Lean wire object omits Python get_indexed_attestation; only successful delivered on_attestation calls in honest in-horizon prefixes are constrained."
+reason = "Indexed wire attestations are assumed to come from the modeled fixed slot committee."
 
 [[field]]
 path = "BeaconExternalsPremises.committee_assignment_unique"
@@ -188,43 +189,43 @@ test = "BeaconExternalsPremises.process_slots_attestation_valid"
 path = "BeaconExternalsPremises.verify_envelope_deterministic"
 file = "Externals.lean"
 class = "I"
-reason = "Execution-engine validity and observation-local data availability are idealized."
+reason = "Engine and availability verdicts are assumed stable for fixed state and envelope inputs."
 
 [[field]]
 path = "ScheduledFCRCallPremises.synchrony"
 file = "FCRCallPremises.lean"
-class = "E"
-reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
+class = "E-network/behavior"
+reason = "The call needs positive delay and the stated next-slot delivery laws."
 
 [[field]]
 path = "ScheduledFCRCallPremises.static_validators"
 file = "FCRCallPremises.lean"
-class = "E"
-reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
+class = "E-scope"
+reason = "The call bundle requires anchor coverage and fixed active status in the horizon."
 
 [[field]]
 path = "ScheduledFCRCallPremises.byzantine_bound"
 file = "FCRCallPremises.lean"
-class = "E"
-reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
+class = "E-network/behavior"
+reason = "The call needs quantized balances, exact estimates, and per-span fault bounds."
 
 [[field]]
 path = "ScheduledFCRCallPremises.source_coherence"
 file = "FCRCallPremises.lean"
-class = "E"
-reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
+class = "E-interpretation"
+reason = "The supplied beacon-state functions must keep justified sources stable within an epoch."
 
 [[field]]
 path = "ScheduledFCRCallPremises.boundary_source_coherence"
 file = "FCRCallPremises.lean"
-class = "E"
-reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
+class = "E-interpretation"
+reason = "The supplied beacon-state functions must follow the guarded epoch-boundary source laws."
 
 [[field]]
 path = "ScheduledFCRCallPremises.balance_floor"
 file = "FCRCallPremises.lean"
-class = "E"
-reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
+class = "E-scope"
+reason = "Anchor active weight must exceed two balance increments for guarded epoch processing."
 
 [[field]]
 path = "Phase0SourceCoherence.process_slots_current_justified"
@@ -241,583 +242,583 @@ test = "Phase0SourceCoherence.state_transition_current_justified"
 [[field]]
 path = "IncludedAttestationEvidence.carrier_message"
 file = "FFGState.lean"
-class = "E"
-reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
+class = "E-interpretation"
+reason = "An included vote must be copied from a scheduled carrier message."
 
 [[field]]
 path = "IncludedAttestationEvidence.received_from_block"
 file = "FFGState.lean"
-class = "E"
-reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
+class = "E-interpretation"
+reason = "The modeled vote must arrive as part of an accepted block."
 
 [[field]]
 path = "IncludedAttestationEvidence.slot_within_horizon"
 file = "FFGState.lean"
-class = "E"
-reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
+class = "E-interpretation"
+reason = "The included vote slot must lie inside the verified horizon."
 
 [[field]]
 path = "IncludedAttestationEvidence.slot_before_carrier"
 file = "FFGState.lean"
-class = "E"
-reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
+class = "E-interpretation"
+reason = "The vote slot must precede the carrier block slot."
 
 [[field]]
 path = "IncludedAttestationEvidence.target_epoch"
 file = "FFGState.lean"
-class = "E"
-reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
+class = "E-interpretation"
+reason = "The vote target epoch must match its attestation slot."
 
 [[field]]
 path = "IncludedAttestationEvidence.attesters_in_committee"
 file = "FFGState.lean"
 class = "I"
-reason = "One fixed committee map is assumed across forks and states; real committees can depend on RANDAO."
+reason = "The supplied included-vote signer set uses the fixed committee map."
 
 [[field]]
 path = "BlockAttestationInclusion.Included"
 file = "FFGState.lean"
-class = "E"
-reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
+class = "E-interpretation"
+reason = "A supplied relation chooses which block-contained attestations count as included."
 
 [[field]]
 path = "BlockAttestationInclusion.evidence"
 file = "FFGState.lean"
-class = "E"
-reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
+class = "E-interpretation"
+reason = "Every selected included vote must have carrier and receipt evidence."
 
 [[field]]
 path = "AcceptedBlockAttestationEvidence.carrier_accepted"
 file = "FFGState.lean"
-class = "E"
-reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
+class = "E-interpretation"
+reason = "The vote carrier must be present in an accepted scheduled prefix."
 
 [[field]]
 path = "AcceptedBlockAttestationInclusion.Included"
 file = "FFGState.lean"
-class = "E"
-reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
+class = "E-interpretation"
+reason = "The accepted-block inclusion relation must identify supplied carrier votes."
 
 [[field]]
 path = "AcceptedBlockAttestationInclusion.evidence"
 file = "FFGState.lean"
-class = "E"
-reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
+class = "E-interpretation"
+reason = "Each accepted-block included vote needs accepted-carrier evidence."
 
 [[field]]
 path = "IncludedSupermajorityLink.signers"
 file = "FFGState.lean"
-class = "E"
-reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
+class = "E-interpretation"
+reason = "The link must identify a concrete signer set."
 
 [[field]]
 path = "IncludedSupermajorityLink.source_before_target"
 file = "FFGState.lean"
-class = "E"
-reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
+class = "E-interpretation"
+reason = "A certified source epoch must precede its target epoch."
 
 [[field]]
 path = "IncludedSupermajorityLink.target_descends_source"
 file = "FFGState.lean"
-class = "E"
-reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
+class = "E-interpretation"
+reason = "The target checkpoint must descend from the source on the accepted chain."
 
 [[field]]
 path = "IncludedSupermajorityLink.target_epoch_within"
 file = "FFGState.lean"
-class = "E"
-reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
+class = "E-interpretation"
+reason = "The target epoch must lie in the relevant verified range."
 
 [[field]]
 path = "IncludedSupermajorityLink.target_span_within"
 file = "FFGState.lean"
-class = "E"
-reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
+class = "E-interpretation"
+reason = "The source-to-target span must stay in the checked horizon."
 
 [[field]]
 path = "IncludedSupermajorityLink.signers_in_epoch"
 file = "FFGState.lean"
-class = "E"
-reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
+class = "E-interpretation"
+reason = "Link signers must be assigned in the target epoch."
 
 [[field]]
 path = "IncludedSupermajorityLink.signer_attestation"
 file = "FFGState.lean"
-class = "E"
-reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
+class = "E-interpretation"
+reason = "Each signer must have a matching included source-to-target attestation."
 
 [[field]]
 path = "IncludedSupermajorityLink.supermajority"
 file = "FFGState.lean"
-class = "E"
-reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
+class = "E-interpretation"
+reason = "The included link signer weight must reach the two-thirds threshold."
 
 [[field]]
 path = "IncludedCertifiedFinalized.justified"
 file = "FFGState.lean"
-class = "E"
-reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
+class = "E-interpretation"
+reason = "A finalized checkpoint must first have justified evidence."
 
 [[field]]
 path = "IncludedCertifiedFinalized.child"
 file = "FFGState.lean"
-class = "E"
-reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
+class = "E-interpretation"
+reason = "The finalization certificate must identify a justified child checkpoint."
 
 [[field]]
 path = "IncludedCertifiedFinalized.child_epoch"
 file = "FFGState.lean"
-class = "E"
-reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
+class = "E-interpretation"
+reason = "The child checkpoint must have the required later epoch."
 
 [[field]]
 path = "IncludedCertifiedFinalized.middle_justified"
 file = "FFGState.lean"
-class = "E"
-reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
+class = "E-interpretation"
+reason = "A two-step finalization must have justified middle evidence."
 
 [[field]]
 path = "IncludedCertifiedFinalized.finalizing_link"
 file = "FFGState.lean"
-class = "E"
-reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
+class = "E-interpretation"
+reason = "The certificate must include the finalizing FFG link."
 
 [[field]]
 path = "IncludedCheckpointEvidence.certified"
 file = "FFGState.lean"
-class = "E"
-reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
+class = "E-interpretation"
+reason = "The checkpoint must have a supplied inclusion certificate."
 
 [[field]]
 path = "IncludedCheckpointEvidence.on_chain"
 file = "FFGState.lean"
-class = "E"
-reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
+class = "E-interpretation"
+reason = "The checkpoint root must be on the accepted carrier chain."
 
 [[field]]
 path = "IncludedCheckpointEvidence.causal"
 file = "FFGState.lean"
-class = "E"
-reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
+class = "E-interpretation"
+reason = "The included evidence must be available before the relevant read."
 
 [[field]]
 path = "AcceptedBlockFFGState.includedAttestations"
 file = "FFGState.lean"
-class = "E"
-reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
+class = "E-interpretation"
+reason = "The supplied FFG state selects included attestations for each accepted carrier."
 
 [[field]]
 path = "AcceptedBlockFFGState.checkpoint_evidence_in_block"
 file = "FFGState.lean"
-class = "E"
-reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
+class = "E-interpretation"
+reason = "Checkpoint evidence must be tied to an accepted block."
 
 [[field]]
 path = "AcceptedBlockFFGState.checkpoint_at_epoch"
 file = "FFGState.lean"
-class = "E"
-reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
+class = "E-interpretation"
+reason = "The checkpoint selector must choose the chain block for that epoch."
 
 [[field]]
 path = "AcceptedBlockFFGState.realized_justified"
 file = "FFGState.lean"
-class = "E"
-reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
+class = "E-interpretation"
+reason = "The realized-justified selector must reflect accepted block state."
 
 [[field]]
 path = "AcceptedBlockFFGState.unrealized_justified"
 file = "FFGState.lean"
-class = "E"
-reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
+class = "E-interpretation"
+reason = "The unrealized-justified selector must reflect eager PJF state."
 
 [[field]]
 path = "AcceptedBlockFFGState.realized_finalized"
 file = "FFGState.lean"
-class = "E"
-reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
+class = "E-interpretation"
+reason = "The realized-finalized selector must reflect accepted block state."
 
 [[field]]
 path = "AcceptedBlockFFGState.unrealized_finalized"
 file = "FFGState.lean"
-class = "E"
-reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
+class = "E-interpretation"
+reason = "The unrealized-finalized selector must reflect eager PJF state."
 
 [[field]]
 path = "AcceptedBlockFFGState.checkpoint_epoch"
 file = "FFGState.lean"
-class = "E"
+class = "E-interpretation"
 legacy_probe = "AcceptedBlockFFGState.checkpoint_epoch"
-reason = "This field depends on an accepted execution or a supplied FFG selector. The former generated-state probe did not test that interpretation. The projection harness checks it on accepted runs."
+reason = "A projected checkpoint must report its queried epoch."
 
 [[field]]
 path = "AcceptedBlockFFGState.formed_carrier_accepted"
 file = "FFGState.lean"
-class = "E"
-reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
+class = "E-interpretation"
+reason = "A formed checkpoint must have an accepted carrier."
 
 [[field]]
 path = "AcceptedBlockFFGState.formed_evidence"
 file = "FFGState.lean"
-class = "E"
-reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
+class = "E-interpretation"
+reason = "A formed checkpoint must have available chain evidence."
 
 [[field]]
 path = "AcceptedBlockFFGState.realized_justified_mem"
 file = "FFGState.lean"
-class = "E"
-reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
+class = "E-interpretation"
+reason = "Realized justification must have an available certificate."
 
 [[field]]
 path = "AcceptedBlockFFGState.unrealized_justified_mem"
 file = "FFGState.lean"
-class = "E"
-reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
+class = "E-interpretation"
+reason = "Unrealized justification must have an available certificate."
 
 [[field]]
 path = "AcceptedBlockFFGState.realized_finalized_mem"
 file = "FFGState.lean"
-class = "E"
-reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
+class = "E-interpretation"
+reason = "Realized finality must have an available certificate."
 
 [[field]]
 path = "AcceptedBlockFFGState.unrealized_finalized_mem"
 file = "FFGState.lean"
-class = "E"
-reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
+class = "E-interpretation"
+reason = "Unrealized finality must have an available certificate."
 
 [[field]]
 path = "AcceptedBlockFFGState.realized_justified_anchor_or_before"
 file = "FFGState.lean"
-class = "E"
+class = "E-interpretation"
 legacy_probe = "AcceptedBlockFFGState.realized_justified_anchor_or_before"
-reason = "This field depends on an accepted execution or a supplied FFG selector. The former generated-state probe did not test that interpretation. The projection harness checks it on accepted runs."
+reason = "Realized justification must be the anchor or come from an earlier epoch."
 
 [[field]]
 path = "AcceptedBlockFFGState.realized_justified_max"
 file = "FFGState.lean"
-class = "E"
-reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field. test_realized_gap.py checks it on projected pyspec runs."
+class = "E-interpretation"
+reason = "The realized justified checkpoint must dominate older available evidence."
 
 [[field]]
 path = "AcceptedBlockFFGState.unrealized_justified_max"
 file = "FFGState.lean"
-class = "E"
-reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field. test_realized_gap.py checks it on projected pyspec runs."
+class = "E-interpretation"
+reason = "The unrealized justified checkpoint must dominate available evidence."
 
 [[field]]
 path = "AcceptedBlockFFGState.unrealized_justified_early"
 file = "FFGState.lean"
-class = "E"
-reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field. test_realized_gap.py checks it on projected pyspec runs."
+class = "E-interpretation"
+reason = "Early-epoch unrealized justification must agree with realized state."
 
 [[field]]
 path = "AcceptedBlockFFGState.realized_justified_realized"
 file = "FFGState.lean"
-class = "E"
-reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field. test_realized_gap.py checks it on projected pyspec runs."
+class = "E-interpretation"
+reason = "Non-anchor realized justification must occur in a prior accepted state."
 
 [[field]]
 path = "AcceptedBlockFFGState.realized_justified_epoch_le_unrealized"
 file = "FFGState.lean"
-class = "E"
-reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field. test_realized_gap.py checks it on projected pyspec runs."
+class = "E-interpretation"
+reason = "Realized justification cannot have an epoch after unrealized justification."
 
 [[field]]
 path = "AcceptedBlockFFGState.unrealized_justified_mono"
 file = "FFGState.lean"
-class = "E"
-reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field. test_realized_gap.py checks it on projected pyspec runs."
+class = "E-interpretation"
+reason = "Unrealized justification must not decrease along accepted ancestry."
 
 [[field]]
 path = "AcceptedBlockFFGState.unrealized_justified_epoch_le_later_realized"
 file = "FFGState.lean"
-class = "E"
-reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field. test_realized_gap.py checks it on projected pyspec runs."
+class = "E-interpretation"
+reason = "Later realized state must catch up with earlier unrealized justification."
 
 [[field]]
 path = "AcceptedBlockFFGState.available_checkpoint_epoch_le_block"
 file = "FFGState.lean"
-class = "E"
-reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
+class = "E-interpretation"
+reason = "Available evidence cannot name a checkpoint after its carrier block epoch."
 
 [[field]]
 path = "AcceptedBlockFFGState.realized_finalized_evidence"
 file = "FFGState.lean"
-class = "E"
-reason = "Python law with a supplied FFG interpretation: weigh_justification_and_finalization finalizes through a link of one or two epochs (rules 1-4), and the realized value at a block of epoch E comes from boundary runs before E, so the finalizing link ends before E. test_realized_gap.py and the projection harness check it on pyspec runs, including 2-epoch links."
+class = "E-interpretation"
+reason = "Realized finality must have a one- or two-epoch included link certificate."
 
 [[field]]
 path = "AcceptedBlockFFGState.unrealized_finalized_evidence"
 file = "FFGState.lean"
-class = "E"
-reason = "Python law with a supplied FFG interpretation: the unrealized value is the eager PJF at the block epoch E, so its finalizing link (one or two epochs) ends no later than E. test_realized_gap.py and the projection harness check it on pyspec runs, including 2-epoch links."
+class = "E-interpretation"
+reason = "Unrealized finality must have a one- or two-epoch included link certificate."
 
 [[field]]
 path = "AcceptedBlockFFGState.epoch_one_finalization_one_step"
 file = "FFGState.lean"
-class = "E"
-reason = "Scope restriction, not a Python law: a finalization of epoch GENESIS_EPOCH + 1 has a link to the next epoch. Honest pyspec runs finalize epoch 1 only through 1 -> 3, because PJF returns early in epoch 1 and epoch-2 votes have source 0. The voter run in test_realized_gap.py shows a finalized epoch-1 checkpoint above another honest store's justification; the late run and the projection harness's epoch-1 run are labelled out of scope."
+class = "E-scope"
+reason = "The proof excludes epoch-1 finality through a 1 -> 3 link alone."
 
 [[field]]
 path = "AcceptedBlockFFGState.unrealized_finalized_epoch_le_realized_justified"
 file = "FFGState.lean"
-class = "E"
-reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field. test_realized_gap.py checks it on projected pyspec runs."
+class = "E-interpretation"
+reason = "Unrealized finality cannot exceed realized justification in the stated case."
 
 [[field]]
 path = "AcceptedBlockFFGState.realized_finalized_epoch_le_realized_justified"
 file = "FFGState.lean"
-class = "E"
+class = "E-interpretation"
 legacy_probe = "AcceptedBlockFFGState.realized_finalized_epoch_le_realized_justified"
-reason = "This field depends on an accepted execution or a supplied FFG selector. The former generated-state probe did not test that interpretation. The projection harness checks it on accepted runs."
+reason = "Realized finality cannot exceed realized justification."
 
 [[field]]
 path = "AcceptedBlockFFGState.unrealized_finalized_epoch_le_unrealized_justified"
 file = "FFGState.lean"
-class = "E"
+class = "E-interpretation"
 legacy_probe = "AcceptedBlockFFGState.unrealized_finalized_epoch_le_unrealized_justified"
-reason = "This field depends on an accepted execution or a supplied FFG selector. The former generated-state probe did not test that interpretation. The projection harness checks it on accepted runs."
+reason = "Unrealized finality cannot exceed unrealized justification."
 
 [[field]]
 path = "FFGStateReadAgreement.genesis_gj"
 file = "FFGState.lean"
-class = "E"
-reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
+class = "E-interpretation"
+reason = "The supplied justified selector must match the genesis store read."
 
 [[field]]
 path = "FFGStateReadAgreement.genesis_gf"
 file = "FFGState.lean"
-class = "E"
-reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
+class = "E-interpretation"
+reason = "The supplied finalized selector must match the genesis store read."
 
 [[field]]
 path = "FFGStateReadAgreement.genesis_gu"
 file = "FFGState.lean"
-class = "E"
-reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
+class = "E-interpretation"
+reason = "The supplied unrealized-justified selector must match the genesis read."
 
 [[field]]
 path = "FFGStateReadAgreement.genesis_guf"
 file = "FFGState.lean"
-class = "E"
-reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
+class = "E-interpretation"
+reason = "The supplied unrealized-finalized selector must match the genesis read."
 
 [[field]]
 path = "FFGStateReadAgreement.genesis_unrealized_justification"
 file = "FFGState.lean"
-class = "E"
+class = "E-interpretation"
 legacy_probe = "FFGStateReadAgreement.genesis_unrealized_justification"
-reason = "This field depends on an accepted execution or a supplied FFG selector. The former generated-state probe did not test that interpretation. The projection harness checks it on accepted runs."
+reason = "Genesis unrealized-justification cache must match the supplied selector."
 
 [[field]]
 path = "FFGStateReadAgreement.transition_gj"
 file = "FFGState.lean"
-class = "E"
+class = "E-interpretation"
 legacy_probe = "FFGStateReadAgreement.transition_gj"
-reason = "This field depends on an accepted execution or a supplied FFG selector. The former generated-state probe did not test that interpretation. The projection harness checks it on accepted runs."
+reason = "A successful import must preserve justified checkpoint read agreement."
 
 [[field]]
 path = "FFGStateReadAgreement.transition_gf"
 file = "FFGState.lean"
-class = "E"
+class = "E-interpretation"
 legacy_probe = "FFGStateReadAgreement.transition_gf"
-reason = "This field depends on an accepted execution or a supplied FFG selector. The former generated-state probe did not test that interpretation. The projection harness checks it on accepted runs."
+reason = "A successful import must preserve finalized checkpoint read agreement."
 
 [[field]]
 path = "FFGStateReadAgreement.transition_gu"
 file = "FFGState.lean"
-class = "E"
+class = "E-interpretation"
 legacy_probe = "FFGStateReadAgreement.transition_gu"
-reason = "This field depends on an accepted execution or a supplied FFG selector. The former generated-state probe did not test that interpretation. The projection harness checks it on accepted runs."
+reason = "A successful import must preserve unrealized-justified read agreement."
 
 [[field]]
 path = "FFGStateReadAgreement.transition_guf"
 file = "FFGState.lean"
-class = "E"
-reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
+class = "E-interpretation"
+reason = "A successful import must preserve unrealized-finalized read agreement."
 
 [[field]]
 path = "FFGStateAndCheckpointReadAgreement.checkpoint_of_known"
 file = "FFGState.lean"
-class = "E"
-reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
+class = "E-interpretation"
+reason = "Each known-root checkpoint read must match the supplied FFG projection."
 
 [[field]]
 path = "FFGStateAndCheckpointReadAgreement.available_checkpoint_checkpoint_of_known"
 file = "FFGState.lean"
-class = "E"
-reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
+class = "E-interpretation"
+reason = "Available checkpoint reads must match the supplied FFG projection."
 
 [[field]]
 path = "ScheduledFFGInterpretation.anchor"
 file = "FFGState.lean"
-class = "E"
-reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
+class = "E-interpretation"
+reason = "The supplied FFG anchor must equal the execution anchor."
 
 [[field]]
 path = "ScheduledFFGInterpretation.state"
 file = "FFGState.lean"
-class = "E"
-reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
+class = "E-interpretation"
+reason = "The supplied accepted-block FFG state must satisfy its certificate laws."
 
 [[field]]
 path = "ScheduledFFGInterpretation.coherence"
 file = "FFGState.lean"
-class = "E"
-reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
+class = "E-interpretation"
+reason = "The supplied FFG selectors must agree with scheduled handler reads."
 
 [[field]]
 path = "CheckpointInclusionView.BlockAt"
 file = "FFGState.lean"
-class = "E"
-reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
+class = "E-interpretation"
+reason = "The A3.2 view must identify a block at each queried epoch."
 
 [[field]]
 path = "CheckpointInclusionView.includedAttestations"
 file = "FFGState.lean"
-class = "E"
-reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
+class = "E-interpretation"
+reason = "The A3.2 view must select its locally included attestations."
 
 [[field]]
 path = "CheckpointInclusionView.formed"
 file = "FFGState.lean"
-class = "E"
-reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
+class = "E-interpretation"
+reason = "The A3.2 view must mark checkpoints formed from included links."
 
 [[field]]
 path = "CheckpointInclusionView.C"
 file = "FFGState.lean"
-class = "E"
-reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
+class = "E-interpretation"
+reason = "The A3.2 view must project the checkpoint for its epoch."
 
 [[field]]
 path = "CheckpointInclusionView.GJ"
 file = "FFGState.lean"
-class = "E"
-reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
+class = "E-interpretation"
+reason = "The A3.2 view must project realized justification."
 
 [[field]]
 path = "CheckpointInclusionView.GU"
 file = "FFGState.lean"
-class = "E"
-reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
+class = "E-interpretation"
+reason = "The A3.2 view must project unrealized justification."
 
 [[field]]
 path = "CheckpointInclusionView.checkpoint_epoch"
 file = "FFGState.lean"
-class = "E"
-reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
+class = "E-interpretation"
+reason = "The A3.2 view checkpoint must report its queried epoch."
 
 [[field]]
 path = "SourceTargetLinkSupportAt.view_within_horizon"
 file = "FFGState.lean"
-class = "E"
-reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
+class = "E-interpretation"
+reason = "Every supporting honest view must lie within the checked horizon."
 
 [[field]]
 path = "SourceTargetLinkSupportAt.source_before_target"
 file = "FFGState.lean"
-class = "E"
-reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
+class = "E-interpretation"
+reason = "The supporting FFG source epoch must precede the target."
 
 [[field]]
 path = "SourceTargetLinkSupportAt.target_epoch_within"
 file = "FFGState.lean"
-class = "E"
-reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
+class = "E-interpretation"
+reason = "The supporting target epoch must lie in the checked range."
 
 [[field]]
 path = "SourceTargetLinkSupportAt.target_known"
 file = "FFGState.lean"
-class = "E"
-reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
+class = "E-interpretation"
+reason = "Every supporting honest view must know the target root."
 
 [[field]]
 path = "SourceTargetLinkSupportAt.target_state_keyed"
 file = "FFGState.lean"
-class = "E"
-reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
+class = "E-interpretation"
+reason = "The supporting target state must have an accepted keyed origin."
 
 [[field]]
 path = "SourceTargetLinkSupportAt.signers"
 file = "FFGState.lean"
-class = "E"
-reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
+class = "E-interpretation"
+reason = "The support witness must select a signer set."
 
 [[field]]
 path = "SourceTargetLinkSupportAt.signers_not_slashable"
 file = "FFGState.lean"
-class = "E"
-reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
+class = "E-interpretation"
+reason = "Support weight must exclude slashable signers at the view."
 
 [[field]]
 path = "SourceTargetLinkSupportAt.signers_in_registry"
 file = "FFGState.lean"
-class = "E"
-reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
+class = "E-interpretation"
+reason = "Support signers must belong to the active registry."
 
 [[field]]
 path = "SourceTargetLinkSupportAt.signer_attestation"
 file = "FFGState.lean"
-class = "E"
-reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
+class = "E-interpretation"
+reason = "Each support signer must have a matching received attestation."
 
 [[field]]
 path = "SourceTargetLinkSupportAt.supermajority"
 file = "FFGState.lean"
-class = "E"
-reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
+class = "E-interpretation"
+reason = "The exact source-to-target support weight must reach two-thirds."
 
 [[field]]
 path = "EventualCheckpointInclusion.included"
 file = "FFGState.lean"
-class = "E"
-reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
+class = "E-interpretation"
+reason = "A3.2 requires an accepted AU carrier by epoch e+2 after every-view support."
 
 [[field]]
 path = "NextSlotSafetyPremises.ffg_interpretation"
 file = "NextSlotSafety.lean"
-class = "E"
-reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
+class = "E-interpretation"
+reason = "The top-level safety premise requires the supplied FFG selector and certificate interpretation."
 
 [[field]]
 path = "NextSlotSafetyPremises.scheduled_execution"
 file = "NextSlotSafety.lean"
-class = "E"
-reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
+class = "E-network/behavior"
+reason = "The execution needs whole-second scheduling, successful handlers, and honest actions."
 
 [[field]]
 path = "NextSlotSafetyPremises.call_conditions"
 file = "NextSlotSafety.lean"
-class = "E"
-reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
+class = "E-network/behavior"
+reason = "Each scheduled FCR call needs delivery, stake, source, and balance conditions."
 
 [[field]]
 path = "NextSlotSafetyPremises.epoch_ends_fit"
 file = "NextSlotSafety.lean"
-class = "E"
-reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
+class = "E-scope"
+reason = "The selected horizon must fit the finite uint64 slot range."
 
 [[field]]
 path = "NextSlotSafetyPremises.anchor_eq"
 file = "NextSlotSafety.lean"
-class = "E"
+class = "E-scope"
 legacy_probe = "NextSlotSafetyPremises.anchor_eq"
-reason = "This field depends on an accepted execution or a supplied FFG selector. The former generated-state probe did not test that interpretation. The projection harness checks it on accepted runs."
+reason = "The supplied anchor checkpoint must match the execution anchor."
 
 [[field]]
 path = "NextSlotSafetyPremises.anchor_state_checkpoints"
 file = "NextSlotSafety.lean"
-class = "E"
+class = "E-scope"
 legacy_probe = "NextSlotSafetyPremises.anchor_state_checkpoints"
-reason = "This field depends on an accepted execution or a supplied FFG selector. The former generated-state probe did not test that interpretation. The projection harness checks it on accepted runs."
+reason = "The anchor state must have a genesis stub or checkpoints equal to the anchor."
 
 [[field]]
 path = "NextSlotSafetyPremises.anchor_boundary"
 file = "NextSlotSafety.lean"
-class = "E"
+class = "E-scope"
 legacy_probe = "NextSlotSafetyPremises.anchor_boundary"
-reason = "This field depends on an accepted execution or a supplied FFG selector. The former generated-state probe did not test that interpretation. The projection harness checks it on accepted runs."
+reason = "The anchor block must lie at an epoch boundary."
 
 [[field]]
 path = "NextSlotSafetyPremises.imported_block_finalization_lag"
@@ -828,122 +829,122 @@ test = "NextSlotSafetyPremises.imported_block_finalization_lag"
 [[field]]
 path = "NextSlotSafetyPremises.slots_per_epoch_gt_one"
 file = "NextSlotSafety.lean"
-class = "E"
-reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
+class = "E-scope"
+reason = "The configuration must have more than one slot per epoch."
 
 [[field]]
 path = "NextSlotSafetyPremises.checkpoint_inclusion"
 file = "NextSlotSafety.lean"
-class = "E"
-reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
+class = "E-interpretation"
+reason = "The safety proof assumes A3.2 inclusion after sustained link support."
 
 [[field]]
 path = "NextSlotSafetyPremises.checkpoint_projection"
 file = "NextSlotSafety.lean"
-class = "E"
-reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
+class = "E-interpretation"
+reason = "The accepted chain must satisfy projected checkpoint root laws."
 
 [[field]]
 path = "NextSlotSafetyPremises.link_checkpoint_agreement"
 file = "NextSlotSafety.lean"
-class = "E"
-reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
+class = "E-interpretation"
+reason = "Included link endpoints must agree with projected checkpoints."
 
 [[field]]
 path = "WellFormedExecution.blocks_root_injective"
 file = "ScheduledExecutionConditions.lean"
 class = "I"
-reason = "Hash collision resistance is idealized."
+reason = "Distinct modeled blocks are assumed to have distinct hash-root labels."
 
 [[field]]
 path = "WellFormedExecution.genesis_blocks_agree"
 file = "ScheduledExecutionConditions.lean"
 class = "I"
-reason = "Hash collision resistance and anchor provenance are idealized."
+reason = "The anchor block and root maps are assumed to agree without a hash proof."
 
 [[field]]
 path = "WellFormedExecution.anchor_parent_unscheduled"
 file = "ScheduledExecutionConditions.lean"
 class = "I"
-reason = "Hash collision resistance and accepted-block validation are idealized."
+reason = "The unscheduled anchor parent is a projected-store boundary condition."
 
 [[field]]
 path = "ScheduledExecutionPremises.whole_seconds"
 file = "ScheduledExecutionConditions.lean"
-class = "E"
-reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
+class = "E-scope"
+reason = "The slot duration must map exactly to whole-second schedule ticks."
 
 [[field]]
 path = "ScheduledExecutionPremises.wellFormed"
 file = "ScheduledExecutionConditions.lean"
-class = "E"
-reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
+class = "E-interpretation"
+reason = "Scheduled stores require injective roots and the anchor parent condition."
 
 [[field]]
 path = "ScheduledExecutionPremises.externals_coherence"
 file = "ScheduledExecutionConditions.lean"
-class = "E"
-reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
+class = "E-interpretation"
+reason = "Scheduled handlers require the beacon, committee, and signature contracts."
 
 [[field]]
 path = "ScheduledExecutionPremises.honest_behavior"
 file = "ScheduledExecutionConditions.lean"
-class = "E"
-reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
+class = "E-network/behavior"
+reason = "Scheduled validator actions must follow the honest voting and deadline rules."
 
 [[field]]
 path = "ScheduledExecutionPremises.genesis"
 file = "ScheduledExecutionConditions.lean"
 class = "I"
-reason = "Hash commitment to the anchor state and trusted initialization are idealized."
+reason = "The initial store must come from the committed anchor state and block."
 
 [[field]]
 path = "HorizonVoteDeliveryLookahead.attestation_delivery"
 file = "Synchrony.lean"
-class = "E"
-reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
+class = "E-network/behavior"
+reason = "Each honest in-horizon vote must reach every honest node by the next boundary."
 
 [[field]]
 path = "NextSlotSynchronyPremises.delta"
 file = "Synchrony.lean"
-class = "E"
-reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
+class = "E-network/behavior"
+reason = "The positive network delay must fit after the attestation cutoff within one slot."
 
 [[field]]
 path = "NextSlotSynchronyPremises.delivery_lookahead"
 file = "Synchrony.lean"
-class = "E"
-reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
+class = "E-network/behavior"
+reason = "The first vote receipt beyond the public horizon must still be scheduled."
 
 [[field]]
 path = "NextSlotSynchronyPremises.deadline_block_relay"
 file = "Synchrony.lean"
-class = "E"
-reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
+class = "E-network/behavior"
+reason = "Cutoff blocks must be serviced and retained by the next slot unless permanently excluded."
 
 [[field]]
 path = "NextSlotSynchronyPremises.boundary_block_prefix"
 file = "Synchrony.lean"
-class = "E"
-reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
+class = "E-network/behavior"
+reason = "Ready blocks must be processed before a boundary attestation handler."
 
 [[field]]
 path = "NextSlotSynchronyPremises.envelope_delivery"
 file = "Synchrony.lean"
-class = "I"
-reason = "Execution-engine and BLS envelope validity are idealized."
+class = "E-network/behavior+I"
+reason = "The network and client must deliver and service the verified envelope before a boundary vote; engine validity remains idealized."
 
 [[field]]
 path = "NextSlotSynchronyPremises.data_availability_relay"
 file = "Synchrony.lean"
-class = "I"
-reason = "KZG, sidecar availability, and local retrieval are idealized."
+class = "E-network/behavior+I"
+reason = "The network must deliver matching data and the client must serve it at receipt; KZG and data service remain idealized."
 
 [[field]]
 path = "NextSlotSynchronyPremises.attester_slashing_relay"
 file = "Synchrony.lean"
-class = "E"
-reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
+class = "E-network/behavior"
+reason = "Accepted equivocation indices must reach every honest store by the next boundary."
 
 [[field]]
 path = "Phase0BoundarySourceCoherence.process_slots_one_boundary"
@@ -974,3 +975,17 @@ path = "Phase0BoundarySourceCoherence.process_slots_two_boundaries"
 file = "FFG.lean"
 class = "T"
 test = "Phase0BoundarySourceCoherence.process_slots_two_boundaries"
+
+# Claim-reachable Prop definitions and interface fields outside Premises/.
+# The structure-field count above excludes these two boundaries.
+[[boundary]]
+path = "EpochEndsFitUint64"
+file = "FastConfirmationModel/Spec/Config.lean"
+class = "E-scope"
+reason = "The configured slots-per-epoch must divide the uint64 slot range for epoch-end arithmetic."
+
+[[boundary]]
+path = "BeaconFunctionInterface.AnchorCommitsToState"
+file = "FastConfirmationModel/Execution/Externals.lean"
+class = "I"
+reason = "A client must supply the anchor block-to-state hash commitment; its default predicate is False."

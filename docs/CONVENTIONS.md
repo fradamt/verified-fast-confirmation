@@ -3,7 +3,7 @@
 File and declaration names state their content. Model functions keep Python names, such as
 `get_latest_confirmed`, so source comparison is direct. New proof names state the fact they
 prove. Do not add a duplicate alias for a renamed declaration. Keep past work in Git. Keep
-only useful historical evidence in `docs/history/`.
+only useful historical evidence in `docs/history/`. The existing `Phase0SourceCoherence` and `Phase0BoundarySourceCoherence` names are historical: the laws also use Altair flags and Gloas epoch processing. `Execution.genesis_store` means the initial anchor store, including a normalized checkpoint-sync anchor. New declarations should name the full source domain. Premise records use FastConfirmation.Spec; execution-specific records use its `Execution` namespace.
 
 Every library module starts with `module`, public imports, and a module docstring. Its first sentence states the function family, premise, invariant, or theorem in that file. A Model docstring cites the Python document and section. An import-only file needs no public section. Put declarations in an `@[expose] public section`, close nested scopes, and then close that section. Keep local proof helpers private where their dependencies permit it.
 

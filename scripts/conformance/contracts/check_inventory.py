@@ -39,13 +39,24 @@ def check_inventory(reachable_file: Path | None = None) -> dict[str, dict]:
     if data.get("version") != 1:
         raise ValueError("unknown inventory version")
     rows = data["field"]
+    boundaries = data.get("boundary", [])
+    for row in boundaries:
+        source = (ROOT / row["file"]).read_text()
+        name = row["path"].rsplit(".", 1)[-1]
+        if not re.search(r"\b" + re.escape(name) + r"\s*(?:\([^\n]*\))?\s*:\s*Prop\b", source) and not (name == "AnchorCommitsToState" and "AnchorCommitsToState : BeaconBlock Root → BeaconState Root → Prop" in source):
+            raise ValueError(f"boundary declaration absent: {row['path']}")
+        if row["class"] not in ("E-scope", "I") or not row.get("reason"):
+            raise ValueError(f"boundary label absent: {row['path']}")
     inventory = {}
     for row in rows:
         key = row["path"]
         if key in inventory:
             raise ValueError(f"duplicate inventory entry: {key}")
-        if row["class"] not in ("T", "E", "I"):
+        labels = row["class"].split("+")
+        if not labels or len(set(labels)) != len(labels) or any(label not in ("T", "E-scope", "E-network/behavior", "E-interpretation", "I") for label in labels):
             raise ValueError(f"invalid class: {key}")
+        if "T" in labels and len(labels) != 1:
+            raise ValueError(f"T cannot be mixed: {key}")
         if row["class"] == "T" and not row.get("test"):
             raise ValueError(f"missing test: {key}")
         if row["class"] != "T" and not row.get("reason"):
@@ -65,8 +76,10 @@ def check_inventory(reachable_file: Path | None = None) -> dict[str, dict]:
     if missing or stale or misplaced:
         raise ValueError(f"missing={sorted(missing)}, stale={sorted(stale)}, wrong file={sorted(misplaced)}")
     active = [row for row in rows if row["path"] in source]
-    counts = {klass: sum(row["class"] == klass for row in active) for klass in ("T", "E", "I")}
-    print(f"contract inventory passed: {len(active)} active fields (T {counts['T']} / E {counts['E']} / I {counts['I']})")
+    counts = {klass: sum(klass in row["class"].split("+") for row in active)
+              for klass in ("T", "E-scope", "E-network/behavior", "E-interpretation", "I")}
+    print(f"contract inventory passed: {len(active)} active fields and {len(boundaries)} outside boundaries "
+          + " / ".join(f"{klass} {count}" for klass, count in counts.items()))
     return inventory
 
 

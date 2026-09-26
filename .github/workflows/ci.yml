@@ -190,6 +190,9 @@ jobs:
       - name: Run contracts and full FFG projection
         run: python3 scripts/conformance/contracts/check_inventory.py --full --repo .source/consensus-specs --output "$RUNNER_TEMP/contracts.json"
 
+      - name: Check whole bundle on a 100-validator mixed-balance run
+        run: .source/consensus-specs/.venv/bin/python scripts/conformance/contracts/check_real_bundle.py --repo .source/consensus-specs --output "$RUNNER_TEMP/real-bundle.json"
+
       - name: Run realized gap regression
         run: .source/consensus-specs/.venv/bin/python scripts/conformance/contracts/test_realized_gap.py --repo .source/consensus-specs
 

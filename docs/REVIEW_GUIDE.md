@@ -41,16 +41,14 @@ agreement, checkpoint projection laws, and finalization lag. The inclusion
 relation selects included attestations with a matching target. Python
 `process_attestation` accepts some votes without a target-root check. The theorem
 holds for any supplied relation that satisfies its laws. The projection harness
-tests each interpretation law on real pyspec runs. The concrete FFG state and
+checks sampled interpretation fields on real pyspec runs. It reports `EventualCheckpointInclusion.included` as NOT_ESTABLISHED; the every-view antecedent and A3.2 implication remain assumed. The concrete FFG state and
 34 Gloas functions in `FastConfirmationModel` agree with 59 Python differential
 cases, but the theorem does not yet use them. A client must prove that its FFG
 behavior supplies the interpretation before it applies the theorem.
 
 ## Operational obligations
 
-`DeadlineBlockRelay` requires cutoff blocks to reach every honest client before
-the next boundary. Each client must process a ready block with a known parent and
-retain it, unless the finalized guard rejects it permanently before the tick.
+`DeadlineBlockRelay` is an operational store-retention premise close to the membership part of the conclusion. The network must deliver each cutoff block and its parents before the next boundary. Each honest client must service ready blocks, accept a valid block with a known parent, and retain accepted blocks. Only a permanent finalized-guard rejection before the tick is exempt. The proof excludes that branch for the confirmed root and proves head ancestry.
 `DeadlineBoundaryBlockPrefix` requires the block before a boundary vote handler.
 Envelope, data-availability, vote, and slashing relay fields require timely
 receipt and handler service. The positive delay bound alone does not give
@@ -217,7 +215,7 @@ deadline. `synchrony_and_delivery_iff_nextSlot` relates these bundles.
 
 Block and envelope exclusion is checked before the next-slot tick. It permits only a permanent finalized-guard conflict with a known parent. The FFG, economic, and finalization-delay premises establish that each honest head's known ancestor path is admissible. Carrier-certificate accountability covers other required roots. Ready blocks and envelopes precede the boundary vote handler. Data service and deterministic envelope validation justify payload acceptance. `FullTwelveEnvelopeWitness.full_bundle_witness` has an accepted envelope event.
 
-`on_attester_slashing` follows Python. It validates against `store.block_states[store.justified_checkpoint.root]`. Evidence relay is an implementation assumption that gives every honest node the indices by the next boundary. Literal Python can reject evidence if this state lacks a signer and can violate the relay. The premise matches five of six checked clients that validate against a newer head state. The [modeling choices](MODELING_CHOICES.md) page records the pinned client commits. A late accepted item uses a fresh cutoff observation at the next scheduled FCR call. No validity-agreement field was added to the external contract.
+`on_attester_slashing` follows Python. It validates against `store.block_states[store.justified_checkpoint.root]`. Evidence relay is an implementation assumption that gives every honest node the indices by the next boundary. With the static registry and one fork, the missing-signer case cannot occur in scope: keyed states have the same validators and signing domain. Timely receipt and handler service remain premises. Five of six checked clients validate against a newer head state. The [modeling choices](MODELING_CHOICES.md) page records the pinned client commits. A late accepted item uses a fresh cutoff observation at the next scheduled FCR call. No validity-agreement field was added to the external contract.
 
 ## Source and checks
 
@@ -227,7 +225,7 @@ The source of record is fork `fradamt/consensus-specs`, tag `fcr-gloas-fix` (`13
 
 ## Known limits
 
-The conclusion covers stored boundary outputs in a finite horizon. It does
+The conclusion covers stored boundary outputs in a finite horizon. Exact `estimate_sound` and coverage force equal slot-committee weights. The epoch-1 one-step condition excludes honest 1 -> 3 finalization. A3.2 remains an untested implication. It does
 not cover an arbitrary in-slot query. The confirmed root is in each honest
 observer's block store from the next slot. The active validator set is fixed.
 No witness has non-anchor finalization, positive Gloas discount, or a PTC
