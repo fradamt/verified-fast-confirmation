@@ -41,14 +41,16 @@ reason = "A supplied execution, schedule, certificate, or FFG interpretation is 
 [[field]]
 path = "EpochCheckpointProjectionLaws.checkpoint_root_accepted"
 file = "CheckpointLinks.lean"
-class = "T"
-test = "EpochCheckpointProjectionLaws.checkpoint_root_accepted"
+class = "E"
+legacy_probe = "EpochCheckpointProjectionLaws.checkpoint_root_accepted"
+reason = "This field depends on an accepted execution or a supplied FFG selector. The former generated-state probe did not test that interpretation. The projection harness checks it on accepted runs."
 
 [[field]]
 path = "EpochCheckpointProjectionLaws.checkpoint_comp"
 file = "CheckpointLinks.lean"
-class = "T"
-test = "EpochCheckpointProjectionLaws.checkpoint_comp"
+class = "E"
+legacy_probe = "EpochCheckpointProjectionLaws.checkpoint_comp"
+reason = "This field depends on an accepted execution or a supplied FFG selector. The former generated-state probe did not test that interpretation. The projection harness checks it on accepted runs."
 
 [[field]]
 path = "IncludedLinkCheckpointAgreement.carrier_accepted"
@@ -437,8 +439,9 @@ reason = "A supplied execution, schedule, certificate, or FFG interpretation is 
 [[field]]
 path = "AcceptedBlockFFGState.checkpoint_epoch"
 file = "FFGState.lean"
-class = "T"
-test = "AcceptedBlockFFGState.checkpoint_epoch"
+class = "E"
+legacy_probe = "AcceptedBlockFFGState.checkpoint_epoch"
+reason = "This field depends on an accepted execution or a supplied FFG selector. The former generated-state probe did not test that interpretation. The projection harness checks it on accepted runs."
 
 [[field]]
 path = "AcceptedBlockFFGState.formed_carrier_accepted"
@@ -479,8 +482,9 @@ reason = "A supplied execution, schedule, certificate, or FFG interpretation is 
 [[field]]
 path = "AcceptedBlockFFGState.realized_justified_anchor_or_before"
 file = "FFGState.lean"
-class = "T"
-test = "AcceptedBlockFFGState.realized_justified_anchor_or_before"
+class = "E"
+legacy_probe = "AcceptedBlockFFGState.realized_justified_anchor_or_before"
+reason = "This field depends on an accepted execution or a supplied FFG selector. The former generated-state probe did not test that interpretation. The projection harness checks it on accepted runs."
 
 [[field]]
 path = "AcceptedBlockFFGState.realized_justified_max"
@@ -545,14 +549,16 @@ reason = "A supplied execution, schedule, certificate, or FFG interpretation is 
 [[field]]
 path = "AcceptedBlockFFGState.realized_finalized_epoch_le_realized_justified"
 file = "FFGState.lean"
-class = "T"
-test = "AcceptedBlockFFGState.realized_finalized_epoch_le_realized_justified"
+class = "E"
+legacy_probe = "AcceptedBlockFFGState.realized_finalized_epoch_le_realized_justified"
+reason = "This field depends on an accepted execution or a supplied FFG selector. The former generated-state probe did not test that interpretation. The projection harness checks it on accepted runs."
 
 [[field]]
 path = "AcceptedBlockFFGState.unrealized_finalized_epoch_le_unrealized_justified"
 file = "FFGState.lean"
-class = "T"
-test = "AcceptedBlockFFGState.unrealized_finalized_epoch_le_unrealized_justified"
+class = "E"
+legacy_probe = "AcceptedBlockFFGState.unrealized_finalized_epoch_le_unrealized_justified"
+reason = "This field depends on an accepted execution or a supplied FFG selector. The former generated-state probe did not test that interpretation. The projection harness checks it on accepted runs."
 
 [[field]]
 path = "FFGStateReadAgreement.genesis_gj"
@@ -581,26 +587,30 @@ reason = "A supplied execution, schedule, certificate, or FFG interpretation is 
 [[field]]
 path = "FFGStateReadAgreement.genesis_unrealized_justification"
 file = "FFGState.lean"
-class = "T"
-test = "FFGStateReadAgreement.genesis_unrealized_justification"
+class = "E"
+legacy_probe = "FFGStateReadAgreement.genesis_unrealized_justification"
+reason = "This field depends on an accepted execution or a supplied FFG selector. The former generated-state probe did not test that interpretation. The projection harness checks it on accepted runs."
 
 [[field]]
 path = "FFGStateReadAgreement.transition_gj"
 file = "FFGState.lean"
-class = "T"
-test = "FFGStateReadAgreement.transition_gj"
+class = "E"
+legacy_probe = "FFGStateReadAgreement.transition_gj"
+reason = "This field depends on an accepted execution or a supplied FFG selector. The former generated-state probe did not test that interpretation. The projection harness checks it on accepted runs."
 
 [[field]]
 path = "FFGStateReadAgreement.transition_gf"
 file = "FFGState.lean"
-class = "T"
-test = "FFGStateReadAgreement.transition_gf"
+class = "E"
+legacy_probe = "FFGStateReadAgreement.transition_gf"
+reason = "This field depends on an accepted execution or a supplied FFG selector. The former generated-state probe did not test that interpretation. The projection harness checks it on accepted runs."
 
 [[field]]
 path = "FFGStateReadAgreement.transition_gu"
 file = "FFGState.lean"
-class = "T"
-test = "FFGStateReadAgreement.transition_gu"
+class = "E"
+legacy_probe = "FFGStateReadAgreement.transition_gu"
+reason = "This field depends on an accepted execution or a supplied FFG selector. The former generated-state probe did not test that interpretation. The projection harness checks it on accepted runs."
 
 [[field]]
 path = "FFGStateReadAgreement.transition_guf"
@@ -785,20 +795,23 @@ reason = "A supplied execution, schedule, certificate, or FFG interpretation is 
 [[field]]
 path = "NextSlotSafetyPremises.anchor_eq"
 file = "NextSlotSafety.lean"
-class = "T"
-test = "NextSlotSafetyPremises.anchor_eq"
+class = "E"
+legacy_probe = "NextSlotSafetyPremises.anchor_eq"
+reason = "This field depends on an accepted execution or a supplied FFG selector. The former generated-state probe did not test that interpretation. The projection harness checks it on accepted runs."
 
 [[field]]
 path = "NextSlotSafetyPremises.anchor_state_checkpoints"
 file = "NextSlotSafety.lean"
-class = "T"
-test = "NextSlotSafetyPremises.anchor_state_checkpoints"
+class = "E"
+legacy_probe = "NextSlotSafetyPremises.anchor_state_checkpoints"
+reason = "This field depends on an accepted execution or a supplied FFG selector. The former generated-state probe did not test that interpretation. The projection harness checks it on accepted runs."
 
 [[field]]
 path = "NextSlotSafetyPremises.anchor_boundary"
 file = "NextSlotSafety.lean"
-class = "T"
-test = "NextSlotSafetyPremises.anchor_boundary"
+class = "E"
+legacy_probe = "NextSlotSafetyPremises.anchor_boundary"
+reason = "This field depends on an accepted execution or a supplied FFG selector. The former generated-state probe did not test that interpretation. The projection harness checks it on accepted runs."
 
 [[field]]
 path = "NextSlotSafetyPremises.finalization_delay"

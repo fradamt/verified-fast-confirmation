@@ -66,6 +66,7 @@ def main() -> int:
     ap.add_argument("--repo", type=Path, help="Pinned consensus-specs checkout")
     ap.add_argument("--python", type=Path, help="Pinned checkout interpreter")
     ap.add_argument("--inventory-only", action="store_true")
+    ap.add_argument("--full", action="store_true", help="Run all projection scenarios")
     ap.add_argument("--output", type=Path, help="Test JSON result path")
     args = ap.parse_args()
     inventory = check_inventory()
@@ -93,11 +94,39 @@ def main() -> int:
             raise ValueError(f"test coverage missing={sorted(missing)} duplicate={len(names)!=len(observed)}")
         if completed.returncode:
             raise ValueError(f"contract tests failed: exit {completed.returncode}")
-        print(f"contract tests passed with recorded findings: {len(names)} laws")
+        projection_path = result_path.with_name(result_path.stem + "-projection.json")
+        projection_command = [str(python), str(HERE / "projection/run.py"),
+                              "--repo", str(args.repo), "--output", str(projection_path)]
+        if args.full:
+            projection_command.append("--full")
+        projected = subprocess.run(projection_command, cwd=ROOT, check=False, timeout=280)
+        if projected.returncode or not projection_path.is_file():
+            raise ValueError(f"projection runner failed: exit {projected.returncode}")
+        projection = json.loads(projection_path.read_text())
+        projection_names = {row["field"] for row in projection["results"]}
+        expected_projection = {row["path"] for row in inventory.values()
+                               if row["path"].startswith(("AcceptedBlockFFGState.",
+                                   "FFGStateReadAgreement.", "FFGStateAndCheckpointReadAgreement.",
+                                   "ScheduledFFGInterpretation.",
+                                   "EventualCheckpointInclusion.", "EpochCheckpointProjectionLaws.",
+                                   "IncludedLinkCheckpointAgreement."))}
+        expected_projection.update(("ImportedBlockFinalizationLag", "GenesisOrNormalizedAnchor"))
+        missing_projection = expected_projection - projection_names
+        if missing_projection:
+            raise ValueError(f"projection coverage missing={sorted(missing_projection)}")
+        bad_runs = [run for run in projection["runs"] if run["handler_errors"]]
+        if bad_runs:
+            raise ValueError(f"projection handler errors: {bad_runs}")
+        findings = sorted({row["field"] for row in projection["results"]
+                           if row["status"] == "FAIL"})
+        print(f"contract tests passed: {len(names)} state probes; "
+              f"{len(projection['results'])} projection checks; "
+              f"recorded findings={findings}")
         return 0
     finally:
         if temporary:
             result_path.unlink(missing_ok=True)
+            result_path.with_name(result_path.stem + "-projection.json").unlink(missing_ok=True)
 
 
 if __name__ == "__main__":
