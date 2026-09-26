@@ -384,9 +384,10 @@ private theorem on_block_of_selectors
     (haccepted : E.RootKnownInScheduledPrefix cfg ext sb.root)
     (hst : ext.state_transition (store.block_states sb.message.parent_root) sb =
       some post)
-    (hgj : post.current_justified_checkpoint = S.realized_justified sb.root)
-    (hgu : (ext.process_justification_and_finalization
-      post).current_justified_checkpoint = S.unrealized_justified sb.root)
+    (hgj : CheckpointReadsAs post.current_justified_checkpoint
+      (S.realized_justified sb.root))
+    (hgu : CheckpointReadsAs (ext.process_justification_and_finalization
+      post).current_justified_checkpoint (S.unrealized_justified sb.root))
     (h : AcceptedFFGJustifiedLedger S store)
     (hh : on_block cfg ext store sb = some store') :
     AcceptedFFGJustifiedLedger S store' := by
@@ -478,7 +479,7 @@ private theorem on_block_of_selectors
                 post.current_justified_checkpoint post.finalized_checkpoint).trans
                 (justified_epoch_le_compute_pulled_up_tip
                   (cfg := cfg) (ext := ext) realized sb.root)))
-        · rw [← hgj]
+        · rw [← hgj.epoch_eq]
           exact (candidate_epoch_le_update_checkpoints boosted
               post.current_justified_checkpoint post.finalized_checkpoint).trans
             (justified_epoch_le_compute_pulled_up_tip
@@ -495,7 +496,7 @@ private theorem on_block_of_selectors
               ((congrArg Checkpoint.epoch hrealizedUJ.symm).le.trans
                 (unrealized_epoch_le_compute_pulled_up_tip
                   (cfg := cfg) (ext := ext) realized sb.root)))
-        · rw [← hgu, ← hrealizedState]
+        · rw [← hgu.epoch_eq, ← hrealizedState]
           exact pulled_epoch_le_compute_pulled_up_tip
             (cfg := cfg) (ext := ext) realized sb.root
 
@@ -724,8 +725,8 @@ private theorem on_block_of_selector
     {post : BeaconState Root}
     (hst : ext.state_transition (store.block_states sb.message.parent_root) sb =
       some post)
-    (hgu : (ext.process_justification_and_finalization
-      post).current_justified_checkpoint = S.unrealized_justified sb.root)
+    (hgu : CheckpointReadsAs (ext.process_justification_and_finalization
+      post).current_justified_checkpoint (S.unrealized_justified sb.root))
     (h : AcceptedOldGURealized S store)
     (hh : FastConfirmation.Spec.on_block cfg ext store sb = some store') :
     AcceptedOldGURealized S store' := by
@@ -843,7 +844,7 @@ private theorem on_block_of_selector
             AcceptedFFGJustifiedLedger.compute_pulled_up_tip_current_epoch
               (cfg := cfg) (ext := ext) realized sb.root
           simpa only [get_block_epoch, hblock, hcurrent] using hrold
-        rw [← hgu, ← hrealizedState]
+        rw [← hgu.epoch_eq, ← hrealizedState]
         exact AcceptedFFGJustifiedLedger.pulled_epoch_le_realized_of_old
           (cfg := cfg) (ext := ext) realized sb.root htipOld
 
@@ -1287,10 +1288,10 @@ theorem causalVotingSource_epoch_le_justified
     Execution.ScheduledFFGInterpretation.causalStoreProjection B hstore
   simp only [get_voting_source]
   split_ifs with hold
-  · rw [hprojection.unrealized_justification r hr]
+  · rw [(hprojection.unrealized_justification r hr).epoch_eq]
     exact hmax.oldGU r hcarrier
       (by simpa only [get_block_epoch] using hold)
-  · rw [hprojection.block_state_gj r hr]
+  · rw [(hprojection.block_state_gj r hr).epoch_eq]
     exact hmax.ledger.gj_epoch_le_justified r hcarrier
 
 end ScheduledFFGInterpretation

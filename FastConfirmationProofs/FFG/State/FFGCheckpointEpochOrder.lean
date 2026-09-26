@@ -385,14 +385,14 @@ theorem acceptedBlockTransition
     exact h
   · have hstatePair : post.finalized_checkpoint.epoch ≤
         post.current_justified_checkpoint.epoch := by
-      rw [← hinserted, hcoh.transition_gf t, hcoh.transition_gj t]
+      rw [← hinserted, (hcoh.transition_gf t).epoch_eq, (hcoh.transition_gj t).epoch_eq]
       exact S.realized_finalized_epoch_le_realized_justified t.signedBlock.root t.root_accepted
     have hpulledPair :
         (ext.process_justification_and_finalization
           post).finalized_checkpoint.epoch ≤
         (ext.process_justification_and_finalization
           post).current_justified_checkpoint.epoch := by
-      rw [← hinserted, hcoh.transition_guf t, hcoh.transition_gu t]
+      rw [← hinserted, (hcoh.transition_guf t).epoch_eq, (hcoh.transition_gu t).epoch_eq]
       exact S.unrealized_finalized_epoch_le_unrealized_justified t.signedBlock.root t.root_accepted
     exact on_block_of_ordered_transition cfg ext hst hstatePair hpulledPair
       h t.accepted

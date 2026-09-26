@@ -119,12 +119,13 @@ theorem paperA32LinkSupportAtCore_of_concreteHonestTargetVotes
     (hdeadline : deadline ≤ E.slot_at cfg m)
     {b' : Root}
     (hknown : target.root ∈ (E.store cfg ext w m).block_roots)
-    (hkeyed : target ∈ (E.store cfg ext w m).checkpoint_state_keys) :
+    (hkeyed : target ∈ (E.store cfg ext w m).checkpoint_state_keys)
+    {source : Checkpoint Root} (hQsource : CheckpointReadsAs Q.source source) :
     Nonempty (SourceTargetLinkSupportAt cfg ext V
-      w m b' Q.source target) := by
+      w m b' source target) := by
   refine ⟨{
     view_within_horizon := hHm
-    source_before_target := Q.source_before_target
+    source_before_target := hQsource.epoch_eq ▸ Q.source_before_target
     target_epoch_within := Q.target_epoch_within
     target_known := hknown
     target_state_keyed := hkeyed
@@ -162,7 +163,7 @@ theorem paperA32LinkSupportAtCore_of_concreteHonestTargetVotes
       · exact ⟨vote.time, a,
           by simpa only [a] using vote.vote, rfl⟩
     · exact (Nat.le_succ vote.slot).trans hslot
-    · simpa only [a] using Q.source_agreement i hi vote
+    · exact (Q.source_agreement i hi vote).trans hQsource
     · simpa only [a] using vote.target_eq
 
 
@@ -197,8 +198,8 @@ theorem paperA32SupportThroughoutEpochCore_of_concreteQuorum
     (hcanonical : E.CanonicalThroughoutEpoch cfg ext b (e + 1))
     (Q : ConcreteA32QuorumBefore cfg ext E
       (compute_start_slot_at_epoch cfg (e + 1)) (V.C b e))
-    (hsourceQuery : Q.source =
-      V.voting_source_at cfg (E.store cfg ext v q) b e) :
+    (hsourceQuery : CheckpointReadsAs Q.source
+      (V.voting_source_at cfg (E.store cfg ext v q) b e)) :
     SourceTargetSupportThroughoutEpoch cfg ext V b e := by
   classical
   obtain ⟨ast, ablk, hgenEq, hgenSlot, hanchorParent⟩ := hgen
@@ -307,17 +308,15 @@ theorem paperA32SupportThroughoutEpochCore_of_concreteQuorum
       vote.honest hw vote.slot_at_time vote.time_within_horizon vote.vote
       hvoteHeadKnown hvoteWalk hdeliveryLe hHm
     simpa only [a, voteStore, vote.target_eq] using hreceived
-  have hsourceView : Q.source =
-      V.voting_source_at cfg (E.store cfg ext w m) b e := by
-    apply hsourceQuery.trans
+  have hsourceView : CheckpointReadsAs Q.source
+      (V.voting_source_at cfg (E.store cfg ext w m) b e) := by
+    apply hsourceQuery.trans (CheckpointReadsAs.of_eq _)
     simp only [CheckpointInclusionView.voting_source_at]
     rw [hbEpochQuery, hbEpochView]
-  have hsupport := E.paperA32LinkSupportAtCore_of_concreteHonestTargetVotes
+  exact E.paperA32LinkSupportAtCore_of_concreteHonestTargetVotes
     cfg ext hhb hsync hpaths hec hdiv hgenTime Q (V := V)
       hw hHm hdeadline
-      (b' := b') htargetKnown htargetKeyed
-  rw [← hsourceView]
-  exact hsupport
+      (b' := b') htargetKnown htargetKeyed hsourceView
 
 
 /-- Accepted-state realization of the full source-specific A.3.2 support
@@ -344,8 +343,8 @@ theorem accepted_paperA32SupportThroughoutEpoch_of_concreteQuorum
     (hcanonical : E.CanonicalThroughoutEpoch cfg ext b (e + 1))
     (Q : ConcreteA32QuorumBefore cfg ext E
       (compute_start_slot_at_epoch cfg (e + 1)) (S.checkpoint_at_epoch b e))
-    (hsourceQuery : Q.source =
-      S.voting_source_at cfg ext (E.store cfg ext v q) b e) :
+    (hsourceQuery : CheckpointReadsAs Q.source
+      (S.voting_source_at cfg ext (E.store cfg ext v q) b e)) :
     S.SourceTargetSupportThroughoutEpoch cfg ext b e :=
   E.paperA32SupportThroughoutEpochCore_of_concreteQuorum cfg ext
     hwf hhb hsync hpaths hec hdiv hgen hwalkDomain hv hqH hbQuery
@@ -379,8 +378,8 @@ theorem accepted_paperA32IncludedAtTip_of_concreteQuorum
     (hcanonical : E.CanonicalThroughoutEpoch cfg ext b (e + 1))
     (Q : ConcreteA32QuorumBefore cfg ext E
       (compute_start_slot_at_epoch cfg (e + 1)) (S.checkpoint_at_epoch b e))
-    (hsourceQuery : Q.source =
-      S.voting_source_at cfg ext (E.store cfg ext v q) b e)
+    (hsourceQuery : CheckpointReadsAs Q.source
+      (S.voting_source_at cfg ext (E.store cfg ext v q) b e))
     {w : ValidatorIndex} (hw : w ∈ E.honest) {m : ℕ}
     (hHm : E.WithinHorizon cfg m)
     (hboundary : compute_start_slot_at_epoch cfg (e + 2) ≤

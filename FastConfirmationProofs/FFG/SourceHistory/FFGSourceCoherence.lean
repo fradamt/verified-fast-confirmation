@@ -347,23 +347,28 @@ theorem gj_eq_parent
   have hprojection : AcceptedFFGStoreProjection S
       (edge.transition.atPrefix.store cfg ext) :=
     edge.transition.atPrefix.acceptedFFGStoreProjection hcoh
-  calc
-    S.realized_justified child =
-        (edge.transition.postStore.block_states child
-          ).current_justified_checkpoint := by
-      exact (congrArg S.realized_justified edge.child_eq).symm |>.trans
-        ((hcoh.transition_gj edge.transition).symm.trans
-          (congrArg (fun r =>
-            (edge.transition.postStore.block_states r
-              ).current_justified_checkpoint) edge.child_eq))
-    _ = edge.post.current_justified_checkpoint := by
-      rw [edge.post_state]
-    _ = ((edge.transition.atPrefix.store cfg ext).block_states parent
-          ).current_justified_checkpoint :=
-      hphase.state_transition_current_justified _ _ _
-        edge.state_transition edge.same_epoch
-    _ = S.realized_justified parent :=
-      hprojection.block_state_gj parent edge.parent_known
+  have hchild : CheckpointReadsAs
+      (edge.transition.postStore.block_states child).current_justified_checkpoint
+      (S.realized_justified child) := by
+    have h0 := hcoh.transition_gj edge.transition
+    rw [edge.child_eq] at h0
+    exact h0
+  have hraw : (edge.transition.postStore.block_states child
+        ).current_justified_checkpoint =
+      ((edge.transition.atPrefix.store cfg ext).block_states parent
+        ).current_justified_checkpoint := by
+    rw [edge.post_state]
+    exact hphase.state_transition_current_justified _ _ _
+      edge.state_transition edge.same_epoch
+  have hread : CheckpointReadsAs (S.realized_justified child)
+      (S.realized_justified parent) :=
+    hchild.symm.trans (hraw ▸ hprojection.block_state_gj parent edge.parent_known)
+  exact hread.eq_of_anchor_or_after
+    (S.realized_justified_anchor_or_after cfg ext
+      (edge.child_eq ▸ edge.transition.root_accepted))
+    (S.realized_justified_anchor_or_after cfg ext
+      (E.acceptedRoot_of_causal_known cfg ext
+        (.scheduledPrefix edge.transition.atPrefix) edge.parent_known))
 
 end AcceptedProjectedSameEpochTransition
 
@@ -412,8 +417,8 @@ structure AcceptedHonestSourceCarrier
   head_block_eq : head_block = store.blocks (get_head cfg store).root
   head_gj_carrier : AcceptedSelectorAUCarrier S store
     (S.realized_justified (get_head cfg store).root)
-  source_eq : (honest_attestation_data cfg ext store slot index).source =
-    S.realized_justified (get_head cfg store).root
+  source_eq : CheckpointReadsAs (honest_attestation_data cfg ext store slot index).source
+    (S.realized_justified (get_head cfg store).root)
 
 def AcceptedHonestSourceEvidence
     (S : AcceptedBlockFFGState cfg ext E anchor)
@@ -426,8 +431,8 @@ theorem source_eq
     {S : AcceptedBlockFFGState cfg ext E anchor}
     {store : Store Root} {slot : Slot} {index : CommitteeIndex}
     (h : AcceptedHonestSourceEvidence S store slot index) :
-    (honest_attestation_data cfg ext store slot index).source =
-      S.realized_justified (get_head cfg store).root := by
+    CheckpointReadsAs (honest_attestation_data cfg ext store slot index).source
+      (S.realized_justified (get_head cfg store).root) := by
   obtain ⟨carrier⟩ := h
   exact carrier.source_eq
 
@@ -470,8 +475,8 @@ theorem causalStoreHonestSourceEvidence
       carrier_accepted := B.state.formed_carrier_accepted hformed
       formed_evidence := B.state.formed_evidence hformed }
   have hsource :
-      (honest_attestation_data cfg ext store slot index).source =
-        B.state.realized_justified (get_head cfg store).root := by
+      CheckpointReadsAs (honest_attestation_data cfg ext store slot index).source
+        (B.state.realized_justified (get_head cfg store).root) := by
     rw [honest_attestation_data_source_eq_head_state hphase store slot index
       hsame]
     exact hglobal.blockLocal.block_state_gj _ hhead

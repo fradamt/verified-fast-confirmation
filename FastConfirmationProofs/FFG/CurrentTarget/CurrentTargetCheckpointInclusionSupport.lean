@@ -309,8 +309,8 @@ def CurrentTargetSourceAgreement
     (source target : Checkpoint Root) : Prop :=
   ∀ i ∈ signers,
     ∀ vote : ConcreteHonestTargetVoteBefore cfg ext E i deadline target,
-      (honest_attestation cfg ext
-        (E.store cfg ext i vote.time) vote.slot vote.index i).data.source = source
+      CheckpointReadsAs (honest_attestation cfg ext
+        (E.store cfg ext i vote.time) vote.slot vote.index i).data.source source
 
 /-- The concrete, source-specific honest quorum retained before it is erased
 to a `CertifiedJustified` certificate.  This record is the operational
@@ -385,9 +385,9 @@ structure CurrentTargetA32GateRealizationCore
             (compute_start_slot_at_epoch cfg
               ((get_current_target cfg store).epoch + 1))
             (get_current_target cfg store),
-          Q.source = phase0HonestSourceAt cfg ext store
+          CheckpointReadsAs Q.source (phase0HonestSourceAt cfg ext store
             (get_current_target cfg store).root
-            (get_current_target cfg store).epoch)
+            (get_current_target cfg store).epoch))
 
 /-- Actual-call producer type for `CurrentTargetA32GateRealization`.  Its
 inputs are the executable boolean, the matching normative target-support
@@ -417,8 +417,8 @@ structure FixedSourceCurrentTargetA32GateRealizationCore
             (compute_start_slot_at_epoch cfg
               ((get_current_target cfg store).epoch + 1))
             (get_current_target cfg store),
-          Q.source = V.voting_source_at cfg store b
-            (get_current_target cfg store).epoch)
+          CheckpointReadsAs Q.source (V.voting_source_at cfg store b
+            (get_current_target cfg store).epoch))
 
 /-- Actual-call producer for the fixed source belonging to the original
 selected carrier.  The producer still receives no helper witness. -/

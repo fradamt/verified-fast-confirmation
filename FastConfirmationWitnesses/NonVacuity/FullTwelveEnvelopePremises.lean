@@ -503,7 +503,7 @@ theorem witnessAcceptedRealizedFinalizationDelay :
       ext witnessAcceptedSemantics := by
   intro t
   change
-    (t.postStore.block_states t.signedBlock.root).finalized_checkpoint =
+    CheckpointReadsAs (t.postStore.block_states t.signedBlock.root).finalized_checkpoint
         anchorCheckpoint ∨
       (t.postStore.block_states t.signedBlock.root
           ).finalized_checkpoint.epoch + 2 ≤
@@ -511,12 +511,14 @@ theorem witnessAcceptedRealizedFinalizationDelay :
   rcases acceptedTransition_cases t with h | h
   · left
     rw [h.1]
+    apply CheckpointReadsAs.of_eq
     change (t.postStore.block_states childRoot).finalized_checkpoint =
       anchorCheckpoint
     rw [h.2]
     rfl
   · left
     rw [h.1]
+    apply CheckpointReadsAs.of_eq
     change (t.postStore.block_states carrierRoot).finalized_checkpoint =
       anchorCheckpoint
     rw [h.2]
@@ -538,6 +540,7 @@ def safety_premises : run.NextSlotSafetyPremises cfg ext where
   completed_calls := completed_calls
   epoch_ends_fit := epoch_ends_fit
   anchor_eq := rfl
+  anchor_state_checkpoints := Or.inl rfl
   anchor_boundary := anchor_boundary
   finalization_delay := witnessAcceptedRealizedFinalizationDelay
   slots_per_epoch_gt_one := by decide

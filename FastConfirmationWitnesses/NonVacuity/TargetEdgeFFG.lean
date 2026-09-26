@@ -824,11 +824,13 @@ def witnessAcceptedFFGTransitionCoherence :
     intro t
     rcases acceptedTransition_cases t with h | h
     · rw [h.1]
+      apply CheckpointReadsAs.of_eq
       change (t.postStore.block_states childRoot).current_justified_checkpoint =
         anchorCheckpoint
       rw [h.2]
       rfl
     · rw [h.1]
+      apply CheckpointReadsAs.of_eq
       change (t.postStore.block_states carrierRoot).current_justified_checkpoint =
         anchorCheckpoint
       rw [h.2]
@@ -837,11 +839,13 @@ def witnessAcceptedFFGTransitionCoherence :
     intro t
     rcases acceptedTransition_cases t with h | h
     · rw [h.1]
+      apply CheckpointReadsAs.of_eq
       change (t.postStore.block_states childRoot).finalized_checkpoint =
         anchorCheckpoint
       rw [h.2]
       rfl
     · rw [h.1]
+      apply CheckpointReadsAs.of_eq
       change (t.postStore.block_states carrierRoot).finalized_checkpoint =
         anchorCheckpoint
       rw [h.2]
@@ -850,11 +854,13 @@ def witnessAcceptedFFGTransitionCoherence :
     intro t
     rcases acceptedTransition_cases t with h | h
     · rw [h.1]
+      apply CheckpointReadsAs.of_eq
       change (witnessPJF (t.postStore.block_states childRoot)).current_justified_checkpoint =
         anchorCheckpoint
       rw [h.2]
       rfl
     · rw [h.1]
+      apply CheckpointReadsAs.of_eq
       change (witnessPJF (t.postStore.block_states carrierRoot)).current_justified_checkpoint =
         childEpochOneCheckpoint
       rw [h.2]
@@ -863,11 +869,13 @@ def witnessAcceptedFFGTransitionCoherence :
     intro t
     rcases acceptedTransition_cases t with h | h
     · rw [h.1]
+      apply CheckpointReadsAs.of_eq
       change (witnessPJF (t.postStore.block_states childRoot)).finalized_checkpoint =
         anchorCheckpoint
       rw [h.2]
       rfl
     · rw [h.1]
+      apply CheckpointReadsAs.of_eq
       change (witnessPJF (t.postStore.block_states carrierRoot)).finalized_checkpoint =
         anchorCheckpoint
       rw [h.2]
@@ -963,7 +971,7 @@ private theorem witnessIncludedLink_cases
     {carrier : WitnessRoot} {source target : Checkpoint WitnessRoot}
     (L : IncludedSupermajorityLink witnessConfig witnessExecution
       witnessIncluded carrier source target) :
-    carrier = carrierRoot ∧ source = anchorCheckpoint ∧
+    carrier = carrierRoot ∧ CheckpointReadsAs source anchorCheckpoint ∧
       target = childEpochOneCheckpoint := by
   have hsigners : L.signers.Nonempty := by
     by_contra hnone
@@ -1002,7 +1010,11 @@ def witnessExactLinkValidity :
     intro carrier source target L hcontributing
     change IncludedSupermajorityLink witnessConfig witnessExecution
       witnessIncluded carrier source target at L
-    obtain ⟨rfl, rfl, rfl⟩ := witnessIncludedLink_cases L
+    obtain ⟨rfl, hsource, rfl⟩ := witnessIncludedLink_cases L
+    obtain rfl : source = anchorCheckpoint :=
+      hsource.eq_of_anchor_or_after
+        (IncludedCertifiedJustified.eq_anchor_or_epoch_gt _ hcontributing)
+        (Or.inl rfl)
     exact ⟨rfl, rfl⟩
 
 /-! ## Included votes are pairwise non-slashable -/

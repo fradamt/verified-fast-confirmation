@@ -249,10 +249,36 @@ bridge to selected blocks and previous-slot witness blocks.
 
 ## Anchor and boundary limits
 
-The current `FFGStateReadAgreement` requires exact state reads at the anchor.
-A real genesis state has a zero-root stub. A checkpoint-sync state can have
-justified and finalized epochs below the anchor epoch. The current safety
-bundle does not cover those raw states.
+`FFGStateReadAgreement` reads each raw state or store checkpoint as the
+accepted selector through `CheckpointReadsAs`: the two are equal, or both have
+epoch `GENESIS_EPOCH`. Away from epoch 0 the relation is equality. A real
+genesis state has the stub `Checkpoint(GENESIS_EPOCH, ZERO_HASH)` as its
+current justified and finalized checkpoints (fork-choice.md:217-244), and
+honest votes carry that stub as their source until the first justification.
+The stub reads as the genesis anchor. The same relation applies to link
+sources (`IncludedSupermajorityLink.signer_attestation`), to the honest-source
+identities, and to `ImportedBlockFinalizationLag`. Executable handlers and wire
+attestations stay raw; the proof uses `normalizeAnchorCheckpoint` only at this
+interpretation boundary.
+
+`NextSlotSafetyPremises.anchor_state_checkpoints` states the anchor scope: the
+anchor epoch is `GENESIS_EPOCH`, or the anchor state's current justified and
+finalized checkpoints equal the anchor. A checkpoint-sync anchor whose state
+checkpoints are older than the anchor is excluded.
+`GenesisStubPremiseWitness.genesis_stub_full_bundle_witness` satisfies the
+full bundle with a genesis stub whose root is not the anchor root, and the
+FCR still confirms its child.
+
+Raw checkpoint equality in the handlers does not change a confirmed result at
+a genesis anchor. `is_head_unrealized_justified_ok` compares the observed
+justified checkpoint, which comes from the global unrealized field, with the
+head's unrealized justification, which can be the stub. When they differ only
+in the stub root, the observed checkpoint is the anchor at slot 0, so
+`is_confirmed_block_stale` is false and the guarded branch has the same
+outcome. `will_no_conflicting_checkpoint_be_justified` compares two global
+fields, which never hold the stub. The filter compares the finalized root only
+above `GENESIS_EPOCH`. Every other FCR and filter test compares epochs, and
+the stub has the anchor's epoch.
 
 `CheckpointSyncFilterWitness.checkpoint_sync_filter_counterexample` starts
 with an epoch-3 anchor and raw justification at epoch 2. The unchanged FCR

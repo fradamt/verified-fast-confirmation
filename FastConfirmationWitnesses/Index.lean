@@ -4,6 +4,7 @@ public import FastConfirmationWitnesses.Counterexamples.DeadlineVotePathCandidat
 public import FastConfirmationWitnesses.Counterexamples.PinnedEconomicsExtraQuery
 public import FastConfirmationWitnesses.Counterexamples.StrictPrefixExtraQuery
 public import FastConfirmationWitnesses.NonVacuity.NextSlotPremises
+public import FastConfirmationWitnesses.NonVacuity.GenesisStubPremises
 public import FastConfirmationWitnesses.NonVacuity.LiveMonotonicity
 public import FastConfirmationWitnesses.NonVacuity.TwelveSecondSynchrony
 public import FastConfirmationWitnesses.NonVacuity.FullTwelve
@@ -53,6 +54,14 @@ does not assert the full safety bundle or eventual inclusion.
   honest validators, four slots per epoch, an anchor, a slot-one child, and a
   slot-seven FFG carrier. Its scheduled FCR call changes the confirmed root.
   The final in-horizon vote is delivered one second beyond the horizon.
+* Real Phase0 genesis anchor:
+  `GenesisStubPremiseWitness.genesis_stub_full_bundle_witness` is the same
+  one-second run with a real genesis anchor state. Its current justified and
+  finalized checkpoints are the stub `(GENESIS_EPOCH, junkRoot)`, and the stub
+  root is not the anchor root. Honest votes before slot eight carry the stub as
+  their source. The full next-slot bundle holds, the FCR call confirms the
+  child, and the anchor state's justified checkpoint differs from the genesis
+  store's justified checkpoint.
 * Guarded current-target edge:
   `TargetEdgePremiseWitness.full_bundle_witness` supplies the full next-slot
   bundle for a one-second run. `target_edge_support_exercised` proves the
@@ -237,7 +246,7 @@ runs set `attestation_due_bps` to zero. The main safety runs have four or five
 validators and one validator per slot committee. The joint live run has two
 validators. Included slashing does not mark a validator slashed in state.
 `DeadlineVotePathCandidate` checks that a skipped-boundary schedule fails the
-pre-tick relay. The audited public theorem set has 48 entries. Four regression checks are:
+pre-tick relay. The audited public theorem set has 49 entries. Four regression checks are:
 `CheckpointSyncFilterWitness.normalized_anchor_run_keeps_child`,
 `CheckpointSyncFilterWitness.anchor_only_view_satisfies_inclusion`,
 `EarlyEpochBoundaryWitness.epoch_one_boundary_regression`, and

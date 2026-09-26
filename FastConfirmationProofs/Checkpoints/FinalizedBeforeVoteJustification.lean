@@ -71,10 +71,10 @@ theorem honest_attestation_source_selector
     (hn : E.slot_at cfg n = s)
     (hhead : (get_head cfg (E.store cfg ext v n)).root ∈
       (E.store cfg ext v n).block_roots) :
-    (honest_attestation cfg ext (E.store cfg ext v n) s index v).data.source =
-        B.state.realized_justified (get_head cfg (E.store cfg ext v n)).root ∨
-      (honest_attestation cfg ext (E.store cfg ext v n) s index v).data.source =
-        B.state.unrealized_justified (get_head cfg (E.store cfg ext v n)).root ∧
+    CheckpointReadsAs (honest_attestation cfg ext (E.store cfg ext v n) s index v).data.source
+        (B.state.realized_justified (get_head cfg (E.store cfg ext v n)).root) ∨
+      CheckpointReadsAs (honest_attestation cfg ext (E.store cfg ext v n) s index v).data.source
+        (B.state.unrealized_justified (get_head cfg (E.store cfg ext v n)).root) ∧
       get_block_epoch cfg (E.store cfg ext v n)
         (get_head cfg (E.store cfg ext v n)).root < compute_epoch_at_slot cfg s ∨
       (honest_attestation cfg ext (E.store cfg ext v n) s index v).data.source.epoch ≤
@@ -97,7 +97,8 @@ theorem honest_attestation_source_selector
     simpa only [store, E.store_current_slot, hn] using h
   by_cases hsame : get_block_epoch cfg store head = compute_epoch_at_slot cfg s
   · left
-    change (honest_attestation_data cfg ext store s index).source = B.state.realized_justified head
+    change CheckpointReadsAs (honest_attestation_data cfg ext store s index).source
+      (B.state.realized_justified head)
     rw [honest_attestation_data_source_eq_head_state hphase store s index
       (by rw [hstateSlot]; exact hsame)]
     exact hprojection.block_state_gj head hhead
@@ -250,12 +251,19 @@ theorem finalized_epoch_le_voter_justified_of_receiver_slot_le
     hanchor hboundary hi k hHk
   have hselector := E.honest_attestation_source_selector cfg ext B hT
     hphase hphaseBoundary hsv hfloor (index := index) hi hHk hk hhead
-  rw [hsource] at hselector
+  -- `F` is a certified checkpoint other than the anchor, so its epoch is
+  -- positive and every reading of it is equality.
+  have hFpos : 0 < F.epoch := by
+    rcases IncludedCertifiedJustified.eq_anchor_or_epoch_gt cfg hFcert.justified with
+      hFeq | hFgt
+    · exact absurd hFeq hFa
+    · exact Nat.lt_of_le_of_lt (Nat.zero_le _) hFgt
+  rw [hsource.eq_of_epoch_pos hFpos] at hselector
   apply E.deadline_justified_epoch_le_of_carrier cfg ext B hT hrelay hanchor hboundary
     P V hacc hi hv hHk hHn hhead (by simpa only [hk] using hdue) hnext hklt
   rcases hselector with hgj | ⟨hgu, hold⟩ | ⟨hle, hlate⟩
-  · exact Or.inl hgj
-  · refine Or.inr ⟨hgu, ?_⟩
+  · exact Or.inl (hgj.eq_of_epoch_gt hFpos)
+  · refine Or.inr ⟨hgu.eq_of_epoch_gt hFpos, ?_⟩
     simpa only [get_current_store_epoch, E.store_current_slot, hn] using
       hold.trans_le (ce_mono cfg hts.le)
   · -- The finalizing link's target epoch is `F.epoch + 1`, so a head two or

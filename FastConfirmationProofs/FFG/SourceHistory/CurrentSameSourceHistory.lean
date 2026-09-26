@@ -610,11 +610,12 @@ theorem AcceptedCurrentCandidateSourceOriginAt.toLemma22AtNextBoundary
       simpa only [get_block_epoch, hseedAgree] using hseedEpochLeOrigin
     exact hseedEpochLeOrigin'.trans_lt
       (by exact Nat.lt_of_succ_le (horiginEpochSucc.le))
-  have hsourceEq : get_voting_source cfg
-      (E.store cfg ext v (n + 1)) h.seed = B.state.unrealized_justified h.seed := by
+  have hsourceEq : (get_voting_source cfg
+      (E.store cfg ext v (n + 1)) h.seed).epoch =
+        (B.state.unrealized_justified h.seed).epoch := by
     rw [(E.store_causal cfg ext v (n + 1)
-      ).getVotingSource_eq_acceptedSelector cfg ext B hseedBoundary]
-    exact if_pos hseedOld
+      ).getVotingSource_epoch_eq_acceptedSelector cfg ext B hseedBoundary,
+      if_pos hseedOld]
   have hstrictlyBefore : h.originSecond <
       E.slot_start cfg (compute_start_slot_at_epoch cfg e) := by
     rw [hboundarySecond]
@@ -700,7 +701,8 @@ theorem AcceptedLemma22EpochStartCandidateSourceAt.lemma24
       have hepoch : get_current_store_epoch cfg (E.store cfg ext w boundary) = e := by
         simpa only [get_current_store_epoch, E.store_current_slot, boundary]
           using h.boundary_epoch
-      rw [hepoch]
+      rw [hepoch, (E.store_causal cfg ext h.validator boundary
+        ).getVotingSource_normalize_epoch cfg ext B h.seed_known_boundary]
       exact h.source_recent
     · rw [hseedAnchor]
       exact (E.resetCheckpointRealizedAt_anchor_of_acceptedTrajectory
@@ -892,12 +894,12 @@ theorem ObservedResetCandidateInputAt.acceptedLemma22EpochStartCandidateSource
       CertifiedJustified.anchor_epoch_le (cfg := cfg) hguCertified
     have hcEpochLeGU : c.epoch ≤ (B.state.unrealized_justified c.root).epoch := by
       exact (congrArg Checkpoint.epoch hcAnchor).le.trans hanchorEpochLeGU
-    have hsourceEq : get_voting_source cfg
-        (E.store cfg ext v (n + 1)) c.root = B.state.unrealized_justified c.root := by
+    have hsourceEq : (get_voting_source cfg
+        (E.store cfg ext v (n + 1)) c.root).epoch =
+          (B.state.unrealized_justified c.root).epoch := by
       rw [(E.store_causal cfg ext v (n + 1)
-        ).getVotingSource_eq_acceptedSelector cfg ext B
-          hrealBoundary.root_known]
-      exact if_pos hcRootOld
+        ).getVotingSource_epoch_eq_acceptedSelector cfg ext B
+          hrealBoundary.root_known, if_pos hcRootOld]
     exact ⟨{
       validator := v
       second := hi.originSecond
@@ -1000,12 +1002,11 @@ theorem ObservedResetCandidateInputAt.acceptedLemma22EpochStartCandidateSource
         apply (Nat.div_lt_iff_lt_mul cfg.slots_per_epoch_pos).2
         simpa only [compute_start_slot_at_epoch] using htipSlotLtStart
       simpa only [e] using hepochLt
-    have hsourceEq : get_voting_source cfg
-        (E.store cfg ext v (n + 1)) tip = c := by
+    have hsourceEq : (get_voting_source cfg
+        (E.store cfg ext v (n + 1)) tip).epoch = c.epoch := by
       rw [(E.store_causal cfg ext v (n + 1)
-        ).getVotingSource_eq_acceptedSelector cfg ext B htipBoundary]
-      rw [if_pos htipOld]
-      exact hcGU.symm
+        ).getVotingSource_epoch_eq_acceptedSelector cfg ext B htipBoundary,
+        if_pos htipOld, hcGU]
     exact ⟨{
       validator := v
       second := hi.originSecond
@@ -1052,7 +1053,7 @@ theorem acceptedLemma24EpochStartSourceAt_of_anchor_near
       (get_voting_source cfg (E.store cfg ext w boundary)
         B.anchor.root).epoch := by
     rw [(E.store_causal cfg ext w boundary
-      ).getVotingSource_eq_acceptedSelector cfg ext B hreal.root_known]
+      ).getVotingSource_epoch_eq_acceptedSelector cfg ext B hreal.root_known]
     split_ifs
     · exact ScheduledFFGInterpretation.anchor_epoch_le_gu
         (E := E) cfg ext B haccepted
@@ -2289,7 +2290,8 @@ structure AcceptedRecentCandidateSourceCarrierAt
     (E.store cfg ext validator second)
     ((E.store cfg ext validator second).blocks candidate).slot tip
   source_au : B.state.AvailableCheckpoint cfg ext tip
-    (get_voting_source cfg (E.store cfg ext validator second) tip)
+    (normalizeAnchorCheckpoint B.anchor
+      (get_voting_source cfg (E.store cfg ext validator second) tip))
   source_recent : get_current_store_epoch cfg (E.store cfg ext v q) ≤
     (get_voting_source cfg (E.store cfg ext validator second) tip).epoch + 2
 

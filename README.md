@@ -31,8 +31,14 @@ witness proves fidelity. This development does not derive the FFG layer from the
 beacon state transition. To apply the theorem to a client or the Python rule,
 one must show that its FFG behavior supplies this interpretation.
 
-The current read agreement excludes real genesis stubs and older
-checkpoint-sync state checkpoints. This remains open. The Phase0
+The read agreement reads each raw state checkpoint as the accepted selector:
+equal, or both at `GENESIS_EPOCH`. The premise field `anchor_state_checkpoints`
+states the scope: the anchor epoch is `GENESIS_EPOCH`, or the anchor state's
+current justified and finalized checkpoints equal the anchor. A real genesis
+state with the zero-root stub is covered;
+`GenesisStubPremiseWitness.genesis_stub_full_bundle_witness` satisfies the full
+bundle with such a state. A checkpoint-sync anchor whose state checkpoints are
+older than the anchor remains excluded. The Phase0
 boundary-source laws hold exactly for the pinned state functions, including
 an epoch-1 state that skips into epoch 3. One law has a balance antecedent,
 which the two-increment `balance_floor` supplies; see
@@ -56,7 +62,8 @@ the child. This is not a counterexample to the full safety bundle. See [anchor l
 │ Timing             │ NextSlotSynchronyPremises requires receipt and handler service by the next boundary.   │
 │ Stake and registry │ The validator registry, including balances and slashed flags, is fixed in the horizon. │
 │ Stake floor        │ Positive total balance and ByzantineWeightPremises hold on each checked span.          │
-│ Anchor             │ The initial anchor has the stated root, epoch, and boundary alignment.                 │
+│ Anchor             │ The initial anchor has the stated root, epoch, and boundary alignment. Its state is a  │
+│                    │ genesis state or carries the anchor as its checkpoints (anchor_state_checkpoints).     │
 │ FFG inclusion      │ AcceptedBlockFFGState.EventualCheckpointInclusion supplies Assumption 3.2 inclusion.   │
 │ FFG state          │ ScheduledFFGInterpretation supplies accepted-block state, links, and checkpoint reads. │
 │ Phase0 source      │ Phase0SourceCoherence and Phase0BoundarySourceCoherence constrain source reads.        │
@@ -114,7 +121,7 @@ scripts/validate.sh --consensus-repo /path/to/fradamt-consensus-specs
 A warm `lake build` took 24.19 seconds on a 12-core desktop. A fresh build can take longer.
 `scripts/validate.sh --fast --consensus-repo /path/to/fradamt-consensus-specs` checks source
 pinning, document names, boundaries, and hygiene. Full validation also builds the libraries
-and audits 48 public theorems: 41 executable-side and seven paper-side. The Python
+and audits 49 public theorems: 42 executable-side and seven paper-side. The Python
 path must name the pinned local checkout.
 
 ## Premise ledger

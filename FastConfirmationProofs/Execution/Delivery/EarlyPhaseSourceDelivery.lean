@@ -109,8 +109,9 @@ theorem StrictSelectedResultMechanicalFacts.current_lemma13SourceSeed_of_notStar
       have hprojection :=
         Execution.ScheduledFFGInterpretation.causalStoreProjection
           B hstore
-      have hguEq : query.store.unrealized_justifications head =
-          B.state.unrealized_justified head := hprojection.unrealized_justification head hhead
+      have hguEq : (query.store.unrealized_justifications head).epoch =
+          (B.state.unrealized_justified head).epoch :=
+        (hprojection.unrealized_justification head hhead).epoch_eq
       refine ⟨head, hhead, hbelow, ?_⟩
       simpa only [head, hguEq] using hgu
 
@@ -178,10 +179,10 @@ theorem recentSourceSeedAt_endpointNext_of_lemma13
     rw [hnextEpoch]
     simp only [get_block_epoch, ← hblock]
     exact Nat.lt_succ_of_le hseedEpochLe
-  have hsourceEq : get_voting_source cfg (E.store cfg ext w m) seed =
-      B.state.unrealized_justified seed := by
-    rw [hendpoint.getVotingSource_eq_acceptedSelector cfg ext B hseedEndpoint]
-    exact if_pos hseedOld
+  have hsourceEq : (get_voting_source cfg (E.store cfg ext w m) seed).epoch =
+      (B.state.unrealized_justified seed).epoch := by
+    rw [hendpoint.getVotingSource_epoch_eq_acceptedSelector cfg ext B hseedEndpoint,
+      if_pos hseedOld]
   refine ⟨seed, hseedEndpoint, hseedSelectedM, ?_⟩
   rw [hsourceEq, hnextEpoch]
   simpa only [Nat.add_assoc, Nat.reduceAdd] using

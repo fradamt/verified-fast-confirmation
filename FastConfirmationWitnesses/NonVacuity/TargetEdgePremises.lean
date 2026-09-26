@@ -442,7 +442,7 @@ private theorem witnessAcceptedRealizedFinalizationDelay :
       witnessExternals witnessAcceptedSemantics := by
   intro t
   change
-    (t.postStore.block_states t.signedBlock.root).finalized_checkpoint =
+    CheckpointReadsAs (t.postStore.block_states t.signedBlock.root).finalized_checkpoint
         anchorCheckpoint ∨
       (t.postStore.block_states t.signedBlock.root
           ).finalized_checkpoint.epoch + 2 ≤
@@ -450,12 +450,14 @@ private theorem witnessAcceptedRealizedFinalizationDelay :
   rcases acceptedTransition_cases t with h | h
   · left
     rw [h.1]
+    apply CheckpointReadsAs.of_eq
     change (t.postStore.block_states childRoot).finalized_checkpoint =
       anchorCheckpoint
     rw [h.2]
     rfl
   · left
     rw [h.1]
+    apply CheckpointReadsAs.of_eq
     change (t.postStore.block_states carrierRoot).finalized_checkpoint =
       anchorCheckpoint
     rw [h.2]
@@ -480,6 +482,7 @@ def witnessAcceptedActualFCRNextSlotSafetyAssumptions :
   epoch_ends_fit := witnessEpochEndsFitUint64
   anchor_eq := by
     simpa only [witnessAcceptedSemantics] using witnessAnchorEquality.symm
+  anchor_state_checkpoints := Or.inl rfl
   anchor_boundary := by
     simpa only [witnessAcceptedSemantics] using
       witnessTrustedAnchorBoundaryAligned

@@ -20,7 +20,7 @@ run_cmd do
     ["confirmed_root_safe_from_next_slot"]
   checkFields `FastConfirmation.Spec.Execution.NextSlotSafetyPremises
     ["ffg_interpretation", "trajectory", "completed_calls", "epoch_ends_fit",
-     "anchor_eq", "anchor_boundary", "finalization_delay",
+     "anchor_eq", "anchor_state_checkpoints", "anchor_boundary", "finalization_delay",
      "slots_per_epoch_gt_one", "checkpoint_inclusion", "checkpoint_projection",
      "exact_link_validity"]
   checkFields `FastConfirmation.Spec.LiveMonotonicityPremises

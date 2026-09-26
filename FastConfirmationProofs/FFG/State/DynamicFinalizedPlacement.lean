@@ -46,8 +46,9 @@ theorem getVotingSource_eq_gj_or_gu
     {store : Store Root}
     (h : AcceptedFFGStoreProjection S store)
     {tip : Root} (htip : tip ∈ store.block_roots) :
-    get_voting_source cfg store tip = S.realized_justified tip ∨
-      get_voting_source cfg store tip = S.unrealized_justified tip := by
+    CheckpointReadsAs (get_voting_source cfg store tip) (S.realized_justified tip) ∨
+      CheckpointReadsAs (get_voting_source cfg store tip)
+        (S.unrealized_justified tip) := by
   simp only [get_voting_source]
   split_ifs
   · exact Or.inr (h.unrealized_justification tip htip)
@@ -110,7 +111,7 @@ theorem dynamicFinalizedPlacementAt_of_sourceVisible
             (get_voting_source cfg store tip).epoch :=
           hvisible.justified_epoch_le_source
         _ = (B.state.realized_justified tip).epoch :=
-          congrArg Checkpoint.epoch hsourceGJ
+          hsourceGJ.epoch_eq
     have hAU := B.state.gj_AU cfg ext htipAccepted
     exact {
       tip_known := htip
@@ -127,7 +128,7 @@ theorem dynamicFinalizedPlacementAt_of_sourceVisible
             (get_voting_source cfg store tip).epoch :=
           hvisible.justified_epoch_le_source
         _ = (B.state.unrealized_justified tip).epoch :=
-          congrArg Checkpoint.epoch hsourceGU
+          hsourceGU.epoch_eq
     have hAU := B.state.gu_AU cfg ext htipAccepted
     exact {
       tip_known := htip

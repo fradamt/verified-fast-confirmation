@@ -84,17 +84,24 @@ theorem finalizedRoot_eq_checkpointBlock_of_causalLag
       E.acceptedRoot_of_causal_known cfg ext h.store_causal h.tip_known
     have hprojection :=
       (B.causalStoreGlobalProjection hgen hanchor h.store_causal).blockLocal
-    have hselector : get_voting_source cfg store h.tip = B.state.realized_justified h.tip ∨
-        get_voting_source cfg store h.tip = B.state.unrealized_justified h.tip :=
-      hprojection.getVotingSource_eq_gj_or_gu cfg ext h.tip_known
+    obtain ⟨c, hc, hread⟩ : ∃ c, (c = B.state.realized_justified h.tip ∨
+        c = B.state.unrealized_justified h.tip) ∧
+        CheckpointReadsAs (get_voting_source cfg store h.tip) c := by
+      rcases hprojection.getVotingSource_eq_gj_or_gu cfg ext h.tip_known with
+        hgj | hgu
+      · exact ⟨_, Or.inl rfl, hgj⟩
+      · exact ⟨_, Or.inr rfl, hgu⟩
+    have hcAU : B.state.AvailableCheckpoint cfg ext h.tip c := by
+      rcases hc with rfl | rfl
+      · exact B.state.gj_AU cfg ext htipAccepted
+      · exact B.state.gu_AU cfg ext htipAccepted
     let hdynamic : AcceptedDynamicFinalizedPlacementAt
         cfg ext B.state store h.tip :=
       { tip_known := h.tip_known
         tip_accepted := htipAccepted
-        target := ⟨get_voting_source cfg store h.tip,
-          hselector, h.source_au,
-          B.state.includedJustifiedAtTip_of_AU cfg ext h.source_au,
-          hfinalizedLeSource⟩ }
+        target := ⟨c, hc, hcAU,
+          B.state.includedJustifiedAtTip_of_AU cfg ext hcAU,
+          hfinalizedLeSource.trans_eq hread.epoch_eq⟩ }
     exact hdynamic.finalizedRoot_eq_checkpointBlock_at_tip cfg ext B hgen
       hanchor P V hanchorExact hacc h.store_causal hparent hwalk
 

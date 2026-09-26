@@ -54,7 +54,7 @@ structure AcceptedHistoricalA32QuorumAt
   deadline_eq : deadline = compute_start_slot_at_epoch cfg (e + 1)
   target_eq : target = B.state.checkpoint_at_epoch origin e
   target_ne_anchor : target ≠ B.anchor
-  source_eq : quorum.source = B.state.realized_justified origin
+  source_eq : CheckpointReadsAs quorum.source (B.state.realized_justified origin)
 
 /-- The irreducible paper-A3.2 data retained from a successful accepted
 current-target gate.  In the non-anchor branch, the target and deadline are
@@ -189,7 +189,7 @@ def of_fixedSourceCurrentTarget
     rcases (realize cutoff hafter).support_branch with hanchor | ⟨hne, Q, hsource⟩
     · exact Or.inl (htarget.symm.trans hanchor)
     · right
-      have hsource' : Q.source = B.state.realized_justified origin := by
+      have hsource' : CheckpointReadsAs Q.source (B.state.realized_justified origin) := by
         simpa only [AcceptedBlockFFGState.voting_source_at, CheckpointInclusionView.voting_source_at,
           htargetEpoch, horiginEpoch, if_pos] using hsource
       exact ⟨{
@@ -270,7 +270,7 @@ def transport_sameEpoch
           deadline_eq := hquorum.deadline_eq
           target_eq := hquorum.target_eq.trans hcheckpoint.symm
           target_ne_anchor := hquorum.target_ne_anchor
-          source_eq := hquorum.source_eq.trans hsource.symm }⟩
+          source_eq := hquorum.source_eq.trans (CheckpointReadsAs.of_eq hsource.symm) }⟩
 
 end AcceptedHistoricalA32GatePayloadAt
 

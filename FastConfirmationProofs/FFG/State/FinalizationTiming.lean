@@ -115,14 +115,15 @@ theorem acceptedPulledUpFinalized_succ_le_blockEpoch
     let pulledFinalized :=
       (ext.process_justification_and_finalization
         (t.postStore.block_states t.signedBlock.root)).finalized_checkpoint
-    pulledFinalized = B.anchor ∨
+    CheckpointReadsAs pulledFinalized B.anchor ∨
       pulledFinalized.epoch + 1 ≤
         compute_epoch_at_slot cfg t.signedBlock.message.slot := by
   have hguf := B.coherence.transition_guf t
-  rw [hguf]
+  intro pulledFinalized
+  rw [show pulledFinalized.epoch = _ from hguf.epoch_eq]
   rcases B.state.unrealized_finalized_evidence t.signedBlock.root t.root_accepted with
     hanchor | hcertificate
-  · exact Or.inl hanchor
+  · exact Or.inl (hguf.trans (CheckpointReadsAs.of_eq hanchor))
   · right
     obtain ⟨F⟩ := hcertificate
     have hsigners : F.finalizing_link.signers.Nonempty := by
@@ -296,31 +297,37 @@ theorem update_checkpoints (store : Store Root)
     (jc fc : Checkpoint Root)
     {anchor : Checkpoint Root}
     (h : AcceptedFinalizationLagAt cfg anchor store)
-    (hfc : fc = anchor ∨
+    (hfc : CheckpointReadsAs fc anchor ∨
       fc.epoch + 2 ≤ get_current_store_epoch cfg store) :
     AcceptedFinalizationLagAt cfg anchor
       (FastConfirmation.Spec.update_checkpoints store jc fc) := by
+  have hfc' : ∀ x : ℕ, fc.epoch > x → fc = anchor ∨
+      fc.epoch + 2 ≤ get_current_store_epoch cfg store :=
+    fun _ hx => hfc.imp_left fun hr => hr.eq_of_epoch_gt hx
   simp only [FastConfirmation.Spec.update_checkpoints]
   split_ifs
   all_goals
     constructor
-    · first | exact hfc | exact h.realized
+    · first | exact hfc' _ (by assumption) | exact h.realized
     · exact h.unrealized
 
 theorem update_unrealized_checkpoints (store : Store Root)
     (ujc ufc : Checkpoint Root)
     {anchor : Checkpoint Root}
     (h : AcceptedFinalizationLagAt cfg anchor store)
-    (hufc : ufc = anchor ∨
+    (hufc : CheckpointReadsAs ufc anchor ∨
       ufc.epoch + 1 ≤ get_current_store_epoch cfg store) :
     AcceptedFinalizationLagAt cfg anchor
       (FastConfirmation.Spec.update_unrealized_checkpoints store ujc ufc) := by
+  have hufc' : ∀ x : ℕ, ufc.epoch > x → ufc = anchor ∨
+      ufc.epoch + 1 ≤ get_current_store_epoch cfg store :=
+    fun _ hx => hufc.imp_left fun hr => hr.eq_of_epoch_gt hx
   simp only [FastConfirmation.Spec.update_unrealized_checkpoints]
   split_ifs
   all_goals
     constructor
     · exact h.realized
-    · first | exact hufc | exact h.unrealized
+    · first | exact hufc' _ (by assumption) | exact h.unrealized
 
 theorem record_block_timeliness (store : Store Root) (r : Root)
     {anchor : Checkpoint Root}
@@ -394,7 +401,7 @@ theorem compute_pulled_up_tip (store : Store Root) (r : Root)
     (h : AcceptedFinalizationLagAt cfg anchor store)
     (huf : let ufc := (ext.process_justification_and_finalization
         (store.block_states r)).finalized_checkpoint
-      ufc = anchor ∨ ufc.epoch + 1 ≤ get_block_epoch cfg store r)
+      CheckpointReadsAs ufc anchor ∨ ufc.epoch + 1 ≤ get_block_epoch cfg store r)
     (hblock : get_block_epoch cfg store r ≤
       get_current_store_epoch cfg store) :
     AcceptedFinalizationLagAt cfg anchor
@@ -402,7 +409,7 @@ theorem compute_pulled_up_tip (store : Store Root) (r : Root)
   let state := ext.process_justification_and_finalization
     (store.block_states r)
   set ufc : Checkpoint Root := state.finalized_checkpoint with hufcEq
-  have huf' : ufc = anchor ∨
+  have huf' : CheckpointReadsAs ufc anchor ∨
       ufc.epoch + 1 ≤
         get_block_epoch cfg store r := by
     rw [hufcEq]
@@ -416,11 +423,11 @@ theorem compute_pulled_up_tip (store : Store Root) (r : Root)
     state.current_justified_checkpoint state.finalized_checkpoint
   have hrecorded : AcceptedFinalizationLagAt cfg anchor recorded :=
     AcceptedFinalizationLagAt.of_eq (cfg := cfg) h rfl rfl rfl rfl
-  have hufCurrent : state.finalized_checkpoint = anchor ∨
+  have hufCurrent : CheckpointReadsAs state.finalized_checkpoint anchor ∨
       state.finalized_checkpoint.epoch + 1 ≤
         get_current_store_epoch cfg recorded := by
     rcases huf' with hanchor | hlag
-    · exact Or.inl (hufcEq.symm.trans hanchor)
+    · exact Or.inl hanchor
     · rw [← hufcEq]
       exact Or.inr (hlag.trans hblock)
   have hpulled : AcceptedFinalizationLagAt cfg anchor pulled :=
@@ -450,7 +457,7 @@ theorem compute_pulled_up_tip (store : Store Root) (r : Root)
   · apply AcceptedFinalizationLagAt.update_checkpoints (cfg := cfg)
     · exact hpulled
     · rcases huf' with hanchor | hlag
-      · exact Or.inl (hufcEq.symm.trans hanchor)
+      · exact Or.inl hanchor
       · right
         have hold' : get_block_epoch cfg store r <
             get_current_store_epoch cfg store := by
@@ -487,11 +494,12 @@ private theorem AcceptedFinalizationLagAt.on_block_of_delays
     {sb : SignedBeaconBlock Root} {post : BeaconState Root}
     (hst : ext.state_transition (store.block_states sb.message.parent_root) sb =
       some post)
-    (hgf : post.finalized_checkpoint = anchor ∨
+    (hgf : CheckpointReadsAs post.finalized_checkpoint anchor ∨
       post.finalized_checkpoint.epoch + 2 ≤
         compute_epoch_at_slot cfg sb.message.slot)
     (hguf :
-      (ext.process_justification_and_finalization post).finalized_checkpoint =
+      CheckpointReadsAs
+          (ext.process_justification_and_finalization post).finalized_checkpoint
           anchor ∨
         (ext.process_justification_and_finalization post
           ).finalized_checkpoint.epoch + 1 ≤
@@ -552,7 +560,7 @@ private theorem AcceptedFinalizationLagAt.on_block_of_delays
       have hboosted : AcceptedFinalizationLagAt cfg anchor boosted :=
         AcceptedFinalizationLagAt.update_proposer_boost_root (cfg := cfg) staged
           (get_head cfg store).root sb.root hstaged
-      have hgfCurrent : post.finalized_checkpoint = anchor ∨
+      have hgfCurrent : CheckpointReadsAs post.finalized_checkpoint anchor ∨
           post.finalized_checkpoint.epoch + 2 ≤
             get_current_store_epoch cfg boosted := by
         rcases hgf with hanchor | hlag
@@ -740,7 +748,7 @@ theorem AcceptedFinalizationLagAt.after_on_tick_per_slot_next
           (cfg := cfg) (get_current_slot cfg store) hzero
       rw [hresetUnrealized]
       rcases h.unrealized with hanchor | hlag
-      · exact Or.inl hanchor
+      · exact Or.inl (CheckpointReadsAs.of_eq hanchor)
       · exact Or.inr
           (oneEpochLag_becomes_two_of_strict hlag hepochStrict)
   · exact hbase

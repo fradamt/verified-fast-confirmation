@@ -1,6 +1,7 @@
 module
 public import FastConfirmationStatements.Premises.FFGState
 public import FastConfirmationModel.Execution.PayloadFrame
+public import FastConfirmationInternal.FFG.AnchorNormalization
 
 public import FastConfirmationProofs.ModelFacts
 @[expose] public section
@@ -23,38 +24,42 @@ variable {cfg : Config} {ext : BeaconFunctionInterface Root}
 variable {E : Execution Root} {anchor : Checkpoint Root}
 variable {S : AcceptedBlockFFGState cfg ext E anchor}
 
-/-- The four exact block-state equations, separated from the per-root
+/-- The four block-state readings, separated from the per-root
 unrealized-justification map while `on_block` installs a root. -/
 structure AcceptedFFGBlockStateProjection
     (S : AcceptedBlockFFGState cfg ext E anchor)
     (store : Store Root) : Prop where
   block_state_gj : ∀ r ∈ store.block_roots,
-    (store.block_states r).current_justified_checkpoint = S.realized_justified r
+    CheckpointReadsAs (store.block_states r).current_justified_checkpoint
+      (S.realized_justified r)
   block_state_gf : ∀ r ∈ store.block_roots,
-    (store.block_states r).finalized_checkpoint = S.realized_finalized r
+    CheckpointReadsAs (store.block_states r).finalized_checkpoint
+      (S.realized_finalized r)
   pulled_up_gu : ∀ r ∈ store.block_roots,
-    (ext.process_justification_and_finalization
-      (store.block_states r)).current_justified_checkpoint = S.unrealized_justified r
+    CheckpointReadsAs (ext.process_justification_and_finalization
+      (store.block_states r)).current_justified_checkpoint (S.unrealized_justified r)
   pulled_up_guf : ∀ r ∈ store.block_roots,
-    (ext.process_justification_and_finalization
-      (store.block_states r)).finalized_checkpoint = S.unrealized_finalized r
+    CheckpointReadsAs (ext.process_justification_and_finalization
+      (store.block_states r)).finalized_checkpoint (S.unrealized_finalized r)
 
 /-- Exact accepted-state projection at every root in one concrete store. -/
 structure AcceptedFFGStoreProjection
     (S : AcceptedBlockFFGState cfg ext E anchor)
     (store : Store Root) : Prop where
   block_state_gj : ∀ r ∈ store.block_roots,
-    (store.block_states r).current_justified_checkpoint = S.realized_justified r
+    CheckpointReadsAs (store.block_states r).current_justified_checkpoint
+      (S.realized_justified r)
   block_state_gf : ∀ r ∈ store.block_roots,
-    (store.block_states r).finalized_checkpoint = S.realized_finalized r
+    CheckpointReadsAs (store.block_states r).finalized_checkpoint
+      (S.realized_finalized r)
   pulled_up_gu : ∀ r ∈ store.block_roots,
-    (ext.process_justification_and_finalization
-      (store.block_states r)).current_justified_checkpoint = S.unrealized_justified r
+    CheckpointReadsAs (ext.process_justification_and_finalization
+      (store.block_states r)).current_justified_checkpoint (S.unrealized_justified r)
   pulled_up_guf : ∀ r ∈ store.block_roots,
-    (ext.process_justification_and_finalization
-      (store.block_states r)).finalized_checkpoint = S.unrealized_finalized r
+    CheckpointReadsAs (ext.process_justification_and_finalization
+      (store.block_states r)).finalized_checkpoint (S.unrealized_finalized r)
   unrealized_justification : ∀ r ∈ store.block_roots,
-    store.unrealized_justifications r = S.unrealized_justified r
+    CheckpointReadsAs (store.unrealized_justifications r) (S.unrealized_justified r)
 
 namespace AcceptedFFGStoreProjection
 
@@ -164,7 +169,8 @@ theorem compute_pulled_up_tip_acceptedFFGStoreProjection_of_blockState
     (store : Store Root) (r : Root)
     (hstate : AcceptedFFGBlockStateProjection S store)
     (hmap : ∀ x ∈ store.block_roots, x ≠ r →
-      store.unrealized_justifications x = S.unrealized_justified x)
+      CheckpointReadsAs (store.unrealized_justifications x)
+        (S.unrealized_justified x))
     (hr : r ∈ store.block_roots) :
     AcceptedFFGStoreProjection S
       (compute_pulled_up_tip cfg ext store r) := by
@@ -217,13 +223,14 @@ private theorem on_block_acceptedFFGStoreProjection_of_selectors
     {post : BeaconState Root}
     (hst : ext.state_transition (store.block_states sb.message.parent_root) sb =
       some post)
-    (hgj : post.current_justified_checkpoint = S.realized_justified sb.root)
-    (hgf : post.finalized_checkpoint = S.realized_finalized sb.root)
-    (hgu : (ext.process_justification_and_finalization
-      post).current_justified_checkpoint =
-      S.unrealized_justified sb.root)
-    (hguf : (ext.process_justification_and_finalization
-      post).finalized_checkpoint = S.unrealized_finalized sb.root)
+    (hgj : CheckpointReadsAs post.current_justified_checkpoint
+      (S.realized_justified sb.root))
+    (hgf : CheckpointReadsAs post.finalized_checkpoint
+      (S.realized_finalized sb.root))
+    (hgu : CheckpointReadsAs (ext.process_justification_and_finalization
+      post).current_justified_checkpoint (S.unrealized_justified sb.root))
+    (hguf : CheckpointReadsAs (ext.process_justification_and_finalization
+      post).finalized_checkpoint (S.unrealized_finalized sb.root))
     (h : AcceptedFFGStoreProjection S store)
     (hh : on_block cfg ext store sb = some store') :
     AcceptedFFGStoreProjection S store' := by
@@ -531,7 +538,8 @@ theorem accepted_unrealized_justification_eq
     (hcoh : FFGStateReadAgreement cfg ext S)
     (w : ValidatorIndex) (n : ℕ)
     {r : Root} (hr : r ∈ (E.store cfg ext w n).block_roots) :
-    (E.store cfg ext w n).unrealized_justifications r = S.unrealized_justified r :=
+    CheckpointReadsAs ((E.store cfg ext w n).unrealized_justifications r)
+      (S.unrealized_justified r) :=
   (E.acceptedFFGStoreProjection hcoh w n).unrealized_justification r hr
 
 

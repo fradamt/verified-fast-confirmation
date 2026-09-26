@@ -16,6 +16,17 @@ variable {Root : Type*} [LinearOrder Root] [Inhabited Root]
 variable (cfg : Config) (ext : BeaconFunctionInterface Root)
 namespace Execution
 variable (E : Execution Root)
+/-- The trusted anchor is a genesis anchor, or its state is normalized: the
+anchor state's current justified and finalized checkpoints equal the anchor.
+Real genesis satisfies the first case; its anchor state carries the stub
+`Checkpoint(GENESIS_EPOCH, ZERO_HASH)`, which `CheckpointReadsAs` reads as
+the anchor. A raw checkpoint-sync anchor state, whose checkpoints are older
+than the anchor, satisfies neither case. -/
+def GenesisOrNormalizedAnchor (anchor : Checkpoint Root) : Prop :=
+  anchor.epoch = GENESIS_EPOCH ∨
+    (E.anchor_state.current_justified_checkpoint = anchor ∧
+      E.anchor_state.finalized_checkpoint = anchor)
+
 /-- Assumptions for the stored-output following-slot theorem.
 
 There is deliberately no finalized-reset, observed-adoption, observed-lock,
@@ -28,6 +39,7 @@ structure NextSlotSafetyPremises where
     E.ScheduledFCRCallPremises cfg ext
   epoch_ends_fit : EpochEndsFitUint64 cfg
   anchor_eq : ffg_interpretation.anchor = E.genesis_store.justified_checkpoint
+  anchor_state_checkpoints : E.GenesisOrNormalizedAnchor ffg_interpretation.anchor
   anchor_boundary : InitialAnchorAtEpochBoundary (cfg := cfg)
     (E := E) (anchor := ffg_interpretation.anchor)
   finalization_delay :

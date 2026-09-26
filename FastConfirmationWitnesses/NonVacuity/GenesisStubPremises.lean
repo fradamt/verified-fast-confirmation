@@ -1,6 +1,6 @@
 module
 public import Mathlib.Tactic
-public import FastConfirmationWitnesses.NonVacuity.FFGEvidence
+public import FastConfirmationWitnesses.NonVacuity.GenesisStubFFG
 public import FastConfirmationProofs.Safety.NextSlotSafety
 public import FastConfirmationProofs.Safety.FinalizedCheckpointNextSlotSafety
 
@@ -8,13 +8,22 @@ public import FastConfirmationProofs.ModelFacts
 @[expose] public section
 
 /-!
-# Joint accepted-FCR non-vacuity: paper inclusion and next-slot bundle
+# Genesis-stub non-vacuity: a real Phase0 genesis anchor
+
+This file is the next-slot bundle of `NextSlotPremises` for the genesis-stub
+variant of the horizon-four run.  The anchor state carries the Phase0 genesis
+stub `(GENESIS_EPOCH, junkRoot)` as its current justified and finalized
+checkpoints, while the trusted store anchor is `(0, anchorRoot)`.  The bundle
+reads the stub as the anchor (`CheckpointReadsAs`), and
+`genesis_stub_full_bundle_witness` shows that the bundle holds, the FCR still
+confirms the child root, and the anchor state need not carry the anchor
+checkpoint.
 
 This file proves that one finite execution satisfies the complete next-slot
 premise bundle. It combines the two parts of the horizon-four witness.  The
-operational execution lives in `AcceptedActualFCRJointNonVacuityBase`; the
+operational execution lives in `GenesisStubBase`; the
 accepted FFG state and exact-link interpretation live in
-`AcceptedActualFCRJointNonVacuityFFG`.  It supplies the paper A3.2 law, the
+`GenesisStubFFG`.  It supplies the paper A3.2 law, the
 call-scoped helper provisos, and the public witness that packages them with the
 reset-free accepted next-slot safety fold.
 
@@ -24,10 +33,10 @@ it inside construction of the combined assumption record.
 -/
 
 namespace FastConfirmation.Spec
-namespace NextSlotPremiseWitness
+namespace GenesisStubPremiseWitness
 
-open AcceptedActualFCRJointNonVacuityBase
-open AcceptedActualFCRJointNonVacuityFFG
+open GenesisStubBase
+open GenesisStubFFG
 
 /-! ## Exact executable FCR and reset classifiers -/
 
@@ -330,7 +339,7 @@ noncomputable def witnessAnchorChildLinkSupportAt
           (by omega : 4 ≤ m)
       · decide
       · decide
-      · rfl
+      · exact stub_reads_anchor
       · rfl
     · refine ⟨vote5, vote_received_by_from_eight
           (s := 5) (by decide) (by decide) h8m, ?_, ?_, ?_, ?_, ?_, ?_,
@@ -345,7 +354,7 @@ noncomputable def witnessAnchorChildLinkSupportAt
           (by omega : 5 ≤ m)
       · decide
       · decide
-      · rfl
+      · exact stub_reads_anchor
       · rfl
     · refine ⟨vote6, vote_received_by_from_eight
           (s := 6) (by decide) (by decide) h8m, ?_, ?_, ?_, ?_, ?_, ?_,
@@ -360,7 +369,7 @@ noncomputable def witnessAnchorChildLinkSupportAt
           (by omega : 6 ≤ m)
       · decide
       · decide
-      · rfl
+      · exact stub_reads_anchor
       · rfl
 
 theorem witnessPaperA32Support_child_one :
@@ -529,18 +538,16 @@ theorem witnessAcceptedRealizedFinalizationDelay :
   rcases acceptedTransition_cases t with h | h
   · left
     rw [h.1]
-    apply CheckpointReadsAs.of_eq
-    change (t.postStore.block_states childRoot).finalized_checkpoint =
+    change CheckpointReadsAs (t.postStore.block_states childRoot).finalized_checkpoint
       anchorCheckpoint
     rw [h.2]
-    rfl
+    exact stub_reads_anchor
   · left
     rw [h.1]
-    apply CheckpointReadsAs.of_eq
-    change (t.postStore.block_states carrierRoot).finalized_checkpoint =
+    change CheckpointReadsAs (t.postStore.block_states carrierRoot).finalized_checkpoint
       anchorCheckpoint
     rw [h.2]
-    rfl
+    exact stub_reads_anchor
 
 def witnessCompletedPrefixCallAssumptions :
     witnessExecution.ScheduledFCRCallPremises
@@ -690,7 +697,26 @@ theorem next_slot_premises_nonempty :
   exact ⟨witnessConfig, witnessExternals, witnessExecution,
     ⟨witnessAcceptedActualFCRNextSlotSafetyAssumptions⟩⟩
 
-end NextSlotPremiseWitness
+/-- Genesis-stub full-bundle witness.  The anchor state is a real Phase0
+genesis state: its current justified and finalized checkpoints are the stub
+`(GENESIS_EPOCH, junkRoot)`, and the stub root is not the anchor root.  The
+complete next-slot premise bundle holds, the actual FCR call confirms the
+child root, and next-slot safety holds at the end of the horizon.  The bundle
+therefore does not force the anchor state's current justified checkpoint to
+equal the genesis store's justified checkpoint. -/
+theorem genesis_stub_full_bundle_witness :
+    witnessExecution.anchor_state.current_justified_checkpoint = stubCheckpoint ∧
+      witnessExecution.anchor_state.finalized_checkpoint = stubCheckpoint ∧
+      stubCheckpoint.epoch = GENESIS_EPOCH ∧
+      stubCheckpoint.root ≠ anchorRoot ∧
+      witnessExecution.genesis_store.justified_checkpoint = anchorCheckpoint ∧
+      witnessExecution.anchor_state.current_justified_checkpoint ≠
+        witnessExecution.genesis_store.justified_checkpoint ∧
+      JointWitnessFacts := by
+  refine ⟨by decide, by decide, rfl, by decide, witnessAnchorEquality, by decide,
+    finite_execution_satisfies_premises⟩
+
+end GenesisStubPremiseWitness
 end FastConfirmation.Spec
 
 end

@@ -31,7 +31,7 @@ structure PaperA32RootProjectionAt
   unrealized_justified_max : ∀ {c : Checkpoint Root}, V.AvailableCheckpoint cfg r c →
     c.epoch ≤ (V.GU r).epoch
   unrealized_justification :
-    store.unrealized_justifications r = V.GU r
+    CheckpointReadsAs (store.unrealized_justifications r) (V.GU r)
 
 /-- Strong paper-facing endpoint result.  The executable GU-epoch projection
 is retained together with the exact AU witness from Assumption 3.2, including
@@ -67,7 +67,7 @@ def paperA32RootProjectionAt
     change S.AvailableCheckpoint cfg ext r c at hAU
     exact hAU
   unrealized_justification := by
-    change store.unrealized_justifications r = S.unrealized_justified r
+    change CheckpointReadsAs (store.unrealized_justifications r) (S.unrealized_justified r)
     exact (hstore.acceptedFFGStoreProjection hcoh).unrealized_justification
       r hr
 
@@ -87,7 +87,7 @@ theorem a32IncludedAtTip_of_existing_AU
     (hAU : V.AvailableCheckpoint cfg seed (V.C selected e)) :
     A32IncludedAtTip cfg store e selected seed := by
   refine ⟨P.root_known, hseedSelected, hseedEpoch, ?_⟩
-  rw [P.unrealized_justification]
+  rw [P.unrealized_justification.epoch_eq]
   have hmax : (V.C selected e).epoch ≤ (V.GU seed).epoch :=
     P.unrealized_justified_max hAU
   simpa only [V.checkpoint_epoch] using hmax

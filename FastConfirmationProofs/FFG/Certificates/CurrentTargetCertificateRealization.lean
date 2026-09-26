@@ -161,27 +161,24 @@ theorem acceptedCurrentTargetA32GateRealization_of_currentEpochConcreteQuorum_co
   obtain ⟨i, hi⟩ := hsignersNonempty
   obtain ⟨vote⟩ := Q.votes i hi
   obtain ⟨hsourceEvidence, hsegment⟩ := hgeometry i hi vote
-  have hvoteSource :
+  have hvoteSource : CheckpointReadsAs
       (honest_attestation_data cfg ext (E.store cfg ext i vote.time)
-        vote.slot vote.index).source = Q.source := by
+        vote.slot vote.index).source Q.source := by
     simpa only [honest_attestation_data_eq] using
       Q.source_agreement i hi vote
-  have hQSource : Q.source = B.state.realized_justified target.root := by
-    exact hvoteSource.symm.trans
+  have hQSource : CheckpointReadsAs Q.source
+      (B.state.realized_justified target.root) :=
+    hvoteSource.symm.trans
       (hsourceEvidence.source_eq.trans
-        (hsegment.gj_eq_first hphase
-          B.coherence.toFFGStateReadAgreement))
+        (CheckpointReadsAs.of_eq (hsegment.gj_eq_first hphase
+          B.coherence.toFFGStateReadAgreement)))
   have hsourceCertifiedGJ : Nonempty
       (CertifiedJustified cfg E B.anchor (B.state.realized_justified target.root)) := by
     obtain ⟨hincluded⟩ := hsourceCarrier.formed_evidence.certified
     exact ⟨IncludedCertifiedJustified.toCertifiedJustified
       (cfg := cfg) B.state.includedAttestations.relation hincluded⟩
-  have hsourceCertified : Nonempty
-      (CertifiedJustified cfg E B.anchor Q.source) := by
-    rw [hQSource]
-    exact hsourceCertifiedGJ
-  have htargetDescendsSource : E.RootDescends target.root Q.source.root := by
-    rw [hQSource]
+  have htargetDescendsSource : E.RootDescends target.root
+      (B.state.realized_justified target.root).root := by
     exact Execution.RootDescends.trans E hsourceCarrier.tip_descends_carrier
       hsourceCarrier.formed_evidence.on_chain
   have htargetBlockEpoch : compute_epoch_at_slot cfg
@@ -193,9 +190,6 @@ theorem acceptedCurrentTargetA32GateRealization_of_currentEpochConcreteQuorum_co
     · rw [hsourceAnchor]
       exact hanchorBefore
     · exact hbefore.trans_eq htargetBlockEpoch
-  have hsourceBefore : Q.source.epoch < target.epoch := by
-    rw [hQSource]
-    exact hsourceBeforeGJ
   have hsignersEpoch : Q.signers ⊆
       E.span_committee (target.epoch * cfg.slots_per_epoch)
         (target.epoch * cfg.slots_per_epoch +
@@ -221,9 +215,10 @@ theorem acceptedCurrentTargetA32GateRealization_of_currentEpochConcreteQuorum_co
       exact hpred
     simp only [Execution.span_committee, Finset.mem_biUnion]
     exact ⟨vj.slot, Finset.mem_Icc.mpr ⟨hlo, hhi⟩, vj.assigned⟩
-  have hlink : SupermajorityLink cfg E Q.source target := {
+  have hlink : SupermajorityLink cfg E
+      (B.state.realized_justified target.root) target := {
     signers := Q.signers
-    source_before_target := hsourceBefore
+    source_before_target := hsourceBeforeGJ
     target_descends_source := htargetDescendsSource
     target_epoch_within := Q.target_epoch_within
     target_span_within := by simpa only [target] using htargetSpan
@@ -237,15 +232,16 @@ theorem acceptedCurrentTargetA32GateRealization_of_currentEpochConcreteQuorum_co
       · simpa only [a] using hdelivery j hj vj
       · simp only [a, honest_attestation_attesting_indices,
           List.mem_singleton]
-      · simpa only [a] using Q.source_agreement j hj vj
+      · exact (Q.source_agreement j hj vj).trans hQSource
       · simpa only [a] using vj.target_eq
     supermajority := Q.supermajority }
-  obtain ⟨hsourceCertificate⟩ := hsourceCertified
+  obtain ⟨hsourceCertificate⟩ := hsourceCertifiedGJ
   have htargetCertificate : Nonempty
       (CertifiedJustified cfg E B.anchor target) :=
     ⟨CertifiedJustified.link hsourceCertificate hlink⟩
   refine ⟨htargetCertificate, Or.inr ⟨htargetNotAnchor, Q, ?_⟩⟩
-  change Q.source = phase0HonestSourceAt cfg ext store target.root target.epoch
+  change CheckpointReadsAs Q.source
+    (phase0HonestSourceAt cfg ext store target.root target.epoch)
   simp only [phase0HonestSourceAt, htargetEpoch, if_pos]
   exact hQSource.trans
     ((Execution.ScheduledFFGInterpretation.causalStoreProjection B

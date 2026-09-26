@@ -95,13 +95,14 @@ theorem StrictSelectorAdvanceAt.previousObservedReset_queryGUEpochSeed
     simpa only [query, E.fcrStep_store] using
       (Execution.ScheduledFFGInterpretation.causalStoreProjection
         B (E.store_causal cfg ext v (n + 1)))
-  have hguHead : query.store.unrealized_justifications head =
-      B.state.unrealized_justified head :=
+  have hguHead : CheckpointReadsAs (query.store.unrealized_justifications head)
+      (B.state.unrealized_justified head) :=
     hprojection.unrealized_justification head hheadKnown
   have hobservedGU :
-      query.current_epoch_observed_justified_checkpoint =
-        B.state.unrealized_justified head := by
-    exact horigin.observed_eq_head_unrealized.trans hguHead
+      query.current_epoch_observed_justified_checkpoint.epoch =
+        (B.state.unrealized_justified head).epoch := by
+    exact (congrArg Checkpoint.epoch horigin.observed_eq_head_unrealized).trans
+      hguHead.epoch_eq
   have hobservedBlockLe : get_block_epoch cfg query.store
         query.current_epoch_observed_justified_checkpoint.root ≤
       query.current_epoch_observed_justified_checkpoint.epoch := by
@@ -134,8 +135,7 @@ theorem StrictSelectorAdvanceAt.previousObservedReset_queryGUEpochSeed
         hresultEpochEq
       _ ≤ query.current_epoch_observed_justified_checkpoint.epoch :=
         hobservedBlockLe
-      _ = (B.state.unrealized_justified head).epoch :=
-        congrArg Checkpoint.epoch hobservedGU
+      _ = (B.state.unrealized_justified head).epoch := hobservedGU
   exact ⟨head, hheadKnown, hheadResult, hguLower⟩
 
 /-! ## Carried-input lineage -/

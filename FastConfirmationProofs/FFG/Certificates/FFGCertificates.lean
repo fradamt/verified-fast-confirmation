@@ -3,6 +3,7 @@ public import FastConfirmationProofs.FFG.Certificates.FFGQuorumWeight
 public import FastConfirmationStatements.Premises.FFGCertificates
 
 public import FastConfirmationProofs.ModelFacts.FFGState
+public import FastConfirmationInternal.FFG.AnchorNormalization
 @[expose] public section
 
 /-!
@@ -40,7 +41,7 @@ theorem honest_signer_vote_timed
       E.slot_start cfg a.data.slot ≤ k ∧
       k ≤ E.slot_start cfg a.data.slot +
         get_attestation_due_ms cfg / 1000 ∧
-      a.data.source = source ∧ a.data.target = target := by
+      CheckpointReadsAs a.data.source source ∧ a.data.target = target := by
   obtain ⟨w, n, a, fromBlock, hsched, hia, hsource, htarget⟩ :=
     L.signer_attestation i hi
   obtain ⟨k, own, hcausal, hvote, hdata⟩ :=
@@ -69,9 +70,11 @@ theorem not_surround_of_honest_intersection
     hhb.no_forgery w n a fromBlock haSchedule i hiHonest hiA
   obtain ⟨k', vote', _hcausal', hvote', hdata'⟩ :=
     hhb.no_forgery w' n' a' fromBlock' haSchedule' i hiHonest hiA'
-  have hvoteSource : vote.data.source = s := by rw [← hdata]; exact haSource
+  have hvoteSource : vote.data.source.epoch = s.epoch := by
+    rw [← hdata]; exact haSource.epoch_eq
   have hvoteTarget : vote.data.target = t := by rw [← hdata]; exact haTarget
-  have hvoteSource' : vote'.data.source = s' := by rw [← hdata']; exact haSource'
+  have hvoteSource' : vote'.data.source.epoch = s'.epoch := by
+    rw [← hdata']; exact haSource'.epoch_eq
   have hvoteTarget' : vote'.data.target = t' := by rw [← hdata']; exact haTarget'
   have hslash : is_slashable_attestation_data vote.data vote'.data = true := by
     simp [is_slashable_attestation_data, hvoteSource, hvoteTarget,

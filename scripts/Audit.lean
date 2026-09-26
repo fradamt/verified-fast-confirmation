@@ -28,6 +28,7 @@ private def publicWitnesses : Array Name :=
     ``FastConfirmation.Spec.NextSlotPremiseWitness.finite_execution_satisfies_premises,
     ``FastConfirmation.Spec.NextSlotPremiseWitness.next_slot_premises_nonempty,
     ``FastConfirmation.Spec.NextSlotPremiseWitness.ffg_interpretation_fidelity,
+    ``FastConfirmation.Spec.GenesisStubPremiseWitness.genesis_stub_full_bundle_witness,
     ``FastConfirmation.Spec.LiveMonotonicityWitness.joint_witness,
     ``FastConfirmation.Spec.LiveMonotonicityWitness.joint_monotonicity,
     ``FastConfirmation.Spec.LiveMonotonicityWitness.ffg_interpretation_fidelity,

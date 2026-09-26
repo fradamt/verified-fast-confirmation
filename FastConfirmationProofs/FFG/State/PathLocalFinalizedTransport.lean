@@ -177,11 +177,11 @@ theorem finalizedRoot_eq_checkpointBlock_of_anchor
   obtain ⟨hsourceJustified⟩ :=
     B.state.includedJustifiedAtTip_of_AU cfg ext h.source_au
   have hprefix : ExactCheckpointPrefix B.state.checkpoint_at_epoch B.anchor
-      (get_voting_source cfg store h.tip) :=
+      (normalizeAnchorCheckpoint B.anchor (get_voting_source cfg store h.tip)) :=
     IncludedCertifiedJustified.anchor_prefix
       (cfg := cfg) P V hanchorExact hsourceJustified
   have hepoch : B.anchor.epoch ≤
-      (get_voting_source cfg store h.tip).epoch :=
+      (normalizeAnchorCheckpoint B.anchor (get_voting_source cfg store h.tip)).epoch :=
     IncludedCertifiedJustified.anchor_epoch_le
       (cfg := cfg) hsourceJustified
   have hwalkAnchor : WalkKnown store

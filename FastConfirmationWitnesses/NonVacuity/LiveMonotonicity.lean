@@ -1117,6 +1117,7 @@ def ffgCoherence : FFGStateAndCheckpointReadAgreement
     intro t
     have h := acceptedTransition_case t
     rw [h.1]
+    apply CheckpointReadsAs.of_eq
     change (t.postStore.block_states child).current_justified_checkpoint =
       anchorCheckpoint
     rw [h.2]
@@ -1125,6 +1126,7 @@ def ffgCoherence : FFGStateAndCheckpointReadAgreement
     intro t
     have h := acceptedTransition_case t
     rw [h.1]
+    apply CheckpointReadsAs.of_eq
     change (t.postStore.block_states child).finalized_checkpoint =
       anchorCheckpoint
     rw [h.2]
@@ -1133,6 +1135,7 @@ def ffgCoherence : FFGStateAndCheckpointReadAgreement
     intro t
     have h := acceptedTransition_case t
     rw [h.1]
+    apply CheckpointReadsAs.of_eq
     change (pjf (t.postStore.block_states child)).current_justified_checkpoint =
       anchorCheckpoint
     rw [h.2]
@@ -1141,6 +1144,7 @@ def ffgCoherence : FFGStateAndCheckpointReadAgreement
     intro t
     have h := acceptedTransition_case t
     rw [h.1]
+    apply CheckpointReadsAs.of_eq
     change (pjf (t.postStore.block_states child)).finalized_checkpoint =
       anchorCheckpoint
     rw [h.2]
@@ -1221,13 +1225,14 @@ def exactLinkValidity : ffgState.LinkCheckpointAgreement where
 
 theorem finalizationDelay : E.ImportedBlockFinalizationLag cfg ext semantics := by
   intro t
-  change (t.postStore.block_states t.signedBlock.root).finalized_checkpoint =
+  change CheckpointReadsAs (t.postStore.block_states t.signedBlock.root).finalized_checkpoint
       anchorCheckpoint ∨
     (t.postStore.block_states t.signedBlock.root).finalized_checkpoint.epoch + 2 ≤
       compute_epoch_at_slot cfg t.signedBlock.message.slot
   left
   have h := acceptedTransition_case t
   rw [h.1]
+  apply CheckpointReadsAs.of_eq
   change (t.postStore.block_states child).finalized_checkpoint =
     anchorCheckpoint
   rw [h.2]
@@ -1315,6 +1320,7 @@ def acceptedBundle : E.NextSlotSafetyPremises cfg ext where
   epoch_ends_fit := epochEndsFit
   anchor_eq := by
     simpa only [semantics] using anchorEquality.symm
+  anchor_state_checkpoints := Or.inl rfl
   anchor_boundary := by
     simpa only [semantics] using anchorBoundary
   finalization_delay := finalizationDelay

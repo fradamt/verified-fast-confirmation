@@ -765,6 +765,12 @@ class = "T"
 test = "NextSlotSafetyPremises.anchor_eq"
 
 [[field]]
+path = "NextSlotSafetyPremises.anchor_state_checkpoints"
+file = "NextSlotSafety.lean"
+class = "T"
+test = "NextSlotSafetyPremises.anchor_state_checkpoints"
+
+[[field]]
 path = "NextSlotSafetyPremises.anchor_boundary"
 file = "NextSlotSafety.lean"
 class = "T"

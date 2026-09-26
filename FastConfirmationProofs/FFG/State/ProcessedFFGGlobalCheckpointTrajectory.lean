@@ -142,8 +142,8 @@ theorem of_extension {store store' : Store Root}
 theorem update_checkpoints (store : Store Root)
     (jc fc : Checkpoint Root)
     (h : AcceptedFFGGlobalCheckpointOrigins S store)
-    (hjc : AcceptedGlobalJustifiedOrigin S store jc)
-    (hfc : AcceptedGlobalFinalizedOrigin S store fc) :
+    (hjc : ∃ c, CheckpointReadsAs jc c ∧ AcceptedGlobalJustifiedOrigin S store c)
+    (hfc : ∃ c, CheckpointReadsAs fc c ∧ AcceptedGlobalFinalizedOrigin S store c) :
     AcceptedFFGGlobalCheckpointOrigins S
       (FastConfirmation.Spec.update_checkpoints store jc fc) := by
   let store' := FastConfirmation.Spec.update_checkpoints store jc fc
@@ -170,19 +170,23 @@ theorem update_checkpoints (store : Store Root)
     split_ifs <;> rfl
   change AcceptedFFGGlobalCheckpointOrigins S store'
   constructor
-  · unfold AcceptedGlobalJustifiedOrigin Execution.AcceptedCarrierIn at hjc ⊢
+  · obtain ⟨c, hread, hjc⟩ := hjc
+    unfold AcceptedGlobalJustifiedOrigin Execution.AcceptedCarrierIn at hjc ⊢
     rw [hroots, hjField]
-    split_ifs
-    · exact hjc
+    split_ifs with hlt
+    · rw [hread.eq_of_epoch_gt hlt]
+      exact hjc
     · exact h.justified
   · unfold AcceptedGlobalUnrealizedJustifiedOrigin
       Execution.AcceptedCarrierIn at ⊢
     rw [hroots, hujField]
     exact h.unrealized_justified
-  · unfold AcceptedGlobalFinalizedOrigin Execution.AcceptedCarrierIn at hfc ⊢
+  · obtain ⟨c, hread, hfc⟩ := hfc
+    unfold AcceptedGlobalFinalizedOrigin Execution.AcceptedCarrierIn at hfc ⊢
     rw [hroots, hfField]
-    split_ifs
-    · exact hfc
+    split_ifs with hlt
+    · rw [hread.eq_of_epoch_gt hlt]
+      exact hfc
     · exact h.finalized
   · unfold AcceptedGlobalUnrealizedFinalizedOrigin
       Execution.AcceptedCarrierIn at ⊢
@@ -192,8 +196,10 @@ theorem update_checkpoints (store : Store Root)
 theorem update_unrealized_checkpoints (store : Store Root)
     (ujc ufc : Checkpoint Root)
     (h : AcceptedFFGGlobalCheckpointOrigins S store)
-    (hujc : AcceptedGlobalUnrealizedJustifiedOrigin S store ujc)
-    (hufc : AcceptedGlobalUnrealizedFinalizedOrigin S store ufc) :
+    (hujc : ∃ c, CheckpointReadsAs ujc c ∧
+      AcceptedGlobalUnrealizedJustifiedOrigin S store c)
+    (hufc : ∃ c, CheckpointReadsAs ufc c ∧
+      AcceptedGlobalUnrealizedFinalizedOrigin S store c) :
     AcceptedFFGGlobalCheckpointOrigins S
       (FastConfirmation.Spec.update_unrealized_checkpoints store ujc ufc) := by
   let store' := FastConfirmation.Spec.update_unrealized_checkpoints store ujc ufc
@@ -221,45 +227,49 @@ theorem update_unrealized_checkpoints (store : Store Root)
   · unfold AcceptedGlobalJustifiedOrigin Execution.AcceptedCarrierIn at ⊢
     rw [hroots, hjField]
     exact h.justified
-  · unfold AcceptedGlobalUnrealizedJustifiedOrigin
+  · obtain ⟨c, hread, hujc⟩ := hujc
+    unfold AcceptedGlobalUnrealizedJustifiedOrigin
       Execution.AcceptedCarrierIn at hujc ⊢
     rw [hroots, hujField]
-    split_ifs
-    · exact hujc
+    split_ifs with hlt
+    · rw [hread.eq_of_epoch_gt hlt]
+      exact hujc
     · exact h.unrealized_justified
   · unfold AcceptedGlobalFinalizedOrigin Execution.AcceptedCarrierIn at ⊢
     rw [hroots, hfField]
     exact h.finalized
-  · unfold AcceptedGlobalUnrealizedFinalizedOrigin
+  · obtain ⟨c, hread, hufc⟩ := hufc
+    unfold AcceptedGlobalUnrealizedFinalizedOrigin
       Execution.AcceptedCarrierIn at hufc ⊢
     rw [hroots, hufField]
-    split_ifs
-    · exact hufc
+    split_ifs with hlt
+    · rw [hread.eq_of_epoch_gt hlt]
+      exact hufc
     · exact h.unrealized_finalized
 
 /-- Exact origin preservation by eager pull-up at an accepted known root. -/
 theorem compute_pulled_up_tip (store : Store Root) (r : Root)
     (h : AcceptedFFGGlobalCheckpointOrigins S store)
     (hr : E.AcceptedCarrierIn (cfg := cfg) (ext := ext) store r)
-    (hgu : (ext.process_justification_and_finalization
-      (store.block_states r)).current_justified_checkpoint = S.unrealized_justified r)
-    (hguf : (ext.process_justification_and_finalization
-      (store.block_states r)).finalized_checkpoint = S.unrealized_finalized r) :
+    (hgu : CheckpointReadsAs (ext.process_justification_and_finalization
+      (store.block_states r)).current_justified_checkpoint (S.unrealized_justified r))
+    (hguf : CheckpointReadsAs (ext.process_justification_and_finalization
+      (store.block_states r)).finalized_checkpoint (S.unrealized_finalized r)) :
     AcceptedFFGGlobalCheckpointOrigins S
       (FastConfirmation.Spec.compute_pulled_up_tip cfg ext store r) := by
-  simp only [FastConfirmation.Spec.compute_pulled_up_tip, hgu, hguf]
+  simp only [FastConfirmation.Spec.compute_pulled_up_tip]
   split_ifs
   · apply AcceptedFFGGlobalCheckpointOrigins.update_checkpoints
     · apply AcceptedFFGGlobalCheckpointOrigins.update_unrealized_checkpoints
       · exact h.of_extension (List.Subset.refl _) rfl rfl rfl rfl
-      · exact Or.inr ⟨r, ⟨by simpa using hr.1, hr.2⟩, rfl⟩
-      · exact Or.inr ⟨r, ⟨by simpa using hr.1, hr.2⟩, rfl⟩
-    · exact Or.inr ⟨r, ⟨by simpa using hr.1, hr.2⟩, Or.inr rfl⟩
-    · exact Or.inr ⟨r, ⟨by simpa using hr.1, hr.2⟩, Or.inr rfl⟩
+      · exact ⟨_, hgu, Or.inr ⟨r, ⟨by simpa using hr.1, hr.2⟩, rfl⟩⟩
+      · exact ⟨_, hguf, Or.inr ⟨r, ⟨by simpa using hr.1, hr.2⟩, rfl⟩⟩
+    · exact ⟨_, hgu, Or.inr ⟨r, ⟨by simpa using hr.1, hr.2⟩, Or.inr rfl⟩⟩
+    · exact ⟨_, hguf, Or.inr ⟨r, ⟨by simpa using hr.1, hr.2⟩, Or.inr rfl⟩⟩
   · apply AcceptedFFGGlobalCheckpointOrigins.update_unrealized_checkpoints
     · exact h.of_extension (List.Subset.refl _) rfl rfl rfl rfl
-    · exact Or.inr ⟨r, ⟨by simpa using hr.1, hr.2⟩, rfl⟩
-    · exact Or.inr ⟨r, ⟨by simpa using hr.1, hr.2⟩, rfl⟩
+    · exact ⟨_, hgu, Or.inr ⟨r, ⟨by simpa using hr.1, hr.2⟩, rfl⟩⟩
+    · exact ⟨_, hguf, Or.inr ⟨r, ⟨by simpa using hr.1, hr.2⟩, rfl⟩⟩
 
 theorem record_block_timeliness (store : Store Root) (r : Root)
     (h : AcceptedFFGGlobalCheckpointOrigins S store) :
@@ -347,10 +357,10 @@ theorem on_tick_per_slot (store : Store Root) (time : ℕ)
     | exact h.of_extension (List.Subset.refl _) rfl rfl rfl rfl
     | · apply AcceptedFFGGlobalCheckpointOrigins.update_checkpoints
         · exact h.of_extension (List.Subset.refl _) rfl rfl rfl rfl
-        · exact unrealizedJustified_to_justified
-            (by simpa using h.unrealized_justified)
-        · exact unrealizedFinalized_to_finalized
-            (by simpa using h.unrealized_finalized)
+        · exact ⟨_, CheckpointReadsAs.refl _, unrealizedJustified_to_justified
+            (by simpa using h.unrealized_justified)⟩
+        · exact ⟨_, CheckpointReadsAs.refl _, unrealizedFinalized_to_finalized
+            (by simpa using h.unrealized_finalized)⟩
 
 theorem on_tick_aux (tick_slot fuel : ℕ) :
     ∀ store : Store Root, AcceptedFFGGlobalCheckpointOrigins S store →
@@ -380,12 +390,14 @@ private theorem on_block_of_selectors
     (haccepted : E.RootKnownInScheduledPrefix cfg ext sb.root)
     (hst : ext.state_transition (store.block_states sb.message.parent_root) sb =
       some post)
-    (hgj : post.current_justified_checkpoint = S.realized_justified sb.root)
-    (hgf : post.finalized_checkpoint = S.realized_finalized sb.root)
-    (hgu : (ext.process_justification_and_finalization
-      post).current_justified_checkpoint = S.unrealized_justified sb.root)
-    (hguf : (ext.process_justification_and_finalization
-      post).finalized_checkpoint = S.unrealized_finalized sb.root)
+    (hgj : CheckpointReadsAs post.current_justified_checkpoint
+      (S.realized_justified sb.root))
+    (hgf : CheckpointReadsAs post.finalized_checkpoint
+      (S.realized_finalized sb.root))
+    (hgu : CheckpointReadsAs (ext.process_justification_and_finalization
+      post).current_justified_checkpoint (S.unrealized_justified sb.root))
+    (hguf : CheckpointReadsAs (ext.process_justification_and_finalization
+      post).finalized_checkpoint (S.unrealized_finalized sb.root))
     (h : AcceptedFFGGlobalCheckpointOrigins S store)
     (hh : FastConfirmation.Spec.on_block cfg ext store sb = some store') :
     AcceptedFFGGlobalCheckpointOrigins S store' := by
@@ -466,8 +478,8 @@ private theorem on_block_of_selectors
         have hrealized : AcceptedFFGGlobalCheckpointOrigins S realized := by
           apply update_checkpoints
           · exact hboosted
-          · exact Or.inr ⟨sb.root, hcarrier, Or.inl hgj⟩
-          · exact Or.inr ⟨sb.root, hcarrier, Or.inl hgf⟩
+          · exact ⟨_, hgj, Or.inr ⟨sb.root, hcarrier, Or.inl rfl⟩⟩
+          · exact ⟨_, hgf, Or.inr ⟨sb.root, hcarrier, Or.inl rfl⟩⟩
         have hsameRoots : realized.block_roots = added.block_roots := by
           simp only [realized, boosted, staged,
             FastConfirmation.Spec.update_checkpoints,

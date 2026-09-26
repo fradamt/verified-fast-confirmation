@@ -1,6 +1,6 @@
 module
 public import Mathlib.Tactic
-public import FastConfirmationWitnesses.NonVacuity.ScheduledRun
+public import FastConfirmationWitnesses.NonVacuity.GenesisStubRun
 public import FastConfirmationProofs.Handlers.BlockTransitionProvenance
 public import FastConfirmationProofs.Execution.Calls.ScheduledPrefixGeometry
 public import FastConfirmationProofs.Checkpoints.ExactCheckpointLinks
@@ -20,9 +20,9 @@ not reduced by interval-casing the unbounded prefix second.
 -/
 
 namespace FastConfirmation.Spec
-namespace AcceptedActualFCRJointNonVacuityFFG
+namespace GenesisStubFFG
 
-open AcceptedActualFCRJointNonVacuityBase
+open GenesisStubBase
 
 /-! ## Exact accepted child and carrier transitions -/
 
@@ -207,6 +207,18 @@ theorem child_descends_anchor :
     witnessExecution.RootDescends childRoot anchorRoot :=
   .step child_parentEdge (.refl anchorRoot)
 
+/-- The anchor block's parent edge reaches the dangling parent root, which is
+also the genesis stub's root (Phase0: `ZERO_HASH`). -/
+theorem anchor_parentEdge :
+    witnessExecution.ParentEdge anchorRoot junkRoot := by
+  refine Or.inl ⟨anchorRoot, ?_, rfl, ?_⟩
+  · simp [witnessExecution, get_forkchoice_store, anchorSignedBlock]
+  · simp [witnessExecution, get_forkchoice_store, anchorSignedBlock]
+
+theorem child_descends_stub :
+    witnessExecution.RootDescends childRoot stubCheckpoint.root :=
+  .step child_parentEdge (.step anchor_parentEdge (.refl junkRoot))
+
 theorem carrier_descends_child :
     witnessExecution.RootDescends carrierRoot childRoot :=
   .step carrier_parentEdge (.refl childRoot)
@@ -272,6 +284,11 @@ theorem carrier_blockAt :
   exact Or.inr ⟨0, 7, carrierSignedBlock,
     block_mem_schedule_iff.mpr (Or.inr ⟨rfl, rfl⟩), rfl, rfl⟩
 
+/-- The genesis stub reads as the genesis anchor: both are
+`GENESIS_EPOCH` checkpoints. -/
+theorem stub_reads_anchor : CheckpointReadsAs stubCheckpoint anchorCheckpoint :=
+  Or.inr ⟨rfl, rfl⟩
+
 theorem includedVote_true_scheduled {s : Slot} (hlo : 4 ≤ s) (hhi : s ≤ 6) :
     Event.attestation (vote s) true ∈ witnessExecution.schedule 0 7 := by
   interval_cases s <;> simp [witnessExecution, witnessSchedule,
@@ -280,7 +297,7 @@ theorem includedVote_true_scheduled {s : Slot} (hlo : 4 ≤ s) (hhi : s ≤ 6) :
 theorem includedVote_data {s : Slot} (hlo : 4 ≤ s) (hhi : s ≤ 6) :
     (vote s).data =
       { slot := s, index := 0, beacon_block_root := childRoot
-        source := anchorCheckpoint, target := childEpochOneCheckpoint } := by
+        source := stubCheckpoint, target := childEpochOneCheckpoint } := by
   interval_cases s <;> rfl
 
 def acceptedIncludedEvidenceAt (s : Slot) (hlo : 4 ≤ s) (hhi : s ≤ 6) :
@@ -321,7 +338,7 @@ def acceptedIncludedFidelityAt (s : Slot) (hlo : 4 ≤ s) (hhi : s ≤ 6) :
     exact carrier_descends_child
   target_descends_source := by
     rw [includedVote_data hlo hhi]
-    exact child_descends_anchor
+    exact child_descends_stub
   attesters_in_registry := by
     intro i hi
     have hi' : i = s % 4 := by simpa [vote] using hi
@@ -408,17 +425,17 @@ def witnessIncludedAnchorChildLink :
     · refine ⟨vote4, ⟨carrierRoot, .refl carrierRoot, ?_⟩, ?_, ?_, ?_⟩
       · exact ⟨rfl, Or.inl rfl⟩
       · decide
-      · rfl
+      · exact stub_reads_anchor
       · rfl
     · refine ⟨vote5, ⟨carrierRoot, .refl carrierRoot, ?_⟩, ?_, ?_, ?_⟩
       · exact ⟨rfl, Or.inr (Or.inl rfl)⟩
       · decide
-      · rfl
+      · exact stub_reads_anchor
       · rfl
     · refine ⟨vote6, ⟨carrierRoot, .refl carrierRoot, ?_⟩, ?_, ?_, ?_⟩
       · exact ⟨rfl, Or.inr (Or.inr rfl)⟩
       · decide
-      · rfl
+      · exact stub_reads_anchor
       · rfl
   supermajority := by
     decide
@@ -796,22 +813,22 @@ def witnessAcceptedFFGTransitionCoherence :
     intro r hr
     have hr' := genesis_known_eq_anchor hr
     subst r
-    rfl
+    exact stub_reads_anchor
   genesis_gf := by
     intro r hr
     have hr' := genesis_known_eq_anchor hr
     subst r
-    rfl
+    exact stub_reads_anchor
   genesis_gu := by
     intro r hr
     have hr' := genesis_known_eq_anchor hr
     subst r
-    rfl
+    exact stub_reads_anchor
   genesis_guf := by
     intro r hr
     have hr' := genesis_known_eq_anchor hr
     subst r
-    rfl
+    exact stub_reads_anchor
   genesis_unrealized_justification := by
     intro r hr
     have hr' := genesis_known_eq_anchor hr
@@ -821,41 +838,36 @@ def witnessAcceptedFFGTransitionCoherence :
     intro t
     rcases acceptedTransition_cases t with h | h
     · rw [h.1]
-      apply CheckpointReadsAs.of_eq
-      change (t.postStore.block_states childRoot).current_justified_checkpoint =
+      change CheckpointReadsAs (t.postStore.block_states childRoot).current_justified_checkpoint
         anchorCheckpoint
       rw [h.2]
-      rfl
+      exact stub_reads_anchor
     · rw [h.1]
-      apply CheckpointReadsAs.of_eq
-      change (t.postStore.block_states carrierRoot).current_justified_checkpoint =
+      change CheckpointReadsAs (t.postStore.block_states carrierRoot).current_justified_checkpoint
         anchorCheckpoint
       rw [h.2]
-      rfl
+      exact stub_reads_anchor
   transition_gf := by
     intro t
     rcases acceptedTransition_cases t with h | h
     · rw [h.1]
-      apply CheckpointReadsAs.of_eq
-      change (t.postStore.block_states childRoot).finalized_checkpoint =
+      change CheckpointReadsAs (t.postStore.block_states childRoot).finalized_checkpoint
         anchorCheckpoint
       rw [h.2]
-      rfl
+      exact stub_reads_anchor
     · rw [h.1]
-      apply CheckpointReadsAs.of_eq
-      change (t.postStore.block_states carrierRoot).finalized_checkpoint =
+      change CheckpointReadsAs (t.postStore.block_states carrierRoot).finalized_checkpoint
         anchorCheckpoint
       rw [h.2]
-      rfl
+      exact stub_reads_anchor
   transition_gu := by
     intro t
     rcases acceptedTransition_cases t with h | h
     · rw [h.1]
-      apply CheckpointReadsAs.of_eq
-      change (witnessPJF (t.postStore.block_states childRoot)).current_justified_checkpoint =
+      change CheckpointReadsAs (witnessPJF (t.postStore.block_states childRoot)).current_justified_checkpoint
         anchorCheckpoint
       rw [h.2]
-      rfl
+      exact stub_reads_anchor
     · rw [h.1]
       apply CheckpointReadsAs.of_eq
       change (witnessPJF (t.postStore.block_states carrierRoot)).current_justified_checkpoint =
@@ -866,17 +878,15 @@ def witnessAcceptedFFGTransitionCoherence :
     intro t
     rcases acceptedTransition_cases t with h | h
     · rw [h.1]
-      apply CheckpointReadsAs.of_eq
-      change (witnessPJF (t.postStore.block_states childRoot)).finalized_checkpoint =
+      change CheckpointReadsAs (witnessPJF (t.postStore.block_states childRoot)).finalized_checkpoint
         anchorCheckpoint
       rw [h.2]
-      rfl
+      exact stub_reads_anchor
     · rw [h.1]
-      apply CheckpointReadsAs.of_eq
-      change (witnessPJF (t.postStore.block_states carrierRoot)).finalized_checkpoint =
+      change CheckpointReadsAs (witnessPJF (t.postStore.block_states carrierRoot)).finalized_checkpoint
         anchorCheckpoint
       rw [h.2]
-      rfl
+      exact stub_reads_anchor
   checkpoint_of_known := by
     intro store hstore r hr e
     exact witnessCheckpointOfKnown hstore r hr e
@@ -986,13 +996,16 @@ theorem witnessIncludedLink_cases
   change witnessIncluded containing a at hincluded
   rcases hincluded with ⟨rfl, rfl | rfl | rfl⟩
   · refine ⟨rootDescends_carrier_iff.mp hdesc, ?_, ?_⟩
-    · simpa [vote4, vote, voteData] using hsource.symm
+    · exact (show CheckpointReadsAs source stubCheckpoint by
+        simpa [vote4, vote, voteData] using hsource.symm).trans stub_reads_anchor
     · simpa [vote4, vote, voteData] using htarget.symm
   · refine ⟨rootDescends_carrier_iff.mp hdesc, ?_, ?_⟩
-    · simpa [vote5, vote, voteData] using hsource.symm
+    · exact (show CheckpointReadsAs source stubCheckpoint by
+        simpa [vote5, vote, voteData] using hsource.symm).trans stub_reads_anchor
     · simpa [vote5, vote, voteData] using htarget.symm
   · refine ⟨rootDescends_carrier_iff.mp hdesc, ?_, ?_⟩
-    · simpa [vote6, vote, voteData] using hsource.symm
+    · exact (show CheckpointReadsAs source stubCheckpoint by
+        simpa [vote6, vote, voteData] using hsource.symm).trans stub_reads_anchor
     · simpa [vote6, vote, voteData] using htarget.symm
 
 def witnessExactLinkValidity :
@@ -1038,7 +1051,7 @@ theorem witness_slashableOnChain_eq_empty (tip : WitnessRoot) :
     ((witnessAcceptedChainFFGState.mem_slashableOnChain
       witnessConfig witnessExternals tip i).mp hi).2
 
-end AcceptedActualFCRJointNonVacuityFFG
+end GenesisStubFFG
 end FastConfirmation.Spec
 
 end

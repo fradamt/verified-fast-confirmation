@@ -558,8 +558,9 @@ theorem StrictSelectedResultMechanicalFacts.previousOffStart_queryGUEpochSeed
         get_current_store_epoch cfg query.store) :
       get_block_epoch cfg query.store selected ≤
         (B.state.unrealized_justified seed).epoch := by
-    have hguEq : query.store.unrealized_justifications seed =
-        B.state.unrealized_justified seed := hprojection.unrealized_justification seed hseed
+    have hguEq : (query.store.unrealized_justifications seed).epoch =
+        (B.state.unrealized_justified seed).epoch :=
+      (hprojection.unrealized_justification seed hseed).epoch_eq
     apply Nat.le_of_add_le_add_right
     calc
       get_block_epoch cfg query.store selected + 1 =
@@ -762,8 +763,9 @@ theorem AcceptedHistoricalA32LineageAt.lateVisibleSeedAt
       B.state.includedJustifiedAtTip_of_AU cfg ext hsourceAU
     have hanchorLeSource : B.anchor.epoch ≤
         (get_voting_source cfg (E.store cfg ext w m) selected).epoch :=
-      IncludedCertifiedJustified.anchor_epoch_le
-        (cfg := cfg) hsourceIncluded
+      (IncludedCertifiedJustified.anchor_epoch_le
+        (cfg := cfg) hsourceIncluded).trans_eq
+        (hendpointCausal.getVotingSource_normalize_epoch cfg ext B hselectedM)
     refine ⟨selected, hselectedM,
       is_ancestor_refl (E.store cfg ext w m)
         (get_node_for_root selected), ?_⟩
@@ -774,8 +776,8 @@ theorem AcceptedHistoricalA32LineageAt.lateVisibleSeedAt
       _htargetNeAnchor, hsource⟩
     subst deadline
     subst target
-    have hsourceQuery : Q.source =
-        B.state.voting_source_at cfg ext (E.store cfg ext v q) selected e := by
+    have hsourceQuery : CheckpointReadsAs Q.source
+        (B.state.voting_source_at cfg ext (E.store cfg ext v q) selected e) := by
       simpa only [AcceptedBlockFFGState.voting_source_at, hselectedEpoch,
         if_pos] using hsource
     have hwalkDomain : E.PostAnchorHonestVoteTargetWalkDomain cfg ext :=
@@ -1038,8 +1040,9 @@ noncomputable def
           Nat.reduceAdd] using Nat.lt_succ_self (e + 1)
       _ ≤ get_current_store_epoch cfg endpoint := by
         simpa only [endpoint] using hlate
-  have hsourceGU : get_voting_source cfg endpoint seed = B.state.unrealized_justified seed := by
-    have hselector := hendpointCausal.getVotingSource_eq_acceptedSelector
+  have hsourceGU : (get_voting_source cfg endpoint seed).epoch =
+      (B.state.unrealized_justified seed).epoch := by
+    have hselector := hendpointCausal.getVotingSource_epoch_eq_acceptedSelector
       cfg ext B (by simpa only [endpoint] using hseedM)
     simpa only [if_pos hseedOld] using hselector
   have hseedVisible : SourceVisibleAtTip cfg endpoint seed := by

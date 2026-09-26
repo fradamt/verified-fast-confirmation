@@ -187,8 +187,8 @@ theorem honest_vote_before_last_slot
       E.vote i s = some (k,
         honest_attestation cfg ext (E.store cfg ext i k) s index i) ∧
       k ≤ E.slot_start cfg s + get_attestation_due_ms cfg / 1000 ∧
-      (honest_attestation cfg ext (E.store cfg ext i k) s index i
-        ).data.source = source ∧
+      CheckpointReadsAs (honest_attestation cfg ext (E.store cfg ext i k) s index i
+        ).data.source source ∧
       (honest_attestation cfg ext (E.store cfg ext i k) s index i
         ).data.target = target := by
   obtain ⟨i, hi, hhi, s, hstart, hbefore, hcommittee⟩ :=

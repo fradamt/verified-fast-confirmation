@@ -108,11 +108,14 @@ theorem head_path_admissible_before_next_tick
   · obtain ⟨tip, htip, hdesc, _hleaf, hcheck, _hlocalF⟩ :=
       filtered_member_viableLeafBelow cfg hparent hwalkK hJknown hfiltered
     have hAU := (E.store_causal cfg ext v n).getVotingSource_AU cfg ext B htip
+    have hnrmEpoch := (E.store_causal cfg ext v n).getVotingSource_normalize_epoch
+      cfg ext B htip
     obtain ⟨cert⟩ := B.state.includedJustifiedAtTip_of_AU cfg ext hAU
     have hFleSource : F.epoch ≤ (get_voting_source cfg source tip).epoch := by
       by_cases hFa : F = B.anchor
       · rw [hFa]
-        exact IncludedCertifiedJustified.anchor_epoch_le (cfg := cfg) cert
+        exact (IncludedCertifiedJustified.anchor_epoch_le (cfg := cfg) cert).trans_eq
+          hnrmEpoch
       have hLag : E.CausalRealizedFinalizationLag cfg ext B :=
         E.causalRealizedFinalizationLag_of_acceptedDelay cfg ext B hT
         hanchor hDelay
@@ -129,11 +132,12 @@ theorem head_path_admissible_before_next_tick
         exact hFleJ.trans_eq hsourceJ.symm
       · rw [hclock] at hrecent
         exact Nat.le_of_add_le_add_right (hlag'.trans hrecent)
-    have hprefix := prefixOf ⟨tip, ⟨cert⟩⟩ hFleSource
+    have hFleSourceN := hFleSource.trans_eq hnrmEpoch.symm
+    have hprefix := prefixOf ⟨tip, ⟨cert⟩⟩ hFleSourceN
     have htipWalk := E.trustedAnchor_boundaryWalkAtEpoch_of_trajectory cfg ext hT hanchor hboundary
       v n hanchorLe htip
     have hcheckpoint := exactCheckpointPrefix_root_eq_at_sameTip cfg ext B.coherence
-      (E.store_causal cfg ext v n) hparent htip hprefix hAU hFleSource htipWalk
+      (E.store_causal cfg ext v n) hparent htip hprefix hAU hFleSourceN htipWalk
     exact E.votePathAdmissible_of_checkpointCompatible_descendant cfg ext B hT
       hanchor hboundary hHm hFrealized.root_known hanchorLe hwalk htip hdesc hcheckpoint
   · have hJcert : ∃ tip, Nonempty (IncludedCertifiedJustified cfg E

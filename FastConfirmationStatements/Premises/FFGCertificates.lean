@@ -16,6 +16,17 @@ namespace FastConfirmation.Spec
 variable {Root : Type*} [LinearOrder Root] [Inhabited Root]
 variable (cfg : Config)
 
+/-- The FFG reading of a raw checkpoint. Real genesis states carry the stub
+`Checkpoint(GENESIS_EPOCH, ZERO_HASH)`, and honest attestations made before
+the first justification name it as their source (`phase0/validator.md`,
+`get_attestation_data`). `get_forkchoice_store` instead records
+`Checkpoint(GENESIS_EPOCH, anchor_root)` (`phase0/fork-choice.md:217-244`).
+The FFG interpretation identifies all `GENESIS_EPOCH` checkpoints. Every other
+raw checkpoint reads only as itself. Executable handlers and wire attestations
+keep the raw value; only the semantic reads use this relation. -/
+def CheckpointReadsAs {Root : Type*} (raw c : Checkpoint Root) : Prop :=
+  raw = c ∨ (raw.epoch = GENESIS_EPOCH ∧ c.epoch = GENESIS_EPOCH)
+
 namespace Execution
 
 variable (E : Execution Root)

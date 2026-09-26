@@ -295,6 +295,8 @@ theorem retainedAt_currentSameEndpoint
   have hLag : E.CausalRealizedFinalizationLag cfg ext B :=
     E.causalRealizedFinalizationLag_of_acceptedDelay
       cfg ext B hT hanchor hDelay
+  have hnrm := (E.store_causal cfg ext h.validator h.second
+    ).getVotingSource_normalize_epoch cfg ext B h.tip_known
   have htargetEpoch : (E.store cfg ext w m).finalized_checkpoint.epoch ≤
       (get_voting_source cfg
         (E.store cfg ext h.validator h.second) h.tip).epoch := by
@@ -302,12 +304,12 @@ theorem retainedAt_currentSameEndpoint
     · obtain ⟨_carrier, _hdesc, hformed⟩ := h.source_au
       obtain ⟨hincluded⟩ := (B.state.formed_evidence hformed).certified
       have hcert : CertifiedJustified cfg E B.anchor
-          (get_voting_source cfg
-            (E.store cfg ext h.validator h.second) h.tip) :=
+          (normalizeAnchorCheckpoint B.anchor (get_voting_source cfg
+            (E.store cfg ext h.validator h.second) h.tip)) :=
         IncludedCertifiedJustified.toCertifiedJustified (cfg := cfg)
           B.state.includedAttestations.relation hincluded
       rw [hFanchor]
-      exact CertifiedJustified.anchor_epoch_le (cfg := cfg) hcert
+      exact (CertifiedJustified.anchor_epoch_le (cfg := cfg) hcert).trans_eq hnrm
     · rw [hcurrentSame] at hFdelay
       exact (Nat.add_le_add_iff_right).mp
         (hFdelay.trans h.source_recent)
@@ -321,7 +323,7 @@ theorem retainedAt_currentSameEndpoint
       h.validator h.second h.tip w m :=
     E.acceptedSourceTip_not_permanentlyExcluded_of_AU cfg ext B hT hA
       hanchor hboundary P V hanchorExact hacc hmH h.tip_known
-      hfinalizedKnown hanchorLe h.source_au htargetEpoch htipWalk
+      hfinalizedKnown hanchorLe h.source_au (htargetEpoch.trans_eq hnrm.symm) htipWalk
   have htipEndpoint : h.tip ∈
       (E.store cfg ext w m).block_roots := by
     rcases hrelayOutcome with hknown | hexcluded
@@ -620,11 +622,12 @@ theorem retainedAt_currentSameEndpoint
         (B.state.formed_evidence hformed).certified
       have hanchorLeSource : B.anchor.epoch ≤
           (get_voting_source cfg past seed).epoch :=
-        CertifiedJustified.anchor_epoch_le (cfg := cfg)
+        (CertifiedJustified.anchor_epoch_le (cfg := cfg)
           (IncludedCertifiedJustified.toCertifiedJustified
             (cfg := cfg)
             (Execution.AcceptedBlockAttestationInclusion.relation
-              cfg ext E B.state.includedAttestations) hcertified)
+              cfg ext E B.state.includedAttestations) hcertified)).trans_eq
+          (hpastCausal.getVotingSource_normalize_epoch cfg ext B hjKnown)
       refine ⟨seed, hjKnown, hjSemantic, ?_⟩
       rw [← hjEpoch, hfieldAnchor]
       exact hanchorLeSource.trans (Nat.le_add_right _ _)
@@ -641,7 +644,7 @@ theorem retainedAt_currentSameEndpoint
           honChain
       have hsourceLower : past.justified_checkpoint.epoch ≤
           (get_voting_source cfg past seed).epoch := by
-        rw [hpastCausal.getVotingSource_eq_acceptedSelector cfg ext B
+        rw [hpastCausal.getVotingSource_epoch_eq_acceptedSelector cfg ext B
           hseedKnown]
         split_ifs with hold
         · rw [hgj]
@@ -662,10 +665,10 @@ theorem retainedAt_currentSameEndpoint
             (B.state.formed_evidence hformed).on_chain
         exact Execution.RootDescends.trans E hseedCarrierDesc
           honChain
-      have hsourceEq : get_voting_source cfg past seed = B.state.unrealized_justified seed := by
-        rw [hpastCausal.getVotingSource_eq_acceptedSelector cfg ext B
-          hseedKnown]
-        exact if_pos hseedOld
+      have hsourceEq : (get_voting_source cfg past seed).epoch =
+          (B.state.unrealized_justified seed).epoch := by
+        rw [hpastCausal.getVotingSource_epoch_eq_acceptedSelector cfg ext B
+          hseedKnown, if_pos hseedOld]
       refine ⟨seed, hseedKnown,
         Execution.RootDescends.trans E hseedJ hjSemantic, ?_⟩
       rw [← hjEpoch, hgu, hsourceEq]
@@ -698,8 +701,9 @@ theorem retainedAt_currentSameEndpoint
         h.past.second_within hseedPast h.past.second_deadline
         w hw m hmH hstart hbefore
   have hsourceAU : B.state.AvailableCheckpoint cfg ext seed
-      (get_voting_source cfg past seed) :=
+      (normalizeAnchorCheckpoint B.anchor (get_voting_source cfg past seed)) :=
     hpastCausal.getVotingSource_AU cfg ext B hseedPast
+  have hnrmSeed := hpastCausal.getVotingSource_normalize_epoch cfg ext B hseedPast
   have hreal := E.finalizedCheckpoint_resetRealizedAt_of_acceptedGlobalTrajectory
     cfg ext B hT hanchor hboundary (w := w) m
   have hfinalizedKnown : endpoint.finalized_checkpoint.root ∈
@@ -716,11 +720,11 @@ theorem retainedAt_currentSameEndpoint
     · obtain ⟨_carrier, _hdesc, hformed⟩ := hsourceAU
       obtain ⟨hincluded⟩ := (B.state.formed_evidence hformed).certified
       have hcert : CertifiedJustified cfg E B.anchor
-          (get_voting_source cfg past seed) :=
+          (normalizeAnchorCheckpoint B.anchor (get_voting_source cfg past seed)) :=
         IncludedCertifiedJustified.toCertifiedJustified (cfg := cfg)
           B.state.includedAttestations.relation hincluded
       rw [hFanchor]
-      exact CertifiedJustified.anchor_epoch_le (cfg := cfg) hcert
+      exact (CertifiedJustified.anchor_epoch_le (cfg := cfg) hcert).trans_eq hnrmSeed
     · rw [hcurrentSame] at hFdelay
       exact (Nat.add_le_add_iff_right).mp
         (hFdelay.trans hrecentPast)
@@ -733,7 +737,8 @@ theorem retainedAt_currentSameEndpoint
       h.past.validator h.past.second seed w m :=
     E.acceptedSourceTip_not_permanentlyExcluded_of_AU cfg ext B hT hA
       hanchor hboundary P V hanchorExact hacc hmH hseedPast
-      hfinalizedKnown hanchorLe hsourceAU htargetEpoch hseedWalk
+      hfinalizedKnown hanchorLe hsourceAU (htargetEpoch.trans_eq hnrmSeed.symm)
+      hseedWalk
   have hseedEndpoint : seed ∈ endpoint.block_roots := by
     rcases hrelayOutcome with hknown | hexcluded
     · exact hknown

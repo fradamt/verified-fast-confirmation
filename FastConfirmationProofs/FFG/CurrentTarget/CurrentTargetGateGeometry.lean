@@ -187,9 +187,9 @@ theorem acceptedCrossEpochParentGJEqBoundarySource_of_known_parent
     (hparent : (store.blocks child).parent_root = parent)
     (hcross : compute_epoch_at_slot cfg (store.blocks parent).slot <
       compute_epoch_at_slot cfg (store.blocks child).slot) :
-    B.state.realized_justified child =
-      phase0BoundarySource cfg ext (store.block_states parent)
-        (compute_epoch_at_slot cfg (store.blocks child).slot) := by
+    CheckpointReadsAs (B.state.realized_justified child)
+      (phase0BoundarySource cfg ext (store.block_states parent)
+        (compute_epoch_at_slot cfg (store.blocks child).slot)) := by
   obtain ⟨writer⟩ :=
     hstore.acceptedBlockLastWriterProvenance child hchildKnown
       hchildNonGenesis
@@ -247,13 +247,15 @@ theorem acceptedCrossEpochParentGJEqBoundarySource_of_known_parent
       store.block_states parent :=
     E.causal_block_states_agree cfg ext hwf hec (.scheduledPrefix t.atPrefix)
       hstore hprefixParentKnown hparentKnown
+  have hchild : B.state.realized_justified child =
+      B.state.realized_justified t.signedBlock.root :=
+    congrArg B.state.realized_justified htRoot.symm
+  refine (CheckpointReadsAs.of_eq hchild).trans
+    ((B.coherence.transition_gj t).symm.trans (CheckpointReadsAs.of_eq ?_))
   calc
-    B.state.realized_justified child = B.state.realized_justified t.signedBlock.root :=
-      congrArg B.state.realized_justified htRoot.symm
-    _ = (t.postStore.block_states
-          t.signedBlock.root).current_justified_checkpoint :=
-      (B.coherence.transition_gj t).symm
-    _ = post.current_justified_checkpoint :=
+    (t.postStore.block_states
+          t.signedBlock.root).current_justified_checkpoint =
+        post.current_justified_checkpoint :=
       congrArg BeaconState.current_justified_checkpoint hpost
     _ = phase0BoundarySource cfg ext
           ((t.atPrefix.store cfg ext).block_states
@@ -286,8 +288,8 @@ theorem acceptedGJEqHonestSourceAt_of_target_walk_root
     (hlands : (get_ancestor store (ForkChoiceNode.mk head .pending)
       (compute_start_slot_at_epoch cfg e)).root = targetRoot)
     (hheadEpoch : get_block_epoch cfg store head = e) :
-    B.state.realized_justified head =
-      phase0HonestSourceAt cfg ext store targetRoot e := by
+    CheckpointReadsAs (B.state.realized_justified head)
+      (phase0HonestSourceAt cfg ext store targetRoot e) := by
   induction hwalk generalizing targetRoot with
   | @stop r hr hle =>
       rw [get_ancestor_stop hle] at hlands
@@ -318,8 +320,8 @@ theorem acceptedGJEqHonestSourceAt_of_target_walk_root
         have hedge := E.acceptedProjectedSameEpochTransition_of_known_parent
           (S := B.state) hwf hcore hstore hparentKnown hr
             (hcurrentNonGenesis r hr hheadEpoch) rfl hsame
-        exact (hedge.gj_eq_parent hphase
-          B.coherence.toFFGStateReadAgreement).trans
+        exact (CheckpointReadsAs.of_eq (hedge.gj_eq_parent hphase
+          B.coherence.toFFGStateReadAgreement)).trans
             (ih hlandsParent hparentCurrent)
       · have hparentOld :
             get_block_epoch cfg store (store.blocks r).parent_root < e :=
@@ -394,20 +396,19 @@ def fixedSource_of_acceptedTargetWalk_root
   rcases hgate.support_branch with hanchor | ⟨hne, Q, hsource⟩
   · exact Or.inl hanchor
   · refine Or.inr ⟨hne, Q, ?_⟩
-    have hgj : B.state.realized_justified carrier = phase0HonestSourceAt cfg ext store
-        (get_current_target cfg store).root
-        (get_current_target cfg store).epoch :=
+    have hgj : CheckpointReadsAs (B.state.realized_justified carrier)
+        (phase0HonestSourceAt cfg ext store (get_current_target cfg store).root
+          (get_current_target cfg store).epoch) :=
       E.acceptedGJEqHonestSourceAt_of_target_walk_root cfg ext B hwf hec hcore
         hphase hboundaryPhase hstore hparentSlots hcurrentNonGenesis hwalk
         hlands hcarrierEpoch
-    calc
-      Q.source = phase0HonestSourceAt cfg ext store
-          (get_current_target cfg store).root
-          (get_current_target cfg store).epoch := hsource
-      _ = B.state.realized_justified carrier := hgj.symm
-      _ = B.state.voting_source_at cfg ext store carrier
-          (get_current_target cfg store).epoch := by
-        simp only [AcceptedBlockFFGState.voting_source_at, hcarrierEpoch, if_pos]
+    have hvs : B.state.voting_source_at cfg ext store carrier
+        (get_current_target cfg store).epoch = B.state.realized_justified carrier := by
+      simp only [AcceptedBlockFFGState.voting_source_at, hcarrierEpoch, if_pos]
+    change CheckpointReadsAs Q.source (B.state.voting_source_at cfg ext store carrier
+      (get_current_target cfg store).epoch)
+    rw [hvs]
+    exact hsource.trans hgj.symm
 
 
 end AcceptedCurrentTargetA32GateRealization
@@ -438,8 +439,8 @@ theorem acceptedHonestAttestationDataSourceEqHonestSourceAtTarget
     (hcurrentNonGenesis : ∀ r ∈ store.block_roots,
       get_block_epoch cfg store r = target.epoch →
         r ∉ E.genesis_store.block_roots) :
-    (honest_attestation_data cfg ext store slot index).source =
-      phase0HonestSourceAt cfg ext store target.root target.epoch := by
+    CheckpointReadsAs (honest_attestation_data cfg ext store slot index).source
+      (phase0HonestSourceAt cfg ext store target.root target.epoch) := by
   let head := (get_head cfg store).root
   have hheadKnown : head ∈ store.block_roots := hwalk.root_mem
   have hroot := honest_attestation_data_target_root cfg ext store slot index
@@ -466,16 +467,15 @@ theorem acceptedHonestAttestationDataSourceEqHonestSourceAtTarget
         (store.block_states head).slot = compute_epoch_at_slot cfg slot := by
       rw [(hcore hstore).2 head hheadKnown]
       exact hheadCurrent.trans hslotEpoch.symm
-    have hsourceGJ :
-        (honest_attestation_data cfg ext store slot index).source =
-          B.state.realized_justified head := by
+    have hsourceGJ : CheckpointReadsAs
+        (honest_attestation_data cfg ext store slot index).source
+          (B.state.realized_justified head) := by
       rw [honest_attestation_data_source_eq_head_state hphase
         store slot index hsame]
       exact hprojection.block_state_gj head hheadKnown
-    rw [hsourceGJ]
-    exact E.acceptedGJEqHonestSourceAt_of_target_walk_root cfg ext B hwf hec
+    exact hsourceGJ.trans (E.acceptedGJEqHonestSourceAt_of_target_walk_root cfg ext B hwf hec
       hcore hphase hboundaryPhase hstore hparentSlots hcurrentNonGenesis hwalk
-      hlands hheadCurrent
+      hlands hheadCurrent)
   · have hheadOld : get_block_epoch cfg store head < target.epoch :=
       Nat.lt_of_le_of_ne hheadEpochLe hheadCurrent
     have hstateEpochOld : compute_epoch_at_slot cfg
@@ -502,6 +502,7 @@ theorem acceptedHonestAttestationDataSourceEqHonestSourceAtTarget
     have hboundaryEpoch : compute_epoch_at_slot cfg
         (store.block_states head).slot < compute_epoch_at_slot cfg slot :=
       hstateEpochOld.trans_eq hslotEpoch.symm
+    apply CheckpointReadsAs.of_eq
     change (if (store.block_states head).slot < slot then
         ext.process_slots (store.block_states head) slot
       else store.block_states head).current_justified_checkpoint = _
@@ -524,8 +525,8 @@ structure AcceptedHonestOldTargetSourceCarrier
     (store : Store Root) (slot : Slot) (index : CommitteeIndex)
     (targetRoot : Root) (targetEpoch : Epoch) where
   target_known : targetRoot ∈ store.block_roots
-  source_eq : (honest_attestation_data cfg ext store slot index).source =
-    phase0BoundarySource cfg ext (store.block_states targetRoot) targetEpoch
+  source_eq : CheckpointReadsAs (honest_attestation_data cfg ext store slot index).source
+    (phase0BoundarySource cfg ext (store.block_states targetRoot) targetEpoch)
 
 def AcceptedHonestOldTargetSourceEvidence
     (B : ScheduledFFGInterpretation cfg ext E)
@@ -542,8 +543,8 @@ theorem source_eq
     {targetRoot : Root} {targetEpoch : Epoch}
     (h : E.AcceptedHonestOldTargetSourceEvidence cfg ext B store slot index
       targetRoot targetEpoch) :
-    (honest_attestation_data cfg ext store slot index).source =
-      phase0BoundarySource cfg ext (store.block_states targetRoot) targetEpoch := by
+    CheckpointReadsAs (honest_attestation_data cfg ext store slot index).source
+      (phase0BoundarySource cfg ext (store.block_states targetRoot) targetEpoch) := by
   obtain ⟨carrier⟩ := h
   exact carrier.source_eq
 
@@ -684,10 +685,10 @@ theorem concreteHonestTargetVote_acceptedOldTargetSourceEvidence
       hT.wellFormed hT.externals_coherence hcausalCore hphase hboundaryPhase
       hvoteCausal hparentSlots vote.slot_epoch hwalk htargetData
       hheadStateSlotLe hcurrentNonGenesis
-  have hsource : (honest_attestation_data cfg ext voteStore
-      vote.slot vote.index).source =
-        phase0BoundarySource cfg ext (voteStore.block_states target.root)
-          target.epoch := by
+  have hsource : CheckpointReadsAs (honest_attestation_data cfg ext voteStore
+      vote.slot vote.index).source
+        (phase0BoundarySource cfg ext (voteStore.block_states target.root)
+          target.epoch) := by
     simpa only [phase0HonestSourceAt, if_neg
       (Nat.ne_of_lt hvoteTargetOld)] using hsourceHonest
   exact ⟨{ target_known := htargetSpec.1, source_eq := hsource }⟩
@@ -1155,8 +1156,8 @@ theorem scheduledEventPrefix_acceptedConcreteCurrentTargetQuorum
     obtain ⟨hsourceEvidence, hsegment⟩ := hgeometryVote i hi vote
     simpa only [honest_attestation_data_eq] using
       hsourceEvidence.source_eq.trans
-        (hsegment.gj_eq_first hphase
-          B.coherence.toFFGStateReadAgreement)
+        (CheckpointReadsAs.of_eq (hsegment.gj_eq_first hphase
+          B.coherence.toFFGStateReadAgreement))
   let Q : ConcreteA32QuorumBefore cfg ext E deadline target :=
     { source := B.state.realized_justified target.root
       signers := signers
@@ -1472,9 +1473,11 @@ theorem acceptedCurrentTargetA32GateRealization_of_oldEpochConcreteQuorum_core
     (hQSource : Q.source = phase0BoundarySource cfg ext
       (store.block_states (get_current_target cfg store).root)
       (get_current_target cfg store).epoch)
-    (hsourceCertified : Nonempty (CertifiedJustified cfg E B.anchor Q.source))
+    {certified : Checkpoint Root}
+    (hQCertified : CheckpointReadsAs Q.source certified)
+    (hsourceCertified : Nonempty (CertifiedJustified cfg E B.anchor certified))
     (htargetDescendsSource :
-      E.RootDescends (get_current_target cfg store).root Q.source.root) :
+      E.RootDescends (get_current_target cfg store).root certified.root) :
     AcceptedCurrentTargetA32GateRealization cfg ext E B.anchor B.state
       store := by
   classical
@@ -1484,7 +1487,8 @@ theorem acceptedCurrentTargetA32GateRealization_of_oldEpochConcreteQuorum_core
   change target ≠ B.anchor at htargetNotAnchor
   change ConcreteA32QuorumBefore cfg ext E deadline target at Q
   change ConcreteA32QuorumScheduledDelivery cfg ext E Q at hdelivery
-  have hsourceBefore : Q.source.epoch < target.epoch := Q.source_before_target
+  have hsourceBefore : certified.epoch < target.epoch :=
+    hQCertified.epoch_eq ▸ Q.source_before_target
   have hsignersEpoch : Q.signers ⊆
       E.span_committee (target.epoch * cfg.slots_per_epoch)
         (target.epoch * cfg.slots_per_epoch +
@@ -1510,7 +1514,7 @@ theorem acceptedCurrentTargetA32GateRealization_of_oldEpochConcreteQuorum_core
       exact hpred
     simp only [Execution.span_committee, Finset.mem_biUnion]
     exact ⟨vj.slot, Finset.mem_Icc.mpr ⟨hlo, hhi⟩, vj.assigned⟩
-  have hlink : SupermajorityLink cfg E Q.source target := {
+  have hlink : SupermajorityLink cfg E certified target := {
     signers := Q.signers
     source_before_target := hsourceBefore
     target_descends_source := htargetDescendsSource
@@ -1526,7 +1530,7 @@ theorem acceptedCurrentTargetA32GateRealization_of_oldEpochConcreteQuorum_core
       · simpa only [a] using hdelivery j hj vj
       · simp only [a, honest_attestation_attesting_indices,
           List.mem_singleton]
-      · simpa only [a] using Q.source_agreement j hj vj
+      · exact (Q.source_agreement j hj vj).trans hQCertified
       · simpa only [a] using vj.target_eq
     supermajority := Q.supermajority }
   obtain ⟨hsourceCertificate⟩ := hsourceCertified
@@ -1534,7 +1538,9 @@ theorem acceptedCurrentTargetA32GateRealization_of_oldEpochConcreteQuorum_core
       (CertifiedJustified cfg E B.anchor target) :=
     ⟨CertifiedJustified.link hsourceCertificate hlink⟩
   refine ⟨htargetCertificate, Or.inr ⟨htargetNotAnchor, Q, ?_⟩⟩
-  change Q.source = phase0HonestSourceAt cfg ext store target.root target.epoch
+  change CheckpointReadsAs Q.source
+    (phase0HonestSourceAt cfg ext store target.root target.epoch)
+  apply CheckpointReadsAs.of_eq
   simpa only [phase0HonestSourceAt, if_neg (Nat.ne_of_lt htargetOld)]
     using hQSource
 
@@ -1583,18 +1589,20 @@ theorem scheduledEventPrefix_oldTargetBoundarySource_certificate
       ((p.store cfg ext).block_states
         (get_current_target cfg (p.store cfg ext)).root)
       (get_current_target cfg (p.store cfg ext)).epoch
-    Nonempty (CertifiedJustified cfg E B.anchor source) ∧
+    ∃ certified : Checkpoint Root, CheckpointReadsAs source certified ∧
+      Nonempty (CertifiedJustified cfg E B.anchor certified) ∧
       E.RootDescends (get_current_target cfg (p.store cfg ext)).root
-        source.root ∧
-      source.epoch < (get_current_target cfg (p.store cfg ext)).epoch := by
+        certified.root ∧
+      certified.epoch < (get_current_target cfg (p.store cfg ext)).epoch := by
   intro source
   let store := p.store cfg ext
   let target := get_current_target cfg store
   change target.root ∈ store.block_roots at htargetKnown
   change get_block_epoch cfg store target.root < target.epoch at htargetOld
   change B.anchor.epoch < target.epoch at hanchorBefore
-  change Nonempty (CertifiedJustified cfg E B.anchor source) ∧
-    E.RootDescends target.root source.root ∧ source.epoch < target.epoch
+  change ∃ certified : Checkpoint Root, CheckpointReadsAs source certified ∧
+    Nonempty (CertifiedJustified cfg E B.anchor certified) ∧
+    E.RootDescends target.root certified.root ∧ certified.epoch < target.epoch
   have hstore : E.ScheduledPrefixStore cfg ext store := by
     simpa only [store] using (Execution.ScheduledPrefixStore.scheduledPrefix p)
   have hprojection : AcceptedFFGStoreProjection B.state store :=
@@ -1608,9 +1616,9 @@ theorem scheduledEventPrefix_oldTargetBoundarySource_certificate
     rw [hqueryCore.2 target.root htargetKnown]
   by_cases hone : get_block_epoch cfg store target.root + 1 = target.epoch
   · -- One boundary: the eager `GU` of the target block.
-    have hGU : source = B.state.unrealized_justified target.root := by
-      change phase0BoundarySource cfg ext (store.block_states target.root)
-        target.epoch = _
+    have hGU : CheckpointReadsAs source (B.state.unrealized_justified target.root) := by
+      change CheckpointReadsAs (phase0BoundarySource cfg ext
+        (store.block_states target.root) target.epoch) _
       rw [hboundaryPhase.boundarySource_eq_pjf
         (by rw [hstateEpoch]; exact hone.symm)]
       exact hprojection.pulled_up_gu target.root htargetKnown
@@ -1627,9 +1635,8 @@ theorem scheduledEventPrefix_oldTargetBoundarySource_certificate
         target.epoch :=
       lt_of_le_of_lt (B.state.available_checkpoint_epoch_le_block htargetAt
         ⟨formedCarrier, htargetDescendsCarrier, hformed⟩) htargetOld
-    rw [hGU]
     obtain ⟨hincluded⟩ := hevidence.certified
-    exact ⟨⟨IncludedCertifiedJustified.toCertifiedJustified
+    exact ⟨_, hGU, ⟨IncludedCertifiedJustified.toCertifiedJustified
         (cfg := cfg) B.state.includedAttestations.relation hincluded⟩,
       Execution.RootDescends.trans E htargetDescendsCarrier hevidence.on_chain,
       hGUEpoch⟩
@@ -1708,7 +1715,7 @@ theorem scheduledEventPrefix_oldTargetBoundarySource_certificate
     have hgj := E.acceptedGJEqHonestSourceAt_of_target_walk_root cfg ext B
       hT.wellFormed hT.externals_coherence hcausalCore hphase hboundaryPhase
       hstore hparentSlots hcurrentNonGenesis hwalk hlands hcTargetEpoch
-    have hsource : B.state.realized_justified c = source := by
+    have hsource : CheckpointReadsAs (B.state.realized_justified c) source := by
       simpa only [phase0HonestSourceAt, if_neg (Nat.ne_of_lt htargetOld)]
         using hgj
     have hcCarrier : E.AcceptedCarrierIn
@@ -1729,8 +1736,7 @@ theorem scheduledEventPrefix_oldTargetBoundarySource_certificate
       · rw [hanc]
         exact hanchorBefore
       · exact lt_of_lt_of_eq hbefore hcTargetEpoch
-    rw [← hsource]
-    refine ⟨⟨hcertified⟩, ?_, hsourceLt⟩
+    refine ⟨_, hsource.symm, ⟨hcertified⟩, ?_, hsourceLt⟩
     have hanchorLe : B.anchor.epoch ≤ (B.state.realized_justified c).epoch :=
       CertifiedJustified.anchor_epoch_le (cfg := cfg) hcertified
     have hepochLe : (B.state.realized_justified c).epoch ≤ target.epoch :=
@@ -1818,10 +1824,12 @@ theorem scheduledEventPrefix_acceptedOldTargetA32GateRealization_core
   change target.root ∈ store.block_roots at htargetKnown
   change get_block_epoch cfg store target.root < target.epoch at htargetOld
   change B.anchor.epoch < target.epoch at hanchorBefore
-  obtain ⟨hsourceCertified, htargetDescendsSource, hsourceBefore⟩ :=
+  obtain ⟨certified, hsourceCertifiedRead, hsourceCertified,
+      htargetDescendsSource, hcertifiedBefore⟩ :=
     E.scheduledEventPrefix_oldTargetBoundarySource_certificate cfg ext B hT
       hphase hboundaryPhase hanchor hboundary p hguard htargetKnown htargetOld
       hanchorBefore
+  have hsourceBefore := hsourceCertifiedRead.epoch_eq ▸ hcertifiedBefore
   obtain ⟨Q, hQSource, _hgeometry⟩ :=
     E.scheduledEventPrefix_acceptedConcreteOldTargetQuorum cfg ext B hT
       hsv hbb hphase hboundaryPhase hanchor hboundary p hp hqH hevidence
@@ -1851,7 +1859,8 @@ theorem scheduledEventPrefix_acceptedOldTargetA32GateRealization_core
     simpa only [store] using (Execution.ScheduledPrefixStore.scheduledPrefix p)
   exact E.acceptedCurrentTargetA32GateRealization_of_oldEpochConcreteQuorum_core
     cfg ext B htargetOld htargetNotAnchor htargetSpan Q (hdelivery Q) hQSource
-      (hQSource ▸ hsourceCertified) (hQSource ▸ htargetDescendsSource)
+      ((CheckpointReadsAs.of_eq hQSource).trans hsourceCertifiedRead)
+      hsourceCertified htargetDescendsSource
 
 
 

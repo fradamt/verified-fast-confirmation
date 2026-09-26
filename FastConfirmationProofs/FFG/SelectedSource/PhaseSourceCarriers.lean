@@ -96,15 +96,16 @@ namespace Execution
 variable {E : Execution Root}
 
 /-- Read the executable voting source at any exact causal store through the
-one accepted semantic state selected outside the store. -/
-theorem ScheduledPrefixStore.getVotingSource_eq_acceptedSelector
+one accepted semantic state selected outside the store.  The raw read is the
+selector, or both are `GENESIS_EPOCH` checkpoints (the genesis stub). -/
+theorem ScheduledPrefixStore.getVotingSource_reads_acceptedSelector
     {store : Store Root} (hstore : E.ScheduledPrefixStore cfg ext store)
     (B : ScheduledFFGInterpretation cfg ext E)
     {r : Root} (hr : r ∈ store.block_roots) :
-    get_voting_source cfg store r =
-      if get_current_store_epoch cfg store > get_block_epoch cfg store r then
+    CheckpointReadsAs (get_voting_source cfg store r)
+      (if get_current_store_epoch cfg store > get_block_epoch cfg store r then
         B.state.unrealized_justified r
-      else B.state.realized_justified r := by
+      else B.state.realized_justified r) := by
   have hprojection :=
     Execution.ScheduledFFGInterpretation.causalStoreProjection B hstore
   simp only [get_voting_source, get_block_epoch]
@@ -112,15 +113,63 @@ theorem ScheduledPrefixStore.getVotingSource_eq_acceptedSelector
   · exact hprojection.unrealized_justification r hr
   · exact hprojection.block_state_gj r hr
 
-/-- The executable voting source of a known root owns positive accepted AU
-evidence at that same root. -/
+/-- Epoch form of `getVotingSource_reads_acceptedSelector`. -/
+theorem ScheduledPrefixStore.getVotingSource_epoch_eq_acceptedSelector
+    {store : Store Root} (hstore : E.ScheduledPrefixStore cfg ext store)
+    (B : ScheduledFFGInterpretation cfg ext E)
+    {r : Root} (hr : r ∈ store.block_roots) :
+    (get_voting_source cfg store r).epoch =
+      (if get_current_store_epoch cfg store > get_block_epoch cfg store r then
+        B.state.unrealized_justified r
+      else B.state.realized_justified r).epoch :=
+  (hstore.getVotingSource_reads_acceptedSelector cfg ext B hr).epoch_eq
+
+/-- At the FFG-interpretation boundary, the anchor-normalized voting source is
+exactly the accepted selector. -/
+theorem ScheduledPrefixStore.getVotingSource_normalize_eq
+    {store : Store Root} (hstore : E.ScheduledPrefixStore cfg ext store)
+    (B : ScheduledFFGInterpretation cfg ext E)
+    {r : Root} (hr : r ∈ store.block_roots) :
+    normalizeAnchorCheckpoint B.anchor (get_voting_source cfg store r) =
+      (if get_current_store_epoch cfg store > get_block_epoch cfg store r then
+        B.state.unrealized_justified r
+      else B.state.realized_justified r) := by
+  have haccepted := E.acceptedRoot_of_causal_known cfg ext hstore hr
+  apply (hstore.getVotingSource_reads_acceptedSelector cfg ext B hr
+    ).normalize_eq_of_anchor_or_after
+  split_ifs
+  · exact B.state.unrealized_justified_anchor_or_after cfg ext haccepted
+  · exact B.state.realized_justified_anchor_or_after cfg ext haccepted
+
+/-- The raw voting source reads as its anchor normalization. -/
+theorem ScheduledPrefixStore.getVotingSource_reads_normalize
+    {store : Store Root} (hstore : E.ScheduledPrefixStore cfg ext store)
+    (B : ScheduledFFGInterpretation cfg ext E)
+    {r : Root} (hr : r ∈ store.block_roots) :
+    CheckpointReadsAs (get_voting_source cfg store r)
+      (normalizeAnchorCheckpoint B.anchor (get_voting_source cfg store r)) := by
+  rw [hstore.getVotingSource_normalize_eq cfg ext B hr]
+  exact hstore.getVotingSource_reads_acceptedSelector cfg ext B hr
+
+/-- Anchor normalization does not change the epoch of the voting source. -/
+theorem ScheduledPrefixStore.getVotingSource_normalize_epoch
+    {store : Store Root} (hstore : E.ScheduledPrefixStore cfg ext store)
+    (B : ScheduledFFGInterpretation cfg ext E)
+    {r : Root} (hr : r ∈ store.block_roots) :
+    (normalizeAnchorCheckpoint B.anchor (get_voting_source cfg store r)).epoch =
+      (get_voting_source cfg store r).epoch :=
+  (hstore.getVotingSource_reads_normalize cfg ext B hr).epoch_eq.symm
+
+/-- The anchor-normalized executable voting source of a known root owns
+positive accepted AU evidence at that same root. -/
 theorem ScheduledPrefixStore.getVotingSource_AU
     {store : Store Root} (hstore : E.ScheduledPrefixStore cfg ext store)
     (B : ScheduledFFGInterpretation cfg ext E)
     {r : Root} (hr : r ∈ store.block_roots) :
-    B.state.AvailableCheckpoint cfg ext r (get_voting_source cfg store r) := by
+    B.state.AvailableCheckpoint cfg ext r
+      (normalizeAnchorCheckpoint B.anchor (get_voting_source cfg store r)) := by
   have haccepted := E.acceptedRoot_of_causal_known cfg ext hstore hr
-  rw [hstore.getVotingSource_eq_acceptedSelector cfg ext B hr]
+  rw [hstore.getVotingSource_normalize_eq cfg ext B hr]
   split_ifs
   · exact B.state.gu_AU cfg ext haccepted
   · exact B.state.gj_AU cfg ext haccepted
@@ -150,8 +199,8 @@ theorem acceptedVotingSource_epoch_le_of_currentEpoch_le
       get_block_epoch cfg endpoint r := by
     simp only [get_block_epoch, hblock]
   have haccepted := hqueryAt.acceptedRoot
-  rw [hquery.getVotingSource_eq_acceptedSelector cfg ext B hrQ,
-    hendpoint.getVotingSource_eq_acceptedSelector cfg ext B hrM]
+  rw [hquery.getVotingSource_epoch_eq_acceptedSelector cfg ext B hrQ,
+    hendpoint.getVotingSource_epoch_eq_acceptedSelector cfg ext B hrM]
   by_cases hqOld : get_current_store_epoch cfg query >
       get_block_epoch cfg query r
   · have hmOld : get_current_store_epoch cfg endpoint >
@@ -198,8 +247,8 @@ theorem acceptedVotingSourceEpochChainPersistence
     E.acceptedBlockAt_of_causal_known cfg ext hstore hseed
   have htipAt : E.BlockKnownInScheduledPrefix cfg ext tip (store.blocks tip) :=
     E.acceptedBlockAt_of_causal_known cfg ext hstore htip
-  rw [hstore.getVotingSource_eq_acceptedSelector cfg ext B hseed,
-    hstore.getVotingSource_eq_acceptedSelector cfg ext B htip]
+  rw [hstore.getVotingSource_epoch_eq_acceptedSelector cfg ext B hseed,
+    hstore.getVotingSource_epoch_eq_acceptedSelector cfg ext B htip]
   by_cases hseedOld : get_current_store_epoch cfg store >
       get_block_epoch cfg store seed
   · rw [if_pos hseedOld]
@@ -252,7 +301,8 @@ structure AcceptedRetainedPhaseSourceCarrierAt
     (get_node_for_root selected) = true
   tip_is_leaf : store.block_roots.filter
     (fun r => (store.blocks r).parent_root = tip) = []
-  source_au : B.state.AvailableCheckpoint cfg ext tip (get_voting_source cfg store tip)
+  source_au : B.state.AvailableCheckpoint cfg ext tip
+    (normalizeAnchorCheckpoint B.anchor (get_voting_source cfg store tip))
   source_recent : (get_voting_source cfg store tip).epoch + 2 ≥
     get_current_store_epoch cfg store
 

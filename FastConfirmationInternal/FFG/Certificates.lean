@@ -31,7 +31,7 @@ structure SupermajorityLink (E : Execution Root)
     ∃ (w : ValidatorIndex) (n : ℕ) (a : Attestation Root) (fromBlock : Bool),
       Event.attestation a fromBlock ∈ E.schedule w n ∧
       i ∈ a.attesting_indices ∧
-      a.data.source = source ∧ a.data.target = target
+      CheckpointReadsAs a.data.source source ∧ a.data.target = target
   supermajority : 2 * E.total_active cfg ≤ 3 * E.weight signers
 
 /-- Checkpoint justification generated from the trusted anchor by concrete

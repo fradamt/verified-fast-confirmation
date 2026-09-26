@@ -102,7 +102,9 @@ variable (E : Execution Root)
 /-- Faithful primitive at the opaque beacon-state transition boundary.
 
 For an actual accepted block, its realized finalized checkpoint (`GF`) is
-either the checkpoint-sync anchor or at least two epochs behind the block.
+either reads as the anchor (`CheckpointReadsAs`: the anchor itself, or at a
+genesis anchor the Phase0 genesis stub `(GENESIS_EPOCH, ZERO_HASH)`) or is at
+least two epochs behind the block.
 This is exactly the reachable-post-state consequence of Phase0's
 process-epoch-before-slot-increment order which is erased by the abstract
 `state_transition` field. -/
@@ -111,7 +113,7 @@ def ImportedBlockFinalizationLag
   ∀ t : E.SuccessfulScheduledBlockImport cfg ext,
     let finalized :=
       (t.postStore.block_states t.signedBlock.root).finalized_checkpoint
-    finalized = B.anchor ∨
+    CheckpointReadsAs finalized B.anchor ∨
       finalized.epoch + 2 ≤
         compute_epoch_at_slot cfg t.signedBlock.message.slot
 

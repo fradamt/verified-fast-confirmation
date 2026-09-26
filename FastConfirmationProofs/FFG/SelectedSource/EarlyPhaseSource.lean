@@ -450,12 +450,13 @@ theorem StrictSelectedResultMechanicalFacts.fcrStep_previous_endpointRecentSourc
       E.deadline_block_relay_at_endpoint cfg ext hsync.deadline_block_relay v hv origin _ horiginH
         hseedOrigin' horiginDeadline w hw m hmH hstartTarget
         (lt_of_le_of_lt horiginLe (Nat.lt_succ_self n) |>.trans_le hnm)
-    let target := get_voting_source cfg
+    let target := normalizeAnchorCheckpoint B.anchor (get_voting_source cfg
       (E.fcrStoreAtCall cfg ext v n).store
-      (E.fcrStoreAtCall cfg ext v n).previous_slot_head
+      (E.fcrStoreAtCall cfg ext v n).previous_slot_head)
     have hsourceAU : B.state.AvailableCheckpoint cfg ext
         (E.fcrStoreAtCall cfg ext v n).previous_slot_head target := by
       exact hqueryCausal.getVotingSource_AU cfg ext B hseedQ
+    have hnrmEpoch := hqueryCausal.getVotingSource_normalize_epoch cfg ext B hseedQ
     have hreal := E.finalizedCheckpoint_resetRealizedAt_of_acceptedGlobalTrajectory
       cfg ext B hT hanchor hboundary (w := w) m
     have hfinalizedKnown : (E.store cfg ext w m).finalized_checkpoint.root ∈
@@ -477,9 +478,12 @@ theorem StrictSelectedResultMechanicalFacts.fcrStep_previous_endpointRecentSourc
             B.state.includedAttestations.relation hincluded
         rw [hFanchor]
         exact CertifiedJustified.anchor_epoch_le (cfg := cfg) hcert
-      · change target.epoch + 2 ≥ get_current_store_epoch cfg
-          (E.fcrStoreAtCall cfg ext v n).store at hrecent
+      · change (get_voting_source cfg (E.fcrStoreAtCall cfg ext v n).store
+            (E.fcrStoreAtCall cfg ext v n).previous_slot_head).epoch + 2 ≥
+          get_current_store_epoch cfg (E.fcrStoreAtCall cfg ext v n).store at hrecent
         rw [hsameEpoch] at hFdelay
+        change _ ≤ (normalizeAnchorCheckpoint B.anchor _).epoch
+        rw [hnrmEpoch]
         exact (Nat.add_le_add_iff_right).mp (hFdelay.trans hrecent)
     have hseedWalk : WalkKnown (E.store cfg ext v origin)
         (compute_start_slot_at_epoch cfg
@@ -529,10 +533,12 @@ theorem StrictSelectedResultMechanicalFacts.fcrStep_previous_endpointRecentSourc
           cfg ext hA v hv (n + 1) result hn1H hselectedQ
           w hw m hslotForward hmH u hu nu hHnu d hslot hdeadline
           hd hdQuery hanc
-      let target := get_voting_source cfg
-        (E.fcrStoreAtCall cfg ext v n).store result
+      let target := normalizeAnchorCheckpoint B.anchor (get_voting_source cfg
+        (E.fcrStoreAtCall cfg ext v n).store result)
       have hsourceAU : B.state.AvailableCheckpoint cfg ext result target :=
         hqueryCausal.getVotingSource_AU cfg ext B h.result_known
+      have hnrmEpoch := hqueryCausal.getVotingSource_normalize_epoch cfg ext B
+        h.result_known
       have hreal := E.finalizedCheckpoint_resetRealizedAt_of_acceptedGlobalTrajectory
         cfg ext B hT hanchor hboundary (w := w) m
       have hfinalizedKnown : (E.store cfg ext w m).finalized_checkpoint.root ∈
@@ -554,9 +560,12 @@ theorem StrictSelectedResultMechanicalFacts.fcrStep_previous_endpointRecentSourc
               B.state.includedAttestations.relation hincluded
           rw [hFanchor]
           exact CertifiedJustified.anchor_epoch_le (cfg := cfg) hcert
-        · change target.epoch + 2 ≥ get_current_store_epoch cfg
-            (E.fcrStoreAtCall cfg ext v n).store at hrecent
+        · change (get_voting_source cfg (E.fcrStoreAtCall cfg ext v n).store
+              result).epoch + 2 ≥
+            get_current_store_epoch cfg (E.fcrStoreAtCall cfg ext v n).store at hrecent
           rw [hsameEpoch] at hFdelay
+          change _ ≤ (normalizeAnchorCheckpoint B.anchor _).epoch
+          rw [hnrmEpoch]
           exact (Nat.add_le_add_iff_right).mp (hFdelay.trans hrecent)
       have hselectedWalk : WalkKnown (E.store cfg ext u nu)
           (compute_start_slot_at_epoch cfg

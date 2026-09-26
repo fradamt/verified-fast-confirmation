@@ -58,6 +58,12 @@ def cp(c):
     return (int(c.epoch), bytes(c.root).hex())
 
 
+def reads_as(raw, c):
+    """`CheckpointReadsAs` on projected checkpoints: equal, or both at
+    GENESIS_EPOCH."""
+    return raw == c or (raw[0] == 0 and c[0] == 0)
+
+
 class AbsentOptionalField(Exception):
     """An optional inventory field that the Lean source does not contain."""
 
@@ -414,11 +420,28 @@ def run(repo: Path):
           "ffg_interpretation.anchor = E.genesis_store.justified_checkpoint",
           anchor_cases,lambda d:(cp(d[2].justified_checkpoint)==(int(d[0].slot)//8,bytes(d[3]).hex()),
                                  {"state":projection(d[0]),"store_checkpoint":cp(d[2].justified_checkpoint)}))
+    # NextSlotSafetyPremises.anchor_state_checkpoints: the anchor epoch is
+    # GENESIS_EPOCH, or the anchor state carries the anchor as its current
+    # justified and finalized checkpoints. A raw checkpoint-sync state with
+    # older checkpoints is outside the premise.
+    def anchor_condition(d):
+        anchor=cp(d[2].justified_checkpoint)
+        return anchor[0]==0 or (cp(d[0].current_justified_checkpoint)==anchor and cp(d[0].finalized_checkpoint)==anchor)
+    in_scope=[(l,d) for l,d in anchor_cases if anchor_condition(d)]
+    out_of_scope=[(l,d) for l,d in anchor_cases if not anchor_condition(d)]
+    check("NextSlotSafetyPremises.anchor_state_checkpoints",
+          "anchor.epoch = GENESIS_EPOCH or (E.anchor_state.current_justified_checkpoint = anchor and E.anchor_state.finalized_checkpoint = anchor)",
+          [(l,d) for l,d in anchor_cases if l=="genesis"],lambda d:(anchor_condition(d),
+                                 {"state":projection(d[0]),"anchor":cp(d[2].justified_checkpoint)}))
+    check("regression.anchor_state_checkpoints_raw_checkpoint_sync",
+          "Expected failure, labelled: a raw checkpoint-sync-like anchor state with older checkpoints does not satisfy anchor_state_checkpoints",
+          out_of_scope,lambda d:(anchor_condition(d),
+                                 {"state":projection(d[0]),"anchor":cp(d[2].justified_checkpoint)}),known=True)
     check("FFGStateReadAgreement.genesis_unrealized_justification",
-          "E.genesis_store.unrealized_justifications r = S.unrealized_justified r, together with genesis_gu fixing S.unrealized_justified to eager PJF",
-          anchor_cases,lambda d:(cp(d[2].unrealized_justifications[d[3]])==cp(eager((spec,d[0],int(d[0].slot))).current_justified_checkpoint),
+          "CheckpointReadsAs (E.genesis_store.unrealized_justifications r) (S.unrealized_justified r), together with genesis_gu reading eager PJF as S.unrealized_justified",
+          in_scope,lambda d:(reads_as(cp(d[2].unrealized_justifications[d[3]]),cp(eager((spec,d[0],int(d[0].slot))).current_justified_checkpoint)),
                                  {"state":projection(d[0]),"store_unrealized":cp(d[2].unrealized_justifications[d[3]]),
-                                  "eager":projection(eager((spec,d[0],int(d[0].slot))))}),known=True)
+                                  "eager":projection(eager((spec,d[0],int(d[0].slot))))}))
     # Accept a valid child through the Gloas handler, then read the actual
     # per-root unrealized checkpoint written by compute_pulled_up_tip.
     accepted=[]
@@ -442,17 +465,20 @@ def run(repo: Path):
           "(t.postStore.block_states t.signedBlock.root).finalized_checkpoint = S.realized_finalized t.signedBlock.root",
           accepted,lambda d:(cp(d[0].block_states[d[1]].finalized_checkpoint)==cp(d[2].finalized_checkpoint),
                              {"store":projection(d[0].block_states[d[1]]),"transition":projection(d[2])}))
+    # The probe reads the raw block-state checkpoint. transition_gj reads it
+    # as the selector, so the selector is the anchor when the raw checkpoint
+    # reads as the anchor (the genesis stub case).
     def anchor_or_before(d):
         store,root,post=d
         j=store.block_states[root].current_justified_checkpoint
         anchor=store.justified_checkpoint
         epoch=int(store.blocks[root].slot)//8
-        return cp(j)==cp(anchor) or int(j.epoch)<epoch,{
+        return reads_as(cp(j),cp(anchor)) or int(j.epoch)<epoch,{
             "block_slot":int(store.blocks[root].slot),"block_epoch":epoch,
             "justified":cp(j),"anchor":cp(anchor)}
     check("AcceptedBlockFFGState.realized_justified_anchor_or_before",
           "realized_justified r = anchor or (realized_justified r).epoch < compute_epoch_at_slot cfg b.slot",
-          accepted,anchor_or_before,known=True)
+          accepted,anchor_or_before)
     check("AcceptedBlockFFGState.realized_finalized_epoch_le_realized_justified",
           "(realized_finalized r).epoch <= (realized_justified r).epoch",
           accepted,lambda d:(int(d[0].block_states[d[1]].finalized_checkpoint.epoch)<=int(d[0].block_states[d[1]].current_justified_checkpoint.epoch),

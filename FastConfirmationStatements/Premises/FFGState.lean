@@ -155,7 +155,7 @@ structure IncludedSupermajorityLink (E : Execution Root)
     ∃ a : Attestation Root,
       AttestationIncludedOnChain E included carrier a ∧
       i ∈ a.attesting_indices ∧
-      a.data.source = source ∧
+      CheckpointReadsAs a.data.source source ∧
       a.data.target = target
   supermajority : 2 * E.total_active cfg ≤ 3 * E.weight signers
 
@@ -276,36 +276,48 @@ def AvailableCheckpoint (S : AcceptedBlockFFGState cfg ext E anchor)
 end AcceptedBlockFFGState
 
 /-- Accepted-only selector coherence.  Its transition equations quantify
-only over actual successful `on_block` calls at exact causal prefixes. -/
+only over actual successful `on_block` calls at exact causal prefixes.  Each
+raw state or store read reads as the selector (`CheckpointReadsAs`): it is
+equal to it, or both are `GENESIS_EPOCH` checkpoints.  Thus a real genesis
+anchor state with the stub `Checkpoint(GENESIS_EPOCH, ZERO_HASH)` reads as
+the anchor, and its descendants keep that reading until the first
+justification. -/
 structure FFGStateReadAgreement
     {E : Execution Root} {anchor : Checkpoint Root}
     (S : AcceptedBlockFFGState cfg ext E anchor) : Prop where
   genesis_gj : ∀ r ∈ E.genesis_store.block_roots,
-    (E.genesis_store.block_states r).current_justified_checkpoint = S.realized_justified r
+    CheckpointReadsAs (E.genesis_store.block_states r).current_justified_checkpoint
+      (S.realized_justified r)
   genesis_gf : ∀ r ∈ E.genesis_store.block_roots,
-    (E.genesis_store.block_states r).finalized_checkpoint = S.realized_finalized r
+    CheckpointReadsAs (E.genesis_store.block_states r).finalized_checkpoint
+      (S.realized_finalized r)
   genesis_gu : ∀ r ∈ E.genesis_store.block_roots,
-    (ext.process_justification_and_finalization
-      (E.genesis_store.block_states r)).current_justified_checkpoint = S.unrealized_justified r
+    CheckpointReadsAs (ext.process_justification_and_finalization
+      (E.genesis_store.block_states r)).current_justified_checkpoint
+      (S.unrealized_justified r)
   genesis_guf : ∀ r ∈ E.genesis_store.block_roots,
-    (ext.process_justification_and_finalization
-      (E.genesis_store.block_states r)).finalized_checkpoint = S.unrealized_finalized r
+    CheckpointReadsAs (ext.process_justification_and_finalization
+      (E.genesis_store.block_states r)).finalized_checkpoint
+      (S.unrealized_finalized r)
   genesis_unrealized_justification : ∀ r ∈ E.genesis_store.block_roots,
-    E.genesis_store.unrealized_justifications r = S.unrealized_justified r
+    CheckpointReadsAs (E.genesis_store.unrealized_justifications r)
+      (S.unrealized_justified r)
   transition_gj : ∀ t : E.SuccessfulScheduledBlockImport cfg ext,
-    (t.postStore.block_states t.signedBlock.root).current_justified_checkpoint =
-      S.realized_justified t.signedBlock.root
+    CheckpointReadsAs
+      (t.postStore.block_states t.signedBlock.root).current_justified_checkpoint
+      (S.realized_justified t.signedBlock.root)
   transition_gf : ∀ t : E.SuccessfulScheduledBlockImport cfg ext,
-    (t.postStore.block_states t.signedBlock.root).finalized_checkpoint =
-      S.realized_finalized t.signedBlock.root
+    CheckpointReadsAs
+      (t.postStore.block_states t.signedBlock.root).finalized_checkpoint
+      (S.realized_finalized t.signedBlock.root)
   transition_gu : ∀ t : E.SuccessfulScheduledBlockImport cfg ext,
-    (ext.process_justification_and_finalization
+    CheckpointReadsAs (ext.process_justification_and_finalization
       (t.postStore.block_states t.signedBlock.root)
-    ).current_justified_checkpoint = S.unrealized_justified t.signedBlock.root
+    ).current_justified_checkpoint (S.unrealized_justified t.signedBlock.root)
   transition_guf : ∀ t : E.SuccessfulScheduledBlockImport cfg ext,
-    (ext.process_justification_and_finalization
+    CheckpointReadsAs (ext.process_justification_and_finalization
       (t.postStore.block_states t.signedBlock.root)
-    ).finalized_checkpoint = S.unrealized_finalized t.signedBlock.root
+    ).finalized_checkpoint (S.unrealized_finalized t.signedBlock.root)
 
 /-- Accepted selector coherence plus checkpoint reflection at every exact
 causal prefix store. -/
@@ -443,7 +455,7 @@ structure SourceTargetLinkSupportAt
       a.data.slot ≤ E.slot_at cfg m ∧
       compute_epoch_at_slot cfg a.data.slot = target.epoch ∧
       i ∈ E.committee a.data.slot ∧
-      a.data.source = source ∧
+      CheckpointReadsAs a.data.source source ∧
       a.data.target = target
   supermajority : 2 * E.total_active cfg ≤ 3 * E.weight signers
 
