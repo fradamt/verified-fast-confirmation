@@ -26,7 +26,7 @@ Concretely `LatestMessageProvenance E cfg sl store` says: whenever
   bounded by the ambient slot `sl`;
 * `i ∈ E.committee a.data.slot` — `i` is in `a`'s slot committee (the span
   confinement `ByzantineWeightPremises` budgets), from
-  `BeaconExternalsPremises.valid_attestation_committee`;
+  `BeaconExternalsPremises.on_attestation_committee`;
 * `m.root ∈ store.block_roots` and `(store.blocks m.root).slot ≤ a.data.slot` —
   the voted block is known and no later than `a`'s slot (the
   `validate_on_attestation` known-block / not-future gates).
@@ -43,8 +43,8 @@ takes the sanctioned `∃`-form `E.genesis_store = get_forkchoice_store …`
 (latest messages start empty). `WellFormedExecution` (wire-root injectivity,
 already in `SpecAssumptions`) preserves the known-block slot fact across
 `on_block` (block records are stable at commonly-known roots — `BlockAgreement`),
-and `BeaconExternalsPremises` supplies committee confinement on reachable validation
-states. The trajectory theorem requires an honest node and an in-horizon
+and `BeaconExternalsPremises` supplies committee confinement for successful
+delivered attestations. The trajectory theorem requires an honest node and an in-horizon
 second.
 -/
 
@@ -292,9 +292,9 @@ private theorem update_latest_messages_checkpointData
 
 /-- `on_attestation` records the applied attestation's provenance for the freshly
 set messages (via `update_latest_messages_mem` + the `validate_on_attestation`
-conjuncts + `BeaconExternalsPremises.valid_attestation_committee`) and transports the
+conjuncts + `BeaconExternalsPremises.on_attestation_committee`) and transports the
 pre-existing ones (the block set and clock are unchanged). The successful
-post-store supplies the reachable checkpoint state. `hcur` bounds the store's
+post-store supplies the delivery scope. `hcur` bounds the store's
 current slot by `sl`. -/
 theorem on_attestation_LMP {E : Execution Root} {sl : Slot}
     (hec : BeaconExternalsPremises cfg ext E) {store store' : Store Root}
@@ -303,30 +303,11 @@ theorem on_attestation_LMP {E : Execution Root} {sl : Slot}
     (hh : on_attestation cfg ext store a ifb = some store')
     (hpost : E.HonestPrefixStoreWithinHorizon cfg ext store') :
     LatestMessageProvenance E cfg sl store' := by
+  have hcommittee := hec.on_attestation_committee store store' a ifb hpost hh
   have hsb := on_attestation_sameBlocks cfg ext hh
   simp only [on_attestation] at hh
   split_ifs at hh with hv hvi
   cases hh
-  have hcache := update_latest_messages_checkpointData
-    (store_target_checkpoint_state cfg ext store a.data.target) a.attesting_indices a
-  have hkeys := congrArg Prod.fst hcache
-  have hstates := congrArg Prod.snd hcache
-  dsimp only at hkeys hstates
-  have htarget : a.data.target ∈
-      (store_target_checkpoint_state cfg ext store a.data.target).checkpoint_state_keys := by
-    by_cases hcached : a.data.target ∈ store.checkpoint_state_keys
-    · simp [store_target_checkpoint_state, hcached]
-    · simp [store_target_checkpoint_state, hcached]
-  have hreachable : E.ReachableValidationState cfg ext
-      ((store_target_checkpoint_state cfg ext store a.data.target).checkpoint_states
-        a.data.target) := by
-    have hkey : a.data.target ∈
-        (update_latest_messages
-          (store_target_checkpoint_state cfg ext store a.data.target)
-          a.attesting_indices a).checkpoint_state_keys := by
-      rw [hkeys]
-      exact htarget
-    simpa only [hstates] using hpost.checkpointState cfg ext hkey
   simp only [validate_on_attestation, Bool.and_eq_true, decide_eq_true_eq] at hv
   obtain ⟨⟨⟨⟨⟨⟨⟨⟨⟨_, hB⟩, _⟩, hD⟩, hE⟩, _⟩, _⟩, _⟩, _⟩, hG⟩ := hv
   intro i m hm
@@ -335,7 +316,7 @@ theorem on_attestation_LMP {E : Execution Root} {sl : Slot}
     obtain ⟨a', h1, h2, h3, h4, h5, h6, h7, h8, h9⟩ := h i m hold
     exact ⟨a', h1, h2, h3, h4, h5, h6, hsb.1 ▸ h7, hsb.2.1 ▸ h8, h9⟩
   · exact ⟨a, hi, by rw [hmeq]; exact hB, by rw [hmeq], by rw [hmeq]; rfl,
-      le_trans hG hcur, hec.valid_attestation_committee _ a hreachable hvi i hi,
+      le_trans hG hcur, hcommittee i hi,
       by rw [hmeq]; exact hsb.1 ▸ hD, by rw [hmeq]; exact hsb.2.1 ▸ hE,
       by rw [hmeq]⟩
 

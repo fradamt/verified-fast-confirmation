@@ -91,12 +91,29 @@ theorem completedPrefix_pulledUpHead_validators
     obtain ⟨ast, ablk, hgeq, _, _⟩ := hT.genesis_structure
     exact ⟨ast, ablk, hgeq⟩
   have hregistry :=
-    (E.registryConstant cfg ext hT.externals_coherence hgen v hv n).1
+    (E.registryConstant cfg ext hT.externals_coherence hgen v hv n hHn).1
       (get_head cfg (E.store cfg ext v n)).root hhead
+  have htargetH : E.SlotWithinHorizon cfg
+      (compute_start_slot_at_epoch cfg
+        (get_current_store_epoch cfg (E.store cfg ext v n))) := by
+    have hle : compute_start_slot_at_epoch cfg
+        (get_current_store_epoch cfg (E.store cfg ext v n)) ≤
+        E.slot_at cfg n := by
+      simp only [compute_start_slot_at_epoch, get_current_store_epoch,
+        E.store_current_slot cfg ext v n, compute_epoch_at_slot]
+      exact Nat.div_mul_le_self _ _
+    constructor
+    · exact hle.trans hHn.2.1
+    · simpa only [compute_start_slot_at_epoch, get_current_store_epoch,
+        E.store_current_slot cfg ext v n, compute_epoch_at_slot,
+        Nat.mul_div_cancel _ cfg.slots_per_epoch_pos] using hHn.2.2
   simp only [get_pulled_up_head_state]
   split_ifs
-  · rw [hT.externals_coherence.process_slots_registry]
-    exact hregistry
+  · apply hT.externals_coherence.registry_static_in_horizon
+    right
+    refine ⟨_, _, ?_, htargetH, rfl⟩
+    exact ⟨_, E.honest_store_prefix cfg ext v hv n hHn,
+      Or.inl ⟨_, hhead, rfl⟩⟩
   · exact hregistry
 
 /-- Pulling the head up makes its state epoch exactly the execution store's

@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """Deterministic state-function contract probes for the pinned pyspec.
 
-The source has no total Boolean wrapper for Python exceptions. BLS is disabled
-through the spec test-helper switch, so these probes do not test signatures.
+The default-state indexed check uses the Lean totalization convention:
+Python rejection or exception maps to false. BLS is disabled through the
+spec test-helper switch, so these probes do not test signatures.
 Known false laws remain executable findings and do not stop other probes.
 """
 from __future__ import annotations
@@ -56,6 +57,14 @@ def projection(st):
 
 def cp(c):
     return (int(c.epoch), bytes(c.root).hex())
+
+
+def totalized_indexed_valid(spec, state, attestation):
+    """The Lean Boolean maps every Python rejection, including an exception, to false."""
+    try:
+        return bool(spec.is_valid_indexed_attestation(state, attestation))
+    except Exception:
+        return False
 
 
 def lean_statement(name: str) -> str | None:
@@ -216,9 +225,27 @@ def run(repo: Path):
     check("BeaconExternalsPremises.process_slots_slot",
           "st.slot < s -> (ext.process_slots st s).slot = s",
           slot_cases, lambda d:(int(slotted(d).slot)==d[2],{"pre":projection(d[1]),"target":d[2],"post":projection(slotted(d))}))
-    check("BeaconExternalsPremises.process_slots_registry",
-          "(ext.process_slots st s).validators = st.validators",
-          slot_cases, lambda d:(projection(slotted(d))["validators"]==projection(d[1])["validators"],{"pre":projection(d[1]),"target":d[2],"post":projection(slotted(d))}), known=True)
+    # These accepted epoch transitions change validator records. They are
+    # outside RegistryStateInHorizon when the execution uses a static anchor.
+    registry_changes=[]
+    for mode in ("activation", "exit", "hysteresis"):
+        pre=genesis(spec, [32 * 10**9] * 64, 32 * 10**9)
+        spec.process_slots(pre, 7)
+        validator=pre.validators[0]
+        if mode == "activation":
+            validator.activation_epoch=spec.FAR_FUTURE_EPOCH
+            validator.activation_eligibility_epoch=spec.Epoch(0)
+        elif mode == "exit":
+            validator.effective_balance=spec.Gwei(16 * 10**9)
+            pre.balances[0]=spec.Gwei(16 * 10**9)
+        else:
+            pre.balances[0]=spec.Gwei(30 * 10**9)
+        registry_changes.append((f"gloas:{mode}:7->8",(spec,pre,8)))
+    check("RegistryScope.excludes_epoch_registry_changes",
+          "Epoch processing can set activation and exit epochs or update effective balance; such runs do not meet the static execution scope",
+          registry_changes,
+          lambda d:(projection(slotted(d))["validators"]!=projection(d[1])["validators"],
+                    {"pre":projection(d[1]),"target":d[2],"post":projection(slotted(d))}))
     check("BeaconExternalsPremises.pjf_checkpoint_epoch",
           "(ext.process_justification_and_finalization st).current_justified_checkpoint.epoch <= compute_epoch_at_slot cfg st.slot",
           st_samples, lambda st:(int((lambda x:(spec if st.__class__ is states[0][1].__class__ else phase0).process_justification_and_finalization(x) or x)(st.copy()).current_justified_checkpoint.epoch)<=int(st.slot)//8,{"pre":projection(st)}))
@@ -265,9 +292,11 @@ def run(repo: Path):
     check("BeaconExternalsPremises.state_transition_slot",
           "ext.state_transition st b = some st' -> st'.slot = b.message.slot",
           transition_cases,lambda d:(int(d[3].slot)==int(d[2].message.slot),{"pre":projection(d[1]),"post":projection(d[3])}))
-    check("BeaconExternalsPremises.state_transition_registry",
-          "ext.state_transition st b = some st' -> st'.validators = st.validators",
-          transition_cases,lambda d:(projection(d[3])["validators"]==projection(d[1])["validators"],{"pre":projection(d[1]),"post":projection(d[3])}),known=True)
+    check("RegistryScope.excludes_slashing_inclusion",
+          "A successful block with proposer and attester slashings changes the registry, so an execution containing it is outside the static scope",
+          [(l,d) for l,d in transition_cases if l=="gloas:both-slashings:0->1"],
+          lambda d:(projection(d[3])["validators"]!=projection(d[1])["validators"],
+                    {"pre":projection(d[1]),"post":projection(d[3])}))
     check("BeaconExternalsPremises.state_transition_pre_slot_lt",
           "ext.state_transition st b = some st' -> st.slot < b.message.slot",
           transition_cases,lambda d:(int(d[1].slot)<int(d[2].message.slot),{"pre":projection(d[1]),"post":projection(d[3])}))
@@ -325,7 +354,8 @@ def run(repo: Path):
     check("BeaconExternalsPremises.valid_attestation_default",
           "ext.is_valid_indexed_attestation (default : BeaconState Root) a = false for every a",
           [("gloas-default-canonical-index",(default,indexed))],
-          lambda d:(spec.is_valid_indexed_attestation(d[0],d[1]) is False,{"indices":[int(i) for i in d[1].attesting_indices]}),known=True)
+          lambda d:(totalized_indexed_valid(spec,d[0],d[1]) is False,
+                    {"indices":[int(i) for i in d[1].attesting_indices]}))
     # The Python indexed check does not query the slot committee. With BLS
     # switched off, an off-committee canonical index passes its Boolean check.
     off_state=states[0][1]
@@ -336,12 +366,32 @@ def run(repo: Path):
     attestation=get_attestation(spec,off_state,slot=0)
     off_attestation=spec.IndexedAttestation(
         attesting_indices=spec.AttestingIndices(data=[outsider]),data=attestation.data)
-    check("BeaconExternalsPremises.valid_attestation_committee",
-          "ext.is_valid_indexed_attestation state a = true -> every i in a.attesting_indices is in E.committee a.data.slot",
+    check("IndexedAttestation.off_committee_valid",
+          "The indexed Boolean can accept an off-committee signer; slashing evidence uses this path without on_attestation",
           [("gloas:genesis:offcommittee-index",(off_state,off_attestation,committee,outsider))],
-          lambda d:(not spec.is_valid_indexed_attestation(d[0],d[1]) or d[3] in d[2],
+          lambda d:(spec.is_valid_indexed_attestation(d[0],d[1]) and d[3] not in d[2],
                     {"slot":int(d[1].data.slot),"indices":[int(i) for i in d[1].attesting_indices],
-                     "committee":sorted(d[2]),"valid":spec.is_valid_indexed_attestation(d[0],d[1])}),known=True)
+                     "committee":sorted(d[2]),"valid":spec.is_valid_indexed_attestation(d[0],d[1])}))
+    def offcommittee_slashing(d):
+        state, outside, members = d
+        signed_state=state.copy()
+        spec.process_slots(signed_state, 1)
+        evidence=attester_slashing(spec, signed_state, slot=0)
+        for indexed_attestation in (evidence.attestation_1, evidence.attestation_2):
+            indexed_attestation.attesting_indices=spec.AttestingIndices(data=[outside])
+        anchor_state=state.copy()
+        anchor_block=spec.BeaconBlock(slot=anchor_state.slot)
+        anchor_state.latest_block_header.body_root=spec.hash_tree_root(anchor_block.body)
+        anchor_block.state_root=spec.hash_tree_root(anchor_state)
+        store=spec.get_forkchoice_store(anchor_state, anchor_block)
+        spec.on_attester_slashing(store, evidence)
+        return outside in store.equivocating_indices and outside not in members, {
+            "outsider":outside,"committee":sorted(members),
+            "equivocating":sorted(int(i) for i in store.equivocating_indices)}
+    check("IndexedAttestation.off_committee_slashing",
+          "Python on_attester_slashing accepts off-committee indexed evidence and only adds the signer to equivocating_indices",
+          [("gloas:genesis:offcommittee-slashing",(off_state,outsider,committee))],
+          offcommittee_slashing)
     # The indexed-attestation Boolean is checked before and after an actual
     # empty-slot transition. BLS is disabled by the test helper switch.
     canonical=spec.IndexedAttestation(attesting_indices=spec.AttestingIndices(data=[0]))

@@ -9,23 +9,37 @@ public import FastConfirmationStatements.Premises.Synchrony
 namespace FastConfirmation.Spec
 variable {Root : Type*} [LinearOrder Root] [Inhabited Root]
 variable (cfg : Config) (ext : BeaconFunctionInterface Root)
-/-- Contracts for the abstract `BeaconFunctionInterface` under the static-registry model.
+/-- A state held in an honest, in-horizon causal store, or a state obtained by
+`process_slots` at an in-horizon slot from one of its keyed validation states. Successful scheduled
+imports at honest nodes enter the first case through their successor prefix.
+The second case includes the checkpoint and pulled-up head states computed by
+handlers. -/
+def RegistryStateInHorizon (E : Execution Root) (state : BeaconState Root) : Prop :=
+  E.ReachableValidationState cfg ext state ∨
+    ∃ base slot, E.ReachableValidationState cfg ext base ∧
+      E.SlotWithinHorizon cfg slot ∧
+      ext.process_slots base slot = state
+
+/-- Contracts for the abstract `BeaconFunctionInterface` and the execution.
 The three indexed-attestation laws apply only to keyed states in honest,
 in-horizon causal stores. Default-state rejection and validity preservation
 under Phase0 slot processing are separate contracts. The other fields state
-slot/registry behavior and committee agreement; this record is not a proof
+slot behavior and committee agreement; this record is not a proof
 that the external interpretation refines the full beacon-chain functions. -/
 structure BeaconExternalsPremises (E : Execution Root) : Prop where
-  /-- `process_slots` targets its slot and preserves the registry. -/
+  /-- `process_slots` targets its slot. -/
   process_slots_slot : ∀ st (s : Slot), st.slot < s → (ext.process_slots st s).slot = s
-  process_slots_registry : ∀ st s, (ext.process_slots st s).validators = st.validators
-  /-- a valid state transition lands on the block's slot and preserves the
-      registry (no deposits/exits in the window — the static-set idealization,
-      spec's own balance-source design note). -/
+  /-- The execution-scope static-registry condition. Every keyed state in an
+      honest in-horizon causal store and every in-horizon `process_slots`
+      result computed from one has the anchor registry. This includes successful scheduled
+      imports at honest nodes. Real runs with included slashings or deposits,
+      or activations, exits, or effective-balance changes taking effect in the
+      horizon do not satisfy this condition. -/
+  registry_static_in_horizon : ∀ state,
+    RegistryStateInHorizon cfg ext E state → state.validators = E.registry
+  /-- A valid state transition lands on the block's slot. -/
   state_transition_slot : ∀ st (b : SignedBeaconBlock Root) st',
     ext.state_transition st b = some st' → st'.slot = b.message.slot
-  state_transition_registry : ∀ st (b : SignedBeaconBlock Root) st',
-    ext.state_transition st b = some st' → st'.validators = st.validators
   /-- a valid state transition requires the pre-state to precede the block's
       slot (the real `process_slots` assert inside `state_transition`) —
       gives base proof layer the parent-slot ordering `WellFormedStore` preservation
@@ -74,14 +88,16 @@ structure BeaconExternalsPremises (E : Execution Root) : Prop where
     ext.is_valid_indexed_attestation state a = true →
     ∀ v ∈ E.honest, v ∈ a.attesting_indices →
       ∃ m a', E.vote v a.data.slot = some (m, a') ∧ a.data = a'.data
-  /-- Committee confinement on the same reachable-state domain: validating attestations carry only indices from
-      the slot's committee (in the real pipeline `get_indexed_attestation`
-      derives indices from the committee and aggregation bits — absorbed into
-      the wire object, so the constraint is restored here; confines LMD
-      supporters to the spans `ByzantineWeightPremises` budgets). -/
-  valid_attestation_committee : ∀ (state : BeaconState Root) (a : Attestation Root),
-    E.ReachableValidationState cfg ext state →
-    ext.is_valid_indexed_attestation state a = true →
+  /-- Committee confinement only for a successful `on_attestation` delivery
+      in an honest in-horizon causal prefix. Python obtains these indices from
+      committee bits before this handler. The Lean wire object is already
+      indexed, so this is an execution premise. Attester-slashing evidence is
+      checked by the same indexed Boolean but does not enter this handler and
+      need not have committee indices. -/
+  on_attestation_committee : ∀ (store store' : Store Root) (a : Attestation Root)
+      (is_from_block : Bool),
+    E.HonestPrefixStoreWithinHorizon cfg ext store' →
+    on_attestation cfg ext store a is_from_block = some store' →
     ∀ i ∈ a.attesting_indices, i ∈ E.committee a.data.slot
   /-- the beacon chain assigns each validator to exactly one slot per epoch
       (`get_committee_assignment` uniqueness — a structural fact of the

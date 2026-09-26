@@ -612,7 +612,7 @@ theorem endpoint_status_strip_lo
   have hval : bs.validators = E.registry := by
     rw [hbsEq]
     exact (E.registryConstant cfg ext hA.externals_coherence hgen
-      v hv q).2 cp hkey
+      v hv q hqH).2 cp hkey
   have htab : get_total_active_balance cfg bs = E.total_active cfg := by
     rw [hbsEq]
     exact E.checkpoint_states_total_active_balance cfg ext
@@ -1674,7 +1674,7 @@ theorem statusMargin_crossing_minimal
   have hval : bs.validators = E.registry := by
     rw [hbsEq]
     exact (E.registryConstant cfg ext hA.externals_coherence hgen
-      v hv q).2 cp hkey
+      v hv q hqH).2 cp hkey
   have htab : get_total_active_balance cfg bs = E.total_active cfg := by
     rw [hbsEq]
     exact E.checkpoint_states_total_active_balance cfg ext hA.static_validators

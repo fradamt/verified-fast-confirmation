@@ -35,11 +35,11 @@ run_cmd do
      "envelope_delivery",
      "data_availability_relay", "attester_slashing_relay"]
   checkFields `FastConfirmation.Spec.BeaconExternalsPremises
-    ["process_slots_slot", "process_slots_registry", "state_transition_slot",
-     "state_transition_registry", "state_transition_pre_slot_lt",
+    ["process_slots_slot", "registry_static_in_horizon", "state_transition_slot",
+     "state_transition_pre_slot_lt",
      "state_transition_checkpoint_epoch", "pjf_checkpoint_epoch",
      "committees_agree", "honest_attestation_valid", "valid_attestation_honest",
-     "valid_attestation_committee", "committee_assignment_unique",
+     "on_attestation_committee", "committee_assignment_unique",
      "committee_coverage", "committee_members_active", "valid_attestation_default",
      "process_slots_attestation_valid", "verify_envelope_deterministic"]
   checkFields `FastConfirmation.Spec.ByzantineWeightPremises

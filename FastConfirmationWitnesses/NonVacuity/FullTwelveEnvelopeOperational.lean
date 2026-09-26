@@ -625,11 +625,25 @@ theorem witnessReachableValidationState_nonempty {state : BeaconState WitnessRoo
 
 theorem extCoherence :
     BeaconExternalsPremises cfg ext run := by
+  have hregistry : ∀ state, run.ReachableValidationState cfg ext state →
+      state.validators = run.registry := by
+    intro state hstate
+    obtain ⟨store, hstore, hstate⟩ := hstate
+    have hreg := witnessCausalStore_registryConstant (hstore.causal cfg ext)
+    rcases hstate with ⟨root, hroot, rfl⟩ | ⟨checkpoint, hcheckpoint, rfl⟩
+    · exact hreg.1 root hroot
+    · exact hreg.2 checkpoint hcheckpoint
   constructor
   · exact witnessExternalsCoherence.process_slots_slot
-  · exact witnessExternalsCoherence.process_slots_registry
+  · intro state hscope
+    rcases hscope with hreachable | ⟨base, slot, hreachable, _hslot, rfl⟩
+    · exact hregistry state hreachable
+    · simp only [ext, TwelveSecondSynchronyWitness.ext]
+      split_ifs
+      · simp only [witnessPJF]
+        split_ifs <;> simpa using (hregistry base hreachable)
+      · simpa using (hregistry base hreachable)
   · exact witnessExternalsCoherence.state_transition_slot
-  · exact witnessExternalsCoherence.state_transition_registry
   · exact witnessExternalsCoherence.state_transition_pre_slot_lt
   · exact witnessExternalsCoherence.state_transition_checkpoint_epoch
   · exact witnessExternalsCoherence.pjf_checkpoint_epoch
@@ -659,8 +673,11 @@ theorem extCoherence :
     refine ⟨12 * s + 3, vote s, ?_, rfl⟩
     rw [vote_data_slot]
     exact recorded_vote_some_iff.mpr ⟨hs, hvmod, rfl, rfl⟩
-  · intro state a _hreachable hvalid i hi
-    have haGround := ((witness_valid_iff state a).mp hvalid).2
+  · intro store store' a ifb _hpost hh i hi
+    simp only [on_attestation] at hh
+    split_ifs at hh with hv hvi
+    cases hh
+    have haGround := ((witness_valid_iff _ a).mp hvi).2
     obtain ⟨s, hs, rfl⟩ := groundVote_exists haGround
     have hi' : i = s % 4 := by simpa [vote] using hi
     rw [vote_data_slot]
