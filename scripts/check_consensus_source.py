@@ -19,6 +19,7 @@ EXPECTED_TOP_LEVEL_KEYS = {"schema", "repository", "commit", "license", "files"}
 EXPECTED_FILE_KEYS = {"path", "role", "git_blob", "bytes", "sha256"}
 EXPECTED_REPOSITORY = "https://github.com/ethereum/consensus-specs.git"
 EXPECTED_COMMIT = "6b9bd532cca16555e2f3282d757622ebff29743e"
+EXPECTED_FORK_COMMIT = "13f391516352f61b3ac5dcaae5be1884d104f86a"
 EXPECTED_GLOAS_DISCOUNT_SHA256 = "e62ba45c9024b6621493b9b2ac7a21913bd6426a61b3e02827e164ac4968742b"
 EXPECTED_LICENSE = "CC0-1.0"
 EXPECTED_ROLES = {
@@ -146,6 +147,12 @@ def run_git(repo: Path, args: list[str], *, binary: bool = False) -> str | bytes
 def verify_objects(repo: Path, entries: list[dict[str, Any]]) -> None:
     if not repo.is_dir():
         raise ManifestError(f"consensus-specs checkout is not a directory: {repo}")
+    head = str(run_git(repo, ["rev-parse", "--verify", "HEAD^{commit}"])).strip()
+    if head != EXPECTED_FORK_COMMIT:
+        raise ManifestError(
+            f"checkout HEAD differs from pinned fork commit: "
+            f"{head} != {EXPECTED_FORK_COMMIT}"
+        )
     object_type = str(run_git(repo, ["cat-file", "-t", EXPECTED_COMMIT])).strip()
     if object_type != "commit":
         raise ManifestError(f"{EXPECTED_COMMIT} is not a commit object")
@@ -183,19 +190,34 @@ def verify_objects(repo: Path, entries: list[dict[str, Any]]) -> None:
                 f"{actual_sha256} != {entry['sha256']}"
             )
 
-    # Documented local rule change: docs/gloas-spec-deviation.md. All manifest
-    # blobs remain the exact upstream objects; only this checkout source is
-    # permitted to differ from the pinned Gloas FCR overlay.
-    local_overlay = repo / "specs/gloas/fast-confirmation.md"
-    try:
-        local_hash = hashlib.sha256(local_overlay.read_bytes()).hexdigest()
-    except OSError as exc:
-        raise ManifestError(f"cannot read local Gloas discount overlay: {exc}") from exc
-    if local_hash != EXPECTED_GLOAS_DISCOUNT_SHA256:
-        raise ManifestError(
-            "Gloas discount overlay differs from documented deviation: "
-            f"{local_hash} != {EXPECTED_GLOAS_DISCOUNT_SHA256}"
-        )
+        # The manifest pins upstream objects. The working files must also
+        # match the fork commit, which changes the Gloas discount overlay.
+        fork_line = str(
+            run_git(repo, ["ls-tree", EXPECTED_FORK_COMMIT, "--", source_path])
+        ).strip()
+        fork_fields = fork_line.split(maxsplit=3)
+        if len(fork_fields) != 4:
+            raise ManifestError(f"missing or malformed fork tree entry for {source_path}")
+        fork_mode, fork_kind, fork_blob, fork_path = fork_fields
+        if fork_mode != "100644" or fork_kind != "blob" or fork_path != source_path:
+            raise ManifestError(
+                f"fork tree identity mismatch for {source_path}: {fork_line!r}"
+            )
+        fork_content = run_git(repo, ["cat-file", "blob", fork_blob], binary=True)
+        assert isinstance(fork_content, bytes)
+        try:
+            local_content = (repo / source_path).read_bytes()
+        except OSError as exc:
+            raise ManifestError(f"cannot read working file {source_path}: {exc}") from exc
+        if local_content != fork_content:
+            raise ManifestError(f"working file differs from pinned fork: {source_path}")
+        if source_path == "specs/gloas/fast-confirmation.md":
+            fork_hash = hashlib.sha256(fork_content).hexdigest()
+            if fork_hash != EXPECTED_GLOAS_DISCOUNT_SHA256:
+                raise ManifestError(
+                    "Gloas discount overlay differs from documented deviation: "
+                    f"{fork_hash} != {EXPECTED_GLOAS_DISCOUNT_SHA256}"
+                )
 
 
 def parse_args() -> argparse.Namespace:
@@ -218,7 +240,8 @@ def main() -> int:
         print(f"consensus source audit failed: {exc}", file=sys.stderr)
         return 1
     print(
-        f"consensus source audit passed: {len(entries)} files at {EXPECTED_COMMIT}"
+        f"consensus source audit passed: {len(entries)} working files at {EXPECTED_FORK_COMMIT} "
+        f"with upstream objects at {EXPECTED_COMMIT}"
     )
     return 0
 
