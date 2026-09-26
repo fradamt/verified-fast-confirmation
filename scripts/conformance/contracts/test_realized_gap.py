@@ -23,6 +23,9 @@ The runs are:
   block at slot 16 on the slot-8 block includes the epoch-1 votes. The
   Python fast confirmation rule confirms the slot-15 block, and the head
   leaves it at slot 24.
+* `voter`: two stores, no honest block after slot 15. At slot 32 one store
+  has finalized epoch 1 through the link 1 -> 3, while the other store at
+  slot 31 still has justified epoch 0.
 
 Names `AcceptedBlockFFGState.*` and `FFGStateReadAgreement.*` are Lean
 fields; `candidate.*` is a proposed restatement; `regression.*` records a
@@ -160,6 +163,52 @@ def fork_run(env):
     return run
 
 
+def voter_run(env):
+    """Two stores. `w` receives every block; `v` has no block after slot 15.
+
+    Honest votes in epochs 2 and 3 use the slot-15 head. Epoch-2 votes have
+    source 0 (PJF returns early at the end of epoch 1); epoch-3 votes have
+    source 1. Block X1 (slot 25) includes the epoch-2 votes and X2 (slot 31)
+    the votes of slots 24-30; `w` receives both at the end of slot 31.
+    """
+    spec = env["spec"]
+    w, v = Run(env, "voter-w"), Run(env, "voter-v")
+    parent = w.anchor_root
+    for slot in range(1, 16):
+        votes = [slot - 1] if slot >= 2 else []
+        v.pool.update(w.pool)
+        root = w.propose(slot, parent, votes)
+        v.propose(slot, parent, votes)
+        parent = root
+        w.vote(slot, parent)
+    b15 = parent
+    v.pool.update(w.pool)
+    for slot in range(16, 32):
+        w.tick(slot)
+        v.tick(slot)
+        w.pool[slot] = v.vote(slot, b15)
+    pre = w.store.block_states[b15].copy()
+    x1 = env["build_block"](spec, pre, slot=25)
+    for s in range(16, 24):
+        x1.body.attestations.append(w.pool[s])
+    signed1 = env["sign_transition"](spec, pre, x1)
+    x2 = env["build_block"](spec, pre, slot=31)
+    for s in range(24, 31):
+        x2.body.attestations.append(w.pool[s])
+    signed2 = env["sign_transition"](spec, pre, x2)
+    spec.on_block(w.store, signed1)
+    spec.on_block(w.store, signed2)
+    x2_state = w.store.block_states[spec.hash_tree_root(signed2.message)].copy()
+    spec.process_justification_and_finalization(x2_state)
+    v_justified = tc.cp(v.store.justified_checkpoint)
+    w.tick(32)
+    return {"w_finalized_slot_32": tc.cp(w.store.finalized_checkpoint)[0],
+            "v_justified_slot_31": v_justified[0],
+            "x2_unrealized": [tc.cp(x2_state.current_justified_checkpoint)[0],
+                              tc.cp(x2_state.finalized_checkpoint)[0]],
+            "vote_source_epochs": sorted({int(w.pool[s].data.source.epoch) for s in range(16, 32)})}
+
+
 class Projection:
     """`AcceptedBlockFFGState` read off one run."""
 
@@ -244,13 +293,16 @@ class Projection:
             s == c and t[0] == c[0] + 1 and self.supermajority(sig)
             for (s, t), sig in self.links[r].items())
 
-    def finalized_k_step(self, r, c):
+    def finalized_k_step(self, r, c, bound=None):
         """Candidate: a link to epoch + 1 or + 2, with the skipped epoch
-        justified on the chain (the PJF rules 1 and 3)."""
+        justified on the chain (the PJF rules 1 and 3). With `bound`, the
+        link must end before epoch `bound`."""
         if c not in self.certified[r]:
             return False
         for (s, t), sig in self.links[r].items():
             if s != c or not self.supermajority(sig):
+                continue
+            if bound is not None and t[0] >= bound:
                 continue
             if t[0] == c[0] + 1:
                 return True
@@ -259,7 +311,7 @@ class Projection:
         return False
 
 
-def run_checks(projections, fork):
+def run_checks(projections, fork, voter):
     results = []
 
     def check(name, statement, cases, predicate, expected="PASS"):
@@ -403,6 +455,23 @@ def run_checks(projections, fork):
               roots(), lambda d, sel=sel: (getattr(d[0], sel)[d[1]] == d[0].run.anchor
                                            or d[0].finalized_k_step(d[1], getattr(d[0], sel)[d[1]]),
                                            {"finalized": getattr(d[0], sel)[d[1]]}))
+    # Certificate timing: the finalizing link ends before the block epoch
+    # (realized) or no later than it (unrealized).
+    for field, sel, slack, bound in (("realized_finalized_evidence", "gf", 0, "child.epoch < epoch b"),
+                                     ("unrealized_finalized_evidence", "guf", 1, "child.epoch <= epoch b")):
+        check(f"candidate.{field}_timed",
+              f"{field.rsplit('_', 1)[0]} r = anchor or a 2-step certificate on r's chain with {bound}",
+              roots(block), lambda d, sel=sel, slack=slack: (
+                  getattr(d[0], sel)[d[1]] == d[0].run.anchor
+                  or d[0].finalized_k_step(d[1], getattr(d[0], sel)[d[1]], d[0].epoch[d[1]] + slack),
+                  {"finalized": getattr(d[0], sel)[d[1]], "block_epoch": d[0].epoch[d[1]]}))
+    check("regression.unrealized_finalized_evidence_strict_timing",
+          "Unrealized finalization with the realized bound child.epoch < epoch b "
+          "(`late`: an epoch-4 block finalizes epoch 2 through the link 2 -> 4)",
+          roots(block), lambda d: (d[0].guf[d[1]] == d[0].run.anchor
+                                   or d[0].finalized_k_step(d[1], d[0].guf[d[1]], d[0].epoch[d[1]]),
+                                   {"finalized": d[0].guf[d[1]], "block_epoch": d[0].epoch[d[1]]}),
+          expected="FAIL")
 
     # Slot-16 witness of the gap in `full`.
     full = projections[0]
@@ -438,6 +507,11 @@ def run_checks(projections, fork):
                                                             spec.get_node_for_root(P.run.seed)),
                      {"confirmed_at_slots": seed_confirmed, "head_slot": P.slot[h],
                       "head_is_fork_block": h == P.run.x}), expected="FAIL")
+    check("regression.finalized_epoch_one_two_step_above_voter_justified",
+          "finalized_epoch_le_voter_justified_of_receiver_slot_le at F = 1 with a 2-step link: "
+          "finalized(w, slot 32).epoch <= justified(v, slot 31).epoch",
+          [("voter:31", voter)],
+          lambda d: (d["w_finalized_slot_32"] <= d["v_justified_slot_31"], dict(d)), expected="FAIL")
     return results
 
 
@@ -453,7 +527,7 @@ def main():
     env = {"spec": spec, "genesis": genesis, "build_block": build_block,
            "sign_transition": sign_transition, "attest": get_valid_attestation_at_slot}
     projections = [Projection(full_run(env)), Projection(late_run(env)), Projection(fork_run(env))]
-    results = run_checks(projections, projections[2])
+    results = run_checks(projections, projections[2], voter_run(env))
     unexpected = [r for r in results if r["status"] != r["expected"]]
     elapsed = round(time.monotonic() - start, 3)
     if args.output:
