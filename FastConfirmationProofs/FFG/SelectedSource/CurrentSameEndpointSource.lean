@@ -117,7 +117,8 @@ theorem globalJustified_honestTarget
     obtain ⟨carrierBlock, hcarrierAt, i, hiHonest, voteSlot, groundTime,
         groundVote, hvoteBeforeCarrier, hvoteSlotH, hvoteGround,
         hgroundSlot, hgroundTarget, hincluded⟩ := hcausal
-    obtain ⟨hincludedCarrier, _hincludedDesc, hincludedAt⟩ := hincluded
+    obtain ⟨includedVote, ⟨hincludedCarrier, _hincludedDesc, hincludedAt⟩, -,
+        hincludedData⟩ := hincluded
     have hincludedEvidence :=
       B.state.includedAttestations.evidence hincludedAt
     obtain ⟨hcertified⟩ := hcarrier.formed_evidence.certified
@@ -131,7 +132,7 @@ theorem globalJustified_honestTarget
     have htargetEpoch : (E.store cfg ext w m).justified_checkpoint.epoch =
         compute_epoch_at_slot cfg voteSlot := by
       rw [← hgroundTarget, ← hgroundSlot]
-      exact hincludedEvidence.target_epoch
+      simpa only [hincludedData] using hincludedEvidence.target_epoch
     have hcommittee : i ∈ E.committee voteSlot :=
       hT.honest_behavior.votes_assigned i hiHonest voteSlot
         (by rw [hvoteGround]; exact Option.some_ne_none _)

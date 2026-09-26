@@ -187,7 +187,13 @@ structure IncludedCertifiedFinalized (E : Execution Root)
 
 /-- Accepted-prefix version of the causal honest formation witness.  The
 exact carrier message, rather than only some same-root scheduled message, is
-known in a causal store. -/
+known in a causal store.
+
+An honest validator `i` cast the single-validator vote `a` for slot `s`, and
+an attestation `a'` included on the carrier chain names `i` and carries the
+same data. Python aggregates votes before inclusion, so `a'` is in general an
+aggregate of `a` with other votes of the same data; the included object is
+not `a` itself. -/
 def HonestEarlierTargetVoteOnCarrierChain (E : Execution Root)
     (included : Root → Attestation Root → Prop)
     (carrier : Root) (c : Checkpoint Root) : Prop :=
@@ -198,7 +204,8 @@ def HonestEarlierTargetVoteOnCarrierChain (E : Execution Root)
       E.vote i s = some (k, a) ∧
       a.data.slot = s ∧
       a.data.target = c ∧
-      AttestationIncludedOnChain E included carrier a
+      ∃ a' : Attestation Root, AttestationIncludedOnChain E included carrier a' ∧
+        i ∈ a'.attesting_indices ∧ a'.data = a.data
 
 /-- Concrete evidence represented by one accepted block-local AU entry.
 Certification and inclusion remain positive, while the non-anchor temporal

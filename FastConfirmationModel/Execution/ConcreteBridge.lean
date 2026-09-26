@@ -2,6 +2,7 @@ module
 public import FastConfirmationModel.Spec.BeaconChain.ConcreteRun
 public import FastConfirmationModel.Execution.ConcreteFFGAdapter
 public import FastConfirmationModel.Execution.Run
+public import FastConfirmationModel.Execution.ScheduledPrefixes
 
 @[expose] public section
 
@@ -289,6 +290,44 @@ def slotOfRoot (r : Root) : Slot :=
 `r` at or before the start slot of `e`. -/
 def checkpointAt (r : Root) (e : Epoch) : Checkpoint Root :=
   ⟨e, B.ancestorWalk (compute_start_slot_at_epoch B.setup.cfg e) (B.slotOfRoot r + 1) r⟩
+
+/-! ### Inclusion -/
+
+/-- A body vote of the accepted block `carrier`: one successful
+`process_attestation` call that the concrete `state_transition` of the block
+ran, from the committed state of its parent. The genesis block has no body.
+Python: `specs/gloas/beacon-chain.md`, `process_operations`. -/
+def CarrierVote (E : Execution Root) (carrier : Root) (r : IncludedVote Root) : Prop :=
+  E.RootKnownInScheduledPrefix B.setup.cfg B.interface carrier ∧
+    carrier ≠ B.setup.genesisRoot ∧
+    ∃ wire stateRoot cp, B.blocks.open_ carrier = some (wire, stateRoot) ∧
+      B.committedState wire.parent_root = some cp ∧ r ∈ blockVotes B.setup cp wire
+
+/-- The canonical inclusion relation of the certificates: the attestation is
+the indexed form of a body vote of the accepted block `carrier` whose
+`process_attestation` call set the timely-target flag. Only these votes
+count for justification in Python `get_unslashed_participating_indices`. -/
+def TargetIncludedAt (E : Execution Root) (carrier : Root) (a : Attestation Root) : Prop :=
+  ∃ r, B.CarrierVote E carrier r ∧ a = B.indexed r.vote ∧
+    ∃ flags, r.flags B.setup = .ok flags ∧ timelyTargetFlagIndex ∈ flags
+
+/-- The block-body relation of the slashing evidence `D_b`: the attestation
+is the indexed form of an attestation in the body of the accepted non-genesis
+block `carrier`, with or without the timely-target flag. -/
+def BodyIncludedAt (E : Execution Root) (carrier : Root) (a : Attestation Root) : Prop :=
+  E.RootKnownInScheduledPrefix B.setup.cfg B.interface carrier ∧
+    carrier ≠ B.setup.genesisRoot ∧
+    ∃ wire stateRoot, B.blocks.open_ carrier = some (wire, stateRoot) ∧
+      ∃ vote ∈ wire.attestations, a = B.indexed vote
+
+/-- Every attestation in the body of an accepted block reaches some node as an
+`on_attestation(store, attestation, is_from_block=True)` call. Python
+`on_block` does not process body attestations; the pyspec fork-choice test
+steps add them: "An on_block step implies receiving block's attestations"
+(`tests/core/pyspec/eth_consensus_specs/test/helpers/fork_choice.py:397`). -/
+def BodyAttestationsDelivered (E : Execution Root) : Prop :=
+  ∀ r b, E.BlockKnownInScheduledPrefix B.setup.cfg B.interface r b →
+    ∀ a ∈ b.attestations, ∃ w n, Event.attestation a true ∈ E.schedule w n
 
 end ConcreteBridge
 

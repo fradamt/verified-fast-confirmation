@@ -500,8 +500,8 @@ private theorem carrier_child_formation_causal :
   · exact (witness_vote_some_iff).2 ⟨by decide, rfl, rfl, rfl⟩
   · rfl
   · rfl
-  · exact ⟨carrierRoot, .refl carrierRoot,
-      ⟨rfl, Or.inl rfl⟩⟩
+  · exact ⟨vote4, ⟨carrierRoot, .refl carrierRoot,
+      ⟨rfl, Or.inl rfl⟩⟩, by first | decide | simp [vote4], rfl⟩
 
 def witnessAcceptedChainFFGState :
     AcceptedBlockFFGState witnessConfig witnessExternals witnessExecution
