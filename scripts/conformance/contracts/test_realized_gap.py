@@ -18,14 +18,18 @@ The runs are:
   justification epoch 1, with the epoch-1 certificate included in epoch 1.
 * `late`: epoch-2 votes are included in epoch 3 and epoch-3 votes in
   epoch 4. The boundary at the end of epoch 4 finalizes epoch 2 through the
-  2-step link 2 -> 4; no 1-step link 2 -> 3 exists.
+  2-step link 2 -> 4; no 1-step link 2 -> 3 exists. Epoch 1 is finalized
+  only through the 2-step link 1 -> 3, so the run is outside the scope of
+  `epoch_one_finalization_one_step`.
 * `fork`: blocks at slots 1-15 and no block on that chain in epoch 2. A
   block at slot 16 on the slot-8 block includes the epoch-1 votes. The
   Python fast confirmation rule confirms the slot-15 block, and the head
   leaves it at slot 24.
 * `voter`: two stores, no honest block after slot 15. At slot 32 one store
   has finalized epoch 1 through the link 1 -> 3, while the other store at
-  slot 31 still has justified epoch 0.
+  slot 31 still has justified epoch 0. The run is outside the scope of
+  `epoch_one_finalization_one_step`; it shows why that scope condition is
+  necessary.
 
 Names `AcceptedBlockFFGState.*` and `FFGStateReadAgreement.*` are Lean
 fields; `candidate.*` is a proposed restatement; `regression.*` records a
@@ -442,33 +446,33 @@ def run_checks(projections, fork, voter):
     check("FFGStateReadAgreement.transition_gu",
           "store.unrealized_justifications r reads as unrealized_justified r",
           roots(), lambda d: (d[0].stored_gu[d[1]] == d[0].gu[d[1]], {"stored": d[0].stored_gu[d[1]], "eager": d[0].gu[d[1]]}))
-    for field, sel in (("realized_finalized_evidence", "gf"), ("unrealized_finalized_evidence", "guf")):
-        one_step = (lambda d, sel=sel: (getattr(d[0], sel)[d[1]] == d[0].run.anchor
-                                        or d[0].finalized_one_step(d[1], getattr(d[0], sel)[d[1]]),
-                                        {"finalized": getattr(d[0], sel)[d[1]]}))
-        statement = (f"{field.rsplit('_', 1)[0]} r = anchor or IncludedCertifiedFinalized "
-                     "(link to the next epoch)")
-        check(f"AcceptedBlockFFGState.{field}", statement + " (scope restriction; in-scope runs)",
-              roots(lambda P, r: P.run.name != "late"), one_step)
-        check(f"out_of_scope.{field}_two_step_run", statement + " (`late` finalizes epoch 1 through "
-              "1 -> 3 and epoch 2 through 2 -> 4; the run is outside the theorem's scope)",
-              roots(lambda P, r: P.run.name == "late"), one_step, expected="FAIL")
-        check(f"candidate.{field}_two_step",
-              f"{field.rsplit('_', 1)[0]} r = anchor or (justified, a link to epoch + 1, or a link to "
-              "epoch + 2 with epoch + 1 justified), all on r's chain",
-              roots(), lambda d, sel=sel: (getattr(d[0], sel)[d[1]] == d[0].run.anchor
-                                           or d[0].finalized_k_step(d[1], getattr(d[0], sel)[d[1]]),
-                                           {"finalized": getattr(d[0], sel)[d[1]]}))
-    # Certificate timing: the finalizing link ends before the block epoch
-    # (realized) or no later than it (unrealized).
+    # Finalization certificates (k = 2) with timing: the finalizing link ends
+    # before the block epoch (realized) or no later than it (unrealized).
     for field, sel, slack, bound in (("realized_finalized_evidence", "gf", 0, "child.epoch < epoch b"),
                                      ("unrealized_finalized_evidence", "guf", 1, "child.epoch <= epoch b")):
-        check(f"candidate.{field}_timed",
-              f"{field.rsplit('_', 1)[0]} r = anchor or a 2-step certificate on r's chain with {bound}",
+        check(f"AcceptedBlockFFGState.{field}",
+              f"{field.rsplit('_', 1)[0]} r = anchor or IncludedCertifiedFinalized on r's chain "
+              f"(a link to epoch + 1, or to epoch + 2 with epoch + 1 justified) with {bound}",
               roots(block), lambda d, sel=sel, slack=slack: (
                   getattr(d[0], sel)[d[1]] == d[0].run.anchor
                   or d[0].finalized_k_step(d[1], getattr(d[0], sel)[d[1]], d[0].epoch[d[1]] + slack),
                   {"finalized": getattr(d[0], sel)[d[1]], "block_epoch": d[0].epoch[d[1]]}))
+    # Scope: a finalization of epoch GENESIS_EPOCH + 1 has a link to the next
+    # epoch. `late` finalizes epoch 1 only through 1 -> 3.
+    def epoch_one_one_step(d):
+        P, r = d
+        bad = [c for c in (P.gf[r], P.guf[r])
+               if c != P.run.anchor and c[0] == GENESIS_EPOCH + 1 and not P.finalized_one_step(r, c)]
+        return not bad, {"gf": P.gf[r], "guf": P.guf[r], "two_step_only": bad}
+    epoch_one_statement = ("(realized|unrealized)_finalized r of epoch GENESIS_EPOCH + 1 = anchor or has a "
+                           "certificate with a link to epoch GENESIS_EPOCH + 2")
+    check("AcceptedBlockFFGState.epoch_one_finalization_one_step",
+          epoch_one_statement + " (scope restriction; in-scope runs)",
+          roots(lambda P, r: P.run.name != "late"), epoch_one_one_step)
+    check("out_of_scope.epoch_one_finalization_one_step_late_run",
+          epoch_one_statement + " (`late` finalizes epoch 1 through 1 -> 3; the run is outside "
+          "the scope of this field)",
+          roots(lambda P, r: P.run.name == "late"), epoch_one_one_step, expected="FAIL")
     check("regression.unrealized_finalized_evidence_strict_timing",
           "Unrealized finalization with the realized bound child.epoch < epoch b "
           "(`late`: an epoch-4 block finalizes epoch 2 through the link 2 -> 4)",
@@ -512,7 +516,7 @@ def run_checks(projections, fork, voter):
                      {"confirmed_at_slots": seed_confirmed, "head_slot": P.slot[h],
                       "head_is_fork_block": h == P.run.x}), expected="FAIL")
     check("regression.finalized_epoch_one_two_step_above_voter_justified",
-          "Out of scope (2-step finality), kept for the concrete FFG lane F4: "
+          "Out of scope (epoch_one_finalization_one_step), kept for the concrete FFG lanes: "
           "finalized_epoch_le_voter_justified_of_receiver_slot_le at F = 1 with a 2-step link: "
           "finalized(w, slot 32).epoch <= justified(v, slot 31).epoch",
           [("voter:31", voter)],

@@ -68,6 +68,17 @@ theorem eq_anchor_or_epoch_gt {E : Execution Root}
 
 end IncludedCertifiedJustified
 namespace IncludedCertifiedFinalized
+
+/-- The finalizing link of a `k = 2` certificate ends at least one epoch
+after the finalized checkpoint. -/
+theorem epoch_succ_le_child {E : Execution Root}
+    {included : Root → Attestation Root → Prop}
+    {anchor : Checkpoint Root} {carrier : Root} {c : Checkpoint Root}
+    (F : IncludedCertifiedFinalized cfg E included anchor carrier c) :
+    c.epoch + 1 ≤ F.child.epoch := by
+  have key : ∀ x y : ℕ, (y = x + 1 ∨ y = x + 2) → x + 1 ≤ y := by omega
+  exact key _ _ F.child_epoch
+
 end IncludedCertifiedFinalized
 namespace ChainFFGState
 variable {E : Execution Root} {anchor : Checkpoint Root}

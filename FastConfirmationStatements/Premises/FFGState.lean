@@ -171,15 +171,26 @@ inductive IncludedCertifiedJustified (E : Execution Root)
       IncludedSupermajorityLink cfg E included carrier source target →
       IncludedCertifiedJustified E included anchor carrier target
 
-/-- Carrier-local Casper finalization: both justification and the immediately
-following finalizing link are backed by attestations included on this chain. -/
+/-- Carrier-local finalization in the Gasper `k = 2` form: `c` is justified,
+and a finalizing link from `c` reaches epoch `c.epoch + 1`, or it reaches
+`c.epoch + 2` while a checkpoint of epoch `c.epoch + 1` that descends from
+`c` is justified.  All votes are included on this chain.
+
+Python `weigh_justification_and_finalization` uses both forms: rules 2 and 4
+use a link to the next epoch, and rules 1 and 3 use a link over one justified
+epoch.  The second form occurs when the middle epoch is justified by votes
+with an older source, so no link from `c` to the middle epoch exists. -/
 structure IncludedCertifiedFinalized (E : Execution Root)
     (included : Root → Attestation Root → Prop)
     (anchor : Checkpoint Root) (carrier : Root)
     (c : Checkpoint Root) where
   justified : IncludedCertifiedJustified cfg E included anchor carrier c
   child : Checkpoint Root
-  child_epoch : child.epoch = c.epoch + 1
+  child_epoch : child.epoch = c.epoch + 1 ∨ child.epoch = c.epoch + 2
+  middle_justified : child.epoch = c.epoch + 2 →
+    ∃ middle : Checkpoint Root, middle.epoch = c.epoch + 1 ∧
+      E.RootDescends middle.root c.root ∧
+      Nonempty (IncludedCertifiedJustified cfg E included anchor carrier middle)
   finalizing_link :
     IncludedSupermajorityLink cfg E included carrier c child
 
@@ -284,20 +295,49 @@ structure AcceptedBlockFFGState (E : Execution Root)
   available_checkpoint_epoch_le_block : ∀ {r b c}, E.BlockKnownInScheduledPrefix cfg ext r b →
     (∃ carrier, E.RootDescends r carrier ∧ checkpoint_evidence_in_block carrier c) →
     c.epoch ≤ compute_epoch_at_slot cfg b.slot
-  /-- Scope restriction, not a Python law.  In the horizon, every realized
-  finalization uses a supermajority link to the next epoch.  Python can also
-  finalize through a link from epoch `k` to `k + 2` (rules 1 and 3 of
-  `weigh_justification_and_finalization`).  Runs that do so are outside the
-  scope of this theorem. -/
-  realized_finalized_evidence : ∀ r, E.RootKnownInScheduledPrefix cfg ext r →
-    realized_finalized r = anchor ∨ Nonempty (IncludedCertifiedFinalized cfg E
-      includedAttestations.Included anchor r (realized_finalized r))
-  /-- Scope restriction, not a Python law, as for
-  `realized_finalized_evidence`: every unrealized finalization in the horizon
-  uses a supermajority link to the next epoch. -/
-  unrealized_finalized_evidence : ∀ r, E.RootKnownInScheduledPrefix cfg ext r →
-    unrealized_finalized r = anchor ∨ Nonempty (IncludedCertifiedFinalized cfg E
-      includedAttestations.Included anchor r (unrealized_finalized r))
+  /-- Python law.  Realized finalization at a block of epoch `E` has a
+  certificate (a link of one or two epochs) whose finalizing link ends before
+  `E`.  Python realizes finalization in the
+  epoch-boundary run at the end of an epoch `k < E`, whose newest link ends at
+  `k`: rules 3 and 4 end at `k`, and rules 1 and 2 end at `k - 1`.  Thus a
+  2-step link `F -> F + 2` (rule 3) is realized only at a block of epoch
+  `F + 3` or later, and rule 1 needs a block of epoch `F + 4` or later. -/
+  realized_finalized_evidence : ∀ {r b}, E.BlockKnownInScheduledPrefix cfg ext r b →
+    realized_finalized r = anchor ∨
+      ∃ F : IncludedCertifiedFinalized cfg E includedAttestations.Included anchor r
+        (realized_finalized r), F.child.epoch < compute_epoch_at_slot cfg b.slot
+  /-- Python law.  Unrealized finalization at a block of epoch `E` has a
+  certificate whose finalizing link ends no later than `E`: Python runs the same function with
+  current epoch `E`.  The store adopts it only when the current epoch is after
+  `E`: in the pull-up of a block from a past epoch, or at the next epoch
+  start. -/
+  unrealized_finalized_evidence : ∀ {r b}, E.BlockKnownInScheduledPrefix cfg ext r b →
+    unrealized_finalized r = anchor ∨
+      ∃ F : IncludedCertifiedFinalized cfg E includedAttestations.Included anchor r
+        (unrealized_finalized r), F.child.epoch ≤ compute_epoch_at_slot cfg b.slot
+  /-- Scope restriction, not a Python law.  A finalization of epoch
+  `GENESIS_EPOCH + 1` in the horizon has a link to the next epoch.  Python can
+  also finalize epoch `GENESIS_EPOCH + 1` through the two-epoch link
+  `GENESIS_EPOCH + 1 -> GENESIS_EPOCH + 3` alone (rules 1 and 3 of
+  `weigh_justification_and_finalization`).  With honest votes this is the
+  only way to finalize that epoch, because honest votes of epoch
+  `GENESIS_EPOCH + 2` have source `GENESIS_EPOCH`.  The proof cannot use such
+  a finalization for two reasons.  First,
+  `process_justification_and_finalization` returns early at epochs up to
+  `GENESIS_EPOCH + 1`, so an honest vote of epoch
+  `GENESIS_EPOCH + 2` whose head is in epoch `GENESIS_EPOCH + 1` can have a
+  source older than the finalized epoch.  Second, A3.2 does not make the
+  finalized checkpoint of epoch `GENESIS_EPOCH + 1` canonical during epoch
+  `GENESIS_EPOCH + 2`.  The pyspec run `voter` in
+  `scripts/conformance/contracts/test_realized_gap.py` shows such a run.
+  Finalizations of later epochs through two-epoch links are in scope. -/
+  epoch_one_finalization_one_step : ∀ r, E.RootKnownInScheduledPrefix cfg ext r →
+    ((realized_finalized r).epoch = GENESIS_EPOCH + 1 → realized_finalized r = anchor ∨
+      ∃ F : IncludedCertifiedFinalized cfg E includedAttestations.Included anchor r
+        (realized_finalized r), F.child.epoch = GENESIS_EPOCH + 2) ∧
+    ((unrealized_finalized r).epoch = GENESIS_EPOCH + 1 → unrealized_finalized r = anchor ∨
+      ∃ F : IncludedCertifiedFinalized cfg E includedAttestations.Included anchor r
+        (unrealized_finalized r), F.child.epoch = GENESIS_EPOCH + 2)
   realized_finalized_epoch_le_realized_justified : ∀ r, E.RootKnownInScheduledPrefix cfg ext r →
     (realized_finalized r).epoch ≤ (realized_justified r).epoch
   unrealized_finalized_epoch_le_unrealized_justified : ∀ r, E.RootKnownInScheduledPrefix cfg ext r →

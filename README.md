@@ -43,13 +43,16 @@ That argument is not formalized.
 inclusion for two epochs, so it is outside `EventualCheckpointInclusion`. It shows why
 that premise matters; it is not an FCR safety failure.
 
-`Phase0BoundarySourceCoherence` has four fields. `process_slots_one_boundary` equates
+`Phase0BoundarySourceCoherence` has five fields. `process_slots_one_boundary` equates
 one boundary with eager PJF. `process_slots_same_target_epoch` equates target slots in
 one epoch. `state_transition_process_slots` equates a crossing block transition with
 slot processing. `process_slots_checkpoint_epoch` bounds the output checkpoint if every
 intermediate slot-processed state satisfies `3 * effective_balance_increment < 2 *
 get_total_active_balance`. This guard is exact because an empty vote set can pass the
 two-thirds test at a total balance of at most one and a half increments.
+`process_slots_two_boundaries` equates two or more boundaries from a start epoch of at
+least `GENESIS_EPOCH + 2` with eager PJF, if the registry and the total active balance
+are unchanged and the same guard holds at every intermediate state.
 `ScheduledFCRCallPremises.balance_floor` requires two increments of anchor active
 weight. With `registry_static_in_horizon`, this floor supplies the guard on in-horizon
 reads. The static-registry condition excludes included slashings, deposits, activations,
@@ -87,8 +90,8 @@ off-committee validators.
 ├──────────────────────┼──────────────────────────────────────────────────────────────────────────────────────────────────┤
 │ FFG state            │ `ScheduledFFGInterpretation` supplies accepted-block state, links, and checkpoint reads.         │
 ├──────────────────────┼──────────────────────────────────────────────────────────────────────────────────────────────────┤
-│ One-epoch finality   │ `realized_finalized_evidence` and `unrealized_finalized_evidence` admit only links to            │
-│                      │ the next epoch. Runs that finalize through k -> k + 2 links are outside the scope.               │
+│ Epoch-1 finality     │ `epoch_one_finalization_one_step`: a finalization of epoch 1 has a link to epoch 2. Runs that    │
+│                      │ finalize epoch 1 through 1 -> 3 are outside the scope. Later 2-epoch links are in scope.         │
 ├──────────────────────┼──────────────────────────────────────────────────────────────────────────────────────────────────┤
 │ Phase0 source        │ `Phase0SourceCoherence` and `Phase0BoundarySourceCoherence` constrain source reads.              │
 ├──────────────────────┼──────────────────────────────────────────────────────────────────────────────────────────────────┤

@@ -54,13 +54,28 @@ Python sources: `specs/phase0/beacon-chain.md:1769-1782` (`state_transition`),
   active balance is at most one and a half increments, an epoch with no
   attestations passes the test.
 
-There is no equation for two or more boundaries. PJF returns early in epochs
-0 and 1, so an epoch-1 start can keep the old checkpoint under eager PJF and
-justify epoch 1 at the end of epoch 2. For a later start, the second PJF
-weighs the start-epoch votes again with the next epoch's active set and
-effective balances, so it can also justify the start epoch when eager PJF
-does not. The laws mention only state functions. They do not mention
-execution ancestry or a safety conclusion. -/
+* `process_slots_two_boundaries`: from a start epoch `E` of at least
+  `GENESIS_EPOCH + 2`, slot processing that crosses two or more boundaries
+  gives the eager PJF checkpoint, if the registry and the total active balance
+  do not change and the balance bound of `process_slots_checkpoint_epoch`
+  holds at every intermediate state. The first boundary is the eager PJF, as
+  in `process_slots_one_boundary`. `process_participation_flag_updates`
+  (`specs/altair/beacon-chain.md:824`) moves the epoch-`E` flags to the
+  previous-epoch flags. Thus the second PJF weighs the same epoch-`E`
+  participants (`get_unslashed_participating_indices`, `:397`) with the same
+  effective balances against the same total. It justifies epoch `E` again if
+  the first PJF did, and fails otherwise. Its current-epoch flags are empty,
+  so the current-epoch test fails. Later boundaries see only empty flag sets,
+  and the balance bound makes their tests fail.
+
+There is no two-boundary equation without these antecedents. PJF returns
+early in epochs 0 and 1, so an epoch-1 start can keep the old checkpoint
+under eager PJF and justify epoch 1 at the end of epoch 2. If the registry
+changes at the first boundary (for example, effective-balance updates in
+`process_effective_balance_updates`, `specs/phase0/beacon-chain.md:2216`), the
+second PJF weighs the start-epoch votes with other balances and can justify
+the start epoch when eager PJF does not. The laws mention only state
+functions. They do not mention execution ancestry or a safety conclusion. -/
 structure Phase0BoundarySourceCoherence
     (cfg : Config) (ext : BeaconFunctionInterface Root) : Prop where
   process_slots_one_boundary :
@@ -97,6 +112,18 @@ structure Phase0BoundarySourceCoherence
           st.current_justified_checkpoint ∨
         (ext.process_slots st target).current_justified_checkpoint.epoch ≤
           compute_epoch_at_slot cfg st.slot
+  process_slots_two_boundaries :
+    ∀ (st : BeaconState Root) (target : Slot),
+      GENESIS_EPOCH + 2 ≤ compute_epoch_at_slot cfg st.slot →
+      compute_epoch_at_slot cfg st.slot + 2 ≤ compute_epoch_at_slot cfg target →
+      (∀ s : Slot, st.slot < s → s ≤ target →
+        (ext.process_slots st s).validators = st.validators ∧
+        get_total_active_balance cfg (ext.process_slots st s) =
+          get_total_active_balance cfg st ∧
+        3 * cfg.effective_balance_increment <
+          2 * get_total_active_balance cfg (ext.process_slots st s)) →
+      (ext.process_slots st target).current_justified_checkpoint =
+        (ext.process_justification_and_finalization st).current_justified_checkpoint
 
 end FastConfirmation.Spec
 

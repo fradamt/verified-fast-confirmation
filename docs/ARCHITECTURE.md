@@ -35,13 +35,16 @@ That argument is not formalized.
 inclusion for two epochs, so it is outside `EventualCheckpointInclusion`. It shows why
 that premise matters; it is not an FCR safety failure.
 
-`Phase0BoundarySourceCoherence` has four fields. `process_slots_one_boundary` equates
+`Phase0BoundarySourceCoherence` has five fields. `process_slots_one_boundary` equates
 one boundary with eager PJF. `process_slots_same_target_epoch` equates target slots in
 one epoch. `state_transition_process_slots` equates a crossing block transition with
 slot processing. `process_slots_checkpoint_epoch` bounds the output checkpoint if every
 intermediate slot-processed state satisfies `3 * effective_balance_increment < 2 *
 get_total_active_balance`. This guard is exact because an empty vote set can pass the
 two-thirds test at a total balance of at most one and a half increments.
+`process_slots_two_boundaries` equates two or more boundaries from a start epoch of at
+least `GENESIS_EPOCH + 2` with eager PJF, if the registry and the total active balance
+are unchanged and the same guard holds at every intermediate state.
 `ScheduledFCRCallPremises.balance_floor` requires two increments of anchor active
 weight. With `registry_static_in_horizon`, this floor supplies the guard on in-horizon
 reads. The static-registry condition excludes included slashings, deposits, activations,

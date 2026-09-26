@@ -44,13 +44,17 @@ inductive CertifiedJustified (E : Execution Root) (anchor : Checkpoint Root) :
       SupermajorityLink cfg E source target →
       CertifiedJustified E anchor target
 
-/-- Casper finalization certificate: a justified checkpoint with a concrete
-supermajority link to a descendant checkpoint in the immediately following
-epoch. -/
+/-- Finalization certificate in the Gasper `k = 2` form: a justified
+checkpoint with a concrete supermajority link to a descendant checkpoint in
+the next epoch, or in the epoch after it while a descendant checkpoint of the
+middle epoch is justified. -/
 structure CertifiedFinalized (E : Execution Root) (anchor c : Checkpoint Root) where
   justified : CertifiedJustified cfg E anchor c
   child : Checkpoint Root
-  child_epoch : child.epoch = c.epoch + 1
+  child_epoch : child.epoch = c.epoch + 1 ∨ child.epoch = c.epoch + 2
+  middle_justified : child.epoch = c.epoch + 2 →
+    ∃ middle : Checkpoint Root, middle.epoch = c.epoch + 1 ∧
+      E.RootDescends middle.root c.root ∧ CertifiedJustified cfg E anchor middle
   finalizing_link : SupermajorityLink cfg E c child
 
 end FastConfirmation.Spec

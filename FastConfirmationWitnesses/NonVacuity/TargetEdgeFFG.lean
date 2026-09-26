@@ -624,11 +624,14 @@ def witnessAcceptedChainFFGState :
           childSignedBlock, carrierSignedBlock, anchorRoot, childRoot,
           carrierRoot, childEpochOneCheckpoint]
   realized_finalized_evidence := by
-    intro r hr
+    intro r b hr
     exact Or.inl rfl
   unrealized_finalized_evidence := by
-    intro r hr
+    intro r b hr
     exact Or.inl rfl
+  epoch_one_finalization_one_step := by
+    intro r hr
+    exact ⟨fun _ => Or.inl rfl, fun _ => Or.inl rfl⟩
   realized_finalized_epoch_le_realized_justified := by
     intro r hr
     rfl

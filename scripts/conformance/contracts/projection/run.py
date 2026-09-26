@@ -195,14 +195,30 @@ class Run:
                 result.setdefault(c, carrier)
         return result
 
-    def finalized_evidence(self, root, c):
-        if c == self.anchor:
-            return True
+    def finalized_links(self, root, c):
+        # Target epochs of the finalizing links of k = 2 certificates for c.
+        # A 2-epoch link also needs a formed middle checkpoint above c.
+        result = set()
         for carrier in self.chain(root):
             formed, links = self.formed_and_links(carrier)
-            if c in formed and any(source == c and target[0] == c[0] + 1 for source, target in links):
-                return True
-        return False
+            if c not in formed:
+                continue
+            for source, target in links:
+                if source != c:
+                    continue
+                if target[0] == c[0] + 1 or (target[0] == c[0] + 2 and any(
+                        m[0] == c[0] + 1 and self.ancestor(m[1], c[1]) for m in formed)):
+                    result.add(target[0])
+        return result
+
+    def finalized_evidence(self, root, c, bound, strict):
+        # The anchor, or a certificate whose finalizing link ends before
+        # (strict) or at the block epoch.
+        return c == self.anchor or any(e < bound if strict else e <= bound
+                                       for e in self.finalized_links(root, c))
+
+    def epoch_one_one_step(self, root, c):
+        return c == self.anchor or c[0] != 1 or 2 in self.finalized_links(root, c)
 
     def state_detail(self, root):
         state = self.states[root]
@@ -259,35 +275,54 @@ def make_runs(env, full):
     state, anchor = start()
     _, blocks, state = next_slots(spec, state, 24, True, False)
     runs.append(Run('later-anchor-out-of-scope', spec, state, blocks[-1].message, [], later=True))
-    # Epoch-2 votes are included at slot 24 and epoch-3 votes at slot 32, so
-    # epoch 2 is finalized through the 2-epoch link 2 -> 4.
     from eth_consensus_specs.test.helpers.attestations import get_valid_attestation_at_slot
-    state, anchor = start()
-    pool, two_step = {}, []
-    for slot in range(1, 45):
-        if slot == 24:
-            votes = range(16, 24)
-        elif slot == 32:
-            votes = range(24, 32)
-        elif slot >= 2 and (slot - 1) // 8 not in (2, 3):
-            votes = [slot - 1]
-        else:
-            votes = []
-        block = build(spec, state, slot=slot)
-        for vote_slot in votes:
-            block.body.attestations.append(pool[vote_slot])
-        two_step.append(sign(spec, state, block))
-        pool[slot] = get_valid_attestation_at_slot(state.copy(), spec, slot,
-                                                   beacon_block_root=spec.hash_tree_root(block))
-    # The finalized evidence fields admit only links to the next epoch, so
-    # this run is outside their scope.
-    runs.append(Run('two-step-finality', spec, genesis(spec, [32 * 10**9] * 64, 32 * 10**9), anchor, two_step,
-                    out_of_scope=('AcceptedBlockFFGState.realized_finalized_evidence',
-                                  'AcceptedBlockFFGState.unrealized_finalized_evidence',
+    def delayed_votes(skip_epochs):
+        # Votes of epoch 2 are included at slot 24 and votes of epoch 3 at slot
+        # 32. Other votes are included in the next slot, except votes of the
+        # epochs in skip_epochs, which are never included.
+        state, anchor = start()
+        pool, blocks = {}, []
+        for slot in range(1, 45):
+            if slot == 24:
+                votes = range(16, 24)
+            elif slot == 32:
+                votes = range(24, 32)
+            elif slot >= 2 and (slot - 1) // 8 not in (2, 3) + skip_epochs:
+                votes = [slot - 1]
+            else:
+                votes = []
+            block = build(spec, state, slot=slot)
+            for vote_slot in votes:
+                block.body.attestations.append(pool[vote_slot])
+            blocks.append(sign(spec, state, block))
+            pool[slot] = get_valid_attestation_at_slot(state.copy(), spec, slot,
+                                                       beacon_block_root=spec.hash_tree_root(block))
+        return anchor, blocks
+    # Epoch 1 is justified at the end of epoch 2, and epoch-3 votes have
+    # source 1. Epoch 1 is finalized through the 2-epoch link 1 -> 3, and
+    # epoch 2 through 2 -> 4. The epoch-1 finalization is outside the scope
+    # of AcceptedBlockFFGState.epoch_one_finalization_one_step.
+    anchor, blocks = delayed_votes(())
+    runs.append(Run('two-step-finality-epoch-1-out-of-scope', spec, genesis(spec, [32 * 10**9] * 64, 32 * 10**9),
+                    anchor, blocks,
+                    out_of_scope=('AcceptedBlockFFGState.epoch_one_finalization_one_step',
                                   'ScheduledFFGInterpretation.state')))
-    full_run, review, delayed, skipped, forks, later_run, two_step_run = runs
-    if not (two_step_run.selector(two_step_run.roots[-1], 'realized_finalized')[0] >= 2):
-        raise AssertionError('two-step finality fixture did not finalize epoch 2')
+    # Epoch-1 votes are never included, so nothing is justified before epoch
+    # 3 and epoch-3 votes have source 0. Epoch 2 is finalized only through the
+    # 2-epoch link 2 -> 4; epoch 1 is not finalized.
+    anchor, blocks = delayed_votes((1,))
+    runs.append(Run('two-step-finality', spec, genesis(spec, [32 * 10**9] * 64, 32 * 10**9), anchor, blocks))
+    full_run, review, delayed, skipped, forks, later_run, epoch_one_run, two_step_run = runs
+    epoch_one_finalized = {epoch_one_run.selector(r, 'unrealized_finalized') for r in epoch_one_run.roots}
+    if not any(c[0] == 1 and epoch_one_run.finalized_links(epoch_one_run.roots[-1], c) == {3}
+               for c in epoch_one_finalized):
+        raise AssertionError('epoch-1 two-step fixture did not finalize epoch 1 through 1 -> 3')
+    last = two_step_run.roots[-1]
+    finalized = two_step_run.selector(last, 'realized_finalized')
+    if not (finalized[0] == 2 and two_step_run.finalized_links(last, finalized) == {4} and
+            all(two_step_run.selector(r, f)[0] != 1 for r in two_step_run.roots
+                for f in ('realized_finalized', 'unrealized_finalized'))):
+        raise AssertionError('two-step finality fixture did not finalize epoch 2 through 2 -> 4 only')
     if not (int(full_run.blocks[full_run.roots[-1]].slot)//8 >= 6 and
             full_run.selector(full_run.roots[-1], 'realized_justified')[0] > 0 and
             full_run.selector(full_run.roots[-1], 'realized_finalized')[0] > 0):
@@ -346,7 +381,8 @@ def check_run(run, statements):
                   'realized_justified_epoch_le_unrealized', 'unrealized_justified_mono',
                   'unrealized_justified_epoch_le_later_realized',
                   'available_checkpoint_epoch_le_block', 'realized_finalized_evidence',
-                  'unrealized_finalized_evidence', 'realized_finalized_epoch_le_realized_justified',
+                  'unrealized_finalized_evidence', 'epoch_one_finalization_one_step',
+                  'realized_finalized_epoch_le_realized_justified',
                   'unrealized_finalized_epoch_le_unrealized_justified',
                   'unrealized_finalized_epoch_le_realized_justified'):
         samples = []
@@ -410,9 +446,15 @@ def check_run(run, statements):
                 samples += [(c[0] <= epoch, {**detail, 'available': c,
                              'carrier': carrier}) for c, carrier in available.items()]
             elif field == 'realized_finalized_evidence':
-                samples.append((run.finalized_evidence(root, rf), {**detail, 'checkpoint': rf}))
+                samples.append((run.finalized_evidence(root, rf, epoch, True),
+                                {**detail, 'checkpoint': rf, 'link_targets': sorted(run.finalized_links(root, rf))}))
             elif field == 'unrealized_finalized_evidence':
-                samples.append((run.finalized_evidence(root, uf), {**detail, 'checkpoint': uf}))
+                samples.append((run.finalized_evidence(root, uf, epoch, False),
+                                {**detail, 'checkpoint': uf, 'link_targets': sorted(run.finalized_links(root, uf))}))
+            elif field == 'epoch_one_finalization_one_step':
+                samples += [(run.epoch_one_one_step(root, c),
+                             {**detail, 'checkpoint': c, 'link_targets': sorted(run.finalized_links(root, c))})
+                            for c in (rf, uf)]
             elif field == 'realized_finalized_epoch_le_realized_justified':
                 samples.append((rf[0] <= rj[0], detail))
             elif field == 'unrealized_finalized_epoch_le_unrealized_justified':

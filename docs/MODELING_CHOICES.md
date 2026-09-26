@@ -155,7 +155,7 @@ need.
 11. `NextSlotSynchronyPremises.attester_slashing_relay` gives each honest store the equivocation indices by the next boundary. Literal Python can reject evidence when its justified state lacks a signer.
 12. `NextSlotSafetyPremises.anchor_state_checkpoints` admits the genesis anchor with a raw stub or a state with both checkpoints equal to the anchor. Older raw checkpoints in a checkpoint-sync state are outside its scope.
 13. `ScheduledFCRCallPremises.balance_floor` requires two increments of anchor active weight. With the static registry, this supplies the exact intermediate-state guard for `Phase0BoundarySourceCoherence.process_slots_checkpoint_epoch`.
-14. `AcceptedBlockFFGState.realized_finalized_evidence` and `unrealized_finalized_evidence` restrict the scope: in the horizon, every finalization that the stores adopt uses a supermajority link to the next epoch. Python can also finalize through a link from epoch `k` to `k + 2` (rules 1 and 3 of `weigh_justification_and_finalization`). Runs that do so are outside the scope of the theorem. The two-epoch form is not a small change: `test_realized_gap.py` has a run in which one store finalizes epoch 1 through the link 1 -> 3 while an honest store still has justified epoch 0 (`regression.finalized_epoch_one_two_step_above_voter_justified`).
+14. `AcceptedBlockFFGState.epoch_one_finalization_one_step` restricts the scope: a finalization of epoch `GENESIS_EPOCH + 1` in the horizon has a link to the next epoch. Python can also finalize epoch `GENESIS_EPOCH + 1` through the link 1 -> 3 alone. With honest votes this is the only way to finalize epoch 1: PJF returns early in epoch 1, so honest epoch-2 votes have source 0. The proof does not cover this case for two reasons. First, an honest vote of epoch 2 with a head in epoch 1 can have a source older than the finalized epoch. Second, Assumption 3.2 does not make a finalized epoch-1 checkpoint canonical during epoch 2. `test_realized_gap.py` has a run in which one store finalizes epoch 1 through the link 1 -> 3 while an honest store still has justified epoch 0 (`regression.finalized_epoch_one_two_step_above_voter_justified`). Finalizations of later epochs through two-epoch links are in scope: `realized_finalized_evidence` and `unrealized_finalized_evidence` state the `k = 2` Python law, and `Phase0BoundarySourceCoherence.process_slots_two_boundaries` gives the honest source of a stale head.
 
 ## Derived prediction support
 
@@ -282,16 +282,20 @@ anchor. The fixture includes no attestation for two epochs. It does not assert t
 votes included on the canonical chain in epoch 4, PJF can instead advance
 the raw source to epoch 3 before the filter's epoch-5 deadline. The raw source age and the filter's `+2` rule need an inclusion argument. That argument is not formalized.
 
-`Phase0BoundarySourceCoherence` has four laws. Slot processing across one
+`Phase0BoundarySourceCoherence` has five laws. Slot processing across one
 boundary gives the eager PJF checkpoint. Targets in the same epoch give the
 same checkpoint. A block transition gives the checkpoint of slot processing
 to the block slot. The fourth law has a balance antecedent: each state that
 slot processing passes through has total active balance such that `3 * effective_balance_increment < 2 * get_total_active_balance`. Under this antecedent, slot processing keeps the checkpoint or
-gives one no newer than the start epoch. There is no equation for two or more
-boundaries. Phase0 and Altair PJF return early in epochs 0 and 1, so an
-epoch-1 state can keep the old checkpoint under eager PJF and justify epoch 1
-when slot processing reaches epoch 3. From a later start, the second PJF
-weighs the start-epoch votes again with the next epoch's balances. The
+gives one no newer than the start epoch. The fifth law covers two or more
+boundaries from a start epoch of at least `GENESIS_EPOCH + 2`: if the
+registry and the total active balance do not change and the same balance
+antecedent holds at every intermediate state, slot processing gives the eager
+PJF checkpoint. The second PJF weighs the same start-epoch participants with
+the same effective balances, and later PJF runs see no votes. Phase0 and
+Altair PJF return early in epochs 0 and 1, so an epoch-1 state can keep the
+old checkpoint under eager PJF and justify epoch 1 when slot processing
+reaches epoch 3; the fifth law excludes these starts. The balance
 antecedent is necessary: `get_total_balance` returns at least one increment,
 so with a total active balance of at most one and a half increments an epoch with no
 attestations passes the two-thirds test. `ScheduledFCRCallPremises.balance_floor`
@@ -303,12 +307,16 @@ The proof reads the honest source of an old target as this boundary source.
 After two or more boundaries, a known current-epoch block below the head
 carries the same checkpoint as its `GJ`, and its formed evidence certifies
 it. The gate producers ask for such a block. Every current-crossing call
-supplies it. The finalization argument excludes the late case: the vote's
-target epoch is one more than its source epoch.
+supplies it. For a finalizing link to the next epoch, the finalization
+argument excludes the late case: the vote's target epoch is one more than its
+source epoch. For a link of two epochs, the head can be one epoch older than
+the vote's source requires; `process_slots_two_boundaries` then reads the
+source as the head's `GU` when the head epoch is at least `GENESIS_EPOCH + 2`,
+and `epoch_one_finalization_one_step` excludes the epoch-1 case.
 `EarlyEpochBoundaryWitness.epoch_one_boundary_regression` records both boundary
 outcomes and the included certificate for the newer source.
 `EarlyEpochBoundaryWitness.epoch_one_fixture_satisfies_boundary_laws` shows
-that the same reduced functions satisfy the four laws.
+that the same reduced functions satisfy the five laws.
 
 `normalizeAnchorCheckpoint` provides internal lemmas for anchor normalization. `CheckpointReadsAs` supplies the genesis-epoch read relation in the safety bundle. The genesis-stub witness proves that the full bundle can hold for raw genesis state checkpoints. The executable handlers and wire attestations keep their raw values.
 

@@ -30,7 +30,7 @@ The [contract inventory](../scripts/conformance/contracts/inventory.toml) lists 
 direct field in the premise structures. T means a generated-state property
 of the pinned Python functions. E means an execution, network, or supplied
 FFG interpretation assumption. I means a cryptographic or engine
-idealization. The inventory has 163 active fields: T 18, E 134, and I 11. Thirteen selector, checkpoint, and anchor fields were moved from T to E because their old probes did not test the supplied execution interpretation. The inventory checker fails when a Lean field has no entry.
+idealization. The inventory has 165 active fields: T 19, E 135, and I 11. Thirteen selector, checkpoint, and anchor fields were moved from T to E because their old probes did not test the supplied execution interpretation. The inventory checker fails when a Lean field has no entry.
 
 The deterministic tests use the Gloas minimal preset and Phase0 for the
 Phase0 source laws. They cover slots and epoch boundaries, included votes,
@@ -69,13 +69,14 @@ maps the raw zero-root stub to the anchor checkpoint. BLS is disabled through
 the pyspec test-helper switch.
 
 The default contract checker runs a fast genesis prefix and the review's
-slot-16 prefix. `check_inventory.py --full` runs all seven cases: through
+slot-16 prefix. `check_inventory.py --full` runs all eight cases: through
 epoch 6, slot 16, delayed two-thirds inclusion, a skipped epoch, two forks, a
-later raw anchor, and two-epoch finality. In the last case, epoch-2 votes are
-included at slot 24 and epoch-3 votes at slot 32; the run finalizes epoch 1
-through the link 1 -> 3 and epoch 2 through the link 2 -> 4. It is labelled
-out of scope for the finalized evidence fields, which admit only links to the
-next epoch. The later anchor is labelled out of scope because it fails
+later raw anchor, and two runs with two-epoch finality. In both, epoch-2 votes
+are included at slot 24 and epoch-3 votes at slot 32. The first run finalizes
+epoch 1 through the link 1 -> 3 and epoch 2 through the link 2 -> 4. It is
+labelled out of scope for `epoch_one_finalization_one_step`. The second run
+never includes epoch-1 votes; it finalizes epoch 2 only through the link
+2 -> 4 and passes the `k = 2` finalized evidence fields. The later anchor is labelled out of scope because it fails
 `GenesisOrNormalizedAnchor`. The JSON output quotes each Lean field and gives
 a status and a state witness for each case. Structural mappings are marked
 construction; the exact Assumption 3.2 antecedent needs all honest views and

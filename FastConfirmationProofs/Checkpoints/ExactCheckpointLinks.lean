@@ -349,21 +349,55 @@ theorem exact_prefix_of_accountable
               hfinalized.finalizing_link hfinalized.justified
               hanchorFinalized
             simpa only [heq] using hprefix
-          · have hchildLt : hfinalized.child.epoch < target.epoch := by
-              have hsuccLe : finalized.epoch + 1 ≤ target.epoch :=
-                Nat.succ_le_iff.mpr hfinalizedLt
-              have htargetNeSucc : target.epoch ≠ finalized.epoch + 1 := by
-                intro heq
-                apply htargetChild
-                rw [hfinalized.child_epoch]
-                exact heq
-              have hsuccLt : finalized.epoch + 1 < target.epoch :=
-                lt_of_le_of_ne hsuccLe htargetNeSucc.symm
-              simpa only [hfinalized.child_epoch] using hsuccLt
-            exact False.elim
-              ((hacc.links_not_surround (toGlobalL link)
-                (toGlobalL hfinalized.finalizing_link))
-                ⟨hsourceLt, hchildLt⟩)
+          · by_cases hmiddle : hfinalized.child.epoch = finalized.epoch + 2 ∧
+                target.epoch = finalized.epoch + 1
+            · -- The skipped epoch of a 2-epoch finalizing link: the target is
+              -- the justified middle checkpoint, which the finalizing
+              -- carrier places above `finalized`.
+              obtain ⟨middle, hmiddleEpoch, _hmiddleDesc, ⟨hmiddleIncluded⟩⟩ :=
+                hfinalized.middle_justified hmiddle.1
+              have hmiddleGlobal := toGlobalJ hmiddleIncluded
+              have htargetMiddleEpoch : target.epoch = middle.epoch :=
+                hmiddle.2.trans hmiddleEpoch.symm
+              have hroot := hacc.justified_unique htargetGlobal hmiddleGlobal
+                htargetMiddleEpoch
+              have heq : target = middle :=
+                checkpoint_eq_of_epoch_root_eq htargetMiddleEpoch hroot
+              have hanchorFinalized : anchor.epoch ≤ finalized.epoch :=
+                CertifiedJustified.anchor_epoch_le (cfg := cfg)
+                  hfinalizedGlobal
+              have hfinalizedOnCarrier :=
+                (V.endpoints_on_carrier hfinalized.finalizing_link
+                  hfinalized.justified).1
+              have hcarrierAccepted := V.carrier_accepted
+                hfinalized.finalizing_link hfinalized.justified
+              have hmiddleOnCarrier : middle = C finalizedCarrier middle.epoch := by
+                cases hmiddleIncluded with
+                | anchor =>
+                    have key : ∀ a f : ℕ, a = f + 1 → a ≤ f → False := by omega
+                    exact (key _ _ hmiddleEpoch hanchorFinalized).elim
+                | @link middleSource _ hmiddleSource middleLink =>
+                    exact (V.endpoints_on_carrier middleLink hmiddleSource).2
+              have hmiddleRoot : middle.root =
+                  (C finalizedCarrier middle.epoch).root :=
+                congrArg Checkpoint.root hmiddleOnCarrier
+              have hcomp := P.checkpoint_comp hcarrierAccepted hanchorFinalized
+                (show finalized.epoch ≤ middle.epoch by
+                  rw [hmiddleEpoch]; exact Nat.le_succ _)
+              unfold ExactCheckpointPrefix
+              rw [heq]
+              calc
+                finalized = C finalizedCarrier finalized.epoch := hfinalizedOnCarrier
+                _ = C (C finalizedCarrier middle.epoch).root finalized.epoch := hcomp.symm
+                _ = C middle.root finalized.epoch := by rw [hmiddleRoot]
+            · have hchildLt : hfinalized.child.epoch < target.epoch := by
+                have key : ∀ f t d : ℕ, f < t → ¬ t = d → ¬ (d = f + 2 ∧ t = f + 1) →
+                    (d = f + 1 ∨ d = f + 2) → d < t := by omega
+                exact key _ _ _ hfinalizedLt htargetChild hmiddle hfinalized.child_epoch
+              exact False.elim
+                ((hacc.links_not_surround (toGlobalL link)
+                  (toGlobalL hfinalized.finalizing_link))
+                  ⟨hsourceLt, hchildLt⟩)
 
 end IncludedCertifiedFinalized
 

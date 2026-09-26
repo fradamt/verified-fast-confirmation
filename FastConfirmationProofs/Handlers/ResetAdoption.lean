@@ -105,16 +105,15 @@ theorem includedCertifiedFinalized_epoch_lt_acceptedCarrierBlock
       _ = ((E.store cfg ext v q).blocks containing).slot :=
         (congrArg BeaconBlock.slot hcontainingBlock).symm
       _ ≤ ((E.store cfg ext v q).blocks carrier).slot := hslotLe
-  have hchildEpoch : c.epoch + 1 =
+  have hchildEpoch : c.epoch + 1 ≤
       compute_epoch_at_slot cfg a.data.slot := by
     calc
-      c.epoch + 1 = F.child.epoch := F.child_epoch.symm
+      c.epoch + 1 ≤ F.child.epoch := F.epoch_succ_le_child cfg
       _ = a.data.target.epoch :=
         congrArg Checkpoint.epoch haTarget.symm
       _ = compute_epoch_at_slot cfg a.data.slot := hevidence.target_epoch
-  apply Nat.lt_of_succ_le
-  simpa only [Nat.succ_eq_add_one, hchildEpoch] using
-    ce_mono cfg (Nat.le_of_lt hattestationBeforeCarrier)
+  exact Nat.lt_of_succ_le
+    (hchildEpoch.trans (ce_mono cfg (Nat.le_of_lt hattestationBeforeCarrier)))
 
 /-! ## Relayed finalized carrier implies endpoint epoch adoption -/
 
