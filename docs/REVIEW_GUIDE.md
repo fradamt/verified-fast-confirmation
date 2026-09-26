@@ -36,7 +36,7 @@ FFG behavior supplies the interpretation before the theorem applies to it.
 ┌─────────────────────────┬──────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
 │ Finding                 │ Status and evidence                                                                                          │
 ├─────────────────────────┼──────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
-│ Stored next-slot safety │ Proved under Execution.NextSlotSafetyPremises for honest stored boundary outputs within a finite horizon.    │
+│ Stored next-slot safety │ The root is in each honest observer's block store and on its head from the next slot, within the horizon.    │
 │ Live monotonicity       │ Conditional theorem under the safety bundle and both fields of LiveMonotonicityPremises.                     │
 │ Selected result         │ A spec-correspondence lemma covers the find_latest_confirmed_descendant note. It is not a review claim.      │
 │ Optional in-slot query  │ No general safety claim. StrictPrefixExtraQuery and PinnedEconomicsExtraQuery give counterexamples.          │
@@ -190,8 +190,8 @@ The source of record is fork `fradamt/consensus-specs`, tag `fcr-gloas-fix` (`13
 ## Known limits
 
 The conclusion covers stored boundary outputs in a finite horizon. It does
-not cover an arbitrary in-slot query. The ancestor statement does not itself
-assert that the confirmed root is in each observer store. The active validator set is fixed.
+not cover an arbitrary in-slot query. The confirmed root is in each honest
+observer's block store from the next slot. The active validator set is fixed.
 No witness has non-anchor finalization, positive Gloas discount, or a PTC
 event. The live witness uses the genesis anchor for FFG timing. The theorem
 does not prove that the Python handlers or a client satisfy each external

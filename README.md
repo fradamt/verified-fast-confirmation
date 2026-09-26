@@ -8,7 +8,7 @@ The Fast Confirmation Rule (FCR) selects a block root that a node can treat as c
 
 `review_claims` proves the next-slot safety claim under the records in `FastConfirmationStatements/Review.lean`:
 
-- **Next-slot safety.** An honest node's stored confirmed root stays on every honest head from the following slot through the finite verification horizon. The statement uses the executable ancestor walk; it does not state observer-store membership for the root.
+- **Next-slot safety.** From the following slot through the finite verification horizon, every honest observer has the stored confirmed root in its block store. The executable ancestor walk also shows that the root stays on the observer's head.
 
 The separate public theorem `live_confirmed_root_monotonicity` is conditional on the safety bundle and both fields of `LiveMonotonicityPremises`. `honest_block_each_slot` requires an honest block in every slot from execution start, known by the next slot, with descendant honest votes and no reorg of those blocks. `ffg_timely_justification` requires exact timely FFG store outputs at the last-slot call and next epoch start. These outputs close the FCR guards. The joint witness meets the timing field through the genesis anchor and has no included vote.
 
