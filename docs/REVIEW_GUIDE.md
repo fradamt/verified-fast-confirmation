@@ -132,10 +132,13 @@ contracts and the intended behavior of any unconstrained function it uses.
 │                                      │process_slots_attestation_valid constrain used outputs. Both Phase0 source-coherence records constrain  │
 │                                      │justification. FFGInterpretationFidelity constrains target-state origin outside safety.                 │
 │state_transition                      │BeaconExternalsPremises.state_transition_slot, state_transition_pre_slot_lt, and                        │
-│                                      │state_transition_checkpoint_epoch constrain imports. Both Phase0 source records, FFG state transitions, │
-│                                      │and ImportedBlockFinalizationLag constrain used state outputs.                                          │
-│process_justification_and_finalization│BeaconExternalsPremises.pjf_checkpoint_epoch and FFG state genesis/transition laws constrain checkpoint │
-│                                      │outputs. The four Phase0BoundarySourceCoherence laws constrain justification.                           │
+│                                      │state_transition_checkpoint_epoch constrain imports; the last one only from a pre-state whose           │
+│                                      │checkpoints are not in a future epoch (anchor_state_checkpoint_epoch starts that invariant). Both       │
+│                                      │Phase0 source records, FFG state transitions, and ImportedBlockFinalizationLag constrain used state     │
+│                                      │outputs.                                                                                                │
+│process_justification_and_finalization│BeaconExternalsPremises.pjf_checkpoint_epoch (for a state whose justified checkpoint is not in a        │
+│                                      │future epoch) and FFG state genesis/transition laws constrain checkpoint outputs. The five              │
+│                                      │Phase0BoundarySourceCoherence laws constrain justification.                                             │
 │is_valid_indexed_attestation          │honest_attestation_valid, valid_attestation_honest, on_attestation_committee, valid_attestation_default,│
 │                                      │and process_slots_attestation_valid constrain accepted checks.                                          │
 │AnchorCommitsToState                  │ScheduledExecutionPremises.genesis supplies the initial anchor relation. No hash theorem is proved.     │

@@ -48,7 +48,12 @@ namespace Phase0BoundarySourceCoherence
 variable {cfg ext}
 
 /-- These eager equations imply the Phase0 boundary laws for an external
-function that satisfies them. Finite witness externals use this constructor. -/
+function that satisfies them. Finite witness externals use this constructor.
+Its three hypotheses are facts about the given functions on every state, not
+premise fields: `hpjf` is stronger than
+`BeaconExternalsPremises.pjf_checkpoint_epoch`, which has an antecedent on the
+state's justified checkpoint. A witness proves `hpjf` from the definition of
+its own PJF. -/
 theorem of_eager
     (hslots : ∀ (st : BeaconState Root) (target : Slot),
       st.slot < target →

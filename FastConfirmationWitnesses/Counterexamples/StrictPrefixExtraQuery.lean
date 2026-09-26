@@ -587,12 +587,13 @@ private theorem witnessExternalsCoherence :
   · intro st b st' h
     simp [witnessExternals] at h
     exact h.1.1
-  · intro st b st' h
+  · intro st b st' _ _ h
     simp [witnessExternals] at h
     rcases h with ⟨_hguard, rfl⟩
     simp [anchorCheckpoint]
-  · intro st
+  · intro st _
     simp [witnessExternals, witnessConfig, compute_epoch_at_slot]
+  · refine ⟨?_, ?_⟩ <;> decide
   · intro v hv n s hn hs
     simp [get_slot_committee, witnessExternals, witnessExecution,
       witnessCommittee]

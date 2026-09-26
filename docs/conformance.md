@@ -27,7 +27,7 @@ Schema v1 phase0 traces remain historical and both readers reject them. Gloas FU
 ## Contract conformance
 
 The [contract inventory](../scripts/conformance/contracts/inventory.toml) lists every
-direct field in the premise structures. T means a generated reachable-state property of the pinned Python functions. E-scope labels execution limits. E-network/behavior labels delivery, scheduling, and honest or adversarial behavior. E-interpretation labels supplied FFG obligations. I labels cryptographic, engine, or fixed-committee idealizations. Some mixed relay fields carry both E-network/behavior and I. The inventory covers 160 authored claim-reachable structure fields, two inherited Lean projections, and two outside Prop boundaries: EpochEndsFitUint64 and BeaconFunctionInterface.AnchorCommitsToState. The checker verifies their source declarations. Thirteen selector, checkpoint, and anchor fields were moved from T to E
+direct field in the premise structures. T means a generated reachable-state property of the pinned Python functions. E-scope labels execution limits. E-network/behavior labels delivery, scheduling, and honest or adversarial behavior. E-interpretation labels supplied FFG obligations. I labels cryptographic, engine, or fixed-committee idealizations. Some mixed relay fields carry both E-network/behavior and I. The inventory covers 161 authored claim-reachable structure fields, two inherited Lean projections, and two outside Prop boundaries: EpochEndsFitUint64 and BeaconFunctionInterface.AnchorCommitsToState. The checker verifies their source declarations. Thirteen selector, checkpoint, and anchor fields were moved from T to E
 because their old probes did not test the supplied execution interpretation. The
 inventory checker fails when a Lean field has no entry.
 
@@ -82,7 +82,7 @@ slashing state, so its result is marked as not established. Unexcluded FAIL resu
 
 ### Whole-bundle sample
 
-`scripts/conformance/contracts/check_real_bundle.py` imports 48 normally participating blocks from a 100-validator Gloas genesis with 32, 33, 34, and 35 ETH effective balances. On this one accepted run it evaluates 71 finite fields: 50 FFG projection checks, 16 registry, committee, economic, anchor, and configuration checks, and five state-law samples on accepted keyed states. `ByzantineWeightPremises.estimate_sound` fails on 211 checked spans. The other checked fields pass, except `EventualCheckpointInclusion.included`, which is NOT_ESTABLISHED. This run has one view and no Byzantine validators; it cannot test network relay, all honest views, BLS, KZG, engine validity, or a nonvacuous span fault bound. CI runs this sample and fails if an unlabelled field fails.
+`scripts/conformance/contracts/check_real_bundle.py` imports 48 normally participating blocks from a 100-validator Gloas genesis with 32, 33, 34, and 35 ETH effective balances. On this one accepted run it evaluates 72 finite fields: 50 FFG projection checks, 17 registry, committee, economic, anchor, and configuration checks, and five state-law samples on accepted keyed states. `ByzantineWeightPremises.estimate_sound` fails on 211 checked spans. The other checked fields pass, except `EventualCheckpointInclusion.included`, which is NOT_ESTABLISHED. This run has one view and no Byzantine validators; it cannot test network relay, all honest views, BLS, KZG, engine validity, or a nonvacuous span fault bound. CI runs this sample and fails if an unlabelled field fails.
 
 ## Scope of the checks
 

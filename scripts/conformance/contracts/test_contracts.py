@@ -159,8 +159,37 @@ def run(repo: Path):
         print(f"{status} {name} ({count} cases)", flush=True)
 
     st_samples = [(label, st) for label, st in states]
+    # Unreachable, well-typed Gloas states. The laws below that quantify over
+    # every state are checked on them too. `in-domain` states keep the
+    # justified and finalized checkpoints at or below the state epoch, but
+    # have a previous justified checkpoint in a future epoch and all
+    # justification bits set; no run reaches them. `out-of-domain` states have
+    # a justified checkpoint in a future epoch. The first one is the r4
+    # reviewer's counterexample (scratch/r4c/pjf_probe.py): a genesis state
+    # with justified epoch 5.
+    def sane(st):
+        epoch = int(st.slot) // 8
+        return (int(st.current_justified_checkpoint.epoch) <= epoch
+                and int(st.finalized_checkpoint.epoch) <= epoch)
+    in_domain, out_of_domain = [], []
+    for label, st in states:
+        if label.startswith("voted:") and int(st.slot) in (16, 23, 31):
+            odd = st.copy()
+            odd.previous_justified_checkpoint = spec.Checkpoint(
+                epoch=int(st.slot) // 8 + 7, root=b"\x02" * 32)
+            for bit in range(len(odd.justification_bits)):
+                odd.justification_bits[bit] = True
+            in_domain.append((f"unreachable:in-domain:{label}", odd))
+    probe = genesis(spec, [spec.MIN_ACTIVATION_BALANCE] * 64, spec.MIN_ACTIVATION_BALANCE)
+    probe.current_justified_checkpoint = spec.Checkpoint(epoch=5, root=b"\x01" * 32)
+    out_of_domain.append(("unreachable:out-of-domain:r4-pjf-probe", probe))
+    future = next(st for label, st in states if label == "voted:16").copy()
+    future.current_justified_checkpoint = spec.Checkpoint(epoch=9, root=b"\x03" * 32)
+    out_of_domain.append(("unreachable:out-of-domain:voted:16-justified-9", future))
+    assert all(sane(st) for _, st in in_domain) and not any(sane(st) for _, st in out_of_domain)
+    unreachable = in_domain + out_of_domain
     slot_cases = []
-    for label, st in st_samples:
+    for label, st in st_samples + unreachable:
         sp = phase0 if label.startswith("phase0") else spec
         for jump in (1, 2, 3, 4, 8, 9, 16, 24):
             target = int(st.slot) + jump
@@ -337,9 +366,24 @@ def run(repo: Path):
     check("RegistryScope.excludes_epoch_registry_changes",
           "Epoch processing can set activation and exit epochs or update effective balance; such runs do not meet the static execution scope",
           registry_changes,epoch_registry_change)
+    def pjf_conclusion(st):
+        sp = spec if st.__class__ is states[0][1].__class__ else phase0
+        out = st.copy()
+        sp.process_justification_and_finalization(out)
+        return (int(out.current_justified_checkpoint.epoch) <= int(st.slot)//8,
+                {"pre": projection(st), "post": projection(out)})
+    def pjf_law(st):
+        ok, fields = pjf_conclusion(st)
+        antecedent = int(st.current_justified_checkpoint.epoch) <= int(st.slot)//8
+        return (not antecedent) or ok, {**fields, "antecedent": antecedent}
     check("BeaconExternalsPremises.pjf_checkpoint_epoch",
-          "(ext.process_justification_and_finalization st).current_justified_checkpoint.epoch <= compute_epoch_at_slot cfg st.slot",
-          st_samples, lambda st:(int((lambda x:(spec if st.__class__ is states[0][1].__class__ else phase0).process_justification_and_finalization(x) or x)(st.copy()).current_justified_checkpoint.epoch)<=int(st.slot)//8,{"pre":projection(st)}))
+          "st.current_justified_checkpoint.epoch <= compute_epoch_at_slot cfg st.slot -> (ext.process_justification_and_finalization st).current_justified_checkpoint.epoch <= compute_epoch_at_slot cfg st.slot",
+          st_samples + unreachable, pjf_law)
+    # Expected failure: the law without its antecedent, on states outside
+    # its domain. The early return keeps the future justified checkpoint.
+    check("regression.pjf_checkpoint_epoch_out_of_domain",
+          "EXPECTED FAILURE (not a Lean law): pjf_checkpoint_epoch without its antecedent, on a state with a future justified checkpoint",
+          out_of_domain, pjf_conclusion, known=True)
 
     transition_cases=[]
     for label,st in st_samples:
@@ -380,9 +424,26 @@ def run(repo: Path):
     except Exception as exc:
         results.append({"law":"fixture.slashing_block","status":"FAIL","known":False,"cases":1,
                         "counterexamples":[{"exception":repr(exc)}]})
+    # Blocks on the unreachable states. They are used only for the laws that
+    # quantify over every pre-state.
+    unreachable_transitions=[]
+    for label,st in unreachable:
+        for jump in (1, 8):
+            target=int(st.slot)+jump
+            pre=st.copy()
+            block=build_block(spec,pre,slot=target)
+            post=pre.copy()
+            signed=sign_transition(spec,post,block)
+            actual=pre.copy()
+            spec.state_transition(actual,signed)
+            assert actual == post
+            unreachable_transitions.append((f"{label}->{target}",(spec,pre,signed,actual)))
+    in_domain_transitions=[(l,d) for l,d in unreachable_transitions if sane(d[1])]
+    out_of_domain_transitions=[(l,d) for l,d in unreachable_transitions if not sane(d[1])]
+    transition_cases_all = transition_cases + unreachable_transitions
     check("BeaconExternalsPremises.state_transition_slot",
           "ext.state_transition st b = some st' -> st'.slot = b.message.slot",
-          transition_cases,lambda d:(int(d[3].slot)==int(d[2].message.slot),{"pre":projection(d[1]),"post":projection(d[3])}))
+          transition_cases_all,lambda d:(int(d[3].slot)==int(d[2].message.slot),{"pre":projection(d[1]),"post":projection(d[3])}))
     check("RegistryScope.excludes_slashing_inclusion",
           "A successful block with proposer and attester slashings changes the registry, so an execution containing it is outside the static scope",
           [(l,d) for l,d in transition_cases if l=="gloas:both-slashings:0->1"],
@@ -390,17 +451,32 @@ def run(repo: Path):
                     {"pre":projection(d[1]),"post":projection(d[3])}))
     check("BeaconExternalsPremises.state_transition_pre_slot_lt",
           "ext.state_transition st b = some st' -> st.slot < b.message.slot",
-          transition_cases,lambda d:(int(d[1].slot)<int(d[2].message.slot),{"pre":projection(d[1]),"post":projection(d[3])}))
+          transition_cases_all,lambda d:(int(d[1].slot)<int(d[2].message.slot),{"pre":projection(d[1]),"post":projection(d[3])}))
+    def transition_epoch_conclusion(d):
+        return (int(d[3].current_justified_checkpoint.epoch)<=int(d[2].message.slot)//8 and
+                int(d[3].finalized_checkpoint.epoch)<=int(d[2].message.slot)//8,
+                {"pre":projection(d[1]),"post":projection(d[3])})
+    def transition_epoch_law(d):
+        ok, fields = transition_epoch_conclusion(d)
+        return (not sane(d[1])) or ok, {**fields, "antecedent": sane(d[1])}
     check("BeaconExternalsPremises.state_transition_checkpoint_epoch",
-          "ext.state_transition st b = some st' -> st'.current_justified_checkpoint.epoch <= block epoch and st'.finalized_checkpoint.epoch <= block epoch",
-          transition_cases,lambda d:(int(d[3].current_justified_checkpoint.epoch)<=int(d[2].message.slot)//8 and int(d[3].finalized_checkpoint.epoch)<=int(d[2].message.slot)//8,{"pre":projection(d[1]),"post":projection(d[3])}))
+          "st.current_justified_checkpoint.epoch <= epoch st -> st.finalized_checkpoint.epoch <= epoch st -> ext.state_transition st b = some st' -> st'.current_justified_checkpoint.epoch <= block epoch and st'.finalized_checkpoint.epoch <= block epoch",
+          transition_cases_all, transition_epoch_law)
+    check("regression.state_transition_checkpoint_epoch_out_of_domain",
+          "EXPECTED FAILURE (not a Lean law): state_transition_checkpoint_epoch without its antecedent, from a pre-state with a future justified checkpoint",
+          [(l,d) for l,d in out_of_domain_transitions if int(d[1].slot)//8 == int(d[2].message.slot)//8],
+          transition_epoch_conclusion, known=True)
+    anchor_cases_epoch=[(label, st) for label, st in states if label.endswith(":genesis")] + [("phase0:genesis", genesis(phase0, [32 * 10**9] * 64, 32 * 10**9))]
+    check("BeaconExternalsPremises.anchor_state_checkpoint_epoch",
+          "anchor state: current_justified_checkpoint.epoch <= epoch and finalized_checkpoint.epoch <= epoch (genesis anchors)",
+          anchor_cases_epoch, lambda st:(sane(st), {"state":projection(st)}))
     check("Phase0SourceCoherence.state_transition_current_justified",
           "ext.state_transition pre sb = some post -> same epoch -> post.current_justified_checkpoint = pre.current_justified_checkpoint",
-          [(l,d) for l,d in transition_cases if int(d[1].slot)//8==int(d[2].message.slot)//8],
+          [(l,d) for l,d in transition_cases_all if int(d[1].slot)//8==int(d[2].message.slot)//8],
           lambda d:(cp(d[3].current_justified_checkpoint)==cp(d[1].current_justified_checkpoint),{"pre":projection(d[1]),"post":projection(d[3])}))
     check("Phase0BoundarySourceCoherence.state_transition_process_slots",
           "ext.state_transition pre sb = some post -> earlier epoch -> post.current_justified_checkpoint = (ext.process_slots pre sb.message.slot).current_justified_checkpoint",
-          [(l,d) for l,d in transition_cases if int(d[1].slot)//8<int(d[2].message.slot)//8],
+          [(l,d) for l,d in transition_cases_all if int(d[1].slot)//8<int(d[2].message.slot)//8],
           lambda d:(cp(d[3].current_justified_checkpoint)==cp(slotted((d[0],d[1],int(d[2].message.slot))).current_justified_checkpoint),{"pre":projection(d[1]),"post":projection(d[3]),"slots":projection(slotted((d[0],d[1],int(d[2].message.slot))))}))
     check("NextSlotSafetyPremises.imported_block_finalization_lag",
           "finalized = anchor or finalized.epoch + 2 <= block epoch for accepted blocks",

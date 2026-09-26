@@ -63,6 +63,9 @@ def main() -> int:
     field('NextSlotSafetyPremises.anchor_state_checkpoints',
           run.anchor[0] == 0 and int(anchor_state.current_justified_checkpoint.epoch) == 0
           and int(anchor_state.finalized_checkpoint.epoch) == 0, 1)
+    field('BeaconExternalsPremises.anchor_state_checkpoint_epoch',
+          int(anchor_state.current_justified_checkpoint.epoch) <= int(anchor_state.slot) // slots_per_epoch
+          and int(anchor_state.finalized_checkpoint.epoch) <= int(anchor_state.slot) // slots_per_epoch, 1)
     field('ScheduledExecutionPremises.whole_seconds', int(spec.config.SLOT_DURATION_MS) % 1000 == 0, 1)
     field('ByzantineWeightPremises.effective_balance_quantized',
           all(int(v.effective_balance) % increment == 0 for v in registry), len(registry))
