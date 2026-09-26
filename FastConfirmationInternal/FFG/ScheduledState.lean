@@ -377,6 +377,13 @@ abbrev voting_source_at (S : AcceptedBlockFFGState cfg ext E anchor)
     (store : Store Root) (b : Root) (e : Epoch) : Checkpoint Root :=
   if get_block_epoch cfg store b = e then S.realized_justified b else S.unrealized_justified b
 
+/-- Accepted-state specialization of support throughout the next epoch. -/
+abbrev SourceTargetSupportThroughoutEpoch
+    (S : AcceptedBlockFFGState cfg ext E anchor)
+    (b : Root) (e : Epoch) : Prop :=
+  FastConfirmation.Spec.SourceTargetSupportThroughoutEpoch cfg ext
+    (S.checkpoint_inclusion_view cfg ext) b e
+
 /-- Accepted-state specialization of exact link support. -/
 abbrev PaperA32LinkSupportAt
     (S : AcceptedBlockFFGState cfg ext E anchor)

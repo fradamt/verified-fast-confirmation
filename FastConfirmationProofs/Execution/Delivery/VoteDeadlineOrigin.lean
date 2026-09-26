@@ -1,7 +1,7 @@
 module
 public import FastConfirmationStatements.Premises.ScheduledExecutionConditions
 public import FastConfirmationStatements.Premises.Synchrony
-public import FastConfirmationStatements.Traces
+public import FastConfirmationInternal.Execution.Traces
 public import FastConfirmationProofs.Checkpoints.SlotClock
 
 @[expose] public section

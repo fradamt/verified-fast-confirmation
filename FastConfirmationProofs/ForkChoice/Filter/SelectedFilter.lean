@@ -4,7 +4,7 @@ public import FastConfirmationProofs.FFG.Certificates.FFGAccountability
 public import FastConfirmationProofs.ForkChoice.Filter.FilterViability
 public import FastConfirmationProofs.Monotonicity.FilterFuelMonotonicity
 
-public import FastConfirmationStatements.Traces
+public import FastConfirmationInternal.Execution.Traces
 @[expose] public section
 
 /-!

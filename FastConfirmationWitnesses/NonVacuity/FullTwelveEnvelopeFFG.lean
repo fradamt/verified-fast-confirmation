@@ -1,6 +1,6 @@
 module
 public import FastConfirmationWitnesses.NonVacuity.FullTwelveEnvelopeOperational
-public import FastConfirmationStatements.Premises.InterpretationFidelity
+public import FastConfirmationInternal.FFG.InterpretationFidelity
 
 @[expose] public section
 

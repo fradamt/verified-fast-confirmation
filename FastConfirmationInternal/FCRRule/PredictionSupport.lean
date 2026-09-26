@@ -1,5 +1,6 @@
 module
-public import FastConfirmationStatements.Premises.FCRCallPremises
+public import FastConfirmationInternal.FCRRule.VoteSupport
+public import FastConfirmationInternal.Execution.Traces
 
 /-!
 Prediction-support proof vocabulary records exact and descendant vote targets.

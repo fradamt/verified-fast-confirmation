@@ -181,7 +181,7 @@ The accepted extension ties the message to the carrier root. The proof gets
 honest-vote facts from the received copy and `HonestBehavior.no_forgery`.
 
 `FFGInterpretationFidelity` in
-`FastConfirmationStatements/Premises/InterpretationFidelity.lean` states the
+`FastConfirmationInternal/FFG/InterpretationFidelity.lean` states the
 intended interpretation: included votes are real, valid body members of
 accepted blocks, and they validate on the target state that `on_attestation`
 prepares. It also identifies the validity oracle with the external check and

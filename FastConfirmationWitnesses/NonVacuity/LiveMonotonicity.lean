@@ -2,7 +2,7 @@ module
 public import Mathlib.Tactic
 public import FastConfirmationWitnesses.NonVacuity.NextSlotPremises
 public import FastConfirmationProofs.Monotonicity.LiveConfirmation
-public import FastConfirmationStatements.Premises.InterpretationFidelity
+public import FastConfirmationInternal.FFG.InterpretationFidelity
 @[expose] public section
 
 namespace FastConfirmation.Spec

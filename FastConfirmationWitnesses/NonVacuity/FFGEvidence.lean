@@ -6,7 +6,7 @@ public import FastConfirmationProofs.Execution.Calls.ScheduledPrefixGeometry
 public import FastConfirmationProofs.Checkpoints.ExactCheckpointLinks
 
 public import FastConfirmationProofs.ModelFacts
-public import FastConfirmationStatements.Premises.InterpretationFidelity
+public import FastConfirmationInternal.FFG.InterpretationFidelity
 @[expose] public section
 
 /-!

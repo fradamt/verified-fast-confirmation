@@ -504,13 +504,6 @@ namespace AcceptedBlockFFGState
 
 variable {E : Execution Root} {anchor : Checkpoint Root}
 
-/-- Accepted-state specialization of support throughout the next epoch. -/
-abbrev SourceTargetSupportThroughoutEpoch
-    (S : AcceptedBlockFFGState cfg ext E anchor)
-    (b : Root) (e : Epoch) : Prop :=
-  FastConfirmation.Spec.SourceTargetSupportThroughoutEpoch cfg ext
-    (S.checkpoint_inclusion_view cfg ext) b e
-
 /-- Accepted-state specialization of paper Assumption 3.2. -/
 abbrev EventualCheckpointInclusion
     (S : AcceptedBlockFFGState cfg ext E anchor) : Prop :=

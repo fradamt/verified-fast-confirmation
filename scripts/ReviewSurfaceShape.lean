@@ -1,4 +1,5 @@
 import FastConfirmationStatements
+import FastConfirmationInternal.FFG.InterpretationFidelity
 import FastConfirmationProofs.ReviewTheorem
 import Lean
 import FastConfirmationProofs.FFG.SelectedSource.TruncatedPredictionPinning
@@ -18,9 +19,9 @@ run_cmd do
   checkFields `FastConfirmation.Spec.ReviewClaims
     ["confirmed_root_safe_from_next_slot", "live_confirmed_root_monotonicity"]
   checkFields `FastConfirmation.Spec.Execution.NextSlotSafetyPremises
-    ["semantics", "trajectory", "completed_calls", "epoch_ends_fit",
+    ["ffg_interpretation", "trajectory", "completed_calls", "epoch_ends_fit",
      "anchor_eq", "anchor_boundary", "finalization_delay",
-     "slots_per_epoch_gt_one", "paper_a32", "checkpoint_projection",
+     "slots_per_epoch_gt_one", "checkpoint_inclusion", "checkpoint_projection",
      "exact_link_validity"]
   checkFields `FastConfirmation.Spec.LiveMonotonicityPremises
     ["honest_block_each_slot", "ffg_timely_justification"]
@@ -51,7 +52,7 @@ run_cmd do
      "slot_before_carrier", "target_epoch", "attesters_in_committee"]
   -- Interpretation fidelity is outside the safety premise.
   checkFields `FastConfirmation.Spec.FFGInterpretationFidelity
-    ["included_fidelity", "attestation_validity", "gf_epoch_le_guf"]
+    ["included_fidelity", "realized_finalized_epoch_le_unrealized_finalized"]
   checkFields `FastConfirmation.Spec.Execution.IncludedAttestationFidelity
     ["carrier_message", "carrier_accepted", "in_carrier_body",
      "head_descends_target", "target_on_chain", "target_descends_source",

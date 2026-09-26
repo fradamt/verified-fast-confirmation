@@ -93,8 +93,9 @@ cutoff after the target epoch. An earlier endpoint uses the original gate and
 votes before that endpoint. No strict justified-epoch external law was added.
 
 The reachability audit keeps the Statements library focused on declarations
-used by the review claims. The Internal library holds the call and trace
-vocabulary used by proofs and witnesses.
+used by the review claims. The Internal library holds call and trace
+vocabulary, vote-support predicates, and interpretation fidelity used by
+proofs and witnesses.
 
 The existing target-edge and previous-result witness theorems remain facts about
 the runs. Their full-bundle constructors no longer prove support fields.

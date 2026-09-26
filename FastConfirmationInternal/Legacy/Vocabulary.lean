@@ -1,7 +1,7 @@
 module
 public import FastConfirmationStatements.Premises.ScheduledExecutionConditions
 public import FastConfirmationStatements.Premises.FFGState
-public import FastConfirmationStatements.Premises.LiveMonotonicity
+public import FastConfirmationInternal.FCRRule.VoteSupport
 
 @[expose] public section
 

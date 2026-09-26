@@ -5,12 +5,15 @@ public import FastConfirmationInternal.Discount.ByzantineBudget
 public import FastConfirmationInternal.Discount.CommitteeWeight
 public import FastConfirmationInternal.Discount.HeadSafetyInvariant
 public import FastConfirmationInternal.Discount.SupportClasses
+public import FastConfirmationInternal.Execution.Traces
+public import FastConfirmationInternal.FCRRule.VoteSupport
 public import FastConfirmationInternal.FCRRule.PredictionSupport
 public import FastConfirmationInternal.FCRRule.SelectedMargin
 public import FastConfirmationInternal.FCRRule.SelectedParentTrace
 public import FastConfirmationInternal.FCRRule.SelectedTraceEdges
 
 public import FastConfirmationInternal.FFG.Certificates
+public import FastConfirmationInternal.FFG.InterpretationFidelity
 public import FastConfirmationInternal.FFG.CheckpointLinks
 public import FastConfirmationInternal.FFG.ScheduledState
 public import FastConfirmationInternal.Network.SynchronyConversion

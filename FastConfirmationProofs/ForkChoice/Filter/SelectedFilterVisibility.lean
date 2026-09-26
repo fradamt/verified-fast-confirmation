@@ -3,7 +3,7 @@ public import FastConfirmationProofs.ForkChoice.Filter.SelectedFilter
 public import FastConfirmationProofs.Execution.StoreInvariants.CheckpointDomain
 public import FastConfirmationProofs.FFG.Certificates.FFGAccountability
 
-public import FastConfirmationStatements.Traces
+public import FastConfirmationInternal.Execution.Traces
 public import FastConfirmationProofs.ModelFacts
 public import FastConfirmationInternal.FCRRule.SelectedTraceEdges
 @[expose] public section

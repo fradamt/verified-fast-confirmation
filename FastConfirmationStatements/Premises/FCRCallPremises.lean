@@ -1,6 +1,5 @@
 module
 public import FastConfirmationModel
-public import FastConfirmationStatements.Traces
 public import FastConfirmationStatements.Premises.LiveMonotonicity
 public import FastConfirmationStatements.Premises.FFG
 public import FastConfirmationStatements.Premises.ScheduledExecutionConditions
@@ -12,30 +11,6 @@ public import FastConfirmationStatements.Premises.ScheduledExecutionConditions
 
 Completed call premises state the remaining conditions on scheduled FCR calls.
 -/
-
-section
-
-/-! ## Selected call support -/
-
-namespace FastConfirmation.Spec
-variable {Root : Type*} [LinearOrder Root] [Inhabited Root]
-variable (cfg : Config) (ext : BeaconFunctionInterface Root)
-/-- From the call slot on, each honest vote of epoch `e` targets a root
-that descends from `result` in the execution's parent graph. This is the
-support needed by paper Lemma 42 for a previous-epoch selected result. It
-allows honest voters to use different epoch-boundary checkpoints. -/
-def HonestVotesTargetDescendFrom (E : Execution Root)
-    (result : Root) (e : Epoch) (q : ℕ) : Prop :=
-  E.WithinHorizon cfg q ∧
-    ∀ w ∈ E.honest, ∀ s : Slot, E.SlotWithinHorizon cfg s →
-      compute_epoch_at_slot cfg s = e → E.slot_at cfg q ≤ s →
-      ∀ k a, E.vote w s = some (k, a) →
-        a.data.target.epoch = e ∧ E.RootDescends a.data.target.root result
-
-
-end FastConfirmation.Spec
-
-end
 
 section
 

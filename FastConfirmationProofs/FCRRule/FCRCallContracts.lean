@@ -1,7 +1,7 @@
 module
 public import FastConfirmationStatements.Premises.FFGCertificates
 
-public import FastConfirmationStatements.Traces
+public import FastConfirmationInternal.Execution.Traces
 @[expose] public section
 
 /-!
