@@ -1,12 +1,13 @@
 module
-public import FastConfirmationWitnesses.NonVacuity.FFGEvidence
+public import FastConfirmationWitnesses.NonVacuity.NextSlotPremises
 
 @[expose] public section
 
 /-!
 Phase0 epoch-1 slot processing can select a certified source newer than eager PJF.
-The finite state-function test uses the three included epoch-1 votes of the
-existing carrier fixture. It is not a complete execution refinement.
+The finite state-function test uses the three epoch-1 votes in the body of
+the slot-eight carrier of `NextSlotBridgeRun`. It is not a complete
+execution refinement.
 The Python control in `scripts/anchor_semantics_probe.py` checks the same
 corner with the pinned state functions. Phase0 beacon-chain.md:1893-1898
 and Altair beacon-chain.md:728-733 return before FFG processing in epochs
@@ -18,13 +19,45 @@ The reduced functions show why the eager PJF equation covers one boundary.
 
 namespace FastConfirmation.Spec.EarlyEpochBoundaryWitness
 
-open AcceptedActualFCRJointNonVacuityBase AcceptedActualFCRJointNonVacuityFFG
+open ConcreteFFG NextSlotBridgeRun NextSlotPremiseWitness
 
 /-- The identity names the carrier with the three included epoch-1 votes.
 The state is at slot 7, in epoch 1, as if those votes were included in an
 epoch-1 block. -/
 def earlyState : BeaconState WitnessRoot :=
-  { carrierState with slot := 7, source_identity := some carrierRoot }
+  { witnessBridge.project carrierFFGState with slot := 7, source_identity := some carrierRoot }
+
+/-- The carrier body includes the votes of slots four to six. -/
+theorem carrier_body_includes {s : Slot} (hlo : 4 ≤ s) (hhi : s ≤ 6) :
+    witnessBridge.BodyIncludedAt witnessExecution carrierRoot (vote s) := by
+  refine ⟨known_bridge carrier_accepted, by decide, carrierWire, carrierRoot, rfl, wireVote s, ?_,
+    (indexed_wireVote hlo hhi).symm⟩
+  interval_cases s <;> simp [carrierWire]
+
+/-- The three carrier body votes form the anchor-to-child link on the carrier
+chain. -/
+def anchorChildLink :
+    IncludedSupermajorityLink witnessConfig witnessExecution
+      (witnessBridge.BodyIncludedAt witnessExecution) carrierRoot anchorCheckpoint
+      childEpochOneCheckpoint where
+  signers := {0, 1, 2}
+  source_before_target := by decide
+  target_descends_source := child_descends_anchor
+  target_epoch_within := by decide
+  target_span_within := by
+    constructor <;> exact slot_within_of_lt_sixteen (by decide)
+  signers_in_epoch := by decide +kernel
+  signer_attestation := by
+    intro i hi
+    simp only [Finset.mem_insert, Finset.mem_singleton] at hi
+    rcases hi with rfl | rfl | rfl
+    · exact ⟨vote 4, ⟨carrierRoot, .refl carrierRoot, carrier_body_includes (by decide)
+        (by decide)⟩, by decide, Or.inl rfl, rfl⟩
+    · exact ⟨vote 5, ⟨carrierRoot, .refl carrierRoot, carrier_body_includes (by decide)
+        (by decide)⟩, by decide, Or.inl rfl, rfl⟩
+    · exact ⟨vote 6, ⟨carrierRoot, .refl carrierRoot, carrier_body_includes (by decide)
+        (by decide)⟩, by decide, Or.inl rfl, rfl⟩
+  supermajority := by decide +kernel
 
 /-- A reduced PJF interpretation with the Phase0 early return. -/
 def pjf (st : BeaconState WitnessRoot) : BeaconState WitnessRoot :=
@@ -79,10 +112,11 @@ theorem epoch_one_boundary_regression :
     (processSlots earlyState 12).current_justified_checkpoint = childEpochOneCheckpoint ∧
     (processSlots earlyState 12).current_justified_checkpoint ≠
       (pjf earlyState).current_justified_checkpoint ∧
-    IncludedCertifiedJustified witnessConfig witnessExecution witnessIncluded
+    IncludedCertifiedJustified witnessConfig witnessExecution
+      (witnessBridge.BodyIncludedAt witnessExecution)
       anchorCheckpoint carrierRoot (processSlots earlyState 12).current_justified_checkpoint := by
-  refine ⟨by decide, by decide, by decide, by decide, by decide, ?_⟩
-  exact .link .anchor witnessIncludedAnchorChildLink
+  refine ⟨by decide, by decide +kernel, by decide +kernel, by decide +kernel, by decide +kernel, ?_⟩
+  exact .link .anchor anchorChildLink
 
 /-- Externals with the reduced slot processing and PJF of this fixture.
 No block transition succeeds, so the block-transition law is vacuous here. -/
