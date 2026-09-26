@@ -1,6 +1,8 @@
 import FastConfirmationStatements
 import FastConfirmationProofs.ReviewTheorem
 import Lean
+import FastConfirmationProofs.FCRRule.PredictionSupport
+import FastConfirmationProofs.FCRRule.PredictionSupportGeometry
 
 /-! Pin the reviewed claim, premise record fields, and the review theorem's type. -/
 
@@ -84,3 +86,8 @@ example {Root : Type*} [LinearOrder Root] [Inhabited Root]
     FastConfirmation.Spec.HonestVotesTargetDescendFrom cfg E result
       (FastConfirmation.Spec.get_current_store_epoch cfg query.store) q :=
   h.selected_previous_result_no_conflict result hout hstrict hprevious hnotStart
+
+-- Proved reductions do not change the two-field prediction-support surface.
+#check FastConfirmation.Spec.Execution.currentTargetSelectedEdge_geometry_of_accepted
+#check FastConfirmation.Spec.Execution.currentTarget_supportBefore_of_canonical
+#check FastConfirmation.Spec.Execution.previousResult_descendSupport_of_canonical

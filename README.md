@@ -35,7 +35,7 @@ The result concerns stored boundary outputs. It does not cover an arbitrary quer
 └────────────────────────┴─────────────────────────────────────────────────────────────────────────────────────────────┘
 ```
 
-The [premise ledger](#premise-ledger) gives the exact records and sources. Evidence relay is supplied as a premise. The fault bound applies to each checked span. The live fields are stronger than paper Assumption 6.
+The guarded support fields remain assumptions. `Execution.currentTarget_support_of_canonical` and `Execution.previousResult_descendSupport_of_canonical` reduce them to canonicity at honest vote times. The within-epoch induction is still open. The [premise ledger](#premise-ledger) gives the exact records and sources. Evidence relay is supplied as a premise. The fault bound applies to each checked span. The live fields are stronger than paper Assumption 6.
 
 ## Trust and source
 

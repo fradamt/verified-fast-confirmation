@@ -84,6 +84,13 @@ the weaker conclusion at a call with a true guard. See the prediction-support
 section in [modeling choices](MODELING_CHOICES.md) for the Python note and the
 protocol counterexample to exact target agreement.
 
+`Execution.currentTargetSelectedEdge_geometry_of_accepted` proves crossing-edge
+knownness, current-epoch membership, and query-head ancestry without a helper
+proviso. `Execution.currentTarget_supportBefore_of_canonical` converts earlier
+canonicity into exact target support before an endpoint. The endpoint induction
+link is `Execution.canonicalAtHonestVotesBefore_of_endpoint_induction`. These
+reductions do not yet prove within-epoch canonicity or remove either field.
+
 ## Delivery and evidence
 
 `NextSlotSynchronyPremises` requires positive Δ and strict `A + Δ < S`. A source observation must occur by its slot deadline. A receiver observation occurs at or after the next boundary. A receiver is later than the source. Honest votes use the vote deadline. `synchrony_and_delivery_iff_nextSlot` relates the current bundles.

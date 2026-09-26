@@ -138,7 +138,14 @@ says: "This function assumes that all honest validators will be voting in
 support of the current epoch target starting from the current moment in time."
 For current-epoch blocks, paper Lemmas 44 and 45 derive the required agreement
 from canonicity within the epoch. This executable proof does not yet perform
-that induction. For previous-epoch results, paper Lemma 42 needs only descent.
+that induction. The crossing-edge geometry is proved by
+`Execution.currentTargetSelectedEdge_geometry_of_accepted`.
+`Execution.currentTarget_support_of_canonical` and
+`Execution.previousResult_descendSupport_of_canonical` prove the reductions
+from canonicity to the two support forms. The endpoint induction also gives
+support restricted to earlier slots; `Execution.support_of_before_epoch_end`
+extends it to the full target epoch only when that epoch has ended.
+For previous-epoch results, paper Lemma 42 needs only descent.
 The no-conflict helper's observed and future honest signer sets exceed one
 third of the weight. Any certified two-thirds link intersects this set, so
 honest non-slashability forces its target to descend from the result.

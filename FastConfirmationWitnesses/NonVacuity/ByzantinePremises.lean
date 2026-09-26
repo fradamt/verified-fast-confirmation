@@ -23,7 +23,8 @@ child's safety threshold from 2760 to 2560 and confirms the child. The call
 from second eight to nine is in a non-start slot of epoch two. It selects the
 epoch-one carrier from the child, so the selected previous-result proviso has
 a true antecedent. `target_votes_support` proves exact target support in
-this run; the bundle now uses only descendant support for a previous result. The accepted FFG interpretation and
+this run; the bundle now uses only descendant support for a previous result.
+The accepted FFG interpretation and
 positive Paper A3.2 support use the three votes in the slot-seven carrier.
 
 The public non-vacuity, full-bundle, and safety theorems are at the end.

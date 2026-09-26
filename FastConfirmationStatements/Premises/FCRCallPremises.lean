@@ -35,8 +35,8 @@ def HonestVotesTargetDescendFrom (E : Execution Root)
 /-- Support provisos for prediction helpers actually used by one
 selector call. `current_target` covers the tentative edges that cross to a
 later epoch. `selected_previous_result_no_conflict` covers the final
-no-conflict guard in a non-start slot with descendant support. The proof does not need a proviso for
-retained previous-loop edges. -/
+no-conflict guard in a non-start slot with descendant support. The proof
+does not need a proviso for retained previous-loop edges. -/
 structure FCRPredictionSupportAt (E : Execution Root)
     (v : ValidatorIndex) (q : ℕ)
     (fcrStore : FastConfirmationStore Root)
@@ -77,9 +77,9 @@ variable {E : Execution Root}
 The first five fields are direct protocol/model contracts.  `balance_floor`
 excludes the executable helper's artificial empty-active-set minimum-balance
 branch. `delivery_lookahead` is the paper-synchrony boundary closure for
-honest votes created inside the prefix. `helper_provisos` states exact current-target support and previous-result descendant support,
-required only when the outer
-evaluator's descendant-selector guard is true.
+honest votes created inside the prefix. `helper_provisos` states exact
+current-target support and previous-result descendant support. It applies
+only when the outer evaluator's descendant-selector guard is true.
 
 Everything else needed by the accepted target gate--causal replay, current
 slot, latest-message provenance, non-equivocation, committee accounting,

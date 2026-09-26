@@ -1,4 +1,6 @@
 module
+public import FastConfirmationProofs.FCRRule.PredictionSupport
+public import FastConfirmationProofs.FCRRule.PredictionSupportGeometry
 public import FastConfirmationProofs.Checkpoints.HonestVotePathAdmissibility
 public import FastConfirmationProofs.Checkpoints.AnchorChainSafety
 public import FastConfirmationProofs.Checkpoints.AnchorParentKnownness

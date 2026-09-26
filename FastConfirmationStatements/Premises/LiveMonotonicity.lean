@@ -18,8 +18,8 @@ section
 namespace FastConfirmation.Spec
 variable {Root : Type*} [LinearOrder Root] [Inhabited Root]
 variable (cfg : Config) (ext : Externals Root)
-/-- Exact target support from the spec note on both `will_*` predictions ("This function assumes
-that all honest validators will be voting in support of the current epoch
+/-- Exact target support from the spec note on both `will_*` predictions
+("This function assumes that all honest validators will be voting in support of the current epoch
 target"): from second `n` on, every honest vote of a slot in the target's
 epoch carries target `T`.
 

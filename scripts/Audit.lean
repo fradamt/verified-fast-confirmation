@@ -52,7 +52,7 @@ private def publicWitnesses : Array Name :=
     ``FastConfirmation.Spec.ByzantinePremiseWitness.byzantine_weight_exercised,
     ``FastConfirmation.Spec.ByzantinePremiseWitness.slashing_relay_exercised,
     ``FastConfirmation.Spec.ByzantinePremiseWitness.previous_result_proviso_exercised,
-  ``FastConfirmation.Spec.ByzantinePremiseWitness.previous_result_descendant_support_exercised,
+    ``FastConfirmation.Spec.ByzantinePremiseWitness.previous_result_descendant_support_exercised,
     ``FastConfirmation.Spec.ByzantinePremiseWitness.changed_root_safe_from_next_slot,
     ``FastConfirmation.Spec.ByzantinePremiseWitness.ffg_interpretation_fidelity,
     ``FastConfirmation.Spec.StrictPrefixExtraQuery.extra_query_changes_head_counterexample,

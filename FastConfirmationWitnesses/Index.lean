@@ -206,7 +206,9 @@ previous-result proviso through
 `ByzantinePremiseWitness.slashing_relay_exercised`, and
 `ByzantinePremiseWitness.previous_result_proviso_exercised`.
 `ByzantinePremiseWitness.previous_result_descendant_support_exercised` checks
-the descendant conclusion. The shorter
+the descendant conclusion. The geometric and canonicity-to-support lemmas
+do not change the witness premise bundle: both guarded support fields remain
+inputs. The shorter
 synchrony-only run does not prove the full safety bundle.
 `DeadlineVotePathCandidate` checks that a skipped-boundary schedule fails the
 pre-tick relay. The audited public witness set has 43 entries.
