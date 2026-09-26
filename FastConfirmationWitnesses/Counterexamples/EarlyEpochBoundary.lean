@@ -68,7 +68,7 @@ theorem guarded_boundary_equality (st : BeaconState WitnessRoot) (target : Slot)
 
 /-- One boundary preserves the epoch-0 source. Two boundaries select epoch
 1; its included certificate is present, although eager PJF still returns
-before processing it. This is the M2 corner, not an unsafe execution. -/
+before processing it. This is an epoch-boundary regression, not an unsafe execution. -/
 theorem epoch_one_boundary_regression :
     compute_epoch_at_slot witnessConfig earlyState.slot = 1 ∧
     (pjf earlyState).current_justified_checkpoint = anchorCheckpoint ∧

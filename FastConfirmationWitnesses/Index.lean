@@ -35,8 +35,11 @@ full-bundle run, and a 12-second run with an accepted payload envelope. It
 also names two counterexamples to same-second head agreement at mid-second
 prefixes under the older synchrony record, and a raw checkpoint-sync filter
 regression. The latter confirms a child at slot 14 and loses it at slot 20.
-See `CheckpointSyncFilterWitness.checkpoint_sync_filter_counterexample`. It
-does not assert the full safety bundle or eventual inclusion.
+See `CheckpointSyncFilterWitness.checkpoint_sync_filter_counterexample`. It has no attestation inclusion for two epochs, so it is outside `EventualCheckpointInclusion`. It shows why that premise matters; it is not an FCR safety failure.
+
+`NextSlotSafetyPremises.anchor_state_checkpoints` covers a genesis anchor whose state has the zero-root stub. It also covers a normalized anchor state whose current justified and finalized checkpoints equal the anchor. At the FFG interpretation boundary, `CheckpointReadsAs` reads a raw genesis stub as the genesis anchor because both checkpoints have `GENESIS_EPOCH`. Executable handlers and wire attestations keep the raw checkpoint. Checkpoint-sync anchors with older state checkpoints are outside this condition. The raw source age and the filter's `+2` rule need an inclusion argument. That argument is not formalized. `CheckpointSyncFilterWitness.checkpoint_sync_filter_counterexample` has no attestation inclusion for two epochs, so it is outside `EventualCheckpointInclusion`. It shows why that premise matters; it is not an FCR safety failure.
+
+`Phase0BoundarySourceCoherence` has four fields. `process_slots_one_boundary` equates one boundary with eager PJF. `process_slots_same_target_epoch` equates target slots in one epoch. `state_transition_process_slots` equates a crossing block transition with slot processing. `process_slots_checkpoint_epoch` bounds the output checkpoint if every intermediate slot-processed state satisfies `3 * effective_balance_increment < 2 * get_total_active_balance`. This guard is exact because an empty vote set can pass the two-thirds test at a total balance of at most one and a half increments. `ScheduledFCRCallPremises.balance_floor` requires two increments of anchor active weight. With `registry_static_in_horizon`, this floor supplies the guard on in-horizon reads. The static-registry condition excludes included slashings, deposits, activations, exits, and effective-balance changes that alter validator records in the horizon. `on_attestation_committee` confines successful delivered attestations in honest in-horizon prefixes to their slot committee. Attester-slashing evidence can name off-committee validators.
 
 ## Premise bundles
 

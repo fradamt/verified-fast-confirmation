@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/fradamt/verified-fast-confirmation/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/fradamt/verified-fast-confirmation/actions/workflows/ci.yml)
 
-The Fast Confirmation Rule (FCR) selects a block root that a node can treat as confirmed from its fork-choice state, under explicit network, stake, and supplied FFG-interpretation premises.
+The Fast Confirmation Rule (FCR) selects a block root that a node can treat as confirmed from its fork-choice state, under explicit network, stake, and supplied FFG-interpretation premises. The state-function contracts are tested against the pinned Python functions.
 
 - **Stored boundary output:** The confirmed root saved after a scheduled slot-boundary call.
 - **Handler-successful prefix:** The state after a scheduled event whose handler returns successfully.
@@ -31,45 +31,49 @@ witness proves fidelity. This development does not derive the FFG layer from the
 beacon state transition. To apply the theorem to a client or the Python rule,
 one must show that its FFG behavior supplies this interpretation.
 
-The read agreement reads each raw state checkpoint as the accepted selector:
-equal, or both at `GENESIS_EPOCH`. The premise field `anchor_state_checkpoints`
-states the scope: the anchor epoch is `GENESIS_EPOCH`, or the anchor state's
-current justified and finalized checkpoints equal the anchor. A real genesis
-state with the zero-root stub is covered;
-`GenesisStubPremiseWitness.genesis_stub_full_bundle_witness` satisfies the full
-bundle with such a state. A checkpoint-sync anchor whose state checkpoints are
-older than the anchor remains excluded. The Phase0
-boundary-source laws hold exactly for the pinned state functions, including
-an epoch-1 state that skips into epoch 3. One law has a balance antecedent,
-which the two-increment `balance_floor` supplies; see
-[anchor and boundary limits](docs/MODELING_CHOICES.md#anchor-and-boundary-limits).
-`CheckpointSyncFilterWitness.checkpoint_sync_filter_counterexample` checks
-that, without eventual inclusion, an old raw checkpoint-sync source can fail
-the filter's `+2` rule and lose a confirmed child. The normalized source keeps
-the child. This is not a counterexample to the full safety bundle. See [anchor limits](docs/MODELING_CHOICES.md#anchor-and-boundary-limits).
+`NextSlotSafetyPremises.anchor_state_checkpoints` covers a genesis anchor whose state has the zero-root stub. It also covers a normalized anchor state whose current justified and finalized checkpoints equal the anchor. At the FFG interpretation boundary, `CheckpointReadsAs` reads a raw genesis stub as the genesis anchor because both checkpoints have `GENESIS_EPOCH`. Executable handlers and wire attestations keep the raw checkpoint. Checkpoint-sync anchors with older state checkpoints are outside this condition. The raw source age and the filter's `+2` rule need an inclusion argument. That argument is not formalized. `CheckpointSyncFilterWitness.checkpoint_sync_filter_counterexample` has no attestation inclusion for two epochs, so it is outside `EventualCheckpointInclusion`. It shows why that premise matters; it is not an FCR safety failure.
+
+`Phase0BoundarySourceCoherence` has four fields. `process_slots_one_boundary` equates one boundary with eager PJF. `process_slots_same_target_epoch` equates target slots in one epoch. `state_transition_process_slots` equates a crossing block transition with slot processing. `process_slots_checkpoint_epoch` bounds the output checkpoint if every intermediate slot-processed state satisfies `3 * effective_balance_increment < 2 * get_total_active_balance`. This guard is exact because an empty vote set can pass the two-thirds test at a total balance of at most one and a half increments. `ScheduledFCRCallPremises.balance_floor` requires two increments of anchor active weight. With `registry_static_in_horizon`, this floor supplies the guard on in-horizon reads. The static-registry condition excludes included slashings, deposits, activations, exits, and effective-balance changes that alter validator records in the horizon. `on_attestation_committee` confines successful delivered attestations in honest in-horizon prefixes to their slot committee. Attester-slashing evidence can name off-committee validators.
+
+`GenesisStubPremiseWitness.genesis_stub_full_bundle_witness` satisfies the full safety bundle with a real genesis stub. See [anchor and boundary limits](docs/MODELING_CHOICES.md#anchor-and-boundary-limits).
 
 ## Assumptions at a glance
 
 ```text
-┌────────────────────┬────────────────────────────────────────────────────────────────────────────────────────┐
-│ Assumption         │ Plain meaning and premise record                                                       │
-├────────────────────┼────────────────────────────────────────────────────────────────────────────────────────┤
-│ Honest actions     │ Scheduled events and head votes. HonestBehavior.votes_head fixes each honest committee │
-│                    │ vote.                                                                                  │
-│ No forgery         │ HonestBehavior.no_forgery covers scheduled votes that name an honest validator.        │
-│ No slashing        │ HonestBehavior.not_slashable makes honest votes pairwise non-slashable.                │
-│ Root labels        │ WellFormedExecution.blocks_root_injective identifies blocks with equal root labels.    │
-│ Timing             │ NextSlotSynchronyPremises requires receipt and handler service by the next boundary.   │
-│ Stake and registry │ Keyed states in honest in-horizon stores and their slot-processed reads have the anchor registry. │
-│ Stake floor        │ Positive total balance and ByzantineWeightPremises hold on each checked span.          │
-│ Anchor             │ The initial anchor has the stated root, epoch, and boundary alignment. Its state is a  │
-│                    │ genesis state or carries the anchor as its checkpoints (anchor_state_checkpoints).     │
-│ FFG inclusion      │ AcceptedBlockFFGState.EventualCheckpointInclusion supplies Assumption 3.2 inclusion.   │
-│ FFG state          │ ScheduledFFGInterpretation supplies accepted-block state, links, and checkpoint reads. │
-│ Phase0 source      │ Phase0SourceCoherence and Phase0BoundarySourceCoherence constrain source reads.        │
-│ Payload validity   │ BeaconExternalsPremises and the execution external contract govern imported payloads.  │
-│ Live result only   │ LiveMonotonicityPremises supplies honest blocks and exact timely FFG store outcomes.   │
-└────────────────────┴────────────────────────────────────────────────────────────────────────────────────────┘```
+┌──────────────────────┬──────────────────────────────────────────────────────────────────────────────────────────────────┐
+│ Assumption           │ Plain meaning and premise record                                                                 │
+├──────────────────────┼──────────────────────────────────────────────────────────────────────────────────────────────────┤
+│ Honest actions       │ Scheduled events and head votes. `HonestBehavior.votes_head` fixes each honest committee vote.   │
+├──────────────────────┼──────────────────────────────────────────────────────────────────────────────────────────────────┤
+│ No forgery           │ `HonestBehavior.no_forgery` covers scheduled votes that name an honest validator.                │
+├──────────────────────┼──────────────────────────────────────────────────────────────────────────────────────────────────┤
+│ No slashing          │ `HonestBehavior.not_slashable` makes honest votes pairwise non-slashable.                        │
+├──────────────────────┼──────────────────────────────────────────────────────────────────────────────────────────────────┤
+│ Root labels          │ `WellFormedExecution.blocks_root_injective` identifies blocks with equal root labels.            │
+├──────────────────────┼──────────────────────────────────────────────────────────────────────────────────────────────────┤
+│ Timing               │ `NextSlotSynchronyPremises` requires receipt and handler service by the next boundary.           │
+├──────────────────────┼──────────────────────────────────────────────────────────────────────────────────────────────────┤
+│ Registry             │ `registry_static_in_horizon` fixes the anchor registry in keyed states and slot-processed reads. │
+├──────────────────────┼──────────────────────────────────────────────────────────────────────────────────────────────────┤
+│ Balance floor        │ `balance_floor` requires two increments of anchor active weight.                                 │
+├──────────────────────┼──────────────────────────────────────────────────────────────────────────────────────────────────┤
+│ Anchor               │ `anchor_state_checkpoints` covers genesis with a stub or a state with both checkpoints equal to  │
+│                      │ the anchor.                                                                                      │
+├──────────────────────┼──────────────────────────────────────────────────────────────────────────────────────────────────┤
+│ FFG inclusion        │ `EventualCheckpointInclusion` supplies the checkpoint inclusion premise.                         │
+├──────────────────────┼──────────────────────────────────────────────────────────────────────────────────────────────────┤
+│ FFG state            │ `ScheduledFFGInterpretation` supplies accepted-block state, links, and checkpoint reads.         │
+├──────────────────────┼──────────────────────────────────────────────────────────────────────────────────────────────────┤
+│ Phase0 source        │ `Phase0SourceCoherence` and `Phase0BoundarySourceCoherence` constrain source reads.              │
+├──────────────────────┼──────────────────────────────────────────────────────────────────────────────────────────────────┤
+│ Committee            │ `on_attestation_committee` covers successful delivered attestations. Slashing evidence can be    │
+│                      │ off-committee.                                                                                   │
+├──────────────────────┼──────────────────────────────────────────────────────────────────────────────────────────────────┤
+│ Payload validity     │ `BeaconExternalsPremises` and the external contract govern imported payloads.                    │
+├──────────────────────┼──────────────────────────────────────────────────────────────────────────────────────────────────┤
+│ Live result only     │ `LiveMonotonicityPremises` supplies honest blocks and exact FFG store outcomes.                  │
+└──────────────────────┴──────────────────────────────────────────────────────────────────────────────────────────────────┘
+```
 
 Prediction support is derived by joint induction over calls and endpoint slots.
 Current-epoch crossings use exact targets. Previous-epoch results use descendant
@@ -105,7 +109,7 @@ external calls with stated contracts. The Lean kernel checks the proofs. The tru
 allows only `propext`, `Classical.choice`, and `Quot.sound`. The [paper
 library](#paper-library) models the [paper](https://arxiv.org/abs/2405.00549) separately.
 There is no refinement theorem from the paper model to the executable model.
-The [contract conformance checks](docs/conformance.md#contract-conformance) test generated states against the pinned Python functions and record known counterexamples.
+The [contract conformance checks](docs/conformance.md#contract-conformance) cover 158 premise fields: 31 tested state-function properties (T), 116 execution or interpretation assumptions (E), and 11 cryptographic or engine idealizations (I). Run `python3 scripts/conformance/contracts/check_inventory.py --repo /path/to/consensus-specs-pending-discount --output /tmp/contract-results.json` with the pinned checkout's interpreter. Two labelled expected failures record why the balance guard is necessary and why an older raw checkpoint-sync state is outside `anchor_state_checkpoints`. These findings do not stop validation.
 
 ## Verify
 

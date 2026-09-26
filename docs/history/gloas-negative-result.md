@@ -94,7 +94,7 @@ accepts honest data only from that fixed table. Each actual honest vote is
 checked against the table. Slot processing preserves the registry. The
 transition external accepts only the specified child from the committed
 anchor state; other inputs reject. Epoch processing clamps future checkpoint
-epochs on malformed inputs. These completions meet the m2 external laws
+epochs on malformed inputs. These completions meet the stated external laws
 without changing the observed execution. The source initializer checks the
 anchor state commitment.
 

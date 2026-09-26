@@ -144,7 +144,7 @@ The source fork is `fradamt/consensus-specs` at tag `fcr-gloas-fix` (`13f391516`
 
 ## Strong conditions
 
-These eleven fields are stronger than a direct claim about all real clients.
+These thirteen fields are stronger than a direct claim about all real clients.
 Each item states why the proof uses the field and what a weaker model would
 need.
 
@@ -159,6 +159,8 @@ need.
 9. `ByzantineWeightPremises.estimate_sound` makes every in-horizon committee estimate an upper bound. It lets the proof use the executable estimate without a failure case.
 10. `ByzantineWeightPremises.span_fraction` bounds non-honest weight in every checked slot span, including one slot. A global stake fraction alone cannot supply this field.
 11. `NextSlotSynchronyPremises.attester_slashing_relay` gives each honest store the equivocation indices by the next boundary. Literal Python can reject evidence when its justified state lacks a signer.
+12. `NextSlotSafetyPremises.anchor_state_checkpoints` admits the genesis anchor with a raw stub or a state with both checkpoints equal to the anchor. Older raw checkpoints in a checkpoint-sync state are outside its scope.
+13. `ScheduledFCRCallPremises.balance_floor` requires two increments of anchor active weight. With the static registry, this supplies the exact intermediate-state guard for `Phase0BoundarySourceCoherence.process_slots_checkpoint_epoch`.
 
 ## Derived prediction support
 
@@ -261,10 +263,7 @@ identities, and to `ImportedBlockFinalizationLag`. Executable handlers and wire
 attestations stay raw; the proof uses `normalizeAnchorCheckpoint` only at this
 interpretation boundary.
 
-`NextSlotSafetyPremises.anchor_state_checkpoints` states the anchor scope: the
-anchor epoch is `GENESIS_EPOCH`, or the anchor state's current justified and
-finalized checkpoints equal the anchor. A checkpoint-sync anchor whose state
-checkpoints are older than the anchor is excluded.
+`NextSlotSafetyPremises.anchor_state_checkpoints` states the anchor scope: the anchor epoch is `GENESIS_EPOCH`, or the anchor state's current justified and finalized checkpoints equal the anchor. The first case covers a real genesis state with a zero-root stub. The second case covers a normalized anchor state. A checkpoint-sync anchor whose state checkpoints are older than the anchor is excluded.
 `GenesisStubPremiseWitness.genesis_stub_full_bundle_witness` satisfies the
 full bundle with a genesis stub whose root is not the anchor root, and the
 FCR still confirms its child.
@@ -284,26 +283,22 @@ the stub has the anchor's epoch.
 with an epoch-3 anchor and raw justification at epoch 2. The unchanged FCR
 confirms its slot-13 child at slot 14. At slot 20, raw source epoch 2 fails
 the filter's `source.epoch + 2 >= current_epoch` test. The head returns to the
-anchor. Without eventual inclusion, the raw source can therefore lose a
-confirmed block; the normalized source keeps it. This is a handler regression,
-not a counterexample to the full safety bundle. With enough valid epoch-3
+anchor. The fixture includes no attestation for two epochs. It is outside `EventualCheckpointInclusion`. The raw source can therefore lose a confirmed child, while the normalized source keeps it. This shows why the inclusion premise matters; it is not an FCR safety failure. With enough valid epoch-3
 votes included on the canonical chain in epoch 4, PJF can instead advance
-the raw source to epoch 3 before the filter's epoch-5 deadline. The proof must
-connect this inclusion to the exact antecedent of `EventualCheckpointInclusion`.
+the raw source to epoch 3 before the filter's epoch-5 deadline. The raw source age and the filter's `+2` rule need an inclusion argument. That argument is not formalized.
 
 `Phase0BoundarySourceCoherence` has four laws. Slot processing across one
 boundary gives the eager PJF checkpoint. Targets in the same epoch give the
 same checkpoint. A block transition gives the checkpoint of slot processing
 to the block slot. The fourth law has a balance antecedent: each state that
-slot processing passes through has total active balance above one and a half
-increments. Under this antecedent, slot processing keeps the checkpoint or
+slot processing passes through has total active balance such that `3 * effective_balance_increment < 2 * get_total_active_balance`. Under this antecedent, slot processing keeps the checkpoint or
 gives one no newer than the start epoch. There is no equation for two or more
 boundaries. Phase0 and Altair PJF return early in epochs 0 and 1, so an
 epoch-1 state can keep the old checkpoint under eager PJF and justify epoch 1
 when slot processing reaches epoch 3. From a later start, the second PJF
 weighs the start-epoch votes again with the next epoch's balances. The
 antecedent is necessary: `get_total_balance` returns at least one increment,
-so with a total active balance of at most one increment an epoch with no
+so with a total active balance of at most one and a half increments an epoch with no
 attestations passes the two-thirds test. `ScheduledFCRCallPremises.balance_floor`
 asks for an anchor active weight of at least two increments. The registry is
 static in the horizon, so this one constant fact gives the antecedent at each
@@ -320,11 +315,7 @@ outcomes and the included certificate for the newer source.
 `EarlyEpochBoundaryWitness.epoch_one_fixture_satisfies_boundary_laws` shows
 that the same reduced functions satisfy the four laws.
 
-`normalizeAnchorCheckpoint` implements the proposed semantic operation in
-Internal. Its lemmas prove genesis epoch preservation, the raw filter tests,
-and strict global checkpoint update compatibility. It is not yet connected to
-`FFGStateReadAgreement` or to the link source equations. The public theorem
-therefore still excludes raw genesis stubs.
+`normalizeAnchorCheckpoint` provides internal lemmas for anchor normalization. `CheckpointReadsAs` supplies the genesis-epoch read relation in the safety bundle. The genesis-stub witness proves that the full bundle can hold for raw genesis state checkpoints. The executable handlers and wire attestations keep their raw values.
 
 `CheckpointSyncFilterWitness.anchor_only_view_satisfies_inclusion` checks an
 additional obligation for checkpoint sync. In a normalized anchor-only view,
