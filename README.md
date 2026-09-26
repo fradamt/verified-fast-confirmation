@@ -87,6 +87,7 @@ external calls with stated contracts. The Lean kernel checks the proofs. The tru
 allows only `propext`, `Classical.choice`, and `Quot.sound`. The [paper
 library](#paper-library) models the [paper](https://arxiv.org/abs/2405.00549) separately.
 There is no refinement theorem from the paper model to the executable model.
+The [contract conformance checks](docs/conformance.md#contract-conformance) test generated states against the pinned Python functions and record known counterexamples.
 
 ## Verify
 
