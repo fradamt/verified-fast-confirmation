@@ -29,7 +29,7 @@ The runs are:
 
 Names `AcceptedBlockFFGState.*` and `FFGStateReadAgreement.*` are Lean
 fields; `candidate.*` is a proposed restatement; `regression.*` records a
-finding.
+finding; `out_of_scope.*` is a run outside the scope of a Lean field.
 
 Each law is checked on every applicable tuple. A law marked `expected=FAIL`
 is a labelled regression: the test fails if it stops failing, because the
@@ -443,12 +443,16 @@ def run_checks(projections, fork, voter):
           "store.unrealized_justifications r reads as unrealized_justified r",
           roots(), lambda d: (d[0].stored_gu[d[1]] == d[0].gu[d[1]], {"stored": d[0].stored_gu[d[1]], "eager": d[0].gu[d[1]]}))
     for field, sel in (("realized_finalized_evidence", "gf"), ("unrealized_finalized_evidence", "guf")):
-        check(f"regression.{field}_one_step",
-              f"{field}: {field.rsplit('_', 1)[0]} r = anchor or IncludedCertifiedFinalized (1-step link) "
-              "(`late`: epoch 2 is finalized through the link 2 -> 4)",
-              roots(), lambda d, sel=sel: (getattr(d[0], sel)[d[1]] == d[0].run.anchor
-                                           or d[0].finalized_one_step(d[1], getattr(d[0], sel)[d[1]]),
-                                           {"finalized": getattr(d[0], sel)[d[1]]}), expected="FAIL")
+        one_step = (lambda d, sel=sel: (getattr(d[0], sel)[d[1]] == d[0].run.anchor
+                                        or d[0].finalized_one_step(d[1], getattr(d[0], sel)[d[1]]),
+                                        {"finalized": getattr(d[0], sel)[d[1]]}))
+        statement = (f"{field.rsplit('_', 1)[0]} r = anchor or IncludedCertifiedFinalized "
+                     "(link to the next epoch)")
+        check(f"AcceptedBlockFFGState.{field}", statement + " (scope restriction; in-scope runs)",
+              roots(lambda P, r: P.run.name != "late"), one_step)
+        check(f"out_of_scope.{field}_two_step_run", statement + " (`late` finalizes epoch 1 through "
+              "1 -> 3 and epoch 2 through 2 -> 4; the run is outside the theorem's scope)",
+              roots(lambda P, r: P.run.name == "late"), one_step, expected="FAIL")
         check(f"candidate.{field}_two_step",
               f"{field.rsplit('_', 1)[0]} r = anchor or (justified, a link to epoch + 1, or a link to "
               "epoch + 2 with epoch + 1 justified), all on r's chain",
@@ -508,6 +512,7 @@ def run_checks(projections, fork, voter):
                      {"confirmed_at_slots": seed_confirmed, "head_slot": P.slot[h],
                       "head_is_fork_block": h == P.run.x}), expected="FAIL")
     check("regression.finalized_epoch_one_two_step_above_voter_justified",
+          "Out of scope (2-step finality), kept for the concrete FFG lane F4: "
           "finalized_epoch_le_voter_justified_of_receiver_slot_le at F = 1 with a 2-step link: "
           "finalized(w, slot 32).epoch <= justified(v, slot 31).epoch",
           [("voter:31", voter)],

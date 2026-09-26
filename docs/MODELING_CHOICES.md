@@ -138,7 +138,7 @@ The source fork is `fradamt/consensus-specs` at tag `fcr-gloas-fix` (`13f391516`
 
 ## Strong conditions
 
-These thirteen fields are stronger than a direct claim about all real clients.
+These fourteen fields are stronger than a direct claim about all real clients.
 Each item states why the proof uses the field and what a weaker model would
 need.
 
@@ -155,6 +155,7 @@ need.
 11. `NextSlotSynchronyPremises.attester_slashing_relay` gives each honest store the equivocation indices by the next boundary. Literal Python can reject evidence when its justified state lacks a signer.
 12. `NextSlotSafetyPremises.anchor_state_checkpoints` admits the genesis anchor with a raw stub or a state with both checkpoints equal to the anchor. Older raw checkpoints in a checkpoint-sync state are outside its scope.
 13. `ScheduledFCRCallPremises.balance_floor` requires two increments of anchor active weight. With the static registry, this supplies the exact intermediate-state guard for `Phase0BoundarySourceCoherence.process_slots_checkpoint_epoch`.
+14. `AcceptedBlockFFGState.realized_finalized_evidence` and `unrealized_finalized_evidence` restrict the scope: in the horizon, every finalization that the stores adopt uses a supermajority link to the next epoch. Python can also finalize through a link from epoch `k` to `k + 2` (rules 1 and 3 of `weigh_justification_and_finalization`). Runs that do so are outside the scope of the theorem. The two-epoch form is not a small change: `test_realized_gap.py` has a run in which one store finalizes epoch 1 through the link 1 -> 3 while an honest store still has justified epoch 0 (`regression.finalized_epoch_one_two_step_above_voter_justified`).
 
 ## Derived prediction support
 

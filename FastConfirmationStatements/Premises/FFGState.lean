@@ -284,9 +284,17 @@ structure AcceptedBlockFFGState (E : Execution Root)
   available_checkpoint_epoch_le_block : ∀ {r b c}, E.BlockKnownInScheduledPrefix cfg ext r b →
     (∃ carrier, E.RootDescends r carrier ∧ checkpoint_evidence_in_block carrier c) →
     c.epoch ≤ compute_epoch_at_slot cfg b.slot
+  /-- Scope restriction, not a Python law.  In the horizon, every realized
+  finalization uses a supermajority link to the next epoch.  Python can also
+  finalize through a link from epoch `k` to `k + 2` (rules 1 and 3 of
+  `weigh_justification_and_finalization`).  Runs that do so are outside the
+  scope of this theorem. -/
   realized_finalized_evidence : ∀ r, E.RootKnownInScheduledPrefix cfg ext r →
     realized_finalized r = anchor ∨ Nonempty (IncludedCertifiedFinalized cfg E
       includedAttestations.Included anchor r (realized_finalized r))
+  /-- Scope restriction, not a Python law, as for
+  `realized_finalized_evidence`: every unrealized finalization in the horizon
+  uses a supermajority link to the next epoch. -/
   unrealized_finalized_evidence : ∀ r, E.RootKnownInScheduledPrefix cfg ext r →
     unrealized_finalized r = anchor ∨ Nonempty (IncludedCertifiedFinalized cfg E
       includedAttestations.Included anchor r (unrealized_finalized r))

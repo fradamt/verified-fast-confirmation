@@ -538,13 +538,13 @@ reason = "A supplied execution, schedule, certificate, or FFG interpretation is 
 path = "AcceptedBlockFFGState.realized_finalized_evidence"
 file = "FFGState.lean"
 class = "E"
-reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
+reason = "Scope restriction: in the horizon, every finalization that the stores adopt uses a supermajority link to the next epoch. Python can also finalize through k -> k + 2 links (weighing rules 1 and 3); runs that do so are outside the scope of this theorem. test_realized_gap.py and the projection harness label such runs out of scope."
 
 [[field]]
 path = "AcceptedBlockFFGState.unrealized_finalized_evidence"
 file = "FFGState.lean"
 class = "E"
-reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
+reason = "Scope restriction: in the horizon, every finalization that the stores adopt uses a supermajority link to the next epoch. Python can also finalize through k -> k + 2 links (weighing rules 1 and 3); runs that do so are outside the scope of this theorem. test_realized_gap.py and the projection harness label such runs out of scope."
 
 [[field]]
 path = "AcceptedBlockFFGState.unrealized_finalized_epoch_le_realized_justified"

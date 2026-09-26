@@ -76,7 +76,7 @@ def setup(repo):
 
 
 class Run:
-    def __init__(self, name, spec, state, anchor_block, batches, *, later=False):
+    def __init__(self, name, spec, state, anchor_block, batches, *, later=False, out_of_scope=()):
         self.name, self.spec = name, spec
         self.store = spec.get_forkchoice_store(state, anchor_block)
         self.anchor = cp(self.store.justified_checkpoint)
@@ -89,6 +89,8 @@ class Run:
         self.votes = defaultdict(list)
         self.snapshots = []
         self.later = later
+        # Fields whose scope restriction excludes this run.
+        self.out_of_scope = set(out_of_scope)
         self.errors = []
         for signed in batches:
             block = signed.message
@@ -277,7 +279,12 @@ def make_runs(env, full):
         two_step.append(sign(spec, state, block))
         pool[slot] = get_valid_attestation_at_slot(state.copy(), spec, slot,
                                                    beacon_block_root=spec.hash_tree_root(block))
-    runs.append(Run('two-step-finality', spec, genesis(spec, [32 * 10**9] * 64, 32 * 10**9), anchor, two_step))
+    # The finalized evidence fields admit only links to the next epoch, so
+    # this run is outside their scope.
+    runs.append(Run('two-step-finality', spec, genesis(spec, [32 * 10**9] * 64, 32 * 10**9), anchor, two_step,
+                    out_of_scope=('AcceptedBlockFFGState.realized_finalized_evidence',
+                                  'AcceptedBlockFFGState.unrealized_finalized_evidence',
+                                  'ScheduledFFGInterpretation.state')))
     full_run, review, delayed, skipped, forks, later_run, two_step_run = runs
     if not (two_step_run.selector(two_step_run.roots[-1], 'realized_finalized')[0] >= 2):
         raise AssertionError('two-step finality fixture did not finalize epoch 2')
@@ -309,7 +316,8 @@ def make_runs(env, full):
 def check_run(run, statements):
     results = []
     def record(name, ok, detail, *, scope='checked'):
-        results.append({'field': name, 'status': ('OUT_OF_SCOPE' if run.later and not ok else ('PASS' if ok else 'FAIL')), 'scope': scope,
+        excluded = run.later or name in run.out_of_scope
+        results.append({'field': name, 'status': ('OUT_OF_SCOPE' if excluded and not ok else ('PASS' if ok else 'FAIL')), 'scope': scope,
                         'state': detail, 'statement': statements[name]})
     def each(name, evaluations):
         fails = [detail for ok, detail in evaluations if not ok]

@@ -87,6 +87,9 @@ off-committee validators.
 ├──────────────────────┼──────────────────────────────────────────────────────────────────────────────────────────────────┤
 │ FFG state            │ `ScheduledFFGInterpretation` supplies accepted-block state, links, and checkpoint reads.         │
 ├──────────────────────┼──────────────────────────────────────────────────────────────────────────────────────────────────┤
+│ One-epoch finality   │ `realized_finalized_evidence` and `unrealized_finalized_evidence` admit only links to            │
+│                      │ the next epoch. Runs that finalize through k -> k + 2 links are outside the scope.               │
+├──────────────────────┼──────────────────────────────────────────────────────────────────────────────────────────────────┤
 │ Phase0 source        │ `Phase0SourceCoherence` and `Phase0BoundarySourceCoherence` constrain source reads.              │
 ├──────────────────────┼──────────────────────────────────────────────────────────────────────────────────────────────────┤
 │ Committee            │ `on_attestation_committee` covers successful delivered attestations. Slashing evidence can be    │
@@ -130,8 +133,8 @@ external calls with stated contracts. The Lean kernel checks the proofs. The tru
 allows only `propext`, `Classical.choice`, and `Quot.sound`. The [paper
 library](#paper-library) models the [paper](https://arxiv.org/abs/2405.00549) separately.
 There is no refinement theorem from the paper model to the executable model.
-The [contract conformance checks](docs/conformance.md#contract-conformance) cover 156
-premise fields: 31 tested state-function properties (T), 114 execution or interpretation
+The [contract conformance checks](docs/conformance.md#contract-conformance) cover 163
+premise fields: 18 tested state-function properties (T), 134 execution or interpretation
 assumptions (E), and 11 cryptographic or engine idealizations (I). Run `python3
 scripts/conformance/contracts/check_inventory.py --repo
 /path/to/consensus-specs-pending-discount --output /tmp/contract-results.json` with the
