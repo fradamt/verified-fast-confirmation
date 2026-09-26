@@ -131,8 +131,8 @@ test = "BeaconExternalsPremises.pjf_checkpoint_epoch"
 [[field]]
 path = "BeaconExternalsPremises.committees_agree"
 file = "Externals.lean"
-class = "E"
-reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
+class = "I"
+reason = "committees are one fixed ground-truth assignment; real RANDAO-seeded, fork-dependent committees are not modeled."
 
 [[field]]
 path = "BeaconExternalsPremises.honest_attestation_valid"
@@ -149,8 +149,8 @@ reason = "BLS unforgeability and honest signing history are idealized."
 [[field]]
 path = "BeaconExternalsPremises.on_attestation_committee"
 file = "Externals.lean"
-class = "E"
-reason = "The indexed Lean wire object omits Python get_indexed_attestation; only successful delivered on_attestation calls in honest in-horizon prefixes are constrained."
+class = "I"
+reason = "committees are one fixed ground-truth assignment; real RANDAO-seeded, fork-dependent committees are not modeled. The indexed Lean wire object omits Python get_indexed_attestation; only successful delivered on_attestation calls in honest in-horizon prefixes are constrained."
 
 [[field]]
 path = "BeaconExternalsPremises.committee_assignment_unique"

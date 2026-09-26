@@ -592,7 +592,7 @@ theorem externalsCoherence : BeaconExternalsPremises cfg ext E := by
   · intro a
     have hdefault : (default : BeaconState Root).validators = [] := rfl
     simp [ext, hdefault]
-  · intro st slot a _hreachable _hlt
+  · intro st slot a _hreachable _hlt _hslotH _hreg
     change decide ((ext.process_slots st slot).validators ≠ [] ∧
       a ∈ groundVotes) = decide (st.validators ≠ [] ∧ a ∈ groundVotes)
     rw [processSlots_registry]

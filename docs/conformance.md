@@ -30,7 +30,7 @@ The [contract inventory](../scripts/conformance/contracts/inventory.toml) lists 
 direct field in the premise structures. T means a generated-state property
 of the pinned Python functions. E means an execution, network, or supplied
 FFG interpretation assumption. I means a cryptographic or engine
-idealization. The inventory has 158 active fields: T 31, E 116, and I 11. The inventory checker fails when a Lean field has no entry.
+idealization. The inventory has 158 active fields: T 31, E 114, and I 13. The inventory checker fails when a Lean field has no entry.
 
 The deterministic tests use the Gloas minimal preset and Phase0 for the
 Phase0 source laws. They cover slots and epoch boundaries, included votes,
