@@ -18,7 +18,7 @@ GU-anchor precondition the never-filter consumes:
   (`greatestJustifiedAnchorPrecondition_of_confirmedNoCaching`).
 
 The *semantic* gate `WillNoConflictingChkpBeJustified` is **not** derived here — the gate-free
-Algorithm-1 never-filter (`NeverFilteredAlg1.lean` / `Certificate.lean`) bypasses it entirely,
+Algorithm-1 never-filter (`FastConfirmationPaper/HFC/Proof/Algorithm1FilterSafety.lean` / `FastConfirmationPaper/HFC/Proof/CheckpointCertificate.lean`) bypasses it entirely,
 driving comparability from `willChkpBeJustified` via the §4.1 certificate.
 -/
 

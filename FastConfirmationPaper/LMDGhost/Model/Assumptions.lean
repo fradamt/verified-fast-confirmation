@@ -38,7 +38,7 @@ def CommitteeHonestMajority (fm : FaultModel n) (cm : Committees n) (A : Anchor 
     *current* epoch can be justified
     at that epoch's *first* slot" hold (a single slot's votes cannot reach a `2/3` target): see
     `justified_epoch_le_of_firstSlot`
-    (`FastConfirmation/Paper/HFC/Proof/Certificate.lean`), which the previous-epoch base
+    (`FastConfirmationPaper/HFC/Proof/CheckpointCertificate.lean`), which the previous-epoch base
     case consumes to bound the witness voting source's epoch. -/
 def SlotCommitteeMinority (fm : FaultModel n) (cm : Committees n) (A : Anchor n) : Prop :=
   ∀ s : Slot, totalWeight A (cm.member s) < (2 / 3 - fm.β) * totalWeight A Finset.univ

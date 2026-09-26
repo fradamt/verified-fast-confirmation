@@ -11,9 +11,10 @@ Proved facade for the §4 HFC confirmation-rule theorems — the original gate-b
 (`GateConfirmedBlockSafety` / `GateConfirmedBlockMonotonicity`) and the gate-free Algorithm-1 pair
 (`RuleConfirmedBlockSafety` / `RuleConfirmedBlockMonotonicity`). The proof-free statements live in
 `FastConfirmation.Paper.HFC.TheoremStatements`; the theorem constants below expose only that each public statement has a
-proof, delegating scripts to `FastConfirmation/Paper/HFC/Proof/` (`Compose.lean`, `Monotonicity.lean`,
-`NeverFiltered.lean` for the gate-based pair; `NeverFilteredAlg1.lean` and
-`MonotonicityAlg1.lean` for the Algorithm-1 pair).
+proof, delegating scripts to `FastConfirmationPaper/HFC/Proof/`. The gate-based
+pair uses `Canonicality.lean`, `Monotonicity.lean`, and
+`JustifiedChainFilterSafety.lean`. The Algorithm-1 pair uses
+`Algorithm1FilterSafety.lean` and `Algorithm1Monotonicity.lean`.
 
 Mirrors `FastConfirmation.Paper.LMDGhost.ProvenTheorems` (the §3.1 module facade): the public statement constant is discharged
 by the internal proof. For the gate-based safety the public `isHFCConfirmed` premise

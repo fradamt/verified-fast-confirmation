@@ -65,7 +65,7 @@ Because `gjFFG bal₀` is a *constant* `Stakes`, `AnchorsCoincide` and `StaticBa
 hold by `rfl`, and the conclusion's per-validator anchor `gjFFG bal₀ 𝒱 w t'` is
 *definitionally* `bal₀`, so no anchor reconciliation is needed — the §3.1 Safety proof
 transports almost verbatim, with `NeverFiltered_trivial` replaced by the FFG
-`ConfirmedNotFFGFiltered` premise (proved in `NeverFiltered.lean` from the local gate).
+`ConfirmedNotFFGFiltered` premise (proved in `FastConfirmationPaper/HFC/Proof/JustifiedChainFilterSafety.lean` from the local gate).
 -/
 
 namespace FastConfirmation.HFC
@@ -115,7 +115,7 @@ theorem hfc_canonical_from_engine (bal₀ : Stakes n)
 /-- **§4 HFC Safety, modulo the FFG never-filtered obligation.** Given the §3.1 premises
     at `gj := gjFFG bal₀`, `flt := ffgFilter bal₀ τ`, an `isConfirmed` block `b`, and
     `ConfirmedNotFFGFiltered` (its safe descendants are never FFG-filtered — proved from the
-    local gate in `NeverFiltered.lean`), `b` is on every honest LMD-GHOST-HFC head from some
+    local gate in `FastConfirmationPaper/HFC/Proof/JustifiedChainFilterSafety.lean`), `b` is on every honest LMD-GHOST-HFC head from some
     time on. The proof mirrors `proof_Theorem1_Safety`, swapping `NeverFiltered_trivial` for
     `ConfirmedNotFFGFiltered` and using that `gjFFG` is constant. -/
 theorem hfc_safety_of_notFiltered (bal₀ : Stakes n)

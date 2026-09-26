@@ -11,7 +11,7 @@ public import FastConfirmationPaper.HFC.Model.AnchorRule
 The §4.1 certificate lemma (arXiv:2405.00549 `lem:sufficient-condition-for-justification`,
 l.2843), **proved** — not assumed — in our gossip-justification model. It is the
 `willChkpBeJustified` analogue of the keystone `checkpoint_justified_of_canonical`
-(`Formation.lean`): the keystone needs the *whole* epoch committee canonical, which fails for the
+(`FastConfirmationPaper/HFC/Proof/CertificateFormation.lean`): the keystone needs the *whole* epoch committee canonical, which fails for the
 early-confirmation-epoch voters (slots `< slot(t)`, before `b` is safe). Here the weight is split
 exactly as the local rule's reservation does:
 

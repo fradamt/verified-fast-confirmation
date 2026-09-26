@@ -35,7 +35,7 @@ This module proves three facts about delivery of honest votes:
    `no_forgery`/`committee_assignment_unique` uniqueness argument.
 
 The whole-second-slots hypothesis `hdiv : 1000 ∣ cfg.slot_duration_ms` (mainnet
-`12000` ms) is the same domain condition `Clock.lean` carries; it is needed for
+`12000` ms) is the same domain condition `FastConfirmationProofs/Execution/Trajectory/ExecutionClock.lean` carries; it is needed for
 the genesis case of `blocks_slot_le_current` (the anchor's slot lands exactly on its
 boundary second).
 -/
@@ -1116,7 +1116,7 @@ theorem Execution.vote_ubiquity {E : Execution Root}
 
 /-! ## Schedule-connected latest-message provenance (`Delivery`)
 
-`LatestMessageProvenance` (Provenance.lean) records the *data* of the setting
+`LatestMessageProvenance` (`FastConfirmationProofs/Execution/Trajectory/LatestMessageProvenance.lean`) records the *data* of the setting
 attestation but drops its schedule connection, which `HonestBehavior.no_forgery`
 needs. `SchedLMProv` is the strengthened invariant: every recorded LMD message
 carries a **schedule-connected** attestation naming the recorder, with matching

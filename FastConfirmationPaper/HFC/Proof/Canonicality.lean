@@ -8,13 +8,13 @@ public import FastConfirmationPaper.LMDGhost.Proof.RuleSafety
 # HFC / Proof / CanonicalReuse
 
 The `flt`-generalized §3.1 canonical lemmas. Each is the corresponding
-`FastConfirmation/Paper/LMDGhost/Proof/Rule.lean` lemma with the
+`FastConfirmationPaper/LMDGhost/Proof/RuleSafety.lean` lemma with the
 hard-wired `trivialFilter` replaced by an arbitrary `(flt : BlockFilter n P)`
 **parameter**. The filter never enters the weight machinery (`Q/S/H/J`) nor the
 GHOST-head well-formedness argument, so the bodies transcribe verbatim — no
 `NeverFiltered` hypothesis is needed for any of these three (it enters only the
 engine/canonical *bridge*, already discharged at `ffgFilter` by
-`hfc_canonical_from_engine`, Compose.lean).
+`hfc_canonical_from_engine`).
 
 These let the §3.1 monotonicity assembly (`proof_Theorem1_Monotonicity`, which is
 `trivialFilter`-hardwired) be re-run at `flt := ffgFilter bal₀ τ` in
@@ -29,7 +29,7 @@ Lemmas:
   `canonical_ancestor_of_slot_le`.
 
 (III.1 `safe_canonical_from_engine_flt` already exists at `ffgFilter` as
-`hfc_canonical_from_engine` in `Compose.lean`; `highestConfirmed_mem`,
+`hfc_canonical_from_engine`; `highestConfirmed_mem`,
 `highestConfirmed_slot_ge_of_mem`, `safe_block_wf_slot` are already filter-free.)
 -/
 

@@ -47,7 +47,7 @@ structure LiveMonotonicityPremises (E : Execution Root)
   next epoch start the head agrees with that observation and the previous
   head has a recent voting source. Paper Assumption 3.2 alone permits a
   two-epoch lag, which closes the executable gates in
-  `MonotonicityLiveGates.lean`. This field also requires production: the
+  the live-monotonicity proof modules. This field also requires production: the
   checkpoint root is the block at the first slot of epoch `e`, and enough
   blocks in `e` carry its votes to justify it by the last slot. See
   `docs/REVIEW_GUIDE.md`, "Scope of the live premises". -/

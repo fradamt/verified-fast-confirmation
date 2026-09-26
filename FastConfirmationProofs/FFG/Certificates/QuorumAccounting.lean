@@ -90,7 +90,7 @@ theorem attestation_score_honest_split (E : Execution Root)
 
 /-! ## Step 2 — supporter slot confinement
 
-At an honest node carrying `LatestMessageProvenance` (`Proof/Provenance.lean`),
+At an honest node carrying `LatestMessageProvenance` (`FastConfirmationProofs/Execution/Trajectory/LatestMessageProvenance.lean`),
 every supporter `i` of `b` has a provenance attestation `a` whose slot lands in
 `[(blocks b).slot, current_slot − 1]` (the voted block is at or below `a`'s
 slot, and `a` was applied no later than `current_slot − 1`), and `i` sits in

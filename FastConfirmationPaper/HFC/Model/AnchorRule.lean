@@ -106,8 +106,8 @@ def willChkpBeJustified (bal₀ : Stakes n) (cm : Committees n) (fm : FaultModel
     block-contained vote availability, concluding only *compatibility* `block(GJ) ~ b`; the
     realization bound
     `epoch(vs(b',t)) ≤ epoch(t)-1` is **proven** from `SlotCommitteeMinority`
-    (`justified_epoch_le_of_firstSlot`), not assumed — see `Certificate.lean` /
-    `NeverFilteredAlg1.lean`. -/
+    (`justified_epoch_le_of_firstSlot`), not assumed — see `FastConfirmationPaper/HFC/Proof/CheckpointCertificate.lean` /
+    `FastConfirmationPaper/HFC/Proof/Algorithm1FilterSafety.lean`. -/
 noncomputable def isConfirmedNoCaching (bal₀ : Stakes n) (fm : FaultModel n) (cm : Committees n)
     (pb : Weight) (we : Weight) (τ : Timing) (𝒱 : ViewFamily n (FFGVote n)) (v : Validator n)
     (b : Block n) (t : Time) : Prop :=

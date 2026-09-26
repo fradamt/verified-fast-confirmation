@@ -10,7 +10,7 @@ public import FastConfirmationProofs.ModelFacts
 /-!
 # Spec / Proof / HonestWeight
 
-`Proof/QuorumAccounting.lean` derives `honest_support_majority_of_byz_le` from
+`FastConfirmationProofs/FFG/Certificates/QuorumAccounting.lean` derives `honest_support_majority_of_byz_le` from
 the Byzantine bound
 
 `byz_score ≤ get_adversarial_weight`.
@@ -51,7 +51,7 @@ variable (cfg : Config) (ext : BeaconFunctionInterface Root)
 
 Only `on_attester_slashing` grows `equivocating_indices`; every other handler
 leaves it untouched. We first record those field-preservation facts (mirroring
-`Proof/Provenance.lean`'s `latest_messages` versions), then invert the slashing
+`FastConfirmationProofs/Execution/Trajectory/LatestMessageProvenance.lean`'s `latest_messages` versions), then invert the slashing
 handler. -/
 
 omit [LinearOrder Root] [Inhabited Root] in

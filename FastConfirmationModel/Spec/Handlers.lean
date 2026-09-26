@@ -599,7 +599,7 @@ def on_attestation (store : Store Root) (attestation : Attestation Root)
     let store := store_target_checkpoint_state cfg ext store attestation.data.target
     -- Get state at the `target` to fully validate attestation
     let target_state := store.checkpoint_states attestation.data.target
-    -- (the wire attestation is already its indexed projection — design §12)
+    -- (the wire attestation is already its indexed projection)
     let indexed_attestation := attestation
     if ¬ ext.is_valid_indexed_attestation target_state indexed_attestation then none
     else
@@ -639,8 +639,8 @@ def on_attester_slashing (store : Store Root)
 from this executable function: the projected block carries no `state_root`.
 `ScheduledExecutionPremises.genesis` requires the abstract
 `BeaconFunctionInterface.AnchorCommitsToState` contract from the external interpretation,
-along with separate slot agreement and parent/root inequality premises
-(design §11a). This is not a concrete hashing proof. Dict fields outside their
+along with separate slot agreement and parent/root inequality premises.
+This is not a concrete hashing proof. Dict fields outside their
 singleton domains are junk-totalized.
 ```python
 anchor_root = hash_tree_root(anchor_block)

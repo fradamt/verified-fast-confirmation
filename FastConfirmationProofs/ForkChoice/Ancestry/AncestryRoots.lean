@@ -6,8 +6,8 @@ public import FastConfirmationProofs.ForkChoice.Ancestry.AncestorWalk
 /-!
 # Spec / Proof / AncestryRoots
 
-Layer 0, the `get_ancestor_roots` / `is_ancestor` toolkit built on top of
-`Proof/Ancestry.lean`. Two independent halves:
+base proof layer, the `get_ancestor_roots` / `is_ancestor` toolkit built on top of
+`FastConfirmationProofs/ForkChoice/Ancestry/AncestorWalk.lean`. Two independent halves:
 
 * **`is_ancestor` order facts** on the known walk domain — reflexivity, the
   walk-composition law `get_ancestor_comp` (walking to a lower slot factors
@@ -19,7 +19,7 @@ Layer 0, the `get_ancestor_roots` / `is_ancestor` toolkit built on top of
   segment (all roots known, parent-linked, ending at `block_root`).
 
 Everything reuses `WalkKnown` and `get_ancestor_stop`/`get_ancestor_step`/
-`get_ancestor_spec` from `Proof/Ancestry.lean`; no behavioral assumptions
+`get_ancestor_spec` from `FastConfirmationProofs/ForkChoice/Ancestry/AncestorWalk.lean`; no behavioral assumptions
 enter here — the only premise is the `parent_slot_lt`-shaped `hwf`, exactly the
 `WellFormedStore.parent_slot_lt` field.
 -/

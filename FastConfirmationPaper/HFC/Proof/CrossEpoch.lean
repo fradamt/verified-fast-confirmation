@@ -38,7 +38,7 @@ the engine's `NeverFilteredFromHead` / `hNFilOfHead` functional form is the per-
   taken to be the *whole epoch* `e` (`[fslot e, lslot e]`), supplied by the IH — **no slot
   bound, no gate**. It is the per-rung descendant placement the ladder consumes.
 
-`confirmedNotFFGFiltered_proved` in `NeverFiltered.lean` composes these rungs and eliminates the
+`confirmedNotFFGFiltered_proved` in `FastConfirmationPaper/HFC/Proof/JustifiedChainFilterSafety.lean` composes these rungs and eliminates the
 slot-bound premise.
 -/
 

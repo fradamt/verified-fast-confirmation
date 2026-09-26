@@ -58,7 +58,7 @@ def honest_attestation_data (store : Store Root) (slot : Slot)
 /-- Sources: `specs/phase0/validator.md:655` and `specs/gloas/validator.md:97`.
 "Construct attestation": the wire attestation of a single
 honest validator — `aggregation_bits` a singleton on the validator's committee
-position, i.e. (in the indexed projection, design §12)
+position, i.e. (in the indexed projection)
 `attesting_indices = [validator_index]`; the BLS signature is absorbed. -/
 def honest_attestation (store : Store Root) (slot : Slot) (index : CommitteeIndex)
     (validator_index : ValidatorIndex) : Attestation Root :=

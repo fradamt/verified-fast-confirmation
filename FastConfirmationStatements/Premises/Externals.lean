@@ -28,7 +28,7 @@ structure BeaconExternalsPremises (E : Execution Root) : Prop where
     ext.state_transition st b = some st' → st'.validators = st.validators
   /-- a valid state transition requires the pre-state to precede the block's
       slot (the real `process_slots` assert inside `state_transition`) —
-      gives Layer 0 the parent-slot ordering `WellFormedStore` preservation
+      gives base proof layer the parent-slot ordering `WellFormedStore` preservation
       needs. -/
   state_transition_pre_slot_lt : ∀ st (b : SignedBeaconBlock Root) st',
     ext.state_transition st b = some st' → st.slot < b.message.slot

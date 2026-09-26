@@ -425,7 +425,7 @@ theorem greatestRealizedJustified_justified (A : Anchor n) (τ : Timing)
     exact hmem.2.1
 
 /-- `gjblock A τ V b` is `Justified` (its `some` branch lies in the justified-filtered set; the
-    `none` branch is the genesis checkpoint, `Justified.base`). Moved here from `Proof/FFGRule.lean`
+    `none` branch is the genesis checkpoint, `Justified.base`). Moved here from an earlier proof module
     so the same-epoch `votingSource` proofs can use it. -/
 theorem gjblock_justified (A : Anchor n) (τ : Timing) (V : View n (FFGVote n)) (b : Block n) :
     Justified A V (gjblock A τ V b) := by
