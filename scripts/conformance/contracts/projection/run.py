@@ -574,7 +574,7 @@ def main():
     failures = sorted({r['field'] for r in results if r['status']=='FAIL'})
     print(f'projection: {len(runs)} runs, {len(results)} field checks, {data["runtime_seconds"]} s')
     print('findings:', ', '.join(failures) if failures else 'none')
-    return 0  # Findings are recorded for Lean repair; they do not hide later probes.
+    return 1 if failures else 0
 
 
 if __name__ == '__main__':

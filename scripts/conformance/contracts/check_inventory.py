@@ -109,8 +109,8 @@ def main() -> int:
         if args.full:
             projection_command.append("--full")
         projected = subprocess.run(projection_command, cwd=ROOT, check=False, timeout=280)
-        if projected.returncode or not projection_path.is_file():
-            raise ValueError(f"projection runner failed: exit {projected.returncode}")
+        if not projection_path.is_file():
+            raise ValueError(f"projection runner produced no JSON: exit {projected.returncode}")
         projection = json.loads(projection_path.read_text())
         projection_names = {row["field"] for row in projection["results"]}
         expected_projection = {row["path"] for row in inventory.values()
@@ -128,9 +128,12 @@ def main() -> int:
             raise ValueError(f"projection handler errors: {bad_runs}")
         findings = sorted({row["field"] for row in projection["results"]
                            if row["status"] == "FAIL"})
+        if findings:
+            raise ValueError(f"unexcluded projection failures: {findings}")
+        if projected.returncode:
+            raise ValueError(f"projection runner failed: exit {projected.returncode}")
         print(f"contract tests passed: {len(names)} state probes; "
-              f"{len(projection['results'])} projection checks; "
-              f"recorded findings={findings}")
+              f"{len(projection['results'])} projection checks; unexcluded failures=0")
         return 0
     finally:
         if temporary:

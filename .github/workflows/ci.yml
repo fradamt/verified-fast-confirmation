@@ -187,8 +187,8 @@ jobs:
           lake exe cache get
           lake build FastConfirmationModel.Spec.BeaconChain.ConcreteTransition
 
-      - name: Run contracts and fast FFG projection
-        run: python3 scripts/conformance/contracts/check_inventory.py --repo .source/consensus-specs --output "$RUNNER_TEMP/contracts.json"
+      - name: Run contracts and full FFG projection
+        run: python3 scripts/conformance/contracts/check_inventory.py --full --repo .source/consensus-specs --output "$RUNNER_TEMP/contracts.json"
 
       - name: Run realized gap regression
         run: .source/consensus-specs/.venv/bin/python scripts/conformance/contracts/test_realized_gap.py --repo .source/consensus-specs

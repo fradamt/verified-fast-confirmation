@@ -93,6 +93,7 @@ elif [[ "${REQUIRE_PYSPEC:-0}" == "1" ]]; then
   echo "pyspec interpreter is required at $consensus_repo/.venv/bin/python" >&2
   exit 1
 else
+  echo "SKIPPED: pyspec contract and projection checks; interpreter absent at $consensus_repo/.venv/bin/python"
   python3 scripts/conformance/contracts/check_inventory.py --inventory-only
 fi
 python3 scripts/conformance/concrete/check_source_inventory.py --repo "$consensus_repo"
