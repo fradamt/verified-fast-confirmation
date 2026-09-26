@@ -20,8 +20,10 @@ public import FastConfirmationWitnesses.NonVacuity.ByzantinePremises
 `ReviewClaims` contains only the safety theorem. Its result gives observer-store
 membership and executable ancestry from the next slot. The public
 `live_confirmed_root_monotonicity` theorem is a separate conditional result
-under `LiveMonotonicityPremises`. Its timely FFG store outcomes close the named
-FCR guards.
+under `LiveMonotonicityPremises`. Its timely FFG store outcomes close
+previous_epoch_greatest_unrealized_checkpoint,
+is_head_unrealized_justified_ok, and the previous-slot-head voting-source
+recency guard.
 
 This page names the finite runs that satisfy the premise bundles: a short
 joint live run, a next-slot safety run with one-second slots and a 500 ms delay,

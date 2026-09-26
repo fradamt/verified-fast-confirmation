@@ -23,6 +23,13 @@ six.
 
 `FastConfirmationModel` and `FastConfirmationStatements` are the trusted review surface. They contain definitions and premise propositions. Model also proves `SuccessfulScheduledBlockImport.processedCount_lt` for its successor-prefix definition. The Lean kernel checks the proof bodies in Internal, Proofs, Witnesses, and Paper. The audit in `scripts/Audit.lean` checks public theorem dependencies and permits only Lean's standard `propext`, `Classical.choice`, and `Quot.sound` axioms.
 
+`ReviewClaims` contains only next-slot safety. Its conclusion gives observer-store
+membership and executable ancestry. `live_confirmed_root_monotonicity` is a
+separate conditional theorem. Its timely FFG premise supplies store outcomes
+for previous_epoch_greatest_unrealized_checkpoint,
+is_head_unrealized_justified_ok, and the previous-slot-head voting-source
+recency guard.
+
 ## Review checks
 
 ```text

@@ -43,7 +43,9 @@ fields. It does not alone certify the votes in real block bodies.
 `review_claims` has one safety field. It gives observer-store membership and
 executable ancestry. `live_confirmed_root_monotonicity` is a separate
 conditional theorem. Its timely FFG premise supplies store outcomes for the
-named FCR guards.
+named FCR guards: previous_epoch_greatest_unrealized_checkpoint,
+is_head_unrealized_justified_ok, and the previous-slot-head voting-source
+recency guard.
 
 The `ByzantineWeightPremises.span_fraction` bound applies to every in-horizon
 committee span, including one slot. A global fault share does not establish
