@@ -1,5 +1,5 @@
 module
-public import FastConfirmationProofs.FFG.SelectedSource.EndpointJustifiedOrientation
+public import FastConfirmationProofs.FFG.SelectedSource.CompletedPredictionProducers
 public import FastConfirmationProofs.FCRRule.PredictionSupport
 
 /-!
