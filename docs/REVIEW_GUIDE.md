@@ -1,6 +1,6 @@
 # Review guide
 
-`ReviewClaims` has two fields. `review_claims` proves both. The trust audit checks 42 public theorem witnesses: 35 executable-side and seven paper-side.
+`ReviewClaims` has two fields. `review_claims` proves both. The trust audit checks 43 public theorem witnesses: 36 executable-side and seven paper-side.
 
 ## Short glossary
 
@@ -73,6 +73,17 @@ Paper Assumption 3.2 can allow a two-epoch FFG inclusion delay. The executable s
 
 `Execution.NextSlotSafetyPremises` includes exact FFG state at each successful handler prefix. It also includes scheduled execution, completed FCR calls, epoch arithmetic, anchor alignment, checkpoint evidence, and finalization delay. `Execution.CompletedFCRCallPremises` adds static validators, a fault bound for each committee span, Phase0 source coherence, a balance floor, next-slot vote receipt, and guarded prediction support. No field directly states the stored-root safety conclusion. Global FFG and finalization premises can range beyond a conclusion endpoint.
 
+The guarded fields in `FCRPredictionSupportAt` are still assumptions.
+`current_target` requires exact agreement on the caller's current target after
+a retained current-epoch crossing. `selected_previous_result_no_conflict`
+requires only that later honest targets of the query epoch descend from the
+selected previous-epoch result. Its consumer proves the same descent for each
+certified checkpoint of that epoch. The live fields and claim are unchanged.
+`ByzantinePremiseWitness.previous_result_descendant_support_exercised` checks
+the weaker conclusion at a call with a true guard. See the prediction-support
+section in [modeling choices](MODELING_CHOICES.md) for the Python note and the
+protocol counterexample to exact target agreement.
+
 ## Delivery and evidence
 
 `NextSlotSynchronyPremises` requires positive Δ and strict `A + Δ < S`. A source observation must occur by its slot deadline. A receiver observation occurs at or after the next boundary. A receiver is later than the source. Honest votes use the vote deadline. `synchrony_and_delivery_iff_nextSlot` relates the current bundles.
@@ -85,4 +96,4 @@ Block and envelope exclusion is checked before the next-slot tick. It permits on
 
 The source of record is fork `fradamt/consensus-specs`, tag `fcr-gloas-fix` (`13f391516`). The [source map](SPEC_MAP.md) records the exact difference from upstream. The [conformance harness](conformance.md) compares projected Python and Lean observations. A matching trace does not prove all external contracts or all reachable executions. The weak-synchrony branch is separate from this main review.
 
-`scripts/validate.sh --fast` checks the source pin, document names, import boundary, and hygiene. Full validation builds the libraries and checks imports, reachability, surface shape, and the 42 public witnesses. `scripts/Audit.lean` allows only `propext`, `Classical.choice`, and `Quot.sound`.
+`scripts/validate.sh --fast` checks the source pin, document names, import boundary, and hygiene. Full validation builds the libraries and checks imports, reachability, surface shape, and the 43 public witnesses. `scripts/Audit.lean` allows only `propext`, `Classical.choice`, and `Quot.sound`.

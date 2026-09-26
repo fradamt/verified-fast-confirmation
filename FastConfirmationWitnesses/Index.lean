@@ -55,7 +55,9 @@ also names two counterexamples to strict-prefix safety variants.
   slashing that every node applies at second five. `equivocation_read_at_call`
   shows that the call from second six to seven reads the evidence and confirms
   the child. `previous_result_proviso_exercised` proves the antecedent of the
-  selected previous-result proviso at the call from second eight to nine.
+  selected previous-result guard at the call from second eight to nine.
+  `previous_result_descendant_support_exercised` proves that its later honest
+  epoch-two targets descend from the selected carrier.
 * Twelve-second synchrony and behavior:
   `TwelveSecondSynchronyWitness.joint_witness` proves `WellFormedExecution`,
   `HonestBehavior`, `Synchrony`, and `NextSlotSynchronyPremises` for a second
@@ -202,8 +204,10 @@ positive non-honest weight, the slashing relay, and the selected
 previous-result proviso through
 `ByzantinePremiseWitness.byzantine_weight_exercised`,
 `ByzantinePremiseWitness.slashing_relay_exercised`, and
-`ByzantinePremiseWitness.previous_result_proviso_exercised`. The shorter
+`ByzantinePremiseWitness.previous_result_proviso_exercised`.
+`ByzantinePremiseWitness.previous_result_descendant_support_exercised` checks
+the descendant conclusion. The shorter
 synchrony-only run does not prove the full safety bundle.
 `DeadlineVotePathCandidate` checks that a skipped-boundary schedule fails the
-pre-tick relay. The audited public witness set has 42 entries.
+pre-tick relay. The audited public witness set has 43 entries.
 -/

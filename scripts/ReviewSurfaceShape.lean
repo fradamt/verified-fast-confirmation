@@ -68,3 +68,19 @@ example {Root : Type*} [LinearOrder Root] [Inhabited Root]
     (ext : FastConfirmation.Spec.Externals Root) :
     FastConfirmation.Spec.ReviewClaims cfg ext :=
   FastConfirmation.Spec.review_claims cfg ext
+
+-- A previous-result guard requires descendant support, with no exact-target equality.
+example {Root : Type*} [LinearOrder Root] [Inhabited Root]
+    (cfg : FastConfirmation.Spec.Config) (ext : FastConfirmation.Spec.Externals Root)
+    (E : FastConfirmation.Spec.Execution Root) (v : Nat) (q : Nat)
+    (query : FastConfirmation.Spec.FastConfirmationStore Root) (input result : Root)
+    (h : FastConfirmation.Spec.FCRPredictionSupportAt cfg ext E v q query input)
+    (hout : FastConfirmation.Spec.find_latest_confirmed_descendant cfg ext query input = result)
+    (hstrict : result ≠ input)
+    (hprevious : FastConfirmation.Spec.get_block_epoch cfg query.store result ≠
+      FastConfirmation.Spec.get_current_store_epoch cfg query.store)
+    (hnotStart : FastConfirmation.Spec.is_start_slot_at_epoch cfg
+      (FastConfirmation.Spec.get_current_slot cfg query.store) ≠ true) :
+    FastConfirmation.Spec.HonestVotesTargetDescendFrom cfg E result
+      (FastConfirmation.Spec.get_current_store_epoch cfg query.store) q :=
+  h.selected_previous_result_no_conflict result hout hstrict hprevious hnotStart

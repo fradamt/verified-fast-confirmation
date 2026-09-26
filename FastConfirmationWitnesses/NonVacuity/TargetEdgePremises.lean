@@ -61,6 +61,29 @@ theorem target_votes_support
   rw [slot_at_eq] at hfuture
   exact bounded_support ⟨v, hvlt⟩ ⟨n, hn⟩ ⟨s, hslt⟩ hepoch hfuture
 
+private theorem bounded_previous_target_root_eq :
+    ∀ (v : Fin 4) (n : Fin 15) (result : WitnessRoot),
+      find_latest_confirmed_descendant witnessConfig witnessExternals
+        (witnessExecution.fcrStoreAtCall witnessConfig witnessExternals v.val n.val)
+        (witnessExecution.getLatestConfirmedTraceAt witnessConfig
+          witnessExternals v.val n.val).afterObserved = result →
+      result ≠ (witnessExecution.getLatestConfirmedTraceAt witnessConfig
+          witnessExternals v.val n.val).afterObserved →
+      get_block_epoch witnessConfig
+        (witnessExecution.fcrStoreAtCall witnessConfig witnessExternals
+          v.val n.val).store result ≠
+        get_current_store_epoch witnessConfig
+          (witnessExecution.fcrStoreAtCall witnessConfig witnessExternals
+            v.val n.val).store →
+      is_start_slot_at_epoch witnessConfig
+        (get_current_slot witnessConfig
+          (witnessExecution.fcrStoreAtCall witnessConfig witnessExternals
+            v.val n.val).store) ≠ true →
+      (get_current_target witnessConfig
+        (witnessExecution.fcrStoreAtCall witnessConfig witnessExternals
+          v.val n.val).store).root = result := by
+  set_option maxRecDepth 50000 in decide
+
 private theorem witnessSelectedHelperProvisos
     {v : ValidatorIndex} (hv : v ∈ witnessExecution.honest) {n : ℕ}
     (hH : witnessExecution.WithinHorizon witnessConfig (n + 1))
@@ -73,7 +96,21 @@ private theorem witnessSelectedHelperProvisos
       (witnessExecution.getLatestConfirmedTraceAt witnessConfig
         witnessExternals v n).afterObserved := by
   have h := target_votes_support hv hH
-  exact ⟨fun _ _ _ => h, fun _ _ _ _ _ => h⟩
+  refine ⟨fun _ _ _ => h, ?_⟩
+  intro result hout hstrict hprevious hnotStart
+  have hn : n < 15 := by have := time_lt_sixteen hH; omega
+  have hvlt : v < 4 := by
+    rcases honest_eq_zero_or_one_or_two_or_three hv with
+      rfl | rfl | rfl | rfl <;> decide
+  have hroot := bounded_previous_target_root_eq ⟨v, hvlt⟩ ⟨n, hn⟩ result
+    hout hstrict hprevious hnotStart
+  refine ⟨hH, ?_⟩
+  intro i hi sl hs hepoch hfuture k a ha
+  have ht := h.2 i hi sl hs hepoch hfuture k a ha
+  rw [ht]
+  refine ⟨rfl, ?_⟩
+  rw [hroot]
+  exact .refl result
 
 /-! ## Four-epoch support and accepted FFG closure -/
 

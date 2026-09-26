@@ -67,8 +67,8 @@ theorem selectedPreviousResult_noConflict_gate_and_support
     (hnotStart : is_start_slot_at_epoch cfg
       (get_current_slot cfg query.store) ≠ true) :
     will_no_conflicting_checkpoint_be_justified cfg ext query.store = true ∧
-      HonestVotesSupportTarget cfg E
-        (get_current_target cfg query.store) q := by
+      HonestVotesTargetDescendFrom cfg E result
+        (get_current_store_epoch cfg query.store) q := by
   exact ⟨selected_previous_result_no_conflict_gate cfg ext query
       latestConfirmedRoot result hout hstrict hprevious hnotStart,
     hprovisos.selected_previous_result_no_conflict result hout hstrict

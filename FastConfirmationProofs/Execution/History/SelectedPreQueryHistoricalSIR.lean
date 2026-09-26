@@ -1,4 +1,5 @@
 module
+public import FastConfirmationProofs.Checkpoints.ExecutionRootReflection
 public import FastConfirmationProofs.Checkpoints.SelectedPreQueryAnchor
 public import FastConfirmationProofs.FCRRule.SelectedCheckpointInclusionSupport
 public import FastConfirmationProofs.Execution.History.CausalCheckpointEpochBound
@@ -89,8 +90,8 @@ inductive StrictSelectedHistoricalSIRCallSite
         (get_current_slot cfg query.store) ≠ true)
       (gate : will_no_conflicting_checkpoint_be_justified cfg ext
         query.store = true)
-      (support : HonestVotesSupportTarget cfg E
-        (get_current_target cfg query.store) q)
+      (support : HonestVotesTargetDescendFrom cfg E result
+        (get_current_store_epoch cfg query.store) q)
 
 /-- The exact selector and proviso facts classify a strict result into the
 paper's historical-current, epoch-boundary, and mid-epoch no-conflict cases.
@@ -734,26 +735,22 @@ def HistoricalCurrentTargetCertificateProducerAt
     Nonempty (CertifiedJustified cfg E anchor
       (get_current_target cfg query.store))
 
-/-- Certificate-level semantics of the exact no-conflict helper.
-
-The conclusion is the same-epoch target pinning forced by a committed
-greater-than-one-third honest target set against any two-thirds concrete
-certificate.  Deriving this implication from the helper arithmetic, vote
-provenance, and committee accounting is the formal counterpart of paper
-Lemma 42.  Again, no selected-result ancestry occurs in this interface. -/
+/-- Paper Lemma 42 in descendant form. Observed supporters use the query
+current target, which descends from `result`. Future honest targets can
+differ, but each must descend from `result`. More than one third of the
+weight then pins every certified checkpoint of that epoch below `result`. -/
 def NoConflictCertificatePinningProducerAt
     (anchor : Checkpoint Root) (q : ℕ)
     (query : FastConfirmationStore Root) : Prop :=
+  ∀ result : Root,
+  E.RootDescends (get_current_target cfg query.store).root result →
   will_no_conflicting_checkpoint_be_justified cfg ext query.store = true →
-  HonestVotesSupportTarget cfg E (get_current_target cfg query.store) q →
+  HonestVotesTargetDescendFrom cfg E result
+    (get_current_store_epoch cfg query.store) q →
   ∀ c : Checkpoint Root,
     CertifiedJustified cfg E anchor c →
     c.epoch = (get_current_target cfg query.store).epoch →
-      c.root = (get_current_target cfg query.store).root
-
-
-
-
+      E.RootDescends c.root result
 
 /-! ## Current-target chain geometry -/
 
@@ -946,16 +943,17 @@ theorem currentEpochBoundaryWalk_of_knownEarlierEpochBlock
 
 /-! ## Completing the three regions from certificate pinning -/
 
-/-- Once same-epoch endpoint certificates are pinned to the query current
-target, all three SIR ancestry clauses follow from executable geometry.
+/-- Once current-result certificates have exact target pinning and
+previous-result certificates have descendant pinning, the three SIR clauses
+follow from executable geometry.
 
 The below-input clause uses only the carried input safety.  In the middle
 clause, confirmation transports `selected ⩾c currentTarget`, while the actual
 pre-query target vote transports `currentTarget ⩾c input`.  In the upper
-clause that same causal vote transports `currentTarget ⩾c selected`.
+clause the certified root descends from the selected result directly.
 
 The final premise is either the executable epoch-start branch or certificate
-equality, never an ancestry assumption.  The preceding exact call-site theorem
+pinning, derived from the helper and its vote support. The call-site theorem
 derives this disjunction. -/
 theorem selectedSIRThreeRegionBracket_of_preQueryVote_and_pinning
     (hA : SelectedMarginAssumptions cfg ext E)
@@ -986,10 +984,20 @@ theorem selectedSIRThreeRegionBracket_of_preQueryVote_and_pinning
       (E.store cfg ext w m).justified_checkpoint)
     (hstartOrPin :
       is_start_slot_at_epoch cfg (get_current_slot cfg query.store) = true ∨
-        ((E.store cfg ext w m).justified_checkpoint.epoch =
-            (get_current_target cfg query.store).epoch →
-          (E.store cfg ext w m).justified_checkpoint.root =
-            (get_current_target cfg query.store).root)) :
+        ((get_block_epoch cfg query.store
+              (find_latest_confirmed_descendant cfg ext query input) =
+            get_current_store_epoch cfg query.store →
+          (E.store cfg ext w m).justified_checkpoint.epoch =
+              (get_current_target cfg query.store).epoch →
+            (E.store cfg ext w m).justified_checkpoint.root =
+              (get_current_target cfg query.store).root) ∧
+        (get_block_epoch cfg query.store
+              (find_latest_confirmed_descendant cfg ext query input) + 1 =
+            get_current_store_epoch cfg query.store →
+          (E.store cfg ext w m).justified_checkpoint.epoch =
+              (get_current_target cfg query.store).epoch →
+            E.RootDescends (E.store cfg ext w m).justified_checkpoint.root
+              (find_latest_confirmed_descendant cfg ext query input)))) :
     SelectedSIRThreeRegionBracket cfg (E.store cfg ext w m) input
       (find_latest_confirmed_descendant cfg ext query input)
       (E.store cfg ext w m).justified_checkpoint := by
@@ -1090,7 +1098,7 @@ theorem selectedSIRThreeRegionBracket_of_preQueryVote_and_pinning
               simpa only [store, J] using htargetLt
             _ = J.epoch := hJEpoch.symm
         exact False.elim (Nat.lt_irrefl _ hbad)
-      · simpa only [store, T] using hpin
+      · simpa only [store, T] using hpin.1 hresultCurrent
     have hsameEpoch : J.epoch = T.epoch := by
       simpa only [T, get_current_target] using hJEpoch
     have hroot : J.root = T.root := by
@@ -1150,8 +1158,7 @@ theorem selectedSIRThreeRegionBracket_of_preQueryVote_and_pinning
         get_current_store_epoch cfg query.store := hforce.1
     have hJEpoch : J.epoch = get_current_store_epoch cfg query.store :=
       hforce.2
-    have hpin : store.justified_checkpoint.epoch = T.epoch →
-        store.justified_checkpoint.root = T.root := by
+    have hdesc : E.RootDescends J.root result := by
       rcases hstartOrPin with hstart | hpin
       · have htargetLt := E.preQueryTarget_epoch_lt_query_of_epochStart
           cfg ext query hquery hgeom hsq hstart
@@ -1161,36 +1168,15 @@ theorem selectedSIRThreeRegionBracket_of_preQueryVote_and_pinning
               simpa only [store, J] using htargetLt
             _ = J.epoch := hJEpoch.symm
         exact False.elim (Nat.lt_irrefl _ hbad)
-      · simpa only [store, T] using hpin
-    have hsameEpoch : J.epoch = T.epoch := by
-      simpa only [T, get_current_target] using hJEpoch
-    have hroot : J.root = T.root := by
-      simpa only [store, J, T] using hpin (by
-        simpa only [store, J, T] using hsameEpoch)
-    have hJT : J = T := checkpoint_eq_of_epoch_root_eq hsameEpoch hroot
-    have htargetT : a₀.data.target = T := by
-      have htargetJ : a₀.data.target = J := by
-        simpa only [store, J] using htarget₀
-      exact htargetJ.trans hJT
-    have hresultEarlier : get_block_epoch cfg query.store result <
-        get_current_store_epoch cfg query.store := by
-      rw [← hresultPrevious]
-      exact Nat.lt_succ_self _
-    have hboundaryWalk :=
-      E.currentEpochBoundaryWalk_of_knownEarlierEpochBlock cfg ext hA hv hqH
-        query hquery hresultQ hresultEarlier
-    obtain ⟨hTQ, hTresultQ⟩ :=
-      currentTarget_descends_previousEpochBlock cfg hwfQuery hwalkQuery
-        hheadQ hresultQ hheadResultQ hboundaryWalk hresultPrevious
-    have hTE : T.root ∈ (E.store cfg ext v q).block_roots := by
-      simpa only [← hquery] using hTQ
-    have hTresultE : is_ancestor (E.store cfg ext v q)
-        (get_node_for_root T.root) (get_node_for_root result) = true := by
-      simpa only [← hquery] using hTresultQ
-    have hTresultM := E.preQueryTarget_descends_queryBlock_at_endpoint
-      cfg ext hA hwalkDomain hv hqH hTE hresultE hTresultE hw hslotQM hHm
-        hi hs0 hsq hsH hvote₀ htargetT
-    simpa only [result, store, J, T, hroot] using hTresultM
+      · exact hpin.2 hresultPrevious hJEpoch
+    obtain ⟨ast, ablk, hgen, hslot, hparent⟩ := hA.genesis
+    have hJM := (E.store_domainK_of_selectedMarginDomain cfg ext
+      hA.wellFormed hA.externals_coherence hA.genesis hA.domain
+      w hw m hHm).2.2
+    exact E.store_ancestor_of_rootDescends_for_storeReflection cfg ext
+      hA.wellFormed hA.externals_coherence hgen hslot hparent
+      hJM hresultM hdesc
+
 
 
 

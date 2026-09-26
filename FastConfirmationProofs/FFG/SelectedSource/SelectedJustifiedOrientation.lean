@@ -200,12 +200,22 @@ theorem epochStart_or_endpointCurrentTargetPinned_of_acceptedCallSite
     (hhistorical : E.AcceptedHistoricalA32PayloadProducerAt
       cfg ext B query input result)
     (hnoConflict : E.NoConflictCertificatePinningProducerAt
-      cfg ext B.anchor q query) :
+      cfg ext B.anchor q query)
+    (htargetResult : get_block_epoch cfg query.store result + 1 =
+        get_current_store_epoch cfg query.store →
+      E.RootDescends (get_current_target cfg query.store).root result) :
     is_start_slot_at_epoch cfg (get_current_slot cfg query.store) = true ∨
-      (store.justified_checkpoint.epoch =
-          (get_current_target cfg query.store).epoch →
-        store.justified_checkpoint.root =
-          (get_current_target cfg query.store).root) := by
+      ((get_block_epoch cfg query.store result =
+          get_current_store_epoch cfg query.store →
+        store.justified_checkpoint.epoch =
+            (get_current_target cfg query.store).epoch →
+          store.justified_checkpoint.root =
+            (get_current_target cfg query.store).root) ∧
+       (get_block_epoch cfg query.store result + 1 =
+          get_current_store_epoch cfg query.store →
+        store.justified_checkpoint.epoch =
+            (get_current_target cfg query.store).epoch →
+          E.RootDescends store.justified_checkpoint.root result)) := by
   have hcurrent' : E.CurrentTargetCertificateProducerAt
       cfg ext B.anchor q query :=
     E.acceptedCurrentTargetCertificateProducerAt_of_gateProducer
@@ -218,22 +228,35 @@ theorem epochStart_or_endpointCurrentTargetPinned_of_acceptedCallSite
     CausalPrefixFFGInterpretation.endpointJustified_certificate
       cfg ext B hgen hanchor hstore
   cases hcall with
-  | currentCrossing _resultCurrent _a _c _edge hgate hsupport =>
+  | currentCrossing resultCurrent _a _c _edge hgate hsupport =>
       right
-      intro hepoch
-      obtain ⟨hT⟩ := hcurrent' hgate hsupport
-      exact hacc.justified_unique hJ hT hepoch
+      constructor
+      · intro _ hepoch
+        obtain ⟨hT⟩ := hcurrent' hgate hsupport
+        exact hacc.justified_unique hJ hT hepoch
+      · intro hprevious
+        rw [resultCurrent] at hprevious
+        exact False.elim (Nat.succ_ne_self _ hprevious)
   | currentHistorical hresultCurrent hnone =>
       right
-      intro hepoch
-      obtain ⟨hT⟩ := hhistorical' hresultCurrent hnone
-      exact hacc.justified_unique hJ hT hepoch
+      constructor
+      · intro _ hepoch
+        obtain ⟨hT⟩ := hhistorical' hresultCurrent hnone
+        exact hacc.justified_unique hJ hT hepoch
+      · intro hprevious
+        rw [hresultCurrent] at hprevious
+        exact False.elim (Nat.succ_ne_self _ hprevious)
   | previousEpochStart _resultPrevious hstart =>
       exact Or.inl hstart
-  | previousNoConflict _resultPrevious _notStart hgate hsupport =>
+  | previousNoConflict resultPrevious _notStart hgate hsupport =>
       right
-      intro hepoch
-      exact hnoConflict hgate hsupport store.justified_checkpoint hJ hepoch
+      constructor
+      · intro hcurrent
+        rw [hcurrent] at resultPrevious
+        exact False.elim (Nat.succ_ne_self _ resultPrevious)
+      · intro _ hepoch
+        exact hnoConflict result (htargetResult resultPrevious) hgate hsupport
+          store.justified_checkpoint hJ hepoch
 
 /-! ## Pre-query SIR and the final non-covered orientation -/
 
@@ -281,10 +304,41 @@ theorem preQueryVoteSelectedSIRBracketAt_of_acceptedProducers
     hv hqH query hquery input hinput hinputEpoch hstrict hprovisos
   have hacc : CertificateAccountability cfg E B.anchor :=
     E.certificateAccountability_of_selectedMarginAssumptions cfg ext hA
+  have htargetResult : get_block_epoch cfg query.store
+        (find_latest_confirmed_descendant cfg ext query input) + 1 =
+      get_current_store_epoch cfg query.store →
+      E.RootDescends (get_current_target cfg query.store).root
+        (find_latest_confirmed_descendant cfg ext query input) := by
+    intro hprevious
+    obtain ⟨hwfQ, hwalkQ, _⟩ :=
+      E.store_domainK_of_selectedMarginDomain cfg ext hA.wellFormed
+        hA.externals_coherence hA.genesis hA.domain v hv q hqH
+    rw [← hquery] at hwfQ hwalkQ
+    have hheadQ : (get_head cfg query.store).root ∈ query.store.block_roots := by
+      rw [hquery]
+      exact E.head_root_known_of_selectedMarginDomain cfg ext hA.domain hv q hqH
+    have hheadInput : is_ancestor query.store (get_head cfg query.store)
+        (get_node_for_root input) = true := by
+      rw [hquery]
+      exact hbase v hv q
+        (E.query_slot_start_le_of_slot_ge_minimal cfg ext hA (Nat.le_refl _)) hqH
+    have hheadResult := findLatestSelectedResult_below_head cfg ext query
+      hwfQ hwalkQ hheadQ input hinput hheadInput
+    have hfacts := E.strictSelectedResultMechanicalFacts cfg ext hA hv hqH
+      query hquery input hinput hinputEpoch hstrict
+    have hboundaryWalk :=
+      E.currentEpochBoundaryWalk_of_knownEarlierEpochBlock cfg ext hA hv hqH
+        query hquery hfacts.result_known
+          (by rw [← hprevious]; exact Nat.lt_succ_self _)
+    obtain ⟨hTQ, hdesc⟩ := currentTarget_descends_previousEpochBlock cfg
+      hwfQ hwalkQ hheadQ hfacts.result_known hheadResult hboundaryWalk hprevious
+    exact E.rootDescends_of_store_ancestor
+      (by rw [hquery]; exact E.blockProvenance cfg ext v q) hwfQ
+      (hwalkQ _ hfacts.result_known _ hTQ) hdesc
   have hstartOrPin :=
     E.epochStart_or_endpointCurrentTargetPinned_of_acceptedCallSite
       cfg ext B hgen hanchor (E.store_causal cfg ext w m)
-      hcall hacc hcurrent hhistorical hnoConflict
+      hcall hacc hcurrent hhistorical hnoConflict htargetResult
   exact E.selectedSIRThreeRegionBracket_of_preQueryVote_and_pinning
     cfg ext hA hwalkDomain hv hqH query hquery input hinput hinputEpoch
       hbase hstrict hw hslotQM hHm hi hs0 hsq hsH hvote htarget

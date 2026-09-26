@@ -22,8 +22,8 @@ The call from second six to seven reads the equivocation. It lowers the
 child's safety threshold from 2760 to 2560 and confirms the child. The call
 from second eight to nine is in a non-start slot of epoch two. It selects the
 epoch-one carrier from the child, so the selected previous-result proviso has
-a true antecedent. `target_votes_support` proves the exact normative support
-consequent for every in-horizon call. The accepted FFG interpretation and
+a true antecedent. `target_votes_support` proves exact target support in
+this run; the bundle now uses only descendant support for a previous result. The accepted FFG interpretation and
 positive Paper A3.2 support use the three votes in the slot-seven carrier.
 
 The public non-vacuity, full-bundle, and safety theorems are at the end.
@@ -71,6 +71,29 @@ theorem target_votes_support
   rw [slot_at_eq] at hfuture
   exact bounded_support ⟨v, hvlt⟩ ⟨n, hn⟩ ⟨s, hslt⟩ hepoch hfuture
 
+private theorem bounded_previous_target_root_eq :
+    ∀ (v : Fin 4) (n : Fin 15) (result : WitnessRoot),
+      find_latest_confirmed_descendant witnessConfig witnessExternals
+        (witnessExecution.fcrStoreAtCall witnessConfig witnessExternals v.val n.val)
+        (witnessExecution.getLatestConfirmedTraceAt witnessConfig
+          witnessExternals v.val n.val).afterObserved = result →
+      result ≠ (witnessExecution.getLatestConfirmedTraceAt witnessConfig
+          witnessExternals v.val n.val).afterObserved →
+      get_block_epoch witnessConfig
+        (witnessExecution.fcrStoreAtCall witnessConfig witnessExternals
+          v.val n.val).store result ≠
+        get_current_store_epoch witnessConfig
+          (witnessExecution.fcrStoreAtCall witnessConfig witnessExternals
+            v.val n.val).store →
+      is_start_slot_at_epoch witnessConfig
+        (get_current_slot witnessConfig
+          (witnessExecution.fcrStoreAtCall witnessConfig witnessExternals
+            v.val n.val).store) ≠ true →
+      (get_current_target witnessConfig
+        (witnessExecution.fcrStoreAtCall witnessConfig witnessExternals
+          v.val n.val).store).root = result := by
+  set_option maxRecDepth 50000 in decide
+
 private theorem witnessSelectedHelperProvisos
     {v : ValidatorIndex} (hv : v ∈ witnessExecution.honest) {n : ℕ}
     (hH : witnessExecution.WithinHorizon witnessConfig (n + 1))
@@ -83,7 +106,21 @@ private theorem witnessSelectedHelperProvisos
       (witnessExecution.getLatestConfirmedTraceAt witnessConfig
         witnessExternals v n).afterObserved := by
   have h := target_votes_support hv hH
-  exact ⟨fun _ _ _ => h, fun _ _ _ _ _ => h⟩
+  refine ⟨fun _ _ _ => h, ?_⟩
+  intro result hout hstrict hprevious hnotStart
+  have hn : n < 15 := by have := time_lt_sixteen hH; omega
+  have hvlt : v < 4 := by
+    rcases honest_eq_zero_or_one_or_two_or_three hv with
+      rfl | rfl | rfl | rfl <;> decide
+  have hroot := bounded_previous_target_root_eq ⟨v, hvlt⟩ ⟨n, hn⟩ result
+    hout hstrict hprevious hnotStart
+  refine ⟨hH, ?_⟩
+  intro i hi sl hs hepoch hfuture k a ha
+  have ht := h.2 i hi sl hs hepoch hfuture k a ha
+  rw [ht]
+  refine ⟨rfl, ?_⟩
+  rw [hroot]
+  exact .refl result
 
 /-! ## Four-epoch support and accepted FFG closure -/
 
@@ -717,6 +754,17 @@ theorem carrier_safe_from_next_slot (w m : ℕ)
     witnessExecution witnessAcceptedActualFCRNextSlotSafetyAssumptions
     0 (by decide) 9 w hw m (by omega) hnext hH
   simpa only [hcarrier] using h
+
+/-- The exercised previous-result call has descendant support for every
+later honest epoch-two vote. The exact target witness remains available. -/
+theorem previous_result_descendant_support_exercised :
+    HonestVotesTargetDescendFrom witnessConfig witnessExecution carrierRoot
+      (get_current_store_epoch witnessConfig previousResultFcr.store) 9 := by
+  have hp := witnessSelectedHelperProvisos (v := 0) (n := 8)
+    (by decide) (time_within_of_lt_sixteen (by decide))
+    (by unfold getLatestSelectorGuard; decide)
+  exact hp.selected_previous_result_no_conflict carrierRoot
+    (by decide) (by decide) (by decide) (by decide)
 
 end ByzantinePremiseWitness
 end FastConfirmation.Spec
