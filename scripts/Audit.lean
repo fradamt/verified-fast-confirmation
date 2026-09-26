@@ -106,8 +106,8 @@ private def isGeneratedSafePartial (env : Environment) (name : Name)
 
 elab "audit_project_trust" : command => do
   let env ← getEnv
-  unless publicWitnesses.size == 48 do
-    throwError "public theorem witness set must contain exactly 48 declarations"
+  unless publicWitnesses.size == 49 do
+    throwError "public theorem witness set must contain exactly 49 declarations"
   unless publicWitnesses.toList.eraseDups.length == publicWitnesses.size do
     throwError "public theorem witness set contains duplicate declarations"
 
