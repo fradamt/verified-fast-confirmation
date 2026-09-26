@@ -539,7 +539,7 @@ theorem phase0_boundary_source : Phase0BoundarySourceCoherence cfg ext := by
       · contradiction
 
 theorem balance_floor :
-    cfg.effective_balance_increment ≤
+    2 * cfg.effective_balance_increment ≤
       run.weight (run.currentTargetAnchorActive cfg) := by decide
 
 theorem epoch_ends_fit : EpochEndsFitUint64 cfg := by

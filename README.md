@@ -27,8 +27,9 @@ one must show that its FFG behavior supplies this interpretation.
 
 The current read agreement excludes real genesis stubs and older
 checkpoint-sync state checkpoints. This remains open. The Phase0
-boundary-source laws hold for the pinned state functions, including an
-epoch-1 state that skips into epoch 3; see
+boundary-source laws hold exactly for the pinned state functions, including
+an epoch-1 state that skips into epoch 3. One law has a balance antecedent,
+which the two-increment `balance_floor` supplies; see
 [anchor and boundary limits](docs/MODELING_CHOICES.md#anchor-and-boundary-limits).
 `CheckpointSyncFilterWitness.checkpoint_sync_filter_counterexample` checks
 that, without eventual inclusion, an old raw checkpoint-sync source can fail
@@ -120,7 +121,7 @@ The records in this table are in `FastConfirmationStatements/Premises/`. The las
 │ Safety field │ Execution.ScheduledExecutionPremises │ Whole seconds, well formed stores, coherent external calls, honest               │ Model idealisation            │
 │              │                                      │ behavior with an attestation deadline, and a valid genesis store.                │ Phase0/Gloas; model premise   │
 │ Safety field │ Execution.ScheduledFCRCallPremises   │ Six delivery laws; fixed active validators; committee and Byzantine              │ Paper Assumptions 1 and 2;    │
-│              │                                      │ weight bounds; Phase0 source coherence; a nonzero balance floor;                 │ Gloas extension; model        │
+│              │                                      │ weight bounds; Phase0 source coherence; a two-increment balance floor;           │ Gloas extension; model        │
 │              │                                      │ next-slot vote receipt.                                                          │ idealisation                  │
 │ Safety field │ NextSlotSynchronyPremises            │ Positive delay parameter; delivery and handler-service laws for blocks,          │ Paper synchrony; Gloas        │
 │              │                                      │ envelopes, data and evidence; pre-tick exclusion before boundary votes.          │ extension                     │

@@ -1169,35 +1169,6 @@ theorem scheduledEventPrefix_acceptedConcreteCurrentTargetQuorum
   intro i hi vote
   exact hgeometryVote i hi vote
 
-/-- The boundary source of a known block before epoch `e` is older than `e`
-when the trusted anchor is older than `e`.  Either slot processing keeps the
-block state's checkpoint, which is the block's `GJ`, or the boundary law
-bounds the epoch by the block epoch. -/
-theorem acceptedBoundarySource_epoch_lt
-    (B : ScheduledFFGInterpretation cfg ext E)
-    (hboundaryPhase : Phase0BoundarySourceCoherence cfg ext)
-    {store : Store Root} (hstore : E.ScheduledPrefixStore cfg ext store)
-    (hstoreCore : WellFormedStoreCore store)
-    {r : Root} (hr : r ∈ store.block_roots) {e : Epoch}
-    (hold : get_block_epoch cfg store r < e)
-    (hanchorBefore : B.anchor.epoch < e) :
-    (phase0BoundarySource cfg ext (store.block_states r) e).epoch < e := by
-  have hstateEpoch : compute_epoch_at_slot cfg (store.block_states r).slot =
-      get_block_epoch cfg store r := by
-    simp only [get_block_epoch]
-    rw [hstoreCore.2 r hr]
-  rcases hboundaryPhase.boundarySource_eq_or_epoch_le
-      (hstateEpoch.trans_lt hold) with hkeep | hle
-  · rw [hkeep, (Execution.ScheduledFFGInterpretation.causalStoreProjection B
-      hstore).block_state_gj r hr]
-    have hat : E.BlockKnownInScheduledPrefix cfg ext r (store.blocks r) :=
-      E.acceptedBlockAt_of_causal_known cfg ext hstore hr
-    rcases B.state.realized_justified_anchor_or_before hat with hanc | hbefore
-    · rw [hanc]
-      exact hanchorBefore
-    · exact hbefore.trans hold
-  · exact (hle.trans_eq hstateEpoch).trans_lt hold
-
 /-- Accepted per-vote geometry for a concrete quorum whose target checkpoint
 block is older than the checkpoint epoch.  Each vote retains exact source
 readback to the boundary source of the target block state. -/
@@ -1215,7 +1186,8 @@ def AcceptedConcreteA32QuorumOldSourceGeometry
 The executable signer union and weight arithmetic are unchanged; every
 concrete vote is instead tied to the boundary source of the target block
 state, which the voter and the query store read identically.
-The quorum and its source are outputs. -/
+The source epoch bound comes from the source certificate.  The quorum and its
+source are outputs. -/
 theorem scheduledEventPrefix_acceptedConcreteOldTargetQuorum
     (B : ScheduledFFGInterpretation cfg ext E)
     (hT : E.ScheduledExecutionPremises cfg ext)
@@ -1252,7 +1224,12 @@ theorem scheduledEventPrefix_acceptedConcreteOldTargetQuorum
       (get_current_target cfg (p.store cfg ext)).root <
         (get_current_target cfg (p.store cfg ext)).epoch)
     (hanchorBefore : B.anchor.epoch <
-      (get_current_target cfg (p.store cfg ext)).epoch) :
+      (get_current_target cfg (p.store cfg ext)).epoch)
+    (hsourceBeforeIn : (phase0BoundarySource cfg ext
+      ((p.store cfg ext).block_states
+        (get_current_target cfg (p.store cfg ext)).root)
+      (get_current_target cfg (p.store cfg ext)).epoch).epoch <
+        (get_current_target cfg (p.store cfg ext)).epoch) :
     ∃ Q : ConcreteA32QuorumBefore cfg ext E
         (compute_start_slot_at_epoch cfg
           ((get_current_target cfg (p.store cfg ext)).epoch + 1))
@@ -1337,11 +1314,7 @@ theorem scheduledEventPrefix_acceptedConcreteOldTargetQuorum
     E.acceptedBlockAt_of_causal_known cfg ext hqueryCausal htargetKnown
   let source := phase0BoundarySource cfg ext (store.block_states target.root)
     target.epoch
-  have hqueryCore : WellFormedStoreCore store :=
-    E.exactCausalStoreWellFormedCore_of_trajectory cfg ext hT hqueryCausal
-  have hsourceBefore : source.epoch < target.epoch :=
-    E.acceptedBoundarySource_epoch_lt cfg ext B hboundaryPhase hqueryCausal
-      hqueryCore htargetKnown htargetOld hanchorBefore
+  have hsourceBefore : source.epoch < target.epoch := hsourceBeforeIn
   have hgeometryVote : ∀ i ∈ signers,
       ∀ vote : ConcreteHonestTargetVoteBefore cfg ext E i deadline target,
         E.AcceptedHonestOldTargetSourceEvidence cfg ext B
@@ -1612,7 +1585,8 @@ theorem scheduledEventPrefix_oldTargetBoundarySource_certificate
       (get_current_target cfg (p.store cfg ext)).epoch
     Nonempty (CertifiedJustified cfg E B.anchor source) ∧
       E.RootDescends (get_current_target cfg (p.store cfg ext)).root
-        source.root := by
+        source.root ∧
+      source.epoch < (get_current_target cfg (p.store cfg ext)).epoch := by
   intro source
   let store := p.store cfg ext
   let target := get_current_target cfg store
@@ -1620,7 +1594,7 @@ theorem scheduledEventPrefix_oldTargetBoundarySource_certificate
   change get_block_epoch cfg store target.root < target.epoch at htargetOld
   change B.anchor.epoch < target.epoch at hanchorBefore
   change Nonempty (CertifiedJustified cfg E B.anchor source) ∧
-    E.RootDescends target.root source.root
+    E.RootDescends target.root source.root ∧ source.epoch < target.epoch
   have hstore : E.ScheduledPrefixStore cfg ext store := by
     simpa only [store] using (Execution.ScheduledPrefixStore.scheduledPrefix p)
   have hprojection : AcceptedFFGStoreProjection B.state store :=
@@ -1646,11 +1620,19 @@ theorem scheduledEventPrefix_oldTargetBoundarySource_certificate
     obtain ⟨formedCarrier, htargetDescendsCarrier, hformed⟩ :=
       B.state.unrealized_justified_mem target.root htargetCarrier.acceptedRoot
     have hevidence := B.state.formed_evidence hformed
+    have htargetAt : E.BlockKnownInScheduledPrefix cfg ext target.root
+        (store.blocks target.root) :=
+      E.acceptedBlockAt_of_causal_known cfg ext hstore htargetKnown
+    have hGUEpoch : (B.state.unrealized_justified target.root).epoch <
+        target.epoch :=
+      lt_of_le_of_lt (B.state.available_checkpoint_epoch_le_block htargetAt
+        ⟨formedCarrier, htargetDescendsCarrier, hformed⟩) htargetOld
     rw [hGU]
     obtain ⟨hincluded⟩ := hevidence.certified
     exact ⟨⟨IncludedCertifiedJustified.toCertifiedJustified
         (cfg := cfg) B.state.includedAttestations.relation hincluded⟩,
-      Execution.RootDescends.trans E htargetDescendsCarrier hevidence.on_chain⟩
+      Execution.RootDescends.trans E htargetDescendsCarrier hevidence.on_chain,
+      hGUEpoch⟩
   · -- Two or more boundaries: the `GJ` of a current-epoch carrier.
     have hlate : get_block_epoch cfg store target.root + 1 < target.epoch :=
       Nat.lt_of_le_of_ne (Nat.succ_le_of_lt htargetOld) hone
@@ -1740,14 +1722,19 @@ theorem scheduledEventPrefix_oldTargetBoundarySource_certificate
         (B.state.realized_justified c) :=
       IncludedCertifiedJustified.toCertifiedJustified
         (cfg := cfg) B.state.includedAttestations.relation hincluded
+    have hcAt : E.BlockKnownInScheduledPrefix cfg ext c (store.blocks c) :=
+      E.acceptedBlockAt_of_causal_known cfg ext hstore hcKnown
+    have hsourceLt : (B.state.realized_justified c).epoch < target.epoch := by
+      rcases B.state.realized_justified_anchor_or_before hcAt with hanc | hbefore
+      · rw [hanc]
+        exact hanchorBefore
+      · exact lt_of_lt_of_eq hbefore hcTargetEpoch
     rw [← hsource]
-    refine ⟨⟨hcertified⟩, ?_⟩
+    refine ⟨⟨hcertified⟩, ?_, hsourceLt⟩
     have hanchorLe : B.anchor.epoch ≤ (B.state.realized_justified c).epoch :=
       CertifiedJustified.anchor_epoch_le (cfg := cfg) hcertified
-    have hepochLe : (B.state.realized_justified c).epoch ≤ target.epoch := by
-      rw [hsource]
-      exact (E.acceptedBoundarySource_epoch_lt cfg ext B hboundaryPhase hstore
-        hqueryCore htargetKnown htargetOld hanchorBefore).le
+    have hepochLe : (B.state.realized_justified c).epoch ≤ target.epoch :=
+      hsourceLt.le
     have hcheckpoint : B.state.realized_justified c =
         get_checkpoint_for_block cfg store c
           (B.state.realized_justified c).epoch :=
@@ -1831,15 +1818,15 @@ theorem scheduledEventPrefix_acceptedOldTargetA32GateRealization_core
   change target.root ∈ store.block_roots at htargetKnown
   change get_block_epoch cfg store target.root < target.epoch at htargetOld
   change B.anchor.epoch < target.epoch at hanchorBefore
+  obtain ⟨hsourceCertified, htargetDescendsSource, hsourceBefore⟩ :=
+    E.scheduledEventPrefix_oldTargetBoundarySource_certificate cfg ext B hT
+      hphase hboundaryPhase hanchor hboundary p hguard htargetKnown htargetOld
+      hanchorBefore
   obtain ⟨Q, hQSource, _hgeometry⟩ :=
     E.scheduledEventPrefix_acceptedConcreteOldTargetQuorum cfg ext B hT
       hsv hbb hphase hboundaryPhase hanchor hboundary p hp hqH hevidence
       hstate hval htab hendH hanchorH hfloor hgate hsupport htargetKnown
-      htargetOld hanchorBefore
-  obtain ⟨hsourceCertified, htargetDescendsSource⟩ :=
-    E.scheduledEventPrefix_oldTargetBoundarySource_certificate cfg ext B hT
-      hphase hboundaryPhase hanchor hboundary p hguard htargetKnown htargetOld
-      hanchorBefore
+      htargetOld hanchorBefore hsourceBefore
   have htargetSpan :
       E.SlotWithinHorizon cfg (target.epoch * cfg.slots_per_epoch) ∧
         E.SlotWithinHorizon cfg

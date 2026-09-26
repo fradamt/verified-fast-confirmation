@@ -448,7 +448,7 @@ theorem phase0_source : Phase0SourceCoherence cfg ext :=
 theorem phase0_boundary_source : Phase0BoundarySourceCoherence cfg ext :=
   TwelveSecondSynchronyWitness.phase0_boundary_source
 
-theorem balance_floor : cfg.effective_balance_increment ≤
+theorem balance_floor : 2 * cfg.effective_balance_increment ≤
     run.weight (run.currentTargetAnchorActive cfg) := by decide
 
 theorem epoch_ends_fit : EpochEndsFitUint64 cfg := TwelveSecondSynchronyWitness.epoch_ends_fit

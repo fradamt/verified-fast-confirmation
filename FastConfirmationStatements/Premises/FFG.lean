@@ -36,16 +36,19 @@ Python sources: `specs/phase0/beacon-chain.md:1769-1782` (`state_transition`),
 * `state_transition_process_slots`: `state_transition` is `process_slots` to
   the block slot followed by `process_block`, and `process_block` does not
   write the checkpoint.
-* `process_slots_checkpoint_epoch`: the checkpoint either stays unchanged or
+* `process_slots_checkpoint_epoch`: if every state that slot processing
+  passes through has total active balance above one and a half
+  `EFFECTIVE_BALANCE_INCREMENT`, the checkpoint either stays unchanged or
   gets an epoch at most the start epoch. An early return keeps it. The first
   epoch processing justifies at most the start epoch. Later epoch processing
-  sees no new attestations (`process_slots` includes no block), so it can
-  justify only the start epoch again. The single exception is a degenerate
-  registry: `get_total_balance` (`:1518`) returns at least
-  `EFFECTIVE_BALANCE_INCREMENT`, so an epoch with no attestations passes the
-  two-thirds test when the total active balance at that epoch is at most one
-  increment. This law excludes that registry, as the static-registry
-  contracts in `BeaconExternalsPremises` do.
+  sees no new attestations (`process_slots` includes no block). For an empty
+  attestation set, `get_total_balance` (`:1518`) returns one increment, and
+  the balance antecedent makes the two-thirds test fail. Thus later epoch
+  processing can justify only the start epoch again. Each epoch processing
+  runs on the state at the last slot of its epoch, which is one of the states
+  in the antecedent. Without the antecedent the law is false: when the total
+  active balance is at most one increment, an epoch with no attestations
+  passes the test.
 
 There is no equation for two or more boundaries. PJF returns early in epochs
 0 and 1, so an epoch-1 start can keep the old checkpoint under eager PJF and
@@ -83,6 +86,9 @@ structure Phase0BoundarySourceCoherence
     ∀ (st : BeaconState Root) (target : Slot),
       compute_epoch_at_slot cfg st.slot <
         compute_epoch_at_slot cfg target →
+      (∀ s : Slot, st.slot < s → s ≤ target →
+        3 * cfg.effective_balance_increment <
+          2 * get_total_active_balance cfg (ext.process_slots st s)) →
       (ext.process_slots st target).current_justified_checkpoint =
           st.current_justified_checkpoint ∨
         (ext.process_slots st target).current_justified_checkpoint.epoch ≤

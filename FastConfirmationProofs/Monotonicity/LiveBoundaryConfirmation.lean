@@ -991,7 +991,7 @@ theorem NextSlotSafetyPremises.full_epoch_span_weight_eq_total
     h.trajectory.externals_coherence h.completed_calls.static_validators
     hcurrentH hendH hanchorH]
   exact E.total_active_eq_anchorActive_weight cfg
-    h.completed_calls.balance_floor |>.symm
+    (by have := h.completed_calls.balance_floor; omega) |>.symm
 
 /-- Estimation soundness on complementary same-epoch ranges is exact once
 their disjoint union is the full active committee. -/

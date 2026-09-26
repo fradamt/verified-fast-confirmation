@@ -23,16 +23,51 @@ private theorem finalization_last_slot_le {f S s : ℕ}
   simp only [Nat.add_mul, one_mul] at hbound ⊢
   omega
 
+/-- Slot processing from a known block state of an honest store, to a slot
+at or before the store slot, keeps the anchor's total active balance.  Slot
+processing keeps the registry, and activity is constant in the horizon. -/
+theorem process_slots_block_state_total_active
+    (hT : E.ScheduledExecutionPremises cfg ext)
+    (hsv : StaticValidatorSet cfg E)
+    {v : ValidatorIndex} (hv : v ∈ E.honest) {n : ℕ}
+    (hHn : E.WithinHorizon cfg n)
+    {r : Root} (hr : r ∈ (E.store cfg ext v n).block_roots)
+    {s : Slot} (hlt : ((E.store cfg ext v n).block_states r).slot < s)
+    (hle : s ≤ E.slot_at cfg n) :
+    get_total_active_balance cfg
+        (ext.process_slots ((E.store cfg ext v n).block_states r) s) =
+      E.total_active cfg := by
+  obtain ⟨ast, ablk, hgen, _, _⟩ := hT.genesis_structure
+  have hval : ((E.store cfg ext v n).block_states r).validators = E.registry :=
+    (E.registryConstant cfg ext hT.externals_coherence ⟨ast, ablk, hgen⟩
+      v hv n).1 r hr
+  have hanchorN : E.anchor_state.slot ≤ E.slot_at cfg n :=
+    le_trans (E.anchor_state_slot_le cfg hT.whole_seconds ⟨ast, ablk, hgen⟩)
+      (E.slot_at_mono cfg (Nat.zero_le n))
+  change _ = get_total_active_balance cfg E.anchor_state
+  apply get_total_active_balance_congr cfg
+  · rw [hT.externals_coherence.process_slots_registry, hval]
+    rfl
+  · intro i
+    rw [hT.externals_coherence.process_slots_registry, hval]
+    simpa only [get_current_epoch,
+      hT.externals_coherence.process_slots_slot _ _ hlt] using
+      hsv.activity_constant_of_slot_le (cfg := cfg) hle hanchorN hHn.2.2 hHn.2.2
+
 /-- The honest source is the head's `GJ`, or its `GU` when the head is one
 epoch old.  When the head is two or more epochs old, the Phase0 boundary laws
 bound only the source epoch by the head epoch; the source can be newer than
-`GU`. -/
+`GU`.  The balance floor gives the balance antecedent of that law. -/
 theorem honest_attestation_source_selector
     (B : ScheduledFFGInterpretation cfg ext E)
     (hT : E.ScheduledExecutionPremises cfg ext)
     (hphase : Phase0SourceCoherence cfg ext)
     (hphaseBoundary : Phase0BoundarySourceCoherence cfg ext)
+    (hsv : StaticValidatorSet cfg E)
+    (hfloor : 2 * cfg.effective_balance_increment ≤
+      E.weight (E.currentTargetAnchorActive cfg))
     {v : ValidatorIndex} {n s : ℕ} {index : CommitteeIndex}
+    (hv : v ∈ E.honest) (hHn : E.WithinHorizon cfg n)
     (hn : E.slot_at cfg n = s)
     (hhead : (get_head cfg (E.store cfg ext v n)).root ∈
       (E.store cfg ext v n).block_roots) :
@@ -85,8 +120,18 @@ theorem honest_attestation_source_selector
       rw [hsourceEq, hphaseBoundary.process_slots_one_boundary _ _ hstateLt
         (by rw [hstateSlot]; exact hone)]
       exact hprojection.pulled_up_gu head hhead
-    · rcases hphaseBoundary.process_slots_checkpoint_epoch _ _ hstateEpoch with
-        hkeep | hle
+    · have hbalance : ∀ s' : Slot, (store.block_states head).slot < s' →
+          s' ≤ s → 3 * cfg.effective_balance_increment < 2 *
+            get_total_active_balance cfg
+              (ext.process_slots (store.block_states head) s') := by
+        intro s' hlt' hle'
+        rw [E.process_slots_block_state_total_active cfg ext hT hsv hv hHn hhead
+            hlt' (hle'.trans_eq hn.symm),
+          E.total_active_eq_anchorActive_weight cfg (by omega)]
+        have hinc := cfg.effective_balance_increment_pos
+        omega
+      rcases hphaseBoundary.process_slots_checkpoint_epoch _ _ hstateEpoch
+          hbalance with hkeep | hle
       · left
         rw [hsourceEq, hkeep]
         exact hprojection.block_state_gj head hhead
@@ -128,6 +173,9 @@ theorem finalized_epoch_le_voter_justified_of_receiver_slot_le
     (hbyz : ByzantineWeightPremises cfg E)
     (hphase : Phase0SourceCoherence cfg ext)
     (hphaseBoundary : Phase0BoundarySourceCoherence cfg ext)
+    (hsv : StaticValidatorSet cfg E)
+    (hfloor : 2 * cfg.effective_balance_increment ≤
+      E.weight (E.currentTargetAnchorActive cfg))
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : InitialAnchorAtEpochBoundary (cfg := cfg)
       (E := E) (anchor := B.anchor))
@@ -201,7 +249,7 @@ theorem finalized_epoch_le_voter_justified_of_receiver_slot_le
   have hhead := E.headRootKnown_of_acceptedGlobalTrajectory cfg ext B hT
     hanchor hboundary hi k hHk
   have hselector := E.honest_attestation_source_selector cfg ext B hT
-    hphase hphaseBoundary (index := index) hk hhead
+    hphase hphaseBoundary hsv hfloor (index := index) hi hHk hk hhead
   rw [hsource] at hselector
   apply E.deadline_justified_epoch_le_of_carrier cfg ext B hT hrelay hanchor hboundary
     P V hacc hi hv hHk hHn hhead (by simpa only [hk] using hdue) hnext hklt
@@ -231,6 +279,9 @@ theorem next_boundary_finalized_epoch_le_voter_justified
     (hbyz : ByzantineWeightPremises cfg E)
     (hphase : Phase0SourceCoherence cfg ext)
     (hphaseBoundary : Phase0BoundarySourceCoherence cfg ext)
+    (hsv : StaticValidatorSet cfg E)
+    (hfloor : 2 * cfg.effective_balance_increment ≤
+      E.weight (E.currentTargetAnchorActive cfg))
     (hanchor : B.anchor = E.genesis_store.justified_checkpoint)
     (hboundary : InitialAnchorAtEpochBoundary (cfg := cfg)
       (E := E) (anchor := B.anchor))
@@ -250,7 +301,8 @@ theorem next_boundary_finalized_epoch_le_voter_justified
   have hgenTime : E.genesis_store.genesis_time ≤ E.genesis_store.time := by
     rw [hgen]; simp only [get_forkchoice_store]; omega
   apply E.finalized_epoch_le_voter_justified_of_receiver_slot_le cfg ext B hT hrelay hbyz
-    hphase hphaseBoundary hanchor hboundary hspe hDelay P V hacc hv hs0 hn hHn
+    hphase hphaseBoundary hsv hfloor hanchor hboundary hspe hDelay P V hacc hv hs0 hn
+    hHn
   rw [E.slot_at_slot_start cfg hT.whole_seconds
     (hs0.trans (Nat.le_succ s)) hgenTime]
 

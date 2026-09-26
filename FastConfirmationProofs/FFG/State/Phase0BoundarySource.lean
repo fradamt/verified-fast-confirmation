@@ -81,7 +81,7 @@ theorem of_eager
       hslots st target' (hlt (hsame ▸ hcross)) (hsame ▸ hcross)]
   · intro pre sb post h hcross
     rw [htransition pre sb post h hcross, hslots pre _ (hlt hcross) hcross]
-  · intro st target hcross
+  · intro st target hcross _
     rw [hslots st target (hlt hcross) hcross]
     exact Or.inr (hpjf st)
 
@@ -123,17 +123,21 @@ theorem boundarySource_eq_pjf
     (slot_lt_start_of_epoch_lt cfg (by rw [hnext]; exact Nat.lt_succ_self _))
     ((compute_epoch_at_start_slot cfg e).trans hnext)
 
-/-- The boundary source is the start state's checkpoint or no newer than the
-start epoch. -/
+/-- If each processed state has total active balance above one and a half
+increments, the boundary source is the start state's checkpoint or no newer
+than the start epoch. -/
 theorem boundarySource_eq_or_epoch_le
     (h : Phase0BoundarySourceCoherence cfg ext)
     {st : BeaconState Root} {e : Epoch}
-    (hcross : compute_epoch_at_slot cfg st.slot < e) :
+    (hcross : compute_epoch_at_slot cfg st.slot < e)
+    (hbalance : ∀ s : Slot, st.slot < s → s ≤ compute_start_slot_at_epoch cfg e →
+      3 * cfg.effective_balance_increment <
+        2 * get_total_active_balance cfg (ext.process_slots st s)) :
     phase0BoundarySource cfg ext st e = st.current_justified_checkpoint ∨
       (phase0BoundarySource cfg ext st e).epoch ≤
         compute_epoch_at_slot cfg st.slot :=
   h.process_slots_checkpoint_epoch st _
-    (by rw [compute_epoch_at_start_slot]; exact hcross)
+    (by rw [compute_epoch_at_start_slot]; exact hcross) hbalance
 
 end Phase0BoundarySourceCoherence
 

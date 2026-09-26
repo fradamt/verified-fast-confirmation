@@ -23,8 +23,12 @@ variable {E : Execution Root}
 /-- Primitive bundle left after replaying the completed scheduled prefix.
 
 The first five fields are direct protocol/model contracts.  `balance_floor`
-excludes the executable helper's artificial empty-active-set minimum-balance
-branch. `delivery_lookahead` is the paper-synchrony boundary closure for
+asks for an anchor active-set weight of at least two
+`EFFECTIVE_BALANCE_INCREMENT`s. It excludes the executable helper's
+artificial empty-active-set minimum-balance branch and the degenerate registry
+in which an epoch with no attestations passes the two-thirds test. The
+registry is static in the horizon, so this is one constant fact; every real
+network satisfies it. `delivery_lookahead` is the paper-synchrony boundary closure for
 honest votes created inside the prefix. Prediction support is derived by
 joint induction over calls and endpoint slots.
 
@@ -38,7 +42,7 @@ structure ScheduledFCRCallPremises : Prop where
   byzantine_bound : ByzantineWeightPremises cfg E
   phase0_source : Phase0SourceCoherence cfg ext
   phase0_boundary_source : Phase0BoundarySourceCoherence cfg ext
-  balance_floor : cfg.effective_balance_increment ≤
+  balance_floor : 2 * cfg.effective_balance_increment ≤
     E.weight (E.currentTargetAnchorActive cfg)
   delivery_lookahead : HorizonVoteDeliveryLookahead cfg E
 

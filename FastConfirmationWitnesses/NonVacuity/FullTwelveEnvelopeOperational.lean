@@ -560,7 +560,7 @@ theorem phase0_boundary_source : Phase0BoundarySourceCoherence cfg ext :=
     TwelveSecondSynchronyWitness.phase0_boundary_source.state_transition_process_slots,
     TwelveSecondSynchronyWitness.phase0_boundary_source.process_slots_checkpoint_epoch⟩
 
-theorem balance_floor : cfg.effective_balance_increment ≤
+theorem balance_floor : 2 * cfg.effective_balance_increment ≤
     run.weight (run.currentTargetAnchorActive cfg) := by decide
 
 theorem epoch_ends_fit : EpochEndsFitUint64 cfg := TwelveSecondSynchronyWitness.epoch_ends_fit

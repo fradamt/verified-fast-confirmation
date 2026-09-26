@@ -289,7 +289,7 @@ theorem completedPrefix_noConflict_certifiedJustified_root_eq_currentTarget
     have honeThird : E.total_active cfg < 3 * E.weight signers := by
       simpa only [signers, store, state] using
         E.noConflict_arithmeticBranch_oneThird cfg ext hA hv hHn1
-          hstate hval htab hendH hanchorH hC.balance_floor heq hgate
+          hstate hval htab hendH hanchorH (by have := hC.balance_floor; omega) heq hgate
     have hcurrentH : E.SlotWithinHorizon cfg
         (get_current_slot cfg store) := by
       rw [show get_current_slot cfg store = E.slot_at cfg (n + 1) by
@@ -308,7 +308,7 @@ theorem completedPrefix_noConflict_certifiedJustified_root_eq_currentTarget
             hanchorH
     have hU : E.weight U ≤ E.total_active cfg := by
       rw [hspanEq, ← E.total_active_eq_anchorActive_weight
-        cfg hC.balance_floor]
+        cfg (by have := hC.balance_floor; omega)]
     cases hc with
     | anchor =>
         exfalso
@@ -552,7 +552,7 @@ theorem completedPrefix_noConflict_certifiedJustified_descends_result
     have honeThird : E.total_active cfg < 3 * E.weight signers := by
       simpa only [signers, store, state] using
         E.noConflict_arithmeticBranch_oneThird cfg ext hA hv hHn1
-          hstate hval htab hendH hanchorH hC.balance_floor heq hgate
+          hstate hval htab hendH hanchorH (by have := hC.balance_floor; omega) heq hgate
     have hcurrentH : E.SlotWithinHorizon cfg
         (get_current_slot cfg store) := by
       rw [show get_current_slot cfg store = E.slot_at cfg (n + 1) by
@@ -571,7 +571,7 @@ theorem completedPrefix_noConflict_certifiedJustified_descends_result
             hanchorH
     have hU : E.weight U ≤ E.total_active cfg := by
       rw [hspanEq, ← E.total_active_eq_anchorActive_weight
-        cfg hC.balance_floor]
+        cfg (by have := hC.balance_floor; omega)]
     cases hc with
     | anchor =>
         exfalso

@@ -364,7 +364,7 @@ theorem actualCall_strictSelected_result_and_child_ancestor_of_endpointJustified
     rw [← hselector.result_eq]
     exact hIH w' hw' m' hstart hm'Lt hm'H
   have hvoteBracket := E.preQueryVoteSelectedSIRBracketAt_of_earlierVotes
-    cfg ext hA B hT hC.balance_floor hfit hanchor hboundary hv hHn1
+    cfg ext hA B hT (by have := hC.balance_floor; omega) hfit hanchor hboundary hv hHn1
     query hquery trace.afterObserved hinput' hinputEpoch
     (by simpa only [trace] using hbase) hstrict hhistorical'
     hw hslotQM hHm hselectedKnown' hIH'

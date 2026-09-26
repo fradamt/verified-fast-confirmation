@@ -95,7 +95,8 @@ theorem finalizedReset_justifiedDom_of_nextSlotSynchrony
       hnextQ.trans (E.slot_at_mono cfg hqm)
     have h := E.finalized_epoch_le_voter_justified_of_receiver_slot_le
       cfg ext B hT hC.synchrony.deadline_block_relay hC.byzantine_bound
-      hC.phase0_source hC.phase0_boundary_source hanchor hboundary hspe hDelay P V
+      hC.phase0_source hC.phase0_boundary_source hC.static_validators
+      hC.balance_floor hanchor hboundary hspe hDelay P V
       (CheckpointCertificateAccountability.of_assumptions cfg hacc)
       (w := v) (n := m) (m := n + 1)
       hw (E.slot_at_mono cfg (Nat.zero_le m)) rfl hHm

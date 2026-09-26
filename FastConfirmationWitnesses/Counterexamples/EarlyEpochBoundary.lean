@@ -89,7 +89,7 @@ def fixtureExternals : BeaconFunctionInterface WitnessRoot :=
     process_justification_and_finalization := pjf
     state_transition := fun _ _ => none }
 
-/-- The M2 corner satisfies the replacement boundary laws: one boundary gives
+/-- This epoch-1 corner satisfies the replacement boundary laws: one boundary gives
 the eager value, targets in one epoch agree, and the epoch-1 source selected
 after two boundaries is not newer than the start epoch. -/
 theorem epoch_one_fixture_satisfies_boundary_laws :
@@ -109,7 +109,7 @@ theorem epoch_one_fixture_satisfies_boundary_laws :
   · intro pre sb post h
     simp only [fixtureExternals] at h
     exact absurd h (by simp)
-  · intro st target hcross
+  · intro st target hcross _
     simp only [fixtureExternals, processSlots, if_pos hcross]
     split_ifs with h2
     · right

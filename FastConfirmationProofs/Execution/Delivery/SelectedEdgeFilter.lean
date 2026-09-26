@@ -235,7 +235,7 @@ theorem actualCall_strictSelected_endpointJustifiedEpoch_le_result
         (find_latest_confirmed_descendant cfg ext query trace.afterObserved)
         w m :=
     E.preQueryVoteSelectedSIRBracketAt_of_earlierVotes cfg ext hA
-      B hT hC.balance_floor hfit hanchor hboundary hv hHn1 query hquery
+      B hT (by have := hC.balance_floor; omega) hfit hanchor hboundary hv hHn1 query hquery
       trace.afterObserved hinput' hinputEpoch
       (by simpa only [trace] using hbase) hstrict
       hhistorical' hw hslotQM hHm

@@ -799,7 +799,7 @@ theorem phase0BoundarySourceCoherence : Phase0BoundarySourceCoherence cfg ext :=
           compute_epoch_at_slot] at hcross
     · contradiction
 
-theorem balanceFloor : cfg.effective_balance_increment ≤
+theorem balanceFloor : 2 * cfg.effective_balance_increment ≤
     E.weight (E.currentTargetAnchorActive cfg) := by decide
 
 theorem epochEndsFit : EpochEndsFitUint64 cfg := by

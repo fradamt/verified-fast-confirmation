@@ -1068,7 +1068,7 @@ theorem witnessPhase0BoundarySourceCoherence :
 
 
 theorem witnessBalanceFloor :
-    witnessConfig.effective_balance_increment ≤
+    2 * witnessConfig.effective_balance_increment ≤
       witnessExecution.weight
         (witnessExecution.currentTargetAnchorActive witnessConfig) := by
   decide

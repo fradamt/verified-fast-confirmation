@@ -260,14 +260,20 @@ connect this inclusion to the exact antecedent of `EventualCheckpointInclusion`.
 `Phase0BoundarySourceCoherence` has four laws. Slot processing across one
 boundary gives the eager PJF checkpoint. Targets in the same epoch give the
 same checkpoint. A block transition gives the checkpoint of slot processing
-to the block slot. Slot processing keeps the checkpoint or gives one no newer
-than the start epoch. There is no equation for two or more boundaries.
-Phase0 and Altair PJF return early in epochs 0 and 1, so an epoch-1 state can
-keep the old checkpoint under eager PJF and justify epoch 1 when slot
-processing reaches epoch 3. From a later start, the second PJF weighs the
-start-epoch votes again with the next epoch's balances. The last law has one
-exception: a registry with total active balance of at most one increment,
-because `get_total_balance` returns at least one increment.
+to the block slot. The fourth law has a balance antecedent: each state that
+slot processing passes through has total active balance above one and a half
+increments. Under this antecedent, slot processing keeps the checkpoint or
+gives one no newer than the start epoch. There is no equation for two or more
+boundaries. Phase0 and Altair PJF return early in epochs 0 and 1, so an
+epoch-1 state can keep the old checkpoint under eager PJF and justify epoch 1
+when slot processing reaches epoch 3. From a later start, the second PJF
+weighs the start-epoch votes again with the next epoch's balances. The
+antecedent is necessary: `get_total_balance` returns at least one increment,
+so with a total active balance of at most one increment an epoch with no
+attestations passes the two-thirds test. `ScheduledFCRCallPremises.balance_floor`
+asks for an anchor active weight of at least two increments. The registry is
+static in the horizon, so this one constant fact gives the antecedent at each
+use. Every real network satisfies it.
 
 The proof reads the honest source of an old target as this boundary source.
 After two or more boundaries, a known current-epoch block below the head

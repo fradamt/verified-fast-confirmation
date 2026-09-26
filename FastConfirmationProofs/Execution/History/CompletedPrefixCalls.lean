@@ -350,7 +350,7 @@ noncomputable def completedPrefix_acceptedTargetGateProducerAt
     cfg ext B hT hC.delivery_lookahead hC.static_validators
       hC.byzantine_bound
       hC.phase0_source hC.phase0_boundary_source hanchor hboundary p hv hHn1
-      hevidence hstate hval htab hendHP hanchorH hC.balance_floor
+      hevidence hstate hval htab hendHP hanchorH (by have := hC.balance_floor; omega)
       hgateP hsupportP
       (by rw [hpstore]; simpa only [E.fcrStep_store] using hguard)
   rw [hpstore] at hrealized
