@@ -73,6 +73,15 @@ def paperA32RootProjectionAt
     exact (hstore.acceptedFFGStoreProjection hcoh).unrealized_justification
       r hr
 
+/-- The own view of an accepted state is compatible with it. -/
+theorem compatibleCheckpointInclusion_of_own
+    {E : Execution Root} {anchor : Checkpoint Root}
+    {S : AcceptedBlockFFGState cfg ext E anchor}
+    (hpaper : S.EventualCheckpointInclusion cfg ext) :
+    S.CompatibleCheckpointInclusion cfg ext :=
+  ⟨S.checkpoint_inclusion_view cfg ext, rfl, rfl, rfl, rfl, id,
+    fun h => (S.includedAttestations.evidence h).received_from_block, hpaper⟩
+
 end AcceptedBlockFFGState
 
 namespace PaperA32RootProjectionAt

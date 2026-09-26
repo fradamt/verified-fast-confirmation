@@ -675,10 +675,10 @@ class = "E-interpretation"
 reason = "The A3.2 view must identify a block at each queried epoch."
 
 [[field]]
-path = "CheckpointInclusionView.includedAttestations"
+path = "CheckpointInclusionView.Included"
 file = "FFGState.lean"
 class = "E-interpretation"
-reason = "The A3.2 view must select its locally included attestations."
+reason = "The A3.2 view must select the attestations in each carrier block body."
 
 [[field]]
 path = "CheckpointInclusionView.formed"
@@ -1004,3 +1004,93 @@ path = "FFGStateAndCheckpointReadAgreement.toFFGStateReadAgreement"
 file = "FFGState.lean"
 class = "E-interpretation"
 reason = "Exact-prefix checkpoint reflection embeds the base FFG selector read agreement."
+
+[[field]]
+path = "SafetyPremises.admissible"
+file = "ConcreteSafety.lean"
+class = "E-scope"
+reason = "The fixed setup must start at genesis, keep a registry weight floor, let the root ring cover two epochs, and fit uint64 root reads."
+
+[[field]]
+path = "SafetyPremises.genesis"
+file = "ConcreteSafety.lean"
+class = "E-scope+I"
+reason = "The run must start from the Python genesis store of the setup, and the state commitment must open the genesis state root."
+
+[[field]]
+path = "SafetyPremises.horizon_scope"
+file = "ConcreteSafety.lean"
+class = "E-scope"
+reason = "The verification horizon must be the epoch after the last epoch of the fixed scope."
+
+[[field]]
+path = "SafetyPremises.whole_seconds"
+file = "ConcreteSafety.lean"
+class = "E-scope"
+reason = "The slot duration must map exactly to whole-second schedule ticks."
+
+[[field]]
+path = "SafetyPremises.wellFormed"
+file = "ConcreteSafety.lean"
+class = "E-interpretation"
+reason = "Scheduled stores require injective roots and the anchor parent condition."
+
+[[field]]
+path = "SafetyPremises.externals_coherence"
+file = "ConcreteSafety.lean"
+class = "E-interpretation"
+reason = "Scheduled handlers require the beacon, committee, and signature contracts."
+
+[[field]]
+path = "SafetyPremises.honest_behavior"
+file = "ConcreteSafety.lean"
+class = "E-network/behavior"
+reason = "Scheduled validator actions must follow the honest voting and deadline rules."
+
+[[field]]
+path = "SafetyPremises.body_attestations_delivered"
+file = "ConcreteSafety.lean"
+class = "E-network/behavior"
+reason = "Every attestation in an accepted block body must reach some node as a block attestation, as in the pyspec fork-choice test steps."
+
+[[field]]
+path = "SafetyPremises.synchrony"
+file = "ConcreteSafety.lean"
+class = "E-network/behavior"
+reason = "The run needs positive delay and the stated next-slot delivery laws."
+
+[[field]]
+path = "SafetyPremises.static_validators"
+file = "ConcreteSafety.lean"
+class = "E-scope"
+reason = "The run requires anchor coverage and fixed active status in the horizon."
+
+[[field]]
+path = "SafetyPremises.byzantine_bound"
+file = "ConcreteSafety.lean"
+class = "E-network/behavior"
+reason = "The run needs quantized balances, exact estimates, and per-span fault bounds."
+
+[[field]]
+path = "SafetyPremises.epoch_ends_fit"
+file = "ConcreteSafety.lean"
+class = "E-scope"
+reason = "The selected horizon must fit the finite uint64 slot range."
+
+[[field]]
+path = "SafetyPremises.slots_per_epoch_gt_one"
+file = "ConcreteSafety.lean"
+class = "E-scope"
+reason = "The configuration must have more than one slot per epoch."
+
+[[field]]
+path = "SafetyPremises.epoch_one_finalization_scope"
+file = "ConcreteSafety.lean"
+class = "E-scope"
+reason = "No in-scope state finalizes epoch 1 only through the two-epoch link from epoch 1 to epoch 3."
+
+[[field]]
+path = "SafetyPremises.checkpoint_inclusion"
+file = "ConcreteSafety.lean"
+class = "E-interpretation"
+reason = "The safety proof assumes paper A3.2 inclusion over the bridge view after sustained link support."

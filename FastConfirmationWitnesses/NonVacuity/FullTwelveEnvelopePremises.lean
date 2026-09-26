@@ -534,7 +534,8 @@ def safety_premises : run.NextSlotSafetyPremises cfg ext where
   anchor_boundary := anchor_boundary
   imported_block_finalization_lag := witnessAcceptedRealizedFinalizationDelay
   slots_per_epoch_gt_one := by decide
-  checkpoint_inclusion := witnessPaperA32Inclusion
+  checkpoint_inclusion := AcceptedBlockFFGState.compatibleCheckpointInclusion_of_own _ _
+    witnessPaperA32Inclusion
   checkpoint_projection := witnessAcceptedEpochCheckpointProjection
   link_checkpoint_agreement := witnessExactLinkValidity
 

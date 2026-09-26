@@ -47,7 +47,7 @@ noncomputable def
       (E := E) (anchor := B.anchor))
     (hDelay : E.ImportedBlockFinalizationLag cfg ext B)
     (hspe : 1 < cfg.slots_per_epoch)
-    (hpaper : B.state.EventualCheckpointInclusion cfg ext)
+    (hpaper : B.state.CompatibleCheckpointInclusion cfg ext)
     (P : EpochCheckpointProjectionLaws B.anchor
       (E.RootKnownInScheduledPrefix cfg ext) B.state.checkpoint_at_epoch)
     (V : B.state.LinkCheckpointAgreement)
@@ -107,7 +107,7 @@ theorem getLatestConfirmedTraceAt_result_safeFrom_of_acceptedDispatcher
       (E := E) (anchor := B.anchor))
     (hDelay : E.ImportedBlockFinalizationLag cfg ext B)
     (hspe : 1 < cfg.slots_per_epoch)
-    (hpaper : B.state.EventualCheckpointInclusion cfg ext)
+    (hpaper : B.state.CompatibleCheckpointInclusion cfg ext)
     (P : EpochCheckpointProjectionLaws B.anchor
       (E.RootKnownInScheduledPrefix cfg ext) B.state.checkpoint_at_epoch)
     (V : B.state.LinkCheckpointAgreement)

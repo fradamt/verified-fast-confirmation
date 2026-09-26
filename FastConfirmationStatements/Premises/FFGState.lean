@@ -434,15 +434,14 @@ def Execution.AttestationReceivedBy
 
 /-- The positive state ingredients used by paper Assumption 3.2.
 
-This is a projection of one already-selected semantic state, not a fresh
-state existentially chosen per call.  Included-attestation evidence is kept
-losslessly so `D_b` remains the concrete block-local slashing set, and AU is
-derived below from the same checkpoint_evidence_in_block-carrier relation as the source state. -/
-structure CheckpointInclusionView (E : Execution Root) where
+`Included carrier a` states that the attestation `a` is in the body of the
+block `carrier`. It defines `D_b`, the block-local slashing set. AU is derived
+below from the relation `formed`. The view is stated for one configuration
+`cfg`. -/
+structure CheckpointInclusionView (cfg : Config) (E : Execution Root) where
   /-- Carrier domain for the block whose canonicality triggers A.3.2. -/
   BlockAt : Root → BeaconBlock Root → Prop
-  includedAttestations :
-    Execution.BlockAttestationInclusion cfg E
+  Included : Root → Attestation Root → Prop
   formed : Root → Checkpoint Root → Prop
   C : Root → Epoch → Checkpoint Root
   GJ : Root → Checkpoint Root
@@ -463,8 +462,8 @@ def AvailableCheckpoint (V : CheckpointInclusionView cfg E)
 def HasSlashablePairOnChain (V : CheckpointInclusionView cfg E)
     (tip : Root) (i : ValidatorIndex) : Prop :=
   ∃ a₁ a₂ : Attestation Root,
-    AttestationIncludedOnChain E V.includedAttestations.Included tip a₁ ∧
-    AttestationIncludedOnChain E V.includedAttestations.Included tip a₂ ∧
+    AttestationIncludedOnChain E V.Included tip a₁ ∧
+    AttestationIncludedOnChain E V.Included tip a₂ ∧
     i ∈ a₁.attesting_indices ∧
     i ∈ a₂.attesting_indices ∧
     is_slashable_attestation_data a₁.data a₂.data = true
@@ -489,14 +488,14 @@ def voting_source_at (V : CheckpointInclusionView cfg E) (store : Store Root)
 
 end CheckpointInclusionView
 
-/-- Lossless positive A.3.2 projection of the accepted-prefix state.  The
-ordinary relation forgets only its extra accepted-carrier proof. -/
+/-- Positive A.3.2 projection of the accepted-prefix state. The view keeps
+the inclusion relation and forgets its evidence. -/
 def AcceptedBlockFFGState.checkpoint_inclusion_view
     {E : Execution Root} {anchor : Checkpoint Root}
     (S : AcceptedBlockFFGState cfg ext E anchor) :
     CheckpointInclusionView cfg E where
   BlockAt := E.BlockKnownInScheduledPrefix cfg ext
-  includedAttestations := S.includedAttestations.relation
+  Included := S.includedAttestations.Included
   formed := S.checkpoint_evidence_in_block
   C := S.checkpoint_at_epoch
   GJ := S.realized_justified
@@ -610,6 +609,21 @@ abbrev EventualCheckpointInclusion
     (S : AcceptedBlockFFGState cfg ext E anchor) : Prop :=
   FastConfirmation.Spec.EventualCheckpointInclusion cfg ext
     (S.checkpoint_inclusion_view cfg ext)
+
+/-- Paper Assumption 3.2 over a view that is compatible with the accepted
+state. The view has the same carrier domain and selectors. Each checkpoint
+that it marks as formed is formed in the state, and each attestation that it
+includes was received from a block. The view can include more attestations
+than the state, so its set `D_b` can be larger. -/
+def CompatibleCheckpointInclusion (S : AcceptedBlockFFGState cfg ext E anchor) : Prop :=
+  ∃ V : CheckpointInclusionView cfg E,
+    V.BlockAt = E.BlockKnownInScheduledPrefix cfg ext ∧
+    V.C = S.checkpoint_at_epoch ∧ V.GJ = S.realized_justified ∧
+    V.GU = S.unrealized_justified ∧
+    (∀ {r : Root} {c : Checkpoint Root}, V.formed r c → S.checkpoint_evidence_in_block r c) ∧
+    (∀ {carrier : Root} {a : Attestation Root}, V.Included carrier a →
+      ∃ (w : ValidatorIndex) (n : ℕ), Event.attestation a true ∈ E.schedule w n) ∧
+    FastConfirmation.Spec.EventualCheckpointInclusion cfg ext V
 
 end AcceptedBlockFFGState
 

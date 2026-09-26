@@ -488,7 +488,8 @@ def witnessAcceptedActualFCRNextSlotSafetyAssumptions :
       witnessTrustedAnchorBoundaryAligned
   imported_block_finalization_lag := by exact witnessAcceptedRealizedFinalizationDelay
   slots_per_epoch_gt_one := by decide
-  checkpoint_inclusion := by exact witnessPaperA32Inclusion
+  checkpoint_inclusion := AcceptedBlockFFGState.compatibleCheckpointInclusion_of_own _ _
+    (by exact witnessPaperA32Inclusion)
   checkpoint_projection := witnessAcceptedEpochCheckpointProjection
   link_checkpoint_agreement := witnessExactLinkValidity
 

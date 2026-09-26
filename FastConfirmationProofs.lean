@@ -11,6 +11,7 @@ public import FastConfirmationProofs.FFG.Concrete.InclusionGuards
 public import FastConfirmationProofs.FFG.Concrete.CanonicalInclusion
 public import FastConfirmationProofs.FFG.Concrete.CertificateTranslation
 public import FastConfirmationProofs.FFG.Concrete.CanonicalEvidence
+public import FastConfirmationProofs.FFG.Concrete.SafetyTranslation
 public import FastConfirmationProofs.FCRRule.PredictionSupport
 public import FastConfirmationProofs.FCRRule.PredictionSupportGeometry
 public import FastConfirmationProofs.Checkpoints.HonestVotePathAdmissibility

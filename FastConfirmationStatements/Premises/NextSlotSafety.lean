@@ -44,7 +44,7 @@ structure NextSlotSafetyPremises where
   imported_block_finalization_lag :
     E.ImportedBlockFinalizationLag cfg ext ffg_interpretation
   slots_per_epoch_gt_one : 1 < cfg.slots_per_epoch
-  checkpoint_inclusion : ffg_interpretation.state.EventualCheckpointInclusion cfg ext
+  checkpoint_inclusion : ffg_interpretation.state.CompatibleCheckpointInclusion cfg ext
   checkpoint_projection : EpochCheckpointProjectionLaws
     ffg_interpretation.anchor (E.RootKnownInScheduledPrefix cfg ext) ffg_interpretation.state.checkpoint_at_epoch
   link_checkpoint_agreement : ffg_interpretation.state.LinkCheckpointAgreement

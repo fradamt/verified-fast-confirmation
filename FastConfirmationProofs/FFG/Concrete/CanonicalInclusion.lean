@@ -208,6 +208,20 @@ theorem bodyIncludedAt_of_targetIncludedAt {E : Execution Root} {carrier : Root}
   obtain rfl := Option.some.inj hcp'
   exact (blockVote_of_transition hst hvote).2.1
 
+/-- A body vote of an accepted block was received from the block. -/
+theorem bodyIncludedAt_received (hB : B.Admissible) {E : Execution Root}
+    (hg : B.ConcreteGenesis E) (hdel : B.BodyAttestationsDelivered E) {carrier : Root}
+    {a : Attestation Root} (h : B.BodyIncludedAt E carrier a) :
+    ∃ (w : ValidatorIndex) (n : ℕ), Event.attestation a true ∈ E.schedule w n := by
+  obtain ⟨⟨store, hstore, hr⟩, hne, wire, stateRoot, hopen, vote, hvin, rfl⟩ := h
+  obtain ⟨cs, -, -, -, -, -, hrest⟩ := (B.bridgedStore_prefix hB hg hstore).known carrier hr
+  obtain ⟨wire', ho', -, hm, -⟩ := hrest hne
+  rw [hopen] at ho'
+  obtain ⟨rfl, -⟩ := Prod.mk.inj (Option.some.inj ho')
+  refine hdel carrier (store.blocks carrier) ⟨store, hstore, hr, rfl⟩ _ ?_
+  rw [hm.2.2.2.2.2.1]
+  exact List.mem_map_of_mem hvin
+
 /-- **The canonical inclusion relation** `I`: target-included body votes of
 accepted blocks, with their inclusion evidence. -/
 noncomputable def canonicalInclusion (hB : B.Admissible) {E : Execution Root}

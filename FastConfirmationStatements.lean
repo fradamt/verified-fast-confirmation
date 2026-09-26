@@ -2,6 +2,7 @@ module
 public import FastConfirmationStatements.Claims
 public import FastConfirmationStatements.Premises.Behavior
 public import FastConfirmationStatements.Premises.CheckpointLinks
+public import FastConfirmationStatements.Premises.ConcreteSafety
 public import FastConfirmationStatements.Premises.Economics
 public import FastConfirmationStatements.Premises.NextSlotSafety
 public import FastConfirmationStatements.Premises.ScheduledExecutionConditions

@@ -180,7 +180,7 @@ antecedent. This view is not a complete FFG interpretation. -/
 def anchorOnlyView : CheckpointInclusionView cfg run where
   BlockAt := fun r b => (r = anchorRoot ∧ b = anchorBlock.message) ∨
     (r = childRoot ∧ b = childBlock.message)
-  includedAttestations := { Included := fun _ _ => False, evidence := fun h => False.elim h }
+  Included := fun _ _ => False
   formed := fun r c => r = anchorRoot ∧ c = anchorCheckpoint
   C := fun r e => ⟨e, if r = childRoot ∧ 4 ≤ e then childRoot else anchorRoot⟩
   GJ := fun _ => anchorCheckpoint

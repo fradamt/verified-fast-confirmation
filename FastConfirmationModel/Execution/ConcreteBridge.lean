@@ -291,6 +291,15 @@ def slotOfRoot (r : Root) : Slot :=
 def checkpointAt (r : Root) (e : Epoch) : Checkpoint Root :=
   ⟨e, B.ancestorWalk (compute_start_slot_at_epoch B.setup.cfg e) (B.slotOfRoot r + 1) r⟩
 
+/-- The checkpoints that the accepted block `x` carries: its realized and
+unrealized justified and finalized checkpoints. This is the relation `formed`
+of the public A3.2 view: `C(b, e)` is in AU at a descendant `b'` when a block
+on the chain of `b'` carries it. -/
+def Carried (E : Execution Root) (x : Root) (c : Checkpoint Root) : Prop :=
+  E.RootKnownInScheduledPrefix B.setup.cfg B.interface x ∧
+    (c = B.realizedJustified x ∨ c = B.realizedFinalized x ∨ c = B.unrealizedJustified x ∨
+      c = B.unrealizedFinalized x)
+
 /-! ### Inclusion -/
 
 /-- A body vote of the accepted block `carrier`: one successful
