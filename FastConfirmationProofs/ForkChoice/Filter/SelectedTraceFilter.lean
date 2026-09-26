@@ -1,4 +1,5 @@
 module
+public import FastConfirmationInternal.FCRRule.PredictionSupport
 public import FastConfirmationProofs.FCRRule.SelectedTraceCoverage
 public import FastConfirmationProofs.FCRRule.SelectedEdgeGeometry
 public import FastConfirmationProofs.ForkChoice.Filter.SelectedFilterChainGeometry

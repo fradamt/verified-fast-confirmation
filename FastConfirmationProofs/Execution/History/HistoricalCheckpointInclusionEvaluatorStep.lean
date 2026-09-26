@@ -1,4 +1,5 @@
 module
+public import FastConfirmationInternal.FCRRule.PredictionSupport
 public import FastConfirmationProofs.Execution.History.HistoricalCheckpointInclusionBranches
 public import FastConfirmationProofs.Checkpoints.ResetCheckpointClassification
 public import FastConfirmationProofs.FFG.CurrentTarget.CurrentTargetGateGeometry
@@ -279,8 +280,10 @@ noncomputable def selectedCurrentCrossingLineage
     (hwfE : WellFormedExecution E)
     (hcore : E.ExactCausalStoreWellFormedCore cfg ext)
     (hphase : Phase0SourceCoherence cfg ext)
-    {v : ValidatorIndex} {q : ℕ}
+    {v : ValidatorIndex} (hv : v ∈ E.honest) {n : ℕ}
     {query : FastConfirmationStore Root}
+    (hactual : query.store = E.store cfg ext v (n + 1))
+    (hanchorLe : B.anchor.epoch ≤ get_current_store_epoch cfg query.store)
     (hstore : E.CausalStore cfg ext query.store)
     (hparent : ParentSlotLt query.store)
     (hwalk : ∀ t ∈ query.store.block_roots,
@@ -299,13 +302,13 @@ noncomputable def selectedCurrentCrossingLineage
     (htargetEpoch : get_block_epoch cfg query.store
       (get_current_target cfg query.store).root =
         (get_current_target cfg query.store).epoch)
-    (hprovisos : FCRPredictionSupportAt cfg ext E v q query
+    (hprovisos : FCRPredictionSupportAt cfg ext E v (n + 1) query
       trace.afterObserved)
     {a c : Root}
     (hedge : CurrentTargetSelectedEdge cfg ext query
       trace.afterObserved a c)
     (hproducer : E.AcceptedCurrentTargetA32GateRealizationProducerAt
-      cfg ext B.anchor B.state q query)
+      cfg ext B.anchor B.state (n + 1) query)
     (hstrictNonGenesis : ∀ r ∈ query.store.block_roots,
       (query.store.blocks (get_current_target cfg query.store).root).slot <
           (query.store.blocks r).slot →
@@ -354,18 +357,20 @@ noncomputable def selectedCurrentCrossingLineage
       hselector hresultCurrent htargetEpoch hedge hstrictNonGenesis
   have hgateAndSupport :=
     E.currentTargetAcceptedEdge_gate_and_support cfg ext hprovisos hedge
-  have htargetGate := hproducer hgateAndSupport.1 hgateAndSupport.2
   have htargetCurrent : (get_current_target cfg query.store).epoch =
       get_current_store_epoch cfg query.store := rfl
   have hresultTargetEpoch : get_block_epoch cfg query.store trace.result =
       (get_current_target cfg query.store).epoch :=
     hresultCurrent.trans htargetCurrent.symm
-  have hfixed :=
+  have hfixed (hs : HonestVotesSupportTarget cfg E
+      (get_current_target cfg query.store) (n + 1)) :=
     AcceptedCurrentTargetA32GateRealization.fixedSource_of_acceptedSameEpochSegment
-      cfg ext B hphase htargetEpoch hresultTargetEpoch hsegment htargetGate
+      cfg ext B hphase htargetEpoch hresultTargetEpoch hsegment
+        (hproducer hgateAndSupport.1 hs)
   have hpayload :=
-    AcceptedHistoricalA32GatePayloadAt.of_fixedSourceCurrentTarget cfg ext B
-      hstore hresultKnown hresultCurrent htarget hfixed
+    AcceptedHistoricalA32GatePayloadAt.of_fixedSourceCurrentTarget cfg ext B hv
+      hstore hactual hresultKnown hresultCurrent htarget hanchorLe
+      hgateAndSupport.1 hgateAndSupport.2 hfixed
   exact AcceptedHistoricalA32LineageAt.refl cfg ext hpayload
 
 /-- Fresh crossing constructor at the exact fixed-source seam.
@@ -377,8 +382,10 @@ target-local wrapper above is only one way to construct this producer in the
 non-skipped-boundary case. -/
 noncomputable def selectedCurrentCrossingLineage_of_fixedSourceProducer
     (B : CausalPrefixFFGInterpretation cfg ext E)
-    {v : ValidatorIndex} {q : ℕ}
+    {v : ValidatorIndex} (hv : v ∈ E.honest) {n : ℕ}
     {query : FastConfirmationStore Root}
+    (hactual : query.store = E.store cfg ext v (n + 1))
+    (hanchorLe : B.anchor.epoch ≤ get_current_store_epoch cfg query.store)
     (hstore : E.CausalStore cfg ext query.store)
     (hparent : ParentSlotLt query.store)
     (hwalk : ∀ t ∈ query.store.block_roots,
@@ -394,14 +401,14 @@ noncomputable def selectedCurrentCrossingLineage_of_fixedSourceProducer
     (hselector : getLatestSelectorGuard cfg query trace.afterObserved)
     (hresultCurrent : get_block_epoch cfg query.store trace.result =
       get_current_store_epoch cfg query.store)
-    (hprovisos : FCRPredictionSupportAt cfg ext E v q query
+    (hprovisos : FCRPredictionSupportAt cfg ext E v (n + 1) query
       trace.afterObserved)
     {a c : Root}
     (hedge : CurrentTargetSelectedEdge cfg ext query
       trace.afterObserved a c)
     (hproducer :
       E.AcceptedFixedSourceCurrentTargetA32GateRealizationProducerAt
-        cfg ext B.anchor B.state q query trace.result) :
+        cfg ext B.anchor B.state (n + 1) query trace.result) :
     E.AcceptedHistoricalA32LineageAt cfg ext B trace.result
       (get_current_store_epoch cfg query.store) := by
   have hresult := trace.selected_facts cfg ext hselector
@@ -443,10 +450,11 @@ noncomputable def selectedCurrentCrossingLineage_of_fixedSourceProducer
           (get_current_store_epoch cfg query.store)).symm
   have hgateAndSupport :=
     E.currentTargetAcceptedEdge_gate_and_support cfg ext hprovisos hedge
-  have hfixed := hproducer hgateAndSupport.1 hgateAndSupport.2
+  have hfixed := hproducer hgateAndSupport.1
   have hpayload :=
-    AcceptedHistoricalA32GatePayloadAt.of_fixedSourceCurrentTarget cfg ext B
-      hstore hresultKnown hresultCurrent htarget hfixed
+    AcceptedHistoricalA32GatePayloadAt.of_fixedSourceCurrentTarget cfg ext B hv
+      hstore hactual hresultKnown hresultCurrent htarget hanchorLe
+      hgateAndSupport.1 hgateAndSupport.2 hfixed
   exact AcceptedHistoricalA32LineageAt.refl cfg ext hpayload
 
 /-! ## Accepted-global geometry for one exact query -/

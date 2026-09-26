@@ -43,8 +43,9 @@ run_cmd do
      "process_slots_attestation_valid", "verify_envelope_deterministic"]
   checkFields `FastConfirmation.Spec.ByzantineWeightPremises
     ["effective_balance_quantized", "estimate_sound", "span_fraction"]
-  checkFields `FastConfirmation.Spec.FCRPredictionSupportAt
-    ["current_target", "selected_previous_result_no_conflict"]
+  checkFields `FastConfirmation.Spec.Execution.CompletedFCRCallPremises
+    ["synchrony", "static_validators", "byzantine_bound", "phase0_source",
+     "phase0_boundary_source", "balance_floor", "delivery_lookahead"]
   checkFields `FastConfirmation.Spec.Execution.IncludedAttestationEvidence
     ["carrier_message", "received_from_block", "slot_within_horizon",
      "slot_before_carrier", "target_epoch", "attesters_in_committee"]
@@ -72,7 +73,7 @@ example {Root : Type*} [LinearOrder Root] [Inhabited Root]
     FastConfirmation.Spec.ReviewClaims cfg ext :=
   FastConfirmation.Spec.review_claims cfg ext
 
--- A previous-result guard requires descendant support, with no exact-target equality.
+-- The internal support record permits descendant targets for a previous result.
 example {Root : Type*} [LinearOrder Root] [Inhabited Root]
     (cfg : FastConfirmation.Spec.Config) (ext : FastConfirmation.Spec.Externals Root)
     (E : FastConfirmation.Spec.Execution Root) (v : Nat) (q : Nat)
@@ -88,7 +89,9 @@ example {Root : Type*} [LinearOrder Root] [Inhabited Root]
       (FastConfirmation.Spec.get_current_store_epoch cfg query.store) q :=
   h.selected_previous_result_no_conflict result hout hstrict hprevious hnotStart
 
--- Proved reductions do not change the two-field prediction-support surface.
+-- The joint induction derives support; it is absent from the safety premise.
+#check FastConfirmation.Spec.Execution.confirmed_safety_and_lineage_of_acceptedActualFCRFold
+#check FastConfirmation.Spec.Execution.currentResult_supportBefore_of_endpoint_induction
 #check FastConfirmation.Spec.Execution.currentTargetSelectedEdge_geometry_of_accepted
 #check FastConfirmation.Spec.Execution.currentTarget_supportBefore_of_canonical
 #check FastConfirmation.Spec.Execution.previousResult_descendSupport_of_canonical

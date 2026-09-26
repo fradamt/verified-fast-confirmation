@@ -703,13 +703,7 @@ private theorem AcceptedHistoricalA32LineageAt.payloadAtExecutionStore
       hlineage.payload.origin_epoch
   have htipEpoch' : get_block_epoch cfg store tip = e := by
     simpa only [store] using htipEpoch
-  have hcertified : CertifiedJustified cfg E B.anchor
-      (B.state.C hlineage.origin e) :=
-    Classical.choice hlineage.payload.certified
-  have hanchorLe : B.anchor.epoch ≤ e := by
-    have hle := CertifiedJustified.anchor_epoch_le
-      (cfg := cfg) hcertified
-    simpa only [B.state.checkpoint_epoch] using hle
+  have hanchorLe : B.anchor.epoch ≤ e := hlineage.payload.anchor_epoch_le
   have htipWalk : WalkKnown store
       (compute_start_slot_at_epoch cfg e) tip := by
     simpa only [store] using
@@ -718,10 +712,9 @@ private theorem AcceptedHistoricalA32LineageAt.payloadAtExecutionStore
   exact ⟨hlineage.payloadAtTip cfg ext hphase hstoreCausal hstoreParent
     horigin htip' horiginEpoch htipEpoch' htipOrigin htipWalk⟩
 
-/-- The completed-prefix historical induction instantiates the retained
-payload producer on the exact strict selector result.  Its lineage invariant
-is stronger than the producer's no-crossing antecedent, so that antecedent is
-not used here. -/
+/-- The preceding lineage supplies a no-crossing current result. The call step
+uses the no-crossing antecedent to exclude a fresh gate. It retains the
+original call instead of requesting global helper support. -/
 noncomputable def completedPrefix_acceptedHistoricalA32PayloadProducerAt
     (B : CausalPrefixFFGInterpretation cfg ext E)
     (hT : E.ScheduledPrefixPremises cfg ext)
@@ -821,13 +814,7 @@ noncomputable def completedPrefix_acceptedHistoricalA32PayloadProducerAt
     exact start_slot_at_block_epoch_le cfg query.store trace.result
   have hwalkHead : WalkKnown query.store
       (compute_start_slot_at_epoch cfg e) (get_head cfg query.store).root := by
-    have hcertified : CertifiedJustified cfg E B.anchor
-        (B.state.C hlineage.origin e) :=
-      Classical.choice hlineage.payload.certified
-    have hanchorLe : B.anchor.epoch ≤ e := by
-      have hle := CertifiedJustified.anchor_epoch_le
-        (cfg := cfg) hcertified
-      simpa only [B.state.checkpoint_epoch] using hle
+    have hanchorLe : B.anchor.epoch ≤ e := hlineage.payload.anchor_epoch_le
     have hw :=
       E.trustedAnchor_boundaryWalkAtEpoch_of_trajectory cfg ext hT
         hanchor hboundary v (n + 1) hanchorLe

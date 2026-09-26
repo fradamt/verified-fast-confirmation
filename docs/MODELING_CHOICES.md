@@ -27,7 +27,7 @@ Each row states a choice in the executable or paper model, why it is used, and t
 │ Static validator registry             │ Matches the paper balance setting over the horizon.              │ The safety theorem does not cover validator churn.                                │
 │ Finite horizon                        │ Makes endpoints and next-slot receipt precise.                   │ Conclusions do not extend beyond the checked horizon.                             │
 │ Global FFG and finalization laws      │ Connects opaque beacon transitions to exact checkpoint state.    │ The premises range over handler-successful prefixes beyond a conclusion endpoint. │
-│ Guarded FCR prediction support        │ Exact targets for current results; descent for previous results. │ Both forms remain assumptions. The proof does not derive future vote support.     │
+│ Derived FCR prediction support        │ Exact targets for current results; descent for previous results. │ Both forms follow from the joint call and endpoint-slot induction.                │
 │ Gloas payload-aware discount          │ Counts matching or PENDING parent votes in an empty slot.        │ Diverges from upstream rule; public fix at fcr-gloas-fix.                         │
 │ Envelope and data relay               │ Carries verified payload state to honest receivers.              │ The finite next-slot witness has no envelope event.                               │
 │ Live block production                 │ Prevents stale cache reversal and supplies descendant votes.     │ Requires an honest-proposer block every slot from execution start.                │
@@ -122,42 +122,43 @@ is its proposal offset; safety's strict bound alone does not supply that fact.
 
 The source fork is `fradamt/consensus-specs` at tag `fcr-gloas-fix` (`13f391516`). See [source map](SPEC_MAP.md), [paper map](PAPER_MAP.md), and [review guide](REVIEW_GUIDE.md).
 
-## Guarded prediction support
+## Derived prediction support
 
-`FCRPredictionSupportAt` applies only at an honest scheduled FCR call inside
-the horizon when the descendant-selector guard is true. Its `current_target`
-field requires exact target agreement for later honest votes of the same
-epoch after a retained crossing. Its `selected_previous_result_no_conflict`
-field requires each later honest target of the query epoch to descend from
-the selected previous-epoch result. Descent is in the execution's concrete
-parent graph. The second field permits different target checkpoints. Both
-fields are still inputs to `NextSlotSafetyPremises` through completed calls.
+`CompletedFCRCallPremises` has no prediction-support field.
+`FCRPredictionSupportAt` remains internal proof vocabulary. For a current-epoch
+crossing it states exact target agreement. For a previous-epoch result it states
+that each later honest target descends from the result in the execution parent
+graph. It permits different target checkpoints.
 
 The Python specs/phase0/fast-confirmation.md note on both prediction helpers
 says: "This function assumes that all honest validators will be voting in
 support of the current epoch target starting from the current moment in time."
-For current-epoch blocks, paper Lemmas 44 and 45 derive the required agreement
-from canonicity within the epoch. This executable proof does not yet perform
-that induction. The crossing-edge geometry is proved by
-`Execution.currentTargetSelectedEdge_geometry_of_accepted`.
-`Execution.currentTarget_support_of_canonical` and
-`Execution.previousResult_descendSupport_of_canonical` prove the reductions
-from canonicity to the two support forms. The endpoint induction also gives
-support restricted to earlier slots; `Execution.support_of_before_epoch_end`
-extends it to the full target epoch only when that epoch has ended.
-At an endpoint, `Execution.completedPrefix_currentTarget_endpoint_root_eq_before`
-and `Execution.completedPrefix_noConflict_endpoint_descends_before` need only
-support at strictly earlier slots. The included certificate puts each signer
-before a known carrier block. Committee assignment uniqueness identifies that
-slot with the counted support vote. This proves pinning even if the target
-epoch has not ended. No strict justified-epoch external law was added.
-These lemmas do not yet replace the support inputs in the main safety proof.
-The historical payload still stores an eager certificate and quorum. Both
-must be produced at the consuming endpoint as part of the remaining induction.
-For previous-epoch results, paper Lemma 42 needs only descent.
-The no-conflict helper's observed and future honest signer sets exceed one
-third of the weight. Any certified two-thirds link intersects this set, so
-honest non-slashability forces its target to descend from the result.
+The current-target condition is derived here, not assumed. As in paper Lemmas
+44 and 45, canonicity gives the target agreement. Paper Lemma 42 needs only
+descendant targets for a previous-epoch result; its exact-target reading is too
+strong, as the execution below shows.
+
+`Execution.confirmed_safety_and_lineage_of_acceptedActualFCRFold` proves safety
+and history together. Each call uses the preceding lineage. Within the strict
+result proof, the endpoint-slot induction supplies canonicity at all earlier
+honest votes. `Execution.currentResult_supportBefore_of_endpoint_induction`
+and `Execution.previousResult_descendSupportBefore_of_canonical` give the
+required support. The two endpoint pinning lemmas use included certificates
+and committee assignment uniqueness to select a vote before the endpoint.
+This also works when the target epoch has not ended. The proof does not use
+the full safety theorem as an input, and adds no strict justified-epoch law.
+
+After strict-result safety is proved, the call fold derives the original
+call's vote support for the next lineage. The payload retains that call,
+its target, its fixed source, and its original `start(e+1)` deadline.
+`AcceptedHistoricalA32GatePayloadAt.certified` and `support_branch` require a
+cutoff after the target epoch. Their producers use votes before that cutoff.
+An earlier endpoint uses the original call's gate and truncated support to
+pin its checkpoint, without producing the full historical quorum.
+
+The six full-bundle witness constructors no longer contain proviso proofs.
+Their support and non-vacuity theorems remain facts about the concrete runs.
+The live fields and claim are unchanged; no live-only support premise is needed.
 
 Exact target agreement is too strong for a previous-epoch result. Let r be
 the result in epoch e-1. A Byzantine proposer withholds a first-slot block

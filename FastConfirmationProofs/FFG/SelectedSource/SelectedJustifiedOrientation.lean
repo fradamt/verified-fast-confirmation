@@ -1,4 +1,5 @@
 module
+public import FastConfirmationInternal.FCRRule.PredictionSupport
 public import Mathlib.Tactic
 public import FastConfirmationProofs.FFG.CurrentTarget.CurrentTargetWalkKnownness
 public import FastConfirmationProofs.Execution.History.HistoricalCheckpointInclusionPayload

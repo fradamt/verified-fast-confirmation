@@ -110,7 +110,7 @@ also names two counterexamples to strict-prefix safety variants.
   execution has synchronized votes and blocks, stable validators and weights,
   and a scheduled descendant-helper call.
   Its selector guard excludes selected current-target accepted edges, so this
-  witness does not exercise their support premise.
+  witness does not exercise these support branches.
 * `NextSlotSynchronyPremises`:
   `AcceptedActualFCRJointNonVacuityBase.witnessPaperSafetySynchrony`.
   The same execution satisfies the delivery and relay laws. It contains no
@@ -187,7 +187,7 @@ also names two counterexamples to strict-prefix safety variants.
   `Execution.NextSlotSafetyPremises`.
   It has no FFG carrier. Its `CausalPrefixFFGInterpretation`,
   `ScheduledPrefixPremises` (in particular `BeaconExternalsPremises`), and
-  `CompletedFCRCallPremises` (in particular `helper_provisos`) are not proved.
+  `CompletedFCRCallPremises` are not proved.
   The bundle's semantic anchor equality, `RealizedFinalizationDelay`,
   `PaperA32Inclusion`, `EpochCheckpointClosure`, and `ExactLinkValidity`
   are also not re-established for this run. The slot count bound and the
@@ -196,20 +196,21 @@ also names two counterexamples to strict-prefix safety variants.
 The short joint live run has a strict root advance. Its FFG timing uses only
 the genesis anchor. The 500 ms safety run changes a stored root. The 12-second
 full-bundle run adds real delayed block and vote receipts. The target-edge run
-exercises the guarded current-target support premise. The envelope run
+checks current-target support as a fact about the run. The envelope run
 exercises envelope delivery and data relay through
 `FullTwelveEnvelopeWitness.envelope_relay_exercised` and
 `FullTwelveEnvelopeWitness.data_relay_exercised`. The Byzantine run exercises
 positive non-honest weight, the slashing relay, and the selected
-previous-result proviso through
+previous-result guard through
 `ByzantinePremiseWitness.byzantine_weight_exercised`,
 `ByzantinePremiseWitness.slashing_relay_exercised`, and
 `ByzantinePremiseWitness.previous_result_proviso_exercised`.
 `ByzantinePremiseWitness.previous_result_descendant_support_exercised` checks
-the descendant conclusion. The geometric and canonicity-to-support lemmas
-do not change the witness premise bundle: both guarded support fields remain
-inputs. The new endpoint pinning lemmas use only earlier votes and add no
-external law; the full safety proof still uses the guarded inputs. The shorter
+the descendant conclusion. Both support forms are now derived by the joint
+call and endpoint-slot induction. The six full-bundle constructors no longer
+contain support fields. The witness support lemmas remain facts about the runs.
+The historical certificate and quorum are produced from earlier votes when
+needed. No external law or live-only premise was added. The shorter
 synchrony-only run does not prove the full safety bundle.
 `DeadlineVotePathCandidate` checks that a skipped-boundary schedule fails the
 pre-tick relay. The audited public witness set has 43 entries.

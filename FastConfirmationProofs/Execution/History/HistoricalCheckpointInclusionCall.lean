@@ -1,4 +1,5 @@
 module
+public import FastConfirmationInternal.FCRRule.PredictionSupport
 public import FastConfirmationProofs.Execution.History.HistoricalCheckpointInclusionEvaluatorStep
 
 @[expose] public section
@@ -98,7 +99,10 @@ noncomputable def getLatestConfirmedTraceAt_currentLineage_step
         E.AcceptedFixedSourceCurrentTargetA32GateRealizationProducerAt
           cfg ext B.anchor B.state (n + 1) query trace.result := by
       simpa only [query, trace] using hfixedRaw
-    exact E.selectedCurrentCrossingLineage_of_fixedSourceProducer cfg ext B
+    exact E.selectedCurrentCrossingLineage_of_fixedSourceProducer cfg ext B hv
+      (E.fcrStep_store cfg ext v n)
+      (by simpa only [query, E.fcrStep_store] using
+        E.trustedAnchor_epoch_le_currentEpoch_of_trajectory cfg ext hT hanchor hboundary v (n + 1))
       hG.causal hG.parent hG.walk hG.head_known hG.current_walk trace
       hinputKnown hselector hresultCurrent (hprovisos hselector) hedge hfixed
   have hnoCrossingLineage

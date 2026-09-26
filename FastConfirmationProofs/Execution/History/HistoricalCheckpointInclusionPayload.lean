@@ -10,12 +10,14 @@ public import FastConfirmationProofs.ModelFacts
 # Accepted historical A3.2 payloads
 
 Paper Lemma 27 needs more than the fact that a current checkpoint was once
-certified.  Its later A3.2 use needs the original target, the exact
+selected. Its later A3.2 use needs the original call and target, the exact
 `start(e+1)` deadline, and the common source of the concrete quorum.  This
 file retains precisely that safety-free payload over the production
 accepted-prefix FFG state.
 
-The payload is store-independent after construction.  Transport is permitted
+The certificate and quorum are delayed until a cutoff after the target epoch.
+Earlier endpoints use the original gate and vote support before the endpoint.
+Transport is permitted
 only when checkpoint reflection is available in one causal store and source
 constancy is witnessed by an actual accepted same-epoch transition segment.
 No canonicity, endpoint head conclusion, `SafeFrom`, or historical SIR result
@@ -30,6 +32,16 @@ variable (cfg : Config) (ext : Externals Root)
 namespace Execution
 
 variable {E : Execution Root}
+
+/-- Support truncated at an endpoint slot `sl`: only votes of slots before
+`sl` are constrained.  This is what an endpoint-slot induction hypothesis
+can supply at endpoint slot `sl`. -/
+def HonestVotesSupportTargetBefore (E : Execution Root) (T : Checkpoint Root) (q : ℕ)
+    (sl : Slot) : Prop :=
+  E.WithinHorizon cfg q ∧
+    ∀ v ∈ E.honest, ∀ s : Slot, E.SlotWithinHorizon cfg s →
+      compute_epoch_at_slot cfg s = T.epoch → E.slot_at cfg q ≤ s →
+      s < sl → ∀ k a, E.vote v s = some (k, a) → a.data.target = T
 
 /-- A dependent quorum package whose equalities expose the exact historical
 target and deadline without casting the vote object across indices. -/
@@ -54,9 +66,23 @@ structure AcceptedHistoricalA32GatePayloadAt
   origin_block : BeaconBlock Root
   origin_at : E.AcceptedBlockAt cfg ext origin origin_block
   origin_epoch : compute_epoch_at_slot cfg origin_block.slot = e
-  certified : Nonempty
-    (CertifiedJustified cfg E B.anchor (B.state.C origin e))
-  support_branch :
+  /-- The original invocation remains fixed under same-epoch transport. -/
+  original_call : Option (ValidatorIndex × ℕ)
+  original_honest : ∀ v n, original_call = some (v, n) → v ∈ E.honest
+  original_target : ∀ v n, original_call = some (v, n) →
+    B.state.C origin e = get_current_target cfg (E.store cfg ext v (n + 1))
+  original_gate : ∀ v n, original_call = some (v, n) →
+    will_current_target_be_justified cfg ext (E.store cfg ext v (n + 1)) = true
+  anchor_case : original_call = none → B.state.C origin e = B.anchor
+  anchor_epoch_le : B.anchor.epoch ≤ e
+  /-- Derived in the joint call fold, or from the strict endpoint-slot IH.
+  No certificate or quorum is made by this field. -/
+  support_before : ∀ v n, original_call = some (v, n) → ∀ cutoff,
+    E.HonestVotesSupportTargetBefore cfg
+      (get_current_target cfg (E.store cfg ext v (n + 1))) (n + 1) cutoff
+  certified : ∀ cutoff, compute_start_slot_at_epoch cfg (e + 1) ≤ cutoff →
+    Nonempty (CertifiedJustified cfg E B.anchor (B.state.C origin e))
+  support_branch : ∀ cutoff, compute_start_slot_at_epoch cfg (e + 1) ≤ cutoff →
     B.state.C origin e = B.anchor ∨
       Nonempty (E.AcceptedHistoricalA32QuorumAt cfg ext B origin e)
 
@@ -80,61 +106,106 @@ def of_anchor
   { origin_block := originBlock
     origin_at := horiginAt
     origin_epoch := horiginEpoch
-    certified := by
+    original_call := none
+    original_honest := by intros; contradiction
+    original_target := by intros; contradiction
+    original_gate := by intros; contradiction
+    anchor_case := fun _ => hcheckpoint
+    anchor_epoch_le := by
+      have he := congrArg Checkpoint.epoch hcheckpoint
+      simpa only [B.state.checkpoint_epoch] using he.symm.le
+    support_before := by intros; contradiction
+    certified := fun _ _ => by
       rw [hcheckpoint]
       exact ⟨CertifiedJustified.anchor⟩
-    support_branch := Or.inl hcheckpoint }
+    support_branch := fun _ _ => Or.inl hcheckpoint }
 
-/-- Construct the historical payload from the fixed-source accepted gate at
-its original current-epoch carrier.  The theorem performs only dependent
-rewriting: all votes, the source agreement, and the certificate were already
-constructed by the gate realization. -/
+/-- Retain the original fixed-source gate producer. The constructor records the
+call and derived vote support. It does not apply the producer until a cutoff
+after the target epoch is supplied. -/
 def of_fixedSourceCurrentTarget
     (B : CausalPrefixFFGInterpretation cfg ext E)
+    {v : ValidatorIndex} (hv : v ∈ E.honest) {n : ℕ}
     {store : Store Root} (hstore : E.CausalStore cfg ext store)
+    (hquery : store = E.store cfg ext v (n + 1))
     {origin : Root} (horigin : origin ∈ store.block_roots)
     {e : Epoch} (horiginEpoch : get_block_epoch cfg store origin = e)
     (htarget : get_current_target cfg store = B.state.C origin e)
-    (hgate : AcceptedFixedSourceCurrentTargetA32GateRealization cfg ext E
-      B.anchor B.state store origin) :
+    (hanchorLe : B.anchor.epoch ≤ e)
+    (hgate : will_current_target_be_justified cfg ext store = true)
+    (hsupport : HonestVotesSupportTarget cfg E (get_current_target cfg store) (n + 1))
+    (hproducer : HonestVotesSupportTarget cfg E (get_current_target cfg store) (n + 1) →
+      AcceptedFixedSourceCurrentTargetA32GateRealization cfg ext E
+        B.anchor B.state store origin) :
     E.AcceptedHistoricalA32GatePayloadAt cfg ext B origin e := by
+  have htargetEpoch : (get_current_target cfg store).epoch = e := by
+    rw [htarget, B.state.checkpoint_epoch]
+  have hbefore (cutoff : Slot) : E.HonestVotesSupportTargetBefore cfg
+      (get_current_target cfg store) (n + 1) cutoff :=
+    ⟨hsupport.1, fun i hi sl hslH he hqsl _ k a hvote =>
+      hsupport.2 i hi sl hslH he hqsl k a hvote⟩
+  -- Demand the original producer only after every target-epoch vote slot.
+  have realize (cutoff : Slot)
+      (hafter : compute_start_slot_at_epoch cfg (e + 1) ≤ cutoff) :
+      AcceptedFixedSourceCurrentTargetA32GateRealization cfg ext E
+        B.anchor B.state store origin := by
+    apply hproducer
+    refine ⟨(hbefore cutoff).1, ?_⟩
+    intro i hi sl hslH he hqsl k a hvote
+    apply (hbefore cutoff).2 i hi sl hslH he hqsl _ k a hvote
+    apply lt_of_lt_of_le _ hafter
+    rw [htargetEpoch] at he
+    change sl / cfg.slots_per_epoch = e at he
+    exact Nat.lt_mul_of_div_lt (by rw [he]; exact Nat.lt_succ_self _) cfg.slots_per_epoch_pos
   refine {
     origin_block := store.blocks origin
     origin_at := E.acceptedBlockAt_of_causal_known cfg ext hstore horigin
-    origin_epoch := ?_
+    origin_epoch := horiginEpoch
+    original_call := some (v, n)
+    original_honest := ?_
+    original_target := ?_
+    original_gate := ?_
+    anchor_case := by intro h; contradiction
+    anchor_epoch_le := hanchorLe
+    support_before := ?_
     certified := ?_
-    support_branch := ?_
-  }
-  · simpa only [get_block_epoch] using horiginEpoch
-  · rw [← htarget]
-    exact hgate.certified
-  · rcases hgate.support_branch with hanchor | ⟨hne, Q, hsource⟩
+    support_branch := ?_ }
+  · intro w k heq
+    cases Option.some.inj heq
+    exact hv
+  · intro w k heq
+    cases Option.some.inj heq
+    simpa only [hquery] using htarget.symm
+  · intro w k heq
+    cases Option.some.inj heq
+    simpa only [hquery] using hgate
+  · intro w k heq cutoff
+    cases Option.some.inj heq
+    simpa only [hquery] using hbefore cutoff
+  · intro cutoff hafter
+    rw [← htarget]
+    exact (realize cutoff hafter).certified
+  · intro cutoff hafter
+    rcases (realize cutoff hafter).support_branch with hanchor | ⟨hne, Q, hsource⟩
     · exact Or.inl (htarget.symm.trans hanchor)
     · right
-      have htargetEpoch : (get_current_target cfg store).epoch = e := by
-        calc
-          (get_current_target cfg store).epoch =
-              (B.state.C origin e).epoch := congrArg Checkpoint.epoch htarget
-          _ = e := B.state.checkpoint_epoch origin e
       have hsource' : Q.source = B.state.GJ origin := by
         simpa only [CausalCarrierFFGState.VSAt, PaperA32StateView.VSAt,
           htargetEpoch, horiginEpoch, if_pos] using hsource
-      exact ⟨
-        { deadline := compute_start_slot_at_epoch cfg
-            ((get_current_target cfg store).epoch + 1)
-          target := get_current_target cfg store
-          quorum := Q
-          deadline_eq := by rw [htargetEpoch]
-          target_eq := htarget
-          target_ne_anchor := hne
-          source_eq := hsource' }⟩
+      exact ⟨{
+        deadline := compute_start_slot_at_epoch cfg ((get_current_target cfg store).epoch + 1)
+        target := get_current_target cfg store
+        quorum := Q
+        deadline_eq := by rw [htargetEpoch]
+        target_eq := htarget
+        target_ne_anchor := hne
+        source_eq := hsource' }⟩
 
 /-- Same-epoch transport of the retained payload.
 
 Checkpoint constancy is derived in the concrete causal store from executable
 ancestry and accepted checkpoint reflection.  Source constancy is derived
-separately from the exact accepted transition segment.  The concrete quorum
-itself is unchanged. -/
+separately from the exact accepted transition segment.  The original producer, call, target, source, and deadline are unchanged. -/
 def transport_sameEpoch
     (B : CausalPrefixFFGInterpretation cfg ext E)
     (hphase : Phase0SourceCoherence cfg ext)
@@ -174,13 +245,22 @@ def transport_sameEpoch
     origin_block := store.blocks tip
     origin_at := E.acceptedBlockAt_of_causal_known cfg ext hstore htip
     origin_epoch := ?_
+    original_call := hpayload.original_call
+    original_honest := hpayload.original_honest
+    original_target := fun v n hc => hcheckpoint.trans (hpayload.original_target v n hc)
+    original_gate := hpayload.original_gate
+    anchor_case := fun hc => hcheckpoint.trans (hpayload.anchor_case hc)
+    anchor_epoch_le := hpayload.anchor_epoch_le
+    support_before := hpayload.support_before
     certified := ?_
     support_branch := ?_
   }
   · simpa only [get_block_epoch] using htipEpoch
-  · rw [hcheckpoint]
-    exact hpayload.certified
-  · rcases hpayload.support_branch with hanchor | hquorum
+  · intro cutoff hafter
+    rw [hcheckpoint]
+    exact hpayload.certified cutoff hafter
+  · intro cutoff hafter
+    rcases hpayload.support_branch cutoff hafter with hanchor | hquorum
     · exact Or.inl (hcheckpoint.trans hanchor)
     · obtain ⟨hquorum⟩ := hquorum
       exact Or.inr ⟨
@@ -311,7 +391,7 @@ theorem acceptedHistoricalA32PayloadProducerAt_to_certificateProducer
   intro hcurrent hnoCrossing
   obtain ⟨e, htarget, ⟨hpayload⟩⟩ := hproducer hcurrent hnoCrossing
   rw [htarget]
-  exact hpayload.certified
+  exact hpayload.certified (compute_start_slot_at_epoch cfg (e + 1)) (Nat.le_refl _)
 
 end Execution
 

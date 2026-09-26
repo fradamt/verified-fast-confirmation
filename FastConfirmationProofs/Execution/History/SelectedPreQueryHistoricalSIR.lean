@@ -1,4 +1,5 @@
 module
+public import FastConfirmationInternal.FCRRule.PredictionSupport
 public import FastConfirmationProofs.Checkpoints.ExecutionRootReflection
 public import FastConfirmationProofs.Checkpoints.SelectedPreQueryAnchor
 public import FastConfirmationProofs.FCRRule.SelectedCheckpointInclusionSupport

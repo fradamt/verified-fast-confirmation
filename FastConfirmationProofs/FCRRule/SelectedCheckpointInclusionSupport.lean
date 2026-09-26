@@ -1,4 +1,5 @@
 module
+public import FastConfirmationInternal.FCRRule.PredictionSupport
 public import FastConfirmationProofs.ForkChoice.Filter.SelectedTraceFilter
 public import FastConfirmationProofs.Execution.Delivery.Delivery
 

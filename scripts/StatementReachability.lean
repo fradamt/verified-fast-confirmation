@@ -41,11 +41,36 @@ private def isSourceDeclaration (env : Environment) (decl : Name) : Bool :=
 -- FFG state's specialization, so its theorem type needs that abbreviation.
 -- The interpretation-fidelity records are deliberately outside the safety
 -- premise; the full-bundle witnesses prove them for their interpretations.
+-- Removing helper_provisos also removes the claim's path to the exact-call
+-- trace API and its two vote-support predicates. Keep these existing public
+-- proof/witness interfaces by name. They are not safety assumptions. The
+-- exact completed-call field list is checked by ReviewSurfaceShape.lean.
 private def approved : List Name := [
   ``FastConfirmation.Spec.Synchrony,
   ``FastConfirmation.Spec.CausalCarrierFFGState.PaperA32SupportThroughoutEpoch,
   ``FastConfirmation.Spec.Execution.IncludedAttestationFidelity,
-  ``FastConfirmation.Spec.FFGInterpretationFidelity
+  ``FastConfirmation.Spec.FFGInterpretationFidelity,
+  -- Existing public support facts used by witness theorem types.
+  ``FastConfirmation.Spec.HonestVotesSupportTarget,
+  ``FastConfirmation.Spec.HonestVotesTargetDescendFrom,
+  -- Exact-call trace vocabulary used by proof and witness interfaces.
+  ``FastConfirmation.Spec.findLatestSelectedTrace,
+  ``FastConfirmation.Spec.GetLatestSelectorPhase,
+  ``FastConfirmation.Spec.getLatestFinalizedRevertGuard,
+  ``FastConfirmation.Spec.tentativeLoopTrace,
+  ``FastConfirmation.Spec.getLatestSelectorGuard,
+  ``FastConfirmation.Spec.CurrentTargetSelectedEdge,
+  ``FastConfirmation.Spec.Execution.IsScheduledFCRCallAt,
+  ``FastConfirmation.Spec.LatestConfirmedCallTrace,
+  ``FastConfirmation.Spec.getLatestAfterObserved,
+  ``FastConfirmation.Spec.GetLatestObservedPhase,
+  ``FastConfirmation.Spec.getLatestObservedRestartGuard,
+  ``FastConfirmation.Spec.prevEpochLoopTrace,
+  ``FastConfirmation.Spec.Execution.fcrStoreAtCall,
+  ``FastConfirmation.Spec.getLatestAfterFinalized,
+  ``FastConfirmation.Spec.GetLatestFinalizedPhase,
+  ``FastConfirmation.Spec.Execution.getLatestConfirmedTraceAt,
+  ``FastConfirmation.Spec.getLatestConfirmedTrace
 ]
 
 run_cmd do

@@ -28,14 +28,19 @@ The result concerns stored boundary outputs. It does not cover an arbitrary quer
 │                        │ evidence. See BeaconExternalsPremises and CausalPrefixFFGInterpretation.                    │
 │ Payload validity       │ Imported payloads pass opaque execution validation. See BeaconExternalsPremises and the     │
 │                        │ execution external contract.                                                                │
-│ Guarded vote support   │ Current-epoch crossing: exact target. Previous-epoch result: descendant targets.            │
-│                        │ See FCRPredictionSupportAt. Both remain assumptions at guarded calls.                       │
 │ Live claim only        │ Each slot has an honest block. Honest votes support it. FFG justification is visible at the │
 │                        │ required epoch boundary. See LiveMonotonicityPremises.                                      │
 └────────────────────────┴─────────────────────────────────────────────────────────────────────────────────────────────┘
 ```
 
-The guarded support fields remain assumptions. `Execution.currentTarget_support_of_canonical` and `Execution.previousResult_descendSupport_of_canonical` reduce them to canonicity at honest vote times. Endpoint pinning from earlier votes is also proved, without a new external law. The within-epoch induction and delayed historical payload remain open. The [premise ledger](#premise-ledger) gives the exact records and sources. Evidence relay is supplied as a premise. The fault bound applies to each checked span. The live fields are stronger than paper Assumption 6.
+Prediction support is derived by joint induction over calls and endpoint slots.
+Current-epoch crossings use exact targets. Previous-epoch results use descendant
+targets. The proof needs only votes before each endpoint. Historical certificates
+and quorums are produced on demand after the target epoch, with the original call,
+target, source, and deadline. See `Execution.confirmed_safety_and_lineage_of_acceptedActualFCRFold`.
+The [premise ledger](#premise-ledger) gives the remaining records and sources.
+Evidence relay is a premise. The fault bound applies to each checked span.
+The live fields are stronger than paper Assumption 6.
 
 ## Trust and source
 
@@ -82,7 +87,7 @@ The records in this table are in `FastConfirmationStatements/Premises/`. The las
 │                    │                                    │ behavior with an attestation deadline, and a valid genesis store.                │ Phase0/Gloas; model premise   │
 │ Safety field       │ Execution.CompletedFCRCallPremises │ Five delivery laws; fixed active validators; committee and Byzantine             │ Paper Assumptions 1 and 2;    │
 │                    │                                    │ weight bounds; Phase0 source coherence; a nonzero balance floor;                 │ Gloas extension; model        │
-│                    │                                    │ next-slot vote receipt; guarded exact and descendant target support.             │ idealisation                  │
+│                    │                                    │ next-slot vote receipt.                                                          │ idealisation                  │
 │ Safety field       │ NextSlotSynchronyPremises          │ Positive delay; deadline cutoff for block, envelope, data and evidence           │ Paper synchrony; Gloas        │
 │                    │                                    │ relay; pre-tick exclusion; payload service before boundary votes.                │ extension                     │
 │ Safety field       │ BeaconExternalsPremises            │ Slot and state transition coherence, committee and attestation                   │ Model idealisation            │
@@ -109,7 +114,7 @@ The records in this table are in `FastConfirmationStatements/Premises/`. The las
 - `FFGInterpretationFidelity` states the intended interpretation of the included votes: membership in the accepted carrier block's ordered FFG attestation body, validity on the target checkpoint state prepared from a keyed target block state in an honest in-horizon store, and the external validity check. The safety theorem does not assume it. Each full-bundle witness proves it for its interpretation.
 - `ByzantineWeightPremises.span_fraction` must hold for every in-horizon slot span, including one slot. A global fault share does not establish this bound. The bound matches `CommitteeHonestMajority` in the repository's formal paper Assumption 2.
 - `LiveMonotonicityPremises.honest_block_each_slot` requires a block with an honest proposer index in every slot from execution start. Its vote-support law and `ffg_timely_justification` require timely descendant votes and exact FFG state outputs at epoch boundaries. These conditions are stronger than paper Assumption 6. Proposer-index membership is not an authentication theorem.
-- `LiveMonotonicityWitness.joint_witness` satisfies both live fields and the safety premise in one short run with a strict root advance. Its FFG timing field holds at epoch 0 through the genesis anchor; no vote-driven justification occurs. `FullTwelveWitness.full_bundle_witness` satisfies the full safety premise at 12-second slots with a 2-second delay and real delayed block and vote receipts. `FullTwelveEnvelopeWitness.envelope_relay_exercised` and `FullTwelveEnvelopeWitness.data_relay_exercised` exercise envelope delivery and data relay with an accepted payload envelope under the full safety bundle. `ByzantinePremiseWitness.byzantine_weight_exercised`, `ByzantinePremiseWitness.slashing_relay_exercised`, and `ByzantinePremiseWitness.previous_result_proviso_exercised` exercise positive Byzantine weight, the slashing relay, and the selected previous-result guard under the full safety bundle. `ByzantinePremiseWitness.previous_result_descendant_support_exercised` proves its descendant-support conclusion. `TargetEdgePremiseWitness.target_edge_support_exercised` exercises the guarded current-target support premise under the full safety bundle. See `FastConfirmationWitnesses/Index.lean`.
+- `LiveMonotonicityWitness.joint_witness` satisfies both live fields and the safety premise in one short run with a strict root advance. Its FFG timing field holds at epoch 0 through the genesis anchor; no vote-driven justification occurs. `FullTwelveWitness.full_bundle_witness` satisfies the full safety premise at 12-second slots with a 2-second delay and real delayed block and vote receipts. `FullTwelveEnvelopeWitness.envelope_relay_exercised` and `FullTwelveEnvelopeWitness.data_relay_exercised` exercise envelope delivery and data relay with an accepted payload envelope under the full safety bundle. `ByzantinePremiseWitness.byzantine_weight_exercised`, `ByzantinePremiseWitness.slashing_relay_exercised`, and `ByzantinePremiseWitness.previous_result_proviso_exercised` exercise positive Byzantine weight, the slashing relay, and the selected previous-result guard under the full safety bundle. `ByzantinePremiseWitness.previous_result_descendant_support_exercised` proves its descendant-support conclusion. `TargetEdgePremiseWitness.target_edge_support_exercised` checks current-target support as a fact about the run under the full safety bundle. See `FastConfirmationWitnesses/Index.lean`.
 - The result covers stored boundary outputs. `StrictPrefixExtraQuery.extra_query_changes_head_counterexample` and `PinnedEconomicsExtraQuery.extra_query_changes_head_counterexample` show why an arbitrary in-slot query needs a different statement.
 
 ## Paper library

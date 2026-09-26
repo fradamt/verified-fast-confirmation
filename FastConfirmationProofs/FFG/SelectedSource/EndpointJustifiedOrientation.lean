@@ -3,8 +3,8 @@ public import FastConfirmationProofs.FFG.SelectedSource.TruncatedPredictionPinni
 
 /-!
 Actual-call endpoint orientation uses honest votes strictly before the endpoint.
-The slot induction supplies their canonicity. The no-crossing branch retains
-its historical producer until the history induction is changed.
+The slot induction supplies their canonicity. The no-crossing branch uses the original call retained by the joint
+history induction, with support only before the consuming endpoint.
 -/
 
 @[expose] public section
@@ -161,13 +161,26 @@ theorem preQueryVoteSelectedSIRBracketAt_of_earlierVotes
           (by simpa only [hquery] using hedge.current_target_gate cfg ext)
           hsupport (by simpa only [hquery] using hepoch)
       · obtain ⟨e, htarget, ⟨hpayload⟩⟩ := hhistorical hcurrent hcross
-        obtain ⟨hcert⟩ := hpayload.certified
         obtain ⟨ast, ablk, hgen, hslot, _⟩ := hT.genesis_structure
         obtain ⟨hJ⟩ := CausalPrefixFFGInterpretation.endpointJustified_certificate
           cfg ext B ⟨ast, ablk, hgen, hslot⟩ hanchor (E.store_causal cfg ext w m)
-        rw [← htarget] at hcert
-        exact (E.certificateAccountability_of_selectedMarginAssumptions
-          cfg ext hA).justified_unique hJ hcert hepoch
+        cases hcall : hpayload.original_call with
+        | none =>
+            have htargetAnchor := htarget.trans (hpayload.anchor_case hcall)
+            have hroot := (E.certificateAccountability_of_selectedMarginAssumptions
+              cfg ext hA).justified_unique hJ CertifiedJustified.anchor
+                (by simpa only [htargetAnchor] using hepoch)
+            simpa only [htargetAnchor] using hroot
+        | some call =>
+            obtain ⟨v0, n0⟩ := call
+            have htargetOriginal := htarget.trans (hpayload.original_target v0 n0 hcall)
+            have hbefore := hpayload.support_before v0 n0 hcall (E.slot_at cfg m)
+            have hroot := E.completedPrefix_currentTarget_endpoint_root_eq_before cfg ext B hT
+              hA.static_validators hA.byzantine_bound hfloor hfit hanchor hboundary
+              (hpayload.original_honest v0 n0 hcall) hbefore.1
+              (hpayload.original_gate v0 n0 hcall) hbefore
+              (by simpa only [htargetOriginal] using hepoch)
+            simpa only [htargetOriginal] using hroot
     · intro hprevious hepoch
       have hnotCurrent : get_block_epoch cfg query.store result ≠
           get_current_store_epoch cfg query.store := by

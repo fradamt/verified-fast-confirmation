@@ -5,20 +5,11 @@ public import FastConfirmationProofs.ModelFacts
 @[expose] public section
 
 /-!
-# Strong induction for the accepted historical A3.2 payload
+# Initial historical A3.2 lineage and call interface
 
-This module writes the exact one-call transformer back to the executable
-`confirmed` trajectory.  It retains two invariants simultaneously:
-
-* the cached confirmed root is known in the node's current store; and
-* whenever that root belongs to the store's current epoch, it has a nonempty
-  accepted historical A3.2 lineage.
-
-The call-site interface deliberately remains explicit.  Its helper provisos
-are the normative provisos used only when the executable selector runs, while
-its gate producer is the action/schedule bridge still to be instantiated at
-each actual FCR call.  Neither field is replaced by a legacy selected-margin,
-justification-interface, history, canonicity, or safety assumption.
+This module defines the initial knownness and lineage facts and the gate-only
+call interface. The joint call/history induction is in ConfirmedCacheSafety.
+It derives support after strict-result safety, without a helper-support field.
 -/
 
 namespace FastConfirmation.Spec
@@ -45,12 +36,10 @@ structure AcceptedHistoricalA32CurrentLineageAt
 
 /-- The exact non-operational interface consumed at one actual FCR call.
 
-`FCRPredictionSupportAt` records the spec's normative helper provisos only
-when the outer evaluator actually invokes the descendant selector.  The gate
-producer is intentionally conditional on the executable target gate and
-matching target-support proviso; concrete global/scheduled action evidence can
-therefore construct it without putting a quorum or A3.2 conclusion in this
-interface. -/
+The producer is conditional on the executable gate and vote support. It
+stores neither an unconditional quorum nor prediction support. The joint
+induction supplies the latter only after it proves the strict result safe.
+-/
 structure AcceptedHistoricalA32CallInterfaceAt
     (B : CausalPrefixFFGInterpretation cfg ext E)
     (v : ValidatorIndex) (n : ℕ) : Prop where

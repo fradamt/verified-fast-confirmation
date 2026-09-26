@@ -31,7 +31,7 @@
 │ Byzantine weight            │ Exercised by ByzantinePremiseWitness.byzantine_weight_exercised: non-honest weight 200 of 4000 under the      │
 │                             │ full safety bundle.                                                                                           │
 │ Slashing relay              │ Exercised by ByzantinePremiseWitness.slashing_relay_exercised; the call at second six reads the evidence.     │
-│ Previous-result proviso     │ Exercised by ByzantinePremiseWitness.previous_result_proviso_exercised at the call from second eight to       │
+│ Previous-result guard       │ Exercised by ByzantinePremiseWitness.previous_result_proviso_exercised at the call from second eight to       │
 │                             │ nine.                                                                                                         │
 │ Included carrier votes      │ The safety premise needs an accepted carrier and a received block copy of each included vote. Body            │
 │                             │ membership and validity are in FFGInterpretationFidelity, outside the premise.                                │
@@ -71,33 +71,35 @@
 
 Paper Assumption 3.2 can allow a two-epoch FFG inclusion delay. The executable selector can close its gates before inclusion. `get_latest_confirmed_eq_finalized_of_stale` and `Execution.confirmed_succ_eq_finalized_of_stale_call` show the stale fallback. The live claim uses timely closure. The joint finite witness meets both live fields, but its FFG timing holds through the genesis anchor. No vote-driven justification occurs in that run. Paper Theorem 1 has no block-in-every-slot premise.
 
-`Execution.NextSlotSafetyPremises` includes exact FFG state at each successful handler prefix. It also includes scheduled execution, completed FCR calls, epoch arithmetic, anchor alignment, checkpoint evidence, and finalization delay. `Execution.CompletedFCRCallPremises` adds static validators, a fault bound for each committee span, Phase0 source coherence, a balance floor, next-slot vote receipt, and guarded prediction support. No field directly states the stored-root safety conclusion. Global FFG and finalization premises can range beyond a conclusion endpoint.
+`Execution.NextSlotSafetyPremises` includes exact FFG state at each successful handler prefix. It also includes scheduled execution, completed FCR calls, epoch arithmetic, anchor alignment, checkpoint evidence, and finalization delay. `Execution.CompletedFCRCallPremises` adds static validators, a fault bound for each committee span, Phase0 source coherence, a balance floor and next-slot vote receipt. No field directly states the stored-root safety conclusion. Global FFG and finalization premises can range beyond a conclusion endpoint.
 
-The guarded fields in `FCRPredictionSupportAt` are still assumptions.
-`current_target` requires exact agreement on the caller's current target after
-a retained current-epoch crossing. `selected_previous_result_no_conflict`
-requires only that later honest targets of the query epoch descend from the
-selected previous-epoch result. Its consumer proves the same descent for each
-certified checkpoint of that epoch. The live fields and claim are unchanged.
-`ByzantinePremiseWitness.previous_result_descendant_support_exercised` checks
-the weaker conclusion at a call with a true guard. See the prediction-support
-section in [modeling choices](MODELING_CHOICES.md) for the Python note and the
-protocol counterexample to exact target agreement.
+Prediction support is derived. `CompletedFCRCallPremises` has no
+helper_provisos field. `FCRPredictionSupportAt` is internal proof vocabulary,
+not a safety premise. Its previous-result conclusion permits different targets
+that all descend from the selected result. The live premise and claim are unchanged.
 
-`Execution.currentTargetSelectedEdge_geometry_of_accepted` proves crossing-edge
-knownness, current-epoch membership, and query-head ancestry without a helper
-proviso. `Execution.currentTarget_supportBefore_of_canonical` converts earlier
-canonicity into exact target support before an endpoint. The endpoint induction
-link is `Execution.canonicalAtHonestVotesBefore_of_endpoint_induction`. These
-reductions do not yet prove within-epoch canonicity or remove either field.
+The key theorem is
+`Execution.confirmed_safety_and_lineage_of_acceptedActualFCRFold`.
+The call induction retains the preceding lineage. The strict endpoint-slot
+induction supplies earlier honest heads. The current crossing and previous-result
+consumers use `Execution.preQueryVoteSelectedSIRBracketAt_of_earlierVotes` and
+the two endpoint pinning lemmas. They do not assume future vote support.
+After strict-result safety is proved, the fold derives support for later calls.
 
-`Execution.completedPrefix_currentTarget_endpoint_root_eq_before` and
-`Execution.completedPrefix_noConflict_endpoint_descends_before` prove exact
-and descendant pinning from votes strictly before the endpoint. They use
-accepted inclusion and committee assignment uniqueness, without a new strict
-justified-epoch law. The remaining work is to integrate these results into
-the selected-result induction and delay the historical certificate and quorum
-until the endpoint that needs them.
+The historical payload retains the original caller, call second, target, source,
+and `start(e+1)` deadline. Both its certificate and its quorum are functions of a
+cutoff after the target epoch. An earlier endpoint uses the original gate and
+votes before that endpoint. No strict justified-epoch external law was added.
+
+The reachability audit explicitly retains 17 existing call/trace declarations
+and two support predicates for public proof and witness interfaces. They became
+unreachable from the claim when the support field was removed. Their types are
+unchanged. The audit still rejects other unexpected declarations.
+
+The existing target-edge and previous-result witness theorems remain facts about
+the runs. Their full-bundle constructors no longer prove support fields.
+See [modeling choices](MODELING_CHOICES.md) for the Python note and the
+counterexample to exact target agreement for a previous-epoch result.
 
 ## Delivery and evidence
 

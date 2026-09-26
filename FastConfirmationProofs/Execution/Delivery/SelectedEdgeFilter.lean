@@ -700,13 +700,7 @@ theorem AcceptedHistoricalA32LineageAt.payloadAtQuery_nonempty
       hlineage.payload.origin_epoch
   have hselectedEpoch' : get_block_epoch cfg query selected = e := by
     simpa only [query] using hselectedEpoch
-  have hlineageCertified : CertifiedJustified cfg E B.anchor
-      (B.state.C hlineage.origin e) :=
-    Classical.choice hlineage.payload.certified
-  have hanchorLeE : B.anchor.epoch ≤ e := by
-    have hle := CertifiedJustified.anchor_epoch_le
-      (cfg := cfg) hlineageCertified
-    simpa only [B.state.checkpoint_epoch] using hle
+  have hanchorLeE : B.anchor.epoch ≤ e := hlineage.payload.anchor_epoch_le
   have hselectedWalk : WalkKnown query
       (compute_start_slot_at_epoch cfg e) selected := by
     simpa only [query] using
@@ -753,7 +747,12 @@ theorem AcceptedHistoricalA32LineageAt.lateVisibleSeedAt
     hphase0 hanchor hboundary hselectedQ hselectedEpoch
   have hendpointCausal : E.CausalStore cfg ext
       (E.store cfg ext w m) := E.store_causal cfg ext w m
-  rcases hpayload.support_branch with htargetAnchor | hquorum
+  have hafter : compute_start_slot_at_epoch cfg (e + 1) ≤ E.slot_at cfg m := by
+    have he : e + 1 ≤ compute_epoch_at_slot cfg (E.slot_at cfg m) := by
+      simpa only [get_current_store_epoch, E.store_current_slot] using
+        (Nat.le_trans (Nat.le_succ _) hlate)
+    exact (Nat.le_div_iff_mul_le cfg.slots_per_epoch_pos).mp he
+  rcases hpayload.support_branch (E.slot_at cfg m) hafter with htargetAnchor | hquorum
   · have heq : e = B.anchor.epoch := by
       have hepoch := congrArg Checkpoint.epoch htargetAnchor
       simpa only [B.state.checkpoint_epoch] using hepoch

@@ -345,16 +345,6 @@ namespace Execution
 
 variable (E : Execution Root)
 
-/-- Support truncated at an endpoint slot `sl`: only votes of slots before
-`sl` are constrained.  This is what an endpoint-slot induction hypothesis
-can supply at endpoint slot `sl`. -/
-def HonestVotesSupportTargetBefore (T : Checkpoint Root) (q : ℕ)
-    (sl : Slot) : Prop :=
-  E.WithinHorizon cfg q ∧
-    ∀ v ∈ E.honest, ∀ s : Slot, E.SlotWithinHorizon cfg s →
-      compute_epoch_at_slot cfg s = T.epoch → E.slot_at cfg q ≤ s →
-      s < sl → ∀ k a, E.vote v s = some (k, a) → a.data.target = T
-
 /-- Canonicity is required only at honest votes strictly before `cutoff`.
 This is the exact time range of the endpoint-slot induction hypothesis. -/
 def CanonicalAtHonestVotesBefore (c : Root) (e : Epoch) (q : ℕ)

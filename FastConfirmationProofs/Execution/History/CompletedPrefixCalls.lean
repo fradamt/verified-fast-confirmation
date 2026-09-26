@@ -13,9 +13,8 @@ prefix to construct the accounting evidence and accepted current-target gate
 producer consumed by `AcceptedHistoricalA32CallInterfaces`.
 
 The adapter does not use `SelectedMarginAssumptions`, a justification
-interface, transition history, canonicity, or safety. The literal normative
-`FCRPredictionSupportAt` contract remains an input exactly when the outer
-evaluator invokes the descendant selector. A one-slot operational delivery
+interface, transition history, canonicity, or safety. Prediction support is derived later by the joint call and endpoint-slot
+induction; it is absent from the call interface. A one-slot operational delivery
 law covers the finite-prefix boundary case: a vote created in the last
 verified slot is scheduled just after the exclusive public cutoff.
 -/
