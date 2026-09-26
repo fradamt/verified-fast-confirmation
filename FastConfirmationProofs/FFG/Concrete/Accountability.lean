@@ -158,6 +158,19 @@ theorem ConcreteCertificateAccountability.of_not_slashableQuorum {S : FFGSetup R
   links_not_surround := fun L L' ht ⟨hs, hts⟩ =>
     h (slashableQuorum_of_surround hS L L' ht hs hts)
 
+/-- Slashable signers inside a set of less than one third of the active
+balance exclude a slashable quorum. With honest validators that never sign
+slashable pairs, the set is the Byzantine set. -/
+theorem not_slashableQuorum_of_weight_lt {S : FFGSetup Root}
+    {votes : List (IncludedVote Root)} {faulty : Finset ValidatorIndex}
+    (hfaulty : ∀ i, SlashableSigner S votes i → i ∈ faulty)
+    (hweight : 3 * S.scope.weight faulty < S.scope.activeBalance) :
+    ¬ SlashableQuorum S votes := by
+  rintro ⟨signers, hq, hs⟩
+  have hsub : signers ⊆ faulty := fun i hi => hfaulty i (hs i hi)
+  have : S.scope.weight signers ≤ S.scope.weight faulty := Finset.sum_le_sum_of_subset hsub
+  beacon_omega
+
 end FastConfirmation.Spec.ConcreteFFG
 
 end

@@ -55,6 +55,10 @@ structure FinalityInvariant [BEq Root] (S : FFGSetup Root)
   finalized_certified : state.finalized_checkpoint = S.stub ∨
     ∃ target, FinalizationLink S blocks votes state.finalized_checkpoint target ∧
       target.epoch < epoch
+  finalized_le_previous :
+    state.finalized_checkpoint.epoch ≤ state.previous_justified_checkpoint.epoch
+  previous_le_current :
+    state.previous_justified_checkpoint.epoch ≤ state.current_justified_checkpoint.epoch
 
 /-- A validator that signed two included, target-matching body votes whose
 data is slashable (a double vote or a surround vote). -/

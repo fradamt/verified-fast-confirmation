@@ -374,12 +374,29 @@ theorem finalityInvariant_pass {S : FFGSetup Root} (hS : S.Admissible)
         Justified S votes (chainCheckpoint S blocks E) := fun h =>
       let ⟨L⟩ := hQ h
       .link hinv.current_justified L
+    have hcjle : state.current_justified_checkpoint.epoch ≤
+        next.current_justified_checkpoint.epoch := by
+      obtain ⟨bits', pj, j, f, rfl, hout⟩ := process_justification_and_finalization_outcome hpjf
+      have := hinv.current_epoch_le
+      rcases hout with ⟨hE1, -⟩ | ⟨-, -, hj | ⟨_, -, -, hje, -⟩ | ⟨_, -, -, hje, -⟩, -⟩
+      · rw [hEt] at hE1
+        exact absurd hE (by beacon_omega)
+      · change _ ≤ j.epoch
+        rw [hj, hcj]
+      · change _ ≤ j.epoch
+        rw [hje, hEt]
+        beacon_omega
+      · change _ ≤ j.epoch
+        rw [hje, hEt]
+        beacon_omega
     refine
       { bits_length := by rw [hnb]; rfl
         bit_epoch := ?_
         bit_link := ?_
         bit_justified := ?_
-        finalized_certified := ?_ }
+        finalized_certified := ?_
+        finalized_le_previous := ?_
+        previous_le_current := by rw [hnpj, hcj]; exact hcjle }
     · intro i hi
       rw [hnb] at hi
       match i, hi with
@@ -434,6 +451,13 @@ theorem finalityInvariant_pass {S : FFGSetup Root} (hS : S.Admissible)
       · rw [h]
         exact Or.inr ⟨_, finalizationLink_rule4 hinv.current_justified he (hQ h0),
           by change E < E + 1; beacon_omega⟩
+    · rw [hnpj, hnf, hnb, hpj, hcj, hfc]
+      have h1 := hfin.finalized_le_previous
+      have h2 := hfin.previous_le_current
+      rcases finalizedOf_cases _ _ _ _ state.previous_justified_checkpoint
+          state.current_justified_checkpoint state.finalized_checkpoint E with
+        h | ⟨-, -, -, -, h⟩ | ⟨-, -, -, h⟩ | ⟨-, -, -, -, h⟩ | ⟨-, -, -, h⟩ <;> rw [h] <;>
+        beacon_omega
   · rcases process_justification_and_finalization_eq_ok hpjf with ⟨-, rfl⟩ | ⟨hE', -⟩
     · have hzero : ∀ i, state.justification_bits.getD i false = true → False := by
         intro i hi
@@ -444,7 +468,9 @@ theorem finalityInvariant_pass {S : FFGSetup Root} (hS : S.Admissible)
           bit_epoch := fun i hi => (hzero i (hbits ▸ hi)).elim
           bit_link := fun hi => (hzero 0 (hbits ▸ hi)).elim
           bit_justified := fun i hi => (hzero i (hbits ▸ hi)).elim
-          finalized_certified := ?_ }
+          finalized_certified := ?_
+          finalized_le_previous := by rw [hfc, hpj]; exact hfin.finalized_le_previous
+          previous_le_current := by rw [hpj, hcj]; exact hfin.previous_le_current }
       rw [hfc]
       rcases hfin.finalized_certified with h' | ⟨target, hl, hlt⟩
       · exact Or.inl h'
@@ -459,6 +485,7 @@ theorem FinalityInvariant.congr {S : FFGSetup Root} {blocks : List (FFGWireBlock
     (h : FinalityInvariant S blocks votes E state)
     (hbits : state'.justification_bits = state.justification_bits)
     (hpj : state'.previous_justified_checkpoint = state.previous_justified_checkpoint)
+    (hcj : state'.current_justified_checkpoint = state.current_justified_checkpoint)
     (hfc : state'.finalized_checkpoint = state.finalized_checkpoint) :
     FinalityInvariant S blocks votes E state' where
   bits_length := by rw [hbits]; exact h.bits_length
@@ -466,6 +493,8 @@ theorem FinalityInvariant.congr {S : FFGSetup Root} {blocks : List (FFGWireBlock
   bit_link := fun hi => by rw [hpj]; exact h.bit_link (by rw [← hbits]; exact hi)
   bit_justified := fun i hi => h.bit_justified i (by rw [← hbits]; exact hi)
   finalized_certified := by rw [hfc]; exact h.finalized_certified
+  finalized_le_previous := by rw [hfc, hpj]; exact h.finalized_le_previous
+  previous_le_current := by rw [hpj, hcj]; exact h.previous_le_current
 
 /-- A finalizing link stays valid when votes are recorded and the chain
 checkpoints up to its target do not change. -/
@@ -504,6 +533,8 @@ theorem FinalityInvariant.transport {S : FFGSetup Root}
     rcases h.finalized_certified with h' | ⟨target, hl, hlt⟩
     · exact Or.inl h'
     · exact Or.inr ⟨target, hl.transport hv (fun k hk => hc k (by beacon_omega)), hlt⟩
+  finalized_le_previous := h.finalized_le_previous
+  previous_le_current := h.previous_le_current
 
 omit [DecidableEq Root] in
 theorem chainCheckpoint_append {S : FFGSetup Root} {blocks : List (FFGWireBlock Root)}
@@ -540,11 +571,11 @@ theorem finalityInvariant_slotStep {S : FFGSetup Root} (hS : S.Admissible)
   rcases hcase with ⟨hb, rfl⟩ | ⟨hb, mid, hmid, rfl⟩
   · change FinalityInvariant S blocks votes (compute_epoch_at_slot S.cfg (state.slot + 1)) _
     rw [epoch_succ_of_not_boundary hb]
-    exact hfin.congr rfl rfl rfl
+    exact hfin.congr rfl rfl rfl rfl
   · change FinalityInvariant S blocks votes (compute_epoch_at_slot S.cfg (state.slot + 1)) _
     rw [epoch_succ_of_boundary hb]
     have := finalityInvariant_pass hS hinv hfin hH hmid rfl rfl rfl rfl rfl rfl rfl rfl
-    exact this.congr rfl rfl rfl
+    exact this.congr rfl rfl rfl rfl
 
 theorem finalityInvariant_slotFold {S : FFGSetup Root} (hS : S.Admissible)
     {blocks : List (FFGWireBlock Root)} {votes : List (IncludedVote Root)} :
@@ -593,6 +624,7 @@ theorem attestationFold_checkpoints {cfg : Config} {preset : FFGPreset}
         process_attestation cfg preset schedule s vote parentSlot) state = .ok next →
       next.justification_bits = state.justification_bits ∧
       next.previous_justified_checkpoint = state.previous_justified_checkpoint ∧
+      next.current_justified_checkpoint = state.current_justified_checkpoint ∧
       next.finalized_checkpoint = state.finalized_checkpoint := by
   intro attestations
   induction attestations with
@@ -600,20 +632,21 @@ theorem attestationFold_checkpoints {cfg : Config} {preset : FFGPreset}
     intro state next h
     simp only [List.foldlM_nil] at h
     cases (except_pure_eq_ok.mp h)
-    exact ⟨rfl, rfl, rfl⟩
+    exact ⟨rfl, rfl, rfl, rfl⟩
   | cons vote attestations ih =>
     intro state next h
     simp only [List.foldlM_cons, except_bind_eq_ok] at h
     obtain ⟨mid, hmid, hrest⟩ := h
-    obtain ⟨h1, h2, h3⟩ := ih mid next hrest
+    obtain ⟨h1, h2, h3, h4⟩ := ih mid next hrest
     obtain ⟨_, _, _, _, _, rfl, _, _⟩ := process_attestation_flags hmid
-    exact ⟨h1, h2, h3⟩
+    exact ⟨h1, h2, h3, h4⟩
 
 theorem process_block_checkpoints {cfg : Config} {preset : FFGPreset}
     {schedule : FixedCommitteeSchedule} {state next : FFGBeaconState Root}
     {block : FFGWireBlock Root} (h : process_block cfg preset schedule state block = .ok next) :
     next.justification_bits = state.justification_bits ∧
       next.previous_justified_checkpoint = state.previous_justified_checkpoint ∧
+      next.current_justified_checkpoint = state.current_justified_checkpoint ∧
       next.finalized_checkpoint = state.finalized_checkpoint := by
   obtain ⟨paid, headed, hpaid, hheaded, hfold⟩ := process_block_eq_ok h
   obtain ⟨_, _, rfl⟩ := process_parent_execution_payload_eq_ok hpaid
@@ -635,9 +668,9 @@ theorem finalityInvariant_state_transition {S : FFGSetup Root} (hS : S.Admissibl
   obtain ⟨hatslot, -⟩ := process_slots_slot hslots
   have hfin1 := finalityInvariant_process_slots hS hinv hfin hslots
     (by rw [← hnextslot]; exact hH)
-  obtain ⟨hb, hpj, hf⟩ := process_block_checkpoints hblock
+  obtain ⟨hb, hpj, hcj, hf⟩ := process_block_checkpoints hblock
   rw [hnextslot]
-  refine (hfin1.congr hb hpj hf).transport (fun r hr => List.mem_append_left _ hr) ?_
+  refine (hfin1.congr hb hpj hcj hf).transport (fun r hr => List.mem_append_left _ hr) ?_
   intro k hk
   have := start_lt_of_lt_epoch hk
   rw [hatslot] at this
@@ -660,7 +693,9 @@ theorem finalityInvariant_genesis (S : FFGSetup Root) :
       bit_epoch := fun i hi => (hz i hi).elim
       bit_link := fun hi => (hz 0 hi).elim
       bit_justified := fun i hi => (hz i hi).elim
-      finalized_certified := Or.inl rfl }
+      finalized_certified := Or.inl rfl
+      finalized_le_previous := Nat.le_refl _
+      previous_le_current := Nat.le_refl _ }
 
 /-- **Finality invariant of reachable states.** -/
 theorem finalityInvariant_of_reachable {S : FFGSetup Root} (hS : S.Admissible)
@@ -722,6 +757,59 @@ theorem eager_finalization_soundness {S : FFGSetup Root} (hS : S.Admissible)
   rcases this with h' | ⟨target, hl, hlt⟩
   · exact Or.inl h'
   · exact Or.inr ⟨target, hl, by beacon_omega⟩
+
+/-- The finalized, previous justified and current justified checkpoints of an
+in-horizon reachable state have ordered epochs. -/
+theorem checkpoint_epochs_ordered {S : FFGSetup Root} (hS : S.Admissible)
+    {blocks : List (FFGWireBlock Root)} {votes : List (IncludedVote Root)}
+    {state : FFGBeaconState Root} (h : Reachable S blocks votes state)
+    (hH : compute_epoch_at_slot S.cfg state.slot ≤ S.scope.last_epoch) :
+    state.finalized_checkpoint.epoch ≤ state.previous_justified_checkpoint.epoch ∧
+      state.previous_justified_checkpoint.epoch ≤ state.current_justified_checkpoint.epoch :=
+  ⟨(finalityInvariant_of_reachable hS h hH).finalized_le_previous,
+    (finalityInvariant_of_reachable hS h hH).previous_le_current⟩
+
+/-- The same order for the eager PJF copy. -/
+theorem eager_checkpoint_epochs_ordered {S : FFGSetup Root} (hS : S.Admissible)
+    {blocks : List (FFGWireBlock Root)} {votes : List (IncludedVote Root)}
+    {state eager : FFGBeaconState Root} (h : Reachable S blocks votes state)
+    (hH : compute_epoch_at_slot S.cfg state.slot ≤ S.scope.last_epoch)
+    (hpjf : process_justification_and_finalization S.cfg S.preset state = .ok eager) :
+    eager.finalized_checkpoint.epoch ≤ eager.previous_justified_checkpoint.epoch ∧
+      eager.previous_justified_checkpoint.epoch ≤ eager.current_justified_checkpoint.epoch := by
+  have := finalityInvariant_pass hS (provenanceInvariant_of_reachable hS h hH)
+    (finalityInvariant_of_reachable hS h hH) hH hpjf rfl rfl rfl rfl rfl rfl rfl rfl
+  exact ⟨this.finalized_le_previous, this.previous_le_current⟩
+
+/-- **Finalization lag.** The finalized checkpoint of an in-horizon reachable
+state is the stub, or its epoch is at least two epochs before the current
+epoch. For the post-state of a block, the current epoch is the block epoch. -/
+theorem finalized_lag {S : FFGSetup Root} (hS : S.Admissible)
+    {blocks : List (FFGWireBlock Root)} {votes : List (IncludedVote Root)}
+    {state : FFGBeaconState Root} (h : Reachable S blocks votes state)
+    (hH : compute_epoch_at_slot S.cfg state.slot ≤ S.scope.last_epoch) :
+    state.finalized_checkpoint = S.stub ∨
+      state.finalized_checkpoint.epoch + 2 ≤ compute_epoch_at_slot S.cfg state.slot := by
+  rcases finalization_soundness hS h hH with h' | ⟨target, hl, hlt⟩
+  · exact Or.inl h'
+  · obtain ⟨L⟩ := hl.link
+    have := L.source_before_target
+    exact Or.inr (by beacon_omega)
+
+/-- The eager finalized checkpoint is the stub, or its epoch is before the
+current epoch. -/
+theorem eager_finalized_lag {S : FFGSetup Root} (hS : S.Admissible)
+    {blocks : List (FFGWireBlock Root)} {votes : List (IncludedVote Root)}
+    {state eager : FFGBeaconState Root} (h : Reachable S blocks votes state)
+    (hH : compute_epoch_at_slot S.cfg state.slot ≤ S.scope.last_epoch)
+    (hpjf : process_justification_and_finalization S.cfg S.preset state = .ok eager) :
+    eager.finalized_checkpoint = S.stub ∨
+      eager.finalized_checkpoint.epoch + 1 ≤ compute_epoch_at_slot S.cfg state.slot := by
+  rcases eager_finalization_soundness hS h hH hpjf with h' | ⟨target, hl, hlt⟩
+  · exact Or.inl h'
+  · obtain ⟨L⟩ := hl.link
+    have := L.source_before_target
+    exact Or.inr (by beacon_omega)
 
 end FastConfirmation.Spec.ConcreteFFG
 
