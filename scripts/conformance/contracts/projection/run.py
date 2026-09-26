@@ -310,10 +310,13 @@ def check_run(run, statements):
     for field in ('checkpoint_epoch', 'formed_carrier_accepted', 'formed_evidence',
                   'realized_justified_mem', 'unrealized_justified_mem', 'realized_finalized_mem',
                   'unrealized_finalized_mem', 'realized_justified_anchor_or_before',
-                  'realized_justified_max', 'unrealized_justified_max',
+                  'realized_justified_max', 'realized_justified_realized', 'unrealized_justified_max',
+                  'realized_justified_epoch_le_unrealized', 'unrealized_justified_mono',
+                  'unrealized_justified_epoch_le_later_realized',
                   'available_checkpoint_epoch_le_block', 'realized_finalized_evidence',
                   'unrealized_finalized_evidence', 'realized_finalized_epoch_le_realized_justified',
-                  'unrealized_finalized_epoch_le_unrealized_justified'):
+                  'unrealized_finalized_epoch_le_unrealized_justified',
+                  'unrealized_finalized_epoch_le_realized_justified'):
         samples = []
         for root in all_roots:
             slot = int(run.blocks[root].slot)
@@ -325,6 +328,8 @@ def check_run(run, statements):
             rf = run.selector(root, 'realized_finalized')
             uf = run.selector(root, 'unrealized_finalized')
             detail = run.state_detail(root)
+            earlier = [seed for seed in run.chain(root)
+                       if int(run.blocks[seed].slot) // int(run.spec.SLOTS_PER_EPOCH) < epoch]
             if field == 'checkpoint_epoch':
                 for e in range(run.anchor[0], epoch + 3):
                     c = run.checkpoint(root, e)
@@ -342,11 +347,28 @@ def check_run(run, statements):
             elif field == 'realized_justified_anchor_or_before':
                 samples.append((rj == run.anchor or rj[0] < epoch, detail))
             elif field == 'realized_justified_max':
-                samples += [(c[0] >= epoch or c[0] <= rj[0], {**detail, 'available': c,
-                             'carrier': carrier}) for c, carrier in available.items()]
+                # The seed is an ancestor block of an earlier epoch; the block
+                # epoch is above GENESIS_EPOCH + 2.
+                if epoch > 2:
+                    for seed in earlier:
+                        samples += [(c[0] <= rj[0], {**detail, 'seed': seed, 'available': c,
+                                     'carrier': carrier}) for c, carrier in run.available(seed).items()]
+            elif field == 'realized_justified_realized':
+                samples.append((rj == run.anchor or (epoch > 2 and any(rj in run.available(seed) for seed in earlier)),
+                                {**detail, 'checkpoint': rj}))
             elif field == 'unrealized_justified_max':
                 samples += [(c[0] <= uj[0], {**detail, 'available': c,
                              'carrier': carrier}) for c, carrier in available.items()]
+            elif field == 'realized_justified_epoch_le_unrealized':
+                samples.append((rj[0] <= uj[0], detail))
+            elif field == 'unrealized_justified_mono':
+                samples += [(run.selector(seed, 'unrealized_justified')[0] <= uj[0], {**detail, 'seed': seed})
+                            for seed in run.chain(root)]
+            elif field == 'unrealized_justified_epoch_le_later_realized':
+                samples += [(run.selector(seed, 'unrealized_justified')[0] <= rj[0], {**detail, 'seed': seed})
+                            for seed in earlier]
+            elif field == 'unrealized_finalized_epoch_le_realized_justified':
+                samples.append((uf[0] <= rj[0], detail))
             elif field == 'available_checkpoint_epoch_le_block':
                 samples += [(c[0] <= epoch, {**detail, 'available': c,
                              'carrier': carrier}) for c, carrier in available.items()]
