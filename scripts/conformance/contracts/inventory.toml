@@ -989,3 +989,17 @@ path = "BeaconFunctionInterface.AnchorCommitsToState"
 file = "FastConfirmationModel/Execution/Externals.lean"
 class = "I"
 reason = "A client must supply the anchor block-to-state hash commitment; its default predicate is False."
+
+# Lean-generated inherited structure projections. These are reachable but are
+# not authored direct `where` fields, so they do not enter the 160-field count.
+[[generated]]
+path = "AcceptedBlockAttestationEvidence.toIncludedAttestationEvidence"
+file = "FFGState.lean"
+class = "E-interpretation"
+reason = "Accepted carrier evidence embeds the included-vote slot and signer facts."
+
+[[generated]]
+path = "FFGStateAndCheckpointReadAgreement.toFFGStateReadAgreement"
+file = "FFGState.lean"
+class = "E-interpretation"
+reason = "Exact-prefix checkpoint reflection embeds the base FFG selector read agreement."

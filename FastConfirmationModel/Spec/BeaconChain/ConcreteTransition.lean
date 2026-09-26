@@ -10,6 +10,9 @@ Python: `specs/phase0/beacon-chain.md`, State transition;
 namespace FastConfirmation.Spec.ConcreteFFG
 open FastConfirmation.Spec
 
+/-- Altair participation flag index used for timely target FFG weight. -/
+def TIMELY_TARGET_FLAG_INDEX : ℕ := 1
+
 inductive Error where
   | state | slot | root | header | parentPayload | operations | committee
   | bitfield | target | inclusion | payloadIndex | source | indexed | oracle
@@ -121,9 +124,9 @@ Python: `specs/altair/beacon-chain.md:728-744`. -/
 def process_justification_and_finalization (cfg : Config) (preset : FFGPreset)
     {Root : Type} (state : FFGBeaconState Root) : Checked (FFGBeaconState Root) := do
   if compute_epoch_at_slot cfg state.slot ≤ 1 then return state
-  let previousIndices ← (get_unslashed_participating_indices cfg state 1
+  let previousIndices ← (get_unslashed_participating_indices cfg state TIMELY_TARGET_FLAG_INDEX
     (get_previous_epoch cfg state) : Checked (Finset ValidatorIndex))
-  let currentIndices ← (get_unslashed_participating_indices cfg state 1
+  let currentIndices ← (get_unslashed_participating_indices cfg state TIMELY_TARGET_FLAG_INDEX
     (compute_epoch_at_slot cfg state.slot) : Checked (Finset ValidatorIndex))
   weigh_justification_and_finalization cfg preset state
     (get_total_active_balance cfg state)

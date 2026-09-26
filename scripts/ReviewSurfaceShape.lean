@@ -2,6 +2,7 @@ import FastConfirmationStatements
 import FastConfirmationInternal.FFG.InterpretationFidelity
 import FastConfirmationProofs.ReviewTheorem
 import Lean
+import Lean.Util.FoldConsts
 import FastConfirmationProofs.FFG.SelectedSource.TruncatedPredictionPinning
 import FastConfirmationProofs.FCRRule.PredictionSupport
 import FastConfirmationProofs.FCRRule.PredictionSupportGeometry
@@ -9,6 +10,32 @@ import FastConfirmationProofs.FCRRule.PredictionSupportGeometry
 /-! Pin the reviewed claim, premise record fields, and the review theorem's type. -/
 
 open Lean Elab Command
+
+private partial def reachableFrom (env : Environment) (pending : List Name)
+    (seen : NameSet := {}) : NameSet :=
+  match pending with
+  | [] => seen
+  | decl :: rest =>
+      if seen.contains decl then reachableFrom env rest seen
+      else
+        let seen := seen.insert decl
+        match env.find? decl with
+        | none => reachableFrom env rest seen
+        | some info => reachableFrom env (info.getUsedConstantsAsSet.toList ++ rest) seen
+
+private def isProjectDeclaration (env : Environment) (decl : Name) : Bool :=
+  match env.getModuleIdxFor? decl with
+  | none => false
+  | some idx =>
+      let moduleName := (env.allImportedModuleNames[idx.toNat]!).toString
+      moduleName.startsWith "FastConfirmation"
+
+private def declarationValueHash (info : ConstantInfo) : UInt64 :=
+  match info with
+  | .defnInfo value => hash value.value
+  | .thmInfo value => hash value.value
+  | .opaqueInfo value => hash value.value
+  | _ => 0
 
 run_cmd do
   let env ← getEnv
@@ -185,7 +212,14 @@ run_cmd do
     `FastConfirmation.Spec.Execution.IncludedAttestationFidelity,
     `FastConfirmation.Spec.FFGInterpretationFidelity,
     `FastConfirmation.Spec.EpochCheckpointProjectionLaws,
-    `FastConfirmation.Spec.IncludedSupermajorityLink]
+    `FastConfirmation.Spec.IncludedSupermajorityLink,
+    `FastConfirmation.Spec.Phase0SourceCoherence,
+    `FastConfirmation.Spec.Phase0BoundarySourceCoherence,
+    `FastConfirmation.Spec.StaticValidatorSet,
+    `FastConfirmation.Spec.WellFormedExecution,
+    `FastConfirmation.Spec.HorizonVoteDeliveryLookahead,
+    `FastConfirmation.Spec.IncludedCertifiedFinalized,
+    `FastConfirmation.Spec.SourceTargetLinkSupportAt]
   let mut fingerprint : UInt64 := 0
   for record in records do
     let some info := env.find? record
@@ -196,10 +230,21 @@ run_cmd do
       let some fieldInfo := env.find? fieldName
         | throwError "missing review field {fieldName}"
       fingerprint := hash (fingerprint, fieldName, fieldInfo.type)
+  -- Include definition bodies and nested premise records in the claim-type
+  -- dependency closure. A change to a Prop-valued def can change the theorem
+  -- even when its declaration type remains `Prop`.
+  let reachable := reachableFrom env
+    [``FastConfirmation.Spec.ReviewClaims, ``FastConfirmation.Spec.ConfirmedRootSafeFromNextSlot]
+  let declarations := (reachable.toList.filter (isProjectDeclaration env)).mergeSort
+    (fun a b => (Name.quickCmp a b).isLE)
+  for decl in declarations do
+    let some info := env.find? decl
+      | throwError "missing reachable declaration {decl}"
+    fingerprint := hash (fingerprint, decl, info.type, declarationValueHash info)
   match env.find? `FastConfirmation.Spec.ConfirmedRootSafeFromNextSlot with
   | some (.defnInfo info) =>
       fingerprint := hash (fingerprint, info.value)
   | _ => throwError "missing claim definition"
-  unless fingerprint == (14368330899410285068 : UInt64) do
+  unless fingerprint == (16393700109737807064 : UInt64) do
     throwError "review surface statement type changed: {fingerprint}"
   IO.println s!"review surface types passed ({fingerprint})"

@@ -55,5 +55,19 @@ run_cmd do
   for decl in sources.mergeSort (Name.quickCmp · · |>.isLE) do
     let status := if reachable.contains decl then "SR" else "SU"
     IO.println s!"{status}\t{(moduleOf? env decl).getD `unknown}\t{decl}"
+  -- Lean-derived direct fields of claim-reachable premise records. The full
+  -- inventory audit uses these PF rows instead of the source regex.
+  let premiseFields := env.const2ModIdx.keysArray.toList.filter fun decl =>
+    (env.getProjectionFnInfo? decl).isSome && reachable.contains decl.getPrefix &&
+      (getStructureFields env decl.getPrefix).toList.any
+        (fun field => field.getString! == decl.getString!) &&
+      (moduleOf? env decl).any (fun m =>
+        m.toString.startsWith "FastConfirmationStatements.Premises.")
+  for decl in premiseFields.mergeSort (Name.quickCmp · · |>.isLE) do
+    IO.println s!"PF\t{(moduleOf? env decl).getD `unknown}\t{decl}"
+  for decl in [``FastConfirmation.Spec.EpochEndsFitUint64,
+               ``FastConfirmation.Spec.BeaconFunctionInterface.AnchorCommitsToState] do
+    if reachable.contains decl then
+      IO.println s!"RB\t{decl}"
   unless unreachable.isEmpty do
     throwError "statement source contains {unreachable.length} unapproved declarations"

@@ -15,7 +15,7 @@ scripts/conformance/run.sh /path/to/fradamt-consensus-specs gloas minimal out/gl
 
 The runner uses the checkout's Python environment. It performs no setup. It writes Python and Lean logs next to the trace and returns a nonzero status for an empty export, schema error, test failure, or Lean mismatch. `FCR_EXPORT_ONLY=1` exports and checks the trace without invoking Lean. The Lean runner is a script outside the library.
 Repository validation uses `scripts/validate.sh --fast` for source and
-boundary checks. Full validation builds the libraries and audits 43 public
+boundary checks. Full validation builds the libraries and audits 44 public
 theorem witnesses. Neither check makes a trace match a refinement theorem.
 
 Schema v2 records payload membership, Payload Timeliness Committee (PTC) vote maps, block deadlines, bid hashes, message slots and payload flags, and committee reads. The projection keeps a source state identity for opaque external calls. The runner checks executable configuration conditions. It does not replay block, envelope, or PTC handlers, prove `BeaconExternalsPremises`, or implement execution engine validation. Each imported payload must already have passed source validation. A trace match is an observation comparison.
@@ -27,7 +27,7 @@ Schema v1 phase0 traces remain historical and both readers reject them. Gloas FU
 ## Contract conformance
 
 The [contract inventory](../scripts/conformance/contracts/inventory.toml) lists every
-direct field in the premise structures. T means a generated reachable-state property of the pinned Python functions. E-scope labels execution limits. E-network/behavior labels delivery, scheduling, and honest or adversarial behavior. E-interpretation labels supplied FFG obligations. I labels cryptographic, engine, or fixed-committee idealizations. Some mixed relay fields carry both E-network/behavior and I. The inventory covers 160 claim-reachable active structure fields and records two outside Prop boundaries: EpochEndsFitUint64 and BeaconFunctionInterface.AnchorCommitsToState. The checker verifies their source declarations. Thirteen selector, checkpoint, and anchor fields were moved from T to E
+direct field in the premise structures. T means a generated reachable-state property of the pinned Python functions. E-scope labels execution limits. E-network/behavior labels delivery, scheduling, and honest or adversarial behavior. E-interpretation labels supplied FFG obligations. I labels cryptographic, engine, or fixed-committee idealizations. Some mixed relay fields carry both E-network/behavior and I. The inventory covers 160 authored claim-reachable structure fields, two inherited Lean projections, and two outside Prop boundaries: EpochEndsFitUint64 and BeaconFunctionInterface.AnchorCommitsToState. The checker verifies their source declarations. Thirteen selector, checkpoint, and anchor fields were moved from T to E
 because their old probes did not test the supplied execution interpretation. The
 inventory checker fails when a Lean field has no entry.
 

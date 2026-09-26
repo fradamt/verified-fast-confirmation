@@ -581,9 +581,13 @@ attestation is not applied now). Note: on the python validity-failure path
 in-place checkpoint-state cache write survives the raise; this model discards
 it. The discard is the **normative** behavior — fork-choice.md: "Invalid
 calls to handlers must not modify store" — and the surviving write in the
-reference python is an implementation artifact (observable only through
-later direct `checkpoint_states` reads such as `get_weight`, on stores whose
-justified checkpoint was never target-cached by a *valid* attestation).
+reference python is an implementation artifact. The written value is
+computed from the target-root keyed block state and `process_slots` at the
+target epoch start when needed. If that keyed state stays fixed, a later
+successful attestation call computes the same value. This is an argument for
+that later validation path, not a refinement proof: a direct
+`checkpoint_states` read (for example in `get_weight`) can observe the write
+before a successful call, while the Lean scheduled fold has no such entry.
 ```python
 validate_on_attestation(store, attestation, is_from_block)
 store_target_checkpoint_state(store, attestation.data.target)

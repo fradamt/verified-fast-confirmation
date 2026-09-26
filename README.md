@@ -156,7 +156,7 @@ scripts/validate.sh --consensus-repo /path/to/fradamt-consensus-specs
 A warm `lake build` took 24.19 seconds on a 12-core desktop. A fresh build can take longer.
 `scripts/validate.sh --fast --consensus-repo /path/to/fradamt-consensus-specs` checks source
 pinning, document names, boundaries, and hygiene. Full validation also builds the libraries
-and audits 43 public theorems: 36 executable-side and seven paper-side. The Python
+and audits 44 public theorems: 37 executable-side and seven paper-side. The Python
 path must name the pinned local checkout.
 
 ## Premise ledger

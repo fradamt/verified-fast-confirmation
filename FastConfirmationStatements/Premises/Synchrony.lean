@@ -29,8 +29,11 @@ def PermanentBlockExclusion (E : Execution Root)
         get_checkpoint_block cfg later (source.blocks r).parent_root
           later.finalized_checkpoint.epoch
 
-/-- Slot-level block gossip from an honest observation no later than its
-attestation deadline. The paper's positive `Δ` and strict `A + Δ < S`, plus
+/-- Operational store-retention premise close to the membership conjunct.
+The network must deliver each cutoff block and its parents. Honest clients
+must service ready blocks and retain accepted ones. Only the exact permanent
+finalized-guard rejection is exempt. Slot-level block gossip starts from an
+honest observation no later than its attestation deadline. The paper's positive `Δ` and strict `A + Δ < S`, plus
 immediate honest gossip, put the raw block before the next slot. Python's
 delay consideration permits a finalized-conflicting block to remain absent;
 the exemption above is limited to exactly that `on_block` guard.
@@ -93,8 +96,9 @@ so the domains are common.
 The handler `on_attester_slashing` follows the Python and validates against
 `store.block_states[store.justified_checkpoint.root]`. The relay field is a
 premise, not a handler check: it states that every honest node holds the
-indices by the next boundary. Literal Python can reject evidence at a node
-whose justified state does not contain a signer. The premise matches clients
+indices by the next boundary. The missing-signer rejection needs a registry
+change; it is outside the static-registry and one-fork scope here. The premise
+still requires timely receipt and service. It matches clients
 that validate network evidence against a newer state. Lighthouse, Prysm, Teku,
 Lodestar, and Nimbus use the head state; Lighthouse advances it to the
 wall-clock slot. Grandine follows the specification and uses the justified

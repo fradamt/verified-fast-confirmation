@@ -1,5 +1,6 @@
 module
 public import FastConfirmationWitnesses.Counterexamples.EarlyEpochBoundary
+public import FastConfirmationWitnesses.Counterexamples.EstimateForcesBalance
 public import FastConfirmationWitnesses.Counterexamples.CheckpointSyncFilter
 public import FastConfirmationWitnesses.Counterexamples.PinnedEconomicsExtraQuery
 public import FastConfirmationWitnesses.Counterexamples.StrictPrefixExtraQuery

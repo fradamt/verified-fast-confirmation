@@ -264,7 +264,7 @@ should_apply_proposer_boost are not exercised positively. The one-second
 runs set `attestation_due_bps` to zero. The main safety runs have four or five
 validators and one validator per slot committee. Included slashing does not mark a validator slashed in state.
 `DeadlineVotePathCandidate` checks that a skipped-boundary schedule fails the
-pre-tick relay. The audited public theorem set has 43 entries. Four regression checks are:
+pre-tick relay. The audited public theorem set has 44 entries. Four regression checks are:
 `CheckpointSyncFilterWitness.normalized_anchor_run_keeps_child`,
 `CheckpointSyncFilterWitness.anchor_only_view_satisfies_inclusion`,
 `EarlyEpochBoundaryWitness.epoch_one_boundary_regression`, and

@@ -11,5 +11,5 @@ Add Python function definitions to Model/Spec by source section. Add run functio
 
 A change passes `scripts/validate.sh --fast` before commit. A library or import change also passes full `scripts/validate.sh`. The checks enforce source pinning, names, import closure, Statement reachability, exact review shape, full elaboration, and the trust audit. `scripts/check_imports.py` checks the library graph. `scripts/Audit.lean` remains a script with ordinary imports so that it can inspect proof bodies.
 The current reachability check has 60 claim-reachable source declarations and
-no approved exception. The trust audit checks 43 public
+no approved exception. The trust audit checks 44 public
 theorem witnesses. Update these counts when the check scripts change.

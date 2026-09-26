@@ -1,6 +1,6 @@
 # Review guide
 
-`ReviewClaims` has one safety field. `review_claims` proves it. The field states observer-store membership and executable ancestry from the next slot. The trust audit checks 43 public theorems: 36 executable-side and seven paper-side. [Former live theorem history](history/live-monotonicity-removed.md).
+`ReviewClaims` has one safety field. `review_claims` proves it. The field states observer-store membership and executable ancestry from the next slot. The trust audit checks 44 public theorems: 37 executable-side and seven paper-side. [Former live theorem history](history/live-monotonicity-removed.md).
 
 `NextSlotSafetyPremises.anchor_state_checkpoints` covers a genesis anchor whose state
 has the zero-root stub. It also covers a normalized anchor state whose current justified
@@ -110,7 +110,7 @@ reviewed records and the definition of the safety claim.
 2. **Statements premises:** Read the safety field of `ReviewClaims`. Expand each record in `FastConfirmationStatements/Premises/`. Check the observer, time, horizon, and successful-prefix ranges.
 3. **Externals:** Check the table below against `BeaconFunctionInterface` and `BeaconExternalsPremises`. Check the supplied FFG inclusion and certificate evidence. The slashing relay is a separate premise over the literal Python handler.
 4. **Claims:** Read the proof terms in `FastConfirmationProofs/`. Check `confirmed_root_safe_from_next_slot` and `review_claims`. Read the independent Paper library with [the paper map](PAPER_MAP.md).
-5. **Witnesses:** Read `FastConfirmationWitnesses/Index.lean`. Check each run's true guards and vacuous branches. Check the 43 audited public theorems in `scripts/Audit.lean`.
+5. **Witnesses:** Read `FastConfirmationWitnesses/Index.lean`. Check each run's true guards and vacuous branches. Check the 44 audited public theorems in `scripts/Audit.lean`.
 
 ## Trusted boundary
 
@@ -221,7 +221,7 @@ Block and envelope exclusion is checked before the next-slot tick. It permits on
 
 The source of record is fork `fradamt/consensus-specs`, tag `fcr-gloas-fix` (`13f391516`). The [source map](SPEC_MAP.md) records the exact difference from upstream. The [conformance harness](conformance.md) compares projected Python and Lean observations. A matching trace does not prove all external contracts or all reachable executions. The `weak-synchrony` branch contains work in progress on weaker timing premises and is outside this review.
 
-`scripts/validate.sh --fast` checks the source pin, document names, import boundary, and hygiene. Full validation builds the libraries and checks imports, reachability, surface shape, and the 43 public witnesses. `scripts/Audit.lean` allows only `propext`, `Classical.choice`, and `Quot.sound`.
+`scripts/validate.sh --fast` checks the source pin, document names, import boundary, and hygiene. Full validation builds the libraries and checks imports, reachability, surface shape, and the 44 public witnesses. `scripts/Audit.lean` allows only `propext`, `Classical.choice`, and `Quot.sound`.
 
 ## Known limits
 

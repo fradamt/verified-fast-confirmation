@@ -71,7 +71,7 @@ membership and executable ancestry.
 │ReviewSurfaceShape.lean     │Field names and types of 18 records and the claim body remain exact.                         │
 │check_imports.py            │The six-library import direction and Paper separation hold.                                  │
 │check_doc_names.py          │Backticked Lean names in current documents resolve to declarations or files.                 │
-│Audit.lean                  │The 43 audited public theorems have only standard axiom dependencies. No forbidden           │
+│Audit.lean                  │The 44 audited public theorems have only standard axiom dependencies. No forbidden           │
 │                            │declaration is allowed.                                                                      │
 │validate.sh                 │Fast checks above; full mode also builds every library and runs Lean checks.                 │
 └────────────────────────────┴─────────────────────────────────────────────────────────────────────────────────────────────┘
@@ -88,7 +88,7 @@ public safety theorem still consumes the supplied interpretation. The projection
 harness checks each interpretation law on real pyspec runs. Full-bundle witnesses
 show consistency, while the contract and differential checks test Python behavior.
 
-The active inventory has 160 claim-reachable premise fields. Its labels separate tested state laws, execution scope, network and behavior, supplied interpretation, and idealizations. Two relay fields have both network and idealization labels.
+The active inventory has 160 authored claim-reachable premise fields. The Lean reachability audit also checks two inherited projections and two outside Prop boundaries. Its labels separate tested state laws, execution scope, network and behavior, supplied interpretation, and idealizations. Two relay fields have both network and idealization labels.
 The field list is checked against the claim-type reachability audit. CI runs the
 Python contract, projection, realized-gap, and concrete differential checks in
 a separate pinned-pyspec job.

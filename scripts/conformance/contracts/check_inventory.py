@@ -40,6 +40,7 @@ def check_inventory(reachable_file: Path | None = None) -> dict[str, dict]:
         raise ValueError("unknown inventory version")
     rows = data["field"]
     boundaries = data.get("boundary", [])
+    generated = data.get("generated", [])
     for row in boundaries:
         source = (ROOT / row["file"]).read_text()
         name = row["path"].rsplit(".", 1)[-1]
@@ -70,6 +71,29 @@ def check_inventory(reachable_file: Path | None = None) -> dict[str, dict]:
         if not reachable or "NextSlotSafetyPremises" not in reachable:
             raise ValueError("reachability audit has no safety premise root")
     source = source_fields(reachable)
+    if reachable_file is not None:
+        audit = reachable_file.read_text()
+        lean_fields = {}
+        for line in audit.splitlines():
+            if line.startswith("PF\t"):
+                _, module, declaration = line.split("\t")
+                parts = declaration.split(".")
+                lean_fields[".".join(parts[-2:])] = module.split(".")[-1] + ".lean"
+        if not lean_fields:
+            raise ValueError("Lean reachability audit has no premise fields")
+        generated_fields = {row["path"]: row for row in generated}
+        lean_only = set(lean_fields) - set(source)
+        source_only = set(source) - set(lean_fields)
+        if lean_only != set(generated_fields) or source_only:
+            raise ValueError(f"Lean/source field mismatch: Lean-only={sorted(lean_only)}, source-only={sorted(source_only)}, classified generated={sorted(generated_fields)}")
+        for key, row in generated_fields.items():
+            if lean_fields[key] != row["file"] or row["class"] != "E-interpretation" or not row.get("reason"):
+                raise ValueError(f"generated field metadata invalid: {key}")
+        lean_boundaries = {line.split("\t", 1)[1] for line in audit.splitlines()
+                           if line.startswith("RB\t")}
+        boundary_names = {"FastConfirmation.Spec." + row["path"] for row in boundaries}
+        if lean_boundaries != boundary_names:
+            raise ValueError(f"Lean boundary mismatch: {sorted(lean_boundaries ^ boundary_names)}")
     missing = set(source) - set(inventory)
     stale = set(inventory) - set(source)
     misplaced = [k for k in source.keys() & inventory.keys() if source[k] != inventory[k]["file"]]
@@ -78,7 +102,7 @@ def check_inventory(reachable_file: Path | None = None) -> dict[str, dict]:
     active = [row for row in rows if row["path"] in source]
     counts = {klass: sum(klass in row["class"].split("+") for row in active)
               for klass in ("T", "E-scope", "E-network/behavior", "E-interpretation", "I")}
-    print(f"contract inventory passed: {len(active)} active fields and {len(boundaries)} outside boundaries "
+    print(f"contract inventory passed: {len(active)} authored fields, {len(generated)} inherited projections, {len(boundaries)} outside boundaries "
           + " / ".join(f"{klass} {count}" for klass, count in counts.items()))
     return inventory
 

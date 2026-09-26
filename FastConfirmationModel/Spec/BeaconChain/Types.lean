@@ -6,7 +6,10 @@ public import FastConfirmationModel.Spec.Config
 
 @[expose] public section
 
-/-! Defines the projected Gloas blocks, attestations, states, validators, and checkpoints read by fork choice and FCR. Python: `specs/gloas/beacon-chain.md`, Containers; `specs/phase0/beacon-chain.md`, Containers. -/
+/-! Defines the projected Gloas blocks, attestations, states, validators,
+and checkpoints read by fork choice and FCR. Python:
+`specs/gloas/beacon-chain.md`, Containers;
+`specs/phase0/beacon-chain.md`, Containers. -/
 
 namespace FastConfirmation.Spec
 /-- `Slot` (python `uint64`). -/

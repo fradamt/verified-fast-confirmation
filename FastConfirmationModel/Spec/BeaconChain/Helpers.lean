@@ -8,7 +8,9 @@ public import FastConfirmationModel.Execution.Externals
 
 @[expose] public section
 
-/-! Defines epoch, validator activity, and balance helpers used by beacon-chain and FCR functions. Python: `specs/phase0/beacon-chain.md`, Beacon chain helpers. -/
+/-! Defines epoch, validator activity, and balance helpers used by
+beacon chain and FCR. Python: `specs/phase0/beacon-chain.md`,
+Beacon chain helpers. -/
 
 namespace FastConfirmation.Spec
 variable {Root : Type*}

@@ -113,7 +113,7 @@ process the second's scheduled events left-to-right, a rejected event
 (`none`) leaving the store unchanged (the spec's "delay consideration" —
 under synchrony, honest messages are scheduled where they apply). -/
 def store (v : ValidatorIndex) : ℕ → Store Root
-  | 0 => E.genesis_store
+  | 0 => E.genesis_store  -- The anchor is preinstalled; schedule v 0 is ignored.
   | n + 1 =>
     let ticked := on_tick cfg (store v n) (E.time_at (n + 1))
     (E.schedule v (n + 1)).foldl
