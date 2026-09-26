@@ -216,7 +216,14 @@ structure IncludedCheckpointEvidence (E : Execution Root)
 /-- The production block-local FFG state.  Selector functions remain total
 for Lean convenience, but all semantic laws are restricted to causal-prefix
 accepted roots or exact accepted block carriers.  Every positive inclusion
-and formed carrier is accepted. -/
+and formed carrier is accepted.
+
+The maximality laws follow the Python timing.  `realized_justified` of a block
+in epoch `E` is the result of the epoch-boundary justification runs before
+`E`, so it reflects only evidence in blocks of earlier epochs.
+`unrealized_justified` runs the same function on the block state at epoch
+`E`.  Both runs return early at epochs up to `GENESIS_EPOCH + 1`, hence the
+epoch bound in `realized_justified_max`. -/
 structure AcceptedBlockFFGState (E : Execution Root)
     (anchor : Checkpoint Root) where
   includedAttestations :
@@ -243,12 +250,32 @@ structure AcceptedBlockFFGState (E : Execution Root)
     ∃ carrier, E.RootDescends r carrier ∧ checkpoint_evidence_in_block carrier (unrealized_finalized r)
   realized_justified_anchor_or_before : ∀ {r b}, E.BlockKnownInScheduledPrefix cfg ext r b →
     realized_justified r = anchor ∨ (realized_justified r).epoch < compute_epoch_at_slot cfg b.slot
-  realized_justified_max : ∀ {r b c}, E.BlockKnownInScheduledPrefix cfg ext r b →
-    (∃ carrier, E.RootDescends r carrier ∧ checkpoint_evidence_in_block carrier c) →
-    c.epoch < compute_epoch_at_slot cfg b.slot → c.epoch ≤ (realized_justified r).epoch
+  realized_justified_max : ∀ {r b seed sb c}, E.BlockKnownInScheduledPrefix cfg ext r b →
+    E.BlockKnownInScheduledPrefix cfg ext seed sb → E.RootDescends r seed →
+    compute_epoch_at_slot cfg sb.slot < compute_epoch_at_slot cfg b.slot →
+    GENESIS_EPOCH + 2 < compute_epoch_at_slot cfg b.slot →
+    (∃ carrier, E.RootDescends seed carrier ∧ checkpoint_evidence_in_block carrier c) →
+    c.epoch ≤ (realized_justified r).epoch
+  realized_justified_realized : ∀ {r b}, E.BlockKnownInScheduledPrefix cfg ext r b →
+    realized_justified r = anchor ∨
+      GENESIS_EPOCH + 2 < compute_epoch_at_slot cfg b.slot ∧
+      ∃ seed sb, E.BlockKnownInScheduledPrefix cfg ext seed sb ∧ E.RootDescends r seed ∧
+        compute_epoch_at_slot cfg sb.slot < compute_epoch_at_slot cfg b.slot ∧
+        ∃ carrier, E.RootDescends seed carrier ∧
+          checkpoint_evidence_in_block carrier (realized_justified r)
   unrealized_justified_max : ∀ {r c}, E.RootKnownInScheduledPrefix cfg ext r →
     (∃ carrier, E.RootDescends r carrier ∧ checkpoint_evidence_in_block carrier c) →
     c.epoch ≤ (unrealized_justified r).epoch
+  realized_justified_epoch_le_unrealized : ∀ r, E.RootKnownInScheduledPrefix cfg ext r →
+    (realized_justified r).epoch ≤ (unrealized_justified r).epoch
+  unrealized_justified_mono : ∀ {seed tip}, E.RootKnownInScheduledPrefix cfg ext seed →
+    E.RootKnownInScheduledPrefix cfg ext tip → E.RootDescends tip seed →
+    (unrealized_justified seed).epoch ≤ (unrealized_justified tip).epoch
+  unrealized_justified_epoch_le_later_realized : ∀ {seed sb tip tb},
+    E.BlockKnownInScheduledPrefix cfg ext seed sb →
+    E.BlockKnownInScheduledPrefix cfg ext tip tb → E.RootDescends tip seed →
+    compute_epoch_at_slot cfg sb.slot < compute_epoch_at_slot cfg tb.slot →
+    (unrealized_justified seed).epoch ≤ (realized_justified tip).epoch
   available_checkpoint_epoch_le_block : ∀ {r b c}, E.BlockKnownInScheduledPrefix cfg ext r b →
     (∃ carrier, E.RootDescends r carrier ∧ checkpoint_evidence_in_block carrier c) →
     c.epoch ≤ compute_epoch_at_slot cfg b.slot
@@ -262,6 +289,8 @@ structure AcceptedBlockFFGState (E : Execution Root)
     (realized_finalized r).epoch ≤ (realized_justified r).epoch
   unrealized_finalized_epoch_le_unrealized_justified : ∀ r, E.RootKnownInScheduledPrefix cfg ext r →
     (unrealized_finalized r).epoch ≤ (unrealized_justified r).epoch
+  unrealized_finalized_epoch_le_realized_justified : ∀ r, E.RootKnownInScheduledPrefix cfg ext r →
+    (unrealized_finalized r).epoch ≤ (realized_justified r).epoch
 
 namespace AcceptedBlockFFGState
 

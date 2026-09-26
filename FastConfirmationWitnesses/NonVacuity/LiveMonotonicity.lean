@@ -999,13 +999,18 @@ def ffgState : AcceptedBlockFFGState cfg ext E anchorCheckpoint where
     intro r b haccepted
     exact Or.inl rfl
   realized_justified_max := by
-    intro r b c haccepted hformed hepoch
-    obtain ⟨carrier, hdesc, ⟨rfl, rfl⟩⟩ := hformed
+    intro r b seed sb c haccepted hseed hdesc hepoch hlate hformed
+    obtain ⟨carrier, hcarrier, ⟨rfl, rfl⟩⟩ := hformed
     rfl
+  realized_justified_realized := by intro r b haccepted; exact Or.inl rfl
   unrealized_justified_max := by
     intro r c hr hformed
     obtain ⟨carrier, hdesc, ⟨rfl, rfl⟩⟩ := hformed
     rfl
+  realized_justified_epoch_le_unrealized := by intro r hr; rfl
+  unrealized_justified_mono := by intro seed tip hseed htip hdesc; rfl
+  unrealized_justified_epoch_le_later_realized := by
+    intro seed sb tip tb hseed htip hdesc hepoch; rfl
   available_checkpoint_epoch_le_block := by
     intro r b c haccepted hformed
     obtain ⟨carrier, hdesc, ⟨rfl, rfl⟩⟩ := hformed
@@ -1014,6 +1019,7 @@ def ffgState : AcceptedBlockFFGState cfg ext E anchorCheckpoint where
   unrealized_finalized_evidence := by intro r hr; exact Or.inl rfl
   realized_finalized_epoch_le_realized_justified := by intro r hr; rfl
   unrealized_finalized_epoch_le_unrealized_justified := by intro r hr; rfl
+  unrealized_finalized_epoch_le_realized_justified := by intro r hr; rfl
 
 
 theorem checkpointOfKnown {store : Store Root}

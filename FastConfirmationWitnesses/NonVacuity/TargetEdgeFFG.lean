@@ -563,18 +563,14 @@ def witnessAcceptedChainFFGState :
     intro r b haccepted
     exact Or.inl rfl
   realized_justified_max := by
-    intro r b c haccepted hformed hepoch
-    obtain ⟨carrier, hdesc, hformed⟩ := hformed
-    rcases hformed with ⟨rfl, rfl⟩ | ⟨rfl, rfl | rfl⟩
-    · simp [anchorCheckpoint]
-    · simp [anchorCheckpoint]
-    · have hr : r = carrierRoot := rootDescends_carrier_iff.mp hdesc
-      subst r
-      rcases acceptedBlockAt_cases haccepted with h | h | h <;>
-        simp_all [witnessConfig, compute_epoch_at_slot, anchorSignedBlock,
-          childSignedBlock, carrierSignedBlock, anchorRoot, childRoot,
-          carrierRoot, anchorCheckpoint,
-          childEpochOneCheckpoint]
+    intro r b seed sb c haccepted _hseed _hdesc _hepoch hlate _hformed
+    exfalso
+    rcases acceptedBlockAt_cases haccepted with h | h | h <;>
+      simp_all [witnessConfig, compute_epoch_at_slot, anchorSignedBlock,
+        childSignedBlock, carrierSignedBlock, GENESIS_EPOCH]
+  realized_justified_realized := by
+    intro r b _haccepted
+    exact Or.inl rfl
   unrealized_justified_max := by
     intro r c hr hformed
     obtain ⟨carrier, hdesc, hformed⟩ := hformed
@@ -584,6 +580,28 @@ def witnessAcceptedChainFFGState :
     · have hrCarrier : r = carrierRoot := rootDescends_carrier_iff.mp hdesc
       subst r
       simp [witnessGU, childEpochOneCheckpoint]
+  realized_justified_epoch_le_unrealized := by
+    intro r _hr
+    simp [witnessGU, anchorCheckpoint, childEpochOneCheckpoint]
+  unrealized_justified_mono := by
+    intro seed tip _hseed _htip hdesc
+    by_cases hs : seed = carrierRoot
+    · subst seed
+      have htipCarrier : tip = carrierRoot := rootDescends_carrier_iff.mp hdesc
+      subst tip
+      exact le_rfl
+    · simp [witnessGU, hs, anchorCheckpoint]
+  unrealized_justified_epoch_le_later_realized := by
+    intro seed sb tip tb hseed htip hdesc hepoch
+    by_cases hs : seed = carrierRoot
+    · subst seed
+      have htipCarrier : tip = carrierRoot := rootDescends_carrier_iff.mp hdesc
+      subst tip
+      exfalso
+      rcases acceptedBlockAt_cases hseed with h | h | h <;>
+        rcases acceptedBlockAt_cases htip with h' | h' | h' <;>
+        simp_all [anchorRoot, childRoot, carrierRoot]
+    · simp [witnessGU, hs, anchorCheckpoint]
   available_checkpoint_epoch_le_block := by
     intro r b c haccepted hformed
     obtain ⟨carrier, hdesc, hformed⟩ := hformed
@@ -608,6 +626,9 @@ def witnessAcceptedChainFFGState :
   unrealized_finalized_epoch_le_unrealized_justified := by
     intro r hr
     simp [witnessGU, anchorCheckpoint, childEpochOneCheckpoint]
+  unrealized_finalized_epoch_le_realized_justified := by
+    intro r hr
+    rfl
 
 /-! ## Checkpoint reflection at every exact causal prefix -/
 

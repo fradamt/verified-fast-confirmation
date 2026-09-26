@@ -49,10 +49,8 @@ theorem gu_epoch_le_of_descends
     (hseed : E.RootKnownInScheduledPrefix cfg ext seed)
     (htip : E.RootKnownInScheduledPrefix cfg ext tip)
     (hdesc : E.RootDescends tip seed) :
-    (S.unrealized_justified seed).epoch ≤ (S.unrealized_justified tip).epoch := by
-  apply S.unrealized_justified_max htip
-  exact AcceptedBlockFFGState.AvailableCheckpoint.mono (cfg := cfg) (ext := ext) S hdesc
-    (S.gu_AU cfg ext hseed)
+    (S.unrealized_justified seed).epoch ≤ (S.unrealized_justified tip).epoch :=
+  S.unrealized_justified_mono hseed htip hdesc
 
 /-- Accepted `GJ` epochs are monotone along a nondecreasing-epoch semantic
 descent. -/
@@ -65,29 +63,29 @@ theorem gj_epoch_le_of_descends
     (hepoch : compute_epoch_at_slot cfg seedBlock.slot ≤
       compute_epoch_at_slot cfg tipBlock.slot) :
     (S.realized_justified seed).epoch ≤ (S.realized_justified tip).epoch := by
-  rcases S.realized_justified_anchor_or_before hseed with hanchor | hbefore
+  rcases S.realized_justified_realized hseed with hanchor |
+      ⟨hlate, earlier, earlierBlock, hearlier, hseedEarlier, hearlierEpoch, hAU⟩
   · rw [hanchor]
     obtain ⟨htipCertified⟩ := S.gj_certified cfg ext htip.acceptedRoot
     exact CertifiedJustified.anchor_epoch_le (cfg := cfg) htipCertified
-  · apply S.realized_justified_max htip
-      (AcceptedBlockFFGState.AvailableCheckpoint.mono (cfg := cfg) (ext := ext) S hdesc
-        (S.gj_AU cfg ext hseed.acceptedRoot))
-    exact hbefore.trans_le hepoch
+  · exact S.realized_justified_max htip hearlier
+      (Execution.RootDescends.trans E hdesc hseedEarlier)
+      (hearlierEpoch.trans_le hepoch) (hlate.trans_le hepoch) hAU
 
-/-- An old accepted `GU` source is below the realized `GJ` of a strictly
-later-epoch descendant. -/
+/-- The accepted `GU` of a block is below the realized `GJ` of a descendant
+in a strictly later epoch.  The epoch order is on the blocks, not on the
+checkpoint: a `GU` epoch below the tip epoch is not enough, because the
+realized value reflects only evidence from blocks of earlier epochs. -/
 theorem gu_epoch_le_gj_of_descends
     (S : AcceptedBlockFFGState cfg ext E anchor)
-    {seed tip : Root} {tipBlock : BeaconBlock Root}
-    (hseed : E.RootKnownInScheduledPrefix cfg ext seed)
+    {seed tip : Root} {seedBlock tipBlock : BeaconBlock Root}
+    (hseed : E.BlockKnownInScheduledPrefix cfg ext seed seedBlock)
     (htip : E.BlockKnownInScheduledPrefix cfg ext tip tipBlock)
     (hdesc : E.RootDescends tip seed)
-    (hbefore : (S.unrealized_justified seed).epoch <
+    (hbefore : compute_epoch_at_slot cfg seedBlock.slot <
       compute_epoch_at_slot cfg tipBlock.slot) :
-    (S.unrealized_justified seed).epoch ≤ (S.realized_justified tip).epoch := by
-  exact S.realized_justified_max htip
-    (AcceptedBlockFFGState.AvailableCheckpoint.mono (cfg := cfg) (ext := ext) S hdesc
-      (S.gu_AU cfg ext hseed)) hbefore
+    (S.unrealized_justified seed).epoch ≤ (S.realized_justified tip).epoch :=
+  S.unrealized_justified_epoch_le_later_realized hseed htip hdesc hbefore
 
 end AcceptedBlockFFGState
 
@@ -261,16 +259,12 @@ theorem acceptedVotingSourceEpochChainPersistence
       have htipCurrent : get_block_epoch cfg store tip =
           get_current_store_epoch cfg store :=
         Nat.le_antisymm htipEpochCurrent (Nat.le_of_not_gt htipOld)
-      have hguSeedBlock : (B.state.unrealized_justified seed).epoch ≤
-          get_block_epoch cfg store seed := by
-        exact B.state.available_checkpoint_epoch_le_block hseedAt
-          (B.state.gu_AU cfg ext hseedAt.acceptedRoot)
-      have hguBeforeTip : (B.state.unrealized_justified seed).epoch <
+      have hseedBeforeTip : get_block_epoch cfg store seed <
           get_block_epoch cfg store tip := by
         rw [htipCurrent]
-        exact hguSeedBlock.trans_lt hseedOld
+        exact hseedOld
       exact B.state.gu_epoch_le_gj_of_descends cfg ext
-        hseedAt.acceptedRoot htipAt hsemantic hguBeforeTip
+        hseedAt htipAt hsemantic hseedBeforeTip
   · rw [if_neg hseedOld]
     by_cases htipOld : get_current_store_epoch cfg store >
         get_block_epoch cfg store tip

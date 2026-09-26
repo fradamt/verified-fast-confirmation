@@ -88,6 +88,11 @@ python3 scripts/check_doc_names.py
 python3 scripts/check_review_boundary.py
 python3 scripts/check_review_boundary.py --self-test
 python3 scripts/conformance/contracts/check_inventory.py --repo "$consensus_repo"
+if [[ -x "$consensus_repo/.venv/bin/python" ]]; then
+  "$consensus_repo/.venv/bin/python" scripts/conformance/contracts/test_realized_gap.py --repo "$consensus_repo"
+else
+  echo "realized-gap regression skipped: pyspec interpreter absent at $consensus_repo/.venv/bin/python"
+fi
 
 if [[ "$mode" == "full" ]]; then
   scripts/check_build.sh

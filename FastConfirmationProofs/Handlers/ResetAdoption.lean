@@ -193,27 +193,10 @@ theorem finalized_epoch_le_justified_of_acceptedCarrierKnown
         (cfg := cfg) (ext := ext) (E.store cfg ext w m) tip :=
       Execution.AcceptedCarrierIn.of_causal_known hendpoint
         htipEndpointKnown
-    rcases B.state.unrealized_finalized_evidence tip htipSource.acceptedRoot with
-      hgufAnchor | hcertificate
-    · rw [hfieldGUF, hgufAnchor]
-      exact E.anchor_epoch_le_acceptedGlobalJustified cfg ext B
-        hgenShort hanchor hendpoint
-    · obtain ⟨hcertificate⟩ := hcertificate
-      have hgufLt : (B.state.unrealized_finalized tip).epoch <
-          compute_epoch_at_slot cfg
-            ((E.store cfg ext v q).blocks tip).slot :=
-        E.includedCertifiedFinalized_epoch_lt_acceptedCarrierBlock
-          cfg ext B hT htipSource.known hcertificate
-      have htipAt : E.BlockKnownInScheduledPrefix cfg ext tip
-          ((E.store cfg ext v q).blocks tip) :=
-        E.acceptedBlockAt_of_causal_known cfg ext hsource htipSource.known
-      have hgufLeGJ : (B.state.unrealized_finalized tip).epoch ≤
-          (B.state.realized_justified tip).epoch :=
-        B.state.realized_justified_max htipAt
-          (B.state.unrealized_finalized_mem tip htipSource.acceptedRoot) hgufLt
-      rw [hfieldGUF]
-      exact hgufLeGJ.trans
-        (hmax.ledger.gj_epoch_le_justified tip htipEndpoint)
+    rw [hfieldGUF]
+    exact (B.state.unrealized_finalized_epoch_le_realized_justified tip
+        htipSource.acceptedRoot).trans
+      (hmax.ledger.gj_epoch_le_justified tip htipEndpoint)
 
 /-! ## The observed seam is a narrow source-lock law -/
 

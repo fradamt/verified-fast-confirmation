@@ -166,7 +166,7 @@ theorem guf_AU (S : AcceptedBlockFFGState cfg ext E anchor)
 theorem gj_epoch_le_gu (S : AcceptedBlockFFGState cfg ext E anchor)
     {r : Root} (hr : E.RootKnownInScheduledPrefix cfg ext r) :
     (S.realized_justified r).epoch ≤ (S.unrealized_justified r).epoch :=
-  S.unrealized_justified_max hr (S.realized_justified_mem r hr)
+  S.realized_justified_epoch_le_unrealized r hr
 
 end AcceptedBlockFFGState
 
