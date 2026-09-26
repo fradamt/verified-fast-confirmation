@@ -6,9 +6,9 @@
   `FastConfirmationPaper`. `FastConfirmation.lean` imports all six.
 - Spec-side imports go from Witnesses to Proofs to Internal to Statements to
   Model, or stay within one library. Paper and the Spec side do not import
-  each other. Keep Model and Statements free of authored theorems except the
-  proof terms needed by `AcceptedBlockTransition.successorPrefix` and
-  `getLatestConfirmedTrace`.
+  each other. Keep Model and Statements free of authored theorems except
+  `SuccessfulScheduledBlockImport.processedCount_lt`, which supports the
+  successor-prefix definition in Model.
 - Model files under `Spec/` follow the Python consensus specification's
   sections. `Execution/` holds scheduled runs, stake reads, and external
   functions. Statements holds premises and claims; Internal holds proof
@@ -48,3 +48,7 @@
 - `docs/REVIEW_GUIDE.md` gives the cold review reading order, audit dimensions, and current limits.
 - `docs/conformance.md` describes the trace comparison.
 - Earlier notes are in `docs/history/`.
+
+The reachability check has 61 claim-reachable source declarations and one
+approved public exception, `Synchrony`. The trust audit checks 43 public
+theorem witnesses. Check these counts against the scripts when they change.

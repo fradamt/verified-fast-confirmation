@@ -1,5 +1,7 @@
 # Verified Fast Confirmation
 
+[![CI](https://github.com/fradamt/verified-fast-confirmation/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/fradamt/verified-fast-confirmation/actions/workflows/ci.yml)
+
 The Fast Confirmation Rule (FCR) selects a block root that a node can treat as confirmed from its fork-choice state.
 
 ## Proved claims
@@ -14,23 +16,23 @@ The result concerns stored boundary outputs. It does not cover an arbitrary quer
 ## Assumptions at a glance
 
 ```text
-┌────────────────────────┬─────────────────────────────────────────────────────────────────────────────────────────────┐
-│ Assumption             │ Plain meaning and premise record                                                            │
-├────────────────────────┼─────────────────────────────────────────────────────────────────────────────────────────────┤
-│ Honest operation       │ Honest nodes process scheduled events. They vote by the due time. See                       │
-│                        │ Execution.ScheduledExecutionPremises and HonestBehavior.                                       │
-│ Timely delivery        │ Needed votes, blocks, payload data, and evidence reach honest nodes before the next         │
-│                        │ boundary under positive delay. See NextSlotSynchronyPremises.                               │
-│ Stake and committees   │ Validators stay active. Committee estimates hold for every checked slot span. The fault     │
-│                        │ bound holds for every checked slot span. See StaticValidatorSet and                         │
-│                        │ ByzantineWeightPremises.                                                                    │
-│ Beacon and FFG state   │ External transitions match accepted evidence. Supplied checkpoint links match accepted      │
-│                        │ evidence. See BeaconExternalsPremises and ScheduledFFGInterpretation.                    │
-│ Payload validity       │ Imported payloads pass opaque execution validation. See BeaconExternalsPremises and the     │
-│                        │ execution external contract.                                                                │
-│ Live claim only        │ Each slot has an honest block. Honest votes support it. FFG justification is visible at the │
-│                        │ required epoch boundary. See LiveMonotonicityPremises.                                      │
-└────────────────────────┴─────────────────────────────────────────────────────────────────────────────────────────────┘
+┌──────────────────────┬─────────────────────────────────────────────────────────────────────────────────────────────┐
+│ Assumption           │ Plain meaning and premise record                                                            │
+├──────────────────────┼─────────────────────────────────────────────────────────────────────────────────────────────┤
+│ Honest operation     │ Honest nodes process scheduled events. They vote by the due time. See                       │
+│                      │ Execution.ScheduledExecutionPremises and HonestBehavior.                                    │
+│ Timely delivery      │ Delivery laws require needed votes, blocks, payload data, and evidence before the next      │
+│                      │ boundary. The positive delay is a timing parameter. See NextSlotSynchronyPremises.          │
+│ Stake and committees │ Validators stay active. Committee estimates hold for every checked slot span. The fault     │
+│                      │ bound holds for every checked slot span. See StaticValidatorSet and                         │
+│                      │ ByzantineWeightPremises.                                                                    │
+│ Beacon and FFG state │ External transitions match accepted evidence. Supplied checkpoint links match accepted      │
+│                      │ evidence. See BeaconExternalsPremises and ScheduledFFGInterpretation.                       │
+│ Payload validity     │ Imported payloads pass opaque execution validation. See BeaconExternalsPremises and the     │
+│                      │ execution external contract.                                                                │
+│ Live claim only      │ Each slot has an honest block. Honest votes support it. FFG justification is visible at the │
+│                      │ required epoch boundary. See LiveMonotonicityPremises.                                      │
+└──────────────────────┴─────────────────────────────────────────────────────────────────────────────────────────────┘
 ```
 
 Prediction support is derived by joint induction over calls and endpoint slots.
@@ -41,6 +43,9 @@ target, source, and deadline. See `Execution.confirmed_safety_and_lineage_of_acc
 The [premise ledger](#premise-ledger) gives the remaining records and sources.
 Evidence relay is a premise. The fault bound applies to each checked span.
 The live fields are stronger than paper Assumption 6.
+The positive `delta` value is a timing parameter. The delivery laws in
+`NextSlotSynchronyPremises` supply the network assumption. The proof does not
+derive handler service or delivery from `delta` alone.
 
 ## Trust and source
 
@@ -77,33 +82,72 @@ path must name the pinned local checkout.
 The records in this table are in `FastConfirmationStatements/Premises/`. The last column gives the source of each condition.
 
 ```text
-┌────────────────────┬────────────────────────────────────┬──────────────────────────────────────────────────────────────────────────────────┬───────────────────────────────┐
-│ Claim              │ Premise record                     │ Fields in plain words                                                            │ Source                        │
-├────────────────────┼────────────────────────────────────┼──────────────────────────────────────────────────────────────────────────────────┼───────────────────────────────┤
-│ Safety field       │ Execution.NextSlotSafetyPremises   │ Exact FFG state at every handler-successful prefix; a well formed scheduled run; │ Paper Assumption 3.2; Gloas   │
-│                    │                                    │ completed FCR calls; epoch arithmetic; anchor alignment; finalization            │ extension; model idealisation │
-│                    │                                    │ delay; more than one slot per epoch; checkpoint and link evidence.               │                               │
-│ Safety field       │ Execution.ScheduledExecutionPremises  │ Whole seconds, well formed stores, coherent external calls, honest               │ Model idealisation            │
-│                    │                                    │ behavior with an attestation deadline, and a valid genesis store.                │ Phase0/Gloas; model premise   │
-│ Safety field       │ Execution.ScheduledFCRCallPremises │ Five delivery laws; fixed active validators; committee and Byzantine             │ Paper Assumptions 1 and 2;    │
-│                    │                                    │ weight bounds; Phase0 source coherence; a nonzero balance floor;                 │ Gloas extension; model        │
-│                    │                                    │ next-slot vote receipt.                                                          │ idealisation                  │
-│ Safety field       │ NextSlotSynchronyPremises          │ Positive delay; deadline cutoff for block, envelope, data and evidence           │ Paper synchrony; Gloas        │
-│                    │                                    │ relay; pre-tick exclusion; payload service before boundary votes.                │ extension                     │
-│ Safety field       │ BeaconExternalsPremises            │ Slot and state transition coherence, committee and attestation                   │ Model idealisation            │
-│                    │                                    │ validity, and deterministic envelope verification.                               │                               │
-│ Safety field       │ ByzantineWeightPremises            │ Quantized balances, sound committee estimates, and a non-honest weight           │ Paper Assumption 2;           │
-│                    │                                    │ fraction bound for every span, including one slot. A global fault                │ executable estimate           │
-│                    │                                    │ share does not establish this span bound.                                        │                               │
-│ Safety field       │ ScheduledFFGInterpretation;     │ Exact handler-successful prefix FFG state, causal links, and projected           │ Paper Assumption 3.2; model   │
-│                    │ EpochCheckpointProjectionLaws             │ checkpoint roots.                                                                │ idealisation                  │
-│ Live field         │ LiveMonotonicityPremises           │ An honest block in each slot from execution start, known by the next             │ Paper Theorem 1 monotonicity  │
-│                    │                                    │ slot and supported by honest votes; timely observed FFG justification            │ and Assumption 6,             │
-│                    │                                    │ at epoch boundaries.                                                             │ strengthened                  │
-└────────────────────┴────────────────────────────────────┴──────────────────────────────────────────────────────────────────────────────────┴───────────────────────────────┘
+┌──────────────┬──────────────────────────────────────┬──────────────────────────────────────────────────────────────────────────────────┬───────────────────────────────┐
+│ Claim        │ Premise record                       │ Fields in plain words                                                            │ Source                        │
+├──────────────┼──────────────────────────────────────┼──────────────────────────────────────────────────────────────────────────────────┼───────────────────────────────┤
+│ Safety field │ Execution.NextSlotSafetyPremises     │ Exact FFG state at every handler-successful prefix; a well formed scheduled run; │ Paper Assumption 3.2; Gloas   │
+│              │                                      │ completed FCR calls; epoch arithmetic; anchor alignment; finalization            │ extension; model idealisation │
+│              │                                      │ delay; more than one slot per epoch; checkpoint and link evidence.               │                               │
+│ Safety field │ Execution.ScheduledExecutionPremises │ Whole seconds, well formed stores, coherent external calls, honest               │ Model idealisation            │
+│              │                                      │ behavior with an attestation deadline, and a valid genesis store.                │ Phase0/Gloas; model premise   │
+│ Safety field │ Execution.ScheduledFCRCallPremises   │ Five delivery laws; fixed active validators; committee and Byzantine             │ Paper Assumptions 1 and 2;    │
+│              │                                      │ weight bounds; Phase0 source coherence; a nonzero balance floor;                 │ Gloas extension; model        │
+│              │                                      │ next-slot vote receipt.                                                          │ idealisation                  │
+│ Safety field │ NextSlotSynchronyPremises            │ Positive delay parameter; delivery and handler-service laws for blocks,          │ Paper synchrony; Gloas        │
+│              │                                      │ envelopes, data and evidence; pre-tick exclusion before boundary votes.          │ extension                     │
+│ Safety field │ BeaconExternalsPremises              │ Slot and state transition coherence, committee and attestation                   │ Model idealisation            │
+│              │                                      │ validity, and deterministic envelope verification.                               │                               │
+│ Safety field │ ByzantineWeightPremises              │ Quantized balances, sound committee estimates, and a non-honest weight           │ Paper Assumption 2;           │
+│              │                                      │ fraction bound for every span, including one slot. A global fault                │ executable estimate           │
+│              │                                      │ share does not establish this span bound.                                        │                               │
+│ Safety field │ ScheduledFFGInterpretation;          │ Exact handler-successful prefix FFG state, causal links, and projected           │ Paper Assumption 3.2; model   │
+│              │ EpochCheckpointProjectionLaws        │ checkpoint roots.                                                                │ idealisation                  │
+│ Live field   │ LiveMonotonicityPremises             │ An honest block in each slot from execution start, known by the next             │ Paper Theorem 1 monotonicity  │
+│              │                                      │ slot and supported by honest votes; timely observed FFG justification            │ and Assumption 6,             │
+│              │                                      │ at epoch boundaries.                                                             │ strengthened                  │
+└──────────────┴──────────────────────────────────────┴──────────────────────────────────────────────────────────────────────────────────┴───────────────────────────────┘
 ```
 
 `Execution.NextSlotSafetyPremises` supplies the common safety premise to the safety field. `LiveConfirmedRootMonotonicity` adds `LiveMonotonicityPremises` to that same execution premise. The FFG and finalization laws can quantify over successful handler prefixes beyond the safety endpoint. The finite conclusion does not shorten those premise ranges.
+
+## Witnesses
+
+Each positive run proves its stated premise bundle. An exercised field has a
+concrete source event, positive quantity, or true guard in that run. A proof of
+the full bundle does not imply that every branch occurs.
+
+- **Full safety at 1 s and 12 s:** `NextSlotPremiseWitness.finite_execution_satisfies_premises` and `FullTwelveWitness.full_bundle_witness` give stored root advances under the full safety bundle. The 12 s run has real delayed block and vote receipts.
+- **Payload envelope:** `FullTwelveEnvelopeWitness.full_bundle_witness` has an accepted envelope. Its delivery and data relay antecedents hold.
+- **Byzantine weight and slashing:** `ByzantinePremiseWitness.full_bundle_witness` has positive non-honest weight and a slashing relay that the next call reads.
+- **Guarded current-target edge:** `TargetEdgePremiseWitness.target_edge_support_exercised` reaches a selected epoch crossing. A later honest vote has the exact current target.
+- **Live monotonicity:** `LiveMonotonicityWitness.joint_witness` satisfies the safety bundle and both live fields. The stored root advances at an epoch boundary.
+- **Counterexamples:** `StrictPrefixExtraQuery.extra_query_changes_head_counterexample` and `PinnedEconomicsExtraQuery.extra_query_changes_head_counterexample` show that an extra in-slot query needs a different safety claim.
+- **Interpretation fidelity:** Full-bundle runs prove `FFGInterpretationFidelity` for their supplied included-vote relation. This record is outside the safety premise.
+
+The table names fields with a concrete instance or true antecedent. A dash
+means that the row is a counterexample and does not assert the safety bundle.
+
+```text
+┌─────────────────────┬───────────────────────────────────────────────────────────────────────────────────────────────────┐
+│ Run                 │ Exercised premise fields or facts                                                                 │
+├─────────────────────┼───────────────────────────────────────────────────────────────────────────────────────────────────┤
+│ 1 s full safety     │ HonestBehavior.votes_head; NextSlotSafetyPremises.checkpoint_inclusion; root advance.             │
+│ 12 s full safety    │ NextSlotSynchronyPremises.attestation_delivery and deadline_block_relay; delayed receipts.        │
+│ 12 s envelope       │ NextSlotSynchronyPremises.envelope_delivery and data_availability_relay; accepted payload.        │
+│ Byzantine run       │ ByzantineWeightPremises.span_fraction with positive fault weight;                                 │
+│                     │ NextSlotSynchronyPremises.attester_slashing_relay; previous-result guard.                         │
+│ Current-target edge │ Selected current-target crossing guard and exact later target vote are derived facts.             │
+│ Joint live run      │ LiveMonotonicityPremises.honest_block_each_slot and ffg_timely_justification; full safety bundle. │
+│ Counterexamples     │ —                                                                                                 │
+│ Fidelity records    │ FFGInterpretationFidelity body membership, validation state, and external validity check.         │
+└─────────────────────┴───────────────────────────────────────────────────────────────────────────────────────────────────┘
+```
+
+No named run exercises non-anchor finalization or positive Gloas empty-slot
+discount. The live run gets its FFG timing from the genesis anchor. The
+envelope run computes a zero discount and does not select a FULL head. No run
+has a PTC event. Validator churn is outside `StaticValidatorSet`. These are
+coverage limits, not claims about unreachable protocol states.
 
 ## Scope limits
 
@@ -114,7 +158,6 @@ The records in this table are in `FastConfirmationStatements/Premises/`. The las
 - `FFGInterpretationFidelity` states the intended interpretation of the included votes: membership in the accepted carrier block's ordered FFG attestation body, validity on the target checkpoint state prepared from a keyed target block state in an honest in-horizon store, and the external validity check. The safety theorem does not assume it. Each full-bundle witness proves it for its interpretation.
 - `ByzantineWeightPremises.span_fraction` must hold for every in-horizon slot span, including one slot. A global fault share does not establish this bound. The bound matches `CommitteeHonestMajority` in the repository's formal paper Assumption 2.
 - `LiveMonotonicityPremises.honest_block_each_slot` requires a block with an honest proposer index in every slot from execution start. Its vote-support law and `ffg_timely_justification` require timely descendant votes and exact FFG state outputs at epoch boundaries. These conditions are stronger than paper Assumption 6. Proposer-index membership is not an authentication theorem.
-- `LiveMonotonicityWitness.joint_witness` satisfies both live fields and the safety premise in one short run with a strict root advance. Its FFG timing field holds at epoch 0 through the genesis anchor; no vote-driven justification occurs. `FullTwelveWitness.full_bundle_witness` satisfies the full safety premise at 12-second slots with a 2-second delay and real delayed block and vote receipts. `FullTwelveEnvelopeWitness.envelope_relay_exercised` and `FullTwelveEnvelopeWitness.data_relay_exercised` exercise envelope delivery and data relay with an accepted payload envelope under the full safety bundle. `ByzantinePremiseWitness.byzantine_weight_exercised`, `ByzantinePremiseWitness.slashing_relay_exercised`, and `ByzantinePremiseWitness.previous_result_proviso_exercised` exercise positive Byzantine weight, the slashing relay, and the selected previous-result guard under the full safety bundle. `ByzantinePremiseWitness.previous_result_descendant_support_exercised` proves its descendant-support conclusion. `TargetEdgePremiseWitness.target_edge_support_exercised` checks current-target support as a fact about the run under the full safety bundle. See `FastConfirmationWitnesses/Index.lean`.
 - The result covers stored boundary outputs. `StrictPrefixExtraQuery.extra_query_changes_head_counterexample` and `PinnedEconomicsExtraQuery.extra_query_changes_head_counterexample` show why an arbitrary in-slot query needs a different statement.
 
 ## Paper library
@@ -131,8 +174,8 @@ comparison. The claim and proof sources are `FastConfirmationStatements/Review.l
 index](FastConfirmationWitnesses/Index.lean) states each finite run's limit. The repository
 uses the MIT [license](LICENSE).
 
-The execution synchrony fields require a positive millisecond delay Δ. The attestation
-deadline offset A and slot duration S obey `A + Δ < S`. The FFG and carrier-evidence
+The execution synchrony fields require a positive millisecond timing parameter Δ. The attestation
+deadline offset A and slot duration S obey `A + Δ < S`. The delivery laws state the network and handler-service conditions. The FFG and carrier-evidence
 premises make required ancestor blocks available to honest heads. Evidence relay is a
 premise. The handler follows Python and looks up the justified state. Literal Python can
 reject evidence when that state lacks a signer. The premise matches head-state clients. See

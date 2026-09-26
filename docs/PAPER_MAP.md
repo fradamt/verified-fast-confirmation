@@ -37,6 +37,8 @@ The execution timing row connects the Spec-side model to the paper's message del
 immediate honest gossip. It uses the attestation deadline as the source cutoff. It requires
 Python client service of ready messages. It tests finalized-guard exclusion before the tick.
 It orders envelopes before boundary votes. The independent Paper library uses slot views.
+The executable `delta` field supplies a positive timing parameter. The
+delivery fields supply the network and handler-service conditions.
 Evidence discount is an executable addition. Evidence relay is a premise. Five of six
 checked clients validate evidence against the head state. Literal Python and Grandine use
 the justified state. See [modeling choices](MODELING_CHOICES.md) for pinned client commits.

@@ -5,6 +5,7 @@
 ## Short glossary
 
 - **FCR:** Fast Confirmation Rule. It selects a confirmed root from fork-choice state.
+- **Beacon function interface:** `BeaconFunctionInterface` supplies the opaque beacon, committee, signature, and payload functions.
 - **FFG:** Casper Friendly Finality Gadget. It supplies checkpoint justification and finalization state.
 - **LMD-GHOST:** Latest Message Driven Greedy Heaviest Observed SubTree. It selects a fork-choice head from latest votes.
 - **Gloas:** The consensus fork that separates beacon blocks from execution payloads.
@@ -12,51 +13,87 @@
 - **PTC:** Payload Timeliness Committee. It supplies payload timeliness votes in Gloas.
 - **GST:** Global stabilization time. The paper's synchrony assumptions apply after this point.
 - **Scheduled prefix:** `Execution.ScheduledPrefixStore` is a store from the exact event fold. `Execution.RootKnownInScheduledPrefix` also covers the initial store.
+- **Selected vote support:** `SelectedPredictionVoteSupport` is an internal derived fact. Current-edge votes use the exact target. Previous-result votes may use different targets below the selected root.
 - **FFG interpretation:** `ScheduledFFGInterpretation` holds the accepted block state and its checkpoint read agreement. `FFGInterpretationFidelity` checks real included votes and the external validity function.
 - **A, Δ, S:** A is the attestation deadline offset. Δ is the positive message delay. S is the slot duration. The execution premise requires `A + Δ < S`.
 
 ## Review status
 
 ```text
-┌─────────────────────────────┬───────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
-│ Finding                     │ Status and evidence                                                                                           │
-├─────────────────────────────┼───────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
-│ Stored next-slot safety     │ Proved under Execution.NextSlotSafetyPremises for honest stored boundary outputs within a finite horizon.     │
-│ Live monotonicity           │ Proved under the safety bundle and both fields of LiveMonotonicityPremises.                                   │
-│ Selected result             │ A spec-correspondence lemma covers the find_latest_confirmed_descendant note. It is not a review claim.       │
-│ Optional in-slot query      │ No general safety claim. StrictPrefixExtraQuery and PinnedEconomicsExtraQuery give counterexamples.           │
-│ Joint live witness          │ LiveMonotonicityWitness.joint_witness satisfies the safety bundle and both live fields in one short run. Its  │
-│                             │ confirmed root advances. Its FFG timing uses the genesis anchor at epoch 0.                                   │
-│ Payload envelope            │ Exercised by FullTwelveEnvelopeWitness.envelope_relay_exercised and data_relay_exercised under the full       │
-│                             │ safety bundle, with an accepted envelope that one node receives two seconds late.                             │
-│ Guarded target edge         │ Exercised by TargetEdgePremiseWitness.target_edge_support_exercised under the full safety bundle.             │
-│ Byzantine weight            │ Exercised by ByzantinePremiseWitness.byzantine_weight_exercised: non-honest weight 200 of 4000 under the      │
-│                             │ full safety bundle.                                                                                           │
-│ Slashing relay              │ Exercised by ByzantinePremiseWitness.slashing_relay_exercised; the call at second six reads the evidence.     │
-│ Previous-result guard       │ Exercised by ByzantinePremiseWitness.previous_result_proviso_exercised at the call from second eight to       │
-│                             │ nine.                                                                                                         │
-│ Included carrier votes      │ The safety premise needs an accepted carrier and a received block copy of each included vote. Body            │
-│                             │ membership and validity are in FFGInterpretationFidelity, outside the premise.                                │
-│ Interpretation fidelity     │ Each full-bundle witness proves FFGInterpretationFidelity for its interpretation. Validation uses a prepared  │
-│                             │ target checkpoint state from a reachable keyed target block state.                                            │
-│ Committee span bound        │ The fault fraction applies to every in-horizon span, including one slot. A global fault share does not        │
-│                             │ establish it.                                                                                                 │
-│ Opaque validation           │ BeaconExternalsPremises and verified envelope events supply the engine verdict and deterministic behavior.    │
-│ Static registry             │ StaticValidatorSet covers the finite horizon. Validator churn is outside the claim.                           │
-│ Paper Algorithm 1           │ SafeConfirmedAlg1Inputs requires future rule confirmation for each honest-view-safe block. This is stronger   │
-│                             │ than paper Assumption 6.                                                                                      │
-│ Gloas discount              │ The pinned fork counts matching-status or PENDING parent votes. Upstream can count opposite resolved-status   │
-│                             │ votes.                                                                                                        │
-└─────────────────────────────┴───────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
+┌─────────────────────────┬──────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
+│ Finding                 │ Status and evidence                                                                                          │
+├─────────────────────────┼──────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+│ Stored next-slot safety │ Proved under Execution.NextSlotSafetyPremises for honest stored boundary outputs within a finite horizon.    │
+│ Live monotonicity       │ Proved under the safety bundle and both fields of LiveMonotonicityPremises.                                  │
+│ Selected result         │ A spec-correspondence lemma covers the find_latest_confirmed_descendant note. It is not a review claim.      │
+│ Optional in-slot query  │ No general safety claim. StrictPrefixExtraQuery and PinnedEconomicsExtraQuery give counterexamples.          │
+│ Joint live witness      │ LiveMonotonicityWitness.joint_witness satisfies the safety bundle and both live fields in one short run. Its │
+│                         │ confirmed root advances. Its FFG timing uses the genesis anchor at epoch 0.                                  │
+│ Payload envelope        │ Exercised by FullTwelveEnvelopeWitness.envelope_relay_exercised and data_relay_exercised under the full      │
+│                         │ safety bundle, with an accepted envelope that one node receives two seconds late.                            │
+│ Guarded target edge     │ Exercised by TargetEdgePremiseWitness.target_edge_support_exercised under the full safety bundle.            │
+│ Byzantine weight        │ Exercised by ByzantinePremiseWitness.byzantine_weight_exercised: non-honest weight 200 of 4000 under the     │
+│                         │ full safety bundle.                                                                                          │
+│ Slashing relay          │ Exercised by ByzantinePremiseWitness.slashing_relay_exercised; the call at second six reads the evidence.    │
+│ Previous-result guard   │ Exercised by ByzantinePremiseWitness.previous_result_proviso_exercised at the call from second eight to      │
+│                         │ nine.                                                                                                        │
+│ Included carrier votes  │ The safety premise needs an accepted carrier and a received block copy of each included vote. Body           │
+│                         │ membership and validity are in FFGInterpretationFidelity, outside the premise.                               │
+│ Interpretation fidelity │ Each full-bundle witness proves FFGInterpretationFidelity for its interpretation. Validation uses a prepared │
+│                         │ target checkpoint state from a reachable keyed target block state.                                           │
+│ Committee span bound    │ The fault fraction applies to every in-horizon span, including one slot. A global fault share does not       │
+│                         │ establish it.                                                                                                │
+│ Opaque validation       │ BeaconExternalsPremises and verified envelope events supply the engine verdict and deterministic behavior.   │
+│ Static registry         │ StaticValidatorSet covers the finite horizon. Validator churn is outside the claim.                          │
+│ Paper Algorithm 1       │ SafeConfirmedAlg1Inputs requires future rule confirmation for each honest-view-safe block. This is stronger  │
+│                         │ than paper Assumption 6.                                                                                     │
+│ Gloas discount          │ The pinned fork counts matching-status or PENDING parent votes. Upstream can count opposite resolved-status  │
+│                         │ votes.                                                                                                       │
+└─────────────────────────┴──────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
 ```
 
 ## Audit path
 
-1. Read `FastConfirmationModel/` and `FastConfirmationStatements/`. Check each definition, premise field, and quantifier. Confirm that the claims concern stored boundary outputs.
-2. Compare `FastConfirmationModel/Spec/` with the pinned Python fork. Check changed branches, totalized maps, loop fuel, integer arithmetic, and the Gloas discount. Review schedules, accepted handler returns, static stake, and payload import in `FastConfirmationModel/Execution/`.
-3. Check external contracts and supplied FFG evidence. The handler uses the Python justified-state lookup. The evidence relay field is a separate premise that matches head-state clients.
-4. Read proof terms in `FastConfirmationProofs/`. Then read `FastConfirmationWitnesses/Index.lean`. Check each finite run and each vacuous field. Check the 43 names in `scripts/Audit.lean`.
-5. Read `FastConfirmationPaper/` independently. Compare the paper claims and assumptions with [the paper map](PAPER_MAP.md). The paper library has no refinement theorem to the executable model.
+1. **Model:** Read `FastConfirmationModel/`. Compare `Spec/` with the pinned Python fork. Check the Gloas discount, finite maps, loop fuel, and arithmetic. Check schedules and accepted handler results in `Execution/`.
+2. **Statements premises:** Read both fields of `ReviewClaims`. Expand each record in `FastConfirmationStatements/Premises/`. Check the observer, time, horizon, and successful-prefix ranges.
+3. **Externals:** Check the table below against `BeaconFunctionInterface` and `BeaconExternalsPremises`. Check the supplied FFG inclusion and certificate evidence. The slashing relay is a separate premise over the literal Python handler.
+4. **Claims:** Read the proof terms in `FastConfirmationProofs/`. Check `confirmed_root_safe_from_next_slot`, `live_confirmed_root_monotonicity`, and `review_claims`. Read the independent Paper library with [the paper map](PAPER_MAP.md).
+5. **Witnesses:** Read `FastConfirmationWitnesses/Index.lean`. Check each run's true guards and vacuous branches. Check the 43 registered theorems in `scripts/Audit.lean`.
+
+## Trusted boundary
+
+`BeaconFunctionInterface` has 11 supplied functions or relations. The table
+names the premise that constrains each one. The stated limits remain inputs
+to a source or client interpretation.
+
+```text
+┌────────────────────────────────────────┬──────────────────────────────────────────────────────────────────────────────────────────────────────┐
+│ External field                         │ Constraining premise and limit                                                                       │
+├────────────────────────────────────────┼──────────────────────────────────────────────────────────────────────────────────────────────────────┤
+│ get_beacon_committee                   │ BeaconExternalsPremises.committees_agree, committee_assignment_unique, committee_coverage, and       │
+│                                        │ committee_members_active constrain the union read. Ordered source queries have no separate contract. │
+│ get_committee_count_per_slot           │ committees_agree constrains the derived slot union. No independent count contract is stated.         │
+│ process_slots                          │ process_slots_slot, process_slots_registry, and process_slots_attestation_valid; Phase0 source       │
+│                                        │ coherence and inclusion validation-state origin constrain its checkpoint reads.                      │
+│ state_transition                       │ state_transition_slot, registry, pre_slot_lt, and checkpoint_epoch; Phase0 source coherence, FFG     │
+│                                        │ transition laws, and ImportedBlockFinalizationLag constrain used state outputs.                      │
+│ process_justification_and_finalization │ pjf_checkpoint_epoch and FFG genesis/transition laws constrain used checkpoint outputs.              │
+│ is_valid_indexed_attestation           │ honest_attestation_valid, valid_attestation_honest, valid_attestation_committee,                     │
+│                                        │ valid_attestation_default, and process_slots_attestation_valid constrain accepted checks.            │
+│ AnchorCommitsToState                   │ ScheduledExecutionPremises.genesis supplies the initial anchor relation. No hash theorem is proved.  │
+│ get_ptc                                │ No dedicated premise. The handler uses the supplied ordered PTC.                                     │
+│ is_valid_indexed_payload_attestation   │ No signature-soundness premise. The handler checks the supplied Boolean result.                      │
+│ is_data_available                      │ NextSlotSynchronyPremises.data_availability_relay and envelope_delivery transport true data reads.   │
+│                                        │ The handler checks the local Boolean result. No KZG soundness theorem is proved.                     │
+│ verify_execution_payload_envelope      │ BeaconExternalsPremises.verify_envelope_deterministic and envelope_delivery constrain verified       │
+│                                        │ observations. No execution-engine or signature refinement theorem is proved.                         │
+└────────────────────────────────────────┴──────────────────────────────────────────────────────────────────────────────────────────────────────┘
+```
+
+`Execution.schedule` is supplied. `WellFormedExecution`, `HonestBehavior`, and
+the delivery laws constrain it. The accepted FFG relation and checkpoint
+reads are also supplied under their evidence and read-agreement premises.
+`Execution.store` is the handler fold.
 
 ## Review dimensions
 
@@ -115,3 +152,13 @@ Block and envelope exclusion is checked before the next-slot tick. It permits on
 The source of record is fork `fradamt/consensus-specs`, tag `fcr-gloas-fix` (`13f391516`). The [source map](SPEC_MAP.md) records the exact difference from upstream. The [conformance harness](conformance.md) compares projected Python and Lean observations. A matching trace does not prove all external contracts or all reachable executions. The weak-synchrony branch is separate from this main review.
 
 `scripts/validate.sh --fast` checks the source pin, document names, import boundary, and hygiene. Full validation builds the libraries and checks imports, reachability, surface shape, and the 43 public witnesses. `scripts/Audit.lean` allows only `propext`, `Classical.choice`, and `Quot.sound`.
+
+## Known limits
+
+The conclusion covers stored boundary outputs in a finite horizon. It does
+not cover an arbitrary in-slot query. The active validator set is fixed.
+No witness has non-anchor finalization, positive Gloas discount, or a PTC
+event. The live witness uses the genesis anchor for FFG timing. The theorem
+does not prove that the Python handlers or a client satisfy each external
+contract. The independent Paper library has no refinement theorem to the
+executable model.

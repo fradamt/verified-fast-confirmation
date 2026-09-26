@@ -16,7 +16,7 @@ Each row states a choice in the executable or paper model, why it is used, and t
 │                                       │ unchanged.                                                       │ Accepted runs exclude that failed call's resulting store.                         │
 │ Explicit loop fuel                    │ Makes recursive Python walks total.                              │ Equivalence needs a bound on reachable parent walks.                              │
 │ Projected BeaconState and Store       │ Keeps only fields used by the rule and checks.                   │ Unused source-state behavior is outside the model.                                │
-│ Opaque BeaconFunctionInterface                      │ Separates consensus logic from execution engine and              │ BeaconExternalsPremises must be justified by an implementation.                   │
+│ Opaque BeaconFunctionInterface        │ Separates consensus logic from execution engine and              │ BeaconExternalsPremises must be justified by an implementation.                   │
 │                                       │ cryptography.                                                    │                                                                                   │
 │ Non-optimistic payload import         │ Every stored payload passed envelope validation, including       │ Optimistic fork-choice behavior is outside the theorem.                           │
 │                                       │ VALID.                                                           │                                                                                   │
@@ -55,6 +55,9 @@ between its slot start and the Python due time, rounded down to whole seconds.
 Phase0 calls for a vote after the expected valid block or at the due time,
 whichever comes first. Gloas sets the offset with `attestation_due_bps`.
 `HonestBehavior.no_forgery` also retains the causal send-time order.
+The `delta` field supplies the positive timing parameter. The separate
+delivery fields state receipt and handler service. No proof derives those
+fields from `delta` alone.
 
 `DeadlineBlockRelay` transports only roots held by an honest node at or before
 the deadline of the source observation's slot. The receiver query is at or
@@ -107,7 +110,7 @@ wall-clock slot. Grandine follows the specification and uses the justified
 state. All six clients apply valid gossip evidence to fork choice before block
 inclusion, and none prunes the equivocation set at finalization.
 
-Client provenance for this comparison (commits checked on 2026-09-25): Lighthouse e423a66763bb1bd780492d635123f208d80c3538; Prysm 5407381fc51c9604c7f95b8d87dbb8f4786a83fd; Teku 3d26533fb84a7d12da04e5ab59e1ab7399db5fc5; Lodestar c535e94f25e209f6b137be3d29a87562088035d; Nimbus 404a0001561d1d83c5b5bf35dcbedbcb5fb86572; Grandine 66b3d385c3dc69d89e05b80bbb6baf7442a12966.
+Client revisions for this comparison: Lighthouse e423a66763bb1bd780492d635123f208d80c3538; Prysm 5407381fc51c9604c7f95b8d87dbb8f4786a83fd; Teku 3d26533fb84a7d12da04e5ab59e1ab7399db5fc5; Lodestar c535e94f25e209f6b137be3d29a87562088035d; Nimbus 404a0001561d1d83c5b5bf35dcbedbcb5fb86572; Grandine 66b3d385c3dc69d89e05b80bbb6baf7442a12966.
 
 Evidence accepted late in a slot is included: the relay's source time is when
 the confirmer holds the index at its scheduled slot-start FCR call. The two
@@ -121,6 +124,22 @@ honest proposal to same-slot voters would also require `P + Δ ≤ A`, where P
 is its proposal offset; safety's strict bound alone does not supply that fact.
 
 The source fork is `fradamt/consensus-specs` at tag `fcr-gloas-fix` (`13f391516`). See [source map](SPEC_MAP.md), [paper map](PAPER_MAP.md), and [review guide](REVIEW_GUIDE.md).
+
+## Strong conditions
+
+These nine fields are stronger than a direct claim about all real clients.
+Each item states why the proof uses the field and what a weaker model would
+need.
+
+1. `HonestBehavior.no_forgery` covers every scheduled attestation that names an honest validator, even before validation. It lets the proof identify honest vote data in received copies. A weaker rule would constrain only validated messages and would need a proof that every used copy passed validation.
+2. `BeaconExternalsPremises.process_slots_registry` preserves every validator record when slots advance. It keeps the registry used by committee and weight arguments fixed. A weaker rule would track only the active status, balances, and slashed flags that those arguments read.
+3. `BeaconExternalsPremises.state_transition_registry` preserves every validator record after a successful block import. It gives the same fixed registry across accepted blocks. A weaker rule would model balance and slashing updates and prove the required weight bounds after each update.
+4. `StaticValidatorSet.activity_constant` fixes active status across the horizon. It lets committee and stake facts use one active set. A weaker rule would account for validator activation and exit in every checked span.
+5. `BeaconExternalsPremises.committees_agree` covers every honest store query for every in-horizon slot. It connects the external committee read to the execution assignment. A weaker rule would restrict queries to those reached by accepted calls and prove that no other query affects the claim.
+6. `BeaconExternalsPremises.verify_envelope_deterministic` ignores observation context for a fixed state and signed envelope. It supports transport of a verified result to a later observation. A weaker rule would model local execution-engine readiness and prove agreement only for the contexts used by the handler.
+7. `ByzantineWeightPremises.estimate_sound` makes every in-horizon committee estimate an upper bound. It lets the proof use the executable estimate without a failure case. A weaker rule would carry an explicit estimate-failure probability or prove soundness from a concrete shuffling model.
+8. `ByzantineWeightPremises.span_fraction` bounds non-honest weight in every checked slot span, including one slot. It matches the formal paper's committee-majority assumption. A global stake fraction alone cannot supply this field. A weaker rule would derive span bounds from a shuffling argument and state its failure probability.
+9. `NextSlotSynchronyPremises.attester_slashing_relay` gives each honest store the equivocation indices by the next boundary. It lets the fault discount use evidence across honest nodes. A weaker rule would model each validation state and prove successful evidence transfer for the indices that the proof uses. Literal Python can reject evidence when its justified state lacks a signer.
 
 ## Derived prediction support
 
@@ -156,7 +175,7 @@ cutoff after the target epoch. Their producers use votes before that cutoff.
 An earlier endpoint uses the original call's gate and truncated support to
 pin its checkpoint, without producing the full historical quorum.
 
-The six full-bundle witness constructors no longer contain proviso proofs.
+The six full-bundle witness constructors do not contain support fields.
 Their support and non-vacuity theorems remain facts about the concrete runs.
 The live fields and claim are unchanged; no live-only support premise is needed.
 

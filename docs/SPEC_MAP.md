@@ -1,6 +1,9 @@
 # Python specification map
 
 The Python source is fork `fradamt/consensus-specs` at tag `fcr-gloas-fix` (`13f391516`).
+The executable definitions use `BeaconFunctionInterface` for opaque beacon and
+payload calls. `BeaconExternalsPremises` states their used contracts. The
+[review guide](REVIEW_GUIDE.md) maps each interface field to its premise.
 Branch `fcr-gloas-discount-fix` contains upstream master `63a81afa6` and the fix alone. The
 table maps each Python function that has an authored Lean definition in the FCR, Gloas
 fork-choice, beacon-chain, and validator sections. Gloas overrides take precedence over
