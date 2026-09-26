@@ -156,6 +156,8 @@ jobs:
         run: |
           python -m venv .source/consensus-specs/.venv
           .source/consensus-specs/.venv/bin/python -m pip install -e './.source/consensus-specs[test]'
+          # The editable install does not build the fork modules; the pinned Makefile runs this step.
+          (cd .source/consensus-specs && .venv/bin/python -m pysetup.generate_specs --all-forks)
 
       - name: Install pinned Elan
         env:
