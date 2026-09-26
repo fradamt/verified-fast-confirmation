@@ -17,16 +17,19 @@ public import FastConfirmationWitnesses.NonVacuity.ByzantinePremises
 /-!
 # Witness index
 
-`ReviewClaims` contains the safety theorem. The public
+`ReviewClaims` contains only the safety theorem. Its result gives observer-store
+membership and executable ancestry from the next slot. The public
 `live_confirmed_root_monotonicity` theorem is a separate conditional result
-under `LiveMonotonicityPremises`.
+under `LiveMonotonicityPremises`. Its timely FFG store outcomes close the named
+FCR guards.
 
 This page names the finite runs that satisfy the premise bundles: a short
 joint live run, a next-slot safety run with one-second slots and a 500 ms delay,
 a one-second target-edge run,
 a one-second run with Byzantine weight and a slashing, a 12-second
 full-bundle run, and a 12-second run with an accepted payload envelope. It
-also names two counterexamples to strict-prefix safety variants.
+also names two counterexamples to same-second head agreement at mid-second
+prefixes under the older synchrony record.
 
 ## Premise bundles
 
@@ -181,11 +184,14 @@ also names two counterexamples to strict-prefix safety variants.
 ## Counterexamples
 
 * `StrictPrefixExtraQuery.extra_query_changes_head_counterexample` refutes
-  exact-current safety at every legal in-second query position: the querying
-  actor confirms a candidate while another honest node's head is its sibling.
+  same-second head agreement at a mid-second prefix under the older synchrony
+  record. The querying actor confirms a candidate while another honest node's
+  head is its sibling.
 * `PinnedEconomicsExtraQuery.extra_query_changes_head_counterexample` refutes
-  the same strict-prefix variant with proposer boost 40 and Byzantine allowance
-  25. Its computed safety threshold is 95.
+  the same same-second claim under the older synchrony record. It uses proposer
+  boost 40 and Byzantine allowance 25. Its computed safety threshold is 95.
+  These counterexamples do not refute next-slot safety of an in-slot query.
+  That question remains open.
 
 ## Known gaps
 
@@ -218,6 +224,11 @@ contain support fields. The witness support lemmas remain facts about the runs.
 The historical certificate and quorum are produced from earlier votes when
 needed. No external law or live-only premise was added. The shorter
 synchrony-only run does not prove the full safety bundle.
+Every positive run has proposer boost zero. The proposer-score term and
+should_apply_proposer_boost are not exercised positively. The one-second
+runs set `attestation_due_bps` to zero. The main safety runs have four or five
+validators and one validator per slot committee. The joint live run has two
+validators. Included slashing does not mark a validator slashed in state.
 `DeadlineVotePathCandidate` checks that a skipped-boundary schedule fails the
-pre-tick relay. The audited public witness set has 43 entries.
+pre-tick relay. The audited public theorem set has 43 entries.
 -/
