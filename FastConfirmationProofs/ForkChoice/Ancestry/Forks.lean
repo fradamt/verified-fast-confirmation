@@ -28,21 +28,6 @@ namespace FastConfirmation.Spec
 
 variable {Root : Type*} [LinearOrder Root]
 
-/-! ## Ancestor determinism at a fixed slot -/
-
-/-- Two ancestors of the same node sitting at the same slot coincide — a purely
-definitional consequence of `get_ancestor` being a function (needs no
-well-formedness). If `a` and `b` are both ancestors of `x` and
-`(blocks a).slot = (blocks b).slot`, then `a = b`. -/
-theorem ancestor_unique_at_slot {store : Store Root} {x a b : Root}
-    (hsl : (store.blocks a).slot = (store.blocks b).slot)
-    (ha : is_ancestor store (ForkChoiceNode.mk x .pending) (ForkChoiceNode.mk a .pending) = true)
-    (hb : is_ancestor store (ForkChoiceNode.mk x .pending) (ForkChoiceNode.mk b .pending) = true) :
-    a = b := by
-  simp only [is_ancestor_pending, decide_eq_true_eq] at ha hb
-  rw [hsl] at ha
-  simpa using ha.symm.trans hb
-
 /-! ## Siblings share no descendant -/
 
 /-- Asymmetric core: with `c`'s slot at or below `c'`'s, distinct siblings `c`,
