@@ -51,11 +51,7 @@ in-horizon prefixes to their slot committee. Attester-slashing evidence can name
 off-committee validators.
 
 `ReviewClaims` contains only next-slot safety. Its conclusion gives observer-store
-membership and executable ancestry. `live_confirmed_root_monotonicity` is a
-separate conditional theorem. Its timely FFG premise supplies store outcomes
-for previous_epoch_greatest_unrealized_checkpoint,
-is_head_unrealized_justified_ok, and the previous-slot-head voting-source
-recency guard.
+membership and executable ancestry.
 
 ## Review checks
 
@@ -71,7 +67,7 @@ recency guard.
 │ ReviewSurfaceShape.lean    │ The safety review field and selected premise record shapes remain exact.                    │
 │ check_imports.py           │ The six-library import direction and Paper separation hold.                                 │
 │ check_doc_names.py         │ Backticked Lean names in current documents resolve to declarations or files.                │
-│ Audit.lean                 │ The 47 audited public theorems have only standard axiom dependencies.                       │
+│ Audit.lean                 │ The 43 audited public theorems have only standard axiom dependencies.                       │
 │                            │ No forbidden declaration is allowed.                                                        │
 │ validate.sh                │ Fast checks above; full mode also builds every library and runs Lean checks.                │
 └────────────────────────────┴─────────────────────────────────────────────────────────────────────────────────────────────┘```

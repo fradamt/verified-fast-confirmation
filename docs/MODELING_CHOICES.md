@@ -30,8 +30,6 @@ Each row states a choice in the executable or paper model, why it is used, and t
 │ Derived FCR prediction support        │ Exact targets for current results; descent for previous results. │ Both forms follow from the joint call and endpoint-slot induction.                │
 │ Gloas payload-aware discount          │ Counts matching or PENDING parent votes in an empty slot.        │ Diverges from upstream rule; public fix at fcr-gloas-fix.                         │
 │ Envelope and data relay               │ Carries verified payload state to honest receivers.              │ The finite next-slot witness has no envelope event.                               │
-│ Live block production                 │ Prevents stale cache reversal and supplies descendant votes.     │ Requires an honest-proposer block every slot from execution start.                │
-│ Timely live FFG justification         │ Opens the rule restart gates at epoch boundaries.                │ Stronger than paper Assumption 6. Joint witness only at the genesis checkpoint.   │
 │ Paper exact rational balances         │ Keeps the paper threshold algebra direct.                        │ Does not by itself model executable integer rounding.                             │
 │ Paper eligibility filter              │ Reuses the LMD head agreement result in HFC.                     │ The proof needs a separate never-filter premise and bridge.                       │
 │ Paper AU from block-contained votes   │ Ties justification to concrete ancestry evidence.                │ OnChainAnchorInterface still supplies visibility and formation laws.              │
@@ -41,11 +39,7 @@ Each row states a choice in the executable or paper model, why it is used, and t
 The safety claim holds for every carrier-vote relation that meets the stated
 fields. It does not alone certify the votes in real block bodies.
 `review_claims` has one safety field. It gives observer-store membership and
-executable ancestry. `live_confirmed_root_monotonicity` is a separate
-conditional theorem. Its timely FFG premise supplies store outcomes for the
-named FCR guards: previous_epoch_greatest_unrealized_checkpoint,
-is_head_unrealized_justified_ok, and the previous-slot-head voting-source
-recency guard.
+executable ancestry.
 
 The `ByzantineWeightPremises.span_fraction` bound applies to every in-horizon
 committee span, including one slot. A global fault share does not establish

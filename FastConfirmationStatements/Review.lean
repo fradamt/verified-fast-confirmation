@@ -4,8 +4,7 @@ public import FastConfirmationStatements.Claims
 @[expose] public section
 
 /-!
-Defines the public FCR review claim for next-slot safety. The separate live
-result is conditional on `LiveMonotonicityPremises`.
+Defines the public FCR review claim for next-slot safety.
 -/
 
 namespace FastConfirmation.Spec

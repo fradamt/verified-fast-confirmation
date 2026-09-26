@@ -298,64 +298,6 @@ theorem find_latest_confirmed_descendant_between (fcr_store : FastConfirmationSt
       | (apply htent; first | exact base | exact hprev _ _ base)
       | exact hprev _ _ base
 
-/-- **`get_latest_confirmed` per-block charge** (task 2) — `Anchoring.get_latest_confirmed_ge`
-strengthened with the per-block confirmation charge. The block `get_latest_confirmed` returns
-descends from one of the three reset anchors `r₀`, and **every** block on the segment `[r₀, glc]`
-is `r₀` or `is_one_confirmed` at the querying store. The reset branches (`glc = r₀`) give the
-charge by antisymmetry; the advance branch (`glc = find_latest_confirmed_descendant r₀`) by the
-loop invariant `find_latest_confirmed_descendant_between`. -/
-theorem get_latest_confirmed_between (fcr_store : FastConfirmationStore Root)
-    (hwf : ∀ r ∈ fcr_store.store.block_roots,
-      (fcr_store.store.blocks r).parent_root ∈ fcr_store.store.block_roots →
-        (fcr_store.store.blocks (fcr_store.store.blocks r).parent_root).slot <
-          (fcr_store.store.blocks r).slot)
-    (hwalk : ∀ t ∈ fcr_store.store.block_roots, ∀ r ∈ fcr_store.store.block_roots,
-      WalkKnown fcr_store.store (fcr_store.store.blocks t).slot r)
-    (hhead : (get_head cfg fcr_store.store).root ∈ fcr_store.store.block_roots)
-    (h0 : fcr_store.confirmed_root ∈ fcr_store.store.block_roots)
-    (h1 : fcr_store.store.finalized_checkpoint.root ∈ fcr_store.store.block_roots)
-    (h2 : fcr_store.current_epoch_observed_justified_checkpoint.root ∈
-      fcr_store.store.block_roots) :
-    ∃ r₀ : Root,
-      (r₀ = fcr_store.confirmed_root ∨ r₀ = fcr_store.store.finalized_checkpoint.root ∨
-        r₀ = fcr_store.current_epoch_observed_justified_checkpoint.root) ∧
-      r₀ ∈ fcr_store.store.block_roots ∧
-      is_ancestor fcr_store.store
-        (get_node_for_root (get_latest_confirmed cfg ext fcr_store)) (get_node_for_root r₀) = true ∧
-      ∀ c : Root, c ∈ fcr_store.store.block_roots →
-        is_ancestor fcr_store.store (get_node_for_root (get_latest_confirmed cfg ext fcr_store))
-          (get_node_for_root c) = true →
-        is_ancestor fcr_store.store (get_node_for_root c) (get_node_for_root r₀) = true →
-        c = r₀ ∨ is_one_confirmed cfg ext fcr_store.store
-          (get_current_balance_source fcr_store) c = true := by
-  generalize hX : get_latest_confirmed cfg ext fcr_store = X
-  simp only [get_latest_confirmed] at hX
-  split_ifs at hX <;>
-    subst hX <;>
-      first
-      | exact ⟨_, Or.inl rfl, h0, is_ancestor_refl _ _,
-          fun c hc hXc hc0 => Or.inl (is_ancestor_antisymm hwf (hwalk c hc _ h0) hc0 hXc)⟩
-      | exact ⟨_, Or.inr (Or.inl rfl), h1, is_ancestor_refl _ _,
-          fun c hc hXc hc1 => Or.inl (is_ancestor_antisymm hwf (hwalk c hc _ h1) hc1 hXc)⟩
-      | exact ⟨_, Or.inr (Or.inr rfl), h2, is_ancestor_refl _ _,
-          fun c hc hXc hc2 => Or.inl (is_ancestor_antisymm hwf (hwalk c hc _ h2) hc2 hXc)⟩
-      | exact ⟨_, Or.inl rfl, h0,
-          (find_latest_confirmed_descendant_between cfg ext fcr_store hwf hwalk hhead _ h0).1,
-          (find_latest_confirmed_descendant_between cfg ext fcr_store hwf hwalk hhead _ h0).2.2⟩
-      | exact ⟨_, Or.inr (Or.inl rfl), h1,
-          (find_latest_confirmed_descendant_between cfg ext fcr_store hwf hwalk hhead _ h1).1,
-          (find_latest_confirmed_descendant_between cfg ext fcr_store hwf hwalk hhead _ h1).2.2⟩
-      | exact ⟨_, Or.inr (Or.inr rfl), h2,
-          (find_latest_confirmed_descendant_between cfg ext fcr_store hwf hwalk hhead _ h2).1,
-          (find_latest_confirmed_descendant_between cfg ext fcr_store hwf hwalk hhead _ h2).2.2⟩
-
-namespace Execution
-
-variable (E : Execution Root)
-
-
-end Execution
-
 end FastConfirmation.Spec
 
 end

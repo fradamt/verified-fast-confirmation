@@ -1,6 +1,5 @@
 module
 public import FastConfirmationModel
-public import FastConfirmationStatements.Premises.LiveMonotonicity
 public import FastConfirmationStatements.Premises.FFG
 public import FastConfirmationStatements.Premises.ScheduledExecutionConditions
 

@@ -23,15 +23,10 @@ private def publicWitnesses : Array Name :=
   #[
     ``FastConfirmation.Spec.review_claims,
     ``FastConfirmation.Spec.confirmed_root_safe_from_next_slot,
-    -- The live theorem is public but is a conditional result outside ReviewClaims.
-    ``FastConfirmation.Spec.live_confirmed_root_monotonicity,
     ``FastConfirmation.Spec.NextSlotPremiseWitness.finite_execution_satisfies_premises,
     ``FastConfirmation.Spec.NextSlotPremiseWitness.next_slot_premises_nonempty,
     ``FastConfirmation.Spec.NextSlotPremiseWitness.ffg_interpretation_fidelity,
     ``FastConfirmation.Spec.GenesisStubPremiseWitness.genesis_stub_full_bundle_witness,
-    ``FastConfirmation.Spec.LiveMonotonicityWitness.joint_witness,
-    ``FastConfirmation.Spec.LiveMonotonicityWitness.joint_monotonicity,
-    ``FastConfirmation.Spec.LiveMonotonicityWitness.ffg_interpretation_fidelity,
     ``FastConfirmation.Spec.FullTwelveWitness.full_bundle_witness,
     ``FastConfirmation.Spec.FullTwelveWitness.changed_root_safe_from_next_slot,
     ``FastConfirmation.Spec.FullTwelveWitness.delayed_receipts_are_first,
@@ -104,8 +99,8 @@ private def isGeneratedSafePartial (env : Environment) (name : Name)
 
 elab "audit_project_trust" : command => do
   let env ← getEnv
-  unless publicWitnesses.size == 47 do
-    throwError "public theorem witness set must contain exactly 47 declarations"
+  unless publicWitnesses.size == 43 do
+    throwError "public theorem witness set must contain exactly 43 declarations"
   unless publicWitnesses.toList.eraseDups.length == publicWitnesses.size do
     throwError "public theorem witness set contains duplicate declarations"
 

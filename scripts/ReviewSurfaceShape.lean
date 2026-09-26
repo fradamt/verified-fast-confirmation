@@ -23,8 +23,6 @@ run_cmd do
      "anchor_eq", "anchor_state_checkpoints", "anchor_boundary", "finalization_delay",
      "slots_per_epoch_gt_one", "checkpoint_inclusion", "checkpoint_projection",
      "exact_link_validity"]
-  checkFields `FastConfirmation.Spec.LiveMonotonicityPremises
-    ["honest_block_each_slot", "ffg_timely_justification"]
   checkFields `FastConfirmation.Spec.Synchrony
     ["delta", "attestation_delivery",
      "deadline_block_relay", "boundary_block_prefix",

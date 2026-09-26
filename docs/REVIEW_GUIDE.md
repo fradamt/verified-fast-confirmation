@@ -1,6 +1,6 @@
 # Review guide
 
-`ReviewClaims` has one safety field. `review_claims` proves it. The field states observer-store membership and executable ancestry from the next slot. The public live theorem is a separate conditional result. The trust audit checks 47 audited public theorems: 40 executable-side and seven paper-side.
+`ReviewClaims` has one safety field. `review_claims` proves it. The field states observer-store membership and executable ancestry from the next slot. The trust audit checks 43 public theorems: 36 executable-side and seven paper-side. The [history note](history/live-monotonicity-removed.md) records the removed live theorem.
 
 `NextSlotSafetyPremises.anchor_state_checkpoints` covers a genesis anchor whose state
 has the zero-root stub. It also covers a normalized anchor state whose current justified
@@ -64,11 +64,8 @@ FFG behavior supplies the interpretation before the theorem applies to it.
 │ Finding                 │ Status and evidence                                                                                          │
 ├─────────────────────────┼──────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
 │ Stored next-slot safety │ The root is in each honest observer's block store and on its head from the next slot, within the horizon.    │
-│ Live monotonicity       │ Conditional theorem under the safety bundle and both fields of LiveMonotonicityPremises.                     │
 │ Selected result         │ A spec-correspondence lemma covers the find_latest_confirmed_descendant note. It is not a review claim.      │
 │ Optional in-slot query  │ Next-slot safety remains open. The counterexamples refute same-second head agreement under older synchrony.  │
-│ Joint live witness      │ LiveMonotonicityWitness.joint_witness satisfies the safety bundle and both live fields in one short run. Its │
-│                         │ confirmed root advances. Its FFG timing uses the genesis anchor at epoch 0.                                  │
 │ Payload envelope        │ Exercised by FullTwelveEnvelopeWitness.envelope_relay_exercised and data_relay_exercised under the full      │
 │                         │ safety bundle, with an accepted envelope that one node receives two seconds late.                            │
 │ Guarded target edge     │ Exercised by TargetEdgePremiseWitness.target_edge_support_exercised under the full safety bundle.            │
@@ -96,8 +93,8 @@ FFG behavior supplies the interpretation before the theorem applies to it.
 1. **Model:** Read `FastConfirmationModel/`. Compare `Spec/` with the pinned Python fork. Check the Gloas discount, finite maps, loop fuel, and arithmetic. Check schedules and accepted handler results in `Execution/`.
 2. **Statements premises:** Read the safety field of `ReviewClaims`. Expand each record in `FastConfirmationStatements/Premises/`. Check the observer, time, horizon, and successful-prefix ranges.
 3. **Externals:** Check the table below against `BeaconFunctionInterface` and `BeaconExternalsPremises`. Check the supplied FFG inclusion and certificate evidence. The slashing relay is a separate premise over the literal Python handler.
-4. **Claims:** Read the proof terms in `FastConfirmationProofs/`. Check `confirmed_root_safe_from_next_slot`, `live_confirmed_root_monotonicity`, and `review_claims`. Read the independent Paper library with [the paper map](PAPER_MAP.md).
-5. **Witnesses:** Read `FastConfirmationWitnesses/Index.lean`. Check each run's true guards and vacuous branches. Check the 47 audited public theorems in `scripts/Audit.lean`.
+4. **Claims:** Read the proof terms in `FastConfirmationProofs/`. Check `confirmed_root_safe_from_next_slot` and `review_claims`. Read the independent Paper library with [the paper map](PAPER_MAP.md).
+5. **Witnesses:** Read `FastConfirmationWitnesses/Index.lean`. Check each run's true guards and vacuous branches. Check the 43 audited public theorems in `scripts/Audit.lean`.
 
 ## Trusted boundary
 
@@ -148,16 +145,14 @@ its committee queries.
 
 - **Python fidelity:** Compare each modeled FCR branch with the pinned Python source. Check each abstraction and changed Gloas branch.
 - **Execution:** Check event order, successful handler returns, state at boundary seconds, payload validation, static stake, and external contracts.
-- **Statements:** Expand the safety field of `ReviewClaims`. Check observer, time, and horizon quantifiers. Read `live_confirmed_root_monotonicity` as a separate conditional result.
+- **Statements:** Expand the safety field of `ReviewClaims`. Check observer, time, and horizon quantifiers. Read the history note for the removed live claim.
 - **Premises:** Expand every nested record. Check that each premise is needed and jointly satisfiable. Check FFG and finalization ranges beyond the endpoint.
-- **Non-vacuity:** Locate concrete runs for the audited theorem witnesses. Check the joint live witness and each field that a run exercises only vacuously.
+- **Non-vacuity:** Locate concrete runs for the audited theorem witnesses. Check each field that a run exercises only vacuously.
 - **Paper:** Read the independent Section 3.1 and Section 4 theorems. Check where Algorithm 1 uses a stronger premise than paper Assumption 6.
 
 ## Premise strength and range
 
-`LiveMonotonicityPremises` has two fields. `honest_block_each_slot` requires an honest-proposer block in each slot from execution start. All honest stores know it by the next slot. Honest votes support descendants without reorg of those blocks. `ffg_timely_justification` requires exact unrealized justification at the last-slot call. It also requires an aligned head state at the next epoch start and a recent previous-head voting source. These store outcomes close the FCR guards. They are conditions of the separate live theorem, not network or behavior assumptions. Proposer-index membership does not prove authentication.
-
-Paper Assumption 3.2 can allow a two-epoch FFG inclusion delay. The executable selector can close its gates before inclusion. `get_latest_confirmed_eq_finalized_of_stale` and `Execution.confirmed_succ_eq_finalized_of_stale_call` show the stale fallback. The live claim uses timely closure. The joint finite witness meets both live fields, but its FFG timing holds through the genesis anchor. No vote-driven justification occurs in that run. Paper Theorem 1 has no block-in-every-slot premise.
+Paper Assumption 3.2 can allow a two-epoch FFG inclusion delay. The executable selector can close its gates before inclusion. The [history note](history/live-monotonicity-removed.md) explains the reset branches and the removed claim.
 
 `Execution.NextSlotSafetyPremises` includes exact FFG state at each successful handler prefix. It also includes scheduled execution, completed FCR calls, epoch arithmetic, anchor alignment, checkpoint evidence, and finalization delay. `Execution.ScheduledFCRCallPremises` adds static validators, a fault bound for each committee span, Phase0 source coherence, a balance floor and next-slot vote receipt. No field directly states the stored-root safety conclusion. Global FFG and finalization premises can range beyond a conclusion endpoint.
 
@@ -168,7 +163,7 @@ outside this development.
 
 Prediction support is derived. `SelectedPredictionVoteSupport` is internal proof vocabulary,
 outside the safety premise. Its previous-result conclusion permits different targets
-that all descend from the selected result. The live premise and conditional theorem are unchanged.
+that all descend from the selected result.
 
 The key theorem is
 `Execution.confirmed_safety_and_lineage_of_acceptedActualFCRFold`.
@@ -184,7 +179,7 @@ cutoff after the target epoch. An earlier endpoint uses the original gate and
 votes before that endpoint. No strict justified-epoch external law was added.
 
 The reachability audit keeps the Statements library focused on declarations
-used by the safety review claim and the conditional live statement. The Internal library holds call and trace
+used by the safety review claim. The Internal library holds call and trace
 vocabulary, vote-support predicates, and interpretation fidelity used by
 proofs and witnesses.
 
@@ -209,7 +204,7 @@ Block and envelope exclusion is checked before the next-slot tick. It permits on
 
 The source of record is fork `fradamt/consensus-specs`, tag `fcr-gloas-fix` (`13f391516`). The [source map](SPEC_MAP.md) records the exact difference from upstream. The [conformance harness](conformance.md) compares projected Python and Lean observations. A matching trace does not prove all external contracts or all reachable executions. The `weak-synchrony` branch contains work in progress on weaker timing premises and is outside this review.
 
-`scripts/validate.sh --fast` checks the source pin, document names, import boundary, and hygiene. Full validation builds the libraries and checks imports, reachability, surface shape, and the 47 public witnesses. `scripts/Audit.lean` allows only `propext`, `Classical.choice`, and `Quot.sound`.
+`scripts/validate.sh --fast` checks the source pin, document names, import boundary, and hygiene. Full validation builds the libraries and checks imports, reachability, surface shape, and the 43 public witnesses. `scripts/Audit.lean` allows only `propext`, `Classical.choice`, and `Quot.sound`.
 
 ## Known limits
 
@@ -219,8 +214,7 @@ observer's block store from the next slot. The active validator set is fixed.
 No witness has non-anchor finalization, positive Gloas discount, or a PTC
 event. Every positive run uses zero proposer boost. The one-second runs use
 `attestation_due_bps = 0`. The main safety runs have four or five validators
-and one validator per slot committee. The joint live run has two validators.
-The live witness uses the genesis anchor for FFG timing. The theorem
+and one validator per slot committee. The theorem
 does not prove that the Python handlers or a client satisfy each external
 contract. The independent Paper library has no refinement theorem to the
 executable model.

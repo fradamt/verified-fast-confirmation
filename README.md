@@ -15,7 +15,7 @@ The Fast Confirmation Rule (FCR) selects a block root that a node can treat as c
 
 - **Next-slot safety.** From the following slot through the finite verification horizon, every honest observer has the stored confirmed root in its block store. The executable ancestor walk also shows that the root stays on the observer's head.
 
-The separate public theorem `live_confirmed_root_monotonicity` is conditional on the safety bundle and both fields of `LiveMonotonicityPremises`. `honest_block_each_slot` requires an honest block in every slot from execution start. Each block must be known by the next slot. Honest votes must support descendants of those blocks without reorg. `ffg_timely_justification` requires exact FFG store outcomes at the last-slot call and next epoch start. These outcomes close the named FCR guards: `previous_epoch_greatest_unrealized_checkpoint`, is_head_unrealized_justified_ok, and the previous-slot-head voting-source recency guard. The joint witness meets this field through the genesis anchor and has no included vote.
+Not claimed: live confirmed-root monotonicity. See [why the former theorem was removed](docs/history/live-monotonicity-removed.md).
 
 The result concerns stored boundary outputs. It does not cover an arbitrary query within a slot.
 
@@ -94,7 +94,6 @@ off-committee validators.
 ├──────────────────────┼──────────────────────────────────────────────────────────────────────────────────────────────────┤
 │ Payload validity     │ `BeaconExternalsPremises` and the external contract govern imported payloads.                    │
 ├──────────────────────┼──────────────────────────────────────────────────────────────────────────────────────────────────┤
-│ Live result only     │ `LiveMonotonicityPremises` supplies honest blocks and exact FFG store outcomes.                  │
 └──────────────────────┴──────────────────────────────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -112,7 +111,6 @@ The per-span fault bound and estimate soundness are deterministic events assumed
 on every checked span, including one slot. A global fault share does not imply
 them. This development does not calculate their probability under committee
 sampling.
-The live fields are stronger than paper Assumption 6.
 The positive `delta` value is a timing parameter. The delivery laws in
 `NextSlotSynchronyPremises` supply the network assumption. The proof does not
 derive handler service or delivery from `delta` alone.
@@ -132,8 +130,8 @@ external calls with stated contracts. The Lean kernel checks the proofs. The tru
 allows only `propext`, `Classical.choice`, and `Quot.sound`. The [paper
 library](#paper-library) models the [paper](https://arxiv.org/abs/2405.00549) separately.
 There is no refinement theorem from the paper model to the executable model.
-The [contract conformance checks](docs/conformance.md#contract-conformance) cover 158
-premise fields: 31 tested state-function properties (T), 116 execution or interpretation
+The [contract conformance checks](docs/conformance.md#contract-conformance) cover 156
+premise fields: 31 tested state-function properties (T), 114 execution or interpretation
 assumptions (E), and 11 cryptographic or engine idealizations (I). Run `python3
 scripts/conformance/contracts/check_inventory.py --repo
 /path/to/consensus-specs-pending-discount --output /tmp/contract-results.json` with the
@@ -155,7 +153,7 @@ scripts/validate.sh --consensus-repo /path/to/fradamt-consensus-specs
 A warm `lake build` took 24.19 seconds on a 12-core desktop. A fresh build can take longer.
 `scripts/validate.sh --fast --consensus-repo /path/to/fradamt-consensus-specs` checks source
 pinning, document names, boundaries, and hygiene. Full validation also builds the libraries
-and audits 47 public theorems: 40 executable-side and seven paper-side. The Python
+and audits 43 public theorems: 36 executable-side and seven paper-side. The Python
 path must name the pinned local checkout.
 
 ## Premise ledger
@@ -183,12 +181,9 @@ The records in this table are in `FastConfirmationStatements/Premises/`. The las
 │              │                                      │ share does not establish this span bound.                                        │                               │
 │ Safety field │ ScheduledFFGInterpretation;          │ Exact handler-successful prefix FFG state, causal links, and projected           │ Paper Assumption 3.2; model   │
 │              │ EpochCheckpointProjectionLaws        │ checkpoint roots.                                                                │ idealisation                  │
-│ Live result  │ LiveMonotonicityPremises             │ An honest block in each slot from execution start, known by the next             │ Paper Theorem 1 monotonicity  │
-│              │                                      │ slot and supported by honest votes; timely observed FFG justification            │ and Assumption 6,             │
-│              │                                      │ at epoch boundaries.                                                             │ strengthened                  │
 └──────────────┴──────────────────────────────────────┴──────────────────────────────────────────────────────────────────────────────────┴───────────────────────────────┘```
 
-`Execution.NextSlotSafetyPremises` supplies the safety premise to the review claim. `LiveConfirmedRootMonotonicity` adds `LiveMonotonicityPremises` to that same execution premise for the separate conditional result. The FFG and finalization laws can quantify over successful handler prefixes beyond the safety endpoint. The finite conclusion does not shorten those premise ranges.
+`Execution.NextSlotSafetyPremises` supplies the safety premise to the review claim. The FFG and finalization laws can quantify over successful handler prefixes beyond the safety endpoint. The finite conclusion does not shorten those premise ranges.
 
 ## Witnesses
 
@@ -200,7 +195,6 @@ the full bundle does not imply that every branch occurs.
 - **Payload envelope:** `FullTwelveEnvelopeWitness.full_bundle_witness` has an accepted envelope. Its delivery and data relay antecedents hold.
 - **Byzantine weight and slashing:** `ByzantinePremiseWitness.full_bundle_witness` has positive non-honest weight and a slashing relay that the next call reads.
 - **Guarded current-target edge:** `TargetEdgePremiseWitness.target_edge_support_exercised` reaches a selected epoch crossing. A later honest vote has the exact current target.
-- **Live monotonicity:** `LiveMonotonicityWitness.joint_witness` satisfies the safety bundle and both live fields. The stored root advances at an epoch boundary.
 - **Counterexamples:** `StrictPrefixExtraQuery.extra_query_changes_head_counterexample` and `PinnedEconomicsExtraQuery.extra_query_changes_head_counterexample` refute same-second head agreement at a mid-second prefix under the older synchrony record. Next-slot safety for an in-slot query is open.
 - **Interpretation fidelity:** Full-bundle runs prove `FFGInterpretationFidelity` for their supplied included-vote relation. This record is outside the safety premise.
 
@@ -218,7 +212,6 @@ a counterexample and does not assert the safety bundle.
 │ Byzantine run       │ ByzantineWeightPremises.span_fraction with positive fault weight;                                 │
 │                     │ NextSlotSynchronyPremises.attester_slashing_relay.                                                │
 │ Current-target edge │ Selected current-target crossing guard and exact later target vote are derived facts.             │
-│ Joint live run      │ LiveMonotonicityPremises.honest_block_each_slot and ffg_timely_justification; full safety bundle. │
 │ Counterexamples     │ —                                                                                                 │
 │ Fidelity records    │ FFGInterpretationFidelity body membership, validation state, and external validity check.         │
 │ Non-anchor finality │ not exercised by a named full-bundle run.                                                         │
@@ -228,13 +221,13 @@ a counterexample and does not assert the safety bundle.
 └─────────────────────┴───────────────────────────────────────────────────────────────────────────────────────────────────┘```
 
 No named run exercises non-anchor finalization or positive Gloas empty-slot
-discount. The live run gets its FFG timing from the genesis anchor. The
+discount. The
 envelope run computes a zero discount and does not select a FULL head. No run
 has a PTC event. Every positive run sets `proposer_score_boost` to zero. The
 proposer-score term and should_apply_proposer_boost are not exercised
 positively. The one-second runs set `attestation_due_bps` to zero. The main
 safety runs have four or five validators and one validator per slot committee.
-The joint live run has two validators. Validator churn is outside
+Validator churn is outside
 `StaticValidatorSet`. These are
 coverage limits, not claims about unreachable protocol states.
 
@@ -246,7 +239,6 @@ coverage limits, not claims about unreachable protocol states.
 - `AcceptedBlockAttestationInclusion.Included` is a supplied carrier-vote relation. Its safety evidence gives an accepted carrier block, a received block copy of the vote, slot and target-epoch facts, and committee membership.
 - `FFGInterpretationFidelity` states the intended interpretation of the included votes: membership in the accepted carrier block's ordered FFG attestation body, validity on the target checkpoint state prepared from a keyed target block state in an honest in-horizon store, and the external validity check. The safety theorem does not assume it. Each full-bundle witness proves it for its interpretation.
 - `ByzantineWeightPremises.span_fraction` must hold for every in-horizon slot span, including one slot. A global fault share does not establish this bound. The bound matches `CommitteeHonestMajority` in the repository's formal paper Assumption 2.
-- `LiveMonotonicityPremises.honest_block_each_slot` requires a block with an honest proposer index in every slot from execution start. Its vote-support law and `ffg_timely_justification` require timely descendant votes and exact FFG state outputs at epoch boundaries. These conditions are stronger than paper Assumption 6. Proposer-index membership is not an authentication theorem.
 - The result covers stored boundary outputs. The two extra-query counterexamples refute same-second head agreement at a mid-second prefix under the older synchrony record. Next-slot safety of an in-slot query is open.
 
 ## Paper library

@@ -5,7 +5,6 @@ public import FastConfirmationWitnesses.Counterexamples.PinnedEconomicsExtraQuer
 public import FastConfirmationWitnesses.Counterexamples.StrictPrefixExtraQuery
 public import FastConfirmationWitnesses.NonVacuity.NextSlotPremises
 public import FastConfirmationWitnesses.NonVacuity.GenesisStubPremises
-public import FastConfirmationWitnesses.NonVacuity.LiveMonotonicity
 public import FastConfirmationWitnesses.NonVacuity.TwelveSecondSynchrony
 public import FastConfirmationWitnesses.NonVacuity.FullTwelve
 public import FastConfirmationWitnesses.NonVacuity.FullTwelveOperational
@@ -20,15 +19,10 @@ public import FastConfirmationWitnesses.NonVacuity.ByzantinePremises
 # Witness index
 
 `ReviewClaims` contains only the safety theorem. Its result gives observer-store
-membership and executable ancestry from the next slot. The public
-`live_confirmed_root_monotonicity` theorem is a separate conditional result
-under `LiveMonotonicityPremises`. Its timely FFG store outcomes close
-previous_epoch_greatest_unrealized_checkpoint,
-is_head_unrealized_justified_ok, and the previous-slot-head voting-source
-recency guard.
+membership and executable ancestry from the next slot.
 
 This page names the finite runs that satisfy the premise bundles: a short
-joint live run, a next-slot safety run with one-second slots and a 500 ms delay,
+next-slot safety run with one-second slots and a 500 ms delay,
 a one-second target-edge run,
 a one-second run with Byzantine weight and a slashing, a 12-second
 full-bundle run, and a 12-second run with an accepted payload envelope. It
@@ -68,14 +62,6 @@ in-horizon prefixes to their slot committee. Attester-slashing evidence can name
 off-committee validators.
 
 ## Premise bundles
-
-* `LiveMonotonicityWitness.joint_witness`: one accepted two-slot-epoch run
-  satisfies the full next-slot safety bundle and both live fields with two
-  honest validators. The interval from second one to second two crosses the
-  completed first epoch. Its stored confirmed root advances strictly from
-  the anchor to the child. `joint_monotonicity` applies the public live theorem
-  to that same strict interval. The FFG timing field holds at epoch 0
-  through the genesis anchor; no vote-driven justification occurs.
 
 * `Execution.NextSlotSafetyPremises`:
   `NextSlotPremiseWitness.finite_execution_satisfies_premises` and
@@ -201,11 +187,10 @@ off-committee validators.
   `FullTwelveWitness.ffg_interpretation_fidelity`,
   `TargetEdgePremiseWitness.ffg_interpretation_fidelity`,
   `FullTwelveEnvelopeWitness.ffg_interpretation_fidelity`,
-  `ByzantinePremiseWitness.ffg_interpretation_fidelity`, and
-  `LiveMonotonicityWitness.ffg_interpretation_fidelity`. Each proves the
+  `ByzantinePremiseWitness.ffg_interpretation_fidelity`. Each proves the
   fidelity record for the interpretation of its premise bundle. In the runs
   with a carrier, the included votes are valid members of the accepted
-  carrier body. The live run includes no vote.
+  carrier body.
 * `EpochCheckpointProjectionLaws`:
   `AcceptedActualFCRJointNonVacuityFFG.witnessAcceptedEpochCheckpointProjection`.
   The anchor, child, and carrier give concrete epoch checkpoint roots.
@@ -250,8 +235,7 @@ off-committee validators.
   are also not re-established for this run. The slot count bound and the
   concrete anchor boundary alignment are proved separately.
 
-The short joint live run has a strict root advance. Its FFG timing uses only
-the genesis anchor. The 1 s safety run (delay 500 ms) changes a stored root. The 12-second
+The 1 s safety run (delay 500 ms) changes a stored root. The 12-second
 full-bundle run adds real delayed block and vote receipts. The target-edge run
 checks current-target support as a fact about the run. The envelope run
 exercises envelope delivery and data relay through
@@ -265,15 +249,14 @@ epoch 2, and no call selects a block of an earlier epoch. Both support forms are
 call and endpoint-slot induction. The six full-bundle constructors no longer
 contain support fields. The witness support lemmas remain facts about the runs.
 The historical certificate and quorum are produced from earlier votes when
-needed. No external law or live-only premise was added. The shorter
+needed. No external law was added. The shorter
 synchrony-only run does not prove the full safety bundle.
 Every positive run has proposer boost zero. The proposer-score term and
 should_apply_proposer_boost are not exercised positively. The one-second
 runs set `attestation_due_bps` to zero. The main safety runs have four or five
-validators and one validator per slot committee. The joint live run has two
-validators. Included slashing does not mark a validator slashed in state.
+validators and one validator per slot committee. Included slashing does not mark a validator slashed in state.
 `DeadlineVotePathCandidate` checks that a skipped-boundary schedule fails the
-pre-tick relay. The audited public theorem set has 47 entries. Four regression checks are:
+pre-tick relay. The audited public theorem set has 43 entries. Four regression checks are:
 `CheckpointSyncFilterWitness.normalized_anchor_run_keeps_child`,
 `CheckpointSyncFilterWitness.anchor_only_view_satisfies_inclusion`,
 `EarlyEpochBoundaryWitness.epoch_one_boundary_regression`, and

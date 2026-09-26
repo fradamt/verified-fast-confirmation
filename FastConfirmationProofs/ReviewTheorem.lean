@@ -1,7 +1,6 @@
 module
 public import FastConfirmationStatements.Review
 public import FastConfirmationProofs.Safety.NextSlotSafety
-public import FastConfirmationProofs.Monotonicity.LiveConfirmation
 
 @[expose] public section
 

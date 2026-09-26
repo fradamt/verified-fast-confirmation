@@ -1,14 +1,13 @@
 module
 public import FastConfirmationModel
 public import FastConfirmationStatements.Premises.CheckpointLinks
-public import FastConfirmationStatements.Premises.LiveMonotonicity
 public import FastConfirmationStatements.Premises.FFG
 public import FastConfirmationStatements.Premises.NextSlotSafety
 public import FastConfirmationStatements.Premises.FCRCallPremises
 
 @[expose] public section
 
-/-! Defines the public next-slot safety and live monotonicity propositions over accepted executions. -/
+/-! Defines the public next-slot safety proposition over accepted executions. -/
 
 section
 namespace FastConfirmation.Spec
@@ -33,18 +32,6 @@ def ConfirmedRootSafeFromNextSlot : Prop :=
               is_ancestor (E.store cfg ext w m)
                 (get_head cfg (E.store cfg ext w m))
                 (get_node_for_root (E.confirmed cfg ext v n)) = true
-
-/-- Conditional live result, separate from the safety review claim.
-`LiveMonotonicityPremises.ffg_timely_justification` supplies the store outcomes
-that close `previous_epoch_greatest_unrealized_checkpoint`,
-`is_head_unrealized_justified_ok`, and the previous-slot-head voting-source
-recency guard of `find_latest_confirmed_descendant`.
-`LiveMonotonicityPremises.honest_block_each_slot` supplies production and
-descendant voting from execution start, with no reorg of those honest blocks.
-These are store outcomes, not network or behavior assumptions. -/
-def LiveConfirmedRootMonotonicity : Prop :=
-  ConfirmedRootMonotonicity cfg ext
-    (fun E => Nonempty (E.NextSlotSafetyPremises cfg ext))
 
 end FastConfirmation.Spec
 end
