@@ -390,6 +390,22 @@ theorem safeFrom_of_justified_dom_K (hdomK : E.StoreDomainK cfg ext) {r₀ : Roo
 
 end Execution
 
+/-- The anchor state's slot is a lower bound on every known block's slot. This
+gives the lower end of the committee read window for ranges that start after a
+known block. -/
+theorem Execution.anchor_state_slot_le_store_block (E : Execution Root)
+    (hwf : WellFormedExecution E) (hec : BeaconExternalsPremises cfg ext E)
+    {ast : BeaconState Root} {ablk : SignedBeaconBlock Root}
+    (hgeq : E.genesis_store = get_forkchoice_store cfg ast ablk)
+    (hslot : ast.slot = ablk.message.slot) (hparent : ablk.message.parent_root ≠ ablk.root)
+    (v : ValidatorIndex) (n : ℕ) :
+    ∀ r ∈ (E.store cfg ext v n).block_roots,
+      E.anchor_state.slot ≤ ((E.store cfg ext v n).blocks r).slot := by
+  intro r hr
+  have hanchor : E.anchor_state = ast := by
+    simp only [Execution.anchor_state, hgeq, get_forkchoice_store, Function.update_self]
+  rw [hanchor, hslot]
+  exact E.store_anchor_min_slot cfg ext hwf hec hgeq hslot hparent v n r hr
 
 end FastConfirmation.Spec
 

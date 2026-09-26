@@ -515,6 +515,8 @@ theorem support_discount_le_Aval_window
       get_current_slot cfg (E.store cfg ext v₀ n₀))
     (hbH : E.SlotWithinHorizon cfg
       ((E.store cfg ext v₀ n₀).blocks b').slot)
+    (hpA : E.anchor_state.slot ≤ ((E.store cfg ext v₀ n₀).blocks
+      ((E.store cfg ext v₀ n₀).blocks b').parent_root).slot)
     (hbanc : is_ancestor (E.store cfg ext v₀ n₀) (get_node_for_root b')
       (get_node_for_root
         ((E.store cfg ext v₀ n₀).blocks b').parent_root) = true)
@@ -525,8 +527,11 @@ theorem support_discount_le_Aval_window
       i ∉ E.honest :=
     fun i hieq hi =>
       Execution.honest_not_equivocating cfg ext hhb hec hgen hi v₀ n₀ (by assumption) (by assumption) hieq
+  have hbN : ((E.store cfg ext v₀ n₀).blocks b').slot ≤ E.slot_at cfg n₀ := by
+    rw [← E.store_current_slot cfg ext v₀ n₀]
+    exact hbcur
   refine le_trans (support_discount_le_parent_stuck cfg ext hec hbb hv₀ hnH
-    hval (hlo ▸ hloH) hbH htab hne) ?_
+    hval (hlo ▸ hloH) hbH hpA hbN htab hne) ?_
   rw [Execution.Aval]
   exact E.weight_mono
     (E.ParentStuck_subset_Aclass_window cfg ext hhb hec hgen hprov hlo hes
@@ -572,6 +577,8 @@ theorem weak_base_discharged_window
       ((E.store cfg ext v₀ n₀).blocks b').slot)
     (hbcur : ((E.store cfg ext v₀ n₀).blocks b').slot ≤
       get_current_slot cfg (E.store cfg ext v₀ n₀))
+    (hpA : E.anchor_state.slot ≤ ((E.store cfg ext v₀ n₀).blocks
+      ((E.store cfg ext v₀ n₀).blocks b').parent_root).slot)
     (hbanc : is_ancestor (E.store cfg ext v₀ n₀) (get_node_for_root b')
       (get_node_for_root
         ((E.store cfg ext v₀ n₀).blocks b').parent_root) = true)
@@ -582,8 +589,9 @@ theorem weak_base_discharged_window
   have hHsup := E.honest_supporters_sum_le_Sval_window cfg ext hhb hec
     hgen hwf hprov hval hlo hes hslotlt hwalk hdom
   have hdisc := E.support_discount_le_Aval_window cfg ext hhb hec hbb
-    hgen hv hnH hprov hval htab hlo hloH hes hslotlt hbcur hbH hbanc hdom
-  exact E.weak_base_of_rule cfg ext hhb hec hbb hgen hv hnH hwf hbH hval
+    hgen hv hnH hprov hval htab hlo hloH hes hslotlt hbcur hbH hpA hbanc hdom
+  exact E.weak_base_of_rule cfg ext hhb hec hbb hgen hv hnH hwf hbH
+    (hpA.trans hslotlt.le) hval
     htab hprov hconf hwalk lo es hlo hes hloH hesH hHsup hdisc
 
 /-- Honest sibling confinement with recorded-epoch domination restricted to

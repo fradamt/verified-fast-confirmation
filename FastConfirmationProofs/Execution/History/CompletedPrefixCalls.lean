@@ -49,8 +49,8 @@ theorem completedScheduledEventPrefix_store
     ScheduledEventPrefix.store, Execution.store]
 
 /-- All prefix accounting evidence at an execution boundary is mechanical:
-operational facts come from exact replay, while committee readback follows
-from external coherence for the completed execution store. -/
+operational facts come from exact replay, while committee readback in the read
+window follows from external coherence for the completed execution store. -/
 theorem completedScheduledEventPrefix_accountingEvidence
     (hT : E.ScheduledExecutionPremises cfg ext)
     (v : ValidatorIndex) (hv : v ∈ E.honest)
@@ -64,10 +64,15 @@ theorem completedScheduledEventPrefix_accountingEvidence
       (p.store cfg ext) (p.previousSecond + 1) :=
     { operational := p.operationalEvidence cfg ext E hT hv hHn1
       committees := by
-        intro slot hslot
-        rw [hpstore]
-        exact hT.externals_coherence.committees_agree
-          v hv (n + 1) slot hHn1 hslot }
+        intro slot hslotA hslotC
+        rw [hpstore] at hslotC ⊢
+        rw [E.store_current_slot cfg ext v (n + 1)] at hslotC
+        exact hT.externals_coherence.committee_read_eq cfg ext hv hHn1
+          ⟨hslotA, hslotC⟩
+      anchor_le_current := by
+        obtain ⟨ast, ablk, hgeq, _⟩ := hT.genesis
+        rw [hpstore, E.store_current_slot cfg ext v (n + 1)]
+        exact E.anchor_state_slot_le_slot_at cfg hT.whole_seconds ⟨ast, ablk, hgeq⟩ (n + 1) }
   rw [hpstore] at hp
   simpa only [p, Execution.completedScheduledEventPrefix] using hp
 

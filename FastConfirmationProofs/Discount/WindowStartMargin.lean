@@ -142,6 +142,7 @@ theorem weak_base_of_rule
           ((E.store cfg ext v₀ n₀).blocks r).slot)
     {bs : BeaconState Root} {b' : Root}
     (hbH : E.SlotWithinHorizon cfg ((E.store cfg ext v₀ n₀).blocks b').slot)
+    (hbA : E.anchor_state.slot ≤ ((E.store cfg ext v₀ n₀).blocks b').slot)
     (hval : bs.validators = E.registry)
     (htab : get_total_active_balance cfg bs = E.total_active cfg)
     (hprov : LatestMessageProvenance E cfg (get_current_slot cfg (E.store cfg ext v₀ n₀))
@@ -164,7 +165,7 @@ theorem weak_base_of_rule
     E.Xval cfg ext v₀ n₀ b' lo es + E.Bval lo es + compute_proposer_score cfg bs + 1
       ≤ E.Sval cfg ext v₀ n₀ b' lo es := by
   subst hlo hes
-  have hsm := honest_support_majority cfg ext hhb hec hbb hgen hv hnH hwf hbH
+  have hsm := honest_support_majority cfg ext hhb hec hbb hgen hv hnH hwf hbH hbA
     hval htab hprov hconf hwalk
   have hpart := E.weight_partition cfg ext v₀ n₀ b'
     (((E.store cfg ext v₀ n₀).blocks ((E.store cfg ext v₀ n₀).blocks b').parent_root).slot + 1)

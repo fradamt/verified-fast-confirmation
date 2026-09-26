@@ -173,6 +173,9 @@ off-committee validators.
 * `BeaconExternalsPremises`:
   `AcceptedActualFCRJointNonVacuityBase.witnessExternalsCoherence`. The same
   execution uses deterministic slot processing and envelope verification.
+  Its committee reads do not depend on the state, so `committees_agree` and
+  `committee_seed_agreement` hold for every read; the witness does not
+  exercise the RANDAO seed dependence.
 * `ByzantineWeightPremises`:
   `AcceptedActualFCRJointNonVacuityBase.witnessByzantineBound`. The same
   execution has four equal-weight honest validators and no Byzantine weight.

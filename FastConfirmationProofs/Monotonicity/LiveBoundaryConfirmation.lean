@@ -1329,8 +1329,9 @@ theorem NextSlotSafetyPremises.live_equivocation_score_growth_with_loss
     (hOldH : get_current_epoch cfg oldSource < E.verification_horizon)
     (hNewH : get_current_epoch cfg newSource < E.verification_horizon)
     (sa oldEnd newEnd : Slot) (hEnd : oldEnd ≤ newEnd)
-    (hOldEndH : E.SlotWithinHorizon cfg oldEnd)
-    (hNewEndH : E.SlotWithinHorizon cfg newEnd)
+    (hsaA : E.anchorEpochStart cfg ≤ sa)
+    (hOldEndN : oldEnd ≤ E.slot_at cfg n)
+    (hNewEndN : newEnd ≤ E.slot_at cfg m)
     (hLostSpan :
       (AttSupporters cfg (E.store cfg ext w n)
         (get_node_for_root b) oldSource).toFinset \
@@ -1400,9 +1401,9 @@ theorem NextSlotSafetyPremises.live_equivocation_score_growth_with_loss
   have hweight := E.weight_growth_of_new_equivocators hOldSubset
     hLostSubset
   rw [get_equivocation_score_eq_weight cfg ext
-    h.trajectory.externals_coherence hw n hHn hvalOld sa oldEnd hOldEndH,
+    h.trajectory.externals_coherence hw n hHn hvalOld sa oldEnd hsaA hOldEndN,
     get_equivocation_score_eq_weight cfg ext
-      h.trajectory.externals_coherence hw m hHm hvalNew sa newEnd hNewEndH]
+      h.trajectory.externals_coherence hw m hHm hvalNew sa newEnd hsaA hNewEndN]
   exact hweight
 
 set_option maxRecDepth 4096 in
@@ -1471,7 +1472,8 @@ theorem NextSlotSafetyPremises.live_lost_weight_le_old_adversarial
       (AttSupporters cfg (E.store cfg ext w m)
         (get_node_for_root b) newSource).toFinset) ≤
       get_adversarial_weight cfg ext (E.store cfg ext w n) oldSource b := by
-  obtain ⟨ast, ablk, hgenEq, _, _⟩ := h.trajectory.genesis_structure
+  obtain ⟨ast, ablk, hgenEq, hanchorSlot, hanchorParent⟩ :=
+    h.trajectory.genesis_structure
   have hgen : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
       E.genesis_store = get_forkchoice_store cfg ast ablk :=
     ⟨ast, ablk, hgenEq⟩
@@ -1482,6 +1484,8 @@ theorem NextSlotSafetyPremises.live_lost_weight_le_old_adversarial
   have hLostEq := h.live_lost_supporters_newly_equivocating cfg ext E
     hw hnm hHn hHm holdCurrent hboundary hb hbEpoch
     oldSource newSource hvalOld hvalNew hOldH hNewH
+  have hbA := E.anchor_state_slot_le_store_block cfg ext h.trajectory.wellFormed
+    h.trajectory.externals_coherence hgenEq hanchorSlot hanchorParent w n b hb
   have hsubsetByz : lost ⊆
       ((AttSupporters cfg (E.store cfg ext w n)
         (get_node_for_root b) oldSource).filter
@@ -1510,7 +1514,7 @@ theorem NextSlotSafetyPremises.live_lost_weight_le_old_adversarial
     h.trajectory.genesis_structure w n
   have hbyz := byz_score_le_adversarial_weight cfg ext
     h.trajectory.honest_behavior h.trajectory.externals_coherence
-    h.completed_calls.byzantine_bound hgen hw hHn hwf hbH
+    h.completed_calls.byzantine_bound hgen hw hHn hwf hbH hbA
     hvalOld htabOld hprov
     (fun i hi msg hmsg => by
       obtain ⟨_, _, _, _, _, _, _, hknown, _, _⟩ := hprov i msg hmsg
@@ -1530,6 +1534,7 @@ theorem NextSlotSafetyPremises.live_equivocation_le_budget
     (htab : get_total_active_balance cfg source = E.total_active cfg)
     {sa : Slot} (hsa : sa ≤ ((E.store cfg ext w n).blocks b).slot)
     (hsaH : E.SlotWithinHorizon cfg sa)
+    (hsaA : E.anchorEpochStart cfg ≤ sa)
     (hendH : E.SlotWithinHorizon cfg
       (get_current_slot cfg (E.store cfg ext w n) - 1)) :
     get_equivocation_score cfg ext (E.store cfg ext w n) source sa
@@ -1552,7 +1557,10 @@ theorem NextSlotSafetyPremises.live_equivocation_le_budget
     hw hHn hb source hsa (Nat.le_refl _)
   have hbound := byz_plus_equiv_le cfg ext
     h.trajectory.externals_coherence h.completed_calls.byzantine_bound
-    hw hHn hval htab hne hsaH hendH
+    hw hHn hval htab hne hsaH hendH hsaA
+    (by
+      rw [← E.store_current_slot cfg ext w n]
+      exact Nat.sub_le _ _)
     (fun i hi _ => hspan (List.mem_toFinset.mpr hi))
   exact (Nat.le_add_left _ _).trans hbound
 
@@ -1787,7 +1795,7 @@ theorem NextSlotSafetyPremises.live_boundary_reconfirm_of_window
     (hsaH : E.SlotWithinHorizon cfg sa)
     (hOldEndH : E.SlotWithinHorizon cfg
       (get_current_slot cfg (E.store cfg ext w n) - 1))
-    (hNewEndH : E.SlotWithinHorizon cfg
+    (_hNewEndH : E.SlotWithinHorizon cfg
       (get_current_slot cfg (E.store cfg ext w m) - 1))
     (hEnd : get_current_slot cfg (E.store cfg ext w n) - 1 ≤
       get_current_slot cfg (E.store cfg ext w m) - 1)
@@ -1852,15 +1860,30 @@ theorem NextSlotSafetyPremises.live_boundary_reconfirm_of_window
           (get_current_slot cfg (E.store cfg ext w m) - 1) := by
     intro i hi
     exact hspan (Finset.mem_sdiff.mp hi).1
+  have hsaA : E.anchorEpochStart cfg ≤ sa := by
+    obtain ⟨_, _, hgenEq, hanchorSlot, hanchorParent⟩ :=
+      h.trajectory.genesis_structure
+    have hbA := E.anchor_state_slot_le_store_block cfg ext h.trajectory.wellFormed
+      h.trajectory.externals_coherence hgenEq hanchorSlot hanchorParent w n b hb
+    rw [← hstartOld]
+    split_ifs
+    · exact E.anchorEpochStart_le_epochStart cfg hbA
+    · exact E.anchorEpochStart_le_of_anchor_le cfg hbA
+  have hOldEndN : get_current_slot cfg (E.store cfg ext w n) - 1 ≤ E.slot_at cfg n := by
+    rw [← E.store_current_slot cfg ext w n]
+    exact Nat.sub_le _ _
+  have hNewEndN : get_current_slot cfg (E.store cfg ext w m) - 1 ≤ E.slot_at cfg m := by
+    rw [← E.store_current_slot cfg ext w m]
+    exact Nat.sub_le _ _
   have hequiv := h.live_equivocation_score_growth_with_loss cfg ext E
     hw hnm hHn hHm holdCurrent hboundary hb hbEpoch
     oldSource newSource hvalOld hvalNew hOldH hNewH
-    sa _ _ hEnd hOldEndH hNewEndH hLostSpan
+    sa _ _ hEnd hsaA hOldEndN hNewEndN hLostSpan
   have hlost := h.live_lost_weight_le_old_adversarial cfg ext E
     hw hnm hHn hHm holdCurrent hboundary hb hbEpoch hbH
     oldSource newSource hvalOld hvalNew htabOld hOldH hNewH
   have hOldEq := h.live_equivocation_le_budget cfg ext E
-    hw hHn hb oldSource hvalOld htabOld hsa hsaH hOldEndH
+    hw hHn hb oldSource hvalOld htabOld hsa hsaH hsaA hOldEndH
   have hadversarial := get_adversarial_weight_quantized_growth_with_loss
     cfg ext (E.store cfg ext w n) (E.store cfg ext w m)
     oldSource newSource b sa added lost hstartOld hstartNew

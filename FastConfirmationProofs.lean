@@ -45,6 +45,7 @@ public import FastConfirmationProofs.Discount.WindowStartMargin
 public import FastConfirmationProofs.Execution.Calls.CurrentTargetPrefixAccounting
 public import FastConfirmationProofs.Execution.Calls.CurrentTargetPrefixVoteRealization
 public import FastConfirmationProofs.Execution.Calls.ScheduledPrefixGeometry
+public import FastConfirmationProofs.Execution.Delivery.CommitteeReads
 public import FastConfirmationProofs.Execution.Delivery.Delivery
 public import FastConfirmationProofs.Execution.Delivery.EarlyPhaseSourceDelivery
 public import FastConfirmationProofs.Execution.Delivery.MarginProducer

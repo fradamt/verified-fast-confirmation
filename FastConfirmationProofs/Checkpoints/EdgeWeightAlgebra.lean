@@ -72,7 +72,7 @@ theorem hR4b_of_confinement (hec : BeaconExternalsPremises cfg ext E)
     {bs : BeaconState Root} {b : Root} (hval : bs.validators = E.registry)
     (hne : ∀ i ∈ (E.store cfg ext v n).equivocating_indices, i ∉ E.honest)
     {sa es : Slot}
-    (hesH : E.SlotWithinHorizon cfg es)
+    (hsaA : E.anchorEpochStart cfg ≤ sa) (hesN : es ≤ E.slot_at cfg n)
     (hspan : ∀ i ∈ AttSupporters cfg (E.store cfg ext v n) (get_node_for_root b) bs,
       i ∉ E.honest → i ∈ E.span_committee sa es) :
     (((AttSupporters cfg (E.store cfg ext v n) (get_node_for_root b) bs).filter
@@ -80,7 +80,7 @@ theorem hR4b_of_confinement (hec : BeaconExternalsPremises cfg ext E)
         (fun i => (bs.validators.getD i default).effective_balance)).sum
       + get_equivocation_score cfg ext (E.store cfg ext v n) bs sa es ≤ E.Bval sa es := by
   rw [byz_score_eq_weight cfg hval,
-    get_equivocation_score_eq_weight cfg ext hec hv n hnH hval sa es hesH]
+    get_equivocation_score_eq_weight cfg ext hec hv n hnH hval sa es hsaA hesN]
   simp only [Execution.Bval, Execution.Bwin]
   refine E.weight_add_le ?_ ?_ ?_
   · rw [Finset.disjoint_left]

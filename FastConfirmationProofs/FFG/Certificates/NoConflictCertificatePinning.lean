@@ -80,7 +80,7 @@ theorem noConflict_arithmeticBranch_oneThird
       (E.store cfg ext v n) = true) :
     E.total_active cfg < 3 * E.weight
       (E.currentTargetA32Signers cfg (E.store cfg ext v n) state) := by
-  obtain ⟨hgen, hwf, _hdiv, hhb, hec, hsv, hbb, _hknown⟩ := hA
+  obtain ⟨hgen, hwf, hdiv, hhb, hec, hsv, hbb, _hknown⟩ := hA
   obtain ⟨ast, ablk, hgeq, _hslot, _hparent⟩ := hgen
   have hgen0 : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
       E.genesis_store = get_forkchoice_store cfg ast ablk :=
@@ -116,7 +116,8 @@ theorem noConflict_arithmeticBranch_oneThird
     simpa only [observedNonhonest, adversarial, start, finish, store,
       Execution.currentTargetObservedNonhonestSupporters] using
       E.currentTarget_nonhonest_weight_le_adversarial cfg ext
-        hhb hec hbb hgen0 hv hnH hval htab hprov
+        hhb hec hbb hgen0 hv hnH (E.anchor_state_slot_le_slot_at cfg hdiv hgen0 n)
+        hval htab hprov
   have hobserved : score - adversarial ≤
       E.weight observedHonest := by
     rw [hscore]

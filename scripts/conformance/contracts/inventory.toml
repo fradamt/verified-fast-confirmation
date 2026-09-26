@@ -129,10 +129,16 @@ class = "T"
 test = "BeaconExternalsPremises.pjf_checkpoint_epoch"
 
 [[field]]
+path = "BeaconExternalsPremises.committee_seed_agreement"
+file = "Externals.lean"
+class = "I"
+reason = "Scope condition committee-seed agreement: honest committee reads in the read window agree across honest nodes and seconds. On one chain with each honest head at most one epoch behind it holds (CommitteeScope.one_chain_window_reads_agree). A stale head or honest heads on branches with different RANDAO mixes for epoch e - 2 break it (CommitteeScope.excludes_stale_head, CommitteeScope.excludes_randao_fork)."
+
+[[field]]
 path = "BeaconExternalsPremises.committees_agree"
 file = "Externals.lean"
 class = "E"
-reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field."
+reason = "The execution committee is supplied; this field makes it an honest committee read in the read window. On one chain the chain committees satisfy it (CommitteeScope.one_chain_window_reads_agree)."
 
 [[field]]
 path = "BeaconExternalsPremises.honest_attestation_valid"
@@ -149,8 +155,8 @@ reason = "BLS unforgeability and honest signing history are idealized."
 [[field]]
 path = "BeaconExternalsPremises.on_attestation_committee"
 file = "Externals.lean"
-class = "E"
-reason = "The indexed Lean wire object omits Python get_indexed_attestation; only successful delivered on_attestation calls in honest in-horizon prefixes are constrained."
+class = "I"
+reason = "The indexed Lean wire object omits Python get_indexed_attestation; only successful delivered on_attestation calls in honest in-horizon prefixes are constrained. Python reads the committee from the target checkpoint state, which fixes the seed; on one chain the chain committees satisfy the field. A target block on a branch with a different RANDAO mix for the seed epoch is outside the committee-seed agreement scope."
 
 [[field]]
 path = "BeaconExternalsPremises.committee_assignment_unique"

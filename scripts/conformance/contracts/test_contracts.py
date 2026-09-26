@@ -439,19 +439,96 @@ def run(repo: Path):
     # empty-slot transition. BLS is disabled by the test helper switch.
     canonical=spec.IndexedAttestation(attesting_indices=spec.AttestingIndices(data=[0]))
     empty_indices=spec.IndexedAttestation()
+    # A pending deposit is applied at the next epoch boundary. It appends
+    # validator 64, so an attestation by index 64 changes validity.
+    from eth_consensus_specs.test.helpers.keys import pubkeys
+    deposit_state=genesis(spec,[32*10**9]*64,32*10**9)
+    deposit_state.pending_deposits.append(spec.PendingDeposit(
+        pubkey=pubkeys[64],withdrawal_credentials=b"\x01"+b"\x00"*11+b"\x11"*20,
+        amount=spec.MIN_ACTIVATION_BALANCE,signature=spec.BLSSignature(),slot=spec.GENESIS_SLOT))
+    spec.process_slots(deposit_state,7)
+    new_index=spec.IndexedAttestation(attesting_indices=spec.AttestingIndices(data=[64]))
     validity_cases=[]
-    for label,st in [("genesis",states[0][1]),("voted:31",next(st for name,st in st_samples if name=="voted:31"))]:
-        for indexed in (canonical,empty_indices):
+    for label,st in [("genesis",states[0][1]),("voted:31",next(st for name,st in st_samples if name=="voted:31")),
+                     ("pending-deposit:7",deposit_state)]:
+        for indexed in (canonical,empty_indices,new_index):
             for jump in (1,8,16):
-                validity_cases.append((f"{label}:{len(indexed.attesting_indices)}-indices:+{jump}",(st,indexed,int(st.slot)+jump)))
+                validity_cases.append((f"{label}:{[int(i) for i in indexed.attesting_indices]}-indices:+{jump}",(st,indexed,int(st.slot)+jump)))
     def validity_preserved(d):
-        before=spec.is_valid_indexed_attestation(d[0],d[1])
+        """Lean antecedents: the target slot is in the horizon (the probe
+        slots are) and slot processing keeps the validator registry."""
+        before=totalized_indexed_valid(spec,d[0],d[1])
         after=slotted((spec,d[0],d[2]))
-        result=spec.is_valid_indexed_attestation(after,d[1])
-        return before == result,{"pre":projection(d[0]),"post":projection(after),"indices":[int(i) for i in d[1].attesting_indices],"before":before,"after":result}
+        result=totalized_indexed_valid(spec,after,d[1])
+        same_registry=projection(after)["validators"]==projection(d[0])["validators"]
+        return (not same_registry) or before == result,{"pre":projection(d[0]),"post":projection(after),"indices":[int(i) for i in d[1].attesting_indices],"before":before,"after":result,"same_registry":same_registry}
     check("BeaconExternalsPremises.process_slots_attestation_valid",
-          "ext.is_valid_indexed_attestation (ext.process_slots state slot) a = ext.is_valid_indexed_attestation state a",
+          "state.slot < slot -> SlotWithinHorizon slot -> (ext.process_slots state slot).validators = state.validators -> ext.is_valid_indexed_attestation (ext.process_slots state slot) a = ext.is_valid_indexed_attestation state a",
           validity_cases,validity_preserved)
+    guarded=sum(1 for _,d in validity_cases if projection(slotted((spec,d[0],d[2])))["validators"]==projection(d[0])["validators"])
+    print(f"NOTE process_slots_attestation_valid: registry kept in {guarded} of {len(validity_cases)} cases",flush=True)
+    def deposit_changes_validity(d):
+        after=slotted((spec,d[0],d[2]))
+        before=totalized_indexed_valid(spec,d[0],d[1])
+        result=totalized_indexed_valid(spec,after,d[1])
+        grows=len(after.validators)>len(d[0].validators)
+        return grows and before!=result,{"registry_before":len(d[0].validators),"registry_after":len(after.validators),"before":before,"after":result}
+    check("RegistryScope.excludes_pending_deposit",
+          "A pending deposit applied by epoch processing appends a validator and changes indexed validity; registry_static_in_horizon excludes such runs",
+          [(l,d) for l,d in validity_cases if l=="pending-deposit:7:[64]-indices:+8"],deposit_changes_validity)
+    # Committee reads. The committees of epoch e use the RANDAO mix of epoch
+    # e - 2 (MIN_SEED_LOOKAHEAD). Python get_slot_committee reads the head
+    # state without slot processing. One chain with a block in every slot:
+    # at wall-clock slot t the head is the block of slot t - 1 or t, and every
+    # read of a slot s <= t in the window agrees with the committee that the
+    # final chain state computes. BLS is off, so each RANDAO reveal is a
+    # constant stub and the mix depends on the parity of the block count.
+    def slot_committee(sp, st, slot):
+        members=set()
+        epoch=sp.compute_epoch_at_slot(sp.Slot(slot))
+        for index in range(int(sp.get_committee_count_per_slot(st,epoch))):
+            members.update(int(i) for i in sp.get_beacon_committee(st,sp.Slot(slot),sp.CommitteeIndex(index)))
+        return frozenset(members)
+    chain_genesis=genesis(spec,[32*10**9]*64,32*10**9)
+    chain=[chain_genesis.copy()]
+    head=chain_genesis.copy()
+    for _ in range(40):
+        _,_,head=with_attestations(spec,head,1,True,False)
+        chain.append(head.copy())
+    reference={s:slot_committee(spec,chain[-1],s) for s in range(41)}
+    read_cases=[]
+    for t in range(1,41):
+        for lag in (0,1):
+            read_cases.append((f"one-chain:time{t}:head{t-lag}",(t,chain[t-lag])))
+    def window_reads(d):
+        t,head_state=d
+        bad=[s for s in range(0,t+1) if slot_committee(spec,head_state,s)!=reference[s]]
+        return not bad,{"time_slot":t,"head_slot":int(head_state.slot),"differing_slots":bad}
+    check("CommitteeScope.one_chain_window_reads_agree",
+          "One chain, head at most one slot behind: every read of a slot from the anchor epoch start to the current slot equals the chain committee (committee_seed_agreement and committees_agree hold)",
+          read_cases,window_reads)
+    def stale_head_differs(d):
+        t,head_state=d
+        bad=[s for s in range(0,t+1) if slot_committee(spec,head_state,s)!=reference[s]]
+        return bool(bad),{"time_slot":t,"head_slot":int(head_state.slot),"differing_slots":bad}
+    check("CommitteeScope.excludes_stale_head",
+          "A head two epochs behind the current epoch reads committees that differ from the chain committees; committee_seed_agreement excludes such runs",
+          [("one-chain:time24:head0",(24,chain[0])),("one-chain:time32:head8",(32,chain[8]))],stale_head_differs)
+    # A second branch from slot 3 skips slot 8, so it has one block fewer in
+    # epoch 1 and a different RANDAO mix for epoch 1. Its reads of epoch-3
+    # slots differ from the first branch.
+    fork=chain[3].copy()
+    for _ in range(4):
+        _,_,fork=with_attestations(spec,fork,1,True,False)
+    spec.process_slots(fork,8)
+    _,_,fork=with_attestations(spec,fork,16,True,False)
+    def fork_differs(d):
+        a,b=d
+        bad=[s for s in range(0,25) if slot_committee(spec,a,s)!=slot_committee(spec,b,s)]
+        return bool(bad) and all(s>=24 for s in bad),{"heads":[int(a.slot),int(b.slot)],"differing_slots":bad}
+    check("CommitteeScope.excludes_randao_fork",
+          "Two honest heads on branches with different RANDAO mixes for epoch e - 2 read different committees for epoch e; committee_seed_agreement excludes such runs",
+          [("fork-at-3:epoch1-block-count",(chain[24],fork))],fork_differs)
     # The genesis state is an accepted anchor with a stub checkpoint root.
     # The store uses the hash of the anchor block as its checkpoint root.
     anchor_cases=[]
