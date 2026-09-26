@@ -222,7 +222,7 @@ theorem hval_of_selectedMarginDomain
     (hH : E.WithinHorizon cfg m) :
     ((E.store cfg ext w m).checkpoint_states
       (E.store cfg ext w m).justified_checkpoint).validators = E.registry :=
-  (E.registryConstant cfg ext hec hgen w hw m).2 _
+  (E.registryConstant cfg ext hec hgen w hw m hH).2 _
     (hdom.justified_checkpoint_cached w hw m hH)
 
 /-- Time-parametric strong-induction shell.  Unlike the legacy helper, its
@@ -296,7 +296,7 @@ theorem honestSupporter_of_confirmed_known_at_minimal
   have hval : bs.validators = E.registry := by
     rw [hbseq]
     exact (E.registryConstant cfg ext hA.externals_coherence hgen0
-      v hv n).2 c hkey
+      v hv n hH).2 c hkey
   have htab : get_total_active_balance cfg bs = E.total_active cfg := by
     rw [hbseq]
     exact E.checkpoint_states_total_active_balance cfg ext hA.static_validators
@@ -846,7 +846,7 @@ theorem futureCrossing_descendStep_of_selectedInputs_minimal
   have hval : bs.validators = E.registry := by
     rw [hbsEq]
     exact (E.registryConstant cfg ext hA.externals_coherence hgen
-      v hv q).2 cp hkey
+      v hv q hqH).2 cp hkey
   have htab : get_total_active_balance cfg bs = E.total_active cfg := by
     rw [hbsEq]
     exact E.checkpoint_states_total_active_balance cfg ext hA.static_validators
@@ -944,7 +944,7 @@ theorem crossingEdge_descendStep_of_selectedInputs_minimal
   have hval : bs.validators = E.registry := by
     rw [hbsEq]
     exact (E.registryConstant cfg ext hA.externals_coherence hgen
-      v hv q).2 cp hkey
+      v hv q hqH).2 cp hkey
   have htab : get_total_active_balance cfg bs = E.total_active cfg := by
     rw [hbsEq]
     exact E.checkpoint_states_total_active_balance cfg ext hA.static_validators

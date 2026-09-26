@@ -666,16 +666,23 @@ theorem witnessReachableValidationState_nonempty {state : BeaconState WitnessRoo
 
 theorem witnessExternalsCoherence :
     BeaconExternalsPremises witnessConfig witnessExternals witnessExecution := by
+  have hregistry : ∀ state, witnessExecution.ReachableValidationState witnessConfig witnessExternals state →
+      state.validators = witnessExecution.registry := by
+    intro state hstate
+    obtain ⟨store, hstore, hstate⟩ := hstate
+    have hreg := witnessCausalStore_registryConstant (hstore.causal witnessConfig witnessExternals)
+    rcases hstate with ⟨root, hroot, rfl⟩ | ⟨checkpoint, hcheckpoint, rfl⟩
+    · exact hreg.1 root hroot
+    · exact hreg.2 checkpoint hcheckpoint
   constructor
   · intro st s hlt
     simp only [witnessExternals, witnessProcessSlots]
     split <;> rfl
-  · intro st s
-    simp only [witnessExternals, witnessProcessSlots]
-    split
-    · simp only [witnessPJF]
-      split <;> rfl
-    · rfl
+  · intro state hscope
+    rcases hscope with hreachable | ⟨base, slot, hreachable, _hslot, rfl⟩
+    · exact hregistry state hreachable
+    · rw [witnessProcessSlots_registry]
+      exact hregistry base hreachable
   · intro st b st' h
     simp only [witnessExternals, witnessTransition] at h
     split at h
@@ -689,23 +696,6 @@ theorem witnessExternalsCoherence :
           simp only [Option.some.injEq] at h
           subst st'
           rw [hguard.2]
-          rfl
-      · contradiction
-  · intro st b st' h
-    simp only [witnessExternals, witnessTransition] at h
-    split at h
-    · next hguard =>
-        simp only [Option.some.injEq] at h
-        subst st'
-        have hst : st = anchorState := sameProjectedState_iff_eq.mp hguard.1
-        subst st
-        rfl
-    · split at h
-      · next hguard =>
-          simp only [Option.some.injEq] at h
-          subst st'
-          have hst : st = childState := sameProjectedState_iff_eq.mp hguard.1
-          subst st
           rfl
       · contradiction
   · intro st b st' h
@@ -767,7 +757,12 @@ theorem witnessExternalsCoherence :
     have haGround := ((witness_valid_iff state a).mp hvalid).2
     obtain ⟨s, hs, rfl⟩ := groundVote_exists haGround
     exact recorded_vote_of_attester hs hvin
-  · intro state a _hreachable hvalid i hi
+  · intro store store' a ifb _hpost hh i hi
+    simp only [on_attestation] at hh
+    split_ifs at hh with hv hvi
+    cases hh
+    let state := (store_target_checkpoint_state witnessConfig witnessExternals store a.data.target).checkpoint_states a.data.target
+    have hvalid : witnessExternals.is_valid_indexed_attestation state a = true := hvi
     have haGround := ((witness_valid_iff state a).mp hvalid).2
     obtain ⟨s, hs, rfl⟩ := groundVote_exists haGround
     have hi' : i = s % 4 := by simpa [vote] using hi

@@ -2035,7 +2035,7 @@ theorem NextSlotSafetyPremises.live_cached_source_geometry
       E.genesis_store = get_forkchoice_store cfg ast ablk :=
     ⟨ast, ablk, hgenEq⟩
   have hregistry := E.registryConstant cfg ext
-    h.trajectory.externals_coherence hgen w hw t
+    h.trajectory.externals_coherence hgen w hw t hHt
   have hslot := (E.stateSlotsLE cfg ext h.trajectory.whole_seconds
     h.trajectory.externals_coherence hgen w t).2 cp hkey
   have hsourceH : get_current_epoch cfg

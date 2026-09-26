@@ -16,17 +16,14 @@ store carries — every `block_states` entry over `block_roots`, every
 `validators = E.registry`.
 
 The trusted `get_forkchoice_store` initialization seeds this at the genesis
-store; every handler preserves it (`BeaconExternalsPremises`'s
-registry-preservation facts move it through `on_block`'s state transition and
-`on_attestation`'s `process_slots` checkpoint-state write); so it holds at
-every node and second. The payoff (`get_total_active_balance` of every balance
+store. `BeaconExternalsPremises.registry_static_in_horizon` gives it for every
+honest causal prefix in the horizon and for the slot-processed states read by
+handlers. The payoff (`get_total_active_balance` of every balance
 source the rule reads equals the anchor's `E.total_active`) needs the
 static-set's epoch-independent activity to move `get_total_active_balance`'s
 `get_current_epoch` read between states at different slots.
 
-No behavioral assumptions enter beyond genesis initialization and
-`BeaconExternalsPremises`; store monotonicity of the tracked fields is the
-mechanism. `StaticValidatorSet` is needed only by the later active-balance
+`StaticValidatorSet` is needed only by the later active-balance
 corollaries, not to seed registry constancy.
 -/
 
@@ -374,24 +371,42 @@ theorem Execution.genesis_registryConstant (E : Execution Root)
     simp only [Execution.registry, Execution.anchor_state, hgeq,
       get_forkchoice_store, Function.update_self]
 
-/-- Registry constancy holds at every node and second: the mechanically seeded
-genesis invariant propagates along the whole trajectory. -/
+/-- An honest store at an in-horizon second is an exact causal prefix. -/
+theorem Execution.honest_store_prefix (E : Execution Root)
+    (v : ValidatorIndex) (hv : v ∈ E.honest) (n : ℕ)
+    (hn : E.WithinHorizon cfg n) :
+    E.HonestPrefixStoreWithinHorizon cfg ext (E.store cfg ext v n) := by
+  cases n with
+  | zero =>
+      exact .genesis ⟨v, hv⟩ hn
+  | succ m =>
+      let p : E.ScheduledEventPrefix :=
+        { node := v
+          previousSecond := m
+          processedCount := (E.schedule v (m + 1)).length
+          count_le := le_refl _ }
+      have hp : p.store cfg ext = E.store cfg ext v (m + 1) := by
+        simp [p, Execution.ScheduledEventPrefix.store, Execution.store]
+      rw [← hp]
+      exact .scheduledPrefix p hv hn
+
+/-- Registry constancy at honest in-horizon stores follows directly from the
+execution-scope condition on their keyed validation states. -/
 theorem Execution.registryConstant (E : Execution Root)
     (hec : BeaconExternalsPremises cfg ext E)
-    (hgen : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
+    (_hgen : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
       E.genesis_store = get_forkchoice_store cfg ast ablk) :
-    ∀ v ∈ E.honest, ∀ n, RegistryConstant E.registry (E.store cfg ext v n) := by
-  intro v _ n
-  induction n with
-  | zero => exact E.genesis_registryConstant cfg hgen
-  | succ n ih =>
-    change RegistryConstant E.registry ((E.schedule v (n + 1)).foldl
-      (fun store event => (apply_event cfg ext store event).getD store)
-      (on_tick cfg (E.store cfg ext v n) (E.time_at (n + 1))))
-    refine registryConstant_foldl
-      (fun s e hs => apply_event_getD_registryConstant cfg ext
-        hec.state_transition_registry hec.process_slots_registry s e hs) _ _ ?_
-    exact on_tick_registryConstant cfg _ _ ih
+    ∀ v ∈ E.honest, ∀ n, E.WithinHorizon cfg n →
+      RegistryConstant E.registry (E.store cfg ext v n) := by
+  intro v hv n hn
+  have hstore := E.honest_store_prefix cfg ext v hv n hn
+  constructor
+  · intro r hr
+    exact hec.registry_static_in_horizon _
+      (Or.inl ⟨_, hstore, Or.inl ⟨r, hr, rfl⟩⟩)
+  · intro c hc
+    exact hec.registry_static_in_horizon _
+      (Or.inl ⟨_, hstore, Or.inr ⟨c, hc, rfl⟩⟩)
 
 /-! ## State-slot bounds for every balance source
 
@@ -839,7 +854,7 @@ theorem Execution.checkpoint_states_total_active_balance (E : Execution Root)
         exact ⟨_, _, by assumption⟩) :
     get_total_active_balance cfg ((E.store cfg ext v n).checkpoint_states c) =
       get_total_active_balance cfg E.anchor_state := by
-  have hrc := (E.registryConstant cfg ext hec hgen v hv n).2 c hc
+  have hrc := (E.registryConstant cfg ext hec hgen v hv n hn).2 c hc
   have hslot := (E.stateSlotsLE cfg ext hdiv hec hgen v n).2 c hc
   have hanchor := E.anchor_state_slot_le cfg hdiv hgen
   have hanchorN : E.anchor_state.slot ≤ E.slot_at cfg n :=

@@ -60,7 +60,7 @@ the child. This is not a counterexample to the full safety bundle. See [anchor l
 │ No slashing        │ HonestBehavior.not_slashable makes honest votes pairwise non-slashable.                │
 │ Root labels        │ WellFormedExecution.blocks_root_injective identifies blocks with equal root labels.    │
 │ Timing             │ NextSlotSynchronyPremises requires receipt and handler service by the next boundary.   │
-│ Stake and registry │ The validator registry, including balances and slashed flags, is fixed in the horizon. │
+│ Stake and registry │ Keyed states in honest in-horizon stores and their slot-processed reads have the anchor registry. │
 │ Stake floor        │ Positive total balance and ByzantineWeightPremises hold on each checked span.          │
 │ Anchor             │ The initial anchor has the stated root, epoch, and boundary alignment. Its state is a  │
 │                    │ genesis state or carries the anchor as its checkpoints (anchor_state_checkpoints).     │
@@ -205,9 +205,9 @@ coverage limits, not claims about unreachable protocol states.
 
 ## Scope limits
 
-- The validator registry, including balances and slashed flags, is fixed in the horizon. An included slashing never marks a validator slashed in state.
+- `BeaconExternalsPremises.registry_static_in_horizon` fixes keyed states in honest in-horizon stores and their slot-processed reads to the anchor registry. Runs with included slashings, deposits, activations, exits, or effective-balance changes in the horizon are outside this condition.
 - The model imports only validated payloads. An imported payload enters the store only after `verify_execution_payload_envelope` returns true. This external includes the execution engine's `VALID` decision. Execution validation itself is opaque.
-- `BeaconExternalsPremises` supplies contracts for external state transitions and validation. The Lean proof does not implement an execution engine.
+- `BeaconExternalsPremises` supplies contracts for external state transitions and validation. `on_attestation_committee` constrains successful delivered attestations. Indexed attester-slashing evidence can have off-committee signers; its handler only updates the equivocating set. The Lean proof does not implement an execution engine.
 - `AcceptedBlockAttestationInclusion.Included` is a supplied carrier-vote relation. Its safety evidence gives an accepted carrier block, a received block copy of the vote, slot and target-epoch facts, and committee membership.
 - `FFGInterpretationFidelity` states the intended interpretation of the included votes: membership in the accepted carrier block's ordered FFG attestation body, validity on the target checkpoint state prepared from a keyed target block state in an honest in-horizon store, and the external validity check. The safety theorem does not assume it. Each full-bundle witness proves it for its interpretation.
 - `ByzantineWeightPremises.span_fraction` must hold for every in-horizon slot span, including one slot. A global fault share does not establish this bound. The bound matches `CommitteeHonestMajority` in the repository's formal paper Assumption 2.

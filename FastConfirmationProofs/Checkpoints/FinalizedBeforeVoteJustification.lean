@@ -25,7 +25,8 @@ private theorem finalization_last_slot_le {f S s : ℕ}
 
 /-- Slot processing from a known block state of an honest store, to a slot
 at or before the store slot, keeps the anchor's total active balance.  Slot
-processing keeps the registry, and activity is constant in the horizon. -/
+processing reaches a state covered by the in-horizon registry condition,
+and activity is constant in the horizon. -/
 theorem process_slots_block_state_total_active
     (hT : E.ScheduledExecutionPremises cfg ext)
     (hsv : StaticValidatorSet cfg E)
@@ -38,18 +39,22 @@ theorem process_slots_block_state_total_active
         (ext.process_slots ((E.store cfg ext v n).block_states r) s) =
       E.total_active cfg := by
   obtain ⟨ast, ablk, hgen, _, _⟩ := hT.genesis_structure
-  have hval : ((E.store cfg ext v n).block_states r).validators = E.registry :=
-    (E.registryConstant cfg ext hT.externals_coherence ⟨ast, ablk, hgen⟩
-      v hv n).1 r hr
+  have hval : (ext.process_slots
+      ((E.store cfg ext v n).block_states r) s).validators = E.registry :=
+    hT.externals_coherence.registry_static_in_horizon _
+      (Or.inr ⟨_, _,
+        ⟨_, E.honest_store_prefix cfg ext v hv n hHn,
+          Or.inl ⟨r, hr, rfl⟩⟩,
+        E.slotWithinHorizon_of_le cfg hle hHn, rfl⟩)
   have hanchorN : E.anchor_state.slot ≤ E.slot_at cfg n :=
     le_trans (E.anchor_state_slot_le cfg hT.whole_seconds ⟨ast, ablk, hgen⟩)
       (E.slot_at_mono cfg (Nat.zero_le n))
   change _ = get_total_active_balance cfg E.anchor_state
   apply get_total_active_balance_congr cfg
-  · rw [hT.externals_coherence.process_slots_registry, hval]
+  · rw [hval]
     rfl
   · intro i
-    rw [hT.externals_coherence.process_slots_registry, hval]
+    rw [hval]
     simpa only [get_current_epoch,
       hT.externals_coherence.process_slots_slot _ _ hlt] using
       hsv.activity_constant_of_slot_le (cfg := cfg) hle hanchorN hHn.2.2 hHn.2.2
