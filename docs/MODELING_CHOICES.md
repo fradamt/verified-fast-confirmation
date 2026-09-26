@@ -209,8 +209,8 @@ branch from r before X1 arrives. Their epoch-e target is r, while the
 caller's target is X1. The selected root r stays safe and the relay
 deadlines permit this schedule. Thus safety and descendant support can hold
 without exact target agreement. This is a protocol description, not a Lean
-counterexample witness. The finite Byzantine witness separately proves a
-true previous-result guard and the new descendant conclusion.
+counterexample witness. The previous-result proviso branch is not exercised
+by a full-bundle witness.
 
 ## Interpretation fidelity
 
@@ -334,3 +334,38 @@ when it walks before a checkpoint-sync anchor. The Lean regression starts from
 the literal one-block initial store. The positive Python control includes epoch-F votes in an epoch-F+1 carrier
 and checks that the raw source is F at F+2. None of these tests is a new
 full-bundle witness.
+
+## Epoch-one inclusion
+
+Phase0 and Altair `process_justification_and_finalization` return early when
+the current epoch is `GENESIS_EPOCH + 1` or less. Thus a block of epoch 1 has
+anchor unrealized justification, even when its chain includes a supermajority
+of epoch-1 votes. Only a block of epoch 2 or later can justify epoch 1 through
+unrealized justification.
+
+`EventualCheckpointInclusion.included` therefore asks for an inclusion block
+of epoch `GENESIS_EPOCH + 2` or later when the target epoch is above
+`GENESIS_EPOCH`. `AcceptedBlockFFGState.unrealized_justified_max` has the same
+epoch guard, and `AcceptedBlockFFGState.unrealized_justified_early` makes the
+realized and unrealized selectors equal at those epochs.
+`AcceptedBlockFFGState.realized_justified_max` asks for a seed
+block of an earlier epoch and a block epoch above `GENESIS_EPOCH + 2`, because
+realized justification at a block of epoch E shows only the boundaries before
+E.
+
+`regression.fcr_confirmed_block_reorged_epoch_one` in
+`scripts/conformance/contracts/test_realized_gap.py` shows why the inclusion
+guard is necessary. In the `fork` run, blocks at slots 1 to 15 include the
+epoch-1 votes, and no block on that chain has epoch 2. A block at slot 16 on
+the slot-8 block includes the same votes. The pinned Python FCR confirms the
+slot-15 block at slots 16 to 23. In epoch 3 the slot-16 block has epoch-1
+unrealized justification and the slot-15 block does not. The head moves to
+the slot-16 block, and the slot-15 block is no longer on the canonical chain.
+The old inclusion premise holds in this run, because the slot-15 chain
+includes the epoch-1 votes in epoch 1. The new premise does not hold, because
+no epoch-2 block on that chain includes them. The run is thus outside the
+theorem. The test fails if the Python run stops showing the reorg.
+
+Each non-vacuity witness has its carrier block in epoch 2 for this reason.
+In epochs 0 and 1 the witness PJF keeps the anchor, as the Python early
+return does.

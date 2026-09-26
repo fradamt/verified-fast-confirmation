@@ -20,9 +20,11 @@ namespace FastConfirmation.Spec.EarlyEpochBoundaryWitness
 
 open AcceptedActualFCRJointNonVacuityBase AcceptedActualFCRJointNonVacuityFFG
 
-/-- The identity names the carrier with the three included epoch-1 votes. -/
+/-- The identity names the carrier with the three included epoch-1 votes.
+The state is at slot 7, in epoch 1, as if those votes were included in an
+epoch-1 block. -/
 def earlyState : BeaconState WitnessRoot :=
-  { carrierState with source_identity := some carrierRoot }
+  { carrierState with slot := 7, source_identity := some carrierRoot }
 
 /-- A reduced PJF interpretation with the Phase0 early return. -/
 def pjf (st : BeaconState WitnessRoot) : BeaconState WitnessRoot :=

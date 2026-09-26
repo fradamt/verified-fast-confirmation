@@ -25,8 +25,8 @@ The runs are:
   leaves it at slot 24.
 
 Names `AcceptedBlockFFGState.*` and `FFGStateReadAgreement.*` are Lean
-fields; `semantics.*` is a Python fact that Lean does not state; `candidate.*`
-is a proposed restatement; `regression.*` records a finding.
+fields; `candidate.*` is a proposed restatement; `regression.*` records a
+finding.
 
 Each law is checked on every applicable tuple. A law marked `expected=FAIL`
 is a labelled regression: the test fails if it stops failing, because the
@@ -361,7 +361,7 @@ def run_checks(projections, fork):
           descents(lambda P, r, s: P.epoch[s] < P.epoch[r]),
           lambda d: (d[0].gu[d[2]][0] <= d[0].gj[d[1]][0], {"gu_seed": d[0].gu[d[2]], "gj_tip": d[0].gj[d[1]],
                                                           "seed_epoch": d[0].epoch[d[2]], "tip_epoch": d[0].epoch[d[1]]}))
-    check("semantics.unrealized_justified_early",
+    check("AcceptedBlockFFGState.unrealized_justified_early",
           "BlockKnown r b -> epoch b <= GENESIS_EPOCH + 1 -> unrealized_justified r = realized_justified r",
           roots(lambda P, r: P.epoch[r] <= GENESIS_EPOCH + 1),
           lambda d: (d[0].gu[d[1]] == d[0].gj[d[1]], {"gu": d[0].gu[d[1]], "gj": d[0].gj[d[1]]}))

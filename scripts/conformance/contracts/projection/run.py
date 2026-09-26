@@ -311,6 +311,7 @@ def check_run(run, statements):
                   'realized_justified_mem', 'unrealized_justified_mem', 'realized_finalized_mem',
                   'unrealized_finalized_mem', 'realized_justified_anchor_or_before',
                   'realized_justified_max', 'realized_justified_realized', 'unrealized_justified_max',
+                  'unrealized_justified_early',
                   'realized_justified_epoch_le_unrealized', 'unrealized_justified_mono',
                   'unrealized_justified_epoch_le_later_realized',
                   'available_checkpoint_epoch_le_block', 'realized_finalized_evidence',
@@ -357,8 +358,13 @@ def check_run(run, statements):
                 samples.append((rj == run.anchor or (epoch > 2 and any(rj in run.available(seed) for seed in earlier)),
                                 {**detail, 'checkpoint': rj}))
             elif field == 'unrealized_justified_max':
-                samples += [(c[0] <= uj[0], {**detail, 'available': c,
-                             'carrier': carrier}) for c, carrier in available.items()]
+                # PJF returns early in epochs 0 and 1.
+                if epoch > 1:
+                    samples += [(c[0] <= uj[0], {**detail, 'available': c,
+                                 'carrier': carrier}) for c, carrier in available.items()]
+            elif field == 'unrealized_justified_early':
+                if epoch <= 1:
+                    samples.append((uj == rj, detail))
             elif field == 'realized_justified_epoch_le_unrealized':
                 samples.append((rj[0] <= uj[0], detail))
             elif field == 'unrealized_justified_mono':
@@ -446,7 +452,7 @@ def check_run(run, statements):
     each('FFGStateAndCheckpointReadAgreement.available_checkpoint_checkpoint_of_known', available_reflection)
     state_failures = [r for r in results if r['field'].startswith('AcceptedBlockFFGState.') and r['status'] in ('FAIL','OUT_OF_SCOPE')]
     record('ScheduledFFGInterpretation.state', not state_failures,
-           state_failures[0]['state'] if state_failures else {'case': run.name, 'state_laws': 22, 'anchor_root': run.anchor_root})
+           state_failures[0]['state'] if state_failures else {'case': run.name, 'state_laws': sum(r['field'].startswith('AcceptedBlockFFGState.') for r in results), 'anchor_root': run.anchor_root})
     coherence_failures = [r for r in results if r['field'].startswith(('FFGStateReadAgreement.',
                           'FFGStateAndCheckpointReadAgreement.')) and r['status'] in ('FAIL','OUT_OF_SCOPE')]
     record('ScheduledFFGInterpretation.coherence', not coherence_failures,
@@ -459,8 +465,10 @@ def check_run(run, statements):
             for snap in run.snapshots:
                 if snap['slot'] < cutoff or base not in snap['known']:
                     continue
+                # An epoch-1 checkpoint needs an inclusion block of epoch 2 or later.
                 candidates = [tip for tip in snap['known'] if run.ancestor(tip, base) and
-                              int(run.blocks[tip].slot) < cutoff and c in run.available(tip)]
+                              int(run.blocks[tip].slot) < cutoff and c in run.available(tip) and
+                              (e == 0 or int(run.blocks[tip].slot)//8 > 1)]
                 consequence.append({'base': base, 'epoch': e, 'view_slot': snap['slot'],
                                     'checkpoint': c, 'descendant_found': bool(candidates)})
     results.append({'field': 'EventualCheckpointInclusion.included', 'status': 'NOT_ESTABLISHED',

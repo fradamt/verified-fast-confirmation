@@ -50,11 +50,11 @@ def childTransition :
   postStore := childPostPrefix.store witnessConfig witnessExternals
   accepted := by exact child_on_block_accepted
 
-/-- At second seven the first event is the ordinary slot-six receipt; the
+/-- At second eight the first event is the ordinary slot-seven receipt; the
 carrier block is the exact next event. -/
 def carrierPrefix : witnessExecution.ScheduledEventPrefix where
   node := 0
-  previousSecond := 6
+  previousSecond := 7
   processedCount := 1
   count_le := by decide
 
@@ -200,7 +200,7 @@ private theorem child_parentEdge :
 
 private theorem carrier_parentEdge :
     witnessExecution.ParentEdge carrierRoot childRoot := by
-  exact Or.inr ⟨0, 7, carrierSignedBlock,
+  exact Or.inr ⟨0, 8, carrierSignedBlock,
     block_mem_schedule_iff.mpr (Or.inr ⟨rfl, rfl⟩), rfl, rfl⟩
 
 private theorem child_descends_anchor :
@@ -269,11 +269,11 @@ def witnessIncluded (carrier : WitnessRoot)
 
 private theorem carrier_blockAt :
     witnessExecution.BlockAt carrierRoot carrierSignedBlock.message := by
-  exact Or.inr ⟨0, 7, carrierSignedBlock,
+  exact Or.inr ⟨0, 8, carrierSignedBlock,
     block_mem_schedule_iff.mpr (Or.inr ⟨rfl, rfl⟩), rfl, rfl⟩
 
 private theorem includedVote_true_scheduled {s : Slot} (hlo : 4 ≤ s) (hhi : s ≤ 6) :
-    Event.attestation (vote s) true ∈ witnessExecution.schedule 0 7 := by
+    Event.attestation (vote s) true ∈ witnessExecution.schedule 0 8 := by
   interval_cases s <;> simp [witnessExecution, witnessSchedule,
     vote4, vote5, vote6]
 
@@ -289,13 +289,13 @@ def acceptedIncludedEvidenceAt (s : Slot) (hlo : 4 ≤ s) (hhi : s ≤ 6) :
       witnessExternals witnessExecution
       carrierRoot (vote s) where
   carrier_message := carrierSignedBlock.message
-  received_from_block := by exact ⟨0, 7, includedVote_true_scheduled hlo hhi⟩
+  received_from_block := by exact ⟨0, 8, includedVote_true_scheduled hlo hhi⟩
   slot_within_horizon := by
     rw [vote_data_slot]
     exact slot_within_of_lt_sixteen (hhi.trans_lt (by decide : 6 < 16))
   slot_before_carrier := by
     rw [vote_data_slot]
-    simpa [carrierSignedBlock] using hhi.trans_lt (by decide : 6 < 7)
+    simpa [carrierSignedBlock] using hhi.trans_lt (by decide : 6 < 8)
   target_epoch := by
     interval_cases s <;> decide
   attesters_in_committee := by
@@ -573,7 +573,7 @@ def witnessAcceptedChainFFGState :
     intro r b _haccepted
     exact Or.inl rfl
   unrealized_justified_max := by
-    intro r c hr hformed
+    intro r b c _haccepted _hlate hformed
     obtain ⟨carrier, hdesc, hformed⟩ := hformed
     rcases hformed with ⟨rfl, rfl⟩ | ⟨rfl, rfl | rfl⟩
     · simp [witnessGU, anchorCheckpoint]
@@ -581,6 +581,15 @@ def witnessAcceptedChainFFGState :
     · have hrCarrier : r = carrierRoot := rootDescends_carrier_iff.mp hdesc
       subst r
       simp [witnessGU, childEpochOneCheckpoint]
+  unrealized_justified_early := by
+    intro r b haccepted hearly
+    by_cases hr : r = carrierRoot
+    · subst r
+      exfalso
+      rcases acceptedBlockAt_cases haccepted with h | h | h <;>
+        simp_all [witnessConfig, compute_epoch_at_slot, anchorSignedBlock, childSignedBlock, carrierSignedBlock, GENESIS_EPOCH,
+          anchorRoot, childRoot, carrierRoot]
+    · simp [witnessGU, hr]
   realized_justified_epoch_le_unrealized := by
     intro r _hr
     simp [witnessGU, anchorCheckpoint, childEpochOneCheckpoint]
@@ -700,7 +709,7 @@ private theorem witnessCheckpointOfKnown {store : Store WitnessRoot}
               childSignedBlock, carrierSignedBlock, hchild, hcarrier] <;>
               simp [anchorRoot, childRoot, carrierRoot]
         | succ e =>
-            have hstop : ¬ 7 > (e + 2) * 4 := by omega
+            have hstop : ¬ 8 > (e + 2) * 4 := by omega
             apply checkpoint_eq_of_epoch_root_eq <;>
               simp [witnessC, get_checkpoint_for_block, get_checkpoint_block,
               compute_start_slot_at_epoch,
@@ -784,7 +793,7 @@ theorem acceptedTransition_cases
     rw [hpostStore]
     rfl
   · right
-    have hprev : t.atPrefix.previousSecond = 6 := by omega
+    have hprev : t.atPrefix.previousSecond = 7 := by omega
     have hcountLe : t.atPrefix.processedCount ≤ 5 := by
       simpa [witnessExecution, witnessSchedule, hprev] using
         t.atPrefix.count_le
@@ -799,7 +808,7 @@ theorem acceptedTransition_cases
         Execution.ScheduledEventPrefix.successor,
         Execution.ScheduledEventPrefix.store, carrierPostPrefix, carrierPrefix,
         hprev, hcount]
-      rw [witness_store_symmetric t.atPrefix.node 0 6]
+      rw [witness_store_symmetric t.atPrefix.node 0 7]
       rfl
     refine ⟨hcarrier.2, ?_⟩
     have hpostStore : t.postStore =
@@ -931,6 +940,16 @@ theorem witnessAU_carrier_anchor :
     witnessAcceptedChainFFGState.AvailableCheckpoint witnessConfig witnessExternals
       carrierRoot anchorCheckpoint :=
   ⟨carrierRoot, .refl carrierRoot, witnessFormed_carrier_anchor⟩
+
+theorem witnessAU_anchor_anchor :
+    witnessAcceptedChainFFGState.AvailableCheckpoint witnessConfig witnessExternals
+      anchorRoot anchorCheckpoint :=
+  ⟨anchorRoot, .refl anchorRoot, witnessFormed_anchor⟩
+
+theorem witnessAU_child_anchor :
+    witnessAcceptedChainFFGState.AvailableCheckpoint witnessConfig witnessExternals
+      childRoot anchorCheckpoint :=
+  ⟨anchorRoot, child_descends_anchor, witnessFormed_anchor⟩
 
 theorem witnessAU_carrier_child :
     witnessAcceptedChainFFGState.AvailableCheckpoint witnessConfig witnessExternals

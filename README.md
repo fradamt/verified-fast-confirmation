@@ -155,7 +155,7 @@ scripts/validate.sh --consensus-repo /path/to/fradamt-consensus-specs
 A warm `lake build` took 24.19 seconds on a 12-core desktop. A fresh build can take longer.
 `scripts/validate.sh --fast --consensus-repo /path/to/fradamt-consensus-specs` checks source
 pinning, document names, boundaries, and hygiene. Full validation also builds the libraries
-and audits 49 public theorems: 42 executable-side and seven paper-side. The Python
+and audits 47 public theorems: 40 executable-side and seven paper-side. The Python
 path must name the pinned local checkout.
 
 ## Premise ledger
@@ -216,12 +216,13 @@ a counterexample and does not assert the safety bundle.
 │ 12 s full safety    │ NextSlotSynchronyPremises.attestation_delivery and deadline_block_relay; delayed receipts.        │
 │ 12 s envelope       │ NextSlotSynchronyPremises.envelope_delivery and data_availability_relay; accepted payload.        │
 │ Byzantine run       │ ByzantineWeightPremises.span_fraction with positive fault weight;                                 │
-│                     │ NextSlotSynchronyPremises.attester_slashing_relay; previous-result guard.                         │
+│                     │ NextSlotSynchronyPremises.attester_slashing_relay.                                                │
 │ Current-target edge │ Selected current-target crossing guard and exact later target vote are derived facts.             │
 │ Joint live run      │ LiveMonotonicityPremises.honest_block_each_slot and ffg_timely_justification; full safety bundle. │
 │ Counterexamples     │ —                                                                                                 │
 │ Fidelity records    │ FFGInterpretationFidelity body membership, validation state, and external validity check.         │
 │ Non-anchor finality │ not exercised by a named full-bundle run.                                                         │
+│ Previous result     │ not exercised: the previous-result proviso branch is not exercised by a full-bundle witness.      │
 │ Positive discount   │ not exercised: the Gloas empty-slot discount is zero in the envelope run.                         │
 │ PTC events          │ not exercised by a named full-bundle run.                                                         │
 └─────────────────────┴───────────────────────────────────────────────────────────────────────────────────────────────────┘```

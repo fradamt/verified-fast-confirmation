@@ -81,7 +81,7 @@ off-committee validators.
   `NextSlotPremiseWitness.finite_execution_satisfies_premises` and
   `NextSlotPremiseWitness.next_slot_premises_nonempty`. The execution has four
   honest validators, four slots per epoch, an anchor, a slot-one child, and a
-  slot-seven FFG carrier. Its scheduled FCR call changes the confirmed root.
+  slot-eight FFG carrier. Its scheduled FCR call changes the confirmed root.
   The final in-horizon vote is delivered one second beyond the horizon.
 * Real Phase0 genesis anchor:
   `GenesisStubPremiseWitness.genesis_stub_full_bundle_witness` is the same
@@ -106,10 +106,9 @@ off-committee validators.
   epoch. `slashing_relay_exercised` proves the relay antecedent for the
   slashing that every node applies at second five. `equivocation_read_at_call`
   shows that the call from second six to seven reads the evidence and confirms
-  the child. `previous_result_proviso_exercised` proves the antecedent of the
-  selected previous-result guard at the call from second eight to nine.
-  `previous_result_descendant_support_exercised` proves that its later honest
-  epoch-two targets descend from the selected carrier.
+  the child. The call from second nine to ten confirms the epoch-two carrier
+  in its own epoch. The previous-result proviso branch is not exercised by a
+  full-bundle witness.
 * Twelve-second synchrony and behavior:
   `TwelveSecondSynchronyWitness.joint_witness` proves `WellFormedExecution`,
   `HonestBehavior`, `Synchrony`, and `NextSlotSynchronyPremises` for a second
@@ -133,7 +132,7 @@ off-committee validators.
   `FullTwelveWitness.delayed_receipts_are_first` proves the real block and
   vote receipt delays. The scheduled call at second 24 changes the anchor
   to the child. `FullTwelveWitness.changed_root_safe_from_next_slot` applies
-  `confirmed_root_safe_from_next_slot` to this output. The accepted slot-seven
+  `confirmed_root_safe_from_next_slot` to this output. The accepted slot-eight
   carrier supports the FFG interpretation and Paper A3.2. Envelope service
   remains vacuous; the selector has no current-target accepted edge.
 * Twelve-second envelope bundle:
@@ -214,8 +213,9 @@ off-committee validators.
   `AcceptedActualFCRJointNonVacuityFFG.witnessExactLinkValidity`. Included
   attestations on the carrier support its exact checkpoint link.
 * `AcceptedBlockFFGState.EventualCheckpointInclusion`:
-  `NextSlotPremiseWitness.witnessPaperA32Inclusion`. The slot-seven carrier
-  includes the vote evidence for the slot-one child.
+  `NextSlotPremiseWitness.witnessPaperA32Inclusion`. The slot-eight carrier
+  includes the vote evidence for the slot-one child. It is in epoch 2, because
+  Python justification returns early in epochs 0 and 1.
 * `Execution.ImportedBlockFinalizationLag`:
   `NextSlotPremiseWitness.witnessAcceptedRealizedFinalizationDelay`. The
   finite FFG state meets the delay bound over the horizon.
@@ -257,13 +257,11 @@ checks current-target support as a fact about the run. The envelope run
 exercises envelope delivery and data relay through
 `FullTwelveEnvelopeWitness.envelope_relay_exercised` and
 `FullTwelveEnvelopeWitness.data_relay_exercised`. The Byzantine run exercises
-positive non-honest weight, the slashing relay, and the selected
-previous-result guard through
-`ByzantinePremiseWitness.byzantine_weight_exercised`,
-`ByzantinePremiseWitness.slashing_relay_exercised`, and
-`ByzantinePremiseWitness.previous_result_proviso_exercised`.
-`ByzantinePremiseWitness.previous_result_descendant_support_exercised` checks
-the descendant conclusion. Both support forms are now derived by the joint
+positive non-honest weight and the slashing relay through
+`ByzantinePremiseWitness.byzantine_weight_exercised` and
+`ByzantinePremiseWitness.slashing_relay_exercised`. The previous-result
+proviso branch is not exercised by a full-bundle witness: each carrier is in
+epoch 2, and no call selects a block of an earlier epoch. Both support forms are now derived by the joint
 call and endpoint-slot induction. The six full-bundle constructors no longer
 contain support fields. The witness support lemmas remain facts about the runs.
 The historical certificate and quorum are produced from earlier votes when
@@ -275,7 +273,7 @@ runs set `attestation_due_bps` to zero. The main safety runs have four or five
 validators and one validator per slot committee. The joint live run has two
 validators. Included slashing does not mark a validator slashed in state.
 `DeadlineVotePathCandidate` checks that a skipped-boundary schedule fails the
-pre-tick relay. The audited public theorem set has 49 entries. Four regression checks are:
+pre-tick relay. The audited public theorem set has 47 entries. Four regression checks are:
 `CheckpointSyncFilterWitness.normalized_anchor_run_keeps_child`,
 `CheckpointSyncFilterWitness.anchor_only_view_satisfies_inclusion`,
 `EarlyEpochBoundaryWitness.epoch_one_boundary_regression`, and

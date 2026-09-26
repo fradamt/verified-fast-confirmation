@@ -118,7 +118,7 @@ theorem child_parentEdge :
 
 theorem carrier_parentEdge :
     run.ParentEdge carrierRoot childRoot := by
-  exact Or.inr ⟨0, 84, carrierSignedBlock, by simp [run, schedule], rfl, rfl⟩
+  exact Or.inr ⟨0, 96, carrierSignedBlock, by simp [run, schedule], rfl, rfl⟩
 
 theorem child_descends_anchor :
     run.RootDescends childRoot anchorRoot :=
@@ -186,10 +186,10 @@ def witnessIncluded (carrier : WitnessRoot)
 
 theorem carrier_blockAt :
     run.BlockAt carrierRoot carrierSignedBlock.message := by
-  exact Or.inr ⟨0, 84, carrierSignedBlock, by simp [run, schedule], rfl, rfl⟩
+  exact Or.inr ⟨0, 96, carrierSignedBlock, by simp [run, schedule], rfl, rfl⟩
 
 theorem includedVote_true_scheduled {s : Slot} (hlo : 4 ≤ s) (hhi : s ≤ 6) :
-    Event.attestation (vote s) true ∈ run.schedule 0 84 := by
+    Event.attestation (vote s) true ∈ run.schedule 0 96 := by
   interval_cases s <;> simp [run, schedule,
     vote4, vote5, vote6]
 
@@ -204,13 +204,13 @@ def acceptedIncludedEvidenceAt (s : Slot) (hlo : 4 ≤ s) (hhi : s ≤ 6) :
       ext run
       carrierRoot (vote s) where
   carrier_message := carrierSignedBlock.message
-  received_from_block := ⟨0, 84, includedVote_true_scheduled hlo hhi⟩
+  received_from_block := ⟨0, 96, includedVote_true_scheduled hlo hhi⟩
   slot_within_horizon := by
     rw [vote_data_slot]
     exact slot_within_of_lt_sixteen (hhi.trans_lt (by decide : 6 < 16))
   slot_before_carrier := by
     rw [vote_data_slot]
-    simpa [carrierSignedBlock] using hhi.trans_lt (by decide : 6 < 7)
+    simpa [carrierSignedBlock] using hhi.trans_lt (by decide : 6 < 8)
   target_epoch := by
     interval_cases s <;> decide
   attesters_in_committee := by
@@ -486,7 +486,7 @@ def witnessAcceptedChainFFGState :
     intro r b _haccepted
     exact Or.inl rfl
   unrealized_justified_max := by
-    intro r c hr hformed
+    intro r b c _haccepted _hlate hformed
     obtain ⟨carrier, hdesc, hformed⟩ := hformed
     rcases hformed with ⟨rfl, rfl⟩ | ⟨rfl, rfl | rfl⟩
     · simp [witnessGU, anchorCheckpoint]
@@ -494,6 +494,15 @@ def witnessAcceptedChainFFGState :
     · have hrCarrier : r = carrierRoot := rootDescends_carrier_iff.mp hdesc
       subst r
       simp [witnessGU, childEpochOneCheckpoint]
+  unrealized_justified_early := by
+    intro r b haccepted hearly
+    by_cases hr : r = carrierRoot
+    · subst r
+      exfalso
+      rcases acceptedBlockAt_cases haccepted with h | h | h <;>
+        simp_all [cfg, TwelveSecondSynchronyWitness.cfg, witnessConfig, compute_epoch_at_slot, anchorSignedBlock, childSignedBlock, carrierSignedBlock, GENESIS_EPOCH,
+          anchorRoot, childRoot, carrierRoot]
+    · simp [witnessGU, hr]
   realized_justified_epoch_le_unrealized := by
     intro r _hr
     simp [witnessGU, anchorCheckpoint, childEpochOneCheckpoint]
@@ -613,7 +622,7 @@ theorem witnessCheckpointOfKnown {store : Store WitnessRoot}
               childSignedBlock, carrierSignedBlock, hchild, hcarrier] <;>
               simp [anchorRoot, childRoot, carrierRoot]
         | succ e =>
-            have hstop : ¬ 7 > (e + 2) * 4 := by (try simp only [Slot, Epoch] at *); omega
+            have hstop : ¬ 8 > (e + 2) * 4 := by (try simp only [Slot, Epoch] at *); omega
             apply checkpoint_eq_of_epoch_root_eq <;>
               simp [witnessC, get_checkpoint_for_block, get_checkpoint_block,
               compute_start_slot_at_epoch,
@@ -656,7 +665,7 @@ theorem witnessAUCheckpointOfKnown {store : Store WitnessRoot}
 
 
 private theorem block_event_time {w n : ℕ} {b : SignedBeaconBlock R}
-    (h : Event.block b ∈ run.schedule w n) : n = 12 ∨ n = 14 ∨ n = 84 := by
+    (h : Event.block b ∈ run.schedule w n) : n = 12 ∨ n = 14 ∨ n = 96 := by
   rw [schedule_by_slot] at h
   have htime := Nat.div_add_mod n 12
   unfold slotEvents at h
@@ -680,7 +689,7 @@ private theorem schedule_class (w n : ℕ) :
   simp [slotEvents, nodeClass, h0, h1, witnessSchedule]
 
 private def receiptPrevious (row : Fin 3) : ℕ :=
-  if row = 0 then 11 else if row = 1 then 13 else 83
+  if row = 0 then 11 else if row = 1 then 13 else 95
 
 private def postAt (w k i : ℕ) : Store R :=
   ((run.schedule w (k + 1)).take (i + 1)).foldl
@@ -721,7 +730,7 @@ theorem acceptedTransition_cases
     rcases block_event_time heventMem with h | h | h
     · exact ⟨0, by change _ = 11; omega⟩
     · exact ⟨1, by change _ = 13; omega⟩
-    · exact ⟨2, by change _ = 83; omega⟩
+    · exact ⟨2, by change _ = 95; omega⟩
   obtain ⟨row, hrow⟩ := hrow
   let w : Fin 3 := ⟨nodeClass t.atPrefix.node, nodeClass_lt _⟩
   have hevent := t.event_at
@@ -867,6 +876,16 @@ theorem witnessAU_carrier_anchor :
     witnessAcceptedChainFFGState.AvailableCheckpoint cfg ext
       carrierRoot anchorCheckpoint :=
   ⟨carrierRoot, .refl carrierRoot, witnessFormed_carrier_anchor⟩
+
+theorem witnessAU_anchor_anchor :
+    witnessAcceptedChainFFGState.AvailableCheckpoint cfg ext
+      anchorRoot anchorCheckpoint :=
+  ⟨anchorRoot, .refl anchorRoot, witnessFormed_anchor⟩
+
+theorem witnessAU_child_anchor :
+    witnessAcceptedChainFFGState.AvailableCheckpoint cfg ext
+      childRoot anchorCheckpoint :=
+  ⟨anchorRoot, child_descends_anchor, witnessFormed_anchor⟩
 
 theorem witnessAU_carrier_child :
     witnessAcceptedChainFFGState.AvailableCheckpoint cfg ext

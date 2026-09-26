@@ -1004,9 +1004,10 @@ def ffgState : AcceptedBlockFFGState cfg ext E anchorCheckpoint where
     rfl
   realized_justified_realized := by intro r b haccepted; exact Or.inl rfl
   unrealized_justified_max := by
-    intro r c hr hformed
+    intro r b c hr hlate hformed
     obtain ⟨carrier, hdesc, ⟨rfl, rfl⟩⟩ := hformed
     rfl
+  unrealized_justified_early := by intro r b hr hearly; rfl
   realized_justified_epoch_le_unrealized := by intro r hr; rfl
   unrealized_justified_mono := by intro seed tip hseed htip hdesc; rfl
   unrealized_justified_epoch_le_later_realized := by

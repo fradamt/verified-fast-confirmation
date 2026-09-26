@@ -71,7 +71,7 @@ recency guard.
 │ ReviewSurfaceShape.lean    │ The safety review field and selected premise record shapes remain exact.                    │
 │ check_imports.py           │ The six-library import direction and Paper separation hold.                                 │
 │ check_doc_names.py         │ Backticked Lean names in current documents resolve to declarations or files.                │
-│ Audit.lean                 │ The 49 audited public theorems have only standard axiom dependencies.                       │
+│ Audit.lean                 │ The 47 audited public theorems have only standard axiom dependencies.                       │
 │                            │ No forbidden declaration is allowed.                                                        │
 │ validate.sh                │ Fast checks above; full mode also builds every library and runs Lean checks.                │
 └────────────────────────────┴─────────────────────────────────────────────────────────────────────────────────────────────┘```

@@ -30,7 +30,7 @@ private theorem schedule_at_slot (w s o : ℕ) (ho : o < 12) :
   · have hlarge : 192 < 12 * s + o := by omega
     have h0 : s ≠ 0 := by omega
     have h1 : s ≠ 1 := by omega
-    have h7 : s ≠ 7 := by omega
+    have h7 : s ≠ 8 := by omega
     have hnot : ¬ (2 ≤ s ∧ s ≤ 16) := by omega
     simp [schedule, slotEvents, witnessSchedule, h0, h1, h7, hnot,
       show 12 * s + o ≠ 4 by omega, show 12 * s + o ≠ 6 by omega,
@@ -62,7 +62,7 @@ private theorem boundary_vote_before {w q a ifb}
   · simp only [List.mem_cons, List.not_mem_nil, or_false,
       reduceCtorEq, false_or, Event.attestation.injEq] at h
     rcases h with h | h | h | h
-    · refine ⟨6, by decide, h.1, ?_⟩
+    · refine ⟨7, by decide, h.1, ?_⟩
       (simp only [Slot] at *; omega)
     · refine ⟨4, by decide, h.1, ?_⟩
       (simp only [Slot] at *; omega)
@@ -140,7 +140,7 @@ theorem honest_behavior : HonestBehavior cfg ext run := by
 theorem block_event_cases {w n : ℕ} {b : SignedBeaconBlock R}
     (h : Event.block b ∈ run.schedule w n) :
     (b = childSignedBlock ∧ 12 ≤ n) ∨
-      (b = carrierSignedBlock ∧ n = 84) := by
+      (b = carrierSignedBlock ∧ n = 96) := by
   rw [schedule_by_slot] at h
   have htime := Nat.div_add_mod n 12
   unfold slotEvents at h
@@ -221,8 +221,8 @@ theorem anchor_known {w m : ℕ} :
 private theorem root_timing_table : ∀ w : Fin 3,
     childRoot ∉ (run.store cfg ext w 11).block_roots ∧
     childRoot ∈ (run.store cfg ext w 14).block_roots ∧
-    carrierRoot ∉ (run.store cfg ext w 83).block_roots ∧
-    carrierRoot ∈ (run.store cfg ext w 84).block_roots := by
+    carrierRoot ∉ (run.store cfg ext w 95).block_roots ∧
+    carrierRoot ∈ (run.store cfg ext w 96).block_roots := by
   set_option maxRecDepth 50000 in decide
 
 theorem child_known_after14 (w : ℕ) {m : ℕ} (hm : 14 ≤ m) :
@@ -231,10 +231,10 @@ theorem child_known_after14 (w : ℕ) {m : ℕ} (hm : 14 ≤ m) :
   rw [← store_nodeClass w 14] at h
   exact (run.store_storeLE cfg ext w hm).1 h
 
-theorem carrier_known_after84 (w : ℕ) {m : ℕ} (hm : 84 ≤ m) :
+theorem carrier_known_after96 (w : ℕ) {m : ℕ} (hm : 96 ≤ m) :
     carrierRoot ∈ (run.store cfg ext w m).block_roots := by
   have h := (root_timing_table ⟨nodeClass w, nodeClass_lt w⟩).2.2.2
-  rw [← store_nodeClass w 84] at h
+  rw [← store_nodeClass w 96] at h
   exact (run.store_storeLE cfg ext w hm).1 h
 
 theorem child_source_after12 {v n : ℕ}
@@ -244,12 +244,12 @@ theorem child_source_after12 {v n : ℕ}
   rw [← store_nodeClass v 11] at hno
   exact hno ((run.store_storeLE cfg ext v (by omega : n ≤ 11)).1 hr)
 
-theorem carrier_source_after84 {v n : ℕ}
-    (hr : carrierRoot ∈ (run.store cfg ext v n).block_roots) : 84 ≤ n := by
+theorem carrier_source_after96 {v n : ℕ}
+    (hr : carrierRoot ∈ (run.store cfg ext v n).block_roots) : 96 ≤ n := by
   by_contra h
   have hno := (root_timing_table ⟨nodeClass v, nodeClass_lt v⟩).2.2.1
-  rw [← store_nodeClass v 83] at hno
-  exact hno ((run.store_storeLE cfg ext v (by omega : n ≤ 83)).1 hr)
+  rw [← store_nodeClass v 95] at hno
+  exact hno ((run.store_storeLE cfg ext v (by omega : n ≤ 95)).1 hr)
 
 private theorem root_known_before_boundary {v n : ℕ} {r : R}
     (hr : r ∈ (run.store cfg ext v n).block_roots) (w : ℕ) :
@@ -260,8 +260,8 @@ private theorem root_known_before_boundary {v n : ℕ} {r : R}
     have hn := child_source_after12 hr
     rw [slot_start_eq, slot_at_eq]
     omega
-  · apply carrier_known_after84
-    have hn := carrier_source_after84 hr
+  · apply carrier_known_after96
+    have hn := carrier_source_after96 hr
     rw [slot_start_eq, slot_at_eq]
     omega
 

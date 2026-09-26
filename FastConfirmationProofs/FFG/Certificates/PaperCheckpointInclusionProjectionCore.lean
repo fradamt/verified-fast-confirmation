@@ -28,8 +28,9 @@ structure PaperA32RootProjectionAt
     (store : Store Root) (r : Root) : Prop where
   causal_store : E.ScheduledPrefixStore cfg ext store
   root_known : r ∈ store.block_roots
-  unrealized_justified_max : ∀ {c : Checkpoint Root}, V.AvailableCheckpoint cfg r c →
-    c.epoch ≤ (V.GU r).epoch
+  unrealized_justified_max : ∀ {c : Checkpoint Root},
+    GENESIS_EPOCH + 1 < get_block_epoch cfg store r →
+    V.AvailableCheckpoint cfg r c → c.epoch ≤ (V.GU r).epoch
   unrealized_justification :
     CheckpointReadsAs (store.unrealized_justifications r) (V.GU r)
 
@@ -61,9 +62,10 @@ def paperA32RootProjectionAt
   causal_store := hstore
   root_known := hr
   unrealized_justified_max := by
-    intro c hAU
+    intro c hlate hAU
     change c.epoch ≤ (S.unrealized_justified r).epoch
-    apply S.unrealized_justified_max (E.acceptedRoot_of_causal_known cfg ext hstore hr)
+    apply S.unrealized_justified_max (E.acceptedBlockAt_of_causal_known cfg ext hstore hr)
+      (by simpa only [get_block_epoch] using hlate)
     change S.AvailableCheckpoint cfg ext r c at hAU
     exact hAU
   unrealized_justification := by
@@ -84,13 +86,16 @@ theorem a32IncludedAtTip_of_existing_AU
     (hseedSelected : is_ancestor store
       (get_node_for_root seed) (get_node_for_root selected) = true)
     (hseedEpoch : get_block_epoch cfg store seed < e + 2)
+    (hseedLate : e ≤ GENESIS_EPOCH ∨ GENESIS_EPOCH + 1 < get_block_epoch cfg store seed)
     (hAU : V.AvailableCheckpoint cfg seed (V.C selected e)) :
     A32IncludedAtTip cfg store e selected seed := by
   refine ⟨P.root_known, hseedSelected, hseedEpoch, ?_⟩
   rw [P.unrealized_justification.epoch_eq]
-  have hmax : (V.C selected e).epoch ≤ (V.GU seed).epoch :=
-    P.unrealized_justified_max hAU
-  simpa only [V.checkpoint_epoch] using hmax
+  rcases hseedLate with hgenesis | hlate
+  · exact hgenesis.trans (Nat.zero_le _)
+  · have hmax : (V.C selected e).epoch ≤ (V.GU seed).epoch :=
+      P.unrealized_justified_max hlate hAU
+    simpa only [V.checkpoint_epoch] using hmax
 
 end PaperA32RootProjectionAt
 
@@ -120,12 +125,12 @@ theorem paperA32IncludedAtTip_of_paperCore
     ∃ seed : Root,
       PaperA32IncludedAtTip cfg V
         (E.store cfg ext w m) e b seed := by
-  obtain ⟨seed, hseed, _hbKnown, hseedB, hseedEpoch, hAU⟩ :=
+  obtain ⟨seed, hseed, _hbKnown, hseedB, hseedEpoch, hseedLate, hAU⟩ :=
     hpaper.included hb hbe hcanonical hsupport w hw m hHm hboundary
   exact ⟨seed, {
     executable :=
       (hprojection hseed).a32IncludedAtTip_of_existing_AU cfg ext
-        hseedB hseedEpoch hAU
+        hseedB hseedEpoch hseedLate hAU
     exact_AU := hAU }⟩
 
 

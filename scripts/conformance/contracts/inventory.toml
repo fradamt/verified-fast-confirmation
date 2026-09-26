@@ -499,6 +499,12 @@ class = "E"
 reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field. test_realized_gap.py checks it on projected pyspec runs."
 
 [[field]]
+path = "AcceptedBlockFFGState.unrealized_justified_early"
+file = "FFGState.lean"
+class = "E"
+reason = "A supplied execution, schedule, certificate, or FFG interpretation is needed; Python state functions alone do not fix this field. test_realized_gap.py checks it on projected pyspec runs."
+
+[[field]]
 path = "AcceptedBlockFFGState.realized_justified_realized"
 file = "FFGState.lean"
 class = "E"

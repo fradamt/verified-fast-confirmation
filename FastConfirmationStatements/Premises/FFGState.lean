@@ -223,7 +223,8 @@ in epoch `E` is the result of the epoch-boundary justification runs before
 `E`, so it reflects only evidence in blocks of earlier epochs.
 `unrealized_justified` runs the same function on the block state at epoch
 `E`.  Both runs return early at epochs up to `GENESIS_EPOCH + 1`, hence the
-epoch bound in `realized_justified_max`. -/
+epoch bounds in `realized_justified_max` and `unrealized_justified_max`, and
+`unrealized_justified_early`: at those epochs the two selectors are equal. -/
 structure AcceptedBlockFFGState (E : Execution Root)
     (anchor : Checkpoint Root) where
   includedAttestations :
@@ -263,9 +264,13 @@ structure AcceptedBlockFFGState (E : Execution Root)
         compute_epoch_at_slot cfg sb.slot < compute_epoch_at_slot cfg b.slot ∧
         ∃ carrier, E.RootDescends seed carrier ∧
           checkpoint_evidence_in_block carrier (realized_justified r)
-  unrealized_justified_max : ∀ {r c}, E.RootKnownInScheduledPrefix cfg ext r →
+  unrealized_justified_max : ∀ {r b c}, E.BlockKnownInScheduledPrefix cfg ext r b →
+    GENESIS_EPOCH + 1 < compute_epoch_at_slot cfg b.slot →
     (∃ carrier, E.RootDescends r carrier ∧ checkpoint_evidence_in_block carrier c) →
     c.epoch ≤ (unrealized_justified r).epoch
+  unrealized_justified_early : ∀ {r b}, E.BlockKnownInScheduledPrefix cfg ext r b →
+    compute_epoch_at_slot cfg b.slot ≤ GENESIS_EPOCH + 1 →
+    unrealized_justified r = realized_justified r
   realized_justified_epoch_le_unrealized : ∀ r, E.RootKnownInScheduledPrefix cfg ext r →
     (realized_justified r).epoch ≤ (unrealized_justified r).epoch
   unrealized_justified_mono : ∀ {seed tip}, E.RootKnownInScheduledPrefix cfg ext seed →
@@ -522,7 +527,16 @@ This is the paper's quantifier shape: if `b` is canonical and the exact fixed
 `vs(b,e)`-to-`C(b,e)` support condition holds in every honest view throughout
 epoch `e+1`, then by `st(e+2)` each honest view contains a pre-boundary
 descendant carrying `C(b,e)` in AU.  Target-only support or a free
-`A32IncludedAtTip` consequence is intentionally insufficient. -/
+`A32IncludedAtTip` consequence is intentionally insufficient.
+
+The descendant must be in an epoch above `GENESIS_EPOCH + 1` unless
+`e = GENESIS_EPOCH`.  Python `process_justification_and_finalization`
+returns early at epochs up to `GENESIS_EPOCH + 1`, so it never computes the
+unrealized justification of epoch 1 in a block of epoch 1: the epoch-1 votes
+must be included in a block of epoch 2 or later.  Without this bound the
+premise admits a run in which the Python FCR confirms a block and then loses
+it (`regression.fcr_confirmed_block_reorged_epoch_one` in
+`scripts/conformance/contracts/test_realized_gap.py`). -/
 structure EventualCheckpointInclusion
     {E : Execution Root} (V : CheckpointInclusionView cfg E) : Prop where
   included : ∀ {b : Root} {bb : BeaconBlock Root} {e : Epoch},
@@ -538,6 +552,7 @@ structure EventualCheckpointInclusion
         is_ancestor (E.store cfg ext w m)
           (get_node_for_root b') (get_node_for_root b) = true ∧
         get_block_epoch cfg (E.store cfg ext w m) b' < e + 2 ∧
+        (e ≤ GENESIS_EPOCH ∨ GENESIS_EPOCH + 1 < get_block_epoch cfg (E.store cfg ext w m) b') ∧
         V.AvailableCheckpoint cfg b' (V.C b e)
 
 namespace AcceptedBlockFFGState
