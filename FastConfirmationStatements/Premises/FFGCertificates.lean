@@ -4,9 +4,8 @@ public import FastConfirmationModel.Execution.Stake
 @[expose] public section
 
 /-!
-# Premises/FFGCertificates
-
-Semantic certificate objects at the boundary between the transcribed fork-choice
+Defines included FFG link certificates and execution block ancestry.
+These objects form the boundary between the transcribed fork-choice
 state and Casper FFG.  They contain concrete scheduled attestation evidence;
 accountable-safety consequences are proved from these objects in
 `FastConfirmationProofs/FFG/Certificates/FFGCertificates.lean`.

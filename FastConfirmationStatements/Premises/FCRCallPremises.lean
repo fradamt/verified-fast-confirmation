@@ -7,9 +7,8 @@ public import FastConfirmationStatements.Premises.ScheduledExecutionConditions
 @[expose] public section
 
 /-!
-# Premises/FCRCallPremises
-
-Completed call premises state the remaining conditions on scheduled FCR calls.
+Defines delivery, stake, source, and horizon conditions for scheduled FCR calls.
+Prediction support follows from the safety proof's call and endpoint induction.
 -/
 
 section

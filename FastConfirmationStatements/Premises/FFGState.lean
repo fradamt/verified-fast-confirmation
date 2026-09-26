@@ -5,34 +5,33 @@ public import FastConfirmationModel.Execution.ScheduledPrefixes
 @[expose] public section
 
 /-!
-# Premises/FFGState
-
+Defines accepted-block FFG evidence and checkpoint views for the safety and inclusion premises.
 The executable transcription retains the ordered FFG attestations in block
 bodies but abstracts most of the beacon-state FFG machinery. This file supplies the corresponding
 semantic objects while keeping fork-choice safety, filtering, and selected FCR
 results outside the model boundary.
 
-AU ("available or unrealized") names the checkpoints with justification
-evidence at a tip: a checkpoint is in AU at a tip when a carrier block on the
+`AvailableCheckpoint` names the checkpoints with justification
+evidence at a tip: a checkpoint is available at a tip when a carrier block on the
 tip's chain has formed evidence for it.
 
 There are three interfaces:
 
 * `AcceptedBlockFFGState` is the block-local projection used by the accepted
   theorem. It ranges over exact accepted event-prefix roots and records
-  AU checkpoint evidence on exact accepted event-prefix roots. `C` is the
-  epoch checkpoint selector; `GJ`, `GU`, `GF`, and `GUF` are the realized
-  justified, unrealized justified, realized finalized, and unrealized
-  finalized checkpoints of a block;
+  available-checkpoint evidence on exact accepted event-prefix roots.
+  `checkpoint_at_epoch` is the epoch checkpoint selector. The fields
+  `realized_justified`, `unrealized_justified`, `realized_finalized`, and
+  `unrealized_finalized` are the checkpoint reads of a block;
 * `FFGStateAndCheckpointReadAgreement` connects the accepted
   projection to actual successful block-handler transitions; and
 * `EventualCheckpointInclusion` is the paper's separate liveness assumption.  Its
   antecedent is the paper's link-specific support condition in every honest
-  view throughout epoch `e+1`; its conclusion is exact AU inclusion in a
+  view throughout epoch `e+1`; its conclusion is exact available-checkpoint inclusion in a
   concrete descendant, not the weaker epoch-only consequence read by
   `get_voting_source`.
 
-`Premises/InterpretationFidelity` states the intended interpretation of the
+`FastConfirmationInternal/FFG/InterpretationFidelity.lean` states the intended interpretation of the
 included votes. It is not part of the safety premise.
 
 None of these declarations assumes that a block is canonical, safe, retained

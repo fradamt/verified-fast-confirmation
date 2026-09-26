@@ -4,8 +4,7 @@ public import FastConfirmationStatements.Premises.FFGState
 @[expose] public section
 
 /-!
-# Premises/CheckpointLinks
-
+Defines checkpoint-link agreement for accepted FFG evidence.
 The reduced beacon-state projection does not retain enough block-history data
 to turn arbitrary root descent into epoch-indexed checkpoint descent.  This
 module records the narrow, certificate-scoped semantic interface.

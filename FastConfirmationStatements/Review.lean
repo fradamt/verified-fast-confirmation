@@ -4,10 +4,8 @@ public import FastConfirmationStatements.Claims
 @[expose] public section
 
 /-!
-# Public FCR review claims
-
-The two fields claim that a confirmed root is safe from the next slot and
-that live confirmed roots remain monotone. The safety field uses
+Defines the two public FCR claims for next-slot safety and live confirmed-root monotonicity.
+The safety field uses
 `Execution.NextSlotSafetyPremises`; the live field also uses
 `LiveMonotonicityPremises` through `LiveConfirmedRootMonotonicity`.
 -/

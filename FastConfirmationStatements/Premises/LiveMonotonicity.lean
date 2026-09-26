@@ -6,9 +6,7 @@ public import FastConfirmationModel.Execution.Stake
 @[expose] public section
 
 /-!
-# Premises/LiveMonotonicity
-
-Vote support and live monotonicity premises. States vote support and timely FFG conditions for live monotonicity.
+Defines honest block and vote support with timely FFG state for live confirmed-root monotonicity.
 -/
 
 section

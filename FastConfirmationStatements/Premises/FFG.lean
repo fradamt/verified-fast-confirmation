@@ -6,9 +6,8 @@ public import FastConfirmationModel.Execution.Stake
 @[expose] public section
 
 /-!
-# Premises/FFG
-
-Phase0 source coherence premises. Reads the Spec Model. Read Premises/FCRCallPremises next.
+Defines Phase0 voting-source coherence at FFG epoch boundaries.
+These premises constrain the abstract beacon-state functions.
 -/
 
 section
