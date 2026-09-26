@@ -782,7 +782,7 @@ theorem phase0SourceCoherence : Phase0SourceCoherence cfg ext := by
     · contradiction
 
 theorem phase0BoundarySourceCoherence : Phase0BoundarySourceCoherence cfg ext := by
-  constructor
+  refine Phase0BoundarySourceCoherence.of_eager ?_ ?_ externalsCoherence.pjf_checkpoint_epoch
   · intro st target hlt hcross
     simp only [ext, processSlots]
     rw [if_pos hcross]

@@ -513,7 +513,7 @@ theorem phase0_source : Phase0SourceCoherence cfg ext := by
       · contradiction
 
 theorem phase0_boundary_source : Phase0BoundarySourceCoherence cfg ext := by
-  constructor
+  refine Phase0BoundarySourceCoherence.of_eager ?_ ?_ (fun st => by simpa only [ext, cfg] using witnessPJF_current_epoch_le st)
   · intro st target hlt hcross
     simp only [ext]
     rw [if_pos hcross]

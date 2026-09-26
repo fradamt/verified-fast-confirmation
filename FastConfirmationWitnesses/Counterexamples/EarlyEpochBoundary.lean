@@ -11,6 +11,9 @@ The Python control in `scripts/anchor_semantics_probe.py` checks the same
 corner with the pinned state functions. Phase0 beacon-chain.md:1893-1898
 and Altair beacon-chain.md:728-733 return before FFG processing in epochs
 0 and 1; epoch processing at the end of epoch 2 can justify epoch 1.
+The reduced functions break the old unconditional boundary equation, and
+`epoch_one_fixture_satisfies_boundary_laws` shows that they satisfy the
+replacement `Phase0BoundarySourceCoherence` laws.
 -/
 
 namespace FastConfirmation.Spec.EarlyEpochBoundaryWitness
@@ -40,7 +43,11 @@ def processSlots (st : BeaconState WitnessRoot) (target : Slot) : BeaconState Wi
   else { st with slot := target }
 
 /-- The guarded boundary equality holds for this fixture's state functions.
-It includes every start at epoch 2 or later and every single-boundary advance. -/
+It includes every start at epoch 2 or later and every single-boundary advance.
+The replacement laws keep only the single-boundary part: for the real
+functions, a later start can also change the source after two boundaries,
+because the second PJF weighs the start-epoch votes with the next epoch's
+active set and balances. -/
 theorem guarded_boundary_equality (st : BeaconState WitnessRoot) (target : Slot)
     (hcross : compute_epoch_at_slot witnessConfig st.slot <
       compute_epoch_at_slot witnessConfig target)
@@ -73,6 +80,50 @@ theorem epoch_one_boundary_regression :
       anchorCheckpoint carrierRoot (processSlots earlyState 12).current_justified_checkpoint := by
   refine ⟨by decide, by decide, by decide, by decide, by decide, ?_⟩
   exact .link .anchor witnessIncludedAnchorChildLink
+
+/-- Externals with the reduced slot processing and PJF of this fixture.
+No block transition succeeds, so the block-transition law is vacuous here. -/
+def fixtureExternals : BeaconFunctionInterface WitnessRoot :=
+  { witnessExternals with
+    process_slots := processSlots
+    process_justification_and_finalization := pjf
+    state_transition := fun _ _ => none }
+
+/-- The M2 corner satisfies the replacement boundary laws: one boundary gives
+the eager value, targets in one epoch agree, and the epoch-1 source selected
+after two boundaries is not newer than the start epoch. -/
+theorem epoch_one_fixture_satisfies_boundary_laws :
+    Phase0BoundarySourceCoherence witnessConfig fixtureExternals := by
+  refine ⟨?_, ?_, ?_, ?_⟩
+  · intro st target _ hnext
+    simp only [fixtureExternals, processSlots, hnext]
+    split_ifs with h1 h2
+    · obtain ⟨h21, h22, _⟩ := h2
+      rw [h21] at h22
+      exact absurd h22 (by decide)
+    · rfl
+    · exact absurd (Nat.lt_succ_self _) h1
+  · intro st target target' _ hsame
+    simp only [fixtureExternals, processSlots, hsame]
+    split_ifs <;> rfl
+  · intro pre sb post h
+    simp only [fixtureExternals] at h
+    exact absurd h (by simp)
+  · intro st target hcross
+    simp only [fixtureExternals, processSlots, if_pos hcross]
+    split_ifs with h2
+    · right
+      rw [h2.1]
+      exact (by decide : childEpochOneCheckpoint.epoch ≤ 1)
+    · simp only [pjf]
+      split_ifs with h3 h4
+      · left
+        rfl
+      · right
+        exact le_trans (by decide : childEpochOneCheckpoint.epoch ≤ 1)
+          (Nat.lt_of_not_le h3).le
+      · left
+        rfl
 
 end FastConfirmation.Spec.EarlyEpochBoundaryWitness
 

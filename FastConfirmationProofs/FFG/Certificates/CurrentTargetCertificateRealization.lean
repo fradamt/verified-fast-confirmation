@@ -90,9 +90,8 @@ The target certificate is an output: the theorem obtains the certified source
 and target-to-source descent from the target's named accepted `GJ` formed
 carrier, turns the concrete quorum's ground votes into one scheduled
 supermajority link, and extends the source certificate by that link.  The
-old-head/cross-epoch `GU` branch is deliberately absent; it requires
-`Phase0BoundarySourceCoherence` and a separate accepted boundary-source
-trajectory.
+old-head/cross-epoch branch is deliberately absent; it uses
+`Phase0BoundarySourceCoherence` and the boundary source of the target block.
 
 `Q` and `hgeometry` are intentionally intermediate.  Reverse exact-prefix
 transition provenance is the remaining prerequisite for constructing them
@@ -246,9 +245,11 @@ theorem acceptedCurrentTargetA32GateRealization_of_currentEpochConcreteQuorum_co
       (CertifiedJustified cfg E B.anchor target) :=
     ⟨CertifiedJustified.link hsourceCertificate hlink⟩
   refine ⟨htargetCertificate, Or.inr ⟨htargetNotAnchor, Q, ?_⟩⟩
-  change Q.source = B.state.voting_source_at cfg ext store target.root target.epoch
-  simpa only [AcceptedBlockFFGState.voting_source_at, CheckpointInclusionView.voting_source_at,
-    htargetEpoch, if_pos] using hQSource
+  change Q.source = phase0HonestSourceAt cfg ext store target.root target.epoch
+  simp only [phase0HonestSourceAt, htargetEpoch, if_pos]
+  exact hQSource.trans
+    ((Execution.ScheduledFFGInterpretation.causalStoreProjection B
+      hstore).block_state_gj target.root htargetKnown).symm
 
 
 
@@ -261,8 +262,8 @@ theorem acceptedCurrentTargetCertificateProducerAt_of_gateProducer
     (hproducer : E.AcceptedCurrentTargetA32GateRealizationProducerAt
       cfg ext B.anchor B.state q query) :
     E.CurrentTargetCertificateProducerAt cfg ext B.anchor q query := by
-  intro hgate hsupport
-  exact (hproducer hgate hsupport).certified
+  intro hgate hsupport hguard
+  exact (hproducer hgate hsupport hguard).certified
 
 end Execution
 

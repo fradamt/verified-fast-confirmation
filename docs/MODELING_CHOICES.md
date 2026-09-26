@@ -257,15 +257,28 @@ votes included on the canonical chain in epoch 4, PJF can instead advance
 the raw source to epoch 3 before the filter's epoch-5 deadline. The proof must
 connect this inclusion to the exact antecedent of `EventualCheckpointInclusion`.
 
-`Phase0BoundarySourceCoherence` also remains too strong. Phase0 and Altair
-PJF return early in epochs 0 and 1. An epoch-1 state with enough included
-votes can keep the stub under eager PJF but justify epoch 1 when slot
-processing reaches epoch 3. The three proof consumers of the unconditional
-boundary equality need a separate case for this behavior.
+`Phase0BoundarySourceCoherence` has four laws. Slot processing across one
+boundary gives the eager PJF checkpoint. Targets in the same epoch give the
+same checkpoint. A block transition gives the checkpoint of slot processing
+to the block slot. Slot processing keeps the checkpoint or gives one no newer
+than the start epoch. There is no equation for two or more boundaries.
+Phase0 and Altair PJF return early in epochs 0 and 1, so an epoch-1 state can
+keep the old checkpoint under eager PJF and justify epoch 1 when slot
+processing reaches epoch 3. From a later start, the second PJF weighs the
+start-epoch votes again with the next epoch's balances. The last law has one
+exception: a registry with total active balance of at most one increment,
+because `get_total_balance` returns at least one increment.
+
+The proof reads the honest source of an old target as this boundary source.
+After two or more boundaries, a known current-epoch block below the head
+carries the same checkpoint as its `GJ`, and its formed evidence certifies
+it. The gate producers ask for such a block. Every current-crossing call
+supplies it. The finalization argument excludes the late case: the vote's
+target epoch is one more than its source epoch.
 `EarlyEpochBoundaryWitness.epoch_one_boundary_regression` records both boundary
-outcomes and the included certificate for the newer source. Its reduced state
-functions satisfy the guarded equality for starts at epoch 2 or later and for
-single-boundary advances. It does not replace the public boundary premise.
+outcomes and the included certificate for the newer source.
+`EarlyEpochBoundaryWitness.epoch_one_fixture_satisfies_boundary_laws` shows
+that the same reduced functions satisfy the four laws.
 
 `normalizeAnchorCheckpoint` implements the proposed semantic operation in
 Internal. Its lemmas prove genesis epoch preservation, the raw filter tests,

@@ -5,6 +5,7 @@ public import FastConfirmationProofs.Checkpoints.SelectedPreQueryAnchor
 public import FastConfirmationProofs.FCRRule.SelectedCheckpointInclusionSupport
 public import FastConfirmationProofs.Execution.History.CausalCheckpointEpochBound
 public import FastConfirmationProofs.Checkpoints.CheckpointGeometry
+public import FastConfirmationProofs.FFG.State.Phase0BoundarySource
 
 @[expose] public section
 
@@ -717,6 +718,7 @@ def CurrentTargetCertificateProducerAt
     (query : FastConfirmationStore Root) : Prop :=
   will_current_target_be_justified cfg ext query.store = true →
   HonestVotesSupportTarget cfg E (get_current_target cfg query.store) q →
+  CurrentTargetLateBoundaryCarrierGuard cfg query.store →
     Nonempty (CertifiedJustified cfg E anchor
       (get_current_target cfg query.store))
 

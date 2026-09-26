@@ -1043,7 +1043,7 @@ theorem witnessPhase0SourceCoherence :
 
 theorem witnessPhase0BoundarySourceCoherence :
     Phase0BoundarySourceCoherence witnessConfig witnessExternals := by
-  constructor
+  refine Phase0BoundarySourceCoherence.of_eager ?_ ?_ witnessExternalsCoherence.pjf_checkpoint_epoch
   · intro st target hlt hcross
     simp only [witnessExternals, witnessProcessSlots]
     rw [if_pos hcross]

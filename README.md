@@ -26,8 +26,10 @@ beacon state transition. To apply the theorem to a client or the Python rule,
 one must show that its FFG behavior supplies this interpretation.
 
 The current read agreement excludes real genesis stubs and older
-checkpoint-sync state checkpoints. The unconditional Phase0 boundary-source
-law also fails when an epoch-1 state skips into epoch 3. These remain open.
+checkpoint-sync state checkpoints. This remains open. The Phase0
+boundary-source laws hold for the pinned state functions, including an
+epoch-1 state that skips into epoch 3; see
+[anchor and boundary limits](docs/MODELING_CHOICES.md#anchor-and-boundary-limits).
 `CheckpointSyncFilterWitness.checkpoint_sync_filter_counterexample` checks
 that, without eventual inclusion, an old raw checkpoint-sync source can fail
 the filter's `+2` rule and lose a confirmed child. The normalized source keeps
@@ -101,7 +103,7 @@ scripts/validate.sh --consensus-repo /path/to/fradamt-consensus-specs
 A warm `lake build` took 24.19 seconds on a 12-core desktop. A fresh build can take longer.
 `scripts/validate.sh --fast --consensus-repo /path/to/fradamt-consensus-specs` checks source
 pinning, document names, boundaries, and hygiene. Full validation also builds the libraries
-and audits 47 public theorem witnesses: 40 executable-side and seven paper-side. The Python
+and audits 48 public theorem witnesses: 41 executable-side and seven paper-side. The Python
 path must name the pinned local checkout.
 
 ## Premise ledger

@@ -365,8 +365,10 @@ noncomputable def selectedCurrentCrossingLineage
   have hfixed (hs : HonestVotesSupportTarget cfg E
       (get_current_target cfg query.store) (n + 1)) :=
     AcceptedCurrentTargetA32GateRealization.fixedSource_of_acceptedSameEpochSegment
-      cfg ext B hphase htargetEpoch hresultTargetEpoch hsegment
-        (hproducer hgateAndSupport.1 hs)
+      cfg ext B hphase hstore (get_ancestor_spec hparent hcurrentWalk).1
+        htargetEpoch hresultTargetEpoch hsegment
+        (hproducer hgateAndSupport.1 hs
+          (fun _ => ⟨trace.result, hresultKnown, hresultCurrent, hbelowResult⟩))
   have hpayload :=
     AcceptedHistoricalA32GatePayloadAt.of_fixedSourceCurrentTarget cfg ext B hv
       hstore hactual hresultKnown hresultCurrent htarget hanchorLe
@@ -864,8 +866,10 @@ noncomputable def
       target.epoch := by
     exact hresultCurrent
   have htargetGate := htargetProducer hgate hsupport
+    (fun _ => ⟨trace.result, hresultKnown, hresultCurrent, hbelowResult⟩)
   exact AcceptedCurrentTargetA32GateRealization.fixedSource_of_acceptedTargetWalk_root
-    (E := E) cfg ext B hT.wellFormed hG.exact_core hphase hboundaryPhase hG.causal
+    (E := E) cfg ext B hT.wellFormed hT.externals_coherence hG.exact_core hphase
+      hboundaryPhase hG.causal
       hG.parent hcarrierEpoch (by simpa only [target] using hcurrentNonGenesis)
       hcarrierWalk hlandsRoot htargetGate
 

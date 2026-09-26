@@ -23,7 +23,10 @@ private theorem finalization_last_slot_le {f S s : ℕ}
   simp only [Nat.add_mul, one_mul] at hbound ⊢
   omega
 
-/-- The honest source is the head's `GJ`, or its `GU` when the head is old. -/
+/-- The honest source is the head's `GJ`, or its `GU` when the head is one
+epoch old.  When the head is two or more epochs old, the Phase0 boundary laws
+bound only the source epoch by the head epoch; the source can be newer than
+`GU`. -/
 theorem honest_attestation_source_selector
     (B : ScheduledFFGInterpretation cfg ext E)
     (hT : E.ScheduledExecutionPremises cfg ext)
@@ -38,7 +41,13 @@ theorem honest_attestation_source_selector
       (honest_attestation cfg ext (E.store cfg ext v n) s index v).data.source =
         B.state.unrealized_justified (get_head cfg (E.store cfg ext v n)).root ∧
       get_block_epoch cfg (E.store cfg ext v n)
-        (get_head cfg (E.store cfg ext v n)).root < compute_epoch_at_slot cfg s := by
+        (get_head cfg (E.store cfg ext v n)).root < compute_epoch_at_slot cfg s ∨
+      (honest_attestation cfg ext (E.store cfg ext v n) s index v).data.source.epoch ≤
+        get_block_epoch cfg (E.store cfg ext v n)
+          (get_head cfg (E.store cfg ext v n)).root ∧
+      get_block_epoch cfg (E.store cfg ext v n)
+        (get_head cfg (E.store cfg ext v n)).root + 1 <
+          compute_epoch_at_slot cfg s := by
   let store := E.store cfg ext v n
   let head := (get_head cfg store).root
   have hcausal := E.store_causal cfg ext v n
@@ -59,19 +68,35 @@ theorem honest_attestation_source_selector
     exact hprojection.block_state_gj head hhead
   · have hold : get_block_epoch cfg store head < compute_epoch_at_slot cfg s :=
       Nat.lt_of_le_of_ne (Nat.div_le_div_right hheadLe) hsame
-    refine Or.inr ⟨?_, hold⟩
     have hstateEpoch : compute_epoch_at_slot cfg (store.block_states head).slot <
         compute_epoch_at_slot cfg s := by rw [hstateSlot]; exact hold
     have hstateLt : (store.block_states head).slot < s := by
       by_contra hnot
       exact (Nat.not_le_of_gt hstateEpoch)
         (Nat.div_le_div_right (Nat.le_of_not_gt hnot))
-    change (if (store.block_states head).slot < s then
-      ext.process_slots (store.block_states head) s else store.block_states head
-      ).current_justified_checkpoint = B.state.unrealized_justified head
-    rw [if_pos hstateLt, hphaseBoundary.process_slots_current_justified
-      _ _ hstateLt hstateEpoch]
-    exact hprojection.pulled_up_gu head hhead
+    have hsourceEq : (honest_attestation cfg ext store s index v).data.source =
+        (ext.process_slots (store.block_states head) s).current_justified_checkpoint := by
+      change (if (store.block_states head).slot < s then
+        ext.process_slots (store.block_states head) s else store.block_states head
+        ).current_justified_checkpoint = _
+      rw [if_pos hstateLt]
+    by_cases hone : compute_epoch_at_slot cfg s = get_block_epoch cfg store head + 1
+    · refine Or.inr (Or.inl ⟨?_, hold⟩)
+      rw [hsourceEq, hphaseBoundary.process_slots_one_boundary _ _ hstateLt
+        (by rw [hstateSlot]; exact hone)]
+      exact hprojection.pulled_up_gu head hhead
+    · rcases hphaseBoundary.process_slots_checkpoint_epoch _ _ hstateEpoch with
+        hkeep | hle
+      · left
+        rw [hsourceEq, hkeep]
+        exact hprojection.block_state_gj head hhead
+      · refine Or.inr (Or.inr ⟨?_, ?_⟩)
+        · rw [hsourceEq]
+          rw [hstateSlot] at hle
+          exact hle
+        · have h1 : get_block_epoch cfg store head + 1 ≤ compute_epoch_at_slot cfg s :=
+            Nat.succ_le_of_lt hold
+          exact Nat.lt_of_le_of_ne h1 (Ne.symm hone)
 
 /-- Boundary alignment puts the initial slot at or before the anchor epoch. -/
 theorem initial_slot_le_anchor_boundary
@@ -180,11 +205,22 @@ theorem finalized_epoch_le_voter_justified_of_receiver_slot_le
   rw [hsource] at hselector
   apply E.deadline_justified_epoch_le_of_carrier cfg ext B hT hrelay hanchor hboundary
     P V hacc hi hv hHk hHn hhead (by simpa only [hk] using hdue) hnext hklt
-  rcases hselector with hgj | ⟨hgu, hold⟩
+  rcases hselector with hgj | ⟨hgu, hold⟩ | ⟨hle, hlate⟩
   · exact Or.inl hgj
   · refine Or.inr ⟨hgu, ?_⟩
     simpa only [get_current_store_epoch, E.store_current_slot, hn] using
       hold.trans_le (ce_mono cfg hts.le)
+  · -- The finalizing link's target epoch is `F.epoch + 1`, so a head two or
+    -- more epochs older than the vote has a source older than `F`.
+    exfalso
+    have htEpoch : compute_epoch_at_slot cfg t = F.epoch + 1 := by
+      rw [← hFcert.child_epoch]
+      apply Nat.div_eq_of_lt_le htstart
+      have hlt := htlast.trans_le (Nat.add_le_add_left
+        (Nat.sub_le cfg.slots_per_epoch 1) _)
+      simpa only [Nat.add_mul, one_mul] using hlt
+    rw [htEpoch] at hlate
+    exact (Nat.not_le_of_gt (Nat.lt_of_add_lt_add_right hlate)) hle
 
 /-- The receiver checkpoint at the next slot start is no newer than the
 honest voter's justification. -/

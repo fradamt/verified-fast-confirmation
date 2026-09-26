@@ -9,6 +9,7 @@ public import FastConfirmationProofs.Checkpoints.SlotClock
 public import FastConfirmationProofs.ForkChoice.Filter.AnchorFilterViability
 public import FastConfirmationProofs.Handlers.HandlerStepFacts
 public import FastConfirmationProofs.ForkChoice.Head.HeadStack
+public import FastConfirmationProofs.FFG.State.Phase0BoundarySource
 
 public import FastConfirmationProofs.ModelFacts
 @[expose] public section
@@ -366,10 +367,12 @@ gate: either the current target is the trusted anchor, or the gate produced a
 concrete source-specific honest quorum.  This deliberately does **not** split
 on equality with the store's unrealized justified checkpoint: a non-anchor
 unrealized checkpoint is still subject to the same arithmetic gate and honest
-target-support proviso.  In the quorum case the source is identified with
-Definition 7's selector in the *actual query store*.  Thus votes and source
-agreement are outputs of the gate realization, never free inputs to a
-paper-A3.2 producer. -/
+target-support proviso.  In the quorum case the source is the honest source
+that the Phase0 state functions give at the target block in the *actual query
+store*.  For a target two or more epochs old, this can be newer than the
+eager `GU` value, so it is not Definition 7's selector at the target block.
+Thus votes and source agreement are outputs of the gate realization, never
+free inputs to a paper-A3.2 producer. -/
 structure CurrentTargetA32GateRealizationCore
     (anchor : Checkpoint Root) (V : CheckpointInclusionView cfg E)
     (store : Store Root) : Prop where
@@ -382,19 +385,21 @@ structure CurrentTargetA32GateRealizationCore
             (compute_start_slot_at_epoch cfg
               ((get_current_target cfg store).epoch + 1))
             (get_current_target cfg store),
-          Q.source = V.voting_source_at cfg store
+          Q.source = phase0HonestSourceAt cfg ext store
             (get_current_target cfg store).root
             (get_current_target cfg store).epoch)
 
-/-- Actual-call producer type for `CurrentTargetA32GateRealization`.  Its only
-inputs are the executable boolean and the matching normative target-support
-proviso.  In particular it takes no signer set, votes, common source, source
-agreement, AU fact, or A3.2 conclusion. -/
+/-- Actual-call producer type for `CurrentTargetA32GateRealization`.  Its
+inputs are the executable boolean, the matching normative target-support
+proviso, and the late-boundary head guard of the query store.  In particular
+it takes no signer set, votes, common source, source agreement, AU fact, or
+A3.2 conclusion. -/
 def CurrentTargetA32GateRealizationProducerAtCore
     (anchor : Checkpoint Root) (V : CheckpointInclusionView cfg E)
     (q : ℕ) (query : FastConfirmationStore Root) : Prop :=
   will_current_target_be_justified cfg ext query.store = true →
   HonestVotesSupportTarget cfg E (get_current_target cfg query.store) q →
+  CurrentTargetLateBoundaryCarrierGuard cfg query.store →
     CurrentTargetA32GateRealizationCore cfg ext E anchor V query.store
 
 /-- The same gate realization after tying its common source to the original

@@ -140,7 +140,8 @@ not assert the full safety bundle or eventual inclusion.
   processing preserves the chosen source within an epoch.
 * `Phase0BoundarySourceCoherence`:
   `AcceptedActualFCRJointNonVacuityBase.witnessPhase0BoundarySourceCoherence`.
-  The same finite state transition supplies the epoch-boundary source law.
+  The same finite state transition satisfies the older eager equations, and
+  `Phase0BoundarySourceCoherence.of_eager` derives the boundary laws.
 * `HorizonVoteDeliveryLookahead`:
   `AcceptedActualFCRJointNonVacuityBase.witnessHorizonVoteDeliveryLookahead`.
   The slot-fifteen vote reaches every honest node at second sixteen, outside
@@ -219,10 +220,12 @@ The historical certificate and quorum are produced from earlier votes when
 needed. No external law or live-only premise was added. The shorter
 synchrony-only run does not prove the full safety bundle.
 `DeadlineVotePathCandidate` checks that a skipped-boundary schedule fails the
-pre-tick relay. The audited public witness set has 47 entries. Three new regression checks are:
+pre-tick relay. The audited public witness set has 48 entries. Four regression checks are:
 `CheckpointSyncFilterWitness.normalized_anchor_run_keeps_child`,
-`CheckpointSyncFilterWitness.anchor_only_view_satisfies_inclusion`, and
-`EarlyEpochBoundaryWitness.epoch_one_boundary_regression`. They check the
-normalized-state control, the strict-link inclusion antecedent, and the
-certified epoch-1 source after two boundaries. They are not full-bundle runs.
+`CheckpointSyncFilterWitness.anchor_only_view_satisfies_inclusion`,
+`EarlyEpochBoundaryWitness.epoch_one_boundary_regression`, and
+`EarlyEpochBoundaryWitness.epoch_one_fixture_satisfies_boundary_laws`. They
+check the normalized-state control, the strict-link inclusion antecedent, the
+certified epoch-1 source after two boundaries, and that this epoch-1 behavior
+satisfies the boundary laws. They are not full-bundle runs.
 -/

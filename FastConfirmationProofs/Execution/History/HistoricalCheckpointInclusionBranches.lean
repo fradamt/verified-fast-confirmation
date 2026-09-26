@@ -41,6 +41,8 @@ def fixedSource_of_acceptedSameEpochSegment
     (B : ScheduledFFGInterpretation cfg ext E)
     (hphase : Phase0SourceCoherence cfg ext)
     {store : Store Root} {b : Root}
+    (hstore : E.ScheduledPrefixStore cfg ext store)
+    (htargetKnown : (get_current_target cfg store).root ∈ store.block_roots)
     (htargetEpoch : get_block_epoch cfg store
       (get_current_target cfg store).root =
         (get_current_target cfg store).epoch)
@@ -61,11 +63,13 @@ def fixedSource_of_acceptedSameEpochSegment
       hsegment.gj_eq_first hphase
         B.coherence.toFFGStateReadAgreement
     calc
-      Q.source = B.state.voting_source_at cfg ext store
+      Q.source = phase0HonestSourceAt cfg ext store
           (get_current_target cfg store).root
           (get_current_target cfg store).epoch := hsource
       _ = B.state.realized_justified (get_current_target cfg store).root := by
-        simp only [AcceptedBlockFFGState.voting_source_at, htargetEpoch, if_pos]
+        simp only [phase0HonestSourceAt, htargetEpoch, if_pos]
+        exact (Execution.ScheduledFFGInterpretation.causalStoreProjection B
+          hstore).block_state_gj _ htargetKnown
       _ = B.state.realized_justified b := hgj.symm
       _ = B.state.voting_source_at cfg ext store b
           (get_current_target cfg store).epoch := by

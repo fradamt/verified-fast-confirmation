@@ -16,6 +16,7 @@ open FastConfirmation.Spec.CheckpointSyncFilterWitness
 #print axioms anchor_only_view_satisfies_inclusion
 #print axioms FastConfirmation.Spec.EarlyEpochBoundaryWitness.epoch_one_boundary_regression
 #print axioms FastConfirmation.Spec.EarlyEpochBoundaryWitness.guarded_boundary_equality
+#print axioms FastConfirmation.Spec.EarlyEpochBoundaryWitness.epoch_one_fixture_satisfies_boundary_laws
 #print axioms FastConfirmation.Spec.normalizeAnchorCheckpoint.strict_update
 #print axioms FastConfirmation.Spec.normalizeAnchorCheckpoint.genesis_justified_filter
 #print axioms FastConfirmation.Spec.normalizeAnchorCheckpoint.genesis_finalized_filter

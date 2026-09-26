@@ -555,8 +555,10 @@ theorem phase0_source : Phase0SourceCoherence cfg ext :=
     TwelveSecondSynchronyWitness.phase0_source.state_transition_current_justified⟩
 
 theorem phase0_boundary_source : Phase0BoundarySourceCoherence cfg ext :=
-  ⟨TwelveSecondSynchronyWitness.phase0_boundary_source.process_slots_current_justified,
-    TwelveSecondSynchronyWitness.phase0_boundary_source.state_transition_current_justified⟩
+  ⟨TwelveSecondSynchronyWitness.phase0_boundary_source.process_slots_one_boundary,
+    TwelveSecondSynchronyWitness.phase0_boundary_source.process_slots_same_target_epoch,
+    TwelveSecondSynchronyWitness.phase0_boundary_source.state_transition_process_slots,
+    TwelveSecondSynchronyWitness.phase0_boundary_source.process_slots_checkpoint_epoch⟩
 
 theorem balance_floor : cfg.effective_balance_increment ≤
     run.weight (run.currentTargetAnchorActive cfg) := by decide

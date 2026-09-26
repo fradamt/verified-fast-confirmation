@@ -294,7 +294,7 @@ noncomputable def completedPrefix_acceptedTargetGateProducerAt
     (hHn1 : E.WithinHorizon cfg (n + 1)) :
     E.AcceptedCurrentTargetA32GateRealizationProducerAt cfg ext
       B.anchor B.state (n + 1) (E.fcrStoreAtCall cfg ext v n) := by
-  intro hgate hsupport
+  intro hgate hsupport hguard
   let p := E.completedScheduledEventPrefix v n
   have hpstore : p.store cfg ext = E.store cfg ext v (n + 1) := by
     simpa only [p] using E.completedScheduledEventPrefix_store cfg ext v n
@@ -352,6 +352,7 @@ noncomputable def completedPrefix_acceptedTargetGateProducerAt
       hC.phase0_source hC.phase0_boundary_source hanchor hboundary p hv hHn1
       hevidence hstate hval htab hendHP hanchorH hC.balance_floor
       hgateP hsupportP
+      (by rw [hpstore]; simpa only [E.fcrStep_store] using hguard)
   rw [hpstore] at hrealized
   simpa only [E.fcrStep_store] using hrealized
 

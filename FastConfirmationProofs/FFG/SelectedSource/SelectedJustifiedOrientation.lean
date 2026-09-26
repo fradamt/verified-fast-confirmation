@@ -4,6 +4,7 @@ public import Mathlib.Tactic
 public import FastConfirmationProofs.FFG.CurrentTarget.CurrentTargetWalkKnownness
 public import FastConfirmationProofs.Execution.History.HistoricalCheckpointInclusionPayload
 public import FastConfirmationProofs.FFG.Certificates.CurrentTargetCertificateRealization
+public import FastConfirmationProofs.Execution.History.HistoricalCurrentTargetTrajectory
 
 public import FastConfirmationProofs.ModelFacts
 @[expose] public section
@@ -204,7 +205,10 @@ theorem epochStart_or_endpointCurrentTargetPinned_of_acceptedCallSite
       cfg ext B.anchor q query)
     (htargetResult : get_block_epoch cfg query.store result + 1 =
         get_current_store_epoch cfg query.store →
-      E.RootDescends (get_current_target cfg query.store).root result) :
+      E.RootDescends (get_current_target cfg query.store).root result)
+    (hguard : get_block_epoch cfg query.store result =
+        get_current_store_epoch cfg query.store →
+      CurrentTargetLateBoundaryCarrierGuard cfg query.store) :
     is_start_slot_at_epoch cfg (get_current_slot cfg query.store) = true ∨
       ((get_block_epoch cfg query.store result =
           get_current_store_epoch cfg query.store →
@@ -233,7 +237,7 @@ theorem epochStart_or_endpointCurrentTargetPinned_of_acceptedCallSite
       right
       constructor
       · intro _ hepoch
-        obtain ⟨hT⟩ := hcurrent' hgate hsupport
+        obtain ⟨hT⟩ := hcurrent' hgate hsupport (hguard resultCurrent)
         exact hacc.justified_unique hJ hT hepoch
       · intro hprevious
         rw [resultCurrent] at hprevious
@@ -336,10 +340,26 @@ theorem preQueryVoteSelectedSIRBracketAt_of_acceptedProducers
     exact E.rootDescends_of_store_ancestor
       (by rw [hquery]; exact E.blockProvenance cfg ext v q) hwfQ
       (hwalkQ _ hfacts.result_known _ hTQ) hdesc
+  have hguard : get_block_epoch cfg query.store
+        (find_latest_confirmed_descendant cfg ext query input) =
+      get_current_store_epoch cfg query.store →
+      CurrentTargetLateBoundaryCarrierGuard cfg query.store := by
+    intro hcur _
+    obtain ⟨hwfQ, hwalkQ, _⟩ :=
+      E.store_domainK_of_selectedMarginDomain cfg ext hA.wellFormed
+        hA.externals_coherence hA.genesis hA.domain v hv q hqH
+    rw [← hquery] at hwfQ hwalkQ
+    have hheadQ : (get_head cfg query.store).root ∈ query.store.block_roots := by
+      rw [hquery]
+      exact E.head_root_known_of_selectedMarginDomain cfg ext hA.domain hv q hqH
+    have hfacts := E.strictSelectedResultMechanicalFacts cfg ext hA hv hqH
+      query hquery input hinput hinputEpoch hstrict
+    exact ⟨_, hfacts.result_known, hcur,
+      strictSelectedResult_below_head cfg ext hwfQ hwalkQ hheadQ hinput hstrict⟩
   have hstartOrPin :=
     E.epochStart_or_endpointCurrentTargetPinned_of_acceptedCallSite
       cfg ext B hgen hanchor (E.store_causal cfg ext w m)
-      hcall hacc hcurrent hhistorical hnoConflict htargetResult
+      hcall hacc hcurrent hhistorical hnoConflict htargetResult hguard
   exact E.selectedSIRThreeRegionBracket_of_preQueryVote_and_pinning
     cfg ext hA hwalkDomain hv hqH query hquery input hinput hinputEpoch
       hbase hstrict hw hslotQM hHm hi hs0 hsq hsH hvote htarget
