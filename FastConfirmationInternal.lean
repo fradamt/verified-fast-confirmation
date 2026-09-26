@@ -18,6 +18,7 @@ public import FastConfirmationInternal.FFG.InterpretationFidelity
 public import FastConfirmationInternal.FFG.CheckpointLinks
 public import FastConfirmationInternal.FFG.ConcreteJustification
 public import FastConfirmationInternal.FFG.ConcreteFinality
+public import FastConfirmationInternal.FFG.ConcreteBridge
 public import FastConfirmationInternal.FFG.ScheduledState
 public import FastConfirmationInternal.Network.SynchronyConversion
 public import FastConfirmationInternal.Execution.SafeFrom
