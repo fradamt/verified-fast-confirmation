@@ -117,7 +117,11 @@ keeps a separate `zeroRoot`, as Python does.
   slashing that every node applies at second five. `equivocation_read_at_call`
   shows that the call from second six to seven reads the evidence and confirms
   the child. The call from second nine to ten confirms the epoch-two carrier
-  in its own epoch.
+  in its own epoch. Block D at slot 11 extends the carrier; its body has the
+  votes of slots 8 to 10. `previous_result_proviso_exercised` shows that the
+  call from second 12 to 13, in the non-start slot 13 of epoch 3, selects D
+  from the confirmed carrier. `previous_result_descendant_support_exercised`
+  proves the descendant target support of this selection.
 * Twelve-second full bundle:
   `FullTwelveWitness.full_bundle_witness` proves the public premise for the
   run `FullTwelveBridgeRun`, with 12,000 ms slots, a 3,000 ms vote deadline,
@@ -202,13 +206,13 @@ exercises envelope delivery and data relay through
 `FullTwelveEnvelopeWitness.data_relay_exercised`. The Byzantine run exercises
 positive non-honest weight and the slashing relay through
 `ByzantinePremiseWitness.byzantine_weight_exercised` and
-`ByzantinePremiseWitness.slashing_relay_exercised`. The previous-result
-proviso branch is not exercised by a full-bundle witness: each carrier is in
-epoch 2, and no call selects a block of an earlier epoch. Both support forms
+`ByzantinePremiseWitness.slashing_relay_exercised`. The Byzantine run
+exercises the previous-result proviso through
+`ByzantinePremiseWitness.previous_result_proviso_exercised`. Both support forms
 are derived by the joint call and endpoint-slot induction. The witness support
 lemmas remain facts about the runs.
-No full-bundle run exercises non-anchor finality, the previous-result proviso,
-positive Gloas discount, a PTC event, or positive proposer boost.
+No full-bundle run exercises non-anchor finality, positive Gloas discount, a
+PTC event, or positive proposer boost.
 Every positive run has proposer boost zero. The proposer-score term and
 should_apply_proposer_boost are not exercised positively. The one-second
 runs set `attestation_due_bps` to zero. The main safety runs have four or five
@@ -216,7 +220,7 @@ validators. Each slot committee has one validator, except in the Byzantine run,
 where validator 4 joins the committees of validator 3. Included slashing does
 not mark a validator slashed in state.
 `DeadlineVotePathCandidate` checks that a skipped-boundary schedule fails the
-pre-tick relay. The audited public theorem set has 44 entries. Four regression checks are:
+pre-tick relay. The audited public theorem set has 46 entries. Four regression checks are:
 `CheckpointSyncFilterWitness.normalized_anchor_run_keeps_child`,
 `CheckpointSyncFilterWitness.anchor_only_view_satisfies_inclusion`,
 `EarlyEpochBoundaryWitness.epoch_one_boundary_regression`, and

@@ -36,12 +36,13 @@ namespace ByzantineBridgeRun
 
 open ConcreteFFG
 
-abbrev WitnessRoot := Fin 4
+abbrev WitnessRoot := Fin 5
 
 def junkRoot : WitnessRoot := 0
 def anchorRoot : WitnessRoot := 1
 def childRoot : WitnessRoot := 2
 def carrierRoot : WitnessRoot := 3
+def dRoot : WitnessRoot := 4
 
 def witnessConfig : Config where
   slots_per_epoch := 4
@@ -62,6 +63,7 @@ def anchorCheckpoint : Checkpoint WitnessRoot := { epoch := 0, root := anchorRoo
 def childEpochOneCheckpoint : Checkpoint WitnessRoot := { epoch := 1, root := childRoot }
 def carrierEpochTwoCheckpoint : Checkpoint WitnessRoot := { epoch := 2, root := carrierRoot }
 def carrierEpochThreeCheckpoint : Checkpoint WitnessRoot := { epoch := 3, root := carrierRoot }
+def dEpochThreeCheckpoint : Checkpoint WitnessRoot := { epoch := 3, root := dRoot }
 
 /-! ## The concrete setup -/
 
@@ -163,6 +165,26 @@ def carrierWire : FFGWireBlock WitnessRoot where
   parent_requests_match := true
   attestations := [wireVote 4, wireVote 5, wireVote 6]
 
+/-- A wire vote of slot `s` with the carrier head and the epoch-two target. -/
+def wireVoteD (s : Slot) : FFGWireAttestation WitnessRoot where
+  aggregation_bits := if committeeIndex s = 3 then [true, false] else [true]
+  committee_bits := [true]
+  data := ⟨s, 0, carrierRoot, anchorCheckpoint, carrierEpochTwoCheckpoint⟩
+  signature := 0
+
+/-- Block D at slot 11, the last slot of epoch 2. Its body has the votes of
+slots 8 to 10. -/
+def dWire : FFGWireBlock WitnessRoot where
+  slot := 11
+  parent_root := carrierRoot
+  proposer_index := 0
+  root := dRoot
+  parent_block_hash := carrierRoot
+  block_hash := carrierRoot
+  parent_requests_empty := true
+  parent_requests_match := true
+  attestations := [wireVoteD 8, wireVoteD 9, wireVoteD 10]
+
 def childFFGState : FFGBeaconState WitnessRoot where
   genesis_time := 0
   slot := 4
@@ -197,6 +219,23 @@ def carrierFFGState : FFGBeaconState WitnessRoot where
   latest_block_hash := anchorRoot
   latest_bid_block_hash := childRoot
 
+def dFFGState : FFGBeaconState WitnessRoot where
+  genesis_time := 0
+  slot := 11
+  validators := witnessScope.validators
+  justification_bits := [false, false, false, false]
+  previous_justified_checkpoint := ⟨0, anchorRoot⟩
+  current_justified_checkpoint := ⟨0, anchorRoot⟩
+  finalized_checkpoint := ⟨0, anchorRoot⟩
+  previous_epoch_participation := [0, 3, 2, 2, 0]
+  current_epoch_participation := [3, 7, 0, 2, 0]
+  block_roots := [carrierRoot, carrierRoot, carrierRoot, anchorRoot,
+    childRoot, childRoot, childRoot, childRoot]
+  latest_block_header := ⟨11, 0, carrierRoot, dRoot⟩
+  execution_payload_availability := [false, false, false, false, false, false, false, false]
+  latest_block_hash := anchorRoot
+  latest_bid_block_hash := carrierRoot
+
 theorem child_transition :
     state_transition witnessConfig witnessPreset committeeSchedule witnessOracle
       witnessSetup.genesis childWire = .ok childFFGState := by
@@ -209,16 +248,23 @@ theorem carrier_transition :
   rw [state_transition_eq_pointwise]
   decide +kernel
 
+theorem d_transition :
+    state_transition witnessConfig witnessPreset committeeSchedule witnessOracle
+      carrierFFGState dWire = .ok dFFGState := by
+  rw [state_transition_eq_pointwise]
+  decide +kernel
+
 /-! ## The bridge -/
 
 def stateEntries : List (WitnessRoot × FFGBeaconState WitnessRoot) :=
   [(anchorRoot, witnessSetup.genesis), (childRoot, childFFGState),
-    (carrierRoot, carrierFFGState)]
+    (carrierRoot, carrierFFGState), (dRoot, dFFGState)]
 
 theorem stateEntries_nodup : (stateEntries.map Prod.snd).Nodup := by decide +kernel
 
 def blockEntries : List (WitnessRoot × (FFGWireBlock WitnessRoot × WitnessRoot)) :=
-  [(childRoot, (childWire, childRoot)), (carrierRoot, (carrierWire, carrierRoot))]
+  [(childRoot, (childWire, childRoot)), (carrierRoot, (carrierWire, carrierRoot)),
+    (dRoot, (dWire, dRoot))]
 
 /-! ### Ground honest votes -/
 
@@ -232,12 +278,15 @@ def voteData (slot : Slot) : AttestationData WitnessRoot :=
   else if slot < 8 then
     { slot := slot, index := 0, beacon_block_root := childRoot
       source := anchorCheckpoint, target := childEpochOneCheckpoint }
-  else if slot < 12 then
+  else if slot < 11 then
     { slot := slot, index := 0, beacon_block_root := carrierRoot
       source := anchorCheckpoint, target := carrierEpochTwoCheckpoint }
+  else if slot < 12 then
+    { slot := slot, index := 0, beacon_block_root := dRoot
+      source := anchorCheckpoint, target := carrierEpochTwoCheckpoint }
   else
-    { slot := slot, index := 0, beacon_block_root := carrierRoot
-      source := childEpochOneCheckpoint, target := carrierEpochThreeCheckpoint }
+    { slot := slot, index := 0, beacon_block_root := dRoot
+      source := carrierEpochTwoCheckpoint, target := dEpochThreeCheckpoint }
 
 def vote (slot : Slot) : Attestation WitnessRoot :=
   { attesting_indices := [committeeIndex slot], data := voteData slot }
@@ -299,24 +348,32 @@ def carrierSignedBlock : SignedBeaconBlock WitnessRoot :=
   { message := { slot := 8, parent_root := childRoot, attestations := [vote 4, vote 5, vote 6] }
     root := carrierRoot }
 
+/-- The message of D has the indexed forms of its three wire votes. -/
+def dSignedBlock : SignedBeaconBlock WitnessRoot :=
+  { message := { slot := 11, parent_root := carrierRoot, attestations := [vote 8, vote 9, vote 10] }
+    root := dRoot }
+
 /-! ### The decode domain -/
 
 theorem stateEntries_cases {id : WitnessRoot} {state : FFGBeaconState WitnessRoot}
     (h : witnessBridge.states.open_ id = some state) :
     (id = anchorRoot ∧ state = witnessSetup.genesis) ∨
       (id = childRoot ∧ state = childFFGState) ∨
-      (id = carrierRoot ∧ state = carrierFFGState) := by
+      (id = carrierRoot ∧ state = carrierFFGState) ∨
+      (id = dRoot ∧ state = dFFGState) := by
   have hmem := tableOpen_mem (entries := stateEntries) h
   simpa [stateEntries] using hmem
 
 theorem witness_inDomain :
     ∀ id state, witnessBridge.states.open_ id = some state → witnessBridge.InDomain state := by
   intro id state h
-  rcases stateEntries_cases h with ⟨-, rfl⟩ | ⟨-, rfl⟩ | ⟨-, rfl⟩
+  rcases stateEntries_cases h with ⟨-, rfl⟩ | ⟨-, rfl⟩ | ⟨-, rfl⟩ | ⟨-, rfl⟩
   · exact ⟨⟨[], [], .genesis⟩, by decide +kernel⟩
   · exact ⟨⟨_, _, .block childWire .genesis child_transition⟩, by decide +kernel⟩
   · exact ⟨⟨_, _, .block carrierWire (.block childWire .genesis child_transition)
       carrier_transition⟩, by decide +kernel⟩
+  · exact ⟨⟨_, _, .block dWire (.block carrierWire (.block childWire .genesis
+      child_transition) carrier_transition) d_transition⟩, by decide +kernel⟩
 
 /-- **The run interface is the computable copy.** -/
 theorem interface_eq : witnessBridge.interface = witnessExternals :=
@@ -325,7 +382,7 @@ theorem interface_eq : witnessBridge.interface = witnessExternals :=
 theorem open_validators {id : WitnessRoot} {state : FFGBeaconState WitnessRoot}
     (h : witnessBridge.states.open_ id = some state) :
     state.validators = witnessScope.validators := by
-  rcases stateEntries_cases h with ⟨-, rfl⟩ | ⟨-, rfl⟩ | ⟨-, rfl⟩ <;> rfl
+  rcases stateEntries_cases h with ⟨-, rfl⟩ | ⟨-, rfl⟩ | ⟨-, rfl⟩ | ⟨-, rfl⟩ <;> rfl
 
 /-! ## Schedule and execution -/
 
@@ -340,6 +397,10 @@ def witnessSchedule (_w : ValidatorIndex) (n : ℕ) : List (Event WitnessRoot) :
     [Event.attestation (vote 7) false, Event.block carrierSignedBlock,
       Event.attestation (vote 4) true, Event.attestation (vote 5) true,
       Event.attestation (vote 6) true]
+  else if n = 11 then
+    [Event.attestation (vote 10) false, Event.block dSignedBlock,
+      Event.attestation (vote 8) true, Event.attestation (vote 9) true,
+      Event.attestation (vote 10) true]
   else if 1 ≤ n ∧ n ≤ 16 then
     [Event.attestation (vote (n - 1)) false]
   else []
@@ -508,7 +569,8 @@ theorem actual_fcr_transition_strict_advance :
 
 theorem block_mem_schedule_iff {w n} {b : SignedBeaconBlock WitnessRoot} :
     Event.block b ∈ witnessExecution.schedule w n ↔
-      (n = 4 ∧ b = childSignedBlock) ∨ (n = 8 ∧ b = carrierSignedBlock) := by
+      (n = 4 ∧ b = childSignedBlock) ∨ (n = 8 ∧ b = carrierSignedBlock) ∨
+        (n = 11 ∧ b = dSignedBlock) := by
   change Event.block b ∈ witnessSchedule w n ↔ _
   by_cases h1 : n = 4
   · subst n
@@ -519,7 +581,10 @@ theorem block_mem_schedule_iff {w n} {b : SignedBeaconBlock WitnessRoot} :
     · by_cases h7 : n = 8
       · subst n
         simp [witnessSchedule]
-      · simp [witnessSchedule, h1, h5, h7]
+      · by_cases h11 : n = 11
+        · subst n
+          simp [witnessSchedule]
+        · simp [witnessSchedule, h1, h5, h7, h11]
 
 theorem attestation_mem_schedule_ground {w n a ifb}
     (h : Event.attestation a ifb ∈ witnessExecution.schedule w n) : a ∈ groundVotes := by
@@ -539,12 +604,17 @@ theorem attestation_mem_schedule_ground {w n a ifb}
         simp [witnessSchedule] at h
         rcases h with h | h | h | h <;> rcases h with ⟨rfl, rfl⟩ <;>
           exact vote_mem_ground (by decide)
-      · by_cases hb : 1 ≤ n ∧ n ≤ 16
-        · simp [witnessSchedule, h1, h5, h7, hb] at h
-          rcases h with ⟨rfl, rfl⟩
-          have hpred : n - 1 < n := Nat.sub_lt (by omega) (by decide)
-          exact vote_mem_ground (s := n - 1) (hpred.trans_le hb.2)
-        · simp [witnessSchedule, h1, h5, h7, hb] at h
+      · by_cases h11 : n = 11
+        · subst n
+          simp [witnessSchedule] at h
+          rcases h with h | h | h | h <;> rcases h with ⟨rfl, rfl⟩ <;>
+            exact vote_mem_ground (by decide)
+        · by_cases hb : 1 ≤ n ∧ n ≤ 16
+          · simp [witnessSchedule, h1, h5, h7, h11, hb] at h
+            rcases h with ⟨rfl, rfl⟩
+            have hpred : n - 1 < n := Nat.sub_lt (by omega) (by decide)
+            exact vote_mem_ground (s := n - 1) (hpred.trans_le hb.2)
+          · simp [witnessSchedule, h1, h5, h7, h11, hb] at h
 
 /-- Every scheduled copy of a ground vote is received after that vote's
 recorded send second. -/
@@ -574,12 +644,20 @@ theorem scheduled_vote_sent_before {w n s ifb}
           have hs := vote_slot_eq h.1
           rw [hs]
           decide
-      · by_cases hb : 1 ≤ n ∧ n ≤ 16
-        · simp [witnessSchedule, h1, h5, h7, hb] at h
-          have hs := vote_slot_eq h.1
-          rw [hs]
-          exact Nat.sub_le n 1
-        · simp [witnessSchedule, h1, h5, h7, hb] at h
+      · by_cases h11 : n = 11
+        · subst n
+          simp [witnessSchedule, h1] at h
+          rcases h with h | h | h | h
+          all_goals
+            have hs := vote_slot_eq h.1
+            rw [hs]
+            decide
+        · by_cases hb : 1 ≤ n ∧ n ≤ 16
+          · simp [witnessSchedule, h1, h5, h7, h11, hb] at h
+            have hs := vote_slot_eq h.1
+            rw [hs]
+            exact Nat.sub_le n 1
+          · simp [witnessSchedule, h1, h5, h7, h11, hb] at h
 
 theorem recorded_vote_of_attester {s : Slot} (hs : s < 16) {v : ValidatorIndex}
     (hvin : v ∈ (vote s).attesting_indices) :
@@ -608,28 +686,17 @@ theorem genesis_roots_iff (r : WitnessRoot) :
 theorem witnessWellFormedExecution : WellFormedExecution witnessExecution := by
   constructor
   · intro w n b hb w' n' b' hb' hroot
-    rcases block_mem_schedule_iff.mp hb with hchild | hcarrier <;>
-      rcases block_mem_schedule_iff.mp hb' with hchild' | hcarrier'
-    · rcases hchild with ⟨rfl, rfl⟩
-      rcases hchild' with ⟨rfl, rfl⟩
-      rfl
-    · rcases hchild with ⟨rfl, rfl⟩
-      rcases hcarrier' with ⟨rfl, rfl⟩
-      exact False.elim ((by decide : childRoot ≠ carrierRoot) hroot)
-    · rcases hcarrier with ⟨rfl, rfl⟩
-      rcases hchild' with ⟨rfl, rfl⟩
-      exact False.elim ((by decide : carrierRoot ≠ childRoot) hroot)
-    · rcases hcarrier with ⟨rfl, rfl⟩
-      rcases hcarrier' with ⟨rfl, rfl⟩
-      rfl
+    rcases block_mem_schedule_iff.mp hb with ⟨-, rfl⟩ | ⟨-, rfl⟩ | ⟨-, rfl⟩ <;>
+      rcases block_mem_schedule_iff.mp hb' with ⟨-, rfl⟩ | ⟨-, rfl⟩ | ⟨-, rfl⟩ <;>
+      first | rfl | exact absurd hroot (by decide)
   · intro w n b hb hgen
     rw [genesis_roots_iff] at hgen
-    rcases block_mem_schedule_iff.mp hb with ⟨rfl, rfl⟩ | ⟨rfl, rfl⟩ <;>
+    rcases block_mem_schedule_iff.mp hb with ⟨rfl, rfl⟩ | ⟨rfl, rfl⟩ | ⟨rfl, rfl⟩ <;>
       exact absurd hgen (by decide)
   · intro r hr w n b hb
     rw [genesis_roots_iff] at hr
     subst r
-    rcases block_mem_schedule_iff.mp hb with ⟨rfl, rfl⟩ | ⟨rfl, rfl⟩ <;>
+    rcases block_mem_schedule_iff.mp hb with ⟨rfl, rfl⟩ | ⟨rfl, rfl⟩ | ⟨rfl, rfl⟩ <;>
       decide +kernel
 
 theorem honest_vote_recorded {s : Slot} (hs : s < 16) :
@@ -711,7 +778,7 @@ theorem witnessTransition_checkpoints {st st' : BeaconState WitnessRoot}
   rw [← interface_eq] at h
   obtain ⟨-, -, stateRoot, cpost, -, -, -, -, -, hopen, -, rfl⟩ :=
     witnessBridge.transition_eq_some h
-  rcases stateEntries_cases hopen with ⟨-, rfl⟩ | ⟨-, rfl⟩ | ⟨-, rfl⟩ <;>
+  rcases stateEntries_cases hopen with ⟨-, rfl⟩ | ⟨-, rfl⟩ | ⟨-, rfl⟩ | ⟨-, rfl⟩ <;>
     exact ⟨rfl, rfl⟩
 
 theorem witnessStore_registryConstant (v : ValidatorIndex) (n : ℕ) :

@@ -71,7 +71,7 @@ membership and executable ancestry.
 │ReviewSurfaceShape.lean     │Field names and types of 18 records and the claim body remain exact.                         │
 │check_imports.py            │The six-library import direction and Paper separation hold.                                  │
 │check_doc_names.py          │Backticked Lean names in current documents resolve to declarations or files.                 │
-│Audit.lean                  │The 44 audited public theorems have only standard axiom dependencies. No forbidden           │
+│Audit.lean                  │The 46 audited public theorems have only standard axiom dependencies. No forbidden           │
 │                            │declaration is allowed.                                                                      │
 │validate.sh                 │Fast checks above; full mode also builds every library and runs Lean checks.                 │
 └────────────────────────────┴─────────────────────────────────────────────────────────────────────────────────────────────┘

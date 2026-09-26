@@ -156,7 +156,7 @@ scripts/validate.sh --consensus-repo /path/to/fradamt-consensus-specs
 A warm `lake build` took 24.19 seconds on a 12-core desktop. A fresh build can take longer.
 `scripts/validate.sh --fast --consensus-repo /path/to/fradamt-consensus-specs` checks source
 pinning, document names, boundaries, and hygiene. Full validation also builds the libraries
-and audits 44 public theorems: 37 executable-side and seven paper-side. The Python
+and audits 46 public theorems: 39 executable-side and seven paper-side. The Python
 path must name the pinned local checkout.
 
 ## Premise ledger
@@ -198,9 +198,10 @@ the full bundle does not imply that every branch occurs.
 - **Full safety at 1 s and 12 s:** `NextSlotPremiseWitness.finite_execution_satisfies_premises` and `FullTwelveWitness.full_bundle_witness` give stored root advances under the full safety bundle. The 12 s run has real delayed block and vote receipts.
 - **Payload envelope:** `FullTwelveEnvelopeWitness.full_bundle_witness` has an accepted envelope. Its delivery and data relay antecedents hold.
 - **Byzantine weight and slashing:** `ByzantinePremiseWitness.full_bundle_witness` has positive non-honest weight and a slashing relay that the next call reads.
+- **Previous-result proviso:** `ByzantinePremiseWitness.previous_result_proviso_exercised` selects an epoch-2 block at a non-start slot of epoch 3. `ByzantinePremiseWitness.previous_result_descendant_support_exercised` shows its descendant target support.
 - **Guarded current-target edge:** `TargetEdgePremiseWitness.target_edge_support_exercised` reaches a selected epoch crossing. A later honest vote has the exact current target.
 - **Counterexamples:** `StrictPrefixExtraQuery.extra_query_changes_head_counterexample` and `PinnedEconomicsExtraQuery.extra_query_changes_head_counterexample` refute same-second head agreement at a mid-second prefix under the counterexample synchrony record. Next-slot safety for an in-slot query is open.
-- **Interpretation fidelity:** Full-bundle runs prove `FFGInterpretationFidelity` for their supplied included-vote relation. This record is outside the safety premise.
+- **Interpretation fidelity:** Full-bundle runs prove `FFGInterpretationFidelity` for the canonical included-vote relation of their bridge. This record is outside the safety premise.
 
 The table names fields with a concrete instance or true antecedent and labels
 the gaps that no named full-bundle run exercises. A dash means that the row is
@@ -210,7 +211,7 @@ a counterexample and does not assert the safety bundle.
 ┌─────────────────────┬───────────────────────────────────────────────────────────────────────────────────────────────────┐
 │ Run                 │ Exercised premise fields or facts                                                                 │
 ├─────────────────────┼───────────────────────────────────────────────────────────────────────────────────────────────────┤
-│ 1 s full safety     │ HonestBehavior.votes_head; NextSlotSafetyPremises.checkpoint_inclusion; root advance.             │
+│ 1 s full safety     │ HonestBehavior.votes_head; SafetyPremises.checkpoint_inclusion; root advance.                     │
 │ 12 s full safety    │ NextSlotSynchronyPremises.attestation_delivery and deadline_block_relay; delayed receipts.        │
 │ 12 s envelope       │ NextSlotSynchronyPremises.envelope_delivery and data_availability_relay; accepted payload.        │
 │ Byzantine run       │ ByzantineWeightPremises.span_fraction with positive fault weight;                                 │
@@ -219,7 +220,8 @@ a counterexample and does not assert the safety bundle.
 │ Counterexamples     │ —                                                                                                 │
 │ Fidelity records    │ FFGInterpretationFidelity body membership, validation state, and external validity check.         │
 │ Non-anchor finality │ not exercised by a named full-bundle run.                                                         │
-│ Previous result     │ not exercised: the previous-result proviso branch is not exercised by a full-bundle witness.      │
+│ Previous result     │ Byzantine run: selected previous-epoch result at a non-start slot;                                │
+│                     │ its descendant target support.                                                                    │
 │ Positive discount   │ not exercised: the Gloas empty-slot discount is zero in the envelope run.                         │
 │ PTC events          │ not exercised by a named full-bundle run.                                                         │
 │ Positive boost      │ not exercised: all full-bundle runs set proposer boost to zero.                                   │
@@ -232,7 +234,9 @@ envelope run computes a zero discount and does not select a FULL head. No run
 has a PTC event. Every positive run sets `proposer_score_boost` to zero. The
 proposer-score term and should_apply_proposer_boost are not exercised
 positively. The one-second runs set `attestation_due_bps` to zero. The main
-safety runs have four or five validators and one validator per slot committee.
+safety runs have four or five validators. Each slot committee has one
+validator, except in the Byzantine run, where validator 4 joins the
+committees of validator 3.
 Validator churn is outside
 `StaticValidatorSet`. These are
 coverage limits, not claims about unreachable protocol states.

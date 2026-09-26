@@ -201,8 +201,8 @@ branch from r before X1 arrives. Their epoch-e target is r, while the
 caller's target is X1. The selected root r stays safe and the relay
 deadlines permit this schedule. Thus safety and descendant support can hold
 without exact target agreement. This is a protocol description, not a Lean
-counterexample witness. The previous-result proviso branch is not exercised
-by a full-bundle witness.
+counterexample witness. The Byzantine run exercises the previous-result
+proviso branch (`ByzantinePremiseWitness.previous_result_proviso_exercised`).
 
 ## Interpretation fidelity
 
