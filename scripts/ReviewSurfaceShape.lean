@@ -1,6 +1,7 @@
 import FastConfirmationStatements
 import FastConfirmationProofs.ReviewTheorem
 import Lean
+import FastConfirmationProofs.FFG.SelectedSource.TruncatedPredictionPinning
 import FastConfirmationProofs.FCRRule.PredictionSupport
 import FastConfirmationProofs.FCRRule.PredictionSupportGeometry
 
@@ -91,3 +92,6 @@ example {Root : Type*} [LinearOrder Root] [Inhabited Root]
 #check FastConfirmation.Spec.Execution.currentTargetSelectedEdge_geometry_of_accepted
 #check FastConfirmation.Spec.Execution.currentTarget_supportBefore_of_canonical
 #check FastConfirmation.Spec.Execution.previousResult_descendSupport_of_canonical
+
+#check FastConfirmation.Spec.Execution.completedPrefix_currentTarget_endpoint_root_eq_before
+#check FastConfirmation.Spec.Execution.completedPrefix_noConflict_endpoint_descends_before

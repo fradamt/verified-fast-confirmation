@@ -208,7 +208,8 @@ previous-result proviso through
 `ByzantinePremiseWitness.previous_result_descendant_support_exercised` checks
 the descendant conclusion. The geometric and canonicity-to-support lemmas
 do not change the witness premise bundle: both guarded support fields remain
-inputs. The shorter
+inputs. The new endpoint pinning lemmas use only earlier votes and add no
+external law; the full safety proof still uses the guarded inputs. The shorter
 synchrony-only run does not prove the full safety bundle.
 `DeadlineVotePathCandidate` checks that a skipped-boundary schedule fails the
 pre-tick relay. The audited public witness set has 43 entries.

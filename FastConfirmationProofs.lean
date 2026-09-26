@@ -1,4 +1,5 @@
 module
+public import FastConfirmationProofs.FFG.SelectedSource.TruncatedPredictionPinning
 public import FastConfirmationProofs.FCRRule.PredictionSupport
 public import FastConfirmationProofs.FCRRule.PredictionSupportGeometry
 public import FastConfirmationProofs.Checkpoints.HonestVotePathAdmissibility

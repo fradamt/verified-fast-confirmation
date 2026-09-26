@@ -145,6 +145,15 @@ that induction. The crossing-edge geometry is proved by
 from canonicity to the two support forms. The endpoint induction also gives
 support restricted to earlier slots; `Execution.support_of_before_epoch_end`
 extends it to the full target epoch only when that epoch has ended.
+At an endpoint, `Execution.completedPrefix_currentTarget_endpoint_root_eq_before`
+and `Execution.completedPrefix_noConflict_endpoint_descends_before` need only
+support at strictly earlier slots. The included certificate puts each signer
+before a known carrier block. Committee assignment uniqueness identifies that
+slot with the counted support vote. This proves pinning even if the target
+epoch has not ended. No strict justified-epoch external law was added.
+These lemmas do not yet replace the support inputs in the main safety proof.
+The historical payload still stores an eager certificate and quorum. Both
+must be produced at the consuming endpoint as part of the remaining induction.
 For previous-epoch results, paper Lemma 42 needs only descent.
 The no-conflict helper's observed and future honest signer sets exceed one
 third of the weight. Any certified two-thirds link intersects this set, so

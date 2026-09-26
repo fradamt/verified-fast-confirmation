@@ -230,20 +230,21 @@ namespace Execution
 
 variable (E : Execution Root)
 
-/-- The Lemma 42 form follows from canonicity of the previous-epoch result
-at the later honest votes of the epoch.  Unlike `HonestVotesSupportTarget`,
-it does not name the caller's own head checkpoint. -/
-theorem previousResult_descendSupport_of_canonical
+private theorem previousResult_vote_descendSupport_of_canonical
     (hA : SelectedMarginAssumptions cfg ext E)
     {v : ValidatorIndex} {q : ℕ} (hqH : E.WithinHorizon cfg q)
     {r : Root} {e : Epoch}
     (hrV : r ∈ (E.store cfg ext v q).block_roots)
     (hrslot : ((E.store cfg ext v q).blocks r).slot ≤
       compute_start_slot_at_epoch cfg e)
-    (hcanon : E.CanonicalAtHonestVotesFrom cfg ext r e q) :
-    HonestVotesTargetDescendFrom cfg E r e q := by
-  refine ⟨hqH, ?_⟩
-  intro w hw s hsH hepoch hsq k a hvote
+    {w : ValidatorIndex} (hw : w ∈ E.honest) {s : Slot}
+    (hsH : E.SlotWithinHorizon cfg s) (hepoch : compute_epoch_at_slot cfg s = e)
+    (hsq : E.slot_at cfg q ≤ s) {k : ℕ} {a : Attestation Root}
+    (hvote : E.vote w s = some (k, a))
+    (hcanon : r ∈ (E.store cfg ext w k).block_roots ∧
+      is_ancestor (E.store cfg ext w k)
+        (get_head cfg (E.store cfg ext w k)) (get_node_for_root r) = true) :
+    a.data.target.epoch = e ∧ E.RootDescends a.data.target.root r := by
   have hs0 : E.slot_at cfg 0 ≤ s :=
     (E.slot_at_mono cfg (Nat.zero_le q)).trans hsq
   have hcomm : w ∈ E.committee s :=
@@ -257,8 +258,7 @@ theorem previousResult_descendSupport_of_canonical
   obtain ⟨hkk, ha⟩ := hvoteEq
   subst hkk
   subst ha
-  obtain ⟨hrW, hWanc⟩ := hcanon w hw s hsH hepoch hsq k'
-    (honest_attestation cfg ext (E.store cfg ext w k') s index w) hvote
+  obtain ⟨hrW, hWanc⟩ := hcanon
   let W := E.store cfg ext w k'
   obtain ⟨ast, ablk, hgenEq, hanchorSlot, hanchorParent⟩ := hA.genesis
   have hgen : ∃ (ast : BeaconState Root) (ablk : SignedBeaconBlock Root),
@@ -314,6 +314,23 @@ theorem previousResult_descendSupport_of_canonical
   rw [hrootData]
   exact ⟨htargetEpoch, hsemantic⟩
 
+/-- The Lemma 42 form follows from canonicity of the previous-epoch result
+at the later honest votes of the epoch.  Unlike `HonestVotesSupportTarget`,
+it does not name the caller's own head checkpoint. -/
+theorem previousResult_descendSupport_of_canonical
+    (hA : SelectedMarginAssumptions cfg ext E)
+    {v : ValidatorIndex} {q : ℕ} (hqH : E.WithinHorizon cfg q)
+    {r : Root} {e : Epoch}
+    (hrV : r ∈ (E.store cfg ext v q).block_roots)
+    (hrslot : ((E.store cfg ext v q).blocks r).slot ≤
+      compute_start_slot_at_epoch cfg e)
+    (hcanon : E.CanonicalAtHonestVotesFrom cfg ext r e q) :
+    HonestVotesTargetDescendFrom cfg E r e q := by
+  refine ⟨hqH, ?_⟩
+  intro w hw sl hsH hepoch hsq k a hvote
+  exact E.previousResult_vote_descendSupport_of_canonical cfg ext hA hqH
+    hrV hrslot hw hsH hepoch hsq hvote (hcanon w hw sl hsH hepoch hsq k a hvote)
+
 end Execution
 
 end FastConfirmation.Spec
@@ -348,6 +365,32 @@ def CanonicalAtHonestVotesBefore (c : Root) (e : Epoch) (q : ℕ)
       c ∈ (E.store cfg ext w k).block_roots ∧
         is_ancestor (E.store cfg ext w k)
           (get_head cfg (E.store cfg ext w k)) (get_node_for_root c) = true
+
+/-- The descendant support form restricted to slots before an endpoint. -/
+def HonestVotesTargetDescendFromBefore (result : Root) (e : Epoch)
+    (q : ℕ) (cutoff : Slot) : Prop :=
+  E.WithinHorizon cfg q ∧
+    ∀ i ∈ E.honest, ∀ sl : Slot, E.SlotWithinHorizon cfg sl →
+      compute_epoch_at_slot cfg sl = e → E.slot_at cfg q ≤ sl → sl < cutoff →
+      ∀ k a, E.vote i sl = some (k, a) →
+        a.data.target.epoch = e ∧ E.RootDescends a.data.target.root result
+
+/-- Canonicity before an endpoint gives descendant support in the same
+restricted range. No assumption is made on votes at the endpoint slot. -/
+theorem previousResult_descendSupportBefore_of_canonical
+    (hA : SelectedMarginAssumptions cfg ext E)
+    {v : ValidatorIndex} {q : ℕ} (hqH : E.WithinHorizon cfg q)
+    {r : Root} {e : Epoch} {cutoff : Slot}
+    (hrV : r ∈ (E.store cfg ext v q).block_roots)
+    (hrslot : ((E.store cfg ext v q).blocks r).slot ≤
+      compute_start_slot_at_epoch cfg e)
+    (hcanon : E.CanonicalAtHonestVotesBefore cfg ext r e q cutoff) :
+    E.HonestVotesTargetDescendFromBefore cfg r e q cutoff := by
+  refine ⟨hqH, ?_⟩
+  intro w hw sl hsH hepoch hsq hbefore k a hvote
+  exact E.previousResult_vote_descendSupport_of_canonical cfg ext hA hqH
+    hrV hrslot hw hsH hepoch hsq hvote
+    (hcanon w hw sl hsH hepoch hsq hbefore k a hvote)
 
 /-- The endpoint induction supplies canonicity at all earlier honest votes.
 Knownness is the independent selected-result delivery invariant. -/

@@ -91,6 +91,14 @@ canonicity into exact target support before an endpoint. The endpoint induction
 link is `Execution.canonicalAtHonestVotesBefore_of_endpoint_induction`. These
 reductions do not yet prove within-epoch canonicity or remove either field.
 
+`Execution.completedPrefix_currentTarget_endpoint_root_eq_before` and
+`Execution.completedPrefix_noConflict_endpoint_descends_before` prove exact
+and descendant pinning from votes strictly before the endpoint. They use
+accepted inclusion and committee assignment uniqueness, without a new strict
+justified-epoch law. The remaining work is to integrate these results into
+the selected-result induction and delay the historical certificate and quorum
+until the endpoint that needs them.
+
 ## Delivery and evidence
 
 `NextSlotSynchronyPremises` requires positive Δ and strict `A + Δ < S`. A source observation must occur by its slot deadline. A receiver observation occurs at or after the next boundary. A receiver is later than the source. Honest votes use the vote deadline. `synchrony_and_delivery_iff_nextSlot` relates the current bundles.
