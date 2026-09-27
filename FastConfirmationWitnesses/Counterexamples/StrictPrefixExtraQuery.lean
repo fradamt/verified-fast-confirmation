@@ -423,7 +423,6 @@ private lemma equivocating_indices_at_three :
 private theorem witnessSynchrony :
     Synchrony witnessConfig witnessExternals witnessExecution := by
   refine {
-    delta := ⟨500, by decide, by decide⟩
     attestation_delivery := ?_
     deadline_block_relay := ?_
     boundary_block_prefix := ?_

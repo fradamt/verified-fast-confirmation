@@ -52,13 +52,8 @@ private def premiseRecords : List Name := [
   `FastConfirmation.Spec.ByzantineWeightPremises,
   `FastConfirmation.Spec.EventualCheckpointInclusion]
 
-/-- Unread premise fields that the documents keep on purpose.
-
-`NextSlotSynchronyPremises.delta` is the paper's timing parameter: a positive
-delay Δ with `A + Δ < S`. The docstrings of the delivery laws derive their
-next-slot deadlines from it, and the documents state that no proof reads it
-(README, MODELING_CHOICES). -/
-private def allowedUnread : List Name := [`FastConfirmation.Spec.NextSlotSynchronyPremises.delta]
+/-- Unread premise fields that the documents keep on purpose. None remain. -/
+private def allowedUnread : List Name := []
 
 private def exprConsts (e : Expr) : Array Name :=
   e.foldConsts #[] fun c acc => acc.push c

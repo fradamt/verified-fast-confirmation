@@ -18,8 +18,9 @@ configuration `B.setup.cfg` and the state functions `B.interface`.
 
 The global `NextSlotSynchronyPremises` in the premise makes this the current
 model's GST-0 specialization. Its delivery contracts cover honest votes,
-cutoff block paths, ordered payload envelopes, data availability, and cutoff
-equivocation evidence under a positive delay and strict deadline fit. -/
+cutoff block paths, verified payloads before boundary votes, and cutoff
+equivocation evidence. Each contract states its timing in slot boundaries
+and attestation deadlines. -/
 def ConfirmedRootSafeFromNextSlot : Prop :=
   ∀ (B : ConcreteFFG.ConcreteBridge Root) (E : Execution Root),
     B.SafetyPremises E →

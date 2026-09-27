@@ -102,9 +102,6 @@ def check(text):
         if name == "Synchrony":
             require("n≤E.slot_startcfgs+get_attestation_due_mscfg/1000→" in d,
                     f"{name}: missing vote cutoff")
-        require("0<delay_ms∧" in d, f"{name}: missing positive delay")
-        require("get_attestation_due_mscfg+delay_ms<cfg.slot_duration_ms" in d,
-                f"{name}: missing strict delay bound")
     next_slot = ds.get("NextSlotSynchronyPremises", "")
     require("delivery_lookahead:HorizonVoteDeliveryLookaheadcfgE" in next_slot,
             "NextSlotSynchronyPremises: missing horizon vote delivery")

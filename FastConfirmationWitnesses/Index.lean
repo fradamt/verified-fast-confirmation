@@ -21,7 +21,7 @@ faithfulness; the contract suite, projection harness, and concrete differential
 check test that behavior. Their PJF returns early in epochs 0 and 1, as Python does.
 
 This page names the finite runs that satisfy the premise bundles: a short
-next-slot safety run with one-second slots and a 500 ms delay, the same run
+next-slot safety run with one-second slots, the same run
 with the real genesis stub,
 a one-second target-edge run,
 a one-second run with Byzantine weight and a slashing, a 12-second
@@ -134,8 +134,8 @@ Byzantine run has five validators.
   proves the descendant target support of this selection.
 * Twelve-second full bundle:
   `FullTwelveWitness.full_bundle_witness` proves the public premise for the
-  run `FullTwelveBridgeRun`, with 12,000 ms slots, a 3,000 ms vote deadline,
-  and a positive 2,000 ms delay. It has the concrete setup, blocks, and states
+  run `FullTwelveBridgeRun`, with 12,000 ms slots and a 3,000 ms vote
+  deadline. It has the concrete setup, blocks, and states
   of the next-slot run. `FullTwelveWitness.delayed_receipts_are_first` proves
   the real block and vote receipt delays: node 1 receives the child block at
   second 14 while node 0 receives it at second 12, and the slot-zero vote at
@@ -235,7 +235,11 @@ Byzantine run has five validators.
 
 ## Notes
 
-The 1 s safety run (delay 500 ms) changes a stored root. The 12-second
+Each run delivers each honest vote at the first second of the next slot, as
+`HorizonVoteDeliveryLookahead` requires: one second after the vote in the
+one-second runs (A = 0), and nine seconds after it in the twelve-second runs
+(vote at second 12s + 3, receipt at second 12(s + 1)). The 1 s safety run
+changes a stored root. The 12-second
 full-bundle run adds real delayed block and vote receipts. The target-edge run
 checks current-target support as a fact about the run. The envelope run
 exercises the envelope prefix through

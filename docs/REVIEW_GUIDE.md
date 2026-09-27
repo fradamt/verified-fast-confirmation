@@ -63,8 +63,7 @@ of 48 accepted blocks of a 100-validator pyspec run.
 `DeadlineBlockRelay` is an operational store-retention premise close to the membership part of the conclusion. The network must deliver each cutoff block and its parents before the next boundary. Each honest client must service ready blocks, accept a valid block with a known parent, and retain accepted blocks. Only a permanent finalized-guard rejection before the tick is exempt. The proof excludes that branch for the confirmed root and proves head ancestry.
 `DeadlineBoundaryBlockPrefix` requires the block before a boundary vote handler.
 The envelope prefix, vote, and slashing relay fields require timely receipt
-and handler service. The positive delay bound alone does not give
-these events.
+and handler service at the stated slot boundaries.
 
 ## Short glossary
 
@@ -79,7 +78,7 @@ these events.
 - **Scheduled prefix:** `Execution.ScheduledPrefixStore` is a store from the exact event fold. `Execution.RootKnownInScheduledPrefix` also covers the initial store.
 - **Selected vote support:** `SelectedPredictionVoteSupport` is an internal derived fact. Current-edge votes use the exact target. Previous-result votes may use different targets below the selected root.
 - **FFG interpretation:** `ScheduledFFGInterpretation` holds the accepted block state and its checkpoint read agreement. The translation computes it from the concrete bridge. `FFGInterpretationFidelity` checks real included votes and the external validity function.
-- **A, Δ, S:** A is the attestation deadline offset. Δ is the positive message delay. S is the slot duration. The execution premise requires `A + Δ < S`.
+- **A, Δ, S:** A is the attestation deadline offset. Δ is the paper's positive message delay. S is the slot duration. The paper's `A + Δ < S` motivates the delivery laws; no premise field states Δ.
 
 ## Review status
 
@@ -242,7 +241,7 @@ counterexample to exact target agreement for a previous-epoch result.
 
 ## Delivery and evidence
 
-`NextSlotSynchronyPremises` requires positive Δ and strict `A + Δ < S`. Its
+`NextSlotSynchronyPremises` states each delivery time at a slot boundary. Its
 `delivery_lookahead` field also covers the first boundary beyond the public
 horizon and implies the in-horizon vote delivery law. A source observation
 must occur by its slot deadline. A receiver store or observation fact holds at

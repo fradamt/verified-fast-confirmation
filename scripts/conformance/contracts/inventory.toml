@@ -192,12 +192,6 @@ class = "E-network/behavior"
 reason = "Each honest in-horizon vote must reach every honest node by the next boundary."
 
 [[field]]
-path = "NextSlotSynchronyPremises.delta"
-file = "Synchrony.lean"
-class = "E-network/behavior"
-reason = "The positive network delay must fit after the attestation cutoff within one slot."
-
-[[field]]
 path = "NextSlotSynchronyPremises.delivery_lookahead"
 file = "Synchrony.lean"
 class = "record"

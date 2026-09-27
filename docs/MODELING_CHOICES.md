@@ -60,18 +60,17 @@ the [trusted boundary](REVIEW_GUIDE.md#trusted-boundary).
 
 `DeadlineBlockRelay` is an operational store-retention condition close to the membership result. Network delivery must bring cutoff blocks and parents before the next boundary. Clients must service ready blocks, retain accepted blocks, and apply only the stated permanent finalized-guard exemption. The proof rules out that exemption for the confirmed root and establishes head ancestry.
 
-The execution records use a positive delay in milliseconds. Their strict bound
-is `get_attestation_due_ms cfg + delay_ms < cfg.slot_duration_ms`. Let S be the
-slot duration and A the attestation deadline offset. This is the paper's
-`A + Δ < S`: immediate honest gossip delivers a message held by A strictly
-before the next slot. `HonestBehavior.vote_deadline` bounds each honest vote
-between its slot start and the Python due time, rounded down to whole seconds.
-Phase0 calls for a vote after the expected valid block or at the due time,
-whichever comes first. Gloas sets the offset with `attestation_due_bps`.
-`HonestBehavior.no_forgery` also retains the causal send-time order.
-The `delta` field supplies the positive timing parameter. The separate
-delivery fields state receipt and handler service. No proof derives those
-fields from `delta` alone.
+Let S be the slot duration and A the attestation deadline offset. The paper
+assumes a positive message delay Δ with `A + Δ < S`: immediate honest gossip
+delivers a message held by A strictly before the next slot. The execution
+records do not state Δ. Each delivery law states its timing directly: a source
+observation at or before `slot_start + A` (whole seconds) and a receiver fact
+from the next slot boundary on. `HonestBehavior.vote_deadline` bounds each
+honest vote between its slot start and the Python due time, rounded down to
+whole seconds. Phase0 calls for a vote after the expected valid block or at
+the due time, whichever comes first. Gloas sets the offset with
+`attestation_due_bps`. `HonestBehavior.no_forgery` also retains the causal
+send-time order.
 
 `DeadlineBlockRelay` transports only roots held by an honest node at or before
 the deadline of the source observation's slot. The receiver query is at or
@@ -103,10 +102,12 @@ messages, as required by Python's delay consideration. Raw receipt alone does
 not prove handler acceptance or data availability. No premise field states
 envelope or data delivery that the proof does not read
 (`scripts/PremiseFieldUse.lean`). The finite next-slot witness has
-one-second slots, A = 0, and a 500 ms delay witness; it has no envelope event.
+one-second slots and A = 0; it has no envelope event.
 `FullTwelveWitness.full_bundle_witness` proves the full bundle at 12-second
-slots, A = 3 s and Δ = 2 s, with two real delayed first receipts; it also has
-no envelope event.
+slots and A = 3 s, with two real delayed first receipts; it also has no
+envelope event. The runs deliver each honest vote at the first second of the
+next slot: one second after the vote in the one-second runs, and nine seconds
+after it (second 12s + 3 to second 12(s + 1)) in the twelve-second runs.
 
 `DeadlineAttesterSlashingRelay` has the same source cutoff and later-slot
 receiver gate, with no exclusion branch. Slashing delivery takes at most Δ,
@@ -133,8 +134,9 @@ Evidence accepted late in a slot is included: the relay's source time is when
 the confirmer holds the index at its scheduled slot-start FCR call. The two
 margin consumers use that call's cutoff observation.
 
-These execution premises implement the paper's positive-delay timing at slot
-boundaries in the synchronous segment. They do not add a GST transition. The
+These execution premises state the paper's delivery timing at slot
+boundaries in the synchronous segment; the paper's delay Δ is their
+motivation, not a premise field. They do not add a GST transition. The
 paper's independent view model is not a refinement proof for Python handlers.
 
 The source fork is `fradamt/consensus-specs` at tag `fcr-gloas-fix` (`13f391516`). See [source map](SPEC_MAP.md), [review guide](REVIEW_GUIDE.md), and [paper library history](history/paper-side-removed.md).

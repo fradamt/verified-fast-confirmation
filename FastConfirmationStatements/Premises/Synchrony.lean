@@ -4,7 +4,16 @@ public import FastConfirmationStatements.Premises.Behavior
 
 @[expose] public section
 
-/-! Defines message, block, envelope, and equivocation-evidence delivery deadlines used by FCR safety. -/
+/-! Defines message, block, envelope, and equivocation-evidence delivery deadlines used by
+FCR safety.
+
+Each law states its timing directly. A source observation is at or before the
+attestation deadline of its slot (`slot_start + A`, in whole seconds). The
+receiver fact holds from the first second of the next slot (the boundary), at
+a receiver second later than the source second. Motivation: in the paper, a
+positive network delay `Δ` with `A + Δ < S` puts a message that an honest node
+holds at the deadline at every honest node before the next slot. No law
+refers to `Δ`, and no premise field states it. -/
 
 namespace FastConfirmation.Spec
 variable {Root : Type*} [LinearOrder Root] [Inhabited Root]
@@ -30,23 +39,23 @@ def PermanentBlockExclusion (E : Execution Root)
           later.finalized_checkpoint.epoch
 
 /-- Operational store-retention premise close to the membership conjunct.
-The network must deliver each cutoff block and its parents. Honest clients
-must service ready blocks and retain accepted ones. Only the exact permanent
-finalized-guard rejection is exempt. Slot-level block gossip starts from an
-honest observation no later than its attestation deadline. The paper's positive `Δ` and strict `A + Δ < S`, plus
-immediate honest gossip, put the raw block before the next slot. Python's
-delay consideration permits a finalized-conflicting block to remain absent;
-the exemption above is limited to exactly that `on_block` guard.
+Timing: a root that an honest node `v` stores at a second `n` at or before the
+attestation deadline of its slot is in the store of every honest node `w` at
+every in-horizon second `m` from `boundary = slot_start (slot_at n + 1)` on,
+with `n < m`. The network must deliver each such block and its parents, and
+honest clients must service ready blocks and retain accepted ones. Only the
+exact permanent finalized-guard rejection is exempt, evaluated at
+`boundary - 1`, before the next-slot tick. Python's delay consideration permits
+a finalized-conflicting block to remain absent; the exemption is limited to
+exactly that `on_block` guard. As in `PermanentBlockExclusion`, the parent
+must already be known at the exclusion point.
 
-Set `boundary = slot_start (slot_at n + 1)`. The exemption starts at
-`boundary - 1`, before the next-slot tick. A block arrives at an integer
-second `a ≤ n + Δ < boundary`. If `on_block` accepts it, the receiver keeps
-it. If the finalized guard rejects it, advancing finality along its checkpoint
-chain preserves that rejection. Thus rejection holds from `a` on, and from
-`boundary - 1` on. The cutoff gives `n ≤ deadline < boundary`, hence
-`n ≤ boundary - 1`. Finality installed at the next tick cannot excuse a
-block that should have arrived earlier. As in `PermanentBlockExclusion`,
-the parent must already be known at the exclusion point. -/
+Motivation: with the paper's `A + Δ < S` and immediate honest gossip, the
+block arrives at a second `a < boundary`. If `on_block` accepts it, the
+receiver keeps it. If the finalized guard rejects it, advancing finality along
+its checkpoint chain preserves that rejection, from `a` on and thus from
+`boundary - 1` on. Finality installed at the next tick cannot excuse a block
+that arrived earlier. -/
 def DeadlineBlockRelay (E : Execution Root) : Prop :=
   ∀ v ∈ E.honest, ∀ n r,
     E.WithinHorizon cfg n →
@@ -61,13 +70,19 @@ def DeadlineBlockRelay (E : Execution Root) : Prop :=
         PermanentBlockExclusion cfg ext E v n r w
           (E.slot_start cfg (E.slot_at cfg n + 1) - 1)
 
-/-- The paper's strict `A + Δ < S` places a cutoff-time block at the receiver
-before the next slot's vote handler. Immediate gossip and Python's delay
-consideration require the honest client to order a ready block before an
-attestation at that boundary. A permanently finalized-conflicting block is
-the only exemption, evaluated at `boundary - 1` as in `DeadlineBlockRelay`.
-Both source and receiver seconds are explicit and
-distinct; this does not assert same-second inter-node state equality. -/
+/-- Timing: a root that an honest node stores at or before the attestation
+deadline of its slot is in the store that each honest node's boundary vote
+handler reads, at the first second of the next slot. That store is the tick
+of the previous second's store followed by the events before the vote. A
+permanently finalized-conflicting block is the only exemption, evaluated at
+`boundary - 1` as in `DeadlineBlockRelay`. Both source and receiver seconds
+are explicit and distinct; this does not assert same-second inter-node state
+equality.
+
+Motivation: the paper's `A + Δ < S` puts a cutoff-time block at the receiver
+before the next slot. Immediate gossip and Python's delay consideration
+require the honest client to order a ready block before an attestation at
+that boundary. -/
 def DeadlineBoundaryBlockPrefix (E : Execution Root) : Prop :=
   ∀ v ∈ E.honest, ∀ n r,
     E.WithinHorizon cfg n →
@@ -85,9 +100,11 @@ def DeadlineBoundaryBlockPrefix (E : Execution Root) : Prop :=
           (fun store event => (apply_event cfg ext store event).getD store)
           (on_tick cfg (E.store cfg ext w (boundary - 1))
             (E.time_at boundary))).block_roots
-/-- Evidence held by an honest node at or before the slot deadline reaches
-every honest node by the next boundary. Slashing gossip takes at most positive
-Δ, and strict `A + Δ < S` puts delivery before that boundary. Acceptance reads
+/-- Timing: an equivocating index that an honest node holds at or before the
+attestation deadline of its slot is held by every honest node at every
+in-horizon second from the next boundary on, at a receiver second later than
+the source second. Motivation: slashing gossip within the paper's delay `Δ`,
+with `A + Δ < S`, delivers the evidence before that boundary. Acceptance reads
 only the slashable-data check and two indexed-attestation checks. These checks
 read the attestations, signer pubkeys, and target-epoch domains. Pubkeys never
 change. The genesis validators root is common, and this model has one fork,
@@ -120,19 +137,21 @@ def DeadlineAttesterSlashingRelay (E : Execution Root) : Prop :=
       E.slot_start cfg (E.slot_at cfg n + 1) ≤ m → n < m →
       i ∈ (E.store cfg ext w m).equivocating_indices
 
-/-- The envelope counterpart of `DeadlineBoundaryBlockPrefix`. Verified
-envelopes are gossiped within positive Δ. The source cutoff and strict
-`A + Δ < S` put a cutoff-time envelope at the receiver before the next slot.
-Immediate gossip and Python's delay consideration require the honest client to
-process a ready envelope before an attestation at that boundary. Thus the
-store that the boundary vote handler reads has the verified payload. The
+/-- The envelope counterpart of `DeadlineBoundaryBlockPrefix`. Timing: a
+payload that an honest node has verified at or before the attestation
+deadline of its slot is verified in the store that each honest node's
+boundary vote handler reads, at the first second of the next slot. The
 envelope can arrive at an earlier second or earlier in the boundary second;
 one receipt is sufficient, because Python `on_execution_payload_envelope`
-writes `store.payloads` and no handler removes an entry.
-The only exemption is the permanent finalized-guard rejection of the block,
-evaluated at `boundary - 1` as in `DeadlineBlockRelay`. Source and receiver
-seconds are distinct; this does not assert same-second inter-node state
-equality. -/
+writes `store.payloads` and no handler removes an entry. The only exemption
+is the permanent finalized-guard rejection of the block, evaluated at
+`boundary - 1` as in `DeadlineBlockRelay`. Source and receiver seconds are
+distinct; this does not assert same-second inter-node state equality.
+
+Motivation: verified envelopes are gossiped within the paper's delay `Δ`, and
+`A + Δ < S` puts a cutoff-time envelope at the receiver before the next slot.
+Immediate gossip and Python's delay consideration require the honest client to
+process a ready envelope before an attestation at that boundary. -/
 def DeadlineBoundaryEnvelopePrefix (E : Execution Root) : Prop :=
   ∀ v ∈ E.honest, ∀ n r,
     E.WithinHorizon cfg n →
@@ -178,32 +197,27 @@ structure HorizonVoteDeliveryLookahead (E : Execution Root) : Prop where
 
 The network content is in the delivery laws: honest-attestation delivery,
 block relay, the block and envelope boundary prefixes, and
-equivocation-evidence relay. `delta` records
-the paper's timing parameter: a positive delay fits after the attestation
-deadline (`A + Δ < S`). The proofs
-use the slot-level delivery laws, not the numeric delay. The exact relation to
-`Synchrony` is proved by `synchrony_and_delivery_iff_nextSlot`. -/
+equivocation-evidence relay. Each law states its timing in slot boundaries
+and attestation deadlines; the paper's `A + Δ < S` is their motivation, not a
+field. The exact relation to `Synchrony` is proved by
+`synchrony_and_delivery_iff_nextSlot`. -/
 structure NextSlotSynchronyPremises (E : Execution Root) : Prop where
-  /-- The paper's timing parameter: a positive millisecond gossip delay
-      `Δ` with the strict vote-to-next-slot bound `A + Δ < S`. -/
-  delta : ∃ delay_ms : ℕ,
-    0 < delay_ms ∧
-      get_attestation_due_ms cfg + delay_ms < cfg.slot_duration_ms
   /-- Vote delivery includes the boundary just beyond the public horizon. -/
   delivery_lookahead : HorizonVoteDeliveryLookahead cfg E
-  /-- Positive-Δ gossip from a cutoff observation, with strict fit and
-      honest delay consideration. Only the pre-tick finalized guard exempts. -/
+  /-- A root stored by a cutoff observation is in every honest store from
+      the next boundary on. Only the pre-tick finalized guard exempts. -/
   deadline_block_relay : DeadlineBlockRelay cfg ext E
-  /-- Strict `A + Δ < S` and honest ready-message service put cutoff blocks
-      before the next-slot vote handler; exclusion is tested before the tick. -/
+  /-- A root stored by a cutoff observation is in the store read by each
+      boundary vote handler; exclusion is tested before the tick. -/
   boundary_block_prefix : DeadlineBoundaryBlockPrefix cfg ext E
-  /-- Strict `A + Δ < S` and honest ready-message service put cutoff
-      envelopes before the next-slot vote handler; exclusion is tested
-      before the tick. -/
+  /-- A payload verified by a cutoff observation is verified in the store
+      read by each boundary vote handler; exclusion is tested before the
+      tick. -/
   boundary_envelope_prefix : DeadlineBoundaryEnvelopePrefix cfg ext E
-  /-- Cutoff evidence gossip under positive Δ and strict fit, without an
-      exclusion branch. A premise over the literal justified-state handler;
-      see the module note on client evidence validation. -/
+  /-- Evidence held by a cutoff observation is held by every honest node
+      from the next boundary on, without an exclusion branch. A premise over
+      the literal justified-state handler; see the definition note on client
+      evidence validation. -/
   attester_slashing_relay : DeadlineAttesterSlashingRelay cfg ext E
 
 

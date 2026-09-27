@@ -200,38 +200,6 @@ theorem deadline_block_relay_outcome_of_arrival
     · exact Or.inr (E.permanentBlockExclusion_mono_of_not_mem cfg ext
         (by omega) hknown hexcluded)
 
-/-- An honest voter's selected root reaches the next-slot receiver unless
-that receiver has permanently excluded the block under `on_block`'s finalized
-guard. The vote gives the source-time cutoff; the strict positive bound gives
-the distinct receiver second. -/
-theorem honest_vote_root_relay_or_excluded
-    (hhb : HonestBehavior cfg ext E)
-    (hsync : NextSlotSynchronyPremises cfg ext E)
-    (hdiv : 1000 ∣ cfg.slot_duration_ms)
-    {v w : ValidatorIndex} (hv : v ∈ E.honest) (hw : w ∈ E.honest)
-    {s n m : ℕ} {a : Attestation Root} {r : Root}
-    (hboundary : E.genesis_store.time ≤ E.genesis_store.genesis_time +
-      s * (cfg.slot_duration_ms / 1000))
-    (hHn : E.WithinHorizon cfg n)
-    (hHm : E.WithinHorizon cfg m)
-    (hvote : E.vote v s = some (n, a))
-    (hslot : E.slot_at cfg n = s)
-    (hroot : r ∈ (E.store cfg ext v n).block_roots)
-    (hnext : E.slot_start cfg (s + 1) ≤ m) :
-    r ∈ (E.store cfg ext w m).block_roots ∨
-      PermanentBlockExclusion cfg ext E v n r w
-        (E.slot_start cfg (E.slot_at cfg n + 1) - 1) := by
-  have hdue := (hhb.vote_deadline v hv s n a hvote).2
-  have hlt : n < m :=
-    (E.deadline_before_next_slot cfg hdiv hboundary hdue
-      hsync.delta_pos hsync.deadline_fits).trans_le hnext
-  apply hsync.deadline_block_relay v hv n r hHn hroot
-  · simpa only [hslot] using hdue
-  · exact hw
-  · exact hHm
-  · simpa only [hslot] using hnext
-  · exact hlt
-
 /-- The finalized-only exemption is impossible when both exact `on_block`
 finalized guards pass in the receiver's current store. -/
 theorem permanentBlockExclusion_false_of_finalized_guards

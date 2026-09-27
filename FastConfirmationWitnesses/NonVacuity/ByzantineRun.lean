@@ -1012,7 +1012,6 @@ theorem witness_slot15_delivery_at_second16 (w : ValidatorIndex) :
 
 theorem witnessSynchrony : Synchrony witnessConfig witnessExternals witnessExecution := by
   refine {
-    delta := ⟨500, by decide, by decide⟩
     attestation_delivery := ?_
     deadline_block_relay := ?_
     boundary_block_prefix := ?_

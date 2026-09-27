@@ -23,7 +23,6 @@ theorem synchrony_and_delivery_iff_nextSlot
     exact Synchrony.toPaperSafetySynchrony cfg ext hs hl hp
   · intro hn
     exact ⟨{
-      delta := hn.delta
       attestation_delivery := hn.attestation_delivery
       deadline_block_relay := hn.deadline_block_relay
       boundary_block_prefix := hn.boundary_block_prefix

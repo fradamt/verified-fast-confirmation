@@ -10,6 +10,6 @@ Every library module starts with `module`, public imports, and a module docstrin
 Add Python function definitions to Model/Spec by source section. Add run functions and external interfaces to Model/Execution. Put assumptions and claim propositions in Statements. Put intermediate records in Internal. Put proof lemmas in Proofs under the subject they establish. Put satisfying executions and counterexamples in Witnesses. Model and Statements stay free of authored theorems except definition obligations.
 
 A change passes `scripts/validate.sh --fast` before commit. A library or import change also passes full `scripts/validate.sh`. The checks enforce source pinning, names, import closure, Statement reachability, exact review shape, full elaboration, and the trust audit. `scripts/check_imports.py` checks the library graph. `scripts/Audit.lean` remains a script with ordinary imports so that it can inspect proof bodies.
-The current reachability check has 60 claim-reachable source declarations and
+The current reachability check has 59 claim-reachable source declarations and
 no approved exception. The trust audit checks 39 public
 theorem witnesses. Update these counts when the check scripts change.

@@ -1059,7 +1059,6 @@ theorem payloads_empty (w : ValidatorIndex) (n : ℕ) :
 
 theorem witnessSynchrony : Synchrony witnessConfig witnessExternals witnessExecution := by
   refine {
-    delta := ⟨2000, by decide, by decide⟩
     attestation_delivery := ?_
     deadline_block_relay := deadline_block_relay
     boundary_block_prefix := boundary_block_prefix
