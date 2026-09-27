@@ -103,10 +103,23 @@ jobs:
         run: lake exe cache get
 
       - name: Audit facade reachability and independence with Lean's parser
-        run: python3 scripts/check_imports.py
+        run: |
+          python3 scripts/check_imports.py
+          python3 scripts/test_trust_negative.py
 
       - name: Build all project modules
         run: scripts/check_build.sh
+
+      - name: Replay every project module through the Lean kernel
+        run: |
+          scripts/check_kernel.sh
+          scripts/test_kernel_negative.sh
+
+      - name: Compile side Lean scripts
+        run: |
+          for script in $(find scripts -name '*.lean' | sort); do
+            lake env lean "$script"
+          done
 
       - name: Audit project declarations and public theorem axioms
         run: lake env lean scripts/Audit.lean
@@ -115,10 +128,13 @@ jobs:
         run: |
           lake env lean scripts/StatementReachability.lean > "$RUNNER_TEMP/reachable.txt"
           cat "$RUNNER_TEMP/reachable.txt"
+          python3 scripts/test_reachability_metadata.py
           python3 scripts/conformance/contracts/check_inventory.py --inventory-only --reachable-file "$RUNNER_TEMP/reachable.txt"
 
       - name: Audit review surface shape
-        run: lake env lean scripts/ReviewSurfaceShape.lean
+        run: |
+          python3 scripts/check_witness_lists.py
+          lake env lean scripts/ReviewSurfaceShape.lean
 
       - name: Require a stable dependency manifest
         run: git diff --exit-code -- lake-manifest.json
@@ -159,6 +175,11 @@ jobs:
           .source/consensus-specs/.venv/bin/python -m pip install -e './.source/consensus-specs[test]'
           # The editable install does not build the fork modules; the pinned Makefile runs this step.
           (cd .source/consensus-specs && .venv/bin/python -m pysetup.generate_specs --all-forks)
+
+      - name: Verify pinned source and generated fork pyspec
+        run: |
+          python3 scripts/check_consensus_source.py --repo .source/consensus-specs
+          CONSENSUS_SPECS_REPO=.source/consensus-specs python3 scripts/test_source_negative.py
 
       - name: Install pinned Elan
         env:

@@ -1,4 +1,5 @@
 import FastConfirmationStatements
+import FastConfirmationWitnesses
 import FastConfirmationInternal.FFG.InterpretationFidelity
 import FastConfirmationProofs.ReviewTheorem
 import Lean
@@ -29,6 +30,49 @@ private def isProjectDeclaration (env : Environment) (decl : Name) : Bool :=
   | some idx =>
       let moduleName := (env.allImportedModuleNames[idx.toNat]!).toString
       moduleName.startsWith "FastConfirmation"
+
+private def publicWitnesses : Array Name :=
+  #[
+    ``FastConfirmation.Spec.review_claims,
+    ``FastConfirmation.Spec.confirmed_root_safe_from_next_slot,
+    ``FastConfirmation.Spec.NextSlotPremiseWitness.finite_execution_satisfies_premises,
+    ``FastConfirmation.Spec.NextSlotPremiseWitness.next_slot_premises_nonempty,
+    ``FastConfirmation.Spec.NextSlotPremiseWitness.ffg_interpretation_fidelity,
+    ``FastConfirmation.Spec.GenesisStubPremiseWitness.genesis_stub_full_bundle_witness,
+    ``FastConfirmation.Spec.FullTwelveWitness.full_bundle_witness,
+    ``FastConfirmation.Spec.FullTwelveWitness.changed_root_safe_from_next_slot,
+    ``FastConfirmation.Spec.FullTwelveWitness.delayed_receipts_are_first,
+    ``FastConfirmation.Spec.FullTwelveWitness.ffg_interpretation_fidelity,
+    ``FastConfirmation.Spec.TargetEdgePremiseWitness.full_bundle_witness,
+    ``FastConfirmation.Spec.TargetEdgePremiseWitness.target_edge_support_exercised,
+    ``FastConfirmation.Spec.TargetEdgePremiseWitness.target_edge_safe_from_next_slot,
+    ``FastConfirmation.Spec.TargetEdgePremiseWitness.ffg_interpretation_fidelity,
+    ``FastConfirmation.Spec.FullTwelveEnvelopeWitness.full_bundle_witness,
+    ``FastConfirmation.Spec.FullTwelveEnvelopeWitness.changed_root_safe_from_next_slot,
+    ``FastConfirmation.Spec.FullTwelveEnvelopeWitness.payload_accepted_with_delay,
+    ``FastConfirmation.Spec.FullTwelveEnvelopeWitness.envelope_relay_exercised,
+    ``FastConfirmation.Spec.FullTwelveEnvelopeWitness.data_relay_exercised,
+    ``FastConfirmation.Spec.FullTwelveEnvelopeWitness.payload_status_branches,
+    ``FastConfirmation.Spec.FullTwelveEnvelopeWitness.fcr_branch_samples,
+    ``FastConfirmation.Spec.FullTwelveEnvelopeWitness.fcr_guard_samples,
+    ``FastConfirmation.Spec.FullTwelveEnvelopeWitness.gloas_discount_sample,
+    ``FastConfirmation.Spec.FullTwelveEnvelopeWitness.ffg_interpretation_fidelity,
+    ``FastConfirmation.Spec.ByzantinePremiseWitness.full_bundle_witness,
+    ``FastConfirmation.Spec.ByzantinePremiseWitness.byzantine_weight_exercised,
+    ``FastConfirmation.Spec.ByzantinePremiseWitness.slashing_relay_exercised,
+    ``FastConfirmation.Spec.ByzantinePremiseWitness.changed_root_safe_from_next_slot,
+    ``FastConfirmation.Spec.ByzantinePremiseWitness.ffg_interpretation_fidelity,
+    ``FastConfirmation.Spec.ByzantinePremiseWitness.previous_result_proviso_exercised,
+    ``FastConfirmation.Spec.ByzantinePremiseWitness.previous_result_descendant_support_exercised,
+    ``FastConfirmation.Spec.CheckpointSyncFilterWitness.checkpoint_sync_filter_counterexample,
+    ``FastConfirmation.Spec.CheckpointSyncFilterWitness.normalized_anchor_run_keeps_child,
+    ``FastConfirmation.Spec.CheckpointSyncFilterWitness.anchor_only_view_satisfies_inclusion,
+    ``FastConfirmation.Spec.EarlyEpochBoundaryWitness.epoch_one_boundary_regression,
+    ``FastConfirmation.Spec.EarlyEpochBoundaryWitness.epoch_one_fixture_satisfies_boundary_laws,
+    ``FastConfirmation.Spec.EstimateForcesBalance.slot_committee_weight_forced,
+    ``FastConfirmation.Spec.StrictPrefixExtraQuery.extra_query_changes_head_counterexample,
+    ``FastConfirmation.Spec.PinnedEconomicsExtraQuery.extra_query_changes_head_counterexample
+  ]
 
 private def declarationValueHash (info : ConstantInfo) : UInt64 :=
   match info with
@@ -233,4 +277,12 @@ run_cmd do
   | _ => throwError "missing claim definition"
   unless fingerprint == (5450425737038397445 : UInt64) do
     throwError "review surface statement type changed: {fingerprint}"
+  let mut witnessFingerprint : UInt64 := 0
+  for name in publicWitnesses do
+    let some info := env.find? name
+      | throwError "missing public witness {name}"
+    witnessFingerprint := hash (witnessFingerprint, name, info.type)
+  unless witnessFingerprint == (16184260627327727404 : UInt64) do
+    throwError "public witness statement type changed: {witnessFingerprint}"
+  IO.println s!"public witness statements passed ({witnessFingerprint})"
   IO.println s!"review surface types passed ({fingerprint})"

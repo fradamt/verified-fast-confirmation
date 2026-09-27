@@ -21,10 +21,12 @@ rev = "v4.30.0-rc2"
 [[lean_lib]]
 name = "FastConfirmationModel"
 globs = ["FastConfirmationModel", "FastConfirmationModel.+"]
+leanOptions = {autoImplicit = false}
 
 [[lean_lib]]
 name = "FastConfirmationStatements"
 globs = ["FastConfirmationStatements", "FastConfirmationStatements.+"]
+leanOptions = {autoImplicit = false}
 
 [[lean_lib]]
 name = "FastConfirmationInternal"
