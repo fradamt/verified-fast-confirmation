@@ -151,8 +151,8 @@ Byzantine run has five validators.
   bridge reports the child data as available and accepts exactly the child
   envelope. Node 1 receives the envelope two seconds after node 0. Each node
   receives it once, before the boundary at second 180, and keeps the payload
-  (`single_early_envelope_receipt`). The envelope delivery, envelope prefix,
-  and data relay antecedents hold at second 168.
+  (`single_early_envelope_receipt`). The antecedent of the envelope prefix
+  holds at second 168.
   `FullTwelveEnvelopeWitness.changed_root_safe_from_next_slot` applies the
   public safety theorem. `payload_status_branches` checks the FULL choice and
   its Gloas weight beside the EMPTY choice. `gloas_discount_sample` computes
@@ -238,9 +238,9 @@ Byzantine run has five validators.
 The 1 s safety run (delay 500 ms) changes a stored root. The 12-second
 full-bundle run adds real delayed block and vote receipts. The target-edge run
 checks current-target support as a fact about the run. The envelope run
-exercises envelope delivery, the envelope prefix, and data relay through
+exercises the envelope prefix through
 `FullTwelveEnvelopeWitness.envelope_relay_exercised` and
-`FullTwelveEnvelopeWitness.data_relay_exercised`. The Byzantine run exercises
+`FullTwelveEnvelopeBridgeRun.single_early_envelope_receipt`. The Byzantine run exercises
 positive non-honest weight and the slashing relay through
 `ByzantinePremiseWitness.byzantine_weight_exercised` and
 `ByzantinePremiseWitness.slashing_relay_exercised`. The Byzantine run

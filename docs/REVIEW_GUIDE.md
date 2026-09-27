@@ -62,8 +62,8 @@ of 48 accepted blocks of a 100-validator pyspec run.
 
 `DeadlineBlockRelay` is an operational store-retention premise close to the membership part of the conclusion. The network must deliver each cutoff block and its parents before the next boundary. Each honest client must service ready blocks, accept a valid block with a known parent, and retain accepted blocks. Only a permanent finalized-guard rejection before the tick is exempt. The proof excludes that branch for the confirmed root and proves head ancestry.
 `DeadlineBoundaryBlockPrefix` requires the block before a boundary vote handler.
-Envelope, data-availability, vote, and slashing relay fields require timely
-receipt and handler service. The positive delay bound alone does not give
+The envelope prefix, vote, and slashing relay fields require timely receipt
+and handler service. The positive delay bound alone does not give
 these events.
 
 ## Short glossary
@@ -91,8 +91,9 @@ these events.
 │ Selected result         │ A spec-correspondence lemma covers the find_latest_confirmed_descendant note. It is not a review claim.      │
 │ Optional in-slot query  │ Next-slot safety remains open. The counterexamples refute same-second head agreement under the               │
 │                         │ counterexample synchrony record.                                                                             │
-│ Payload envelope        │ Exercised by FullTwelveEnvelopeWitness.envelope_relay_exercised and data_relay_exercised under the full      │
-│                         │ safety bundle, with an accepted envelope that each node receives once, one node two seconds late.            │
+│ Payload envelope        │ Exercised by FullTwelveEnvelopeWitness.envelope_relay_exercised and                                          │
+│                         │ FullTwelveEnvelopeBridgeRun.single_early_envelope_receipt under the full safety bundle, with an accepted     │
+│                         │ envelope that each node receives once, one node two seconds late.                                            │
 │ Guarded target edge     │ Exercised by TargetEdgePremiseWitness.target_edge_support_exercised under the full safety bundle.            │
 │ Byzantine weight        │ Exercised by ByzantinePremiseWitness.byzantine_weight_exercised: non-honest weight 200 of 4000 under the     │
 │                         │ full safety bundle.                                                                                          │
@@ -164,10 +165,10 @@ contracts and the intended behavior of any unconstrained function it uses.
 │                                      │ConcreteBridge.ConcreteGenesis gives the genesis store. No hash theorem is proved.                      │
 │get_ptc                               │Unconstrained: the theorem holds for every choice of this function. The handler reads the ordered PTC.  │
 │is_valid_indexed_payload_attestation  │Unconstrained: the theorem holds for every choice of this function. No PTC signature contract exists.   │
-│is_data_available                     │NextSlotSynchronyPremises.data_availability_relay transports true data reads; envelope_delivery and     │
-│                                      │boundary_envelope_prefix give the verified payload at honest receivers. The handler checks the local    │
-│                                      │Boolean result. No KZG soundness theorem is proved.                                                     │
-│verify_execution_payload_envelope     │BeaconExternalsPremises.verify_envelope_deterministic and envelope_delivery constrain verified          │
+│is_data_available                     │NextSlotSynchronyPremises.boundary_envelope_prefix gives the verified payload at honest receivers before│
+│                                      │a boundary vote; no premise field constrains the data read itself. The handler checks the local Boolean │
+│                                      │result. No KZG soundness theorem is proved.                                                             │
+│verify_execution_payload_envelope     │BeaconExternalsPremises.verify_envelope_deterministic and boundary_envelope_prefix constrain verified   │
 │                                      │observations. No execution-engine or signature refinement theorem is proved.                            │
 └──────────────────────────────────────┴────────────────────────────────────────────────────────────────────────────────────────────────────────┘
 ```
@@ -249,7 +250,7 @@ or after the next boundary. A receiver is later than the source. Honest votes
 use the vote deadline. `synchrony_and_delivery_iff_nextSlot` relates these
 bundles.
 
-Block and envelope exclusion is checked before the next-slot tick. It permits only a permanent finalized-guard conflict with a known parent. The FFG, economic, and finalization-delay premises establish that each honest head's known ancestor path is admissible. Carrier-certificate accountability covers other required roots. Ready blocks and envelopes precede the boundary vote handler. Data service and deterministic envelope validation justify payload acceptance. `FullTwelveEnvelopeWitness.full_bundle_witness` has an accepted envelope event.
+Block and envelope exclusion is checked before the next-slot tick. It permits only a permanent finalized-guard conflict with a known parent. The FFG, economic, and finalization-delay premises establish that each honest head's known ancestor path is admissible. Carrier-certificate accountability covers other required roots. Ready blocks and envelopes precede the boundary vote handler; the envelope prefix states the verified payload directly. `FullTwelveEnvelopeWitness.full_bundle_witness` has an accepted envelope event.
 
 `on_attester_slashing` follows Python. It validates against `store.block_states[store.justified_checkpoint.root]`. Evidence relay is an implementation assumption that gives every honest node the indices by the next boundary. With the static registry and one fork, the missing-signer case cannot occur in scope: keyed states have the same validators and signing domain. Timely receipt and handler service remain premises. Five of six checked clients validate against a newer head state. The [modeling choices](MODELING_CHOICES.md) page records the pinned client commits. A late accepted item uses a fresh cutoff observation at the next scheduled FCR call. No validity-agreement field was added to the external contract.
 

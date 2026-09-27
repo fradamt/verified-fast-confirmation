@@ -13,8 +13,8 @@ public import FastConfirmationProofs.ModelFacts
 The run of `FullTwelveEnvelopeBridgeRun` satisfies the public safety premise
 `ConcreteBridge.SafetyPremises`. It adds to the twelve-second run a verified
 child envelope, which node 1 receives two seconds after the other nodes. The
-envelope delivery and data-availability relays of the synchrony premise hold
-with this envelope. The call from second 23 to 24 changes the confirmed root
+envelope boundary prefix of the synchrony premise holds with this
+envelope. The call from second 23 to 24 changes the confirmed root
 from the anchor to the child.
 -/
 
@@ -785,9 +785,9 @@ theorem payload_accepted_with_delay :
     exact child_verified_after170 v (by decide)
 
 /-- The verified child satisfies every source condition of
-`DeadlineEnvelopeDelivery` and `DeadlineBoundaryEnvelopePrefix` at second
-168. Its next boundary is second 180. Node 1 received the envelope once, at
-second 170, and has the verified payload at that boundary. -/
+`DeadlineBoundaryEnvelopePrefix` at second 168. Its next boundary is second
+180. Node 1 received the envelope once, at second 170, and has the verified
+payload at that boundary. -/
 theorem envelope_relay_exercised :
     ∃ v n r, v ∈ witnessExecution.honest ∧ witnessExecution.WithinHorizon witnessConfig n ∧
       is_payload_verified (witnessExecution.store witnessConfig witnessExternals v n) r = true ∧
@@ -808,27 +808,6 @@ theorem envelope_relay_exercised :
   · rw [slot_start_eq, slot_at_eq] <;> decide
   · intro k hk signed observation h
     rcases (scheduled_envelope_cases h).2.2 with rfl | rfl <;> omega
-
-/-- The scheduled source envelope and its available data satisfy every
-source condition of `DeadlineDataAvailabilityRelay` at second 168. No
-envelope event occurs at or after the next boundary, so the receiver clause
-has no instance in this run. -/
-theorem data_relay_exercised :
-    ∃ (v k n : ℕ) (signed : SignedExecutionPayloadEnvelope WitnessRoot)
-        (sourceObservation : EnvelopeObservation WitnessRoot),
-      v ∈ witnessExecution.honest ∧ k ≤ n ∧ witnessExecution.WithinHorizon witnessConfig n ∧
-      Event.execution_payload_envelope signed sourceObservation ∈
-        witnessExecution.schedule v k ∧
-      witnessExternals.is_data_available signed.message.beacon_block_root
-        sourceObservation = true ∧
-      n ≤ witnessExecution.slot_start witnessConfig (witnessExecution.slot_at witnessConfig n) +
-        get_attestation_due_ms witnessConfig / 1000 := by
-  refine ⟨0, 168, 168, childEnvelope, payloadObservation,
-    by decide, by decide, time_within (by decide),
-    by simp [witnessExecution, witnessSchedule, slotEvents], ?_, ?_⟩
-  · rfl
-  · rw [slot_start_eq, slot_at_eq, due_eq]
-    decide
 
 /-- Payload verification adds a FULL child choice. Gloas weight gives the
 EMPTY choice 400 and the FULL choice zero in this scheduled store. -/

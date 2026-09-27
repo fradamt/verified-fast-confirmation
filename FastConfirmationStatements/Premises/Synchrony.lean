@@ -120,36 +120,15 @@ def DeadlineAttesterSlashingRelay (E : Execution Root) : Prop :=
       E.slot_start cfg (E.slot_at cfg n + 1) ≤ m → n < m →
       i ∈ (E.store cfg ext w m).equivocating_indices
 
-/-- Verified envelopes are gossiped within positive Δ. The source cutoff and
-strict `A + Δ < S` put them before the next slot. An honest client that
-receives a ready envelope verifies it and keeps the payload: Python
-`on_execution_payload_envelope` writes `store.payloads`, and no handler
-removes an entry. Thus the receiver store has the verified payload at every
-later in-horizon second from the next slot start. The receipt can be at any
-earlier second, and one receipt is sufficient. The exact finalized-guard
-exemption is evaluated before the tick, as in `DeadlineBlockRelay`; late and
-parent-missing blocks are not exempt. `DeadlineBoundaryEnvelopePrefix` gives
-the order before the boundary votes. -/
-def DeadlineEnvelopeDelivery (E : Execution Root) : Prop :=
-  ∀ v ∈ E.honest, ∀ n r,
-    E.WithinHorizon cfg n →
-    is_payload_verified (E.store cfg ext v n) r = true →
-    r ∈ (E.store cfg ext v n).block_roots →
-    n ≤ E.slot_start cfg (E.slot_at cfg n) +
-      get_attestation_due_ms cfg / 1000 →
-    ∀ w ∈ E.honest, ∀ m,
-      E.WithinHorizon cfg m →
-      E.slot_start cfg (E.slot_at cfg n + 1) ≤ m → n < m →
-      is_payload_verified (E.store cfg ext w m) r = true ∨
-        PermanentBlockExclusion cfg ext E v n r w
-          (E.slot_start cfg (E.slot_at cfg n + 1) - 1)
-
-/-- The envelope counterpart of `DeadlineBoundaryBlockPrefix`. Strict
-`A + Δ < S` puts a cutoff-time envelope at the receiver before the next slot.
+/-- The envelope counterpart of `DeadlineBoundaryBlockPrefix`. Verified
+envelopes are gossiped within positive Δ. The source cutoff and strict
+`A + Δ < S` put a cutoff-time envelope at the receiver before the next slot.
 Immediate gossip and Python's delay consideration require the honest client to
 process a ready envelope before an attestation at that boundary. Thus the
 store that the boundary vote handler reads has the verified payload. The
-envelope can arrive at an earlier second or earlier in the boundary second.
+envelope can arrive at an earlier second or earlier in the boundary second;
+one receipt is sufficient, because Python `on_execution_payload_envelope`
+writes `store.payloads` and no handler removes an entry.
 The only exemption is the permanent finalized-guard rejection of the block,
 evaluated at `boundary - 1` as in `DeadlineBlockRelay`. Source and receiver
 seconds are distinct; this does not assert same-second inter-node state
@@ -172,27 +151,6 @@ def DeadlineBoundaryEnvelopePrefix (E : Execution Root) : Prop :=
           (fun store event => (apply_event cfg ext store event).getD store)
           (on_tick cfg (E.store cfg ext w (boundary - 1))
             (E.time_at boundary))) r = true
-
-/-- Available envelope data follows the same positive-Δ gossip bound and
-source deadline. Honest data service makes it available at the receiver's
-corresponding envelope observation after the next slot start. This remains
-an explicit data-service contract; block receipt alone does not prove data
-availability. Both observations are at distinct execution seconds. -/
-def DeadlineDataAvailabilityRelay (E : Execution Root) : Prop :=
-  ∀ v ∈ E.honest, ∀ k n (signed : SignedExecutionPayloadEnvelope Root)
-      (sourceObservation : EnvelopeObservation Root),
-    k ≤ n → E.WithinHorizon cfg n →
-    Event.execution_payload_envelope signed sourceObservation ∈ E.schedule v k →
-    ext.is_data_available signed.message.beacon_block_root sourceObservation = true →
-    n ≤ E.slot_start cfg (E.slot_at cfg n) +
-      get_attestation_due_ms cfg / 1000 →
-    ∀ w ∈ E.honest, ∀ m,
-      E.WithinHorizon cfg m →
-      E.slot_start cfg (E.slot_at cfg n + 1) ≤ m → n < m →
-      ∀ receiverSigned receiverObservation,
-        receiverSigned.message.beacon_block_root = signed.message.beacon_block_root →
-        Event.execution_payload_envelope receiverSigned receiverObservation ∈ E.schedule w m →
-        ext.is_data_available signed.message.beacon_block_root receiverObservation = true
 
 /-- One-slot operational closure for honest votes created inside the public
 verification horizon.
@@ -219,8 +177,8 @@ structure HorizonVoteDeliveryLookahead (E : Execution Root) : Prop where
 /-- The synchrony fragment used by the accepted spec next-slot proof.
 
 The network content is in the delivery laws: honest-attestation delivery,
-block relay, envelope delivery, the two boundary prefixes,
-data-availability relay, and equivocation-evidence relay. `delta` records
+block relay, the block and envelope boundary prefixes, and
+equivocation-evidence relay. `delta` records
 the paper's timing parameter: a positive delay fits after the attestation
 deadline (`A + Δ < S`). The proofs
 use the slot-level delivery laws, not the numeric delay. The exact relation to
@@ -239,17 +197,10 @@ structure NextSlotSynchronyPremises (E : Execution Root) : Prop where
   /-- Strict `A + Δ < S` and honest ready-message service put cutoff blocks
       before the next-slot vote handler; exclusion is tested before the tick. -/
   boundary_block_prefix : DeadlineBoundaryBlockPrefix cfg ext E
-  /-- Positive-Δ envelope gossip and strict fit give a verified payload
-      in every honest store from the next slot start. The named contract has
-      the pre-tick block exemption. -/
-  envelope_delivery : DeadlineEnvelopeDelivery cfg ext E
   /-- Strict `A + Δ < S` and honest ready-message service put cutoff
       envelopes before the next-slot vote handler; exclusion is tested
       before the tick. -/
   boundary_envelope_prefix : DeadlineBoundaryEnvelopePrefix cfg ext E
-  /-- Honest data service follows the same cutoff and positive-Δ bound;
-      the receiver observation is at or after the next slot boundary. -/
-  data_availability_relay : DeadlineDataAvailabilityRelay cfg ext E
   /-- Cutoff evidence gossip under positive Δ and strict fit, without an
       exclusion branch. A premise over the literal justified-state handler;
       see the module note on client evidence validation. -/

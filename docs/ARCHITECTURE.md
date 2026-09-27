@@ -69,7 +69,9 @@ membership and executable ancestry.
 │StatementReachability.lean  │60 source declarations are claim-reachable from the claim type; no exception remains. No     │
 │                            │other unreachable source declaration is allowed.                                             │
 │ReviewSurfaceShape.lean     │Field names and types of 18 records and the claim body remain exact.                         │
-│check_imports.py            │The five-library import direction holds.                                  │
+│PremiseFieldUse.lean        │The proof of the claim reads each Prop field of each premise record; delta is the one        │
+│                            │documented exception.                                                                        │
+│check_imports.py            │The five-library import direction holds.                                                     │
 │check_doc_names.py          │Backticked Lean names in current documents resolve to declarations or files.                 │
 │Audit.lean                  │The 39 audited public theorems have only standard axiom dependencies. No forbidden           │
 │                            │declaration is allowed.                                                                      │
@@ -92,7 +94,7 @@ the concrete transition against pinned Python. The projection harness checks
 each interpretation law on real pyspec runs. Full-bundle witnesses show
 consistency, while the contract and differential checks test Python behavior.
 
-The active inventory has 62 authored claim-reachable fields: 17 definitions (the A3.2 view and antecedent), 7 record fields whose own fields are listed, and 38 assumed leaves. The bridge proves the other internal external contracts and the static validator set (`ExternalsLaws.lean`), so they are not premise fields. The Lean reachability audit also checks two outside Prop boundaries. The leaf labels separate tested state laws, execution scope, network and behavior, and idealizations. Three envelope and data fields have both network and idealization labels, and `SafetyPremises.genesis` has both scope and idealization labels.
+The active inventory has 60 authored claim-reachable fields: 17 definitions (the A3.2 view and antecedent), 7 record fields whose own fields are listed, and 36 assumed leaves. The bridge proves the other internal external contracts and the static validator set (`ExternalsLaws.lean`), so they are not premise fields. The Lean reachability audit also checks two outside Prop boundaries. The leaf labels separate tested state laws, execution scope, network and behavior, and idealizations. `boundary_envelope_prefix` has both network and idealization labels, and `SafetyPremises.genesis` has both scope and idealization labels.
 The field list is checked against the claim-type reachability audit. CI runs the
 Python contract, projection, realized-gap, and concrete differential checks in
 a separate pinned-pyspec job.

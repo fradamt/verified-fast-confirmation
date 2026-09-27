@@ -64,22 +64,17 @@ theorem NextSlotSynchronyPremises.attestation_delivery
   h.delivery_lookahead.attestation_delivery v hv s n a hs hn hvote hdeadline w hw
 
 /-- The synchrony bundle supplies the beacon and attestation fields.
-Gloas also needs envelope delivery, the envelope boundary prefix, and
-data-availability relay. -/
+Gloas also needs the envelope boundary prefix. -/
 def Synchrony.toPaperSafetySynchrony
     (h : Synchrony cfg ext E)
     (hlookahead : HorizonVoteDeliveryLookahead cfg E)
-    (henvelope : DeadlineEnvelopeDelivery cfg ext E)
-    (henvelopePrefix : DeadlineBoundaryEnvelopePrefix cfg ext E)
-    (hdata : DeadlineDataAvailabilityRelay cfg ext E) :
+    (henvelopePrefix : DeadlineBoundaryEnvelopePrefix cfg ext E) :
     NextSlotSynchronyPremises cfg ext E where
   delta := h.delta
   delivery_lookahead := hlookahead
   deadline_block_relay := h.deadline_block_relay
   boundary_block_prefix := h.boundary_block_prefix
-  envelope_delivery := henvelope
   boundary_envelope_prefix := henvelopePrefix
-  data_availability_relay := hdata
   attester_slashing_relay := h.attester_slashing_relay
 
 section DelayFacts

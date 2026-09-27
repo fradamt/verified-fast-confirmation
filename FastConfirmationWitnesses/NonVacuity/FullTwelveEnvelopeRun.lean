@@ -1158,13 +1158,6 @@ private theorem verified_boundary {v : ValidatorIndex} {n : ℕ} {r : WitnessRoo
   simp only [Slot]
   omega
 
-theorem envelope_delivery :
-    DeadlineEnvelopeDelivery witnessConfig witnessExternals witnessExecution := by
-  intro v hv n r hn hverified _hr _hdeadline w hw m hm hboundary _hlt
-  obtain ⟨rfl, h180⟩ := verified_boundary hn hverified
-  left
-  exact child_verified_after170 w (by omega)
-
 theorem boundary_envelope_prefix :
     DeadlineBoundaryEnvelopePrefix witnessConfig witnessExternals witnessExecution := by
   intro v hv n r hn hverified _hr _hdeadline w hw boundary _hHboundary _hlt
@@ -1184,10 +1177,11 @@ theorem boundary_envelope_prefix :
     simpa only [is_payload_verified, on_tick_payloads] using hpred
   exact foldl_apply_event_payloadLE witnessConfig witnessExternals before _ childRoot htick
 
-/-- Regression for the envelope delivery premise: each node receives the
-child envelope once, before the boundary at second 180, and no envelope
-event occurs at or after that boundary. The delivery premise and the boundary
-prefix still hold, because the receiver keeps the verified payload. -/
+/-- Regression for the envelope premise: each node receives the child
+envelope once, before the boundary at second 180, and no envelope event
+occurs at or after that boundary. Every node has the verified payload at the
+boundary, and the boundary prefix holds, because the receiver keeps the
+verified payload. -/
 theorem single_early_envelope_receipt :
     (∀ w n (signed : SignedExecutionPayloadEnvelope WitnessRoot)
         (observation : EnvelopeObservation WitnessRoot),
@@ -1201,9 +1195,10 @@ theorem single_early_envelope_receipt :
         (observation : EnvelopeObservation WitnessRoot),
       Event.execution_payload_envelope signed observation ∈ witnessExecution.schedule 1 n →
         n = 170) ∧
-    DeadlineEnvelopeDelivery witnessConfig witnessExternals witnessExecution ∧
+    (∀ w, is_payload_verified (witnessExecution.store witnessConfig witnessExternals w 180)
+      childRoot = true) ∧
     DeadlineBoundaryEnvelopePrefix witnessConfig witnessExternals witnessExecution := by
-  refine ⟨?_, ?_, ?_, envelope_delivery, boundary_envelope_prefix⟩
+  refine ⟨?_, ?_, ?_, fun w => child_verified_after170 w (by decide), boundary_envelope_prefix⟩
   · intro w n signed observation h
     rcases (scheduled_envelope_cases h).2.2 with rfl | rfl <;> decide
   · intro w hw1 n signed observation h
@@ -1215,13 +1210,6 @@ theorem single_early_envelope_receipt :
     · simp [witnessExecution, witnessSchedule, slotEvents] at h
     · rfl
 
-theorem data_availability_relay :
-    DeadlineDataAvailabilityRelay witnessConfig witnessExternals witnessExecution := by
-  intro v hv k n signed sourceObservation hk hn hevent havailable hdeadline
-    w hw m hm hboundary hlt receiverSigned receiverObservation hroot hreceiver
-  obtain ⟨rfl, _, _⟩ := scheduled_envelope_cases hevent
-  rfl
-
 theorem witnessHorizonVoteDeliveryLookahead :
     HorizonVoteDeliveryLookahead witnessConfig witnessExecution := by
   constructor
@@ -1231,8 +1219,7 @@ theorem witnessHorizonVoteDeliveryLookahead :
 theorem witnessPaperSafetySynchrony :
     NextSlotSynchronyPremises witnessConfig witnessExternals witnessExecution :=
   witnessSynchrony.toPaperSafetySynchrony witnessConfig witnessExternals
-    witnessHorizonVoteDeliveryLookahead envelope_delivery boundary_envelope_prefix
-    data_availability_relay
+    witnessHorizonVoteDeliveryLookahead boundary_envelope_prefix
 
 end FullTwelveEnvelopeBridgeRun
 end FastConfirmation.Spec

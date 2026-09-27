@@ -35,7 +35,7 @@ Each row states a choice in the executable model, why it is used, and the proper
 │ Global FFG and finalization laws      │ The translation proves them from the concrete transition.        │ They range over handler-successful prefixes beyond a conclusion endpoint.         │
 │ Derived FCR prediction support        │ Exact targets for current results; descent for previous results. │ Both forms follow from the joint call and endpoint-slot induction.                │
 │ Gloas payload-aware discount          │ Counts matching or PENDING parent votes in an empty slot.        │ Diverges from upstream rule; public fix at fcr-gloas-fix.                         │
-│ Envelope and data relay               │ Carries verified payload state to honest receivers.              │ The finite next-slot witness has no envelope event.                               │
+│ Envelope boundary prefix              │ Puts the verified payload before the next-slot vote handler.     │ The finite next-slot witness has no envelope event.                               │
 └───────────────────────────────────────┴──────────────────────────────────────────────────────────────────┴───────────────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -95,16 +95,14 @@ retain their earlier deadline observations. These facts preserve the public
 next-slot endpoints without a new public premise field.
 
 `DeadlineBoundaryBlockPrefix` puts needed blocks before the next-slot
-attestation handler. `DeadlineEnvelopeDelivery` uses the same cutoff and
-pre-tick exemption. It states that every honest store has the verified payload
-from the next slot start; one receipt at any earlier second is sufficient,
-because Python keeps `store.payloads`. `DeadlineBoundaryEnvelopePrefix` puts
-the verified payload before the next-slot attestation handler.
-`DeadlineDataAvailabilityRelay` provides data at a matching receiver
-observation at or after the next slot start. These contracts include honest
-client service of ready messages, as required by Python's delay
-consideration. Raw receipt alone does not prove handler acceptance or data
-availability. The finite next-slot witness has
+attestation handler. `DeadlineBoundaryEnvelopePrefix` uses the same cutoff
+and pre-tick exemption and puts the verified payload before that handler; one
+receipt at any earlier second is sufficient, because Python keeps
+`store.payloads`. These contracts include honest client service of ready
+messages, as required by Python's delay consideration. Raw receipt alone does
+not prove handler acceptance or data availability. No premise field states
+envelope or data delivery that the proof does not read
+(`scripts/PremiseFieldUse.lean`). The finite next-slot witness has
 one-second slots, A = 0, and a 500 ms delay witness; it has no envelope event.
 `FullTwelveWitness.full_bundle_witness` proves the full bundle at 12-second
 slots, A = 3 s and Δ = 2 s, with two real delayed first receipts; it also has

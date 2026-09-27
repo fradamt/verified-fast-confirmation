@@ -39,7 +39,7 @@ private def publicWitnesses : Array Name :=
     ``FastConfirmation.Spec.FullTwelveEnvelopeWitness.changed_root_safe_from_next_slot,
     ``FastConfirmation.Spec.FullTwelveEnvelopeWitness.payload_accepted_with_delay,
     ``FastConfirmation.Spec.FullTwelveEnvelopeWitness.envelope_relay_exercised,
-    ``FastConfirmation.Spec.FullTwelveEnvelopeWitness.data_relay_exercised,
+    ``FastConfirmation.Spec.FullTwelveEnvelopeBridgeRun.single_early_envelope_receipt,
     ``FastConfirmation.Spec.FullTwelveEnvelopeWitness.payload_status_branches,
     ``FastConfirmation.Spec.FullTwelveEnvelopeWitness.fcr_branch_samples,
     ``FastConfirmation.Spec.FullTwelveEnvelopeWitness.fcr_guard_samples,

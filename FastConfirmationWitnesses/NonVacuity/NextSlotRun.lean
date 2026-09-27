@@ -949,17 +949,6 @@ theorem witnessPaperSafetySynchrony :
       simp only [is_payload_verified, hempty, hnone, Option.isSome_none]
     rw [hfalse] at hr
     cases hr
-  · intro v hv n r hn hr
-    have hempty := witness_payloads_empty v n
-    have hnone : witnessExecution.genesis_store.payloads r = none := rfl
-    have hfalse : is_payload_verified
-        (witnessExecution.store witnessConfig witnessExternals v n) r = false := by
-      simp only [is_payload_verified, hempty, hnone, Option.isSome_none]
-    rw [hfalse] at hr
-    cases hr
-  · intro v hv k n signed sourceObservation hk hn hevent havailable
-    have hno := witnessSchedule_no_envelope v k _ hevent signed sourceObservation
-    exact (hno rfl).elim
 
 end NextSlotBridgeRun
 end FastConfirmation.Spec

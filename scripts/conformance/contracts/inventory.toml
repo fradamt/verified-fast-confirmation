@@ -216,22 +216,10 @@ class = "E-network/behavior"
 reason = "Ready blocks must be processed before a boundary attestation handler."
 
 [[field]]
-path = "NextSlotSynchronyPremises.envelope_delivery"
-file = "Synchrony.lean"
-class = "E-network/behavior+I"
-reason = "The network must deliver each cutoff verified envelope, and each honest client must verify it and keep the payload from the next slot start unless the block is permanently excluded; one earlier receipt is sufficient. Engine validity remains idealized."
-
-[[field]]
 path = "NextSlotSynchronyPremises.boundary_envelope_prefix"
 file = "Synchrony.lean"
 class = "E-network/behavior+I"
 reason = "Ready envelopes must be processed before a boundary attestation handler, so that handler reads a store with the verified payload. Engine validity remains idealized."
-
-[[field]]
-path = "NextSlotSynchronyPremises.data_availability_relay"
-file = "Synchrony.lean"
-class = "E-network/behavior+I"
-reason = "The network must deliver matching data and the client must serve it at receipt; KZG and data service remain idealized."
 
 [[field]]
 path = "NextSlotSynchronyPremises.attester_slashing_relay"
