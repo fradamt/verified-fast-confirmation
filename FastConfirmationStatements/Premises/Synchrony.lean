@@ -190,7 +190,11 @@ and creation time remain horizon-scoped; only its mandated receipt second may
 be the first second of the immediately following epoch, just beyond the
 exclusive public cutoff.  Keeping that receipt in the infinite execution
 schedule avoids the impossible requirement that the cutoff contain its own
-next epoch boundary. -/
+next epoch boundary.
+
+Idealization: each honest single-validator vote reaches every honest node at
+the exact next boundary second. Real gossip uses subnets and aggregates; the
+fork-choice effect of the aggregate is the same. -/
 structure HorizonVoteDeliveryLookahead (E : Execution Root) : Prop where
   attestation_delivery : ∀ v ∈ E.honest, ∀ s n (a : Attestation Root),
     E.SlotWithinHorizon cfg s →

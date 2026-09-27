@@ -24,12 +24,13 @@ Each row states a choice in the executable or paper model, why it is used, and t
 │                                       │                                                                  │ argument.                                                                         │
 │ Canonical FFG inclusion relation      │ Reads body votes of accepted blocks through the concrete         │ Counts only votes that set the timely-target flag; an aggregate stands for        │
 │                                       │ transition (TargetIncludedAt).                                   │ single-validator votes of its signers.                                            │
-│ Opaque block-validity oracle          │ Separates BLS, hash roots, proposer selection, and erased        │ The theorem holds for every oracle; agreement with Python validity is class I.    │
-│                                       │ operations from the FFG transition.                              │                                                                                   │
+│ Opaque block-validity oracle          │ Separates BLS, hash roots, proposer selection, and other         │ The theorem holds for every oracle; agreement with Python validity is class I.    │
+│                                       │ unmodeled checks from the FFG transition.                        │                                                                                   │
 │ Supplied FFG validation state         │ Prepares the keyed target block state from an honest store.      │ Stated in FFGInterpretationFidelity only; the prepared state may be unkeyed.      │
-│ Static validator registry             │ Fixes balances and slashed flags in the horizon.                 │ Included slashing never marks a validator slashed in state; see FixedFFGScope.    │
+│ Static validator registry             │ Fixes the registry in the horizon.                               │ Blocks with slashings, exits, or parent requests are rejected; an epoch-step      │
+│                                       │                                                                  │ registry change in Python is outside the scope.                                   │
 │ Finite horizon                        │ Makes endpoints and next-slot receipt precise.                   │ Conclusions do not extend beyond the checked horizon.                             │
-│ Global FFG and finalization laws      │ Connects opaque beacon transitions to exact checkpoint state.    │ The premises range over handler-successful prefixes beyond a conclusion endpoint. │
+│ Global FFG and finalization laws      │ The translation proves them from the concrete transition.        │ They range over handler-successful prefixes beyond a conclusion endpoint.         │
 │ Derived FCR prediction support        │ Exact targets for current results; descent for previous results. │ Both forms follow from the joint call and endpoint-slot induction.                │
 │ Gloas payload-aware discount          │ Counts matching or PENDING parent votes in an empty slot.        │ Diverges from upstream rule; public fix at fcr-gloas-fix.                         │
 │ Envelope and data relay               │ Carries verified payload state to honest receivers.              │ The finite next-slot witness has no envelope event.                               │
@@ -42,8 +43,9 @@ Each row states a choice in the executable or paper model, why it is used, and t
 
 On a failed indexed attestation, Python may retain the target checkpoint-state cache write. Lean returns none, and the scheduled fold keeps the prior store. The cache value comes from the target block state and deterministic `process_slots` when the target entry is absent. A later successful call computes the same value if the keyed block state is unchanged. This is an argument for later successful attestation validation, not a refinement proof for all later reads. A direct `checkpoint_states` read can observe the Python write before any successful call; the Lean model omits that effect.
 
-The safety claim holds for every carrier-vote relation that meets the stated
-fields. It does not alone certify the votes in real block bodies.
+The inclusion relation is the canonical relation of the bridge: the body votes
+of accepted blocks, read through the concrete transition. It is not a free
+input.
 `review_claims` has one safety field. `DeadlineBlockRelay` supplies operational store retention close to membership; the proof removes permanent exclusion and proves executable ancestry.
 
 The `ByzantineWeightPremises.span_fraction` bound applies to every in-horizon
@@ -146,8 +148,8 @@ need.
 1. `HonestBehavior.votes_head` requires every honest committee member to vote for its fork-choice head. It excludes abstention and other vote choices. The proof uses this vote support.
 2. `HonestBehavior.not_slashable` requires all scheduled honest votes to be pairwise non-slashable. With `votes_head`, it constrains honest head votes across slots. The proof uses it to exclude honest equivocation.
 3. `HonestBehavior.no_forgery` covers every scheduled attestation that names an honest validator, even before validation. It lets the proof identify honest vote data in received copies.
-4. `BeaconExternalsPremises.registry_static_in_horizon` fixes the registry in keyed states of honest causal stores and in the slot-processed states that handlers read. It excludes runs where included slashings, voluntary exits, withdrawal or consolidation requests that start an exit, deposits or deposit requests, activations, ejections, or effective-balance updates change those records in the horizon. The concrete scope `FixedFFGScope` states the same exclusions. Withdrawals, rewards, and penalties change only balances, which the projection does not retain. The proof uses one anchor registry for weights and committees.
-5. `StaticValidatorSet.activity_constant` fixes active status across the horizon. It lets committee and stake facts use one active set.
+4. `BeaconExternalsPremises.registry_static_in_horizon` fixes the registry in keyed states of honest causal stores and in the slot-processed states that handlers read. Under the bridge it is a theorem (`ConcreteBridge.registry_static_in_horizon`). The concrete transition rejects blocks with slashings, voluntary exits, or parent execution requests. A Python run with an epoch-step registry change (effective-balance update, activation, ejection, or pending deposit) is outside the scope; see [the registry scope](#current-ffg-and-execution-scope). Withdrawals, rewards, and penalties change only balances, which the projection does not retain. The proof uses one anchor registry for weights and committees.
+5. `StaticValidatorSet.activity_constant` fixes active status across the horizon. It lets committee and stake facts use one active set. Under the bridge it is a theorem (`ConcreteBridge.activity_constant`) from `FixedFFGScope.activity_fixed`, so it is not a public premise field.
 6. `BeaconExternalsPremises.committees_agree` and `on_attestation_committee` model committees as one fixed ground-truth assignment `E.committee`. `committees_agree` makes every honest store query for every in-horizon slot return this assignment. In the real protocol, the committees of epoch e depend on the RANDAO mix of epoch e − 2 and on the branch of the reading state, so two honest nodes can read different committees. These RANDAO-seeded, fork-dependent committees are not modeled. A weaker model needs per-branch committees in the execution, with each weight bound stated for the committees of the reading branch.
 7. `BeaconExternalsPremises.on_attestation_committee` confines successful delivered attestations to their slot committee. The Lean handler receives an indexed wire object. This premise stands for Python's committee-derived `get_indexed_attestation` path, with the fixed assignment of item 6 in place of the committee of the target checkpoint state. It does not constrain attester-slashing evidence; off-committee evidence can validate and only adds indices to the equivocating set.
 8. `BeaconExternalsPremises.verify_envelope_deterministic` ignores observation context for a fixed state and signed envelope. It supports transport of a verified result to a later observation.
@@ -156,7 +158,7 @@ need.
 11. `NextSlotSynchronyPremises.attester_slashing_relay` gives each honest store the equivocation indices by the next boundary. Literal Python can reject evidence when its justified state lacks a signer.
 12. `NextSlotSafetyPremises.anchor_state_checkpoints` admits the genesis anchor with a raw stub or a state with both checkpoints equal to the anchor. Older raw checkpoints in a checkpoint-sync state are outside its scope. Under `ConcreteBridge.SafetyPremises` the run starts from the concrete genesis (`ConcreteBridge.ConcreteGenesis`), and the translation proves this field.
 13. `ScheduledFCRCallPremises.balance_floor` requires two increments of anchor active weight. With the static registry, this supplies the exact intermediate-state guard for `Phase0BoundarySourceCoherence.process_slots_checkpoint_epoch`. Under the concrete premise the translation proves it from the admissible setup (`FFGSetup.Admissible`).
-14. `AcceptedBlockFFGState.epoch_one_finalization_one_step` restricts the scope. The concrete premise states it as `ConcreteBridge.EpochOneFinalizationScope` over the committed states of accepted blocks: a finalization of epoch `GENESIS_EPOCH + 1` in the horizon has a link to the next epoch. Python can also finalize epoch `GENESIS_EPOCH + 1` through the link 1 -> 3 alone. With honest votes this is the only way to finalize epoch 1: PJF returns early in epoch 1, so honest epoch-2 votes have source 0. The proof does not cover this case for two reasons. First, an honest vote of epoch 2 with a head in epoch 1 can have a source older than the finalized epoch. Second, Assumption 3.2 does not make a finalized epoch-1 checkpoint canonical during epoch 2. `test_realized_gap.py` has a run in which one store finalizes epoch 1 through the link 1 -> 3 while an honest store still has justified epoch 0 (regression.finalized_epoch_one_two_step_above_voter_justified). Finalizations of later epochs through two-epoch links are in scope: `realized_finalized_evidence` and `unrealized_finalized_evidence` state the `k = 2` Python law, and `Phase0BoundarySourceCoherence.process_slots_two_boundaries` gives the honest source of a stale head.
+14. `SafetyPremises.epoch_one_finalization_scope` (`ConcreteBridge.EpochOneFinalizationScope`, internally `AcceptedBlockFFGState.epoch_one_finalization_one_step`) restricts the scope: a finalization of epoch `GENESIS_EPOCH + 1` in a committed state of an accepted block, or in an eager copy, has a link to the next epoch. No such link can exist. A target-epoch-2 vote must match the current justified checkpoint in epoch 2 or the previous justified checkpoint in epoch 3, and both have epoch 0 because PJF returns early at the ends of epochs 0 and 1. So in effect the field says that no accepted block state finalizes epoch 1. Lean proves this (`ConcreteBridge.epochOneFinalizationScope_finalized_ne_one`), and the pyspec check finding.epoch_two_target_source_is_genesis tests the source epochs. Python finalizes epoch 1 when epoch-2 justification needs votes included in epoch 3, through the link 1 -> 3. The proof does not cover this case for two reasons. First, an honest vote of epoch 2 with a head in epoch 1 can have a source older than the finalized epoch. Second, Assumption 3.2 does not make a finalized epoch-1 checkpoint canonical during epoch 2. `test_realized_gap.py` has a run in which one store finalizes epoch 1 through the link 1 -> 3 while an honest store still has justified epoch 0 (regression.finalized_epoch_one_two_step_above_voter_justified). Finalizations of later epochs through two-epoch links are in scope: `realized_finalized_evidence` and `unrealized_finalized_evidence` state the `k = 2` Python law, and `Phase0BoundarySourceCoherence.process_slots_two_boundaries` gives the honest source of a stale head.
 
 ## Derived prediction support
 
@@ -323,7 +325,7 @@ argument excludes the late case: the vote's target epoch is one more than its
 source epoch. For a link of two epochs, the head can be one epoch older than
 the vote's source requires; `process_slots_two_boundaries` then reads the
 source as the head's `GU` when the head epoch is at least `GENESIS_EPOCH + 2`,
-and `epoch_one_finalization_one_step` excludes the epoch-1 case.
+and `epoch_one_finalization_scope` excludes the epoch-1 case.
 `EarlyEpochBoundaryWitness.epoch_one_boundary_regression` records both boundary
 outcomes and the included certificate for the newer source.
 `EarlyEpochBoundaryWitness.epoch_one_fixture_satisfies_boundary_laws` shows
@@ -421,22 +423,16 @@ names the validator and has the same data.
 The block-validity oracle is opaque and class I. It can reject a block, but it
 supplies no FFG state. It stands for BLS signatures, SSZ hash roots, proposer
 selection, the execution-requests commitment, RANDAO, eth1 data, sync
-aggregates, withdrawals, payload attestations, and the validity of the erased
-operations. The safety theorem holds for every oracle, including one that
-accepts every block. A bridge represents a Python run only if its oracle
-accepts the blocks that Python accepts, and if the erased operations keep the
-retained fields fixed. `ConcreteBridge.StateRootsCommit` (class I) is collision
+aggregates, withdrawals, payload attestations, and BLS-to-execution changes;
+none of these writes a retained field. The safety theorem holds for every
+oracle, including one that accepts every block. A bridge represents a Python
+run only if its oracle accepts the blocks that Python accepts and the run
+satisfies the registry scope below. `ConcreteBridge.StateRootsCommit` (class I) is collision
 resistance of the Python state hash root on the states of one run. With it, the bridge
 accepts each in-scope scheduled block that Python accepts. The safety theorem
 does not need it.
 
-The fixed scope (`FixedFFGScope`) keeps the registry constant. It excludes
-proposer and attester slashings, voluntary exits, withdrawal and consolidation
-requests that start an exit, deposits and deposit requests that add a
-validator, registry updates (activations and ejections), and effective-balance
-updates. Withdrawals, rewards, penalties, and the slashing penalty change only
-balances, which the projection does not retain. Deposits in a block body fail
-the Gloas `process_operations` guard in both Python and Lean.
+The concrete transition keeps every validator record fixed. It rejects a block with a proposer or attester slashing, a voluntary exit, or a parent execution request (`FFGWireBlock.InFixedScope`, error `scope`); a body deposit fails the Python guard. An epoch step can still change a record in Python: an effective-balance update, an activation, an ejection, or a pending deposit. The model has no balances and cannot detect these steps, so a Python run is in scope only if no epoch step in the horizon changes a validator record. The whole-bundle sample checks this condition on its run, and a negative control shows that the check detects an effective-balance change. Under the bridge, `registry_static_in_horizon` is a theorem (`ConcreteBridge.registry_static_in_horizon`): the concrete functions write no validator record. It is a fact of the model, so it does not by itself exclude a Python registry change; the epoch-step condition does. Withdrawals, rewards, penalties, and the slashing penalty change only balances, which the projection does not retain.
 
 The concrete differential compares 59 cases with pinned Python. The whole-bundle
 sample compares the retained fields after each of 48 accepted blocks of a
@@ -462,4 +458,4 @@ epoch-1 vote to be included in a block of epoch 2 or later. The Python FCR
 regression in `scripts/conformance/contracts/test_realized_gap.py` loses a
 confirmed block when epoch-1 evidence is seeded too early. The finality law uses
 a two-epoch lag (`k = 2`), the source law covers two or more boundaries, and the
-`epoch_one_finalization_one_step` field gives the `F = 1` scope.
+`epoch_one_finalization_scope` field gives the `F = 1` scope.

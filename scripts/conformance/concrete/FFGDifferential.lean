@@ -117,6 +117,12 @@ def parseVote (j : J) : Except String (FFGWireAttestation Nat) := do
     signature := 0
   }
 
+/-- An optional count field; an absent field reads as zero. -/
+def countField (j : J) (name : String) : Except String Nat :=
+  match j.getObjVal? name with
+  | .ok value => nat value
+  | .error _ => pure 0
+
 def parseBlock (j : J) : Except String (FFGWireBlock Nat) := do
   return {
     slot := ← natField j "slot"
@@ -128,6 +134,9 @@ def parseBlock (j : J) : Except String (FFGWireBlock Nat) := do
     parent_requests_empty := ← boolean (← field j "parent_requests_empty")
     parent_requests_match := ← boolean (← field j "parent_requests_match")
     deposit_count := ← natField j "deposit_count"
+    proposer_slashing_count := ← countField j "proposer_slashing_count"
+    attester_slashing_count := ← countField j "attester_slashing_count"
+    voluntary_exit_count := ← countField j "voluntary_exit_count"
     attestations := ← list parseVote (← field j "attestations")
   }
 
@@ -156,7 +165,7 @@ def errorClass : Error → String
   | .committee => "committee" | .bitfield => "bitfield"
   | .target => "target" | .inclusion => "inclusion"
   | .payloadIndex => "payloadIndex" | .source => "source"
-  | .indexed => "indexed" | .oracle => "oracle"
+  | .indexed => "indexed" | .oracle => "oracle" | .scope => "scope"
 
 def runCase (j : J) : Except String J := do
   let state ← parseState (← field j "state")

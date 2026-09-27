@@ -177,12 +177,14 @@ def committedState [DecidableEq Root] (r : Root) : Option (FFGBeaconState Root) 
     | some (_, stateRoot) => B.states.open_ stateRoot
     | none => none
 
-/-- The setup conditions of the bridge laws: the admissible setup, and a
-`uint64` bound that covers every root read of the fixed scope. -/
+/-- The setup conditions of the bridge laws: the admissible setup, a
+`uint64` bound that covers every root read of the fixed scope, and a `uint64`
+genesis time (the Python type of `genesis_time`). -/
 structure Admissible (B : ConcreteBridge Root) : Prop where
   setup : B.setup.Admissible
   numeric : (B.setup.scope.last_epoch + 1) * B.setup.cfg.slots_per_epoch +
     B.setup.preset.slots_per_historical_root ≤ UINT64_MAX
+  genesis_time : B.setup.genesisTime ≤ UINT64_MAX
 
 /-- An execution starts from the Python genesis store of the setup: the
 anchor state is the projected genesis state and the anchor block is the
@@ -338,14 +340,29 @@ def BodyAttestationsDelivered (E : Execution Root) : Prop :=
   ∀ r b, E.BlockKnownInScheduledPrefix B.setup.cfg B.interface r b →
     ∀ a ∈ b.attestations, ∃ w n, Event.attestation a true ∈ E.schedule w n
 
-/-- **Scope condition, not a protocol law.** No committed state of an
-accepted block, and no single eager PJF pass on a copy of one, finalizes
-epoch `GENESIS_EPOCH + 1` only through the two-epoch link
-`GENESIS_EPOCH + 1 -> GENESIS_EPOCH + 3`: a finalized checkpoint of epoch
-`GENESIS_EPOCH + 1` has a finalization link to epoch `GENESIS_EPOCH + 2` in the
-run of the state. Python can finalize epoch `GENESIS_EPOCH + 1` through the
-two-epoch link alone (rules 1 and 3 of `weigh_justification_and_finalization`);
-such runs are outside the verified scope. -/
+/-- **Scope condition, not a protocol law.** A finalized checkpoint of epoch
+`GENESIS_EPOCH + 1` in the committed state of an accepted block, or after one
+eager PJF pass on a copy of it, has a finalization link to epoch
+`GENESIS_EPOCH + 2` in the run of the state.
+
+Literally the condition admits epoch-1 finality through a link
+`GENESIS_EPOCH + 1 -> GENESIS_EPOCH + 2`. No run can form that link, so in
+effect the condition says that no such state finalizes epoch
+`GENESIS_EPOCH + 1`. A link `GENESIS_EPOCH + 1 -> GENESIS_EPOCH + 2` needs
+target-included votes with source epoch 1 and target epoch 2. A target-epoch-2
+vote must match the current justified checkpoint in epoch 2, or the previous
+justified checkpoint in epoch 3. PJF returns early at the ends of epochs 0 and
+1, and the end of epoch 2 copies the current justified checkpoint (epoch 0)
+to the previous one, so both have epoch 0 and `process_attestation` rejects
+the vote. Python can still finalize epoch `GENESIS_EPOCH + 1` at the end of
+epoch 3 or later through `weigh_justification_and_finalization`,
+when epoch-2 justification needs votes included in epoch 3. Such runs are
+outside the verified scope. `no_finalizationLink_epoch_one_to_two` and
+`epochOneFinalizationScope_finalized_ne_one`
+(`FastConfirmationProofs/FFG/Concrete/EpochOneLinks.lean`) prove that no
+link exists and that no such state finalizes epoch 1. The pyspec check
+`finding.epoch_two_target_source_is_genesis` in
+`scripts/conformance/contracts/test_realized_gap.py` tests the source epochs. -/
 def EpochOneFinalizationScope (E : Execution Root) : Prop :=
   ∀ r cs, E.RootKnownInScheduledPrefix B.setup.cfg B.interface r →
     B.committedState r = some cs → ∀ bl vo, Reachable B.setup bl vo cs →

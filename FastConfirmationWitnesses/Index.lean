@@ -31,7 +31,8 @@ prefixes under the counterexample synchrony record, and a raw checkpoint-sync fi
 regression. The latter confirms a child at slot 14 and loses it at slot 20.
 See `CheckpointSyncFilterWitness.checkpoint_sync_filter_counterexample`. It has no
 attestation inclusion for two epochs. The regression does not assert the full safety
-bundle or its `EventualCheckpointInclusion` premise. It shows why that premise matters;
+bundle or its `EventualCheckpointInclusion` premise (paper Assumption 3.2
+(explicit)). It shows why that premise matters;
 it is not an FCR safety failure.
 
 `NextSlotSafetyPremises.anchor_state_checkpoints` covers a genesis anchor whose state
@@ -43,7 +44,8 @@ checkpoint. Checkpoint-sync anchors with older state checkpoints are outside thi
 condition. The raw source age and the filter's `+2` rule need an inclusion argument.
 That argument is not formalized.
 `CheckpointSyncFilterWitness.checkpoint_sync_filter_counterexample` has no attestation
-inclusion for two epochs, so it is outside `EventualCheckpointInclusion`. It shows why
+inclusion for two epochs, so it is outside `EventualCheckpointInclusion` (paper Assumption 3.2
+(explicit)). It shows why
 that premise matters; it is not an FCR safety failure.
 
 `Phase0BoundarySourceCoherence` has five fields. `process_slots_one_boundary` equates
@@ -58,8 +60,9 @@ least `GENESIS_EPOCH + 2` with eager PJF, if the registry and the total active b
 are unchanged and the same guard holds at every intermediate state.
 `ScheduledFCRCallPremises.balance_floor` requires two increments of anchor active
 weight. With `registry_static_in_horizon`, this floor supplies the guard on in-horizon
-reads. The static-registry condition excludes included slashings, deposits, activations,
-exits, and effective-balance changes that alter validator records in the horizon.
+reads. The concrete transition rejects blocks with slashings, voluntary exits, or parent
+execution requests (`FFGWireBlock.InFixedScope`), and a Python run with an epoch-step
+registry change is outside the scope (`FixedFFGScope`).
 `on_attestation_committee` confines successful delivered attestations in honest
 in-horizon prefixes to their slot committee. Attester-slashing evidence can name
 off-committee validators.
@@ -79,7 +82,14 @@ Five families take `zeroRoot := anchorRoot`: the next-slot, target-edge,
 Byzantine, twelve-second, and twelve-second envelope runs. Python cannot make
 this choice, because `ZERO_HASH` is not the genesis root. With it, the genesis
 stub reads as the anchor checkpoint in the honest votes. The genesis-stub run
-keeps a separate `zeroRoot`, as Python does.
+keeps a separate `zeroRoot`, as Python does. It is still not a
+Python-faithful execution: it uses one-second slots, four validators and four
+slots per epoch, `attestation_due_bps = 0`, zero proposer boost, an oracle that
+accepts every block, a base signature check that accepts exactly the ground
+votes, and the genesis payload fields of `FFGBeaconState.genesis`. Every
+full-bundle run makes the same kind of choices: the twelve-second runs use
+twelve-second slots and a 2500 basis-point attestation due time, and the
+Byzantine run has five validators.
 
 * `ConcreteBridge.SafetyPremises`, the public premise:
   `NextSlotPremiseWitness.finite_execution_satisfies_premises` and
@@ -160,9 +170,9 @@ keeps a separate `zeroRoot`, as Python does.
 * The run fields of the public premise, for the next-slot run:
   `NextSlotBridgeRun.witnessWellFormedExecution`,
   `NextSlotBridgeRun.witnessHonestBehavior`,
-  `NextSlotBridgeRun.witnessExternalsCoherence`,
+  `NextSlotBridgeRun.witnessExternalsCoherence` (the internal record; the
+  public field is its residual part),
   `NextSlotBridgeRun.witnessPaperSafetySynchrony`,
-  `NextSlotBridgeRun.witnessStaticValidatorSet`,
   `NextSlotBridgeRun.witnessByzantineBound`, and
   `NextSlotPremiseWitness.witnessEpochEndsFitUint64`. The four honest nodes
   start from one anchor store and process finite schedules. Every honest vote
@@ -171,6 +181,25 @@ keeps a separate `zeroRoot`, as Python does.
   `NextSlotBridgeRun.witnessHorizonVoteDeliveryLookahead` delivers the
   slot-fifteen vote to every honest node at second sixteen, outside the
   verification horizon.
+* Concrete FFG fixtures outside the safety bundle:
+  `ConcreteJustificationWitness.concrete_certificate_extraction` extracts the
+  supermajority certificate of the end-of-epoch-2 justification of epoch 1 in
+  a two-slot-per-epoch concrete run, and
+  `ConcreteJustificationWitness.wrong_target_vote_not_counted` shows that
+  `process_attestation` accepts a wrong-target vote that does not count.
+  `ConcreteFinalityWitness.k2_certificate_extraction` finalizes epoch 2
+  through the two-epoch link 2 -> 4 with no link 2 -> 3
+  (`ConcreteFinalityWitness.no_adjacent_link`), the pattern of the pyspec
+  two-step-finality run, and
+  `ConcreteFinalityWitness.adjacent_certificate_extraction` finalizes epoch 4
+  through an adjacent link. These fixtures show concrete non-anchor finality;
+  no full-bundle run has it.
+* Fixed-scope guard regression:
+  `ScopeGuardRegression.registry_changing_block_out_of_scope` and
+  `ScopeGuardRegression.parent_request_block_out_of_scope` reject a genesis
+  child with slashings and an exit, or with a parent execution request;
+  `ScopeGuardRegression.in_scope_child_accepted` accepts the same child
+  without them.
 * `FFGInterpretationFidelity` (outside the safety premise):
   `NextSlotPremiseWitness.ffg_interpretation_fidelity`,
   `FullTwelveWitness.ffg_interpretation_fidelity`,
@@ -179,7 +208,8 @@ keeps a separate `zeroRoot`, as Python does.
   `ByzantinePremiseWitness.ffg_interpretation_fidelity`. Each proves the
   fidelity record for the canonical interpretation of its run: the included
   votes are valid members of the accepted carrier body.
-* `EventualCheckpointInclusion` over the view of the bridge:
+* `EventualCheckpointInclusion` (paper Assumption 3.2 (explicit)) over the
+  view of the bridge:
   `NextSlotPremiseWitness.witnessPaperA32Inclusion`. The slot-eight carrier
   carries the unrealized justification of the slot-one child in epoch 1. It is
   in epoch 2, because Python justification returns early in epochs 0 and 1.

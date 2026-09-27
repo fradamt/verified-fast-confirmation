@@ -4,7 +4,6 @@ public import FastConfirmationStatements.Premises.Behavior
 public import FastConfirmationStatements.Premises.ConcreteSafety
 public import FastConfirmationStatements.Premises.Economics
 public import FastConfirmationStatements.Premises.ScheduledExecutionConditions
-public import FastConfirmationStatements.Premises.Externals
 public import FastConfirmationStatements.Premises.FFGCertificates
 public import FastConfirmationStatements.Premises.FFGState
 public import FastConfirmationStatements.Premises.Synchrony

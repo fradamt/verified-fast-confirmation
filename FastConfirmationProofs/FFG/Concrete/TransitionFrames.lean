@@ -469,8 +469,24 @@ theorem state_transition_eq_ok [DecidableEq Root] {cfg : Config} {preset : FFGPr
       oracle.accepts atSlot block next = true := by
   unfold state_transition at h
   simp only [except_bind_eq_ok, except_pure_eq_ok] at h
-  obtain ⟨_, -, _, -, atSlot, hslots, result, hblock, _, hacc, rfl⟩ := h
+  obtain ⟨_, -, _, -, _, -, atSlot, hslots, result, hblock, _, hacc, rfl⟩ := h
   exact ⟨atSlot, hslots, hblock, guard_eq_ok.mp hacc⟩
+
+/-- A successful transition carries a block in the fixed scope: no slashing,
+no voluntary exit, and no parent execution request. -/
+theorem state_transition_inFixedScope [DecidableEq Root] {cfg : Config}
+    {preset : FFGPreset} {schedule : FixedCommitteeSchedule}
+    {oracle : BlockValidityOracle Root} {state next : FFGBeaconState Root}
+    {block : FFGWireBlock Root}
+    (h : state_transition cfg preset schedule oracle state block = .ok next) :
+    block.proposer_slashing_count = 0 ∧ block.attester_slashing_count = 0 ∧
+      block.voluntary_exit_count = 0 ∧ block.parent_requests_empty = true := by
+  unfold state_transition at h
+  simp only [except_bind_eq_ok] at h
+  obtain ⟨_, -, _, -, _, hscope, -⟩ := h
+  have := guard_eq_ok.mp hscope
+  simp only [FFGWireBlock.InFixedScope, Bool.and_eq_true, beq_iff_eq] at this
+  exact ⟨this.1.1.1, this.1.1.2, this.1.2, this.2⟩
 
 /-- The recorded body votes of a successful transition are the ordered calls
 of its attestation fold. -/

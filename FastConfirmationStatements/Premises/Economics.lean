@@ -1,31 +1,14 @@
 module
 public import FastConfirmationModel.Execution.ScheduledPrefixes
-public import FastConfirmationStatements.Premises.Externals
+public import FastConfirmationStatements.Premises.Synchrony
 
 @[expose] public section
 
-/-! Defines the static validator-set and Byzantine committee-weight bounds used by the safety claim. -/
+/-! Defines the Byzantine committee-weight bounds used by the safety claim. -/
 
 namespace FastConfirmation.Spec
 variable {Root : Type*} [LinearOrder Root] [Inhabited Root]
 variable (cfg : Config) (ext : BeaconFunctionInterface Root)
-/-- The static-validator-set idealization over the verified execution segment.
-The trusted genesis initialization itself seeds registry constancy
-mechanically; this record carries only the horizon and activity facts that are
-not consequences of `get_forkchoice_store`. -/
-structure StaticValidatorSet (cfg : Config) (E : Execution Root) : Prop where
-  /-- The trusted anchor itself belongs to the verified uint64 segment, so the
-      public conclusion domain cannot be empty merely because the chosen
-      horizon predates initialization. -/
-  genesis_within_horizon : E.WithinHorizon cfg 0
-  /-- Paper Assumption 1, restricted to the concrete execution segment: the
-      active validator set is constant at epochs below the exclusive
-      verification horizon. This places no finite upper bound on the
-      execution's unbounded `ℕ` clock. -/
-  activity_constant : ∀ i : ValidatorIndex, ∀ e e' : Epoch,
-    e < E.verification_horizon → e' < E.verification_horizon →
-      is_active_validator (E.registry.getD i default) e =
-        is_active_validator (E.registry.getD i default) e'
 /-- The economic assumptions: the `CONFIRMATION_BYZANTINE_THRESHOLD` bound and
 the committee-weight-estimation soundness — both against the ground truth,
 both exactly the spec's own stated assumptions (the estimation soundness is
@@ -41,7 +24,12 @@ structure ByzantineWeightPremises (E : Execution Root) : Prop where
       weight does not exceed `estimate_committee_weight_between_slots`.
       The stronger post-`//100` inequality used by the arithmetic is derived
       from this field and effective-balance quantization in
-      `FastConfirmationProofs/Discount/EconomicRounding.lean`. -/
+      `FastConfirmationProofs/Discount/EconomicRounding.lean`. This is a
+      class I idealization that is false for realistic registries: with
+      fixed committees and coverage it forces every slot committee to weigh
+      exactly `total_active / SLOTS_PER_EPOCH`, and the pinned 100-validator
+      run of `scripts/conformance/contracts/check_real_bundle.py` violates it
+      from slot 0. -/
   estimate_sound : ∀ a b : Slot,
     E.SlotWithinHorizon cfg a → E.SlotWithinHorizon cfg b →
     E.weight (E.span_committee a b) ≤

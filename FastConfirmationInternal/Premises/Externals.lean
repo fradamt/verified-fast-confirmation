@@ -4,7 +4,13 @@ public import FastConfirmationStatements.Premises.Synchrony
 
 @[expose] public section
 
-/-! Defines coherence conditions for abstract state transitions, committees, signatures, and payload observations. -/
+/-! Defines the internal coherence conditions for the bridge interface (state
+transitions, committees, signatures, and payload observations) and the static
+validator set. The public premise of a run with the concrete bridge carries
+only the fields that the bridge does not prove
+(`ConcreteBridge.ConcreteExternalsPremises`);
+`FastConfirmationProofs/FFG/Concrete/ExternalsLaws.lean` proves the others and
+builds these records. -/
 
 namespace FastConfirmation.Spec
 variable {Root : Type*} [LinearOrder Root] [Inhabited Root]
@@ -20,21 +26,30 @@ def RegistryStateInHorizon (E : Execution Root) (state : BeaconState Root) : Pro
       E.SlotWithinHorizon cfg slot ∧
       ext.process_slots base slot = state
 
-/-- Contracts for the abstract `BeaconFunctionInterface` and the execution.
+/-- Contracts for the bridge interface (`BeaconFunctionInterface`) and the execution.
 The three indexed-attestation laws apply only to keyed states in honest,
 in-horizon causal stores. Default-state rejection and validity preservation
 under slot processing are separate contracts. The other fields state
 slot behavior and committee agreement; this record is not a proof
-that the external interpretation refines the full beacon-chain functions. -/
+that the external interpretation refines the full beacon-chain functions.
+For the concrete bridge, eight fields are theorems
+(`FastConfirmationProofs/FFG/Concrete/ExternalsLaws.lean`): the slot laws,
+the two checkpoint-epoch laws, the anchor checkpoint epochs, default-state
+rejection, and the static registry. The public premise carries the other
+nine (`ConcreteBridge.ConcreteExternalsPremises`). -/
 structure BeaconExternalsPremises (E : Execution Root) : Prop where
   /-- `process_slots` targets its slot. -/
   process_slots_slot : ∀ st (s : Slot), st.slot < s → (ext.process_slots st s).slot = s
   /-- The execution-scope static-registry condition. Every keyed state in an
       honest in-horizon causal store and every in-horizon `process_slots`
       result computed from one has the anchor registry. This includes successful scheduled
-      imports at honest nodes. Real runs with included slashings or deposits,
-      or activations, exits, or effective-balance changes taking effect in the
-      horizon do not satisfy this condition. -/
+      imports at honest nodes. Under the concrete bridge this field is a
+      theorem (`ExternalsLaws.lean`): the concrete functions never write a
+      validator record. It is a fact of the model, so it does not by itself
+      exclude a Python registry change. The concrete transition rejects blocks with slashings,
+      exits, or parent execution requests, and a Python run is in scope only
+      if no epoch step in the horizon changes a validator record
+      (`FixedFFGScope`). -/
   registry_static_in_horizon : ∀ state,
     RegistryStateInHorizon cfg ext E state → state.validators = E.registry
   /-- A valid state transition lands on the block's slot. -/
@@ -112,9 +127,14 @@ structure BeaconExternalsPremises (E : Execution Root) : Prop where
     ext.is_valid_indexed_attestation state a = true →
     ∀ v ∈ E.honest, v ∈ a.attesting_indices →
       ∃ m a', E.vote v a.data.slot = some (m, a') ∧ a.data = a'.data
-  /-- Committee confinement only for a successful `on_attestation` delivery
-      in an honest in-horizon causal prefix. Python obtains these indices from
-      committee bits before this handler. The Lean wire object is already
+  /-- Committee confinement for every successful `on_attestation` call whose
+      result is an honest in-horizon prefix store. The pre-store is arbitrary,
+      and a call can return its input store unchanged (for example, a vote
+      older than the latest message with its checkpoint state present). So the
+      field requires that the base validity check reject, on the states of
+      such stores, an indexed attestation with an index outside its slot
+      committee. Python obtains these indices from committee bits before this
+      handler. The Lean wire object is already
       indexed, so this premise supplies the committee. It uses the fixed
       ground-truth assignment `E.committee`; the RANDAO-seeded,
       fork-dependent committees of the real protocol are not modeled.
@@ -178,6 +198,25 @@ structure BeaconExternalsPremises (E : Execution Root) : Prop where
   verify_envelope_deterministic : ∀ state signed o o',
     ext.verify_execution_payload_envelope state signed o =
       ext.verify_execution_payload_envelope state signed o'
+
+/-- The static-validator-set idealization over the verified execution segment.
+The trusted genesis initialization itself seeds registry constancy
+mechanically; this record carries only the horizon and activity facts that are
+not consequences of `get_forkchoice_store`. For the concrete bridge both
+fields are theorems (`ExternalsLaws.lean`). -/
+structure StaticValidatorSet (cfg : Config) (E : Execution Root) : Prop where
+  /-- The trusted anchor itself belongs to the verified uint64 segment, so the
+      public conclusion domain cannot be empty merely because the chosen
+      horizon predates initialization. -/
+  genesis_within_horizon : E.WithinHorizon cfg 0
+  /-- Paper Assumption 1, restricted to the concrete execution segment: the
+      active validator set is constant at epochs below the exclusive
+      verification horizon. This places no finite upper bound on the
+      execution's unbounded `ℕ` clock. -/
+  activity_constant : ∀ i : ValidatorIndex, ∀ e e' : Epoch,
+    e < E.verification_horizon → e' < E.verification_horizon →
+      is_active_validator (E.registry.getD i default) e =
+        is_active_validator (E.registry.getD i default) e'
 
 end FastConfirmation.Spec
 

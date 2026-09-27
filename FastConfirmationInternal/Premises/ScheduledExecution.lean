@@ -1,7 +1,7 @@
 module
 public import FastConfirmationStatements.Premises.ScheduledExecutionConditions
 public import FastConfirmationStatements.Premises.Behavior
-public import FastConfirmationStatements.Premises.Externals
+public import FastConfirmationInternal.Premises.Externals
 public import FastConfirmationInternal.Premises.AcceptedFFGState
 
 @[expose] public section

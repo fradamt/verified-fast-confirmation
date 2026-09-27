@@ -48,9 +48,10 @@ least `GENESIS_EPOCH + 2` with eager PJF, if the registry and the total active b
 are unchanged and the same guard holds at every intermediate state.
 `ScheduledFCRCallPremises.balance_floor` requires two increments of anchor active
 weight. With `registry_static_in_horizon`, this floor supplies the guard on in-horizon
-reads. The static-registry condition excludes included slashings, voluntary exits,
-withdrawal and consolidation requests that start an exit, deposits, activations,
-ejections, and effective-balance changes that alter validator records in the horizon.
+reads. The concrete transition rejects blocks with slashings, voluntary exits, or
+parent execution requests, and a Python run with an epoch-step registry change
+(effective-balance update, activation, ejection, or pending deposit) is outside the
+scope (`FixedFFGScope`).
 `on_attestation_committee` confines successful delivered attestations in honest
 in-horizon prefixes to their slot committee. Attester-slashing evidence can name
 off-committee validators.
@@ -93,7 +94,7 @@ the concrete transition against pinned Python. The projection harness checks
 each interpretation law on real pyspec runs. Full-bundle witnesses show
 consistency, while the contract and differential checks test Python behavior.
 
-The active inventory has 72 authored claim-reachable premise fields. The Lean reachability audit also checks two outside Prop boundaries. Its labels separate tested state laws, execution scope, network and behavior, interpretation, and idealizations. Two relay fields have both network and idealization labels, and `SafetyPremises.genesis` has both scope and idealization labels.
+The active inventory has 61 authored claim-reachable fields: 17 definitions (the A3.2 view and antecedent), 7 record fields whose own fields are listed, and 37 assumed leaves. The bridge proves the other internal external contracts and the static validator set (`ExternalsLaws.lean`), so they are not premise fields. The Lean reachability audit also checks two outside Prop boundaries. The leaf labels separate tested state laws, execution scope, network and behavior, and idealizations. Two relay fields have both network and idealization labels, and `SafetyPremises.genesis` has both scope and idealization labels.
 The field list is checked against the claim-type reachability audit. CI runs the
 Python contract, projection, realized-gap, and concrete differential checks in
 a separate pinned-pyspec job.

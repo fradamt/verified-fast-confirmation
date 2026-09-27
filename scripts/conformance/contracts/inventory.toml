@@ -1,6 +1,8 @@
 # Direct fields of structures in FastConfirmationStatements/Premises.
 # T: reachable generated-state law; E-scope: execution limit; E-network/behavior: delivery or actor condition.
 # E-interpretation: supplied FFG or external-state obligation; I: idealization. A + joins mixed labels.
+# definition: a field fixed by a definition (the A3.2 view) or part of the A3.2 antecedent; not an assumption.
+# record: a field whose type is a listed premise record; its own fields carry the classes.
 version = 1
 
 [[field]]
@@ -40,18 +42,6 @@ class = "E-network/behavior"
 reason = "Honest validators must remain unslashed in the fixed registry."
 
 [[field]]
-path = "StaticValidatorSet.genesis_within_horizon"
-file = "Economics.lean"
-class = "E-scope"
-reason = "The anchor second must lie before the absolute horizon."
-
-[[field]]
-path = "StaticValidatorSet.activity_constant"
-file = "Economics.lean"
-class = "E-scope"
-reason = "Active status must stay fixed through every in-horizon epoch."
-
-[[field]]
 path = "ByzantineWeightPremises.effective_balance_quantized"
 file = "Economics.lean"
 class = "T"
@@ -70,209 +60,106 @@ class = "E-network/behavior"
 reason = "Non-honest stake must stay under the bound for each in-horizon slot span."
 
 [[field]]
-path = "BeaconExternalsPremises.process_slots_slot"
-file = "Externals.lean"
-class = "T"
-test = "BeaconExternalsPremises.process_slots_slot"
-
-[[field]]
-path = "BeaconExternalsPremises.registry_static_in_horizon"
-file = "Externals.lean"
-class = "E-scope"
-reason = "Keyed and slot-processed in-horizon states must retain the anchor validator registry."
-
-[[field]]
-path = "BeaconExternalsPremises.state_transition_slot"
-file = "Externals.lean"
-class = "T"
-test = "BeaconExternalsPremises.state_transition_slot"
-
-[[field]]
-path = "BeaconExternalsPremises.state_transition_pre_slot_lt"
-file = "Externals.lean"
-class = "T"
-test = "BeaconExternalsPremises.state_transition_pre_slot_lt"
-
-[[field]]
-path = "BeaconExternalsPremises.state_transition_checkpoint_epoch"
-file = "Externals.lean"
-class = "T"
-test = "BeaconExternalsPremises.state_transition_checkpoint_epoch"
-
-[[field]]
-path = "BeaconExternalsPremises.pjf_checkpoint_epoch"
-file = "Externals.lean"
-class = "T"
-test = "BeaconExternalsPremises.pjf_checkpoint_epoch"
-
-[[field]]
-path = "BeaconExternalsPremises.anchor_state_checkpoint_epoch"
-file = "Externals.lean"
-class = "E-scope"
-legacy_probe = "BeaconExternalsPremises.anchor_state_checkpoint_epoch"
-reason = "The anchor state's justified and finalized checkpoints must not be in a future epoch of the anchor state. Genesis states and every state that the beacon chain reaches satisfy it; an arbitrary well-typed state need not."
-
-[[field]]
-path = "BeaconExternalsPremises.committees_agree"
-file = "Externals.lean"
-class = "I"
-reason = "One fixed committee map stands for branch-dependent RANDAO committee reads."
-
-[[field]]
-path = "BeaconExternalsPremises.honest_attestation_valid"
-file = "Externals.lean"
-class = "I"
-reason = "The opaque BLS and index check must accept each honestly signed singleton vote."
-
-[[field]]
-path = "BeaconExternalsPremises.valid_attestation_honest"
-file = "Externals.lean"
-class = "I"
-reason = "The opaque BLS check must reject forged data naming an honest signer."
-
-[[field]]
-path = "BeaconExternalsPremises.on_attestation_committee"
-file = "Externals.lean"
-class = "I"
-reason = "Indexed wire attestations are assumed to come from the modeled fixed slot committee."
-
-[[field]]
-path = "BeaconExternalsPremises.committee_assignment_unique"
-file = "Externals.lean"
-class = "T"
-test = "BeaconExternalsPremises.committee_assignment_unique"
-
-[[field]]
-path = "BeaconExternalsPremises.committee_coverage"
-file = "Externals.lean"
-class = "T"
-test = "BeaconExternalsPremises.committee_coverage"
-
-[[field]]
-path = "BeaconExternalsPremises.committee_members_active"
-file = "Externals.lean"
-class = "T"
-test = "BeaconExternalsPremises.committee_members_active"
-
-[[field]]
-path = "BeaconExternalsPremises.valid_attestation_default"
-file = "Externals.lean"
-class = "T"
-test = "BeaconExternalsPremises.valid_attestation_default"
-
-[[field]]
-path = "BeaconExternalsPremises.process_slots_attestation_valid"
-file = "Externals.lean"
-class = "T"
-test = "BeaconExternalsPremises.process_slots_attestation_valid"
-
-[[field]]
-path = "BeaconExternalsPremises.verify_envelope_deterministic"
-file = "Externals.lean"
-class = "I"
-reason = "Engine and availability verdicts are assumed stable for fixed state and envelope inputs."
-
-[[field]]
 path = "CheckpointInclusionView.BlockAt"
 file = "FFGState.lean"
-class = "E-interpretation"
+class = "definition"
 reason = "Fixed by the bridge: the accepted blocks of scheduled prefixes."
 
 [[field]]
 path = "CheckpointInclusionView.Included"
 file = "FFGState.lean"
-class = "E-interpretation"
+class = "definition"
 reason = "Fixed by the bridge: indexed body attestations of accepted blocks; modeling choice: indices come from the fixed committee schedule."
 
 [[field]]
 path = "CheckpointInclusionView.formed"
 file = "FFGState.lean"
-class = "E-interpretation"
+class = "definition"
 reason = "Fixed by the bridge: the checkpoints that an accepted block carries; modeling choice: AU reads only the four carried selectors."
 
 [[field]]
 path = "CheckpointInclusionView.C"
 file = "FFGState.lean"
-class = "E-interpretation"
+class = "definition"
 reason = "Fixed by the bridge: the committed ancestor at the epoch start slot, as get_checkpoint_block reads it."
 
 [[field]]
 path = "CheckpointInclusionView.GJ"
 file = "FFGState.lean"
-class = "E-interpretation"
+class = "definition"
 reason = "Fixed by the bridge: realized justification of the committed state; modeling choice: a genesis-epoch checkpoint reads as the anchor (CheckpointReadsAs)."
 
 [[field]]
 path = "CheckpointInclusionView.GU"
 file = "FFGState.lean"
-class = "E-interpretation"
+class = "definition"
 reason = "Fixed by the bridge: justification after one eager PJF copy; modeling choice: a genesis-epoch checkpoint reads as the anchor (CheckpointReadsAs)."
 
 [[field]]
 path = "CheckpointInclusionView.checkpoint_epoch"
 file = "FFGState.lean"
-class = "E-interpretation"
+class = "definition"
 reason = "Fixed by the bridge: the selector returns the queried epoch by definition."
 
 [[field]]
 path = "SourceTargetLinkSupportAt.view_within_horizon"
 file = "FFGState.lean"
-class = "E-network/behavior"
-reason = "Every supporting honest view must lie within the checked horizon."
+class = "definition"
+reason = "Part of the A3.2 antecedent that the proof must supply; not an assumption. Every supporting honest view must lie within the checked horizon."
 
 [[field]]
 path = "SourceTargetLinkSupportAt.source_before_target"
 file = "FFGState.lean"
-class = "E-network/behavior"
-reason = "The supporting FFG source epoch must precede the target."
+class = "definition"
+reason = "Part of the A3.2 antecedent that the proof must supply; not an assumption. The supporting FFG source epoch must precede the target."
 
 [[field]]
 path = "SourceTargetLinkSupportAt.target_epoch_within"
 file = "FFGState.lean"
-class = "E-network/behavior"
-reason = "The supporting target epoch must lie in the checked range."
+class = "definition"
+reason = "Part of the A3.2 antecedent that the proof must supply; not an assumption. The supporting target epoch must lie in the checked range."
 
 [[field]]
 path = "SourceTargetLinkSupportAt.target_known"
 file = "FFGState.lean"
-class = "E-network/behavior"
-reason = "Every supporting honest view must know the target root."
+class = "definition"
+reason = "Part of the A3.2 antecedent that the proof must supply; not an assumption. Every supporting honest view must know the target root."
 
 [[field]]
 path = "SourceTargetLinkSupportAt.target_state_keyed"
 file = "FFGState.lean"
-class = "E-network/behavior"
-reason = "The supporting target state must have an accepted keyed origin."
+class = "definition"
+reason = "Part of the A3.2 antecedent that the proof must supply; not an assumption. The supporting target state must have an accepted keyed origin."
 
 [[field]]
 path = "SourceTargetLinkSupportAt.signers"
 file = "FFGState.lean"
-class = "E-network/behavior"
-reason = "The support witness must select a signer set."
+class = "definition"
+reason = "Part of the A3.2 antecedent that the proof must supply; not an assumption. The support witness must select a signer set."
 
 [[field]]
 path = "SourceTargetLinkSupportAt.signers_not_slashable"
 file = "FFGState.lean"
-class = "E-network/behavior"
-reason = "Support weight must exclude slashable signers at the view."
+class = "definition"
+reason = "Part of the A3.2 antecedent that the proof must supply; not an assumption. Support weight must exclude slashable signers at the view."
 
 [[field]]
 path = "SourceTargetLinkSupportAt.signers_in_registry"
 file = "FFGState.lean"
-class = "E-network/behavior"
-reason = "Support signers must belong to the active registry."
+class = "definition"
+reason = "Part of the A3.2 antecedent that the proof must supply; not an assumption. Support signers must belong to the active registry."
 
 [[field]]
 path = "SourceTargetLinkSupportAt.signer_attestation"
 file = "FFGState.lean"
-class = "E-network/behavior"
-reason = "Each support signer must have a matching received attestation."
+class = "definition"
+reason = "Part of the A3.2 antecedent that the proof must supply; not an assumption. Each support signer must have a matching received attestation."
 
 [[field]]
 path = "SourceTargetLinkSupportAt.supermajority"
 file = "FFGState.lean"
-class = "E-network/behavior"
-reason = "The exact source-to-target support weight must reach two-thirds."
+class = "definition"
+reason = "Part of the A3.2 antecedent that the proof must supply; not an assumption. The exact source-to-target support weight must reach two-thirds."
 
 [[field]]
 path = "EventualCheckpointInclusion.included"
@@ -313,8 +200,8 @@ reason = "The positive network delay must fit after the attestation cutoff withi
 [[field]]
 path = "NextSlotSynchronyPremises.delivery_lookahead"
 file = "Synchrony.lean"
-class = "E-network/behavior"
-reason = "The first vote receipt beyond the public horizon must still be scheduled."
+class = "record"
+reason = "Record field: its fields are listed under HorizonVoteDeliveryLookahead with their own classes. The first vote receipt beyond the public horizon must still be scheduled."
 
 [[field]]
 path = "NextSlotSynchronyPremises.deadline_block_relay"
@@ -350,7 +237,7 @@ reason = "Accepted equivocation indices must reach every honest store by the nex
 path = "SafetyPremises.admissible"
 file = "ConcreteSafety.lean"
 class = "E-scope"
-reason = "The fixed setup must start at genesis, keep a registry weight floor, let the root ring cover two epochs, and fit uint64 root reads."
+reason = "The fixed setup must start at genesis, keep a registry weight floor, let the root ring cover two epochs, fit uint64 root reads, and have a uint64 genesis time."
 
 [[field]]
 path = "SafetyPremises.genesis"
@@ -373,20 +260,20 @@ reason = "The slot duration must map exactly to whole-second schedule ticks."
 [[field]]
 path = "SafetyPremises.wellFormed"
 file = "ConcreteSafety.lean"
-class = "E-interpretation"
-reason = "Scheduled stores require injective roots and the anchor parent condition."
+class = "record"
+reason = "Record field: its fields are listed under WellFormedExecution with their own classes. Scheduled stores require injective roots and the anchor parent condition."
 
 [[field]]
 path = "SafetyPremises.externals_coherence"
 file = "ConcreteSafety.lean"
-class = "E-interpretation"
-reason = "Scheduled handlers require the beacon, committee, and signature contracts."
+class = "record"
+reason = "Record field: its fields are listed under ConcreteExternalsPremises with their own classes. The bridge proves the other contracts of the internal record BeaconExternalsPremises (ExternalsLaws.lean)."
 
 [[field]]
 path = "SafetyPremises.honest_behavior"
 file = "ConcreteSafety.lean"
-class = "E-network/behavior"
-reason = "Scheduled validator actions must follow the honest voting and deadline rules."
+class = "record"
+reason = "Record field: its fields are listed under HonestBehavior with their own classes. Scheduled validator actions must follow the honest voting and deadline rules."
 
 [[field]]
 path = "SafetyPremises.body_attestations_delivered"
@@ -397,20 +284,14 @@ reason = "Every attestation in an accepted block body must reach some node as a 
 [[field]]
 path = "SafetyPremises.synchrony"
 file = "ConcreteSafety.lean"
-class = "E-network/behavior"
-reason = "The run needs positive delay and the stated next-slot delivery laws."
-
-[[field]]
-path = "SafetyPremises.static_validators"
-file = "ConcreteSafety.lean"
-class = "E-scope"
-reason = "The run requires anchor coverage and fixed active status in the horizon."
+class = "record"
+reason = "Record field: its fields are listed under NextSlotSynchronyPremises with their own classes. The run needs positive delay and the stated next-slot delivery laws."
 
 [[field]]
 path = "SafetyPremises.byzantine_bound"
 file = "ConcreteSafety.lean"
-class = "E-network/behavior"
-reason = "The run needs quantized balances, exact estimates, and per-span fault bounds."
+class = "record"
+reason = "Record field: its fields are listed under ByzantineWeightPremises with their own classes. The run needs quantized balances, exact estimates, and per-span fault bounds."
 
 [[field]]
 path = "SafetyPremises.epoch_ends_fit"
@@ -433,8 +314,8 @@ reason = "No in-scope state finalizes epoch 1 only through the two-epoch link fr
 [[field]]
 path = "SafetyPremises.checkpoint_inclusion"
 file = "ConcreteSafety.lean"
-class = "E-network/behavior"
-reason = "Paper A3.2 over the fixed bridge view: after sustained honest link support, proposers include the votes and the network delivers a carrier block by epoch e+2."
+class = "record"
+reason = "Record field: its fields are listed under EventualCheckpointInclusion with their own classes. Paper A3.2 over the fixed bridge view: after sustained honest link support, proposers include the votes and the network delivers a carrier block by epoch e+2."
 
 [[boundary]]
 path = "EpochEndsFitUint64"
@@ -447,3 +328,57 @@ path = "BeaconFunctionInterface.AnchorCommitsToState"
 file = "FastConfirmationModel/Execution/Externals.lean"
 class = "I"
 reason = "The concrete bridge fixes the anchor commitment: the anchor block is at slot 0 and the anchor state is the projected setup genesis state."
+
+[[field]]
+path = "ConcreteExternalsPremises.committees_agree"
+file = "ConcreteSafety.lean"
+class = "I"
+reason = "One fixed committee map stands for branch-dependent RANDAO committee reads."
+
+[[field]]
+path = "ConcreteExternalsPremises.honest_attestation_valid"
+file = "ConcreteSafety.lean"
+class = "I"
+reason = "The opaque BLS and index check must accept each honestly signed singleton vote."
+
+[[field]]
+path = "ConcreteExternalsPremises.valid_attestation_honest"
+file = "ConcreteSafety.lean"
+class = "I"
+reason = "The opaque BLS check must reject forged data naming an honest signer."
+
+[[field]]
+path = "ConcreteExternalsPremises.on_attestation_committee"
+file = "ConcreteSafety.lean"
+class = "I"
+reason = "Indexed wire attestations are assumed to come from the modeled fixed slot committee."
+
+[[field]]
+path = "ConcreteExternalsPremises.committee_assignment_unique"
+file = "ConcreteSafety.lean"
+class = "T"
+test = "BeaconExternalsPremises.committee_assignment_unique"
+
+[[field]]
+path = "ConcreteExternalsPremises.committee_coverage"
+file = "ConcreteSafety.lean"
+class = "T"
+test = "BeaconExternalsPremises.committee_coverage"
+
+[[field]]
+path = "ConcreteExternalsPremises.committee_members_active"
+file = "ConcreteSafety.lean"
+class = "T"
+test = "BeaconExternalsPremises.committee_members_active"
+
+[[field]]
+path = "ConcreteExternalsPremises.process_slots_attestation_valid"
+file = "ConcreteSafety.lean"
+class = "T"
+test = "BeaconExternalsPremises.process_slots_attestation_valid"
+
+[[field]]
+path = "ConcreteExternalsPremises.verify_envelope_deterministic"
+file = "ConcreteSafety.lean"
+class = "I"
+reason = "Engine and availability verdicts are assumed stable for fixed state and envelope inputs."

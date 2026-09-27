@@ -115,6 +115,31 @@ def retained_projection_rows(spec, run):
     return rows, expected
 
 
+def epoch_registry_change(spec, run):
+    """Negative control for the epoch-step applicability condition.
+
+    The bridge keeps every validator record fixed, so it represents a Python
+    run only if no epoch step changes a record in the horizon. Lower the
+    balance of validator 0 below the downward hysteresis threshold before the
+    first epoch-crossing block at or after slot 16. Python
+    `process_effective_balance_updates` then lowers its effective balance, and
+    the retained-projection comparison must report the registry change."""
+    root = next(r for r in run.events
+                if int(run.blocks[r].slot) >= 16 and int(run.blocks[r].slot) % 8 == 0)
+    pre = run.states[run.parents[root]].copy()
+    # Fix the header state root first, so that the parent root of the block
+    # still matches after the balance change.
+    pre.latest_block_header.state_root = spec.hash_tree_root(pre)
+    pre.balances[0] = spec.Gwei(int(pre.validators[0].effective_balance)
+                                - int(spec.EFFECTIVE_BALANCE_INCREMENT) // 2)
+    post = pre.copy()
+    spec.state_transition(post, spec.SignedBeaconBlock(message=run.blocks[root]),
+                          validate_result=False)
+    return {'slot': int(run.blocks[root].slot),
+            'before': int(pre.validators[0].effective_balance),
+            'after': int(post.validators[0].effective_balance)}
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument('--repo', type=Path, required=True)
@@ -153,8 +178,8 @@ def main() -> int:
           len(run.states), {'root': changed} if changed else None)
     field('ScheduledFCRCallPremises.balance_floor',
           sum(int(registry[i].effective_balance) for i in active[0]) >= 2 * increment, 1)
-    field('NextSlotSafetyPremises.slots_per_epoch_gt_one', slots_per_epoch > 1, 1)
-    field('NextSlotSafetyPremises.epoch_ends_fit',
+    field('SafetyPremises.slots_per_epoch_gt_one', slots_per_epoch > 1, 1)
+    field('SafetyPremises.epoch_ends_fit',
           horizon * slots_per_epoch < 2**64, 1)
     field('NextSlotSafetyPremises.anchor_boundary', int(anchor.slot) % slots_per_epoch == 0, 1)
     field('NextSlotSafetyPremises.anchor_eq', run.anchor[1] == run.anchor_root, 1)
@@ -164,7 +189,7 @@ def main() -> int:
     field('BeaconExternalsPremises.anchor_state_checkpoint_epoch',
           int(anchor_state.current_justified_checkpoint.epoch) <= int(anchor_state.slot) // slots_per_epoch
           and int(anchor_state.finalized_checkpoint.epoch) <= int(anchor_state.slot) // slots_per_epoch, 1)
-    field('ScheduledExecutionPremises.whole_seconds', int(spec.config.SLOT_DURATION_MS) % 1000 == 0, 1)
+    field('SafetyPremises.whole_seconds', int(spec.config.SLOT_DURATION_MS) % 1000 == 0, 1)
     field('ByzantineWeightPremises.effective_balance_quantized',
           all(int(v.effective_balance) % increment == 0 for v in registry), len(registry))
     # T laws sampled on accepted keyed states of this same execution.
@@ -217,12 +242,12 @@ def main() -> int:
     unique = all(sum(len(committees[s]) for s in range(e*slots_per_epoch, (e+1)*slots_per_epoch))
                  == len(set().union(*(committees[s] for s in range(e*slots_per_epoch, (e+1)*slots_per_epoch))))
                  for e in range(6))
-    field('BeaconExternalsPremises.committee_assignment_unique', unique, 6)
+    field('ConcreteExternalsPremises.committee_assignment_unique', unique, 6)
     covered = all(active[e] <= set().union(*(committees[s] for s in range(e*slots_per_epoch, (e+1)*slots_per_epoch)))
                   for e in range(6))
-    field('BeaconExternalsPremises.committee_coverage', covered, 6)
+    field('ConcreteExternalsPremises.committee_coverage', covered, 6)
     member_active = all(committees[s] <= active[s // slots_per_epoch] for s in committees)
-    field('BeaconExternalsPremises.committee_members_active', member_active, len(committees))
+    field('ConcreteExternalsPremises.committee_members_active', member_active, len(committees))
     total = int(spec.get_total_active_balance(anchor_state))
     span_checks = 0
     estimate_failures = []
@@ -255,6 +280,10 @@ def main() -> int:
                      if want != got), None)
     field('ConcreteFFG.state_transition.retained_projection',
           mismatch is None and len(rows) == 48, len(rows), mismatch)
+    control = epoch_registry_change(spec, run)
+    field('ConcreteFFG.state_transition.epoch_registry_change_detected',
+          control['after'] != control['before'], 1,
+          None if control['after'] != control['before'] else control)
     for row in projection.check_run(run, projection.source_statements()):
         results.append({'field': row['field'], 'status': row['status'],
                         'checks': 1, 'first_failure': row['state'] if row['status'] == 'FAIL' else None})
