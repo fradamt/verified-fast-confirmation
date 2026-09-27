@@ -34,7 +34,6 @@ jobs:
           ref: fcr-gloas-fix
           path: .source/consensus-specs
           fetch-depth: 0 # helper fixture reads the historical pinned Git object
-          fetch-depth: 0
           persist-credentials: false
 
       - name: Set up Python
